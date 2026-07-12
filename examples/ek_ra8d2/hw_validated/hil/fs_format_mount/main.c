@@ -1,22 +1,22 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/fs_format_mount/main.c
- * @brief Format + mount + file-ops HIL demo across every FAT type ra_fs writes.
+ * @brief Format + mount + file-ops HIL demo across every FAT type ra8_fs writes.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Standalone EVM-tier app that exercises the new `ra_fs_format()` mkfs path
+ * Standalone EVM-tier app that exercises the new `ra8_fs_format()` mkfs path
  * end to end on real removable storage. It drives a microSD card over the
- * `ra_sdmmc_spi` SPI-mode driver (the same Pmod2 / SCI0 Simple-SPI transport
- * adapter as `tz_secure_only_sd`) and, for each FAT variant `ra_fs` can write:
+ * `ra8_sdmmc_spi` SPI-mode driver (the same Pmod2 / SCI0 Simple-SPI transport
+ * adapter as `tz_secure_only_sd`) and, for each FAT variant `ra8_fs` can write:
  *
  *   - FAT12, FAT16, FAT32,
  *
  * it runs this cycle on the card:
  *
- *   1. `ra_fs_format` the volume as the target type (auto cluster size);
- *   2. `ra_fs_mount` it and assert the detected `ra_fs_type` matches;
+ *   1. `ra8_fs_format` the volume as the target type (auto cluster size);
+ *   2. `ra8_fs_mount` it and assert the detected `ra8_fs_type` matches;
  *   3. create + write a known payload to a test file;
  *   4. read it back and byte-compare;
  *   5. rename the file and confirm the new name reads back intact and the old
@@ -49,18 +49,18 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_fs.h"
-#include "ra_gpio_constants.h"
-#include "ra_isr.h"
-#include "ra_log.h"
-#include "ra_port_utils.h"
-#include "ra_sci_spi.h"
-#include "ra_sdmmc_spi.h"
-#include "ra_spi.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_fs.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_isr.h"
+#include "ra8_log.h"
+#include "ra8_port_utils.h"
+#include "ra8_sci_spi.h"
+#include "ra8_sdmmc_spi.h"
+#include "ra8_spi.h"
+#include "ra8_time.h"
 
 /* =============================================================================
  * Tunables
@@ -100,10 +100,10 @@ typedef enum : uint8_t {
  */
 
 /** @brief Pmod2 SPI pins (J25) -- SCI0 Simple-SPI; CS held by GPIO. */
-static const ra_port_pin_t k_fs_fmt_pin_sck  = (ra_port_pin_t)k_ra_board_pmod2_spi_sck;
-static const ra_port_pin_t k_fs_fmt_pin_cipo = (ra_port_pin_t)k_ra_board_pmod2_spi_cipo;
-static const ra_port_pin_t k_fs_fmt_pin_copi = (ra_port_pin_t)k_ra_board_pmod2_spi_copi;
-static const ra_port_pin_t k_fs_fmt_pin_cs   = (ra_port_pin_t)k_ra_board_pmod2_spi_cs;
+static const ra8_port_pin_t k_fs_fmt_pin_sck  = (ra8_port_pin_t)k_ra8_board_pmod2_spi_sck;
+static const ra8_port_pin_t k_fs_fmt_pin_cipo = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cipo;
+static const ra8_port_pin_t k_fs_fmt_pin_copi = (ra8_port_pin_t)k_ra8_board_pmod2_spi_copi;
+static const ra8_port_pin_t k_fs_fmt_pin_cs   = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cs;
 
 /* =============================================================================
  * Static message strings (ASCII-only per project policy)
@@ -155,7 +155,7 @@ static const char k_name_b[] = "FMTDONE.BIN";
  */
 static void fs_fmt_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Emit a NUL-terminated literal (length via strlen at compile sites). */
@@ -190,17 +190,17 @@ static void fs_fmt_panic_halt(void)
  * @post No state modified beyond `*out_len`.
  * @since 0.1.0
  */
-static const uint8_t* fs_fmt_label(ra_fs_type_t type, uint32_t* out_len)
+static const uint8_t* fs_fmt_label(ra8_fs_type_t type, uint32_t* out_len)
 {
-  if (type == k_ra_fs_type_fat12) {
+  if (type == k_ra8_fs_type_fat12) {
     *out_len = (uint32_t)sizeof(k_msg_fat12) - 1U;
     return k_msg_fat12;
   }
-  if (type == k_ra_fs_type_fat16) {
+  if (type == k_ra8_fs_type_fat16) {
     *out_len = (uint32_t)sizeof(k_msg_fat16) - 1U;
     return k_msg_fat16;
   }
-  if (type == k_ra_fs_type_exfat) {
+  if (type == k_ra8_fs_type_exfat) {
     *out_len = (uint32_t)sizeof(k_msg_exfat) - 1U;
     return k_msg_exfat;
   }
@@ -220,7 +220,7 @@ static const uint8_t* fs_fmt_label(ra_fs_type_t type, uint32_t* out_len)
  * @post The composed line is queued to the console.
  * @since 0.1.0
  */
-static void fs_fmt_print_line(ra_fs_type_t type, const uint8_t* suffix, uint32_t suflen)
+static void fs_fmt_print_line(ra8_fs_type_t type, const uint8_t* suffix, uint32_t suflen)
 {
   uint32_t       lbl_len = 0U;
   const uint8_t* lbl     = fs_fmt_label(type, &lbl_len);
@@ -230,31 +230,31 @@ static void fs_fmt_print_line(ra_fs_type_t type, const uint8_t* suffix, uint32_t
 }
 
 /* =============================================================================
- * SPI -> ra_sdmmc_spi transport adapter (mirror of tz_secure_only_sd)
+ * SPI -> ra8_sdmmc_spi transport adapter (mirror of tz_secure_only_sd)
  * =============================================================================
  */
 
 /* cppcheck-suppress constParameterCallback
- * Reason: bound to ra_sdmmc_spi_transport_t::set_clock, whose signature is
- * `ra_err_t (*)(void*, uint32_t)`; constifying ctx would break the binding. */
-static ra_err_t fs_fmt_spi_set_clock(void* ctx, uint32_t hz)
+ * Reason: bound to ra8_sdmmc_spi_transport_t::set_clock, whose signature is
+ * `ra8_err_t (*)(void*, uint32_t)`; constifying ctx would break the binding. */
+static ra8_err_t fs_fmt_spi_set_clock(void* ctx, uint32_t hz)
 {
   const uint32_t pclka_hz = *(const uint32_t*)ctx;
-  return ra_sci_spi_set_clock((uint8_t)k_fs_fmt_spi_channel, hz, pclka_hz);
+  return ra8_sci_spi_set_clock((uint8_t)k_fs_fmt_spi_channel, hz, pclka_hz);
 }
 
-/** @brief ra_sdmmc_spi_transport_t::cs over ra_gpio (CS active-low). */
-static ra_err_t fs_fmt_spi_cs(void* ctx, bool asserted)
+/** @brief ra8_sdmmc_spi_transport_t::cs over ra8_gpio (CS active-low). */
+static ra8_err_t fs_fmt_spi_cs(void* ctx, bool asserted)
 {
   (void)ctx;
-  return ra_gpio_write(k_fs_fmt_pin_cs, asserted ? k_ra_level_low : k_ra_level_high);
+  return ra8_gpio_write(k_fs_fmt_pin_cs, asserted ? k_ra8_level_low : k_ra8_level_high);
 }
 
-/** @brief ra_sdmmc_spi_transport_t::xfer over ra_sci_spi_xfer. */
-static ra_err_t fs_fmt_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
+/** @brief ra8_sdmmc_spi_transport_t::xfer over ra8_sci_spi_xfer. */
+static ra8_err_t fs_fmt_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
 {
   (void)ctx;
-  return ra_sci_spi_xfer((uint8_t)k_fs_fmt_spi_channel, tx, rx, len);
+  return ra8_sci_spi_xfer((uint8_t)k_fs_fmt_spi_channel, tx, rx, len);
 }
 
 /* =============================================================================
@@ -265,28 +265,28 @@ static ra_err_t fs_fmt_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint3
 /**
  * @brief Route Pmod2 SPI pins and claim CS as a GPIO output (idle high).
  *
- * @return ra_err_t from the routing calls.
- * @retval k_ra_ok    SPI pins routed, CS driven high.
- * @retval k_ra_err_* Routing failure.
+ * @return ra8_err_t from the routing calls.
+ * @retval k_ra8_ok    SPI pins routed, CS driven high.
+ * @retval k_ra8_err_* Routing failure.
  * @pre IOPORT is reachable.
  * @post P601/P602/P603 are SCI0 Simple-SPI; P604 is a GPIO output high.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t fs_fmt_spi_pins_init(void)
+[[nodiscard]] static ra8_err_t fs_fmt_spi_pins_init(void)
 {
-  ra_err_t err = ra_pfs_route_peripheral(k_fs_fmt_pin_sck, k_ra_psel_sci_async, "fsfmt.sck");
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_pfs_route_peripheral(k_fs_fmt_pin_sck, k_ra8_psel_sci_async, "fsfmt.sck");
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_pfs_route_peripheral(k_fs_fmt_pin_cipo, k_ra_psel_sci_async, "fsfmt.cipo");
-  if (err != k_ra_ok) {
+  err = ra8_pfs_route_peripheral(k_fs_fmt_pin_cipo, k_ra8_psel_sci_async, "fsfmt.cipo");
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_pfs_route_peripheral(k_fs_fmt_pin_copi, k_ra_psel_sci_async, "fsfmt.copi");
-  if (err != k_ra_ok) {
+  err = ra8_pfs_route_peripheral(k_fs_fmt_pin_copi, k_ra8_psel_sci_async, "fsfmt.copi");
+  if (err != k_ra8_ok) {
     return err;
   }
-  return ra_gpio_output_init(k_fs_fmt_pin_cs, k_ra_level_high);
+  return ra8_gpio_output_init(k_fs_fmt_pin_cs, k_ra8_level_high);
 }
 
 /**
@@ -303,31 +303,31 @@ static void fs_fmt_setup_or_halt(uint32_t* out_pclka_hz)
 {
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     fs_fmt_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     fs_fmt_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz) != k_ra8_ok) {
     fs_fmt_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     fs_fmt_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_fs_fmt_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_fs_fmt_uart_baud) != k_ra8_ok) {
     fs_fmt_panic_halt();
   }
-  if (fs_fmt_spi_pins_init() != k_ra_ok) {
+  if (fs_fmt_spi_pins_init() != k_ra8_ok) {
     fs_fmt_panic_halt();
   }
-  const ra_sci_spi_cfg_t spi_cfg = {
-    .baud_hz   = (uint32_t)k_ra_sdmmc_spi_clock_init_hz,
+  const ra8_sci_spi_cfg_t spi_cfg = {
+    .baud_hz   = (uint32_t)k_ra8_sdmmc_spi_clock_init_hz,
     .pclk_hz   = pclka_hz,
-    .mode      = k_ra_spi_mode_0,
+    .mode      = k_ra8_spi_mode_0,
     .lsb_first = false,
   };
-  if (ra_sci_spi_init((uint8_t)k_fs_fmt_spi_channel, &spi_cfg) != k_ra_ok) {
+  if (ra8_sci_spi_init((uint8_t)k_fs_fmt_spi_channel, &spi_cfg) != k_ra8_ok) {
     fs_fmt_panic_halt();
   }
   *out_pclka_hz = pclka_hz;
@@ -344,13 +344,13 @@ static void fs_fmt_setup_or_halt(uint32_t* out_pclka_hz)
  */
 static void fs_fmt_init_card_or_halt(uint32_t* pclka_hz)
 {
-  const ra_sdmmc_spi_transport_t transport = {
+  const ra8_sdmmc_spi_transport_t transport = {
     .set_clock = fs_fmt_spi_set_clock,
     .cs        = fs_fmt_spi_cs,
     .xfer      = fs_fmt_spi_xfer,
     .ctx       = pclka_hz,
   };
-  if (ra_sdmmc_spi_init(&transport) != k_ra_ok) {
+  if (ra8_sdmmc_spi_init(&transport) != k_ra8_ok) {
     FS_FMT_PUTS(k_msg_init_fail);
     fs_fmt_panic_halt();
   }
@@ -388,40 +388,40 @@ static void fs_fmt_fill_payload(void)
  * @param[in] mount Mounted volume.
  * @param[in] path  File name to create.
  *
- * @return ra_err_t
- * @retval k_ra_ok                Round-trip verified.
- * @retval k_ra_err_validation_failed Length or content mismatch on read-back.
- * @retval k_ra_err_*             ra_fs create/read failure.
+ * @return ra8_err_t
+ * @retval k_ra8_ok                Round-trip verified.
+ * @retval k_ra8_err_validation_failed Length or content mismatch on read-back.
+ * @retval k_ra8_err_*             ra8_fs create/read failure.
  * @pre @p mount is mounted; `s_payload` is filled.
  * @pre @p path does not already exist.
  * @post On success @p path holds `s_payload`.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t fs_fmt_create_and_verify(ra_fs_mount_t* mount, const char* path)
+[[nodiscard]] static ra8_err_t fs_fmt_create_and_verify(ra8_fs_mount_t* mount, const char* path)
 {
-  ra_err_t err = ra_fs_write_file(mount, path, s_payload, (uint32_t)k_fs_fmt_payload_bytes);
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_fs_write_file(mount, path, s_payload, (uint32_t)k_fs_fmt_payload_bytes);
+  if (err != k_ra8_ok) {
     return err;
   }
-  ra_fs_file_t* f = nullptr;
-  err             = ra_fs_open(mount, path, k_ra_fs_mode_read, &f);
-  if (err != k_ra_ok) {
+  ra8_fs_file_t* f = nullptr;
+  err              = ra8_fs_open(mount, path, k_ra8_fs_mode_read, &f);
+  if (err != k_ra8_ok) {
     return err;
   }
   memset(s_readback, 0, sizeof(s_readback));
   uint32_t got = 0U;
-  err          = ra_fs_read(f, s_readback, (uint32_t)k_fs_fmt_payload_bytes, &got);
-  (void)ra_fs_close(f);
-  if (err != k_ra_ok) {
+  err          = ra8_fs_read(f, s_readback, (uint32_t)k_fs_fmt_payload_bytes, &got);
+  (void)ra8_fs_close(f);
+  if (err != k_ra8_ok) {
     return err;
   }
   if (got != (uint32_t)k_fs_fmt_payload_bytes) {
-    return k_ra_err_validation_failed;
+    return k_ra8_err_validation_failed;
   }
   if (memcmp(s_payload, s_readback, (size_t)k_fs_fmt_payload_bytes) != 0) {
-    return k_ra_err_validation_failed;
+    return k_ra8_err_validation_failed;
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -431,43 +431,43 @@ static void fs_fmt_fill_payload(void)
  * @param[in] from  Existing file name.
  * @param[in] to    Replacement name (must not exist).
  *
- * @return ra_err_t
- * @retval k_ra_ok                Renamed; old gone, new reads back.
- * @retval k_ra_err_invalid_state Old name still resolves after rename.
- * @retval k_ra_err_*             ra_fs rename/read failure.
+ * @return ra8_err_t
+ * @retval k_ra8_ok                Renamed; old gone, new reads back.
+ * @retval k_ra8_err_invalid_state Old name still resolves after rename.
+ * @retval k_ra8_err_*             ra8_fs rename/read failure.
  * @pre @p from exists and holds `s_payload`.
  * @post On success @p to holds the data and @p from is gone.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t
-fs_fmt_rename_and_verify(ra_fs_mount_t* mount, const char* from, const char* to)
+[[nodiscard]] static ra8_err_t
+fs_fmt_rename_and_verify(ra8_fs_mount_t* mount, const char* from, const char* to)
 {
-  ra_err_t err = ra_fs_rename(mount, from, to);
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_fs_rename(mount, from, to);
+  if (err != k_ra8_ok) {
     return err;
   }
-  ra_fs_file_t* gone = nullptr;
-  if (ra_fs_open(mount, from, k_ra_fs_mode_read, &gone) == k_ra_ok) {
-    (void)ra_fs_close(gone);
-    return k_ra_err_invalid_state; /* old name must no longer resolve */
+  ra8_fs_file_t* gone = nullptr;
+  if (ra8_fs_open(mount, from, k_ra8_fs_mode_read, &gone) == k_ra8_ok) {
+    (void)ra8_fs_close(gone);
+    return k_ra8_err_invalid_state; /* old name must no longer resolve */
   }
-  ra_fs_file_t* f = nullptr;
-  err             = ra_fs_open(mount, to, k_ra_fs_mode_read, &f);
-  if (err != k_ra_ok) {
+  ra8_fs_file_t* f = nullptr;
+  err              = ra8_fs_open(mount, to, k_ra8_fs_mode_read, &f);
+  if (err != k_ra8_ok) {
     return err;
   }
   memset(s_readback, 0, sizeof(s_readback));
   uint32_t got = 0U;
-  err          = ra_fs_read(f, s_readback, (uint32_t)k_fs_fmt_payload_bytes, &got);
-  (void)ra_fs_close(f);
-  if (err != k_ra_ok) {
+  err          = ra8_fs_read(f, s_readback, (uint32_t)k_fs_fmt_payload_bytes, &got);
+  (void)ra8_fs_close(f);
+  if (err != k_ra8_ok) {
     return err;
   }
   if ((got != (uint32_t)k_fs_fmt_payload_bytes) ||
       (memcmp(s_payload, s_readback, (size_t)k_fs_fmt_payload_bytes) != 0)) {
-    return k_ra_err_validation_failed;
+    return k_ra8_err_validation_failed;
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -481,32 +481,32 @@ fs_fmt_rename_and_verify(ra_fs_mount_t* mount, const char* from, const char* to)
  * @param[in] mount Mounted, type-validated volume.
  * @param[in] type  Filesystem type, for the per-step diagnostic line.
  *
- * @return ra_err_t
- * @retval k_ra_ok    create + rename + unlink all verified.
- * @retval k_ra_err_* The first failing step's code (its FAIL line is printed).
+ * @return ra8_err_t
+ * @retval k_ra8_ok    create + rename + unlink all verified.
+ * @retval k_ra8_err_* The first failing step's code (its FAIL line is printed).
  * @pre @p mount is mounted; `s_payload` is filled.
  * @pre `k_name_a` does not already exist on @p mount.
  * @post On success @p mount no longer holds the test file.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t fs_fmt_write_cycle(ra_fs_mount_t* mount, ra_fs_type_t type)
+[[nodiscard]] static ra8_err_t fs_fmt_write_cycle(ra8_fs_mount_t* mount, ra8_fs_type_t type)
 {
-  ra_err_t err = fs_fmt_create_and_verify(mount, k_name_a);
-  if (err != k_ra_ok) {
+  ra8_err_t err = fs_fmt_create_and_verify(mount, k_name_a);
+  if (err != k_ra8_ok) {
     fs_fmt_print_line(type, k_msg_fail_write, (uint32_t)sizeof(k_msg_fail_write) - 1U);
     return err;
   }
   err = fs_fmt_rename_and_verify(mount, k_name_a, k_name_b);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     fs_fmt_print_line(type, k_msg_fail_rename, (uint32_t)sizeof(k_msg_fail_rename) - 1U);
     return err;
   }
-  err = ra_fs_unlink(mount, k_name_b);
-  if (err != k_ra_ok) {
+  err = ra8_fs_unlink(mount, k_name_b);
+  if (err != k_ra8_ok) {
     fs_fmt_print_line(type, k_msg_fail_unlink, (uint32_t)sizeof(k_msg_fail_unlink) - 1U);
     return err;
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -514,66 +514,66 @@ fs_fmt_rename_and_verify(ra_fs_mount_t* mount, const char* from, const char* to)
  *
  * @details Emits a per-step `FAIL ...` diagnostic and returns the failing code
  *          on any error, or prints the `FS <TYPE> FORMAT+MOUNT PASS` line and
- *          returns `k_ra_ok` on success.
+ *          returns `k_ra8_ok` on success.
  *
  * @param[in] type FAT variant to format + exercise.
  *
- * @return ra_err_t
- * @retval k_ra_ok    The whole cycle passed for @p type.
- * @retval k_ra_err_* The first failing step's code.
+ * @return ra8_err_t
+ * @retval k_ra8_ok    The whole cycle passed for @p type.
+ * @retval k_ra8_err_* The first failing step's code.
  * @pre The SD card is initialised and `s_payload` is filled.
  * @post The card is left formatted as @p type with the test file removed.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t fs_fmt_run_one_type(ra_fs_type_t type)
+[[nodiscard]] static ra8_err_t fs_fmt_run_one_type(ra8_fs_type_t type)
 {
-  ra_fs_backend_t backend = {};
-  if (ra_sdmmc_spi_bind_fs_backend(&backend) != k_ra_ok) {
+  ra8_fs_backend_t backend = {};
+  if (ra8_sdmmc_spi_bind_fs_backend(&backend) != k_ra8_ok) {
     fs_fmt_print_line(type, k_msg_fail_fmt, (uint32_t)sizeof(k_msg_fail_fmt) - 1U);
-    return k_ra_err_hw_error;
+    return k_ra8_err_hw_error;
   }
-  ra_fs_format_opts_t opts = {};
-  opts.type                = type;
-  opts.label               = "RAFSFMT";
-  ra_err_t err             = ra_fs_format(&backend, &opts);
-  if (err != k_ra_ok) {
+  ra8_fs_format_opts_t opts = {};
+  opts.type                 = type;
+  opts.label                = "RAFSFMT";
+  ra8_err_t err             = ra8_fs_format(&backend, &opts);
+  if (err != k_ra8_ok) {
     /* invalid_size == the card cannot hold this FAT type (too large/small): the
      * caller treats that as a SKIP, not a FAIL, so do not print the FAIL line. */
-    if (err != k_ra_err_invalid_size) {
+    if (err != k_ra8_err_invalid_size) {
       fs_fmt_print_line(type, k_msg_fail_fmt, (uint32_t)sizeof(k_msg_fail_fmt) - 1U);
     }
     return err;
   }
-  ra_fs_mount_t* mount = nullptr;
-  err                  = ra_fs_mount(&backend, &mount);
-  if (err != k_ra_ok) {
+  ra8_fs_mount_t* mount = nullptr;
+  err                   = ra8_fs_mount(&backend, &mount);
+  if (err != k_ra8_ok) {
     fs_fmt_print_line(type, k_msg_fail_mount, (uint32_t)sizeof(k_msg_fail_mount) - 1U);
     return err;
   }
   if (mount->type != type) {
     fs_fmt_print_line(type, k_msg_fail_type, (uint32_t)sizeof(k_msg_fail_type) - 1U);
-    (void)ra_fs_unmount(mount);
-    return k_ra_err_validation_failed;
+    (void)ra8_fs_unmount(mount);
+    return k_ra8_err_validation_failed;
   }
   err = fs_fmt_write_cycle(mount, type);
-  if (err != k_ra_ok) {
-    (void)ra_fs_unmount(mount);
+  if (err != k_ra8_ok) {
+    (void)ra8_fs_unmount(mount);
     return err;
   }
-  (void)ra_fs_unmount(mount);
+  (void)ra8_fs_unmount(mount);
   fs_fmt_print_line(type, k_msg_pass_suf, (uint32_t)sizeof(k_msg_pass_suf) - 1U);
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
  * @var s_exfat_listed
  * @brief Root-directory entry tally for the exFAT trial.
- * @note File-scope; reset before each `ra_fs_listdir` call.
+ * @note File-scope; reset before each `ra8_fs_listdir` call.
  * @since 0.1.0
  */
 static uint32_t s_exfat_listed = 0U;
 
-/** @brief `ra_fs_listdir` callback: tally visible entries for the exFAT trial. */
+/** @brief `ra8_fs_listdir` callback: tally visible entries for the exFAT trial. */
 static void fs_fmt_count_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
 {
   (void)name;
@@ -586,7 +586,7 @@ static void fs_fmt_count_cb(const char* name, uint8_t attr, uint32_t size, void*
 /**
  * @brief Assert a mounted volume's root directory lists exactly zero files.
  *
- * @details Re-zeroes `s_exfat_listed`, walks the root via `ra_fs_listdir`, and
+ * @details Re-zeroes `s_exfat_listed`, walks the root via `ra8_fs_listdir`, and
  *          fails if the walk errors or any user-visible entry surfaces. Used by
  *          the exFAT trial both right after format (the bitmap / up-case /
  *          volume-label system entries must stay hidden) and again after the
@@ -596,29 +596,29 @@ static void fs_fmt_count_cb(const char* name, uint8_t attr, uint32_t size, void*
  * @param[in] mount Mounted, type-validated volume.
  * @param[in] type  Filesystem type, for the per-step diagnostic line.
  *
- * @return ra_err_t
- * @retval k_ra_ok                  Root listed zero entries.
- * @retval k_ra_err_validation_failed Root was non-empty.
- * @retval k_ra_err_*               `ra_fs_listdir` failed (its code).
+ * @return ra8_err_t
+ * @retval k_ra8_ok                  Root listed zero entries.
+ * @retval k_ra8_err_validation_failed Root was non-empty.
+ * @retval k_ra8_err_*               `ra8_fs_listdir` failed (its code).
  * @pre @p mount is mounted.
  * @post `s_exfat_listed` holds the entry count seen on this call.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t fs_fmt_assert_empty_root(ra_fs_mount_t* mount, ra_fs_type_t type)
+[[nodiscard]] static ra8_err_t fs_fmt_assert_empty_root(ra8_fs_mount_t* mount, ra8_fs_type_t type)
 {
   s_exfat_listed = 0U;
-  ra_err_t err   = ra_fs_listdir(mount, "/", fs_fmt_count_cb, nullptr);
-  if ((err != k_ra_ok) || (s_exfat_listed != 0U)) {
+  ra8_err_t err  = ra8_fs_listdir(mount, "/", fs_fmt_count_cb, nullptr);
+  if ((err != k_ra8_ok) || (s_exfat_listed != 0U)) {
     fs_fmt_print_line(type, k_msg_fail_mount, (uint32_t)sizeof(k_msg_fail_mount) - 1U);
-    return (err != k_ra_ok) ? err : k_ra_err_validation_failed;
+    return (err != k_ra8_ok) ? err : k_ra8_err_validation_failed;
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
  * @brief Format the card as exFAT, mount, and run the full file-mutation cycle.
  *
- * @details Mirrors `fs_fmt_run_one_type` for exFAT now that `ra_fs` writes the
+ * @details Mirrors `fs_fmt_run_one_type` for exFAT now that `ra8_fs` writes the
  *          format: it formats the volume, mounts it, asserts the detected type
  *          is exFAT, confirms a freshly-formatted root lists zero files (the
  *          allocation bitmap / up-case / volume-label system entries must stay
@@ -627,63 +627,63 @@ static void fs_fmt_count_cb(const char* name, uint8_t attr, uint32_t size, void*
  *          reclaimed the directory set. The image the formatter writes is
  *          independently fsck.exfat-clean.
  *
- * @return ra_err_t
- * @retval k_ra_ok               Format + mount + full file cycle all passed.
- * @retval k_ra_err_invalid_size Card capacity cannot hold an exFAT volume (SKIP).
- * @retval k_ra_err_*            The first failing step's code.
+ * @return ra8_err_t
+ * @retval k_ra8_ok               Format + mount + full file cycle all passed.
+ * @retval k_ra8_err_invalid_size Card capacity cannot hold an exFAT volume (SKIP).
+ * @retval k_ra8_err_*            The first failing step's code.
  *
  * @pre The SD card is initialised and `s_payload` is filled.
  * @post The card is left formatted as exFAT with the test file removed.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t fs_fmt_run_exfat(void)
+[[nodiscard]] static ra8_err_t fs_fmt_run_exfat(void)
 {
-  ra_fs_backend_t backend = {};
-  if (ra_sdmmc_spi_bind_fs_backend(&backend) != k_ra_ok) {
-    fs_fmt_print_line(k_ra_fs_type_exfat, k_msg_fail_fmt, (uint32_t)sizeof(k_msg_fail_fmt) - 1U);
-    return k_ra_err_hw_error;
+  ra8_fs_backend_t backend = {};
+  if (ra8_sdmmc_spi_bind_fs_backend(&backend) != k_ra8_ok) {
+    fs_fmt_print_line(k_ra8_fs_type_exfat, k_msg_fail_fmt, (uint32_t)sizeof(k_msg_fail_fmt) - 1U);
+    return k_ra8_err_hw_error;
   }
-  ra_fs_format_opts_t opts = {};
-  opts.type                = k_ra_fs_type_exfat;
-  opts.label               = "RAFSFMT";
-  ra_err_t err             = ra_fs_format(&backend, &opts);
-  if (err != k_ra_ok) {
-    if (err != k_ra_err_invalid_size) {
-      fs_fmt_print_line(k_ra_fs_type_exfat, k_msg_fail_fmt, (uint32_t)sizeof(k_msg_fail_fmt) - 1U);
+  ra8_fs_format_opts_t opts = {};
+  opts.type                 = k_ra8_fs_type_exfat;
+  opts.label                = "RAFSFMT";
+  ra8_err_t err             = ra8_fs_format(&backend, &opts);
+  if (err != k_ra8_ok) {
+    if (err != k_ra8_err_invalid_size) {
+      fs_fmt_print_line(k_ra8_fs_type_exfat, k_msg_fail_fmt, (uint32_t)sizeof(k_msg_fail_fmt) - 1U);
     }
     return err;
   }
-  ra_fs_mount_t* mount = nullptr;
-  err                  = ra_fs_mount(&backend, &mount);
-  if (err != k_ra_ok) {
-    fs_fmt_print_line(k_ra_fs_type_exfat,
+  ra8_fs_mount_t* mount = nullptr;
+  err                   = ra8_fs_mount(&backend, &mount);
+  if (err != k_ra8_ok) {
+    fs_fmt_print_line(k_ra8_fs_type_exfat,
                       k_msg_fail_mount,
                       (uint32_t)sizeof(k_msg_fail_mount) - 1U);
     return err;
   }
-  if (mount->type != k_ra_fs_type_exfat) {
-    fs_fmt_print_line(k_ra_fs_type_exfat, k_msg_fail_type, (uint32_t)sizeof(k_msg_fail_type) - 1U);
-    (void)ra_fs_unmount(mount);
-    return k_ra_err_validation_failed;
+  if (mount->type != k_ra8_fs_type_exfat) {
+    fs_fmt_print_line(k_ra8_fs_type_exfat, k_msg_fail_type, (uint32_t)sizeof(k_msg_fail_type) - 1U);
+    (void)ra8_fs_unmount(mount);
+    return k_ra8_err_validation_failed;
   }
-  err = fs_fmt_assert_empty_root(mount, k_ra_fs_type_exfat);
-  if (err != k_ra_ok) {
-    (void)ra_fs_unmount(mount);
+  err = fs_fmt_assert_empty_root(mount, k_ra8_fs_type_exfat);
+  if (err != k_ra8_ok) {
+    (void)ra8_fs_unmount(mount);
     return err;
   }
-  err = fs_fmt_write_cycle(mount, k_ra_fs_type_exfat);
-  if (err != k_ra_ok) {
-    (void)ra_fs_unmount(mount);
+  err = fs_fmt_write_cycle(mount, k_ra8_fs_type_exfat);
+  if (err != k_ra8_ok) {
+    (void)ra8_fs_unmount(mount);
     return err;
   }
-  err = fs_fmt_assert_empty_root(mount, k_ra_fs_type_exfat);
-  if (err != k_ra_ok) {
-    (void)ra_fs_unmount(mount);
+  err = fs_fmt_assert_empty_root(mount, k_ra8_fs_type_exfat);
+  if (err != k_ra8_ok) {
+    (void)ra8_fs_unmount(mount);
     return err;
   }
-  (void)ra_fs_unmount(mount);
-  fs_fmt_print_line(k_ra_fs_type_exfat, k_msg_pass_suf, (uint32_t)sizeof(k_msg_pass_suf) - 1U);
-  return k_ra_ok;
+  (void)ra8_fs_unmount(mount);
+  fs_fmt_print_line(k_ra8_fs_type_exfat, k_msg_pass_suf, (uint32_t)sizeof(k_msg_pass_suf) - 1U);
+  return k_ra8_ok;
 }
 
 /* =============================================================================
@@ -709,24 +709,24 @@ int32_t main(void)
 {
   uint32_t pclka_hz = 0U;
   fs_fmt_setup_or_halt(&pclka_hz);
-  ra_isr_globals_enable();
-  ra_log_init();
+  ra8_isr_globals_enable();
+  ra8_log_init();
   FS_FMT_PUTS(k_msg_boot);
 
   fs_fmt_init_card_or_halt(&pclka_hz);
   fs_fmt_fill_payload();
 
-  static const ra_fs_type_t k_types[k_fs_fmt_idx_count] = {
-    k_ra_fs_type_fat12,
-    k_ra_fs_type_fat16,
-    k_ra_fs_type_fat32,
+  static const ra8_fs_type_t k_types[k_fs_fmt_idx_count] = {
+    k_ra8_fs_type_fat12,
+    k_ra8_fs_type_fat16,
+    k_ra8_fs_type_fat32,
   };
   uint32_t passed = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_fs_fmt_idx_count; i++) {
-    const ra_err_t r = fs_fmt_run_one_type(k_types[i]);
-    if (r == k_ra_ok) {
+    const ra8_err_t r = fs_fmt_run_one_type(k_types[i]);
+    if (r == k_ra8_ok) {
       passed++;
-    } else if (r == k_ra_err_invalid_size) {
+    } else if (r == k_ra8_err_invalid_size) {
       /* This FAT type does not fit this card's capacity -- skip it, do not halt.
        * A big card (e.g. 128 GB) takes only FAT32; a tiny one only FAT12/16. */
       fs_fmt_print_line(k_types[i], k_msg_skip_size, (uint32_t)sizeof(k_msg_skip_size) - 1U);
@@ -736,11 +736,11 @@ int32_t main(void)
   }
   /* exFAT trial (full cycle: format + mount + create/write/rename/unlink); same
    * SKIP semantics as the FAT types above. */
-  const ra_err_t ex = fs_fmt_run_exfat();
-  if (ex == k_ra_ok) {
+  const ra8_err_t ex = fs_fmt_run_exfat();
+  if (ex == k_ra8_ok) {
     passed++;
-  } else if (ex == k_ra_err_invalid_size) {
-    fs_fmt_print_line(k_ra_fs_type_exfat, k_msg_skip_size, (uint32_t)sizeof(k_msg_skip_size) - 1U);
+  } else if (ex == k_ra8_err_invalid_size) {
+    fs_fmt_print_line(k_ra8_fs_type_exfat, k_msg_skip_size, (uint32_t)sizeof(k_msg_skip_size) - 1U);
   } else {
     fs_fmt_panic_halt();
   }

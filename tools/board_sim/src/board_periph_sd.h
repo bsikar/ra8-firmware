@@ -7,7 +7,7 @@
  * host image file passed with @c --sd. The SPI_B block model
  * (@c board_periph_spi.c) routes each SPDR byte exchange into
  * @ref board_sd_exchange when a card is attached and the channel is NOT in
- * internal loopback, so the firmware's genuine @c ra_sdmmc_spi command /
+ * internal loopback, so the firmware's genuine @c ra8_sdmmc_spi command /
  * response / data-token path runs against a real FAT image.
  *
  * The protocol handled: CMD0 / CMD8 / CMD55+ACMD41 / CMD58 / CMD9 (CSD) /
@@ -61,7 +61,7 @@ bool board_sd_attached(void);
  * @brief Create a blank, FAT-formatted SD card in memory and attach it.
  *
  * @details Formats an empty FAT16 or FAT32 volume (complete BPB + FAT media /
- * EOC markers, valid to a host `fsck_msdos` and the firmware's ra_fs) so a card
+ * EOC markers, valid to a host `fsck_msdos` and the firmware's ra8_fs) so a card
  * of an arbitrary size / format can be set up with no pre-built image.
  *
  * @param[in] total_sectors Card size in 512-byte sectors (>= 64).

@@ -9,7 +9,7 @@
 ## The owner requirements, restated
 
 1. The C6 exists (in large part) to give the product **over-the-air updates**.
-2. The RA8 already has a **USB HS** update path (`ra_dfu` + the production
+2. The RA8 already has a **USB HS** update path (`ra8_dfu` + the production
    `dfu_bootloader`, A/B slots, header-last commit, RoT-enforced boot).
 3. OTA and USB updates must **behave the same**.
 4. An update must be **fully downloaded to local storage first**, then applied
@@ -63,7 +63,7 @@ never drift:
 The RA8 owns 64 MB OSPI flash (plus SD); the C6 has neither the storage nor
 the authority. Every transport stages into the same RA8-side staging area:
 
-- **USB HS**: host pushes the bundle over the existing `ra_dfu` ingest; bytes
+- **USB HS**: host pushes the bundle over the existing `ra8_dfu` ingest; bytes
   go to staging instead of directly to a slot. Cable can be pulled the moment
   the transfer completes; VERIFY/APPLY/CONFIRM run from staging (requirement 4).
 - **Wi-Fi OTA**: the C6 downloads the bundle (it is the only chip with a
@@ -141,8 +141,8 @@ loop must exercise the **production roles**:
 
 1. **Bundle format + verify** (host tool to pack/sign; RA8-side verify against
    RoT) -- pure logic, host-unit-testable, MC/DC-able, no new hardware.
-2. **Staging store on OSPI** behind the existing `ra_io_blockdev_t` facade.
-3. **USB HS -> staging** rewire of the existing `ra_dfu` ingest.
+2. **Staging store on OSPI** behind the existing `ra8_io_blockdev_t` facade.
+3. **USB HS -> staging** rewire of the existing `ra8_dfu` ingest.
 4. **Companion-link framed protocol** (shared header, versioned) + the C6-side
    receiver -> `ota_apply` (needs the C6 direction decision first -- see
    `DIRECTION.md`).

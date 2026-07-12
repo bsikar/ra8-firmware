@@ -7,8 +7,8 @@
  *
  * @details
  * A tiny, self-contained application linked ONCE at the dfu_bootloader's SRAM
- * run base (::k_ra_dfu_run_base = 0x22020000, see payload.ld). A copy-to-run
- * launcher (::ra_dfu_launch) copies this image to that base and branches here,
+ * run base (::k_ra8_dfu_run_base = 0x22020000, see payload.ld). A copy-to-run
+ * launcher (::ra8_dfu_launch) copies this image to that base and branches here,
  * so the IDENTICAL `.bin` is bootable from Slot A or Slot B -- the proof that
  * copy-to-run removes the per-slot build (issue #97). It backs both the
  * `dfu_copy_to_run` HIL demo (which embeds and launches it) and the bench
@@ -50,12 +50,12 @@ typedef enum : uint32_t {
 } payload_sentinel_t;
 
 /** @brief Initial-MSP symbol, defined by payload.ld at the top of the run region. */
-extern uint32_t g_ra_ls_stack_top;
+extern uint32_t g_ra8_ls_stack_top;
 
 /**
  * @brief Payload reset entry: set the sentinel, then advance a heartbeat forever.
  * @return Does not return.
- * @pre A copy-to-run launcher copied this image to ::k_ra_dfu_run_base and set MSP.
+ * @pre A copy-to-run launcher copied this image to ::k_ra8_dfu_run_base and set MSP.
  * @pre Interrupts are masked (the launcher masked them before the hand-off).
  * @post The sentinel word holds ::k_payload_sentinel_value.
  * @post The heartbeat counter advances continuously.
@@ -86,6 +86,6 @@ void payload_reset(void)
  * @since 0.1.0
  */
 [[gnu::section(".vectors"), gnu::used]] static const uintptr_t s_vectors[2] = {
-  (uintptr_t)&g_ra_ls_stack_top, /* initial MSP                              */
-  (uintptr_t)&payload_reset,     /* reset vector (Thumb bit from the symbol) */
+  (uintptr_t)&g_ra8_ls_stack_top, /* initial MSP                              */
+  (uintptr_t)&payload_reset,      /* reset vector (Thumb bit from the symbol) */
 };

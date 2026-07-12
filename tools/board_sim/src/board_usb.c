@@ -7,7 +7,7 @@
  * (base 0x40250000, HUM Ch 36) is modelled register-by-register with real
  * staging buffers for the control (DCP) and bulk pipe FIFOs, and a virtual USB
  * host walks the standard chapter-9 enumeration against the real device-side
- * firmware (port/usbx/ux_dcd_ra_usb -> ra_usb*.c). The host delivers each SETUP
+ * firmware (port/usbx/ux_dcd_ra8_usb -> ra8_usb*.c). The host delivers each SETUP
  * by latching USBREQ..USBLENG and raising the controller's CTRT interrupt
  * through board_periph's ICU -> NVIC path, then drains the descriptor bytes the
  * device pushes into the CFIFO and advances the device state machine
@@ -26,8 +26,8 @@
 #include <string.h>
 
 #include "board_console.h"
-#include "ra8d2_elc_regs.h"
-#include "ra8d2_usb_regs.h"
+#include "ra8_elc_regs.h"
+#include "ra8_usb_regs.h"
 
 /** @brief USB class-request, SCSI command, and CBW-layout constants. */
 typedef enum : uint32_t {
@@ -193,7 +193,7 @@ static bool s_roles_swapped;
 /* ICU event the device model pends for its interrupts: USBFS_INT while the
  * device model sits behind the USBFS window (Config A), USBHS_USB_INT_RESUME
  * once the roles swap and the DCD drives the USBHS controller (Config B). */
-static uint16_t s_dev_irq_event = (uint16_t)k_ra_elc_event_usbfs_int;
+static uint16_t s_dev_irq_event = (uint16_t)k_ra8_elc_event_usbfs_int;
 
 /* DCP control-OUT "wire" holding buffer (bridge path). The polled host delivers
  * a control-write data stage (e.g. a DFU_DNLOAD block) before the device -- off
@@ -385,15 +385,15 @@ static void usb_hid_decode_report(const uint8_t* d, uint16_t len)
 /** @brief INTSTS0 value the device reads: event bits OR computed fields. */
 static uint16_t usb_intsts0(void)
 {
-  uint16_t v = s_usb.reg[usb_word((uint64_t)k_ra_usb_off_intsts0)];
-  v &= (uint16_t)((1U << k_ra_int0_bit_brdy) | (1U << k_ra_int0_bit_nrdy) |
-                  (1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_ctrt) |
-                  (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_vbse));
-  v = (uint16_t)(v | (s_usb.ctsq & (uint16_t)k_ra_intsts0_mask_ctsq));
-  v = (uint16_t)(v | (s_usb.dvsq & (uint16_t)k_ra_intsts0_mask_dvsq));
-  v = (uint16_t)(v | (uint16_t)k_ra_intsts0_mask_vbsts); /* VBUS always present. */
+  uint16_t v = s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_intsts0)];
+  v &= (uint16_t)((1U << k_ra8_int0_bit_brdy) | (1U << k_ra8_int0_bit_nrdy) |
+                  (1U << k_ra8_int0_bit_bemp) | (1U << k_ra8_int0_bit_ctrt) |
+                  (1U << k_ra8_int0_bit_dvst) | (1U << k_ra8_int0_bit_vbse));
+  v = (uint16_t)(v | (s_usb.ctsq & (uint16_t)k_ra8_intsts0_mask_ctsq));
+  v = (uint16_t)(v | (s_usb.dvsq & (uint16_t)k_ra8_intsts0_mask_dvsq));
+  v = (uint16_t)(v | (uint16_t)k_ra8_intsts0_mask_vbsts); /* VBUS always present. */
   if (s_usb.setup_valid) {
-    v = (uint16_t)(v | (uint16_t)k_ra_intsts0_mask_valid);
+    v = (uint16_t)(v | (uint16_t)k_ra8_intsts0_mask_valid);
   }
   return v;
 }
@@ -401,7 +401,7 @@ static uint16_t usb_intsts0(void)
 /** @brief Set an INTSTS0 event bit in the shadow (host asserts it). */
 static void usb_intsts0_set(uint8_t bit)
 {
-  const uint32_t w = usb_word((uint64_t)k_ra_usb_off_intsts0);
+  const uint32_t w = usb_word((uint64_t)k_ra8_usb_off_intsts0);
   s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << bit));
 }
 
@@ -422,15 +422,15 @@ static void usb_raise_irq(uc_engine* uc)
 /** @brief Currently-selected CFIFO pipe number (CFIFOSEL.CURPIPE[3:0]). */
 static uint8_t cfifo_pipe(void)
 {
-  const uint16_t sel = s_usb.reg[usb_word((uint64_t)k_ra_usb_off_cfifosel)];
-  return (uint8_t)(sel & (uint16_t)k_ra_fifosel_curpipe);
+  const uint16_t sel = s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_cfifosel)];
+  return (uint8_t)(sel & (uint16_t)k_ra8_fifosel_curpipe);
 }
 
 /** @brief True when CFIFOSEL selects the IN direction (device writes / fills). */
 static bool cfifo_is_in(void)
 {
-  const uint16_t sel = s_usb.reg[usb_word((uint64_t)k_ra_usb_off_cfifosel)];
-  return (sel & (uint16_t)k_ra_fifosel_isel) != 0U;
+  const uint16_t sel = s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_cfifosel)];
+  return (sel & (uint16_t)k_ra8_fifosel_isel) != 0U;
 }
 
 /** @brief The device-IN staging buffer CFIFOSEL currently points at. */
@@ -482,7 +482,7 @@ static void cfifo_write_port(uint32_t value, unsigned size)
 /** @brief Apply a CFIFOCTR write: BCLR clears the buffer, BVAL commits an IN. */
 static void cfifoctr_write(uint16_t value)
 {
-  if ((value & (uint16_t)k_ra_fifoctr_bclr) != 0U) {
+  if ((value & (uint16_t)k_ra8_fifoctr_bclr) != 0U) {
     if (cfifo_is_in()) {
       usb_in_buf_t* b = cfifo_in_buf();
       b->len          = 0U;
@@ -492,7 +492,7 @@ static void cfifoctr_write(uint16_t value)
       b->rd            = b->len; /* drop the remainder of the OUT buffer. */
     }
   }
-  if ((value & (uint16_t)k_ra_fifoctr_bval) != 0U) {
+  if ((value & (uint16_t)k_ra8_fifoctr_bval) != 0U) {
     if (cfifo_is_in()) {
       cfifo_in_buf()->valid = true; /* IN buffer committed; ready for the host. */
     }
@@ -507,28 +507,28 @@ static void cfifoctr_write(uint16_t value)
 /** @brief CFIFOCTR read value: FRDY always ready, DTLN = OUT bytes available. */
 static uint16_t cfifoctr_read(void)
 {
-  return (uint16_t)((uint16_t)k_ra_fifoctr_frdy | (cfifo_dtln() & (uint16_t)k_ra_fifoctr_dtln));
+  return (uint16_t)((uint16_t)k_ra8_fifoctr_frdy | (cfifo_dtln() & (uint16_t)k_ra8_fifoctr_dtln));
 }
 
 /** @brief Read one device-controller register; @p off is the byte offset into the window. */
 static uint32_t usb_reg_read(uint64_t off, unsigned size)
 {
   switch ((uint16_t)off) {
-    case (uint16_t)k_ra_usb_off_intsts0:
+    case (uint16_t)k_ra8_usb_off_intsts0:
       return usb_intsts0();
-    case (uint16_t)k_ra_usb_off_cfifoctr:
+    case (uint16_t)k_ra8_usb_off_cfifoctr:
       return cfifoctr_read();
-    case (uint16_t)k_ra_usb_off_cfifo:
-    case (uint16_t)((uint16_t)k_ra_usb_off_cfifo + (uint16_t)k_usb_cfifo_h):  /* CFIFOH tail.  */
-    case (uint16_t)((uint16_t)k_ra_usb_off_cfifo + (uint16_t)k_usb_cfifo_hh): /* CFIFOHH tail. */
+    case (uint16_t)k_ra8_usb_off_cfifo:
+    case (uint16_t)((uint16_t)k_ra8_usb_off_cfifo + (uint16_t)k_usb_cfifo_h):  /* CFIFOH tail.  */
+    case (uint16_t)((uint16_t)k_ra8_usb_off_cfifo + (uint16_t)k_usb_cfifo_hh): /* CFIFOHH tail. */
       /* Full access width: the HS instance drains its CFIFO 32 bits at a time
        * (MBW=32) with 16/8-bit residual reads through the CFIFOH / CFIFOHH
        * aliases (HUM Ch 37.2.7 "CFIFO, DnFIFO : FIFO Port Register" p 2069-2070); the FS
        * instance uses 16-bit accesses at the base port. */
       return cfifo_read_port(size);
-    case (uint16_t)k_ra_usb_off_syssts0:
+    case (uint16_t)k_ra8_usb_off_syssts0:
       return (uint16_t)0x0003U; /* LNST = J-state: device pull-up seen. */
-    case (uint16_t)k_ra_usb_off_dvstctr0: {
+    case (uint16_t)k_ra8_usb_off_dvstctr0: {
       /* HUM Ch 36.2.5 "DVSTCTR0 : Device State Control Register 0", p 1971:
        * RHST[2:0] reports the settled link speed once the host's bus reset
        * completes; the device firmware (internal_dvst_track_speed in the DCD)
@@ -536,13 +536,13 @@ static uint32_t usb_reg_read(uint64_t off, unsigned size)
        * link (the FS controller's ceiling caps it in either polarity), so
        * report FS from the moment the device has left Powered. */
       uint16_t v = s_usb.reg[usb_word(off)];
-      if (s_usb.dvsq != (uint16_t)k_ra_dvsq_powered) {
+      if (s_usb.dvsq != (uint16_t)k_ra8_dvsq_powered) {
         v = (uint16_t)(v | (uint16_t)k_usb_rhst_fs);
       }
       return v;
     }
-    case (uint16_t)k_ra_usb_off_frmnum:
-      return s_usb.reg[usb_word((uint64_t)k_ra_usb_off_frmnum)];
+    case (uint16_t)k_ra8_usb_off_frmnum:
+      return s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_frmnum)];
     default:
       return s_usb.reg[usb_word(off)];
   }
@@ -553,22 +553,22 @@ static void usb_reg_write(uint64_t off, uint32_t value, unsigned size)
 {
   const uint16_t v16 = (uint16_t)value;
   switch ((uint16_t)off) {
-    case (uint16_t)k_ra_usb_off_cfifo:
-    case (uint16_t)((uint16_t)k_ra_usb_off_cfifo + (uint16_t)k_usb_cfifo_h):  /* CFIFOH tail.  */
-    case (uint16_t)((uint16_t)k_ra_usb_off_cfifo + (uint16_t)k_usb_cfifo_hh): /* CFIFOHH tail. */
+    case (uint16_t)k_ra8_usb_off_cfifo:
+    case (uint16_t)((uint16_t)k_ra8_usb_off_cfifo + (uint16_t)k_usb_cfifo_h):  /* CFIFOH tail.  */
+    case (uint16_t)((uint16_t)k_ra8_usb_off_cfifo + (uint16_t)k_usb_cfifo_hh): /* CFIFOHH tail. */
       /* Full access width: the HS instance fills its CFIFO 32 bits at a time
        * (MBW=32) with 16/8-bit residual writes through the CFIFOH / CFIFOHH
        * aliases (HUM Ch 37.2.7 "CFIFO, DnFIFO : FIFO Port Register" p 2069-2070); truncating to
        * 16 bits here zeroed bytes 2-3 of every descriptor word in Config B. */
       cfifo_write_port(value, size);
       return;
-    case (uint16_t)k_ra_usb_off_cfifoctr:
+    case (uint16_t)k_ra8_usb_off_cfifoctr:
       cfifoctr_write(v16);
       return;
-    case (uint16_t)k_ra_usb_off_intsts0:
+    case (uint16_t)k_ra8_usb_off_intsts0:
       /* W0C on the event bits: a written 0 clears, a 1 preserves. */
       s_usb.reg[usb_word(off)] &= v16;
-      if ((v16 & (uint16_t)k_ra_intsts0_mask_valid) == 0U) {
+      if ((v16 & (uint16_t)k_ra8_intsts0_mask_valid) == 0U) {
         s_usb.setup_valid = false;
       }
       return;
@@ -587,7 +587,7 @@ uint64_t board_usb_read(uc_engine* uc, uint64_t addr, unsigned size, bool* handl
   }
   *handled = true;
   if (s_roles_swapped) {
-    /* Config B: the polled ra_usb_host_* driver owns the USBFS controller. */
+    /* Config B: the polled ra8_usb_host_* driver owns the USBFS controller. */
     return board_usbhs_host_reg_read(uc, addr - (uint64_t)k_usb_base, size);
   }
   return (uint64_t)usb_reg_read(addr - (uint64_t)k_usb_base, size);
@@ -604,8 +604,8 @@ void board_usb_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value
   /* Role declaration (HUM Ch 36.2.1 SYSCFG.DCFM, p 1966): the firmware writes
    * DCFM=1 to select controller (host) function on THIS instance. Under the
    * self-loop bridge that pins the FS window to the host model -- Config B. */
-  if (s_external_host && !s_roles_swapped && (off == (uint64_t)k_ra_usb_off_syscfg) &&
-      (((uint16_t)value & (uint16_t)(1U << k_ra_syscfg_bit_dcfm)) != 0U)) {
+  if (s_external_host && !s_roles_swapped && (off == (uint64_t)k_ra8_usb_off_syscfg) &&
+      (((uint16_t)value & (uint16_t)(1U << k_ra8_syscfg_bit_dcfm)) != 0U)) {
     board_usb_roles_swap(uc);
   }
   if (s_roles_swapped) {
@@ -722,30 +722,30 @@ typedef enum : uint8_t {
 /** @brief True when SYSCFG.DPRPU is set: the device has attached its pull-up. */
 static bool host_device_attached(void)
 {
-  const uint16_t syscfg = s_usb.reg[usb_word((uint64_t)k_ra_usb_off_syscfg)];
-  return (syscfg & (uint16_t)(1U << k_ra_syscfg_bit_dprpu)) != 0U;
+  const uint16_t syscfg = s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_syscfg)];
+  return (syscfg & (uint16_t)(1U << k_ra8_syscfg_bit_dprpu)) != 0U;
 }
 
 /** @brief Latch a SETUP packet into USBREQ..USBLENG (host -> device). */
 static void host_latch_setup(const usb_setup_step_t* s)
 {
-  s_usb.reg[usb_word((uint64_t)k_ra_usb_off_usbreq)] =
+  s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbreq)] =
     (uint16_t)(s->bm_request_type | (uint16_t)((uint16_t)s->b_request << k_usb_byte_bits));
-  s_usb.reg[usb_word((uint64_t)k_ra_usb_off_usbval)]  = s->w_value;
-  s_usb.reg[usb_word((uint64_t)k_ra_usb_off_usbindx)] = s->w_index;
-  s_usb.reg[usb_word((uint64_t)k_ra_usb_off_usbleng)] = s->w_length;
+  s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbval)]  = s->w_value;
+  s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbindx)] = s->w_index;
+  s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbleng)] = s->w_length;
 }
 
 /** @brief CTSQ control-stage value the host advertises for a SETUP. */
 static uint16_t host_setup_ctsq(const usb_setup_step_t* s)
 {
   if ((s->bm_request_type & (uint8_t)k_usb_dir_device_to_host) != 0U) {
-    return (uint16_t)k_ra_ctsq_rdds; /* control read data stage. */
+    return (uint16_t)k_ra8_ctsq_rdds; /* control read data stage. */
   }
   if (s->w_length != 0U) {
-    return (uint16_t)k_ra_ctsq_wrds; /* control write data stage. */
+    return (uint16_t)k_ra8_ctsq_wrds; /* control write data stage. */
   }
-  return (uint16_t)k_ra_ctsq_wrnd; /* no-data control. */
+  return (uint16_t)k_ra8_ctsq_wrnd; /* no-data control. */
 }
 
 /** @brief Deliver the current script step's SETUP and raise the CTRT IRQ. */
@@ -774,7 +774,7 @@ static void host_deliver_setup(uc_engine* uc, const usb_setup_step_t* s)
   host_latch_setup(s);
   s_usb.setup_valid = true;
   s_usb.ctsq        = host_setup_ctsq(s);
-  usb_intsts0_set((uint8_t)k_ra_int0_bit_ctrt);
+  usb_intsts0_set((uint8_t)k_ra8_int0_bit_ctrt);
   char line[k_usb_log_width];
   (void)snprintf(line, sizeof(line), "SETUP[%u] %s -> CTRT raised", (unsigned)s_host_step, s->name);
   usb_log_line(line);
@@ -793,15 +793,15 @@ static void host_drain_in(void)
 /** @brief DCPCTR.PID == BUF: the device has armed an IN response. */
 static bool host_dcp_pid_buf(void)
 {
-  const uint16_t dcpctr = s_usb.reg[usb_word((uint64_t)k_ra_usb_off_dcpctr)];
-  return (dcpctr & (uint16_t)k_ra_pid_mask) == (uint16_t)k_ra_pid_buf;
+  const uint16_t dcpctr = s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_dcpctr)];
+  return (dcpctr & (uint16_t)k_ra8_pid_mask) == (uint16_t)k_ra8_pid_buf;
 }
 
 /** @brief Observe (and clear) DCPCTR.CCPL: the device ended a control transfer. */
 static bool host_take_ccpl(void)
 {
-  const uint32_t w    = usb_word((uint64_t)k_ra_usb_off_dcpctr);
-  const uint16_t ccpl = (uint16_t)(1U << k_ra_dcpctr_bit_ccpl);
+  const uint32_t w    = usb_word((uint64_t)k_ra8_usb_off_dcpctr);
+  const uint16_t ccpl = (uint16_t)(1U << k_ra8_dcpctr_bit_ccpl);
   const bool     seen = (s_usb.reg[w] & ccpl) != 0U;
   if (seen) {
     s_usb.reg[w] = (uint16_t)(s_usb.reg[w] & (uint16_t)~ccpl); /* SIE clears CCPL. */
@@ -815,10 +815,10 @@ static void host_apply_no_data(uc_engine* uc, const usb_setup_step_t* s)
   if (s->b_request == (uint8_t)k_usb_req_set_address) {
     /* The SIE latches USBADDR and owns the IN-ZLP status stage itself; mirror
      * that and advance the device state to Address (HUM Ch 36.3). */
-    s_usb.reg[usb_word((uint64_t)k_ra_usb_off_usbaddr)] =
-      (uint16_t)(s->w_value & (uint16_t)k_ra_usbaddr_addr_mask);
-    s_usb.dvsq = (uint16_t)k_ra_dvsq_address;
-    usb_intsts0_set((uint8_t)k_ra_int0_bit_dvst);
+    s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbaddr)] =
+      (uint16_t)(s->w_value & (uint16_t)k_ra8_usbaddr_addr_mask);
+    s_usb.dvsq = (uint16_t)k_ra8_dvsq_address;
+    usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
     char line[k_usb_log_width];
     (void)
       snprintf(line, sizeof(line), "SET_ADDRESS: DVSQ -> Address (addr=%u)", (unsigned)s->w_value);
@@ -862,9 +862,9 @@ static void host_step_wait_in(void)
 /** @brief Sub-state k_sub_status: deliver the control-read status stage. */
 static void host_step_status(uc_engine* uc)
 {
-  s_usb.ctsq        = (uint16_t)k_ra_ctsq_rdss; /* read status stage. */
+  s_usb.ctsq        = (uint16_t)k_ra8_ctsq_rdss; /* read status stage. */
   s_usb.setup_valid = false;
-  usb_intsts0_set((uint8_t)k_ra_int0_bit_ctrt);
+  usb_intsts0_set((uint8_t)k_ra8_int0_bit_ctrt);
   usb_raise_irq(uc);
   s_host_substate = (uint8_t)k_sub_wait_ack;
   s_host_wait     = 0U;
@@ -894,8 +894,8 @@ static uint32_t host_script_len(void)
 /** @brief Mark the device CONFIGURED: advance DVSQ and raise DVST. */
 static void host_mark_configured(uc_engine* uc)
 {
-  s_usb.dvsq = (uint16_t)k_ra_dvsq_configured;
-  usb_intsts0_set((uint8_t)k_ra_int0_bit_dvst);
+  s_usb.dvsq = (uint16_t)k_ra8_dvsq_configured;
+  usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
   usb_raise_irq(uc);
   if (!s_configured) {
     usb_log_line("SET_CONFIGURATION done: DVSQ -> Configured");
@@ -952,8 +952,8 @@ static void host_run_idle_phase(uc_engine* uc)
     return;
   }
   usb_log_line("device pull-up detected (SYSCFG.DPRPU) -> bus reset");
-  s_usb.dvsq = (uint16_t)k_ra_dvsq_default;
-  usb_intsts0_set((uint8_t)k_ra_int0_bit_dvst);
+  s_usb.dvsq = (uint16_t)k_ra8_dvsq_default;
+  usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
   usb_raise_irq(uc);
   s_host_phase = (uint8_t)k_phase_reset;
   s_host_wait  = 0U;
@@ -964,9 +964,9 @@ static void host_run_reset_phase(uc_engine* uc)
 {
   /* Keep DVSQ at Default and re-raise DVST so the bridge's busreset_rearm runs
    * (it re-defaults DCPCFG/DCPMAXP/PIPECTR/INTENB0 -- HUM Ch 36.3). */
-  s_usb.dvsq = (uint16_t)k_ra_dvsq_default;
+  s_usb.dvsq = (uint16_t)k_ra8_dvsq_default;
   if (s_host_wait == 0U) {
-    usb_intsts0_set((uint8_t)k_ra_int0_bit_dvst);
+    usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
     usb_raise_irq(uc);
   }
   s_host_wait++;
@@ -989,9 +989,9 @@ static void host_echo_send_out(uc_engine* uc)
   b->rd    = 0U;
   b->ready = true;
   /* BRDYSTS bit for the OUT pipe: an OUT packet has landed (HUM Ch 36.2.12). */
-  const uint32_t w = usb_word((uint64_t)k_ra_usb_off_brdysts);
+  const uint32_t w = usb_word((uint64_t)k_ra8_usb_off_brdysts);
   s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << k_usb_bulk_out_pipe));
-  usb_intsts0_set((uint8_t)k_ra_int0_bit_brdy);
+  usb_intsts0_set((uint8_t)k_ra8_int0_bit_brdy);
   s_echo_out_sent += chunk;
   usb_log_count("bulk OUT: delivered to data pipe", (unsigned)chunk);
   usb_raise_irq(uc);
@@ -1021,9 +1021,9 @@ static void host_echo_read_in(uc_engine* uc)
     b->len   = 0U;
     b->valid = false;
     /* Acknowledge the IN transfer (BEMP) so the device can queue the next. */
-    const uint32_t w = usb_word((uint64_t)k_ra_usb_off_bempsts);
+    const uint32_t w = usb_word((uint64_t)k_ra8_usb_off_bempsts);
     s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << k_usb_bulk_in_pipe));
-    usb_intsts0_set((uint8_t)k_ra_int0_bit_bemp);
+    usb_intsts0_set((uint8_t)k_ra8_int0_bit_bemp);
     usb_raise_irq(uc);
   } else if (b->valid) {
     b->valid = false; /* drained ZLP terminator. */
@@ -1133,9 +1133,9 @@ static void host_msc_send_cbw(uc_engine* uc)
   b->len           = (uint16_t)k_msc_cbw_len;
   b->rd            = 0U;
   b->ready         = true;
-  const uint32_t w = usb_word((uint64_t)k_ra_usb_off_brdysts);
+  const uint32_t w = usb_word((uint64_t)k_ra8_usb_off_brdysts);
   s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << k_usb_bulk_out_pipe));
-  usb_intsts0_set((uint8_t)k_ra_int0_bit_brdy);
+  usb_intsts0_set((uint8_t)k_ra8_int0_bit_brdy);
   usb_raise_irq(uc);
 }
 
@@ -1152,9 +1152,9 @@ static uint16_t host_msc_take_in(uc_engine* uc, uint8_t* out, uint16_t cap)
   }
   b->len           = 0U;
   b->valid         = false;
-  const uint32_t w = usb_word((uint64_t)k_ra_usb_off_bempsts);
+  const uint32_t w = usb_word((uint64_t)k_ra8_usb_off_bempsts);
   s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << k_usb_bulk_in_pipe));
-  usb_intsts0_set((uint8_t)k_ra_int0_bit_bemp);
+  usb_intsts0_set((uint8_t)k_ra8_int0_bit_bemp);
   usb_raise_irq(uc);
   return n;
 }
@@ -1293,7 +1293,7 @@ void board_usb_roles_swap(uc_engine* uc)
    * this swap, and the HS DPRPU=1 trigger fires before any FS host activity). */
   (void)board_usbhs_host_shadow_handoff(s_usb.reg, (uint32_t)k_usb_reg_words);
   s_roles_swapped = true;
-  s_dev_irq_event = (uint16_t)k_ra_elc_event_usbhs_int_resume;
+  s_dev_irq_event = (uint16_t)k_ra8_elc_event_usbhs_int_resume;
   usb_log_line("role swap: FS window = host model, HS window = device model (Config B)");
 }
 
@@ -1316,8 +1316,8 @@ bool board_usb_dev_attached(void)
 
 void board_usb_bridge_bus_reset(uc_engine* uc)
 {
-  s_usb.dvsq = (uint16_t)k_ra_dvsq_default;
-  usb_intsts0_set((uint8_t)k_ra_int0_bit_dvst);
+  s_usb.dvsq = (uint16_t)k_ra8_dvsq_default;
+  usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
   usb_log_line("bridge: HS host bus reset -> device Default");
   usb_raise_irq(uc);
 }
@@ -1376,9 +1376,9 @@ uint16_t board_usb_bridge_dcp_in_take(uint8_t* buf, uint16_t cap)
 
 void board_usb_bridge_ctrl_status(uc_engine* uc)
 {
-  s_usb.ctsq        = (uint16_t)k_ra_ctsq_rdss;
+  s_usb.ctsq        = (uint16_t)k_ra8_ctsq_rdss;
   s_usb.setup_valid = false;
-  usb_intsts0_set((uint8_t)k_ra_int0_bit_ctrt);
+  usb_intsts0_set((uint8_t)k_ra8_int0_bit_ctrt);
   usb_raise_irq(uc);
 }
 
@@ -1406,9 +1406,9 @@ void board_usb_bridge_bulk_out(uc_engine* uc, uint8_t dev_pipe, const uint8_t* d
   b->len           = n;
   b->rd            = 0U;
   b->ready         = true;
-  const uint32_t w = usb_word((uint64_t)k_ra_usb_off_brdysts);
+  const uint32_t w = usb_word((uint64_t)k_ra8_usb_off_brdysts);
   s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << dev_pipe));
-  usb_intsts0_set((uint8_t)k_ra_int0_bit_brdy);
+  usb_intsts0_set((uint8_t)k_ra8_int0_bit_brdy);
   usb_raise_irq(uc);
 }
 
@@ -1441,9 +1441,9 @@ uint16_t board_usb_bridge_bulk_in_take(uc_engine* uc, uint8_t dev_pipe, uint8_t*
   (void)memcpy(buf, b->data, n);
   b->len           = 0U;
   b->valid         = false;
-  const uint32_t w = usb_word((uint64_t)k_ra_usb_off_bempsts);
+  const uint32_t w = usb_word((uint64_t)k_ra8_usb_off_bempsts);
   s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << dev_pipe));
-  usb_intsts0_set((uint8_t)k_ra_int0_bit_bemp);
+  usb_intsts0_set((uint8_t)k_ra8_int0_bit_bemp);
   usb_raise_irq(uc);
   return n;
 }
@@ -1483,7 +1483,7 @@ bool board_usb_bridge_dcp_out_consumed(void)
  * running on the same core off its own IRQ -- has armed the DCP to receive it.
  * On real silicon the SIE keeps re-issuing the OUT token until the device ACKs;
  * here the one-shot BRDY the delivery pended is cleared by the device's own
- * ``ra_usb_dcp_out_arm`` (W0C) and never re-raised, so the receive stalls. This
+ * ``ra8_usb_dcp_out_arm`` (W0C) and never re-raised, so the receive stalls. This
  * pump, run each emulation chunk while the external host drives the device,
  * re-raises the device DCP BRDY whenever the device has armed the DCP for OUT
  * (PID=BUF and BRDYENB.PIPE0) and undrained OUT data is still staged -- exactly
@@ -1496,9 +1496,9 @@ static void bridge_pump_device(uc_engine* uc)
   if (!s_dcp_hold_pending) {
     return;
   }
-  const uint16_t dcpctr  = s_usb.reg[usb_word((uint64_t)k_ra_usb_off_dcpctr)];
-  const uint16_t brdyenb = s_usb.reg[usb_word((uint64_t)k_ra_usb_off_brdyenb)];
-  const bool     armed   = ((dcpctr & (uint16_t)k_ra_pid_mask) == (uint16_t)k_ra_pid_buf) &&
+  const uint16_t dcpctr  = s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_dcpctr)];
+  const uint16_t brdyenb = s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_brdyenb)];
+  const bool     armed   = ((dcpctr & (uint16_t)k_ra8_pid_mask) == (uint16_t)k_ra8_pid_buf) &&
                            ((brdyenb & (uint16_t)k_usb_dcp_pipe_bit) != 0U);
   if (!armed) {
     return; /* device has not armed its DCP for OUT yet; keep the bytes on the wire. */
@@ -1511,9 +1511,9 @@ static void bridge_pump_device(uc_engine* uc)
   s_usb.dcp_out.rd    = 0U;
   s_usb.dcp_out.ready = true;
   s_dcp_hold_pending  = false;
-  const uint32_t w    = usb_word((uint64_t)k_ra_usb_off_brdysts);
+  const uint32_t w    = usb_word((uint64_t)k_ra8_usb_off_brdysts);
   s_usb.reg[w]        = (uint16_t)(s_usb.reg[w] | (uint16_t)k_usb_dcp_pipe_bit);
-  usb_intsts0_set((uint8_t)k_ra_int0_bit_brdy);
+  usb_intsts0_set((uint8_t)k_ra8_int0_bit_brdy);
   usb_raise_irq(uc);
 }
 
@@ -1531,7 +1531,7 @@ void board_usb_tick(uc_engine* uc)
   /* Latch the CONFIGURED marker as soon as the device state reaches it -- the
    * host sets DVSQ, but record it here so a single source of truth drives both
    * the success assertion and the report marker. */
-  if (s_usb.dvsq == (uint16_t)k_ra_dvsq_configured) {
+  if (s_usb.dvsq == (uint16_t)k_ra8_dvsq_configured) {
     s_configured = true;
   }
   /* A real-firmware USB host is driving the device through the bridge (the
@@ -1592,8 +1592,8 @@ void board_usb_init(bool trace)
   s_dcp_hold_len     = 0U;
   s_dcp_hold_pending = false;
   s_roles_swapped    = false;
-  s_dev_irq_event    = (uint16_t)k_ra_elc_event_usbfs_int;
-  s_usb.dvsq         = (uint16_t)k_ra_dvsq_powered;
+  s_dev_irq_event    = (uint16_t)k_ra8_elc_event_usbfs_int;
+  s_usb.dvsq         = (uint16_t)k_ra8_dvsq_powered;
 }
 
 void board_usb_set_irq_raiser(board_usb_irq_raiser_t raise)
@@ -1624,14 +1624,14 @@ uint32_t board_usb_echo_received(void)
 /** @brief Print the device-state name for the report line. */
 static const char* usb_dvsq_name(uint16_t dvsq)
 {
-  switch (dvsq & (uint16_t)k_ra_intsts0_mask_dvsq) {
-    case (uint16_t)k_ra_dvsq_powered:
+  switch (dvsq & (uint16_t)k_ra8_intsts0_mask_dvsq) {
+    case (uint16_t)k_ra8_dvsq_powered:
       return "Powered";
-    case (uint16_t)k_ra_dvsq_default:
+    case (uint16_t)k_ra8_dvsq_default:
       return "Default";
-    case (uint16_t)k_ra_dvsq_address:
+    case (uint16_t)k_ra8_dvsq_address:
       return "Address";
-    case (uint16_t)k_ra_dvsq_configured:
+    case (uint16_t)k_ra8_dvsq_configured:
       return "Configured";
     default:
       return "Suspended";
@@ -1716,8 +1716,8 @@ void board_usb_report(void)
 
 /** @brief SETUP-word decode helpers + the DCP status bit for the loop path. */
 typedef enum : uint16_t {
-  k_loop_req_bm_mask    = 0x00FFU, /**< bmRequestType byte of USBREQ.    */
-  k_ra_usb_dcp_brdy_bit = 0x0001U, /**< BRDYSTS bit 0: the DCP (pipe 0). */
+  k_loop_req_bm_mask     = 0x00FFU, /**< bmRequestType byte of USBREQ.    */
+  k_ra8_usb_dcp_brdy_bit = 0x0001U, /**< BRDYSTS bit 0: the DCP (pipe 0). */
 } loop_req_mask_t;
 
 /** @brief Reset one pipe's IN/OUT staging plus the host-side read cursor. */
@@ -1763,9 +1763,9 @@ void board_usb_loop_bus_reset(uc_engine* uc)
     loop_reset_pipe((uint8_t)p);
   }
   s_usb.setup_valid = false;
-  s_usb.ctsq        = (uint16_t)k_ra_ctsq_idle;
-  s_usb.dvsq        = (uint16_t)k_ra_dvsq_default;
-  usb_intsts0_set((uint8_t)k_ra_int0_bit_dvst);
+  s_usb.ctsq        = (uint16_t)k_ra8_ctsq_idle;
+  s_usb.dvsq        = (uint16_t)k_ra8_dvsq_default;
+  usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
   usb_log_line("loop: bus reset -> DVSQ Default");
   usb_raise_irq(uc);
 }
@@ -1779,11 +1779,11 @@ bool board_usb_loop_setup(uc_engine* uc, uint16_t req, uint16_t val, uint16_t in
    * any completion still latched here belongs to the finished transfer). */
   loop_reset_dcp();
   (void)host_take_ccpl();
-  s_loop_pending_cfg                                  = false;
-  s_usb.reg[usb_word((uint64_t)k_ra_usb_off_usbreq)]  = req;
-  s_usb.reg[usb_word((uint64_t)k_ra_usb_off_usbval)]  = val;
-  s_usb.reg[usb_word((uint64_t)k_ra_usb_off_usbindx)] = indx;
-  s_usb.reg[usb_word((uint64_t)k_ra_usb_off_usbleng)] = leng;
+  s_loop_pending_cfg                                   = false;
+  s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbreq)]  = req;
+  s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbval)]  = val;
+  s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbindx)] = indx;
+  s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbleng)] = leng;
   s_loop_setups++;
   char line[k_usb_log_width];
   (void)snprintf(line,
@@ -1797,10 +1797,10 @@ bool board_usb_loop_setup(uc_engine* uc, uint16_t req, uint16_t val, uint16_t in
   if ((bm == (uint8_t)k_usb_dir_host_to_device) && (breq == (uint8_t)k_usb_req_set_address)) {
     /* The device SIE latches USBADDR and runs the whole status stage itself
      * (mirrors ::host_apply_no_data): the host needs no device CCPL. */
-    s_usb.reg[usb_word((uint64_t)k_ra_usb_off_usbaddr)] =
-      (uint16_t)(val & (uint16_t)k_ra_usbaddr_addr_mask);
-    s_usb.dvsq = (uint16_t)k_ra_dvsq_address;
-    usb_intsts0_set((uint8_t)k_ra_int0_bit_dvst);
+    s_usb.reg[usb_word((uint64_t)k_ra8_usb_off_usbaddr)] =
+      (uint16_t)(val & (uint16_t)k_ra8_usbaddr_addr_mask);
+    s_usb.dvsq = (uint16_t)k_ra8_dvsq_address;
+    usb_intsts0_set((uint8_t)k_ra8_int0_bit_dvst);
     usb_raise_irq(uc);
     return true;
   }
@@ -1810,13 +1810,13 @@ bool board_usb_loop_setup(uc_engine* uc, uint16_t req, uint16_t val, uint16_t in
   /* For an OUT-data request the payload arrives via board_usb_loop_ctrl_out. */
   s_usb.setup_valid = true;
   if ((bm & (uint8_t)k_usb_dir_device_to_host) != 0U) {
-    s_usb.ctsq = (uint16_t)k_ra_ctsq_rdds;
+    s_usb.ctsq = (uint16_t)k_ra8_ctsq_rdds;
   } else if (leng != 0U) {
-    s_usb.ctsq = (uint16_t)k_ra_ctsq_wrds;
+    s_usb.ctsq = (uint16_t)k_ra8_ctsq_wrds;
   } else {
-    s_usb.ctsq = (uint16_t)k_ra_ctsq_wrnd;
+    s_usb.ctsq = (uint16_t)k_ra8_ctsq_wrnd;
   }
-  usb_intsts0_set((uint8_t)k_ra_int0_bit_ctrt);
+  usb_intsts0_set((uint8_t)k_ra8_int0_bit_ctrt);
   usb_raise_irq(uc);
   return false;
 }
@@ -1875,17 +1875,17 @@ void board_usb_loop_ctrl_out(uc_engine* uc, const uint8_t* data, uint16_t len)
   s_usb.dcp_out.len   = n;
   s_usb.dcp_out.rd    = 0U;
   s_usb.dcp_out.ready = true;
-  const uint32_t w    = usb_word((uint64_t)k_ra_usb_off_brdysts);
-  s_usb.reg[w]        = (uint16_t)(s_usb.reg[w] | (uint16_t)k_ra_usb_dcp_brdy_bit);
-  usb_intsts0_set((uint8_t)k_ra_int0_bit_brdy);
+  const uint32_t w    = usb_word((uint64_t)k_ra8_usb_off_brdysts);
+  s_usb.reg[w]        = (uint16_t)(s_usb.reg[w] | (uint16_t)k_ra8_usb_dcp_brdy_bit);
+  usb_intsts0_set((uint8_t)k_ra8_int0_bit_brdy);
   usb_raise_irq(uc);
 }
 
 void board_usb_loop_status_out_zlp(uc_engine* uc)
 {
-  s_usb.ctsq        = (uint16_t)k_ra_ctsq_rdss;
+  s_usb.ctsq        = (uint16_t)k_ra8_ctsq_rdss;
   s_usb.setup_valid = false;
-  usb_intsts0_set((uint8_t)k_ra_int0_bit_ctrt);
+  usb_intsts0_set((uint8_t)k_ra8_int0_bit_ctrt);
   usb_raise_irq(uc);
 }
 
@@ -1900,9 +1900,9 @@ void board_usb_loop_bulk_out(uc_engine* uc, uint8_t ep, const uint8_t* data, uin
   b->len           = n;
   b->rd            = 0U;
   b->ready         = true;
-  const uint32_t w = usb_word((uint64_t)k_ra_usb_off_brdysts);
+  const uint32_t w = usb_word((uint64_t)k_ra8_usb_off_brdysts);
   s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << (ep % k_usb_pipe_count)));
-  usb_intsts0_set((uint8_t)k_ra_int0_bit_brdy);
+  usb_intsts0_set((uint8_t)k_ra8_int0_bit_brdy);
   s_loop_bulk_out_pkts++;
   usb_raise_irq(uc);
 }
@@ -1933,9 +1933,9 @@ uint16_t board_usb_loop_bulk_in_read(uc_engine* uc, uint8_t ep, uint8_t* dst, ui
     s_loop_bulk_in_pkts++;
     /* Transmit buffer drained: raise the device's BEMP for this pipe so its
      * firmware can queue the next packet (mirrors ::host_echo_read_in). */
-    const uint32_t w = usb_word((uint64_t)k_ra_usb_off_bempsts);
+    const uint32_t w = usb_word((uint64_t)k_ra8_usb_off_bempsts);
     s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << pipe));
-    usb_intsts0_set((uint8_t)k_ra_int0_bit_bemp);
+    usb_intsts0_set((uint8_t)k_ra8_int0_bit_bemp);
     usb_raise_irq(uc);
   }
   return n;

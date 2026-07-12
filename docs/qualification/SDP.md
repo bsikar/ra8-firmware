@@ -157,8 +157,8 @@ translation units carry HUM citations.
 
 Third-party libraries are admitted to the build under the SOUP
 register at [`../SOUP/`](../SOUP/). Each library is wrapped behind a
-first-party platform abstraction layer (`libs/ra_*_pal/`,
-`libs/ra_tls/`, `libs/ra_ota/`, `port/lwip/`, `port/usbx/`,
+first-party platform abstraction layer (`libs/ra8_*_pal/`,
+`libs/ra8_tls/`, `libs/ra8_ota/`, `port/lwip/`, `port/usbx/`,
 `port/levelx/`, `port/nimble/`) so that:
 
 - The first-party code remains the **only** code in scope for MC/DC
@@ -174,8 +174,8 @@ NASA Power-of-10 Rule 3 is enforced by
 in the pre-commit hook. The xorshift32 `rand()` override added in
 commit `6d2ebbfac` is the canonical example of how third-party calls
 into newlib heap functions are intercepted (see
-[`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md) "ra_rand_stub
-fix"). Failures of this rule are recorded by `ra_sbrk_trap` as
+[`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md) "ra8_rand_stub
+fix"). Failures of this rule are recorded by `ra8_sbrk_trap` as
 `fatal_error` events on hardware.
 
 ### 3.4 Per-app boot files
@@ -279,7 +279,7 @@ Policy"); signed tags will be introduced when the SCMP
 
 Commit messages follow a `<scope>: <subject>` convention seen in the
 recent history (e.g. `secure_app+tests: properly order key_import
-enums; wire ra_psa_crypto`). Per
+enums; wire ra8_psa_crypto`). Per
 [`../../CLAUDE.md`](../../CLAUDE.md) "Git Commits and Pull Requests",
 no AI attribution is added to commit messages or PR descriptions.
 
@@ -330,7 +330,7 @@ which builds tests with `clang -fcoverage-mcdc`, runs each test
 binary with `LLVM_PROFILE_FILE` set, merges via `llvm-profdata
 merge -sparse`, and renders the report under `build/mcdc-report/`.
 Default threshold is 100 % (per DO-178C Section 6.4.4.2 for Level B);
-the threshold is overridable via `RA_MCDC_THRESHOLD=NN` for
+the threshold is overridable via `RA8_MCDC_THRESHOLD=NN` for
 intermediate phase gates. The current measurement is **100.00 %
 reachable / 92.29 % absolute** (2026-05-03 , see
 [`../MCDC.md`](../MCDC.md) measurement history). 58 conditions are

@@ -10,7 +10,7 @@ each other** and one firmware image runs both USB stacks.
   synthesizes a deterministic per-`(LUN, LBA)` byte pattern, so the two
   LUNs return distinct, predictable data.
 - **USBHS (J7) = host:** the polled first-party host stack
-  (`ra_usb_hmsc`) enumerates the device over the cable, reads
+  (`ra8_usb_hmsc`) enumerates the device over the cable, reads
   `GET_MAX_LUN`, then for **each** LUN issues `READ_CAPACITY` + a full
   raw multi-block `READ(10)` sweep and byte-checks every sector against
   that LUN's pattern formula.
@@ -25,7 +25,7 @@ end on chip.
 The vendored USBX Cortex-M33 port (`ux_port.h`) defaults
 `UX_MAX_SLAVE_LUN` to **1**, which sizes the storage class LUN arrays;
 a device that declares more LUNs than that overruns the parameter
-struct. `cmake/usbx.cmake` raises the cap (`RA_USBX_MAX_PERIPHERAL_LUN`, the
+struct. `cmake/usbx.cmake` raises the cap (`RA8_USBX_MAX_PERIPHERAL_LUN`, the
 `UX_MAX_SLAVE_LUN` compile define (passed with -D)) to **2** for the whole tree so the
 Mass-Storage class can expose more than one logical unit. Two LUNs is
 the smallest genuinely-multi-LUN device (`GET_MAX_LUN` = 1) and is

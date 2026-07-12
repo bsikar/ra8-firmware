@@ -9,9 +9,9 @@
  * Brings up CGC + SysTick + SCI8 + LED1 + GPT0 in free-run mode.
  * Once a second:
  *
- *   1. Snapshots GPT0 counter via ``ra_gpt_read``.
+ *   1. Snapshots GPT0 counter via ``ra8_gpt_read``.
  *   2. Toggles LED1 (the "event" being measured).
- *   3. ``ra_delay_ms(50)`` to leave a known interval between reads.
+ *   3. ``ra8_delay_ms(50)`` to leave a known interval between reads.
  *   4. Snapshots GPT0 again, computes ``delta = stop - start``
  *      (handling wrap), and emits ``"gpt: period=NNNNNNNN\r\n"``
  *      on the J-Link OB CDC channel (115200 8N1).
@@ -32,13 +32,13 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gpt.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gpt.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_time.h"
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
@@ -137,26 +137,26 @@ static void timer_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     timer_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     timer_demo_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     timer_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     timer_demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_timer_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_timer_demo_baud) != k_ra8_ok) {
     timer_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     timer_demo_panic_halt();
   }
-  if (ra_gpt_start_free_run((uint8_t)k_timer_demo_gpt_channel, (uint32_t)k_timer_demo_gpt_period) !=
-      k_ra_ok) {
+  if (ra8_gpt_start_free_run((uint8_t)k_timer_demo_gpt_channel,
+                             (uint32_t)k_timer_demo_gpt_period) != k_ra8_ok) {
     timer_demo_panic_halt();
   }
 }
@@ -177,32 +177,32 @@ static void timer_demo_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t timer_demo_one_capture(void)
+[[nodiscard]] static ra8_err_t timer_demo_one_capture(void)
 {
   uint32_t start = 0U;
   uint32_t stop  = 0U;
 
-  if (ra_gpt_read((uint8_t)k_timer_demo_gpt_channel, &start) != k_ra_ok) {
-    return k_ra_err_hw_error;
+  if (ra8_gpt_read((uint8_t)k_timer_demo_gpt_channel, &start) != k_ra8_ok) {
+    return k_ra8_err_hw_error;
   }
-  (void)ra_board_led_toggle(k_ra_board_led1);
-  ra_delay_ms((uint32_t)k_timer_demo_capture_ms);
-  if (ra_gpt_read((uint8_t)k_timer_demo_gpt_channel, &stop) != k_ra_ok) {
-    return k_ra_err_hw_error;
+  (void)ra8_board_led_toggle(k_ra8_board_led1);
+  ra8_delay_ms((uint32_t)k_timer_demo_capture_ms);
+  if (ra8_gpt_read((uint8_t)k_timer_demo_gpt_channel, &stop) != k_ra8_ok) {
+    return k_ra8_err_hw_error;
   }
 
   const uint32_t delta                          = timer_demo_delta(start, stop);
   uint8_t        hex[k_timer_demo_hex_per_word] = {};
   timer_demo_word_to_hex(delta, hex);
 
-  if (ra_board_uart_console_write(k_timer_demo_prefix,
-                                  (size_t)(sizeof(k_timer_demo_prefix) - 1U)) != k_ra_ok) {
-    return k_ra_err_hw_error;
+  if (ra8_board_uart_console_write(k_timer_demo_prefix,
+                                   (size_t)(sizeof(k_timer_demo_prefix) - 1U)) != k_ra8_ok) {
+    return k_ra8_err_hw_error;
   }
-  if (ra_board_uart_console_write(hex, (size_t)k_timer_demo_hex_per_word) != k_ra_ok) {
-    return k_ra_err_hw_error;
+  if (ra8_board_uart_console_write(hex, (size_t)k_timer_demo_hex_per_word) != k_ra8_ok) {
+    return k_ra8_err_hw_error;
   }
-  return ra_board_uart_console_write(k_timer_demo_eol, (size_t)(sizeof(k_timer_demo_eol) - 1U));
+  return ra8_board_uart_console_write(k_timer_demo_eol, (size_t)(sizeof(k_timer_demo_eol) - 1U));
 }
 
 #pragma GCC diagnostic push
@@ -210,13 +210,13 @@ static void timer_demo_setup_or_halt(void)
 int32_t main(void)
 {
   timer_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   while (1) {
-    if (timer_demo_one_capture() != k_ra_ok) {
+    if (timer_demo_one_capture() != k_ra8_ok) {
       break;
     }
-    ra_delay_ms((uint32_t)k_timer_demo_period_ms);
+    ra8_delay_ms((uint32_t)k_timer_demo_period_ms);
   }
   timer_demo_panic_halt();
   return 0;

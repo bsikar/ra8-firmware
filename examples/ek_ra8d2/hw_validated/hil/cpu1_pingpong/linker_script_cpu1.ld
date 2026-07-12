@@ -16,8 +16,8 @@ MEMORY
     SRAM_CPU1 (rwx) : ORIGIN = 0x22190000, LENGTH = 64K
 }
 
-g_ra_ls_cpu1_stack_size = DEFINED(g_ra_ls_cpu1_stack_size) ? g_ra_ls_cpu1_stack_size : 8K;
-g_ra_ls_cpu1_stack_top  = ORIGIN(SRAM_CPU1) + LENGTH(SRAM_CPU1);
+g_ra8_ls_cpu1_stack_size = DEFINED(g_ra8_ls_cpu1_stack_size) ? g_ra8_ls_cpu1_stack_size : 8K;
+g_ra8_ls_cpu1_stack_top  = ORIGIN(SRAM_CPU1) + LENGTH(SRAM_CPU1);
 
 SECTIONS
 {
@@ -34,23 +34,23 @@ SECTIONS
 
     .data : ALIGN(4)
     {
-        g_ra_ls_cpu1_data_start = .;
+        g_ra8_ls_cpu1_data_start = .;
         *(.data*)
-        g_ra_ls_cpu1_data_end   = .;
+        g_ra8_ls_cpu1_data_end   = .;
     } > SRAM_CPU1 AT > MRAM_CPU1
-    g_ra_ls_cpu1_data_load = LOADADDR(.data);
+    g_ra8_ls_cpu1_data_load = LOADADDR(.data);
 
     .bss : ALIGN(4)
     {
-        g_ra_ls_cpu1_bss_start = .;
+        g_ra8_ls_cpu1_bss_start = .;
         *(.bss*)
         *(COMMON)
-        g_ra_ls_cpu1_bss_end   = .;
+        g_ra8_ls_cpu1_bss_end   = .;
     } > SRAM_CPU1
 
     .stack (NOLOAD) :
     {
-        . = ORIGIN(SRAM_CPU1) + LENGTH(SRAM_CPU1) - g_ra_ls_cpu1_stack_size;
-        . = . + g_ra_ls_cpu1_stack_size;
+        . = ORIGIN(SRAM_CPU1) + LENGTH(SRAM_CPU1) - g_ra8_ls_cpu1_stack_size;
+        . = . + g_ra8_ls_cpu1_stack_size;
     } > SRAM_CPU1
 }

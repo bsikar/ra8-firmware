@@ -65,6 +65,6 @@ locally chosen. Bench use only.
 
 ## BSP usage
 
-Uses `ra_board_ek_ra8d2` BSP for LED1 init/toggle (P600 per EK-RA8D2
+Uses `ra8_board_ek_ra8d2` BSP for LED1 init/toggle (P600 per EK-RA8D2
 v1 UM Table 24 p 31; toggles per SCSI read). USB-FS pin set
 (P407 / P500 / P814 / P815) is routed PSEL 0x13 as in `usb_cdc_echo`.

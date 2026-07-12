@@ -3,11 +3,11 @@
  * @brief PDM-IF (digital MEMS microphone) peripheral-block model for board_sim
  *
  * @details
- * Models the single RA8D2 PDM-IF block at 0x4025_6000 (ra8d2_pdm_regs.h /
- * ra_pdm.c, the real HUM Ch 49 PDM-IF). The firmware read path
- * (``ra_pdm_read``) polls a channel's data-status register ``PDDSR.NUM`` for the
+ * Models the single RA8D2 PDM-IF block at 0x4025_6000 (ra8_pdm_regs.h /
+ * ra8_pdm.c, the real HUM Ch 49 PDM-IF). The firmware read path
+ * (``ra8_pdm_read``) polls a channel's data-status register ``PDDSR.NUM`` for the
  * FIFO fill count, then drains that many 20-bit signed PCM samples out of the
- * data-read register ``PDDRR``. The stop path (``ra_pdm_stop``) polls the common
+ * data-read register ``PDDRR``. The stop path (``ra8_pdm_stop``) polls the common
  * channel-status register ``PDCSR`` until the channel's run bit clears.
  *
  * This block turns that register set into a synthetic-audio source. A channel
@@ -39,7 +39,7 @@
 #include "board_console.h"
 #include "board_periph_block.h"
 
-/** @brief PDM-IF register-window geometry (ra8d2_pdm_regs.h). */
+/** @brief PDM-IF register-window geometry (ra8_pdm_regs.h). */
 typedef enum : uint64_t {
   k_pdm_base       = 0x40256000UL,  /**< PDM-IF block base (HUM Ch 49).      */
   k_pdm_span       = 0x400UL,       /**< Common bank + 3 channel banks.      */
@@ -55,7 +55,7 @@ typedef enum : uint64_t {
   k_pdm_ch_pddsr   = 0xECUL,        /**< CHn PDDSR data status (fill count). */
 } pdm_map_t;
 
-/** @brief PDM-IF register field masks / bits (ra8d2_pdm_regs.h). */
+/** @brief PDM-IF register field masks / bits (ra8_pdm_regs.h). */
 typedef enum : uint32_t {
   k_pdm_pddrcr_datre = 0x1U,        /**< PDDRCR[0] data-read enable.           */
   k_pdm_pddsr_num    = 0x000000FFU, /**< PDDSR[7:0] FIFO fill count field.     */

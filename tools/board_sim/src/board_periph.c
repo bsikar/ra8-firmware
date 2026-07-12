@@ -39,11 +39,11 @@
 #include "board_usb_host.h"
 
 /* =============================================================================
- * ICU / NVIC register map (addresses verified against libs/ra_hal regs).
+ * ICU / NVIC register map (addresses verified against libs/ra8_hal regs).
  * =============================================================================
  */
 
-/** @brief ICU block geometry (ra8d2_icu_regs.h). */
+/** @brief ICU block geometry (ra8_icu_regs.h). */
 typedef enum : uint64_t {
   k_icu_base      = 0x40006000UL, /**< R_ICU base.                */
   k_icu_off_ielsr = 0x6300UL,     /**< IELSR[0..95], 32-bit each. */
@@ -51,7 +51,7 @@ typedef enum : uint64_t {
   k_icu_span      = 0x6300UL + (96UL * 4UL),
 } icu_map_t;
 
-/** @brief ICU IELSR layout -- ra_ielsr_bit_t / ra_ielsr_mask_t. */
+/** @brief ICU IELSR layout -- ra8_ielsr_bit_t / ra8_ielsr_mask_t. */
 typedef enum : uint32_t {
   k_ielsr_iels_mask = 0x000003FFU, /**< IELS event-select field [9:0].    */
   k_ielsr_ir_bit    = 16U,         /**< IR interrupt status flag (RW1C).  */
@@ -228,7 +228,7 @@ static const board_periph_block_t* block_for_addr(uint64_t addr)
 /* ICU IELSR event-link table. The ICU registers live inside the callback-MMIO
  * peripheral window (0x40006xxx), so the model owns this state itself rather
  * than reading it back through the MMIO callback. The firmware's IELSR writes
- * (ra_isr_register / ra_icu_route) land here; icu_raise_event scans it. */
+ * (ra8_isr_register / ra8_icu_route) land here; icu_raise_event scans it. */
 static uint32_t s_ielsr[k_icu_ielsr_cnt];
 
 /* Pending-IRQ ring: the ICU pushes a line here when a linked, NVIC-enabled

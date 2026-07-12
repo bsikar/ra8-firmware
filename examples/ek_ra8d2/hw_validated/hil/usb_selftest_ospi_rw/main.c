@@ -16,9 +16,9 @@
  *    64-sector (32 KiB) window of the onboard OSPI flash (IS25LX512M at
  *    xSPI CS1, offset 0x00200000). media_write programs host data into the
  *    flash window; media_read serves it back. IRQ-driven through the
- *    `port/usbx/ux_dcd_ra_usb` bridge.
+ *    `port/usbx/ux_dcd_ra8_usb` bridge.
  *  - USBHS (J7) = HOST: the first-party polled host MSC stack
- *    (`ra_usb_hmsc`). It enumerates the device, WRITE(10)s a
+ *    (`ra8_usb_hmsc`). It enumerates the device, WRITE(10)s a
  *    deterministic per-LBA pattern across the whole window, then READ(10)s
  *    it back and byte-checks every sector -- proving the device bulk-OUT
  *    WRITE data phase round-trips intact onto flash, end to end on chip.
@@ -53,30 +53,30 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gpio_constants.h"
-#include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_time.h"
-#include "ra_usb.h"
-#include "ra_usb_hmsc.h"
-#include "ra_xspi.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_isr.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_time.h"
+#include "ra8_usb.h"
+#include "ra8_usb_hmsc.h"
+#include "ra8_xspi.h"
 #include "usb_selftest_ospi_rw_steps.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 #include "ux_api.h"
-#include "ux_dcd_ra_usb.h"
+#include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_storage.h"
 #include "ux_device_stack.h"
 
-/* Strong SysTick override: route the tick into BOTH the ra_time millisecond
- * counter (for ra_delay_ms and the polled host stack's timeouts) AND
+/* Strong SysTick override: route the tick into BOTH the ra8_time millisecond
+ * counter (for ra8_delay_ms and the polled host stack's timeouts) AND
  * ThreadX's timer; the 1 ms pulse also recovers the DCD's storm-guard mask. */
-extern void ra_time_on_tick(void);
+extern void ra8_time_on_tick(void);
 extern void _tx_timer_interrupt(void);
 
 /**
@@ -93,10 +93,10 @@ static volatile bool s_tx_kernel_up = false;
 void SysTick_Handler(void);
 void SysTick_Handler(void)
 {
-  ra_time_on_tick();
+  ra8_time_on_tick();
   if (s_tx_kernel_up) {
     _tx_timer_interrupt();
-    ux_dcd_ra_usb_irq_reenable();
+    ux_dcd_ra8_usb_irq_reenable();
   }
 }
 #endif
@@ -106,28 +106,28 @@ void SysTick_Handler(void)
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
-static const ra_port_pin_t k_ospirw_pin_fs_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
+static const ra8_port_pin_t k_ospirw_pin_fs_vbus =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_7);
 
 /** @brief USBFS VBUSEN (P5_00) -- GPIO LOW for the device role. */
-static const ra_port_pin_t k_ospirw_pin_fs_vbusen =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0);
+static const ra8_port_pin_t k_ospirw_pin_fs_vbusen =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_5 << 8) | (uint16_t)k_ra8_pin_0);
 
 /** @brief USBFS D+ (P8_14). */
-static const ra_port_pin_t k_ospirw_pin_fs_dp =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14);
+static const ra8_port_pin_t k_ospirw_pin_fs_dp =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_14);
 
 /** @brief USBFS D- (P8_15). */
-static const ra_port_pin_t k_ospirw_pin_fs_dm =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
+static const ra8_port_pin_t k_ospirw_pin_fs_dm =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_15);
 
 /** @brief USBHS_VBUS sense pin (P4_08, PSEL = 0x14). */
-static const ra_port_pin_t k_ospirw_pin_hs_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_8);
+static const ra8_port_pin_t k_ospirw_pin_hs_vbus =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_8);
 
 /** @brief J7 host-power switch (PD07): HIGH = U18 supplies VBUS (UM 6.2). */
-static const ra_port_pin_t k_ospirw_pin_hs_pwr =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7);
+static const ra8_port_pin_t k_ospirw_pin_hs_pwr =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << 8) | (uint16_t)k_ra8_pin_7);
 
 /* -------------------------------------------------------------------------- */
 /* Tunables */
@@ -159,7 +159,7 @@ typedef enum : uint8_t {
   k_scsi_asc_write_protected   = 0x27U, /**< ASC: WRITE PROTECTED.       */
 } scsi_sense_code_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
 /* ThreadX workers + USBX pool storage */
@@ -382,7 +382,7 @@ static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en
  *
  * @details Bound-checks the request against the LUN geometry, then reads
  * @p number_blocks sectors from the OSPI window at ::k_ospirw_offset with
- * ::ra_xspi_flash_read into the USBX buffer. One callback serves the
+ * ::ra8_xspi_flash_read into the USBX buffer. One callback serves the
  * single LUN. LED1 toggles per call so loop traffic is visible.
  *
  * @param[in,out] storage      USBX storage class instance (unused).
@@ -421,18 +421,19 @@ static UINT ospirw_msc_read(VOID*  storage,
     return UX_ERROR;
   }
   const uint32_t addr = (uint32_t)k_ospirw_offset + ((uint32_t)lba * (uint32_t)k_ospirw_block_size);
-  const ra_err_t rerr = ra_xspi_flash_read((uint8_t)k_ospirw_instance,
-                                           addr,
-                                           data_pointer,
-                                           (uint32_t)number_blocks * (uint32_t)k_ospirw_block_size);
-  if (rerr != k_ra_ok) {
+  const ra8_err_t rerr =
+    ra8_xspi_flash_read((uint8_t)k_ospirw_instance,
+                        addr,
+                        data_pointer,
+                        (uint32_t)number_blocks * (uint32_t)k_ospirw_block_size);
+  if (rerr != k_ra8_ok) {
     *media_status = UX_DEVICE_CLASS_STORAGE_SENSE_STATUS(k_scsi_sense_illegal_request,
                                                          k_scsi_asc_lba_out_of_range,
                                                          k_scsi_ascq_none);
     return UX_ERROR;
   }
   *media_status = 0UL;
-  (void)ra_board_led_toggle(k_ra_board_led1);
+  (void)ra8_board_led_toggle(k_ra8_board_led1);
   return UX_SUCCESS;
 }
 
@@ -441,7 +442,7 @@ static UINT ospirw_msc_read(VOID*  storage,
  *
  * @details The LUN is writable; the host's WRITE(10) data-OUT phase lands
  * here. Programs @p number_blocks sectors from the USBX buffer into the
- * OSPI window at ::k_ospirw_offset with ::ra_xspi_flash_program. The
+ * OSPI window at ::k_ospirw_offset with ::ra8_xspi_flash_program. The
  * window is ERASED once at boot, so this is a fast program-only path (no
  * per-write 4 KiB erase, which would exceed the host's BOT timeout).
  * Bumps ::s_dbg_write_calls / ::s_dbg_write_blocks.
@@ -485,12 +486,12 @@ static UINT ospirw_msc_write(VOID*  storage,
     return UX_ERROR;
   }
   const uint32_t addr = (uint32_t)k_ospirw_offset + ((uint32_t)lba * (uint32_t)k_ospirw_block_size);
-  const ra_err_t werr =
-    ra_xspi_flash_program((uint8_t)k_ospirw_instance,
-                          addr,
-                          data_pointer,
-                          (uint32_t)number_blocks * (uint32_t)k_ospirw_block_size);
-  if (werr != k_ra_ok) {
+  const ra8_err_t werr =
+    ra8_xspi_flash_program((uint8_t)k_ospirw_instance,
+                           addr,
+                           data_pointer,
+                           (uint32_t)number_blocks * (uint32_t)k_ospirw_block_size);
+  if (werr != k_ra8_ok) {
     *media_status = UX_DEVICE_CLASS_STORAGE_SENSE_STATUS(k_scsi_sense_illegal_request,
                                                          k_scsi_asc_lba_out_of_range,
                                                          k_scsi_ascq_none);
@@ -498,7 +499,7 @@ static UINT ospirw_msc_write(VOID*  storage,
   }
   s_dbg_write_blocks += (uint32_t)number_blocks;
   *media_status = 0UL;
-  (void)ra_board_led_toggle(k_ra_board_led2);
+  (void)ra8_board_led_toggle(k_ra8_board_led2);
   return UX_SUCCESS;
 }
 /* cppcheck-suppress-end [constParameterCallback] */
@@ -668,7 +669,7 @@ static VOID ospirw_device_worker(ULONG arg)
 {
   (void)arg;
 
-  if (ospirw_ospi_provision() != k_ra_ok) {
+  if (ospirw_ospi_provision() != k_ra8_ok) {
     return; /* s_dbg_ospi_prov records the failure; host READ/WRITE will FAIL */
   }
   UINT ux = ospirw_usbx_stack_up();
@@ -683,14 +684,14 @@ static VOID ospirw_device_worker(ULONG arg)
     return;
   }
   s_dbg_dev_step = (uint32_t)k_ospirw_dev_step_class;
-  ra_err_t e     = ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs);
-  if (e != k_ra_ok) {
+  ra8_err_t e    = ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs);
+  if (e != k_ra8_ok) {
     s_dbg_dev_err = (uint32_t)e;
     return;
   }
   s_dbg_dev_step = (uint32_t)k_ospirw_dev_step_dcd;
-  e              = ra_usb_device_attach(k_ra_usb_speed_fs, true);
-  if (e != k_ra_ok) {
+  e              = ra8_usb_device_attach(k_ra8_usb_speed_fs, true);
+  if (e != k_ra8_ok) {
     s_dbg_dev_err = (uint32_t)e;
     return;
   }
@@ -744,7 +745,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
 /* Startup */
@@ -788,27 +789,27 @@ static void ospirw_panic_halt(void)
  */
 static void ospirw_route_usb_or_halt(void)
 {
-  if (ra_pfs_route_peripheral(k_ospirw_pin_fs_vbus, k_ra_psel_usb_fs, "ospirw.fs_vbus") !=
-      k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_ospirw_pin_fs_vbus, k_ra8_psel_usb_fs, "ospirw.fs_vbus") !=
+      k_ra8_ok) {
     ospirw_panic_halt();
   }
-  if (ra_gpio_output_init(k_ospirw_pin_fs_vbusen, k_ra_level_low) != k_ra_ok) {
+  if (ra8_gpio_output_init(k_ospirw_pin_fs_vbusen, k_ra8_level_low) != k_ra8_ok) {
     ospirw_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_ospirw_pin_fs_dp, k_ra_psel_usb_fs, "ospirw.fs_dp") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_ospirw_pin_fs_dp, k_ra8_psel_usb_fs, "ospirw.fs_dp") != k_ra8_ok) {
     ospirw_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_ospirw_pin_fs_dm, k_ra_psel_usb_fs, "ospirw.fs_dm") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_ospirw_pin_fs_dm, k_ra8_psel_usb_fs, "ospirw.fs_dm") != k_ra8_ok) {
     ospirw_panic_halt();
   }
-  if (ra_board_io_expander_set_usbhs_host_mode() != k_ra_ok) {
+  if (ra8_board_io_expander_set_usbhs_host_mode() != k_ra8_ok) {
     ospirw_panic_halt();
   }
-  if (ra_gpio_output_init(k_ospirw_pin_hs_pwr, k_ra_level_high) != k_ra_ok) {
+  if (ra8_gpio_output_init(k_ospirw_pin_hs_pwr, k_ra8_level_high) != k_ra8_ok) {
     ospirw_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_ospirw_pin_hs_vbus, k_ra_psel_usb_hs, "ospirw.hs_vbus") !=
-      k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_ospirw_pin_hs_vbus, k_ra8_psel_usb_hs, "ospirw.hs_vbus") !=
+      k_ra8_ok) {
     ospirw_panic_halt();
   }
 }
@@ -830,28 +831,28 @@ static void ospirw_route_usb_or_halt(void)
 static void ospirw_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     ospirw_panic_halt();
   }
-  if (ra_cgc_usbfs_clock_enable() != k_ra_ok) {
+  if (ra8_cgc_usbfs_clock_enable() != k_ra8_ok) {
     ospirw_panic_halt();
   }
-  if (ra_cgc_usbhs_pll_enable() != k_ra_ok) {
+  if (ra8_cgc_usbhs_pll_enable() != k_ra8_ok) {
     ospirw_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     ospirw_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     ospirw_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_ospirw_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_ospirw_baud) != k_ra8_ok) {
     ospirw_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     ospirw_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     ospirw_panic_halt();
   }
   ospirw_route_usb_or_halt();
@@ -879,9 +880,9 @@ int32_t main(void)
 {
   ospirw_setup_or_halt();
 
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   tx_kernel_enter();
 #endif
 

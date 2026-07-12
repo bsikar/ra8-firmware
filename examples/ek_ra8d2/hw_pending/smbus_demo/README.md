@@ -1,9 +1,9 @@
 # smbus_demo
 
-Standalone **SMBus 3.2 protocol-layer** demo + HIL gate (`ra_smbus`, #128).
-`ra_smbus` frames Send Byte / Receive Byte / Read Byte Data / Block transactions
+Standalone **SMBus 3.2 protocol-layer** demo + HIL gate (`ra8_smbus`, #128).
+`ra8_smbus` frames Send Byte / Receive Byte / Read Byte Data / Block transactions
 on top of the IIC_B (I3C-in-I2C-mode) controller and delegates raw byte movement
-to `ra_i3c`. It had no example and no CI gate.
+to `ra8_i3c`. It had no example and no CI gate.
 
 ## What it does
 
@@ -47,9 +47,9 @@ $ board_sim smbus_demo.elf
 
 `scripts/board_sim_smoke.sh smbus_demo` PASS -- board_sim models the LSM6DSO on
 the modelled IIC_B bus, so the SMBus transactions return through the genuine
-`ra_smbus -> ra_i3c -> GT911/IMU` I2C path (no stub) and the banner is
+`ra8_smbus -> ra8_i3c -> GT911/IMU` I2C path (no stub) and the banner is
 deterministic. The SMBus PEC CRC-8 helper is covered on the host by
-`tests/test_ra_smbus.c`.
+`tests/test_ra8_smbus.c`.
 
 ## On real silicon (hw_pending)
 

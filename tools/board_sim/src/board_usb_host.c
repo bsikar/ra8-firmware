@@ -4,7 +4,7 @@
  *
  * @details
  * Implements the model declared in board_usb_host.h. The register window is
- * the shared "USB2_B" layout (ra8d2_usb_regs.h; HUM Ch 37 for the USBHS
+ * the shared "USB2_B" layout (ra8_usb_regs.h; HUM Ch 37 for the USBHS
  * instance) plus the HS-only PHY registers (PLLSTA / PHYSET / LPSTS) and the
  * DEVADDn slots. The polled first-party host engine drives this window with
  * plain MMIO -- no interrupts -- so the model services each access
@@ -42,7 +42,7 @@
 #include <string.h>
 
 #include "board_usb.h"
-#include "ra8d2_usb_regs.h"
+#include "ra8_usb_regs.h"
 
 /* =============================================================================
  * Window geometry + model sizing.
@@ -93,7 +93,7 @@ typedef enum : uint32_t {
   k_usbhs_byte_bits = 8U, /**< Bits per byte (LE packing shifts). */
 } usbhs_misc_t;
 
-/** @brief Register field masks (HUM Ch 37.2) not exported by ra8d2_usb_regs.h. */
+/** @brief Register field masks (HUM Ch 37.2) not exported by ra8_usb_regs.h. */
 typedef enum : uint16_t {
   k_usbhs_dcpmaxp_mxps  = 0x007FU, /**< DCPMAXP.MXPS: DCP max packet field.   */
   k_usbhs_pipemaxp_mxps = 0x07FFU, /**< PIPEMAXP.MXPS: pipe max packet field. */
@@ -115,23 +115,23 @@ typedef enum : uint16_t {
  * @invariant @c stage_len <= ::k_usbhs_stage_cap.
  */
 typedef struct {
-  uint16_t reg[k_usbhs_reg_words];        /**< Plain register shadow.         */
-  uint16_t pipecfg[k_ra_usb_pipe_count];  /**< Windowed PIPECFG per pipe.     */
-  uint16_t pipebuf[k_ra_usb_pipe_count];  /**< Windowed PIPEBUF per pipe.     */
-  uint16_t pipemaxp[k_ra_usb_pipe_count]; /**< Windowed PIPEMAXP per pipe.    */
-  uint16_t pipeperi[k_ra_usb_pipe_count]; /**< Windowed PIPEPERI per pipe.    */
-  uint8_t  stage[k_usbhs_stage_cap];      /**< CFIFO OUT staging buffer.      */
-  uint16_t stage_len;                     /**< Staged OUT bytes.              */
-  uint16_t rhst;                          /**< DVSTCTR0.RHST after bus reset. */
-  bool     engaged;                       /**< Model owns the window.         */
-  bool     allowed;                       /**< main.c granted the loop.       */
-  bool     last_setup_in;                 /**< Last SETUP was device-to-host. */
-  bool     sie_status_done;               /**< SIE ran the status (SET_ADDR). */
-  bool     ccpl_armed;                    /**< Awaiting the device's CCPL.    */
-  bool     status_zlp;                    /**< Status ZLP ready for the host. */
-  uint32_t setups;                        /**< SETUPs delivered (report).     */
-  uint32_t bulk_out;                      /**< Bulk-OUT packets (report).     */
-  uint32_t bulk_in;                       /**< Bulk-IN packets (report).      */
+  uint16_t reg[k_usbhs_reg_words];         /**< Plain register shadow.         */
+  uint16_t pipecfg[k_ra8_usb_pipe_count];  /**< Windowed PIPECFG per pipe.     */
+  uint16_t pipebuf[k_ra8_usb_pipe_count];  /**< Windowed PIPEBUF per pipe.     */
+  uint16_t pipemaxp[k_ra8_usb_pipe_count]; /**< Windowed PIPEMAXP per pipe.    */
+  uint16_t pipeperi[k_ra8_usb_pipe_count]; /**< Windowed PIPEPERI per pipe.    */
+  uint8_t  stage[k_usbhs_stage_cap];       /**< CFIFO OUT staging buffer.      */
+  uint16_t stage_len;                      /**< Staged OUT bytes.              */
+  uint16_t rhst;                           /**< DVSTCTR0.RHST after bus reset. */
+  bool     engaged;                        /**< Model owns the window.         */
+  bool     allowed;                        /**< main.c granted the loop.       */
+  bool     last_setup_in;                  /**< Last SETUP was device-to-host. */
+  bool     sie_status_done;                /**< SIE ran the status (SET_ADDR). */
+  bool     ccpl_armed;                     /**< Awaiting the device's CCPL.    */
+  bool     status_zlp;                     /**< Status ZLP ready for the host. */
+  uint32_t setups;                         /**< SETUPs delivered (report).     */
+  uint32_t bulk_out;                       /**< Bulk-OUT packets (report).     */
+  uint32_t bulk_in;                        /**< Bulk-IN packets (report).      */
 } usbhs_state_t;
 
 /**
@@ -170,43 +170,43 @@ static uint32_t usbhs_word(uint64_t off)
 /** @brief Currently-selected CFIFO pipe number (CFIFOSEL.CURPIPE[3:0]). */
 static uint8_t usbhs_cur_pipe(void)
 {
-  const uint16_t sel = s_hs.reg[usbhs_word((uint64_t)k_ra_usb_off_cfifosel)];
-  return (uint8_t)(sel & (uint16_t)k_ra_fifosel_curpipe);
+  const uint16_t sel = s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_cfifosel)];
+  return (uint8_t)(sel & (uint16_t)k_ra8_fifosel_curpipe);
 }
 
 /** @brief True when CFIFOSEL selects the write (ISEL) side of the DCP port. */
 static bool usbhs_cfifo_isel(void)
 {
-  const uint16_t sel = s_hs.reg[usbhs_word((uint64_t)k_ra_usb_off_cfifosel)];
-  return (sel & (uint16_t)k_ra_fifosel_isel) != 0U;
+  const uint16_t sel = s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_cfifosel)];
+  return (sel & (uint16_t)k_ra8_fifosel_isel) != 0U;
 }
 
 /** @brief Device endpoint number a host pipe addresses (PIPECFG.EPNUM). */
 static uint8_t usbhs_pipe_ep(uint8_t pipe)
 {
   const uint8_t ep =
-    (uint8_t)(s_hs.pipecfg[pipe % k_ra_usb_pipe_count] & (uint16_t)k_ra_pipecfg_epnum_mask);
+    (uint8_t)(s_hs.pipecfg[pipe % k_ra8_usb_pipe_count] & (uint16_t)k_ra8_pipecfg_epnum_mask);
   return (ep != 0U) ? ep : pipe; /* unconfigured: fall back to pipe == EP. */
 }
 
 /** @brief True when a host pipe transmits (host-to-device; PIPECFG.DIR set). */
 static bool usbhs_pipe_is_tx(uint8_t pipe)
 {
-  return (s_hs.pipecfg[pipe % k_ra_usb_pipe_count] & (uint16_t)k_ra_pipecfg_dir_in) != 0U;
+  return (s_hs.pipecfg[pipe % k_ra8_usb_pipe_count] & (uint16_t)k_ra8_pipecfg_dir_in) != 0U;
 }
 
 /** @brief A pipe's effective max packet size (fallback when unprogrammed). */
 static uint16_t usbhs_pipe_mps(uint8_t pipe)
 {
   const uint16_t mps =
-    (uint16_t)(s_hs.pipemaxp[pipe % k_ra_usb_pipe_count] & (uint16_t)k_usbhs_pipemaxp_mxps);
+    (uint16_t)(s_hs.pipemaxp[pipe % k_ra8_usb_pipe_count] & (uint16_t)k_usbhs_pipemaxp_mxps);
   return (mps != 0U) ? mps : (uint16_t)k_usbhs_mps_fall;
 }
 
 /** @brief The DCP's effective max packet size (fallback when unprogrammed). */
 static uint16_t usbhs_dcp_mps(void)
 {
-  const uint16_t mps = (uint16_t)(s_hs.reg[usbhs_word((uint64_t)k_ra_usb_off_dcpmaxp)] &
+  const uint16_t mps = (uint16_t)(s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_dcpmaxp)] &
                                   (uint16_t)k_usbhs_dcpmaxp_mxps);
   return (mps != 0U) ? mps : (uint16_t)k_usbhs_mps_fall;
 }
@@ -240,15 +240,15 @@ static void usbhs_do_setup(uc_engine* uc)
   s_hs.sie_status_done = false;
   s_hs.ccpl_armed      = false;
   s_hs.status_zlp      = false;
-  const uint32_t w1    = usbhs_word((uint64_t)k_ra_usb_off_intsts1);
+  const uint32_t w1    = usbhs_word((uint64_t)k_ra8_usb_off_intsts1);
   if (!board_usb_loop_attached()) {
     s_hs.reg[w1] = (uint16_t)(s_hs.reg[w1] | (uint16_t)k_usbhs_int1_sign);
     return;
   }
-  const uint16_t req   = s_hs.reg[usbhs_word((uint64_t)k_ra_usb_off_usbreq)];
-  const uint16_t val   = s_hs.reg[usbhs_word((uint64_t)k_ra_usb_off_usbval)];
-  const uint16_t indx  = s_hs.reg[usbhs_word((uint64_t)k_ra_usb_off_usbindx)];
-  const uint16_t leng  = s_hs.reg[usbhs_word((uint64_t)k_ra_usb_off_usbleng)];
+  const uint16_t req   = s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_usbreq)];
+  const uint16_t val   = s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_usbval)];
+  const uint16_t indx  = s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_usbindx)];
+  const uint16_t leng  = s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_usbleng)];
   s_hs.last_setup_in   = ((req & (uint16_t)k_usbhs_setup_dir_in) != 0U);
   s_hs.sie_status_done = board_usb_loop_setup(uc, req, val, indx, leng);
   s_hs.reg[w1]         = (uint16_t)(s_hs.reg[w1] | (uint16_t)k_usbhs_int1_sack);
@@ -285,7 +285,7 @@ static void usbhs_do_setup(uc_engine* uc)
  */
 static void usbhs_do_ccpl(uc_engine* uc)
 {
-  const uint32_t wb = usbhs_word((uint64_t)k_ra_usb_off_bempsts);
+  const uint32_t wb = usbhs_word((uint64_t)k_ra8_usb_off_bempsts);
   if (s_hs.last_setup_in) {
     board_usb_loop_status_out_zlp(uc);
     s_hs.reg[wb] = (uint16_t)(s_hs.reg[wb] | (uint16_t)k_usbhs_dcp_bit);
@@ -328,7 +328,7 @@ static uint16_t usbhs_brdysts_value(uc_engine* uc)
   if (s_hs.status_zlp || (board_usb_loop_ctrl_in_avail() > 0U)) {
     v |= (uint16_t)k_usbhs_dcp_bit;
   }
-  for (uint8_t pipe = 1U; pipe < (uint8_t)k_ra_usb_pipe_count; pipe++) {
+  for (uint8_t pipe = 1U; pipe < (uint8_t)k_ra8_usb_pipe_count; pipe++) {
     if (s_hs.pipecfg[pipe] == 0U) {
       continue;
     }
@@ -353,7 +353,7 @@ static uint16_t usbhs_brdysts_value(uc_engine* uc)
  * exactly the framing the polled engine's short-packet logic expects.
  *
  * @return The composed CFIFOCTR value.
- * @retval k_ra_fifoctr_frdy No receive bytes pending (DTLN = 0).
+ * @retval k_ra8_fifoctr_frdy No receive bytes pending (DTLN = 0).
  * @pre The model is engaged.
  * @pre CFIFOSEL selects the pipe the caller is transferring on.
  * @post No model state changes (compose-only).
@@ -378,7 +378,7 @@ static uint16_t usbhs_cfifoctr_value(void)
     avail = 0U;
   }
   const uint16_t dtln = (avail < mps) ? avail : mps;
-  return (uint16_t)((uint16_t)k_ra_fifoctr_frdy | (dtln & (uint16_t)k_ra_fifoctr_dtln));
+  return (uint16_t)((uint16_t)k_ra8_fifoctr_frdy | (dtln & (uint16_t)k_ra8_fifoctr_dtln));
 }
 
 /**
@@ -475,7 +475,7 @@ static void usbhs_cfifo_write(uint64_t value, unsigned size)
 static void usbhs_cfifoctr_write(uc_engine* uc, uint16_t value)
 {
   const uint8_t pipe = usbhs_cur_pipe();
-  if ((value & (uint16_t)k_ra_fifoctr_bclr) != 0U) {
+  if ((value & (uint16_t)k_ra8_fifoctr_bclr) != 0U) {
     if (pipe == 0U) {
       if (usbhs_cfifo_isel()) {
         s_hs.stage_len = 0U;
@@ -489,8 +489,8 @@ static void usbhs_cfifoctr_write(uc_engine* uc, uint16_t value)
       board_usb_loop_bulk_in_flush(usbhs_pipe_ep(pipe));
     }
   }
-  if ((value & (uint16_t)k_ra_fifoctr_bval) != 0U) {
-    const uint32_t wb = usbhs_word((uint64_t)k_ra_usb_off_bempsts);
+  if ((value & (uint16_t)k_ra8_fifoctr_bval) != 0U) {
+    const uint32_t wb = usbhs_word((uint64_t)k_ra8_usb_off_bempsts);
     if ((pipe == 0U) && usbhs_cfifo_isel() && (s_hs.stage_len > 0U)) {
       board_usb_loop_ctrl_out(uc, s_hs.stage, s_hs.stage_len);
       s_hs.reg[wb]   = (uint16_t)(s_hs.reg[wb] | (uint16_t)k_usbhs_dcp_bit);
@@ -524,7 +524,7 @@ static void usbhs_cfifoctr_write(uc_engine* uc, uint16_t value)
  */
 static void usbhs_dvstctr_write(uc_engine* uc, uint16_t value)
 {
-  const uint32_t w   = usbhs_word((uint64_t)k_ra_usb_off_dvstctr0);
+  const uint32_t w   = usbhs_word((uint64_t)k_ra8_usb_off_dvstctr0);
   const uint16_t old = s_hs.reg[w];
   s_hs.reg[w]        = (uint16_t)(value & (uint16_t)~(uint16_t)k_usbhs_rhst_mask);
   const bool was_rst = (old & (uint16_t)k_usbhs_dvst_usbrst) != 0U;
@@ -559,7 +559,7 @@ static void usbhs_dvstctr_write(uc_engine* uc, uint16_t value)
  */
 static void usbhs_dcpctr_write(uc_engine* uc, uint16_t value)
 {
-  const uint32_t w   = usbhs_word((uint64_t)k_ra_usb_off_dcpctr);
+  const uint32_t w   = usbhs_word((uint64_t)k_ra8_usb_off_dcpctr);
   const uint16_t old = s_hs.reg[w];
   if (((value & (uint16_t)k_usbhs_dcpctr_sureq) != 0U) &&
       ((old & (uint16_t)k_usbhs_dcpctr_sureq) == 0U)) {
@@ -601,31 +601,31 @@ static void usbhs_dcpctr_write(uc_engine* uc, uint16_t value)
  */
 static uint64_t usbhs_reg_read(uc_engine* uc, uint64_t off, unsigned size)
 {
-  const uint8_t sel = (uint8_t)(s_hs.reg[usbhs_word((uint64_t)k_ra_usb_off_pipesel)] &
-                                (uint16_t)k_ra_fifosel_curpipe);
+  const uint8_t sel = (uint8_t)(s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_pipesel)] &
+                                (uint16_t)k_ra8_fifosel_curpipe);
   switch ((uint16_t)off) {
-    case (uint16_t)k_ra_usb_off_syssts0:
+    case (uint16_t)k_ra8_usb_off_syssts0:
       return (board_usb_loop_attached()) ? (uint64_t)k_usbhs_lnst_j_state : 0U;
-    case (uint16_t)k_ra_usbhs_off_pllsta:
-      return (uint16_t)k_ra_pllsta_plllock;
-    case (uint16_t)k_ra_usb_off_dvstctr0:
+    case (uint16_t)k_ra8_usbhs_off_pllsta:
+      return (uint16_t)k_ra8_pllsta_plllock;
+    case (uint16_t)k_ra8_usb_off_dvstctr0:
       return (uint16_t)(s_hs.reg[usbhs_word(off)] | s_hs.rhst);
-    case (uint16_t)k_ra_usb_off_cfifo:
+    case (uint16_t)k_ra8_usb_off_cfifo:
       return usbhs_cfifo_read(uc, size); /* full width: 32-bit MBW drains. */
-    case (uint16_t)k_ra_usb_off_cfifoctr:
+    case (uint16_t)k_ra8_usb_off_cfifoctr:
       return usbhs_cfifoctr_value();
-    case (uint16_t)k_ra_usb_off_brdysts:
+    case (uint16_t)k_ra8_usb_off_brdysts:
       return usbhs_brdysts_value(uc);
-    case (uint16_t)k_ra_usb_off_nrdysts:
+    case (uint16_t)k_ra8_usb_off_nrdysts:
       return 0U;
-    case (uint16_t)k_ra_usb_off_pipecfg:
-      return s_hs.pipecfg[sel % k_ra_usb_pipe_count];
-    case (uint16_t)k_ra_usb_off_pipebuf:
-      return s_hs.pipebuf[sel % k_ra_usb_pipe_count];
-    case (uint16_t)k_ra_usb_off_pipemaxp:
-      return s_hs.pipemaxp[sel % k_ra_usb_pipe_count];
-    case (uint16_t)k_ra_usb_off_pipeperi:
-      return s_hs.pipeperi[sel % k_ra_usb_pipe_count];
+    case (uint16_t)k_ra8_usb_off_pipecfg:
+      return s_hs.pipecfg[sel % k_ra8_usb_pipe_count];
+    case (uint16_t)k_ra8_usb_off_pipebuf:
+      return s_hs.pipebuf[sel % k_ra8_usb_pipe_count];
+    case (uint16_t)k_ra8_usb_off_pipemaxp:
+      return s_hs.pipemaxp[sel % k_ra8_usb_pipe_count];
+    case (uint16_t)k_ra8_usb_off_pipeperi:
+      return s_hs.pipeperi[sel % k_ra8_usb_pipe_count];
     default:
       return s_hs.reg[usbhs_word(off)];
   }
@@ -656,56 +656,56 @@ static uint64_t usbhs_reg_read(uc_engine* uc, uint64_t off, unsigned size)
 static void usbhs_reg_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t value64)
 {
   const uint16_t value = (uint16_t)value64;
-  const uint8_t  sel   = (uint8_t)(s_hs.reg[usbhs_word((uint64_t)k_ra_usb_off_pipesel)] &
-                                   (uint16_t)k_ra_fifosel_curpipe);
+  const uint8_t  sel   = (uint8_t)(s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_pipesel)] &
+                                   (uint16_t)k_ra8_fifosel_curpipe);
   /* The CFIFO port spans +0x14..+0x17: 32-bit head words at +0x14, the
    * CFIFOH (+0x16) / CFIFOHH (+0x17) residual aliases for the 2- / 1-byte
    * tails. All append to the same OUT staging. */
-  if ((off >= (uint64_t)k_ra_usb_off_cfifo) && (off < (uint64_t)(k_ra_usb_off_cfifo + 4U))) {
+  if ((off >= (uint64_t)k_ra8_usb_off_cfifo) && (off < (uint64_t)(k_ra8_usb_off_cfifo + 4U))) {
     usbhs_cfifo_write(value64, size); /* full width: 32-bit MBW fills. */
     return;
   }
   switch ((uint16_t)off) {
-    case (uint16_t)k_ra_usb_off_cfifoctr:
+    case (uint16_t)k_ra8_usb_off_cfifoctr:
       usbhs_cfifoctr_write(uc, value);
       return;
-    case (uint16_t)k_ra_usb_off_dcpctr:
+    case (uint16_t)k_ra8_usb_off_dcpctr:
       usbhs_dcpctr_write(uc, value);
       return;
-    case (uint16_t)k_ra_usb_off_dvstctr0:
+    case (uint16_t)k_ra8_usb_off_dvstctr0:
       usbhs_dvstctr_write(uc, value);
       return;
-    case (uint16_t)k_ra_usb_off_intsts1:
-    case (uint16_t)k_ra_usb_off_bempsts:
+    case (uint16_t)k_ra8_usb_off_intsts1:
+    case (uint16_t)k_ra8_usb_off_bempsts:
       /* W0C: a written 0 clears, a written 1 preserves. */
       s_hs.reg[usbhs_word(off)] &= value;
       return;
-    case (uint16_t)k_ra_usb_off_brdysts:
+    case (uint16_t)k_ra8_usb_off_brdysts:
       /* Live bits are composed; only the sticky status-ZLP flag is W0C. */
       if ((value & (uint16_t)k_usbhs_dcp_bit) == 0U) {
         s_hs.status_zlp = false;
       }
       return;
-    case (uint16_t)k_ra_usb_off_nrdysts:
+    case (uint16_t)k_ra8_usb_off_nrdysts:
       return; /* never latched -- nothing to clear. */
-    case (uint16_t)k_ra_usb_off_pipecfg:
-      s_hs.pipecfg[sel % k_ra_usb_pipe_count] = value;
+    case (uint16_t)k_ra8_usb_off_pipecfg:
+      s_hs.pipecfg[sel % k_ra8_usb_pipe_count] = value;
       return;
-    case (uint16_t)k_ra_usb_off_pipebuf:
-      s_hs.pipebuf[sel % k_ra_usb_pipe_count] = value;
+    case (uint16_t)k_ra8_usb_off_pipebuf:
+      s_hs.pipebuf[sel % k_ra8_usb_pipe_count] = value;
       return;
-    case (uint16_t)k_ra_usb_off_pipemaxp:
-      s_hs.pipemaxp[sel % k_ra_usb_pipe_count] = value;
+    case (uint16_t)k_ra8_usb_off_pipemaxp:
+      s_hs.pipemaxp[sel % k_ra8_usb_pipe_count] = value;
       return;
-    case (uint16_t)k_ra_usb_off_pipeperi:
-      s_hs.pipeperi[sel % k_ra_usb_pipe_count] = value;
+    case (uint16_t)k_ra8_usb_off_pipeperi:
+      s_hs.pipeperi[sel % k_ra8_usb_pipe_count] = value;
       return;
     default:
       break;
   }
-  if ((off >= (uint64_t)k_ra_usb_off_pipectr) &&
-      (off <
-       (uint64_t)(k_ra_usb_off_pipectr + ((uint64_t)k_ra_usb_pipectr_count * sizeof(uint16_t))))) {
+  if ((off >= (uint64_t)k_ra8_usb_off_pipectr) &&
+      (off < (uint64_t)(k_ra8_usb_off_pipectr +
+                        ((uint64_t)k_ra8_usb_pipectr_count * sizeof(uint16_t))))) {
     /* PIPECTR: PID persists; the SQSET / SQCLR pulses never store. */
     s_hs.reg[usbhs_word(off)] = (uint16_t)(value & (uint16_t)~(uint16_t)k_usbhs_ctr_pulse_mask);
     return;
@@ -757,10 +757,10 @@ void board_usb_host_write(uc_engine* uc,
      * reports unhandled so the sparse fallback records it and every app that
      * never engages keeps its exact current behaviour. */
     *handled = false;
-    if (s_hs.allowed && (off == (uint64_t)k_ra_usb_off_syscfg) &&
-        (((uint16_t)value & (uint16_t)(1U << k_ra_syscfg_bit_dcfm)) != 0U)) {
-      s_hs.engaged                                        = true;
-      s_hs.reg[usbhs_word((uint64_t)k_ra_usb_off_syscfg)] = (uint16_t)value;
+    if (s_hs.allowed && (off == (uint64_t)k_ra8_usb_off_syscfg) &&
+        (((uint16_t)value & (uint16_t)(1U << k_ra8_syscfg_bit_dcfm)) != 0U)) {
+      s_hs.engaged                                         = true;
+      s_hs.reg[usbhs_word((uint64_t)k_ra8_usb_off_syscfg)] = (uint16_t)value;
       board_usb_loop_latch();
       (void)fprintf(stderr,
                     "  USBHS host    : host mode engaged (SYSCFG.DCFM) -- self-loop to USBFS\n");

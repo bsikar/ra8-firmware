@@ -27,7 +27,7 @@ matters (the cite_check / world_tag scripts grep on it):
 
 ```c
 /**
- * @file ra_glcdc.c
+ * @file ra8_glcdc.c
  * @brief Graphics LCD Controller driver implementation
  *
  * @par Tag
@@ -78,13 +78,13 @@ required tags are:
  * function is non-trivial. Mention thread safety, ISR safety, and
  * any external invariants the caller has to maintain.
  *
- * @param[in] port Port identifier (k_ra_port_0 .. k_ra_port_11)
+ * @param[in] port Port identifier (k_ra8_port_0 .. k_ra8_port_11)
  * @param[in] pin  Pin index within the port (0..15)
  * @param[in] init_level Initial output level
  *
- * @return ra_err_t Error code
- * @retval k_ra_ok Success, pin configured and driven to init_level
- * @retval k_ra_err_invalid_arg port or pin out of range
+ * @return ra8_err_t Error code
+ * @retval k_ra8_ok Success, pin configured and driven to init_level
+ * @retval k_ra8_err_invalid_arg port or pin out of range
  *
  * @pre Power to the IOPORT module is on (MSTPCRB cleared for IOPORT)
  * @pre Caller holds the pin validator lock
@@ -97,13 +97,13 @@ required tags are:
  *
  * @par Example
  * @code
- *   ra_gpio_output_init(k_ra_port_1, 7, k_ra_level_high);
+ *   ra8_gpio_output_init(k_ra8_port_1, 7, k_ra8_level_high);
  * @endcode
  *
- * @see ra_gpio_write
+ * @see ra8_gpio_write
  * @since 0.1.0
  */
-ra_err_t ra_gpio_output_init(ra_port_t port, uint8_t pin, ra_level_t init_level);
+ra8_err_t ra8_gpio_output_init(ra8_port_t port, uint8_t pin, ra8_level_t init_level);
 ```
 
 Minimums per CLAUDE.md and the pre-commit hook:
@@ -155,18 +155,18 @@ clang-format owns the spacing around those.
 
 | Identifier kind | Convention | Example |
 |---|---|---|
-| Functions | `snake_case` | `ra_gpio_output_init` |
-| Public types | `snake_case_t` | `ra_port_pin_t` |
-| Private types | `snake_case_t` | `ra_drv_state_t` |
-| Macros / `#define` | `SCREAMING_SNAKE` | `RA_RETURN_ON_ERROR` |
-| Enum values | `k_<scope>_<name>` | `k_ra_ok`, `k_ra_pin_led1` |
+| Functions | `snake_case` | `ra8_gpio_output_init` |
+| Public types | `snake_case_t` | `ra8_port_pin_t` |
+| Private types | `snake_case_t` | `ra8_drv_state_t` |
+| Macros / `#define` | `SCREAMING_SNAKE` | `RA8_RETURN_ON_ERROR` |
+| Enum values | `k_<scope>_<name>` | `k_ra8_ok`, `k_ra8_pin_led1` |
 | Static functions | `internal_<verb>` | `internal_validate_freq` |
 | Private (file-local) functions | `priv_<verb>` | `priv_unlock_pwpr` |
 | Static variables | `s_<name>` | `s_tag` |
-| Global variables (avoid) | `g_<name>` | `g_ra_vector_table_start` |
-| Linker symbols | `g_ra_ls_<name>` | `g_ra_ls_stack_top` |
+| Global variables (avoid) | `g_<name>` | `g_ra8_vector_table_start` |
+| Linker symbols | `g_ra8_ls_<name>` | `g_ra8_ls_stack_top` |
 
-The `g_ra_ls_` prefix on linker symbols is mandatory: it keeps them
+The `g_ra8_ls_` prefix on linker symbols is mandatory: it keeps them
 out of the leading-underscore reserved namespace that ISO C and
 `cert-dcl37-c` reject.
 
@@ -178,16 +178,16 @@ the modern features:
 ```c
 // Always: typed enums with explicit underlying type.
 typedef enum : uint8_t {
-  k_ra_state_idle      = 0,
-  k_ra_state_busy      = 1,
-  k_ra_state_error     = 2,
-} ra_state_t;
+  k_ra8_state_idle      = 0,
+  k_ra8_state_busy      = 1,
+  k_ra8_state_error     = 2,
+} ra8_state_t;
 
 // Always: static_assert (C23 keyword), not _Static_assert.
-static_assert(sizeof(ra_state_t) == 1, "tightly-packed enum");
+static_assert(sizeof(ra8_state_t) == 1, "tightly-packed enum");
 
 // Always: zero-init with empty braces.
-ra_drv_state_t s = {};
+ra8_drv_state_t s = {};
 
 // Never: stdbool.h. `bool`, `true`, `false` are C23 keywords.
 // Never: _Static_assert. Use static_assert.
@@ -252,24 +252,24 @@ Use **inline accessor functions**, never macro-style register pointers:
 ```c
 // CORRECT
 typedef enum : uintptr_t {
-  k_ra_glcdc_base_addr = 0x40340000UL,
-} ra_glcdc_addr_t;
+  k_ra8_glcdc_base_addr = 0x40340000UL,
+} ra8_glcdc_addr_t;
 
-static inline volatile r_glcdc_regs_t* ra_glcdc(void)
+static inline volatile r_glcdc_regs_t* ra8_glcdc(void)
 {
-  return (volatile r_glcdc_regs_t*)k_ra_glcdc_base_addr;
+  return (volatile r_glcdc_regs_t*)k_ra8_glcdc_base_addr;
 }
 
 // Usage
-ra_glcdc()->BG_PERI = 0x12345678U;
+ra8_glcdc()->BG_PERI = 0x12345678U;
 
 // WRONG
 #define GLCDC_BASE ((volatile r_glcdc_regs_t*)0x40340000UL)
 GLCDC_BASE->BG_PERI = 0x12345678U;
 ```
 
-The inline-accessor approach lets the host `RA_SIMULATOR_MODE` build
-intercept register writes by linking a different `ra_glcdc()` body.
+The inline-accessor approach lets the host `RA8_SIMULATOR_MODE` build
+intercept register writes by linking a different `ra8_glcdc()` body.
 Macros foreclose that.
 
 ## HUM citations
@@ -280,7 +280,7 @@ RA8D2 Hardware User's Manual:
 
 ```c
 /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
-*ra_mstp_reg32(k_ra_mstpcrc_off) &= ~(1U << k_ra_mstpc_glcdc_bit);
+*ra8_mstp_reg32(k_ra8_mstpcrc_off) &= ~(1U << k_ra8_mstpc_glcdc_bit);
 ```
 
 The format is:
@@ -303,13 +303,13 @@ analogous structure in the STAR project for cross-pollination.
 
 ### Single Responsibility (S)
 
-- **One module = one purpose.** `ra_pid` would handle ONLY PID
+- **One module = one purpose.** `ra8_pid` would handle ONLY PID
   arithmetic -- no motor control, no hardware. STAR's `rx_pid`
   follows the same rule.
-- **One function = one action.** `ra_pid_compute` does math;
-  `ra_pid_reset` clears state. They do not share an entry point.
-- **Separation of concerns.** Configuration (`ra_pid_config_t`) is a
-  separate type from runtime state (`ra_pid_handle_t`). The handle
+- **One function = one action.** `ra8_pid_compute` does math;
+  `ra8_pid_reset` clears state. They do not share an entry point.
+- **Separation of concerns.** Configuration (`ra8_pid_config_t`) is a
+  separate type from runtime state (`ra8_pid_handle_t`). The handle
   carries the cfg by value at init time so subsequent edits to the
   cfg struct don't ghost-update running PIDs.
 
@@ -328,9 +328,9 @@ analogous structure in the STAR project for cross-pollination.
 - **Implementations are interchangeable.** A bus manager accepts any
   bus type (I2C/SPI/1-Wire) through the same vtable shape.
 - **Mocks substitute real implementations.** Tests use
-  `mock_ra_bus_iic` in place of real hardware -- the HAL's mock vs.
+  `mock_ra8_bus_iic` in place of real hardware -- the HAL's mock vs.
   prod selection is at link time, not source time.
-- **Consistent error handling.** All drivers return `ra_err_t` with
+- **Consistent error handling.** All drivers return `ra8_err_t` with
   the same semantics. A caller can write a generic error handler
   that handles every driver uniformly.
 
@@ -347,8 +347,8 @@ analogous structure in the STAR project for cross-pollination.
 - **High-level modules depend on abstractions, not implementations.**
   ```c
   typedef struct {
-    ra_err_t (*read)(void* ctx, uint8_t* data, uint32_t len);
-    ra_err_t (*write)(void* ctx, const uint8_t* data, uint32_t len);
+    ra8_err_t (*read)(void* ctx, uint8_t* data, uint32_t len);
+    ra8_err_t (*write)(void* ctx, const uint8_t* data, uint32_t len);
     void* ctx;
   } bus_interface_t;
   ```
@@ -370,9 +370,9 @@ all 10 with a single intentional deviation:
 | 2 | All loops have fixed upper bounds. | Compliant; main loops are `while(1)` with watchdog refresh, exempt by convention. |
 | 3 | No dynamic memory after init. | Compliant. Zero `malloc`/`free` in firmware. `_sbrk` traps any accidental use. |
 | 4 | Functions ~60 lines max. | Compliant. clang-tidy `LineThreshold = 60` enforces. NOLINT only for legitimately linear HUM-spec init paths. |
-| 5 | Two assertions per function. | Compliant. Use `RA_CHECK_NULL_PTR` for preconditions, output bounds checks for postconditions. |
+| 5 | Two assertions per function. | Compliant. Use `RA8_CHECK_NULL_PTR` for preconditions, output bounds checks for postconditions. |
 | 6 | Smallest scope. | Compliant. File-scope vars are `static`; loop counters live in the `for`-statement. |
-| 7 | Check all return values. | Compliant. `RA_RETURN_ON_ERROR` macro propagates; `(void)` casts mark explicit ignores. |
+| 7 | Check all return values. | Compliant. `RA8_RETURN_ON_ERROR` macro propagates; `(void)` casts mark explicit ignores. |
 | 8 | Limit preprocessor use. | Compliant. C23 typed enums replace `#define` for constants; macros only for duplicated code, conditional compilation, build flags. |
 | 9 | Restrict pointer use. | **Intentional deviation.** Function pointers are allowed for Dependency Inversion. |
 | 10 | Compile clean with max warnings. | Compliant. `-Wall -Wextra -Werror -fshort-enums`; CI fails on any warning. |
@@ -420,7 +420,7 @@ to run in:
 
 ```c
 /**
- * @file ra_glcdc.c
+ * @file ra8_glcdc.c
  * @brief Graphics LCD Controller driver
  *
  * @par Tag

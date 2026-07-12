@@ -1,19 +1,19 @@
 # widget_kit_demo
 
-Concrete `ra_widget` **leaf widgets** -- a text label and a push button --
-composited through the `ra_widget_panel` compositor on the live GLCDC panel.
+Concrete `ra8_widget` **leaf widgets** -- a text label and a push button --
+composited through the `ra8_widget_panel` compositor on the live GLCDC panel.
 The Phase-2 follow-up to `widget_compose_demo` for
 [issue #145](https://github.com/bsikar/ra8-firmware/issues/145).
 
 Where `widget_compose_demo` proved the panel compositor with anonymous tile
 leaves, this app drops the **real, reusable leaf widgets** onto it:
 
-- `ra_widget_label_t` -- a background fill plus an aligned string.
-- `ra_widget_button_t` -- a bordered, filled face + label that **latches on a
+- `ra8_widget_label_t` -- a background fill plus an aligned string.
+- `ra8_widget_button_t` -- a bordered, filled face + label that **latches on a
   tap** and reports the press through its `on_input` callback.
 
-Both draw through an injected `ra_widget_paint_t` backend wired to `ra_gfx`, so
-the `ra_widget` library itself stays graphics free (the same widgets run under
+Both draw through an injected `ra8_widget_paint_t` backend wired to `ra8_gfx`, so
+the `ra8_widget` library itself stays graphics free (the same widgets run under
 the host unit tests with a recording mock paint).
 
 ## The tree (dwm-style: every piece opt-in)
@@ -27,7 +27,7 @@ root (column panel)
 |- footer (LABEL,  fixed)   a left-aligned hint line
 ```
 
-One `ra_widget_panel_compose()` call lays the children out, computes the minimal
+One `ra8_widget_panel_compose()` call lays the children out, computes the minimal
 damage rectangle + refresh hint, and renders only the dirty children. A dirty
 nested panel repaints its whole subtree.
 

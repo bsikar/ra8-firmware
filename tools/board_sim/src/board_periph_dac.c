@@ -3,15 +3,15 @@
  * @brief DAC_B (12-bit D/A) peripheral-block model for the board emulator
  *
  * @details
- * Models the two RA8D2 DAC_B instances (ra8d2_dac_b_regs.h / ra_dac_b.c):
+ * Models the two RA8D2 DAC_B instances (ra8_dac_b_regs.h / ra8_dac_b.c):
  * DAC_B0 at 0x40233000 and DAC_B1 at 0x40233100 (stride 0x100). Each instance
  * drives one 12-bit channel through a {DADR, DACR0, DACR1, DACR2} register set.
  *
- * The DAC has no conversion-result readback on silicon -- ``ra_dac_b_write`` is
+ * The DAC has no conversion-result readback on silicon -- ``ra8_dac_b_write`` is
  * a single 16-bit store to DADR -- so this block simply accepts every register
  * write and reads each back as written. That read-back is what matters for the
- * driver: ``ra_dac_b_init_configured`` / ``_set_output_enable`` do a
- * read-modify-write of DACR0 (DACEN / DAOUTDIS), and ``ra_dac_b_get_status``
+ * driver: ``ra8_dac_b_init_configured`` / ``_set_output_enable`` do a
+ * read-modify-write of DACR0 (DACEN / DAOUTDIS), and ``ra8_dac_b_get_status``
  * reads DACR0.DACEN, so the control state must survive. The model additionally
  * tracks each channel's last and peak DADR code (and a write count) purely for
  * the end-of-run report, so a ramp/triangle demo's output sweep is observable
@@ -38,7 +38,7 @@ typedef enum : uint32_t {
   k_dac_console_every    = 256U, /**< Push 1 line per N updates (anti-flood). */
 } dac_console_t;
 
-/** @brief DAC_B block geometry (ra8d2_dac_b_regs.h, FSP R_DAC_B0_Type). */
+/** @brief DAC_B block geometry (ra8_dac_b_regs.h, FSP R_DAC_B0_Type). */
 typedef enum : uint64_t {
   k_dac_base       = 0x40233000UL,  /**< DAC_B0 base.                        */
   k_dac_stride     = 0x100UL,       /**< Bytes between DAC_B0 and DAC_B1.    */

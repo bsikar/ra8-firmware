@@ -31,7 +31,7 @@ extern "C" {
  * design; without an SAU programming step the entire 4 GiB address
  * space remains Secure as the IDAU default dictates. This is exactly
  * the configuration we want to test against the
- * ``ra_cgc_pll2_enable`` failure observed in the dual-world build.
+ * ``ra8_cgc_pll2_enable`` failure observed in the dual-world build.
  *
  * @pre None.
  * @post No SAU/IDAU register writes performed; security state is
@@ -40,7 +40,7 @@ extern "C" {
  * @note Thread safety: trivially safe (empty function body).
  * @since 0.1.0
  */
-void ra_trustzone_init(void);
+void ra8_trustzone_init(void);
 
 #ifdef __cplusplus
 }

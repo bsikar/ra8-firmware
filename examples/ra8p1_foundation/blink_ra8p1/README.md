@@ -1,7 +1,7 @@
 # blink_ra8p1 -- RA8P1 build-foundation
 
 Minimal LED blink that exists to **prove the RA8 multi-chip foundation**: the
-`ra_core` + `ra_hal` libraries compile and link for the Renesas **RA8P1**
+`ra8_core` + `ra8_hal` libraries compile and link for the Renesas **RA8P1**
 (`R7KA8P1KFLCAC`), not just the RA8D2.
 
 ## Build
@@ -13,7 +13,7 @@ make size
 ```
 
 `cmake/toolchain-ra8p1.cmake` includes the RA8D2 toolchain (identical Cortex-M85
-compiler and flags) and adds `-DRA_DEVICE_RA8P1`. `libs/ra_core/inc/ra_device.h`
+compiler and flags) and adds `-DRA8_DEVICE_RA8P1`. `libs/ra8_core/inc/ra8_device.h`
 reads that define to select the RA8P1 feature set. A `#error` guard in `main.c`
 fails the build loudly if it is ever configured with the RA8D2 toolchain.
 
@@ -22,8 +22,8 @@ fails the build loudly if it is ever configured with the RA8D2 toolchain.
 The peripheral register bases and the memory map are **byte-identical** between
 the RA8D2 and RA8P1 (verified from both chips' FSP CMSIS headers and Zephyr
 device trees; see the RA8P1 difference-analysis issue). The only hardware
-addition is the Arm Ethos-U55 NPU (`libs/ra_hal/inc/ra_npu_regs.h`). So this app
-reuses the `ra_board_ek_ra8d2` board layer unchanged and differs from the RA8D2
+addition is the Arm Ethos-U55 NPU (`libs/ra8_hal/inc/ra8_npu_regs.h`). So this app
+reuses the `ra8_board_ek_ra8d2` board layer unchanged and differs from the RA8D2
 `blink` only in its toolchain file and a RA8P1-accurate `linker_script.ld`
 (1664 KB SRAM, RA8P1 HUM `R01UH1064EJ`).
 

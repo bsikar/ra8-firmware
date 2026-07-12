@@ -3,17 +3,17 @@
 # Copyright (c) 2026 Brighton Sikarskie
 """Root-of-trust image signer + key ceremony for the RA8D2 secure-boot chain.
 
-The firmware verifier ``ra_rot_verify_image`` (libs/ra_dfu/src/ra_rot.c) accepts a
+The firmware verifier ``ra8_rot_verify_image`` (libs/ra8_dfu/src/ra8_rot.c) accepts a
 signed image of the form::
 
-    [ body (body_len bytes) ] [ ra_rot_trailer_t ]
+    [ body (body_len bytes) ] [ ra8_rot_trailer_t ]
 
 and default-denies anything without a valid trailer.  Nothing in-tree could
-*produce* that trailer, so ``RA_ENABLE_ROOT_OF_TRUST`` could never be turned on.
+*produce* that trailer, so ``RA8_ENABLE_ROOT_OF_TRUST`` could never be turned on.
 This tool closes that gap.  It is a build/release-time host tool (never a CI
 gate); it shells out to ``openssl`` so it needs no third-party Python packages.
 
-The trailer is 116 bytes, little-endian, matching ra_rot.h::ra_rot_trailer_t::
+The trailer is 116 bytes, little-endian, matching ra8_rot.h::ra8_rot_trailer_t::
 
     uint32 magic        = 0x524F5431  ("ROT1")
     uint32 version      = 1
@@ -24,7 +24,7 @@ The trailer is 116 bytes, little-endian, matching ra_rot.h::ra_rot_trailer_t::
     uint8  sig[64]      = ECDSA-P256 raw r||s over the digest
 
 The public key is the 65-byte uncompressed P-256 point ``0x04 || X || Y`` that is
-embedded in ra_rot.c::s_rot_root_pubkey.
+embedded in ra8_rot.c::s_rot_root_pubkey.
 
 Commands::
 
@@ -48,13 +48,13 @@ import tempfile
 from pathlib import Path
 from typing import NoReturn
 
-# Mirrors libs/ra_dfu/inc/ra_rot.h.
+# Mirrors libs/ra8_dfu/inc/ra8_rot.h.
 ROT_MAGIC = 0x524F5431  # "ROT1"
 ROT_VERSION = 1
 DIGEST_BYTES = 32
 SIG_BYTES = 64
 PUBKEY_BYTES = 65
-BODY_MAX = 0x00100000  # 1 MiB signable-body cap (k_ra_rot_body_max)
+BODY_MAX = 0x00100000  # 1 MiB signable-body cap (k_ra8_rot_body_max)
 TRAILER_BYTES = 5 * 4 + DIGEST_BYTES + SIG_BYTES  # 116
 INT_BYTES = 32  # P-256 field element / half-signature width
 
@@ -138,7 +138,7 @@ def public_key(key_path: Path) -> bytes:
 
 
 def sign_body(key_path: Path, body: bytes, img_version: int) -> bytes:
-    """Return ``body`` with an appended ra_rot_trailer_t signed by ``key_path``."""
+    """Return ``body`` with an appended ra8_rot_trailer_t signed by ``key_path``."""
     if len(body) == 0 or len(body) > BODY_MAX:
         _fail(f"body length {len(body)} out of range (1..{BODY_MAX})")
     digest = hashlib.sha256(body).digest()
@@ -146,7 +146,7 @@ def sign_body(key_path: Path, body: bytes, img_version: int) -> bytes:
     # bare body digest, so a forged img_version cannot ride on a validly-signed
     # body (T5-05). `openssl dgst -sha256 -sign` hashes its input, so signing the
     # concatenation yields ECDSA(SHA-256(img_version_le || digest)) -- exactly
-    # what ra_rot_verify_image recomputes via internal_bind_version. The trailer's
+    # what ra8_rot_verify_image recomputes via internal_bind_version. The trailer's
     # own `digest` field still stores SHA-256(body) for the tamper pre-check.
     to_sign = struct.pack("<I", img_version) + digest
     with tempfile.NamedTemporaryFile() as sign_file:
@@ -170,8 +170,8 @@ def _pubkey_c_header(pubkey: bytes) -> str:
     body = "\n".join(rows)
     return (
         "/* Provisioned root public key -- paste into "
-        "libs/ra_dfu/src/ra_rot.c::s_rot_root_pubkey. */\n"
-        "static const uint8_t s_rot_root_pubkey[k_ra_rot_pubkey_bytes] = {\n"
+        "libs/ra8_dfu/src/ra8_rot.c::s_rot_root_pubkey. */\n"
+        "static const uint8_t s_rot_root_pubkey[k_ra8_rot_pubkey_bytes] = {\n"
         f"{body}\n}};\n"
     )
 
@@ -217,7 +217,7 @@ def cmd_selftest(_args: argparse.Namespace) -> int:
         # Re-verify the raw r||s signature against the public key via openssl:
         # rebuild the DER form and check ECDSA-P256 over the version-bound
         # material SHA-256(img_version_le || digest) -- the same bytes
-        # ra_rot_verify_image reconstructs. _openssl exits on a failed verify, so
+        # ra8_rot_verify_image reconstructs. _openssl exits on a failed verify, so
         # reaching the print means the signature is valid over that material.
         signed_material_input = struct.pack("<I", imgv) + digest
         raw = signed[len(body) + 20 + DIGEST_BYTES :]
@@ -259,7 +259,7 @@ def main() -> int:
     keygen_p.add_argument("--pubkey-c", help="output C header with s_rot_root_pubkey")
     keygen_p.set_defaults(func=cmd_keygen)
 
-    sign_p = sub.add_parser("sign", help="append a signed ra_rot_trailer_t to an image")
+    sign_p = sub.add_parser("sign", help="append a signed ra8_rot_trailer_t to an image")
     sign_p.add_argument("--key", required=True, help="private-key PEM from keygen")
     sign_p.add_argument("--image", required=True, help="raw image body .bin")
     sign_p.add_argument("--out", required=True, help="output signed image path")

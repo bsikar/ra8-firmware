@@ -3,7 +3,7 @@
  * @brief Graphics LCD Controller (GLCDC) framebuffer-descriptor model for board_sim
  *
  * @details
- * Models the RA8D2 GLCDC display controller (ra8d2_glcdc_regs.h, ra_glcdc.c) at
+ * Models the RA8D2 GLCDC display controller (ra8_glcdc_regs.h, ra8_glcdc.c) at
  * @c 0x40342000 so the display / e-reader example family can be inspected
  * headlessly: the model snoops the graphics-layer register writes the driver
  * emits and recovers WHERE the scanned-out framebuffer lives in emulated memory
@@ -48,14 +48,14 @@
 #include "board_periph.h"
 #include "board_periph_block.h"
 
-/** @brief GLCDC register-window geometry (ra8d2_glcdc_regs.h). */
+/** @brief GLCDC register-window geometry (ra8_glcdc_regs.h). */
 typedef enum : uint64_t {
   k_glcdc_base = 0x40342000ULL, /**< GLCDC block base (HUM Ch 63).          */
   k_glcdc_span = 0x1500ULL,     /**< Covers CLUTs..SYSCNT_PANEL_CLK 0x1450. */
 } glcdc_geom_t;
 
 /**
- * @brief GLCDC register byte offsets this model snoops (ra8d2_glcdc_regs.h).
+ * @brief GLCDC register byte offsets this model snoops (ra8_glcdc_regs.h).
  *
  * @details
  * The subset of the GR1 / GR2 graphics-layer and BG background-plane registers
@@ -90,7 +90,7 @@ typedef enum : uint32_t {
   k_glcdc_lnnum_mask     = 0x7FFU,     /**< FLM5.LNNUM is 11 bits.               */
 } glcdc_field_t;
 
-/** @brief FLM6.FORMAT codes (ra_glcdc_pixel_fmt_t; HUM Ch 63 Table 63.11). */
+/** @brief FLM6.FORMAT codes (ra8_glcdc_pixel_fmt_t; HUM Ch 63 Table 63.11). */
 typedef enum : uint8_t {
   k_glcdc_fmt_argb8888 = 0x0U, /**< 32-bit ARGB.     */
   k_glcdc_fmt_rgb888   = 0x1U, /**< 24-bit RGB.      */

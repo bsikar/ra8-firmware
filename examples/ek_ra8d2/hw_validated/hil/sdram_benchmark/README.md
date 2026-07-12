@@ -1,9 +1,9 @@
 # sdram_benchmark
 
 External-SDRAM bring-up + 64 KB write/read benchmark for the
-EK-RA8D2. Uses `ra_sdramc_init` to run the documented bring-up
+EK-RA8D2. Uses `ra8_sdramc_init` to run the documented bring-up
 sequence (PALL -> MRS -> AREF enable) for the on-board 64 MB
-Winbond W9825G6KH SDRAM mapped at `k_ra_sdram_base_addr`
+Winbond W9825G6KH SDRAM mapped at `k_ra8_sdram_base_addr`
 (0x68000000), then writes / reads a 64 KB block of incrementing
 32-bit words and reports throughput in MB/s.
 

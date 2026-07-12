@@ -1,16 +1,16 @@
 /**
  * @file test_mcdc_reflow_svg.c
- * @brief MC/DC independence vectors for the ra_reflow SVG scanner/rasteriser.
+ * @brief MC/DC independence vectors for the ra8_reflow SVG scanner/rasteriser.
  *
  * @details
- * The SVG number scanner (::ra_svgp_numf), the transform-list parser
- * (::ra_svgp_apply_xform) and the point-list line/polyline scanner
- * (::ra_svgp_draw_line) are TU-external helpers declared in
- * ra_reflow_svg_internal.h. Higher-level callers pre-skip separators, so the
+ * The SVG number scanner (::ra8_svgp_numf), the transform-list parser
+ * (::ra8_svgp_apply_xform) and the point-list line/polyline scanner
+ * (::ra8_svgp_draw_line) are TU-external helpers declared in
+ * ra8_reflow_svg_internal.h. Higher-level callers pre-skip separators, so the
  * scanners' own whitespace/comma/terminator sub-conditions are only reachable
  * by driving the scanners directly with crafted byte spans -- exactly what
  * this file does. The shape-fill, gradient, arc and self-closing-element
- * decisions are driven through the public ::ra_svg_render entry point.
+ * decisions are driven through the public ::ra8_svg_render entry point.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -20,10 +20,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "ra_err.h"
-#include "ra_gfx.h"
-#include "ra_reflow_svg.h"
-#include "ra_reflow_svg_internal.h"
+#include "ra8_err.h"
+#include "ra8_gfx.h"
+#include "ra8_reflow_svg.h"
+#include "ra8_reflow_svg_internal.h"
 #include "unity_minimal.h"
 
 /** @brief Framebuffer geometry + palette for the render cases. */
@@ -39,33 +39,33 @@ static uint32_t s_fb[k_w * k_h];
 /** @brief Bind + clear the framebuffer to white. */
 static void fb_reset(void)
 {
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_gfx_init(s_fb, (uint16_t)k_w, (uint16_t)k_h, k_ra_gfx_format_argb8888));
-  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_clear((uint32_t)k_white));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_gfx_init(s_fb, (uint16_t)k_w, (uint16_t)k_h, k_ra8_gfx_format_argb8888));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_clear((uint32_t)k_white));
 }
 
 /** @brief Render a NUL-terminated SVG string into the full framebuffer box. */
-static ra_err_t render(const char* svg)
+static ra8_err_t render(const char* svg)
 {
-  return ra_svg_render((const uint8_t*)svg, strlen(svg), 0, 0, k_w, k_h);
+  return ra8_svg_render((const uint8_t*)svg, strlen(svg), 0, 0, k_w, k_h);
 }
 
-/** @brief Scan a NUL-terminated span with ra_svgp_numf from offset 0. */
+/** @brief Scan a NUL-terminated span with ra8_svgp_numf from offset 0. */
 static float numf(const char* s)
 {
   size_t i = 0U;
-  return ra_svgp_numf((const uint8_t*)s, strlen(s), &i);
+  return ra8_svgp_numf((const uint8_t*)s, strlen(s), &i);
 }
 
 /**
  * @test test_svgp_numf_scanner_mcdc
  *
  * @par MC/DC:
- * Two decisions inside ::ra_svgp_numf, driven directly (the scanner is
+ * Two decisions inside ::ra8_svgp_numf, driven directly (the scanner is
  * TU-external; callers pre-skip separators so these arms are white-box only).
  *
  * Decision A: `while ((*i < len) && (ws(s[*i]) || (s[*i] == ',')))` (3 conds;
- * libs/ra_reflow/src/ra_reflow_svg_xform.c@ra_svgp_numf).
+ * libs/ra8_reflow/src/ra8_reflow_svg_xform.c@ra8_svgp_numf).
  *  - V1: ""      -> C1 F                     -> stop (control).
  *  - V2: " 5"    -> C1 T, C2 T               -> skip ws.
  *  - V3: ",5"    -> C1 T, C2 F, C3 T         -> skip comma.
@@ -81,7 +81,7 @@ static float numf(const char* s)
  */
 static void test_svgp_numf_scanner_mcdc(void)
 {
-  TEST_BEGIN("ra_svgp_numf: separator-skip and digit-scan terminators");
+  TEST_BEGIN("ra8_svgp_numf: separator-skip and digit-scan terminators");
   TEST_ASSERT(numf("") == 0.0F);     /* Dec A V1: C1 false          */
   TEST_ASSERT(numf(" 5") == 5.0F);   /* Dec A V2: whitespace skip   */
   TEST_ASSERT(numf(",5") == 5.0F);   /* Dec A V3: comma skip (C3)   */
@@ -89,7 +89,7 @@ static void test_svgp_numf_scanner_mcdc(void)
   TEST_ASSERT(numf("5)") == 5.0F);   /* Dec B C2 false (')' < '0')  */
   TEST_ASSERT(numf("5a") == 5.0F);   /* Dec B C3 false ('a' > '9')  */
   TEST_ASSERT(numf("-3.5") < -3.4F); /* sign + fraction arms        */
-  TEST_END("ra_svgp_numf: separator-skip and digit-scan terminators");
+  TEST_END("ra8_svgp_numf: separator-skip and digit-scan terminators");
 }
 
 /**
@@ -97,9 +97,9 @@ static void test_svgp_numf_scanner_mcdc(void)
  *
  * @par MC/DC:
  * Decision: `while ((*j < vlen) && (ws(v[*j]) || (v[*j] == ',')))` (3 conds;
- * libs/ra_reflow/src/ra_reflow_svg_xform.c@priv_xform_read) -- the per-argument
+ * libs/ra8_reflow/src/ra8_reflow_svg_xform.c@priv_xform_read) -- the per-argument
  * separator skip inside a transform function's argument list, reached via the
- * TU-external ::ra_svgp_apply_xform. The missing pair is C2 (a whitespace
+ * TU-external ::ra8_svgp_apply_xform. The missing pair is C2 (a whitespace
  * separator between arguments) with C3 false; a comma separator supplies C3;
  * end-of-args supplies C1.
  *  - "translate(1 2)"  -> space between args -> C1 T, C2 T (fills C2 pair).
@@ -108,14 +108,14 @@ static void test_svgp_numf_scanner_mcdc(void)
  */
 static void test_svgp_xform_list_mcdc(void)
 {
-  TEST_BEGIN("ra_svgp_apply_xform: whitespace + comma argument separators");
+  TEST_BEGIN("ra8_svgp_apply_xform: whitespace + comma argument separators");
   svg_xform_t t   = {.bw = 100, .bh = 100, .vw = 100, .vh = 100, .ua = 1.0F, .ud = 1.0F};
   const char* tag = "<g transform=\"translate(1 2) scale(1,2)\">";
-  ra_svgp_apply_xform(&t, (const uint8_t*)tag, strlen(tag));
+  ra8_svgp_apply_xform(&t, (const uint8_t*)tag, strlen(tag));
   /* translate(1,2) then scale(1,2): net x translate present, x scale applied. */
   TEST_ASSERT(t.ue > 0.5F); /* translate x parsed (space-separated args) */
   TEST_ASSERT(t.ua > 0.5F); /* scale x parsed (comma-separated args)     */
-  TEST_END("ra_svgp_apply_xform: whitespace + comma argument separators");
+  TEST_END("ra8_svgp_apply_xform: whitespace + comma argument separators");
 }
 
 /**
@@ -123,28 +123,28 @@ static void test_svgp_xform_list_mcdc(void)
  *
  * @par MC/DC:
  * Decision: `while ((k < vlen) && (ws(v[k]) || (v[k] == ',')))` (3 conds;
- * libs/ra_reflow/src/ra_reflow_svg_shape.c@ra_svgp_draw_line) -- the point-list
+ * libs/ra8_reflow/src/ra8_reflow_svg_shape.c@ra8_svgp_draw_line) -- the point-list
  * coordinate scanner. Driven directly with a polyline tag whose `points`
  * value mixes comma and space separators, supplying the missing C3 (comma)
  * pair with C2 false; a space separator supplies C2; the list end supplies C1.
  */
 static void test_svgp_draw_line_points_mcdc(void)
 {
-  TEST_BEGIN("ra_svgp_draw_line: comma + space point separators");
+  TEST_BEGIN("ra8_svgp_draw_line: comma + space point separators");
   fb_reset();
   svg_xform_t t   = {.bw = 100, .bh = 100, .vw = 100, .vh = 100, .ua = 1.0F, .ud = 1.0F};
   const char* tag = "<polyline points=\"10,10 40,10 40,40\" stroke=\"#f00\"/>";
-  ra_svgp_draw_line((const uint8_t*)tag, strlen(tag), &t);
-  TEST_END("ra_svgp_draw_line: comma + space point separators");
+  ra8_svgp_draw_line((const uint8_t*)tag, strlen(tag), &t);
+  TEST_END("ra8_svgp_draw_line: comma + space point separators");
 }
 
 /**
  * @test test_svgp_attr_at_start_mcdc
  *
  * @par MC/DC:
- * Decision: `if ((at > 0U) && !ra_svgp_ws((char)s[at - 1U]))` (2 conds;
- * libs/ra_reflow/src/ra_reflow_svg.c@priv_attr_at) -- the "attribute name must
- * be preceded by whitespace" guard, reached via the TU-external ::ra_svgp_attr.
+ * Decision: `if ((at > 0U) && !ra8_svgp_ws((char)s[at - 1U]))` (2 conds;
+ * libs/ra8_reflow/src/ra8_reflow_svg.c@priv_attr_at) -- the "attribute name must
+ * be preceded by whitespace" guard, reached via the TU-external ::ra8_svgp_attr.
  * A search span that BEGINS with the attribute name gives at == 0 (the missing
  * C1-false arm, which normal `<tag ...>` markup -- always starting with '<' --
  * never produces).
@@ -155,34 +155,34 @@ static void test_svgp_draw_line_points_mcdc(void)
  */
 static void test_svgp_attr_at_start_mcdc(void)
 {
-  TEST_BEGIN("ra_svgp_attr: attribute-name-at-offset-0 guard");
+  TEST_BEGIN("ra8_svgp_attr: attribute-name-at-offset-0 guard");
   size_t off = 0U;
   size_t vl  = 0U;
   /* V1: name at offset 0 -> at == 0 -> guard's C1 false -> accepted. */
   const char* v1 = "fill='#abc'";
-  TEST_ASSERT(ra_svgp_attr((const uint8_t*)v1, strlen(v1), "fill", &off, &vl));
+  TEST_ASSERT(ra8_svgp_attr((const uint8_t*)v1, strlen(v1), "fill", &off, &vl));
   /* V2: name preceded by whitespace -> at > 0, C2 false -> accepted. */
   const char* v2 = " fill='#abc'";
-  TEST_ASSERT(ra_svgp_attr((const uint8_t*)v2, strlen(v2), "fill", &off, &vl));
+  TEST_ASSERT(ra8_svgp_attr((const uint8_t*)v2, strlen(v2), "fill", &off, &vl));
   /* V3: name is a suffix of "xfill" -> at > 0, preceded by non-ws -> rejected. */
   const char* v3 = "xfill='#abc'";
-  TEST_ASSERT(!ra_svgp_attr((const uint8_t*)v3, strlen(v3), "fill", &off, &vl));
-  TEST_END("ra_svgp_attr: attribute-name-at-offset-0 guard");
+  TEST_ASSERT(!ra8_svgp_attr((const uint8_t*)v3, strlen(v3), "fill", &off, &vl));
+  TEST_END("ra8_svgp_attr: attribute-name-at-offset-0 guard");
 }
 
 /**
  * @test test_svg_render_shape_paths_mcdc
  *
  * @par MC/DC:
- * Decisions reached through the public ::ra_svg_render walk.
+ * Decisions reached through the public ::ra8_svg_render walk.
  *
  * Decision A: `return ws(c) || (c == '>') || (c == '/')` (3 conds;
- * libs/ra_reflow/src/ra_reflow_svg_doc.c@priv_elem_at) -- element-name
+ * libs/ra8_reflow/src/ra8_reflow_svg_doc.c@priv_elem_at) -- element-name
  * terminator. A no-attribute self-closed `<rect/>` puts '/' right after the
  * name, flipping the missing C3; `<g>` supplies C2; `<rect ` supplies C1.
  *
  * Decision B: `if ((grads == nullptr) || !starts_ci(val, "url(#"))` (2 conds;
- * libs/ra_reflow/src/ra_reflow_svg.c@priv_match_grad) -- a `fill="url(#id)"`
+ * libs/ra8_reflow/src/ra8_reflow_svg.c@priv_match_grad) -- a `fill="url(#id)"`
  * with NO gradient defined makes grads NULL (missing C1 true); a defined
  * matching gradient supplies both-false. (C2 is deactivated: the sole caller
  * guards it with the identical starts_ci predicate -- see the source comment.)
@@ -193,7 +193,7 @@ static void test_svg_render_shape_paths_mcdc(void)
   fb_reset();
   /* Self-closed no-attr element -> priv_elem_at sees '/' immediately (Dec A C3);
    * `<g>` open tag supplies C2 ('>'); attributed tags supply C1 (whitespace). */
-  TEST_ASSERT_EQ(k_ra_ok,
+  TEST_ASSERT_EQ(k_ra8_ok,
                  render("<svg viewBox=\"0 0 100 100\"><g>"
                         "<rect/><rect x=\"1\" y=\"1\" width=\"3\" height=\"3\" "
                         "fill=\"#111\"/></g></svg>"));
@@ -201,13 +201,13 @@ static void test_svg_render_shape_paths_mcdc(void)
   /* Path whose command tokens are comma-separated: priv_next_cmd's separator
    * skip consumes a ',' immediately before a command letter (svg_path.c C3). */
   fb_reset();
-  TEST_ASSERT_EQ(k_ra_ok,
+  TEST_ASSERT_EQ(k_ra8_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<path d=\"M1 1,L20 20,z\" fill=\"#050\"/></svg>"));
 
   /* fill=url(#none) with no <defs> gradient -> t->grads == NULL (Dec B C1). */
   fb_reset();
-  TEST_ASSERT_EQ(k_ra_ok,
+  TEST_ASSERT_EQ(k_ra8_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"0\" y=\"0\" width=\"10\" height=\"10\" "
                         "fill=\"url(#none)\"/></svg>"));
@@ -216,7 +216,7 @@ static void test_svg_render_shape_paths_mcdc(void)
    * starts_ci true -> both-false control for Dec B; interior stops make some
    * fill positions fall below the first segment (priv_grad_eval lower bound). */
   fb_reset();
-  TEST_ASSERT_EQ(k_ra_ok,
+  TEST_ASSERT_EQ(k_ra8_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<defs><linearGradient id=\"g\">"
                         "<stop offset=\"0.25\" stop-color=\"#f00\"/>"
@@ -231,8 +231,8 @@ static void test_svg_render_shape_paths_mcdc(void)
  * @test test_svgp_match_grad_mcdc
  *
  * @par MC/DC:
- * Decision: `if ((grads == nullptr) || !ra_svgp_starts_ci(val, vlen, 0U, "url(#"))`
- * (2 conds; libs/ra_reflow/src/ra_reflow_svg.c@priv_match_grad). The sole
+ * Decision: `if ((grads == nullptr) || !ra8_svgp_starts_ci(val, vlen, 0U, "url(#"))`
+ * (2 conds; libs/ra8_reflow/src/ra8_reflow_svg.c@priv_match_grad). The sole
  * production caller only reaches this with a bound gradient set and a value
  * that already passed the url(#) prefix check, so both conditions are exercised
  * independently via a direct call to the (now TU-external) helper.
@@ -263,7 +263,7 @@ static void test_svgp_match_grad_mcdc(void)
  *
  * @par MC/DC:
  * Decision A: `if (((y0 <= y) && (y < y1)) || ((y1 <= y) && (y < y0)))`
- * (4 conds; libs/ra_reflow/src/ra_reflow_svg_shape.c@priv_fill_polygon) --
+ * (4 conds; libs/ra8_reflow/src/ra8_reflow_svg_shape.c@priv_fill_polygon) --
  * the scan-line edge-crossing test. A concave polygon supplies edges that
  * rise (first clause) AND fall (second clause) across a scan-line, flipping
  * the previously-uncovered C4 (`y < y0`) of the falling-edge clause.
@@ -277,14 +277,14 @@ static void test_svg_render_polygon_arc_mcdc(void)
   TEST_BEGIN("svg render: concave polygon edges + arc sweep flags");
   fb_reset();
   /* Concave chevron: mid scan-line is crossed by both rising and falling edges. */
-  TEST_ASSERT_EQ(k_ra_ok,
+  TEST_ASSERT_EQ(k_ra8_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<polygon points=\"10,50 40,10 40,40 90,40 40,60 40,90\" "
                         "fill=\"#093\"/></svg>"));
 
   /* Two arcs, sweep 0 then sweep 1. */
   fb_reset();
-  TEST_ASSERT_EQ(k_ra_ok,
+  TEST_ASSERT_EQ(k_ra8_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<path d=\"M20,50 A30,30 0 0 0 80,50\" stroke=\"#000\" fill=\"none\"/>"
                         "<path d=\"M20,60 A30,30 0 0 1 80,60\" stroke=\"#000\" fill=\"none\"/>"

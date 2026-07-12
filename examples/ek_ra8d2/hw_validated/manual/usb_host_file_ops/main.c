@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/manual/usb_host_file_ops/main.c
- * @brief USB host MSC + ra_fs file-operations exerciser for EK-RA8D2 (USB-HS)
+ * @brief USB host MSC + ra8_fs file-operations exerciser for EK-RA8D2 (USB-HS)
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
@@ -8,8 +8,8 @@
  * @details
  * Manual HIL test that proves real file operations work end to end on a USB
  * thumb drive plugged into the J7 USB-HS jack: the board enumerates the stick
- * via ::ra_usb_hmsc_enumerate, mounts its FAT/exFAT volume through `ra_fs`
- * (block I/O bridged onto ::ra_usb_hmsc_read10 / ::ra_usb_hmsc_write10),
+ * via ::ra8_usb_hmsc_enumerate, mounts its FAT/exFAT volume through `ra8_fs`
+ * (block I/O bridged onto ::ra8_usb_hmsc_read10 / ::ra8_usb_hmsc_write10),
  * then runs a 9-step suite over the J-Link OB CDC console:
  *
  *  1. cleanup: best-effort unlink of leftover test files
@@ -29,7 +29,7 @@
  * Board specifics (EK-RA8D2 v1 UM):
  *  - PD07 HIGH = U18 supplies VBUS to J7 (Sec 6.2 p 34, 2 A budget).
  *  - SW4-8 must sit in the Host position; set in software through the
- *    U15 expander (::ra_board_io_expander_set_usbhs_host_mode).
+ *    U15 expander (::ra8_board_io_expander_set_usbhs_host_mode).
  *  - P4_08 is the only PFS-muxed USBHS pin (VBUS sense, PSEL 0x14);
  *    D+/D- are dedicated PHY package balls.
  *
@@ -42,17 +42,17 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_fs.h"
-#include "ra_gpio_constants.h"
-#include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_time.h"
-#include "ra_usb.h"
-#include "ra_usb_hmsc.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_fs.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_isr.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_time.h"
+#include "ra8_usb.h"
+#include "ra8_usb_hmsc.h"
 #include "usb_host_file_ops_steps.h"
 
 /* =============================================================================
@@ -61,28 +61,28 @@
  */
 
 /** @brief USBHS_VBUS sense pin (P4_08, PSEL = 0x14). */
-static const ra_port_pin_t k_fileops_pin_hs_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_8);
+static const ra8_port_pin_t k_fileops_pin_hs_vbus =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_8);
 
 /** @brief J7 host-power switch (PD07): HIGH = U18 supplies VBUS (UM 6.2). */
-static const ra_port_pin_t k_fileops_pin_hs_pwr =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7);
+static const ra8_port_pin_t k_fileops_pin_hs_pwr =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << 8) | (uint16_t)k_ra8_pin_7);
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
-static const ra_port_pin_t k_fileops_pin_fs_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
+static const ra8_port_pin_t k_fileops_pin_fs_vbus =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_7);
 
 /** @brief USBFS VBUSEN (P5_00): the USB function drives host VBUS. */
-static const ra_port_pin_t k_fileops_pin_fs_vbusen =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0);
+static const ra8_port_pin_t k_fileops_pin_fs_vbusen =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_5 << 8) | (uint16_t)k_ra8_pin_0);
 
 /** @brief USBFS D+ (P8_14) -- PFS-muxed, unlike the dedicated HS balls. */
-static const ra_port_pin_t k_fileops_pin_fs_dp =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14);
+static const ra8_port_pin_t k_fileops_pin_fs_dp =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_14);
 
 /** @brief USBFS D- (P8_15). */
-static const ra_port_pin_t k_fileops_pin_fs_dm =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
+static const ra8_port_pin_t k_fileops_pin_fs_dm =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_15);
 
 /* =============================================================================
  * Panic stop
@@ -128,28 +128,30 @@ static void fileops_panic_halt(void)
  */
 static void fileops_route_usb_or_halt(void)
 {
-  if (ra_board_io_expander_set_usbhs_host_mode() != k_ra_ok) {
+  if (ra8_board_io_expander_set_usbhs_host_mode() != k_ra8_ok) {
     fileops_panic_halt();
   }
-  if (ra_gpio_output_init(k_fileops_pin_hs_pwr, k_ra_level_high) != k_ra_ok) {
+  if (ra8_gpio_output_init(k_fileops_pin_hs_pwr, k_ra8_level_high) != k_ra8_ok) {
     fileops_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_fileops_pin_hs_vbus, k_ra_psel_usb_hs, "fileops.hs_vbus") !=
-      k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_fileops_pin_hs_vbus, k_ra8_psel_usb_hs, "fileops.hs_vbus") !=
+      k_ra8_ok) {
     fileops_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_fileops_pin_fs_vbus, k_ra_psel_usb_fs, "fileops.fs_vbus") !=
-      k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_fileops_pin_fs_vbus, k_ra8_psel_usb_fs, "fileops.fs_vbus") !=
+      k_ra8_ok) {
     fileops_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_fileops_pin_fs_vbusen, k_ra_psel_usb_fs, "fileops.fs_vbusen") !=
-      k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_fileops_pin_fs_vbusen, k_ra8_psel_usb_fs, "fileops.fs_vbusen") !=
+      k_ra8_ok) {
     fileops_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_fileops_pin_fs_dp, k_ra_psel_usb_fs, "fileops.fs_dp") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_fileops_pin_fs_dp, k_ra8_psel_usb_fs, "fileops.fs_dp") !=
+      k_ra8_ok) {
     fileops_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_fileops_pin_fs_dm, k_ra_psel_usb_fs, "fileops.fs_dm") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_fileops_pin_fs_dm, k_ra8_psel_usb_fs, "fileops.fs_dm") !=
+      k_ra8_ok) {
     fileops_panic_halt();
   }
 }
@@ -161,7 +163,7 @@ static void fileops_route_usb_or_halt(void)
  * @details Enables the USBHS 60 MHz PLL and the USBFS 48 MHz PLL2 clock
  * (the latter must run before MSTPB11 is released or UACT never sticks),
  * then routes both ports' pins. The controller itself is brought up per
- * retry cycle by the ladder (`ra_usb_hmsc_init`), since the app
+ * retry cycle by the ladder (`ra8_usb_hmsc_init`), since the app
  * alternates between the HS and FS ports.
  *
  * @pre Reset_Handler has finished C runtime init.
@@ -174,28 +176,28 @@ static void fileops_route_usb_or_halt(void)
 static void fileops_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     fileops_panic_halt();
   }
-  if (ra_cgc_usbhs_pll_enable() != k_ra_ok) {
+  if (ra8_cgc_usbhs_pll_enable() != k_ra8_ok) {
     fileops_panic_halt();
   }
-  if (ra_cgc_usbfs_clock_enable() != k_ra_ok) {
+  if (ra8_cgc_usbfs_clock_enable() != k_ra8_ok) {
     fileops_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     fileops_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     fileops_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_fileops_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_fileops_baud) != k_ra8_ok) {
     fileops_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     fileops_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     fileops_panic_halt();
   }
   fileops_route_usb_or_halt();
@@ -206,7 +208,7 @@ static void fileops_setup_or_halt(void)
  *
  * @param[in] speed Controller selector.
  * @return Static NUL-terminated name string.
- * @retval "USB-HS" For ::k_ra_usb_speed_hs.
+ * @retval "USB-HS" For ::k_ra8_usb_speed_hs.
  * @pre None -- total over the two host speeds.
  * @pre @p speed is one of the two host-capable controllers.
  * @post No state changes.
@@ -214,9 +216,9 @@ static void fileops_setup_or_halt(void)
  * @note Pure function.
  * @since 0.1.0
  */
-static const char* fileops_port_name(ra_usb_speed_t speed)
+static const char* fileops_port_name(ra8_usb_speed_t speed)
 {
-  if (speed == k_ra_usb_speed_hs) {
+  if (speed == k_ra8_usb_speed_hs) {
     return "USB-HS";
   }
   return "USB-FS";
@@ -227,40 +229,40 @@ static const char* fileops_port_name(ra_usb_speed_t speed)
  *
  * @param[in] device Enumerated device snapshot.
  * @param[in] speed  Controller the device answered on.
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok All chunks queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok All chunks queued.
  * @pre SCI8 init already ran; @p device is non-NULL.
- * @pre The snapshot was filled by ::ra_usb_hmsc_enumerate.
+ * @pre The snapshot was filled by ::ra8_usb_hmsc_enumerate.
  * @post One ASCII line is in the SCI8 TX FIFO.
  * @post No other state changes.
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t fileops_print_attach(const ra_usb_hmsc_device_t* device,
-                                                   ra_usb_speed_t              speed)
+[[nodiscard]] static ra8_err_t fileops_print_attach(const ra8_usb_hmsc_device_t* device,
+                                                    ra8_usb_speed_t              speed)
 {
-  ra_err_t err = fileops_print("ra8d2 fileops: device attached vid=0x");
-  if (err != k_ra_ok) {
+  ra8_err_t err = fileops_print("ra8d2 fileops: device attached vid=0x");
+  if (err != k_ra8_ok) {
     return err;
   }
   err = fileops_print_hex((uint32_t)device->vendor_id, (uint8_t)k_fileops_hex_chars_u16);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = fileops_print(" pid=0x");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = fileops_print_hex((uint32_t)device->product_id, (uint8_t)k_fileops_hex_chars_u16);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = fileops_print(" port=");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = fileops_print(fileops_port_name(speed));
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   return fileops_print("\r\n");
@@ -270,14 +272,14 @@ static const char* fileops_port_name(ra_usb_speed_t speed)
  * @brief One full pass on one port: host up, enumerate, mount, run the
  *        9-step file-op suite.
  *
- * @details Brings the selected controller up (`ra_usb_hmsc_init`), so the
+ * @details Brings the selected controller up (`ra8_usb_hmsc_init`), so the
  * caller can alternate between the HS and FS ports per retry cycle. On
  * any failure the controller is closed again before returning; the mount
  * handle is always released so the static mount-slot pool cannot leak.
  *
  * @param[in] speed Controller to drive this cycle (HS or FS port).
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok The suite printed `ALL FILE OPS PASSED`.
+ * @return First failing step's error, or k_ra8_ok.
+ * @retval k_ra8_ok The suite printed `ALL FILE OPS PASSED`.
  * @pre ::fileops_setup_or_halt completed.
  * @pre The USB drive is inserted in either host jack.
  * @post On success LED1 is on and all verdict lines are printed.
@@ -285,62 +287,62 @@ static const char* fileops_port_name(ra_usb_speed_t speed)
  * @note Blocking; bounded by the class-layer timeouts.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t fileops_run_ladder(ra_usb_speed_t speed)
+[[nodiscard]] static ra8_err_t fileops_run_ladder(ra8_usb_speed_t speed)
 {
-  ra_err_t err = fileops_print("ra8d2 fileops: probing ");
-  if (err != k_ra_ok) {
+  ra8_err_t err = fileops_print("ra8d2 fileops: probing ");
+  if (err != k_ra8_ok) {
     return err;
   }
   err = fileops_print(fileops_port_name(speed));
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = fileops_print("\r\n");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_usb_hmsc_init(speed);
-  if (err != k_ra_ok) {
+  err = ra8_usb_hmsc_init(speed);
+  if (err != k_ra8_ok) {
     (void)fileops_print_fail("host init", err);
     return err;
   }
 
-  ra_usb_hmsc_device_t device = {};
-  err                         = ra_usb_hmsc_enumerate(&device);
-  if (err != k_ra_ok) {
-    (void)ra_usb_hmsc_close();
+  ra8_usb_hmsc_device_t device = {};
+  err                          = ra8_usb_hmsc_enumerate(&device);
+  if (err != k_ra8_ok) {
+    (void)ra8_usb_hmsc_close();
     return err;
   }
   err = fileops_print_attach(&device, speed);
-  if (err != k_ra_ok) {
-    (void)ra_usb_hmsc_close();
+  if (err != k_ra8_ok) {
+    (void)ra8_usb_hmsc_close();
     return err;
   }
 
-  ra_fs_mount_t* mount = nullptr;
-  err                  = fileops_mount_volume(&mount);
-  if (err != k_ra_ok) {
+  ra8_fs_mount_t* mount = nullptr;
+  err                   = fileops_mount_volume(&mount);
+  if (err != k_ra8_ok) {
     fileops_probe_layout();
-    (void)ra_usb_hmsc_close();
+    (void)ra8_usb_hmsc_close();
     return err;
   }
 
   err = fileops_suite_create(mount);
-  if (err == k_ra_ok) {
+  if (err == k_ra8_ok) {
     err = fileops_suite_mutate(mount);
   }
-  (void)ra_fs_unmount(mount);
-  if (err != k_ra_ok) {
-    (void)ra_usb_hmsc_close();
+  (void)ra8_fs_unmount(mount);
+  if (err != k_ra8_ok) {
+    (void)ra8_usb_hmsc_close();
     return err;
   }
 
   err = fileops_print("ra8d2 fileops: ALL FILE OPS PASSED\r\n");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
-  (void)ra_board_led_on(k_ra_board_led1);
-  return k_ra_ok;
+  (void)ra8_board_led_on(k_ra8_board_led1);
+  return k_ra8_ok;
 }
 
 /* =============================================================================
@@ -367,30 +369,31 @@ int32_t main(void)
 {
   fileops_setup_or_halt();
 
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  if (fileops_print("ra8d2 fileops: ready, plug a USB drive into either USB jack\r\n") != k_ra_ok) {
+  if (fileops_print("ra8d2 fileops: ready, plug a USB drive into either USB jack\r\n") !=
+      k_ra8_ok) {
     fileops_panic_halt();
   }
 
   /* Alternate ports until the suite fully passes: a drive inserted in
    * either jack (or reseated) is picked up by a following cycle. */
-  ra_usb_speed_t speed = k_ra_usb_speed_hs;
-  ra_err_t       err   = fileops_run_ladder(speed);
-  while (err != k_ra_ok) {
+  ra8_usb_speed_t speed = k_ra8_usb_speed_hs;
+  ra8_err_t       err   = fileops_run_ladder(speed);
+  while (err != k_ra8_ok) {
     (void)fileops_print_fail("ladder", err);
     (void)fileops_print("ra8d2 fileops: trying the other port in 5 s\r\n");
-    ra_delay_ms(k_fileops_retry_ms);
-    if (speed == k_ra_usb_speed_hs) {
-      speed = k_ra_usb_speed_fs;
+    ra8_delay_ms(k_fileops_retry_ms);
+    if (speed == k_ra8_usb_speed_hs) {
+      speed = k_ra8_usb_speed_fs;
     } else {
-      speed = k_ra_usb_speed_hs;
+      speed = k_ra8_usb_speed_hs;
     }
     err = fileops_run_ladder(speed);
   }
 
   while (1) {
-    ra_delay_ms(k_fileops_idle_ms);
+    ra8_delay_ms(k_fileops_idle_ms);
     __asm__ volatile("wfi");
   }
 

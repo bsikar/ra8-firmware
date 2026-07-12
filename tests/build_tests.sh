@@ -5,8 +5,8 @@
 # Two build modes are supported, each rooted in its own out-of-tree
 # directory so toggling between them does not invalidate the other:
 #
-#   default     ->  tests/build/        (RA_MCDC=OFF, fast iteration)
-#   --coverage  ->  tests/build-cov/    (RA_MCDC=ON,  llvm-cov MC/DC)
+#   default     ->  tests/build/        (RA8_MCDC=OFF, fast iteration)
+#   --coverage  ->  tests/build-cov/    (RA8_MCDC=ON,  llvm-cov MC/DC)
 #
 # Coverage rebuilds are expensive (every TU is recompiled with
 # -fcoverage-mcdc / -fprofile-instr-generate). Keeping the two trees
@@ -43,12 +43,12 @@ fi
 
 if [[ "$MODE" == "coverage" ]]; then
   BUILD_DIR="$SCRIPT_DIR/build-cov"
-  CMAKE_ARGS=(-DRA_MCDC=ON -DRA_COVERAGE=OFF)
-  LABEL="coverage (RA_MCDC=ON)"
+  CMAKE_ARGS=(-DRA8_MCDC=ON -DRA8_COVERAGE=OFF)
+  LABEL="coverage (RA8_MCDC=ON)"
 elif [[ "$MODE" == "ubsan" ]]; then
   BUILD_DIR="$SCRIPT_DIR/build-ubsan"
-  CMAKE_ARGS=(-DRA_COVERAGE=OFF -DRA_SANITIZE=undefined)
-  LABEL="ubsan (RA_SANITIZE=undefined)"
+  CMAKE_ARGS=(-DRA8_COVERAGE=OFF -DRA8_SANITIZE=undefined)
+  LABEL="ubsan (RA8_SANITIZE=undefined)"
 else
   BUILD_DIR="$SCRIPT_DIR/build"
   CMAKE_ARGS=()
@@ -60,7 +60,7 @@ fi
 # the whole host-test tooling agrees on the compiler.
 # shellcheck source=scripts/utils/select_host_compiler.sh
 . "$SCRIPT_DIR/../scripts/utils/select_host_compiler.sh"
-ra_select_host_compiler || exit 1
+ra8_select_host_compiler || exit 1
 echo "    using CC=$CC CXX=$CXX"
 
 CMAKE_ARGS+=("-DCMAKE_C_COMPILER=$CC")

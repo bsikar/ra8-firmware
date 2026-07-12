@@ -25,8 +25,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
 #include "usb_msc_sdcard_steps.h"
 
 /* -------------------------------------------------------------------------- */
@@ -98,8 +98,8 @@ static uint32_t sdmsc_str_len(const char* text)
  * @param[in] data Buffer to send.
  * @param[in] len  Byte count.
  *
- * @return ra_err_t passthrough from `ra_board_uart_console_write`.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t passthrough from `ra8_board_uart_console_write`.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre @p data is non-NULL; the BSP console init already ran.
  * @pre @p len excludes any NUL terminator.
@@ -109,18 +109,18 @@ static uint32_t sdmsc_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t sdmsc_sci_write(const uint8_t* data, uint32_t len)
+[[nodiscard]] static ra8_err_t sdmsc_sci_write(const uint8_t* data, uint32_t len)
 {
-  return ra_board_uart_console_write(data, (size_t)len);
+  return ra8_board_uart_console_write(data, (size_t)len);
 }
 
-[[nodiscard]] ra_err_t sdmsc_print(const char* text)
+[[nodiscard]] ra8_err_t sdmsc_print(const char* text)
 {
   return sdmsc_sci_write((const uint8_t*)text, sdmsc_str_len(text));
 }
 
 /** @brief Implementation of `sdmsc_print_dec()` -- digit-reversal scratch. */
-[[nodiscard]] ra_err_t sdmsc_print_dec(uint32_t value)
+[[nodiscard]] ra8_err_t sdmsc_print_dec(uint32_t value)
 {
   uint8_t  scratch[k_sdmsc_dec_chars_u32] = {};
   uint8_t  out[k_sdmsc_dec_chars_u32]     = {};
@@ -145,7 +145,7 @@ static uint32_t sdmsc_str_len(const char* text)
 }
 
 /** @brief Implementation of `sdmsc_print_hex()` -- width clamped to 8. */
-[[nodiscard]] ra_err_t sdmsc_print_hex(uint32_t value, uint8_t digits)
+[[nodiscard]] ra8_err_t sdmsc_print_hex(uint32_t value, uint8_t digits)
 {
   uint8_t out[k_sdmsc_hex_chars_u32] = {};
   uint8_t width                      = digits;
@@ -159,22 +159,22 @@ static uint32_t sdmsc_str_len(const char* text)
   return sdmsc_sci_write(out, (uint32_t)width);
 }
 
-[[nodiscard]] ra_err_t sdmsc_print_fail(const char* what, ra_err_t err)
+[[nodiscard]] ra8_err_t sdmsc_print_fail(const char* what, ra8_err_t err)
 {
-  ra_err_t e = sdmsc_print("usb_msc_sdcard: FAIL ");
-  if (e != k_ra_ok) {
+  ra8_err_t e = sdmsc_print("usb_msc_sdcard: FAIL ");
+  if (e != k_ra8_ok) {
     return e;
   }
   e = sdmsc_print(what);
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   e = sdmsc_print(" err=0x");
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   e = sdmsc_print_hex((uint32_t)err, (uint8_t)k_sdmsc_hex_chars_u32);
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   return sdmsc_print("\r\n");

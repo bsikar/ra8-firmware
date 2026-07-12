@@ -5,10 +5,10 @@
 # scripts/utils/gen_jpeg_fixture.py -- emit a minimal baseline JPEG
 # (SOI / APP0 / DQT / SOF0 / DHT / SOS / RST-free entropy / EOI) as
 # raw bytes on stdout or to a file. Used to seed the libFuzzer corpus
-# for tests/fuzz/fuzz_ra_jpeg_sw.
+# for tests/fuzz/fuzz_ra8_jpeg_sw.
 #
-# This generator only needs to satisfy the parser in libs/ra_hal/src/
-# ra_jpeg_sw.c well enough for the fuzzer to start from real coverage:
+# This generator only needs to satisfy the parser in libs/ra8_hal/src/
+# ra8_jpeg_sw.c well enough for the fuzzer to start from real coverage:
 # valid SOI, valid SOF0 with parseable WxH, and either valid entropy
 # bytes or an EOI marker right after SOS. The generator does NOT have
 # to produce a visually decodable image.

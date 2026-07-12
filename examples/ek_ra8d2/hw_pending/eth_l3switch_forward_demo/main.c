@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/eth_l3switch_forward_demo/main.c
- * @brief L3 Ethernet switch / frame-forwarding config demo (ra_eth_mfwd + ra_layer3_switch)
+ * @brief L3 Ethernet switch / frame-forwarding config demo (ra8_eth_mfwd + ra8_layer3_switch)
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
@@ -9,25 +9,25 @@
  * Configures the RA8D2 Ethernet frame-forwarding path that no other example
  * referenced (recon gap #135). Two drivers, honestly separated:
  *
- *   1. ``ra_eth_mfwd`` -- the **real** Message Forwarding engine that sits
+ *   1. ``ra8_eth_mfwd`` -- the **real** Message Forwarding engine that sits
  *      between the GMAC ports and the CPU Agent (GWCA) making per-frame
  *      port-to-port / port-to-host decisions (HUM Ch 31-32 "Ethernet"). This
  *      app programs the per-port forwarding-destination masks
- *      (``ra_eth_mfwd_set_forwarding_masks``, permissive 0x7F on every port),
+ *      (``ra8_eth_mfwd_set_forwarding_masks``, permissive 0x7F on every port),
  *      routes port-0 ingress into a GWCA RX queue
- *      (``ra_eth_mfwd_route_queue``), and reads the MFWD status
- *      (``ra_eth_mfwd_get_status``).
- *   2. ``ra_layer3_switch`` -- the FSP-shaped L3-switch **facade**. The RA8D2
+ *      (``ra8_eth_mfwd_route_queue``), and reads the MFWD status
+ *      (``ra8_eth_mfwd_get_status``).
+ *   2. ``ra8_layer3_switch`` -- the FSP-shaped L3-switch **facade**. The RA8D2
  *      silicon carries no L3 switch block (the driver header says so), so the
  *      facade's route-table ops are documented placeholders that return
- *      ``k_ra_err_not_supported``. The app exercises the working lifecycle
+ *      ``k_ra8_err_not_supported``. The app exercises the working lifecycle
  *      (``open`` / ``status_get`` / ``close``) and calls ``route_add`` once to
  *      log -- honestly -- that the L3 route table is a not-supported placeholder
  *      on this part. The real forwarding config is the MFWD path above.
  *
  * The fixed verdict ``"l3sw: forward PASS"`` prints only when every real
  * operation (MFWD program + status, L3 open / status / close) returned
- * ``k_ra_ok``. The ``route_add`` placeholder code is logged but never fails the
+ * ``k_ra8_ok``. The ``route_add`` placeholder code is logged but never fails the
  * verdict.
  *
  * hw_pending: ``tools/board_sim`` has no Ethernet / MFWD peripheral model, and
@@ -44,14 +44,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_eth_mfwd.h"
-#include "ra_isr.h"
-#include "ra_layer3_switch.h"
-#include "ra_mstp.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_eth_mfwd.h"
+#include "ra8_isr.h"
+#include "ra8_layer3_switch.h"
+#include "ra8_mstp.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables (illustrative route). */
 typedef enum : uint32_t {
@@ -110,14 +110,14 @@ static void l3_panic_halt(void)
  * @param[in] data Non-NULL byte span to transmit.
  * @param[in] len  Byte count (0 is a no-op).
  *
- * @pre ``ra_board_uart_console_init`` has succeeded.
+ * @pre ``ra8_board_uart_console_init`` has succeeded.
  * @pre ``data`` points at ``len`` readable bytes.
  * @post ``len`` bytes have been queued to the console UART.
  * @since 0.1.0
  */
 static void l3_write(const uint8_t* data, uint32_t len)
 {
-  (void)ra_board_uart_console_write(data, (size_t)len);
+  (void)ra8_board_uart_console_write(data, (size_t)len);
 }
 
 /**
@@ -179,9 +179,9 @@ static void l3_write_u32(uint32_t val)
  * ports 0, 1 and the host/GWCA port), routes GMAC port-0 ingress into GWCA RX
  * queue 0, and logs the MFWD status word.
  *
- * @return True iff the mask, route, and status calls returned ``k_ra_ok``.
+ * @return True iff the mask, route, and status calls returned ``k_ra8_ok``.
  *
- * @pre ``ra_eth_mfwd_init`` has succeeded.
+ * @pre ``ra8_eth_mfwd_init`` has succeeded.
  * @pre The console has been initialised.
  * @post One ``l3sw: fwd_sts=0x`` line has been queued.
  * @post FWPBFC0/1/2 masks and the port-0 queue route are programmed.
@@ -195,15 +195,15 @@ static bool l3_program_forwarding(void)
     (uint8_t)k_l3_fwd_mask_all,
     (uint8_t)k_l3_fwd_mask_all,
   };
-  if (ra_eth_mfwd_set_forwarding_masks(masks) != k_ra_ok) {
+  if (ra8_eth_mfwd_set_forwarding_masks(masks) != k_ra8_ok) {
     ok = false;
   }
-  if (ra_eth_mfwd_route_queue((uint8_t)k_l3_src_port, (uint8_t)k_l3_rx_queue) != k_ra_ok) {
+  if (ra8_eth_mfwd_route_queue((uint8_t)k_l3_src_port, (uint8_t)k_l3_rx_queue) != k_ra8_ok) {
     ok = false;
   }
-  uint32_t       sts = 0U;
-  const ra_err_t err = ra_eth_mfwd_get_status(&sts);
-  if (err != k_ra_ok) {
+  uint32_t        sts = 0U;
+  const ra8_err_t err = ra8_eth_mfwd_get_status(&sts);
+  if (err != k_ra8_ok) {
     ok = false;
   }
   l3_write(k_l3_fwd_prefix, (uint32_t)(sizeof(k_l3_fwd_prefix) - 1U));
@@ -218,12 +218,12 @@ static bool l3_program_forwarding(void)
  * @details
  * Opens the facade (2 ports, 1500-byte MTU, non-promiscuous), reads back the
  * open / promiscuous flags, and closes it. Between open and close it calls
- * ``ra_layer3_switch_route_add`` once and logs the returned code: on this
+ * ``ra8_layer3_switch_route_add`` once and logs the returned code: on this
  * silicon the L3 route table is a documented placeholder that returns
- * ``k_ra_err_not_supported``, so that code is logged (never failing the
+ * ``k_ra8_err_not_supported``, so that code is logged (never failing the
  * verdict) to make the placeholder explicit.
  *
- * @return True iff open, status_get and close returned ``k_ra_ok``.
+ * @return True iff open, status_get and close returned ``k_ra8_ok``.
  *
  * @pre The console has been initialised.
  * @pre No prior facade open is still outstanding.
@@ -233,19 +233,19 @@ static bool l3_program_forwarding(void)
  */
 static bool l3_run_facade(void)
 {
-  bool                         ok  = true;
-  const ra_layer3_switch_cfg_t cfg = {
+  bool                          ok  = true;
+  const ra8_layer3_switch_cfg_t cfg = {
     .port_count  = (uint8_t)k_l3_port_count,
     .mtu_bytes   = (uint16_t)k_l3_mtu_bytes,
     .promiscuous = (uint8_t)k_l3_promisc_off,
   };
-  if (ra_layer3_switch_open(&cfg) != k_ra_ok) {
+  if (ra8_layer3_switch_open(&cfg) != k_ra8_ok) {
     ok = false;
   }
-  uint8_t        is_open = 0U;
-  uint8_t        promisc = 0U;
-  const ra_err_t st_err  = ra_layer3_switch_status_get(&is_open, &promisc);
-  if (st_err != k_ra_ok) {
+  uint8_t         is_open = 0U;
+  uint8_t         promisc = 0U;
+  const ra8_err_t st_err  = ra8_layer3_switch_status_get(&is_open, &promisc);
+  if (st_err != k_ra8_ok) {
     ok = false;
   }
   l3_write(k_l3_open_prefix, (uint32_t)(sizeof(k_l3_open_prefix) - 1U));
@@ -254,17 +254,17 @@ static bool l3_run_facade(void)
   l3_write_u32((uint32_t)promisc);
   l3_write(k_l3_crlf, (uint32_t)(sizeof(k_l3_crlf) - 1U));
 
-  const ra_layer3_switch_route_t route = {
+  const ra8_layer3_switch_route_t route = {
     .dst_ip      = (uint32_t)k_l3_route_ip,
     .mask        = (uint32_t)k_l3_route_mask,
     .egress_port = (uint8_t)k_l3_egress_port,
   };
-  const ra_err_t route_err = ra_layer3_switch_route_add(&route);
+  const ra8_err_t route_err = ra8_layer3_switch_route_add(&route);
   l3_write(k_l3_route_prefix, (uint32_t)(sizeof(k_l3_route_prefix) - 1U));
   l3_write_u32((uint32_t)route_err);
   l3_write(k_l3_route_sfx, (uint32_t)(sizeof(k_l3_route_sfx) - 1U));
 
-  if (ra_layer3_switch_close() != k_ra_ok) {
+  if (ra8_layer3_switch_close() != k_ra8_ok) {
     ok = false;
   }
   return ok;
@@ -273,7 +273,7 @@ static bool l3_run_facade(void)
 /**
  * @brief Run one cycle: MFWD forwarding config + L3-switch facade lifecycle.
  *
- * @return True iff every real operation in the cycle returned ``k_ra_ok``.
+ * @return True iff every real operation in the cycle returned ``k_ra8_ok``.
  *
  * @pre ``l3_arm`` initialised the MFWD engine.
  * @pre The console has been initialised.
@@ -305,22 +305,22 @@ static bool l3_run_cycle(void)
 static void l3_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     l3_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     l3_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     l3_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     l3_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_l3_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_l3_baud) != k_ra8_ok) {
     l3_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     l3_panic_halt();
   }
 }
@@ -329,23 +329,23 @@ static void l3_setup_or_halt(void)
  * @brief Bring up the MFWD forwarding engine.
  *
  * @details
- * ``ra_eth_mfwd_init`` ungates the shared Ethernet switch MSTP gate and resets
+ * ``ra8_eth_mfwd_init`` ungates the shared Ethernet switch MSTP gate and resets
  * the MFWD registers so the per-port forwarding masks and queue routing can be
  * programmed by the run cycle.
  *
- * @return ``ra_err_t`` error code from ``ra_eth_mfwd_init``.
- * @retval k_ra_ok MFWD engine is up.
- * @retval Other   Forwarded from ``ra_eth_mfwd_init``.
+ * @return ``ra8_err_t`` error code from ``ra8_eth_mfwd_init``.
+ * @retval k_ra8_ok MFWD engine is up.
+ * @retval Other   Forwarded from ``ra8_eth_mfwd_init``.
  *
  * @pre ``l3_setup_or_halt`` has ungated MSTP.
  * @pre IRQs are masked or this is single-threaded init.
- * @post On ``k_ra_ok`` the MFWD forwarding registers are writable.
+ * @post On ``k_ra8_ok`` the MFWD forwarding registers are writable.
  * @post On failure no partial MFWD state is relied upon by the caller.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t l3_arm(void)
+[[nodiscard]] static ra8_err_t l3_arm(void)
 {
-  return ra_eth_mfwd_init();
+  return ra8_eth_mfwd_init();
 }
 
 #pragma GCC diagnostic push
@@ -353,9 +353,9 @@ static void l3_setup_or_halt(void)
 int32_t main(void)
 {
   l3_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  if (l3_arm() != k_ra_ok) {
+  if (l3_arm() != k_ra8_ok) {
     l3_panic_halt();
   }
 
@@ -366,10 +366,10 @@ int32_t main(void)
     } else {
       l3_write(k_l3_verdict_fail, (uint32_t)(sizeof(k_l3_verdict_fail) - 1U));
     }
-    if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
+    if (ra8_board_led_toggle(k_ra8_board_led1) != k_ra8_ok) {
       break;
     }
-    ra_delay_ms((uint32_t)k_l3_period_ms);
+    ra8_delay_ms((uint32_t)k_l3_period_ms);
   }
   l3_panic_halt();
   return 0;

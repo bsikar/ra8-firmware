@@ -6,33 +6,33 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Brings the chip up via ``ra_cgc_init()`` (XTAL -> PLL1 -> CPUCLK0 =
+ * Brings the chip up via ``ra8_cgc_init()`` (XTAL -> PLL1 -> CPUCLK0 =
  * 1 GHz, PCLKA = 125 MHz, PCLKD = 125 MHz, SCICLK = PLL1R / 4),
  * routes the GPT0 / GPT1 / GPT2 GTIOCnA outputs onto a J-tag header
  * suitable for an external three-phase motor-driver IC, opens the
  * three channels as a phase-synchronized triple via
- * ``ra_gpt_three_phase_open``, programmes a 1 us dead-time pair on
+ * ``ra8_gpt_three_phase_open``, programmes a 1 us dead-time pair on
  * each channel, and runs a 2-second-period sine-table sweep that
  * smoothly rotates the three duty cycles 0..100 %. The duty values
  * are reported every 100 ms over the J-Link OB CDC port (SCI8 @
  * 115200 8N1).
  *
  * Sequence:
- *   1. ``ra_cgc_init()`` -- standard FSP-quickstart clock tree.
- *   2. ``ra_time_init(cpuclk0_hz)`` for the slow update tick.
- *   3. ``ra_pfs_route_peripheral()`` for the three GTIOC output
- *      pins. The GPT PSEL is ``k_ra_psel_gpt0`` (0x03) for
- *      channels 0..3 and ``k_ra_psel_gpt1`` (0x04) for higher-
+ *   1. ``ra8_cgc_init()`` -- standard FSP-quickstart clock tree.
+ *   2. ``ra8_time_init(cpuclk0_hz)`` for the slow update tick.
+ *   3. ``ra8_pfs_route_peripheral()`` for the three GTIOC output
+ *      pins. The GPT PSEL is ``k_ra8_psel_gpt0`` (0x03) for
+ *      channels 0..3 and ``k_ra8_psel_gpt1`` (0x04) for higher-
  *      numbered channels per HUM Ch 20.4.
- *   4. ``ra_board_uart_console_init(115200)`` for diagnostic output
+ *   4. ``ra8_board_uart_console_init(115200)`` for diagnostic output
  *      (J-Link OB console: SCI8 @ 115200 8N1, PD02 TXD / PD03 RXD).
- *   5. ``ra_mstp_init()`` then ``ra_gpt_three_phase_open(&cfg)``
+ *   5. ``ra8_mstp_init()`` then ``ra8_gpt_three_phase_open(&cfg)``
  *      with U = GPT0, V = GPT1, W = GPT2, triangle-wave PWM,
  *      prescaler / 1, period = 0xFFFF (~512 us at 125 MHz PCLKD).
- *   6. ``ra_gpt_dead_time_set(ch, 125, 125)`` per channel for
+ *   6. ``ra8_gpt_dead_time_set(ch, 125, 125)`` per channel for
  *      ~1 us dead-time at PCLKD = 125 MHz.
  *   7. Initial test pattern: 50 % duty on all three phases via
- *      ``ra_gpt_three_phase_set_duty(period/2, period/2, period/2)``.
+ *      ``ra8_gpt_three_phase_set_duty(period/2, period/2, period/2)``.
  *   8. Loop:
  *        - Tick a 256-sample sine table at 8 kHz update rate so
  *          one full electrical revolution lands in 2 seconds
@@ -40,7 +40,7 @@
  *          via inner step counter).
  *        - Recompute U/V/W as 0..period scaled by
  *          ``(1 + sin(theta + phase))/2``.
- *        - ``ra_gpt_three_phase_set_duty`` to push the new triple
+ *        - ``ra8_gpt_three_phase_set_duty`` to push the new triple
  *          via the GTCCRC/E shadow buffers.
  *        - Every 100 ms: print "duty UVW <u> <v> <w>\\r\\n" on
  *          SCI8.
@@ -50,9 +50,9 @@
  * Manual at authoring time; the placeholder pin macros in this
  * file (``k_motor_3phase_pin_u`` etc.) need a hardware bring-up
  * pass before live PWM will reach a motor driver. The application
- * still compiles cleanly and exercises ``ra_gpt_init``,
- * ``ra_gpt_three_phase_open``, ``ra_gpt_pwm_pin_configure``,
- * ``ra_gpt_dead_time_set``, and ``ra_gpt_three_phase_set_duty``
+ * still compiles cleanly and exercises ``ra8_gpt_init``,
+ * ``ra8_gpt_three_phase_open``, ``ra8_gpt_pwm_pin_configure``,
+ * ``ra8_gpt_dead_time_set``, and ``ra8_gpt_three_phase_set_duty``
  * end-to-end.
  *
  * @par Architectural ring
@@ -68,16 +68,16 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gpio_constants.h"
-#include "ra_gpt.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_gpt.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_time.h"
 
 /**
  * @brief Compile-time settings for the three-phase motor demo.
@@ -108,7 +108,7 @@ typedef enum : uint32_t {
  * GPT0 -> U-phase (GTIOC0A). GPT1 -> V-phase (GTIOC1A). GPT2 ->
  * W-phase (GTIOC2A). The three channels share a common period and
  * are armed by the same GTSTR write inside
- * ``ra_gpt_three_phase_open``.
+ * ``ra8_gpt_three_phase_open``.
  */
 typedef enum : uint8_t {
   k_motor_3phase_ch_u = 0U,
@@ -143,9 +143,9 @@ typedef enum : uint16_t {
  * with the SCI8 / LED pins. Update once the manual table is read.
  */
 // TODO(board-rev): no public GTIOC0A on EK-RA8D2 v1; pins conflict with debug UART per UM. Use P105/P103/Pmod-GTIOC10A or a custom carrier board.
-static const ra_port_pin_t k_motor_3phase_pin_u = RA_PIN(k_ra_port_4, k_ra_pin_8);
-static const ra_port_pin_t k_motor_3phase_pin_v = RA_PIN(k_ra_port_4, k_ra_pin_9);
-static const ra_port_pin_t k_motor_3phase_pin_w = RA_PIN(k_ra_port_4, k_ra_pin_10);
+static const ra8_port_pin_t k_motor_3phase_pin_u = RA8_PIN(k_ra8_port_4, k_ra8_pin_8);
+static const ra8_port_pin_t k_motor_3phase_pin_v = RA8_PIN(k_ra8_port_4, k_ra8_pin_9);
+static const ra8_port_pin_t k_motor_3phase_pin_w = RA8_PIN(k_ra8_port_4, k_ra8_pin_10);
 
 /** @brief Diagnostic banner emitted every 100 ms. */
 static const uint8_t k_motor_3phase_msg_prefix[] = "duty UVW ";
@@ -191,7 +191,7 @@ static void motor_3phase_panic_halt(void)
  * Computes ``sin(theta)`` for ``theta = 2*pi*i/N`` using the
  * Bhaskara I formula in fixed-point so we never pull in libm. The
  * output is shifted into ``[0, period]`` so the values can be fed
- * directly to ``ra_gpt_three_phase_set_duty``.
+ * directly to ``ra8_gpt_three_phase_set_duty``.
  *
  * The Bhaskara formula:
  *   sin(x) ~= 16 * x * (pi - x) / (5 * pi^2 - 4 * x * (pi - x))
@@ -245,12 +245,12 @@ static void motor_3phase_build_sine(void)
 /**
  * @brief Route the three GTIOC pins.
  *
- * @return Error code from the first failing route call, or k_ra_ok.
+ * @return Error code from the first failing route call, or k_ra8_ok.
  *
- * @retval k_ra_ok                       All pins routed.
- * @retval k_ra_err_gpio_invalid_port    Port index out of range.
- * @retval k_ra_err_gpio_invalid_pin     Pin index out of range.
- * @retval k_ra_err_gpio_conflict        Pin already claimed.
+ * @retval k_ra8_ok                       All pins routed.
+ * @retval k_ra8_err_gpio_invalid_port    Port index out of range.
+ * @retval k_ra8_err_gpio_invalid_pin     Pin index out of range.
+ * @retval k_ra8_err_gpio_conflict        Pin already claimed.
  *
  * @pre IOPORT module reachable.
  * @pre Caller is single-threaded init context.
@@ -259,26 +259,26 @@ static void motor_3phase_build_sine(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t motor_3phase_pins_init(void)
+[[nodiscard]] static ra8_err_t motor_3phase_pins_init(void)
 {
-  ra_err_t err =
-    ra_pfs_route_peripheral(k_motor_3phase_pin_u, k_ra_psel_gpt0, "motor_3phase.gtioc0a");
-  if (err != k_ra_ok) {
+  ra8_err_t err =
+    ra8_pfs_route_peripheral(k_motor_3phase_pin_u, k_ra8_psel_gpt0, "motor_3phase.gtioc0a");
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_pfs_route_peripheral(k_motor_3phase_pin_v, k_ra_psel_gpt0, "motor_3phase.gtioc1a");
-  if (err != k_ra_ok) {
+  err = ra8_pfs_route_peripheral(k_motor_3phase_pin_v, k_ra8_psel_gpt0, "motor_3phase.gtioc1a");
+  if (err != k_ra8_ok) {
     return err;
   }
-  return ra_pfs_route_peripheral(k_motor_3phase_pin_w, k_ra_psel_gpt0, "motor_3phase.gtioc2a");
+  return ra8_pfs_route_peripheral(k_motor_3phase_pin_w, k_ra8_psel_gpt0, "motor_3phase.gtioc2a");
 }
 
 /**
  * @brief Configure GTIOR for the three GTIOCnA outputs (active high).
  *
- * @return Error code from the first failing call, or k_ra_ok.
+ * @return Error code from the first failing call, or k_ra8_ok.
  *
- * @pre ``ra_gpt_three_phase_open`` already returned k_ra_ok.
+ * @pre ``ra8_gpt_three_phase_open`` already returned k_ra8_ok.
  * @pre IRQs masked.
  *
  * @post Each channel's GTIOR.OAE is set so the pin actually drives.
@@ -286,16 +286,16 @@ static void motor_3phase_build_sine(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t motor_3phase_pin_configure_all(void)
+[[nodiscard]] static ra8_err_t motor_3phase_pin_configure_all(void)
 {
   enum : uint8_t {
     k_phase_count = 3U,
   };
-  const ra_gpt_pwm_pin_cfg_t pin_cfg = {
+  const ra8_gpt_pwm_pin_cfg_t pin_cfg = {
     .output_enable    = true,
-    .polarity         = k_ra_gpt_pol_active_high,
-    .stop_level       = k_ra_gpt_stop_low,
-    .disable_on_fault = k_ra_gpt_disable_high_z,
+    .polarity         = k_ra8_gpt_pol_active_high,
+    .stop_level       = k_ra8_gpt_stop_low,
+    .disable_on_fault = k_ra8_gpt_disable_high_z,
   };
   const uint8_t channels[k_phase_count] = {
     k_motor_3phase_ch_u,
@@ -303,16 +303,16 @@ static void motor_3phase_build_sine(void)
     k_motor_3phase_ch_w,
   };
   for (uint8_t i = 0U; i < k_phase_count; i++) {
-    ra_err_t err = ra_gpt_pwm_pin_configure(channels[i], k_ra_gpt_pin_a, &pin_cfg);
-    if (err != k_ra_ok) {
+    ra8_err_t err = ra8_gpt_pwm_pin_configure(channels[i], k_ra8_gpt_pin_a, &pin_cfg);
+    if (err != k_ra8_ok) {
       return err;
     }
-    err = ra_gpt_dead_time_set(channels[i], k_motor_3phase_dead_time, k_motor_3phase_dead_time);
-    if (err != k_ra_ok) {
+    err = ra8_gpt_dead_time_set(channels[i], k_motor_3phase_dead_time, k_motor_3phase_dead_time);
+    if (err != k_ra8_ok) {
       return err;
     }
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -333,22 +333,22 @@ static void motor_3phase_init_clocks_and_led(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     motor_3phase_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     motor_3phase_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     motor_3phase_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     motor_3phase_panic_halt();
   }
-  if (motor_3phase_pins_init() != k_ra_ok) {
+  if (motor_3phase_pins_init() != k_ra8_ok) {
     motor_3phase_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     motor_3phase_panic_halt();
   }
 }
@@ -358,11 +358,11 @@ static void motor_3phase_init_clocks_and_led(void)
  *
  * @details
  * Delegates SCI8 bring-up, PD02 TXD / PD03 RXD routing, and the baud
- * divisor to ``ra_board_uart_console_init`` so the application carries
+ * divisor to ``ra8_board_uart_console_init`` so the application carries
  * no board-specific console scaffolding.
  *
  * @pre Clocks initialized.
- * @pre ``ra_mstp_init`` succeeded.
+ * @pre ``ra8_mstp_init`` succeeded.
  *
  * @post The console SCI8 channel is enabled.
  * @post Halts in WFI on init failure.
@@ -371,7 +371,7 @@ static void motor_3phase_init_clocks_and_led(void)
  */
 static void motor_3phase_init_console(void)
 {
-  if (ra_board_uart_console_init((uint32_t)k_motor_3phase_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_motor_3phase_baud) != k_ra8_ok) {
     motor_3phase_panic_halt();
   }
 }
@@ -380,12 +380,12 @@ static void motor_3phase_init_console(void)
  * @brief Open the GPT three-phase block, configure pins, prime duty.
  *
  * @details
- * After ``ra_gpt_three_phase_open`` arms U/V/W with a shared period,
+ * After ``ra8_gpt_three_phase_open`` arms U/V/W with a shared period,
  * the per-pin GTIOR is programmed for active-high output, stop-low,
  * and POEG-fault-Hi-Z, dead-time is set, and the test pattern
  * (50 % duty on every phase) is loaded.
  *
- * @pre ``ra_mstp_init`` succeeded.
+ * @pre ``ra8_mstp_init`` succeeded.
  * @pre Pin mux for the three GTIOC outputs is established.
  *
  * @post All three GPT channels are running synchronized.
@@ -398,19 +398,19 @@ static void motor_3phase_init_pwm(void)
   /* MSTP enable is now performed in motor_3phase_init_clocks_and_led so
    * the canonical CGC -> MSTP -> IOPORT -> TIME -> peripheral order is
    * preserved (see audit_init_order). */
-  const ra_gpt_three_phase_cfg_t three_phase_cfg = {
+  const ra8_gpt_three_phase_cfg_t three_phase_cfg = {
     .channels       = {k_motor_3phase_ch_u, k_motor_3phase_ch_v, k_motor_3phase_ch_w},
-    .mode           = k_ra_gpt_mode_triangle_pwm,
-    .prescaler      = k_ra_gpt_ps_div_1,
+    .mode           = k_ra8_gpt_mode_triangle_pwm,
+    .prescaler      = k_ra8_gpt_ps_div_1,
     .period_counts  = k_motor_3phase_period,
     .initial_duty_u = k_motor_3phase_half_period,
     .initial_duty_v = k_motor_3phase_half_period,
     .initial_duty_w = k_motor_3phase_half_period,
   };
-  if (ra_gpt_three_phase_open(&three_phase_cfg) != k_ra_ok) {
+  if (ra8_gpt_three_phase_open(&three_phase_cfg) != k_ra8_ok) {
     motor_3phase_panic_halt();
   }
-  if (motor_3phase_pin_configure_all() != k_ra_ok) {
+  if (motor_3phase_pin_configure_all() != k_ra8_ok) {
     motor_3phase_panic_halt();
   }
 
@@ -418,9 +418,9 @@ static void motor_3phase_init_pwm(void)
   s_motor_3phase_step = 0U;
 
   /* Initial test pattern: 50 % duty on all three phases. */
-  if (ra_gpt_three_phase_set_duty(k_motor_3phase_half_period,
-                                  k_motor_3phase_half_period,
-                                  k_motor_3phase_half_period) != k_ra_ok) {
+  if (ra8_gpt_three_phase_set_duty(k_motor_3phase_half_period,
+                                   k_motor_3phase_half_period,
+                                   k_motor_3phase_half_period) != k_ra8_ok) {
     motor_3phase_panic_halt();
   }
 }
@@ -484,20 +484,20 @@ static void motor_3phase_print_duty(uint32_t u_duty, uint32_t v_duty, uint32_t w
   uint8_t  digits[k_dec_buf];
   uint32_t n = 0U;
 
-  (void)ra_board_uart_console_write(k_motor_3phase_msg_prefix,
-                                    (size_t)(sizeof(k_motor_3phase_msg_prefix) - 1U));
+  (void)ra8_board_uart_console_write(k_motor_3phase_msg_prefix,
+                                     (size_t)(sizeof(k_motor_3phase_msg_prefix) - 1U));
   n = motor_3phase_u32_to_dec(u_duty, digits);
-  (void)ra_board_uart_console_write(digits, (size_t)n);
-  (void)ra_board_uart_console_write(k_motor_3phase_msg_sep,
-                                    (size_t)(sizeof(k_motor_3phase_msg_sep) - 1U));
+  (void)ra8_board_uart_console_write(digits, (size_t)n);
+  (void)ra8_board_uart_console_write(k_motor_3phase_msg_sep,
+                                     (size_t)(sizeof(k_motor_3phase_msg_sep) - 1U));
   n = motor_3phase_u32_to_dec(v_duty, digits);
-  (void)ra_board_uart_console_write(digits, (size_t)n);
-  (void)ra_board_uart_console_write(k_motor_3phase_msg_sep,
-                                    (size_t)(sizeof(k_motor_3phase_msg_sep) - 1U));
+  (void)ra8_board_uart_console_write(digits, (size_t)n);
+  (void)ra8_board_uart_console_write(k_motor_3phase_msg_sep,
+                                     (size_t)(sizeof(k_motor_3phase_msg_sep) - 1U));
   n = motor_3phase_u32_to_dec(w_duty, digits);
-  (void)ra_board_uart_console_write(digits, (size_t)n);
-  (void)ra_board_uart_console_write(k_motor_3phase_msg_eol,
-                                    (size_t)(sizeof(k_motor_3phase_msg_eol) - 1U));
+  (void)ra8_board_uart_console_write(digits, (size_t)n);
+  (void)ra8_board_uart_console_write(k_motor_3phase_msg_eol,
+                                     (size_t)(sizeof(k_motor_3phase_msg_eol) - 1U));
 }
 
 /**
@@ -549,7 +549,7 @@ int32_t main(void)
   motor_3phase_init_console();
   motor_3phase_init_pwm();
 
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   uint32_t print_accum_ms = 0U;
 
@@ -560,7 +560,7 @@ int32_t main(void)
 
     motor_3phase_advance(&u_duty, &v_duty, &w_duty);
 
-    if (ra_gpt_three_phase_set_duty(u_duty, v_duty, w_duty) != k_ra_ok) {
+    if (ra8_gpt_three_phase_set_duty(u_duty, v_duty, w_duty) != k_ra8_ok) {
       break;
     }
 
@@ -568,10 +568,10 @@ int32_t main(void)
     if (print_accum_ms >= k_motor_3phase_print_period) {
       print_accum_ms = 0U;
       motor_3phase_print_duty(u_duty, v_duty, w_duty);
-      (void)ra_board_led_toggle(k_ra_board_led1);
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
     }
 
-    ra_delay_ms(k_motor_3phase_update_ms);
+    ra8_delay_ms(k_motor_3phase_update_ms);
   }
 
   motor_3phase_panic_halt();

@@ -7,11 +7,11 @@ heartbeat demo.
 
 The OSPI flash bring-up that blocked this app is fixed (#44): the
 on-board ISSI IS25LX512M (U16, JEDEC 0x9D5A1A) is on xSPI controller
-**CS1**, and `ra_xspi` now drives it correctly (the earlier "JTAG-
+**CS1**, and `ra8_xspi` now drives it correctly (the earlier "JTAG-
 confirmed dead chip / physically unresponsive" conclusion was wrong --
 it was a controller chip-select bug, see
 `examples/ek_ra8d2/hw_pending/flash_journal/README.md`). LevelX runs
-against that flash through the unchanged `port/levelx/lx_nor_driver_ra_xspi`
+against that flash through the unchanged `port/levelx/lx_nor_driver_ra8_xspi`
 HAL path, so it inherits the fix.
 
 This app stays in `hw_pending` only until a full HIL re-run confirms the

@@ -64,7 +64,7 @@ In practice this means:
 4. **Functions stay short** (NASA Rule 4 + clang-tidy
    `LineThreshold = 60`).
 5. **All return values checked** (NASA Rule 7) via
-   `RA_RETURN_ON_ERROR` or explicit `(void)` cast.
+   `RA8_RETURN_ON_ERROR` or explicit `(void)` cast.
 6. **Documented deviations** for every place the code knowingly
    diverges from the standard's defaults (e.g. function pointers
    for DIP, deactivated guards on already-validated invariants).

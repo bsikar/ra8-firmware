@@ -32,7 +32,7 @@ cd "$ROOT"
 sim_dir="$ROOT/tools/board_sim"
 
 # A "halt loop" is any firmware give-up spin: the per-app <app>_panic_halt, the
-# shared lcd_panic_halt / ra_exception_halt_loop, or a fault trap
+# shared lcd_panic_halt / ra8_exception_halt_loop, or a fault trap
 # (HardFault_Handler / Default_Handler). A final PC inside one means a bring-up
 # step failed and the firmware gave up. Resolve their address ranges from the
 # ELF (nm -S yields each symbol's size) so the check is accurate per app rather
@@ -82,7 +82,7 @@ PY
 }
 
 # UI apps whose rendered frame must be rich (distinct-color floor). ereader_ui
-# is the e-reader chrome (ra_box + ra_gfx); this gates that it actually paints.
+# is the e-reader chrome (ra8_box + ra8_gfx); this gates that it actually paints.
 # sd_font_render reads FONT.OTF off the modelled microSD and reflows it, so its
 # frame must also be non-trivial.
 render_assert_apps="ereader_ui sd_font_render"
@@ -94,7 +94,7 @@ min_render_colors=6
 button_apps="gpio_input_demo"
 
 # Apps driven with an injected panel tap (board_sim --click X Y arms one GT911
-# contact, re-armed each chunk until the firmware's real ra_touch_read drains
+# contact, re-armed each chunk until the firmware's real ra8_touch_read drains
 # it). touch_demo brings up the GT911 and decodes that tap, so the injected
 # coordinate must come back in its banner -- this gates the GT911 touch path
 # end to end (#122). 250,250 maps 1:1 on the default panel (no rotation).
@@ -148,8 +148,8 @@ periodic_tick_apps="agt_periodic rtc_alarm elc_event_demo"
 usb_enum_apps="usb_cdc_echo threadx_usbx_cdc_demo usb_hid_device usb_msc_device"
 
 # USB HOST-mode apps (#67 Phase 3, the inverse path). board_sim seams the
-# first-party ra_usb_host_* primitives to a virtual HID boot keyboard (the same
-# function-seam technique it uses for ra_eth_*), since the USBHS host controller
+# first-party ra8_usb_host_* primitives to a virtual HID boot keyboard (the same
+# function-seam technique it uses for ra8_eth_*), since the USBHS host controller
 # (0x40351000) is unmodelled. The firmware's real host stack enumerates the
 # virtual device, opens the interrupt-IN pipe, and decodes its reports -- we
 # assert the app's end-to-end PASS banner. ThreadX, so newer-Unicorn-only; pass
@@ -158,22 +158,22 @@ usb_host_apps="usb_host_keyboard usb_host_msc_browse usb_host_file_ops"
 
 # Live-SD USB MSC device app (#206): the MSC LUN serves the ACTUAL modelled
 # card (--sd), not a snapshot -- media-read/media-write forward to
-# ra_sdmmc_spi_read_blocks / ra_sdmmc_spi_write_blocks and the LUN geometry is
+# ra8_sdmmc_spi_read_blocks / ra8_sdmmc_spi_write_blocks and the LUN geometry is
 # the card's CSD capacity. board_sim's virtual USB host enumerates the device
 # and drives the MSC BOT script (INQUIRY, READ CAPACITY(10), READ(10) of
 # sector 0), so the gate asserts CONFIGURED (MSC active) PLUS the capacity
 # reported over the USB pipe equals the card image's real block count PLUS a
 # full 512-byte sector-0 read -- proving capacity + data flow card ->
-# ra_sdmmc_spi -> media callbacks -> USB end to end. The scripted host issues
+# ra8_sdmmc_spi -> media callbacks -> USB end to end. The scripted host issues
 # no WRITE(10); the real-PC file copy stays a manual bench step (README.md).
 # ThreadX/USBX, so newer-Unicorn-only; pass explicitly, e.g.
 # `scripts/board_sim_smoke.sh usb_msc_sdcard`.
 usb_msc_sd_apps="usb_msc_sdcard"
 
-# microSD FORMAT apps: exercise the ra_fs_format() mkfs path end to end. These
+# microSD FORMAT apps: exercise the ra8_fs_format() mkfs path end to end. These
 # reformat the modelled card themselves (once per FAT type), so they take a
 # blank card via board_sim's --sd-new (not a pre-built --sd image). board_sim's
-# SD model answers the block writes the formatter and ra_fs emit, and its CSD
+# SD model answers the block writes the formatter and ra8_fs emit, and its CSD
 # reports the --sd-new size so the SD bring-up sees a real capacity.
 # fs_format_mount formats + mounts + file-cycles FAT12, FAT16, FAT32 (+ an
 # exFAT format + mount + empty-root trial) and
@@ -182,18 +182,18 @@ usb_msc_sd_apps="usb_msc_sdcard"
 # explicitly, e.g. `scripts/board_sim_smoke.sh fs_format_mount`.
 sd_format_apps="fs_format_mount"
 
-# microSD ra_io apps: prove the ra_io fabric's swappable SD-over-SPI block-device
-# backend (ra_io_blockdev_sdspi) by formatting + mounting FAT16 on a blank
+# microSD ra8_io apps: prove the ra8_io fabric's swappable SD-over-SPI block-device
+# backend (ra8_io_blockdev_sdspi) by formatting + mounting FAT16 on a blank
 # --sd-new card and round-tripping a file through the VFS. Distinct from the
 # fs_format_mount banner, so it gets its own banner assertion via uart_expect().
-sd_io_apps="ra_io_sd_demo ra_io_sdhi_demo ra_sdhi_card_demo"
+sd_io_apps="ra8_io_sd_demo ra8_io_sdhi_demo ra8_sdhi_card_demo"
 
-# On-chip non-volatile ra_io apps (no CLI flag -- board_sim models the medium
-# internally): OSPI NOR (ra_io_xspi_demo, erase-before-write 4 KiB RMW) and the
-# on-chip extra MRAM (ra_io_mram_demo, MACI program/erase via board_periph_mram).
+# On-chip non-volatile ra8_io apps (no CLI flag -- board_sim models the medium
+# internally): OSPI NOR (ra8_io_xspi_demo, erase-before-write 4 KiB RMW) and the
+# on-chip extra MRAM (ra8_io_mram_demo, MACI program/erase via board_periph_mram).
 # Both idle forever after their PASS banner, so STOP_ON ends the run the moment
 # it prints. Asserts via uart_expect().
-xspi_io_apps="ra_io_xspi_demo ra_io_mram_demo"
+xspi_io_apps="ra8_io_xspi_demo ra8_io_mram_demo"
 
 # Deep-idle self-parking apps. lpm_periodic_idle runs a bounded wake/work/standby
 # loop, prints "lpm_periodic_idle PASS", then parks forever in lpi_panic_halt --
@@ -208,14 +208,14 @@ xspi_io_apps="ra_io_xspi_demo ra_io_mram_demo"
 selfpark_banner_apps="lpm_periodic_idle"
 
 # Dual-core ITM-verdict apps (#67 / #152). Unlike the UART-banner apps, these
-# narrate their run over ra_log, which the firmware writes to the Cortex-M ITM
+# narrate their run over ra8_log, which the firmware writes to the Cortex-M ITM
 # stimulus port; board_sim surfaces those bytes as `[itm] ...` lines (the SWO
 # analog of the `[uart]` console echo). The M85 narrates the M33's replies too
 # -- a dualcore_mailbox reply of operand*3+1, or the background counter's final
 # total, can only come from the SECOND core actually executing -- so the ITM
 # verdict gates the dual-core release + cross-core shared-SRAM IPC path end to
 # end, with no hardware. They are built Debug (see the build loop) because
-# ra_log_info is compiled to a no-op at the default RelWithDebInfo level, and run
+# ra8_log_info is compiled to a no-op at the default RelWithDebInfo level, and run
 # with BOARD_SIM_STOP_ON tied to each app's PERSISTENT steady-state ITM line so
 # the run ends deterministically the moment the verdict has been logged (the M85
 # parks / heartbeats forever afterwards). Bare-metal (no ThreadX), and the
@@ -266,7 +266,7 @@ build_sd_image() {
 # bakes a tiny deterministic EPUB onto the card (build_book_sd_image) so the full
 # import + compile + cache + read path runs end to end in board_sim with no
 # hardware. The seed book carries a `text/css` stylesheet (style.css) so the run
-# exercises the runtime ra_rabook stylesheet-compile stage end to end, not just
+# exercises the runtime ra8_rabook stylesheet-compile stage end to end, not just
 # text (#169). This was previously gated text-only on the belief it tripped a
 # board_sim emulation gap; the real cause was a firmware bug -- import_reader's
 # pipeline scratch never wired a `.css` source buffer (css_cap == 0), so any
@@ -282,7 +282,7 @@ book_sd_image=""
 # (mimetype first + every member STORED with a fixed 1980 epoch, so the bytes
 # never drift across Python/zlib versions or run times -- the same recipe
 # scripts/utils/rabook_parity_gen.py uses), then writes it through mkfontimg's
-# real ra_fs so the on-card FAT layout is exactly what the firmware reads. Sets
+# real ra8_fs so the on-card FAT layout is exactly what the firmware reads. Sets
 # the global $book_sd_image on success; leaves it empty if the fixture, Python,
 # or mkfontimg is unavailable (the gate then fails loudly, as a missing card is a
 # real setup error for this app).
@@ -374,16 +374,16 @@ sim_extra_args() { # app -> extra args on stdout
 uart_expect() { # app -> expected UART substring on stdout
   case "$1" in
     uart_hello) printf 'hello, ra8d2!' ;;
-    ra_io_demo) printf 'ra_io_demo: mkdir+nested ram:/SUB/NOTE.TXT PASS' ;;
-    ra_io_sdram_demo) printf 'ra_io_sdram_demo: mkdir+nested dr:/SUB/NOTE.TXT PASS' ;;
-    ra_io_compress_demo) printf 'bytes -> 4096 round-trip PASS' ;;
-    ra_io_sd_demo) printf 'ra_io_sd_demo: sd:/LOGS/A.TXT 512 bytes PASS' ;;
-    ra_io_sdhi_demo) printf 'ra_io_sdhi_demo: sd:/LOGS/A.TXT 512 bytes PASS' ;;
-    ra_sdhi_card_demo) printf 'ra_sdhi_card_demo: native SDHI block round-trip PASS' ;;
-    ra_io_xspi_demo) printf 'ra_io_xspi_demo: xs:/CFG/SET.BIN 256 bytes PASS' ;;
-    ra_io_mram_demo) printf 'block erase/program/read on extra MRAM PASS' ;;
-    ra_io_fsfmt_demo) printf 'ra_io_fsfmt_demo: probed fat maxname=12 + foreign stub seam PASS' ;;
-    ra_io_cache_demo) printf 'ra_io_cache_demo: re-read x8 hits=' ;;
+    ra8_io_demo) printf 'ra8_io_demo: mkdir+nested ram:/SUB/NOTE.TXT PASS' ;;
+    ra8_io_sdram_demo) printf 'ra8_io_sdram_demo: mkdir+nested dr:/SUB/NOTE.TXT PASS' ;;
+    ra8_io_compress_demo) printf 'bytes -> 4096 round-trip PASS' ;;
+    ra8_io_sd_demo) printf 'ra8_io_sd_demo: sd:/LOGS/A.TXT 512 bytes PASS' ;;
+    ra8_io_sdhi_demo) printf 'ra8_io_sdhi_demo: sd:/LOGS/A.TXT 512 bytes PASS' ;;
+    ra8_sdhi_card_demo) printf 'ra8_sdhi_card_demo: native SDHI block round-trip PASS' ;;
+    ra8_io_xspi_demo) printf 'ra8_io_xspi_demo: xs:/CFG/SET.BIN 256 bytes PASS' ;;
+    ra8_io_mram_demo) printf 'block erase/program/read on extra MRAM PASS' ;;
+    ra8_io_fsfmt_demo) printf 'ra8_io_fsfmt_demo: probed fat maxname=12 + foreign stub seam PASS' ;;
+    ra8_io_cache_demo) printf 'ra8_io_cache_demo: re-read x8 hits=' ;;
     ereader_chrome) printf 'ereader-hil: chrome boxes=7 crc=0DCB740F' ;;
     ereader_image) printf 'ereader-img-hil: img 160x120 crc=BDC56EC5' ;;
     ereader_link) printf 'ereader-link-hil: links=2 cross=Y frag=Y apage=1 geom=5B90D1EE' ;;
@@ -514,7 +514,7 @@ fail=0
 for app in "${apps[@]}"; do
   printf '  %-24s ' "$app"
   # The dual-core ITM-verdict apps must be built Debug so their INFO-level
-  # ra_log/[itm] verdict lines are compiled in (RelWithDebInfo strips them).
+  # ra8_log/[itm] verdict lines are compiled in (RelWithDebInfo strips them).
   # Force a clean reconfigure first: the per-app `build` target re-runs cmake
   # only when a source is newer than the ELF, so an up-to-date RelWithDebInfo
   # tree from an earlier `make <app>` would otherwise silently win and the
@@ -728,25 +728,25 @@ for app in "${apps[@]}"; do
       continue
       ;;
   esac
-  # microSD ra_io apps: blank FAT16 card via --sd-new, assert the app banner.
+  # microSD ra8_io apps: blank FAT16 card via --sd-new, assert the app banner.
   case " $sd_io_apps " in
     *" $app "*)
       want="$(uart_expect "$app")"
       ioclean="$({ BOARD_SIM_MAX_CHUNKS=200000 BOARD_SIM_WALL_S=300 \
         "$sim" "$elf" --sd-new 64:fat16 2>&1 || true; } | LC_ALL=C tr -cd '[:print:]\n')"
       if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$ioclean"; then
-        echo "FAULT (during ra_io SD round-trip)"
+        echo "FAULT (during ra8_io SD round-trip)"
         fail=1
       elif grep -qF "$want" <<<"$ioclean"; then
-        echo "OK (ra_io SD backend: $want)"
+        echo "OK (ra8_io SD backend: $want)"
       else
-        echo "RA_IO SD FAIL (did not reach the PASS banner)"
+        echo "RA8_IO SD FAIL (did not reach the PASS banner)"
         fail=1
       fi
       continue
       ;;
   esac
-  # OSPI-NOR ra_io app: no card needed (OSPI is modelled internally), but the
+  # OSPI-NOR ra8_io app: no card needed (OSPI is modelled internally), but the
   # erase-reprogram RMW is slow -- STOP_ON ends the run as soon as PASS prints.
   case " $xspi_io_apps " in
     *" $app "*)
@@ -754,12 +754,12 @@ for app in "${apps[@]}"; do
       xsclean="$({ BOARD_SIM_MAX_CHUNKS=8000000 BOARD_SIM_STOP_ON="$want" BOARD_SIM_WALL_S=300 \
         "$sim" "$elf" 2>&1 || true; } | LC_ALL=C tr -cd '[:print:]\n')"
       if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$xsclean"; then
-        echo "FAULT (during ra_io on-chip-NV round-trip)"
+        echo "FAULT (during ra8_io on-chip-NV round-trip)"
         fail=1
       elif grep -qF "$want" <<<"$xsclean"; then
-        echo "OK (ra_io on-chip-NV backend: $want)"
+        echo "OK (ra8_io on-chip-NV backend: $want)"
       else
-        echo "RA_IO on-chip-NV FAIL (did not reach the PASS banner)"
+        echo "RA8_IO on-chip-NV FAIL (did not reach the PASS banner)"
         fail=1
       fi
       continue
@@ -943,7 +943,7 @@ case " ${apps[*]} " in
     ;;
 esac
 
-# Low-battery nag (ra_batt policy): seed the modelled fuel gauge below each
+# Low-battery nag (ra8_batt policy): seed the modelled fuel gauge below each
 # threshold via --battery and assert the edge-triggered warning line. 15% must
 # raise LOW (<=20), 8% must raise CRITICAL (<=10); the default 72% run gated
 # above already proves no nag fires when healthy. Only when the app is built.

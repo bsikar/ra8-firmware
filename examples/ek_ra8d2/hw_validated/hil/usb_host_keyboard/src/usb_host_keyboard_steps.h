@@ -36,9 +36,9 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
+#include "ra8_err.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 #endif
 
@@ -121,7 +121,7 @@ typedef enum : uint8_t {
   k_hid_kc_2 = 0x1FU, /**< Keycode for '2'.                 */
 } hid_keycode_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
 /* Shared mutable state (defined once in main.c) */
@@ -246,8 +246,8 @@ uint32_t hid_str_len(const char* text);
  *
  * @param[in] data Buffer to send.
  * @param[in] len  Byte count.
- * @return ra_err_t passthrough from `ra_board_uart_console_write`.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t passthrough from `ra8_board_uart_console_write`.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre @p data is non-NULL; SCI8 init already ran.
  * @pre @p len excludes any NUL terminator.
@@ -257,14 +257,14 @@ uint32_t hid_str_len(const char* text);
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t hid_sci_write(const uint8_t* data, uint32_t len);
+[[nodiscard]] ra8_err_t hid_sci_write(const uint8_t* data, uint32_t len);
 
 /**
  * @brief Print a NUL-terminated ASCII string over the console.
  *
  * @param[in] text String to print (CR/LF included by the caller).
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran; @p text is non-NULL.
  * @pre @p text is NUL-terminated within ::k_hid_print_cap bytes.
@@ -274,14 +274,14 @@ uint32_t hid_str_len(const char* text);
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t hid_print(const char* text);
+[[nodiscard]] ra8_err_t hid_print(const char* text);
 
 /**
  * @brief Print a uint32_t as ASCII decimal.
  *
  * @param[in] value Value to print.
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
  * @pre None beyond console readiness.
@@ -291,15 +291,15 @@ uint32_t hid_str_len(const char* text);
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t hid_print_dec(uint32_t value);
+[[nodiscard]] ra8_err_t hid_print_dec(uint32_t value);
 
 /**
  * @brief Print a value as fixed-width uppercase hex.
  *
  * @param[in] value  Value to print.
  * @param[in] digits Hex digit count (4 for u16, 8 for u32).
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p digits is at most ::k_hid_hex_chars_u32.
@@ -309,15 +309,15 @@ uint32_t hid_str_len(const char* text);
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t hid_print_hex(uint32_t value, uint8_t digits);
+[[nodiscard]] ra8_err_t hid_print_hex(uint32_t value, uint8_t digits);
 
 /**
  * @brief Print "FAIL <what> err=0xNNNNNNNN" on its own line.
  *
  * @param[in] what Short description of the failed step.
  * @param[in] err  Error code returned by the step.
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The diagnostic line is queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok The diagnostic line is queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p what is NUL-terminated within the print cap.
@@ -327,6 +327,6 @@ uint32_t hid_str_len(const char* text);
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t hid_print_fail(const char* what, ra_err_t err);
+[[nodiscard]] ra8_err_t hid_print_fail(const char* what, ra8_err_t err);
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

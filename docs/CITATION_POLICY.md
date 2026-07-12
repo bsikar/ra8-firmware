@@ -7,7 +7,7 @@ citation rules. The short form lives in `CLAUDE.md` under
 ## Rule 1: in-tree line citations are FORBIDDEN
 
 Comments must not reference other files in this repository by
-`<file>:<line>` (e.g. `libs/ra_drw/src/ra_drw.c:776`). Line numbers <!-- CITES-OK: literal example of the forbidden pattern documenting the rule -->
+`<file>:<line>` (e.g. `libs/ra8_drw/src/ra8_drw.c:776`). Line numbers <!-- CITES-OK: literal example of the forbidden pattern documenting the rule -->
 go stale the moment any agent reformats or edits the target file, and
 they are not searchable -- a reader cannot grep for `:776` and find
 anything useful.
@@ -15,8 +15,8 @@ anything useful.
 Use the function or symbol name instead:
 
 - `internal_rect_below_min`
-- `ra_dmac::internal_mode_to_dmtmd`
-- `see ra_pid_step in libs/ra_pid/src/ra_pid.c`
+- `ra8_dmac::internal_mode_to_dmtmd`
+- `see ra8_pid_step in libs/ra8_pid/src/ra8_pid.c`
 
 The pre-commit gate `scripts/utils/check_line_citations.py` enforces
 this rule strictly: any new in-tree `<file>:<line>` reference inside

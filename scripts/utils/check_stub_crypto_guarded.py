@@ -10,28 +10,28 @@ image (issue #180):
   - src/secure_app/secure_trng.c        deterministic xorshift PRNG as a "TRNG"
   - src/secure_app/key_import.c         forgeable length-tagged XOR-fold MAC
   - src/secure_app/key_vault.c          plain secure-SRAM key store (no HW vault)
-  - libs/ra_hal/src/ra_rsip_key_injection.c  non-cryptographic xorshift key-wrap
-  - libs/ra_hal/src/ra_rsip_ecc.c       fiction-opcode ECDSA / ECDH / Ed25519 asym
-  - libs/ra_hal/src/ra_rsip_cipher.c    fiction-opcode AES / ChaCha / key-install
-  - libs/ra_hal/src/ra_rsip_rsa.c       fiction-opcode RSA sign / verify / enc / dec
-  - libs/ra_hal/src/ra_rsip_asym.c      fiction-opcode hash / HMAC / key vault / wrap / KDF
-  - libs/ra_hal/src/ra_rsip_devsec.c    fiction-register lifecycle / debug / tamper / DPA
+  - libs/ra8_hal/src/ra8_rsip_key_injection.c  non-cryptographic xorshift key-wrap
+  - libs/ra8_hal/src/ra8_rsip_ecc.c       fiction-opcode ECDSA / ECDH / Ed25519 asym
+  - libs/ra8_hal/src/ra8_rsip_cipher.c    fiction-opcode AES / ChaCha / key-install
+  - libs/ra8_hal/src/ra8_rsip_rsa.c       fiction-opcode RSA sign / verify / enc / dec
+  - libs/ra8_hal/src/ra8_rsip_asym.c      fiction-opcode hash / HMAC / key vault / wrap / KDF
+  - libs/ra8_hal/src/ra8_rsip_devsec.c    fiction-register lifecycle / debug / tamper / DPA
 
 Each such body MUST be wrapped in the guard::
 
-    #if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE)
+    #if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
         <insecure placeholder body>
     #else
-        <fail-closed: every entry point returns a hard error, never k_ra_ok>
+        <fail-closed: every entry point returns a hard error, never k_ra8_ok>
     #endif
 
 so a real production/HIL image that sets NEITHER flag compiles the fail-closed
 #else and cannot silently ship the stub. This gate is the compile-time-of-CI
 guarantee the audit asked for: it FAILS if, for any listed TU,
 
-  1. the guard `#if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE)`
+  1. the guard `#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)`
      is absent, or has no matching #else / #endif;
-  2. the #else branch is not fail-closed (no `#error` and no `k_ra_err_` return);
+  2. the #else branch is not fail-closed (no `#error` and no `k_ra8_err_` return);
   3. the TU's insecure signature token escapes the guarded region (appears before
      the guard, in the #else, or after the #endif) -- i.e. an insecure body that
      is not actually behind the guard.
@@ -60,12 +60,12 @@ STUB_TUS = {
     "src/secure_app/secure_trng.c": "internal_xorshift64",
     "src/secure_app/key_import.c": "internal_verify_mac",
     "src/secure_app/key_vault.c": "s_vault",
-    "libs/ra_hal/src/ra_rsip_key_injection.c": "ki_compute_mac",
-    "libs/ra_hal/src/ra_rsip_ecc.c": "k_ra_rsip_asym_op_eddsa_sign",
-    "libs/ra_hal/src/ra_rsip_cipher.c": "internal_sym_run",
-    "libs/ra_hal/src/ra_rsip_rsa.c": "internal_rsa_dispatch",
-    "libs/ra_hal/src/ra_rsip_asym.c": "internal_hash_pull_digest",
-    "libs/ra_hal/src/ra_rsip_devsec.c": "k_ra_rsip_off_life_state",
+    "libs/ra8_hal/src/ra8_rsip_key_injection.c": "ki_compute_mac",
+    "libs/ra8_hal/src/ra8_rsip_ecc.c": "k_ra8_rsip_asym_op_eddsa_sign",
+    "libs/ra8_hal/src/ra8_rsip_cipher.c": "internal_sym_run",
+    "libs/ra8_hal/src/ra8_rsip_rsa.c": "internal_rsa_dispatch",
+    "libs/ra8_hal/src/ra8_rsip_asym.c": "internal_hash_pull_digest",
+    "libs/ra8_hal/src/ra8_rsip_devsec.c": "k_ra8_rsip_off_life_state",
 }
 
 _RE_IF = re.compile(r"^\s*#\s*if(n?def)?\b")
@@ -78,8 +78,8 @@ def is_guard_open(line: str) -> bool:
     """Whether ``line`` is the stub-crypto guard opener (either flag order)."""
     return bool(
         re.match(r"^\s*#\s*if\b", line)
-        and "RA_INSECURE_STUB_CRYPTO" in line
-        and "RA_SIMULATOR_MODE" in line
+        and "RA8_INSECURE_STUB_CRYPTO" in line
+        and "RA8_SIMULATOR_MODE" in line
     )
 
 
@@ -120,7 +120,7 @@ def check_file(rel: str, token: str) -> list[str]:
     if region is None:
         return [
             f"{rel}: missing the stub-crypto guard "
-            f"'#if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE)' "
+            f"'#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)' "
             f"with a matching #else / #endif"
         ]
     if_idx, else_idx, endif_idx = region
@@ -128,13 +128,13 @@ def check_file(rel: str, token: str) -> list[str]:
     problems: list[str] = []
 
     # (2) the #else branch must be fail-closed: a compile-time #error or a hard
-    #     k_ra_err_ return (never k_ra_ok).
+    #     k_ra8_err_ return (never k_ra8_ok).
     else_body = lines[else_idx + 1 : endif_idx]
-    fail_closed = any(_RE_ERROR.match(ln) or "k_ra_err_" in ln for ln in else_body)
+    fail_closed = any(_RE_ERROR.match(ln) or "k_ra8_err_" in ln for ln in else_body)
     if not fail_closed:
         problems.append(
             f"{rel}: the #else branch is not fail-closed "
-            f"(needs a #error or a k_ra_err_* hard return, not k_ra_ok)"
+            f"(needs a #error or a k_ra8_err_* hard return, not k_ra8_ok)"
         )
 
     # (3) the insecure signature token must live INSIDE the guarded #if region
@@ -152,7 +152,7 @@ def check_file(rel: str, token: str) -> list[str]:
         problems.append(
             f"{rel}: insecure signature '{token}' appears OUTSIDE the guard "
             f"({where}) -- the insecure body must be fully inside the "
-            f"#if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE) block"
+            f"#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE) block"
         )
 
     return problems
@@ -168,8 +168,8 @@ def main() -> int:
         for p in all_problems:
             print(f"  {p}")
         print("Fix each at the root -- wrap the insecure body in")
-        print("  #if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE)")
-        print("and make the #else fail closed (return k_ra_err_* / #error), or replace")
+        print("  #if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)")
+        print("and make the #else fail closed (return k_ra8_err_* / #error), or replace")
         print("the placeholder with a real crypto backend.")
         return 1
 

@@ -8,13 +8,13 @@
  * @details
  * The e-reader chrome (#76 box model + #80 interaction) is golden-validated on
  * the board_sim emulator. This app closes the on-hardware gap: it exercises the
- * **real** `ra_box` layout + `ra_gfx` software render on the actual RA8D2,
+ * **real** `ra8_box` layout + `ra8_gfx` software render on the actual RA8D2,
  * deterministically, with no panel / SDRAM / touch / SD dependency.
  *
- * It builds a representative chrome screen as an `ra_box` tree (a status bar
- * over a 2-column grid of "book" cells), lays it out with `ra_box_layout`,
+ * It builds a representative chrome screen as an `ra8_box` tree (a status bar
+ * over a 2-column grid of "book" cells), lays it out with `ra8_box_layout`,
  * renders the boxes (fill + 1-px border) and labels (bundled
- * `ra_gfx_font_8x16`) into a static RGB565 framebuffer in internal SRAM, then
+ * `ra8_gfx_font_8x16`) into a static RGB565 framebuffer in internal SRAM, then
  * folds an FNV-1a-32 hash over the whole framebuffer and prints it over the
  * SCI8 J-Link OB console:
  *
@@ -33,16 +33,16 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_box.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gfx.h"
-#include "ra_gfx_font.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_time.h"
-#include "ra_ui.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_box.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gfx.h"
+#include "ra8_gfx_font.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_time.h"
+#include "ra8_ui.h"
 
 /**
  * @enum chrome_hil_cfg_t
@@ -70,7 +70,7 @@ typedef enum : uint32_t {
 
 /**
  * @enum chrome_hil_color_t
- * @brief Chrome palette (0xRRGGBB; ra_gfx down-converts to RGB565).
+ * @brief Chrome palette (0xRRGGBB; ra8_gfx down-converts to RGB565).
  */
 typedef enum : uint32_t {
   k_ch_col_page   = 0xF4F0E8U, /**< Page / root background.  */
@@ -85,7 +85,7 @@ typedef enum : uint32_t {
 static uint16_t s_framebuffer[(size_t)k_ch_fb_h * (size_t)k_ch_fb_w];
 
 /** @brief Box-tree node storage. */
-static ra_box_t s_box_nodes[k_ch_max_nodes];
+static ra8_box_t s_box_nodes[k_ch_max_nodes];
 
 /** @brief Per-node label (NULL = no text), indexed by box-tree node. */
 static const char* s_label[k_ch_max_nodes];
@@ -110,7 +110,7 @@ static const uint8_t k_msg_eol[]  = "\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void ch_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Park forever in WFI after a fatal init error. */
@@ -159,88 +159,88 @@ static void ch_print_uint(uint32_t value)
  */
 
 /** @brief Build the status-bar-over-grid chrome tree; return the root index. */
-static int16_t ch_build_chrome(ra_box_tree_t* tree)
+static int16_t ch_build_chrome(ra8_box_tree_t* tree)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ch_max_nodes; i++) {
     s_label[i] = nullptr;
   }
-  (void)ra_box_tree_init(tree, s_box_nodes, (uint16_t)k_ch_max_nodes);
-  const ra_box_t root_n = {.kind = (uint8_t)k_ra_box_stack_v,
-                           .pad  = (int16_t)k_ch_root_pad,
-                           .gap  = (int16_t)k_ch_root_pad,
-                           .flex = 1U,
-                           .fill = (uint32_t)k_ch_col_page};
-  const int16_t  root   = ra_box_add(tree, (int16_t)k_ra_box_none, &root_n);
+  (void)ra8_box_tree_init(tree, s_box_nodes, (uint16_t)k_ch_max_nodes);
+  const ra8_box_t root_n = {.kind = (uint8_t)k_ra8_box_stack_v,
+                            .pad  = (int16_t)k_ch_root_pad,
+                            .gap  = (int16_t)k_ch_root_pad,
+                            .flex = 1U,
+                            .fill = (uint32_t)k_ch_col_page};
+  const int16_t   root   = ra8_box_add(tree, (int16_t)k_ra8_box_none, &root_n);
 
-  const ra_box_t bar_n = {.kind  = (uint8_t)k_ra_box_leaf,
-                          .fixed = (int16_t)k_ch_status_h,
-                          .fill  = (uint32_t)k_ch_col_bar};
-  const int16_t  bar   = ra_box_add(tree, root, &bar_n);
-  s_label[bar]         = "Library";
+  const ra8_box_t bar_n = {.kind  = (uint8_t)k_ra8_box_leaf,
+                           .fixed = (int16_t)k_ch_status_h,
+                           .fill  = (uint32_t)k_ch_col_bar};
+  const int16_t   bar   = ra8_box_add(tree, root, &bar_n);
+  s_label[bar]          = "Library";
 
-  const ra_box_t grid_n = {.kind      = (uint8_t)k_ra_box_grid,
-                           .grid_cols = 2U,
-                           .flex      = 1U,
-                           .pad       = (int16_t)k_ch_grid_pad,
-                           .gap       = (int16_t)k_ch_grid_gap};
-  const int16_t  grid   = ra_box_add(tree, root, &grid_n);
+  const ra8_box_t grid_n = {.kind      = (uint8_t)k_ra8_box_grid,
+                            .grid_cols = 2U,
+                            .flex      = 1U,
+                            .pad       = (int16_t)k_ch_grid_pad,
+                            .gap       = (int16_t)k_ch_grid_gap};
+  const int16_t   grid   = ra8_box_add(tree, root, &grid_n);
 
   for (uint32_t i = 0U; i < (uint32_t)k_ch_cell_count; i++) {
-    const ra_box_t cell_n = {.kind     = (uint8_t)k_ra_box_leaf,
-                             .flex     = 1U,
-                             .pad      = (int16_t)k_ch_cell_pad,
-                             .fill     = (uint32_t)k_ch_col_cell,
-                             .border   = (uint32_t)k_ch_col_edge,
-                             .border_w = (int16_t)k_ch_border_w,
-                             .tag      = (int16_t)i};
-    const int16_t  cell   = ra_box_add(tree, grid, &cell_n);
-    s_label[cell]         = k_ch_titles[i];
+    const ra8_box_t cell_n = {.kind     = (uint8_t)k_ra8_box_leaf,
+                              .flex     = 1U,
+                              .pad      = (int16_t)k_ch_cell_pad,
+                              .fill     = (uint32_t)k_ch_col_cell,
+                              .border   = (uint32_t)k_ch_col_edge,
+                              .border_w = (int16_t)k_ch_border_w,
+                              .tag      = (int16_t)i};
+    const int16_t   cell   = ra8_box_add(tree, grid, &cell_n);
+    s_label[cell]          = k_ch_titles[i];
   }
   return root;
 }
 
 /** @brief Fill a rectangle by drawing @p h horizontal spans. */
-static void ch_fill(const ra_ui_rect_t* r, uint32_t color)
+static void ch_fill(const ra8_ui_rect_t* r, uint32_t color)
 {
   for (int32_t row = 0; row < r->h; row++) {
-    (void)ra_gfx_line(r->x, r->y + row, r->x + r->w - 1, r->y + row, color);
+    (void)ra8_gfx_line(r->x, r->y + row, r->x + r->w - 1, r->y + row, color);
   }
 }
 
 /** @brief Draw a 1-pixel border around a rectangle. */
-static void ch_border(const ra_ui_rect_t* r, uint32_t color)
+static void ch_border(const ra8_ui_rect_t* r, uint32_t color)
 {
   const int32_t x1 = r->x + r->w - 1;
   const int32_t y1 = r->y + r->h - 1;
-  (void)ra_gfx_line(r->x, r->y, x1, r->y, color);
-  (void)ra_gfx_line(r->x, y1, x1, y1, color);
-  (void)ra_gfx_line(r->x, r->y, r->x, y1, color);
-  (void)ra_gfx_line(x1, r->y, x1, y1, color);
+  (void)ra8_gfx_line(r->x, r->y, x1, r->y, color);
+  (void)ra8_gfx_line(r->x, y1, x1, y1, color);
+  (void)ra8_gfx_line(r->x, r->y, r->x, y1, color);
+  (void)ra8_gfx_line(x1, r->y, x1, y1, color);
 }
 
 /** @brief Render the laid-out tree: per node, fill + border + label. */
-static void ch_render(const ra_box_tree_t* tree)
+static void ch_render(const ra8_box_tree_t* tree)
 {
-  (void)ra_gfx_clear((uint32_t)k_ch_col_page);
+  (void)ra8_gfx_clear((uint32_t)k_ch_col_page);
   for (uint16_t i = 0U; i < tree->count; i++) {
-    const ra_box_t* b = &tree->nodes[i];
-    if (b->fill != (uint32_t)k_ra_box_no_colour) {
+    const ra8_box_t* b = &tree->nodes[i];
+    if (b->fill != (uint32_t)k_ra8_box_no_colour) {
       ch_fill(&b->rect, b->fill);
     }
-    if ((b->border != (uint32_t)k_ra_box_no_colour) && (b->border_w > 0)) {
+    if ((b->border != (uint32_t)k_ra8_box_no_colour) && (b->border_w > 0)) {
       ch_border(&b->rect, b->border);
     }
     if (s_label[i] != nullptr) {
       const uint32_t fg =
         (b->fill == (uint32_t)k_ch_col_bar) ? (uint32_t)k_ch_col_bar_tx : (uint32_t)k_ch_col_ink;
       const uint32_t bg =
-        (b->fill != (uint32_t)k_ra_box_no_colour) ? b->fill : (uint32_t)k_ch_col_page;
-      (void)ra_gfx_text_out(b->rect.x + (int16_t)k_ch_cell_pad,
-                            b->rect.y + (int16_t)k_ch_cell_pad,
-                            s_label[i],
-                            &ra_gfx_font_8x16,
-                            fg,
-                            bg);
+        (b->fill != (uint32_t)k_ra8_box_no_colour) ? b->fill : (uint32_t)k_ch_col_page;
+      (void)ra8_gfx_text_out(b->rect.x + (int16_t)k_ch_cell_pad,
+                             b->rect.y + (int16_t)k_ch_cell_pad,
+                             s_label[i],
+                             &ra8_gfx_font_8x16,
+                             fg,
+                             bg);
     }
   }
 }
@@ -266,16 +266,16 @@ static uint32_t ch_framebuffer_hash(void)
 static void ch_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     ch_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     ch_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     ch_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_ch_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_ch_uart_baud) != k_ra8_ok) {
     ch_panic_halt();
   }
 }
@@ -295,19 +295,19 @@ static void ch_setup_or_halt(void)
 int32_t main(void)
 {
   ch_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   ch_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
-  if (ra_gfx_init(s_framebuffer,
-                  (uint16_t)k_ch_fb_w,
-                  (uint16_t)k_ch_fb_h,
-                  k_ra_gfx_format_rgb565) != k_ra_ok) {
+  if (ra8_gfx_init(s_framebuffer,
+                   (uint16_t)k_ch_fb_w,
+                   (uint16_t)k_ch_fb_h,
+                   k_ra8_gfx_format_rgb565) != k_ra8_ok) {
     ch_panic_halt();
   }
-  ra_box_tree_t      tree  = {};
-  const int16_t      root  = ch_build_chrome(&tree);
-  const ra_ui_rect_t frame = {.x = 0, .y = 0, .w = (int32_t)k_ch_fb_w, .h = (int32_t)k_ch_fb_h};
-  (void)ra_box_layout(&tree, root, &frame);
+  ra8_box_tree_t      tree  = {};
+  const int16_t       root  = ch_build_chrome(&tree);
+  const ra8_ui_rect_t frame = {.x = 0, .y = 0, .w = (int32_t)k_ch_fb_w, .h = (int32_t)k_ch_fb_h};
+  (void)ra8_box_layout(&tree, root, &frame);
   ch_render(&tree);
 
   ch_print(k_msg_pre, (uint32_t)sizeof(k_msg_pre) - 1U);

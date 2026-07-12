@@ -11,7 +11,7 @@
 #     * The format gate pins clang-format-22; Homebrew (macOS) and Ubuntu ship
 #       different majors that disagree on edge cases.
 #     * The host unit tests install RAM with mmap(MAP_FIXED, 0x40000000, ...)
-#       (tests/mocks/ra_sim_mmap.c). macOS arm64 refuses MAP_FIXED below 4 GiB,
+#       (tests/mocks/ra8_sim_mmap.c). macOS arm64 refuses MAP_FIXED below 4 GiB,
 #       so every test SIGKILLs before main() on the Mac.
 #   Running the gates inside the Ubuntu 24.04 devcontainer reproduces the runner
 #   environment, so a red gate is caught here instead of in CI.
@@ -21,7 +21,7 @@
 #   bash scripts/ci.sh --fast     # skip the slow clang-tidy + coverage gates
 #   bash scripts/ci.sh --rebuild  # force a devcontainer image rebuild first
 #
-# The script re-enters itself inside the container with RA_CI_INNER=1, where it
+# The script re-enters itself inside the container with RA8_CI_INNER=1, where it
 # extracts a clean `git archive HEAD` (exactly what CI checks out) into a
 # throwaway dir and runs the gates there. The host repo is bind-mounted
 # read-only, so the host source tree and its macOS CMake caches are never
@@ -35,11 +35,11 @@ IMAGE_TAG="ra8-ci:latest"
 DOCKERFILE="$REPO_ROOT/.devcontainer/Dockerfile"
 
 # ===========================================================================
-# IN-CONTAINER MODE. Entered via `docker run ... -e RA_CI_INNER=1`. Runs every
+# IN-CONTAINER MODE. Entered via `docker run ... -e RA8_CI_INNER=1`. Runs every
 # gate, records PASS/FAIL, prints a summary, and exits non-zero if any failed.
 # ===========================================================================
-if [[ "${RA_CI_INNER:-0}" == "1" ]]; then
-  fast="${RA_CI_FAST:-0}"
+if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
+  fast="${RA8_CI_FAST:-0}"
 
   # Run the gates against a CLEAN snapshot of committed HEAD -- exactly what CI
   # checks out -- NOT the bind-mounted working tree. The host tree carries
@@ -280,8 +280,8 @@ echo "==> running CI gates in container (fast=$fast)"
 # throwaway tree (and its fresh build dirs) is writable.
 exec docker run --rm \
   -u 0:0 \
-  -e RA_CI_INNER=1 \
-  -e RA_CI_FAST="$fast" \
+  -e RA8_CI_INNER=1 \
+  -e RA8_CI_FAST="$fast" \
   -e HOME=/tmp \
   -e CMAKE_BUILD_PARALLEL_LEVEL=4 \
   -v "$REPO_ROOT":/workspace:ro \

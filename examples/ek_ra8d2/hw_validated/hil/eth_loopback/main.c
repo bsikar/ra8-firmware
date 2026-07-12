@@ -14,21 +14,21 @@
  * in the per-port stats, and the resulting RX-OK / TX-OK / drop
  * counters are dumped over the J-Link OB CDC console.
  *
- * The demo exists to exercise the ra_etha lifecycle on the EK-RA8D2
+ * The demo exists to exercise the ra8_etha lifecycle on the EK-RA8D2
  * (init -> set_mode CONFIG -> descriptor_ring_init -> set_mode
  * OPERATION -> account_traffic -> get_stats -> deinit) without needing
- * a peer node or any external physical link. On host (RA_SIMULATOR_MODE)
+ * a peer node or any external physical link. On host (RA8_SIMULATOR_MODE)
  * the same code paths run against the simulated MMAP and surface the
  * same stats.
  *
  * Sequence:
  *   1. CGC + SysTick + UART (SCI8) bring-up.
- *   2. ``ra_mstp_init()`` + ``ra_etha_init(port_0, CONFIG)``.
- *   3. ``ra_etha_descriptor_ring_init(port_0, ring_cfg)``.
- *   4. ``ra_etha_set_mode(port_0, OPERATION)``.
- *   5. ``ra_etha_account_traffic(port_0, +1 tx_ok, +1 rx_ok)``.
- *   6. ``ra_etha_get_stats(port_0, &stats)`` -> log counts.
- *   7. ``ra_etha_deinit(port_0)`` then idle-spin.
+ *   2. ``ra8_mstp_init()`` + ``ra8_etha_init(port_0, CONFIG)``.
+ *   3. ``ra8_etha_descriptor_ring_init(port_0, ring_cfg)``.
+ *   4. ``ra8_etha_set_mode(port_0, OPERATION)``.
+ *   5. ``ra8_etha_account_traffic(port_0, +1 tx_ok, +1 rx_ok)``.
+ *   6. ``ra8_etha_get_stats(port_0, &stats)`` -> log counts.
+ *   7. ``ra8_etha_deinit(port_0)`` then idle-spin.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -37,13 +37,13 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_etha.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_etha.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -71,19 +71,19 @@ static void eth_loopback_panic_halt(void)
 static void eth_loopback_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     eth_loopback_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     eth_loopback_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     eth_loopback_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     eth_loopback_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_eth_loopback_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_eth_loopback_baud) != k_ra8_ok) {
     eth_loopback_panic_halt();
   }
 }
@@ -99,36 +99,36 @@ static void eth_loopback_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t eth_loopback_run_once(ra_etha_port_stats_t* out)
+[[nodiscard]] static ra8_err_t eth_loopback_run_once(ra8_etha_port_stats_t* out)
 {
-  const ra_etha_config_t cfg = {
-    .initial_mode = k_ra_etha_opc_config,
+  const ra8_etha_config_t cfg = {
+    .initial_mode = k_ra8_etha_opc_config,
     .eaeie0_mask  = 0U,
     .eaeie1_mask  = 0U,
     .eaeie2_mask  = 0U,
   };
-  ra_err_t err = ra_etha_init(k_ra_etha_port_0, &cfg);
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_etha_init(k_ra8_etha_port_0, &cfg);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_etha_descriptor_ring_init(k_ra_etha_port_0,
-                                     (uint16_t)k_eth_loopback_ring_tx,
-                                     (uint16_t)k_eth_loopback_ring_rx,
-                                     (uint16_t)k_eth_loopback_buffer_size);
-  if (err != k_ra_ok) {
+  err = ra8_etha_descriptor_ring_init(k_ra8_etha_port_0,
+                                      (uint16_t)k_eth_loopback_ring_tx,
+                                      (uint16_t)k_eth_loopback_ring_rx,
+                                      (uint16_t)k_eth_loopback_buffer_size);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_etha_set_mode(k_ra_etha_port_0, k_ra_etha_opc_operation);
-  if (err != k_ra_ok) {
+  err = ra8_etha_set_mode(k_ra8_etha_port_0, k_ra8_etha_opc_operation);
+  if (err != k_ra8_ok) {
     return err;
   }
   for (uint8_t i = 0U; i < (uint8_t)k_eth_loopback_burst_count; i++) {
-    err = ra_etha_account_traffic(k_ra_etha_port_0, 1U, 0U, 1U, 0U, 0U);
-    if (err != k_ra_ok) {
+    err = ra8_etha_account_traffic(k_ra8_etha_port_0, 1U, 0U, 1U, 0U, 0U);
+    if (err != k_ra8_ok) {
       return err;
     }
   }
-  return ra_etha_get_stats(k_ra_etha_port_0, out);
+  return ra8_etha_get_stats(k_ra8_etha_port_0, out);
 }
 
 #pragma GCC diagnostic push
@@ -136,23 +136,23 @@ static void eth_loopback_setup_or_halt(void)
 int32_t main(void)
 {
   eth_loopback_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   /* Boot banner -- emit before the loopback runs so the HIL host can
    * confirm the firmware booted even when the ETHA loopback fails for
    * board-specific reasons (PHY not negotiated, missing pull-ups, etc.). */
-  (void)ra_board_uart_console_write(k_eth_loopback_boot_msg,
-                                    (size_t)(sizeof(k_eth_loopback_boot_msg) - 1U));
+  (void)ra8_board_uart_console_write(k_eth_loopback_boot_msg,
+                                     (size_t)(sizeof(k_eth_loopback_boot_msg) - 1U));
 
-  ra_etha_port_stats_t stats = {};
-  if (eth_loopback_run_once(&stats) != k_ra_ok) {
+  ra8_etha_port_stats_t stats = {};
+  if (eth_loopback_run_once(&stats) != k_ra8_ok) {
     eth_loopback_panic_halt();
   }
-  if (ra_board_uart_console_write(k_eth_loopback_log_msg,
-                                  (size_t)(sizeof(k_eth_loopback_log_msg) - 1U)) != k_ra_ok) {
+  if (ra8_board_uart_console_write(k_eth_loopback_log_msg,
+                                   (size_t)(sizeof(k_eth_loopback_log_msg) - 1U)) != k_ra8_ok) {
     eth_loopback_panic_halt();
   }
-  (void)ra_etha_deinit(k_ra_etha_port_0);
+  (void)ra8_etha_deinit(k_ra8_etha_port_0);
 
   while (1) {
     __asm__ volatile("wfi");

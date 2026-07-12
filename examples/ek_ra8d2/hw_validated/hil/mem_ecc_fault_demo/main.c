@@ -13,9 +13,9 @@
  *
  * It enables full SECDED ECC on a spare SRAM bank (bank 2, which the linker
  * leaves unused), then runs the HUM Ch 58.3.4 ECC decoder self-test twice via
- * ``ra_sram_self_test``:
+ * ``ra8_sram_self_test``:
  *
- *  1. A **1-bit** (correctable) fault -- ``ra_sram_self_test(..., false, ...)``
+ *  1. A **1-bit** (correctable) fault -- ``ra8_sram_self_test(..., false, ...)``
  *     reads the raw syndrome in bypass mode, flips one bit, writes it back, and
  *     the verify read latches ``SRAMESR`` -- ``out_caught`` confirms the latch.
  *  2. A **2-bit** (uncorrectable) fault -- the same path with two bits flipped,
@@ -53,14 +53,14 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_check.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_sram.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_check.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_sram.h"
+#include "ra8_time.h"
 
 /** @brief Diagnostic / log tag. */
 static const char* s_tag = "mem_ecc";
@@ -134,25 +134,25 @@ static void mecc_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     mecc_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     mecc_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     mecc_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     mecc_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_mecc_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_mecc_baud) != k_ra8_ok) {
     mecc_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     mecc_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     mecc_panic_halt();
   }
 }
@@ -169,8 +169,8 @@ static void mecc_setup_or_halt(void)
  * Sequential init guards (no compound decision); 2 vectors -- init OK / init
  * rejects (covered by the host test).
  *
- * @return ``ra_err_t`` from ``ra_sram_init``.
- * @retval k_ra_ok Bank 2 configured for ECC with-check.
+ * @return ``ra8_err_t`` from ``ra8_sram_init``.
+ * @retval k_ra8_ok Bank 2 configured for ECC with-check.
  * @pre CGC + MSTP up; IRQs masked or single-threaded init.
  * @pre Bank 2 holds no program data (linker keeps it spare).
  * @post Bank 2's SRAMCRn is in ECC + check mode.
@@ -178,21 +178,21 @@ static void mecc_setup_or_halt(void)
  * @note Not thread-safe; boot-time use.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t mecc_configure(void)
+[[nodiscard]] static ra8_err_t mecc_configure(void)
 {
-  ra_sram_config_t cfg                     = {};
-  cfg.banks[k_mecc_bank].ecc_mode          = k_ra_sram_ecc_with_chk;
-  cfg.banks[k_mecc_bank].on_error          = k_ra_sram_on_error_interrupt;
+  ra8_sram_config_t cfg                    = {};
+  cfg.banks[k_mecc_bank].ecc_mode          = k_ra8_sram_ecc_with_chk;
+  cfg.banks[k_mecc_bank].on_error          = k_ra8_sram_on_error_interrupt;
   cfg.banks[k_mecc_bank].enable_1bit_latch = true;
-  cfg.banks[k_mecc_bank].eccrgn            = k_ra_sram_region_128kb;
+  cfg.banks[k_mecc_bank].eccrgn            = k_ra8_sram_region_128kb;
   cfg.banks[k_mecc_bank].zero_init         = true;
-  return ra_sram_init(&cfg);
+  return ra8_sram_init(&cfg);
 }
 
 /**
  * @brief Inject one ECC fault via the decoder self-test and record the verdict.
  *
- * @details Runs ``ra_sram_self_test`` on bank 2 (which corrupts the syndrome of
+ * @details Runs ``ra8_sram_self_test`` on bank 2 (which corrupts the syndrome of
  * the probe line and confirms the SRAMESR latch), snapshots the decoded
  * error masks for HIL probing, then clears the latched status so the next
  * injection starts clean.
@@ -200,10 +200,10 @@ static void mecc_setup_or_halt(void)
  * @param[in]  two_bit    ``true`` to inject a 2-bit (uncorrectable) fault.
  * @param[out] out_caught Receives 1 when SRAMESR latched the injected fault.
  *
- * @return ``ra_err_t`` from the self-test / status calls.
- * @retval k_ra_ok               Injection ran; ``*out_caught`` set.
- * @retval k_ra_err_null_ptr     ``out_caught`` was NULL.
- * @retval k_ra_err_invalid_arg  Bank / probe rejected by ``ra_sram_self_test``.
+ * @return ``ra8_err_t`` from the self-test / status calls.
+ * @retval k_ra8_ok               Injection ran; ``*out_caught`` set.
+ * @retval k_ra8_err_null_ptr     ``out_caught`` was NULL.
+ * @retval k_ra8_err_invalid_arg  Bank / probe rejected by ``ra8_sram_self_test``.
  * @pre ::mecc_configure succeeded.
  * @pre ``out_caught`` is non-NULL.
  * @post SRAMESR latched status is cleared on success.
@@ -211,20 +211,20 @@ static void mecc_setup_or_halt(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t mecc_inject(bool two_bit, uint8_t* out_caught)
+[[nodiscard]] static ra8_err_t mecc_inject(bool two_bit, uint8_t* out_caught)
 {
-  RA_CHECK_NULL_PTR(out_caught, s_tag, "out_caught must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_caught, s_tag, "out_caught must not be nullptr");
 
-  bool           caught = false;
-  const ra_err_t serr =
-    ra_sram_self_test((uint8_t)k_mecc_bank, (uint32_t)k_mecc_probe_offset, two_bit, &caught);
-  if (serr != k_ra_ok) {
+  bool            caught = false;
+  const ra8_err_t serr =
+    ra8_sram_self_test((uint8_t)k_mecc_bank, (uint32_t)k_mecc_probe_offset, two_bit, &caught);
+  if (serr != k_ra8_ok) {
     return serr;
   }
 
-  ra_sram_status_t st   = {};
-  const ra_err_t   gerr = ra_sram_get_status(&st);
-  if (gerr != k_ra_ok) {
+  ra8_sram_status_t st   = {};
+  const ra8_err_t   gerr = ra8_sram_get_status(&st);
+  if (gerr != k_ra8_ok) {
     return gerr;
   }
   if (two_bit) {
@@ -233,13 +233,13 @@ static void mecc_setup_or_halt(void)
     g_mecc_1bit_mask = (uint32_t)st.one_bit_mask;
   }
 
-  const ra_err_t cerr = ra_sram_clear_status(st.raw_esr);
-  if (cerr != k_ra_ok) {
+  const ra8_err_t cerr = ra8_sram_clear_status(st.raw_esr);
+  if (cerr != k_ra8_ok) {
     return cerr;
   }
 
   *out_caught = caught ? 1U : 0U;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -247,9 +247,9 @@ static void mecc_setup_or_halt(void)
  *
  * @param[out] out_ok 1 only when both the 1-bit and 2-bit faults were caught.
  *
- * @return ``ra_err_t`` from the injection helpers.
- * @retval k_ra_ok           Both injections ran; ``*out_ok`` set.
- * @retval k_ra_err_null_ptr ``out_ok`` was NULL.
+ * @return ``ra8_err_t`` from the injection helpers.
+ * @retval k_ra8_ok           Both injections ran; ``*out_ok`` set.
+ * @retval k_ra8_err_null_ptr ``out_ok`` was NULL.
  * @pre ::mecc_configure succeeded.
  * @pre ``out_ok`` is non-NULL.
  * @post ``g_mecc_1bit_caught`` / ``g_mecc_2bit_caught`` updated.
@@ -257,33 +257,33 @@ static void mecc_setup_or_halt(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t mecc_run_pass(uint8_t* out_ok)
+[[nodiscard]] static ra8_err_t mecc_run_pass(uint8_t* out_ok)
 {
-  RA_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
   *out_ok = 0U;
 
-  uint8_t        caught1 = 0U;
-  const ra_err_t e1      = mecc_inject(false, &caught1);
-  if (e1 != k_ra_ok) {
+  uint8_t         caught1 = 0U;
+  const ra8_err_t e1      = mecc_inject(false, &caught1);
+  if (e1 != k_ra8_ok) {
     return e1;
   }
   g_mecc_1bit_caught = (uint32_t)caught1;
 
-  uint8_t        caught2 = 0U;
-  const ra_err_t e2      = mecc_inject(true, &caught2);
-  if (e2 != k_ra_ok) {
+  uint8_t         caught2 = 0U;
+  const ra8_err_t e2      = mecc_inject(true, &caught2);
+  if (e2 != k_ra8_ok) {
     return e2;
   }
   g_mecc_2bit_caught = (uint32_t)caught2;
 
   if (caught1 == 0U) {
-    return k_ra_ok;
+    return k_ra8_ok;
   }
   if (caught2 == 0U) {
-    return k_ra_ok;
+    return k_ra8_ok;
   }
   *out_ok = 1U;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 #pragma GCC diagnostic push
@@ -291,30 +291,30 @@ static void mecc_setup_or_halt(void)
 int32_t main(void)
 {
   mecc_setup_or_halt();
-  /* Clear PRIMASK so SysTick drives ra_delay_ms(); the ECC NMI is
+  /* Clear PRIMASK so SysTick drives ra8_delay_ms(); the ECC NMI is
    * non-maskable and unaffected (no maskable NVIC source is armed). */
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  if (mecc_configure() != k_ra_ok) {
+  if (mecc_configure() != k_ra8_ok) {
     mecc_panic_halt();
   }
 
   while (1) {
-    uint8_t        ok   = 0U;
-    const ra_err_t err  = mecc_run_pass(&ok);
-    uint8_t        good = 0U;
-    if (err == k_ra_ok) {
+    uint8_t         ok   = 0U;
+    const ra8_err_t err  = mecc_run_pass(&ok);
+    uint8_t         good = 0U;
+    if (err == k_ra8_ok) {
       good = ok;
     }
     if (good != 0U) {
-      (void)ra_board_uart_console_write(k_mecc_ok_msg, (size_t)(sizeof(k_mecc_ok_msg) - 1U));
-      (void)ra_board_led_toggle(k_ra_board_led1);
+      (void)ra8_board_uart_console_write(k_mecc_ok_msg, (size_t)(sizeof(k_mecc_ok_msg) - 1U));
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
-      (void)ra_board_uart_console_write(k_mecc_bad_msg, (size_t)(sizeof(k_mecc_bad_msg) - 1U));
-      (void)ra_board_led_toggle(k_ra_board_led2);
+      (void)ra8_board_uart_console_write(k_mecc_bad_msg, (size_t)(sizeof(k_mecc_bad_msg) - 1U));
+      (void)ra8_board_led_toggle(k_ra8_board_led2);
     }
     ++g_mecc_heartbeat;
-    ra_delay_ms(k_mecc_period_ms);
+    ra8_delay_ms(k_mecc_period_ms);
   }
   mecc_panic_halt();
   return 0;

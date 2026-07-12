@@ -5,9 +5,9 @@
  * @details
  * Models the RA8D2 Layer-3 Ethernet switch register cluster so a networking
  * app (@c threadx_netx_tcp_echo and the @c eth_* demos) runs the GENUINE
- * ra_eth / ra_etha / ra_rmac / ra_eth_gwca drivers headless, instead of the
- * function-level seam hooks that used to intercept @c ra_eth_write /
- * @c ra_eth_read / @c ra_eth_link_status and bypass the register path
+ * ra8_eth / ra8_etha / ra8_rmac / ra8_eth_gwca drivers headless, instead of the
+ * function-level seam hooks that used to intercept @c ra8_eth_write /
+ * @c ra8_eth_read / @c ra8_eth_link_status and bypass the register path
  * entirely. Retires those seams (see #219 / #218).
  *
  * The block owns the contiguous cluster window @c [0x403C0000, 0x403CF000):
@@ -50,9 +50,9 @@
 #include "board_console.h"
 #include "board_net.h"
 #include "board_periph_block.h"
-#include "ra8d2_etha_regs.h"
-#include "ra8d2_ether_regs.h"
-#include "ra8d2_rmac_regs.h"
+#include "ra8_etha_regs.h"
+#include "ra8_ether_regs.h"
+#include "ra8_rmac_regs.h"
 
 /**
  * @enum eth_win_geom_t
@@ -64,8 +64,8 @@
  * fallback -- they are config-reflect only, so that is faithful.
  */
 typedef enum : uint64_t {
-  k_eth_win_base = (uint64_t)k_ra_mfwd_base_addr, /**< MFWD base = window base. */
-  k_eth_win_span = 0xF000UL,                      /**< MFWD..GWCA end.          */
+  k_eth_win_base = (uint64_t)k_ra8_mfwd_base_addr, /**< MFWD base = window base. */
+  k_eth_win_span = 0xF000UL,                       /**< MFWD..GWCA end.          */
 } eth_win_geom_t;
 
 /**
@@ -245,7 +245,7 @@ static uint32_t eth_desc_ptr(const uint8_t* d8)
  * @param[in]     dt   New descriptor-type nibble.
  * @return Nothing.
  * @pre @p addr points at a live GWCA descriptor.
- * @pre @p dt is a valid ra_gwdcc_dt_t nibble.
+ * @pre @p dt is a valid ra8_gwdcc_dt_t nibble.
  * @post Byte 2 of the descriptor carries @p dt in bits [7:4].
  * @post Other descriptor bytes are untouched.
  * @note Not thread-safe.
@@ -292,21 +292,21 @@ static void eth_desc_set_ds(uc_engine* uc, uint32_t addr, uint32_t ds)
 /** @brief True if @p addr is the given @p off in either ETHA port window. */
 static bool eth_is_etha_reg(uint64_t addr, uint64_t off)
 {
-  return (addr == (uint64_t)k_ra_etha0_base_addr + off) ||
-         (addr == (uint64_t)k_ra_etha1_base_addr + off);
+  return (addr == (uint64_t)k_ra8_etha0_base_addr + off) ||
+         (addr == (uint64_t)k_ra8_etha1_base_addr + off);
 }
 
 /** @brief True if @p addr is the given @p off in either RMAC port window. */
 static bool eth_is_rmac_reg(uint64_t addr, uint64_t off)
 {
-  return (addr == (uint64_t)k_ra_rmac0_base_addr + off) ||
-         (addr == (uint64_t)k_ra_rmac1_base_addr + off);
+  return (addr == (uint64_t)k_ra8_rmac0_base_addr + off) ||
+         (addr == (uint64_t)k_ra8_rmac1_base_addr + off);
 }
 
 /** @brief True if @p addr is one of GWCA GWDCC[0..31]; sets @p *queue. */
 static bool eth_is_gwdcc(uint64_t addr, uint32_t* queue)
 {
-  const uint64_t base = (uint64_t)k_ra_gwca0_base_addr + (uint64_t)k_ra_gwca_off_gwdcc_base;
+  const uint64_t base = (uint64_t)k_ra8_gwca0_base_addr + (uint64_t)k_ra8_gwca_off_gwdcc_base;
   const uint64_t top  = base + ((uint64_t)k_eth_phy_reg_count * (uint64_t)k_eth_reg32_bytes);
   if ((addr < base) || (addr >= top) || (((addr - base) % (uint64_t)k_eth_reg32_bytes) != 0U)) {
     return false;
@@ -376,17 +376,17 @@ static void eth_phy_write(uint32_t reg, uint16_t value)
 static void eth_mpsm_exec(uint64_t mpsm_off, uint32_t value)
 {
   const uint32_t pop =
-    (value >> (uint32_t)k_ra_rmac_shift_mpsm_pop) & (uint32_t)k_ra_rmac_mask_mpsm_op;
+    (value >> (uint32_t)k_ra8_rmac_shift_mpsm_pop) & (uint32_t)k_ra8_rmac_mask_mpsm_op;
   const uint32_t pra =
-    (value >> (uint32_t)k_ra_rmac_shift_mpsm_pra) & (uint32_t)k_ra_rmac_mask_mpsm_phy_reg;
+    (value >> (uint32_t)k_ra8_rmac_shift_mpsm_pra) & (uint32_t)k_ra8_rmac_mask_mpsm_phy_reg;
   const uint32_t prd =
-    (value >> (uint32_t)k_ra_rmac_shift_mpsm_prd) & (uint32_t)k_ra_rmac_mask_mpsm_data;
+    (value >> (uint32_t)k_ra8_rmac_shift_mpsm_prd) & (uint32_t)k_ra8_rmac_mask_mpsm_data;
   const bool c45 = (value & (uint32_t)k_eth_mpsm_mff) != 0U;
-  uint32_t   out = value & ~(uint32_t)k_ra_rmac_mpsm_psme; /* PSME self-clears. */
-  if (!c45 && (pop == (uint32_t)k_ra_rmac_mdio_op_c22_read)) {
-    out = ((uint32_t)eth_phy_read(pra) & (uint32_t)k_ra_rmac_mask_mpsm_data)
-          << (uint32_t)k_ra_rmac_shift_mpsm_prd;
-  } else if (!c45 && (pop == (uint32_t)k_ra_rmac_mdio_op_c22_write)) {
+  uint32_t   out = value & ~(uint32_t)k_ra8_rmac_mpsm_psme; /* PSME self-clears. */
+  if (!c45 && (pop == (uint32_t)k_ra8_rmac_mdio_op_c22_read)) {
+    out = ((uint32_t)eth_phy_read(pra) & (uint32_t)k_ra8_rmac_mask_mpsm_data)
+          << (uint32_t)k_ra8_rmac_shift_mpsm_prd;
+  } else if (!c45 && (pop == (uint32_t)k_ra8_rmac_mdio_op_c22_write)) {
     eth_phy_write(pra, (uint16_t)prd);
   }
   eth_shadow_write(mpsm_off, k_eth_reg32_bytes, out);
@@ -430,7 +430,7 @@ static void eth_tx_kick_queue(uc_engine* uc, uint32_t queue)
   }
   uint8_t head[k_eth_desc_bytes];
   eth_desc_read(uc, chain, head);
-  if (eth_desc_dt(head) != (uint32_t)k_ra_gwdcc_dt_fsingle) {
+  if (eth_desc_dt(head) != (uint32_t)k_ra8_gwdcc_dt_fsingle) {
     return; /* multi-fragment / empty head is unmodelled here -- honest no-op. */
   }
   const uint32_t len = eth_desc_ds(head);
@@ -443,7 +443,7 @@ static void eth_tx_kick_queue(uc_engine* uc, uint32_t queue)
     return;
   }
   board_net_on_tx(frame, len);
-  eth_desc_set_dt(uc, chain, (uint32_t)k_ra_gwdcc_dt_fempty);
+  eth_desc_set_dt(uc, chain, (uint32_t)k_ra8_gwdcc_dt_fempty);
   s_eth.tx_frames++;
   char ln[k_eth_console_cap];
   (void)snprintf(ln, sizeof(ln), "ETH tx q%u %uB", (unsigned)queue, (unsigned)len);
@@ -487,11 +487,11 @@ static bool eth_rx_find_slot(uc_engine* uc, uint32_t chain, uint32_t* out_slot)
     uint8_t d8[k_eth_desc_bytes];
     eth_desc_read(uc, cur, d8);
     const uint32_t dt = eth_desc_dt(d8);
-    if (dt == (uint32_t)k_ra_gwdcc_dt_fempty) {
+    if (dt == (uint32_t)k_ra8_gwdcc_dt_fempty) {
       *out_slot = cur;
       return true;
     }
-    if ((dt == (uint32_t)k_ra_gwdcc_dt_link) || (dt == (uint32_t)k_ra_gwdcc_dt_linkfix)) {
+    if ((dt == (uint32_t)k_ra8_gwdcc_dt_link) || (dt == (uint32_t)k_ra8_gwdcc_dt_linkfix)) {
       const uint32_t next = eth_desc_ptr(d8);
       if ((next == 0U) || (next == cur)) {
         return false;
@@ -545,7 +545,7 @@ static void eth_rx_drain_peer(uc_engine* uc, uint32_t chain)
     }
     (void)uc_mem_write(uc, (uint64_t)buf, frame, (size_t)got);
     eth_desc_set_ds(uc, slot, got);
-    eth_desc_set_dt(uc, slot, (uint32_t)k_ra_gwdcc_dt_fsingle);
+    eth_desc_set_dt(uc, slot, (uint32_t)k_ra8_gwdcc_dt_fsingle);
     s_eth.rx_frames++;
   }
 }
@@ -557,9 +557,9 @@ static void eth_tick(uc_engine* uc)
     return;
   }
   const uint64_t gwmc_woff =
-    ((uint64_t)k_ra_gwca0_base_addr - (uint64_t)k_eth_win_base) + (uint64_t)k_ra_gwca_off_gwmc;
-  const uint32_t opc = eth_shadow_u32(gwmc_woff) & (uint32_t)k_ra_gwmc_opc_mask;
-  if (opc != (uint32_t)k_ra_gwmc_opc_operation) {
+    ((uint64_t)k_ra8_gwca0_base_addr - (uint64_t)k_eth_win_base) + (uint64_t)k_ra8_gwca_off_gwmc;
+  const uint32_t opc = eth_shadow_u32(gwmc_woff) & (uint32_t)k_ra8_gwmc_opc_mask;
+  if (opc != (uint32_t)k_ra8_gwmc_opc_operation) {
     return; /* rings only live in OPERATION mode. */
   }
   uint8_t        lf[k_eth_desc_bytes];
@@ -595,43 +595,43 @@ static uint64_t eth_read(uc_engine* uc, uint64_t addr, unsigned size)
   (void)uc;
   const uint64_t off   = addr - (uint64_t)k_eth_win_base;
   uint32_t       queue = 0U;
-  if (eth_is_etha_reg(addr, (uint64_t)k_ra_etha_off_eams)) {
+  if (eth_is_etha_reg(addr, (uint64_t)k_ra8_etha_off_eams)) {
     /* EAMS.OPS mirrors the commanded EAMC.OPC (the mode machine converges). */
     /* HUM Ch 32.3.1.2 "EAMS : Mode Status Register" p 1631 */
-    const uint64_t eamc = off - ((uint64_t)k_ra_etha_off_eams - (uint64_t)k_ra_etha_off_eamc);
-    return eth_shadow_u32(eamc) & (uint32_t)k_ra_etha_mask_ops;
+    const uint64_t eamc = off - ((uint64_t)k_ra8_etha_off_eams - (uint64_t)k_ra8_etha_off_eamc);
+    return eth_shadow_u32(eamc) & (uint32_t)k_ra8_etha_mask_ops;
   }
-  if (addr == (uint64_t)k_ra_gwca0_base_addr + (uint64_t)k_ra_gwca_off_gwms) {
+  if (addr == (uint64_t)k_ra8_gwca0_base_addr + (uint64_t)k_ra8_gwca_off_gwms) {
     /* GWMS.OPS mirrors the commanded GWMC.OPC. */
     /* HUM Ch 34.3.2 "GWMS : Mode Status Register" p 1798 */
-    const uint64_t gwmc = off - ((uint64_t)k_ra_gwca_off_gwms - (uint64_t)k_ra_gwca_off_gwmc);
-    return eth_shadow_u32(gwmc) & (uint32_t)k_ra_gwmc_opc_mask;
+    const uint64_t gwmc = off - ((uint64_t)k_ra8_gwca_off_gwms - (uint64_t)k_ra8_gwca_off_gwmc);
+    return eth_shadow_u32(gwmc) & (uint32_t)k_ra8_gwmc_opc_mask;
   }
-  if (addr == (uint64_t)k_ra_gwca0_base_addr + (uint64_t)k_ra_gwca_off_gwarirm) {
+  if (addr == (uint64_t)k_ra8_gwca0_base_addr + (uint64_t)k_ra8_gwca_off_gwarirm) {
     /* GWARIRM.ARR (AXI-init done) follows the ARIOG request. */
     /* HUM Ch 34 "Ethernet CPU Agent (GWCA)" p 1787 */
     const uint32_t v = eth_shadow_u32(off);
     return ((v & (uint32_t)k_eth_gwarirm_ariog) != 0U) ? (v | (uint32_t)k_eth_gwarirm_arr) : v;
   }
-  if (addr == (uint64_t)k_ra_coma_base_addr + (uint64_t)k_ra_coma_off_cabpirm) {
+  if (addr == (uint64_t)k_ra8_coma_base_addr + (uint64_t)k_ra8_coma_off_cabpirm) {
     /* CABPIRM.BPR self-sets after the BPIOG kick (buffer-pool init completes
      * ~512 clocks later); modelling it lets the board bring-up's non-simulator
      * BPR poll converge. */
     /* HUM Ch 31.3.2.7 "CABPIRM" p 1599 */
     const uint32_t v = eth_shadow_u32(off);
-    return ((v & (uint32_t)k_ra_coma_cabpirm_bpiog) != 0U) ? (v | (uint32_t)k_ra_coma_cabpirm_bpr)
-                                                           : v;
+    return ((v & (uint32_t)k_ra8_coma_cabpirm_bpiog) != 0U) ? (v | (uint32_t)k_ra8_coma_cabpirm_bpr)
+                                                            : v;
   }
   if (eth_is_gwdcc(addr, &queue)) {
     /* GWDCC.BALR self-clears after the reload completes. */
     /* HUM Ch 34.3 "GWDCCi" p 1811 */
-    return eth_shadow_u32(off) & ~(uint32_t)k_ra_gwdcc_balr;
+    return eth_shadow_u32(off) & ~(uint32_t)k_ra8_gwdcc_balr;
   }
-  if (eth_is_rmac_reg(addr, (uint64_t)k_ra_rmac_off_mtgfce)) {
+  if (eth_is_rmac_reg(addr, (uint64_t)k_ra8_rmac_off_mtgfce)) {
     return s_eth.tx_frames;
   }
   if (eth_is_rmac_reg(addr, (uint64_t)k_eth_rmac_off_mrfc) ||
-      eth_is_rmac_reg(addr, (uint64_t)k_ra_rmac_off_mrgfce)) {
+      eth_is_rmac_reg(addr, (uint64_t)k_ra8_rmac_off_mrgfce)) {
     return s_eth.rx_frames;
   }
   return eth_shadow_read(off, size);
@@ -656,30 +656,30 @@ static void eth_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
 {
   const uint64_t off   = addr - (uint64_t)k_eth_win_base;
   uint32_t       queue = 0U;
-  if (addr == (uint64_t)k_ra_gwca0_base_addr + (uint64_t)k_ra_gwca_off_gwtrc0) {
+  if (addr == (uint64_t)k_ra8_gwca0_base_addr + (uint64_t)k_ra8_gwca_off_gwtrc0) {
     eth_shadow_write(off, size, 0U); /* request register clears when consumed. */
     eth_gwtrc_kick(uc, (uint32_t)value, 0U);
     return;
   }
-  if (addr == (uint64_t)k_ra_gwca0_base_addr + (uint64_t)k_ra_gwca_off_gwtrc1) {
+  if (addr == (uint64_t)k_ra8_gwca0_base_addr + (uint64_t)k_ra8_gwca_off_gwtrc1) {
     eth_shadow_write(off, size, 0U);
     eth_gwtrc_kick(uc, (uint32_t)value, (uint32_t)k_eth_phy_reg_count);
     return;
   }
-  if (addr == (uint64_t)k_ra_gwca0_base_addr + (uint64_t)k_ra_gwca_off_gwdcbac1) {
+  if (addr == (uint64_t)k_ra8_gwca0_base_addr + (uint64_t)k_ra8_gwca_off_gwdcbac1) {
     /* Capture the descriptor-chain base so the DMA can walk the rings. */
     /* HUM Ch 34 "Ethernet CPU Agent (GWCA)" p 1787 */
     s_eth.linkfix_base = (uint32_t)value;
     eth_shadow_write(off, size, value);
     return;
   }
-  if (eth_is_rmac_reg(addr, (uint64_t)k_ra_rmac_off_mpsm) &&
-      ((value & (uint32_t)k_ra_rmac_mpsm_psme) != 0U)) {
+  if (eth_is_rmac_reg(addr, (uint64_t)k_ra8_rmac_off_mpsm) &&
+      ((value & (uint32_t)k_ra8_rmac_mpsm_psme) != 0U)) {
     eth_mpsm_exec(off, (uint32_t)value);
     return;
   }
   eth_shadow_write(off, size, value);
-  if (eth_is_gwdcc(addr, &queue) && ((value & (uint32_t)k_ra_gwdcc_dqt) == 0U)) {
+  if (eth_is_gwdcc(addr, &queue) && ((value & (uint32_t)k_ra8_gwdcc_dqt) == 0U)) {
     s_eth.rx_queue = queue; /* GWDCC.DQT == 0 marks the reception queue. */
   }
 }

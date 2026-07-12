@@ -14,7 +14,7 @@ LevelX integration); this one exercises the FileX FAT API itself.
 1. Brings the chip up like `uart_hello` (CGC + SCI8 @ 115200 8N1 on PD_02/PD_03).
 2. Hands control to ThreadX. The single worker thread:
    - Formats + opens a LevelX NOR partition on the OSPI flash
-     (`lx_nor_driver_ra_xspi`).
+     (`lx_nor_driver_ra8_xspi`).
    - Lays down + mounts a FAT volume on top via the LevelX<->FileX adapter
      (`lx_filex_adapter_bind` -> `fx_media_format` -> `fx_media_open`).
    - Creates `readme.txt` and `scratch.txt`, lists the root, reads `readme.txt`
@@ -46,7 +46,7 @@ unattended on the HIL bench.
 ## Build dependencies
 
 Links the FileX **core** plus the **LevelX** flash port (not the FileX SDHI
-bridge): the per-app `CMakeLists.txt` enables `RA_USE_FILEX`, `USES threadx
+bridge): the per-app `CMakeLists.txt` enables `RA8_USE_FILEX`, `USES threadx
 levelx`, links `filex`, and adds the LevelX<->FileX port sources -- mirroring
 `threadx_filex_levelx_demo`.
 

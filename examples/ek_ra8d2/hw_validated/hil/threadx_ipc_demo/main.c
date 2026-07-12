@@ -16,7 +16,7 @@
  * ``<no reply>``, so the demo is recast as an entirely-local ThreadX
  * queue exchange:
  *
- *   1. Brings the chip up via ``ra_cgc_init()`` (XTAL -> PLL1, CPUCLK0 =
+ *   1. Brings the chip up via ``ra8_cgc_init()`` (XTAL -> PLL1, CPUCLK0 =
  *      1 GHz, PCLKA = 125 MHz, SCICLK = PLL1R / 4) and configures SCI8
  *      TXD = PD_02, RXD = PD_03 at 115200 8N1 -- the on-board J-Link OB
  *      CDC channel surfaces those pins as a host-side virtual COM port.
@@ -46,7 +46,7 @@
  *     enqueues); the previous code polled with ``TX_NO_WAIT``-shape
  *     loops that returned ``TX_QUEUE_EMPTY`` on every miss.
  *   - **CGC not initialized -> SysTick at MOCO.** ``ipc_demo_setup``
- *     calls ``ra_cgc_init()`` first; without it ``tx_thread_sleep``
+ *     calls ``ra8_cgc_init()`` first; without it ``tx_thread_sleep``
  *     ticks ~119x slower than expected (same root cause that broke
  *     ``threadx_blink`` -- see commit a0e8909f).
  *
@@ -64,13 +64,13 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 #endif
 
@@ -157,7 +157,7 @@ static void ipc_demo_panic_halt(void)
  * @param[in] len Length in bytes excluding the NUL terminator.
  *
  * @pre ``s`` non-NULL and ``len`` > 0.
- * @pre ``ra_board_uart_console_init`` has been called.
+ * @pre ``ra8_board_uart_console_init`` has been called.
  * @post Bytes are queued on the SCI8 TX path (best-effort polling).
  * @post Errors are dropped -- the log path is non-essential.
  *
@@ -165,7 +165,7 @@ static void ipc_demo_panic_halt(void)
  */
 static void ipc_demo_log(const uint8_t* s, uint32_t len)
 {
-  (void)ra_board_uart_console_write(s, (size_t)len);
+  (void)ra8_board_uart_console_write(s, (size_t)len);
 }
 
 /* ---------------------------------------------------------------------------
@@ -176,16 +176,16 @@ static void ipc_demo_log(const uint8_t* s, uint32_t len)
  * @brief Bring CGC + SCI8 up. Panic-halts on any failure.
  *
  * @details
- * Order matters: ``ra_cgc_init`` MUST run before the kernel enters its
+ * Order matters: ``ra8_cgc_init`` MUST run before the kernel enters its
  * scheduler tick, otherwise SysTick (programmed by
- * ``_tx_initialize_low_level`` against ``RA_BOOT_CLOCK_HZ = 1e9``)
+ * ``_tx_initialize_low_level`` against ``RA8_BOOT_CLOCK_HZ = 1e9``)
  * ticks at the wrong rate and ``tx_thread_sleep`` becomes ~119x
  * slower than expected. Without that fix the consumer thread's
  * ``-> ping`` log lines would appear every ~2 minutes instead of
  * every 1 s, and the HIL UART scrape would time out.
  *
  * @pre Reset_Handler has run.
- * @pre ``ra_isr_init`` has been called by Reset_Handler / SystemInit.
+ * @pre ``ra8_isr_init`` has been called by Reset_Handler / SystemInit.
  * @post On success, SCI8 is alive at 115200 8N1.
  * @post On any failure, the function does not return.
  *
@@ -195,16 +195,16 @@ static void ipc_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     ipc_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     ipc_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     ipc_demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_ipc_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_ipc_demo_baud) != k_ra8_ok) {
     ipc_demo_panic_halt();
   }
 }
@@ -213,8 +213,8 @@ static void ipc_demo_setup_or_halt(void)
  * ThreadX bring-up.
  * --------------------------------------------------------------------------- */
 
-#ifndef RA_SIMULATOR_MODE
-/* SysTick handler lives in libs/ra_core/src/ra_time.c -- the project's
+#ifndef RA8_SIMULATOR_MODE
+/* SysTick handler lives in libs/ra8_core/src/ra8_time.c -- the project's
  * shared weak SysTick_Handler dispatches to ThreadX (via a weak extern
  * to `_tx_timer_interrupt`) so no per-app override is needed. */
 
@@ -385,7 +385,7 @@ void tx_application_define(void* first_unused_memory)
     ipc_demo_panic_halt();
   }
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /* ---------------------------------------------------------------------------
  * main()
@@ -410,9 +410,9 @@ int32_t main(void)
 {
   ipc_demo_setup_or_halt();
 
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   tx_kernel_enter();
 #endif
 

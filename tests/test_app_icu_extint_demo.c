@@ -4,8 +4,8 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/icu_extint_demo/main.c bring-up:
- * ``ra_icu_init`` -> ``ra_icu_configure_irq_pin(13, falling_edge +
- * filter)`` -> ``ra_icu_read_irqcr``. Backed by the host MMIO shim so
+ * ``ra8_icu_init`` -> ``ra8_icu_configure_irq_pin(13, falling_edge +
+ * filter)`` -> ``ra8_icu_read_irqcr``. Backed by the host MMIO shim so
  * the IRQCR write/read round-trips succeed.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -15,9 +15,9 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
-#include "ra_icu.h"
-#include "ra_sim_mmap.h"
+#include "ra8_err.h"
+#include "ra8_icu.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
@@ -27,14 +27,14 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
+  ra8_sim_mmap_reset();
 }
 
-static ra_icu_irq_cfg_t make_cfg(void)
+static ra8_icu_irq_cfg_t make_cfg(void)
 {
-  const ra_icu_irq_cfg_t cfg = {
-    .sense      = k_ra_icu_irqmd_falling,
-    .filter_div = k_ra_icu_fclksel_pclkb_64,
+  const ra8_icu_irq_cfg_t cfg = {
+    .sense      = k_ra8_icu_irqmd_falling,
+    .filter_div = k_ra8_icu_fclksel_pclkb_64,
     .filter_en  = true,
   };
   return cfg;
@@ -44,7 +44,7 @@ static ra_icu_irq_cfg_t make_cfg(void)
  * @brief Golden bring-up: init + configure IRQ13 + readback IRQCR.
  *
  * @par MC/DC:
- * Decision in app: ``ra_icu_configure_irq_pin != ok``. One atomic
+ * Decision in app: ``ra8_icu_configure_irq_pin != ok``. One atomic
  * condition x 2 vectors -- golden (this) + null cfg / bad channel
  * below.
  */
@@ -52,16 +52,16 @@ static void test_icu_extint_arm_ok(void)
 {
   reset_world();
   TEST_BEGIN("icu_extint_demo: configure IRQ13 + readback");
-  TEST_ASSERT_EQ(k_ra_ok, ra_icu_init());
-  const ra_icu_irq_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_icu_configure_irq_pin((uint8_t)k_test_icu_extint_irq, &cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_icu_init());
+  const ra8_icu_irq_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_icu_configure_irq_pin((uint8_t)k_test_icu_extint_irq, &cfg));
   uint8_t irqcr = 0U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_icu_read_irqcr((uint8_t)k_test_icu_extint_irq, &irqcr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_icu_read_irqcr((uint8_t)k_test_icu_extint_irq, &irqcr));
   TEST_END("icu_extint_demo: configure IRQ13 + readback");
 }
 
 /**
- * @brief NULL cfg rejected by ``ra_icu_configure_irq_pin``.
+ * @brief NULL cfg rejected by ``ra8_icu_configure_irq_pin``.
  *
  * @par MC/DC:
  * Decision: ``cfg == NULL``. One atomic condition x 2 vectors --
@@ -71,8 +71,8 @@ static void test_icu_extint_null_cfg(void)
 {
   reset_world();
   TEST_BEGIN("icu_extint_demo: NULL cfg rejected");
-  (void)ra_icu_init();
-  TEST_ASSERT(ra_icu_configure_irq_pin((uint8_t)k_test_icu_extint_irq, nullptr) != k_ra_ok);
+  (void)ra8_icu_init();
+  TEST_ASSERT(ra8_icu_configure_irq_pin((uint8_t)k_test_icu_extint_irq, nullptr) != k_ra8_ok);
   TEST_END("icu_extint_demo: NULL cfg rejected");
 }
 
@@ -80,21 +80,21 @@ static void test_icu_extint_null_cfg(void)
  * @brief Out-of-range IRQ number rejected.
  *
  * @par MC/DC:
- * Decision: ``irq_num < k_ra_icu_max_irq``. One atomic condition x 2
+ * Decision: ``irq_num < k_ra8_icu_max_irq``. One atomic condition x 2
  * vectors -- in-range golden + out-of-range here.
  */
 static void test_icu_extint_bad_irq(void)
 {
   reset_world();
   TEST_BEGIN("icu_extint_demo: out-of-range IRQ rejected");
-  (void)ra_icu_init();
-  const ra_icu_irq_cfg_t cfg = make_cfg();
-  TEST_ASSERT(ra_icu_configure_irq_pin((uint8_t)k_test_icu_extint_irq_oor, &cfg) != k_ra_ok);
+  (void)ra8_icu_init();
+  const ra8_icu_irq_cfg_t cfg = make_cfg();
+  TEST_ASSERT(ra8_icu_configure_irq_pin((uint8_t)k_test_icu_extint_irq_oor, &cfg) != k_ra8_ok);
   TEST_END("icu_extint_demo: out-of-range IRQ rejected");
 }
 
 /**
- * @brief NULL ``out_val`` rejected by ``ra_icu_read_irqcr``.
+ * @brief NULL ``out_val`` rejected by ``ra8_icu_read_irqcr``.
  *
  * @par MC/DC:
  * Decision: ``out_val == NULL``. One atomic condition x 2 vectors --
@@ -104,8 +104,8 @@ static void test_icu_extint_read_null(void)
 {
   reset_world();
   TEST_BEGIN("icu_extint_demo: NULL out_val rejected");
-  (void)ra_icu_init();
-  TEST_ASSERT(ra_icu_read_irqcr((uint8_t)k_test_icu_extint_irq, nullptr) != k_ra_ok);
+  (void)ra8_icu_init();
+  TEST_ASSERT(ra8_icu_read_irqcr((uint8_t)k_test_icu_extint_irq, nullptr) != k_ra8_ok);
   TEST_END("icu_extint_demo: NULL out_val rejected");
 }
 

@@ -3,7 +3,7 @@
 IEEE 1588-2019 PTP controller smoke test for the EK-RA8D2. Brings up the
 on-chip Ethernet MAC at MAC `02:00:00:00:00:01`, waits for PHY link-up,
 arms the PTP block in controller role on domain 0 with a 1 Hz Sync interval
-(`k_ra_ptp_sync_int_1`), and sends one Sync + one Announce message every
+(`k_ra8_ptp_sync_int_1`), and sends one Sync + one Announce message every
 second. SCI8 (PD_02 / PD_03 -- 115200 8N1) prints the running PTP wall
 clock once per loop iteration so an attached terminal can see the clock
 advance.
@@ -17,17 +17,17 @@ and watch the peripheral latch on.
 
 | Net          | Pin    | PSEL                       | Direction      |
 |--------------|--------|----------------------------|----------------|
-| ETH_REF_CLK  | P7_00  | k_ra_psel_ether_rmii (0x11)| 50 MHz REFCLK  |
-| ETH_MDC      | P4_01  | k_ra_psel_ether_rmii (0x11)| MDIO clock     |
-| ETH_MDIO     | P4_02  | k_ra_psel_ether_rmii (0x11)| MDIO data      |
-| ETH_TXD0     | P7_01  | k_ra_psel_ether_rmii (0x11)| Tx data 0      |
-| ETH_TXD1     | P7_02  | k_ra_psel_ether_rmii (0x11)| Tx data 1      |
-| ETH_TX_EN    | P7_03  | k_ra_psel_ether_rmii (0x11)| Tx enable      |
-| ETH_RXD0     | P7_04  | k_ra_psel_ether_rmii (0x11)| Rx data 0      |
-| ETH_RXD1     | P7_05  | k_ra_psel_ether_rmii (0x11)| Rx data 1      |
-| ETH_RX_DV    | P7_06  | k_ra_psel_ether_rmii (0x11)| Rx data valid  |
-| ETH_RX_ER    | P7_07  | k_ra_psel_ether_rmii (0x11)| Rx error       |
-| ETH_CRS_DV   | P7_08  | k_ra_psel_ether_rmii (0x11)| Carrier sense  |
+| ETH_REF_CLK  | P7_00  | k_ra8_psel_ether_rmii (0x11)| 50 MHz REFCLK  |
+| ETH_MDC      | P4_01  | k_ra8_psel_ether_rmii (0x11)| MDIO clock     |
+| ETH_MDIO     | P4_02  | k_ra8_psel_ether_rmii (0x11)| MDIO data      |
+| ETH_TXD0     | P7_01  | k_ra8_psel_ether_rmii (0x11)| Tx data 0      |
+| ETH_TXD1     | P7_02  | k_ra8_psel_ether_rmii (0x11)| Tx data 1      |
+| ETH_TX_EN    | P7_03  | k_ra8_psel_ether_rmii (0x11)| Tx enable      |
+| ETH_RXD0     | P7_04  | k_ra8_psel_ether_rmii (0x11)| Rx data 0      |
+| ETH_RXD1     | P7_05  | k_ra8_psel_ether_rmii (0x11)| Rx data 1      |
+| ETH_RX_DV    | P7_06  | k_ra8_psel_ether_rmii (0x11)| Rx data valid  |
+| ETH_RX_ER    | P7_07  | k_ra8_psel_ether_rmii (0x11)| Rx error       |
+| ETH_CRS_DV   | P7_08  | k_ra8_psel_ether_rmii (0x11)| Carrier sense  |
 
 ## Test on Linux (`ptp4l`)
 
@@ -75,32 +75,32 @@ make -C examples/ptp_time_transmitter flash
 
 ## What the firmware does
 
-1. `ra_cgc_init()` -- XTAL + PLL1 -> CPUCLK0 = 1 GHz, PCLKA = 125 MHz.
-2. `ra_time_init(cpuclk0_hz)` -- SysTick for `ra_delay_ms`.
+1. `ra8_cgc_init()` -- XTAL + PLL1 -> CPUCLK0 = 1 GHz, PCLKA = 125 MHz.
+2. `ra8_time_init(cpuclk0_hz)` -- SysTick for `ra8_delay_ms`.
 3. SCI8 logging on PD_02 / PD_03 + LED1 (P6_00) heartbeat.
 4. RMII pin-mux on P7 + P4 (eleven pins, all PSEL = 0x11).
-5. `ra_eth_open` with MAC `02:00:00:00:00:01` and the default 8/8
+5. `ra8_eth_open` with MAC `02:00:00:00:00:01` and the default 8/8
    descriptor ring sizing.
-6. Polling `ra_eth_link_status` until BMSR.LINK_STATUS = 1.
-7. `ra_ptp_open` with domain 0, sync interval 1 Hz, locally-administered
+6. Polling `ra8_eth_link_status` until BMSR.LINK_STATUS = 1.
+7. `ra8_ptp_open` with domain 0, sync interval 1 Hz, locally-administered
    MAC, and `clock_class = default (248)`.
-8. `ra_ptp_set_role(k_ra_ptp_role_controller)` and
-   `ra_ptp_set_time(1767225600, 0)` to seed the wall clock to a fixed
+8. `ra8_ptp_set_role(k_ra8_ptp_role_controller)` and
+   `ra8_ptp_set_time(1767225600, 0)` to seed the wall clock to a fixed
    recent Unix epoch (2026-01-01T00:00:00Z).
-9. Loop: every second, `ra_ptp_send_sync` + `ra_ptp_send_announce`,
-   `ra_ptp_get_time` for the running wall clock, log over SCI8.
+9. Loop: every second, `ra8_ptp_send_sync` + `ra8_ptp_send_announce`,
+   `ra8_ptp_get_time` for the running wall clock, log over SCI8.
 
 ## Note on pin map vs EK-RA8D2 v1 board
 
 Same caveat as `ethernet_tcp_echo`: the RMII pin set this app programs
 targets a separate RMII-only daughter board, not the v1 board's
 on-board PEF7071 PHY (which is wired RGMII per UM Table 26 p 33). To
-run on the on-board PHY use `ra_board_ethernet_init()` from the
-`ra_board_ek_ra8d2` BSP and run PTP on top of the BSP-routed RMAC0.
+run on the on-board PHY use `ra8_board_ethernet_init()` from the
+`ra8_board_ek_ra8d2` BSP and run PTP on top of the BSP-routed RMAC0.
 
 ## BSP usage
 
-Uses `ra_board_ek_ra8d2` BSP for LED1 init/toggle (P600 per UM Table
+Uses `ra8_board_ek_ra8d2` BSP for LED1 init/toggle (P600 per UM Table
 24 p 31). Ethernet pins are hand-rolled (see note above).
 
 Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101

@@ -11,11 +11,11 @@
  *
  *   1. Bare-metal init (CGC + SCI8 + SysTick) -- identical to
  *      ``examples/threadx_filex_demo``.
- *   2. ``ra_ble_init`` clocks the radio block and opens the HCI
+ *   2. ``ra8_ble_init`` clocks the radio block and opens the HCI
  *      mailbox.
  *   3. ``tx_kernel_enter`` hands the CPU over to ThreadX.
  *   4. ``tx_application_define`` spawns one worker thread which
- *      calls ``ble_hci_ra_ble_init`` to attach the NimBLE -> ra_ble
+ *      calls ``ble_hci_ra8_ble_init`` to attach the NimBLE -> ra8_ble
  *      bridge, then ``nimble_port_init`` to bring the host stack up,
  *      then drives the Battery Service: advertise as ``EK-RA8D2``,
  *      decrement the battery level by one every 10 s, push a Handle
@@ -32,7 +32,7 @@
  * down once every ten seconds.
  *
  * @par BLE patch image gap
- * Phase 1.3 of the BLE roadmap: ``ra_ble_open`` currently stubs the
+ * Phase 1.3 of the BLE roadmap: ``ra8_ble_open`` currently stubs the
  * controller patch-load loop. Real silicon needs the Renesas-supplied
  * BLE firmware patch image before this demo can pass the smoke test
  * end-to-end -- see README.md alongside this file.
@@ -47,22 +47,22 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /*
- * The host unit-test build (RA_SIMULATOR_MODE) does not link the
+ * The host unit-test build (RA8_SIMULATOR_MODE) does not link the
  * ThreadX or NimBLE vendor trees, so `tx_api.h` and our adapter
  * headers are unreachable when clang-tidy walks this file. Pull
  * them in only on the cross-compile target.
  */
-#ifndef RA_SIMULATOR_MODE
-#include "ble_hci_ra_ble.h"
+#ifndef RA8_SIMULATOR_MODE
+#include "ble_hci_ra8_ble.h"
 #include "nimble_npl_threadx.h"
-#include "ra_ble.h"
+#include "ra8_ble.h"
 #include "tx_api.h"
 #endif
 
@@ -108,15 +108,15 @@ typedef enum : uint16_t {
 /** @brief Local-name string broadcast in adv-data. */
 static const char k_demo_local_name[] = "EK-RA8D2";
 
-/** @brief Tag used in SCI8 / ra_log output to identify this app. */
+/** @brief Tag used in SCI8 / ra8_log output to identify this app. */
 static const char* s_demo_tag = "ble_nimble";
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /** @brief Worker thread control block (statically allocated). */
 static TX_THREAD s_demo_thread;
 /** @brief Worker thread stack. ThreadX requires non-zero static storage. */
 static UCHAR s_demo_stack[k_demo_thread_stack];
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /** @brief Current battery percentage value (mirrored to GATT cache). */
 static uint8_t s_demo_battery_level = k_demo_battery_init;
@@ -141,7 +141,7 @@ static void demo_panic_halt(void)
  *
  * @param[in] s ASCII string (NUL-terminated). May be ``nullptr``.
  *
- * @pre ra_board_uart_console_init() succeeded for the SCI8 console.
+ * @pre ra8_board_uart_console_init() succeeded for the SCI8 console.
  * @post Bytes have been polled out of TXD8 (or silently discarded on
  *       backpressure -- this is logging only).
  *
@@ -153,7 +153,7 @@ static void demo_log(const char* s)
     return;
   }
   uint32_t len = (uint32_t)strlen(s);
-  (void)ra_board_uart_console_write((const uint8_t*)s, (size_t)len);
+  (void)ra8_board_uart_console_write((const uint8_t*)s, (size_t)len);
 }
 
 /**
@@ -168,31 +168,31 @@ static void demo_clocks_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_demo_baud) != k_ra8_ok) {
     demo_panic_halt();
   }
 }
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /**
  * @brief Bring the BLE controller + NimBLE adapter up.
  *
  * @details
- * 1. ``ra_ble_open`` powers up the radio block and opens the HCI
+ * 1. ``ra8_ble_open`` powers up the radio block and opens the HCI
  *    mailbox.
- * 2. ``ble_hci_ra_ble_init`` attaches our NimBLE <-> ra_ble bridge.
+ * 2. ``ble_hci_ra8_ble_init`` attaches our NimBLE <-> ra8_ble bridge.
  * 3. ``nimble_port_init`` brings the host stack's default eventq up.
  *
  * @pre Clocks + SCI8 are already initialized.
@@ -202,16 +202,16 @@ static void demo_clocks_or_halt(void)
  */
 static void demo_ble_or_halt(void)
 {
-  const ra_ble_config_t ble_cfg = {
+  const ra8_ble_config_t ble_cfg = {
     .use_external_osc  = 1U,
     .deep_sleep_enable = 0U,
   };
-  if (ra_ble_open(&ble_cfg) != k_ra_ok) {
-    demo_log("[nimble] ra_ble_open failed -- patch image missing?\r\n");
+  if (ra8_ble_open(&ble_cfg) != k_ra8_ok) {
+    demo_log("[nimble] ra8_ble_open failed -- patch image missing?\r\n");
     demo_panic_halt();
   }
-  if (ble_hci_ra_ble_init() != k_ra_ok) {
-    demo_log("[nimble] ble_hci_ra_ble_init failed\r\n");
+  if (ble_hci_ra8_ble_init() != k_ra8_ok) {
+    demo_log("[nimble] ble_hci_ra8_ble_init failed\r\n");
     demo_panic_halt();
   }
   nimble_port_init();
@@ -236,7 +236,7 @@ static void demo_tick_battery(void)
   } else {
     s_demo_battery_level = (uint8_t)(s_demo_battery_level - k_demo_battery_step);
   }
-  (void)ra_board_led_toggle(k_ra_board_led1);
+  (void)ra8_board_led_toggle(k_ra8_board_led1);
   demo_log("[nimble] battery tick\r\n");
 }
 
@@ -262,7 +262,7 @@ static void demo_thread_entry(ULONG arg)
 
   while (1) {
     /* Pump any inbound HCI events / ACL frames through the bridge. */
-    (void)ra_ble_dispatch();
+    (void)ra8_ble_dispatch();
     /* Sleep one full tick window before the next battery decrement. */
     (void)tx_thread_sleep((ULONG)k_demo_tick_ms);
     demo_tick_battery();
@@ -293,7 +293,7 @@ void tx_application_define(void* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
@@ -312,12 +312,12 @@ void tx_application_define(void* first_unused_memory)
 int32_t main(void)
 {
   demo_clocks_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   demo_log("[nimble] booting ThreadX + NimBLE on ");
   demo_log(s_demo_tag);
   demo_log("\r\n");
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   /* Hands control over to ThreadX permanently. */
   tx_kernel_enter();
 #endif

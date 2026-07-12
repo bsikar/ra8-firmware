@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/eth_gptp_timestamp_demo/main.c
- * @brief gPTP / IEEE 1588 hardware-timestamp clock demo (ra_eth_gptp + ra_ptp)
+ * @brief gPTP / IEEE 1588 hardware-timestamp clock demo (ra8_eth_gptp + ra8_ptp)
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
@@ -9,31 +9,31 @@
  * Exercises the Ethernet hardware-timestamp path that no other example
  * references (recon gap #133). Two layered drivers are driven end to end:
  *
- *   1. ``ra_eth_gptp`` -- the GPTP block that owns the IEEE 1588 free-running
+ *   1. ``ra8_eth_gptp`` -- the GPTP block that owns the IEEE 1588 free-running
  *      hardware timestamp counter shared by the GMAC ports (HUM Ch 31-32
  *      "Ethernet" / gPTP timer). This app brings up the timer and reads its
  *      status word.
- *   2. ``ra_ptp`` -- the SYNFP / STCA layer that turns the raw counter into an
+ *   2. ``ra8_ptp`` -- the SYNFP / STCA layer that turns the raw counter into an
  *      IEEE 1588-2019 ordinary/boundary clock: role select, absolute-time
  *      get/set (the timestamp capture), the disciplined-clock servo (step
  *      + rate), and the Sync / Announce generators.
  *
  * Per cycle the app:
- *   - loads an absolute PTP time (``ra_ptp_set_time``) then reads it back
- *     twice (``ra_ptp_get_time``) -- the hardware-timestamp capture path;
- *   - applies one servo step + rate correction (``ra_ptp_adjust_time`` /
- *     ``ra_ptp_adjust_rate``) and reads the offset from the reference clock;
- *   - queues one Sync + one Announce (``ra_ptp_send_sync`` /
- *     ``ra_ptp_send_announce``);
- *   - reads the GPTP status word (``ra_eth_gptp_get_status``).
+ *   - loads an absolute PTP time (``ra8_ptp_set_time``) then reads it back
+ *     twice (``ra8_ptp_get_time``) -- the hardware-timestamp capture path;
+ *   - applies one servo step + rate correction (``ra8_ptp_adjust_time`` /
+ *     ``ra8_ptp_adjust_rate``) and reads the offset from the reference clock;
+ *   - queues one Sync + one Announce (``ra8_ptp_send_sync`` /
+ *     ``ra8_ptp_send_announce``);
+ *   - reads the GPTP status word (``ra8_eth_gptp_get_status``).
  *
  * The fixed verdict ``"gptp: clock PASS"`` prints only when every driver call
- * in the cycle returned ``k_ra_ok``. The captured seconds.nanoseconds pair is
+ * in the cycle returned ``k_ra8_ok``. The captured seconds.nanoseconds pair is
  * logged verbatim so a bench operator can watch the counter advance.
  *
  * Bring-up sequence (CGC -> MSTP -> TIME -> peripheral):
  *   1. CGC + SysTick + UART console (SCI8 on PD_02 / PD_03 -> J-Link OB).
- *   2. ``ra_eth_gptp_init`` + ``ra_ptp_open`` (role ``k_ra_ptp_role_controller``).
+ *   2. ``ra8_eth_gptp_init`` + ``ra8_ptp_open`` (role ``k_ra8_ptp_role_controller``).
  *   3. Loop once per ``k_gptp_period_ms``.
  *
  * hw_pending: ``tools/board_sim`` has no Ethernet / GPTP peripheral model
@@ -50,14 +50,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_eth_gptp.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_ptp.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_eth_gptp.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_ptp.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -126,14 +126,14 @@ static void gptp_panic_halt(void)
  * @param[in] data Non-NULL byte span to transmit.
  * @param[in] len  Byte count (0 is a no-op).
  *
- * @pre ``ra_board_uart_console_init`` has succeeded.
+ * @pre ``ra8_board_uart_console_init`` has succeeded.
  * @pre ``data`` points at ``len`` readable bytes.
  * @post ``len`` bytes have been queued to the console UART.
  * @since 0.1.0
  */
 static void gptp_write(const uint8_t* data, uint32_t len)
 {
-  (void)ra_board_uart_console_write(data, (size_t)len);
+  (void)ra8_board_uart_console_write(data, (size_t)len);
 }
 
 /**
@@ -213,14 +213,14 @@ static void gptp_write_i32(int32_t val)
  * @brief Capture the PTP wall clock: set, then read it back twice.
  *
  * @details
- * ``ra_ptp_set_time`` loads an absolute epoch, then two back-to-back
- * ``ra_ptp_get_time`` calls read the hardware-timestamp counter. Both
+ * ``ra8_ptp_set_time`` loads an absolute epoch, then two back-to-back
+ * ``ra8_ptp_get_time`` calls read the hardware-timestamp counter. Both
  * captured ``seconds.nanoseconds`` pairs are logged so the bench operator
  * can watch the free-running counter advance between reads.
  *
- * @return True iff the set and both reads returned ``k_ra_ok``.
+ * @return True iff the set and both reads returned ``k_ra8_ok``.
  *
- * @pre ``ra_ptp_open`` has succeeded.
+ * @pre ``ra8_ptp_open`` has succeeded.
  * @pre The console has been initialised.
  * @post Two timestamp lines have been queued to the console.
  * @post No driver state other than the loaded time was mutated.
@@ -229,14 +229,14 @@ static void gptp_write_i32(int32_t val)
 static bool gptp_probe_clock(void)
 {
   bool ok = true;
-  if (ra_ptp_set_time((uint64_t)k_gptp_base_sec, 0U) != k_ra_ok) {
+  if (ra8_ptp_set_time((uint64_t)k_gptp_base_sec, 0U) != k_ra8_ok) {
     ok = false;
   }
   for (uint32_t i = 0U; i < 2U; i++) {
-    uint64_t       sec  = 0U;
-    uint32_t       nsec = 0U;
-    const ra_err_t err  = ra_ptp_get_time(&sec, &nsec);
-    if (err != k_ra_ok) {
+    uint64_t        sec  = 0U;
+    uint32_t        nsec = 0U;
+    const ra8_err_t err  = ra8_ptp_get_time(&sec, &nsec);
+    if (err != k_ra8_ok) {
       ok = false;
     }
     gptp_write(k_gptp_time_prefix, (uint32_t)(sizeof(k_gptp_time_prefix) - 1U));
@@ -251,9 +251,9 @@ static bool gptp_probe_clock(void)
 /**
  * @brief Run one disciplined-clock servo step + rate correction, log offset.
  *
- * @return True iff the step, rate, and offset read returned ``k_ra_ok``.
+ * @return True iff the step, rate, and offset read returned ``k_ra8_ok``.
  *
- * @pre ``ra_ptp_open`` has succeeded.
+ * @pre ``ra8_ptp_open`` has succeeded.
  * @pre The console has been initialised.
  * @post One ``gptp: offset_ns=`` line has been queued.
  * @post The local clock has absorbed one step + one rate correction.
@@ -262,15 +262,15 @@ static bool gptp_probe_clock(void)
 static bool gptp_run_servo(void)
 {
   bool ok = true;
-  if (ra_ptp_adjust_time((int32_t)k_gptp_servo_step_ns) != k_ra_ok) {
+  if (ra8_ptp_adjust_time((int32_t)k_gptp_servo_step_ns) != k_ra8_ok) {
     ok = false;
   }
-  if (ra_ptp_adjust_rate((int32_t)k_gptp_servo_rate_ppb) != k_ra_ok) {
+  if (ra8_ptp_adjust_rate((int32_t)k_gptp_servo_rate_ppb) != k_ra8_ok) {
     ok = false;
   }
-  int32_t        offset_ns = 0;
-  const ra_err_t off_err   = ra_ptp_get_offset(&offset_ns);
-  if (off_err != k_ra_ok) {
+  int32_t         offset_ns = 0;
+  const ra8_err_t off_err   = ra8_ptp_get_offset(&offset_ns);
+  if (off_err != k_ra8_ok) {
     ok = false;
   }
   gptp_write(k_gptp_off_prefix, (uint32_t)(sizeof(k_gptp_off_prefix) - 1U));
@@ -282,10 +282,10 @@ static bool gptp_run_servo(void)
 /**
  * @brief Queue one Sync and one Announce as the transmitting clock.
  *
- * @return True iff both generators returned ``k_ra_ok``.
+ * @return True iff both generators returned ``k_ra8_ok``.
  *
- * @pre ``ra_ptp_set_role`` selected ``k_ra_ptp_role_controller``.
- * @pre ``ra_ptp_open`` has succeeded.
+ * @pre ``ra8_ptp_set_role`` selected ``k_ra8_ptp_role_controller``.
+ * @pre ``ra8_ptp_open`` has succeeded.
  * @post One Sync and one Announce have been queued for transmission.
  * @post No other PTP state was mutated.
  * @since 0.1.0
@@ -293,10 +293,10 @@ static bool gptp_run_servo(void)
 static bool gptp_run_controller(void)
 {
   bool ok = true;
-  if (ra_ptp_send_sync() != k_ra_ok) {
+  if (ra8_ptp_send_sync() != k_ra8_ok) {
     ok = false;
   }
-  if (ra_ptp_send_announce() != k_ra_ok) {
+  if (ra8_ptp_send_announce() != k_ra8_ok) {
     ok = false;
   }
   return ok;
@@ -305,9 +305,9 @@ static bool gptp_run_controller(void)
 /**
  * @brief Read + log the GPTP block status word.
  *
- * @return True iff ``ra_eth_gptp_get_status`` returned ``k_ra_ok``.
+ * @return True iff ``ra8_eth_gptp_get_status`` returned ``k_ra8_ok``.
  *
- * @pre ``ra_eth_gptp_init`` has succeeded.
+ * @pre ``ra8_eth_gptp_init`` has succeeded.
  * @pre The console has been initialised.
  * @post One ``gptp: sts=0x`` line has been queued.
  * @post No GPTP register state was mutated (status read is passive).
@@ -315,10 +315,10 @@ static bool gptp_run_controller(void)
  */
 static bool gptp_log_status(void)
 {
-  bool           ok   = true;
-  uint32_t       mask = 0U;
-  const ra_err_t err  = ra_eth_gptp_get_status(&mask);
-  if (err != k_ra_ok) {
+  bool            ok   = true;
+  uint32_t        mask = 0U;
+  const ra8_err_t err  = ra8_eth_gptp_get_status(&mask);
+  if (err != k_ra8_ok) {
     ok = false;
   }
   gptp_write(k_gptp_sts_prefix, (uint32_t)(sizeof(k_gptp_sts_prefix) - 1U));
@@ -330,7 +330,7 @@ static bool gptp_log_status(void)
 /**
  * @brief Run one clock cycle: capture + servo + transmit + status.
  *
- * @return True iff every driver call in the cycle returned ``k_ra_ok``.
+ * @return True iff every driver call in the cycle returned ``k_ra8_ok``.
  *
  * @pre ``gptp_arm`` initialised the GPTP timer and opened the PTP clock.
  * @pre The console has been initialised.
@@ -368,66 +368,66 @@ static bool gptp_run_cycle(void)
 static void gptp_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     gptp_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     gptp_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     gptp_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     gptp_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_gptp_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_gptp_baud) != k_ra8_ok) {
     gptp_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     gptp_panic_halt();
   }
 }
 
 /**
  * @brief Bring up the GPTP timer and open the IEEE 1588 clock in the
- *        ``k_ra_ptp_role_controller`` role.
+ *        ``k_ra8_ptp_role_controller`` role.
  *
  * @details
- * ``ra_eth_gptp_init`` ungates and starts the shared hardware-timestamp
- * counter; ``ra_ptp_open`` layers the SYNFP / STCA IEEE 1588 clock on top
+ * ``ra8_eth_gptp_init`` ungates and starts the shared hardware-timestamp
+ * counter; ``ra8_ptp_open`` layers the SYNFP / STCA IEEE 1588 clock on top
  * (domain 0, 1 s Sync interval, the demo MAC, default clockClass), and
- * ``ra_ptp_set_role`` selects ``k_ra_ptp_role_controller`` so the Sync / Announce
+ * ``ra8_ptp_set_role`` selects ``k_ra8_ptp_role_controller`` so the Sync / Announce
  * generators are legal.
  *
- * @return ``ra_err_t`` error code from the first failing step.
- * @retval k_ra_ok GPTP timer up and the PTP clock is the transmitting clock.
- * @retval Other   Forwarded from ``ra_eth_gptp_init`` / ``ra_ptp_open`` /
- *                 ``ra_ptp_set_role``.
+ * @return ``ra8_err_t`` error code from the first failing step.
+ * @retval k_ra8_ok GPTP timer up and the PTP clock is the transmitting clock.
+ * @retval Other   Forwarded from ``ra8_eth_gptp_init`` / ``ra8_ptp_open`` /
+ *                 ``ra8_ptp_set_role``.
  *
  * @pre ``gptp_setup_or_halt`` has ungated MSTP.
  * @pre IRQs are masked or this is single-threaded init.
- * @post On ``k_ra_ok`` the timestamp counter runs; role ``k_ra_ptp_role_controller``.
+ * @post On ``k_ra8_ok`` the timestamp counter runs; role ``k_ra8_ptp_role_controller``.
  * @post On failure no partial PTP state is relied upon by the caller.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t gptp_arm(void)
+[[nodiscard]] static ra8_err_t gptp_arm(void)
 {
-  const ra_err_t gptp_err = ra_eth_gptp_init();
-  if (gptp_err != k_ra_ok) {
+  const ra8_err_t gptp_err = ra8_eth_gptp_init();
+  if (gptp_err != k_ra8_ok) {
     return gptp_err;
   }
-  const ra_ptp_cfg_t cfg = {
-    .domain        = (uint8_t)k_ra_ptp_domain_default,
-    .sync_interval = k_ra_ptp_sync_int_1,
+  const ra8_ptp_cfg_t cfg = {
+    .domain        = (uint8_t)k_ra8_ptp_domain_default,
+    .sync_interval = k_ra8_ptp_sync_int_1,
     .mac_addr =
       {k_gptp_mac_b0, k_gptp_mac_b1, k_gptp_mac_b2, k_gptp_mac_b3, k_gptp_mac_b4, k_gptp_mac_b5},
-    .clock_class = k_ra_ptp_clock_class_default,
+    .clock_class = k_ra8_ptp_clock_class_default,
   };
-  const ra_err_t open_err = ra_ptp_open(&cfg);
-  if (open_err != k_ra_ok) {
+  const ra8_err_t open_err = ra8_ptp_open(&cfg);
+  if (open_err != k_ra8_ok) {
     return open_err;
   }
-  return ra_ptp_set_role(k_ra_ptp_role_controller);
+  return ra8_ptp_set_role(k_ra8_ptp_role_controller);
 }
 
 #pragma GCC diagnostic push
@@ -435,9 +435,9 @@ static void gptp_setup_or_halt(void)
 int32_t main(void)
 {
   gptp_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  if (gptp_arm() != k_ra_ok) {
+  if (gptp_arm() != k_ra8_ok) {
     gptp_panic_halt();
   }
 
@@ -448,10 +448,10 @@ int32_t main(void)
     } else {
       gptp_write(k_gptp_verdict_fail, (uint32_t)(sizeof(k_gptp_verdict_fail) - 1U));
     }
-    if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
+    if (ra8_board_led_toggle(k_ra8_board_led1) != k_ra8_ok) {
       break;
     }
-    ra_delay_ms((uint32_t)k_gptp_period_ms);
+    ra8_delay_ms((uint32_t)k_gptp_period_ms);
   }
   gptp_panic_halt();
   return 0;

@@ -13,18 +13,18 @@
  * of the EK-RA8D2.
  *
  * The slow rate is dictated by the millisecond-granularity HAL delay
- * (``ra_delay_ms``) -- there is no microsecond busy-wait helper in
- * ``libs/ra_core/ra_time`` yet. Adding one is tracked in
+ * (``ra8_delay_ms``) -- there is no microsecond busy-wait helper in
+ * ``libs/ra8_core/ra8_time`` yet. Adding one is tracked in
  * ``docs/ROADMAP.md``; once available this demo's step period drops
  * to 16 us for an audible 1 kHz triangle.
  *
  * Sequence:
  *   1. CGC + SysTick bring-up.
- *   2. ``ra_dac_b_init_configured`` with NORMAL VREFH, right-justified
+ *   2. ``ra8_dac_b_init_configured`` with NORMAL VREFH, right-justified
  *      12-bit data, channel 0 enabled, internal output disabled.
  *   3. Loop: walk ``value`` from 0 to 4095 in N_STEPS increments,
- *      then back down. ``ra_dac_b_write`` updates the channel
- *      every iteration; ``ra_delay_us`` paces the step.
+ *      then back down. ``ra8_dac_b_write`` updates the channel
+ *      every iteration; ``ra8_delay_us`` paces the step.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -33,12 +33,12 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_dac_b.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_dac_b.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /** @brief Channel + sample-rate tunables. */
 typedef enum : uint16_t {
@@ -83,23 +83,23 @@ static void dac_demo_panic_halt(void)
 static void dac_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     dac_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     dac_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     dac_demo_panic_halt();
   }
-  const ra_dac_b_cfg_t cfg = {
-    .vref                    = k_ra_dac_b_vref_normal,
-    .data_format             = k_ra_dac_b_format_right,
+  const ra8_dac_b_cfg_t cfg = {
+    .vref                    = k_ra8_dac_b_vref_normal,
+    .data_format             = k_ra8_dac_b_format_right,
     .internal_output_enabled = false,
     .enable_channel0         = true,
     .enable_channel1         = false,
   };
-  if (ra_dac_b_init_configured(&cfg) != k_ra_ok) {
+  if (ra8_dac_b_init_configured(&cfg) != k_ra8_ok) {
     dac_demo_panic_halt();
   }
 }
@@ -114,24 +114,24 @@ static void dac_demo_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t dac_demo_one_triangle_period(void)
+[[nodiscard]] static ra8_err_t dac_demo_one_triangle_period(void)
 {
   const uint16_t step = (uint16_t)((uint32_t)k_dac_demo_max_code / (uint32_t)k_dac_demo_steps);
   for (uint16_t i = 0U; i < (uint16_t)k_dac_demo_steps; ++i) {
     const uint16_t code = (uint16_t)(i * step);
-    if (ra_dac_b_write((uint8_t)k_dac_demo_channel, code) != k_ra_ok) {
-      return k_ra_err_hw_error;
+    if (ra8_dac_b_write((uint8_t)k_dac_demo_channel, code) != k_ra8_ok) {
+      return k_ra8_err_hw_error;
     }
-    ra_delay_ms((uint32_t)k_dac_demo_step_ms);
+    ra8_delay_ms((uint32_t)k_dac_demo_step_ms);
   }
   for (uint16_t i = (uint16_t)k_dac_demo_steps; i > 0U; --i) {
     const uint16_t code = (uint16_t)((i - 1U) * step);
-    if (ra_dac_b_write((uint8_t)k_dac_demo_channel, code) != k_ra_ok) {
-      return k_ra_err_hw_error;
+    if (ra8_dac_b_write((uint8_t)k_dac_demo_channel, code) != k_ra8_ok) {
+      return k_ra8_err_hw_error;
     }
-    ra_delay_ms((uint32_t)k_dac_demo_step_ms);
+    ra8_delay_ms((uint32_t)k_dac_demo_step_ms);
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 #pragma GCC diagnostic push
@@ -139,9 +139,9 @@ static void dac_demo_setup_or_halt(void)
 int32_t main(void)
 {
   dac_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   while (1) {
-    if (dac_demo_one_triangle_period() != k_ra_ok) {
+    if (dac_demo_one_triangle_period() != k_ra8_ok) {
       break;
     }
     g_dac_waveform_tick += 1U;

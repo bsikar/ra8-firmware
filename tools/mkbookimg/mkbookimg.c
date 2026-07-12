@@ -5,8 +5,8 @@
  * @details
  * Builds a raw FAT32 disk image (512-byte sectors, no MBR) containing the given
  * .rabook files under 8.3 names BOOK01.RBK, BOOK02.RBK, ... It drives the SAME
- * first-party `ra_fs` formatter/writer the firmware reads with, so the emulator
- * (`board_sim --sd image.img`) and the on-device ra_sdmmc_spi -> ra_fs path see
+ * first-party `ra8_fs` formatter/writer the firmware reads with, so the emulator
+ * (`board_sim --sd image.img`) and the on-device ra8_sdmmc_spi -> ra8_fs path see
  * a byte-identical layout. The firmware reads each book's title/author/cover
  * from the .rabook header, so the 8.3 names need carry no metadata.
  *
@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ra_fs.h"
+#include "ra8_fs.h"
 
 enum : uint32_t {
   k_block_size  = 512U,    /* FAT sector size.                       */
@@ -29,7 +29,7 @@ enum : uint32_t {
   k_name_len    = 12U,     /* "BOOKNN.RBK" + NUL.                    */
 };
 
-/** @brief In-memory disk for the ra_fs backend. */
+/** @brief In-memory disk for the ra8_fs backend. */
 typedef struct {
   uint8_t* bytes;
   uint32_t block_count;
@@ -37,32 +37,32 @@ typedef struct {
 
 static mem_disk_t s_disk;
 
-static ra_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if ((lba + count) > d->block_count) {
-    return k_ra_err_out_of_range;
+    return k_ra8_err_out_of_range;
   }
   memcpy(buf, &d->bytes[(size_t)lba * k_block_size], (size_t)count * k_block_size);
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
-static ra_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if ((lba + count) > d->block_count) {
-    return k_ra_err_out_of_range;
+    return k_ra8_err_out_of_range;
   }
   memcpy(&d->bytes[(size_t)lba * k_block_size], buf, (size_t)count * k_block_size);
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
-static ra_err_t mem_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
+static ra8_err_t mem_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
   *block_size   = k_block_size;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /** @brief Read a whole file into a freshly malloc'd buffer; NULL on failure. */
@@ -91,17 +91,17 @@ static uint8_t* read_file(const char* path, uint32_t* out_len)
 }
 
 /** @brief Format + mount the in-memory disk as FAT32; 0 on success. */
-static int fs_format_mount(const ra_fs_backend_t* backend, ra_fs_mount_t** out_mnt)
+static int fs_format_mount(const ra8_fs_backend_t* backend, ra8_fs_mount_t** out_mnt)
 {
-  ra_fs_format_opts_t opts = {};
-  opts.type                = k_ra_fs_type_fat32;
-  opts.label               = "RABOOKS";
-  if (ra_fs_format(backend, &opts) != k_ra_ok) {
-    (void)fprintf(stderr, "mkbookimg: ra_fs_format failed\n");
+  ra8_fs_format_opts_t opts = {};
+  opts.type                 = k_ra8_fs_type_fat32;
+  opts.label                = "RABOOKS";
+  if (ra8_fs_format(backend, &opts) != k_ra8_ok) {
+    (void)fprintf(stderr, "mkbookimg: ra8_fs_format failed\n");
     return 1;
   }
-  if (ra_fs_mount(backend, out_mnt) != k_ra_ok) {
-    (void)fprintf(stderr, "mkbookimg: ra_fs_mount failed\n");
+  if (ra8_fs_mount(backend, out_mnt) != k_ra8_ok) {
+    (void)fprintf(stderr, "mkbookimg: ra8_fs_mount failed\n");
     return 1;
   }
   return 0;
@@ -116,7 +116,7 @@ static const char* book_ext(const char* path)
 }
 
 /** @brief Write each argv[2..] book as BOOKNN.RBK / BOOKNN.EPB; 0 on success. */
-static int write_books(ra_fs_mount_t* mnt, char** argv, int n_books)
+static int write_books(ra8_fs_mount_t* mnt, char** argv, int n_books)
 {
   for (int i = 0; i < n_books; ++i) {
     uint32_t       len  = 0U;
@@ -127,12 +127,12 @@ static int write_books(ra_fs_mount_t* mnt, char** argv, int n_books)
     }
     char name[k_name_len];
     (void)snprintf(name, sizeof name, "BOOK%02d.%s", i + 1, book_ext(argv[2 + i]));
-    const ra_err_t err = ra_fs_write_file(mnt, name, data, len);
-    if (err == k_ra_ok) {
+    const ra8_err_t err = ra8_fs_write_file(mnt, name, data, len);
+    if (err == k_ra8_ok) {
       (void)fprintf(stderr, "mkbookimg: + %s  (%u bytes)  <- %s\n", name, len, argv[2 + i]);
     }
     free(data);
-    if (err != k_ra_ok) {
+    if (err != k_ra8_ok) {
       (void)fprintf(stderr, "mkbookimg: write %s failed\n", name);
       return 1;
     }
@@ -171,15 +171,15 @@ int main(int argc, char** argv)
     (void)fprintf(stderr, "mkbookimg: out of memory\n");
     return 1;
   }
-  const ra_fs_backend_t backend = {.read_block   = mem_read,
-                                   .write_block  = mem_write,
-                                   .get_capacity = mem_cap,
-                                   .ctx          = &s_disk};
-  ra_fs_mount_t*        mnt     = NULL;
-  int                   rc      = fs_format_mount(&backend, &mnt);
+  const ra8_fs_backend_t backend = {.read_block   = mem_read,
+                                    .write_block  = mem_write,
+                                    .get_capacity = mem_cap,
+                                    .ctx          = &s_disk};
+  ra8_fs_mount_t*        mnt     = NULL;
+  int                    rc      = fs_format_mount(&backend, &mnt);
   if (rc == 0) {
     rc = write_books(mnt, argv, n_books);
-    (void)ra_fs_unmount(mnt);
+    (void)ra8_fs_unmount(mnt);
   }
   if (rc == 0) {
     rc = dump_image(argv[1]);

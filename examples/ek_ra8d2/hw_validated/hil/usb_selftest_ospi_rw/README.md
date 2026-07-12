@@ -11,9 +11,9 @@ each other** and one firmware image runs both USB stacks.
   single **writable** logical unit (`GET_MAX_LUN` = 0) backed by a
   64-sector (32 KiB) window of the onboard OSPI flash (IS25LX512M at xSPI
   CS1, offset `0x00200000`). `media_write` programs host data into the
-  flash window with `ra_xspi_flash_program`; `media_read` serves it back
-  with `ra_xspi_flash_read`.
-- **USBHS (J7) = host:** the polled first-party host stack (`ra_usb_hmsc`)
+  flash window with `ra8_xspi_flash_program`; `media_read` serves it back
+  with `ra8_xspi_flash_read`.
+- **USBHS (J7) = host:** the polled first-party host stack (`ra8_usb_hmsc`)
   enumerates the device, `WRITE(10)`s a deterministic per-LBA pattern
   across the whole window in 8-block bursts, then `READ(10)`s it back and
   byte-checks every sector against the same pattern.
@@ -27,7 +27,7 @@ self-loop matrix (writable OSPI).
 
 The device worker provisions OSPI once at boot
 (`ospirw_ospi_provision`): activate the octo-SPI mux via the U15 I/O
-expander, init the xSPI pins, `ra_xspi_init` in 1S-1S-1S, read the JEDEC
+expander, init the xSPI pins, `ra8_xspi_init` in 1S-1S-1S, read the JEDEC
 id (expect `0x009D5A1A`), then **erase the 32 KiB window once** (eight
 4 KiB sectors at `0x00200000`). Per-WRITE(10) the callback is therefore a
 fast **program-only** path -- no per-write 4 KiB erase, which would blow
@@ -39,11 +39,11 @@ every run, so the test never touches another app's data.
 ## The driver fix this validates
 
 A host->device bulk-OUT data phase needs four things working together
-(all landed in `ra_usb` / the DCD / `cmake/usbx.cmake`):
+(all landed in `ra8_usb` / the DCD / `cmake/usbx.cmake`):
 
 1. **Host MPS** -- chunk the data-out at the device's enumerated endpoint
    `wMaxPacketSize` (FS = 64), not the host controller's speed ceiling
-   (HS = 512). `ra_usb_host_bulk_out` ships one packet per call.
+   (HS = 512). `ra8_usb_host_bulk_out` ships one packet per call.
 2. **Device DBLB** -- double-buffer the device bulk-OUT pipe so the host's
    next packet lands in bank B while the ISR drains bank A.
 3. **Loop-drain** -- the DCD drains every ready OUT bank per interrupt.

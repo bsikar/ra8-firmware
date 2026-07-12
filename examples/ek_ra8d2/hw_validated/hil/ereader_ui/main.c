@@ -7,24 +7,24 @@
  *
  * @details
  * E-reader UI chrome (issue #80). The application
- * shell is laid out by the bounded box-model engine ``libs/ra_box``
+ * shell is laid out by the bounded box-model engine ``libs/ra8_box``
  * (the #80 box model: stacks, a fixed-column grid, padding/gap, fixed
  * vs flex sizing), rendered into the GLCDC framebuffer through
- * ``libs/ra_gfx`` in the flat 16-level-grayscale language of the verified
- * "PAPYR" proof-of-concept, and navigated through the ``libs/ra_ui``
+ * ``libs/ra8_gfx`` in the flat 16-level-grayscale language of the verified
+ * "PAPYR" proof-of-concept, and navigated through the ``libs/ra8_ui``
  * screen stack. The Reading body renders real reflowed book text through
- * ``libs/ra_reflow`` when a font is present on the microSD (``FONT.OTF``);
- * with no card it falls back to the bundled ``ra_gfx`` bitmap font (#83).
+ * ``libs/ra8_reflow`` when a font is present on the microSD (``FONT.OTF``);
+ * with no card it falls back to the bundled ``ra8_gfx`` bitmap font (#83).
  *
  * Two screens:
  *   - Library: status bar, toolbar (search + count), a 2-column grid of
  *     book cards (cover + title + author + reading-progress bar), and a
- *     bottom navigation strip -- all laid out by ra_box.
+ *     bottom navigation strip -- all laid out by ra8_box.
  *   - Reading: status bar, body text at the reading margin, footer with
  *     page label + progress bar.
  *
  * Boot: clocks/MSTP/SysTick/LEDs, then SDRAM + GLCDC (the 1024x600 RGB565
- * framebuffer lives in external SDRAM), then ra_gfx bound to it. Layout
+ * framebuffer lives in external SDRAM), then ra8_gfx bound to it. Layout
  * is resolution-adaptive from the framebuffer the backend reports.
  *
  * The screen rendering, in-content navigation, on-screen keyboard, battery
@@ -45,31 +45,31 @@
 #include "er_pageturn.h"
 #include "ereader_ui_steps.h"
 #include "literata_latin1.h"
-#include "ra_app.h"
-#include "ra_batt.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_box.h"
-#include "ra_cgc.h"
-#include "ra_display_pal.h"
-#include "ra_display_pal_lcd.h"
-#include "ra_display_pal_policy.h"
-#include "ra_err.h"
-#include "ra_gfx.h"
-#include "ra_i2c_bus_ops.h"
-#include "ra_i3c.h"
-#include "ra_io_i2c_bus.h"
-#include "ra_io_i2c_bus_i3c_compat.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_panel_timing.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_reflow.h"
-#include "ra_sdfont.h"
-#include "ra_sdramc.h"
-#include "ra_time.h"
-#include "ra_touch.h"
-#include "ra_ui.h"
+#include "ra8_app.h"
+#include "ra8_batt.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_box.h"
+#include "ra8_cgc.h"
+#include "ra8_display_pal.h"
+#include "ra8_display_pal_lcd.h"
+#include "ra8_display_pal_policy.h"
+#include "ra8_err.h"
+#include "ra8_gfx.h"
+#include "ra8_i2c_bus_ops.h"
+#include "ra8_i3c.h"
+#include "ra8_io_i2c_bus.h"
+#include "ra8_io_i2c_bus_i3c_compat.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_panel_timing.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_reflow.h"
+#include "ra8_sdfont.h"
+#include "ra8_sdramc.h"
+#include "ra8_time.h"
+#include "ra8_touch.h"
+#include "ra8_ui.h"
 
 /* ===========================================================================
  * Static content (ASCII; public-domain titles)
@@ -126,7 +126,7 @@ static_assert((sizeof(k_er_body_lines) / sizeof(k_er_body_lines[0])) ==
               "k_er_body_line_count must match k_er_body_lines");
 
 /**
- * @brief Reading-view chapter as XHTML, reflowed by ra_reflow when an SD
+ * @brief Reading-view chapter as XHTML, reflowed by ra8_reflow when an SD
  *        font is present (the same prose as ::k_er_body_lines, but laid out
  *        live at the proportional type scale instead of pre-wrapped bitmap
  *        lines). Kept short so the software glyph rasteriser stays quick
@@ -180,10 +180,10 @@ static_assert((sizeof(k_er_spine) / sizeof(k_er_spine[0])) == (size_t)k_er_spine
 uint32_t s_chapter_idx;
 
 /** @brief Pmod2 SPI pins (J25) -- SCI0 Simple-SPI, per sd_font_render. */
-static const ra_port_pin_t k_er_pin_sck  = (ra_port_pin_t)k_ra_board_pmod2_spi_sck;
-static const ra_port_pin_t k_er_pin_cipo = (ra_port_pin_t)k_ra_board_pmod2_spi_cipo;
-static const ra_port_pin_t k_er_pin_copi = (ra_port_pin_t)k_ra_board_pmod2_spi_copi;
-static const ra_port_pin_t k_er_pin_cs   = (ra_port_pin_t)k_ra_board_pmod2_spi_cs;
+static const ra8_port_pin_t k_er_pin_sck  = (ra8_port_pin_t)k_ra8_board_pmod2_spi_sck;
+static const ra8_port_pin_t k_er_pin_cipo = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cipo;
+static const ra8_port_pin_t k_er_pin_copi = (ra8_port_pin_t)k_ra8_board_pmod2_spi_copi;
+static const ra8_port_pin_t k_er_pin_cs   = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cs;
 
 /* ===========================================================================
  * Static storage
@@ -199,13 +199,13 @@ static const ra_port_pin_t k_er_pin_cs   = (ra_port_pin_t)k_ra_board_pmod2_spi_c
 
 /** @brief Display PAL config -- LCD/GLCDC backend over the SDRAM buffer. */
 static const display_cfg_t k_er_display_cfg = {
-  .iface             = &k_display_backend_lcd_ra_glcdc,
+  .iface             = &k_display_backend_lcd_ra8_glcdc,
   .framebuffer       = s_framebuffer,
   .framebuffer_bytes = sizeof(s_framebuffer),
   .width_px          = (uint16_t)k_er_fb_w,
   .height_px         = (uint16_t)k_er_fb_h,
   .pixfmt            = k_display_pixfmt_rgb565,
-  .panel_timing      = &k_ra_panel_ek_ra8d2_timing,
+  .panel_timing      = &k_ra8_panel_ek_ra8d2_timing,
 };
 
 /** @brief PAL handle returned by display_init. */
@@ -215,19 +215,19 @@ static display_handle_t* s_display = nullptr;
 display_fb_t s_fb;
 
 /** @brief Navigation stack (which screen is shown). */
-ra_ui_nav_t s_nav;
+ra8_ui_nav_t s_nav;
 
 /** @brief Tap targets for the current screen (rect + action id). */
-ra_ui_target_t s_targets[k_er_max_targets];
+ra8_ui_target_t s_targets[k_er_max_targets];
 
 /** @brief Number of tap targets currently populated. */
 uint16_t s_target_count;
 
 /** @brief On-screen keyboard grid (built by er_render_keyboard, read on tap). */
-ra_kbd_layout_t s_kb;
+ra8_kbd_layout_t s_kb;
 
 /** @brief Live search query typed on the keyboard; filters the Library shelf. */
-ra_kbd_text_t s_query;
+ra8_kbd_text_t s_query;
 
 /** @brief Reading view: current reflow page index (0-based). */
 uint32_t s_reading_page;
@@ -235,10 +235,10 @@ uint32_t s_reading_page;
 /** @brief Reading view: total reflow pages from the last layout (>= 1). */
 uint32_t s_reading_pages = 1U;
 
-/** @brief Low-battery nag policy state (edge-triggered, see ra_batt). */
-ra_batt_monitor_t s_batt_mon;
+/** @brief Low-battery nag policy state (edge-triggered, see ra8_batt). */
+ra8_batt_monitor_t s_batt_mon;
 /** @brief Nag currently shown over the chrome (none = no banner). */
-ra_batt_nag_t s_batt_nag = k_ra_batt_nag_none;
+ra8_batt_nag_t s_batt_nag = k_ra8_batt_nag_none;
 /** @brief Last fuel-gauge SOC percent (for the banner text). */
 uint8_t s_batt_soc = 0U;
 /** @brief Set by er_handle_tap when a tap only toggled the nag (incremental repaint). */
@@ -277,8 +277,8 @@ uint32_t s_loc_back_count;
 /** @brief Image-decode bump arena in SDRAM (covers / figures are megabytes). */
 [[gnu::section(".sdram_data")]] uint8_t s_img_arena_buf[k_er_img_arena];
 
-/** @brief ra_reflow engine for the Reading body (page / glyph / token pools). */
-ra_reflow_t s_reflow_engine;
+/** @brief ra8_reflow engine for the Reading body (page / glyph / token pools). */
+ra8_reflow_t s_reflow_engine;
 
 /** @brief True while ::s_reflow_engine holds a laid-out chapter (cache valid). */
 bool s_reflow_open = false;
@@ -291,21 +291,21 @@ int32_t s_reflow_h = 0; /**< @see s_reflow_w */
 /** @brief Bytes of font read off the card (0 if none). */
 uint32_t s_font_len;
 
-/** @brief True once an SD font is loaded; gates the ra_reflow body render. */
+/** @brief True once an SD font is loaded; gates the ra8_reflow body render. */
 bool s_have_font;
 
 /** @brief Cached PCLKA rate (Hz) for the SD SPI clock shim. */
 static uint32_t s_pclka_hz;
 
 /** @brief SW1 (P009) = previous page; active-low, internal pull-up. */
-static const ra_port_pin_t k_er_pin_sw1 =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_0 << 8) | (uint16_t)k_ra_pin_9);
+static const ra8_port_pin_t k_er_pin_sw1 =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_0 << 8) | (uint16_t)k_ra8_pin_9);
 /** @brief SW2 (P008) = next page; active-low, internal pull-up. */
-static const ra_port_pin_t k_er_pin_sw2 =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_0 << 8) | (uint16_t)k_ra_pin_8);
+static const ra8_port_pin_t k_er_pin_sw2 =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_0 << 8) | (uint16_t)k_ra8_pin_8);
 
 /** @brief Nag banner overlay widget vtable (renderer lives in the input TU). */
-static const ra_widget_vtable_t k_er_nag_vt = {.render = er_nag_render};
+static const ra8_widget_vtable_t k_er_nag_vt = {.render = er_nag_render};
 
 /* ===========================================================================
  * Boot helpers
@@ -326,7 +326,7 @@ static const ra_widget_vtable_t k_er_nag_vt = {.render = er_nag_render};
  */
 static void app_panic_halt(void)
 {
-  (void)ra_board_led_on(k_ra_board_led_red);
+  (void)ra8_board_led_on(k_ra8_board_led_red);
   while (1) {
     __asm__ volatile("wfi");
   }
@@ -339,7 +339,7 @@ static void app_panic_halt(void)
  *
  * @pre Reset_Handler ran .data/.bss init.
  * @pre IRQs are still globally disabled.
- * @post Clocks, MSTP, ra_time and both board LEDs are initialised.
+ * @post Clocks, MSTP, ra8_time and both board LEDs are initialised.
  * @post Global IRQs are enabled.
  *
  * @note Not thread-safe; single-shot helper.
@@ -348,32 +348,32 @@ static void app_panic_halt(void)
 static void app_bringup_clocks(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     app_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     app_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     app_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     app_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led_blue) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led_blue) != k_ra8_ok) {
     app_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led_red) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led_red) != k_ra8_ok) {
     app_panic_halt();
   }
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 }
 
 /**
  * @brief Bring up external SDRAM and the GLCDC panel, then cache the FB.
  *
  * @details
- * Settle delay, ``ra_sdramc_init`` (the framebuffer lives at 0x68000000),
+ * Settle delay, ``ra8_sdramc_init`` (the framebuffer lives at 0x68000000),
  * then ``display_init`` (panel power + GLCDC routing). Caches the FB.
  *
  * @pre ``app_bringup_clocks`` has run; IRQs are enabled.
@@ -386,26 +386,26 @@ static void app_bringup_clocks(void)
  */
 static void app_bringup_panel(void)
 {
-  ra_delay_ms((uint32_t)k_er_settle_ms);
-  if (ra_sdramc_init() != k_ra_ok) {
+  ra8_delay_ms((uint32_t)k_er_settle_ms);
+  if (ra8_sdramc_init() != k_ra8_ok) {
     app_panic_halt();
   }
-  if (display_init(&k_er_display_cfg, &s_display) != k_ra_ok) {
+  if (display_init(&k_er_display_cfg, &s_display) != k_ra8_ok) {
     app_panic_halt();
   }
-  if (display_get_framebuffer(s_display, &s_fb) != k_ra_ok) {
+  if (display_get_framebuffer(s_display, &s_fb) != k_ra8_ok) {
     app_panic_halt();
   }
 }
 
 /**
- * @brief Bind ra_gfx to the panel framebuffer.
+ * @brief Bind ra8_gfx to the panel framebuffer.
  *
- * @details After this, all chrome drawing goes through ra_gfx primitives.
+ * @details After this, all chrome drawing goes through ra8_gfx primitives.
  *
  * @pre ``app_bringup_panel`` has run; ``s_fb.pixels`` is reachable.
  * @pre The framebuffer is RGB565.
- * @post ra_gfx draw calls operate on ``s_framebuffer``.
+ * @post ra8_gfx draw calls operate on ``s_framebuffer``.
  * @post On failure the app panic-halts.
  *
  * @note Not thread-safe; single-shot helper.
@@ -413,7 +413,8 @@ static void app_bringup_panel(void)
  */
 static void app_bringup_gfx(void)
 {
-  if (ra_gfx_init(s_fb.pixels, s_fb.width_px, s_fb.height_px, k_ra_gfx_format_rgb565) != k_ra_ok) {
+  if (ra8_gfx_init(s_fb.pixels, s_fb.width_px, s_fb.height_px, k_ra8_gfx_format_rgb565) !=
+      k_ra8_ok) {
     app_panic_halt();
   }
 }
@@ -429,17 +430,17 @@ static void app_bringup_gfx(void)
  * @warning Do not rebind while the touch driver is open.
  * @since 0.1.0
  */
-static ra_io_i2c_bus_t s_touch_bus;
+static ra8_io_i2c_bus_t s_touch_bus;
 
 /**
  * @brief Open the GT911 touch controller (best-effort, polled).
  *
  * @details
  * Brings the app-owned IIC_B peripheral up in I2C-compat mode, binds it
- * through the ra_io facade into the driver's injected seam, then opens
+ * through the ra8_io facade into the driver's injected seam, then opens
  * the driver. The fuel-gauge reads in ``ereader_ui_input.c`` share this
  * bus bring-up. Boards / sims without the GT911 simply return an error
- * from ``ra_touch_open``; the UI still renders, just without touch
+ * from ``ra8_touch_open``; the UI still renders, just without touch
  * input, so this is non-fatal (no panic).
  *
  * @pre ``app_bringup_clocks`` has run (IIC_B clock + MSTP up).
@@ -452,32 +453,32 @@ static ra_io_i2c_bus_t s_touch_bus;
  */
 static void app_bringup_touch(void)
 {
-  const ra_i3c_cfg_t iic_cfg = {
-    .mode     = k_ra_i3c_mode_i2c,
+  const ra8_i3c_cfg_t iic_cfg = {
+    .mode     = k_ra8_i3c_mode_i2c,
     .bus_hz   = (uint32_t)k_er_touch_bus_hz,
     .pclka_hz = (uint32_t)k_er_touch_pclka_hz,
   };
-  if (ra_i3c_init((uint8_t)k_er_touch_channel, &iic_cfg) != k_ra_ok) {
+  if (ra8_i3c_init((uint8_t)k_er_touch_channel, &iic_cfg) != k_ra8_ok) {
     return;
   }
-  ra_i2c_bus_ops_t bus_ops = {};
-  if (ra_io_i2c_bus_bind_i3c_compat(&s_touch_bus, (uint8_t)k_er_touch_channel) != k_ra_ok) {
+  ra8_i2c_bus_ops_t bus_ops = {};
+  if (ra8_io_i2c_bus_bind_i3c_compat(&s_touch_bus, (uint8_t)k_er_touch_channel) != k_ra8_ok) {
     return;
   }
-  if (ra_io_i2c_bus_as_ops(&s_touch_bus, &bus_ops) != k_ra_ok) {
+  if (ra8_io_i2c_bus_as_ops(&s_touch_bus, &bus_ops) != k_ra8_ok) {
     return;
   }
-  const ra_touch_cfg_t cfg = {
+  const ra8_touch_cfg_t cfg = {
     .bus        = bus_ops,
     .target_7b  = (uint8_t)k_er_touch_addr_7b,
-    .irq_pin    = (uint8_t)k_ra_touch_irq_pin_unset,
+    .irq_pin    = (uint8_t)k_ra8_touch_irq_pin_unset,
     .max_points = (uint8_t)k_er_touch_max_points,
   };
-  (void)ra_touch_open(&cfg);
+  (void)ra8_touch_open(&cfg);
 }
 
 /* ===========================================================================
- * Optional SD-loaded font for the ra_reflow Reading body
+ * Optional SD-loaded font for the ra8_reflow Reading body
  * =========================================================================== */
 
 /**
@@ -485,7 +486,7 @@ static void app_bringup_touch(void)
  *
  * @details
  * Delegates the Pmod2 SPI bring-up, FAT mount, and font read to
- * @ref ra_sdfont_load. Entirely non-fatal: any failure (no Pmod, no card, no
+ * @ref ra8_sdfont_load. Entirely non-fatal: any failure (no Pmod, no card, no
  * FONT.OTF) leaves ::s_have_font false and the Reading view falls back to the
  * baked Latin-1 font (or the bundled bitmap), so the chrome is never broken by
  * the absence of an SD card. Provisioning is left disabled (NULL blob): the
@@ -501,10 +502,10 @@ static void app_bringup_touch(void)
  */
 static void er_try_load_font(void)
 {
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &s_pclka_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &s_pclka_hz) != k_ra8_ok) {
     return;
   }
-  const ra_sdfont_cfg_t cfg = {
+  const ra8_sdfont_cfg_t cfg = {
     .spi_channel    = (uint8_t)k_er_spi_chan,
     .sck            = k_er_pin_sck,
     .cipo           = k_er_pin_cipo,
@@ -516,31 +517,31 @@ static void er_try_load_font(void)
     .provision_len  = 0U,
   };
   uint32_t got = 0U;
-  if (ra_sdfont_load(&cfg, s_font_buf, (uint32_t)k_er_font_cap, &got, nullptr) != k_ra_ok) {
+  if (ra8_sdfont_load(&cfg, s_font_buf, (uint32_t)k_er_font_cap, &got, nullptr) != k_ra8_ok) {
     return;
   }
   s_font_len  = got;
   s_have_font = true;
 }
 
-#ifdef RA_APP_SETTINGS
+#ifdef RA8_APP_SETTINGS
 /**
  * @brief Minimal Settings screen for the optional Settings app.
  *
- * @details Only compiled when ``RA_APP_SETTINGS`` is defined -- the default
+ * @details Only compiled when ``RA8_APP_SETTINGS`` is defined -- the default
  * build excludes the Settings app entirely (it is never registered, so it is
  * absent from the launcher / nav). A real settings panel would compose its own
  * widget tree; this stub draws a paper page with an ink title band so the
  * enabled build is complete and runnable.
  *
- * @pre ::ra_gfx is bound to ::s_framebuffer.
+ * @pre ::ra8_gfx is bound to ::s_framebuffer.
  * @post The framebuffer holds the Settings page; no tap targets are armed.
  * @since 0.1.0
  */
 static void er_render_settings(void)
 {
-  (void)ra_gfx_clear((uint32_t)k_er_paper);
-  (void)ra_gfx_rect(0, 0, (int32_t)k_er_fb_w, (int32_t)k_er_statusbar_h, (uint32_t)k_er_ink, true);
+  (void)ra8_gfx_clear((uint32_t)k_er_paper);
+  (void)ra8_gfx_rect(0, 0, (int32_t)k_er_fb_w, (int32_t)k_er_statusbar_h, (uint32_t)k_er_ink, true);
   s_target_count = 0U;
 }
 #endif
@@ -548,37 +549,37 @@ static void er_render_settings(void)
 /* ===========================================================================
  * App framework integration (#146)
  *
- * Each screen is re-expressed as an ``ra_app``: the screen-id stack (``s_nav``)
+ * Each screen is re-expressed as an ``ra8_app``: the screen-id stack (``s_nav``)
  * remains the source of truth for *which* screen is active, and that id is the
  * active app's id, so ::er_render_current focuses the matching app and renders
  * its tree. The render callbacks are the existing ``er_render_*`` functions, so
  * the composited chrome is byte-identical (``make ereader-golden`` stays green)
  * while the control flow is now an app composition rather than a hardcoded
- * if/else. ``RA_APP_SETTINGS`` shows the build-time "uninstallable core" knob: a
+ * if/else. ``RA8_APP_SETTINGS`` shows the build-time "uninstallable core" knob: a
  * Settings app is only registered when the macro is defined.
  * ===========================================================================
  */
 
 /** @brief Library / Reading / Keyboard (+ optional Settings) app instances. */
-static ra_app_t s_app_library;
-static ra_app_t s_app_reader;
-static ra_app_t s_app_keyboard;
-#ifdef RA_APP_SETTINGS
-static ra_app_t s_app_settings;
+static ra8_app_t s_app_library;
+static ra8_app_t s_app_reader;
+static ra8_app_t s_app_keyboard;
+#ifdef RA8_APP_SETTINGS
+static ra8_app_t s_app_settings;
 #endif
 
 /** @brief App registry storage (4 slots: 3 core + an optional Settings). */
-static ra_app_t*         s_app_slots[4];
-static ra_app_registry_t s_app_reg;
+static ra8_app_t*         s_app_slots[4];
+static ra8_app_registry_t s_app_reg;
 
 /** @brief App render trampoline: dispatch to the screen render by app id. */
-static void er_app_render(const ra_app_t* a)
+static void er_app_render(const ra8_app_t* a)
 {
   if (a->id == (uint16_t)k_er_screen_reading) {
     er_render_reading();
   } else if (a->id == (uint16_t)k_er_screen_keyboard) {
     er_render_keyboard();
-#ifdef RA_APP_SETTINGS
+#ifdef RA8_APP_SETTINGS
   } else if (a->id == (uint16_t)k_er_screen_settings) {
     er_render_settings();
 #endif
@@ -588,54 +589,54 @@ static void er_app_render(const ra_app_t* a)
 }
 
 /** @brief Vtable shared by every screen-app (render-only; nav owns transitions). */
-static const ra_app_vtable_t k_er_app_vt = {
+static const ra8_app_vtable_t k_er_app_vt = {
   .render = er_app_render,
 };
 
 /** @brief Register the e-reader screen-apps into ::s_app_reg. */
 static void er_apps_init(void)
 {
-  s_app_library  = (ra_app_t){.vt        = &k_er_app_vt,
-                              .id        = (uint16_t)k_er_screen_library,
-                              .name      = "Library",
-                              .removable = false};
-  s_app_reader   = (ra_app_t){.vt        = &k_er_app_vt,
-                              .id        = (uint16_t)k_er_screen_reading,
-                              .name      = "Reader",
-                              .removable = false};
-  s_app_keyboard = (ra_app_t){.vt        = &k_er_app_vt,
-                              .id        = (uint16_t)k_er_screen_keyboard,
-                              .name      = "Search",
-                              .removable = false};
-  (void)ra_app_registry_init(&s_app_reg,
-                             s_app_slots,
-                             (uint16_t)(sizeof(s_app_slots) / sizeof(s_app_slots[0])));
-  (void)ra_app_register(&s_app_reg, &s_app_library);
-  (void)ra_app_register(&s_app_reg, &s_app_reader);
-  (void)ra_app_register(&s_app_reg, &s_app_keyboard);
-#ifdef RA_APP_SETTINGS
-  s_app_settings = (ra_app_t){.vt        = &k_er_app_vt,
-                              .id        = (uint16_t)k_er_screen_settings,
-                              .name      = "Settings",
-                              .removable = true};
-  (void)ra_app_register(&s_app_reg, &s_app_settings);
+  s_app_library  = (ra8_app_t){.vt        = &k_er_app_vt,
+                               .id        = (uint16_t)k_er_screen_library,
+                               .name      = "Library",
+                               .removable = false};
+  s_app_reader   = (ra8_app_t){.vt        = &k_er_app_vt,
+                               .id        = (uint16_t)k_er_screen_reading,
+                               .name      = "Reader",
+                               .removable = false};
+  s_app_keyboard = (ra8_app_t){.vt        = &k_er_app_vt,
+                               .id        = (uint16_t)k_er_screen_keyboard,
+                               .name      = "Search",
+                               .removable = false};
+  (void)ra8_app_registry_init(&s_app_reg,
+                              s_app_slots,
+                              (uint16_t)(sizeof(s_app_slots) / sizeof(s_app_slots[0])));
+  (void)ra8_app_register(&s_app_reg, &s_app_library);
+  (void)ra8_app_register(&s_app_reg, &s_app_reader);
+  (void)ra8_app_register(&s_app_reg, &s_app_keyboard);
+#ifdef RA8_APP_SETTINGS
+  s_app_settings = (ra8_app_t){.vt        = &k_er_app_vt,
+                               .id        = (uint16_t)k_er_screen_settings,
+                               .name      = "Settings",
+                               .removable = true};
+  (void)ra8_app_register(&s_app_reg, &s_app_settings);
 #endif
 }
 
 void er_render_current(void)
 {
   uint16_t top = (uint16_t)k_er_screen_library;
-  (void)ra_ui_nav_top(&s_nav, &top);
+  (void)ra8_ui_nav_top(&s_nav, &top);
   /* The nav top is the active screen-app's id: focus it (idempotent if already
    * focused, so no flicker) and render its widget tree. */
-  (void)ra_app_launch(&s_app_reg, top);
-  (void)ra_app_render(&s_app_reg);
+  (void)ra8_app_launch(&s_app_reg, top);
+  (void)ra8_app_render(&s_app_reg);
   /* Low-battery nag (#145/#146): an app-framework-level overlay widget drawn
    * over whichever screen-app is active. A no-op at a healthy SOC, so the chrome
    * golden (rendered at the default battery) stays byte-identical. */
-  if (s_batt_nag != k_ra_batt_nag_none) {
-    ra_widget_t nag = {.vt = &k_er_nag_vt, .visible = true, .dirty = true};
-    (void)ra_widget_render_dirty(&nag, 1U);
+  if (s_batt_nag != k_ra8_batt_nag_none) {
+    ra8_widget_t nag = {.vt = &k_er_nag_vt, .visible = true, .dirty = true};
+    (void)ra8_widget_render_dirty(&nag, 1U);
   }
 }
 
@@ -645,29 +646,29 @@ void er_render_nag_region(void)
   const int32_t ny = (int32_t)k_er_nag_top;
   const int32_t nw = (int32_t)s_fb.width_px - (2 * (int32_t)k_er_nag_margin);
   const int32_t nh = (int32_t)k_er_nag_h;
-  if (ra_gfx_set_clip(nx, ny, nw, nh) != k_ra_ok) {
+  if (ra8_gfx_set_clip(nx, ny, nw, nh) != k_ra8_ok) {
     er_render_current(); /* clip unavailable -> safe full repaint. */
     return;
   }
   uint16_t top = (uint16_t)k_er_screen_library;
-  (void)ra_ui_nav_top(&s_nav, &top);
-  (void)ra_app_launch(&s_app_reg, top);
-  (void)ra_app_render(&s_app_reg);
-  if (s_batt_nag != k_ra_batt_nag_none) {
-    ra_widget_t nag = {.vt = &k_er_nag_vt, .visible = true, .dirty = true};
-    (void)ra_widget_render_dirty(&nag, 1U);
+  (void)ra8_ui_nav_top(&s_nav, &top);
+  (void)ra8_app_launch(&s_app_reg, top);
+  (void)ra8_app_render(&s_app_reg);
+  if (s_batt_nag != k_ra8_batt_nag_none) {
+    ra8_widget_t nag = {.vt = &k_er_nag_vt, .visible = true, .dirty = true};
+    (void)ra8_widget_render_dirty(&nag, 1U);
   }
-  (void)ra_gfx_reset_clip();
+  (void)ra8_gfx_reset_clip();
 }
 
 void er_flush_event(display_turn_event_t event)
 {
   display_policy_decision_t dec = {};
-  if (display_policy_decide(&s_policy, event, &dec) != k_ra_ok) {
+  if (display_policy_decide(&s_policy, event, &dec) != k_ra8_ok) {
     dec.hint = k_display_refresh_quality; /* safe fallback: a clean full update */
   }
   display_rect_t rect = {};
-  if (display_policy_full_rect(s_fb.width_px, s_fb.height_px, &rect) != k_ra_ok) {
+  if (display_policy_full_rect(s_fb.width_px, s_fb.height_px, &rect) != k_ra8_ok) {
     rect = display_full_rect(s_display);
   }
   (void)display_flush(s_display, rect, dec.hint);
@@ -683,17 +684,17 @@ int32_t main(void)
   app_bringup_panel();
   app_bringup_gfx();
   app_bringup_touch();
-  (void)ra_batt_monitor_init(&s_batt_mon); /* low-battery nag policy (#145/#146) */
+  (void)ra8_batt_monitor_init(&s_batt_mon); /* low-battery nag policy (#145/#146) */
   /* User switches SW1/SW2 as inputs with internal pull-ups (active-low). Best-
    * effort: a config failure just leaves page-turn on the touch path. */
-  (void)ra_gpio_input_init(k_er_pin_sw1, k_ra_pull_up);
-  (void)ra_gpio_input_init(k_er_pin_sw2, k_ra_pull_up);
-  er_try_load_font(); /* Best-effort SD font for the ra_reflow Reading body. */
+  (void)ra8_gpio_input_init(k_er_pin_sw1, k_ra8_pull_up);
+  (void)ra8_gpio_input_init(k_er_pin_sw2, k_ra8_pull_up);
+  er_try_load_font(); /* Best-effort SD font for the ra8_reflow Reading body. */
 
   /* Default refresh cadence: fast A2 turns with a periodic GC16 clean (#78). */
   (void)display_policy_init(&s_policy, k_display_policy_fast_clean, (uint16_t)k_er_clean_every);
-  (void)ra_ui_nav_init(&s_nav, (uint16_t)k_er_screen_library);
-  er_apps_init(); /* re-express the screens as ra_app instances (#146) */
+  (void)ra8_ui_nav_init(&s_nav, (uint16_t)k_er_screen_library);
+  er_apps_init(); /* re-express the screens as ra8_app instances (#146) */
   er_render_current();
   er_flush_event(k_display_event_open); /* boot -> a clean INIT panel update */
 
@@ -704,12 +705,12 @@ int32_t main(void)
     /* Heartbeat LED toggles on a slow sub-cadence so it blinks (~1 Hz) instead
      * of strobing at the input-poll rate. */
     if ((g_er_loop_ticks % (uint32_t)k_er_led_every) == 0U) {
-      (void)ra_board_led_toggle(k_ra_board_led_blue);
+      (void)ra8_board_led_toggle(k_ra8_board_led_blue);
     }
     /* Free-running liveness counter: the jlink_memprobe HIL reads it twice across
      * a window and asserts the render/poll loop advanced (it never WFIs). */
     g_er_loop_ticks++;
-    ra_delay_ms((uint32_t)k_er_frame_ms);
+    ra8_delay_ms((uint32_t)k_er_frame_ms);
   }
   return 0;
 }

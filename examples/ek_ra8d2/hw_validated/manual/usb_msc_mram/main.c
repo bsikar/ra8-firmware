@@ -6,13 +6,13 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Brings the chip up via ``ra_cgc_init()`` (XTAL -> PLL1 -> CPUCLK0 =
+ * Brings the chip up via ``ra8_cgc_init()`` (XTAL -> PLL1 -> CPUCLK0 =
  * 1 GHz, PCLKA = 125 MHz), routes the four USB-FS pins per the
  * EK-RA8D2 v1 User's Manual to the on-board USB-FS receptacle, hands
  * control to ThreadX, and brings the Mass-Storage device class up via
  * Eclipse USBX (``_ux_device_class_storage_initialize``). The class
- * sits on top of the project's ``port/usbx/ux_dcd_ra_usb`` bridge to
- * the hand-written ``ra_usb`` register-level driver (HUM Ch. 36
+ * sits on top of the project's ``port/usbx/ux_dcd_ra8_usb`` bridge to
+ * the hand-written ``ra8_usb`` register-level driver (HUM Ch. 36
  * USBFS, sec. 36.2.x for SYSCFG / DCPCFG / DCPMAXP / PIPECFG /
  * CFIFO). The host actually enumerates the device because USBX's
  * chapter-9 + SCSI/BBB state machines answer SETUP and BOT packets
@@ -31,7 +31,7 @@
  * ## Pinout (USB-FS, FSP-aligned, mirrors usb_cdc_echo)
  *
  * P4_07 = VBUS, P5_00 = VBUSEN, P8_14 = D+, P8_15 = D-, all PSEL =
- * ``k_ra_psel_usb_fs``.
+ * ``k_ra8_psel_usb_fs``.
  *
  * ## Verification (macOS)
  *
@@ -50,43 +50,43 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gpio_constants.h"
-#include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_time.h"
-#include "ra_usb.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_isr.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_time.h"
+#include "ra8_usb.h"
 #include "usb_msc_mram_steps.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 #include "ux_api.h"
-#include "ux_dcd_ra_usb.h"
+#include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_storage.h"
 #include "ux_device_stack.h"
 
-/* Strong SysTick override: route the tick into BOTH the ra_time millisecond
- * counter (for ra_delay_ms) AND ThreadX's timer (for tx_thread_sleep and
- * semaphore timeouts). The default weak ra_time SysTick handler only advances
+/* Strong SysTick override: route the tick into BOTH the ra8_time millisecond
+ * counter (for ra8_delay_ms) AND ThreadX's timer (for tx_thread_sleep and
+ * semaphore timeouts). The default weak ra8_time SysTick handler only advances
  * the ms counter; without _tx_timer_interrupt ThreadX time never advances and
  * tx_thread_sleep / USBX class-thread scheduling stall. The project's
  * tx_initialize_low_level.S configures SysTick but relies on the application
  * to publish the handler. */
-extern void ra_time_on_tick(void);
+extern void ra8_time_on_tick(void);
 extern void _tx_timer_interrupt(void);
 void        SysTick_Handler(void);
 void        SysTick_Handler(void)
 {
-  ra_time_on_tick();
+  ra8_time_on_tick();
   _tx_timer_interrupt();
   /* Re-enable the USB IRQ at the NVIC level: the bridge's storm guard
    * masks it to break the USBFS event-less interrupt storm, and this
    * 1 ms pulse is its recovery clock -- a masked line is re-enabled
    * within one period so real USB events are never lost. */
-  ux_dcd_ra_usb_irq_reenable();
+  ux_dcd_ra8_usb_irq_reenable();
 }
 #endif
 
@@ -95,19 +95,19 @@ void        SysTick_Handler(void)
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief USB-FS pin identifiers, packed ``ra_port_pin_t`` (port << 8 | pin).
+ * @brief USB-FS pin identifiers, packed ``ra8_port_pin_t`` (port << 8 | pin).
  * @details Built as a runtime cast so clang-tidy's enum-range check
  * is happy with the otherwise out-of-enum value.
  * @since 0.1.0
  */
-static const ra_port_pin_t k_demo_pin_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
-static const ra_port_pin_t k_demo_pin_vbusen =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0);
-static const ra_port_pin_t k_demo_pin_dp =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14);
-static const ra_port_pin_t k_demo_pin_dm =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
+static const ra8_port_pin_t k_demo_pin_vbus =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_7);
+static const ra8_port_pin_t k_demo_pin_vbusen =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_5 << 8) | (uint16_t)k_ra8_pin_0);
+static const ra8_port_pin_t k_demo_pin_dp =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_14);
+static const ra8_port_pin_t k_demo_pin_dm =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_15);
 
 /* -------------------------------------------------------------------------- */
 /* Tunables */
@@ -126,7 +126,7 @@ typedef enum : uint8_t {
   k_scsi_asc_write_protected = 0x27U, /**< ASC: WRITE PROTECTED.    */
 } scsi_wp_sense_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
 /* ThreadX worker + USBX pool storage */
@@ -370,7 +370,7 @@ static UINT demo_msc_read(VOID*  storage,
     demo_fat_fill_sector((uint32_t)(lba + i), &data_pointer[i * (ULONG)k_demo_block_size]);
   }
   *media_status = 0UL;
-  (void)ra_board_led_toggle(k_ra_board_led1);
+  (void)ra8_board_led_toggle(k_ra8_board_led1);
   return UX_SUCCESS;
 }
 
@@ -534,10 +534,10 @@ static VOID demo_worker(ULONG arg)
   if (demo_msc_class_register() != UX_SUCCESS) {
     return;
   }
-  if (ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs) != k_ra_ok) {
+  if (ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs) != k_ra8_ok) {
     return;
   }
-  if (ra_usb_device_attach(k_ra_usb_speed_fs, true) != k_ra_ok) {
+  if (ra8_usb_device_attach(k_ra8_usb_speed_fs, true) != k_ra8_ok) {
     return;
   }
 
@@ -576,7 +576,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
 /* Startup helpers */
@@ -601,8 +601,8 @@ static void demo_panic_halt(void)
 /**
  * @brief Route the four USB-FS pins to the USBFS controller.
  *
- * @return Error from the first failing route call, or k_ra_ok.
- * @retval k_ra_ok All four pins routed.
+ * @return Error from the first failing route call, or k_ra8_ok.
+ * @retval k_ra8_ok All four pins routed.
  *
  * @pre IOPORT module is reachable.
  * @pre Single-threaded init context.
@@ -611,23 +611,23 @@ static void demo_panic_halt(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t demo_pins_init(void)
+[[nodiscard]] static ra8_err_t demo_pins_init(void)
 {
-  ra_err_t err = ra_pfs_route_peripheral(k_demo_pin_vbus, k_ra_psel_usb_fs, "usb_msc_mram.vbus");
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_pfs_route_peripheral(k_demo_pin_vbus, k_ra8_psel_usb_fs, "usb_msc_mram.vbus");
+  if (err != k_ra8_ok) {
     return err;
   }
   /* VBUSEN as GPIO output LOW for USB device mode. Peripheral routing
    * forces VBUSEN HIGH (host mode) which blocks device enumeration. */
-  err = ra_gpio_output_init(k_demo_pin_vbusen, k_ra_level_low);
-  if (err != k_ra_ok) {
+  err = ra8_gpio_output_init(k_demo_pin_vbusen, k_ra8_level_low);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_pfs_route_peripheral(k_demo_pin_dp, k_ra_psel_usb_fs, "usb_msc_mram.dp");
-  if (err != k_ra_ok) {
+  err = ra8_pfs_route_peripheral(k_demo_pin_dp, k_ra8_psel_usb_fs, "usb_msc_mram.dp");
+  if (err != k_ra8_ok) {
     return err;
   }
-  return ra_pfs_route_peripheral(k_demo_pin_dm, k_ra_psel_usb_fs, "usb_msc_mram.dm");
+  return ra8_pfs_route_peripheral(k_demo_pin_dm, k_ra8_psel_usb_fs, "usb_msc_mram.dm");
 }
 
 #pragma GCC diagnostic push
@@ -649,7 +649,7 @@ int32_t main(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     demo_panic_halt();
   }
   /* Bring up PLL2 -> USBCKCR / USBCKDIVCR so USBFS sees a spec-compliant
@@ -658,25 +658,25 @@ int32_t main(void)
    * hangs otherwise (HUM Ch 9 "Clock selection switching procedure"
    * step 1). Without this the SIE never sees a 48 MHz clock and the
    * host never enumerates the device. */
-  if (ra_cgc_usbfs_clock_enable() != k_ra_ok) {
+  if (ra8_cgc_usbfs_clock_enable() != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (demo_pins_init() != k_ra_ok) {
+  if (demo_pins_init() != k_ra8_ok) {
     demo_panic_halt();
   }
 
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   /* tx_kernel_enter is __noreturn -- it never comes back. */
   tx_kernel_enter();
 #endif

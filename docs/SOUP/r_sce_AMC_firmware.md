@@ -35,7 +35,7 @@ into this firmware as Software Of Unknown Provenance (SOUP).
 ## Use case in this firmware
 
 - Drives the RSIP-E50D protected-mode key-install / key-wrap /
-  key-unwrap flows inside `libs/ra_hal/src/ra_rsip*.c` and
+  key-unwrap flows inside `libs/ra8_hal/src/ra8_rsip*.c` and
   `src/secure_app/key_import.c`. These are the OEM-grade crypto
   primitives that the bare RSIP register interface (Hardware User's
   Manual Ch 52, pp 3302-3307) does not expose by itself.
@@ -64,7 +64,7 @@ and DO-178C Section 12.1.4 (previously developed software):
   whose internal structure cannot be re-verified (no source-level
   MC/DC, no MISRA-C audit, no Doxygen audit). The compensating
   controls are the host-side PSA-Crypto self-tests under
-  `tests/test_ra_psa_crypto.c` and the Phase-6 hardware-in-the-loop
+  `tests/test_ra8_psa_crypto.c` and the Phase-6 hardware-in-the-loop
   smoke (per `docs/HIL_DEVELOPER_WORKFLOW.md`).
 - **Bug tracker review**: Renesas FSP issue tracker
   <https://github.com/renesas/fsp/issues> is reviewed at the
@@ -73,10 +73,10 @@ and DO-178C Section 12.1.4 (previously developed software):
 
 ## Risk mitigation
 
-- The blob is invoked **only** from `libs/ra_hal/src/ra_rsip*.c` and
+- The blob is invoked **only** from `libs/ra8_hal/src/ra8_rsip*.c` and
   the `src/secure_app/key_import*` veneers; first-party application
   code never calls into `r_sce` directly.
-- The software-only fallback (`RA_RSIP_SOFTWARE_BACKEND`) remains in
+- The software-only fallback (`RA8_RSIP_SOFTWARE_BACKEND`) remains in
   the tree and provides host-side coverage of the surrounding
   state-machine logic without exercising the blob itself.
 - Downstream consumers who require certified evidence for RSIP
@@ -86,7 +86,7 @@ and DO-178C Section 12.1.4 (previously developed software):
 ## Deviations / patches
 
 None planned. Any future patch must live in a separate first-party
-shim (`libs/ra_hal/src/ra_rsip_patch.c`) and must not modify the
+shim (`libs/ra8_hal/src/ra8_rsip_patch.c`) and must not modify the
 vendored tree.
 
 ## Procurement status
@@ -101,11 +101,11 @@ vendored tree.
   is preserved verbatim under
   `libs/third_party/fsp_blobs/r_sce_AMC/ra/fsp/src/...`.
 - **What was copied**:
-  - `ra/fsp/src/r_rsip_protected/crypto_procedures_protected/src/rsip/ra/primitive/ra_rsip_e50d/`
+  - `ra/fsp/src/r_rsip_protected/crypto_procedures_protected/src/rsip/ra/primitive/ra8_rsip_e50d/`
     (313 files, ~3.2 MB) -- the obfuscated RSIP-E50D primitive
     procedures (`r_rsip_func*.c`, `r_rsip_p*.c`, `r_rsip_data.c`,
     `r_rsip_addr.h`, `r_rsip_data.h`).
-  - `ra/fsp/src/r_rsip_protected/crypto_procedures_protected/src/rsip/ra/private/ra_rsip_e5xx/`
+  - `ra/fsp/src/r_rsip_protected/crypto_procedures_protected/src/rsip/ra/private/ra8_rsip_e5xx/`
     (4 files, ~532 KB) -- the private CIP driver shim
     (`r_cip_drv_api.c`, `r_cip_drv_if.h`, `r_cip_private.h`,
     `r_vdev_fsbl_option.h`) that the primitive procedures call into.

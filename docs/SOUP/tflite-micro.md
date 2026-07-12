@@ -58,7 +58,7 @@ entry), not nested under this tree:
 - `ruy` (`docs/SOUP/ruy.md`) -- a profiler instrumentation stub header.
 
 The Arm `ethos-u-core-driver` is deliberately NOT vendored: this project owns a
-first-party NPU driver (`libs/ra_hal` `ra_npu`) that the Ethos-U operator will
+first-party NPU driver (`libs/ra8_hal` `ra8_npu`) that the Ethos-U operator will
 call in Phase 2.
 
 ## Provenance
@@ -73,7 +73,7 @@ call in Phase 2.
 ## Use case in this firmware
 
 - On-device neural-network inference on the RA8P1 (R7KA8P1KFLCAC), whose Arm
-  Ethos-U55 NPU is driven through the first-party `ra_npu` driver. TFLite-micro
+  Ethos-U55 NPU is driven through the first-party `ra8_npu` driver. TFLite-micro
   parses the Vela-compiled model, plans the tensor arena, walks the operator
   graph, and hands Ethos-U subgraphs to the NPU.
 - Integrity claim category: data-handling (model parsing, tensor arithmetic).
@@ -108,7 +108,7 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section 12.1.4:
   `libs/third_party/`; this document is the case-by-case justification for that
   exemption.
 
-## Phase 2: Ethos-U operator -> ra_npu adapter (planned)
+## Phase 2: Ethos-U operator -> ra8_npu adapter (planned)
 
 Phase 1 vendors the portable `ethosu.cc` stub. The real dispatch upstream lives
 at `tensorflow/lite/micro/kernels/ethos_u/ethosu.cc` and calls the Arm
@@ -121,17 +121,17 @@ result = ethosu_invoke_v3(drv, cms_data, cms_data_size,
 ethosu_release_driver(drv);
 ```
 
-Phase 2 replaces that with the first-party `ra_npu` driver
-(`libs/ra_hal/inc/ra_npu.h`). The mapping is direct:
+Phase 2 replaces that with the first-party `ra8_npu` driver
+(`libs/ra8_hal/inc/ra8_npu.h`). The mapping is direct:
 
-| Arm core-driver call                | `ra_npu` equivalent |
+| Arm core-driver call                | `ra8_npu` equivalent |
 | ----------------------------------- | ------------------- |
-| `ethosu_reserve_driver()`           | one-time `ra_npu_init()` at boot; reserve becomes a no-op (single NPU) |
-| `ethosu_invoke_v3(cms, len, base_addrs, sizes, n, ...)` | fill `ra_npu_job_t{ .cmd_stream = cms, .cmd_stream_bytes = len, .region_base[i] = base_addrs[i] }`, then `ra_npu_submit(&job)` + `ra_npu_run()` + `ra_npu_wait()` |
+| `ethosu_reserve_driver()`           | one-time `ra8_npu_init()` at boot; reserve becomes a no-op (single NPU) |
+| `ethosu_invoke_v3(cms, len, base_addrs, sizes, n, ...)` | fill `ra8_npu_job_t{ .cmd_stream = cms, .cmd_stream_bytes = len, .region_base[i] = base_addrs[i] }`, then `ra8_npu_submit(&job)` + `ra8_npu_run()` + `ra8_npu_wait()` |
 | `ethosu_release_driver(drv)`        | no-op (single NPU) |
 
 The command stream (`cms_data`) is the Vela output; the base-address array maps
-onto `ra_npu_job_t.region_base[]` (region 0 = weight/bias arena). A first
+onto `ra8_npu_job_t.region_base[]` (region 0 = weight/bias arena). A first
 end-to-end test needs: (1) a tiny Vela-compiled `.tflite` for Ethos-U55, baked
 as a byte array; (2) the adapter above wired into an `examples/ra8p1_foundation`
 app that reuses the `npu_smoke` boot files; (3) the board_sim Ethos-U model

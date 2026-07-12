@@ -2,7 +2,7 @@
 # Bake a set of compiled .rabook files into a C header of MRAM-resident byte
 # arrays plus a lookup table. Each blob is the chunked RBKC container as
 # produced by tools/epub_compile; the firmware inflates it into SDRAM on demand
-# via ra_book_open(). Full books (with cover + inline images) are kept compressed
+# via ra8_book_open(). Full books (with cover + inline images) are kept compressed
 # in MRAM and only expanded when opened, so several fit alongside the firmware.
 #
 # Each book's cover is also pre-decoded here into a gray8 thumbnail (matching the
@@ -33,7 +33,7 @@ MIN_ARGV_COUNT = 3
 def unwrap_container(data):
     """Inflate a chunked RBKC .rabook container back to its flat blob.
 
-    Keep in sync with ra_book_container_t in libs/ra_book/inc/ra_book.h:
+    Keep in sync with ra8_book_container_t in libs/ra8_book/inc/ra8_book.h:
     "RBKC" + <I chunk_bytes + <Q total + <I count + <I reserved(0), a
     (count + 1)-entry <Q offset table, then count concatenated zlib streams.
     """
@@ -129,7 +129,7 @@ def main(argv):
         " * @file library.h",
         " * @generated tools/bake_library.py -- do not edit by hand.",
         " * @brief Baked full .rabook blobs + pre-decoded cover thumbnails (generated).",
-        " * @details Each entry is the chunked RBKC container (ra_book_open inflates it",
+        " * @details Each entry is the chunked RBKC container (ra8_book_open inflates it",
         " *          on demand) plus a gray8 cover thumbnail the shelf blits without any",
         " *          boot-time inflation. Regenerate with tools/bake_library.py (the",
         " *          thumbnail bytes are architecture-dependent to regenerate; see",

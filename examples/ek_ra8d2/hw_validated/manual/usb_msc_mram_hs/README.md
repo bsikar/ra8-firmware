@@ -10,7 +10,7 @@ one root file `MRAM.BIN`, write-protected via MODE SENSE, WRITE(10)
 rejected with DATA PROTECT sense). The differences are the HS device
 framework (Device Qualifier descriptor, 512-byte bulk MPS, FS-fallback
 framework) and the USBHS controller + UTMI PHY bring-up
-(`ra_cgc_usbhs_pll_enable`, HSE/CNEN, dedicated PHY balls).
+(`ra8_cgc_usbhs_pll_enable`, HSE/CNEN, dedicated PHY balls).
 
 ## Build
 

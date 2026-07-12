@@ -32,7 +32,7 @@ cd ra8-firmware
 make help           # list top-level targets
 make apps           # list every discovered app (grouped by tier)
 make <app>          # cross-compile a specific app, e.g. `make blink`
-make                # build the default app (RA_DEFAULT_APP, defaults to blink)
+make                # build the default app (RA8_DEFAULT_APP, defaults to blink)
 ```
 
 Per-app builds also work directly via `make -C <app-dir>`.
@@ -72,7 +72,7 @@ make test              # Linux: native ctest run
 make test-docker       # macOS: same suite, run inside an Ubuntu container
 ```
 
-The suite uses `tests/mocks/ra_sim_mmap.c` to install anonymous mmap
+The suite uses `tests/mocks/ra8_sim_mmap.c` to install anonymous mmap
 backings at every RA8D2 MMIO window so production driver code paths run
 unmodified on the x86_64 host. On Apple Silicon the kernel rejects
 `MAP_FIXED` at low addresses, so the macOS path goes through Docker.
@@ -84,7 +84,7 @@ unmodified on the x86_64 host. On Apple Silicon the kernel rejects
   `<tier>` directory groups apps by hardware-support category
   (`ek_ra8d2/` for the stock EVM, `_unsupported/` for apps needing
   extra hardware).
-- `libs/ra_*` -- hand-written HAL, BSP, PALs, crypto, graphics, EPUB,
+- `libs/ra8_*` -- hand-written HAL, BSP, PALs, crypto, graphics, EPUB,
   NSC veneers.
 - `libs/third_party/` -- vendored ThreadX X-Ware, NimBLE, Mbed TLS,
   litehtml, tinyxml2, etc. with integration shims.

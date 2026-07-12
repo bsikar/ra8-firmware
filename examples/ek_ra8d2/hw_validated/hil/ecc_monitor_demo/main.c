@@ -44,14 +44,14 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_check.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_sram.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_check.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_sram.h"
+#include "ra8_time.h"
 
 /** @brief Diagnostic / log tag. */
 static const char* s_tag = "ecc_demo";
@@ -143,25 +143,25 @@ static void ecc_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     ecc_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     ecc_demo_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     ecc_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     ecc_demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_ecc_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_ecc_demo_baud) != k_ra8_ok) {
     ecc_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     ecc_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     ecc_demo_panic_halt();
   }
 }
@@ -179,31 +179,31 @@ static void ecc_demo_setup_or_halt(void)
  * Sequential init guards (no compound decision); 2 vectors -- init OK /
  * init rejects (host-tested).
  *
- * @return ``ra_err_t`` from ``ra_sram_init`` / ``ra_sram_get_bank_info``.
+ * @return ``ra8_err_t`` from ``ra8_sram_init`` / ``ra8_sram_get_bank_info``.
  * @pre CGC + MSTP up; IRQs masked or single-threaded init.
  * @post ``s_ecc_buf`` points at bank 2's ECC-protected base.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t ecc_demo_configure(void)
+[[nodiscard]] static ra8_err_t ecc_demo_configure(void)
 {
-  ra_sram_config_t cfg                         = {};
-  cfg.banks[k_ecc_demo_bank].ecc_mode          = k_ra_sram_ecc_with_chk;
-  cfg.banks[k_ecc_demo_bank].on_error          = k_ra_sram_on_error_interrupt;
+  ra8_sram_config_t cfg                        = {};
+  cfg.banks[k_ecc_demo_bank].ecc_mode          = k_ra8_sram_ecc_with_chk;
+  cfg.banks[k_ecc_demo_bank].on_error          = k_ra8_sram_on_error_interrupt;
   cfg.banks[k_ecc_demo_bank].enable_1bit_latch = true;
-  cfg.banks[k_ecc_demo_bank].eccrgn            = k_ra_sram_region_128kb;
+  cfg.banks[k_ecc_demo_bank].eccrgn            = k_ra8_sram_region_128kb;
   cfg.banks[k_ecc_demo_bank].zero_init         = true;
 
-  const ra_err_t ierr = ra_sram_init(&cfg);
-  if (ierr != k_ra_ok) {
+  const ra8_err_t ierr = ra8_sram_init(&cfg);
+  if (ierr != k_ra8_ok) {
     return ierr;
   }
-  ra_sram_bank_info_t info = {};
-  const ra_err_t      berr = ra_sram_get_bank_info((uint8_t)k_ecc_demo_bank, &info);
-  if (berr != k_ra_ok) {
+  ra8_sram_bank_info_t info = {};
+  const ra8_err_t      berr = ra8_sram_get_bank_info((uint8_t)k_ecc_demo_bank, &info);
+  if (berr != k_ra8_ok) {
     return berr;
   }
   s_ecc_buf = (volatile uint32_t*)info.data_base;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -219,17 +219,17 @@ static void ecc_demo_setup_or_halt(void)
  * The latched 1-bit / 2-bit error masks are reported via globals, not
  * gated, since board_sim does not model ECC.
  *
- * @return ``ra_err_t`` from ``ra_sram_get_status``.
- * @retval k_ra_err_null_ptr ``out_ok`` was NULL.
+ * @return ``ra8_err_t`` from ``ra8_sram_get_status``.
+ * @retval k_ra8_err_null_ptr ``out_ok`` was NULL.
  * @pre ::ecc_demo_configure succeeded (``s_ecc_buf`` valid).
  * @post ``g_ecc_rw_ok`` / ``g_ecc_esr`` updated.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t ecc_demo_sample(uint8_t* out_ok)
+[[nodiscard]] static ra8_err_t ecc_demo_sample(uint8_t* out_ok)
 {
-  RA_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
   if (s_ecc_buf == nullptr) {
-    return k_ra_err_not_initialized;
+    return k_ra8_err_not_initialized;
   }
 
   for (uint32_t i = 0U; i < (uint32_t)k_ecc_demo_test_words; ++i) {
@@ -243,9 +243,9 @@ static void ecc_demo_setup_or_halt(void)
   }
   g_ecc_rw_ok = (uint32_t)rw;
 
-  ra_sram_status_t st  = {};
-  const ra_err_t   err = ra_sram_get_status(&st);
-  if (err != k_ra_ok) {
+  ra8_sram_status_t st  = {};
+  const ra8_err_t   err = ra8_sram_get_status(&st);
+  if (err != k_ra8_ok) {
     return err;
   }
   g_ecc_esr  = (uint32_t)st.raw_esr;
@@ -257,7 +257,7 @@ static void ecc_demo_setup_or_halt(void)
    * real bit-flip sets them; board_sim does not model ECC, so they stay out
    * of the headless verdict (else it would flake on the unmodelled ESR). */
   *out_ok = (rw != 0U) ? 1U : 0U;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 #pragma GCC diagnostic push
@@ -265,31 +265,31 @@ static void ecc_demo_setup_or_halt(void)
 int32_t main(void)
 {
   ecc_demo_setup_or_halt();
-  /* Clear PRIMASK so SysTick can dispatch and ra_delay_ms() uses the
+  /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the
    * SysTick path (board_sim does not advance DWT_CYCCNT). The ECC NMI is
    * non-maskable and unaffected; no maskable NVIC source is armed. */
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  if (ecc_demo_configure() != k_ra_ok) {
+  if (ecc_demo_configure() != k_ra8_ok) {
     ecc_demo_panic_halt();
   }
 
   while (1) {
-    uint8_t        ok   = 0U;
-    const ra_err_t err  = ecc_demo_sample(&ok);
-    const uint8_t  good = (err == k_ra_ok && ok != 0U) ? 1U : 0U;
-    g_ecc_ok            = (uint32_t)good;
+    uint8_t         ok   = 0U;
+    const ra8_err_t err  = ecc_demo_sample(&ok);
+    const uint8_t   good = (err == k_ra8_ok && ok != 0U) ? 1U : 0U;
+    g_ecc_ok             = (uint32_t)good;
     if (good != 0U) {
-      (void)ra_board_uart_console_write(k_ecc_demo_ok_msg,
-                                        (size_t)(sizeof(k_ecc_demo_ok_msg) - 1U));
-      (void)ra_board_led_toggle(k_ra_board_led1);
+      (void)ra8_board_uart_console_write(k_ecc_demo_ok_msg,
+                                         (size_t)(sizeof(k_ecc_demo_ok_msg) - 1U));
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
-      (void)ra_board_uart_console_write(k_ecc_demo_bad_msg,
-                                        (size_t)(sizeof(k_ecc_demo_bad_msg) - 1U));
-      (void)ra_board_led_toggle(k_ra_board_led2);
+      (void)ra8_board_uart_console_write(k_ecc_demo_bad_msg,
+                                         (size_t)(sizeof(k_ecc_demo_bad_msg) - 1U));
+      (void)ra8_board_led_toggle(k_ra8_board_led2);
     }
     ++g_ecc_heartbeat;
-    ra_delay_ms(k_ecc_demo_period_ms);
+    ra8_delay_ms(k_ecc_demo_period_ms);
   }
   ecc_demo_panic_halt();
   return 0;

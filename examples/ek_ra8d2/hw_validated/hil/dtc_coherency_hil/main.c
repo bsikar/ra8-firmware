@@ -16,30 +16,30 @@
  * descriptors (the vector-table entry and the TI fields) sit dirty in cache where
  * the engine cannot see them, so a missing clean would let the DTC fetch stale
  * descriptors and transfer the wrong data, or nothing at all. The HAL
- * ``ra_dtc_enable()`` now cleans the caller-populated vector table back to RAM
+ * ``ra8_dtc_enable()`` now cleans the caller-populated vector table back to RAM
  * before ``DTCST = 1`` (commit b80c247b); the DTC is direction-blind (like the
  * DMAC), so this app -- as the owning driver -- cleans the TI block and the
  * source buffer and invalidates the destination buffer itself.
  *
- * This app builds with ``RA_BOOT_ENABLE_CACHE_MPU`` (set in its CMakeLists.txt).
- * With that flag the shared boot (``libs/ra_board_ek_ra8d2/boot/system_init.c``)
+ * This app builds with ``RA8_BOOT_ENABLE_CACHE_MPU`` (set in its CMakeLists.txt).
+ * With that flag the shared boot (``libs/ra8_board_ek_ra8d2/boot/system_init.c``)
  * brings up the MPU (5 regions) + I-cache + D-cache + branch predictor before
  * ``main()`` runs. The vector table, the TI block, and both data buffers live in
  * MPU **region 1** (``0x22000000``, M85-private **cacheable** SRAM), so the cache
  * hazard is real on silicon.
  *
  * Sequence (one-shot, then WFI):
- *   1. ``ra_cgc_init()`` + ``ra_mstp_init()`` + ``ra_isr_init()`` +
- *      ``ra_elc_init()`` + the SCI8 J-Link OB console + the two LEDs.
- *   2. ``ra_dtc_init(s_dtc_vt)`` programmes ``DTCVBR``; ``ra_isr_register()``
+ *   1. ``ra8_cgc_init()`` + ``ra8_mstp_init()`` + ``ra8_isr_init()`` +
+ *      ``ra8_elc_init()`` + the SCI8 J-Link OB console + the two LEDs.
+ *   2. ``ra8_dtc_init(s_dtc_vt)`` programmes ``DTCVBR``; ``ra8_isr_register()``
  *      allocates an IELSR slot for ELC software event 0 (its slot index is the
  *      DTC activation-source vector number).
  *   3. Fill ``s_src`` with a deterministic pattern (M85 stores -> **dirty in the
  *      D-cache**) and ``s_dst`` with a sentinel so a no-op copy fails the verify.
  *   4. Write the 16-byte TI block (a 256-word, 32-bit, increment-both block copy)
  *      and point ``s_dtc_vt[slot]`` at it -- both more **dirty** CPU writes.
- *   5. ``ra_cache_dcache_clean_by_addr(s_src)`` and ``... (s_dtc_ti)`` (the app
- *      owns the TI + source); ``ra_dtc_enable()`` (the HAL cleans the vector
+ *   5. ``ra8_cache_dcache_clean_by_addr(s_src)`` and ``... (s_dtc_ti)`` (the app
+ *      owns the TI + source); ``ra8_dtc_enable()`` (the HAL cleans the vector
  *      table, then ``DTCST = 1``); arm ``IELSRn.DTCE``; fire ELC software event 0.
  *   6. Wait for the copy to land in SRAM by invalidating ``s_dst`` and re-reading
  *      it each poll iteration (the read therefore observes RAM, not the stale
@@ -48,12 +48,12 @@
  *      missing on silicon the DTC would fetch a stale entry, the copy would be
  *      wrong/absent, and the poll would time out.
  *   7. PASS -> emit ``"dtc_coherency_hil: dtc coherent PASS\r\n"`` over VCOM and
- *      the same verdict over ITM (``ra_log_info``), toggle LED1. Mismatch / timeout
+ *      the same verdict over ITM (``ra8_log_info``), toggle LED1. Mismatch / timeout
  *      -> a distinct ``... FAIL`` line (never containing "PASS") + LED2. Either way
  *      the core parks in WFI so ``board_sim``'s idle-stop terminates the run.
  *
  * The completion IRQ is intentionally left masked (the app never calls
- * ``ra_isr_globals_enable``): the registered slot + ``DTCE`` still activate the
+ * ``ra8_isr_globals_enable``): the registered slot + ``DTCE`` still activate the
  * DTC, the app simply polls for the result instead of taking the interrupt, which
  * avoids the completion ISR (which writes ``DTCSTS``) racing the in-flight copy.
  *
@@ -61,12 +61,12 @@
  * ``tools/board_sim`` DOES model the DTC transfer engine
  * (``board_periph_dtc.c``): the ELC software-event trigger reads the vector-table
  * entry at ``DTCVBR + slot*4``, fetches the TI, and actually MOVES the bytes in
- * emulated memory, so the **real** ``ra_dtc`` + ELC path runs in sim and the copy
+ * emulated memory, so the **real** ``ra8_dtc`` + ELC path runs in sim and the copy
  * verifies. board_sim's memory is byte-exact and it does **not** model the L1
  * D-cache, so the clean / invalidate calls are exercised (the line-size and
  * barrier logic run) but have no caching effect, and the poll falls through on its
  * first iteration. The cache hazard this app guards against is only observable on
- * real silicon. ``RA_SIMULATOR_MODE`` is a host-unit-test define and is NOT set
+ * real silicon. ``RA8_SIMULATOR_MODE`` is a host-unit-test define and is NOT set
  * for the ARM cross-build that board_sim executes, so there is nothing to
  * ``#ifdef`` here.
  *
@@ -82,18 +82,18 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra8d2_dtc_regs.h"
-#include "ra8d2_icu_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cache.h"
-#include "ra_cgc.h"
-#include "ra_check.h"
-#include "ra_dtc.h"
-#include "ra_elc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_log.h"
-#include "ra_mstp.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cache.h"
+#include "ra8_cgc.h"
+#include "ra8_check.h"
+#include "ra8_dtc.h"
+#include "ra8_dtc_regs.h"
+#include "ra8_elc.h"
+#include "ra8_err.h"
+#include "ra8_icu_regs.h"
+#include "ra8_isr.h"
+#include "ra8_log.h"
+#include "ra8_mstp.h"
 
 /** @brief Diagnostic / ITM log tag. */
 static const char* s_tag = "dtc_coherency_hil";
@@ -130,9 +130,9 @@ typedef enum : uint8_t {
  * @enum dtc_coh_event_t
  * @brief ELC software event 0 -> ICU event number.
  * @details HUM Table 19.3 (p 824) row "0x0CC | ELC | ELC_SWEVT0 | Software event
- *          0": ``ra_elc_software_trigger(0)`` raises this event; routed to an
+ *          0": ``ra8_elc_software_trigger(0)`` raises this event; routed to an
  *          IELSR slot with ``DTCE = 1`` it activates the DTC. App-local (the
- *          shared ``ra_elc_event_t`` table only carries events the HAL itself
+ *          shared ``ra8_elc_event_t`` table only carries events the HAL itself
  *          wires), mirroring ``dtc_transfer_demo``.
  * @since 0.1.0
  */
@@ -142,7 +142,7 @@ typedef enum : uint16_t {
 
 /**
  * @enum dtc_coh_swevt_t
- * @brief ELSEGRn index fired by ::ra_elc_software_trigger.
+ * @brief ELSEGRn index fired by ::ra8_elc_software_trigger.
  * @details ELSEGR0 generates ELC software event 0 (``0x0CC``).
  * @since 0.1.0
  */
@@ -240,7 +240,7 @@ static const uint8_t k_dtc_coh_fail_banner[] = "dtc_coherency_hil: dtc coherent 
  * @var s_src
  * @brief Source buffer -- M85 writes leave it dirty in the D-cache.
  * @details 1 KiB, 32-byte (D-cache line) aligned and an exact whole number of
- *          lines, so ``ra_cache_dcache_clean_by_addr`` cleans exactly the buffer
+ *          lines, so ``ra8_cache_dcache_clean_by_addr`` cleans exactly the buffer
  *          with no partial-line spill. Lives in MPU region 1 (cacheable SRAM).
  * @warning The DTC reads this from RAM; it must be cleaned before activation.
  * @since 0.1.0
@@ -251,7 +251,7 @@ alignas(k_dtc_coh_align) static uint32_t s_src[k_dtc_coh_buf_words];
  * @var s_dst
  * @brief Destination buffer the DTC writes; the M85 must invalidate to read it.
  * @details 1 KiB, 32-byte aligned and a whole number of cache lines so
- *          ``ra_cache_dcache_invalidate_by_addr`` drops exactly the buffer's
+ *          ``ra8_cache_dcache_invalidate_by_addr`` drops exactly the buffer's
  *          lines. Lives in MPU region 1 (cacheable SRAM).
  * @warning Stale cached lines here are the exact hazard this app proves.
  * @since 0.1.0
@@ -262,7 +262,7 @@ alignas(k_dtc_coh_align) static uint32_t s_dst[k_dtc_coh_buf_words];
  * @var s_dtc_vt
  * @brief DTC vector table -- one 4-byte TI start address per IELSR slot.
  * @details Lives in MPU region 1 (cacheable SRAM). The CPU write to
- *          ``s_dtc_vt[slot]`` is dirty in cache; ``ra_dtc_enable()`` cleans this
+ *          ``s_dtc_vt[slot]`` is dirty in cache; ``ra8_dtc_enable()`` cleans this
  *          region back to RAM before ``DTCST = 1`` so the DTC fetches the live
  *          entry, not a stale line -- the wiring this app validates.
  * @warning 1 KiB-aligned: ``DTCVBR`` requires the lower 10 bits be 0.
@@ -285,7 +285,7 @@ alignas(k_dtc_coh_align) static r_dtc_xfer_info_t s_dtc_ti;
 /**
  * @var s_dtc_slot
  * @brief IELSR slot allocated for the DTC activation = DTC vector number.
- * @details Assigned by ::ra_isr_register; indexes both the IELSR table and the
+ * @details Assigned by ::ra8_isr_register; indexes both the IELSR table and the
  *          ``s_dtc_vt`` vector table.
  * @note Written once during bring-up, then read-only.
  * @since 0.1.0
@@ -318,7 +318,7 @@ static uint16_t s_dtc_slot;
 }
 
 /**
- * @brief DTC completion callback (fanned out by ::ra_dtc_dispatch).
+ * @brief DTC completion callback (fanned out by ::ra8_dtc_dispatch).
  *
  * @details Registered for symmetry with the activation slot; it does not run in
  * this app because the completion IRQ is left globally masked (the app polls).
@@ -328,7 +328,7 @@ static uint16_t s_dtc_slot;
  *
  * @return Nothing.
  *
- * @pre Attached via ::ra_dtc_attach_handler.
+ * @pre Attached via ::ra8_dtc_attach_handler.
  * @pre Reached only if global IRQs are enabled (they are not, here).
  * @post No application state is modified.
  * @post No hardware register is modified by this callback.
@@ -346,16 +346,16 @@ static void dtc_coh_complete_cb(void* ctx, uint16_t status)
  * @brief IELSR-slot ISR for the DTC-complete interrupt (masked in this app).
  *
  * @details Routes the slot event through the HAL dispatch into
- * ::dtc_coh_complete_cb. Present so ::ra_isr_register has a valid handler; it does
+ * ::dtc_coh_complete_cb. Present so ::ra8_isr_register has a valid handler; it does
  * not run because the completion IRQ stays globally masked.
  *
  * @param[in] ctx Unused registration context.
  *
  * @return Nothing.
  *
- * @pre Registered via ::ra_isr_register for ELC software event 0.
+ * @pre Registered via ::ra8_isr_register for ELC software event 0.
  * @pre Reached only if global IRQs are enabled (they are not, here).
- * @post ::ra_dtc_dispatch has run at most once per entry.
+ * @post ::ra8_dtc_dispatch has run at most once per entry.
  * @post No application state is modified.
  *
  * @note ISR context; not re-entrant.
@@ -364,21 +364,21 @@ static void dtc_coh_complete_cb(void* ctx, uint16_t status)
 static void dtc_coh_swevt_isr(void* ctx)
 {
   (void)ctx;
-  ra_dtc_dispatch();
+  ra8_dtc_dispatch();
 }
 
 /**
  * @brief Bring CGC + MSTP + ISR + ELC + SCI8 console + LEDs up. Panic-halts.
  *
  * @details The DTC0 module clock shares MSTPA22 with DMAC0 and is ungated by the
- * ``ra_dtc`` driver via ``ra_mstp``. The SCI8 J-Link OB console (TXD8 = PD_02 /
+ * ``ra8_dtc`` driver via ``ra8_mstp``. The SCI8 J-Link OB console (TXD8 = PD_02 /
  * RXD8 = PD_03 @ 115200 8N1) comes up through the BSP console API. ELC + ISR are
  * needed to allocate the DTC activation slot and fire the software event.
  *
  * @return Nothing.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
- * @pre SystemInit has enabled the MPU + caches (RA_BOOT_ENABLE_CACHE_MPU).
+ * @pre SystemInit has enabled the MPU + caches (RA8_BOOT_ENABLE_CACHE_MPU).
  * @post On success CGC, MSTP, ISR, ELC, the console and both LEDs are ready.
  * @post On any failure the function does not return (parks in WFI).
  *
@@ -387,25 +387,25 @@ static void dtc_coh_swevt_isr(void* ctx)
  */
 static void dtc_coh_setup_or_halt(void)
 {
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     dtc_coh_park();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     dtc_coh_park();
   }
-  if (ra_isr_init() != k_ra_ok) {
+  if (ra8_isr_init() != k_ra8_ok) {
     dtc_coh_park();
   }
-  if (ra_elc_init() != k_ra_ok) {
+  if (ra8_elc_init() != k_ra8_ok) {
     dtc_coh_park();
   }
-  if (ra_board_uart_console_init((uint32_t)k_dtc_coh_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_dtc_coh_baud) != k_ra8_ok) {
     dtc_coh_park();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     dtc_coh_park();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     dtc_coh_park();
   }
 }
@@ -430,17 +430,17 @@ static void dtc_coh_setup_or_halt(void)
  */
 static void dtc_coh_bringup_or_halt(void)
 {
-  if (ra_dtc_init(s_dtc_vt) != k_ra_ok) {
+  if (ra8_dtc_init(s_dtc_vt) != k_ra8_ok) {
     dtc_coh_park();
   }
-  if (ra_dtc_attach_handler(dtc_coh_complete_cb, nullptr) != k_ra_ok) {
+  if (ra8_dtc_attach_handler(dtc_coh_complete_cb, nullptr) != k_ra8_ok) {
     dtc_coh_park();
   }
-  if (ra_isr_register((ra_elc_event_t)k_dtc_coh_event_swevt0,
-                      dtc_coh_swevt_isr,
-                      nullptr,
-                      (uint8_t)k_dtc_coh_isr_prio,
-                      &s_dtc_slot) != k_ra_ok) {
+  if (ra8_isr_register((ra8_elc_event_t)k_dtc_coh_event_swevt0,
+                       dtc_coh_swevt_isr,
+                       nullptr,
+                       (uint8_t)k_dtc_coh_isr_prio,
+                       &s_dtc_slot) != k_ra8_ok) {
     dtc_coh_park();
   }
   if (s_dtc_slot >= (uint16_t)k_dtc_coh_vt_entries) {
@@ -519,14 +519,14 @@ static void dtc_coh_program_ti(void)
  * @brief Re-arm DTC activation on the slot (set ``IELSRn.DTCE``).
  *
  * @details The DTC activates from an IELSR slot only when its DTCE bit is set; the
- * read-modify-write preserves the IELS event field that ::ra_isr_register wrote.
+ * read-modify-write preserves the IELS event field that ::ra8_isr_register wrote.
  *
- * @return ``k_ra_ok`` on success, ``k_ra_err_hw_error`` if the slot accessor
+ * @return ``k_ra8_ok`` on success, ``k_ra8_err_hw_error`` if the slot accessor
  *         returned NULL.
- * @retval k_ra_ok           DTCE is set for the slot.
- * @retval k_ra_err_hw_error The IELSR accessor returned NULL.
+ * @retval k_ra8_ok           DTCE is set for the slot.
+ * @retval k_ra8_err_hw_error The IELSR accessor returned NULL.
  *
- * @pre ``s_dtc_slot`` was assigned by ::ra_isr_register.
+ * @pre ``s_dtc_slot`` was assigned by ::ra8_isr_register.
  * @pre Called single-threaded with the completion IRQ masked.
  * @post IELSRn.DTCE for the slot reads 1.
  * @post No other IELSR field is modified.
@@ -534,16 +534,16 @@ static void dtc_coh_program_ti(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t dtc_coh_arm_slot(void)
+[[nodiscard]] static ra8_err_t dtc_coh_arm_slot(void)
 {
-  volatile uint32_t* slot_reg = ra_icu_ielsr(s_dtc_slot);
+  volatile uint32_t* slot_reg = ra8_icu_ielsr(s_dtc_slot);
   if (slot_reg == nullptr) {
-    return k_ra_err_hw_error;
+    return k_ra8_err_hw_error;
   }
   /* HUM Ch 14.2.10 "IELSRn : ICU Event Link Setting Register n" p 524:
    * DTCE[24] enables DTC activation; the IELS event field is preserved. */
-  *slot_reg = *slot_reg | (uint32_t)k_ra_ielsr_dtce_mask;
-  return k_ra_ok;
+  *slot_reg = *slot_reg | (uint32_t)k_ra8_ielsr_dtce_mask;
+  return k_ra8_ok;
 }
 
 /**
@@ -584,13 +584,13 @@ static void dtc_coh_program_ti(void)
  * @brief Clean src + TI, enable + trigger the DTC, then wait for the copy.
  *
  * @details Implements the descriptor + data coherency pattern:
- *   1. ``ra_cache_dcache_clean_by_addr(s_src)`` and ``... (s_dtc_ti)`` flush the
+ *   1. ``ra8_cache_dcache_clean_by_addr(s_src)`` and ``... (s_dtc_ti)`` flush the
  *      dirty source bytes and TI fields to SRAM so the DTC reads live descriptors
  *      and data (the app owns the TI + source; the HAL owns the vector table).
- *   2. ``ra_dtc_enable()`` cleans the caller-populated vector table back to RAM
+ *   2. ``ra8_dtc_enable()`` cleans the caller-populated vector table back to RAM
  *      (commit b80c247b), then sets ``DTCST = 1``.
  *   3. ::dtc_coh_arm_slot sets ``IELSRn.DTCE`` so the event activates the DTC.
- *   4. ``ra_elc_software_trigger`` fires ELC software event 0, activating the DTC.
+ *   4. ``ra8_elc_software_trigger`` fires ELC software event 0, activating the DTC.
  *   5. Poll for completion by invalidating ``s_dst`` and re-verifying each
  *      iteration -- the read therefore observes RAM, not the dirty sentinel still
  *      cached, so the loop ends exactly when the DTC's copy has fully landed
@@ -600,48 +600,48 @@ static void dtc_coh_program_ti(void)
  *
  * @param[out] out_ok 1 if the destination matched the source, else 0.
  *
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok            The copy landed and matched within the poll bound.
- * @retval k_ra_err_null_ptr  ``out_ok`` was NULL.
- * @retval k_ra_err_hw_error  A cache-maintenance op or the IELSR accessor failed.
- * @retval k_ra_err_hw_timeout The copy never matched within the poll bound.
- * @retval (other)            Propagated ``ra_dtc_enable`` / ``ra_elc_software_trigger``
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok            The copy landed and matched within the poll bound.
+ * @retval k_ra8_err_null_ptr  ``out_ok`` was NULL.
+ * @retval k_ra8_err_hw_error  A cache-maintenance op or the IELSR accessor failed.
+ * @retval k_ra8_err_hw_timeout The copy never matched within the poll bound.
+ * @retval (other)            Propagated ``ra8_dtc_enable`` / ``ra8_elc_software_trigger``
  *                            error.
  *
  * @pre Buffers are filled and the TI + vector entry are programmed.
  * @pre Global IRQs are masked (the completion IRQ is not taken).
- * @post On ``k_ra_ok`` ``s_dst`` holds the source pattern in SRAM and its cache
+ * @post On ``k_ra8_ok`` ``s_dst`` holds the source pattern in SRAM and its cache
  *       lines are invalid.
  * @post ``*out_ok`` reflects the post-copy comparison.
  *
  * @note Not thread-safe; single-shot init-context use.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t dtc_coh_run_once(uint8_t* out_ok)
+[[nodiscard]] static ra8_err_t dtc_coh_run_once(uint8_t* out_ok)
 {
-  RA_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
   *out_ok = 0U;
 
   /* clean-before (app owns the TI + source): dirty lines -> SRAM so the DTC
    * reads the real descriptor and the real pattern from memory. */
-  if (ra_cache_dcache_clean_by_addr(s_src, (uint32_t)sizeof(s_src)) != k_ra_ok) {
-    return k_ra_err_hw_error;
+  if (ra8_cache_dcache_clean_by_addr(s_src, (uint32_t)sizeof(s_src)) != k_ra8_ok) {
+    return k_ra8_err_hw_error;
   }
-  if (ra_cache_dcache_clean_by_addr(&s_dtc_ti, (uint32_t)sizeof(s_dtc_ti)) != k_ra_ok) {
-    return k_ra_err_hw_error;
+  if (ra8_cache_dcache_clean_by_addr(&s_dtc_ti, (uint32_t)sizeof(s_dtc_ti)) != k_ra8_ok) {
+    return k_ra8_err_hw_error;
   }
 
   /* The HAL cleans the caller-populated vector table here, then DTCST = 1. */
-  const ra_err_t en = ra_dtc_enable();
-  if (en != k_ra_ok) {
+  const ra8_err_t en = ra8_dtc_enable();
+  if (en != k_ra8_ok) {
     return en;
   }
-  const ra_err_t arm = dtc_coh_arm_slot();
-  if (arm != k_ra_ok) {
+  const ra8_err_t arm = dtc_coh_arm_slot();
+  if (arm != k_ra8_ok) {
     return arm;
   }
-  const ra_err_t trig = ra_elc_software_trigger((uint8_t)k_dtc_coh_swevt_index);
-  if (trig != k_ra_ok) {
+  const ra8_err_t trig = ra8_elc_software_trigger((uint8_t)k_dtc_coh_swevt_index);
+  if (trig != k_ra8_ok) {
     return trig;
   }
 
@@ -651,8 +651,8 @@ static void dtc_coh_program_ti(void)
    * (the regression this app guards against) times out instead of hanging. */
   bool done = false;
   for (uint32_t i = 0U; i < (uint32_t)k_dtc_coh_poll_limit; ++i) {
-    if (ra_cache_dcache_invalidate_by_addr(s_dst, (uint32_t)sizeof(s_dst)) != k_ra_ok) {
-      return k_ra_err_hw_error;
+    if (ra8_cache_dcache_invalidate_by_addr(s_dst, (uint32_t)sizeof(s_dst)) != k_ra8_ok) {
+      return k_ra8_err_hw_error;
     }
     if (dtc_coh_verify() != 0U) {
       done = true;
@@ -660,10 +660,10 @@ static void dtc_coh_program_ti(void)
     }
   }
   if (!done) {
-    return k_ra_err_hw_timeout;
+    return k_ra8_err_hw_timeout;
   }
   *out_ok = 1U;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -684,17 +684,17 @@ static void dtc_coh_program_ti(void)
 static void dtc_coh_report(uint8_t ok)
 {
   if (ok != 0U) {
-    (void)ra_board_uart_console_write(k_dtc_coh_pass_banner,
-                                      (size_t)(sizeof(k_dtc_coh_pass_banner) - 1U));
-    (void)ra_board_uart_console_flush();
-    ra_log_info(s_tag, "dtc coherent PASS");
-    (void)ra_board_led_toggle(k_ra_board_led1);
+    (void)ra8_board_uart_console_write(k_dtc_coh_pass_banner,
+                                       (size_t)(sizeof(k_dtc_coh_pass_banner) - 1U));
+    (void)ra8_board_uart_console_flush();
+    ra8_log_info(s_tag, "dtc coherent PASS");
+    (void)ra8_board_led_toggle(k_ra8_board_led1);
   } else {
-    (void)ra_board_uart_console_write(k_dtc_coh_fail_banner,
-                                      (size_t)(sizeof(k_dtc_coh_fail_banner) - 1U));
-    (void)ra_board_uart_console_flush();
-    ra_log_info(s_tag, "dtc coherent FAIL");
-    (void)ra_board_led_toggle(k_ra_board_led2);
+    (void)ra8_board_uart_console_write(k_dtc_coh_fail_banner,
+                                       (size_t)(sizeof(k_dtc_coh_fail_banner) - 1U));
+    (void)ra8_board_uart_console_flush();
+    ra8_log_info(s_tag, "dtc coherent FAIL");
+    (void)ra8_board_led_toggle(k_ra8_board_led2);
   }
 }
 
@@ -705,14 +705,14 @@ static void dtc_coh_report(uint8_t ok)
  *
  * @details Brings up the clock tree, MSTP, ISR/ELC, and the VCOM console, programs
  * a software-triggered DTC block copy, runs it with the L1 caches + MPU enabled by
- * the shared boot (``RA_BOOT_ENABLE_CACHE_MPU``), emits the matching PASS / FAIL
- * banner over the console and ``ra_log``, then parks in WFI.
+ * the shared boot (``RA8_BOOT_ENABLE_CACHE_MPU``), emits the matching PASS / FAIL
+ * banner over the console and ``ra8_log``, then parks in WFI.
  *
  * @return Never returns (parks in WFI after reporting).
  * @retval (none) Control stays in the WFI idle loop.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
- * @pre SystemInit enabled the MPU + caches via RA_BOOT_ENABLE_CACHE_MPU.
+ * @pre SystemInit enabled the MPU + caches via RA8_BOOT_ENABLE_CACHE_MPU.
  * @post Exactly one PASS/FAIL banner is emitted, then the core parks.
  * @post The core ends in WFI so board_sim's idle-stop terminates the run.
  *
@@ -721,8 +721,8 @@ static void dtc_coh_report(uint8_t ok)
  */
 int32_t main(void)
 {
-  ra_log_init();
-  ra_log_info(s_tag, "==== dtc_coherency_hil: M85 D-cache DTC descriptor coherency ====");
+  ra8_log_init();
+  ra8_log_info(s_tag, "==== dtc_coherency_hil: M85 D-cache DTC descriptor coherency ====");
 
   dtc_coh_setup_or_halt();
   dtc_coh_bringup_or_halt();
@@ -730,9 +730,9 @@ int32_t main(void)
   dtc_coh_fill_buffers();
   dtc_coh_program_ti();
 
-  uint8_t        ok   = 0U;
-  const ra_err_t err  = dtc_coh_run_once(&ok);
-  const uint8_t  good = (err == k_ra_ok && ok != 0U) ? 1U : 0U;
+  uint8_t         ok   = 0U;
+  const ra8_err_t err  = dtc_coh_run_once(&ok);
+  const uint8_t   good = (err == k_ra8_ok && ok != 0U) ? 1U : 0U;
   dtc_coh_report(good);
 
   dtc_coh_park();

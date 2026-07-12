@@ -1,10 +1,10 @@
 /**
  * @file test_app_rng_demo.c
- * @brief Integration test: ra_psa_crypto_random round-trip from rng_demo
+ * @brief Integration test: ra8_psa_crypto_random round-trip from rng_demo
  *
  * @details
- * Mirrors examples/ek_ra8d2/rng_demo/main.c bring-up: ra_psa_crypto_init
- * -> ra_psa_crypto_random(buf, 32) -> nibble-to-hex conversion. Each
+ * Mirrors examples/ek_ra8d2/rng_demo/main.c bring-up: ra8_psa_crypto_init
+ * -> ra8_psa_crypto_random(buf, 32) -> nibble-to-hex conversion. Each
  * test exercises a distinct branch in the demo's emit-one-line path so
  * MC/DC for the four-condition compound decision is fully covered.
  *
@@ -16,8 +16,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_err.h"
-#include "ra_psa_crypto.h"
+#include "ra8_err.h"
+#include "ra8_psa_crypto.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
@@ -38,14 +38,14 @@ static uint8_t banner_nibble(uint8_t nibble)
 
 static void reset_world(void)
 {
-  (void)ra_psa_crypto_deinit();
+  (void)ra8_psa_crypto_deinit();
 }
 
 /**
  * @brief Init facade and pull the requested number of bytes.
  *
  * @par MC/DC:
- * Decision in app: ``ra_psa_crypto_random != ok``. One atomic
+ * Decision in app: ``ra8_psa_crypto_random != ok``. One atomic
  * condition x 2 vectors -- this test (ok) + the not-initialized test
  * below (err).
  */
@@ -53,9 +53,9 @@ static void test_rng_app_random_ok(void)
 {
   reset_world();
   TEST_BEGIN("rng_demo: init + random(32) ok");
-  TEST_ASSERT_EQ(k_ra_ok, ra_psa_crypto_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_psa_crypto_init());
   uint8_t buf[k_t_rng_bytes_per_line] = {};
-  TEST_ASSERT_EQ(k_ra_ok, ra_psa_crypto_random(buf, sizeof(buf)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_psa_crypto_random(buf, sizeof(buf)));
   /* xorshift32 sim is deterministic; at least one of the 32 bytes
    * must differ from the all-zero seed buffer. */
   uint8_t accum = 0U;
@@ -78,7 +78,7 @@ static void test_rng_app_random_not_initialized(void)
   reset_world();
   TEST_BEGIN("rng_demo: random before init rejected");
   uint8_t buf[k_t_rng_bytes_per_line] = {};
-  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_psa_crypto_random(buf, sizeof(buf)));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_psa_crypto_random(buf, sizeof(buf)));
   TEST_END("rng_demo: random before init rejected");
 }
 
@@ -93,9 +93,9 @@ static void test_rng_app_random_null(void)
 {
   reset_world();
   TEST_BEGIN("rng_demo: NULL out rejected");
-  TEST_ASSERT_EQ(k_ra_ok, ra_psa_crypto_init());
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_psa_crypto_random(nullptr, (size_t)k_t_rng_bytes_per_line));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_psa_crypto_init());
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_psa_crypto_random(nullptr, (size_t)k_t_rng_bytes_per_line));
   TEST_END("rng_demo: NULL out rejected");
 }
 
@@ -110,9 +110,9 @@ static void test_rng_app_random_zero_len(void)
 {
   reset_world();
   TEST_BEGIN("rng_demo: zero len rejected");
-  TEST_ASSERT_EQ(k_ra_ok, ra_psa_crypto_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_psa_crypto_init());
   uint8_t buf[1] = {};
-  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_psa_crypto_random(buf, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_psa_crypto_random(buf, 0U));
   TEST_END("rng_demo: zero len rejected");
 }
 

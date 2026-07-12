@@ -59,8 +59,8 @@ Source: ``examples/_unsupported/threadx_nimble_peripheral/main.c``
 
 Source: ``examples/_unsupported/threadx_sdcard_demo/main.c``
 
-- L381: ra_board_led_init  (rank 100)
-- L386: ra_board_uart_console_init  (rank 100)
+- L381: ra8_board_led_init  (rank 100)
+- L386: ra8_board_uart_console_init  (rank 100)
 
 ### usb_audio_device
 

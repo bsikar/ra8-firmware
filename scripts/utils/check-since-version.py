@@ -8,7 +8,7 @@ verify their values match the project ``VERSION`` file.
 Two checks combined:
 
   1. **Presence**: every public declaration in a `.h` under
-     ``libs/ra_*/inc/`` (i.e. every ``ra_*`` function or static
+     ``libs/ra8_*/inc/`` (i.e. every ``ra8_*`` function or static
      inline accessor) must be preceded within the previous 30
      lines by a ``@since`` tag inside its Doxygen block.
 
@@ -74,8 +74,8 @@ PUBLIC_DECL = re.compile(
     r"""
     ^(?:\[\[nodiscard\]\]\s+)?
     (?:static\s+inline\s+)?
-    \s*ra_\w+(?:\s*\*)?\s+
-    (ra_\w+)\s*
+    \s*ra8_\w+(?:\s*\*)?\s+
+    (ra8_\w+)\s*
     \(
 """,
     re.VERBOSE,
@@ -98,7 +98,7 @@ def read_project_version() -> str:
 
 
 def check_presence(path: pathlib.Path) -> list[str]:
-    """Header-only: every ra_* declaration must have @since in lookback."""
+    """Header-only: every ra8_* declaration must have @since in lookback."""
     problems: list[str] = []
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
@@ -133,7 +133,7 @@ def check_values(path: pathlib.Path, project_version: str) -> list[str]:
 
 
 def is_under_lib_inc(path: pathlib.Path) -> bool:
-    return "libs/ra_" in str(path) and path.suffix == ".h" and "/inc/" in str(path)
+    return "libs/ra8_" in str(path) and path.suffix == ".h" and "/inc/" in str(path)
 
 
 def is_scannable(path: pathlib.Path) -> bool:

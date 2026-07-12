@@ -8,8 +8,8 @@ plausibility verdict over SCI8.
 
 ## What it does
 
-1. `ra_cgc_init` / `ra_time_init` / `ra_mstp_init`, then the BSP SCI8
-   console (`ra_board_uart_console_init`, PD02 / PD03).
+1. `ra8_cgc_init` / `ra8_time_init` / `ra8_mstp_init`, then the BSP SCI8
+   console (`ra8_board_uart_console_init`, PD02 / PD03).
 2. **XCLK**: GPT channel 12 saw-PWM on **GTIOC12A (P501)** synthesises the
    ~24 MHz sensor input clock (XVCLK). The OV5640 needs XVCLK before it
    answers on SCCB, so this comes up first. The app then confirms the GPT
@@ -24,7 +24,7 @@ plausibility verdict over SCI8.
    CEU and programs a compact OV5640 DVP YUV422 QVGA (320x240) sequence with
    the **built-in colour-bar test pattern** enabled -- deterministic
    regardless of lens focus or scene light.
-6. `ra_ceu_init` + `ra_ceu_capture_arm` capture one frame into SRAM;
+6. `ra8_ceu_init` + `ra8_ceu_capture_arm` capture one frame into SRAM;
    completion is polled on `CETCR.CPE`.
 7. Computes min / max / mean over the frame. **PASS** when the sensor ID is
    `0x5640`, a frame was captured, and it is non-degenerate (`max != min`).
@@ -49,9 +49,9 @@ Result globals for SWD probing: `g_cam_chipid`, `g_cam_frame_ok`,
 
 ## Drivers exercised
 
-`ra_ceu` (CEU, HUM Ch 60), `ra_gpt` (XCLK on GTIOC12A, HUM Ch 22),
-`ra_i2c` (SCCB / RIIC ch1, HUM Ch 39), `ra_pfs`/`ra_gpio` (pin routing +
-RST, HUM Ch 20), `ra_board_uart_console`.
+`ra8_ceu` (CEU, HUM Ch 60), `ra8_gpt` (XCLK on GTIOC12A, HUM Ch 22),
+`ra8_i2c` (SCCB / RIIC ch1, HUM Ch 39), `ra8_pfs`/`ra8_gpio` (pin routing +
+RST, HUM Ch 20), `ra8_board_uart_console`.
 
 ## HIL status: BLOCKED -- sensor streams, CEU rejects the frame
 

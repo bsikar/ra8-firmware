@@ -8,22 +8,22 @@
  * @details
  * Companion to ``uart_hello`` (which proves the polled SCI path): this app
  * proves the **interrupt-driven** SCI path end to end -- a receive byte raises
- * RXI, the registered ISR drives ``ra_sci_dispatch_rxi``, the echo is queued
- * with ``ra_sci_write`` (which arms CCR0.TIE), and each TXI then pushes the next
- * byte from ``ra_sci_dispatch_txi`` until the frame drains. Nothing in the main
+ * RXI, the registered ISR drives ``ra8_sci_dispatch_rxi``, the echo is queued
+ * with ``ra8_sci_write`` (which arms CCR0.TIE), and each TXI then pushes the next
+ * byte from ``ra8_sci_dispatch_txi`` until the frame drains. Nothing in the main
  * loop touches the data path, so any byte echoed is proof the real NVIC -> ISR
  * chain ran.
  *
  * It brings the chip up exactly like ``uart_hello`` (CGC -> PLL, SCI8 TXD8 =
  * PD02 / RXD8 = PD03 at 115200 8N1), then:
- *   1. ``ra_isr_init`` + ``ra_isr_register`` for SCI8 RXI / TXI / TEI so each
+ *   1. ``ra8_isr_init`` + ``ra8_isr_register`` for SCI8 RXI / TXI / TEI so each
  *      event links through the ICU IELSR table and enables its NVIC line.
- *   2. Prints a one-line banner with ``ra_sci_write_polling`` (so the polled
+ *   2. Prints a one-line banner with ``ra8_sci_write_polling`` (so the polled
  *      path is exercised too, and the host sees a prompt).
  *   3. Attaches an RX byte callback and arms a 1-byte interrupt receive with
- *      ``ra_sci_read``; the callback re-arms the next receive and echoes the
+ *      ``ra8_sci_read``; the callback re-arms the next receive and echoes the
  *      byte back over the interrupt-driven transmitter.
- *   4. Idles in ``ra_delay_ms`` -- every echoed byte happens in handler context.
+ *   4. Idles in ``ra8_delay_ms`` -- every echoed byte happens in handler context.
  *
  * On the EK-RA8D2 the SCI8 pins surface as the J-Link OB VCOM port; typing into
  * a terminal at 115200 8N1 echoes each character back and toggles LED1. Under
@@ -31,7 +31,7 @@
  * captured ``[uart]`` output.
  *
  * @note Unlike the other demos, this one drives SCI8 directly rather than the
- *       BSP ``ra_board_uart_console`` API: the interrupt-driven SCI8 RX/TX path
+ *       BSP ``ra8_board_uart_console`` API: the interrupt-driven SCI8 RX/TX path
  *       is the subject under test, so it must own the channel's ISRs and
  *       registers itself. (The BSP is still linked -- for LED1.)
  *
@@ -44,16 +44,16 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_elc.h"
-#include "ra_err.h"
-#include "ra_gpio_constants.h"
-#include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_elc.h"
+#include "ra8_err.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_isr.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_sci.h"
+#include "ra8_time.h"
 
 /** @brief Compile-time settings for the echo demo. */
 typedef enum : uint32_t {
@@ -71,10 +71,10 @@ typedef enum : uint16_t {
 } uart_irq_event_t;
 
 /** @brief Pinout for the on-board J-Link OB CDC channel (SCI8 / PD02 + PD03). */
-static const ra_port_pin_t k_uart_irq_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_uart_irq_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
+static const ra8_port_pin_t k_uart_irq_pin_txd =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << 8) | (uint16_t)k_ra8_pin_2);
+static const ra8_port_pin_t k_uart_irq_pin_rxd =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << 8) | (uint16_t)k_ra8_pin_3);
 
 /** @brief Banner printed once over the polled path so the host sees a prompt. */
 static const uint8_t k_uart_irq_banner[] = "uart_irq_echo ready\r\n";
@@ -85,7 +85,7 @@ static const uint8_t k_uart_irq_banner[] = "uart_irq_echo ready\r\n";
  *
  * @details
  * Incremented only inside ``uart_irq_rx_cb`` (reached via the real RXI ->
- * ra_isr_dispatch -> driver path). A non-zero value is direct evidence the
+ * ra8_isr_dispatch -> driver path). A non-zero value is direct evidence the
  * interrupt-driven receive ran; read externally by J-Link (HIL) and by
  * tools/board_sim (emulator).
  *
@@ -111,7 +111,7 @@ static void uart_irq_panic_halt(void)
   }
 }
 
-/* ---- Interrupt service routines (registered via ra_isr_register) ---------- */
+/* ---- Interrupt service routines (registered via ra8_isr_register) ---------- */
 
 /**
  * @brief SCI8 RXI ISR: drive the driver's receive state machine.
@@ -125,7 +125,7 @@ static void uart_irq_panic_halt(void)
 static void uart_irq_rxi_isr(void* ctx)
 {
   (void)ctx;
-  ra_sci_dispatch_rxi((uint8_t)k_uart_irq_sci_chan);
+  ra8_sci_dispatch_rxi((uint8_t)k_uart_irq_sci_chan);
 }
 
 /**
@@ -140,7 +140,7 @@ static void uart_irq_rxi_isr(void* ctx)
 static void uart_irq_txi_isr(void* ctx)
 {
   (void)ctx;
-  ra_sci_dispatch_txi((uint8_t)k_uart_irq_sci_chan);
+  ra8_sci_dispatch_txi((uint8_t)k_uart_irq_sci_chan);
 }
 
 /**
@@ -155,7 +155,7 @@ static void uart_irq_txi_isr(void* ctx)
 static void uart_irq_tei_isr(void* ctx)
 {
   (void)ctx;
-  ra_sci_dispatch_eri((uint8_t)k_uart_irq_sci_chan);
+  ra8_sci_dispatch_eri((uint8_t)k_uart_irq_sci_chan);
 }
 
 /**
@@ -163,7 +163,7 @@ static void uart_irq_tei_isr(void* ctx)
  *
  * @details
  * Runs in RXI handler context (driver invokes it per received byte). Echoes
- * the byte over the interrupt-driven transmitter (``ra_sci_write`` arms TIE,
+ * the byte over the interrupt-driven transmitter (``ra8_sci_write`` arms TIE,
  * so the echo flows out through ``uart_irq_txi_isr``) and re-arms a fresh
  * 1-byte interrupt receive so the stream keeps draining.
  *
@@ -176,10 +176,10 @@ static void uart_irq_rx_cb(void* ctx, uint8_t byte)
 {
   (void)ctx;
   g_uart_irq_echoes += 1U;
-  (void)ra_board_led_toggle(k_ra_board_led1);
+  (void)ra8_board_led_toggle(k_ra8_board_led1);
   s_uart_irq_rx_byte = byte;
-  (void)ra_sci_write((uint8_t)k_uart_irq_sci_chan, &s_uart_irq_rx_byte, 1U);
-  (void)ra_sci_read((uint8_t)k_uart_irq_sci_chan, &s_uart_irq_rx_byte, 1U);
+  (void)ra8_sci_write((uint8_t)k_uart_irq_sci_chan, &s_uart_irq_rx_byte, 1U);
+  (void)ra8_sci_read((uint8_t)k_uart_irq_sci_chan, &s_uart_irq_rx_byte, 1U);
 }
 
 /* ---- Bring-up ------------------------------------------------------------- */
@@ -187,52 +187,53 @@ static void uart_irq_rx_cb(void* ctx, uint8_t byte)
 /**
  * @brief Route PD02 / PD03 to SCI8 TXD / RXD via the PFS PSEL field.
  *
- * @return Error code from the first failing route call, or k_ra_ok.
- * @retval k_ra_ok Both pins are SCI-routed.
+ * @return Error code from the first failing route call, or k_ra8_ok.
+ * @retval k_ra8_ok Both pins are SCI-routed.
  * @pre IOPORT module is reachable; single-threaded init context.
  * @post On success PD02 and PD03 are in SCI-async (PSEL=0x04) mode.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t uart_irq_pins_init(void)
+[[nodiscard]] static ra8_err_t uart_irq_pins_init(void)
 {
-  ra_err_t err = ra_pfs_route_peripheral(k_uart_irq_pin_txd, k_ra_psel_sci_async, "uart_irq.txd8");
-  if (err != k_ra_ok) {
+  ra8_err_t err =
+    ra8_pfs_route_peripheral(k_uart_irq_pin_txd, k_ra8_psel_sci_async, "uart_irq.txd8");
+  if (err != k_ra8_ok) {
     return err;
   }
-  return ra_pfs_route_peripheral(k_uart_irq_pin_rxd, k_ra_psel_sci_async, "uart_irq.rxd8");
+  return ra8_pfs_route_peripheral(k_uart_irq_pin_rxd, k_ra8_psel_sci_async, "uart_irq.rxd8");
 }
 
 /**
  * @brief Register the SCI8 RXI / TXI / TEI events with the NVIC.
  *
- * @return k_ra_ok on success, else the first failing registration error.
- * @pre ra_isr_init has run; interrupts not yet globally enabled.
+ * @return k_ra8_ok on success, else the first failing registration error.
+ * @pre ra8_isr_init has run; interrupts not yet globally enabled.
  * @post Each SCI8 event links through IELSR and its NVIC line is enabled.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t uart_irq_register_isrs(void)
+[[nodiscard]] static ra8_err_t uart_irq_register_isrs(void)
 {
-  ra_err_t err = ra_isr_register((ra_elc_event_t)k_uart_irq_event_rxi,
-                                 uart_irq_rxi_isr,
-                                 nullptr,
-                                 (uint8_t)k_uart_irq_isr_prio,
-                                 nullptr);
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_isr_register((ra8_elc_event_t)k_uart_irq_event_rxi,
+                                   uart_irq_rxi_isr,
+                                   nullptr,
+                                   (uint8_t)k_uart_irq_isr_prio,
+                                   nullptr);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_isr_register((ra_elc_event_t)k_uart_irq_event_txi,
-                        uart_irq_txi_isr,
-                        nullptr,
-                        (uint8_t)k_uart_irq_isr_prio,
-                        nullptr);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_isr_register((ra_elc_event_t)k_uart_irq_event_tei,
-                         uart_irq_tei_isr,
+  err = ra8_isr_register((ra8_elc_event_t)k_uart_irq_event_txi,
+                         uart_irq_txi_isr,
                          nullptr,
                          (uint8_t)k_uart_irq_isr_prio,
                          nullptr);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  return ra8_isr_register((ra8_elc_event_t)k_uart_irq_event_tei,
+                          uart_irq_tei_isr,
+                          nullptr,
+                          (uint8_t)k_uart_irq_isr_prio,
+                          nullptr);
 }
 
 /**
@@ -246,39 +247,39 @@ static void uart_irq_setup_or_halt(void)
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     uart_irq_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     uart_irq_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz) != k_ra8_ok) {
     uart_irq_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     uart_irq_panic_halt();
   }
-  if (uart_irq_pins_init() != k_ra_ok) {
+  if (uart_irq_pins_init() != k_ra8_ok) {
     uart_irq_panic_halt();
   }
 
-  const ra_sci_cfg_t sci_cfg = {
+  const ra8_sci_cfg_t sci_cfg = {
     .baud      = k_uart_irq_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
+    .data_bits = k_ra8_sci_data_8,
+    .parity    = k_ra8_sci_parity_none,
+    .stop_bits = k_ra8_sci_stop_1,
     .pclk_hz   = pclka_hz,
   };
-  if (ra_sci_init((uint8_t)k_uart_irq_sci_chan, &sci_cfg) != k_ra_ok) {
+  if (ra8_sci_init((uint8_t)k_uart_irq_sci_chan, &sci_cfg) != k_ra8_ok) {
     uart_irq_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     uart_irq_panic_halt();
   }
-  if (ra_isr_init() != k_ra_ok) {
+  if (ra8_isr_init() != k_ra8_ok) {
     uart_irq_panic_halt();
   }
-  if (uart_irq_register_isrs() != k_ra_ok) {
+  if (uart_irq_register_isrs() != k_ra8_ok) {
     uart_irq_panic_halt();
   }
 }
@@ -298,20 +299,20 @@ int32_t main(void)
 {
   uart_irq_setup_or_halt();
 
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  /* Polled path: announce readiness (also exercises ra_sci_write_polling). */
-  (void)ra_sci_write_polling((uint8_t)k_uart_irq_sci_chan,
-                             k_uart_irq_banner,
-                             (uint32_t)(sizeof(k_uart_irq_banner) - 1U));
+  /* Polled path: announce readiness (also exercises ra8_sci_write_polling). */
+  (void)ra8_sci_write_polling((uint8_t)k_uart_irq_sci_chan,
+                              k_uart_irq_banner,
+                              (uint32_t)(sizeof(k_uart_irq_banner) - 1U));
 
   /* Attach the echo callback and arm the first interrupt-driven receive. */
-  (void)ra_sci_attach_rx_handler((uint8_t)k_uart_irq_sci_chan, uart_irq_rx_cb, nullptr);
-  (void)ra_sci_read((uint8_t)k_uart_irq_sci_chan, &s_uart_irq_rx_byte, 1U);
+  (void)ra8_sci_attach_rx_handler((uint8_t)k_uart_irq_sci_chan, uart_irq_rx_cb, nullptr);
+  (void)ra8_sci_read((uint8_t)k_uart_irq_sci_chan, &s_uart_irq_rx_byte, 1U);
 
   while (1) {
     /* All echo work happens in the SCI ISRs; the loop only idles. */
-    ra_delay_ms((uint32_t)k_uart_irq_loop_ms);
+    ra8_delay_ms((uint32_t)k_uart_irq_loop_ms);
   }
 
   uart_irq_panic_halt();

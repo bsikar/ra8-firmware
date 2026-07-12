@@ -51,12 +51,12 @@ make coverage
 
 This wraps `scripts/utils/coverage_report.sh`, which:
 
-1. Configures `tests/build-cov/` with `cmake -DRA_COVERAGE=ON
-   -DRA_MCDC=OFF`.
+1. Configures `tests/build-cov/` with `cmake -DRA8_COVERAGE=ON
+   -DRA8_MCDC=OFF`.
 2. Builds the host test suite with `--coverage -fprofile-arcs
    -ftest-coverage`.
 3. Runs every test via ctest.
-4. Invokes `gcovr` filtered to first-party `libs/ra_*` and `src/`.
+4. Invokes `gcovr` filtered to first-party `libs/ra8_*` and `src/`.
 5. Emits:
    - `build/coverage/index.html` -- per-file annotated source
    - `build/coverage/coverage.xml` -- Cobertura XML (consumed by the gate)

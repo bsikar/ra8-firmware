@@ -8,7 +8,7 @@
  * the bus host on the self-loop bench: USBHS (J7) host cabled to USBFS (J11)
  * device, both driven by the same chip (usb_selftest_cdc's topology, and the
  * TrustZone NS image of tz_nsc_cgc_usb). The registers the polled first-party
- * host engine (`ra_usb_host_*` in libs/ra_hal) drives -- SYSCFG / DVSTCTR0 /
+ * host engine (`ra8_usb_host_*` in libs/ra8_hal) drives -- SYSCFG / DVSTCTR0 /
  * DCPCTR.SUREQ / USBREQ..USBLENG / CFIFO / BRDYSTS / BEMPSTS / INTSTS1 SACK
  * / the PIPESEL window -- are serviced here, and every bus transaction is
  * forwarded over the loop-cable transport (board_usb.h `board_usb_loop_*`)
@@ -26,7 +26,7 @@
  * built-in virtual host for the rest of the run.
  *
  * Modelling boundary: single-packet-in-flight, polled transfers only -- what
- * the synchronous `ra_usb_host_*` engine issues. A multi-chunk control-OUT
+ * the synchronous `ra8_usb_host_*` engine issues. A multi-chunk control-OUT
  * data stage overwrites the device's single DCP staging bank if the device
  * firmware does not drain between chunks (no consumer in the SIL suite does
  * this; DFU class flows stay on their C-level seams).

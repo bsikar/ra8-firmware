@@ -4,11 +4,11 @@
 #
 # Compiles every content/library/*.epub source (the Git-LFS source of truth)
 # into content/compiled/*.rabook and regenerates the manifest header
-# libs/ra_book/inc/ra_book_library.h. The .rabook blobs and the manifest are
+# libs/ra8_book/inc/ra8_book_library.h. The .rabook blobs and the manifest are
 # build artifacts (gitignored): they are 100% derived from the epubs plus
 # tools/epub_compile, so they are regenerated rather than committed.
 #
-# Image downscale target (long edge, pixels) is RA_BOOK_MAX_EDGE. The compiler
+# Image downscale target (long edge, pixels) is RA8_BOOK_MAX_EDGE. The compiler
 # default is now NO downscale (issue #210: full-res sources for the zoom
 # loupe); the library build stays an EXPLICIT opt-in use of the knob because
 # these baked TFT-class fixtures pin goldens on their pixel content and gain
@@ -44,9 +44,9 @@ SRC_DIR="$ROOT/content/library"
 OUT_DIR="$ROOT/content/compiled"
 COMPILER="$ROOT/tools/epub_compile/epub_compile.py"
 MANIFEST_GEN="$ROOT/tools/epub_compile/gen_manifest.py"
-MANIFEST_HDR="$ROOT/libs/ra_book/inc/ra_book_library.h"
+MANIFEST_HDR="$ROOT/libs/ra8_book/inc/ra8_book_library.h"
 SHELF_HDR="$ROOT/examples/ek_ra8d2/hw_validated/hil/ereader_shelf/library.h"
-MAX_EDGE="${RA_BOOK_MAX_EDGE:-1024}"
+MAX_EDGE="${RA8_BOOK_MAX_EDGE:-1024}"
 
 # Single source of truth for the ereader_shelf demo subset: one entry per baked
 # book as "<epub/rabook basename>|<display title>|<author>" (the epub and its

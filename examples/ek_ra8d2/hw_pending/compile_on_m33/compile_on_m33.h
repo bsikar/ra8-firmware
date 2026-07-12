@@ -8,11 +8,11 @@
  * @details
  * This header pins the cross-core JOB mailbox and the shared input/output buffers
  * for the #149 compiler offload: running the full text/CSS/SVG EPUB->`.rabook`
- * compile (`libs/ra_rabook_compile` + `ra_epub`) on the RA8D2's Cortex-M33
+ * compile (`libs/ra8_rabook_compile` + `ra8_epub`) on the RA8D2's Cortex-M33
  * secondary core. The Cortex-M85 (primary, "CPU0") STAGES a source `.epub` into
  * shared SRAM, posts the job, releases the M33, then PARKS while the slow core
  * compiles the staged book and lays a complete RABOOK1 blob into the shared
- * output buffer. The M85 then validates that blob with @ref ra_book_validate AND
+ * output buffer. The M85 then validates that blob with @ref ra8_book_validate AND
  * byte-compares it to the desktop/M85 golden -- proving the secondary core
  * produced the identical compiled book the primary core would have.
  *
@@ -23,11 +23,11 @@
  * Memory budget (all in the shared upper SRAM window, see the address enum):
  *   - mailbox       : the ::com33_mailbox_t request/response block at 0x22100000.
  *   - staged .epub  : ::k_com33_epub_cap bytes at ::k_com33_epub_addr; the M85
- *                     copies the source `.epub` here and the M33 ra_epub_opens it.
+ *                     copies the source `.epub` here and the M33 ra8_epub_opens it.
  *   - output blob   : ::k_com33_blob_cap bytes at ::k_com33_blob_addr; the M33
  *                     writes the finalized RABOOK1 blob here so the M85 reads it
  *                     with no copy.
- *   - compile arenas: the M33's ra_epub_book_t + builder pools + scratch are NOT
+ *   - compile arenas: the M33's ra8_epub_book_t + builder pools + scratch are NOT
  *                     shared -- they live in the M33 image's external SDRAM
  *                     (`.sdram_bss`); only the staged .epub + the blob are shared.
  *
@@ -41,17 +41,17 @@
  *      shared SRAM, fills the request (epub base/len, out base/cap), and stamps
  *      ::k_com33_req_magic LAST behind a `dsb`.
  *   2. M85 releases the M33 and PARKS. The M33 now compiles.
- *   3. M33 stamps ::k_com33_m33_sig, reads the request, ra_epub_opens the staged
- *      bytes, runs ra_rabook_compile_from_epub_to_buffer into the shared output
+ *   3. M33 stamps ::k_com33_m33_sig, reads the request, ra8_epub_opens the staged
+ *      bytes, runs ra8_rabook_compile_from_epub_to_buffer into the shared output
  *      buffer, then publishes `blob_base` / `blob_len` / `blob_crc` (the blob
  *      header's body CRC-32) / `chapter_count`.
  *   4. M33 sets `status = ok` then `done = 1` (or a failure status, then `done`).
  *   5. M85 validates the shared blob, byte-compares it to the golden, and logs
  *      "compile_on_m33 PASS" (or traps so board_sim's smoke flags a divergence).
  *
- * @note The M33 image links miniz + tinyxml2 + ra_epub + the rabook pipeline but
- *       NOT stb_image (raster is compiled out via `RA_RABOOK_NO_RASTER`; the SVG
- *       path stores verbatim) and NOT ra_fs (the M85 owns the filesystem; the M33
+ * @note The M33 image links miniz + tinyxml2 + ra8_epub + the rabook pipeline but
+ *       NOT stb_image (raster is compiled out via `RA8_RABOOK_NO_RASTER`; the SVG
+ *       path stores verbatim) and NOT ra8_fs (the M85 owns the filesystem; the M33
  *       finalizes into the shared buffer).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -115,7 +115,7 @@ typedef enum : uint32_t {
   k_com33_status_running    = 0U,          /**< status: M33 is still building the blob.    */
   k_com33_status_ok         = 1U,          /**< status: compile finalized a valid blob.    */
   k_com33_status_build_fail = 2U,          /**< status: a compile stage overflowed/failed. */
-  k_com33_status_open_fail  = 3U,          /**< status: ra_epub_open rejected the input.   */
+  k_com33_status_open_fail  = 3U,          /**< status: ra8_epub_open rejected the input.  */
   k_com33_status_no_request = 4U,          /**< status: req_magic absent (no staged job).  */
   k_com33_status_fault      = 5U,          /**< status: M33 took a hardware fault mid-run. */
 } com33_const_t;
@@ -158,7 +158,7 @@ typedef enum : uint32_t {
  * @code
  * volatile com33_mailbox_t* mb = com33_mailbox();
  * while (mb->done == 0U) {}                         // wait for the M33 emitter
- * ra_err_t rc = ra_book_validate((const void*)mb->blob_base, mb->blob_len);
+ * ra8_err_t rc = ra8_book_validate((const void*)mb->blob_base, mb->blob_len);
  * @endcode
  *
  * @see com33_mailbox()
@@ -232,7 +232,7 @@ static inline uint8_t* com33_blob(void)
  * @brief Typed pointer to the fixed-address shared staged-input .epub buffer.
  *
  * @details The M85 copies the source `.epub` bytes here before posting the job;
- * the M33 reads them via @ref ra_epub_mem_media_t at the same physical SRAM base,
+ * the M33 reads them via @ref ra8_epub_mem_media_t at the same physical SRAM base,
  * so no shared translation unit is needed.
  *
  * @return Pointer to the staged-input buffer at ::k_com33_epub_addr.

@@ -1,17 +1,17 @@
 # ereader_rabook
 
 Headless HIL gate that **loads a compiled `.rabook` and renders it** -- the
-on-silicon proof of the `ra_book` pipeline (libs/ra_book + tools/epub_compile).
+on-silicon proof of the `ra8_book` pipeline (libs/ra8_book + tools/epub_compile).
 
 ## What it does
 
-A small two-chapter demo book is compiled from a tiny EPUB into the `ra_book`
+A small two-chapter demo book is compiled from a tiny EPUB into the `ra8_book`
 format and baked (already inflated) into `rabook_fixture.h`. On boot the app:
 
-1. `ra_book_validate()` -- accepts the flat blob (magic, table bounds, CRC-32).
-2. For each chapter, `ra_book_chapter_to_xhtml()` walks the pre-parsed DOM and
-   re-emits XHTML (the bridge into the existing, untouched `ra_reflow` engine).
-3. `ra_reflow_layout_chapter()` paginates, then every page is rendered into a
+1. `ra8_book_validate()` -- accepts the flat blob (magic, table bounds, CRC-32).
+2. For each chapter, `ra8_book_chapter_to_xhtml()` walks the pre-parsed DOM and
+   re-emits XHTML (the bridge into the existing, untouched `ra8_reflow` engine).
+3. `ra8_reflow_layout_chapter()` paginates, then every page is rendered into a
    128x160 RGB565 framebuffer and folded into an FNV-1a-32.
 
 The first chapter is short and the second longer, so it renders **small to
@@ -47,30 +47,30 @@ python3 tools/epub_compile/epub_compile.py demo.epub demo.rabook
 
 This gate bakes the blob **inflated** so it needs no decompressor. A real device
 reads the compressed `.rabook` off SD and inflates it with the bundled miniz via
-`ra_book_open()`:
+`ra8_book_open()`:
 
 ```c
 /* inflate adapter: the container payload is a zlib stream -> mz_uncompress */
-static ra_err_t app_book_inflate(const void* src, size_t src_len, void* dst,
+static ra8_err_t app_book_inflate(const void* src, size_t src_len, void* dst,
                                   size_t dst_cap, size_t* out_len) {
   mz_ulong n = (mz_ulong)dst_cap;
   if (mz_uncompress((unsigned char*)dst, &n,
                     (const unsigned char*)src, (mz_ulong)src_len) != MZ_OK) {
-    return k_ra_err_invalid_size;
+    return k_ra8_err_invalid_size;
   }
   *out_len = (size_t)n;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /* read BOOK.RBK off SD, inflate into an SDRAM scratch, validate, then walk */
-static uint8_t s_sdram_scratch[k_ra_book_library_max_inflated]; /* place in SDRAM */
+static uint8_t s_sdram_scratch[k_ra8_book_library_max_inflated]; /* place in SDRAM */
 const void* base = NULL;
 size_t      sz   = 0U;
-ra_book_open(file_bytes, file_len, app_book_inflate,
+ra8_book_open(file_bytes, file_len, app_book_inflate,
              s_sdram_scratch, sizeof s_sdram_scratch, &base, &sz);
 ```
 
-Then list LIBS `ra_book ra_reflow ra_gfx ra_epub` in CMakeLists.txt (ra_epub
-pulls in miniz), size `s_sdram_scratch` to `k_ra_book_library_max_inflated`
-(from the generated `ra_book_library.h`), and put the framebuffer + scratch in
-SDRAM (`0x68000000`, after `ra_sdramc_init()`) rather than SRAM.
+Then list LIBS `ra8_book ra8_reflow ra8_gfx ra8_epub` in CMakeLists.txt (ra8_epub
+pulls in miniz), size `s_sdram_scratch` to `k_ra8_book_library_max_inflated`
+(from the generated `ra8_book_library.h`), and put the framebuffer + scratch in
+SDRAM (`0x68000000`, after `ra8_sdramc_init()`) rather than SRAM.

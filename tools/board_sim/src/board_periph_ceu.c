@@ -3,10 +3,10 @@
  * @brief Capture Engine Unit (CEU) peripheral-block model for board_sim
  *
  * @details
- * Models the RA8D2 Capture Engine Unit at 0x4034_8000 (ra8d2_ceu_regs.h /
- * ra_ceu.c, the real HUM Ch 60 parallel-camera capture path). The firmware
+ * Models the RA8D2 Capture Engine Unit at 0x4034_8000 (ra8_ceu_regs.h /
+ * ra8_ceu.c, the real HUM Ch 60 parallel-camera capture path). The firmware
  * (``camera_capture`` via cam_ceu.c) initialises the CEU, arms a single-shot
- * capture with ``ra_ceu_capture_arm`` (which programs the destination address
+ * capture with ``ra8_ceu_capture_arm`` (which programs the destination address
  * register ``CDAYR`` then sets ``CAPSR.CE``), and polls the event register
  * ``CETCR.CPE`` for one-frame-end. On silicon that end is raised by the sensor's
  * VD edge; in board_sim the capture is instantaneous.
@@ -18,7 +18,7 @@
  * at ``CDAYR`` through the Unicorn engine, latches ``CETCR.CPE`` (and the data
  * size ``CDSSR``), and clears ``CAPSR.CE`` (single-shot end). The status
  * register ``CSTSR`` reads idle (capture is instantaneous) and ``CAPSR.CPKIL``
- * self-clears, so ``ra_ceu_init``'s idle wait and the arm path both complete.
+ * self-clears, so ``ra8_ceu_init``'s idle wait and the arm path both complete.
  * The result: ``camera_capture`` reaches ``frame=OK`` with a plausible
  * non-degenerate min/max/mean and runs its capture -> stats -> verdict path
  * headless.
@@ -42,7 +42,7 @@
 #include "board_console.h"
 #include "board_periph_block.h"
 
-/** @brief CEU register-window geometry (ra8d2_ceu_regs.h, Plane A view). */
+/** @brief CEU register-window geometry (ra8_ceu_regs.h, Plane A view). */
 typedef enum : uint64_t {
   k_ceu_base      = 0x40348000UL,  /**< CEU block base (HUM Ch 60).          */
   k_ceu_span      = 0x100UL,       /**< Plane-A register set (0x00..0x9C).   */
@@ -57,7 +57,7 @@ typedef enum : uint64_t {
   k_ceu_off_cdssr = 0x84UL,        /**< CDSSR captured data byte count.      */
 } ceu_map_t;
 
-/** @brief CEU register bit fields (ra8d2_ceu_regs.h). */
+/** @brief CEU register bit fields (ra8_ceu_regs.h). */
 typedef enum : uint32_t {
   k_ceu_capsr_ce     = 0x00000001U, /**< CAPSR.CE: start capture at next VD.    */
   k_ceu_capsr_cpkil  = 0x00010000U, /**< CAPSR.CPKIL: software reset.           */

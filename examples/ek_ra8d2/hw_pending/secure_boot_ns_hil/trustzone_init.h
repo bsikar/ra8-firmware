@@ -6,7 +6,7 @@
  * [Ring 1 / Boot] {World: S}
  *
  * @details
- * Declares ::ra_trustzone_init (called from ``SystemInit`` before the C runtime
+ * Declares ::ra8_trustzone_init (called from ``SystemInit`` before the C runtime
  * is live) and the fixed Non-Secure image addresses shared between
  * ``trustzone_init.c`` (which copies the NS image MRAM->SRAM) and ``main.c``
  * (which authenticates it and BLXNS-es to it). The values MUST match
@@ -49,8 +49,8 @@ typedef enum : uintptr_t {
  * bit[28] SAU (the IDAU-NS ranges Non-secure, ALLNS = 0 default-deny), and
  * copies the NS image from its MRAM LMA to the SRAM run base. It deliberately
  * does NOT jump: ``main()`` performs the root-of-trust verify + BLXNS after the
- * C runtime (and the crypto heap) is live. On a host build (``RA_SIMULATOR_MODE``
- * or no ``RA_TRUSTZONE_ENABLE``) it is a no-op.
+ * C runtime (and the crypto heap) is live. On a host build (``RA8_SIMULATOR_MODE``
+ * or no ``RA8_TRUSTZONE_ENABLE``) it is a no-op.
  *
  * @return void.
  * @pre Caller is in Secure state, single-threaded, early boot (from SystemInit).
@@ -61,7 +61,7 @@ typedef enum : uintptr_t {
  * @note Not thread-safe; runs once at boot.
  * @since 0.1.0
  */
-void ra_trustzone_init(void);
+void ra8_trustzone_init(void);
 
 #ifdef __cplusplus
 }

@@ -4,8 +4,8 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/iwdt_demo/main.c bring-up:
- * ``ra_iwdt_init`` -> ``ra_iwdt_get_counter`` -> window check ->
- * ``ra_iwdt_refresh_deferred`` -> ``ra_iwdt_clear_status``. Backed by
+ * ``ra8_iwdt_init`` -> ``ra8_iwdt_get_counter`` -> window check ->
+ * ``ra8_iwdt_refresh_deferred`` -> ``ra8_iwdt_clear_status``. Backed by
  * the host MMIO shim. The window-membership decision is local to the
  * demo, so this test re-implements the same predicate and exhausts
  * its MC/DC vectors.
@@ -17,9 +17,9 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
-#include "ra_iwdt.h"
-#include "ra_sim_mmap.h"
+#include "ra8_err.h"
+#include "ra8_iwdt.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
@@ -32,7 +32,7 @@ typedef enum : uint16_t {
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
+  ra8_sim_mmap_reset();
 }
 
 /**
@@ -51,23 +51,23 @@ static bool in_window(uint16_t counter)
  * @brief Golden bring-up: init + counter read + refresh + status clear.
  *
  * @par MC/DC:
- * Decision in app: ``ra_iwdt_init != ok``. One atomic condition x 2
+ * Decision in app: ``ra8_iwdt_init != ok``. One atomic condition x 2
  * vectors -- golden (this) + null counter pointer below.
  */
 static void test_iwdt_arm_ok(void)
 {
   reset_world();
   TEST_BEGIN("iwdt_demo: init + counter + refresh + clear");
-  TEST_ASSERT_EQ(k_ra_ok, ra_iwdt_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_iwdt_init());
   uint16_t counter = 0U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_iwdt_get_counter(&counter));
-  ra_iwdt_refresh_deferred();
-  TEST_ASSERT_EQ(k_ra_ok, ra_iwdt_clear_status());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_iwdt_get_counter(&counter));
+  ra8_iwdt_refresh_deferred();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_iwdt_clear_status());
   TEST_END("iwdt_demo: init + counter + refresh + clear");
 }
 
 /**
- * @brief NULL counter pointer rejected by ``ra_iwdt_get_counter``.
+ * @brief NULL counter pointer rejected by ``ra8_iwdt_get_counter``.
  *
  * @par MC/DC:
  * Decision: ``out_counter == NULL``. One atomic condition x 2 vectors
@@ -77,8 +77,8 @@ static void test_iwdt_null_counter(void)
 {
   reset_world();
   TEST_BEGIN("iwdt_demo: NULL counter pointer rejected");
-  (void)ra_iwdt_init();
-  TEST_ASSERT(ra_iwdt_get_counter(nullptr) != k_ra_ok);
+  (void)ra8_iwdt_init();
+  TEST_ASSERT(ra8_iwdt_get_counter(nullptr) != k_ra8_ok);
   TEST_END("iwdt_demo: NULL counter pointer rejected");
 }
 

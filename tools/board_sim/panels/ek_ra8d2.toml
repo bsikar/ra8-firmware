@@ -1,5 +1,5 @@
 # EK-RA8D2 Parallel Graphics Expansion Board 1 panel (the dev-kit display).
-# Mirrors libs/ra_board_ek_ra8d2/inc/ra_panel.h.
+# Mirrors libs/ra8_board_ek_ra8d2/inc/ra8_panel.h.
 name   = "ER-TFT070-6"
 width  = 1024
 height = 600

@@ -1,6 +1,6 @@
 # epub_parse
 
-First firmware app to run the `ra_epub` EPUB parse stack on the target
+First firmware app to run the `ra8_epub` EPUB parse stack on the target
 (issue #139). It bakes a known-good 2-chapter `.epub` (the
 `seed_two_chapters` fuzzer-corpus seed) into a C array and parses it
 entirely in memory -- no SD card, no USB, no display -- then prints a
@@ -17,16 +17,16 @@ that had only ever run on the x86 host. This gate runs it on the
 Cortex-M85, exercising the two allocation paths that the zero-heap
 firmware (NASA Rule 3: `_sbrk` traps) has to route around `malloc`:
 
-- **`ra_epub_open()`** drives `mz_zip_reader_init_mem` to read the ZIP
+- **`ra8_epub_open()`** drives `mz_zip_reader_init_mem` to read the ZIP
   central directory, then tinyxml2 to parse `META-INF/container.xml` and
   the OPF (spine + Dublin Core metadata).
-- **`ra_epub_load_chapter(0)`** drives `mz_zip_reader_extract_to_mem`,
+- **`ra8_epub_load_chapter(0)`** drives `mz_zip_reader_extract_to_mem`,
   i.e. the miniz DEFLATE (tinfl) decompressor, on chapter 0.
-- **`ra_epub_get_metadata()`** reads the parsed Dublin Core fields.
+- **`ra8_epub_get_metadata()`** reads the parsed Dublin Core fields.
 
-miniz's allocations go through the `ra_epub_miniz_alloc` static first-fit
+miniz's allocations go through the `ra8_epub_miniz_alloc` static first-fit
 arena; tinyxml2's `operator new` / `new[]` go through the arena-backed
-override in `ra_epub_cpp_alloc.cpp`. Neither reaches the trapped heap.
+override in `ra8_epub_cpp_alloc.cpp`. Neither reaches the trapped heap.
 
 The CRC-32 over chapter 0's decompressed XHTML is `0xCF23AEEE`, which is
 byte-exact for the baked seed (`zlib.crc32` of `OEBPS/chapter1.xhtml`),
@@ -70,7 +70,7 @@ emulates them, without which the ZIP parse fails with miniz error 9
 | What you see (SCI8 @ 115200) | Verdict |
 |---|---|
 | `epub: chapters=2 ch0_crc=CF23AEEE PASS` | Full parse + decompress are byte-exact |
-| `epub: FAIL open` | `ra_epub_open` rejected the archive (miniz / container / OPF) |
+| `epub: FAIL open` | `ra8_epub_open` rejected the archive (miniz / container / OPF) |
 | `epub: FAIL chapters` | Spine count != 2 (OPF spine parse wrong) |
 | `epub: FAIL load` | Chapter-0 DEFLATE extract failed |
 | `epub: FAIL meta` | Dublin Core metadata parse failed |

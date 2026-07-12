@@ -20,7 +20,7 @@ the rx_spin.
 
 1. Split g_canfd_filter_match into _exact, _mask, _nomatch
    counters so the failing sub-round is identifiable.
-2. Add a between-sub-round drain (loop ra_canfd_receive until
+2. Add a between-sub-round drain (loop ra8_canfd_receive until
    no_data) to flush any late frames before the next TX.
 3. Re-run; once all three counters advance cleanly, move the dir
    back to hw_validated/hil/.

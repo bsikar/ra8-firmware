@@ -1,7 +1,7 @@
 # pdm_mic_demo
 
 Capture + plausibility demo for the EK-RA8D2 on-board SPH0690 PDM MEMS
-microphones, driving the `ra_pdm` (PDM-IF) driver. Closes gap issue #129.
+microphones, driving the `ra8_pdm` (PDM-IF) driver. Closes gap issue #129.
 
 The app brings up PDM-IF channel 2, captures 20-bit PCM windows, computes
 AC RMS / peak / span and prints a plausibility verdict scraped by
@@ -69,6 +69,6 @@ ssh star 'stty -F /dev/ttyACM0 115200 raw -echo; timeout 8 cat /dev/ttyACM0 | gr
 ## Status
 
 `hw_pending`: builds for the target and is driven end-to-end against the
-`ra_pdm` register model in the host test (`tests/test_ra_pdm.c`). Promote
+`ra8_pdm` register model in the host test (`tests/test_ra8_pdm.c`). Promote
 to `hw_validated/hil` once the `pdm: rms=... active=Y` banner is confirmed
 on a bench EK-RA8D2.

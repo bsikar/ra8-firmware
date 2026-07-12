@@ -138,7 +138,7 @@ def discover_apps() -> dict[str, dict[str, str]]:
     tier directory (``examples/<tier>/.../<app>/main.c``). The app name is the
     directory basename -- the exact token ``make <app>`` / ``make flash-<app>``
     expects. The description is parsed from the app's ``CMakeLists.txt``
-    ``ra_add_app(... DESCRIPTION "...")`` clause.
+    ``ra8_add_app(... DESCRIPTION "...")`` clause.
     """
     apps: dict[str, dict[str, str]] = {}
     examples = REPO_ROOT / "examples"

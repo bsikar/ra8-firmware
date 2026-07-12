@@ -1,7 +1,7 @@
 # drw_fill_demo
 
 DRW ("D/AVE 2D") hardware 2D-engine bring-up + fill-rect demo for the bare
-EK-RA8D2 EVM. Exercises the `ra_drw` driver.
+EK-RA8D2 EVM. Exercises the `ra8_drw` driver.
 
 ## What it does
 
@@ -9,9 +9,9 @@ Brings up SCI8 + LEDs + the DRW engine pointed at a 32x32 ARGB8888
 framebuffer in SRAM. Once a second it:
 
 1. Clears the framebuffer.
-2. `ra_drw_fill_rect` -- fills a 16x16 green (`0xFF00FF00`) rectangle at
+2. `ra8_drw_fill_rect` -- fills a 16x16 green (`0xFF00FF00`) rectangle at
    (8, 8).
-3. `ra_drw_wait_idle` -- waits (bounded) for the engine to finish.
+3. `ra8_drw_wait_idle` -- waits (bounded) for the engine to finish.
 4. Checks the framebuffer byte-exact: the centre pixel (16, 16) must be
    green and the corners must still be clear.
 5. Reports `drw: fill match=Y` on the J-Link OB CDC channel.
@@ -37,15 +37,15 @@ sequence, not the real D/AVE 2D engine).
 
 ## Notes (HUM R01UH1065EJ0130 Rev.1.30, Ch 62 "2D Drawing Engine")
 
-- `ra_drw_init` ungates the DRW, programs ORIGIN / PITCH / CONTROL2 to
+- `ra8_drw_init` ungates the DRW, programs ORIGIN / PITCH / CONTROL2 to
   target the framebuffer (HUM Ch 62.2 p 3685+), and masks the IRQs.
-- `ra_drw_fill_rect` programs the box limiters + colour and kicks the
-  enumeration unit; `ra_drw_wait_idle` polls STATUS.busyenum (HUM
+- `ra8_drw_fill_rect` programs the box limiters + colour and kicks the
+  enumeration unit; `ra8_drw_wait_idle` polls STATUS.busyenum (HUM
   Ch 62.4 p 3725+).
 - **Cache coherency:** this demo leaves the DRW FB cache off
   (`enable_caches = false`) so the CPU reads the freshly-rasterized
   pixels. On the bench, if you enable the FB cache, call
-  `ra_drw_cache_flush` before reading; and because the framebuffer lives
+  `ra8_drw_cache_flush` before reading; and because the framebuffer lives
   in cacheable SRAM, invalidate the Cortex-M85 D-cache over the
   framebuffer span before the verify (or place the FB in a non-cacheable
   region).

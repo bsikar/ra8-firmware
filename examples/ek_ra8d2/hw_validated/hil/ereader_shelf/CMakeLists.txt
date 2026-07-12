@@ -1,6 +1,6 @@
 #
 # Per-app CMake stub for `ereader_shelf`. All build logic lives in the shared
-# cmake/ra_add_app.cmake recipe; this file only names the app + its deps.
+# cmake/ra8_add_app.cmake recipe; this file only names the app + its deps.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -11,33 +11,33 @@ cmake_minimum_required(VERSION 3.20)
 # listfile, which CMake requires to contain a literal, direct project()
 # call. The aggregate repo-root build instead pulls this app in via
 # add_subdirectory() (project() is already called at the root), so guard on
-# PARENT_DIRECTORY to avoid a redundant nested sub-project. ra_add_app()
+# PARENT_DIRECTORY to avoid a redundant nested sub-project. ra8_add_app()
 # below re-runs project() in the standalone case to apply the shared VERSION
 # and the app description.
-get_directory_property(_ra_has_parent PARENT_DIRECTORY)
-if(NOT _ra_has_parent)
+get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
+if(NOT _ra8_has_parent)
     project(ereader_shelf LANGUAGES C CXX ASM)
 endif()
 
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
-while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
+while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
     get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
-include("${_d}/cmake/ra_add_app.cmake")
+include("${_d}/cmake/ra8_add_app.cmake")
 
-# Hybrid baked+SD e-reader: ra_box grid layout + ra_ui geometry draw through
-# ra_gfx into the SDRAM framebuffer ra_display_pal scans over GLCDC to the
-# 1024x600 panel. ra_book + miniz inflate the compressed .rabook blobs (baked in
+# Hybrid baked+SD e-reader: ra8_box grid layout + ra8_ui geometry draw through
+# ra8_gfx into the SDRAM framebuffer ra8_display_pal scans over GLCDC to the
+# 1024x600 panel. ra8_book + miniz inflate the compressed .rabook blobs (baked in
 # MRAM via library.h, or read from SD). src/*.c hold the per-screen modules.
-ra_add_app(NAME ereader_shelf STACK_BYTES 16384
+ra8_add_app(NAME ereader_shelf STACK_BYTES 16384
            DESCRIPTION "Hybrid baked+SD e-reader: shelf, covers, TOC, full reader (1024x600 panel)"
-           LIBS ra_gfx ra_display_pal ra_box ra_ui ra_book ra_fs ra_sdmmc_spi ra_epub ra_reflow
-                ra_board_ek_ra8d2 ra_io_bus)
+           LIBS ra8_gfx ra8_display_pal ra8_box ra8_ui ra8_book ra8_fs ra8_sdmmc_spi ra8_epub ra8_reflow
+                ra8_board_ek_ra8d2 ra8_io_bus)
 
 # Pin the reader's optimisation level to -Og on this target, independent of the
 # configured build type. Two facts force this:
-#   * At -O0 the fully-linked reader (ra_epub + miniz + tinyxml2 + stb +
-#     ra_reflow + baked library.h ...) overflows the 1 MiB MRAM code region by
+#   * At -O0 the fully-linked reader (ra8_epub + miniz + tinyxml2 + stb +
+#     ra8_reflow + baked library.h ...) overflows the 1 MiB MRAM code region by
 #     ~17 KiB, so the top-level aggregate build (which defaults to Debug/-O0)
 #     and `make sim-ereader_shelf` cannot link it. A per-target option lands
 #     after the build-type -O flag, so -Og wins (GCC honours the last -O) and
@@ -45,7 +45,7 @@ ra_add_app(NAME ereader_shelf STACK_BYTES 16384
 #   * -O1 and above render differently IN board_sim only -- NOT a firmware bug
 #     (#233, root-caused). board_sim runs the Cortex-M85 image on a Unicorn
 #     Cortex-M33 (Armv8-M) core, which lacks the Armv8.1-M instructions GCC 14
-#     emits at higher -O: at -O1 the ra_gfx fill fast path internal_fill_rect_565
+#     emits at higher -O: at -O1 the ra8_gfx fill fast path internal_fill_rect_565
 #     compiles to a Low-Overhead-Branch loop (`dls`/`le`), and at -O2 the byte
 #     fill auto-vectorises to MVE (`vldrw`/`vstrw`). board_sim carries
 #     hand-emulation seams for the Armv8.1-M CSEL and long-shift families but
@@ -63,7 +63,7 @@ ra_add_app(NAME ereader_shelf STACK_BYTES 16384
 target_compile_options(ereader_shelf.elf PRIVATE -Og)
 
 # Turn on the shared boot's Cortex-M85 L1 cache + MPU bring-up for this app. The
-# shared SystemInit (libs/ra_board_ek_ra8d2/boot/system_init.c) is compiled into
+# shared SystemInit (libs/ra8_board_ek_ra8d2/boot/system_init.c) is compiled into
 # each app's own executable, so this PRIVATE define reaches that TU here and
 # nowhere else: it programmes the 5-region MPU and enables the I-cache, D-cache,
 # and branch predictor before main() runs (substrate silicon-validated by
@@ -71,15 +71,15 @@ target_compile_options(ereader_shelf.elf PRIVATE -Og)
 # and renders out of high-latency MRAM / SDRAM, so uncached it stalls the 1 GHz
 # core on nearly every fetch; this is the single largest CPU-active-time win.
 #
-# The same define also arms the framebuffer D-cache clean in ra_display_pal_lcd
+# The same define also arms the framebuffer D-cache clean in ra8_display_pal_lcd
 # (lcd_flush / lcd_clear): the framebuffer lives in cacheable SDRAM and the GLCDC
 # scans it over AXI without seeing the L1 D-cache, so each flush cleans the
 # painted rows back to SDRAM before the next scan. The SD path is polled SCI
 # Simple-SPI (CPU PIO, no DMA initiator) and needs no maintenance, and the app links
-# no ra_drw, so the framebuffer is the only coherency boundary.
+# no ra8_drw, so the framebuffer is the only coherency boundary.
 #
 # board_sim has no cache model, so it renders identically with the flag on
 # (validated: fb=FA3AB5B5 unchanged). The cache CORRECTNESS itself -- that the
 # clean prevents stale scan-out on real silicon with the D-cache live -- is
 # HIL-only and remains bench-validation-pending for this app.
-target_compile_definitions(ereader_shelf.elf PRIVATE RA_BOOT_ENABLE_CACHE_MPU)
+target_compile_definitions(ereader_shelf.elf PRIVATE RA8_BOOT_ENABLE_CACHE_MPU)

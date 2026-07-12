@@ -3,8 +3,8 @@
  * @brief Native 4-bit SDHI host-controller model for board_sim (SDHI0).
  *
  * @details
- * Models the RA8D2 SDHI0 host controller (ra8d2_sdhi_regs.h, ra_sdhi.c,
- * ra_sdcard.c) at @c 0x40252000 just enough that the firmware's real native-SD
+ * Models the RA8D2 SDHI0 host controller (ra8_sdhi_regs.h, ra8_sdhi.c,
+ * ra8_sdcard.c) at @c 0x40252000 just enough that the firmware's real native-SD
  * path runs headless: the SD Physical Layer identification
  * (CMD0 -> CMD8 -> ACMD41 -> CMD2 -> CMD3 -> CMD9 -> CMD7) plus the polled
  * 512-byte block read / write over the SD_BUF0 FIFO. Without it the
@@ -16,7 +16,7 @@
  *
  *   - A @c SD_CMD write latches the command (index = SD_CMD & 0x3F) and the
  *     pending @c SD_ARG, executes it, drops a response into SD_RSP10/32/54/76,
- *     and SETS @c SD_INFO1.RSPEND (bit 0) so ra_sdhi_send_command's poll exits.
+ *     and SETS @c SD_INFO1.RSPEND (bit 0) so ra8_sdhi_send_command's poll exits.
  *   - CMD17/18 arm a read data phase; CMD24/25 arm a write data phase. Each
  *     @c SD_BUF0 access serves / captures one 32-bit word of a 512-byte block;
  *     after 128 words a multi-block transfer advances to the next LBA and keeps
@@ -28,7 +28,7 @@
  *
  * Window geometry is deliberately narrow -- only SDHI0's own 0x200-byte register
  * page is claimed (SDHI registers are SDHI-only, so no clock-setup register that
- * ra_cgc_init polls is intercepted).
+ * ra8_cgc_init polls is intercepted).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

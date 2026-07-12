@@ -1,15 +1,15 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/i2c_peripheral_responder/main.c
- * @brief RIIC (ra_i2c) target/peripheral responder driven by an external controller
+ * @brief RIIC (ra8_i2c) target/peripheral responder driven by an external controller
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Standalone EVM-tier app that exercises the ra_i2c (RIIC) *target*
+ * Standalone EVM-tier app that exercises the ra8_i2c (RIIC) *target*
  * (peripheral) role added for issue #189 -- the own-address match, the
- * attached-callback dispatch (``ra_i2c_peripheral_attach_handler`` /
- * ``ra_i2c_peripheral_dispatch``) and the clock-stretched target TX/RX path.
+ * attached-callback dispatch (``ra8_i2c_peripheral_attach_handler`` /
+ * ``ra8_i2c_peripheral_dispatch``) and the clock-stretched target TX/RX path.
  *
  * The RA8D2 answers as an I2C target at 7-bit own address 0x42 on RIIC
  * channel 1 (P512 SCL1 / P511 SDA1 -- the board's Grove / Pmod / mikroBUS /
@@ -19,14 +19,14 @@
  * blocking controller transfer and service its own target at once, so the
  * controller lives off-board. The flow:
  *
- *   1. ``ra_cgc_init`` + ``ra_mstp_init`` + ``ra_time_init`` -- clocks up.
- *   2. ``ra_board_uart_console_init`` -- BSP SCI8 console (PD02 / PD03).
- *   3. ``ra_board_io_expander_apply_project_sw4_defaults()`` -- the board's
+ *   1. ``ra8_cgc_init`` + ``ra8_mstp_init`` + ``ra8_time_init`` -- clocks up.
+ *   2. ``ra8_board_uart_console_init`` -- BSP SCI8 console (PD02 / PD03).
+ *   3. ``ra8_board_io_expander_apply_project_sw4_defaults()`` -- the board's
  *      bench-validated RIIC1 bring-up (bus-recover, pull-ups, SCL1/SDA1
- *      route, ``ra_i2c_init(ch1)``); reused verbatim from ``i2c_loopback``.
- *   4. ``ra_i2c_peripheral_attach_handler`` + ``ra_i2c_peripheral_init``
+ *      route, ``ra8_i2c_init(ch1)``); reused verbatim from ``i2c_loopback``.
+ *   4. ``ra8_i2c_peripheral_attach_handler`` + ``ra8_i2c_peripheral_init``
  *      (own_addr 0x42, clock-stretch on) -- arm the target and the callback.
- *   5. Tight loop over ``ra_i2c_peripheral_dispatch``: when the external
+ *   5. Tight loop over ``ra8_i2c_peripheral_dispatch``: when the external
  *      controller writes to 0x42, the callback drains it (``_receive``);
  *      when it reads 0x42, the callback echoes the last write (``_transmit``).
  *      Each serviced transfer prints on SCI8 and toggles LED1.
@@ -42,13 +42,13 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_i2c.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_i2c.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_time.h"
 
 /** @brief 32-bit app tunables (baud, bus rate). */
 typedef enum : uint32_t {
@@ -71,7 +71,7 @@ typedef enum : uint8_t {
  * @brief Callback context: the channel and the last controller-write payload.
  *
  * @details
- * Passed to ``ra_i2c_peripheral_attach_handler`` and handed back to
+ * Passed to ``ra8_i2c_peripheral_attach_handler`` and handed back to
  * ``riic_target_on_event``. A controller write is captured into ``rx`` and
  * echoed back on the next controller read, giving a simple loopback semantic.
  * cppcheck cannot see the dispatch call graph, so pre-waive the member scan.
@@ -107,7 +107,7 @@ static void riic_target_panic_halt(void)
  * @brief Address-match callback: service the controller-driven transfer.
  *
  * @details
- * Runs in polled ``ra_i2c_peripheral_dispatch`` context (not an ISR), so the
+ * Runs in polled ``ra8_i2c_peripheral_dispatch`` context (not an ISR), so the
  * blocking target transfers and console writes here are safe. A controller
  * write is drained into ``ctx->rx``; a controller read is answered by echoing
  * the last captured write (or the seed byte before any write arrives).
@@ -119,27 +119,27 @@ static void riic_target_panic_halt(void)
  * @post On a write ``ctx->rx`` holds the payload; on a read it was transmitted.
  * @since 0.1.0
  */
-static void riic_target_on_event(void* vctx, ra_i2c_peripheral_event_t event)
+static void riic_target_on_event(void* vctx, ra8_i2c_peripheral_event_t event)
 {
   riic_target_ctx_t* ctx = (riic_target_ctx_t*)vctx;
   if (ctx == nullptr) {
     return;
   }
-  if (event == k_ra_i2c_peripheral_event_write) {
+  if (event == k_ra8_i2c_peripheral_event_write) {
     uint32_t got = 0U;
-    (void)ra_i2c_peripheral_receive(ctx->channel, ctx->rx, (uint32_t)k_riic_target_buf_len, &got);
+    (void)ra8_i2c_peripheral_receive(ctx->channel, ctx->rx, (uint32_t)k_riic_target_buf_len, &got);
     if (got > 0U) {
       ctx->rx_len = got;
     }
-    (void)ra_board_uart_console_write(k_riic_target_msg_rx, sizeof(k_riic_target_msg_rx) - 1U);
-    (void)ra_board_led_toggle(k_ra_board_led1);
+    (void)ra8_board_uart_console_write(k_riic_target_msg_rx, sizeof(k_riic_target_msg_rx) - 1U);
+    (void)ra8_board_led_toggle(k_ra8_board_led1);
     return;
   }
-  if (event == k_ra_i2c_peripheral_event_read) {
+  if (event == k_ra8_i2c_peripheral_event_read) {
     uint32_t sent = 0U;
-    (void)ra_i2c_peripheral_transmit(ctx->channel, ctx->rx, ctx->rx_len, &sent);
-    (void)ra_board_uart_console_write(k_riic_target_msg_tx, sizeof(k_riic_target_msg_tx) - 1U);
-    (void)ra_board_led_toggle(k_ra_board_led1);
+    (void)ra8_i2c_peripheral_transmit(ctx->channel, ctx->rx, ctx->rx_len, &sent);
+    (void)ra8_board_uart_console_write(k_riic_target_msg_tx, sizeof(k_riic_target_msg_tx) - 1U);
+    (void)ra8_board_led_toggle(k_ra8_board_led1);
   }
 }
 
@@ -153,16 +153,16 @@ static void riic_target_on_event(void* vctx, ra_i2c_peripheral_event_t event)
 static void riic_target_clocks_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     riic_target_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     riic_target_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     riic_target_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     riic_target_panic_halt();
   }
 }
@@ -172,7 +172,7 @@ static void riic_target_clocks_or_halt(void)
  *
  * @details
  * Reuses the board's bench-validated RIIC1 bring-up
- * (``ra_board_io_expander_apply_project_sw4_defaults``) exactly as
+ * (``ra8_board_io_expander_apply_project_sw4_defaults``) exactly as
  * ``i2c_loopback`` does, then brings up LED1.
  *
  * @pre Reset boot finished; single-threaded init context.
@@ -183,13 +183,13 @@ static void riic_target_setup_or_halt(void)
 {
   riic_target_clocks_or_halt();
 
-  if (ra_board_uart_console_init((uint32_t)k_riic_target_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_riic_target_baud) != k_ra8_ok) {
     riic_target_panic_halt();
   }
-  if (ra_board_io_expander_apply_project_sw4_defaults() != k_ra_ok) {
+  if (ra8_board_io_expander_apply_project_sw4_defaults() != k_ra8_ok) {
     riic_target_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     riic_target_panic_halt();
   }
 }
@@ -199,33 +199,33 @@ static void riic_target_setup_or_halt(void)
  *
  * @param[in,out] ctx Callback context to register (channel pre-filled).
  *
- * @return ``ra_err_t`` from the attach + arm sequence.
- * @retval k_ra_ok Target armed and the callback attached.
+ * @return ``ra8_err_t`` from the attach + arm sequence.
+ * @retval k_ra8_ok Target armed and the callback attached.
  *
  * @pre RIIC1 is initialized (``riic_target_setup_or_halt`` ran).
- * @pre ``ctx`` outlives every ``ra_i2c_peripheral_dispatch`` call.
+ * @pre ``ctx`` outlives every ``ra8_i2c_peripheral_dispatch`` call.
  * @post On success the channel answers 0x42 and fires ``riic_target_on_event``.
  * @post Clock stretching (ICMR3.WAIT) is armed so the poll loop can service.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t riic_target_arm(riic_target_ctx_t* ctx)
+[[nodiscard]] static ra8_err_t riic_target_arm(riic_target_ctx_t* ctx)
 {
   if (ctx == nullptr) {
-    return k_ra_err_null_ptr;
+    return k_ra8_err_null_ptr;
   }
-  const ra_err_t attached =
-    ra_i2c_peripheral_attach_handler((uint8_t)k_riic_target_channel, riic_target_on_event, ctx);
-  if (attached != k_ra_ok) {
+  const ra8_err_t attached =
+    ra8_i2c_peripheral_attach_handler((uint8_t)k_riic_target_channel, riic_target_on_event, ctx);
+  if (attached != k_ra8_ok) {
     return attached;
   }
-  const ra_i2c_peripheral_cfg_t cfg = {
+  const ra8_i2c_peripheral_cfg_t cfg = {
     .own_addr_7b   = (uint8_t)k_riic_target_own_addr,
-    .slot          = k_ra_i2c_peripheral_slot_0,
+    .slot          = k_ra8_i2c_peripheral_slot_0,
     .general_call  = false,
     .clock_stretch = true,
     .irq_enable    = false, /* polled dispatch, no NVIC wiring */
   };
-  return ra_i2c_peripheral_init((uint8_t)k_riic_target_channel, &cfg);
+  return ra8_i2c_peripheral_init((uint8_t)k_riic_target_channel, &cfg);
 }
 
 #pragma GCC diagnostic push
@@ -244,23 +244,23 @@ static void riic_target_setup_or_halt(void)
 int32_t main(void)
 {
   riic_target_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   static riic_target_ctx_t s_ctx = {
     .channel = (uint8_t)k_riic_target_channel,
     .rx_len  = (uint32_t)k_riic_target_seed_len,
     .rx      = {(uint8_t)k_riic_target_seed_byte},
   };
-  if (riic_target_arm(&s_ctx) != k_ra_ok) {
+  if (riic_target_arm(&s_ctx) != k_ra8_ok) {
     riic_target_panic_halt();
   }
-  if (ra_board_uart_console_write(k_riic_target_msg_armed, sizeof(k_riic_target_msg_armed) - 1U) !=
-      k_ra_ok) {
+  if (ra8_board_uart_console_write(k_riic_target_msg_armed, sizeof(k_riic_target_msg_armed) - 1U) !=
+      k_ra8_ok) {
     riic_target_panic_halt();
   }
 
   while (1) {
-    ra_i2c_peripheral_dispatch((uint8_t)k_riic_target_channel);
+    ra8_i2c_peripheral_dispatch((uint8_t)k_riic_target_channel);
   }
 
   riic_target_panic_halt();

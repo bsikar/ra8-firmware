@@ -13,7 +13,7 @@ other** and one firmware image runs both USB stacks.
   tick between queue attempts so the lower-priority host thread can drain
   the report queue.
 - **USBHS (J7) = host:** a self-contained polled host built on the
-  first-party `ra_usb_host_*` primitives (no `ra_usb_hhid`). It enumerates
+  first-party `ra8_usb_host_*` primitives (no `ra8_usb_hhid`). It enumerates
   the device (bus reset -> GET_DESCRIPTOR -> SET_ADDRESS ->
   SET_CONFIGURATION), opens the HID interrupt-IN endpoint (EP1 IN) as a
   receive pipe, then polls 8 reports and byte-checks the fixed pattern in

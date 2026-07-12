@@ -11,17 +11,17 @@ independently zlib-compressed, and the firmware reads a page at a time.
 Why a second container at all: a ZIP already compresses every entry
 independently, so a comic has no whole-archive DEFLATE stream to chunk. The
 natural paging unit is therefore one page -- register a page's compressed byte
-range as an ``ra_vsource`` object and inflate it on the page-turn -- and the
+range as an ``ra8_vsource`` object and inflate it on the page-turn -- and the
 manifest lets a shelf/cover view size a page without paging any raster in. The
 owner's omnibus volumes can be multi-GB, so the book is read page-paged, never
 resident.
 
 Container layout (little-endian; kept in lockstep with
-libs/ra_book/inc/ra_cbz_container.h):
+libs/ra8_book/inc/ra8_cbz_container.h):
 
     [0]  "RCBZ" magic (4 bytes)
     [4]  uint32 page_count
-    [8]  uint32 flags            (k_ra_book_flag_rtl == 0x1)
+    [8]  uint32 flags            (k_ra8_book_flag_rtl == 0x1)
     [12] uint32 reserved         (0)
     [16] uint64 offset[page_count + 1]   payload-relative zlib-stream bounds
     [..] meta[page_count]        12 bytes each: uint32 raw_size, uint16 width,
@@ -59,7 +59,7 @@ from cbz_compile import is_page_entry, natural_key
 from epub_compile import FLAG_RTL, IMG_GRAY4, BlobBuilder
 from PIL import Image
 
-# --- RCBZ wire layout (keep in lockstep with libs/ra_book/inc/ra_cbz_container.h) ---
+# --- RCBZ wire layout (keep in lockstep with libs/ra8_book/inc/ra8_cbz_container.h) ---
 CONTAINER_MAGIC = b"RCBZ"
 HEADER_FMT = "<4sIII"  # magic, page_count, flags, reserved
 HEADER_BYTES = 16
@@ -67,7 +67,7 @@ OFFSET_FMT = "<Q"
 OFFSET_BYTES = 8
 META_FMT = "<IHHBBH"  # raw_size, width, height, format, reserved, reserved2
 META_BYTES = 12
-# Only the RTL bit is a defined feature flag (k_ra_book_flag_mask_known).
+# Only the RTL bit is a defined feature flag (k_ra8_book_flag_mask_known).
 FLAG_MASK_KNOWN = FLAG_RTL
 # zlib level: match wrap_container so a page compresses as tightly as it would
 # inside the .rabook path.

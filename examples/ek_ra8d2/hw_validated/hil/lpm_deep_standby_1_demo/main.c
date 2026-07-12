@@ -22,7 +22,7 @@
  *   3. RTC init + seed + arm a +5 s alarm + RCR1.AIE.
  *   4. Arm DPSIER2.DRTCAIE so the alarm cancels Deep Standby.
  *   5. Arm WUPEN0.RTCALMWUPEN so the alarm reaches the wake matrix.
- *   6. ``ra_lpm_enter_sleep(k_ra_sleep_mode_deep_standby_1)``.
+ *   6. ``ra8_lpm_enter_sleep(k_ra8_sleep_mode_deep_standby_1)``.
  *
  * The chip resets on wake -- the next boot lands back in step 1.
  *
@@ -39,14 +39,14 @@
 
 #include <stdint.h>
 
-#include "ra8d2_lpm_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_lpm.h"
-#include "ra_rtc.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_lpm.h"
+#include "ra8_lpm_regs.h"
+#include "ra8_rtc.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -90,22 +90,22 @@ static void lpm_dpsby1_panic_halt(void)
 static void lpm_dpsby1_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     lpm_dpsby1_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     lpm_dpsby1_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     lpm_dpsby1_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_lpm_dpsby1_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_lpm_dpsby1_baud) != k_ra8_ok) {
     lpm_dpsby1_panic_halt();
   }
-  if (ra_rtc_init() != k_ra_ok) {
+  if (ra8_rtc_init() != k_ra8_ok) {
     lpm_dpsby1_panic_halt();
   }
-  const ra_rtc_datetime_t seed = {
+  const ra8_rtc_datetime_t seed = {
     .year    = (uint16_t)(k_lpm_dpsby1_year_base + (uint16_t)k_lpm_dpsby1_seed_year_lo),
     .month   = (uint8_t)k_lpm_dpsby1_seed_month,
     .day     = (uint8_t)k_lpm_dpsby1_seed_day,
@@ -114,17 +114,17 @@ static void lpm_dpsby1_setup_or_halt(void)
     .minute  = 0U,
     .second  = 0U,
   };
-  if (ra_rtc_set(&seed) != k_ra_ok) {
+  if (ra8_rtc_set(&seed) != k_ra8_ok) {
     lpm_dpsby1_panic_halt();
   }
-  const ra_lpm_config_t lpm_cfg = {
+  const ra8_lpm_config_t lpm_cfg = {
     .io_port_keep     = false,
     .opa_bus_keep     = true,
     .sscr_fast_return = false,
-    .dcdc_softstart   = k_ra_lpm_dcssmode_128us,
-    .sscr_low_power   = k_ra_lpm_ss2lp_default,
+    .dcdc_softstart   = k_ra8_lpm_dcssmode_128us,
+    .sscr_low_power   = k_ra8_lpm_ss2lp_default,
   };
-  if (ra_lpm_init(&lpm_cfg) != k_ra_ok) {
+  if (ra8_lpm_init(&lpm_cfg) != k_ra8_ok) {
     lpm_dpsby1_panic_halt();
   }
 }
@@ -138,7 +138,7 @@ static void lpm_dpsby1_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-static void lpm_dpsby1_add_offset(const ra_rtc_datetime_t* now, ra_rtc_datetime_t* out)
+static void lpm_dpsby1_add_offset(const ra8_rtc_datetime_t* now, ra8_rtc_datetime_t* out)
 {
   *out                = *now;
   const uint16_t s    = (uint16_t)now->second + (uint16_t)k_lpm_dpsby1_alarm_offset_s;
@@ -155,15 +155,15 @@ static void lpm_dpsby1_add_offset(const ra_rtc_datetime_t* now, ra_rtc_datetime_
  * @brief Arm the +5 s RTC alarm, DPSIER2.DRTCAIE, and WUPEN0.RTCALM.
  *
  * @par MC/DC:
- * Compound decision: ``ra_rtc_set_alarm != ok ||
- * ra_rtc_set_irq_enable != ok || ra_lpm_arm_dpsier != ok ||
- * ra_lpm_arm_wupen0_bits != ok``. Four atomic conditions x N+1 = 5
+ * Compound decision: ``ra8_rtc_set_alarm != ok ||
+ * ra8_rtc_set_irq_enable != ok || ra8_lpm_arm_dpsier != ok ||
+ * ra8_lpm_arm_wupen0_bits != ok``. Four atomic conditions x N+1 = 5
  * vectors covered in the host unit test.
  *
  * @return Error code from the first failing primitive.
  *
  * @pre RTC initialised and seeded.
- * @pre PRC1 unlocked by ra_lpm_init.
+ * @pre PRC1 unlocked by ra8_lpm_init.
  *
  * @post On success the RTC alarm fires in 5 s and is wired both into
  *       the deep-standby cancel matrix (DPSIER2) and the wake-up
@@ -171,23 +171,23 @@ static void lpm_dpsby1_add_offset(const ra_rtc_datetime_t* now, ra_rtc_datetime_
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t lpm_dpsby1_arm_wake(const ra_rtc_datetime_t* now)
+[[nodiscard]] static ra8_err_t lpm_dpsby1_arm_wake(const ra8_rtc_datetime_t* now)
 {
-  ra_rtc_datetime_t a = {};
+  ra8_rtc_datetime_t a = {};
   lpm_dpsby1_add_offset(now, &a);
-  ra_err_t err = ra_rtc_set_alarm(&a);
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_rtc_set_alarm(&a);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_rtc_set_irq_enable((uint8_t)k_ra_rtc_irq_alarm);
-  if (err != k_ra_ok) {
+  err = ra8_rtc_set_irq_enable((uint8_t)k_ra8_rtc_irq_alarm);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_lpm_arm_dpsier(k_ra_lpm_dpsier_idx_2, (uint8_t)k_ra_lpm_dpsier2_drtcaie_mask);
-  if (err != k_ra_ok) {
+  err = ra8_lpm_arm_dpsier(k_ra8_lpm_dpsier_idx_2, (uint8_t)k_ra8_lpm_dpsier2_drtcaie_mask);
+  if (err != k_ra8_ok) {
     return err;
   }
-  return ra_lpm_arm_wupen0_bits((uint32_t)k_ra_lpm_wupen0_rtcalm);
+  return ra8_lpm_arm_wupen0_bits((uint32_t)k_ra8_lpm_wupen0_rtcalm);
 }
 
 #pragma GCC diagnostic push
@@ -195,27 +195,27 @@ static void lpm_dpsby1_add_offset(const ra_rtc_datetime_t* now, ra_rtc_datetime_
 int32_t main(void)
 {
   lpm_dpsby1_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   /* Emit boot banner before the deep-standby entry so the HIL gate
    * confirms the build + bring-up path even if the sub-clock crystal
    * is silent (see SOSC caveat in the file header). */
-  (void)ra_board_uart_console_write(k_lpm_dpsby1_boot_msg,
-                                    (size_t)(sizeof(k_lpm_dpsby1_boot_msg) - 1U));
+  (void)ra8_board_uart_console_write(k_lpm_dpsby1_boot_msg,
+                                     (size_t)(sizeof(k_lpm_dpsby1_boot_msg) - 1U));
 
   while (1) {
-    ra_rtc_datetime_t now = {};
-    if (ra_rtc_get(&now) != k_ra_ok) {
+    ra8_rtc_datetime_t now = {};
+    if (ra8_rtc_get(&now) != k_ra8_ok) {
       break;
     }
-    if (lpm_dpsby1_arm_wake(&now) != k_ra_ok) {
+    if (lpm_dpsby1_arm_wake(&now) != k_ra8_ok) {
       break;
     }
     /* On hardware this never returns -- Deep Software Standby resets
      * the CPU on wake, so control re-enters Reset_Handler. On the
-     * host (RA_SIMULATOR_MODE) WFI is a no-op so the loop simply
+     * host (RA8_SIMULATOR_MODE) WFI is a no-op so the loop simply
      * iterates. */
-    if (ra_lpm_enter_sleep(k_ra_sleep_mode_deep_standby_1) != k_ra_ok) {
+    if (ra8_lpm_enter_sleep(k_ra8_sleep_mode_deep_standby_1) != k_ra8_ok) {
       break;
     }
   }

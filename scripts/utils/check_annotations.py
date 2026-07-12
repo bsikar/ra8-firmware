@@ -7,9 +7,9 @@ check_annotations.py -- libclang-based annotation enforcement.
 This script walks the AST of every C / C++ translation unit under
 ``libs/``, ``src/``, ``examples/``, ``tests/``, and ``port/`` and
 applies the project's annotation-enforcement rules. The annotation
-macros themselves are defined in ``libs/ra_core/inc/ra_attributes.h``
+macros themselves are defined in ``libs/ra8_core/inc/ra8_attributes.h``
 (produced by ) and lower to GCC ``__attribute__((annotate
-("ra_<rule>:...")))`` markers that libclang exposes via
+("ra8_<rule>:...")))`` markers that libclang exposes via
 ``AnnotateAttr`` cursors.
 
 The 19 enforceable rules are documented in ``docs/ANNOTATIONS.md``;
@@ -56,34 +56,34 @@ EXCLUDED_PATH_PARTS = {
 }
 SOURCE_SUFFIXES = {".c", ".cpp"}
 
-WARN_ONLY_RULES = {"ra_latency_max_ns", "ra_reviewed_by", "ra_register_bank"}
+WARN_ONLY_RULES = {"ra8_latency_max_ns", "ra8_reviewed_by", "ra8_register_bank"}
 
-# Upper bound on the call-graph BFS used for ra_no_recursion checking.
+# Upper bound on the call-graph BFS used for ra8_no_recursion checking.
 # Prevents infinite loops on pathological call graphs during static analysis.
 RECURSION_GUARD_LIMIT = 1000
 
 ANNOTATION_PREFIXES = (
-    "ra_test_helper",
-    "ra_internal",
-    "ra_priv",
-    "ra_di_slot",
-    "ra_nsc_veneer",
-    "ra_hw_mmio",
-    "ra_p10_rule3_exception",
-    "ra_mcdc_deactivated",
-    "ra_stack_max",
-    "ra_isr_safe",
-    "ra_expects_lock",
-    "ra_host_friendly",
-    "ra_latency_max_ns",
-    "ra_no_recursion",
-    "ra_bounded_loop",
-    "ra_validates",
-    "ra_owns_resource",
-    "ra_releases_resource",
-    "ra_reviewed_by",
-    "ra_register_bank",
-    "ra_isr_handler",
+    "ra8_test_helper",
+    "ra8_internal",
+    "ra8_priv",
+    "ra8_di_slot",
+    "ra8_nsc_veneer",
+    "ra8_hw_mmio",
+    "ra8_p10_rule3_exception",
+    "ra8_mcdc_deactivated",
+    "ra8_stack_max",
+    "ra8_isr_safe",
+    "ra8_expects_lock",
+    "ra8_host_friendly",
+    "ra8_latency_max_ns",
+    "ra8_no_recursion",
+    "ra8_bounded_loop",
+    "ra8_validates",
+    "ra8_owns_resource",
+    "ra8_releases_resource",
+    "ra8_reviewed_by",
+    "ra8_register_bank",
+    "ra8_isr_handler",
 )
 
 
@@ -108,7 +108,7 @@ except ImportError:
 # None so a missing kind degrades to "no section attribute detected" instead of
 # raising AttributeError, which previously aborted the entire TU walk (silently
 # dropping every TU that defined an annotated function in-place, e.g.
-# ra_widget_*, ra_book, ra_rabook_*).
+# ra8_widget_*, ra8_book, ra8_rabook_*).
 SECTION_ATTR_KIND = getattr(cindex.CursorKind, "SECTION_ATTR", None)
 
 
@@ -117,7 +117,7 @@ SECTION_ATTR_KIND = getattr(cindex.CursorKind, "SECTION_ATTR", None)
 # --------------------------------------------------------------------------
 @dataclass
 class AnnotatedSymbol:
-    """A function definition (or declaration) carrying ra_* annotations."""
+    """A function definition (or declaration) carrying ra8_* annotations."""
 
     name: str
     file: str
@@ -138,7 +138,7 @@ class CallSite:
     caller_file: str
     caller_line: int
     in_address_of: bool = False
-    parent_loop_label: str | None = None  # for RA_PROTECTED_WRITE detection
+    parent_loop_label: str | None = None  # for RA8_PROTECTED_WRITE detection
     preceding_comment: str = ""
 
 
@@ -174,7 +174,7 @@ def discover_translation_units() -> list[pathlib.Path]:
 
 
 def collect_annotations(cursor: cindex.Cursor) -> list[str]:
-    """Return every ra_* string attached to a cursor via AnnotateAttr."""
+    """Return every ra8_* string attached to a cursor via AnnotateAttr."""
     out: list[str] = []
     for child in cursor.get_children():
         if child.kind == cindex.CursorKind.ANNOTATE_ATTR:
@@ -197,10 +197,10 @@ def parse_tu(path: pathlib.Path) -> cindex.TranslationUnit | None:
         "-std=c23",
         "-x",
         "c",
-        "-DRA_HOST_BUILD=1",
-        f"-I{REPO_ROOT}/libs/ra_core/inc",
-        f"-I{REPO_ROOT}/libs/ra_hal/inc",
-        f"-I{REPO_ROOT}/libs/ra_nsc/inc",
+        "-DRA8_HOST_BUILD=1",
+        f"-I{REPO_ROOT}/libs/ra8_core/inc",
+        f"-I{REPO_ROOT}/libs/ra8_hal/inc",
+        f"-I{REPO_ROOT}/libs/ra8_nsc/inc",
         f"-I{REPO_ROOT}/src/inc",
         f"-I{REPO_ROOT}/tests/include",
     ]
@@ -301,7 +301,7 @@ def walk_tu(
 # Rule helpers
 # --------------------------------------------------------------------------
 def parse_annotation(ann: str) -> tuple[str, str]:
-    """Split ``ra_stack_max:512`` -> (``ra_stack_max``, ``512``)."""
+    """Split ``ra8_stack_max:512`` -> (``ra8_stack_max``, ``512``)."""
     if ":" in ann:
         rule, _, arg = ann.partition(":")
         return rule.strip(), arg.strip()
@@ -361,33 +361,33 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
 
             warn_only = rule in WARN_ONLY_RULES
 
-            # 1. ra_test_helper -- callers must live under /tests/
-            if rule == "ra_test_helper":
+            # 1. ra8_test_helper -- callers must live under /tests/
+            if rule == "ra8_test_helper":
                 out.extend(
                     Violation(
                         rule,
                         cs.caller_file,
                         cs.caller_line,
-                        f"function '{sym.name}' tagged RA_TEST_HELPER called from non-test context",
+                        f"function '{sym.name}' tagged RA8_TEST_HELPER called from non-test context",
                     )
                     for cs in direct_calls_by_callee.get(sym.name, [])
                     if "/tests/" not in cs.caller_file.replace("\\", "/")
                 )
 
-            # 2. ra_internal -- definition must be static
-            elif rule == "ra_internal":
+            # 2. ra8_internal -- definition must be static
+            elif rule == "ra8_internal":
                 if not sym.is_static:
                     out.append(
                         Violation(
                             rule,
                             sym.file,
                             sym.line,
-                            f"function '{sym.name}' tagged RA_INTERNAL is not declared static",
+                            f"function '{sym.name}' tagged RA8_INTERNAL is not declared static",
                         )
                     )
 
-            # 3. ra_priv -- callers must share the same libs/<module>/
-            elif rule == "ra_priv":
+            # 3. ra8_priv -- callers must share the same libs/<module>/
+            elif rule == "ra8_priv":
                 callee_mod = module_of(sym.file)
                 if callee_mod is None:
                     continue
@@ -399,14 +399,14 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                                 rule,
                                 cs.caller_file,
                                 cs.caller_line,
-                                f"function '{sym.name}' tagged RA_PRIV "
+                                f"function '{sym.name}' tagged RA8_PRIV "
                                 f"({callee_mod}) called from outside its module "
                                 f"(caller={caller_mod or 'unknown'})",
                             )
                         )
 
-            # 4. ra_di_slot:<role> -- must be referenced via &name, not direct
-            elif rule == "ra_di_slot":
+            # 4. ra8_di_slot:<role> -- must be referenced via &name, not direct
+            elif rule == "ra8_di_slot":
                 if sym.name in direct_calls_by_callee and sym.name not in address_taken:
                     cs = direct_calls_by_callee[sym.name][0]
                     out.append(
@@ -414,33 +414,33 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                             rule,
                             cs.caller_file,
                             cs.caller_line,
-                            f"function '{sym.name}' tagged RA_DI_SLOT "
+                            f"function '{sym.name}' tagged RA8_DI_SLOT "
                             f"called directly; must be invoked via function "
                             f"pointer (DIP)",
                             warn_only=True,  # heuristic; warn until pattern stable
                         )
                     )
 
-            # 5. ra_nsc_veneer
-            elif rule == "ra_nsc_veneer":
+            # 5. ra8_nsc_veneer
+            elif rule == "ra8_nsc_veneer":
                 f = sym.file.replace("\\", "/")
-                if "/libs/ra_nsc/src/" not in f:
+                if "/libs/ra8_nsc/src/" not in f:
                     out.append(
                         Violation(
                             rule,
                             sym.file,
                             sym.line,
-                            f"NSC veneer '{sym.name}' must live under libs/ra_nsc/src/ (found {f})",
+                            f"NSC veneer '{sym.name}' must live under libs/ra8_nsc/src/ (found {f})",
                         )
                     )
                 body_calls = direct_calls_by_caller.get(sym.name, [])
-                if not any(c.callee_name.startswith("ra_nsc_check_") for c in body_calls):
+                if not any(c.callee_name.startswith("ra8_nsc_check_") for c in body_calls):
                     out.append(
                         Violation(
                             rule,
                             sym.file,
                             sym.line,
-                            f"NSC veneer '{sym.name}' missing ra_nsc_check_* call in body",
+                            f"NSC veneer '{sym.name}' missing ra8_nsc_check_* call in body",
                         )
                     )
                 if (
@@ -458,8 +458,8 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                         )
                     )
 
-            # 6. ra_hw_mmio
-            elif rule == "ra_hw_mmio":
+            # 6. ra8_hw_mmio
+            elif rule == "ra8_hw_mmio":
                 if not sym.has_inline:
                     out.append(
                         Violation(
@@ -479,32 +479,32 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                             f"(got '{sym.return_type}')",
                         )
                     )
-                # Caller-side RA_PROTECTED_WRITE / // CITES-OK: check is
+                # Caller-side RA8_PROTECTED_WRITE / // CITES-OK: check is
                 # left to a future textual scan; libclang loses macro
                 # context that early.
 
-            # 7. ra_p10_rule3_exception -- malloc only inside this function
-            elif rule == "ra_p10_rule3_exception":
+            # 7. ra8_p10_rule3_exception -- malloc only inside this function
+            elif rule == "ra8_p10_rule3_exception":
                 # Nothing to check at the symbol; the global sweep below
                 # ensures malloc/free/calloc/realloc only appear inside
                 # tagged functions.
                 pass
 
-            # 8. ra_mcdc_deactivated:<reason>
-            elif rule == "ra_mcdc_deactivated":
+            # 8. ra8_mcdc_deactivated:<reason>
+            elif rule == "ra8_mcdc_deactivated":
                 if re.search(r"\.[ch]:\d+", arg):
                     out.append(
                         Violation(
                             rule,
                             sym.file,
                             sym.line,
-                            f"ra_mcdc_deactivated reason on '{sym.name}' "
+                            f"ra8_mcdc_deactivated reason on '{sym.name}' "
                             f"contains file:line citation -- use function name",
                         )
                     )
 
-            # 9. ra_stack_max:<bytes>
-            elif rule == "ra_stack_max":
+            # 9. ra8_stack_max:<bytes>
+            elif rule == "ra8_stack_max":
                 try:
                     annotated = int(arg)
                 except ValueError:
@@ -513,7 +513,7 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                             rule,
                             sym.file,
                             sym.line,
-                            f"ra_stack_max:'{arg}' on '{sym.name}' is not an integer byte count",
+                            f"ra8_stack_max:'{arg}' on '{sym.name}' is not an integer byte count",
                         )
                     )
                     continue
@@ -525,21 +525,21 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                             sym.file,
                             sym.line,
                             f"function '{sym.name}' frame {measured} B exceeds "
-                            f"ra_stack_max:{annotated}",
+                            f"ra8_stack_max:{annotated}",
                         )
                     )
 
-            # 10. ra_isr_safe -- handled by global ISR-chain pass below.
-            elif rule == "ra_isr_safe":
+            # 10. ra8_isr_safe -- handled by global ISR-chain pass below.
+            elif rule == "ra8_isr_safe":
                 pass
 
-            # 11. ra_expects_lock:<name>
-            elif rule == "ra_expects_lock":
+            # 11. ra8_expects_lock:<name>
+            elif rule == "ra8_expects_lock":
                 lock = arg
                 for cs in direct_calls_by_callee.get(sym.name, []):
                     body = direct_calls_by_caller.get(cs.caller_name, [])
                     has_take = any(
-                        c.callee_name == "RA_TAKE_LOCK" and c.caller_line < cs.caller_line
+                        c.callee_name == "RA8_TAKE_LOCK" and c.caller_line < cs.caller_line
                         for c in body
                     )
                     if not has_take:
@@ -549,16 +549,16 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                                 cs.caller_file,
                                 cs.caller_line,
                                 f"call to '{sym.name}' (expects lock '{lock}') "
-                                f'missing preceding RA_TAKE_LOCK("{lock}")',
+                                f'missing preceding RA8_TAKE_LOCK("{lock}")',
                             )
                         )
 
-            # 12. ra_host_friendly
-            elif rule == "ra_host_friendly":
+            # 12. ra8_host_friendly
+            elif rule == "ra8_host_friendly":
                 for cs in direct_calls_by_caller.get(sym.name, []):
                     callee_sym = symbols.get(cs.callee_name)
                     if callee_sym and any(
-                        a.startswith(("ra_hw_mmio", "RA_HW_REGISTER_ACCESS"))
+                        a.startswith(("ra8_hw_mmio", "RA8_HW_REGISTER_ACCESS"))
                         for a in callee_sym.annotations
                     ):
                         out.append(
@@ -571,20 +571,20 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                             )
                         )
 
-            # 13. ra_latency_max_ns -- warn-only TODO until WCET pass exists.
-            elif rule == "ra_latency_max_ns":
+            # 13. ra8_latency_max_ns -- warn-only TODO until WCET pass exists.
+            elif rule == "ra8_latency_max_ns":
                 out.append(
                     Violation(
                         rule,
                         sym.file,
                         sym.line,
-                        f"ra_latency_max_ns:{arg} on '{sym.name}' deferred until WCET pass exists",
+                        f"ra8_latency_max_ns:{arg} on '{sym.name}' deferred until WCET pass exists",
                         warn_only=True,
                     )
                 )
 
-            # 14. ra_no_recursion -- transitive call closure must not include self
-            elif rule == "ra_no_recursion":
+            # 14. ra8_no_recursion -- transitive call closure must not include self
+            elif rule == "ra8_no_recursion":
                 seen = {sym.name}
                 stack = [sym.name]
                 recursive = False
@@ -609,15 +609,15 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                             rule,
                             sym.file,
                             sym.line,
-                            f"function '{sym.name}' tagged RA_NO_RECURSION "
+                            f"function '{sym.name}' tagged RA8_NO_RECURSION "
                             f"appears in its own transitive call closure",
                         )
                     )
 
-            # 15. ra_bounded_loop:<symbol> -- textual fallback (libclang
+            # 15. ra8_bounded_loop:<symbol> -- textual fallback (libclang
             # loses for/while bounds easily; the textual pass is enough
             # to catch the common case).
-            elif rule == "ra_bounded_loop":
+            elif rule == "ra8_bounded_loop":
                 try:
                     src = pathlib.Path(sym.file).read_text(errors="ignore")
                 except OSError:
@@ -655,35 +655,35 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                             )
                         )
 
-            # 16. ra_validates:<n>
-            elif rule == "ra_validates":
+            # 16. ra8_validates:<n>
+            elif rule == "ra8_validates":
                 try:
                     need = int(arg)
                 except ValueError:
                     continue
                 body = direct_calls_by_caller.get(sym.name, [])
-                count = sum(1 for c in body if c.callee_name.startswith("RA_CHECK_"))
+                count = sum(1 for c in body if c.callee_name.startswith("RA8_CHECK_"))
                 if count < need:
                     out.append(
                         Violation(
                             rule,
                             sym.file,
                             sym.line,
-                            f"function '{sym.name}' has {count} RA_CHECK_* calls; "
-                            f"ra_validates:{need} requires at least {need}",
+                            f"function '{sym.name}' has {count} RA8_CHECK_* calls; "
+                            f"ra8_validates:{need} requires at least {need}",
                         )
                     )
 
-            # 17. ra_owns_resource:<kind> -- approximate: require at least
-            # one matching ra_releases_resource:<kind> call somewhere in body.
-            elif rule == "ra_owns_resource":
+            # 17. ra8_owns_resource:<kind> -- approximate: require at least
+            # one matching ra8_releases_resource:<kind> call somewhere in body.
+            elif rule == "ra8_owns_resource":
                 kind = arg
                 body = direct_calls_by_caller.get(sym.name, [])
                 released = False
                 for c in body:
                     callee = symbols.get(c.callee_name)
                     if callee and any(
-                        a == f"ra_releases_resource:{kind}" for a in callee.annotations
+                        a == f"ra8_releases_resource:{kind}" for a in callee.annotations
                     ):
                         released = True
                         break
@@ -694,12 +694,12 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                             sym.file,
                             sym.line,
                             f"function '{sym.name}' acquires '{kind}' but no "
-                            f"matching ra_releases_resource:{kind} call found",
+                            f"matching ra8_releases_resource:{kind} call found",
                         )
                     )
 
-            # 18. ra_reviewed_by -- informational rollup only.
-            elif rule == "ra_reviewed_by":
+            # 18. ra8_reviewed_by -- informational rollup only.
+            elif rule == "ra8_reviewed_by":
                 out.append(
                     Violation(
                         rule,
@@ -710,8 +710,8 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                     )
                 )
 
-            # 19. ra_register_bank -- informational only.
-            elif rule == "ra_register_bank":
+            # 19. ra8_register_bank -- informational only.
+            elif rule == "ra8_register_bank":
                 out.append(
                     Violation(
                         rule,
@@ -731,7 +731,7 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
     p10_exempt = {
         sym.name
         for sym in symbols.values()
-        if any(a.startswith("ra_p10_rule3_exception") for a in sym.annotations)
+        if any(a.startswith("ra8_p10_rule3_exception") for a in sym.annotations)
     }
     bad_alloc = {"malloc", "free", "calloc", "realloc", "aligned_alloc"}
     for cs in calls:
@@ -744,20 +744,20 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
         if cs.callee_name in bad_alloc and cs.caller_name not in p10_exempt:
             out.append(
                 Violation(
-                    "ra_p10_rule3_exception",
+                    "ra8_p10_rule3_exception",
                     cs.caller_file,
                     cs.caller_line,
                     f"call to '{cs.callee_name}' from '{cs.caller_name}' which "
-                    f"is not tagged RA_P10_RULE3_EXCEPTION",
+                    f"is not tagged RA8_P10_RULE3_EXCEPTION",
                 )
             )
 
     # ----- Rule 10 global sweep: ISR chain reachability -----------------
     isr_safe_names = {
-        s.name for s in symbols.values() if any(a == "ra_isr_safe" for a in s.annotations)
+        s.name for s in symbols.values() if any(a == "ra8_isr_safe" for a in s.annotations)
     }
     isr_handler_names = {
-        s.name for s in symbols.values() if any(a == "ra_isr_handler" for a in s.annotations)
+        s.name for s in symbols.values() if any(a == "ra8_isr_handler" for a in s.annotations)
     }
     if isr_handler_names or isr_safe_names:
         for handler in isr_handler_names:
@@ -777,21 +777,21 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                         # External / libc -- treat as unsafe.
                         out.append(
                             Violation(
-                                "ra_isr_safe",
+                                "ra8_isr_safe",
                                 cs.caller_file,
                                 cs.caller_line,
                                 f"ISR handler '{handler}' transitively calls untagged '{callee}'",
                             )
                         )
                         continue
-                    if not any(a == "ra_isr_safe" for a in callee_sym.annotations):
+                    if not any(a == "ra8_isr_safe" for a in callee_sym.annotations):
                         out.append(
                             Violation(
-                                "ra_isr_safe",
+                                "ra8_isr_safe",
                                 cs.caller_file,
                                 cs.caller_line,
                                 f"ISR handler '{handler}' transitively calls "
-                                f"'{callee}' which lacks RA_ISR_SAFE",
+                                f"'{callee}' which lacks RA8_ISR_SAFE",
                             )
                         )
                     stack.append(callee)

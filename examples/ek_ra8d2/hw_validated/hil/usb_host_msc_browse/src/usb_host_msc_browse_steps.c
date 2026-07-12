@@ -16,7 +16,7 @@
  * in `main.c`.
  *
  * The whole TU is compiled only in the non-simulator firmware build, mirroring
- * the original placement inside `main.c`'s ``#ifndef RA_SIMULATOR_MODE`` block.
+ * the original placement inside `main.c`'s ``#ifndef RA8_SIMULATOR_MODE`` block.
  *
  * @author Brighton Sikarskie
  * @date 2026-06-25
@@ -30,9 +30,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
-#include "ra_board_ek_ra8d2.h"
+#include "ra8_board_ek_ra8d2.h"
 #include "ux_api.h"
 #include "ux_device_class_storage.h"
 
@@ -323,7 +323,7 @@ UINT selftest_msc_read(VOID*  storage,
     selftest_fat_fill_sector((uint32_t)(lba + i), &data_pointer[i * (ULONG)k_selftest_block_size]);
   }
   *media_status = 0UL;
-  (void)ra_board_led_toggle(k_ra_board_led1);
+  (void)ra8_board_led_toggle(k_ra8_board_led1);
   return UX_SUCCESS;
 }
 
@@ -358,4 +358,4 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
   return UX_SUCCESS;
 }
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

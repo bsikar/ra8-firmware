@@ -12,8 +12,8 @@
  * NSC veneers.
  *
  * A ThreadX watchdog supervisor guards the workers: at start-up it arms the
- * Secure-owned WDT through the ``ra_nsc_wdt_start`` veneer, then refreshes it
- * (through ``ra_nsc_wdt_refresh``) only while every worker thread keeps
+ * Secure-owned WDT through the ``ra8_nsc_wdt_start`` veneer, then refreshes it
+ * (through ``ra8_nsc_wdt_refresh``) only while every worker thread keeps
  * checking in within its deadline. If any thread wedges the supervisor stops
  * kicking the WDT and it underflows. Expiry is routed to NMI in this build, so
  * a wedge halts the system deterministically (context preserved for a
@@ -27,24 +27,24 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
-#include "ra_nsc.h"
-#include "ra_wdt_supervisor.h"
+#include "ra8_err.h"
+#include "ra8_nsc.h"
+#include "ra8_wdt_supervisor.h"
 #include "tx_api.h"
 
 /* Linker symbols for BSS and Stack */
-extern uint32_t g_ra_ls_ns_bss_start;
-extern uint32_t g_ra_ls_ns_bss_end;
-extern uint32_t g_ra_ls_ns_stack_top;
-extern uint32_t g_ra_ls_ns_run_start;
+extern uint32_t g_ra8_ls_ns_bss_start;
+extern uint32_t g_ra8_ls_ns_bss_end;
+extern uint32_t g_ra8_ls_ns_stack_top;
+extern uint32_t g_ra8_ls_ns_run_start;
 
-#ifdef RA_EREADER_NS_XIP
+#ifdef RA8_EREADER_NS_XIP
 /* XIP-only: .data lives (writable) in SRAM but its init image is in OSPI. These
  * mark the OSPI load image (LMA) and the SRAM run bounds (VMA) so the NS reset
  * handler can copy it in -- the Secure boot no longer copies the whole image. */
-extern uint32_t g_ra_ls_ns_data_load_start;
-extern uint32_t g_ra_ls_ns_data_start;
-extern uint32_t g_ra_ls_ns_data_end;
+extern uint32_t g_ra8_ls_ns_data_load_start;
+extern uint32_t g_ra8_ls_ns_data_start;
+extern uint32_t g_ra8_ls_ns_data_end;
 #endif
 
 /** @brief Address of NS VTOR register. */
@@ -142,9 +142,9 @@ typedef enum : uint32_t {
 [[gnu::aligned(8)]] static uint8_t s_sup_stack[k_ns_wdt_sup_stack_size];
 
 /** @brief Supervisor check-in handle for the UI thread. */
-static uint8_t s_ui_wdt_handle = (uint8_t)k_ra_wdt_sup_handle_invalid;
+static uint8_t s_ui_wdt_handle = (uint8_t)k_ra8_wdt_sup_handle_invalid;
 /** @brief Supervisor check-in handle for the system thread. */
-static uint8_t s_sys_wdt_handle = (uint8_t)k_ra_wdt_sup_handle_invalid;
+static uint8_t s_sys_wdt_handle = (uint8_t)k_ra8_wdt_sup_handle_invalid;
 
 /**
  * @var g_ns_ui_frames
@@ -170,18 +170,18 @@ volatile uint32_t g_ns_sys_ticks = 0U;
 /* External declarations for thread tick hooks */
 extern void              PendSV_Handler(void);
 extern void              _tx_timer_interrupt(void);
-extern volatile uint32_t g_ra_threadx_systick_ready;
+extern volatile uint32_t g_ra8_threadx_systick_ready;
 
 /**
  * @brief SysTick exception handler for the Non-Secure ThreadX OS.
  * @details Drives the ThreadX timer: once the kernel is up
- *          (@c g_ra_threadx_systick_ready set), each SysTick forwards into
+ *          (@c g_ra8_threadx_systick_ready set), each SysTick forwards into
  *          @c _tx_timer_interrupt to service timeouts and the time-slice. Before
  *          the kernel is ready the tick is ignored so an early SysTick cannot
  *          enter the scheduler.
  * @return Nothing.
  * @pre Installed as the SysTick vector in the NS vector table.
- * @pre @c g_ra_threadx_systick_ready is set only after @c tx_kernel_enter.
+ * @pre @c g_ra8_threadx_systick_ready is set only after @c tx_kernel_enter.
  * @post When the kernel is ready, one ThreadX timer tick has been serviced.
  * @post When the kernel is not ready, no scheduler state is touched.
  * @note Runs in NS handler mode; not callable from thread context.
@@ -189,7 +189,7 @@ extern volatile uint32_t g_ra_threadx_systick_ready;
  */
 static void ns_systick_handler(void)
 {
-  if (g_ra_threadx_systick_ready != 0U) {
+  if (g_ra8_threadx_systick_ready != 0U) {
     _tx_timer_interrupt();
   }
 }
@@ -225,7 +225,7 @@ static void ns_systick_handler(void)
  * @param[in] thread_input ThreadX entry argument (unused; reserved by the API).
  * @return Nothing (runs for the lifetime of the system).
  * @pre Registered as the UI thread's entry in ::tx_application_define.
- * @pre @c ra_nsc_periph_init has completed (Secure services available).
+ * @pre @c ra8_nsc_periph_init has completed (Secure services available).
  * @post The UI loop runs continuously, yielding each iteration.
  * @post Heartbeat log lines are emitted on the configured cadence.
  * @note Runs on the NS UI thread; not thread-safe across threads.
@@ -234,16 +234,16 @@ static void ns_systick_handler(void)
 static void ui_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
-  (void)ra_nsc_log_emit("UI", "UI thread started");
+  (void)ra8_nsc_log_emit("UI", "UI thread started");
 
   uint32_t frame = 0U;
   for (;;) {
     frame++;
     g_ns_ui_frames = frame; /* HIL liveness probe (read via J-Link). */
     /* Prove liveness to the watchdog supervisor once per frame. */
-    (void)ra_wdt_supervisor_checkin(s_ui_wdt_handle);
+    (void)ra8_wdt_supervisor_checkin(s_ui_wdt_handle);
     if ((frame % (uint32_t)k_ns_ui_heartbeat_frames) == 0U) {
-      (void)ra_nsc_log_emit("UI", "UI loop: frame heartbeat");
+      (void)ra8_nsc_log_emit("UI", "UI loop: frame heartbeat");
     }
     tx_thread_sleep((uint32_t)k_ns_ui_frame_ticks); /* ~16 ms; yields to the others. */
   }
@@ -269,15 +269,15 @@ static void sys_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
 
-  (void)ra_nsc_log_emit("SYS", "System thread started (storage + supervisor)");
+  (void)ra8_nsc_log_emit("SYS", "System thread started (storage + supervisor)");
   uint32_t tick = 0U;
   for (;;) {
     tick++;
     g_ns_sys_ticks = tick; /* HIL liveness probe (read via J-Link). */
     /* Prove liveness to the watchdog supervisor once per poll. */
-    (void)ra_wdt_supervisor_checkin(s_sys_wdt_handle);
+    (void)ra8_wdt_supervisor_checkin(s_sys_wdt_handle);
     if ((tick % (uint32_t)k_ns_sys_heartbeat_iters) == 0U) {
-      (void)ra_nsc_log_emit("SYS", "System heartbeat: supervisor loop");
+      (void)ra8_nsc_log_emit("SYS", "System heartbeat: supervisor loop");
     }
     tx_thread_sleep((uint32_t)k_ns_sys_poll_ticks);
   }
@@ -287,15 +287,15 @@ static void sys_thread_entry(ULONG thread_input)
  * @brief Arm the watchdog and start the ThreadX check-in supervisor.
  * @details Runs once from ::tx_application_define, before the workers are
  *          created, and in this exact order: arm the Secure WDT via the
- *          ``ra_nsc_wdt_start`` veneer; initialise the supervisor with a
+ *          ``ra8_nsc_wdt_start`` veneer; initialise the supervisor with a
  *          caller-owned stack; redirect its refresh hook to the
- *          ``ra_nsc_wdt_refresh`` veneer (the library default would call the
+ *          ``ra8_nsc_wdt_refresh`` veneer (the library default would call the
  *          WDT directly, which faults in NS); register the UI and system
  *          workers with their deadlines; then start the supervisor thread. Any
  *          failure is unrecoverable this early, so it parks in ::ns_panic_halt.
  * @return Nothing.
  * @retval None Returns only on full success; otherwise never returns (halts).
- * @pre ::ra_nsc_periph_init has completed (Secure clocks + substrate up).
+ * @pre ::ra8_nsc_periph_init has completed (Secure clocks + substrate up).
  * @pre Called in single-threaded boot context before any worker is created.
  * @post The WDT is armed and the supervisor thread is running.
  * @post ::s_ui_wdt_handle and ::s_sys_wdt_handle hold valid registry handles.
@@ -304,34 +304,34 @@ static void sys_thread_entry(ULONG thread_input)
  */
 static void ns_wdt_setup(void)
 {
-  if (ra_nsc_wdt_start() != k_ra_ok) {
+  if (ra8_nsc_wdt_start() != k_ra8_ok) {
     ns_panic_halt();
   }
-  const ra_wdt_sup_cfg_t sup_cfg = {
+  const ra8_wdt_sup_cfg_t sup_cfg = {
     .stack             = s_sup_stack,
     .stack_size_bytes  = (uint32_t)k_ns_wdt_sup_stack_size,
     .priority          = (uint32_t)k_ns_wdt_sup_priority,
     .refresh_period_ms = (uint32_t)k_ns_wdt_refresh_ms,
   };
-  if (ra_wdt_supervisor_init(&sup_cfg) != k_ra_ok) {
+  if (ra8_wdt_supervisor_init(&sup_cfg) != k_ra8_ok) {
     ns_panic_halt();
   }
   /* Route refresh through the NSC veneer -- the WDT is Secure-owned, so the
-   * library's default direct ra_wdt_refresh_deferred would fault in NS. */
-  if (ra_wdt_supervisor_set_refresh_hook(ra_nsc_wdt_refresh) != k_ra_ok) {
+   * library's default direct ra8_wdt_refresh_deferred would fault in NS. */
+  if (ra8_wdt_supervisor_set_refresh_hook(ra8_nsc_wdt_refresh) != k_ra8_ok) {
     ns_panic_halt();
   }
-  if (ra_wdt_supervisor_register_thread("ui",
-                                        (uint32_t)k_ns_wdt_ui_deadline_ms,
-                                        &s_ui_wdt_handle) != k_ra_ok) {
+  if (ra8_wdt_supervisor_register_thread("ui",
+                                         (uint32_t)k_ns_wdt_ui_deadline_ms,
+                                         &s_ui_wdt_handle) != k_ra8_ok) {
     ns_panic_halt();
   }
-  if (ra_wdt_supervisor_register_thread("sys",
-                                        (uint32_t)k_ns_wdt_sys_deadline_ms,
-                                        &s_sys_wdt_handle) != k_ra_ok) {
+  if (ra8_wdt_supervisor_register_thread("sys",
+                                         (uint32_t)k_ns_wdt_sys_deadline_ms,
+                                         &s_sys_wdt_handle) != k_ra8_ok) {
     ns_panic_halt();
   }
-  if (ra_wdt_supervisor_start() != k_ra_ok) {
+  if (ra8_wdt_supervisor_start() != k_ra8_ok) {
     ns_panic_halt();
   }
 }
@@ -376,37 +376,37 @@ void tx_application_define(void* first_unused_memory)
  */
 [[noreturn]] void ns_reset_handler(void)
 {
-#ifdef RA_EREADER_NS_XIP
+#ifdef RA8_EREADER_NS_XIP
   /* XIP: code/rodata execute in place from OSPI, but .data must be writable, so
    * copy its init image from OSPI (LMA) into SRAM (VMA) before any initialised
    * global is read. Must run first -- nothing below may touch a .data global. */
-  const uintptr_t data_src = (uintptr_t)&g_ra_ls_ns_data_load_start;
-  const uintptr_t data_dst = (uintptr_t)&g_ra_ls_ns_data_start;
-  const uintptr_t data_end = (uintptr_t)&g_ra_ls_ns_data_end;
+  const uintptr_t data_src = (uintptr_t)&g_ra8_ls_ns_data_load_start;
+  const uintptr_t data_dst = (uintptr_t)&g_ra8_ls_ns_data_start;
+  const uintptr_t data_end = (uintptr_t)&g_ra8_ls_ns_data_end;
   for (uintptr_t off = 0U; (data_dst + off) < data_end; off += sizeof(uint32_t)) {
     *(volatile uint32_t*)(data_dst + off) = *(const volatile uint32_t*)(data_src + off);
   }
 #endif
 
   /* Zero the NS BSS section */
-  const uintptr_t bss_start = (uintptr_t)&g_ra_ls_ns_bss_start;
-  const uintptr_t bss_end   = (uintptr_t)&g_ra_ls_ns_bss_end;
+  const uintptr_t bss_start = (uintptr_t)&g_ra8_ls_ns_bss_start;
+  const uintptr_t bss_end   = (uintptr_t)&g_ra8_ls_ns_bss_end;
   for (uintptr_t addr = bss_start; addr < bss_end; addr += sizeof(uint32_t)) {
     *(volatile uint32_t*)addr = 0U;
   }
 
   /* Set the NS VTOR so exceptions vector correctly to NS handlers */
-  *(volatile uint32_t*)k_ns_scb_vtor_addr = (uint32_t)(uintptr_t)&g_ra_ls_ns_run_start;
+  *(volatile uint32_t*)k_ns_scb_vtor_addr = (uint32_t)(uintptr_t)&g_ra8_ls_ns_run_start;
 
   /* Call Secure-side substrate initialization via NSC veneer gateway */
-  if (ra_nsc_periph_init() != k_ra_ok) {
+  if (ra8_nsc_periph_init() != k_ra8_ok) {
     ns_panic_halt();
   }
 
   /* Announce the Non-Secure world is live before handing off to ThreadX.
-   * Logs flow NS -> ra_nsc_log_emit veneer -> Secure ra_log_info -> ITM
+   * Logs flow NS -> ra8_nsc_log_emit veneer -> Secure ra8_log_info -> ITM
    * (visible on the J-Link SWO console). */
-  (void)ra_nsc_log_emit("BOOT", "ra8d2-ereader: Non-Secure world online");
+  (void)ra8_nsc_log_emit("BOOT", "ra8d2-ereader: Non-Secure world online");
 
   /* Enter ThreadX RTOS kernel (never returns) */
   tx_kernel_enter();
@@ -441,21 +441,21 @@ typedef void (*ns_exc_handler_t)(void);
   }
 }
 
-[[gnu::section(".ns_vectors"), gnu::used]] const ns_exc_handler_t g_ra_ns_vector_table[16] = {
-  (ns_exc_handler_t)&g_ra_ls_ns_stack_top, /* 0 Initial MSP_NS */
-  ns_reset_handler,                        /* 1 Reset          */
-  ns_nmi_halt,                             /* 2 NMI            */
-  ns_nmi_halt,                             /* 3 HardFault      */
-  ns_nmi_halt,                             /* 4 MemManage      */
-  ns_nmi_halt,                             /* 5 BusFault       */
-  ns_nmi_halt,                             /* 6 UsageFault     */
-  ns_nmi_halt,                             /* 7 SecureFault    */
-  0,                                       /* 8 Reserved       */
-  0,                                       /* 9 Reserved       */
-  0,                                       /* 10 Reserved      */
-  ns_nmi_halt,                             /* 11 SVCall        */
-  ns_nmi_halt,                             /* 12 DebugMonitor  */
-  0,                                       /* 13 Reserved      */
-  PendSV_Handler,                          /* 14 PendSV        */
-  ns_systick_handler,                      /* 15 SysTick       */
+[[gnu::section(".ns_vectors"), gnu::used]] const ns_exc_handler_t g_ra8_ns_vector_table[16] = {
+  (ns_exc_handler_t)&g_ra8_ls_ns_stack_top, /* 0 Initial MSP_NS */
+  ns_reset_handler,                         /* 1 Reset          */
+  ns_nmi_halt,                              /* 2 NMI            */
+  ns_nmi_halt,                              /* 3 HardFault      */
+  ns_nmi_halt,                              /* 4 MemManage      */
+  ns_nmi_halt,                              /* 5 BusFault       */
+  ns_nmi_halt,                              /* 6 UsageFault     */
+  ns_nmi_halt,                              /* 7 SecureFault    */
+  0,                                        /* 8 Reserved       */
+  0,                                        /* 9 Reserved       */
+  0,                                        /* 10 Reserved      */
+  ns_nmi_halt,                              /* 11 SVCall        */
+  ns_nmi_halt,                              /* 12 DebugMonitor  */
+  0,                                        /* 13 Reserved      */
+  PendSV_Handler,                           /* 14 PendSV        */
+  ns_systick_handler,                       /* 15 SysTick       */
 };

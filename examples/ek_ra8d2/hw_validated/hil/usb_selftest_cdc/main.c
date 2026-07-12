@@ -14,12 +14,12 @@
  *  - USBFS (J11) = DEVICE: a ThreadX + USBX CDC-ACM class. A worker
  *    loops `_ux_device_class_cdc_acm_read` -> `_ux_device_class_cdc_acm_write`,
  *    echoing every byte the host sends straight back on the bulk-IN
- *    endpoint. IRQ-driven through the `port/usbx/ux_dcd_ra_usb` bridge.
+ *    endpoint. IRQ-driven through the `port/usbx/ux_dcd_ra8_usb` bridge.
  *    (Worker-thread echo, NOT the DCD ISR auto-echo -- the worker path
  *    rides the normal device bulk-OUT receive that the WRITE(10) driver
  *    fix repaired.)
  *  - USBHS (J7) = HOST: a self-contained polled CDC host built on the
- *    first-party `ra_usb_host_*` primitives. It enumerates the device
+ *    first-party `ra8_usb_host_*` primitives. It enumerates the device
  *    (bus reset -> GET_DESCRIPTOR -> SET_ADDRESS -> SET_CONFIGURATION),
  *    opens the CDC data interface's bulk pipes (EP2 OUT / EP1 IN), then
  *    runs several rounds: bulk-OUT a deterministic pattern, bulk-IN the
@@ -53,28 +53,28 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gpio_constants.h"
-#include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_time.h"
-#include "ra_usb.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_isr.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_time.h"
+#include "ra8_usb.h"
 #include "usb_selftest_cdc_steps.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 #include "ux_api.h"
-#include "ux_dcd_ra_usb.h"
+#include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_cdc_acm.h"
 #include "ux_device_stack.h"
 
-/* Strong SysTick override: route the tick into BOTH the ra_time millisecond
- * counter (for ra_delay_ms and the polled host stack's timeouts) AND
+/* Strong SysTick override: route the tick into BOTH the ra8_time millisecond
+ * counter (for ra8_delay_ms and the polled host stack's timeouts) AND
  * ThreadX's timer; the 1 ms pulse also recovers the DCD's storm-guard mask. */
-extern void ra_time_on_tick(void);
+extern void ra8_time_on_tick(void);
 extern void _tx_timer_interrupt(void);
 
 /**
@@ -91,10 +91,10 @@ static volatile bool s_tx_kernel_up = false;
 void SysTick_Handler(void);
 void SysTick_Handler(void)
 {
-  ra_time_on_tick();
+  ra8_time_on_tick();
   if (s_tx_kernel_up) {
     _tx_timer_interrupt();
-    ux_dcd_ra_usb_irq_reenable();
+    ux_dcd_ra8_usb_irq_reenable();
   }
 }
 #endif
@@ -104,28 +104,28 @@ void SysTick_Handler(void)
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
-static const ra_port_pin_t k_cdc_pin_fs_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
+static const ra8_port_pin_t k_cdc_pin_fs_vbus =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_7);
 
 /** @brief USBFS VBUSEN (P5_00) -- GPIO LOW for the device role. */
-static const ra_port_pin_t k_cdc_pin_fs_vbusen =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0);
+static const ra8_port_pin_t k_cdc_pin_fs_vbusen =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_5 << 8) | (uint16_t)k_ra8_pin_0);
 
 /** @brief USBFS D+ (P8_14). */
-static const ra_port_pin_t k_cdc_pin_fs_dp =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14);
+static const ra8_port_pin_t k_cdc_pin_fs_dp =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_14);
 
 /** @brief USBFS D- (P8_15). */
-static const ra_port_pin_t k_cdc_pin_fs_dm =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
+static const ra8_port_pin_t k_cdc_pin_fs_dm =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_15);
 
 /** @brief USBHS_VBUS sense pin (P4_08, PSEL = 0x14). */
-static const ra_port_pin_t k_cdc_pin_hs_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_8);
+static const ra8_port_pin_t k_cdc_pin_hs_vbus =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_8);
 
 /** @brief J7 host-power switch (PD07): HIGH = U18 supplies VBUS (UM 6.2). */
-static const ra_port_pin_t k_cdc_pin_hs_pwr =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7);
+static const ra8_port_pin_t k_cdc_pin_hs_pwr =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << 8) | (uint16_t)k_ra8_pin_7);
 
 /* -------------------------------------------------------------------------- */
 /* Tunables */
@@ -148,7 +148,7 @@ typedef enum : uint32_t {
   k_cdc_dev_step_echo   = 5U, /**< Echo loop running.             */
 } cdc_dev_step_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
 /* ThreadX workers + USBX pool storage */
@@ -584,7 +584,7 @@ static void cdc_echo_iter(UCHAR* buf, ULONG cap)
   }
   s_dbg_dev_echo_calls++;
   s_dbg_dev_last_len = (uint32_t)n;
-  (void)ra_board_led_toggle(k_ra_board_led1);
+  (void)ra8_board_led_toggle(k_ra8_board_led1);
 }
 
 /**
@@ -620,14 +620,14 @@ static VOID cdc_device_worker(ULONG arg)
     return;
   }
   s_dbg_dev_step = (uint32_t)k_cdc_dev_step_class;
-  ra_err_t e     = ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs);
-  if (e != k_ra_ok) {
+  ra8_err_t e    = ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs);
+  if (e != k_ra8_ok) {
     s_dbg_dev_err = (uint32_t)e;
     return;
   }
   s_dbg_dev_step = (uint32_t)k_cdc_dev_step_dcd;
-  e              = ra_usb_device_attach(k_ra_usb_speed_fs, true);
-  if (e != k_ra_ok) {
+  e              = ra8_usb_device_attach(k_ra8_usb_speed_fs, true);
+  if (e != k_ra8_ok) {
     s_dbg_dev_err = (uint32_t)e;
     return;
   }
@@ -687,7 +687,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
 /* Startup */
@@ -731,25 +731,25 @@ static void cdc_panic_halt(void)
  */
 static void cdc_route_usb_or_halt(void)
 {
-  if (ra_pfs_route_peripheral(k_cdc_pin_fs_vbus, k_ra_psel_usb_fs, "cdc.fs_vbus") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_cdc_pin_fs_vbus, k_ra8_psel_usb_fs, "cdc.fs_vbus") != k_ra8_ok) {
     cdc_panic_halt();
   }
-  if (ra_gpio_output_init(k_cdc_pin_fs_vbusen, k_ra_level_low) != k_ra_ok) {
+  if (ra8_gpio_output_init(k_cdc_pin_fs_vbusen, k_ra8_level_low) != k_ra8_ok) {
     cdc_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_cdc_pin_fs_dp, k_ra_psel_usb_fs, "cdc.fs_dp") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_cdc_pin_fs_dp, k_ra8_psel_usb_fs, "cdc.fs_dp") != k_ra8_ok) {
     cdc_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_cdc_pin_fs_dm, k_ra_psel_usb_fs, "cdc.fs_dm") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_cdc_pin_fs_dm, k_ra8_psel_usb_fs, "cdc.fs_dm") != k_ra8_ok) {
     cdc_panic_halt();
   }
-  if (ra_board_io_expander_set_usbhs_host_mode() != k_ra_ok) {
+  if (ra8_board_io_expander_set_usbhs_host_mode() != k_ra8_ok) {
     cdc_panic_halt();
   }
-  if (ra_gpio_output_init(k_cdc_pin_hs_pwr, k_ra_level_high) != k_ra_ok) {
+  if (ra8_gpio_output_init(k_cdc_pin_hs_pwr, k_ra8_level_high) != k_ra8_ok) {
     cdc_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_cdc_pin_hs_vbus, k_ra_psel_usb_hs, "cdc.hs_vbus") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_cdc_pin_hs_vbus, k_ra8_psel_usb_hs, "cdc.hs_vbus") != k_ra8_ok) {
     cdc_panic_halt();
   }
 }
@@ -771,28 +771,28 @@ static void cdc_route_usb_or_halt(void)
 static void cdc_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     cdc_panic_halt();
   }
-  if (ra_cgc_usbfs_clock_enable() != k_ra_ok) {
+  if (ra8_cgc_usbfs_clock_enable() != k_ra8_ok) {
     cdc_panic_halt();
   }
-  if (ra_cgc_usbhs_pll_enable() != k_ra_ok) {
+  if (ra8_cgc_usbhs_pll_enable() != k_ra8_ok) {
     cdc_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     cdc_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     cdc_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_cdc_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_cdc_baud) != k_ra8_ok) {
     cdc_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     cdc_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     cdc_panic_halt();
   }
   cdc_route_usb_or_halt();
@@ -820,9 +820,9 @@ int32_t main(void)
 {
   cdc_setup_or_halt();
 
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   tx_kernel_enter();
 #endif
 

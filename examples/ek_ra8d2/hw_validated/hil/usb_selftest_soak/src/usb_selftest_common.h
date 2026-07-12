@@ -89,7 +89,7 @@ typedef enum : uint32_t {
  */
 typedef enum : uint32_t {
   k_selftest_phase_boot      = 0U, /**< Host thread not yet started.    */
-  k_selftest_phase_host_init = 1U, /**< ra_usb_hmsc_init issued.        */
+  k_selftest_phase_host_init = 1U, /**< ra8_usb_hmsc_init issued.       */
   k_selftest_phase_enum      = 2U, /**< Enumerating the FS device.      */
   k_selftest_phase_mount     = 3U, /**< Mounting the FAT16 volume.      */
   k_selftest_phase_verify    = 4U, /**< Streaming + comparing MRAM.BIN. */

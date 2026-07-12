@@ -6,11 +6,11 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Standalone EVM-tier app that exercises the ``ra_sdmmc_spi`` driver
+ * Standalone EVM-tier app that exercises the ``ra8_sdmmc_spi`` driver
  * against a Digilent PMOD MicroSD (part 410-380, Digikey 1286-1200-ND)
  * plugged into Pmod2 (J25) on the EK-RA8D2. The flow:
  *
- *   1. ``ra_cgc_init`` -- CPUCLK0 = 1 GHz, PCLKA = 125 MHz, SCICLK =
+ *   1. ``ra8_cgc_init`` -- CPUCLK0 = 1 GHz, PCLKA = 125 MHz, SCICLK =
  *      100 MHz.
  *   2. Route SCI8 (TXD8 = PD02, RXD8 = PD03) for the J-Link OB CDC
  *      console at 115200 8N1 -- this is the same console as
@@ -21,14 +21,14 @@
  *      driver can hold it asserted across multi-byte command frames
  *      (the SCI hardware CS pulses per byte, which the SD SPI mode
  *      protocol cannot tolerate -- SD spec PHY v9 section 7.2.4).
- *   4. ``ra_sci_spi_init`` channel 0 (SCI0 Simple-SPI) at 400 kHz,
+ *   4. ``ra8_sci_spi_init`` channel 0 (SCI0 Simple-SPI) at 400 kHz,
  *      mode 0, MSB-first -- the SD spec mandates the bus opens at
  *      <=400 kHz for the identification phase.
- *   5. ``ra_sdmmc_spi_init`` runs the standard SPI-mode SD bring-up
+ *   5. ``ra8_sdmmc_spi_init`` runs the standard SPI-mode SD bring-up
  *      (CMD0 / CMD8 / ACMD41 / CMD58 / CMD9 / CMD16) and escalates
  *      the bus to 25 MHz default-speed on success.
- *   6. Mount a FAT volume via ``ra_fs_mount`` using the backend
- *      adapter shipped with ``ra_sdmmc_spi``.
+ *   6. Mount a FAT volume via ``ra8_fs_mount`` using the backend
+ *      adapter shipped with ``ra8_sdmmc_spi``.
  *   7. Write a fixed-seed pseudo-random payload to ``/test.txt``,
  *      seek back to 0, read it into a second buffer, byte-compare.
  *   8. Print the round-trip result over SCI8. The HIL runner scrapes
@@ -47,19 +47,19 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_fs.h"
-#include "ra_gpio_constants.h"
-#include "ra_isr.h"
-#include "ra_log.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci_spi.h"
-#include "ra_sdmmc_spi.h"
-#include "ra_spi.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_fs.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_isr.h"
+#include "ra8_log.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_sci_spi.h"
+#include "ra8_sdmmc_spi.h"
+#include "ra8_spi.h"
+#include "ra8_time.h"
 
 /* =============================================================================
  * Tunables
@@ -106,10 +106,10 @@ typedef enum : uint32_t {
  * controller pulses CS between every word, which the SD protocol does
  * not tolerate. Driving CS by hand is the standard workaround.
  */
-static const ra_port_pin_t k_sd_demo_pin_sck  = (ra_port_pin_t)k_ra_board_pmod2_spi_sck;
-static const ra_port_pin_t k_sd_demo_pin_cipo = (ra_port_pin_t)k_ra_board_pmod2_spi_cipo;
-static const ra_port_pin_t k_sd_demo_pin_copi = (ra_port_pin_t)k_ra_board_pmod2_spi_copi;
-static const ra_port_pin_t k_sd_demo_pin_cs   = (ra_port_pin_t)k_ra_board_pmod2_spi_cs;
+static const ra8_port_pin_t k_sd_demo_pin_sck  = (ra8_port_pin_t)k_ra8_board_pmod2_spi_sck;
+static const ra8_port_pin_t k_sd_demo_pin_cipo = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cipo;
+static const ra8_port_pin_t k_sd_demo_pin_copi = (ra8_port_pin_t)k_ra8_board_pmod2_spi_copi;
+static const ra8_port_pin_t k_sd_demo_pin_cs   = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cs;
 
 /* =============================================================================
  * UART output helpers
@@ -135,7 +135,7 @@ static const uint8_t k_sd_demo_msg_eol[]        = "\r\n";
  */
 static void sd_demo_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /**
@@ -171,12 +171,12 @@ static void sd_demo_panic_halt(void)
 }
 
 /* =============================================================================
- * SPI -> ra_sdmmc_spi transport adapter
+ * SPI -> ra8_sdmmc_spi transport adapter
  * =============================================================================
  */
 
 /**
- * @brief ``ra_sdmmc_spi_transport_t::set_clock`` shim over ``ra_spi``.
+ * @brief ``ra8_sdmmc_spi_transport_t::set_clock`` shim over ``ra8_spi``.
  *
  * @details
  * The mock-friendly transport signature carries PCLKA in the ``ctx``
@@ -184,37 +184,37 @@ static void sd_demo_panic_halt(void)
  * file-scope global. ``ctx`` is a ``uint32_t*`` to the cached PCLKA Hz.
  */
 /* cppcheck-suppress constParameterCallback
- * Reason: this function is bound to ra_sdmmc_spi_transport_t::set_clock,
- * whose signature is `ra_err_t (*)(void*, uint32_t)` -- changing `ctx`
+ * Reason: this function is bound to ra8_sdmmc_spi_transport_t::set_clock,
+ * whose signature is `ra8_err_t (*)(void*, uint32_t)` -- changing `ctx`
  * to `const void*` would also require changing the function-pointer
  * type, which would break every other transport binding. */
-static ra_err_t sd_demo_spi_set_clock(void* ctx, uint32_t hz)
+static ra8_err_t sd_demo_spi_set_clock(void* ctx, uint32_t hz)
 {
   const uint32_t pclka_hz = *(const uint32_t*)ctx;
-  return ra_sci_spi_set_clock((uint8_t)k_sd_demo_spi_channel, hz, pclka_hz);
+  return ra8_sci_spi_set_clock((uint8_t)k_sd_demo_spi_channel, hz, pclka_hz);
 }
 
 /**
- * @brief ``ra_sdmmc_spi_transport_t::cs`` shim over ``ra_gpio``.
+ * @brief ``ra8_sdmmc_spi_transport_t::cs`` shim over ``ra8_gpio``.
  */
-static ra_err_t sd_demo_spi_cs(void* ctx, bool asserted)
+static ra8_err_t sd_demo_spi_cs(void* ctx, bool asserted)
 {
   (void)ctx;
-  return ra_gpio_write(k_sd_demo_pin_cs, asserted ? k_ra_level_low : k_ra_level_high);
+  return ra8_gpio_write(k_sd_demo_pin_cs, asserted ? k_ra8_level_low : k_ra8_level_high);
 }
 
 /**
- * @brief ``ra_sdmmc_spi_transport_t::xfer`` shim over ``ra_sci_spi_xfer``.
+ * @brief ``ra8_sdmmc_spi_transport_t::xfer`` shim over ``ra8_sci_spi_xfer``.
  *
  * @details
- * ``ra_sci_spi_xfer`` is full-duplex and already handles a NULL ``tx``
+ * ``ra8_sci_spi_xfer`` is full-duplex and already handles a NULL ``tx``
  * (shifts idle 0xFF) or NULL ``rx`` (discards), so the transport is a
  * thin pass-through.
  */
-static ra_err_t sd_demo_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
+static ra8_err_t sd_demo_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
 {
   (void)ctx;
-  return ra_sci_spi_xfer((uint8_t)k_sd_demo_spi_channel, tx, rx, len);
+  return ra8_sci_spi_xfer((uint8_t)k_sd_demo_spi_channel, tx, rx, len);
 }
 
 /* =============================================================================
@@ -228,22 +228,22 @@ static ra_err_t sd_demo_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint
  * @pre IOPORT module is reachable.
  * @post P601/P602/P603 are in SCI0 Simple-SPI mode; P604 is a GPIO output.
  */
-[[nodiscard]] static ra_err_t sd_demo_spi_pins_init(void)
+[[nodiscard]] static ra8_err_t sd_demo_spi_pins_init(void)
 {
-  ra_err_t err = ra_pfs_route_peripheral(k_sd_demo_pin_sck, k_ra_psel_sci_async, "tz_sd.sck");
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_pfs_route_peripheral(k_sd_demo_pin_sck, k_ra8_psel_sci_async, "tz_sd.sck");
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_pfs_route_peripheral(k_sd_demo_pin_cipo, k_ra_psel_sci_async, "tz_sd.cipo");
-  if (err != k_ra_ok) {
+  err = ra8_pfs_route_peripheral(k_sd_demo_pin_cipo, k_ra8_psel_sci_async, "tz_sd.cipo");
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_pfs_route_peripheral(k_sd_demo_pin_copi, k_ra_psel_sci_async, "tz_sd.copi");
-  if (err != k_ra_ok) {
+  err = ra8_pfs_route_peripheral(k_sd_demo_pin_copi, k_ra8_psel_sci_async, "tz_sd.copi");
+  if (err != k_ra8_ok) {
     return err;
   }
   /* CS as GPIO output, idle high (deasserted). */
-  return ra_gpio_output_init(k_sd_demo_pin_cs, k_ra_level_high);
+  return ra8_gpio_output_init(k_sd_demo_pin_cs, k_ra8_level_high);
 }
 
 /**
@@ -259,31 +259,31 @@ static void sd_demo_setup_or_halt(uint32_t* out_pclka_hz)
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     sd_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     sd_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz) != k_ra8_ok) {
     sd_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     sd_demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_sd_demo_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_sd_demo_uart_baud) != k_ra8_ok) {
     sd_demo_panic_halt();
   }
-  if (sd_demo_spi_pins_init() != k_ra_ok) {
+  if (sd_demo_spi_pins_init() != k_ra8_ok) {
     sd_demo_panic_halt();
   }
-  const ra_sci_spi_cfg_t spi_cfg = {
-    .baud_hz   = (uint32_t)k_ra_sdmmc_spi_clock_init_hz,
+  const ra8_sci_spi_cfg_t spi_cfg = {
+    .baud_hz   = (uint32_t)k_ra8_sdmmc_spi_clock_init_hz,
     .pclk_hz   = pclka_hz,
-    .mode      = k_ra_spi_mode_0,
+    .mode      = k_ra8_spi_mode_0,
     .lsb_first = false,
   };
-  if (ra_sci_spi_init((uint8_t)k_sd_demo_spi_channel, &spi_cfg) != k_ra_ok) {
+  if (ra8_sci_spi_init((uint8_t)k_sd_demo_spi_channel, &spi_cfg) != k_ra8_ok) {
     sd_demo_panic_halt();
   }
   *out_pclka_hz = pclka_hz;
@@ -313,38 +313,38 @@ static void sd_demo_fill_payload(uint8_t* buf, uint32_t len)
 /**
  * @brief Write the payload to ``TEST.TXT`` on the mounted volume.
  *
- * @details Uses the one-shot ::ra_fs_write_file so the same path works on
+ * @details Uses the one-shot ::ra8_fs_write_file so the same path works on
  * FAT and exFAT (exFAT only supports whole-file creation). It does not
  * overwrite: if ``TEST.TXT`` already exists from a previous run the existing
  * file is kept, and the read-back below still validates persistence.
  */
-[[nodiscard]] static ra_err_t
-sd_demo_write_payload(ra_fs_mount_t* mount, const uint8_t* payload, uint32_t len)
+[[nodiscard]] static ra8_err_t
+sd_demo_write_payload(ra8_fs_mount_t* mount, const uint8_t* payload, uint32_t len)
 {
-  ra_fs_file_t* existing = nullptr;
-  if (ra_fs_open(mount, "TEST.TXT", k_ra_fs_mode_read, &existing) == k_ra_ok) {
-    return ra_fs_close(existing);
+  ra8_fs_file_t* existing = nullptr;
+  if (ra8_fs_open(mount, "TEST.TXT", k_ra8_fs_mode_read, &existing) == k_ra8_ok) {
+    return ra8_fs_close(existing);
   }
-  return ra_fs_write_file(mount, "TEST.TXT", payload, len);
+  return ra8_fs_write_file(mount, "TEST.TXT", payload, len);
 }
 
 /**
  * @brief Read the payload back into ``buf`` and report bytes copied.
  */
-[[nodiscard]] static ra_err_t
-sd_demo_read_payload(ra_fs_mount_t* mount, uint8_t* buf, uint32_t cap, uint32_t* out_len)
+[[nodiscard]] static ra8_err_t
+sd_demo_read_payload(ra8_fs_mount_t* mount, uint8_t* buf, uint32_t cap, uint32_t* out_len)
 {
-  ra_fs_file_t* f   = nullptr;
-  ra_err_t      err = ra_fs_open(mount, "TEST.TXT", k_ra_fs_mode_read, &f);
-  if (err != k_ra_ok) {
+  ra8_fs_file_t* f   = nullptr;
+  ra8_err_t      err = ra8_fs_open(mount, "TEST.TXT", k_ra8_fs_mode_read, &f);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_fs_read(f, buf, cap, out_len);
-  if (err != k_ra_ok) {
-    (void)ra_fs_close(f);
+  err = ra8_fs_read(f, buf, cap, out_len);
+  if (err != k_ra8_ok) {
+    (void)ra8_fs_close(f);
     return err;
   }
-  return ra_fs_close(f);
+  return ra8_fs_close(f);
 }
 
 /**
@@ -353,7 +353,7 @@ sd_demo_read_payload(ra_fs_mount_t* mount, uint8_t* buf, uint32_t cap, uint32_t*
 static void sd_demo_print_capacity(void)
 {
   uint32_t cap_blocks = 0U;
-  (void)ra_sdmmc_spi_get_capacity(&cap_blocks);
+  (void)ra8_sdmmc_spi_get_capacity(&cap_blocks);
   const uint32_t cap_mib = cap_blocks / (uint32_t)k_sd_demo_blocks_per_mib;
   sd_demo_print(k_sd_demo_msg_card_pre, (uint32_t)sizeof(k_sd_demo_msg_card_pre) - 1U);
   sd_demo_print_u32(cap_mib);
@@ -387,13 +387,13 @@ static void sd_demo_compare_and_report(const uint8_t* a, const uint8_t* b, uint3
  */
 static void sd_demo_init_card_or_halt(uint32_t* pclka_hz)
 {
-  const ra_sdmmc_spi_transport_t transport = {
+  const ra8_sdmmc_spi_transport_t transport = {
     .set_clock = sd_demo_spi_set_clock,
     .cs        = sd_demo_spi_cs,
     .xfer      = sd_demo_spi_xfer,
     .ctx       = pclka_hz,
   };
-  if (ra_sdmmc_spi_init(&transport) != k_ra_ok) {
+  if (ra8_sdmmc_spi_init(&transport) != k_ra8_ok) {
     sd_demo_print(k_sd_demo_msg_init_fail, (uint32_t)sizeof(k_sd_demo_msg_init_fail) - 1U);
     sd_demo_panic_halt();
   }
@@ -403,15 +403,15 @@ static void sd_demo_init_card_or_halt(uint32_t* pclka_hz)
 /**
  * @brief Bind the SD backend, mount the FAT volume, panic-halt on failure.
  */
-static ra_fs_mount_t* sd_demo_mount_or_halt(void)
+static ra8_fs_mount_t* sd_demo_mount_or_halt(void)
 {
-  ra_fs_backend_t backend = {};
-  if (ra_sdmmc_spi_bind_fs_backend(&backend) != k_ra_ok) {
+  ra8_fs_backend_t backend = {};
+  if (ra8_sdmmc_spi_bind_fs_backend(&backend) != k_ra8_ok) {
     sd_demo_print(k_sd_demo_msg_mount_fail, (uint32_t)sizeof(k_sd_demo_msg_mount_fail) - 1U);
     sd_demo_panic_halt();
   }
-  ra_fs_mount_t* mount = nullptr;
-  if (ra_fs_mount(&backend, &mount) != k_ra_ok) {
+  ra8_fs_mount_t* mount = nullptr;
+  if (ra8_fs_mount(&backend, &mount) != k_ra8_ok) {
     sd_demo_print(k_sd_demo_msg_mount_fail, (uint32_t)sizeof(k_sd_demo_msg_mount_fail) - 1U);
     sd_demo_panic_halt();
   }
@@ -442,25 +442,26 @@ int32_t main(void)
 {
   uint32_t pclka_hz = 0U;
   sd_demo_setup_or_halt(&pclka_hz);
-  ra_isr_globals_enable();
-  ra_log_init();
+  ra8_isr_globals_enable();
+  ra8_log_init();
   sd_demo_print(k_sd_demo_msg_boot, (uint32_t)sizeof(k_sd_demo_msg_boot) - 1U);
 
   sd_demo_init_card_or_halt(&pclka_hz);
   sd_demo_print_capacity();
-  ra_fs_mount_t* mount = sd_demo_mount_or_halt();
+  ra8_fs_mount_t* mount = sd_demo_mount_or_halt();
 
   static uint8_t s_payload[k_sd_demo_payload_bytes];
   static uint8_t s_readback[k_sd_demo_payload_bytes];
   sd_demo_fill_payload(s_payload, (uint32_t)k_sd_demo_payload_bytes);
   memset(s_readback, 0, sizeof(s_readback));
 
-  if (sd_demo_write_payload(mount, s_payload, (uint32_t)k_sd_demo_payload_bytes) != k_ra_ok) {
+  if (sd_demo_write_payload(mount, s_payload, (uint32_t)k_sd_demo_payload_bytes) != k_ra8_ok) {
     sd_demo_print(k_sd_demo_msg_write_fail, (uint32_t)sizeof(k_sd_demo_msg_write_fail) - 1U);
     sd_demo_panic_halt();
   }
   uint32_t got = 0U;
-  if (sd_demo_read_payload(mount, s_readback, (uint32_t)k_sd_demo_payload_bytes, &got) != k_ra_ok) {
+  if (sd_demo_read_payload(mount, s_readback, (uint32_t)k_sd_demo_payload_bytes, &got) !=
+      k_ra8_ok) {
     sd_demo_print(k_sd_demo_msg_read_fail, (uint32_t)sizeof(k_sd_demo_msg_read_fail) - 1U);
     sd_demo_panic_halt();
   }

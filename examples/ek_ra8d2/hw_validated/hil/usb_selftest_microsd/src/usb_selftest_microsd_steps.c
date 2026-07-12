@@ -29,15 +29,15 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
-#include "ra_usb.h"
-#include "ra_usb_hmsc.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
+#include "ra8_usb.h"
+#include "ra8_usb_hmsc.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 #include "ux_api.h"
-#include "ux_dcd_ra_usb.h"
+#include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_storage.h"
 #include "ux_device_stack.h"
 
@@ -268,7 +268,7 @@ static UINT microsd_msc_read(VOID*  storage,
                &s_usb_selftest_microsd_sd_snapshot[lba * (ULONG)k_microsd_block_size],
                (size_t)(number_blocks * (ULONG)k_microsd_block_size));
   *media_status = 0UL;
-  (void)ra_board_led_toggle(k_ra_board_led1);
+  (void)ra8_board_led_toggle(k_ra8_board_led1);
   return UX_SUCCESS;
 }
 
@@ -474,14 +474,14 @@ VOID microsd_device_worker(ULONG arg)
     return;
   }
   s_dbg_dev_step = (uint32_t)k_microsd_dev_step_class;
-  ra_err_t e     = ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs);
-  if (e != k_ra_ok) {
+  ra8_err_t e    = ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs);
+  if (e != k_ra8_ok) {
     s_dbg_dev_err = (uint32_t)e;
     return;
   }
   s_dbg_dev_step = (uint32_t)k_microsd_dev_step_dcd;
-  e              = ra_usb_device_attach(k_ra_usb_speed_fs, true);
-  if (e != k_ra_ok) {
+  e              = ra8_usb_device_attach(k_ra8_usb_speed_fs, true);
+  if (e != k_ra8_ok) {
     s_dbg_dev_err = (uint32_t)e;
     return;
   }
@@ -494,7 +494,7 @@ VOID microsd_device_worker(ULONG arg)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Host side: ra_usb_hmsc enumerate + per-LUN read/verify */
+/* Host side: ra8_usb_hmsc enumerate + per-LUN read/verify */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -507,10 +507,10 @@ VOID microsd_device_worker(ULONG arg)
  *
  * @param[in] lun Logical unit to verify (0..1).
  *
- * @return ra_err_t verdict.
- * @retval k_ra_ok            Every sector matched the SD snapshot.
- * @retval k_ra_err_invalid_size  READ_CAPACITY reported wrong geometry.
- * @retval k_ra_err_invalid_state A byte differed from the snapshot.
+ * @return ra8_err_t verdict.
+ * @retval k_ra8_ok            Every sector matched the SD snapshot.
+ * @retval k_ra8_err_invalid_size  READ_CAPACITY reported wrong geometry.
+ * @retval k_ra8_err_invalid_state A byte differed from the snapshot.
  *
  * @pre The host has enumerated the device.
  * @pre @p lun is below ::k_microsd_count.
@@ -520,29 +520,29 @@ VOID microsd_device_worker(ULONG arg)
  * @note Blocking; 32 four-KiB READ(10) bursts over the self-loop.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t microsd_verify_one(uint32_t lun)
+[[nodiscard]] static ra8_err_t microsd_verify_one(uint32_t lun)
 {
   static uint8_t s_burst[k_microsd_burst_bytes] = {};
 
-  uint32_t block_count = 0U;
-  uint32_t block_size  = 0U;
-  ra_err_t err         = ra_usb_hmsc_read_capacity((uint8_t)lun, &block_count, &block_size);
-  if (err != k_ra_ok) {
+  uint32_t  block_count = 0U;
+  uint32_t  block_size  = 0U;
+  ra8_err_t err         = ra8_usb_hmsc_read_capacity((uint8_t)lun, &block_count, &block_size);
+  if (err != k_ra8_ok) {
     (void)microsd_print_fail("read_capacity", err);
     return err;
   }
   if (block_count != (uint32_t)k_microsd_sectors) {
-    (void)microsd_print_fail("capacity mismatch", k_ra_err_invalid_size);
-    return k_ra_err_invalid_size;
+    (void)microsd_print_fail("capacity mismatch", k_ra8_err_invalid_size);
+    return k_ra8_err_invalid_size;
   }
   if (s_usb_selftest_microsd_dbg_bootsig == 0U) {
-    (void)microsd_print_fail("no 0x55AA boot sig on SD LBA0", k_ra_err_invalid_state);
-    return k_ra_err_invalid_state;
+    (void)microsd_print_fail("no 0x55AA boot sig on SD LBA0", k_ra8_err_invalid_state);
+    return k_ra8_err_invalid_state;
   }
   for (uint32_t blk = 0U; blk < (uint32_t)k_microsd_sectors;
        blk += (uint32_t)k_microsd_burst_blocks) {
-    err = ra_usb_hmsc_read10((uint8_t)lun, blk, (uint16_t)k_microsd_burst_blocks, s_burst);
-    if (err != k_ra_ok) {
+    err = ra8_usb_hmsc_read10((uint8_t)lun, blk, (uint16_t)k_microsd_burst_blocks, s_burst);
+    if (err != k_ra8_ok) {
       (void)microsd_print_fail("READ(10)", err);
       return err;
     }
@@ -550,11 +550,11 @@ VOID microsd_device_worker(ULONG arg)
     if (memcmp(s_burst, &s_usb_selftest_microsd_sd_snapshot[off], (size_t)k_microsd_burst_bytes) !=
         0) {
       s_dbg_mismatch = blk;
-      (void)microsd_print_fail("SD data mismatch vs snapshot", k_ra_err_invalid_state);
-      return k_ra_err_invalid_state;
+      (void)microsd_print_fail("SD data mismatch vs snapshot", k_ra8_err_invalid_state);
+      return k_ra8_err_invalid_state;
     }
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -562,10 +562,10 @@ VOID microsd_device_worker(ULONG arg)
  *
  * @param[in] lun The LUN that just verified.
  *
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The line is queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok The line is queued.
  *
- * @pre ::microsd_verify_one returned k_ra_ok for @p lun.
+ * @pre ::microsd_verify_one returned k_ra8_ok for @p lun.
  * @pre SCI8 init already ran.
  * @post One ASCII line is in the SCI8 TX FIFO.
  * @post No other state changes.
@@ -573,14 +573,14 @@ VOID microsd_device_worker(ULONG arg)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t microsd_print_lun_ok(uint32_t lun)
+[[nodiscard]] static ra8_err_t microsd_print_lun_ok(uint32_t lun)
 {
-  ra_err_t err = microsd_print("ra8d2 microsd: LUN ");
-  if (err != k_ra_ok) {
+  ra8_err_t err = microsd_print("ra8d2 microsd: LUN ");
+  if (err != k_ra8_ok) {
     return err;
   }
   err = microsd_print_dec(lun);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   return microsd_print(" OK (64 sectors, SD vs snapshot)\r\n");
@@ -589,48 +589,48 @@ VOID microsd_device_worker(ULONG arg)
 /**
  * @brief Enumerate the looped device and print its PID + GET_MAX_LUN.
  *
- * @details Sets the enum phase, runs ::ra_usb_hmsc_enumerate, records
+ * @details Sets the enum phase, runs ::ra8_usb_hmsc_enumerate, records
  * the reported max-LUN in ::s_dbg_max_lun, and streams the
  * ``enumerated pid=... GET_MAX_LUN=...`` banner. On enumerate failure
  * the host controller is closed so the next retry re-attaches clean.
  *
  * @param[out] device Receives the enumerated descriptor snapshot.
  *
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok Device enumerated and the banner printed.
+ * @return First failing step's error, or k_ra8_ok.
+ * @retval k_ra8_ok Device enumerated and the banner printed.
  *
  * @pre @p device is non-null.
- * @pre ::ra_usb_hmsc_init has succeeded on this pass.
+ * @pre ::ra8_usb_hmsc_init has succeeded on this pass.
  * @post ::s_dbg_max_lun mirrors the device's GET_MAX_LUN.
  * @post On failure the host controller is deinitialized.
  *
  * @note Blocking; runs on the low-priority host thread.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t microsd_host_enumerate(ra_usb_hmsc_device_t* device)
+[[nodiscard]] static ra8_err_t microsd_host_enumerate(ra8_usb_hmsc_device_t* device)
 {
-  s_dbg_phase  = (uint32_t)k_microsd_phase_enum;
-  ra_err_t err = ra_usb_hmsc_enumerate(device);
-  if (err != k_ra_ok) {
+  s_dbg_phase   = (uint32_t)k_microsd_phase_enum;
+  ra8_err_t err = ra8_usb_hmsc_enumerate(device);
+  if (err != k_ra8_ok) {
     (void)microsd_print_fail("enumerate", err);
-    (void)ra_usb_hmsc_close();
+    (void)ra8_usb_hmsc_close();
     return err;
   }
   s_dbg_max_lun = (uint32_t)device->max_lun;
   err           = microsd_print("ra8d2 microsd: enumerated pid=0x");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = microsd_print_hex((uint32_t)device->product_id, (uint8_t)k_microsd_hex_chars_u16);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = microsd_print(", GET_MAX_LUN=");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = microsd_print_dec(s_dbg_max_lun);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   return microsd_print("\r\n");
@@ -642,8 +642,8 @@ VOID microsd_device_worker(ULONG arg)
  * @details Phases mirror ::microsd_phase_t. On any failure the host
  * controller is closed so the next retry starts from a clean attach.
  *
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok The pass printed MICROSD PASS.
+ * @return First failing step's error, or k_ra8_ok.
+ * @retval k_ra8_ok The pass printed MICROSD PASS.
  *
  * @pre Device-side class is registered and attached (other thread).
  * @pre The self-loop cable connects J7 to J11.
@@ -653,22 +653,22 @@ VOID microsd_device_worker(ULONG arg)
  * @note Blocking; runs on the low-priority host thread.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t microsd_host_pass(void)
+[[nodiscard]] static ra8_err_t microsd_host_pass(void)
 {
-  s_dbg_phase  = (uint32_t)k_microsd_phase_init;
-  ra_err_t err = microsd_print("ra8d2 microsd: host up on USB-HS, probing the loop...\r\n");
-  if (err != k_ra_ok) {
+  s_dbg_phase   = (uint32_t)k_microsd_phase_init;
+  ra8_err_t err = microsd_print("ra8d2 microsd: host up on USB-HS, probing the loop...\r\n");
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_usb_hmsc_init(k_ra_usb_speed_hs);
-  if (err != k_ra_ok) {
+  err = ra8_usb_hmsc_init(k_ra8_usb_speed_hs);
+  if (err != k_ra8_ok) {
     (void)microsd_print_fail("host init", err);
     return err;
   }
 
-  ra_usb_hmsc_device_t device = {};
-  err                         = microsd_host_enumerate(&device);
-  if (err != k_ra_ok) {
+  ra8_usb_hmsc_device_t device = {};
+  err                          = microsd_host_enumerate(&device);
+  if (err != k_ra8_ok) {
     return err;
   }
 
@@ -676,13 +676,13 @@ VOID microsd_device_worker(ULONG arg)
   s_dbg_luns_ok = 0U;
   for (uint32_t lun = 0U; lun < (uint32_t)k_microsd_count; lun++) {
     err = microsd_verify_one(lun);
-    if (err != k_ra_ok) {
-      (void)ra_usb_hmsc_close();
+    if (err != k_ra8_ok) {
+      (void)ra8_usb_hmsc_close();
       return err;
     }
     s_dbg_luns_ok++;
     err = microsd_print_lun_ok(lun);
-    if (err != k_ra_ok) {
+    if (err != k_ra8_ok) {
       return err;
     }
   }
@@ -690,11 +690,11 @@ VOID microsd_device_worker(ULONG arg)
   s_dbg_phase = (uint32_t)k_microsd_phase_pass;
   s_dbg_pass_count++;
   err = microsd_print("ra8d2 microsd: USB SELFTEST MICROSD PASS\r\n");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
-  (void)ra_board_led_on(k_ra_board_led2);
-  return k_ra_ok;
+  (void)ra8_board_led_on(k_ra8_board_led2);
+  return k_ra8_ok;
 }
 
 VOID microsd_host_worker(ULONG arg)
@@ -703,8 +703,8 @@ VOID microsd_host_worker(ULONG arg)
 
   tx_thread_sleep(k_microsd_boot_wait_ticks);
   for (;;) {
-    const ra_err_t err = microsd_host_pass();
-    if (err == k_ra_ok) {
+    const ra8_err_t err = microsd_host_pass();
+    if (err == k_ra8_ok) {
       break;
     }
     tx_thread_sleep(k_microsd_retry_ticks);
@@ -714,4 +714,4 @@ VOID microsd_host_worker(ULONG arg)
   }
 }
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

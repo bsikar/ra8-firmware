@@ -11,16 +11,16 @@
  *  1. Reads the no-init SRAM DFU trigger word (one-shot, cleared after read).
  *  2. Validates both application slots (magic + length + software CRC32 over the
  *     image body) and reads their monotonic sequence numbers.
- *  3. Runs the pure ::ra_dfu_boot_decide policy: trigger set OR neither slot
+ *  3. Runs the pure ::ra8_dfu_boot_decide policy: trigger set OR neither slot
  *     valid -> stay in DFU; otherwise jump to the valid slot with the higher
  *     sequence number (Slot A on a tie).
  *
  * On a JUMP it copies the slot's image body to a fixed SRAM run base
- * (::k_ra_dfu_run_base), points VTOR there, loads the image's initial MSP, and
+ * (::k_ra8_dfu_run_base), points VTOR there, loads the image's initial MSP, and
  * branches to its reset vector -- a same-world (Secure) hand-off. Copy-to-run
  * means an app is linked ONCE at the run base and the same image boots from
  * either slot (no per-slot build). On DFU it brings up the
- * USBX DFU device (libs/ra_dfu) on USB-FS (J11), programs the INACTIVE slot as
+ * USBX DFU device (libs/ra8_dfu) on USB-FS (J11), programs the INACTIVE slot as
  * the host DFU_DNLOADs it, and soft-resets once the image header is committed so
  * the next boot decision selects the freshly written slot.
  *
@@ -30,12 +30,12 @@
  * slot -- no BTFLG, no option-setting, nothing irreversible.
  *
  * @note The console is hand-rolled (raw SCI8, not the BSP
- *       ``ra_board_uart_console`` API) on purpose: this immutable bootloader
+ *       ``ra8_board_uart_console`` API) on purpose: this immutable bootloader
  *       keeps its dependency surface minimal and self-contained for
  *       brick-safety, so it does not pull in the board-support library.
  *
  * @note An app is copied to SRAM and run there, so it is linked at the single
- *       ::k_ra_dfu_run_base (linker ORIGIN), not at a slot base; the identical
+ *       ::k_ra8_dfu_run_base (linker ORIGIN), not at a slot base; the identical
  *       image boots from either slot. See this app's README for the run base
  *       and the staging procedure.
  *
@@ -54,31 +54,31 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_dfu.h"
-#include "ra_dfu_device.h"
-#include "ra_err.h"
-#include "ra_gpio_constants.h"
-#include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
-#include "ra_time.h"
-#include "ra_usb.h"
-#ifdef RA_ENABLE_ROOT_OF_TRUST
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_dfu.h"
+#include "ra8_dfu_device.h"
+#include "ra8_err.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_isr.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_sci.h"
+#include "ra8_time.h"
+#include "ra8_usb.h"
+#ifdef RA8_ENABLE_ROOT_OF_TRUST
 #include "mbedtls/memory_buffer_alloc.h"
-#include "ra_psa_crypto.h"
+#include "ra8_psa_crypto.h"
 #endif
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 #include "ux_api.h"
-#include "ux_dcd_ra_usb.h"
+#include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_dfu.h"
 #include "ux_device_stack.h"
 
-extern void ra_time_on_tick(void);
+extern void ra8_time_on_tick(void);
 extern void _tx_timer_interrupt(void); /**< @brief ThreadX 1 ms tick worker. */
 
 /**
@@ -91,10 +91,10 @@ static volatile bool s_tx_kernel_up = false;
 void SysTick_Handler(void);
 void SysTick_Handler(void)
 {
-  ra_time_on_tick();
+  ra8_time_on_tick();
   if (s_tx_kernel_up) {
     _tx_timer_interrupt();
-    ux_dcd_ra_usb_irq_reenable();
+    ux_dcd_ra8_usb_irq_reenable();
   }
 }
 #endif
@@ -104,28 +104,28 @@ void SysTick_Handler(void)
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
-static const ra_port_pin_t k_blc_pin_fs_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
+static const ra8_port_pin_t k_blc_pin_fs_vbus =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_7);
 
 /** @brief USBFS VBUSEN (P5_00) -- GPIO LOW for the device role. */
-static const ra_port_pin_t k_blc_pin_fs_vbusen =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0);
+static const ra8_port_pin_t k_blc_pin_fs_vbusen =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_5 << 8) | (uint16_t)k_ra8_pin_0);
 
 /** @brief USBFS D+ (P8_14). */
-static const ra_port_pin_t k_blc_pin_fs_dp =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14);
+static const ra8_port_pin_t k_blc_pin_fs_dp =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_14);
 
 /** @brief USBFS D- (P8_15). */
-static const ra_port_pin_t k_blc_pin_fs_dm =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
+static const ra8_port_pin_t k_blc_pin_fs_dm =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_15);
 
 /** @brief J-Link OB CDC TX pin (PD_02 -- SCI8 TX). */
-static const ra_port_pin_t k_blc_pin_sci_tx =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
+static const ra8_port_pin_t k_blc_pin_sci_tx =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << 8) | (uint16_t)k_ra8_pin_2);
 
 /** @brief J-Link OB CDC RX pin (PD_03 -- SCI8 RX). */
-static const ra_port_pin_t k_blc_pin_sci_rx =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
+static const ra8_port_pin_t k_blc_pin_sci_rx =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << 8) | (uint16_t)k_ra8_pin_3);
 
 /* -------------------------------------------------------------------------- */
 /* Tunables */
@@ -166,7 +166,7 @@ typedef enum : uint32_t {
  *
  * @details Accessed by absolute address (the project does not vendor a CMSIS
  * SCB struct). AIRCR is the Secure alias since the bootloader runs Secure. The
- * copy-to-run hand-off's VTOR write lives in ::ra_dfu_launch.
+ * copy-to-run hand-off's VTOR write lives in ::ra8_dfu_launch.
  */
 typedef enum : uintptr_t {
   k_blc_scb_aircr_addr = 0xE000ED0CU, /**< SCB->AIRCR (reset control). */
@@ -179,7 +179,7 @@ typedef enum : uint32_t {
 
 /**
  * @var g_dfu_trigger
- * @brief No-init SRAM word an application writes (== ::k_ra_dfu_trigger_magic)
+ * @brief No-init SRAM word an application writes (== ::k_ra8_dfu_trigger_magic)
  *        before resetting to request the bootloader's DFU mode.
  * @details Lives in `.noinit` (survives a warm reset, never bss-cleared). The
  * bootloader reads it once and clears it, so the request is one-shot.
@@ -189,7 +189,7 @@ typedef enum : uint32_t {
  */
 [[gnu::section(".noinit")]] static volatile uint32_t g_dfu_trigger;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
 /* ThreadX worker + USBX pool storage */
@@ -328,7 +328,7 @@ typedef enum : uint8_t {
 /** @brief USBX language-id table -- US English. */
 static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
 /* J-Link probes */
@@ -339,9 +339,9 @@ typedef enum : uint32_t {
   k_blc_dbg_unset = 0xFFFFFFFFU, /**< Probe word value before main writes it. */
 } blc_dbg_t;
 
-/** @brief Boot decision outcome (::ra_dfu_action_t), J-Link-readable. */
+/** @brief Boot decision outcome (::ra8_dfu_action_t), J-Link-readable. */
 static volatile uint32_t s_dbg_action = k_blc_dbg_unset;
-/** @brief Slot the DFU path targets (::ra_dfu_slot_t), J-Link-readable. */
+/** @brief Slot the DFU path targets (::ra8_dfu_slot_t), J-Link-readable. */
 static volatile uint32_t s_dbg_target = k_blc_dbg_unset;
 /** @brief Device worker progress: 4 = DFU class attached. */
 static volatile uint32_t s_dbg_dev_step;
@@ -354,7 +354,7 @@ static volatile uint32_t s_dbg_dev_err;
  *
  * @details
  * Flashed standalone (the HIL scenario), neither application slot is valid, so
- * ::blc_decide deterministically returns ::k_ra_dfu_action_dfu and control ends
+ * ::blc_decide deterministically returns ::k_ra8_dfu_action_dfu and control ends
  * up in ::blc_device_worker's service loop. This counter is incremented on every
  * pass of that loop, so a J-Link double-halt mem32 read (scripts/
  * hil_jlink_memprobe.sh, HIL_MODE=jlink_memprobe) sees it advance and proves the
@@ -422,8 +422,8 @@ static uint32_t blc_str_len(const char* text)
 /**
  * @brief Print a NUL-terminated ASCII string over SCI8 (polled).
  * @param[in] text String to print (CR/LF included by the caller).
- * @return ra_err_t propagated from `ra_sci_write_polling`.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from `ra8_sci_write_polling`.
+ * @retval k_ra8_ok All bytes queued.
  * @pre SCI8 init already ran; @p text is non-NULL.
  * @pre @p text is NUL-terminated within ::k_blc_print_cap bytes.
  * @post The string bytes are in the SCI8 TX FIFO.
@@ -431,16 +431,16 @@ static uint32_t blc_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t blc_print(const char* text)
+[[nodiscard]] static ra8_err_t blc_print(const char* text)
 {
-  return ra_sci_write_polling((uint8_t)k_blc_sci_channel, (const uint8_t*)text, blc_str_len(text));
+  return ra8_sci_write_polling((uint8_t)k_blc_sci_channel, (const uint8_t*)text, blc_str_len(text));
 }
 
 /**
  * @brief Print a value as fixed-width (8-digit) uppercase hex.
  * @param[in] value Value to print.
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  * @pre SCI8 init already ran.
  * @pre None beyond console readiness.
  * @post One 8-character hex token is in the SCI8 TX FIFO.
@@ -448,14 +448,14 @@ static uint32_t blc_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t blc_print_hex(uint32_t value)
+[[nodiscard]] static ra8_err_t blc_print_hex(uint32_t value)
 {
   uint8_t out[k_blc_hex_chars_u32] = {};
   for (uint8_t i = 0U; i < (uint8_t)k_blc_hex_chars_u32; i++) {
     const uint8_t shift = (uint8_t)(((uint8_t)k_blc_hex_chars_u32 - 1U - i) * k_blc_nibble_bits);
     out[i]              = blc_nibble_to_hex((value >> shift) & k_blc_nibble_mask);
   }
-  return ra_sci_write_polling((uint8_t)k_blc_sci_channel, out, (uint32_t)k_blc_hex_chars_u32);
+  return ra8_sci_write_polling((uint8_t)k_blc_sci_channel, out, (uint32_t)k_blc_hex_chars_u32);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -467,45 +467,45 @@ static uint32_t blc_str_len(const char* text)
  *
  * @details Reads and clears the one-shot ::g_dfu_trigger, validates both slots
  * (CRC over the body) and their sequence numbers, then folds them through the
- * pure ::ra_dfu_boot_decide policy. The DFU target (the slot to program) is the
+ * pure ::ra8_dfu_boot_decide policy. The DFU target (the slot to program) is the
  * INACTIVE slot, or Slot A when neither slot is valid.
  *
  * @param[out] out_target Slot the DFU path should program. Non-NULL.
  *
- * @return The resolved ::ra_dfu_action_t.
- * @retval k_ra_dfu_action_jump_a Boot Slot A.
- * @retval k_ra_dfu_action_jump_b Boot Slot B.
- * @retval k_ra_dfu_action_dfu    Stay in the DFU device.
+ * @return The resolved ::ra8_dfu_action_t.
+ * @retval k_ra8_dfu_action_jump_a Boot Slot A.
+ * @retval k_ra8_dfu_action_jump_b Boot Slot B.
+ * @retval k_ra8_dfu_action_dfu    Stay in the DFU device.
  *
  * @pre @p out_target is non-NULL.
  * @pre Both slots are readable code-MRAM (always true post-reset).
  * @post ::g_dfu_trigger has been cleared to 0.
  * @post `*out_target` holds the inactive slot (or Slot A).
  *
- * @note Pure reads only -- no ra_flash_open, no programming.
+ * @note Pure reads only -- no ra8_flash_open, no programming.
  * @since 0.1.0
  */
-static ra_dfu_action_t blc_decide(ra_dfu_slot_t* out_target)
+static ra8_dfu_action_t blc_decide(ra8_dfu_slot_t* out_target)
 {
   if (out_target == nullptr) {
-    return k_ra_dfu_action_dfu; /* safe fallback: never jump on a bad caller */
+    return k_ra8_dfu_action_dfu; /* safe fallback: never jump on a bad caller */
   }
-  const bool trig = (g_dfu_trigger == (uint32_t)k_ra_dfu_trigger_magic);
+  const bool trig = (g_dfu_trigger == (uint32_t)k_ra8_dfu_trigger_magic);
   g_dfu_trigger   = 0U; /* one-shot: consume the request */
 
-  const bool a_valid = ra_dfu_slot_valid(k_ra_dfu_slot_a);
-  const bool b_valid = ra_dfu_slot_valid(k_ra_dfu_slot_b);
+  const bool a_valid = ra8_dfu_slot_valid(k_ra8_dfu_slot_a);
+  const bool b_valid = ra8_dfu_slot_valid(k_ra8_dfu_slot_b);
   uint32_t   a_seq   = 0U;
   uint32_t   b_seq   = 0U;
   /* A failed read leaves seq at 0 (treated as oldest) -- a safe default that
    * never wins the higher-seq tiebreak, so the discarded return is intentional. */
-  (void)ra_dfu_slot_seq(k_ra_dfu_slot_a, &a_seq);
-  (void)ra_dfu_slot_seq(k_ra_dfu_slot_b, &b_seq);
+  (void)ra8_dfu_slot_seq(k_ra8_dfu_slot_a, &a_seq);
+  (void)ra8_dfu_slot_seq(k_ra8_dfu_slot_b, &b_seq);
 
-  const ra_dfu_slot_t active = ra_dfu_select_slot(a_valid, a_seq, b_valid, b_seq);
-  *out_target = (active == k_ra_dfu_slot_none) ? k_ra_dfu_slot_a : ra_dfu_other_slot(active);
+  const ra8_dfu_slot_t active = ra8_dfu_select_slot(a_valid, a_seq, b_valid, b_seq);
+  *out_target = (active == k_ra8_dfu_slot_none) ? k_ra8_dfu_slot_a : ra8_dfu_other_slot(active);
 
-  return ra_dfu_boot_decide(trig, a_valid, a_seq, b_valid, b_seq);
+  return ra8_dfu_boot_decide(trig, a_valid, a_seq, b_valid, b_seq);
 }
 
 /**
@@ -513,36 +513,36 @@ static ra_dfu_action_t blc_decide(ra_dfu_slot_t* out_target)
  *
  * @details
  * Reads the slot header for its `img_len` / `entry`, then delegates to the
- * shared ::ra_dfu_launch, which cross-checks the run target, copies the image
- * body from the slot to ::k_ra_dfu_run_base in SRAM, and branches to it. Because
+ * shared ::ra8_dfu_launch, which cross-checks the run target, copies the image
+ * body from the slot to ::k_ra8_dfu_run_base in SRAM, and branches to it. Because
  * an app is linked ONCE at the run base, the same image boots from either slot.
- * ::ra_dfu_launch returns here only when the run target fails validation (a
+ * ::ra8_dfu_launch returns here only when the run target fails validation (a
  * corrupted `entry`/length), in which case `main` drops to DFU.
  *
- * @param[in] slot Slot to boot (A or B); already passed ::ra_dfu_slot_valid.
+ * @param[in] slot Slot to boot (A or B); already passed ::ra8_dfu_slot_valid.
  *
  * @return void -- returns to the caller ONLY when the run target is invalid
  *         (so `main` drops to DFU); on a valid image it does not return.
  *
  * @pre @p slot is A or B and passed CRC validation in ::blc_decide.
- * @pre The image was linked at ::k_ra_dfu_run_base (its header `entry` records it).
+ * @pre The image was linked at ::k_ra8_dfu_run_base (its header `entry` records it).
  * @post On a valid image, control is in the application at the run base.
  * @post On an invalid run target, no copy/jump happens and control returns.
  *
  * @note Not thread-safe; the final hand-off of a single-threaded boot.
  * @since 0.1.0
  */
-static void blc_boot_slot(ra_dfu_slot_t slot)
+static void blc_boot_slot(ra8_dfu_slot_t slot)
 {
-  ra_dfu_img_hdr_t hdr = {};
-  if (ra_dfu_read_header(slot, &hdr) != k_ra_ok) {
+  ra8_dfu_img_hdr_t hdr = {};
+  if (ra8_dfu_read_header(slot, &hdr) != k_ra8_ok) {
     return; /* unreadable header -> let main fall through to DFU */
   }
-  ra_dfu_launch(ra_dfu_slot_base(slot), hdr.img_len, hdr.entry);
-  /* Returns only if ra_dfu_run_target_valid rejected the image -> main -> DFU. */
+  ra8_dfu_launch(ra8_dfu_slot_base(slot), hdr.img_len, hdr.entry);
+  /* Returns only if ra8_dfu_run_target_valid rejected the image -> main -> DFU. */
 }
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 /**
  * @brief Request a system reset via AIRCR.SYSRESETREQ. Never returns.
@@ -571,7 +571,7 @@ static void blc_boot_slot(ra_dfu_slot_t slot)
  * @brief DFU device worker: bring the DFU class up, drain commits, reset on done.
  * @param[in] arg ThreadX entry argument (unused).
  * @return Never returns.
- * @pre ::ra_dfu_device_set_target selected the inactive slot (main did it).
+ * @pre ::ra8_dfu_device_set_target selected the inactive slot (main did it).
  * @pre USB-FS pins + clock are up (main did both).
  * @post The FS device is attached in DFU mode; commits trigger a system reset.
  * @post On any bring-up failure the thread parks (::s_dbg_dev_err set).
@@ -582,16 +582,16 @@ static VOID blc_device_worker(ULONG arg)
 {
   (void)arg;
 
-  const ra_err_t e = ra_dfu_device_start(k_ra_usb_speed_fs,
-                                         s_usbx_pool,
-                                         (uint32_t)sizeof(s_usbx_pool),
-                                         s_device_framework,
-                                         (uint32_t)sizeof(s_device_framework),
-                                         s_string_framework,
-                                         (uint32_t)sizeof(s_string_framework),
-                                         s_language_id_framework,
-                                         (uint32_t)sizeof(s_language_id_framework));
-  if (e != k_ra_ok) {
+  const ra8_err_t e = ra8_dfu_device_start(k_ra8_usb_speed_fs,
+                                           s_usbx_pool,
+                                           (uint32_t)sizeof(s_usbx_pool),
+                                           s_device_framework,
+                                           (uint32_t)sizeof(s_device_framework),
+                                           s_string_framework,
+                                           (uint32_t)sizeof(s_string_framework),
+                                           s_language_id_framework,
+                                           (uint32_t)sizeof(s_language_id_framework));
+  if (e != k_ra8_ok) {
     s_dbg_dev_err = (uint32_t)e;
     (void)blc_print("dfu-bootloader: FAIL device bring-up\r\n");
     return;
@@ -602,9 +602,9 @@ static VOID blc_device_worker(ULONG arg)
   /* NASA Rule 2 exemption: deliberate RTOS service loop. It exits only via
    * blc_system_reset() once an image commits (that call does not return). */
   while (1) {
-    (void)ra_dfu_device_worker_step();
+    (void)ra8_dfu_device_worker_step();
     g_blc_dfu_tick += 1U; /* HIL liveness: proves the DFU service loop iterates */
-    if (ra_dfu_device_committed() && (ra_dfu_device_last_error() == k_ra_ok)) {
+    if (ra8_dfu_device_committed() && (ra8_dfu_device_last_error() == k_ra8_ok)) {
       (void)blc_print("dfu-bootloader: image committed -- resetting into new slot\r\n");
       blc_system_reset();
     }
@@ -637,7 +637,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
 /* Startup */
@@ -673,21 +673,21 @@ VOID tx_application_define(VOID* first_unused_memory)
  */
 static void blc_route_usb_or_halt(void)
 {
-  if (ra_pfs_route_peripheral(k_blc_pin_fs_vbus, k_ra_psel_usb_fs, "blc.fs_vbus") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_blc_pin_fs_vbus, k_ra8_psel_usb_fs, "blc.fs_vbus") != k_ra8_ok) {
     blc_panic_halt();
   }
-  if (ra_gpio_output_init(k_blc_pin_fs_vbusen, k_ra_level_low) != k_ra_ok) {
+  if (ra8_gpio_output_init(k_blc_pin_fs_vbusen, k_ra8_level_low) != k_ra8_ok) {
     blc_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_blc_pin_fs_dp, k_ra_psel_usb_fs, "blc.fs_dp") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_blc_pin_fs_dp, k_ra8_psel_usb_fs, "blc.fs_dp") != k_ra8_ok) {
     blc_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_blc_pin_fs_dm, k_ra_psel_usb_fs, "blc.fs_dm") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_blc_pin_fs_dm, k_ra8_psel_usb_fs, "blc.fs_dm") != k_ra8_ok) {
     blc_panic_halt();
   }
 }
 
-#ifdef RA_ENABLE_ROOT_OF_TRUST
+#ifdef RA8_ENABLE_ROOT_OF_TRUST
 /**
  * @enum blc_rot_const_t
  * @brief Root-of-trust setup constant.
@@ -722,47 +722,47 @@ static void blc_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     blc_panic_halt();
   }
-  if (ra_cgc_usbfs_clock_enable() != k_ra_ok) {
+  if (ra8_cgc_usbfs_clock_enable() != k_ra8_ok) {
     blc_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     blc_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz) != k_ra8_ok) {
     blc_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     blc_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_blc_pin_sci_tx, k_ra_psel_sci_async, "blc.txd8") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_blc_pin_sci_tx, k_ra8_psel_sci_async, "blc.txd8") != k_ra8_ok) {
     blc_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_blc_pin_sci_rx, k_ra_psel_sci_async, "blc.rxd8") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_blc_pin_sci_rx, k_ra8_psel_sci_async, "blc.rxd8") != k_ra8_ok) {
     blc_panic_halt();
   }
-  const ra_sci_cfg_t sci_cfg = {
+  const ra8_sci_cfg_t sci_cfg = {
     .baud      = k_blc_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
+    .data_bits = k_ra8_sci_data_8,
+    .parity    = k_ra8_sci_parity_none,
+    .stop_bits = k_ra8_sci_stop_1,
     .pclk_hz   = pclka_hz,
   };
-  if (ra_sci_init((uint8_t)k_blc_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra8_sci_init((uint8_t)k_blc_sci_channel, &sci_cfg) != k_ra8_ok) {
     blc_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     blc_panic_halt();
   }
-#ifdef RA_ENABLE_ROOT_OF_TRUST
+#ifdef RA8_ENABLE_ROOT_OF_TRUST
   /* Bring up the tf-psa-crypto backend for the root-of-trust launch gate: a
    * static buffer-alloc arena (no malloc) then psa_crypto_init. A failure here
    * means the bootloader cannot authenticate any slot, so halt rather than boot
    * an unverified image. */
   mbedtls_memory_buffer_alloc_init(s_blc_psa_heap, sizeof(s_blc_psa_heap));
-  if (ra_psa_crypto_init() != k_ra_ok) {
+  if (ra8_psa_crypto_init() != k_ra8_ok) {
     blc_panic_halt();
   }
 #endif
@@ -784,33 +784,33 @@ static void blc_setup_or_halt(void)
 int32_t main(void)
 {
   blc_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   (void)blc_print("\r\nra8d2 dfu-bootloader (immutable, 128K @ 0x02000000)\r\n");
 
-  ra_dfu_slot_t         target = k_ra_dfu_slot_a;
-  const ra_dfu_action_t action = blc_decide(&target);
-  s_dbg_action                 = (uint32_t)action;
-  s_dbg_target                 = (uint32_t)target;
+  ra8_dfu_slot_t         target = k_ra8_dfu_slot_a;
+  const ra8_dfu_action_t action = blc_decide(&target);
+  s_dbg_action                  = (uint32_t)action;
+  s_dbg_target                  = (uint32_t)target;
 
-  if (action == k_ra_dfu_action_jump_a) {
+  if (action == k_ra8_dfu_action_jump_a) {
     (void)blc_print("dfu-bootloader: Slot A -> copy-to-run @0x");
-    (void)blc_print_hex((uint32_t)k_ra_dfu_run_base);
+    (void)blc_print_hex((uint32_t)k_ra8_dfu_run_base);
     (void)blc_print("\r\n");
-    blc_boot_slot(k_ra_dfu_slot_a); /* returns only if the run target is invalid */
+    blc_boot_slot(k_ra8_dfu_slot_a); /* returns only if the run target is invalid */
   }
-  if (action == k_ra_dfu_action_jump_b) {
+  if (action == k_ra8_dfu_action_jump_b) {
     (void)blc_print("dfu-bootloader: Slot B -> copy-to-run @0x");
-    (void)blc_print_hex((uint32_t)k_ra_dfu_run_base);
+    (void)blc_print_hex((uint32_t)k_ra8_dfu_run_base);
     (void)blc_print("\r\n");
-    blc_boot_slot(k_ra_dfu_slot_b); /* returns only if the run target is invalid */
+    blc_boot_slot(k_ra8_dfu_slot_b); /* returns only if the run target is invalid */
   }
 
-  /* k_ra_dfu_action_dfu (or a slot whose run target failed validation): no
+  /* k_ra8_dfu_action_dfu (or a slot whose run target failed validation): no
    * bootable slot -- accept a DFU update into the inactive slot over USB-FS. */
   (void)blc_print("dfu-bootloader: no bootable slot -- entering DFU\r\n");
-#ifndef RA_SIMULATOR_MODE
-  ra_dfu_device_set_target(target);
+#ifndef RA8_SIMULATOR_MODE
+  ra8_dfu_device_set_target(target);
   tx_kernel_enter();
 #endif
 

@@ -1,14 +1,14 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/widget_kit_demo/main.c
- * @brief Concrete ra_widget leaf widgets composited on the GLCDC panel (#145).
+ * @brief Concrete ra8_widget leaf widgets composited on the GLCDC panel (#145).
  *
  * @details
- * `widget_compose_demo` proved the ::ra_widget_panel compositor with anonymous
+ * `widget_compose_demo` proved the ::ra8_widget_panel compositor with anonymous
  * tile leaves. This app is the Phase-2 demonstration of the **concrete leaf
- * widgets** the panel can now composite: ::ra_widget_label_t (a background fill
- * plus aligned text) and ::ra_widget_button_t (a bordered face + label that
+ * widgets** the panel can now composite: ::ra8_widget_label_t (a background fill
+ * plus aligned text) and ::ra8_widget_button_t (a bordered face + label that
  * latches on a tap and reports the press through `on_input`). Both draw through
- * an injected ::ra_widget_paint_t backend wired to `ra_gfx`, so `ra_widget`
+ * an injected ::ra8_widget_paint_t backend wired to `ra8_gfx`, so `ra8_widget`
  * itself stays graphics free.
  *
  * The tree (dwm-style, each piece opt-in):
@@ -20,7 +20,7 @@
  *   |   |- button B (BUTTON, flex) -- "Next"
  *   |- footer (LABEL,  fixed) -- a left-aligned hint line
  *
- * One ::ra_widget_panel_compose call lays the children out, computes the
+ * One ::ra8_widget_panel_compose call lays the children out, computes the
  * minimal damage rect + refresh hint, and renders only the dirty children -- a
  * dirty nested panel repaints its whole subtree.
  *
@@ -55,21 +55,21 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_box.h"
-#include "ra_cgc.h"
-#include "ra_display_pal.h"
-#include "ra_display_pal_lcd.h"
-#include "ra_err.h"
-#include "ra_gfx.h"
-#include "ra_gfx_font.h"
-#include "ra_glcdc.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_panel_timing.h"
-#include "ra_time.h"
-#include "ra_ui.h"
-#include "ra_widget.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_box.h"
+#include "ra8_cgc.h"
+#include "ra8_display_pal.h"
+#include "ra8_display_pal_lcd.h"
+#include "ra8_err.h"
+#include "ra8_gfx.h"
+#include "ra8_gfx_font.h"
+#include "ra8_glcdc.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_panel_timing.h"
+#include "ra8_time.h"
+#include "ra8_ui.h"
+#include "ra8_widget.h"
 
 /**
  * @enum wk_geom_t
@@ -90,7 +90,7 @@ typedef enum : uint16_t {
 
 /**
  * @enum wk_color_t
- * @brief 0xRRGGBB palette (ra_gfx packs to RGB565).
+ * @brief 0xRRGGBB palette (ra8_gfx packs to RGB565).
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -116,11 +116,11 @@ typedef enum : uint16_t {
   k_wk_w_body   = 1U,  /**< Root child 1: nested body panel.    */
   k_wk_w_footer = 2U,  /**< Root child 2: footer label (fixed). */
   k_wk_root_n   = 3U,  /**< Root child count.                   */
-  k_wk_root_cap = 4U,  /**< Root ra_box scratch (count + 1).    */
+  k_wk_root_cap = 4U,  /**< Root ra8_box scratch (count + 1).   */
   k_wk_w_btn_a  = 0U,  /**< Body child 0: button A (flex).      */
   k_wk_w_btn_b  = 1U,  /**< Body child 1: button B (flex).      */
   k_wk_body_n   = 2U,  /**< Body child count.                   */
-  k_wk_body_cap = 3U,  /**< Body ra_box scratch (count + 1).    */
+  k_wk_body_cap = 3U,  /**< Body ra8_box scratch (count + 1).   */
   k_wk_act_a    = 10U, /**< Button A hit-routing action id.     */
   k_wk_act_b    = 11U, /**< Button B hit-routing action id.     */
 } wk_widget_idx_t;
@@ -160,38 +160,38 @@ typedef enum : uint32_t {
   k_wk_fb_align)]] static uint16_t s_framebuffer[(uint32_t)k_wk_fb_w * (uint32_t)k_wk_fb_h];
 
 /* ===========================================================================
- * Paint backend: ra_widget_paint_t -> ra_gfx (the only ra_gfx call sites)
+ * Paint backend: ra8_widget_paint_t -> ra8_gfx (the only ra8_gfx call sites)
  * ===========================================================================
  */
 
-/** @brief Paint backend fill: a solid ra_gfx rectangle. */
+/** @brief Paint backend fill: a solid ra8_gfx rectangle. */
 static void wk_paint_fill(void* user, int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color)
 {
   (void)user;
-  (void)ra_gfx_rect(x, y, w, h, color, true);
+  (void)ra8_gfx_rect(x, y, w, h, color, true);
 }
 
-/** @brief Paint backend text: an 8x16 ra_gfx string. */
+/** @brief Paint backend text: an 8x16 ra8_gfx string. */
 static void
 wk_paint_text(void* user, int32_t x, int32_t y, const char* str, uint32_t fg, uint32_t bg)
 {
   (void)user;
-  (void)ra_gfx_text_out(x, y, str, &ra_gfx_font_8x16, fg, bg);
+  (void)ra8_gfx_text_out(x, y, str, &ra8_gfx_font_8x16, fg, bg);
 }
 
-/** @brief Paint backend measure: 8x16 ra_gfx string size (for centring). */
+/** @brief Paint backend measure: 8x16 ra8_gfx string size (for centring). */
 static void wk_paint_size(void* user, const char* str, int32_t* out_w, int32_t* out_h)
 {
   (void)user;
   uint32_t pw = 0U;
   uint32_t ph = 0U;
-  (void)ra_gfx_text_size(str, &ra_gfx_font_8x16, &pw, &ph);
+  (void)ra8_gfx_text_size(str, &ra8_gfx_font_8x16, &pw, &ph);
   *out_w = (int32_t)pw;
   *out_h = (int32_t)ph;
 }
 
 /** @brief The shared paint backend every leaf widget draws through. */
-static const ra_widget_paint_t k_wk_paint = {
+static const ra8_widget_paint_t k_wk_paint = {
   .user      = nullptr,
   .fill_rect = wk_paint_fill,
   .draw_text = wk_paint_text,
@@ -204,83 +204,83 @@ static const ra_widget_paint_t k_wk_paint = {
  */
 
 /** @brief Mark the body band dirty so a button press flushes only that rect. */
-static void wk_on_button_press(ra_widget_t* w);
+static void wk_on_button_press(ra8_widget_t* w);
 
 /** @brief Title label: a centred heading over the slate band. */
-static ra_widget_label_t s_title = {.paint    = &k_wk_paint,
-                                    .text     = "widget_kit_demo",
-                                    .fg       = (uint32_t)k_wk_col_text,
-                                    .bg       = (uint32_t)k_wk_col_title_bg,
-                                    .pad      = (int16_t)k_wk_pad,
-                                    .align    = k_ra_widget_align_center,
-                                    .reserved = 0U};
-
-/** @brief Footer label: a left-aligned hint line. */
-static ra_widget_label_t s_footer = {.paint    = &k_wk_paint,
-                                     .text     = "label + button leaves on ra_widget_panel",
-                                     .fg       = (uint32_t)k_wk_col_dim,
-                                     .bg       = (uint32_t)k_wk_col_footer_bg,
+static ra8_widget_label_t s_title = {.paint    = &k_wk_paint,
+                                     .text     = "widget_kit_demo",
+                                     .fg       = (uint32_t)k_wk_col_text,
+                                     .bg       = (uint32_t)k_wk_col_title_bg,
                                      .pad      = (int16_t)k_wk_pad,
-                                     .align    = k_ra_widget_align_left,
+                                     .align    = k_ra8_widget_align_center,
                                      .reserved = 0U};
 
+/** @brief Footer label: a left-aligned hint line. */
+static ra8_widget_label_t s_footer = {.paint    = &k_wk_paint,
+                                      .text     = "label + button leaves on ra8_widget_panel",
+                                      .fg       = (uint32_t)k_wk_col_dim,
+                                      .bg       = (uint32_t)k_wk_col_footer_bg,
+                                      .pad      = (int16_t)k_wk_pad,
+                                      .align    = k_ra8_widget_align_left,
+                                      .reserved = 0U};
+
 /** @brief Button A ("Prev"): blue face, latches + flushes the body on tap. */
-static ra_widget_button_t s_btn_a = {.paint        = &k_wk_paint,
-                                     .text         = "Prev",
-                                     .on_press     = wk_on_button_press,
-                                     .fg           = (uint32_t)k_wk_col_text,
-                                     .face         = (uint32_t)k_wk_col_btn_a,
-                                     .face_pressed = (uint32_t)k_wk_col_btn_a_hi,
-                                     .border       = (uint32_t)k_wk_col_btn_brd,
-                                     .presses      = 0U,
-                                     .pad          = (int16_t)k_wk_pad,
-                                     .border_w     = (int16_t)k_wk_btn_border,
-                                     .align        = k_ra_widget_align_center,
-                                     .pressed      = false,
-                                     .reserved     = 0U};
+static ra8_widget_button_t s_btn_a = {.paint        = &k_wk_paint,
+                                      .text         = "Prev",
+                                      .on_press     = wk_on_button_press,
+                                      .fg           = (uint32_t)k_wk_col_text,
+                                      .face         = (uint32_t)k_wk_col_btn_a,
+                                      .face_pressed = (uint32_t)k_wk_col_btn_a_hi,
+                                      .border       = (uint32_t)k_wk_col_btn_brd,
+                                      .presses      = 0U,
+                                      .pad          = (int16_t)k_wk_pad,
+                                      .border_w     = (int16_t)k_wk_btn_border,
+                                      .align        = k_ra8_widget_align_center,
+                                      .pressed      = false,
+                                      .reserved     = 0U};
 
 /** @brief Button B ("Next"): brown face, latches + flushes the body on tap. */
-static ra_widget_button_t s_btn_b = {.paint        = &k_wk_paint,
-                                     .text         = "Next",
-                                     .on_press     = wk_on_button_press,
-                                     .fg           = (uint32_t)k_wk_col_text,
-                                     .face         = (uint32_t)k_wk_col_btn_b,
-                                     .face_pressed = (uint32_t)k_wk_col_btn_b_hi,
-                                     .border       = (uint32_t)k_wk_col_btn_brd,
-                                     .presses      = 0U,
-                                     .pad          = (int16_t)k_wk_pad,
-                                     .border_w     = (int16_t)k_wk_btn_border,
-                                     .align        = k_ra_widget_align_center,
-                                     .pressed      = false,
-                                     .reserved     = 0U};
+static ra8_widget_button_t s_btn_b = {.paint        = &k_wk_paint,
+                                      .text         = "Next",
+                                      .on_press     = wk_on_button_press,
+                                      .fg           = (uint32_t)k_wk_col_text,
+                                      .face         = (uint32_t)k_wk_col_btn_b,
+                                      .face_pressed = (uint32_t)k_wk_col_btn_b_hi,
+                                      .border       = (uint32_t)k_wk_col_btn_brd,
+                                      .presses      = 0U,
+                                      .pad          = (int16_t)k_wk_pad,
+                                      .border_w     = (int16_t)k_wk_btn_border,
+                                      .align        = k_ra8_widget_align_center,
+                                      .pressed      = false,
+                                      .reserved     = 0U};
 
-static ra_widget_t s_root_kids[k_wk_root_n];      /**< [title, body, footer]. */
-static ra_widget_t s_body_kids[k_wk_body_n];      /**< [button A, button B].  */
-static ra_box_t    s_body_scratch[k_wk_body_cap]; /**< Body layout scratch.   */
-static ra_box_t    s_root_scratch[k_wk_root_cap]; /**< Root layout scratch.   */
+static ra8_widget_t s_root_kids[k_wk_root_n];      /**< [title, body, footer]. */
+static ra8_widget_t s_body_kids[k_wk_body_n];      /**< [button A, button B].  */
+static ra8_box_t    s_body_scratch[k_wk_body_cap]; /**< Body layout scratch.   */
+static ra8_box_t    s_root_scratch[k_wk_root_cap]; /**< Root layout scratch.   */
 
 /** @brief Body row-panel descriptor (the nested panel of buttons). */
-static ra_widget_panel_t s_body_panel = {.children    = s_body_kids,
-                                         .box_scratch = s_body_scratch,
-                                         .count       = (uint16_t)k_wk_body_n,
-                                         .box_cap     = (uint16_t)k_wk_body_cap,
-                                         .gap         = (int16_t)k_wk_btn_gap,
-                                         .pad         = 0,
-                                         .axis        = k_ra_widget_axis_row,
-                                         .reserved    = 0U};
+static ra8_widget_panel_t s_body_panel = {.children    = s_body_kids,
+                                          .box_scratch = s_body_scratch,
+                                          .count       = (uint16_t)k_wk_body_n,
+                                          .box_cap     = (uint16_t)k_wk_body_cap,
+                                          .gap         = (int16_t)k_wk_btn_gap,
+                                          .pad         = 0,
+                                          .axis        = k_ra8_widget_axis_row,
+                                          .reserved    = 0U};
 
 /** @brief Root column-panel descriptor. */
-static ra_widget_panel_t s_root_panel = {.children    = s_root_kids,
-                                         .box_scratch = s_root_scratch,
-                                         .count       = (uint16_t)k_wk_root_n,
-                                         .box_cap     = (uint16_t)k_wk_root_cap,
-                                         .gap         = 0,
-                                         .pad         = 0,
-                                         .axis        = k_ra_widget_axis_col,
-                                         .reserved    = 0U};
+static ra8_widget_panel_t s_root_panel = {.children    = s_root_kids,
+                                          .box_scratch = s_root_scratch,
+                                          .count       = (uint16_t)k_wk_root_n,
+                                          .box_cap     = (uint16_t)k_wk_root_cap,
+                                          .gap         = 0,
+                                          .pad         = 0,
+                                          .axis        = k_ra8_widget_axis_col,
+                                          .reserved    = 0U};
 
 /** @brief The root panel widget (composed each frame). */
-static ra_widget_t s_root;
+static ra8_widget_t s_root;
 /** @brief Live display handle once the GLCDC panel is up. */
 static display_handle_t* s_display = nullptr;
 /** @brief Live-loop tick used to alternate which button is tapped. */
@@ -303,7 +303,7 @@ static const uint8_t k_wk_msg_tail[]  = " flush=512x440 hint=fast PASS\r\n";
 /** @brief Emit a byte run on the board console. */
 static void wk_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print a fail banner and park forever in WFI. */
@@ -344,59 +344,59 @@ static uint32_t wk_framebuffer_hash(void)
  * ===========================================================================
  */
 
-static void wk_on_button_press(ra_widget_t* w)
+static void wk_on_button_press(ra8_widget_t* w)
 {
   (void)w;
-  (void)ra_widget_invalidate(&s_root_kids[k_wk_w_body], k_ra_widget_refresh_fast);
+  (void)ra8_widget_invalidate(&s_root_kids[k_wk_w_body], k_ra8_widget_refresh_fast);
 }
 
 /** @brief Assemble the nested widget tree; return false on a bind error. */
 static bool wk_build_tree(void)
 {
-  if (ra_widget_label_init(&s_root_kids[k_wk_w_title], &s_title) != k_ra_ok) {
+  if (ra8_widget_label_init(&s_root_kids[k_wk_w_title], &s_title) != k_ra8_ok) {
     return false;
   }
   s_root_kids[k_wk_w_title].fixed = (int16_t)k_wk_title_h;
-  if (ra_widget_label_init(&s_root_kids[k_wk_w_footer], &s_footer) != k_ra_ok) {
+  if (ra8_widget_label_init(&s_root_kids[k_wk_w_footer], &s_footer) != k_ra8_ok) {
     return false;
   }
   s_root_kids[k_wk_w_footer].fixed = (int16_t)k_wk_footer_h;
-  if (ra_widget_button_init(&s_body_kids[k_wk_w_btn_a], &s_btn_a) != k_ra_ok) {
+  if (ra8_widget_button_init(&s_body_kids[k_wk_w_btn_a], &s_btn_a) != k_ra8_ok) {
     return false;
   }
   s_body_kids[k_wk_w_btn_a].flex      = 1U;
   s_body_kids[k_wk_w_btn_a].action_id = (uint16_t)k_wk_act_a;
-  if (ra_widget_button_init(&s_body_kids[k_wk_w_btn_b], &s_btn_b) != k_ra_ok) {
+  if (ra8_widget_button_init(&s_body_kids[k_wk_w_btn_b], &s_btn_b) != k_ra8_ok) {
     return false;
   }
   s_body_kids[k_wk_w_btn_b].flex      = 1U;
   s_body_kids[k_wk_w_btn_b].action_id = (uint16_t)k_wk_act_b;
-  if (ra_widget_panel_init(&s_root_kids[k_wk_w_body], &s_body_panel) != k_ra_ok) {
+  if (ra8_widget_panel_init(&s_root_kids[k_wk_w_body], &s_body_panel) != k_ra8_ok) {
     return false;
   }
   s_root_kids[k_wk_w_body].flex = 1U;
-  return (ra_widget_panel_init(&s_root, &s_root_panel) == k_ra_ok);
+  return (ra8_widget_panel_init(&s_root, &s_root_panel) == k_ra8_ok);
 }
 
 /** @brief Mark every root child dirty so the next compose repaints the tree. */
-static void wk_invalidate_all(ra_widget_refresh_t refresh)
+static void wk_invalidate_all(ra8_widget_refresh_t refresh)
 {
   for (uint16_t i = 0U; i < (uint16_t)k_wk_root_n; i++) {
-    (void)ra_widget_invalidate(&s_root_kids[i], refresh);
+    (void)ra8_widget_invalidate(&s_root_kids[i], refresh);
   }
 }
 
 /** @brief Compose the tree into the framebuffer; report the flush rect. */
-static ra_err_t wk_compose(ra_ui_rect_t* dmg, ra_widget_refresh_t* hint, uint16_t* dirty)
+static ra8_err_t wk_compose(ra8_ui_rect_t* dmg, ra8_widget_refresh_t* hint, uint16_t* dirty)
 {
-  const ra_ui_rect_t frame = {.x = 0, .y = 0, .w = (int32_t)k_wk_fb_w, .h = (int32_t)k_wk_fb_h};
-  return ra_widget_panel_compose(&s_root, &frame, dmg, hint, dirty);
+  const ra8_ui_rect_t frame = {.x = 0, .y = 0, .w = (int32_t)k_wk_fb_w, .h = (int32_t)k_wk_fb_h};
+  return ra8_widget_panel_compose(&s_root, &frame, dmg, hint, dirty);
 }
 
 /** @brief Route a synthetic touch through the root panel to a leaf widget. */
 static bool wk_route_touch(int32_t x, int32_t y)
 {
-  const ra_widget_event_t ev = {.kind = k_ra_widget_ev_touch, .x = x, .y = y};
+  const ra8_widget_event_t ev = {.kind = k_ra8_widget_ev_touch, .x = x, .y = y};
   if (s_root.vt == nullptr) {
     return false;
   }
@@ -413,47 +413,48 @@ static bool wk_route_touch(int32_t x, int32_t y)
 
 /** @brief Display PAL config: GLCDC LCD backend bound to the SRAM framebuffer. */
 static const display_cfg_t k_wk_display_cfg = {
-  .iface             = &k_display_backend_lcd_ra_glcdc,
+  .iface             = &k_display_backend_lcd_ra8_glcdc,
   .framebuffer       = s_framebuffer,
   .framebuffer_bytes = sizeof(s_framebuffer),
   .width_px          = (uint16_t)k_wk_fb_w,
   .height_px         = (uint16_t)k_wk_fb_h,
   .pixfmt            = k_display_pixfmt_rgb565,
-  .panel_timing      = &k_ra_panel_ek_ra8d2_timing,
+  .panel_timing      = &k_ra8_panel_ek_ra8d2_timing,
 };
 
-/** @brief Bring up the GLCDC panel and bind ra_gfx to its framebuffer. */
+/** @brief Bring up the GLCDC panel and bind ra8_gfx to its framebuffer. */
 static bool wk_panel_up(void)
 {
-  if (display_init(&k_wk_display_cfg, &s_display) != k_ra_ok) {
+  if (display_init(&k_wk_display_cfg, &s_display) != k_ra8_ok) {
     return false;
   }
   if (s_display == nullptr) {
     return false;
   }
   display_fb_t fb = {};
-  if (display_get_framebuffer(s_display, &fb) != k_ra_ok) {
+  if (display_get_framebuffer(s_display, &fb) != k_ra8_ok) {
     return false;
   }
   if (fb.pixels != (void*)s_framebuffer) {
     return false;
   }
-  return (
-    ra_gfx_init(s_framebuffer, (uint16_t)k_wk_fb_w, (uint16_t)k_wk_fb_h, k_ra_gfx_format_rgb565) ==
-    k_ra_ok);
+  return (ra8_gfx_init(s_framebuffer,
+                       (uint16_t)k_wk_fb_w,
+                       (uint16_t)k_wk_fb_h,
+                       k_ra8_gfx_format_rgb565) == k_ra8_ok);
 }
 
 /** @brief Map a widget refresh hint to the display PAL refresh hint. */
-static display_refresh_hint_t wk_map_hint(ra_widget_refresh_t hint)
+static display_refresh_hint_t wk_map_hint(ra8_widget_refresh_t hint)
 {
-  if (hint == k_ra_widget_refresh_fast) {
+  if (hint == k_ra8_widget_refresh_fast) {
     return k_display_refresh_fast;
   }
   return k_display_refresh_quality;
 }
 
 /** @brief Flush only @p dmg to the panel with the mapped refresh hint. */
-static void wk_flush_rect(const ra_ui_rect_t* dmg, ra_widget_refresh_t hint)
+static void wk_flush_rect(const ra8_ui_rect_t* dmg, ra8_widget_refresh_t hint)
 {
   if (s_display == nullptr) {
     return;
@@ -479,12 +480,12 @@ static void wk_flush_rect(const ra_ui_rect_t* dmg, ra_widget_refresh_t hint)
 /** @brief Assert the full compose: clear, 3 dirty, full-frame quality. */
 static bool wk_check_full(uint32_t* out_crc)
 {
-  (void)ra_gfx_clear((uint32_t)k_wk_col_clear);
-  wk_invalidate_all(k_ra_widget_refresh_quality);
-  ra_ui_rect_t        dmg  = {};
-  ra_widget_refresh_t hint = k_ra_widget_refresh_none;
-  uint16_t            nd   = 0U;
-  if (wk_compose(&dmg, &hint, &nd) != k_ra_ok) {
+  (void)ra8_gfx_clear((uint32_t)k_wk_col_clear);
+  wk_invalidate_all(k_ra8_widget_refresh_quality);
+  ra8_ui_rect_t        dmg  = {};
+  ra8_widget_refresh_t hint = k_ra8_widget_refresh_none;
+  uint16_t             nd   = 0U;
+  if (wk_compose(&dmg, &hint, &nd) != k_ra8_ok) {
     return false;
   }
   if (nd != (uint16_t)k_wk_root_n) {
@@ -496,7 +497,7 @@ static bool wk_check_full(uint32_t* out_crc)
   if (dmg.h != (int32_t)k_wk_fb_h) {
     return false;
   }
-  if (hint != k_ra_widget_refresh_quality) {
+  if (hint != k_ra8_widget_refresh_quality) {
     return false;
   }
   *out_crc = wk_framebuffer_hash();
@@ -518,10 +519,10 @@ static bool wk_check_press(void)
 /** @brief Assert the partial compose: body-only damage, fast hint. */
 static bool wk_check_partial(uint32_t* out_crc)
 {
-  ra_ui_rect_t        dmg  = {};
-  ra_widget_refresh_t hint = k_ra_widget_refresh_none;
-  uint16_t            nd   = 0U;
-  if (wk_compose(&dmg, &hint, &nd) != k_ra_ok) {
+  ra8_ui_rect_t        dmg  = {};
+  ra8_widget_refresh_t hint = k_ra8_widget_refresh_none;
+  uint16_t             nd   = 0U;
+  if (wk_compose(&dmg, &hint, &nd) != k_ra8_ok) {
     return false;
   }
   if (nd != 1U) {
@@ -533,7 +534,7 @@ static bool wk_check_partial(uint32_t* out_crc)
   if (dmg.h != (int32_t)k_wk_body_h) {
     return false;
   }
-  if (hint != k_ra_widget_refresh_fast) {
+  if (hint != k_ra8_widget_refresh_fast) {
     return false;
   }
   *out_crc = wk_framebuffer_hash();
@@ -564,16 +565,16 @@ static bool wk_selfcheck(uint32_t* crc0, uint32_t* crc1)
 static void wk_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     wk_fail_halt(k_wk_msg_finit, (uint32_t)sizeof(k_wk_msg_finit) - 1U);
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     wk_fail_halt(k_wk_msg_finit, (uint32_t)sizeof(k_wk_msg_finit) - 1U);
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     wk_fail_halt(k_wk_msg_finit, (uint32_t)sizeof(k_wk_msg_finit) - 1U);
   }
-  if (ra_board_uart_console_init((uint32_t)k_wk_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_wk_uart_baud) != k_ra8_ok) {
     wk_fail_halt(k_wk_msg_finit, (uint32_t)sizeof(k_wk_msg_finit) - 1U);
   }
 }
@@ -594,10 +595,10 @@ static void wk_tick_live(void)
   const int32_t tx = ((s_tick & 1U) == 0U) ? (int32_t)k_wk_touch_ax : (int32_t)k_wk_touch_bx;
   s_tick++;
   (void)wk_route_touch(tx, (int32_t)k_wk_touch_y);
-  ra_ui_rect_t        dmg  = {};
-  ra_widget_refresh_t hint = k_ra_widget_refresh_none;
-  uint16_t            nd   = 0U;
-  if (wk_compose(&dmg, &hint, &nd) == k_ra_ok) {
+  ra8_ui_rect_t        dmg  = {};
+  ra8_widget_refresh_t hint = k_ra8_widget_refresh_none;
+  uint16_t             nd   = 0U;
+  if (wk_compose(&dmg, &hint, &nd) == k_ra8_ok) {
     wk_flush_rect(&dmg, hint);
   }
 }
@@ -619,7 +620,7 @@ static void wk_tick_live(void)
 int32_t main(void)
 {
   wk_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   wk_print(k_wk_msg_boot, (uint32_t)sizeof(k_wk_msg_boot) - 1U);
 
   if (!wk_panel_up()) {
@@ -637,18 +638,18 @@ int32_t main(void)
   wk_print_banner(crc0, crc1);
 
   /* Land on a clean full composite and show it live on the panel. */
-  (void)ra_gfx_clear((uint32_t)k_wk_col_clear);
-  wk_invalidate_all(k_ra_widget_refresh_quality);
-  ra_ui_rect_t        dmg  = {};
-  ra_widget_refresh_t hint = k_ra_widget_refresh_none;
-  uint16_t            nd   = 0U;
-  if (wk_compose(&dmg, &hint, &nd) == k_ra_ok) {
+  (void)ra8_gfx_clear((uint32_t)k_wk_col_clear);
+  wk_invalidate_all(k_ra8_widget_refresh_quality);
+  ra8_ui_rect_t        dmg  = {};
+  ra8_widget_refresh_t hint = k_ra8_widget_refresh_none;
+  uint16_t             nd   = 0U;
+  if (wk_compose(&dmg, &hint, &nd) == k_ra8_ok) {
     wk_flush_rect(&dmg, hint);
   }
 
   while (1) {
     wk_tick_live();
-    ra_delay_ms((uint32_t)k_wk_frame_ms);
+    ra8_delay_ms((uint32_t)k_wk_frame_ms);
   }
 }
 #pragma GCC diagnostic pop

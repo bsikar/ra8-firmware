@@ -6,13 +6,13 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Brings the chip up via ``ra_cgc_init()`` (XTAL -> PLL1 -> CPUCLK0 =
+ * Brings the chip up via ``ra8_cgc_init()`` (XTAL -> PLL1 -> CPUCLK0 =
  * 1 GHz, PCLKA = 125 MHz), routes the four USB-FS pins per the
  * EK-RA8D2 v1 User's Manual to the on-board USB-FS receptacle, hands
  * control to ThreadX, and brings the CDC ACM device class up via
  * Eclipse USBX (``_ux_device_class_cdc_acm_initialize``). The class
- * sits on top of the project's ``port/usbx/ux_dcd_ra_usb`` bridge to
- * the hand-written ``ra_usb`` register-level driver (HUM Ch. 36
+ * sits on top of the project's ``port/usbx/ux_dcd_ra8_usb`` bridge to
+ * the hand-written ``ra8_usb`` register-level driver (HUM Ch. 36
  * USBFS, sec. 36.2.x for SYSCFG / DCPCFG / DCPMAXP / PIPECFG /
  * CFIFO). The host actually enumerates the device because USBX's
  * chapter-9 state machine answers SETUP packets through the DCD
@@ -26,26 +26,26 @@
  *
  * | Net           | Pin    | PFS PSEL                |
  * |---------------|--------|-------------------------|
- * | USB_FS_VBUS   | P4_07  | k_ra_psel_usb_fs (0x13) |
- * | USB_FS_VBUSEN | P5_00  | k_ra_psel_usb_fs (0x13) |
- * | USB_FS_DP     | P8_14  | k_ra_psel_usb_fs (0x13) |
- * | USB_FS_DM     | P8_15  | k_ra_psel_usb_fs (0x13) |
+ * | USB_FS_VBUS   | P4_07  | k_ra8_psel_usb_fs (0x13) |
+ * | USB_FS_VBUSEN | P5_00  | k_ra8_psel_usb_fs (0x13) |
+ * | USB_FS_DP     | P8_14  | k_ra8_psel_usb_fs (0x13) |
+ * | USB_FS_DM     | P8_15  | k_ra8_psel_usb_fs (0x13) |
  *
  * ## Sequence
  *
- *   1. ``ra_cgc_init()`` -- standard FSP-quickstart clock tree.
- *   2. ``ra_time_init`` for back-off delays.
- *   3. ``ra_pfs_route_peripheral`` for the four USB-FS pins.
- *   4. ``ra_board_led_init(k_ra_board_led1)`` for visual heartbeat.
+ *   1. ``ra8_cgc_init()`` -- standard FSP-quickstart clock tree.
+ *   2. ``ra8_time_init`` for back-off delays.
+ *   3. ``ra8_pfs_route_peripheral`` for the four USB-FS pins.
+ *   4. ``ra8_board_led_init(k_ra8_board_led1)`` for visual heartbeat.
  *   5. ThreadX ``tx_kernel_enter()`` -- spins the scheduler.
  *   6. ``tx_application_define`` -- spawns one worker thread that:
  *        - Allocates USBX memory pool and calls
  *          ``_ux_system_initialize`` + ``_ux_device_stack_initialize``.
  *        - Calls ``_ux_device_stack_class_register`` for the CDC-ACM
  *          class.
- *        - Calls ``ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs)`` to
+ *        - Calls ``ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs)`` to
  *          plug our DCD bridge into USBX.
- *        - Calls ``ra_usb_device_attach(true)`` so the host begins
+ *        - Calls ``ra8_usb_device_attach(true)`` so the host begins
  *          enumeration.
  *        - Drops into the echo loop.
  *
@@ -65,16 +65,16 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gpio_constants.h"
-#include "ra_isr.h"
-#include "ra_log.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_time.h"
-#include "ra_usb.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_isr.h"
+#include "ra8_log.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_time.h"
+#include "ra8_usb.h"
 
 /**
  * @var s_demo_tag
@@ -84,18 +84,18 @@
  */
 static const char* s_demo_tag = "USBCDC";
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 #include "ux_api.h"
-#include "ux_dcd_ra_usb.h"
+#include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_cdc_acm.h"
 #include "ux_device_stack.h"
 #include "ux_system.h"
 
-/* SysTick handler lives in libs/ra_core/src/ra_time.c -- the project's
+/* SysTick handler lives in libs/ra8_core/src/ra8_time.c -- the project's
  * shared weak SysTick_Handler dispatches into ThreadX (via a weak
  * extern to `_tx_timer_interrupt`) AND re-arms the USB storm-guard
- * NVIC line (via a weak extern to `ux_dcd_ra_usb_irq_reenable`), so
+ * NVIC line (via a weak extern to `ux_dcd_ra8_usb_irq_reenable`), so
  * no per-app override is needed. Closes Issue #8. */
 #endif
 
@@ -104,19 +104,19 @@ static const char* s_demo_tag = "USBCDC";
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief USB-FS pin identifiers, packed ``ra_port_pin_t`` (port << 8 | pin).
+ * @brief USB-FS pin identifiers, packed ``ra8_port_pin_t`` (port << 8 | pin).
  * @details Built as a runtime cast so clang-tidy's enum-range check
  * is happy with the otherwise out-of-enum value.
  * @since 0.1.0
  */
-static const ra_port_pin_t k_demo_pin_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
-static const ra_port_pin_t k_demo_pin_vbusen =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0);
-static const ra_port_pin_t k_demo_pin_dp =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14);
-static const ra_port_pin_t k_demo_pin_dm =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
+static const ra8_port_pin_t k_demo_pin_vbus =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_7);
+static const ra8_port_pin_t k_demo_pin_vbusen =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_5 << 8) | (uint16_t)k_ra8_pin_0);
+static const ra8_port_pin_t k_demo_pin_dp =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_14);
+static const ra8_port_pin_t k_demo_pin_dm =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_15);
 
 /* -------------------------------------------------------------------------- */
 /* Tunables */
@@ -133,7 +133,7 @@ typedef enum : uint32_t {
   k_demo_idle_ticks      = 1U,     /**< Idle back-off when no class active.              */
 } demo_config_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
 /* ThreadX worker + USBX pool storage */
@@ -451,7 +451,7 @@ static VOID demo_cdc_activate(VOID* cdc_instance)
    * worker-thread _read/_write loop. demo_worker's _read/_write call
    * is suppressed under the matching s_dcd_auto_echo_enable check so
    * the two paths cannot race on the bulk-OUT pipe. */
-  ux_dcd_ra_usb_auto_echo_enable(2U, 1U);
+  ux_dcd_ra8_usb_auto_echo_enable(2U, 1U);
 }
 
 /**
@@ -593,7 +593,7 @@ static void demo_echo_iter(UCHAR* buf, ULONG cap)
   }
   s_demo_diag.loop_post_write++;
   for (ULONG i = 0UL; i < n; i++) {
-    (void)ra_board_led_toggle(k_ra_board_led1);
+    (void)ra8_board_led_toggle(k_ra8_board_led1);
   }
 }
 
@@ -618,10 +618,10 @@ static VOID demo_worker(ULONG arg)
   if (demo_cdc_class_register() != UX_SUCCESS) {
     return;
   }
-  if (ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs) != k_ra_ok) {
+  if (ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs) != k_ra8_ok) {
     return;
   }
-  if (ra_usb_device_attach(k_ra_usb_speed_fs, true) != k_ra_ok) {
+  if (ra8_usb_device_attach(k_ra8_usb_speed_fs, true) != k_ra8_ok) {
     return;
   }
 
@@ -675,7 +675,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
 /* Startup helpers */
@@ -700,8 +700,8 @@ static void demo_panic_halt(void)
 /**
  * @brief Route the four USB-FS pins to the USBFS controller.
  *
- * @return Error from the first failing route call, or k_ra_ok.
- * @retval k_ra_ok All four pins routed.
+ * @return Error from the first failing route call, or k_ra8_ok.
+ * @retval k_ra8_ok All four pins routed.
  *
  * @pre IOPORT module is reachable.
  * @pre Single-threaded init context.
@@ -710,10 +710,10 @@ static void demo_panic_halt(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t demo_pins_init(void)
+[[nodiscard]] static ra8_err_t demo_pins_init(void)
 {
-  ra_err_t err = ra_pfs_route_peripheral(k_demo_pin_vbus, k_ra_psel_usb_fs, "usb_cdc.vbus");
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_pfs_route_peripheral(k_demo_pin_vbus, k_ra8_psel_usb_fs, "usb_cdc.vbus");
+  if (err != k_ra8_ok) {
     return err;
   }
   /* P500 is the EK-RA8D2 USB-FS role-select GPIO per the v1 User's
@@ -724,15 +724,15 @@ static void demo_panic_halt(void)
    * in HOST mode and prevents enumeration. For this device-mode demo
    * we instead claim P500 as a GPIO output and drive it LOW so the
    * board's role-select circuitry presents a USB device to the host. */
-  err = ra_gpio_output_init(k_demo_pin_vbusen, k_ra_level_low);
-  if (err != k_ra_ok) {
+  err = ra8_gpio_output_init(k_demo_pin_vbusen, k_ra8_level_low);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_pfs_route_peripheral(k_demo_pin_dp, k_ra_psel_usb_fs, "usb_cdc.dp");
-  if (err != k_ra_ok) {
+  err = ra8_pfs_route_peripheral(k_demo_pin_dp, k_ra8_psel_usb_fs, "usb_cdc.dp");
+  if (err != k_ra8_ok) {
     return err;
   }
-  return ra_pfs_route_peripheral(k_demo_pin_dm, k_ra_psel_usb_fs, "usb_cdc.dm");
+  return ra8_pfs_route_peripheral(k_demo_pin_dm, k_ra8_psel_usb_fs, "usb_cdc.dm");
 }
 
 #pragma GCC diagnostic push
@@ -754,7 +754,7 @@ int32_t main(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     demo_panic_halt();
   }
 
@@ -765,29 +765,29 @@ int32_t main(void)
    * step 1). Without this the SIE never sees a 48 MHz clock and the
    * host never enumerates the device. The init-order audit
    * (scripts/utils/audit_init_order.py) requires CGC bring-up to
-   * land BEFORE peripheral inits like ra_log_init, so the RTT
+   * land BEFORE peripheral inits like ra8_log_init, so the RTT
    * heart-beat moves down to right after the time/board bring-up. */
-  if (ra_cgc_usbfs_clock_enable() != k_ra_ok) {
+  if (ra8_cgc_usbfs_clock_enable() != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (demo_pins_init() != k_ra_ok) {
+  if (demo_pins_init() != k_ra8_ok) {
     demo_panic_halt();
   }
-  ra_log_init();
-  ra_log_info(s_demo_tag, "usb_cdc_echo boot, CGC PLL2 enable OK");
+  ra8_log_init();
+  ra8_log_info(s_demo_tag, "usb_cdc_echo boot, CGC PLL2 enable OK");
 
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   /* tx_kernel_enter is __noreturn -- it never comes back. */
   tx_kernel_enter();
 #endif

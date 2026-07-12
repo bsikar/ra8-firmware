@@ -66,7 +66,7 @@ typedef enum : uint32_t {
   k_cdc_byte_mask     = 0xFFU,       /**< Byte mask.                         */
 } cdc_geom_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 
 /**
@@ -84,8 +84,8 @@ typedef enum : uint32_t {
  * @post On success the pass counter and LED2 are latched.
  * @post Retries forever otherwise; each failure prints its step.
  *
- * @note Blocking calls; ms timeouts via ra_time.
+ * @note Blocking calls; ms timeouts via ra8_time.
  * @since 0.1.0
  */
 VOID cdc_host_worker(ULONG arg);
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

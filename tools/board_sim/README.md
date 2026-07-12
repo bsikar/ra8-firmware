@@ -38,7 +38,7 @@ cd tools/board_sim && cmake -B build -S . && cmake --build build -j
 ./build/board_sim <firmware.elf> --sd <image>         # attach a pre-built FAT image as the microSD
 ./build/board_sim <firmware.elf> --sd-new 64:fat32    # create + attach a blank 64 MiB FAT32 card
 ./build/board_sim <firmware.elf> --sd-new 16 --save-sd out.img  # blank card, then dump it after
-./build/board_sim <firmware.elf> --trace-sym ra_usb_device_attach   # log each entry to a function
+./build/board_sim <firmware.elf> --trace-sym ra8_usb_device_attach   # log each entry to a function
 ./build/board_sim <firmware.elf> --device ra8p1       # emulate the RA8P1 (adds the Ethos-U55 NPU window)
 ```
 
@@ -79,7 +79,7 @@ The microSD card is set up at launch with no pre-built image required:
   The backing store is a **sparse mmap**, so a 30 GiB card costs ~kilobytes of
   host RAM (only the sectors the formatter + firmware actually touch are
   materialised -- a full 30 GiB run measured ~18 MiB RSS). The BPB is complete
-  enough for a host `fsck_msdos` and the firmware's `ra_fs` mount alike, and the
+  enough for a host `fsck_msdos` and the firmware's `ra8_fs` mount alike, and the
   modelled card's CSD reports the chosen capacity (so the firmware sees the real
   size -- `sd: card=30720 MB` for `--sd-new 30g`). `--sd <image>` still attaches a
   pre-built image when you need specific contents.
@@ -95,8 +95,8 @@ The microSD card is set up at launch with no pre-built image required:
 `--trace-sym <name>` is a debugging instrument: it arms a code hook on a symbol's
 entry address and logs every time control reaches it (with the calling LR), so a
 multi-stage bring-up that stalls is visible without a full instruction trace --
-e.g. tracing the USBX device worker (`ux_dcd_ra_usb_initialize`,
-`ra_usb_device_attach`, the USBX `_ux_*` calls) pinpoints exactly which init step
+e.g. tracing the USBX device worker (`ux_dcd_ra8_usb_initialize`,
+`ra8_usb_device_attach`, the USBX `_ux_*` calls) pinpoints exactly which init step
 a stuck enumeration never reaches. Pair it with `--dump-sym <global>` (print a
 32-bit global after the run) and `--stop-sym <global> <N>` (end the run the
 instant a 32-bit global reaches `N` -- the counter analog of
@@ -169,7 +169,7 @@ there is no separate native UI tool.
   CDC-ACM firmware. The host watches SYSCFG.DPRPU, issues a bus reset, then walks
   GET_DESCRIPTOR / SET_ADDRESS / SET_CONFIGURATION + the CDC line requests --
   raising the USBFS interrupt through the same ICU->NVIC path so the genuine ISR
-  (`ra_usb_dispatch` -> `ux_dcd_ra_usb_irq`) answers each SETUP, clocking the
+  (`ra8_usb_dispatch` -> `ux_dcd_ra8_usb_irq`) answers each SETUP, clocking the
   device's descriptor responses out of the CFIFO until USBX's CDC-ACM activate
   callback fires. `--usb-in <str>` then drives the bulk OUT pipe and reads the
   device's echoed bulk IN, so the CDC data path is exercised end-to-end.
@@ -178,7 +178,7 @@ there is no separate native UI tool.
   edge) poll. This is currently the *only* register needing bespoke behaviour.
 - **Time**: bare-metal delays are SysTick-driven. Between emulation chunks the
   installed `SysTick_Handler` is cooperatively invoked as a function so the tick
-  counter advances and `ra_delay_ms` returns.
+  counter advances and `ra8_delay_ms` returns.
 - **Display**: the current frame is read from emulated GLCDC state each present
   -- the BG_BGC background colour, with the GR1 graphics-layer framebuffer
   (decoded from FLM2/FLM3/FLM5/FLM6) blitted over it out of emulated RAM.
@@ -269,34 +269,34 @@ only if you exceed the registry capacity.
   from regressing again.
 - Proven on `usb_host_keyboard`: the inverse path -- the firmware as USB **host**.
   The USBHS host controller (`0x40351000`) is unmodelled, so board_sim seams the
-  first-party `ra_usb_host_*` primitives to a **virtual HID boot keyboard** (the
-  same function-seam it uses for `ra_eth_*`, since the register model "cannot
+  first-party `ra8_usb_host_*` primitives to a **virtual HID boot keyboard** (the
+  same function-seam it uses for `ra8_eth_*`, since the register model "cannot
   satisfy" that sequence either). The firmware's real host stack enumerates the
   virtual device (device + config + HID descriptors -> SET_ADDRESS ->
   SET_CONFIGURATION), opens the interrupt-IN pipe, reads the boot-keyboard input
   reports and decodes the keycodes -- `ra8d2 hid: host decoded keys "RA8D2" ...
   USB HOST KEYBOARD PASS`.
 - Proven on `usb_host_msc_browse`: the host as USB **mass-storage host**. board_sim
-  seams the higher-level `ra_usb_hmsc_*` class API (one level above BOT/SCSI) to a
+  seams the higher-level `ra8_usb_hmsc_*` class API (one level above BOT/SCSI) to a
   **virtual read-only FAT16 disk** whose single file `MRAM.BIN` is the live 1 MiB
   MRAM window -- the boot/FAT/root sectors are a byte-exact replica of the device's
   synthesis, and the data region is read straight out of emulated MRAM, so it
   matches the host's own MRAM compare byte-for-byte. The firmware's real host stack
-  enumerates it, `READ_CAPACITY`s, mounts the FAT16 over `ra_fs`, browses the root
+  enumerates it, `READ_CAPACITY`s, mounts the FAT16 over `ra8_fs`, browses the root
   directory (finds `MRAM.BIN`, 1 MiB), content-verifies all 1 048 576 bytes against
   MRAM, and confirms a `WRITE(10)` is rejected (read-only) -- `ra8d2 host: USB HOST
   MSC BROWSE PASS`.
 - Proven on `usb_host_file_ops`: the same MSC disk made **read-write**. When the
   firmware links `fileops_backend_write` the virtual disk accepts `WRITE(10)` into
   a small sector overlay (a host file touches only a handful of FAT / root / data
-  sectors), so the host's `ra_fs` can create, read back, rename, and unlink a
+  sectors), so the host's `ra8_fs` can create, read back, rename, and unlink a
   file: the app runs its full nine-step ladder (write `USBTEST.TXT`, verify the
   payload, rename to `USBDONE.TXT`, unlink) and prints `ra8d2 fileops: ALL FILE
   OPS PASSED`. All three host apps are gated: `scripts/board_sim_smoke.sh
   usb_host_keyboard usb_host_msc_browse usb_host_file_ops` asserts each PASS
   banner. The seam picks the virtual device's class + writability from the
-  firmware's linked host stack (`ra_usb_hmsc_*` -> disk, `fileops_backend_write`
-  -> writable, else `ra_usb_host_*` -> keyboard) and is symbol-gated, so
+  firmware's linked host stack (`ra8_usb_hmsc_*` -> disk, `fileops_backend_write`
+  -> writable, else `ra8_usb_host_*` -> keyboard) and is symbol-gated, so
   device-mode apps are entirely unaffected.
 - ThreadX apps run on the real PendSV/SysTick-scheduled exception path now; the
   USBX/CDC stacks all execute as the actual cross-compiled `.elf`.
@@ -319,7 +319,7 @@ their expected output.** The three that do not are one honest category:
 
 - **A real firmware bug the emulator found (3):** `agt_periodic`,
   `agt_cascade_demo`, `agt_pulse_demo` fault after exactly 255 timer periods.
-  Each re-arm leaks one `ra_mstp` reference and `ra_mstp_enable` saturates a
+  Each re-arm leaks one `ra8_mstp` reference and `ra8_mstp_enable` saturates a
   `uint8_t` refcount at 255; the short HIL run never reaches it, the emulator's
   longer run does. The emulator is faithful here -- it ran the real firmware long
   enough to expose the leak. Tracked in issue #68.

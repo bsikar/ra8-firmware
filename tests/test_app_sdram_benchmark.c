@@ -4,7 +4,7 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/sdram_benchmark/main.c bring-up:
- * ra_sdramc_init -> get_status. The mbps helper math is exercised
+ * ra8_sdramc_init -> get_status. The mbps helper math is exercised
  * directly so MC/DC vectors land on the divide-by-zero clamp.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -14,10 +14,10 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
-#include "ra_pin_validator.h"
-#include "ra_sdramc.h"
-#include "ra_sim_mmap.h"
+#include "ra8_err.h"
+#include "ra8_pin_validator.h"
+#include "ra8_sdramc.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -26,8 +26,8 @@ typedef enum : uint32_t {
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
-  ra_pin_validator_reset();
+  ra8_sim_mmap_reset();
+  ra8_pin_validator_reset();
 }
 
 /** @brief Copy of the app helper to exercise the divide-by-zero clamp. */
@@ -38,10 +38,10 @@ static uint32_t app_mbps(uint32_t bytes, uint32_t ms)
 }
 
 /**
- * @brief ra_sdramc_init succeeds in simulator mode.
+ * @brief ra8_sdramc_init succeeds in simulator mode.
  *
  * @par MC/DC:
- * Decision: ``ra_sdramc_init != ok``. One atomic condition x 2
+ * Decision: ``ra8_sdramc_init != ok``. One atomic condition x 2
  * vectors -- ok (this) + status NULL-out below covers the get_status
  * NULL guard.
  */
@@ -49,12 +49,12 @@ static void test_sdram_app_init_ok(void)
 {
   reset_world();
   TEST_BEGIN("sdram_benchmark: init ok");
-  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdramc_init());
   TEST_END("sdram_benchmark: init ok");
 }
 
 /**
- * @brief ra_sdramc_get_status with NULL is rejected.
+ * @brief ra8_sdramc_get_status with NULL is rejected.
  *
  * @par MC/DC:
  * Decision: ``out_enabled == nullptr``. One atomic condition x 2
@@ -64,8 +64,8 @@ static void test_sdram_app_status_null_rejected(void)
 {
   reset_world();
   TEST_BEGIN("sdram_benchmark: get_status NULL rejected");
-  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_init());
-  TEST_ASSERT(ra_sdramc_get_status(nullptr) != k_ra_ok);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdramc_init());
+  TEST_ASSERT(ra8_sdramc_get_status(nullptr) != k_ra8_ok);
   TEST_END("sdram_benchmark: get_status NULL rejected");
 }
 
@@ -80,9 +80,9 @@ static void test_sdram_app_status_ok(void)
 {
   reset_world();
   TEST_BEGIN("sdram_benchmark: get_status ok");
-  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdramc_init());
   uint8_t enabled = 0U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_get_status(&enabled));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdramc_get_status(&enabled));
   TEST_END("sdram_benchmark: get_status ok");
 }
 

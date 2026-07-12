@@ -17,8 +17,8 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
 #include "usb_selftest_common.h"
 
 static uint8_t selftest_nibble_to_hex(uint32_t nibble)
@@ -67,8 +67,8 @@ static uint32_t selftest_str_len(const char* text)
  * @param[in] data Buffer to send.
  * @param[in] len  Byte count.
  *
- * @return ra_err_t passthrough from `ra_board_uart_console_write`.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t passthrough from `ra8_board_uart_console_write`.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre @p data is non-NULL; SCI8 init already ran.
  * @pre @p len excludes any NUL terminator.
@@ -78,9 +78,9 @@ static uint32_t selftest_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t selftest_sci_write(const uint8_t* data, uint32_t len)
+[[nodiscard]] static ra8_err_t selftest_sci_write(const uint8_t* data, uint32_t len)
 {
-  return ra_board_uart_console_write(data, (size_t)len);
+  return ra8_board_uart_console_write(data, (size_t)len);
 }
 
 /**
@@ -90,8 +90,8 @@ static uint32_t selftest_str_len(const char* text)
  *
  * @param[in] text String to print (CR/LF included by the caller).
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran; @p text is non-NULL.
  * @pre @p text is NUL-terminated within ::k_selftest_print_cap bytes.
@@ -101,7 +101,7 @@ static uint32_t selftest_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t selftest_print(const char* text)
+[[nodiscard]] ra8_err_t selftest_print(const char* text)
 {
   return selftest_sci_write((const uint8_t*)text, selftest_str_len(text));
 }
@@ -113,8 +113,8 @@ static uint32_t selftest_str_len(const char* text)
  *
  * @param[in] value Value to print.
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
  * @pre None beyond console readiness.
@@ -124,7 +124,7 @@ static uint32_t selftest_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t selftest_print_dec(uint32_t value)
+[[nodiscard]] ra8_err_t selftest_print_dec(uint32_t value)
 {
   uint8_t  scratch[k_selftest_dec_chars_u32] = {};
   uint8_t  out[k_selftest_dec_chars_u32]     = {};
@@ -156,8 +156,8 @@ static uint32_t selftest_str_len(const char* text)
  * @param[in] value  Value to print.
  * @param[in] digits Hex digit count (4 for u16, 8 for u32).
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p digits is at most ::k_selftest_hex_chars_u32.
@@ -167,7 +167,7 @@ static uint32_t selftest_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t selftest_print_hex(uint32_t value, uint8_t digits)
+[[nodiscard]] ra8_err_t selftest_print_hex(uint32_t value, uint8_t digits)
 {
   uint8_t out[k_selftest_hex_chars_u32] = {};
   uint8_t width                         = digits;
@@ -190,8 +190,8 @@ static uint32_t selftest_str_len(const char* text)
  * @param[in] what Short description of the failed step.
  * @param[in] err  Error code returned by the step.
  *
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The diagnostic line is queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok The diagnostic line is queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p what is NUL-terminated within the print cap.
@@ -201,22 +201,22 @@ static uint32_t selftest_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t selftest_print_fail(const char* what, ra_err_t err)
+[[nodiscard]] ra8_err_t selftest_print_fail(const char* what, ra8_err_t err)
 {
-  ra_err_t e = selftest_print("ra8d2 selftest: FAIL ");
-  if (e != k_ra_ok) {
+  ra8_err_t e = selftest_print("ra8d2 selftest: FAIL ");
+  if (e != k_ra8_ok) {
     return e;
   }
   e = selftest_print(what);
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   e = selftest_print(" err=0x");
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   e = selftest_print_hex((uint32_t)err, (uint8_t)k_selftest_hex_chars_u32);
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   return selftest_print("\r\n");

@@ -6,19 +6,19 @@
  * Mirrors the multi-module integration-test pattern. The
  * production app at examples/ek_ra8d2/usb_msc_device/main.c brings up
  * CGC, routes the four USB-FS pins, hands control to ThreadX, and lets
- * USBX's Mass-Storage class drive the ra_usb_pal device-side
+ * USBX's Mass-Storage class drive the ra8_usb_pal device-side
  * controller against a 4 KiB RAM-disk (8 x 512-byte blocks). Neither
  * USBX nor ThreadX is in the host test build, so this test exercises
- * the same module surface the app calls (PFS routing + ra_usb_pal
+ * the same module surface the app calls (PFS routing + ra8_usb_pal
  * init/attach/ep_open with two bulk endpoints) plus the SCSI bounds-
  * check semantics of the read/write callbacks.
  *
  * Modeled flow:
- *   1. ra_pfs_route_peripheral for the four USB-FS pins.
- *   2. ra_board_led_init(LED1).
- *   3. ra_usb_pal_init(speed=fs).
- *   4. ra_usb_pal_attach(true).
- *   5. ra_usb_pal_ep_open(EP1 IN bulk + EP2 OUT bulk).
+ *   1. ra8_pfs_route_peripheral for the four USB-FS pins.
+ *   2. ra8_board_led_init(LED1).
+ *   3. ra8_usb_pal_init(speed=fs).
+ *   4. ra8_usb_pal_attach(true).
+ *   5. ra8_usb_pal_ep_open(EP1 IN bulk + EP2 OUT bulk).
  *   6. SCSI READ/WRITE bounds verified against the 8-block geometry.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -29,14 +29,14 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
-#include "ra_gpio_constants.h"
-#include "ra_pin_validator.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sim_mmap.h"
-#include "ra_usb_pal.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_pin_validator.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_sim_mmap.h"
+#include "ra8_usb_pal.h"
 #include "unity_minimal.h"
 
 /** @brief Per-test enums. */
@@ -49,12 +49,12 @@ typedef enum : uint16_t {
 } test_msc_const_t;
 
 /** @brief Pin map mirrors examples/ek_ra8d2/usb_msc_device/main.c. */
-static const ra_port_pin_t k_test_msc_pin_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
-static const ra_port_pin_t k_test_msc_pin_dp =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14);
-static const ra_port_pin_t k_test_msc_pin_dm =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
+static const ra8_port_pin_t k_test_msc_pin_vbus =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_7);
+static const ra8_port_pin_t k_test_msc_pin_dp =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_14);
+static const ra8_port_pin_t k_test_msc_pin_dm =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_15);
 
 /**
  * @brief Mock "RAM-disk" backing store -- mirrors the app's s_ramdisk.
@@ -65,9 +65,9 @@ static uint8_t s_test_msc_ramdisk[k_test_msc_block_count * k_test_msc_block_size
 /** @brief Per-test fixture reset. */
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
-  ra_pin_validator_reset();
-  (void)ra_usb_pal_deinit();
+  ra8_sim_mmap_reset();
+  ra8_pin_validator_reset();
+  (void)ra8_usb_pal_deinit();
   (void)memset(s_test_msc_ramdisk, 0, sizeof(s_test_msc_ramdisk));
 }
 
@@ -96,10 +96,12 @@ static void test_msc_pfs_routes_usbfs_pins(void)
 {
   reset_world();
   TEST_BEGIN("usb_msc_device: PFS routes USB-FS pins");
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_pfs_route_peripheral(k_test_msc_pin_vbus, k_ra_psel_usb_fs, "test.vbus"));
-  TEST_ASSERT_EQ(k_ra_ok, ra_pfs_route_peripheral(k_test_msc_pin_dp, k_ra_psel_usb_fs, "test.dp"));
-  TEST_ASSERT_EQ(k_ra_ok, ra_pfs_route_peripheral(k_test_msc_pin_dm, k_ra_psel_usb_fs, "test.dm"));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_pfs_route_peripheral(k_test_msc_pin_vbus, k_ra8_psel_usb_fs, "test.vbus"));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_pfs_route_peripheral(k_test_msc_pin_dp, k_ra8_psel_usb_fs, "test.dp"));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_pfs_route_peripheral(k_test_msc_pin_dm, k_ra8_psel_usb_fs, "test.dm"));
   TEST_END("usb_msc_device: PFS routes USB-FS pins");
 }
 
@@ -114,18 +116,18 @@ static void test_msc_open_bulk_endpoint_pair(void)
 {
   reset_world();
   TEST_BEGIN("usb_msc_device: open bulk EP1 IN + EP2 OUT");
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_usb_pal_ep_open((uint8_t)k_test_msc_ep_bulk_in,
-                                    k_ra_usb_pal_ep_dir_in,
-                                    k_ra_usb_pal_ep_type_bulk,
-                                    (uint16_t)k_test_msc_max_packet));
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_usb_pal_ep_open((uint8_t)k_test_msc_ep_bulk_out,
-                                    k_ra_usb_pal_ep_dir_out,
-                                    k_ra_usb_pal_ep_type_bulk,
-                                    (uint16_t)k_test_msc_max_packet));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_usb_pal_ep_open((uint8_t)k_test_msc_ep_bulk_in,
+                                     k_ra8_usb_pal_ep_dir_in,
+                                     k_ra8_usb_pal_ep_type_bulk,
+                                     (uint16_t)k_test_msc_max_packet));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_usb_pal_ep_open((uint8_t)k_test_msc_ep_bulk_out,
+                                     k_ra8_usb_pal_ep_dir_out,
+                                     k_ra8_usb_pal_ep_type_bulk,
+                                     (uint16_t)k_test_msc_max_packet));
   TEST_END("usb_msc_device: open bulk EP1 IN + EP2 OUT");
 }
 
@@ -176,14 +178,14 @@ static void test_msc_write_last_block_in_range(void)
 /**
  * @brief PFS route on out-of-range port is rejected.
  *
- * @par MC/DC: Failure-side vector for ``ra_pfs_route_peripheral != ok``.
+ * @par MC/DC: Failure-side vector for ``ra8_pfs_route_peripheral != ok``.
  */
 static void test_msc_pfs_route_invalid_pin_rejected(void)
 {
   reset_world();
   TEST_BEGIN("usb_msc_device: PFS rejects out-of-range port");
-  const ra_port_pin_t bad_pin = (ra_port_pin_t)(((uint16_t)0x0FU << 8) | (uint16_t)k_ra_pin_0);
-  TEST_ASSERT(ra_pfs_route_peripheral(bad_pin, k_ra_psel_usb_fs, "test.bad") != k_ra_ok);
+  const ra8_port_pin_t bad_pin = (ra8_port_pin_t)(((uint16_t)0x0FU << 8) | (uint16_t)k_ra8_pin_0);
+  TEST_ASSERT(ra8_pfs_route_peripheral(bad_pin, k_ra8_psel_usb_fs, "test.bad") != k_ra8_ok);
   TEST_END("usb_msc_device: PFS rejects out-of-range port");
 }
 
@@ -214,11 +216,11 @@ static void test_msc_ep_open_before_init_rejected(void)
 {
   reset_world();
   TEST_BEGIN("usb_msc_device: ep_open before init rejected");
-  ra_err_t err = ra_usb_pal_ep_open((uint8_t)k_test_msc_ep_bulk_in,
-                                    k_ra_usb_pal_ep_dir_in,
-                                    k_ra_usb_pal_ep_type_bulk,
-                                    (uint16_t)k_test_msc_max_packet);
-  TEST_ASSERT(err != k_ra_ok);
+  ra8_err_t err = ra8_usb_pal_ep_open((uint8_t)k_test_msc_ep_bulk_in,
+                                      k_ra8_usb_pal_ep_dir_in,
+                                      k_ra8_usb_pal_ep_type_bulk,
+                                      (uint16_t)k_test_msc_max_packet);
+  TEST_ASSERT(err != k_ra8_ok);
   TEST_END("usb_msc_device: ep_open before init rejected");
 }
 

@@ -29,11 +29,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra8d2_usb_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_usb.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_usb.h"
+#include "ra8_usb_regs.h"
 
 /** @brief USBHS security/privilege attribution register addresses. */
 typedef enum : uintptr_t {
@@ -48,18 +48,18 @@ typedef enum : uint32_t {
   k_demo_idle_ticks      = 1U,     /**< Idle back-off when no class active. */
 } demo_config_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 #include "ux_api.h"
-#include "ux_dcd_ra_usb.h"
+#include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_cdc_acm.h"
 #include "ux_device_stack.h"
 #include "ux_system.h"
 
-/* SysTick handler lives in libs/ra_core/src/ra_time.c -- the project's
+/* SysTick handler lives in libs/ra8_core/src/ra8_time.c -- the project's
  * shared weak SysTick_Handler dispatches into ThreadX (via a weak
  * extern to `_tx_timer_interrupt`) AND re-arms the USB storm-guard
- * NVIC line (via a weak extern to `ux_dcd_ra_usb_irq_reenable`), so
+ * NVIC line (via a weak extern to `ux_dcd_ra8_usb_irq_reenable`), so
  * no per-app override is needed. Closes Issue #8. */
 
 /* -------------------------------------------------------------------------- */
@@ -208,8 +208,8 @@ volatile demo_diag_t s_demo_diag = {};
  * can read the last value reached and localise which call faulted.
  * Values: 1=thread entry, 2=pre _ux_system_initialize, 3=pre
  * _ux_device_stack_initialize, 4=pre _ux_device_stack_class_register,
- * 5=pre ra_board_usbhs_device_init, 7=post that, 8=pre
- * ux_dcd_ra_usb_initialize, 9=post, 10=pre ra_usb_device_attach,
+ * 5=pre ra8_board_usbhs_device_init, 7=post that, 8=pre
+ * ux_dcd_ra8_usb_initialize, 9=post, 10=pre ra8_usb_device_attach,
  * 11=post, 12=entering echo while(1). Remove once the offending call
  * is identified.
  *
@@ -227,7 +227,7 @@ static volatile uint32_t s_boot_probe = 0U;
  * exactly once -- before the loop body has had a chance to do any
  * USBX work -- so a JLink session can compare it against
  * ::s_syscfg_after_attach to localise whether anything between
- * ra_usb_device_attach and the echo-loop entry clears USBE.
+ * ra8_usb_device_attach and the echo-loop entry clears USBE.
  *
  * @note File-scope, single-writer (worker thread).
  * @since 0.1.0
@@ -290,12 +290,12 @@ typedef enum : uint32_t {
   k_boot_probe_pre_sys_init          = 2U,  /**< before _ux_system_initialize.           */
   k_boot_probe_pre_dev_stack_init    = 3U,  /**< before _ux_device_stack_init.           */
   k_boot_probe_pre_class_register    = 4U,  /**< before _ux_device_stack_class_register. */
-  k_boot_probe_pre_board_usbhs_init  = 5U,  /**< before ra_board_usbhs_device_init.      */
-  k_boot_probe_post_board_usbhs_init = 7U,  /**< after ra_board_usbhs_device_init.       */
-  k_boot_probe_pre_ux_dcd_init       = 8U,  /**< before ux_dcd_ra_usb_initialize.        */
-  k_boot_probe_post_ux_dcd_init      = 9U,  /**< after ux_dcd_ra_usb_initialize.         */
-  k_boot_probe_pre_dev_attach        = 10U, /**< before ra_usb_device_attach.            */
-  k_boot_probe_post_dev_attach       = 11U, /**< after ra_usb_device_attach.             */
+  k_boot_probe_pre_board_usbhs_init  = 5U,  /**< before ra8_board_usbhs_device_init.     */
+  k_boot_probe_post_board_usbhs_init = 7U,  /**< after ra8_board_usbhs_device_init.      */
+  k_boot_probe_pre_ux_dcd_init       = 8U,  /**< before ux_dcd_ra8_usb_initialize.       */
+  k_boot_probe_post_ux_dcd_init      = 9U,  /**< after ux_dcd_ra8_usb_initialize.        */
+  k_boot_probe_pre_dev_attach        = 10U, /**< before ra8_usb_device_attach.           */
+  k_boot_probe_post_dev_attach       = 11U, /**< after ra8_usb_device_attach.            */
   k_boot_probe_enter_echo_loop       = 12U, /**< entering echo while(1).                 */
 } boot_probe_step_t;
 
@@ -337,14 +337,14 @@ static VOID demo_cdc_activate(VOID* cdc_instance)
   s_cdc_activate_count++;
   /* Enable bridge-side auto-echo for the CDC bulk pair (EP2 OUT -> EP1 IN).
    * The worker thread DOES get scheduled now (the IRQ-mask + SysTick re-
-   * enable in ux_dcd_ra_usb.c stops the USBR-driven storm) and the proper
+   * enable in ux_dcd_ra8_usb.c stops the USBR-driven storm) and the proper
    * _ux_device_class_cdc_acm_read / _write path works for individual
    * packets, but the per-transfer round-trip latency is ~1 ms ThreadX
    * tick because of the IRQ re-enable cadence. Auto-echo bypasses the
    * thread mode entirely and runs the mirror inside the dispatch
    * handler -- which is invoked on every real BRDY/BEMP -- so the
    * throughput is line-rate and integrity is perfect. */
-  ux_dcd_ra_usb_auto_echo_enable(2U, 1U);
+  ux_dcd_ra8_usb_auto_echo_enable(2U, 1U);
   (void)tx_semaphore_put(&s_cdc_active_sem);
   s_cdc_activate_post_put++;
 }
@@ -377,7 +377,7 @@ static VOID demo_cdc_deactivate(VOID* cdc_instance)
  * @details
  * Initializes the USBX memory pool, then registers both HS and FS device
  * frameworks. With the PHY CLKSEL=24 fix landed (see
- * ra_usb.c::internal_usbhs_phy_bringup), the HS chirp completes correctly
+ * ra8_usb.c::internal_usbhs_phy_bringup), the HS chirp completes correctly
  * and the host expects HS-conformant descriptors with 512-byte bulk MPS.
  * USBX picks the framework matching the negotiated bus speed
  * (RHST=011 -> HS framework, RHST=010 -> FS framework).
@@ -419,7 +419,7 @@ static bool demo_worker_usbx_init(void)
  * @details
  * Wires the activate/deactivate callbacks so ``s_cdc_acm`` tracks the
  * live class instance. Must be called after the device stack has been
- * initialized and before ``ux_dcd_ra_usb_initialize``.
+ * initialized and before ``ux_dcd_ra8_usb_initialize``.
  *
  * @return true on success, false on USBX failure.
  * @retval true CDC-ACM class registered.
@@ -454,13 +454,13 @@ static bool demo_worker_register_cdc(void)
  *
  * @details
  * USBHS controller bring-up is performed exactly once, inside
- * ``ux_dcd_ra_usb_initialize`` (which itself calls ``ra_usb_device_init``).
- * The PHY clock was armed in main() via ``ra_cgc_usbhs_pll_enable``;
+ * ``ux_dcd_ra8_usb_initialize`` (which itself calls ``ra8_usb_device_init``).
+ * The PHY clock was armed in main() via ``ra8_cgc_usbhs_pll_enable``;
  * PD07 role-select is owned by ``demo_pins_init``. MSTPB12 ungate happens
- * inside ``ra_usb_device_init`` via ``ra_mstp_enable``.
+ * inside ``ra8_usb_device_init`` via ``ra8_mstp_enable``.
  *
- * Previously this site called ``ra_board_usbhs_device_init()`` which also
- * invoked ``ra_usb_device_init(hs)`` and ``ux_dcd_ra_usb_initialize`` then
+ * Previously this site called ``ra8_board_usbhs_device_init()`` which also
+ * invoked ``ra8_usb_device_init(hs)`` and ``ux_dcd_ra8_usb_initialize`` then
  * invoked it AGAIN. The duplicate PHY bring-up cleared INTENB0 and left
  * the controller in a state where chirp completed but the host never
  * issued SETUP -- exactly the failure signature observed on J7.
@@ -472,7 +472,7 @@ static bool demo_worker_register_cdc(void)
  *
  * @return true on success, false on any HAL failure.
  * @retval true DCD initialized and bus attached at HS.
- * @retval false ``ux_dcd_ra_usb_initialize`` or ``ra_usb_device_attach`` failed.
+ * @retval false ``ux_dcd_ra8_usb_initialize`` or ``ra8_usb_device_attach`` failed.
  *
  * @pre ``demo_worker_register_cdc`` returned true.
  * @post Bus is attached at HS speed; controller is enumerating.
@@ -485,12 +485,12 @@ static bool demo_worker_start_dcd(void)
   s_boot_probe     = (uint32_t)k_boot_probe_post_board_usbhs_init;
   s_host_kick_done = 0U;
   s_boot_probe     = (uint32_t)k_boot_probe_pre_ux_dcd_init;
-  if (ux_dcd_ra_usb_initialize(k_ra_usb_speed_hs) != k_ra_ok) {
+  if (ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_hs) != k_ra8_ok) {
     return false;
   }
   s_boot_probe = (uint32_t)k_boot_probe_post_ux_dcd_init;
   s_boot_probe = (uint32_t)k_boot_probe_pre_dev_attach;
-  if (ra_usb_device_attach(k_ra_usb_speed_hs, true) != k_ra_ok) {
+  if (ra8_usb_device_attach(k_ra8_usb_speed_hs, true) != k_ra8_ok) {
     return false;
   }
   s_boot_probe = (uint32_t)k_boot_probe_post_dev_attach;
@@ -548,8 +548,8 @@ static void demo_worker_spawn_intenb0_watchdog(void)
  */
 static void demo_worker_capture_echo_probes(void)
 {
-  s_syscfg_in_echo_loop                  = ra_usb_hs()->SYSCFG;
-  s_lpsts_in_echo_loop                   = *ra_usbhs_lpsts();
+  s_syscfg_in_echo_loop                  = ra8_usb_hs()->SYSCFG;
+  s_lpsts_in_echo_loop                   = *ra8_usbhs_lpsts();
   volatile const uint32_t* const psarb_p = (volatile const uint32_t*)k_usbhs_psarb_addr;
   volatile const uint32_t* const pparb_p = (volatile const uint32_t*)k_usbhs_pparb_addr;
   s_psar_state                           = *psarb_p;
@@ -611,7 +611,7 @@ static void demo_worker_echo_loop(void)
     }
     s_demo_diag.loop_post_write++;
     for (ULONG i = 0UL; i < n; i++) {
-      (void)ra_board_led_toggle(k_ra_board_led1);
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
     }
   }
 }
@@ -667,11 +667,11 @@ static VOID demo_worker(ULONG arg)
 static VOID intenb0_watchdog_entry(ULONG arg)
 {
   (void)arg;
-  volatile r_usb_regs_t* reg = ra_usb_hs();
+  volatile r_usb_regs_t* reg = ra8_usb_hs();
   s_intenb0_watchdog_started = 1U;
   while (1) {
-    if (reg->INTENB0 != (uint16_t)k_ra_int0_full_mask) {
-      reg->INTENB0 = (uint16_t)k_ra_int0_full_mask;
+    if (reg->INTENB0 != (uint16_t)k_ra8_int0_full_mask) {
+      reg->INTENB0 = (uint16_t)k_ra8_int0_full_mask;
       s_intenb0_rearm_count++;
     }
     tx_thread_sleep(1UL);
@@ -697,4 +697,4 @@ VOID tx_application_define(VOID* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

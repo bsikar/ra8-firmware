@@ -24,7 +24,7 @@ Software Of Unknown Provenance (SOUP).
 ## Use case in this firmware
 
 - Deflate / inflate / ZIP container support backing the EPUB unpacker
-  in `libs/ra_epub/` (EPUB files are ZIP archives).
+  in `libs/ra8_epub/` (EPUB files are ZIP archives).
 - Integrity claim category: data-handling (decompression of trusted
   local EPUB payloads).
 
@@ -46,7 +46,7 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 - miniz is exercised only on locally staged EPUB files; no network
   payload feeds it.
-- The `libs/ra_epub/` wrapper enforces a maximum decompressed size cap
+- The `libs/ra8_epub/` wrapper enforces a maximum decompressed size cap
   to bound memory pressure.
 
 ## Deviations / patches

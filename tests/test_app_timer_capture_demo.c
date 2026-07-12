@@ -4,7 +4,7 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/timer_capture_demo/main.c bring-up:
- * ra_gpt_start_free_run -> ra_gpt_read -> delta(start, stop). The
+ * ra8_gpt_start_free_run -> ra8_gpt_read -> delta(start, stop). The
  * delta helper handles wrap so both the no-wrap and wrap branches
  * are exercised.
  *
@@ -15,10 +15,10 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
-#include "ra_gpt.h"
-#include "ra_mstp.h"
-#include "ra_sim_mmap.h"
+#include "ra8_err.h"
+#include "ra8_gpt.h"
+#include "ra8_mstp.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -41,47 +41,47 @@ static uint32_t delta(uint32_t start, uint32_t stop)
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
+  ra8_sim_mmap_reset();
 }
 
 /**
  * @brief Bring-up programmes GPT0 in free-run mode.
  *
  * @par MC/DC:
- * Decision: ``ra_gpt_start_free_run != ok``. One atomic condition
+ * Decision: ``ra8_gpt_start_free_run != ok``. One atomic condition
  * x 2 vectors -- valid channel + period (this) + bad channel test.
  */
 static void test_timer_app_free_run_init(void)
 {
   reset_world();
   TEST_BEGIN("timer_capture_demo: free-run init ok");
-  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_gpt_start_free_run((uint8_t)k_t_timer_channel, (uint32_t)k_t_timer_period));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_gpt_start_free_run((uint8_t)k_t_timer_channel, (uint32_t)k_t_timer_period));
   TEST_END("timer_capture_demo: free-run init ok");
 }
 
 /**
- * @brief ra_gpt_read pulls the current counter value.
+ * @brief ra8_gpt_read pulls the current counter value.
  *
  * @par MC/DC:
- * Decision: ``ra_gpt_read != ok``. Pairs with the NULL-out test
+ * Decision: ``ra8_gpt_read != ok``. Pairs with the NULL-out test
  * for N+1 = 2 coverage.
  */
 static void test_timer_app_read_ok(void)
 {
   reset_world();
   TEST_BEGIN("timer_capture_demo: read counter ok");
-  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_gpt_start_free_run((uint8_t)k_t_timer_channel, (uint32_t)k_t_timer_period));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_gpt_start_free_run((uint8_t)k_t_timer_channel, (uint32_t)k_t_timer_period));
   uint32_t out = 0xAAAAAAAAUL;
-  TEST_ASSERT_EQ(k_ra_ok, ra_gpt_read((uint8_t)k_t_timer_channel, &out));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_read((uint8_t)k_t_timer_channel, &out));
   TEST_END("timer_capture_demo: read counter ok");
 }
 
 /**
- * @brief NULL out pointer rejected by ra_gpt_read.
+ * @brief NULL out pointer rejected by ra8_gpt_read.
  *
  * @par MC/DC:
  * Decision: ``out == nullptr``. One atomic condition x 2 vectors --
@@ -91,10 +91,10 @@ static void test_timer_app_read_null(void)
 {
   reset_world();
   TEST_BEGIN("timer_capture_demo: NULL read rejected");
-  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_gpt_start_free_run((uint8_t)k_t_timer_channel, (uint32_t)k_t_timer_period));
-  TEST_ASSERT(ra_gpt_read((uint8_t)k_t_timer_channel, nullptr) != k_ra_ok);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_gpt_start_free_run((uint8_t)k_t_timer_channel, (uint32_t)k_t_timer_period));
+  TEST_ASSERT(ra8_gpt_read((uint8_t)k_t_timer_channel, nullptr) != k_ra8_ok);
   TEST_END("timer_capture_demo: NULL read rejected");
 }
 

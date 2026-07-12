@@ -6,21 +6,21 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * One ThreadX thread that exercises the full ``ra_sdcard`` HAL stack:
+ * One ThreadX thread that exercises the full ``ra8_sdcard`` HAL stack:
  *
  *   1. Route the eight SDHI pins (CMD, CLK, DAT0..3, WP, CD) on port 4
- *      to the SDHI peripheral function via ``ra_board_sdhi_pins_init``.
+ *      to the SDHI peripheral function via ``ra8_board_sdhi_pins_init``.
  *   2. Bring the J-Link OB VCOM console up at 115200 8N1 via
- *      ``ra_board_uart_console_init``.
- *   3. ``ra_sdcard_init`` runs the standard SD Physical Layer
+ *      ``ra8_board_uart_console_init``.
+ *   3. ``ra8_sdcard_init`` runs the standard SD Physical Layer
  *      initialization sequence (CMD0 -> CMD7) on SDHI instance 0.
- *   4. ``ra_sdcard_read_blocks(0, ...)`` reads sector 0 (the MBR / boot
+ *   4. ``ra8_sdcard_read_blocks(0, ...)`` reads sector 0 (the MBR / boot
  *      sector) into a 512-byte SRAM buffer.
  *   5. The first 16 bytes are formatted as ASCII hex
  *      (``XX XX XX XX...``) and pushed out the console; LED1 toggles
  *      once per pass to make the activity visible.
  *
- * SDHI pin map is owned by the BSP (``ra_board_sdhi_pins_init``): port 4,
+ * SDHI pin map is owned by the BSP (``ra8_board_sdhi_pins_init``): port 4,
  * pins 0..7 routed to the on-chip SDHI block.
  *
  * @par Threads
@@ -37,17 +37,17 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_sdcard.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_sdcard.h"
 
 /*
- * The host unit-test build (RA_SIMULATOR_MODE) does not link the
+ * The host unit-test build (RA8_SIMULATOR_MODE) does not link the
  * ThreadX vendor tree, so ``tx_api.h`` is unreachable when clang-tidy
  * walks this file. Pull it in only on the cross-compile target.
  */
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 #endif
 
@@ -112,7 +112,7 @@ typedef enum : uint16_t {
  * Vector table override and thread storage (cross-build only).
  * --------------------------------------------------------------------------- */
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /* NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,readability-identifier-naming) -- ThreadX-supplied symbol. */
 extern void _tx_timer_interrupt(void);
 /* NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,readability-identifier-naming) */
@@ -196,7 +196,7 @@ static void sdcard_hex_dump(const uint8_t* in, uint8_t len, char* out)
  *
  * @param[in] s NUL-terminated string. NULL is a no-op.
  *
- * @pre ra_board_uart_console_init has succeeded.
+ * @pre ra8_board_uart_console_init has succeeded.
  * @post Bytes have been handed to SCI3 TDR (or silently dropped on err).
  */
 static void sdcard_log(const char* s)
@@ -208,7 +208,7 @@ static void sdcard_log(const char* s)
   while (s[len] != '\0') {
     len++;
   }
-  (void)ra_board_uart_console_write((const uint8_t*)s, len);
+  (void)ra8_board_uart_console_write((const uint8_t*)s, len);
 }
 
 /* ---------------------------------------------------------------------------
@@ -218,13 +218,13 @@ static void sdcard_log(const char* s)
 /**
  * @brief Read sector 0 into ``s_sdcard_block`` and log status / hex dump.
  *
- * @pre ra_sdcard_init has succeeded.
+ * @pre ra8_sdcard_init has succeeded.
  * @post Either the dump line has been emitted or an error line has.
  */
 static void sdcard_one_pass(void)
 {
-  const ra_err_t err = ra_sdcard_read_blocks(0U, s_sdcard_block, 1U);
-  if (err != k_ra_ok) {
+  const ra8_err_t err = ra8_sdcard_read_blocks(0U, s_sdcard_block, 1U);
+  if (err != k_ra8_ok) {
     sdcard_log("sdcard: read block 0 failed\r\n");
     return;
   }
@@ -248,8 +248,8 @@ static void sdcard_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
 
-  const ra_sdcard_cfg_t cfg = {.instance = k_sdcard_sdhi_instance};
-  if (ra_sdcard_init(&cfg) != k_ra_ok) {
+  const ra8_sdcard_cfg_t cfg = {.instance = k_sdcard_sdhi_instance};
+  if (ra8_sdcard_init(&cfg) != k_ra8_ok) {
     sdcard_log("sdcard: init failed (no card / bad pinmux?)\r\n");
     while (1) {
       (void)tx_thread_sleep((ULONG)k_sdcard_loop_ticks);
@@ -259,7 +259,7 @@ static void sdcard_thread_entry(ULONG thread_input)
 
   while (1) {
     sdcard_one_pass();
-    (void)ra_board_led_toggle(k_ra_board_led1);
+    (void)ra8_board_led_toggle(k_ra8_board_led1);
     (void)tx_thread_sleep((ULONG)k_sdcard_loop_ticks);
   }
 }
@@ -298,7 +298,7 @@ void tx_application_define(void* first_unused_memory)
     }
   }
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /* ---------------------------------------------------------------------------
  * main() -- driver init, then drop into the ThreadX scheduler.
@@ -320,23 +320,23 @@ void tx_application_define(void* first_unused_memory)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
   }
-  if (ra_board_uart_console_init((uint32_t)k_sdcard_console_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_sdcard_console_baud) != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
   }
-#ifndef RA_SIMULATOR_MODE
-  if (ra_board_sdhi_pins_init() != k_ra_ok) {
+#ifndef RA8_SIMULATOR_MODE
+  if (ra8_board_sdhi_pins_init() != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
   }
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   tx_kernel_enter();
 #endif
 

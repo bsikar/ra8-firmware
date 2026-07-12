@@ -3,7 +3,7 @@
  * @brief Virtual network peer (Ethernet/ARP/IPv4/ICMP/TCP) for board_sim
  *
  * @details
- * Implements the "other host on the wire" behind the ra_eth frame seam (see
+ * Implements the "other host on the wire" behind the ra8_eth frame seam (see
  * board_net.h). The peer is 192.168.1.1 (MAC 02:00:5E:00:53:01); the firmware is
  * 192.168.1.42. Its state machine resolves the firmware over ARP, pings it
  * (ICMP), then opens a TCP connection to the echo server on port 7, sends a
@@ -119,7 +119,7 @@ static uint32_t s_pings;          /**< ICMP echo replies received.             *
 static uint32_t s_wait;           /**< Ticks since the last send.              */
 static uint16_t s_ping_seq;       /**< ICMP echo sequence.                     */
 static uint32_t s_tx_frames;      /**< Frames the firmware sent.               */
-static uint32_t s_polls;          /**< ra_eth_read polls served.               */
+static uint32_t s_polls;          /**< ra8_eth_read polls served.              */
 static uint32_t s_delivered;      /**< Frames delivered to firmware.           */
 static uint32_t s_tcp_our_seq;    /**< Our next TCP send sequence.             */
 static uint32_t s_tcp_their_seq;  /**< Their next seq (our ack).               */

@@ -8,12 +8,12 @@
  * trampolines. Specifically:
  *
  *   - The project's `vector_table.c` already provides (and pins to MRAM)
- *     `g_ra_vector_table_start`. The upstream port writes VTOR with a
+ *     `g_ra8_vector_table_start`. The upstream port writes VTOR with a
  *     symbol called `_vectors`, which is not what we use; here we leave
  *     VTOR alone (SystemInit set it correctly during Reset_Handler).
  *
  *   - The project's `vector_table.c` provides the HardFault / UsageFault
- *     trampolines that hand off to ra_exception_report(). The upstream
+ *     trampolines that hand off to ra8_exception_report(). The upstream
  *     port's tx_initialize_low_level.S re-defines those handlers, which
  *     would multi-define link errors. We omit them here.
  *
@@ -22,8 +22,8 @@
  *     TX_TIMER_TICKS_PER_SECOND (1000 by default for this firmware).
  *
  *   - System clock at this point is the boot-default MOCO ~8.4 MHz
- *     (matches blink_hal). When ra_cgc_init() upgrades the clock,
- *     `ra_threadx_systick_retune()` (C) reprograms SysTick.LOAD so the
+ *     (matches blink_hal). When ra8_cgc_init() upgrades the clock,
+ *     `ra8_threadx_systick_retune()` (C) reprograms SysTick.LOAD so the
  *     1 ms tick is preserved -- not implemented in this scaffold; the
  *     demo runs entirely on MOCO so the tick stays accurate.
  *
@@ -41,9 +41,9 @@
  * tick is actually 1 ms wall-clock, not 1 ms scaled by the
  * 8.4 MHz reset clock.  1 GHz / 1000 = 1,000,000 -- fits the
  * 24-bit SysTick.LOAD register (max 0xFFFFFF == 16,777,215). */
-                .equ    RA_BOOT_CLOCK_HZ,        1000000000
-                .equ    RA_THREADX_TICK_HZ,      1000
-                .equ    RA_SYSTICK_RELOAD,       ((RA_BOOT_CLOCK_HZ / RA_THREADX_TICK_HZ) - 1)
+                .equ    RA8_BOOT_CLOCK_HZ,        1000000000
+                .equ    RA8_THREADX_TICK_HZ,      1000
+                .equ    RA8_SYSTICK_RELOAD,       ((RA8_BOOT_CLOCK_HZ / RA8_THREADX_TICK_HZ) - 1)
 
 /* NVIC / SCB register offsets (relative to 0xE000E000). */
                 .equ    NVIC_BASE,               0xE000E000
@@ -87,7 +87,7 @@ _tx_initialize_low_level:
                  * from the linker-script symbol via the vector table)
                  * for any future ISR processing that needs it. */
                 LDR     r0, =_tx_thread_system_stack_ptr
-                LDR     r1, =g_ra_vector_table_start
+                LDR     r1, =g_ra8_vector_table_start
                 LDR     r1, [r1]
                 STR     r1, [r0]
 
@@ -96,7 +96,7 @@ _tx_initialize_low_level:
                  * uses static stacks so this only has to be a valid
                  * (non-NULL) pointer. */
                 LDR     r0, =_tx_initialize_unused_memory
-                LDR     r1, =g_ra_threadx_unused_memory_start
+                LDR     r1, =g_ra8_threadx_unused_memory_start
                 STR     r1, [r0]
 
                 /* Enable the DWT cycle counter (used by tx_trace and the
@@ -106,10 +106,10 @@ _tx_initialize_low_level:
                 ORR     r1, r1, #1
                 STR     r1, [r0]
 
-                /* Programme SysTick: reload at RA_SYSTICK_RELOAD,
+                /* Programme SysTick: reload at RA8_SYSTICK_RELOAD,
                  * processor-clock source, exception enabled. */
                 LDR     r0, =NVIC_BASE
-                LDR     r1, =RA_SYSTICK_RELOAD
+                LDR     r1, =RA8_SYSTICK_RELOAD
                 STR     r1, [r0, #SYST_RVR_OFFSET]
                 MOV     r1, #0
                 STR     r1, [r0, #SYST_CVR_OFFSET]
@@ -126,22 +126,22 @@ _tx_initialize_low_level:
                 STR     r1, [r0, #SHPR3_OFFSET]
 
                 /* Latch the global flag that tells the shared
-                 * SysTick_Handler in libs/ra_core/src/ra_time.c
+                 * SysTick_Handler in libs/ra8_core/src/ra8_time.c
                  * that ThreadX has finished priming its timer
                  * subsystem. Until this is set, the handler MUST
                  * NOT call _tx_timer_interrupt -- the kernel
                  * timer infrastructure is uninitialised between
-                 * ra_time_init() (which arms SysTick at 1 kHz
+                 * ra8_time_init() (which arms SysTick at 1 kHz
                  * from C) and tx_kernel_enter() (which runs us);
                  * a stray timer ISR in that window faults with
                  * UFSR.INVPC and bricks the boot. Reproduced on
                  * threadx_netx_tcp_echo because the
-                 * ra_board_ethernet_init() between those two
+                 * ra8_board_ethernet_init() between those two
                  * calls is long enough that SysTick always
                  * fires inside it. Storage lives in
                  * port/threadx/cortex_m85/tx_systick_ready.c
                  * (zero-initialised in .bss). */
-                LDR     r0, =g_ra_threadx_systick_ready
+                LDR     r0, =g_ra8_threadx_systick_ready
                 MOV     r1, #1
                 STR     r1, [r0]
 

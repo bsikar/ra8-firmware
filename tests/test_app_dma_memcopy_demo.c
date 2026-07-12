@@ -4,10 +4,10 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/dma_memcopy_demo/main.c bring-up. The
- * host ra_sim_mmap shim does not actually move bytes through the
+ * host ra8_sim_mmap shim does not actually move bytes through the
  * mocked DMAC channel, so the test focuses on:
  *
- *  - ra_dmac_start programmes DMSAR / DMDAR / DMCRA / DMCNT.
+ *  - ra8_dmac_start programmes DMSAR / DMDAR / DMCRA / DMCNT.
  *  - The verify helper detects matches and mismatches.
  *  - The fill helper produces a non-trivial pattern.
  *
@@ -22,11 +22,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra8d2_dmac_regs.h"
-#include "ra_dmac.h"
-#include "ra_err.h"
-#include "ra_mstp.h"
-#include "ra_sim_mmap.h"
+#include "ra8_dmac.h"
+#include "ra8_dmac_regs.h"
+#include "ra8_err.h"
+#include "ra8_mstp.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
@@ -40,7 +40,7 @@ static uint32_t s_dst[k_t_dma_words];
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
+  ra8_sim_mmap_reset();
   (void)memset(s_src, 0, sizeof(s_src));
   (void)memset(s_dst, 0, sizeof(s_dst));
 }
@@ -112,10 +112,10 @@ static void test_dma_app_verify_branches(void)
 }
 
 /**
- * @brief ra_dmac_start programmes DMSAR / DMDAR / DMCRA on the channel.
+ * @brief ra8_dmac_start programmes DMSAR / DMDAR / DMCRA on the channel.
  *
  * @par MC/DC:
- * Decision in app: ``ra_dmac_start != ok``. One atomic condition x
+ * Decision in app: ``ra8_dmac_start != ok``. One atomic condition x
  * 2 vectors -- valid channel + cfg (this) + the bad-channel test
  * below for the err branch.
  */
@@ -124,16 +124,16 @@ static void test_dma_app_start_programmes_regs(void)
   reset_world();
   TEST_BEGIN("dma_memcopy_demo: start programmes DMSAR/DMDAR/DMCRA");
   fill_buffers();
-  const ra_dmac_config_t cfg = {
+  const ra8_dmac_config_t cfg = {
     .src     = (uint32_t)(uintptr_t)s_src,
     .dst     = (uint32_t)(uintptr_t)s_dst,
     .count   = (uint16_t)k_t_dma_words,
-    .width   = k_ra_dmac_width_word,
+    .width   = k_ra8_dmac_width_word,
     .src_inc = true,
     .dst_inc = true,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_dmac_start((uint8_t)k_t_dma_channel, &cfg));
-  volatile r_dmac_channel_regs_t* reg = ra_dmac((uint8_t)k_t_dma_channel);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dmac_start((uint8_t)k_t_dma_channel, &cfg));
+  volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_t_dma_channel);
   TEST_ASSERT_NOT_NULL((void*)reg);
   /* DMSAR/DMDAR are 32-bit registers; cfg.src/dst already truncated to uint32_t. */
   const uint32_t exp_src = (uint32_t)(uintptr_t)s_src;
@@ -141,12 +141,12 @@ static void test_dma_app_start_programmes_regs(void)
   TEST_ASSERT_EQ(exp_src, reg->DMSAR);
   TEST_ASSERT_EQ(exp_dst, reg->DMDAR);
   TEST_ASSERT_EQ(k_t_dma_words, reg->DMCRA);
-  (void)ra_dmac_stop((uint8_t)k_t_dma_channel);
+  (void)ra8_dmac_stop((uint8_t)k_t_dma_channel);
   TEST_END("dma_memcopy_demo: start programmes DMSAR/DMDAR/DMCRA");
 }
 
 /**
- * @brief ra_dmac_start rejects an out-of-range channel.
+ * @brief ra8_dmac_start rejects an out-of-range channel.
  *
  * @par MC/DC:
  * Decision: ``channel >= 8``. One atomic condition x 2 vectors --
@@ -156,15 +156,15 @@ static void test_dma_app_start_bad_channel(void)
 {
   reset_world();
   TEST_BEGIN("dma_memcopy_demo: bad channel rejected");
-  const ra_dmac_config_t cfg = {
+  const ra8_dmac_config_t cfg = {
     .src     = 0U,
     .dst     = 0U,
     .count   = 1U,
-    .width   = k_ra_dmac_width_word,
+    .width   = k_ra8_dmac_width_word,
     .src_inc = true,
     .dst_inc = true,
   };
-  TEST_ASSERT(ra_dmac_start(9U, &cfg) != k_ra_ok);
+  TEST_ASSERT(ra8_dmac_start(9U, &cfg) != k_ra8_ok);
   TEST_END("dma_memcopy_demo: bad channel rejected");
 }
 

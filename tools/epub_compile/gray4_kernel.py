@@ -1,12 +1,12 @@
 """Deterministic integer gray4 downscale kernel -- host mirror of the firmware.
 
 This is a pure-Python, integer-exact port of the on-device 4-bpp transcode in
-``libs/ra_rabook_compile/src/ra_rabook_gray4.c``:
+``libs/ra8_rabook_compile/src/ra8_rabook_gray4.c``:
 
-  * :func:`gray4_output_dims`  mirrors ``ra_rabook_gray4_output_dims``.
-  * :func:`gray4_downscale`    mirrors ``ra_rabook_gray4_downscale`` (the Q16.16
+  * :func:`gray4_output_dims`  mirrors ``ra8_rabook_gray4_output_dims``.
+  * :func:`gray4_downscale`    mirrors ``ra8_rabook_gray4_downscale`` (the Q16.16
                                fixed-point bilinear resample).
-  * :func:`gray4_encode`       mirrors ``ra_rabook_gray4_encode`` (round-to-nearest
+  * :func:`gray4_encode`       mirrors ``ra8_rabook_gray4_encode`` (round-to-nearest
                                16-level quantise + two-nibbles-per-byte pack).
 
 Why this file exists (issue #213): the .rabook image pipeline downscales rasters
@@ -29,14 +29,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-# Q16.16 fixed-point constants (mirror ra_gray4_fp_t in ra_rabook_gray4.c).
+# Q16.16 fixed-point constants (mirror ra8_gray4_fp_t in ra8_rabook_gray4.c).
 _FP_SHIFT = 16
 _FP_UNIT = 1 << _FP_SHIFT  # 1.0 in Q16.16 (65536).
 _FP_MASK = _FP_UNIT - 1  # Fractional-bits mask (low 16 bits).
 _FP_NORM_SHIFT = 2 * _FP_SHIFT  # Right-shift to normalise the 64-bit product.
 _BYTE_MASK = 0xFF  # (uint8_t) truncation of the normalised sample.
 
-# 16-level even-palette quantise constants (mirror ra_rabook_gray4_consts_t).
+# 16-level even-palette quantise constants (mirror ra8_rabook_gray4_consts_t).
 _QUANT_DIV = 17  # Palette step: 255 / 15 == 17.
 _ROUND_HALF = 8  # Added before the divide to round-to-nearest.
 _NIB_MAX = 15  # Maximum nibble value (4 bits unsigned).
@@ -47,7 +47,7 @@ _NIB_PER_BYTE = 2  # Pixels packed per output byte.
 def gray4_output_dims(src_w: int, src_h: int, max_edge: int) -> tuple[int, int]:
     """Scaled output dims keeping the longer edge within ``max_edge``.
 
-    Exact mirror of ``ra_rabook_gray4_output_dims``: returns the source dims
+    Exact mirror of ``ra8_rabook_gray4_output_dims``: returns the source dims
     unchanged when they already fit, otherwise scales both by
     ``max_edge / longer_edge`` with round-half-up integer division (matching the C
     ``(dim * max_edge + longer / 2) / longer``), clamping each result to >= 1.
@@ -97,7 +97,7 @@ def _bilinear_sample(src: bytes, src_w: int, src_h: int, sx_fp: int, sy_fp: int)
 def gray4_downscale(src: bytes, src_w: int, src_h: int, dst_w: int, dst_h: int) -> bytes:
     """Bilinear-resample an 8-bit gray image from (src_w x src_h) to (dst_w x dst_h).
 
-    Exact mirror of ``ra_rabook_gray4_downscale``: a left-aligned sample grid
+    Exact mirror of ``ra8_rabook_gray4_downscale``: a left-aligned sample grid
     (``sx_fp = dx * ((src_w << 16) // dst_w)``) fed through :func:`_bilinear_sample`.
     An all-zero source yields an all-zero destination, matching the C.
 
@@ -138,7 +138,7 @@ def gray4_nibble(value: int) -> int:
 def gray4_encode(gray: bytes, width: int, height: int) -> bytes:
     """Quantise + nibble-pack a gray buffer to 4-bpp (two pixels per byte).
 
-    Exact mirror of ``ra_rabook_gray4_encode`` / ``s_pack_nibbles``: even pixels
+    Exact mirror of ``ra8_rabook_gray4_encode`` / ``s_pack_nibbles``: even pixels
     land in the high nibble, odd pixels in the low nibble; an odd final pixel keeps
     a zero low half.  Output size is ``(width * height + 1) // 2`` bytes.
     """

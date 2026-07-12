@@ -2,20 +2,20 @@
 
 An unattended, self-contained HIL proof of the [`dfu_bootloader`](../dfu_bootloader)'s
 **copy-to-run** scheme: an image linked **once** at the SRAM run base
-(`k_ra_dfu_run_base = 0x22020000`) runs from wherever it is staged, so there is
+(`k_ra8_dfu_run_base = 0x22020000`) runs from wherever it is staged, so there is
 no per-slot build and no "which slot am I building for?" footgun.
 
 ## What it does
 
 1. Embeds the copy-to-run demo payload as `payload_image.h` (generated from
    [`payload.c`](payload.c) by [`build_payload.sh`](build_payload.sh)).
-2. Hands it to the shared `ra_dfu_launch` in
-   [`libs/ra_dfu`](../../../../../libs/ra_dfu) -- **the exact launcher the
+2. Hands it to the shared `ra8_dfu_launch` in
+   [`libs/ra8_dfu`](../../../../../libs/ra8_dfu) -- **the exact launcher the
    bootloader uses** -- which copies the image to the run base and branches there.
 3. The payload then spins forever in the SRAM run window, writing a sentinel
    (`0x9710C0DE`) and an advancing heartbeat at `0x22010000`.
 
-This exercises the real copy-to-run path (`ra_dfu_run_target_valid` + the
+This exercises the real copy-to-run path (`ra8_dfu_run_target_valid` + the
 copy + the VTOR/MSP/branch hand-off) on silicon. The DFU *programming* path that
 fills a slot is covered separately by the `dfu_selftest_*` self-loop twins.
 

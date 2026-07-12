@@ -42,7 +42,7 @@
 #include "ux_device_stack.h"
 
 /**
- * @enum ra_ux_inquiry_const_t
+ * @enum ra8_ux_inquiry_const_t
  * @brief SCSI INQUIRY wire-format constants (SPC-4 sec 6.6).
  */
 typedef enum : uint8_t {
@@ -71,7 +71,7 @@ typedef enum : uint8_t {
   k_inq_sense_illegal   = 0x05U, /**< Sense key: ILLEGAL REQUEST.           */
   k_inq_sense_asc_field = 0x26U, /**< ASC: INVALID FIELD IN PARAMETER.      */
   k_inq_sense_ascq      = 0x01U, /**< ASCQ used by the vendor class.        */
-} ra_ux_inquiry_const_t;
+} ra8_ux_inquiry_const_t;
 
 /**
  * @brief Fill the 36-byte standard INQUIRY response.

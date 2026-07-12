@@ -43,7 +43,7 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Risk mitigation
 
-- Underlying flash driver shim lives in `libs/ra_fs/`, so LevelX sees a
+- Underlying flash driver shim lives in `libs/ra8_fs/`, so LevelX sees a
   single block-device interface.
 - Demo-only use in this revision.
 

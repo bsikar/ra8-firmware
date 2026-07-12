@@ -2,7 +2,7 @@
 """audit_init_order.py -- per-app init-order linter.
 
 Walks every ``examples/<tier>/<app>/main.c`` in the tree, extracts the
-sequence of ``ra_*_init(`` and ``ra_board_*_init(`` calls in source
+sequence of ``ra8_*_init(`` and ``ra8_board_*_init(`` calls in source
 order, and verifies the sequence respects the project-wide canonical
 ordering:
 
@@ -10,7 +10,7 @@ ordering:
 
 The check is structural rather than full-graph: for every adjacent pair
 of init calls we ensure the earlier one has a lower-or-equal canonical
-rank. Calls outside the ranked set (e.g. ``ra_acmphs_init``) are
+rank. Calls outside the ranked set (e.g. ``ra8_acmphs_init``) are
 treated as "peripheral" and must come last. The script emits a warning
 for each offending pair and -- in the default STRICT mode -- exits
 non-zero if any app fails. Pass ``--no-strict`` to downgrade to
@@ -43,28 +43,28 @@ RANK_PERIPHERAL = 100
 
 # Token (substring of the called function) -> canonical rank.
 RANK_TABLE = {
-    "ra_cgc_init": RANK_CGC,
-    "ra_cgc_get_clock_hz": RANK_CGC,
-    "ra_mstp_init": RANK_MSTP,
-    "ra_pfs_init": RANK_IOPORT,
-    "ra_pfs_route": RANK_IOPORT,
-    "ra_gpio_init": RANK_IOPORT,
-    "ra_gpio_output_init": RANK_IOPORT,
-    "ra_gpio_input_init": RANK_IOPORT,
-    "ra_port_init": RANK_IOPORT,
-    "ra_pin_validator": RANK_IOPORT,
-    "ra_time_init": RANK_TIME,
-    "ra_systick_init": RANK_TIME,
-    "ra_icu_init": RANK_ISR_CORE,
-    "ra_isr_init": RANK_ISR_CORE,
+    "ra8_cgc_init": RANK_CGC,
+    "ra8_cgc_get_clock_hz": RANK_CGC,
+    "ra8_mstp_init": RANK_MSTP,
+    "ra8_pfs_init": RANK_IOPORT,
+    "ra8_pfs_route": RANK_IOPORT,
+    "ra8_gpio_init": RANK_IOPORT,
+    "ra8_gpio_output_init": RANK_IOPORT,
+    "ra8_gpio_input_init": RANK_IOPORT,
+    "ra8_port_init": RANK_IOPORT,
+    "ra8_pin_validator": RANK_IOPORT,
+    "ra8_time_init": RANK_TIME,
+    "ra8_systick_init": RANK_TIME,
+    "ra8_icu_init": RANK_ISR_CORE,
+    "ra8_isr_init": RANK_ISR_CORE,
 }
 
-INIT_CALL_RE = re.compile(r"\b(ra_[a-z0-9_]+|ra_board_[a-z0-9_]+)\(", re.IGNORECASE)
+INIT_CALL_RE = re.compile(r"\b(ra8_[a-z0-9_]+|ra8_board_[a-z0-9_]+)\(", re.IGNORECASE)
 
 
 @dataclass
 class InitCall:
-    """One ``ra_*_init`` call site recorded from main.c."""
+    """One ``ra8_*_init`` call site recorded from main.c."""
 
     name: str  # function symbol
     line: int  # 1-based line number in main.c
@@ -91,7 +91,7 @@ def rank_for(symbol: str) -> int:
 
 def is_init_call(symbol: str) -> bool:
     """Return True for symbols we want to track."""
-    if symbol == "ra_cgc_get_clock_hz":
+    if symbol == "ra8_cgc_get_clock_hz":
         return True
     return symbol.endswith(("_init", "_pins_init")) or "_init_" in symbol
 
@@ -104,7 +104,7 @@ def extract_calls(main_path: Path) -> list[InitCall]:
 
     Only calls whose source position falls inside the body of ``main()``
     are considered: helper functions defined above ``main`` (like a
-    static ``demo_pins_init``) routinely call ``ra_*_init`` symbols in
+    static ``demo_pins_init``) routinely call ``ra8_*_init`` symbols in
     an order that matches the helper's local logic, not the boot-time
     sequence the audit cares about. The textual brace-tracker below is
     intentionally simple -- it works for the project's hand-written

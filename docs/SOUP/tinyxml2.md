@@ -23,9 +23,9 @@ as Software Of Unknown Provenance (SOUP).
 
 ## Use case in this firmware
 
-- XML parser used by `libs/ra_epub/` to walk EPUB container metadata
+- XML parser used by `libs/ra8_epub/` to walk EPUB container metadata
   (`META-INF/container.xml`, OPF package documents, NCX navigation).
-- Also used by `libs/ra_rabook_compile/` (the on-device EPUB->.rabook
+- Also used by `libs/ra8_rabook_compile/` (the on-device EPUB->.rabook
   compiler) to parse each spine chapter's XHTML into the chapter DOM.
 - Integrity claim category: data-handling (parsing of trusted local
   EPUB metadata and chapter content).
@@ -48,7 +48,7 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 - Parsed XML originates only from locally staged EPUB files; there is
   no network-driven XML path.
-- All TinyXML-2 access is wrapped by `libs/ra_epub/` so the SOUP
+- All TinyXML-2 access is wrapped by `libs/ra8_epub/` so the SOUP
   boundary is a single facade.
 
 ## Memory model on the firmware target
@@ -57,11 +57,11 @@ TinyXML-2 allocates its node pools (`MemPoolT<>::Alloc`), growable
 arrays (`DynArray::EnsureCapacity`), and string storage
 (`StrPair::SetStr`) through the global `operator new` / `operator new[]`.
 The firmware is zero-heap (NASA Rule 3: `_sbrk` traps), so those operators
-are replaced, firmware-only, by `libs/ra_epub/src/ra_epub_cpp_alloc.cpp`,
+are replaced, firmware-only, by `libs/ra8_epub/src/ra8_epub_cpp_alloc.cpp`,
 which routes them through the same bounded static first-fit arena miniz
-uses (`ra_epub_miniz_alloc`). No TinyXML-2 allocation reaches `malloc`.
+uses (`ra8_epub_miniz_alloc`). No TinyXML-2 allocation reaches `malloc`.
 The host unit-test build keeps the standard `malloc`-backed operators
-(the override is gated `#ifndef RA_SIMULATOR_MODE`).
+(the override is gated `#ifndef RA8_SIMULATOR_MODE`).
 
 **Known limitation -- fault, not error, on pool exhaustion.** The target
 is built `-fno-exceptions`, so the replacement `operator new` returns
@@ -71,7 +71,7 @@ pool faults in the following `memcpy` instead of surfacing
 `XML_ERROR_*`. This is accepted rather than patched (the vendored
 sources stay unmodified) because it cannot be reached by a conformant
 book: the only documents parsed are `META-INF/container.xml` and the
-OPF, and the OPF scratch is capped at `k_ra_epub_opf_xml_buf`, so the
+OPF, and the OPF scratch is capped at `k_ra8_epub_opf_xml_buf`, so the
 node footprint is bounded well under the arena size. A future move to a
 hand-rolled SAX scanner (tracked on the EPUB-reader roadmap) removes the
 dependency entirely.
@@ -100,7 +100,7 @@ Two integration seams exist:
      run start, restore the parse line).
 
    - **Why.** The on-device EPUB->.rabook compiler
-     (`libs/ra_rabook_compile`) must emit a `.rabook` blob byte-identical
+     (`libs/ra8_rabook_compile`) must emit a `.rabook` blob byte-identical
      to the desktop reference `tools/epub_compile/epub_compile.py`. That
      reference uses Python's `HTMLParser`, which keeps every text run --
      including inter-element whitespace. With the default
@@ -116,13 +116,13 @@ Two integration seams exist:
      solely when a caller constructs the document with
      `XMLDocument(true, PEDANTIC_WHITESPACE)`; the only such caller is the
      chapter-content parse in
-     `libs/ra_rabook_compile/src/ra_rabook_xml_shim.cpp`. `libs/ra_epub/`
+     `libs/ra8_rabook_compile/src/ra8_rabook_xml_shim.cpp`. `libs/ra8_epub/`
      and all metadata / OPF / container / TOC parsing keep the default
      `PRESERVE_WHITESPACE` mode, for which `WhitespaceMode() == PEDANTIC_WHITESPACE`
      is false and the patched guard never fires -- so the default parser
      behaviour is byte-for-byte unchanged. The change is covered by the
      real-book byte-identity gate `test_pipeline_parity_realbook_byte_identical`
-     in `tests/test_ra_rabook_pipeline.c`.
+     in `tests/test_ra8_rabook_pipeline.c`.
 
 ## Last review date
 

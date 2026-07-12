@@ -9,20 +9,20 @@
 
 # ---------------------------------------------------------------------------
 # comparePointers on linker symbols (vector_table.c .data copy and .bss zero
-# loops, ra_infrastructure.c stack canary write/check loops).
+# loops, ra8_infrastructure.c stack canary write/check loops).
 #
-# Justification: cppcheck cannot see that symbols like `g_ra_ls_sdata` and
-# `g_ra_ls_edata` bracket the same memory region because they are declared as
+# Justification: cppcheck cannot see that symbols like `g_ra8_ls_sdata` and
+# `g_ra8_ls_edata` bracket the same memory region because they are declared as
 # separate `extern uint32_t` objects. The linker script places them at
-# `g_ra_ls_sdata = start of .data` and `g_ra_ls_edata = end of .data`, so
+# `g_ra8_ls_sdata = start of .data` and `g_ra8_ls_edata = end of .data`, so
 # pointer comparison across them is well-defined in this context. This is the
 # CMSIS-standard way to implement the Reset_Handler .data / .bss
 # initialisation and to scan the stack-canary sentinel region.
 # ---------------------------------------------------------------------------
 comparePointers:src/boot/vector_table.c
 comparePointers:src/app/vector_table.c
-comparePointers:libs/ra_core/src/ra_infrastructure.c
-comparePointers:libs/ra_board_ek_ra8d2/boot/vector_table.c
+comparePointers:libs/ra8_core/src/ra8_infrastructure.c
+comparePointers:libs/ra8_board_ek_ra8d2/boot/vector_table.c
 comparePointers:examples/*/*/vector_table.c
 comparePointers:examples/*/*/*/vector_table.c
 comparePointers:examples/*/*/*/*/vector_table.c
@@ -45,17 +45,17 @@ comparePointers:examples/*/*/*/*/vector_table.c
 # ---------------------------------------------------------------------------
 knownConditionTrueFalse:examples/_unsupported/threadx_https_client/main.c
 variableScope:examples/ek_ra8d2/threadx_netx_tcp_echo/main.c
-variableScope:libs/ra_hal/src/ra_touch.c
+variableScope:libs/ra8_hal/src/ra8_touch.c
 
 # ---------------------------------------------------------------------------
-# duplicateExpression on ra_time.c tick rollover math
+# duplicateExpression on ra8_time.c tick rollover math
 #
 # Justification: `(uint32_t)(s_tick_ms - start) < ms` performs unsigned
 # modular subtraction that handles 32-bit tick counter rollover correctly.
 # cppcheck flags this as a self-subtract because it does not model the fact
 # that `s_tick_ms` is updated concurrently by the SysTick ISR.
 # ---------------------------------------------------------------------------
-duplicateExpression:libs/ra_core/src/ra_time.c
+duplicateExpression:libs/ra8_core/src/ra8_time.c
 
 # ---------------------------------------------------------------------------
 # badBitmaskCheck on `(x << 1U) | 0U` in iic.c
@@ -65,7 +65,7 @@ duplicateExpression:libs/ra_core/src/ra_time.c
 # current call site always writes; a matching `| 1U` appears in the read path.
 # Preserving both makes the register-layout intent readable.
 # ---------------------------------------------------------------------------
-badBitmaskCheck:libs/ra_hal/src/iic.c
+badBitmaskCheck:libs/ra8_hal/src/iic.c
 
 # ---------------------------------------------------------------------------
 # missingInclude for hardware register headers.
@@ -74,17 +74,17 @@ badBitmaskCheck:libs/ra_hal/src/iic.c
 # it cannot find CMSIS headers even when they exist on the system. The host
 # test build and the real cross build both include them successfully.
 # ---------------------------------------------------------------------------
-missingInclude:libs/ra_hal/*
-missingInclude:libs/ra_core/src/ra_wdt.c
-missingInclude:libs/ra_core/src/ra_exception.c
-missingInclude:libs/ra_core/src/ra_infrastructure.c
+missingInclude:libs/ra8_hal/*
+missingInclude:libs/ra8_core/src/ra8_wdt.c
+missingInclude:libs/ra8_core/src/ra8_exception.c
+missingInclude:libs/ra8_core/src/ra8_infrastructure.c
 missingInclude:src/boot/*
 missingInclude:src/main.c
 
 # ---------------------------------------------------------------------------
 # unusedStructMember on hardware register layout structs.
 #
-# Justification: every `r_*_regs_t` struct in libs/ra_hal/inc/ra8d2_*_regs.h
+# Justification: every `r_*_regs_t` struct in libs/ra8_hal/inc/ra8d2_*_regs.h
 # is a 1:1 map of a peripheral's MMIO window. Individual fields are "used"
 # at runtime by the compiler emitting the correct load/store instructions
 # through volatile pointer dereferences, but cppcheck's static-flow analysis
@@ -93,13 +93,13 @@ missingInclude:src/main.c
 # sprinkling inline suppressions across 30+ files every time a new field is
 # exposed ahead of its driver consumer.
 # ---------------------------------------------------------------------------
-unusedStructMember:libs/ra_hal/inc/ra8d2_*_regs.h
+unusedStructMember:libs/ra8_hal/inc/ra8d2_*_regs.h
 
 # ---------------------------------------------------------------------------
-# unusedStructMember on the ra_sdfont config struct.
+# unusedStructMember on the ra8_sdfont config struct.
 #
-# Justification: every ra_sdfont_cfg_t field IS consumed in
-# libs/ra_sdfont/src/ra_sdfont.c (spi_channel/pclka_hz copied into the
+# Justification: every ra8_sdfont_cfg_t field IS consumed in
+# libs/ra8_sdfont/src/ra8_sdfont.c (spi_channel/pclka_hz copied into the
 # transport ctx, sck/cipo/copi/cs routed, filename selected, provision_blob/
 # provision_len gated in the self-provision guards). cppcheck's per-file flow
 # analysis does not reliably track members read across the .h/.c boundary --
@@ -107,19 +107,19 @@ unusedStructMember:libs/ra_hal/inc/ra8d2_*_regs.h
 # and flags them. The struct is the public DI seam, so the fields cannot be
 # dropped.
 # ---------------------------------------------------------------------------
-unusedStructMember:libs/ra_sdfont/inc/ra_sdfont.h
+unusedStructMember:libs/ra8_sdfont/inc/ra8_sdfont.h
 
 # ---------------------------------------------------------------------------
-# constParameterCallback on the ra_sdfont transport shims.
+# constParameterCallback on the ra8_sdfont transport shims.
 #
 # Justification: sdfont_set_clock/cs/xfer take `void* ctx` because they are
-# bound to the ra_sdmmc_spi transport function-pointer types, whose ctx
+# bound to the ra8_sdmmc_spi transport function-pointer types, whose ctx
 # parameter is `void*`. cppcheck suggests const-qualifying it, but that would
 # make the shim incompatible with the shared callback typedef. Suppressed via
 # the list (not inline) so the Doxygen block stays adjacent to the function for
 # the doc-coverage audit.
 # ---------------------------------------------------------------------------
-constParameterCallback:libs/ra_sdfont/src/ra_sdfont.c
+constParameterCallback:libs/ra8_sdfont/src/ra8_sdfont.c
 
 # ---------------------------------------------------------------------------
 # constParameterPointer / constVariablePointer suggestions are informational
@@ -137,29 +137,29 @@ constVariablePointer
 
 # unusedStructMember on driver-facing config / matrix structs.
 # Justification: cppcheck cannot follow fields across .h boundaries.
-unusedStructMember:libs/ra_touch_cal/inc/ra_touch_cal.h
-unusedStructMember:libs/ra_ui/inc/ra_ui.h
-unusedStructMember:libs/ra_box/inc/ra_box.h
+unusedStructMember:libs/ra8_touch_cal/inc/ra8_touch_cal.h
+unusedStructMember:libs/ra8_ui/inc/ra8_ui.h
+unusedStructMember:libs/ra8_box/inc/ra8_box.h
 
 # unusedStructMember on the ereader_shelf app-state header: sh_entry_t /
 # sh_line_t / sh_* members are populated and read across the app's eight
 # TUs (sh_book.c, sh_cover.c, sh_reader.c, ...); cppcheck analyzes the
 # header per-TU and cannot see the cross-TU reads.
 unusedStructMember:examples/ek_ra8d2/hw_validated/hil/ereader_shelf/sh_app.h
-unusedStructMember:libs/ra_tls/inc/ra_tls.h
-unusedStructMember:libs/ra_hal/inc/ra_sdcard.h
-unusedStructMember:libs/ra_hal/inc/ra_smbus.h
-unusedStructMember:libs/ra_wdt_supervisor/inc/ra_wdt_supervisor.h
-unusedStructMember:libs/ra_hal/inc/ra_eth.h
-unusedStructMember:libs/ra_hal/inc/ra_etha.h
-unusedStructMember:libs/ra_hal/inc/ra_rsip.h
-unusedStructMember:libs/ra_hal/inc/ra_vreg.h
-unusedStructMember:libs/ra_hal/inc/ra_rmac.h
-unusedStructMember:libs/ra_hal/inc/ra_touch.h
-unusedStructMember:libs/ra_hal/inc/ra_usb.h
-unusedStructMember:libs/ra_hal/inc/ra_wdt.h
-unusedStructMember:libs/ra_hal/inc/ra_sci_spi.h
-unusedStructMember:libs/ra_fs/inc/ra_fs.h
+unusedStructMember:libs/ra8_tls/inc/ra8_tls.h
+unusedStructMember:libs/ra8_hal/inc/ra8_sdcard.h
+unusedStructMember:libs/ra8_hal/inc/ra8_smbus.h
+unusedStructMember:libs/ra8_wdt_supervisor/inc/ra8_wdt_supervisor.h
+unusedStructMember:libs/ra8_hal/inc/ra8_eth.h
+unusedStructMember:libs/ra8_hal/inc/ra8_etha.h
+unusedStructMember:libs/ra8_hal/inc/ra8_rsip.h
+unusedStructMember:libs/ra8_hal/inc/ra8_vreg.h
+unusedStructMember:libs/ra8_hal/inc/ra8_rmac.h
+unusedStructMember:libs/ra8_hal/inc/ra8_touch.h
+unusedStructMember:libs/ra8_hal/inc/ra8_usb.h
+unusedStructMember:libs/ra8_hal/inc/ra8_wdt.h
+unusedStructMember:libs/ra8_hal/inc/ra8_sci_spi.h
+unusedStructMember:libs/ra8_fs/inc/ra8_fs.h
 
 # unusedStructMember on the board_sim board-view status struct. Its fields are
 # read in tools/board_sim/src/board_overlay.c via a pointer to the struct declared
@@ -205,46 +205,46 @@ misra-c2012-15.5:tools/board_sim/*
 misra-c2012-17.7:tools/board_sim/*
 
 # constParameterCallback on ISR trampolines whose signatures are dictated by
-# the registration API (ra_isr_register takes a fixed function-pointer type).
-constParameterCallback:libs/ra_hal/src/ra_ipc.c
-constParameterCallback:libs/ra_hal/src/ra_cnecc.c
+# the registration API (ra8_isr_register takes a fixed function-pointer type).
+constParameterCallback:libs/ra8_hal/src/ra8_ipc.c
+constParameterCallback:libs/ra8_hal/src/ra8_cnecc.c
 
-# constParameterCallback on the ra_ftl block-device vtable shims. ftl_dev_read /
+# constParameterCallback on the ra8_ftl block-device vtable shims. ftl_dev_read /
 # ftl_dev_write / ftl_dev_sync take `void* ctx` because they are bound to the
-# ra_io_blockdev_iface_t function-pointer types, whose ctx parameter is `void*`;
+# ra8_io_blockdev_iface_t function-pointer types, whose ctx parameter is `void*`;
 # const-qualifying it would break the shared callback typedef. Suppressed via the
 # list (not inline) so the Doxygen block stays adjacent to the function for the
-# doc-coverage audit (same pattern as ra_sdfont above).
-constParameterCallback:libs/ra_ftl/src/ra_ftl.c
-# constParameterCallback on the ra_comic streamed-ZIP miniz read callback
+# doc-coverage audit (same pattern as ra8_sdfont above).
+constParameterCallback:libs/ra8_ftl/src/ra8_ftl.c
+# constParameterCallback on the ra8_comic streamed-ZIP miniz read callback
 # (s_stream_read): its signature is dictated by mz_zip's read-func pointer type,
 # so opaque cannot be const without a function-pointer cast.
-constParameterCallback:libs/ra_comic/src/ra_comic_cbz.c
-# constParameterCallback on the ra_epub streamed-ZIP miniz read callback
+constParameterCallback:libs/ra8_comic/src/ra8_comic_cbz.c
+# constParameterCallback on the ra8_epub streamed-ZIP miniz read callback
 # (priv_stream_read): its signature is dictated by miniz's mz_file_read_func
 # (m_pRead) pointer type, so opaque cannot be const without a function-pointer
 # cast. Suppressed via the list (not inline) so the Doxygen block stays adjacent
-# to the function for the doc-coverage audit (same pattern as ra_comic above).
-constParameterCallback:libs/ra_epub/src/ra_epub_open.c
+# to the function for the doc-coverage audit (same pattern as ra8_comic above).
+constParameterCallback:libs/ra8_epub/src/ra8_epub_open.c
 # constParameterCallback on the ereader_comic reader read callback (cm_read):
-# its signature is dictated by the ra_comic read-callback pointer type, so ctx
+# its signature is dictated by the ra8_comic read-callback pointer type, so ctx
 # cannot be const without a function-pointer cast. Listed (not inline) to keep
 # the Doxygen block adjacent for the doc-coverage audit.
 constParameterCallback:examples/ek_ra8d2/hw_pending/ereader_comic/main.c
 
 
-# unusedStructMember in ra_ble_host implementation files. These TUs each
+# unusedStructMember in ra8_ble_host implementation files. These TUs each
 # define a forward-compatible state struct whose fields are populated by
 # downstream NimBLE-target builds; cppcheck's per-TU view cannot see those
 # uses. Suppressing per-file rather than per-field keeps the suppression set
 # stable when new fields are added during BLE bring-up.
-unusedStructMember:libs/ra_ble_host/src/ra_ble_att.c
-unusedStructMember:libs/ra_ble_host/src/ra_ble_gatt.c
-unusedStructMember:libs/ra_ble_host/src/ra_ble_gatt_client.c
-unusedStructMember:libs/ra_ble_host/src/ra_ble_l2cap.c
-unusedStructMember:libs/ra_ble_host/src/ra_ble_mesh.c
-unusedStructMember:libs/ra_ble_host/src/ra_ble_security.c
-unusedStructMember:libs/ra_ble_host/inc/ra_ble_host.h
+unusedStructMember:libs/ra8_ble_host/src/ra8_ble_att.c
+unusedStructMember:libs/ra8_ble_host/src/ra8_ble_gatt.c
+unusedStructMember:libs/ra8_ble_host/src/ra8_ble_gatt_client.c
+unusedStructMember:libs/ra8_ble_host/src/ra8_ble_l2cap.c
+unusedStructMember:libs/ra8_ble_host/src/ra8_ble_mesh.c
+unusedStructMember:libs/ra8_ble_host/src/ra8_ble_security.c
+unusedStructMember:libs/ra8_ble_host/inc/ra8_ble_host.h
 
 # unusedStructMember in NimBLE NPL-ThreadX bridge headers. Fields are
 # consumed by NimBLE host code at link time, not visible to the per-TU
@@ -254,20 +254,20 @@ unusedStructMember:port/nimble/nimble_npl_threadx.h
 # Cortex-M exception-frame and net-internal struct fields populated by
 # fault handlers / future net-stack consumers; not yet visible to the
 # per-TU cppcheck pass.
-unusedStructMember:libs/ra_core/inc/ra_exception.h
-unusedStructMember:libs/ra_net/src/ra_net_internal.h
+unusedStructMember:libs/ra8_core/inc/ra8_exception.h
+unusedStructMember:libs/ra8_net/src/ra8_net_internal.h
 
-# knownConditionTrueFalse in ra_net_udp DNS poll loop. The inner check is
+# knownConditionTrueFalse in ra8_net_udp DNS poll loop. The inner check is
 # a defensive early-out that cppcheck proves redundant from the loop
 # condition, but it documents intent when the surrounding logic evolves.
-knownConditionTrueFalse:libs/ra_net/src/ra_net_udp.c:664
+knownConditionTrueFalse:libs/ra8_net/src/ra8_net_udp.c:664
 
-# knownConditionTrueFalse in ra_dual_core: internal_is_cpu0() returns
-# a compile-time constant that depends on RA_BUILD_FOR_CPU1. cppcheck
+# knownConditionTrueFalse in ra8_dual_core: internal_is_cpu0() returns
+# a compile-time constant that depends on RA8_BUILD_FOR_CPU1. cppcheck
 # only ever sees one branch (CPU0 = host or M85 build), so the
 # !internal_is_cpu0() guard appears redundant; it is the documented
 # CPU1-build defensive path.
-knownConditionTrueFalse:libs/ra_hal/src/ra_dual_core.c
+knownConditionTrueFalse:libs/ra8_hal/src/ra8_dual_core.c
 
 # ---------------------------------------------------------------------------
 # misra-c2012-12.1 (Advisory) -- per-line suppressions under D-004 partial
@@ -288,85 +288,85 @@ knownConditionTrueFalse:libs/ra_hal/src/ra_dual_core.c
 # When the source line numbers shift due to refactor, re-run `make misra`
 # and regenerate this block from the new docs/MISRA_GAPS.csv 12.1 rows.
 # ---------------------------------------------------------------------------
-misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_gatt_client.c:189
-misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_gatt_client.c:236
-misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_gatt_client.c:342
-misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_gatt_client.c:393
-misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_gatt_client.c:400
-misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_gatt_client.c:464
-misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_mesh.c:108
-misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_mesh.c:215
-misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_security.c:224
-misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_security.c:301
-misra-c2012-12.1:libs/ra_core/src/ra_log.c:251
-misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:64
-misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:70
-misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:77
-misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:168
-misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:192
-misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:208
-misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:212
-misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:232
-misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:247
-misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:251
-misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:271
-misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:293
-misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:298
-misra-c2012-12.1:libs/ra_epub/src/ra_epub_open.c:96
-misra-c2012-12.1:libs/ra_epub/src/ra_epub_open.c:213
-misra-c2012-12.1:libs/ra_epub/src/ra_epub_open.c:217
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:275
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:319
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:414
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:417
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:419
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:478
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:491
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:526
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:564
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:734
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:756
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:816
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:825
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:867
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:870
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1042
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1140
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1147
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1278
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1281
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1319
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1331
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1374
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1380
-misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1405
-misra-c2012-12.1:libs/ra_mpu/src/ra_mpu.c:62
-misra-c2012-12.1:libs/ra_mpu/src/ra_mpu.c:65
-misra-c2012-12.1:libs/ra_mpu/src/ra_mpu.c:68
-misra-c2012-12.1:libs/ra_mpu/src/ra_mpu.c:71
-misra-c2012-12.1:libs/ra_mpu/src/ra_mpu.c:98
-misra-c2012-12.1:libs/ra_mpu/src/ra_mpu.c:195
-misra-c2012-12.1:libs/ra_net/src/ra_net_tcp.c:84
-misra-c2012-12.1:libs/ra_net/src/ra_net_tcp.c:90
-misra-c2012-12.1:libs/ra_ota/src/ra_ota.c:190
-misra-c2012-12.1:libs/ra_ota/src/ra_ota.c:235
-misra-c2012-12.1:libs/ra_ota/src/ra_ota.c:255
-misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:266
-misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:311
-misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:316
-misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:345
-misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:366
-misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:403
-misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:510
-misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:535
-misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:538
-misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:541
-misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:584
-misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:615
-misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:633
-misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:636
-misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_parse.c:62
-misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_render.c:122
+misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_gatt_client.c:189
+misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_gatt_client.c:236
+misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_gatt_client.c:342
+misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_gatt_client.c:393
+misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_gatt_client.c:400
+misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_gatt_client.c:464
+misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_mesh.c:108
+misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_mesh.c:215
+misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_security.c:224
+misra-c2012-12.1:libs/ra8_ble_host/src/ra8_ble_security.c:301
+misra-c2012-12.1:libs/ra8_core/src/ra8_log.c:251
+misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:64
+misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:70
+misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:77
+misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:168
+misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:192
+misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:208
+misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:212
+misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:232
+misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:247
+misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:251
+misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:271
+misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:293
+misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_chapter.c:298
+misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_open.c:96
+misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_open.c:213
+misra-c2012-12.1:libs/ra8_epub/src/ra8_epub_open.c:217
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:275
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:319
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:414
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:417
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:419
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:478
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:491
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:526
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:564
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:734
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:756
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:816
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:825
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:867
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:870
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1042
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1140
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1147
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1278
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1281
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1319
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1331
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1374
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1380
+misra-c2012-12.1:libs/ra8_fs/src/ra8_fs_fat.c:1405
+misra-c2012-12.1:libs/ra8_mpu/src/ra8_mpu.c:62
+misra-c2012-12.1:libs/ra8_mpu/src/ra8_mpu.c:65
+misra-c2012-12.1:libs/ra8_mpu/src/ra8_mpu.c:68
+misra-c2012-12.1:libs/ra8_mpu/src/ra8_mpu.c:71
+misra-c2012-12.1:libs/ra8_mpu/src/ra8_mpu.c:98
+misra-c2012-12.1:libs/ra8_mpu/src/ra8_mpu.c:195
+misra-c2012-12.1:libs/ra8_net/src/ra8_net_tcp.c:84
+misra-c2012-12.1:libs/ra8_net/src/ra8_net_tcp.c:90
+misra-c2012-12.1:libs/ra8_ota/src/ra8_ota.c:190
+misra-c2012-12.1:libs/ra8_ota/src/ra8_ota.c:235
+misra-c2012-12.1:libs/ra8_ota/src/ra8_ota.c:255
+misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:266
+misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:311
+misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:316
+misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:345
+misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:366
+misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:403
+misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:510
+misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:535
+misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:538
+misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:541
+misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:584
+misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:615
+misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:633
+misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:636
+misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_parse.c:62
+misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_render.c:122
 misra-c2012-12.1:port/lwip/arch/sys_arch.c:158
 misra-c2012-12.1:port/lwip/arch/sys_arch.c:166
 misra-c2012-12.1:port/lwip/arch/sys_arch.c:181
@@ -394,17 +394,17 @@ misra-c2012-12.1:port/nimble/nimble_npl_threadx.c:417
 # n was assigned `(rx_len < max_len) ? rx_len : max_len`. The condition is
 # true when max_len < rx_len (caller buffer smaller than queued bytes), so
 # the check correctly guards the memmove. Surfaced after promoting
-# ra_net_tcp internals to external linkage for MC/DC test access.
-knownConditionTrueFalse:libs/ra_net/src/ra_net_tcp.c:463
+# ra8_net_tcp internals to external linkage for MC/DC test access.
+knownConditionTrueFalse:libs/ra8_net/src/ra8_net_tcp.c:463
 
 # ---------------------------------------------------------------------------
-# Uninitialized-variable false positive in ra_net_arp.c arp_insert call.
+# Uninitialized-variable false positive in ra8_net_arp.c arp_insert call.
 # cppcheck does not always track memcpy(struct.bytes, ...) as initialisation;
 # spa and sha are fully written via memcpy on the two lines preceding the
 # arp_insert(&spa, &sha) call.
 # ---------------------------------------------------------------------------
-uninitvar:libs/ra_net/src/ra_net_arp.c
-uninitvar:libs/ra_net/src/ra_net_icmp.c
+uninitvar:libs/ra8_net/src/ra8_net_arp.c
+uninitvar:libs/ra8_net/src/ra8_net_icmp.c
 
 # ---------------------------------------------------------------------------
 # unusedStructMember on driver-facing config / state structs that are
@@ -413,17 +413,17 @@ uninitvar:libs/ra_net/src/ra_net_icmp.c
 # surfaced after touching doc-comments in these headers triggered the
 # pre-commit cppcheck pass on previously-unstaged files.
 # ---------------------------------------------------------------------------
-unusedStructMember:libs/ra_hal/inc/ra_epaper.h
-unusedStructMember:libs/ra_hal/inc/ra_rmac_phy.h
-unusedStructMember:libs/ra_hal/inc/ra_usb_haud.h
-unusedStructMember:libs/ra_hal/inc/ra_usb_cdc.h
-unusedStructMember:libs/ra_hal/inc/ra_usb_composite.h
-unusedStructMember:libs/ra_hal/inc/ra_usb_paud.h
-unusedStructMember:port/usbx/ux_dcd_ra_usb.c
+unusedStructMember:libs/ra8_hal/inc/ra8_epaper.h
+unusedStructMember:libs/ra8_hal/inc/ra8_rmac_phy.h
+unusedStructMember:libs/ra8_hal/inc/ra8_usb_haud.h
+unusedStructMember:libs/ra8_hal/inc/ra8_usb_cdc.h
+unusedStructMember:libs/ra8_hal/inc/ra8_usb_composite.h
+unusedStructMember:libs/ra8_hal/inc/ra8_usb_paud.h
+unusedStructMember:port/usbx/ux_dcd_ra8_usb.c
 
 # ---------------------------------------------------------------------------
 # Weak-extern address compare in the shared SysTick handler. The
-# `if (&g_ra_threadx_systick_ready != ((void*)0))` check gates
+# `if (&g_ra8_threadx_systick_ready != ((void*)0))` check gates
 # `_tx_timer_interrupt` so it does not fire before ThreadX is
 # initialised. cppcheck flags the compare as always-true because it
 # does not model weak externs -- but the symbol IS declared as a weak
@@ -432,4 +432,4 @@ unusedStructMember:port/usbx/ux_dcd_ra_usb.c
 # at link time. See ea3ee420 + the threadx_netx_tcp_echo eth bring-up
 # commit for the boot-HardFault rationale.
 # ---------------------------------------------------------------------------
-knownConditionTrueFalse:libs/ra_core/src/ra_time.c
+knownConditionTrueFalse:libs/ra8_core/src/ra8_time.c

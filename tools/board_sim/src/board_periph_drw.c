@@ -3,17 +3,17 @@
  * @brief DRW ("D/AVE 2D") solid-fill rasterizer model for board_sim
  *
  * @details
- * Models the RA8D2 DRW 2D graphics engine (ra8d2_drw_regs.h, ra_drw.c) at
+ * Models the RA8D2 DRW 2D graphics engine (ra8_drw_regs.h, ra8_drw.c) at
  * @c 0x40444000 so the rasterizer actually writes pixels into the emulated
  * framebuffer instead of merely shadowing control registers. Against the sparse
- * fallback the DRW control writes read back and @c ra_drw_wait_idle returned,
+ * fallback the DRW control writes read back and @c ra8_drw_wait_idle returned,
  * but the framebuffer was never touched, so @c drw_fill_demo's centre pixel
  * stayed clear and the banner reported @c match=N. This block makes the solid
  * fill land in memory, flipping that to @c match=Y, and serves the same path the
- * e-reader @c ra_gfx rectangle fills use.
+ * e-reader @c ra8_gfx rectangle fills use.
  *
  * The engine is driven by a fixed register sequence the driver emits (see
- * @c ra_drw_fill_rect / @c ra_drw_init in ra_drw.c):
+ * @c ra8_drw_fill_rect / @c ra8_drw_init in ra8_drw.c):
  *  - @c ORIGIN (0x080) holds the framebuffer base address.
  *  - @c PITCH (0x07C) holds the framebuffer pitch in pixels.
  *  - @c CONTROL2 (0x004) low/high bits encode WRITEFORMAT (A8 / RGB565 /
@@ -31,24 +31,24 @@
  *    completes; the pixels simply are not synthesised).
  *
  * Completion is synchronous: the fill is performed inside the CONTROL write, so
- * STATUS always reads back with the busy bits clear and @c ra_drw_wait_idle
+ * STATUS always reads back with the busy bits clear and @c ra8_drw_wait_idle
  * succeeds on its first poll. HWREVISION returns a non-zero stamp so
- * @c ra_drw_get_hwrevision reports the engine as present.
+ * @c ra8_drw_get_hwrevision reports the engine as present.
  *
  * @par Alpha-blend (issue #120).
  * The driver arms the per-pixel / global-alpha blend unit via
- * @c ra_drw_set_blend, which sets @c CONTROL2.USEACB plus the source-over
+ * @c ra8_drw_set_blend, which sets @c CONTROL2.USEACB plus the source-over
  * factor bits and pushes the global alpha into @c COLOR1.A. A subsequent
- * @c ra_drw_fill_rect must then COMPOSITE the COLOR1 source over each existing
+ * @c ra8_drw_fill_rect must then COMPOSITE the COLOR1 source over each existing
  * framebuffer pixel rather than overwrite it. This model honours that: when
  * @c CONTROL2.USEACB is set at the CONTROL trigger, @c drw_fill_box runs the
  * source-over mix @c out = (src*a + dst*(255-a) + 127) / 255 per channel
  * (ARGB8888 only) instead of a plain store, so the emulated framebuffer carries
  * the same composite the silicon produces and the demo's framebuffer CRC is
- * deterministic. @c ra_drw_set_blend reads-modifies-writes CONTROL2, so this
+ * deterministic. @c ra8_drw_set_blend reads-modifies-writes CONTROL2, so this
  * model returns the stored CONTROL2 value on the 0x004 read (the driver assumes
  * that register reads back its last-written value); the HWREVISION stamp is the
- * CONTROL2 reset value so an early @c ra_drw_get_hwrevision still sees a
+ * CONTROL2 reset value so an early @c ra8_drw_get_hwrevision still sees a
  * non-zero "engine present" code before the first init write.
  *
  * Colour conversion from the COLOR1 ARGB8888 source to the framebuffer format
@@ -66,13 +66,13 @@
 
 #include "board_periph_block.h"
 
-/** @brief DRW block geometry (ra8d2_drw_regs.h). */
+/** @brief DRW block geometry (ra8_drw_regs.h). */
 typedef enum : uint64_t {
   k_drw_base = 0x40444000UL, /**< DRW Secure base (HUM Ch 62). */
   k_drw_span = 0x104UL,      /**< Register window (260 bytes). */
 } drw_geom_t;
 
-/** @brief DRW register offsets this model interprets (ra8d2_drw_regs.h). */
+/** @brief DRW register offsets this model interprets (ra8_drw_regs.h). */
 typedef enum : uint64_t {
   k_drw_off_control  = 0x000UL, /**< W CONTROL (geometry) / R STATUS.    */
   k_drw_off_control2 = 0x004UL, /**< W CONTROL2 / R HWREVISION.          */
@@ -84,7 +84,7 @@ typedef enum : uint64_t {
   k_drw_off_origin   = 0x080UL, /**< W ORIGIN: framebuffer base address. */
 } drw_off_t;
 
-/** @brief CONTROL / CONTROL2 / SIZE field constants (ra8d2_drw_regs.h). */
+/** @brief CONTROL / CONTROL2 / SIZE field constants (ra8_drw_regs.h). */
 typedef enum : uint32_t {
   k_drw_ctrl_quad_box    = 0x0FU,       /**< Limiters 1..4 enabled (box).   */
   k_drw_c2_patternenable = (1U << 0U),  /**< CONTROL2.PATTERNENABLE.        */
@@ -112,7 +112,7 @@ typedef enum : uint32_t {
   k_drw_alpha_round    = 127U,  /**< Source-over rounding bias (255/2).  */
 } drw_pixel_pack_t;
 
-/** @brief WRITEFORMAT codes (ra_drw_writeformat_t). */
+/** @brief WRITEFORMAT codes (ra8_drw_writeformat_t). */
 typedef enum : uint32_t {
   k_drw_wfmt_a8       = 0U, /**< 8 bpp A(8).      */
   k_drw_wfmt_rgb565   = 1U, /**< 16 bpp RGB565.   */
@@ -273,7 +273,7 @@ static void drw_reset(void)
   s_drw = (drw_state_t){};
   /* CONTROL2 (0x004) reads back its last-written value for the driver's
    * read-modify-write of the blend bits; seed the reset value with the
-   * HWREVISION stamp so an early ra_drw_get_hwrevision (before the first init
+   * HWREVISION stamp so an early ra8_drw_get_hwrevision (before the first init
    * write) still reads a non-zero "engine present" code. */
   s_drw.control2 = (uint32_t)k_drw_hwrevision_stamp;
 }
@@ -291,7 +291,7 @@ static uint64_t drw_read(uc_engine* uc, uint64_t addr, unsigned size)
     /* The driver read-modify-writes CONTROL2 (blend / texture / colour-key
      * bits) and so expects this offset to read back its last-written value.
      * The HWREVISION stamp is seeded as the reset value (see drw_reset), so an
-     * early ra_drw_get_hwrevision still reads a non-zero code before any write. */
+     * early ra8_drw_get_hwrevision still reads a non-zero code before any write. */
     return s_drw.control2;
   }
   if (off == (uint64_t)k_drw_off_origin) {

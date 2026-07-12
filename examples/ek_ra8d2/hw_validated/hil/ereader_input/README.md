@@ -1,12 +1,12 @@
 # ereader_input
 
-Headless **on-silicon HIL gate** for the e-reader interaction layer (`ra_ui`
+Headless **on-silicon HIL gate** for the e-reader interaction layer (`ra8_ui`
 hit-test + screen navigation, #80/#118). The chrome render is golden-validated
 (`ereader_chrome`); this app closes the *input-routing* gap with **synthetic**
 input -- no GT911 touch needed.
 
 1. Build a representative chrome target set (a 2x2 library book grid + a status
-   bar toolbar button), each an `ra_ui_target_t` rect bound to an action id.
+   bar toolbar button), each an `ra8_ui_target_t` rect bound to an action id.
 2. Inject a sequence of taps at known coordinates: each target's centre (a hit
    on the matching action) plus off-target taps (the column gutter + off-screen,
    which must miss).

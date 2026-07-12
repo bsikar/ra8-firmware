@@ -6,7 +6,7 @@
  * [Ring 4 / PORT] {World: NS}
  *
  * @details
- * Declares ``fx_media_driver_ra_levelx`` -- a FileX media-driver entry
+ * Declares ``fx_media_driver_ra8_levelx`` -- a FileX media-driver entry
  * point that translates FileX block-device requests
  * (``FX_DRIVER_INIT`` / ``FX_DRIVER_READ`` / ``FX_DRIVER_WRITE`` /
  * ``FX_DRIVER_BOOT_READ`` / ``FX_DRIVER_BOOT_WRITE`` /
@@ -17,7 +17,7 @@
  *
  * The shim lets a FAT volume (``fx_media_open()``) live on top of the
  * LevelX wear-levelling layer that already sits on top of
- * ``ra_xspi_flash_*`` against the on-board EK-RA8D2 ISSI IS25LX512M
+ * ``ra8_xspi_flash_*`` against the on-board EK-RA8D2 ISSI IS25LX512M
  * octal-SPI NOR flash. The user-visible result is "FAT-on-OSPI" with
  * dynamic block remapping -- exactly what the e-reader's local
  * library wants when no SD card is present.
@@ -28,16 +28,16 @@
  *   FileX (FAT, fx_media_open)
  *       |
  *       v
- *   fx_media_driver_ra_levelx (this file)
+ *   fx_media_driver_ra8_levelx (this file)
  *       |
  *       v
  *   LevelX (lx_nor_flash_sector_read / write)
  *       |
  *       v
- *   lx_nor_driver_ra_xspi (port/levelx/lx_nor_driver_ra_xspi.c)
+ *   lx_nor_driver_ra8_xspi (port/levelx/lx_nor_driver_ra8_xspi.c)
  *       |
  *       v
- *   ra_xspi_flash_read / program / erase_sector
+ *   ra8_xspi_flash_read / program / erase_sector
  *       |
  *       v
  *   IS25LX512M octal-SPI NOR (EK-RA8D2 on-board chip)
@@ -75,7 +75,7 @@ extern "C" {
  *
  * @details
  * Stores ``nor_flash`` as the module-private back-end pointer. All
- * subsequent ``fx_media_driver_ra_levelx`` calls dispatch their
+ * subsequent ``fx_media_driver_ra8_levelx`` calls dispatch their
  * ``FX_DRIVER_READ`` / ``FX_DRIVER_WRITE`` requests against this
  * pointer. The caller retains ownership of the storage; the adapter
  * does not free it.
@@ -92,7 +92,7 @@ extern "C" {
  * @pre ``nor_flash`` was successfully opened with ``lx_nor_flash_open``.
  * @pre The adapter is not currently servicing a FileX request.
  *
- * @post ``fx_media_driver_ra_levelx`` may be passed to ``fx_media_open``.
+ * @post ``fx_media_driver_ra8_levelx`` may be passed to ``fx_media_open``.
  * @post Subsequent media driver calls translate to LevelX I/O.
  *
  * @note Not thread-safe; intended for single-threaded init.
@@ -172,7 +172,7 @@ ULONG lx_filex_adapter_get_total_sectors(void);
  *
  * @since 0.1.0
  */
-void fx_media_driver_ra_levelx(FX_MEDIA* media);
+void fx_media_driver_ra8_levelx(FX_MEDIA* media);
 
 #ifdef __cplusplus
 }

@@ -6,9 +6,9 @@
  * Closes the *real-hardware* gap for the book-content render path: paginate a
  * multi-page chapter, render every page into a framebuffer, and exercise a
  * font-size re-flow -- no panel / SD / touch needed. The app lays out a baked
- * multi-paragraph chapter through `ra_reflow` (fixed-metric Ahem face) into a
+ * multi-paragraph chapter through `ra8_reflow` (fixed-metric Ahem face) into a
  * 160x192 RGB565 framebuffer, renders each page and folds an FNV-1a-32 over the
- * framebuffer, then calls ra_reflow_set_font_size() to re-flow at a larger size
+ * framebuffer, then calls ra8_reflow_set_font_size() to re-flow at a larger size
  * and renders again. It prints a banner on the SCI8 J-Link OB console:
  *
  *   `reflow-content-hil: pages=<N> crc=<8 hex> rpages=<M> crc=<8 hex>`
@@ -29,14 +29,14 @@
 #include <stdint.h>
 
 #include "font_fixture.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gfx.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_reflow.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gfx.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_reflow.h"
+#include "ra8_time.h"
 
 /** @enum rc_consts_t @brief Framebuffer / console / hash / type-size knobs. */
 typedef enum : uint32_t {
@@ -60,7 +60,7 @@ typedef enum : uint32_t {
 static uint16_t s_framebuffer[(size_t)k_rc_fb_h * (size_t)k_rc_fb_w];
 
 /** @brief Reflow engine (large -- file-scope, not on the stack). */
-static ra_reflow_t s_engine;
+static ra8_reflow_t s_engine;
 
 /** @brief Baked multi-paragraph chapter (paginates to several pages). */
 static const char k_rc_chapter[] =
@@ -87,7 +87,7 @@ static const uint8_t k_msg_eol[]    = "\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void rc_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -140,12 +140,12 @@ static void rc_print_uint(uint32_t value)
 static uint32_t rc_render_all(uint32_t* out_hash)
 {
   uint32_t pages = 0U;
-  (void)ra_reflow_get_page_count(&s_engine, &pages);
+  (void)ra8_reflow_get_page_count(&s_engine, &pages);
   uint32_t     hsh    = (uint32_t)k_rc_fnv_offset;
   const size_t nbytes = (size_t)k_rc_fb_w * (size_t)k_rc_fb_h * sizeof(uint16_t);
   for (uint32_t p = 0U; p < pages; p++) {
-    (void)ra_gfx_clear((uint32_t)k_rc_bg);
-    (void)ra_reflow_render_page(&s_engine, p, s_framebuffer);
+    (void)ra8_gfx_clear((uint32_t)k_rc_bg);
+    (void)ra8_reflow_render_page(&s_engine, p, s_framebuffer);
     const uint8_t* fb = (const uint8_t*)s_framebuffer;
     for (size_t i = 0U; i < nbytes; i++) {
       hsh = (hsh ^ (uint32_t)fb[i]) * (uint32_t)k_rc_fnv_prime;
@@ -159,16 +159,16 @@ static uint32_t rc_render_all(uint32_t* out_hash)
 static void rc_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     rc_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     rc_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     rc_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_board_uart_console_init((uint32_t)k_rc_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_rc_uart_baud) != k_ra8_ok) {
     rc_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }
@@ -188,30 +188,30 @@ static void rc_setup_or_halt(void)
 int32_t main(void)
 {
   rc_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   rc_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
-  if (ra_gfx_init(s_framebuffer,
-                  (uint16_t)k_rc_fb_w,
-                  (uint16_t)k_rc_fb_h,
-                  k_ra_gfx_format_rgb565) != k_ra_ok) {
+  if (ra8_gfx_init(s_framebuffer,
+                   (uint16_t)k_rc_fb_w,
+                   (uint16_t)k_rc_fb_h,
+                   k_ra8_gfx_format_rgb565) != k_ra8_ok) {
     rc_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_reflow_init((uint16_t)k_rc_fb_w,
-                     (uint16_t)k_rc_fb_h,
-                     k_ahem_ttf,
-                     (size_t)k_ahem_ttf_len,
-                     (uint16_t)k_rc_font_px,
-                     (uint32_t)k_rc_ink,
-                     (uint32_t)k_rc_link_col,
-                     &s_engine) != k_ra_ok) {
+  if (ra8_reflow_init((uint16_t)k_rc_fb_w,
+                      (uint16_t)k_rc_fb_h,
+                      k_ahem_ttf,
+                      (size_t)k_ahem_ttf_len,
+                      (uint16_t)k_rc_font_px,
+                      (uint32_t)k_rc_ink,
+                      (uint32_t)k_rc_link_col,
+                      &s_engine) != k_ra8_ok) {
     rc_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
   uint32_t pages = 0U;
-  if (ra_reflow_layout_chapter(&s_engine,
-                               (const uint8_t*)k_rc_chapter,
-                               (uint32_t)(sizeof(k_rc_chapter) - 1U),
-                               &pages) != k_ra_ok) {
+  if (ra8_reflow_layout_chapter(&s_engine,
+                                (const uint8_t*)k_rc_chapter,
+                                (uint32_t)(sizeof(k_rc_chapter) - 1U),
+                                &pages) != k_ra8_ok) {
     rc_panic_halt(k_msg_lerr, (uint32_t)sizeof(k_msg_lerr) - 1U);
   }
 
@@ -219,7 +219,7 @@ int32_t main(void)
   const uint32_t pages1 = rc_render_all(&crc1);
 
   /* Re-flow at a larger size on the cached chapter; render again. */
-  if (ra_reflow_set_font_size(&s_engine, (uint16_t)k_rc_reflow_px) != k_ra_ok) {
+  if (ra8_reflow_set_font_size(&s_engine, (uint16_t)k_rc_reflow_px) != k_ra8_ok) {
     rc_panic_halt(k_msg_lerr, (uint32_t)sizeof(k_msg_lerr) - 1U);
   }
   uint32_t       crc2   = 0U;

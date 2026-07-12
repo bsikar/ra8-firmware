@@ -3,7 +3,7 @@
  * @brief Window Watchdog Timer (WDT0 / WWDT) model for board_sim
  *
  * @details
- * Models the RA8D2 WDT0 (ra8d2_wdt_regs.h, ra_wdt.c) at @c 0x40202600 closely
+ * Models the RA8D2 WDT0 (ra8_wdt_regs.h, ra8_wdt.c) at @c 0x40202600 closely
  * enough that a watchdog reset actually fires when the firmware stops refreshing
  * the counter, instead of the timeout never happening. Against the sparse
  * fallback @c wdt_reset_recovery_demo armed the WWDT for reset and then stopped
@@ -11,7 +11,7 @@
  * @c "wdt: reset_by=watchdog" banner) was unreachable. This block runs the
  * down-counter and, on underflow in reset mode, asks the run loop to warm-reboot
  * the firmware with the watchdog-reset cause latched, so the next boot reads
- * @c k_ra_reset_cause_wdt0.
+ * @c k_ra8_reset_cause_wdt0.
  *
  * Behaviour (HUM Ch 27.2):
  *  - @c WDTRR (0x00) is the refresh register: the @c 0x00 then @c 0xFF unlock
@@ -44,7 +44,7 @@
 #include "board_periph.h"
 #include "board_periph_block.h"
 
-/** @brief WDT0 block geometry (ra8d2_wdt_regs.h, r_wdt_regs_t). */
+/** @brief WDT0 block geometry (ra8_wdt_regs.h, r_wdt_regs_t). */
 typedef enum : uint64_t {
   k_wdt_base       = 0x40202600UL, /**< WDT0 base (HUM Ch 27).       */
   k_wdt_span       = 0x10UL,       /**< Covers WDTRR..WDTRCR.        */
@@ -54,7 +54,7 @@ typedef enum : uint64_t {
   k_wdt_off_wdtrcr = 0x06UL,       /**< WDTRCR reset control (8b).   */
 } wdt_geom_t;
 
-/** @brief WDT register field constants (ra8d2_wdt_regs.h). */
+/** @brief WDT register field constants (ra8_wdt_regs.h). */
 typedef enum : uint32_t {
   k_wdt_refresh_a   = 0x00U,   /**< First byte of the refresh sequence.     */
   k_wdt_refresh_b   = 0xFFU,   /**< Second byte of the refresh sequence.    */

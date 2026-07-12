@@ -11,10 +11,10 @@
  * from ``SystemInit`` after the cache + MPU are up but before any
  * non-secure code can run.
  *
- * The function is gated behind the ``RA_TRUSTZONE_ENABLE`` build
+ * The function is gated behind the ``RA8_TRUSTZONE_ENABLE`` build
  * symbol so the single-world build (the ..8 default) does not
  * pay any code-size cost. When the symbol is undefined,
- * ``ra_trustzone_init`` is an empty inline.
+ * ``ra8_trustzone_init`` is an empty inline.
  *
  * ## Partition layout (scaffold)
  *
@@ -59,7 +59,7 @@
 
 #include <stdint.h>
 
-#ifdef RA_TRUSTZONE_ENABLE
+#ifdef RA8_TRUSTZONE_ENABLE
 
 /* =============================================================================
  * SAU register addresses (System Control Space, secure alias)
@@ -67,34 +67,34 @@
  */
 
 typedef enum : uintptr_t {
-  k_ra_sau_ctrl_addr = 0xE000EDD0UL, /**< SAU_CTRL Control Register.    */
-  k_ra_sau_type_addr = 0xE000EDD4UL, /**< SAU_TYPE Type Register.       */
-  k_ra_sau_rnr_addr  = 0xE000EDD8UL, /**< SAU_RNR Region Number.        */
-  k_ra_sau_rbar_addr = 0xE000EDDCUL, /**< SAU_RBAR Region Base Address. */
-  k_ra_sau_rlar_addr = 0xE000EDE0UL, /**< SAU_RLAR Region Limit + bits. */
-  k_ra_sfsr_addr     = 0xE000EDE4UL, /**< SecureFault Status Register.  */
-} ra_tz_sau_addr_t;
+  k_ra8_sau_ctrl_addr = 0xE000EDD0UL, /**< SAU_CTRL Control Register.    */
+  k_ra8_sau_type_addr = 0xE000EDD4UL, /**< SAU_TYPE Type Register.       */
+  k_ra8_sau_rnr_addr  = 0xE000EDD8UL, /**< SAU_RNR Region Number.        */
+  k_ra8_sau_rbar_addr = 0xE000EDDCUL, /**< SAU_RBAR Region Base Address. */
+  k_ra8_sau_rlar_addr = 0xE000EDE0UL, /**< SAU_RLAR Region Limit + bits. */
+  k_ra8_sfsr_addr     = 0xE000EDE4UL, /**< SecureFault Status Register.  */
+} ra8_tz_sau_addr_t;
 
 /**
- * @enum ra_tz_sau_ctrl_bit_t
+ * @enum ra8_tz_sau_ctrl_bit_t
  * @brief SAU_CTRL bit positions.
  */
 typedef enum : uint32_t {
-  k_ra_sau_ctrl_enable = 1UL << 0, /**< ENABLE: main SAU enable.        */
-  k_ra_sau_ctrl_allns  = 1UL << 1, /**< ALLNS: default-NS unprogrammed. */
-} ra_tz_sau_ctrl_bit_t;
+  k_ra8_sau_ctrl_enable = 1UL << 0, /**< ENABLE: main SAU enable.        */
+  k_ra8_sau_ctrl_allns  = 1UL << 1, /**< ALLNS: default-NS unprogrammed. */
+} ra8_tz_sau_ctrl_bit_t;
 
 /**
- * @enum ra_tz_sau_rlar_bit_t
+ * @enum ra8_tz_sau_rlar_bit_t
  * @brief SAU_RLAR bit positions.
  */
 typedef enum : uint32_t {
-  k_ra_sau_rlar_enable = 1UL << 0, /**< ENABLE: region active.              */
-  k_ra_sau_rlar_nsc    = 1UL << 1, /**< NSC: region is Non-Secure Callable. */
-} ra_tz_sau_rlar_bit_t;
+  k_ra8_sau_rlar_enable = 1UL << 0, /**< ENABLE: region active.              */
+  k_ra8_sau_rlar_nsc    = 1UL << 1, /**< NSC: region is Non-Secure Callable. */
+} ra8_tz_sau_rlar_bit_t;
 
 /**
- * @enum ra_tz_partition_t
+ * @enum ra8_tz_partition_t
  * @brief canonical region addresses.
  *
  * @details
@@ -102,15 +102,15 @@ typedef enum : uint32_t {
  * upper bound minus 32 OR-ed with the enable bits at write time.
  */
 typedef enum : uint32_t {
-  k_ra_tz_ns_mram_base    = 0x02080000UL,
-  k_ra_tz_ns_mram_limit   = 0x020FFFE0UL,
-  k_ra_tz_ns_sram_base    = 0x22100000UL,
-  k_ra_tz_ns_sram_limit   = 0x221FFFE0UL,
-  k_ra_tz_ns_sdram_base   = 0x6A000000UL,
-  k_ra_tz_ns_sdram_limit  = 0x6BFFFFE0UL,
-  k_ra_tz_nsc_veneer_base = 0x10000000UL,
-  k_ra_tz_nsc_veneer_lim  = 0x100FFFE0UL,
-} ra_tz_partition_t;
+  k_ra8_tz_ns_mram_base    = 0x02080000UL,
+  k_ra8_tz_ns_mram_limit   = 0x020FFFE0UL,
+  k_ra8_tz_ns_sram_base    = 0x22100000UL,
+  k_ra8_tz_ns_sram_limit   = 0x221FFFE0UL,
+  k_ra8_tz_ns_sdram_base   = 0x6A000000UL,
+  k_ra8_tz_ns_sdram_limit  = 0x6BFFFFE0UL,
+  k_ra8_tz_nsc_veneer_base = 0x10000000UL,
+  k_ra8_tz_nsc_veneer_lim  = 0x100FFFE0UL,
+} ra8_tz_partition_t;
 
 /* =============================================================================
  * Internal helpers
@@ -147,13 +147,13 @@ static uint32_t internal_read32(uintptr_t addr)
  */
 static void internal_sau_set_region(uint32_t region, uint32_t base, uint32_t limit, bool is_nsc)
 {
-  internal_write32(k_ra_sau_rnr_addr, region);
-  internal_write32(k_ra_sau_rbar_addr, base);
-  uint32_t rlar = limit | (uint32_t)k_ra_sau_rlar_enable;
+  internal_write32(k_ra8_sau_rnr_addr, region);
+  internal_write32(k_ra8_sau_rbar_addr, base);
+  uint32_t rlar = limit | (uint32_t)k_ra8_sau_rlar_enable;
   if (is_nsc) {
-    rlar |= (uint32_t)k_ra_sau_rlar_nsc;
+    rlar |= (uint32_t)k_ra8_sau_rlar_nsc;
   }
-  internal_write32(k_ra_sau_rlar_addr, rlar);
+  internal_write32(k_ra8_sau_rlar_addr, rlar);
 }
 
 /* =============================================================================
@@ -161,15 +161,15 @@ static void internal_sau_set_region(uint32_t region, uint32_t base, uint32_t lim
  * =============================================================================
  */
 
-#endif /* RA_TRUSTZONE_ENABLE */
+#endif /* RA8_TRUSTZONE_ENABLE */
 
-void ra_trustzone_init(void)
+void ra8_trustzone_init(void)
 {
-#ifdef RA_TRUSTZONE_ENABLE
+#ifdef RA8_TRUSTZONE_ENABLE
   /* Sanity check: SAU_TYPE.SREGION must report >= 4 implemented
    * regions for our partition to fit. The Cortex-M85 always has 8,
    * but a chip-specific override could trim the count. */
-  const uint32_t sau_type = internal_read32(k_ra_sau_type_addr);
+  const uint32_t sau_type = internal_read32(k_ra8_sau_type_addr);
   if ((sau_type & 0xFFU) < 4U) {
     /* Refuse to bring up TrustZone on an SAU we cannot use. The
      * caller will see SAU_CTRL.ENABLE clear and fall back to the
@@ -179,33 +179,33 @@ void ra_trustzone_init(void)
 
   /* Region 0: NS upper MRAM */
   internal_sau_set_region(0U,
-                          (uint32_t)k_ra_tz_ns_mram_base,
-                          (uint32_t)k_ra_tz_ns_mram_limit,
+                          (uint32_t)k_ra8_tz_ns_mram_base,
+                          (uint32_t)k_ra8_tz_ns_mram_limit,
                           /*is_nsc=*/false);
 
   /* Region 1: NS upper SRAM */
   internal_sau_set_region(1U,
-                          (uint32_t)k_ra_tz_ns_sram_base,
-                          (uint32_t)k_ra_tz_ns_sram_limit,
+                          (uint32_t)k_ra8_tz_ns_sram_base,
+                          (uint32_t)k_ra8_tz_ns_sram_limit,
                           /*is_nsc=*/false);
 
   /* Region 2: NS upper SDRAM */
   internal_sau_set_region(2U,
-                          (uint32_t)k_ra_tz_ns_sdram_base,
-                          (uint32_t)k_ra_tz_ns_sdram_limit,
+                          (uint32_t)k_ra8_tz_ns_sdram_base,
+                          (uint32_t)k_ra8_tz_ns_sdram_limit,
                           /*is_nsc=*/false);
 
   /* Region 3: NSC veneer alias ( will place .gnu.sgstubs
    * here via the linker script). */
   internal_sau_set_region(3U,
-                          (uint32_t)k_ra_tz_nsc_veneer_base,
-                          (uint32_t)k_ra_tz_nsc_veneer_lim,
+                          (uint32_t)k_ra8_tz_nsc_veneer_base,
+                          (uint32_t)k_ra8_tz_nsc_veneer_lim,
                           /*is_nsc=*/true);
 
   /* Enable the SAU. Leave ALLNS clear: anything we have not
    * explicitly carved out stays secure (default-deny). */
   internal_dsb();
-  internal_write32(k_ra_sau_ctrl_addr, (uint32_t)k_ra_sau_ctrl_enable);
+  internal_write32(k_ra8_sau_ctrl_addr, (uint32_t)k_ra8_sau_ctrl_enable);
   internal_dsb();
   internal_isb();
 #endif

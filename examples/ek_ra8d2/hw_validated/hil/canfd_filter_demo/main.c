@@ -14,11 +14,11 @@
  *
  * Sequence:
  *   1. CGC + SysTick + LEDs.
- *   2. ``ra_canfd_init`` + ``ra_canfd_set_bitrate`` (500 kbps).
- *   3. ``ra_canfd_filter_set(0, 0x100, 0x7FF, 8)``  -- exact match.
- *   4. ``ra_canfd_filter_set(1, 0x110, 0x7F0, 8)``  -- mask lower 4.
+ *   2. ``ra8_canfd_init`` + ``ra8_canfd_set_bitrate`` (500 kbps).
+ *   3. ``ra8_canfd_filter_set(0, 0x100, 0x7FF, 8)``  -- exact match.
+ *   4. ``ra8_canfd_filter_set(1, 0x110, 0x7F0, 8)``  -- mask lower 4.
  *   5. Self-test 1 / internal loopback (CFDC[0].CTR.CTME=1, CTMS=11b)
- *      via ``ra_canfd_set_test_mode`` (HUM Ch 41 "CFDCnCTR" p 2710).
+ *      via ``ra8_canfd_set_test_mode`` (HUM Ch 41 "CFDCnCTR" p 2710).
  *   6. Loop forever transmitting + checking RX FIFO.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -28,13 +28,13 @@
 
 #include <stdint.h>
 
-#include "ra8d2_canfd_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_canfd.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_canfd.h"
+#include "ra8_canfd_regs.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -64,7 +64,7 @@ typedef enum : uint8_t {
   k_canfd_filter_payload_b7 = 0xEFU,
 } canfd_filter_layout_t;
 
-/* CFDC[0].CTR test-mode bits live in ra_canfd_set_test_mode() now.
+/* CFDC[0].CTR test-mode bits live in ra8_canfd_set_test_mode() now.
  * Bit positions (CTME = bit 24, CTMS = bits [26:25]) and the
  * Self-test 1 / internal-loopback selector (CTMS = 11b) come from
  * HUM Ch 41 "CFDCnCTR" p 2710. */
@@ -162,21 +162,21 @@ static void canfd_filter_panic_halt(void)
  * @brief Enable Self-test 1 (internal loopback) on @p channel.
  *
  * @details
- * Forwards to ::ra_canfd_set_test_mode which bounces the channel
+ * Forwards to ::ra8_canfd_set_test_mode which bounces the channel
  * through CH_HALT (the only mode where CTME/CTMS are writable per
  * HUM Ch 41 "CFDCnCTR" p 2710).
  *
- * @retval k_ra_ok                Bits stamped, channel back in operation.
- * @retval k_ra_err_invalid_arg   Channel index rejected by the HAL.
+ * @retval k_ra8_ok                Bits stamped, channel back in operation.
+ * @retval k_ra8_err_invalid_arg   Channel index rejected by the HAL.
  *
- * @pre  ``ra_canfd_init(channel)`` returned ``k_ra_ok``.
+ * @pre  ``ra8_canfd_init(channel)`` returned ``k_ra8_ok``.
  * @pre  No TX/RX is in flight on @p channel.
  * @post ``CFDC[channel].CTR`` has CTME=1, CTMS=11b.
  * @post Channel is back in CH_OPERATION ready to TX.
  */
-[[nodiscard]] static ra_err_t canfd_filter_loopback(uint8_t channel)
+[[nodiscard]] static ra8_err_t canfd_filter_loopback(uint8_t channel)
 {
-  return ra_canfd_set_test_mode(channel, k_ra_ctms_self_test_1);
+  return ra8_canfd_set_test_mode(channel, k_ra8_ctms_self_test_1);
 }
 
 /**
@@ -187,22 +187,22 @@ static void canfd_filter_panic_halt(void)
  * conditions x N+1 = 3 vectors -- both ok / a fails / b fails;
  * exercised by the host test.
  *
- * @retval k_ra_ok              Both filters programmed.
- * @retval k_ra_err_invalid_arg HAL rejected an argument.
+ * @retval k_ra8_ok              Both filters programmed.
+ * @retval k_ra8_err_invalid_arg HAL rejected an argument.
  */
-[[nodiscard]] static ra_err_t canfd_filter_program_slots(void)
+[[nodiscard]] static ra8_err_t canfd_filter_program_slots(void)
 {
-  ra_err_t err = ra_canfd_filter_set((uint16_t)k_canfd_filter_slot_a,
-                                     (uint32_t)k_canfd_filter_id_exact,
-                                     (uint32_t)k_canfd_filter_mask_full,
-                                     (uint8_t)k_canfd_filter_dlc);
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_canfd_filter_set((uint16_t)k_canfd_filter_slot_a,
+                                       (uint32_t)k_canfd_filter_id_exact,
+                                       (uint32_t)k_canfd_filter_mask_full,
+                                       (uint8_t)k_canfd_filter_dlc);
+  if (err != k_ra8_ok) {
     return err;
   }
-  return ra_canfd_filter_set((uint16_t)k_canfd_filter_slot_b,
-                             (uint32_t)k_canfd_filter_id_mask,
-                             (uint32_t)k_canfd_filter_mask_low4,
-                             (uint8_t)k_canfd_filter_dlc);
+  return ra8_canfd_filter_set((uint16_t)k_canfd_filter_slot_b,
+                              (uint32_t)k_canfd_filter_id_mask,
+                              (uint32_t)k_canfd_filter_mask_low4,
+                              (uint8_t)k_canfd_filter_dlc);
 }
 
 /**
@@ -211,33 +211,33 @@ static void canfd_filter_panic_halt(void)
 static void canfd_filter_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     canfd_filter_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     canfd_filter_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     canfd_filter_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     canfd_filter_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     canfd_filter_panic_halt();
   }
-  if (ra_canfd_init((uint8_t)k_canfd_filter_channel) != k_ra_ok) {
+  if (ra8_canfd_init((uint8_t)k_canfd_filter_channel) != k_ra8_ok) {
     canfd_filter_panic_halt();
   }
-  if (ra_canfd_set_bitrate((uint8_t)k_canfd_filter_channel,
-                           (uint32_t)k_canfd_filter_bitrate,
-                           (uint32_t)k_canfd_filter_bitrate) != k_ra_ok) {
+  if (ra8_canfd_set_bitrate((uint8_t)k_canfd_filter_channel,
+                            (uint32_t)k_canfd_filter_bitrate,
+                            (uint32_t)k_canfd_filter_bitrate) != k_ra8_ok) {
     canfd_filter_panic_halt();
   }
-  if (canfd_filter_program_slots() != k_ra_ok) {
+  if (canfd_filter_program_slots() != k_ra8_ok) {
     canfd_filter_panic_halt();
   }
-  if (canfd_filter_loopback((uint8_t)k_canfd_filter_channel) != k_ra_ok) {
+  if (canfd_filter_loopback((uint8_t)k_canfd_filter_channel) != k_ra8_ok) {
     canfd_filter_panic_halt();
   }
 }
@@ -246,35 +246,35 @@ static void canfd_filter_setup_or_halt(void)
  * @brief Send one frame at @p id, attempt to receive it back.
  *
  * @param[in] id Arbitration ID to send.
- * @return k_ra_ok if both TX + RX succeed, error otherwise.
+ * @return k_ra8_ok if both TX + RX succeed, error otherwise.
  */
-[[nodiscard]] static ra_err_t canfd_filter_one_round(uint32_t id)
+[[nodiscard]] static ra8_err_t canfd_filter_one_round(uint32_t id)
 {
-  ra_canfd_frame_t tx = {.id          = id,
-                         .dlc         = (uint8_t)k_canfd_filter_dlc,
-                         .is_extended = 0U,
-                         .is_fd       = 0U,
-                         .is_brs      = 0U,
-                         .data        = {(uint8_t)id,
-                                         (uint8_t)(id >> k_canfd_filter_byte_shift),
-                                         (uint8_t)k_canfd_filter_payload_b2,
-                                         (uint8_t)k_canfd_filter_payload_b3,
-                                         (uint8_t)k_canfd_filter_payload_b4,
-                                         (uint8_t)k_canfd_filter_payload_b5,
-                                         (uint8_t)k_canfd_filter_payload_b6,
-                                         (uint8_t)k_canfd_filter_payload_b7}};
-  if (ra_canfd_transmit((uint8_t)k_canfd_filter_channel, &tx) != k_ra_ok) {
-    return k_ra_err_hw_error;
+  ra8_canfd_frame_t tx = {.id          = id,
+                          .dlc         = (uint8_t)k_canfd_filter_dlc,
+                          .is_extended = 0U,
+                          .is_fd       = 0U,
+                          .is_brs      = 0U,
+                          .data        = {(uint8_t)id,
+                                          (uint8_t)(id >> k_canfd_filter_byte_shift),
+                                          (uint8_t)k_canfd_filter_payload_b2,
+                                          (uint8_t)k_canfd_filter_payload_b3,
+                                          (uint8_t)k_canfd_filter_payload_b4,
+                                          (uint8_t)k_canfd_filter_payload_b5,
+                                          (uint8_t)k_canfd_filter_payload_b6,
+                                          (uint8_t)k_canfd_filter_payload_b7}};
+  if (ra8_canfd_transmit((uint8_t)k_canfd_filter_channel, &tx) != k_ra8_ok) {
+    return k_ra8_err_hw_error;
   }
   /* Poll for the loopback frame: 500 kbit/s + 8 data bytes is ~240 us
    * round-trip, so wait up to ~10 ms before declaring no_data. */
-  ra_canfd_frame_t rx = {};
+  ra8_canfd_frame_t rx = {};
   for (uint32_t i = 0U; i < (uint32_t)k_canfd_filter_rx_spin; i++) {
-    if (ra_canfd_receive((uint8_t)k_canfd_filter_channel, &rx) == k_ra_ok) {
-      return k_ra_ok;
+    if (ra8_canfd_receive((uint8_t)k_canfd_filter_channel, &rx) == k_ra8_ok) {
+      return k_ra8_ok;
     }
   }
-  return k_ra_err_no_data;
+  return k_ra8_err_no_data;
 }
 
 #pragma GCC diagnostic push
@@ -282,17 +282,17 @@ static void canfd_filter_setup_or_halt(void)
 int32_t main(void)
 {
   canfd_filter_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   while (1) {
     /* Drain any stale frames left in RX FIFO 0 before this iteration's
      * three sub-rounds. Without this, a late-arriving frame from the
      * mask round can land in the FIFO while the no-match round is
-     * spinning on ra_canfd_receive and report a false "match" for
+     * spinning on ra8_canfd_receive and report a false "match" for
      * what should be a rejected frame. */
-    ra_canfd_frame_t scratch = {};
+    ra8_canfd_frame_t scratch = {};
     for (uint8_t i = 0U; i < (uint8_t)k_canfd_filter_drain_max; i++) {
-      if (ra_canfd_receive((uint8_t)k_canfd_filter_channel, &scratch) != k_ra_ok) {
+      if (ra8_canfd_receive((uint8_t)k_canfd_filter_channel, &scratch) != k_ra8_ok) {
         break;
       }
     }
@@ -300,16 +300,16 @@ int32_t main(void)
     /* Two IDs the filters accept and one they should reject. The
      * loopback path mirrors every TX, but only filter-matched frames
      * land in the RX FIFO. */
-    if (canfd_filter_one_round((uint32_t)k_canfd_filter_id_exact) == k_ra_ok) {
-      (void)ra_board_led_toggle(k_ra_board_led1);
+    if (canfd_filter_one_round((uint32_t)k_canfd_filter_id_exact) == k_ra8_ok) {
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
       g_canfd_filter_exact_match += 1U;
       g_canfd_filter_match += 1U;
     } else {
       g_canfd_filter_exact_mismatch += 1U;
       g_canfd_filter_mismatch += 1U;
     }
-    if (canfd_filter_one_round((uint32_t)k_canfd_filter_id_mask) == k_ra_ok) {
-      (void)ra_board_led_toggle(k_ra_board_led1);
+    if (canfd_filter_one_round((uint32_t)k_canfd_filter_id_mask) == k_ra8_ok) {
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
       g_canfd_filter_mask_match += 1U;
       g_canfd_filter_match += 1U;
     } else {
@@ -317,15 +317,15 @@ int32_t main(void)
       g_canfd_filter_mismatch += 1U;
     }
     /* No-match: receive should report no_data; if it doesn't, latch LED2. */
-    if (canfd_filter_one_round((uint32_t)k_canfd_filter_id_nomatch) == k_ra_ok) {
-      (void)ra_board_led_toggle(k_ra_board_led2);
+    if (canfd_filter_one_round((uint32_t)k_canfd_filter_id_nomatch) == k_ra8_ok) {
+      (void)ra8_board_led_toggle(k_ra8_board_led2);
       g_canfd_filter_nomatch_mismatch += 1U;
       g_canfd_filter_mismatch += 1U;
     } else {
       g_canfd_filter_nomatch_match += 1U;
       g_canfd_filter_match += 1U;
     }
-    ra_delay_ms(k_canfd_filter_period_ms);
+    ra8_delay_ms(k_canfd_filter_period_ms);
   }
   canfd_filter_panic_halt();
   return 0;

@@ -25,8 +25,8 @@ firmware as Software Of Unknown Provenance (SOUP).
 ## Use case in this firmware
 
 - PSA Crypto API implementation (key store, hashes, AEAD, asymmetric
-  signature) consumed via `libs/ra_psa_crypto/` and indirectly by
-  `libs/ra_tls/`, `libs/ra_ota/`, and the secure-side substrate at
+  signature) consumed via `libs/ra8_psa_crypto/` and indirectly by
+  `libs/ra8_tls/`, `libs/ra8_ota/`, and the secure-side substrate at
   `src/secure_app/`.
 - Integrity claim category: control-flow (signature verification gates
   the OTA acceptance decision and TLS handshake completion).
@@ -51,8 +51,8 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 - PSA Crypto key handles are owned by the secure-side key vault
   (`src/secure_app/`) and surfaced to the non-secure side only through
-  the NSC veneers in `libs/ra_nsc/`.
-- All callers go through the `libs/ra_psa_crypto/` shim, never the raw
+  the NSC veneers in `libs/ra8_nsc/`.
+- All callers go through the `libs/ra8_psa_crypto/` shim, never the raw
   `psa/crypto.h` API directly.
 
 ## Deviations / patches

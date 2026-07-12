@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Exercises ``ra_gpt_write_dma`` -- the "sample streaming" DMA TX
+ * Exercises ``ra8_gpt_write_dma`` -- the "sample streaming" DMA TX
  * path that copies a buffer of 32-bit period values into the GPT's
  * GTPR register via a DMAC channel. The CPU does not touch GTPR
  * each tick; DMA pumps the preloaded period sequence.
@@ -16,8 +16,8 @@
  * can scrape the counter advancing.
  *
  * Bring-up sequence:
- *   - CGC + SysTick + LED1 + ra_dma_init + ra_gpt_init.
- *   - Arm a DMA transfer of 4 period values via ra_gpt_write_dma.
+ *   - CGC + SysTick + LED1 + ra8_dma_init + ra8_gpt_init.
+ *   - Arm a DMA transfer of 4 period values via ra8_gpt_write_dma.
  *   - Wait for completion (callback bumps a flag).
  *   - Re-arm with the same period sequence.
  *
@@ -28,13 +28,13 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_dma.h"
-#include "ra_err.h"
-#include "ra_gpt.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_dma.h"
+#include "ra8_err.h"
+#include "ra8_gpt.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -76,7 +76,7 @@ volatile uint32_t g_gpt_dma_match = 0U;
 
 /**
  * @var g_gpt_dma_mismatch
- * @brief HIL failure counter -- bumped when ra_gpt_write_dma
+ * @brief HIL failure counter -- bumped when ra8_gpt_write_dma
  *        returned non-ok or the completion callback never fired
  *        inside the bounded wait.
  *
@@ -107,19 +107,19 @@ static void gpt_dma_demo_panic_halt(void)
 static void gpt_dma_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     gpt_dma_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     gpt_dma_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     gpt_dma_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     gpt_dma_demo_panic_halt();
   }
-  if (ra_dma_init() != k_ra_ok) {
+  if (ra8_dma_init() != k_ra8_ok) {
     gpt_dma_demo_panic_halt();
   }
 }
@@ -141,32 +141,32 @@ static void gpt_dma_demo_on_complete(void* ctx)
 {
   (void)ctx;
   s_dma_done = 1U;
-  (void)ra_board_led_toggle(k_ra_board_led1);
+  (void)ra8_board_led_toggle(k_ra8_board_led1);
 }
 
 /**
  * @brief Init GPT0 as a saw-wave PWM with a stable initial period.
  *
- * @return ra_err_t error code.
+ * @return ra8_err_t error code.
  *
- * @pre ra_cgc_init has succeeded.
+ * @pre ra8_cgc_init has succeeded.
  * @pre GPT0 not yet initialised.
- * @post On k_ra_ok the channel is running.
+ * @post On k_ra8_ok the channel is running.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t gpt_dma_demo_arm_channel(void)
+[[nodiscard]] static ra8_err_t gpt_dma_demo_arm_channel(void)
 {
-  const ra_gpt_cfg_t cfg = {
-    .mode       = k_ra_gpt_mode_saw_pwm,
-    .prescaler  = k_ra_gpt_ps_div_4,
+  const ra8_gpt_cfg_t cfg = {
+    .mode       = k_ra8_gpt_mode_saw_pwm,
+    .prescaler  = k_ra8_gpt_ps_div_4,
     .period     = (uint32_t)k_gpt_dma_demo_initial_period,
     .duty_a     = 0U,
     .duty_b     = 0U,
     .auto_start = true,
   };
-  return ra_gpt_init((uint8_t)k_gpt_dma_demo_channel, &cfg);
+  return ra8_gpt_init((uint8_t)k_gpt_dma_demo_channel, &cfg);
 }
 
 /**
@@ -186,19 +186,19 @@ static bool gpt_dma_demo_run_one(void)
 {
   s_dma_done       = 0U;
   uint8_t dma_chan = 0U;
-  /* ra_gpt_write_dma succeeding proves: ra_dma_init worked, a DMAC
+  /* ra8_gpt_write_dma succeeding proves: ra8_dma_init worked, a DMAC
    * channel was allocated, the source / dest registers were
    * programmed, the transfer was kicked. The completion-callback
    * path additionally requires the per-app vector table to route
-   * the DMAC interrupt to ra_dma's dispatcher (not wired in this
+   * the DMAC interrupt to ra8_dma's dispatcher (not wired in this
    * app's boilerplate), so the IRQ-driven s_dma_done flag is a
    * best-effort signal, not the gate. */
-  if (ra_gpt_write_dma((uint8_t)k_gpt_dma_demo_channel,
-                       s_period_table,
-                       (uint16_t)k_gpt_dma_demo_period_count,
-                       gpt_dma_demo_on_complete,
-                       nullptr,
-                       &dma_chan) != k_ra_ok) {
+  if (ra8_gpt_write_dma((uint8_t)k_gpt_dma_demo_channel,
+                        s_period_table,
+                        (uint16_t)k_gpt_dma_demo_period_count,
+                        gpt_dma_demo_on_complete,
+                        nullptr,
+                        &dma_chan) != k_ra8_ok) {
     return false;
   }
   /* Best-effort wait -- on real IRQ wiring the callback fires fast;
@@ -208,12 +208,12 @@ static bool gpt_dma_demo_run_one(void)
     if (s_dma_done != 0U) {
       break;
     }
-    ra_delay_ms(1U);
+    ra8_delay_ms(1U);
   }
   /* Manually release the channel because completion IRQ is not wired
    * in this app's vector_table; without this each iteration leaks a
    * channel and the 8-slot pool fills after 8 transfers. */
-  (void)ra_dma_release(dma_chan);
+  (void)ra8_dma_release(dma_chan);
   return true;
 }
 
@@ -222,9 +222,9 @@ static bool gpt_dma_demo_run_one(void)
 int32_t main(void)
 {
   gpt_dma_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  if (gpt_dma_demo_arm_channel() != k_ra_ok) {
+  if (gpt_dma_demo_arm_channel() != k_ra8_ok) {
     gpt_dma_demo_panic_halt();
   }
 
@@ -234,7 +234,7 @@ int32_t main(void)
     } else {
       g_gpt_dma_mismatch += 1U;
     }
-    ra_delay_ms((uint32_t)k_gpt_dma_demo_rearm_delay_ms);
+    ra8_delay_ms((uint32_t)k_gpt_dma_demo_rearm_delay_ms);
   }
   gpt_dma_demo_panic_halt();
   return 0;

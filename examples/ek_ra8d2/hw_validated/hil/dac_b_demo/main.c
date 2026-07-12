@@ -14,10 +14,10 @@
  *
  * Bring-up sequence:
  *   1. CGC + SysTick + LED1.
- *   2. ``ra_dac_b_init_configured`` -- 12-bit, right-aligned, both
+ *   2. ``ra8_dac_b_init_configured`` -- 12-bit, right-aligned, both
  *      channels disabled initially.
- *   3. ``ra_dac_b_set_output_enable(0, true)``.
- *   4. Loop: ``ra_dac_b_write`` with monotonically increasing /
+ *   3. ``ra8_dac_b_set_output_enable(0, true)``.
+ *   4. Loop: ``ra8_dac_b_write`` with monotonically increasing /
  *      decreasing 12-bit code.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -27,12 +27,12 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_dac_b.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_dac_b.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint16_t {
@@ -79,16 +79,16 @@ static void dac_b_demo_panic_halt(void)
 static void dac_b_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     dac_b_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     dac_b_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     dac_b_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     dac_b_demo_panic_halt();
   }
 }
@@ -97,18 +97,18 @@ static void dac_b_demo_setup_or_halt(void)
  * @brief Configure DAC_B in 12-bit, normal-vref mode.
  *
  * @par MC/DC:
- * Decision: ``ra_dac_b_init_configured != ok``. One atomic condition
+ * Decision: ``ra8_dac_b_init_configured != ok``. One atomic condition
  * x 2 vectors -- golden (this) + null cfg (test_app_dac_b_demo.c).
  */
-[[nodiscard]] static ra_err_t dac_b_demo_arm(void)
+[[nodiscard]] static ra8_err_t dac_b_demo_arm(void)
 {
-  const ra_dac_b_cfg_t cfg = {
-    .vref            = k_ra_dac_b_vref_normal,
-    .data_format     = k_ra_dac_b_format_right,
+  const ra8_dac_b_cfg_t cfg = {
+    .vref            = k_ra8_dac_b_vref_normal,
+    .data_format     = k_ra8_dac_b_format_right,
     .enable_channel0 = true,
     .enable_channel1 = false,
   };
-  return ra_dac_b_init_configured(&cfg);
+  return ra8_dac_b_init_configured(&cfg);
 }
 
 #pragma GCC diagnostic push
@@ -116,19 +116,19 @@ static void dac_b_demo_setup_or_halt(void)
 int32_t main(void)
 {
   dac_b_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  if (dac_b_demo_arm() != k_ra_ok) {
+  if (dac_b_demo_arm() != k_ra8_ok) {
     dac_b_demo_panic_halt();
   }
-  if (ra_dac_b_set_output_enable((uint8_t)k_dac_b_demo_channel, true) != k_ra_ok) {
+  if (ra8_dac_b_set_output_enable((uint8_t)k_dac_b_demo_channel, true) != k_ra8_ok) {
     dac_b_demo_panic_halt();
   }
 
   uint16_t code = 0U;
   bool     up   = true;
   while (1) {
-    if (ra_dac_b_write((uint8_t)k_dac_b_demo_channel, code) != k_ra_ok) {
+    if (ra8_dac_b_write((uint8_t)k_dac_b_demo_channel, code) != k_ra8_ok) {
       break;
     }
     g_dac_b_demo_tick += 1U;
@@ -147,7 +147,7 @@ int32_t main(void)
         code = (uint16_t)(code - (uint16_t)k_dac_b_demo_step);
       }
     }
-    ra_delay_ms((uint32_t)k_dac_b_demo_step_ms);
+    ra8_delay_ms((uint32_t)k_dac_b_demo_step_ms);
   }
   dac_b_demo_panic_halt();
   return 0;

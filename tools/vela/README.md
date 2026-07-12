@@ -43,4 +43,4 @@ vela --accelerator-config ethos-u55-256 \
 The `_vela.tflite` output is what a Phase-2 `examples/ra8p1_foundation` app bakes
 in and hands to the vendored TFLite-micro `MicroInterpreter`; the `ethos-u`
 operator then dispatches the command stream to the NPU through the first-party
-`ra_npu` driver (see `docs/SOUP/tflite-micro.md`, "Phase 2").
+`ra8_npu` driver (see `docs/SOUP/tflite-micro.md`, "Phase 2").

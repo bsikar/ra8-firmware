@@ -8,7 +8,7 @@
 # does NOT replace the gate and does NOT change gate behaviour.
 #
 # Pipeline:
-#   1. Configure tests/ with RA_COVERAGE=ON (wires --coverage,
+#   1. Configure tests/ with RA8_COVERAGE=ON (wires --coverage,
 #      -fprofile-arcs, -ftest-coverage in tests/CMakeLists.txt).
 #   2. Build all host tests.
 #   3. Run them via ctest.
@@ -43,10 +43,10 @@ run_native() {
   local info="$build/coverage.info"
   local info_filtered="$build/coverage.filtered.info"
 
-  echo "==> [1/6] Configuring host tests with RA_COVERAGE=ON"
+  echo "==> [1/6] Configuring host tests with RA8_COVERAGE=ON"
   cmake -B "$build" -S "$repo/tests" \
     -DCMAKE_BUILD_TYPE=Debug \
-    -DRA_COVERAGE=ON \
+    -DRA8_COVERAGE=ON \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     -Wno-dev >/dev/null
 

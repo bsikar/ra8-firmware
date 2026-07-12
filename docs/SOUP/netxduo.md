@@ -26,7 +26,7 @@ firmware as Software Of Unknown Provenance (SOUP).
 
 - Dual IPv4/IPv6 TCP/IP stack, plus NetX Secure (TLS), used by
   `examples/ek_ra8d2/threadx_netx_tcp_echo` and the OTA demo's update
-  download path (`threadx_ota_demo` via `libs/ra_ota`).
+  download path (`threadx_ota_demo` via `libs/ra8_ota`).
 - Integrity claim category: data-handling (frame parsing, TLS record
   layer).
 
@@ -53,9 +53,9 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 ## Risk mitigation
 
 - All board-specific Ethernet/PHY plumbing is isolated in
-  `libs/ra_net_pal/` (NetX Duo PAL) so the SOUP boundary is a single
+  `libs/ra8_net_pal/` (NetX Duo PAL) so the SOUP boundary is a single
   driver shim.
-- TLS record handling is wrapped behind `libs/ra_tls/` for use-case
+- TLS record handling is wrapped behind `libs/ra8_tls/` for use-case
   policy enforcement.
 - Demo-only use in this revision; no safety-critical control loop runs
   over the network.

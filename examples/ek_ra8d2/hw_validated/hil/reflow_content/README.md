@@ -1,13 +1,13 @@
 # reflow_content
 
-Headless **on-silicon HIL gate** for the `ra_reflow` book-content render path
+Headless **on-silicon HIL gate** for the `ra8_reflow` book-content render path
 (#115) -- multi-page pagination, per-page render correctness, and a font-size
 re-flow. No panel / SD / touch needed.
 
-1. Lay out a baked multi-paragraph chapter through `ra_reflow` (bundled **Ahem**
+1. Lay out a baked multi-paragraph chapter through `ra8_reflow` (bundled **Ahem**
    face) into a 160x192 RGB565 framebuffer.
 2. Render **every page** and fold an **FNV-1a-32** over the framebuffer output.
-3. Call `ra_reflow_set_font_size()` to re-flow the cached chapter at a larger
+3. Call `ra8_reflow_set_font_size()` to re-flow the cached chapter at a larger
    size (16 -> 24 px), then render every page again.
 4. Print a banner on the SCI8 J-Link OB console:
 

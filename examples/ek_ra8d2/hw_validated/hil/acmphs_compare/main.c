@@ -9,7 +9,7 @@
  * Brings up the on-chip ACMPHS unit, configures channel 0 with the
  * default plus-input / internal-Vref minus-input pair (no edge IRQ,
  * polling only), and reads ``CMPMON`` once per second via
- * ``ra_acmphs_read_output``. LED1 toggles each time the comparator
+ * ``ra8_acmphs_read_output``. LED1 toggles each time the comparator
  * output is HIGH; LED2 toggles each time the output is LOW. LED3
  * latches if a HAL error is ever returned.
  *
@@ -26,13 +26,13 @@
 
 #include <stdint.h>
 
-#include "ra_acmphs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_time.h"
+#include "ra8_acmphs.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_port_constants.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -78,7 +78,7 @@ static void acmphs_demo_panic_halt(void)
  * @brief Bring CGC + SysTick + LEDs + ACMPHS channel 0 up.
  *
  * @par MC/DC:
- * Compound decision: ``ra_acmphs_init != ok || ra_acmphs_channel_init !=
+ * Compound decision: ``ra8_acmphs_init != ok || ra8_acmphs_channel_init !=
  * ok``. Two atomic conditions x N+1 = 3 vectors -- both-ok (steady
  * state), each-fail (mock injection in test_app_acmphs_compare).
  *
@@ -89,88 +89,88 @@ static void acmphs_demo_panic_halt(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t acmphs_demo_setup(void)
+[[nodiscard]] static ra8_err_t acmphs_demo_setup(void)
 {
-  uint32_t cpuclk0_hz = 0U;
-  ra_err_t err        = ra_cgc_init();
-  if (err != k_ra_ok) {
+  uint32_t  cpuclk0_hz = 0U;
+  ra8_err_t err        = ra8_cgc_init();
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz);
-  if (err != k_ra_ok) {
+  err = ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_time_init(cpuclk0_hz);
-  if (err != k_ra_ok) {
+  err = ra8_time_init(cpuclk0_hz);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_board_led_init(k_ra_board_led1);
-  if (err != k_ra_ok) {
+  err = ra8_board_led_init(k_ra8_board_led1);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_board_led_init(k_ra_board_led2);
-  if (err != k_ra_ok) {
+  err = ra8_board_led_init(k_ra8_board_led2);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_board_led_init(k_ra_board_led3);
-  if (err != k_ra_ok) {
+  err = ra8_board_led_init(k_ra8_board_led3);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_acmphs_init();
-  if (err != k_ra_ok) {
+  err = ra8_acmphs_init();
+  if (err != k_ra8_ok) {
     return err;
   }
-  const ra_acmphs_cfg_t cfg = {
+  const ra8_acmphs_cfg_t cfg = {
     .ivpsel     = (uint8_t)k_acmphs_demo_ivpsel,
     .ivrefsel   = (uint8_t)k_acmphs_demo_ivrefsel,
-    .edge       = k_ra_acmphs_edge_none,
+    .edge       = k_ra8_acmphs_edge_none,
     .filter_en  = false,
     .invert_out = false,
   };
-  return ra_acmphs_channel_init((uint8_t)k_acmphs_demo_channel, &cfg);
+  return ra8_acmphs_channel_init((uint8_t)k_acmphs_demo_channel, &cfg);
 }
 
 /**
  * @brief Read the comparator output and route to the matching LED.
  *
  * @par MC/DC:
- * Compound decision: ``ra_acmphs_read_output != ok``. One atomic
+ * Compound decision: ``ra8_acmphs_read_output != ok``. One atomic
  * condition x 2 vectors -- success (steady state) + driver-failure
  * (test mock).
  *
- * @return Error code from ra_acmphs_read_output.
+ * @return Error code from ra8_acmphs_read_output.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t acmphs_demo_one_iter(void)
+[[nodiscard]] static ra8_err_t acmphs_demo_one_iter(void)
 {
-  ra_level_t     lv  = k_ra_level_low;
-  const ra_err_t err = ra_acmphs_read_output((uint8_t)k_acmphs_demo_channel, &lv);
-  if (err != k_ra_ok) {
+  ra8_level_t     lv  = k_ra8_level_low;
+  const ra8_err_t err = ra8_acmphs_read_output((uint8_t)k_acmphs_demo_channel, &lv);
+  if (err != k_ra8_ok) {
     return err;
   }
-  if (lv == k_ra_level_high) {
-    return ra_board_led_toggle(k_ra_board_led1);
+  if (lv == k_ra8_level_high) {
+    return ra8_board_led_toggle(k_ra8_board_led1);
   }
-  return ra_board_led_toggle(k_ra_board_led2);
+  return ra8_board_led_toggle(k_ra8_board_led2);
 }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  if (acmphs_demo_setup() != k_ra_ok) {
+  if (acmphs_demo_setup() != k_ra8_ok) {
     acmphs_demo_panic_halt();
   }
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   while (1) {
-    if (acmphs_demo_one_iter() != k_ra_ok) {
-      (void)ra_board_led_on(k_ra_board_led3);
+    if (acmphs_demo_one_iter() != k_ra8_ok) {
+      (void)ra8_board_led_on(k_ra8_board_led3);
       break;
     }
     g_acmphs_compare_tick += 1U;
-    ra_delay_ms((uint32_t)k_acmphs_demo_period_ms);
+    ra8_delay_ms((uint32_t)k_acmphs_demo_period_ms);
   }
   acmphs_demo_panic_halt();
   return 0;

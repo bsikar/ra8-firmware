@@ -5,7 +5,7 @@ Digikey 1471-MIKROE-4073-ND) on the EK-RA8D2.
 
 The app boots, brings up IIC_B channel 0 at 100 kHz on the MikroBUS
 SDA/SCL pair (Arduino D14 = SDA1 = P511, D15 = SCL1 = P512 -- see
-`k_ra_board_mikrobus_i2c_*` in the BSP), binds the new `ra_lsm6dso`
+`k_ra8_board_mikrobus_i2c_*` in the BSP), binds the new `ra8_lsm6dso`
 driver to the I2C bus, reads the WHO_AM_I register and prints the
 banner line scraped by `hil.conf`:
 
@@ -57,10 +57,10 @@ requires:
 
 The other channels (SW4-1/2 for Pmod1 mode, SW4-6/7/8) are independent
 and can stay at the project's other defaults documented in
-`libs/ra_board_ek_ra8d2/inc/ra_board_ek_ra8d2.h` ("Project SW4 layout").
+`libs/ra8_board_ek_ra8d2/inc/ra8_board_ek_ra8d2.h` ("Project SW4 layout").
 
 Either flip the DIPs manually or call
-`ra_board_io_expander_apply_project_sw4_defaults()` early in `main()`
+`ra8_board_io_expander_apply_project_sw4_defaults()` early in `main()`
 to have the U15 PI4IOE5V6408 expander drive the whole project layout
 in firmware -- this overrides whatever the physical switches read.
 

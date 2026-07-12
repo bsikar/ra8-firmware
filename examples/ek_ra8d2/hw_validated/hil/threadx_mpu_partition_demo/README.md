@@ -1,7 +1,7 @@
 # threadx_mpu_partition_demo
 
 Eclipse ThreadX + Arm v8-M MPU partition HIL test for the EK-RA8D2.
-Programs a small static MPU region table at boot via `ra_mpu_configure`
+Programs a small static MPU region table at boot via `ra8_mpu_configure`
 and then runs a single ThreadX worker that blinks LED1 at 1 Hz to
 prove the MPU configuration did not wedge ordinary code execution.
 
@@ -22,8 +22,8 @@ non-secure worlds and add per-thread sub-regions.
 
 ## What it does
 
-1. `ra_mpu_configure(&s_mpu_cfg)` -- install the 3-region table.
-2. `ra_board_led_init(k_ra_board_led1)` -- bring LED1 up as output.
+1. `ra8_mpu_configure(&s_mpu_cfg)` -- install the 3-region table.
+2. `ra8_board_led_init(k_ra8_board_led1)` -- bring LED1 up as output.
 3. `tx_kernel_enter()` -- spin the ThreadX scheduler.
 4. Worker thread (`mpu_blink`, prio 4, 1 KiB stack) toggles LED1
    every 1000 ticks (1 Hz).
@@ -42,7 +42,7 @@ bash scripts/flash.sh build/threadx_mpu_partition_demo/threadx_mpu_partition_dem
 
 ## BSP usage
 
-Uses `ra_board_ek_ra8d2` BSP for LED1 init/toggle (per EK-RA8D2 v1 UM
+Uses `ra8_board_ek_ra8d2` BSP for LED1 init/toggle (per EK-RA8D2 v1 UM
 Table 24 "EK-RA8D2 Board LED Functions" p 31).
 
 Validated 2026-05-02 against EK-RA8D2 v1 User's Manual

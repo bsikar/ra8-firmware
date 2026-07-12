@@ -1,7 +1,7 @@
 # battery_monitor_demo
 
 Battery **state-of-charge** monitor over a MAX17048-class I2C fuel gauge, read
-through `ra_smbus` on the IIC_B (I3C-in-I2C-mode) bus.
+through `ra8_smbus` on the IIC_B (I3C-in-I2C-mode) bus.
 
 ## What it does
 
@@ -30,7 +30,7 @@ before any PASS line, so the gate is exact. `g_bat_soc` / `g_bat_chg` /
 
 ## Low-battery nag
 
-Each reading is folded into the **`ra_batt`** nag policy (`libs/ra_batt`), which
+Each reading is folded into the **`ra8_batt`** nag policy (`libs/ra8_batt`), which
 raises a one-shot warning on the descent into each band:
 
 ```
@@ -40,10 +40,10 @@ battery: NAG CRITICAL soc=10%   # SOC fell to <=10%
 
 The policy is **edge-triggered with hysteresis**: each band warns once, stays
 quiet while the battery sits in the band, and only re-arms after SOC recovers
-past the band threshold by `k_ra_batt_rearm_margin` (3%) or while charging -- so
+past the band threshold by `k_ra8_batt_rearm_margin` (3%) or while charging -- so
 a steady or jittering low battery does not spam. Charging suppresses warnings.
 The decision logic is pure (no MMIO), so it is host-unit-tested with full MC/DC
-in `tests/test_ra_batt.c`; this app is the on-target consumer.
+in `tests/test_ra8_batt.c`; this app is the on-target consumer.
 
 In the simulator window you can drag the POWER slider down through 20% and 10%
 to watch each nag fire once in the console, then back up and down to see it
@@ -87,7 +87,7 @@ $ board_sim battery_monitor_demo.elf --battery 55 --charge
 
 `scripts/board_sim_smoke.sh battery_monitor_demo` PASS -- board_sim models the
 fuel gauge on the modelled IIC_B bus, so the SOC + CRATE reads return through the
-genuine `ra_smbus -> ra_i3c` I2C path (no stub) and the banner is deterministic.
+genuine `ra8_smbus -> ra8_i3c` I2C path (no stub) and the banner is deterministic.
 
 ## On real silicon (hw_pending)
 

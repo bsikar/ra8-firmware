@@ -1,9 +1,9 @@
 # blink_hal
 
-LED-blink demo built on the project's HAL libraries (`libs/ra_hal/` +
-`libs/ra_core/`). Same observable behaviour as `blink/` --
+LED-blink demo built on the project's HAL libraries (`libs/ra8_hal/` +
+`libs/ra8_core/`). Same observable behaviour as `blink/` --
 1 Hz toggle on the EK-RA8D2 user-LED candidates -- but using
-`ra_gpio_*` and `ra_time_*` instead of raw register pokes. Standalone
+`ra8_gpio_*` and `ra8_time_*` instead of raw register pokes. Standalone
 example app: `examples/ek_ra8d2/hw_validated/hil/blink_hal/main.c` plus its own `vector_table.c`,
 `system_init.c`, `secure_exception.c`, `trustzone_init.c`,
 `linker_script.ld`, `Makefile`, and `CMakeLists.txt`.
@@ -12,8 +12,8 @@ example app: `examples/ek_ra8d2/hw_validated/hil/blink_hal/main.c` plus its own 
 
 | | `blink` | `blink_hal` |
 |---|---|---|
-| GPIO programming | direct PFS / PCNTR1 writes | `ra_gpio_output_init`, `ra_gpio_toggle` |
-| Delay | inline SysTick poll | `ra_time_init` + `ra_delay_ms` |
+| GPIO programming | direct PFS / PCNTR1 writes | `ra8_gpio_output_init`, `ra8_gpio_toggle` |
+| Delay | inline SysTick poll | `ra8_time_init` + `ra8_delay_ms` |
 | Pin validator | bypassed | claimed via the HAL |
 | Diagnostic value | "is the chip alive?" | "is the HAL stack alive?" |
 | Lines of C | ~250 | ~150 |
@@ -43,10 +43,10 @@ make clean                 # rm -rf build
 
 ## What it touches
 
-- **`libs/ra_core/src/ra_time.c`** -- SysTick-driven 1 ms tick + busy-wait.
-- **`libs/ra_hal/src/ra_gpio.c`** -- PFS unlock dance, pin-validator
+- **`libs/ra8_core/src/ra8_time.c`** -- SysTick-driven 1 ms tick + busy-wait.
+- **`libs/ra8_hal/src/ra8_gpio.c`** -- PFS unlock dance, pin-validator
   reservation, output-mode programming, atomic toggle via PCNTR3.
-- **`libs/ra_core/src/ra_pin_validator.c`** -- pulled in transitively
+- **`libs/ra8_core/src/ra8_pin_validator.c`** -- pulled in transitively
   to claim each LED pin so the HAL refuses double-assignment.
 
 The HAL stack adds ~24 KB of .text vs. the raw `blink` app (91 KB
@@ -55,10 +55,10 @@ table + log helpers + assertion strings.
 
 ## What it deliberately doesn't touch
 
-- **`ra_cgc_init()`** -- PLL bring-up to 1 GHz. The CGC driver writes
+- **`ra8_cgc_init()`** -- PLL bring-up to 1 GHz. The CGC driver writes
   several PRCR-protected registers and HardFaults today on the bare
   chip; we run on the reset-default MOCO ~8.4 MHz.
-- **`ra_infrastructure_init()`** -- log + stack canary + pin-validator
+- **`ra8_infrastructure_init()`** -- log + stack canary + pin-validator
   bootstrap. Skipped to keep the demo's failure surface as small as
   possible while still proving the HAL works.
 - TrustZone / SAU programming.
@@ -66,8 +66,8 @@ table + log helpers + assertion strings.
 When those subsystems are ready to flip on, this app is the
 canonical place to add them one at a time.
 
-Uses `ra_board_ek_ra8d2` BSP for LED1 / LED2 / LED3 init + toggle
-(`ra_board_led_init`, `ra_board_led_toggle`), so the demo speaks board
+Uses `ra8_board_ek_ra8d2` BSP for LED1 / LED2 / LED3 init + toggle
+(`ra8_board_led_init`, `ra8_board_led_toggle`), so the demo speaks board
 coordinates ("LED1, LED2, LED3") instead of chip pin numbers. Underlying
 chip pins (P600 / P303 / PA07) come from the BSP per EK-RA8D2 v1 UM
 Table 24 p 31.

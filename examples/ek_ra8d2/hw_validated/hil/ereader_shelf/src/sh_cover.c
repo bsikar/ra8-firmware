@@ -15,8 +15,8 @@
  *
  * @since 0.1.0
  */
-#include "ra_gfx.h"
-#include "ra_gfx_font.h"
+#include "ra8_gfx.h"
+#include "ra8_gfx_font.h"
 #include "sh_app.h"
 
 /** @enum sh_cover_layout_t @brief Cover-page geometry (framebuffer pixels). */
@@ -38,44 +38,45 @@ typedef enum : int32_t {
 /** @brief Draw a filled action button with a left-inset label. */
 static void sh_cover_button(int32_t y, const char* label)
 {
-  (void)ra_gfx_rect(k_sh_cv_panel_x, y, k_sh_cv_btn_w, k_sh_cv_btn_h, (uint32_t)k_sh_col_bar, true);
-  (void)ra_gfx_text_out(k_sh_cv_panel_x + k_sh_cv_btn_pad,
-                        y + ((k_sh_cv_btn_h - (int32_t)k_sh_glyph_h) / 2),
-                        label,
-                        &ra_gfx_font_8x16,
-                        (uint32_t)k_sh_col_barfg,
-                        (uint32_t)k_sh_col_bar);
+  (void)
+    ra8_gfx_rect(k_sh_cv_panel_x, y, k_sh_cv_btn_w, k_sh_cv_btn_h, (uint32_t)k_sh_col_bar, true);
+  (void)ra8_gfx_text_out(k_sh_cv_panel_x + k_sh_cv_btn_pad,
+                         y + ((k_sh_cv_btn_h - (int32_t)k_sh_glyph_h) / 2),
+                         label,
+                         &ra8_gfx_font_8x16,
+                         (uint32_t)k_sh_col_barfg,
+                         (uint32_t)k_sh_col_bar);
 }
 
 void sh_cover_render(void)
 {
-  (void)ra_gfx_clear((uint32_t)k_sh_col_bg);
+  (void)ra8_gfx_clear((uint32_t)k_sh_col_bg);
   sh_titlebar("< Library", nullptr);
   sh_book_cover_fullscreen(k_sh_cv_box_x, k_sh_cv_box_y, k_sh_cv_box_w, k_sh_cv_box_h);
   const sh_entry_t* e = &g_sh.entry[g_sh.selected];
   char              buf[k_sh_linebuf];
   const int32_t     panel_w = (int32_t)k_sh_fb_w - k_sh_cv_panel_x - (int32_t)k_sh_pad;
   sh_fit(buf, sizeof buf, e->title, sh_cells(panel_w));
-  (void)ra_gfx_text_out(k_sh_cv_panel_x,
-                        k_sh_cv_title_y,
-                        buf,
-                        &ra_gfx_font_8x16,
-                        (uint32_t)k_sh_col_card,
-                        (uint32_t)k_sh_col_bg);
+  (void)ra8_gfx_text_out(k_sh_cv_panel_x,
+                         k_sh_cv_title_y,
+                         buf,
+                         &ra8_gfx_font_8x16,
+                         (uint32_t)k_sh_col_card,
+                         (uint32_t)k_sh_col_bg);
   sh_fit(buf, sizeof buf, e->author, sh_cells(panel_w));
-  (void)ra_gfx_text_out(k_sh_cv_panel_x,
-                        k_sh_cv_auth_y,
-                        buf,
-                        &ra_gfx_font_8x16,
-                        (uint32_t)k_sh_col_sub,
-                        (uint32_t)k_sh_col_bg);
+  (void)ra8_gfx_text_out(k_sh_cv_panel_x,
+                         k_sh_cv_auth_y,
+                         buf,
+                         &ra8_gfx_font_8x16,
+                         (uint32_t)k_sh_col_sub,
+                         (uint32_t)k_sh_col_bg);
 
-  (void)ra_gfx_text_out(k_sh_cv_panel_x,
-                        k_sh_cv_auth_y + (int32_t)k_sh_glyph_h,
-                        e->from_sd ? "Source: SD card" : "Source: baked (MRAM)",
-                        &ra_gfx_font_8x16,
-                        (uint32_t)k_sh_col_sub,
-                        (uint32_t)k_sh_col_bg);
+  (void)ra8_gfx_text_out(k_sh_cv_panel_x,
+                         k_sh_cv_auth_y + (int32_t)k_sh_glyph_h,
+                         e->from_sd ? "Source: SD card" : "Source: baked (MRAM)",
+                         &ra8_gfx_font_8x16,
+                         (uint32_t)k_sh_col_sub,
+                         (uint32_t)k_sh_col_bg);
 
   sh_cover_button(k_sh_cv_read_y, "Read this book");
   sh_cover_button(k_sh_cv_toc_y, "Table of Contents");
@@ -105,7 +106,7 @@ bool sh_cover_loupe_map(int32_t px, int32_t py, int32_t* out_cx, int32_t* out_cy
     return false; /* EPUB covers are decoded rasters, not the gray4 image pool */
   }
   const uint32_t cover = g_sh.book_src.hdr.cover_image_index;
-  if ((g_sh.book_src.vm == nullptr) || (cover == k_ra_book_nil)) {
+  if ((g_sh.book_src.vm == nullptr) || (cover == k_ra8_book_nil)) {
     return false;
   }
   return sh_image_loupe_map(&g_sh.book_src,
@@ -126,7 +127,7 @@ void sh_cover_loupe_render(void)
     return;
   }
   const uint32_t cover = g_sh.book_src.hdr.cover_image_index;
-  if (cover == k_ra_book_nil) {
+  if (cover == k_ra8_book_nil) {
     return;
   }
   const int32_t dx = ((int32_t)k_sh_fb_w - (int32_t)k_sh_loupe_w) / 2;

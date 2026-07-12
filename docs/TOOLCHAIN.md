@@ -58,7 +58,7 @@ target; the "status" column flags the known skews.
 Codegen correctness on the attacker-facing `miniz` ZIP inflater is
 version-specific (arm-gcc 13.3 miscompiles it under strict aliasing where other
 majors do not; worked around with `-fno-strict-aliasing` on the SOUP TUs in
-`cmake/ra_add_app.cmake`), so every environment is pinned to the **same** Arm GNU
+`cmake/ra8_add_app.cmake`), so every environment is pinned to the **same** Arm GNU
 Toolchain release: **13.3.rel1** (gcc `13.3.1`).
 
 **How the pin is enforced (#178):**
@@ -67,12 +67,12 @@ Toolchain release: **13.3.rel1** (gcc `13.3.1`).
   box at `~/opt/arm-gnu-toolchain-13.3`. `cmake/toolchain-ra8d2.cmake`
   `find_program`s the cross tools with `HINTS` on those paths (searched before
   `PATH`), so the pinned 13.3 wins regardless of what stray arm-gcc sits on `PATH`
-  (e.g. a Homebrew 14.x). Override with `-DRA_ARM_TOOLCHAIN_BIN=<dir>`.
+  (e.g. a Homebrew 14.x). Override with `-DRA8_ARM_TOOLCHAIN_BIN=<dir>`.
 - **Version assertion.** The toolchain file runs `-dumpfullversion` and requires
   major.minor `13.3` (patch-tolerant; rejects 13.2 and 14.x). A mismatch is a
-  **FATAL error by default** (`RA_STRICT_TOOLCHAIN` defaults ON) -- a build that
+  **FATAL error by default** (`RA8_STRICT_TOOLCHAIN` defaults ON) -- a build that
   silently picks up a stray arm-gcc fails loudly instead of shipping divergent
-  codegen. Pass `-DRA_STRICT_TOOLCHAIN=OFF` (or `RA_STRICT_TOOLCHAIN=0` in the
+  codegen. Pass `-DRA8_STRICT_TOOLCHAIN=OFF` (or `RA8_STRICT_TOOLCHAIN=0` in the
   environment) for a deliberate one-off local build on a different toolchain.
 - **Reproducible fetch.** `.devcontainer/Dockerfile` fetches 13.3.rel1 by
   **URL + sha256** (per-arch, `ARM_GCC_SHA256_X86_64` / `_AARCH64`) to
@@ -81,7 +81,7 @@ Toolchain release: **13.3.rel1** (gcc `13.3.1`).
   in the devcontainer) and its own newlib. The base image is digest-pinned.
 
 **To move the pin:** bump `ARM_GCC_RELEASE` + both `ARM_GCC_SHA256_*` in the
-Dockerfile and `RA_PINNED_ARM_GCC_VERSION` in the toolchain file, then re-install
+Dockerfile and `RA8_PINNED_ARM_GCC_VERSION` in the toolchain file, then re-install
 at the standard path on the Mac + dev box (download from
 `developer.arm.com/downloads/-/arm-gnu-toolchain-downloads`, extract to
 `~/opt/arm-gnu-toolchain-<rel>` with `--strip-components=1`). Keep the
@@ -161,7 +161,7 @@ Gotchas (each has bitten a push):
   others) aborts ~random tests under coverage instrumentation and kills
   `coverage.sh` at its `set -e` ctest step BEFORE the floor check. Defeat with
   `ctest --repeat until-pass:4` then run the gcovr + `check_coverage_floor.py`
-  steps by hand. Root fix: the T1-01 deterministic MMIO seam (`ra_sim_mmio_*`).
+  steps by hand. Root fix: the T1-01 deterministic MMIO seam (`ra8_sim_mmio_*`).
 - **The dev box is shared** -- another session may `git reset --hard` it between
   your ssh calls, wiping untracked files. Sync + validate in ONE session.
 

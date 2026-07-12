@@ -7,7 +7,7 @@
 ## 2026-06-10 OSPI flash RESOLVED -- JEDEC 0x9D reads, round-trip passes (#44)
 
 **The flash was never a hardware fault. It was a controller chip-select
-bug in our `ra_xspi` driver.** Every prior "hardware" conclusion in this
+bug in our `ra8_xspi` driver.** Every prior "hardware" conclusion in this
 file (SW4-3 isolation, missing 1.8 V rail, U15 gating) is **superseded** by
 this entry. Proof the bug was firmware: J-Link's own OSPI flash loader
 erases/programs/verifies arbitrary patterns at the `0x90000000` memory
@@ -22,7 +22,7 @@ The Renesas FSP EK-RA8D2 OSPI example confirms this: its
 `configuration.xml` sets `module.driver.ospi_b.channel = channel.1`, and
 FSP `R_OSPI_B_Open` writes the protocol/timing into
 `LIOCFGCS[p_cfg_extend->channel]` and selects `CDCTL0.CSSEL = channel` on
-every manual command. Our `ra_xspi_init` hard-coded CS0: it wrote the
+every manual command. Our `ra8_xspi_init` hard-coded CS0: it wrote the
 protocol into `LIOCFGCS[0]` and left `CDCTL0.CSSEL = 0`. With CSSEL=0 the
 controller strobed the (unconnected) CS0 pin, the flash never saw
 chip-select, and the 1S RDID floated to `0x00FFFFFF` on the board
@@ -34,19 +34,19 @@ config is in place, the FSP bring-up (`ospi_b_ep.c` `ospi_b_init`,
 `LIOCTL.RSTCS` (bit 16) low->high to hardware-reset the flash. A prior
 J-Link OSPI loader run can leave the part in OPI/DOPI; without the RSTCS
 pulse it would not answer a 1S RDID. Both fixes are now in
-`ra_xspi_init`.
+`ra8_xspi_init`.
 
-### The fix (minimal, in `ra_xspi.c` + `ra8d2_ospi_regs.h`)
+### The fix (minimal, in `ra8_xspi.c` + `ra8_ospi_regs.h`)
 
-- `ra_xspi_init` now writes the protocol mode to `LIOCFGCS[k_ra_xspi_onboard_cs]`
-  (CS1) and sets `CDCTL0.CSSEL = k_ra_xspi_onboard_cs`, so all subsequent
+- `ra8_xspi_init` now writes the protocol mode to `LIOCFGCS[k_ra8_xspi_onboard_cs]`
+  (CS1) and sets `CDCTL0.CSSEL = k_ra8_xspi_onboard_cs`, so all subsequent
   manual commands (RDID, RDSR, WREN, PP, SE, read) target the connected
-  device. `k_ra_xspi_onboard_cs = 1` is a documented board fact.
-- `ra_xspi_init` then calls `internal_xspi_reset_device()`, which pulses
+  device. `k_ra8_xspi_onboard_cs = 1` is a documented board fact.
+- `ra8_xspi_init` then calls `internal_xspi_reset_device()`, which pulses
   `LIOCTL.RSTCS` low->high (with `WPCS` held deasserted) to return the
   flash to its power-on 1S SPI protocol.
-- `ra8d2_ospi_regs.h` gained `k_ra_xspi_lioctl_mask_wpcs` (bit 0) /
-  `k_ra_xspi_lioctl_mask_rstcs` (bit 16) from the FSP CMSIS
+- `ra8_ospi_regs.h` gained `k_ra8_xspi_lioctl_mask_wpcs` (bit 0) /
+  `k_ra8_xspi_lioctl_mask_rstcs` (bit 16) from the FSP CMSIS
   `R_XSPI0_LIOCTL_*` field definitions.
 
 ### On-board verification (flash_journal, J-Link memprobe)
@@ -182,18 +182,18 @@ and [`examples/_unsupported/README.md`](../examples/_unsupported/README.md).
 ### blink (commit f55b0... post-fix)
 - `make blink` builds clean
 - `JLinkExe loadfile blink.hex` succeeds (143 KB/s, 6144 bytes to MRAM)
-- After flash + run + 3s sleep + halt: **PC=0x02000B2E in `ra_delay_ms` at libs/ra_core/src/ra_time.c, called from main.c**
+- After flash + run + 3s sleep + halt: **PC=0x02000B2E in `ra8_delay_ms` at libs/ra8_core/src/ra8_time.c, called from main.c**
 - LR=0x02000245 (return to main loop `b.n 02000230`)
 - CycleCnt advancing (~25M cycles in 3s = 8.3 MHz effective -- chip running but maybe not yet at full 1 GHz)
 - **No fault, no Default_Handler trap.** Firmware in main loop.
 
 ### uart_hello
-- Flashes and runs without fault (PC in `ra_delay_ms` from main.c).
+- Flashes and runs without fault (PC in `ra8_delay_ms` from main.c).
 - **BUT no UART data reaching the host CDC port**. SCI3 registers populated; suspected baud-rate drift (BRR=0x20 for 115200 at PCLKA=125MHz gives 118371 actual = 2.7% error, edge of UART tolerance).
 
 ## Real bugs caught (silent-failure on hardware)
 
-1. **SysTick_Handler weak-alias bug** -- both `vector_table.c` and `ra_time.c` defined SysTick weak; ld picked the alias-to-Default_Handler in vector_table.c, silently discarding ra_time.c's real implementation. Without the fix `ra_delay_ms` would spin forever. **Fixed in commit d3a9a278f** across all 36 example apps.
+1. **SysTick_Handler weak-alias bug** -- both `vector_table.c` and `ra8_time.c` defined SysTick weak; ld picked the alias-to-Default_Handler in vector_table.c, silently discarding ra8_time.c's real implementation. Without the fix `ra8_delay_ms` would spin forever. **Fixed in commit d3a9a278f** across all 36 example apps.
 
 2. **uart_hello SCI channel was wrong** -- used SCI8, J-Link OB VCOM is on SCI3 per the BSP commit a937aecbf and UM Table 13. Fixed.
 
@@ -201,7 +201,7 @@ and [`examples/_unsupported/README.md`](../examples/_unsupported/README.md).
 
 1. **SCI BRR computation** -- baud error at the UART tolerance limit. Either:
    - SCICLK isn't actually running at 100 MHz (would explain why N=33 instead of 27)
-   - PCLKA reported by `ra_cgc_get_clock_hz` is 125 MHz but actual SCICLK divider isn't /4
+   - PCLKA reported by `ra8_cgc_get_clock_hz` is 125 MHz but actual SCICLK divider isn't /4
    - MDDR fine-tuning needs to be applied
    
    Need to verify by reading CGC registers (PLLCCR, MOSCCR, etc.) on hardware or use a logic analyzer to measure actual baud.
@@ -217,7 +217,7 @@ and [`examples/_unsupported/README.md`](../examples/_unsupported/README.md).
 
 Caught additional bugs via continued hardware bring-up:
 
-3. **BSP UART console SCI channel was wrong** -- `k_ra_board_uart_console_sci_channel`
+3. **BSP UART console SCI channel was wrong** -- `k_ra8_board_uart_console_sci_channel`
    was set to `3U` by the original BSP-additions agent (commit a937aecbf).
    Sweeping channels 0..9 on real silicon revealed the J-Link OB VCOM
    bridge is on **SCI8**, not SCI3. PD02/PD03 routing under PSEL=`sci_async`
@@ -246,14 +246,14 @@ SCI8 -> J-Link OB UART bridge -> USB-CDC -> /dev/cu.usbmodem0010865671981 -> hos
 | uart_hello | 2 (UART) | [PASS] Verified | "hello, ra8d2!" stream at 115200 8N1 on SCI8 via /dev/cu.usbmodem0010865671981 |
 | threadx_blink | 1+RTOS | [PASS] Running | ThreadX scheduler in tx_thread_schedule idle; threads active |
 | threadx_lwip_tcp_echo | 5 (ETH) | [WARN]  Running but unreachable | Firmware up; static IP 192.168.1.50 mismatches host network 10.0.64.x. Needs DHCP or subnet-match. |
-| usb_hid_device | 3 (USB-FS) | [BUG] Init fails | PC parked at usb_hid_panic_halt (main.c). USB init returns error on real silicon -- likely ra_cgc_usbhs_pll_enable timeout or a stub that we promoted assuming chip behaviour that doesn't match. |
+| usb_hid_device | 3 (USB-FS) | [BUG] Init fails | PC parked at usb_hid_panic_halt (main.c). USB init returns error on real silicon -- likely ra8_cgc_usbhs_pll_enable timeout or a stub that we promoted assuming chip behaviour that doesn't match. |
 
 ## Open follow-ups for next hardware session
 
-1. **USB device bring-up debug** -- usb_hid_device fails. Add log/gdb-trace to identify exact failing call. Likely candidate: ra_cgc_usbhs_pll_enable's USBCKCR PLL-lock wait may not actually settle in real hardware; or a missing pin-enable.
+1. **USB device bring-up debug** -- usb_hid_device fails. Add log/gdb-trace to identify exact failing call. Likely candidate: ra8_cgc_usbhs_pll_enable's USBCKCR PLL-lock wait may not actually settle in real hardware; or a missing pin-enable.
 2. **Ethernet integration** -- switch threadx_lwip_tcp_echo to lwIP DHCP so it picks up an IP from any subnet the cable connects to. Or add a runtime config knob.
 3. **Phase 7.1 tier 1 LED-only sweep** -- flash blink_hal, threadx_mpu_partition_demo (LED+MPU), confirm each runs.
-4. **ra_board_uart_console real-console verification** -- refactor uart_hello to call ra_board_uart_console_* (now correct on SCI8) instead of raw ra_sci_*.
+4. **ra8_board_uart_console real-console verification** -- refactor uart_hello to call ra8_board_uart_console_* (now correct on SCI8) instead of raw ra8_sci_*.
 
 ## 2026-05-02 broader silicon sweep
 
@@ -261,10 +261,10 @@ Quick-flash + halt-and-check-PC across more example apps:
 
 | App | Result | Halt PC location |
 |---|---|---|
-| blink | [PASS] | ra_delay_ms loop |
-| blink_hal | [PASS] | ra_delay_ms loop |
+| blink | [PASS] | ra8_delay_ms loop |
+| blink_hal | [PASS] | ra8_delay_ms loop |
 | uart_hello | [PASS] | "hello, ra8d2!\n" stream verified |
-| clock_check | [PASS] | ra_delay_ms loop |
+| clock_check | [PASS] | ra8_delay_ms loop |
 | threadx_blink | [PASS] | tx_thread_schedule idle |
 | threadx_filex_demo | [PASS] | tx_thread_schedule idle |
 | threadx_canfd_demo | [PASS] | tx_thread_schedule idle |
@@ -274,10 +274,10 @@ Quick-flash + halt-and-check-PC across more example apps:
 | threadx_levelx_demo | [INVESTIGATE] still in main init at sample time | needs longer settle window |
 | threadx_filex_levelx_demo | [INVESTIGATE] still in main init | needs longer settle |
 | threadx_https_client | [INVESTIGATE] still in main init | needs longer settle |
-| ra_bootloader | [INVESTIGATE] still in system_init | needs longer settle |
-| threadx_netx_tcp_echo | [BUG] ra_error_handler panic | likely SCI8 console init racing -- same pattern as uart_hello pre-fix? |
-| threadx_ipc_demo | [WARN] early sample mis-flagged as ra_hw_err | retracted -- see "threadx_ipc_demo ra_hw_err retraction" below; later sweeps (lines 122, 164) confirm it boots cleanly |
-| usb_hid_device | [BUG] usb_hid_panic_halt | USB init returns error (suspected ra_cgc_usbhs_pll_enable hang or missing pin enable) |
+| ra8_bootloader | [INVESTIGATE] still in system_init | needs longer settle |
+| threadx_netx_tcp_echo | [BUG] ra8_error_handler panic | likely SCI8 console init racing -- same pattern as uart_hello pre-fix? |
+| threadx_ipc_demo | [WARN] early sample mis-flagged as ra8_hw_err | retracted -- see "threadx_ipc_demo ra8_hw_err retraction" below; later sweeps (lines 122, 164) confirm it boots cleanly |
+| usb_hid_device | [BUG] usb_hid_panic_halt | USB init returns error (suspected ra8_cgc_usbhs_pll_enable hang or missing pin enable) |
 
 **Score: 9 of 17 sampled apps confirmed running on silicon. 4 still settling. 4 need bug fixes.**
 
@@ -304,14 +304,14 @@ Results across 27 testable apps:
 
 ### [BUG] Real bugs surfaced (not yet fixed)
 1. **NetX malloc** -- threadx_netx_tcp_echo: nx_system_initialize calls
-   malloc -> ra_sbrk_trap fires (NASA Rule 3 enforcement). Need to
+   malloc -> ra8_sbrk_trap fires (NASA Rule 3 enforcement). Need to
    compile NetX with NX_TRACE_INSERT off + NX_PHYSICAL_HEADER right or
    pre-allocate a static heap pool.
 2. **XSPI NOR flash format** -- LevelX apps fail at lx_nor_flash_format.
-   Likely the lx_nor_driver_ra_xspi_initialize hook isn't actually
+   Likely the lx_nor_driver_ra8_xspi_initialize hook isn't actually
    bringing up the IS25LX512M-JHLE chip. Needs xSPI bring-up debug.
 3. **USB device enumeration silent** -- usb_hid_device firmware runs
-   stably but macOS never enumerates VID 0x1209. ra_nsc_usb_init or
+   stably but macOS never enumerates VID 0x1209. ra8_nsc_usb_init or
    downstream USB-FS controller bring-up missing a step (possibly D+
    pull-up, PHY clock, or VBUS-detect).
 4. **USB host apps fault** -- usb_host_cdc_echo / keyboard / msc_browse
@@ -321,13 +321,13 @@ Results across 27 testable apps:
    radio init; documented in VENDOR_BLOBS.md.
 6. **threadx_https_client** -- stuck in main init at line 239. Needs
    network up (so depends on lwIP echo working too).
-7. **ra_bootloader** -- stuck in system_init.c. Boot stub design
+7. **ra8_bootloader** -- stuck in system_init.c. Boot stub design
    may intentionally halt waiting for a banked image; need to verify.
 
-## 2026-05-02 final sweep (after ra_rand_stub fix)
+## 2026-05-02 final sweep (after ra8_rand_stub fix)
 
 The xorshift32 rand() override (commit 6d2ebbfac) was a **massive
-unblocker**. Apps that previously hit ra_sbrk_trap fatal_error from
+unblocker**. Apps that previously hit ra8_sbrk_trap fatal_error from
 inside newlib's rand()/srand() now boot cleanly:
 
 ### [PASS] Confirmed running on silicon (18 of 27 apps)
@@ -348,11 +348,11 @@ inside newlib's rand()/srand() now boot cleanly:
   IS25LX512M-JHLE chip on EK-RA8D2 v1.
 - **threadx_https_client** -- stuck in main init line 239 (see
   "threadx_https_client RSIP BIST root cause" section below). Panic is in
-  `demo_setup_or_halt()`, triggered by `ra_rsip_init({.run_bist=true})`,
+  `demo_setup_or_halt()`, triggered by `ra8_rsip_init({.run_bist=true})`,
   not Ethernet.
-- **threadx_mpu_partition_demo** -- ra_error_handler spin. Probably the
+- **threadx_mpu_partition_demo** -- ra8_error_handler spin. Probably the
   intentional cross-region fault firing as designed (the fault IS the demo).
-- **ra_bootloader** -- stuck in ra_log.c. Log-loop blocking on UART; likely
+- **ra8_bootloader** -- stuck in ra8_log.c. Log-loop blocking on UART; likely
   the boot stub's intentional "halt waiting for banked image" path.
 
 ## Summary
@@ -361,7 +361,7 @@ inside newlib's rand()/srand() now boot cleanly:
 
 | Commit | Bug | Impact |
 |---|---|---|
-| d3a9a278f | SysTick weak-alias dropped ra_time.c handler | All 36 vector tables -- without fix every blink/delay app spins forever |
+| d3a9a278f | SysTick weak-alias dropped ra8_time.c handler | All 36 vector tables -- without fix every blink/delay app spins forever |
 | 5f7110168 | BSP UART console wired to wrong SCI channel (3 vs 8) | All BSP UART users |
 | 394055f13 | usb_hid_device panics on pre-enum send_report | Any USB device app with same break-on-error pattern |
 | a953d16c9 | usb_cdc_echo same pattern | Same |
@@ -379,31 +379,31 @@ with the J-Link probe (SN 1086567198).
 
 | App | Outcome | Evidence |
 |---|---|---|
-| blink (regression baseline) | **PASS** | PC=`ra_time.c` (ra_delay_ms loop) |
+| blink (regression baseline) | **PASS** | PC=`ra8_time.c` (ra8_delay_ms loop) |
 | threadx_mpu_partition_demo | **PASS -- fix verified** | PC=`tx_timer_interrupt.S:237`, LR=`main.c` (worker thread). Pre-fix: HardFault |
 | threadx_filex_levelx_demo | **FAIL -- code fix insufficient** | PC=`main.c` (`demo_panic_halt`), LR=`main.c` -- `lx_nor_flash_format` still returns non-LX_SUCCESS. Pin routing + DATASIZE fixes built clean but did not make the IS25LX512M actually format. Likely still missing: octal-DDR mode-switch, or RDID returning wrong manufacturer ID, or RESET timing |
 | usb_hid_device | **FAIL -- does not enumerate** | Chip alive in `tx_thread_schedule.S:264`, but VID 0x1209 absent from macOS `ioreg -p IOUSB`. USBX library is wired but no host-visible device |
 
 ### USB enumeration root cause (now confirmed by hardware)
 
-`port/usbx/ux_dcd_ra_usb.c::ux_dcd_ra_usb_initialize` calls
-`ra_usb_attach_handler(internal_event_cb, nullptr)` -- so the DCD
+`port/usbx/ux_dcd_ra8_usb.c::ux_dcd_ra8_usb_initialize` calls
+`ra8_usb_attach_handler(internal_event_cb, nullptr)` -- so the DCD
 bridge has a callback waiting for events. But that callback only
-fires when something invokes `ra_usb_dispatch(speed)`. Grep across
+fires when something invokes `ra8_usb_dispatch(speed)`. Grep across
 the entire repo confirms **no source file** ever calls
-`ra_usb_dispatch` from an IRQ context (it is linked into every
-binary because `ra_usb.c` defines it, but it has zero callers).
+`ra8_usb_dispatch` from an IRQ context (it is linked into every
+binary because `ra8_usb.c` defines it, but it has zero callers).
 
 Result: the USB controller's `INTSTS0` accumulates SETUP/CTRT bits
 that nobody reads, so SETUP packets time out at the host before
 the DCD ever sees them. macOS gives up enumerating.
 
-**Fix needed** (separate task): in `ux_dcd_ra_usb_initialize`, call
-`ra_isr_register(k_ra_event_usbfs_int, slot, internal_usb_isr,
+**Fix needed** (separate task): in `ux_dcd_ra8_usb_initialize`, call
+`ra8_isr_register(k_ra8_event_usbfs_int, slot, internal_usb_isr,
 prio, ctx)` (and likewise USBHS for HS-mode), where
 `internal_usb_isr` is a thin C function that calls
-`ra_usb_dispatch(speed)`. The ELC event codes for `usbfs_int` /
-`usbhs_int` need to be added to `ra8d2_elc_regs.h::ra_elc_event_t`.
+`ra8_usb_dispatch(speed)`. The ELC event codes for `usbfs_int` /
+`usbhs_int` need to be added to `ra8_elc_regs.h::ra8_elc_event_t`.
 
 ## 2026-05-02 second-round hardware verification
 
@@ -412,27 +412,27 @@ octal bring-up extensions (commit 52e373507):
 
 | App | Outcome | Evidence |
 |---|---|---|
-| usb_hid_device with IRQ wiring | FAIL HardFault | PC=0xEFFFFFFE, MMFAR/BFAR=0x40700004 (out of any peripheral range). Faults the moment ra_isr_register(USBFS_INT) is called. The ELC event code 0x09A taken from FSP for older RA series is almost certainly wrong for RA8D2 |
+| usb_hid_device with IRQ wiring | FAIL HardFault | PC=0xEFFFFFFE, MMFAR/BFAR=0x40700004 (out of any peripheral range). Faults the moment ra8_isr_register(USBFS_INT) is called. The ELC event code 0x09A taken from FSP for older RA series is almost certainly wrong for RA8D2 |
 | usb_hid_device polled (post-revert in commit a67acbc26) | PASS chip-alive, FAIL enumeration | PC=tx_thread_schedule.S:268. SYSCFG=0x411 (USBE+DPRPU+SCKE), INTSTS0=0x9F00 ticking, but VID 0x1209 still absent from macOS ioreg. Polling cadence (~30ms via jiggle period) is too slow for SETUP-window timeouts |
 | threadx_filex_levelx_demo with all xSPI fixes | FAIL same panic site | PC=main.c (panic_halt), LR=main.c, i.e. lx_nor_flash_format still returns non-LX_SUCCESS even after CMDCMP poll budget bump (64 -> 1M), tPUW reset wait (1ms -> 15ms), BMCTL0 disable, and RDID validation. UART won't drain the failure log (1-3 bytes captured at any baud) so the actual RDID response is not yet observable |
 
 ### Confirmed via JLink memory read -- round 2 (after dual-protocol soft-reset)
 
-`g_ra_xspi_rdid_observed` (8 words) at `0x2200448C` now reads `{magic, 1, 0, 0xFFFFFF, 0, 0, 6, 0}`:
-- magic = 'RDID', call_count = 1, rid_err = `k_ra_ok`
+`g_ra8_xspi_rdid_observed` (8 words) at `0x2200448C` now reads `{magic, 1, 0, 0xFFFFFF, 0, 0, 6, 0}`:
+- magic = 'RDID', call_count = 1, rid_err = `k_ra8_ok`
 - jedec_id still `0x00FFFFFF` (chip silent)
 - reset_8d_err = 0 (8D soft-reset controller-side OK)
 - reset_1s_err = 0 (1S soft-reset controller-side OK)
-- stage = 6 (`k_ra_xspi_stage_rdid` -- reached RDID step)
+- stage = 6 (`k_ra8_xspi_stage_rdid` -- reached RDID step)
 
 **Hypothesis #3 (stuck-in-8D) ruled out.** Controller is healthy (CMDCMP fires for every command). Remaining: pin routing in `s_xspi_octa_pins[]` is wrong on at least one of the 12 OCTA pins, OR DQS is not being clocked back. This is logic-analyzer-class debugging now -- beyond what JLink + UART can resolve.
 
 ### Confirmed via JLink memory read (commit 2f2560915 + first hardware capture)
 
-`g_ra_xspi_rdid_observed` at `0x2200448C` reads `{0x44494452, 1, 0, 0x00FFFFFF}`:
+`g_ra8_xspi_rdid_observed` at `0x2200448C` reads `{0x44494452, 1, 0, 0x00FFFFFF}`:
 - magic = 'RDID' (probe ran)
 - call_count = 1 (priv_bus_init_once executed once)
-- rid_err = 0 (`ra_xspi_flash_read_id` returned `k_ra_ok`)
+- rid_err = 0 (`ra8_xspi_flash_read_id` returned `k_ra8_ok`)
 - jedec_id = **0x00FFFFFF** -- expected `0x009D5A1A` for IS25LX512M
 
 The all-ones response is the diagnostic floor: **the chip is not responding at all**. The xSPI controller successfully clocks out the RDID opcode and the response window completes without timeout, but the data lines come back floating high. Either:
@@ -446,14 +446,14 @@ The all-ones response is the diagnostic floor: **the chip is not responding at a
 2. IS25LX512M RDID actual response - UART would not drain in time to
    print the `[LX_XSPI] RDID returned 0xNNN` log line before
    `demo_panic_halt`. Diagnostic now stashed in SRAM via
-   `g_ra_xspi_rdid_observed` (defined in
-   `port/levelx/lx_nor_driver_ra_xspi.c`). Read it with JLink after
+   `g_ra8_xspi_rdid_observed` (defined in
+   `port/levelx/lx_nor_driver_ra8_xspi.c`). Read it with JLink after
    the panic halt:
 
    1. Look up the global's address for the app under test:
 
-          arm-none-eabi-nm examples/ek_ra8d2/threadx_filex_levelx_demo/build/threadx_filex_levelx_demo.elf | grep g_ra_xspi_rdid_observed
-          arm-none-eabi-nm examples/ek_ra8d2/threadx_levelx_demo/build/threadx_levelx_demo.elf | grep g_ra_xspi_rdid_observed
+          arm-none-eabi-nm examples/ek_ra8d2/threadx_filex_levelx_demo/build/threadx_filex_levelx_demo.elf | grep g_ra8_xspi_rdid_observed
+          arm-none-eabi-nm examples/ek_ra8d2/threadx_levelx_demo/build/threadx_levelx_demo.elf | grep g_ra8_xspi_rdid_observed
 
       Current addresses (will move with code changes):
         - threadx_filex_levelx_demo: `0x2200448c`
@@ -468,14 +468,14 @@ The all-ones response is the diagnostic floor: **the chip is not responding at a
                              written; `0` means the probe never ran.
         - `[1] call_count` = number of `priv_bus_init_once` probe
                              attempts since reset.
-        - `[2] rid_err`    = `ra_err_t` from `ra_xspi_flash_read_id`
-                             cast to uint32 (`0` = `k_ra_ok`).
+        - `[2] rid_err`    = `ra8_err_t` from `ra8_xspi_flash_read_id`
+                             cast to uint32 (`0` = `k_ra8_ok`).
         - `[3] jedec_id`   = packed `(mfr<<16)|(type<<8)|capacity`;
                              expected `0x009D5A1A` for IS25LX512M-JHLE.
 
       Replace the address with the value from `nm` for the app you
       flashed.
-3. USB polled-mode tick rate -- even if the IRQ event code is wrong, a thread-pumped ra_usb_dispatch at >= 1 kHz should keep up with FS enumeration.
+3. USB polled-mode tick rate -- even if the IRQ event code is wrong, a thread-pumped ra8_usb_dispatch at >= 1 kHz should keep up with FS enumeration.
 
 ## 2026-05-02 MPU demo HardFault root cause + fix
 
@@ -495,13 +495,13 @@ Fix (commit `c41954c8f`): set MAIR0 attr 0 = 0xFF (Normal, inner+outer
 write-back, RW-allocate, non-transient) so MRAM/SRAM are Normal
 memory; route the peripheral region to attr 1 = 0x04 (device-nGnRnE).
 
-## 2026-05-02 ra_bootloader spin is intentional
+## 2026-05-02 ra8_bootloader spin is intentional
 
-`examples/ek_ra8d2/ra_bootloader/main.c` is `while(1) { wfi; }` reached when
+`examples/ek_ra8d2/ra8_bootloader/main.c` is `while(1) { wfi; }` reached when
 both bank A and bank B fail `internal_bank_is_valid` -- i.e. neither
 slot holds an app. In the test environment we never flash apps into
 bank A/B, so the spin is the design-intended terminal state. The
-earlier "stuck at ra_log.c" observation was just a sample during
+earlier "stuck at ra8_log.c" observation was just a sample during
 the log burst before the spin started. No bug, no fix needed.
 
 ## 2026-05-02 USB device enumeration root cause
@@ -509,11 +509,11 @@ the log burst before the spin started. No bug, no fix needed.
 Investigated why macOS never enumerates `usb_hid_device` despite SYSCFG showing
 USBE=1, DPRPU=1, SCKE=1 and INTSTS0 ticking on the bus.
 
-**Finding:** `ra_usb_dispatch` (the function that reads INTSTS0 and forwards
+**Finding:** `ra8_usb_dispatch` (the function that reads INTSTS0 and forwards
 SETUP/BRDY/CTRT events to a registered handler) is **never called by anything**:
-- No `ra_isr_register` for USBFS_INT in `libs/ra_hal/src/ra_usb*.c`
-- No example main loop polls `ra_usb_dispatch`
-- `ra_usb_phid_handle_setup` exists but has no caller -- only class SETUP is
+- No `ra8_isr_register` for USBFS_INT in `libs/ra8_hal/src/ra8_usb*.c`
+- No example main loop polls `ra8_usb_dispatch`
+- `ra8_usb_phid_handle_setup` exists but has no caller -- only class SETUP is
   wired; standard SETUP (GET_DESCRIPTOR/SET_ADDRESS/SET_CONFIGURATION) has no
   handler at all
 
@@ -545,22 +545,22 @@ output** (`/tmp/ra8d2-hw-test/runs/threadx_https_client.uart` is 0 bytes).
    `demo_setup_or_halt()`, before line 919.
 4. The only call in `demo_setup_or_halt()` that is **unique to this app**
    (i.e. not also exercised by the apps that DO boot) is
-   `ra_rsip_init({.run_bist=true})` at line 277. Apps `threadx_lwip_tcp_echo`,
+   `ra8_rsip_init({.run_bist=true})` at line 277. Apps `threadx_lwip_tcp_echo`,
    `threadx_netx_tcp_echo`, and `ethernet_tcp_echo` share lines 257-270
    (cgc/time/uart/ethernet init) and they all reach their banner.
 
 Conclusion: the panicking call is line 278, fired by
-`ra_rsip_init` returning non-`k_ra_ok`.
+`ra8_rsip_init` returning non-`k_ra8_ok`.
 
-### Why ra_rsip_init fails on real silicon
+### Why ra8_rsip_init fails on real silicon
 
-`libs/ra_hal/src/ra_rsip.c::internal_run_bist()` does:
+`libs/ra8_hal/src/ra8_rsip.c::internal_run_bist()` does:
 
 ```c
-*ctrl   |= k_ra_rsip_mask_ctrl_bist;     /* arm BIST */
-*status |= k_ra_rsip_mask_status_bistok; /* host-sim hack */
-return internal_wait_bit(k_ra_rsip_off_status,
-                         k_ra_rsip_mask_status_bistok); /* spin */
+*ctrl   |= k_ra8_rsip_mask_ctrl_bist;     /* arm BIST */
+*status |= k_ra8_rsip_mask_status_bistok; /* host-sim hack */
+return internal_wait_bit(k_ra8_rsip_off_status,
+                         k_ra8_rsip_mask_status_bistok); /* spin */
 ```
 
 The OR-write into `STATUS` is described in the source comment as a
@@ -572,15 +572,15 @@ write. If the RSIP-E AMC firmware is not actually running -- which is
 the default state until the FSP-equivalent SCE init sequence has
 loaded the AMC code page -- the bit never sets, `internal_wait_bit`
 exhausts its 4096-iteration budget, and `internal_run_bist` returns
-`k_ra_err_hw_init_failed`. `ra_rsip_init` propagates the error and
+`k_ra8_err_hw_init_failed`. `ra8_rsip_init` propagates the error and
 `demo_setup_or_halt()` jumps straight to `demo_panic_halt()`.
 
 The hand-rolled CTRL/STATUS register layout in
-`libs/ra_hal/inc/ra8d2_rsip_regs.h` (CTRL @ +0x0, STATUS @ +0x4,
+`libs/ra8_hal/inc/ra8_rsip_regs.h` (CTRL @ +0x0, STATUS @ +0x4,
 ENABLE/RESET/BIST bit assignments) is **not documented in the RA8D2
 Hardware User's Manual**. RSIP-E (a.k.a. SCE9) is a sealed-engine
 peripheral whose only Renesas-supported entry point is the FSP
-`r_sce_*` driver family. The current `ra_rsip` register definitions
+`r_sce_*` driver family. The current `ra8_rsip` register definitions
 were inferred for the host-sim test path and have never been
 validated against silicon.
 
@@ -592,7 +592,7 @@ Bringing real RSIP/SCE up requires:
    binary lifecycle / key-injection page that ships only via FSP).
 2. Either translating `r_sce_subprc_select` + the SCE9 bring-up
    handshake into our HAL, or wrapping the FSP driver as a
-   third-party blob behind a thin `ra_rsip_*` shim.
+   third-party blob behind a thin `ra8_rsip_*` shim.
 3. Re-validating CTRL/STATUS/CMD/MAILBOX register offsets against
    FSP's `bsp_sec.h` (the canonical layout) instead of the inferred
    host-sim layout.
@@ -607,9 +607,9 @@ the canonical root cause for `threadx_https_client`'s line-239 halt.**
 For functional testing of the NetX-Duo + Mbed TLS data path without
 touching RSIP, the demo could be patched to:
 
-- Replace `ra_rsip_init({.run_bist=true})` with a no-op on hardware
+- Replace `ra8_rsip_init({.run_bist=true})` with a no-op on hardware
   builds (the call is currently the only one at boot), and
-- Replace the `ra_rsip_trng_read`-backed
+- Replace the `ra8_rsip_trng_read`-backed
   `mbedtls_psa_external_get_random` with the existing xorshift32
   `rand()` (already in tree per commit 6d2ebbfac) until SCE comes up.
 
@@ -618,10 +618,10 @@ acceleration, but produces cryptographically weak entropy and is
 deliberately NOT being committed -- it would mask the real bug. Doc
 only.
 
-## 2026-05-02 threadx_ipc_demo ra_hw_err retraction
+## 2026-05-02 threadx_ipc_demo ra8_hw_err retraction
 
 The "broader silicon sweep" table above (line 106) flagged
-`threadx_ipc_demo` as "ra_hw_err fired -- needs investigation". After
+`threadx_ipc_demo` as "ra8_hw_err fired -- needs investigation". After
 re-tracing the demo's code paths and re-reading the two later sweep
 results in this file, that initial observation was a sampling artifact,
 not a real bug. The demo runs cleanly and the entry has been amended.
@@ -634,39 +634,39 @@ not a real bug. The demo runs cleanly and the entry has been amended.
 `tx_application_define`. Every site that can call it is local to the
 M85 boot path:
 
-- `ra_cgc_init` -- shared with every booting app, would fail uniformly.
-- `ra_cgc_get_clock_hz(cpuclk0|pclka)` -- same.
-- `ra_time_init(cpuclk0_hz)` -- same.
+- `ra8_cgc_init` -- shared with every booting app, would fail uniformly.
+- `ra8_cgc_get_clock_hz(cpuclk0|pclka)` -- same.
+- `ra8_time_init(cpuclk0_hz)` -- same.
 - `ipc_demo_pins_init()` (PD_02 / PD_03 -> SCI8 async) -- same pin
   routing the verified-working `uart_hello` uses.
-- `ra_sci_init(8, &sci_cfg)` -- same SCI channel as the working UART
+- `ra8_sci_init(8, &sci_cfg)` -- same SCI channel as the working UART
   apps.
-- `ra_ipc_channel_for_send(cpu0, 0, ...)` and
-  `ra_ipc_channel_for_recv(cpu0, 0, ...)` -- pure computation that
+- `ra8_ipc_channel_for_send(cpu0, 0, ...)` and
+  `ra8_ipc_channel_for_recv(cpu0, 0, ...)` -- pure computation that
   validates `core <= cpu1` and `pair <= 1`; both arguments are compile-
   time constants in range, so these cannot fail.
-- `ra_ipc_init(&send_cfg)` / `ra_ipc_init(&recv_cfg)` -- writes
+- `ra8_ipc_init(&send_cfg)` / `ra8_ipc_init(&recv_cfg)` -- writes
   `CLR.RST` and the IRQ/RERR/FERR clear mask to the channel's `CLR`
   register, then stores per-channel state. IPC has no `MSTPCR` gate
   (HUM Ch 3 -- always-on CPU-bus peripheral), and channels 0 and 2 are
   always reachable on the M85 side regardless of M33 state. With both
   `cfg.channel == 0` and `cfg.channel == 2` (in range), the function
-  cannot return anything but `k_ra_ok`.
+  cannot return anything but `k_ra8_ok`.
 
 ### Steady-state behaviour without an M33 image
 
 Inside the worker thread (`ipc_demo_thread_entry`):
 
-- `ra_ipc_send_message_retry(channel=2, payload=ping, retries=16)`
+- `ra8_ipc_send_message_retry(channel=2, payload=ping, retries=16)`
   writes `TXD` for the M85->M33 FIFO. The 4-stage hardware FIFO (HUM
   Ch 3.1 p 204) accepts up to 4 unread words and then reports
-  `STA.FULL`; the retry helper returns `k_ra_err_hw_timeout` (NOT a
+  `STA.FULL`; the retry helper returns `k_ra8_err_hw_timeout` (NOT a
   panic) and the demo logs `[ipc_demo] send err\r\n`.
-- `ra_ipc_recv_message(channel=0, &word)` returns `k_ra_err_no_data`
+- `ra8_ipc_recv_message(channel=0, &word)` returns `k_ra8_err_no_data`
   whenever `STA.RDY == 0`; the loop falls through and logs
   `[ipc_demo] <no reply>\r\n`.
 
-Neither path calls `ra_error_handler`, `ra_panic`, or any halting
+Neither path calls `ra8_error_handler`, `ra8_panic`, or any halting
 helper. The demo is structurally tolerant of "M33 firmware not
 loaded": it prints a pong-or-no-reply line every second forever and
 never asserts.
@@ -677,9 +677,9 @@ never asserts.
   after `JLinkExe loadfile` + `g; sleep ?; halt` and reported a
   transient state. Most plausibly the sample landed during the
   CGC/PLL settle window (PLL1 lock + cache enable) where the CPU is
-  briefly executing inside `ra_cgc_init` -- the gdb backtrace at that
+  briefly executing inside `ra8_cgc_init` -- the gdb backtrace at that
   PC does not look like a clean main-loop sample to the table-builder
-  script and got bucketed as `ra_hw_err`.
+  script and got bucketed as `ra8_hw_err`.
 - "systematic 27-app sweep" (line 122) and "final sweep" (line 164)
   both used a longer settle window and the on-board UART capture, and
   both observed continuous output -- the demo was running normally.
@@ -714,16 +714,16 @@ app). Hardware results below.
 
 | App | Result | PC | Symbol |
 |---|---|---|---|
-| blink | PASS | 0x02000B2E | ra_delay_ms libs/ra_core/src/ra_time.c |
-| blink_hal | PASS | 0x02000B8A | ra_delay_ms libs/ra_core/src/ra_time.c |
-| clock_check | PASS | 0x02000BEE | ra_delay_ms libs/ra_core/src/ra_time.c |
+| blink | PASS | 0x02000B2E | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
+| blink_hal | PASS | 0x02000B8A | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
+| clock_check | PASS | 0x02000BEE | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
 | ereader | WIP | 0x0200042C | ereader_panic_halt examples/ek_ra8d2/ereader/main.c |
-| ethernet_tcp_echo | PASS | 0x020018AE | ra_delay_ms libs/ra_core/src/ra_time.c |
+| ethernet_tcp_echo | PASS | 0x020018AE | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
 | lcd_demo | WIP | 0x02000204 | lcd_demo_panic_halt examples/ek_ra8d2/lcd_demo/main.c |
-| ra_bootloader | UNKNOWN | 0x02000530 | SystemInit examples/ek_ra8d2/ra_bootloader/system_init.c |
+| ra8_bootloader | UNKNOWN | 0x02000530 | SystemInit examples/ek_ra8d2/ra8_bootloader/system_init.c |
 | threadx_blink | PASS | 0x0200029A | __tx_ts_wait tx_thread_schedule.S:264 |
 | threadx_canfd_demo | PASS | 0x0200029A | __tx_ts_wait tx_thread_schedule.S:264 |
-| threadx_filex_demo | PASS | 0x02000F74 | ra_time_on_tick libs/ra_core/src/ra_time.c |
+| threadx_filex_demo | PASS | 0x02000F74 | ra8_time_on_tick libs/ra8_core/src/ra8_time.c |
 | threadx_filex_levelx_demo | WIP | 0x0200035C | demo_panic_halt examples/ek_ra8d2/threadx_filex_levelx_demo/main.c |
 | threadx_ipc_demo | PASS | 0x0200029A | __tx_ts_wait tx_thread_schedule.S:264 |
 | threadx_levelx_demo | WIP | 0x02000326 | demo_panic_halt examples/ek_ra8d2/threadx_levelx_demo/main.c |
@@ -732,12 +732,12 @@ app). Hardware results below.
 | threadx_netx_tcp_echo | PASS | 0x020002A0 | __tx_ts_wait tx_thread_schedule.S:268 |
 | threadx_ota_demo | PASS | 0x020002A0 | __tx_ts_wait tx_thread_schedule.S:268 |
 | threadx_usbx_cdc_demo | PASS | 0x020002A0 | __tx_ts_wait tx_thread_schedule.S:268 |
-| uart_hello | PASS | 0x02000CAA | ra_delay_ms libs/ra_core/src/ra_time.c |
+| uart_hello | PASS | 0x02000CAA | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
 | usb_cdc_echo | PASS | 0x0200029A | __tx_ts_wait tx_thread_schedule.S:264 |
-| usb_hid_device | UNKNOWN | 0x02002DD0 | ux_dcd_ra_usb_irq port/usbx/ux_dcd_ra_usb.c |
-| usb_host_cdc_echo | PASS | 0x0200117E | ra_delay_ms libs/ra_core/src/ra_time.c |
-| usb_host_keyboard | PASS | 0x02001156 | ra_delay_ms libs/ra_core/src/ra_time.c |
-| usb_host_msc_browse | PASS | 0x0200142E | ra_delay_ms libs/ra_core/src/ra_time.c |
+| usb_hid_device | UNKNOWN | 0x02002DD0 | ux_dcd_ra8_usb_irq port/usbx/ux_dcd_ra8_usb.c |
+| usb_host_cdc_echo | PASS | 0x0200117E | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
+| usb_host_keyboard | PASS | 0x02001156 | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
+| usb_host_msc_browse | PASS | 0x0200142E | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
 | usb_msc_device | PASS | 0x0200029A | __tx_ts_wait tx_thread_schedule.S:264 |
 
 ### Tally
@@ -745,17 +745,17 @@ app). Hardware results below.
 - Total apps swept: 26
 - PASS: 20
 - WIP: 4 (ereader, lcd_demo, threadx_filex_levelx_demo, threadx_levelx_demo)
-- UNKNOWN: 2 (ra_bootloader, usb_hid_device)
+- UNKNOWN: 2 (ra8_bootloader, usb_hid_device)
 - FAIL: 0
 - NOBUILD: 0
 
 ### Notes (no source changes; record-only per task scope)
 
-- The two `UNKNOWN` rows are not faults. `ra_bootloader` halt PC sits in
+- The two `UNKNOWN` rows are not faults. `ra8_bootloader` halt PC sits in
   `system_init.c`, consistent with the documented intentional spin
-  when neither bank A nor bank B holds a valid image (see "ra_bootloader
+  when neither bank A nor bank B holds a valid image (see "ra8_bootloader
   spin is intentional" section above). `usb_hid_device` halted inside
-  `ux_dcd_ra_usb_irq` (port/usbx/ux_dcd_ra_usb.c), i.e. an active
+  `ux_dcd_ra8_usb_irq` (port/usbx/ux_dcd_ra8_usb.c), i.e. an active
   USB ISR on the M85 -- chip is alive and servicing interrupts. Neither
   matches the harness PASS keyword set, so they fall through to UNKNOWN.
 - All four `WIP` rows reproduce previously documented init-failure
@@ -773,7 +773,7 @@ Re-sweep of every app under `examples/ek_ra8d2/` after commit `3e522dd19`
 restore DCPCTR.PID = BUF after every received SETUP token) and after the
 test/doxygen avalanche that landed between the evening sweep above and
 this run (`07b84847a` MC/DC vector subsets, `13e1e96a8` /
-`2673557d5` doxygen audits in `ra_hal`, `f0ceae6cf` MISRA rule-12.1
+`2673557d5` doxygen audits in `ra8_hal`, `f0ceae6cf` MISRA rule-12.1
 closure, etc.). Goal: confirm the USB-FS fix flipped `usb_hid_device`
 into a host-visible enumeration AND that no other EVM app regressed
 under the test/doc churn.
@@ -797,13 +797,13 @@ app re-run from scratch this session). Hardware results below.
 
 | App | Result | PC | Symbol |
 |---|---|---|---|
-| blink | PASS | 0x02000B2E | ra_delay_ms libs/ra_core/src/ra_time.c |
-| blink_hal | PASS | 0x02000B8A | ra_delay_ms libs/ra_core/src/ra_time.c |
-| clock_check | PASS | 0x02000BEE | ra_delay_ms libs/ra_core/src/ra_time.c |
+| blink | PASS | 0x02000B2E | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
+| blink_hal | PASS | 0x02000B8A | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
+| clock_check | PASS | 0x02000BEE | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
 | ereader | WIP | 0x0200042C | ereader_panic_halt examples/ek_ra8d2/ereader/main.c |
-| ethernet_tcp_echo | PASS | 0x020018AE | ra_delay_ms libs/ra_core/src/ra_time.c |
+| ethernet_tcp_echo | PASS | 0x020018AE | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
 | lcd_demo | WIP | 0x02000204 | lcd_demo_panic_halt examples/ek_ra8d2/lcd_demo/main.c |
-| ra_bootloader | UNKNOWN | 0x02000452 | internal_write32 examples/ek_ra8d2/ra_bootloader/system_init.c |
+| ra8_bootloader | UNKNOWN | 0x02000452 | internal_write32 examples/ek_ra8d2/ra8_bootloader/system_init.c |
 | threadx_blink | PASS | 0x0200029A | __tx_ts_wait tx_thread_schedule.S:264 |
 | threadx_canfd_demo | PASS | 0x020002A0 | __tx_ts_wait tx_thread_schedule.S:268 |
 | threadx_filex_demo | PASS | 0x0200029A | __tx_ts_wait tx_thread_schedule.S:264 |
@@ -815,12 +815,12 @@ app re-run from scratch this session). Hardware results below.
 | threadx_netx_tcp_echo | PASS | 0x0200029A | __tx_ts_wait tx_thread_schedule.S:264 |
 | threadx_ota_demo | PASS | 0x020002A0 | __tx_ts_wait tx_thread_schedule.S:268 |
 | threadx_usbx_cdc_demo | PASS | 0x020002A0 | __tx_ts_wait tx_thread_schedule.S:268 |
-| uart_hello | PASS | 0x02000CAA | ra_delay_ms libs/ra_core/src/ra_time.c |
+| uart_hello | PASS | 0x02000CAA | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
 | usb_cdc_echo | PASS | 0x0200029A | __tx_ts_wait tx_thread_schedule.S:264 |
-| usb_hid_device | UNKNOWN | 0x02001C8C | ra_usb_fs libs/ra_hal/inc/ra8d2_usb_regs.h |
-| usb_host_cdc_echo | PASS | 0x0200117E | ra_delay_ms libs/ra_core/src/ra_time.c |
-| usb_host_keyboard | PASS | 0x02001156 | ra_delay_ms libs/ra_core/src/ra_time.c |
-| usb_host_msc_browse | PASS | 0x0200142E | ra_delay_ms libs/ra_core/src/ra_time.c |
+| usb_hid_device | UNKNOWN | 0x02001C8C | ra8_usb_fs libs/ra8_hal/inc/ra8_usb_regs.h |
+| usb_host_cdc_echo | PASS | 0x0200117E | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
+| usb_host_keyboard | PASS | 0x02001156 | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
+| usb_host_msc_browse | PASS | 0x0200142E | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
 | usb_msc_device | PASS | 0x020002A0 | __tx_ts_wait tx_thread_schedule.S:268 |
 
 ### Tally
@@ -828,7 +828,7 @@ app re-run from scratch this session). Hardware results below.
 - Total apps swept: 26
 - PASS:    20
 - WIP:     4 (ereader, lcd_demo, threadx_filex_levelx_demo, threadx_levelx_demo)
-- UNKNOWN: 2 (ra_bootloader, usb_hid_device)
+- UNKNOWN: 2 (ra8_bootloader, usb_hid_device)
 - FAIL:    0
 - NOBUILD: 0
 
@@ -845,10 +845,10 @@ allowed to settle for 8s before halt-and-read. Outcome:
 - macOS host enumeration count for VID 0x1209 (`ioreg -p IOUSB -l |
   grep -c '"idVendor" = 4617'`): **0** -- the device still does not
   appear on the host USB tree.
-- Halt PC = `0x02001C8C` -> `ra_usb_fs (libs/ra_hal/inc/ra8d2_usb_regs.h)`,
+- Halt PC = `0x02001C8C` -> `ra8_usb_fs (libs/ra8_hal/inc/ra8_usb_regs.h)`,
   i.e. the M85 is alive and parked inside the USB-FS register accessor
   invoked from the dispatch poll loop. No fault, no panic_halt.
-- `g_ra_usb_dcd_diag` at `0x2200564C` (struct size 0x68, dumped with
+- `g_ra8_usb_dcd_diag` at `0x2200564C` (struct size 0x68, dumped with
   `mem32 0x2200564C 26`):
 
 ```
@@ -894,7 +894,7 @@ message's own caveat ("dispatch is being called only after the host
 has already given up and electrically suspended the port") and
 points at the init-order / DPRPU-timing follow-up the commit
 explicitly defers ("the dispatch loop should start polling BEFORE
-ra_usb_device_attach asserts DPRPU, not after").
+ra8_usb_device_attach asserts DPRPU, not after").
 
 Net result: USB enumeration is still **not** functional, but the
 two specific bugs `3e522dd19` fixed are no longer reachable on the
@@ -905,7 +905,7 @@ diagnose further per task brief.
 
 ### xSPI RDID re-check (`threadx_filex_levelx_demo`)
 
-`g_ra_xspi_rdid_observed` at `0x2200448C` (8 words, dumped with
+`g_ra8_xspi_rdid_observed` at `0x2200448C` (8 words, dumped with
 `mem32 0x2200448C 8`):
 
 ```
@@ -917,14 +917,14 @@ Decoded:
 
 - magic        = `0x44494452` (`RDID`, probe ran).
 - call_count   = 1     -- `priv_bus_init_once` executed exactly once.
-- rid_err      = 0     -- `ra_xspi_flash_read_id` returned
-                          `k_ra_ok` (controller-side OK).
+- rid_err      = 0     -- `ra8_xspi_flash_read_id` returned
+                          `k_ra8_ok` (controller-side OK).
 - jedec_id     = `0x00FFFFFF` -- **chip still silent, identical to
                                  the evening sweep and to all prior
                                  captures**. No change.
 - reset_8d_err = 0
 - reset_1s_err = 0
-- stage        = 6     -- `k_ra_xspi_stage_rdid` reached.
+- stage        = 6     -- `k_ra8_xspi_stage_rdid` reached.
 
 No regression and no progress on the IS25LX512M-JHLE bring-up --
 the RDID response is still all-ones, identical to the
@@ -935,21 +935,21 @@ Logic-analyzer-class debug needed; out of scope for this sweep.
 
 - All 20 PASS rows are byte-identical PC + symbol matches to the
   evening sweep, modulo the `usb_hid_device` row (now parked inside
-  the USB-FS register accessor instead of `ux_dcd_ra_usb_irq`,
+  the USB-FS register accessor instead of `ux_dcd_ra8_usb_irq`,
   consistent with the new dispatch-poll loop introduced by
   `3e522dd19`).
-- `ra_bootloader`'s UNKNOWN row sampled inside
+- `ra8_bootloader`'s UNKNOWN row sampled inside
   `internal_write32` (system_init.c) this time instead of
   `SystemInit` itself -- still the same pre-banner clock/PFS
   bring-up burst before the documented intentional spin in
-  `main.c`. Not a fault; matches the "ra_bootloader spin is
+  `main.c`. Not a fault; matches the "ra8_bootloader spin is
   intentional" section above.
 - `usb_hid_device`'s UNKNOWN row is the new INTSTS0/PID-BUF dispatch
   loop running cleanly -- it does not match the harness PASS keyword
-  set (the new poll body is `ra_usb_fs` accessor, not
-  `tx_thread_schedule`/`ra_delay_ms`/`main.c`/`internal_*`), so the
+  set (the new poll body is `ra8_usb_fs` accessor, not
+  `tx_thread_schedule`/`ra8_delay_ms`/`main.c`/`internal_*`), so the
   classifier falls through to UNKNOWN. Chip is alive and the bridge
-  IRQ ran (g_ra_usb_dcd_diag.magic = `UCDD`).
+  IRQ ran (g_ra8_usb_dcd_diag.magic = `UCDD`).
 - Zero hard faults across all 26 apps -- no `Default_Handler`,
   `HardFault_Handler`, `MemManage_Handler`, `BusFault_Handler`,
   `UsageFault_Handler`, `SecureFault_Handler`, or 0xEFFFFFFE
@@ -958,9 +958,9 @@ Logic-analyzer-class debug needed; out of scope for this sweep.
 ## 2026-05-02 LevelX OCTA pin readback verification
 
 Added a new JLink-readable global to the LevelX-on-xSPI driver
-(`port/levelx/lx_nor_driver_ra_xspi.c`), `g_ra_xspi_pin_observed`,
+(`port/levelx/lx_nor_driver_ra8_xspi.c`), `g_ra8_xspi_pin_observed`,
 which captures the 5-bit `PSEL` and the `PMR` bit of every OCTA
-pin AFTER `ra_board_xspi_pins_init` returns. Goal: confirm /
+pin AFTER `ra8_board_xspi_pins_init` returns. Goal: confirm /
 disprove the long-standing hypothesis that one of the 12 pins in
 the BSP table (`s_xspi_octa_pins`) is mis-routed -- which would
 silently drop CS / DQ on the wrong pad and explain the all-ones
@@ -968,7 +968,7 @@ RDID readout.
 
 ### Verification procedure
 
-1. `arm-none-eabi-nm threadx_filex_levelx_demo.elf | grep g_ra_xspi_pin_observed`
+1. `arm-none-eabi-nm threadx_filex_levelx_demo.elf | grep g_ra8_xspi_pin_observed`
    -> address `0x220044AC` (will move; re-resolve on rebuild).
 2. Flash, settle 5s, halt.
 3. `JLinkExe ... mem32 0x220044AC 24` (12 rows x 8 bytes per row).
@@ -987,14 +987,14 @@ Each row encodes `{port, pin, psel_observed, pmr_observed, pfs_raw}`.
 ```
 
 Decoded: every active row has `psel_observed = 0x1C`
-(`k_ra_psel_qspi`) and `pmr_observed = 1`. **All 12 OCTA pins are
+(`k_ra8_psel_qspi`) and `pmr_observed = 1`. **All 12 OCTA pins are
 correctly routed to the OSPI peripheral.** Pin-routing hypothesis
 is conclusively ruled out. The BSP `s_xspi_octa_pins` enum matches
 EK-RA8D2 v1 UM Table 29 (p 35) byte-for-byte, and the chip's PFS
 hardware confirms the routing took effect.
 
 The remaining all-ones RDID readout (`0x00FFFFFF`, captured via
-`g_ra_xspi_rdid_observed` at `0x2200448C`) is therefore caused by
+`g_ra8_xspi_rdid_observed` at `0x2200448C`) is therefore caused by
 something the chip is doing on the bus side -- not by the
 controller failing to drive the right pad. Most likely candidates
 are now (in order of plausibility):
@@ -1073,7 +1073,7 @@ early in boot. `addr2line` of the captured PC + LR pinpoints:
 | App | PC | LR | Failing call |
 |---|---|---|---|
 | lcd_demo | `0x02000204` (panic_halt) | `0x02000515` | `lcd_demo_pins_init()` (main.c) |
-| ereader  | `0x0200042C` (panic_halt) | `0x02000657` | `ra_board_led_init(k_ra_board_led1)` (main.c) |
+| ereader  | `0x0200042C` (panic_halt) | `0x02000657` | `ra8_board_led_init(k_ra8_board_led1)` (main.c) |
 
 **Common root cause:** Both apps' `k_*_glcdc_pins[]` tables are the
 unfinished TODO stub left over from before the EK-RA8D2 v1 board
@@ -1098,15 +1098,15 @@ The real EK-RA8D2 v1 LCD-connector wiring (UM Table 33, p 42, the
 The downstream symptom differs between the two apps because of
 init-order:
 
-- `lcd_demo` calls `ra_board_led_init(LED1)` BEFORE
+- `lcd_demo` calls `ra8_board_led_init(LED1)` BEFORE
   `lcd_demo_pins_init()`. LED1 is P600. The pin validator gives
   P600 to LED1, then `lcd_demo_pins_init()` immediately tries to
   re-claim P600 as LCDD0 (its first GLCDC pin) and gets
-  `k_ra_err_gpio_conflict`. Panic.
+  `k_ra8_err_gpio_conflict`. Panic.
 
 - `ereader` calls `ereader_pins_init()` BEFORE
-  `ra_board_led_init(LED1)`. The GLCDC route succeeds (P600 silently
-  becomes LCDD0), then `ra_board_led_init(LED1)` tries to take
+  `ra8_board_led_init(LED1)`. The GLCDC route succeeds (P600 silently
+  becomes LCDD0), then `ra8_board_led_init(LED1)` tries to take
   P600 as plain GPIO and the validator denies it. Panic.
 
 `lcd_demo` also collides with LED2 (P303 not in its pin table) and
@@ -1148,8 +1148,8 @@ board needed) are `clock_check`, `blink`, `blink_hal`,
 
 ### Status
 
-PLL2 brought up successfully. `ra_cgc_pll2_enable(80, 0, /4)` runs
-inside `ra_cgc_usbfs_clock_enable` and is verified live on the chip:
+PLL2 brought up successfully. `ra8_cgc_pll2_enable(80, 0, /4)` runs
+inside `ra8_cgc_usbfs_clock_enable` and is verified live on the chip:
 
 ```
 mem 0x4001E03C 1 1   ; OSCSF
@@ -1187,7 +1187,7 @@ JLink readback after the panic-halt:
 ```
 
 The CPU is wedged in `demo_panic_halt()`, which means
-`ra_cgc_usbfs_clock_enable` returned `k_ra_err_hw_timeout`. The
+`ra8_cgc_usbfs_clock_enable` returned `k_ra8_err_hw_timeout`. The
 USBCKCR readback `0x40` proves the *first* register write
 (`USBCKCR = USBCKSREQ` mask) executed, but `internal_wait_usbcksrdy(1U)`
 never observed `USBCKSRDY = 1`.
@@ -1208,12 +1208,12 @@ caller is *changing* the source. Switching from a not-yet-running
 HOCO selector to PLL2P may need either:
 
 1. Touch `MSTPCRB.MSTPB11` to ungate USBFS *before*
-   `ra_cgc_usbfs_clock_enable`, so there's a clock for the
+   `ra8_cgc_usbfs_clock_enable`, so there's a clock for the
    gating logic to chase, or
 2. Skip the SREQ/SRDY handshake on first programming (write
    USBCKDIVCR + USBCKCR = src directly with no SREQ bit), or
 3. Start the HOCO explicitly (it might be HCSTP=1 at this point;
-   `ra_cgc_init` does not call `ra_cgc_use_hoco`).
+   `ra8_cgc_init` does not call `ra8_cgc_use_hoco`).
 
 Diagnostic next step: read `MSTPCRB` (0x40087004) and `HOCOCR`
 (0x4001E036) at the same halt-point to confirm which of (1) and
@@ -1222,15 +1222,15 @@ wait when USBCKCR was 0 on entry.
 
 ### What this commit does
 
-- Adds `ra_cgc_pll2_enable(mul_int, mul_quarters, p_div)` with
+- Adds `ra8_cgc_pll2_enable(mul_int, mul_quarters, p_div)` with
   PLL2 stop -> programme -> start -> lock-poll sequence.
-- Switches `ra_cgc_usbfs_clock_enable` from PLL1Q/8 (41.67 MHz,
+- Switches `ra8_cgc_usbfs_clock_enable` from PLL1Q/8 (41.67 MHz,
   out of spec) to PLL2P/5 (48.000 MHz, in spec).
-- Wires `ra_cgc_usbfs_clock_enable` into `usb_hid_device/main.c`
+- Wires `ra8_cgc_usbfs_clock_enable` into `usb_hid_device/main.c`
   (was previously declared but never called).
-- Adds register accessors `ra_sys_pll2cr / pll2ccr / pll2ccr2`
-  and offset / encoding enums in `ra8d2_system_regs.h` and
-  `ra8d2_cgc_regs.h`.
+- Adds register accessors `ra8_sys_pll2cr / pll2ccr / pll2ccr2`
+  and offset / encoding enums in `ra8_system_regs.h` and
+  `ra8_cgc_regs.h`.
 
 The 48 MHz reference now exists; the remaining work is the
 USBCKSRDY handshake hypothesis above.
@@ -1238,7 +1238,7 @@ USBCKSRDY handshake hypothesis above.
 ## 2026-06-09 OSPI JEDEC-ID bring-up: CDT command-byte left-justification fix + exhaustive bus-silence triage (#44)
 
 Goal: make `flash_journal`'s `g_fj_jedec_id` (stamped via
-`ra_xspi_flash_read_id` right after `ra_xspi_init`) read the Macronix
+`ra8_xspi_flash_read_id` right after `ra8_xspi_init`) read the Macronix
 MX25UM25645G manufacturer ID `0xC2....` instead of the floating
 `0x00FFFFFF`.
 
@@ -1246,7 +1246,7 @@ MX25UM25645G manufacturer ID `0xC2....` instead of the floating
 
 `internal_make_cdt` (and the inline builder in
 `internal_issue_reset_opcode`) placed a 1-byte opcode at `CDT[23:16]`
-(`opcode << k_ra_xspi_cdt_pos_cmd`, pos=16). The command-manual engine
+(`opcode << k_ra8_xspi_cdt_pos_cmd`, pos=16). The command-manual engine
 transmits `CMDSIZE` bytes **MSB-first from bit 31**, so with `CMDSIZE=1`
 it was clocking out the **zero** byte at `CDT[31:24]` and the chip saw
 command `0x00` for every 0x9F / 0x05 / 0x06 / 0x02 / 0x20 op.
@@ -1337,7 +1337,7 @@ pins are disconnected from the part by the switch.
 The U15 PI4IOE5V6408 expander (I2C 0x43, RIIC1) is wired across SW4 and
 its input-level register 0x0F reflects the *physical* switch levels. A
 diagnostic in `flash_journal` floated the expander port (IODIR 0x03 =
-0x00 -> all inputs) and read reg 0x0F via `ra_i2c_transfer`:
+0x00 -> all inputs) and read reg 0x0F via `ra8_i2c_transfer`:
 
 ```
 g_fj_exp_devid = 0x000000A0/A2  <- PI4IOE5V6408 answering (bus healthy)
@@ -1445,7 +1445,7 @@ bus otherwise reaches only **unpopulated** ecosystem connectors (Grove J27,
 Qwiic J30, Pmod, mikroBUS, Arduino). The DA7212 audio CODEC (U14) is on a
 separate control path (P405/P406), not the OSPI power. The Ethernet PHY
 (U11) is RGMII/MDIO, not I2C. **There is no PMIC and no I2C-controlled
-load switch** that could gate U3's 1.8 V rail. A live `ra_i2c_scan` sweep
+load switch** that could gate U3's 1.8 V rail. A live `ra8_i2c_scan` sweep
 of 0x08..0x77 on RIIC1 would therefore be expected to ACK at **0x43 only**
 (plus whatever a user has plugged into the Qwiic/Grove headers) -- there is
 no other on-board addressable device to find. (The live sweep could not be

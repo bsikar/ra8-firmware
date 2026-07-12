@@ -4,10 +4,10 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/lpm_wake_matrix_demo/main.c bring-up:
- * ra_lpm_init -> arm WUPEN0 bits in sequence -> arm WUPEN1 bits in
+ * ra8_lpm_init -> arm WUPEN0 bits in sequence -> arm WUPEN1 bits in
  * sequence -> clear both -> verify zero. The host sim mmap records
  * each register write so the test can verify the bits actually
- * landed and that ``ra_lpm_get_exit_cause`` returns the packed
+ * landed and that ``ra8_lpm_get_exit_cause`` returns the packed
  * snapshot the demo relies on.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -17,10 +17,10 @@
 
 #include <stdint.h>
 
-#include "ra8d2_lpm_regs.h"
-#include "ra_err.h"
-#include "ra_lpm.h"
-#include "ra_sim_mmap.h"
+#include "ra8_err.h"
+#include "ra8_lpm.h"
+#include "ra8_lpm_regs.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /** @brief Bit-cast widths used for packing WUPEN1 into the high word. */
@@ -30,31 +30,31 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
+  ra8_sim_mmap_reset();
 }
 
-static ra_lpm_config_t make_demo_cfg(void)
+static ra8_lpm_config_t make_demo_cfg(void)
 {
-  const ra_lpm_config_t cfg = {
+  const ra8_lpm_config_t cfg = {
     .io_port_keep     = false,
     .opa_bus_keep     = true,
     .sscr_fast_return = false,
-    .dcdc_softstart   = k_ra_lpm_dcssmode_128us,
-    .sscr_low_power   = k_ra_lpm_ss2lp_default,
+    .dcdc_softstart   = k_ra8_lpm_dcssmode_128us,
+    .sscr_low_power   = k_ra8_lpm_ss2lp_default,
   };
   return cfg;
 }
 
 /**
  * @par MC/DC:
- * Decision: ``ra_lpm_init != ok``. One atomic condition x 2 vectors.
+ * Decision: ``ra8_lpm_init != ok``. One atomic condition x 2 vectors.
  */
 static void test_lpm_wake_init_ok(void)
 {
   reset_world();
   TEST_BEGIN("lpm_wake_matrix_demo: init ok");
-  const ra_lpm_config_t cfg = make_demo_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_init(&cfg));
+  const ra8_lpm_config_t cfg = make_demo_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&cfg));
   TEST_END("lpm_wake_matrix_demo: init ok");
 }
 
@@ -65,25 +65,25 @@ static void test_lpm_wake_init_ok(void)
  * Decision: ``arm_wupen0(IWDT) != ok || arm_wupen0(PVD1) != ok || ...``
  * Six atomic conditions x N+1 = 7 vectors. The happy path runs here;
  * the per-bit error vectors are dominated by the underlying
- * ra_lpm_arm_wupen0_bits API which has no failure path on host (no
+ * ra8_lpm_arm_wupen0_bits API which has no failure path on host (no
  * NULL deref), so this test pins the happy-path readback.
  */
 static void test_lpm_wake_walk_wupen0(void)
 {
   reset_world();
   TEST_BEGIN("lpm_wake_matrix_demo: walk WUPEN0");
-  const ra_lpm_config_t cfg = make_demo_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_init(&cfg));
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_wupen0_bits((uint32_t)k_ra_lpm_wupen0_iwdt));
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_wupen0_bits((uint32_t)k_ra_lpm_wupen0_pvd1));
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_wupen0_bits((uint32_t)k_ra_lpm_wupen0_pvd2));
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_wupen0_bits((uint32_t)k_ra_lpm_wupen0_vbatt));
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_wupen0_bits((uint32_t)k_ra_lpm_wupen0_rtcalm));
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_wupen0_bits((uint32_t)k_ra_lpm_wupen0_rtcprd));
-  const uint32_t expected = (uint32_t)k_ra_lpm_wupen0_iwdt | (uint32_t)k_ra_lpm_wupen0_pvd1 |
-                            (uint32_t)k_ra_lpm_wupen0_pvd2 | (uint32_t)k_ra_lpm_wupen0_vbatt |
-                            (uint32_t)k_ra_lpm_wupen0_rtcalm | (uint32_t)k_ra_lpm_wupen0_rtcprd;
-  TEST_ASSERT_EQ(expected, *ra_lpm_icu_reg32(k_ra_lpm_wupen0_off));
+  const ra8_lpm_config_t cfg = make_demo_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen0_bits((uint32_t)k_ra8_lpm_wupen0_iwdt));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen0_bits((uint32_t)k_ra8_lpm_wupen0_pvd1));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen0_bits((uint32_t)k_ra8_lpm_wupen0_pvd2));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen0_bits((uint32_t)k_ra8_lpm_wupen0_vbatt));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen0_bits((uint32_t)k_ra8_lpm_wupen0_rtcalm));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen0_bits((uint32_t)k_ra8_lpm_wupen0_rtcprd));
+  const uint32_t expected = (uint32_t)k_ra8_lpm_wupen0_iwdt | (uint32_t)k_ra8_lpm_wupen0_pvd1 |
+                            (uint32_t)k_ra8_lpm_wupen0_pvd2 | (uint32_t)k_ra8_lpm_wupen0_vbatt |
+                            (uint32_t)k_ra8_lpm_wupen0_rtcalm | (uint32_t)k_ra8_lpm_wupen0_rtcprd;
+  TEST_ASSERT_EQ(expected, *ra8_lpm_icu_reg32(k_ra8_lpm_wupen0_off));
   TEST_END("lpm_wake_matrix_demo: walk WUPEN0");
 }
 
@@ -99,18 +99,18 @@ static void test_lpm_wake_walk_wupen1(void)
 {
   reset_world();
   TEST_BEGIN("lpm_wake_matrix_demo: walk WUPEN1");
-  const ra_lpm_config_t cfg = make_demo_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_init(&cfg));
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_wupen1_bits((uint32_t)k_ra_lpm_wupen1_comphs0));
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_wupen1_bits((uint32_t)k_ra_lpm_wupen1_sosc));
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_wupen1_bits((uint32_t)k_ra_lpm_wupen1_ulpt0u));
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_wupen1_bits((uint32_t)k_ra_lpm_wupen1_ulpt0a));
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_wupen1_bits((uint32_t)k_ra_lpm_wupen1_ulpt0b));
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_wupen1_bits((uint32_t)k_ra_lpm_wupen1_i3c0));
-  const uint32_t expected = (uint32_t)k_ra_lpm_wupen1_comphs0 | (uint32_t)k_ra_lpm_wupen1_sosc |
-                            (uint32_t)k_ra_lpm_wupen1_ulpt0u | (uint32_t)k_ra_lpm_wupen1_ulpt0a |
-                            (uint32_t)k_ra_lpm_wupen1_ulpt0b | (uint32_t)k_ra_lpm_wupen1_i3c0;
-  TEST_ASSERT_EQ(expected, *ra_lpm_icu_reg32(k_ra_lpm_wupen1_off));
+  const ra8_lpm_config_t cfg = make_demo_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen1_bits((uint32_t)k_ra8_lpm_wupen1_comphs0));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen1_bits((uint32_t)k_ra8_lpm_wupen1_sosc));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen1_bits((uint32_t)k_ra8_lpm_wupen1_ulpt0u));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen1_bits((uint32_t)k_ra8_lpm_wupen1_ulpt0a));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen1_bits((uint32_t)k_ra8_lpm_wupen1_ulpt0b));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen1_bits((uint32_t)k_ra8_lpm_wupen1_i3c0));
+  const uint32_t expected = (uint32_t)k_ra8_lpm_wupen1_comphs0 | (uint32_t)k_ra8_lpm_wupen1_sosc |
+                            (uint32_t)k_ra8_lpm_wupen1_ulpt0u | (uint32_t)k_ra8_lpm_wupen1_ulpt0a |
+                            (uint32_t)k_ra8_lpm_wupen1_ulpt0b | (uint32_t)k_ra8_lpm_wupen1_i3c0;
+  TEST_ASSERT_EQ(expected, *ra8_lpm_icu_reg32(k_ra8_lpm_wupen1_off));
   TEST_END("lpm_wake_matrix_demo: walk WUPEN1");
 }
 
@@ -126,16 +126,16 @@ static void test_lpm_wake_disarm_all(void)
 {
   reset_world();
   TEST_BEGIN("lpm_wake_matrix_demo: disarm all");
-  const ra_lpm_config_t cfg = make_demo_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_init(&cfg));
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_wupen0_bits(0xFFFFFFFFUL));
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_arm_wupen1_bits(0xFFFFFFFFUL));
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_clear_wupen0_bits(0xFFFFFFFFUL));
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_clear_wupen1_bits(0xFFFFFFFFUL));
-  TEST_ASSERT_EQ(0U, *ra_lpm_icu_reg32(k_ra_lpm_wupen0_off));
-  TEST_ASSERT_EQ(0U, *ra_lpm_icu_reg32(k_ra_lpm_wupen1_off));
+  const ra8_lpm_config_t cfg = make_demo_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen0_bits(0xFFFFFFFFUL));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_arm_wupen1_bits(0xFFFFFFFFUL));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_clear_wupen0_bits(0xFFFFFFFFUL));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_clear_wupen1_bits(0xFFFFFFFFUL));
+  TEST_ASSERT_EQ(0U, *ra8_lpm_icu_reg32(k_ra8_lpm_wupen0_off));
+  TEST_ASSERT_EQ(0U, *ra8_lpm_icu_reg32(k_ra8_lpm_wupen1_off));
   uint64_t cause = 0xDEADBEEFCAFEBABEULL;
-  TEST_ASSERT_EQ(k_ra_ok, ra_lpm_get_exit_cause(&cause));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_get_exit_cause(&cause));
   TEST_ASSERT_EQ(0U, cause);
   TEST_END("lpm_wake_matrix_demo: disarm all");
 }

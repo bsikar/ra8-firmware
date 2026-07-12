@@ -3,7 +3,7 @@
 # hil_reflash.sh -- recover + reflash a TrustZone/RoT-provisioned EK-RA8D2.
 #
 # A board that was flashed with a TrustZone image or a Root-of-Trust bootloader
-# (RA_ENABLE_ROOT_OF_TRUST -- e.g. examples/.../dfu_bootloader with the RoT
+# (RA8_ENABLE_ROOT_OF_TRUST -- e.g. examples/.../dfu_bootloader with the RoT
 # launch gate on) may not re-flash cleanly with `make hil-flash` alone:
 #
 #   1. The TrustZone boundary (SAU/IDAU option bytes) can gate the debug AP, so

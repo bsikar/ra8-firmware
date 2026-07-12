@@ -35,7 +35,7 @@ and spins up a second Unicorn engine for the M33 sharing the SRAM buffer.
 [itm] [M85] INFO: Cortex-M85 primary core online
 [itm] [M85] INFO: shared block in SRAM at 0x22100000
 [itm] [M85] INFO: releasing Cortex-M33 secondary core ...
-[itm] [M85] INFO: ra_cpu1_release rc (0 = ok)=0
+[itm] [M85] INFO: ra8_cpu1_release rc (0 = ok)=0
 [itm] [M85] INFO: M33 is alive
 [itm] [M85] INFO: M85 yielding -- waiting for M33 to finish counting ...
 [itm] [M85] INFO: M33 counted to=1000

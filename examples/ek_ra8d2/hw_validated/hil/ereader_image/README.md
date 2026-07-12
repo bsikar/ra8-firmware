@@ -1,13 +1,13 @@
 # ereader_image
 
 Headless **on-silicon HIL gate** for the zero-heap raster image pipeline
-(`ra_reflow_image`, #106) -- the same decode -> scale -> blit path the e-reader
+(`ra8_reflow_image`, #106) -- the same decode -> scale -> blit path the e-reader
 uses for cover art and in-chapter `<img>` figures.
 
 It needs no panel / SDRAM / touch / SD:
 
 1. Decode a baked **120x90 RGB PNG** cover (`cover_fixture.h`) through
-   `ra_img_decode_blit()`, allocating only from a fixed **128 KiB SRAM bump
+   `ra8_img_decode_blit()`, allocating only from a fixed **128 KiB SRAM bump
    arena** -- so the decode reaches no `malloc` (NASA P10 Rule 3).
 2. Nearest-neighbour scale it to fit a fixed **160x120 RGB565** framebuffer in
    internal SRAM (the 4:3 cover fills the 4:3 frame -> `160x120`).
@@ -48,7 +48,7 @@ emulated RA8D2 and scrapes the banner:
 ereader_image   OK (uart: 'ereader-img-hil: img 160x120 crc=BDC56EC5')
 ```
 
-The identical decode + scale + blit run on host (real `ra_gfx` over an RGB565
+The identical decode + scale + blit run on host (real `ra8_gfx` over an RGB565
 framebuffer, same fixture, same FNV) produces the **same** `crc=BDC56EC5` --
 byte-for-byte agreement between the host render and the emulated RA8D2, so the
 hash is a true sim/silicon equivalence check.

@@ -28,27 +28,27 @@
 
 #ifndef __APPLE__
 /* On the firmware target every IRQ vector slot forwards to the
- * substrate dispatcher so drivers that called ra_isr_register get
+ * substrate dispatcher so drivers that called ra8_isr_register get
  * their (handler, ctx) pair invoked. HUM Ch 14 ICU + IELSR. */
-extern void ra_isr_dispatch(uint16_t slot);
+extern void ra8_isr_dispatch(uint16_t slot);
 #endif
 
 /* =============================================================================
  * Linker-provided symbols
  * =============================================================================
  *
- * Project convention: linker symbols carry the `g_ra_ls_` prefix so they
+ * Project convention: linker symbols carry the `g_ra8_ls_` prefix so they
  * are not in the reserved leading-underscore namespace that ISO C (and
  * cert-dcl37-c / bugprone-reserved-identifier) reject. The linker script
  * in uart_irq_echo/linker_script.ld defines them with this exact spelling.
  */
 
-extern uint32_t g_ra_ls_stack_top; /**< Top of main stack (linker symbol). */
-extern uint32_t g_ra_ls_sdata;     /**< Start of .data in SRAM.            */
-extern uint32_t g_ra_ls_edata;     /**< End of .data in SRAM.              */
-extern uint32_t g_ra_ls_sidata;    /**< Source of .data in MRAM.           */
-extern uint32_t g_ra_ls_sbss;      /**< Start of .bss in SRAM.             */
-extern uint32_t g_ra_ls_ebss;      /**< End of .bss in SRAM.               */
+extern uint32_t g_ra8_ls_stack_top; /**< Top of main stack (linker symbol). */
+extern uint32_t g_ra8_ls_sdata;     /**< Start of .data in SRAM.            */
+extern uint32_t g_ra8_ls_edata;     /**< End of .data in SRAM.              */
+extern uint32_t g_ra8_ls_sidata;    /**< Source of .data in MRAM.           */
+extern uint32_t g_ra8_ls_sbss;      /**< Start of .bss in SRAM.             */
+extern uint32_t g_ra8_ls_ebss;      /**< End of .bss in SRAM.               */
 
 /* =============================================================================
  * main()
@@ -74,7 +74,7 @@ void UsageFault_Handler(void);
 
 /* Core exceptions (Cortex-M85). HardFault / MemManage / BusFault /
  * UsageFault each get a dedicated naked trampoline below which
- * forwards to ra_exception_report(). The rest are weak-aliased to
+ * forwards to ra8_exception_report(). The rest are weak-aliased to
  * Default_Handler and may be overridden by application code.
  *
  * Mach-O (macOS host) does not support `__attribute__((alias(...)))`.
@@ -82,7 +82,7 @@ void UsageFault_Handler(void);
  * keep only `weak`; the host build never branches through these
  * symbols (the firmware vector table is not exercised on the test
  * host), so we just need them to exist for the `&` references in
- * `g_ra_vector_table_start` to be well-formed. */
+ * `g_ra8_vector_table_start` to be well-formed. */
 #ifndef __APPLE__
 [[gnu::weak, gnu::alias("Default_Handler")]] void NMI_Handler(void);
 [[gnu::weak, gnu::alias("Default_Handler")]] void SecureFault_Handler(void);
@@ -97,7 +97,7 @@ void UsageFault_Handler(void);
 [[gnu::weak]] void PendSV_Handler(void);
 #endif
 
-/* SysTick provided by libs/ra_core/src/ra_time.c (weak) so RTOS apps may override. */
+/* SysTick provided by libs/ra8_core/src/ra8_time.c (weak) so RTOS apps may override. */
 extern void SysTick_Handler(void);
 
 /* =============================================================================
@@ -107,8 +107,8 @@ extern void SysTick_Handler(void);
  * The RA Interrupt Control Unit exposes 112 routable interrupt lines
  * to the NVIC (per HUM table 13.x).
  *
- * Each peripheral IRQ vector forwards to ra_isr_dispatch(slot) so any
- * (handler, ctx) registered through the substrate (ra_isr_register)
+ * Each peripheral IRQ vector forwards to ra8_isr_dispatch(slot) so any
+ * (handler, ctx) registered through the substrate (ra8_isr_register)
  * runs in NVIC handler-mode. Slots that were never registered land in
  * the dispatcher's bounds-checked no-op path. The trampolines are
  * weak so a driver can still install a fully-custom IRQ handler by
@@ -118,146 +118,146 @@ extern void SysTick_Handler(void);
  * NB: a prior revision aliased every IRQn_Handler directly to
  * Default_Handler (which contains ``bkpt #0``). On debug-disabled
  * silicon a stray bkpt escalates to HardFault, so the first USB IRQ
- * after ra_isr_register armed the NVIC line halted the chip. The
+ * after ra8_isr_register armed the NVIC line halted the chip. The
  * working tz_secure_only_usb_fs / _hs apps use this dispatching form;
  * this app now matches.
  */
 
 enum : uint16_t {
-  k_ra_irq_count = 112U,
+  k_ra8_irq_count = 112U,
 };
 
-/* On Apple host syntax-check we drop ra_isr_dispatch (host build
+/* On Apple host syntax-check we drop ra8_isr_dispatch (host build
  * never branches through these) and keep only a weak empty body. */
 #ifndef __APPLE__
-#define RA_IRQ_STUB(n)                                                                             \
+#define RA8_IRQ_STUB(n)                                                                            \
   void               IRQ##n##_Handler(void);                                                       \
   [[gnu::weak]] void IRQ##n##_Handler(void)                                                        \
   {                                                                                                \
-    ra_isr_dispatch((uint16_t)(n));                                                                \
+    ra8_isr_dispatch((uint16_t)(n));                                                               \
   }                                                                                                \
-  static_assert(1, "ra_irq_stub_" #n)
+  static_assert(1, "ra8_irq_stub_" #n)
 #else
-#define RA_IRQ_STUB(n)                                                                             \
+#define RA8_IRQ_STUB(n)                                                                            \
   void               IRQ##n##_Handler(void);                                                       \
   [[gnu::weak]] void IRQ##n##_Handler(void) {}                                                     \
-  static_assert(1, "ra_irq_stub_" #n)
+  static_assert(1, "ra8_irq_stub_" #n)
 #endif
 
-RA_IRQ_STUB(0);
-RA_IRQ_STUB(1);
-RA_IRQ_STUB(2);
-RA_IRQ_STUB(3);
-RA_IRQ_STUB(4);
-RA_IRQ_STUB(5);
-RA_IRQ_STUB(6);
-RA_IRQ_STUB(7);
-RA_IRQ_STUB(8);
-RA_IRQ_STUB(9);
-RA_IRQ_STUB(10);
-RA_IRQ_STUB(11);
-RA_IRQ_STUB(12);
-RA_IRQ_STUB(13);
-RA_IRQ_STUB(14);
-RA_IRQ_STUB(15);
-RA_IRQ_STUB(16);
-RA_IRQ_STUB(17);
-RA_IRQ_STUB(18);
-RA_IRQ_STUB(19);
-RA_IRQ_STUB(20);
-RA_IRQ_STUB(21);
-RA_IRQ_STUB(22);
-RA_IRQ_STUB(23);
-RA_IRQ_STUB(24);
-RA_IRQ_STUB(25);
-RA_IRQ_STUB(26);
-RA_IRQ_STUB(27);
-RA_IRQ_STUB(28);
-RA_IRQ_STUB(29);
-RA_IRQ_STUB(30);
-RA_IRQ_STUB(31);
-RA_IRQ_STUB(32);
-RA_IRQ_STUB(33);
-RA_IRQ_STUB(34);
-RA_IRQ_STUB(35);
-RA_IRQ_STUB(36);
-RA_IRQ_STUB(37);
-RA_IRQ_STUB(38);
-RA_IRQ_STUB(39);
-RA_IRQ_STUB(40);
-RA_IRQ_STUB(41);
-RA_IRQ_STUB(42);
-RA_IRQ_STUB(43);
-RA_IRQ_STUB(44);
-RA_IRQ_STUB(45);
-RA_IRQ_STUB(46);
-RA_IRQ_STUB(47);
-RA_IRQ_STUB(48);
-RA_IRQ_STUB(49);
-RA_IRQ_STUB(50);
-RA_IRQ_STUB(51);
-RA_IRQ_STUB(52);
-RA_IRQ_STUB(53);
-RA_IRQ_STUB(54);
-RA_IRQ_STUB(55);
-RA_IRQ_STUB(56);
-RA_IRQ_STUB(57);
-RA_IRQ_STUB(58);
-RA_IRQ_STUB(59);
-RA_IRQ_STUB(60);
-RA_IRQ_STUB(61);
-RA_IRQ_STUB(62);
-RA_IRQ_STUB(63);
-RA_IRQ_STUB(64);
-RA_IRQ_STUB(65);
-RA_IRQ_STUB(66);
-RA_IRQ_STUB(67);
-RA_IRQ_STUB(68);
-RA_IRQ_STUB(69);
-RA_IRQ_STUB(70);
-RA_IRQ_STUB(71);
-RA_IRQ_STUB(72);
-RA_IRQ_STUB(73);
-RA_IRQ_STUB(74);
-RA_IRQ_STUB(75);
-RA_IRQ_STUB(76);
-RA_IRQ_STUB(77);
-RA_IRQ_STUB(78);
-RA_IRQ_STUB(79);
-RA_IRQ_STUB(80);
-RA_IRQ_STUB(81);
-RA_IRQ_STUB(82);
-RA_IRQ_STUB(83);
-RA_IRQ_STUB(84);
-RA_IRQ_STUB(85);
-RA_IRQ_STUB(86);
-RA_IRQ_STUB(87);
-RA_IRQ_STUB(88);
-RA_IRQ_STUB(89);
-RA_IRQ_STUB(90);
-RA_IRQ_STUB(91);
-RA_IRQ_STUB(92);
-RA_IRQ_STUB(93);
-RA_IRQ_STUB(94);
-RA_IRQ_STUB(95);
-RA_IRQ_STUB(96);
-RA_IRQ_STUB(97);
-RA_IRQ_STUB(98);
-RA_IRQ_STUB(99);
-RA_IRQ_STUB(100);
-RA_IRQ_STUB(101);
-RA_IRQ_STUB(102);
-RA_IRQ_STUB(103);
-RA_IRQ_STUB(104);
-RA_IRQ_STUB(105);
-RA_IRQ_STUB(106);
-RA_IRQ_STUB(107);
-RA_IRQ_STUB(108);
-RA_IRQ_STUB(109);
-RA_IRQ_STUB(110);
-RA_IRQ_STUB(111);
+RA8_IRQ_STUB(0);
+RA8_IRQ_STUB(1);
+RA8_IRQ_STUB(2);
+RA8_IRQ_STUB(3);
+RA8_IRQ_STUB(4);
+RA8_IRQ_STUB(5);
+RA8_IRQ_STUB(6);
+RA8_IRQ_STUB(7);
+RA8_IRQ_STUB(8);
+RA8_IRQ_STUB(9);
+RA8_IRQ_STUB(10);
+RA8_IRQ_STUB(11);
+RA8_IRQ_STUB(12);
+RA8_IRQ_STUB(13);
+RA8_IRQ_STUB(14);
+RA8_IRQ_STUB(15);
+RA8_IRQ_STUB(16);
+RA8_IRQ_STUB(17);
+RA8_IRQ_STUB(18);
+RA8_IRQ_STUB(19);
+RA8_IRQ_STUB(20);
+RA8_IRQ_STUB(21);
+RA8_IRQ_STUB(22);
+RA8_IRQ_STUB(23);
+RA8_IRQ_STUB(24);
+RA8_IRQ_STUB(25);
+RA8_IRQ_STUB(26);
+RA8_IRQ_STUB(27);
+RA8_IRQ_STUB(28);
+RA8_IRQ_STUB(29);
+RA8_IRQ_STUB(30);
+RA8_IRQ_STUB(31);
+RA8_IRQ_STUB(32);
+RA8_IRQ_STUB(33);
+RA8_IRQ_STUB(34);
+RA8_IRQ_STUB(35);
+RA8_IRQ_STUB(36);
+RA8_IRQ_STUB(37);
+RA8_IRQ_STUB(38);
+RA8_IRQ_STUB(39);
+RA8_IRQ_STUB(40);
+RA8_IRQ_STUB(41);
+RA8_IRQ_STUB(42);
+RA8_IRQ_STUB(43);
+RA8_IRQ_STUB(44);
+RA8_IRQ_STUB(45);
+RA8_IRQ_STUB(46);
+RA8_IRQ_STUB(47);
+RA8_IRQ_STUB(48);
+RA8_IRQ_STUB(49);
+RA8_IRQ_STUB(50);
+RA8_IRQ_STUB(51);
+RA8_IRQ_STUB(52);
+RA8_IRQ_STUB(53);
+RA8_IRQ_STUB(54);
+RA8_IRQ_STUB(55);
+RA8_IRQ_STUB(56);
+RA8_IRQ_STUB(57);
+RA8_IRQ_STUB(58);
+RA8_IRQ_STUB(59);
+RA8_IRQ_STUB(60);
+RA8_IRQ_STUB(61);
+RA8_IRQ_STUB(62);
+RA8_IRQ_STUB(63);
+RA8_IRQ_STUB(64);
+RA8_IRQ_STUB(65);
+RA8_IRQ_STUB(66);
+RA8_IRQ_STUB(67);
+RA8_IRQ_STUB(68);
+RA8_IRQ_STUB(69);
+RA8_IRQ_STUB(70);
+RA8_IRQ_STUB(71);
+RA8_IRQ_STUB(72);
+RA8_IRQ_STUB(73);
+RA8_IRQ_STUB(74);
+RA8_IRQ_STUB(75);
+RA8_IRQ_STUB(76);
+RA8_IRQ_STUB(77);
+RA8_IRQ_STUB(78);
+RA8_IRQ_STUB(79);
+RA8_IRQ_STUB(80);
+RA8_IRQ_STUB(81);
+RA8_IRQ_STUB(82);
+RA8_IRQ_STUB(83);
+RA8_IRQ_STUB(84);
+RA8_IRQ_STUB(85);
+RA8_IRQ_STUB(86);
+RA8_IRQ_STUB(87);
+RA8_IRQ_STUB(88);
+RA8_IRQ_STUB(89);
+RA8_IRQ_STUB(90);
+RA8_IRQ_STUB(91);
+RA8_IRQ_STUB(92);
+RA8_IRQ_STUB(93);
+RA8_IRQ_STUB(94);
+RA8_IRQ_STUB(95);
+RA8_IRQ_STUB(96);
+RA8_IRQ_STUB(97);
+RA8_IRQ_STUB(98);
+RA8_IRQ_STUB(99);
+RA8_IRQ_STUB(100);
+RA8_IRQ_STUB(101);
+RA8_IRQ_STUB(102);
+RA8_IRQ_STUB(103);
+RA8_IRQ_STUB(104);
+RA8_IRQ_STUB(105);
+RA8_IRQ_STUB(106);
+RA8_IRQ_STUB(107);
+RA8_IRQ_STUB(108);
+RA8_IRQ_STUB(109);
+RA8_IRQ_STUB(110);
+RA8_IRQ_STUB(111);
 
-#undef RA_IRQ_STUB
+#undef RA8_IRQ_STUB
 
 /* =============================================================================
  * Vector table
@@ -277,24 +277,24 @@ RA_IRQ_STUB(111);
 #else
 [[gnu::used]]
 #endif
-const exc_handler_t g_ra_vector_table_start[16U + k_ra_irq_count] = {
+const exc_handler_t g_ra8_vector_table_start[16U + k_ra8_irq_count] = {
   /* Core exceptions (slots 0..15). */
-  (exc_handler_t)&g_ra_ls_stack_top, /* 0  Initial main stack pointer. */
-  Reset_Handler,                     /* 1  Reset vector.               */
-  NMI_Handler,                       /* 2  NMI.                        */
-  HardFault_Handler,                 /* 3  HardFault.                  */
-  MemManage_Handler,                 /* 4  MemManage.                  */
-  BusFault_Handler,                  /* 5  BusFault.                   */
-  UsageFault_Handler,                /* 6  UsageFault.                 */
-  SecureFault_Handler,               /* 7  SecureFault.                */
-  0,                                 /* 8  Reserved.                   */
-  0,                                 /* 9  Reserved.                   */
-  0,                                 /* 10 Reserved.                   */
-  SVC_Handler,                       /* 11 SVC.                        */
-  DebugMon_Handler,                  /* 12 DebugMon.                   */
-  0,                                 /* 13 Reserved.                   */
-  PendSV_Handler,                    /* 14 PendSV.                     */
-  SysTick_Handler,                   /* 15 SysTick.                    */
+  (exc_handler_t)&g_ra8_ls_stack_top, /* 0  Initial main stack pointer. */
+  Reset_Handler,                      /* 1  Reset vector.               */
+  NMI_Handler,                        /* 2  NMI.                        */
+  HardFault_Handler,                  /* 3  HardFault.                  */
+  MemManage_Handler,                  /* 4  MemManage.                  */
+  BusFault_Handler,                   /* 5  BusFault.                   */
+  UsageFault_Handler,                 /* 6  UsageFault.                 */
+  SecureFault_Handler,                /* 7  SecureFault.                */
+  0,                                  /* 8  Reserved.                   */
+  0,                                  /* 9  Reserved.                   */
+  0,                                  /* 10 Reserved.                   */
+  SVC_Handler,                        /* 11 SVC.                        */
+  DebugMon_Handler,                   /* 12 DebugMon.                   */
+  0,                                  /* 13 Reserved.                   */
+  PendSV_Handler,                     /* 14 PendSV.                     */
+  SysTick_Handler,                    /* 15 SysTick.                    */
 
 /* Peripheral IRQs 0..111. */
 #define E(n) IRQ##n##_Handler
@@ -427,15 +427,15 @@ void Reset_Handler(void)
   SystemInit();
 
   /* Step 2: copy initialized data from flash/MRAM to SRAM. */
-  uint32_t* src = &g_ra_ls_sidata;
-  uint32_t* dst = &g_ra_ls_sdata;
-  while (dst < &g_ra_ls_edata) {
+  uint32_t* src = &g_ra8_ls_sidata;
+  uint32_t* dst = &g_ra8_ls_sdata;
+  while (dst < &g_ra8_ls_edata) {
     *dst++ = *src++;
   }
 
   /* Step 3: zero BSS. */
-  dst = &g_ra_ls_sbss;
-  while (dst < &g_ra_ls_ebss) {
+  dst = &g_ra8_ls_sbss;
+  while (dst < &g_ra8_ls_ebss) {
     *dst++ = 0U;
   }
 
@@ -455,24 +455,24 @@ void Reset_Handler(void)
  *
  * Each trampoline picks the stack pointer the fault was taken on
  * (MSP if `EXC_RETURN[2]=0`, PSP otherwise), packs an `exception
- * number` in `r1`, and tail-calls `ra_exception_report()`. See
- * `ra_exception.h` for the frame layout and HUM reference.
+ * number` in `r1`, and tail-calls `ra8_exception_report()`. See
+ * `ra8_exception.h` for the frame layout and HUM reference.
  */
 
-extern void ra_exception_report(const void* frame, uint32_t exc_number);
+extern void ra8_exception_report(const void* frame, uint32_t exc_number);
 
 /**
- * @enum ra_vector_exc_t
+ * @enum ra8_vector_exc_t
  * @brief Exception numbers matching the Cortex-M vector table slots.
  */
 typedef enum : uint32_t {
-  k_ra_vector_hardfault  = 3U,
-  k_ra_vector_memmanage  = 4U,
-  k_ra_vector_busfault   = 5U,
-  k_ra_vector_usagefault = 6U,
-} ra_vector_exc_t;
+  k_ra8_vector_hardfault  = 3U,
+  k_ra8_vector_memmanage  = 4U,
+  k_ra8_vector_busfault   = 5U,
+  k_ra8_vector_usagefault = 6U,
+} ra8_vector_exc_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 [[gnu::naked, noreturn]] void HardFault_Handler(void)
 {
   __asm__ volatile("tst lr, #4          \n"
@@ -480,7 +480,7 @@ typedef enum : uint32_t {
                    "mrseq r0, msp       \n"
                    "mrsne r0, psp       \n"
                    "mov   r1, #3        \n"
-                   "b     ra_exception_report\n");
+                   "b     ra8_exception_report\n");
 }
 
 [[gnu::naked, noreturn]] void MemManage_Handler(void)
@@ -490,7 +490,7 @@ typedef enum : uint32_t {
                    "mrseq r0, msp       \n"
                    "mrsne r0, psp       \n"
                    "mov   r1, #4        \n"
-                   "b     ra_exception_report\n");
+                   "b     ra8_exception_report\n");
 }
 
 [[gnu::naked, noreturn]] void BusFault_Handler(void)
@@ -500,7 +500,7 @@ typedef enum : uint32_t {
                    "mrseq r0, msp       \n"
                    "mrsne r0, psp       \n"
                    "mov   r1, #5        \n"
-                   "b     ra_exception_report\n");
+                   "b     ra8_exception_report\n");
 }
 
 [[gnu::naked, noreturn]] void UsageFault_Handler(void)
@@ -510,31 +510,31 @@ typedef enum : uint32_t {
                    "mrseq r0, msp       \n"
                    "mrsne r0, psp       \n"
                    "mov   r1, #6        \n"
-                   "b     ra_exception_report\n");
+                   "b     ra8_exception_report\n");
 }
 #else
 /* Host build: fault handlers trap directly to the reporter. The host
- * compiler does not know `ra_exception_report` is noreturn through
+ * compiler does not know `ra8_exception_report` is noreturn through
  * the extern declaration, so we add `__builtin_unreachable()` after
  * each call to keep the `noreturn` attribute on the handler valid. */
 [[noreturn]] void HardFault_Handler(void)
 {
-  ra_exception_report(nullptr, k_ra_vector_hardfault);
+  ra8_exception_report(nullptr, k_ra8_vector_hardfault);
   __builtin_unreachable();
 }
 [[noreturn]] void MemManage_Handler(void)
 {
-  ra_exception_report(nullptr, k_ra_vector_memmanage);
+  ra8_exception_report(nullptr, k_ra8_vector_memmanage);
   __builtin_unreachable();
 }
 [[noreturn]] void BusFault_Handler(void)
 {
-  ra_exception_report(nullptr, k_ra_vector_busfault);
+  ra8_exception_report(nullptr, k_ra8_vector_busfault);
   __builtin_unreachable();
 }
 [[noreturn]] void UsageFault_Handler(void)
 {
-  ra_exception_report(nullptr, k_ra_vector_usagefault);
+  ra8_exception_report(nullptr, k_ra8_vector_usagefault);
   __builtin_unreachable();
 }
 #endif
@@ -547,7 +547,7 @@ typedef enum : uint32_t {
 void Default_Handler(void)
 {
   /* Stop here so an attached debugger can inspect stack / faults. */
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   __asm__ volatile("bkpt #0");
   while (1) {
     __asm__ volatile("wfi");

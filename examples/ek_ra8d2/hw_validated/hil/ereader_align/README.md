@@ -1,10 +1,10 @@
 # ereader_align
 
 Headless **on-silicon HIL gate** for text alignment + justification
-(`ra_reflow`, #108) -- the `style="text-align:..."` -> per-line shift / justify
+(`ra8_reflow`, #108) -- the `style="text-align:..."` -> per-line shift / justify
 pipeline. No panel / SD / touch needed.
 
-1. Lay out a baked chapter through `ra_reflow` (bundled **Ahem** face) with one
+1. Lay out a baked chapter through `ra8_reflow` (bundled **Ahem** face) with one
    paragraph each of `text-align:right`, `:center`, `:justify`, and the default
    left.
 2. Fold an **FNV-1a-32** hash over every laid-out glyph's `(x, y)` -- the

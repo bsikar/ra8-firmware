@@ -46,7 +46,7 @@ $(ELF): $(wildcard $(HERE)/*.c) $(wildcard $(HERE)/*.h) $(wildcard $(HERE)/linke
 	    -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN) \
 	    -DCMAKE_BUILD_TYPE=$(or $(BUILD_TYPE),RelWithDebInfo) \
 	    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-	    -DRA_USE_THREADX=ON
+	    -DRA8_USE_THREADX=ON
 	$(CMAKE) --build $(BUILD_DIR)
 
 clean:

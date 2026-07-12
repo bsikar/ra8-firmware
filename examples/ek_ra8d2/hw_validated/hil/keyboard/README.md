@@ -1,17 +1,17 @@
 # keyboard
 
-On-silicon **HIL gate** for the on-screen keyboard widget `ra_keyboard` (#105) --
+On-silicon **HIL gate** for the on-screen keyboard widget `ra8_keyboard` (#105) --
 the text-entry model behind the e-reader Library search.
 
 ## What it does
 
-`ra_keyboard` is a pure, rendering-free model modelled on the iOS keyboard: a
+`ra8_keyboard` is a pure, rendering-free model modelled on the iOS keyboard: a
 **letters** layer (`qwertyuiop` / `asdfghjkl` inset / SHIFT + `zxcvbnm` +
 BACKSPACE / 123 + SPACE + RETURN) and a **numbers** layer (digits + symbols),
 toggled by the 123 / ABC key. It lays the active layer into a frame as
-`ra_ui_rect_t` key rects, maps a tap to a key (`ra_kbd_hit`, via the shared
-`ra_ui_rect_contains`), and mutates a text buffer + one-shot SHIFT + active
-layer (`ra_kbd_apply`). The caller owns drawing + tap routing; this is the
+`ra8_ui_rect_t` key rects, maps a tap to a key (`ra8_kbd_hit`, via the shared
+`ra8_ui_rect_contains`), and mutates a text buffer + one-shot SHIFT + active
+layer (`ra8_kbd_apply`). The caller owns drawing + tap routing; this is the
 deterministic logic underneath.
 
 This HIL drives that model with **synthetic key-centre taps** -- the same
@@ -43,9 +43,9 @@ kbd: q=Hi 9 commit=1 taps=7 PASS
 ```
 
 `scripts/board_sim_smoke.sh keyboard` PASS (final PC in the `main` WFI idle
-loop; 7 synthetic taps routed through `ra_kbd_hit` -> `ra_kbd_apply`). The
+loop; 7 synthetic taps routed through `ra8_kbd_hit` -> `ra8_kbd_apply`). The
 widget logic -- case toggle, the 123/ABC layer switch, digits, edits -- is
-covered on the host by `tests/test_ra_keyboard.c` (ASan + MC/DC for the
+covered on the host by `tests/test_ra8_keyboard.c` (ASan + MC/DC for the
 frame-rejection decision); the same model + the same sequence produce the same
 banner, so host == board_sim == silicon.
 

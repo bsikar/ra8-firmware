@@ -60,21 +60,21 @@ MEMORY
      * build because the linker treats them as views of the same
      * physical bytes; the SAU programmes the bit-28 split at boot
      * (see blink/trustzone_init.c) so the CPU sees them as
-     * Non-Secure aliases. With RA_TRUSTZONE_ENABLE off the linker
+     * Non-Secure aliases. With RA8_TRUSTZONE_ENABLE off the linker
      * is allowed to place sections in either region freely. */
     NS_MRAM (rx) : ORIGIN = 0x02080000, LENGTH = 512K
     NS_SRAM (rwx) : ORIGIN = 0x22100000, LENGTH = 1024K
 }
 
 /*
- * Linker symbols. Named with the g_ra_ls_ prefix so they are NOT in
+ * Linker symbols. Named with the g_ra8_ls_ prefix so they are NOT in
  * the ISO C reserved leading-underscore namespace. The boot code in
  * blink/vector_table.c declares them with exactly these names.
  */
-g_ra_ls_stack_size = DEFINED(g_ra_ls_stack_size) ? g_ra_ls_stack_size : 8K;
-g_ra_ls_stack_top = ORIGIN(SRAM) + LENGTH(SRAM);
+g_ra8_ls_stack_size = DEFINED(g_ra8_ls_stack_size) ? g_ra8_ls_stack_size : 8K;
+g_ra8_ls_stack_top = ORIGIN(SRAM) + LENGTH(SRAM);
 /* No heap: NASA Power of 10 Rule 3 -- zero dynamic allocation after
- * init. _sbrk() in libs/ra_core/src/ra_sbrk_trap.c traps any
+ * init. _sbrk() in libs/ra8_core/src/ra8_sbrk_trap.c traps any
  * accidental malloc() call from newlib. */
 
 /*
@@ -167,36 +167,36 @@ SECTIONS
 
     .ARM.exidx : ALIGN(4)
     {
-        g_ra_ls_exidx_start = .;
+        g_ra8_ls_exidx_start = .;
         *(.ARM.exidx* .gnu.linkonce.armexidx.*)
-        g_ra_ls_exidx_end = .;
+        g_ra8_ls_exidx_end = .;
     } > MRAM
 
     /* ---- C++ constructors / destructors (for __libc_init_array) ---- */
     .preinit_array : ALIGN(4)
     {
-        g_ra_ls_preinit_array_start = .;
+        g_ra8_ls_preinit_array_start = .;
         KEEP(*(.preinit_array*))
-        g_ra_ls_preinit_array_end = .;
+        g_ra8_ls_preinit_array_end = .;
     } > MRAM
 
     .init_array : ALIGN(4)
     {
-        g_ra_ls_init_array_start = .;
+        g_ra8_ls_init_array_start = .;
         KEEP(*(SORT(.init_array.*)))
         KEEP(*(.init_array*))
-        g_ra_ls_init_array_end = .;
+        g_ra8_ls_init_array_end = .;
     } > MRAM
 
     .fini_array : ALIGN(4)
     {
-        g_ra_ls_fini_array_start = .;
+        g_ra8_ls_fini_array_start = .;
         KEEP(*(SORT(.fini_array.*)))
         KEEP(*(.fini_array*))
-        g_ra_ls_fini_array_end = .;
+        g_ra8_ls_fini_array_end = .;
     } > MRAM
 
-    g_ra_ls_etext = .;
+    g_ra8_ls_etext = .;
 
     /* ---- TrustZone Non-Secure Callable veneer stubs ----
      *
@@ -214,15 +214,15 @@ SECTIONS
      * single-image build still loads cleanly. */
     .gnu.sgstubs : ALIGN(32)
     {
-        g_ra_ls_sgstubs_start = .;
+        g_ra8_ls_sgstubs_start = .;
         *(.gnu.sgstubs*)
-        g_ra_ls_sgstubs_end = .;
+        g_ra8_ls_sgstubs_end = .;
     } > MRAM
 
     /* ---- Option setting regions (fixed flash addresses) ----
      *
      * Every one of these lands at a fixed MRAM address. Values are
-     * provided by libs/ra_hal/src/ra_ofs.c via BSP_PLACE_IN_SECTION
+     * provided by libs/ra8_hal/src/ra8_ofs.c via BSP_PLACE_IN_SECTION
      * (which expands to __attribute__((section(".option_setting_*")))).
      * A project that wants to change any of them just overrides the
      * matching `BSP_CFG_OPTION_SETTING_*` macro and rebuilds.
@@ -257,69 +257,69 @@ SECTIONS
     /* ---- Initialised data: loaded from MRAM, lives in SRAM ---- */
     .data : ALIGN(4)
     {
-        g_ra_ls_sdata = .;
+        g_ra8_ls_sdata = .;
         *(.data)
         *(.data.*)
-        g_ra_ls_edata = .;
+        g_ra8_ls_edata = .;
     } > SRAM AT > MRAM
 
-    g_ra_ls_sidata = LOADADDR(.data);
+    g_ra8_ls_sidata = LOADADDR(.data);
 
     /* ---- Zero-init data ---- */
     .bss (NOLOAD) : ALIGN(4)
     {
-        g_ra_ls_sbss = .;
+        g_ra8_ls_sbss = .;
         *(.bss)
         *(.bss.*)
         *(COMMON)
-        g_ra_ls_ebss = .;
+        g_ra8_ls_ebss = .;
     } > SRAM
 
-    /* No .heap region -- see ra_sbrk_trap.c. */
+    /* No .heap region -- see ra8_sbrk_trap.c. */
 
     /* ---- Stack canary (32 bytes just below the stack top -- filled
-     * with a known pattern by ra_stack_canary_init() at boot so
-     * ra_stack_canary_check() has a sentinel to compare against). */
+     * with a known pattern by ra8_stack_canary_init() at boot so
+     * ra8_stack_canary_check() has a sentinel to compare against). */
     .stack_canary (NOLOAD) : ALIGN(8)
     {
-        g_ra_ls_stack_canary_start = .;
+        g_ra8_ls_stack_canary_start = .;
         . = . + 32;
-        g_ra_ls_stack_canary_end = .;
+        g_ra8_ls_stack_canary_end = .;
     } > SRAM
 
     /* ---- ITCM / DTCM sections (drivers opt in via
      * __attribute__((section(".itcm_text")))). ---- */
     .itcm_text : ALIGN(4)
     {
-        g_ra_ls_sitcm = .;
+        g_ra8_ls_sitcm = .;
         *(.itcm_text)
         *(.itcm_text.*)
-        g_ra_ls_eitcm = .;
+        g_ra8_ls_eitcm = .;
     } > ITCM AT > MRAM
 
     .dtcm_data : ALIGN(4)
     {
-        g_ra_ls_sdtcm = .;
+        g_ra8_ls_sdtcm = .;
         *(.dtcm_data)
         *(.dtcm_data.*)
-        g_ra_ls_edtcm = .;
+        g_ra8_ls_edtcm = .;
     } > DTCM AT > MRAM
 
     .dtcm_bss (NOLOAD) : ALIGN(4)
     {
-        g_ra_ls_sdtcm_bss = .;
+        g_ra8_ls_sdtcm_bss = .;
         *(.dtcm_bss)
         *(.dtcm_bss.*)
-        g_ra_ls_edtcm_bss = .;
+        g_ra8_ls_edtcm_bss = .;
     } > DTCM
 
     /* ---- SDRAM sections for framebuffers, image buffers, etc. ---- */
     .sdram_data (NOLOAD) : ALIGN(8)
     {
-        g_ra_ls_ssdram = .;
+        g_ra8_ls_ssdram = .;
         *(.sdram_data)
         *(.sdram_data.*)
-        g_ra_ls_esdram = .;
+        g_ra8_ls_esdram = .;
     } > SDRAM
 
     /* ---- Discarded ---- */
@@ -335,10 +335,10 @@ SECTIONS
  * fire, resize the sections above or move the offending module to
  * SDRAM / ITCM / DTCM.
  */
-ASSERT(g_ra_ls_etext <= ORIGIN(MRAM) + LENGTH(MRAM),
+ASSERT(g_ra8_ls_etext <= ORIGIN(MRAM) + LENGTH(MRAM),
        "FATAL: MRAM overflow -- .text + .rodata too large")
-ASSERT(g_ra_ls_ebss + g_ra_ls_stack_size <= g_ra_ls_stack_top,
+ASSERT(g_ra8_ls_ebss + g_ra8_ls_stack_size <= g_ra8_ls_stack_top,
        "FATAL: SRAM overflow -- .bss + stack won't fit")
 
-g_ra_ls_cpu1_mram_start = ORIGIN(MRAM_CPU1);
-g_ra_ls_cpu1_stack_top  = ORIGIN(SRAM) + LENGTH(SRAM) - 16K;
+g_ra8_ls_cpu1_mram_start = ORIGIN(MRAM_CPU1);
+g_ra8_ls_cpu1_stack_top  = ORIGIN(SRAM) + LENGTH(SRAM) - 16K;

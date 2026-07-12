@@ -1,6 +1,6 @@
 #
 # mkbookimg -- build a FAT32 SD-card image carrying compiled .rabook files,
-# written through the real ra_fs so the firmware (ereader_shelf / board_sim
+# written through the real ra8_fs so the firmware (ereader_shelf / board_sim
 # --sd) reads them back bit-for-bit.
 #
 #   cmake -B build -S . && cmake --build build
@@ -20,14 +20,14 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # Repo root from this tool dir (tools/mkbookimg -> repo).
 get_filename_component(_repo "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
-# ra_fs is split across ra_fs_fat*.c TUs (file-size gate); glob them so the
+# ra8_fs is split across ra8_fs_fat*.c TUs (file-size gate); glob them so the
 # tool keeps linking as the library gains/renames TUs.
-file(GLOB _ra_fs_srcs CONFIGURE_DEPENDS ${_repo}/libs/ra_fs/src/*.c)
+file(GLOB _ra8_fs_srcs CONFIGURE_DEPENDS ${_repo}/libs/ra8_fs/src/*.c)
 
 add_executable(mkbookimg
     ${CMAKE_CURRENT_SOURCE_DIR}/mkbookimg.c
-    ${_ra_fs_srcs})
+    ${_ra8_fs_srcs})
 
 target_include_directories(mkbookimg PRIVATE
-    ${_repo}/libs/ra_fs/inc
-    ${_repo}/libs/ra_core/inc)
+    ${_repo}/libs/ra8_fs/inc
+    ${_repo}/libs/ra8_core/inc)

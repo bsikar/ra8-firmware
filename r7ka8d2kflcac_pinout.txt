@@ -32,10 +32,10 @@ J-Link OB debug (on-board, cannot be reassigned):
     SWDIO / SWCLK / TDO / TDI via the SEGGER OB target MCU
 
 J-Link OB virtual COM port (USB CDC -- "VCOMM"):
-    TXD8 -- PD_02       (PFS PSEL = k_ra_psel_sci_async, 0x04)
-    RXD8 -- PD_03       (PFS PSEL = k_ra_psel_sci_async, 0x04)
+    TXD8 -- PD_02       (PFS PSEL = k_ra8_psel_sci_async, 0x04)
+    RXD8 -- PD_03       (PFS PSEL = k_ra8_psel_sci_async, 0x04)
     Channel: SCI8 (an SCI_B instance on RA8D2 -- the legacy
-                    `libs/ra_hal/src/ra_sci.c` register layout
+                    `libs/ra8_hal/src/ra8_sci.c` register layout
                     needs to be re-derived against HUM Ch 38
                     SCI_B registers before this UART will work.)
     Source: Renesas FSP `ek_ra8d2_ep` quickstart -- the board nets
@@ -49,12 +49,12 @@ These are reasonable starting points for bring-up. Confirm each
 against HUM section 20.4 ("Peripheral I/O Table") before trusting.
 
 SCI0 UART (alternate debug console -- generic, NOT the J-Link OB CDC):
-    TXD0 -- P1_01       (PFS PSEL = k_ra_psel_sci_async, 0x04)
-    RXD0 -- P1_02       (PFS PSEL = k_ra_psel_sci_async, 0x04)
+    TXD0 -- P1_01       (PFS PSEL = k_ra8_psel_sci_async, 0x04)
+    RXD0 -- P1_02       (PFS PSEL = k_ra8_psel_sci_async, 0x04)
 
 IIC0 I2C:
-    SDA0 -- P4_00       (PFS PSEL = k_ra_psel_iic, 0x07)
-    SCL0 -- P4_01       (PFS PSEL = k_ra_psel_iic, 0x07)
+    SDA0 -- P4_00       (PFS PSEL = k_ra8_psel_iic, 0x07)
+    SCL0 -- P4_01       (PFS PSEL = k_ra8_psel_iic, 0x07)
 
 SPI0:
     RSPCK -- P1_02
@@ -63,8 +63,8 @@ SPI0:
     CS    -- P1_03
 
 CANFD0:
-    CTX0 -- P4_01       (PFS PSEL = k_ra_psel_can, 0x10)
-    CRX0 -- P4_02       (PFS PSEL = k_ra_psel_can, 0x10)
+    CTX0 -- P4_01       (PFS PSEL = k_ra8_psel_can, 0x10)
+    CRX0 -- P4_02       (PFS PSEL = k_ra8_psel_can, 0x10)
 
 USB FS (PHY pins are fixed by package):
     USB_DP -- USBHS1-DP  (not remappable)

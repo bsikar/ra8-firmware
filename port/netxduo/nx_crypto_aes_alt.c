@@ -13,7 +13,7 @@
  * ``method->nx_crypto_algorithm`` selector:
  *
  *   - AES-128-CBC, AES-192-CBC, AES-256-CBC, AES-128-CTR,
- *     AES-256-CTR -- routed to ``ra_rsip_aes_cipher`` running the
+ *     AES-256-CTR -- routed to ``ra8_rsip_aes_cipher`` running the
  *     RSIP block engine. The wrapped key is installed once per
  *     ``__wrap__nx_crypto_method_aes_init`` call and stored in the
  *     extended metadata block alongside the upstream
@@ -22,7 +22,7 @@
  *     ``__real__nx_crypto_method_aes_*`` (the upstream software
  *     implementation). The RSIP engine *does* support GCM and CCM,
  *     but matching NetX's IV / AAD framing onto the FSP single-shot
- *     ``ra_rsip_aes_gcm`` API requires more buffering than a thin
+ *     ``ra8_rsip_aes_gcm`` API requires more buffering than a thin
  *     port shim can carry, so we leave them on the software path.
  *
  * The ``__real_*`` symbols are emitted by GNU ld in response to
@@ -40,8 +40,8 @@
 #include "nx_crypto.h"
 #include "nx_crypto_aes.h"
 #include "nx_crypto_const.h"
-#include "ra_err.h"
-#include "ra_rsip.h"
+#include "ra8_err.h"
+#include "ra8_rsip.h"
 
 /**
  * @enum nx_aes_alt_constants_t
@@ -67,7 +67,7 @@ typedef enum : uint16_t {
  * a "ready" flag.
  */
 typedef struct {
-  ra_rsip_key_handle_t key;   /**< Wrapped RSIP key handle.       */
+  ra8_rsip_key_handle_t key;   /**< Wrapped RSIP key handle.       */
   uint8_t              ready; /**< 1 if the key was installed OK. */
 } nx_aes_alt_meta_t;
 
@@ -111,20 +111,20 @@ static UCHAR priv_alg_is_accelerated(UINT alg)
   return 0U;
 }
 
-/* Translate a NetX Crypto AES key-length into ``ra_rsip_*_install_plain`` -- see implementation for details. */
-static ra_err_t
-priv_install_key(NX_CRYPTO_KEY_SIZE key_bits, const uint8_t* key, ra_rsip_key_handle_t* out_handle)
+/* Translate a NetX Crypto AES key-length into ``ra8_rsip_*_install_plain`` -- see implementation for details. */
+static ra8_err_t
+priv_install_key(NX_CRYPTO_KEY_SIZE key_bits, const uint8_t* key, ra8_rsip_key_handle_t* out_handle)
 {
   if (key_bits == (NX_CRYPTO_KEY_SIZE)k_nx_aes_alt_key128_bits) {
-    return ra_rsip_aes128_install_plain(key, out_handle);
+    return ra8_rsip_aes128_install_plain(key, out_handle);
   }
   if (key_bits == (NX_CRYPTO_KEY_SIZE)k_nx_aes_alt_key192_bits) {
-    return ra_rsip_aes192_install_plain(key, out_handle);
+    return ra8_rsip_aes192_install_plain(key, out_handle);
   }
   if (key_bits == (NX_CRYPTO_KEY_SIZE)k_nx_aes_alt_key256_bits) {
-    return ra_rsip_aes256_install_plain(key, out_handle);
+    return ra8_rsip_aes256_install_plain(key, out_handle);
   }
-  return k_ra_err_invalid_arg;
+  return k_ra8_err_invalid_arg;
 }
 
 /**
@@ -208,29 +208,29 @@ UINT __wrap__nx_crypto_method_aes_init(struct NX_CRYPTO_METHOD_STRUCT* method,
   }
   nx_aes_alt_meta_t* meta = priv_meta_of(crypto_metadata);
   meta->ready             = 0U;
-  ra_err_t err            = priv_install_key(key_size_in_bits, key, &meta->key);
-  if (err == k_ra_ok) {
+  ra8_err_t err            = priv_install_key(key_size_in_bits, key, &meta->key);
+  if (err == k_ra8_ok) {
     meta->ready = 1U;
   }
   return (UINT)NX_CRYPTO_SUCCESS;
 }
 
-/* Map a NetX algorithm + op pair onto ``ra_rsip_aes_cipher`` args -- see implementation for details. */
-static UCHAR priv_map_mode(UINT alg, UINT op, ra_rsip_aes_mode_t* mode, ra_rsip_aes_dir_t* dir)
+/* Map a NetX algorithm + op pair onto ``ra8_rsip_aes_cipher`` args -- see implementation for details. */
+static UCHAR priv_map_mode(UINT alg, UINT op, ra8_rsip_aes_mode_t* mode, ra8_rsip_aes_dir_t* dir)
 {
   if (alg == (UINT)NX_CRYPTO_ENCRYPTION_AES_CBC) {
-    *mode = k_ra_rsip_aes_mode_cbc;
+    *mode = k_ra8_rsip_aes_mode_cbc;
   } else if (alg == (UINT)NX_CRYPTO_ENCRYPTION_AES_CTR) {
-    *mode = k_ra_rsip_aes_mode_ctr;
+    *mode = k_ra8_rsip_aes_mode_ctr;
   } else {
     return 0U;
   }
   if (op == (UINT)NX_CRYPTO_ENCRYPT || op == (UINT)NX_CRYPTO_ENCRYPT_UPDATE ||
       op == (UINT)NX_CRYPTO_ENCRYPT_INITIALIZE) {
-    *dir = k_ra_rsip_dir_encrypt;
+    *dir = k_ra8_rsip_dir_encrypt;
   } else if (op == (UINT)NX_CRYPTO_DECRYPT || op == (UINT)NX_CRYPTO_DECRYPT_UPDATE ||
              op == (UINT)NX_CRYPTO_DECRYPT_INITIALIZE) {
-    *dir = k_ra_rsip_dir_decrypt;
+    *dir = k_ra8_rsip_dir_decrypt;
   } else {
     return 0U;
   }
@@ -357,7 +357,7 @@ static UCHAR priv_must_fallback(const nx_aes_alt_op_args_t* a)
  *
  * @details
  * Translates the NetX algorithm/op pair into RSIP enums, range-checks
- * the output buffer, then submits one ``ra_rsip_aes_cipher`` call. If
+ * the output buffer, then submits one ``ra8_rsip_aes_cipher`` call. If
  * the algorithm/op cannot be mapped (defensive -- the caller already
  * vetted accelerated-ness), defers to the upstream software path.
  *
@@ -385,8 +385,8 @@ static UCHAR priv_must_fallback(const nx_aes_alt_op_args_t* a)
  */
 static UINT priv_run_accelerated(const nx_aes_alt_op_args_t* a)
 {
-  ra_rsip_aes_mode_t mode = k_ra_rsip_aes_mode_ecb;
-  ra_rsip_aes_dir_t  dir  = k_ra_rsip_dir_encrypt;
+  ra8_rsip_aes_mode_t mode = k_ra8_rsip_aes_mode_ecb;
+  ra8_rsip_aes_dir_t  dir  = k_ra8_rsip_dir_encrypt;
   if (priv_map_mode(a->method->nx_crypto_algorithm, a->op, &mode, &dir) == 0U) {
     return priv_forward_op(a);
   }
@@ -394,14 +394,14 @@ static UINT priv_run_accelerated(const nx_aes_alt_op_args_t* a)
     return (UINT)NX_CRYPTO_INVALID_BUFFER_SIZE;
   }
   nx_aes_alt_meta_t* meta = priv_meta_of(a->crypto_metadata);
-  ra_err_t           err  = ra_rsip_aes_cipher(&meta->key,
+  ra8_err_t           err  = ra8_rsip_aes_cipher(&meta->key,
                                                mode,
                                                dir,
                                                (const uint8_t*)a->iv_ptr,
                                                (const uint8_t*)a->input,
                                                (uint8_t*)a->output,
                                                (uint32_t)a->input_length_in_byte);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return (UINT)NX_CRYPTO_NOT_SUCCESSFUL;
   }
   return (UINT)NX_CRYPTO_SUCCESS;
@@ -412,7 +412,7 @@ static UINT priv_run_accelerated(const nx_aes_alt_op_args_t* a)
  *
  * @details
  * For accelerated CBC / CTR algorithms with a usable wrapped key,
- * routes the bulk of the data through ``ra_rsip_aes_cipher`` and
+ * routes the bulk of the data through ``ra8_rsip_aes_cipher`` and
  * returns. For every other case (initialisation-only ops, no
  * wrapped key, GCM / CCM / XCBC) defers to the upstream
  * ``__real_*`` so behaviour stays bit-identical to the software
@@ -469,7 +469,7 @@ UINT __wrap__nx_crypto_method_aes_operation(UINT                            op,
  * Zeroes our trailing metadata before delegating to the upstream
  * cleanup path. The wrapped-key handle stays inside the metadata
  * block so this clears it in place; the RSIP engine itself does
- * not retain plaintext after ``ra_rsip_aes*_install_plain``
+ * not retain plaintext after ``ra8_rsip_aes*_install_plain``
  * returns.
  *
  * @since 0.1.0

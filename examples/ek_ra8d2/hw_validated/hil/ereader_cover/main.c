@@ -5,11 +5,11 @@
  * @details
  * The headline "book cover art" path for the on-device e-reader, end to end:
  *
- *   1. `ra_epub_open` -- open a baked, cover-bearing `.epub` in memory
- *      (vendored miniz ZIP + tinyxml2, zero-heap via `ra_epub_miniz_alloc`).
- *   2. `ra_epub_get_cover_image` -- resolve the `properties="cover-image"`
+ *   1. `ra8_epub_open` -- open a baked, cover-bearing `.epub` in memory
+ *      (vendored miniz ZIP + tinyxml2, zero-heap via `ra8_epub_miniz_alloc`).
+ *   2. `ra8_epub_get_cover_image` -- resolve the `properties="cover-image"`
  *      manifest item and copy the cover's raw PNG bytes into a buffer.
- *   3. `ra_img_decode_blit` -- decode the PNG (stb_image), scale-to-fit it into
+ *   3. `ra8_img_decode_blit` -- decode the PNG (stb_image), scale-to-fit it into
  *      the framebuffer box preserving aspect ratio, and blit it -- allocating
  *      only from a fixed SRAM bump arena (no `malloc`, NASA Rule 3).
  *   4. FNV-1a hash the rendered framebuffer.
@@ -25,7 +25,7 @@
  * BKPT before the PASS line, so the gate is exact.
  *
  * This is the EPUB analogue of `ereader_image` (#106, which decodes a bare
- * baked PNG): the only new surface is the `ra_epub_get_cover_image` extraction
+ * baked PNG): the only new surface is the `ra8_epub_get_cover_image` extraction
  * in front of the proven decode+scale+blit pipeline.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -40,15 +40,15 @@
 #include <stdint.h>
 
 #include "epub_cover_fixture.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_epub.h"
-#include "ra_err.h"
-#include "ra_gfx.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_reflow_image.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_epub.h"
+#include "ra8_err.h"
+#include "ra8_gfx.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_reflow_image.h"
+#include "ra8_time.h"
 
 /** @enum ec_consts_t @brief Console / render knobs (no magic numbers). */
 typedef enum : uint32_t {
@@ -67,7 +67,7 @@ typedef enum : uint32_t {
 } ec_consts_t;
 
 /** @brief Opened book (large -- file-scope, not on the stack). */
-static ra_epub_book_t s_book;
+static ra8_epub_book_t s_book;
 /** @brief Cover-image read buffer (file-scope; holds the raw encoded bytes). */
 static uint8_t s_cover[k_ec_cover_cap];
 /** @brief RGB565 framebuffer the cover is rendered into. */
@@ -88,7 +88,7 @@ static const uint8_t k_msg_ok[]   = " PASS\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void ec_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -148,16 +148,16 @@ static void ec_print_uint(uint32_t value)
 static void ec_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     ec_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     ec_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     ec_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_board_uart_console_init((uint32_t)k_ec_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_ec_uart_baud) != k_ra8_ok) {
     ec_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }
@@ -174,36 +174,37 @@ static void ec_setup_or_halt(void)
  * @param[out] out_h Receives the blitted (scaled) cover height, pixels.
  * @return The number of raw cover bytes extracted from the manifest.
  *
- * @pre ::ec_setup_or_halt ran and ::ra_gfx_init bound ::s_framebuffer.
+ * @pre ::ec_setup_or_halt ran and ::ra8_gfx_init bound ::s_framebuffer.
  * @post On return ::s_framebuffer holds the scaled cover; @p out_w/@p out_h set.
  * @since 0.1.0
  */
 static size_t ec_render_cover_or_halt(int32_t* out_w, int32_t* out_h)
 {
-  const ra_epub_mem_media_t media = {.data = k_epub_cover_fixture,
-                                     .size = (size_t)k_epub_cover_fixture_len};
-  if (ra_epub_open(&media, "book.epub", &s_book) != k_ra_ok) {
+  const ra8_epub_mem_media_t media = {.data = k_epub_cover_fixture,
+                                      .size = (size_t)k_epub_cover_fixture_len};
+  if (ra8_epub_open(&media, "book.epub", &s_book) != k_ra8_ok) {
     ec_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
   }
   size_t cover_len = 0U;
-  if ((ra_epub_get_cover_image(&s_book, s_cover, (size_t)k_ec_cover_cap, &cover_len) != k_ra_ok) ||
+  if ((ra8_epub_get_cover_image(&s_book, s_cover, (size_t)k_ec_cover_cap, &cover_len) !=
+       k_ra8_ok) ||
       (cover_len == 0U)) {
     ec_panic_halt(k_msg_cov, (uint32_t)sizeof(k_msg_cov) - 1U);
   }
 
-  ra_img_arena_t arena = {.base   = s_img_arena,
-                          .cap    = (size_t)k_ec_arena_bytes,
-                          .offset = 0U,
-                          .live   = 0U};
-  if (ra_img_decode_blit(&arena,
-                         s_cover,
-                         cover_len,
-                         0,
-                         0,
-                         (int32_t)k_ec_fb_w,
-                         (int32_t)k_ec_fb_h,
-                         out_w,
-                         out_h) != k_ra_ok) {
+  ra8_img_arena_t arena = {.base   = s_img_arena,
+                           .cap    = (size_t)k_ec_arena_bytes,
+                           .offset = 0U,
+                           .live   = 0U};
+  if (ra8_img_decode_blit(&arena,
+                          s_cover,
+                          cover_len,
+                          0,
+                          0,
+                          (int32_t)k_ec_fb_w,
+                          (int32_t)k_ec_fb_h,
+                          out_w,
+                          out_h) != k_ra8_ok) {
     ec_panic_halt(k_msg_derr, (uint32_t)sizeof(k_msg_derr) - 1U);
   }
   return cover_len;
@@ -224,16 +225,16 @@ static size_t ec_render_cover_or_halt(int32_t* out_w, int32_t* out_h)
 int32_t main(void)
 {
   ec_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   ec_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
-  if (ra_gfx_init(s_framebuffer,
-                  (uint16_t)k_ec_fb_w,
-                  (uint16_t)k_ec_fb_h,
-                  k_ra_gfx_format_rgb565) != k_ra_ok) {
+  if (ra8_gfx_init(s_framebuffer,
+                   (uint16_t)k_ec_fb_w,
+                   (uint16_t)k_ec_fb_h,
+                   k_ra8_gfx_format_rgb565) != k_ra8_ok) {
     ec_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  (void)ra_gfx_clear((uint32_t)k_ec_col_bg);
+  (void)ra8_gfx_clear((uint32_t)k_ec_col_bg);
 
   int32_t out_w = 0;
   int32_t out_h = 0;

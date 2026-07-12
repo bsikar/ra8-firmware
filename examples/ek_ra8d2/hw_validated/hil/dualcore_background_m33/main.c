@@ -9,7 +9,7 @@
  * This is the firmware that runs on the RA8D2's primary core, the Cortex-M85,
  * out of reset. It demonstrates M33 as an autonomous co-processor:
  *
- *   1. The M85 releases the M33 with `ra_cpu1_release`.
+ *   1. The M85 releases the M33 with `ra8_cpu1_release`.
  *   2. The M85 waits for the M33 boot signature -- proof that the second core
  *      left reset and is executing code.
  *   3. The M85 then simply polls `done` in shared SRAM while the M33 runs
@@ -23,7 +23,7 @@
  * Contrast with `dualcore_mailbox`, where the M85 drives each request/reply
  * round. Here the M85 yields and lets the M33 run at its own pace.
  *
- * @note `ra_log_info` is a no-op unless the build defines a log level of INFO
+ * @note `ra8_log_info` is a no-op unless the build defines a log level of INFO
  *       or finer (a Debug build). `make sim-dualcore_background_m33` builds
  *       Debug, so `[itm]` lines appear; a release build runs the same logic
  *       but stays silent.
@@ -37,24 +37,24 @@
 #include <stdint.h>
 
 #include "dualcore_background.h"
-#include "ra_attributes.h"
-#include "ra_board_ek_ra8d2_peripherals.h"
-#include "ra_cgc.h"
-#include "ra_dual_core.h"
-#include "ra_err.h"
-#include "ra_log.h"
+#include "ra8_attributes.h"
+#include "ra8_board_ek_ra8d2_peripherals.h"
+#include "ra8_cgc.h"
+#include "ra8_dual_core.h"
+#include "ra8_err.h"
+#include "ra8_log.h"
 
 /** @brief Base of the embedded M33 image / its vector table (MRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_mram_start;
+extern uint32_t g_ra8_ls_cpu1_mram_start;
 /** @brief Initial stack pointer handed to the M33 at release. */
-extern uint32_t g_ra_ls_cpu1_stack_top;
+extern uint32_t g_ra8_ls_cpu1_stack_top;
 
 /**
  * @enum dualcore_bg_hil_t
  * @brief VCOM-console line rate for the deterministic HIL success banner.
  * @details The EK-RA8D2 J-Link OB VCOM bridge (SCI8, PD02/PD03) runs 8N1 at this
  *          rate; the Pi HIL rig's `uart_scrape` reads /dev/ttyACM0 to gate the
- *          app. The banner is additive to the existing `ra_log` ITM trace.
+ *          app. The banner is additive to the existing `ra8_log` ITM trace.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -66,7 +66,7 @@ typedef enum : uint32_t {
  * @brief Deterministic, run-to-run-stable HIL success banner (uart_scrape gate).
  * @details Emitted over the SCI8 / J-Link OB VCOM console only when the M33's
  *          autonomous final counter equalled ::k_bg_target_count -- a value only
- *          the second core executing can produce. The ITM `ra_log` verdict is
+ *          the second core executing can produce. The ITM `ra8_log` verdict is
  *          left intact; this is purely additive so the Pi rig (which has no SWO /
  *          ITM capture) can gate the producer/consumer handshake.
  * @note Trailing CRLF terminates the line on the wire; the gate matches the text.
@@ -79,19 +79,19 @@ static const uint8_t k_dualcore_bg_pass_banner[] = "dualcore_background_m33: cou
  * @brief Bring up the SCI8 / J-Link OB VCOM console for the HIL success banner.
  *
  * @details
- * Configures the clock tree (`ra_cgc_init`, which publishes the PCLKA the SCI8
+ * Configures the clock tree (`ra8_cgc_init`, which publishes the PCLKA the SCI8
  * BRR divisor is computed from -- and which the released M33 then shares) then
- * the EK-RA8D2 debug console (`ra_board_uart_console_init`, SCI8 on PD02/PD03 at
+ * the EK-RA8D2 debug console (`ra8_board_uart_console_init`, SCI8 on PD02/PD03 at
  * ::k_dualcore_bg_hil_baud). Best-effort: a failure only means the additive HIL
- * banner cannot reach the host; the `ra_log` ITM trace and the dual-core logic
+ * banner cannot reach the host; the `ra8_log` ITM trace and the dual-core logic
  * are unaffected.
  *
  * @return Whether the VCOM console is ready to carry the banner.
  * @retval true  Clock + SCI8 console are up.
  * @retval false A bring-up step failed (the banner is then silently skipped).
  *
- * @pre Called once during M85 bring-up, before `ra_cpu1_release`.
- * @pre `ra_log_init` has run (failures are narrated over ITM).
+ * @pre Called once during M85 bring-up, before `ra8_cpu1_release`.
+ * @pre `ra8_log_init` has run (failures are narrated over ITM).
  * @post On true, SCI8 is enabled (TE/RE) and PD02/PD03 route to it.
  * @post On false, no console state persists; the app continues normally.
  *
@@ -100,10 +100,10 @@ static const uint8_t k_dualcore_bg_pass_banner[] = "dualcore_background_m33: cou
  */
 static bool dualcore_bg_hil_console_init(void)
 {
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     return false;
   }
-  if (ra_board_uart_console_init((uint32_t)k_dualcore_bg_hil_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_dualcore_bg_hil_baud) != k_ra8_ok) {
     return false;
   }
   return true;
@@ -115,7 +115,7 @@ static bool dualcore_bg_hil_console_init(void)
  * @details
  * Writes ::k_dualcore_bg_pass_banner to the SCI8 / J-Link OB VCOM console and
  * flushes it so the bytes clock out before the M85 parks. A no-op if the console
- * never came up (the write returns `k_ra_err_not_initialized`, ignored).
+ * never came up (the write returns `k_ra8_err_not_initialized`, ignored).
  *
  * @return Nothing.
  *
@@ -129,9 +129,9 @@ static bool dualcore_bg_hil_console_init(void)
  */
 static void dualcore_bg_hil_emit_pass(void)
 {
-  (void)ra_board_uart_console_write(k_dualcore_bg_pass_banner,
-                                    (size_t)(sizeof(k_dualcore_bg_pass_banner) - 1U));
-  (void)ra_board_uart_console_flush();
+  (void)ra8_board_uart_console_write(k_dualcore_bg_pass_banner,
+                                     (size_t)(sizeof(k_dualcore_bg_pass_banner) - 1U));
+  (void)ra8_board_uart_console_flush();
 }
 
 /**
@@ -154,7 +154,7 @@ typedef enum : uint32_t {
  * @return Nothing.
  *
  * @pre @p bg points to the fixed shared-SRAM address.
- * @pre Called before `ra_cpu1_release` so the M33 starts from a clean slate.
+ * @pre Called before `ra8_cpu1_release` so the M33 starts from a clean slate.
  * @post All three words of the block read back as 0.
  * @post A `dsb` has drained the writes to shared SRAM.
  *
@@ -179,7 +179,7 @@ static void zero_bg(volatile dualcore_bg_t* bg)
  * @retval false Poll budget exhausted before the signature appeared.
  *
  * @pre @p bg points to the fixed shared-SRAM address.
- * @pre The M85 has already called `ra_cpu1_release`.
+ * @pre The M85 has already called `ra8_cpu1_release`.
  * @post No block field is modified.
  * @post Iteration count bounded by ::k_m85_sig_poll_budget (NASA Rule 2).
  *
@@ -188,7 +188,7 @@ static void zero_bg(volatile dualcore_bg_t* bg)
  */
 static bool wait_for_m33_sig(volatile dualcore_bg_t* bg)
 {
-  RA_BOUNDED_LOOP(k_m85_sig_poll_budget);
+  RA8_BOUNDED_LOOP(k_m85_sig_poll_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m85_sig_poll_budget; i++) {
     if (bg->m33_sig == (uint32_t)k_bg_m33_signature) {
       return true;
@@ -216,7 +216,7 @@ static bool wait_for_m33_sig(volatile dualcore_bg_t* bg)
  */
 static bool wait_for_done(volatile dualcore_bg_t* bg)
 {
-  RA_BOUNDED_LOOP(k_m85_done_poll_budget);
+  RA8_BOUNDED_LOOP(k_m85_done_poll_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m85_done_poll_budget; i++) {
     if (bg->done == 1U) {
       return true;
@@ -266,37 +266,37 @@ static bool wait_for_done(volatile dualcore_bg_t* bg)
  */
 int main(void)
 {
-  ra_log_init();
-  ra_log_info("M85", "==== RA8D2 dualcore_background_m33 demo ====");
-  ra_log_info("M85", "Cortex-M85 primary core online");
-  ra_log_info("M85", "shared block in SRAM at 0x22100000");
+  ra8_log_init();
+  ra8_log_info("M85", "==== RA8D2 dualcore_background_m33 demo ====");
+  ra8_log_info("M85", "Cortex-M85 primary core online");
+  ra8_log_info("M85", "shared block in SRAM at 0x22100000");
 
   /* Bring up the VCOM console so the success path can emit the HIL banner.
    * Best-effort: a failure is narrated over ITM and the demo continues. */
   if (!dualcore_bg_hil_console_init()) {
-    ra_log_info("M85", "VCOM console init failed -- HIL banner unavailable");
+    ra8_log_info("M85", "VCOM console init failed -- HIL banner unavailable");
   }
 
   volatile dualcore_bg_t* bg = dualcore_bg();
   zero_bg(bg);
 
-  ra_log_info("M85", "releasing Cortex-M33 secondary core ...");
-  const ra_err_t err = ra_cpu1_release(&g_ra_ls_cpu1_mram_start, &g_ra_ls_cpu1_stack_top);
-  ra_log_info_val("M85", "ra_cpu1_release rc (0 = ok)", (uint32_t)err);
-  if (err != k_ra_ok) {
-    ra_log_info("M85", "release FAILED -- halting");
+  ra8_log_info("M85", "releasing Cortex-M33 secondary core ...");
+  const ra8_err_t err = ra8_cpu1_release(&g_ra8_ls_cpu1_mram_start, &g_ra8_ls_cpu1_stack_top);
+  ra8_log_info_val("M85", "ra8_cpu1_release rc (0 = ok)", (uint32_t)err);
+  if (err != k_ra8_ok) {
+    ra8_log_info("M85", "release FAILED -- halting");
     park_forever();
   }
 
   if (wait_for_m33_sig(bg)) {
-    ra_log_info("M85", "M33 is alive");
+    ra8_log_info("M85", "M33 is alive");
   } else {
-    ra_log_info("M85", "M33 signature not seen -- did it boot?");
+    ra8_log_info("M85", "M33 signature not seen -- did it boot?");
   }
 
-  ra_log_info("M85", "M85 yielding -- waiting for M33 to finish counting ...");
+  ra8_log_info("M85", "M85 yielding -- waiting for M33 to finish counting ...");
   if (!wait_for_done(bg)) {
-    ra_log_info("M85", "M33 done flag not seen -- timed out");
+    ra8_log_info("M85", "M33 done flag not seen -- timed out");
     park_forever();
   }
 
@@ -307,15 +307,15 @@ int main(void)
    * and cpu1_pingpong (main). */
   __asm volatile("dmb" ::: "memory");
   const uint32_t final_count = bg->counter;
-  ra_log_info_val("M85", "M33 counted to", final_count);
+  ra8_log_info_val("M85", "M33 counted to", final_count);
 
   if (final_count == (uint32_t)k_bg_target_count) {
-    ra_log_info("M85", "dualcore_background_m33 PASS");
+    ra8_log_info("M85", "dualcore_background_m33 PASS");
     /* Additive HIL banner: the M33 counted autonomously to its target, so
      * mirror the verdict to VCOM for the Pi rig's uart_scrape to gate. */
     dualcore_bg_hil_emit_pass();
   } else {
-    ra_log_info("M85", "dualcore_background_m33 FAIL -- wrong count");
+    ra8_log_info("M85", "dualcore_background_m33 FAIL -- wrong count");
   }
 
   park_forever();

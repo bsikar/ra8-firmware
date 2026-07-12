@@ -3,8 +3,8 @@
  * @brief LVD / PVD voltage-monitor status model for board_sim
  *
  * @details
- * Models the RA8D2 low-voltage detection status registers (ra8d2_lvd_regs.h,
- * ra_lvd.c) so a VCC monitor reports a healthy rail, instead of the status
+ * Models the RA8D2 low-voltage detection status registers (ra8_lvd_regs.h,
+ * ra8_lvd.c) so a VCC monitor reports a healthy rail, instead of the status
  * reading back zero. Against the sparse fallback @c lvd_monitor_demo configured
  * PVD1 (threshold 2.80 V) but @c PVD1SR.MON read back 0, so the banner reported
  * @c mon=below @c ok=N -- the opposite of a healthy 3.3 V board. This block
@@ -23,7 +23,7 @@
  *
  * The emulator has no analog rail to compare, so reporting "above" is the
  * faithful steady state for a powered board -- the genuine driver path
- * (@c ra_lvd_get_status reading @c PVD1SR.MON / .DET) sees exactly what a
+ * (@c ra8_lvd_get_status reading @c PVD1SR.MON / .DET) sees exactly what a
  * healthy 3.3 V supply yields on silicon.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -37,7 +37,7 @@
 
 #include "board_periph_block.h"
 
-/** @brief PVD status-window geometry (ra8d2_lvd_regs.h). */
+/** @brief PVD status-window geometry (ra8_lvd_regs.h). */
 typedef enum : uint64_t {
   k_lvd_base        = 0x4001E0E0UL, /**< PVD1CR1 .. PVD2SR window base. */
   k_lvd_span        = 0x04UL,       /**< PVD1CR1/PVD1SR/PVD2CR1/PVD2SR. */
@@ -47,7 +47,7 @@ typedef enum : uint64_t {
   k_lvd_off_pvd2sr  = 0x03UL,       /**< PVD2SR status (8b).            */
 } lvd_geom_t;
 
-/** @brief PVDmSR field masks + the healthy-rail status value (ra_lvd.c). */
+/** @brief PVDmSR field masks + the healthy-rail status value (ra8_lvd.c). */
 typedef enum : uint8_t {
   k_lvd_sr_det     = 0x01U, /**< DET latched threshold-crossing (bit 0).  */
   k_lvd_sr_mon     = 0x02U, /**< MON live "VCC above Vdetm" flag (bit 1). */

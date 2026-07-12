@@ -4,8 +4,8 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/acmphs_compare/main.c bring-up:
- * ra_acmphs_init -> ra_acmphs_channel_init(channel 0) ->
- * ra_acmphs_read_output. Host shim returns deterministic values so
+ * ra8_acmphs_init -> ra8_acmphs_channel_init(channel 0) ->
+ * ra8_acmphs_read_output. Host shim returns deterministic values so
  * the golden path always succeeds.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -15,10 +15,10 @@
 
 #include <stdint.h>
 
-#include "ra_acmphs.h"
-#include "ra_err.h"
-#include "ra_port_constants.h"
-#include "ra_sim_mmap.h"
+#include "ra8_acmphs.h"
+#include "ra8_err.h"
+#include "ra8_port_constants.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
@@ -28,7 +28,7 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
+  ra8_sim_mmap_reset();
 }
 
 /**
@@ -43,15 +43,15 @@ static void test_acmphs_app_bringup_ok(void)
 {
   reset_world();
   TEST_BEGIN("acmphs_compare: bring-up ok");
-  TEST_ASSERT_EQ(k_ra_ok, ra_acmphs_init());
-  const ra_acmphs_cfg_t cfg = {
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_acmphs_init());
+  const ra8_acmphs_cfg_t cfg = {
     .ivpsel     = 0U,
     .ivrefsel   = 0U,
-    .edge       = k_ra_acmphs_edge_none,
+    .edge       = k_ra8_acmphs_edge_none,
     .filter_en  = false,
     .invert_out = false,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_acmphs_channel_init((uint8_t)k_test_acmphs_app_channel, &cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_acmphs_channel_init((uint8_t)k_test_acmphs_app_channel, &cfg));
   TEST_END("acmphs_compare: bring-up ok");
 }
 
@@ -59,7 +59,7 @@ static void test_acmphs_app_bringup_ok(void)
  * @brief read_output returns one of the legal levels.
  *
  * @par MC/DC:
- * Decision in app: ``lv == k_ra_level_high``. One atomic condition
+ * Decision in app: ``lv == k_ra8_level_high``. One atomic condition
  * x 2 vectors -- HIGH path (LED1) and LOW path (LED2). Both
  * branches reachable by varying the seeded CMPMON value.
  */
@@ -67,18 +67,18 @@ static void test_acmphs_app_read_legal(void)
 {
   reset_world();
   TEST_BEGIN("acmphs_compare: read_output returns legal value");
-  TEST_ASSERT_EQ(k_ra_ok, ra_acmphs_init());
-  const ra_acmphs_cfg_t cfg = {
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_acmphs_init());
+  const ra8_acmphs_cfg_t cfg = {
     .ivpsel     = 0U,
     .ivrefsel   = 0U,
-    .edge       = k_ra_acmphs_edge_none,
+    .edge       = k_ra8_acmphs_edge_none,
     .filter_en  = false,
     .invert_out = false,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_acmphs_channel_init((uint8_t)k_test_acmphs_app_channel, &cfg));
-  ra_level_t lv = k_ra_level_low;
-  TEST_ASSERT_EQ(k_ra_ok, ra_acmphs_read_output((uint8_t)k_test_acmphs_app_channel, &lv));
-  TEST_ASSERT(lv == k_ra_level_low || lv == k_ra_level_high);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_acmphs_channel_init((uint8_t)k_test_acmphs_app_channel, &cfg));
+  ra8_level_t lv = k_ra8_level_low;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_acmphs_read_output((uint8_t)k_test_acmphs_app_channel, &lv));
+  TEST_ASSERT(lv == k_ra8_level_low || lv == k_ra8_level_high);
   TEST_END("acmphs_compare: read_output returns legal value");
 }
 
@@ -93,8 +93,8 @@ static void test_acmphs_app_null_cfg(void)
 {
   reset_world();
   TEST_BEGIN("acmphs_compare: null cfg rejected");
-  TEST_ASSERT_EQ(k_ra_ok, ra_acmphs_init());
-  TEST_ASSERT(ra_acmphs_channel_init((uint8_t)k_test_acmphs_app_channel, nullptr) != k_ra_ok);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_acmphs_init());
+  TEST_ASSERT(ra8_acmphs_channel_init((uint8_t)k_test_acmphs_app_channel, nullptr) != k_ra8_ok);
   TEST_END("acmphs_compare: null cfg rejected");
 }
 
@@ -109,9 +109,9 @@ static void test_acmphs_app_bad_channel(void)
 {
   reset_world();
   TEST_BEGIN("acmphs_compare: bad channel rejected");
-  TEST_ASSERT_EQ(k_ra_ok, ra_acmphs_init());
-  ra_level_t lv = k_ra_level_low;
-  TEST_ASSERT(ra_acmphs_read_output((uint8_t)k_test_acmphs_app_bad_ch, &lv) != k_ra_ok);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_acmphs_init());
+  ra8_level_t lv = k_ra8_level_low;
+  TEST_ASSERT(ra8_acmphs_read_output((uint8_t)k_test_acmphs_app_bad_ch, &lv) != k_ra8_ok);
   TEST_END("acmphs_compare: bad channel rejected");
 }
 

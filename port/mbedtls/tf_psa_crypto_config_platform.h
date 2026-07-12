@@ -98,7 +98,7 @@
  * MBEDTLS_PLATFORM_GMTIME_R_ALT.
  *
  * Disabled: this firmware has no calendar-time source yet. The
- * example app accepts cert validity windows blindly until ra_time
+ * example app accepts cert validity windows blindly until ra8_time
  * is wired.
  */
 //#define MBEDTLS_HAVE_TIME_DATE

@@ -32,7 +32,7 @@ from pathlib import Path
 
 WARN_ONLY_MODE = False
 """Enforcing. The statement+branch baseline (.github/coverage-baseline.txt,
-89.9 / 81.1 over libs/ra_* + src/) has been stable across CI runs and the
+89.9 / 81.1 over libs/ra8_* + src/) has been stable across CI runs and the
 measured tree clears it with margin (90.3 / 81.6), so this gate now FAILS CI
 on a regression below baseline (minus the SLACK_PCT band) rather than only
 warning. This is the enforcing counterpart that finally puts src/ -- including

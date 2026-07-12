@@ -4,12 +4,12 @@ Event Link Controller (ELC) software-event demo for the EK-RA8D2.
 The ELC lets one peripheral fire another peripheral's input
 without CPU involvement (HUM Ch 19, p 817..836). This demo:
 
-1. `ra_elc_init` -- powers on the controller and clears every
+1. `ra8_elc_init` -- powers on the controller and clears every
    ELSR slot.
-2. `ra_elc_link(0, k_ra_elc_event_icu_irq0)` -- routes external
+2. `ra8_elc_link(0, k_ra8_elc_event_icu_irq0)` -- routes external
    IRQ0 into ELSR slot 0. On a real EVM a button on IRQ0 would
    trigger a hardware capture without a single CPU instruction.
-3. Once a second, `ra_elc_software_trigger(0)` fires the 3-step
+3. Once a second, `ra8_elc_software_trigger(0)` fires the 3-step
    ELSEGR unlock-arm-set sequence (HUM Ch 19.2.2) so the runtime
    never depends on the user pressing a button.
 

@@ -53,7 +53,7 @@ into a verification-activity register.
 | 4     | LLR verifiable                         | `tests/test_<module>.c` per module                                      | 25 of 26 EVM apps have host integration tests today.             |
 | 5     | LLR conform to standards               | `.clang-format`, `.clang-tidy`, `docs/STYLE_GUIDE.md`                   | Pre-commit enforces; CI mirrors.                                 |
 | 6     | LLR traceable to HLR                   | `scripts/utils/cite_check.py` HUM page-citation tags                    | Bidirectional trace matrix pending.                              |
-| 7     | Algorithms are accurate                | Targeted unit tests (`tests/test_ra_*_mcdc.c` class)                    | MC/DC reachable = 100.00% (gate met); absolute = 92.29%.         |
+| 7     | Algorithms are accurate                | Targeted unit tests (`tests/test_ra8_*_mcdc.c` class)                    | MC/DC reachable = 100.00% (gate met); absolute = 92.29%.         |
 | 8     | Software architecture compat with HLR  | `docs/RING_AND_WORLD.md`, `docs/MEMORY_MAP.md`                          | Section 8 (Partitioning) below.                                  |
 | 9     | Software architecture consistent       | `scripts/utils/check_world_tags.py`                                     | Strict mode pending (currently `--warn`).                        |
 | 10    | Software architecture compat with target| Cross-build matrix in `.github/workflows/firmware.yml::build-cross`     | HW-in-the-loop pending.                                          |
@@ -155,7 +155,7 @@ repository is:
 ### 2.4 Simulation
 
 No formal model-in-the-loop simulation environment is in scope for this
-release. The HAL test doubles under `libs/ra_*_pal/` (mock register
+release. The HAL test doubles under `libs/ra8_*_pal/` (mock register
 files in host tests) provide a simulation-equivalent layer for unit
 verification; they are not a replacement for hardware-in-the-loop
 smoke.
@@ -292,8 +292,8 @@ SOUP is exempt from source-level MC/DC. Each component under
 `docs/SOUP/` carries a written qualification basis. Verification at
 the integration boundary is via:
 
-- Host unit tests of the wrapper layer (`libs/ra_*_pal/`,
-  `libs/ra_tls/`, `libs/ra_psa_crypto/` in-tree shims).
+- Host unit tests of the wrapper layer (`libs/ra8_*_pal/`,
+  `libs/ra8_tls/`, `libs/ra8_psa_crypto/` in-tree shims).
 - Hardware-in-the-loop smoke via the developer-laptop pre-push
   workflow (`docs/HIL_DEVELOPER_WORKFLOW.md`).
 
@@ -341,8 +341,8 @@ The `tests/CMakeLists.txt` MC/DC instrumentation explicitly excludes
 matching the DO-178C 12.1.4 division.
 
 Verification at the SOUP integration boundary is the responsibility
-of the in-tree wrapper layer (e.g. `libs/ra_tls/` for Mbed TLS,
-`libs/ra_fs/` for FileX) and is gated by the host unit tests for that
+of the in-tree wrapper layer (e.g. `libs/ra8_tls/` for Mbed TLS,
+`libs/ra8_fs/` for FileX) and is gated by the host unit tests for that
 wrapper.
 
 ---
@@ -363,7 +363,7 @@ configuration that enforces the partition is in each app's
 | Property to verify                                      | Evidence                                                              |
 |---------------------------------------------------------|------------------------------------------------------------------------|
 | Each function carries a world tag (S, NS, or NSC)       | `scripts/utils/check_world_tags.py` (warn mode today; strict planned)  |
-| Secure-side state is unreachable from NS without veneer | `libs/ra_nsc/` veneers + SAU config review                            |
+| Secure-side state is unreachable from NS without veneer | `libs/ra8_nsc/` veneers + SAU config review                            |
 | Veneer set is closed (no unintentional NSC exposure)    | Linker-script review; `arm-none-eabi-nm` of the secure ELF             |
 | Secure faults trap to the secure exception handler      | `examples/*/secure_exception.c` per-app handler + smoke fault-injection|
 | Key-vault operations occur in S only                    | `src/secure_app/key_vault.c` review + ring-tag audit                   |
