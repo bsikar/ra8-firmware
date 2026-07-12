@@ -23,7 +23,7 @@ cmake_minimum_required(VERSION 3.20)
 # Objective-C (board_view.m) is the macOS live-window backend ONLY, and an OBJC
 # compiler / AppKit may be absent on a Linux CI runner. Enable C unconditionally
 # and add OBJC only on APPLE, where board_view.m is actually compiled.
-project(ra8d2_board_sim LANGUAGES C)
+project(ra8_board_sim LANGUAGES C)
 if(APPLE)
     enable_language(OBJC)
 endif()
