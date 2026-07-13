@@ -311,7 +311,8 @@ fi
 # -----------------------------------------------------------------------------
 # cite_check runs STRICT: its cite-VALIDATION pass (malformed cite / unknown
 # chapter / page-out-of-range) is clean tree-wide, so any regression blocks the
-# commit. check_world_tags is still WARN. roadmap_stats runs in --check mode
+# commit. check_world_tags now runs STRICT (0 findings tree-wide, #241).
+# roadmap_stats runs in --check mode
 # (the script itself never edits files in pre-commit; the developer is expected
 # to run it without --check to refresh).
 
@@ -327,9 +328,9 @@ if [[ -f scripts/utils/cite_check.py ]]; then
     fi
 fi
 
-# ---- World-tag validator (warn in Wave 0) -------------------------
+# ---- World-tag validator (strict: 0 findings tree-wide, #241) -----
 if [[ -f scripts/utils/check_world_tags.py ]]; then
-    if ! python3 scripts/utils/check_world_tags.py --warn; then
+    if ! python3 scripts/utils/check_world_tags.py --strict; then
         echo "[FAIL] check_world_tags.py reported issues."
         error_found=1
     fi

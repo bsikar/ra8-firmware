@@ -154,7 +154,7 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
   gate_precommit_checks() (
     set -e
     python3 scripts/utils/check_obsolete_standards.py
-    python3 scripts/utils/check_world_tags.py --warn
+    python3 scripts/utils/check_world_tags.py --strict
     python3 scripts/utils/check_mcdc_block.py
     python3 scripts/utils/check_no_dynamic_alloc.py --all
     python3 scripts/utils/check_no_ai_attribution.py
