@@ -22,7 +22,7 @@
 #include "ra8_err.h"
 #include "ra8_wdt.h"
 #ifdef RA8_SIMULATOR_MODE
-#include "ra8_wdt_sup_tx_shim.h"
+#include "ra8_wdt_sup_tx_shim_internal.h"
 #else
 #include "tx_api.h"
 #endif

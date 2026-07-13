@@ -1,12 +1,12 @@
 /**
  * @file test_ra8_wdt_sup_tx_shim_cov.c
- * @brief Coverage-lift tests for libs/ra8_wdt_supervisor/src/ra8_wdt_sup_tx_shim.h
+ * @brief Coverage-lift tests for libs/ra8_wdt_supervisor/src/ra8_wdt_sup_tx_shim_internal.h
  *
  * @par Tag
  * [Test / Host] {World: N/A}
  *
  * @details
- * Drives the two inline stubs in ra8_wdt_sup_tx_shim.h that the existing
+ * Drives the two inline stubs in ra8_wdt_sup_tx_shim_internal.h that the existing
  * supervisor test executables cannot reach:
  *
  *  - tx_thread_sleep (source lines 288-291): the supervisor thread loop
@@ -38,7 +38,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "ra8_wdt_sup_tx_shim.h"
+#include "ra8_wdt_sup_tx_shim_internal.h"
 #include "unity_minimal.h"
 
 /* ---------------------------------------------------------------------------
@@ -56,7 +56,7 @@
  * blocking. Passing 0 is the degenerate lower bound; the return value
  * must still be TX_SUCCESS.
  *
- * This call covers source lines 288, 290, and 291 of ra8_wdt_sup_tx_shim.h.
+ * This call covers source lines 288, 290, and 291 of ra8_wdt_sup_tx_shim_internal.h.
  *
  * @par MC/DC:
  * tx_thread_sleep contains no compound boolean decisions. A single call
@@ -120,7 +120,7 @@ static void test_tx_thread_sleep_nonzero_ticks(void)
  * deadline arithmetic sees t = 0 ms -- meaning registered threads are
  * never considered overdue under the default hook.
  *
- * This call covers source lines 307 and 309 of ra8_wdt_sup_tx_shim.h.
+ * This call covers source lines 307 and 309 of ra8_wdt_sup_tx_shim_internal.h.
  *
  * @par MC/DC:
  * tx_time_get contains no compound boolean decisions. A single call
