@@ -69,10 +69,8 @@ typedef enum : uint8_t {
  *         J27-1/J27-2 p ~32). No on-board device sits here -- this is the
  *         I3C peripheral's I2C-compat bus, exercised as a controller
  *         self-test. */
-static const ra8_port_pin_t k_i3c_demo_pin_scl =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_0);
-static const ra8_port_pin_t k_i3c_demo_pin_sda =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_1);
+static const ra8_port_pin_t k_i3c_demo_pin_scl = (ra8_port_pin_t)k_ra8_board_i3c0_pin_scl;
+static const ra8_port_pin_t k_i3c_demo_pin_sda = (ra8_port_pin_t)k_ra8_board_i3c0_pin_sda;
 
 /* Controller bring-up banners. Reaching this loop at all proves
  * ra8_i3c_init configured + powered the I3C controller on real silicon
