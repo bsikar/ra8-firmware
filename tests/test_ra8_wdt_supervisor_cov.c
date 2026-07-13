@@ -27,7 +27,7 @@
  *    Linux test runner.
  *
  * All remaining uncovered lines require a ThreadX stub to return a
- * non-zero status code.  The host shim (``ra8_wdt_sup_tx_shim.h``) provides
+ * non-zero status code.  The host shim (``ra8_wdt_sup_tx_shim_internal.h``) provides
  * ``static inline`` stubs that unconditionally return ``TX_SUCCESS``; no
  * host input can cause them to fail.  Those lines carry ``GCOVR_EXCL_LINE``
  * or ``GCOVR_EXCL_START/STOP`` annotations in the source file.
