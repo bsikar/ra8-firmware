@@ -132,10 +132,10 @@ the gates there:
 
 ```bash
 # 1. clean sync (dev's origin ref lags -- always fetch first)
-ssh dev 'cd ~/ra8d2-firmware && git fetch origin -q && git reset --hard origin/dev -q && git clean -fdq'
-COPYFILE_DISABLE=1 tar czf - <changed files> | ssh dev 'cd ~/ra8d2-firmware && tar xzf - && find . -name "._*" -delete'
+ssh dev 'cd ~/ra8-firmware && git fetch origin -q && git reset --hard origin/dev -q && git clean -fdq'
+COPYFILE_DISABLE=1 tar czf - <changed files> | ssh dev 'cd ~/ra8-firmware && tar xzf - && find . -name "._*" -delete'
 # 2. gates (gcc-14 host compiler is auto-selected by scripts/utils/select_host_compiler.sh)
-ssh dev 'cd ~/ra8d2-firmware && export PATH=/usr/local/bin:$HOME/.local/bin:$PATH && bash scripts/coverage.sh --gate'   # aggregate 90/80 + per-file floor
+ssh dev 'cd ~/ra8-firmware && export PATH=/usr/local/bin:$HOME/.local/bin:$PATH && bash scripts/coverage.sh --gate'   # aggregate 90/80 + per-file floor
 ssh dev '... clang-format-22 --dry-run --Werror <files>; the check_*.py suite; clang-tidy-22 ...'
 # 3. push (the pre-push hook runs `make ci` which the Mac cannot; bypass -- dev already validated)
 SKIP_CI_PUSH=1 git push origin dev

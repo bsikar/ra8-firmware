@@ -38,12 +38,12 @@ Expected terminal output will print heartbeats from both ThreadX threads:
 
 | File | Role |
 |------|------|
-| [CMakeLists.txt](file:///Users/bsikar/Documents/github/ra8d2-firmware/examples/ek_ra8d2/hw_pending/tz_threadx_demo/CMakeLists.txt) | Builds the two-project TrustZone structure and merges HEX outputs |
-| [Makefile](file:///Users/bsikar/Documents/github/ra8d2-firmware/examples/ek_ra8d2/hw_pending/tz_threadx_demo/Makefile) | Standalone build helper |
-| [main.c](file:///Users/bsikar/Documents/github/ra8d2-firmware/examples/ek_ra8d2/hw_pending/tz_threadx_demo/main.c) | Secure world fallback entry |
-| [ns_main.c](file:///Users/bsikar/Documents/github/ra8d2-firmware/examples/ek_ra8d2/hw_pending/tz_threadx_demo/ns_main.c) | Non-Secure entry point, ThreadX app initialization and threads |
-| [linker_script.ld](file:///Users/bsikar/Documents/github/ra8d2-firmware/examples/ek_ra8d2/hw_pending/tz_threadx_demo/linker_script.ld) | Memory map for the Secure executable |
-| [ns_image.ld](file:///Users/bsikar/Documents/github/ra8d2-firmware/examples/ek_ra8d2/hw_pending/tz_threadx_demo/ns_image.ld) | Memory map for the Non-Secure executable |
-| [system_init.c](file:///Users/bsikar/Documents/github/ra8d2-firmware/examples/ek_ra8d2/hw_pending/tz_threadx_demo/system_init.c) | Clocks and memory controller setup |
-| [trustzone_init.c](file:///Users/bsikar/Documents/github/ra8d2-firmware/examples/ek_ra8d2/hw_pending/tz_threadx_demo/trustzone_init.c) | SAU configuration and transition helper |
-| [vector_table.c](file:///Users/bsikar/Documents/github/ra8d2-firmware/examples/ek_ra8d2/hw_pending/tz_threadx_demo/vector_table.c) | Reset vectors for Secure boot |
+| [CMakeLists.txt](file:///Users/bsikar/Documents/github/ra8-firmware/examples/ek_ra8d2/hw_pending/tz_threadx_demo/CMakeLists.txt) | Builds the two-project TrustZone structure and merges HEX outputs |
+| [Makefile](file:///Users/bsikar/Documents/github/ra8-firmware/examples/ek_ra8d2/hw_pending/tz_threadx_demo/Makefile) | Standalone build helper |
+| [main.c](file:///Users/bsikar/Documents/github/ra8-firmware/examples/ek_ra8d2/hw_pending/tz_threadx_demo/main.c) | Secure world fallback entry |
+| [ns_main.c](file:///Users/bsikar/Documents/github/ra8-firmware/examples/ek_ra8d2/hw_pending/tz_threadx_demo/ns_main.c) | Non-Secure entry point, ThreadX app initialization and threads |
+| [linker_script.ld](file:///Users/bsikar/Documents/github/ra8-firmware/examples/ek_ra8d2/hw_pending/tz_threadx_demo/linker_script.ld) | Memory map for the Secure executable |
+| [ns_image.ld](file:///Users/bsikar/Documents/github/ra8-firmware/examples/ek_ra8d2/hw_pending/tz_threadx_demo/ns_image.ld) | Memory map for the Non-Secure executable |
+| [system_init.c](file:///Users/bsikar/Documents/github/ra8-firmware/examples/ek_ra8d2/hw_pending/tz_threadx_demo/system_init.c) | Clocks and memory controller setup |
+| [trustzone_init.c](file:///Users/bsikar/Documents/github/ra8-firmware/examples/ek_ra8d2/hw_pending/tz_threadx_demo/trustzone_init.c) | SAU configuration and transition helper |
+| [vector_table.c](file:///Users/bsikar/Documents/github/ra8-firmware/examples/ek_ra8d2/hw_pending/tz_threadx_demo/vector_table.c) | Reset vectors for Secure boot |
