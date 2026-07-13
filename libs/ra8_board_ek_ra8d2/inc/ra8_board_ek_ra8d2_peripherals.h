@@ -142,14 +142,13 @@ extern "C" {
  * for the full-speed peripheral and follows the same arrangement.
  */
 typedef enum : uint16_t {
-  /* USB-HS uses an MCU-driven VBUS-enable GPIO (handled by the ra8_usb
-   * host-class init paths, e.g. ra8_usb_hhid_init / ra8_usb_hcdc_init,
-   * which route the pin as a peripheral output -> drives 5 V VBUS on
-   * J7 for host-mode operation). Empirically verified: usb_host_*
-   * apps boot through USB host init without fault on the bench
-   * (alive PASS, see issue #40 for the 2026-06-02 confirmation).
-   * No board-routed port-pin enum is needed here. */
-  k_ra8_board_usbhs_unmapped = 0U,
+  /* The HS D+/D- differential pair (USBH_P/USBH_N) is internal to the chip,
+   * so only the two MCU-driven board signals below are port pins: the VBUS
+   * sense input and the J7 host-power-switch enable. */
+  k_ra8_board_usbhs_pin_vbus =
+    (uint16_t)RA8_PIN(k_ra8_port_4, k_ra8_pin_8), /**< P4_08 USBHS_VBUS sense. UM Table 28 p 34. */
+  k_ra8_board_usbhs_pin_pwr =
+    (uint16_t)RA8_PIN(k_ra8_port_13, k_ra8_pin_7), /**< PD07 J7 host-power switch (HIGH = U18 drives 5 V VBUS). UM 6.2. */
 } ra8_board_usbhs_pin_t;
 
 /**

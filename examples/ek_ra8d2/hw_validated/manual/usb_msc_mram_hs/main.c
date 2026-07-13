@@ -101,12 +101,10 @@ void        SysTick_Handler(void)
  * is happy with the otherwise out-of-enum value.
  * @since 0.1.0
  */
-static const ra8_port_pin_t k_demo_pin_hs_vbus =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_8);
+static const ra8_port_pin_t k_demo_pin_hs_vbus = (ra8_port_pin_t)k_ra8_board_usbhs_pin_vbus;
 
 /** @brief J7 role-select strap (PD07): LOW = Device (UM Sec 6.2 p 34). */
-static const ra8_port_pin_t k_demo_pin_hs_role =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << 8) | (uint16_t)k_ra8_pin_7);
+static const ra8_port_pin_t k_demo_pin_hs_role = (ra8_port_pin_t)k_ra8_board_usbhs_pin_pwr;
 
 /* -------------------------------------------------------------------------- */
 /* Tunables */
