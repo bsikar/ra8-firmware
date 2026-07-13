@@ -492,6 +492,7 @@ macro(ra8_add_app)
         ${RA8_REPO_ROOT}/src
         ${RA8_REPO_ROOT}/src/inc
         ${RA8_REPO_ROOT}/src/secure_app
+        ${RA8_REPO_ROOT}/src/secure_app/inc
         ${RA8_REPO_ROOT}/libs/ra8_core/inc
         ${RA8_REPO_ROOT}/libs/ra8_hal/inc
         ${RA8_REPO_ROOT}/libs/ra8_net_pal/inc

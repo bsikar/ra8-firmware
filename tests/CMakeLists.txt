@@ -346,6 +346,7 @@ target_include_directories(ra8_core_hal PUBLIC
     ${FW_ROOT}/src
     ${FW_ROOT}/src/inc
     ${FW_ROOT}/src/secure_app
+    ${FW_ROOT}/src/secure_app/inc
     # Per-module src/ directories exposed for MC/DC test access to
     # internal helpers (see CLAUDE.md "Test access to internal symbols").
     # Tests under tests/ MAY include "<module>_internal.h" to drive MC/DC
@@ -556,6 +557,7 @@ function(ra8_add_test name)
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
     ${FW_ROOT}/src/secure_app
+    ${FW_ROOT}/src/secure_app/inc
     # Per-module src/ for MC/DC test access (see CLAUDE.md).
     ${FW_ROOT}/libs/ra8_core/src
     ${FW_ROOT}/libs/ra8_hal/src
