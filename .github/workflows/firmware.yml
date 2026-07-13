@@ -265,7 +265,7 @@ jobs:
           # diff range, so we run them in their default modes (which match
           # how the pre-commit hook invokes them).
           python3 scripts/utils/check_obsolete_standards.py
-          python3 scripts/utils/check_world_tags.py --warn
+          python3 scripts/utils/check_world_tags.py --strict
           python3 scripts/utils/check_mcdc_block.py
           # check_no_dynamic_alloc.py scans the production tree (--all
           # asks it to enumerate src/ + libs/ rather than read a list
