@@ -1,5 +1,5 @@
 /**
- * @file ra8_fs_fat_types.h
+ * @file ra8_fs_fat_types_internal.h
  * @brief Cross-TU on-disk-layout enums and typedefs for the FAT/exFAT adapter.
  *
  * @details
