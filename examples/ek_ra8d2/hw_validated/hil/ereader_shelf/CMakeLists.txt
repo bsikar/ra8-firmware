@@ -42,24 +42,27 @@ ra8_add_app(NAME ereader_shelf STACK_BYTES 16384
 #     and `make sim-ereader_shelf` cannot link it. A per-target option lands
 #     after the build-type -O flag, so -Og wins (GCC honours the last -O) and
 #     the app builds regardless of how it was configured.
-#   * -O1 and above render differently IN board_sim only -- NOT a firmware bug
-#     (#233, root-caused). board_sim runs the Cortex-M85 image on a Unicorn
-#     Cortex-M33 (Armv8-M) core, which lacks the Armv8.1-M instructions GCC 14
-#     emits at higher -O: at -O1 the ra8_gfx fill fast path internal_fill_rect_565
-#     compiles to a Low-Overhead-Branch loop (`dls`/`le`), and at -O2 the byte
-#     fill auto-vectorises to MVE (`vldrw`/`vstrw`). board_sim carries
-#     hand-emulation seams for the Armv8.1-M CSEL and long-shift families but
-#     NONE for the LOB or MVE families, so it mis-executes them: the -O1 shelf
-#     comes out as fb=DE69E794 with a ~3400x-inflated instruction count, and -O2
-#     hits an opcode board_sim reports as invalid. The FIRMWARE is correct and
-#     optimisation-stable -- the identical source renders byte-identical
-#     fb=FA3AB5B5 at -O0/-O1/-O2/-O3 on the host (clang + gcc), UBSan- and
-#     ASan-clean (guarded by tests/test_ereader_shelf_geometry.c) -- so real M85
-#     silicon (which HAS LOB + MVE) can run the reader at -O1+. The pin stays
-#     until board_sim grows an LOB (and MVE) seam and the golden is re-baselined;
-#     only then can the board_sim gate (hil.conf `fb=FA3AB5B5`) validate higher -O.
-# -Og is the highest level the board_sim golden gate validates today; it renders
-# byte-identically to the pinned `fb=FA3AB5B5` reference.
+#   * The pin is a board_sim GATE-SPEED choice, not a firmware limit. The
+#     firmware is optimisation-stable: the identical source renders byte-
+#     identical at -O0/-O1/-O2/-O3 on the host (clang + gcc), UBSan- and ASan-
+#     clean (guarded by tests/test_ereader_shelf_geometry.c), and -- since
+#     board_sim's LOB decode was fixed (#233) -- board_sim now renders the -O1
+#     reader byte-identically to -Og too (both fb=0ADB62C6). So real M85 silicon
+#     (which has the Armv8.1-M LOB + MVE hardware natively) runs the reader at
+#     -O1+ with no board_sim relaxation.
+#     What -Og buys is SPEED under the emulator: board_sim runs the Cortex-M85
+#     image on a Unicorn Cortex-M33 that lacks the v8.1-M instructions GCC emits
+#     at higher -O (at -O1 the ra8_gfx fill path internal_fill_rect_565 becomes a
+#     Low-Overhead-Branch `dls`/`le` loop; -O2 auto-vectorises to MVE). board_sim
+#     hand-emulates these via trap-and-relaunch -- one emulation chunk PER loop
+#     iteration -- so an -O1 render grinds the reader's counted loops through
+#     ~2.5M relaunches (tens of seconds), while -Og emits no LOB at all and the
+#     golden gate (hil.conf fb=0ADB62C6) runs in well under a second. Until the
+#     LOB seam batches whole loops, -Og stays the gated level for a fast gate.
+# NOTE: the earlier "board_sim has no LOB seam / -O1 is fb=DE69E794 corruption"
+# was the pre-#233 state -- board_sim's emulate_lob mis-decoded the LE branch
+# offset (the scattered immediate LSB), branching mid-instruction; that bug is
+# fixed, so -O1 no longer diverges, only runs slower under emulation.
 target_compile_options(ereader_shelf.elf PRIVATE -Og)
 
 # Turn on the shared boot's Cortex-M85 L1 cache + MPU bring-up for this app. The

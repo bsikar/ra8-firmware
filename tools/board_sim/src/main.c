@@ -1316,8 +1316,8 @@ enum : uint32_t {
   k_lob_le_hw1   = 0xF00FU, /**< LE lr,label first half-word.             */
   k_lob_le_hw2   = 0xC000U, /**< LE second half-word fixed bits.          */
   k_lob_le_h2m   = 0xF000U, /**< Mask isolating the fixed LE hw2 bits.    */
-  k_lob_le_imm   = 0x07FFU, /**< LE backward offset, in 2-byte units.     */
-  k_lob_reg_lr   = 14U,     /**< Rn == 14 selects LR.                     */
+  k_lob_le_imm10 = 0x03FFU, /**< LE offset high bits hw2[10:1] (#233).    */
+  k_lob_le_lsb   = 11U,     /**< LE offset LSB scattered to hw2[11].      */
   k_lob_rn_mask  = 0xFU,    /**< Rn field (4 bits) in hw1[3:0].           */
   k_lob_insn_len = 4U,      /**< LOB instructions are 32-bit Thumb-2.     */
 };
@@ -1332,11 +1332,13 @@ static bool emulate_lob(uc_engine* uc, uint32_t pc, const uint8_t code[4])
   /* DLS lr, Rn -> LR = Rn (start the counted loop). */
   if (((hw1 & (uint16_t)k_lob_dls_h1m) == (uint16_t)k_lob_dls_hw1) &&
       (hw2 == (uint16_t)k_lob_dls_hw2)) {
+    /* Map Rn via k_arm_reg_id[] -- Unicorn's UC_ARM_REG_* enum is NOT contiguous
+     * (UC_ARM_REG_R0 + n != UC_ARM_REG_Rn), so the prior arithmetic read the
+     * wrong register for the loop count -> bogus iteration count -> over-run and
+     * a wild branch (#233). This is the same table the CSEL/long-shift seams use. */
     const uint32_t rn = (uint32_t)hw1 & (uint32_t)k_lob_rn_mask;
-    const int      rn_id =
-      (rn == (uint32_t)k_lob_reg_lr) ? (int)UC_ARM_REG_LR : ((int)UC_ARM_REG_R0 + (int)rn);
-    uint32_t v = 0U;
-    (void)uc_reg_read(uc, rn_id, &v);
+    uint32_t       v  = 0U;
+    (void)uc_reg_read(uc, k_arm_reg_id[rn], &v);
     (void)uc_reg_write(uc, UC_ARM_REG_LR, &v);
     const uint32_t next = pc + (uint32_t)k_lob_insn_len;
     (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
@@ -1352,7 +1354,16 @@ static bool emulate_lob(uc_engine* uc, uint32_t pc, const uint8_t code[4])
     (void)uc_reg_write(uc, UC_ARM_REG_LR, &lr);
     uint32_t next = pc + (uint32_t)k_lob_insn_len;
     if (lr != 0U) {
-      next -= (((uint32_t)hw2 & (uint32_t)k_lob_le_imm) << 1U); /* backward to loop top. */
+      /* Backward branch to the loop top: the 11-bit immediate is scattered --
+       * hw2[10:1] are the high bits and hw2[11] is the offset LSB (2-byte
+       * granularity) -- so offset = (imm10 << 2) | (lsb << 1), taken from PC+4.
+       * Verified against objdump for all 95 LE sites in the -O1 reader image
+       * (#233). The previous (hw2 & 0x7FF) << 1 decode ignored the scatter and
+       * mis-branched at 55 of them, running loops the wrong number of times
+       * (memory corruption + a wild branch to zeros at -O1). */
+      const uint32_t imm10 = ((uint32_t)hw2 >> 1U) & (uint32_t)k_lob_le_imm10;
+      const uint32_t lsb   = ((uint32_t)hw2 >> (uint32_t)k_lob_le_lsb) & 1U;
+      next -= ((imm10 << 2U) | (lsb << 1U)); /* backward to loop top. */
     }
     (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
     s_lob_emulated++;
