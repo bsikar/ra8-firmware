@@ -27,6 +27,6 @@
     }
   },
   "remoteUser": "vscode",
-  "postCreateCommand": "bash scripts/format_code.sh --check || true",
+  "postCreateCommand": "CLANG_FORMAT=clang-format-22 bash scripts/format_code.sh --check || true",
   "features": {}
 }
