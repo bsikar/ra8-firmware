@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 """
-ra8d2_mcp.py -- a Model Context Protocol (MCP) server for this firmware repo.
+ra8_mcp.py -- a Model Context Protocol (MCP) server for this firmware repo.
 
 This server gives an MCP-aware assistant live, structured context about the
 ra8-firmware tree -- the firmware app catalogue, build / test / quality
@@ -28,7 +28,7 @@ Transport
 ---------
 MCP stdio framing is one JSON-RPC message per line on stdin / stdout. All
 human-readable logging goes to stderr so it never corrupts the protocol
-stream. Run ``python3 tools/mcp/ra8d2_mcp.py --selftest`` to exercise the
+stream. Run ``python3 tools/mcp/ra8_mcp.py --selftest`` to exercise the
 dispatcher in-process without a client (used by ``make mcp``).
 
 The methods implemented are the subset a tools+resources server needs:
@@ -51,7 +51,7 @@ from typing import Any, Callable
 # Repo root = two parents up from this file (tools/mcp/<this>).
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-SERVER_NAME = "ra8d2-firmware"
+SERVER_NAME = "ra8-firmware"
 SERVER_VERSION = "1.0.0"
 
 # Newest spec revision this server is known to interoperate with. When a client

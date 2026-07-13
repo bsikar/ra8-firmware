@@ -1,6 +1,6 @@
 
 
-OpenDocument="main.c", FilePath="/Users/bsikar/Documents/github/ra8d2-firmware/examples/ek_ra8d2/blink/main.c", Line=0
+OpenDocument="main.c", FilePath="/Users/bsikar/Documents/github/ra8-firmware/examples/ek_ra8d2/blink/main.c", Line=0
 OpenToolbar="Debug", Floating=0, x=0, y=0
 OpenWindow="Registers 1", DockArea=RIGHT, x=0, y=0, w=300, h=1358, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, FilteredItems=[], RefreshRate=1
 OpenWindow="Memory 1", DockArea=BOTTOM, x=1, y=0, w=1919, h=696, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, EditorAddress=0x0

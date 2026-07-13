@@ -12,7 +12,7 @@ authoritative project docs -- to any MCP-aware assistant. The point is to give
 the assistant *live, structured* context about what the repo can actually do,
 instead of it re-deriving everything from loose markdown each session.
 
-It is a single self-contained script, `ra8d2_mcp.py`, with **zero third-party
+It is a single self-contained script, `ra8_mcp.py`, with **zero third-party
 dependencies**: it speaks the MCP stdio transport (newline-delimited JSON-RPC
 2.0) using only the Python standard library, so there is nothing to install.
 That matches the rest of the repo's hand-written, minimal-dependency tooling.
@@ -21,7 +21,7 @@ That matches the rest of the repo's hand-written, minimal-dependency tooling.
 
 ```sh
 make mcp                          # runs the in-process self-test
-python3 tools/mcp/ra8d2_mcp.py --selftest
+python3 tools/mcp/ra8_mcp.py --selftest
 ```
 
 The server itself is not meant to be run by hand -- an MCP client launches it
@@ -83,9 +83,9 @@ this directory:
 ```json
 {
   "mcpServers": {
-    "ra8d2-firmware": {
+    "ra8-firmware": {
       "command": "python3",
-      "args": ["tools/mcp/ra8d2_mcp.py"]
+      "args": ["tools/mcp/ra8_mcp.py"]
     }
   }
 }
@@ -99,9 +99,9 @@ path to the script so it resolves regardless of the launch directory:
 ```json
 {
   "mcpServers": {
-    "ra8d2-firmware": {
+    "ra8-firmware": {
       "command": "python3",
-      "args": ["/abs/path/to/ra8d2-firmware/tools/mcp/ra8d2_mcp.py"]
+      "args": ["/abs/path/to/ra8-firmware/tools/mcp/ra8_mcp.py"]
     }
   }
 }

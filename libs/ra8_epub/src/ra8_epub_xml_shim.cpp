@@ -34,7 +34,7 @@
  *     is destroyed before the function returns. No allocation outlives
  *     a single `ra8_epub_*` call.
  *   - Replacing tinyxml2 with a hand-rolled scanner is on the roadmap
- *     (`docs/ROADMAP_RA8D2.md` Phase 6.2.3 fallback option).
+ *     (see `docs/ROADMAP.md`).
  *
  * Anyone reviewing the no-alloc audit (`scripts/utils/check_no_dynamic_alloc.py`)
  * should expect to see allocations charged to this TU at runtime; the

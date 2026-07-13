@@ -145,7 +145,7 @@ require:
 - Tool: **Git**.
 - Authoritative remote: GitHub repository `ra8-firmware` under user
   account `bsikar` (origin).
-- Working directory: `/Users/bsikar/Documents/github/ra8d2-firmware`.
+- Working directory: `/Users/bsikar/Documents/github/ra8-firmware`.
 
 ### 2.2 Branching model
 

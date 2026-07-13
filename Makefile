@@ -455,7 +455,7 @@ hooks:
 # protocol surface stays covered without a client or any hardware.
 .PHONY: mcp
 mcp:
-	@python3 $(ROOT)/tools/mcp/ra8d2_mcp.py --selftest
+	@python3 $(ROOT)/tools/mcp/ra8_mcp.py --selftest
 
 # `make sim-<app> [PANEL=<name>]` -- cross-build the app, then boot its REAL .elf
 # (the same binary that flashes to the board) on the Unicorn-based CPU emulator
