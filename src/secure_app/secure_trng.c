@@ -15,12 +15,11 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "secure_trng.h"
-
 #include <stdint.h>
 
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "secure_trng_internal.h"
 
 static const char* s_tag = "SECTRNG";
 

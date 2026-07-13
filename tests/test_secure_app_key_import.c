@@ -14,7 +14,7 @@
 
 #include <stdint.h>
 
-#include "key_import.h"
+#include "key_import_internal.h"
 #include "key_vault.h"
 #include "ra8_err.h"
 #include "unity_minimal.h"
