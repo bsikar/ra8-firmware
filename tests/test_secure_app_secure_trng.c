@@ -14,7 +14,7 @@
 #include <stdint.h>
 
 #include "ra8_err.h"
-#include "secure_trng.h"
+#include "secure_trng_internal.h"
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {

@@ -23,10 +23,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "key_import.h"
-
 #include <stdint.h>
 
+#include "key_import_internal.h"
 #include "key_vault.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
