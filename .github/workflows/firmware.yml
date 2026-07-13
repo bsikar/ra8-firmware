@@ -292,6 +292,11 @@ jobs:
           # an unmarked private one (rename *_internal.h) -- either way a
           # defect the inc/src split exists to prevent.
           python3 scripts/utils/check_header_file_placement.py
+          # check_example_board_pins.py: the EK-RA8D2 pinout is a board fact
+          # owned by libs/ra8_board_ek_ra8d2. Forbid the (port << 8 | pin)
+          # encoding idiom in examples so the USB-pin duplication #251 fixed
+          # (identical pins copy-pasted across 29 apps) cannot come back.
+          python3 scripts/utils/check_example_board_pins.py
           # check_final_newline.py: every first-party source file (C/C++,
           # Python, shell, CMake, YAML, ...) must end in a trailing
           # newline.  Complements .clang-format InsertNewlineAtEOF (C/C++
