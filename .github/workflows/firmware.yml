@@ -286,6 +286,12 @@ jobs:
           # which a multi-thousand-line god-file or copy-pasted sibling
           # bodies can pass while still being unreviewable.
           python3 scripts/utils/check_file_size.py
+          # check_header_file_placement.py: a header under a src/ directory is
+          # module-private and must be named *_internal.h.  A non-internal
+          # src/ header is a misfiled public interface (belongs in inc/) or
+          # an unmarked private one (rename *_internal.h) -- either way a
+          # defect the inc/src split exists to prevent.
+          python3 scripts/utils/check_header_file_placement.py
           # check_final_newline.py: every first-party source file (C/C++,
           # Python, shell, CMake, YAML, ...) must end in a trailing
           # newline.  Complements .clang-format InsertNewlineAtEOF (C/C++
