@@ -71,10 +71,8 @@ typedef enum : uint16_t {
 } uart_irq_event_t;
 
 /** @brief Pinout for the on-board J-Link OB CDC channel (SCI8 / PD02 + PD03). */
-static const ra8_port_pin_t k_uart_irq_pin_txd =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << 8) | (uint16_t)k_ra8_pin_2);
-static const ra8_port_pin_t k_uart_irq_pin_rxd =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << 8) | (uint16_t)k_ra8_pin_3);
+static const ra8_port_pin_t k_uart_irq_pin_txd = (ra8_port_pin_t)k_ra8_board_uart_console_pin_txd;
+static const ra8_port_pin_t k_uart_irq_pin_rxd = (ra8_port_pin_t)k_ra8_board_uart_console_pin_rxd;
 
 /** @brief Banner printed once over the polled path so the host sees a prompt. */
 static const uint8_t k_uart_irq_banner[] = "uart_irq_echo ready\r\n";
