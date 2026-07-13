@@ -164,3 +164,13 @@ tools/cache_bench/*.dSYM/
 
 # ESP32-C6 spike build artifacts (esp32/Makefile writes here).
 esp32/build/
+
+# libFuzzer seed corpus: regenerated deterministically by
+# scripts/utils/init_fuzz_corpora.sh (invoked from `make fuzz`), so the seeds
+# are a build product, not source. Committing them only lets them drift from
+# the generator. Crash reproducers the fuzzer discovers are NOT regenerable,
+# so those are carved back in below and must be committed by hand.
+tests/fuzz/corpus/
+!tests/fuzz/corpus/**/crash-*
+!tests/fuzz/corpus/**/leak-*
+!tests/fuzz/corpus/**/timeout-*
