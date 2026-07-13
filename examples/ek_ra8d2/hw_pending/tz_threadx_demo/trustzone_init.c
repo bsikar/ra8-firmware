@@ -142,11 +142,11 @@ typedef enum : uint32_t {
  * @invariant Matches the EK-RA8D2 v1 User's Manual USB-FS (J11) pin map.
  */
 typedef enum : uint16_t {
-  k_tz_usb_pin_vbus = ((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_7, /**< P4_07 FS VBUS. */
+  k_tz_usb_pin_vbus = (uint16_t)k_ra8_board_usbfs_pin_vbus, /**< P4_07 FS VBUS. */
   k_tz_usb_pin_vbusen =
-    ((uint16_t)k_ra8_port_5 << 8) | (uint16_t)k_ra8_pin_0,                  /**< P5_00 FS role. */
-  k_tz_usb_pin_dp = ((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_14, /**< P8_14 FS D+.   */
-  k_tz_usb_pin_dm = ((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_15, /**< P8_15 FS D-.   */
+    (uint16_t)k_ra8_board_usbfs_pin_vbusen,                  /**< P5_00 FS role. */
+  k_tz_usb_pin_dp = (uint16_t)k_ra8_board_usbfs_pin_dp, /**< P8_14 FS D+.   */
+  k_tz_usb_pin_dm = (uint16_t)k_ra8_board_usbfs_pin_dm, /**< P8_15 FS D-.   */
   k_tz_usb_pin_hs_vbus =
     ((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_8, /**< P4_08 HS VBUS. */
   k_tz_usb_pin_hs_pwr = ((uint16_t)k_ra8_port_13 << 8) | (uint16_t)k_ra8_pin_7, /**< PD07 J7 pwr. */
