@@ -34,7 +34,7 @@
 #include "ra8_psa_crypto.h"
 #include "ra8_rot.h"
 #include "ra8_time.h"
-#include "src/rot_fixture.h"
+#include "rot_fixture.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
