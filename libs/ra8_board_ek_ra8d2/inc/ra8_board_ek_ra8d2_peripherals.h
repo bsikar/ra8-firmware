@@ -153,6 +153,31 @@ typedef enum : uint16_t {
 } ra8_board_usbhs_pin_t;
 
 /**
+ * @brief USB-FS (J11) board-routed port pins, UM Table 22 p 30.
+ *
+ * @details
+ * The full-speed peripheral on J11 (USB Type-C) exposes four board-routed
+ * pins: the D+/D- differential pair, the VBUS sense input, and the
+ * MCU-driven VBUS-enable GPIO. Route D+/D-/VBUS to the USBFS peripheral
+ * function (``k_ra8_psel_usb_fs``) and drive VBUSEN as a GPIO output
+ * (LOW = device role, HIGH = supply 5 V VBUS for host role).
+ *
+ * These are the single source of truth for the EK-RA8D2 USB-FS pinout:
+ * applications reference these names instead of re-encoding the port/pin
+ * pair, so the board fact lives in exactly one place.
+ */
+typedef enum : uint16_t {
+  k_ra8_board_usbfs_pin_dp =
+    (uint16_t)RA8_PIN(k_ra8_port_8, k_ra8_pin_14), /**< P8_14 D+. UM Table 22 p 30. */
+  k_ra8_board_usbfs_pin_dm =
+    (uint16_t)RA8_PIN(k_ra8_port_8, k_ra8_pin_15), /**< P8_15 D-. UM Table 22 p 30. */
+  k_ra8_board_usbfs_pin_vbus =
+    (uint16_t)RA8_PIN(k_ra8_port_4, k_ra8_pin_7), /**< P4_07 VBUS sense. UM Table 22 p 30. */
+  k_ra8_board_usbfs_pin_vbusen =
+    (uint16_t)RA8_PIN(k_ra8_port_5, k_ra8_pin_0), /**< P5_00 VBUSEN GPIO. UM Table 22 p 30. */
+} ra8_board_usbfs_pin_t;
+
+/**
  * @brief Drive the U15 PI4IOE5V6408 I/O expander to select USB-HS device mode.
  *
  * @details
