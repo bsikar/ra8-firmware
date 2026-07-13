@@ -111,8 +111,7 @@ static const char* s_demo_tag = "TZSECONLYHS";
  *
  * @since 0.1.0
  */
-static const ra8_port_pin_t k_demo_pin_hs_vbus =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_8);
+static const ra8_port_pin_t k_demo_pin_hs_vbus = (ra8_port_pin_t)k_ra8_board_usbhs_pin_vbus;
 
 /**
  * @brief J7 USB-HS role-select strap (PD07), packed ``ra8_port_pin_t``.
@@ -128,8 +127,7 @@ static const ra8_port_pin_t k_demo_pin_hs_vbus =
  *
  * @since 0.1.0
  */
-static const ra8_port_pin_t k_demo_pin_pd07_role =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << 8) | (uint16_t)k_ra8_pin_7);
+static const ra8_port_pin_t k_demo_pin_pd07_role = (ra8_port_pin_t)k_ra8_board_usbhs_pin_pwr;
 
 /* -------------------------------------------------------------------------- */
 /* Startup helpers */
