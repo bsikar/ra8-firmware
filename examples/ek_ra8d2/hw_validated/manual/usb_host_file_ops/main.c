@@ -70,19 +70,19 @@ static const ra8_port_pin_t k_fileops_pin_hs_pwr =
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
 static const ra8_port_pin_t k_fileops_pin_fs_vbus =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_7);
+  (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbus;
 
 /** @brief USBFS VBUSEN (P5_00): the USB function drives host VBUS. */
 static const ra8_port_pin_t k_fileops_pin_fs_vbusen =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_5 << 8) | (uint16_t)k_ra8_pin_0);
+  (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbusen;
 
 /** @brief USBFS D+ (P8_14) -- PFS-muxed, unlike the dedicated HS balls. */
 static const ra8_port_pin_t k_fileops_pin_fs_dp =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_14);
+  (ra8_port_pin_t)k_ra8_board_usbfs_pin_dp;
 
 /** @brief USBFS D- (P8_15). */
 static const ra8_port_pin_t k_fileops_pin_fs_dm =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_15);
+  (ra8_port_pin_t)k_ra8_board_usbfs_pin_dm;
 
 /* =============================================================================
  * Panic stop
