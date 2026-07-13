@@ -488,6 +488,7 @@ macro(ra8_add_app)
 
     target_include_directories(${_ra8_elf} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/inc
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${RA8_REPO_ROOT}/src
         ${RA8_REPO_ROOT}/src/inc
