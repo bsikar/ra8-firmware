@@ -147,8 +147,9 @@ typedef enum : uint16_t {
    * sense input and the J7 host-power-switch enable. */
   k_ra8_board_usbhs_pin_vbus =
     (uint16_t)RA8_PIN(k_ra8_port_4, k_ra8_pin_8), /**< P4_08 USBHS_VBUS sense. UM Table 28 p 34. */
-  k_ra8_board_usbhs_pin_pwr =
-    (uint16_t)RA8_PIN(k_ra8_port_13, k_ra8_pin_7), /**< PD07 J7 host-power switch (HIGH = U18 drives 5 V VBUS). UM 6.2. */
+  k_ra8_board_usbhs_pin_pwr = (uint16_t)RA8_PIN(
+    k_ra8_port_13,
+    k_ra8_pin_7), /**< PD07 J7 host-power switch (HIGH = U18 drives 5 V VBUS). UM 6.2. */
 } ra8_board_usbhs_pin_t;
 
 /**
@@ -175,6 +176,22 @@ typedef enum : uint16_t {
   k_ra8_board_usbfs_pin_vbusen =
     (uint16_t)RA8_PIN(k_ra8_port_5, k_ra8_pin_0), /**< P5_00 VBUSEN GPIO. UM Table 22 p 30. */
 } ra8_board_usbfs_pin_t;
+
+/**
+ * @brief IIC_B / I3C channel-0 board pins (SCL0 / SDA0), UM Table 20 p 28.
+ *
+ * @details
+ * The I3C ch0 I2C-compatibility bus is routed to P400 (SCL0) and P401 (SDA0)
+ * when SW4-5 selects I3C mode (UM Table 20 p 28 + Section 5.5.3 p 32). These
+ * two pads double as SDHI0 CMD/CLK under the default I2C-mode routing, so use
+ * these names only when the board is jumpered for the I3C bus.
+ */
+typedef enum : uint16_t {
+  k_ra8_board_i3c0_pin_scl =
+    (uint16_t)RA8_PIN(k_ra8_port_4, k_ra8_pin_0), /**< P400 SCL0. UM Table 20 p 28. */
+  k_ra8_board_i3c0_pin_sda =
+    (uint16_t)RA8_PIN(k_ra8_port_4, k_ra8_pin_1), /**< P401 SDA0. UM Table 20 p 28. */
+} ra8_board_i3c0_pin_t;
 
 /**
  * @brief Drive the U15 PI4IOE5V6408 I/O expander to select USB-HS device mode.

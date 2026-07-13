@@ -55,10 +55,8 @@ typedef enum : uint8_t {
 
 /** @brief I3C ch0 pins (P400 SCL0 / P401 SDA0). RIIC ch1 pins are routed
  *         by the board U15 bring-up. */
-static const ra8_port_pin_t k_combo_pin_i3c_scl =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_0);
-static const ra8_port_pin_t k_combo_pin_i3c_sda =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_1);
+static const ra8_port_pin_t k_combo_pin_i3c_scl = (ra8_port_pin_t)k_ra8_board_i3c0_pin_scl;
+static const ra8_port_pin_t k_combo_pin_i3c_sda = (ra8_port_pin_t)k_ra8_board_i3c0_pin_sda;
 
 /* The pass banner requires BOTH: RIIC ACKed U15 (real round-trip) and the
  * I3C controller is up (reaching the loop proves ra8_i3c_init succeeded). */
