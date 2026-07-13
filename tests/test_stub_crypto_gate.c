@@ -33,11 +33,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "key_import.h"
+#include "key_import_internal.h"
 #include "key_vault.h"
 #include "ra8_err.h"
 #include "ra8_rsip_key_injection.h"
-#include "secure_trng.h"
+#include "secure_trng_internal.h"
 #include "unity_minimal.h"
 
 /** @brief Fixed sizes used by the reachability cases (no magic numbers). */

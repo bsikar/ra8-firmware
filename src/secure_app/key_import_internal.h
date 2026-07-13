@@ -1,5 +1,5 @@
 /**
- * @file key_import.h
+ * @file key_import_internal.h
  * @brief Secure-side sealed key import + opaque handle vending
  *
  * @par Tag

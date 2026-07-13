@@ -1,5 +1,5 @@
 /**
- * @file secure_trng.h
+ * @file secure_trng_internal.h
  * @brief Secure-side TRNG read API (RSIP-backed entropy)
  *
  * @par Tag
