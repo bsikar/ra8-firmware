@@ -163,6 +163,7 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
     python3 scripts/utils/check_file_size.py
     python3 scripts/utils/check_header_file_placement.py
     python3 scripts/utils/check_example_board_pins.py
+    python3 scripts/utils/check_core_layering.py
     python3 scripts/utils/check_final_newline.py
     python3 scripts/utils/check_magic_numbers.py
     python3 scripts/utils/check_no_gnu_attribute.py
