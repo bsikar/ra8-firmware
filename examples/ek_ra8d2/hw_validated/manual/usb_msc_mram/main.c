@@ -100,14 +100,10 @@ void        SysTick_Handler(void)
  * is happy with the otherwise out-of-enum value.
  * @since 0.1.0
  */
-static const ra8_port_pin_t k_demo_pin_vbus =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_7);
-static const ra8_port_pin_t k_demo_pin_vbusen =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_5 << 8) | (uint16_t)k_ra8_pin_0);
-static const ra8_port_pin_t k_demo_pin_dp =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_14);
-static const ra8_port_pin_t k_demo_pin_dm =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_15);
+static const ra8_port_pin_t k_demo_pin_vbus   = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbus;
+static const ra8_port_pin_t k_demo_pin_vbusen = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbusen;
+static const ra8_port_pin_t k_demo_pin_dp     = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dp;
+static const ra8_port_pin_t k_demo_pin_dm     = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dm;
 
 /* -------------------------------------------------------------------------- */
 /* Tunables */
