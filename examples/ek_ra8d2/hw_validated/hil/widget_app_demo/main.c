@@ -154,12 +154,10 @@ typedef enum : uint32_t {
   k_wd_dec_ten     = 10U,         /**< Hex/decimal split + buf. */
 } wd_console_t;
 
-/** @brief SW1 (P009) = previous app; active-low, internal pull-up. */
-static const ra8_port_pin_t k_wd_pin_sw1 =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_0 << 8) | (uint16_t)k_ra8_pin_9);
-/** @brief SW2 (P008) = next app; active-low, internal pull-up. */
-static const ra8_port_pin_t k_wd_pin_sw2 =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_0 << 8) | (uint16_t)k_ra8_pin_8);
+/** @brief SW1 (previous app) port pin, sourced from the board layer at init. */
+static ra8_port_pin_t s_wd_sw1_pin = k_ra8_pin_none;
+/** @brief SW2 (next app) port pin, sourced from the board layer at init. */
+static ra8_port_pin_t s_wd_sw2_pin = k_ra8_pin_none;
 
 /**
  * @brief GLCDC-scanned render target in SRAM, AXI-burst aligned.
@@ -666,8 +664,8 @@ static void wd_route_button(wd_btn_t btn)
 /** @brief Poll SW1/SW2 (edge-triggered) and route a fresh press as a button. */
 static void wd_poll_buttons(void)
 {
-  const bool sw1    = wd_sw_pressed(k_wd_pin_sw1);
-  const bool sw2    = wd_sw_pressed(k_wd_pin_sw2);
+  const bool sw1    = wd_sw_pressed(s_wd_sw1_pin);
+  const bool sw2    = wd_sw_pressed(s_wd_sw2_pin);
   bool       fresh1 = false;
   if (sw1) {
     if (!s_was_sw1) {
@@ -868,8 +866,10 @@ static void wd_setup_or_halt(void)
   if (ra8_board_uart_console_init((uint32_t)k_wd_uart_baud) != k_ra8_ok) {
     wd_fail_halt(k_wd_msg_finit, (uint32_t)sizeof(k_wd_msg_finit) - 1U);
   }
-  (void)ra8_gpio_input_init(k_wd_pin_sw1, k_ra8_pull_up);
-  (void)ra8_gpio_input_init(k_wd_pin_sw2, k_ra8_pull_up);
+  (void)ra8_board_sw_pin(k_ra8_board_sw1, &s_wd_sw1_pin);
+  (void)ra8_board_sw_pin(k_ra8_board_sw2, &s_wd_sw2_pin);
+  (void)ra8_board_sw_init(k_ra8_board_sw1);
+  (void)ra8_board_sw_init(k_ra8_board_sw2);
 }
 
 /** @brief Emit the PASS banner once the self-check holds. */

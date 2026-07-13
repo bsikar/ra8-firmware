@@ -25,6 +25,7 @@
 
 #include "er_pageturn.h"
 #include "ereader_ui_steps.h"
+#include "ra8_board_ek_ra8d2.h"
 #include "ra8_display_pal.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
@@ -554,13 +555,6 @@ static bool s_was_touching;
 static bool s_was_sw1;
 static bool s_was_sw2; /**< @see s_was_sw1 */
 
-/** @brief SW1 (P009) = previous page; active-low, internal pull-up. */
-static const ra8_port_pin_t k_er_pin_sw1 =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_0 << 8) | (uint16_t)k_ra8_pin_9);
-/** @brief SW2 (P008) = next page; active-low, internal pull-up. */
-static const ra8_port_pin_t k_er_pin_sw2 =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_0 << 8) | (uint16_t)k_ra8_pin_8);
-
 void er_poll_touch(void)
 {
   ra8_touch_point_t pt  = {};
@@ -594,8 +588,12 @@ static bool er_sw_pressed(ra8_port_pin_t pin)
 
 void er_poll_buttons(void)
 {
-  const bool sw1    = er_sw_pressed(k_er_pin_sw1);
-  const bool sw2    = er_sw_pressed(k_er_pin_sw2);
+  ra8_port_pin_t sw1_pin = k_ra8_pin_none;
+  ra8_port_pin_t sw2_pin = k_ra8_pin_none;
+  (void)ra8_board_sw_pin(k_ra8_board_sw1, &sw1_pin);
+  (void)ra8_board_sw_pin(k_ra8_board_sw2, &sw2_pin);
+  const bool sw1    = er_sw_pressed(sw1_pin);
+  const bool sw2    = er_sw_pressed(sw2_pin);
   const bool fresh1 = sw1 && !s_was_sw1;
   const bool fresh2 = sw2 && !s_was_sw2;
   s_was_sw1         = sw1;

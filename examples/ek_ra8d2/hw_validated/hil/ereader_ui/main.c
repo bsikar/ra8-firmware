@@ -297,13 +297,6 @@ bool s_have_font;
 /** @brief Cached PCLKA rate (Hz) for the SD SPI clock shim. */
 static uint32_t s_pclka_hz;
 
-/** @brief SW1 (P009) = previous page; active-low, internal pull-up. */
-static const ra8_port_pin_t k_er_pin_sw1 =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_0 << 8) | (uint16_t)k_ra8_pin_9);
-/** @brief SW2 (P008) = next page; active-low, internal pull-up. */
-static const ra8_port_pin_t k_er_pin_sw2 =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_0 << 8) | (uint16_t)k_ra8_pin_8);
-
 /** @brief Nag banner overlay widget vtable (renderer lives in the input TU). */
 static const ra8_widget_vtable_t k_er_nag_vt = {.render = er_nag_render};
 
@@ -687,8 +680,8 @@ int32_t main(void)
   (void)ra8_batt_monitor_init(&s_batt_mon); /* low-battery nag policy (#145/#146) */
   /* User switches SW1/SW2 as inputs with internal pull-ups (active-low). Best-
    * effort: a config failure just leaves page-turn on the touch path. */
-  (void)ra8_gpio_input_init(k_er_pin_sw1, k_ra8_pull_up);
-  (void)ra8_gpio_input_init(k_er_pin_sw2, k_ra8_pull_up);
+  (void)ra8_board_sw_init(k_ra8_board_sw1);
+  (void)ra8_board_sw_init(k_ra8_board_sw2);
   er_try_load_font(); /* Best-effort SD font for the ra8_reflow Reading body. */
 
   /* Default refresh cadence: fast A2 turns with a periodic GC16 clean (#78). */

@@ -104,28 +104,22 @@ void SysTick_Handler(void)
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
-static const ra8_port_pin_t k_blc_pin_fs_vbus =
-  (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbus;
+static const ra8_port_pin_t k_blc_pin_fs_vbus = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbus;
 
 /** @brief USBFS VBUSEN (P5_00) -- GPIO LOW for the device role. */
-static const ra8_port_pin_t k_blc_pin_fs_vbusen =
-  (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbusen;
+static const ra8_port_pin_t k_blc_pin_fs_vbusen = (ra8_port_pin_t)k_ra8_board_usbfs_pin_vbusen;
 
 /** @brief USBFS D+ (P8_14). */
-static const ra8_port_pin_t k_blc_pin_fs_dp =
-  (ra8_port_pin_t)k_ra8_board_usbfs_pin_dp;
+static const ra8_port_pin_t k_blc_pin_fs_dp = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dp;
 
 /** @brief USBFS D- (P8_15). */
-static const ra8_port_pin_t k_blc_pin_fs_dm =
-  (ra8_port_pin_t)k_ra8_board_usbfs_pin_dm;
+static const ra8_port_pin_t k_blc_pin_fs_dm = (ra8_port_pin_t)k_ra8_board_usbfs_pin_dm;
 
 /** @brief J-Link OB CDC TX pin (PD_02 -- SCI8 TX). */
-static const ra8_port_pin_t k_blc_pin_sci_tx =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << 8) | (uint16_t)k_ra8_pin_2);
+static const ra8_port_pin_t k_blc_pin_sci_tx = (ra8_port_pin_t)k_ra8_board_uart_console_pin_txd;
 
 /** @brief J-Link OB CDC RX pin (PD_03 -- SCI8 RX). */
-static const ra8_port_pin_t k_blc_pin_sci_rx =
-  (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << 8) | (uint16_t)k_ra8_pin_3);
+static const ra8_port_pin_t k_blc_pin_sci_rx = (ra8_port_pin_t)k_ra8_board_uart_console_pin_rxd;
 
 /* -------------------------------------------------------------------------- */
 /* Tunables */
