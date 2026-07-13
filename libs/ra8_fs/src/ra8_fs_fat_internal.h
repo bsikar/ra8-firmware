@@ -12,10 +12,10 @@
  * includes a single name. The declarations themselves live in the sub-headers
  * pulled in below:
  *
- * - `ra8_fs_fat_types.h`    -- on-disk-layout enums, cross-TU typedefs, and the
- *                             shared `s_scratch` extern.
- * - `ra8_fs_fat_protos_a.h` -- cross-TU helper prototypes, part A of 2.
- * - `ra8_fs_fat_protos_b.h` -- cross-TU helper prototypes, part B of 2.
+ * - `ra8_fs_fat_types_internal.h`    -- on-disk-layout enums, cross-TU typedefs,
+ *                             and the shared `s_scratch` extern.
+ * - `ra8_fs_fat_protos_a_internal.h` -- cross-TU helper prototypes, part A of 2.
+ * - `ra8_fs_fat_protos_b_internal.h` -- cross-TU helper prototypes, part B of 2.
  *
  * This header is included by every `ra8_fs_fat*.c` file and by nothing outside
  * this module.
@@ -28,6 +28,6 @@
 
 #pragma once
 
-#include "ra8_fs_fat_protos_a.h"
-#include "ra8_fs_fat_protos_b.h"
-#include "ra8_fs_fat_types.h"
+#include "ra8_fs_fat_protos_a_internal.h"
+#include "ra8_fs_fat_protos_b_internal.h"
+#include "ra8_fs_fat_types_internal.h"

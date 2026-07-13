@@ -1,5 +1,5 @@
 /**
- * @file ra8_fs_fat_protos_a.h
+ * @file ra8_fs_fat_protos_a_internal.h
  * @brief Cross-TU helper prototypes for the FAT/exFAT adapter (part A of 2).
  *
  * @details
@@ -7,7 +7,7 @@
  * helper is defined `static`-free in exactly one FAT/exFAT translation unit and
  * called from at least one other. This part covers the alphabetical run from
  * `priv_83_to_str()` through `priv_exfat_unlink()`; the remaining helpers live
- * in `ra8_fs_fat_protos_b.h`. Both are aggregated by the
+ * in `ra8_fs_fat_protos_b_internal.h`. Both are aggregated by the
  * `ra8_fs_fat_internal.h` umbrella, which every `ra8_fs_fat*.c` file includes.
  *
  * This header aggregates each cross-TU helper's full Doxygen contract, so it
@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "ra8_fs_fat_types.h"
+#include "ra8_fs_fat_types_internal.h"
 
 /* ===========================================================================
  * Cross-TU helper prototypes. Each is defined `static`-free in exactly one
