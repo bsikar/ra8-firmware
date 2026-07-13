@@ -297,6 +297,11 @@ jobs:
           # encoding idiom in examples so the USB-pin duplication #251 fixed
           # (identical pins copy-pasted across 29 apps) cannot come back.
           python3 scripts/utils/check_example_board_pins.py
+          # check_core_layering.py: ra8_core is the foundation lib -- every
+          # other lib may build on it, but it must depend on nothing above
+          # itself. Fails on any #include from ra8_core that resolves to a
+          # header owned by another lib (the upward edge #243 removed).
+          python3 scripts/utils/check_core_layering.py
           # check_final_newline.py: every first-party source file (C/C++,
           # Python, shell, CMake, YAML, ...) must end in a trailing
           # newline.  Complements .clang-format InsertNewlineAtEOF (C/C++
