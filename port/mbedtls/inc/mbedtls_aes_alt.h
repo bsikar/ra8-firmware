@@ -26,15 +26,6 @@
  * blob lives only inside the context until ``mbedtls_aes_free``
  * scrubs it.
  *
- * ## Why a separate header
- *
- * The build configures ``port/mbedtls/`` BEFORE the vendored Mbed TLS
- * include directory so this file is what compilers see when the
- * upstream ``mbedtls/aes.h`` says ``#include "mbedtls_aes_alt.h"``
- * (the canonical hook). The struct lives here -- the upstream
- * ``aes.h`` then forward-declares the function prototypes against
- * this struct, and the matching ``.c`` provides the bodies.
- *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
