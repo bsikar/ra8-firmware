@@ -17,11 +17,20 @@
 #   scripts/rot_provision.sh                     # keygen only (prints header)
 #   scripts/rot_provision.sh --patch             # also write s_rot_root_pubkey
 #   scripts/rot_provision.sh --key <path> --patch
+#   scripts/rot_provision.sh --patch --store     # also version+tag it in the key store
+#   scripts/rot_provision.sh --store --backend local   # force the no-vault store
+#
+# --store persists the key into the versioned, tagged key store
+# (scripts/rot_keystore.py): OpenBao when reachable, else a local directory.
+# For routine re-keying, prefer `scripts/rot_keystore.py rekey --patch`, which
+# backs up the outgoing key, generates + tags a new one, and installs it.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KEY_FILE="${HOME}/ra8d2-rot-signing-key.pem"
 PATCH=0
+STORE=0
+BACKEND=auto
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -32,6 +41,14 @@ while [[ $# -gt 0 ]]; do
     --patch)
       PATCH=1
       shift
+      ;;
+    --store)
+      STORE=1
+      shift
+      ;;
+    --backend)
+      BACKEND="$2"
+      shift 2
       ;;
     *)
       echo "unknown argument: $1" >&2
@@ -58,32 +75,19 @@ FINGERPRINT="$(openssl ec -in "${KEY_FILE}" -pubout 2>/dev/null | openssl dgst -
 
 # 2. Optionally provision the public key into ra8_rot.c.
 if [[ "${PATCH}" -eq 1 ]]; then
-  python3 - "${ROT_C}" "${HEADER_TMP}" <<'PY'
-import re
-import sys
-
-rot_c, header = sys.argv[1], sys.argv[2]
-lines = open(header, encoding="ascii").read().splitlines()
-body = "\n".join(line for line in lines if line.strip().startswith("0x"))
-new_array = "static const uint8_t s_rot_root_pubkey[k_ra8_rot_pubkey_bytes] = {\n" + body + "\n};"
-src = open(rot_c, encoding="ascii").read()
-patched, n = re.subn(
-    r"static const uint8_t s_rot_root_pubkey\[k_ra8_rot_pubkey_bytes\] = \{.*?\n\};",
-    new_array,
-    src,
-    count=1,
-    flags=re.DOTALL,
-)
-if n != 1:
-    sys.exit(f"expected exactly one s_rot_root_pubkey definition, found {n}")
-open(rot_c, "w", encoding="ascii").write(patched)
-print(f"patched {rot_c}")
-PY
+  python3 "${REPO_ROOT}/tools/rot_patch_pubkey.py" "${ROT_C}" "${HEADER_TMP}"
   if command -v clang-format-22 >/dev/null 2>&1; then
     clang-format-22 -i "${ROT_C}"
   elif command -v clang-format >/dev/null 2>&1; then
     clang-format -i "${ROT_C}"
   fi
+fi
+
+# 2b. Optionally persist the key into the versioned, tagged key store
+# (OpenBao when reachable, else a local dir -- see scripts/rot_keystore.py).
+if [[ "${STORE}" -eq 1 ]]; then
+  python3 "${REPO_ROOT}/scripts/rot_keystore.py" --backend "${BACKEND}" \
+    store --key "${KEY_FILE}" --note "provision ceremony"
 fi
 
 # 3. Report + tell the operator how to back the key up.
@@ -94,9 +98,12 @@ Root-of-trust key ceremony complete.
   Pubkey SHA-256 fingerprint: ${FINGERPRINT}
   Provisioned into ra8_rot.c:  $([[ "${PATCH}" -eq 1 ]] && echo yes || echo "no (re-run with --patch)")
 
-BACK UP THE PRIVATE KEY NOW so it cannot be lost. For example, into OpenBao:
-  bao kv put secret/ra8d2/rot-signing-key pem=@${KEY_FILE} fingerprint=${FINGERPRINT}
-(or store it in your password manager). Anyone with this key can sign firmware.
+BACK UP THE PRIVATE KEY NOW so it cannot be lost. Persist it into the
+versioned, tagged key store (OpenBao when reachable, else a local dir):
+  scripts/rot_keystore.py store --key ${KEY_FILE}
+  scripts/rot_keystore.py history         # list every stored version + tags
+Re-run this ceremony with --store to do that automatically. Anyone with this
+key can sign firmware.
 
 To sign an application image for this key:
   python3 tools/rot_sign.py sign --key ${KEY_FILE} --image app.bin --out app.signed.bin --img-version N
