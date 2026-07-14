@@ -34,7 +34,7 @@ ra8_add_app(NAME psa_crypto_hil STACK_BYTES 32768
 # (src/psa_kat_shim.c). MBEDTLS_PSA_CRYPTO_STORAGE_C is off -> no filesystem.
 # ---------------------------------------------------------------------------
 set(_TF "${_d}/libs/third_party/tf-psa-crypto")
-set(_PORT "${_d}/port/mbedtls")
+set(_PORT "${_d}/port/mbedtls/inc")
 file(GLOB _TF_SRC CONFIGURE_DEPENDS
     ${_TF}/core/*.c
     ${_TF}/drivers/builtin/src/*.c

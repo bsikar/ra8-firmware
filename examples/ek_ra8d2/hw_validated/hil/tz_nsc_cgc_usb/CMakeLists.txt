@@ -122,7 +122,7 @@ file(GLOB _ns_usbx_cdc CONFIGURE_DEPENDS
 # the register driver explicitly (NOT a glob -- the NS world deliberately
 # excludes the ra8_usb_pmsc/hmsc/cdc/... class drivers).
 file(GLOB _ns_ux_dcd CONFIGURE_DEPENDS
-     ${RA8_REPO_ROOT}/port/usbx/ux_dcd_ra8_usb*.c)
+     ${RA8_REPO_ROOT}/port/usbx/src/ux_dcd_ra8_usb*.c)
 set(_ns_usb_srcs
     ${_ns_usbx_core}
     ${_ns_usbx_cdc}
@@ -143,7 +143,7 @@ target_include_directories(tz_nsc_cgc_usb_ns.elf PRIVATE
     ${_ra8_usbx_root}/common/core/inc
     ${_ra8_usbx_root}/common/usbx_device_classes/inc
     ${_ra8_usbx_root}/ports/cortex_m33/gnu/inc
-    ${RA8_REPO_ROOT}/port/usbx
+    ${RA8_REPO_ROOT}/port/usbx/inc
     ${RA8_REPO_ROOT}/libs/ra8_usb_pal/inc
     ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/inc)
 

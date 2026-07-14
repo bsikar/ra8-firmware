@@ -33,7 +33,7 @@ ra8_add_app(NAME secure_boot_hil STACK_BYTES 32768
 
 # tf-psa-crypto software crypto for ARM (same recipe as rot_verify_hil).
 set(_TF "${_d}/libs/third_party/tf-psa-crypto")
-set(_PORT "${_d}/port/mbedtls")
+set(_PORT "${_d}/port/mbedtls/inc")
 file(GLOB _TF_SRC CONFIGURE_DEPENDS
     ${_TF}/core/*.c ${_TF}/drivers/builtin/src/*.c ${_TF}/platform/*.c
     ${_TF}/utilities/*.c ${_TF}/extras/*.c)
