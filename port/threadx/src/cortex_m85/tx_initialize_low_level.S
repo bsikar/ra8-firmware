@@ -21,6 +21,11 @@
  *     `_tx_timer_interrupt`); we configure SysTick here to fire at
  *     TX_TIMER_TICKS_PER_SECOND (1000 by default for this firmware).
  *
+ *   - PendSV_Handler and SVC_Handler come from the upstream port's
+ *     strong symbols: `vector_table.c` provides only weak aliases to
+ *     `Default_Handler`, so the linker lets the upstream context-switch
+ *     and supervisor-call handlers win.
+ *
  *   - System clock at this point is the boot-default MOCO ~8.4 MHz
  *     (matches blink_hal). When ra8_cgc_init() upgrades the clock,
  *     `ra8_threadx_systick_retune()` (C) reprograms SysTick.LOAD so the
