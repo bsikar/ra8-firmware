@@ -95,8 +95,8 @@ configuration keeps building cleanly.
   this firmware vendors both at `libs/third_party/mbedtls` (4.1.0)
   and `libs/third_party/tf-psa-crypto` (1.1.0). The cmake glue is in
   `cmake/mbedtls.cmake`; project-wide configs live in
-  `port/mbedtls/mbedtls_config.h` (TLS / X.509 surface) and
-  `port/mbedtls/tf_psa_crypto_config.h` (PSA crypto + builtin driver
+  `port/mbedtls/inc/mbedtls_config.h` (TLS / X.509 surface) and
+  `port/mbedtls/inc/tf_psa_crypto_config.h` (PSA crypto + builtin driver
   surface).
 - RSIP wiring of AES / SHA-256 / RSA / ECDH primitives to PSA crypto
   driver wrappers is a follow-up sweep -- the

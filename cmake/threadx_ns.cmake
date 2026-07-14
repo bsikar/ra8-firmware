@@ -4,7 +4,7 @@
 # Non-Secure variant of the ThreadX library (Cortex-M85), for apps that run
 # the RTOS INSIDE the TrustZone Non-Secure image (see GitHub #96 -- Phase C of
 # tz_nsc_cgc_usb). Identical sources to cmake/threadx.cmake, but compiled with
-# RA8_THREADX_NON_SECURE so port/threadx/tx_user.h selects TX_SINGLE_MODE_NON_SECURE
+# RA8_THREADX_NON_SECURE so port/threadx/inc/tx_user.h selects TX_SINGLE_MODE_NON_SECURE
 # instead of TX_SINGLE_MODE_SECURE. The consuming app's linker script routes
 # this archive's sections into the NS regions.
 #
@@ -45,14 +45,14 @@ list(FILTER RA8_THREADX_NS_PORT_ASM
      EXCLUDE REGEX ".*/tx_initialize_low_level\\.S$")
 
 set(RA8_THREADX_NS_PROJECT_LOW_LEVEL
-    "${RA8_THREADX_PORT_DIR}/cortex_m85/tx_initialize_low_level.S")
+    "${RA8_THREADX_PORT_DIR}/src/cortex_m85/tx_initialize_low_level.S")
 
 add_library(threadx_ns STATIC
     ${RA8_THREADX_NS_COMMON_SOURCES}
     ${RA8_THREADX_NS_PORT_ASM}
     ${RA8_THREADX_NS_PORT_C}
     ${RA8_THREADX_NS_PROJECT_LOW_LEVEL}
-    "${RA8_THREADX_PORT_DIR}/cortex_m85/tx_systick_ready.c"
+    "${RA8_THREADX_PORT_DIR}/src/cortex_m85/tx_systick_ready.c"
 )
 
 target_include_directories(threadx_ns SYSTEM PUBLIC
@@ -60,7 +60,7 @@ target_include_directories(threadx_ns SYSTEM PUBLIC
     "${RA8_THREADX_M85_GNU}/inc"
 )
 target_include_directories(threadx_ns PUBLIC
-    "${RA8_THREADX_PORT_DIR}"
+    "${RA8_THREADX_PORT_DIR}/inc"
 )
 
 # RA8_THREADX_NON_SECURE flips tx_user.h to TX_SINGLE_MODE_NON_SECURE. PUBLIC so

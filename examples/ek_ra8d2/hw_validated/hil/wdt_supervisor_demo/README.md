@@ -11,13 +11,13 @@ Two ThreadX threads, each blinking a different LED at a different rate:
 
 ## What it exercises
 
-- The project's port glue under `port/threadx/cortex_m85/`:
+- The project's port glue under `port/threadx/src/cortex_m85/`:
   - `tx_initialize_low_level.S` -- 1 ms SysTick reload, system stack
     pointer save, priority fix-up.
 - The vendored upstream port at
   `libs/third_party/threadx/ports/cortex_m85/gnu/` (PendSV / SVC /
   schedule / context save / context restore).
-- `port/threadx/tx_user.h` tunables (1 ms tick, single-mode-secure,
+- `port/threadx/inc/tx_user.h` tunables (1 ms tick, single-mode-secure,
   TIMER_PROCESS_IN_ISR, etc.).
 - The HAL's `ra8_gpio_output_init` + `ra8_gpio_toggle` -- same paths
   `examples/blink_hal` uses, but driven by the RTOS instead of a
@@ -27,7 +27,7 @@ Two ThreadX threads, each blinking a different LED at a different rate:
 
 - `ra8_cgc_init()` -- the CGC PRCR-protected register sequence still
   HardFaults on the bare chip today. Without it the CPU runs on
-  MOCO ~8.4 MHz, which `port/threadx/cortex_m85/tx_initialize_low_level.S`
+  MOCO ~8.4 MHz, which `port/threadx/src/cortex_m85/tx_initialize_low_level.S`
   uses to compute the SysTick reload value.
 
 ## Build / flash

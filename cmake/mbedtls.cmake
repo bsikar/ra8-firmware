@@ -2,7 +2,7 @@
 # cmake/mbedtls.cmake
 #
 # Top-level integration for the vendored Mbed TLS 4.x + TF-PSA-Crypto
-# 1.x library on RA8D2 (Cortex-M85). Mbed TLS 4.x split the
+# 1.x library on RA8 (Cortex-M85). Mbed TLS 4.x split the
 # cryptographic primitives out of the main repo into a companion
 # `tf-psa-crypto` repo: AES, SHA, RSA, ECC, bignum, PSA crypto layer
 # all live there now. The mbedtls/library/ tree retains TLS, X.509,
@@ -74,7 +74,7 @@ set(_RA8_MBEDTLS_VENDOR_DIR  "${_RA8_MBEDTLS_REPO_ROOT}/libs/third_party/mbedtls
 set(_RA8_MBEDTLS_INC_DIR     "${_RA8_MBEDTLS_VENDOR_DIR}/include")
 set(_RA8_MBEDTLS_LIB_DIR     "${_RA8_MBEDTLS_VENDOR_DIR}/library")
 set(_RA8_MBEDTLS_PORT_DIR    "${_RA8_MBEDTLS_REPO_ROOT}/port/mbedtls")
-set(_RA8_MBEDTLS_CONFIG_FILE "${_RA8_MBEDTLS_PORT_DIR}/mbedtls_config.h")
+set(_RA8_MBEDTLS_CONFIG_FILE "${_RA8_MBEDTLS_PORT_DIR}/inc/mbedtls_config.h")
 
 set(_RA8_TFPSA_DIR              "${_RA8_MBEDTLS_REPO_ROOT}/libs/third_party/tf-psa-crypto")
 set(_RA8_TFPSA_INC_DIR          "${_RA8_TFPSA_DIR}/include")
@@ -86,7 +86,7 @@ set(_RA8_TFPSA_DRIVERS_SRC_DIR  "${_RA8_TFPSA_DRIVERS_DIR}/src")
 set(_RA8_TFPSA_PLATFORM_DIR     "${_RA8_TFPSA_DIR}/platform")
 set(_RA8_TFPSA_UTILITIES_DIR    "${_RA8_TFPSA_DIR}/utilities")
 set(_RA8_TFPSA_EXTRAS_DIR       "${_RA8_TFPSA_DIR}/extras")
-set(_RA8_TFPSA_CRYPTO_CONFIG    "${_RA8_MBEDTLS_PORT_DIR}/tf_psa_crypto_config.h")
+set(_RA8_TFPSA_CRYPTO_CONFIG    "${_RA8_MBEDTLS_PORT_DIR}/inc/tf_psa_crypto_config.h")
 
 if(NOT EXISTS "${_RA8_MBEDTLS_INC_DIR}/mbedtls/build_info.h")
     message(FATAL_ERROR
