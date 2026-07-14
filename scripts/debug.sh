@@ -23,6 +23,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FW_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Optional J-Link serial from the gitignored .env (see .env.example). Only
+# needed to disambiguate multiple probes; single-probe machines can omit it.
+source "$SCRIPT_DIR/lib/rig_env.sh"
+
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
@@ -50,9 +54,11 @@ echo -e "${GREEN}Starting JLinkGDBServer for Cortex-M85 (RA8D2 fallback) ...${NC
 # Use CORTEX-M85 instead of R7KA8D2KF to skip JLink's "unknown device" GUI
 # (P/N R7KA8D2KFLCAC isn't in v9.38a's device DB).  -nogui drops the picker;
 # -select USB=<SN> pins the on-board J-Link OB so multi-probe machines don't
-# prompt either.
+# prompt either (set JLINK_SN in .env; skipped when unset).
+SELECT_ARGS=()
+[ -n "${JLINK_SN:-}" ] && SELECT_ARGS=(-select "USB=${JLINK_SN}")
 JLinkGDBServer -device CORTEX-M85 -if SWD -speed 4000 -port 2331 -nogui \
-  -select USB=1086567198 \
+  "${SELECT_ARGS[@]}" \
   >/tmp/jlinkgdbserver.log 2>&1 &
 GDB_PID=$!
 

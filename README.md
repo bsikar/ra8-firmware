@@ -35,6 +35,27 @@ are in [`examples/_unsupported/`](examples/_unsupported/README.md).
 VS Code Dev Container (`.devcontainer/`) with the pinned toolchain; `make ci`
 runs the gates in it. Git hooks install on the first `make`.
 
+## Hardware and flashing
+
+`make sim-<app>` needs no hardware. To flash or debug a real board you need an
+EK-RA8D2 (on-board J-Link) and the SEGGER J-Link tools. Rig settings (probe
+serial, bench Pi) live in a gitignored `.env`; copy the template and fill in
+what you use:
+
+```sh
+cp .env.example .env
+make hil-find-jlink     # prints your J-Link serial to paste into .env
+```
+
+- Flash / debug a board cabled to your machine: `make flash-<app>`,
+  `make debug-<app>`.
+- The `make hil-*` targets drive the maintainer's bench rig (a Pi plus Tapo
+  smart plugs); they will not work elsewhere without your own `.env` and rig.
+
+**Bricked board?** `bash scripts/hil_dlm_reset_local.sh recover` mass-erases an
+EK-RA8D2 wired to this machine and returns it to the factory default
+(all-Secure, OEM_PL2). Run `... check` first to confirm the probe can reach it.
+
 ## Docs
 
 - [`CLAUDE.md`](CLAUDE.md), [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md): rules and style

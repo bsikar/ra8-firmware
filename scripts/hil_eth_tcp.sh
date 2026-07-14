@@ -41,9 +41,9 @@
 
 set -euo pipefail
 
-PI_HOST="${PI_HOST:-star@star.local}"
-JLINK_SN="1086567198"
-JLINK_DEVICE="R7KA8D2KF_CPU0"
+# Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+rig_require PI_HOST JLINK_SN
 PI_IP="192.168.1.1"
 PI_PREFIX="24"
 
@@ -131,9 +131,7 @@ esac
 APP_NAME="$(basename "${HEX%.hex}")"
 
 LOCAL_PI=0
-if [[ "$(hostname 2>/dev/null || true)" == "star" ]] ||
-  [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] ||
-  [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+if rig_is_local_pi; then
   LOCAL_PI=1
 fi
 

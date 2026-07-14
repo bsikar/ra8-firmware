@@ -21,7 +21,9 @@
 
 set -euo pipefail
 
-PI_HOST="star@star.local"
+# Rig config (PI_HOST) comes from the gitignored .env, not the tree.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+rig_require PI_HOST
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -68,9 +70,7 @@ run_local() {
 
 # True when we are executing on the Pi HIL host itself.
 on_pi() {
-  [[ "$(hostname 2>/dev/null || true)" == "star" ]] ||
-    [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] ||
-    [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]
+  rig_is_local_pi
 }
 
 if [[ "$TARGET" == "pi" ]]; then

@@ -15,7 +15,10 @@ set -euo pipefail
 export PATH="$HOME/opt/arm-gnu-toolchain/bin:$PATH"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-PI="star@star.local"
+# Rig config (PI_HOST) comes from the gitignored .env, not the tree.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+rig_require PI_HOST
+PI="$PI_HOST"
 REMOTE_DIR="/tmp/hil-dev-$$"
 ONLY=""
 

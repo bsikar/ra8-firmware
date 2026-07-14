@@ -757,8 +757,9 @@ version:
 # HIL (Hardware-In-the-Loop) tests.
 #
 # These build the app locally, SCP the hex to the Pi, flash via J-Link,
-# and verify expected UART output.  The Pi must be reachable at star.local
-# with the EK-RA8D2 wired to its USB ports.  See scripts/hil_run.sh.
+# and verify expected UART output.  The Pi must be reachable at $PI_HOST
+# (set in .env; see .env.example) with the EK-RA8D2 wired to its USB ports.
+# See scripts/hil_run.sh.
 #
 # Add one target per app as they are validated.  The target name is
 # hil-<appname>; `make hil` runs all of them.
@@ -778,6 +779,7 @@ hil-help:
 	@echo "  make hil-erase                  mass-erase the MRAM"
 	@echo "  make hil-dlm-reset              recover from OEM_PL0/PL1 lockout"
 	@echo "  make hil-probe                  quick J-Link + board diagnostic"
+	@echo "  make hil-find-jlink             print connected J-Link serial(s) for .env"
 	@echo "  make hil-suite                  run the HIL test suite (on the Pi)"
 	@echo "  make hil-all                    run the full HIL suite"
 	@echo "  make hil-tapo TARGET=<board|pi> CMD=<status|on|off|cycle>   board/Pi power via Tapo plug"
@@ -914,7 +916,7 @@ audit-init:
 #   make debug-ocd APP=blink     gdb via OpenOCD
 # ---------------------------------------------------------------------------
 .PHONY: hil-flash hil-recover hil-flash-retry hil-erase hil-dlm-reset \
-        hil-reflash hil-probe hil-suite hil-all hil-tapo hil-ppps flash-ocd debug-ocd
+        hil-reflash hil-probe hil-find-jlink hil-suite hil-all hil-tapo hil-ppps flash-ocd debug-ocd
 
 hil-flash:
 	@test -n "$(APP)" || { echo "usage: make hil-flash APP=<app>"; exit 2; }
@@ -940,6 +942,9 @@ hil-reflash:
 
 hil-probe:
 	bash scripts/hil_probe.sh
+
+hil-find-jlink:
+	bash scripts/hil_find_jlink.sh
 
 hil-suite:
 	bash scripts/hil_suite.sh
