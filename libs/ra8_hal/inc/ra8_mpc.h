@@ -22,18 +22,6 @@
  * and the pin-validator registration so two drivers cannot claim
  * the same pin without being told about it.
  *
- * ## Why wrap PFS in yet another layer?
- *
- * The existing ``ra8_pfs_regs.h`` header is low-level: a driver
- * must know the full 32-bit bit layout, remember to unlock PWPR,
- * and coordinate direction / pull / PSEL fields. ``ra8_mpc_*``
- * exposes one call per high-level intent and takes care of the
- * bits.
- *
- * will route the whole facade through an NSC veneer so
- * Non-Secure drivers can keep claiming pins but only via the
- * single auditable entry point.
- *
  * ## Threading
  *
  * Single-threaded init context only.
