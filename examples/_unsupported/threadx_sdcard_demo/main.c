@@ -77,7 +77,7 @@ typedef enum : uint32_t {
 } sdcard_baud_t;
 
 /**
- * @brief Loop period in ThreadX ticks (port/threadx/tx_user.h pins to 1 ms).
+ * @brief Loop period in ThreadX ticks (port/threadx/inc/tx_user.h pins to 1 ms).
  */
 typedef enum : uint16_t {
   k_sdcard_loop_ticks = 5000U,

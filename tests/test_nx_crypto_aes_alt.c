@@ -1,9 +1,9 @@
 /**
  * @file test_nx_crypto_aes_alt.c
- * @brief MC/DC vector tests for port/netxduo/nx_crypto_aes_alt.c
+ * @brief MC/DC vector tests for port/netxduo/src/nx_crypto_aes_alt.c
  *
  * @details
- * The NetX Crypto AES ALT shim ``port/netxduo/nx_crypto_aes_alt.c`` is
+ * The NetX Crypto AES ALT shim ``port/netxduo/src/nx_crypto_aes_alt.c`` is
  * not part of the host-compiled ``ra8_core_hal`` aggregate library
  * because it depends on the NetX Duo Crypto API (NX_CRYPTO_METHOD,
  * NX_CRYPTO_AES, ``__real__nx_crypto_method_aes_operation``) that is
@@ -15,7 +15,7 @@
  * exercising condition-equivalent helpers that preserve the operator,
  * operand types, and short-circuit semantics of the source decision.
  * This file mirrors the compound boolean decision from
- * ``port/netxduo/nx_crypto_aes_alt.c`` as a ``static inline`` helper
+ * ``port/netxduo/src/nx_crypto_aes_alt.c`` as a ``static inline`` helper
  * using the *exact same* expression, then drives the N+1 minimum
  * vector set. The ``@par MC/DC:`` block on the test cites the
  * original source line so a reviewer can verify the helper is
@@ -60,7 +60,7 @@ typedef enum : uint32_t {
 /**
  * @brief Mirror of the priv_must_fallback op-kind guard decision.
  *
- * Source: port/netxduo/nx_crypto_aes_alt.c
+ * Source: port/netxduo/src/nx_crypto_aes_alt.c
  *   `if (a->op != (UINT)NX_CRYPTO_ENCRYPT && a->op != (UINT)NX_CRYPTO_DECRYPT)`
  *
  * Returns true when the operation must fall back to the upstream
@@ -80,7 +80,7 @@ static inline bool internal_mirror_op_kind_guard(uint32_t op)
  *
  * @par MC/DC:
  * Decision: `if (a->op != NX_CRYPTO_ENCRYPT && a->op != NX_CRYPTO_DECRYPT)`
- * (2 conditions, port/netxduo/nx_crypto_aes_alt.c@priv_must_fallback)
+ * (2 conditions, port/netxduo/src/nx_crypto_aes_alt.c@priv_must_fallback)
  *  - C1 = (op != NX_CRYPTO_ENCRYPT)
  *  - C2 = (op != NX_CRYPTO_DECRYPT)
  *

@@ -1,9 +1,9 @@
 /**
  * @file test_ux_dcd_ra8_usb.c
- * @brief MC/DC vector tests for port/usbx/ux_dcd_ra8_usb.c
+ * @brief MC/DC vector tests for port/usbx/src/ux_dcd_ra8_usb.c
  *
  * @details
- * The USBX device-controller-driver bridge ``port/usbx/ux_dcd_ra8_usb.c``
+ * The USBX device-controller-driver bridge ``port/usbx/src/ux_dcd_ra8_usb.c``
  * is not part of the host-compiled ``ra8_core_hal`` aggregate library
  * because it depends on the USBX + ThreadX runtimes (UX_SLAVE_*,
  * _ux_system_slave, _ux_device_stack_control_request_process,
@@ -15,7 +15,7 @@
  * exercising condition-equivalent helpers that preserve the operator,
  * operand types, and short-circuit semantics of the source decision.
  * This file mirrors each compound boolean decision from
- * ``port/usbx/ux_dcd_ra8_usb.c`` as a ``static inline`` helper using
+ * ``port/usbx/src/ux_dcd_ra8_usb.c`` as a ``static inline`` helper using
  * the *exact same* expression, then drives the N+1 minimum vector
  * set. The ``@par MC/DC:`` block on each test cites the original
  * source line so a reviewer can verify the helper is identical.
@@ -41,7 +41,7 @@
 /**
  * @brief Mirror of the transfer-request null-guard decision.
  *
- * Source: port/usbx/ux_dcd_ra8_usb.c
+ * Source: port/usbx/src/ux_dcd_ra8_usb.c
  *   `if (tr == nullptr || tr->ux_slave_transfer_request_endpoint == nullptr)`
  */
 static inline bool internal_mirror_xfer_null_guard(bool tr_is_null, const void* ep)
@@ -52,7 +52,7 @@ static inline bool internal_mirror_xfer_null_guard(bool tr_is_null, const void* 
 /**
  * @brief Mirror of the EP0 IN-data length + pointer guard.
  *
- * Source: port/usbx/ux_dcd_ra8_usb.c
+ * Source: port/usbx/src/ux_dcd_ra8_usb.c
  *   `if (tr->ux_slave_transfer_request_in_transfer_length != 0U &&
  *        tr->ux_slave_transfer_request_data_pointer != nullptr)`
  */
@@ -64,7 +64,7 @@ static inline bool internal_mirror_ep0_in_guard(uint32_t in_len, const void* dat
 /**
  * @brief Mirror of the endpoint-create pipe-range guard.
  *
- * Source: port/usbx/ux_dcd_ra8_usb.c
+ * Source: port/usbx/src/ux_dcd_ra8_usb.c
  *   `if (pipe == 0U || pipe >= (uint8_t)k_ux_dcd_ra8_usb_max_pipes)`
  */
 static inline bool internal_mirror_ep_create_guard(uint8_t pipe)
@@ -78,7 +78,7 @@ static inline bool internal_mirror_ep_create_guard(uint8_t pipe)
 /**
  * @brief Mirror of the SETUP-dispatch null + system-bound guard.
  *
- * Source: port/usbx/ux_dcd_ra8_usb.c
+ * Source: port/usbx/src/ux_dcd_ra8_usb.c
  *   `if (setup == nullptr || _ux_system_slave == UX_NULL)`
  */
 static inline bool internal_mirror_dispatch_setup_guard(const void* setup,
@@ -90,7 +90,7 @@ static inline bool internal_mirror_dispatch_setup_guard(const void* setup,
 /**
  * @brief Mirror of the SQMON rising-edge SETUP-dispatch guard.
  *
- * Source: port/usbx/ux_dcd_ra8_usb.c
+ * Source: port/usbx/src/ux_dcd_ra8_usb.c
  *   `if (now_sqmon != 0U && s_prev_dcpctr_sqmon == 0U)`
  */
 static inline bool internal_mirror_sqmon_edge_guard(uint16_t now_sqmon, uint16_t prev_sqmon)
@@ -107,7 +107,7 @@ static inline bool internal_mirror_sqmon_edge_guard(uint16_t now_sqmon, uint16_t
  *
  * @par MC/DC:
  * Decision: `if (tr == nullptr || tr->ux_slave_transfer_request_endpoint == nullptr)`
- * (2 conditions, port/usbx/ux_dcd_ra8_usb.c)
+ * (2 conditions, port/usbx/src/ux_dcd_ra8_usb.c)
  *  - C1 = (tr == nullptr)
  *  - C2 = (tr->endpoint == nullptr)
  *
@@ -138,7 +138,7 @@ static void test_mcdc_xfer_request_null_guard(void)
  *
  * @par MC/DC:
  * Decision: `if (tr->in_transfer_length != 0U && tr->data_pointer != nullptr)`
- * (2 conditions, port/usbx/ux_dcd_ra8_usb.c)
+ * (2 conditions, port/usbx/src/ux_dcd_ra8_usb.c)
  *  - C1 = (in_transfer_length != 0U)
  *  - C2 = (data_pointer != nullptr)
  *
@@ -168,7 +168,7 @@ static void test_mcdc_ep0_in_data_guard(void)
  *
  * @par MC/DC:
  * Decision: `if (pipe == 0U || pipe >= (uint8_t)k_ux_dcd_ra8_usb_max_pipes)`
- * (2 conditions, port/usbx/ux_dcd_ra8_usb.c)
+ * (2 conditions, port/usbx/src/ux_dcd_ra8_usb.c)
  *  - C1 = (pipe == 0U)
  *  - C2 = (pipe >= 10U)
  *
@@ -195,7 +195,7 @@ static void test_mcdc_ep_create_pipe_range(void)
  *
  * @par MC/DC:
  * Decision: `if (setup == nullptr || _ux_system_slave == UX_NULL)`
- * (2 conditions, port/usbx/ux_dcd_ra8_usb.c)
+ * (2 conditions, port/usbx/src/ux_dcd_ra8_usb.c)
  *  - C1 = (setup == nullptr)
  *  - C2 = (_ux_system_slave == UX_NULL)
  *
@@ -227,7 +227,7 @@ static void test_mcdc_dispatch_setup_guard(void)
  *
  * @par MC/DC:
  * Decision: `if (now_sqmon != 0U && s_prev_dcpctr_sqmon == 0U)`
- * (2 conditions, port/usbx/ux_dcd_ra8_usb.c@internal_dvst_default_state)
+ * (2 conditions, port/usbx/src/ux_dcd_ra8_usb.c@internal_dvst_default_state)
  *  - C1 = (now_sqmon != 0U)
  *  - C2 = (s_prev_dcpctr_sqmon == 0U)
  *

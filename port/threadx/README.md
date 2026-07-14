@@ -5,10 +5,18 @@ ships under `libs/third_party/threadx/ports/cortex_m85/gnu/`.
 
 ## What lives here
 
-- `tx_user.h` -- RA8D2-tuned tunables (1 ms tick, 32 priorities, single
+Headers live under `inc/`; sources under `src/`, organised by which Cortex
+core they target. The RA8 is dual-core, so port glue lives in a per-core
+directory: `src/cortex_m85/` for the primary M85, with a `src/cortex_m33/`
+peer added if the secondary core ever needs its own port glue. ThreadX runs
+on the M85 today, so only `src/cortex_m85/` exists.
+
+- `inc/tx_user.h` -- RA8-tuned tunables (1 ms tick, 32 priorities, single
   mode secure, etc.). Both the ThreadX library build and any consuming
   application TU pick this up via `TX_INCLUDE_USER_DEFINE_FILE`.
-- `cortex_m85/tx_initialize_low_level.S` -- replacement for the upstream
+- `src/cortex_m85/tx_systick_ready.c` -- latch that gates the SysTick handler
+  until `tx_kernel_enter` has run (Issue #8).
+- `src/cortex_m85/tx_initialize_low_level.S` -- replacement for the upstream
   port's low-level init. Drops the upstream's `_vectors`,
   `HardFault_Handler`, `UsageFault_Handler`, and `SysTick_Handler`
   symbols (which would collide with the project's `vector_table.c`),

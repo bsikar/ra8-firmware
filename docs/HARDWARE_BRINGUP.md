@@ -386,7 +386,7 @@ with the J-Link probe (SN 1086567198).
 
 ### USB enumeration root cause (now confirmed by hardware)
 
-`port/usbx/ux_dcd_ra8_usb.c::ux_dcd_ra8_usb_initialize` calls
+`port/usbx/src/ux_dcd_ra8_usb.c::ux_dcd_ra8_usb_initialize` calls
 `ra8_usb_attach_handler(internal_event_cb, nullptr)` -- so the DCD
 bridge has a callback waiting for events. But that callback only
 fires when something invokes `ra8_usb_dispatch(speed)`. Grep across
@@ -447,7 +447,7 @@ The all-ones response is the diagnostic floor: **the chip is not responding at a
    print the `[LX_XSPI] RDID returned 0xNNN` log line before
    `demo_panic_halt`. Diagnostic now stashed in SRAM via
    `g_ra8_xspi_rdid_observed` (defined in
-   `port/levelx/lx_nor_driver_ra8_xspi.c`). Read it with JLink after
+   `port/levelx/src/lx_nor_driver_ra8_xspi.c`). Read it with JLink after
    the panic halt:
 
    1. Look up the global's address for the app under test:
@@ -734,7 +734,7 @@ app). Hardware results below.
 | threadx_usbx_cdc_demo | PASS | 0x020002A0 | __tx_ts_wait tx_thread_schedule.S:268 |
 | uart_hello | PASS | 0x02000CAA | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
 | usb_cdc_echo | PASS | 0x0200029A | __tx_ts_wait tx_thread_schedule.S:264 |
-| usb_hid_device | UNKNOWN | 0x02002DD0 | ux_dcd_ra8_usb_irq port/usbx/ux_dcd_ra8_usb.c |
+| usb_hid_device | UNKNOWN | 0x02002DD0 | ux_dcd_ra8_usb_irq port/usbx/src/ux_dcd_ra8_usb.c |
 | usb_host_cdc_echo | PASS | 0x0200117E | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
 | usb_host_keyboard | PASS | 0x02001156 | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
 | usb_host_msc_browse | PASS | 0x0200142E | ra8_delay_ms libs/ra8_core/src/ra8_time.c |
@@ -755,7 +755,7 @@ app). Hardware results below.
   `system_init.c`, consistent with the documented intentional spin
   when neither bank A nor bank B holds a valid image (see "ra8_bootloader
   spin is intentional" section above). `usb_hid_device` halted inside
-  `ux_dcd_ra8_usb_irq` (port/usbx/ux_dcd_ra8_usb.c), i.e. an active
+  `ux_dcd_ra8_usb_irq` (port/usbx/src/ux_dcd_ra8_usb.c), i.e. an active
   USB ISR on the M85 -- chip is alive and servicing interrupts. Neither
   matches the harness PASS keyword set, so they fall through to UNKNOWN.
 - All four `WIP` rows reproduce previously documented init-failure
@@ -958,7 +958,7 @@ Logic-analyzer-class debug needed; out of scope for this sweep.
 ## 2026-05-02 LevelX OCTA pin readback verification
 
 Added a new JLink-readable global to the LevelX-on-xSPI driver
-(`port/levelx/lx_nor_driver_ra8_xspi.c`), `g_ra8_xspi_pin_observed`,
+(`port/levelx/src/lx_nor_driver_ra8_xspi.c`), `g_ra8_xspi_pin_observed`,
 which captures the 5-bit `PSEL` and the `PMR` bit of every OCTA
 pin AFTER `ra8_board_xspi_pins_init` returns. Goal: confirm /
 disprove the long-standing hypothesis that one of the 12 pins in

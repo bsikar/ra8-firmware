@@ -2,7 +2,7 @@
 # cmake/netxduo.cmake
 #
 # Top-level integration for the vendored NetX Duo TCP/IP stack and the
-# bundled NetX Crypto / NetX Secure libraries on RA8D2 (Cortex-M85).
+# bundled NetX Crypto / NetX Secure libraries on RA8 (Cortex-M85).
 #
 # Exposes the `RA8_USE_NETXDUO` option; when ON, this file:
 #

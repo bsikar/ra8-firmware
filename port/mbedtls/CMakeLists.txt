@@ -3,7 +3,7 @@
 #
 # Defines the `mbedtls_port_ra8_rsip` interface library that exposes
 # the project-supplied Mbed TLS configuration headers and the
-# scaffolding for routing AES + SHA-256 primitives through the RA8D2
+# scaffolding for routing AES + SHA-256 primitives through the RA8
 # ``ra8_rsip`` HAL.
 #
 # Mbed TLS 4.x replaced the legacy ``MBEDTLS_AES_ALT`` /
@@ -32,7 +32,7 @@ cmake_minimum_required(VERSION 3.20)
 add_library(mbedtls_port_ra8_rsip INTERFACE)
 
 target_include_directories(mbedtls_port_ra8_rsip INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc
 )
 
 # In Mbed TLS 4.x the ALT-style RSIP shims are not dispatched to. The
@@ -44,5 +44,5 @@ set_property(GLOBAL PROPERTY RA8_MBEDTLS_PORT_SOURCES "")
 # Track the config header path so cmake/mbedtls.cmake can pin
 # MBEDTLS_CONFIG_FILE to it.
 set_property(GLOBAL PROPERTY RA8_MBEDTLS_CONFIG_FILE
-    ${CMAKE_CURRENT_SOURCE_DIR}/mbedtls_config.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc/mbedtls_config.h
 )

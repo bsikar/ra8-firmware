@@ -19,7 +19,7 @@
  * - Hide the MSTP / clock-gate dance behind ``ra8_net_pal_init``.
  *
  * The PAL is intentionally stack-agnostic. NetX Duo's driver
- * (``port/netxduo/nx_ether_driver_ra8_eth.c``) wraps this API; no
+ * (``port/netxduo/src/nx_ether_driver_ra8_eth.c``) wraps this API; no
  * NetX Duo types appear in this header. The same is true for any
  * future TCPDirect or zero-stack consumer.
  *

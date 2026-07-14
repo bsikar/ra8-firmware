@@ -397,7 +397,7 @@ static void demo_thread_entry(ULONG thread_input)
     }
     /* Sleep ``k_demo_tick_ms`` between writes so a human can watch
      * the flash actually being beat on. ThreadX's tick rate is set by
-     * ``port/threadx/tx_user.h``; one tick is one millisecond at the
+     * ``port/threadx/inc/tx_user.h``; one tick is one millisecond at the
      * project default of ``TX_TIMER_TICKS_PER_SECOND = 1000``. */
     tx_thread_sleep((ULONG)k_demo_tick_ms);
   }

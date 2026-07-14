@@ -364,7 +364,7 @@ per-file:line entry. The full inventory is:
 | `libs/ra8_reflow/src/ra8_reflow_parse.c`            | 62 |
 | `libs/ra8_reflow/src/ra8_reflow_render.c`           | 122 |
 | `port/lwip/arch/sys_arch.c`                       | 158, 166, 181, 224, 230, 246, 253, 280, 286, 292, 299, 316, 333, 341, 355, 380, 398, 405, 452 |
-| `port/nimble/nimble_npl_threadx.c`                | 354, 398, 417 |
+| `port/nimble/src/nimble_npl_threadx.c`                | 354, 398, 417 |
 
 Per-line review notes:
 
@@ -376,7 +376,7 @@ Per-line review notes:
     blocks or on function-signature lines that the `misra.py` addon
     has misattributed from a nearby expression in the dump.
   - The `port/lwip/arch/sys_arch.c` and
-    `port/nimble/nimble_npl_threadx.c` hits are trivial null-check
+    `port/nimble/src/nimble_npl_threadx.c` hits are trivial null-check
     chains of the form `(p != NULL && p->field != 0U)` plus the
     `ticks * 1000U / hz` and `ms * hz + 999U` tick-conversion
     statements -- both squarely covered by case 1 (`* /` over `+ -`)
@@ -433,7 +433,7 @@ referencing the accepted-as-implicit category.
 
   | File                                        | Hits |
   |---------------------------------------------|-----:|
-  | `port/nimble/nimble_npl_threadx.c`          |  40  |
+  | `port/nimble/src/nimble_npl_threadx.c`          |  40  |
   | `port/lwip/arch/sys_arch.c`                 |  31  |
   | `libs/ra8_net/src/ra8_net_ipv4.c`             |  11  |
   | `libs/ra8_fs/src/ra8_fs_fat.c`                |  11  |
@@ -500,7 +500,7 @@ upgrade can confirm both root causes are gone.
   the four representative files
   (`libs/ra8_mpu/src/ra8_mpu.c`,
   `libs/ra8_ble_host/src/ra8_ble_gatt.c`,
-  `port/nimble/nimble_npl_threadx.c`,
+  `port/nimble/src/nimble_npl_threadx.c`,
   `port/lwip/arch/sys_arch.c`) before this register was authored.
 - Module-internal functions are marked `static` and are caught
   separately by clang-tidy's `misc-unused-using-decls` and gcc's

@@ -1,9 +1,9 @@
 /**
  * @file test_lx_nor_driver_ra8_xspi.c
- * @brief MC/DC vector tests for port/levelx/lx_nor_driver_ra8_xspi.c
+ * @brief MC/DC vector tests for port/levelx/src/lx_nor_driver_ra8_xspi.c
  *
  * @details
- * The LevelX NOR-flash driver glue ``port/levelx/lx_nor_driver_ra8_xspi.c``
+ * The LevelX NOR-flash driver glue ``port/levelx/src/lx_nor_driver_ra8_xspi.c``
  * is not part of the host-compiled ``ra8_core_hal`` aggregate library
  * because it depends on the LevelX + ThreadX runtimes (LX_NOR_FLASH,
  * LX_NULL, ULONG, lx_nor_flash_open) that are vendored separately and
@@ -14,7 +14,7 @@
  * exercising condition-equivalent helpers that preserve the operator,
  * operand types, and short-circuit semantics of the source decision.
  * This file mirrors each compound boolean decision from
- * ``port/levelx/lx_nor_driver_ra8_xspi.c`` as a ``static inline``
+ * ``port/levelx/src/lx_nor_driver_ra8_xspi.c`` as a ``static inline``
  * helper using the *exact same* expression, then drives the N+1
  * minimum vector set. The ``@par MC/DC:`` block on each test cites
  * the original source line so a reviewer can verify the helper is
@@ -59,7 +59,7 @@ internal_mirror_nor_write_guard(const void* flash, const void* src, uint32_t wor
  *
  * @par MC/DC:
  * Decision: `if ((flash_address == LX_NULL) || (destination == LX_NULL) || (words == 0U))`
- * (3 conditions, port/levelx/lx_nor_driver_ra8_xspi.c)
+ * (3 conditions, port/levelx/src/lx_nor_driver_ra8_xspi.c)
  *  - C1 = (flash_address == LX_NULL)
  *  - C2 = (destination == LX_NULL)
  *  - C3 = (words == 0U)
@@ -101,7 +101,7 @@ static void test_mcdc_nor_read_guard(void)
  *
  * @par MC/DC:
  * Decision: `if ((flash_address == LX_NULL) || (source == LX_NULL) || (words == 0U))`
- * (3 conditions, port/levelx/lx_nor_driver_ra8_xspi.c)
+ * (3 conditions, port/levelx/src/lx_nor_driver_ra8_xspi.c)
  *  - C1 = (flash_address == LX_NULL)
  *  - C2 = (source == LX_NULL)
  *  - C3 = (words == 0U)

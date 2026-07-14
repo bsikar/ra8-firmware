@@ -1,9 +1,9 @@
 /**
  * @file test_ux_hcd_ra8_usb.c
- * @brief MC/DC vector tests for port/usbx/ux_hcd_ra8_usb.c
+ * @brief MC/DC vector tests for port/usbx/src/ux_hcd_ra8_usb.c
  *
  * @details
- * The USBX host-controller-driver bridge ``port/usbx/ux_hcd_ra8_usb.c``
+ * The USBX host-controller-driver bridge ``port/usbx/src/ux_hcd_ra8_usb.c``
  * is not part of the host-compiled ``ra8_core_hal`` aggregate library
  * because it depends on the USBX + ThreadX runtimes (UX_HCD_*,
  * _ux_system_host, _ux_host_stack_*, tx_semaphore_*) that are
@@ -15,7 +15,7 @@
  * exercising condition-equivalent helpers that preserve the operator,
  * operand types, and short-circuit semantics of the source decision.
  * This file mirrors each compound boolean decision from
- * ``port/usbx/ux_hcd_ra8_usb.c`` as a ``static inline`` helper using
+ * ``port/usbx/src/ux_hcd_ra8_usb.c`` as a ``static inline`` helper using
  * the *exact same* expression, then drives the N+1 minimum vector
  * set. The ``@par MC/DC:`` block on each test cites the original
  * source line so a reviewer can verify the helper is identical.
@@ -67,7 +67,7 @@ static inline bool internal_mirror_h_init_guard(const void* system_host, const v
  *
  * @par MC/DC:
  * Decision: `if (pipe == 0U || pipe >= 10U)`
- * (2 conditions, port/usbx/ux_hcd_ra8_usb.c)
+ * (2 conditions, port/usbx/src/ux_hcd_ra8_usb.c)
  *  - C1 = (pipe == 0U)
  *  - C2 = (pipe >= 10U)
  *
@@ -93,7 +93,7 @@ static void test_mcdc_h_ep_create_pipe_range(void)
  *
  * @par MC/DC:
  * Decision: `if (tr == nullptr || tr->ux_transfer_request_endpoint == nullptr)`
- * (2 conditions, port/usbx/ux_hcd_ra8_usb.c)
+ * (2 conditions, port/usbx/src/ux_hcd_ra8_usb.c)
  *  - C1 = (tr == nullptr)
  *  - C2 = (tr->endpoint == nullptr)
  *
@@ -121,7 +121,7 @@ static void test_mcdc_h_xfer_request_null_guard(void)
  *
  * @par MC/DC:
  * Decision: `if (tr->requested_length != 0U && tr->data_pointer != nullptr)`
- * (2 conditions, port/usbx/ux_hcd_ra8_usb.c)
+ * (2 conditions, port/usbx/src/ux_hcd_ra8_usb.c)
  *  - C1 = (requested_length != 0U)
  *  - C2 = (data_pointer != nullptr)
  *
@@ -149,7 +149,7 @@ static void test_mcdc_h_xfer_payload_guard(void)
  *
  * @par MC/DC:
  * Decision: `if (_ux_system_host == UX_NULL || _ux_system_host->ux_system_host_hcd_array == UX_NULL)`
- * (2 conditions, port/usbx/ux_hcd_ra8_usb.c)
+ * (2 conditions, port/usbx/src/ux_hcd_ra8_usb.c)
  *  - C1 = (_ux_system_host == UX_NULL)
  *  - C2 = (_ux_system_host->ux_system_host_hcd_array == UX_NULL)
  *

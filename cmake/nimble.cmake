@@ -2,7 +2,7 @@
 # cmake/nimble.cmake
 #
 # Top-level integration of the vendored Apache NimBLE host stack on
-# RA8D2. Exposes the `RA8_USE_NIMBLE` option; when ON, this file:
+# RA8. Exposes the `RA8_USE_NIMBLE` option; when ON, this file:
 #
 #   1. Verifies that ThreadX is also enabled (the NimBLE Native
 #      Porting Layer maps onto ThreadX TX_MUTEX / TX_SEMAPHORE /
@@ -89,7 +89,7 @@ target_include_directories(nimble SYSTEM INTERFACE
     ${_RA8_NIMBLE_VENDOR_DIR}/porting/nimble/include
     # Upstream ``nimble/nimble_npl.h`` chains to ``nimble/nimble_npl_os.h``
     # which is provided per-port. Our ThreadX NPL adapter
-    # (``port/nimble/nimble_npl_threadx.h``) does not yet ship that shim,
+    # (``port/nimble/inc/nimble_npl_threadx.h``) does not yet ship that shim,
     # so the upstream "dummy" port's header is used to satisfy the chain
     # for translation-units that only reference NimBLE host APIs by
     # function name (e.g. libs/ra8_ble_host/src/ra8_ble_*.c). Code paths
@@ -106,7 +106,7 @@ target_include_directories(nimble SYSTEM INTERFACE
 target_compile_definitions(nimble INTERFACE RA8_TARGET_BUILD)
 
 # NimBLE's NPL header pulls ThreadX primitives in via our
-# port/nimble/nimble_npl_threadx.h shim. Inherit the ThreadX include
+# port/nimble/inc/nimble_npl_threadx.h shim. Inherit the ThreadX include
 # dirs from the `threadx` target rather than hard-coding them.
 target_link_libraries(nimble INTERFACE threadx)
 

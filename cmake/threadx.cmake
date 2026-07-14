@@ -1,7 +1,7 @@
 #
 # cmake/threadx.cmake
 #
-# Top-level integration for Eclipse ThreadX on RA8D2 (Cortex-M85).
+# Top-level integration for Eclipse ThreadX on the RA8 family (Cortex-M85).
 #
 # Usage from a per-app CMakeLists.txt:
 #
@@ -18,9 +18,9 @@
 #     named `threadx`.
 #   - Compiles every .S file under the upstream M85/GNU port
 #     EXCEPT `tx_initialize_low_level.S`, which we replace with the
-#     project-tuned version under `port/threadx/cortex_m85/`.
+#     project-tuned version under `port/threadx/src/cortex_m85/`.
 #   - Forces `TX_INCLUDE_USER_DEFINE_FILE` so ThreadX picks up
-#     `port/threadx/tx_user.h` for the firmware's tick rate, stack
+#     `port/threadx/inc/tx_user.h` for the firmware's tick rate, stack
 #     sizes, and feature flags.
 #   - Exposes the public include dirs through PUBLIC includes on the
 #     `threadx` target, so any consumer that links against it can
@@ -73,7 +73,7 @@ file(GLOB RA8_THREADX_COMMON_SOURCES CONFIGURE_DEPENDS
 #
 # We pull every .S and .c file under ports/cortex_m85/gnu/src/ EXCEPT
 # `tx_initialize_low_level.S` -- that one is replaced by our own under
-# port/threadx/cortex_m85/.
+# port/threadx/src/cortex_m85/.
 # ---------------------------------------------------------------------------
 file(GLOB RA8_THREADX_PORT_ASM CONFIGURE_DEPENDS
      "${RA8_THREADX_M85_GNU}/src/*.S")
@@ -86,7 +86,7 @@ list(FILTER RA8_THREADX_PORT_ASM
 
 # Project-tuned low-level init.
 set(RA8_THREADX_PROJECT_LOW_LEVEL
-    "${RA8_THREADX_PORT_DIR}/cortex_m85/tx_initialize_low_level.S")
+    "${RA8_THREADX_PORT_DIR}/src/cortex_m85/tx_initialize_low_level.S")
 
 if(NOT EXISTS "${RA8_THREADX_PROJECT_LOW_LEVEL}")
     message(FATAL_ERROR
@@ -102,7 +102,7 @@ add_library(threadx STATIC
     ${RA8_THREADX_PORT_ASM}
     ${RA8_THREADX_PORT_C}
     ${RA8_THREADX_PROJECT_LOW_LEVEL}
-    "${RA8_THREADX_PORT_DIR}/cortex_m85/tx_systick_ready.c"
+    "${RA8_THREADX_PORT_DIR}/src/cortex_m85/tx_systick_ready.c"
 )
 
 # Vendor headers + project tx_user.h. Public so app TUs can #include
@@ -112,7 +112,7 @@ target_include_directories(threadx SYSTEM PUBLIC
     "${RA8_THREADX_M85_GNU}/inc"
 )
 target_include_directories(threadx PUBLIC
-    "${RA8_THREADX_PORT_DIR}"
+    "${RA8_THREADX_PORT_DIR}/inc"
 )
 
 # Force ThreadX to pick up our tx_user.h on every TU it compiles, and
@@ -140,5 +140,5 @@ target_compile_options(threadx PRIVATE
 )
 
 message(STATUS "ThreadX: ${CMAKE_PROJECT_NAME}/threadx target configured")
-message(STATUS "ThreadX: tx_user.h     = ${RA8_THREADX_PORT_DIR}/tx_user.h")
+message(STATUS "ThreadX: tx_user.h     = ${RA8_THREADX_PORT_DIR}/inc/tx_user.h")
 message(STATUS "ThreadX: low-level S   = ${RA8_THREADX_PROJECT_LOW_LEVEL}")

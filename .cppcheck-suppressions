@@ -249,7 +249,7 @@ unusedStructMember:libs/ra8_ble_host/inc/ra8_ble_host.h
 # unusedStructMember in NimBLE NPL-ThreadX bridge headers. Fields are
 # consumed by NimBLE host code at link time, not visible to the per-TU
 # cppcheck pass.
-unusedStructMember:port/nimble/nimble_npl_threadx.h
+unusedStructMember:port/nimble/inc/nimble_npl_threadx.h
 
 # Cortex-M exception-frame and net-internal struct fields populated by
 # fault handlers / future net-stack consumers; not yet visible to the
@@ -386,9 +386,9 @@ misra-c2012-12.1:port/lwip/arch/sys_arch.c:380
 misra-c2012-12.1:port/lwip/arch/sys_arch.c:398
 misra-c2012-12.1:port/lwip/arch/sys_arch.c:405
 misra-c2012-12.1:port/lwip/arch/sys_arch.c:452
-misra-c2012-12.1:port/nimble/nimble_npl_threadx.c:354
-misra-c2012-12.1:port/nimble/nimble_npl_threadx.c:398
-misra-c2012-12.1:port/nimble/nimble_npl_threadx.c:417
+misra-c2012-12.1:port/nimble/src/nimble_npl_threadx.c:354
+misra-c2012-12.1:port/nimble/src/nimble_npl_threadx.c:398
+misra-c2012-12.1:port/nimble/src/nimble_npl_threadx.c:417
 
 # False positive: cppcheck flags `n < t->rx_len` as "always false" because
 # n was assigned `(rx_len < max_len) ? rx_len : max_len`. The condition is
@@ -419,7 +419,7 @@ unusedStructMember:libs/ra8_hal/inc/ra8_usb_haud.h
 unusedStructMember:libs/ra8_hal/inc/ra8_usb_cdc.h
 unusedStructMember:libs/ra8_hal/inc/ra8_usb_composite.h
 unusedStructMember:libs/ra8_hal/inc/ra8_usb_paud.h
-unusedStructMember:port/usbx/ux_dcd_ra8_usb.c
+unusedStructMember:port/usbx/src/ux_dcd_ra8_usb.c
 
 # ---------------------------------------------------------------------------
 # Weak-extern address compare in the shared SysTick handler. The

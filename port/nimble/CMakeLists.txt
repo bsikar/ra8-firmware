@@ -32,7 +32,7 @@ cmake_minimum_required(VERSION 3.20)
 add_library(nimble_port_threadx INTERFACE)
 
 target_include_directories(nimble_port_threadx INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc
 )
 
 target_link_libraries(nimble_port_threadx INTERFACE
@@ -44,6 +44,6 @@ target_link_libraries(nimble_port_threadx INTERFACE
 # their own add_executable() globs. Same pattern used by
 # port/filex/CMakeLists.txt.
 set_property(GLOBAL PROPERTY RA8_NIMBLE_PORT_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/ble_hci_ra8_ble.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/nimble_npl_threadx.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ble_hci_ra8_ble.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/nimble_npl_threadx.c
 )

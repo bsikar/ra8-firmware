@@ -11,7 +11,7 @@
  * scheduling. This is the canonical "is the RTOS alive?" demo and the
  * first piece of code that exercises:
  *
- *   - The project's `port/threadx/cortex_m85/tx_initialize_low_level.S`
+ *   - The project's `port/threadx/src/cortex_m85/tx_initialize_low_level.S`
  *     bring-up (SysTick at 1 ms, system stack pointer save, priority
  *     fix-up).
  *   - SysTick_Handler routed to `_tx_timer_interrupt` (override of the
@@ -69,7 +69,7 @@
  *
  * @details
  * 1 KiB is comfortably above `TX_MINIMUM_STACK` (set to 512 in
- * `port/threadx/tx_user.h`) and accommodates the FPU + Helium register
+ * `port/threadx/inc/tx_user.h`) and accommodates the FPU + Helium register
  * save area on a context switch. Static allocation keeps the demo
  * compatible with NASA Power of 10 Rule 3 (no dynamic memory).
  */
@@ -88,7 +88,7 @@ typedef enum : uint8_t {
  * @brief Sleep durations expressed in ThreadX ticks.
  *
  * @details
- * `port/threadx/tx_user.h` pins the tick rate to 1000 Hz, so a tick is
+ * `port/threadx/inc/tx_user.h` pins the tick rate to 1000 Hz, so a tick is
  * 1 ms. `k_blink_a_ticks` therefore lights LED1 at 1 Hz and
  * `k_blink_b_ticks` lights LED2 at 0.5 Hz.
  */
@@ -286,7 +286,7 @@ int32_t main(void)
 {
   /* CGC bring-up FIRST. tx_initialize_low_level.S programs SysTick
    * with a reload of (1 GHz / 1000 - 1) = 999999 cycles per tick
-   * (chip HUM Ch 11 CGC, plus our port/threadx/cortex_m85/
+   * (chip HUM Ch 11 CGC, plus our port/threadx/src/cortex_m85/
    * tx_initialize_low_level.S RA8_BOOT_CLOCK_HZ value). If the chip
    * is still on MOCO (~8.4 MHz) at scheduler-enter time, that
    * 999999-cycle reload takes ~119 ms wallclock instead of 1 ms --

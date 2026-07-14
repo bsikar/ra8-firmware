@@ -898,7 +898,7 @@ static void test_mcdc_init_name_copy_loop(void)
  * via any UNIT_TEST hook. The task plan forbids modifying production
  * code, so per IEC 61508 / DO-178C 6.4.4.3 these are documented as
  * harness-unreachable; their MC/DC is taken on the target build via the
- * NimBLE controller event path (port/nimble/ble_hci_ra8_ble.c) where
+ * NimBLE controller event path (port/nimble/src/ble_hci_ra8_ble.c) where
  * internal_evt_trampoline is registered as the live HCI event sink.
  *
  * @par Internal note (ra8_ble_att.c lines 286/305/385/530):

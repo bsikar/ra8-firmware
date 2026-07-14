@@ -2,7 +2,7 @@
 # port/netxduo/CMakeLists.txt
 #
 # Defines the `netxduo_port_ra8_eth` interface library that exposes
-# the bridge between vendored NetX Duo and the RA8D2 ``ra8_eth`` /
+# the bridge between vendored NetX Duo and the RA8 ``ra8_eth`` /
 # ``ra8_rsip`` HALs. The shim has three pieces:
 #
 #   - ``nx_ether_driver_ra8_eth.c`` -- NetX Duo network driver callback
@@ -30,13 +30,13 @@ cmake_minimum_required(VERSION 3.20)
 add_library(netxduo_port_ra8_eth INTERFACE)
 
 target_include_directories(netxduo_port_ra8_eth INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc
 )
 
 # Track the source list as a property so apps can splice it into
 # their own add_executable() globs.
 set_property(GLOBAL PROPERTY RA8_NETXDUO_PORT_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/nx_ether_driver_ra8_eth.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/nx_crypto_aes_alt.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/nx_crypto_sha256_alt.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/nx_ether_driver_ra8_eth.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/nx_crypto_aes_alt.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/nx_crypto_sha256_alt.c
 )
