@@ -144,7 +144,7 @@ Status: `[x]` DONE. Track of deliverables themselves; the
 ## Shared HAL substrate
 
 The substrate modules below are Ring 3 / `{World: S}` and underpin
-every per-peripheral driver from onwards.
+every per-peripheral driver that follows.
 
 ### ra8_mstp -- MSTP module-stop ref count
 
@@ -261,7 +261,7 @@ every per-peripheral driver from onwards.
 [x] Doxygen -- n/a
 ```
 
-### ra8_dma -- DMAC + DTC generic transfer (DMAC backend; DTC deferred to )
+### ra8_dma -- DMAC + DTC generic transfer (DMAC backend; DTC deferred)
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: S}`
 
@@ -359,7 +359,7 @@ every per-peripheral driver from onwards.
 
 ### ra8_dtc -- Data Transfer Controller
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (+ 3.8 closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}`
 
 ```
 [x] Init -- HUM Ch 18 "Data Transfer Controller (DTC)" p 784
@@ -409,7 +409,7 @@ every per-peripheral driver from onwards.
 
 ### ra8_sci -- Serial Communications Interface
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (+ 3.7b)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
 [x] Init -- HUM Ch 38 "Serial Communications Interface (SCI)" p 2174
@@ -418,8 +418,8 @@ every per-peripheral driver from onwards.
 [x] Polling RX -- HUM Ch 38 p 2174
 [x] Interrupt TX -- HUM Ch 38 p 2174
 [x] Interrupt RX -- HUM Ch 38 p 2174
-[x] DMA TX -- HUM Ch 38 p 2174 (ra8_sci_write_dma -- )
-[x] DMA RX -- HUM Ch 38 p 2174 (ra8_sci_read_dma -- )
+[x] DMA TX -- HUM Ch 38 p 2174 (ra8_sci_write_dma)
+[x] DMA RX -- HUM Ch 38 p 2174 (ra8_sci_read_dma)
 [x] Error status -- HUM Ch 38 p 2174
 [x] Runtime reconfig -- HUM Ch 38 p 2174
 [x] Power transition -- HUM Ch 38 p 2174
@@ -432,7 +432,7 @@ every per-peripheral driver from onwards.
 
 ### ra8_iic -- I2C Bus Interface
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (+ 3.7b)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
 [x] Init -- HUM Ch 39 "I2C Bus Interface (IIC)" p 2367
@@ -441,8 +441,8 @@ every per-peripheral driver from onwards.
 [x] Polling RX -- HUM Ch 39 p 2367
 [x] Interrupt TX -- HUM Ch 39 p 2367
 [x] Interrupt RX -- HUM Ch 39 p 2367
-[x] DMA TX -- HUM Ch 39 p 2367 (ra8_iic_write_dma -- )
-[x] DMA RX -- HUM Ch 39 p 2367 (ra8_iic_read_dma -- )
+[x] DMA TX -- HUM Ch 39 p 2367 (ra8_iic_write_dma)
+[x] DMA RX -- HUM Ch 39 p 2367 (ra8_iic_read_dma)
 [x] Error status -- HUM Ch 39 p 2367
 [x] Runtime reconfig -- HUM Ch 39 p 2367
 [x] Power transition -- HUM Ch 39 p 2367
@@ -455,7 +455,7 @@ every per-peripheral driver from onwards.
 
 ### ra8_spi -- Serial Peripheral Interface
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (+ 3.7b)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
 [x] Init -- HUM Ch 43 "Serial Peripheral Interface (SPI)" p 2877
@@ -464,8 +464,8 @@ every per-peripheral driver from onwards.
 [x] Polling RX -- HUM Ch 43 p 2877
 [x] Interrupt TX -- HUM Ch 43 p 2877
 [x] Interrupt RX -- HUM Ch 43 p 2877
-[x] DMA TX -- HUM Ch 43 p 2877 (ra8_spi_write_dma -- )
-[x] DMA RX -- HUM Ch 43 p 2877 (ra8_spi_read_dma -- )
+[x] DMA TX -- HUM Ch 43 p 2877 (ra8_spi_write_dma)
+[x] DMA RX -- HUM Ch 43 p 2877 (ra8_spi_read_dma)
 [x] Error status -- HUM Ch 43 p 2877
 [x] Runtime reconfig -- HUM Ch 43 p 2877
 [x] Power transition -- HUM Ch 43 p 2877
@@ -501,7 +501,7 @@ every per-peripheral driver from onwards.
 
 ### ra8_gpt -- General PWM Timer (full build-out)
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (+ 3.7b)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
 [x] Init -- HUM Ch 22 "General PWM Timer (GPT)" p 878
@@ -510,8 +510,8 @@ every per-peripheral driver from onwards.
 [x] Polling RX -- HUM Ch 22 p 878 (counter read == "polling rx")
 [x] Interrupt TX -- HUM Ch 22 p 878 (ovf/und/ccra/ccrb dispatch)
 [x] Interrupt RX -- HUM Ch 22 p 878 (ovf/und/ccra/ccrb dispatch)
-[x] DMA TX -- HUM Ch 22 p 878 (ra8_gpt_write_dma streams GTPR -- )
-[x] DMA RX -- HUM Ch 22 p 878 (ra8_gpt_read_dma captures GTCNT -- )
+[x] DMA TX -- HUM Ch 22 p 878 (ra8_gpt_write_dma streams GTPR)
+[x] DMA RX -- HUM Ch 22 p 878 (ra8_gpt_read_dma captures GTCNT)
 [x] Error status -- HUM Ch 22 p 878 (GTST OVF/UDF/CCRA/CCRB)
 [x] Runtime reconfig -- HUM Ch 22 p 878 (set_period, set_duty)
 [x] Power transition -- HUM Ch 22 p 878
@@ -533,7 +533,7 @@ list (docs/reference/CHAPTER_MAP.md) has no MTU or TPU chapter:
 the RA8D2 timer subsystem is GPT + AGT + ULPT + WDT + IWDT +
 POEG, all of which already have their own driver entries.
 
- shipped ``ra8_poeg`` (below) in the slot originally
+``ra8_poeg`` (below) shipped in the slot originally
 marked ``ra8_mtu + ra8_tpu``. This keeps timer coverage
 feature-complete on RA8D2 without introducing dead code for
 peripherals that do not exist on this MCU.
@@ -567,7 +567,7 @@ peripherals that do not exist on this MCU.
 
 ### ra8_adc -- 16-bit A/D Converter (ADC16H)
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
 [x] Init -- HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308
@@ -590,7 +590,7 @@ peripherals that do not exist on this MCU.
 
 ### ra8_dac_b -- 12-Bit D/A Converter (DAC12)
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
 [x] Init -- HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490
@@ -613,7 +613,7 @@ peripherals that do not exist on this MCU.
 
 ### ra8_acmphs -- High-Speed Analog Comparator
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
 [x] Init -- HUM Ch 56 "High-Speed Analog Comparator (ACMPHS)" p 3508
@@ -636,7 +636,7 @@ peripherals that do not exist on this MCU.
 
 ### ra8_rtc -- Realtime Clock
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}`
 
 ```
 [x] Init -- HUM Ch 26 "Realtime Clock (RTC)" p 1219
@@ -659,7 +659,7 @@ peripherals that do not exist on this MCU.
 
 ### ra8_wdt -- Watchdog Timer
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}`
 
 ```
 [x] Init -- HUM Ch 27 "Watchdog Timer (WDT)" p 1256
@@ -682,7 +682,7 @@ peripherals that do not exist on this MCU.
 
 ### ra8_iwdt -- Independent Watchdog Timer
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}`
 
 ```
 [x] Init -- HUM Ch 28 "Independent Watchdog Timer (IWDT)" p 1271
@@ -705,7 +705,7 @@ peripherals that do not exist on this MCU.
 
 ### ra8_ulpt -- Ultra-Low-Power Timer
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
 [x] Init -- HUM Ch 25 "Ultra-Low-Power Timer (ULPT)" p 1187
@@ -728,7 +728,7 @@ peripherals that do not exist on this MCU.
 
 ### ra8_agt -- Low Power Asynchronous General Purpose Timer
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
 [x] Init -- HUM Ch 24 "Low Power Asynchronous General Purpose Timer (AGT)" p 1164
@@ -751,7 +751,7 @@ peripherals that do not exist on this MCU.
 
 ### ra8_cac -- Clock Frequency Accuracy Measurement Circuit
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
 [x] Init -- HUM Ch 10 "Clock Frequency Accuracy Measurement Circuit (CAC)" p 420
@@ -774,7 +774,7 @@ peripherals that do not exist on this MCU.
 
 ### ra8_crc -- Cyclic Redundancy Check
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
 [x] Init -- HUM Ch 48 "Cyclic Redundancy Check (CRC)" p 3180
@@ -801,7 +801,7 @@ peripherals that do not exist on this MCU.
 
 ### ra8_xspi -- Octal Serial Peripheral Interface (OSPI)
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}`
 
 ```
 [x] Init -- HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986
@@ -824,7 +824,7 @@ peripherals that do not exist on this MCU.
 
 ### ra8_sdramc -- SDRAM controller (Buses chapter)
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}`
 
 ```
 [x] Init -- HUM Ch 15 "Buses" p 583
@@ -847,7 +847,7 @@ peripherals that do not exist on this MCU.
 
 ### ra8_canfd -- CAN with Flexible Data-rate
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
 [x] Init -- HUM Ch 41 "CAN with Flexible Data-rate (CANFD)" p 2702
@@ -870,7 +870,7 @@ peripherals that do not exist on this MCU.
 
 ### ra8_sdhi -- SD/MMC Host Interface
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
 [x] Init -- HUM Ch 47 "SD/MMC Host Interface (SDHI)" p 3122
@@ -893,7 +893,7 @@ peripherals that do not exist on this MCU.
 
 ### ra8_i3c -- I3C Bus Interface
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
 [x] Init -- HUM Ch 40 "I3C Bus Interface (I3C)" p 2445
@@ -920,7 +920,7 @@ peripherals that do not exist on this MCU.
 
 ### ra8_glcdc -- Graphics LCD Controller
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
 [x] Init -- HUM Ch 63 "Graphics LCD Controller (GLCDC)" p 3744
@@ -943,7 +943,7 @@ peripherals that do not exist on this MCU.
 
 ### ra8_pdm -- Pulse Density Modulation Interface
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
 [x] Init -- HUM Ch 49 "Pulse Density Modulation Interface (PDM-IF)" p 3190
@@ -966,7 +966,7 @@ peripherals that do not exist on this MCU.
 
 ### ra8_usb_fs -- USB 2.0 Full-Speed Module
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 Implemented in unified ``libs/ra8_hal/src/ra8_usb.c`` -- the FS
 and HS controllers share an identical SYSCFG / INTSTS0 / DCP
@@ -994,7 +994,7 @@ layout, so one source file multiplexes both speeds via
 
 ### ra8_usb_hs -- USB 2.0 High-Speed Module
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 Same unified ``libs/ra8_hal/src/ra8_usb.c`` source. The HS
 controller reuses the entire FS register surface plus
@@ -1140,9 +1140,9 @@ SYSCFG.HSE which the driver sets when ``speed == k_ra8_usb_speed_hs``.
 
 ### ra8_net_pal -- NetX Duo port glue
 
-`[x]` Status: DONE. `[Ring 4 / PAL] {World: NS}` (+ 7.4 closure)
+`[x]` Status: DONE. `[Ring 4 / PAL] {World: NS}`
 
- ships the full PAL API surface over ra8_eth:
+The port glue ships the full PAL API surface over ra8_eth:
 
 - `libs/ra8_net_pal/inc/ra8_net_pal.h` -- public init/deinit, MAC,
   link state, send/recv, async event handler.
@@ -1183,9 +1183,9 @@ full GWCA descriptor ring in Ring 3 first.
 
 ### ra8_usb_pal -- CherryUSB usb_dc port glue
 
-`[x]` Status: DONE. `[Ring 4 / PAL] {World: NS}` (+ 7.4 closure)
+`[x]` Status: DONE. `[Ring 4 / PAL] {World: NS}`
 
- ships the full PAL API surface over ra8_usb:
+The port glue ships the full PAL API surface over ra8_usb:
 
 - `libs/ra8_usb_pal/inc/ra8_usb_pal.h` -- public init/deinit,
   attach/detach, get_state, ep_open, ep_send, ep_recv, async
@@ -1229,13 +1229,13 @@ implement the full pipe FIFO surface in Ring 3 first.
 
 ### ra8_nsc -- NSC veneer scaffold
 
-`[x]` Status: DONE. `[Ring 4 / NSC] {World: NSC}` (+ 9.2 + 9.3 + 9.4)
+`[x]` Status: DONE. `[Ring 4 / NSC] {World: NSC}`
 
- shipped the first four veneer files plus the public
-``ra8_nsc.h`` contract. retrofitted every veneer with
+The scaffold shipped the first four veneer files plus the public
+``ra8_nsc.h`` contract. Later work retrofitted every veneer with
 ``RA8_NSC_VENEER`` (= ``__attribute__((cmse_nonsecure_entry))``)
-and the ``RA8_NSC_CHECK_NS_RANGE_R/RW`` macros. and 9.4
-expanded the surface to cover every Ring-3 comms + I/O driver.
+and the ``RA8_NSC_CHECK_NS_RANGE_R/RW`` macros, then expanded the
+surface to cover every Ring-3 comms + I/O driver.
 
 - `libs/ra8_nsc/inc/ra8_nsc.h` -- four core veneer prototypes and
   the ``k_ra8_nsc_*`` boundary-policy constants.
@@ -1274,7 +1274,7 @@ expanded the surface to cover every Ring-3 comms + I/O driver.
 [x] Runtime reconfig -- per-veneer args forwarded to Ring 3
 [x] Power transition -- n/a (ra8_pwr stays secure-side)
 [x] Register coverage-- n/a (veneers are software-only)
-[x] Unit tests -- tests/test_ra8_nsc*.c (+ key_vault)
+[x] Unit tests -- tests/test_ra8_nsc*.c (plus key_vault)
 [x] World tag -- {World: NSC}
 [x] HUM cross-ref -- forwards to cited Ring-3 drivers
 [x] Doxygen -- every veneer has @par TrustZone Safety
@@ -1340,7 +1340,7 @@ no-ops so the host-test build keeps working unchanged.
       forwards to the secure-side ra8_*_*. Test coverage in
       `tests/test_ra8_nsc_comms.c` (7 cases) confirms the
       forwarding path on the host build. The remaining IRQ /
-      DMA / dispatch surface is deferred to alongside
+      DMA / dispatch surface is deferred to land alongside
       the first NS-world consumer that exercises it.
 - [x] Session 9.4 -- HAL retrofit -- I/O (`ra8_gpt`, `ra8_adc`,
       `ra8_dac_b`, `ra8_acmphs`, `ra8_crc`, `ra8_glcdc`, `ra8_pdm`,

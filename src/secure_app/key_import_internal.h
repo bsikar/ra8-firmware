@@ -24,10 +24,10 @@
  * - Subsequent NS calls (challenge/response) reference the handle;
  *   the secure side translates handle->slot internally.
  *
- * The sealing MAC in is intentionally tiny -- a length-tagged
+ * The sealing MAC is intentionally tiny -- a length-tagged
  * XOR-fold rather than full CMAC -- because the real authentication
- * stage gets wired in once the SCE driver supports CMAC-on-import
- *. The handle layer, however, lands now so the rest of
+ * stage gets wired in once the SCE driver supports CMAC-on-import.
+ * The handle layer, however, lands now so the rest of
  * the stack can be built against it.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
