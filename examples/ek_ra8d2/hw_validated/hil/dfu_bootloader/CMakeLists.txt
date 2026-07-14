@@ -45,7 +45,7 @@ ra8_add_app(NAME dfu_bootloader STACK_BYTES 32768
 # mechanism on silicon) and turns the gate on. The bootloader's src/psa_verify_rng.c
 # provides a FAIL-CLOSED external-RNG hook (verify draws no randomness).
 set(_TF "${_d}/libs/third_party/tf-psa-crypto")
-set(_PORT "${_d}/port/mbedtls")
+set(_PORT "${_d}/port/mbedtls/inc")
 file(GLOB _TF_SRC CONFIGURE_DEPENDS
     ${_TF}/core/*.c ${_TF}/drivers/builtin/src/*.c ${_TF}/platform/*.c
     ${_TF}/utilities/*.c ${_TF}/extras/*.c)
