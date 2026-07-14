@@ -80,7 +80,7 @@ INPUT                  = README.md \
                          examples \
                          docs/reference/README.md
 INPUT_ENCODING         = UTF-8
-FILE_PATTERNS          = *.c *.h *.cpp *.hpp *.md
+FILE_PATTERNS          = *.c *.h *.cpp *.hpp *.md *.dox
 RECURSIVE              = YES
 
 # EXCLUDE: vendored libs and any build trees.
@@ -90,6 +90,8 @@ EXCLUDE                = libs/third_party \
                          docs/doxygen
 EXCLUDE_SYMLINKS       = YES
 EXCLUDE_PATTERNS       = */build/* \
+                         */build-*/* \
+                         */CMakeFiles/* \
                          */_deps/* \
                          */tests/build/* \
                          */third_party/*
