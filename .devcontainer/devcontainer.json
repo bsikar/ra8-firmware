@@ -14,7 +14,9 @@
         "files.trimTrailingWhitespace": true,
         "files.insertFinalNewline": true,
         "editor.formatOnSave": true,
-        "editor.rulers": [100]
+        "editor.rulers": [100],
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.fontFamily": "MesloLGS NF, Consolas, monospace"
       },
       "extensions": [
         "llvm-vs-code-extensions.vscode-clangd",
