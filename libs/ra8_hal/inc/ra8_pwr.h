@@ -24,23 +24,6 @@
  * ``release`` for ungate / gate so that "stop" only ever means
  * "STBY-style stopped" rather than "MSTP bit set".
  *
- * ## Why wrap ra8_mstp?
- *
- * Drivers could call ``ra8_mstp_enable()`` directly. Going through
- * ``ra8_pwr_module_request()`` instead gives the LPM machinery a
- * single chokepoint where it can:
- *
- * - Validate that the requested module is allowed in the current
- * power mode (e.g. some peripherals do not survive Software
- * Standby).
- * - Track which modules need their clock domain switched on
- * before the bit can be cleared (e.g. ULPT needs SOSC up first).
- * - In , route the request through the NSC veneer.
- *
- * For now ``ra8_pwr_module_request()`` is a thin
- * pass-through plus logging, but every driver from onwards
- * goes through this layer so the chokepoint exists.
- *
  * ## Wake-up sources
  *
  * The RA8D2 has 64 distinct wake-up sources spread across two
