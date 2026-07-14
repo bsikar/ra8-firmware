@@ -204,7 +204,7 @@ board_overlay_btn_t board_overlay_hit_button(uint16_t x, uint16_t y, uint16_t pa
  * the percent the user dragged to, so the caller can drive the fuel-gauge model.
  * The percent is the click's fraction across the track, clamped to 0..100 (a
  * click left of the track yields 0, right of it yields 100), and the same fixed
- * geometry ::board_overlay_compose draws the track with is used here so the drawn
+ * geometry that ::board_overlay_compose draws the track with is used here so the drawn
  * fill and the drag position stay in lock-step.
  *
  * @param[in]  x       Click column in composite pixels (top-left origin).
