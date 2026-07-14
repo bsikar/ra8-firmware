@@ -60,6 +60,15 @@
 #      than `bool`, so the check fires on idiomatic `return x != y;`
 #      bodies. Its auto-fixer wraps them in `(x != y) != 0`, which
 #      is identical noise. v22 doesn't flag the same code at all.
+#  -clang-analyzer-valist.Unterminated         (non-deterministic;
+#                                               guards zero first-party code)
+#      No first-party TU uses <stdarg.h>: grep for va_list / va_start /
+#      va_end across libs/ src/ port/ examples/ tools/ tests/ finds none,
+#      so this checker protects nothing here. The path-sensitive analyzer
+#      nonetheless intermittently reports a phantom "Initialized va_list
+#      is leaked" against ra8_reflow_render.c (a function with no va_list
+#      at all), failing one CI run and passing the next on byte-identical
+#      code. Disable it to stop the flake.
 #
 Checks: >
   cert-*,
@@ -71,6 +80,7 @@ Checks: >
   performance-*,
   -bugprone-easily-swappable-parameters,
   -clang-analyzer-core.FixedAddressDereference,
+  -clang-analyzer-valist.Unterminated,
   -misc-include-cleaner,
   -misc-use-internal-linkage,
   -performance-no-int-to-ptr,
