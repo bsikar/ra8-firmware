@@ -141,9 +141,12 @@ PREDEFINED             = __DOXYGEN__=1 \
 
 # Graphviz-driven diagrams. The build_docs.sh wrapper flips HAVE_DOT off
 # automatically when `dot` is not on PATH so the build still succeeds.
+# Per-function call/caller graphs are disabled: across the whole first-party
+# tree they generate tens of thousands of SVGs (~0.5 GB), which is impractical
+# to publish. Include / collaboration / directory graphs (far fewer) stay on.
 HAVE_DOT               = YES
-CALL_GRAPH             = YES
-CALLER_GRAPH           = YES
+CALL_GRAPH             = NO
+CALLER_GRAPH           = NO
 DOT_GRAPH_MAX_NODES    = 75
 DOT_IMAGE_FORMAT       = svg
 INTERACTIVE_SVG        = YES
