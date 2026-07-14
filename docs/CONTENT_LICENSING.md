@@ -3,9 +3,10 @@
 > **Scope.** This is the clearance record for e-book content the reader is
 > allowed to **bundle and publicly redistribute**. It lists the titles, the
 > license basis, the sourcing policy, and the caveats to check before
-> publishing. The actual `.epub` files are NOT checked into this tree (see
-> [`VENDOR_BLOBS.md`](VENDOR_BLOBS.md) for why large third-party assets stay
-> out of git); the working library is managed off-repo.
+> publishing. The cleared `.epub` files are bundled in the tree under
+> [`content/library/`](../content/library) -- redistributing them is exactly
+> what the CC0 basis below permits. Only titles that appear in the cleared
+> catalog belong there; anything not yet cleared is kept off-repo.
 
 The reader renders EPUB (see [`EPUB_CONFORMANCE.md`](EPUB_CONFORMANCE.md)).
 Any title shipped on-device or published as a bundle must be redistributable,
