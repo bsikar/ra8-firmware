@@ -10,7 +10,7 @@
  * variant brings up the USB 2.0 High-Speed controller (USBHS @
  * 0x40351000, HUM Ch 37) so the EK-RA8D2 USB-C receptacle (J7)
  * enumerates as a CDC-ACM device on the host. The class layer, the
- * USBX bridge in ``port/usbx/ux_dcd_ra8_usb.c`` and the register-level
+ * USBX bridge in ``port/usbx/src/ux_dcd_ra8_usb.c`` and the register-level
  * driver in ``libs/ra8_hal/src/ra8_usb.c`` are already speed-
  * parameterised; this app simply selects ``k_ra8_usb_speed_hs`` and
  * uses the HS-specific board bring-up entry

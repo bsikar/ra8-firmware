@@ -279,7 +279,7 @@ void ra8_time_on_tick(void)
  *                                   timer state is not safe to call
  *                                   into until the project's
  *                                   `_tx_initialize_low_level` has run.
- *   - `ux_dcd_ra8_usb_irq_reenable`  lives in port/usbx/ux_dcd_ra8_usb.c.
+ *   - `ux_dcd_ra8_usb_irq_reenable`  lives in port/usbx/src/ux_dcd_ra8_usb.c.
  *                                   Re-arms the USBFS NVIC line that
  *                                   the bridge's storm guard masks.
  *

@@ -64,7 +64,7 @@ endif()
 # Glob LevelX NOR-only sources. The NAND tree and the simulator
 # drivers (`fx_*` + `lx_*_simulator*`) are excluded -- this firmware
 # uses LevelX exclusively to wear-level the MX25LM512 NOR chip via our
-# `port/levelx/lx_nor_driver_ra8_xspi.c` shim, so dragging the NAND
+# `port/levelx/src/lx_nor_driver_ra8_xspi.c` shim, so dragging the NAND
 # code in only inflates the build and the warning surface.
 file(GLOB _RA8_LEVELX_NOR_SOURCES CONFIGURE_DEPENDS
     "${_RA8_LEVELX_COMMON_SRC}/lx_nor_*.c")

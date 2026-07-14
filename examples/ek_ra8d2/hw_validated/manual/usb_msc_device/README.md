@@ -48,7 +48,7 @@ Linux path tolerated both defects):
 - the vendored USBX INQUIRY handler reports RESPONSE DATA FORMAT = 0
   (SCSI-1) and ignores the EVPD bit; macOS answers that with a
   Bulk-Only Mass Storage Reset and abandons the device. Replaced by
-  `port/usbx/ux_device_class_storage_inquiry.c` (SPC-2 + VPD pages
+  `port/usbx/src/ux_device_class_storage_inquiry.c` (SPC-2 + VPD pages
   0x00/0x80).
 - the DCD bridge gained strand recovery for stashed bulk-IN transfers
   (PID=NAK with a loaded bank) and a transactional BEMPSTS ack for
