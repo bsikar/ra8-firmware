@@ -111,9 +111,9 @@ equivalent under `src/secure_app/` and `port/`).
 | Test ID         | Source                         | Subject                                        |
 |-----------------|--------------------------------|------------------------------------------------|
 | IT-LWIP-001     | `tests/test_lwip_sys_arch.c`   | `port/lwip/arch/sys_arch.c` (lwIP shim)        |
-| IT-LXNOR-001    | `tests/test_lx_nor_driver_ra8_xspi.c` | `port/levelx/lx_nor_driver_ra8_xspi.c` |
-| IT-NIMBLE-001   | `tests/test_nimble_npl_threadx.c` | `port/nimble/nimble_npl_threadx.c`          |
-| IT-USBX-DCD-001 | `tests/test_ux_dcd_ra8_usb.c`   | `port/usbx/ux_dcd_ra8_usb.c`                    |
+| IT-LXNOR-001    | `tests/test_lx_nor_driver_ra8_xspi.c` | `port/levelx/src/lx_nor_driver_ra8_xspi.c` |
+| IT-NIMBLE-001   | `tests/test_nimble_npl_threadx.c` | `port/nimble/src/nimble_npl_threadx.c`          |
+| IT-USBX-DCD-001 | `tests/test_ux_dcd_ra8_usb.c`   | `port/usbx/src/ux_dcd_ra8_usb.c`                    |
 
 ### 1.4 Application-shape integration tests (one per EVM-tier app)
 

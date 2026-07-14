@@ -23,7 +23,7 @@
  * RSIP-E50D, so the sim-only command path is gated behind the stub-crypto
  * guard and a production build returns ``k_ra8_err_not_supported``. The shipping
  * symmetric crypto is tf-psa-crypto on the M85; the NetX Crypto ALT shim in
- * ``port/netxduo/nx_crypto_aes_alt.c`` falls back to its own software AES when
+ * ``port/netxduo/src/nx_crypto_aes_alt.c`` falls back to its own software AES when
  * the install fails, so the fail-closed path degrades gracefully (issue #214).
  *
  * Cross-TU primitives shared with ``ra8_rsip.c`` and ``ra8_rsip_asym.c`` are
@@ -224,7 +224,7 @@ uint8_t internal_aes_alg_byte(uint32_t alg)
  * fail-closed #else and can never mistake these bytes for real ciphertext or a
  * valid tag. The shipping symmetric crypto is tf-psa-crypto on the M85,
  * silicon-proven in psa_crypto_hil; the NetX Crypto ALT shim in
- * port/netxduo/nx_crypto_aes_alt.c treats a non-ok install as "not installed"
+ * port/netxduo/src/nx_crypto_aes_alt.c treats a non-ok install as "not installed"
  * and falls back to NetX's own software AES, so this fail-closed path degrades
  * gracefully (issue #214). The register pokes below therefore carry NO HUM
  * citation: there is no real register map to cite.

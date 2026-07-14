@@ -65,7 +65,7 @@ ra8_usb_queue_in(ra8_usb_speed_t speed, uint8_t pipe_num, const uint8_t* data, u
    * the current bank drains. Our measured ceiling (2.66 MB/s on HS)
    * is bounded by the Linux cdc_acm read-URB completion path on the
    * host, not by this code. See the matching note in
-   * port/usbx/ux_dcd_ra8_usb.c (auto-echo block) for the full
+   * port/usbx/src/ux_dcd_ra8_usb.c (auto-echo block) for the full
    * chain-of-causality + what it would take to lift the ceiling. */
   volatile r_usb_regs_t* reg = internal_pick(speed);
   if (reg == nullptr) {

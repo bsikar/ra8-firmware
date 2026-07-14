@@ -23,7 +23,7 @@ cmake_minimum_required(VERSION 3.20)
 add_library(levelx_port_ra8_xspi INTERFACE)
 
 target_include_directories(levelx_port_ra8_xspi INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc
 )
 
 # Track the source list as a global property so per-app builds can
@@ -32,8 +32,8 @@ target_include_directories(levelx_port_ra8_xspi INTERFACE
 # tracked separately because it pulls in FileX headers and is only
 # wanted by apps that link both FileX and LevelX.
 set_property(GLOBAL PROPERTY RA8_LEVELX_PORT_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/lx_nor_driver_ra8_xspi.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lx_nor_driver_ra8_xspi.c
 )
 set_property(GLOBAL PROPERTY RA8_LEVELX_FILEX_PORT_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/lx_filex_adapter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lx_filex_adapter.c
 )

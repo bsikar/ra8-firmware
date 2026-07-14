@@ -1458,7 +1458,7 @@ both speeds before the next class begins.
 
 **Resolved technical references** (from the FS bring-up that informs HS + later classes):
 
-- Bridge synchronous-DCD contract: `port/usbx/ux_dcd_ra8_usb.c::internal_transfer_request`
+- Bridge synchronous-DCD contract: `port/usbx/src/ux_dcd_ra8_usb.c::internal_transfer_request`
   blocks on `tx_semaphore_get` before returning; matches `ux_dcd_sim_slave`.
 - FIT-style pipe configure: `libs/ra8_hal/src/ra8_usb.c::ra8_usb_configure_endpoint`
   does quiesce -> windowed PIPECFG/PIPEMAXP/PIPEPERI write -> finalize (SQCLR
