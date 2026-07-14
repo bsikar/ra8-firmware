@@ -6,17 +6,17 @@
  * [Ring 4 / NSC] {World: NSC}
  *
  * @details
- * retrofit veneers for the comms drivers (ra8_sci,
+ * Retrofit veneers for the comms drivers (ra8_sci,
  * ra8_iic, ra8_spi, ra8_usb). Each function here is a Non-Secure
  * Callable entry point that validates pointer arguments via
  * ``cmse_check_address_range`` (under TrustZone) and forwards
  * to the matching Ring-3 driver primitive in the secure world.
  *
- * ships a representative subset -- init + the most
+ * This layer ships a representative subset -- init + the most
  * common transfer primitive per driver. The remaining surface
  * (interrupt callbacks, DMA paths, error introspection) is
  * straightforward to add by following the same pattern; it is
- * deferred to alongside the first NS-world consumer
+ * deferred to land alongside the first NS-world consumer
  * that actually exercises those paths.
  *
  * ## Coverage

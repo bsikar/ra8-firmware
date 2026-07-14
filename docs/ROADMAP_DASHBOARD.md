@@ -44,7 +44,7 @@ Overall: `[========================================] 704/704`
 | ra8_hw_err -- header-only wait-flag primitives | DONE | 16/16 | `[====================] 16/16` |
 | ra8_isr -- NVIC + ICU IELSR allocator | DONE | 16/16 | `[====================] 16/16` |
 | ra8_mpc -- pin mux facade | DONE | 16/16 | `[====================] 16/16` |
-| ra8_dma -- DMAC + DTC generic transfer (DMAC backend; DTC deferred to ) | DONE | 16/16 | `[====================] 16/16` |
+| ra8_dma -- DMAC + DTC generic transfer (DMAC backend; DTC deferred) | DONE | 16/16 | `[====================] 16/16` |
 
 ### Foundation drivers
 
