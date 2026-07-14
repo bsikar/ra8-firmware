@@ -1,6 +1,7 @@
 /**
  * @file ra8_ssie.h
  * @brief Serial Sound Interface Enhanced (SSIE / I2S audio) driver
+ * @ingroup grp_hal_audio
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

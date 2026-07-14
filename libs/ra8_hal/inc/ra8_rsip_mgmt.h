@@ -1,6 +1,7 @@
 /**
  * @file ra8_rsip_mgmt.h
  * @brief Renesas Secure IP (RSIP-E50D) HAL -- vault / KDF / lifecycle / tamper
+ * @ingroup grp_hal_crypto
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

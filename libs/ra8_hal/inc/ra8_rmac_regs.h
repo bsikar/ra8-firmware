@@ -1,6 +1,7 @@
 /**
  * @file ra8_rmac_regs.h
  * @brief Ethernet MAC (RMAC) per-port register layout for the RA8D2
+ * @ingroup grp_hal_net
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

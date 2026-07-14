@@ -1,6 +1,7 @@
 /**
  * @file ra8_stbtt_alloc.h
  * @brief Heap-free scratch allocator for stb_truetype (glyph rasterise).
+ * @ingroup grp_ereader
  *
  * @details
  * stb_truetype allocates short-lived scratch (glyph vertices, rasteriser

@@ -1,6 +1,7 @@
 /**
  * @file ra8_ble_mesh.h
  * @brief Bluetooth Mesh provisioning + element/model registration API.
+ * @ingroup grp_net
  *
  * @par Tag
  * [Ring 5 / LIB] {World: NS}

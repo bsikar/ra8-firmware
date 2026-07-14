@@ -1,6 +1,7 @@
 /**
  * @file ra8_nsc_io.h
- * @brief NSC veneers for the -6 I/O drivers
+ * @brief NSC veneers for the I/O drivers
+ * @ingroup grp_security
  *
  * @par Tag
  * [Ring 4 / NSC] {World: NSC}

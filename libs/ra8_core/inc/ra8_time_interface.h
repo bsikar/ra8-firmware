@@ -1,6 +1,7 @@
 /**
  * @file ra8_time_interface.h
  * @brief Abstract time-source interface for DI and unit testing
+ * @ingroup grp_core
  *
  * @details
  * Modules that need wall-clock time (timeouts, rate limiters, delay

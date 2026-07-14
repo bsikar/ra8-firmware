@@ -1,6 +1,7 @@
 /**
  * @file ra8_panel.h
  * @brief Active display-panel descriptor for the EK-RA8D2 (ER-TFT070-6)
+ * @ingroup grp_board
  *
  * @details
  * BSP description of the display wired to the EK-RA8D2 Parallel Graphics

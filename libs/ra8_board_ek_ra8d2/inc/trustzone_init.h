@@ -1,6 +1,7 @@
 /**
  * @file libs/ra8_board_ek_ra8d2/inc/trustzone_init.h
  * @brief Cortex-M85 TrustZone-M SAU bring-up entry point
+ * @ingroup grp_board
  *
  * @par Tag
  * [Ring 1 / Boot] {World: S}

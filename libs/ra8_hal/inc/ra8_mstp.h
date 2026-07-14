@@ -1,6 +1,7 @@
 /**
  * @file ra8_mstp.h
  * @brief Ref-counted Module Stop Control wrapper for the RA8D2
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

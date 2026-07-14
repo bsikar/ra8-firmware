@@ -1,6 +1,7 @@
 /**
  * @file ra8_iwdt.h
  * @brief Independent Watchdog driver header
+ * @ingroup grp_hal_timers
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

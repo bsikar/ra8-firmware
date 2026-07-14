@@ -1,6 +1,7 @@
 /**
  * @file ra8_reset.h
  * @brief Reset cause introspection + software reset trigger
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

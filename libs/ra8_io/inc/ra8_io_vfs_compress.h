@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_vfs_compress.h
  * @brief Transparent VFS-level whole-file compression (compress-on-write,
+ * @ingroup grp_io
  *        decompress-on-read) over the ra8_io fabric.
  *
  * @par Tag

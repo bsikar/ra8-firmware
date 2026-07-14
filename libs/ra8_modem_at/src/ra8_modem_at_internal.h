@@ -1,6 +1,7 @@
 /**
  * @file ra8_modem_at_internal.h
  * @brief Test-access surface for ra8_modem_at internal helpers (MC/DC).
+ * @ingroup grp_net
  *
  * @details
  * Not part of the public API. Tests under tests/ MAY include this

@@ -1,6 +1,7 @@
 /**
  * @file ra8_ui.h
  * @brief Bounded UI interaction core: hit-testing, screen stack, paging.
+ * @ingroup grp_ereader
  *
  * @details
  * `ra8_ui` is the interaction / controller layer for the e-reader UI

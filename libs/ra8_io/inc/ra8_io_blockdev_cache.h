@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_blockdev_cache.h
  * @brief ra8_io caching block device -- an LRU sector cache over any backend.
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

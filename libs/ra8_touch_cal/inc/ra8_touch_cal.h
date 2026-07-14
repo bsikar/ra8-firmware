@@ -1,6 +1,7 @@
 /**
  * @file ra8_touch_cal.h
  * @brief Resistive/capacitive touch-screen calibration utility
+ * @ingroup grp_board
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

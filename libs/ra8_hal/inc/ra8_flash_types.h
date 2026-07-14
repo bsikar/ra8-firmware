@@ -1,6 +1,7 @@
 /**
  * @file ra8_flash_types.h
  * @brief Code MRAM driver -- shared types (enums, structs, callback typedef)
+ * @ingroup grp_hal_memory
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

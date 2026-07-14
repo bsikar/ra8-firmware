@@ -1,6 +1,7 @@
 /**
  * @file ra8_mipi_phy_internal.h
  * @brief Module-private link seam shared between the MIPI D-PHY driver
+ * @ingroup grp_hal_display
  *        translation units.
  *
  * @par Tag

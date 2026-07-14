@@ -1,6 +1,7 @@
 /**
  * @file ra8_reflow_api.h
  * @brief Reflow-engine public + internal function prototypes.
+ * @ingroup grp_ereader
  *
  * @details
  * This sub-header holds the `ra8_reflow` engine's callable surface: the

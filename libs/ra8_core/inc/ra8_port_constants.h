@@ -1,6 +1,7 @@
 /**
  * @file ra8_port_constants.h
  * @brief Typed Port / Pin Constants for the RA8D2 IOPORT Module
+ * @ingroup grp_core
  *
  * @details
  * Provides `ra8_port_t`, `ra8_pin_t`, and a packed `ra8_port_pin_t` type

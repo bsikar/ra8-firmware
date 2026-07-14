@@ -1,6 +1,7 @@
 /**
  * @file ra8_sci_internal.h
  * @brief src/-local shared surface for the ra8_sci driver TUs.
+ * @ingroup grp_hal_comms
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

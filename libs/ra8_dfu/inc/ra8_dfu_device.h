@@ -1,6 +1,7 @@
 /**
  * @file ra8_dfu_device.h
  * @brief USBX DFU device class wired to real MRAM, bound to either controller.
+ * @ingroup grp_security
  *
  * @par Tag
  * [Ring 4 / Service] {World: S}

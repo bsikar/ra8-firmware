@@ -1,6 +1,7 @@
 /**
  * @file ra8_fs.h
  * @brief Minimal FAT12/FAT16/FAT32 filesystem adapter (read + write).
+ * @ingroup grp_storage
  *
  * @details
  * `ra8_fs` is a self-contained, pure-C FAT filesystem implementation that sits

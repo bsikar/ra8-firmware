@@ -1,6 +1,7 @@
 /**
  * @file ra8_poeg_regs.h
  * @brief Port Output Enable for GPT (POEG) register layout for the RA8D2
+ * @ingroup grp_hal_timers
  *
  * @details
  * Four POEG groups (POEG0..POEG3) at `0x40212000` with `0x100`

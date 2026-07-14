@@ -1,6 +1,7 @@
 /**
  * @file ra8_mipi_phy_regs.h
  * @brief MIPI D-PHY register layout for the RA8D2
+ * @ingroup grp_hal_display
  *
  * @details
  * The MIPI PHY block at MMIO base ``0x4034_6C00`` is the physical

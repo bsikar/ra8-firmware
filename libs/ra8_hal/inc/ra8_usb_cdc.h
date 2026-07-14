@@ -1,6 +1,7 @@
 /**
  * @file ra8_usb_cdc.h
  * @brief Native USB CDC ACM (Communications Device Class - Abstract
+ * @ingroup grp_hal_usb
  *        Control Model) class layer
  *
  * @details

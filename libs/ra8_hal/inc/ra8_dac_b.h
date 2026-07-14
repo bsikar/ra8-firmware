@@ -1,6 +1,7 @@
 /**
  * @file ra8_dac_b.h
  * @brief Full-featured 12-bit DAC_B driver
+ * @ingroup grp_hal_analog
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

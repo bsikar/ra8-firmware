@@ -1,6 +1,7 @@
 /**
  * @file ra8_vin_api.h
  * @brief Video Input Module (VIN) driver function prototypes
+ * @ingroup grp_hal_camera
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

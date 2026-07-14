@@ -1,6 +1,7 @@
 /**
  * @file ra8_comic.h
  * @brief Unified demand-paged reader for comic-book archives -- CBZ (ZIP) and CBR (RAR).
+ * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 4 / Domain] {World: NS}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_ofs.h
  * @brief Option Function Select (OFS) boot-map inventory for the active RA8 device
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_pdm.h
  * @brief Pulse Density Modulation Interface (PDM-IF) capture driver
+ * @ingroup grp_hal_audio
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

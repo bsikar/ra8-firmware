@@ -1,6 +1,7 @@
 /**
  * @file ra8_glcdc_regs.h
  * @brief Graphics LCD Controller (GLCDC) register layout for the RA8D2
+ * @ingroup grp_hal_display
  *
  * @details
  * GLCDC at `0x40342000` drives up to two RGB graphics layers with

@@ -1,6 +1,7 @@
 /**
  * @file ra8_cgc_regs.h
  * @brief Clock Generation Circuit (CGC) field layouts for the Renesas RA8D2
+ * @ingroup grp_hal_system
  *
  * @details
  * The CGC is logically a separate peripheral but physically lives

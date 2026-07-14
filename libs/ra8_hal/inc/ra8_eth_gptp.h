@@ -1,6 +1,7 @@
 /**
  * @file ra8_eth_gptp.h
  * @brief Ethernet Generic PTP Timer (GPTP) driver
+ * @ingroup grp_hal_net
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

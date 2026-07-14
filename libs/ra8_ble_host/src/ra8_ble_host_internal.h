@@ -1,6 +1,7 @@
 /**
  * @file ra8_ble_host_internal.h
  * @brief Host-private contract shared between the BLE host TUs.
+ * @ingroup grp_net
  *
  * @details
  * Declares the implementation-internal types and symbols that the

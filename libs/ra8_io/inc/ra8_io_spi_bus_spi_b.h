@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_spi_bus_spi_b.h
  * @brief SPI_B backend binder for the ra8_io SPI-bus facade.
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

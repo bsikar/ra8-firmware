@@ -1,6 +1,7 @@
 /**
  * @file ra8_epaper.h
  * @brief IT8951 e-paper controller SPI driver -- public API
+ * @ingroup grp_hal_display
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

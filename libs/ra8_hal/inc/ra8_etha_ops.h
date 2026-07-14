@@ -1,6 +1,7 @@
 /**
  * @file ra8_etha_ops.h
  * @brief Per-port ETHA lifecycle / IRQ / mode / queue API -- HUM Ch 32 (p 1627-1702)
+ * @ingroup grp_hal_net
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

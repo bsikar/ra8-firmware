@@ -1,6 +1,7 @@
 /**
  * @file ra8_lsm6dso.h
  * @brief ST LSM6DSO 6-DoF IMU driver (accel + gyro + temperature)
+ * @ingroup grp_board
  *
  * @par Tag
  * [Ring 4 / Service] {World: NS}

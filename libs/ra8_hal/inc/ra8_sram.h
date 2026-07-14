@@ -1,6 +1,7 @@
 /**
  * @file ra8_sram.h
  * @brief SRAM (with ECC) HAL driver public API
+ * @ingroup grp_hal_memory
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

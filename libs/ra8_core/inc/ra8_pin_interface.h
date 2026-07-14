@@ -1,6 +1,7 @@
 /**
  * @file ra8_pin_interface.h
  * @brief Abstract pin-driver interface for dependency injection
+ * @ingroup grp_core
  *
  * @details
  * Drivers that need to toggle a GPIO pin (LED blinkers, motor

@@ -1,6 +1,7 @@
 /**
  * @file ra8_usb_hmsc_internal.h
  * @brief Cross-TU surface shared between the host-MSC class layer
+ * @ingroup grp_hal_usb
  *        (ra8_usb_hmsc.c) and the polled enumeration ladder
  *        (ra8_usb_hmsc_enum.c).
  *

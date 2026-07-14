@@ -1,6 +1,7 @@
 /**
  * @file ra8_reflow_css_internal.h
  * @brief Cross-TU surface for the split content-CSS cascade (#111).
+ * @ingroup grp_ereader
  *
  * @details
  * The content-CSS implementation is split across three translation units that

@@ -1,6 +1,7 @@
 /**
  * @file ra8_reflow_tokenize_internal.h
  * @brief Test-access surface for ra8_reflow_tokenize.c internal helpers.
+ * @ingroup grp_ereader
  *
  * @details
  * Exposes the small, individually-MC/DC-able helpers of the no-heap XHTML

@@ -1,6 +1,7 @@
 /**
  * @file ra8_sci_spi.h
  * @brief SCI Simple-SPI controller-mode driver (polling, full-duplex)
+ * @ingroup grp_hal_comms
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

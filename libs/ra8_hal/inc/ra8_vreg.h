@@ -1,6 +1,7 @@
 /**
  * @file ra8_vreg.h
  * @brief Internal Voltage Regulator (DCDC / LDO) driver -- full HUM Ch 68 surface
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

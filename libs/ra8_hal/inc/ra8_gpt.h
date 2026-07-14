@@ -1,6 +1,7 @@
 /**
  * @file ra8_gpt.h
  * @brief Full-featured General PWM Timer (GPT) driver
+ * @ingroup grp_hal_timers
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

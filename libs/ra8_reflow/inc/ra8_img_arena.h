@@ -1,6 +1,7 @@
 /**
  * @file ra8_img_arena.h
  * @brief Heap-free scratch allocator hooks for the stb_image single-TU build.
+ * @ingroup grp_ereader
  *
  * @details
  * stb_image decodes JPEG/PNG/GIF/BMP through `STBI_MALLOC` / `STBI_FREE` /

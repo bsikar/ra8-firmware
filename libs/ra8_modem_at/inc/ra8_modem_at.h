@@ -1,6 +1,7 @@
 /**
  * @file ra8_modem_at.h
  * @brief Cellular modem AT command/response driver layered on UART
+ * @ingroup grp_net
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

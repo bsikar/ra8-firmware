@@ -1,6 +1,7 @@
 /**
  * @file ra8_rsip_keys.h
  * @brief Renesas Secure IP (RSIP-E50D) HAL -- key install + cipher / hash API
+ * @ingroup grp_hal_crypto
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

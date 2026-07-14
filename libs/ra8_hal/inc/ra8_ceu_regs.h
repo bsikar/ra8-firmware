@@ -1,6 +1,7 @@
 /**
  * @file ra8_ceu_regs.h
  * @brief Capture Engine Unit (CEU) register layout for the RA8D2
+ * @ingroup grp_hal_camera
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

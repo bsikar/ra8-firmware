@@ -1,6 +1,7 @@
 /**
  * @file ra8_flash_fsp.h
  * @brief Code MRAM driver -- FSP r_mram parity surface
+ * @ingroup grp_hal_memory
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_infrastructure.h
  * @brief Bring-up Helpers Called Before Any Driver Init
+ * @ingroup grp_core
  *
  * @details
  * `ra8_infrastructure_init()` is the one place every piece of

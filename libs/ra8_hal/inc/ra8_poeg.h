@@ -1,6 +1,7 @@
 /**
  * @file ra8_poeg.h
  * @brief Port Output Enable for GPT (POEG) driver
+ * @ingroup grp_hal_timers
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

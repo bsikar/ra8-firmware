@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_blockdev_sdspi.h
  * @brief ra8_io block-device backend over the micro-SD-in-SPI-mode driver.
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

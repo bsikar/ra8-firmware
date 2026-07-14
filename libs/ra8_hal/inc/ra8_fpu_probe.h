@@ -1,6 +1,7 @@
 /**
  * @file ra8_fpu_probe.h
  * @brief Double-precision FPU probe -- codegen witness for the RA8P1 DP-FPU
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

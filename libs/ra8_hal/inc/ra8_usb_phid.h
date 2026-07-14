@@ -1,6 +1,7 @@
 /**
  * @file ra8_usb_phid.h
  * @brief Native USB device-side HID (Human Interface Device) class layer
+ * @ingroup grp_hal_usb
  *
  * @details
  * Glues the device-mode `ra8_usb` controller driver to a USB HID

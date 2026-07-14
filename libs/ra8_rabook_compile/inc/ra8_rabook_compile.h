@@ -1,6 +1,7 @@
 /**
  * @file ra8_rabook_compile.h
  * @brief Zero-heap builder that emits a RABOOK1 blob (the #149 compiler back-end).
+ * @ingroup grp_ereader
  *
  * @details
  * `ra8_rabook_compile` is the serialization back-end of the on-device EPUB ->

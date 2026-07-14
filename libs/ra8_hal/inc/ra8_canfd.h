@@ -1,6 +1,7 @@
 /**
  * @file ra8_canfd.h
  * @brief CANFD Lite driver (bit-timing, TX, RX, error state)
+ * @ingroup grp_hal_comms
  *
  * @details
  * Minimal driver surface over the RA8D2 CANFD Lite controller --

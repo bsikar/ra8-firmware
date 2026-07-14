@@ -1,6 +1,7 @@
 /**
  * @file ra8_reflow_layout_internal.h
  * @brief Cross-TU shared declarations for the ra8_reflow layout engine.
+ * @ingroup grp_ereader
  *
  * @details
  * The layout engine is split across three translation units so each stays

@@ -1,6 +1,7 @@
 /**
  * @file ra8_stbtt_guard.h
  * @brief sfnt (TrueType/OpenType) table-directory bounds guard for stb_truetype.
+ * @ingroup grp_ereader
  *
  * @details
  * The vendored stb_truetype (`libs/third_party/stb/stb_truetype.h`) parses the

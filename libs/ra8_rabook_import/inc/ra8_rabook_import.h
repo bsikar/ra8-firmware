@@ -1,6 +1,7 @@
 /**
  * @file ra8_rabook_import.h
  * @brief On-import EPUB -> .rabook compile-and-cache manager (#151).
+ * @ingroup grp_ereader
  *
  * @details
  * `ra8_rabook_import` makes the e-reader a self-contained appliance: drop a raw

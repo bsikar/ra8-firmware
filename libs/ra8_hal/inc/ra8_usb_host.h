@@ -1,6 +1,7 @@
 /**
  * @file ra8_usb_host.h
  * @brief Native USB controller driver public API -- host-mode bring-up
+ * @ingroup grp_hal_usb
  *
  * @details
  * Host-mode half of the hand-written, FSP-equivalent driver for the two

@@ -1,6 +1,7 @@
 /**
  * @file ra8_ble_host.h
  * @brief Starter Bluetooth Low Energy host stack (L2CAP / ATT / GATT)
+ * @ingroup grp_net
  *
  * @details
  * Sits on top of libs/ra8_hal/ra8_ble (the controller HCI driver) and

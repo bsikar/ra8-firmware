@@ -1,6 +1,7 @@
 /**
  * @file ra8_cac.h
  * @brief Clock Accuracy Check driver
+ * @ingroup grp_hal_system
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
