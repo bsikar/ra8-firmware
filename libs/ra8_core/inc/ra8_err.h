@@ -1,6 +1,7 @@
 /**
  * @file ra8_err.h
  * @brief Error Code Definitions for ra8-firmware
+ * @ingroup grp_core
  *
  * @details
  * Single source of truth for all error codes returned across the firmware.

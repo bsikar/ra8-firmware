@@ -74,7 +74,7 @@ INPUT                  = README.md \
                          libs/ra8_nsc \
                          docs/reference/README.md
 INPUT_ENCODING         = UTF-8
-FILE_PATTERNS          = *.c *.h *.md
+FILE_PATTERNS          = *.c *.h *.md *.dox
 RECURSIVE              = YES
 EXCLUDE                = build \
                          build/tidy \

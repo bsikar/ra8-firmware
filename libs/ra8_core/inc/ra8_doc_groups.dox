@@ -1,0 +1,131 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+//
+// ra8_doc_groups.dox -- Doxygen module (topic) taxonomy for ra8-firmware.
+//
+// This file is documentation only: it defines the @defgroup tree that the
+// generated docs use as their top-level "Topics" navigation. Every first-party
+// header slots into one group by adding a single `@ingroup <group>` line to its
+// @file block. The groups are defined here (once) so the doxygen-warnings gate
+// resolves every @ingroup reference.
+//
+// Rule of thumb for tagging a header:
+//   - libs/ra8_hal/**    -> the matching grp_hal_* functional sub-group
+//   - everything else    -> the grp_* subsystem its library belongs to
+
+/**
+ * @defgroup grp_core Core substrate
+ * @brief Cross-cutting primitives: error codes, validation, logging,
+ *        assertions, attributes, and device selection (libs/ra8_core).
+ */
+
+/**
+ * @defgroup grp_hal Hardware Abstraction Layer
+ * @brief Ring 3 peripheral drivers and register maps for the RA8D2
+ *        (libs/ra8_hal). Grouped by function below.
+ */
+
+/**
+ * @defgroup grp_hal_system System, clocks & power
+ * @ingroup grp_hal
+ * @brief ICU/ELC/ISR, CGC, MSTP, LPM/PWR, reset, MPC/ports, SRAM, IPC.
+ */
+/**
+ * @defgroup grp_hal_comms Serial communication
+ * @ingroup grp_hal
+ * @brief SCI (UART/SPI/LIN), RIIC/I2C, SPI-B, SMBus, CANFD.
+ */
+/**
+ * @defgroup grp_hal_timers Timers & watchdogs
+ * @ingroup grp_hal
+ * @brief GPT, AGT, ULPT, RTC, WDT, IWDT, POEG.
+ */
+/**
+ * @defgroup grp_hal_memory Memory & DMA
+ * @ingroup grp_hal
+ * @brief DMAC/DTC/DMA, XSPI/OSPI, flash, SDRAMC, SDHI/SD.
+ */
+/**
+ * @defgroup grp_hal_display Display
+ * @ingroup grp_hal
+ * @brief GLCDC, DRW 2D engine, MIPI-DSI/PHY, e-paper.
+ */
+/**
+ * @defgroup grp_hal_camera Camera & imaging
+ * @ingroup grp_hal
+ * @brief CEU, VIN, MIPI-CSI, JPEG codec.
+ */
+/**
+ * @defgroup grp_hal_audio Audio
+ * @ingroup grp_hal
+ * @brief SSIE, PDM.
+ */
+/**
+ * @defgroup grp_hal_analog Analog & measurement
+ * @ingroup grp_hal
+ * @brief ADC, DAC, ACMPHS, temperature sensor, CRC.
+ */
+/**
+ * @defgroup grp_hal_crypto Crypto hardware
+ * @ingroup grp_hal
+ * @brief RSIP, DOTF, cache-noise ECC.
+ */
+/**
+ * @defgroup grp_hal_net Ethernet & time
+ * @ingroup grp_hal
+ * @brief ETH/ETHA, RMAC PHY, PTP/gPTP, GWCA/COMA/MFWD.
+ */
+/**
+ * @defgroup grp_hal_usb USB & touch
+ * @ingroup grp_hal
+ * @brief USB device/host controller + class helpers, touch.
+ */
+
+/**
+ * @defgroup grp_io I/O fabric
+ * @brief Central I/O facade: block-device vtables, VFS mounts, targetable
+ *        stdio, container/format decode (libs/ra8_io).
+ */
+
+/**
+ * @defgroup grp_security Security & TrustZone
+ * @brief NSC veneers, DFU/secure-boot, root-of-trust, PSA crypto, TLS, OTA
+ *        (libs/ra8_nsc, ra8_dfu, ra8_psa_crypto, ra8_tls, ra8_tz_secure_boot,
+ *        ra8_ota).
+ */
+
+/**
+ * @defgroup grp_storage Storage & filesystems
+ * @brief Filesystems, flash-translation, SD-over-SPI, on-flash fonts, and
+ *        caches (libs/ra8_fs, ra8_ftl, ra8_sdmmc_spi, ra8_sdfont,
+ *        ra8_cache_store).
+ */
+
+/**
+ * @defgroup grp_ereader E-reader stack
+ * @brief Reflow/layout, EPUB/CBZ parsing, the book model, rendering, the
+ *        widget/compositor UI, and the memory hierarchy (libs/ra8_reflow,
+ *        ra8_epub, ra8_comic, ra8_book, ra8_rabook_compile, ra8_rabook_import,
+ *        ra8_gfx, ra8_compositor, ra8_widget, ra8_ui, ra8_box, ra8_display_pal,
+ *        ra8_mem).
+ */
+
+/**
+ * @defgroup grp_net Networking & wireless
+ * @brief PAL glue for network + USB stacks, BLE host, and cellular modem
+ *        (libs/ra8_net_pal, ra8_usb_pal, ra8_ble_host, ra8_modem_at).
+ */
+
+/**
+ * @defgroup grp_board Board support & sensors
+ * @brief Board pin/peripheral map, battery, touch calibration, keyboard,
+ *        power profiling, IMU, and the app framework (libs/ra8_board_ek_ra8d2,
+ *        ra8_batt, ra8_touch_cal, ra8_keyboard, ra8_power_profile, ra8_lsm6dso,
+ *        ra8_app).
+ */
+
+/**
+ * @defgroup grp_system System services
+ * @brief MPU configuration and the watchdog supervisor (libs/ra8_mpu,
+ *        ra8_wdt_supervisor).
+ */
