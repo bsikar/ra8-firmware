@@ -112,7 +112,7 @@ RA8_SIM_GENERIC := $(filter-out sim-ra8d2-ereader sim-dualcore_mailbox sim-tz_th
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean compile_commands format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version smoke stack-usage scan-build scan-build-strict iwyu fuzz bench bench-cache app-sizes check-annotations sbom sbom-check all $(RA8_APPS)
+.PHONY: help apps default clean compile_commands format check tidy test test-cov test-docker ctest coverage mcdc misra docs docs-push dashboard ascii version smoke stack-usage scan-build scan-build-strict iwyu fuzz bench bench-cache app-sizes check-annotations sbom sbom-check all $(RA8_APPS)
 
 # hw_validated apps -- smoke test and stack-usage sweeps run over this
 # set only, since these are the apps confirmed working on a stock EK-RA8D2.
@@ -177,6 +177,7 @@ help:
 	@echo ""
 	@echo "DOCS / REPORTS"
 	@echo "  make docs              generate doxygen HTML into build/docs/html/"
+	@echo "  make docs-push         build + publish doxygen HTML to the gh-pages branch"
 	@echo "  make dashboard         regenerate docs/ROADMAP_DASHBOARD.md + docs/badges/"
 	@echo "  make app-sizes         summarise per-app .text/.data/.bss footprints"
 	@echo "  make audit-init        per-app init-order audit (docs/INIT_ORDER_AUDIT.md)"
@@ -384,6 +385,12 @@ fuzz:
 
 docs:
 	bash scripts/build_docs.sh
+
+# `make docs-push` -- build the Doxygen HTML and force-publish it to the
+# gh-pages branch (the same script CI runs on every push to main). Uses your
+# `origin` credentials locally; see scripts/publish_docs.sh for details.
+docs-push: docs
+	bash scripts/publish_docs.sh
 
 dashboard:
 	python3 scripts/utils/roadmap_dashboard.py

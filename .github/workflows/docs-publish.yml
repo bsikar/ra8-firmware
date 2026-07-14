@@ -1,0 +1,41 @@
+# Build the Doxygen HTML and publish it to the gh-pages branch on every push
+# to main (and on manual dispatch). Generated HTML is never committed to a
+# source branch: the orphan gh-pages branch is force-updated with a single
+# fresh commit each run, so it never accumulates generated-HTML history.
+#
+# doxygen is already provisioned on the self-hosted runner (the firmware.yml
+# "Doxygen warnings" job uses it). graphviz is optional -- build_docs.sh falls
+# back to text-only output when `dot` is absent.
+#
+# One-time repo setup (owner): Settings -> Pages -> Build and deployment ->
+# Source = "Deploy from a branch", Branch = gh-pages / (root).
+name: docs-publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# The publish step force-pushes to the gh-pages branch.
+permissions:
+  contents: write
+
+# Never let two publishes race the gh-pages force-push.
+concurrency:
+  group: docs-publish
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Build + publish Doxygen HTML
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Doxygen HTML
+        run: make docs
+
+      - name: Publish to gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/publish_docs.sh
