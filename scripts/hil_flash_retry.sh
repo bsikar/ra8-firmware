@@ -14,9 +14,9 @@
 
 set -euo pipefail
 
-PI_HOST="star@star.local"
-JLINK_SN="1086567198"
-JLINK_DEVICE="R7KA8D2KF_CPU0"
+# Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+rig_require PI_HOST JLINK_SN
 HUB="2-1"
 PORT="4"
 

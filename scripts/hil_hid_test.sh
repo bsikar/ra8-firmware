@@ -16,7 +16,9 @@
 
 set -euo pipefail
 
-PI_HOST="${PI_HOST:-star@star.local}"
+# Rig config (PI_HOST) comes from the gitignored .env, not the tree.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+rig_require PI_HOST
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 APP=""

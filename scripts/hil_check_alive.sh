@@ -53,19 +53,17 @@
 
 set -euo pipefail
 
-PI_HOST="${PI_HOST:-star@star.local}"
-JLINK_SN="1086567198"
-JLINK_DEVICE="R7KA8D2KF_CPU0"
+# Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+rig_require PI_HOST JLINK_SN
 
 # Detect when we are already running on the Pi itself (self-hosted CI
 # runner, or running locally on the bench). In that case we must NOT
-# `ssh $PI_HOST` -- mDNS hostname resolution to `star.local` can fail
+# `ssh $PI_HOST` -- mDNS resolution of the Pi's `.local` hostname can fail
 # inside a self-hosted runner's network namespace, and we have direct
 # access to the same files/devices anyway.
 LOCAL_PI=0
-if [[ "$(hostname 2>/dev/null || true)" == "star" ]] ||
-  [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] ||
-  [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+if rig_is_local_pi; then
   LOCAL_PI=1
 fi
 pi_run() {
