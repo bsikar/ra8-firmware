@@ -10,7 +10,7 @@
 # default.
 #
 # Why a separate script: hil_dlm_reset.sh shells out to the bench Pi
-# over `ssh star@star.local`. When the board is cabled directly to a
+# over `ssh $PI_HOST`. When the board is cabled directly to a
 # laptop (no Pi in the loop) that path cannot reach the probe. This
 # script runs rfp-cli locally instead, and resolves the rfp-cli binary
 # from a few well-known install locations because Renesas Flash
@@ -46,7 +46,9 @@
 
 set -uo pipefail
 
-JLINK_SN="${JLINK_SN:-1086567198}"
+# Rig config (JLINK_SN) comes from the gitignored .env, not the tree.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+rig_require JLINK_SN
 DEVICE="${RFP_DEVICE:-ra}"
 SPEED="${RFP_SPEED:-1000000}"
 

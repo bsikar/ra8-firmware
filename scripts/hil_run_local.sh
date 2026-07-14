@@ -6,7 +6,7 @@
 # Mac, with the EK-RA8D2 plugged directly into this machine (no Pi).
 #
 # The bench Pi runners (hil_run_direct.sh / hil_jlink_memprobe.sh /
-# hil_check_alive.sh) flash + verify on `star@star.local` and read
+# hil_check_alive.sh) flash + verify on the bench Pi (`$PI_HOST`) and read
 # /dev/ttyACM0 with Linux-only tools (udevadm, setsid, stdbuf, stty -F,
 # timeout). This runner mirrors their exact J-Link command sequences and
 # pass/fail logic, but drives the local J-Link OB over USB and reads the
@@ -33,7 +33,9 @@
 
 set -euo pipefail
 
-JLINK_SN="${JLINK_SN:-1086567198}"
+# Rig config (JLINK_SN) comes from the gitignored .env, not the tree.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+rig_require JLINK_SN
 JLINK_DEVICE="R7KA8D2KF_CPU0"
 JLINK_SPEED="1000"
 

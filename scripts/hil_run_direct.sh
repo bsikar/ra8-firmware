@@ -5,7 +5,7 @@
 # hil_run_direct.sh -- Flash a firmware .hex and verify expected UART output.
 #
 # Auto-detects environment:
-#  * If running ON the HIL Pi (hostname == "star"), runs JLinkExe and reads
+#  * If running ON the HIL Pi (see rig_is_local_pi), runs JLinkExe and reads
 #    /dev/ttyACM0 directly.
 #  * If running on a developer workstation, SCPs the hex to the Pi, SSHes
 #    in, and re-invokes itself there. The shape of the test (expect string,
@@ -44,8 +44,9 @@
 
 set -euo pipefail
 
-PI_HOST="${PI_HOST:-star@star.local}"
-JLINK_SN="1086567198"
+# Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+rig_require PI_HOST JLINK_SN
 JLINK_DEVICE="R7KA8D2KF_CPU0"
 
 GREEN='\033[0;32m'
@@ -146,9 +147,7 @@ LOG_FILE="/tmp/hil_jlink_${APP_NAME}.log"
 # Detect whether we're already on the Pi (matches the pattern used by
 # hil_usb_test.sh: hostname OR aarch64 + ttyACM0 present).
 LOCAL_PI=0
-if [[ "$(hostname 2>/dev/null || true)" == "star" ]] ||
-  [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] ||
-  [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+if rig_is_local_pi; then
   LOCAL_PI=1
 fi
 
