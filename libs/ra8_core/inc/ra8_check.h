@@ -1,6 +1,7 @@
 /**
  * @file ra8_check.h
  * @brief Validation and Error-Checking Macros for ra8-firmware
+ * @ingroup grp_core
  *
  * @details
  * This header is the *only* place error handling lives. Every function

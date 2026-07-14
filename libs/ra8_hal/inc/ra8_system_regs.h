@@ -1,6 +1,7 @@
 /**
  * @file ra8_system_regs.h
  * @brief System Control (SYSC) register layout for the Renesas RA8D2
+ * @ingroup grp_hal_system
  *
  * @details
  * Covers the System Control block at `0x4001E000`. The SYSC block

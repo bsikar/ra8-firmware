@@ -1,6 +1,7 @@
 /**
  * @file ra8_book.h
  * @brief Flat, execute-in-place container for a build-time "compiled" e-book.
+ * @ingroup grp_ereader
  *
  * @details
  * `ra8_book` is the on-device representation of a book that has already been

@@ -1,6 +1,7 @@
 /**
  * @file ra8_nsc_comms.h
  * @brief NSC veneers for the communications drivers
+ * @ingroup grp_security
  *
  * @par Tag
  * [Ring 4 / NSC] {World: NSC}

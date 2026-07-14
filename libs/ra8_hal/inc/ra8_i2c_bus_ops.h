@@ -1,6 +1,7 @@
 /**
  * @file ra8_i2c_bus_ops.h
  * @brief Injected I2C-bus seam consumed by Ring-3 I2C device drivers.
+ * @ingroup grp_hal_comms
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

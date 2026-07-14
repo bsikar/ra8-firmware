@@ -1,6 +1,7 @@
 /**
  * @file ra8_tile_cache.h
  * @brief Fixed-RAM-budget image-tile cache with LRU eviction (Layer 3b, #147).
+ * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 2 / Core] {World: NS}

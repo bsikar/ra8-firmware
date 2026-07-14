@@ -1,6 +1,7 @@
 /**
  * @file ra8_eth_internal.h
  * @brief Cross-TU shared surface for the ra8_eth driver split.
+ * @ingroup grp_hal_net
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

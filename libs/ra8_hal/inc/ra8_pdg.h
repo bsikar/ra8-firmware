@@ -1,6 +1,7 @@
 /**
  * @file ra8_pdg.h
  * @brief PWM Delay Generation Circuit (PDG) driver public API
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_bit_constants.h
  * @brief Named Bit Positions and Masks for Register Manipulation
+ * @ingroup grp_core
  *
  * @details
  * Central home for bit-position constants used when poking hardware

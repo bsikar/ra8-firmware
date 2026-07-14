@@ -1,6 +1,7 @@
 /**
  * @file ra8_dotf.h
  * @brief Decryption On The Fly (DOTF) HAL driver public API
+ * @ingroup grp_hal_crypto
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

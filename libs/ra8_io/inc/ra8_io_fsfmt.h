@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_fsfmt.h
  * @brief ra8_io pluggable filesystem-format registry (probe + capabilities).
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

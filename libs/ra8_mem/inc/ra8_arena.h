@@ -1,6 +1,7 @@
 /**
  * @file ra8_arena.h
  * @brief Init-time bump arena -- carves per-tier slab backing, zero-heap.
+ * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 2 / Core] {World: NS}

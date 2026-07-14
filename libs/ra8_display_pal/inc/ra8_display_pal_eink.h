@@ -1,6 +1,7 @@
 /**
  * @file ra8_display_pal_eink.h
  * @brief E-ink backend (IT8951) for the display PAL
+ * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_tz_secure_boot.h
  * @brief FSP-style TrustZone secure-boot for the Cortex-M85 (CPU0)
+ * @ingroup grp_security
  *
  * @par Tag
  * [Ring 1 / Boot] {World: S}

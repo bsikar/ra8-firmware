@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_i2c_bus.h
  * @brief ra8_io I2C-bus facade -- one controller-transfer vtable over the
+ * @ingroup grp_io
  *        chip's two I2C implementations.
  *
  * @par Tag

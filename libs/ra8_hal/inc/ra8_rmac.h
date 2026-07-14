@@ -1,6 +1,7 @@
 /**
  * @file ra8_rmac.h
  * @brief Per-port Ethernet MAC (RMAC) driver -- HUM Ch 33
+ * @ingroup grp_hal_net
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

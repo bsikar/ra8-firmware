@@ -1,6 +1,7 @@
 /**
  * @file ra8_npu.h
  * @brief Arm Ethos-U55 NPU command/queue driver foundation (RA8P1-only)
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

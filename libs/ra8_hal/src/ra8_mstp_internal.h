@@ -1,6 +1,7 @@
 /**
  * @file ra8_mstp_internal.h
  * @brief Cross-TU surface for the ra8_mstp module-stop driver (test access).
+ * @ingroup grp_hal_system
  *
  * @details
  * Not part of the public API. Declares two helpers promoted from TU-private

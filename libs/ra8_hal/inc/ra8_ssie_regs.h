@@ -1,6 +1,7 @@
 /**
  * @file ra8_ssie_regs.h
  * @brief Serial Sound Interface Enhanced (SSIE) register layout for the RA8D2
+ * @ingroup grp_hal_audio
  *
  * @details
  * The RA8D2 exposes two SSIE channels (SSIE0 and SSIE1). Each

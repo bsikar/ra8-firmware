@@ -1,6 +1,7 @@
 /**
  * @file ra8_mpc.h
  * @brief Multi-function Pin Controller (MPC) facade
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

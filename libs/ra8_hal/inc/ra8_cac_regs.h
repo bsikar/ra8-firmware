@@ -1,6 +1,7 @@
 /**
  * @file ra8_cac_regs.h
  * @brief Clock Accuracy Check (CAC) register layout for the Renesas RA8D2
+ * @ingroup grp_hal_system
  *
  * @details
  * The CAC compares a reference clock (external crystal / pin) against

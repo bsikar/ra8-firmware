@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_i2c_bus_i3c_compat.h
  * @brief I3C I2C-compatibility backend binder for the ra8_io I2C-bus facade.
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

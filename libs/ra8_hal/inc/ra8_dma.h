@@ -1,6 +1,7 @@
 /**
  * @file ra8_dma.h
  * @brief Generic DMA transfer substrate (DMAC engine)
+ * @ingroup grp_hal_memory
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_lvd_regs.h
  * @brief Programmable Voltage Detection (PVD / LVD) register layout for the RA8D2
+ * @ingroup grp_hal_system
  *
  * @details
  * Four programmable voltage-monitor channels live inside the SYSC

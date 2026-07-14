@@ -1,6 +1,7 @@
 /**
  * @file ra8_gfx.h
  * @brief Software 2D graphics primitives layered on top of a caller-owned
+ * @ingroup grp_ereader
  *        framebuffer (DRW / D/AVE 2D / GLCDC ready).
  *
  * @details

@@ -1,6 +1,7 @@
 /**
  * @file ra8_dual_core_job.h
  * @brief Cross-core compile-job dispatch seam + status contract (#149)
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

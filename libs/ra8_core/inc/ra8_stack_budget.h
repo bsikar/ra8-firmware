@@ -1,6 +1,7 @@
 /**
  * @file ra8_stack_budget.h
  * @brief Greppable stack-frame deviation marker
+ * @ingroup grp_core
  *
  * @details
  * Static stack-overflow is the silent equivalent of dynamic allocation

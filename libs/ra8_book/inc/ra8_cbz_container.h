@@ -1,6 +1,7 @@
 /**
  * @file ra8_cbz_container.h
  * @brief Per-page demand-paged reader for the "RCBZ" comic-container format.
+ * @ingroup grp_ereader
  *
  * @details
  * A CBZ (a ZIP of comic/manga page images) is architecturally easier to page

@@ -1,6 +1,7 @@
 /**
  * @file ra8_agt_regs.h
  * @brief Asynchronous General-Purpose Timer (AGT) register layout for RA8D2
+ * @ingroup grp_hal_timers
  *
  * @details
  * The AGT is a 16-bit down-counter typically used as a tick timer or

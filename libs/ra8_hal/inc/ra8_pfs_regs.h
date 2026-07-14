@@ -1,6 +1,7 @@
 /**
  * @file ra8_pfs_regs.h
  * @brief Pin Function Select (PFS) register layout for the Renesas RA8D2
+ * @ingroup grp_hal_system
  *
  * @details
  * Every GPIO pin on an RA8D2 has a 32-bit `PmnPFS` register inside the

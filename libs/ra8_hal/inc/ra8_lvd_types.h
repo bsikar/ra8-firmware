@@ -1,6 +1,7 @@
 /**
  * @file ra8_lvd_types.h
  * @brief Programmable Voltage Detection (PVD / LVD) HAL types
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

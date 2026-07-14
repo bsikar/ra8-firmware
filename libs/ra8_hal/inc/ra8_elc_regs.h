@@ -1,6 +1,7 @@
 /**
  * @file ra8_elc_regs.h
  * @brief Event Link Controller (ELC) register layout for the Renesas RA8D2
+ * @ingroup grp_hal_system
  *
  * @details
  * The ELC lets one peripheral's event directly trigger another

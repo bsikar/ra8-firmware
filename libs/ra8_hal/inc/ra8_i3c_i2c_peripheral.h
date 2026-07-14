@@ -1,6 +1,7 @@
 /**
  * @file ra8_i3c_i2c_peripheral.h
  * @brief IIC_B (I3C in I2C-only mode) peripheral driver -- mirrors FSP ``r_iic_b_peripheral``
+ * @ingroup grp_hal_comms
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

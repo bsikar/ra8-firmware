@@ -1,6 +1,7 @@
 /**
  * @file ra8_usb_haud.h
  * @brief Native USB host-side Audio class layer (USB Audio 1.0)
+ * @ingroup grp_hal_usb
  *
  * @details
  * Glues the host-mode bring-up paths in `ra8_usb` to a USB Audio class

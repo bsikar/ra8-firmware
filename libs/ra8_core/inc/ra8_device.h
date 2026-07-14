@@ -1,6 +1,7 @@
 /**
  * @file ra8_device.h
  * @brief Compile-time device selection for the RA8 multi-chip build (RA8D2 / RA8P1)
+ * @ingroup grp_core
  *
  * @details
  * This project's HAL was written for the Renesas RA8D2 (R7KA8D2KFLCAC). The

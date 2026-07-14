@@ -1,6 +1,7 @@
 /**
  * @file ra8_nsc_veneer.h
  * @brief Macros for declaring Non-Secure Callable veneer functions
+ * @ingroup grp_security
  *
  * @par Tag
  * [Ring 4 / NSC] {World: NSC}

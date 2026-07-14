@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_spi_bus.h
  * @brief ra8_io SPI-bus facade -- one controller-transfer vtable over the
+ * @ingroup grp_io
  *        chip's two SPI implementations.
  *
  * @par Tag

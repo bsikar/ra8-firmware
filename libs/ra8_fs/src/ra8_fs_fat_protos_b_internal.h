@@ -1,6 +1,7 @@
 /**
  * @file ra8_fs_fat_protos_b_internal.h
  * @brief Cross-TU helper prototypes for the FAT/exFAT adapter (part B of 2).
+ * @ingroup grp_storage
  *
  * @details
  * The second half of the FAT/exFAT adapter's cross-TU helper prototypes. Each

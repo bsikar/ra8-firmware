@@ -1,6 +1,7 @@
 /**
  * @file ra8_mstp_regs.h
  * @brief Module Stop Control (MSTP) register layout for the Renesas RA8D2
+ * @ingroup grp_hal_system
  *
  * @details
  * Every RA-family peripheral has a Module Stop bit. When that bit is

@@ -1,6 +1,7 @@
 /**
  * @file ra8_usb_hcdc.h
  * @brief Native USB host-side CDC ACM (Communications Device Class -
+ * @ingroup grp_hal_usb
  *        Abstract Control Model) class layer
  *
  * @details

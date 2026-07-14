@@ -1,6 +1,7 @@
 /**
  * @file ra8_dfu.h
  * @brief Controller-agnostic USB-DFU MRAM bootloader core for the RA8D2.
+ * @ingroup grp_security
  *
  * @par Tag
  * [Ring 4 / Service] {World: S}

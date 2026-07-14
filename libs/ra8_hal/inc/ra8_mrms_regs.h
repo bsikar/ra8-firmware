@@ -1,6 +1,7 @@
 /**
  * @file ra8_mrms_regs.h
  * @brief MRAM Memory System (MRMS) wait-state register layout for the RA8D2
+ * @ingroup grp_hal_system
  *
  * @details
  * The Renesas RA8 Gen2 family does not expose the legacy MEMWAIT /

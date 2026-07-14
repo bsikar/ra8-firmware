@@ -1,6 +1,7 @@
 /**
  * @file ra8_i3c_i2c_regs.h
  * @brief IIC_B (I3C-based I2C) register layout for the Renesas RA8D2
+ * @ingroup grp_hal_comms
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

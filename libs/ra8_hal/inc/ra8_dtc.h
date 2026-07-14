@@ -1,6 +1,7 @@
 /**
  * @file ra8_dtc.h
  * @brief Data Transfer Controller (DTC) driver
+ * @ingroup grp_hal_memory
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

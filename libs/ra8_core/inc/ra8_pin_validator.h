@@ -1,6 +1,7 @@
 /**
  * @file ra8_pin_validator.h
  * @brief Runtime Pin-Ownership Validator
+ * @ingroup grp_core
  *
  * @details
  * Centralised bookkeeping that prevents two drivers from accidentally

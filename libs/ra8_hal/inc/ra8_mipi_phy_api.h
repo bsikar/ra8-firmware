@@ -1,6 +1,7 @@
 /**
  * @file ra8_mipi_phy_api.h
  * @brief MIPI D-PHY driver -- public function prototypes
+ * @ingroup grp_hal_display
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

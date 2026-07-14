@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_stream_internal.h
  * @brief Internal vtable type for the ra8_io byte-stream facade.
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

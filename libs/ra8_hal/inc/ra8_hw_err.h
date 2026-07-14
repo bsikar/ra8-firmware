@@ -1,6 +1,7 @@
 /**
  * @file ra8_hw_err.h
  * @brief Bounded wait-flag primitives for RA8D2 HAL drivers
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S} (header-only)

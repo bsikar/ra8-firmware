@@ -1,6 +1,7 @@
 /**
  * @file ra8_xspi.h
  * @brief xSPI / Octo-SPI driver (flash read/program/erase + ID/status)
+ * @ingroup grp_hal_memory
  *
  * @details
  * Driver surface for the RA8D2 xSPI controller in direct-command

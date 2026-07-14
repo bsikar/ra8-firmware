@@ -1,6 +1,7 @@
 /**
  * @file ra8_cache_store_internal.h
  * @brief Internal on-media format + cross-TU helpers for ra8_cache_store (#201).
+ * @ingroup grp_storage
  *
  * @details
  * Private to `libs/ra8_cache_store/src/`. Declares the three fixed-width on-flash

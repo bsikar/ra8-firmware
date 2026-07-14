@@ -1,6 +1,7 @@
 /**
  * @file ra8_dual_core.h
  * @brief Dual-core (CPU0 / CPU1) lifecycle helper -- public API
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

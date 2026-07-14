@@ -1,6 +1,7 @@
 /**
  * @file ra8_usb_pal.h
  * @brief USB device-mode Platform Abstraction Layer
+ * @ingroup grp_net
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

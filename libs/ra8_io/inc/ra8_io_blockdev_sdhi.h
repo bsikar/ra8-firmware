@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_blockdev_sdhi.h
  * @brief ra8_io block-device backend over the native SDHI SD-card controller.
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

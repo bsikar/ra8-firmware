@@ -1,6 +1,7 @@
 /**
  * @file ra8_sci_regs.h
  * @brief SCI_B (Serial Communication Interface, B variant) register layout
+ * @ingroup grp_hal_comms
  *        for the RA8D2
  *
  * @details

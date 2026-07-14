@@ -1,6 +1,7 @@
 /**
  * @file ra8_spi_bus_ops.h
  * @brief Injected SPI-bus seam consumed by Ring-3 SPI device drivers.
+ * @ingroup grp_hal_comms
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

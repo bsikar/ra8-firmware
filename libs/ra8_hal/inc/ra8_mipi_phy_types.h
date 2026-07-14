@@ -1,6 +1,7 @@
 /**
  * @file ra8_mipi_phy_types.h
  * @brief MIPI D-PHY driver -- shared enums, structs, and callback typedef
+ * @ingroup grp_hal_display
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

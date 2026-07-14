@@ -1,6 +1,7 @@
 /**
  * @file ra8_reflow.h
  * @brief HTML / CSS reflow + paginate engine for the ra8d2 ereader.
+ * @ingroup grp_ereader
  *
  * @details
  * `ra8_reflow` is a small, hand-written HTML reflow + pagination engine

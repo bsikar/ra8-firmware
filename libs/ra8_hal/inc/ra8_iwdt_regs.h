@@ -1,6 +1,7 @@
 /**
  * @file ra8_iwdt_regs.h
  * @brief Independent Watchdog Timer (IWDT) register layout for the RA8D2
+ * @ingroup grp_hal_timers
  *
  * @details
  * The IWDT is a free-running 14-bit down-counter clocked from the

@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_stream_usbcdc.h
  * @brief ra8_io byte-stream sink over a USB-CDC endpoint.
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

@@ -2,6 +2,7 @@
  * @file ra8_board_ek_ra8d2_peripherals.h
  * @brief I/O-expander, USB, camera, external-memory, MIPI-DSI, UART console,
  *        and Ethernet portion of the EK-RA8D2 v1 board-support layer.
+ * @ingroup grp_board
  *
  * @par Tag
  * [Ring 5 / BSP] {World: S}

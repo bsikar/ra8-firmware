@@ -1,6 +1,7 @@
 /**
  * @file ra8_bscan_regs.h
  * @brief JTAG / IEEE-1149.1 Boundary Scan TAP constants for the RA8D2
+ * @ingroup grp_hal_system
  *
  * @details
  * The RA8D2 implements an IEEE-1149.1 (JTAG) Test Access Port for

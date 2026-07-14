@@ -1,6 +1,7 @@
 /**
  * @file ra8_vreg_regs.h
  * @brief Internal Voltage Regulator (VREG / DCDC / LDO) register layout for RA8D2
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

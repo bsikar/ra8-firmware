@@ -1,6 +1,7 @@
 /**
  * @file ra8_wdt_supervisor.h
  * @brief ThreadX-aware watchdog supervisor (per-thread check-in registry)
+ * @ingroup grp_system
  *
  * @par Tag
  * [Ring 4 / Service] {World: NS}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_mipi_dsi_regs.h
  * @brief MIPI DSI Host (DSI-2) register layout for the RA8D2
+ * @ingroup grp_hal_display
  *
  * @details
  * The RA8D2 MIPI DSI Host module is a MIPI DSI-2 transmitter that

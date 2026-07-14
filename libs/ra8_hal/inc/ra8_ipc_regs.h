@@ -1,6 +1,7 @@
 /**
  * @file ra8_ipc_regs.h
  * @brief Inter-Processor Communication (IPC) register layout for the RA8D2
+ * @ingroup grp_hal_system
  *
  * @details
  * The RA8D2 hosts two CPU cores (Cortex-M85 / "CPU0" and Cortex-M33 /

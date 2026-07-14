@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_blockdev.h
  * @brief ra8_io block-device fabric -- one LBA vtable across every storage medium.
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

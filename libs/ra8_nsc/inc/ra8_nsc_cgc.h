@@ -1,6 +1,7 @@
 /**
  * @file ra8_nsc_cgc.h
  * @brief NSC veneers for the Clock Generation Circuit (CGC) driver
+ * @ingroup grp_security
  *
  * @par Tag
  * [Ring 4 / NSC] {World: NSC}

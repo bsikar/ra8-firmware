@@ -1,6 +1,7 @@
 /**
  * @file ra8_psa_crypto.h
  * @brief Application-level PSA Crypto facade over tf-psa-crypto
+ * @ingroup grp_security
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

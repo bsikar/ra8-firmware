@@ -1,6 +1,7 @@
 /**
  * @file ra8_usb_composite.h
  * @brief Native USB device-side composite-class layer
+ * @ingroup grp_hal_usb
  *
  * @details
  * Mirrors FSP's `r_usb_composite` peripheral-mode composite-device

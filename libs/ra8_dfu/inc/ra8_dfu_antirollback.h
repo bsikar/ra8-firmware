@@ -1,6 +1,7 @@
 /**
  * @file ra8_dfu_antirollback.h
  * @brief DFU anti-rollback (downgrade protection) policy + storage seam.
+ * @ingroup grp_security
  *
  * @par Tag
  * [Ring 4 / Service] {World: S}

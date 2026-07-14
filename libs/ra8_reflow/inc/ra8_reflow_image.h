@@ -1,6 +1,7 @@
 /**
  * @file ra8_reflow_image.h
  * @brief Zero-heap raster image decode + scale + blit for ra8_reflow (#106).
+ * @ingroup grp_ereader
  *
  * @details
  * Decodes an in-memory JPEG/PNG/GIF/BMP (the formats EPUB covers + figures

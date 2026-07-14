@@ -1,6 +1,7 @@
 /**
  * @file ra8_drw.h
  * @brief 2D Drawing Engine (DRW / D/AVE 2D) HAL driver -- public API
+ * @ingroup grp_hal_display
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

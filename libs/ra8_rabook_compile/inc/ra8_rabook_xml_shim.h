@@ -1,6 +1,7 @@
 /**
  * @file ra8_rabook_xml_shim.h
  * @brief C-callable interface to the XHTML -> ra8_rabook DOM parser (#149).
+ * @ingroup grp_ereader
  *
  * @details
  * Thin extern "C" boundary over the C++ tinyxml2 shim that walks an XHTML

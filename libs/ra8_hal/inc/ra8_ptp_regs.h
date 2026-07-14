@@ -1,6 +1,7 @@
 /**
  * @file ra8_ptp_regs.h
  * @brief IEEE 1588 Precision Time Protocol (PTP) register layout for the RA8D2
+ * @ingroup grp_hal_net
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

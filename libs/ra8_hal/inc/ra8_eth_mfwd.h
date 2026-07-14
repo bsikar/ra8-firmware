@@ -1,6 +1,7 @@
 /**
  * @file ra8_eth_mfwd.h
  * @brief Ethernet Message Forwarding Engine (MFWD) driver
+ * @ingroup grp_hal_net
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

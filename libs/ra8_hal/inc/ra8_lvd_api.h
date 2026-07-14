@@ -1,6 +1,7 @@
 /**
  * @file ra8_lvd_api.h
  * @brief Programmable Voltage Detection (PVD / LVD) HAL function prototypes
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

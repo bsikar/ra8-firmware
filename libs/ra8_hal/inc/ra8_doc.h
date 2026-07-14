@@ -1,6 +1,7 @@
 /**
  * @file ra8_doc.h
  * @brief Data Operation Circuit (DOC) driver header
+ * @ingroup grp_hal_system
  *
  * @details
  * Public API for the 16-bit Data Operation Circuit that performs

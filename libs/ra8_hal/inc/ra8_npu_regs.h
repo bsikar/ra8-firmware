@@ -1,6 +1,7 @@
 /**
  * @file ra8_npu_regs.h
  * @brief Arm Ethos-U55 NPU register window on the Renesas RA8P1 (RA8P1-only)
+ * @ingroup grp_hal_system
  *
  * @details
  * The RA8P1 (R7KA8P1KFLCAC) integrates an Arm Ethos-U55 micro-NPU that the

@@ -1,6 +1,7 @@
 /**
  * @file ra8_batt.h
  * @brief Bounded, allocation-free low-battery nag policy.
+ * @ingroup grp_board
  *
  * @details
  * `ra8_batt` decides *when* to raise a low-battery warning from a stream of

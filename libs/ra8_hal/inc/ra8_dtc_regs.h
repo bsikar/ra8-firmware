@@ -1,6 +1,7 @@
 /**
  * @file ra8_dtc_regs.h
  * @brief DTC (Data Transfer Controller) register layout for the RA8D2
+ * @ingroup grp_hal_memory
  *
  * @details
  * The DTC is a lighter-weight alternative to the DMAC for moving

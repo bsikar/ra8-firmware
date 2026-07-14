@@ -1,6 +1,7 @@
 /**
  * @file ra8_tls.h
  * @brief Tiny TLS facade over the vendored Mbed TLS 4.x stack
+ * @ingroup grp_security
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

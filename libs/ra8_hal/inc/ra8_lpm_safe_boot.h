@@ -1,6 +1,7 @@
 /**
  * @file ra8_lpm_safe_boot.h
  * @brief Self-healing LPM register reset for very early boot
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

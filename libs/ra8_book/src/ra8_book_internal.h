@@ -1,6 +1,7 @@
 /**
  * @file ra8_book_internal.h
  * @brief ra8_book DOM-walk helpers shared across the library's translation units.
+ * @ingroup grp_ereader
  *
  * @details
  * Module-private seam between ra8_book_xhtml.c (resident XHTML serialiser + text

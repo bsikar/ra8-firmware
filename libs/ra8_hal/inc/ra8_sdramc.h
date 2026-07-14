@@ -1,6 +1,7 @@
 /**
  * @file ra8_sdramc.h
  * @brief External SDRAM controller driver (framework)
+ * @ingroup grp_hal_memory
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -1,6 +1,7 @@
 /**
  * @file ra8_dotf_regs.h
  * @brief Decryption On The Fly (DOTF) register layout for the Renesas RA8D2
+ * @ingroup grp_hal_crypto
  *
  * @details
  * The RA8D2 has two DOTF channels which transparently decrypt read

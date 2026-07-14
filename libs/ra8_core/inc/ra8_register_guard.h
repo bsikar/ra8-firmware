@@ -1,6 +1,7 @@
 /**
  * @file ra8_register_guard.h
  * @brief IRQ-masked read-modify-write helper for shared registers
+ * @ingroup grp_core
  *
  * @details
  * Most RA8D2 peripheral registers are safe to read-modify-write from

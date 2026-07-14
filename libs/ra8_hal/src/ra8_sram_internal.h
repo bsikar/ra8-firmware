@@ -1,6 +1,7 @@
 /**
  * @file ra8_sram_internal.h
  * @brief src/-local shared surface for the SRAM HAL driver split.
+ * @ingroup grp_hal_memory
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

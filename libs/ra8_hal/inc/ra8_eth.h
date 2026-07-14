@@ -1,6 +1,7 @@
 /**
  * @file ra8_eth.h
  * @brief Ethernet Switch Module (ESWM) + frame TX/RX driver
+ * @ingroup grp_hal_net
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_psa_crypto_internal.h
  * @brief Module-private definitions shared across the ``ra8_psa_crypto`` TUs.
+ * @ingroup grp_security
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

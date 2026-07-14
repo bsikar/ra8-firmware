@@ -1,6 +1,7 @@
 /**
  * @file ra8_board_ek_ra8d2.h
  * @brief Board-support layer for the Renesas EK-RA8D2 v1 evaluation kit
+ * @ingroup grp_board
  *
  * @par Tag
  * [Ring 5 / BSP] {World: S}

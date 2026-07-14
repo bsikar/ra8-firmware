@@ -1,6 +1,7 @@
 /**
  * @file ra8_ceu_types.h
  * @brief Capture Engine Unit (CEU) configuration descriptors and types
+ * @ingroup grp_hal_camera
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_display_pal_policy.h
  * @brief Pluggable page-turn refresh-cadence policy for bistable (e-ink) panels.
+ * @ingroup grp_ereader
  *
  * @details
  * E-ink panels are bistable: every ``display_flush`` is a real, visible panel

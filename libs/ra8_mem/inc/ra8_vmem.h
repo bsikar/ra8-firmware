@@ -1,6 +1,7 @@
 /**
  * @file ra8_vmem.h
  * @brief Unified page cache with SLRU eviction (Layer 2, #147).
+ * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 2 / Core] {World: NS}

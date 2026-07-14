@@ -1,6 +1,7 @@
 /**
  * @file ra8_icu.h
  * @brief Interrupt Control Unit driver (IRQ pins, NMI)
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

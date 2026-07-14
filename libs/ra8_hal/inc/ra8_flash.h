@@ -1,6 +1,7 @@
 /**
  * @file ra8_flash.h
  * @brief Code MRAM + Extra MRAM + Option-Setting driver -- DANGEROUS, brick-capable
+ * @ingroup grp_hal_memory
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_ether_phy.h
  * @brief Generic Ethernet PHY abstraction (MDIO Clause-22 + auto-neg)
+ * @ingroup grp_hal_net
  *
  * @details
  * Mirrors the FSP `r_ether_phy` API shape (open / close / chipInit /

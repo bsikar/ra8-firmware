@@ -1,6 +1,7 @@
 /**
  * @file ra8_usb_pvnd.h
  * @brief Native USB device-side Vendor-defined class layer
+ * @ingroup grp_hal_usb
  *
  * @details
  * Glues the device-mode `ra8_usb` controller driver to a vendor-defined

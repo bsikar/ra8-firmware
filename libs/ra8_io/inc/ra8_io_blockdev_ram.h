@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_blockdev_ram.h
  * @brief ra8_io block-device backend over a caller-owned RAM buffer.
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

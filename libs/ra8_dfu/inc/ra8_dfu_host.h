@@ -1,6 +1,7 @@
 /**
  * @file ra8_dfu_host.h
  * @brief Polled on-board USB-DFU host driver, bound to either controller.
+ * @ingroup grp_security
  *
  * @par Tag
  * [Ring 4 / Service] {World: S}

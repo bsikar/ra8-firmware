@@ -1,6 +1,7 @@
 /**
  * @file ra8_usb_pmsc_internal.h
  * @brief Cross-TU surface shared between the device-MSC BOT state
+ * @ingroup grp_hal_usb
  *        machine (ra8_usb_pmsc.c) and the SCSI command handlers
  *        (ra8_usb_pmsc_scsi.c).
  *

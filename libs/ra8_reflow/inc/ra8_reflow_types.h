@@ -1,6 +1,7 @@
 /**
  * @file ra8_reflow_types.h
  * @brief Reflow-engine data model: enums, structs, typedefs, and the handle.
+ * @ingroup grp_ereader
  *
  * @details
  * This sub-header holds the data model for the `ra8_reflow` HTML / CSS reflow

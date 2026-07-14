@@ -1,6 +1,7 @@
 /**
  * @file ra8_ospi_regs.h
  * @brief xSPI / Octo-SPI controller register layout for the Renesas RA8D2
+ * @ingroup grp_hal_memory
  *
  * @details
  * The RA8D2 xSPI controller drives the on-board 64 MiB Octo-SPI NOR

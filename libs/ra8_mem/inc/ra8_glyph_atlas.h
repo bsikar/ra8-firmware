@@ -1,6 +1,7 @@
 /**
  * @file ra8_glyph_atlas.h
  * @brief Fixed-RAM-budget glyph cache with LRU eviction (Layer 3, #147).
+ * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 2 / Core] {World: NS}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_lpm_regs.h
  * @brief Low Power Mode (LPM) register layout for the Renesas RA8D2
+ * @ingroup grp_hal_system
  *
  * @details
  * Hand-derived register map covering every register the LPM HAL

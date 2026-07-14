@@ -1,6 +1,7 @@
 /**
  * @file ra8_usb_internal.h
  * @brief Cross-TU surface for the ra8_usb driver split.
+ * @ingroup grp_hal_usb
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

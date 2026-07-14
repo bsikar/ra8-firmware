@@ -1,6 +1,7 @@
 /**
  * @file ra8_reset_regs.h
  * @brief Reset block register layout (offsets, bit masks, accessors)
+ * @ingroup grp_hal_system
  *        for the Renesas RA8D2
  *
  * @details

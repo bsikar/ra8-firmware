@@ -1,6 +1,7 @@
 /**
  * @file ra8_display_pal.h
  * @brief Display Platform Abstraction Layer for the RA8D2
+ * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_i3c_i2c.h
  * @brief IIC_B (I3C unified IP, I2C-only mode) controller driver
+ * @ingroup grp_hal_comms
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

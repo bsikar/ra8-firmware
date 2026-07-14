@@ -1,6 +1,7 @@
 /**
  * @file ra8_fs_fat_types_internal.h
  * @brief Cross-TU on-disk-layout enums and typedefs for the FAT/exFAT adapter.
+ * @ingroup grp_storage
  *
  * @details
  * The TYPES half of the FAT/exFAT adapter's module-private declarations. It

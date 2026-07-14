@@ -1,6 +1,7 @@
 /**
  * @file ra8_keyboard.h
  * @brief On-screen keyboard widget -- iOS-style layers, shift, hit-test.
+ * @ingroup grp_board
  *
  * @par Tag
  * [Ring 4 / UI] {World: NS}

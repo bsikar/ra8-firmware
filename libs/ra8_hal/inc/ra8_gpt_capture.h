@@ -1,6 +1,7 @@
 /**
  * @file ra8_gpt_capture.h
  * @brief GPT input-capture + external event / pulse-count extension
+ * @ingroup grp_hal_timers
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

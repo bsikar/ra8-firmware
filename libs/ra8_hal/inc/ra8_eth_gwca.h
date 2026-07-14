@@ -1,6 +1,7 @@
 /**
  * @file ra8_eth_gwca.h
  * @brief Ethernet CPU Agent (GWCA) driver
+ * @ingroup grp_hal_net
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_eth_coma.h
  * @brief Ethernet Common Agent (COMA) driver
+ * @ingroup grp_hal_net
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

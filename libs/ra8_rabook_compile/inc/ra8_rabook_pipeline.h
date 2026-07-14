@@ -1,6 +1,7 @@
 /**
  * @file ra8_rabook_pipeline.h
  * @brief End-to-end EPUB -> RABOOK1 compile pipeline (#149).
+ * @ingroup grp_ereader
  *
  * @details
  * Wires the back-end stages into a single call, in the desktop epub_compile.py

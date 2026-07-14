@@ -1,6 +1,7 @@
 /**
  * @file ra8_spi.h
  * @brief SPI_B controller driver (RA8D2 Type-B SPI peripheral)
+ * @ingroup grp_hal_comms
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

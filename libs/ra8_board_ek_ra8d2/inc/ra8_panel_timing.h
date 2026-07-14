@@ -1,6 +1,7 @@
 /**
  * @file ra8_panel_timing.h
  * @brief EK-RA8D2 panel timing as the HAL's ra8_glcdc_timing_t (ER-TFT070-6)
+ * @ingroup grp_board
  *
  * @details
  * Assembles the named panel constants from ra8_panel.h into the HAL's

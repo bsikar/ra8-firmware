@@ -1,6 +1,7 @@
 /**
  * @file ra8_dfu_internal.h
  * @brief TU-shared surface for the DFU MRAM program/verify implementation.
+ * @ingroup grp_security
  *
  * @par Tag
  * [Ring 4 / Service] {World: S}

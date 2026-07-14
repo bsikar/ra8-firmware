@@ -1,6 +1,7 @@
 /**
  * @file ra8_jpeg_sw.h
  * @brief Pure-software baseline JPEG (ISO/IEC 10918-1 / ITU-T T.81) codec
+ * @ingroup grp_hal_camera
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

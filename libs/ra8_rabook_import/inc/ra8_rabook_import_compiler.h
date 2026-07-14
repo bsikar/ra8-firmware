@@ -1,6 +1,7 @@
 /**
  * @file ra8_rabook_import_compiler.h
  * @brief Production adapter binding the import seam to the real compiler (#151).
+ * @ingroup grp_ereader
  *
  * @details
  * @ref ra8_rabook_import.h keeps the cache manager decoupled from the EPUB parser

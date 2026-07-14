@@ -1,6 +1,7 @@
 /**
  * @file ra8_epub_miniz_alloc.h
  * @brief Static-arena allocator for miniz on the zero-heap firmware target.
+ * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 4 / Domain] {World: NS}

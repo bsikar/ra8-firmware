@@ -1,6 +1,7 @@
 /**
  * @file ra8_canfd_regs.h
  * @brief CANFD controller register layout for the Renesas RA8D2
+ * @ingroup grp_hal_comms
  *
  * @details
  * Two CANFD instances live at `0x40380000` (CANFD0) and `0x40382000`

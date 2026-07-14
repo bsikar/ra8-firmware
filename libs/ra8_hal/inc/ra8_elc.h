@@ -1,6 +1,7 @@
 /**
  * @file ra8_elc.h
  * @brief Event Link Controller driver
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

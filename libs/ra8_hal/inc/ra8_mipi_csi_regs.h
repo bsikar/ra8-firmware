@@ -1,6 +1,7 @@
 /**
  * @file ra8_mipi_csi_regs.h
  * @brief MIPI CSI-2 Receiver register layout for the RA8D2 (HUM Ch 66)
+ * @ingroup grp_hal_camera
  *
  * @details
  * The RA8D2 exposes a single MIPI CSI-2 receiver block at base

@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_stream_blockdev.h
  * @brief ra8_io byte-stream sink that buffers into a raw block device.
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

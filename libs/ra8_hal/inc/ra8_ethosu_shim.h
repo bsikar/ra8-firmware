@@ -1,6 +1,7 @@
 /**
  * @file ra8_ethosu_shim.h
  * @brief Arm ethos-u-core-driver C API shim over the `ra8_npu` driver (RA8P1-only)
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

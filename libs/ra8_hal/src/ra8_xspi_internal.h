@@ -1,6 +1,7 @@
 /**
  * @file ra8_xspi_internal.h
  * @brief Module-private seam shared between the ra8_xspi translation units.
+ * @ingroup grp_hal_memory
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_log.h
  * @brief Lightweight Logging Interface for ra8-firmware
+ * @ingroup grp_core
  *
  * @details
  * Zero-allocation, tag + message + optional value logging API. The

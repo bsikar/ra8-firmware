@@ -1,6 +1,7 @@
 /**
  * @file ra8_drw_regs.h
  * @brief 2D Drawing Engine (DRW / D/AVE 2D) register layout for the RA8D2
+ * @ingroup grp_hal_display
  *
  * @details
  * The RA8D2 carries a Renesas D/AVE 2D vector / BitBLT drawing

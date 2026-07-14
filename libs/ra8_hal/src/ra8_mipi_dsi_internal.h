@@ -1,6 +1,7 @@
 /**
  * @file ra8_mipi_dsi_internal.h
  * @brief Module-private link seam shared between the MIPI DSI-2 host
+ * @ingroup grp_hal_display
  *        driver translation units.
  *
  * @par Tag

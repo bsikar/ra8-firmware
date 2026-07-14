@@ -1,6 +1,7 @@
 /**
  * @file ra8_sdramc_regs.h
  * @brief External SDRAM controller register layout for the Renesas RA8D2
+ * @ingroup grp_hal_memory
  *
  * @details
  * The RA8D2 has a built-in SDRAMC that drives the external SDRAM on

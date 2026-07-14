@@ -1,6 +1,7 @@
 /**
  * @file ra8_hal_internal.h
  * @brief Cross-translation-unit private helpers shared inside ra8_hal.
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

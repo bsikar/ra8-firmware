@@ -1,6 +1,7 @@
 /**
  * @file ra8_time_constants.h
  * @brief Named Time Unit Constants for Delay / Timeout / Tick Math
+ * @ingroup grp_core
  *
  * @details
  * Collects every magic number related to time (microseconds,

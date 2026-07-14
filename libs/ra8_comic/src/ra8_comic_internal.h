@@ -1,6 +1,7 @@
 /**
  * @file ra8_comic_internal.h
  * @brief Cross-TU seams between the comic facade and its CBZ / CBR backends.
+ * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 4 / Domain] {World: NS}

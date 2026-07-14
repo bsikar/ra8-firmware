@@ -1,6 +1,7 @@
 /**
  * @file ra8_reflow_internal.h
  * @brief Test-access surface for ra8_reflow internal helpers (MC/DC).
+ * @ingroup grp_ereader
  *
  * @details
  * Not part of the public API. Tests under tests/ MAY include this

@@ -1,6 +1,7 @@
 /**
  * @file ra8_simulator_config.h
  * @brief Guards for host-compiled unit tests
+ * @ingroup grp_core
  *
  * @details
  * Every firmware .c file that touches a peripheral register block

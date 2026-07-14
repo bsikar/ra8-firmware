@@ -1,6 +1,7 @@
 /**
  * @file ra8_rsip_internal.h
  * @brief Cross-TU surface for the ra8_rsip driver split.
+ * @ingroup grp_hal_crypto
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

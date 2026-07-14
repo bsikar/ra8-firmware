@@ -1,6 +1,7 @@
 /**
  * @file ra8_fs_fat_internal.h
  * @brief Cross-TU shared declarations for the FAT/exFAT `ra8_fs` adapter.
+ * @ingroup grp_storage
  *
  * @details
  * The FAT/exFAT adapter is split across several translation units so that

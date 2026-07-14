@@ -1,6 +1,7 @@
 /**
  * @file ra8_rot.h
  * @brief Root-of-trust signed-image verifier (SHA-256 + ECDSA-P256, default-deny).
+ * @ingroup grp_security
  *
  * @par Tag
  * [Ring 4 / Service] {World: S}

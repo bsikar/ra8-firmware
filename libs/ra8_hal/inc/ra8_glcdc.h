@@ -1,6 +1,7 @@
 /**
  * @file ra8_glcdc.h
  * @brief Graphics LCD Controller driver (two-layer with alpha blending)
+ * @ingroup grp_hal_display
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

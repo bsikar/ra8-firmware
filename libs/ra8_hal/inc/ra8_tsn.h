@@ -1,6 +1,7 @@
 /**
  * @file ra8_tsn.h
  * @brief On-chip Temperature Sensor (TSN) driver
+ * @ingroup grp_hal_analog
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

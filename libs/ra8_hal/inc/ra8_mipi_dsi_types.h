@@ -1,6 +1,7 @@
 /**
  * @file ra8_mipi_dsi_types.h
  * @brief MIPI DSI-2 host driver -- public types (enums / structs / typedefs)
+ * @ingroup grp_hal_display
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

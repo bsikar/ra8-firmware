@@ -1,6 +1,7 @@
 /**
  * @file ra8_epub_fs.h
  * @brief `ra8_fs` -> `ra8_epub` bridge: open a `.epub` straight off a filesystem.
+ * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 4 / EPUB] {World: S}

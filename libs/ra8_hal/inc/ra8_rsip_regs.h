@@ -1,6 +1,7 @@
 /**
  * @file ra8_rsip_regs.h
  * @brief Renesas Secure IP (RSIP-E50D) register layout for the RA8D2
+ * @ingroup grp_hal_crypto
  *
  * @details
  * The RSIP-E50D engine on the RA8D2 is an isolated security

@@ -1,6 +1,7 @@
 /**
  * @file ra8_attributes.h
  * @brief Annotation-attribute framework macros for ra8-firmware
+ * @ingroup grp_core
  *
  * @details
  * This header defines the `RA8_*` annotation macros that decorate function

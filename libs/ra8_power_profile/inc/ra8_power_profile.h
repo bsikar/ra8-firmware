@@ -1,6 +1,7 @@
 /**
  * @file ra8_power_profile.h
  * @brief Power-profiling helper -- public API
+ * @ingroup grp_board
  *
  * @par Tag
  * [Ring 4 / Service] {World: NS}

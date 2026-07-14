@@ -1,6 +1,7 @@
 /**
  * @file adc_internal.h
  * @brief Cross-TU constants shared by the ADC_B driver split.
+ * @ingroup grp_hal_analog
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

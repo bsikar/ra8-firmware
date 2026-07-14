@@ -1,6 +1,7 @@
 /**
  * @file ra8_i3c_regs.h
  * @brief I3C Bus Interface register layout for the Renesas RA8D2
+ * @ingroup grp_hal_comms
  *
  * @details
  * Two I3C instances are available on the RA8D2 (R_I3C0 at

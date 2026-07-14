@@ -1,6 +1,7 @@
 /**
  * @file ra8_error_handler.h
  * @brief Centralised fatal-error sink
+ * @ingroup grp_core
  *
  * @details
  * `internal_ra8_fatal_error()` is the single entry point for "stop

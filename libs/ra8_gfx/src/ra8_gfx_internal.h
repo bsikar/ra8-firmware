@@ -1,6 +1,7 @@
 /**
  * @file ra8_gfx_internal.h
  * @brief Module-private declarations shared across the ra8_gfx software rasteriser TUs.
+ * @ingroup grp_ereader
  *
  * @details
  * The software pixel-pusher is split across several translation units that all

@@ -1,6 +1,7 @@
 /**
  * @file ra8_rabook_gray4.h
  * @brief 4-bpp grayscale image transcode stage for the on-device EPUB compiler (#149).
+ * @ingroup grp_ereader
  *
  * @details
  * Converts a decoded grayscale pixel buffer (one byte per pixel, 0-255) into

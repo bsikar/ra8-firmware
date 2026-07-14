@@ -1,6 +1,7 @@
 /**
  * @file ra8_i2c.h
  * @brief I2C Bus Interface (IIC) controller driver -- polling mode
+ * @ingroup grp_hal_comms
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

@@ -2,6 +2,7 @@
  * @file ra8_board_ek_ra8d2_connectors.h
  * @brief Board-identity, LEDs, switches, display, audio, Arduino, Pmod, and
  *        MikroBUS portion of the EK-RA8D2 v1 board-support layer.
+ * @ingroup grp_board
  *
  * @par Tag
  * [Ring 5 / BSP] {World: S}

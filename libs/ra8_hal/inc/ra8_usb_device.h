@@ -1,6 +1,7 @@
 /**
  * @file ra8_usb_device.h
  * @brief Native USB controller driver public API -- shared types + device mode
+ * @ingroup grp_hal_usb
  *
  * @details
  * Device-mode half of the hand-written, FSP-equivalent driver for the

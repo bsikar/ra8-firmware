@@ -1,6 +1,7 @@
 /**
  * @file ra8_rsip_asym_internal.h
  * @brief Cross-TU surface shared by the RSIP asymmetric + RSA split.
+ * @ingroup grp_hal_crypto
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

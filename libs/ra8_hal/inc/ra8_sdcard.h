@@ -1,6 +1,7 @@
 /**
  * @file ra8_sdcard.h
  * @brief SD card driver layered on top of the RA8D2 SDHI peripheral
+ * @ingroup grp_hal_memory
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

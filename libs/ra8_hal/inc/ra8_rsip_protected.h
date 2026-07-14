@@ -1,6 +1,7 @@
 /**
  * @file ra8_rsip_protected.h
  * @brief RSIP protected-key HAL -- crypto operations driven by wrapped
+ * @ingroup grp_hal_crypto
  *        key blobs (the RSIP engine never sees the raw key)
  *
  * @par Tag

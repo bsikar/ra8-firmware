@@ -1,6 +1,7 @@
 /**
  * @file ra8_mipi_csi_ctrl.h
  * @brief MIPI CSI-2 receiver HAL driver -- control, status, and IRQ-enable API
+ * @ingroup grp_hal_camera
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

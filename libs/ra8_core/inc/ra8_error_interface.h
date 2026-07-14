@@ -1,6 +1,7 @@
 /**
  * @file ra8_error_interface.h
  * @brief Abstract error-reporter interface for DI
+ * @ingroup grp_core
  *
  * @details
  * Drivers that want to report non-fatal errors (retry loops,

@@ -1,6 +1,7 @@
 /**
  * @file ra8_flash_regs.h
  * @brief Flash / MRAM controller register layout for the Renesas RA8D2
+ * @ingroup grp_hal_memory
  *
  * @details
  * On RA8D2 the primary non-volatile code memory is MRAM, not

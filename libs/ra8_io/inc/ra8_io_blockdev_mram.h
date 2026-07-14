@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_blockdev_mram.h
  * @brief ra8_io block-device backend over the on-chip extra/data MRAM region.
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

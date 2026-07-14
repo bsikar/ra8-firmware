@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_stream_uart.h
  * @brief ra8_io byte-stream sink over a UART/SCI channel.
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_register_protection.h
  * @brief Scoped PRCR unlock helper
+ * @ingroup grp_hal_system
  *
  * @details
  * Many CGC / LVD / LPM registers on the RA8D2 are gated by the PRCR

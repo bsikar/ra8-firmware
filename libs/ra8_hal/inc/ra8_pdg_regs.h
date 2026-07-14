@@ -1,6 +1,7 @@
 /**
  * @file ra8_pdg_regs.h
  * @brief PWM Delay Generation Circuit (PDG) register layout for the Renesas RA8D2
+ * @ingroup grp_hal_system
  *
  * @details
  * The PDG block (HUM Ch 23 "PWM Delay Generation Circuit (PDG)",

@@ -1,6 +1,7 @@
 /**
  * @file ra8_ota.h
  * @brief Phase-5 OTA firmware-update orchestration for the RA8D2.
+ * @ingroup grp_security
  *
  * @par Tag
  * [Ring 4 / Service] {World: NS}

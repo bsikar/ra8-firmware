@@ -1,6 +1,7 @@
 /**
  * @file ra8_sdhi_regs.h
  * @brief SDHI (SD/MMC host interface) register layout for the Renesas RA8D2
+ * @ingroup grp_hal_memory
  *
  * @details
  * Two SDHI instances at `0x40252000` (SDHI0) and `0x40252400`

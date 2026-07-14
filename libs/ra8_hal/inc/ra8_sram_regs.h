@@ -1,6 +1,7 @@
 /**
  * @file ra8_sram_regs.h
  * @brief SRAM (with ECC) control / status / security register layout
+ * @ingroup grp_hal_memory
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

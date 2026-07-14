@@ -1,6 +1,7 @@
 /**
  * @file ra8_book_paged.h
  * @brief Paged (demand-fetched) accessor mode for ra8_book over ra8_vmem (#163).
+ * @ingroup grp_ereader
  *
  * @details
  * The default ra8_book accessors (ra8_book.h) are pure offset arithmetic over a

@@ -1,6 +1,7 @@
 /**
  * @file ra8_lpm.h
  * @brief Low Power Mode (LPM) HAL driver -- public API
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

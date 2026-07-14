@@ -1,6 +1,7 @@
 /**
  * @file ra8_rar.h
  * @brief Clean-room, read-only RAR archive walker (RAR4 + RAR5 headers, STORE data).
+ * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 4 / Domain] {World: NS}

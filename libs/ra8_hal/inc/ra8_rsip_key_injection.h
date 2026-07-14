@@ -1,6 +1,7 @@
 /**
  * @file ra8_rsip_key_injection.h
  * @brief RSIP key-injection HAL -- wrap raw key material into the
+ * @ingroup grp_hal_crypto
  *        RSIP installed-key blob format
  *
  * @par Tag

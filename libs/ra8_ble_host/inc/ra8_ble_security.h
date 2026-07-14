@@ -1,6 +1,7 @@
 /**
  * @file ra8_ble_security.h
  * @brief BLE Security Manager Protocol (SMP) bonding + crypto offload.
+ * @ingroup grp_net
  *
  * @par Tag
  * [Ring 5 / LIB] {World: NS}

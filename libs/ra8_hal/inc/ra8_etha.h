@@ -1,6 +1,7 @@
 /**
  * @file ra8_etha.h
  * @brief Per-port Ethernet Agent (ETHA) driver -- HUM Ch 32 (p 1627-1702)
+ * @ingroup grp_hal_net
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

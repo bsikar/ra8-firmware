@@ -1,6 +1,7 @@
 /**
  * @file ra8_dmac_regs.h
  * @brief DMAC (Direct Memory Access Controller) register layout for the RA8D2
+ * @ingroup grp_hal_memory
  *
  * @details
  * 8-channel DMAC0 at `0x4000A000` with `0x40` bytes per channel. The

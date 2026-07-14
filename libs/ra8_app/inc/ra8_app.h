@@ -1,6 +1,7 @@
 /**
  * @file ra8_app.h
  * @brief Zero-heap app framework: lifecycle + static registry + launcher (#146).
+ * @ingroup grp_board
  *
  * @details
  * `ra8_app` makes each major function a first-class **app** with a lifecycle,

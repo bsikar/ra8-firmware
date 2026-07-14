@@ -1,6 +1,7 @@
 /**
  * @file ra8_usb_hmsc.h
  * @brief Native USB host-side MSC (Mass Storage Class) class layer
+ * @ingroup grp_hal_usb
  *
  * @details
  * Glues the host-mode bring-up paths in `ra8_usb` to a USB Mass Storage

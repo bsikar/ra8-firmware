@@ -1,6 +1,7 @@
 /**
  * @file ra8_mipi_csi_types.h
  * @brief MIPI CSI-2 receiver HAL driver -- public types
+ * @ingroup grp_hal_camera
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

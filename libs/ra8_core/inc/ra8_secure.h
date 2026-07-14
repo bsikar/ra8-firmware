@@ -1,6 +1,7 @@
 /**
  * @file ra8_secure.h
  * @brief Secure-comparison primitives for the crypto / secure-boot paths
+ * @ingroup grp_core
  *
  * @par Tag
  * [Ring 1 / Core] {World: S}

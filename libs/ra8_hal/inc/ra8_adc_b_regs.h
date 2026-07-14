@@ -1,6 +1,7 @@
 /**
  * @file ra8_adc_b_regs.h
  * @brief ADC_B (12 / 14-bit SAR) register layout for the Renesas RA8D2
+ * @ingroup grp_hal_analog
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

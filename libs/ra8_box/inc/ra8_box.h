@@ -1,6 +1,7 @@
 /**
  * @file ra8_box.h
  * @brief Bounded, allocation-free box-model layout for e-reader chrome.
+ * @ingroup grp_ereader
  *
  * @details
  * `ra8_box` is the minimal CSS-style box model the e-reader chrome needs

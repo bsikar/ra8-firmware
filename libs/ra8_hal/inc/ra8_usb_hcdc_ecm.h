@@ -1,6 +1,7 @@
 /**
  * @file ra8_usb_hcdc_ecm.h
  * @brief Native USB host-side CDC ECM (Communications Device Class -
+ * @ingroup grp_hal_usb
  *        Ethernet Networking Control Model) class layer
  *
  * @details

@@ -1,6 +1,7 @@
 /**
  * @file ra8_sdfont.h
  * @brief Load a TTF/OTF font off a Pmod SD card, self-provisioning if absent.
+ * @ingroup grp_storage
  *
  * @par Tag
  * [Ring 4 / SDFont] {World: NS}

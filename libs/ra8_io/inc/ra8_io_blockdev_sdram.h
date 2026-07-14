@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_blockdev_sdram.h
  * @brief ra8_io block-device backend over the external 64 MiB SDRAM window.
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_bscan.h
  * @brief JTAG / IEEE-1149.1 Boundary Scan TAP HAL surface
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
