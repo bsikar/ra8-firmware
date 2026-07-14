@@ -368,7 +368,8 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                         rule,
                         cs.caller_file,
                         cs.caller_line,
-                        f"function '{sym.name}' tagged RA8_TEST_HELPER called from non-test context",
+                        f"function '{sym.name}' tagged RA8_TEST_HELPER "
+                        "called from non-test context",
                     )
                     for cs in direct_calls_by_callee.get(sym.name, [])
                     if "/tests/" not in cs.caller_file.replace("\\", "/")
@@ -430,7 +431,8 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                             rule,
                             sym.file,
                             sym.line,
-                            f"NSC veneer '{sym.name}' must live under libs/ra8_nsc/src/ (found {f})",
+                            f"NSC veneer '{sym.name}' must live under "
+                            f"libs/ra8_nsc/src/ (found {f})",
                         )
                     )
                 body_calls = direct_calls_by_caller.get(sym.name, [])
