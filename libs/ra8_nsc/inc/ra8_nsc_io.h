@@ -6,7 +6,7 @@
  * [Ring 4 / NSC] {World: NSC}
  *
  * @details
- * retrofit veneers for the analog / safety / display /
+ * Retrofit veneers for the analog / safety / display /
  * audio / ethernet drivers (ra8_gpt, ra8_adc, ra8_dac_b, ra8_acmphs,
  * ra8_crc, ra8_glcdc, ra8_pdm, ra8_eth). Each veneer is a Non-Secure
  * Callable entry point that validates pointer arguments and
@@ -16,9 +16,9 @@
  * on the RA8D2 (see the scope-correction note in the
  * roadmap) so they have no veneers here.
  *
- * ships init + the most-used primitive per driver. The
+ * This layer ships init + the most-used primitive per driver. The
  * remaining surface is straightforward to add by following the
- * same pattern; deferred to alongside the first NS
+ * same pattern; deferred to land alongside the first NS
  * consumer.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
