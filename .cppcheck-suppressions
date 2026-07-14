@@ -19,7 +19,6 @@
 # CMSIS-standard way to implement the Reset_Handler .data / .bss
 # initialisation and to scan the stack-canary sentinel region.
 # ---------------------------------------------------------------------------
-comparePointers:src/boot/vector_table.c
 comparePointers:src/app/vector_table.c
 comparePointers:libs/ra8_core/src/ra8_infrastructure.c
 comparePointers:libs/ra8_board_ek_ra8d2/boot/vector_table.c
@@ -44,7 +43,6 @@ comparePointers:examples/*/*/*/*/vector_table.c
 # correct as written.
 # ---------------------------------------------------------------------------
 knownConditionTrueFalse:examples/_unsupported/threadx_https_client/main.c
-variableScope:examples/ek_ra8d2/threadx_netx_tcp_echo/main.c
 variableScope:libs/ra8_hal/src/ra8_touch.c
 
 # ---------------------------------------------------------------------------
@@ -58,16 +56,6 @@ variableScope:libs/ra8_hal/src/ra8_touch.c
 duplicateExpression:libs/ra8_core/src/ra8_time.c
 
 # ---------------------------------------------------------------------------
-# badBitmaskCheck on `(x << 1U) | 0U` in iic.c
-#
-# Justification: the `| 0U` is a documentation aid indicating the R/W bit
-# position in an I2C address byte (bit 0 = 0 for write, 1 for read). The
-# current call site always writes; a matching `| 1U` appears in the read path.
-# Preserving both makes the register-layout intent readable.
-# ---------------------------------------------------------------------------
-badBitmaskCheck:libs/ra8_hal/src/iic.c
-
-# ---------------------------------------------------------------------------
 # missingInclude for hardware register headers.
 #
 # Justification: cppcheck does not parse the full arm-none-eabi sysroot, so
@@ -75,16 +63,13 @@ badBitmaskCheck:libs/ra8_hal/src/iic.c
 # test build and the real cross build both include them successfully.
 # ---------------------------------------------------------------------------
 missingInclude:libs/ra8_hal/*
-missingInclude:libs/ra8_core/src/ra8_wdt.c
 missingInclude:libs/ra8_core/src/ra8_exception.c
 missingInclude:libs/ra8_core/src/ra8_infrastructure.c
-missingInclude:src/boot/*
-missingInclude:src/main.c
 
 # ---------------------------------------------------------------------------
 # unusedStructMember on hardware register layout structs.
 #
-# Justification: every `r_*_regs_t` struct in libs/ra8_hal/inc/ra8d2_*_regs.h
+# Justification: every `r_*_regs_t` struct in libs/ra8_hal/inc/ra8_*_regs.h
 # is a 1:1 map of a peripheral's MMIO window. Individual fields are "used"
 # at runtime by the compiler emitting the correct load/store instructions
 # through volatile pointer dereferences, but cppcheck's static-flow analysis
@@ -93,7 +78,7 @@ missingInclude:src/main.c
 # sprinkling inline suppressions across 30+ files every time a new field is
 # exposed ahead of its driver consumer.
 # ---------------------------------------------------------------------------
-unusedStructMember:libs/ra8_hal/inc/ra8d2_*_regs.h
+unusedStructMember:libs/ra8_hal/inc/ra8_*_regs.h
 
 # ---------------------------------------------------------------------------
 # unusedStructMember on the ra8_sdfont config struct.
@@ -251,16 +236,9 @@ unusedStructMember:libs/ra8_ble_host/inc/ra8_ble_host.h
 # cppcheck pass.
 unusedStructMember:port/nimble/inc/nimble_npl_threadx.h
 
-# Cortex-M exception-frame and net-internal struct fields populated by
-# fault handlers / future net-stack consumers; not yet visible to the
-# per-TU cppcheck pass.
+# Cortex-M exception-frame struct fields populated by fault handlers; not
+# yet visible to the per-TU cppcheck pass.
 unusedStructMember:libs/ra8_core/inc/ra8_exception.h
-unusedStructMember:libs/ra8_net/src/ra8_net_internal.h
-
-# knownConditionTrueFalse in ra8_net_udp DNS poll loop. The inner check is
-# a defensive early-out that cppcheck proves redundant from the loop
-# condition, but it documents intent when the surrounding logic evolves.
-knownConditionTrueFalse:libs/ra8_net/src/ra8_net_udp.c:664
 
 # knownConditionTrueFalse in ra8_dual_core: internal_is_cpu0() returns
 # a compile-time constant that depends on RA8_BUILD_FOR_CPU1. cppcheck
@@ -346,8 +324,6 @@ misra-c2012-12.1:libs/ra8_mpu/src/ra8_mpu.c:68
 misra-c2012-12.1:libs/ra8_mpu/src/ra8_mpu.c:71
 misra-c2012-12.1:libs/ra8_mpu/src/ra8_mpu.c:98
 misra-c2012-12.1:libs/ra8_mpu/src/ra8_mpu.c:195
-misra-c2012-12.1:libs/ra8_net/src/ra8_net_tcp.c:84
-misra-c2012-12.1:libs/ra8_net/src/ra8_net_tcp.c:90
 misra-c2012-12.1:libs/ra8_ota/src/ra8_ota.c:190
 misra-c2012-12.1:libs/ra8_ota/src/ra8_ota.c:235
 misra-c2012-12.1:libs/ra8_ota/src/ra8_ota.c:255
@@ -367,44 +343,9 @@ misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:633
 misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_layout.c:636
 misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_parse.c:62
 misra-c2012-12.1:libs/ra8_reflow/src/ra8_reflow_render.c:122
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:158
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:166
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:181
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:224
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:230
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:246
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:253
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:280
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:286
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:292
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:299
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:316
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:333
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:341
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:355
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:380
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:398
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:405
-misra-c2012-12.1:port/lwip/arch/sys_arch.c:452
 misra-c2012-12.1:port/nimble/src/nimble_npl_threadx.c:354
 misra-c2012-12.1:port/nimble/src/nimble_npl_threadx.c:398
 misra-c2012-12.1:port/nimble/src/nimble_npl_threadx.c:417
-
-# False positive: cppcheck flags `n < t->rx_len` as "always false" because
-# n was assigned `(rx_len < max_len) ? rx_len : max_len`. The condition is
-# true when max_len < rx_len (caller buffer smaller than queued bytes), so
-# the check correctly guards the memmove. Surfaced after promoting
-# ra8_net_tcp internals to external linkage for MC/DC test access.
-knownConditionTrueFalse:libs/ra8_net/src/ra8_net_tcp.c:463
-
-# ---------------------------------------------------------------------------
-# Uninitialized-variable false positive in ra8_net_arp.c arp_insert call.
-# cppcheck does not always track memcpy(struct.bytes, ...) as initialisation;
-# spa and sha are fully written via memcpy on the two lines preceding the
-# arp_insert(&spa, &sha) call.
-# ---------------------------------------------------------------------------
-uninitvar:libs/ra8_net/src/ra8_net_arp.c
-uninitvar:libs/ra8_net/src/ra8_net_icmp.c
 
 # ---------------------------------------------------------------------------
 # unusedStructMember on driver-facing config / state structs that are
