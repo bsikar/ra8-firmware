@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * substrate. Sits on top of ``ra8_mstp`` and ``ra8_cgc`` and
+ * Ring 3 / HAL substrate. Sits on top of ``ra8_mstp`` and ``ra8_cgc`` and
  * exposes the small set of helpers every driver checklist needs:
  *
  * - ``ra8_pwr_init()`` -- bring-up validation

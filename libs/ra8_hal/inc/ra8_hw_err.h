@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: S} (header-only)
  *
  * @details
- * substrate. Header-only because every helper here is a
+ * Ring 3 / HAL substrate. Header-only because every helper here is a
  * single short loop that the compiler should inline at the call
  * site -- making them ``static inline`` keeps the symbol weight
  * to zero in the cross-build.
