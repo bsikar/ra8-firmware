@@ -202,3 +202,14 @@ RUN set -eux; \
 
 COPY --chown=${USERNAME}:${USERNAME} zshrc    /home/${USERNAME}/.zshrc
 COPY --chown=${USERNAME}:${USERNAME} p10k.zsh /home/${USERNAME}/.p10k.zsh
+
+# Git config for the workspace. `feature.manyFiles` (index v4 + untracked cache)
+# speeds up `git status` on this large tree, which is otherwise slow over the
+# bind-mounted workspace on non-Linux hosts. `safe.directory` preempts git's
+# "detected dubious ownership" refusal when the bind mount's uid does not match
+# the container user. This is only a partial remedy: the real fix for slow git
+# on a Windows/macOS host is to keep the checkout in a container volume rather
+# than a host bind mount (VS Code: "Dev Containers: Clone Repository in Container
+# Volume"). See the workspaceMount note in devcontainer.json.
+RUN git config --global feature.manyFiles true \
+    && git config --global --add safe.directory /workspace
