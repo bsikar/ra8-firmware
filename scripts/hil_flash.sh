@@ -22,9 +22,9 @@
 
 set -euo pipefail
 
-PI_HOST="star@star.local"
-JLINK_SN="1086567198"
-JLINK_DEVICE="R7KA8D2KF_CPU0"
+# Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+rig_require PI_HOST JLINK_SN
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -87,9 +87,7 @@ fi
 
 # Detect if we are already on the Pi (CI self-hosted runner case).
 RUN_LOCAL=0
-if [[ "$(hostname 2>/dev/null || true)" == "star" ]] ||
-  [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] ||
-  [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+if rig_is_local_pi; then
   RUN_LOCAL=1
 fi
 

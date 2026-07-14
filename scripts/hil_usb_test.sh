@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 #
 # hil_usb_test.sh -- HIL test runner for both USBFS and USBHS CDC echo on
-# the EK-RA8D2.  Designed to run on the Pi (star@star.local) as the
+# the EK-RA8D2.  Designed to run on the bench Pi (`$PI_HOST`) as the
 # self-hosted gitea/github runner, or on a dev machine that can SSH there.
 #
 # What it does, for each controller:
@@ -28,7 +28,9 @@
 
 set -euo pipefail
 
-PI_HOST="star@star.local"
+# Rig config (PI_HOST) comes from the gitignored .env, not the tree.
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+rig_require PI_HOST
 HUB_PORT_USBHS=1
 HUB_PORT_USBFS=4
 ENUM_WAIT_S=35
@@ -37,9 +39,7 @@ PPPS_REENUM_RETRIES=3
 # Auto-detect if we are running on the Pi itself (so the script can serve
 # as the body of a self-hosted CI job without SSH'ing to itself).
 LOCAL_PI=0
-if [[ "$(hostname 2>/dev/null || true)" == "star" ]] ||
-  [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] ||
-  [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+if rig_is_local_pi; then
   LOCAL_PI=1
 fi
 # Wrappers: run something on the Pi (locally if we ARE the Pi, else via SSH).

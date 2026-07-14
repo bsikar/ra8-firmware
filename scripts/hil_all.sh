@@ -97,7 +97,10 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 HIL_DIR="${REPO_ROOT}/examples/ek_ra8d2/hw_validated/hil"
-PI_HOST="${PI_HOST:-star@star.local}"
+# Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
+source "${REPO_ROOT}/scripts/lib/rig_env.sh"
+rig_require JLINK_SN
+PI_HOST="${PI_HOST:-}"
 
 # Shared app discovery + hil.conf sourcing (also used by scripts/sil_all.sh).
 # shellcheck source=scripts/lib/hil_conf.sh
@@ -108,9 +111,7 @@ source "${REPO_ROOT}/scripts/lib/hil_conf.sh"
 # scripts SSH out automatically -- but we still want to use the matching
 # detection here to avoid double-hops.
 LOCAL_PI=0
-if [[ "$(hostname 2>/dev/null || true)" == "star" ]] ||
-  [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] ||
-  [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+if rig_is_local_pi; then
   LOCAL_PI=1
 fi
 pi_run() { if ((LOCAL_PI)); then bash -c "$*"; else ssh "$PI_HOST" "$@"; fi; }
@@ -369,14 +370,12 @@ for app in "${APPS[@]}"; do
   if [[ "${HIL_POST_INITIALIZE:-0}" == "1" ]]; then
     echo -e "${CYAN}[hil_all]${NC} ${app}: HIL_POST_INITIALIZE=1 -- running rfp-cli -erase-chip..."
     # Detect Pi vs dev-machine (same heuristic as hil_flash.sh)
-    if [[ "$(hostname 2>/dev/null || true)" == "star" ]] ||
-      [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] ||
-      [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
-      rfp-cli -d ra -t jlink:1086567198 -if swd -s 1000000 -erase-chip \
+    if ((LOCAL_PI)); then
+      rfp-cli -d ra -t "jlink:${JLINK_SN}" -if swd -s 1000000 -erase-chip \
         >/tmp/hil_all_post_init_${app}.log 2>&1 || true
     else
-      ssh -o ConnectTimeout=5 -o BatchMode=yes star@star.local \
-        "rfp-cli -d ra -t jlink:1086567198 -if swd -s 1000000 -erase-chip" \
+      ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" \
+        "rfp-cli -d ra -t jlink:${JLINK_SN} -if swd -s 1000000 -erase-chip" \
         >/tmp/hil_all_post_init_${app}.log 2>&1 || true
     fi
     if grep -q "Operation successful" "/tmp/hil_all_post_init_${app}.log" 2>/dev/null; then
