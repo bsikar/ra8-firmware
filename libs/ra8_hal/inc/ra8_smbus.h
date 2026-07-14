@@ -1,6 +1,7 @@
 /**
  * @file ra8_smbus.h
  * @brief SMBus 3.2 protocol layer over an injected I2C bus seam
+ * @ingroup grp_hal_comms
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

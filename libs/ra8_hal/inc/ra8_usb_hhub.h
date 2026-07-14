@@ -1,6 +1,7 @@
 /**
  * @file ra8_usb_hhub.h
  * @brief Native USB host-side HUB class layer
+ * @ingroup grp_hal_usb
  *
  * @details
  * Glues the host-mode bring-up paths in `ra8_usb` to a USB HUB device

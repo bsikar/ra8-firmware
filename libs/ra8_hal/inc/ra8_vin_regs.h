@@ -1,6 +1,7 @@
 /**
  * @file ra8_vin_regs.h
  * @brief Video Input Module (VIN) register layout for the RA8D2
+ * @ingroup grp_hal_camera
  *
  * @details
  * The Video Input Module sits at the AXI/PCLKA boundary between the

@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_vfs.h
  * @brief ra8_io virtual filesystem -- mount many volumes, address them by name.
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_stream.h
  * @brief ra8_io targetable byte-stream facade -- one writer, many destinations.
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

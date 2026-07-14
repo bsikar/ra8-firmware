@@ -1,6 +1,7 @@
 /**
  * @file ra8_gpio_constants.h
  * @brief PSEL codes for peripheral pin routing on the RA8D2
+ * @ingroup grp_core
  *
  * @details
  * Supplements `ra8_port_constants.h` with peripheral-function codes

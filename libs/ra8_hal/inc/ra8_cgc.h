@@ -1,6 +1,7 @@
 /**
  * @file ra8_cgc.h
  * @brief High-level Clock Generation Circuit driver
+ * @ingroup grp_hal_system
  *
  * @details
  * Minimal clock-init surface for bring-up. The RA8D2 defaults to MOCO

@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_blockdev_vsource.h
  * @brief Thin adapter exposing an ra8_io block device as an ra8_vsource reader.
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

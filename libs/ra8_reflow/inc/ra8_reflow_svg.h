@@ -1,6 +1,7 @@
 /**
  * @file ra8_reflow_svg.h
  * @brief Minimal SVG handling for the ra8_reflow ereader (#112).
+ * @ingroup grp_ereader
  *
  * @details
  * A small, hand-written, zero-allocation SVG subset for the two forms that

@@ -1,6 +1,7 @@
 /**
  * @file ra8_exception.h
  * @brief Cortex-M85 CPU exception diagnostic helpers
+ * @ingroup grp_core
  *
  * @details
  * When the Cortex-M85 takes a HardFault / MemManage / BusFault /

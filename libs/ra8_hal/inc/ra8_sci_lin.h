@@ -1,6 +1,7 @@
 /**
  * @file ra8_sci_lin.h
  * @brief LIN (Local Interconnect Network) commander + responder driver on SCI_B
+ * @ingroup grp_hal_comms
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

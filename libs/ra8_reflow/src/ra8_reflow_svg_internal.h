@@ -1,6 +1,7 @@
 /**
  * @file ra8_reflow_svg_internal.h
  * @brief Cross-TU surface for the split minimal-SVG subset (#112).
+ * @ingroup grp_ereader
  *
  * @details
  * The SVG subset implementation is split across five translation units that

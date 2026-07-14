@@ -1,6 +1,7 @@
 /**
  * @file ra8_sdmmc_spi_internal.h
  * @brief Module-private cross-TU surface for the SPI-mode SD card driver.
+ * @ingroup grp_storage
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

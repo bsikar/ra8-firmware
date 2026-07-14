@@ -1,6 +1,7 @@
 /**
  * @file ra8_rmac_phy.h
  * @brief Reduced-MAC (RMAC) PHY driver -- off-chip PHY for the GMAC-FPI
+ * @ingroup grp_hal_net
  *
  * @details
  * Mirrors the FSP `r_rmac_phy` API shape. The RMAC peripheral sits

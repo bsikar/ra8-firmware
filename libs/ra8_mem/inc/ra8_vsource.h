@@ -1,6 +1,7 @@
 /**
  * @file ra8_vsource.h
  * @brief Virtual-memory object sources -- the page-cache storage seam (Layer 1, #147).
+ * @ingroup grp_ereader
  *
  * @details
  * Layer 1 of the #147 memory hierarchy. ::ra8_vmem (Layer 2) pages objects in

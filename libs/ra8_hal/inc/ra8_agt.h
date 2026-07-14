@@ -1,6 +1,7 @@
 /**
  * @file ra8_agt.h
  * @brief Asynchronous General-Purpose Timer (AGT) driver header
+ * @ingroup grp_hal_timers
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

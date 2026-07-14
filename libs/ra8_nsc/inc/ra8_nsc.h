@@ -1,6 +1,7 @@
 /**
  * @file ra8_nsc.h
  * @brief Non-Secure Callable veneer scaffold
+ * @ingroup grp_security
  *
  * @par Tag
  * [Ring 4 / NSC] {World: NSC}

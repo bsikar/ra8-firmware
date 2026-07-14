@@ -1,6 +1,7 @@
 /**
  * @file ra8_sci.h
  * @brief Full-featured Serial Communications Interface driver
+ * @ingroup grp_hal_comms
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

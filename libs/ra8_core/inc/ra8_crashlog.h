@@ -1,6 +1,7 @@
 /**
  * @file ra8_crashlog.h
  * @brief Cross-reset crash-log: persist the last fault + a reset-loop guard.
+ * @ingroup grp_core
  *
  * @details
  * `ra8_exception.c` decodes every CPU fault / NMI into the fixed-SRAM

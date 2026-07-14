@@ -1,6 +1,7 @@
 /**
  * @file ra8_icu_regs.h
  * @brief Interrupt Control Unit (ICU) register layout for the Renesas RA8D2
+ * @ingroup grp_hal_system
  *
  * @details
  * The RA Interrupt Control Unit sits between the peripheral event

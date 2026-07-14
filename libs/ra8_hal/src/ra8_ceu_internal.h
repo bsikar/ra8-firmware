@@ -1,6 +1,7 @@
 /**
  * @file ra8_ceu_internal.h
  * @brief Cross-TU surface for the ra8_ceu driver split.
+ * @ingroup grp_hal_camera
  *
  * @details
  * Not part of the public API. Declares the init-time register

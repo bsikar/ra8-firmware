@@ -1,6 +1,7 @@
 /**
  * @file ra8_compositor.h
  * @brief Zero-heap framebuffer compositor: a tiled widget tree painted into
+ * @ingroup grp_ereader
  *        a caller-owned framebuffer through ra8_gfx, with dirty-region updates.
  *
  * @details

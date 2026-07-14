@@ -1,6 +1,7 @@
 /**
  * @file ra8_cache.h
  * @brief Cortex-M85 L1 D-cache maintenance (clean / invalidate by address).
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

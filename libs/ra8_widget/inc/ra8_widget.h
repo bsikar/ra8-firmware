@@ -1,6 +1,7 @@
 /**
  * @file ra8_widget.h
  * @brief Zero-heap composable widget layer (dwm-style) over ra8_box + ra8_ui.
+ * @ingroup grp_ereader
  *
  * @details
  * `ra8_widget` is the composable-UI layer issue #145 asks for: render

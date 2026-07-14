@@ -1,6 +1,7 @@
 /**
  * @file ra8_regs.h
  * @brief Top-level peripheral register header for the Renesas RA8D2
+ * @ingroup grp_hal_system
  *
  * @details
  * This header is the single include point for every peripheral register

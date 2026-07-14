@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_compress.h
  * @brief ra8_io DEFLATE compress / decompress (zero-heap, firmware-safe).
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

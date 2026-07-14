@@ -1,6 +1,7 @@
 /**
  * @file libs/ra8_board_ek_ra8d2/inc/ra8_boot_intrinsics.h
  * @brief Tiny MMIO / barrier intrinsics shared by the boot files
+ * @ingroup grp_board
  *
  * @par Tag
  * [Ring 1 / BSP] {World: S}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_sdmmc_spi.h
  * @brief SD card driver in SPI-mode (PMOD-attached cards)
+ * @ingroup grp_storage
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

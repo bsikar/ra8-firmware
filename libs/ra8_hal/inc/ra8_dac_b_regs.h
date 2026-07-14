@@ -1,6 +1,7 @@
 /**
  * @file ra8_dac_b_regs.h
  * @brief 12-bit DAC_B register layout for the Renesas RA8D2
+ * @ingroup grp_hal_analog
  *
  * @details
  * The RA8D2 has two separate DAC_B instances DAC_B0 / DAC_B1 at

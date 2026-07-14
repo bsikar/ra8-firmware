@@ -1,6 +1,7 @@
 /**
  * @file ra8_jpeg_sw_internal.h
  * @brief Module-private declarations shared across the software JPEG
+ * @ingroup grp_hal_camera
  *        codec translation units.
  *
  * @par Tag

@@ -1,6 +1,7 @@
 /**
  * @file ra8_rsip_regs_fields.h
  * @brief RSIP-E50D register field/value enums and the reg32 accessor
+ * @ingroup grp_hal_crypto
  *
  * @details
  * Sub-header of @ref ra8_rsip_regs.h. Carries every register

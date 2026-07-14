@@ -1,6 +1,7 @@
 /**
  * @file ra8_io.h
  * @brief ra8_io -- unified peripheral-agnostic I/O fabric (umbrella header).
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

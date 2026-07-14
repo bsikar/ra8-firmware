@@ -1,6 +1,7 @@
 /**
  * @file ra8_reflow_css.h
  * @brief Minimal content-CSS cascade for the ra8_reflow ereader engine (#111).
+ * @ingroup grp_ereader
  *
  * @details
  * A small, hand-written, zero-allocation CSS subset that lets EPUB content

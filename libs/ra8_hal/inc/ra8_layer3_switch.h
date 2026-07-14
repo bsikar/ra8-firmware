@@ -1,6 +1,7 @@
 /**
  * @file ra8_layer3_switch.h
  * @brief Layer-3 Ethernet switch driver -- placeholder
+ * @ingroup grp_hal_net
  *
  * @details
  * Mirrors the FSP `r_layer3_switch` API shape (open / route-add /

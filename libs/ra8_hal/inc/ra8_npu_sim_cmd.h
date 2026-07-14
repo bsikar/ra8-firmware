@@ -1,6 +1,7 @@
 /**
  * @file ra8_npu_sim_cmd.h
  * @brief board_sim / host-test command-stream convention for the Ethos-U55 model
+ * @ingroup grp_hal_system
  *
  * @details
  * This header defines a TINY, DETERMINISTIC, SIM-ONLY command-stream layout that

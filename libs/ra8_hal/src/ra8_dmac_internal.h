@@ -1,6 +1,7 @@
 /**
  * @file ra8_dmac_internal.h
  * @brief Test-access surface for ra8_dmac internal helpers (MC/DC).
+ * @ingroup grp_hal_memory
  *
  * @details
  * Not part of the public API. Tests under tests/ MAY include this

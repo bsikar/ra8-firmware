@@ -1,6 +1,7 @@
 /**
  * @file ra8_widget_internal.h
  * @brief Module-private paint helpers shared by the concrete leaf-widget TUs.
+ * @ingroup grp_ereader
  *
  * @details
  * The concrete leaf widgets (::ra8_widget_label_t in `ra8_widget_label.c` and

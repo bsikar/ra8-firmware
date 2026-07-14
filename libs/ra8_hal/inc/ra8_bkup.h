@@ -1,6 +1,7 @@
 /**
  * @file ra8_bkup.h
  * @brief Battery Backup Function (VBATT) HAL driver -- public API
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_ipc.h
  * @brief Inter-Processor Communication (IPC) HAL driver -- public API
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

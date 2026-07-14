@@ -1,6 +1,7 @@
 /**
  * @file ra8_adc.h
  * @brief Full-featured ADC_B driver
+ * @ingroup grp_hal_analog
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

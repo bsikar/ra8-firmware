@@ -1,6 +1,7 @@
 /**
  * @file ra8_board_ek_ra8d2_internal.h
  * @brief Cross-translation-unit seam for the EK-RA8D2 BSP implementation
+ * @ingroup grp_board
  *
  * @par Tag
  * [Ring 5 / BSP] {World: S}

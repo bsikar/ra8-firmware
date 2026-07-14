@@ -1,6 +1,7 @@
 /**
  * @file ra8_cnecc_regs.h
  * @brief CANFD ECC (CNECC) register layout for the RA8D2
+ * @ingroup grp_hal_crypto
  *
  * @details
  * The RA8D2 ships two CANFD message-buffer SRAM (MBRAM) ECC blocks

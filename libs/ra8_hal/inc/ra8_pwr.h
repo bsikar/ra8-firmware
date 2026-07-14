@@ -1,6 +1,7 @@
 /**
  * @file ra8_pwr.h
  * @brief Low Power Mode + clock-domain wrapper
+ * @ingroup grp_hal_system
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}
@@ -144,8 +145,7 @@ typedef enum : uint16_t {
  * @details
  * Forwards to ``ra8_mstp_enable(id)`` after logging. Future
  * versions will validate the requested module against the current
- * LPM state and route the request through an NSC veneer in
- * .
+ * LPM state and route the request through an NSC veneer.
  *
  * @param[in] id Peripheral identifier from ``ra8_mstp_t``.
  * @return Result of the underlying ``ra8_mstp_enable()``.

@@ -1,6 +1,7 @@
 /**
  * @file ra8_mpu.h
  * @brief Cortex-M85 Memory Protection Unit (MPU) configuration helper
+ * @ingroup grp_system
  *
  * @details
  * Programs the Armv8-M MPU regions inside each TrustZone world from a

@@ -1,6 +1,7 @@
 /**
  * @file ra8_usb_pmsc.h
  * @brief Native USB device-side MSC (Mass Storage Class) class layer
+ * @ingroup grp_hal_usb
  *
  * @details
  * Mirrors FSP's `r_usb_pmsc` peripheral-mode Mass Storage Class

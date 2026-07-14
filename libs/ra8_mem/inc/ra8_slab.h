@@ -1,6 +1,7 @@
 /**
  * @file ra8_slab.h
  * @brief Fixed-cell slab allocator -- O(1), zero-fragmentation, zero-heap.
+ * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 2 / Core] {World: NS}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_mipi_phy.h
  * @brief MIPI D-PHY driver -- physical layer shared by DSI and CSI
+ * @ingroup grp_hal_display
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

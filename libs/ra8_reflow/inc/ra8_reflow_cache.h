@@ -1,6 +1,7 @@
 /**
  * @file ra8_reflow_cache.h
  * @brief Import-time pagination cache for `ra8_reflow` (#79).
+ * @ingroup grp_ereader
  *
  * @details
  * Laying out a chapter (`ra8_reflow_layout_chapter()`) is the expensive

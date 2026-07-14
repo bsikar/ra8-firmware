@@ -1,6 +1,7 @@
 /**
  * @file ra8_i3c.h
  * @brief I3C Bus Interface driver -- unified native-I3C + I2C-compat modes
+ * @ingroup grp_hal_comms
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

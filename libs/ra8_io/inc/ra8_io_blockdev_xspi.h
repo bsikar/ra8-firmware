@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_blockdev_xspi.h
  * @brief ra8_io block-device backend over OSPI NOR flash via ra8_xspi.
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

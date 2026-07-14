@@ -1,6 +1,7 @@
 /**
  * @file ra8_dmac.h
  * @brief 8-channel DMA controller (DMAC0) driver
+ * @ingroup grp_hal_memory
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

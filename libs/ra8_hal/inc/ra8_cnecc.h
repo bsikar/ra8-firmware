@@ -1,6 +1,7 @@
 /**
  * @file ra8_cnecc.h
  * @brief CANFD ECC (CNECC) HAL driver public API
+ * @ingroup grp_hal_crypto
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_net_pal.h
  * @brief Network Platform Abstraction Layer for the RA8D2 ESWM block
+ * @ingroup grp_net
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

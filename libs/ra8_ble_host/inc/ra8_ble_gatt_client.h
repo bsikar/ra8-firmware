@@ -1,6 +1,7 @@
 /**
  * @file ra8_ble_gatt_client.h
  * @brief GATT client (central role) API on top of NimBLE.
+ * @ingroup grp_net
  *
  * @par Tag
  * [Ring 5 / LIB] {World: NS}

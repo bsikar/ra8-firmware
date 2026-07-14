@@ -1,6 +1,7 @@
 /**
  * @file ra8_ether_regs.h
  * @brief Ethernet controller base addresses for the Renesas RA8D2
+ * @ingroup grp_hal_net
  *
  * @details
  * RA8D2 has a gigabit Ethernet subsystem composed of several blocks

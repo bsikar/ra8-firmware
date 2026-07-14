@@ -1,6 +1,7 @@
 /**
  * @file ra8_rtc_regs.h
  * @brief Real-Time Clock (RTC) register layout for the Renesas RA8D2
+ * @ingroup grp_hal_timers
  *
  * @details
  * RTC block at `0x40202000`. Layout re-derived against FSP

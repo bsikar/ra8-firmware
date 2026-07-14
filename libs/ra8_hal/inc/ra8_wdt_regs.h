@@ -1,6 +1,7 @@
 /**
  * @file ra8_wdt_regs.h
  * @brief Watchdog Timer (WDT) register layout for the RA8D2
+ * @ingroup grp_hal_timers
  *
  * @details
  * The WDT is the *software*-clocked companion to the IWDT. Where the

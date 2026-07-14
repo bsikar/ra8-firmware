@@ -1,6 +1,7 @@
 /**
  * @file ra8_gfx_font.h
  * @brief Bitmap font descriptor + bundled font handles for ra8_gfx.
+ * @ingroup grp_ereader
  *
  * @details
  * The font format is intentionally tiny: a packed array of glyph rows,

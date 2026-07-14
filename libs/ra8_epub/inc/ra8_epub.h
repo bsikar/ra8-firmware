@@ -1,6 +1,7 @@
 /**
  * @file ra8_epub.h
  * @brief EPUB (.epub) reader and chapter iterator for ra8-firmware.
+ * @ingroup grp_ereader
  *
  * @details
  * `ra8_epub` is a small, dependency-light domain layer that opens an EPUB

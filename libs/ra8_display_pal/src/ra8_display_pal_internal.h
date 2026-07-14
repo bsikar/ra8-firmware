@@ -1,6 +1,7 @@
 /**
  * @file ra8_display_pal_internal.h
  * @brief Internal vtable + handle types for the display PAL
+ * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

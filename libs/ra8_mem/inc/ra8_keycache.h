@@ -1,6 +1,7 @@
 /**
  * @file ra8_keycache.h
  * @brief Reusable keyed-LRU cache with render-on-miss + pin/unpin (Layer 3, #147).
+ * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 2 / Core] {World: NS}

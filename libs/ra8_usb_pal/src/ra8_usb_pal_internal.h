@@ -1,6 +1,7 @@
 /**
  * @file ra8_usb_pal_internal.h
  * @brief Test-access surface for ra8_usb_pal internal helpers (MC/DC).
+ * @ingroup grp_net
  *
  * @par Tag
  * [Ring 3 / PAL] {World: NS}

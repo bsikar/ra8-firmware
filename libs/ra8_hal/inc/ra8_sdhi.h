@@ -1,6 +1,7 @@
 /**
  * @file ra8_sdhi.h
  * @brief SD/MMC Host Interface (SDHI) driver scaffold
+ * @ingroup grp_hal_memory
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

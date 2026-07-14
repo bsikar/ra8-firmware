@@ -1,6 +1,7 @@
 /**
  * @file ra8_mipi_csi_isr.h
  * @brief MIPI CSI-2 receiver HAL driver -- FIFO, ISR dispatch, framing, power
+ * @ingroup grp_hal_camera
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

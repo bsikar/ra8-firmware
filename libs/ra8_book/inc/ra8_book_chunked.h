@@ -1,6 +1,7 @@
 /**
  * @file ra8_book_chunked.h
  * @brief Demand-paged chunk reader for the "RBKC" `.rabook` container.
+ * @ingroup grp_ereader
  *
  * @details
  * The bridge between the chunked on-disk container (see @ref

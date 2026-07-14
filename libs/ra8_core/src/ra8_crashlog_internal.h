@@ -1,6 +1,7 @@
 /**
  * @file ra8_crashlog_internal.h
  * @brief Cross-TU surface for ra8_crashlog (host-test white-box access only).
+ * @ingroup grp_core
  *
  * @details
  * Not part of the public API. On the host unit-test build

@@ -1,6 +1,7 @@
 /**
  * @file ra8_acmphs.h
  * @brief Full-featured High-Speed Analog Comparator (ACMPHS) driver
+ * @ingroup grp_hal_analog
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

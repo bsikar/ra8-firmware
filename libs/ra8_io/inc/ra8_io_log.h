@@ -1,6 +1,7 @@
 /**
  * @file ra8_io_log.h
  * @brief Redirect `ra8_log` output into an ra8_io stream.
+ * @ingroup grp_io
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

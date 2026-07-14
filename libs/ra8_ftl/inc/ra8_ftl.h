@@ -1,6 +1,7 @@
 /**
  * @file ra8_ftl.h
  * @brief Flash Translation Layer -- free overwrite over erase-before-write media.
+ * @ingroup grp_storage
  *
  * @par Tag
  * [Ring 4 / PAL] {World: NS}

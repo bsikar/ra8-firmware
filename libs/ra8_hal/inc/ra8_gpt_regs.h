@@ -1,6 +1,7 @@
 /**
  * @file ra8_gpt_regs.h
  * @brief General PWM Timer (GPT) register layout for the Renesas RA8D2
+ * @ingroup grp_hal_timers
  *
  * @details
  * RA8D2 exposes 14 GPT channels (GPT0..GPT13) at `0x40322000` with a

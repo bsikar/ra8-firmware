@@ -1,6 +1,7 @@
 /**
  * @file ra8_bkup_regs.h
  * @brief Battery Backup Function (VBATT / BAT*) register layout for the RA8D2
+ * @ingroup grp_hal_system
  *
  * @details
  * The RA8D2 battery backup block lives inside the SYSC peripheral

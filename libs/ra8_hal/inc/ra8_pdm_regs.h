@@ -1,6 +1,7 @@
 /**
  * @file ra8_pdm_regs.h
  * @brief Pulse Density Modulation Interface (PDM-IF) register layout
+ * @ingroup grp_hal_audio
  *
  * @details
  * Register map for the single RA8D2 PDM-IF block at 0x4025_6000. The

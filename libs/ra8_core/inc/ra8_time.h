@@ -1,6 +1,7 @@
 /**
  * @file ra8_time.h
  * @brief SysTick-based tick counter, delay and timestamp helpers
+ * @ingroup grp_core
  *
  * @details
  * Uses the Cortex-M SysTick peripheral (architectural, always

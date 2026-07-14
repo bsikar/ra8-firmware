@@ -1,6 +1,7 @@
 /**
  * @file ra8_cgc_internal.h
  * @brief Cross-TU sharing for the split Clock Generation Circuit driver.
+ * @ingroup grp_hal_system
  *
  * @details
  * The CGC driver is split across several translation units that all live

@@ -1,6 +1,7 @@
 /**
  * @file ra8_touch.h
  * @brief Multi-touch input driver -- GoodIX GT911 backend
+ * @ingroup grp_hal_usb
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

@@ -1,6 +1,7 @@
 /**
  * @file ra8_wdt_sup_tx_shim_internal.h
  * @brief ThreadX shim for ra8_wdt_supervisor (host unit-test build only)
+ * @ingroup grp_system
  *
  * @par Tag
  * [Ring 4 / Service] {World: NS}

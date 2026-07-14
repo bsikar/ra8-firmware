@@ -1,6 +1,7 @@
 /**
  * @file ra8_ble.h
  * @brief BLE HCI transport seam (host-side)
+ * @ingroup grp_hal_system
  *
  * @details
  * The host-side HCI transport the BLE host stack (``libs/ra8_ble_host``,

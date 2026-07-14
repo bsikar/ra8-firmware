@@ -1,6 +1,7 @@
 /**
  * @file ra8_ceu.h
  * @brief Capture Engine Unit (CEU) camera-capture driver
+ * @ingroup grp_hal_camera
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}

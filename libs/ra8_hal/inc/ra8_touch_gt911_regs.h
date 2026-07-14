@@ -1,6 +1,7 @@
 /**
  * @file ra8_touch_gt911_regs.h
  * @brief Register layout for the GoodIX GT911 capacitive touch controller
+ * @ingroup grp_hal_usb
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
