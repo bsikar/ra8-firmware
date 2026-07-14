@@ -11,6 +11,8 @@
         "C_Cpp.intelliSenseEngine": "disabled",
         "clangd.path": "/usr/bin/clang-tidy",
         "cmake.configureOnOpen": false,
+        "makefile.makefilePath": "Makefile",
+        "makefile.configureOnOpen": true,
         "files.trimTrailingWhitespace": true,
         "files.insertFinalNewline": true,
         "editor.formatOnSave": true,
@@ -21,6 +23,7 @@
       "extensions": [
         "llvm-vs-code-extensions.vscode-clangd",
         "marus25.cortex-debug",
+        "ms-vscode.makefile-tools",
         "ms-vscode.cmake-tools",
         "twxs.cmake",
         "eamodio.gitlens",
@@ -29,6 +32,5 @@
     }
   },
   "remoteUser": "vscode",
-  "postCreateCommand": "CLANG_FORMAT=clang-format-22 bash scripts/format_code.sh --check || true",
   "features": {}
 }
