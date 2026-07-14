@@ -165,8 +165,9 @@ WORKDIR /workspace
 # setup). The container defaulted to a bare `sh`, which is a poor interactive
 # experience; this makes the terminal a first-class dev shell -- git-aware
 # prompt, autosuggestions, and syntax highlighting. Installed into the vscode
-# user's $HOME. --unattended keeps the OMZ installer from calling chsh/zsh
-# (the login shell is already set via `useradd -s`).
+# user's $HOME. The login shell is set separately via `useradd -s`, and the
+# .zshrc is the committed one copied below, so no interactive installer is
+# needed -- everything is a plain, pinned git clone.
 #
 # NOTE: powerlevel10k's icons need a Nerd Font in the *client* terminal, which
 # is a VS Code / host-side setting we cannot install from the image. Set
@@ -174,16 +175,29 @@ WORKDIR /workspace
 # your machine) for the full prompt; without it the shell still works, just
 # with fallback glyphs.
 # ---------------------------------------------------------------------------
+# Pinned to immutable refs so a rebuild is reproducible and cannot drift when
+# these upstreams move (same discipline as the ARM_GCC_SHA256 / *_VERSION pins
+# above). oh-my-zsh publishes no release tags, so it is pinned by commit; the
+# rest use release tags. Bump deliberately, never implicitly. A plain
+# `git clone` at a pinned ref also avoids piping a live installer script into a
+# shell (`curl | sh`).
+ARG OMZ_COMMIT=677a4592b18c08ddea737f8aca70bac0e9fc9313
+ARG P10K_TAG=v1.20.0
+ARG ZSH_AUTOSUGGESTIONS_TAG=v0.7.1
+ARG ZSH_SYNTAX_HIGHLIGHTING_TAG=0.8.0
 RUN set -eux; \
     export HOME="/home/${USERNAME}"; \
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" \
-        "" --unattended --keep-zshrc; \
-    ZSH_CUSTOM="${HOME}/.oh-my-zsh/custom"; \
-    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git \
+    ZSH="${HOME}/.oh-my-zsh"; \
+    ZSH_CUSTOM="${ZSH}/custom"; \
+    git clone https://github.com/ohmyzsh/ohmyzsh.git "${ZSH}"; \
+    git -C "${ZSH}" checkout --quiet "${OMZ_COMMIT}"; \
+    git clone --branch "${P10K_TAG}" --depth=1 https://github.com/romkatv/powerlevel10k.git \
         "${ZSH_CUSTOM}/themes/powerlevel10k"; \
-    git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions.git \
+    git clone --branch "${ZSH_AUTOSUGGESTIONS_TAG}" --depth=1 \
+        https://github.com/zsh-users/zsh-autosuggestions.git \
         "${ZSH_CUSTOM}/plugins/zsh-autosuggestions"; \
-    git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting.git \
+    git clone --branch "${ZSH_SYNTAX_HIGHLIGHTING_TAG}" --depth=1 \
+        https://github.com/zsh-users/zsh-syntax-highlighting.git \
         "${ZSH_CUSTOM}/plugins/zsh-syntax-highlighting"
 
 COPY --chown=${USERNAME}:${USERNAME} zshrc    /home/${USERNAME}/.zshrc
