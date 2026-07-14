@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * substrate. Owns every write to the ICU IELSR slot array
+ * Ring 3 / HAL substrate. Owns every write to the ICU IELSR slot array
  * and to the Cortex-M85 NVIC ISER / ICER / IPR windows. See
  * ``ra8_isr.h`` for the API contract.
  *

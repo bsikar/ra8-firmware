@@ -6,8 +6,8 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * substrate. See ``ra8_pwr.h`` for the API contract.
- * Implementation depth on is intentionally minimal:
+ * Ring 3 / HAL substrate. See ``ra8_pwr.h`` for the API contract.
+ * Implementation depth is intentionally minimal:
  *
  * - Module request / release forward straight to ra8_mstp.
  * - Wake-source toggling reads / modifies / writes WUPEN0 or
