@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * substrate. Sits on top of ``ra8_dmac`` and exposes a
+ * Ring 3 / HAL substrate. Sits on top of ``ra8_dmac`` and exposes a
  * driver-friendly API that hides free-channel allocation and
  * completion-interrupt wiring behind a single ``ra8_dma_request``
  * call.

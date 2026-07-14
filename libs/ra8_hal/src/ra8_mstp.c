@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * substrate. Wraps the RA8D2 ``MSTPCRA..MSTPCRE`` registers
+ * Ring 3 / HAL substrate. Wraps the RA8D2 ``MSTPCRA..MSTPCRE`` registers
  * (HUM Ch 11.2.6..10, p 443..450) behind a small ref-counted API
  * so two unrelated drivers can both depend on the same MSTP bit
  * (DMAC + DTC, OSPI + DOTF, SSIE0/SSIE1, ...) without trampling

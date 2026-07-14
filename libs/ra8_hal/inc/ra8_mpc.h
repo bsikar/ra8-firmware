@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * substrate. Wraps the RA8D2 ``PmnPFS`` register array
+ * Ring 3 / HAL substrate. Wraps the RA8D2 ``PmnPFS`` register array
  * (HUM Ch 20 "I/O Ports", p 837) behind a small set of
  * operation-named helpers:
  *

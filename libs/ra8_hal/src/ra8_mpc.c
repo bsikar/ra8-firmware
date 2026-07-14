@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * substrate. Owns every write to ``PmnPFS`` and the
+ * Ring 3 / HAL substrate. Owns every write to ``PmnPFS`` and the
  * accompanying PWPR unlock/lock sequence. See ``ra8_mpc.h`` for
  * the API contract.
  *
