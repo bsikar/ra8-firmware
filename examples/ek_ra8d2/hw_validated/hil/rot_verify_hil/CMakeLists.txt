@@ -36,7 +36,7 @@ ra8_add_app(NAME rot_verify_hil STACK_BYTES 32768
 # out of -Werror + clang-tidy; the port config is software-only with
 # EXTERNAL_RNG; a static-buffer allocator backs mbedtls_calloc (no libc heap).
 set(_TF "${_d}/libs/third_party/tf-psa-crypto")
-set(_PORT "${_d}/port/mbedtls")
+set(_PORT "${_d}/port/mbedtls/inc")
 file(GLOB _TF_SRC CONFIGURE_DEPENDS
     ${_TF}/core/*.c
     ${_TF}/drivers/builtin/src/*.c
