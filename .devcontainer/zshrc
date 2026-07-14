@@ -1,0 +1,39 @@
+# .zshrc for the ra8-firmware devcontainer.
+#
+# A Linux-portable distillation of the maintainer's macOS zsh setup: the
+# macOS-only pieces (Homebrew, the `macos`/`brew` plugins, Android SDK, MacTeX,
+# MATLAB, colima, Tailscale.app, /opt/homebrew paths, ...) are intentionally
+# dropped -- only what makes sense inside the Ubuntu container is kept. Edit
+# freely; this file is copied to ~/.zshrc at image build time.
+
+# Powerlevel10k instant prompt (renders the prompt immediately on shell start).
+# Keep this near the top; in this container nothing at startup asks for input,
+# so the instant prompt is always safe.
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+# User-local bin (pip --user, etc.) ahead of the system PATH.
+export PATH="$HOME/.local/bin:$PATH"
+
+# Oh My Zsh
+export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME="powerlevel10k/powerlevel10k"
+plugins=(
+  git
+  gh
+  docker
+  python
+  colored-man-pages
+  zsh-autosuggestions
+  zsh-syntax-highlighting
+)
+source "$ZSH/oh-my-zsh.sh"
+
+# Aliases
+alias ll="ls -lah"
+alias tree1="tree -L 1"
+alias tree2="tree -L 2"
+
+# Powerlevel10k prompt config (run `p10k configure` to regenerate ~/.p10k.zsh).
+[[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh

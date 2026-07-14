@@ -66,15 +66,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       iwyu \
       libclang-rt-18-dev \
       llvm-18 \
+      locales \
       ninja-build \
       pkg-config \
       python3 \
       python3-pip \
       sudo \
+      tree \
       unzip \
       wget \
       xz-utils \
-    && rm -rf /var/lib/apt/lists/*
+      zsh \
+    && rm -rf /var/lib/apt/lists/* \
+    && sed -i '/en_US.UTF-8/s/^# //' /etc/locale.gen \
+    && locale-gen
+
+# UTF-8 locale so oh-my-zsh / powerlevel10k render glyphs and box-drawing.
+ENV LANG=en_US.UTF-8 \
+    LC_ALL=en_US.UTF-8
 
 # Arm GNU Toolchain 13.3.rel1 -> /opt/arm-gnu-toolchain-13.3 (the runner's path,
 # found by cmake/toolchain-ra8d2.cmake's HINTS). Multi-arch: this image is built
@@ -145,8 +154,37 @@ ARG USER_GID=$USER_UID
 
 RUN if id -u ubuntu >/dev/null 2>&1; then userdel -r ubuntu 2>/dev/null || true; fi \
     && groupadd --gid ${USER_GID} ${USERNAME} \
-    && useradd --uid ${USER_UID} --gid ${USER_GID} -m ${USERNAME} \
+    && useradd --uid ${USER_UID} --gid ${USER_GID} -m -s /usr/bin/zsh ${USERNAME} \
     && echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/${USERNAME}
 
 USER ${USERNAME}
 WORKDIR /workspace
+
+# ---------------------------------------------------------------------------
+# Shell: zsh + oh-my-zsh + powerlevel10k (matches the maintainer's local
+# setup). The container defaulted to a bare `sh`, which is a poor interactive
+# experience; this makes the terminal a first-class dev shell -- git-aware
+# prompt, autosuggestions, and syntax highlighting. Installed into the vscode
+# user's $HOME. --unattended keeps the OMZ installer from calling chsh/zsh
+# (the login shell is already set via `useradd -s`).
+#
+# NOTE: powerlevel10k's icons need a Nerd Font in the *client* terminal, which
+# is a VS Code / host-side setting we cannot install from the image. Set
+# `"terminal.integrated.fontFamily": "MesloLGS NF"` (and install that font on
+# your machine) for the full prompt; without it the shell still works, just
+# with fallback glyphs.
+# ---------------------------------------------------------------------------
+RUN set -eux; \
+    export HOME="/home/${USERNAME}"; \
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" \
+        "" --unattended --keep-zshrc; \
+    ZSH_CUSTOM="${HOME}/.oh-my-zsh/custom"; \
+    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git \
+        "${ZSH_CUSTOM}/themes/powerlevel10k"; \
+    git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions.git \
+        "${ZSH_CUSTOM}/plugins/zsh-autosuggestions"; \
+    git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting.git \
+        "${ZSH_CUSTOM}/plugins/zsh-syntax-highlighting"
+
+COPY --chown=${USERNAME}:${USERNAME} zshrc    /home/${USERNAME}/.zshrc
+COPY --chown=${USERNAME}:${USERNAME} p10k.zsh /home/${USERNAME}/.p10k.zsh
