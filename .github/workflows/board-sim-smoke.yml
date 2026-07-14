@@ -16,7 +16,7 @@ name: board-sim-smoke
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
   workflow_dispatch:
 
