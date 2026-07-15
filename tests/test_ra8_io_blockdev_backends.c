@@ -6,8 +6,9 @@
  * Exercises the backends that are reachable under `RA8_SIMULATOR_MODE`:
  *   - sdram: full read/write/erase/caps over the simulated SDRAM window.
  *   - xspi : geometry validation plus a NOR read-modify-write round-trip over
- *            the `ra8_xspi` simulator's 4 KiB fake-flash, including the property
- *            that a write preserves untouched blocks in the same sector.
+ *            the register-level NOR model in `tests/mocks/ra8_sim_xspi_flash.c`,
+ *            including the property that a write preserves untouched blocks in
+ *            the same sector.
  *   - mram : the data-MRAM fence (reject mis-aligned / out-of-region windows),
  *            capabilities, and a memory-mapped read of poked data.
  *   - sdspi / sdhi: bind + NULL-guard (the data path needs a real card, so it
@@ -30,6 +31,8 @@
 #include "ra8_io_blockdev_sdspi.h"
 #include "ra8_io_blockdev_xspi.h"
 #include "ra8_ospi_regs.h"
+#include "ra8_sim_mmio.h"
+#include "ra8_sim_xspi_flash.h"
 #include "ra8_xspi.h"
 #include "unity_minimal.h"
 
@@ -39,7 +42,7 @@
  */
 typedef enum : uint32_t {
   k_t_sdram_blocks   = 64,     /**< 32 KiB inside the simulated SDRAM window.  */
-  k_t_xspi_blocks    = 8,      /**< 4 KiB == the sim fake-flash (one sector).  */
+  k_t_xspi_blocks    = 8,      /**< 4 KiB == one NOR sector of the model.      */
   k_t_mram_blocks    = 4,      /**< 2 KiB inside the 12 KiB extra-MRAM region. */
   k_t_sdram_oversize = 200000, /**< > 64 MiB / 512 -- rejected by sdram init.  */
 } t_backend_const_t;
@@ -89,7 +92,7 @@ static void test_sdram_backend(void)
 }
 
 /* =============================================================================
- * xspi (OSPI NOR) -- read-modify-write over the sim fake-flash
+ * xspi (OSPI NOR) -- read-modify-write over the tests/mocks NOR model
  * =============================================================================
  */
 
@@ -126,6 +129,10 @@ static void test_xspi_geom(void)
 static void test_xspi_rmw_roundtrip(void)
 {
   TEST_BEGIN("xspi RMW round-trip");
+  /* The driver's real register sequence needs the tests/mocks NOR model
+   * to service each TRREQ kick and back the flash data. */
+  ra8_sim_mmio_reset();
+  ra8_sim_xspi_flash_install();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_init(0, k_ra8_xspi_lio_1s1s1s));
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
