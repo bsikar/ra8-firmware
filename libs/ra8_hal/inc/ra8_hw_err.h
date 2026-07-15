@@ -87,6 +87,64 @@ extern "C" {
  * (see ra8_sim_mmio_set_poll_hook) so a host test can model the peripheral on the
  * driver's OWN poll thread, deterministically and thread-free. */
 [[nodiscard]] bool ra8_sim_mmio_poll(const volatile void* reg, uint32_t iter, bool flag_set);
+/**
+ * @brief Host-seam model of a "set condition: reading this register" bit.
+ *
+ * @details
+ * Register-behaviour model (#238) for read side effects dumb host RAM
+ * cannot express. The driver routes the SAME 32-bit read it performs on
+ * silicon through this; the seam then latches ``set_mask`` into the
+ * RAM-backed register (e.g. IPCSEMn.LOCK, HUM Ch 3.2.3) so composed host
+ * flows (take -> release -> take) observe silicon-faithful state. Runs any
+ * registered synchronous poll hook first (``ra8_sim_mmio_set_poll_hook``)
+ * so a test can model a peer core mutating the register right before the
+ * driver's read, deterministically on the driver's own thread.
+ *
+ * @param[in,out] reg      RAM-backed register to read; latches ``set_mask``
+ *                         after the read. NULL returns 0 without touching
+ *                         anything (drivers null-check first).
+ * @param[in]     set_mask Bits the hardware sets as the read side effect.
+ *
+ * @return The 32-bit value read *before* the latch -- exactly what the
+ *         silicon read data report.
+ * @retval 0 ``reg`` was NULL, or the register held 0 before the latch.
+ *
+ * @pre Host test binary (``RA8_SIMULATOR_MODE`` and ``UNIT_TEST``).
+ * @pre ``reg`` points into a ``ra8_sim_mmap`` backed window when non-NULL.
+ * @post ``*reg`` has ``set_mask`` latched on top of the pre-read value.
+ * @post Any registered poll hook ran once before the read.
+ *
+ * @note Test-only. Not thread-safe (tests are single-threaded).
+ * @since 0.1.0
+ */
+[[nodiscard]] uint32_t ra8_sim_mmio_read_to_set32(volatile uint32_t* reg, uint32_t set_mask);
+
+/**
+ * @brief Host-seam model of a write-1-to-clear register write.
+ *
+ * @details
+ * Register-behaviour model (#238) for W1C semantics dumb host RAM cannot
+ * express. The driver routes the SAME 32-bit write command it issues on
+ * silicon through this; bits covered by ``w1c_mask`` clear where ``value``
+ * wrote 1 and hold otherwise, while bits outside the mask store ``value``
+ * as plain data. Dumb RAM would have stored the literal 1 and left the
+ * register file claiming the opposite of what silicon holds (e.g. a
+ * "released" IPCSEMn.LOCK reading back as locked, HUM Ch 3.2.3).
+ *
+ * @param[in,out] reg      RAM-backed register receiving the command. NULL
+ *                         is ignored (drivers null-check first).
+ * @param[in]     w1c_mask Bits with write-1-to-clear behaviour.
+ * @param[in]     value    The command word the driver writes on silicon.
+ *
+ * @pre Host test binary (``RA8_SIMULATOR_MODE`` and ``UNIT_TEST``).
+ * @pre ``reg`` points into a ``ra8_sim_mmap`` backed window when non-NULL.
+ * @post W1C bits written 1 read back 0; W1C bits written 0 are unchanged.
+ * @post Non-W1C bits hold the written ``value`` bits.
+ *
+ * @note Test-only. Not thread-safe (tests are single-threaded).
+ * @since 0.1.0
+ */
+void ra8_sim_mmio_write1_clear32(volatile uint32_t* reg, uint32_t w1c_mask, uint32_t value);
 #endif
 
 /* =============================================================================

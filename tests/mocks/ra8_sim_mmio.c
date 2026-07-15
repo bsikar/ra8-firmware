@@ -190,3 +190,40 @@ bool ra8_sim_mmio_poll(const volatile void* reg, uint32_t iter, bool flag_set)
   }
   return internal_armed_eval(slot, iter);
 }
+
+/* =============================================================================
+ * Register-behaviour models (#238): read-to-set and write-1-to-clear.
+ * These replace per-driver RA8_SIMULATOR_MODE peripheral models: the driver
+ * performs its real register touch through them, and the seam applies the
+ * silicon side effect that dumb host RAM cannot (a read that latches a bit,
+ * a W1C command that clears instead of storing the 1). Declared for the HAL
+ * in ra8_hw_err.h, same as ra8_sim_mmio_wait_eval / ra8_sim_mmio_poll.
+ * =============================================================================
+ */
+
+uint32_t ra8_sim_mmio_read_to_set32(volatile uint32_t* reg, uint32_t set_mask)
+{
+  if (reg == nullptr) {
+    return 0U; /* Defensive: drivers null-check before touching a register. */
+  }
+  /* Same contract as ra8_sim_mmio_poll: run the synchronous hook first, on the
+   * DRIVER's own thread, so a test can model the peer -- e.g. another core
+   * releasing a hardware semaphore -- exactly before the driver's read. */
+  if (s_poll_hook != nullptr) {
+    s_poll_hook();
+  }
+  const uint32_t prev = *reg;
+  *reg                = prev | set_mask;
+  return prev;
+}
+
+void ra8_sim_mmio_write1_clear32(volatile uint32_t* reg, uint32_t w1c_mask, uint32_t value)
+{
+  if (reg == nullptr) {
+    return; /* Defensive: drivers null-check before touching a register. */
+  }
+  const uint32_t prev = *reg;
+  /* Bits covered by w1c_mask clear where the command wrote 1 and are
+   * otherwise unchanged; bits outside the mask behave as plain storage. */
+  *reg = (prev & ~(value & w1c_mask)) | (value & ~w1c_mask);
+}

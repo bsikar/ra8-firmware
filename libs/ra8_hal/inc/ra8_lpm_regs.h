@@ -427,10 +427,77 @@ typedef enum : uint32_t {
   k_ra8_lpm_wupen1_pdm     = 1UL << 15, /**< PDMWUPEN     @ bit 15. */
 } ra8_lpm_wupen1_bits_t;
 
+/**
+ * @enum ra8_lpm_scb_t
+ * @brief ARM Cortex-M System Control Block address used for SLEEPDEEP.
+ *
+ * @details
+ * SCB->SCR lives at 0xE000_E000 + 0x10 in the System Control Space;
+ * the SLEEPDEEP bit instructs WFI to enter Deep Sleep / Software
+ * Standby instead of plain CPU sleep. This is an Arm core register
+ * (Armv8-M SCS), not an RA8D2 peripheral, so it carries no HUM
+ * citation. The host unit-test build backs the SCS window with RAM
+ * (``ra8_sim_mmap`` core region at 0xE0000000), so the driver's
+ * read-modify-write sequence runs unchanged on every build.
+ *
+ * @invariant The single enumerator is the architectural SCR address.
+ *
+ * @see ra8_lpm_scb_scr()  Accessor returning the typed pointer.
+ * @see ra8_lpm_scb_field_t  SCR field masks used by the LPM driver.
+ * @since 0.1.0
+ */
+typedef enum : uintptr_t {
+  k_ra8_lpm_scb_scr_addr = 0xE000ED10UL, /**< SCB->SCR address (Cortex-M85). */
+} ra8_lpm_scb_t;
+
+/**
+ * @enum ra8_lpm_scb_field_t
+ * @brief ARM Cortex-M85 SCB.SCR field bits used for sleep entry.
+ *
+ * @details
+ * Only SLEEPDEEP is driven by the LPM driver; sibling bits such as
+ * SLEEPONEXIT and SEVONPEND are preserved by read-modify-write.
+ *
+ * @invariant Each enumerator is a single-bit mask within SCR.
+ *
+ * @see ra8_lpm_scb_scr()  Accessor returning the typed pointer.
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra8_lpm_scb_scr_sleepdeep = 0x4UL, /**< SCR.SLEEPDEEP @ bit 2. */
+} ra8_lpm_scb_field_t;
+
 /* =============================================================================
  * Inline accessors
  * =============================================================================
  */
+
+/**
+ * @brief Return a typed pointer to the Cortex-M SCB->SCR register.
+ *
+ * @details
+ * SCR is an Arm core register (Armv8-M System Control Space), shared
+ * by the LPM driver (SLEEPDEEP toggling around WFI) and the host unit
+ * tests (staging / asserting the toggle sequence through the sim mmap
+ * core window).
+ *
+ * @return Volatile pointer suitable for direct dereference.
+ *
+ * @pre Executing on the Cortex-M85 (or a host build with the SCS
+ *      window RAM-backed by ``ra8_sim_mmap``).
+ * @pre The address enum matches the Armv8-M architectural SCS layout.
+ *
+ * @post No register has been modified by this call.
+ * @post Returned pointer is non-NULL.
+ *
+ * @note Thread safety: pointer arithmetic is reentrant; the caller
+ *       must serialize concurrent register writes.
+ * @since 0.1.0
+ */
+static inline volatile uint32_t* ra8_lpm_scb_scr(void)
+{
+  return (volatile uint32_t*)k_ra8_lpm_scb_scr_addr;
+}
 
 /**
  * @brief Return a typed pointer to an 8-bit SYSC register.
