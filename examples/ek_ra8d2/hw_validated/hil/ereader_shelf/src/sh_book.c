@@ -11,9 +11,12 @@
  *     whole-book inflate). Chapter text, TOC labels, metadata strings and the
  *     4bpp cover are all copied out of the page cache via ra8_book_src_read /
  *     ra8_book_chapter_text_src.
- *   - `.epub`: parsed on-device by ra8_epub (SD only). Chapters arrive as XHTML,
- *     which this module strips to the same plain text the reader word-wraps;
- *     the cover is a compressed JPEG/PNG decoded via ra8_img_decode_blit.
+ *   - `.epub`: parsed on-device by ra8_epub (SD only), STREAMED straight off
+ *     the card (#230 -- the source file stays held open in sh_sd.c and every
+ *     ZIP entry is seek+read on demand; no whole-file buffer, no book-size
+ *     ceiling). Chapters arrive as XHTML, which this module strips to the same
+ *     plain text the reader word-wraps; the cover is a compressed JPEG/PNG
+ *     decoded via ra8_img_decode_blit.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -31,26 +34,24 @@
 
 /** @enum sh_book_const_t @brief Backend buffer + format constants. */
 typedef enum : uint32_t {
-  k_sh_epub_file_cap = 8U * 1024U * 1024U, /**< Whole-.epub read buffer.      */
-  k_sh_xhtml_cap     = 256U * 1024U,       /**< One chapter's XHTML scratch.  */
-  k_sh_cover_cap     = 512U * 1024U,       /**< Compressed cover image bytes. */
-  k_sh_arena_cap     = 64U * 1024U,        /**< stb_image decode bump arena.  */
-  k_sh_col_white     = 0xFFFFFFU,          /**< Thumbnail letterbox fill.     */
-  k_sh_luma_r        = 77U,                /**< Rec.601 red weight (/256).    */
-  k_sh_luma_g        = 150U,               /**< Rec.601 green weight.         */
-  k_sh_luma_b        = 29U,                /**< Rec.601 blue weight.          */
-  k_sh_luma_sh       = 8U,                 /**< Rec.601 divide shift (/256).  */
-  k_sh_r5_sh         = 11U,                /**< RGB565 red shift.             */
-  k_sh_g6_sh         = 5U,                 /**< RGB565 green shift.           */
-  k_sh_r5_mask       = 0x1FU,              /**< 5-bit channel mask.           */
-  k_sh_g6_mask       = 0x3FU,              /**< 6-bit channel mask.           */
-  k_sh_5to8          = 3U,                 /**< 5-bit -> 8-bit shift.         */
-  k_sh_6to8          = 2U,                 /**< 6-bit -> 8-bit shift.         */
+  k_sh_xhtml_cap = 256U * 1024U, /**< One chapter's XHTML scratch.  */
+  k_sh_cover_cap = 512U * 1024U, /**< Compressed cover image bytes. */
+  k_sh_arena_cap = 64U * 1024U,  /**< stb_image decode bump arena.  */
+  k_sh_col_white = 0xFFFFFFU,    /**< Thumbnail letterbox fill.     */
+  k_sh_luma_r    = 77U,          /**< Rec.601 red weight (/256).    */
+  k_sh_luma_g    = 150U,         /**< Rec.601 green weight.         */
+  k_sh_luma_b    = 29U,          /**< Rec.601 blue weight.          */
+  k_sh_luma_sh   = 8U,           /**< Rec.601 divide shift (/256).  */
+  k_sh_r5_sh     = 11U,          /**< RGB565 red shift.             */
+  k_sh_g6_sh     = 5U,           /**< RGB565 green shift.           */
+  k_sh_r5_mask   = 0x1FU,        /**< 5-bit channel mask.           */
+  k_sh_g6_mask   = 0x3FU,        /**< 6-bit channel mask.           */
+  k_sh_5to8      = 3U,           /**< 5-bit -> 8-bit shift.         */
+  k_sh_6to8      = 2U,           /**< 6-bit -> 8-bit shift.         */
 } sh_book_const_t;
 
 static ra8_epub_book_t s_epub; /**< The open EPUB (in_use when active). */
 
-[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_epub_file[k_sh_epub_file_cap];
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_xhtml[k_sh_xhtml_cap];
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_cover[k_sh_cover_cap];
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_arena[k_sh_arena_cap];
@@ -432,18 +433,18 @@ bool sh_book_open(uint16_t idx)
     return false;
   }
   if (s_epub.in_use != 0U) {
-    (void)ra8_epub_close(&s_epub);
+    sh_sd_close_epub(&s_epub);
   }
   sh_paged_close();
   sh_entry_t* const e = &g_sh.entry[idx];
 
   if (e->fmt == k_sh_fmt_epub) {
-    if (!sh_sd_open_epub(e->sd_name, &s_epub, s_epub_file, sizeof s_epub_file)) {
+    if (!sh_sd_open_epub(e->sd_name, &s_epub)) {
       return false;
     }
     uint16_t n = 0U;
     if (ra8_epub_get_chapter_count(&s_epub, &n) != k_ra8_ok) {
-      (void)ra8_epub_close(&s_epub);
+      sh_sd_close_epub(&s_epub);
       return false;
     }
     g_sh.open_fmt      = k_sh_fmt_epub;
