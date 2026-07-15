@@ -11,9 +11,10 @@
  * credit-based shaper (CBS / 802.1Qav), time-aware shaper (TAS /
  * 802.1Qbv), per-port MIB counters, security gate (EASCR), descriptor
  * ring sizing, software traffic accounting, and the one-shot PHY bring-up
- * helper. Includes the simulator-only RX-frame injection veneer. Split
- * out of the umbrella ra8_etha.h to keep that header under the per-file
- * line budget; this is a pure move of the original declarations. The data
+ * helper. Split out of the umbrella ra8_etha.h to keep that header under
+ * the per-file line budget; this is a pure move of the original
+ * declarations (the tests-side Ethernet header parser that once lived
+ * here moved to tests/eth_frame_fixture.h under issue #238). The data
  * types these functions take live in ra8_etha_types.h, the register enums
  * in ra8_etha_regs.h, and the PHY link type in ra8_rmac.h.
  *
@@ -417,37 +418,6 @@ ra8_etha_configure_cut_through(ra8_etha_port_t port, uint16_t qd, uint8_t dqd);
 [[nodiscard]] ra8_err_t ra8_etha_open(ra8_etha_port_t            channel,
                                       const ra8_etha_phy_open_t* phy,
                                       ra8_rmac_phy_link_t*       out_link);
-
-#ifdef RA8_SIMULATOR_MODE
-/**
- * @brief Inject a raw RX frame for fuzz / unit-test ingestion.
- *
- * @details
- * Test-only veneer compiled when ``RA8_SIMULATOR_MODE`` is defined.
- * Performs the minimum sanity check the descriptor ISR would do
- * (length >= Ethernet header) and decodes the destination MAC,
- * source MAC, and EtherType into the supplied output struct. Returns
- * an error if the frame is malformed. Used by the libFuzzer harness
- * in ``tests/fuzz/fuzz_ra8_etha.c``.
- *
- * @param[in]  frame      Raw bytes (untrusted).
- * @param[in]  frame_len  Length in bytes of @p frame.
- * @param[out] out_dst    6-byte destination MAC, populated on success.
- * @param[out] out_src    6-byte source MAC, populated on success.
- * @param[out] out_etype  16-bit big-endian EtherType, populated on success.
- *
- * @retval k_ra8_ok               Frame parsed.
- * @retval k_ra8_err_null_ptr     Any required output is NULL.
- * @retval k_ra8_err_invalid_arg  Frame too short to be a legal Ethernet frame.
- *
- * @since 0.1.0
- */
-[[nodiscard]] ra8_err_t ra8_etha_test_inject_rx(const uint8_t* frame,
-                                                uint32_t       frame_len,
-                                                uint8_t        out_dst[6],
-                                                uint8_t        out_src[6],
-                                                uint16_t*      out_etype);
-#endif /* RA8_SIMULATOR_MODE */
 
 #ifdef __cplusplus
 }

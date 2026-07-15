@@ -6,6 +6,9 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <string.h>
+
+#include "eth_frame_fixture.h"
 #include "ra8_err.h"
 #include "ra8_etha.h"
 #include "ra8_etha_regs.h"
@@ -1360,10 +1363,10 @@ static void test_mcdc_configure_cut_through_pair(void)
 }
 
 /**
- * @test test_mcdc_test_inject_rx_quad
+ * @test test_mcdc_eth_frame_parse_quad
  *
  * @par MC/DC:
- * Decision (libs/ra8_hal/src/ra8_etha.c@ra8_etha_test_inject_rx ra8_etha_test_inject_rx):
+ * Decision (tests/eth_frame_fixture.h@eff_parse_eth_header eff_parse_eth_header):
  * 4-condition OR over the four NULL guards
  * ``frame == nullptr || out_dst == nullptr || out_src == nullptr ||
  *   out_etype == nullptr``. Short-circuit MC/DC requires N+1 = 5
@@ -1375,9 +1378,12 @@ static void test_mcdc_configure_cut_through_pair(void)
  *   - V5: frame valid, out_dst/src valid, out_etype=NULL -> C1..C3=F, C4=T.
  * Each Vi (i>=2) flips condition Ci with all earlier conditions held F.
  */
-static void test_mcdc_test_inject_rx_quad(void)
+static void test_mcdc_eth_frame_parse_quad(void)
 {
-  TEST_BEGIN("etha test_inject_rx MC/DC: 4-cond OR null-check");
+  TEST_BEGIN("eth frame fixture MC/DC: 4-cond OR null-check");
+  enum : uint16_t {
+    k_test_etype_ipv4 = 0x0800U, /**< IPv4 EtherType encoded in the fixture frame. */
+  };
   uint8_t  frame[16] = {0xAAU,
                         0xBBU,
                         0xCCU,
@@ -1391,33 +1397,66 @@ static void test_mcdc_test_inject_rx_quad(void)
                         0x55U,
                         0x66U, /* src */
                         0x08U,
-                        0x00U, /* etype = 0x0800 */
+                        0x00U, /* etype = IPv4 */
                         0x00U,
                         0x00U};
-  uint8_t  out_dst[6];
-  uint8_t  out_src[6];
+  uint8_t  out_dst[k_eff_mac_bytes];
+  uint8_t  out_src[k_eff_mac_bytes];
   uint16_t out_etype = 0U;
-  /* V1: all valid. */
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_etha_test_inject_rx(frame, (uint32_t)sizeof(frame), out_dst, out_src, &out_etype));
+  /* V1: all valid -- and the decoded fields match the header bytes. */
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 eff_parse_eth_header(frame, (uint32_t)sizeof(frame), out_dst, out_src, &out_etype));
+  TEST_ASSERT_EQ(0, memcmp(out_dst, &frame[0], (size_t)k_eff_mac_bytes));
+  TEST_ASSERT_EQ(0, memcmp(out_src, &frame[k_eff_mac_bytes], (size_t)k_eff_mac_bytes));
+  TEST_ASSERT_EQ(k_test_etype_ipv4, out_etype);
   /* V2: frame NULL (C1=T short). */
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
-    ra8_etha_test_inject_rx(nullptr, (uint32_t)sizeof(frame), out_dst, out_src, &out_etype));
+    eff_parse_eth_header(nullptr, (uint32_t)sizeof(frame), out_dst, out_src, &out_etype));
   /* V3: out_dst NULL (C1=F, C2=T). */
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
-    ra8_etha_test_inject_rx(frame, (uint32_t)sizeof(frame), nullptr, out_src, &out_etype));
+    eff_parse_eth_header(frame, (uint32_t)sizeof(frame), nullptr, out_src, &out_etype));
   /* V4: out_src NULL (C1..C2=F, C3=T). */
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
-    ra8_etha_test_inject_rx(frame, (uint32_t)sizeof(frame), out_dst, nullptr, &out_etype));
+    eff_parse_eth_header(frame, (uint32_t)sizeof(frame), out_dst, nullptr, &out_etype));
   /* V5: out_etype NULL (C1..C3=F, C4=T). */
-  TEST_ASSERT_EQ(
-    k_ra8_err_null_ptr,
-    ra8_etha_test_inject_rx(frame, (uint32_t)sizeof(frame), out_dst, out_src, nullptr));
-  TEST_END("etha test_inject_rx MC/DC: 4-cond OR null-check");
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 eff_parse_eth_header(frame, (uint32_t)sizeof(frame), out_dst, out_src, nullptr));
+  TEST_END("eth frame fixture MC/DC: 4-cond OR null-check");
+}
+
+/**
+ * @test test_eth_frame_parse_short_frame
+ *
+ * @brief Cover the frame-too-short early return in ::eff_parse_eth_header.
+ *
+ * @details ``eff_parse_eth_header`` requires at least ::k_eff_hdr_bytes
+ * bytes (a complete Ethernet II header: destination MAC, source MAC,
+ * EtherType). Supplying one byte fewer exercises the length guard and
+ * returns ``k_ra8_err_invalid_arg`` without writing any output.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the ``frame_len`` guard is a
+ * single-condition comparison; its true branch is covered here, the
+ * false branch by ::test_mcdc_eth_frame_parse_quad vector V1)
+ */
+static void test_eth_frame_parse_short_frame(void)
+{
+  TEST_BEGIN("eth frame fixture: short frame -> k_ra8_err_invalid_arg");
+  const uint8_t frame[k_eff_hdr_bytes] = {};
+  uint8_t       out_dst[k_eff_mac_bytes];
+  uint8_t       out_src[k_eff_mac_bytes];
+  uint16_t      out_etype = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 eff_parse_eth_header(frame,
+                                      (uint32_t)k_eff_hdr_bytes - 1U,
+                                      out_dst,
+                                      out_src,
+                                      &out_etype));
+  TEST_ASSERT_EQ(0U, out_etype);
+  TEST_END("eth frame fixture: short frame -> k_ra8_err_invalid_arg");
 }
 
 int32_t main(void)
@@ -1459,7 +1498,8 @@ int32_t main(void)
   test_mcdc_get_queue_level_pair();
   test_mcdc_set_max_frame_size_pair();
   test_mcdc_configure_cut_through_pair();
-  test_mcdc_test_inject_rx_quad();
+  test_mcdc_eth_frame_parse_quad();
+  test_eth_frame_parse_short_frame();
   (void)fprintf(stderr, "[OK  ] test_ra8_etha.c\n");
   return 0;
 }

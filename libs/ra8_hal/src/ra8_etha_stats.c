@@ -247,34 +247,3 @@ ra8_err_t ra8_etha_open(ra8_etha_port_t            channel,
   }
   return ra8_rmac_phy_auto_neg_wait(rmac_port, phy->phy_addr, phy->timeout_ms, out_link);
 }
-
-#ifdef RA8_SIMULATOR_MODE
-ra8_err_t ra8_etha_test_inject_rx(const uint8_t* frame,
-                                  uint32_t       frame_len,
-                                  uint8_t        out_dst[6],
-                                  uint8_t        out_src[6],
-                                  uint16_t*      out_etype)
-{
-  enum : uint32_t {
-    k_test_eth_hdr_bytes      = 14U,
-    k_test_eth_mac_bytes      = 6U,
-    k_test_eth_etype_off_high = 12U,
-    k_test_eth_etype_off_low  = 13U,
-    k_test_eth_byte_shift     = 8U,
-  };
-  if (frame == nullptr || out_dst == nullptr || out_src == nullptr || out_etype == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  if (frame_len < (uint32_t)k_test_eth_hdr_bytes) {
-    return k_ra8_err_invalid_arg;
-  }
-  for (uint8_t i = 0U; i < (uint8_t)k_test_eth_mac_bytes; i++) {
-    out_dst[i] = frame[i];
-    out_src[i] = frame[(uint8_t)k_test_eth_mac_bytes + i];
-  }
-  *out_etype =
-    (uint16_t)(((uint16_t)frame[k_test_eth_etype_off_high] << (uint16_t)k_test_eth_byte_shift) |
-               (uint16_t)frame[k_test_eth_etype_off_low]);
-  return k_ra8_ok;
-}
-#endif /* RA8_SIMULATOR_MODE */
