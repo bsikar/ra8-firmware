@@ -318,7 +318,7 @@ typedef struct {
  *       context.
  * @since 0.1.0
  */
-ra8_err_t ra8_tz_secure_boot_jump_ns(const uint32_t* ns_vector_table);
+[[nodiscard]] ra8_err_t ra8_tz_secure_boot_jump_ns(const uint32_t* ns_vector_table);
 
 /**
  * @brief Run the full secure-boot sequence and (on target) BLXNS.
@@ -349,9 +349,9 @@ ra8_err_t ra8_tz_secure_boot_jump_ns(const uint32_t* ns_vector_table);
  * @note Not thread-safe; runs once at boot.
  * @since 0.1.0
  */
-ra8_err_t ra8_tz_secure_boot_run(uint32_t        ipcsar_value,
-                                 uint32_t        ipcpar_value,
-                                 const uint32_t* ns_vector_table);
+[[nodiscard]] ra8_err_t ra8_tz_secure_boot_run(uint32_t        ipcsar_value,
+                                               uint32_t        ipcpar_value,
+                                               const uint32_t* ns_vector_table);
 
 /**
  * @brief Reset the host-side state for unit-test fixtures.
