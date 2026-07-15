@@ -144,8 +144,8 @@ static uint32_t imu_demo_i32_to_dec(int32_t value, uint8_t* out)
     tmp[n++] = (uint8_t)'0';
   } else {
     while (v > 0 && n < (uint32_t)k_imu_demo_int_str_cap) {
-      tmp[n++] = (uint8_t)('0' + (uint8_t)(v % k_imu_decimal_base));
-      v /= k_imu_decimal_base;
+      tmp[n++] = (uint8_t)('0' + (uint8_t)((uint32_t)v % k_imu_decimal_base));
+      v        = (int32_t)((uint32_t)v / k_imu_decimal_base);
     }
   }
   if (neg && n < (uint32_t)k_imu_demo_int_str_cap) {

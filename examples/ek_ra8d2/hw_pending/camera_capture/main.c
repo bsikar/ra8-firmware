@@ -224,7 +224,7 @@ static ra8_err_t cam_put_hex(uint32_t value, uint8_t width)
   uint8_t  i = width;
   uint32_t v = value;
   while (i > 0U) {
-    i -= 1U;
+    i      = (uint8_t)(i - 1U);
     buf[i] = k_hex[v & (uint32_t)k_cam_nibble_mask];
     v >>= 4U;
   }
@@ -255,7 +255,7 @@ static ra8_err_t cam_put_u32(uint32_t value)
   uint8_t  i = (uint8_t)sizeof(buf);
   uint32_t v = value;
   do {
-    i -= 1U;
+    i      = (uint8_t)(i - 1U);
     buf[i] = (char)('0' + (v % (uint32_t)k_cam_dec_base));
     v /= (uint32_t)k_cam_dec_base;
   } while ((v != 0U) && (i > 0U));
