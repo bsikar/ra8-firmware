@@ -372,7 +372,7 @@ all 10 with a single intentional deviation:
 | 4 | Functions ~60 lines max. | Compliant. clang-tidy `LineThreshold = 60` enforces. NOLINT only for legitimately linear HUM-spec init paths. |
 | 5 | Two assertions per function. | Compliant. Use `RA8_CHECK_NULL_PTR` for preconditions, output bounds checks for postconditions. |
 | 6 | Smallest scope. | Compliant. File-scope vars are `static`; loop counters live in the `for`-statement. |
-| 7 | Check all return values. | Compliant. `RA8_RETURN_ON_ERROR` macro propagates; `(void)` casts mark explicit ignores. |
+| 7 | Check all return values. | Compliant. `RA8_RETURN_ON_ERROR` macro propagates; `(void)` casts mark explicit ignores -- but never at a TrustZone boot boundary. A C23 `(void)` cast suppresses `[[nodiscard]]` by ISO rule, so `-Werror` cannot police it; `scripts/utils/check_tz_boundary_discard.py` therefore bans `(void)`-cast discards of `ra8_tz_secure_boot_*()` calls everywhere and of any `ra8_*()` call inside a boot TU (a `.c` defining `SystemInit` / `ra8_trustzone_init`). |
 | 8 | Limit preprocessor use. | Compliant. C23 typed enums replace `#define` for constants; macros only for duplicated code, conditional compilation, build flags. |
 | 9 | Restrict pointer use. | **Intentional deviation.** Function pointers are allowed for Dependency Inversion. |
 | 10 | Compile clean with max warnings. | Compliant. `-Wall -Wextra -Werror -fshort-enums`; CI fails on any warning. |
