@@ -20,8 +20,8 @@
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
-  k_ra8_doc_test_a = 0x1234U, /**< Operand A -- seeded into DODSR0.  */
-  k_ra8_doc_test_b = 0x00FFU, /**< Operand B -- written to DODIR.    */
+  k_ra8_doc_test_a = 0x1234U, /**< Operand A -- seeded into DODSR0. */
+  k_ra8_doc_test_b = 0x00FFU, /**< Operand B -- written to DODIR.   */
 } ra8_doc_test_value_t;
 
 /**

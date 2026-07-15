@@ -31,8 +31,8 @@ typedef enum : uint32_t {
   k_test_xspi_flash_addr_start    = 0U,
   k_test_xspi_flash_addr_middle   = 128U,
   k_test_xspi_flash_addr_pagetail = 250U,         /**< 6 bytes below the 256-byte page end. */
-  k_test_xspi_flash_addr_overflow = 0x10000000UL, /**< Past 2^24 (3-byte space). */
-  k_test_xspi_flash_addr_near_top = 0xFFFFF8UL,   /**< 8 bytes below 2^24.       */
+  k_test_xspi_flash_addr_overflow = 0x10000000UL, /**< Past 2^24 (3-byte space).            */
+  k_test_xspi_flash_addr_near_top = 0xFFFFF8UL,   /**< 8 bytes below 2^24.                  */
   k_test_xspi_len_zero            = 0U,
   k_test_xspi_len_small           = 16U,
   k_test_xspi_len_multipage       = 320U, /**< > 256-byte page; crosses a page from addr 128. */
