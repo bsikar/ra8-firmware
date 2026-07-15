@@ -323,7 +323,7 @@ ra8_err_t ra8_reflow_bind_font(ra8_reflow_t* engine, const uint8_t* font_data, s
     }
   }
   stbtt_fontinfo probe;
-  if (offset < 0 || stbtt_InitFont(&probe, font_data, offset) == 0) {
+  if (offset < 0 || stbtt_InitFont(&probe, font_data, (int)font_len, offset) == 0) {
     return k_ra8_err_not_supported;
   }
 
@@ -372,7 +372,7 @@ ra8_err_t ra8_reflow_register_face(ra8_reflow_t*  engine,
     }
   }
   stbtt_fontinfo probe;
-  if (offset < 0 || stbtt_InitFont(&probe, blob, offset) == 0) {
+  if (offset < 0 || stbtt_InitFont(&probe, blob, (int)len, offset) == 0) {
     return k_ra8_err_not_supported;
   }
   ra8_reflow_face_t* face = &engine->faces[engine->face_count];

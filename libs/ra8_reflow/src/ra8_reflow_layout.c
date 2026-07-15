@@ -160,7 +160,7 @@ ra8_err_t ra8_reflow_layout_init_font(const ra8_reflow_t* engine, stbtt_fontinfo
   if (offset < 0) {
     return k_ra8_err_validation_failed;
   }
-  if (stbtt_InitFont(out_font, engine->font_data, offset) == 0) {
+  if (stbtt_InitFont(out_font, engine->font_data, (int)engine->font_len, offset) == 0) {
     return k_ra8_err_validation_failed;
   }
   return k_ra8_ok;

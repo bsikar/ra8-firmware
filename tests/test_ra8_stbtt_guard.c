@@ -20,6 +20,14 @@
  *     `priv_font_init`) -- asserting each rejects a bad-directory font with
  *     its documented error and leaves prior state intact.
  *
+ *  3. A deeper regression: a font that PASSES the directory guard and
+ *     `stbtt_InitFont` but whose `loca` table resolves a glyph to an
+ *     out-of-bounds `glyf` offset. This is the `fuzz_ra8_stbtt` crash that the
+ *     directory guard alone did not cover; the stb_truetype bounds patch (see
+ *     docs/SOUP/stb.md) rejects the glyph instead of reading past the buffer.
+ *
+ * @see docs/SOUP/stb.md  stb_truetype memory-safety hardening record.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -386,6 +394,97 @@ static void test_epub_render_glyph_rejects_bad_directory(void)
   TEST_END("ra8_epub_render_glyph: bad sfnt directory rejected");
 }
 
+/**
+ * @brief A structurally valid font whose `loca` table resolves glyph 1 to an
+ *        out-of-bounds `glyf` offset.
+ *
+ * @details
+ * This 276-byte TrueType font passes ::ra8_stbtt_sfnt_dir_in_bounds and
+ * `stbtt_InitFont` (every table record lies inside the buffer), then maps code
+ * point 'A' to glyph 1 whose short-`loca` entry (0x7FFF) resolves to byte
+ * offset 0xFFFE -- far past the 276-byte buffer. Upstream stb_truetype
+ * dereferences that wild `glyf` offset while walking the outline
+ * (`stbtt__GetGlyfOffset` -> `stbtt_GetGlyphBox` / `stbtt__GetGlyphShapeTT`),
+ * an attacker-reachable out-of-bounds read. This is the hand-minimised
+ * reproducer committed at
+ * `tests/fuzz/corpus/fuzz_ra8_stbtt/crash-3c1c53513113a34cbe60414887e1632540bade93`;
+ * the `stb_truetype.h` bounds patch (see docs/SOUP/stb.md) rejects the glyph
+ * instead of reading past the buffer.
+ */
+static const uint8_t s_oob_loca_font[276] = {
+  0x00U, 0x01U, 0x00U, 0x00U, 0x00U, 0x07U, 0x00U, 0x40U, 0x00U, 0x02U, 0x00U, 0x30U, 0x63U, 0x6dU,
+  0x61U, 0x70U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x7cU, 0x00U, 0x00U, 0x00U, 0x18U,
+  0x67U, 0x6cU, 0x79U, 0x66U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x94U, 0x00U, 0x00U,
+  0x00U, 0x10U, 0x68U, 0x65U, 0x61U, 0x64U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0xa4U,
+  0x00U, 0x00U, 0x00U, 0x36U, 0x68U, 0x68U, 0x65U, 0x61U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
+  0x00U, 0xdcU, 0x00U, 0x00U, 0x00U, 0x24U, 0x68U, 0x6dU, 0x74U, 0x78U, 0x00U, 0x00U, 0x00U, 0x00U,
+  0x00U, 0x00U, 0x01U, 0x00U, 0x00U, 0x00U, 0x00U, 0x04U, 0x6cU, 0x6fU, 0x63U, 0x61U, 0x00U, 0x00U,
+  0x00U, 0x00U, 0x00U, 0x00U, 0x01U, 0x04U, 0x00U, 0x00U, 0x00U, 0x06U, 0x6dU, 0x61U, 0x78U, 0x70U,
+  0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U, 0x0cU, 0x00U, 0x00U, 0x00U, 0x06U, 0x00U, 0x00U,
+  0x00U, 0x01U, 0x00U, 0x03U, 0x00U, 0x01U, 0x00U, 0x00U, 0x00U, 0x0cU, 0x00U, 0x06U, 0x00U, 0x0cU,
+  0x00U, 0x00U, 0x00U, 0x41U, 0x00U, 0x01U, 0x00U, 0x01U, 0x00U, 0x01U, 0x00U, 0x00U, 0x00U, 0x00U,
+  0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U, 0x00U, 0x00U,
+  0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x5fU, 0x0fU, 0x3cU, 0xf5U, 0x00U, 0x00U,
+  0x03U, 0xe8U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
+  0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
+  0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U, 0x00U, 0x00U,
+  0x03U, 0x20U, 0xffU, 0x38U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
+  0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
+  0x00U, 0x00U, 0x00U, 0x01U, 0x01U, 0xf4U, 0x00U, 0x00U, 0x00U, 0x00U, 0x7fU, 0xffU, 0x7fU, 0xf0U,
+  0x00U, 0x00U, 0x00U, 0x00U, 0x50U, 0x00U, 0x00U, 0x02U, 0x00U, 0x00U,
+};
+
+/**
+ * @test test_epub_render_glyph_oob_loca_safe
+ *
+ * @details
+ * Regression for the `fuzz_ra8_stbtt` crash that survived the #217 directory
+ * guard: a font can pass the directory bounds check and `stbtt_InitFont`, yet
+ * still drive an out-of-bounds read when a `loca` entry resolves a glyph to a
+ * `glyf` offset past the buffer. Asserts that (1) the font DOES pass the
+ * directory guard -- so it genuinely reaches the deeper glyph-outline path this
+ * test is meant to cover -- and (2) `ra8_epub_render_glyph()` returns cleanly
+ * (`k_ra8_ok` with a zero-size `0x0` bitmap: the rejected glyph is reported as
+ * empty) instead of reading past the buffer. Under AddressSanitizer a
+ * regression that removes the stb_truetype bounds check aborts here rather than
+ * returning.
+ *
+ * @par MC/DC: not applicable -- the guarded decisions live in vendored SOUP
+ * (`libs/third_party/stb/stb_truetype.h`), which is exempt from MC/DC re-test;
+ * this is an end-to-end memory-safety assertion, not a first-party decision.
+ */
+static void test_epub_render_glyph_oob_loca_safe(void)
+{
+  TEST_BEGIN("ra8_epub_render_glyph: out-of-bounds loca handled safely");
+  /* The font must clear the directory guard so it reaches the glyph-outline
+   * path (otherwise this would only re-test the guard rejection above). */
+  TEST_ASSERT(ra8_stbtt_sfnt_dir_in_bounds(s_oob_loca_font, sizeof s_oob_loca_font, 0U));
+
+  ra8_epub_book_t book = {};
+  book.in_use          = 1U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_set_font(&book, s_oob_loca_font, sizeof s_oob_loca_font));
+
+  uint8_t  bitmap[(size_t)k_g_glyph_dim * (size_t)k_g_glyph_dim] = {};
+  uint32_t w                                                     = 0xFFFFU;
+  uint32_t h                                                     = 0xFFFFU;
+  /* Pre-fix this call read past the font buffer inside stb_truetype. Post-fix
+   * the glyph's out-of-bounds glyf offset is rejected, so stb reports an empty
+   * glyph: the render succeeds with a zero-size bitmap (0x0) and no read
+   * escapes the buffer. Under AddressSanitizer a regression aborts before this
+   * assertion is reached. */
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_epub_render_glyph(&book,
+                                       (int32_t)k_g_codepoint_a,
+                                       (float)k_g_font_px,
+                                       bitmap,
+                                       sizeof bitmap,
+                                       &w,
+                                       &h));
+  TEST_ASSERT_EQ(0U, w);
+  TEST_ASSERT_EQ(0U, h);
+  TEST_END("ra8_epub_render_glyph: out-of-bounds loca handled safely");
+}
+
 int main(void)
 {
   test_guard_rejects_null_data();
@@ -397,6 +496,7 @@ int main(void)
   test_bind_font_rejects_bad_directory();
   test_register_face_rejects_bad_directory();
   test_epub_render_glyph_rejects_bad_directory();
+  test_epub_render_glyph_oob_loca_safe();
   (void)fprintf(stderr, "[OK ] test_ra8_stbtt_guard.c\n");
   return 0;
 }

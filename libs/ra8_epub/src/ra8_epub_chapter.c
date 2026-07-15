@@ -224,7 +224,7 @@ static ra8_err_t priv_font_init(const ra8_epub_book_t* book, stbtt_fontinfo* out
   if (!ra8_stbtt_sfnt_dir_in_bounds(book->font_data, book->font_size, (uint32_t)offset)) {
     return k_ra8_err_validation_failed;
   }
-  if (stbtt_InitFont(out_font, book->font_data, offset) == 0) {
+  if (stbtt_InitFont(out_font, book->font_data, (int)book->font_size, offset) == 0) {
     return k_ra8_err_validation_failed;
   }
   return k_ra8_ok;

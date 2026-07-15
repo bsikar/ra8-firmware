@@ -64,7 +64,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     return 0;
   }
   stbtt_fontinfo font;
-  if (stbtt_InitFont(&font, data, offset) == 0) {
+  if (stbtt_InitFont(&font, data, (int)size, offset) == 0) {
     return 0;
   }
 
