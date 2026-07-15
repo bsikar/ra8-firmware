@@ -10,7 +10,7 @@ the malformed-TOC fallback on silicon.
 ## What it tests
 
 Three baked books are self-provisioned onto the card (if absent), opened
-through `ra8_fs` -> `ra8_epub_open_fs`, and asserted:
+through `ra8_fs` -> the streamed `ra8_epub_open_streamed_fs` (#230), and asserted:
 
 | File on SD | Form | Asserts |
 |---|---|---|
