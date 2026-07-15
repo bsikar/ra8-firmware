@@ -5,6 +5,13 @@
 # Usage:
 #   bash scripts/build_docs.sh         -- build into build/docs/html/
 #   bash scripts/build_docs.sh --open  -- build, then open index.html
+#   bash scripts/build_docs.sh --gate  -- warning-gate build into
+#                                         build/docs-gate/ (used by CI)
+#
+# Always builds with the project-pinned doxygen release, resolved (and
+# downloaded on first use) by scripts/utils/provision_doxygen.sh. The
+# in-tree HTML header template and the vendored doxygen-awesome theme are
+# only valid for that exact version -- see docs/DOCS.md.
 #
 # Auto-detects whether `dot` (graphviz) is on PATH. If absent, falls
 # back to text-only output (HAVE_DOT=NO) so the build still succeeds.
@@ -17,15 +24,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DOXYFILE="${ROOT_DIR}/Doxyfile"
-OUTPUT_HTML="${ROOT_DIR}/build/docs/html"
-WARN_LOG="${ROOT_DIR}/build/docs/doxygen-warnings.log"
 
 OPEN_AFTER=0
+GATE_MODE=0
 for arg in "$@"; do
   case "${arg}" in
     --open) OPEN_AFTER=1 ;;
+    --gate) GATE_MODE=1 ;;
     -h | --help)
-      sed -n '3,12p' "${BASH_SOURCE[0]}"
+      sed -n '3,16p' "${BASH_SOURCE[0]}"
       exit 0
       ;;
     *)
@@ -35,44 +42,55 @@ for arg in "$@"; do
   esac
 done
 
-if ! command -v doxygen >/dev/null 2>&1; then
-  cat >&2 <<EOF
-build_docs.sh: 'doxygen' was not found on PATH.
-
-Install it before running this script:
-  Debian/Ubuntu:  sudo apt install doxygen graphviz
-  macOS:          brew install doxygen graphviz
-  Fedora:         sudo dnf install doxygen graphviz
-
-Graphviz is optional (used for call/caller graphs); the build will fall
-back to text-only output automatically when 'dot' is missing.
-EOF
-  exit 1
+if [[ "${GATE_MODE}" -eq 1 ]]; then
+  OUTPUT_DIR="${ROOT_DIR}/build/docs-gate"
+else
+  OUTPUT_DIR="${ROOT_DIR}/build/docs"
 fi
+OUTPUT_HTML="${OUTPUT_DIR}/html"
+WARN_LOG="${OUTPUT_DIR}/doxygen-warnings.log"
 
 if [[ ! -f "${DOXYFILE}" ]]; then
   echo "build_docs.sh: ${DOXYFILE} not found." >&2
   exit 1
 fi
 
-DOT_OVERRIDE=""
+DOXYGEN_BIN="$(bash "${SCRIPT_DIR}/utils/provision_doxygen.sh")"
+echo "build_docs.sh: using doxygen $("${DOXYGEN_BIN}" --version) (${DOXYGEN_BIN})"
+
+# PROJECT_NUMBER in the Doxyfile expands $(RA8_PROJECT_VERSION) so the docs
+# always carry the version from the top-level VERSION file.
+RA8_PROJECT_VERSION="$(tr -d '[:space:]' <"${ROOT_DIR}/VERSION")"
+export RA8_PROJECT_VERSION
+
+OVERRIDES=""
 if command -v dot >/dev/null 2>&1; then
   echo "build_docs.sh: graphviz detected -- enabling call/caller graphs."
 else
   echo "build_docs.sh: graphviz NOT detected -- generating text-only docs."
-  DOT_OVERRIDE=$'HAVE_DOT=NO\nCALL_GRAPH=NO\nCALLER_GRAPH=NO\n'
+  OVERRIDES+=$'HAVE_DOT=NO\nCALL_GRAPH=NO\nCALLER_GRAPH=NO\n'
 fi
 
-mkdir -p "${ROOT_DIR}/build/docs"
+if [[ "${GATE_MODE}" -eq 1 ]]; then
+  # The firmware.yml "Doxygen warnings" gate: same Doxyfile, same pinned
+  # doxygen, but a separate output tree, no graphs (speed), and private
+  # members extracted so their doc blocks are checked too.
+  OVERRIDES+="OUTPUT_DIRECTORY=${OUTPUT_DIR}"$'\n'
+  OVERRIDES+="WARN_LOGFILE=${WARN_LOG}"$'\n'
+  OVERRIDES+=$'EXTRACT_PRIVATE=YES\nWARN_IF_UNDOCUMENTED=YES\n'
+  OVERRIDES+=$'HAVE_DOT=NO\nCALL_GRAPH=NO\nCALLER_GRAPH=NO\n'
+fi
+
+mkdir -p "${OUTPUT_DIR}"
 cd "${ROOT_DIR}"
 
-if [[ -n "${DOT_OVERRIDE}" ]]; then
+if [[ -n "${OVERRIDES}" ]]; then
   {
     cat "${DOXYFILE}"
-    printf '%s' "${DOT_OVERRIDE}"
-  } | doxygen -
+    printf '%s' "${OVERRIDES}"
+  } | "${DOXYGEN_BIN}" -
 else
-  doxygen "${DOXYFILE}"
+  "${DOXYGEN_BIN}" "${DOXYFILE}"
 fi
 
 echo

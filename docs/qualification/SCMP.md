@@ -63,7 +63,7 @@ explicit design goal:
 | `Makefile` (root)                 | Shorthand wrapper invoking CMake per app.                    |
 | `cmake/toolchain-ra8d2.cmake`     | arm-none-eabi cross-compile settings.                        |
 | `cmake/ra8_warnings.cmake`         | Warning + stack-usage gate (`-Wstack-usage=2048` default).   |
-| `Doxyfile.main`                   | Doxygen warning-gate configuration.                          |
+| `Doxyfile`                        | Doxygen configuration (docs site + warning gate).            |
 
 ### 1.4 Test configuration items
 
