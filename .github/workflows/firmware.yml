@@ -541,7 +541,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run doxygen
-        run: doxygen Doxyfile.main 2>&1 | tee doxygen.log
+        # --gate builds the single top-level Doxyfile with the project-pinned
+        # doxygen (downloaded + sha256-verified by provision_doxygen.sh on
+        # first use, cached under build/tools/ afterwards) and writes the
+        # warning log to build/docs-gate/doxygen-warnings.log. Using the same
+        # pinned version as the docs-publish workflow keeps this gate and the
+        # published site in lockstep.
+        run: |
+          bash scripts/build_docs.sh --gate
+          cp build/docs-gate/doxygen-warnings.log doxygen.log
       - name: Fail on warnings
         run: |
           # Filter known-benign Doxygen warnings:

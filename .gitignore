@@ -56,12 +56,12 @@ build/coverage-html/
 
 # Doxygen generated output (build/ is already ignored above; listed
 # explicitly here so a future change to the build-tree policy still
-# keeps the generated HTML out of git).
+# keeps the generated HTML out of git). docs/doxygen/ was the output
+# directory of the retired Doxyfile.main; kept ignored so stale local
+# builds never get committed.
 build/docs/
-docs/doxygen/html/
-docs/doxygen/xml/
-docs/doxygen/latex/
-docs/doxygen/*.log
+build/docs-gate/
+docs/doxygen/
 doxygen.log
 
 # Per-page PDF splits of the reference manuals (local browsing aid;
