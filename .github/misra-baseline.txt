@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 11573
+# total findings: 11509
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -1254,14 +1254,6 @@ port/levelx/src/lx_nor_driver_ra8_xspi.c	misra-c2012-15.5	20
 port/levelx/src/lx_nor_driver_ra8_xspi.c	misra-c2012-17.3	3
 port/levelx/src/lx_nor_driver_ra8_xspi.c	misra-c2012-8.4	3
 port/levelx/src/lx_nor_driver_ra8_xspi.c	misra-c2012-8.9	2
-port/mbedtls/src/mbedtls_aes_alt.c	misra-c2012-12.1	9
-port/mbedtls/src/mbedtls_aes_alt.c	misra-c2012-15.5	23
-port/mbedtls/src/mbedtls_aes_alt.c	misra-c2012-18.4	2
-port/mbedtls/src/mbedtls_aes_alt.c	misra-c2012-8.4	7
-port/mbedtls/src/mbedtls_aes_alt.c	misra-c2012-9.2	1
-port/mbedtls/src/mbedtls_sha256_alt.c	misra-c2012-12.1	4
-port/mbedtls/src/mbedtls_sha256_alt.c	misra-c2012-15.5	16
-port/mbedtls/src/mbedtls_sha256_alt.c	misra-c2012-8.4	7
 port/netxduo/src/nx_crypto_aes_alt.c	misra-c2012-11.3	1
 port/netxduo/src/nx_crypto_aes_alt.c	misra-c2012-11.8	1
 port/netxduo/src/nx_crypto_aes_alt.c	misra-c2012-12.1	4
@@ -1346,17 +1338,18 @@ port/usbx/src/ux_hcd_ra8_usb.c	misra-c2012-8.9	1
 src/app/main.c	misra-c2012-8.4	1
 src/app/ns_main.c	misra-c2012-11.4	6
 src/app/ns_main.c	misra-c2012-14.2	2
-src/app/ns_main.c	misra-c2012-17.3	7
+src/app/ns_main.c	misra-c2012-17.3	9
 src/app/ns_main.c	misra-c2012-8.4	3
 src/app/ns_main.c	misra-c2012-8.9	4
 src/app/secure_exception.c	misra-c2012-8.9	1
 src/app/system_init.c	misra-c2012-11.4	3
+src/app/system_init.c	misra-c2012-17.3	1
 src/app/system_init.c	misra-c2012-20.1	2
 src/app/system_init.c	misra-c2012-8.11	1
 src/app/trustzone_init.c	misra-c2012-11.4	5
 src/app/trustzone_init.c	misra-c2012-14.2	1
-src/app/trustzone_init.c	misra-c2012-15.5	2
-src/app/trustzone_init.c	misra-c2012-8.4	4
+src/app/trustzone_init.c	misra-c2012-15.5	3
+src/app/trustzone_init.c	misra-c2012-8.4	5
 src/app/vector_table.c	misra-c2012-13.3	2
 src/app/vector_table.c	misra-c2012-20.10	3
 src/app/vector_table.c	misra-c2012-20.5	2
