@@ -92,11 +92,11 @@ typedef enum : uint32_t {
  * @brief Bounded spin budget for ::ra8_sdhi_send_command response wait.
  *
  * @details
- * The host test fires a 100 us SIGALRM to set RSPEND asynchronously;
- * the budget must be large enough that the loop is still spinning
- * when the signal lands under macOS / Linux scheduler jitter. 2M
- * spins on a 1 GHz CPU is still only ~2 ms of wall clock -- a sane
- * SDHI command-response timeout on real silicon.
+ * 2M spins on a 1 GHz CPU is ~2 ms of wall clock -- a sane SDHI
+ * command-response timeout on real silicon. Host tests never race this
+ * budget: they assert RSPEND synchronously from the ra8_sim_mmio
+ * poll-hook, which runs inline on each iteration of this loop, so the
+ * flag is observed on the very next poll regardless of host load.
  */
 typedef enum : uint32_t {
   k_ra8_sdhi_cmd_spin = 2000000U,
