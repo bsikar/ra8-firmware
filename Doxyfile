@@ -74,13 +74,23 @@ WARN_LOGFILE           = build/docs/doxygen-warnings.log
 
 # INPUT covers libs/ra8_*, examples/, src/. Vendored third-party libs are
 # explicitly excluded below so that we do not pull their docs into our build.
+# INPUT covers everything first-party so the docs mirror the repo layout and
+# stay self-maintaining: new drivers / examples / scripts appear automatically
+# in the directory tree with no doc edits. docs/doxygen_dirs.dox only adds a
+# one-line description per top-level directory.
 INPUT                  = README.md \
-                         src \
+                         docs/doxygen_dirs.dox \
                          libs \
+                         src \
                          examples \
+                         scripts \
+                         tools \
                          docs/reference/README.md
 INPUT_ENCODING         = UTF-8
-FILE_PATTERNS          = *.c *.h *.cpp *.hpp *.md *.dox
+FILE_PATTERNS          = *.c *.h *.cpp *.hpp *.md *.dox *.py *.sh
+# Shell has no native doxygen parser; treat it as Python so the leading
+# `#` comment header of each script is picked up instead of being skipped.
+EXTENSION_MAPPING      = sh=Python
 RECURSIVE              = YES
 
 # EXCLUDE: vendored libs and any build trees.
@@ -92,6 +102,7 @@ EXCLUDE_SYMLINKS       = YES
 EXCLUDE_PATTERNS       = */build/* \
                          */build-*/* \
                          */CMakeFiles/* \
+                         */__pycache__/* \
                          */_deps/* \
                          */tests/build/* \
                          */third_party/*
@@ -115,9 +126,18 @@ ALPHABETICAL_INDEX     = YES
 GENERATE_HTML          = YES
 HTML_OUTPUT            = html
 HTML_FILE_EXTENSION    = .html
-HTML_COLORSTYLE_HUE    = 220
-HTML_COLORSTYLE_SAT    = 100
-HTML_COLORSTYLE_GAMMA  = 80
+
+# doxygen-awesome-css theme (vendored under docs/doxygen_theme/, MIT) with a
+# built-in light/dark toggle next to the search box. HTML_COLORSTYLE must be
+# LIGHT; the theme's JS handles the dark switch. See docs/doxygen_theme/LICENSE.
+HTML_HEADER            = docs/doxygen_theme/header.html
+HTML_EXTRA_STYLESHEET  = docs/doxygen_theme/doxygen-awesome.css \
+                         docs/doxygen_theme/doxygen-awesome-sidebar-only.css \
+                         docs/doxygen_theme/doxygen-awesome-sidebar-only-darkmode-toggle.css
+HTML_EXTRA_FILES       = docs/doxygen_theme/doxygen-awesome-darkmode-toggle.js \
+                         docs/doxygen_theme/doxygen-awesome-fragment-copy-button.js \
+                         docs/doxygen_theme/doxygen-awesome-paragraph-link.js
+HTML_COLORSTYLE        = LIGHT
 HTML_DYNAMIC_SECTIONS  = YES
 HTML_INDEX_NUM_ENTRIES = 100
 DISABLE_INDEX          = NO

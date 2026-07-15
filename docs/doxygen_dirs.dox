@@ -1,0 +1,87 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Brighton Sikarskie
+//
+// doxygen_dirs.dox -- one-line descriptions for the top-level directories.
+//
+// This is the ONLY hand-maintained organization file: the docs otherwise
+// mirror the repository layout automatically (every file in INPUT appears in
+// the directory tree with no per-file bookkeeping). Adding a driver, example,
+// or script needs no edit here; only a NEW top-level directory does.
+
+/**
+ * @dir libs
+ * @brief Hand-written first-party libraries -- the drivers and substrates the
+ *        rest of the firmware builds on (HAL peripheral drivers + register
+ *        maps, the ra8_core substrate, I/O fabric, security/TrustZone, the
+ *        e-reader stack, storage, networking, board support). Vendored SOUP
+ *        lives under libs/third_party and is excluded from these docs.
+ */
+
+/**
+ * @dir src
+ * @brief Shared application internals used by the drivers -- no boot code, no
+ *        main(). Includes the Ring 5 secure-side substrate (src/secure_app,
+ *        e.g. the key vault and secure-OTA commit).
+ */
+
+/**
+ * @dir examples
+ * @brief Example applications -- the primary showcase of the repository. Each
+ *        app pairs the drivers above with its own boot files and linker script
+ *        to demonstrate one capability, and is the main entry point for reading
+ *        the codebase. Organized by hardware-validation tier (see below).
+ */
+
+/**
+ * @dir examples/ek_ra8d2/hw_validated
+ * @brief Apps confirmed working on a stock EK-RA8D2 board: smoke (no-UART),
+ *        uart (print over SCI), manual (jumper/button steps), and hil
+ *        (hardware-in-the-loop, driven by the bench rig).
+ */
+
+/**
+ * @dir examples/ek_ra8d2/hw_pending
+ * @brief Apps written but not yet hardware-validated on a stock board.
+ */
+
+/**
+ * @dir examples/_unsupported
+ * @brief Apps that need external hardware not on the stock board (motor driver,
+ *        audio CODEC, BLE/Thread radios, ...).
+ */
+
+/**
+ * @dir examples/ra8p1_foundation
+ * @brief Foundation apps for the RA8P1 variant (RA8D2 + Ethos-U55 NPU).
+ */
+
+/**
+ * @dir scripts
+ * @brief Developer and CI tooling: build/flash/debug wrappers, the HIL bench
+ *        rig control (Tapo power, J-Link, RTT), the OpenBao secret client and
+ *        root-of-trust key store, and the check_*.py quality gates under
+ *        scripts/utils that CI and the git hooks enforce.
+ */
+
+/**
+ * @dir tools
+ * @brief Host-side tools: the board_sim RA8D2 emulator, cache/glyph benchmarks,
+ *        the EPUB/book image builders, the root-of-trust signer, and the MCP
+ *        server.
+ */
+
+/**
+ * @page experimental_spikes Experimental Spikes
+ * @brief Exploratory work that is NOT part of the supported firmware.
+ *
+ * Spikes are proofs of concept, not shipped components. They live on their own
+ * git branches rather than on `main`, so they do not appear in the directory
+ * tree above -- this page is the index.
+ *
+ * ## ESP32-C6 companion radio
+ *
+ * An investigation into offloading wireless (Wi-Fi / BLE / Thread) to an
+ * ESP32-C6 companion MCU, evaluated as SOUP (esp-hosted). It lives on the
+ * `spike/esp32c6` branch; see that branch's DIRECTION.md and
+ * UPDATE_PIPELINE.md for the current state. Treat it as experimental.
+ */
