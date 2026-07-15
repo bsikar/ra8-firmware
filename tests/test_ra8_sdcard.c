@@ -54,9 +54,9 @@ typedef enum : uint32_t {
 /** @brief When non-zero the CMD55 mock withholds APP_CMD, forcing a 4-bit decline. */
 static uint8_t s_decline_4bit;
 
-/* Deterministic SD command servicing via a background thread -- no wall-clock
- * timer. The hook mirrors the former per-command response decode, but is driven
- * by the driver's SD_CMD write on its OWN poll thread rather than a timer, and
+/* Deterministic SD command servicing via the ra8_sim_mmio poll-hook -- no
+ * wall-clock timer, no servicer thread. The hook decodes each command from the
+ * driver's SD_CMD write on its OWN poll thread rather than off a timer, and
  * gates each response behind a sentinel so a command is served exactly once:
  * after responding it writes SD_CMD = k_sdcard_srv_cmd_done (> the max valid SD
  * command index), so it does nothing until ra8_sdhi_send_command writes the next
@@ -254,7 +254,7 @@ static void test_init_bad_instance(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_init_no_alarm_times_out(void)
+static void test_init_no_rspend_times_out(void)
 {
   TEST_BEGIN("sdcard init: no RSPEND -> SDHI propagates timeout");
   prep();
@@ -448,7 +448,7 @@ int32_t main(void)
   test_init_full_sequence();
   test_init_double_call_rejected();
   test_init_bad_instance();
-  test_init_no_alarm_times_out();
+  test_init_no_rspend_times_out();
   test_io_before_init_rejected();
   test_io_null_args();
   test_io_zero_count();

@@ -32,18 +32,20 @@
  * RA8_SIMULATOR_MODE the SDHI register window is plain host RAM (see
  * tests/mocks/ra8_sim_mmap.c), so nothing sets RSPEND on its own and the
  * driver clears the bit after every command. The register handshake must
- * therefore be serviced concurrently while init blocks.
+ * therefore be re-serviced between commands while init blocks.
  *
- * A background servicer thread does exactly that -- WITHOUT any SIGALRM /
- * setitimer timer signal. The response registers SD_RSP10..76 are
- * pre-loaded once with a single universal value set that satisfies every
- * command the init sequence issues (CMD8 echo, ACMD41 OCR busy+CCS, and a
- * CSD v2 layout), because the driver only ever reads those registers --
- * it never writes them. The servicer then simply keeps SD_INFO1.RSPEND
- * asserted; each ``ra8_sdhi_send_command`` sees it on its next poll,
- * copies the pre-loaded response, and returns. The two-million-iteration
- * per-command spin budget dwarfs the thread's scheduling latency, so the
- * bring-up is deterministic in result on a preemptive multi-core host.
+ * The ra8_sim_mmio poll-hook does exactly that -- no SIGALRM / setitimer
+ * timer signal and no concurrent servicer thread. The response registers
+ * SD_RSP10..76 are pre-loaded once with a single universal value set that
+ * satisfies every command the init sequence issues (CMD8 echo, ACMD41 OCR
+ * busy+CCS, and a CSD v2 layout), because the driver only ever reads
+ * those registers -- it never writes them. The hook then simply
+ * re-asserts SD_INFO1.RSPEND; it runs inline on every
+ * ``ra8_sdhi_send_command`` poll iteration (the driver's OWN thread), so
+ * each command observes the flag on its next poll, copies the pre-loaded
+ * response, and returns. Because the injection is keyed to the driver's
+ * own register polls rather than elapsed time, the bring-up is
+ * deterministic on any host regardless of scheduler load.
  *
  * Builds as a standalone executable auto-discovered by the
  * tests/CMakeLists.txt ``test_*.c`` GLOB; its .gcda stream is merged by
@@ -55,8 +57,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include <pthread.h>
-#include <stdatomic.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -67,6 +67,7 @@
 #include "ra8_sdcard.h"
 #include "ra8_sdhi_regs.h"
 #include "ra8_sim_mmap.h"
+#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /* ===========================================================================
@@ -108,82 +109,69 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_cov_sdhi_rsp10          = 0xC00001AAUL, /**< CMD8 echo | OCR busy | CCS.         */
-  k_cov_sdhi_rsp32          = 0xF0000000UL, /**< CSD v2 C_SIZE middle bits.          */
-  k_cov_sdhi_rsp54          = 0x00000000UL, /**< CSD v2 C_SIZE top bits (zero).      */
-  k_cov_sdhi_rsp76          = 0x40000000UL, /**< CSD_STRUCTURE = 1 (v2 layout).      */
-  k_cov_sdhi_rspend_bit     = 0x00000001UL, /**< SD_INFO1.RSPEND (bit 0).            */
-  k_cov_sdhi_expect_blocks  = 62915584UL,   /**< (0xF000 + 1) * 1024 blocks.         */
-  k_cov_sdhi_init_retry_max = 8U,           /**< Bring-up attempts before giving up. */
+  k_cov_sdhi_rsp10         = 0xC00001AAUL, /**< CMD8 echo | OCR busy | CCS.    */
+  k_cov_sdhi_rsp32         = 0xF0000000UL, /**< CSD v2 C_SIZE middle bits.     */
+  k_cov_sdhi_rsp54         = 0x00000000UL, /**< CSD v2 C_SIZE top bits (zero). */
+  k_cov_sdhi_rsp76         = 0x40000000UL, /**< CSD_STRUCTURE = 1 (v2 layout). */
+  k_cov_sdhi_rspend_bit    = 0x00000001UL, /**< SD_INFO1.RSPEND (bit 0).       */
+  k_cov_sdhi_expect_blocks = 62915584UL,   /**< (0xF000 + 1) * 1024 blocks.    */
 } cov_sdhi_rsp_t;
 
 /* ===========================================================================
- * RSPEND servicer thread (no SIGALRM)
+ * RSPEND poll-hook (no SIGALRM, no servicer thread)
  * ===========================================================================
  */
 
-/** @brief Servicer run flag; cleared to stop the thread. */
-static atomic_int s_srv_run;
-
-/** @brief Servicer thread handle. */
-static pthread_t s_srv_thread;
-
-/** @brief SDHI instance the servicer keeps RSPEND asserted on. */
-static uint8_t s_srv_inst;
+/** @brief SDHI instance the poll-hook keeps RSPEND asserted on. */
+static uint8_t s_cov_inst;
 
 /**
- * @brief Continuously re-assert SD_INFO1.RSPEND for the serviced instance.
+ * @brief Re-assert SD_INFO1.RSPEND for the serviced instance.
  *
  * @details
- * The driver clears RSPEND after each command; this loop keeps setting it
- * again so the next ``ra8_sdhi_send_command`` poll always observes it. The
- * response registers were pre-loaded before the thread started and are
- * never written by the driver, so no other register work is needed. No
- * timer signal is used -- the thread is a plain busy re-assert.
+ * The driver clears RSPEND after each command; this hook sets it again so
+ * the next ``ra8_sdhi_send_command`` poll iteration observes it. The
+ * response registers were pre-loaded by cov_hook_arm() and are never
+ * written by the driver, so no other register work is needed. Installed
+ * via ::ra8_sim_mmio_set_poll_hook, it runs inline at the top of every
+ * ::ra8_sim_mmio_poll -- on the driver's OWN polling thread -- so the
+ * injection is keyed to the driver's register reads, never to elapsed
+ * time, and cannot race the bounded spin budget under host load.
  *
- * @param[in] arg Unused pthread cookie.
- *
- * @return Always nullptr.
- *
- * @pre s_srv_inst is a valid SDHI instance index.
+ * @pre s_cov_inst is a valid SDHI instance index.
  * @pre The SDHI register window is mapped (RA8_SIMULATOR_MODE).
- * @post SD_INFO1.RSPEND is held high until s_srv_run is cleared.
+ * @post SD_INFO1.RSPEND is asserted for the serviced instance.
  *
- * @note Runs on a dedicated thread; shares only the RAM-backed register
- *       window and the atomic run flag with the main thread.
+ * @note Runs single-threaded, inline with the driver's poll.
  *
  * @since 0.1.0
  */
-static void* sdhi_servicer_main(void* arg)
+static void cov_rspend_hook(void)
 {
-  (void)arg;
-  volatile r_sdhi_regs_t* reg = ra8_sdhi(s_srv_inst);
+  volatile r_sdhi_regs_t* reg = ra8_sdhi(s_cov_inst);
   if (reg == nullptr) {
-    return nullptr;
+    return;
   }
-  while (atomic_load(&s_srv_run) != 0) {
-    reg->SD_INFO1 = reg->SD_INFO1 | (uint32_t)k_cov_sdhi_rspend_bit;
-  }
-  return nullptr;
+  reg->SD_INFO1 = reg->SD_INFO1 | (uint32_t)k_cov_sdhi_rspend_bit;
 }
 
 /**
- * @brief Pre-load the universal responses and start the RSPEND servicer.
+ * @brief Pre-load the universal responses and install the RSPEND poll-hook.
  *
  * @param[in] inst SDHI instance index to service.
  *
- * @pre No servicer thread is currently running.
+ * @pre No poll-hook is currently installed.
  * @pre ra8_sim_mmap_reset() has already scrubbed the register window.
- * @post SD_RSP10..76 hold the universal init responses and the servicer
- *       thread is running with RSPEND asserted.
+ * @post SD_RSP10..76 hold the universal init responses and ::cov_rspend_hook
+ *       runs on every ra8_sim_mmio_poll with RSPEND asserted.
  *
- * @note Not reentrant; tests are single-threaded apart from this servicer.
+ * @note Not reentrant; tests are single-threaded.
  *
  * @since 0.1.0
  */
-static void sdhi_servicer_start(uint8_t inst)
+static void cov_hook_arm(uint8_t inst)
 {
-  s_srv_inst                  = inst;
+  s_cov_inst                  = inst;
   volatile r_sdhi_regs_t* reg = ra8_sdhi(inst);
   TEST_ASSERT_NOT_NULL((const void*)reg);
   reg->SD_RSP10 = (uint32_t)k_cov_sdhi_rsp10;
@@ -192,23 +180,20 @@ static void sdhi_servicer_start(uint8_t inst)
   reg->SD_RSP76 = (uint32_t)k_cov_sdhi_rsp76;
   reg->SD_INFO1 = reg->SD_INFO1 | (uint32_t)k_cov_sdhi_rspend_bit;
 
-  atomic_store(&s_srv_run, 1);
-  const int rc = pthread_create(&s_srv_thread, nullptr, sdhi_servicer_main, nullptr);
-  TEST_ASSERT_EQ(0, rc);
+  ra8_sim_mmio_set_poll_hook(cov_rspend_hook);
 }
 
 /**
- * @brief Stop the RSPEND servicer and join its thread.
+ * @brief Remove the RSPEND poll-hook.
  *
- * @pre sdhi_servicer_start() was called previously.
- * @post The servicer thread has terminated and been joined.
+ * @pre cov_hook_arm() was called previously.
+ * @post No poll-hook is installed.
  *
  * @since 0.1.0
  */
-static void sdhi_servicer_stop(void)
+static void cov_hook_disarm(void)
 {
-  atomic_store(&s_srv_run, 0);
-  (void)pthread_join(s_srv_thread, nullptr);
+  ra8_sim_mmio_set_poll_hook(nullptr);
 }
 
 /* ===========================================================================
@@ -227,17 +212,18 @@ static void sdhi_servicer_stop(void)
 static void cov_prep(void)
 {
   ra8_sim_mmap_reset();
+  ra8_sim_mmio_reset();
   (void)ra8_mstp_init();
   (void)ra8_sdcard_deinit();
 }
 
 /**
- * @brief Bring the ``ra8_sdcard`` singleton fully up against the servicer.
+ * @brief Bring the ``ra8_sdcard`` singleton fully up against the poll-hook.
  *
  * @details
- * Starts the RSPEND servicer, then runs ``ra8_sdcard_init`` (retrying a
- * few times purely as insurance against a pathological single-attempt
- * scheduling miss), and stops the servicer. Asserts the card came up.
+ * Installs the RSPEND poll-hook, runs ``ra8_sdcard_init`` once (the hook
+ * answers every command on the driver's own poll, so a single attempt is
+ * deterministic), and removes the hook. Asserts the card came up.
  *
  * @pre cov_prep() has just run.
  * @post ra8_sdcard_get_capacity() returns ::k_ra8_ok with a non-zero count.
@@ -246,17 +232,10 @@ static void cov_prep(void)
  */
 static void cov_card_up(void)
 {
-  sdhi_servicer_start((uint8_t)k_cov_sdhi_inst);
+  cov_hook_arm((uint8_t)k_cov_sdhi_inst);
   const ra8_sdcard_cfg_t cfg = {.instance = (uint8_t)k_cov_sdhi_inst};
-  ra8_err_t              err = k_ra8_err_hw_timeout;
-  for (uint32_t attempt = 0U; attempt < (uint32_t)k_cov_sdhi_init_retry_max; ++attempt) {
-    err = ra8_sdcard_init(&cfg);
-    if (err == k_ra8_ok) {
-      break;
-    }
-    (void)ra8_sdcard_deinit();
-  }
-  sdhi_servicer_stop();
+  const ra8_err_t        err = ra8_sdcard_init(&cfg);
+  cov_hook_disarm();
   TEST_ASSERT_EQ(k_ra8_ok, err);
 }
 
