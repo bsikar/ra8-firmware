@@ -50,7 +50,7 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_epub/src/ra8_epub_xml_shim.cpp | 3 | (file scope) | `if (meta_name != nullptr && meta_content != nullptr && st...` | Annotated deactivation: TU-local helper find_cover_by_met... |
 | libs/ra8_fs/src/ra8_fs_fat.c | 2 | priv_path_to_83 | `if (path == NULL \|\| out11 == NULL) {` | TU-local static helper `priv_path_to_83` -- defensive NUL... |
 | libs/ra8_fs/src/ra8_fs_fat.c | 3 | priv_83_to_str | `if (j > 0 && (uint8_t)out12[0] == k_dir_marker_kanji_e5 &...` | Annotated deactivation: 3-condition AND on Shift-JIS kanj... |
-| libs/ra8_fs/src/ra8_fs_fat.c | 2 | priv_free_chain | `while (cur >= k_cluster_first_data && (cur - k_cluster_fi...` | Annotated deactivation: loop bound; `cur < k_cluster_firs... |
+| libs/ra8_fs/src/ra8_fs_fat.c | 2 | priv_free_chain | `while (cur >= k_cluster_first_data && (cur - k_cluster_fi...` | Annotated deactivation: loop bound; `cur < k_cluster_firs...` |
 | libs/ra8_fs/src/ra8_fs_fat.c | 3 | ra8_fs_listdir | `if (path[0] != '/' \|\| (path[0] == '/' && path[1] != '\0...` | Structurally-redundant condition: `x == V` inside the sec... |
 | libs/ra8_hal/src/ra8_ble.c | 2 | internal_dispatch_event | `if ((internal_rx_byte(&code) == 0U) \|\| (internal_rx_byt...` | Annotated deactivation: TU-local helper internal_dispatch... |
 | libs/ra8_hal/src/ra8_ble.c | 4 | internal_dispatch_acl | `if ((internal_rx_byte(&hdl_lo) == 0U) \|\| (internal_rx_b...` | Annotated deactivation: TU-local helper internal_dispatch... |

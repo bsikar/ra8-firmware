@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/mem_ecc_fault_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/mem_ecc_fault_demo/main.c
  * @brief SRAM ECC fault-injection + detection demo (EK-RA8D2, issue #130)
  *
  * @par Tag

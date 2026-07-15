@@ -20,7 +20,7 @@
  * builder call appends into those arenas; an overflow latches a sticky failure
  * that @ref ra8_rabook_finalize reports, so the caller checks once at the end.
  *
- * @par Byte layout (matches @ref ra8_book.h and the desktop tool)
+ * @par Byte layout (matches ra8_book.h and the desktop tool)
  * @code
  *   [ ra8_book_header_t                       ] fixed 100-byte header
  *   [ chapter table                          ] header.chapter_count entries

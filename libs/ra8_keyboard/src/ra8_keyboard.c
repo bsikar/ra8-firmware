@@ -14,7 +14,10 @@
 #include "ra8_err.h"
 #include "ra8_ui.h"
 
-/** @var s_tag @brief Log tag for this module. */
+/**
+ * @var s_tag
+ * @brief Log tag for this module.
+ */
 static const char* s_tag = "KBD";
 
 /**
@@ -33,7 +36,7 @@ typedef enum : int32_t {
   k_kbd_r2_lett   = 7,  /**< Letters in letters row 2.                 */
   k_kbd_punct_n   = 5,  /**< Punctuation keys (. , ? ! ') in row 2.    */
   k_kbd_punct_hu0 = 5,  /**< Centred start for the 5 punctuation keys. */
-  k_kbd_sym1_n    = 7,  /**< Symbols row 1 keys (_ \\ | ~ < > `).      */
+  k_kbd_sym1_n    = 7,  /**< Symbols row 1 keys (_ \\ | ~ < > \`).     */
   k_kbd_sym1_hu0  = 3,  /**< Centred start for symbols row 1.          */
   k_kbd_row1      = 1,  /**< Row index 1.                              */
   k_kbd_row2      = 2,  /**< Row index 2.                              */
@@ -454,7 +457,7 @@ static void priv_build_numbers(ra8_kbd_layout_t* kb, const ra8_ui_rect_t* f, int
  * Populates four rows into @p kb:
  * - Row 0: 10-key brackets/math row (k_s_r0 "[]{}#%^*+=") at f->y; no shift
  *          effect (hi == nullptr).
- * - Row 1: k_kbd_sym1_n (7) keys from k_s_r1 ("<>\\_ `|~") centred at
+ * - Row 1: k_kbd_sym1_n (7) keys from k_s_r1 ("<>\\_ \`|~") centred at
  *          half-unit k_kbd_sym1_hu0 (3); no shift effect.
  * - Row 2: layer-toggle to numbers, k_punct punctuation, BACKSPACE via
  *          priv_row_punct() with tog_aux = k_ra8_kbd_layer_numbers.

@@ -434,18 +434,19 @@ static void er_build_library(ra8_box_tree_t* tree, const ra8_ui_rect_t* frame)
 }
 
 /**
- * @brief Render a laid-out box tree (fills, borders, progress, labels).
+ * @brief Render box nodes ``[from, to)`` of ::s_nodes (fills, borders,
+ *        progress bars, labels).
  *
- * @param[in] tree Laid-out tree whose nodes index the side tables.
+ * @param[in] from Index of the first node to draw (inclusive).
+ * @param[in] to   Index one past the last node to draw (exclusive).
  *
- * @pre ra8_gfx is bound; @p tree laid out; side tables match its nodes.
- * @pre None.
- * @post Every node's fill/border/progress/label is drawn.
+ * @pre ra8_gfx is bound; the tree is laid out; side tables match its nodes.
+ * @pre @p from <= @p to and @p to is within the laid-out node count.
+ * @post Every node in ``[from, to)`` has its fill/border/progress/label drawn.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-/** @brief Render box nodes ``[from, to)`` of ::s_nodes (fill/border/bar/label). */
 static void er_render_boxnodes(uint16_t from, uint16_t to)
 {
   for (uint16_t i = from; i < to; ++i) {

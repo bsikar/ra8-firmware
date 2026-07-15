@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/kint_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/kint_demo/main.c
  * @brief Key-interrupt (KINT / IRQ pin) input demo for EK-RA8D2
  *
  * @par Tag

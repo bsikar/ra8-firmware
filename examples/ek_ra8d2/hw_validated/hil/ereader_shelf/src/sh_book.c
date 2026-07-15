@@ -178,7 +178,10 @@ static bool sh_decode_entity(const char* s, size_t n, size_t* consumed, uint32_t
   return sh_parse_numeric(s, n, consumed, cp);
 }
 
-/** @struct sh_strip_t @brief Mutable state threaded through the XHTML strip. */
+/**
+ * @struct sh_strip_t
+ * @brief Mutable state threaded through the XHTML strip.
+ */
 typedef struct {
   size_t pos;      /**< Bytes written to out.                  */
   bool   at_break; /**< Suppress a leading space (post-break). */

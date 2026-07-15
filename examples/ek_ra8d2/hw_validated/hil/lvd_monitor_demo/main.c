@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/lvd_monitor_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/lvd_monitor_demo/main.c
  * @brief Safe LVD / PVD VCC-monitor demo for the EK-RA8D2
  *
  * @par Tag

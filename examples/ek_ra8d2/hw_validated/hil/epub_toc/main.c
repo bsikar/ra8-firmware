@@ -76,7 +76,7 @@ typedef enum : uint32_t {
   k_etoc_ncx_count = 2U,          /**< navMap navPoints.                 */
   k_etoc_ncx_crc   = 0xDBC4EA24U, /**< crc32("Intro").                   */
   k_etoc_nav_kind  = 2U,          /**< k_ra8_epub_toc_nav.               */
-  k_etoc_nav_count = 3U,          /**< nav <ol> entries.                 */
+  k_etoc_nav_count = 3U,          /**< nav `<ol>` entries.               */
   k_etoc_nav_crc   = 0x4CC9A9C1U, /**< crc32("Cover").                   */
   k_etoc_bad_kind  = 0U,          /**< k_ra8_epub_toc_none (no TOC doc). */
   k_etoc_exp_chap  = 2U,          /**< Spine length in every fixture.    */

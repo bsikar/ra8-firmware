@@ -165,12 +165,12 @@ typedef enum : uint32_t {
                                /**< sleep on hundreds/thousands of ticks */
                                /**< (e.g. ThreadX tx_thread_sleep) need a */
                                /**< far larger budget than bare-metal. */
-  k_idle_spin_insns = 2U,      /**< Budget when the core is parked on a */
-                               /**< wait-for-interrupt spin (`b .`, wfi, or */
-                               /**< a `cpsie i`+back-branch poll): collapse */
-                               /**< the idle wait to the next SysTick instead */
-                               /**< of spinning a whole chunk. */
-  k_op_branch_self  = 0xE7FEU, /**< Thumb `b .` (branch-to-self idle loop).     */
+  k_idle_spin_insns = 2U,      /**< Budget when the core is parked on a
+                                * wait-for-interrupt spin (a "b ." self-branch,
+                                * `wfi`, or a `cpsie i` + back-branch poll):
+                                * collapse the idle wait to the next SysTick
+                                * instead of spinning a whole chunk. */
+  k_op_branch_self  = 0xE7FEU, /**< Thumb "b ." (branch-to-self idle loop).     */
   k_op_wfi          = 0xBF30U, /**< Thumb `wfi` (wait-for-interrupt).           */
   k_op_cpsie_i      = 0xB662U, /**< Thumb `cpsie i` (re-enable IRQ in a poll).  */
   k_op_bn_mask      = 0xF800U, /**< Mask selecting a Thumb T2 `b.n` opcode.     */
@@ -548,7 +548,7 @@ static uint32_t     s_div0_fault_pc;                  /**< PC of the divide.    
 static uint64_t     s_div0_traps;                     /**< Div-0 UsageFaults.    */
 
 /**
- * @enum dual_core_t
+ * @enum dual_core_addr_t
  * @brief CPU_CTRL registers + activation bit for the second core (cpu1).
  *
  * @details

@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/gpt_irq_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/gpt_irq_demo/main.c
  * @brief GPT0 overflow interrupt -> NVIC -> ISR demo for EK-RA8D2
  *
  * @par Tag

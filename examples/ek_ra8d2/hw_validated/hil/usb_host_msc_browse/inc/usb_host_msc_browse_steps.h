@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/usb_host_msc_browse/src/usb_host_msc_browse_steps.h
+ * @file examples/ek_ra8d2/hw_validated/hil/usb_host_msc_browse/inc/usb_host_msc_browse_steps.h
  * @brief Shared constants + device-side FAT16/MSC step declarations
  *
  * @par Tag

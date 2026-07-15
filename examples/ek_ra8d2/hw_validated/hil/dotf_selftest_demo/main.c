@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/dotf_selftest_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/dotf_selftest_demo/main.c
  * @brief DOTF (Decryption On The Fly) bring-up + AES self-test demo (EK-RA8D2)
  *
  * @par Tag

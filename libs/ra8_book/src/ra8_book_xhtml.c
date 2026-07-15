@@ -482,8 +482,8 @@ bool ra8_book_is_block(const char* name)
  *
  * @details
  * Iterates over @p str character by character applying the HTML
- * whitespace-collapsing rule: any run of space (@c ' '), tab (@c '\t'),
- * carriage return (@c '\r'), or newline (@c '\n') characters is folded into at
+ * whitespace-collapsing rule: any run of space (`' '`), tab (`'\t'`),
+ * carriage return (`'\r'`), or newline (`'\n'`) characters is folded into at
  * most a single ASCII space.  Non-whitespace characters are passed through
  * unchanged via @c ra8_book_emit.  The @p at_break flag carries inter-call
  * state: when @c true any leading whitespace in the current fragment is
@@ -545,12 +545,12 @@ bool ra8_book_emit_text(char* out, size_t cap, size_t* pos, const char* str, boo
  *
  * @details
  * Trims any trailing space characters already written to @p out (by
- * decrementing @p *pos while the last byte is @c ' '), then sets @p *at_break
+ * decrementing @p *pos while the last byte is `' '`), then sets @p *at_break
  * to @c true to suppress leading whitespace in the next text fragment.  If the
- * last byte already in @p out is @c '\n' no additional newline is written,
+ * last byte already in @p out is `'\n'` no additional newline is written,
  * which collapses runs of breaks produced by consecutive or nested block-level
  * elements (e.g. a @c p inside a @c div) into a single blank line.  Otherwise
- * a single @c '\n' is appended via @c ra8_book_emit.
+ * a single `'\n'` is appended via @c ra8_book_emit.
  *
  * @param[out]    out       Destination character buffer.
  * @param[in]     cap       Total capacity of @p out in bytes.
@@ -568,7 +568,7 @@ bool ra8_book_emit_text(char* out, size_t cap, size_t* pos, const char* str, boo
  * @pre  @p pos is non-null and @p *pos <= @p cap on entry.
  * @post @p *at_break is @c true on return.
  * @post Trailing space characters in @p out before the current @p *pos have
- *       been removed; at most one @c '\n' is appended.
+ *       been removed; at most one `'\n'` is appended.
  *
  * @note Not thread-safe; callers must provide external synchronisation.
  *

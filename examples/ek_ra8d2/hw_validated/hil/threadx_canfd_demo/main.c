@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/threadx_canfd_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/threadx_canfd_demo/main.c
  * @brief Eclipse ThreadX CANFD heartbeat / RX-logger demo for RA8D2
  *
  * @par Tag

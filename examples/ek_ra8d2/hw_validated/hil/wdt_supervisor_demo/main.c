@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/wdt_supervisor_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/wdt_supervisor_demo/main.c
  * @brief WDT supervisor abstraction HIL demo for EK-RA8D2
  *
  * @par Tag

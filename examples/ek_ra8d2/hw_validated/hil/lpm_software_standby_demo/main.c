@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/lpm_software_standby_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/lpm_software_standby_demo/main.c
  * @brief Software Standby (LPSCR.LPMD = 0x5) + RTC periodic wake demo
  *
  * @par Tag

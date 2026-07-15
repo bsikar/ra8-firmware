@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/crypto_aes_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/crypto_aes_demo/main.c
  * @brief AES-128-GCM encrypt + decrypt round-trip on EK-RA8D2
  *
  * @par Tag

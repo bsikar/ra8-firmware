@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/flash_journal/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/flash_journal/main.c
  * @brief Octo-SPI flash journal demo for EK-RA8D2
  *
  * @par Tag

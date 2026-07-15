@@ -41,7 +41,7 @@ static uint32_t cb_pow2_ceil(uint32_t v)
 }
 
 /**
- * @enum cb_hash_param_t
+ * @enum cb_hash_mul_t
  * @brief Murmur3 finalizer constants used in ::cb_hash.
  * @details These are the canonical Murmur3 64-bit finalization mix constants
  *          (Austin Appleby, 2011). They are algorithm-specified bit patterns

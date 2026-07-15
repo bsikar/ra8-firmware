@@ -88,7 +88,10 @@ static ra8_vsource_t s_shp_vs;
 /** @brief The page cache the bound ::ra8_book_src_t reads through. */
 static ra8_vmem_t s_shp_vm;
 
-/** @struct sh_paged_mram_t @brief Memory-mapped container backing (baked books). */
+/**
+ * @struct sh_paged_mram_t
+ * @brief Memory-mapped container backing (baked books).
+ */
 typedef struct {
   const uint8_t* data; /**< First container byte (MRAM, memory-mapped). */
   uint64_t       len;  /**< Container length in bytes.                  */

@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/acmphs_compare/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/acmphs_compare/main.c
  * @brief High-Speed Analog Comparator (ACMPHS) channel-0 polling demo
  *
  * @par Tag

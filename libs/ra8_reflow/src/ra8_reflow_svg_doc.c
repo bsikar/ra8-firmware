@@ -337,7 +337,7 @@ static int32_t priv_group_open(const uint8_t*     s,
  *
  * @details Maintains a bounded group transform stack of depth @c k_svg_g_depth_max.
  * Entering a 'g' element (via @c priv_group_open) composes its 'transform='
- * onto the current top and pushes. Encountering '</g>' pops. Each shape element
+ * onto the current top and pushes. Encountering `</g>` pops. Each shape element
  * inherits the top group transform via @c priv_xform_with_group, then
  * composes its own element-level 'transform=' in @c priv_dispatch_shape.
  * The scan is bounded: each iteration advances past one '<...>' tag or breaks.

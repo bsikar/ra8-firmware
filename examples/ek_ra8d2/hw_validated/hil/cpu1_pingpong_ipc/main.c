@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/cpu1_pingpong_ipc/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong_ipc/main.c
  * @brief CPU0 (M85) Secure fallback entry for the TZ ping-pong demo.
  *
  * @par Tag

@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/lpm_ulpt_standby/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/lpm_ulpt_standby/main.c
  * @brief ULPT0-underflow wake from Software Standby (LPSCR.LPMD = 0x5)
  *
  * @par Tag
