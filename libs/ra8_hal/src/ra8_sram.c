@@ -788,42 +788,6 @@ static void internal_self_test_inject(uint8_t bank, volatile uint64_t* data, boo
   internal_write_cr_locked(bank, k_ra8_sram_cr_self_test_phase_verify);
 }
 
-#ifdef RA8_SIMULATOR_MODE
-/**
- * @brief Forge an SRAMESR latch on the host build.
- *
- * @details
- * The host has no ECC engine, so the self-test path needs us to fake
- * the latch a real chip would set. Mirrors HUM Ch 58.2.12 p 3535
- * SRAMESR semantics for the chosen bank/slot.
- *
- * @param[in] bank           Bank under test.
- * @param[in] inject_two_bit ``true`` if a 2-bit fault was injected.
- * @param[in] probe_offset   Byte offset within the bank's data window.
- *
- * @pre ``bank`` is in range and ``probe_offset`` is 8-byte aligned.
- * @post SRAMESR has the matching error flag set; SRAMEAR populated.
- *
- * @note Host-only helper, not thread-safe.
- *
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @since 0.1.0
- */
-static void internal_simulator_force_latch(uint8_t bank, bool inject_two_bit, uint32_t probe_offset)
-{
-  volatile r_sram_regs_t* regs = ra8_sram_regs();
-  uint8_t                 slot = k_ra8_sram_ear_slot_1bit;
-  if (inject_two_bit) {
-    slot = k_ra8_sram_ear_slot_2bit;
-  }
-  const uint16_t esr_bit =
-    (uint16_t)((uint16_t)1U << (uint16_t)(((uint16_t)2U * (uint16_t)bank) + (uint16_t)slot));
-  regs->SRAMESR             = (uint16_t)(regs->SRAMESR | esr_bit);
-  regs->SRAMEAR[bank][slot] = (uint32_t)(s_sram_data_off_table[bank] + probe_offset);
-}
-#endif
-
 [[nodiscard]] ra8_err_t
 ra8_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, bool* out_caught)
 {
@@ -853,14 +817,13 @@ ra8_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, boo
   /* Steps 2-3: bypass-read, inject, then arm verify. */
   internal_self_test_inject(bank, data, inject_two_bit);
 
-  /* Read the line. On real silicon this triggers the ECC engine; on
-   * the host build the simulator helper below forges the latch. */
+  /* Read the line. On real silicon this triggers the ECC engine, which
+   * latches SRAMESR / SRAMEAR for the faulted slot. The RAM-backed host
+   * register file has no ECC engine, so on the unit-test build the read
+   * is inert and host tests stage SRAMESR before the call to drive both
+   * legs of the caught decision below. */
   volatile uint64_t scratch = *data;
   (void)scratch;
-
-#ifdef RA8_SIMULATOR_MODE
-  internal_simulator_force_latch(bank, inject_two_bit, probe_offset);
-#endif
 
   /* Step 4: confirm SRAMESR latched the expected flag. */
   volatile r_sram_regs_t* check_regs = ra8_sram_regs();
