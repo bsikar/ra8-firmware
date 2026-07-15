@@ -1,7 +1,7 @@
 #
 # port/mbedtls/CMakeLists.txt
 #
-# Defines the `mbedtls_port_ra8_rsip` interface library that exposes
+# Defines the `mbedtls_port_ra8_config` interface library that exposes
 # the project-supplied Mbed TLS configuration headers.
 #
 # This port is config-only: it ships no compiled sources. Mbed TLS 4.x
@@ -11,7 +11,7 @@
 # so ALT-style shims are not dispatchable, and the RSIP crypto engine
 # they once targeted is not functional on this silicon (issues #214 /
 # #215). The ``RA8_MBEDTLS_PORT_SOURCES`` global property is therefore
-# empty. Apps that link ``mbedtls_port_ra8_rsip`` pick up the
+# empty. Apps that link ``mbedtls_port_ra8_config`` pick up the
 # project-wide ``mbedtls_config.h`` / ``tf_psa_crypto_config.h`` via
 # the include path below.
 #
@@ -25,9 +25,9 @@ cmake_minimum_required(VERSION 3.20)
 
 # Header-only interface: consumers get the config-header include path
 # and nothing else.
-add_library(mbedtls_port_ra8_rsip INTERFACE)
+add_library(mbedtls_port_ra8_config INTERFACE)
 
-target_include_directories(mbedtls_port_ra8_rsip INTERFACE
+target_include_directories(mbedtls_port_ra8_config INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/inc
 )
 

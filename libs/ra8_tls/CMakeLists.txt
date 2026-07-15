@@ -11,7 +11,7 @@
 #
 #   2. Per-app firmware builds (examples/<app>/CMakeLists.txt) opt in
 #      to RA8_USE_MBEDTLS=ON, which pulls in cmake/mbedtls.cmake and
-#      makes the `mbedtls` + `mbedtls_port_ra8_rsip` interface targets
+#      makes the `mbedtls` + `mbedtls_port_ra8_config` interface targets
 #      available. Those apps add_subdirectory() this file and link
 #      against the resulting `ra8_tls` STATIC target.
 #
@@ -39,7 +39,7 @@ if(TARGET mbedtls)
     target_link_libraries(ra8_tls PUBLIC
         ra8_core
         mbedtls
-        mbedtls_port_ra8_rsip
+        mbedtls_port_ra8_config
     )
 
     # tf-psa-crypto headers are exposed transitively by `mbedtls`; the
