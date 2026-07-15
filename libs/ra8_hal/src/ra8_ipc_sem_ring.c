@@ -26,6 +26,7 @@
 
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_hw_err.h"
 #include "ra8_ipc.h"
 #include "ra8_ipc_regs.h"
 
@@ -54,29 +55,79 @@ static volatile r_ipc_nmi_regs_t* internal_ra8_ipc_get_nmi(uint8_t unit)
  * @brief Test-and-set on IPCSEMn -- a 32-bit read takes the lock and
  *        returns the previous LOCK value.
  *
- * @details See implementation.
- * @param[in] sem See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
+ * @details
+ * On silicon the read itself is the take: HUM Ch 3.2.3 "IPCSEMn" p 210
+ * documents "Set condition: Reading this register", and the read data
+ * report the LOCK state from *before* the set. The host unit-test
+ * register file is dumb RAM with no read side effects, so the host
+ * test build routes the same read through the ``ra8_sim_mmio``
+ * read-to-set model, which performs the read and then latches LOCK in
+ * the backing RAM exactly as the silicon set condition does. A test
+ * models a peer core releasing the semaphore mid-spin with
+ * ``ra8_sim_mmio_set_poll_hook``.
+ *
+ * @param[in] sem Mapped IPCSEMn register. Must not be NULL (callers
+ *                null-check the accessor result before calling).
+ * @return The LOCK bit as read *before* the take side effect.
+ * @retval 0 The semaphore was free -- the caller now owns it.
+ * @retval k_ra8_ipc_sem_mask_lock It was already owned by another core.
+ *
+ * @pre ``sem`` points at a mapped IPCSEMn register.
+ * @pre The caller validated ``sem_id`` against ``k_ra8_ipc_sem_count``.
+ * @post LOCK is set in the register (silicon set condition / host model).
+ * @post No other register state is modified.
+ * @note ISR-safe: the take is a single 32-bit read on silicon.
  * @since 0.1.0
  */
 static uint32_t internal_ra8_ipc_sem_read_take(volatile uint32_t* sem)
 {
+#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+  /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- the seam performs the driver's read
+   * and applies the "Set condition: Reading this register" latch that
+   * dumb host RAM cannot. */
+  return ra8_sim_mmio_read_to_set32(sem, k_ra8_ipc_sem_mask_lock) & k_ra8_ipc_sem_mask_lock;
+#else
   /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- "Set condition: Reading this
    * register". Reading the register sets LOCK to 1; the read result
    * is the value the register held *before* the set. */
-  const uint32_t prev = *sem & k_ra8_ipc_sem_mask_lock;
-#ifdef RA8_SIMULATOR_MODE
-  /* The host-test simulator is dumb memory: a plain read has no
-   * side effect, so synthesise the read-takes-lock semantics here. */
+  return *sem & k_ra8_ipc_sem_mask_lock;
+#endif
+}
+
+/**
+ * @brief Write the IPCSEMn write-1-to-clear release command.
+ *
+ * @details
+ * HUM Ch 3.2.3 "IPCSEMn" p 210: "Clear condition: Writing 1 to this
+ * bit" -- silicon clears LOCK when the command lands. The host
+ * unit-test register file is dumb RAM that would store the literal 1
+ * (leaving the register file claiming "locked" after a release), so
+ * the host test build routes the same write through the
+ * ``ra8_sim_mmio`` write-1-to-clear model, which leaves LOCK cleared
+ * exactly as silicon does.
+ *
+ * @param[in] sem Mapped IPCSEMn register. Must not be NULL (callers
+ *                null-check the accessor result before calling).
+ *
+ * @pre ``sem`` points at a mapped IPCSEMn register.
+ * @pre The caller owns the semaphore (its last read-take returned 0).
+ * @post LOCK reads back 0 (released) on silicon and on the host model.
+ * @post No other register state is modified.
+ * @note ISR-safe: the release is a single 32-bit write on silicon.
+ * @since 0.1.0
+ */
+static void internal_ra8_ipc_sem_release_write(volatile uint32_t* sem)
+{
+#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+  /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- the seam applies the driver's W1C
+   * release command to the RAM register file the way the silicon clear
+   * condition does. */
+  ra8_sim_mmio_write1_clear32(sem, k_ra8_ipc_sem_mask_lock, k_ra8_ipc_sem_mask_lock);
+#else
+  /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- "Clear condition: Writing 1 to
+   * this bit". */
   *sem = k_ra8_ipc_sem_mask_lock;
 #endif
-  return prev;
 }
 
 /* =============================================================================
@@ -118,10 +169,10 @@ static uint32_t internal_ra8_ipc_sem_read_take(volatile uint32_t* sem)
   volatile uint32_t* sem = ra8_ipc_sem(sem_id);
   RA8_CHECK_NULL_PTR(sem, s_tag, "sem mapping failed");
   /* NASA Rule 2: bounded by ``max_spins``. */
-  for (uint16_t i = 0U; i < max_spins; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint16_t i = 0U; i < max_spins; ++i) {
     /* HUM Ch 3.2.3 "IPCSEMn" p 210 */
     const uint32_t prev = internal_ra8_ipc_sem_read_take(sem);
-    if (prev == 0U) { /* GCOVR_EXCL_BR_LINE */
+    if (prev == 0U) {
       /* Acquire barrier: order the caller's critical section after the
        * successful take. */
       ra8_ipc_barrier();
@@ -141,15 +192,7 @@ static uint32_t internal_ra8_ipc_sem_read_take(volatile uint32_t* sem)
   /* Release barrier: every store the caller made inside the critical
    * section must be visible to the peer before the lock is dropped. */
   ra8_ipc_barrier();
-  /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- "Clear condition: Writing 1 to
-   * this bit". */
-  *sem = k_ra8_ipc_sem_mask_lock;
-#ifdef RA8_SIMULATOR_MODE
-  /* On real HW, writing 1 clears LOCK to 0. The host-test simulator
-   * is dumb memory and just stores the 1; reflect the released state
-   * so subsequent take/is_locked observations match HW. */
-  *sem = 0U;
-#endif
+  internal_ra8_ipc_sem_release_write(sem);
   return k_ra8_ok;
 }
 
@@ -166,17 +209,11 @@ static uint32_t internal_ra8_ipc_sem_read_take(volatile uint32_t* sem)
   const uint32_t prev = internal_ra8_ipc_sem_read_take(sem);
   *out_locked         = (prev != 0U);
   if (prev == 0U) {
-    /* Caller observed unlocked; the read just locked it -- HUM
-     * Ch 3.2.3 "IPCSEMn" p 210 says writing 1 to LOCK clears the bit
-     * (releases the resource), and the post-condition for a diagnostic
-     * predicate is that the register reads back 0 so the side-effect
-     * of the take is invisible. The first write performs the
-     * write-1-to-clear; the second drives the value the caller would
-     * observe via a non-acquiring read on real silicon (LOCK=0). On
-     * the dumb-memory unit-test sim the second write is the one that
-     * is actually observable. */
-    *sem = k_ra8_ipc_sem_mask_lock;
-    *sem = 0U;
+    /* The caller observed "unlocked", but the diagnostic read itself
+     * took the lock (HUM Ch 3.2.3 set condition). Undo the probe's own
+     * take with the write-1-to-clear release command so the register
+     * reads back 0 and the side effect stays invisible. */
+    internal_ra8_ipc_sem_release_write(sem);
   }
   return k_ra8_ok;
 }
