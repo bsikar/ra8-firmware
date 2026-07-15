@@ -204,9 +204,9 @@ static void test_power_transition(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_send_command_rspend_via_alarm(void)
+static void test_send_command_rspend_via_poll_hook(void)
 {
-  TEST_BEGIN("sdhi send_command: RSPEND via alarm");
+  TEST_BEGIN("sdhi send_command: RSPEND via poll-hook");
   prep();
 
   /* Pre-seed response regs. */
@@ -229,7 +229,7 @@ static void test_send_command_rspend_via_alarm(void)
   TEST_ASSERT_EQ(0x44444444, rsp[3]);
   TEST_ASSERT_EQ(0xDEADBEEFUL, reg->SD_ARG);
   TEST_ASSERT_EQ(0x0000ABCDU, reg->SD_CMD);
-  TEST_END("sdhi send_command: RSPEND via alarm");
+  TEST_END("sdhi send_command: RSPEND via poll-hook");
 }
 
 /**
@@ -523,7 +523,7 @@ int32_t main(void)
   test_status_read_and_clear();
   test_attach_and_dispatch();
   test_power_transition();
-  test_send_command_rspend_via_alarm();
+  test_send_command_rspend_via_poll_hook();
   test_send_command_no_rsp_buffer();
   test_send_command_bad_instance();
   test_set_clock();

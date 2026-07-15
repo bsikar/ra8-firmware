@@ -42,13 +42,15 @@ extern "C" {
 typedef enum : uint32_t {
   k_ra8_adc_clk_wait_limit  = 100000UL,  /**< ADCLKSR settle-poll budget. */
   k_ra8_adc_busy_wait_limit = 2000000UL, /**< ADSR.ADACT busy-poll budget.
-                                              The host test fires a 100 us
-                                              SIGALRM to clear ADACT0; the
-                                              budget must outlast scheduler
-                                              jitter. 2M spins on a 1 GHz
-                                              CPU is ~2 ms wall clock -- a
-                                              sane ADC conversion timeout
-                                              on real silicon. */
+                                              2M spins on a 1 GHz CPU is
+                                              ~2 ms wall clock -- a sane
+                                              ADC conversion timeout on
+                                              real silicon. Host tests
+                                              leave ADACT0 idle (0) in the
+                                              RAM-backed window, so the
+                                              poll completes on its first
+                                              read; nothing races this
+                                              budget. */
 } ra8_adc_const_t;
 
 #ifdef __cplusplus

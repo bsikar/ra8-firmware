@@ -23,12 +23,13 @@
  * arming the ra8_sim_mmio fault seam on the SDHI module's MSTPCR register so
  * the ra8_mstp_disable readback never settles.
  *
- * Each multi-command test uses a mode-driven background servicer thread
- * identical in spirit to test_ra8_sdcard.c (no wall-clock timer).  After
- * asserting RSPEND for a command, the servicer overwrites SD_CMD with a
- * sentinel value (> 63, outside the valid SD command range) so that
- * subsequent steps -- before the driver writes the next SD_CMD -- cannot
- * accidentally assert RSPEND for the stale command index.  Fail-mode tests
+ * Each multi-command test uses a mode-driven ra8_sim_mmio poll-hook
+ * identical in spirit to test_ra8_sdcard.c (no wall-clock timer, no
+ * servicer thread).  After asserting RSPEND for a command, the hook
+ * overwrites SD_CMD with a sentinel value (> 63, outside the valid SD
+ * command range) so that subsequent steps -- before the driver writes
+ * the next SD_CMD -- cannot accidentally assert RSPEND for the stale
+ * command index.  Fail-mode tests
  * skip RSPEND for the failing command; the driver's bounded spin budget
  * then expires naturally.
  *
@@ -69,9 +70,9 @@ typedef enum : uint8_t {
  * @brief SD command sentinel and bounds.
  *
  * @details
- * k_cov_sd_cmd_sentinel is written to SD_CMD by the servicer after
+ * k_cov_sd_cmd_sentinel is written to SD_CMD by the poll-hook after
  * asserting RSPEND for a command.  Its value (255) lies outside the valid
- * SD command range (0-63), so subsequent servicer steps see the sentinel
+ * SD command range (0-63), so subsequent hook steps see the sentinel
  * and do nothing, preventing spurious RSPEND assertions for stale command
  * indices.
  *
@@ -84,7 +85,7 @@ typedef enum : uint32_t {
 
 /**
  * @enum cov_ocr_t
- * @brief OCR response constants used by servicer modes.
+ * @brief OCR response constants used by poll-hook modes.
  *
  * @details
  * - busy bit 31 set means card is ready (ACMD41 loop exits)
@@ -188,8 +189,8 @@ typedef enum : uint32_t {
  */
 
 /**
- * @enum cov_alarm_mode_t
- * @brief Operating mode for the coverage servicer.
+ * @enum cov_hook_mode_t
+ * @brief Operating mode for the coverage poll-hook.
  *
  * @details
  * Each mode controls which commands receive RSPEND and which responses are
@@ -205,46 +206,46 @@ typedef enum : uint8_t {
   k_cov_mode_sdsc_v1         = 4U, /**< Full init: CSD v1, OCR CCS=0 (SDSC).       */
   k_cov_mode_sdxc_v2         = 5U, /**< Full init: CSD v2 large, OCR CCS=1 (SDXC). */
   k_cov_mode_csd_bad_struct  = 6U, /**< Full init up to CMD9; CSD_STRUCTURE=2.     */
-} cov_alarm_mode_t;
+} cov_hook_mode_t;
 
 /**
- * @struct cov_alarm_cfg_t
- * @brief Shared configuration for the coverage servicer.
+ * @struct cov_hook_cfg_t
+ * @brief Shared configuration for the coverage poll-hook.
  *
  * @details
- * Written before arming the alarm; read-only inside the handler.
+ * Written before arming the poll-hook; read-only inside the hook.
  *
  * @invariant inst < k_ra8_sdhi_instance_count when handler is armed.
  *
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t          inst; /**< SDHI instance index. */
-  cov_alarm_mode_t mode; /**< Handler behaviour.   */
-} cov_alarm_cfg_t;
+  uint8_t         inst; /**< SDHI instance index. */
+  cov_hook_mode_t mode; /**< Handler behaviour.   */
+} cov_hook_cfg_t;
 
-/** @brief Current alarm configuration. */
-static cov_alarm_cfg_t s_cov_cfg;
+/** @brief Current poll-hook configuration. */
+static cov_hook_cfg_t s_cov_cfg;
 
 /* ---------------------------------------------------------------------------
- * Alarm handler helpers
+ * Poll-hook helpers
  * ---------------------------------------------------------------------------
  */
 
 /**
  * @brief Select the ACMD41 OCR response for the current mode.
  *
- * @param[in] mode Active alarm mode.
+ * @param[in] mode Active hook mode.
  * @return 32-bit OCR word to load into SD_RSP10.
  *
- * @pre mode is a valid cov_alarm_mode_t value.
- * @pre Called from the servicer thread.
+ * @pre mode is a valid cov_hook_mode_t value.
+ * @pre Called from the poll-hook, on the driver's own poll thread.
  * @post Return value is one of the k_cov_ocr_* constants.
  * @note Thread-safe: reads only static config and constants.
  *
  * @since 0.1.0
  */
-static uint32_t cov_ocr_for_mode(cov_alarm_mode_t mode)
+static uint32_t cov_ocr_for_mode(cov_hook_mode_t mode)
 {
   if (mode == k_cov_mode_sdsc_v1) {
     return (uint32_t)k_cov_ocr_sdsc_ready;
@@ -259,16 +260,16 @@ static uint32_t cov_ocr_for_mode(cov_alarm_mode_t mode)
  * @brief Inject the CMD9 CSD response for the current mode.
  *
  * @param[in,out] reg  Pointer to the SDHI register window.
- * @param[in]     mode Active alarm mode.
+ * @param[in]     mode Active hook mode.
  *
  * @pre reg is a valid, mapped SDHI register window pointer.
- * @pre mode is a valid cov_alarm_mode_t value.
+ * @pre mode is a valid cov_hook_mode_t value.
  * @post SD_RSP10..76 hold the CSD words for the requested mode.
  * @note Thread-safe.
  *
  * @since 0.1.0
  */
-static void cov_set_csd(volatile r_sdhi_regs_t* reg, cov_alarm_mode_t mode)
+static void cov_set_csd(volatile r_sdhi_regs_t* reg, cov_hook_mode_t mode)
 {
   if (mode == k_cov_mode_sdsc_v1) {
     reg->SD_RSP10 = (uint32_t)k_cov_csd_v1_rsp10;
@@ -295,7 +296,8 @@ static void cov_set_csd(volatile r_sdhi_regs_t* reg, cov_alarm_mode_t mode)
  * @brief Servicer step -- injects SDHI command responses per mode.
  *
  * @details
- * Runs in a tight loop on the servicer thread.  Reads SD_CMD from the register
+ * Runs inline on every ra8_sim_mmio_poll, on the driver's own poll
+ * thread.  Reads SD_CMD from the register
  * window.  If the value exceeds the maximum valid SD command index (63), it is
  * the sentinel written by a prior step and the function returns immediately.
  *
@@ -418,7 +420,7 @@ static void cov_sdcard_step(void)
  *
  * @since 0.1.0
  */
-static void cov_hook_arm(uint8_t inst, cov_alarm_mode_t mode)
+static void cov_hook_arm(uint8_t inst, cov_hook_mode_t mode)
 {
   s_cov_cfg.inst = inst;
   s_cov_cfg.mode = mode;
@@ -473,7 +475,7 @@ static void cov_prep(void)
  * @brief CMD8 echo-pattern mismatch causes hw_init_failed (line 293).
  *
  * @details
- * The alarm handler returns SD_RSP10=0 for CMD8.  The driver checks
+ * The hook returns SD_RSP10=0 for CMD8.  The driver checks
  * ``(rsp[0] & 0xFFF) != (0x1AA & 0xFFF)`` and returns
  * k_ra8_err_hw_init_failed at source line 293.
  *
@@ -501,7 +503,7 @@ static void test_cov_cmd8_echo_mismatch(void)
  * @brief CMD55 hardware timeout propagated from ACMD41 loop (lines 164, 414, 415).
  *
  * @details
- * The alarm handles CMD0 (identifies the card) and CMD8 (correct echo),
+ * The hook handles CMD0 (identifies the card) and CMD8 (correct echo),
  * but does NOT assert RSPEND for CMD55.  The SDHI spin budget exhausts and
  * ra8_sdhi_send_command returns k_ra8_err_hw_timeout.  internal_run_acmd41
  * propagates it at line 164.  ra8_sdcard_init then calls ra8_sdhi_deinit
@@ -531,7 +533,7 @@ static void test_cov_acmd41_cmd55_fails(void)
  * @brief ACMD41 hardware timeout propagated from ACMD41 loop (lines 173, 414, 415).
  *
  * @details
- * The alarm handles CMD0, CMD8 (correct echo), and CMD55, but does NOT
+ * The hook handles CMD0, CMD8 (correct echo), and CMD55, but does NOT
  * assert RSPEND for ACMD41 (cmd=41).  The spin budget exhausts and
  * internal_run_acmd41 propagates the error at line 173.
  *
@@ -559,15 +561,15 @@ static void test_cov_acmd41_acmd41_fails(void)
  * @brief ACMD41 busy bit never set exhausts all retries (lines 180, 182, 414, 415).
  *
  * @details
- * The alarm handles CMD0, CMD8, CMD55, and ACMD41.  ACMD41 returns
+ * The hook handles CMD0, CMD8, CMD55, and ACMD41.  ACMD41 returns
  * OCR=0 (busy bit 31 is 0) for all 1000 iterations.  Each iteration
  * the loop body falls through to line 180 (loop end) without breaking.
  * After all retries the done==0 check at line 181 is true and line 182
  * returns k_ra8_err_hw_init_failed.
  *
- * This test runs ~1000 iterations of CMD55+ACMD41 driven at the
- * 50-microsecond alarm interval (~100 ms total) -- acceptable for the
- * host test suite.
+ * This test runs ~1000 iterations of CMD55+ACMD41, each answered
+ * synchronously by the poll-hook on the driver's own poll, so the whole
+ * retry loop completes in host-CPU time with no timer waits.
  *
  * @par MC/DC:
  * Decisions in internal_run_acmd41 (all single-condition):
@@ -597,12 +599,12 @@ static void test_cov_acmd41_busy_exhausted(void)
  *        (lines 230-245, 385, 467).
  *
  * @details
- * The alarm injects CSD_STRUCTURE=0 (v1) with READ_BL_LEN=9,
+ * The hook injects CSD_STRUCTURE=0 (v1) with READ_BL_LEN=9,
  * C_SIZE=127, C_SIZE_MULT=1.  The OCR has CCS=0 (byte-addressed SDSC).
  *
  * After a successful init, ra8_sdcard_read_blocks is called.  The SDSC
  * branch of internal_to_card_address returns lba * 512 (line 467).
- * The SDHI block-read completes because the alarm keeps BRE asserted.
+ * The SDHI block-read completes because the hook keeps BRE asserted.
  *
  * @par MC/DC:
  * Decisions in internal_decode_csd:
@@ -634,7 +636,7 @@ static void test_cov_csd_v1_sdsc_card(void)
   TEST_ASSERT_EQ(k_ra8_sdcard_type_sdsc, t);
 
   /* Trigger line 467: internal_to_card_address(0) returns 0*512=0.
-   * Alarm is still armed so the single-block read succeeds (BRE set). */
+   * The hook is still armed so the single-block read succeeds (BRE set). */
   uint8_t buf[512] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdcard_read_blocks(0U, buf, 1U));
 
@@ -647,7 +649,7 @@ static void test_cov_csd_v1_sdsc_card(void)
  * @brief CSD v2 with SDXC-range capacity triggers SDXC classification (line 388).
  *
  * @details
- * The alarm injects C_SIZE=65536 (22-bit field).  Decoded capacity:
+ * The hook injects C_SIZE=65536 (22-bit field).  Decoded capacity:
  * (65536+1) * 1024 = 67,109,888 blocks, which exceeds the 32-GiB
  * SDHC/SDXC boundary (67,108,864) and yields k_ra8_sdcard_type_sdxc.
  *
@@ -725,7 +727,7 @@ static void test_cov_deinit_mstp_timeout(void)
  *        (lines 247, 346, 423, 424).
  *
  * @details
- * The alarm injects rsp[3] = 0x80000000 (CSD_STRUCTURE = 2).
+ * The hook injects rsp[3] = 0x80000000 (CSD_STRUCTURE = 2).
  * internal_decode_csd returns k_ra8_err_hw_init_failed at line 247.
  * internal_sdcard_publish_and_select returns it at line 346.
  * ra8_sdcard_init calls ra8_sdhi_deinit at line 423 and returns at line 424.
