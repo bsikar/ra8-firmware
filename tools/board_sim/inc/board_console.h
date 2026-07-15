@@ -5,8 +5,9 @@
  * @details
  * The emulator surfaces firmware activity through many distinct endpoints: the
  * SCI_B serial console (@c [uart] SCIn:), the CoreSight ITM/SWO trace port
- * (@c [itm]), and one lane per modelled I/O protocol -- SPI, I2C, CAN, USB, SD,
- * OSPI, I2S, ADC, DAC, GPIO, DMA, and the virtual network peer. These are
+ * (@c [itm]), the SEGGER RTT up-buffer drain (@c [rtt]), and one lane per
+ * modelled I/O protocol -- SPI, I2C, CAN, USB, SD, OSPI, I2S, ADC, DAC, GPIO,
+ * DMA, and the virtual network peer. These are
  * genuinely different wires, so this module keeps one fixed-capacity scrollback
  * ring per channel plus an aggregate ALL ring that interleaves every channel in
  * arrival order. The board view renders one channel at a time behind a clickable
@@ -50,19 +51,20 @@ typedef enum : uint32_t {
   k_board_console_ch_all   = 0U,  /**< Aggregate of all lanes (arrival order).  */
   k_board_console_ch_uart  = 1U,  /**< SCI_B serial console ([uart] SCIn:).     */
   k_board_console_ch_itm   = 2U,  /**< CoreSight ITM/SWO trace ([itm]).         */
-  k_board_console_ch_spi   = 3U,  /**< SPI_B transfer summaries.                */
-  k_board_console_ch_i2c   = 4U,  /**< I2C (IIC_B + RIIC) transfer summaries.   */
-  k_board_console_ch_can   = 5U,  /**< CAN-FD frame summaries.                  */
-  k_board_console_ch_usb   = 6U,  /**< USBFS transfer / enumeration summaries.  */
-  k_board_console_ch_sd    = 7U,  /**< SD (SDHI + SD-over-SPI) block summaries. */
-  k_board_console_ch_ospi  = 8U,  /**< Octal-SPI (xSPI) command summaries.      */
-  k_board_console_ch_i2s   = 9U,  /**< SSIE / I2S sample-block summaries.       */
-  k_board_console_ch_adc   = 10U, /**< ADC_B conversion summaries.              */
-  k_board_console_ch_dac   = 11U, /**< DAC_B output summaries.                  */
-  k_board_console_ch_gpio  = 12U, /**< GPIO / PORT pin-level transitions.       */
-  k_board_console_ch_dma   = 13U, /**< DMAC + DTC transfer-complete summaries.  */
-  k_board_console_ch_net   = 14U, /**< Ethernet / IPv4 / TCP packet summaries.  */
-  k_board_console_ch_count = 15U, /**< Channel count (ring + tab array size).   */
+  k_board_console_ch_rtt   = 3U,  /**< SEGGER RTT up-buffer 0 drain ([rtt]).    */
+  k_board_console_ch_spi   = 4U,  /**< SPI_B transfer summaries.                */
+  k_board_console_ch_i2c   = 5U,  /**< I2C (IIC_B + RIIC) transfer summaries.   */
+  k_board_console_ch_can   = 6U,  /**< CAN-FD frame summaries.                  */
+  k_board_console_ch_usb   = 7U,  /**< USBFS transfer / enumeration summaries.  */
+  k_board_console_ch_sd    = 8U,  /**< SD (SDHI + SD-over-SPI) block summaries. */
+  k_board_console_ch_ospi  = 9U,  /**< Octal-SPI (xSPI) command summaries.      */
+  k_board_console_ch_i2s   = 10U, /**< SSIE / I2S sample-block summaries.       */
+  k_board_console_ch_adc   = 11U, /**< ADC_B conversion summaries.              */
+  k_board_console_ch_dac   = 12U, /**< DAC_B output summaries.                  */
+  k_board_console_ch_gpio  = 13U, /**< GPIO / PORT pin-level transitions.       */
+  k_board_console_ch_dma   = 14U, /**< DMAC + DTC transfer-complete summaries.  */
+  k_board_console_ch_net   = 15U, /**< Ethernet / IPv4 / TCP packet summaries.  */
+  k_board_console_ch_count = 16U, /**< Channel count (ring + tab array size).   */
 } board_console_ch_t;
 
 /** @brief Fixed ring geometry (mirrors the overlay line cap + SCI ring depth). */

@@ -7451,13 +7451,16 @@ int main(int argc, char** argv)
         }
       }
       /* Generic banner stop: the firmware printed its success line to the
-       * console. Check BOTH endpoints -- the UART (the SCI-TX `[uart]` banners)
-       * and the ITM/SWO stimulus stream (the `[itm]` ra8_log lines surfaced by
-       * on_itm_stim_write). ra8_log-only apps -- e.g. the dual-core demos, whose
-       * PASS verdict is an `ra8_log_info` line that never touches the UART --
-       * would otherwise run to the full chunk budget; matching the ITM line lets
-       * BOARD_SIM_STOP_ON end the run the instant the verdict is logged, exactly
-       * as it already does for the UART-banner apps. */
+       * console. Check ALL THREE text endpoints -- the UART (the SCI-TX `[uart]`
+       * banners), the ITM/SWO stimulus stream (the `[itm]` ra8_log lines
+       * surfaced by on_itm_stim_write), and the SEGGER RTT up-buffer drain (the
+       * `[rtt]` lines board_periph_rtt.c pulls out of the in-RAM control
+       * block). ra8_log-only apps -- e.g. the dual-core demos, whose PASS
+       * verdict is an `ra8_log_info` line that never touches the UART -- and
+       * RTT-only apps (rtt_log_demo) would otherwise run to the full chunk
+       * budget; matching the ITM / RTT lines lets BOARD_SIM_STOP_ON end the run
+       * the instant the verdict is emitted, exactly as it already does for the
+       * UART-banner apps. */
       if (stop_on != nullptr) {
         const char* last_uart = board_periph_uart_last_line();
         if ((last_uart != nullptr) && (strstr(last_uart, stop_on) != nullptr)) {
@@ -7466,6 +7469,11 @@ int main(int argc, char** argv)
         }
         const char* last_itm = board_console_line(k_board_console_ch_itm, 0U);
         if ((last_itm != nullptr) && (strstr(last_itm, stop_on) != nullptr)) {
+          usb_stopped = true;
+          break;
+        }
+        const char* last_rtt = board_console_line(k_board_console_ch_rtt, 0U);
+        if ((last_rtt != nullptr) && (strstr(last_rtt, stop_on) != nullptr)) {
           usb_stopped = true;
           break;
         }

@@ -36,14 +36,18 @@
 #                         does not model that peripheral) FAILS -- a real,
 #                         reported modelling gap, not a false pass.
 #
-#   rtt_scrape            SKIP: the banner is emitted over SEGGER RTT, which
-#                         board_sim does not model (no RTT control block).
+#   rtt_scrape            Checked exactly like uart_scrape: board_sim models
+#                         the SEGGER RTT host side (board_periph_rtt.c scans
+#                         SRAM for the "SEGGER RTT" control block and drains
+#                         up-buffer 0, echoing each line as `[rtt] ...` on the
+#                         same console output STOP_ON watches), so the RTT
+#                         banner is asserted with no J-Link attached.
 #   hil_eth_tcp           SKIP: needs a live external TCP peer on the wire;
 #                         board_sim models eth loopback, not a socket peer.
 #
 # A SKIP is a clearly-reported "board_sim cannot check this mode" -- never a
 # false pass. Only apps in a SIL-capable mode (uart_scrape / alive /
-# jlink_memprobe) can FAIL the suite; SKIPs do not.
+# jlink_memprobe / rtt_scrape) can FAIL the suite; SKIPs do not.
 #
 # PARALLELISM: unlike hil_all.sh (serial -- one physical board), board_sim
 # instances share no hardware, so apps run CONCURRENTLY in a worker pool of
@@ -444,17 +448,12 @@ run_one() {
   : "${HIL_SIM_MAX_CHUNKS:=$(sil_app_max_chunks "$app")}"
 
   case "${HIL_MODE:-}" in
-    rtt_scrape)
-      sil_emit "$rf" SKIP "$app" "hardware-only: SEGGER RTT not modelled by board_sim"
-      sil_progress "$app" SKIP
-      return 0
-      ;;
     hil_eth_tcp)
       sil_emit "$rf" SKIP "$app" "hardware-only: needs a live external TCP peer on the wire"
       sil_progress "$app" SKIP
       return 0
       ;;
-    uart_scrape | alive | jlink_memprobe) : ;;
+    uart_scrape | alive | jlink_memprobe | rtt_scrape) : ;;
     *)
       sil_emit "$rf" FAIL "$app" "unknown HIL_MODE='${HIL_MODE:-}'"
       sil_progress "$app" FAIL
@@ -477,7 +476,10 @@ run_one() {
   fi
 
   case "${HIL_MODE}" in
-    uart_scrape) verdict_uart "$app" "$elf" "$rf" ;;
+    # rtt_scrape shares the uart verdict: board_sim's RTT model drains the
+    # in-RAM control block onto the same console output path ([rtt] lines),
+    # so the banner grep + STOP_ON early-stop work identically to a UART app.
+    uart_scrape | rtt_scrape) verdict_uart "$app" "$elf" "$rf" ;;
     alive) verdict_alive "$app" "$elf" "$rf" ;;
     jlink_memprobe) verdict_memprobe "$app" "$elf" "$rf" ;;
   esac
@@ -540,7 +542,7 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     -h | --help)
-      sed -n '5,88p' "$0"
+      sed -n '5,79p' "$0"
       exit 0
       ;;
     *)
