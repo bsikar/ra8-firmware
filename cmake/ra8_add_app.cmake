@@ -367,6 +367,9 @@ macro(ra8_add_app)
         -Wno-type-limits        # miniz range-limited comparisons
         -Wno-duplicated-branches   # stb_image identical if/else arms
         -Wno-missing-declarations  # stb_image extern helpers with no prior decl
+        -Wno-conversion            # stb / miniz implicit narrowing throughout
+        -Wno-sign-conversion       # stb / miniz signed<->unsigned index math
+        -Wno-float-conversion      # stb_truetype double -> float literals
         # stb_image's GIF path (stbi__gif_load / stbi__load_gif_main) puts ~34 KiB
         # of frame buffers on the stack -- far over the per-app -Wstack-usage=N
         # budget, but an inherent property of the vendored decoder we cannot shrink
