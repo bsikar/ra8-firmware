@@ -67,8 +67,8 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | Eclipse LevelX | 6.5.0 | MIT | `libs/third_party/levelx/` | <https://github.com/eclipse-threadx/levelx> |
 | Mbed TLS | 4.1.0 | Apache-2.0 (elected; dual w/ GPL-2.0) | `libs/third_party/mbedtls/` | <https://github.com/Mbed-TLS/mbedtls> |
 | TF-PSA-Crypto | 1.1.0 | Apache-2.0 (elected; dual w/ GPL-2.0) | `libs/third_party/tf-psa-crypto/` | <https://github.com/Mbed-TLS/TF-PSA-Crypto> |
-| Apache NimBLE | 1.9.0 (`version.yml`=0.0.0) | Apache-2.0 | `libs/third_party/nimble/` | <https://github.com/apache/mynewt-nimble> |
-| litehtml | unpinned dev snapshot (CMake 0.0.0) | BSD-3-Clause | `libs/third_party/litehtml/` | <https://github.com/litehtml/litehtml> |
+| Apache NimBLE | git `8b6f3e81` (post-1.9.0 dev snapshot) | Apache-2.0 | `libs/third_party/nimble/` | <https://github.com/apache/mynewt-nimble> |
+| litehtml | git `8836bc1b` (post-v0.9 dev snapshot) | BSD-3-Clause | `libs/third_party/litehtml/` | <https://github.com/litehtml/litehtml> |
 | miniz | 11.0.2 | MIT (zlib-style) | `libs/third_party/miniz/` | <https://github.com/richgel999/miniz> |
 | stb (stb_image + stb_truetype) | image 2.30 / truetype 1.26 | MIT OR Unlicense (public domain) | `libs/third_party/stb/` | <https://github.com/nothings/stb> |
 | TinyXML-2 (**patched**) | 11.0.0 | Zlib | `libs/third_party/tinyxml2/` | <https://github.com/leethomason/tinyxml2> |
@@ -84,7 +84,8 @@ Counts: **16 vendored source components** + **1 blob tree** (`fsp_blobs/`, holdi
 the vendored RSIP-E50D firmware and the absent BLE patch) + **1 bundled font
 asset**. TinyXML-2 carries a local in-tree patch (see below), so it is
 *modified* SOUP. The four ML-stack components (TFLite-micro, FlatBuffers,
-gemmlowp, ruy) are commit-pinned and unmodified. Separately, **Arm Ethos-U
+gemmlowp, ruy) and the two dev-branch snapshots (Apache NimBLE, litehtml)
+are commit-pinned and unmodified. Separately, **Arm Ethos-U
 Vela** is a build-time host tool (pinned at `tools/vela/requirements.txt`),
 linked into nothing -- see the build-tools note below and
 [`docs/SOUP/vela.md`](docs/SOUP/vela.md).
@@ -94,10 +95,13 @@ linked into nothing -- see the build-tools note below and
 ## Provenance and integrity
 
 Only the Renesas RSIP blob is pinned to an upstream commit with an integrity
-hash. Every source component's version is *inferred from an in-tree header*
-and no upstream commit or `SHA256SUMS` manifest is recorded -- this is the
-open **T5-09** finding; it means the trees are not independently reproducible
-or tamper-verifiable yet.
+hash. Seven components carry an upstream commit pin (the ML stack, the RSIP
+blob, and the NimBLE / litehtml dev snapshots -- the latter two recovered by
+fingerprinting the vendored trees against their upstream histories, each a
+byte-identical single-commit match). The remaining ten source components'
+versions are *inferred from an in-tree header* with no upstream commit or
+`SHA256SUMS` manifest recorded -- the open **T5-09** finding; those trees
+are not independently reproducible or tamper-verifiable yet.
 
 | Component | Version source | Upstream commit | Integrity hash | Pinned? |
 |-----------|----------------|-----------------|----------------|---------|
@@ -107,8 +111,8 @@ or tamper-verifiable yet.
 | miniz | `MZ_VERSION` | none | none | version only |
 | TinyXML-2 | `TIXML2_*_VERSION` | none | none | version only (+patch) |
 | stb | header-tail version comments | none | none | version only |
-| Apache NimBLE | `RELEASE_NOTES.md` prose; `version.yml`=0.0.0 | none | none | **unpinned (dev snapshot)** |
-| litehtml | none (CMake project 0.0.0) | none | none | **unpinned (dev snapshot)** |
+| Apache NimBLE | tree fingerprint vs upstream (859/859 files byte-identical) | `8b6f3e819118a1839e5f238bfe1797d64878dc3d` | none | **commit-pinned** |
+| litehtml | tree fingerprint vs upstream (215/215 files byte-identical) | `8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e` | none | **commit-pinned** |
 | TFLite-micro | commit pin (lean subset) | `fddd3707a3c5733af4cb866f18650441e6712504` | none | **commit-pinned** |
 | FlatBuffers | tag `v25.9.23` (+ `FLATBUFFERS_VERSION_*`) | `edbe17738352418245d7228e7fd9f12c3ddc34c4` | none | **commit-pinned** |
 | gemmlowp | commit pin | `719139ce755a0f31cbf1c37f7f98adcc7fc9f425` | none | **commit-pinned** |
@@ -202,19 +206,28 @@ These are real gaps, tracked so they are not forgotten. None blocks internal
 development (the project is unreleased), but each is a live obligation the
 moment a binary is shared.
 
-1. **No commit pins / integrity manifest for 12 source components (T5-09).**
+1. **No commit pins / integrity manifest for 10 source components (T5-09).**
    Versions are inferred from headers only. Adopt the `fsp_blobs` pattern
    (commit SHA + per-component SHA-256) or convert to submodules / a
    vendoring lockfile.
-2. **litehtml and NimBLE are unreleased 0.0.0 dev snapshots (T5-09 / SOUP-4).**
-   Re-vendor at tagged releases. litehtml is the weakest provenance and is on
-   the untrusted-EPUB path (linked via `libs/ra8_reflow`).
+2. **litehtml and NimBLE are dev-branch snapshots, not tagged releases
+   (SOUP-4).** Both are now pinned to their exact upstream commits
+   (byte-identical tree fingerprints; see the provenance table), which
+   closes the unpinned half of the finding. Re-vendoring at tagged releases
+   remains preferable; litehtml in particular is on the untrusted-EPUB path
+   (linked via `libs/ra8_reflow`).
 3. **stb has no standalone `LICENSE` file (SOUP-5).** The `MIT OR Unlicense`
    text exists only in the header tails. A standalone
    `libs/third_party/stb/LICENSE` would make the attribution self-contained.
-4. **No automated CVE/SBOM scanning yet (T5-09 / SOUP-3).** The SBOM this file
-   accompanies is the input for `osv-scanner`; wiring a weekly scan closes the
-   monitoring gap (currently a manual <=12-month re-review cadence).
+4. **CVE monitoring only covers commit-pinned components (SOUP-3).** The
+   weekly [`osv-scan.yml`](.github/workflows/osv-scan.yml) workflow runs the
+   pinned `osv-scanner` release against the SBOM and against every recorded
+   upstream commit (`scripts/utils/osv_scan.sh`). OSV.dev resolves C/C++
+   advisories by GIT commit range only -- GitHub purls do not resolve -- so
+   the ten version-only components (ThreadX family, Mbed TLS, TF-PSA-Crypto,
+   miniz, TinyXML-2, stb) are NOT commit-queried until they gain pins under
+   item 1, and keep the manual <=12-month re-review cadence (NetX Duo CVE
+   notes live in `docs/SOUP/netxduo.md`).
 
 The bundled reading font is no longer an open item: the proprietary Adobe
 Arno Pro face was replaced with **Literata** (SIL OFL 1.1) -- open and cleared
@@ -246,6 +259,9 @@ component cannot ship without updating both artifacts.
   CycloneDX 1.5 SBOM (machine-readable; feed to `osv-scanner`).
 - [`scripts/utils/gen_sbom.py`](scripts/utils/gen_sbom.py) -- the generator /
   validator and its component registry.
+- [`scripts/utils/osv_scan.sh`](scripts/utils/osv_scan.sh) +
+  [`.github/workflows/osv-scan.yml`](.github/workflows/osv-scan.yml) -- the
+  weekly OSV CVE scan (SBOM purl leg + pinned-commit leg).
 - [`docs/SOUP/`](docs/SOUP/) -- per-component qualification (service history,
   CVE notes, integration seams, re-review cadence).
 - [`libs/third_party/fsp_blobs/README.md`](libs/third_party/fsp_blobs/README.md)

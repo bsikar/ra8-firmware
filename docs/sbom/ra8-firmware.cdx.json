@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:a4fb7316-1f79-54ba-a6a8-7ed928b57c94",
+  "serialNumber": "urn:uuid:5e99b272-5b42-50c4-9dce-6380dfefe29e",
   "version": 1,
   "metadata": {
     "tools": [
@@ -339,7 +339,7 @@
       "bom-ref": "nimble",
       "name": "Apache NimBLE",
       "group": "apache",
-      "version": "1.9.0 (RELEASE_NOTES); version.yml=0.0.0 -- unpinned, see T5-02",
+      "version": "1.9.0+git.8b6f3e81 (2026-04-28 default-branch snapshot)",
       "description": "Bluetooth 5.4 host + controller stack (staged, not linked).",
       "scope": "required",
       "licenses": [
@@ -350,7 +350,7 @@
         }
       ],
       "copyright": "Ships its own NOTICE (Apache-2.0 section 4(d)).",
-      "purl": "pkg:github/apache/mynewt-nimble@1.9.0",
+      "purl": "pkg:github/apache/mynewt-nimble@8b6f3e819118a1839e5f238bfe1797d64878dc3d",
       "externalReferences": [
         {
           "type": "vcs",
@@ -360,11 +360,15 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "dev-snapshot-unpinned"
+          "value": "commit-pinned-sha256"
         },
         {
           "name": "ra8:path",
           "value": "libs/third_party/nimble"
+        },
+        {
+          "name": "ra8:upstreamCommit",
+          "value": "8b6f3e819118a1839e5f238bfe1797d64878dc3d"
         },
         {
           "name": "ra8:licenseFile",
@@ -376,10 +380,14 @@
         },
         {
           "name": "ra8:note0",
-          "value": "version.yml records repo.version 0.0.0 (upstream default branch placeholder); 1.9.0 is inferred from RELEASE_NOTES.md prose. No upstream commit pinned (T5-09 / SOUP-1, SOUP-4)."
+          "value": "Pinned by tree fingerprint: all 859 vendored files (including the one symlink) are byte-identical to upstream commit 8b6f3e81, the single exact match among the 5567 commits reachable from the upstream default branch (42 commits past nimble_1_9_0_tag). The vendored subset drops upstream apps/ only."
         },
         {
           "name": "ra8:note1",
+          "value": "version.yml records repo.version 0.0.0 (upstream default-branch placeholder); RELEASE_NOTES.md prose still reads 1.9.0."
+        },
+        {
+          "name": "ra8:note2",
           "value": "Second attribution file: libs/third_party/nimble/NOTICE."
         }
       ]
@@ -389,7 +397,7 @@
       "bom-ref": "litehtml",
       "name": "litehtml",
       "group": "litehtml",
-      "version": "unpinned dev-branch snapshot (CMake 0.0.0) -- see T5-02",
+      "version": "0.9+git.8836bc1b (2026-01-10 default-branch snapshot)",
       "description": "HTML/CSS layout engine; linked by libs/ra8_reflow (EPUB).",
       "scope": "required",
       "licenses": [
@@ -399,7 +407,7 @@
           }
         }
       ],
-      "purl": "pkg:github/litehtml/litehtml",
+      "purl": "pkg:github/litehtml/litehtml@8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e",
       "externalReferences": [
         {
           "type": "vcs",
@@ -409,11 +417,15 @@
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "dev-snapshot-unpinned"
+          "value": "commit-pinned-sha256"
         },
         {
           "name": "ra8:path",
           "value": "libs/third_party/litehtml"
+        },
+        {
+          "name": "ra8:upstreamCommit",
+          "value": "8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e"
         },
         {
           "name": "ra8:licenseFile",
@@ -425,7 +437,11 @@
         },
         {
           "name": "ra8:note0",
-          "value": "Weakest provenance in the tree: a mid-stream dev commit fed untrusted EPUB HTML/CSS, no VERSION file, no commit pin (T5-09 / SOUP-4). Re-vendor at a tagged release."
+          "value": "Pinned by tree fingerprint: all 215 vendored files are byte-identical to upstream commit 8836bc1b, the single exact match among the 1040 commits reachable from the upstream default branch (340 commits past the v0.9 tag). The vendored subset drops doc/, support/, README.md and the MSVC project files."
+        },
+        {
+          "name": "ra8:note1",
+          "value": "Feeds untrusted EPUB HTML/CSS from a dev-branch snapshot; prefer a tagged release at the next re-vendor (SOUP-4)."
         }
       ]
     },
