@@ -701,7 +701,7 @@ static uint32_t internal_pack_texture_bits(const ra8_drw_texture_t* tex)
   if (tex->enable_rle) {
     set_bits |= k_ra8_drw_control2_rleenable;
   }
-  set_bits |= ((uint32_t)tex->rle_pixel_width & 0x3UL) << k_ra8_drw_control2_rlepixel_pos;
+  set_bits |= ((uint32_t)tex->rle_pixel_width & 0x3U) << k_ra8_drw_control2_rlepixel_pos;
   return set_bits;
 }
 
