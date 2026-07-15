@@ -1,0 +1,54 @@
+name: osv-scan
+
+on:
+  schedule:
+    # Weekly CVE sweep of the vendored SOUP, Mondays 06:17 UTC. New
+    # advisories are published continuously against pinned (unchanging)
+    # components, so this must run on a clock, not on pushes.
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Version-pinned scanner release + its published sha256 (from the
+  # osv-scanner_SHA256SUMS asset of the release). Bump both together.
+  OSV_SCANNER_VERSION: 2.4.0
+  OSV_SCANNER_SHA256: 15314940c10d26af9c6649f150b8a47c1262e8fc7e17b1d1029b0e479e8ed8a0
+
+jobs:
+  osv-scan:
+    name: OSV CVE scan (SBOM purls + pinned upstream commits)
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: SBOM freshness gate
+        # The scan is only as good as the SBOM it reads; refuse to scan a
+        # stale one (same gate as firmware.yml / the pre-commit hook).
+        run: python3 scripts/utils/gen_sbom.py --check
+
+      - name: Download pinned osv-scanner
+        run: |
+          set -euo pipefail
+          curl -fsSL -o osv-scanner \
+            "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64"
+          echo "${OSV_SCANNER_SHA256}  osv-scanner" | sha256sum -c -
+          chmod +x osv-scanner
+
+      - name: Scan SBOM + pinned upstream commits
+        # Two legs (see scripts/utils/osv_scan.sh): the SBOM purl leg and
+        # the commit leg that resolves GIT-range advisories for the
+        # git-vendored C/C++ SOUP. Exits 1 on any finding.
+        run: bash scripts/utils/osv_scan.sh --scanner ./osv-scanner --output-dir osv-report
+
+      - name: Upload JSON reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: osv-scan-report
+          path: osv-report/
+          if-no-files-found: ignore
