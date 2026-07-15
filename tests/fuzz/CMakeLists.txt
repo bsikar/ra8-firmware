@@ -98,7 +98,7 @@ set(RA8_FUZZ_TARGETS
 # the ra8_sim_mmap host backing store. All touch only peripheral-bus
 # addresses (0x40000000-class), never the 0xE0000000 SCB/MPU window, so the
 # shadow-gap skip in ra8_sim_mmap.c does not affect them:
-#   fuzz_ra8_canfd    -- writes CFDRF RX registers via ra8_canfd_test_inject_frame
+#   fuzz_ra8_canfd    -- stages a CFDRF[0] RX block and decodes via ra8_canfd_receive
 #   fuzz_ra8_usb_pal  -- ra8_mstp_init + ra8_usb_pal_init / _ep_* touch USBFS regs
 #   fuzz_ra8_ble_att  -- ra8_ble_host_init -> ra8_ble_open writes the BLE
 #                       controller block at 0x40700000
