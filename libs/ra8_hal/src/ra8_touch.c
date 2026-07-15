@@ -312,15 +312,16 @@ static void priv_stash_state(const ra8_touch_cfg_t* cfg)
  * @brief Read the GT911 product id and verify the first byte is '9'.
  *
  * @details
- * The I2C transfer-error leg is checked on every build. The product-id
- * VALUE check (``product[0] == '9'``) is target-only: the host unit-test
- * i3c-i2c-compat bus echoes the address byte (0xBB / 0x29), never 0x39, so
- * no host test can present a valid GT911 id through it. Host-testing the
- * value check needs a controllable-RX bus trampoline -- tracked as #234.
+ * Issues the 4-byte PRODUCT_ID read and rejects both a failed transfer
+ * and a first byte other than ASCII '9' ("911" is the id string): either
+ * means the bus is broken or the device behind the configured address is
+ * not a GT911, so bring-up must not proceed. Both rejection legs compile
+ * on every build; the host tests drive them through a scripted-RX
+ * trampoline filled into the ``ra8_i2c_bus_ops_t`` seam.
  *
  * @return Result code.
- * @retval k_ra8_ok               Product-id read succeeded (and matched on target).
- * @retval k_ra8_err_hw_init_failed The read transfer failed, or (target) the
+ * @retval k_ra8_ok               Product id read back and byte 0 matched.
+ * @retval k_ra8_err_hw_init_failed The read transfer failed, or the
  *                               product-id byte did not match.
  * @pre Module state is consistent.
  * @pre The injected I2C bus seam is bound.
@@ -337,12 +338,9 @@ static ra8_err_t priv_check_product_id(void)
   if (pid_err != k_ra8_ok) {
     return k_ra8_err_hw_init_failed;
   }
-#ifndef RA8_SIMULATOR_MODE
-  /* Value check is target-only until a controllable-RX bus lands (#234). */
   if ((uint32_t)product[0] != k_ra8_touch_product_id_byte0) {
     return k_ra8_err_hw_init_failed;
   }
-#endif
   return k_ra8_ok;
 }
 
@@ -519,23 +517,15 @@ priv_read_inner(ra8_touch_point_t* out_points, uint8_t max_count, uint8_t* got_c
     const uint32_t  bytes   = (uint32_t)emit * (uint32_t)k_ra8_touch_gt911_point_bytes;
     const ra8_err_t blk_err = priv_gt911_read(k_ra8_touch_gt911_reg_point0, raw, bytes);
     if (blk_err != k_ra8_ok) {
-      /* GCOVR_EXCL_START -- the per-point block read and the preceding
-       * status read share one bus-free status gate, so on the host any
-       * input that fails this read also fails the earlier status read;
-       * the status-ok / block-fail combination is unreachable. */
       *got_count = 0U;
       priv_ack_frame();
       return k_ra8_err_hw_error;
-      /* GCOVR_EXCL_STOP */
     }
     priv_decode_block(raw, emit, out_points, max_count, got_count);
   } else {
-    /* GCOVR_EXCL_START -- under RA8_SIMULATOR_MODE the status byte reads
-     * back as the odd 8-bit read-address byte, so a frame-ready status
-     * (bit7 set) always carries a nonzero point count; emit is never 0
-     * on this leg on the host. */
+    /* Frame-ready with zero contacts: a full-release frame. Nothing to
+     * decode -- fall through to the ack so the IC latches the next one. */
     *got_count = 0U;
-    /* GCOVR_EXCL_STOP */
   }
 
   /* Step 5: ack the frame so the IC latches the next one. */
