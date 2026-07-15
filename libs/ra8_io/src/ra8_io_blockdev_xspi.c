@@ -170,10 +170,7 @@ xspi_program_chunked(uint8_t instance, uint32_t flash_addr, const uint8_t* data,
       (remaining > (uint32_t)k_ra8_xspi_max_xfer) ? (uint32_t)k_ra8_xspi_max_xfer : remaining;
     const ra8_err_t e = ra8_xspi_flash_program(instance, flash_addr + done, &data[done], chunk);
     if (e != k_ra8_ok) {
-      /* In sim mode the range check uses the same boundary for reads and programs,
-       * so a sector address that lets the preceding read succeed always lets the
-       * program succeed too: this return is HW-only (physical NOR program failure). */
-      return e; /* GCOVR_EXCL_LINE */
+      return e;
     }
     done += chunk;
   }
@@ -229,10 +226,7 @@ static ra8_err_t write_one_sector(const ra8_io_blockdev_xspi_state_t* st,
   (void)memcpy(&s_sector[dst_off], src, n_bytes);
   const ra8_err_t e = ra8_xspi_flash_erase_sector(st->instance, sec_addr);
   if (e != k_ra8_ok) {
-    /* In sim mode, read and erase use the same sector address, so the range
-     * check that would fail the erase also fails the preceding read (line 221)
-     * before reaching here.  This return is HW-only (physical NOR erase failure). */
-    return e; /* GCOVR_EXCL_LINE */
+    return e;
   }
   return xspi_program_chunked(st->instance, sec_addr, s_sector, (uint32_t)k_xspi_sector_bytes);
 }

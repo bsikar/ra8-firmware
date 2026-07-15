@@ -41,11 +41,11 @@
  * Read responses (status, JEDEC ID, flash-read bytes) land in
  * ``CDBUF[2]`` / ``CDBUF[3]`` after the controller clears TRREQ.
  *
- * In ``RA8_SIMULATOR_MODE`` every flash read/program/erase routes
- * through an in-process 4 KiB fake-flash buffer so unit tests can
- * round-trip data without real hardware. The register sequence is
- * still emitted in full so test cases can assert on register state
- * if they need to. Every register write carries a
+ * Every build emits the identical register sequence; host unit tests
+ * round-trip data through the register-level NOR-flash model in
+ * ``tests/mocks/ra8_sim_xspi_flash.c``, which services each TRREQ kick
+ * from the CMDCMP poll's ``ra8_sim_mmio`` seam consult (#238). Every
+ * register write carries a
  * ``HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986``
  * citation comment for the cite checker.
  *

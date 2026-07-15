@@ -15,12 +15,18 @@
 #include "ra8_nsc.h"
 #include "ra8_ospi_regs.h"
 #include "ra8_sim_mmap.h"
+#include "ra8_sim_mmio.h"
+#include "ra8_sim_xspi_flash.h"
 #include "ra8_xspi.h"
 #include "unity_minimal.h"
 
 static void prep(void)
 {
   ra8_sim_mmap_reset();
+  ra8_sim_mmio_reset();
+  /* The xspi veneers forward to ra8_xspi_flash_*, whose real register
+   * sequence needs the tests/mocks NOR model to service TRREQ kicks. */
+  ra8_sim_xspi_flash_install();
   (void)ra8_mstp_init();
   (void)ra8_net_pal_deinit();
 }
@@ -37,7 +43,7 @@ static void prep(void)
 
 static void test_xspi_read_validates_args(void)
 {
-  TEST_BEGIN("ra8_nsc_xspi_read: arg validation + sim-flash forward");
+  TEST_BEGIN("ra8_nsc_xspi_read: arg validation + model-flash forward");
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_init(0U, k_ra8_xspi_lio_1s1s1s));
 
@@ -47,9 +53,10 @@ static void test_xspi_read_validates_args(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_nsc_xspi_read(0U, buf, (uint32_t)k_ra8_nsc_xspi_max_read + 1U));
 
-  /* Valid args -> veneer forwards to ra8_xspi_flash_read (sim flash). */
+  /* Valid args -> veneer forwards to ra8_xspi_flash_read, serviced by
+   * the tests/mocks register-level NOR model. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_xspi_read(0U, buf, 64U));
-  TEST_END("ra8_nsc_xspi_read: arg validation + sim-flash forward");
+  TEST_END("ra8_nsc_xspi_read: arg validation + model-flash forward");
 }
 
 /**

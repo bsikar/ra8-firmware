@@ -15,9 +15,7 @@
  *                          XIP/DTR/DQS-calibration + software-reset surface.
  * - ``ra8_xspi_flash.c`` -- the manual-command engine (CDT/CDBUF builders +
  *                          CMDCMP poll + TRREQ kick) and the JEDEC NOR-flash
- *                          read / program / erase / status / id operations,
- *                          plus the ``RA8_SIMULATOR_MODE`` fake-flash backing
- *                          store.
+ *                          read / program / erase / status / id operations.
  *
  * This header carries exactly the symbols that cross that TU boundary:
  *
