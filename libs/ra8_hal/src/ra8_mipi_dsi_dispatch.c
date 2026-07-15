@@ -274,7 +274,7 @@ static void internal_ra8_mipi_dsi_decode_rx(uint32_t raw, ra8_mipi_dsi_rx_result
   }
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
   /* HUM Ch 65.2 "RXRSSR : Receive Result Save Status Register", p 3878 */
-  const uint32_t valid_bit = (1UL << slot);
+  const uint32_t valid_bit = (1U << slot);
   if ((reg->RXRSSR & valid_bit) == 0U) {
     return k_ra8_err_no_data;
   }

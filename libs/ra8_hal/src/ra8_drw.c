@@ -205,7 +205,7 @@ void ra8_drw_internal_color1_write(uint32_t argb8888)
  */
 static inline uint32_t internal_pack_writeformat(ra8_drw_writeformat_t fmt)
 {
-  const uint32_t low  = ((uint32_t)fmt & 0x3UL) << k_ra8_drw_control2_writeformat_pos;
+  const uint32_t low  = ((uint32_t)fmt & 0x3U) << k_ra8_drw_control2_writeformat_pos;
   uint32_t       high = 0UL;
   if (((uint32_t)fmt & 0x4UL) != 0UL) {
     high = k_ra8_drw_control2_writeformat2_bit;
@@ -233,8 +233,8 @@ static inline uint32_t internal_pack_writeformat(ra8_drw_writeformat_t fmt)
 static inline uint32_t internal_pack_readformat(ra8_drw_readformat_t fmt)
 {
   const uint32_t code = (uint32_t)fmt;
-  const uint32_t lo   = (code & 0x3UL) << k_ra8_drw_control2_readformatl_pos;
-  const uint32_t hi   = ((code >> 2U) & 0x3UL) << k_ra8_drw_control2_readformath_pos;
+  const uint32_t lo   = (code & 0x3U) << k_ra8_drw_control2_readformatl_pos;
+  const uint32_t hi   = ((code >> 2U) & 0x3U) << k_ra8_drw_control2_readformath_pos;
   return lo | hi;
 }
 

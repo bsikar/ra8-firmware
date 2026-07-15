@@ -227,7 +227,8 @@ typedef enum : uint16_t {
  */
 static inline volatile uint8_t* ra8_vreg_dcdcctl(void)
 {
-  return (volatile uint8_t*)(k_ra8_vreg_sysc_base_addr + k_ra8_vreg_off_dcdcctl);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_vreg_sysc_base_addr +
+                             (uintptr_t)k_ra8_vreg_off_dcdcctl);
 }
 
 /**
@@ -236,7 +237,8 @@ static inline volatile uint8_t* ra8_vreg_dcdcctl(void)
  */
 static inline volatile uint8_t* ra8_vreg_vccsel(void)
 {
-  return (volatile uint8_t*)(k_ra8_vreg_sysc_base_addr + k_ra8_vreg_off_vccsel);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_vreg_sysc_base_addr +
+                             (uintptr_t)k_ra8_vreg_off_vccsel);
 }
 
 /**
@@ -245,7 +247,8 @@ static inline volatile uint8_t* ra8_vreg_vccsel(void)
  */
 static inline volatile uint8_t* ra8_vreg_lvocr(void)
 {
-  return (volatile uint8_t*)(k_ra8_vreg_sysc_base_addr + k_ra8_vreg_off_lvocr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_vreg_sysc_base_addr +
+                             (uintptr_t)k_ra8_vreg_off_lvocr);
 }
 
 #ifdef __cplusplus

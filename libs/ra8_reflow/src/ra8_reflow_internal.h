@@ -19,6 +19,7 @@
 extern "C" {
 #endif
 
+#include <stddef.h>
 #include <stdint.h>
 
 /**
@@ -125,7 +126,7 @@ bool ra8_reflow_internal_right_overflow_break(int32_t cursor_x,
  *
  * @since 0.1.0
  */
-bool ra8_reflow_internal_xhtml_invalid(const void* xhtml_buf, uint32_t xhtml_len);
+bool ra8_reflow_internal_xhtml_invalid(const void* xhtml_buf, size_t xhtml_len);
 
 /**
  * @brief Decide whether the layout pass produced zero pages but the

@@ -270,73 +270,75 @@ typedef enum : uint8_t {
 /** @brief Get pointer to the 32-bit VSCR register (voltage scaling control). */
 static inline volatile uint32_t* ra8_sys_vscr(void)
 {
-  return (volatile uint32_t*)(k_ra8_system_base_addr + k_ra8_sys_off_vscr);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_vscr);
 }
 
 /** @brief Get pointer to the 32-bit SCKDIVCR register. */
 static inline volatile uint32_t* ra8_sys_sckdivcr(void)
 {
-  return (volatile uint32_t*)(k_ra8_system_base_addr + k_ra8_sys_off_sckdivcr);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_system_base_addr +
+                              (uintptr_t)k_ra8_sys_off_sckdivcr);
 }
 
 /** @brief Get pointer to the 8-bit SCICKDIVCR register (SCICLK divider). */
 static inline volatile uint8_t* ra8_sys_scickdivcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_scickdivcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr +
+                             (uintptr_t)k_ra8_sys_off_scickdivcr);
 }
 
 /** @brief Get pointer to the 8-bit SCICKCR register (SCICLK source select). */
 static inline volatile uint8_t* ra8_sys_scickcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_scickcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_scickcr);
 }
 
 /** @brief Get pointer to the 8-bit SCKSCR register. */
 static inline volatile uint8_t* ra8_sys_sckscr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_sckscr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_sckscr);
 }
 
 /** @brief Get pointer to the 8-bit HOCOCR register. */
 static inline volatile uint8_t* ra8_sys_hococr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_hococr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_hococr);
 }
 
 /** @brief Get pointer to the 8-bit SOSCCR register (sub-clock oscillator stop). */
 static inline volatile uint8_t* ra8_sys_sosccr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_sosccr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_sosccr);
 }
 
 /** @brief Get pointer to the 8-bit SOMCR register (sub-clock oscillator mode). */
 static inline volatile uint8_t* ra8_sys_somcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_somcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_somcr);
 }
 
 /** @brief Get pointer to the 8-bit LOCOCR register (LOCO stop control). */
 static inline volatile uint8_t* ra8_sys_lococr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_lococr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_lococr);
 }
 
 /** @brief Get pointer to the 8-bit MOSCWTCR register. */
 static inline volatile uint8_t* ra8_sys_moscwtcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_moscwtcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_moscwtcr);
 }
 
 /** @brief Get pointer to the 32-bit PLLCCR register. */
 static inline volatile uint32_t* ra8_sys_pllccr(void)
 {
-  return (volatile uint32_t*)(k_ra8_system_base_addr + k_ra8_sys_off_pllccr);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_pllccr);
 }
 
 /** @brief Get pointer to the 16-bit PLLCCR2 register (PLL1 output dividers). */
 static inline volatile uint16_t* ra8_sys_pllccr2(void)
 {
-  return (volatile uint16_t*)(k_ra8_system_base_addr + k_ra8_sys_off_pllccr2);
+  return (volatile uint16_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_pllccr2);
 }
 
 /**
@@ -366,7 +368,7 @@ static inline volatile uint16_t* ra8_sys_pllccr2(void)
  */
 static inline volatile uint32_t* ra8_sys_pll2ccr(void)
 {
-  return (volatile uint32_t*)(k_ra8_system_base_addr + k_ra8_sys_off_pll2ccr);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_pll2ccr);
 }
 
 /**
@@ -387,7 +389,7 @@ static inline volatile uint32_t* ra8_sys_pll2ccr(void)
  */
 static inline volatile uint8_t* ra8_sys_pll2cr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_pll2cr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_pll2cr);
 }
 
 /**
@@ -413,49 +415,51 @@ static inline volatile uint8_t* ra8_sys_pll2cr(void)
  */
 static inline volatile uint16_t* ra8_sys_pll2ccr2(void)
 {
-  return (volatile uint16_t*)(k_ra8_system_base_addr + k_ra8_sys_off_pll2ccr2);
+  return (volatile uint16_t*)((uintptr_t)k_ra8_system_base_addr +
+                              (uintptr_t)k_ra8_sys_off_pll2ccr2);
 }
 
 /** @brief Get pointer to the 8-bit OSCSF (oscillation stabilisation) register. */
 static inline volatile uint8_t* ra8_sys_oscsf(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_oscsf);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_oscsf);
 }
 
 /** @brief Get pointer to the 8-bit PLLCR register (PLL enable/stop). */
 static inline volatile uint8_t* ra8_sys_pllcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_pllcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_pllcr);
 }
 
 /** @brief Get pointer to the 16-bit SCKDIVCR2 register. */
 static inline volatile uint16_t* ra8_sys_sckdivcr2(void)
 {
-  return (volatile uint16_t*)(k_ra8_system_base_addr + k_ra8_sys_off_sckdivcr2);
+  return (volatile uint16_t*)((uintptr_t)k_ra8_system_base_addr +
+                              (uintptr_t)k_ra8_sys_off_sckdivcr2);
 }
 
 /** @brief Get pointer to the 32-bit RSTSR1 register. */
 static inline volatile uint32_t* ra8_sys_rstsr1(void)
 {
-  return (volatile uint32_t*)(k_ra8_system_base_addr + k_ra8_sys_off_rstsr1);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_rstsr1);
 }
 
 /** @brief Get pointer to the 16-bit PRCR register. */
 static inline volatile uint16_t* ra8_sys_prcr(void)
 {
-  return (volatile uint16_t*)(k_ra8_system_base_addr + k_ra8_sys_off_prcr);
+  return (volatile uint16_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_prcr);
 }
 
 /** @brief Get pointer to the 8-bit RSTSR0 register. */
 static inline volatile uint8_t* ra8_sys_rstsr0(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_rstsr0);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_rstsr0);
 }
 
 /** @brief Get pointer to the 8-bit RSTSR2 register. */
 static inline volatile uint8_t* ra8_sys_rstsr2(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_rstsr2);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_rstsr2);
 }
 
 /**
@@ -492,25 +496,28 @@ typedef enum : uint8_t {
 /** @brief Get pointer to the 8-bit USBCKDIVCR (USB clock divider). */
 static inline volatile uint8_t* ra8_sys_usbckdivcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_usbckdivcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr +
+                             (uintptr_t)k_ra8_sys_off_usbckdivcr);
 }
 
 /** @brief Get pointer to the 8-bit USBCKCR (USB-FS source select). */
 static inline volatile uint8_t* ra8_sys_usbckcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_usbckcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_usbckcr);
 }
 
 /** @brief Get pointer to the 8-bit USB60CKCR (USBHS 60MHz source select). */
 static inline volatile uint8_t* ra8_sys_usb60ckcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_usb60ckcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr +
+                             (uintptr_t)k_ra8_sys_off_usb60ckcr);
 }
 
 /** @brief Get pointer to the 8-bit USB60CKDIVCR (USBHS 60MHz divider). */
 static inline volatile uint8_t* ra8_sys_usb60ckdivcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_usb60ckdivcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr +
+                             (uintptr_t)k_ra8_sys_off_usb60ckdivcr);
 }
 
 /** @brief Get pointer to the 8-bit CANFDCKCR (CANFD core clock source select).
@@ -521,7 +528,8 @@ static inline volatile uint8_t* ra8_sys_usb60ckdivcr(void)
  */
 static inline volatile uint8_t* ra8_sys_canfdckcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_canfdckcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr +
+                             (uintptr_t)k_ra8_sys_off_canfdckcr);
 }
 
 /** @brief Get pointer to the 8-bit CANFDCKDIVCR (CANFD core clock divider).
@@ -531,7 +539,8 @@ static inline volatile uint8_t* ra8_sys_canfdckcr(void)
  */
 static inline volatile uint8_t* ra8_sys_canfdckdivcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_canfdckdivcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr +
+                             (uintptr_t)k_ra8_sys_off_canfdckdivcr);
 }
 
 /** @brief Get pointer to the 8-bit OCTACKCR (Octal-SPI clock source select).
@@ -546,7 +555,7 @@ static inline volatile uint8_t* ra8_sys_canfdckdivcr(void)
  */
 static inline volatile uint8_t* ra8_sys_octackcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_octackcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_octackcr);
 }
 
 /** @brief Get pointer to the 8-bit OCTACKDIVCR (Octal-SPI clock divider).
@@ -556,7 +565,8 @@ static inline volatile uint8_t* ra8_sys_octackcr(void)
  */
 static inline volatile uint8_t* ra8_sys_octackdivcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_octackdivcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr +
+                             (uintptr_t)k_ra8_sys_off_octackdivcr);
 }
 
 /**
@@ -609,13 +619,14 @@ typedef enum : uint8_t {
  */
 static inline volatile uint8_t* ra8_sys_eswckcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_eswckcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_eswckcr);
 }
 
 /** @brief Get pointer to the 8-bit ESWCKDIVCR (ESWCLK divider; 4-bit CKDIV field). */
 static inline volatile uint8_t* ra8_sys_eswckdivcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_eswckdivcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr +
+                             (uintptr_t)k_ra8_sys_off_eswckdivcr);
 }
 
 /**
@@ -632,13 +643,14 @@ static inline volatile uint8_t* ra8_sys_eswckdivcr(void)
  */
 static inline volatile uint8_t* ra8_sys_eswpckcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_eswpckcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_eswpckcr);
 }
 
 /** @brief Get pointer to the 8-bit ESWPCKDIVCR (ESWPHYCLK divider; 4-bit CKDIV field). */
 static inline volatile uint8_t* ra8_sys_eswpckdivcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_eswpckdivcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr +
+                             (uintptr_t)k_ra8_sys_off_eswpckdivcr);
 }
 
 /**
@@ -665,7 +677,8 @@ typedef enum : uint8_t {
 /** @brief Get pointer to the 8-bit PDCTRESWM (ESWM power-domain control). */
 static inline volatile uint8_t* ra8_sys_pdctreswm(void)
 {
-  return (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_pdctreswm);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr +
+                             (uintptr_t)k_ra8_sys_off_pdctreswm);
 }
 
 /* =============================================================================

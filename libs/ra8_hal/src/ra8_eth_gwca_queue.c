@@ -357,7 +357,7 @@ ra8_err_t ra8_eth_gwca_kick_tx(uint32_t queue_index)
                                       ? (uintptr_t)k_ra8_gwca_off_gwtrc0
                                       : (uintptr_t)k_ra8_gwca_off_gwtrc1;
   volatile uint32_t* const gwtrc  = (volatile uint32_t*)(k_ra8_gwca0_base_addr + offset);
-  const uint32_t           bit    = 1UL << (queue_index % k_ra8_gwca_queues_per_reg);
+  const uint32_t           bit    = 1U << (queue_index % k_ra8_gwca_queues_per_reg);
   *gwtrc                          = *gwtrc | bit;
   return k_ra8_ok;
 }

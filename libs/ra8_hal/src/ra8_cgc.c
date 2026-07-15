@@ -647,8 +647,9 @@ static ra8_err_t internal_start_main_osc(void)
   *ra8_sys_moscwtcr() = k_ra8_moscwtcr_2_to_16_cycles;
 
   /* HUM Ch 9.2.13 "MOSCCR : Main Clock Oscillator Control Register" p 338 */
-  volatile uint8_t* const moscr = (volatile uint8_t*)(k_ra8_system_base_addr + k_ra8_sys_off_moscr);
-  *moscr                        = (uint8_t)(*moscr & (uint8_t)~k_ra8_moscr_mostp_mask);
+  volatile uint8_t* const moscr =
+    (volatile uint8_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_sys_off_moscr);
+  *moscr = (uint8_t)(*moscr & (uint8_t)~k_ra8_moscr_mostp_mask);
 
   return ra8_cgc_wait_oscsf_set(k_ra8_oscsf_bit_moscsf);
 }

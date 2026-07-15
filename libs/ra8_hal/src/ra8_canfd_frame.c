@@ -303,7 +303,7 @@ static void internal_decode_rx_header(uint32_t           id_word,
                                       uint32_t           fdsts_word,
                                       ra8_canfd_frame_t* out)
 {
-  const uint8_t is_ext = ((id_word & k_ra8_canfd_id_ide) != 0U) ? 1U : 0U;
+  const uint8_t is_ext = (uint8_t)(((id_word & k_ra8_canfd_id_ide) != 0U) ? 1U : 0U);
   out->is_extended     = is_ext;
   out->id =
     (is_ext != 0U) ? (id_word & k_ra8_canfd_id_ext_mask) : (id_word & k_ra8_canfd_id_std_mask);
