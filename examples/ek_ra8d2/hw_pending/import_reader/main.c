@@ -10,7 +10,8 @@
  * #151: drop a raw `.epub` on the SD card and the device "just works." This app
  * mounts a FAT volume on a micro-SD over `ra8_sdmmc_spi`, then drives the
  * `ra8_rabook_import` cache manager wired to its PRODUCTION compile adapter
- * (`ra8_rabook_import_compile_adapter`, which runs `ra8_epub_open_fs` +
+ * (`ra8_rabook_import_compile_adapter`, which STREAMS the source through a
+ * bounded `ra8_vmem` page cache -- no whole-file load buffer, #230 -- into
  * `ra8_rabook_compile_from_epub`):
  *
  *   1. First open of `BOOK.EPB` is a cache MISS -> the importer streams the
@@ -68,6 +69,7 @@
 #include "ra8_rabook_pipeline.h"
 #include "ra8_sdmmc_spi.h"
 #include "ra8_time.h"
+#include "ra8_vmem.h"
 
 /* =============================================================================
  * Tunables
@@ -97,21 +99,23 @@ typedef enum : uint32_t {
  * @brief SDRAM working-arena capacities (sized for a small text book).
  */
 typedef enum : uint32_t {
-  k_imp_epub_load_cap = 128U * 1024U,       /**< Whole-`.epub` load buffer.       */
-  k_imp_chapter_cap   = 32U,                /**< Max chapters.                    */
-  k_imp_node_cap      = 2048U,              /**< Max DOM nodes.                   */
-  k_imp_attr_cap      = 512U,               /**< Max attribute records.           */
-  k_imp_style_cap     = 16U,                /**< Max stylesheets.                 */
-  k_imp_image_cap     = 32U,                /**< Max image descriptors.           */
-  k_imp_string_cap    = 64U * 1024U,        /**< String-pool capacity (bytes).    */
-  k_imp_imgpool_cap   = 1024U * 1024U,      /**< Image-pool capacity (bytes).     */
-  k_imp_out_cap       = 512U * 1024U,       /**< Output-blob capacity (bytes).    */
-  k_imp_xhtml_cap     = 64U * 1024U,        /**< Chapter XHTML scratch (bytes).   */
-  k_imp_css_cap       = 16U * 1024U,        /**< Stylesheet load scratch (bytes). */
-  k_imp_imgraw_cap    = 2U * 1024U * 1024U, /**< Raw cover/image scratch (bytes). */
-  k_imp_arena_cap     = 4U * 1024U * 1024U, /**< stb_image bump arena (bytes).    */
-  k_imp_gray_cap      = 2U * 1024U * 1024U, /**< Gray downscale scratch (pixels). */
-  k_imp_readback_cap  = 512U * 1024U,       /**< Cached-.rabook read buffer.      */
+  k_imp_cache_frame_bytes = 4096U,              /**< Source page-cache frame size (bytes).     */
+  k_imp_cache_frames      = 64U,                /**< Fixed frame budget: 64 x 4 KiB = 256 KiB. */
+  k_imp_cache_buckets     = 128U,               /**< Page-cache hash buckets (~2x frames).     */
+  k_imp_chapter_cap       = 32U,                /**< Max chapters.                    */
+  k_imp_node_cap          = 2048U,              /**< Max DOM nodes.                   */
+  k_imp_attr_cap          = 512U,               /**< Max attribute records.           */
+  k_imp_style_cap         = 16U,                /**< Max stylesheets.                 */
+  k_imp_image_cap         = 32U,                /**< Max image descriptors.           */
+  k_imp_string_cap        = 64U * 1024U,        /**< String-pool capacity (bytes).    */
+  k_imp_imgpool_cap       = 1024U * 1024U,      /**< Image-pool capacity (bytes).     */
+  k_imp_out_cap           = 512U * 1024U,       /**< Output-blob capacity (bytes).    */
+  k_imp_xhtml_cap         = 64U * 1024U,        /**< Chapter XHTML scratch (bytes).   */
+  k_imp_css_cap           = 16U * 1024U,        /**< Stylesheet load scratch (bytes). */
+  k_imp_imgraw_cap        = 2U * 1024U * 1024U, /**< Raw cover/image scratch (bytes). */
+  k_imp_arena_cap         = 4U * 1024U * 1024U, /**< stb_image bump arena (bytes).    */
+  k_imp_gray_cap          = 2U * 1024U * 1024U, /**< Gray downscale scratch (pixels). */
+  k_imp_readback_cap      = 512U * 1024U,       /**< Cached-.rabook read buffer.      */
 } imp_buf_cap_t;
 
 /* =============================================================================
@@ -136,9 +140,18 @@ static const char k_imp_epub_path[] = "BOOK.EPB";
 /** @brief Streaming CRC chunk for the source-key pass. */
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_scratch[k_imp_scratch_cap];
 
-/** @brief Whole-`.epub` load buffer the EPUB reader serves the book from. */
+/** @brief Fixed frame pool the streamed source is paged through (#230). */
 [[gnu::section(".sdram_data"),
-  gnu::aligned(8)]] static uint8_t s_imp_epub_load[k_imp_epub_load_cap];
+  gnu::aligned(8)]] static uint8_t s_imp_cache_frames[k_imp_cache_frames * k_imp_cache_frame_bytes];
+
+/** @brief Per-frame metadata for the source page cache. */
+static ra8_vmem_frame_t s_imp_cache_meta[k_imp_cache_frames];
+
+/** @brief Hash-bucket heads for the source page cache. */
+static int32_t s_imp_cache_buckets[k_imp_cache_buckets];
+
+/** @brief Source page cache; re-initialised by the adapter per compile. */
+static ra8_vmem_t s_imp_cache;
 
 /** @brief Open-book storage owned across the compile. */
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static ra8_epub_book_t s_imp_epub;
@@ -385,10 +398,11 @@ static ra8_rabook_import_compiler_ctx_t s_imp_cookie;
 /**
  * @brief Populate the builder/scratch views + the production compile cookie.
  * @details Binds every caller-owned SDRAM arena into the views the real
- *          compiler needs and the cookie the import adapter forwards. No buffer
- *          is aliased: @p image_raw is distinct from the @p img_arena / @p gray
- *          source the transcode stage reads (a contract @warning of the scratch
- *          struct).
+ *          compiler needs and the cookie the import adapter forwards --
+ *          including the fixed source page-cache storage the adapter streams
+ *          the `.epub` through (#230). No buffer is aliased: @p image_raw is
+ *          distinct from the @p img_arena / @p gray source the transcode stage
+ *          reads (a contract @warning of the scratch struct).
  * @return Nothing.
  * @pre The file-scope SDRAM arenas are defined (always true at TU scope).
  * @pre This is called once before the first import.
@@ -431,11 +445,16 @@ static void imp_build_cookie(void)
     .css_cap   = sizeof(s_imp_css),
   };
   s_imp_cookie = (ra8_rabook_import_compiler_ctx_t){
-    .epub          = &s_imp_epub,
-    .epub_load_buf = s_imp_epub_load,
-    .epub_load_cap = sizeof(s_imp_epub_load),
-    .bufs          = &s_imp_bufs,
-    .scr           = &s_imp_scr,
+    .epub               = &s_imp_epub,
+    .cache              = &s_imp_cache,
+    .cache_frames       = s_imp_cache_frames,
+    .cache_frame_bytes  = (uint32_t)k_imp_cache_frame_bytes,
+    .cache_frame_count  = (uint32_t)k_imp_cache_frames,
+    .cache_meta         = s_imp_cache_meta,
+    .cache_buckets      = s_imp_cache_buckets,
+    .cache_bucket_count = (uint32_t)k_imp_cache_buckets,
+    .bufs               = &s_imp_bufs,
+    .scr                = &s_imp_scr,
   };
 }
 

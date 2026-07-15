@@ -25,6 +25,10 @@
  *    -> the adapter compiles the real fixture `.epub` IN-CORE and writes a blob
  *    byte-identical to the desktop golden (proving the appliance still produces a
  *    valid `.rabook` when the offload fails).
+ *  - Oversize-source path (#230): a source larger than the cross-core transport
+ *    buffer is reported as a transport overflow (`k_ra8_err_no_mem`) BEFORE any
+ *    dispatch, and the streamed in-core fallback -- which has no size ceiling --
+ *    still imports it byte-identically to the golden.
  *  - No-fallback-on-clean: a golden-returning mock with a deliberately POISONED
  *    fallback -> the M33 result is used directly and the fallback is never touched.
  *  - No-fallback-on-other-error: a mock returning a non-offload error
@@ -66,6 +70,7 @@
 #include "ra8_log.h"
 #include "ra8_rabook_import_compiler.h"
 #include "ra8_rabook_pipeline.h"
+#include "ra8_vmem.h"
 #include "rabook_parity_fixture.h"
 #include "unity_minimal.h"
 
@@ -390,8 +395,19 @@ typedef enum : uint32_t {
   k_ic_arena_cap   = 8U * 1024U,  /**< stb_image bump-arena scratch (bytes). */
   k_ic_gray_cap    = 8U * 1024U,  /**< Intermediate gray downscale (pixels). */
   k_ic_css_cap     = 16U * 1024U, /**< Stylesheet load scratch (bytes).      */
-  k_ic_load_cap    = 8U * 1024U,  /**< In-core `.epub` read buffer (bytes).  */
 } incore_cap_t;
+
+/**
+ * @enum incore_cache_t
+ * @brief Source page-cache geometry for the streamed in-core compile (#230).
+ * @details Deliberately tiny (8 x 1 KiB = 8 KiB) -- the streamed adapter's
+ *          source-side RAM budget is this fixed pool, not the book size.
+ */
+typedef enum : uint32_t {
+  k_ic_cache_frame_bytes = 1024U, /**< Cache frame size (bytes).    */
+  k_ic_cache_frames      = 8U,    /**< Fixed resident frame budget. */
+  k_ic_cache_buckets     = 16U,   /**< Cache hash buckets.          */
+} incore_cache_t;
 
 static ra8_book_chapter_t    s_ic_chapters[k_ic_chapter_cap];
 static ra8_book_node_t       s_ic_nodes[k_ic_node_cap];
@@ -406,7 +422,15 @@ static uint8_t               s_ic_image_raw[k_ic_imgraw_cap];
 static uint8_t               s_ic_img_scratch[k_ic_arena_cap];
 static uint8_t               s_ic_gray[k_ic_gray_cap];
 static char                  s_ic_css[k_ic_css_cap];
-static uint8_t               s_ic_load[k_ic_load_cap];
+
+/** @brief Fixed frame pool the streamed in-core source is paged through. */
+static uint8_t s_ic_cache_frames[k_ic_cache_frames * k_ic_cache_frame_bytes];
+/** @brief Per-frame metadata for the in-core source page cache. */
+static ra8_vmem_frame_t s_ic_cache_meta[k_ic_cache_frames];
+/** @brief Hash-bucket heads for the in-core source page cache. */
+static int32_t s_ic_cache_buckets[k_ic_cache_buckets];
+/** @brief In-core source page cache; re-initialised by the adapter per compile. */
+static ra8_vmem_t s_ic_cache;
 
 static ra8_epub_book_t               s_ic_book  = {};
 static ra8_rabook_buffers_t          s_ic_bufs  = {};
@@ -460,7 +484,8 @@ static void make_incore_views(void)
  * @param[out] ctx Cookie to populate (non-NULL).
  * @pre @p ctx is writable.
  * @pre The file-scope in-core buffers are defined (always true at TU scope).
- * @post @p ctx references @p s_ic_book / @p s_ic_load and the wired arena views.
+ * @post @p ctx references @p s_ic_book, the source page-cache storage, and the
+ *       wired arena views.
  * @post @p s_ic_book is re-zeroed so a prior compile cannot leak in.
  * @note Not thread-safe (returns a view over shared file-scope buffers).
  */
@@ -469,11 +494,16 @@ static void make_incore_ctx(ra8_rabook_import_compiler_ctx_t* ctx)
   make_incore_views();
   s_ic_book = (ra8_epub_book_t){};
   *ctx      = (ra8_rabook_import_compiler_ctx_t){
-    .epub          = &s_ic_book,
-    .epub_load_buf = s_ic_load,
-    .epub_load_cap = sizeof(s_ic_load),
-    .bufs          = &s_ic_bufs,
-    .scr           = &s_ic_scr,
+    .epub               = &s_ic_book,
+    .cache              = &s_ic_cache,
+    .cache_frames       = s_ic_cache_frames,
+    .cache_frame_bytes  = (uint32_t)k_ic_cache_frame_bytes,
+    .cache_frame_count  = (uint32_t)k_ic_cache_frames,
+    .cache_meta         = s_ic_cache_meta,
+    .cache_buckets      = s_ic_cache_buckets,
+    .cache_bucket_count = (uint32_t)k_ic_cache_buckets,
+    .bufs               = &s_ic_bufs,
+    .scr                = &s_ic_scr,
   };
 }
 
@@ -696,9 +726,10 @@ static void test_m33_adapter_falls_back_on_oom(void)
 /**
  * @test A clean offload result is used directly; the fallback is never invoked.
  *
- * @details The fallback cookie is deliberately POISONED (NULL load buffer) so an
- * in-core compile would fail. A successful, golden-identical output therefore
- * proves the adapter short-circuited on the clean M33 result without touching it.
+ * @details The fallback cookie is deliberately POISONED (NULL open-book storage)
+ * so an in-core compile would fail. A successful, golden-identical output
+ * therefore proves the adapter short-circuited on the clean M33 result without
+ * touching it.
  *
  * @par MC/DC:
  * Exercises the adapter's `if (err == k_ra8_ok)` short-circuit (a single-condition
@@ -714,7 +745,7 @@ static void test_m33_adapter_uses_clean_result_no_fallback(void)
   /* A fallback that would FAIL if it were ever invoked. */
   ra8_rabook_import_compiler_ctx_t poison = {};
   make_incore_ctx(&poison);
-  poison.epub_load_buf = nullptr;
+  poison.epub = nullptr;
 
   ra8_rabook_import_compiler_m33_ctx_t ctx = {};
   make_cookie(&ctx, mock_dispatch_golden);
@@ -726,6 +757,47 @@ static void test_m33_adapter_uses_clean_result_no_fallback(void)
 
   teardown(mount);
   TEST_END("ra8_rabook_import_m33: clean offload -> M33 result used, no fallback");
+}
+
+/**
+ * @test A source larger than the cross-core transport buffer is reported as a
+ *       transport overflow BEFORE dispatch, and the streamed in-core fallback
+ *       (which has no size ceiling, #230) still imports it to the golden blob.
+ *
+ * @details The cookie's @p epub_load_cap is shrunk below the parity fixture's
+ * length, so `s_read_whole_file` reports `k_ra8_err_no_mem` without ever
+ * dispatching (the mock would abort the test if invoked). The classifier treats
+ * no_mem as an offload failure, so the in-core fallback streams the FULL source
+ * off the volume and the output is byte-identical to the desktop golden --
+ * proving an import too big for the M33 transport is not truncated or lost.
+ *
+ * @par MC/DC:
+ * Exercises the new `if (size > cap)` transport-overflow guard in
+ * `s_read_whole_file` (a single-condition branch, no N+1 set required): drives
+ * it TRUE here; every other m33 case (full-size load buffer) drives it FALSE.
+ */
+static void test_m33_adapter_falls_back_on_oversize_source(void)
+{
+  TEST_BEGIN("ra8_rabook_import_m33: oversize source -> overflow -> streamed fallback");
+  ra8_fs_mount_t* mount =
+    fresh_volume_seeded("SRC.EPB", s_parity_epub, (uint32_t)k_parity_epub_len);
+
+  ra8_rabook_import_compiler_ctx_t incore = {};
+  make_incore_ctx(&incore);
+
+  /* mock_dispatch_corrupt would poison the output if the dispatch ever ran; a
+   * golden result therefore proves the overflow was caught BEFORE dispatch. */
+  ra8_rabook_import_compiler_m33_ctx_t ctx = {};
+  make_cookie(&ctx, mock_dispatch_corrupt);
+  ctx.epub_load_cap = (uint32_t)k_parity_epub_len - 1U; /* source no longer fits */
+  ctx.fallback      = &incore;
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_rabook_import_compile_adapter_m33(&ctx, mount, "SRC.EPB", "OUT.RAB"));
+  assert_output_is_golden(mount, "OUT.RAB");
+
+  teardown(mount);
+  TEST_END("ra8_rabook_import_m33: oversize source -> overflow -> streamed fallback");
 }
 
 /**
@@ -796,6 +868,7 @@ int32_t main(void)
   test_m33_adapter_null_guards();
   test_m33_adapter_falls_back_on_timeout();
   test_m33_adapter_falls_back_on_oom();
+  test_m33_adapter_falls_back_on_oversize_source();
   test_m33_adapter_uses_clean_result_no_fallback();
   test_m33_adapter_no_fallback_on_other_error();
   (void)fprintf(stderr, "[OK ] test_ra8_rabook_import_m33.c\n");

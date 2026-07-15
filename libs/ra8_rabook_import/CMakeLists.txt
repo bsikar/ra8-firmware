@@ -18,11 +18,12 @@
 #   inc/ra8_rabook_import.h            cache manager + import state machine API
 #   inc/ra8_rabook_import_compiler.h   production adapter onto the real compiler
 #   src/ra8_rabook_import.c            CRC key, freshness gate, temp+rename
-#   src/ra8_rabook_import_compiler.c   ra8_epub_open_fs + ra8_rabook_compile_from_epub
+#   src/ra8_rabook_import_compiler.c   streamed EPUB open + ra8_rabook_compile_from_epub
 #
 # The core manager TU (ra8_rabook_import.c) depends only on ra8_fs + ra8_core. The
-# adapter TU (ra8_rabook_import_compiler.c) additionally pulls ra8_epub +
-# ra8_rabook_compile and is only needed by apps that wire the real compiler.
+# adapter TU (ra8_rabook_import_compiler.c) additionally pulls ra8_epub,
+# ra8_rabook_compile, and ra8_mem (the bounded page cache the streamed source is
+# fronted with, #230) and is only needed by apps that wire the real compiler.
 #
 # Header-and-source library; no standalone build target. Firmware apps list
 # `ra8_rabook_import` in ra8_add_app(LIBS ...); the host test build folds the
