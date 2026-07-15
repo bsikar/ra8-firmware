@@ -185,9 +185,9 @@ ra8_err_t ra8_rsip_hash(ra8_rsip_hash_alg_t alg,
     internal_push_bytes_to_port(k_ra8_rsip_off_hash_data_in, msg, msg_len);
   }
 
-  /* Pre-arm + wait for DONE on host sim. */
+  /* Wait for DONE; the bounded poll routes through the host wait seam. */
   const ra8_err_t wait_err = internal_hash_wait_done();
-  RA8_RETURN_ON_ERROR(wait_err, s_tag, "rsip_hash: hash done"); /* GCOVR_EXCL_BR_LINE */
+  RA8_RETURN_ON_ERROR(wait_err, s_tag, "rsip_hash: hash done");
 
   /* Read digest_len for SHAKE; algo-natural otherwise. */
   const uint32_t to_read =
@@ -329,15 +329,6 @@ static ra8_err_t internal_kv_op(ra8_rsip_kv_op_t op, uint8_t slot)
   return internal_complete(k_ra8_rsip_mask_isr_kv_done);
 }
 
-#ifdef RA8_SIMULATOR_MODE
-/* The host-test simulator backs MMIO with plain memory, so successive
- * writes to the kv_data FIFO would just overwrite the same word. Keep
- * a per-slot shadow so read-after-write tests can verify the round
- * trip without modelling the FIFO inside ra8_sim_mmap. */
-static uint8_t s_sim_kv_slots[(uint32_t)k_ra8_rsip_kv_slot_count]
-                             [k_ra8_rsip_kv_slot_w * (uint32_t)k_ra8_rsip_trng_word_bytes];
-#endif
-
 ra8_err_t ra8_rsip_kv_read(uint8_t slot, uint8_t* out)
 {
   RA8_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -352,14 +343,6 @@ ra8_err_t ra8_rsip_kv_read(uint8_t slot, uint8_t* out)
     const uint32_t word = *ra8_rsip_reg32(k_ra8_rsip_off_kv_data);
     internal_unpack_le(word, &out[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
   }
-#ifdef RA8_SIMULATOR_MODE
-  /* Replay from the per-slot shadow so the test sees the bytes that
-   * were actually written rather than whatever the FIFO MMIO settled
-   * on after 16 overlapping writes. */
-  for (uint32_t i = 0U; i < k_ra8_rsip_kv_slot_w * (uint32_t)k_ra8_rsip_trng_word_bytes; ++i) {
-    out[i] = s_sim_kv_slots[slot][i];
-  }
-#endif
   return k_ra8_ok;
 }
 
@@ -373,11 +356,6 @@ ra8_err_t ra8_rsip_kv_write(uint8_t slot, const uint8_t* in)
     *ra8_rsip_reg32(k_ra8_rsip_off_kv_data) =
       internal_pack_le(&in[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
   }
-#ifdef RA8_SIMULATOR_MODE
-  for (uint32_t i = 0U; i < k_ra8_rsip_kv_slot_w * (uint32_t)k_ra8_rsip_trng_word_bytes; ++i) {
-    s_sim_kv_slots[slot][i] = in[i];
-  }
-#endif
   return internal_kv_op(k_ra8_rsip_kv_op_write, slot);
 }
 

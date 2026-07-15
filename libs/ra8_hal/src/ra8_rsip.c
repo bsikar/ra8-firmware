@@ -32,10 +32,13 @@
  * code is included verbatim.
  *
  * The host unit-test build runs every register access through
- * ``ra8_sim_mmap``-backed pages, so the BIST and DONE polls also
- * pre-arm their "completion" bits before they start to spin.
- * That keeps the test deterministic without requiring a full
- * functional model of the engine.
+ * ``ra8_sim_mmap``-backed pages and routes the bounded BIST / DONE
+ * polls through the ``ra8_sim_mmio`` wait seam (issue #238): an
+ * unarmed register satisfies its wait on the first poll, and a test
+ * arms ``ra8_sim_mmio_fail_wait`` / ``ra8_sim_mmio_satisfy_after``
+ * to drive the timeout / continuation legs of the real loop. The
+ * driver itself runs the identical register sequence on every build
+ * and never forges an engine-side status bit.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -47,6 +50,7 @@
 
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_hw_err.h"
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 #include "ra8_rsip_internal.h"
@@ -143,10 +147,19 @@ static void* s_rsip_ctx;
 ra8_err_t internal_wait_bit(ra8_rsip_off_t offset, uint32_t mask)
 {
   volatile uint32_t* reg = ra8_rsip_reg32(offset);
-  for (uint32_t i = 0U; i < k_ra8_rsip_poll_budget; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if ((*reg & mask) == mask) {                           /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra8_rsip_poll_budget; ++i) {
+#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+    /* Host unit-test MMIO wait seam (tests/mocks/ra8_sim_mmio.c): an unarmed
+     * register satisfies the wait on its first poll; a test arms fail_wait /
+     * satisfy_after to drive the timeout / continuation legs of this loop. */
+    if (ra8_sim_mmio_wait_eval(reg, i, ((*reg & mask) == mask))) {
       return k_ra8_ok;
     }
+#else
+    if ((*reg & mask) == mask) {
+      return k_ra8_ok;
+    }
+#endif
   }
   return k_ra8_err_hw_timeout;
 }
@@ -155,11 +168,12 @@ ra8_err_t internal_wait_bit(ra8_rsip_off_t offset, uint32_t mask)
  * @brief Arm the BIST and wait for ``STATUS.BIST_OK``.
  *
  * @details
- * Sets ``CTRL.BIST``, simulates the engine completing the test by
- * pre-asserting ``STATUS.BIST_OK`` (no-op on real hardware where
- * the engine sets the bit itself), and spins on the bit. The
- * pre-assert keeps the host unit test deterministic without
- * needing a register stub for the BIST sequencer.
+ * Sets ``CTRL.BIST`` and spins on ``STATUS.BIST_OK``, which the
+ * access-management circuit asserts once the on-board firmware
+ * finishes the self-test. The driver never forges the bit itself:
+ * on the host build the bounded wait routes through the
+ * ``ra8_sim_mmio`` seam (unarmed = pass on the first poll; a test
+ * arms ``ra8_sim_mmio_fail_wait`` to reach the failure leg).
  *
  * @return ``k_ra8_ok`` on pass, ``k_ra8_err_hw_init_failed`` on fail.
  *
@@ -177,21 +191,14 @@ ra8_err_t internal_wait_bit(ra8_rsip_off_t offset, uint32_t mask)
  */
 static ra8_err_t internal_run_bist(void)
 {
-  volatile uint32_t* ctrl   = ra8_rsip_reg32(k_ra8_rsip_off_ctrl);
-  volatile uint32_t* status = ra8_rsip_reg32(k_ra8_rsip_off_status);
+  volatile uint32_t* ctrl = ra8_rsip_reg32(k_ra8_rsip_off_ctrl);
 
   /* HUM Ch 52.1 "Overview" p 3302 */
   /* Engine self-test gate. */
   *ctrl |= k_ra8_rsip_mask_ctrl_bist;
 
-  /* On real hardware the access-management circuit asserts BIST_OK
-   * after the on-board firmware finishes the self-test. The host
-   * test wires this assert here so the spin terminates on the sim
-   * mmap; on silicon the OR-write is a no-op. */
-  *status |= k_ra8_rsip_mask_status_bistok;
-
   const ra8_err_t err = internal_wait_bit(k_ra8_rsip_off_status, k_ra8_rsip_mask_status_bistok);
-  if (err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
+  if (err != k_ra8_ok) {
     return k_ra8_err_hw_init_failed;
   }
 
@@ -221,11 +228,9 @@ static void internal_sha256_push_msg(const uint8_t* msg, uint32_t msg_len)
 /* internal_hash_wait_done stays compiled: it is shared with ra8_rsip_asym.c. */
 ra8_err_t internal_hash_wait_done(void)
 {
-  /* On hardware the engine raises HASH_STATUS.DONE once it
-   * absorbs the trailing block + length. The host sim pre-asserts
-   * the bit so the wait terminates. */
-  volatile uint32_t* hstatus = ra8_rsip_reg32(k_ra8_rsip_off_hash_status);
-  *hstatus |= k_ra8_rsip_mask_isr_done;
+  /* On hardware the engine raises HASH_STATUS.DONE once it absorbs the
+   * trailing block + length; the bounded wait routes through the host
+   * ra8_sim_mmio seam inside internal_wait_bit. */
   return internal_wait_bit(k_ra8_rsip_off_hash_status, k_ra8_rsip_mask_isr_done);
 }
 
@@ -340,12 +345,10 @@ void ra8_rsip_dispatch(void)
   }
   const ra8_rsip_event_fn_t fn  = s_rsip_fn;
   void* const               ctx = s_rsip_ctx;
-  *isr                          = snapshot;
-#ifdef RA8_SIMULATOR_MODE
-  /* W1C semantics: writing 1 clears each bit in real HW. The host-test
-   * simulator is dumb memory, so reflect the cleared state explicitly. */
-  *isr = 0U;
-#endif
+  /* W1C ack: writing the snapshot back clears each pending bit on real
+   * hardware. The host-test RAM backing has no W1C semantics, so a test
+   * that needs the post-ack state stages the ISR word itself. */
+  *isr = snapshot;
   if (fn != nullptr) {
     fn(ctx, snapshot);
   }

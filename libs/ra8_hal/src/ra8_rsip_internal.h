@@ -83,8 +83,12 @@ typedef enum : uint32_t {
  *
  * @details
  * Bounded busy-wait. NASA Power of 10 Rule 2 satisfied via a hard
- * iteration cap (``k_ra8_rsip_poll_budget``). Defined in ``ra8_rsip.c``;
- * shared with the mailbox-completion driver in ``ra8_rsip_cipher.c``.
+ * iteration cap (``k_ra8_rsip_poll_budget``). On the host unit-test
+ * build the poll routes through the ``ra8_sim_mmio`` wait seam
+ * (unarmed register = satisfied on the first poll; a test arms
+ * ``ra8_sim_mmio_fail_wait`` / ``ra8_sim_mmio_satisfy_after`` for the
+ * timeout / continuation legs). Defined in ``ra8_rsip.c``; shared with
+ * the mailbox-completion driver in ``ra8_rsip_cipher.c``.
  *
  * @param[in] offset Word offset to poll.
  * @param[in] mask   Mask to AND against the read.
@@ -109,8 +113,9 @@ ra8_err_t internal_wait_bit(ra8_rsip_off_t offset, uint32_t mask);
  *
  * @details
  * On hardware the engine raises ``HASH_STATUS.DONE`` once it absorbs the
- * trailing block + length. The host sim pre-asserts the bit so the wait
- * terminates. Defined in ``ra8_rsip.c``; shared with the generic hash /
+ * trailing block + length. The bounded wait routes through the host
+ * ``ra8_sim_mmio`` seam inside ``internal_wait_bit`` (never forged by the
+ * driver). Defined in ``ra8_rsip.c``; shared with the generic hash /
  * HMAC path in ``ra8_rsip_cipher.c``.
  *
  * @return ``k_ra8_ok`` on success; ``k_ra8_err_hw_timeout`` otherwise.
