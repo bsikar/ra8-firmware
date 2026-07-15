@@ -790,7 +790,7 @@ static ra8_err_t internal_three_phase_init_subs(const ra8_gpt_three_phase_cfg_t*
       } /* GCOVR_EXCL_LINE */
       return err; /* GCOVR_EXCL_LINE */
     }
-    mask |= (1UL << cfg->channels[i]);
+    mask |= (uint32_t)(1UL << cfg->channels[i]);
     s_three_phase.channels[i] = cfg->channels[i];
   }
   *out_mask = mask;

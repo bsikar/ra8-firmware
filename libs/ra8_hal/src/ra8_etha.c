@@ -784,7 +784,7 @@ ra8_err_t ra8_etha_set_tas_schedule(ra8_etha_port_t            port,
     reg->EATASGL0 = (uint32_t)gate_list[i].gate_state & k_ra8_etha_local_byte_mask;
     /* HUM Ch 32.3 "EATASGL1 : TAS Gate Learn 1" p 1678 */
     const uint32_t gl1 = (gate_list[i].time_units & k_ra8_etha_mask_tas_gtl) |
-                         (gate_list[i].cut_through != 0U ? (1UL << k_etha_cut_through_pos) : 0U);
+                         (gate_list[i].cut_through != 0U ? (1U << k_etha_cut_through_pos) : 0U);
     /* HUM Ch 32.3 "EATASGL1 : TAS Gate Learn 1" p 1678 */
     reg->EATASGL1 = gl1;
   }

@@ -80,7 +80,7 @@ static uint32_t internal_pack_capcr(const ra8_ceu_config_t* cfg)
 {
   uint32_t capcr = 0U;
   if (cfg->capture_mode == k_ra8_ceu_capture_continuous) {
-    capcr |= (1UL << k_ra8_ceu_capcr_shift_ctncp);
+    capcr |= (1U << k_ra8_ceu_capcr_shift_ctncp);
   }
   capcr |= ((uint32_t)cfg->burst_mode) << k_ra8_ceu_capcr_shift_mtcm;
   capcr |= ((uint32_t)cfg->frame_drop) << k_ra8_ceu_capcr_shift_fdrp;
@@ -109,10 +109,10 @@ static uint32_t internal_pack_caifr(const ra8_ceu_config_t* cfg)
   uint32_t caifr = 0U;
   caifr |= ((uint32_t)cfg->first_field) << k_ra8_ceu_caifr_shift_fci;
   if (cfg->one_field_only) {
-    caifr |= (1UL << k_ra8_ceu_caifr_shift_cim);
+    caifr |= (1U << k_ra8_ceu_caifr_shift_cim);
   }
   if (cfg->interlace) {
-    caifr |= (1UL << k_ra8_ceu_caifr_shift_ifs);
+    caifr |= (1U << k_ra8_ceu_caifr_shift_ifs);
   }
   return caifr;
 }

@@ -226,7 +226,7 @@ static inline uint32_t internal_make_mpic(ra8_rmac_pis_t    iface,
                                << (uint32_t)k_ra8_rmac_shift_mpic_pis;
   const uint32_t lsc         = ((uint32_t)speed & k_ra8_rmac_mask_mpic_lsc)
                                << (uint32_t)k_ra8_rmac_shift_mpic_lsc;
-  const uint32_t pipp        = (duplex == k_ra8_rmac_duplex_full) ? (1UL << k_rmac_pipp_pos) : 0UL;
+  const uint32_t pipp        = (duplex == k_ra8_rmac_duplex_full) ? (1U << k_rmac_pipp_pos) : 0U;
   const uint32_t psmcs_field = (psmcs & k_ra8_rmac_mask_mpic_psmcs)
                                << (uint32_t)k_ra8_rmac_shift_mpic_psmcs;
   return pis | lsc | pipp | psmcs_field;
