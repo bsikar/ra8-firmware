@@ -1404,8 +1404,9 @@ static void test_mcdc_eth_frame_parse_quad(void)
   uint8_t  out_src[k_eff_mac_bytes];
   uint16_t out_etype = 0U;
   /* V1: all valid -- and the decoded fields match the header bytes. */
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 eff_parse_eth_header(frame, (uint32_t)sizeof(frame), out_dst, out_src, &out_etype));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    eff_parse_eth_header(frame, (uint32_t)sizeof(frame), out_dst, out_src, &out_etype));
   TEST_ASSERT_EQ(0, memcmp(out_dst, &frame[0], (size_t)k_eff_mac_bytes));
   TEST_ASSERT_EQ(0, memcmp(out_src, &frame[k_eff_mac_bytes], (size_t)k_eff_mac_bytes));
   TEST_ASSERT_EQ(k_test_etype_ipv4, out_etype);
@@ -1449,12 +1450,9 @@ static void test_eth_frame_parse_short_frame(void)
   uint8_t       out_dst[k_eff_mac_bytes];
   uint8_t       out_src[k_eff_mac_bytes];
   uint16_t      out_etype = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 eff_parse_eth_header(frame,
-                                      (uint32_t)k_eff_hdr_bytes - 1U,
-                                      out_dst,
-                                      out_src,
-                                      &out_etype));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    eff_parse_eth_header(frame, (uint32_t)k_eff_hdr_bytes - 1U, out_dst, out_src, &out_etype));
   TEST_ASSERT_EQ(0U, out_etype);
   TEST_END("eth frame fixture: short frame -> k_ra8_err_invalid_arg");
 }
