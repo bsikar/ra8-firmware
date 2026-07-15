@@ -112,7 +112,7 @@ RA8_SIM_GENERIC := $(filter-out sim-ra8d2-ereader sim-dualcore_mailbox sim-tz_th
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean compile_commands format check tidy test test-cov test-docker ctest coverage mcdc misra docs docs-push dashboard ascii version smoke stack-usage scan-build scan-build-strict iwyu fuzz bench bench-cache app-sizes check-annotations sbom sbom-check all $(RA8_APPS)
+.PHONY: help apps default clean compile_commands format check tidy test test-cov test-docker ctest coverage mcdc misra misra-check misra-baseline docs docs-push dashboard ascii version smoke stack-usage scan-build scan-build-strict iwyu fuzz bench bench-cache app-sizes check-annotations sbom sbom-check all $(RA8_APPS)
 
 # hw_validated apps -- smoke test and stack-usage sweeps run over this
 # set only, since these are the apps confirmed working on a stock EK-RA8D2.
@@ -167,7 +167,9 @@ help:
 	@echo "  make ctest             rerun just ctest (assumes already built)"
 	@echo "  make coverage          generate lcov+genhtml HTML coverage report"
 	@echo "  make mcdc              generate DO-178C Level B MC/DC report (clang >= 18)"
-	@echo "  make misra             run MISRA-C 2012 audit (advisory; see docs/MISRA.md)"
+	@echo "  make misra             run MISRA-C 2012 audit (report only; see docs/MISRA.md)"
+	@echo "  make misra-check       audit + ratchet vs .github/misra-baseline.txt (CI gate)"
+	@echo "  make misra-baseline    audit + regenerate the committed MISRA baseline"
 	@echo "  make scan-build        run clang static analyzer over the host test build"
 	@echo "  make iwyu              run include-what-you-use over the host test build"
 	@echo "  make check-annotations enforce the ra8_* annotation-attribute rules"
@@ -402,13 +404,22 @@ coverage:
 mcdc:
 	bash scripts/utils/mcdc_report.sh
 
-# MISRA-C 2012 audit (advisory; see docs/MISRA.md). Outputs:
+# MISRA-C 2012 audit (see docs/MISRA.md). Outputs:
 #   build/misra/results.txt  -- one TSV violation per line
 #   build/misra/raw.txt      -- raw cppcheck stderr
 #   build/misra/misra-raw.txt-- raw misra.py stdout
-# Not gated by pre-commit yet.
+# `make misra` alone is the advisory audit; `make misra-check` adds the
+# ratchet comparison against .github/misra-baseline.txt (the CI gate);
+# `make misra-baseline` regenerates that baseline (run it on the CI-pinned
+# cppcheck -- the self-hosted runner / dev box -- and commit the result).
 misra:
 	bash scripts/utils/misra_check.sh
+
+misra-check: misra
+	python3 scripts/utils/misra_ratchet.py --check
+
+misra-baseline: misra
+	python3 scripts/utils/misra_ratchet.py --update
 
 .PHONY: cppcheck build-all nsc-cmse-check ci ci-fast
 # `make cppcheck` -- local parity with the CI cppcheck gate.

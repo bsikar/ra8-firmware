@@ -39,13 +39,23 @@ RAW="$OUT_DIR/raw.txt"
 MISRA_RAW="$OUT_DIR/misra-raw.txt"
 RESULTS="$OUT_DIR/results.txt"
 
+# Delete dump artefacts on EVERY exit path, not just success. A stale dump
+# left behind by an aborted run (disk-full, timeout, ^C) would be picked up
+# by the next run's find and could resurrect findings for source that has
+# since changed -- silent corruption of the ratchet comparison.
+cleanup_dumps() {
+  find libs src port -name '*.dump' -not -path '*/third_party/*' -delete 2>/dev/null || true
+  find libs src port -name '*.ctu-info' -not -path '*/third_party/*' -delete 2>/dev/null || true
+}
+trap cleanup_dumps EXIT
+
 if ! command -v cppcheck >/dev/null 2>&1; then
   echo "[ERROR] cppcheck not in PATH (brew install cppcheck)" >&2
   exit 2
 fi
 
 ADDON_DIR=""
-for candidate in /opt/homebrew/share/Cppcheck/addons /usr/share/cppcheck/addons /usr/local/share/Cppcheck/addons; do
+for candidate in /opt/homebrew/share/Cppcheck/addons /usr/share/cppcheck/addons /usr/local/share/Cppcheck/addons /usr/lib/x86_64-linux-gnu/cppcheck/addons; do
   if [[ -d "$candidate" && -f "$candidate/misra.py" ]]; then
     ADDON_DIR="$candidate"
     break
@@ -78,6 +88,23 @@ else
   TIMEOUT_CMD=()
 fi
 
+# cppcheck 2.13 (Ubuntu 24.04 / Debian 12 -- the CI + dev-box version) is
+# finicky about the --suppressions-list parser ("Failed to add suppression.
+# No id."); convert each non-comment, non-blank line into an explicit
+# --suppress= flag instead, exactly like the cppcheck CI job does. This
+# syntax is accepted by every cppcheck version.
+SUPPRESS_ARGS=()
+while IFS= read -r line; do
+  line="${line%$'\r'}"
+  line="${line## }"
+  line="${line%% }"
+  [[ -z "$line" ]] && continue
+  case "$line" in
+    \#*) continue ;;
+  esac
+  SUPPRESS_ARGS+=("--suppress=$line")
+done <"$ROOT_DIR/.cppcheck-suppressions"
+
 # cppcheck 2.20 does not support --std=c23. The codebase uses C23
 # typed enums (`enum : uint8_t`) and `[[nodiscard]]`-style attributes;
 # both raise syntaxError on the affected line. cppcheck recovers and
@@ -90,7 +117,7 @@ set +e
   --dump \
   --enable=warning \
   --inline-suppr \
-  --suppressions-list="$ROOT_DIR/.cppcheck-suppressions" \
+  "${SUPPRESS_ARGS[@]}" \
   --suppress=missingIncludeSystem \
   --suppress=unmatchedSuppression \
   --suppress=syntaxError \
@@ -117,12 +144,29 @@ fi
 # Run misra.py on every dump file produced under libs/ src/ port/.
 mapfile -t DUMPS < <(find libs src port -name '*.dump' -not -path '*/third_party/*' | sort)
 echo "[INFO] running misra.py on ${#DUMPS[@]} dump file(s) ..." >&2
+if [[ ${#DUMPS[@]} -eq 0 ]]; then
+  echo "[ERROR] cppcheck produced zero dump files -- the audit did not run" >&2
+  echo "        (see $RAW for the cppcheck invocation error)" >&2
+  exit 1
+fi
 
 : >"$MISRA_RAW"
-if [[ ${#DUMPS[@]} -gt 0 ]]; then
-  set +e
-  python3 "$MISRA_PY" --quiet "${DUMPS[@]}" >>"$MISRA_RAW" 2>&1
-  set -e
+set +e
+python3 "$MISRA_PY" --quiet "${DUMPS[@]}" >>"$MISRA_RAW" 2>&1
+MISRA_PY_RC=$?
+set -e
+# misra.py exits non-zero when it finds violations (expected) but ALSO
+# crashes outright on a corrupt/truncated dump (seen in practice when the
+# box runs out of disk mid-dump: cppcheck leaves a partial XML file and
+# misra.py dies with an ElementTree ParseError partway through the list).
+# Swallowing that produced a silently truncated results.txt, which the
+# ratchet would misread as a massive burn-down. A Python traceback is
+# never a legitimate outcome -- fail loudly on it.
+if grep -q "^Traceback (most recent call last):" "$MISRA_RAW"; then
+  echo "[ERROR] misra.py crashed (exit $MISRA_PY_RC) -- results.txt would be truncated" >&2
+  echo "        traceback follows (from $MISRA_RAW):" >&2
+  grep -A 12 "^Traceback (most recent call last):" "$MISRA_RAW" | tail -13 >&2
+  exit 1
 fi
 
 # misra.py emits one diagnostic per line in the format:
@@ -154,9 +198,7 @@ grep -E '\[misra-c2012-[0-9]+\.[0-9]+\] *$' "$MISRA_RAW" | awk '
     printf("%s\t%s\t%s\t%s\t%s\n", rule, sev, file, line, msg);
 }' | sort -u >"$RESULTS"
 
-# Tidy up dump artefacts so they don't pollute the source tree.
-find libs src port -name '*.dump' -not -path '*/third_party/*' -delete 2>/dev/null || true
-find libs src port -name '*.ctu-info' -not -path '*/third_party/*' -delete 2>/dev/null || true
+# Dump artefacts are removed by the EXIT trap (cleanup_dumps above).
 
 TOTAL=$(wc -l <"$RESULTS" | tr -d ' ')
 

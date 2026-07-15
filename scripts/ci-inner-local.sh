@@ -186,6 +186,15 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
     bash scripts/coverage.sh --gate
   }
 
+  # --- gate: MISRA-C 2012 ratchet (firmware.yml job: misra) ----------------
+  # The devcontainer's cppcheck matches the runner (Ubuntu 24.04 / 2.13), so
+  # the committed .github/misra-baseline.txt is directly comparable here.
+  gate_misra() (
+    set -e
+    bash scripts/utils/misra_check.sh
+    python3 scripts/utils/misra_ratchet.py --check
+  )
+
   run_gate "clang-format" gate_clang_format
   run_gate "cppcheck" gate_cppcheck
   run_gate "pre-commit-checks" gate_precommit_checks
@@ -195,6 +204,7 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
   run_gate "host-tests" gate_host_tests
   if [[ "$fast" != "1" ]]; then
     run_gate "coverage" gate_coverage
+    run_gate "misra-ratchet" gate_misra
   fi
 
   echo ""
