@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/cpu1_pingpong_ipc/trustzone_init.c
+ * @file examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong_ipc/trustzone_init.c
  * @brief Per-app secure-boot wiring for cpu1_pingpong_ipc
  *
  * @par Tag

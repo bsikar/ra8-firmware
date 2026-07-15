@@ -175,8 +175,8 @@ bool ra8_book_emit_text(char* out, size_t cap, size_t* pos, const char* str, boo
  *
  * @details Trims any trailing spaces already written (decrementing @p *pos while
  *          the last byte is a space), sets @p *at_break to suppress leading
- *          whitespace next, then appends a single @c '\n' unless the last byte is
- *          already @c '\n' (so nested/adjacent block elements collapse to one
+ *          whitespace next, then appends a single `'\n'` unless the last byte is
+ *          already `'\n'` (so nested/adjacent block elements collapse to one
  *          blank line).
  *
  * @param[out]    out      Destination character buffer.
@@ -191,7 +191,7 @@ bool ra8_book_emit_text(char* out, size_t cap, size_t* pos, const char* str, boo
  * @pre  @p out is a valid, writable buffer of at least @p cap bytes.
  * @pre  @p pos is non-null and @p *pos <= @p cap on entry.
  * @post @p *at_break is @c true on return.
- * @post Trailing spaces before @p *pos are removed; at most one @c '\n' added.
+ * @post Trailing spaces before @p *pos are removed; at most one `'\n'` added.
  *
  * @note Not thread-safe; callers must provide external synchronisation.
  * @since Version 0.1.0

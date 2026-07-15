@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/lpm_deep_standby_3_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/lpm_deep_standby_3_demo/main.c
  * @brief Deep Software Standby 3 (LPSCR.LPMD = 0xA) entry demo
  *
  * @par Tag

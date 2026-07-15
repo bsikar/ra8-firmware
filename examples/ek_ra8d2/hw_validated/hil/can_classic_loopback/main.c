@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/can_classic_loopback/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/can_classic_loopback/main.c
  * @brief CAN 2.0B (classic, non-FD) internal-loopback HIL test
  *
  * @par Tag

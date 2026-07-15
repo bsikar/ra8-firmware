@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/uart_irq_echo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/uart_irq_echo/main.c
  * @brief Interrupt-driven SCI8 UART echo for EK-RA8D2 (RXI / TXI / TEI)
  *
  * @par Tag

@@ -642,7 +642,7 @@ static uint64_t usbhs_reg_read(uc_engine* uc, uint64_t off, unsigned size)
  * @param[in,out] uc    Unicorn engine (transactions pend the device IRQ).
  * @param[in]     off   Byte offset into the USBHS window.
  * @param[in]     size  Access width in bytes.
- * @param[in]     value The written value -- 64-bit wide so the CFIFO port's
+ * @param[in]     value64 The written value -- 64-bit wide so the CFIFO port's
  *                      32-bit MBW fills arrive untruncated (every other
  *                      register consumes its low 16 bits).
  * @return Nothing.

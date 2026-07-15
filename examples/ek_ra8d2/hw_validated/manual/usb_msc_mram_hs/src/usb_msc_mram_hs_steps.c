@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/usb_msc_mram_hs/src/usb_msc_mram_hs_steps.c
+ * @file examples/ek_ra8d2/hw_validated/manual/usb_msc_mram_hs/src/usb_msc_mram_hs_steps.c
  * @brief Synthesized FAT16 volume helpers for the USB-HS MRAM MSC demo
  *
  * @par Tag

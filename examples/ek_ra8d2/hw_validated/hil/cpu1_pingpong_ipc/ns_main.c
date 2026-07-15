@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/cpu1_pingpong_ipc/ns_main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong_ipc/ns_main.c
  * @brief Self-contained Non-Secure image at 0x02080000 for the IPC ping-pong demo.
  *
  * @par Tag

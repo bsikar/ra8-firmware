@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_dfu/src/usb_selftest_dfu_steps.h
+ * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_dfu/inc/usb_selftest_dfu_steps.h
  * @brief Shared constants + host-side DFU ladder interface for usb_selftest_dfu
  *
  * @par Tag

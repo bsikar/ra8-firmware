@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/rtt_log_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/rtt_log_demo/main.c
  * @brief Minimal SEGGER RTT logging demo for EK-RA8D2
  *
  * @par Tag

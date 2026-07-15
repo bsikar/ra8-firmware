@@ -22,7 +22,10 @@
 #include "ra8_gfx_font.h"
 #include "sh_app.h"
 
-/** @struct sh_fold_t @brief One typographic-Unicode -> ASCII substitution. */
+/**
+ * @struct sh_fold_t
+ * @brief One typographic-Unicode -> ASCII substitution.
+ */
 typedef struct {
   uint32_t    cp;  /**< Source Unicode code point.             */
   const char* rep; /**< ASCII replacement ("" drops the char). */

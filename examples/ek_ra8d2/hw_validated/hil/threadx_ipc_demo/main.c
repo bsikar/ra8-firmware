@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/threadx_ipc_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/threadx_ipc_demo/main.c
  * @brief ThreadX inter-thread queue (TX_QUEUE) demo on the EK-RA8D2
  *
  * @par Tag

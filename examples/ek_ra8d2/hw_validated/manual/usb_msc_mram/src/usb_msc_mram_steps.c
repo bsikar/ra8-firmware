@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/usb_msc_mram/src/usb_msc_mram_steps.c
+ * @file examples/ek_ra8d2/hw_validated/manual/usb_msc_mram/src/usb_msc_mram_steps.c
  * @brief FAT16 read-only volume image synthesizer for the MSC MRAM demo.
  *
  * @par Tag

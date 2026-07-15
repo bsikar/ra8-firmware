@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/usb_msc_mram/src/usb_msc_mram_steps.h
+ * @file examples/ek_ra8d2/hw_validated/manual/usb_msc_mram/inc/usb_msc_mram_steps.h
  * @brief Shared geometry constants + FAT16 sector-synthesis prototype.
  *
  * @par Tag

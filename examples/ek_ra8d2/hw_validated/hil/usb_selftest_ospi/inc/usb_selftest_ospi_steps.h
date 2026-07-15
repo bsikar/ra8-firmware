@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi/src/usb_selftest_ospi_steps.h
+ * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi/inc/usb_selftest_ospi_steps.h
  * @brief Shared constants + step prototypes for the OSPI USB self-loop app
  *
  * @par Tag

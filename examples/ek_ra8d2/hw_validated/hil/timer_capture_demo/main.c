@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/timer_capture_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/timer_capture_demo/main.c
  * @brief GPT free-running timer capture demo for the EK-RA8D2
  *
  * @par Tag

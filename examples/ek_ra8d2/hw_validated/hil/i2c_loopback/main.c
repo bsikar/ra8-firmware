@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/i2c_loopback/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/i2c_loopback/main.c
  * @brief RIIC (ra8_i2c) controller self-test against the on-board U15
  *
  * @par Tag
