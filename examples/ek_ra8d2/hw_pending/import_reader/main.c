@@ -102,20 +102,20 @@ typedef enum : uint32_t {
   k_imp_cache_frame_bytes = 4096U,              /**< Source page-cache frame size (bytes).     */
   k_imp_cache_frames      = 64U,                /**< Fixed frame budget: 64 x 4 KiB = 256 KiB. */
   k_imp_cache_buckets     = 128U,               /**< Page-cache hash buckets (~2x frames).     */
-  k_imp_chapter_cap       = 32U,                /**< Max chapters.                    */
-  k_imp_node_cap          = 2048U,              /**< Max DOM nodes.                   */
-  k_imp_attr_cap          = 512U,               /**< Max attribute records.           */
-  k_imp_style_cap         = 16U,                /**< Max stylesheets.                 */
-  k_imp_image_cap         = 32U,                /**< Max image descriptors.           */
-  k_imp_string_cap        = 64U * 1024U,        /**< String-pool capacity (bytes).    */
-  k_imp_imgpool_cap       = 1024U * 1024U,      /**< Image-pool capacity (bytes).     */
-  k_imp_out_cap           = 512U * 1024U,       /**< Output-blob capacity (bytes).    */
-  k_imp_xhtml_cap         = 64U * 1024U,        /**< Chapter XHTML scratch (bytes).   */
-  k_imp_css_cap           = 16U * 1024U,        /**< Stylesheet load scratch (bytes). */
-  k_imp_imgraw_cap        = 2U * 1024U * 1024U, /**< Raw cover/image scratch (bytes). */
-  k_imp_arena_cap         = 4U * 1024U * 1024U, /**< stb_image bump arena (bytes).    */
-  k_imp_gray_cap          = 2U * 1024U * 1024U, /**< Gray downscale scratch (pixels). */
-  k_imp_readback_cap      = 512U * 1024U,       /**< Cached-.rabook read buffer.      */
+  k_imp_chapter_cap       = 32U,                /**< Max chapters.                             */
+  k_imp_node_cap          = 2048U,              /**< Max DOM nodes.                            */
+  k_imp_attr_cap          = 512U,               /**< Max attribute records.                    */
+  k_imp_style_cap         = 16U,                /**< Max stylesheets.                          */
+  k_imp_image_cap         = 32U,                /**< Max image descriptors.                    */
+  k_imp_string_cap        = 64U * 1024U,        /**< String-pool capacity (bytes).             */
+  k_imp_imgpool_cap       = 1024U * 1024U,      /**< Image-pool capacity (bytes).              */
+  k_imp_out_cap           = 512U * 1024U,       /**< Output-blob capacity (bytes).             */
+  k_imp_xhtml_cap         = 64U * 1024U,        /**< Chapter XHTML scratch (bytes).            */
+  k_imp_css_cap           = 16U * 1024U,        /**< Stylesheet load scratch (bytes).          */
+  k_imp_imgraw_cap        = 2U * 1024U * 1024U, /**< Raw cover/image scratch (bytes).          */
+  k_imp_arena_cap         = 4U * 1024U * 1024U, /**< stb_image bump arena (bytes).             */
+  k_imp_gray_cap          = 2U * 1024U * 1024U, /**< Gray downscale scratch (pixels).          */
+  k_imp_readback_cap      = 512U * 1024U,       /**< Cached-.rabook read buffer.               */
 } imp_buf_cap_t;
 
 /* =============================================================================

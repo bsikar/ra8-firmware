@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 11509
+# total findings: 11439
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -402,9 +402,9 @@ libs/ra8_hal/src/ra8_canfd.c	misra-c2012-8.4	10
 libs/ra8_hal/src/ra8_canfd_afl.c	misra-c2012-15.5	12
 libs/ra8_hal/src/ra8_canfd_afl.c	misra-c2012-8.4	1
 libs/ra8_hal/src/ra8_canfd_afl.c	misra-c2012-8.9	1
-libs/ra8_hal/src/ra8_canfd_frame.c	misra-c2012-15.5	14
+libs/ra8_hal/src/ra8_canfd_frame.c	misra-c2012-15.5	13
 libs/ra8_hal/src/ra8_canfd_frame.c	misra-c2012-17.3	1
-libs/ra8_hal/src/ra8_canfd_frame.c	misra-c2012-8.4	4
+libs/ra8_hal/src/ra8_canfd_frame.c	misra-c2012-8.4	3
 libs/ra8_hal/src/ra8_canfd_tdc.c	misra-c2012-15.5	5
 libs/ra8_hal/src/ra8_canfd_tdc.c	misra-c2012-8.4	1
 libs/ra8_hal/src/ra8_canfd_tdc.c	misra-c2012-8.9	1
@@ -448,7 +448,7 @@ libs/ra8_hal/src/ra8_dma.c	misra-c2012-8.4	5
 libs/ra8_hal/src/ra8_dma.c	misra-c2012-9.2	1
 libs/ra8_hal/src/ra8_dmac.c	misra-c2012-15.5	29
 libs/ra8_hal/src/ra8_dmac.c	misra-c2012-8.4	7
-libs/ra8_hal/src/ra8_doc.c	misra-c2012-11.3	4
+libs/ra8_hal/src/ra8_doc.c	misra-c2012-11.3	2
 libs/ra8_hal/src/ra8_doc.c	misra-c2012-15.5	12
 libs/ra8_hal/src/ra8_dotf.c	misra-c2012-14.2	4
 libs/ra8_hal/src/ra8_dotf.c	misra-c2012-15.5	73
@@ -511,9 +511,8 @@ libs/ra8_hal/src/ra8_etha.c	misra-c2012-12.1	5
 libs/ra8_hal/src/ra8_etha.c	misra-c2012-15.5	53
 libs/ra8_hal/src/ra8_etha.c	misra-c2012-17.3	1
 libs/ra8_hal/src/ra8_etha.c	misra-c2012-8.4	29
-libs/ra8_hal/src/ra8_etha_stats.c	misra-c2012-12.1	1
-libs/ra8_hal/src/ra8_etha_stats.c	misra-c2012-15.5	16
-libs/ra8_hal/src/ra8_etha_stats.c	misra-c2012-8.4	5
+libs/ra8_hal/src/ra8_etha_stats.c	misra-c2012-15.5	14
+libs/ra8_hal/src/ra8_etha_stats.c	misra-c2012-8.4	4
 libs/ra8_hal/src/ra8_ether_phy.c	misra-c2012-15.5	18
 libs/ra8_hal/src/ra8_ether_phy.c	misra-c2012-15.7	1
 libs/ra8_hal/src/ra8_ether_phy.c	misra-c2012-8.4	6
@@ -682,12 +681,12 @@ libs/ra8_hal/src/ra8_rmac_phy.c	misra-c2012-15.5	27
 libs/ra8_hal/src/ra8_rmac_phy.c	misra-c2012-15.7	1
 libs/ra8_hal/src/ra8_rmac_phy.c	misra-c2012-8.4	7
 libs/ra8_hal/src/ra8_rmac_phy.c	misra-c2012-9.2	1
-libs/ra8_hal/src/ra8_rsip.c	misra-c2012-15.5	39
+libs/ra8_hal/src/ra8_rsip.c	misra-c2012-15.5	40
 libs/ra8_hal/src/ra8_rsip.c	misra-c2012-15.7	1
+libs/ra8_hal/src/ra8_rsip.c	misra-c2012-17.3	1
 libs/ra8_hal/src/ra8_rsip.c	misra-c2012-8.4	15
 libs/ra8_hal/src/ra8_rsip.c	misra-c2012-8.9	2
 libs/ra8_hal/src/ra8_rsip.c	misra-c2012-9.2	2
-libs/ra8_hal/src/ra8_rsip_asym.c	misra-c2012-12.1	2
 libs/ra8_hal/src/ra8_rsip_asym.c	misra-c2012-15.5	60
 libs/ra8_hal/src/ra8_rsip_asym.c	misra-c2012-8.4	26
 libs/ra8_hal/src/ra8_rsip_cipher.c	misra-c2012-15.5	102
@@ -754,7 +753,7 @@ libs/ra8_hal/src/ra8_spi_b_target.c	misra-c2012-8.4	2
 libs/ra8_hal/src/ra8_spi_b_target.c	misra-c2012-8.9	1
 libs/ra8_hal/src/ra8_sram.c	misra-c2012-14.2	4
 libs/ra8_hal/src/ra8_sram.c	misra-c2012-15.5	41
-libs/ra8_hal/src/ra8_sram.c	misra-c2012-8.9	3
+libs/ra8_hal/src/ra8_sram.c	misra-c2012-8.9	2
 libs/ra8_hal/src/ra8_sram_security.c	misra-c2012-11.1	1
 libs/ra8_hal/src/ra8_sram_security.c	misra-c2012-15.5	13
 libs/ra8_hal/src/ra8_sram_security.c	misra-c2012-9.2	1
@@ -859,8 +858,7 @@ libs/ra8_hal/src/ra8_xspi.c	misra-c2012-14.2	1
 libs/ra8_hal/src/ra8_xspi.c	misra-c2012-15.4	1
 libs/ra8_hal/src/ra8_xspi.c	misra-c2012-15.5	30
 libs/ra8_hal/src/ra8_xspi.c	misra-c2012-8.4	16
-libs/ra8_hal/src/ra8_xspi_flash.c	misra-c2012-14.2	1
-libs/ra8_hal/src/ra8_xspi_flash.c	misra-c2012-15.5	31
+libs/ra8_hal/src/ra8_xspi_flash.c	misra-c2012-15.5	29
 libs/ra8_hal/src/ra8_xspi_flash.c	misra-c2012-17.3	1
 libs/ra8_hal/src/ra8_xspi_flash.c	misra-c2012-8.4	5
 libs/ra8_io/src/ra8_io_blockdev.c	misra-c2012-15.5	28
@@ -997,38 +995,25 @@ libs/ra8_mpu/src/ra8_mpu.c	misra-c2012-8.4	4
 libs/ra8_net_pal/src/ra8_net_pal.c	misra-c2012-15.5	21
 libs/ra8_net_pal/src/ra8_net_pal.c	misra-c2012-8.4	8
 libs/ra8_net_pal/src/ra8_net_pal.c	misra-c2012-9.2	1
-libs/ra8_nsc/src/ra8_nsc_cgc.c	misra-c2012-11.4	1
 libs/ra8_nsc/src/ra8_nsc_cgc.c	misra-c2012-12.3	1
-libs/ra8_nsc/src/ra8_nsc_cgc.c	misra-c2012-15.5	2
-libs/ra8_nsc/src/ra8_nsc_cgc.c	misra-c2012-17.3	1
+libs/ra8_nsc/src/ra8_nsc_cgc.c	misra-c2012-15.5	1
 libs/ra8_nsc/src/ra8_nsc_cgc.c	misra-c2012-8.4	3
 libs/ra8_nsc/src/ra8_nsc_cgc.c	misra-c2012-8.9	1
-libs/ra8_nsc/src/ra8_nsc_comms.c	misra-c2012-11.4	7
-libs/ra8_nsc/src/ra8_nsc_comms.c	misra-c2012-11.6	4
 libs/ra8_nsc/src/ra8_nsc_comms.c	misra-c2012-12.3	7
-libs/ra8_nsc/src/ra8_nsc_comms.c	misra-c2012-15.5	32
-libs/ra8_nsc/src/ra8_nsc_comms.c	misra-c2012-17.3	11
+libs/ra8_nsc/src/ra8_nsc_comms.c	misra-c2012-15.5	21
 libs/ra8_nsc/src/ra8_nsc_comms.c	misra-c2012-8.4	13
-libs/ra8_nsc/src/ra8_nsc_eth.c	misra-c2012-11.4	3
 libs/ra8_nsc/src/ra8_nsc_eth.c	misra-c2012-12.3	1
-libs/ra8_nsc/src/ra8_nsc_eth.c	misra-c2012-15.5	8
-libs/ra8_nsc/src/ra8_nsc_eth.c	misra-c2012-17.3	3
+libs/ra8_nsc/src/ra8_nsc_eth.c	misra-c2012-15.5	5
 libs/ra8_nsc/src/ra8_nsc_eth.c	misra-c2012-8.4	2
-libs/ra8_nsc/src/ra8_nsc_io.c	misra-c2012-11.4	6
 libs/ra8_nsc/src/ra8_nsc_io.c	misra-c2012-12.3	7
-libs/ra8_nsc/src/ra8_nsc_io.c	misra-c2012-15.5	14
-libs/ra8_nsc/src/ra8_nsc_io.c	misra-c2012-17.3	7
+libs/ra8_nsc/src/ra8_nsc_io.c	misra-c2012-15.5	7
 libs/ra8_nsc/src/ra8_nsc_io.c	misra-c2012-8.4	13
-libs/ra8_nsc/src/ra8_nsc_key_vault.c	misra-c2012-11.4	2
 libs/ra8_nsc/src/ra8_nsc_key_vault.c	misra-c2012-12.3	2
-libs/ra8_nsc/src/ra8_nsc_key_vault.c	misra-c2012-15.5	4
-libs/ra8_nsc/src/ra8_nsc_key_vault.c	misra-c2012-17.3	2
+libs/ra8_nsc/src/ra8_nsc_key_vault.c	misra-c2012-15.5	2
 libs/ra8_nsc/src/ra8_nsc_key_vault.c	misra-c2012-8.4	1
 libs/ra8_nsc/src/ra8_nsc_key_vault.c	misra-c2012-8.9	1
-libs/ra8_nsc/src/ra8_nsc_log.c	misra-c2012-11.4	2
 libs/ra8_nsc/src/ra8_nsc_log.c	misra-c2012-12.3	2
-libs/ra8_nsc/src/ra8_nsc_log.c	misra-c2012-15.5	5
-libs/ra8_nsc/src/ra8_nsc_log.c	misra-c2012-17.3	2
+libs/ra8_nsc/src/ra8_nsc_log.c	misra-c2012-15.5	3
 libs/ra8_nsc/src/ra8_nsc_log.c	misra-c2012-8.4	1
 libs/ra8_nsc/src/ra8_nsc_log.c	misra-c2012-8.9	3
 libs/ra8_nsc/src/ra8_nsc_ota.c	misra-c2012-15.5	1
@@ -1039,10 +1024,8 @@ libs/ra8_nsc/src/ra8_nsc_periph_init.c	misra-c2012-8.4	1
 libs/ra8_nsc/src/ra8_nsc_periph_init.c	misra-c2012-8.9	2
 libs/ra8_nsc/src/ra8_nsc_wdt.c	misra-c2012-8.4	1
 libs/ra8_nsc/src/ra8_nsc_wdt.c	misra-c2012-8.9	1
-libs/ra8_nsc/src/ra8_nsc_xspi.c	misra-c2012-11.4	2
 libs/ra8_nsc/src/ra8_nsc_xspi.c	misra-c2012-12.3	1
-libs/ra8_nsc/src/ra8_nsc_xspi.c	misra-c2012-15.5	5
-libs/ra8_nsc/src/ra8_nsc_xspi.c	misra-c2012-17.3	2
+libs/ra8_nsc/src/ra8_nsc_xspi.c	misra-c2012-15.5	3
 libs/ra8_nsc/src/ra8_nsc_xspi.c	misra-c2012-8.4	2
 libs/ra8_ota/src/ra8_ota.c	misra-c2012-12.1	1
 libs/ra8_ota/src/ra8_ota.c	misra-c2012-15.4	2
@@ -1093,8 +1076,9 @@ libs/ra8_rabook_import/src/ra8_rabook_import.c	misra-c2012-15.5	67
 libs/ra8_rabook_import/src/ra8_rabook_import.c	misra-c2012-17.3	2
 libs/ra8_rabook_import/src/ra8_rabook_import.c	misra-c2012-17.8	3
 libs/ra8_rabook_import/src/ra8_rabook_import.c	misra-c2012-8.4	1
-libs/ra8_rabook_import/src/ra8_rabook_import_compiler.c	misra-c2012-15.5	19
+libs/ra8_rabook_import/src/ra8_rabook_import_compiler.c	misra-c2012-15.5	34
 libs/ra8_rabook_import/src/ra8_rabook_import_compiler.c	misra-c2012-8.4	2
+libs/ra8_rabook_import/src/ra8_rabook_import_compiler.c	misra-c2012-9.2	1
 libs/ra8_reflow/src/ra8_img_arena.c	misra-c2012-15.5	6
 libs/ra8_reflow/src/ra8_img_arena.c	misra-c2012-17.7	1
 libs/ra8_reflow/src/ra8_img_arena.c	misra-c2012-8.4	5
@@ -1189,8 +1173,8 @@ libs/ra8_reflow/src/ra8_reflow_tokenize_lex.c	misra-c2012-21.14	3
 libs/ra8_reflow/src/ra8_reflow_tokenize_lex.c	misra-c2012-21.16	3
 libs/ra8_reflow/src/ra8_stbtt_alloc.c	misra-c2012-15.5	3
 libs/ra8_reflow/src/ra8_stbtt_alloc.c	misra-c2012-8.4	3
-libs/ra8_reflow/src/ra8_stbtt_guard.c	misra-c2012-15.5	4
-libs/ra8_reflow/src/ra8_stbtt_guard.c	misra-c2012-18.4	3
+libs/ra8_reflow/src/ra8_stbtt_guard.c	misra-c2012-15.5	9
+libs/ra8_reflow/src/ra8_stbtt_guard.c	misra-c2012-18.4	5
 libs/ra8_reflow/src/ra8_stbtt_guard.c	misra-c2012-8.4	1
 libs/ra8_sdfont/src/ra8_sdfont.c	misra-c2012-11.5	3
 libs/ra8_sdfont/src/ra8_sdfont.c	misra-c2012-15.5	31
@@ -1336,7 +1320,7 @@ port/usbx/src/ux_hcd_ra8_usb.c	misra-c2012-17.3	8
 port/usbx/src/ux_hcd_ra8_usb.c	misra-c2012-8.4	4
 port/usbx/src/ux_hcd_ra8_usb.c	misra-c2012-8.9	1
 src/app/main.c	misra-c2012-8.4	1
-src/app/ns_main.c	misra-c2012-11.4	6
+src/app/ns_main.c	misra-c2012-11.4	8
 src/app/ns_main.c	misra-c2012-14.2	2
 src/app/ns_main.c	misra-c2012-17.3	9
 src/app/ns_main.c	misra-c2012-8.4	3

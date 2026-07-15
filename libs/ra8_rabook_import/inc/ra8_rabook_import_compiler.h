@@ -77,8 +77,8 @@ typedef struct {
   ra8_vmem_frame_t*           cache_meta;         /**< Per-frame metadata array.              */
   int32_t*                    cache_buckets;      /**< Cache hash-bucket heads.               */
   uint32_t                    cache_bucket_count; /**< Number of hash buckets (>= 1).         */
-  const ra8_rabook_buffers_t* bufs;               /**< RABOOK1 builder arenas.       */
-  const ra8_rabook_pipeline_scratch_t* scr;       /**< XHTML + image decode scratch. */
+  const ra8_rabook_buffers_t* bufs;               /**< RABOOK1 builder arenas.                */
+  const ra8_rabook_pipeline_scratch_t* scr;       /**< XHTML + image decode scratch.          */
 } ra8_rabook_import_compiler_ctx_t;
 
 /**
