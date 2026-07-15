@@ -87,7 +87,10 @@ mkdir -p "$BUILD_DIR"
   -Wno-dev \
   "${CMAKE_ARGS[@]}"
 
-"$CMAKE" --build "$BUILD_DIR" --parallel "$JOBS"
+# Keep going on compile errors: a red gate then reports EVERY failing TU in
+# one run instead of the first, so toolchain-specific -Wconversion sweeps
+# converge in a single iteration.
+"$CMAKE" --build "$BUILD_DIR" --parallel "$JOBS" -- -k
 
 echo ""
 echo "==> Build complete. Run with:"

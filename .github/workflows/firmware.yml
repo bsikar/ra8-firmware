@@ -131,6 +131,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build + run host tests under UBSan
+        # Pin the compiler like the coverage job does: the ambient `gcc` on a
+        # runner changes with the image, and -Wconversion findings are
+        # compiler-version-specific.
+        env:
+          CC: gcc-13
+          CXX: g++-13
         run: make ubsan
 
   # ---------------------------------------------------------------------------
