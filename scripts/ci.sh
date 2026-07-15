@@ -164,6 +164,7 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
     python3 scripts/utils/check_final_newline.py
     python3 scripts/utils/check_magic_numbers.py
     python3 scripts/utils/check_no_gnu_attribute.py
+    python3 scripts/utils/check_tz_boundary_discard.py
   )
 
   # --- gate: clang-tidy (firmware.yml job: tidy) ---------------------------

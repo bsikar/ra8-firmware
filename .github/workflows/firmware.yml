@@ -316,6 +316,14 @@ jobs:
           # for interrupt / cmse_nonsecure_entry / cmse_nonsecure_call,
           # which clang has no portable [[gnu::]] spelling for).
           python3 scripts/utils/check_no_gnu_attribute.py
+          # check_tz_boundary_discard.py: no silent ra8_err_t discards at
+          # TrustZone boot boundaries. A C23 (void)-cast silences
+          # [[nodiscard]] by ISO rule, so -Werror can never catch
+          # `(void)ra8_cgc_init();` right before a BLXNS (T2-05, #191);
+          # this gate bans (void)-cast discards of the ra8_tz_secure_boot_*
+          # family everywhere and of any ra8_*() call inside a boot TU
+          # (a .c defining SystemInit / ra8_trustzone_init).
+          python3 scripts/utils/check_tz_boundary_discard.py
           # check_no_wave_references.py: ban "Wave N" session-bookkeeping
           # references (the numbered recon-era tags) from comments and docs.
           # Ran only in the bypassable local pre-commit hook until now; it is
