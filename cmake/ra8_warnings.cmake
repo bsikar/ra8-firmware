@@ -22,6 +22,13 @@ function(ra8_target_enable_project_warnings target)
         -Wall
         -Wextra
         -Werror
+        # Implicit-conversion discipline (#240). For C, -Wconversion also
+        # enables -Wsign-conversion and flags float narrowing, so every
+        # implicit narrowing / sign-changing / value-changing conversion in
+        # first-party code is a hard -Werror. Vendored SOUP translation units
+        # opt out via the narrow per-source -Wno sets in ra8_add_app.cmake
+        # (firmware) and the blanket -w in tests/CMakeLists.txt (host).
+        -Wconversion
         -Wcast-qual
         -Wcast-align
         -Wdouble-promotion
