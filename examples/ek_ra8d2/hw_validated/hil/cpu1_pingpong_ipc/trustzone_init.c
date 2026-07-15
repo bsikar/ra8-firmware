@@ -178,7 +178,16 @@ void ra8_trustzone_init(void)
     return;
   }
 
-  (void)ra8_tz_secure_boot_security_init((uint32_t)k_ipcsar_value, (uint32_t)k_ipcpar_value);
+  const ra8_err_t sec_err =
+    ra8_tz_secure_boot_security_init((uint32_t)k_ipcsar_value, (uint32_t)k_ipcpar_value);
+  if (sec_err != k_ra8_ok) {
+    /* Do NOT release CPU1 or BLXNS when the IPC channel S/NS attribution
+     * failed -- the NS core would face Secure-locked IPC channels. */
+    ra8_log_error_val("CPU1IPC", "security_init failed", (uint32_t)sec_err);
+    const ra8_tz_secure_boot_step_t step_sec = ra8_tz_secure_boot_get_step();
+    g_cpu1_pingpong_ipc_tz_step              = (uint8_t)step_sec;
+    return;
+  }
   /* HUM Ch 3.2.1 "IPCSAR" p 205 -- read-back so a J-Link memprobe can
    * confirm the write landed even if BLXNS later wedges. */
   g_cpu1_pingpong_ipc_ipcsar_post         = *(volatile uint32_t*)0x40008610UL;
@@ -190,7 +199,16 @@ void ra8_trustzone_init(void)
   /* On hardware ra8_tz_secure_boot_jump_ns does not return. On host
    * the BLXNS is captured into the secure-boot library's state for
    * the unit tests to inspect. */
-  (void)ra8_tz_secure_boot_jump_ns(ns_vt);
+  const ra8_err_t jump_err = ra8_tz_secure_boot_jump_ns(ns_vt);
+  if (jump_err != k_ra8_ok) {
+    /* Reached on hardware ONLY when the NS image was DENIED (vector-table
+     * validation failed): stamp the step for the J-Link memprobe and fall
+     * back to the S-side main() -- never treat the NS world as live. */
+    ra8_log_error_val("CPU1IPC", "jump_ns denied", (uint32_t)jump_err);
+    const ra8_tz_secure_boot_step_t step_denied = ra8_tz_secure_boot_get_step();
+    g_cpu1_pingpong_ipc_tz_step                 = (uint8_t)step_denied;
+    return;
+  }
 
   /* Post 1: g_cpu1_pingpong_ipc_ipcsar_post == 0x00050000 (bench). */
   /* Post 2: ra8_tz_secure_boot_get_step() == ..._branched (host) /
