@@ -15,7 +15,9 @@
  * Flow: bring up the Pmod2 microSD over the `ra8_sdmmc_spi` SPI-mode driver, mount
  * an `ra8_fs` volume (formatting FAT32 first if the card is blank), self-provision
  * a known 2-chapter `.epub` onto it if absent (the same `seed_two_chapters` seed
- * as `epub_parse`), then `ra8_epub_open_fs()` it and assert:
+ * as `epub_parse`), then `ra8_epub_open_streamed_fs()` it -- the production
+ * open path (#230): no whole-file buffer, every ZIP read seeks the card on
+ * demand -- and assert:
  *   - chapter (spine) count == 2,
  *   - chapter 0's decompressed XHTML CRC-32 == 0xCF23AEEE (byte-exact for the
  *     seed; identical on board_sim and silicon),
@@ -65,19 +67,18 @@
 
 /** @enum eoh_consts_t @brief Console / SPI / parse knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_eoh_uart_baud   = 115200U,     /**< Console baud.                       */
-  k_eoh_spi_chan    = 0U,          /**< Pmod2 / J25 SCI0 Simple-SPI.        */
-  k_eoh_expect_chap = 2U,          /**< Spine length of the baked seed.     */
-  k_eoh_expect_crc  = 0xCF23AEEEU, /**< Chapter-0 XHTML CRC-32 (seed).      */
-  k_eoh_epub_cap    = 2048U,       /**< .epub read buffer (seed is 1355 B). */
-  k_eoh_chap_cap    = 4096U,       /**< Chapter XHTML scratch capacity.     */
-  k_eoh_crc_init    = 0xFFFFFFFFU, /**< CRC-32 initial value.               */
-  k_eoh_crc_poly    = 0xEDB88320U, /**< CRC-32 reflected polynomial.        */
-  k_eoh_crc_bits    = 8U,          /**< Bits folded per byte.               */
-  k_eoh_hex_nibbles = 8U,          /**< Hex digits in a 32-bit value.       */
-  k_eoh_nibble_bits = 4U,          /**< Bits per hex nibble.                */
-  k_eoh_nibble_mask = 0x0FU,       /**< Low-nibble mask.                    */
-  k_eoh_dec_ten     = 10U,         /**< Hex digit / decimal split.          */
+  k_eoh_uart_baud   = 115200U,     /**< Console baud.                   */
+  k_eoh_spi_chan    = 0U,          /**< Pmod2 / J25 SCI0 Simple-SPI.    */
+  k_eoh_expect_chap = 2U,          /**< Spine length of the baked seed. */
+  k_eoh_expect_crc  = 0xCF23AEEEU, /**< Chapter-0 XHTML CRC-32 (seed).  */
+  k_eoh_chap_cap    = 4096U,       /**< Chapter XHTML scratch capacity. */
+  k_eoh_crc_init    = 0xFFFFFFFFU, /**< CRC-32 initial value.           */
+  k_eoh_crc_poly    = 0xEDB88320U, /**< CRC-32 reflected polynomial.    */
+  k_eoh_crc_bits    = 8U,          /**< Bits folded per byte.           */
+  k_eoh_hex_nibbles = 8U,          /**< Hex digits in a 32-bit value.   */
+  k_eoh_nibble_bits = 4U,          /**< Bits per hex nibble.            */
+  k_eoh_nibble_mask = 0x0FU,       /**< Low-nibble mask.                */
+  k_eoh_dec_ten     = 10U,         /**< Hex digit / decimal split.      */
 } eoh_consts_t;
 
 /** @brief Pmod2 SPI pins (J25) -- SCI0 Simple-SPI; CS held by GPIO. */
@@ -102,7 +103,7 @@ typedef enum : uint32_t {
   k_eoh_err_card  = 2U, /**< SD card SPI init.                    */
   k_eoh_err_mount = 3U, /**< Mount (and format-if-blank).         */
   k_eoh_err_prov  = 4U, /**< Provision the .epub onto the card.   */
-  k_eoh_err_open  = 5U, /**< ra8_epub_open_fs.                    */
+  k_eoh_err_open  = 5U, /**< ra8_epub_open_streamed_fs.           */
   k_eoh_err_chap  = 6U, /**< Chapter-count mismatch.              */
   k_eoh_err_load  = 7U, /**< Chapter-0 DEFLATE load.              */
   k_eoh_err_crc   = 8U, /**< Chapter-0 CRC mismatch.              */
@@ -129,8 +130,8 @@ volatile uint32_t g_eoh_heartbeat = 0U;
 
 /** @brief Opened book (large -- file-scope, not on the stack). */
 static ra8_epub_book_t s_book;
-/** @brief Whole-.epub read buffer; must outlive @ref s_book (zip points in). */
-static uint8_t s_epub_buf[k_eoh_epub_cap];
+/** @brief Streamed-open source-file context; must outlive @ref s_book (#230). */
+static ra8_epub_stream_fs_ctx_t s_epub_io;
 /** @brief Chapter-0 XHTML scratch (file-scope to keep the stack small). */
 static uint8_t s_chapter[k_eoh_chap_cap];
 /** @brief SD backend; file-scope so the mount handle may reference it. */
@@ -355,8 +356,7 @@ static void eoh_provision_or_halt(ra8_fs_mount_t* mount)
  */
 static uint16_t eoh_parse_or_halt(ra8_fs_mount_t* mount, uint32_t* out_crc)
 {
-  if (ra8_epub_open_fs(mount, k_eoh_book_path, s_epub_buf, (size_t)k_eoh_epub_cap, &s_book) !=
-      k_ra8_ok) {
+  if (ra8_epub_open_streamed_fs(mount, k_eoh_book_path, &s_epub_io, &s_book) != k_ra8_ok) {
     eoh_fail((uint32_t)k_eoh_err_open, k_msg_fopen, (uint32_t)sizeof(k_msg_fopen) - 1U);
   }
   uint16_t chapters = 0U;

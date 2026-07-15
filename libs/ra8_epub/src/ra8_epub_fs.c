@@ -6,10 +6,12 @@
  * [Ring 4 / EPUB] {World: S}
  *
  * @details
- * Reads a whole `.epub` off a mounted `ra8_fs` volume into a caller buffer, then
- * opens it with `ra8_epub_open()`. Guarded on `__has_include("ra8_fs.h")` so the
- * pure `ra8_epub` core still links into apps/hosts that do not pull in `ra8_fs`
- * (this TU is then empty -- only the in-memory `ra8_epub_open()` path is used).
+ * Opens a `.epub` living on a mounted `ra8_fs` volume by streaming it (#151/#230):
+ * the file stays open for the book's lifetime and every ZIP read seeks+reads on
+ * demand, so no whole-file buffer ever exists. Guarded on
+ * `__has_include("ra8_fs.h")` so the pure `ra8_epub` core still links into
+ * apps/hosts that do not pull in `ra8_fs` (this TU is then empty -- only the
+ * in-memory `ra8_epub_open()` path is used).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -22,49 +24,6 @@
 #include "ra8_epub_fs.h"
 
 #include <stdint.h>
-
-[[nodiscard]] ra8_err_t ra8_epub_open_fs(ra8_fs_mount_t*  mount,
-                                         const char*      path,
-                                         uint8_t*         buf,
-                                         size_t           cap,
-                                         ra8_epub_book_t* out_book)
-{
-  if ((mount == nullptr) || (path == nullptr) || (buf == nullptr) || (out_book == nullptr)) {
-    return k_ra8_err_null_ptr;
-  }
-  if (cap == 0U) {
-    return k_ra8_err_invalid_size;
-  }
-
-  ra8_fs_file_t* file = nullptr;
-  ra8_err_t      err  = ra8_fs_open(mount, path, k_ra8_fs_mode_read, &file);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-
-  uint32_t size = 0U;
-  err           = ra8_fs_size(file, &size);
-  // mcdc-deactivated: DO-178C 6.4.4.3 -- C1 (`err == k_ra8_ok`) is invariantly true here: ra8_fs_size() cannot fail on the handle ra8_fs_open() just returned (its in_use flag is set and both out-params are non-NULL), so no public-API input flips C1. Only C2 (size > cap) varies, and both its arms are tested (roundtrip: false; buffer-too-small: true). The err guard is defensive against a future ra8_fs_size contract change.
-  if ((err == k_ra8_ok) && ((size_t)size > cap)) {
-    err = k_ra8_err_no_mem; /* book does not fit the caller buffer */
-  }
-
-  uint32_t got = 0U;
-  if (err == k_ra8_ok) {
-    err = ra8_fs_read(file, buf, size, &got);
-  }
-  // mcdc-deactivated: DO-178C 6.4.4.3 -- the outcome-true vector (C1 && C2) requires a successful read (err == k_ra8_ok) that returned fewer bytes than requested (got != size). ra8_fs_read() reports k_ra8_ok only after producing exactly `size` bytes (offset 0, max_len == size), so got == size on every success and (T,T) is unreachable on any public-API path. With no outcome-true vector neither condition can be shown independently; the short-read guard is defensive against a future backend that violates that contract.
-  if ((err == k_ra8_ok) && (got != size)) {
-    err = k_ra8_err_hw_error; /* short read -- file shrank or backend hiccup */
-  }
-  (void)ra8_fs_close(file); /* always release the handle */
-  if (err != k_ra8_ok) {
-    return err;
-  }
-
-  const ra8_epub_mem_media_t media = {.data = buf, .size = (size_t)got};
-  return ra8_epub_open(&media, path, out_book);
-}
 
 /**
  * @brief ra8_epub stream read callback backed by an open `ra8_fs` file (#151).

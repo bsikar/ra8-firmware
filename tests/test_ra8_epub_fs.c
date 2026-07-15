@@ -3,11 +3,13 @@
  * @brief End-to-end host test for the ra8_fs -> ra8_epub bridge (#71).
  *
  * @details
- * Proves the storage-stack acceptance for #71 on the host: a real `.epub` is
- * assembled in memory with miniz, *written to a FAT16 volume through ra8_fs*
- * (over a RAM block backend -- the same mem-disk pattern as
- * `tests/test_ra8_fs_fat.c`), and then opened end to end with
- * `ra8_epub_open_fs()`, which reads the file back off `ra8_fs` and parses it. On
+ * Proves the storage-stack acceptance for #71/#151/#230 on the host: a real
+ * `.epub` is assembled in memory with miniz, *written to a FAT16 volume through
+ * ra8_fs* (over a RAM block backend -- the same mem-disk pattern as
+ * `tests/test_ra8_fs_fat.c`), and then opened end to end with the STREAMED
+ * `ra8_epub_open_streamed_fs()` -- the sole production `ra8_fs` open path since
+ * #230 retired the whole-file `ra8_epub_open_fs()`: the source file stays open
+ * and every ZIP entry is seek+read on demand, with no whole-file buffer. On
  * target the only difference is the block backend (`ra8_sdmmc_spi` over the SD
  * card instead of RAM), which is independently bench-validated.
  *
@@ -175,109 +177,6 @@ static void write_epub(ra8_fs_mount_t* mount, const char* path)
 }
 
 /**
- * @test test_epub_fs_roundtrip
- * @brief A .epub written through ra8_fs is opened end to end by ra8_epub_open_fs:
- *        the spine count and a chapter body come back intact.
- *
- * @par MC/DC:
- * (no compound decisions under test here -- the happy path; the open_fs guard
- * decision is covered by test_epub_fs_guards.)
- */
-static void test_epub_fs_roundtrip(void)
-{
-  TEST_BEGIN("ra8_epub_fs: write -> ra8_fs -> open_fs roundtrip");
-  build_fat16_volume();
-  build_epub();
-
-  ra8_fs_mount_t* mount = nullptr;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &mount));
-  write_epub(mount, "BOOK.EPB");
-
-  /* The ra8_fs layer round-trips the exact bytes (size + content) before the
-   * adapter parses them -- so a later parse failure is never a storage bug. */
-  {
-    ra8_fs_file_t* rf = nullptr;
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(mount, "BOOK.EPB", k_ra8_fs_mode_read, &rf));
-    uint32_t sz = 0U;
-    uint32_t gt = 0U;
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(rf, &sz));
-    TEST_ASSERT_EQ(s_epub_len, sz);
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(rf, s_read, sz, &gt));
-    TEST_ASSERT_EQ(sz, gt);
-    TEST_ASSERT_EQ(0, memcmp(s_read, s_epub, (size_t)sz));
-    (void)ra8_fs_close(rf);
-  }
-
-  ra8_epub_book_t book = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open_fs(mount, "BOOK.EPB", s_read, (size_t)k_read_cap, &book));
-
-  uint16_t chapters = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_get_chapter_count(&book, &chapters));
-  TEST_ASSERT_EQ(2U, chapters);
-
-  uint8_t chbuf[2048] = {};
-  size_t  got         = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_load_chapter(&book, 0U, chbuf, sizeof(chbuf) - 1U, &got));
-  TEST_ASSERT(got > 0U);
-  chbuf[got] = (uint8_t)'\0';
-  TEST_ASSERT(strstr((const char*)chbuf, "rejoice") != nullptr); /* real Frankenstein prose */
-
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(mount));
-  free(s_disk.bytes);
-  s_disk.bytes = nullptr;
-  TEST_END("ra8_epub_fs: write -> ra8_fs -> open_fs roundtrip");
-}
-
-/**
- * @test test_epub_fs_guards
- * @brief ra8_epub_open_fs rejects bad arguments, a missing file, and a buffer
- *        too small for the book -- without leaking the file handle.
- *
- * @par MC/DC:
- * Decision: `mount==NULL || path==NULL || buf==NULL || out_book==NULL`
- * (4 conditions, OR). One control vector (all non-NULL -> passes the guard)
- * plus one vector flipping each operand to NULL -> N+1 = 5 vectors.
- */
-static void test_epub_fs_guards(void)
-{
-  TEST_BEGIN("ra8_epub_fs: open_fs guards (MC/DC)");
-  build_fat16_volume();
-  build_epub();
-  ra8_fs_mount_t* mount = nullptr;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &mount));
-  write_epub(mount, "BOOK.EPB");
-
-  ra8_epub_book_t book = {};
-
-  /* NULL-OR guard MC/DC: control (all set) is exercised by the roundtrip test;
-   * here each operand is independently flipped to NULL. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epub_open_fs(nullptr, "BOOK.EPB", s_read, (size_t)k_read_cap, &book));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epub_open_fs(mount, nullptr, s_read, (size_t)k_read_cap, &book));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epub_open_fs(mount, "BOOK.EPB", nullptr, (size_t)k_read_cap, &book));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epub_open_fs(mount, "BOOK.EPB", s_read, (size_t)k_read_cap, nullptr));
-
-  /* cap == 0 -> invalid_size. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_epub_open_fs(mount, "BOOK.EPB", s_read, 0U, &book));
-
-  /* Missing file -> propagated open error (not k_ra8_ok). */
-  TEST_ASSERT(ra8_epub_open_fs(mount, "NOPE.EPB", s_read, (size_t)k_read_cap, &book) != k_ra8_ok);
-
-  /* Buffer smaller than the book -> no_mem (file does not fit). */
-  TEST_ASSERT_EQ(k_ra8_err_no_mem,
-                 ra8_epub_open_fs(mount, "BOOK.EPB", s_read, s_epub_len - 1U, &book));
-
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(mount));
-  free(s_disk.bytes);
-  s_disk.bytes = nullptr;
-  TEST_END("ra8_epub_fs: open_fs guards (MC/DC)");
-}
-
-/**
  * @enum epub_fs_fat16_off_t
  * @brief Byte offsets into the FAT16 image for cluster-chain corruption.
  *
@@ -297,34 +196,27 @@ typedef enum : uint32_t {
 
 /**
  * @test test_epub_fs_read_error_corrupt_fat
- * @brief A corrupt FAT chain makes the whole-file read fault; ra8_epub_open_fs
- *        propagates the backend error and still closes the file handle.
+ * @brief A corrupt FAT chain makes the on-demand stream reads fault mid-parse;
+ *        ra8_epub_open_streamed_fs fails cleanly and closes the file handle.
+ *
+ * @details
+ * Cluster 2's FAT16 entry is rewritten (in both FAT copies) to 0xF000, a
+ * normal (non-EOC) pointer whose data LBA is past the 8192-sector disk. The
+ * streamed open's first ZIP-tail read walks the chain 2 -> 0xF000, whose LBA
+ * (61504) trips the mem_read `lba + count > block_count` guard ->
+ * k_ra8_err_out_of_range inside the stream callback, which reports 0 bytes;
+ * miniz treats the short read as a reader-init failure, so the open returns
+ * k_ra8_err_validation_failed, the adapter closes the file (io.file == NULL),
+ * and the book is left unopened.
  *
  * @par MC/DC:
- * Drives the *production* decision in ra8_epub_fs.c ra8_epub_open_fs():
- *   `if ((err == k_ra8_ok) && (got != size))` (2 conditions, AND) -- the
- * left-operand-false arm. Cluster 2's FAT16 entry is rewritten (in both FAT
- * copies) to 0xF000, a normal (non-EOC) pointer whose data LBA is past the
- * 8192-sector disk. The first 512-byte chunk reads cluster 2 fine, then the
- * chain walk follows 2 -> 0xF000, whose LBA (61504) trips the mem_read
- * `lba + count > block_count` guard -> k_ra8_err_out_of_range. So ra8_fs_read
- * returns non-ok, making `(err == k_ra8_ok)` FALSE; the AND short-circuits and
- * the error is propagated.
- *
- * - This vector: err != k_ra8_ok -> C1=F -> overall F via the left operand.
- * - The control vector (err==k_ra8_ok, got==size -> C1=T, C2=F -> overall F) is
- *   exercised by test_epub_fs_roundtrip.
- * Pair (control, this) isolates the left condition.
- *
- * @note The right-operand-true arm (err==k_ra8_ok && got!=size) is structurally
- *       unreachable here: ra8_fs_read returns k_ra8_ok only after producing
- *       exactly `remaining == size` bytes (offset starts at 0, max_len==size),
- *       so on the success path got==size is invariant. The short-read guard is
- *       defensive against a future backend that violates that contract.
+ * (no compound decisions under test here -- the stream callback's guards are
+ * independent single-condition early returns; this drives the seek/read error
+ * leg the happy-path roundtrip never reaches.)
  */
 static void test_epub_fs_read_error_corrupt_fat(void)
 {
-  TEST_BEGIN("ra8_epub_fs: corrupt FAT chain -> read error propagated");
+  TEST_BEGIN("ra8_epub_fs: corrupt FAT chain -> streamed open fails, file closed");
   build_fat16_volume();
   build_epub();
   TEST_ASSERT(s_epub_len > (size_t)k_disk_block_size); /* multi-cluster chain */
@@ -341,14 +233,17 @@ static void test_epub_fs_read_error_corrupt_fat(void)
         (k_fat16_fat1_lba * (uint32_t)k_disk_block_size) + (uint32_t)k_fat16_clus2_ent_byte,
         (uint16_t)k_fat16_offdisk_clus);
 
-  ra8_epub_book_t book = {};
-  TEST_ASSERT_EQ(k_ra8_err_out_of_range,
-                 ra8_epub_open_fs(mount, "BOOK.EPB", s_read, (size_t)k_read_cap, &book));
+  ra8_epub_stream_fs_ctx_t io   = {};
+  ra8_epub_book_t          book = {};
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 ra8_epub_open_streamed_fs(mount, "BOOK.EPB", &io, &book));
+  TEST_ASSERT(io.file == nullptr); /* the failed open released the handle */
+  TEST_ASSERT_EQ(0, book.in_use);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(mount));
   free(s_disk.bytes);
   s_disk.bytes = nullptr;
-  TEST_END("ra8_epub_fs: corrupt FAT chain -> read error propagated");
+  TEST_END("ra8_epub_fs: corrupt FAT chain -> streamed open fails, file closed");
 }
 
 /**
@@ -371,6 +266,21 @@ static void test_epub_fs_streamed_roundtrip(void)
   ra8_fs_mount_t* mount = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &mount));
   write_epub(mount, "BOOK.EPB");
+
+  /* The ra8_fs layer round-trips the exact bytes (size + content) before the
+   * adapter parses them -- so a later parse failure is never a storage bug. */
+  {
+    ra8_fs_file_t* rf = nullptr;
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(mount, "BOOK.EPB", k_ra8_fs_mode_read, &rf));
+    uint32_t sz = 0U;
+    uint32_t gt = 0U;
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(rf, &sz));
+    TEST_ASSERT_EQ(s_epub_len, sz);
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(rf, s_read, sz, &gt));
+    TEST_ASSERT_EQ(sz, gt);
+    TEST_ASSERT_EQ(0, memcmp(s_read, s_epub, (size_t)sz));
+    (void)ra8_fs_close(rf);
+  }
 
   ra8_epub_stream_fs_ctx_t io   = {};
   ra8_epub_book_t          book = {};
@@ -470,10 +380,8 @@ static void test_epub_fs_streamed_guards(void)
 
 int32_t main(void)
 {
-  test_epub_fs_roundtrip();
-  test_epub_fs_guards();
-  test_epub_fs_read_error_corrupt_fat();
   test_epub_fs_streamed_roundtrip();
   test_epub_fs_streamed_guards();
+  test_epub_fs_read_error_corrupt_fat();
   return 0;
 }

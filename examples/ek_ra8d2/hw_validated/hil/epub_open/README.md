@@ -14,7 +14,8 @@ byte-twiddling parse layer meets real SD timing and the FAT read path, not a
 2. Self-provisions a known 2-chapter `.epub` (the `seed_two_chapters` seed, baked
    into `epub_fixture.h`) onto the card as `BOOK.EPB` if it is not already there,
    then reads it back.
-3. `ra8_epub_open_fs()` it and asserts:
+3. `ra8_epub_open_streamed_fs()` it -- the production streamed open (#230): no
+   whole-file buffer, every ZIP read seeks the card on demand -- and asserts:
    - chapter (spine) count == 2,
    - chapter 0's decompressed XHTML CRC-32 == `0xCF23AEEE` (byte-exact for the
      seed -- `zlib.crc32` of `OEBPS/chapter1.xhtml`),
@@ -75,7 +76,7 @@ already-present path.
 | 2 | frozen | SD card SPI init failed (card / wiring) |
 | 3 | frozen | Mount (and format-if-blank) failed |
 | 4 | frozen | Provisioning the `.epub` onto the card failed |
-| 5 | frozen | `ra8_epub_open_fs` rejected the archive |
+| 5 | frozen | `ra8_epub_open_streamed_fs` rejected the archive |
 | 6 | frozen | Spine count != 2 (OPF parse wrong) |
 | 7 | frozen | Chapter-0 DEFLATE load failed |
 | 8 | frozen | Chapter-0 CRC mismatch (decompressor produced wrong bytes) |

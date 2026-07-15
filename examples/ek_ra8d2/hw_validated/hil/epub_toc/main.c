@@ -62,7 +62,6 @@
 typedef enum : uint32_t {
   k_etoc_uart_baud  = 115200U,     /**< Console baud.                        */
   k_etoc_spi_chan   = 0U,          /**< Pmod2 / J25 SCI0 Simple-SPI.         */
-  k_etoc_epub_cap   = 2048U,       /**< .epub read buffer (max fix 1528 B).  */
   k_etoc_crc_init   = 0xFFFFFFFFU, /**< CRC-32 initial value.                */
   k_etoc_crc_poly   = 0xEDB88320U, /**< CRC-32 reflected polynomial.         */
   k_etoc_crc_bits   = 8U,          /**< Bits folded per byte.                */
@@ -136,8 +135,8 @@ volatile uint32_t g_etoc_heartbeat = 0U;
 
 /** @brief Opened book (large -- file-scope, not on the stack). */
 static ra8_epub_book_t s_book;
-/** @brief Whole-.epub read buffer; must outlive @ref s_book (zip points in). */
-static uint8_t s_epub_buf[k_etoc_epub_cap];
+/** @brief Streamed-open source-file context; must outlive @ref s_book (#230). */
+static ra8_epub_stream_fs_ctx_t s_epub_io;
 /** @brief SD backend; file-scope so the mount handle may reference it. */
 static ra8_fs_backend_t s_backend;
 
@@ -345,7 +344,7 @@ static void etoc_read_toc(ra8_fs_mount_t*    mount,
                           volatile uint32_t* e0crc,
                           volatile uint32_t* ch0)
 {
-  if (ra8_epub_open_fs(mount, path, s_epub_buf, (size_t)k_etoc_epub_cap, &s_book) != k_ra8_ok) {
+  if (ra8_epub_open_streamed_fs(mount, path, &s_epub_io, &s_book) != k_ra8_ok) {
     etoc_fail(stage, fmsg, fmsglen);
   }
   uint8_t  k = 0U;
@@ -368,7 +367,7 @@ static void etoc_read_toc(ra8_fs_mount_t*    mount,
     *e0crc = etoc_title_crc(entry.title);
     *ch0   = (uint32_t)chap;
   }
-  (void)ra8_epub_close(&s_book);
+  (void)ra8_epub_close_streamed_fs(&s_epub_io, &s_book);
 }
 
 /** @brief Parse + assert the NCX (EPUB2) TOC; latch the result globals. */
@@ -420,8 +419,7 @@ static void etoc_check_nav(ra8_fs_mount_t* mount)
  */
 static void etoc_check_bad(ra8_fs_mount_t* mount)
 {
-  if (ra8_epub_open_fs(mount, k_etoc_path_bad, s_epub_buf, (size_t)k_etoc_epub_cap, &s_book) !=
-      k_ra8_ok) {
+  if (ra8_epub_open_streamed_fs(mount, k_etoc_path_bad, &s_epub_io, &s_book) != k_ra8_ok) {
     etoc_fail((uint32_t)k_etoc_err_bad, k_msg_fbad, (uint32_t)sizeof(k_msg_fbad) - 1U);
   }
   uint8_t  kind = (uint8_t)k_etoc_kind_unset;
@@ -435,7 +433,7 @@ static void etoc_check_bad(ra8_fs_mount_t* mount)
   if ((kind != (uint8_t)k_etoc_bad_kind) || (chap != (uint16_t)k_etoc_exp_chap)) {
     etoc_fail((uint32_t)k_etoc_err_bad, k_msg_fbad, (uint32_t)sizeof(k_msg_fbad) - 1U);
   }
-  (void)ra8_epub_close(&s_book);
+  (void)ra8_epub_close_streamed_fs(&s_epub_io, &s_book);
 }
 
 #pragma GCC diagnostic push
