@@ -346,29 +346,36 @@ void tx_application_define(void* first_unused_memory)
   /* Arm the WDT + start the check-in supervisor before any worker runs. */
   ns_wdt_setup();
 
-  /* Create the UI thread */
-  (void)tx_thread_create(&s_ui_thread,
-                         "UI Thread",
-                         ui_thread_entry,
-                         0UL,
-                         s_ui_thread_stack,
-                         k_ns_ui_thread_stack_size,
-                         k_ns_ui_priority, /* Priority             */
-                         k_ns_ui_priority, /* Preemption threshold */
-                         TX_NO_TIME_SLICE,
-                         TX_AUTO_START);
+  /* Create the UI thread. A failed create is unrecoverable this early: the
+   * WDT supervisor already registered the "ui"/"sys" deadlines, so a missing
+   * worker would only surface later as a silent watchdog boot-loop -- panic
+   * now instead, like every other NS bring-up failure in this file. */
+  if (tx_thread_create(&s_ui_thread,
+                       "UI Thread",
+                       ui_thread_entry,
+                       0UL,
+                       s_ui_thread_stack,
+                       k_ns_ui_thread_stack_size,
+                       k_ns_ui_priority, /* Priority             */
+                       k_ns_ui_priority, /* Preemption threshold */
+                       TX_NO_TIME_SLICE,
+                       TX_AUTO_START) != TX_SUCCESS) {
+    ns_panic_halt();
+  }
 
   /* Create the System/Storage thread */
-  (void)tx_thread_create(&s_sys_thread,
-                         "System Thread",
-                         sys_thread_entry,
-                         0UL,
-                         s_sys_thread_stack,
-                         k_ns_sys_thread_stack_size,
-                         k_ns_sys_priority, /* Priority             */
-                         k_ns_sys_priority, /* Preemption threshold */
-                         TX_NO_TIME_SLICE,
-                         TX_AUTO_START);
+  if (tx_thread_create(&s_sys_thread,
+                       "System Thread",
+                       sys_thread_entry,
+                       0UL,
+                       s_sys_thread_stack,
+                       k_ns_sys_thread_stack_size,
+                       k_ns_sys_priority, /* Priority             */
+                       k_ns_sys_priority, /* Preemption threshold */
+                       TX_NO_TIME_SLICE,
+                       TX_AUTO_START) != TX_SUCCESS) {
+    ns_panic_halt();
+  }
 }
 
 /**

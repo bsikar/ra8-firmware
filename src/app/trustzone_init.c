@@ -43,8 +43,11 @@
  *    (checked by ``ra8_tz_secure_boot_jump_ns``).
  *  - **Trusts:** the boot ROM left the SAU disabled and the IDAU in its
  *    documented reset state (fixed bit[28] split).
- *  - **Denies:** any return path from ``ra8_tz_secure_boot_jump_ns`` on
- *    hardware -- BLXNS leaves Secure thread mode.
+ *  - **Denies:** treating the NS world as live on any
+ *    ``ra8_tz_secure_boot_jump_ns`` return. On hardware a successful BLXNS
+ *    leaves Secure thread mode and never returns; a returned denial verdict
+ *    is latched in ::g_tz_jump_ns_err and boot falls back to the S-side
+ *    ``main()``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -191,6 +194,21 @@ volatile uint32_t g_tz_usb_pins_err;
  * @since 0.1.0
  */
 volatile uint32_t g_tz_usb_expander_err;
+
+/**
+ * @var g_tz_jump_ns_err
+ * @brief Denial verdict from ::ra8_tz_secure_boot_jump_ns (0 = never denied).
+ * @details On hardware ::ra8_tz_secure_boot_jump_ns only returns when it
+ *          REFUSED to branch: the NS vector table failed validation or the
+ *          root-of-trust gate rejected the NS image. The verdict is latched
+ *          here so a J-Link probe can tell "NS image denied" apart from "SAU
+ *          programming failed" when the S-side fallback main() is reached
+ *          instead of the NS world.
+ * @note Written once by ::ra8_trustzone_init on the denial path; read
+ *       externally by J-Link.
+ * @since 0.1.0
+ */
+volatile uint32_t g_tz_jump_ns_err;
 
 /**
  * @enum tz_prcr_t
@@ -644,9 +662,18 @@ void ra8_trustzone_init(void)
 
   /* 5. BLXNS into the NS reset vector (slot 1 of the NS vector table at the
    *    fixed run base 0x3210_0000). Does not return on hardware. */
-  (void)ra8_tz_secure_boot_jump_ns((const uint32_t*)(uintptr_t)k_tz_ns_run_base);
+  const ra8_err_t jump_err =
+    ra8_tz_secure_boot_jump_ns((const uint32_t*)(uintptr_t)k_tz_ns_run_base);
+  if (jump_err != k_ra8_ok) {
+    /* Reached on hardware ONLY when the NS image was DENIED (vector-table
+     * validation or the root-of-trust gate failed). Latch the verdict for a
+     * J-Link probe and fall through to the S-side main() fallback -- never
+     * treat the NS world as live. */
+    g_tz_jump_ns_err = (uint32_t)jump_err;
+    return;
+  }
 
-  /* On host (RA8_SIMULATOR_MODE) the library stubs BLXNS and returns; on
-   * target this is unreachable. */
+  /* On host (RA8_SIMULATOR_MODE) the library stubs BLXNS and returns
+   * k_ra8_ok; on target this point is unreachable. */
 #endif
 }
