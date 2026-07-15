@@ -12,10 +12,9 @@ The board:
 3. Runs an Mbed TLS handshake over the NetX TCP socket. RSIP TRNG
    feeds the PSA crypto layer through the
    `mbedtls_psa_external_get_random()` hook (`MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG`).
-   The AES / SHA-256 RSIP-E50D fast paths are wired as scaffolding in
-   `port/mbedtls/` but Mbed TLS 4.x replaced the legacy `*_ALT` hook
-   with the PSA driver wrapper interface, which is a follow-up sweep --
-   the current handshake runs the portable C primitives.
+   The handshake runs the portable C primitives: Mbed TLS 4.x replaced
+   the legacy `*_ALT` hooks with the PSA driver wrapper interface, and
+   `port/mbedtls/` is config-headers only (no hardware fast paths).
 4. Pins the peer leaf certificate by SHA-256 (compile-time constant
    in `main.c`); a mismatch aborts the request.
 5. Sends `GET / HTTP/1.1\r\nHost: www.example.com\r\n\r\n` and
@@ -98,12 +97,10 @@ configuration keeps building cleanly.
   `port/mbedtls/inc/mbedtls_config.h` (TLS / X.509 surface) and
   `port/mbedtls/inc/tf_psa_crypto_config.h` (PSA crypto + builtin driver
   surface).
-- RSIP wiring of AES / SHA-256 / RSA / ECDH primitives to PSA crypto
-  driver wrappers is a follow-up sweep -- the
-  `port/mbedtls/mbedtls_aes_alt.{c,h}` /
-  `port/mbedtls/mbedtls_sha256_alt.{c,h}` scaffolding from the 3.x
-  ALT-style port is intentionally not compiled (4.x removed those
-  hooks).
+- No crypto primitives are routed to RSIP hardware: Mbed TLS 4.x
+  removed the 3.x `*_ALT` hooks, and the RSIP AES / SHA engines are
+  not functional on this silicon anyway. `port/mbedtls/` is
+  config-headers only.
 
 ## BSP usage
 
