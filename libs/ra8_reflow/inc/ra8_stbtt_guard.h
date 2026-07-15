@@ -41,21 +41,33 @@
  *
  * @details
  * Mirrors exactly the reads `stbtt_InitFont()` / `stbtt__find_table()` make
- * while walking the sfnt offset table and table directory, and confirms each
- * one stays inside `[0, len)`:
+ * while walking the sfnt offset table, table directory, and the table-internal
+ * fields InitFont reads, and confirms each one stays inside `[0, len)`:
  *  1. The 12-byte offset table (sfnt version, `numTables`, and the three
  *     binary-search hint fields) must fit: `fontstart + 12 <= len`.
  *  2. The whole table directory must fit:
  *     `fontstart + 12 + numTables * 16 <= len`.
  *  3. Every table record's declared extent must fit: for each record,
  *     `tableOffset + tableLength <= len`.
+ *  4. The fields `stbtt_InitFont()` reads *inside* cmap / head / maxp must fit.
+ *     Most importantly, InitFont strides the cmap encoding-record sub-directory
+ *     as `cmap + 4 + 8 * numTables` using a `numTables` it trusts from inside
+ *     the cmap table -- a value the table's declared length does not bound, so
+ *     a crafted count (up to 65535) drives a ~512 KiB out-of-bounds read. This
+ *     check requires `cmap + 4 + 8 * numTables <= len`, plus the fixed
+ *     `head + 52 <= len` and `maxp + 6 <= len` extents InitFont's other
+ *     table-internal reads need.
  *
  * All arithmetic is performed in `uint64_t` so that a hostile `fontstart`
  * (up to `UINT32_MAX`, e.g. a crafted TrueType-collection sub-font offset) or
  * a hostile per-table offset/length cannot overflow the bound computation.
- * The function does not validate that each field a downstream stb_truetype
- * read touches lies within its owning table -- only that no read escapes the
- * caller-supplied buffer, which is what closes the memory-safety hole.
+ * The function bounds every read `stbtt_InitFont()` itself issues. It does NOT
+ * bound the deeper reads the glyph-lookup / rasterisation path makes after init
+ * (`stbtt_FindGlyphIndex` following an attacker-controlled cmap subtable offset,
+ * then the loca / glyf outline walk); stb_truetype does not bound those against
+ * the buffer either, so a crafted font can still drive an out-of-bounds read
+ * there. Hardening that deeper path is tracked separately as parser hardening
+ * (issue #179); it is a much larger change than this directory pre-check.
  *
  * @param[in] data      Pointer to the first byte of the font buffer.
  * @param[in] len       Length of the font buffer, bytes.
@@ -64,16 +76,18 @@
  *                      a TrueType collection). This is the same value passed
  *                      as the `offset` argument to `stbtt_InitFont()`.
  *
- * @return `true` if the offset table and every table record lie fully within
- *         the buffer; `false` otherwise.
+ * @return `true` if the offset table, every table record, and every cmap /
+ *         head / maxp field InitFont reads lie fully within the buffer;
+ *         `false` otherwise.
  * @retval true  The directory is in bounds; `stbtt_InitFont()` may safely walk it.
  * @retval false @p data is `nullptr`, or the offset table / directory / any
- *               table record extends past @p len -- reject the font.
+ *               table record / a cmap-head-maxp internal read extends past
+ *               @p len -- reject the font.
  *
  * @pre @p data references at least @p len readable bytes (or is `nullptr`).
  * @pre @p len is the true byte length of the buffer @p data points to.
  * @post @p data and the buffer it points to are unmodified (pure read).
- * @post No read is issued outside `[data, data + len)`.
+ * @post No read `stbtt_InitFont()` issues lands outside `[data, data + len)`.
  *
  * @note Thread-safe and re-entrant: no shared or static state, no allocation.
  *

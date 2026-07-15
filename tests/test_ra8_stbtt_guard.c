@@ -92,6 +92,27 @@ static const uint8_t s_bad_dir_record[28] = {
 };
 
 /**
+ * @brief A crafted font whose cmap record fits but whose in-table encoding
+ *        count overruns the buffer (the fuzz-found #239 out-of-bounds read).
+ * @details The top-level directory is well-formed: one record tagged "cmap" at
+ *          offset 28, declared length 4 (28 + 4 == 32 == buffer len), so checks
+ *          (1)-(3) pass. The cmap table's internal numTables field is 0xFFFF, so
+ *          `stbtt_InitFont` would stride `cmap + 4 + 8 * 0xFFFF` (~512 KiB) past
+ *          the buffer. Check (4) reads that count and rejects it.
+ */
+static const uint8_t s_bad_cmap_subdir[32] = {
+  0x00U, 0x01U, 0x00U, 0x00U,               /* sfnt version 1.0              */
+  0x00U, 0x01U,                             /* numTables = 1                 */
+  0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, /* search hints (ignored)        */
+  0x63U, 0x6DU, 0x61U, 0x70U,               /* record 0: tag "cmap"          */
+  0x00U, 0x00U, 0x00U, 0x00U,               /* record 0: checksum            */
+  0x00U, 0x00U, 0x00U, 0x1CU,               /* record 0: offset 28           */
+  0x00U, 0x00U, 0x00U, 0x04U,               /* record 0: length 4 (fits)     */
+  0x00U, 0x00U,                             /* cmap version 0                */
+  0xFFU, 0xFFU,                             /* cmap numTables = 65535 (huge) */
+};
+
+/**
  * @brief A 10-byte buffer: shorter than the 12-byte sfnt offset table.
  * @details The header-fits check rejects it before numTables is ever read.
  */
@@ -227,17 +248,40 @@ static void test_guard_rejects_out_of_range_record(void)
 }
 
 /**
+ * @test test_guard_rejects_bad_cmap_subdir
+ *
+ * @par MC/DC:
+ * Decision: `if (sub_end > buf_len)` inside the cmap arm of
+ * priv_table_internal_in_bounds
+ * (libs/ra8_reflow/src/ra8_stbtt_guard.c@priv_table_internal_in_bounds), plus
+ * the `tag == k_sfnt_tag_cmap` branch selection.
+ * - Vector T (this test): a well-formed directory whose cmap record fits but
+ *   whose in-table numTables is 0xFFFF -> `cmap + 4 + 8 * 0xFFFF` >> 32-byte
+ *   buffer -> true -> reject before `stbtt_InitFont` strides the sub-directory.
+ * - Vector F (test_guard_accepts_valid_font): the Ahem face has a cmap whose
+ *   sub-directory fits -> false, so the tag-cmap branch is taken with the
+ *   bound satisfied. The T/F pair completes MC/DC for the cmap internal check.
+ */
+static void test_guard_rejects_bad_cmap_subdir(void)
+{
+  TEST_BEGIN("ra8_stbtt guard: cmap in-table subdir overrun rejected");
+  TEST_ASSERT(!ra8_stbtt_sfnt_dir_in_bounds(s_bad_cmap_subdir, sizeof s_bad_cmap_subdir, 0U));
+  TEST_END("ra8_stbtt guard: cmap in-table subdir overrun rejected");
+}
+
+/**
  * @test test_guard_accepts_valid_font
  *
  * @par MC/DC:
  * Provides the all-false control (accept) vector for every 1-condition
- * decision in ra8_stbtt_sfnt_dir_in_bounds
+ * decision in ra8_stbtt_sfnt_dir_in_bounds and its helper
  * (libs/ra8_reflow/src/ra8_stbtt_guard.c@ra8_stbtt_sfnt_dir_in_bounds):
- * - The bundled Ahem face: data != nullptr, header fits, directory fits, and
- *   every record's extent fits -> all four checks false -> return true. This
- *   supplies the F vector paired with the T vectors in the four reject tests
- *   above, completing MC/DC for each check, and exercises the record loop's
- *   in-bounds arm across many records.
+ * - The bundled Ahem face: data != nullptr, header fits, directory fits, every
+ *   record's extent fits, and every cmap / head / maxp internal read fits ->
+ *   all checks false -> return true. This supplies the F vector paired with the
+ *   T vectors in the reject tests above (including the cmap-subdir check),
+ *   completing MC/DC for each, and exercises the record loop's in-bounds arm
+ *   across many records with the cmap / head / maxp tag branches taken.
  * - A 12-byte zero-table header: header + directory fit and the record loop
  *   is skipped (numTables == 0) -> return true, covering the loop-not-taken
  *   edge.
@@ -348,6 +392,7 @@ int main(void)
   test_guard_rejects_short_header();
   test_guard_rejects_truncated_directory();
   test_guard_rejects_out_of_range_record();
+  test_guard_rejects_bad_cmap_subdir();
   test_guard_accepts_valid_font();
   test_bind_font_rejects_bad_directory();
   test_register_face_rejects_bad_directory();
