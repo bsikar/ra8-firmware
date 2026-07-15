@@ -52,6 +52,7 @@ EXTENSIONS = {
     ".h",
     ".cpp",
     ".hpp",
+    ".dox",
     ".md",
     ".yml",
     ".yaml",
@@ -65,12 +66,15 @@ EXTENSIONS = {
     ".tex",
     ".txt",
     ".ini",
+    ".ld",
+    ".s",
+    ".m",
 }
 
 
 # Vendored / generated trees we don't author -- skip wholesale.
 # Mirrors check_no_ai_attribution.py and check_line_citations.py.
-EXCLUDED_PARTS = {"third_party", "_deps", "build", "build-cov"}
+EXCLUDED_PARTS = {"third_party", "_deps", "build", "build-cov", "doxygen_theme", "fixtures"}
 
 # Largest code point in 7-bit ASCII (U+007F).
 MAX_ASCII_CODEPOINT = 127
