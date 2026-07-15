@@ -163,6 +163,7 @@ help:
 	@echo "  make version           verify @since tags match the VERSION file"
 	@echo "  make test              host-compile + run unit tests (tests/build/)"
 	@echo "  make test-cov          alias for make mcdc (tests/build-cov/)"
+	@echo "  make ubsan             host tests under UBSan (tests/build-ubsan/; PR gate)"
 	@echo "  make test-docker       host-compile + run unit tests in Linux container"
 	@echo "  make ctest             rerun just ctest (assumes already built)"
 	@echo "  make coverage          generate lcov+genhtml HTML coverage report"
@@ -350,40 +351,21 @@ ctest:
 
 # `make fuzz` -- build every libFuzzer harness (clang only; opt-in via
 # RA8_FUZZ=ON) and run each for ~30 seconds as a smoke check. Crash
-# artefacts land in tests/build-fuzz/crashes/<target>/. For longer
-# fuzz sessions on a single target, use scripts/utils/run_fuzz.sh.
-# See docs/FUZZING.md.
-FUZZ_BUILD    := $(TESTS_DIR)/build-fuzz
+# artefacts land in tests/build-fuzz/crashes/<target>/. The harness
+# registry, compiler selection, and run loop all live in
+# scripts/utils/run_fuzz.sh (single source of truth; the nightly CI sweep
+# .github/workflows/fuzz-nightly.yml calls the same script with a longer
+# budget). FUZZ_RUNS caps trivial targets so they finish before the wall
+# budget. For longer sessions on a single target, call run_fuzz.sh with a
+# target name. See docs/FUZZING.md.
 FUZZ_SECONDS  ?= 30
-FUZZ_TARGETS  := fuzz_ra8_jpeg_sw fuzz_ra8_jpeg_sw_block fuzz_ra8_epub fuzz_ra8_modem_at \
-                 fuzz_ra8_ble_att fuzz_ra8_usb_pal fuzz_ra8_tls fuzz_ra8_canfd \
-                 fuzz_ra8_etha fuzz_ra8_fs_fat fuzz_ra8_stb_image fuzz_ra8_reflow_xml \
-                 fuzz_ra8_stbtt
-FUZZ_CC       ?= clang
-FUZZ_CXX      ?= clang++
+FUZZ_RUNS     ?= 10000
+FUZZ_CC       ?=
+FUZZ_CXX      ?=
 
 fuzz:
-	@command -v $(FUZZ_CC) >/dev/null 2>&1 || { \
-	  echo "ERROR: $(FUZZ_CC) not found -- libFuzzer requires clang."; exit 1; }
-	$(CMAKE) -S $(TESTS_DIR) -B $(FUZZ_BUILD) \
-	    -DRA8_FUZZ=ON -DRA8_COVERAGE=OFF \
-	    -DCMAKE_C_COMPILER=$(FUZZ_CC) \
-	    -DCMAKE_CXX_COMPILER=$(FUZZ_CXX) \
-	    -DCMAKE_BUILD_TYPE=Debug
-	$(CMAKE) --build $(FUZZ_BUILD) --target ra8_fuzz_all -j
-	@bash scripts/utils/init_fuzz_corpora.sh
-	@for t in $(FUZZ_TARGETS); do \
-	  echo "==== Running $$t for $(FUZZ_SECONDS)s ===="; \
-	  mkdir -p $(FUZZ_BUILD)/crashes/$$t; \
-	  $(FUZZ_BUILD)/fuzz/$$t \
-	      tests/fuzz/corpus/$$t \
-	      -max_total_time=$(FUZZ_SECONDS) \
-	      -runs=10000 \
-	      -print_final_stats=1 \
-	      -artifact_prefix=$(FUZZ_BUILD)/crashes/$$t/ \
-	    || { echo "FUZZ FAIL: $$t"; exit 1; }; \
-	done
-	@echo "All fuzz smoke runs passed."
+	@CC="$(FUZZ_CC)" CXX="$(FUZZ_CXX)" FUZZ_RUNS="$(FUZZ_RUNS)" \
+	  bash scripts/utils/run_fuzz.sh --all "$(FUZZ_SECONDS)"
 
 docs:
 	bash scripts/build_docs.sh
