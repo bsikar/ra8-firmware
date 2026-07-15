@@ -30,7 +30,7 @@
 #      configuration headers only -- no shim sources.)
 #
 # Apps that want Mbed TLS link against ``mbedtls`` and
-# ``mbedtls_port_ra8_rsip``; everything else (include dirs, defines,
+# ``mbedtls_port_ra8_config``; everything else (include dirs, defines,
 # wrap link options) flows through the interface targets.
 #
 # Copyright (c) 2026 Brighton Sikarskie
