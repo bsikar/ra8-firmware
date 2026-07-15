@@ -22,14 +22,12 @@
 #      mbedtls + crypto config files pinned via
 #      ``-DMBEDTLS_CONFIG_FILE`` / ``-DTF_PSA_CRYPTO_CONFIG_FILE`` so
 #      every TU sees the same surface.
-#   3. Pulls in our ``port/mbedtls/`` shim. The port's include
-#      directory is INTERFACE-prepended on the consumer-facing
+#   3. Pulls in our config-only ``port/mbedtls/`` port. The port's
+#      include directory is INTERFACE-prepended on the consumer-facing
 #      ``mbedtls`` target. (In Mbed TLS 4.x the legacy
 #      ``MBEDTLS_AES_ALT`` / ``MBEDTLS_SHA256_ALT`` hooks have been
-#      replaced by the PSA driver wrapper interface; the port shim
-#      sources are kept compiling as scaffolding for a future
-#      RSIP-via-PSA-driver wave but they are not currently dispatched
-#      to.)
+#      replaced by the PSA driver wrapper interface, so the port ships
+#      configuration headers only -- no shim sources.)
 #
 # Apps that want Mbed TLS link against ``mbedtls`` and
 # ``mbedtls_port_ra8_rsip``; everything else (include dirs, defines,
@@ -121,8 +119,9 @@ if(NOT EXISTS "${_RA8_TFPSA_CORE_DIR}/psa_crypto_driver_wrappers.h")
         "submodule + jsonschema + jinja2).")
 endif()
 
-# Pull in the port shim FIRST so its include dir is visible when the
-# upstream library sources (compiled below) reach for the ALT headers.
+# Pull in the config-only port FIRST so its include dir is visible
+# when the upstream library sources (compiled below) resolve the
+# project configuration headers.
 add_subdirectory(${_RA8_MBEDTLS_PORT_DIR}
                  ${CMAKE_BINARY_DIR}/port_mbedtls)
 
