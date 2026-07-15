@@ -115,6 +115,25 @@ jobs:
         run: bash tests/run_tests.sh
 
   # ---------------------------------------------------------------------------
+  # UBSan gate (#239) -- the whole host suite rebuilt under
+  # -fsanitize=undefined in its own tree (tests/build-ubsan/), with
+  # UBSAN_OPTIONS=halt_on_error=1 so any undefined behaviour is a hard test
+  # failure. This was a local-only tool while ~8 tests injected register
+  # events via a SIGALRM/setitimer wall-clock race that flaked under
+  # sanitizer slowdown; the injection now goes through the deterministic
+  # ra8_sim_mmio poll-hook (synchronous, on the driver's own thread), so the
+  # suite is load-stable and the gate can block PRs.
+  # ---------------------------------------------------------------------------
+  ubsan:
+    name: UBSan (host tests)
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build + run host tests under UBSan
+        run: make ubsan
+
+  # ---------------------------------------------------------------------------
   # #147/#160 cache-benchmark toolchain -- builds + runs cache_bench (the SLRU
   # decision record), reader_vmem (drives the REAL ra8_vmem with a reader
   # workload and emits a cache_bench-consumable trace), and glyph_bench (sweeps

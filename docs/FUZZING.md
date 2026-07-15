@@ -28,10 +28,13 @@ the device (network, modem, removable media):
 | `fuzz_ra8_reflow_xml`| `ra8_epub_xml_parse_opf/ncx/nav()` (tinyxml2 XML parse)  | EPUB manifest / TOC (XML)    |
 | `fuzz_ra8_stbtt`     | `stbtt_InitFont()` + glyph raster (stb_truetype font)   | EPUB embedded fonts          |
 
-Add a new harness by dropping `tests/fuzz/fuzz_<x>.c` next to the
-existing files, listing it in `tests/fuzz/CMakeLists.txt`
-(`RA8_FUZZ_TARGETS`), and (if you want it in the smoke run) adding it to
-`FUZZ_TARGETS` in the top-level `Makefile`.
+Add a new harness by dropping `tests/fuzz/fuzz_ra8_<x>.c` next to the
+existing files and listing it in `tests/fuzz/CMakeLists.txt`
+(`RA8_FUZZ_TARGETS`). That registry is the single source of truth:
+`scripts/utils/run_fuzz.sh --list` parses it, cross-checks it against
+the `tests/fuzz/fuzz_ra8_*.c` sources (drift in either direction is a
+hard error), and both `make fuzz` and the nightly CI sweep consume it
+through that script -- there is no second list to update.
 
 ## Running
 
@@ -39,14 +42,17 @@ existing files, listing it in `tests/fuzz/CMakeLists.txt`
 
     make fuzz
 
-This configures `tests/build-fuzz/` with `-DRA8_FUZZ=ON`, builds every
-harness, then runs each one with `-max_total_time=30 -runs=10000`. The
-target build is skipped when no source changed; subsequent invocations
-only re-run the harnesses.
+This delegates to `scripts/utils/run_fuzz.sh --all`, which configures
+`tests/build-fuzz/` with `-DRA8_FUZZ=ON`, builds every harness, then
+runs each one with `-max_total_time=30 -runs=10000`. The target build
+is skipped when no source changed; subsequent invocations only re-run
+the harnesses.
 
-Override the budget per harness:
+Override the budget per harness (and the run cap, which exists so
+trivial targets finish before the wall budget):
 
     FUZZ_SECONDS=120 make fuzz
+    FUZZ_RUNS= make fuzz          # no -runs cap, wall budget only
 
 ### Long-form session on one target
 
@@ -55,12 +61,29 @@ Override the budget per harness:
 The script reuses the same `tests/build-fuzz/` tree and writes any
 crash inputs to `tests/build-fuzz/crashes/<target>/`.
 
+### Sweep every harness with one budget
+
+    bash scripts/utils/run_fuzz.sh --all 300
+
+Unlike a shell loop over single-target runs, `--all` keeps going after
+a crashing target (so one crash cannot mask another), then exits
+non-zero listing every failed harness.
+
+### Nightly CI sweep
+
+`.github/workflows/fuzz-nightly.yml` runs `run_fuzz.sh --all` every
+night (and on manual `workflow_dispatch`, where the per-target budget
+is an input; default 600 s). The job fails on any crash and uploads
+`tests/build-fuzz/crashes/` plus the full sweep log as artifacts.
+
 ## Toolchain requirements
 
 - `clang` (any version with libFuzzer; the project is verified with
   `clang-18` on Linux). gcc has no `-fsanitize=fuzzer` support and the
   build will refuse to configure if the active C compiler is not
-  clang.
+  clang. `run_fuzz.sh` auto-selects the first clang on PATH that can
+  link `-fsanitize=fuzzer` (bare `clang` first, then versioned majors
+  newest-first); pin one explicitly with `CC=clang-18 CXX=clang++-18`.
 - AddressSanitizer + UndefinedBehaviorSanitizer runtimes (shipped with
   clang automatically; no separate install).
 
@@ -142,7 +165,7 @@ reproducer file in `tests/build-fuzz/crashes/<target>/crash-<sha1>`.
 For each crash:
 
 1. Confirm the reproducer with
-   `tests/build-fuzz/<target> tests/build-fuzz/crashes/<target>/crash-<sha1>`.
+   `tests/build-fuzz/fuzz/<target> tests/build-fuzz/crashes/<target>/crash-<sha1>`.
 2. Add a regression test under `tests/test_<module>.c` that loads the
    reproducer (or a hand-minimised version) and asserts the parser
    returns an error code instead of crashing.

@@ -18,7 +18,7 @@
 #
 # Usage (host):
 #   bash scripts/ci.sh            # full gate suite (mirrors firmware.yml)
-#   bash scripts/ci.sh --fast     # skip the slow clang-tidy + coverage gates
+#   bash scripts/ci.sh --fast     # skip the slow clang-tidy/coverage/ubsan gates
 #   bash scripts/ci.sh --rebuild  # force a devcontainer image rebuild first
 #
 # The script re-enters itself inside the container with RA8_CI_INNER=1, where it
@@ -184,6 +184,11 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
     bash scripts/coverage.sh --gate
   }
 
+  # --- gate: UBSan host tests (firmware.yml job: ubsan) --------------------
+  gate_ubsan() {
+    make ubsan
+  }
+
   run_gate "clang-format" gate_clang_format
   run_gate "cppcheck" gate_cppcheck
   run_gate "pre-commit-checks" gate_precommit_checks
@@ -193,11 +198,12 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
   run_gate "host-tests" gate_host_tests
   if [[ "$fast" != "1" ]]; then
     run_gate "coverage" gate_coverage
+    run_gate "ubsan" gate_ubsan
   fi
 
   echo ""
   echo "==================================================================="
-  echo "== make ci summary$([[ "$fast" == "1" ]] && echo "  (--fast: clang-tidy + coverage skipped)")"
+  echo "== make ci summary$([[ "$fast" == "1" ]] && echo "  (--fast: clang-tidy + coverage + ubsan skipped)")"
   echo "==================================================================="
   failed=0
   idx=0
@@ -222,7 +228,7 @@ fast=0
 rebuild=0
 usage() {
   echo "usage: bash scripts/ci.sh [--fast] [--rebuild]"
-  echo "  --fast     skip the slow clang-tidy + coverage gates"
+  echo "  --fast     skip the slow clang-tidy + coverage + ubsan gates"
   echo "  --rebuild  force a devcontainer image rebuild first"
 }
 for arg in "$@"; do
