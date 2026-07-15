@@ -5,8 +5,17 @@
  * @details
  * Drives the touch driver against the host ``ra8_sim_mmap`` substrate.
  * Status flags for the underlying IIC_B channel are pre-armed so the
- * polling driver does not time out, and the GT911 wire-format parser
- * is verified directly through the ``ra8_touch_test_decode`` test hook.
+ * polling driver does not time out. Lifecycle, bus-path, and handler
+ * dispatch are covered here.
+ *
+ * The driver's injected ``ra8_i2c_bus_ops_t`` seam is filled with a
+ * test-local controllable-RX trampoline layered over the real
+ * i3c-i2c-compat bus model: reads of a scripted GT911 register pointer
+ * return a chosen byte stream (the real model can only echo the address
+ * byte), everything else forwards to the bound bus. This is what lets
+ * the product-id VALUE check and the exact status-byte read legs run on
+ * the host (#234). The wire-format parser tests live in
+ * ``test_ra8_touch_decode.c``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -31,19 +40,10 @@
  * @enum ra8_touch_test_const_t
  * @brief Test-only constants (no magic numbers).
  */
-typedef enum : uint16_t {
-  k_test_max_points_default = 5U,
-  k_test_irq_pin_unused     = 32U, /**< Same as ::k_ra8_touch_irq_pin_unset. */
-  k_test_x_one              = 0x0123U,
-  k_test_y_one              = 0x0456U,
-  k_test_x_two              = 0x07F0U,
-  k_test_y_two              = 0x0218U,
-  k_test_x_three            = 0x0099U,
-  k_test_y_three            = 0x012CU,
-  k_test_x_five_a           = 0x0001U,
-  k_test_y_five_a           = 0x0002U,
-  k_test_max_count_wide     = 8U, /**< Read cap above the 5-point hard limit. */
-  k_test_decode_hw_over     = 7U, /**< Decode n_points/max_count above 5.     */
+typedef enum : uint8_t {
+  k_test_max_points_default = 5U,  /**< Caller cap matching the hw limit.      */
+  k_test_irq_pin_unused     = 32U, /**< Same as ::k_ra8_touch_irq_pin_unset.   */
+  k_test_max_count_wide     = 8U,  /**< Read cap above the 5-point hard limit. */
 } ra8_touch_test_const_t;
 
 /**
@@ -51,16 +51,11 @@ typedef enum : uint16_t {
  * @brief Address constants used across tests.
  */
 typedef enum : uint8_t {
-  k_test_addr_default = 0x5DU,
-  k_test_addr_alt     = 0x14U,
-  k_test_addr_bad     = 0x42U,
-  k_test_pressure_one = 0x40U,
-  k_test_pressure_two = 0x80U,
-  k_test_track_zero   = 0U,
-  k_test_track_one    = 1U,
-  k_test_track_two    = 2U,
-  k_test_byte_shift   = 8U,
-  k_test_irq_pin_zero = 0U, /**< In-range ICU IRQ pin for the attach path. */
+  k_test_addr_default = 0x5DU, /**< Factory-default GT911 target address.     */
+  k_test_addr_alt     = 0x14U, /**< Alternate GT911 target address.           */
+  k_test_addr_bad     = 0x42U, /**< Address outside the GT911 pair.           */
+  k_test_byte_shift   = 8U,    /**< Bits per byte for register decoding.      */
+  k_test_irq_pin_zero = 0U,    /**< In-range ICU IRQ pin for the attach path. */
 } ra8_touch_test_addr_t;
 
 /**
@@ -88,17 +83,135 @@ typedef enum : uint32_t {
   k_test_pclka_hz = 60000000U, /**< IIC_B clock-source rate. */
 } ra8_touch_test_bus_t;
 
-/** @brief Bound I2C bus handle the injected seam's ctx points at. */
+/**
+ * @enum ra8_touch_test_script_t
+ * @brief Scripted-RX byte values presented through the trampoline seam.
+ */
+typedef enum : uint8_t {
+  k_test_pid_byte_match    = 0x39U, /**< ASCII '9' -- valid GT911 product-id byte 0. */
+  k_test_pid_byte_mismatch = 0x35U, /**< ASCII '5' -- foreign-IC product-id byte 0.  */
+  k_test_status_ready_zero = 0x80U, /**< Status: buffer-ready (bit7), zero contacts. */
+  k_test_status_ready_one  = 0x81U, /**< Status: buffer-ready (bit7), one contact.   */
+} ra8_touch_test_script_t;
+
+/** @brief Bound I2C bus handle the forwarding trampolines drain into. */
 static ra8_io_i2c_bus_t s_bus;
-/** @brief Seam filled from ::s_bus by ``ra8_io_i2c_bus_as_ops`` in prep(). */
+/** @brief Real seam filled from ::s_bus by ``ra8_io_i2c_bus_as_ops`` in prep(). */
 static ra8_i2c_bus_ops_t s_bus_ops;
 /** @brief Standard config used by happy-path tests (filled in prep()). */
 static ra8_touch_cfg_t s_cfg_default;
 
+/* =============================================================================
+ * Controllable-RX bus trampoline (#234)
+ *
+ * The real i3c-i2c-compat host model can only echo the address byte on
+ * reads, so it can never present a valid GT911 product id (or an exact
+ * status byte). These trampolines wrap the real seam: a read of a
+ * scripted register pointer returns a chosen byte stream, everything
+ * else forwards to ::s_bus_ops.
+ * =============================================================================
+ */
+
+/** @brief When true, product-id reads return ::s_script_pid_byte0. */
+static bool s_script_pid_armed;
+/** @brief Scripted PRODUCT_ID byte 0 ('9' accepts, anything else rejects). */
+static uint8_t s_script_pid_byte0;
+/** @brief When true, status reads return ::s_script_status_byte. */
+static bool s_script_status_armed;
+/** @brief Scripted STATUS byte (bit7 ready, bits[3:0] contact count). */
+static uint8_t s_script_status_byte;
+
+/**
+ * @brief Forwarding trampoline for the seam's ``write`` row.
+ */
+static ra8_err_t
+tramp_write(void* ctx, uint8_t addr, const uint8_t* data, uint32_t len, bool send_stop)
+{
+  const ra8_i2c_bus_ops_t* real = ctx;
+  return real->write(real->ctx, addr, data, len, send_stop);
+}
+
+/**
+ * @brief Forwarding trampoline for the seam's ``read`` row.
+ */
+static ra8_err_t tramp_read(void* ctx, uint8_t addr, uint8_t* data, uint32_t len)
+{
+  const ra8_i2c_bus_ops_t* real = ctx;
+  return real->read(real->ctx, addr, data, len);
+}
+
+/**
+ * @brief Decode the 16-bit GT911 register pointer from a transfer's
+ *        write phase; 0 when the phase is not a register-pointer write.
+ */
+static uint16_t tramp_decode_reg(const uint8_t* wr, uint32_t wr_len)
+{
+  if (wr == nullptr) {
+    return 0U;
+  }
+  if (wr_len != (uint32_t)k_ra8_touch_gt911_reg_ptr_bytes) {
+    return 0U;
+  }
+  return (uint16_t)(((uint32_t)wr[0] << (uint32_t)k_test_byte_shift) | (uint32_t)wr[1]);
+}
+
+/**
+ * @brief Fill a scripted RX buffer: ``byte0`` first, zeroes after.
+ */
+static ra8_err_t tramp_fill_rx(uint8_t* rd, uint32_t rd_len, uint8_t byte0)
+{
+  if (rd == nullptr) {
+    return k_ra8_err_null_ptr;
+  }
+  for (uint32_t i = 0U; i < rd_len; i++) {
+    rd[i] = 0U;
+  }
+  if (rd_len > 0U) {
+    rd[0] = byte0;
+  }
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Controllable-RX trampoline for the seam's ``transfer`` row.
+ *
+ * @details
+ * Reads of a scripted register pointer (PRODUCT_ID / STATUS) return the
+ * scripted byte stream without touching the bus model; every other
+ * transfer forwards to the real ::s_bus_ops seam.
+ */
+static ra8_err_t tramp_transfer(void*          ctx,
+                                uint8_t        addr,
+                                const uint8_t* wr,
+                                uint32_t       wr_len,
+                                uint8_t*       rd,
+                                uint32_t       rd_len)
+{
+  const ra8_i2c_bus_ops_t* real = ctx;
+  const uint16_t           reg  = tramp_decode_reg(wr, wr_len);
+  if (s_script_pid_armed) {
+    if (reg == (uint16_t)k_ra8_touch_gt911_reg_product) {
+      return tramp_fill_rx(rd, rd_len, s_script_pid_byte0);
+    }
+  }
+  if (s_script_status_armed) {
+    if (reg == (uint16_t)k_ra8_touch_gt911_reg_status) {
+      return tramp_fill_rx(rd, rd_len, s_script_status_byte);
+    }
+  }
+  return real->transfer(real->ctx, addr, wr, wr_len, rd, rd_len);
+}
+
 /**
  * @brief Reset the simulator, bring MSTP up, and play the app's role:
- *        initialise IIC_B channel 0 and bind it through the ra8_io facade
- *        into the driver's injected seam.
+ *        initialise IIC_B channel 0, bind it through the ra8_io facade,
+ *        and wrap the resulting seam in the controllable-RX trampoline.
+ *
+ * @details
+ * The default script presents a valid GT911 product id ('9') so every
+ * open() in this file passes the always-compiled product-id VALUE
+ * check; the status script starts disarmed so read-path tests keep
+ * exercising the real bus model.
  */
 static void prep(void)
 {
@@ -112,34 +225,23 @@ static void prep(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &iic_cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_i2c_bus_bind_i3c_compat(&s_bus, 0U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_i2c_bus_as_ops(&s_bus, &s_bus_ops));
+  s_script_pid_armed                = true;
+  s_script_pid_byte0                = (uint8_t)k_test_pid_byte_match;
+  s_script_status_armed             = false;
+  s_script_status_byte              = 0U;
+  const ra8_i2c_bus_ops_t tramp_ops = {
+    .write    = tramp_write,
+    .read     = tramp_read,
+    .transfer = tramp_transfer,
+    .ctx      = &s_bus_ops,
+  };
   const ra8_touch_cfg_t cfg = {
-    .bus        = s_bus_ops,
+    .bus        = tramp_ops,
     .target_7b  = (uint8_t)k_test_addr_default,
     .irq_pin    = (uint8_t)k_test_irq_pin_unused,
     .max_points = (uint8_t)k_test_max_points_default,
   };
   s_cfg_default = cfg;
-}
-
-/**
- * @brief Pack an unsigned 16-bit value into LSB-first byte order.
- */
-static void pack_le16(uint16_t v, uint8_t* out)
-{
-  out[0] = (uint8_t)(v & 0xFFU);
-  out[1] = (uint8_t)((uint32_t)v >> (uint32_t)k_test_byte_shift);
-}
-
-/**
- * @brief Build one GT911 8-byte point record.
- */
-static void build_point(uint8_t* buf, uint8_t track, uint16_t x, uint16_t y, uint16_t size)
-{
-  buf[k_ra8_touch_gt911_point_off_track] = track;
-  pack_le16(x, &buf[k_ra8_touch_gt911_point_off_x_lsb]);
-  pack_le16(y, &buf[k_ra8_touch_gt911_point_off_y_lsb]);
-  pack_le16(size, &buf[k_ra8_touch_gt911_point_off_size_lsb]);
-  buf[k_ra8_touch_gt911_point_off_reserved] = 0U;
 }
 
 /* =============================================================================
@@ -327,129 +429,6 @@ static void test_read_before_open(void)
   TEST_ASSERT_EQ(k_ra8_err_not_initialized,
                  ra8_touch_read(pt, (uint8_t)k_test_max_points_default, &got));
   TEST_END("ra8_touch_read: not-initialized rejected");
-}
-
-/* =============================================================================
- * Decode parser (test_decode hook)
- * =============================================================================
-  *
-  * @par MC/DC:
-  * (no compound decisions in this test -- exercises the public-API
-  * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
- */
-
-static void test_decode_one_point(void)
-{
-  TEST_BEGIN("ra8_touch_test_decode: single point");
-  uint8_t raw[(uint32_t)k_ra8_touch_gt911_point_bytes] = {};
-  build_point(raw,
-              (uint8_t)k_test_track_zero,
-              (uint16_t)k_test_x_one,
-              (uint16_t)k_test_y_one,
-              (uint16_t)k_test_pressure_one);
-
-  ra8_touch_point_t pts[5U];
-  uint8_t           got = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_touch_test_decode(raw, 1U, pts, (uint8_t)k_test_max_points_default, &got));
-  TEST_ASSERT_EQ(1, got);
-  TEST_ASSERT_EQ(k_test_track_zero, pts[0].track_id);
-  TEST_ASSERT_EQ(k_test_x_one, pts[0].x);
-  TEST_ASSERT_EQ(k_test_y_one, pts[0].y);
-  TEST_ASSERT_EQ(k_test_pressure_one, pts[0].pressure);
-  TEST_END("ra8_touch_test_decode: single point");
-}
-
-/**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_decode_three_points(void)
-{
-  TEST_BEGIN("ra8_touch_test_decode: three points");
-  uint8_t raw[(uint32_t)k_ra8_touch_gt911_point_bytes * 3U] = {};
-  build_point(&raw[0U * (uint32_t)k_ra8_touch_gt911_point_bytes],
-              (uint8_t)k_test_track_zero,
-              (uint16_t)k_test_x_one,
-              (uint16_t)k_test_y_one,
-              (uint16_t)k_test_pressure_one);
-  build_point(&raw[1U * (uint32_t)k_ra8_touch_gt911_point_bytes],
-              (uint8_t)k_test_track_one,
-              (uint16_t)k_test_x_two,
-              (uint16_t)k_test_y_two,
-              (uint16_t)k_test_pressure_two);
-  build_point(&raw[2U * (uint32_t)k_ra8_touch_gt911_point_bytes],
-              (uint8_t)k_test_track_two,
-              (uint16_t)k_test_x_three,
-              (uint16_t)k_test_y_three,
-              (uint16_t)k_test_pressure_one);
-
-  ra8_touch_point_t pts[5U];
-  uint8_t           got = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_touch_test_decode(raw, 3U, pts, (uint8_t)k_test_max_points_default, &got));
-  TEST_ASSERT_EQ(3, got);
-  TEST_ASSERT_EQ(k_test_x_one, pts[0].x);
-  TEST_ASSERT_EQ(k_test_x_two, pts[1].x);
-  TEST_ASSERT_EQ(k_test_y_three, pts[2].y);
-  TEST_ASSERT_EQ(k_test_track_two, pts[2].track_id);
-  TEST_END("ra8_touch_test_decode: three points");
-}
-
-/**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_decode_five_points_max(void)
-{
-  TEST_BEGIN("ra8_touch_test_decode: five points (max)");
-  uint8_t raw[(uint32_t)k_ra8_touch_gt911_point_bytes * 5U] = {};
-  for (uint8_t i = 0U; i < 5U; i++) {
-    build_point(&raw[(uint32_t)i * (uint32_t)k_ra8_touch_gt911_point_bytes],
-                i,
-                (uint16_t)((uint32_t)k_test_x_five_a + i),
-                (uint16_t)((uint32_t)k_test_y_five_a + i),
-                (uint16_t)k_test_pressure_one);
-  }
-
-  ra8_touch_point_t pts[5U];
-  uint8_t           got = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_touch_test_decode(raw, 5U, pts, (uint8_t)k_test_max_points_default, &got));
-  TEST_ASSERT_EQ(5, got);
-  for (uint8_t i = 0U; i < 5U; i++) {
-    TEST_ASSERT_EQ(i, pts[i].track_id);
-  }
-  TEST_END("ra8_touch_test_decode: five points (max)");
-}
-
-/**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
-static void test_decode_clamp_to_max_count(void)
-{
-  TEST_BEGIN("ra8_touch_test_decode: input > max_count clamps");
-  uint8_t raw[(uint32_t)k_ra8_touch_gt911_point_bytes * 3U] = {};
-  for (uint8_t i = 0U; i < 3U; i++) {
-    build_point(&raw[(uint32_t)i * (uint32_t)k_ra8_touch_gt911_point_bytes],
-                i,
-                (uint16_t)((uint32_t)k_test_x_five_a + i),
-                (uint16_t)((uint32_t)k_test_y_five_a + i),
-                (uint16_t)k_test_pressure_one);
-  }
-  ra8_touch_point_t pts[2U];
-  uint8_t           got = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_test_decode(raw, 3U, pts, 2U, &got));
-  TEST_ASSERT_EQ(2, got);
-  TEST_END("ra8_touch_test_decode: input > max_count clamps");
 }
 
 /* =============================================================================
@@ -671,9 +650,10 @@ static void test_open_product_id_transfer_error(void)
   TEST_BEGIN("ra8_touch_open: product-id read transport error -> hw_init_failed");
   prep();
   prime_iic_b();
-  /* Drop the bus-free flag so the product-id read (open's first transfer)
-   * fails its busy gate: priv_check_product_id returns hw_init_failed instead
-   * of the fake success the deleted RA8_SIMULATOR_MODE short-circuit returned. */
+  /* Disarm the product-id script so the read forwards to the real bus,
+   * then drop the bus-free flag so that forwarded transfer (open's first)
+   * fails its busy gate: priv_check_product_id returns hw_init_failed. */
+  s_script_pid_armed             = false;
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(0U);
   reg->BCST                      = 0U;
   TEST_ASSERT_EQ(k_ra8_err_hw_init_failed, ra8_touch_open(&s_cfg_default));
@@ -681,52 +661,93 @@ static void test_open_product_id_transfer_error(void)
 }
 
 /**
- * @test test_decode_clamp_to_hw_max
+ * @test test_mcdc_open_product_id_value
  *
  * @par MC/DC:
- * (no compound decisions -- n_points and max_count both 7 leave emit at 7
- * past the ``emit > max_count`` clamp, so the single-condition
- * ``emit > k_ra8_touch_gt911_max_points`` clamp drops it to 5.)
+ * Decisions in ``priv_check_product_id``, libs/ra8_hal/src/ra8_touch.c.
+ * Both are single-condition, so MC/DC degenerates to branch coverage:
+ * both outcomes of each decision (DO-178C 6.4.4.3).
+ * Decision A: ``if (pid_err != k_ra8_ok)``
+ * - V1: scripted RX transfer succeeds -> F (falls through to Decision B)
+ * - V2: forwarded transfer fails the bus-free gate -> T -> hw_init_failed
+ *       (driven by test_open_product_id_transfer_error)
+ * Decision B: ``if ((uint32_t)product[0] != k_ra8_touch_product_id_byte0)``
+ * - V1: scripted product[0] = '9' (0x39) -> F -> open returns k_ra8_ok
+ * - V3: scripted product[0] = '5' (0x35) -> T -> hw_init_failed
+ * V1+V2 exercise Decision A both ways; V1+V3 exercise Decision B both
+ * ways with the transfer held constant-passing.
  */
-static void test_decode_clamp_to_hw_max(void)
+static void test_mcdc_open_product_id_value(void)
 {
-  TEST_BEGIN("ra8_touch_test_decode: input > hw max clamps to 5");
-  uint8_t raw[(uint32_t)k_ra8_touch_gt911_point_bytes * (uint32_t)k_test_decode_hw_over] = {};
-  for (uint8_t i = 0U; i < (uint8_t)k_test_decode_hw_over; i++) {
-    build_point(&raw[(uint32_t)i * (uint32_t)k_ra8_touch_gt911_point_bytes],
-                i,
-                (uint16_t)((uint32_t)k_test_x_five_a + i),
-                (uint16_t)((uint32_t)k_test_y_five_a + i),
-                (uint16_t)k_test_pressure_one);
-  }
-  ra8_touch_point_t pts[(uint32_t)k_test_decode_hw_over];
-  uint8_t           got = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_touch_test_decode(raw,
-                                       (uint8_t)k_test_decode_hw_over,
-                                       pts,
-                                       (uint8_t)k_test_decode_hw_over,
-                                       &got));
-  TEST_ASSERT_EQ(k_ra8_touch_gt911_max_points, got);
-  TEST_END("ra8_touch_test_decode: input > hw max clamps to 5");
+  TEST_BEGIN("ra8_touch_open: product-id VALUE match accepts, mismatch rejects");
+  prep();
+  prime_iic_b();
+  /* V1: scripted '9' passes the value check and open completes. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_open(&s_cfg_default));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_close());
+  /* V3: a non-GT911 id byte behind the same address is rejected. */
+  s_script_pid_byte0 = (uint8_t)k_test_pid_byte_mismatch;
+  TEST_ASSERT_EQ(k_ra8_err_hw_init_failed, ra8_touch_open(&s_cfg_default));
+  TEST_END("ra8_touch_open: product-id VALUE match accepts, mismatch rejects");
 }
 
 /**
- * @test test_decode_zero_max_count
+ * @test test_read_block_transfer_error
  *
  * @par MC/DC:
- * (no compound decisions -- exercises the single-condition
- * ``max_count == 0`` rejection leg of the ra8_touch_test_decode hook.)
+ * (no compound decisions -- scripting the status RX to "ready, one
+ * contact" (0x81) while BCST.BFREF is clear makes the forwarded
+ * per-point block read fail its bus-free gate after the status read
+ * succeeded, driving the single-condition ``blk_err != k_ra8_ok``
+ * error leg of priv_read_inner.)
  */
-static void test_decode_zero_max_count(void)
+static void test_read_block_transfer_error(void)
 {
-  TEST_BEGIN("ra8_touch_test_decode: max_count == 0 rejected");
-  uint8_t           raw[(uint32_t)k_ra8_touch_gt911_point_bytes] = {};
-  ra8_touch_point_t pts[1U];
-  uint8_t           got = 3U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_touch_test_decode(raw, 1U, pts, 0U, &got));
+  TEST_BEGIN("ra8_touch_read: point-block transport error -> hw_error");
+  prep();
+  prime_iic_b();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_open(&s_cfg_default));
+
+  /* Script "frame ready, one contact", then break the bus: the scripted
+   * status read still succeeds while the forwarded block read fails. */
+  s_script_status_armed          = true;
+  s_script_status_byte           = (uint8_t)k_test_status_ready_one;
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(0U);
+  reg->BCST                      = 0U;
+
+  ra8_touch_point_t pt[5U];
+  uint8_t           got = 9U;
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_touch_read(pt, (uint8_t)k_test_max_points_default, &got));
   TEST_ASSERT_EQ(0, got);
-  TEST_END("ra8_touch_test_decode: max_count == 0 rejected");
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_close());
+  TEST_END("ra8_touch_read: point-block transport error -> hw_error");
+}
+
+/**
+ * @test test_read_ready_zero_contacts
+ *
+ * @par MC/DC:
+ * (no compound decisions -- scripting the status RX to "ready, zero
+ * contacts" (0x80) leaves emit at 0 past both clamps, driving the
+ * single-condition ``emit > 0`` else leg (full-release frame) of
+ * priv_read_inner: got_count is 0 and the frame is still acked.)
+ */
+static void test_read_ready_zero_contacts(void)
+{
+  TEST_BEGIN("ra8_touch_read: ready frame with zero contacts -> ok, got=0");
+  prep();
+  prime_iic_b();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_open(&s_cfg_default));
+
+  s_script_status_armed = true;
+  s_script_status_byte  = (uint8_t)k_test_status_ready_zero;
+
+  ra8_touch_point_t pt[5U];
+  uint8_t           got = 7U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_read(pt, (uint8_t)k_test_max_points_default, &got));
+  TEST_ASSERT_EQ(0, got);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_close());
+  TEST_END("ra8_touch_read: ready frame with zero contacts -> ok, got=0");
 }
 
 int32_t main(void)
@@ -740,10 +761,6 @@ int32_t main(void)
   test_read_null_args();
   test_read_returns_ok();
   test_read_before_open();
-  test_decode_one_point();
-  test_decode_three_points();
-  test_decode_five_points_max();
-  test_decode_clamp_to_max_count();
   test_attach_dispatch();
   test_calibrate_noop();
   test_mcdc_ra8_touch();
@@ -752,8 +769,9 @@ int32_t main(void)
   test_read_clamp_to_max_points();
   test_read_status_transfer_error();
   test_open_product_id_transfer_error();
-  test_decode_clamp_to_hw_max();
-  test_decode_zero_max_count();
+  test_mcdc_open_product_id_value();
+  test_read_block_transfer_error();
+  test_read_ready_zero_contacts();
   (void)fprintf(stderr, "[OK ] test_ra8_touch.c\n");
   return 0;
 }
