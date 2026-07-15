@@ -84,6 +84,10 @@ add_executable(tz_nsc_cgc_usb_ns.elf
 target_compile_definitions(tz_nsc_cgc_usb_ns.elf PRIVATE
     RA8_TRUSTZONE_ENABLE RA8_PERIPH_NS_ALIAS RA8_USB_POLLED_ONLY)
 target_compile_options(tz_nsc_cgc_usb_ns.elf PRIVATE -fshort-enums -ffreestanding)
+# Raw add_executable targets skip the ra8_add_app warning profile, so without
+# this the NS image compiles WITHOUT -Wall/-Wextra/-Werror (the T2-05
+# warnings-scope hole). threadx_ns keeps its own permissive vendor flags.
+ra8_target_enable_project_warnings(tz_nsc_cgc_usb_ns.elf STACK_USAGE_BYTES 2200)
 target_include_directories(tz_nsc_cgc_usb_ns.elf PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${RA8_REPO_ROOT}/libs/ra8_core/inc
@@ -139,10 +143,14 @@ set(_ns_usb_srcs
 target_sources(tz_nsc_cgc_usb_ns.elf PRIVATE ${_ns_usb_srcs})
 # Vendored USBX + ra8_usb predate the first-party -Werror set.
 set_source_files_properties(${_ns_usb_srcs} PROPERTIES COMPILE_OPTIONS "-w")
-target_include_directories(tz_nsc_cgc_usb_ns.elf PRIVATE
+# Vendored USBX headers are not clean under the first-party warning profile
+# (e.g. -Wredundant-decls in ux_device_stack.h); SYSTEM keeps the profile on
+# the first-party TUs that include them without -Werror-ing SOUP headers.
+target_include_directories(tz_nsc_cgc_usb_ns.elf SYSTEM PRIVATE
     ${_ra8_usbx_root}/common/core/inc
     ${_ra8_usbx_root}/common/usbx_device_classes/inc
-    ${_ra8_usbx_root}/ports/cortex_m33/gnu/inc
+    ${_ra8_usbx_root}/ports/cortex_m33/gnu/inc)
+target_include_directories(tz_nsc_cgc_usb_ns.elf PRIVATE
     ${RA8_REPO_ROOT}/port/usbx/inc
     ${RA8_REPO_ROOT}/libs/ra8_usb_pal/inc
     ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/inc)

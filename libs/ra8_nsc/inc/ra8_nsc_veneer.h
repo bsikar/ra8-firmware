@@ -9,9 +9,16 @@
  * @details
  * enables ``__attribute__((cmse_nonsecure_entry))`` on the
  * NSC veneer functions when the firmware is built with
- * ``-DRA8_TRUSTZONE_ENABLE=ON``. In single-world builds the macros
+ * ``-DRA8_TRUSTZONE_ENABLE=ON`` **and** the translation unit is
+ * compiled for the Secure world (``-mcmse``, i.e.
+ * ``__ARM_FEATURE_CMSE`` bit 1 set). Non-Secure images define
+ * ``RA8_TRUSTZONE_ENABLE`` too but compile without ``-mcmse``; they
+ * must see the veneers as plain function declarations, because gcc
+ * ignores ``cmse_nonsecure_entry`` without ``-mcmse`` and the
+ * -Wattributes diagnostic is fatal under the project -Werror
+ * profile. In single-world and host builds the macros likewise
  * compile to nothing, so the same veneer source compiles cleanly
- * against either build configuration.
+ * against every build configuration.
  *
  * Use ``RA8_NSC_VENEER`` on the function declarations in
  * ``ra8_nsc.h`` and on the matching definitions in
@@ -41,7 +48,10 @@ extern "C" {
 
 #include <stdint.h>
 
-#ifdef RA8_TRUSTZONE_ENABLE
+/* __ARM_FEATURE_CMSE bit 1 marks a Secure-world (-mcmse) compile: only there
+ * is cmse_nonsecure_entry meaningful. NS TUs share RA8_TRUSTZONE_ENABLE but
+ * compile without -mcmse and must take the plain-declaration branch. */
+#if defined(RA8_TRUSTZONE_ENABLE) && defined(__ARM_FEATURE_CMSE) && ((__ARM_FEATURE_CMSE & 2) != 0)
 
 #include <arm_cmse.h>
 
@@ -82,13 +92,13 @@ extern "C" {
     }                                                                                              \
   } while (0)
 
-#else /* !RA8_TRUSTZONE_ENABLE */
+#else /* !RA8_TRUSTZONE_ENABLE or a non-Secure-world compile */
 
 #define RA8_NSC_VENEER
 #define RA8_NSC_CHECK_NS_RANGE_R(ptr, len)  ((void)(ptr), (void)(len))
 #define RA8_NSC_CHECK_NS_RANGE_RW(ptr, len) ((void)(ptr), (void)(len))
 
-#endif /* RA8_TRUSTZONE_ENABLE */
+#endif /* RA8_TRUSTZONE_ENABLE && Secure-world (-mcmse) compile */
 
 #ifdef __cplusplus
 }

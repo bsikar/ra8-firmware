@@ -64,6 +64,11 @@ target_compile_options(tz_threadx_demo_ns.elf PRIVATE
     -ffreestanding
 )
 
+# Raw add_executable targets skip the ra8_add_app warning profile, so without
+# this the NS image compiles WITHOUT -Wall/-Wextra/-Werror (the T2-05
+# warnings-scope hole). threadx_ns keeps its own permissive vendor flags.
+ra8_target_enable_project_warnings(tz_threadx_demo_ns.elf STACK_USAGE_BYTES 2200)
+
 target_include_directories(tz_threadx_demo_ns.elf PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${RA8_REPO_ROOT}/libs/ra8_core/inc

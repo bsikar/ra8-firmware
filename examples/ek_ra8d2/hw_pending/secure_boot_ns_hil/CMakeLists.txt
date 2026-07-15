@@ -87,6 +87,10 @@ set_source_files_properties(
 # NS-image linker script.
 add_executable(secure_boot_ns_hil_ns.elf ${CMAKE_CURRENT_SOURCE_DIR}/ns_main.c)
 target_compile_options(secure_boot_ns_hil_ns.elf PRIVATE -fshort-enums -ffreestanding)
+# Raw add_executable targets skip the ra8_add_app warning profile, so without
+# this the NS image compiles WITHOUT -Wall/-Wextra/-Werror (the T2-05
+# warnings-scope hole).
+ra8_target_enable_project_warnings(secure_boot_ns_hil_ns.elf STACK_USAGE_BYTES 32768)
 target_link_options(secure_boot_ns_hil_ns.elf PRIVATE
     -nostartfiles
     -T${CMAKE_CURRENT_SOURCE_DIR}/ns_image.ld
