@@ -139,6 +139,17 @@ set(RA8_SANITIZE "" CACHE STRING "Comma-separated -fsanitize list for host tests
 if(RA8_SANITIZE)
   add_compile_options(-fsanitize=${RA8_SANITIZE} -fno-omit-frame-pointer)
   add_link_options(-fsanitize=${RA8_SANITIZE})
+else()
+  # The MAP_FIXED peripheral windows span [0x02000000, 0x68100000) (see
+  # tests/mocks/ra8_sim_mmap.c). On toolchains that default to non-PIE the
+  # image loads at 0x400000, so a large-enough .bss (the gcov counters of a
+  # coverage build crossed 0x02000000 in practice) pushes static data and the
+  # brk heap INTO a window; the constructor's mmap then silently replaces live
+  # pages and glibc aborts on the first heap extension. Pin the image above
+  # every window so text/.data/.bss/brk can never intersect one. Sanitizer
+  # builds are excluded: ASan/UBSan own their layout and skip the shadow-gap
+  # window instead (ra8_sim_mmap_install still checks overlap at runtime).
+  add_link_options(-no-pie -Wl,-Ttext-segment=0x70000000)
 endif()
 
 # Firmware root (one directory up from tests/).

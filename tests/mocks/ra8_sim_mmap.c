@@ -40,6 +40,22 @@
 #include <unistd.h>
 
 /**
+ * @var __executable_start
+ * @brief Linker-provided first byte of the loaded ELF image.
+ *
+ * @details
+ * GNU ld (and lld) define this symbol at the base of the text segment.
+ * Together with `sbrk(0)` (the current program break, i.e. the end of
+ * .bss plus the initial heap) it bounds everything the loader placed at
+ * fixed addresses, which ::ra8_sim_mmap_install checks against the
+ * backing windows before issuing any `MAP_FIXED` mapping.
+ *
+ * @note Read-only address anchor; never dereferenced as data.
+ * @since 0.1.0
+ */
+extern char __executable_start[];
+
+/**
  * @def RA8_SIM_UNDER_ASAN
  * @brief Defined to 1 when this translation unit is compiled under
  *        AddressSanitizer; left undefined otherwise.
@@ -209,6 +225,34 @@ static bool ra8_sim_region_mappable(bool asan_shadow_gap)
     (void)setenv("RA8_SIM_NO_ASLR", "1", 1);
     (void)execv("/proc/self/exe", argv);
     /* execv only returns on failure: fall through and map best-effort. */
+  }
+  /* The loaded image (text + .data + .bss) and the initial brk heap must not
+   * intersect any backing window: MAP_FIXED would silently replace their live
+   * pages (the classic symptom is a glibc sysmalloc assertion on the first
+   * heap extension, long after the trample). A coverage build's gcov-counter
+   * .bss once grew past 0x02000000 and landed inside the code-MRAM window;
+   * the -Ttext-segment pin in tests/CMakeLists.txt prevents that, and this
+   * check turns any future layout regression into an immediate diagnosis. */
+  void* const     brk_now  = sbrk(0);
+  const uintptr_t image_lo = (uintptr_t)__executable_start;
+  const uintptr_t image_hi = (uintptr_t)brk_now;
+  for (uint8_t i = 0U; i < (uint8_t)k_ra8_sim_region_count; ++i) {
+    const ra8_sim_region_t region = s_ra8_sim_regions[i];
+    if (!ra8_sim_region_mappable(region.asan_shadow_gap)) {
+      continue;
+    }
+    if ((region.base < image_hi) && (image_lo < (region.base + region.size))) {
+      (void)fprintf(stderr,
+                    "ra8_sim_mmap: window 0x%llx..0x%llx overlaps the loaded "
+                    "image/heap 0x%llx..0x%llx -- relink the test binary "
+                    "clear of the backing windows (tests/CMakeLists.txt "
+                    "-Ttext-segment pin)\n",
+                    (unsigned long long)region.base,
+                    (unsigned long long)(region.base + region.size),
+                    (unsigned long long)image_lo,
+                    (unsigned long long)image_hi);
+      abort();
+    }
   }
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_sim_region_count; ++i) {
     const ra8_sim_region_t region = s_ra8_sim_regions[i];
