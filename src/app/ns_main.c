@@ -350,8 +350,11 @@ void tx_application_define(void* first_unused_memory)
    * WDT supervisor already registered the "ui"/"sys" deadlines, so a missing
    * worker would only surface later as a silent watchdog boot-loop -- panic
    * now instead, like every other NS bring-up failure in this file. */
+  /* (CHAR*)(uintptr_t): the vendored ThreadX API takes a non-const CHAR* for
+   * the thread name; the uintptr_t hop launders the string-literal const
+   * without tripping -Wcast-qual (same pattern as ra8_wdt_supervisor). */
   if (tx_thread_create(&s_ui_thread,
-                       "UI Thread",
+                       (CHAR*)(uintptr_t)"UI Thread",
                        ui_thread_entry,
                        0UL,
                        s_ui_thread_stack,
@@ -365,7 +368,7 @@ void tx_application_define(void* first_unused_memory)
 
   /* Create the System/Storage thread */
   if (tx_thread_create(&s_sys_thread,
-                       "System Thread",
+                       (CHAR*)(uintptr_t)"System Thread",
                        sys_thread_entry,
                        0UL,
                        s_sys_thread_stack,
@@ -380,7 +383,23 @@ void tx_application_define(void* first_unused_memory)
 
 /**
  * @brief Non-Secure Reset handler: entered via Secure-to-NS transition.
+ *
+ * @details
+ * Slot 1 of the NS vector table and the NS image's linker entry symbol; the
+ * Secure boot BLXNS-es here. No header declares it because the only callers
+ * are the hardware vector fetch and the linker -- the prototype below
+ * satisfies -Wmissing-prototypes for this externally-linked boot symbol.
+ *
+ * @pre The Secure boot copied/armed the NS image and programmed VTOR_NS.
+ * @pre Executes in NS Thread mode with MSP_NS from vector slot 0.
+ * @post .bss (and, under XIP, .data) is initialised; ThreadX never returns.
+ * @post Interrupt state is whatever tx_kernel_enter establishes.
+ *
+ * @note Not thread-safe; single-threaded NS boot only.
+ * @since 0.1.0
  */
+[[noreturn]] void ns_reset_handler(void);
+
 [[noreturn]] void ns_reset_handler(void)
 {
 #ifdef RA8_EREADER_NS_XIP

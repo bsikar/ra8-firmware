@@ -99,6 +99,14 @@ target_compile_options(ra8d2-ereader_ns.elf PRIVATE
     -ffreestanding
 )
 
+# The NS image is a raw add_executable, so unlike the Secure side (which gets
+# the profile via ra8_add_app) it would otherwise compile WITHOUT
+# -Wall/-Wextra/-Werror -- the T2-05 warnings-scope hole: a discarded
+# [[nodiscard]] ra8_err_t in ns_main.c could never fail the build. Apply the
+# same first-party warning profile; threadx_ns is a separate target and keeps
+# its own permissive vendor flags.
+ra8_target_enable_project_warnings(ra8d2-ereader_ns.elf STACK_USAGE_BYTES 2200)
+
 target_include_directories(ra8d2-ereader_ns.elf PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${RA8_REPO_ROOT}/libs/ra8_core/inc
