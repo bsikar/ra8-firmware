@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/threadx_levelx_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/threadx_levelx_demo/main.c
  * @brief ThreadX + LevelX wear-levelling demo for EK-RA8D2 OSPI flash
  *
  * @par Tag

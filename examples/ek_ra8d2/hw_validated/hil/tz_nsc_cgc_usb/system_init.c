@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/tz_nsc_cgc_usb/system_init.c
+ * @file examples/ek_ra8d2/hw_validated/hil/tz_nsc_cgc_usb/system_init.c
  * @brief Cortex-M85 / RA8D2 core bring-up (called from Reset_Handler)
  *
  * @par Tag

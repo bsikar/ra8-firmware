@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/spi_loopback/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/spi_loopback/main.c
  * @brief SPI_B internal-loopback HIL test for the EK-RA8D2
  *
  * @par Tag

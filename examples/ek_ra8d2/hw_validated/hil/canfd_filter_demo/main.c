@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/canfd_filter_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/canfd_filter_demo/main.c
  * @brief CAN-FD acceptance-filter demo for EK-RA8D2
  *
  * @par Tag

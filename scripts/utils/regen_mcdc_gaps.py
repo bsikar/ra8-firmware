@@ -71,6 +71,23 @@ EXCERPT_TRUNC_DEACTIVATED = 57
 # Maximum number of rows shown inline in the reachable-gaps markdown table.
 TABLE_ROW_CAP = 60
 
+
+def _truncate_md_cell(text: str, limit: int, trunc: int) -> str:
+    """Truncate `text` for a Markdown table cell, keeping backticks balanced.
+
+    Rationale/excerpt strings carry backtick code spans; a truncation that
+    cuts between a span's opening and closing backtick leaves an odd count,
+    which opens a verbatim block that swallows the rest of the page (and
+    trips doxygen's "still searching closing backtick" warning). When the
+    truncated cell holds an odd number of backticks, close the span.
+    """
+    if len(text) > limit:
+        text = text[:trunc] + "..."
+    if text.count("`") % 2 == 1:
+        text += "`"
+    return text
+
+
 # Lines in mcdc.txt look like:
 #   "  385|      0|  if ((start == 0U) || (start > end)) {"
 # i.e.   <pad><lineno>|<exec_count>|<source>
@@ -752,9 +769,9 @@ def main() -> int:  # noqa: PLR0912 PLR0915  # report generator, splitting hurts
     md_lines.append("| File | Conds | Function | Excerpt | Status |")
     md_lines.append("|------|------:|----------|---------|--------|")
     for src, _ln, n, func, excerpt, covered, _deact, _rat in reachable_rows[:TABLE_ROW_CAP]:
-        ex = excerpt.replace("|", "\\|")
-        if len(ex) > EXCERPT_MAX_REACHABLE:
-            ex = ex[:EXCERPT_TRUNC_REACHABLE] + "..."
+        ex = _truncate_md_cell(
+            excerpt.replace("|", "\\|"), EXCERPT_MAX_REACHABLE, EXCERPT_TRUNC_REACHABLE
+        )
         md_lines.append(f"| {src} | {n} | {func} | `{ex}` | {covered} |")
     if len(reachable_rows) > TABLE_ROW_CAP:
         overflow = len(reachable_rows) - TABLE_ROW_CAP
@@ -772,12 +789,12 @@ def main() -> int:  # noqa: PLR0912 PLR0915  # report generator, splitting hurts
     md_lines.append("| File | Conds | Function | Excerpt | Rationale |")
     md_lines.append("|------|------:|----------|---------|-----------|")
     for src, _ln, n, func, excerpt, _covered, _deact, rationale in deactivated_rows:
-        ex = excerpt.replace("|", "\\|")
-        if len(ex) > EXCERPT_MAX_DEACTIVATED:
-            ex = ex[:EXCERPT_TRUNC_DEACTIVATED] + "..."
-        rt = rationale.replace("|", "\\|")
-        if len(rt) > EXCERPT_MAX_DEACTIVATED:
-            rt = rt[:EXCERPT_TRUNC_DEACTIVATED] + "..."
+        ex = _truncate_md_cell(
+            excerpt.replace("|", "\\|"), EXCERPT_MAX_DEACTIVATED, EXCERPT_TRUNC_DEACTIVATED
+        )
+        rt = _truncate_md_cell(
+            rationale.replace("|", "\\|"), EXCERPT_MAX_DEACTIVATED, EXCERPT_TRUNC_DEACTIVATED
+        )
         md_lines.append(f"| {src} | {n} | {func} | `{ex}` | {rt} |")
     md_lines.append("")
     md_lines.append("## Per-module gap counts (full table)")

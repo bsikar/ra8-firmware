@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/elc_event_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/elc_event_demo/main.c
  * @brief Event Link Controller (ELC) software-event demo for the EK-RA8D2
  *
  * @par Tag

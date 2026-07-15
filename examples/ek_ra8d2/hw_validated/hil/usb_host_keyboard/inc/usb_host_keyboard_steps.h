@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/usb_host_keyboard/src/usb_host_keyboard_steps.h
+ * @file examples/ek_ra8d2/hw_validated/hil/usb_host_keyboard/inc/usb_host_keyboard_steps.h
  * @brief Shared seam between usb_host_keyboard main.c and its sibling TUs
  *
  * @par Tag

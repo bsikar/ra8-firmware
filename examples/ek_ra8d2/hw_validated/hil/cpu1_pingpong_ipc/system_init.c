@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/cpu1_pingpong_ipc/system_init.c
+ * @file examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong_ipc/system_init.c
  * @brief Cortex-M85 / RA8D2 core bring-up for cpu1_pingpong_ipc
  *
  * @details

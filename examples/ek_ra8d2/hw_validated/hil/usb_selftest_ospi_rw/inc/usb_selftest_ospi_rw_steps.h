@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/src/usb_selftest_ospi_rw_steps.h
+ * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_ospi_rw/inc/usb_selftest_ospi_rw_steps.h
  * @brief Shared tunables + host-side worker seam for the writable-OSPI self-loop
  *
  * @par Tag

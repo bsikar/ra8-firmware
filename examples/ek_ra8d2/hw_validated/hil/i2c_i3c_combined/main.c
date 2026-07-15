@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/i2c_i3c_combined/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/i2c_i3c_combined/main.c
  * @brief RIIC + I3C(I2C-mode) coexistence self-test for the EK-RA8D2
  *
  * @par Tag

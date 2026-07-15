@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/dtc_transfer_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/dtc_transfer_demo/main.c
  * @brief 1 KB DTC SRAM-to-SRAM block-copy + verify demo for the EK-RA8D2
  *
  * @par Tag

@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/canfd_loopback/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/canfd_loopback/main.c
  * @brief CANFD0 internal-loopback HIL test for EK-RA8D2
  *
  * @par Tag

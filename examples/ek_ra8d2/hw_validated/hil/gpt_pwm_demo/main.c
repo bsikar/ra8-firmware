@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/gpt_pwm_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/gpt_pwm_demo/main.c
  * @brief GPT PWM duty-cycle LED demo for EK-RA8D2
  *
  * @par Tag

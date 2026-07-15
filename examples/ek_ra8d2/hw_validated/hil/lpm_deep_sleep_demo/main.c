@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/lpm_deep_sleep_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/lpm_deep_sleep_demo/main.c
  * @brief Deep-Sleep mode (LPMD=0, SCR.SLEEPDEEP=1) one-shot wake demo
  *
  * @par Tag

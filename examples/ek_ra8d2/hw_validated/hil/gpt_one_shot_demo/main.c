@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/gpt_one_shot_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/gpt_one_shot_demo/main.c
  * @brief GPT one-shot (saw-wave one-shot) HIL demo for EK-RA8D2
  *
  * @par Tag

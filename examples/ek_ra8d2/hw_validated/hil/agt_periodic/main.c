@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/agt_periodic/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/agt_periodic/main.c
  * @brief AGT 1 Hz tick + LED1 blink demo for EK-RA8D2
  *
  * @par Tag

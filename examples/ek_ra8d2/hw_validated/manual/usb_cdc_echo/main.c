@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/usb_cdc_echo/main.c
+ * @file examples/ek_ra8d2/hw_validated/manual/usb_cdc_echo/main.c
  * @brief ThreadX + USBX CDC ACM echo for EK-RA8D2 (USB-FS)
  *
  * @par Tag

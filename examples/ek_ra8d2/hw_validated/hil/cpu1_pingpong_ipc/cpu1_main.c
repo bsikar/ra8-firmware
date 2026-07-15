@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/cpu1_pingpong/cpu1_main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong_ipc/cpu1_main.c
  * @brief CPU1 (Cortex-M33) ping-pong responder
  *
  * @par Tag

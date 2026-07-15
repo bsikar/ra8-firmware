@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/threadx_netx_tcp_echo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/threadx_netx_tcp_echo/main.c
  * @brief ThreadX + NetX Duo TCP echo demo for EK-RA8D2
  *
  * @par Tag

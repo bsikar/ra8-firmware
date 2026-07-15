@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/cpu1_pingpong/shared_pingpong.h
+ * @file examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/shared_pingpong.h
  * @brief Shared-SRAM message layout for the CPU0 <-> CPU1 ping-pong demo
  *
  * @par Tag

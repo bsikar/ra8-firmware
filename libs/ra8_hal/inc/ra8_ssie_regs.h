@@ -25,9 +25,9 @@
  * |  0x24  | SSISCR  | 32    | Status Control (TDES, RDFS)          |
  *
  * Field bit positions are sourced from HUM Ch 46.2 register
- * description tables (p 3056-3094) and cross-checked against
- * ``/Users/bsikar/Documents/github/fsp/ra/fsp/src/r_ssi/r_ssi.c``
- * shift macros (FSP is reference only -- no code copied).
+ * description tables (p 3056-3094) and cross-checked against the
+ * ``ra/fsp/src/r_ssi/r_ssi.c`` shift macros in the Renesas FSP
+ * sources (FSP is reference only -- no code copied).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

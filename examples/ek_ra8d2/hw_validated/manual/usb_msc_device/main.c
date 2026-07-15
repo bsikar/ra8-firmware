@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/usb_msc_device/main.c
+ * @file examples/ek_ra8d2/hw_validated/manual/usb_msc_device/main.c
  * @brief ThreadX + USBX Mass-Storage RAM-disk for EK-RA8D2 (USB-FS)
  *
  * @par Tag

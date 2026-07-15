@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/cpu1_pingpong/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong/main.c
  * @brief CPU0 (Cortex-M85) ping-pong demo against CPU1 (Cortex-M33)
  *
  * @par Tag

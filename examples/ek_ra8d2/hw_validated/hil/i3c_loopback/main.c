@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/i3c_loopback/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/i3c_loopback/main.c
  * @brief I3C (ra8_i3c) controller bring-up self-test for the EK-RA8D2
  *
  * @par Tag

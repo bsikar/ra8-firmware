@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/ulpt_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/ulpt_demo/main.c
  * @brief ULPT 1 Hz wake-from-software-standby demo for EK-RA8D2
  *
  * @par Tag

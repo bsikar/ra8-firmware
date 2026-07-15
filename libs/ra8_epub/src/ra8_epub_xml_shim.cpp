@@ -199,7 +199,7 @@ const char* manifest_href_by_id(const XMLElement* manifest, const char* id)
   for (const XMLElement* item = manifest->FirstChildElement(); item != nullptr;
        item                   = item->NextSiblingElement()) {
     const char* item_id = item->Attribute("id");
-    // mcdc-deactivated: TU-local helper manifest_href_by_id; well-formed EPUB OPF manifests always tag every <item> with an `id` attribute (EPUB 3 spec 3.4.3.2 makes id mandatory), so item_id is non-NULL on every reachable iteration -- the second condition (string match) is the only one that varies.
+    // mcdc-deactivated: TU-local helper manifest_href_by_id; well-formed EPUB OPF manifests always tag every `<item>` with an `id` attribute (EPUB 3 spec 3.4.3.2 makes id mandatory), so item_id is non-NULL on every reachable iteration -- the second condition (string match) is the only one that varies.
     if (item_id != nullptr && std::strcmp(item_id, id) == 0) {
       return item->Attribute("href");
     }
@@ -247,7 +247,7 @@ const char* find_cover_by_meta(const XMLElement* metadata, const XMLElement* man
     }
     const char* meta_name    = meta->Attribute("name");
     const char* meta_content = meta->Attribute("content");
-    // mcdc-deactivated: TU-local helper find_cover_by_meta; legacy EPUB 2 <meta name="cover" content="ID"/> elements are only emitted by builders when both attributes are present (otherwise the element is meaningless and elided) -- both NULL guards cannot independently flip on any conformant input.
+    // mcdc-deactivated: TU-local helper find_cover_by_meta; legacy EPUB 2 `<meta name="cover" content="ID"/>` elements are only emitted by builders when both attributes are present (otherwise the element is meaningless and elided) -- both NULL guards cannot independently flip on any conformant input.
     if (meta_name != nullptr && meta_content != nullptr && std::strcmp(meta_name, "cover") == 0) {
       const char* href = manifest_href_by_id(manifest, meta_content);
       if (href != nullptr) {

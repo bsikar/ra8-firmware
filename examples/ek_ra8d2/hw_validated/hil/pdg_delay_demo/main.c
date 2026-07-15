@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/pdg_delay_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/pdg_delay_demo/main.c
  * @brief PWM Delay Generation (PDG) bring-up + delay-program demo (EK-RA8D2)
  *
  * @par Tag

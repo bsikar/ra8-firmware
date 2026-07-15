@@ -781,8 +781,10 @@ static void priv_arc_solve(svg_arc_t* a,
  * @pre  @p rx_in and @p ry_in fit in a float without overflow (SVG coords are bounded).
  * @pre  @p p0 and @p p_end are valid user-space points.
  *
- * @post When @c ok==true, @c cx/@c cy/@c rx/@c ry/@c t1/@c dt are all valid.
- * @post When @c ok==false, no other field in the returned struct is meaningful.
+ * @post When `ok == true`, the fields `cx`, `cy`, `rx`, `ry`, `t1`, and `dt`
+ *       are all valid.
+ * @post When `ok == false`, no other field in the returned struct is
+ *       meaningful.
  *
  * @note Not thread-safe in isolation; callers in this module are
  *       single-threaded during SVG render.

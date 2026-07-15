@@ -564,9 +564,11 @@ static int demo_bio_recv(void* ctx, unsigned char* buf, size_t len)
  * ``ra8_rsip_trng_read`` so seeding the CTR_DRBG never depends on
  * software entropy collectors.
  *
- * @param[in]  ctx Unused.
- * @param[out] buf Output buffer.
- * @param[in]  len Number of bytes requested.
+ * @param[in]  ctx  Unused.
+ * @param[out] buf  Output buffer.
+ * @param[in]  len  Number of bytes requested.
+ * @param[out] olen Receives the number of bytes actually written (always
+ *                  @p len on success).
  *
  * @return ``0`` on success.
  *

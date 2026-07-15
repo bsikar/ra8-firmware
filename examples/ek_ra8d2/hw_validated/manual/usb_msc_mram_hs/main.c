@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/usb_msc_mram_hs/main.c
+ * @file examples/ek_ra8d2/hw_validated/manual/usb_msc_mram_hs/main.c
  * @brief ThreadX + USBX Mass-Storage view of the onboard MRAM (USB-HS)
  *
  * @par Tag

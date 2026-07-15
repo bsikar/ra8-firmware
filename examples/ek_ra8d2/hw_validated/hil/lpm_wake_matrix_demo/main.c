@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/lpm_wake_matrix_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/lpm_wake_matrix_demo/main.c
  * @brief Exercise the WUPEN0 / WUPEN1 wake-source enable matrix
  *
  * @par Tag

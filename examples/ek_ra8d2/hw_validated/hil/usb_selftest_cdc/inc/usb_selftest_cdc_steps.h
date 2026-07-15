@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_cdc/src/usb_selftest_cdc_steps.h
+ * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_cdc/inc/usb_selftest_cdc_steps.h
  * @brief Host-side self-test ladder + console helpers shared with main.c
  *
  * @par Tag

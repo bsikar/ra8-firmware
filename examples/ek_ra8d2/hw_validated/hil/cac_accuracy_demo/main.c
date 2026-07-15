@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/cac_accuracy_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/cac_accuracy_demo/main.c
  * @brief Clock Frequency Accuracy Measurement (CAC) demo for the EK-RA8D2
  *
  * @par Tag

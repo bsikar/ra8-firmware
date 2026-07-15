@@ -386,7 +386,7 @@ static uint32_t s_add_manifest_image(ra8_rabook_ctx_t*                    ctx,
  *          via @ref s_add_manifest_image so the image table indices match. The
  *          cover index is the table index of the item whose href equals
  *          @c epub->cover_path (ra8_epub already resolves that from
- *          @c properties="cover-image" or the legacy @c <meta name="cover">), which
+ *          `properties="cover-image"` or the legacy `<meta name="cover">`), which
  *          is the same image the desktop's @c id_to_image[cover_id] yields.
  *
  *          When @p scr->skip_images is set the whole stage is a no-op: no image

@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/common/ra8_io_roundtrip.c
+ * @file examples/ek_ra8d2/hw_validated/hil/ra8_io_demo/ra8_io_roundtrip.c
  * @brief Shared ra8_io VFS round-trip implementation for the FAT demos (#155).
  *
  * @details

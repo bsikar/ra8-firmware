@@ -137,4 +137,3 @@ copy-to-run were validated locally over the J-Link OB:
 The bootloader region is never erased by DFU, so a normal SWD re-flash of this
 app (`scripts/flash.sh` / `make flash`) always recovers the board. A bad slot is
 self-healing (CRC fails -> the older valid slot boots).
-```

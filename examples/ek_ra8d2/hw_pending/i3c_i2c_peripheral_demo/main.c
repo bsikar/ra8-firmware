@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/i3c_i2c_peripheral_demo/main.c
+ * @file examples/ek_ra8d2/hw_pending/i3c_i2c_peripheral_demo/main.c
  * @brief IIC_B peripheral-mode demo on EK-RA8D2
  *
  * @par Tag

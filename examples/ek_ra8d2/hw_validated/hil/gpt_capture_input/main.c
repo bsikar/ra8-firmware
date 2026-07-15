@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/gpt_capture_input/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/gpt_capture_input/main.c
  * @brief GPT input-capture-style demo: measure SW1 press period
  *
  * @par Tag

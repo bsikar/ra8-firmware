@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/ecc_monitor_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/ecc_monitor_demo/main.c
  * @brief SRAM ECC bring-up + error-status monitor demo (EK-RA8D2)
  *
  * @par Tag

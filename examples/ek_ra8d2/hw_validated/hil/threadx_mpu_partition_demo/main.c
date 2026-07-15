@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/threadx_mpu_partition_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/threadx_mpu_partition_demo/main.c
  * @brief Eclipse ThreadX + Arm v8-M MPU partition demo for RA8D2
  *
  * @par Tag

@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/wdt_reset_recovery_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/wdt_reset_recovery_demo/main.c
  * @brief WWDT reset + recovery HIL demo for EK-RA8D2
  *
  * @par Tag

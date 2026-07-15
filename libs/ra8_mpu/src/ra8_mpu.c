@@ -39,7 +39,7 @@ typedef enum : uint8_t {
 } ra8_mpu_ap_t;
 
 /**
- * @enum ra8_mpu_shcsr_t
+ * @enum ra8_mpu_shcsr_addr_t
  * @brief SCB->SHCSR address + bits needed to dispatch MemManage faults.
  *
  * @details
