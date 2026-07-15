@@ -170,7 +170,14 @@ esp32/build/
 # are a build product, not source. Committing them only lets them drift from
 # the generator. Crash reproducers the fuzzer discovers are NOT regenerable,
 # so those are carved back in below and must be committed by hand.
-tests/fuzz/corpus/
+#
+# NOTE: the corpus contents (not the directory) are ignored, and the
+# subdirectories are re-included, so the crash-/leak-/timeout- negations below
+# actually take effect. Git cannot re-include a file whose parent directory is
+# itself excluded, so `tests/fuzz/corpus/` (directory form) would silently
+# defeat the negations.
+tests/fuzz/corpus/**
+!tests/fuzz/corpus/**/
 !tests/fuzz/corpus/**/crash-*
 !tests/fuzz/corpus/**/leak-*
 !tests/fuzz/corpus/**/timeout-*

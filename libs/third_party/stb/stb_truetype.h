@@ -753,6 +753,15 @@ struct stbtt_fontinfo {
   unsigned char* data;      // pointer to .ttf file
   int            fontstart; // offset of start of font
 
+  // RA8 LOCAL PATCH (see docs/SOUP/stb.md): byte length of data[]. Upstream
+  // stb_truetype does no bounds checking on file-derived offsets, which lets a
+  // crafted font drive out-of-bounds reads (the e-reader feeds it fully
+  // attacker-controlled EPUB/CBZ fonts). This field records the buffer length
+  // so the parse can range-check every file-derived read; it is set by
+  // stbtt_InitFont() and must be >= 0. A read is admissible only while it stays
+  // inside [0, data_size).
+  int data_size;
+
   int numGlyphs; // number of glyphs, needed for range checking
 
   int loca, head, glyf, hhea, hmtx, kern, gpos, svg; // table locations as offset from start of .ttf
@@ -767,12 +776,17 @@ struct stbtt_fontinfo {
   stbtt__buf fdselect;    // map from glyph to fontdict
 };
 
-STBTT_DEF int stbtt_InitFont(stbtt_fontinfo* info, const unsigned char* data, int offset);
+STBTT_DEF int stbtt_InitFont(stbtt_fontinfo* info, const unsigned char* data, int data_size, int offset);
 // Given an offset into the file that defines a font, this function builds
 // the necessary cached info for the rest of the system. You must allocate
 // the stbtt_fontinfo yourself, and stbtt_InitFont will fill it out. You don't
 // need to do anything special to free it, because the contents are pure
 // value data with no additional data structures. Returns 0 on failure.
+//
+// RA8 LOCAL PATCH (see docs/SOUP/stb.md): `data_size` is the byte length of
+// `data[]`. Upstream stb takes no length and never bounds-checks file-derived
+// offsets; passing the true length lets the parser reject a crafted font that
+// would otherwise read out of bounds. `data_size` must be >= 0.
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -1521,6 +1535,18 @@ static stbtt_int32 ttLONG(stbtt_uint8* p)
   return (p[0] << 24) + (p[1] << 16) + (p[2] << 8) + p[3];
 }
 
+// RA8 LOCAL PATCH (see docs/SOUP/stb.md): true iff the `count`-byte read at
+// `info->data + offset` lies fully inside the font buffer [0, data_size). All
+// arithmetic is in stbtt_uint32 with no subtraction that can wrap: `size -
+// offset` is evaluated only after `offset <= size`. Used to gate every
+// file-derived (hence attacker-controlled) read the parser makes so a crafted
+// font is rejected instead of dereferencing past its buffer.
+static int stbtt__in_bounds(const stbtt_fontinfo* info, stbtt_uint32 offset, stbtt_uint32 count)
+{
+  stbtt_uint32 size = (stbtt_uint32)info->data_size;
+  return (offset <= size) && (count <= size - offset);
+}
+
 #define stbtt_tag4(p, c0, c1, c2, c3)                                                              \
   ((p)[0] == (c0) && (p)[1] == (c1) && (p)[2] == (c2) && (p)[3] == (c3))
 #define stbtt_tag(p, str) stbtt_tag4(p, str[0], str[1], str[2], str[3])
@@ -1621,10 +1647,15 @@ static int stbtt__get_svg(stbtt_fontinfo* info)
   return info->svg;
 }
 
-static int stbtt_InitFont_internal(stbtt_fontinfo* info, unsigned char* data, int fontstart)
+static int stbtt_InitFont_internal(stbtt_fontinfo* info, unsigned char* data, int data_size, int fontstart)
 {
   stbtt_uint32 cmap, t;
   stbtt_int32  i, numTables;
+
+  // RA8 LOCAL PATCH (see docs/SOUP/stb.md): record the buffer length up front
+  // so every file-derived read below (and in the glyph API) can be
+  // range-checked. A negative length is a caller bug; treat it as empty.
+  info->data_size = data_size < 0 ? 0 : data_size;
 
   info->data      = data;
   info->fontstart = fontstart;
@@ -1641,6 +1672,16 @@ static int stbtt_InitFont_internal(stbtt_fontinfo* info, unsigned char* data, in
 
   if (!cmap || !info->head || !info->hhea || !info->hmtx)
     return 0;
+  // RA8 LOCAL PATCH (see docs/SOUP/stb.md): stbtt__find_table returns a table
+  // offset but never its length, so a crafted font can position a required
+  // table such that the fixed-offset reads stb makes into it (head[18],[50];
+  // hhea[4],[6]) fall outside the buffer. `head` and `hhea` are spec-fixed at
+  // 54 and 36 bytes; require at least that much before trusting any read into
+  // them.
+  if (!stbtt__in_bounds(info, (stbtt_uint32)info->head, 54) ||
+      !stbtt__in_bounds(info, (stbtt_uint32)info->hhea, 36)) {
+    return 0;
+  }
   if (info->glyf) {
     // required for truetype
     if (!info->loca)
@@ -1658,8 +1699,13 @@ static int stbtt_InitFont_internal(stbtt_fontinfo* info, unsigned char* data, in
     info->fontdicts = stbtt__new_buf(NULL, 0);
     info->fdselect  = stbtt__new_buf(NULL, 0);
 
-    // @TODO this should use size from table (not 512MB)
-    info->cff = stbtt__new_buf(data + cff, 512 * 1024 * 1024);
+    // RA8 LOCAL PATCH (see docs/SOUP/stb.md): upstream sizes the CFF buffer at a
+    // bogus 512 MB, so the bounds checks inside stbtt__buf (buf_get8 / buf_seek /
+    // cff index parsing) never fire on a crafted OTF and the whole CFF /
+    // charstring path can read out of bounds. Size it to the real bytes left in
+    // the font buffer (`cff` was proven <= data_size by the table-directory
+    // guard), so every stbtt__buf read is bounded by construction.
+    info->cff = stbtt__new_buf(data + cff, (size_t)((stbtt_uint32)info->data_size - cff));
     b         = info->cff;
 
     // read the header
@@ -1700,9 +1746,13 @@ static int stbtt_InitFont_internal(stbtt_fontinfo* info, unsigned char* data, in
   }
 
   t = stbtt__find_table(data, fontstart, "maxp");
-  if (t)
+  if (t) {
+    // RA8 LOCAL PATCH (see docs/SOUP/stb.md): numGlyphs lives at maxp+4; reject
+    // a maxp table truncated before it.
+    if (!stbtt__in_bounds(info, t, 6))
+      return 0;
     info->numGlyphs = ttUSHORT(data + t + 4);
-  else
+  } else
     info->numGlyphs = 0xffff;
 
   info->svg = -1;
@@ -1710,7 +1760,15 @@ static int stbtt_InitFont_internal(stbtt_fontinfo* info, unsigned char* data, in
   // find a cmap encoding table we understand *now* to avoid searching
   // later. (todo: could make this installable)
   // the same regardless of glyph.
-  numTables       = ttUSHORT(data + cmap + 2);
+  // RA8 LOCAL PATCH (see docs/SOUP/stb.md): the cmap subtable directory --
+  // numTables at cmap+2, then numTables 8-byte encoding records at cmap+4 -- is
+  // walked with a count taken straight from the font. Bound the numTables read
+  // and the whole record array before iterating them.
+  if (!stbtt__in_bounds(info, cmap, 4))
+    return 0;
+  numTables = ttUSHORT(data + cmap + 2);
+  if (!stbtt__in_bounds(info, cmap, 4 + (stbtt_uint32)numTables * 8))
+    return 0;
   info->index_map = 0;
   for (i = 0; i < numTables; ++i) {
     stbtt_uint32 encoding_record = cmap + 4 + 8 * i;
@@ -1744,37 +1802,75 @@ STBTT_DEF int stbtt_FindGlyphIndex(const stbtt_fontinfo* info, int unicode_codep
   stbtt_uint8* data      = info->data;
   stbtt_uint32 index_map = info->index_map;
 
+  // RA8 LOCAL PATCH (see docs/SOUP/stb.md): index_map is `cmap + subtableOffset`
+  // where subtableOffset comes straight from the font, so it can point anywhere;
+  // bound the 2-byte format read before dereferencing it. Each format arm below
+  // then bounds its own attacker-sized reads.
+  if (!stbtt__in_bounds(info, index_map, 2))
+    return 0;
   stbtt_uint16 format = ttUSHORT(data + index_map + 0);
   if (format == 0) { // apple byte encoding
-    stbtt_int32 bytes = ttUSHORT(data + index_map + 2);
-    if (unicode_codepoint < bytes - 6)
+    stbtt_int32 bytes;
+    if (!stbtt__in_bounds(info, index_map, 4))
+      return 0;
+    bytes = ttUSHORT(data + index_map + 2);
+    if (unicode_codepoint < bytes - 6) {
+      // Read at index_map + 6 + cp, cp < bytes-6, so it stays inside the
+      // `bytes`-long subtable; confirm that subtable fits the buffer.
+      if (!stbtt__in_bounds(info, index_map, (stbtt_uint32)bytes))
+        return 0;
       return ttBYTE(data + index_map + 6 + unicode_codepoint);
+    }
     return 0;
   } else if (format == 6) {
-    stbtt_uint32 first = ttUSHORT(data + index_map + 6);
-    stbtt_uint32 count = ttUSHORT(data + index_map + 8);
-    if ((stbtt_uint32)unicode_codepoint >= first && (stbtt_uint32)unicode_codepoint < first + count)
+    stbtt_uint32 first, count;
+    if (!stbtt__in_bounds(info, index_map, 10))
+      return 0;
+    first = ttUSHORT(data + index_map + 6);
+    count = ttUSHORT(data + index_map + 8);
+    if ((stbtt_uint32)unicode_codepoint >= first &&
+        (stbtt_uint32)unicode_codepoint < first + count) {
+      if (!stbtt__in_bounds(info, index_map, 10 + count * 2))
+        return 0;
       return ttUSHORT(data + index_map + 10 + (unicode_codepoint - first) * 2);
+    }
     return 0;
   } else if (format == 2) {
     STBTT_assert(0); // @TODO: high-byte mapping for japanese/chinese/korean
     return 0;
   } else if (format ==
              4) { // standard mapping for windows fonts: binary search collection of ranges
-    stbtt_uint16 segcount      = ttUSHORT(data + index_map + 6) >> 1;
-    stbtt_uint16 searchRange   = ttUSHORT(data + index_map + 8) >> 1;
-    stbtt_uint16 entrySelector = ttUSHORT(data + index_map + 10);
-    stbtt_uint16 rangeShift    = ttUSHORT(data + index_map + 12) >> 1;
+    stbtt_uint16 segcount, searchRange, entrySelector, rangeShift;
+    stbtt_uint32 endCount, search;
+
+    // RA8 LOCAL PATCH (see docs/SOUP/stb.md): bound the fixed format-4 header
+    // (index_map[6..13]) and then the four segcount-sized arrays it indexes --
+    // endCount, startCount, idDelta, idRangeOffset -- which span
+    // index_map+14 .. index_map+16+segcount*8. The binary search and the
+    // start/last/idDelta/idRangeOffset reads below all stay inside that span.
+    if (!stbtt__in_bounds(info, index_map, 14))
+      return 0;
+    segcount      = ttUSHORT(data + index_map + 6) >> 1;
+    searchRange   = ttUSHORT(data + index_map + 8) >> 1;
+    entrySelector = ttUSHORT(data + index_map + 10);
+    rangeShift    = ttUSHORT(data + index_map + 12) >> 1;
+    if (!stbtt__in_bounds(info, index_map, 16 + (stbtt_uint32)segcount * 8))
+      return 0;
 
     // do a binary search of the segments
-    stbtt_uint32 endCount = index_map + 14;
-    stbtt_uint32 search   = endCount;
+    endCount = index_map + 14;
+    search   = endCount;
 
     if (unicode_codepoint > 0xffff)
       return 0;
 
     // they lie from endCount .. endCount + segCount
     // but searchRange is the nearest power of two, so...
+    // RA8 LOCAL PATCH (see docs/SOUP/stb.md): rangeShift/searchRange come from
+    // the font and can push `search` past the segment arrays; bound every
+    // search read against the buffer.
+    if (!stbtt__in_bounds(info, search + (stbtt_uint32)rangeShift * 2, 2))
+      return 0;
     if (unicode_codepoint >= ttUSHORT(data + search + rangeShift * 2))
       search += rangeShift * 2;
 
@@ -1783,6 +1879,8 @@ STBTT_DEF int stbtt_FindGlyphIndex(const stbtt_fontinfo* info, int unicode_codep
     while (entrySelector) {
       stbtt_uint16 end;
       searchRange >>= 1;
+      if (!stbtt__in_bounds(info, search + (stbtt_uint32)searchRange * 2, 2))
+        return 0;
       end = ttUSHORT(data + search + searchRange * 2);
       if (unicode_codepoint > end)
         search += searchRange * 2;
@@ -1794,6 +1892,13 @@ STBTT_DEF int stbtt_FindGlyphIndex(const stbtt_fontinfo* info, int unicode_codep
       stbtt_uint16 offset, start, last;
       stbtt_uint16 item = (stbtt_uint16)((search - endCount) >> 1);
 
+      // RA8 LOCAL PATCH (see docs/SOUP/stb.md): `item` indexes the segcount-sized
+      // arrays; the search above can leave it past segcount. Reject that so the
+      // start/last/idDelta/idRangeOffset reads stay inside the arrays bounded
+      // when format 4 was entered.
+      if (item >= segcount)
+        return 0;
+
       start = ttUSHORT(data + index_map + 14 + segcount * 2 + 2 + 2 * item);
       last  = ttUSHORT(data + endCount + 2 * item);
       if (unicode_codepoint < start || unicode_codepoint > last)
@@ -1804,12 +1909,27 @@ STBTT_DEF int stbtt_FindGlyphIndex(const stbtt_fontinfo* info, int unicode_codep
         return (stbtt_uint16)(unicode_codepoint +
                               ttSHORT(data + index_map + 14 + segcount * 4 + 2 + 2 * item));
 
-      return ttUSHORT(data + offset + (unicode_codepoint - start) * 2 + index_map + 14 +
-                      segcount * 6 + 2 + 2 * item);
+      // RA8 LOCAL PATCH (see docs/SOUP/stb.md): `offset` (idRangeOffset) is a
+      // raw font value, so the glyph-id read can land anywhere; bound it.
+      {
+        stbtt_uint32 gidx_off = (stbtt_uint32)offset + (stbtt_uint32)(unicode_codepoint - start) * 2 +
+                                index_map + 14 + (stbtt_uint32)segcount * 6 + 2 + 2 * (stbtt_uint32)item;
+        if (!stbtt__in_bounds(info, gidx_off, 2))
+          return 0;
+        return ttUSHORT(data + gidx_off);
+      }
     }
   } else if (format == 12 || format == 13) {
-    stbtt_uint32 ngroups = ttULONG(data + index_map + 12);
+    stbtt_uint32 ngroups;
     stbtt_int32  low, high;
+    // RA8 LOCAL PATCH (see docs/SOUP/stb.md): bound the ngroups field, cap it so
+    // ngroups*12 cannot overflow the bound arithmetic, then bound the whole
+    // group array the binary search indexes (index_map+16 .. +16+ngroups*12).
+    if (!stbtt__in_bounds(info, index_map, 16))
+      return 0;
+    ngroups = ttULONG(data + index_map + 12);
+    if (ngroups > 0x0FFFFFFFu || !stbtt__in_bounds(info, index_map, 16 + ngroups * 12))
+      return 0;
     low  = 0;
     high = (stbtt_int32)ngroups;
     // Binary search the right group.
@@ -1862,20 +1982,36 @@ static int stbtt__GetGlyfOffset(const stbtt_fontinfo* info, int glyph_index)
 
   STBTT_assert(!info->cff.size);
 
-  if (glyph_index >= info->numGlyphs)
+  // RA8 LOCAL PATCH (see docs/SOUP/stb.md): reject a negative index (a crafted
+  // cmap can map a code point to one) as well as one past numGlyphs, so the
+  // loca read below cannot use a negative offset.
+  if (glyph_index < 0 || glyph_index >= info->numGlyphs)
     return -1; // glyph index out of range
   if (info->indexToLocFormat >= 2)
     return -1; // unknown index->glyph map format
 
   if (info->indexToLocFormat == 0) {
+    // RA8 LOCAL PATCH (see docs/SOUP/stb.md): the loca table can be shorter than
+    // numGlyphs+1 entries; bound the two 2-byte reads before making them.
+    if (!stbtt__in_bounds(info, (stbtt_uint32)info->loca + (stbtt_uint32)glyph_index * 2, 4))
+      return -1;
     g1 = info->glyf + ttUSHORT(info->data + info->loca + glyph_index * 2) * 2;
     g2 = info->glyf + ttUSHORT(info->data + info->loca + glyph_index * 2 + 2) * 2;
   } else {
+    if (!stbtt__in_bounds(info, (stbtt_uint32)info->loca + (stbtt_uint32)glyph_index * 4, 8))
+      return -1;
     g1 = info->glyf + ttULONG(info->data + info->loca + glyph_index * 4);
     g2 = info->glyf + ttULONG(info->data + info->loca + glyph_index * 4 + 4);
   }
 
-  return g1 == g2 ? -1 : g1; // if length is 0, return -1
+  if (g1 == g2)
+    return -1; // if length is 0, return -1
+  // RA8 LOCAL PATCH (see docs/SOUP/stb.md): loca resolves to a glyf-relative
+  // offset taken from the font; require the 10-byte glyph header (contour count
+  // + bounding box) to lie inside the buffer before any caller dereferences g1.
+  if (!stbtt__in_bounds(info, (stbtt_uint32)g1, 10))
+    return -1;
+  return g1;
 }
 
 static int stbtt__GetGlyphInfoT2(const stbtt_fontinfo* info,
@@ -1955,12 +2091,21 @@ static int stbtt__close_shape(stbtt_vertex* vertices,
   return num_vertices;
 }
 
-static int
-stbtt__GetGlyphShapeTT(const stbtt_fontinfo* info, int glyph_index, stbtt_vertex** pvertices)
+// RA8 LOCAL PATCH (see docs/SOUP/stb.md): TrueType composite glyphs may
+// reference other glyphs, and a crafted font can make a composite reference
+// itself (or form a cycle), recursing until the stack overflows. Cap the
+// nesting depth; legitimate fonts nest at most a couple of levels.
+#define STBTT__MAX_COMPOSITE_DEPTH 8
+
+static int stbtt__GetGlyphShapeTT_depth(const stbtt_fontinfo* info,
+                                        int                   glyph_index,
+                                        stbtt_vertex**        pvertices,
+                                        int                   depth)
 {
   stbtt_int16   numberOfContours;
   stbtt_uint8*  endPtsOfContours;
   stbtt_uint8*  data         = info->data;
+  stbtt_uint8*  data_end     = info->data + info->data_size; // RA8 LOCAL PATCH: read bound
   stbtt_vertex* vertices     = 0;
   int           num_vertices = 0;
   int           g            = stbtt__GetGlyfOffset(info, glyph_index);
@@ -1978,8 +2123,21 @@ stbtt__GetGlyphShapeTT(const stbtt_fontinfo* info, int glyph_index, stbtt_vertex
     stbtt_int32  x, y, cx, cy, sx, sy, scx, scy;
     stbtt_uint8* points;
     endPtsOfContours = (data + g + 10);
-    ins              = ttUSHORT(data + g + 10 + numberOfContours * 2);
-    points           = data + g + 10 + numberOfContours * 2 + 2 + ins;
+    // RA8 LOCAL PATCH (see docs/SOUP/stb.md): bound the endPtsOfContours[last]
+    // read (g+10+nc*2-2) and the instructionLength read (g+10+nc*2).
+    if (!stbtt__in_bounds(info, (stbtt_uint32)g, 10 + (stbtt_uint32)numberOfContours * 2 + 2))
+      return 0;
+    ins = ttUSHORT(data + g + 10 + numberOfContours * 2);
+    {
+      // RA8 LOCAL PATCH (see docs/SOUP/stb.md): the point stream starts after
+      // the (font-supplied) instruction bytes; require that start to lie inside
+      // the buffer before walking it. data_end below then bounds each read.
+      stbtt_uint32 points_off =
+        (stbtt_uint32)g + 10 + (stbtt_uint32)numberOfContours * 2 + 2 + (stbtt_uint32)ins;
+      if (points_off > (stbtt_uint32)info->data_size)
+        return 0;
+      points = data + points_off;
+    }
 
     n = 1 + ttUSHORT(endPtsOfContours + numberOfContours * 2 - 2);
 
@@ -1999,12 +2157,25 @@ stbtt__GetGlyphShapeTT(const stbtt_fontinfo* info, int glyph_index, stbtt_vertex
       m - n; // starting offset for uninterpreted data, regardless of how m ends up being calculated
 
     // first load flags
+    // RA8 LOCAL PATCH (see docs/SOUP/stb.md): the flag / x / y streams are
+    // walked one byte at a time with counts driven by the font; guard every
+    // read against data_end so a crafted glyph cannot run off the buffer. On
+    // overrun free the scratch and report an empty glyph.
 
     for (i = 0; i < n; ++i) {
       if (flagcount == 0) {
+        if (points >= data_end) {
+          STBTT_free(vertices, info->userdata);
+          return 0;
+        }
         flags = *points++;
-        if (flags & 8)
+        if (flags & 8) {
+          if (points >= data_end) {
+            STBTT_free(vertices, info->userdata);
+            return 0;
+          }
           flagcount = *points++;
+        }
       } else
         --flagcount;
       vertices[off + i].type = flags;
@@ -2015,10 +2186,19 @@ stbtt__GetGlyphShapeTT(const stbtt_fontinfo* info, int glyph_index, stbtt_vertex
     for (i = 0; i < n; ++i) {
       flags = vertices[off + i].type;
       if (flags & 2) {
-        stbtt_int16 dx = *points++;
+        stbtt_int16 dx;
+        if (points >= data_end) {
+          STBTT_free(vertices, info->userdata);
+          return 0;
+        }
+        dx = *points++;
         x += (flags & 16) ? dx : -dx; // ???
       } else {
         if (!(flags & 16)) {
+          if (data_end - points < 2) {
+            STBTT_free(vertices, info->userdata);
+            return 0;
+          }
           x = x + (stbtt_int16)(points[0] * 256 + points[1]);
           points += 2;
         }
@@ -2031,10 +2211,19 @@ stbtt__GetGlyphShapeTT(const stbtt_fontinfo* info, int glyph_index, stbtt_vertex
     for (i = 0; i < n; ++i) {
       flags = vertices[off + i].type;
       if (flags & 4) {
-        stbtt_int16 dy = *points++;
+        stbtt_int16 dy;
+        if (points >= data_end) { // RA8 LOCAL PATCH: bound the y stream read
+          STBTT_free(vertices, info->userdata);
+          return 0;
+        }
+        dy = *points++;
         y += (flags & 32) ? dy : -dy; // ???
       } else {
         if (!(flags & 32)) {
+          if (data_end - points < 2) { // RA8 LOCAL PATCH: bound the y stream read
+            STBTT_free(vertices, info->userdata);
+            return 0;
+          }
           y = y + (stbtt_int16)(points[0] * 256 + points[1]);
           points += 2;
         }
@@ -2118,12 +2307,24 @@ stbtt__GetGlyphShapeTT(const stbtt_fontinfo* info, int glyph_index, stbtt_vertex
     stbtt_uint8* comp = data + g + 10;
     num_vertices      = 0;
     vertices          = 0;
+    // RA8 LOCAL PATCH (see docs/SOUP/stb.md): a crafted composite can reference
+    // itself; cap the recursion depth before descending further.
+    if (depth >= STBTT__MAX_COMPOSITE_DEPTH)
+      return 0;
     while (more) {
       stbtt_uint16  flags, gidx;
       int           comp_num_verts = 0, i;
       stbtt_vertex *comp_verts = 0, *tmp = 0;
       float         mtx[6] = {1, 0, 0, 1, 0, 0}, m, n;
 
+      // RA8 LOCAL PATCH (see docs/SOUP/stb.md): the component records are walked
+      // incrementally with font-driven flags; bound every read against data_end
+      // (freeing any accumulated vertices on overrun).
+      if (data_end - comp < 4) {
+        if (vertices)
+          STBTT_free(vertices, info->userdata);
+        return 0;
+      }
       flags = ttSHORT(comp);
       comp += 2;
       gidx = ttSHORT(comp);
@@ -2131,11 +2332,21 @@ stbtt__GetGlyphShapeTT(const stbtt_fontinfo* info, int glyph_index, stbtt_vertex
 
       if (flags & 2) {   // XY values
         if (flags & 1) { // shorts
+          if (data_end - comp < 4) {
+            if (vertices)
+              STBTT_free(vertices, info->userdata);
+            return 0;
+          }
           mtx[4] = ttSHORT(comp);
           comp += 2;
           mtx[5] = ttSHORT(comp);
           comp += 2;
         } else {
+          if (data_end - comp < 2) {
+            if (vertices)
+              STBTT_free(vertices, info->userdata);
+            return 0;
+          }
           mtx[4] = ttCHAR(comp);
           comp += 1;
           mtx[5] = ttCHAR(comp);
@@ -2146,16 +2357,31 @@ stbtt__GetGlyphShapeTT(const stbtt_fontinfo* info, int glyph_index, stbtt_vertex
         STBTT_assert(0);
       }
       if (flags & (1 << 3)) { // WE_HAVE_A_SCALE
+        if (data_end - comp < 2) {
+          if (vertices)
+            STBTT_free(vertices, info->userdata);
+          return 0;
+        }
         mtx[0] = mtx[3] = ttSHORT(comp) / 16384.0f;
         comp += 2;
         mtx[1] = mtx[2] = 0;
       } else if (flags & (1 << 6)) { // WE_HAVE_AN_X_AND_YSCALE
+        if (data_end - comp < 4) {
+          if (vertices)
+            STBTT_free(vertices, info->userdata);
+          return 0;
+        }
         mtx[0] = ttSHORT(comp) / 16384.0f;
         comp += 2;
         mtx[1] = mtx[2] = 0;
         mtx[3]          = ttSHORT(comp) / 16384.0f;
         comp += 2;
       } else if (flags & (1 << 7)) { // WE_HAVE_A_TWO_BY_TWO
+        if (data_end - comp < 8) {
+          if (vertices)
+            STBTT_free(vertices, info->userdata);
+          return 0;
+        }
         mtx[0] = ttSHORT(comp) / 16384.0f;
         comp += 2;
         mtx[1] = ttSHORT(comp) / 16384.0f;
@@ -2171,7 +2397,9 @@ stbtt__GetGlyphShapeTT(const stbtt_fontinfo* info, int glyph_index, stbtt_vertex
       n = (float)STBTT_sqrt(mtx[2] * mtx[2] + mtx[3] * mtx[3]);
 
       // Get indexed glyph.
-      comp_num_verts = stbtt_GetGlyphShape(info, gidx, &comp_verts);
+      // RA8 LOCAL PATCH (see docs/SOUP/stb.md): recurse through the depth-aware
+      // entry so nested composites cannot exceed STBTT__MAX_COMPOSITE_DEPTH.
+      comp_num_verts = stbtt__GetGlyphShapeTT_depth(info, gidx, &comp_verts, depth + 1);
       if (comp_num_verts > 0) {
         // Transform vertices.
         for (i = 0; i < comp_num_verts; ++i) {
@@ -2698,7 +2926,7 @@ STBTT_DEF int
 stbtt_GetGlyphShape(const stbtt_fontinfo* info, int glyph_index, stbtt_vertex** pvertices)
 {
   if (!info->cff.size)
-    return stbtt__GetGlyphShapeTT(info, glyph_index, pvertices);
+    return stbtt__GetGlyphShapeTT_depth(info, glyph_index, pvertices, 0); // RA8 LOCAL PATCH
   else
     return stbtt__GetGlyphShapeT2(info, glyph_index, pvertices);
 }
@@ -4681,7 +4909,11 @@ static int stbtt_BakeFontBitmap_internal(unsigned char* data,
   int            x, y, bottom_y, i;
   stbtt_fontinfo f;
   f.userdata = NULL;
-  if (!stbtt_InitFont(&f, data, offset))
+  // RA8 LOCAL PATCH (see docs/SOUP/stb.md): this baking convenience API carries
+  // no buffer length and is unused by the firmware (which drives InitFont + the
+  // no-alloc glyph path directly). Pass INT_MAX so it keeps its upstream
+  // behaviour; if it is ever wired up, thread the real length here.
+  if (!stbtt_InitFont(&f, data, 0x7fffffff, offset))
     return -1;
   STBTT_memset(pixels, 0, pw * ph); // background of 0 around pixels
   x = y    = 1;
@@ -5250,7 +5482,10 @@ STBTT_DEF int stbtt_PackFontRanges(stbtt_pack_context*  spc,
     return 0;
 
   info.userdata = spc->user_allocator_context;
-  stbtt_InitFont(&info, fontdata, stbtt_GetFontOffsetForIndex(fontdata, font_index));
+  // RA8 LOCAL PATCH (see docs/SOUP/stb.md): unused font-packing convenience API
+  // with no buffer length; pass INT_MAX to preserve upstream behaviour.
+  stbtt_InitFont(
+    &info, fontdata, 0x7fffffff, stbtt_GetFontOffsetForIndex(fontdata, font_index));
 
   n = stbtt_PackFontRangesGatherRects(spc, &info, ranges, num_ranges, rects);
 
@@ -5289,7 +5524,9 @@ STBTT_DEF void stbtt_GetScaledFontVMetrics(const unsigned char* fontdata,
   int            i_ascent, i_descent, i_lineGap;
   float          scale;
   stbtt_fontinfo info;
-  stbtt_InitFont(&info, fontdata, stbtt_GetFontOffsetForIndex(fontdata, index));
+  // RA8 LOCAL PATCH (see docs/SOUP/stb.md): unused metrics convenience API with
+  // no buffer length; pass INT_MAX to preserve upstream behaviour.
+  stbtt_InitFont(&info, fontdata, 0x7fffffff, stbtt_GetFontOffsetForIndex(fontdata, index));
   scale = size > 0 ? stbtt_ScaleForPixelHeight(&info, size)
                    : stbtt_ScaleForMappingEmToPixels(&info, -size);
   stbtt_GetFontVMetrics(&info, &i_ascent, &i_descent, &i_lineGap);
@@ -6004,9 +6241,9 @@ STBTT_DEF int stbtt_GetNumberOfFonts(const unsigned char* data)
   return stbtt_GetNumberOfFonts_internal((unsigned char*)data);
 }
 
-STBTT_DEF int stbtt_InitFont(stbtt_fontinfo* info, const unsigned char* data, int offset)
+STBTT_DEF int stbtt_InitFont(stbtt_fontinfo* info, const unsigned char* data, int data_size, int offset)
 {
-  return stbtt_InitFont_internal(info, (unsigned char*)data, offset);
+  return stbtt_InitFont_internal(info, (unsigned char*)data, data_size, offset);
 }
 
 STBTT_DEF int stbtt_FindMatchingFont(const unsigned char* fontdata, const char* name, int flags)
