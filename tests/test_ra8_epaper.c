@@ -10,10 +10,11 @@
  * SPI-bus facade (``ra8_io_spi_bus_bind_spi_b`` +
  * ``ra8_io_spi_bus_as_ops``), and hands the resulting seam to
  * ``ra8_epaper_init`` -- exercising the exact production wiring.
- * ``RA8_SIMULATOR_MODE`` short-circuits the HRDY busy-poll inside the
- * driver; the LUT-idle poll in ``display_area`` runs for real on host
- * (issue #177 / T1-01) and is driven through the ``ra8_sim_mmio`` fault
- * seam keyed on the seam's ctx cookie (the bound bus handle).
+ * The HRDY busy-poll, the /RESET GPIO pulse, and the LUT-idle poll in
+ * ``display_area`` all run for real on host (issues #177 / #238): the
+ * two polls are driven through the ``ra8_sim_mmio`` fault seam (the
+ * LUT poll keyed on the seam's ctx cookie, the bound bus handle) and
+ * the reset pulse drives the RAM-backed PORT block.
  *
  * What we cover:
  *   - ``ra8_epaper_init`` rejects NULL cfg.
@@ -283,6 +284,45 @@ static void test_wait_ready_hrdy_timeout(void)
 }
 
 /**
+ * @brief The /RESET pulse in init drives the reset pin's PORT block.
+ *
+ * @details
+ * The issue-238 migration deleted the ``RA8_SIMULATOR_MODE`` branch
+ * that compiled the reset pulse out of the host build; init now runs
+ * the real high -> low -> high ``ra8_gpio_write`` sequence against the
+ * RAM-backed PORT window (``ra8_delay_ms`` is a host no-op). PCNTR3 is
+ * last-write-wins RAM on host, so the observable trace is the final
+ * write: the POSR (set) half carrying the reset pin's bit -- the pulse
+ * ended with the panel taken OUT of reset. A leftover PORR (clear)
+ * pattern would mean the driver parked the panel in reset.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the pulse is straight-line
+ * GPIO writes; no `&&` or `||` in the code under test)
+ */
+static void test_pulse_reset_drives_line(void)
+{
+  TEST_BEGIN("epaper init pulses /RESET for real on host");
+  prep();
+  stage_spsr_ready();
+  const ra8_epaper_cfg_t  cfg      = make_cfg();
+  volatile r_port_regs_t* port     = ra8_port(RA8_PIN_PORT(cfg.reset_pin));
+  const uint32_t          pin_mask = (uint32_t)(1UL << RA8_PIN_PIN(cfg.reset_pin));
+
+  /* Pre-stage PCNTR3 with the PORR (clear) pattern so the assertion can
+   * only pass if init's pulse actually wrote the register. */
+  port->PCNTR3 = pin_mask << (uint32_t)k_ra8_pcntr_high_half_shift;
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_init(&cfg));
+
+  /* Last write of the high->low->high sequence sets the POSR half. */
+  TEST_ASSERT_EQ(pin_mask, port->PCNTR3);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_sleep());
+  TEST_END("epaper init pulses /RESET for real on host");
+}
+
+/**
  * @test test_mcdc_ra8_epaper
  *
  * @par MC/DC:
@@ -360,6 +400,7 @@ int main(void)
   test_happy_path();
   test_display_area_lut_timeout();
   test_wait_ready_hrdy_timeout();
+  test_pulse_reset_drives_line();
   test_mcdc_ra8_epaper();
   return 0;
 }

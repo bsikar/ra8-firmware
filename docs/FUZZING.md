@@ -20,7 +20,7 @@ the device (network, modem, removable media):
 | `fuzz_ra8_ble_att`   | ATT dispatcher via `ra8_ble_host_test_inject_acl()`      | BLE peer (over the air)      |
 | `fuzz_ra8_usb_pal`   | `ra8_usb_pal_ep_open` / `ep_send` / `ep_recv`            | USB host / compliance stand  |
 | `fuzz_ra8_tls`       | `ra8_tls_*` facade lifecycle + BIO recv stream           | Network transport (TLS)      |
-| `fuzz_ra8_canfd`     | RX frame parser via `ra8_canfd_test_inject_frame()`      | CAN-FD bus                   |
+| `fuzz_ra8_canfd`     | `ra8_canfd_receive()` decode of a staged `CFDRF[0]` block | CAN-FD bus                   |
 | `fuzz_ra8_etha`      | Ethernet header parser via `eff_parse_eth_header()`      | Ethernet                     |
 | `fuzz_ra8_fs_fat`    | FAT BPB / directory entry walk via `ra8_fs_mount()`      | Removable media              |
 | `fuzz_ra8_jpeg_sw_block` | Focused JPEG Huffman block decoder (dec_block path) | Camera frames                |
