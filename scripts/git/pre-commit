@@ -426,6 +426,19 @@ if [[ -f scripts/utils/check_no_gnu_attribute.py ]]; then
     fi
 fi
 
+# ---- No silent ra8_err_t discards at TrustZone boot boundaries ----
+# A C23 (void)-cast silences [[nodiscard]] by ISO rule, so -Werror can
+# never catch `(void)ra8_cgc_init();` right before a BLXNS (T2-05,
+# tracker #191). This gate bans (void)-cast discards of the
+# ra8_tz_secure_boot_* family everywhere and of any ra8_*() call inside
+# a boot TU (a .c defining SystemInit / ra8_trustzone_init).
+if [[ -f scripts/utils/check_tz_boundary_discard.py ]]; then
+    if ! python3 scripts/utils/check_tz_boundary_discard.py; then
+        echo "[FAIL] check_tz_boundary_discard.py: handle the error, do not (void)-cast it."
+        error_found=1
+    fi
+fi
+
 # ---- @par MC/DC: block on staged tests (warn in Wave 0) -----------
 if [[ -f scripts/utils/check_mcdc_block.py ]]; then
     if ! python3 scripts/utils/check_mcdc_block.py; then
