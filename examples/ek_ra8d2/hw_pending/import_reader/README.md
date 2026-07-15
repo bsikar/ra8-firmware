@@ -16,7 +16,8 @@ format and caches it on the card; every later open takes the fast cached path.
    **mounts** the card's existing FAT volume with `ra8_fs` (it does **not**
    reformat -- the source `.epub` is preserved).
 2. Drives the `ra8_rabook_import` cache manager wired to its **production** compile
-   adapter `ra8_rabook_import_compile_adapter` (which runs `ra8_epub_open_fs` +
+   adapter `ra8_rabook_import_compile_adapter` (which streams the source through
+   a bounded `ra8_vmem` page cache -- no whole-file load buffer, #230 -- into
    `ra8_rabook_compile_from_epub`):
    - **first open** of `BOOK.EPB` is a cache **miss** -> the importer keys the
      entry by the source CRC-32, compiles the EPUB to the bare `RABOOK1` body,
