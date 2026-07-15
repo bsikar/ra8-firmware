@@ -204,7 +204,7 @@ static uint32_t priv_ra8_i3c_xfer_cmd_word(uint8_t target_addr, bool rnw)
 static uint32_t priv_ra8_i3c_ccc_cmd_word(uint8_t ccc, uint8_t target_addr, bool rnw)
 {
   uint32_t cmd = 0U;
-  cmd |= 1U << k_ra8_i3c_cmd_cp_shift;               /* command-present (CCC). */
+  cmd |= 1U << k_ra8_i3c_cmd_cp_shift;                /* command-present (CCC). */
   cmd |= ((uint32_t)ccc) << k_ra8_i3c_cmd_code_shift; /* CCC opcode in [14:7].  */
   cmd |= ((uint32_t)target_addr) << k_ra8_i3c_cmd_dev_index_shift;
   if (rnw) {
