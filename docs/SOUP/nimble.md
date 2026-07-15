@@ -7,9 +7,12 @@ firmware as Software Of Unknown Provenance (SOUP).
 ## Component identity
 
 - **Name**: Apache NimBLE
-- **Version**: 1.9.0 (per `RELEASE_NOTES.md`: "15 December 2025 - Apache
-  NimBLE v1.9.0"). The `version.yml` file is "0.0.0" because that file
-  is reserved for the upstream default-branch placeholder.
+- **Version**: 1.9.0+dev, pinned at upstream commit
+  `8b6f3e819118a1839e5f238bfe1797d64878dc3d` (default branch, 2026-04-28;
+  42 commits past the `nimble_1_9_0_tag` release tag). `RELEASE_NOTES.md`
+  prose still reads "15 December 2025 - Apache NimBLE v1.9.0"; the
+  `version.yml` file is "0.0.0" because that file is reserved for the
+  upstream default-branch placeholder.
 - **Upstream URL**: https://github.com/apache/mynewt-nimble
 - **Local path**: `libs/third_party/nimble/`
 
@@ -17,8 +20,13 @@ firmware as Software Of Unknown Provenance (SOUP).
 
 - **Origin**: Apache Software Foundation, Apache Mynewt project.
 - **License**: Apache-2.0 (`LICENSE` and `NOTICE`).
-- **How it entered our tree**: Vendored snapshot of the upstream Apache
-  NimBLE 1.9.0 release. Upstream commit hash unknown.
+- **How it entered our tree**: Vendored snapshot of the upstream default
+  branch shortly after the 1.9.0 release. The commit was recovered by
+  fingerprinting: all 859 vendored files (858 regular files plus the one
+  `porting/npl/riot` symlink) are byte-identical to upstream commit
+  `8b6f3e81`, the single exact match among the 5567 commits reachable
+  from the upstream default branch. The vendored subset drops the
+  upstream `apps/` directory (163 files) and nothing else.
 
 ## Use case in this firmware
 
@@ -51,9 +59,17 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Deviations / patches
 
-None. The vendored tree is unmodified.
+None. The vendored tree is unmodified (byte-identical to the pinned
+upstream commit; `apps/` omitted).
+
+## CVE monitoring
+
+The pinned commit is queried against OSV.dev weekly by
+`.github/workflows/osv-scan.yml` (commit-range GIT queries via
+`scripts/utils/osv_scan.sh`); a published advisory affecting the pin
+fails the scheduled run.
 
 ## Last review date
 
-- Reviewed: 2026-05-02
+- Reviewed: 2026-07-15 (commit pin recovered and recorded)
 - Expected re-review by: 2027-05-02

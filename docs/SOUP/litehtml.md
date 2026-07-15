@@ -7,9 +7,11 @@ as Software Of Unknown Provenance (SOUP).
 ## Component identity
 
 - **Name**: litehtml (HTML/CSS rendering engine)
-- **Version**: unknown (the in-tree `CMakeLists.txt` sets
-  `PROJECT_MAJOR=0`, `PROJECT_MINOR=0` and there is no separate VERSION
-  file; this corresponds to an upstream development-branch snapshot).
+- **Version**: 0.9+dev, pinned at upstream commit
+  `8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e` (default branch, 2026-01-10;
+  340 commits past the `v0.9` release tag). The in-tree `CMakeLists.txt`
+  sets `PROJECT_MAJOR=0`, `PROJECT_MINOR=0` because upstream only stamps
+  a version at release time; the tree is a development-branch snapshot.
 - **Upstream URL**: https://github.com/litehtml/litehtml
 - **Local path**: `libs/third_party/litehtml/`
 
@@ -19,8 +21,12 @@ as Software Of Unknown Provenance (SOUP).
   GitHub.
 - **License**: 3-clause BSD (`LICENSE`, "Copyright (c) 2013, Yuri
   Kobets (tordex). All rights reserved.").
-- **How it entered our tree**: Vendored snapshot of the upstream
-  litehtml repository. Upstream commit hash unknown.
+- **How it entered our tree**: Vendored snapshot of the upstream default
+  branch. The commit was recovered by fingerprinting: all 215 vendored
+  files are byte-identical to upstream commit `8836bc1b`, the single
+  exact match among the 1040 commits reachable from the upstream default
+  branch. The vendored subset drops `doc/`, `support/`, `README.md` and
+  the MSVC project files (20 files total) and nothing else.
 
 ## Use case in this firmware
 
@@ -51,9 +57,18 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Deviations / patches
 
-None. The vendored tree is unmodified.
+None. The vendored tree is unmodified (byte-identical to the pinned
+upstream commit; documentation and MSVC scaffolding omitted).
+
+## CVE monitoring
+
+The pinned commit is queried against OSV.dev weekly by
+`.github/workflows/osv-scan.yml` (commit-range GIT queries via
+`scripts/utils/osv_scan.sh`); a published advisory affecting the pin
+fails the scheduled run. Because litehtml parses untrusted EPUB
+HTML/CSS, prefer re-vendoring at a tagged release when one lands.
 
 ## Last review date
 
-- Reviewed: 2026-05-02
+- Reviewed: 2026-07-15 (commit pin recovered and recorded)
 - Expected re-review by: 2027-05-02

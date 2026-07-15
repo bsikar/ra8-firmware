@@ -21,8 +21,9 @@ provenance).  Everything that CAN be cross-checked against the tree is:
   * **Version drift** -- for components whose in-tree headers carry a version
     macro (the ThreadX family, Mbed TLS, TF-PSA-Crypto, miniz, TinyXML-2,
     stb), the macro is re-read from source and compared to the recorded
-    version.  Versions are never invented; an unpinnable component (litehtml,
-    NimBLE dev snapshots) is recorded as such (see T5-02).
+    version.  Versions are never invented; a component with no upstream
+    release tag (litehtml, NimBLE dev snapshots) is pinned to the exact
+    upstream commit its vendored tree is byte-identical to (T5-09).
   * **License-file presence** -- each entry that names a LICENSE file must
     have it on disk.  stb ships no standalone LICENSE (text in header tails)
     and is reported as a known gap rather than a hard failure.
@@ -37,6 +38,8 @@ Run::
     gen_sbom.py --check    # fail if the committed SBOM is stale or the tree
                            #   drifted from the registry (the CI/hook gate)
     gen_sbom.py --print    # write nothing; print the SBOM JSON to stdout
+    gen_sbom.py --commits  # print `<key> <upstream-commit>` per pinned
+                           #   component (consumed by the weekly OSV scan)
 
 Exit 0 if clean, 1 on drift / a catalogued-tree mismatch (including a version
 macro that no longer parses). argparse exits 2 on a usage error.
@@ -71,7 +74,6 @@ EXIT_DRIFT = 1
 # pinned versus inferred.
 PROV_COMMIT_PINNED = "commit-pinned-sha256"  # upstream SHA + integrity hash
 PROV_VERSION_HEADER = "version-header"  # version from an in-tree header macro
-PROV_DEV_SNAPSHOT = "dev-snapshot-unpinned"  # 0.0.0 dev branch; see T5-02
 PROV_NOT_VENDORED = "not-vendored"  # documented but absent from the tree
 PROV_PROPRIETARY = "proprietary-unresolved"  # license not cleared; see notes
 PROV_OPEN_ASSET = "open-asset-versioned"  # cleared open asset (OFL font); version from name table
@@ -253,41 +255,52 @@ REGISTRY: tuple[Component, ...] = (
     Component(
         key="nimble",
         name="Apache NimBLE",
-        version="1.9.0 (RELEASE_NOTES); version.yml=0.0.0 -- unpinned, see T5-02",
+        version="1.9.0+git.8b6f3e81 (2026-04-28 default-branch snapshot)",
         ctype="library",
         group="apache",
         url="https://github.com/apache/mynewt-nimble",
         path="libs/third_party/nimble",
-        provenance=PROV_DEV_SNAPSHOT,
+        provenance=PROV_COMMIT_PINNED,
         description="Bluetooth 5.4 host + controller stack (staged, not linked).",
-        purl="pkg:github/apache/mynewt-nimble@1.9.0",
+        purl="pkg:github/apache/mynewt-nimble@8b6f3e819118a1839e5f238bfe1797d64878dc3d",
         spdx="Apache-2.0",
         license_note="Ships its own NOTICE (Apache-2.0 section 4(d)).",
         license_file="libs/third_party/nimble/LICENSE",
+        upstream_commit="8b6f3e819118a1839e5f238bfe1797d64878dc3d",
         extra_notes=(
-            "version.yml records repo.version 0.0.0 (upstream default branch "
-            "placeholder); 1.9.0 is inferred from RELEASE_NOTES.md prose. "
-            "No upstream commit pinned (T5-09 / SOUP-1, SOUP-4).",
+            "Pinned by tree fingerprint: all 859 vendored files (including "
+            "the one symlink) are byte-identical to upstream commit 8b6f3e81, "
+            "the single exact match among the 5567 commits reachable from the "
+            "upstream default branch (42 commits past nimble_1_9_0_tag). The "
+            "vendored subset drops upstream apps/ only.",
+            "version.yml records repo.version 0.0.0 (upstream default-branch "
+            "placeholder); RELEASE_NOTES.md prose still reads 1.9.0.",
             "Second attribution file: libs/third_party/nimble/NOTICE.",
         ),
     ),
     Component(
         key="litehtml",
         name="litehtml",
-        version="unpinned dev-branch snapshot (CMake 0.0.0) -- see T5-02",
+        version="0.9+git.8836bc1b (2026-01-10 default-branch snapshot)",
         ctype="library",
         group="litehtml",
         url="https://github.com/litehtml/litehtml",
         path="libs/third_party/litehtml",
-        provenance=PROV_DEV_SNAPSHOT,
+        provenance=PROV_COMMIT_PINNED,
         description="HTML/CSS layout engine; linked by libs/ra8_reflow (EPUB).",
-        purl="pkg:github/litehtml/litehtml",
+        purl="pkg:github/litehtml/litehtml@8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e",
         spdx="BSD-3-Clause",
         license_file="libs/third_party/litehtml/LICENSE",
+        upstream_commit="8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e",
         extra_notes=(
-            "Weakest provenance in the tree: a mid-stream dev commit fed "
-            "untrusted EPUB HTML/CSS, no VERSION file, no commit pin "
-            "(T5-09 / SOUP-4). Re-vendor at a tagged release.",
+            "Pinned by tree fingerprint: all 215 vendored files are "
+            "byte-identical to upstream commit 8836bc1b, the single exact "
+            "match among the 1040 commits reachable from the upstream "
+            "default branch (340 commits past the v0.9 tag). The vendored "
+            "subset drops doc/, support/, README.md and the MSVC project "
+            "files.",
+            "Feeds untrusted EPUB HTML/CSS from a dev-branch snapshot; "
+            "prefer a tagged release at the next re-vendor (SOUP-4).",
         ),
     ),
     Component(
@@ -781,8 +794,28 @@ def run_check() -> int:
     return EXIT_OK
 
 
+def run_commits() -> int:
+    """Print one ``<key> <upstream-commit>`` line per commit-pinned component.
+
+    This is the machine interface behind the weekly OSV CVE scan
+    (``scripts/utils/osv_scan.sh``): OSV.dev indexes C/C++ advisories as GIT
+    commit ranges queryable only by commit hash (GitHub purls do not
+    resolve), so the scan materializes each pinned commit as a stub git
+    checkout and lets ``osv-scanner`` issue the exact commit queries.
+    Exits nonzero when the registry carries no pins at all, which would
+    mean the scan is wired to nothing.
+    """
+    pinned = [comp for comp in REGISTRY if comp.upstream_commit is not None]
+    for comp in pinned:
+        print(f"{comp.key} {comp.upstream_commit}")
+    if not pinned:
+        print(f"{GENERATOR_NAME}: no commit-pinned component in REGISTRY", file=sys.stderr)
+        return EXIT_DRIFT
+    return EXIT_OK
+
+
 def main(argv: list[str]) -> int:
-    """Parse arguments and dispatch to the write / check / print action."""
+    """Parse arguments and dispatch to the write / check / print / commits action."""
     parser = argparse.ArgumentParser(description="Generate/validate the ra8-firmware SBOM.")
     parser.add_argument(
         "--check",
@@ -795,9 +828,16 @@ def main(argv: list[str]) -> int:
         action="store_true",
         help="print the SBOM to stdout instead of writing the file",
     )
+    parser.add_argument(
+        "--commits",
+        action="store_true",
+        help="print `<key> <upstream-commit>` per commit-pinned component",
+    )
     args = parser.parse_args(argv)
     if args.check:
         return run_check()
+    if args.commits:
+        return run_commits()
     return run_write(args.to_stdout)
 
 

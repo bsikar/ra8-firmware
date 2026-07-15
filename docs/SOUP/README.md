@@ -22,8 +22,8 @@ basis.
 | LevelX          | 6.5.0    | Eclipse Foundation          | [levelx.md](levelx.md)             |
 | Mbed TLS        | 4.1.0    | TrustedFirmware.org         | [mbedtls.md](mbedtls.md)           |
 | TF-PSA-Crypto   | 1.1.0    | TrustedFirmware.org         | [tf-psa-crypto.md](tf-psa-crypto.md) |
-| Apache NimBLE   | 1.9.0    | Apache Software Foundation  | [nimble.md](nimble.md)             |
-| litehtml        | unknown  | Yuri Kobets / community     | [litehtml.md](litehtml.md)         |
+| Apache NimBLE   | 1.9.0+dev git `8b6f3e81` | Apache Software Foundation  | [nimble.md](nimble.md)             |
+| litehtml        | 0.9+dev git `8836bc1b` | Yuri Kobets / community     | [litehtml.md](litehtml.md)         |
 | miniz           | 11.0.2   | Rich Geldreich / RAD        | [miniz.md](miniz.md)               |
 | stb             | image v2.30 / truetype v1.26 | Sean Barrett | [stb.md](stb.md)              |
 | TinyXML-2       | 11.0.0   | Lee Thomason / community    | [tinyxml2.md](tinyxml2.md)         |
@@ -92,6 +92,12 @@ source of truth for the version / license / purl / provenance fields. When
 you bump or re-vendor a component here, update that registry and run
 `make sbom` so the SBOM and inventory do not drift (enforced in CI and the
 pre-commit hook).
+
+Commit-pinned components are additionally scanned for published CVEs every
+week: `.github/workflows/osv-scan.yml` downloads a pinned `osv-scanner`
+release and runs [`../../scripts/utils/osv_scan.sh`](../../scripts/utils/osv_scan.sh),
+which queries OSV.dev both with the SBOM purls and with each recorded
+upstream commit (the form OSV actually resolves for git-vendored C/C++).
 
 ## Review cadence
 
