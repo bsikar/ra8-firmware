@@ -179,7 +179,7 @@ static ra8_err_t priv_init_font(const ra8_reflow_t* engine, stbtt_fontinfo* out_
   if (offset < 0) {
     return k_ra8_err_validation_failed;
   }
-  if (stbtt_InitFont(out_font, engine->font_data, offset) == 0) {
+  if (stbtt_InitFont(out_font, engine->font_data, (int)engine->font_len, offset) == 0) {
     return k_ra8_err_validation_failed;
   }
   return k_ra8_ok;
@@ -636,7 +636,8 @@ static ra8_err_t priv_init_faces(const ra8_reflow_t* engine, stbtt_fontinfo* fac
   for (uint8_t k = 0U; k < engine->face_count; ++k) {
     const uint8_t* blob   = engine->faces[k].blob;
     const int32_t  offset = stbtt_GetFontOffsetForIndex(blob, 0);
-    if ((offset < 0) || (stbtt_InitFont(&faces[k + 1U], blob, offset) == 0)) {
+    if ((offset < 0) ||
+        (stbtt_InitFont(&faces[k + 1U], blob, (int)engine->faces[k].len, offset) == 0)) {
       faces[k + 1U] = faces[0]; /* graceful: bad face -> default */
     }
   }
