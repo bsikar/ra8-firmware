@@ -552,7 +552,8 @@ typedef enum : uint8_t {
  */
 static inline volatile uint32_t* ra8_adc_b_adclkenr(void)
 {
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_adclkenr);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
+                              (uintptr_t)k_ra8_adc_b_off_adclkenr);
 }
 
 /**
@@ -561,7 +562,8 @@ static inline volatile uint32_t* ra8_adc_b_adclkenr(void)
  */
 static inline volatile uint32_t* ra8_adc_b_adclksr(void)
 {
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_adclksr);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
+                              (uintptr_t)k_ra8_adc_b_off_adclksr);
 }
 
 /**
@@ -570,7 +572,8 @@ static inline volatile uint32_t* ra8_adc_b_adclksr(void)
  */
 static inline volatile uint32_t* ra8_adc_b_adclkcr(void)
 {
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_adclkcr);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
+                              (uintptr_t)k_ra8_adc_b_off_adclkcr);
 }
 
 /**
@@ -579,7 +582,7 @@ static inline volatile uint32_t* ra8_adc_b_adclkcr(void)
  */
 static inline volatile uint32_t* ra8_adc_b_admdr(void)
 {
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_admdr);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr + (uintptr_t)k_ra8_adc_b_off_admdr);
 }
 
 /**
@@ -588,7 +591,7 @@ static inline volatile uint32_t* ra8_adc_b_admdr(void)
  */
 static inline volatile uint32_t* ra8_adc_b_adsger(void)
 {
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_adsger);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr + (uintptr_t)k_ra8_adc_b_off_adsger);
 }
 
 /**
@@ -597,7 +600,8 @@ static inline volatile uint32_t* ra8_adc_b_adsger(void)
  */
 static inline volatile uint32_t* ra8_adc_b_adintcr(void)
 {
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_adintcr);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
+                              (uintptr_t)k_ra8_adc_b_off_adintcr);
 }
 
 /**
@@ -606,7 +610,8 @@ static inline volatile uint32_t* ra8_adc_b_adintcr(void)
  */
 static inline volatile uint32_t* ra8_adc_b_adsystr(void)
 {
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_adsystr);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
+                              (uintptr_t)k_ra8_adc_b_off_adsystr);
 }
 
 /**
@@ -615,7 +620,8 @@ static inline volatile uint32_t* ra8_adc_b_adsystr(void)
  */
 static inline volatile uint32_t* ra8_adc_b_adstopr(void)
 {
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_adstopr);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
+                              (uintptr_t)k_ra8_adc_b_off_adstopr);
 }
 
 /**
@@ -624,7 +630,7 @@ static inline volatile uint32_t* ra8_adc_b_adstopr(void)
  */
 static inline volatile uint32_t* ra8_adc_b_adsr(void)
 {
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_adsr);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr + (uintptr_t)k_ra8_adc_b_off_adsr);
 }
 
 /**
@@ -638,7 +644,8 @@ static inline volatile uint32_t* ra8_adc_b_adchcr(uint8_t ch)
   if (ch >= k_ra8_adc_b_max_channels) {
     return nullptr;
   }
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_adchcr0 +
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
+                              (uintptr_t)k_ra8_adc_b_off_adchcr0 +
                               ((uintptr_t)ch * (uintptr_t)k_ra8_adc_b_adchcr_stride));
 }
 
@@ -654,7 +661,7 @@ static inline volatile uint32_t* ra8_adc_b_adstr(uint8_t group)
   if (group >= k_ra8_adc_b_scan_groups) {
     return nullptr;
   }
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_adstr0 +
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr + (uintptr_t)k_ra8_adc_b_off_adstr0 +
                               ((uintptr_t)group * (uintptr_t)k_ra8_adc_b_adstr_stride));
 }
 
@@ -664,7 +671,8 @@ static inline volatile uint32_t* ra8_adc_b_adstr(uint8_t group)
  */
 static inline volatile uint32_t* ra8_adc_b_adtrgenr(void)
 {
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_adtrgenr);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
+                              (uintptr_t)k_ra8_adc_b_off_adtrgenr);
 }
 
 /**
@@ -673,7 +681,8 @@ static inline volatile uint32_t* ra8_adc_b_adtrgenr(void)
  */
 static inline volatile uint32_t* ra8_adc_b_adcmpenr(void)
 {
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_adcmpenr);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
+                              (uintptr_t)k_ra8_adc_b_off_adcmpenr);
 }
 
 /**
@@ -682,7 +691,8 @@ static inline volatile uint32_t* ra8_adc_b_adcmpenr(void)
  */
 static inline volatile uint32_t* ra8_adc_b_adcmpintcr(void)
 {
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_adcmpintcr);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
+                              (uintptr_t)k_ra8_adc_b_off_adcmpintcr);
 }
 
 /**
@@ -694,10 +704,12 @@ static inline volatile uint32_t* ra8_adc_b_adcmpintcr(void)
 static inline volatile uint32_t* ra8_adc_b_adcmpmdr(uint8_t which)
 {
   if (which == 0U) {
-    return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_adcmpmdr0);
+    return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
+                                (uintptr_t)k_ra8_adc_b_off_adcmpmdr0);
   }
   if (which == 1U) {
-    return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_adcmpmdr1);
+    return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
+                                (uintptr_t)k_ra8_adc_b_off_adcmpmdr1);
   }
   return nullptr;
 }
@@ -713,7 +725,8 @@ static inline volatile uint32_t* ra8_adc_b_adcmptbr(uint8_t table)
   if (table >= k_ra8_adc_b_cmp_tables) {
     return nullptr;
   }
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_adcmptbr0 +
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
+                              (uintptr_t)k_ra8_adc_b_off_adcmptbr0 +
                               ((uintptr_t)table * (uintptr_t)k_ra8_adc_b_cmptbr_stride));
 }
 
@@ -733,7 +746,8 @@ static inline volatile uint32_t* ra8_adc_b_addopcrb(uint8_t ch)
   if (ch >= k_ra8_adc_b_max_channels) {
     return nullptr;
   }
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_addopcrb0 +
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
+                              (uintptr_t)k_ra8_adc_b_off_addopcrb0 +
                               ((uintptr_t)ch * (uintptr_t)k_ra8_adc_b_adchcr_stride));
 }
 
@@ -750,7 +764,7 @@ static inline volatile uint32_t* ra8_adc_b_addr(uint8_t ch)
   if (ch >= k_ra8_adc_b_result_regs) {
     return nullptr;
   }
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_addr0 +
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr + (uintptr_t)k_ra8_adc_b_off_addr0 +
                               ((uintptr_t)ch * (uintptr_t)k_ra8_adc_b_addr_stride));
 }
 
@@ -766,7 +780,8 @@ static inline volatile uint32_t* ra8_adc_b_adsgdcr(uint8_t group)
   if (group >= k_ra8_adc_b_scan_groups) {
     return nullptr;
   }
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_adsgdcr0 +
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
+                              (uintptr_t)k_ra8_adc_b_off_adsgdcr0 +
                               ((uintptr_t)group * (uintptr_t)k_ra8_adc_b_adsgdcr_stride));
 }
 
@@ -786,7 +801,8 @@ static inline volatile uint32_t* ra8_adc_b_addopcrc(uint8_t ch)
   if (ch >= k_ra8_adc_b_max_channels) {
     return nullptr;
   }
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_addopcrc0 +
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
+                              (uintptr_t)k_ra8_adc_b_off_addopcrc0 +
                               ((uintptr_t)ch * (uintptr_t)k_ra8_adc_b_adchcr_stride));
 }
 
@@ -803,7 +819,8 @@ static inline volatile uint32_t* ra8_adc_b_adexdr(uint8_t n)
   if (n >= k_ra8_adc_b_ext_data_regs) {
     return nullptr;
   }
-  return (volatile uint32_t*)(k_ra8_adc_b_base_addr + k_ra8_adc_b_off_adexdr0 +
+  return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
+                              (uintptr_t)k_ra8_adc_b_off_adexdr0 +
                               ((uintptr_t)n * (uintptr_t)k_ra8_adc_b_adexdr_stride));
 }
 

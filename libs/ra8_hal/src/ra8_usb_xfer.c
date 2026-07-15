@@ -270,7 +270,7 @@ ra8_err_t ra8_usb_dcp_in_data(ra8_usb_speed_t speed, const uint8_t* data, uint16
   }
   s_dcp_cfifoctr_post    = reg->CFIFOCTR;
   s_dcp_dcpctr_post_push = reg->DCPCTR;
-  s_dcp_last_err         = (err == k_ra8_ok) ? 0U : 1U;
+  s_dcp_last_err         = (uint8_t)((err == k_ra8_ok) ? 0U : 1U);
   return err;
 }
 

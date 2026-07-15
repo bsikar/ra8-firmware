@@ -284,7 +284,7 @@ static void internal_build_frame(sd_cmd_t cmd, uint32_t arg, uint8_t* out_frame)
     out_frame[k_sd_frame_idx_crc] = (uint8_t)k_sd_crc7_cmd8_byte;
   } else {
     const uint8_t crc7            = ra8_sdmmc_spi_crc7(out_frame, k_sd_cmd_frame_len);
-    out_frame[k_sd_frame_idx_crc] = (uint8_t)((crc7 << 1U) | 1U);
+    out_frame[k_sd_frame_idx_crc] = (uint8_t)(((uint32_t)crc7 << 1U) | 1U);
   }
 }
 

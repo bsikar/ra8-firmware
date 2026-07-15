@@ -747,7 +747,7 @@ static uint16_t internal_dcp_in_drain(volatile r_usb_regs_t* reg, uint8_t* out, 
     return 0U;
   }
   /* HUM Ch 36.2.7 "CFIFOSEL" p 1976 */ /* pipe=0 (DCP), MBW=16, ISEL=1. */
-  uint16_t sel  = k_ra8_hhid_dcp_pipe_dcp & k_ra8_fifosel_curpipe;
+  uint16_t sel  = (uint16_t)k_ra8_hhid_dcp_pipe_dcp & (uint16_t)k_ra8_fifosel_curpipe;
   sel           = (uint16_t)(sel | k_ra8_fifosel_mbw_16);
   sel           = (uint16_t)(sel | k_ra8_fifosel_isel);
   reg->CFIFOSEL = sel;

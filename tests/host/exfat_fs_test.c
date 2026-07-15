@@ -280,7 +280,7 @@ int main(int argc, char** argv)
   }
   g_blocks = (uint32_t)((size_t)sz / 512U);
 
-  ra8_fs_backend_t be  = {be_read, be_write, be_cap, nullptr};
+  ra8_fs_backend_t be  = {be_read, be_write, be_cap, nullptr, nullptr};
   ra8_fs_mount_t*  mnt = nullptr;
   ra8_err_t        e   = ra8_fs_mount(&be, &mnt);
   check(e == k_ra8_ok, "mount succeeds");

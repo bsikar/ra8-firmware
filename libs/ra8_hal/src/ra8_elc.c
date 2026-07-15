@@ -43,7 +43,7 @@ static const char* s_tag = "ELC";
  */
 static volatile uint8_t* internal_elcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_elc_base_addr + k_ra8_elc_off_elcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_elc_base_addr + (uintptr_t)k_ra8_elc_off_elcr);
 }
 
 /**
@@ -58,7 +58,7 @@ static volatile uint8_t* internal_elcr(void)
  */
 static volatile uint16_t* internal_elsr(uint8_t index)
 {
-  return (volatile uint16_t*)(k_ra8_elc_base_addr + k_ra8_elc_off_elsr0 +
+  return (volatile uint16_t*)((uintptr_t)k_ra8_elc_base_addr + (uintptr_t)k_ra8_elc_off_elsr0 +
                               ((uintptr_t)index * (uintptr_t)k_ra8_elc_elsr_stride));
 }
 
@@ -75,7 +75,7 @@ static volatile uint16_t* internal_elsr(uint8_t index)
  */
 static volatile uint8_t* internal_elsegr(uint8_t group)
 {
-  return (volatile uint8_t*)(k_ra8_elc_base_addr + k_ra8_elc_off_elsegr0 +
+  return (volatile uint8_t*)((uintptr_t)k_ra8_elc_base_addr + (uintptr_t)k_ra8_elc_off_elsegr0 +
                              ((uintptr_t)group * (uintptr_t)k_ra8_elc_elsegr_stride));
 }
 

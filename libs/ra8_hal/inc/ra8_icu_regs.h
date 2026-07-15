@@ -126,25 +126,25 @@ typedef enum : uint8_t {
 /** @brief Get pointer to the 32-bit NMIER register. */
 static inline volatile uint32_t* ra8_icu_nmier(void)
 {
-  return (volatile uint32_t*)(k_ra8_icu_base_addr + k_ra8_icu_off_nmier);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_icu_base_addr + (uintptr_t)k_ra8_icu_off_nmier);
 }
 
 /** @brief Get pointer to the 32-bit NMISR register. */
 static inline volatile uint32_t* ra8_icu_nmisr(void)
 {
-  return (volatile uint32_t*)(k_ra8_icu_base_addr + k_ra8_icu_off_nmisr);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_icu_base_addr + (uintptr_t)k_ra8_icu_off_nmisr);
 }
 
 /** @brief Get pointer to the 32-bit NMICLR register. */
 static inline volatile uint32_t* ra8_icu_nmiclr(void)
 {
-  return (volatile uint32_t*)(k_ra8_icu_base_addr + k_ra8_icu_off_nmiclr);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_icu_base_addr + (uintptr_t)k_ra8_icu_off_nmiclr);
 }
 
 /** @brief Get pointer to the 8-bit NMICR register. */
 static inline volatile uint8_t* ra8_icu_nmicr(void)
 {
-  return (volatile uint8_t*)(k_ra8_icu_base_addr + k_ra8_icu_off_nmicr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_icu_base_addr + (uintptr_t)k_ra8_icu_off_nmicr);
 }
 
 /**
@@ -157,7 +157,7 @@ static inline volatile uint8_t* ra8_icu_nmicr(void)
  */
 static inline volatile uint32_t* ra8_icu_wupen0(void)
 {
-  return (volatile uint32_t*)(k_ra8_icu_base_addr + k_ra8_icu_off_wupen0);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_icu_base_addr + (uintptr_t)k_ra8_icu_off_wupen0);
 }
 
 /**
@@ -170,7 +170,7 @@ static inline volatile uint32_t* ra8_icu_wupen0(void)
  */
 static inline volatile uint32_t* ra8_icu_wupen1(void)
 {
-  return (volatile uint32_t*)(k_ra8_icu_base_addr + k_ra8_icu_off_wupen1);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_icu_base_addr + (uintptr_t)k_ra8_icu_off_wupen1);
 }
 
 /**
@@ -192,7 +192,7 @@ static inline volatile uint32_t* ra8_icu_delsr(uint8_t index)
   if (index >= k_ra8_icu_num_delsr) {
     return nullptr;
   }
-  return (volatile uint32_t*)(k_ra8_icu_base_addr + k_ra8_icu_off_delsr0 +
+  return (volatile uint32_t*)((uintptr_t)k_ra8_icu_base_addr + (uintptr_t)k_ra8_icu_off_delsr0 +
                               ((uintptr_t)index * sizeof(uint32_t)));
 }
 
@@ -207,7 +207,7 @@ static inline volatile uint32_t* ra8_icu_ielsr(uint16_t index)
   if (index >= k_ra8_icu_num_ielsr) {
     return nullptr;
   }
-  return (volatile uint32_t*)(k_ra8_icu_base_addr + k_ra8_icu_off_ielsr0 +
+  return (volatile uint32_t*)((uintptr_t)k_ra8_icu_base_addr + (uintptr_t)k_ra8_icu_off_ielsr0 +
                               ((uintptr_t)index * sizeof(uint32_t)));
 }
 
@@ -240,8 +240,8 @@ static inline volatile uint8_t* ra8_icu_irqcr(uint8_t irq_num)
   const uintptr_t gap_bytes = ((uintptr_t)irq_num >= (uintptr_t)k_ra8_icu_irqcrb_first)
                                 ? (uintptr_t)k_ra8_icu_irqcrb_offset
                                 : (uintptr_t)0U;
-  return (volatile uint8_t*)(k_ra8_icu_base_addr + k_ra8_icu_off_irqcra0 + (uintptr_t)irq_num +
-                             gap_bytes);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_icu_base_addr + (uintptr_t)k_ra8_icu_off_irqcra0 +
+                             (uintptr_t)irq_num + gap_bytes);
 }
 
 /* =============================================================================

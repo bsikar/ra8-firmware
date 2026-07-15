@@ -35,7 +35,8 @@ static const char* s_tag = "PINVAL";
  * @note Size is exactly `k_ra8_port_count * k_ra8_pin_count /
  *       k_ra8_bits_per_byte` bytes = 30.
  */
-static uint8_t s_claimed[(k_ra8_port_count * k_ra8_pin_count) / k_ra8_bits_per_byte];
+static uint8_t s_claimed[((uint16_t)k_ra8_port_count * (uint16_t)k_ra8_pin_count) /
+                         (uint16_t)k_ra8_bits_per_byte];
 
 /**
  * @var s_owner
@@ -45,7 +46,7 @@ static uint8_t s_claimed[(k_ra8_port_count * k_ra8_pin_count) / k_ra8_bits_per_b
  * `NULL` means "not claimed". Claim stores the caller-provided string
  * literal pointer; the validator never copies the bytes.
  */
-static const char* s_owner[k_ra8_port_count * k_ra8_pin_count];
+static const char* s_owner[(uint16_t)k_ra8_port_count * (uint16_t)k_ra8_pin_count];
 
 /* Convert a packed `ra8_port_pin_t` to a flat bit index -- see implementation for details. */
 static ra8_err_t internal_flat_index(ra8_port_pin_t pin, uint16_t* out_index)
@@ -201,7 +202,7 @@ void ra8_pin_validator_reset(void)
   for (uint16_t i = 0U; i < (uint16_t)sizeof(s_claimed); i++) {
     s_claimed[i] = 0U;
   }
-  for (uint16_t i = 0U; i < (uint16_t)(k_ra8_port_count * k_ra8_pin_count); i++) {
+  for (uint16_t i = 0U; i < ((uint16_t)k_ra8_port_count * (uint16_t)k_ra8_pin_count); i++) {
     s_owner[i] = nullptr;
   }
 }
