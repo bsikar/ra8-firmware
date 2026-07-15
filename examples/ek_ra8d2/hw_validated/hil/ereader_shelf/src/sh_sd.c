@@ -9,9 +9,12 @@
  * Each .RBK is the same compressed RBKC container the baked books use, so the
  * rest of the app is source-agnostic. The opened book's file handle stays held
  * (::sh_sd_book_open) and ::sh_sd_book_read seeks + reads single compressed
- * chunks on demand -- the whole container is never resident. Mounting is
- * best-effort: with no card (board_sim run without `--sd`)
- * ra8_sdmmc_spi_init() times out and the shelf stays baked-only.
+ * chunks on demand -- the whole container is never resident. `.EPB` books use
+ * the same discipline (#230): ::sh_sd_open_epub holds the source file open and
+ * `ra8_epub` seeks + reads each ZIP entry on demand, so no whole-file buffer
+ * exists for EPUBs either. Mounting is best-effort: with no card (board_sim
+ * run without `--sd`) ra8_sdmmc_spi_init() times out and the shelf stays
+ * baked-only.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -51,6 +54,9 @@ static ra8_fs_backend_t s_backend;          /**< SD block-device backend (mount-
 static ra8_fs_mount_t*  s_mount;            /**< Mounted FAT volume, or NULL.           */
 static ra8_fs_file_t*   s_book;             /**< Held-open .RBK backing paged reads.    */
 static const char*      s_sd_tag = "sh_sd"; /**< Log tag for SD-read diagnostics.       */
+
+/** @brief Held-open streamed `.epub` source (#230); valid while an EPUB is open. */
+static ra8_epub_stream_fs_ctx_t s_epub_io;
 
 /* cppcheck-suppress constParameterCallback
  * Reason: bound to ra8_sdmmc_spi_transport_t::set_clock; the void* ctx signature
@@ -224,10 +230,24 @@ void sh_sd_book_close(void)
   }
 }
 
-bool sh_sd_open_epub(const char* name, void* out_book, uint8_t* filebuf, size_t cap)
+bool sh_sd_open_epub(const char* name, void* out_book)
 {
   if (s_mount == nullptr) {
     return false;
   }
-  return ra8_epub_open_fs(s_mount, name, filebuf, cap, (ra8_epub_book_t*)out_book) == k_ra8_ok;
+  if (name == nullptr) {
+    return false;
+  }
+  return ra8_epub_open_streamed_fs(s_mount, name, &s_epub_io, (ra8_epub_book_t*)out_book) ==
+         k_ra8_ok;
+}
+
+void sh_sd_close_epub(void* book)
+{
+  if (book == nullptr) {
+    return;
+  }
+  /* Releases the held source file too; a double close is a harmless no-op
+   * (the ctx's file is already NULL and the book already reset). */
+  (void)ra8_epub_close_streamed_fs(&s_epub_io, (ra8_epub_book_t*)book);
 }

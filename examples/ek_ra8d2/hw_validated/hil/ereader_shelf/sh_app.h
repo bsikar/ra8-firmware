@@ -393,15 +393,24 @@ ra8_err_t sh_sd_book_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len
 void sh_sd_book_close(void);
 
 /**
- * @brief Parse SD file @p name as an EPUB into @p out_book via ra8_epub_open_fs.
+ * @brief Stream-open SD file @p name as an EPUB via ra8_epub_open_streamed_fs.
+ * @details No whole-file residency (#230): the source file stays held open by
+ *          this module and every ZIP entry (chapter, cover, resource) is
+ *          seek+read on demand, so there is no book-size ceiling below the
+ *          `ra8_fs` 4 GiB offset limit. Release with ::sh_sd_close_epub.
  * @param[in]  name     8.3 root file name.
  * @param[out] out_book ra8_epub_book_t* (void* to keep ra8_epub out of this header).
- * @param[in]  filebuf  Caller buffer the whole .epub is read into (must outlive the book).
- * @param[in]  cap      Capacity of @p filebuf.
- * @return true if the EPUB opened.
+ * @return true if the EPUB opened (the source file is now held open).
  * @since 0.1.0
  */
-bool sh_sd_open_epub(const char* name, void* out_book, uint8_t* filebuf, size_t cap);
+bool sh_sd_open_epub(const char* name, void* out_book);
+
+/**
+ * @brief Close a streamed EPUB opened by ::sh_sd_open_epub and its source file.
+ * @param[in,out] book The ra8_epub_book_t* passed to ::sh_sd_open_epub.
+ * @since 0.1.0
+ */
+void sh_sd_close_epub(void* book);
 
 /** @brief The live RGB565 framebuffer ra8_gfx scans (defined in main.c). */
 uint16_t* sh_fb_pixels(void);
