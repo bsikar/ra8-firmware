@@ -2,8 +2,10 @@
 
 This document captures the ra8-firmware MISRA-C 2012 audit baseline,
 the open-source tooling gap, and the staged plan for closing the
-identified gaps. The audit is intentionally **advisory** at this stage --
-no MISRA finding currently blocks a commit.
+identified gaps. The audit is enforced in CI as a **ratchet** (issue
+#240): any NEW finding relative to the committed baseline
+(`.github/misra-baseline.txt`) fails the `misra` CI job, while the
+existing debt burns down without blocking unrelated work.
 
 For per-violation detail, see [`MISRA_GAPS.csv`](MISRA_GAPS.csv).
 
@@ -97,6 +99,14 @@ bash scripts/utils/misra_check.sh
 * Output: `build/misra/results.txt` (TSV) and
   `docs/MISRA_GAPS.csv` (capped at 1000 rows + tail summary).
 
+The current enforced number lives in `.github/misra-baseline.txt` (see
+its `# total findings:` header line) and is much larger than the 2026-05
+figure: the tree has grown from 158 to ~350 audited translation units,
+and the CI-pinned cppcheck 2.13 (vs the Homebrew 2.20 used for the first
+audit) parses none of the C23 syntax, inflating the tooling-gap rule
+counts (8.4 / 17.3 / 9.2). The two numbers are not comparable; the
+ratchet only ever compares like-for-like on the pinned toolchain.
+
 ### Top 5 violated rules
 
 | Rank | Rule              | Count | Category | Topic |
@@ -168,19 +178,23 @@ The triage below tracks that decision per top-violated rule.
 
 ### Workflow
 
-1. **No pre-commit gate yet.** The existing pre-commit suite already
-   runs ASCII / format / clang-tidy / cppcheck (without MISRA addon)
-   / no-dynamic-alloc / world-tags / since-version / obsolete-
-   standards. Adding a 1371-finding MISRA gate would block every
-   commit. The MISRA addon is wired only via `make misra`.
-2. **Quarterly audit cadence.** Re-run `make misra` quarterly,
-   compare against the pinned baseline (`build/misra/results.txt`),
-   and burn down violations during housekeeping sprints.
-3. **Pre-commit gate flips on once the count is under 100.**
-   `scripts/utils/misra_check.sh` already supports a baseline-pinned
-   `--check` mode (the existing `scripts/misra_check.sh` follows the
-   same pattern).
-4. **No commercial-tool re-audit.** cppcheck-MISRA at ~two-thirds
+1. **CI ratchet gate (issue #240).** The `misra` job in
+   `.github/workflows/firmware.yml` re-runs the audit on every push /
+   PR and fails when any per-file-per-rule finding count rises above
+   the committed baseline (`.github/misra-baseline.txt`, compared by
+   `scripts/utils/misra_ratchet.py`). Counts are keyed on
+   `(file, rule)` rather than raw `file:line` findings so ordinary
+   line drift does not churn the baseline; the accepted coarseness is
+   that a new violation offset by a simultaneous fix of the same rule
+   in the same file nets zero. Findings can only shrink: when they
+   do, the gate passes and prints a notice to regenerate + commit the
+   smaller baseline (`make misra-baseline`, run on the CI-pinned
+   cppcheck -- the baseline header records the generating version).
+   There is still no pre-commit hook: a full cppcheck pass is too
+   slow per-commit, so the gate rides CI.
+2. **Burn-down.** Reduce violations during housekeeping sprints, then
+   `make misra-baseline` + commit to lock each tranche in.
+3. **No commercial-tool re-audit.** cppcheck-MISRA at ~two-thirds
    rule coverage is the project's permanent MISRA enforcement
    stance. The uncovered rules are accepted as residual risk per
    IEC 61508-7 Annex D.7. This project will not seek certification
@@ -193,6 +207,8 @@ The triage below tracks that decision per top-violated rule.
 | Asset                                | Purpose |
 |--------------------------------------|---------|
 | `scripts/utils/misra_check.sh`       | This audit. Generates `build/misra/results.txt` and prints per-rule tally. Invoked by `make misra`. |
+| `scripts/utils/misra_ratchet.py`     | Ratchet comparator: fails on any (file, rule) count above `.github/misra-baseline.txt`; `--update` regenerates the baseline. Invoked by `make misra-check` / `make misra-baseline` and the `misra` CI job. |
+| `.github/misra-baseline.txt`         | Committed per-file-per-rule finding counts + the generating cppcheck version. |
 | `scripts/misra_check.sh`             | Older baseline-gated MISRA-C 2023 wrapper -- complementary, not redundant. |
 | `.cppcheck-suppressions`             | Project-wide suppressions; new MISRA deviations will be added here with justification comments per the existing convention. |
 | `docs/MISRA_GAPS.csv`                | Capped per-violation list (1000 rows + tail summary). |

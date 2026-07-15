@@ -558,6 +558,26 @@ jobs:
           fi
 
   # ---------------------------------------------------------------------------
+  # MISRA-C 2012 ratchet (#240) -- misra_check.sh (cppcheck misra.py addon)
+  # over libs/ src/ port/, then misra_ratchet.py compares the per-file-per-rule
+  # finding counts against the committed .github/misra-baseline.txt. Any new
+  # finding fails; burn-down passes with a re-baseline notice. The baseline
+  # records the cppcheck version it was generated with -- keep the runner's
+  # cppcheck in step with it, and regenerate via `make misra-baseline` (never
+  # to absorb new findings; see docs/MISRA.md).
+  # ---------------------------------------------------------------------------
+  misra:
+    name: MISRA-C 2012 ratchet
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run MISRA audit (cppcheck misra.py addon)
+        run: bash scripts/utils/misra_check.sh
+      - name: Ratchet against the committed baseline
+        run: python3 scripts/utils/misra_ratchet.py --check
+
+  # ---------------------------------------------------------------------------
   # cppcheck static analysis
   # ---------------------------------------------------------------------------
   cppcheck:
