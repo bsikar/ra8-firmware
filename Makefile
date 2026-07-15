@@ -748,7 +748,7 @@ sil-only:
 	bash scripts/sil_all.sh --only $(APP)
 
 ascii:
-	@for dir in src libs tests; do \
+	@for dir in src libs tests examples port scripts tools docs; do \
 		python3 scripts/utils/fix-encoding.py --check "$$dir" || exit 1; \
 	done
 	@for d in $(ROOT)/examples/*/*/main.c $(ROOT)/examples/*/*/*/main.c $(ROOT)/examples/*/*/*/*/main.c; do \
