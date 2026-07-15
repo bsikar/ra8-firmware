@@ -40,7 +40,7 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 
 #include <stdint.h>
@@ -86,7 +86,7 @@ typedef enum : uint32_t {
  * be mistaken for a control block if it is ever staged through a scan buffer.
  *
  * @note Read-only; compared with memcmp against staged SRAM bytes.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static const char k_rtt_id[k_rtt_id_len] = {'S', 'E', 'G', 'G', 'E', 'R', ' ', 'R', 'T', 'T'};
 
@@ -131,7 +131,7 @@ static uint8_t s_rtt_seg[k_rtt_drain_max];
  * @post No guest state is modified (pure read).
  * @post The returned value is 0 on any read failure.
  * @note Not thread-safe; board_sim is single-threaded.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static uint32_t rtt_rd32(uc_engine* uc, uint64_t addr)
 {
@@ -163,7 +163,7 @@ static uint32_t rtt_rd32(uc_engine* uc, uint64_t addr)
  * @post No guest state is modified (pure validation).
  * @post A true result means up-buffer 0 is safe to drain this tick.
  * @note Not thread-safe; board_sim is single-threaded.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static bool rtt_cb_valid(uc_engine* uc, uint64_t cb_addr)
 {
@@ -200,7 +200,7 @@ static bool rtt_cb_valid(uc_engine* uc, uint64_t cb_addr)
  * @post No guest state is modified (pure match).
  * @post A non-zero result begins with the 10-byte RTT ID.
  * @note Not thread-safe; board_sim is single-threaded.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static uint64_t rtt_match_stage(uc_engine* uc, uint64_t stage_addr, uint64_t len)
 {
@@ -241,7 +241,7 @@ static uint64_t rtt_match_stage(uc_engine* uc, uint64_t stage_addr, uint64_t len
  * @post On a validated match @c s_rtt.cb_addr holds the block address.
  * @post No guest state is modified (pure scan).
  * @note Not thread-safe; board_sim is single-threaded.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static void rtt_scan(uc_engine* uc)
 {
@@ -281,7 +281,7 @@ static void rtt_scan(uc_engine* uc)
  * @post On LF the completed line is surfaced and the buffer reset.
  * @post Any other non-CR byte is appended to the pending line.
  * @note Not thread-safe; board_sim is single-threaded.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static void rtt_line_feed(uint8_t byte)
 {
@@ -323,7 +323,7 @@ static void rtt_line_feed(uint8_t byte)
  *       by ::k_rtt_drain_max on an oversized backlog).
  * @post Every drained byte passed through ::rtt_line_feed in ring order.
  * @note Not thread-safe; board_sim is single-threaded.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static void rtt_drain(uc_engine* uc)
 {
@@ -383,7 +383,7 @@ static void rtt_drain(uc_engine* uc)
  * @post @c s_rtt.ticks advanced by one.
  * @post Any pending up-buffer bytes of a discovered block were surfaced.
  * @note Not thread-safe; board_sim is single-threaded.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static void rtt_tick(uc_engine* uc)
 {
@@ -414,7 +414,7 @@ static void rtt_tick(uc_engine* uc)
  * @post The control block is forgotten and the scan cadence re-armed.
  * @post All counters and the in-flight line buffer read zero/empty.
  * @note Not thread-safe; board_sim is single-threaded.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static void rtt_reset(void)
 {
@@ -432,7 +432,7 @@ static void rtt_reset(void)
  * @post One summary line is printed iff a control block was discovered.
  * @post Model state is unchanged (pure report).
  * @note Not thread-safe; board_sim is single-threaded.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static void rtt_report(void)
 {
@@ -459,7 +459,7 @@ static void rtt_report(void)
  * @post No state is touched.
  * @post The return value is 0.
  * @note Present only because the registry requires a read handler.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static uint64_t rtt_mmio_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
@@ -482,7 +482,7 @@ static uint64_t rtt_mmio_read(uc_engine* uc, uint64_t addr, unsigned size)
  * @post No state is touched.
  * @post The write is discarded.
  * @note Present only because the registry requires a write handler.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static void rtt_mmio_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
