@@ -565,9 +565,9 @@ ra8_etha_set_preemption(ra8_etha_port_t port, uint8_t preempt, uint8_t cut_thru,
   /* HUM Ch 32.3 "EATPEC : TX Preemption Configuration" p 1635 */
   uint32_t v = (uint32_t)preempt & k_ra8_etha_local_byte_mask;
   if (cut_thru != 0U) {
-    v |= (1UL << 8); /* TTQ8 cut-through preemptable */
+    v |= (1U << 8); /* TTQ8 cut-through preemptable */
   }
-  v |= ((uint32_t)afs & 0x3UL) << (uint32_t)k_ra8_etha_eatpec_afs_pos;
+  v |= ((uint32_t)afs & 0x3U) << (uint32_t)k_ra8_etha_eatpec_afs_pos;
   /* HUM Ch 32.3 "EATPEC : TX Preemption Configuration" p 1635 */
   ra8_etha(port)->EATPEC = v;
   return k_ra8_ok;
