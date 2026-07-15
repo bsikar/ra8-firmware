@@ -7,11 +7,12 @@
  * (``ra8_sram_self_test``) for a 1-bit and a 2-bit injection on a spare bank and
  * asserts the error record decodes to the correct ``SRAMESR`` slot --
  * ``one_bit_mask`` for the correctable fault, ``two_bit_mask`` for the
- * uncorrectable one -- and that ``ra8_sram_clear_status`` clears it. Under
- * ``RA8_SIMULATOR_MODE`` (the unit-test build) ``ra8_sram_self_test`` forges the
- * matching latch, so this proves the per-slot decode fidelity the on-device
- * board_sim model approximates (it latches both slots) and the demo's globals
- * report.
+ * uncorrectable one -- and that ``ra8_sram_clear_status`` clears it. The
+ * RAM-backed host register file has no ECC engine, so each case stages the
+ * exact ``SRAMESR`` latch the silicon engine would set before the call; the
+ * self-test's real read-and-decode then proves the per-slot fidelity the
+ * on-device board_sim model approximates (it latches both slots) and the
+ * demo's globals report.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -58,6 +59,11 @@ static void test_mem_ecc_1bit_decodes_correctable(void)
   const ra8_sram_config_t cfg = mecc_test_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sram_init(&cfg));
 
+  /* The RAM-backed host register file has no ECC engine: stage the
+   * bank-1 1-bit SRAMESR latch the silicon engine would set. */
+  volatile r_sram_regs_t* regs = ra8_sram_regs();
+  regs->SRAMESR                = (uint16_t)k_ra8_sram_err_bank1_1bit;
+
   bool caught = false;
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -89,6 +95,10 @@ static void test_mem_ecc_2bit_decodes_uncorrectable(void)
   (void)ra8_mstp_init();
   const ra8_sram_config_t cfg = mecc_test_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sram_init(&cfg));
+
+  /* Stage the bank-1 2-bit SRAMESR latch (no host ECC engine). */
+  volatile r_sram_regs_t* regs = ra8_sram_regs();
+  regs->SRAMESR                = (uint16_t)k_ra8_sram_err_bank1_2bit;
 
   bool caught = false;
   TEST_ASSERT_EQ(

@@ -19,7 +19,9 @@
  *  - global + per-bank error callback dispatch
  *  - ``ra8_sram_dispatch_from_esr`` walks every set ESR bit
  *  - zero-init pass writes all-zero across the bank
- *  - ECC decoder self-test catches both 1-bit and 2-bit faults
+ *  - ECC decoder self-test decodes staged SRAMESR latches (hit + miss;
+ *    the RAM-backed host register file has no ECC engine, so tests
+ *    stage the latch the silicon engine would set)
  *  - SRAMSAR / SRAMESAR / SRAMSABARn writes via the security helpers
  *  - SRAMWTSC manual + auto-from-clock helpers
  *  - enter_stop / exit_stop lifecycle
@@ -649,16 +651,22 @@ static void test_zero_init_bank_writes_all_zero(void)
 
 /**
  * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * (no compound decisions in this test -- drives the true leg of the
+ * single-condition caught decode `(esr & want_bit) != 0` by staging
+ * the bank-1 1-bit SRAMESR latch the silicon ECC engine would set;
+ * the RAM-backed host register file has no ECC engine)
  */
 static void test_self_test_catches_1bit(void)
 {
-  TEST_BEGIN("sram self_test catches a 1-bit injected error");
+  TEST_BEGIN("sram self_test reports a staged 1-bit latch as caught");
   prep();
   const ra8_sram_config_t cfg = make_default_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sram_init(&cfg));
+
+  /* Stage the latch the silicon ECC engine would set for the verify
+   * read (self_test itself never writes SRAMESR -- it is read-only). */
+  volatile r_sram_regs_t* regs = ra8_sram_regs();
+  regs->SRAMESR                = (uint16_t)k_ra8_sram_err_bank1_1bit;
 
   bool caught = false;
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -669,24 +677,25 @@ static void test_self_test_catches_1bit(void)
   TEST_ASSERT(caught);
 
   /* The verify-step CR is 0x1C (ECC + check + 1-bit latch). */
-  volatile r_sram_regs_t* regs = ra8_sram_regs();
   TEST_ASSERT_EQ(k_ra8_sram_cr_self_test_phase_verify,
                  *ra8_sram_cr_ptr(regs, (uint8_t)k_ra8_sram_test_bank_one));
-  TEST_END("sram self_test catches a 1-bit injected error");
+  TEST_END("sram self_test reports a staged 1-bit latch as caught");
 }
 
 /**
  * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * (no compound decisions in this test -- drives the true leg of the
+ * caught decode for the 2-bit slot by staging the bank-1 2-bit latch)
  */
 static void test_self_test_catches_2bit(void)
 {
-  TEST_BEGIN("sram self_test catches a 2-bit injected error");
+  TEST_BEGIN("sram self_test reports a staged 2-bit latch as caught");
   prep();
   const ra8_sram_config_t cfg = make_default_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sram_init(&cfg));
+
+  volatile r_sram_regs_t* regs = ra8_sram_regs();
+  regs->SRAMESR                = (uint16_t)k_ra8_sram_err_bank1_2bit;
 
   bool caught = false;
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -695,7 +704,43 @@ static void test_self_test_catches_2bit(void)
                                     true,
                                     &caught));
   TEST_ASSERT(caught);
-  TEST_END("sram self_test catches a 2-bit injected error");
+  TEST_END("sram self_test reports a staged 2-bit latch as caught");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- drives the false leg of the
+ * caught decode: no latch staged, then the WRONG slot staged. Both
+ * cases must report not-caught, proving the decode selects the exact
+ * (bank, slot) SRAMESR bit and does not fake success)
+ */
+static void test_self_test_miss_reports_not_caught(void)
+{
+  TEST_BEGIN("sram self_test reports not-caught without the expected latch");
+  prep();
+  const ra8_sram_config_t cfg = make_default_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sram_init(&cfg));
+
+  /* No latch staged at all: the ECC engine "missed" the fault. */
+  bool caught = true;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_sram_self_test((uint8_t)k_ra8_sram_test_bank_one,
+                                    (uint32_t)k_ra8_sram_test_probe_off,
+                                    false,
+                                    &caught));
+  TEST_ASSERT(!caught);
+
+  /* Wrong slot staged: a 1-bit latch must not satisfy a 2-bit probe. */
+  volatile r_sram_regs_t* regs = ra8_sram_regs();
+  regs->SRAMESR                = (uint16_t)k_ra8_sram_err_bank1_1bit;
+  caught                       = true;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_sram_self_test((uint8_t)k_ra8_sram_test_bank_one,
+                                    (uint32_t)k_ra8_sram_test_probe_off,
+                                    true,
+                                    &caught));
+  TEST_ASSERT(!caught);
+  TEST_END("sram self_test reports not-caught without the expected latch");
 }
 
 /**
@@ -990,6 +1035,7 @@ int32_t main(void)
   test_zero_init_bank_writes_all_zero();
   test_self_test_catches_1bit();
   test_self_test_catches_2bit();
+  test_self_test_miss_reports_not_caught();
   test_self_test_rejects_bad_offset();
   test_get_bank_info();
   test_set_security();

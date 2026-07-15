@@ -157,9 +157,10 @@ ra8_doc_set_window(uint16_t lower, uint16_t upper, ra8_doc_window_polarity_t pol
  * and returned via out_flag. The flag is cleared before and after the
  * comparison so each call reflects only the single DODIR write.
  *
- * In RA8_SIMULATOR_MODE the host model computes the flag in software
- * (the simulator has no DOC operation engine) using the DCSEL and
- * threshold values stored in simulated registers.
+ * The window decision itself is made by the silicon comparator. The
+ * RAM-backed host register file has no comparator engine, so host unit
+ * tests stage DOSR.DOPCF before the call to drive both flag legs; the
+ * inside/outside/boundary semantics are proven on silicon.
  *
  * @param[in]  value    16-bit data value to compare against the window.
  *                      Range: 0..65535.

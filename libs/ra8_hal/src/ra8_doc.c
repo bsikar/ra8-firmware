@@ -63,19 +63,18 @@ static inline void internal_ra8_doc_set_mode_16(ra8_docr_oms_t mode)
  *
  * @details Per HUM Ch 57.2.4 / 57.2.5 p 3521 the operation is triggered
  * by writing DODIR. Writes happen at 16-bit width because DOCR.DOBW=0
- * (set by ``internal_ra8_doc_set_mode_16``). In simulator mode the
- * software-modelled DOC has no real operation engine, so the helper
- * stores the result back into DODSR0 explicitly.
+ * (set by ``internal_ra8_doc_set_mode_16``). The DODSR0 readback is the
+ * silicon operation engine's result. The RAM-backed host register file
+ * has no operation engine, so on the unit-test build the readback is
+ * simply the seed value: host tests assert the register trace
+ * (DOCR / DODSR0 / DODIR) instead of the arithmetic, which the
+ * ``doc_demo`` HIL app proves on silicon.
  *
  * @param[in]  seed     Initial DODSR0 value (operand A).
  * @param[in]  operand  DODIR value (operand B).
- * @param[in]  sw_model Pre-computed software result used in
- *                      ``RA8_SIMULATOR_MODE`` to mirror what the real
- *                      DOC hardware would have produced.
  *
  * @return 16-bit DODSR0 readback.
- * @retval 0..UINT16_MAX The operation result -- caller compares it
- *                       against ``sw_model`` to detect HW != SW.
+ * @retval 0..UINT16_MAX The DODSR0 value after the DODIR trigger write.
  *
  * @pre Driver state has been initialized by ``ra8_doc_init``.
  * @pre DOCR.OMS has been programmed for the desired operation.
@@ -84,7 +83,7 @@ static inline void internal_ra8_doc_set_mode_16(ra8_docr_oms_t mode)
  * @note Not thread-safe; caller must serialize.
  * @since 0.1.0
  */
-static inline uint16_t internal_ra8_doc_run_16(uint16_t seed, uint16_t operand, uint16_t sw_model)
+static inline uint16_t internal_ra8_doc_run_16(uint16_t seed, uint16_t operand)
 {
   volatile r_doc_regs_t* reg    = ra8_doc();
   volatile uint16_t*     dodsr0 = (volatile uint16_t*)&reg->DODSR0;
@@ -95,12 +94,8 @@ static inline uint16_t internal_ra8_doc_run_16(uint16_t seed, uint16_t operand, 
   /* Writing DODIR triggers the operation. */
   /* HUM Ch 57.2.4 "DODIR : DOC Data Input Register" p 3521 */
   *dodir = operand;
-#ifdef RA8_SIMULATOR_MODE
-  /* The sim DOC has no operation engine, model the result. */
-  *dodsr0 = sw_model;
-#else
-  (void)sw_model;
-#endif
+  /* Read back the accumulator the operation just updated. */
+  /* HUM Ch 57.2.5 "DODSR0 : DOC Data Setting Register 0" p 3521 */
   return *dodsr0;
 }
 
@@ -131,7 +126,7 @@ static inline uint16_t internal_ra8_doc_run_16(uint16_t seed, uint16_t operand, 
   RA8_CHECK_NULL_PTR(out_sum, s_tag, "out_sum must not be nullptr");
 
   internal_ra8_doc_set_mode_16(k_ra8_doc_mode_add);
-  *out_sum = internal_ra8_doc_run_16(a, b, (uint16_t)(a + b));
+  *out_sum = internal_ra8_doc_run_16(a, b);
   return k_ra8_ok;
 }
 
@@ -140,7 +135,7 @@ static inline uint16_t internal_ra8_doc_run_16(uint16_t seed, uint16_t operand, 
   RA8_CHECK_NULL_PTR(out_diff, s_tag, "out_diff must not be nullptr");
 
   internal_ra8_doc_set_mode_16(k_ra8_doc_mode_subtract);
-  *out_diff = internal_ra8_doc_run_16(a, b, (uint16_t)(a - b));
+  *out_diff = internal_ra8_doc_run_16(a, b);
   return k_ra8_ok;
 }
 
@@ -191,54 +186,6 @@ ra8_doc_set_window(uint16_t lower, uint16_t upper, ra8_doc_window_polarity_t pol
   return k_ra8_ok;
 }
 
-#ifdef RA8_SIMULATOR_MODE
-/**
- * @brief Model the DOC window comparison in the host simulator.
- *
- * @details The host build has no DOC operation engine, so this reproduces the
- * silicon DCSEL inside/outside window decision (strict bounds) and writes the
- * resulting DOPCF into DOSR, which is read-only on real hardware.
- *
- * @param[in] reg   DOC register block from `ra8_doc()` (host RAM under sim).
- * @param[in] value Operand just written to DODIR.
- *
- * @pre `reg` is non-nullptr (the caller already dereferenced it).
- * @pre DODSR0/DODSR1 hold the active window bounds.
- * @post DOSR.DOPCF reflects whether `value` lies inside/outside the window.
- * @post No other DOC register is modified.
- *
- * @note Not thread-safe; caller must serialize DOC access (single register bank).
- * @since 0.1.0
- */
-static void internal_doc_window_sim(volatile r_doc_regs_t* reg, uint16_t value)
-{
-  volatile uint16_t* dodsr0_ptr = (volatile uint16_t*)&reg->DODSR0;
-  volatile uint16_t* dodsr1_ptr = (volatile uint16_t*)&reg->DODSR1;
-  const uint16_t     low        = *dodsr0_ptr;
-  const uint16_t     high       = *dodsr1_ptr;
-  const uint8_t      dcsel =
-    (uint8_t)((reg->DOCR >> (uint8_t)k_ra8_doc_bit_dcsel) & (uint8_t)k_ra8_doc_mask_dcsel_field);
-  uint8_t sim_flag = 0U;
-  if (dcsel == (uint8_t)k_ra8_doc_dcsel_inside) {
-    if (value > low) {
-      if (value < high) {
-        sim_flag = (uint8_t)k_ra8_doc_mask_dopcf;
-      }
-    }
-  } else {
-    if (value < low) {
-      sim_flag = (uint8_t)k_ra8_doc_mask_dopcf;
-    }
-    if (value > high) {
-      sim_flag = (uint8_t)k_ra8_doc_mask_dopcf;
-    }
-  }
-  /* DOSR is R in hardware; this write is valid only in simulator mode. */
-  /* HUM Ch 57.2.2 "DOSR : DOC Flag Status Register" p 3520 */
-  reg->DOSR = sim_flag;
-}
-#endif /* RA8_SIMULATOR_MODE */
-
 /** @brief Implementation of `ra8_doc_window_compare()` -- writes DODIR, reads DOPCF. */
 [[nodiscard]] ra8_err_t ra8_doc_window_compare(uint16_t value, bool* out_flag)
 {
@@ -256,15 +203,14 @@ static void internal_doc_window_sim(volatile r_doc_regs_t* reg, uint16_t value)
   /* Clear any prior flag before triggering a new comparison. */
   /* HUM Ch 57.2.3 "DOSCR : DOC Status Clear Register" p 3521 */
   reg->DOSCR = (uint8_t)k_ra8_doc_mask_dopcfcl;
-  /* Writing DODIR triggers the hardware comparison; DOSR.DOPCF is set. */
+  /* Writing DODIR triggers the hardware comparison; DOSR.DOPCF is set.
+   * The RAM-backed host register file has no comparator engine, so on
+   * the unit-test build DOSR simply retains whatever the test staged
+   * before the call -- both flag legs below are driven that way. */
   /* HUM Ch 57.2.4 "DODIR : DOC Data Input Register" p 3521 */
   *dodir = value;
 
-#ifdef RA8_SIMULATOR_MODE
-  internal_doc_window_sim(reg, value);
-#endif /* RA8_SIMULATOR_MODE */
-
-  /* Read DOPCF -- set by hardware (or sim model above) after the compare. */
+  /* Read DOPCF -- set by the silicon comparator after the compare. */
   /* HUM Ch 57.2.2 "DOSR : DOC Flag Status Register" p 3520 */
   *out_flag = ((reg->DOSR & (uint8_t)k_ra8_doc_mask_dopcf) != 0U);
   /* Clear DOPCF so the flag reflects only the last comparison. */
