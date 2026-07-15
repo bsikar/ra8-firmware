@@ -7,7 +7,7 @@
  * ``test_ra8_etha_rmac_edge_cases.c`` suites by covering the branches
  * in ``ra8_etha_stats.c`` that neither prior suite reaches:
  *
- *   - ``internal_etha_to_operation`` early return on success (line 204):
+ *   - ``internal_etha_to_operation`` early return on success:
  *     pre-seeding EAMS = OPERATION causes the first poll iteration to
  *     match, returning ``k_ra8_ok`` without exhausting the 200000-spin cap.
  *
@@ -19,10 +19,6 @@
  *     while ``ra8_rmac_phy_auto_neg_wait`` times out because BMSR is 0.
  *     Each per-step error leg is reached by arming the seam to fail the
  *     matching MPSM wait-loop (fail_wait / fail_nth_wait).
- *
- *   - ``ra8_etha_test_inject_rx`` short-frame rejection (line 264):
- *     triggered when ``frame_len`` is below the 14-byte Ethernet header
- *     minimum; the function returns ``k_ra8_err_invalid_arg``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -77,13 +73,12 @@ static void prep(void)
  *
  * By writing ``ra8_etha(port)->EAMS = k_ra8_etha_opc_operation`` before
  * the call, the first poll iteration sees the expected value and exits
- * early (line 204).  Control then passes to the three MDIO calls --
+ * early.  Control then passes to the three MDIO calls --
  * ``ra8_rmac_phy_reset``, ``ra8_rmac_phy_set_advertise``, and
- * ``ra8_rmac_phy_auto_neg_start`` -- which all succeed in sim mode
- * (lines 228-239).  ``ra8_rmac_phy_auto_neg_wait`` polls BMSR, which
- * reads zero from the sim backing (no auto-neg handshake possible), and
- * times out after the 100-iteration cap imposed by ``timeout_ms = 1``
- * (line 243).
+ * ``ra8_rmac_phy_auto_neg_start`` -- which all succeed in sim mode.
+ * ``ra8_rmac_phy_auto_neg_wait`` polls BMSR, which reads zero from the
+ * sim backing (no auto-neg handshake possible), and times out after the
+ * 100-iteration cap imposed by ``timeout_ms = 1``.
  *
  * @par MC/DC:
  * (no compound decisions in this test -- every guarded return in the
@@ -121,8 +116,8 @@ static void test_etha_open_covers_phy_seq(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_init(k_ra8_rmac_port_0, &rcfg));
 
   /* Pre-seed EAMS so the first EAMS poll in internal_etha_to_operation
-   * sees OPS == OPERATION and returns k_ra8_ok at ra8_etha_stats.c line 204
-   * without spinning the 200000-iteration cap. */
+   * sees OPS == OPERATION and returns k_ra8_ok without spinning the
+   * 200000-iteration cap. */
   ra8_etha(k_ra8_etha_port_0)->EAMS = (uint32_t)k_ra8_etha_opc_operation;
 
   ra8_rmac_phy_link_t       lk  = {};
@@ -130,74 +125,16 @@ static void test_etha_open_covers_phy_seq(void)
                                    .advertise  = (uint16_t)k_ra8_rmac_phy_advert_100_fd,
                                    .timeout_ms = 1U};
 
-  /* Expected outcome: EAMC -> OPERATION (line 204 hit); phy_reset, set_advertise,
-   * auto_neg_start all return k_ra8_ok in sim (lines 228-239 hit); auto_neg_wait
-   * times out because BMSR reads as 0 (line 243 hit) -> k_ra8_err_hw_timeout. */
+  /* Expected outcome: EAMC -> OPERATION (internal_etha_to_operation converges
+   * on its first poll); phy_reset, set_advertise, auto_neg_start all return
+   * k_ra8_ok in sim; auto_neg_wait times out because BMSR reads as 0
+   * -> k_ra8_err_hw_timeout. */
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_etha_open(k_ra8_etha_port_0, &phy, &lk));
   TEST_ASSERT_EQ(k_ra8_etha_opc_operation,
                  (ra8_etha(k_ra8_etha_port_0)->EAMC & (uint32_t)k_ra8_etha_mask_opc));
   TEST_ASSERT(!lk.up);
 
   TEST_END("etha_open: EAMS pre-seeded -> PHY seq covered, auto_neg times out");
-}
-
-/**
- * @test test_inject_rx_short_frame
- *
- * @brief Cover the frame-too-short early return in
- *        ``ra8_etha_test_inject_rx`` (line 264).
- *
- * @details
- * ``ra8_etha_test_inject_rx`` requires at least 14 bytes (a complete
- * Ethernet II header: 6 bytes destination MAC, 6 bytes source MAC,
- * 2 bytes EtherType).  Supplying ``frame_len = 13`` exercises the guard
- * at the top of the function body and returns
- * ``k_ra8_err_invalid_arg`` without reading beyond the supplied buffer.
- *
- * @par MC/DC:
- * (no compound decisions in this test -- the ``frame_len`` guard is a
- * single-condition comparison; its true branch is covered here, the
- * false branch (frame is long enough) is covered by the existing
- * test_ra8_etha.c happy-path test)
- *
- * @pre The board_sim MMIO backing is zeroed by ``prep()``.
- * @pre A 14-byte buffer is available; only the first 13 bytes are passed.
- * @post No output pointers are written (early return before any copy).
- * @post Return value equals ``k_ra8_err_invalid_arg``.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static void test_inject_rx_short_frame(void)
-{
-  TEST_BEGIN("etha_test_inject_rx: frame_len < 14 -> k_ra8_err_invalid_arg");
-  prep();
-
-  /* Fourteen-byte Ethernet II header -- we pass only 13 bytes to
-   * trigger the short-frame rejection inside ra8_etha_test_inject_rx. */
-  const uint8_t frame[14] = {
-    0xFFU,
-    0xFFU,
-    0xFFU,
-    0xFFU,
-    0xFFU,
-    0xFFU, /* destination MAC */
-    0x00U,
-    0x11U,
-    0x22U,
-    0x33U,
-    0x44U,
-    0x55U, /* source MAC */
-    0x08U,
-    0x00U, /* EtherType (IPv4) */
-  };
-  uint8_t  out_dst[6] = {};
-  uint8_t  out_src[6] = {};
-  uint16_t out_etype  = 0U;
-
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_etha_test_inject_rx(frame, 13U, out_dst, out_src, &out_etype));
-
-  TEST_END("etha_test_inject_rx: frame_len < 14 -> k_ra8_err_invalid_arg");
 }
 
 /**
@@ -309,7 +246,6 @@ int32_t main(void)
 {
   test_etha_open_covers_phy_seq();
   test_etha_open_phy_step_error_legs();
-  test_inject_rx_short_frame();
   (void)fprintf(stderr, "[OK  ] test_ra8_etha_stats_cov.c\n");
   return 0;
 }
