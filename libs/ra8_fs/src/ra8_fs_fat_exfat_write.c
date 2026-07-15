@@ -127,7 +127,7 @@ priv_exfat_bitmap_scan(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t need,
     }
     const uint32_t byte = (idx >> k_exfat_bit_shift) % k_ra8_fs_bytes_per_sector;
     const uint32_t bit  = idx & k_exfat_bit_mask;
-    if (((sec[byte] >> bit) & 1U) != 0U) {
+    if ((((uint32_t)sec[byte] >> bit) & 1U) != 0U) {
       run = 0U;
       continue;
     }
