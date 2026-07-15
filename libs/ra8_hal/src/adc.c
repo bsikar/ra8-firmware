@@ -694,7 +694,7 @@ ra8_err_t ra8_adc_set_compare_window(uint8_t channel, uint16_t low, uint16_t hig
 
   /* CMPMDn -> "inside-window" mode. ADCMPMDR0 carries CMPMD0..3,
    * ADCMPMDR1 carries CMPMD4..7. Each field is 2 bits at byte stride. */
-  const uint8_t      which = (channel < k_ra8_adcmpmd_per_reg) ? 0U : 1U;
+  const uint8_t      which = (uint8_t)((channel < k_ra8_adcmpmd_per_reg) ? 0U : 1U);
   volatile uint32_t* mdr   = ra8_adc_b_adcmpmdr(which);
   if (mdr != nullptr) {
     const uint8_t  local_idx = (uint8_t)(channel % k_ra8_adcmpmd_per_reg);

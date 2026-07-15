@@ -302,7 +302,8 @@ static bool s_rar4_file(const ra8_rar_t* rar,
   size_t         pos    = (size_t)k_rar4_off_name;
   if (large) {
     pack |= (uint64_t)s_le32(&scratch[k_rar4_off_name]) << (uint32_t)k_rar_hi_sh;
-    unp |= (uint64_t)s_le32(&scratch[k_rar4_off_name + k_rar_w32]) << (uint32_t)k_rar_hi_sh;
+    unp |= (uint64_t)s_le32(&scratch[(size_t)k_rar4_off_name + (size_t)k_rar_w32])
+           << (uint32_t)k_rar_hi_sh;
     pos = (size_t)k_rar4_off_name_large;
   }
   out->is_file = 1U;
@@ -356,7 +357,7 @@ s_rar4_block(const ra8_rar_t* rar, uint64_t off, char* nbuf, uint16_t ncap, ra8_
   const bool islong = (flags & (uint16_t)k_rar4_flag_long) != 0U;
   uint64_t   add    = 0U;
   if (islong) {
-    if (n >= (size_t)(k_rar4_off_add + k_rar_w32)) {
+    if (n >= ((size_t)k_rar4_off_add + (size_t)k_rar_w32)) {
       add = (uint64_t)s_le32(&scratch[k_rar4_off_add]);
     }
   }

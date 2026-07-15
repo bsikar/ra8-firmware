@@ -672,7 +672,7 @@ static void internal_sw_sha256_pad(uint32_t       state[k_ra8_rsip_sw_sha256_sta
     ++pad_idx;
   }
   /* If we cannot fit the 8-byte length, push this block and start a fresh one. */
-  if (rem >= (k_ra8_rsip_sha256_block - k_ra8_rsip_sw_sha256_pad_min + 1U)) {
+  if (rem >= ((uint32_t)k_ra8_rsip_sha256_block - (uint32_t)k_ra8_rsip_sw_sha256_pad_min + 1U)) {
     internal_sw_sha256_compress(state, block);
     for (uint32_t b = 0U; b < k_ra8_rsip_sha256_block; ++b) {
       block[b] = 0x00U;
@@ -681,7 +681,7 @@ static void internal_sw_sha256_pad(uint32_t       state[k_ra8_rsip_sw_sha256_sta
   /* Encode bit length big-endian into the last 8 bytes. */
   for (uint32_t b = 0U; b < k_ra8_rsip_sw_sha256_len_bytes; ++b) {
     const uint32_t shift = (k_ra8_rsip_sw_sha256_len_bytes - 1U - b) * k_ra8_rsip_byte_bits;
-    block[k_ra8_rsip_sha256_block - k_ra8_rsip_sw_sha256_len_bytes + b] =
+    block[(uint32_t)k_ra8_rsip_sha256_block - (uint32_t)k_ra8_rsip_sw_sha256_len_bytes + b] =
       (uint8_t)((bit_len >> shift) & (uint64_t)k_ra8_rsip_byte_mask);
   }
   internal_sw_sha256_compress(state, block);
@@ -872,7 +872,7 @@ static ra8_err_t internal_hmac_outer(const uint8_t key_block[k_ra8_rsip_sha256_b
                                      const uint8_t inner[k_ra8_rsip_sha256_digest_bytes],
                                      uint8_t*      mac_out)
 {
-  uint8_t outer_buf[k_ra8_rsip_sha256_block + k_ra8_rsip_sha256_digest_bytes];
+  uint8_t outer_buf[(size_t)k_ra8_rsip_sha256_block + (size_t)k_ra8_rsip_sha256_digest_bytes];
   for (uint32_t i = 0U; i < k_ra8_rsip_sha256_block; ++i) {
     outer_buf[i] = key_block[i] ^ (uint8_t)k_ra8_rsip_hmac_outer_pad;
   }
@@ -880,7 +880,8 @@ static ra8_err_t internal_hmac_outer(const uint8_t key_block[k_ra8_rsip_sha256_b
     outer_buf[k_ra8_rsip_sha256_block + i] = inner[i];
   }
   return internal_sha256_dispatch(outer_buf,
-                                  k_ra8_rsip_sha256_block + k_ra8_rsip_sha256_digest_bytes,
+                                  (size_t)k_ra8_rsip_sha256_block +
+                                    (size_t)k_ra8_rsip_sha256_digest_bytes,
                                   mac_out);
 }
 

@@ -142,7 +142,7 @@ typedef enum : uint32_t {
  */
 static inline volatile uint32_t* ra8_mrms_mrcpfb(void)
 {
-  return (volatile uint32_t*)(k_ra8_mrms_base_addr + k_ra8_mrms_off_mrcpfb);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_mrms_base_addr + (uintptr_t)k_ra8_mrms_off_mrcpfb);
 }
 
 /**
@@ -160,7 +160,7 @@ static inline volatile uint32_t* ra8_mrms_mrcpfb(void)
  */
 static inline volatile uint32_t* ra8_mrms_mrcfreq(void)
 {
-  return (volatile uint32_t*)(k_ra8_mrms_base_addr + k_ra8_mrms_off_mrcfreq);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_mrms_base_addr + (uintptr_t)k_ra8_mrms_off_mrcfreq);
 }
 
 /**
@@ -178,7 +178,7 @@ static inline volatile uint32_t* ra8_mrms_mrcfreq(void)
  */
 static inline volatile uint32_t* ra8_mrms_mrefreq(void)
 {
-  return (volatile uint32_t*)(k_ra8_mrms_base_addr + k_ra8_mrms_off_mrefreq);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_mrms_base_addr + (uintptr_t)k_ra8_mrms_off_mrefreq);
 }
 
 #ifdef __cplusplus

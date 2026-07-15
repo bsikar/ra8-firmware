@@ -186,7 +186,7 @@ typedef enum : uint8_t {
 /** @brief Get pointer to the PWPR register (non-secure write-protect). */
 static inline volatile uint8_t* ra8_pfs_pwpr(void)
 {
-  return (volatile uint8_t*)(k_ra8_pmisc_base_addr + k_ra8_pmisc_off_pwpr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_pmisc_base_addr + (uintptr_t)k_ra8_pmisc_off_pwpr);
 }
 
 /**
@@ -203,7 +203,7 @@ static inline volatile uint8_t* ra8_pfs_pwpr(void)
  */
 static inline volatile uint8_t* ra8_pfs_pwprs(void)
 {
-  return (volatile uint8_t*)(k_ra8_pmisc_base_addr + k_ra8_pmisc_off_pwprs);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_pmisc_base_addr + (uintptr_t)k_ra8_pmisc_off_pwprs);
 }
 
 /**

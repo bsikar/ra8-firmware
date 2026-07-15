@@ -111,7 +111,7 @@ bool ra8_reflow_internal_right_overflow_break(int32_t cursor_x,
  * @note Pure function; thread-safe.
  * @since 0.1.0
  */
-bool ra8_reflow_internal_xhtml_invalid(const void* xhtml_buf, uint32_t xhtml_len)
+bool ra8_reflow_internal_xhtml_invalid(const void* xhtml_buf, size_t xhtml_len)
 {
   return (xhtml_buf == nullptr) || (xhtml_len == 0U);
 }

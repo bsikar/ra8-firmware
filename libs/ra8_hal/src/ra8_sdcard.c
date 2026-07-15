@@ -237,8 +237,8 @@ static ra8_err_t internal_decode_csd(const uint32_t* rsp, uint32_t* out_blocks)
                   ((rsp[1] >> k_sd_csize_v1_lo_shift) & k_sd_csize_v1_lo_mask)) &
                  k_sd_csize_v1_mask);
     const uint8_t c_size_mult = (uint8_t)((rsp[1] >> k_sd_csize_mult_shift) & k_sd_csize_mult_mask);
-    const uint32_t mult       = 1UL << ((uint32_t)c_size_mult + 2U);
-    const uint32_t block_len  = 1UL << (uint32_t)read_bl_len;
+    const uint32_t mult       = 1U << ((uint32_t)c_size_mult + 2U);
+    const uint32_t block_len  = 1U << (uint32_t)read_bl_len;
     const uint32_t blocknr    = ((uint32_t)c_size + 1U) * mult;
     /* Convert to 512-byte sectors. */
     *out_blocks = (blocknr * block_len) / k_sd_block_size_bytes;

@@ -706,7 +706,7 @@ ra8_err_t ra8_etha_configure_cbs(ra8_etha_port_t             port,
     reg->EACAULC[(uint8_t)tc] = param->upper_lim & k_ra8_etha_mask_cul;
   }
   /* HUM Ch 32.3 "EACAEC : CBS Admin Enable Configuration" p 1658 */
-  const uint32_t bit = 1UL << (uint8_t)tc;
+  const uint32_t bit = 1U << (uint8_t)tc;
   if (enable != 0U) {
     reg->EACAEC = reg->EACAEC | bit;
     /* HUM Ch 32.3 "EACC : CBS Configuration" p 1659 */
@@ -734,7 +734,7 @@ ra8_err_t ra8_etha_get_cbs_state(ra8_etha_port_t       port,
   }
 
   volatile r_etha_regs_t* reg = ra8_etha(port);
-  const uint32_t          bit = 1UL << (uint8_t)tc;
+  const uint32_t          bit = 1U << (uint8_t)tc;
   /* HUM Ch 32.3 "EACOEM : CBS Oper Enable Monitoring" p 1663 */
   *enabled = (uint8_t)((reg->EACOEM & bit) != 0U ? 1U : 0U);
   /* HUM Ch 32.3 "EACGSM : CBS Gate State Monitoring" p 1666 */
@@ -804,9 +804,9 @@ ra8_err_t ra8_etha_enable_tas(ra8_etha_port_t port, uint8_t enable)
   volatile r_etha_regs_t* reg = ra8_etha(port);
   /* HUM Ch 32.3 "EATASC : TAS Configuration" p 1667 */
   if (enable != 0U) {
-    reg->EATASC = reg->EATASC | (1UL << (uint32_t)k_ra8_etha_eatasc_tase_pos);
+    reg->EATASC = reg->EATASC | (1U << (uint32_t)k_ra8_etha_eatasc_tase_pos);
   } else {
-    reg->EATASC = reg->EATASC & ~(1UL << (uint32_t)k_ra8_etha_eatasc_tase_pos);
+    reg->EATASC = reg->EATASC & ~(1U << (uint32_t)k_ra8_etha_eatasc_tase_pos);
   }
   return k_ra8_ok;
 }

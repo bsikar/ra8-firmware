@@ -258,103 +258,106 @@ typedef enum : uint32_t {
 /** @brief Pointer to 8-bit VBATTMNSELR (HUM Ch 12.2.5 p 503). */
 static inline volatile uint8_t* ra8_bkup_vbattmnselr(void)
 {
-  return (volatile uint8_t*)(k_ra8_bkup_base_addr + k_ra8_bkup_off_vbattmnselr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_bkup_base_addr +
+                             (uintptr_t)k_ra8_bkup_off_vbattmnselr);
 }
 
 /** @brief Pointer to 8-bit VBTBPCR1 (HUM Ch 12.2.11 p 507). */
 static inline volatile uint8_t* ra8_bkup_vbtbpcr1(void)
 {
-  return (volatile uint8_t*)(k_ra8_bkup_base_addr + k_ra8_bkup_off_vbtbpcr1);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_bkup_base_addr + (uintptr_t)k_ra8_bkup_off_vbtbpcr1);
 }
 
 /** @brief Pointer to 8-bit VBTBER (HUM Ch 12.2.6 p 504). */
 static inline volatile uint8_t* ra8_bkup_vbtber(void)
 {
-  return (volatile uint8_t*)(k_ra8_bkup_base_addr + k_ra8_bkup_off_vbtber);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_bkup_base_addr + (uintptr_t)k_ra8_bkup_off_vbtber);
 }
 
 /** @brief Pointer to 8-bit VBTBPCR2 (HUM Ch 12.2.12 p 508). */
 static inline volatile uint8_t* ra8_bkup_vbtbpcr2(void)
 {
-  return (volatile uint8_t*)(k_ra8_bkup_base_addr + k_ra8_bkup_off_vbtbpcr2);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_bkup_base_addr + (uintptr_t)k_ra8_bkup_off_vbtbpcr2);
 }
 
 /** @brief Pointer to 8-bit VBTBPSR (HUM Ch 12.2.13 p 509). */
 static inline volatile uint8_t* ra8_bkup_vbtbpsr(void)
 {
-  return (volatile uint8_t*)(k_ra8_bkup_base_addr + k_ra8_bkup_off_vbtbpsr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_bkup_base_addr + (uintptr_t)k_ra8_bkup_off_vbtbpsr);
 }
 
 /** @brief Pointer to 8-bit VBTADSR (HUM Ch 12.2.14 p 509). */
 static inline volatile uint8_t* ra8_bkup_vbtadsr(void)
 {
-  return (volatile uint8_t*)(k_ra8_bkup_base_addr + k_ra8_bkup_off_vbtadsr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_bkup_base_addr + (uintptr_t)k_ra8_bkup_off_vbtadsr);
 }
 
 /** @brief Pointer to 8-bit VBTADCR1 (HUM Ch 12.2.15 p 510). */
 static inline volatile uint8_t* ra8_bkup_vbtadcr1(void)
 {
-  return (volatile uint8_t*)(k_ra8_bkup_base_addr + k_ra8_bkup_off_vbtadcr1);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_bkup_base_addr + (uintptr_t)k_ra8_bkup_off_vbtadcr1);
 }
 
 /** @brief Pointer to 8-bit VBTADCR2 (HUM Ch 12.2.16 p 511). */
 static inline volatile uint8_t* ra8_bkup_vbtadcr2(void)
 {
-  return (volatile uint8_t*)(k_ra8_bkup_base_addr + k_ra8_bkup_off_vbtadcr2);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_bkup_base_addr + (uintptr_t)k_ra8_bkup_off_vbtadcr2);
 }
 
 /** @brief Pointer to 8-bit VBTADCR3 (HUM Ch 12.2.17 p 511). */
 static inline volatile uint8_t* ra8_bkup_vbtadcr3(void)
 {
-  return (volatile uint8_t*)(k_ra8_bkup_base_addr + k_ra8_bkup_off_vbtadcr3);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_bkup_base_addr + (uintptr_t)k_ra8_bkup_off_vbtadcr3);
 }
 
 /** @brief Pointer to 8-bit VBTICTLR (HUM Ch 12.2.8 p 505). */
 static inline volatile uint8_t* ra8_bkup_vbtictlr(void)
 {
-  return (volatile uint8_t*)(k_ra8_bkup_base_addr + k_ra8_bkup_off_vbtictlr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_bkup_base_addr + (uintptr_t)k_ra8_bkup_off_vbtictlr);
 }
 
 /** @brief Pointer to 8-bit VBTICTLR2 (HUM Ch 12.2.9 p 506). */
 static inline volatile uint8_t* ra8_bkup_vbtictlr2(void)
 {
-  return (volatile uint8_t*)(k_ra8_bkup_base_addr + k_ra8_bkup_off_vbtictlr2);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_bkup_base_addr + (uintptr_t)k_ra8_bkup_off_vbtictlr2);
 }
 
 /** @brief Pointer to 8-bit VBTIMONR (HUM Ch 12.2.10 p 506). */
 static inline volatile uint8_t* ra8_bkup_vbtimonr(void)
 {
-  return (volatile uint8_t*)(k_ra8_bkup_base_addr + k_ra8_bkup_off_vbtimonr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_bkup_base_addr + (uintptr_t)k_ra8_bkup_off_vbtimonr);
 }
 
 /** @brief Pointer to 8-bit VBTNCWCR (HUM Ch 12.2.18 p 511). */
 static inline volatile uint8_t* ra8_bkup_vbtncwcr(void)
 {
-  return (volatile uint8_t*)(k_ra8_bkup_base_addr + k_ra8_bkup_off_vbtncwcr);
+  return (volatile uint8_t*)((uintptr_t)k_ra8_bkup_base_addr + (uintptr_t)k_ra8_bkup_off_vbtncwcr);
 }
 
 /** @brief Pointer to 32-bit BBFSAR (HUM Ch 12.2.1 p 500). */
 static inline volatile uint32_t* ra8_bkup_bbfsar(void)
 {
-  return (volatile uint32_t*)(k_ra8_bkup_base_addr + k_ra8_bkup_off_bbfsar);
+  return (volatile uint32_t*)((uintptr_t)k_ra8_bkup_base_addr + (uintptr_t)k_ra8_bkup_off_bbfsar);
 }
 
 /** @brief Pointer to 16-bit VBRSABAR (HUM Ch 12.2.2 p 502). */
 static inline volatile uint16_t* ra8_bkup_vbrsabar(void)
 {
-  return (volatile uint16_t*)(k_ra8_bkup_base_addr + k_ra8_bkup_off_vbrsabar);
+  return (volatile uint16_t*)((uintptr_t)k_ra8_bkup_base_addr + (uintptr_t)k_ra8_bkup_off_vbrsabar);
 }
 
 /** @brief Pointer to 16-bit VBRPABARS (HUM Ch 12.2.3 p 502). */
 static inline volatile uint16_t* ra8_bkup_vbrpabars(void)
 {
-  return (volatile uint16_t*)(k_ra8_bkup_base_addr + k_ra8_bkup_off_vbrpabars);
+  return (volatile uint16_t*)((uintptr_t)k_ra8_bkup_base_addr +
+                              (uintptr_t)k_ra8_bkup_off_vbrpabars);
 }
 
 /** @brief Pointer to 16-bit VBRPABARNS (HUM Ch 12.2.4 p 503). */
 static inline volatile uint16_t* ra8_bkup_vbrpabarns(void)
 {
-  return (volatile uint16_t*)(k_ra8_bkup_base_addr + k_ra8_bkup_off_vbrpabarns);
+  return (volatile uint16_t*)((uintptr_t)k_ra8_bkup_base_addr +
+                              (uintptr_t)k_ra8_bkup_off_vbrpabarns);
 }
 
 /**
