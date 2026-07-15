@@ -46,6 +46,7 @@ static const char* const k_channel_names[k_board_console_ch_count] = {
   "ALL",  /**< k_board_console_ch_all  */
   "UART", /**< k_board_console_ch_uart */
   "ITM",  /**< k_board_console_ch_itm  */
+  "RTT",  /**< k_board_console_ch_rtt  */
   "SPI",  /**< k_board_console_ch_spi  */
   "I2C",  /**< k_board_console_ch_i2c  */
   "CAN",  /**< k_board_console_ch_can  */
