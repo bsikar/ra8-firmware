@@ -51,20 +51,24 @@ ra8_xspi_direct_command(uint8_t instance, const uint8_t* cmd_buf, uint8_t len);
  * @brief Read `len` bytes from external flash into `buf`.
  *
  * @details
- * Builds a standard 0x03 (1S-1S-1S) read command sequence, programmes
- * the xSPI direct-command registers, polls COMSTT for completion, and
- * copies the RDBUF shadow into `buf`. In `RA8_SIMULATOR_MODE` the body
- * is backed by an on-host 4 KiB fake-flash buffer so unit tests can
- * exercise the function end-to-end.
+ * Builds a standard 0x03 (1S-1S-1S) read command sequence in 8-byte
+ * manual-command chunks, kicks each via `CDCTL0.TRREQ`, polls
+ * `INTS.CMDCMP` for completion, and copies the CDD0/CDD1 response
+ * words into `buf`. Host unit tests exercise the identical sequence
+ * against the register-level NOR model in
+ * `tests/mocks/ra8_sim_xspi_flash.c`.
  *
  * @param[in]  instance   xSPI instance (0 or 1).
- * @param[in]  flash_addr Flash offset to read from.
+ * @param[in]  flash_addr Flash offset to read from (3-byte addressable).
  * @param[out] buf        Destination buffer. Must not be NULL.
  * @param[in]  len        Number of bytes to read.
  *
  * @return `k_ra8_ok` on success.
  * @return `k_ra8_err_null_ptr`    if buf is NULL or instance out of range.
- * @return `k_ra8_err_invalid_arg` if len == 0 or > `k_ra8_xspi_max_xfer`.
+ * @return `k_ra8_err_invalid_arg` if len == 0, len > `k_ra8_xspi_max_xfer`,
+ *         or `[flash_addr, flash_addr + len)` exceeds the 2^24-byte window
+ *         a 3-byte JEDEC address can reach.
+ * @return `k_ra8_err_hw_timeout`  if a read command never retires (CMDCMP).
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t
@@ -74,19 +78,23 @@ ra8_xspi_flash_read(uint8_t instance, uint32_t flash_addr, uint8_t* buf, uint32_
  * @brief Program (write) `len` bytes at `flash_addr`.
  *
  * @details
- * Sequence is: Write Enable -> Page Program -> Poll WIP. On a
- * simulator build the fake-flash buffer is updated byte-wise. On
- * target the xSPI direct-command registers are driven and COMSTT is
- * polled for completion.
+ * Sequence per chunk is: Write Enable -> Page Program -> Poll WIP,
+ * with chunks clamped to the 8-byte manual-command slot and to
+ * 256-byte NOR page boundaries. Every build drives the identical
+ * xSPI register sequence; host unit tests run it against the
+ * register-level NOR model in `tests/mocks/ra8_sim_xspi_flash.c`.
  *
  * @param[in] instance   xSPI instance.
- * @param[in] flash_addr Flash offset.
+ * @param[in] flash_addr Flash offset (3-byte addressable).
  * @param[in] data       Source buffer.
  * @param[in] len        Number of bytes to program.
  *
  * @return `k_ra8_ok` on success.
  * @return `k_ra8_err_null_ptr`    if data or instance is invalid.
- * @return `k_ra8_err_invalid_arg` if len == 0 or > `k_ra8_xspi_max_xfer`.
+ * @return `k_ra8_err_invalid_arg` if len == 0, len > `k_ra8_xspi_max_xfer`,
+ *         or `[flash_addr, flash_addr + len)` exceeds the 2^24-byte window
+ *         a 3-byte JEDEC address can reach.
+ * @return `k_ra8_err_hw_timeout`  if a WREN / PP command never retires.
  * @return `k_ra8_err_timeout`     if the WIP bit never clears.
  * @since 0.1.0
  */
@@ -97,11 +105,15 @@ ra8_xspi_flash_program(uint8_t instance, uint32_t flash_addr, const uint8_t* dat
  * @brief Erase the 4 KiB sector containing `flash_addr`.
  *
  * @param[in] instance   xSPI instance.
- * @param[in] flash_addr Address within the target sector.
+ * @param[in] flash_addr Address within the target sector (3-byte
+ *                       addressable).
  *
  * @return `k_ra8_ok` on success.
- * @return `k_ra8_err_null_ptr` if `instance` is out of range.
- * @return `k_ra8_err_timeout`  if WIP does not clear.
+ * @return `k_ra8_err_null_ptr`    if `instance` is out of range.
+ * @return `k_ra8_err_invalid_arg` if `flash_addr` exceeds the 2^24-byte
+ *         window a 3-byte JEDEC address can reach.
+ * @return `k_ra8_err_hw_timeout`  if the WREN / SE command never retires.
+ * @return `k_ra8_err_timeout`     if WIP does not clear.
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_xspi_flash_erase_sector(uint8_t instance, uint32_t flash_addr);

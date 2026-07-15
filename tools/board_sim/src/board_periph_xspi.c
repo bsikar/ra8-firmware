@@ -22,8 +22,8 @@
  *   - 0x20 SE    -> fill the 4 KiB sector at CDA with 0xFF
  *   - anything else (8D/1S software-reset opcodes, mode switches) -> no-op
  * then sets INTS.CMDCMP and clears CDCTL0.TRREQ. NOR semantics (program only
- * clears bits; erase restores 0xFF) match the real part and the RA8_SIMULATOR
- * fake-flash model in ra8_xspi.c.
+ * clears bits; erase restores 0xFF) match the real part and the host-test
+ * register-level model in tests/mocks/ra8_sim_xspi_flash.c.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

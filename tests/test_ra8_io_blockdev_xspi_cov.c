@@ -6,28 +6,22 @@
  * Exercises the branches in ra8_io_blockdev_xspi.c that remain uncovered
  * after test_ra8_io_blockdev_backends.c: the xspi_bounds out-of-range
  * returns, the read-only rejections, the misaligned-erase guards, the
- * HAL-error propagation paths (where base_off=4096 pushes all flash
- * addresses past the simulator 4 KiB fake-flash window), and the
- * complete xspi_get_caps body.
+ * HAL-error propagation paths, and the complete xspi_get_caps body.
+ *
+ * The HAL-error paths are driven through the real driver register
+ * sequence: the register-level NOR model in
+ * ``tests/mocks/ra8_sim_xspi_flash.c`` services every ``TRREQ`` kick, and
+ * the ``ra8_sim_mmio`` seam arms a CMDCMP fault on ``INTS`` -- either for
+ * every command (``fail_wait``) or for exactly one command in the
+ * read -> erase -> program chain (``fail_nth_wait``), which isolates the
+ * erase-leg and program-leg error returns inside ``write_one_sector`` /
+ * ``xspi_program_chunked`` that were previously unreachable on the host.
  *
  * Builds as a standalone executable auto-discovered by the
  * tests/CMakeLists.txt GLOB; its .gcda stream is merged by gcovr with
  * the sibling tests so the newly hit lines count toward the global
  * ra8_io_blockdev_xspi.c coverage total without touching the sibling
  * test file.
- *
- * Lines 172 and 228 carry GCOVR_EXCL_LINE markers because they are
- * genuinely unreachable from any host-side input:
- *   - Line 172 (xspi_program_chunked error return): xspi_program_chunked
- *     is only called from write_one_sector after a successful read and
- *     erase of the same sector address.  In the simulator the range check
- *     uses the same 4 KiB boundary for reads and programs, so a sector
- *     address that lets the read succeed always lets the program succeed
- *     too.
- *   - Line 228 (write_one_sector erase error return): read and erase use
- *     the same sector address, so the simulator range check that could
- *     fail the erase also fails the preceding read, hitting line 221
- *     instead and never reaching line 228.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -40,6 +34,8 @@
 #include "ra8_io_blockdev.h"
 #include "ra8_io_blockdev_xspi.h"
 #include "ra8_ospi_regs.h"
+#include "ra8_sim_mmio.h"
+#include "ra8_sim_xspi_flash.h"
 #include "ra8_xspi.h"
 #include "unity_minimal.h"
 
@@ -54,21 +50,28 @@
  *
  * @details
  * All literal values used across this file are collected here so the
- * magic-number gate is silent and test bodies read symbolically.
+ * magic-number gate is silent and test bodies read symbolically. The
+ * ``k_cov_bd_nth_*`` values are zero-based ordinals of INTS wait-loops
+ * (one per manual command) within one ``write_one_sector`` call at
+ * ``base_off=0``, ``lba=0``: the 4 KiB sector read issues 4096/8 = 512
+ * read commands (ordinals 0..511); the erase issues WREN (512), SE (513)
+ * and one WIP RDSR (514); each 8-byte program chunk then issues WREN,
+ * PP, RDSR, so the first chunk's PP is ordinal 516.
  *
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_cov_bd_blocks_per_sector = 8U,    /**< One 4 KiB NOR sector = 8 blocks.            */
-  k_cov_bd_base_valid        = 0U,    /**< Sector-aligned flash byte offset 0.         */
-  k_cov_bd_base_out_of_sim   = 4096U, /**< First offset past the sim fake-flash end.   */
-  k_cov_bd_lba_zero          = 0U,    /**< Logical block address zero.                 */
-  k_cov_bd_lba_at_end        = 8U,    /**< LBA equal to block_count (past last block). */
-  k_cov_bd_lba_unaligned     = 1U,    /**< Not a multiple of 8 blocks.                 */
-  k_cov_bd_count_too_big     = 9U,    /**< count > block_count (triggers line 81).     */
-  k_cov_bd_count_two         = 2U,    /**< count=2 with lba=7 -> 7 > 8-2 = 6.          */
-  k_cov_bd_lba_near_end      = 7U,    /**< lba=7, count=2 overflows 8-block device.    */
-  k_cov_bd_count_unaligned   = 1U,    /**< Not a multiple of 8 blocks (erase guard).   */
+  k_cov_bd_blocks_per_sector = 8U,   /**< One 4 KiB NOR sector = 8 blocks.            */
+  k_cov_bd_base_valid        = 0U,   /**< Sector-aligned flash byte offset 0.         */
+  k_cov_bd_lba_zero          = 0U,   /**< Logical block address zero.                 */
+  k_cov_bd_lba_at_end        = 8U,   /**< LBA equal to block_count (past last block). */
+  k_cov_bd_lba_unaligned     = 1U,   /**< Not a multiple of 8 blocks.                 */
+  k_cov_bd_count_too_big     = 9U,   /**< count > block_count (bounds reject).        */
+  k_cov_bd_count_two         = 2U,   /**< count=2 with lba=7 -> 7 > 8-2 = 6.          */
+  k_cov_bd_lba_near_end      = 7U,   /**< lba=7, count=2 overflows 8-block device.    */
+  k_cov_bd_count_unaligned   = 1U,   /**< Not a multiple of 8 blocks (erase guard).   */
+  k_cov_bd_nth_erase_se      = 513U, /**< Wait-loop ordinal of the RMW's SE command.  */
+  k_cov_bd_nth_first_pp      = 516U, /**< Wait-loop ordinal of the RMW's first PP.    */
 } cov_xspi_bd_const_t;
 
 /* ==========================================================================
@@ -77,12 +80,35 @@ typedef enum : uint32_t {
  */
 
 /**
- * @brief Bind an 8-block xSPI device at flash offset 0 (sim window valid).
+ * @brief Reset the MMIO fault seam and (re)install the NOR flash model.
+ *
+ * @details
+ * Clears any fault a previous test armed on ``INTS`` and re-registers the
+ * register-level NOR model so the driver's real command sequence makes
+ * progress. Register RAM is deliberately NOT reset: this binary shares
+ * one mapped window across tests, exactly as the sibling suites do.
+ *
+ * @pre Host test binary (``RA8_SIMULATOR_MODE`` + ``UNIT_TEST``).
+ * @pre No other thread touches the xSPI registers (single-threaded test).
+ * @post The seam holds no armed faults and the model hook is installed.
+ * @post Both model instances read back fully erased (0xFF).
+ *
+ * @note Thread-unsafe -- single-threaded test context.
+ * @since 0.1.0
+ */
+static void prep(void)
+{
+  ra8_sim_mmio_reset();
+  ra8_sim_xspi_flash_install();
+}
+
+/**
+ * @brief Bind an 8-block xSPI device at flash offset 0.
  *
  * @details
  * The resulting device has instance=0, base_off=0, block_count=8,
- * read_only=false.  Every flash access falls within the simulator 4 KiB
- * fake-flash range, so HAL calls succeed.
+ * read_only=false.  With the NOR model installed and no fault armed,
+ * every HAL call succeeds.
  *
  * @param[out] bd    Zero-initialised block-device handle to populate.
  * @param[out] state Zero-initialised backend state to populate.
@@ -134,36 +160,6 @@ static void fixture_init_read_only(ra8_io_blockdev_t* bd, ra8_io_blockdev_xspi_s
   TEST_ASSERT_EQ(k_ra8_ok, e);
 }
 
-/**
- * @brief Bind an 8-block xSPI device at flash offset 4096 (past the sim).
- *
- * @details
- * 4096 is a valid sector-aligned base_off but places every HAL access at
- * or beyond the simulator fake-flash boundary (k_ra8_xspi_fake_flash_size =
- * 4096), causing internal_sim_range_check to return k_ra8_err_invalid_arg
- * for every read and erase chunk.
- *
- * @param[out] bd    Zero-initialised block-device handle to populate.
- * @param[out] state Zero-initialised backend state to populate.
- *
- * @pre bd and state are zero-initialised on entry.
- * @post bd is bound; all HAL flash operations return a non-ok error.
- * @post state has base_off = 4096.
- *
- * @note Thread-unsafe -- single-threaded test context.
- * @since 0.1.0
- */
-static void fixture_init_out_of_sim(ra8_io_blockdev_t* bd, ra8_io_blockdev_xspi_state_t* state)
-{
-  const ra8_err_t e = ra8_io_blockdev_xspi_init(bd,
-                                                state,
-                                                (uint8_t)k_cov_bd_lba_zero,
-                                                (uint32_t)k_cov_bd_base_out_of_sim,
-                                                (uint32_t)k_cov_bd_blocks_per_sector,
-                                                false);
-  TEST_ASSERT_EQ(k_ra8_ok, e);
-}
-
 /* ==========================================================================
  * Test functions
  * ==========================================================================
@@ -190,6 +186,7 @@ static void fixture_init_out_of_sim(ra8_io_blockdev_t* bd, ra8_io_blockdev_xspi_
 static void test_xspi_bounds_count_too_big(void)
 {
   TEST_BEGIN("xspi_bounds count > block_count");
+  prep();
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
   fixture_init_valid(&bd, &state);
@@ -219,6 +216,7 @@ static void test_xspi_bounds_count_too_big(void)
 static void test_xspi_bounds_lba_overflow(void)
 {
   TEST_BEGIN("xspi_bounds lba + count > block_count");
+  prep();
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
   fixture_init_valid(&bd, &state);
@@ -233,15 +231,14 @@ static void test_xspi_bounds_lba_overflow(void)
  * @brief xspi_read_chunked: HAL read failure propagates up the call chain.
  *
  * @details
- * Uses a device with base_off=4096.  Every chunked HAL call goes to
- * flash address 4096, which is >= the simulator fake-flash size, so
- * ra8_xspi_flash_read returns k_ra8_err_invalid_arg.  xspi_read_chunked
- * propagates this error (line 126) through xspi_read (line 268 propagation)
+ * Arms ``ra8_sim_mmio_fail_wait`` on ``INTS`` so the first read command's
+ * CMDCMP poll exhausts its budget: ra8_xspi_flash_read returns the
+ * hardware timeout, and xspi_read_chunked propagates it through xspi_read
  * back to the caller.
  *
  * @par MC/DC:
  * Decision: `e != k_ra8_ok` inside xspi_read_chunked (single condition)
- * - Vector 1 (this test): e = k_ra8_err_invalid_arg -> true -> early return.
+ * - Vector 1 (this test): e = k_ra8_err_hw_timeout -> true -> early return.
  * - Vector 2 (existing rmw test): e = k_ra8_ok -> false -> loop continues.
  * Minimal MC/DC: N+1 = 2 vectors for N=1 condition.
  *
@@ -250,10 +247,13 @@ static void test_xspi_bounds_lba_overflow(void)
 static void test_xspi_read_hal_error(void)
 {
   TEST_BEGIN("xspi_read_chunked HAL error propagation");
+  prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_init((uint8_t)k_cov_bd_lba_zero, k_ra8_xspi_lio_1s1s1s));
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
-  fixture_init_out_of_sim(&bd, &state);
+  fixture_init_valid(&bd, &state);
+  volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_cov_bd_lba_zero);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&reg->INTS));
   uint8_t         buf[(size_t)k_cov_bd_blocks_per_sector * (size_t)k_ra8_io_block_size_bytes] = {};
   const ra8_err_t e = ra8_io_blockdev_read(&bd,
                                            (uint32_t)k_cov_bd_lba_zero,
@@ -281,6 +281,7 @@ static void test_xspi_read_hal_error(void)
 static void test_xspi_write_read_only(void)
 {
   TEST_BEGIN("xspi_write read-only rejection");
+  prep();
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
   fixture_init_read_only(&bd, &state);
@@ -310,6 +311,7 @@ static void test_xspi_write_read_only(void)
 static void test_xspi_write_bounds_overflow(void)
 {
   TEST_BEGIN("xspi_write bounds overflow");
+  prep();
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
   fixture_init_valid(&bd, &state);
@@ -326,15 +328,14 @@ static void test_xspi_write_bounds_overflow(void)
  * @brief xspi_write -> write_one_sector: HAL read failure propagates up.
  *
  * @details
- * Uses a device with base_off=4096 (writable, not read-only).  Bounds pass
- * for lba=0, count=8.  Inside write_one_sector, xspi_read_chunked is called
- * with sec_addr=4096, which the simulator range-check rejects.  This error
- * propagates from write_one_sector (line 221) to xspi_write (line 327) and
- * back to the caller.
+ * Arms ``ra8_sim_mmio_fail_wait`` on ``INTS`` (writable device, bounds
+ * pass for lba=0, count=8).  Inside write_one_sector the sector pre-read's
+ * first command times out; the error propagates from write_one_sector
+ * through xspi_write back to the caller.
  *
  * @par MC/DC:
  * Decision: `e != k_ra8_ok` in xspi_write after write_one_sector (single condition)
- * - Vector 1 (this test): e = k_ra8_err_invalid_arg -> true -> early return.
+ * - Vector 1 (this test): e = k_ra8_err_hw_timeout -> true -> early return.
  * - Vector 2 (existing rmw test): e = k_ra8_ok -> false -> loop continues.
  * Minimal MC/DC: N+1 = 2 vectors for N=1 condition.
  *
@@ -343,10 +344,13 @@ static void test_xspi_write_bounds_overflow(void)
 static void test_xspi_write_hal_error(void)
 {
   TEST_BEGIN("xspi_write HAL error propagation via write_one_sector");
+  prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_init((uint8_t)k_cov_bd_lba_zero, k_ra8_xspi_lio_1s1s1s));
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
-  fixture_init_out_of_sim(&bd, &state);
+  fixture_init_valid(&bd, &state);
+  volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_cov_bd_lba_zero);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&reg->INTS));
   const uint8_t   buf[(size_t)k_cov_bd_blocks_per_sector * (size_t)k_ra8_io_block_size_bytes] = {};
   const ra8_err_t e = ra8_io_blockdev_write(&bd,
                                             (uint32_t)k_cov_bd_lba_zero,
@@ -354,6 +358,87 @@ static void test_xspi_write_hal_error(void)
                                             buf);
   TEST_ASSERT(e != k_ra8_ok);
   TEST_END("xspi_write HAL error propagation via write_one_sector");
+}
+
+/**
+ * @brief write_one_sector: an erase failure AFTER a good read propagates.
+ *
+ * @details
+ * Arms ``ra8_sim_mmio_fail_nth_wait`` on ``INTS`` for wait-loop ordinal
+ * ::k_cov_bd_nth_erase_se -- the RMW's 0x20 sector-erase kick.  The 512
+ * sector pre-read commands and the erase's WREN succeed (the NOR model
+ * services them), then the SE command's CMDCMP poll times out, driving
+ * the erase-leg error return inside write_one_sector that a whole-call
+ * fault (fail_wait) can never reach because the pre-read fails first.
+ *
+ * @par MC/DC:
+ * Decision: `e != k_ra8_ok` in write_one_sector after
+ * ra8_xspi_flash_erase_sector (single condition)
+ * - Vector 1 (this test): e = k_ra8_err_hw_timeout -> true -> early return.
+ * - Vector 2 (existing rmw test): e = k_ra8_ok -> false -> proceeds to program.
+ * Minimal MC/DC: N+1 = 2 vectors for N=1 condition.
+ *
+ * @since 0.1.0
+ */
+static void test_xspi_write_erase_leg_error(void)
+{
+  TEST_BEGIN("write_one_sector erase-leg error propagation");
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_init((uint8_t)k_cov_bd_lba_zero, k_ra8_xspi_lio_1s1s1s));
+  ra8_io_blockdev_t            bd    = {};
+  ra8_io_blockdev_xspi_state_t state = {};
+  fixture_init_valid(&bd, &state);
+  volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_cov_bd_lba_zero);
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_sim_mmio_fail_nth_wait((const volatile void*)&reg->INTS, (uint32_t)k_cov_bd_nth_erase_se));
+  const uint8_t   buf[(size_t)k_cov_bd_blocks_per_sector * (size_t)k_ra8_io_block_size_bytes] = {};
+  const ra8_err_t e = ra8_io_blockdev_write(&bd,
+                                            (uint32_t)k_cov_bd_lba_zero,
+                                            (uint32_t)k_cov_bd_blocks_per_sector,
+                                            buf);
+  TEST_ASSERT(e != k_ra8_ok);
+  TEST_END("write_one_sector erase-leg error propagation");
+}
+
+/**
+ * @brief xspi_program_chunked: a program failure AFTER read + erase propagates.
+ *
+ * @details
+ * Arms ``ra8_sim_mmio_fail_nth_wait`` on ``INTS`` for wait-loop ordinal
+ * ::k_cov_bd_nth_first_pp -- the first 0x02 page-program kick of the RMW's
+ * program-back phase.  The sector pre-read, the erase (WREN + SE + WIP
+ * RDSR) and the first chunk's WREN all succeed, then the PP command's
+ * CMDCMP poll times out, driving the error return inside
+ * xspi_program_chunked that a whole-call fault can never reach.
+ *
+ * @par MC/DC:
+ * Decision: `e != k_ra8_ok` in xspi_program_chunked (single condition)
+ * - Vector 1 (this test): e = k_ra8_err_hw_timeout -> true -> early return.
+ * - Vector 2 (existing rmw test): e = k_ra8_ok -> false -> loop continues.
+ * Minimal MC/DC: N+1 = 2 vectors for N=1 condition.
+ *
+ * @since 0.1.0
+ */
+static void test_xspi_write_program_leg_error(void)
+{
+  TEST_BEGIN("xspi_program_chunked program-leg error propagation");
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_init((uint8_t)k_cov_bd_lba_zero, k_ra8_xspi_lio_1s1s1s));
+  ra8_io_blockdev_t            bd    = {};
+  ra8_io_blockdev_xspi_state_t state = {};
+  fixture_init_valid(&bd, &state);
+  volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_cov_bd_lba_zero);
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_sim_mmio_fail_nth_wait((const volatile void*)&reg->INTS, (uint32_t)k_cov_bd_nth_first_pp));
+  const uint8_t   buf[(size_t)k_cov_bd_blocks_per_sector * (size_t)k_ra8_io_block_size_bytes] = {};
+  const ra8_err_t e = ra8_io_blockdev_write(&bd,
+                                            (uint32_t)k_cov_bd_lba_zero,
+                                            (uint32_t)k_cov_bd_blocks_per_sector,
+                                            buf);
+  TEST_ASSERT(e != k_ra8_ok);
+  TEST_END("xspi_program_chunked program-leg error propagation");
 }
 
 /**
@@ -374,6 +459,7 @@ static void test_xspi_write_hal_error(void)
 static void test_xspi_erase_read_only(void)
 {
   TEST_BEGIN("xspi_erase read-only rejection");
+  prep();
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
   fixture_init_read_only(&bd, &state);
@@ -402,6 +488,7 @@ static void test_xspi_erase_read_only(void)
 static void test_xspi_erase_lba_misaligned(void)
 {
   TEST_BEGIN("xspi_erase lba not sector-aligned");
+  prep();
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
   fixture_init_valid(&bd, &state);
@@ -431,6 +518,7 @@ static void test_xspi_erase_lba_misaligned(void)
 static void test_xspi_erase_count_misaligned(void)
 {
   TEST_BEGIN("xspi_erase count not sector-aligned");
+  prep();
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
   fixture_init_valid(&bd, &state);
@@ -459,6 +547,7 @@ static void test_xspi_erase_count_misaligned(void)
 static void test_xspi_erase_bounds_overflow(void)
 {
   TEST_BEGIN("xspi_erase bounds overflow");
+  prep();
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
   fixture_init_valid(&bd, &state);
@@ -472,14 +561,14 @@ static void test_xspi_erase_bounds_overflow(void)
  * @brief xspi_erase: HAL erase failure propagates back to caller.
  *
  * @details
- * Uses a device with base_off=4096.  All alignment and bounds checks pass
- * for lba=0, count=8.  Inside the erase loop, the sector address computes
- * as 4096, and the simulator rejects the erase with k_ra8_err_invalid_arg.
- * xspi_erase propagates this error (line 385) to the caller.
+ * Arms ``ra8_sim_mmio_fail_wait`` on ``INTS`` so the erase's first command
+ * (the WREN) times out.  All alignment and bounds checks pass for lba=0,
+ * count=8; inside the erase loop ra8_xspi_flash_erase_sector returns the
+ * hardware timeout, and xspi_erase propagates it to the caller.
  *
  * @par MC/DC:
  * Decision: `e != k_ra8_ok` in xspi_erase loop (single condition)
- * - Vector 1 (this test): e = k_ra8_err_invalid_arg -> true -> early return.
+ * - Vector 1 (this test): e = k_ra8_err_hw_timeout -> true -> early return.
  * - Vector 2 (existing rmw test): e = k_ra8_ok -> false -> advance blk pointer.
  * Minimal MC/DC: N+1 = 2 vectors for N=1 condition.
  *
@@ -488,10 +577,13 @@ static void test_xspi_erase_bounds_overflow(void)
 static void test_xspi_erase_hal_error(void)
 {
   TEST_BEGIN("xspi_erase HAL erase-sector failure propagation");
+  prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_init((uint8_t)k_cov_bd_lba_zero, k_ra8_xspi_lio_1s1s1s));
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
-  fixture_init_out_of_sim(&bd, &state);
+  fixture_init_valid(&bd, &state);
+  volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_cov_bd_lba_zero);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&reg->INTS));
   const ra8_err_t e =
     ra8_io_blockdev_erase(&bd, (uint32_t)k_cov_bd_lba_zero, (uint32_t)k_cov_bd_blocks_per_sector);
   TEST_ASSERT(e != k_ra8_ok);
@@ -524,6 +616,7 @@ static void test_xspi_erase_hal_error(void)
 static void test_xspi_get_caps(void)
 {
   TEST_BEGIN("xspi_get_caps full body coverage");
+  prep();
   ra8_io_blockdev_t            bd    = {};
   ra8_io_blockdev_xspi_state_t state = {};
   fixture_init_valid(&bd, &state);
@@ -552,8 +645,9 @@ static void test_xspi_get_caps(void)
  *
  * @pre ra8_ospi_regs mmap region is accessible (RA8_SIMULATOR_MODE).
  * @pre The ra8_core_hal OBJECT library was built with --coverage.
- * @post All uncovered lines in ra8_io_blockdev_xspi.c (excluding the two
- *       GCOVR_EXCL_LINE markers) have been executed at least once.
+ * @post All previously uncovered lines in ra8_io_blockdev_xspi.c -- now
+ *       including the erase-leg and program-leg error returns -- have
+ *       been executed at least once.
  * @post Exit code 0 signals success to the CI coverage runner.
  *
  * @since 0.1.0
@@ -566,6 +660,8 @@ int32_t main(void)
   test_xspi_write_read_only();
   test_xspi_write_bounds_overflow();
   test_xspi_write_hal_error();
+  test_xspi_write_erase_leg_error();
+  test_xspi_write_program_leg_error();
   test_xspi_erase_read_only();
   test_xspi_erase_lba_misaligned();
   test_xspi_erase_count_misaligned();
