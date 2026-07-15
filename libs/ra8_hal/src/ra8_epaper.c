@@ -355,20 +355,26 @@ static ra8_epaper_panel_t s_panel;
 /**
  * @brief Pulse the panel /RESET line low for 10 ms then back high.
  *
- * @details See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
+ * @details
+ * Drives ``cfg.reset_pin`` high -> low -> high through ``ra8_gpio_write``
+ * with a ::k_ra8_epaper_reset_pulse_ms dwell after each edge (Waveshare
+ * IT8951 user guide reset sequence). The write results are deliberately
+ * discarded: the pulse runs before the panel can report anything, and a
+ * mis-wired pin surfaces on the HRDY wait that immediately follows. The
+ * same body runs on every build -- the host unit-test build drives the
+ * RAM-backed PORT window (``ra8_delay_ms`` is a host no-op inside
+ * ``ra8_core``), so tests observe the final POSR set-bit write on the
+ * reset port's PCNTR3.
+ *
+ * @pre ``ra8_epaper_init`` copied a validated cfg into ``s_panel``.
+ * @pre ``cfg.reset_pin`` addresses a mapped PORT pin.
+ * @post The /RESET line is left driven high (panel out of reset).
+ * @post Three reset-dwell delays have elapsed (firmware builds).
+ * @note Not thread-safe; init path only.
  * @since 0.1.0
  */
 static void internal_ra8_epaper_pulse_reset(void)
 {
-#ifdef RA8_SIMULATOR_MODE
-  /* No physical line on host -- nothing to pulse. */
-  (void)s_panel.cfg.reset_pin;
-#else
   const ra8_port_pin_t pin = (ra8_port_pin_t)s_panel.cfg.reset_pin;
   (void)ra8_gpio_write(pin, k_ra8_level_high);
   ra8_delay_ms((uint32_t)k_ra8_epaper_reset_pulse_ms);
@@ -376,7 +382,6 @@ static void internal_ra8_epaper_pulse_reset(void)
   ra8_delay_ms((uint32_t)k_ra8_epaper_reset_pulse_ms);
   (void)ra8_gpio_write(pin, k_ra8_level_high);
   ra8_delay_ms((uint32_t)k_ra8_epaper_reset_pulse_ms);
-#endif
 }
 
 /**

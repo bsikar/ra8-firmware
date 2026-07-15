@@ -17,8 +17,11 @@
  *    reading ``CFDRF[0].ID/PTR/FDSTS/DF[]``, decoding the header, and
  *    writing ``CFDRFPCTR[0]`` to advance the pointer.
  *  - Read TEC/REC out of ``CFDC[0].STS`` for the error-state query.
- *  - The host-only ``ra8_canfd_test_inject_frame`` seam used by the
- *    board_sim receive tests.
+ *
+ * This TU compiles the identical register sequence on every build; host
+ * unit tests stage the RAM-backed ``CFDRF[0]`` receive buffer and the
+ * ``CFDRFSTS[0]`` empty flag directly (the values the silicon RX engine
+ * would have latched) and drive the real receive path against them.
  *
  * Every register access carries a HUM Ch 41 "CAN with Flexible
  * Data-rate (CANFD)" citation (pages 2702..2867, chapter map row 41)
@@ -351,30 +354,3 @@ ra8_err_t ra8_canfd_get_error_state(uint8_t channel, uint8_t* tx_err, uint8_t* r
   *rx_err            = (uint8_t)((sts >> (uint32_t)k_ra8_cnsts_bit_rec) & k_ra8_cnsts_mask_rec);
   return k_ra8_ok;
 }
-
-#ifdef RA8_SIMULATOR_MODE
-ra8_err_t ra8_canfd_test_inject_frame(uint8_t        channel,
-                                      uint32_t       id_word,
-                                      uint32_t       ptr_word,
-                                      uint32_t       fdsts_word,
-                                      const uint8_t* data,
-                                      uint32_t       data_len)
-{
-  volatile r_canfd_t* reg = ra8_canfd(channel);
-  if (reg == nullptr) {
-    return k_ra8_err_null_ptr;
-  }
-  reg->CFDRF[k_ra8_canfd_rx_fifo_default].ID    = id_word;
-  reg->CFDRF[k_ra8_canfd_rx_fifo_default].PTR   = ptr_word;
-  reg->CFDRF[k_ra8_canfd_rx_fifo_default].FDSTS = fdsts_word;
-  const uint32_t copy_len                       = (data_len > (uint32_t)k_ra8_canfd_data_bytes_max)
-                                                    ? (uint32_t)k_ra8_canfd_data_bytes_max
-                                                    : data_len;
-  for (uint32_t b = 0U; b < copy_len; b++) {
-    reg->CFDRF[k_ra8_canfd_rx_fifo_default].DF[b] = (data != nullptr) ? data[b] : 0U;
-  }
-  /* Clear the RFEMP bit so ra8_canfd_receive sees a frame ready. */
-  reg->CFDRFSTS[k_ra8_canfd_rx_fifo_default] &= ~(uint32_t)k_ra8_rfsts_bit_empty;
-  return k_ra8_ok;
-}
-#endif /* RA8_SIMULATOR_MODE */

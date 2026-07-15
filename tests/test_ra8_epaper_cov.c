@@ -27,11 +27,12 @@
  * once the source is included, so each helper's error legs are driven
  * directly on a fresh transfer counter. No hardware line is bypassed by an
  * exclusion marker from here; the only exclusions live in the module source
- * and cover legs that are provably dead under ``RA8_SIMULATOR_MODE`` (the HRDY
- * hardware poll is compiled out, so ``internal_ra8_epaper_wait_ready`` cannot
- * fail on the host). The display LUT-idle loop now runs for real on host
- * (issue #177 / T1-01); this TU drives both its idle-success exit (mock RX 0)
- * and its budget-exhaustion timeout (mock RX always busy).
+ * and cover redundant timeout re-raises whose underlying timeout leg is
+ * already seam-driven. The HRDY wait, the /RESET GPIO pulse, and the
+ * display LUT-idle loop all run for real on host (issues #177 / #238):
+ * this TU drives the LUT loop's idle-success exit (mock RX 0) and its
+ * budget-exhaustion timeout (mock RX always busy), and the HRDY wait's
+ * first-poll success through the unarmed ``ra8_sim_mmio`` seam.
  *
  * @par Tag
  * [Ring 3 / HAL]
@@ -247,14 +248,16 @@ static void test_send16_recv16_legs(void)
  * @test test_wait_ready_sim_leg
  *
  * @par MC/DC:
- * (no compound decisions -- under ``RA8_SIMULATOR_MODE`` the helper is a single
- * unconditional ``return k_ra8_ok``; the HRDY poll loop is compiled out.)
+ * (no compound decisions -- the real HRDY poll loop runs and its loop-exit is
+ * a single-condition seam consult; the unarmed ``ra8_sim_mmio`` seam models a
+ * panel whose HRDY is already high, so the first poll succeeds. The timeout
+ * leg is driven in test_ra8_epaper.c by arming the busy pin's PCNTR2.)
  */
 static void test_wait_ready_sim_leg(void)
 {
-  TEST_BEGIN("wait_ready: host build short-circuits to k_ra8_ok");
+  TEST_BEGIN("wait_ready: unarmed seam reports ready on the first poll");
   TEST_ASSERT_EQ(k_ra8_ok, internal_ra8_epaper_wait_ready());
-  TEST_END("wait_ready: host build short-circuits to k_ra8_ok");
+  TEST_END("wait_ready: unarmed seam reports ready on the first poll");
 }
 
 /**
