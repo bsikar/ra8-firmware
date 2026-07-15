@@ -7,15 +7,18 @@
  * ``ra8_sim_mmap``-backed register window:
  *
  * - happy-path init runs MSTP release + BIST gate;
+ * - the BIST timeout / late-pass legs are driven through the
+ * ``ra8_sim_mmio`` wait seam (``fail_wait`` / ``satisfy_after``),
+ * never by forging ``STATUS.BIST_OK`` inside the driver;
  * - null-arg rejection on every public API;
- * - TRNG read pulls 32 bytes from the RND_DATA register;
- * - SHA-256 streams a buffer through HASH_DATA_IN and reads
- * back the digest from HASH_DIGEST;
- * - status / IRQ helpers ack the right bits;
+ * - TRNG read fails closed (no register backend on this silicon);
+ * - SHA-256 known answers via the software backend;
+ * - status / IRQ helpers ack the right bits (W1C staged by the test,
+ * since the RAM backing has no W1C semantics);
  * - power transition (enter / exit stop).
  *
- * Each test resets ``ra8_sim_mmap`` and ``ra8_mstp`` first so cases
- * stay independent.
+ * Each test resets ``ra8_sim_mmap``, ``ra8_sim_mmio`` and ``ra8_mstp``
+ * first so cases stay independent.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -26,6 +29,7 @@
 #include "ra8_rsip.h"
 #include "ra8_rsip_regs.h"
 #include "ra8_sim_mmap.h"
+#include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -40,6 +44,15 @@ typedef enum : uint32_t {
   k_ra8_rsip_test_digest_seed = 0x11223344UL, /**< Sentinel HASH digest word.   */
   k_ra8_rsip_test_invalid_len = 5U,           /**< Non-multiple-of-4 length.    */
   k_ra8_rsip_test_isr_garbage = 0x40000000UL, /**< Bit outside ISR field.       */
+  k_ra8_rsip_test_bist_polls  = 3U,           /**< Late BIST pass poll index.   */
+  k_ra8_rsip_test_kv_fill     = 0x7CU,        /**< Staged KV_DATA fill byte.    */
+  k_ra8_rsip_test_kv_fill_w   = 0x7C7C7C7CUL, /**< Fill byte in all 4 lanes.    */
+  k_ra8_rsip_test_kv_tail_i   = 60U,          /**< First byte of the last word. */
+  k_ra8_rsip_test_kv_tail_w   = 0x3F3E3D3CUL, /**< LE pack of bytes 60..63 of a
+                                               *   0,1,2,... ramp: the value the
+                                               *   single-address KV_DATA port
+                                               *   holds after 16 overlapping
+                                               *   FIFO writes on dumb RAM.     */
 } ra8_rsip_test_const_t;
 
 /**
@@ -80,6 +93,7 @@ static void stub_rsip_cb(void* ctx, uint32_t isr)
 static void prep(void)
 {
   ra8_sim_mmap_reset();
+  ra8_sim_mmio_reset();
   (void)ra8_mstp_init();
   s_test_isr_count = 0U;
   s_test_isr_last  = 0U;
@@ -101,13 +115,69 @@ static void test_init_happy(void)
   const ra8_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
 
-  /* CTRL.ENABLE should be left set, BIST_OK should be visible. */
+  /* CTRL.ENABLE stays set and the one-shot BIST trigger is cleared
+   * post-pass, so ENABLE is the only bit left in CTRL. */
   TEST_ASSERT_EQ(k_ra8_rsip_mask_ctrl_enable, *ra8_rsip_reg32(k_ra8_rsip_off_ctrl));
+  /* The driver never forges STATUS.BIST_OK: the read-only status word
+   * is exactly what the "engine" (here: the RAM backing, unarmed wait
+   * seam) latched -- nothing. */
   uint32_t status = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_get_status(&status));
-  TEST_ASSERT((status & (uint32_t)k_ra8_rsip_mask_status_bistok) != 0U);
+  TEST_ASSERT((status & (uint32_t)k_ra8_rsip_mask_status_bistok) == 0U);
 
   TEST_END("rsip init happy");
+}
+
+/**
+ * @brief BIST timeout: STATUS.BIST_OK never asserts -> init fails closed.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- arms the ra8_sim_mmio wait
+  * seam so `internal_wait_bit` runs to its budget and `internal_run_bist`
+  * takes its single-condition failure branch; no `&&` or `||` involved)
+ */
+static void test_init_bist_timeout(void)
+{
+  TEST_BEGIN("rsip init bist timeout");
+  prep();
+
+  /* Arm the exact register internal_run_bist polls: the wait now runs
+   * its full budget and times out, so init reports the BIST failure
+   * and backs the module out (MSTP re-gated). */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait(ra8_rsip_reg32(k_ra8_rsip_off_status)));
+  const ra8_rsip_config_t cfg = {.run_bist = true};
+  TEST_ASSERT_EQ(k_ra8_err_hw_init_failed, ra8_rsip_init(&cfg));
+
+  /* Disarm; a clean retry must succeed on the same engine. */
+  ra8_sim_mmio_reset();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
+
+  TEST_END("rsip init bist timeout");
+}
+
+/**
+ * @brief Late BIST pass: the poll loop iterates before BIST_OK asserts.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- ra8_sim_mmio_satisfy_after
+  * steps `internal_wait_bit` through its continuation iterations before
+  * the wait is satisfied, exercising the loop-iteration branch)
+ */
+static void test_init_bist_late_pass(void)
+{
+  TEST_BEGIN("rsip init bist late pass");
+  prep();
+
+  /* The "engine" asserts BIST_OK on the 3rd poll: the bounded wait
+   * must iterate and still converge to success. */
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_sim_mmio_satisfy_after(ra8_rsip_reg32(k_ra8_rsip_off_status),
+                                            (uint32_t)k_ra8_rsip_test_bist_polls));
+  const ra8_rsip_config_t cfg = {.run_bist = true};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_rsip_mask_ctrl_enable, *ra8_rsip_reg32(k_ra8_rsip_off_ctrl));
+
+  TEST_END("rsip init bist late pass");
 }
 
 /**
@@ -355,7 +425,13 @@ static void test_attach_dispatch(void)
   TEST_ASSERT_EQ(1, s_test_isr_count);
   TEST_ASSERT_EQ(k_ra8_rsip_mask_isr_rnd, s_test_isr_last);
 
-  /* Empty ISR -> dispatch is a no-op. */
+  /* The W1C ack wrote the snapshot back; on silicon that clears the
+   * pending bits, on the RAM backing the word still reads the snapshot
+   * (the driver no longer forges the cleared state). Stage the
+   * post-ack value the hardware would latch, then verify an empty ISR
+   * makes dispatch a no-op. */
+  TEST_ASSERT_EQ(k_ra8_rsip_mask_isr_rnd, *ra8_rsip_reg32(k_ra8_rsip_off_isr));
+  *ra8_rsip_reg32(k_ra8_rsip_off_isr) = 0U;
   ra8_rsip_dispatch();
   TEST_ASSERT_EQ(1, s_test_isr_count);
 
@@ -389,6 +465,31 @@ static void test_power_transition(void)
   TEST_ASSERT_EQ(k_ra8_rsip_mask_ctrl_enable, *ra8_rsip_reg32(k_ra8_rsip_off_ctrl));
 
   TEST_END("rsip power transition");
+}
+
+/**
+ * @brief Exit-stop propagates a BIST failure and re-gates the module.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- arms the ra8_sim_mmio wait
+  * seam so the post-wake BIST times out and ra8_rsip_exit_stop takes
+  * its single-condition failure branch)
+ */
+static void test_exit_stop_bist_timeout(void)
+{
+  TEST_BEGIN("rsip exit stop bist timeout");
+  prep();
+
+  const ra8_rsip_config_t cfg = {.run_bist = true};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_enter_stop());
+
+  /* The post-wake self-test never completes: exit_stop must fail
+   * closed instead of reporting a ready engine. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait(ra8_rsip_reg32(k_ra8_rsip_off_status)));
+  TEST_ASSERT_EQ(k_ra8_err_hw_init_failed, ra8_rsip_exit_stop());
+
+  TEST_END("rsip exit stop bist timeout");
 }
 
 /* ===========================================================================
@@ -848,6 +949,31 @@ static void test_hash_family(void)
 }
 
 /**
+ * @brief HASH_STATUS.DONE never asserts -> ra8_rsip_hash reports the timeout.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- arms the ra8_sim_mmio wait
+  * seam on the HASH_STATUS register so ``internal_hash_wait_done``
+  * runs its bounded poll to the budget and ``ra8_rsip_hash`` takes its
+  * single-condition wait-error branch)
+ */
+static void test_hash_done_timeout(void)
+{
+  TEST_BEGIN("rsip hash done timeout");
+  prep_running();
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait(ra8_rsip_reg32(k_ra8_rsip_off_hash_status)));
+  const uint8_t msg[3] = {'a', 'b', 'c'};
+  uint8_t       d[32]  = {};
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
+                 ra8_rsip_hash(k_ra8_rsip_hash_sha256, msg, sizeof(msg), d, sizeof(d)));
+  /* No digest bytes may be delivered on the failed command. */
+  TEST_ASSERT_EQ(0x00U, d[0]);
+
+  TEST_END("rsip hash done timeout");
+}
+
+/**
  * @brief HMAC routes through the hash path with a wrapped key.
   *
   * @par MC/DC:
@@ -1035,7 +1161,7 @@ static void test_oem_bl_version(void)
  */
 
 /**
- * @brief Vault read / write / erase / count.
+ * @brief Vault read / write / erase / count drive the real MMIO sequence.
   *
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
@@ -1053,12 +1179,26 @@ static void test_kv(void)
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_kv_write(3U, blob));
 
-  uint8_t back[64] = {};
+  /* Real sequence: 16 LE words streamed into the single-address
+   * KV_DATA port (on dumb RAM the last word wins), then the slot /
+   * command / mailbox operands. The driver keeps no shadow copy. */
+  TEST_ASSERT_EQ(k_ra8_rsip_test_kv_tail_w, *ra8_rsip_reg32(k_ra8_rsip_off_kv_data));
+  TEST_ASSERT_EQ(3U, *ra8_rsip_reg32(k_ra8_rsip_off_kv_slot));
+  TEST_ASSERT_EQ(k_ra8_rsip_kv_op_write, *ra8_rsip_reg32(k_ra8_rsip_off_kv_ctrl));
+  TEST_ASSERT_EQ(k_ra8_rsip_kv_op_write, *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op));
+
+  /* Read decode: stage the word the engine would present on KV_DATA
+   * and verify the driver's real 16-word drain + LE unpack. */
+  *ra8_rsip_reg32(k_ra8_rsip_off_kv_data) = (uint32_t)k_ra8_rsip_test_kv_fill_w;
+  uint8_t back[64]                        = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_kv_read(3U, back));
-  TEST_ASSERT_EQ(blob[0], back[0]);
-  TEST_ASSERT_EQ(blob[63], back[63]);
+  TEST_ASSERT_EQ(k_ra8_rsip_kv_op_read, *ra8_rsip_reg32(k_ra8_rsip_off_kv_ctrl));
+  for (uint32_t i = 0U; i < sizeof(back); ++i) {
+    TEST_ASSERT_EQ(k_ra8_rsip_test_kv_fill, back[i]);
+  }
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_kv_erase(3U));
+  TEST_ASSERT_EQ(k_ra8_rsip_kv_op_erase, *ra8_rsip_reg32(k_ra8_rsip_off_kv_ctrl));
 
   uint32_t count = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_kv_count(&count));
@@ -1072,6 +1212,30 @@ static void test_kv(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_rsip_kv_count(nullptr));
 
   TEST_END("rsip kv read/write/erase/count");
+}
+
+/**
+ * @brief Vault read forwards an engine-side completion error.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- a non-zero MBOX_RET makes
+  * ``internal_complete`` report ``k_ra8_err_hw_error`` and
+  * ``ra8_rsip_kv_read`` takes its single-condition forward-the-error
+  * branch before touching the data port)
+ */
+static void test_kv_engine_error(void)
+{
+  TEST_BEGIN("rsip kv engine error");
+  prep_running();
+
+  *ra8_rsip_reg32(k_ra8_rsip_off_mbox_ret) = 1U;
+  uint8_t back[64]                         = {};
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_rsip_kv_read(3U, back));
+  /* The failed command must not have drained the data port into the
+   * caller's buffer. */
+  TEST_ASSERT_EQ(0x00U, back[0]);
+
+  TEST_END("rsip kv engine error");
 }
 
 /**
@@ -1610,17 +1774,17 @@ static void test_sha256_command_sequence(void)
  *
  * @par MC/DC:
  * Decision: `if ((data == nullptr) && (len != 0U))`
- * (2 conditions, libs/ra8_hal/src/ra8_rsip.c line 836)
+ * (2 conditions, `ra8_rsip_sha256_update` in libs/ra8_hal/src/ra8_rsip.c)
  * Standard: DO-178C Table A-7 obj 5; ISO 26262 Part 6 Table 12.
  * Short-circuit AND with N=2; N+1 = 3 vectors.
  * - Vector 1: data!=null, len=8 -> C1=F (short-circuits) -> Decision F (ok)
  * - Vector 2: data==null, len=0 -> C1=T, C2=F -> Decision F (ok zero-len)
  * - Vector 3: data==null, len=8 -> C1=T, C2=T -> Decision T (null_ptr)
  * Vectors 1+3 vary C1 (decision flips); vectors 2+3 vary C2 with C1=T.
- * Same compound shape repeats in ra8_rsip_hmac_sha256_init line 917,
- * ra8_rsip_poly1305 line 2008, internal_hash_validate line 2112,
- * ra8_rsip_hmac line 2202; per DO-178C 6.4.4.3 source-text equivalence
- * a single MC/DC vector set discharges the obligation for all of them.
+ * Same compound shape repeats in `ra8_rsip_hmac_sha256_init`,
+ * `ra8_rsip_poly1305`, `internal_hash_validate` and `ra8_rsip_hmac`;
+ * per DO-178C 6.4.4.3 source-text equivalence a single MC/DC vector
+ * set discharges the obligation for all of them.
  */
 static void test_sha256_update_mcdc_data_len(void)
 {
@@ -1649,7 +1813,7 @@ static void test_sha256_update_mcdc_data_len(void)
  * @par MC/DC:
  * Decision: `if ((mode == k_ra8_rsip_aes_mode_gcm) ||
  *               (mode == k_ra8_rsip_aes_mode_ccm))`
- * (2 conditions, libs/ra8_hal/src/ra8_rsip.c line 1711)
+ * (2 conditions, `ra8_rsip_aes_cipher` in libs/ra8_hal/src/ra8_rsip_cipher.c)
  * Standard: DO-178C Table A-7 obj 5; IEC 61508-3 SIL 3.
  * Short-circuit OR with N=2; N+1 = 3 vectors.
  * - Vector 1: mode=GCM -> C1=T (short-circuits) -> Decision T (invalid_arg)
@@ -1657,7 +1821,7 @@ static void test_sha256_update_mcdc_data_len(void)
  * - Vector 3: mode=CCM -> C1=F, C2=T -> Decision T (invalid_arg)
  * Vectors 1+2 vary C1; vectors 2+3 vary C2 with C1=F.
  *
- * The downstream AES_BLOCK alignment guard (line 1714) is a 4-condition
+ * The downstream AES_BLOCK alignment guard in `ra8_rsip_aes_cipher` is a 4-condition
  * decision that we deliberately do not exercise to MC/DC here -- per
  * DO-178C 6.4.4.3 the path-equivalence-class argument requires a
  * separate per-mode test which is owned by the existing
@@ -1672,7 +1836,7 @@ static void test_aes_cipher_mcdc_aead_modes(void)
   /* Build a minimal wrapped key handle. The function returns
    * invalid_arg before the key is dereferenced for vectors 1 and 3;
    * for vector 2 the downstream call may also fail -- the MC/DC
-   * obligation only requires the *decision* at line 1711 to be
+   * obligation only requires the GCM/CCM rejection *decision* to be
    * exercised T/F/T. */
   ra8_rsip_key_handle_t key = {};
   key.alg                   = (uint32_t)k_ra8_rsip_sym_alg_aes128;
@@ -1864,8 +2028,8 @@ static void test_mcdc_hash_validate_shake_digest(void)
  * - V3: msg=NULL,  msg_len=8 -> C1=T, C2=T  -> dec T -> null_ptr.
  * V1+V3 isolate C1; V2+V3 isolate C2.
  *
- * Same vectors apply to internal_hash_pull_digest (line 2958) which
- * shares the predicate; both are reached through ra8_rsip_hash().
+ * Same vectors apply to `internal_hash_pull_digest`, which shares the
+ * predicate; both are reached through ra8_rsip_hash().
  */
 static void test_mcdc_hash_msg_null_len_pair(void)
 {
@@ -1954,7 +2118,8 @@ static void test_mcdc_aead_aad_null_len_pair(void)
  *
  * @par Note:
  * The CTR mode-2 case at V4 also discharges the structural obligation
- * for the outer 3-way OR's all-false branch (line 2264 first row).
+ * for the outer 3-way OR's all-false branch (first row of the
+ * `ra8_rsip_aes_cipher` block-align guard).
  */
 static void test_mcdc_aes_cipher_block_align_quad(void)
 {
@@ -2121,6 +2286,8 @@ static void test_mcdc_kdf_hkdf_ikm_required_quad(void)
 int32_t main(void)
 {
   test_init_happy();
+  test_init_bist_timeout();
+  test_init_bist_late_pass();
   test_init_skip_bist();
   test_init_null_cfg();
   test_deinit();
@@ -2133,6 +2300,7 @@ int32_t main(void)
   test_status_clear();
   test_attach_dispatch();
   test_power_transition();
+  test_exit_stop_bist_timeout();
   /* Round-3 tests. */
   test_install_aes128_plain();
   test_install_aes_192_256();
@@ -2145,12 +2313,14 @@ int32_t main(void)
   test_chacha20_stream();
   test_chacha20_poly1305();
   test_hash_family();
+  test_hash_done_timeout();
   test_hmac();
   test_rsa_sign_verify();
   test_rsa_engine_error_paths();
   test_ecc();
   test_oem_bl_version();
   test_kv();
+  test_kv_engine_error();
   test_key_wrap_unwrap();
   test_kdf();
   test_life();
