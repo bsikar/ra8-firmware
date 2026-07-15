@@ -79,9 +79,9 @@ typedef enum : uint8_t {
  */
 [[nodiscard]] static inline ra8_err_t eff_parse_eth_header(const uint8_t* frame,
                                                            uint32_t       frame_len,
-                                                           uint8_t   out_dst[k_eff_mac_bytes],
-                                                           uint8_t   out_src[k_eff_mac_bytes],
-                                                           uint16_t* out_etype)
+                                                           uint8_t        out_dst[k_eff_mac_bytes],
+                                                           uint8_t        out_src[k_eff_mac_bytes],
+                                                           uint16_t*      out_etype)
 {
   if (frame == nullptr || out_dst == nullptr || out_src == nullptr || out_etype == nullptr) {
     return k_ra8_err_null_ptr;
