@@ -154,9 +154,9 @@ static inline void ra8_ipc_barrier(void)
  * @details
  * Note that simply *reading* IPCSEMn through a 32-bit access *takes*
  * the semaphore (HUM Ch 3.2.3 p 210 NOTE). This API therefore samples
- * the LOCK bit by reading and then unconditionally writes back the
- * previous value to restore the prior state -- if the semaphore was
- * unlocked the side-effect of the read is undone by the write.
+ * the LOCK bit by reading and, if the read observed "unlocked", undoes
+ * the probe's own take with the write-1-to-clear release command so
+ * the register reads back 0 again.
  *
  * Only safe to call when the caller already owns the lock or knows
  * the peer is quiescent. Most users should treat this as a debug-only

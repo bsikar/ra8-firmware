@@ -27,11 +27,13 @@
  * exact critical section. The legacy contract (caller has unlocked
  * PRC1 before the protected writes) is preserved.
  *
- * On host (``RA8_SIMULATOR_MODE``) builds the WFI is replaced with a
- * no-op so unit tests can drive ``ra8_lpm_enter_sleep`` and observe
- * the LPSCR write through the sim mmap without the test binary
- * actually halting. Likewise the SCR.SLEEPDEEP toggle is skipped
- * because the host has no SCB.
+ * On host (``RA8_SIMULATOR_MODE``) builds the WFI asm is replaced
+ * with a no-op so unit tests can drive ``ra8_lpm_enter_sleep`` and
+ * observe the LPSCR write through the sim mmap without the test
+ * binary actually halting. The SCR.SLEEPDEEP read-modify-write runs
+ * unchanged on every build: the sim mmap backs the Cortex-M System
+ * Control Space window (core region at 0xE0000000), so host tests
+ * stage and assert the real toggle sequence.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -88,28 +90,6 @@ typedef enum : uint8_t {
 } ra8_lpm_dpsi_count_t;
 
 /**
- * @enum ra8_lpm_scb_t
- * @brief ARM Cortex-M System Control Block constants used for SLEEPDEEP.
- *
- * @details
- * SCB lives at 0xE000_E000 + 0x10 in the System Control Space; the
- * SLEEPDEEP bit (bit 2) instructs WFI to enter Deep Sleep / Software
- * Standby instead of plain CPU sleep. On the host build SCB does not
- * exist, so the toggle is compiled out.
- */
-typedef enum : uintptr_t {
-  k_ra8_lpm_scb_scr_addr = 0xE000ED10UL, /**< SCB->SCR address (Cortex-M85). */
-} ra8_lpm_scb_t;
-
-/**
- * @enum ra8_lpm_scb_field_t
- * @brief ARM Cortex-M85 SCB.SCR field bits used for sleep entry.
- */
-typedef enum : uint32_t {
-  k_ra8_lpm_scb_scr_sleepdeep = 0x4UL, /**< SCR.SLEEPDEEP @ bit 2. */
-} ra8_lpm_scb_field_t;
-
-/**
  * @brief Issue WFI, or no-op on host test builds.
  *
  * @details
@@ -143,31 +123,33 @@ static inline void internal_wait_for_interrupt(void)
  * @brief Toggle SCB.SCR.SLEEPDEEP for non-Sleep mode entry.
  *
  * @details
- * On host builds this is a no-op (no SCB exists). On the target
- * the function reads-modify-writes SCR so other SCR bits (e.g.
- * SLEEPONEXIT) are preserved.
+ * Reads-modify-writes SCR so sibling SCR bits (e.g. SLEEPONEXIT,
+ * SEVONPEND) are preserved. SCR is an Arm core register (Armv8-M SCS,
+ * not in the HUM); the same sequence runs on every build -- the host
+ * unit-test sim mmap backs the SCS window with RAM, so tests stage
+ * and assert the toggle directly.
  *
  * @param[in] enable true -- set SLEEPDEEP; false -- clear.
  *
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
+ * @pre The SCS window is accessible (always true on target and in the
+ *      host test binary via ``ra8_sim_mmap``).
+ * @pre Interrupt-free context is NOT required; the RMW is only racy
+ *      against other SCR writers, which the LPM contract forbids.
+ * @post SCR.SLEEPDEEP equals ``enable``.
+ * @post All other SCR bits are unchanged.
+ * @note Not thread-safe against concurrent SCR writers.
  * @since 0.1.0
  */
 static inline void internal_set_sleepdeep(bool enable)
 {
-#ifdef RA8_SIMULATOR_MODE
-  (void)enable;
-#else
-  volatile uint32_t* scr = (volatile uint32_t*)k_ra8_lpm_scb_scr_addr;
+  /* Arm Cortex-M85 SCB->SCR (Armv8-M System Control Space; no HUM
+   * chapter -- architectural register). */
+  volatile uint32_t* scr = ra8_lpm_scb_scr();
   if (enable) {
     *scr |= (uint32_t)k_ra8_lpm_scb_scr_sleepdeep;
   } else {
     *scr &= ~(uint32_t)k_ra8_lpm_scb_scr_sleepdeep;
   }
-#endif
 }
 
 /**

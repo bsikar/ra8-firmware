@@ -8,7 +8,9 @@
  * PRCR unlock/relock, raw + per-source WUPEN0/1 manipulation,
  * DPSIER/DPSIFR/DPSIEGR programming, snooze request/end source
  * helpers, RAM/LDO retention, clock-shutdown matrix, OPCCR read +
- * timeout-wait, all six sleep modes, and packed-status diagnostics.
+ * timeout-wait, all six sleep modes (including the SCR.SLEEPDEEP
+ * read-modify-write against the RAM-backed SCS window), and
+ * packed-status diagnostics.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -25,10 +27,12 @@
  * @brief Magic values used by the LPM unit tests.
  */
 typedef enum : uint32_t {
-  k_ra8_lpm_test_wupen0_pattern = 0x0123ABCDUL, /**< Arbitrary WUPEN0 pattern.  */
-  k_ra8_lpm_test_wupen1_pattern = 0xDEADBEEFUL, /**< Arbitrary WUPEN1 pattern.  */
-  k_ra8_lpm_test_bad_mode_value = 0x77U,        /**< Not a valid LPMD encoding. */
-  k_ra8_lpm_test_poll_budget    = 16U,          /**< OPCMTSF poll budget.       */
+  k_ra8_lpm_test_wupen0_pattern  = 0x0123ABCDUL, /**< Arbitrary WUPEN0 pattern.  */
+  k_ra8_lpm_test_wupen1_pattern  = 0xDEADBEEFUL, /**< Arbitrary WUPEN1 pattern.  */
+  k_ra8_lpm_test_bad_mode_value  = 0x77U,        /**< Not a valid LPMD encoding. */
+  k_ra8_lpm_test_poll_budget     = 16U,          /**< OPCMTSF poll budget.       */
+  k_ra8_lpm_test_scr_sleeponexit = 0x00000002UL, /**< SCR.SLEEPONEXIT @ bit 1 (sibling
+                                                  *   bit the driver must preserve). */
 } ra8_lpm_test_const_t;
 
 static ra8_lpm_config_t make_default_cfg(void)
@@ -507,6 +511,44 @@ static void test_enter_sleep_modes(void)
 
 /**
  * @par MC/DC:
+ * (no compound decisions in this test -- drives both single-condition
+ * legs of the driver's SCR.SLEEPDEEP read-modify-write: the Deep
+ * Sleep entry runs the set leg then the post-wake clear leg, and the
+ * plain Sleep entry runs the clear leg twice. The staged SLEEPONEXIT
+ * sibling bit surviving both entries proves each leg is a true RMW,
+ * not a blind store)
+ */
+static void test_enter_sleep_scr_sleepdeep_rmw(void)
+{
+  TEST_BEGIN("lpm enter_sleep drives SCR.SLEEPDEEP as RMW");
+  ra8_sim_mmap_reset();
+
+  /* Arm Cortex-M85 SCB->SCR, RAM-backed by the sim mmap core window.
+   * Stage a sibling SCR bit the driver must never disturb. */
+  volatile uint32_t* scr = ra8_lpm_scb_scr();
+  *scr                   = (uint32_t)k_ra8_lpm_test_scr_sleeponexit;
+
+  /* Deep Sleep: SLEEPDEEP is set before WFI and cleared after wake
+   * (host WFI is a no-op, so the restored state is observable on
+   * return). SLEEPONEXIT survives both writes. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_enter_sleep(k_ra8_sleep_mode_deep_sleep));
+  TEST_ASSERT_EQ(k_ra8_lpm_test_scr_sleeponexit, *scr);
+
+  /* Plain Sleep must scrub a stale SLEEPDEEP left by earlier code so
+   * the WFI is a plain CPU sleep -- and still preserve the sibling. */
+  *scr = (uint32_t)k_ra8_lpm_test_scr_sleeponexit | (uint32_t)k_ra8_lpm_scb_scr_sleepdeep;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_enter_sleep(k_ra8_sleep_mode_sleep));
+  TEST_ASSERT_EQ(k_ra8_lpm_test_scr_sleeponexit, *scr);
+
+  /* Software Standby also restores SLEEPDEEP = 0 after wake. */
+  *scr = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_enter_sleep(k_ra8_sleep_mode_software_std));
+  TEST_ASSERT_EQ(0, *scr);
+  TEST_END("lpm enter_sleep drives SCR.SLEEPDEEP as RMW");
+}
+
+/**
+ * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
@@ -682,6 +724,7 @@ int32_t main(void)
   test_opccr_read_and_wait();
   test_prcr_unlock_relock();
   test_enter_sleep_modes();
+  test_enter_sleep_scr_sleepdeep_rmw();
   test_enter_deep_standby_helper();
   test_enter_sleep_bad_mode();
   test_get_status_packs_four_regs();
