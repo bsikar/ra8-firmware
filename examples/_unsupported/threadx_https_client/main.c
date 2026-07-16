@@ -12,8 +12,9 @@
  *
  *   1. ``nx_system_initialize()`` + packet pool / IP / ARP / TCP /
  *      ICMP enable on the static address 192.168.1.42 / 24.
- *   2. Initialises ``ra8_rsip`` so AES + SHA-256 are routed through
- *      the RSIP-E50D engine via the port shims.
+ *   2. Initialises ``ra8_rsip`` for its TRNG entropy source. The
+ *      RSIP-E50D AES / SHA-256 engines are not functional on this
+ *      silicon, so all handshake crypto runs in Mbed TLS software.
  *   3. Seeds Mbed TLS's CTR_DRBG from ``ra8_rsip_trng_read``.
  *   4. Opens a NetX TCP socket to ``www.example.com:443`` (static IP
  *      ``93.184.216.34`` so the demo runs without DNS).
@@ -305,8 +306,8 @@ static void demo_setup_or_halt(void)
     demo_panic_halt();
   }
 
-  /* Bring up the RSIP engine so AES + SHA-256 ALT shims have a live
-   * peripheral underneath. The BIST is a one-shot ~ms operation so
+  /* Bring up the RSIP engine for its TRNG entropy source (used to
+   * seed Mbed TLS's CTR_DRBG). The BIST is a one-shot ~ms operation so
    * we run it here at boot, not per request. */
   const ra8_rsip_config_t rsip_cfg = {.run_bist = true};
   if (ra8_rsip_init(&rsip_cfg) != k_ra8_ok) {
@@ -637,8 +638,7 @@ psa_status_t mbedtls_psa_external_get_random(mbedtls_psa_external_random_context
  * @brief Verify the peer's leaf certificate matches our compile-time pin.
  *
  * @details
- * Hashes the peer's leaf DER with ``ra8_rsip_sha256`` (which the
- * SHA-256 ALT path below also uses transparently) and compares
+ * Hashes the peer's leaf DER with ``ra8_rsip_sha256`` and compares
  * against ``k_demo_cert_pin_sha256``. Mismatch is fatal -- the
  * caller must abort the handshake without sending the HTTP request.
  *
