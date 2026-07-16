@@ -26,11 +26,17 @@
  *     `Default_Handler`, so the linker lets the upstream context-switch
  *     and supervisor-call handlers win.
  *
- *   - System clock at this point is the boot-default MOCO ~8.4 MHz
- *     (matches blink_hal). When ra8_cgc_init() upgrades the clock,
- *     `ra8_threadx_systick_retune()` (C) reprograms SysTick.LOAD so the
- *     1 ms tick is preserved -- not implemented in this scaffold; the
- *     demo runs entirely on MOCO so the tick stays accurate.
+ *   - SysTick.LOAD is programmed below from RA8_BOOT_CLOCK_HZ (the
+ *     post-CGC CPUCLK0 target, 1 GHz). That is only correct if the app
+ *     actually raised CPUCLK0 to that rate before tx_kernel_enter. An
+ *     app entering the kernel on a different clock (the boot-default
+ *     MOCO ~8 MHz, or any other CGC target) MUST call
+ *     `ra8_threadx_systick_retune()` (C, in tx_systick_retune.c) from
+ *     `tx_application_define` -- ThreadX runs that after this file but
+ *     before the first scheduling decision, and it reprograms
+ *     SysTick.LOAD from the *live* CPUCLK0 so the 1 ms tick stays
+ *     accurate regardless of clock. See port/threadx/inc/ra8_threadx.h
+ *     (issue #287).
  *
  * Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

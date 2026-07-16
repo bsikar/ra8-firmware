@@ -38,16 +38,18 @@
 #include <stdint.h>
 
 #include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
 #include "ra8_err.h"
 #include "ra8_isr.h"
 #include "ra8_sdcard.h"
 
 /*
  * The host unit-test build (RA8_SIMULATOR_MODE) does not link the
- * ThreadX vendor tree, so ``tx_api.h`` is unreachable when clang-tidy
- * walks this file. Pull it in only on the cross-compile target.
+ * ThreadX vendor tree, so ``tx_api.h`` (and the ThreadX-port header
+ * ``ra8_threadx.h``) are pulled in only on the cross-compile target.
  */
 #ifndef RA8_SIMULATOR_MODE
+#include "ra8_threadx.h"
 #include "tx_api.h"
 #endif
 
@@ -275,12 +277,25 @@ static void sdcard_thread_entry(ULONG thread_input)
  * @param[in] first_unused_memory Unused -- the demo uses a static stack.
  *
  * @pre Called from ``_tx_initialize_kernel_enter`` with IRQs masked.
+ * @post SysTick is retuned to the live CPUCLK0 before scheduling starts.
  * @post The SD card thread is created and auto-started.
  */
 /* NOLINTNEXTLINE(misc-use-internal-linkage) -- exported symbol expected by ThreadX. */
 void tx_application_define(void* first_unused_memory)
 {
   (void)first_unused_memory;
+
+  /* Retune SysTick to the live CPUCLK0 (raised to 1 GHz by
+   * ra8_cgc_init() in main()). tx_initialize_low_level.S already
+   * programmed the reload from the same compile-time 1 GHz assumption,
+   * but this makes the 1 ms kernel tick correct-by-construction for
+   * whatever clock the app actually brought up (issue #287). Runs after
+   * _tx_initialize_low_level and before the first scheduling decision. */
+  if (ra8_threadx_systick_retune() != k_ra8_ok) {
+    while (1) {
+      __asm__ volatile("wfi");
+    }
+  }
 
   const UINT err = tx_thread_create(&s_sdcard_thread,
                                     "sdcard",
@@ -311,6 +326,7 @@ void tx_application_define(void* first_unused_memory)
  *
  * @pre Reset_Handler has copied .data + zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
+ * @post CPUCLK0 is raised to the PLL1 target before the kernel starts.
  * @post On clean entry the SD card thread runs forever.
  * @post On any HAL init failure the function halts in ``__WFI``.
  *
@@ -320,6 +336,17 @@ void tx_application_define(void* first_unused_memory)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
+  /* CGC bring-up FIRST. tx_initialize_low_level.S programs SysTick from
+   * the post-CGC CPUCLK0 target (1 GHz); entering the kernel on the
+   * boot-default MOCO (~8 MHz) instead would run the "1 ms" tick ~119x
+   * too slow, so tx_thread_sleep(5000) would stretch to ~10 minutes.
+   * Raise the PLL before tx_kernel_enter (and tx_application_define
+   * additionally retunes SysTick from the live clock -- issue #287). */
+  if (ra8_cgc_init() != k_ra8_ok) {
+    while (1) {
+      __asm__ volatile("wfi");
+    }
+  }
   if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
