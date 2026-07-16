@@ -83,8 +83,9 @@ configuration keeps building cleanly.
 ## Notes
 
 - The DNS path is intentionally static -- this demo focuses on the
-  TLS / cert-pin / hardware-crypto integration. A future sweep can
-  drop in NetX DNS once the `nx_dns_*` plumbing lands.
+  TLS / cert-pin / RSIP-TRNG integration (the handshake crypto itself
+  is Mbed TLS software; see the note below). A future sweep can drop
+  in NetX DNS once the `nx_dns_*` plumbing lands.
 - Cert pinning is per-leaf. If `www.example.com` rotates its
   certificate (typical: ~3 months), update `k_demo_cert_pin_sha256`
   and re-flash. The placeholder ships as 32 zero bytes so an
