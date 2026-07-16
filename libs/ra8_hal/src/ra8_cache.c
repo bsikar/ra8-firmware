@@ -30,6 +30,7 @@
 
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_hw_intrinsics.h"
 
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_cache";
@@ -81,50 +82,6 @@ typedef enum : uint32_t {
 static inline volatile uint32_t* ra8_cache_reg(ra8_cache_reg_addr_t addr)
 {
   return (volatile uint32_t*)addr;
-}
-
-/**
- * @brief Data synchronisation barrier (no-op on the host build).
- * @details Emits a full-system `dsb 0xF`, which stalls the core until every
- *          prior explicit memory access -- including the cache-maintenance
- *          register writes that precede it -- has completed before the next
- *          instruction executes. Compiled out under RA8_SIMULATOR_MODE, where
- *          accesses target ordinary host RAM and need no ordering.
- * @return None.
- * @pre Called between a maintenance write and a dependent access.
- * @pre Runs on the Cortex-M85 (or the host stub).
- * @post All prior memory accesses have completed before the next instruction.
- * @post No general-purpose register is modified.
- * @note Arm v8-M ARM A "DSB".
- * @since 0.1.0
- */
-static inline void ra8_cache_dsb(void)
-{
-#ifndef RA8_SIMULATOR_MODE
-  __asm__ volatile("dsb 0xF" ::: "memory");
-#endif
-}
-
-/**
- * @brief Instruction synchronisation barrier (no-op on the host build).
- * @details Emits a full-system `isb 0xF`, flushing the pipeline so that
- *          instructions fetched after it observe the updated cache and MPU
- *          state established by the preceding enable/invalidate sequence.
- *          Compiled out under RA8_SIMULATOR_MODE, where no pipeline exists to
- *          flush.
- * @return None.
- * @pre Called after a cache-enable or invalidate-all sequence.
- * @pre Runs on the Cortex-M85 (or the host stub).
- * @post The pipeline is flushed; later instructions see the new cache state.
- * @post No general-purpose register is modified.
- * @note Arm v8-M ARM A "ISB".
- * @since 0.1.0
- */
-static inline void ra8_cache_isb(void)
-{
-#ifndef RA8_SIMULATOR_MODE
-  __asm__ volatile("isb 0xF" ::: "memory");
-#endif
 }
 
 uint32_t ra8_cache_dcache_line_bytes(void)
@@ -200,12 +157,12 @@ static ra8_err_t ra8_cache_maintain_range(const void* addr, uint32_t size, ra8_c
   const uint32_t line  = ra8_cache_dcache_line_bytes();
   uintptr_t      start = 0U;
   const uint32_t lines = ra8_cache_span_lines((uintptr_t)addr, size, line, &start);
-  ra8_cache_dsb();
+  ra8_hw_dsb();
   for (uint32_t i = 0U; i < lines; ++i) {
     *ra8_cache_reg(reg) = (uint32_t)(start + ((uintptr_t)i * (uintptr_t)line));
   }
-  ra8_cache_dsb();
-  ra8_cache_isb();
+  ra8_hw_dsb();
+  ra8_hw_isb();
   return k_ra8_ok;
 }
 
@@ -229,7 +186,7 @@ void ra8_cache_dcache_invalidate_all(void)
   /* Arm v8-M ARM: select L1 data cache, read its geometry, then invalidate
    * every set/way. CSSELR=0 selects level 0, data. */
   *ra8_cache_reg(k_ra8_cache_csselr) = 0U;
-  ra8_cache_dsb();
+  ra8_hw_dsb();
   const uint32_t ccsidr = *ra8_cache_reg(k_ra8_cache_ccsidr);
   if ((ccsidr == 0U) || (ccsidr == UINT32_MAX)) {
     return; /* geometry unavailable -- nothing safe to invalidate */
@@ -244,6 +201,6 @@ void ra8_cache_dcache_invalidate_all(void)
                                           (ways << (uint32_t)k_ra8_cache_dcisw_way_shift);
     } while (ways-- != 0U);
   } while (sets-- != 0U);
-  ra8_cache_dsb();
-  ra8_cache_isb();
+  ra8_hw_dsb();
+  ra8_hw_isb();
 }

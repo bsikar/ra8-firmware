@@ -30,6 +30,7 @@
 #include "ra8_cgc.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_hw_intrinsics.h"
 #include "ra8_log.h"
 #include "ra8_lpm_regs.h"
 #include "ra8_mstp.h"
@@ -114,22 +115,20 @@ static bool internal_decode_wake(ra8_pwr_wake_t source, uint8_t* out_reg, uint8_
  * @brief WFI wrapper. No-op on the host build.
  *
  * @details
- * On the Cortex-M85 target this expands to ``wfi``. In
- * ``RA8_SIMULATOR_MODE`` the body is empty so unit tests can call
- * ``ra8_pwr_enter_sleep()`` without stalling.
+ * Routes through the ``ra8_hw_intrinsics`` seam: on the Cortex-M85 target it
+ * expands to ``wfi``; on the host the stub returns at once so unit tests can
+ * call ``ra8_pwr_enter_sleep()`` without stalling.
  *
  * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
+ * @pre The desired sleep-mode registers have been written.
+ * @post The core has parked until a wake event (target) or returned (host).
+ * @post No module state is mutated by the wait itself.
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
 static inline void internal_wfi(void)
 {
-#ifndef RA8_SIMULATOR_MODE
-  __asm__ volatile("wfi");
-#endif
+  ra8_hw_wfi();
 }
 
 /* =============================================================================

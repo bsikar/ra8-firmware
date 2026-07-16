@@ -20,6 +20,7 @@
 
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_hw_intrinsics.h"
 #include "ra8_icu_regs.h"
 #include "ra8_log.h"
 
@@ -402,16 +403,13 @@ ra8_err_t ra8_isr_lookup_slot(ra8_elc_event_t event, uint16_t* out_slot)
 
 void ra8_isr_globals_enable(void)
 {
-  /* PRIMASK clear -- maskable IRQs may now dispatch. */
-#ifndef RA8_SIMULATOR_MODE
-  __asm__ volatile("cpsie i" ::: "memory");
-#endif
+  /* PRIMASK clear -- maskable IRQs may now dispatch (host no-op via seam). */
+  ra8_hw_irq_enable();
 }
 
 void ra8_isr_globals_disable(void)
 {
-  /* PRIMASK set -- subsequent maskable IRQs pend until re-enabled. */
-#ifndef RA8_SIMULATOR_MODE
-  __asm__ volatile("cpsid i" ::: "memory");
-#endif
+  /* PRIMASK set -- subsequent maskable IRQs pend until re-enabled (host
+   * no-op via seam). */
+  ra8_hw_irq_disable();
 }

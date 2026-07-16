@@ -27,10 +27,10 @@
  * exact critical section. The legacy contract (caller has unlocked
  * PRC1 before the protected writes) is preserved.
  *
- * On host (``RA8_SIMULATOR_MODE``) builds the WFI asm is replaced
- * with a no-op so unit tests can drive ``ra8_lpm_enter_sleep`` and
- * observe the LPSCR write through the sim mmap without the test
- * binary actually halting. The SCR.SLEEPDEEP read-modify-write runs
+ * On host builds the WFI routes through the ``ra8_hw_intrinsics`` seam,
+ * whose host stub returns at once, so unit tests can drive
+ * ``ra8_lpm_enter_sleep`` and observe the LPSCR write through the sim mmap
+ * without the test binary actually halting. The SCR.SLEEPDEEP read-modify-write runs
  * unchanged on every build: the sim mmap backs the Cortex-M System
  * Control Space window (core region at 0xE0000000), so host tests
  * stage and assert the real toggle sequence.
@@ -45,6 +45,7 @@
 
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_hw_intrinsics.h"
 #include "ra8_log.h"
 #include "ra8_lpm_regs.h"
 
@@ -90,33 +91,26 @@ typedef enum : uint8_t {
 } ra8_lpm_dpsi_count_t;
 
 /**
- * @brief Issue WFI, or no-op on host test builds.
+ * @brief Issue a Data Synchronization Barrier followed by WFI.
  *
  * @details
- * On the Cortex-M85 target this expands to a DSB followed by the
- * Arm WFI intrinsic. On the host (``RA8_SIMULATOR_MODE``) the
- * function is a no-op so unit tests can call ``ra8_lpm_enter_sleep``
- * without blocking.
+ * A DSB retires every prior register write before the core sleeps, per the
+ * HUM Ch 11 "Low Power Mode" entry sequence, then WFI parks the core. Both
+ * primitives route through the ``ra8_hw_intrinsics`` seam, so the host build
+ * substitutes no-ops (defined in ``tests/mocks/ra8_host_asm_stub.c``) and a
+ * unit test can drive ``ra8_lpm_enter_sleep`` without blocking.
  *
  * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
+ * @pre Sleep-mode registers have been written.
+ * @post The prior register writes have retired before the core sleeps.
+ * @post Control resumes on a wake event (target) or at once (host).
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
 static inline void internal_wait_for_interrupt(void)
 {
-#ifdef RA8_SIMULATOR_MODE
-  /* Host build: WFI would not exist on x86. */
-  (void)0;
-#else
-  /* Data Synchronization Barrier before sleeping per HUM Ch 11
-   * "Low Power Mode" entry sequence (DSB ensures every prior
-   * register write has retired). */
-  __asm volatile("dsb 0xF" ::: "memory");
-  __asm volatile("wfi" ::: "memory");
-#endif
+  ra8_hw_dsb();
+  ra8_hw_wfi();
 }
 
 /**

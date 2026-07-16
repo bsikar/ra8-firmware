@@ -27,6 +27,7 @@
 #include "ra8_eth_gwca_internal.h"
 #include "ra8_ether_regs.h"
 #include "ra8_hw_err.h"
+#include "ra8_hw_intrinsics.h"
 #include "ra8_log.h"
 
 static const char* s_tag = "ETHGWC";
@@ -613,10 +614,8 @@ ra8_eth_gwca_default_send(ra8_eth_gwca_default_state_t* state, const uint8_t* fr
   state->tx_tail = 0U;
   /* DSB: the descriptor + frame buffer are Normal (SRAM) writes; the
    * GWCA kick below is a Device write. Armv8-M does not order them
-   * without an explicit barrier. */
-#ifndef RA8_SIMULATOR_MODE
-  __asm__ volatile("dsb" ::: "memory");
-#endif
+   * without an explicit barrier (host no-op via the ra8_hw_intrinsics seam). */
+  ra8_hw_dsb();
   const ra8_err_t reload_err = ra8_eth_gwca_reload_queue(state->tx_queue_index);
   if (reload_err != k_ra8_ok) {
     return reload_err;

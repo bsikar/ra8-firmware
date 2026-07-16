@@ -311,6 +311,7 @@ add_library(ra8_core_hal OBJECT
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_sim_world.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_sim_mmio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_sim_xspi_flash.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_host_asm_stub.c
 )
 # STACK_USAGE_BYTES 0 disables the per-function stack gate for the host
 # build (see the line 41 note): the host ABI pushes wider frames than the
