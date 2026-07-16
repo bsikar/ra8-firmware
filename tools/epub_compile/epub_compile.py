@@ -399,7 +399,8 @@ def parse_opf(zf):
     meta = {"title": "", "author": "", "language": "", "identifier": ""}
     manifest = {}  # id -> (href, media_type, properties)
     spine = []  # list of idref
-    cover_id = None
+    cover_id_meta = None  # legacy EPUB2 <meta name="cover" content="ID">
+    cover_id_props = None  # EPUB3 manifest <item properties="cover-image">
     for el in opf.iter():
         tag = opf_localname(el.tag)
         if tag == "title" and not meta["title"]:
@@ -411,15 +412,24 @@ def parse_opf(zf):
         elif tag == "identifier" and not meta["identifier"]:
             meta["identifier"] = (el.text or "").strip()
         elif tag == "meta" and el.get("name") == "cover":
-            cover_id = el.get("content")
+            cover_id_meta = el.get("content")
         elif tag == "item":
-            manifest[el.get("id")] = (
-                el.get("href"),
-                el.get("media-type", ""),
-                el.get("properties", "") or "",
-            )
+            props = el.get("properties", "") or ""
+            manifest[el.get("id")] = (el.get("href"), el.get("media-type", ""), props)
+            # First manifest item carrying the EPUB3 cover-image property. The
+            # substring test mirrors ra8_epub_xml_shim.cpp find_cover_by_properties()
+            # (a strstr over the space-separated properties list) byte-for-byte, so
+            # an EPUB3-only book -- no legacy meta, how modern fixed-layout comics
+            # ship (issue #196) -- resolves the same cover host-side and on-device.
+            if (cover_id_props is None) and ("cover-image" in props):
+                cover_id_props = el.get("id")
         elif tag == "itemref":
             spine.append(el.get("idref"))
+    # EPUB3 properties="cover-image" wins; the legacy <meta name="cover"> is the
+    # fallback -- the exact precedence ra8_epub_xml_shim.cpp uses on device
+    # (find_cover_by_properties() then find_cover_by_meta()), so the desktop
+    # .rabook and the on-device compile agree on the cover image index.
+    cover_id = cover_id_props if cover_id_props is not None else cover_id_meta
     return opf_dir, meta, manifest, spine, cover_id
 
 
@@ -516,10 +526,170 @@ def compile_epub(path, max_image_edge=MAX_IMAGE_EDGE, skip_images=SKIP_IMAGES):
     return bb.serialize(meta), meta, bb
 
 
+# --- fixed-layout selftest (issue #196) ---------------------------------------
+# A fixed-layout / image-only EPUB3 is a CBZ in EPUB clothing: each spine
+# document is one full-page <img> with no flowable text. This selftest proves
+# that content model survives the compiler end to end -- the emitted .rabook has
+# the one-image-per-page shape, its 4bpp payload is byte-identical to the
+# equivalent CBZ, the EPUB3 properties="cover-image" cover is resolved, and it
+# documents the img-src vs manifest-href resolution gap the render path must
+# bridge. The fixture lives at tests/fixtures/rabook_fixed_layout/.
+FIXED_LAYOUT_FIXTURE = ("tests", "fixtures", "rabook_fixed_layout")
+
+
+def _fl_fail(message):
+    """Print a failure to stderr and raise SystemExit(1) (no traceback)."""
+    sys.stderr.write(f"epub_compile.py: {message}\n")
+    raise SystemExit(1)
+
+
+def _fl_require(cond, what):
+    """Exit non-zero unless `cond` holds (a checkable assert for the selftest)."""
+    if not cond:
+        _fl_fail(f"selftest FAILED: {what}")
+
+
+def _fl_str(bb, off):
+    """Resolve a string-pool offset in builder `bb` back to text."""
+    raw = bb.sp.buf
+    return bytes(raw[off : raw.index(b"\x00", off)]).decode("utf-8")
+
+
+def _fl_find_image(bb, root_idx):
+    """DFS a chapter DOM for the first <img>/<image>; return (tag, attrs) or None.
+
+    Handles both the bare <img src> page and the <svg><image xlink:href> wrapper
+    page: the tag name distinguishes them, and either src or xlink:href carries
+    the raster reference.
+    """
+    stack = [root_idx]
+    while stack:
+        idx = stack.pop()
+        if idx == NIL:
+            continue
+        node = bb.nodes[idx]
+        if node["kind"] == NODE_ELEMENT:
+            tag = _fl_str(bb, node["name_off"])
+            if tag in ("img", "image"):
+                attrs = {}
+                for k in range(node["attr_count"]):
+                    name_off, val_off = bb.attrs[node["first_attr"] + k]
+                    attrs[_fl_str(bb, name_off)] = _fl_str(bb, val_off)
+                return tag, attrs
+        stack.append(node["next_sibling"])
+        stack.append(node["first_child"])
+    return None
+
+
+def _fl_zip_dir(directory):
+    """Zip a directory tree in memory (sorted for determinism); return BytesIO."""
+    buf = io.BytesIO()
+    with ZipFile(buf, "w") as zf:
+        for path in sorted(directory.rglob("*")):
+            if path.is_file():
+                zf.writestr(str(path.relative_to(directory)), path.read_bytes())
+    buf.seek(0)
+    return buf
+
+
+def _fl_build_equivalent_cbz(page_images):
+    """Zip `{basename: png_bytes}` into a CBZ (flat image entries); return BytesIO."""
+    buf = io.BytesIO()
+    with ZipFile(buf, "w") as zf:
+        for name, data in sorted(page_images.items()):
+            zf.writestr(name, data)
+    buf.seek(0)
+    return buf
+
+
+def selftest():
+    """Compile the committed fixed-layout fixture and check the #196 contract.
+
+    Zips tests/fixtures/rabook_fixed_layout/ in memory, compiles it, then:
+      * asserts the one-image-per-page shape (one spine chapter per page, each a
+        <body> holding a single <img>/<image>, one manifest raster per page);
+      * asserts the EPUB3 properties="cover-image" cover resolved to page 1;
+      * builds an equivalent CBZ from the SAME page rasters, compiles it with
+        cbz_compile, and asserts the 4bpp image payloads are byte-identical
+        EPUB-vs-CBZ (so an image that the render path can find draws the same
+        pixels either way);
+      * documents the img-src gap: the verbatim <img src> does NOT equal the
+        manifest image id (cross-directory), but normalising it against the
+        chapter path does -- the exact bridge a book-backed image loader needs.
+    Exits non-zero on the first failed check.
+    """
+    root = Path(__file__).resolve().parents[2]
+    fixture = root.joinpath(*FIXED_LAYOUT_FIXTURE)
+    _fl_require(fixture.is_dir(), f"fixture missing at {fixture}")
+
+    blob, meta, bb = compile_epub(_fl_zip_dir(fixture))
+    container = wrap_container(blob)
+
+    # Round-trip the container so the whole on-disk path is exercised, not just
+    # the flat blob (mirrors cbz_compile's selftest).
+    from cbz_compile import compile_cbz, unwrap_container  # noqa: PLC0415  # avoid import cycle
+
+    _fl_require(unwrap_container(container) == blob, "RBKC container round-trip")
+
+    want_pages = ["text/page1.xhtml", "text/page2.xhtml", "text/page3.xhtml"]
+    _fl_require(meta["title"] == "Fixed Layout Spike (#196)", "title interned")
+    _fl_require(bb.flags == 0, "no stray header flags on a fixed-layout book")
+    _fl_require(len(bb.chapters) == len(want_pages), "one chapter per spine page")
+    _fl_require(len(bb.images) == len(want_pages), "one manifest raster per page")
+    _fl_require(bb.cover_index == 0, "EPUB3 properties=cover-image resolved to page 1")
+
+    hrefs = [_fl_str(bb, href_off) for (_t, href_off, _r) in bb.chapters]
+    _fl_require(hrefs == want_pages, f"spine order preserved (got {hrefs})")
+
+    image_ids = [_fl_str(bb, img[0]) for img in bb.images]
+    _fl_require(
+        image_ids == ["images/page1.png", "images/page2.png", "images/page3.png"],
+        f"manifest image ids (got {image_ids})",
+    )
+
+    want_tags = ["img", "img", "image"]  # p1 bare img, p2 bare img, p3 svg<image>
+    for i, (_title_off, href_off, root_idx) in enumerate(bb.chapters):
+        root_node = bb.nodes[root_idx]
+        _fl_require(_fl_str(bb, root_node["name_off"]) == "body", f"chapter root is body [{i}]")
+        hit = _fl_find_image(bb, root_idx)
+        _fl_require(hit is not None, f"chapter has an image element [{i}]")
+        tag, attrs = hit
+        _fl_require(tag == want_tags[i], f"page {i} image tag is <{want_tags[i]}> (got <{tag}>)")
+        src = attrs.get("src") or attrs.get("xlink:href")
+        _fl_require(src is not None, f"image element carries a src/xlink:href [{i}]")
+        # The gap: verbatim src != manifest image id, but normalising the src
+        # against the chapter's own directory recovers the id exactly.
+        chapter_dir = posixpath.dirname(_fl_str(bb, href_off))
+        normalised = posixpath.normpath(posixpath.join(chapter_dir, src))
+        _fl_require(src not in image_ids, f"verbatim src is NOT a manifest id [{i}] (the gap)")
+        _fl_require(normalised in image_ids, f"normalised src recovers the manifest id [{i}]")
+
+    # Equivalent CBZ from the same page rasters -> identical 4bpp payloads.
+    page_names = [posixpath.basename(_fl_str(bb, img[0])) for img in bb.images]
+    raw_pngs = {name: (fixture / "OEBPS" / "images" / name).read_bytes() for name in page_names}
+    _blob_cbz, _meta_cbz, bb_cbz = compile_cbz(
+        _fl_build_equivalent_cbz(raw_pngs), title="Fixed Layout Spike (#196)"
+    )
+    cbz_payload = {posixpath.basename(_fl_str(bb_cbz, img[0])): img for img in bb_cbz.images}
+    for img in bb.images:
+        name = posixpath.basename(_fl_str(bb, img[0]))
+        _fl_require(name in cbz_payload, f"CBZ has a matching page for {name}")
+        c_img = cbz_payload[name]
+        _fl_require((img[1], img[2]) == (c_img[1], c_img[2]), f"same dims EPUB/CBZ [{name}]")
+        _fl_require(img[3] == c_img[3] == IMG_GRAY4, f"both transcode to 4bpp [{name}]")
+        _fl_require(img[4] == c_img[4], f"4bpp payload byte-identical EPUB/CBZ [{name}]")
+
+    sys.stdout.write(
+        "epub_compile.py selftest: PASS -- fixed-layout shape, EPUB3 cover, "
+        "CBZ payload parity, and the img-src normalisation gap all verified.\n"
+    )
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser(description="Compile an EPUB into a .rabook blob.")
-    ap.add_argument("input", help="source .epub")
-    ap.add_argument("output", help="destination .rabook")
+    ap.add_argument("input", nargs="?", help="source .epub")
+    ap.add_argument("output", nargs="?", help="destination .rabook")
     ap.add_argument("--stats", action="store_true", help="print size/structure stats")
     ap.add_argument(
         "--max-edge",
@@ -540,7 +710,17 @@ def main():
         help="inflated bytes per independently-compressed container chunk "
         "(must equal the reader's ra8_vmem frame size)",
     )
+    ap.add_argument(
+        "--selftest",
+        action="store_true",
+        help="compile the fixed-layout fixture and run the #196 self-check, then exit",
+    )
     args = ap.parse_args()
+
+    if args.selftest:
+        return selftest()
+    if not args.input or not args.output:
+        ap.error("input and output are required unless --selftest")
 
     blob, meta, bb = compile_epub(args.input, args.max_edge, args.no_images)
     container = wrap_container(blob, args.chunk_bytes)
@@ -559,7 +739,8 @@ def main():
             f"  epub={src // 1024} KB -> rabook={out // 1024} KB "
             f"({100 * out // max(src, 1)}%); inflated={len(blob) // 1024} KB"
         )
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
