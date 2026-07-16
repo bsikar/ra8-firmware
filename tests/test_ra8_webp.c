@@ -34,7 +34,7 @@
 #include "unity_minimal.h"
 
 /* ------------------------------------------------------------------------- */
-/* Committed fixtures under tests/fixtures/webp/, embedded inline.            */
+/* Committed fixtures under tests/fixtures/webp/, embedded inline. */
 /* ------------------------------------------------------------------------- */
 
 /** 8x8 VP8L (lossless, -exact) -- golden pixel round-trip. */
@@ -72,11 +72,11 @@ static const uint8_t k_webp_tall[] = {
  * @brief Geometry + buffer constants for the 8x8 fixtures (no magic numbers).
  */
 typedef enum : uint32_t {
-  k_dim       = 8U,               /**< Fixture width and height, pixels.       */
-  k_bpp       = 4U,               /**< RGBA8888 bytes per pixel.               */
-  k_stride    = k_dim * k_bpp,    /**< Tight row stride in bytes (32).         */
-  k_fb_bytes  = k_dim * k_stride, /**< 8x8 RGBA framebuffer size (256).        */
-  k_alpha_opq = 255U,             /**< Opaque alpha for the golden pattern.    */
+  k_dim       = 8U,               /**< Fixture width and height, pixels.    */
+  k_bpp       = 4U,               /**< RGBA8888 bytes per pixel.            */
+  k_stride    = k_dim * k_bpp,    /**< Tight row stride in bytes (32).      */
+  k_fb_bytes  = k_dim * k_stride, /**< 8x8 RGBA framebuffer size (256).     */
+  k_alpha_opq = 255U,             /**< Opaque alpha for the golden pattern. */
 } test_webp_consts_t;
 
 /** 1 MiB scratch backing store shared by the decode tests. */
@@ -89,7 +89,7 @@ static ra8_webp_arena_t fresh_arena(void)
 }
 
 /* ------------------------------------------------------------------------- */
-/* Golden decode + arena drain.                                              */
+/* Golden decode + arena drain. */
 /* ------------------------------------------------------------------------- */
 
 /**
@@ -168,7 +168,7 @@ static void test_decode_lossy_runs(void)
 }
 
 /* ------------------------------------------------------------------------- */
-/* ra8_webp_get_info validation.                                             */
+/* ra8_webp_get_info validation. */
 /* ------------------------------------------------------------------------- */
 
 /**
@@ -244,7 +244,7 @@ static void test_get_info_dimension_cap_mcdc(void)
 }
 
 /* ------------------------------------------------------------------------- */
-/* ra8_webp_decode_rgba validation.                                          */
+/* ra8_webp_decode_rgba validation. */
 /* ------------------------------------------------------------------------- */
 
 /**
@@ -419,7 +419,7 @@ static void test_decode_arena_oom(void)
 }
 
 /* ------------------------------------------------------------------------- */
-/* ra8_webp_arena unit + MC/DC.                                              */
+/* ra8_webp_arena unit + MC/DC. */
 /* ------------------------------------------------------------------------- */
 
 /**
