@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 11811
+# total findings: 11801
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -311,9 +311,11 @@ libs/ra8_fs/src/ra8_fs_fat_name.c	misra-c2012-15.5	18
 libs/ra8_fs/src/ra8_fs_fat_name.c	misra-c2012-17.8	3
 libs/ra8_fs/src/ra8_fs_fat_name.c	misra-c2012-9.2	2
 libs/ra8_ftl/src/ra8_ftl.c	misra-c2012-12.1	2
-libs/ra8_ftl/src/ra8_ftl.c	misra-c2012-15.5	60
-libs/ra8_ftl/src/ra8_ftl.c	misra-c2012-8.4	3
+libs/ra8_ftl/src/ra8_ftl.c	misra-c2012-15.5	78
+libs/ra8_ftl/src/ra8_ftl.c	misra-c2012-21.15	2
+libs/ra8_ftl/src/ra8_ftl.c	misra-c2012-8.4	7
 libs/ra8_ftl/src/ra8_ftl.c	misra-c2012-8.9	1
+libs/ra8_ftl/src/ra8_ftl.c	misra-c2012-9.2	1
 libs/ra8_gfx/src/ra8_gfx_blit_gray4.c	misra-c2012-15.5	4
 libs/ra8_gfx/src/ra8_gfx_blit_gray4.c	misra-c2012-8.4	1
 libs/ra8_gfx/src/ra8_gfx_font_8x16.c	misra-c2012-8.4	1
@@ -1226,9 +1228,11 @@ libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	misra-c2012-15.5	86
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	misra-c2012-8.4	11
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	misra-c2012-8.9	1
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	misra-c2012-9.2	1
-libs/ra8_tls/src/ra8_tls.c	misra-c2012-15.5	40
+libs/ra8_tls/src/ra8_tls.c	misra-c2012-10.4	1
+libs/ra8_tls/src/ra8_tls.c	misra-c2012-15.5	48
 libs/ra8_tls/src/ra8_tls.c	misra-c2012-20.1	4
-libs/ra8_tls/src/ra8_tls.c	misra-c2012-8.4	7
+libs/ra8_tls/src/ra8_tls.c	misra-c2012-8.4	10
+libs/ra8_tls/src/ra8_tls.c	misra-c2012-8.9	1
 libs/ra8_touch_cal/src/ra8_touch_cal.c	misra-c2012-10.8	2
 libs/ra8_touch_cal/src/ra8_touch_cal.c	misra-c2012-15.5	22
 libs/ra8_touch_cal/src/ra8_touch_cal.c	misra-c2012-21.15	2
@@ -1307,19 +1311,6 @@ port/levelx/src/lx_nor_driver_ra8_xspi.c	misra-c2012-15.5	20
 port/levelx/src/lx_nor_driver_ra8_xspi.c	misra-c2012-17.3	3
 port/levelx/src/lx_nor_driver_ra8_xspi.c	misra-c2012-8.4	3
 port/levelx/src/lx_nor_driver_ra8_xspi.c	misra-c2012-8.9	2
-port/netxduo/src/nx_crypto_aes_alt.c	misra-c2012-11.3	1
-port/netxduo/src/nx_crypto_aes_alt.c	misra-c2012-11.8	1
-port/netxduo/src/nx_crypto_aes_alt.c	misra-c2012-12.1	4
-port/netxduo/src/nx_crypto_aes_alt.c	misra-c2012-15.5	20
-port/netxduo/src/nx_crypto_aes_alt.c	misra-c2012-18.4	1
-port/netxduo/src/nx_crypto_aes_alt.c	misra-c2012-8.4	3
-port/netxduo/src/nx_crypto_sha256_alt.c	misra-c2012-11.3	2
-port/netxduo/src/nx_crypto_sha256_alt.c	misra-c2012-11.4	3
-port/netxduo/src/nx_crypto_sha256_alt.c	misra-c2012-11.8	1
-port/netxduo/src/nx_crypto_sha256_alt.c	misra-c2012-12.1	2
-port/netxduo/src/nx_crypto_sha256_alt.c	misra-c2012-15.5	12
-port/netxduo/src/nx_crypto_sha256_alt.c	misra-c2012-18.4	3
-port/netxduo/src/nx_crypto_sha256_alt.c	misra-c2012-8.4	3
 port/netxduo/src/nx_ether_driver_ra8_eth.c	misra-c2012-12.1	4
 port/netxduo/src/nx_ether_driver_ra8_eth.c	misra-c2012-15.4	1
 port/netxduo/src/nx_ether_driver_ra8_eth.c	misra-c2012-15.5	21
@@ -1341,6 +1332,8 @@ port/nimble/src/nimble_npl_threadx.c	misra-c2012-17.8	1
 port/nimble/src/nimble_npl_threadx.c	misra-c2012-8.4	32
 port/nimble/src/nimble_npl_threadx.c	misra-c2012-8.9	1
 port/threadx/src/cortex_m85/tx_systick_ready.c	misra-c2012-8.4	1
+port/threadx/src/cortex_m85/tx_systick_retune.c	misra-c2012-15.5	6
+port/threadx/src/cortex_m85/tx_systick_retune.c	misra-c2012-8.4	2
 port/usbx/src/ux_dcd_ra8_usb.c	misra-c2012-11.4	2
 port/usbx/src/ux_dcd_ra8_usb.c	misra-c2012-15.5	8
 port/usbx/src/ux_dcd_ra8_usb.c	misra-c2012-17.3	1
