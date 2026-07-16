@@ -58,37 +58,14 @@ static const char* s_tag = "JPEG_SW";
 /* Decoder */
 /* ------------------------------------------------------------------ */
 
-/**
- * @struct ra8_jpeg_dec_ctx_t
- * @brief Decoder state -- all stack-allocated, no heap.
- */
-typedef struct {
-  const uint8_t* src;
-  uint32_t       src_len;
-  uint32_t       cursor;
+/* The decoder context (`ra8_jpeg_dec_ctx_t`) and the marker/scan
+ * primitives below are declared in `ra8_jpeg_sw_internal.h` so the
+ * streaming driver (`ra8_jpeg_sw_stream.c`) can reuse them over its
+ * sliding window; this unit keeps their definitions plus the
+ * whole-buffer `ra8_jpeg_sw_decode()` driver. */
 
-  uint16_t width;
-  uint16_t height;
-  uint8_t  ncomp; /**< 1 grayscale, 3 YCbCr. */
-  uint8_t  hmax;
-  uint8_t  vmax;
-
-  /* Per-component info (T.81 sec B.2.2). */
-  uint8_t comp_id[k_ra8_jpeg_max_comps];
-  uint8_t comp_h[k_ra8_jpeg_max_comps];
-  uint8_t comp_v[k_ra8_jpeg_max_comps];
-  uint8_t comp_qid[k_ra8_jpeg_max_comps];
-  uint8_t comp_dc_id[k_ra8_jpeg_max_comps];
-  uint8_t comp_ac_id[k_ra8_jpeg_max_comps];
-  int32_t comp_dc_pred[k_ra8_jpeg_max_comps];
-
-  uint16_t        qtab[k_ra8_jpeg_quant_tabs][k_ra8_jpeg_block_size];
-  ra8_jpeg_htab_t hdc[k_ra8_jpeg_huff_ids];
-  ra8_jpeg_htab_t hac[k_ra8_jpeg_huff_ids];
-} ra8_jpeg_dec_ctx_t;
-
-/* Skip an unrecognized variable-length segment -- see surrounding code and HUM citations. */
-static ra8_err_t dec_skip_segment(ra8_jpeg_dec_ctx_t* d)
+/** @brief Implementation of `ra8_jpeg_sw_priv_skip_segment()` -- bounds-checked cursor hop. */
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_skip_segment(ra8_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
     return k_ra8_err_protocol_error;
@@ -102,7 +79,7 @@ static ra8_err_t dec_skip_segment(ra8_jpeg_dec_ctx_t* d)
 }
 
 /* Parse a DQT segment (T -- see surrounding code and HUM citations. */
-static ra8_err_t dec_parse_dqt(ra8_jpeg_dec_ctx_t* d)
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_dqt(ra8_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
     return k_ra8_err_protocol_error;
@@ -133,7 +110,7 @@ static ra8_err_t dec_parse_dqt(ra8_jpeg_dec_ctx_t* d)
 }
 
 /* Parse a DHT segment (T -- see surrounding code and HUM citations. */
-static ra8_err_t dec_parse_dht(ra8_jpeg_dec_ctx_t* d)
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_dht(ra8_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
     return k_ra8_err_protocol_error;
@@ -178,7 +155,7 @@ static ra8_err_t dec_parse_dht(ra8_jpeg_dec_ctx_t* d)
 }
 
 /* Parse SOF0 (T -- see surrounding code and HUM citations. */
-static ra8_err_t dec_parse_sof0(ra8_jpeg_dec_ctx_t* d)
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_sof0(ra8_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
     return k_ra8_err_protocol_error;
@@ -237,7 +214,7 @@ static ra8_err_t dec_parse_sof0(ra8_jpeg_dec_ctx_t* d)
 }
 
 /* Parse SOS scan-component selectors (T -- see surrounding code and HUM citations. */
-static ra8_err_t dec_parse_sos(ra8_jpeg_dec_ctx_t* d)
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_sos(ra8_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
     return k_ra8_err_protocol_error;
@@ -277,8 +254,10 @@ static ra8_err_t dec_parse_sos(ra8_jpeg_dec_ctx_t* d)
 }
 
 /* Decode one 8x8 block of coefficients -- see surrounding code and HUM citations. */
-static ra8_err_t
-dec_block(ra8_jpeg_dec_ctx_t* d, ra8_jpeg_bitreader_t* br, uint8_t ci, int32_t* outblk)
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_block(ra8_jpeg_dec_ctx_t*   d,
+                                          ra8_jpeg_bitreader_t* br,
+                                          uint8_t               ci,
+                                          int32_t*              outblk)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_block_size; i++) {
     outblk[i] = 0;
@@ -339,7 +318,7 @@ dec_block(ra8_jpeg_dec_ctx_t* d, ra8_jpeg_bitreader_t* br, uint8_t ci, int32_t* 
 /* ------------------------------------------------------------------ */
 
 /* Render a fully-dequantized+IDCTed component sample into a tile -- see surrounding code and HUM citations. */
-static void dec_idct_into(int32_t* coeffs, uint8_t* tile)
+RA8_PRIV void ra8_jpeg_sw_priv_idct_into(int32_t* coeffs, uint8_t* tile)
 {
   ra8_jpeg_sw_idct8x8(coeffs);
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_block_size; i++) {
@@ -373,20 +352,20 @@ static void dec_idct_into(int32_t* coeffs, uint8_t* tile)
  * @note Not thread-safe; caller serializes access via decoder context.
  * @since 0.1.0
  */
-static ra8_err_t dec_decode_mcu_y_blocks(ra8_jpeg_dec_ctx_t*   d,
-                                         ra8_jpeg_bitreader_t* br,
-                                         uint8_t*              y_tile,
-                                         uint16_t              mcu_w_px)
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_mcu_y(ra8_jpeg_dec_ctx_t*   d,
+                                          ra8_jpeg_bitreader_t* br,
+                                          uint8_t*              y_tile,
+                                          uint16_t              mcu_w_px)
 {
   int32_t coeffs[(uint32_t)k_ra8_jpeg_block_size];
   for (uint8_t by = 0U; by < d->vmax; by++) {
     for (uint8_t bx = 0U; bx < d->hmax; bx++) {
-      ra8_err_t e = dec_block(d, br, 0U, coeffs);
+      ra8_err_t e = ra8_jpeg_sw_priv_block(d, br, 0U, coeffs);
       if (e != k_ra8_ok) {
         return e;
       }
       uint8_t blk[(uint32_t)k_ra8_jpeg_block_size];
-      dec_idct_into(coeffs, blk);
+      ra8_jpeg_sw_priv_idct_into(coeffs, blk);
       for (uint8_t r = 0U; r < (uint8_t)k_ra8_jpeg_block_dim; r++) {
         for (uint8_t c = 0U; c < (uint8_t)k_ra8_jpeg_block_dim; c++) {
           uint16_t ty                = (uint16_t)(by * (uint16_t)k_ra8_jpeg_block_dim + r);
@@ -424,22 +403,22 @@ static ra8_err_t dec_decode_mcu_y_blocks(ra8_jpeg_dec_ctx_t*   d,
  * @note Not thread-safe; caller serializes access via decoder context.
  * @since 0.1.0
  */
-static ra8_err_t dec_decode_mcu_chroma_blocks(ra8_jpeg_dec_ctx_t*   d,
-                                              ra8_jpeg_bitreader_t* br,
-                                              uint8_t*              cb_tile,
-                                              uint8_t*              cr_tile)
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_mcu_chroma(ra8_jpeg_dec_ctx_t*   d,
+                                               ra8_jpeg_bitreader_t* br,
+                                               uint8_t*              cb_tile,
+                                               uint8_t*              cr_tile)
 {
   int32_t   coeffs[(uint32_t)k_ra8_jpeg_block_size];
-  ra8_err_t e = dec_block(d, br, 1U, coeffs);
+  ra8_err_t e = ra8_jpeg_sw_priv_block(d, br, 1U, coeffs);
   if (e != k_ra8_ok) {
     return e;
   }
-  dec_idct_into(coeffs, cb_tile);
-  e = dec_block(d, br, 2U, coeffs);
+  ra8_jpeg_sw_priv_idct_into(coeffs, cb_tile);
+  e = ra8_jpeg_sw_priv_block(d, br, 2U, coeffs);
   if (e != k_ra8_ok) {
     return e;
   }
-  dec_idct_into(coeffs, cr_tile);
+  ra8_jpeg_sw_priv_idct_into(coeffs, cr_tile);
   return k_ra8_ok;
 }
 
@@ -556,12 +535,12 @@ static ra8_err_t dec_decode_scan(ra8_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32
 
   for (uint16_t my = 0U; my < mcus_y; my++) {
     for (uint16_t mx = 0U; mx < mcus_x; mx++) {
-      ra8_err_t e = dec_decode_mcu_y_blocks(d, &br, y_tile, mcu_w_px);
+      ra8_err_t e = ra8_jpeg_sw_priv_mcu_y(d, &br, y_tile, mcu_w_px);
       if (e != k_ra8_ok) {
         return e;
       }
       if (d->ncomp == 3U) {
-        e = dec_decode_mcu_chroma_blocks(d, &br, cb_tile, cr_tile);
+        e = ra8_jpeg_sw_priv_mcu_chroma(d, &br, cb_tile, cr_tile);
         if (e != k_ra8_ok) {
           return e;
         }
@@ -572,16 +551,6 @@ static ra8_err_t dec_decode_scan(ra8_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32
   d->cursor = br.pos;
   return k_ra8_ok;
 }
-
-/**
- * @enum ra8_jpeg_dec_marker_action_t
- * @brief Result of dec_dispatch_marker(): tells ra8_jpeg_sw_decode() what to do next.
- */
-typedef enum : uint8_t {
-  k_ra8_jpeg_dec_continue = 0U, /**< Keep scanning markers.                               */
-  k_ra8_jpeg_dec_scan     = 1U, /**< SOS reached; caller should run dec_decode_scan().    */
-  k_ra8_jpeg_dec_eoi      = 2U, /**< EOI reached; caller should stop with protocol_error. */
-} ra8_jpeg_dec_marker_action_t;
 
 /**
  * @brief Dispatch one JPEG marker segment in the top-level decode loop.
@@ -609,8 +578,9 @@ typedef enum : uint8_t {
  * @note Not thread-safe; caller serializes via decoder context.
  * @since 0.1.0
  */
-static ra8_err_t
-dec_dispatch_marker(ra8_jpeg_dec_ctx_t* d, bool* got_sof, ra8_jpeg_dec_marker_action_t* action)
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_dispatch(ra8_jpeg_dec_ctx_t*           d,
+                                             bool*                         got_sof,
+                                             ra8_jpeg_dec_marker_action_t* action)
 {
   *action = k_ra8_jpeg_dec_continue;
   if (d->src[d->cursor] != (uint8_t)k_ra8_jpeg_marker_byte) {
@@ -627,7 +597,7 @@ dec_dispatch_marker(ra8_jpeg_dec_ctx_t* d, bool* got_sof, ra8_jpeg_dec_marker_ac
   uint16_t mk = (uint16_t)(k_jpeg_marker_ff00 | m);
 
   if (mk == (uint16_t)k_ra8_jpeg_marker_sof0) {
-    ra8_err_t e = dec_parse_sof0(d);
+    ra8_err_t e = ra8_jpeg_sw_priv_parse_sof0(d);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -640,16 +610,16 @@ dec_dispatch_marker(ra8_jpeg_dec_ctx_t* d, bool* got_sof, ra8_jpeg_dec_marker_ac
     return k_ra8_err_not_supported;
   }
   if (mk == (uint16_t)k_ra8_jpeg_marker_dqt) {
-    return dec_parse_dqt(d);
+    return ra8_jpeg_sw_priv_parse_dqt(d);
   }
   if (mk == (uint16_t)k_ra8_jpeg_marker_dht) {
-    return dec_parse_dht(d);
+    return ra8_jpeg_sw_priv_parse_dht(d);
   }
   if (mk == (uint16_t)k_ra8_jpeg_marker_sos) {
     if (!*got_sof) {
       return k_ra8_err_protocol_error;
     }
-    ra8_err_t e = dec_parse_sos(d);
+    ra8_err_t e = ra8_jpeg_sw_priv_parse_sos(d);
     if (e != k_ra8_ok) {
       return e;
     }
@@ -664,7 +634,7 @@ dec_dispatch_marker(ra8_jpeg_dec_ctx_t* d, bool* got_sof, ra8_jpeg_dec_marker_ac
     /* Standalone marker, no length. */
     return k_ra8_ok;
   }
-  return dec_skip_segment(d);
+  return ra8_jpeg_sw_priv_skip_segment(d);
 }
 
 ra8_err_t ra8_jpeg_sw_decode(const uint8_t* jpeg_buf,
@@ -700,7 +670,7 @@ ra8_err_t ra8_jpeg_sw_decode(const uint8_t* jpeg_buf,
   bool got_sof = false;
   while (d->cursor < d->src_len) {
     ra8_jpeg_dec_marker_action_t action = k_ra8_jpeg_dec_continue;
-    ra8_err_t                    e      = dec_dispatch_marker(d, &got_sof, &action);
+    ra8_err_t                    e      = ra8_jpeg_sw_priv_dispatch(d, &got_sof, &action);
     if (e != k_ra8_ok) {
       return e;
     }

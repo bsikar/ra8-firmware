@@ -1,0 +1,27 @@
+#
+# libs/ra8_tileatlas -- RTA1 band-tile atlas: format reader + import-time
+# transcode producer (#231; the normalized image format shared with the
+# webtoon scroll #289 and the codec policy #290).
+#
+# Layout:
+#   inc/ra8_tileatlas.h          format spec (authoritative), reader, memstore
+#   inc/ra8_tileatlas_produce.h  transcode producer (JPEG/PNG -> atlas)
+#   src/ra8_tileatlas.c          parse/validate + bounded per-tile decode
+#   src/ra8_tileatlas_produce.c  sniff/dispatch, band accumulator, tile encode
+#   src/ra8_tileatlas_png.c      streaming PNG scanline decoder (miniz tinfl)
+#   src/ra8_tileatlas_internal.h producer-private seams (bump arena, hooks)
+#
+# Dependencies: ra8_core (err/check/log), ra8_hal (the streaming JPEG
+# decoder ra8_jpeg_sw_decode_stripes), ra8_io (ra8_io_compress/decompress),
+# and the vendored miniz (tinfl, PNG IDAT inflate).
+#
+# Like the other domain libs in this tree, consumers reach into inc/ + src/
+# directly: the host unit-test build globs it in tests/CMakeLists.txt and
+# apps list `ra8_tileatlas` in their ra8_add_app(... LIBS ...) (see the
+# special-case block in cmake/ra8_add_app.cmake for the miniz/ra8_io wiring).
+#
+# Copyright (c) 2026 Brighton Sikarskie
+# SPDX-License-Identifier: MIT
+#
+
+# Intentionally empty -- consumers reach into inc/ + src/ directly.
