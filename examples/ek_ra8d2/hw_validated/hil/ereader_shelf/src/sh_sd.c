@@ -136,6 +136,16 @@ static bool sh_sd_classify(const char* name, sh_book_fmt_t* out_fmt)
     *out_fmt = k_sh_fmt_epub;
     return true;
   }
+  /* .cbz / .cbr are already 3-char exts, so they keep their name on FAT 8.3
+   * (no truncation, unlike .epub -> .EPB). Comics route through sh_comic.c. */
+  if (sh_sd_has_ext(name, ".CBZ")) {
+    *out_fmt = k_sh_fmt_cbz;
+    return true;
+  }
+  if (sh_sd_has_ext(name, ".CBR")) {
+    *out_fmt = k_sh_fmt_cbr;
+    return true;
+  }
   return false;
 }
 
@@ -220,6 +230,28 @@ ra8_err_t sh_sd_book_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len
     return k_ra8_err_out_of_range;
   }
   return k_ra8_ok;
+}
+
+size_t sh_sd_comic_read(void* ctx, uint64_t offset, void* buf, size_t len)
+{
+  (void)ctx; /* the held file handle is module state; no per-call context */
+  if ((buf == nullptr) || (s_book == nullptr)) {
+    return 0U;
+  }
+  if (offset > (uint64_t)UINT32_MAX) {
+    return 0U; /* EOF for any archive within the ra8_fs 4 GiB offset limit */
+  }
+  const uint32_t want = (len > (size_t)UINT32_MAX) ? UINT32_MAX : (uint32_t)len;
+  if (ra8_fs_seek(s_book, (uint32_t)offset) != k_ra8_ok) {
+    return 0U;
+  }
+  uint32_t got = 0U;
+  /* A read past EOF surfaces as a short read (ra8_fs_seek clamps to size); the
+   * comic backends treat a short read as end-of-file, so return the count. */
+  if (ra8_fs_read(s_book, buf, want, &got) != k_ra8_ok) {
+    return 0U;
+  }
+  return (size_t)got;
 }
 
 void sh_sd_book_close(void)

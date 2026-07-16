@@ -104,11 +104,18 @@ static uint32_t sh_fb_hash(void)
 }
 
 /**
- * @brief Emit the gate banner: book count, SD flag, and framebuffer hash.
- * @details The hash digests the rendered shelf, so the board_sim uart_scrape
- *          gate catches cover-decode / layout regressions, not just "booted".
+ * @brief Emit the gate banner: book count, SD flag, framebuffer hash, comic digests.
+ * @details The `fb=` hash digests the rendered SHELF (unchanged by this feature),
+ *          so the board_sim uart_scrape gate still catches cover-decode / layout
+ *          regressions. The appended `cbz=`/`cbr=`/`rtl=` fields pin the newly
+ *          integrated comic decode + RTL path (#236) -- a deterministic,
+ *          toolchain-independent digest of page 0 of the baked CBZ + CBR
+ *          fixtures decoded through the shelf's own ::ra8_comic + image pipeline.
+ * @param[in] cbz    CBZ page-0 self-check result.
+ * @param[in] cbr    CBR page-0 self-check result.
+ * @param[in] rtl_ok RTL edge-mapping verdict.
  */
-static void sh_print_banner(void)
+static void sh_print_banner(const sh_comic_probe_t* cbz, const sh_comic_probe_t* cbr, bool rtl_ok)
 {
   char        b[k_sh_linebuf];
   size_t      p   = 0U;
@@ -132,6 +139,7 @@ static void sh_print_banner(void)
       (h >> (((uint32_t)k_sh_hex_digits - 1U - d) * (uint32_t)k_sh_nib_bits)) & k_sh_nib_mask;
     b[p++] = (char)((nib < k_sh_dec_base) ? ('0' + nib) : ('A' + (nib - (uint32_t)k_sh_dec_base)));
   }
+  sh_comic_append_banner(b, &p, cbz, cbr, rtl_ok);
   const char* end = " ok\r\n";
   for (const char* s = end; *s != '\0'; ++s) {
     b[p++] = *s;
@@ -250,7 +258,9 @@ static bool sh_select_book(uint16_t idx)
   }
   g_sh.selected   = idx;
   g_sh.toc_scroll = 0;
-  g_sh.screen     = k_sh_screen_cover;
+  /* Comics open straight into the full-page image reader; text books land on
+   * the cover / title page as before. */
+  g_sh.screen = sh_fmt_is_comic(g_sh.open_fmt) ? k_sh_screen_comic : k_sh_screen_cover;
   return true;
 }
 
@@ -332,6 +342,8 @@ static bool sh_handle_tap(int32_t x, int32_t y)
       return sh_tap_toc(x, y, header);
     case k_sh_screen_reader:
       return sh_tap_reader(x, y, header);
+    case k_sh_screen_comic:
+      return sh_comic_tap(x, header);
     case k_sh_screen_shelf:
     default: {
       const int32_t card = sh_shelf_hit(x, y);
@@ -434,6 +446,9 @@ static bool sh_handle_button(bool is_sw2)
     case k_sh_screen_toc:
       sh_toc_scroll(is_sw2 ? 1 : -1);
       return true;
+    case k_sh_screen_comic:
+      /* SW2 = next page, SW1 = previous page (in the active reading order). */
+      return sh_comic_turn(is_sw2 ? 1 : -1);
     case k_sh_screen_reader:
     default:
       return sh_reader_turn(is_sw2 ? 1 : -1);
@@ -455,6 +470,9 @@ static void sh_present(void)
       break;
     case k_sh_screen_reader:
       sh_reader_render();
+      break;
+    case k_sh_screen_comic:
+      sh_comic_render();
       break;
     case k_sh_screen_shelf:
     default:
@@ -780,7 +798,16 @@ int32_t main(void)
   sh_shelf_build_thumbs();
 
   sh_present();
-  sh_print_banner();
+
+  /* Prove the integrated comic path (#236) headlessly: decode page 0 of the
+   * baked CBZ + CBR fixtures into an off-screen scratch (rebinding ra8_gfx to it
+   * and back), so the shelf render that `sh_present` just left in the live
+   * framebuffer -- and its pinned `fb=` hash -- is untouched. */
+  sh_comic_probe_t cbz    = {};
+  sh_comic_probe_t cbr    = {};
+  bool             rtl_ok = false;
+  sh_comic_selfcheck(&cbz, &cbr, &rtl_ok);
+  sh_print_banner(&cbz, &cbr, rtl_ok);
 
   sh_run(); /* never returns */
   return 0;

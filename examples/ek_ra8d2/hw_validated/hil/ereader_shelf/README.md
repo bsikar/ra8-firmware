@@ -10,11 +10,14 @@ Books come from **two sources, tested side by side in one app**:
 - **Baked** -- a few books compiled to `.rabook` and embedded in MRAM
   (`library.h`, the chunked RBKC container).
 - **SD card** -- the rest live on a FAT card, discovered at boot and opened on
-  tap, in **either** format:
+  tap, in **any** of these formats:
   - `BOOKnn.RBK` -- a pre-compiled `.rabook`, read chunk-by-chunk from the file.
   - `BOOKnn.EPB` -- a plain **`.epub`**, parsed on-device by `ra8_epub` (ZIP +
     XML) so you can drop an ordinary book on the card without pre-compiling.
     (`.epub` truncates to the 3-char 8.3 extension `.EPB` on FAT.)
+  - `NAME.CBZ` / `NAME.CBR` -- a **comic** archive (ZIP / RAR of page images),
+    opened by `ra8_comic` and read as a full-page image reader (#236). Both are
+    already 3-char exts, so they keep their name on FAT 8.3 (no truncation).
 
 `.rabook` books are **always demand-paged** (#204/#205): `sh_paged.c` binds the
 chunked RBKC reader (`ra8_book_chunked`) as the backing of an `ra8_vmem` page
@@ -35,14 +38,40 @@ word-wraps; EPUB covers (JPEG/PNG) decode via `ra8_img_decode_blit`.
 
 ```
 shelf (cover-thumbnail grid)
-  -> tap a book -> cover / title page (full cover, Read / Contents)
+  -> tap a text book -> cover / title page (full cover, Read / Contents)
        -> Contents -> table of contents (real chapter labels, scrollable)
             -> tap a chapter -> reader
        -> Read -> reader (first prose chapter)
+  -> tap a comic (CBZ/CBR) -> comic reader (full-page image, page 1/N)
   reader: tap left/right third or SW1/SW2 to turn pages -- page turns cross
           chapter boundaries; the header shows "Ch c/N  p/q". Tap the header
           to step back up (reader -> TOC -> cover -> shelf).
+  comic:  tap left/right third or SW1/SW2 to page; the header shows "p/N LTR|RTL".
+          Tap the header's RIGHT half to flip the reading direction (manga RTL
+          mirrors the edge zones -- the left edge advances); tap the LEFT half to
+          return to the shelf.
 ```
+
+### Comics (CBZ / CBR), manga RTL
+
+A comic is just a container of page images in reading order. `ra8_comic` opens a
+`.cbz` (ZIP of images) or a `.cbr` (RAR of images) behind one interface and
+streams **one page's encoded image at a time** (bounded RAM, no whole-archive
+residency). The comic screen re-decodes the current page each turn through the
+same integer `ra8_img_decode_blit` pipeline the cover uses ("page-0-as-cover").
+Large-manga pages are a future `#231/#232` tile-cache streaming path; today a
+page must fit the bounded decode buffer.
+
+Raw CBZ/CBR carry no reading-direction metadata, so **right-to-left (manga)** is
+an app-level toggle (the header's right half, or default LTR). RTL mirrors the
+edge-tap zones so the left edge advances -- natural for manga.
+
+The comic decode is proven headlessly at boot: the app decodes page 0 of a baked
+CBZ + CBR fixture into an off-screen scratch and folds a **toolchain-independent**
+digest into the gate banner (`cbz=2:160x106:733D076C cbr=... rtl=OK`) -- the exact
+value the standalone `ereader_comic` gate produces -- without disturbing the
+shelf render or its pinned `fb=` hash. To browse comics interactively, drop a
+`.cbz` / `.cbr` on the SD card and tap it on the shelf.
 
 Hold **SW1 at boot** (`board_sim --button 1`) to run a self-demo that walks every
 screen -- handy for a headless `board_sim --record`. The first touch takes over.
@@ -71,7 +100,8 @@ instant on hardware, a couple seconds in the emulator.
 | `sh_cover.c`  | cover / title page                                              |
 | `sh_toc.c`    | scrollable chapter list                                         |
 | `sh_reader.c` | per-chapter text extract, UTF-8->ASCII fold, word-wrap, paginate|
-| `sh_book.c`   | format backend: ra8_book vs ra8_epub dispatch + XHTML->text strip |
+| `sh_comic.c`  | CBZ/CBR full-page image reader (`ra8_comic`), page-turn, RTL, self-check |
+| `sh_book.c`   | format backend: ra8_book / ra8_epub / ra8_comic dispatch + XHTML->text strip |
 | `sh_sd.c`     | Pmod2 microSD bring-up (`ra8_sdmmc_spi` -> `ra8_fs`), scan, paged reads |
 | `sh_util.c`   | shared draw/format helpers                                      |
 

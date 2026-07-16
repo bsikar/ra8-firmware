@@ -15,6 +15,7 @@
  *   - ::k_sh_screen_cover  -- one book's full cover + title/author + actions.
  *   - ::k_sh_screen_toc    -- scrollable chapter list; tap a chapter to open it.
  *   - ::k_sh_screen_reader -- full-book pagination across every chapter.
+ *   - ::k_sh_screen_comic  -- full-page image reader for a CBZ / CBR comic.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -112,10 +113,11 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_sh_screen_shelf  = 0U, /**< Book grid with cover thumbnails. */
-  k_sh_screen_cover  = 1U, /**< One book's cover / title page.   */
-  k_sh_screen_toc    = 2U, /**< Chapter list.                    */
-  k_sh_screen_reader = 3U, /**< Reading a book.                  */
+  k_sh_screen_shelf  = 0U, /**< Book grid with cover thumbnails.    */
+  k_sh_screen_cover  = 1U, /**< One book's cover / title page.      */
+  k_sh_screen_toc    = 2U, /**< Chapter list.                       */
+  k_sh_screen_reader = 3U, /**< Reading a book.                     */
+  k_sh_screen_comic  = 4U, /**< Full-page image reader (CBZ / CBR). */
 } sh_screen_t;
 
 /**
@@ -140,7 +142,28 @@ typedef struct {
 typedef enum : uint8_t {
   k_sh_fmt_rabook = 0U, /**< ra8_book RBKC container (demand-paged chunks). */
   k_sh_fmt_epub   = 1U, /**< EPUB parsed on-device by ra8_epub.             */
+  k_sh_fmt_cbz    = 2U, /**< Comic archive: ZIP of page images (`.cbz`).    */
+  k_sh_fmt_cbr    = 3U, /**< Comic archive: RAR of page images (`.cbr`).    */
 } sh_book_fmt_t;
+
+/**
+ * @brief True if @p fmt is a comic-archive container (CBZ or CBR).
+ * @details Both route through sh_comic.c (::ra8_comic) rather than the
+ *          text-book screens, so this predicate is the single dispatch test
+ *          the shelf/open path branches on.
+ * @param[in] fmt Container format from a shelf entry / the open book.
+ * @return true for ::k_sh_fmt_cbz or ::k_sh_fmt_cbr; false otherwise.
+ * @retval true  @p fmt is a comic archive (image-page reader).
+ * @retval false @p fmt is a text book (rabook / epub).
+ * @pre @p fmt is a valid ::sh_book_fmt_t.
+ * @post No state is modified (pure predicate).
+ * @note Thread-safe: pure function of its argument.
+ * @since 0.1.0
+ */
+static inline bool sh_fmt_is_comic(sh_book_fmt_t fmt)
+{
+  return (fmt == k_sh_fmt_cbz) || (fmt == k_sh_fmt_cbr);
+}
 
 /**
  * @struct sh_entry_t
@@ -188,6 +211,10 @@ typedef struct {
   uint32_t       page;          /**< Reader: current page within the chapter. */
   uint32_t       chap_pages;    /**< Reader: pages in the current chapter.    */
   int32_t        toc_scroll;    /**< TOC: first visible row index.            */
+
+  uint32_t comic_page;  /**< Comic reader: current page index (0-based).        */
+  uint32_t comic_count; /**< Comic reader: open comic page count (0 = none).    */
+  bool     comic_rtl;   /**< Comic reader: right-to-left (manga) reading order. */
 
   bool     loupe_active;  /**< Press-hold magnifier loupe currently open (#211).   */
   int32_t  loupe_cx;      /**< Loupe pan centre X in full-res source pixels.       */
@@ -393,6 +420,25 @@ ra8_err_t sh_sd_book_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len
 void sh_sd_book_close(void);
 
 /**
+ * @brief ::ra8_comic_read_fn over the held-open SD book file (seek + clamped read).
+ * @details Shares the held file handle with ::sh_sd_book_read but matches the
+ *          comic reader's seam shape (returns the byte count, not an error) and
+ *          serves a short read at EOF instead of rejecting it -- ra8_comic's
+ *          miniz/RAR backends probe the archive tail and treat a short read as
+ *          end-of-file.
+ * @param[in]  ctx    Unused (the held file handle is module state).
+ * @param[in]  offset Absolute byte offset within the file.
+ * @param[out] buf    Destination buffer (@p len writable bytes).
+ * @param[in]  len    Bytes requested.
+ * @return Bytes actually copied (0 at/after EOF or on any error).
+ * @pre A comic file is held open via ::sh_sd_book_open.
+ * @pre @p buf holds @p len writable bytes.
+ * @post At most @p len bytes were copied to @p buf; the return is that count.
+ * @since 0.1.0
+ */
+size_t sh_sd_comic_read(void* ctx, uint64_t offset, void* buf, size_t len);
+
+/**
  * @brief Stream-open SD file @p name as an EPUB via ra8_epub_open_streamed_fs.
  * @details No whole-file residency (#230): the source file stays held open by
  *          this module and every ZIP entry (chapter, cover, resource) is
@@ -584,3 +630,142 @@ bool sh_reader_turn(int32_t dir);
  * @since 0.1.0
  */
 void sh_reader_prefetch_adjacent(void);
+
+/* ----- sh_comic.c : full-page image reader for CBZ / CBR comics (#236) ------ */
+
+/**
+ * @brief Open shelf entry @p idx as a comic archive (CBZ / CBR) for page reading.
+ * @details Binds ::ra8_comic over the entry's backing -- a baked MRAM blob, or
+ *          the held-open SD file (::sh_sd_book_open + ::sh_sd_comic_read) -- and
+ *          builds the sorted page index. On success `g_sh.comic_count` is the
+ *          page count and `g_sh.comic_page` is reset to 0. The reading direction
+ *          (`g_sh.comic_rtl`) is preserved across opens (an app-level toggle,
+ *          since raw CBZ/CBR carry no direction metadata).
+ * @param[in] idx Shelf entry index (`< g_sh.book_count`) whose fmt is a comic.
+ * @return true if the comic opened with >= 1 page; false leaves none open.
+ * @retval true  Comic bound; `g_sh.comic_count >= 1`, `g_sh.comic_page == 0`.
+ * @retval false Bad index/format, backing open failed, or no decodable pages.
+ * @pre The entry at @p idx has ::sh_fmt_is_comic() true.
+ * @pre Any previously open book/comic was torn down by the caller (sh_book_open).
+ * @post On true a comic is bound and page 0 is the current page.
+ * @post On false no comic is bound (`g_sh.comic_count == 0`).
+ * @note Not thread-safe; single-threaded UI loop only.
+ * @since 0.1.0
+ */
+bool sh_comic_open(uint16_t idx);
+
+/** @brief Close any open comic and release its backing (idempotent). */
+void sh_comic_close(void);
+
+/** @brief Render the current comic page full-screen (title bar + fitted image). */
+void sh_comic_render(void);
+
+/**
+ * @brief Map a comic-screen edge tap to a reading-order page delta (RTL-aware).
+ * @details The left third yields one edge and the right third the other; the
+ *          centre third is neutral. In left-to-right order the right edge is
+ *          "next" (+1); in right-to-left (manga) order the mapping is mirrored,
+ *          so the LEFT edge advances. The centre band returns 0.
+ * @param[in] x Touch X in framebuffer pixels (0 .. ::k_sh_fb_w - 1).
+ * @return +1 to advance a page, -1 to go back, 0 for a neutral centre tap.
+ * @retval +1 Tap maps to the next page in reading order.
+ * @retval -1 Tap maps to the previous page in reading order.
+ * @retval  0 Tap fell in the neutral centre band.
+ * @pre `g_sh.comic_rtl` reflects the active reading direction.
+ * @post No state is modified (pure mapping).
+ * @note Thread-safe: pure function of @p x and the RTL flag.
+ * @since 0.1.0
+ */
+int32_t sh_comic_edge_dir(int32_t x);
+
+/**
+ * @brief Turn the comic page by @p dir in reading order, clamped to the ends.
+ * @param[in] dir +1 for the next page, -1 for the previous; 0 is a no-op.
+ * @return true if the page index changed (a repaint is needed).
+ * @retval true  `g_sh.comic_page` advanced/retreated by one.
+ * @retval false At an end, no comic open, or @p dir == 0.
+ * @pre A comic is open (or the call is a no-op).
+ * @post `g_sh.comic_page` stays within `[0, g_sh.comic_count)`.
+ * @post On false no state changed.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+bool sh_comic_turn(int32_t dir);
+
+/**
+ * @brief Handle a comic-screen tap: header returns to the shelf, else page-turn.
+ * @param[in] x      Touch X in framebuffer pixels.
+ * @param[in] header true if the tap landed in the header bar (`y < k_sh_bar_h`).
+ * @return true if the screen must be repainted.
+ * @retval true  Navigated to the shelf, or a page turned.
+ * @retval false Neutral tap with no state change.
+ * @pre The comic screen is active.
+ * @post On a header tap `g_sh.screen == k_sh_screen_shelf`.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+bool sh_comic_tap(int32_t x, bool header);
+
+/** @brief Flip the comic reading direction (LTR <-> RTL); page index unchanged. */
+void sh_comic_toggle_rtl(void);
+
+/**
+ * @struct sh_comic_probe_t
+ * @brief One container's headless self-check result (page 0 decode digest).
+ * @details Filled by ::sh_comic_selfcheck for the baked CBZ and CBR fixtures so
+ *          the boot banner can pin the integrated comic decode + render path
+ *          with a deterministic, toolchain-independent digest (integer decode).
+ * @invariant `ok` is true only when a page decoded and `crc` is meaningful.
+ * @since 0.1.0
+ */
+typedef struct {
+  bool     ok;    /**< true if page 0 opened + decoded successfully.   */
+  uint32_t pages; /**< Page count parsed from the archive.             */
+  int32_t  w;     /**< Blitted (fitted) page width in pixels.          */
+  int32_t  h;     /**< Blitted (fitted) page height in pixels.         */
+  uint32_t crc;   /**< FNV-1a-32 over the decoded scratch framebuffer. */
+} sh_comic_probe_t;
+
+/**
+ * @brief Headless boot self-check: decode the baked CBZ + CBR page 0, verify RTL.
+ * @details Opens each baked fixture through the SAME ::ra8_comic path the live
+ *          screen uses, decodes page 0 into an off-screen RGB565 scratch via the
+ *          integer ::ra8_img_decode_blit pipeline, and FNV-hashes the scratch --
+ *          a deterministic digest identical on host, board_sim, and silicon. It
+ *          also exercises ::sh_comic_edge_dir in both reading directions. The
+ *          live display framebuffer binding is restored on return, so the shelf
+ *          render (and its pinned `fb=` hash) is untouched.
+ * @param[out] cbz     Receives the CBZ page-0 decode result (non-NULL).
+ * @param[out] cbr     Receives the CBR page-0 decode result (non-NULL).
+ * @param[out] rtl_ok  Receives true if the RTL edge mapping mirrors LTR (non-NULL).
+ * @pre ra8_gfx is bound to the live framebuffer on entry.
+ * @pre `cbz`, `cbr`, and `rtl_ok` are non-NULL.
+ * @post ra8_gfx is rebound to the live framebuffer (::sh_fb_pixels) on return.
+ * @post No comic is left open.
+ * @note Not thread-safe; single-threaded boot only.
+ * @since 0.1.0
+ */
+void sh_comic_selfcheck(sh_comic_probe_t* cbz, sh_comic_probe_t* cbr, bool* rtl_ok);
+
+/**
+ * @brief Append " cbz=P:WxH:CRC cbr=P:WxH:CRC rtl=OK" to the boot banner buffer.
+ * @details Formats the two ::sh_comic_selfcheck digests + the RTL verdict onto
+ *          @p b at @p *pos, advancing @p *pos past what it wrote. The comic
+ *          golden the shelf `hil.conf` pins lives entirely in these fields, so
+ *          the shelf's own `fb=` hash stays byte-identical (this appends after).
+ * @param[in,out] b      Banner buffer with room for the appended fields.
+ * @param[in,out] pos    Current write offset into @p b; advanced on return.
+ * @param[in]     cbz    CBZ page-0 self-check result (non-NULL).
+ * @param[in]     cbr    CBR page-0 self-check result (non-NULL).
+ * @param[in]     rtl_ok RTL edge-mapping verdict from ::sh_comic_selfcheck.
+ * @pre @p b holds at least `*pos + 64` writable bytes.
+ * @pre @p pos, @p cbz, @p cbr are non-NULL.
+ * @post `*pos` advanced past the appended text; @p b is not NUL-terminated here.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+void sh_comic_append_banner(char*                   b,
+                            size_t*                 pos,
+                            const sh_comic_probe_t* cbz,
+                            const sh_comic_probe_t* cbr,
+                            bool                    rtl_ok);
