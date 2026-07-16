@@ -384,9 +384,8 @@ void ra8_decomp_budget_leave(ra8_decomp_budget_t* b);
  * @see ra8_decomp_budget_charge_output()
  * @since Version 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_decomp_check_declared(const ra8_decomp_limits_t* limits,
-                                                  uint64_t                   comp_size,
-                                                  uint64_t                   out_size);
+[[nodiscard]] ra8_err_t
+ra8_decomp_check_declared(const ra8_decomp_limits_t* limits, uint64_t comp_size, uint64_t out_size);
 
 #ifdef __cplusplus
 }
