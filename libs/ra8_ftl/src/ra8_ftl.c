@@ -768,3 +768,131 @@ ra8_err_t ra8_ftl_wear_stats(const ra8_ftl_t* ftl, uint32_t* max_out, uint32_t* 
   *min_out = lo;
   return k_ra8_ok;
 }
+
+ra8_err_t ra8_ftl_phys_of(const ra8_ftl_t* ftl, uint32_t lbn, uint16_t* phys_out)
+{
+  RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
+  RA8_CHECK_NULL_PTR(phys_out, s_tag, "phys_out must not be nullptr");
+  if (ftl->map == nullptr) {
+    return k_ra8_err_not_initialized;
+  }
+  if (lbn >= ftl->logical_blocks) {
+    return k_ra8_err_out_of_range;
+  }
+  *phys_out = ftl->map[lbn];
+  return k_ra8_ok;
+}
+
+/* =============================================================================
+ * Mapping-state checkpoint (minimal persistent metadata)
+ * =============================================================================
+ */
+
+/**
+ * @enum ra8_ftl_ck_const_t
+ * @brief Checkpoint format constants.
+ *
+ * @details
+ * ::k_ra8_ftl_ck_magic tags a serialised checkpoint so a blank or foreign
+ * buffer is rejected by ::ra8_ftl_checkpoint_load before any table is restored.
+ * The 32-bit value spells "FTL1" in ASCII when read most-significant byte first.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra8_ftl_ck_magic = 0x46544C31U, /**< 'F','T','L','1' checkpoint tag. */
+} ra8_ftl_ck_const_t;
+
+/**
+ * @struct ra8_ftl_ck_hdr_t
+ * @brief Fixed header prefixing a serialised checkpoint.
+ *
+ * @details
+ * Recorded ahead of the `map` and `pblocks` payloads so a checkpoint is
+ * self-describing: ::ra8_ftl_checkpoint_load rejects a buffer whose `magic`
+ * differs or whose geometry does not match the target handle. The struct is
+ * copied verbatim (native layout); a checkpoint is architecture-local.
+ *
+ * @invariant `magic == k_ra8_ftl_ck_magic` in any valid checkpoint.
+ * @invariant `logical_blocks`/`physical_blocks` equal the saving handle's sizes.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t magic;           /**< ::k_ra8_ftl_ck_magic checkpoint tag.       */
+  uint32_t logical_blocks;  /**< Logical block count of the saving handle.  */
+  uint32_t physical_blocks; /**< Physical block count of the saving handle. */
+} ra8_ftl_ck_hdr_t;
+
+ra8_err_t ra8_ftl_checkpoint_size(const ra8_ftl_t* ftl, uint32_t* size_out)
+{
+  RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
+  RA8_CHECK_NULL_PTR(size_out, s_tag, "size_out must not be nullptr");
+  if (ftl->pblocks == nullptr) {
+    return k_ra8_err_not_initialized;
+  }
+  const size_t total = sizeof(ra8_ftl_ck_hdr_t) + ((size_t)ftl->logical_blocks * sizeof(uint16_t)) +
+                       ((size_t)ftl->physical_blocks * sizeof(ra8_ftl_pblock_t));
+  *size_out          = (uint32_t)total;
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_ftl_checkpoint_save(const ra8_ftl_t* ftl, uint8_t* buf, uint32_t buf_len)
+{
+  RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
+  RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
+  uint32_t        need = 0;
+  const ra8_err_t sz   = ra8_ftl_checkpoint_size(ftl, &need);
+  if (sz != k_ra8_ok) {
+    return sz;
+  }
+  if (buf_len < need) {
+    return k_ra8_err_invalid_size;
+  }
+  const ra8_ftl_ck_hdr_t hdr = {
+    .magic           = (uint32_t)k_ra8_ftl_ck_magic,
+    .logical_blocks  = ftl->logical_blocks,
+    .physical_blocks = ftl->physical_blocks,
+  };
+  size_t off = 0;
+  (void)memcpy(&buf[off], &hdr, sizeof hdr);
+  off += sizeof hdr;
+  const size_t map_bytes = (size_t)ftl->logical_blocks * sizeof(uint16_t);
+  (void)memcpy(&buf[off], ftl->map, map_bytes);
+  off += map_bytes;
+  const size_t pb_bytes = (size_t)ftl->physical_blocks * sizeof(ra8_ftl_pblock_t);
+  (void)memcpy(&buf[off], ftl->pblocks, pb_bytes);
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_ftl_checkpoint_load(ra8_ftl_t* ftl, const uint8_t* buf, uint32_t buf_len)
+{
+  RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
+  RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
+  uint32_t        need = 0;
+  const ra8_err_t sz   = ra8_ftl_checkpoint_size(ftl, &need);
+  if (sz != k_ra8_ok) {
+    return sz;
+  }
+  if (buf_len < need) {
+    return k_ra8_err_invalid_size;
+  }
+  ra8_ftl_ck_hdr_t hdr = {};
+  (void)memcpy(&hdr, buf, sizeof hdr);
+  if (hdr.magic != (uint32_t)k_ra8_ftl_ck_magic) {
+    return k_ra8_err_invalid_state;
+  }
+  if (hdr.logical_blocks != ftl->logical_blocks) {
+    return k_ra8_err_invalid_arg;
+  }
+  if (hdr.physical_blocks != ftl->physical_blocks) {
+    return k_ra8_err_invalid_arg;
+  }
+  size_t       off       = sizeof hdr;
+  const size_t map_bytes = (size_t)ftl->logical_blocks * sizeof(uint16_t);
+  (void)memcpy(ftl->map, &buf[off], map_bytes);
+  off += map_bytes;
+  const size_t pb_bytes = (size_t)ftl->physical_blocks * sizeof(ra8_ftl_pblock_t);
+  (void)memcpy(ftl->pblocks, &buf[off], pb_bytes);
+  return k_ra8_ok;
+}

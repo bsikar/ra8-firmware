@@ -276,6 +276,16 @@ macro(ra8_add_app)
         list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_mem/inc)
     endif()
 
+    # ra8_ftl is a wrapper backend: it implements the ra8_io block-device vtable
+    # (ra8_io_blockdev_iface), whose concrete layout lives in ra8_io's private
+    # src header ra8_io_blockdev_internal.h. Expose that path when an app pulls in
+    # ra8_ftl so ra8_ftl.c compiles in an app build, mirroring tests/CMakeLists.txt
+    # (which already adds libs/ra8_io/src). ra8_io itself must be listed in LIBS to
+    # supply the block-device fabric sources ra8_ftl links against.
+    if("ra8_ftl" IN_LIST _RA8_APP_LIBS)
+        list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_io/src)
+    endif()
+
     # ra8_epub parses .epub (ZIP container + XML) through the vendored miniz (C)
     # and tinyxml2 (C++). Its first-party .c sources are globbed by the LIBS loop
     # above, but the C-callable XML shim is C++ (ra8_epub_xml_shim.cpp) and the two
