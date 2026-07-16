@@ -52,7 +52,7 @@ static uint8_t s_tilebuf[k_t_payload];
 /** @brief One compressed tile (staging for the hand producer). */
 static uint8_t s_cmpbuf[k_t_payload + (k_t_payload / 8U) + 256U];
 /** @brief Deflate compressor scratch (miniz tdefl). */
-static alignas(8) uint8_t s_dfl[k_ra8_io_compress_scratch_bytes];
+alignas(8) static uint8_t s_dfl[k_ra8_io_compress_scratch_bytes];
 
 /** @brief Deterministic source pixel channel at (x, y, c). */
 static uint8_t pix(uint32_t x, uint32_t y, uint32_t c)
