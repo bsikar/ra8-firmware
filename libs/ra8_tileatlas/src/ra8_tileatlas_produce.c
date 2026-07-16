@@ -865,15 +865,40 @@ static ra8_err_t priv_epilogue(ra8_ta_prod_state_t* st, ra8_tileatlas_info_t* ou
   return priv_finish(st, out_info);
 }
 
-ra8_err_t ra8_tileatlas_produce(const ra8_tileatlas_produce_cfg_t* cfg,
-                                ra8_tileatlas_info_t*              out_info)
+/**
+ * @brief Reject any NULL `ra8_tileatlas_produce` argument or seam.
+ * @details Split out so the public entry stays under the statement budget.
+ * @param[in] cfg      Producer configuration to validate.
+ * @param[in] out_info Output pointer to validate.
+ * @return Result code.
+ * @retval k_ra8_ok           Every required pointer is non-NULL.
+ * @retval k_ra8_err_null_ptr Some pointer is NULL.
+ * @pre Only @p cfg is dereferenced (after its own check).
+ * @pre The caller forwards its own arguments.
+ * @post No state mutated.
+ * @post Return depends solely on the inputs.
+ * @note Thread-safe (pure).
+ * @since 0.1.0
+ */
+static ra8_err_t priv_produce_args_ok(const ra8_tileatlas_produce_cfg_t* cfg,
+                                      const ra8_tileatlas_info_t*        out_info)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   RA8_CHECK_NULL_PTR(out_info, s_tag, "out_info must not be nullptr");
   RA8_CHECK_NULL_PTR(cfg->pull, s_tag, "cfg->pull must not be nullptr");
   RA8_CHECK_NULL_PTR(cfg->sink, s_tag, "cfg->sink must not be nullptr");
   RA8_CHECK_NULL_PTR(cfg->work, s_tag, "cfg->work must not be nullptr");
-  ra8_err_t err = priv_check_cfg(cfg);
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_tileatlas_produce(const ra8_tileatlas_produce_cfg_t* cfg,
+                                ra8_tileatlas_info_t*              out_info)
+{
+  ra8_err_t err = priv_produce_args_ok(cfg, out_info);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  err = priv_check_cfg(cfg);
   if (err != k_ra8_ok) {
     return err;
   }

@@ -610,6 +610,38 @@ static ra8_err_t priv_fetch_decode(ra8_tileatlas_pread_fn      pread,
                             out_px);
 }
 
+/**
+ * @brief Reject any NULL `ra8_tileatlas_read_tile` pointer argument.
+ * @details Split out so the public entry stays under the statement budget.
+ * @param[in] pread  Backing read seam to validate.
+ * @param[in] info   Atlas geometry pointer to validate.
+ * @param[in] out_px Destination pixels pointer to validate.
+ * @param[in] out_w  Width output pointer to validate.
+ * @param[in] out_h  Height output pointer to validate.
+ * @return Result code.
+ * @retval k_ra8_ok           Every required pointer is non-NULL.
+ * @retval k_ra8_err_null_ptr Some pointer is NULL.
+ * @pre The caller forwards its own arguments.
+ * @pre No pointer is dereferenced here.
+ * @post No state mutated.
+ * @post Return depends solely on the inputs.
+ * @note Thread-safe (pure).
+ * @since 0.1.0
+ */
+static ra8_err_t priv_read_args_ok(ra8_tileatlas_pread_fn      pread,
+                                   const ra8_tileatlas_info_t* info,
+                                   const uint8_t*              out_px,
+                                   const uint16_t*             out_w,
+                                   const uint16_t*             out_h)
+{
+  RA8_CHECK_NULL_PTR(pread, s_tag, "pread must not be nullptr");
+  RA8_CHECK_NULL_PTR(info, s_tag, "info must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_px, s_tag, "out_px must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_w, s_tag, "out_w must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_h, s_tag, "out_h must not be nullptr");
+  return k_ra8_ok;
+}
+
 ra8_err_t ra8_tileatlas_read_tile(ra8_tileatlas_pread_fn      pread,
                                   void*                       pread_ctx,
                                   const ra8_tileatlas_info_t* info,
@@ -622,11 +654,10 @@ ra8_err_t ra8_tileatlas_read_tile(ra8_tileatlas_pread_fn      pread,
                                   uint16_t*                   out_w,
                                   uint16_t*                   out_h)
 {
-  RA8_CHECK_NULL_PTR(pread, s_tag, "pread must not be nullptr");
-  RA8_CHECK_NULL_PTR(info, s_tag, "info must not be nullptr");
-  RA8_CHECK_NULL_PTR(out_px, s_tag, "out_px must not be nullptr");
-  RA8_CHECK_NULL_PTR(out_w, s_tag, "out_w must not be nullptr");
-  RA8_CHECK_NULL_PTR(out_h, s_tag, "out_h must not be nullptr");
+  const ra8_err_t nz = priv_read_args_ok(pread, info, out_px, out_w, out_h);
+  if (nz != k_ra8_ok) {
+    return nz;
+  }
   uint16_t  tw  = 0U;
   uint16_t  th  = 0U;
   ra8_err_t err = ra8_tileatlas_tile_dims(info, tile_x, tile_y, &tw, &th);
