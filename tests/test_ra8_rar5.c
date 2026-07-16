@@ -551,7 +551,7 @@ static void test_rar5_filters(void)
  *
  * @par MC/DC:
  * Provides the vector set for the compound decisions in
- * libs/ra8_comic/src/ra8_rar5.c@s_apply_run:
+ * libs/ra8_comic/src/ra8_rar5_tables.c@s_apply_run:
  * - `num == k_r5_tbl_copy_long || num == k_r5_tbl_zero_long` (is_long): code 17
  *   -> first true; code 18 (short) -> both false; code 19 -> second true.
  * - `num == k_r5_tbl_zero_short || num == k_r5_tbl_zero_long` (is_zero): code 17
@@ -612,7 +612,7 @@ static void test_rar5_table_runs(void)
  *        zero run still decodes an all-literal payload byte-exactly.
  *
  * @par MC/DC:
- * Drives libs/ra8_comic/src/ra8_rar5.c@s_fill_zeros
+ * Drives libs/ra8_comic/src/ra8_rar5_tables.c@s_fill_zeros
  * `c < count && i < max`: the 5-entry zero run fills every entry with i < max
  * -> the loop iterates then exits on c == count (both conditions independently end
  * the fill); the i == max short-circuit true leg is a defensive bound the fuzz
