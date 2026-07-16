@@ -390,6 +390,37 @@ static int32_t priv_pick_victim(const ra8_vmem_t* vm)
 }
 
 /**
+ * @brief Reject a NULL config or any NULL buffer / callback it carries.
+ *
+ * @details The pointer half of ::priv_vmem_validate_cfg, split out so both stay
+ *          under the statement-complexity threshold. Runs the five null guards
+ *          the SLRU page cache needs bound before init touches any of them.
+ *
+ * @param[in] cfg Caller-supplied configuration to validate.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok           Every pointer member is non-NULL.
+ * @retval k_ra8_err_null_ptr `cfg` or one of its buffers/callbacks is NULL.
+ *
+ * @pre `s_tag` is initialised (always true for this TU).
+ * @pre The caller propagates a non-OK result unchanged.
+ * @post No state is modified.
+ * @post A `k_ra8_ok` result guarantees every pointer member is non-NULL.
+ *
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t priv_vmem_check_ptrs(const ra8_vmem_cfg_t* cfg)
+{
+  RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+  RA8_CHECK_NULL_PTR(cfg->frame_mem, s_tag, "frame_mem must not be nullptr");
+  RA8_CHECK_NULL_PTR(cfg->meta, s_tag, "meta must not be nullptr");
+  RA8_CHECK_NULL_PTR(cfg->buckets, s_tag, "buckets must not be nullptr");
+  RA8_CHECK_NULL_PTR(cfg->loader, s_tag, "loader must not be nullptr");
+  return k_ra8_ok;
+}
+
+/**
  * @brief Validate a ::ra8_vmem_cfg_t before it is adopted by ::ra8_vmem_init.
  *
  * @details Rejects a NULL config, any NULL buffer / callback it carries, and any
@@ -414,11 +445,10 @@ static int32_t priv_pick_victim(const ra8_vmem_t* vm)
  */
 static ra8_err_t priv_vmem_validate_cfg(const ra8_vmem_cfg_t* cfg)
 {
-  RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
-  RA8_CHECK_NULL_PTR(cfg->frame_mem, s_tag, "frame_mem must not be nullptr");
-  RA8_CHECK_NULL_PTR(cfg->meta, s_tag, "meta must not be nullptr");
-  RA8_CHECK_NULL_PTR(cfg->buckets, s_tag, "buckets must not be nullptr");
-  RA8_CHECK_NULL_PTR(cfg->loader, s_tag, "loader must not be nullptr");
+  const ra8_err_t ptr_err = priv_vmem_check_ptrs(cfg);
+  if (ptr_err != k_ra8_ok) {
+    return ptr_err;
+  }
   if (cfg->frame_count == 0U) {
     return k_ra8_err_invalid_size;
   }

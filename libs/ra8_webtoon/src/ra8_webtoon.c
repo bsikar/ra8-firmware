@@ -75,13 +75,86 @@ ra8_err_t ra8_webtoon_tile_decode(void*                 ctx,
                                  out_h);
 }
 
-ra8_err_t ra8_webtoon_open(ra8_webtoon_t* wt, const ra8_webtoon_cfg_t* cfg)
+/**
+ * @brief Bind the parsed atlas geometry and config into the engine state.
+ *
+ * @details The state-population half of ::ra8_webtoon_open, split out to keep
+ *          the entry point under the statement-complexity threshold. Homes the
+ *          scroll to the top and derives the max-scroll clamp from the canvas
+ *          height against the viewport (a strip no taller than the viewport
+ *          cannot scroll, so the clamp floors at zero).
+ *
+ * @param[out] wt   Engine state to populate (every field written).
+ * @param[in]  cfg  Validated open configuration.
+ * @param[in]  info Parsed, shape-checked RTA1 atlas geometry.
+ *
+ * @pre @p wt, @p cfg and @p info are non-NULL (the caller validated them).
+ * @pre @p info describes a single full-width band column.
+ * @post Every field of @p wt is initialised; the scroll is homed to the top.
+ * @post `wt->max_scroll >= 0`.
+ *
+ * @note Not thread-safe (mutates @p wt).
+ * @since 0.1.0
+ */
+static void
+priv_webtoon_bind(ra8_webtoon_t* wt, const ra8_webtoon_cfg_t* cfg, const ra8_tileatlas_info_t* info)
+{
+  wt->info       = *info;
+  wt->canvas_w   = info->width;
+  wt->canvas_h   = info->height;
+  wt->band_h     = info->tile_h;
+  wt->band_count = info->tile_rows;
+  wt->viewport_w = cfg->viewport_w;
+  wt->viewport_h = cfg->viewport_h;
+  wt->scroll_y   = 0;
+  wt->max_scroll = (info->height > cfg->viewport_h)
+                     ? (int32_t)((uint32_t)info->height - (uint32_t)cfg->viewport_h)
+                     : 0;
+  wt->velocity   = 0;
+  wt->cache      = cfg->cache;
+  wt->image_id   = cfg->image_id;
+  wt->blit       = cfg->blit;
+  wt->blit_ctx   = cfg->blit_ctx;
+}
+
+/**
+ * @brief Reject a NULL engine, config, or any NULL callback / cache it carries.
+ *
+ * @details The null-guard half of ::ra8_webtoon_open, split out so the entry
+ *          point stays under the statement-complexity threshold. Validates the
+ *          three seams the engine must hold before it can page or composite.
+ *
+ * @param[in] wt  Engine state handle to validate.
+ * @param[in] cfg Open configuration to validate.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok           `wt`, `cfg` and every required callback are non-NULL.
+ * @retval k_ra8_err_null_ptr One of them is NULL.
+ *
+ * @pre `s_tag` is initialised (always true for this TU).
+ * @pre The caller propagates a non-OK result unchanged.
+ * @post No state is modified.
+ * @post A `k_ra8_ok` result guarantees `cfg->pread`/`cache`/`blit` are non-NULL.
+ *
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t priv_webtoon_check_ptrs(const ra8_webtoon_t* wt, const ra8_webtoon_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(wt, s_tag, "wt must not be nullptr");
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   RA8_CHECK_NULL_PTR(cfg->pread, s_tag, "cfg->pread must not be nullptr");
   RA8_CHECK_NULL_PTR(cfg->cache, s_tag, "cfg->cache must not be nullptr");
   RA8_CHECK_NULL_PTR(cfg->blit, s_tag, "cfg->blit must not be nullptr");
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_webtoon_open(ra8_webtoon_t* wt, const ra8_webtoon_cfg_t* cfg)
+{
+  const ra8_err_t ptr_err = priv_webtoon_check_ptrs(wt, cfg);
+  if (ptr_err != k_ra8_ok) {
+    return ptr_err;
+  }
   /* Decision: reject a zero-area viewport (2 conditions -- MC/DC in tests). */
   if ((cfg->viewport_w == 0U) || (cfg->viewport_h == 0U)) {
     return k_ra8_err_invalid_arg;
@@ -96,22 +169,7 @@ ra8_err_t ra8_webtoon_open(ra8_webtoon_t* wt, const ra8_webtoon_cfg_t* cfg)
   if ((info.tile_w != info.width) || (info.tile_cols != 1U)) {
     return k_ra8_err_not_supported;
   }
-  wt->info       = info;
-  wt->canvas_w   = info.width;
-  wt->canvas_h   = info.height;
-  wt->band_h     = info.tile_h;
-  wt->band_count = info.tile_rows;
-  wt->viewport_w = cfg->viewport_w;
-  wt->viewport_h = cfg->viewport_h;
-  wt->scroll_y   = 0;
-  wt->max_scroll = (info.height > cfg->viewport_h)
-                     ? (int32_t)((uint32_t)info.height - (uint32_t)cfg->viewport_h)
-                     : 0;
-  wt->velocity   = 0;
-  wt->cache      = cfg->cache;
-  wt->image_id   = cfg->image_id;
-  wt->blit       = cfg->blit;
-  wt->blit_ctx   = cfg->blit_ctx;
+  priv_webtoon_bind(wt, cfg, &info);
   return k_ra8_ok;
 }
 
