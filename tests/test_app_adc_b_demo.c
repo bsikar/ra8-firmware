@@ -5,9 +5,9 @@
  * @details
  * Mirrors examples/ek_ra8d2/adc_b_demo/main.c bring-up:
  * ``ra8_adc_init_configured`` (12-bit, software trigger) ->
- * ``ra8_adc_read_channel``. The host MMIO shim backs ADCSR/ADCER and
- * ADDRn so the writes succeed and the test validates both the
- * acceptance path and documented rejection paths.
+ * ``ra8_adc_read_channel``. The host MMIO shim backs the ADC16H
+ * ADCHCRn / ADDOPCRCn / ADDRn window so the writes succeed and the test
+ * validates both the acceptance path and documented rejection paths.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
