@@ -9,15 +9,25 @@
  * Sits between the NSC veneer ``ra8_nsc_key_import`` and the
  * underlying ``ra8_key_vault_store``. The job here is twofold:
  *
- * - Validate the sealed blob's MAC. The MAC scheme is a stub
- *   (length-tagged XOR fold against ``s_salt``) until the SCE
- *   CMAC engine is hooked up; the *interface* is the part of this
- *   commit that matters. NS callers see a binary go/no-go.
+ * - Authenticate the sealed blob with a real AES-CMAC (NIST
+ *   SP 800-38B) over the 32 key bytes, keyed by the vault's
+ *   key-authentication key (KAK). The CMAC is computed through the
+ *   ``ra8_sec_cmac_*`` seam, so the firmware image runs the
+ *   silicon-proven TF-PSA-Crypto ``psa_mac_*`` backend while host
+ *   tests exercise a KAT-pinned in-tree reference. This replaces the
+ *   forgeable length-tagged XOR fold that used to stand in for it;
+ *   NS callers still see a binary go/no-go.
  *
  * - Hand back an opaque handle rather than the raw slot index.
  *   The handle is computed as ``slot ^ (s_salt rotated)``, so two
  *   different boots vend different handles for the same slot, and
  *   the slot index never leaks to NS.
+ *
+ * The KAK is provisioned once, secure-side, via
+ * ``ra8_key_vault_set_mac_key`` and read back only through
+ * ``ra8_key_vault_load_mac_key`` -- it lives in vault storage that
+ * is separate from the NS-importable slot array, so nothing the
+ * Non-Secure world can reach ever keys the MAC.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -29,60 +39,37 @@
 #include "key_vault.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_secure.h"
+#include "sec_cmac_internal.h"
 
 static const char* s_tag = "KEYIMP";
 
-/*
- * Fail-closed stub-crypto gate (issue #180). The sealed-blob MAC below is a
- * FORGEABLE length-tagged XOR fold standing in for the SCE CMAC engine, so a
- * caller can mint a blob this code will accept. It is only safe under host
- * simulation or an explicitly-declared insecure dev/eval image. A real
- * production/HIL image (neither flag set) compiles the #else branch, where
- * every entry point hard-errors so a forged key blob can never be accepted.
- * scripts/utils/check_stub_crypto_guarded.py enforces the guard.
- */
-#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
+/** @brief 5-bit rotate-amount mask (mod 32). */
+typedef enum : uint8_t {
+  k_rotate_mask_5bit = 31U,
+} rotate_mask_t;
 
 /**
- * @def k_handle_rotate_bits
- * @brief Bits the salt is rotated by before XORing into the slot.
+ * @enum ra8_key_import_internal_t
+ * @brief Handle-obfuscation shift constants.
  *
  * @details
  * Rotating the 32-bit salt before XORing into the 16-bit slot
  * decorrelates the low 16 bits of the salt from the high 16, so a
  * caller who can observe many handles cannot recover the salt by
  * differencing them.
- *
- * @since 0.1.0
  */
-/** @brief 5-bit rotate-amount mask (mod 32). */
 typedef enum : uint8_t {
-  k_rotate_mask_5bit = 31U,
-} rotate_mask_t;
-
-typedef enum : uint8_t {
-  k_handle_rotate_bits = 13U,
-  k_handle_lo16_mask   = 16U,
+  k_handle_rotate_bits = 13U, /**< Salt rotate amount before slot XOR. */
+  k_salt_reroll_rot    = 7U,  /**< Salt reroll rotate amount.          */
 } ra8_key_import_internal_t;
 
-/* Magic-number suppression aids for clang-tidy. */
-typedef enum : uint8_t {
-  k_byte_shift_24   = 24U,
-  k_byte_shift_16   = 16U,
-  k_byte_shift_8    = 8U,
-  k_blob_off_byte0  = 0U,
-  k_blob_off_byte1  = 1U,
-  k_blob_off_byte2  = 2U,
-  k_blob_off_byte3  = 3U,
-  k_salt_reroll_rot = 7U,
-} ra8_key_import_byte_pack_t;
-
+/** @brief 32-bit handle/salt mixing masks and seeds. */
 typedef enum : uint32_t {
-  k_byte_lo_mask         = 0xFFU,
-  k_initial_salt         = 0xA5A5A5A5U,
-  k_handle_high_bit_mask = 0x80000000U,
-  k_salt_reroll_xor      = 0xDEADBEEFU,
-} ra8_key_import_byte_mask_t;
+  k_initial_salt         = 0xA5A5A5A5U, /**< Boot salt seed.           */
+  k_handle_high_bit_mask = 0x80000000U, /**< Forces a non-zero handle. */
+  k_salt_reroll_xor      = 0xDEADBEEFU, /**< Salt reroll mixing const. */
+} ra8_key_import_mask_t;
 
 /**
  * @var s_slot_used
@@ -99,7 +86,7 @@ static uint16_t s_slot_used = 0U;
 
 /**
  * @var s_salt
- * @brief Per-boot 32-bit salt used for handle obfuscation + MAC.
+ * @brief Per-boot 32-bit salt used for handle obfuscation.
  *
  * @details Refreshed on every ``ra8_key_import_reset`` call. The chosen
  * value is intentionally non-zero so the handle for slot 0 never
@@ -114,8 +101,8 @@ static uint32_t s_salt = (uint32_t)k_initial_salt;
  * @brief Rotate a 32-bit value left by ``amount`` bits (mod 32).
  *
  * @details
- * Used by both the salt rerolling step and the MAC fold so the bit
- * mixing is well distributed even for sparse blob inputs.
+ * Used by both the salt rerolling step and the handle mixing so the
+ * bit distribution is well spread for sparse inputs.
  *
  * @param[in] value  Source 32-bit word.
  * @param[in] amount Bit count; only the low 5 bits are used.
@@ -170,46 +157,47 @@ static uint32_t internal_handle_for_slot(uint16_t slot)
 }
 
 /**
- * @brief Verify the trailing MAC bytes of a sealed key blob.
+ * @brief Verify the trailing AES-CMAC of a sealed key blob.
  *
  * @details
- * Folds the 32 key bytes into a 32-bit accumulator (rotate-and-XOR
- * with the per-boot salt seed) and compares the result to the
- * trailing 4 big-endian bytes of the blob. The scheme is a stub for
- * the SCE CMAC engine slated for ; the interface is final.
+ * Loads the KAK from the vault, recomputes the AES-CMAC over the 32
+ * key bytes via ``ra8_sec_cmac_verify``, and reports whether it
+ * matches the trailing ``k_ra8_key_import_mac_bytes`` of the blob.
+ * The KAK copy is wiped before return so no key material lingers on
+ * the secure stack.
  *
  * @param[in] blob Sealed key blob; ``k_ra8_key_import_blob_bytes`` long.
  *
- * @return true when the computed MAC matches the trailing bytes.
- * @retval true  Blob authentic under the current ``s_salt``.
- * @retval false Blob tampered or built under a different salt.
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok               CMAC authentic under the vault KAK.
+ * @retval k_ra8_err_invalid_arg  CMAC mismatch (blob tampered / wrong KAK).
+ * @retval k_ra8_err_not_found    No KAK provisioned in the vault.
  *
- * @pre ``blob`` is non-NULL.
- * @pre ``blob`` storage spans at least ``k_ra8_key_import_blob_bytes``.
- * @post No state is mutated.
- * @post Return value depends only on ``blob`` and ``s_salt``.
+ * @pre ``blob`` is non-NULL and spans ``k_ra8_key_import_blob_bytes``.
+ * @pre A KAK was provisioned via ``ra8_key_vault_set_mac_key``.
+ * @post No state is mutated; the KAK copy is wiped.
+ * @post Return value is the authentication verdict only.
  *
- * @note Pure helper; safe from any context.
+ * @note Not thread-safe; secure-side serial dispatch only.
  * @since 0.1.0
  */
-static bool internal_verify_mac(const uint8_t* blob)
+static ra8_err_t internal_verify_cmac(const uint8_t* blob)
 {
-  /* MAC scheme: fold the 32 key bytes into a 32-bit accumulator
-   * with the salt mixed in, then compare to the trailing 4 bytes.
- * A real CMAC swap-in lands in ; the interface stays the
-   * same so the veneer code survives. */
-  uint32_t acc = s_salt;
-  for (uint16_t i = 0U; i < k_ra8_key_import_key_bytes; ++i) {
-    acc = internal_rotate_left_32(acc, 1U) ^ (uint32_t)blob[i];
+  uint8_t         mac_key[k_ra8_key_vault_mac_key_bytes];
+  uint16_t        mac_key_len = 0U;
+  const ra8_err_t kerr =
+    ra8_key_vault_load_mac_key(mac_key, (uint16_t)sizeof(mac_key), &mac_key_len);
+  if (kerr != k_ra8_ok) {
+    return kerr;
   }
-  const uint32_t expect = ((uint32_t)blob[k_ra8_key_import_key_bytes + (uint16_t)k_blob_off_byte0]
-                           << (uint32_t)k_byte_shift_24) |
-                          ((uint32_t)blob[k_ra8_key_import_key_bytes + (uint16_t)k_blob_off_byte1]
-                           << (uint32_t)k_byte_shift_16) |
-                          ((uint32_t)blob[k_ra8_key_import_key_bytes + (uint16_t)k_blob_off_byte2]
-                           << (uint32_t)k_byte_shift_8) |
-                          ((uint32_t)blob[k_ra8_key_import_key_bytes + (uint16_t)k_blob_off_byte3]);
-  return acc == expect;
+  const ra8_err_t verr = ra8_sec_cmac_verify(mac_key,
+                                             mac_key_len,
+                                             blob,
+                                             (uint32_t)k_ra8_key_import_key_bytes,
+                                             &blob[k_ra8_key_import_key_bytes],
+                                             (uint16_t)k_ra8_key_import_mac_bytes);
+  ra8_secure_memzero(mac_key, sizeof(mac_key));
+  return verr;
 }
 
 /**
@@ -249,10 +237,10 @@ ra8_err_t ra8_key_import_reset(void)
  * @brief Verify, store, and assign an opaque handle for a sealed key blob.
  *
  * @details
- * Validates the blob length, checks the MAC, allocates the lowest
- * free vault slot, copies the key into the vault, and returns an
- * opaque handle that the NS world can later present to the SHA-256
- * challenge primitive without ever learning the slot index.
+ * Validates the blob length, checks the AES-CMAC, allocates the
+ * lowest free vault slot, copies the key into the vault, and returns
+ * an opaque handle that the NS world can later present to the
+ * SHA-256 challenge primitive without ever learning the slot index.
  *
  * @param[in]  blob       Sealed key blob.
  * @param[in]  blob_len   Length of ``blob``; must equal
@@ -263,11 +251,12 @@ ra8_err_t ra8_key_import_reset(void)
  * @retval k_ra8_ok                 Key sealed and handle issued.
  * @retval k_ra8_err_null_ptr       ``blob`` or ``out_handle`` was NULL.
  * @retval k_ra8_err_invalid_size   ``blob_len`` did not match expected size.
- * @retval k_ra8_err_invalid_arg    MAC verification failed.
+ * @retval k_ra8_err_invalid_arg    CMAC verification failed.
+ * @retval k_ra8_err_not_found      No KAK provisioned in the vault.
  * @retval k_ra8_err_no_mem         All vault slots are in use.
  *
  * @pre ``blob`` and ``out_handle`` are non-NULL.
- * @pre Caller has finished bring-up of the key vault via ::ra8_key_vault_init.
+ * @pre A KAK was provisioned via ``ra8_key_vault_set_mac_key``.
  * @post On success, the chosen slot bit is set in ``s_slot_used``.
  * @post On error, no vault slot is mutated.
  *
@@ -282,8 +271,9 @@ ra8_err_t ra8_key_import_seal(const uint8_t* blob, uint32_t blob_len, uint32_t* 
   if (blob_len != (uint32_t)k_ra8_key_import_blob_bytes) {
     return k_ra8_err_invalid_size;
   }
-  if (!internal_verify_mac(blob)) {
-    return k_ra8_err_invalid_arg;
+  const ra8_err_t mac_err = internal_verify_cmac(blob);
+  if (mac_err != k_ra8_ok) {
+    return mac_err;
   }
 
   /* Pick the lowest free slot. Loop bound is the slot count -- NASA
@@ -349,85 +339,51 @@ ra8_err_t ra8_key_import_resolve(uint32_t handle, uint16_t* out_slot)
 }
 
 /**
- * @brief Build a sealed key blob from a raw 32-byte key (test helper).
+ * @brief Build a sealed key blob from a raw 32-byte key (provisioning + test).
  *
  * @details
- * Copies the key bytes verbatim, computes the same MAC fold as
- * ::internal_verify_mac, and writes the trailing 4 big-endian
- * bytes. Provided so unit tests can exercise the verify path
- * without a separate sealing utility.
+ * Copies the key bytes verbatim, computes the AES-CMAC over them with
+ * the vault KAK via ``ra8_sec_cmac_compute``, and writes the trailing
+ * ``k_ra8_key_import_mac_bytes`` of the blob. Provided so provisioning
+ * and unit tests can package a key the import path will accept.
  *
- * @param[in]  key      Raw 32-byte key.
+ * @param[in]  material Raw 32-byte key material.
  * @param[out] out_blob Receives ``k_ra8_key_import_blob_bytes`` of output.
  *
  * @return ``ra8_err_t`` error code.
  * @retval k_ra8_ok                 Blob written.
- * @retval k_ra8_err_null_ptr       ``key`` or ``out_blob`` was NULL.
+ * @retval k_ra8_err_null_ptr       ``material`` or ``out_blob`` was NULL.
+ * @retval k_ra8_err_not_found      No KAK provisioned in the vault.
  *
- * @pre ``key`` and ``out_blob`` are non-NULL.
- * @pre ``out_blob`` storage spans at least ``k_ra8_key_import_blob_bytes``.
- * @post ``out_blob`` contains a blob accepted by ::internal_verify_mac
- *       under the current ``s_salt``.
+ * @pre ``material`` and ``out_blob`` are non-NULL.
+ * @pre A KAK was provisioned via ``ra8_key_vault_set_mac_key``.
+ * @post On success ``out_blob`` is accepted by ::internal_verify_cmac
+ *       under the current KAK.
  * @post No global state is mutated.
  *
  * @note Not thread-safe.
  * @see ra8_key_import_seal
  * @since 0.1.0
  */
-ra8_err_t ra8_key_import_build_blob(const uint8_t* key, uint8_t* out_blob)
+ra8_err_t ra8_key_import_build_blob(const uint8_t* material, uint8_t* out_blob)
 {
-  RA8_CHECK_NULL_PTR(key, s_tag, "build_blob: key");
+  RA8_CHECK_NULL_PTR(material, s_tag, "build_blob: material");
   RA8_CHECK_NULL_PTR(out_blob, s_tag, "build_blob: out_blob");
-  uint32_t acc = s_salt;
-  for (uint16_t i = 0U; i < k_ra8_key_import_key_bytes; ++i) {
-    out_blob[i] = key[i];
-    acc         = internal_rotate_left_32(acc, 1U) ^ (uint32_t)key[i];
+  uint8_t         mac_key[k_ra8_key_vault_mac_key_bytes];
+  uint16_t        mac_key_len = 0U;
+  const ra8_err_t kerr =
+    ra8_key_vault_load_mac_key(mac_key, (uint16_t)sizeof(mac_key), &mac_key_len);
+  if (kerr != k_ra8_ok) {
+    return kerr;
   }
-  out_blob[k_ra8_key_import_key_bytes + (uint16_t)k_blob_off_byte0] =
-    (uint8_t)((acc >> (uint32_t)k_byte_shift_24) & (uint32_t)k_byte_lo_mask);
-  out_blob[k_ra8_key_import_key_bytes + (uint16_t)k_blob_off_byte1] =
-    (uint8_t)((acc >> (uint32_t)k_byte_shift_16) & (uint32_t)k_byte_lo_mask);
-  out_blob[k_ra8_key_import_key_bytes + (uint16_t)k_blob_off_byte2] =
-    (uint8_t)((acc >> (uint32_t)k_byte_shift_8) & (uint32_t)k_byte_lo_mask);
-  out_blob[k_ra8_key_import_key_bytes + (uint16_t)k_blob_off_byte3] =
-    (uint8_t)(acc & (uint32_t)k_byte_lo_mask);
-  return k_ra8_ok;
+  for (uint16_t i = 0U; i < (uint16_t)k_ra8_key_import_key_bytes; ++i) {
+    out_blob[i] = material[i];
+  }
+  const ra8_err_t cerr = ra8_sec_cmac_compute(mac_key,
+                                              mac_key_len,
+                                              material,
+                                              (uint32_t)k_ra8_key_import_key_bytes,
+                                              &out_blob[k_ra8_key_import_key_bytes]);
+  ra8_secure_memzero(mac_key, sizeof(mac_key));
+  return cerr;
 }
-
-#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_SIMULATOR_MODE */
-
-/*
- * Fail-closed production variant. Without a real CMAC backend the forgeable
- * XOR-fold MAC above must never authenticate a blob, so every entry point
- * returns a hard error (never k_ra8_ok). A production image that forgot to
- * provide real key sealing therefore cannot import an unauthenticated key.
- */
-
-ra8_err_t ra8_key_import_reset(void)
-{
-  return k_ra8_err_not_supported;
-}
-
-ra8_err_t ra8_key_import_seal(const uint8_t* blob, uint32_t blob_len, uint32_t* out_handle)
-{
-  RA8_CHECK_NULL_PTR(blob, s_tag, "seal: blob");
-  RA8_CHECK_NULL_PTR(out_handle, s_tag, "seal: out_handle");
-  (void)blob_len;
-  return k_ra8_err_not_supported;
-}
-
-ra8_err_t ra8_key_import_resolve(uint32_t handle, uint16_t* out_slot)
-{
-  RA8_CHECK_NULL_PTR(out_slot, s_tag, "resolve: out_slot");
-  (void)handle;
-  return k_ra8_err_not_supported;
-}
-
-ra8_err_t ra8_key_import_build_blob(const uint8_t* key, uint8_t* out_blob)
-{
-  RA8_CHECK_NULL_PTR(key, s_tag, "build_blob: key");
-  RA8_CHECK_NULL_PTR(out_blob, s_tag, "build_blob: out_blob");
-  return k_ra8_err_not_supported;
-}
-
-#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_SIMULATOR_MODE */

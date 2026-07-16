@@ -18,13 +18,18 @@
  * This ctest runs in the host build, which compiles the stub TUs under
  * RA8_SIMULATOR_MODE (the #if branch). It proves the OTHER half of the guard:
  * that in stub mode every insecure entry point is REACHABLE and exhibits its
- * placeholder behaviour -- a deterministic (predictable) TRNG, a self-minted
- * key-import blob the stub MAC accepts, a deterministic vault challenge, and a
- * round-tripping non-cryptographic RSIP key-wrap. If the fail-closed #else were
- * compiled instead, every one of these calls would return k_ra8_err_not_supported
- * and this test would fail -- so the test also demonstrates that the two guard
- * branches are genuinely different. The deterministic / round-trip properties
- * asserted here are exactly the INSECURE behaviour a real backend must replace.
+ * placeholder behaviour -- a deterministic (predictable) TRNG, a deterministic
+ * vault challenge, and a round-tripping non-cryptographic RSIP key-wrap. If the
+ * fail-closed #else were compiled instead, every one of these calls would
+ * return k_ra8_err_not_supported and this test would fail -- so the test also
+ * demonstrates that the two guard branches are genuinely different. The
+ * deterministic / round-trip properties asserted here are exactly the INSECURE
+ * behaviour a real backend must replace.
+ *
+ * Note: the sealed-key importer (src/secure_app/key_import.c) is no longer part
+ * of this set -- its forgeable XOR-fold MAC was replaced by a real AES-CMAC
+ * (issue #291), so it is no longer a stub crypto TU. Its own tests live in
+ * test_secure_app_key_import.c / test_secure_app_sec_cmac.c.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -33,7 +38,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "key_import_internal.h"
 #include "key_vault.h"
 #include "ra8_err.h"
 #include "ra8_rsip_key_injection.h"
@@ -43,8 +47,7 @@
 /** @brief Fixed sizes used by the reachability cases (no magic numbers). */
 typedef enum : uint16_t {
   k_stub_trng_len   = 32U,  /**< TRNG bytes drawn per read.                */
-  k_stub_key_bytes  = 32U,  /**< 256-bit key (vault + import).             */
-  k_stub_blob_bytes = 36U,  /**< Sealed import blob (k_ra8_key_import...). */
+  k_stub_key_bytes  = 32U,  /**< 256-bit key (vault).                      */
   k_stub_chal_bytes = 32U,  /**< Vault challenge / digest length.          */
   k_stub_aes_bytes  = 16U,  /**< AES-128 raw key length.                   */
   k_stub_rsip_total = 636U, /**< Wrapped-key buffer (k_ra8_rsip_...total). */
@@ -82,32 +85,6 @@ static void test_trng_is_deterministic_stub(void)
   }
   TEST_ASSERT(any_nonzero);
   TEST_END("stub-gate: TRNG is a reachable deterministic PRNG (insecure)");
-}
-
-/**
- * @par MC/DC:
- * (no compound decisions in this test.)
- */
-static void test_key_import_accepts_self_minted_blob(void)
-{
-  TEST_BEGIN("stub-gate: key-import stub accepts a self-minted blob (forgeable MAC)");
-  uint8_t key[k_stub_key_bytes]   = {};
-  uint8_t blob[k_stub_blob_bytes] = {};
-  for (uint32_t i = 0U; i < (uint32_t)k_stub_key_bytes; ++i) {
-    key[i] = (uint8_t)i;
-  }
-
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_reset());
-  /* Anyone who knows the weak fold can build a blob the stub accepts. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_build_blob(key, blob));
-
-  uint32_t handle = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_seal(blob, (uint32_t)k_stub_blob_bytes, &handle));
-  TEST_ASSERT(handle != 0U);
-
-  uint16_t slot = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_resolve(handle, &slot));
-  TEST_END("stub-gate: key-import stub accepts a self-minted blob (forgeable MAC)");
 }
 
 /**
@@ -160,7 +137,6 @@ static void test_rsip_key_wrap_roundtrips_stub(void)
 int32_t main(void)
 {
   test_trng_is_deterministic_stub();
-  test_key_import_accepts_self_minted_blob();
   test_key_vault_challenge_is_reachable();
   test_rsip_key_wrap_roundtrips_stub();
   (void)fprintf(stderr,
