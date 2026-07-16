@@ -31,6 +31,7 @@
 
 #include "miniz.h"
 #include "ra8_epub.h"
+#include "ra8_epub_entry.h"
 #include "ra8_err.h"
 #include "unity_minimal.h"
 
