@@ -168,12 +168,35 @@ static char s_clock[k_wd_clock_len] = "0";
 /** @brief Monotonic clock counter shown in the status bar. */
 static uint32_t s_clock_val = 0U;
 
+/**
+ * @brief Sample reading-progress percentages for the four demo books.
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_wd_pct_dune        = 42U,  /**< "Dune" read progress, percent.        */
+  k_wd_pct_1984        = 100U, /**< "1984" read progress, percent.        */
+  k_wd_pct_solaris     = 12U,  /**< "Solaris" read progress, percent.     */
+  k_wd_pct_neuromancer = 70U,  /**< "Neuromancer" read progress, percent. */
+} wd_book_pct_t;
+
 /** @brief The four book records shown in the grid. */
 static const ra8_widget_book_t s_books[k_wd_book_count] = {
-  {.title = "Dune", .author = "Herbert", .cover = (uint32_t)k_wd_col_cover_a, .percent = 42U},
-  {.title = "1984", .author = "Orwell", .cover = (uint32_t)k_wd_col_cover_b, .percent = 100U},
-  {.title = "Solaris", .author = "Lem", .cover = (uint32_t)k_wd_col_cover_c, .percent = 12U},
-  {.title = "Neuromancer", .author = "Gibson", .cover = (uint32_t)k_wd_col_cover_d, .percent = 70U},
+  {.title   = "Dune",
+   .author  = "Herbert",
+   .cover   = (uint32_t)k_wd_col_cover_a,
+   .percent = k_wd_pct_dune},
+  {.title   = "1984",
+   .author  = "Orwell",
+   .cover   = (uint32_t)k_wd_col_cover_b,
+   .percent = k_wd_pct_1984},
+  {.title   = "Solaris",
+   .author  = "Lem",
+   .cover   = (uint32_t)k_wd_col_cover_c,
+   .percent = k_wd_pct_solaris},
+  {.title   = "Neuromancer",
+   .author  = "Gibson",
+   .cover   = (uint32_t)k_wd_col_cover_d,
+   .percent = k_wd_pct_neuromancer},
 };
 
 /** @brief Nav-strip destinations. */
