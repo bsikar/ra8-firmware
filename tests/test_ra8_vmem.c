@@ -237,6 +237,114 @@ static void test_prefetch_warms(void)
   TEST_END("vmem prefetch warms cache");
 }
 
+/**
+ * @enum t_split_const_t
+ * @brief Hot-set + flood dimensions for the split-knob survival probe.
+ */
+typedef enum : uint32_t {
+  k_t_split_obj     = 5U,   /**< Object id used by the split probe.             */
+  k_t_split_hot     = 4U,   /**< Re-referenced hot pages promoted to protected. */
+  k_t_split_passes  = 2U,   /**< Warmup passes (2nd promotes the hot set).      */
+  k_t_split_flood0  = 200U, /**< First page of the one-shot scan flood.         */
+  k_t_split_flood_n = 40U,  /**< Distinct pages in the scan flood.              */
+} t_split_const_t;
+
+/**
+ * @brief Warm a hot set, flood with a one-shot scan, then re-read the hot set.
+ *
+ * @details Shared body for the split-knob test: promotes ::k_t_split_hot pages
+ *          into the protected segment (each read twice), floods the cache with
+ *          ::k_t_split_flood_n never-revisited pages, then re-reads the hot set
+ *          and reports how many of those re-reads MISSED. A miss means the hot
+ *          page was demoted (protected segment too small to hold it) and then
+ *          evicted by the flood -- exactly the outcome the split knob controls.
+ *
+ * @param[in,out] vm Initialised cache (its split determines the survival count).
+ *
+ * @return Number of hot pages that missed on re-read (0 == whole hot set survived).
+ * @retval 0 The protected segment held the entire hot set through the flood.
+ *
+ * @pre `vm` was populated by ::ra8_vmem_init.
+ * @pre The cache has at least ::k_t_split_hot frames.
+ * @post Every frame touched here is unpinned on return (get+put balanced).
+ * @post No cache state beyond the SLRU order / counters is mutated.
+ *
+ * @note Not thread-safe.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- single-condition loop bounds only)
+ *
+ * @since 0.1.0
+ */
+static uint32_t t_split_hot_set_survival(ra8_vmem_t* vm)
+{
+  for (uint32_t pass = 0U; pass < (uint32_t)k_t_split_passes; ++pass) {
+    for (uint32_t h = 0U; h < (uint32_t)k_t_split_hot; ++h) {
+      TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_put(vm, t_get(vm, (uint32_t)k_t_split_obj, h)));
+    }
+  }
+  for (uint32_t i = 0U; i < (uint32_t)k_t_split_flood_n; ++i) {
+    const uint32_t pg = (uint32_t)k_t_split_flood0 + i;
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_put(vm, t_get(vm, (uint32_t)k_t_split_obj, pg)));
+  }
+  uint32_t miss_before = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stats(vm, nullptr, &miss_before, nullptr));
+  for (uint32_t h = 0U; h < (uint32_t)k_t_split_hot; ++h) {
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_put(vm, t_get(vm, (uint32_t)k_t_split_obj, h)));
+  }
+  uint32_t miss_after = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stats(vm, nullptr, &miss_after, nullptr));
+  return miss_after - miss_before;
+}
+
+/**
+ * @test protected_split_knob
+ * @brief The `cfg.protected_pct` SLRU split knob (#232): rejects an over-range
+ *        split, sizes `protected_cap`, and changes how much of the hot set
+ *        survives a page-turn flood.
+ *
+ * @par MC/DC:
+ * Decision under test: `priv_vmem_validate_cfg`'s `protected_pct > 100` guard
+ * (1 condition) plus `priv_vmem_protected_cap`'s `protected_pct == 0` default
+ * selector (1 condition, single-condition decisions -- no compound `&&`/`||`).
+ * - `protected_pct == 101` -> init rejects with k_ra8_err_invalid_arg (guard true).
+ * - `protected_pct == 50`  -> accepted; selector false (uses 50); cap == 4.
+ * - `protected_pct == 25`  -> accepted; selector false (uses 25); cap == 2.
+ * The `protected_pct == 0` default branch (selector true) is exercised by every
+ * other test in this file via ::t_cfg. Wide vs narrow splits give a strictly
+ * different hot-set survival count, proving the knob influences eviction.
+ */
+static void test_protected_split_knob(void)
+{
+  TEST_BEGIN("vmem protected/probationary split knob");
+  ra8_vmem_t vm = {};
+
+  /* Reject an out-of-range split (guard: protected_pct > 100). */
+  ra8_vmem_cfg_t bad = t_cfg();
+  bad.protected_pct  = 101U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vmem_init(&vm, &bad));
+
+  /* A 50% split over 8 frames sizes a 4-frame protected segment: it holds the
+   * whole 4-page hot set, so every hot page survives the flood. */
+  ra8_vmem_cfg_t wide = t_cfg();
+  wide.protected_pct  = 50U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_init(&vm, &wide));
+  TEST_ASSERT_EQ(4U, vm.protected_cap);
+  const uint32_t wide_reread = t_split_hot_set_survival(&vm);
+  TEST_ASSERT_EQ(0U, wide_reread);
+
+  /* A 25% split sizes only a 2-frame protected segment: two hot pages are
+   * demoted to probation during warmup and then thrashed out by the flood. */
+  ra8_vmem_cfg_t narrow = t_cfg();
+  narrow.protected_pct  = 25U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_init(&vm, &narrow));
+  TEST_ASSERT_EQ(2U, vm.protected_cap);
+  const uint32_t narrow_reread = t_split_hot_set_survival(&vm);
+  TEST_ASSERT(narrow_reread > wide_reread); /* the knob has teeth */
+
+  TEST_END("vmem protected/probationary split knob");
+}
+
 int32_t main(void)
 {
   test_miss_hit_content();
@@ -244,6 +352,7 @@ int32_t main(void)
   test_pin_protection();
   test_validation();
   test_prefetch_warms();
+  test_protected_split_knob();
   (void)fprintf(stderr, "[OK  ] test_ra8_vmem.c\n");
   return 0;
 }
