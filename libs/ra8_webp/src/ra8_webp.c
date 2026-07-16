@@ -162,13 +162,14 @@ static ra8_err_t internal_webp_decode_impl(const uint8_t*    data,
   }
 
   /*
-   * TODO(#289): render-path integration. This facade decodes a whole WebP into
-   * a caller RGBA8888 buffer. Once the #289 band-tile format lands, the
-   * normalise-on-import path will slice the decoded canvas into band tiles and
-   * route render-time decodes through the single band-tile codec, and the
-   * ra8_reflow / ra8_img raster dispatch (libs/ra8_reflow/src/ra8_reflow_image.c)
-   * will gain a WebP arm that calls this function. Deliberately NOT wired here
-   * (issue #290 is vendor + build + standalone decode only).
+   * This facade decodes a whole WebP into a caller RGBA8888 buffer. The #290
+   * normalize-on-import path consumes it in the RTA1 tile producer
+   * (libs/ra8_tileatlas/src/ra8_tileatlas_produce.c: priv_webp_transcode), which
+   * bands the decoded canvas into RTA1 tiles so render time touches one codec
+   * regardless of source. TODO(#289): the ra8_reflow / ra8_img inline raster
+   * dispatch (libs/ra8_reflow/src/ra8_reflow_image.c) does not yet have a WebP
+   * arm for the small-image (non-tiled) path -- that lands with the webtoon
+   * render work; large WebP pages already normalize through the producer above.
    */
 
   if (out_w != nullptr) {

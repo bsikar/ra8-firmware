@@ -322,6 +322,17 @@ macro(ra8_add_app)
         if(NOT "ra8_io" IN_LIST _RA8_APP_LIBS)
             list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_io/src/ra8_io_compress.c)
         endif()
+        # #290 normalize-on-import: the producer normalises WebP manifest images
+        # to RTA1 too, so it calls the ra8_webp facade (ra8_tileatlas_produce.c:
+        # priv_webp_transcode). Compile the facade sources here when the app did
+        # not already list ra8_webp explicitly (the LIBS loop globs them then).
+        # The vendored libwebp decoder itself is wired by the shared block below.
+        list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_webp/inc)
+        if(NOT "ra8_webp" IN_LIST _RA8_APP_LIBS)
+            file(GLOB_RECURSE _ra8_ta_webp_facade CONFIGURE_DEPENDS
+                ${RA8_REPO_ROOT}/libs/ra8_webp/src/*.c)
+            list(APPEND _ra8_lib_extra ${_ra8_ta_webp_facade})
+        endif()
     endif()
 
     # ra8_webp decodes WebP (VP8 / VP8L) through the vendored libwebp decoder
@@ -330,10 +341,12 @@ macro(ra8_add_app)
     # WebPSafe{Malloc,Calloc,Free} through the heap-free ra8_webp bump arena via
     # -DRA8_WEBP_USE_ARENA (the RA8 LOCAL PATCH; applied to the SOUP TUs below),
     # so the firmware reaches no libc malloc. ra8_webp's own .c facade/arena are
-    # globbed by the LIBS loop above; only the vendored TUs + include root are
-    # wired here. (NOTE(#289): not yet in the ra8_reflow/ra8_img raster dispatch.)
+    # globbed by the LIBS loop above (or by the ra8_tileatlas block); only the
+    # vendored TUs + include root are wired here. Wired whenever ra8_webp is
+    # requested directly OR pulled in transitively by ra8_tileatlas (#290), and
+    # only once so the two paths never double-add the libwebp sources.
     set(_ra8_webp_vendor "")
-    if("ra8_webp" IN_LIST _RA8_APP_LIBS)
+    if(("ra8_webp" IN_LIST _RA8_APP_LIBS) OR ("ra8_tileatlas" IN_LIST _RA8_APP_LIBS))
         file(GLOB_RECURSE _ra8_webp_vendor CONFIGURE_DEPENDS
             ${RA8_REPO_ROOT}/libs/third_party/libwebp/src/*.c)
         list(APPEND _ra8_lib_extra ${_ra8_webp_vendor})
