@@ -1,26 +1,29 @@
 #!/usr/bin/env python3
 # gen_doxygen_nav.py -- generate the Doxygen navigation trees for ra8-firmware.
 #
-# This script is the single generator behind the two curated navigation
-# sections of the Doxygen site:
+# Doxygen renders markdown files (docs/*.md and every example README.md) as
+# "pages", never as entries in the Files/directory tree -- so the sidebar's
+# directory view is code-only, and the human-readable docs + per-app READMEs
+# can only be reached through the "pages" tab. This script builds that pages
+# tab to MIRROR THE ON-DISK DIRECTORY TREE instead of an invented taxonomy, so
+# navigation reads the same way everywhere (browse by directory) and can never
+# drift from the repo:
 #
-#   1. "Guides & Reference" -- the hand-written docs under docs/*.md, grouped
-#      into a small, sensible section tree (Architecture, Conventions & Policy,
-#      Safety & Certification, Hardware & Bring-up, Project & Reference) instead
-#      of a flat heap. Directory sub-trees (docs/adr, docs/SOUP, ...) are picked
-#      up automatically as sub-sections.
+#   1. "Documentation" -- the docs/ subtree. Every docs/*.md is a leaf and
+#      every docs/<subdir> (adr, SOUP, qualification, reference, ...) is a
+#      sub-node, recursively, exactly as they sit on disk. No doc-to-section
+#      map: a new page or a new subdir just appears; a removed one just leaves.
 #
-#   2. "Example Applications" -- every example app under examples/, organized by
-#      the exact directory tiers the repo already uses (hw_validated/hil,
-#      hw_validated/manual, hw_pending, _unsupported, ra8p1_foundation, ...),
-#      each app row carrying the one-line description from its own README.
+#   2. "Examples" -- the examples/ subtree. Every app appears under its real
+#      hardware-validation tier directory (hw_validated/hil, hw_validated/manual,
+#      hw_pending, _unsupported, ra8p1_foundation, ...), each carrying the
+#      one-line description from its own README. Moving an app between tiers on
+#      disk moves it in the nav with no edit here.
 #
-# It is deterministic and directory-driven: adding a new example app or a new
-# docs/*.md page needs no edit here -- the app appears in its tier automatically,
-# and an unclassified top-level doc lands in "Project & Reference" with a
-# warning printed to stderr so it can be curated. Only a genuinely new top-level
-# docs section or example board tier needs a one-line entry in the small maps
-# below.
+# The only hand-maintained data left is a set of PRETTY-TITLE maps (tier and
+# docs-subdir display names); every one degrades gracefully -- an unmapped
+# directory falls back to a prettified name and still renders, never breaks and
+# never lists a removed item.
 #
 # The generated .dox files are written under docs/generated/ (gitignored) and
 # consumed by the main Doxyfile. build_docs.sh runs this before doxygen, so the
@@ -31,9 +34,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import html
 import pathlib
-import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 DOCS_DIR = ROOT / "docs"
@@ -41,9 +44,10 @@ EXAMPLES_DIR = ROOT / "examples"
 OUT_DIR = DOCS_DIR / "generated"
 
 # --- Doxygen id manglers -----------------------------------------------------
-# These reproduce Doxygen 1.17's deterministic naming so the generated @subpage
-# / link targets resolve without editing any source file. If Doxygen ever
-# changed the scheme, the warnings gate would flag the unresolved references.
+# These reproduce the pinned Doxygen 1.16.1's deterministic naming so the
+# generated @subpage / link targets resolve without editing any source file. If
+# Doxygen ever changed the scheme, the warnings gate would flag the unresolved
+# references.
 
 
 def doxy_page_id(relpath: str) -> str:
@@ -67,115 +71,42 @@ def doxy_page_id(relpath: str) -> str:
     return "".join(out)
 
 
-def doxy_file_id(relpath: str) -> str:
-    """Doxygen file-page id for any input file (case preserved)."""
-    out = []
-    for ch in relpath:
-        if ch == "/":
-            out.append("_2")
-        elif ch == "_":
-            out.append("__")
-        elif ch == ".":
-            out.append("_8")
-        else:
-            out.append(ch)
-    return "".join(out)
+def doxy_dir_id(relpath: str) -> str:
+    """Doxygen directory-page id: 'dir_' + md5 of the STRIP_FROM_PATH-relative
+    directory path WITH a trailing slash.
+
+    Doxygen renders a directory's README.md as that directory page's detailed
+    description -- so this is where an example app's README actually shows,
+    alongside its source-file list (the empty 'README.md File Reference' page
+    is a dead end). Because the Doxyfile sets STRIP_FROM_PATH=., the path fed
+    to the hash is the plain repo-relative one, so the id is machine-independent
+    and matches the same page the Files directory tree links to.
+    """
+    key = relpath.rstrip("/") + "/"
+    # Not security-sensitive: this reproduces doxygen's own directory-page
+    # file-naming hash so links resolve. usedforsecurity=False documents that
+    # and satisfies the lint.
+    digest = hashlib.md5(key.encode("utf-8"), usedforsecurity=False).hexdigest()
+    return "dir_" + digest
 
 
-# --- narrative-docs taxonomy -------------------------------------------------
-# Ordered list of (section id, title, brief). Order here == order in the tree.
-DOC_SECTIONS: list[tuple[str, str, str]] = [
-    (
-        "architecture",
-        "Architecture",
-        "How the firmware is structured: rings/worlds, dual core, the memory "
-        "map, the module tour, and driver status.",
-    ),
-    (
-        "policy",
-        "Conventions & Policy",
-        "The rules every change is held to: style, annotations, citations, "
-        "licensing, and the AI-attribution policy.",
-    ),
-    (
-        "safety",
-        "Safety & Certification",
-        "The DO-178C Level B / IEC 61508 SIL 3 evidence: MC/DC, MISRA, "
-        "coverage, static analysis, stack bounding, and the qualification kit.",
-    ),
-    (
-        "hardware",
-        "Hardware & Bring-up",
-        "Board bring-up, the HIL bench rig, debugging, the toolchain, and "
-        "performance / size reports.",
-    ),
-    (
-        "reference",
-        "Project & Reference",
-        "Acronym glossary, the roadmap, and other quick-reference material.",
-    ),
-]
-
-# Top-level docs/*.md basename (without extension) -> section id. This is the
-# one curated map; anything missing defaults to "reference" with a warning.
-DOC_CLASSIFY: dict[str, str] = {
-    "ARCHITECTURE": "architecture",
-    "RING_AND_WORLD": "architecture",
-    "DUAL_CORE": "architecture",
-    "MEMORY_MAP": "architecture",
-    "MODULES": "architecture",
-    "DRIVER_STATUS": "architecture",
-    "STYLE_GUIDE": "policy",
-    "ANNOTATIONS": "policy",
-    "AI_ATTRIBUTION_POLICY": "policy",
-    "CITATION_POLICY": "policy",
-    "CONTENT_LICENSING": "policy",
-    "VENDOR_BLOBS": "policy",
-    "DOCS": "policy",
-    "CERTIFICATION_SCOPE": "safety",
-    "QUALIFICATION_ROADMAP": "safety",
-    "MCDC": "safety",
-    "MCDC_GAPS": "safety",
-    "MCDC_DEACTIVATIONS": "safety",
-    "MISRA": "safety",
-    "COVERAGE": "safety",
-    "STATIC_ANALYSIS": "safety",
-    "STACK_USAGE": "safety",
-    "FUZZING": "safety",
-    "DOXYGEN_GAPS": "safety",
-    "INIT_ORDER_AUDIT": "safety",
-    "ROOT_OF_TRUST": "safety",
-    "HARDWARE_BRINGUP": "hardware",
-    "HIL_SUITE": "hardware",
-    "HIL_DEVELOPER_WORKFLOW": "hardware",
-    "DEBUG": "hardware",
-    "TOOLCHAIN": "hardware",
-    "PERFORMANCE": "hardware",
-    "APP_SIZES": "hardware",
-    "RA8D2_VS_RA8P1": "hardware",
-    "EPUB_CONFORMANCE": "hardware",
-    "ACRONYMS": "reference",
-    "ROADMAP": "reference",
-    "ROADMAP_DASHBOARD": "reference",
-}
-
-# docs/<subdir>/*.md become an automatic sub-section. Title + parent section is
-# looked up here; an unknown subdir defaults to a prettified name under
-# "reference" (still shown, just uncurated).
+# --- narrative-docs (directory-mirroring) ------------------------------------
+# The "Documentation" tree mirrors docs/ exactly, so there is NO doc-to-section
+# classification map to rot. The only hand-maintained data is a set of pretty
+# display titles for a few subdirectories; every lookup degrades gracefully --
+# an unmapped subdir simply shows its prettified directory name.
 SUBDIR_TITLES: dict[str, str] = {
-    "adr": "Architecture Decision Records",
-    "SOUP": "SOUP component justifications",
-    "qualification": "Qualification kit",
-    "reference": "Datasheet reference",
-}
-SUBDIR_PARENT: dict[str, str] = {
-    "adr": "safety",
-    "SOUP": "safety",
-    "qualification": "safety",
-    "reference": "hardware",
+    "adr": "Architecture Decision Records (adr)",
+    "SOUP": "SOUP component justifications (SOUP)",
+    "qualification": "Qualification kit (qualification)",
+    "reference": "Datasheet reference (reference)",
 }
 
-# docs subdirs that are not narrative pages (vendored/generated/binary assets).
+# docs/<subdir> holding no narrative markdown (vendored theme, generated .dox,
+# the legacy build tree, and binary/asset dirs). These are excluded from the
+# Doxyfile INPUT too, so linking their READMEs would dangle -- skip them. A new
+# subdir that DOES carry .md is picked up automatically; nothing here hides
+# real narrative content (badges/sbom hold only images/JSON, no *.md).
 DOCS_SKIP_DIRS = {"generated", "doxygen", "doxygen_theme", "badges", "sbom"}
 
 # --- example-tier taxonomy ---------------------------------------------------
@@ -289,8 +220,11 @@ def build_example_tree() -> tuple[TierNode, int]:
         for seg in [s for s in tier_rel.split("/") if s]:
             acc = f"{acc}/{seg}" if acc else seg
             node = node.children.setdefault(acc, TierNode(acc))
-        rel = app_dir.relative_to(ROOT).as_posix() + "/README.md"
-        node.apps.append((app_dir.name, doxy_file_id(rel), read_app_desc(app_dir)))
+        app_rel = app_dir.relative_to(ROOT).as_posix()
+        # Link to the app's DIRECTORY page: doxygen renders the app README as
+        # that page's description and lists its source files there -- the same
+        # page the Files tree reaches. (The README file page itself is empty.)
+        node.apps.append((app_dir.name, doxy_dir_id(app_rel), read_app_desc(app_dir)))
         count += 1
     return root, count
 
@@ -347,7 +281,7 @@ def gen_examples() -> str:
         "// GENERATED by scripts/utils/gen_doxygen_nav.py -- do not edit.",
         "",
         "/**",
-        " * @page ra8_examples Example Applications",
+        " * @page ra8_examples Examples",
         f" * @brief All {total} example apps, browsable by the same board and",
         " *        hardware-validation tiers the repository uses on disk.",
         " *",
@@ -370,76 +304,120 @@ def gen_examples() -> str:
 
 
 # --- narrative docs tree -----------------------------------------------------
+def _docs_subid(rel_under_docs: str) -> str:
+    """Stable @page id for a docs/ subdirectory, keyed by its full sub-path.
+
+    Keying on the full path (not just the leaf name) means two subdirs that
+    share a leaf name at different depths cannot collide. The distinct
+    "docsub" prefix keeps it clear of the "ra8_docs" root and of any page id.
+    """
+    safe = "".join(c if (c.isalnum() or c == "_") else "_" for c in rel_under_docs)
+    return "ra8_docsub_" + safe
+
+
+def _walk_docs(dir_path: pathlib.Path, rel_under_docs: str) -> tuple[list[str], str | None, str]:
+    """Emit the @page blocks for a docs/ subtree, mirroring it on disk.
+
+    Returns (page_blocks, subid, title). subid is None when the subtree holds
+    no narrative markdown at all, so the parent omits it -- a directory of only
+    images / JSON never becomes an empty nav node. Sub-directories are listed
+    before files, matching doxygen's own Files-tree convention.
+    """
+    md_files = sorted(
+        (p for p in dir_path.glob("*.md") if p.name.lower() != "readme.md"),
+        key=lambda p: p.name.lower(),
+    )
+    child_dirs = sorted(
+        (p for p in dir_path.iterdir() if p.is_dir() and p.name not in DOCS_SKIP_DIRS),
+        key=lambda p: p.name.lower(),
+    )
+
+    blocks: list[str] = []
+    child_nodes: list[tuple[str, str]] = []
+    for cd in child_dirs:
+        crel = f"{rel_under_docs}/{cd.name}" if rel_under_docs else cd.name
+        cblocks, csubid, ctitle = _walk_docs(cd, crel)
+        if csubid is not None:
+            child_nodes.append((csubid, ctitle))
+            blocks.extend(cblocks)
+
+    leaf_ids = [doxy_page_id(p.relative_to(ROOT).as_posix()) for p in md_files]
+    if not leaf_ids and not child_nodes:
+        return [], None, ""
+
+    subid = _docs_subid(rel_under_docs)
+    title = SUBDIR_TITLES.get(dir_path.name, prettify(dir_path.name))
+    page = ["/**", f" * @page {subid} {title}", " *"]
+    entries = [(cid, "") for cid, _t in child_nodes] + [(pid, "") for pid in leaf_ids]
+    emit_subpage_list(page, entries)
+    page.append(" */")
+    page.append("")
+    # This directory's page first, then its descendants' pages.
+    return page + blocks, subid, title
+
+
+def _handwritten_doc_page_ids() -> list[str]:
+    """Discover hand-written @page ids in docs/*.dox so they nest under
+    Documentation instead of floating at the top level.
+
+    Only the docs/ root .dox files are scanned (never docs/generated/, which
+    this script owns). The ids are read straight from the files, so a page that
+    is renamed or deleted is picked up or dropped automatically -- nothing is
+    hardcoded, nothing dangles.
+    """
+    ids: list[str] = []
+    for dox in sorted(DOCS_DIR.glob("*.dox"), key=lambda p: p.name.lower()):
+        for line in dox.read_text(encoding="utf-8", errors="replace").splitlines():
+            stripped = line.lstrip(" *")
+            for tag in ("@page ", "\\page "):
+                if stripped.startswith(tag):
+                    pid = stripped[len(tag) :].split()[0]
+                    if pid:
+                        ids.append(pid)
+    return ids
+
+
 def gen_docs() -> str:
-    section_pages: dict[str, list[str]] = {sid: [] for sid, _, _ in DOC_SECTIONS}
-    # sub-sections keyed by parent section id -> list of (subid, title, [ids])
-    subsections: dict[str, list[tuple[str, str, list[str]]]] = {
-        sid: [] for sid, _, _ in DOC_SECTIONS
-    }
+    # Top-level docs/*.md become leaves of the "Documentation" root; each
+    # docs/<subdir> that carries markdown becomes a sub-node, recursively --
+    # the tree is exactly the on-disk docs/ layout, no classification map.
+    top_md = sorted(
+        (p for p in DOCS_DIR.glob("*.md") if p.name.lower() != "readme.md"),
+        key=lambda p: p.name.lower(),
+    )
+    top_leaf_ids = [doxy_page_id(p.relative_to(ROOT).as_posix()) for p in top_md]
+    top_leaf_ids += _handwritten_doc_page_ids()
 
-    # top-level docs/*.md
-    top = sorted(p for p in DOCS_DIR.glob("*.md") if p.name.lower() != "readme.md")
-    for md in top:
-        base = md.stem
-        section = DOC_CLASSIFY.get(base)
-        if section is None:
-            section = "reference"
-            print(
-                f"gen_doxygen_nav: docs/{md.name} is not classified -- "
-                f"placing it under 'Project & Reference'.",
-                file=sys.stderr,
-            )
-        rel = md.relative_to(ROOT).as_posix()
-        section_pages[section].append(doxy_page_id(rel))
-
-    # docs/<subdir>/*.md -> sub-sections
-    for sub in sorted(p for p in DOCS_DIR.iterdir() if p.is_dir()):
-        if sub.name in DOCS_SKIP_DIRS:
-            continue
-        md_files = sorted(p for p in sub.glob("*.md") if p.name.lower() != "readme.md")
-        if not md_files:
-            continue
-        parent = SUBDIR_PARENT.get(sub.name, "reference")
-        title = SUBDIR_TITLES.get(sub.name, prettify(sub.name))
-        # Distinct "docsub" prefix so a subdir named like a section id (e.g.
-        # docs/reference vs the "reference" section) cannot collide.
-        subid = "ra8_docsub_" + "".join(
-            c if (c.isalnum() or c == "_") else "_" for c in sub.name.lower()
-        )
-        ids = [doxy_page_id(p.relative_to(ROOT).as_posix()) for p in md_files]
-        subsections[parent].append((subid, title, ids))
+    subdirs = sorted(
+        (p for p in DOCS_DIR.iterdir() if p.is_dir() and p.name not in DOCS_SKIP_DIRS),
+        key=lambda p: p.name.lower(),
+    )
+    child_nodes: list[tuple[str, str]] = []
+    sub_blocks: list[str] = []
+    for sd in subdirs:
+        blocks, subid, _title = _walk_docs(sd, sd.name)
+        if subid is not None:
+            child_nodes.append((subid, _title))
+            sub_blocks.extend(blocks)
 
     out: list[str] = [
         "// GENERATED by scripts/utils/gen_doxygen_nav.py -- do not edit.",
         "",
         "/**",
-        " * @page ra8_guides Guides & Reference",
-        " * @brief The hand-written documentation, grouped into a few sensible",
-        " *        sections. (The API reference lives under Topics; the source",
-        " *        tree lives under Files.)",
+        " * @page ra8_docs Documentation",
+        " * @brief The hand-written documentation, browsable exactly as it sits",
+        " *        under docs/ on disk. (The API reference lives under Topics /",
+        " *        Data Structures; the source tree lives under Files.)",
         " *",
     ]
-    emit_subpage_list(out, [(f"ra8_docs_{sid}", "") for sid, _t, _b in DOC_SECTIONS])
+    # Sub-directories first, then the top-level pages -- same order as the
+    # Files directory tree.
+    entries = [(subid, "") for subid, _t in child_nodes]
+    entries += [(pid, "") for pid in top_leaf_ids]
+    emit_subpage_list(out, entries)
     out.append(" */")
     out.append("")
-
-    for sid, title, brief in DOC_SECTIONS:
-        out.append("/**")
-        out.append(f" * @page ra8_docs_{sid} {title}")
-        out.append(f" * @brief {brief}")
-        out.append(" *")
-        entries = [(pid, "") for pid in section_pages[sid]]
-        entries += [(subid, "") for subid, _st, _ids in subsections[sid]]
-        emit_subpage_list(out, entries)
-        out.append(" */")
-        out.append("")
-        for subid, st, ids in subsections[sid]:
-            out.append("/**")
-            out.append(f" * @page {subid} {st}")
-            out.append(" *")
-            emit_subpage_list(out, [(pid, "") for pid in ids])
-            out.append(" */")
-            out.append("")
+    out.extend(sub_blocks)
 
     return "\n".join(out) + "\n"
 

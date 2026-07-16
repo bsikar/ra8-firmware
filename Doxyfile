@@ -43,6 +43,16 @@ MULTILINE_CPP_IS_BRIEF = NO
 TAB_SIZE               = 2
 OPTIMIZE_OUTPUT_FOR_C  = YES
 
+# Collapse each markdown page (the README main page especially) to a SINGLE
+# treeview node. At the default (5) doxygen turns every markdown heading into a
+# child nav node, so README.md's "Getting started / Examples / Development /
+# ..." H2s exploded into six sidebar entries. 0 keeps those headings rendered
+# ON the page (they still anchor and show in the body) but stops them becoming
+# navigation nodes -- the sidebar mirrors the file/directory tree, not each
+# page's internal outline. No page here uses an explicit [TOC], so nothing else
+# is affected.
+TOC_INCLUDE_HEADINGS   = 0
+
 # Per task spec: extract everything (incl. statics) but skip privates.
 EXTRACT_ALL            = YES
 EXTRACT_PRIVATE        = NO
