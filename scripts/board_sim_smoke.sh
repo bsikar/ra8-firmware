@@ -145,7 +145,14 @@ periodic_tick_apps="agt_periodic rtc_alarm elc_event_demo"
 # They are ThreadX/USBX, so (like the LevelX/FileX apps) they need a newer Unicorn
 # than the CI runner's 2.0.1 and a bounded budget; pass them explicitly, e.g.
 # `scripts/board_sim_smoke.sh usb_cdc_echo usb_msc_device`.
-usb_enum_apps="usb_cdc_echo threadx_usbx_cdc_demo usb_hid_device usb_msc_device"
+#
+# usb_printer_vendor (issue #265) is the odd one out: it is bare-metal (no
+# ThreadX/USBX) and answers the same chapter-9 script from a hand-rolled polled
+# responder that drives the native ra8_usb_pprn (Printer 7/1/2) + ra8_usb_pvnd
+# (Vendor 0xFF) class layers. The virtual host detects its first interface
+# (Printer 0x07) and the run reaches "device CONFIGURED (Printer active)"; the
+# same CONFIGURED assertion applies.
+usb_enum_apps="usb_cdc_echo threadx_usbx_cdc_demo usb_hid_device usb_msc_device usb_printer_vendor"
 
 # USB HOST-mode apps (#67 Phase 3, the inverse path). board_sim seams the
 # first-party ra8_usb_host_* primitives to a virtual HID boot keyboard (the same
