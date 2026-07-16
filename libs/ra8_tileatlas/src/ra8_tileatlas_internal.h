@@ -10,14 +10,17 @@
  * The producer is split across translation units to keep each under the
  * maintainability line cap:
  *
- *   - `ra8_tileatlas_produce.c` -- sniff/dispatch, band accumulator, tile
- *     cut + encode + sink, index/footer emission.
- *   - `ra8_tileatlas_png.c`     -- the streaming PNG scanline decoder.
+ *   - `ra8_tileatlas_produce.c`      -- sniff/dispatch, band accumulator,
+ *     tile cut + encode + sink, index/footer emission, JPEG/PNG arms.
+ *   - `ra8_tileatlas_produce_webp.c` -- the whole-frame WebP arm (#290):
+ *     `ra8_tileatlas_webp_work_bytes()` and `ra8_ta_priv_webp_transcode()`.
+ *   - `ra8_tileatlas_png.c`          -- the streaming PNG scanline decoder.
  *
- * This header carries the bump allocator over the caller's work arena and
- * the geometry/rows callback contracts the PNG decoder reports through
- * (the JPEG path reports through `ra8_jpeg_sw_decode_stripes()`'s own
- * public seams instead).
+ * This header carries the bump allocator over the caller's work arena, the
+ * geometry/rows callback contracts the PNG decoder reports through (the JPEG
+ * path reports through `ra8_jpeg_sw_decode_stripes()`'s own public seams
+ * instead), and the producer-state / prefix-pull seams the WebP arm shares
+ * with the dispatcher.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -164,3 +167,197 @@ RA8_PRIV ra8_err_t ra8_ta_priv_png_rows(ra8_tileatlas_pull_fn pull,
                                         ra8_ta_geom_fn        on_geom,
                                         ra8_ta_rows_fn        on_rows,
                                         void*                 cb_ctx);
+
+/**
+ * @enum ra8_ta_carve_const_t
+ * @brief Carve-sizing constant shared by both work-arena calculators.
+ */
+typedef enum : uint32_t {
+  k_ra8_ta_carve_slack = 128U, /**< Alignment slack folded into every arena sizing. */
+} ra8_ta_carve_const_t;
+
+/**
+ * @struct ra8_ta_prefix_pull_t
+ * @brief Pull adapter that replays the sniffed head bytes, then delegates.
+ *
+ * @details The producer must peek the source magic before choosing a decoder,
+ *          but every decoder expects the stream from byte 0; this adapter
+ *          serves the peeked bytes first, then transparently delegates to the
+ *          inner source. Shared so the WebP arm can pull its whole compressed
+ *          source through the same replay as the streaming decoders.
+ *
+ * @invariant `pos <= head_len` at all times.
+ * @since 0.1.0
+ */
+typedef struct {
+  const uint8_t*        head;      /**< Sniffed bytes to replay. */
+  size_t                head_len;  /**< Sniffed byte count.      */
+  size_t                pos;       /**< Replay cursor.           */
+  ra8_tileatlas_pull_fn inner;     /**< Real source.             */
+  void*                 inner_ctx; /**< Context for the source.  */
+} ra8_ta_prefix_pull_t;
+
+/**
+ * @struct ra8_ta_prod_state_t
+ * @brief Whole transcode state (module-static instance in the producer TU).
+ *
+ * @details One static instance mirrors the decoder pattern; every sized buffer
+ *          inside is a bump carve out of the caller's arena. Shared with the
+ *          WebP arm, which binds geometry and feeds rows through the same
+ *          state so its atlas bytes are identical to the streaming path.
+ *
+ * @invariant `band_fill <= tile_h` and `tiles_done <= tile_count`.
+ * @since 0.1.0
+ */
+typedef struct {
+  const ra8_tileatlas_produce_cfg_t* cfg;        /**< Caller configuration.    */
+  ra8_ta_bump_t                      bump_store; /**< Arena allocator state.   */
+  ra8_ta_bump_t*                     bump;       /**< Arena allocator (owned). */
+
+  uint16_t cap_w; /**< Effective width cap.  */
+  uint16_t cap_h; /**< Effective height cap. */
+
+  uint16_t w;          /**< Source width, pixels.      */
+  uint16_t h;          /**< Source height, pixels.     */
+  uint8_t  bpp;        /**< Output bytes per pixel.    */
+  uint16_t tile_cols;  /**< Tile grid columns.         */
+  uint16_t tile_rows;  /**< Tile grid rows.            */
+  uint32_t tile_count; /**< Total tiles (cols * rows). */
+  uint8_t  geom_done;  /**< 1 once geometry was bound. */
+
+  uint8_t* band;    /**< One tile row of decoded pixels.   */
+  uint8_t* stage;   /**< One packed tile payload.          */
+  uint8_t* cmp;     /**< One encoded tile (deflate codec). */
+  uint32_t cmp_cap; /**< Capacity of `cmp`.                */
+  uint8_t* idx;     /**< Tile index bytes (8 per tile).    */
+  uint8_t* dfl;     /**< Deflate compressor scratch.       */
+  uint32_t dfl_len; /**< Scratch length (0 for raw codec). */
+
+  uint32_t rows_seen;  /**< Decoded rows accumulated so far. */
+  uint32_t band_fill;  /**< Rows currently in the band.      */
+  uint32_t tiles_done; /**< Tiles encoded + recorded so far. */
+  uint32_t written;    /**< Atlas bytes sunk so far.         */
+} ra8_ta_prod_state_t;
+
+/**
+ * @brief Pull adapter: replay the sniffed head, then delegate to the source.
+ *
+ * @details Serves the replay bytes first, then transparently delegates to the
+ *          inner source. Matches ::ra8_tileatlas_pull_fn so it can be passed
+ *          as the pull seam to any decoder.
+ *
+ * @param[in]  ctx A ::ra8_ta_prefix_pull_t.
+ * @param[out] buf Destination buffer.
+ * @param[in]  cap Capacity of @p buf.
+ * @param[out] got Bytes delivered.
+ *
+ * @return Result code.
+ * @retval k_ra8_ok Delivered replay or source bytes.
+ * @retval other    Propagated from the inner source.
+ *
+ * @pre @p ctx points at an initialised adapter.
+ * @pre @p buf holds @p cap writable bytes.
+ * @post `*got <= cap` bytes were written to @p buf.
+ * @post The replay cursor never exceeds the head length.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t ra8_ta_priv_prefix_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got);
+
+/**
+ * @brief Bind the source geometry: validate caps, carve buffers, emit header.
+ *
+ * @details Fires once per transcode (from any decoder arm). Rejects, fail
+ *          closed: dimensions above the caps, a tile grid above the format
+ *          cap, and any carve the arena cannot fit. On success the 32-byte
+ *          RTA1 header has been sunk. Matches ::ra8_ta_geom_fn.
+ *
+ * @param[in] ctx      The producer state (::ra8_ta_prod_state_t).
+ * @param[in] width    Source width, pixels.
+ * @param[in] height   Source height, pixels.
+ * @param[in] channels Output bytes per pixel (1, 3 or 4).
+ *
+ * @return Result code.
+ * @retval k_ra8_ok                Geometry bound; header written.
+ * @retval k_ra8_err_invalid_size  Over the caps / grid cap / arena exhausted.
+ * @retval k_ra8_err_invalid_state The geometry hook fired twice.
+ * @retval other                   Propagated from the sink.
+ *
+ * @pre The decoder validated @p width/@p height non-zero.
+ * @pre `st->cfg` and `st->bump` are bound.
+ * @post On success the pixel-path buffers are carved and the header sunk.
+ * @post On error the transcode aborts.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t ra8_ta_priv_on_geom(void*    ctx,
+                                       uint16_t width,
+                                       uint16_t height,
+                                       uint8_t  channels);
+
+/**
+ * @brief Row sink shared by every decoder arm: accumulate, flush full bands.
+ *
+ * @details Enforces the strict in-order row contract (`y0 == rows_seen`), then
+ *          copies the delivered rows into the band, flushing a tile row every
+ *          time the band fills. A row group may span a band boundary; the copy
+ *          loop splits it. Matches ::ra8_ta_rows_fn.
+ *
+ * @param[in] ctx      The producer state (::ra8_ta_prod_state_t).
+ * @param[in] px       Decoded row pixels.
+ * @param[in] width    Row width, pixels.
+ * @param[in] y0       Image row of the first delivered row.
+ * @param[in] nrows    Rows delivered.
+ * @param[in] channels Bytes per pixel.
+ *
+ * @return Result code.
+ * @retval k_ra8_ok                    Rows accumulated (bands maybe flushed).
+ * @retval k_ra8_err_validation_failed Contract violation (order, geometry).
+ * @retval other                       Propagated from the flush stage.
+ *
+ * @pre The geometry hook has fired (`geom_done == 1`).
+ * @pre @p px holds `nrows * width * channels` bytes.
+ * @post `rows_seen` advanced by @p nrows on success.
+ * @post On error the transcode aborts.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t ra8_ta_priv_on_rows(void*          ctx,
+                                       const uint8_t* px,
+                                       uint16_t       width,
+                                       uint16_t       y0,
+                                       uint16_t       nrows,
+                                       uint8_t        channels);
+
+/**
+ * @brief Transcode a WebP source into the RTA1 tile path (whole-frame, #290).
+ *
+ * @details Pulls the whole compressed source into `cfg->webp_work`, reads its
+ *          geometry, binds it as a 4-bpp source through ::ra8_ta_priv_on_geom,
+ *          carves the decoded RGBA frame and libwebp scratch after the source
+ *          bytes, decodes heap-free through the `ra8_webp` facade, and bands
+ *          the frame out through ::ra8_ta_priv_on_rows. Every carve is
+ *          bounds-checked; any shortfall fails closed. WebP is not
+ *          stripe-decodable (its lossless mode back-references the whole
+ *          frame), so it carries an honest whole-frame memory cost isolated in
+ *          `webp_work`; the emitted atlas bytes are identical to the streaming
+ *          arms for the same pixels.
+ *
+ * @param[in,out] st  Producer state (`priv_init_state()` succeeded).
+ * @param[in,out] pfx Prefix-replay pull adapter over the source.
+ *
+ * @return Result code.
+ * @retval k_ra8_ok                    Whole WebP decoded and accumulated.
+ * @retval k_ra8_err_not_supported     No `webp_work` arena, or an axis over cap.
+ * @retval k_ra8_err_invalid_size      The arena cannot fit source + frame + scratch.
+ * @retval k_ra8_err_validation_failed Corrupt WebP or the scratch exhausted.
+ * @retval other                       Propagated from the pull / facade / rows.
+ *
+ * @pre `ra8_ta_priv_prefix_pull` replays the sniffed head before the source.
+ * @pre The dispatcher confirmed the RIFF+WEBP head.
+ * @post On success every source row reached the band accumulator.
+ * @post On error the transcode aborts.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t ra8_ta_priv_webp_transcode(ra8_ta_prod_state_t* st, ra8_ta_prefix_pull_t* pfx);

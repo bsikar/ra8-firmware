@@ -146,19 +146,19 @@ static void test_comic_page0_digest_matches_golden(void)
   int32_t  zh = 0;
   uint32_t zc = 0U;
   tsc_probe(k_comic_cbz, (size_t)k_comic_cbz_len, &zp, &zw, &zh, &zc);
-  TEST_ASSERT_EQ((int32_t)k_tsc_golden_page, (int32_t)zp);
-  TEST_ASSERT_EQ((int32_t)k_tsc_golden_w, zw);
-  TEST_ASSERT_EQ((int32_t)k_tsc_golden_h, zh);
-  TEST_ASSERT_EQ((int32_t)k_tsc_golden_crc, (int32_t)zc);
+  TEST_ASSERT_EQ(k_tsc_golden_page, zp);
+  TEST_ASSERT_EQ(k_tsc_golden_w, zw);
+  TEST_ASSERT_EQ(k_tsc_golden_h, zh);
+  TEST_ASSERT_EQ(k_tsc_golden_crc, zc);
 
   uint32_t rp = 0U;
   int32_t  rw = 0;
   int32_t  rh = 0;
   uint32_t rc = 0U;
   tsc_probe(k_comic_cbr, (size_t)k_comic_cbr_len, &rp, &rw, &rh, &rc);
-  TEST_ASSERT_EQ((int32_t)k_tsc_golden_page, (int32_t)rp);
-  TEST_ASSERT_EQ((int32_t)k_tsc_golden_crc, (int32_t)rc);
-  TEST_ASSERT_EQ((int32_t)zc, (int32_t)rc); /* CBZ and CBR share the page bytes */
+  TEST_ASSERT_EQ(k_tsc_golden_page, rp);
+  TEST_ASSERT_EQ(k_tsc_golden_crc, rc);
+  TEST_ASSERT_EQ(zc, rc); /* CBZ and CBR share the page bytes */
   TEST_END("ereader_shelf comic: CBZ+CBR page-0 decode == 733D076C golden");
 }
 
@@ -241,23 +241,23 @@ static void test_comic_turn_clamp_mcdc(void)
   TEST_BEGIN("sh_comic_turn: clamped one-page step, both decisions MC/DC");
   uint32_t page = 0U;
   TEST_ASSERT(m_turn(&page, 2U, 1)); /* D1 true */
-  TEST_ASSERT_EQ(1, (int32_t)page);
+  TEST_ASSERT_EQ(1, page);
   page = 0U;
   TEST_ASSERT(!m_turn(&page, 2U, 0)); /* D1 dir false */
-  TEST_ASSERT_EQ(0, (int32_t)page);
+  TEST_ASSERT_EQ(0, page);
   page = 1U;
   TEST_ASSERT(!m_turn(&page, 2U, 1)); /* D1 bound false (last page) */
-  TEST_ASSERT_EQ(1, (int32_t)page);
+  TEST_ASSERT_EQ(1, page);
 
   page = 1U;
   TEST_ASSERT(m_turn(&page, 2U, -1)); /* D2 true */
-  TEST_ASSERT_EQ(0, (int32_t)page);
+  TEST_ASSERT_EQ(0, page);
   page = 1U;
   TEST_ASSERT(!m_turn(&page, 2U, 0)); /* D2 dir false */
-  TEST_ASSERT_EQ(1, (int32_t)page);
+  TEST_ASSERT_EQ(1, page);
   page = 0U;
   TEST_ASSERT(!m_turn(&page, 2U, -1)); /* D2 bound false (first page) */
-  TEST_ASSERT_EQ(0, (int32_t)page);
+  TEST_ASSERT_EQ(0, page);
 
   page = 0U;
   TEST_ASSERT(!m_turn(&page, 0U, 1)); /* empty archive: no-op */
@@ -287,13 +287,13 @@ static void test_comic_tap_mcdc(void)
   const int32_t w    = (int32_t)k_tsc_fb_w * 8;
   uint32_t      page = 0U;
   TEST_ASSERT(m_tap_edge(&page, 2U, w - 1, w, false)); /* both true */
-  TEST_ASSERT_EQ(1, (int32_t)page);
+  TEST_ASSERT_EQ(1, page);
   page = 0U;
   TEST_ASSERT(!m_tap_edge(&page, 2U, w / 2, w, false)); /* d==0 short-circuit */
-  TEST_ASSERT_EQ(0, (int32_t)page);
+  TEST_ASSERT_EQ(0, page);
   page = 1U;
   TEST_ASSERT(!m_tap_edge(&page, 2U, w - 1, w, false)); /* turn false at end */
-  TEST_ASSERT_EQ(1, (int32_t)page);
+  TEST_ASSERT_EQ(1, page);
   TEST_END("sh_comic_tap: edge tap turns iff it maps to a real move");
 }
 

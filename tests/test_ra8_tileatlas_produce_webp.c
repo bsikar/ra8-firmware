@@ -342,10 +342,10 @@ static void test_webp_lossless_golden(void)
                               (size_t)need,
                               &store,
                               &info));
-  TEST_ASSERT_EQ((uint8_t)k_t_bpp, info.bpp);
-  TEST_ASSERT_EQ((uint16_t)k_t_dim, info.width);
-  TEST_ASSERT_EQ((uint16_t)k_t_dim, info.height);
-  TEST_ASSERT_EQ((uint32_t)k_t_grid, info.tile_count);
+  TEST_ASSERT_EQ(k_t_bpp, info.bpp);
+  TEST_ASSERT_EQ(k_t_dim, info.width);
+  TEST_ASSERT_EQ(k_t_dim, info.height);
+  TEST_ASSERT_EQ(k_t_grid, info.tile_count);
 
   ra8_tileatlas_info_t reparsed = {};
   TEST_ASSERT_EQ(
@@ -425,9 +425,9 @@ static void test_webp_lossy_path(void)
                               sizeof(s_webp_work),
                               &store,
                               &info));
-  TEST_ASSERT_EQ((uint8_t)k_t_bpp, info.bpp);
-  TEST_ASSERT_EQ((uint16_t)k_t_dim, info.width);
-  TEST_ASSERT_EQ((uint16_t)k_t_dim, info.height);
+  TEST_ASSERT_EQ(k_t_bpp, info.bpp);
+  TEST_ASSERT_EQ(k_t_dim, info.width);
+  TEST_ASSERT_EQ(k_t_dim, info.height);
   ra8_tileatlas_info_t reparsed = {};
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -447,8 +447,8 @@ static void test_webp_lossy_path(void)
                                          (uint32_t)sizeof(s_cell),
                                          &w,
                                          &h));
-  TEST_ASSERT_EQ((uint16_t)k_t_tile, w);
-  TEST_ASSERT_EQ((uint16_t)k_t_tile, h);
+  TEST_ASSERT_EQ(k_t_tile, w);
+  TEST_ASSERT_EQ(k_t_tile, h);
   TEST_END("produce webp: lossy VP8 -> valid RTA1");
 }
 
