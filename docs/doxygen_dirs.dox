@@ -17,11 +17,28 @@
  *        lives under libs/third_party and is excluded from these docs.
  */
 
-// NOTE: the top-level src/ directory is described by src/README.md instead
-// of a @dir block here: hundreds of nested library dirs are also named
-// "src", and a bare `@dir src` fragment is ambiguous (doxygen warns once
-// per candidate). A README.md attaches to its own directory without any
-// name matching, so it cannot collide.
+/*
+ * NOTE: the repo-root @dir src lives in the generated docs/generated/nav_dirs.dox
+ * (emitted by scripts/utils/gen_doxygen_nav.py with an absolute path). A plain
+ * "@dir src" here is ambiguous because many example apps carry a nested src/.
+ */
+
+/**
+ * @dir docs
+ * @brief Human-facing documentation: architecture, policy, the DO-178C /
+ *        IEC 61508 safety-and-certification evidence, hardware bring-up, and
+ *        quick reference. The narrative pages are grouped for reading under the
+ *        "Guides & Reference" section of the sidebar; this Files view is the
+ *        raw on-disk tree. Vendored theme assets (docs/doxygen_theme) and the
+ *        legacy build output (docs/doxygen) are excluded.
+ */
+
+/**
+ * @dir docs/reference
+ * @brief Committed vendor reference material: the RA8D2 datasheet, Hardware
+ *        User's Manual, technical brief, and the EK-RA8D2 board manual (PDFs),
+ *        plus the chapter map used by the HUM-citation tooling.
+ */
 
 /**
  * @dir examples
