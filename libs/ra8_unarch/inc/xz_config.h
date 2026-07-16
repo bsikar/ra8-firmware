@@ -23,10 +23,12 @@
  * defines a bare integer constant.
  *
  * Feature selection (compile-time, decode-only):
- * - `XZ_DEC_SINGLE` + `XZ_DEC_PREALLOC`: the two zero-growth modes the
- *   wrapper uses (single-call decode; preallocated-dictionary streaming).
- *   `XZ_DEC_DYNALLOC` is deliberately NOT defined: it would grow the
- *   dictionary on demand from hostile header values.
+ * - `XZ_DEC_PREALLOC` only: the zero-growth streaming mode the wrapper
+ *   uses (decoder state + dictionary allocated once at init from the
+ *   caller scratch). `XZ_DEC_DYNALLOC` is deliberately NOT defined: it
+ *   would grow the dictionary on demand from hostile header values.
+ *   `XZ_DEC_SINGLE` is likewise not defined: no consumer decodes from a
+ *   fully-resident input buffer, and every enabled mode is dead weight.
  * - `XZ_USE_CRC64`: verify the CRC64 integrity check that `xz`(1) emits by
  *   default; without it every default-created `.xz` would be rejected or
  *   ride unverified.
@@ -55,22 +57,12 @@
 #include "ra8_unarch_xz_pool.h"
 
 /**
- * @def XZ_DEC_SINGLE
- * @brief Enable xz-embedded's single-call decode mode (`XZ_SINGLE`).
- * @details Whole-input / whole-output decoding where the caller's output
- *          buffer doubles as the LZMA2 dictionary -- zero dictionary
- *          allocation. Used by `ra8_unarch_xz_decode`.
- * @note Build-configuration flag consumed by the SOUP sources.
- * @since Version 0.1.0
- */
-#define XZ_DEC_SINGLE
-
-/**
  * @def XZ_DEC_PREALLOC
  * @brief Enable xz-embedded's preallocated-dictionary streaming mode.
- * @details Multi-call decoding with the dictionary allocated once at init
- *          (from the caller scratch via the pool) and never grown. Used by
- *          the seekable stream view over `.tar.xz` content.
+ * @details Multi-call decoding with the decoder state and dictionary
+ *          allocated once at init (from the caller scratch via the pool)
+ *          and never grown. The only mode the `ra8_unarch_xz` wrapper
+ *          uses; `XZ_DEC_SINGLE` / `XZ_DEC_DYNALLOC` stay disabled.
  * @note Build-configuration flag consumed by the SOUP sources.
  * @since Version 0.1.0
  */
@@ -145,6 +137,19 @@
  * @since Version 0.1.0
  */
 #define memzero(buf, size) memset((buf), 0, (size))
+
+/**
+ * @def min
+ * @brief Untyped minimum shim used by the SOUP's buffer clamping.
+ * @details Evaluates to the smaller of @p x and @p y, exactly as the kernel
+ *          macro the sources were written against (both operands are always
+ *          same-typed at the call sites).
+ * @note Name fixed by the SOUP porting contract; do not rename.
+ * @since Version 0.1.0
+ */
+#ifndef min
+#define min(x, y) (((x) < (y)) ? (x) : (y))
+#endif
 
 /**
  * @def min_t

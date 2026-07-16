@@ -354,6 +354,34 @@ macro(ra8_add_app)
         list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/third_party/libwebp)
     endif()
 
+    # ra8_unarch decodes wrapped / container archive streams (tar for .cbt,
+    # gzip, XZ) under the unified decompression-limits policy. Its XZ leg
+    # drives the vendored xz-embedded decoder (SOUP), whose allocator and mode
+    # selection come from the first-party porting header
+    # libs/ra8_unarch/inc/xz_config.h (zero-heap pool, XZ_PREALLOC only).
+    # Wired whenever ra8_unarch is requested directly OR pulled in
+    # transitively by ra8_comic (the CBT / wrapped-open backends), and only
+    # once. The gzip leg reuses the miniz DEFLATE core supplied by the
+    # ra8_epub block above or the bare-miniz block below.
+    set(_ra8_xz_vendor "")
+    if(("ra8_unarch" IN_LIST _RA8_APP_LIBS) OR ("ra8_comic" IN_LIST _RA8_APP_LIBS))
+        set(_ra8_xz_vendor
+            ${RA8_REPO_ROOT}/libs/third_party/xz_embedded/xz_crc32.c
+            ${RA8_REPO_ROOT}/libs/third_party/xz_embedded/xz_crc64.c
+            ${RA8_REPO_ROOT}/libs/third_party/xz_embedded/xz_dec_lzma2.c
+            ${RA8_REPO_ROOT}/libs/third_party/xz_embedded/xz_dec_stream.c)
+        list(APPEND _ra8_lib_extra ${_ra8_xz_vendor})
+        list(APPEND _ra8_lib_inc
+            ${RA8_REPO_ROOT}/libs/third_party/xz_embedded
+            ${RA8_REPO_ROOT}/libs/ra8_unarch/inc
+            ${RA8_REPO_ROOT}/libs/third_party/miniz)
+        if(NOT "ra8_unarch" IN_LIST _RA8_APP_LIBS)
+            file(GLOB_RECURSE _ra8_unarch_srcs CONFIGURE_DEPENDS
+                ${RA8_REPO_ROOT}/libs/ra8_unarch/src/*.c)
+            list(APPEND _ra8_lib_extra ${_ra8_unarch_srcs})
+        endif()
+    endif()
+
     # A bare "miniz" in LIBS pulls in just the vendored DEFLATE core, for apps
     # that inflate compressed blobs directly (e.g. ra8_book RBKC containers via the
     # heap-free tinfl_decompress) without ra8_epub's full ZIP + XML stack. Skipped
@@ -552,6 +580,16 @@ macro(ra8_add_app)
     if(_ra8_webp_vendor)
         set_source_files_properties(${_ra8_webp_vendor} PROPERTIES COMPILE_OPTIONS
             "-w;-fno-strict-aliasing;-DRA8_WEBP_USE_ARENA")
+    endif()
+
+    # The vendored xz-embedded decoder (SOUP): blanket -w + -fno-strict-aliasing
+    # matching tests/CMakeLists.txt. Its attacker-facing memory-safety net is
+    # the ASan/UBSan libFuzzer harness (fuzz_ra8_unarch_xz) plus the bounded
+    # first-party wrapper (ra8_unarch_xz.c), which is held to the full warning
+    # bar and charges every decode against the decompression-limits policy.
+    if(_ra8_xz_vendor)
+        set_source_files_properties(${_ra8_xz_vendor} PROPERTIES COMPILE_OPTIONS
+            "-w;-fno-strict-aliasing")
     endif()
 
     ra8_target_enable_project_warnings(${_ra8_elf} STACK_USAGE_BYTES ${_RA8_APP_STACK_BYTES})

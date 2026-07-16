@@ -70,6 +70,7 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | Apache NimBLE | git `8b6f3e81` (post-1.9.0 dev snapshot) | Apache-2.0 | `libs/third_party/nimble/` | <https://github.com/apache/mynewt-nimble> |
 | litehtml | git `8836bc1b` (post-v0.9 dev snapshot) | BSD-3-Clause | `libs/third_party/litehtml/` | <https://github.com/litehtml/litehtml> |
 | miniz | 11.0.2 | MIT (zlib-style) | `libs/third_party/miniz/` | <https://github.com/richgel999/miniz> |
+| XZ Embedded (decode-only) | tag `v2024-12-30` (git `ae63ae3a`) | 0BSD | `libs/third_party/xz_embedded/` | <https://github.com/tukaani-project/xz-embedded> |
 | stb (stb_image + stb_truetype) | image 2.30 / truetype 1.26 | MIT OR Unlicense (public domain) | `libs/third_party/stb/` | <https://github.com/nothings/stb> |
 | libwebp (decode-only, **patched**) | 1.5.0 | BSD-3-Clause (+ PATENTS grant) | `libs/third_party/libwebp/` | <https://chromium.googlesource.com/webm/libwebp> |
 | TinyXML-2 (**patched**) | 11.0.0 | Zlib | `libs/third_party/tinyxml2/` | <https://github.com/leethomason/tinyxml2> |
@@ -81,7 +82,7 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | Renesas BLE controller patch (**not vendored**) | FSP (Renesas SLA) | Renesas SLA | `libs/third_party/fsp_blobs/ble_patch/` (absent) | <https://github.com/renesas/fsp> |
 | Literata (**bundled font**) | 3.103 | OFL-1.1 | `libs/fonts/Literata-Regular.ttf` | <https://github.com/googlefonts/literata> |
 
-Counts: **17 vendored source components** + **1 blob tree** (`fsp_blobs/`, holding
+Counts: **18 vendored source components** + **1 blob tree** (`fsp_blobs/`, holding
 the vendored RSIP-E50D firmware and the absent BLE patch) + **1 bundled font
 asset**. TinyXML-2 and libwebp each carry a local in-tree patch (see below), so
 both are *modified* SOUP. The four ML-stack components (TFLite-micro, FlatBuffers,
@@ -96,13 +97,13 @@ linked into nothing -- see the build-tools note below and
 
 ## Provenance and integrity
 
-Only the Renesas RSIP blob is pinned to an upstream commit with an integrity
-hash. Eight components carry an upstream commit pin (the ML stack, the RSIP
-blob, the NimBLE / litehtml dev snapshots -- the latter two recovered by
-fingerprinting the vendored trees against their upstream histories, each a
-byte-identical single-commit match -- and libwebp, pinned to release tag
-`v1.5.0` and byte-identical except its one allocator-fronting patch). The
-remaining ten source components'
+Only the Renesas RSIP blob and XZ Embedded are pinned to an upstream commit
+with an integrity hash. Nine components carry an upstream commit pin (the ML
+stack, the RSIP blob, the NimBLE / litehtml dev snapshots and XZ Embedded --
+those three recovered by fingerprinting the vendored trees against their
+upstream histories, each a byte-identical single-commit match -- and libwebp,
+pinned to release tag `v1.5.0` and byte-identical except its one
+allocator-fronting patch). The remaining ten source components'
 versions are *inferred from an in-tree header* with no upstream commit or
 `SHA256SUMS` manifest recorded -- the open **T5-09** finding; those trees
 are not independently reproducible or tamper-verifiable yet.
@@ -118,6 +119,7 @@ are not independently reproducible or tamper-verifiable yet.
 | libwebp (decode-only) | release tag `v1.5.0` (byte-identical except 1 patched TU) | `a4d7a715337ded4451fec90ff8ce79728e04126c` | none | **commit-pinned** (+patch) |
 | Apache NimBLE | tree fingerprint vs upstream (859/859 files byte-identical) | `8b6f3e819118a1839e5f238bfe1797d64878dc3d` | none | **commit-pinned** |
 | litehtml | tree fingerprint vs upstream (215/215 files byte-identical) | `8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e` | none | **commit-pinned** |
+| XZ Embedded | tree fingerprint vs upstream (11/11 files byte-identical, tag `v2024-12-30`) | `ae63ae3a36ed01724674e8f3d750dc47bf125410` | aggregate SHA-256 `9dc6c2af...c95dd9` | **fully pinned (gold standard)** |
 | TFLite-micro | commit pin (lean subset) | `fddd3707a3c5733af4cb866f18650441e6712504` | none | **commit-pinned** |
 | FlatBuffers | tag `v25.9.23` (+ `FLATBUFFERS_VERSION_*`) | `edbe17738352418245d7228e7fd9f12c3ddc34c4` | none | **commit-pinned** |
 | gemmlowp | commit pin | `719139ce755a0f31cbf1c37f7f98adcc7fc9f425` | none | **commit-pinned** |
@@ -154,6 +156,13 @@ below); this section reproduces the copyright line and points to that text.
 - **miniz** -- MIT. "Copyright 2013-2014 RAD Game Tools and Valve Software;
   Copyright 2010-2014 Rich Geldreich and Tenacious Software LLC." Text:
   `libs/third_party/miniz/LICENSE`.
+- **XZ Embedded** (decode-only) -- 0BSD. "Copyright (C) The XZ Embedded
+  authors and contributors" (Lasse Collin; parts based on Igor Pavlov's
+  LZMA SDK). Text: `libs/third_party/xz_embedded/COPYING`; contributor
+  list: `libs/third_party/xz_embedded/AUTHORS`. Unmodified SOUP -- the
+  allocator / mode porting layer is the first-party
+  `libs/ra8_unarch/inc/xz_config.h` (see
+  [`docs/SOUP/xz_embedded.md`](docs/SOUP/xz_embedded.md)).
 - **stb** -- public domain, dual `MIT OR Unlicense`. Sean Barrett
   (nothings.org). The license text lives ONLY in the tails of
   `stb_image.h` / `stb_truetype.h` -- there is no standalone `LICENSE` file
