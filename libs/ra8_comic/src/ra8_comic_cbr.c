@@ -8,15 +8,17 @@
  * @details
  * The RAR half of the comic facade. ::ra8_comic_cbr_open walks the RAR block chain
  * one header at a time through the clean-room ::ra8_rar_next, appending each image
- * file member to the shared page index; a member packed with a RAR compressor is
- * indexed with `extractable == 0` so the page list stays complete while
- * ::ra8_comic_cbr_extract reports it unsupported. STORE members -- the common case
- * for comics whose pages are already-compressed JPEG/PNG -- extract by streaming
- * the member's data area. The walk stops at the first unparseable block, keeping
- * the pages found so far (tolerant of trailing junk).
+ * file member to the shared page index. STORE members -- the common case for comics
+ * whose pages are already-compressed JPEG/PNG -- extract by streaming the member's
+ * data area; a RAR5-compressed member is inflated by the clean-room decompressor
+ * (::ra8_rar5_decompress) through ::ra8_rar_extract. Only a RAR4-compressed member
+ * (legacy codec, out of scope) is indexed `extractable == 0` and reported
+ * unsupported. The walk stops at the first unparseable block, keeping the pages
+ * found so far (tolerant of trailing junk).
  *
- * Zero allocation (NASA Rule 3): the walker reads one header into a stack scratch
- * and streams one member through the caller's buffer.
+ * Zero allocation (NASA Rule 3): the walker reads one header into a stack scratch,
+ * streams STORE members through the caller's buffer, and inflates compressed members
+ * through the comic's caller-owned RAR5 scratch pool.
  *
  * @since Version 0.1.0
  *
@@ -50,8 +52,9 @@ typedef enum : uint32_t {
 /**
  * @brief Index one RAR block if it is a decodable page-image file member.
  * @details Skips non-file blocks, directories and non-image / hidden names;
- *          otherwise appends the member (marking `extractable` from the STORE
- *          method) to the shared index.
+ *          otherwise appends the member. A STORE member and, on a RAR5 archive, a
+ *          compressed member are both `extractable` (the RAR5 decompressor decodes
+ *          the latter); only a RAR4-compressed member stays non-extractable.
  * @param[in,out] c    Comic accumulating its index.
  * @param[in]     ent  Decoded block from ::ra8_rar_next.
  * @param[in]     name Member name bytes.
@@ -78,12 +81,17 @@ s_add_member(ra8_comic_t* c, const ra8_rar_entry_t* ent, const char* name, uint1
   if (!ra8_comic_is_page_name(name, nlen)) {
     return k_ra8_ok;
   }
-  const uint8_t extractable = (ent->method == (uint8_t)k_ra8_rar_method_store) ? 1U : 0U;
+  const bool is_store = (ent->method == (uint8_t)k_ra8_rar_method_store);
+  const bool is_rar5  = (c->rar.version == k_ra8_rar_ver_5);
+  /* STORE always decodes; a compressed member decodes only on RAR5 (the RAR4
+   * legacy codec is out of scope), so a RAR4-compressed page stays inert. */
+  const uint8_t extractable = (is_store || is_rar5) ? 1U : 0U;
   return ra8_comic_page_add(c,
                             name,
                             nlen,
                             ent->unp_size,
                             extractable,
+                            ent->method,
                             0U,
                             ent->data_off,
                             ent->pack_size);
@@ -134,9 +142,9 @@ ra8_err_t ra8_comic_cbr_extract(ra8_comic_t*            c,
   ra8_rar_entry_t ent = {};
   ent.is_file         = 1U;
   ent.is_dir          = 0U;
-  ent.method          = (uint8_t)k_ra8_rar_method_store;
+  ent.method          = p->rar_method;
   ent.data_off        = p->data_off;
   ent.pack_size       = p->pack_size;
   ent.unp_size        = p->raw_size;
-  return ra8_rar_extract_stored(&c->rar, &ent, buf, cap, got);
+  return ra8_rar_extract(&c->rar, &ent, buf, cap, &c->rar5_state, got);
 }
