@@ -230,7 +230,7 @@ static uint64_t stream_and_verify_big(ra8_epub_book_t* book)
   ra8_epub_entry_reader_t rd   = {};
   uint64_t                size = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_entry_open(book, "big.dat", &rd, &size));
-  TEST_ASSERT_EQ((uint64_t)k_big_bytes, size);
+  TEST_ASSERT_EQ(k_big_bytes, size);
 
   uint8_t  chunk[k_chunk] = {};
   uint64_t off            = 0U;
@@ -247,7 +247,7 @@ static uint64_t stream_and_verify_big(ra8_epub_book_t* book)
     ++reads;
     TEST_ASSERT(reads <= ((uint32_t)k_big_bytes / (uint32_t)k_chunk) + 2U); /* bounded loop */
   }
-  TEST_ASSERT_EQ((uint64_t)k_big_bytes, off);
+  TEST_ASSERT_EQ(k_big_bytes, off);
   /* Reading past EOF stays at zero, idempotently. */
   size_t again = 123U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_entry_read(&rd, chunk, sizeof(chunk), &again));
@@ -289,12 +289,12 @@ static void test_entry_stream_parity_bounded(void)
   /* Oracle: the whole entry inflated in one shot (the path #231 replaces). */
   size_t ref_got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_get_resource(&book, "big.dat", s_ref, sizeof(s_ref), &ref_got));
-  TEST_ASSERT_EQ((size_t)k_big_bytes, ref_got);
+  TEST_ASSERT_EQ(k_big_bytes, ref_got);
   TEST_ASSERT_EQ(0, memcmp(s_ref, s_big, (size_t)k_big_bytes));
 
   /* Streamed, chunk by chunk, into a fixed 4 KiB buffer -- provably parity. */
   const uint64_t streamed = stream_and_verify_big(&book);
-  TEST_ASSERT_EQ((uint64_t)ref_got, streamed);
+  TEST_ASSERT_EQ(ref_got, streamed);
   /* The resident chunk buffer is 64x smaller than the entry it paged. */
   TEST_ASSERT(((size_t)k_chunk * 64U) == (size_t)k_big_bytes);
 
@@ -329,7 +329,7 @@ static void test_entry_stream_over_streamed_book(void)
   TEST_ASSERT(book.zip_bytes == nullptr);
 
   const uint64_t streamed = stream_and_verify_big(&book);
-  TEST_ASSERT_EQ((uint64_t)k_big_bytes, streamed);
+  TEST_ASSERT_EQ(k_big_bytes, streamed);
   /* Every backing fetch is a bounded miniz chunk, never the whole entry. */
   TEST_ASSERT(g_peak <= (size_t)k_io_bound);
   TEST_ASSERT((size_t)k_io_bound < (size_t)k_big_bytes);
@@ -366,21 +366,21 @@ static void test_entry_pread_windows(void)
 
   /* Full window. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_entry_pread(&book, "page.raw", 0U, win, sizeof(win), &got));
-  TEST_ASSERT_EQ((size_t)k_raw_bytes, got);
+  TEST_ASSERT_EQ(k_raw_bytes, got);
   TEST_ASSERT_EQ(0, memcmp(win, s_raw, (size_t)k_raw_bytes));
 
   /* Mid window. */
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_epub_entry_pread(&book, "page.raw", (uint64_t)k_win_off, win, k_win_len, &got));
-  TEST_ASSERT_EQ((size_t)k_win_len, got);
+  TEST_ASSERT_EQ(k_win_len, got);
   TEST_ASSERT_EQ(0, memcmp(win, &s_raw[k_win_off], (size_t)k_win_len));
 
   /* Tail window over-read -> short read of exactly the remaining bytes. */
   const uint64_t tail_off = (uint64_t)k_raw_bytes - (uint64_t)k_tail_back;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_epub_entry_pread(&book, "page.raw", tail_off, win, k_tail_extra, &got));
-  TEST_ASSERT_EQ((size_t)k_tail_back, got);
+  TEST_ASSERT_EQ(k_tail_back, got);
   TEST_ASSERT_EQ(0, memcmp(win, &s_raw[(size_t)tail_off], (size_t)k_tail_back));
 
   /* At/after EOF -> zero bytes, ok. */

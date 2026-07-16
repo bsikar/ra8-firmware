@@ -334,8 +334,8 @@ static void verify_tile(ra8_epub_tile_binder_t* b,
 {
   ra8_tile_t t = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_get(b, image_id, (uint16_t)tx, (uint16_t)ty, &t));
-  TEST_ASSERT_EQ((uint16_t)exp_w, t.width);
-  TEST_ASSERT_EQ((uint16_t)exp_h, t.height);
+  TEST_ASSERT_EQ(exp_w, t.width);
+  TEST_ASSERT_EQ(exp_h, t.height);
   for (uint32_t r = 0U; r < exp_h; ++r) {
     for (uint32_t c = 0U; c < exp_w; ++c) {
       const uint32_t sx = (tx * (uint32_t)k_tile) + c;
@@ -381,10 +381,10 @@ static void test_tile_paging_bounded(void)
 
   ra8_epub_tileimg_info_t info = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_info(&binder, k_id_big, &info));
-  TEST_ASSERT_EQ((uint16_t)k_big_w, info.width);
-  TEST_ASSERT_EQ((uint16_t)k_big_h, info.height);
-  TEST_ASSERT_EQ((uint16_t)(k_big_w / k_tile), info.tile_cols);
-  TEST_ASSERT_EQ((uint16_t)(k_big_h / k_tile), info.tile_rows);
+  TEST_ASSERT_EQ(k_big_w, info.width);
+  TEST_ASSERT_EQ(k_big_h, info.height);
+  TEST_ASSERT_EQ((k_big_w / k_tile), info.tile_cols);
+  TEST_ASSERT_EQ((k_big_h / k_tile), info.tile_rows);
 
   /* Measure only the tile-paging backing reads (not the ZIP open / header). */
   g_peak = 0U;
@@ -450,8 +450,8 @@ static void test_tile_edges(void)
 
   ra8_epub_tileimg_info_t info = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_info(&binder, k_id_edge, &info));
-  TEST_ASSERT_EQ((uint16_t)2U, info.tile_cols); /* ceil(100/64) */
-  TEST_ASSERT_EQ((uint16_t)2U, info.tile_rows); /* ceil(70/64)  */
+  TEST_ASSERT_EQ(2U, info.tile_cols); /* ceil(100/64) */
+  TEST_ASSERT_EQ(2U, info.tile_rows); /* ceil(70/64)  */
 
   const uint32_t rem_w = k_edge_w - k_tile;                /* 36          */
   const uint32_t rem_h = k_edge_h - k_tile;                /* 6           */
@@ -570,7 +570,7 @@ static void test_reflow_img_loader(void)
   size_t                n  = 0U;
   const char*           h  = "fig.png";
   TEST_ASSERT_EQ(k_ra8_ok, fn(&ld, h, (uint32_t)strlen(h), &b, &n));
-  TEST_ASSERT_EQ((size_t)k_fig_bytes, n);
+  TEST_ASSERT_EQ(k_fig_bytes, n);
   TEST_ASSERT_EQ(0, memcmp(b, s_fig, (size_t)k_fig_bytes));
 
   /* Oracle: identical to a whole extract. */

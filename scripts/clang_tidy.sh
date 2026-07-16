@@ -319,11 +319,11 @@ run_clang_tidy() {
   local f
   for f in "${files[@]}"; do
     case "$f" in
-      */examples/ra8p1_foundation/* | */ra8_npu.c | */ra8_npu.h | */ra8_npu_regs.h \
-        | */ra8_npu_loader.c | */ra8_npu_loader.h \
-        | */ra8_npu_quant.c | */ra8_npu_quant.h \
-        | */ra8_ethosu_kernel.cc | */ra8_ethosu_kernel.h \
-        | */libs/ra8_board_ra8p1/*)
+      */examples/ra8p1_foundation/* | */ra8_npu.c | */ra8_npu.h | */ra8_npu_regs.h | \
+        */ra8_npu_loader.c | */ra8_npu_loader.h | \
+        */ra8_npu_quant.c | */ra8_npu_quant.h | \
+        */ra8_ethosu_kernel.cc | */ra8_ethosu_kernel.h | \
+        */libs/ra8_board_ra8p1/*)
         ra8p1_files+=("$f")
         ;;
       *) main_files+=("$f") ;;
