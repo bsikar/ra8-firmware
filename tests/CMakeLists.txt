@@ -239,6 +239,15 @@ set(RA8_EPUB_THIRD_PARTY
     ${FW_ROOT}/libs/third_party/stb/stb_truetype_impl.c
     ${FW_ROOT}/libs/third_party/stb/stb_image_impl.c
 )
+# libwebp decode-only SOUP (#290) + the first-party ra8_webp facade/arena that
+# fronts it. Only the decoder subset is vendored under libs/third_party/libwebp,
+# so a recursive *.c glob is exactly that subset. NOT yet wired into the
+# ra8_reflow/ra8_img raster dispatch (that is #289) -- compiled into ra8_core_hal
+# so the standalone WebP decode host test (test_ra8_webp.c) and the fuzz harness
+# (fuzz_ra8_webp) link against it. utils.c routes its allocator through the
+# ra8_webp bump arena via -DRA8_WEBP_USE_ARENA (set below).
+file(GLOB_RECURSE RA8_WEBP_THIRD_PARTY CONFIGURE_DEPENDS ${FW_ROOT}/libs/third_party/libwebp/src/*.c)
+file(GLOB_RECURSE RA8_WEBP_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_webp/src/*.c)
 file(GLOB_RECURSE RA8_SECURE_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/src/secure_app/*.c)
 file(GLOB_RECURSE RA8_TOUCH_CAL_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_touch_cal/src/*.c)
 file(GLOB_RECURSE RA8_PSA_CRYPTO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_psa_crypto/src/*.c)
@@ -284,6 +293,8 @@ add_library(ra8_core_hal OBJECT
     ${RA8_REFLOW_C_SOURCES}
     ${RA8_REFLOW_CPP_SOURCES}
     ${RA8_EPUB_THIRD_PARTY}
+    ${RA8_WEBP_THIRD_PARTY}
+    ${RA8_WEBP_SOURCES}
     ${RA8_SECURE_APP_SOURCES}
     ${RA8_TOUCH_CAL_SOURCES}
     ${RA8_MPU_SOURCES}
@@ -345,6 +356,7 @@ target_include_directories(ra8_core_hal PUBLIC
     ${FW_ROOT}/libs/ra8_epub/inc
     ${FW_ROOT}/libs/ra8_comic/inc
     ${FW_ROOT}/libs/ra8_reflow/inc
+    ${FW_ROOT}/libs/ra8_webp/inc
     ${FW_ROOT}/libs/ra8_touch_cal/inc
     ${FW_ROOT}/libs/ra8_mpu/inc
     ${FW_ROOT}/libs/ra8_psa_crypto/inc
@@ -355,6 +367,10 @@ target_include_directories(ra8_core_hal PUBLIC
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
+    # libwebp is included as "src/webp/...", so its ROOT is the include dir.
+    ${FW_ROOT}/libs/third_party/libwebp
+    ${FW_ROOT}/libs/ra8_webp/inc
+    ${FW_ROOT}/libs/ra8_webp/src
     ${FW_ROOT}/src
     ${FW_ROOT}/src/inc
     ${FW_ROOT}/src/secure_app
@@ -413,6 +429,17 @@ set_source_files_properties(
     PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing"
 )
 
+# Vendored libwebp decoder (SOUP): silence its warnings and disable strict
+# aliasing (it type-puns through byte buffers), and define RA8_WEBP_USE_ARENA so
+# utils.c routes WebPSafe{Malloc,Calloc,Free} through the heap-free ra8_webp
+# bump arena (the RA8 LOCAL PATCH) instead of libc malloc. The first-party
+# ra8_webp facade/arena sources are held to the full project warning bar and are
+# NOT listed here.
+set_source_files_properties(
+    ${RA8_WEBP_THIRD_PARTY}
+    PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing;-DRA8_WEBP_USE_ARENA"
+)
+
 # Route stb_truetype's per-glyph scratch (vertices, rasteriser edge/point
 # lists) through the no-heap arena in libs/ra8_reflow/src/ra8_stbtt_alloc.c
 # instead of libc malloc, so the host test build exercises the exact
@@ -434,6 +461,7 @@ set_property(SOURCE ${FW_ROOT}/libs/third_party/stb/stb_truetype_impl.c
 if(RA8_MCDC)
   set(RA8_MCDC_THIRD_PARTY_SOURCES
       ${RA8_EPUB_THIRD_PARTY}
+      ${RA8_WEBP_THIRD_PARTY}
   )
   foreach(_src ${RA8_MCDC_THIRD_PARTY_SOURCES})
     set_property(SOURCE ${_src} APPEND PROPERTY COMPILE_OPTIONS
@@ -558,6 +586,7 @@ function(ra8_add_test name)
     ${FW_ROOT}/libs/ra8_epub/inc
     ${FW_ROOT}/libs/ra8_comic/inc
     ${FW_ROOT}/libs/ra8_reflow/inc
+    ${FW_ROOT}/libs/ra8_webp/inc
     ${FW_ROOT}/libs/ra8_touch_cal/inc
     ${FW_ROOT}/libs/ra8_mpu/inc
     ${FW_ROOT}/libs/ra8_psa_crypto/inc

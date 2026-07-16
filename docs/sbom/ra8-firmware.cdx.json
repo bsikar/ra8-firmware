@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:5e99b272-5b42-50c4-9dce-6380dfefe29e",
+  "serialNumber": "urn:uuid:e5412e6a-536f-5c80-833a-23e427425fda",
   "version": 1,
   "metadata": {
     "tools": [
@@ -528,6 +528,68 @@
         {
           "name": "ra8:note0",
           "value": "stb_truetype.h version 1.26 (tracked separately; probe covers stb_image only)."
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "libwebp",
+      "name": "libwebp (WebP decoder)",
+      "group": "webmproject",
+      "version": "1.5.0",
+      "description": "WebP (VP8 / VP8L) decode-only codec for webtoon/manga raster (via ra8_webp).",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ],
+      "copyright": "BSD-3-Clause plus an additional PATENTS grant (both mirrored in-tree).",
+      "purl": "pkg:github/webmproject/libwebp@v1.5.0",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://chromium.googlesource.com/webm/libwebp"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ra8:provenance",
+          "value": "commit-pinned-sha256"
+        },
+        {
+          "name": "ra8:path",
+          "value": "libs/third_party/libwebp"
+        },
+        {
+          "name": "ra8:upstreamCommit",
+          "value": "a4d7a715337ded4451fec90ff8ce79728e04126c"
+        },
+        {
+          "name": "ra8:licenseFile",
+          "value": "libs/third_party/libwebp/COPYING"
+        },
+        {
+          "name": "ra8:modified",
+          "value": "true"
+        },
+        {
+          "name": "ra8:note0",
+          "value": "DECODE-ONLY subset (#290): upstream's libwebpdecoder source set (src/dec + the decode subset of src/dsp + src/utils COMMON) plus the headers those TUs include; the encoder, mux/demux, sharpyuv and CLI tools are not vendored. Byte-identical to release tag v1.5.0."
+        },
+        {
+          "name": "ra8:note1",
+          "value": "MODIFIED SOUP: src/utils/utils.c carries one RA8 LOCAL PATCH that, under -DRA8_WEBP_USE_ARENA, routes WebPSafe{Malloc,Calloc,Free} through the heap-free ra8_webp bump arena (NASA P10 Rule 3). See docs/SOUP/libwebp.md."
+        },
+        {
+          "name": "ra8:note2",
+          "value": "Additional attribution files: libs/third_party/libwebp/PATENTS (IP-rights grant) and libs/third_party/libwebp/AUTHORS."
+        },
+        {
+          "name": "ra8:note3",
+          "value": "Ships v1.5.0 which carries the CVE-2023-4863 VP8L fix."
         }
       ]
     },
