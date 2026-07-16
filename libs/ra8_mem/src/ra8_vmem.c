@@ -31,11 +31,11 @@ static const char* const s_tag = "ra8_vmem";
 
 /** @brief Internal sizing / policy constants. */
 typedef enum : uint32_t {
-  k_vmem_nil_idx       = 0xFFFFFFFFU, /**< "no frame" sentinel for list/hash links. */
-  k_vmem_protected_pct = 75U,         /**< Protected-segment share of the cache.    */
-  k_vmem_percent_full  = 100U,        /**< Percent denominator.                     */
-  k_vmem_hash_mul_obj  = 2654435761U, /**< Knuth multiplicative hash (object id).   */
-  k_vmem_hash_mul_page = 40503U,      /**< Odd multiplier mixing the page number.   */
+  k_vmem_nil_idx           = 0xFFFFFFFFU, /**< "no frame" sentinel for list/hash links.  */
+  k_vmem_protected_pct_def = 75U,         /**< Default protected share when cfg is 0.    */
+  k_vmem_percent_full      = 100U,        /**< Percent denominator (also the max split). */
+  k_vmem_hash_mul_obj      = 2654435761U, /**< Knuth multiplicative hash (object id).    */
+  k_vmem_hash_mul_page     = 40503U,      /**< Odd multiplier mixing the page number.    */
 } ra8_vmem_const_t;
 
 /** @brief SLRU segment tags stored in ::ra8_vmem_frame_t::seg. */
@@ -428,7 +428,38 @@ static ra8_err_t priv_vmem_validate_cfg(const ra8_vmem_cfg_t* cfg)
   if (cfg->bucket_count == 0U) {
     return k_ra8_err_invalid_size;
   }
+  if ((uint32_t)cfg->protected_pct > (uint32_t)k_vmem_percent_full) {
+    return k_ra8_err_invalid_arg;
+  }
   return k_ra8_ok;
+}
+
+/**
+ * @brief Resolve the configured SLRU protected-segment capacity, in frames.
+ *
+ * @details Maps `cfg->protected_pct` (0 selects the 75% default; 1..100 is used
+ *          verbatim) to an absolute frame count via `frame_count * pct / 100`.
+ *          A small non-zero split can floor to zero protected frames, which is a
+ *          valid degenerate policy (every re-reference stays probationary).
+ *
+ * @param[in] cfg Validated configuration (`protected_pct <= 100`).
+ *
+ * @return Protected-segment capacity in `[0, frame_count]`.
+ * @retval 0 The split floored to no protected frames.
+ *
+ * @pre `cfg` passed ::priv_vmem_validate_cfg (so `protected_pct <= 100`).
+ * @pre `cfg->frame_count` is non-zero.
+ * @post No state is modified.
+ * @post The result is <= `cfg->frame_count`.
+ *
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+static uint32_t priv_vmem_protected_cap(const ra8_vmem_cfg_t* cfg)
+{
+  const uint32_t pct =
+    (cfg->protected_pct == 0U) ? (uint32_t)k_vmem_protected_pct_def : (uint32_t)cfg->protected_pct;
+  return (cfg->frame_count * pct) / (uint32_t)k_vmem_percent_full;
 }
 
 /**
@@ -474,13 +505,12 @@ ra8_err_t ra8_vmem_init(ra8_vmem_t* vm, const ra8_vmem_cfg_t* cfg)
     return verr;
   }
   (void)memset(vm, 0, sizeof(*vm));
-  vm->cfg     = *cfg;
-  vm->pb_head = -1;
-  vm->pb_tail = -1;
-  vm->pt_head = -1;
-  vm->pt_tail = -1;
-  vm->protected_cap =
-    (cfg->frame_count * (uint32_t)k_vmem_protected_pct) / (uint32_t)k_vmem_percent_full;
+  vm->cfg           = *cfg;
+  vm->pb_head       = -1;
+  vm->pb_tail       = -1;
+  vm->pt_head       = -1;
+  vm->pt_tail       = -1;
+  vm->protected_cap = priv_vmem_protected_cap(cfg);
   priv_vmem_link_frames(vm);
   return k_ra8_ok;
 }

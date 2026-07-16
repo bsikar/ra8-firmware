@@ -22,6 +22,31 @@
  * does not evict the hot set. The victim is always the probationary LRU (then
  * the protected LRU); pinned frames are skipped.
  *
+ * ## Tuning the protected/probationary split (`cfg.protected_pct`)
+ *
+ * The one policy knob is the share of frames the **protected** segment may hold;
+ * the rest is the **probationary** scan buffer. It is a per-cache tuning axis
+ * (#232) because the sweet spot depends on the workload's hot-set size versus its
+ * scan volume:
+ *
+ *  - **Default (`protected_pct == 0` selects 75%).** Good general default: most
+ *    of the cache protects re-referenced data and a quarter absorbs scans.
+ *  - **Manga / webtoon streaming (a page-turn flood over a >SDRAM book).** The
+ *    reader scrolls forward through thousands of never-revisited band pages (a
+ *    huge one-shot scan) while a *small* hot set -- the archive central
+ *    directory, the current chapter's tile index, the RTA1 atlas headers/footers
+ *    re-read on every page open -- is touched repeatedly. Size `protected_pct`
+ *    to comfortably cover that hot metadata set (so it is never demoted by the
+ *    flood) while leaving the remaining frames as a large probationary buffer
+ *    that both soaks the scan and keeps a short back-flip (scroll-up) window
+ *    resident. Under-sizing the protected segment lets the flood evict metadata
+ *    that must then be re-paged on the next page open; over-sizing it shrinks the
+ *    back-flip window. The resident set stays bounded by `frame_count` at every
+ *    split -- only the hit rate moves.
+ *
+ * The split changes *which* frame is evicted, never *how many* are resident: the
+ * bounded-RAM guarantee (residency <= `frame_count`) is independent of the knob.
+ *
  * Zero allocation (NASA P10 Rule 3): the caller provides the frame storage, the
  * per-frame metadata array, and the hash-bucket array -- all carved once from a
  * tier arena (::ra8_arena) at init. The frames themselves come from a tier's
@@ -103,14 +128,18 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t*           frame_mem;    /**< `frame_count * frame_bytes` of page storage. */
-  uint32_t           frame_bytes;  /**< Bytes per frame (page size, e.g. 4096).      */
-  uint32_t           frame_count;  /**< Number of frames.                            */
-  ra8_vmem_frame_t*  meta;         /**< `frame_count` metadata entries.              */
-  int32_t*           buckets;      /**< `bucket_count` hash-bucket heads.            */
-  uint32_t           bucket_count; /**< Number of hash buckets (>= 1).               */
-  ra8_vmem_loader_fn loader;       /**< Page-fill callback (the storage DIP seam).   */
-  void*              loader_ctx;   /**< Opaque context passed to @c loader.          */
+  uint8_t*           frame_mem;     /**< `frame_count * frame_bytes` of page storage. */
+  uint32_t           frame_bytes;   /**< Bytes per frame (page size, e.g. 4096).      */
+  uint32_t           frame_count;   /**< Number of frames.                            */
+  ra8_vmem_frame_t*  meta;          /**< `frame_count` metadata entries.              */
+  int32_t*           buckets;       /**< `bucket_count` hash-bucket heads.            */
+  uint32_t           bucket_count;  /**< Number of hash buckets (>= 1).               */
+  ra8_vmem_loader_fn loader;        /**< Page-fill callback (the storage DIP seam).   */
+  void*              loader_ctx;    /**< Opaque context passed to @c loader.          */
+  uint8_t            protected_pct; /**< SLRU protected-segment share, 1..100;
+                                     *   0 selects the 75% default. See the file
+                                     *   comment "Tuning the protected/probationary
+                                     *   split" for how to size it (#232).           */
 } ra8_vmem_cfg_t;
 
 /**
@@ -149,9 +178,10 @@ typedef struct {
  * @retval k_ra8_err_null_ptr     `vm`, `cfg`, or a required `cfg` pointer is NULL.
  * @retval k_ra8_err_invalid_size `frame_count`, `frame_bytes`, or `bucket_count`
  *                               was zero.
+ * @retval k_ra8_err_invalid_arg  `cfg->protected_pct` exceeds 100.
  *
  * @pre `cfg`'s arrays cover their declared sizes and out-live the cache.
- * @pre `cfg->loader` is non-NULL.
+ * @pre `cfg->loader` is non-NULL and `cfg->protected_pct <= 100`.
  * @post On success `vm` is empty (0 valid frames) and the buckets are cleared.
  * @post On any non-ok return `vm` is left unbound.
  *
