@@ -47,6 +47,7 @@
 #include "board_overlay.h"
 #include "board_periph.h"
 #include "board_periph_eink.h"
+#include "board_periph_modem.h"
 #include "board_periph_sd.h"
 #include "board_usb.h"
 #include "board_usb_host.h"
@@ -6205,6 +6206,8 @@ int main(int argc, char** argv)
       s_fast_sd = true;
     } else if (strncmp(argv[i], "--eink", sizeof("--eink")) == 0) {
       (void)board_eink_attach(); /* answer the ra8_epaper SPI path (IT8951 model) */
+    } else if (strncmp(argv[i], "--modem", sizeof("--modem")) == 0) {
+      (void)board_modem_attach(); /* answer the ra8_modem_at AT path (SCI7 modem model) */
     } else if ((strncmp(argv[i], "--click", sizeof("--click")) == 0) && ((i + 2) < argc)) {
       click_x    = (int)strtol(argv[i + 1], nullptr, (int)k_strtol_base10);
       click_y    = (int)strtol(argv[i + 2], nullptr, (int)k_strtol_base10);

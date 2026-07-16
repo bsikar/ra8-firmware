@@ -35,6 +35,7 @@
 #include "board_console.h"
 #include "board_periph.h"
 #include "board_periph_block.h"
+#include "board_periph_modem.h"
 #include "board_periph_sd.h"
 
 /** @brief SCI_B block geometry (ra8_sci_regs.h, 32-bit-register variant). */
@@ -103,12 +104,13 @@ typedef enum : uint16_t {
 
 /** @brief SCI_B model sizing and the EK-RA8D2 console channel. */
 typedef enum : uint32_t {
-  k_sci_console_ch    = 8U,    /**< EK-RA8D2 console = SCI8 (PD02/PD03).        */
-  k_sci_sd_ch         = 0U,    /**< EK-RA8D2 Pmod2 microSD = SCI0 Simple-SPI.   */
-  k_sci_rx_queue_len  = 512U,  /**< Per-channel host->firmware RX capacity.     */
-  k_sci_data_mask     = 0xFFU, /**< RDR/TDR data field is 8 bits.               */
-  k_uart_line_cap     = 256U,  /**< Captured last-TX-line buffer capacity.      */
-  k_sci_spi_cipo_idle = 0xFFU, /**< CIPO idles high (0xFF) on an empty SPI bus. */
+  k_sci_console_ch     = 8U,    /**< EK-RA8D2 console = SCI8 (PD02/PD03).        */
+  k_sci_sd_ch          = 0U,    /**< EK-RA8D2 Pmod2 microSD = SCI0 Simple-SPI.   */
+  k_sci_rx_queue_len   = 512U,  /**< Per-channel host->firmware RX capacity.     */
+  k_sci_data_mask      = 0xFFU, /**< RDR/TDR data field is 8 bits.               */
+  k_uart_line_cap      = 256U,  /**< Captured last-TX-line buffer capacity.      */
+  k_sci_spi_cipo_idle  = 0xFFU, /**< CIPO idles high (0xFF) on an empty SPI bus. */
+  k_sci_modem_resp_cap = 96U,   /**< Scratch for one AT-modem reply burst.       */
 } sci_tune_t;
 
 /**
@@ -304,6 +306,18 @@ static void sci_reg_write(uint32_t ch, uint64_t off, uint32_t value)
         board_sd_attached() ? board_sd_exchange(byte) : (uint8_t)k_sci_spi_cipo_idle;
       board_periph_sci_feed_rx((uint8_t)ch, &resp, 1U);
     }
+    /* MikroBUS UART (SCI7) with a modelled AT modem attached: forward each
+     * transmitted byte to the modem line model. Most bytes buffer silently; the
+     * terminating CR closes an AT command and the model returns the modem's
+     * reply, which we feed back into this channel's RX queue so the firmware's
+     * genuine ra8_modem_at -> ra8_sci_getc_polling path drains it (SIM == HIL). */
+    if ((ch == (uint32_t)board_modem_channel()) && board_modem_attached()) {
+      uint8_t        mresp[k_sci_modem_resp_cap] = {};
+      const uint32_t mn = board_modem_feed_tx(byte, mresp, (uint32_t)k_sci_modem_resp_cap);
+      if (mn > 0U) {
+        board_periph_sci_feed_rx((uint8_t)ch, mresp, mn);
+      }
+    }
   } else if (off == (uint64_t)k_sci_off_ccr0) {
     s->ccr0 = value;
   }
@@ -372,6 +386,10 @@ static void sci_reset(void)
   s_uart_last[0]  = '\0';
   s_uart_pend[0]  = '\0';
   s_uart_pend_len = 0U;
+  /* Re-frame the AT modem's command accumulator on a block reset (--reboot),
+   * keeping its attached flag -- the SCI reset re-frames transport, not the
+   * modem's presence, mirroring board_periph_eink.c's reset. */
+  board_modem_reset();
 }
 
 /** @brief Print one line per SCI channel that moved any bytes. */
@@ -387,6 +405,9 @@ static void sci_report(void)
                     s_sci[ch].rx_dropped);
     }
   }
+  /* An attached AT modem answers on the modem channel; summarise its traffic
+   * alongside the raw SCI byte counts (self-contained -- no main.c edit). */
+  board_modem_report();
 }
 
 /** @brief This block's descriptor (static lifetime; the core keeps the pointer). */

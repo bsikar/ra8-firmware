@@ -205,6 +205,17 @@ xspi_io_apps="ra8_io_xspi_demo ra8_io_mram_demo"
 # load-bearing (SIM == HIL). Asserts via uart_expect().
 eink_apps="epaper_refresh"
 
+# Cellular AT-modem app (#259): board_sim attaches a modelled 3GPP AT modem on
+# the MikroBUS UART (SCI7) with --modem (board_periph_modem.c), which answers
+# the demo's AT script -- AT / ATE0 / CMEE / CPIN? / CSQ / CREG=1 (+ a +CREG
+# URC) / CREG? / CGATT? -- and rejects an unsupported command with +CME ERROR,
+# so modem_at_demo drives the full ra8_modem_at -> ra8_sci path (sync, SIM,
+# signal, registration, PS attach, error path) to its PASS banner with no
+# physical modem. Without --modem the modem never answers and the app honestly
+# reports "modem: sync FAIL", so the model is load-bearing (SIM == HIL for the
+# AT protocol). Asserts via uart_expect().
+modem_apps="modem_at_demo"
+
 # Deep-idle self-parking apps. lpm_periodic_idle runs a bounded wake/work/standby
 # loop, prints "lpm_periodic_idle PASS", then parks forever in lpi_panic_halt --
 # a deliberate low-power WFI spin (the same success-park its bench-proven sibling
@@ -393,6 +404,7 @@ uart_expect() { # app -> expected UART substring on stdout
     ra8_io_xspi_demo) printf 'ra8_io_xspi_demo: xs:/CFG/SET.BIN 256 bytes PASS' ;;
     ra8_io_mram_demo) printf 'block erase/program/read on extra MRAM PASS' ;;
     epaper_refresh) printf 'epaper: PASS' ;;
+    modem_at_demo) printf 'modem: rssi=17 reg=1 attach=1 cme=ok PASS' ;;
     ra8_io_fsfmt_demo) printf 'ra8_io_fsfmt_demo: probed fat maxname=12 + foreign stub seam PASS' ;;
     ra8_io_cache_demo) printf 'ra8_io_cache_demo: re-read x8 hits=' ;;
     ereader_chrome) printf 'ereader-hil: chrome boxes=7 crc=0DCB740F' ;;
@@ -487,7 +499,7 @@ if [ "${#apps[@]}" -eq 0 ]; then
     gpt_capture_input gpt_dma_demo gpt_one_shot_demo gpt_pwm_demo gpt_three_phase_demo
     i2c_loopback flash_journal eth_loopback clock_check crypto_aes_demo
     compile_on_m33 dualcore_background_m33 dualcore_mailbox
-    import_reader i3c_i2c_peripheral_demo epaper_refresh)
+    import_reader i3c_i2c_peripheral_demo epaper_refresh modem_at_demo)
 fi
 
 echo "board_sim smoke: building the emulator ..."
@@ -798,6 +810,29 @@ for app in "${apps[@]}"; do
         echo "OK (IT8951 e-paper: $want)"
       else
         echo "EINK FAIL (did not reach the PASS banner)"
+        fail=1
+      fi
+      continue
+      ;;
+  esac
+  # Cellular AT-modem app (see $modem_apps): attach the modelled AT modem on
+  # SCI7 with --modem, let modem_at_demo drive the full ra8_modem_at -> ra8_sci
+  # state machine (sync, SIM, signal, registration + URC, PS attach, +CME ERROR
+  # path), and assert its PASS banner. STOP_ON ends the run at the banner (the
+  # app heartbeats forever after). Without --modem the modem never answers and
+  # the app reports "modem: sync FAIL", so the model is load-bearing (SIM==HIL).
+  case " $modem_apps " in
+    *" $app "*)
+      want="$(uart_expect "$app")"
+      mdclean="$({ BOARD_SIM_MAX_CHUNKS=4000000 BOARD_SIM_STOP_ON="$want" BOARD_SIM_WALL_S=300 \
+        "$sim" "$elf" --modem 2>&1 || true; } | LC_ALL=C tr -cd '[:print:]\n')"
+      if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$mdclean"; then
+        echo "FAULT (during AT modem run)"
+        fail=1
+      elif grep -qF "$want" <<<"$mdclean"; then
+        echo "OK (AT modem: $want)"
+      else
+        echo "MODEM FAIL (did not reach the PASS banner)"
         fail=1
       fi
       continue
