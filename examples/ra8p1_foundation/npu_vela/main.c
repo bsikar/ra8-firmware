@@ -315,7 +315,10 @@ int32_t main(void)
     load_ok             = (job.cmd_stream != nullptr); /* load leaves it null on failure */
     run_ok              = (rc == k_ra8_ok);
 
-    const bool matched = run_ok && npu_vela_verify(&job, &check);
+    /* Gate verify on load_ok as well: a successful run implies the load
+     * populated cmd_stream, but stating it explicitly lets the static analyzer
+     * see that npu_vela_verify() never dereferences a null cmd_stream. */
+    const bool matched = run_ok && load_ok && npu_vela_verify(&job, &check);
     g_npu_vela_check   = check;
     pass               = load_ok && run_ok && matched && (id != 0U);
   }
