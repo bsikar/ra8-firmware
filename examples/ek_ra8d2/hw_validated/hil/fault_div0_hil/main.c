@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/fault_div0_hil/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/fault_div0_hil/main.c
  * @brief Prove CCR.DIV_0_TRP: a zero divisor must raise a decoded UsageFault.
  *
  * @par Tag
@@ -32,8 +32,9 @@
  * zero, so the sim run reproduces the silicon dump headlessly
  * (`exception=6`, `cfsr =33554432`). The `survived divide` branch below is
  * therefore the on-silicon negative fallback -- reached only if the trap
- * ever fails to fire -- not the sim's normal path. The app still lives in
- * `hw_pending/` until a bench run captures the real fault dump on silicon.
+ * ever fails to fire -- not the sim's normal path. The bench has captured
+ * the real fault dump on silicon (tracker issue #191), so the app lives in
+ * `hw_validated/hil/`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

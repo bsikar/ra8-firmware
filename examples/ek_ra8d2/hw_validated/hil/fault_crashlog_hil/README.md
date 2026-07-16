@@ -57,26 +57,30 @@ post-mortem from garbage SRAM). **Surviving a full power loss is out of
 scope** and is the named follow-up: VBATT-backed / MRAM persistence via
 `ra8_bkup`, currently silicon-blocked (#131).
 
-## Why `hw_pending`
+## Validation
 
-`tools/board_sim` **cold-loads** the image on every run and its Unicorn
-core cannot take a real CPU fault, so it can prove the boot bring-up, the
-peek / claim / safe-mode logic, and the synthesised in-process write+read
-back -- but **not** the cross-reset survival or the real
-fault->hook->record path. Those two legs are proven elsewhere:
+**Silicon (EK-RA8D2, J-Link):** a cold boot reports `no prior record`,
+then the synthesised fault is recorded and read back
+(`crashlog: recorded+readback exc=6 pc=0x02001234 boot_loops=1`) across the
+`.noinit` record with its software CRC-32 and boot-loop counter (T2-03).
+Recorded on tracker issue #191.
+
+**Simulator-in-the-loop (`scripts/sil_all.sh`):** board_sim **cold-loads**
+the image on every run, so it proves the boot bring-up, the peek / claim /
+safe-mode logic, and the synthesised in-process write+readback -- the
+`recorded+readback exc=6` gate `hil.conf` asserts. Two legs are proven
+elsewhere rather than in SIL:
 
 - the genuine `ra8_exception_report` -> hook -> record path, plus the
   fill / validate / claim / loop-counter / threshold / corrupted-magic
   lifecycle, is proven in-process by `tests/test_ra8_crashlog.c`;
 - the real cross-reset survival + `boot_loops` climb toward safe mode is a
-  **bench-only** leg: reset the board *without cutting power* (e.g. the
-  J-Link `reset` / a watchdog underflow) and watch `boot_loops` count up on
-  each `crashlog: prior record ...` line until `SAFE-MODE requested`.
-
-Promote to `hw_validated/hil/` once the bench captures that warm-reset
-climb:
+  **bench-only** leg (a cold power-cycle randomises SRAM): reset the board
+  *without cutting power* (e.g. the J-Link `reset` / a watchdog underflow)
+  and watch `boot_loops` count up on each `crashlog: prior record ...` line
+  until `SAFE-MODE requested`.
 
 ```
-make -C examples/ek_ra8d2/hw_pending/fault_crashlog_hil build flash
+make -C examples/ek_ra8d2/hw_validated/hil/fault_crashlog_hil build flash
 # scrape the SCI8 VCOM console; warm-reset (keep power) to see boot_loops climb
 ```
