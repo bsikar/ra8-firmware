@@ -67,10 +67,10 @@ extern "C" {
  * @since 0.1.0
  */
 typedef struct ra8_widget_toolbar {
-  const ra8_widget_paint_t* paint;         /**< Draw backend (NULL -> draws nothing).    */
-  const char*               hint;          /**< Search-field placeholder (NULL -> none). */
-  const char*               count;         /**< Right count chip text (NULL -> none).    */
-  void (*on_search)(struct ra8_widget* w); /**< Tap-in-field callback (optional/NULL). */
+  const ra8_widget_paint_t* paint;         /**< Draw backend (NULL -> draws nothing).     */
+  const char*               hint;          /**< Search-field placeholder (NULL -> none).  */
+  const char*               count;         /**< Right count chip text (NULL -> none).     */
+  void (*on_search)(struct ra8_widget* w); /**< Tap-in-field callback (optional/NULL).    */
   uint32_t bg;                             /**< Band background colour, 0xRRGGBB.         */
   uint32_t field;                          /**< Search-field fill colour, 0xRRGGBB.       */
   uint32_t border;                         /**< Search-field border colour, 0xRRGGBB.     */
