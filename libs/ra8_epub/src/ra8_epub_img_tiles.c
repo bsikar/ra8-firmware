@@ -62,6 +62,7 @@ typedef enum : uint8_t {
  * @param[in] buf Source bytes.
  * @param[in] off Field offset.
  * @return The 16-bit value.
+ * @retval 0-65535 Little-endian uint16 assembled from the two bytes at @p off.
  * @pre @p buf holds at least `off + 2` bytes.
  * @pre @p off does not overflow the buffer.
  * @post No state mutated.
@@ -81,6 +82,8 @@ static uint16_t priv_rd_u16(const uint8_t* buf, uint8_t off)
  * @param[in] a First value.
  * @param[in] b Second value.
  * @return The smaller of @p a and @p b.
+ * @retval a @p a when @p a is strictly less than @p b.
+ * @retval b Otherwise (@p b when @p b <= @p a).
  * @pre None.
  * @pre None.
  * @post No state mutated.
@@ -99,6 +102,7 @@ static uint32_t priv_min_u32(uint32_t a, uint32_t b)
  * @param[in] n Numerator.
  * @param[in] d Denominator (> 0).
  * @return `ceil(n / d)`.
+ * @retval 0-UINT32_MAX The ceiling of @p n divided by @p d.
  * @pre @p d is non-zero.
  * @pre The result fits uint32_t.
  * @post No state mutated.
@@ -117,6 +121,8 @@ static uint32_t priv_ceil_div(uint32_t n, uint32_t d)
  * @param[in] binder   Initialised binder.
  * @param[in] image_id Image id to find.
  * @return Source index in `[0, source_count)`, or -1 if unregistered.
+ * @retval 0-source_count-1 Index of the source whose image_id matches.
+ * @retval -1 No registered source matches @p image_id.
  * @pre @p binder is non-NULL and initialised.
  * @pre @p binder->source_count <= ::k_ra8_epub_tile_max_sources.
  * @post No state mutated.

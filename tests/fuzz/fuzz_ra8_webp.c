@@ -38,7 +38,7 @@
 enum : uint32_t {
   k_fuzz_webp_max_dim       = 512U,                /**< Max decoded width/height probed. */
   k_fuzz_webp_bpp           = 4U,                  /**< RGBA8888 bytes per pixel.        */
-  k_fuzz_webp_scratch_bytes = 16U * 1024U * 1024U, /**< Arena backing store, bytes.     */
+  k_fuzz_webp_scratch_bytes = 16U * 1024U * 1024U, /**< Arena backing store, bytes.      */
   k_fuzz_webp_max_input     = 1U << 20,            /**< Cap fuzz input at 1 MiB.         */
 };
 

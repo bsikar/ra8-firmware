@@ -48,14 +48,14 @@
  * @brief Fixed geometry + buffer sizes for the baked 8x8 fixture.
  */
 typedef enum : uint32_t {
-  k_webp_demo_baud     = 115200U,                              /**< Console baud rate.          */
-  k_webp_demo_dim      = 8U,                                   /**< Fixture width and height.   */
-  k_webp_demo_bpp      = 4U,                                   /**< RGBA8888 bytes per pixel.    */
-  k_webp_demo_stride   = k_webp_demo_dim * k_webp_demo_bpp,    /**< Row stride. */
-  k_webp_demo_fb_bytes = k_webp_demo_dim * k_webp_demo_stride, /**< 8x8 RGBA.   */
-  k_webp_demo_scratch  = 256U * 1024U,                         /**< Decode arena, bytes.        */
-  k_webp_demo_probe_r  = 32U,                                  /**< Expected R at pixel (1,1).  */
-  k_webp_demo_probe_a  = 255U,                                 /**< Expected A at pixel (1,1).  */
+  k_webp_demo_baud     = 115200U,                              /**< Console baud rate.         */
+  k_webp_demo_dim      = 8U,                                   /**< Fixture width and height.  */
+  k_webp_demo_bpp      = 4U,                                   /**< RGBA8888 bytes per pixel.  */
+  k_webp_demo_stride   = k_webp_demo_dim * k_webp_demo_bpp,    /**< Row stride.                */
+  k_webp_demo_fb_bytes = k_webp_demo_dim * k_webp_demo_stride, /**< 8x8 RGBA.                  */
+  k_webp_demo_scratch  = 256U * 1024U,                         /**< Decode arena, bytes.       */
+  k_webp_demo_probe_r  = 32U,                                  /**< Expected R at pixel (1,1). */
+  k_webp_demo_probe_a  = 255U,                                 /**< Expected A at pixel (1,1). */
 } webp_demo_consts_t;
 
 /** 8x8 VP8L (lossless, -exact) fixture -- see tests/fixtures/webp/README.md. */

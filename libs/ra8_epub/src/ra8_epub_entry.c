@@ -152,6 +152,8 @@ priv_locate(mz_zip_archive* zip, ra8_epub_book_t* book, const char* path, int32_
  * @param[out] buf        Destination (`n` writable bytes).
  * @param[in]  n          Bytes to read.
  * @return true iff exactly @p n bytes were read.
+ * @retval true  Exactly @p n bytes were copied into @p buf.
+ * @retval false Short read, out-of-range offset, or no read backend.
  * @pre @p book, @p buf are non-NULL.
  * @pre @p n > 0.
  * @post On true, @p buf holds the requested window.
@@ -183,6 +185,8 @@ static bool priv_backing_read(ra8_epub_book_t* book, uint64_t archive_ofs, uint8
  * @param[in]  local_header_ofs Archive offset the header was read from.
  * @param[out] out_data_ofs    Receives the entry's stored-data archive offset.
  * @return true iff the signature is valid.
+ * @retval true  Local-header signature matched; `*out_data_ofs` is set.
+ * @retval false Signature mismatch; `*out_data_ofs` is left unmodified.
  * @pre @p hdr holds ::k_ra8_epub_ldh_size readable bytes.
  * @pre @p out_data_ofs is non-NULL.
  * @post On true `*out_data_ofs` is the stored-data offset.
