@@ -445,6 +445,59 @@ typedef enum : uint16_t {
    * @par Value: 0x504
    */
   k_ra8_err_null_ptr = 0x504,
+
+  /**
+   * @brief Decompression output cap breached (`ra8_decomp_limits_t`).
+   * @details A decode unit (one archive member or one wrapped stream) either
+   *          declared or actually produced more bytes than the policy's
+   *          `max_output_bytes`. The decoder stops fail-closed; nothing past
+   *          the cap is written.
+   * @par Value: 0x505
+   * @see ra8_decomp_limits.h The unified decompression-limits policy.
+   */
+  k_ra8_err_decomp_output_cap = 0x505,
+
+  /**
+   * @brief Compression ratio bound breached (`ra8_decomp_limits_t`).
+   * @details A decode unit's output exceeded `input * max_ratio +
+   *          ratio_grace_bytes` -- the decompression-bomb signature. The
+   *          decoder stops fail-closed at the breach point.
+   * @par Value: 0x506
+   * @see ra8_decomp_limits.h The unified decompression-limits policy.
+   */
+  k_ra8_err_decomp_ratio = 0x506,
+
+  /**
+   * @brief Archive entry-count cap breached (`ra8_decomp_limits_t`).
+   * @details An archive enumerated more members than the policy's
+   *          `max_entries` -- the many-tiny-entries resource-exhaustion
+   *          shape. The whole archive is rejected fail-closed.
+   * @par Value: 0x507
+   * @see ra8_decomp_limits.h The unified decompression-limits policy.
+   */
+  k_ra8_err_decomp_entries = 0x507,
+
+  /**
+   * @brief Container nesting-depth cap breached (`ra8_decomp_limits_t`).
+   * @details Decoder plumbing was asked to stack more layers (e.g. a
+   *          compressed stream inside a compressed stream) than the policy's
+   *          `max_depth` -- the recursive-bomb shape. Rejected fail-closed
+   *          before any inner decode starts.
+   * @par Value: 0x508
+   * @see ra8_decomp_limits.h The unified decompression-limits policy.
+   */
+  k_ra8_err_decomp_depth = 0x508,
+
+  /**
+   * @brief Decode-loop iteration budget exhausted (`ra8_decomp_limits_t`).
+   * @details A decode loop charged more iterations than the policy's
+   *          `max_iterations` without finishing -- the stuck-stream /
+   *          no-progress shape (NASA P10 Rule 2 backstop). The decoder
+   *          stops fail-closed.
+   * @par Value: 0x509
+   * @see ra8_decomp_limits.h The unified decompression-limits policy.
+   */
+  k_ra8_err_decomp_iterations = 0x509,
 } ra8_err_codes_t;
 
 /**

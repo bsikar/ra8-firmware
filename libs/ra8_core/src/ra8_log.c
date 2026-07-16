@@ -595,7 +595,7 @@ static void internal_emit_line_i(const char* level, const char* tag, const char*
  *
  * @details
  * The error codes are sparse (0, 0x101..0x10F, 0x201..0x209, 0x301..0x306,
- * 0x401..0x409, 0x501..0x504), so a directly indexed array would waste
+ * 0x401..0x409, 0x501..0x509), so a directly indexed array would waste
  * ~1.2 KB of flash. A linear-scan {code, name} table keeps the table size
  * proportional to the number of codes (~44 entries).
  *
@@ -676,6 +676,11 @@ static const ra8_err_name_entry_t s_ra8_err_names[] = {
   {k_ra8_err_checksum_mismatch, "checksum_mismatch"},
   {k_ra8_err_range_check_failed, "range_check_failed"},
   {k_ra8_err_null_ptr, "null_ptr"},
+  {k_ra8_err_decomp_output_cap, "decomp_output_cap"},
+  {k_ra8_err_decomp_ratio, "decomp_ratio"},
+  {k_ra8_err_decomp_entries, "decomp_entries"},
+  {k_ra8_err_decomp_depth, "decomp_depth"},
+  {k_ra8_err_decomp_iterations, "decomp_iterations"},
 };
 
 /**

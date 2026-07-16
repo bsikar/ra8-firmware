@@ -342,6 +342,11 @@ static const test_err_entry_t s_all_err_codes[] = {
   {k_ra8_err_checksum_mismatch, "checksum_mismatch"},
   {k_ra8_err_range_check_failed, "range_check_failed"},
   {k_ra8_err_null_ptr, "null_ptr"},
+  {k_ra8_err_decomp_output_cap, "decomp_output_cap"},
+  {k_ra8_err_decomp_ratio, "decomp_ratio"},
+  {k_ra8_err_decomp_entries, "decomp_entries"},
+  {k_ra8_err_decomp_depth, "decomp_depth"},
+  {k_ra8_err_decomp_iterations, "decomp_iterations"},
 };
 
 /**
