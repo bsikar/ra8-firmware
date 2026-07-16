@@ -94,6 +94,8 @@ set(RA8_FUZZ_TARGETS
     fuzz_ra8_stbtt
     fuzz_ra8_rar
     fuzz_ra8_webp
+    fuzz_ra8_tileatlas
+    fuzz_ra8_tileatlas_produce
 )
 
 # Harnesses that dereference real peripheral registers and therefore need
@@ -140,6 +142,7 @@ foreach(_t ${RA8_FUZZ_TARGETS})
       ${FW_ROOT}/libs/ra8_reflow/inc
       ${FW_ROOT}/libs/ra8_comic/inc
       ${FW_ROOT}/libs/ra8_webp/inc
+      ${FW_ROOT}/libs/ra8_tileatlas/inc
       ${FW_ROOT}/libs/third_party/stb
       # tests/ root: shared test fixtures (e.g. eth_frame_fixture.h,
       # the fuzz_ra8_etha parse target).
