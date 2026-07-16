@@ -8,16 +8,18 @@
  *
  * @details
  * This is the RA8P1 counterpart of ``examples/ek_ra8d2/.../blink``. Its purpose
- * is NOT hardware validation (there is no RA8P1 board layer yet) but to prove
- * the multi-chip foundation: built with ``cmake/toolchain-ra8p1.cmake`` it
- * compiles with ``-DRA8_DEVICE_RA8P1``, and the ENTIRE ``ra8_core`` + ``ra8_hal``
- * (plus the reused ``ra8_board_ek_ra8d2`` layer, whose register and pin map is
- * identical on the pin-compatible RA8P1) compile and link for the
+ * is NOT hardware validation (there is no RA8P1 board yet) but to prove the
+ * multi-chip foundation: built with ``cmake/toolchain-ra8p1.cmake`` it compiles
+ * with ``-DRA8_DEVICE_RA8P1``, and the ENTIRE ``ra8_core`` + ``ra8_hal`` plus the
+ * dedicated ``ra8_board_ra8p1`` layer (issue #226) compile and link for the
  * R7KA8P1KFLCAC. The peripheral register bases and the memory map are
  * byte-identical to the RA8D2 -- see the difference-analysis issue and
- * ``libs/ra8_core/inc/ra8_device.h`` -- so the same board and HAL sources serve
- * both chips unchanged; only the Arm Ethos-U55 NPU
- * (``libs/ra8_hal/inc/ra8_npu_regs.h``) is RA8P1-specific.
+ * ``libs/ra8_core/inc/ra8_device.h`` -- so the HAL sources serve both chips
+ * unchanged; only the Arm Ethos-U55 NPU
+ * (``libs/ra8_hal/inc/ra8_npu_regs.h``) is RA8P1-specific. The LED pin the blink
+ * drives comes from ``ra8_board_ra8p1``, whose LED/switch/console pins are
+ * provisional (mirrored from the pin-compatible EK-RA8D2) until an RA8P1 board
+ * is defined; see that layer's header for the ``TODO(EK-RA8P1 UM / ra8p1_kicad)``.
  *
  * @par Architectural ring
  * See docs/RING_AND_WORLD.md for what `[Ring 6 / APP] {World: S}` means --
@@ -32,7 +34,7 @@
 
 #include <stdint.h>
 
-#include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ra8p1.h"
 #include "ra8_device.h"
 #include "ra8_err.h"
 #include "ra8_isr.h"

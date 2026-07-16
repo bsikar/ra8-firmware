@@ -16,19 +16,30 @@
 #   - vector_table.c / system_init.c / secure_exception.c / nmi_exception.c /
 #     trustzone_init.c :
 #       the app's local copy if it exists (per-app override), else the
-#       shared libs/ra8_board_ek_ra8d2/boot/ copy. The shared vector_table.c is
+#       selected board's libs/ra8_board_<BOARD>/boot/ copy (BOARD defaults to
+#       ek_ra8d2 -- see the option below). The shared vector_table.c is
 #       the plurality variant (weak-alias handlers + ra8_lpm_safe_boot() early
 #       hook); apps with a divergent table (ra8_isr_dispatch dispatcher, no LPM
 #       hook, dual-core / TrustZone reset) keep their own copy and override it.
 #   - linker_script.ld               : the app's local copy if it exists
 #       (divergent maps: dual-core, TrustZone, bootloader banks), else the
-#       shared canonical single-core map libs/ra8_board_ek_ra8d2/ld/linker_script.ld
+#       selected board's canonical single-core map
+#       libs/ra8_board_<BOARD>/ld/linker_script.ld
 #   - the ra8_* libraries + src/secure_app
 #
 # Options:
 #   NAME <n>            (required) app + elf base name
 #   STACK_BYTES <n>     per-function stack-frame budget (default 2200)
 #   DESCRIPTION <s>     project() description for standalone builds
+#   BOARD <b>           board-support layer under libs/ra8_board_<b> (default
+#                       ek_ra8d2). Selects which board layer supplies the fallback
+#                       boot files, the board src glob, the fallback linker script,
+#                       and the board include path. Left unset every existing app
+#                       resolves to libs/ra8_board_ek_ra8d2 -- the exact hardcoded
+#                       paths this recipe used before the parameter existed, so the
+#                       default build is byte-for-behaviour unchanged. The RA8P1
+#                       foundation apps pass BOARD ra8p1 to build against the
+#                       libs/ra8_board_ra8p1 layer (issue #226).
 #   NO_NSC              exclude the ra8_nsc sources (secure-only dual-core apps)
 #   USES <m>...         vendored middleware to enable + link. Each <m> maps to
 #                       cmake/<m>.cmake (interface lib target <m>) and, when a
@@ -62,7 +73,7 @@
 set(_RA8_ADD_APP_DIR "${CMAKE_CURRENT_LIST_DIR}")
 
 macro(ra8_add_app)
-    cmake_parse_arguments(_RA8_APP "NO_NSC" "NAME;STACK_BYTES;DESCRIPTION" "USES;LIBS;SIM_LIBS;NSC_SRCS;EXTRA_SRCS" ${ARGN})
+    cmake_parse_arguments(_RA8_APP "NO_NSC" "NAME;STACK_BYTES;DESCRIPTION;BOARD" "USES;LIBS;SIM_LIBS;NSC_SRCS;EXTRA_SRCS" ${ARGN})
 
     if(NOT _RA8_APP_NAME)
         message(FATAL_ERROR "ra8_add_app(): NAME is required")
@@ -73,9 +84,24 @@ macro(ra8_add_app)
     if(NOT _RA8_APP_DESCRIPTION)
         set(_RA8_APP_DESCRIPTION "RA8D2 firmware: ${_RA8_APP_NAME}")
     endif()
+    # Board-support layer selector (issue #226). Unset -> ek_ra8d2, so every
+    # existing app resolves to the exact libs/ra8_board_ek_ra8d2 paths this recipe
+    # hardcoded before the parameter existed and rebuilds byte-identically.
+    if(NOT _RA8_APP_BOARD)
+        set(_RA8_APP_BOARD "ek_ra8d2")
+    endif()
 
     # Repo root = parent of the dir holding this file (cmake/).
     get_filename_component(RA8_REPO_ROOT "${_RA8_ADD_APP_DIR}/.." ABSOLUTE)
+
+    # Absolute path to the selected board layer. All four board references below
+    # (fallback boot files, board src glob, fallback linker script, board include
+    # path) derive from this one variable so the board is swapped in one place.
+    set(_ra8_board_dir "${RA8_REPO_ROOT}/libs/ra8_board_${_RA8_APP_BOARD}")
+    if(NOT EXISTS "${_ra8_board_dir}")
+        message(FATAL_ERROR
+            "ra8_add_app(): BOARD '${_RA8_APP_BOARD}' has no layer at ${_ra8_board_dir}")
+    endif()
 
     # ---- standalone vs embedded -------------------------------------------
     # NOTE: the per-app stub already contains its own literal, guarded
@@ -148,7 +174,7 @@ macro(ra8_add_app)
         if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${_ra8_boot}")
             list(APPEND _ra8_src "${CMAKE_CURRENT_SOURCE_DIR}/${_ra8_boot}")
         else()
-            list(APPEND _ra8_src "${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/boot/${_ra8_boot}")
+            list(APPEND _ra8_src "${_ra8_board_dir}/boot/${_ra8_boot}")
         endif()
     endforeach()
 
@@ -184,7 +210,7 @@ macro(ra8_add_app)
     file(GLOB_RECURSE _ra8_lib_hal     CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_hal/src/*.c)
     file(GLOB_RECURSE _ra8_lib_net_pal CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_net_pal/src/*.c)
     file(GLOB_RECURSE _ra8_lib_usb_pal CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_usb_pal/src/*.c)
-    file(GLOB_RECURSE _ra8_lib_board   CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/src/*.c)
+    file(GLOB_RECURSE _ra8_lib_board   CONFIGURE_DEPENDS ${_ra8_board_dir}/src/*.c)
     file(GLOB_RECURSE _ra8_secure_app  CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/src/secure_app/*.c)
     if(_RA8_APP_NO_NSC)
         set(_ra8_lib_nsc "")
@@ -390,7 +416,7 @@ macro(ra8_add_app)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld")
         set(_ra8_linker ${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld)
     else()
-        set(_ra8_linker ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/ld/linker_script.ld)
+        set(_ra8_linker ${_ra8_board_dir}/ld/linker_script.ld)
     endif()
     set(_ra8_elf ${_RA8_APP_NAME}.elf)
 
@@ -502,7 +528,7 @@ macro(ra8_add_app)
         ${RA8_REPO_ROOT}/libs/ra8_net_pal/inc
         ${RA8_REPO_ROOT}/libs/ra8_usb_pal/inc
         ${RA8_REPO_ROOT}/libs/ra8_nsc/inc
-        ${RA8_REPO_ROOT}/libs/ra8_board_ek_ra8d2/inc
+        ${_ra8_board_dir}/inc
         ${_ra8_lib_inc}
         ${_ra8_extra_inc})
 

@@ -18,6 +18,11 @@
  * npu: id=0x10060000 run=OK out=0x........ verdict=PASS
  * @endcode
  *
+ * The SCI8 console is provided by the dedicated ``ra8_board_ra8p1`` board layer
+ * (issue #226), whose LED/switch/console pins are provisional (mirrored from the
+ * pin-compatible EK-RA8D2) until an RA8P1 board is defined -- see that layer's
+ * header for the ``TODO(EK-RA8P1 UM / ra8p1_kicad)`` rationale.
+ *
  * The command stream is NOT a real Vela program: it uses the tiny, documented
  * board_sim / host-test convention in ``ra8_npu_sim_cmd.h`` (an "SE55" magic word
  * plus an add-constant opcode). Under ``tools/board_sim --device ra8p1`` the NPU
@@ -43,7 +48,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "ra8_board_ek_ra8d2.h"
+#include "ra8_board_ra8p1.h"
 #include "ra8_cgc.h"
 #include "ra8_device.h"
 #include "ra8_err.h"

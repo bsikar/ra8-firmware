@@ -12,9 +12,9 @@
 # or simply `make` in this directory (its Makefile points at toolchain-ra8p1).
 #
 # All build logic lives in the shared cmake/ra8_add_app.cmake recipe; this file
-# only names the app. The recipe compiles the full ra8_core + ra8_hal + the reused
-# ra8_board_ek_ra8d2 layer -- identical register/pin map on the pin-compatible
-# RA8P1 -- so this app doubles as the "does the foundation compile+link for
+# only names the app. BOARD ra8p1 selects the dedicated libs/ra8_board_ra8p1
+# layer (issue #226); the recipe compiles the full ra8_core + ra8_hal + that
+# board layer, so this app doubles as the "does the foundation compile+link for
 # R7KA8P1KFLCAC" proof.
 #
 # Copyright (c) 2026 Brighton Sikarskie
@@ -34,5 +34,5 @@ while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME blink_ra8p1 STACK_BYTES 2200
+ra8_add_app(NAME blink_ra8p1 BOARD ra8p1 STACK_BYTES 2200
            DESCRIPTION "RA8P1 build-foundation blink (R7KA8P1KFLCAC)")
