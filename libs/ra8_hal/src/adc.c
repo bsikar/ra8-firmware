@@ -1,13 +1,13 @@
 /**
  * @file adc.c
- * @brief 12 / 14-bit ADC_B converter driver implementation
+ * @brief ADC16H (16-bit SAR) converter driver implementation
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Driver for the RA8D2 ADC_B peripheral. ADC_B is the Type-B SAR
- * block introduced on the RA8 family; its register layout was
+ * Driver for the RA8 ADC_B peripheral -- the 16-bit ADC16H SAR block
+ * shared byte-for-byte by the RA8D2 and RA8P1. Its register layout was
  * cross-verified against FSP ``R_ADC_B0_Type``
  * (``R7KA8D2KF_core0.h`` lines 20460-24938) and against the FSP
  * driver in ``ra/fsp/src/r_adc_b/r_adc_b.c``.
@@ -18,15 +18,19 @@
  *   2. Disable ADCLK (write 0 to ADCLKENR), wait CLKSR == 0.
  *   3. Programme ADCLKCR (clock source / divider).
  *   4. Enable ADCLK (write 1 to ADCLKENR), wait CLKSR == 1.
- *   5. Programme ADMDR per-unit mode (ADMD0[3:0], ADMD1[11:8]).
- *   6. Programme each ADCHCRn slot (channel selection).
+ *   5. Programme ADMDR per-unit operating mode (ADMD0[3:0], ADMD1[11:8]).
+ *   6. Programme each ADCHCRn slot (channel selection) and each
+ *      ADDOPCRCn.ADPRC data-format (conversion resolution).
  *   7. Enable scan-group via ADSGER, kick via ADSYSTR / ADSTR.
  *   8. Poll ADSR.ADACT0/1, read ADDR[ch].
  *
- * Resolution is controlled by ADMDR per-unit mode codes, not by a
- * per-channel field. The previous version of this driver modelled
- * non-existent ADCSR / ADCER / RESSEL / CVEN bits; those have been
- * deleted.
+ * Conversion resolution (10/12/14/16-bit) is the per-channel
+ * ADDOPCRCn.ADPRC[1:0] data-format field (HUM Ch 53.2.3.4 p 3339), NOT
+ * an ADMDR mode: ADMDR.ADMD0 only selects the unit's operating mode
+ * (single-shot / one-cycle / continuous). The previous version of this
+ * driver modelled non-existent ADCSR / ADCER / RESSEL / CVEN bits and
+ * folded "resolution" into the ADMD0 mode code; both were wrong and
+ * have been deleted.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -81,28 +85,102 @@ typedef struct {
 static ra8_adc_state_t s_adc_state;
 
 /**
- * @brief Translate a public resolution-enum into the ADMD0 unit-mode code.
+ * @brief Translate a public resolution selector into its ADDOPCRC.ADPRC code.
  *
  * @details
- * ADMDR.ADMD0[3:0] selects unit mode. For the polling driver we
- * always use one-cycle scan; future extensions can refine this by
- * writing per-table ADCNVSTR / ADDOPCRA values.
+ * Conversion resolution on the ADC16H is the per-channel
+ * ADDOPCRCn.ADPRC[1:0] data-format field (HUM Ch 53.2.3.4 p 3339), not
+ * an ADMDR mode. This maps each ::ra8_adc_resolution_t selector onto the
+ * matching ::ra8_addopcrc_adprc_t code; an unknown selector is rejected
+ * so callers can fail cleanly.
  *
- * @param[in] resolution Public resolution selector (currently a soft hint).
- * @return ADMD0 mode code to OR into ADMDR.
+ * @param[in]  resolution Public resolution selector.
+ * @param[out] out_adprc  Receives the ADPRC[1:0] code on success.
+ * @return True when @p resolution is a known selector, false otherwise.
  *
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
+ * @retval true  @p resolution is known; @p out_adprc holds the ADPRC code.
+ * @retval false @p resolution is out of range; @p out_adprc left untouched.
+ * @pre @p out_adprc is non-null.
+ * @pre @p resolution is sourced from ra8_adc_resolution_t.
+ * @post @p out_adprc is written only when the function returns true.
+ * @post No registers are accessed (pure translation).
+ * @note Re-entrant; touches no globals or MMIO.
+ * @since 0.1.0
+ */
+static bool internal_adprc_for_resolution(ra8_adc_resolution_t resolution, uint32_t* out_adprc)
+{
+  switch (resolution) {
+    case k_ra8_adc_res_16bit:
+      *out_adprc = (uint32_t)k_ra8_addopcrc_adprc_16bit;
+      return true;
+    case k_ra8_adc_res_14bit:
+      *out_adprc = (uint32_t)k_ra8_addopcrc_adprc_14bit;
+      return true;
+    case k_ra8_adc_res_12bit:
+      *out_adprc = (uint32_t)k_ra8_addopcrc_adprc_12bit;
+      return true;
+    case k_ra8_adc_res_10bit:
+      *out_adprc = (uint32_t)k_ra8_addopcrc_adprc_10bit;
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ * @brief Write the ADPRC data-format field of one ADDOPCRCn slot (RMW).
+ *
+ * @details
+ * Read-modify-writes ADDOPCRC[@p vch], replacing only ADPRC[1:0] and
+ * leaving SIGNSEL and the reserved bits intact (HUM Ch 53.2.3.4 p 3339).
+ * A slot whose accessor is out of range is skipped defensively.
+ *
+ * @param[in] vch   Virtual-channel (ADDOPCRC) slot index.
+ * @param[in] adprc ADPRC[1:0] data-format code to install.
+ *
+ * @pre @p vch indexes a result-producing virtual channel.
+ * @pre @p adprc is sourced from ra8_addopcrc_adprc_t.
+ * @post On a valid slot ADDOPCRCn.ADPRC == @p adprc.
+ * @post No write occurs when @p vch is out of range.
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint32_t internal_admd0_for_resolution(ra8_adc_resolution_t resolution)
+static void internal_write_adprc(uint8_t vch, uint32_t adprc)
 {
-  (void)resolution;
-  return k_ra8_admdr_mode_one_cycle;
+  volatile uint32_t* reg = ra8_adc_b_addopcrc(vch);
+  if (reg == nullptr) {
+    return;
+  }
+  const uint32_t adprc_field =
+    (adprc << (uint32_t)k_ra8_addopcrc_bit_adprc) & k_ra8_addopcrc_mask_adprc;
+  /* HUM Ch 53.2.3.4 "ADDOPCRCn : A/D Conversion Data Operation Control C Register n" p 3339 */
+  *reg = (*reg & ~k_ra8_addopcrc_mask_adprc) | adprc_field;
+}
+
+/**
+ * @brief Install one ADPRC data-format code on every result-producing channel.
+ *
+ * @details
+ * Programs @p adprc into each ADDOPCRC[0..``k_ra8_adc_b_result_regs``-1] slot
+ * so a conversion on any result channel reports in the matching precision. The
+ * dedicated self-diagnosis slot (top ADCHCR index) is deliberately excluded --
+ * ``ra8_adc_self_diagnose`` forces its own 16-bit signed format per run. The
+ * caller is responsible for validating the resolution -> ADPRC translation.
+ *
+ * @param[in] adprc ADPRC[1:0] data-format code (::ra8_addopcrc_adprc_t).
+ *
+ * @pre @p adprc is a valid ADPRC data-format code.
+ * @pre The ADC clock is running (init has completed).
+ * @post Every result-channel ADDOPCRCn.ADPRC == @p adprc.
+ * @post No slot outside 0..result_regs-1 is modified.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+static void internal_apply_resolution_code(uint32_t adprc)
+{
+  for (uint8_t ch = 0U; ch < k_ra8_adc_b_result_regs; ++ch) {
+    internal_write_adprc(ch, adprc);
+  }
 }
 
 /**
@@ -216,11 +294,14 @@ static void internal_program_channel(uint8_t virtual_ch, uint8_t physical_ch)
 /**
  * @brief Build the ADMDR value (ADMD0 only -- ADC1 stays disabled).
  *
- * @param[in] resolution Public resolution selector.
- * @param[in] scan_mode  True for continuous scan, false for one-shot.
- * @return Composite ADMDR value.
+ * @details
+ * ADMDR.ADMD0[3:0] selects the ADC0 operating mode: continuous scan when
+ * @p scan_mode is set, one-cycle scan otherwise. Conversion resolution is
+ * orthogonal (ADDOPCRC.ADPRC) and is not encoded here.
  *
- * @details See implementation.
+ * @param[in] scan_mode True for continuous scan, false for one-shot.
+ * @return Composite ADMDR value (ADMD0 field only).
+ *
  * @retval k_ra8_ok Operation succeeded.
  * @pre Module state is consistent.
  * @pre Module state is consistent.
@@ -229,10 +310,10 @@ static void internal_program_channel(uint8_t virtual_ch, uint8_t physical_ch)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint32_t internal_build_admdr(ra8_adc_resolution_t resolution, bool scan_mode)
+static uint32_t internal_build_admdr(bool scan_mode)
 {
   const uint32_t admd0_code =
-    scan_mode ? k_ra8_admdr_mode_continuous : internal_admd0_for_resolution(resolution);
+    scan_mode ? (uint32_t)k_ra8_admdr_mode_continuous : (uint32_t)k_ra8_admdr_mode_one_cycle;
   return (admd0_code << (uint32_t)k_ra8_admdr_bit_admd0) & k_ra8_admdr_mask_admd0;
 }
 
@@ -245,11 +326,12 @@ ra8_err_t ra8_adc_init(void)
   internal_clock_bring_up(0U);
 
   /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
-  *ra8_adc_b_admdr()   = internal_build_admdr(k_ra8_adc_res_14bit, false);
+  *ra8_adc_b_admdr()   = internal_build_admdr(false);
   *ra8_adc_b_adintcr() = 0U;
   *ra8_adc_b_adsger()  = (uint32_t)(1UL << (uint32_t)k_ra8_adc_default_group);
 
   internal_zero_channel_table();
+  internal_apply_resolution_code((uint32_t)k_ra8_addopcrc_adprc_14bit);
 
   for (uint8_t g = 0U; g < k_ra8_adc_b_scan_groups; ++g) {
     s_adc_state.groups[g].num_channels = 0U;
@@ -301,17 +383,25 @@ ra8_err_t ra8_adc_init_configured(const ra8_adc_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
 
+  /* Validate the resolution -> ADPRC translation before touching hardware so
+   * a bad descriptor cannot leave the module half-configured. */
+  uint32_t adprc = 0U;
+  if (!internal_adprc_for_resolution(cfg->resolution, &adprc)) {
+    return k_ra8_err_invalid_arg;
+  }
+
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_adc16h);
   RA8_RETURN_ON_ERROR(mst_err, s_tag, "adc_init_cfg: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   internal_clock_bring_up(0U);
 
   /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
-  *ra8_adc_b_admdr()   = internal_build_admdr(cfg->resolution, cfg->scan_mode);
+  *ra8_adc_b_admdr()   = internal_build_admdr(cfg->scan_mode);
   *ra8_adc_b_adintcr() = 0U;
   *ra8_adc_b_adsger()  = (uint32_t)(1UL << (uint32_t)k_ra8_adc_default_group);
 
   internal_zero_channel_table();
+  internal_apply_resolution_code(adprc);
 
   for (uint8_t g = 0U; g < k_ra8_adc_b_scan_groups; ++g) {
     s_adc_state.groups[g].num_channels = 0U;
@@ -345,18 +435,15 @@ ra8_err_t ra8_adc_deinit(void)
 
 ra8_err_t ra8_adc_set_resolution(ra8_adc_resolution_t resolution)
 {
-  if ((uint8_t)resolution > k_ra8_adc_res_14bit) {
+  uint32_t adprc = 0U;
+  if (!internal_adprc_for_resolution(resolution, &adprc)) {
     return k_ra8_err_invalid_arg;
   }
   s_adc_state.resolution = resolution;
-  /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
-  /* Re-apply the per-unit mode keeping ADC1's ADMD1 field intact;
-   * we only own ADC0 in this driver. */
-  const uint32_t mdr_now = *ra8_adc_b_admdr() & ~k_ra8_admdr_mask_admd0;
-  const uint32_t admd0 =
-    (internal_admd0_for_resolution(resolution) << (uint32_t)k_ra8_admdr_bit_admd0) &
-    k_ra8_admdr_mask_admd0;
-  *ra8_adc_b_admdr() = mdr_now | admd0;
+  /* Resolution is the per-channel ADDOPCRC.ADPRC data-format, not an ADMDR
+   * mode: install it on every result-producing virtual channel so the next
+   * conversion reports in the requested precision. */
+  internal_apply_resolution_code(adprc);
   return k_ra8_ok;
 }
 

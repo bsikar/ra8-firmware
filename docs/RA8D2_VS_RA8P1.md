@@ -51,7 +51,7 @@ leaves it unmapped.
 | NPUCLK domain | absent | present | `RA8_HAS_NPUCLK` | CGC NPUCLK; on-silicon wiring #229. |
 | OFS3 / WDT1 option reg | present | **absent** | `RA8_HAS_OFS3` | `ra8_ofs.{h,c}` gates OFS3 out of the option map (#223). **Done.** |
 | M85 FPU width | single (`fpv5-sp-d16`) | **double** (`fpv5-d16`) | toolchain | `cmake/toolchain-ra8p1.cmake` appends `-mfpu=fpv5-d16`; witnessed by `ra8_fpu_probe` (#225). **Done.** |
-| ADC resolution | 12-bit | 16-bit capability | (pending flag) | ADC16 unit present on both; 16-bit mode delta to be evaluated (#225 tail). **Pending.** |
+| ADC resolution | 12-bit default | **16-bit** (ADC16H) | `ADDOPCRC.ADPRC` | Same ADC16H block on both; `ra8_adc_resolution_t` carries 10/12/14/16-bit and `ra8_adc` programs the per-channel `ADDOPCRCn.ADPRC` data-format; sim-modelled (#225). **Done.** |
 | HUM | `R01UH1065EJ` | `R01UH1064EJ` | -- | cite the matching manual per device. |
 
 Package, 1 MB code MRAM, 1.6 MB dual-core ECC SRAM, and every non-NPU
@@ -95,6 +95,7 @@ silicon (#229) step.
 ## 6. Open RA8P1 issues
 
 `#220` (this analysis) - `#223` OFS/boot (done) - `#225` DP-FPU (done) + 16-bit
-ADC (pending) - `#226` `ra8_board_ra8p1` board layer + bring-up - `#227` Vela
+ADC (done; `fpv5-d16` silicon benchmark remains, part-blocked) - `#226`
+`ra8_board_ra8p1` board layer + bring-up - `#227` Vela
 integration - `#228` inference adapter (done) - `#229` on-silicon Ethos-U55 -
 `#203` PCB / memory-hierarchy spike.

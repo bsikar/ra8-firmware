@@ -8,7 +8,8 @@
  * register layout away from the imaginary CVEN / RESSEL / ADTRGMD /
  * ADSCANMD / ADBUSY bit map. These tests verify:
  *   - ADCLKENR is set after init
- *   - ADMDR encodes ADMD0 unit mode (resolution / scan)
+ *   - ADMDR encodes the ADMD0 unit operating mode (one-cycle / continuous)
+ *   - ADDOPCRCn.ADPRC encodes the per-channel conversion resolution
  *   - ADSGER enables the default scan group (group 0)
  *   - ``ra8_adc_read_channel`` programmes ADCHCRn and kicks ADSTR[0]
  *   - The driver polls ADSR.ADACT0 and reads ADDR[ch].DATA on success
@@ -89,6 +90,13 @@ typedef enum : uint8_t {
   * happy path / error-rejection contract; no `&&` or `||` in the
   * code under test that this case touches)
  * --------------------------------------------------------------------------- */
+
+/** @brief Extract the ADDOPCRCn.ADPRC[1:0] data-format field for a channel. */
+static uint32_t adc_adprc_of(uint8_t ch)
+{
+  const uint32_t opcrc = *ra8_adc_b_addopcrc(ch);
+  return (opcrc & k_ra8_addopcrc_mask_adprc) >> (uint32_t)k_ra8_addopcrc_bit_adprc;
+}
 
 static void test_init_happy(void)
 {
@@ -312,24 +320,41 @@ static void test_deinit(void)
 }
 
 /**
+ * @brief Every resolution selector installs its ADDOPCRCn.ADPRC code on the
+ *        result-producing channels, and leaves the ADMD0 operating mode alone.
+ *
  * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * (no compound decisions in this test -- exercises the resolution ->
+ * ADPRC translation switch, one selector per call; no `&&` or `||` in
+ * the code under test that this case touches)
  */
 static void test_set_resolution(void)
 {
-  TEST_BEGIN("adc set_resolution updates ADMD0");
+  TEST_BEGIN("adc set_resolution updates ADDOPCRC.ADPRC");
   ra8_sim_mmap_reset();
 
-  const ra8_adc_cfg_t cfg = make_cfg();
+  const ra8_adc_cfg_t cfg = make_cfg(); /* 14-bit. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init_configured(&cfg));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_set_resolution(k_ra8_adc_res_12bit));
+  /* init_configured applied the 14-bit ADPRC to the result channels. */
+  TEST_ASSERT_EQ(k_ra8_addopcrc_adprc_14bit, adc_adprc_of(k_ra8_adc_test_ch_zero));
 
-  /* ADMD0 should still hold the one-cycle code (every public resolution
-   * selector currently maps to one-cycle). */
+  /* 16-bit is the RA8P1 ADC16H headline capability (ADPRC = 0b00). */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_set_resolution(k_ra8_adc_res_16bit));
+  TEST_ASSERT_EQ(k_ra8_addopcrc_adprc_16bit, adc_adprc_of(k_ra8_adc_test_ch_zero));
+  TEST_ASSERT_EQ(k_ra8_addopcrc_adprc_16bit, adc_adprc_of(k_ra8_adc_test_ch_valid));
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_set_resolution(k_ra8_adc_res_12bit));
+  TEST_ASSERT_EQ(k_ra8_addopcrc_adprc_12bit, adc_adprc_of(k_ra8_adc_test_ch_valid));
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_set_resolution(k_ra8_adc_res_10bit));
+  TEST_ASSERT_EQ(k_ra8_addopcrc_adprc_10bit, adc_adprc_of(k_ra8_adc_test_ch_max));
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_set_resolution(k_ra8_adc_res_14bit));
+  TEST_ASSERT_EQ(k_ra8_addopcrc_adprc_14bit, adc_adprc_of(k_ra8_adc_test_ch_valid));
+
+  /* Resolution is orthogonal to ADMD0: the one-cycle operating mode is intact. */
   TEST_ASSERT_EQ(k_ra8_adc_test_admd0_one_cycle, (*ra8_adc_b_admdr() & k_ra8_admdr_mask_admd0));
-  TEST_END("adc set_resolution updates ADMD0");
+  TEST_END("adc set_resolution updates ADDOPCRC.ADPRC");
 }
 
 /**
@@ -345,6 +370,48 @@ static void test_set_resolution_bad(void)
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_adc_set_resolution((ra8_adc_resolution_t)9U));
   TEST_END("adc set_resolution bad");
+}
+
+/**
+ * @brief ``ra8_adc_init_configured`` honours a 16-bit descriptor by writing the
+ *        16-bit ADPRC code (ADC16H headline capability) to the result channels.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the init-time
+ * resolution -> ADPRC application; no `&&` or `||` in the code under
+ * test that this case touches)
+ */
+static void test_init_configured_16bit(void)
+{
+  TEST_BEGIN("adc init configured: 16-bit ADPRC");
+  ra8_sim_mmap_reset();
+
+  ra8_adc_cfg_t cfg = make_cfg();
+  cfg.resolution    = k_ra8_adc_res_16bit;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init_configured(&cfg));
+  TEST_ASSERT_EQ(k_ra8_addopcrc_adprc_16bit, adc_adprc_of(k_ra8_adc_test_ch_zero));
+  TEST_ASSERT_EQ(k_ra8_addopcrc_adprc_16bit, adc_adprc_of(k_ra8_adc_test_ch_max));
+  TEST_END("adc init configured: 16-bit ADPRC");
+}
+
+/**
+ * @brief ``ra8_adc_init_configured`` rejects an out-of-range resolution before
+ *        it powers the module.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the single-condition
+ * resolution-validation guard; no `&&` or `||` in the code under test
+ * that this case touches)
+ */
+static void test_init_configured_bad_resolution(void)
+{
+  TEST_BEGIN("adc init configured: bad resolution rejected");
+  ra8_sim_mmap_reset();
+
+  ra8_adc_cfg_t cfg = make_cfg();
+  cfg.resolution    = (ra8_adc_resolution_t)9U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_adc_init_configured(&cfg));
+  TEST_END("adc init configured: bad resolution rejected");
 }
 
 /**
@@ -922,6 +989,8 @@ int32_t main(void)
   test_deinit();
   test_set_resolution();
   test_set_resolution_bad();
+  test_init_configured_16bit();
+  test_init_configured_bad_resolution();
   test_status_read_and_clear();
   test_status_null();
   test_attach_and_dispatch();
