@@ -14,12 +14,14 @@
  * attacker-controlled initial-access content -- a WebP inside a downloaded
  * book -- and are fuzzed by `tests/fuzz/fuzz_ra8_webp.c`.
  *
- * @par Scope of #290 (this file):
- * Vendor + build + standalone decode. This facade is intentionally NOT yet
- * wired into the `ra8_reflow` / `ra8_img` raster decode dispatch: that
- * integration -- normalising a decoded WebP into the band-tile format and
- * routing render-time decodes through one codec -- lands with #289 once the
- * band-tile format exists. See the `TODO(#289)` seam in ra8_webp.c.
+ * @par Integration (#290 normalize-on-import):
+ * The RTA1 tile producer consumes this facade
+ * (`ra8_tileatlas_produce()` -> `priv_webp_transcode`): a WebP manifest image
+ * is decoded whole-frame here and banded into the one normalized band-tile
+ * format, so render time touches a single codec regardless of source. The
+ * small-image (non-tiled) `ra8_reflow` / `ra8_img` inline raster dispatch does
+ * not yet have a WebP arm -- that lands with the #289 webtoon render path; see
+ * the `TODO(#289)` seam in ra8_webp.c.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

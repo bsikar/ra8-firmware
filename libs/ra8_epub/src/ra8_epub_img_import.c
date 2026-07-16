@@ -6,9 +6,10 @@
  * @details
  * Implements `ra8_epub_tile_binder_import()`: resolve a manifest image href,
  * register it in place when the entry already is a stored RTA1 atlas, or
- * stream its encoded JPEG/PNG bytes through the bounded transcode producer
+ * stream its encoded JPEG/PNG/WebP bytes through the bounded transcode producer
  * (`ra8_tileatlas_produce`) into the caller's atlas store and register the
- * result. Either way the binder afterwards serves the image's full-resolution
+ * result. Every source codec normalizes to the one RTA1 format on import
+ * (#290). Either way the binder afterwards serves the image's full-resolution
  * tiles decode-on-demand -- the #231 goal for pages larger than SDRAM.
  *
  * Guarded on `__has_include` exactly like the binder unit so epub-only apps
@@ -152,17 +153,19 @@ static ra8_err_t priv_transcode(ra8_epub_book_t*                   book,
     return err;
   }
   const ra8_tileatlas_produce_cfg_t pcfg = {
-    .pull       = priv_entry_pull,
-    .pull_ctx   = &pull,
-    .sink       = cfg->store.sink,
-    .sink_ctx   = cfg->store.sink_ctx,
-    .tile_w     = cfg->tile_w,
-    .tile_h     = cfg->tile_h,
-    .codec      = cfg->codec,
-    .max_width  = cfg->max_width,
-    .max_height = cfg->max_height,
-    .work       = cfg->work,
-    .work_cap   = cfg->work_cap,
+    .pull          = priv_entry_pull,
+    .pull_ctx      = &pull,
+    .sink          = cfg->store.sink,
+    .sink_ctx      = cfg->store.sink_ctx,
+    .tile_w        = cfg->tile_w,
+    .tile_h        = cfg->tile_h,
+    .codec         = cfg->codec,
+    .max_width     = cfg->max_width,
+    .max_height    = cfg->max_height,
+    .work          = cfg->work,
+    .work_cap      = cfg->work_cap,
+    .webp_work     = cfg->webp_work,
+    .webp_work_cap = cfg->webp_work_cap,
   };
   err                       = ra8_tileatlas_produce(&pcfg, out_info);
   const ra8_err_t close_err = ra8_epub_entry_close(&pull.reader);

@@ -26,12 +26,12 @@
  *      image size, with no downscaling.
  *   2. **Import-time transcode** (`ra8_epub_tile_binder_import()`): the
  *      #231 producer wired to the open path. Resolves a manifest href,
- *      streams the encoded JPEG/PNG through
- *      `ra8_tileatlas_produce()` into a caller-supplied atlas store, and
- *      registers the result -- after which a page larger than SDRAM at
- *      native resolution renders full-res via decode-on-demand tiles. An
- *      entry that already IS a stored RTA1 atlas registers in place with
- *      no transcode.
+ *      streams the encoded JPEG/PNG (or, with a `webp_work` arena, WebP)
+ *      through `ra8_tileatlas_produce()` into a caller-supplied atlas store,
+ *      and registers the result -- after which a page larger than SDRAM at
+ *      native resolution renders full-res via decode-on-demand tiles. Every
+ *      source codec converges on the one RTA1 format (#290). An entry that
+ *      already IS a stored RTA1 atlas registers in place with no transcode.
  *   3. **Reflow `<img>` loader** (`ra8_epub_reflow_img_load`): the real
  *      `ra8_reflow_image_loader_fn` -- resolves an `<img src>` href to an
  *      EPUB manifest resource and returns its encoded bytes in a
@@ -177,9 +177,13 @@ typedef struct {
  * @details Mirrors the producer configuration (`ra8_tileatlas_produce.h`)
  *          minus the source, which the import path streams from the archive
  *          entry itself. Size `work` with `ra8_tileatlas_work_bytes()` over
- *          the same caps.
+ *          the same caps. `webp_work` is the optional whole-frame arena for
+ *          WebP manifest images (size it with
+ *          `ra8_tileatlas_webp_work_bytes()`); leave it NULL to fail-closed
+ *          reject WebP entries the way JPEG/PNG-only importers always did.
  *
  * @invariant `tile_w`/`tile_h` non-zero; `work` covers `work_cap`.
+ * @invariant `webp_work` is NULL, or it covers `webp_work_cap`.
  * @see ra8_epub_tile_binder_import()
  * @since 0.1.0
  */
@@ -194,9 +198,13 @@ typedef struct {
   // cppcheck-suppress unusedStructMember
   uint16_t max_height; /**< Height budget cap (0 = format cap). */
   // cppcheck-suppress unusedStructMember
-  uint8_t* work; /**< Producer work arena. */
+  uint8_t* work; /**< Producer streaming work arena (JPEG/PNG). */
   // cppcheck-suppress unusedStructMember
   size_t work_cap; /**< Arena size (ra8_tileatlas_work_bytes()). */
+  // cppcheck-suppress unusedStructMember
+  uint8_t* webp_work; /**< WebP whole-frame arena, or NULL to reject WebP. */
+  // cppcheck-suppress unusedStructMember
+  size_t webp_work_cap; /**< WebP arena size (ra8_tileatlas_webp_work_bytes()). */
   // cppcheck-suppress unusedStructMember
   ra8_epub_atlas_store_t store; /**< Destination atlas store. */
 } ra8_epub_atlas_import_cfg_t;
@@ -322,8 +330,9 @@ typedef struct {
  *      (`ra8_epub_tile_binder_add()`) -- the host-baked fast path, no
  *      transcode and no store writes.
  *   2. Otherwise streams the entry's encoded bytes through
- *      `ra8_tileatlas_produce()` (bounded stripes; the whole decoded image
- *      is never resident) into @p cfg->store, then registers the produced
+ *      `ra8_tileatlas_produce()` (JPEG/PNG in bounded stripes so the whole
+ *      decoded image is never resident; WebP whole-frame through the
+ *      `cfg->webp_work` arena) into @p cfg->store, then registers the produced
  *      atlas via `ra8_epub_tile_binder_add_ext()`.
  *
  * After a successful import, `ra8_epub_tile_binder_get()` pages the image's
@@ -343,7 +352,8 @@ typedef struct {
  * @retval k_ra8_err_invalid_arg       Bad href length / duplicate id / bad cfg.
  * @retval k_ra8_err_no_mem            Source table full, or the store filled.
  * @retval k_ra8_err_not_found         @p href resolves to no archive entry.
- * @retval k_ra8_err_not_supported     The entry is not JPEG/PNG/atlas, or an
+ * @retval k_ra8_err_not_supported     The entry is not JPEG/PNG/WebP/atlas, a
+ *                                     WebP with no `webp_work` arena, or an
  *                                     unsupported variant.
  * @retval k_ra8_err_invalid_size      Source exceeds the caps / arena too small.
  * @retval k_ra8_err_protocol_error    Malformed / hostile source structure.
