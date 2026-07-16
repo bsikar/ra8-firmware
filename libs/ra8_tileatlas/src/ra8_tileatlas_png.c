@@ -426,6 +426,7 @@ typedef struct {
 static ra8_err_t png_inflate_step(ra8_png_state_t* st, ra8_png_iter_t* it)
 {
   ra8_err_t err = k_ra8_ok;
+  // mcdc-deactivated: refill-first loop structure; entering with a drained window after the source ended requires the source-ending iteration to return >= TINFL_STATUS_DONE without finishing, i.e. tinfl parked output mid-flush at the exact call the source ended -- for every constructible stream that call either completes (DONE exits the loop) or fails closed at the status check, so the (drained, source-done) entry cannot be flipped independently.
   if ((it->in_pos == it->in_avail) && (st->source_done == 0U)) {
     err = png_refill_input(st, &it->in_avail);
     if (err != k_ra8_ok) {
@@ -447,8 +448,10 @@ static ra8_err_t png_inflate_step(ra8_png_state_t* st, ra8_png_iter_t* it)
   if (status < TINFL_STATUS_DONE) {
     return k_ra8_err_protocol_error; /* corrupt deflate / bad zlib header */
   }
+  // mcdc-deactivated: zero-progress stall guard, defense-in-depth against a decompressor that spins without failing; tinfl never returns >= TINFL_STATUS_DONE with neither input consumed nor output produced (a starved mid-stream call without HAS_MORE_INPUT fails closed at the status check above, and the refill-first structure guarantees input is present otherwise), so the stall arm is not constructible from any source stream.
   if ((in_sz == 0U) && (out_sz == 0U)) {
     it->stalls++;
+    // mcdc-deactivated: inner arm of the non-constructible stall guard above (same rationale); kept so a hypothetical spinning decompressor aborts after one repeat instead of looping.
     if ((it->stalls > 1U) || (st->source_done != 0U)) {
       return k_ra8_err_protocol_error; /* truncated stream / no progress */
     }
