@@ -22,9 +22,9 @@
  * production: HUM Ch 52 documents no symmetric command-register map for the
  * RSIP-E50D, so the sim-only command path is gated behind the stub-crypto
  * guard and a production build returns ``k_ra8_err_not_supported``. The shipping
- * symmetric crypto is tf-psa-crypto on the M85; the NetX Crypto ALT shim in
- * ``port/netxduo/src/nx_crypto_aes_alt.c`` falls back to its own software AES when
- * the install fails, so the fail-closed path degrades gracefully (issue #214).
+ * symmetric crypto is tf-psa-crypto on the M85. NetX Crypto is linked with its
+ * own built-in software AES / SHA-256 (there is no RSIP ALT shim), so no NetX
+ * consumer depends on this fail-closed path (issue #214).
  *
  * Cross-TU primitives shared with ``ra8_rsip.c`` and ``ra8_rsip_asym.c`` are
  * declared in ``ra8_rsip_internal.h`` and remain compiled in every build. The
@@ -223,11 +223,10 @@ uint8_t internal_aes_alg_byte(uint32_t alg)
  * under the insecure-stub / simulator guard so a production image gets the
  * fail-closed #else and can never mistake these bytes for real ciphertext or a
  * valid tag. The shipping symmetric crypto is tf-psa-crypto on the M85,
- * silicon-proven in psa_crypto_hil; the NetX Crypto ALT shim in
- * port/netxduo/src/nx_crypto_aes_alt.c treats a non-ok install as "not installed"
- * and falls back to NetX's own software AES, so this fail-closed path degrades
- * gracefully (issue #214). The register pokes below therefore carry NO HUM
- * citation: there is no real register map to cite.
+ * silicon-proven in psa_crypto_hil; NetX Crypto is linked with its own built-in
+ * software AES / SHA-256 (there is no RSIP ALT shim), so no NetX consumer
+ * depends on this fail-closed path (issue #214). The register pokes below
+ * therefore carry NO HUM citation: there is no real register map to cite.
  */
 #if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
 
@@ -742,8 +741,9 @@ ra8_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_
  * key-install backend on this silicon, every entry point returns a hard error
  * (never k_ra8_ok) so a production image cannot mistake the simulator
  * command-path for real ciphertext, a valid tag, or an installed key handle.
- * A non-ok install leaves the NetX Crypto ALT shim on its own software AES, so
- * this degrades gracefully. Callers use tf-psa-crypto on the M85.
+ * No production caller depends on a real result here: NetX Crypto uses its own
+ * built-in software AES / SHA-256, and general callers use tf-psa-crypto on the
+ * M85.
  */
 
 ra8_err_t ra8_rsip_aes128_install_plain(const uint8_t* key, ra8_rsip_key_handle_t* out)

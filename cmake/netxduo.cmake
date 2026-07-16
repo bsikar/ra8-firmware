@@ -12,26 +12,21 @@
 #      bundled NetX Crypto sources into a single `netxduo` interface
 #      library.
 #   3. Pulls in our `port/netxduo/` shim which exposes the NetX Duo
-#      Ethernet driver entry point (`nx_ether_driver_ra8_eth`) and the
-#      `_nx_crypto_method_aes_*` / `_nx_crypto_method_sha256_*` ALT
-#      replacements that route to `ra8_rsip_aes_cipher` and
-#      `ra8_rsip_sha256` on real silicon.
+#      Ethernet driver entry point (`nx_ether_driver_ra8_eth`).
 #
-# The ALT replacements use GNU ld's `--wrap=symbol` redirection rather
-# than excluding the upstream TUs. Each upstream
-# `_nx_crypto_method_aes_init` / `..._operation` / `..._cleanup`
-# (and SHA-256 equivalent) is renamed by the linker to
-# `__real__nx_crypto_method_aes_init` etc., and our shim provides
-# `__wrap__nx_crypto_method_aes_init` etc. which routes the body
-# through ``ra8_rsip_aes_cipher`` / ``ra8_rsip_sha256`` on AES-128 ECB
-# and SHA-256, falling back to ``__real_*`` for the modes RSIP does
-# not natively cover (CCM-8/12/16, GCM, XCBC). This keeps the upstream
-# tree completely untouched.
+# NetX Crypto's AES / SHA-256 methods are NOT redirected to the RSIP
+# engine. The RSIP-E50D symmetric-cipher and hash blocks are not
+# backed by a documented register interface on this silicon (HUM Ch 52
+# is a six-page feature overview with no command-register map), so the
+# RSIP HAL fail-closes in production (issues #214 / #215). NetX Crypto
+# therefore uses its own built-in software AES / SHA-256 directly, and
+# the shipping crypto path is tf-psa-crypto on the M85. There is no
+# `--wrap` redirection and no ALT shim: the upstream crypto methods are
+# linked as-is.
 #
 # Apps that want NetX Duo `target_link_libraries(<app>.elf PRIVATE
 # netxduo netxduo_port_ra8_eth)` -- everything else (include dirs,
-# preprocessor defines, --wrap link options) flows through the
-# interface targets.
+# preprocessor defines) flows through the interface targets.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -112,21 +107,6 @@ target_link_libraries(netxduo_objs PRIVATE threadx)
 # Vendor sources predate -Wpedantic / -Werror cleanliness.
 target_compile_options(netxduo_objs PRIVATE -w)
 
-# The list of symbols our `port/netxduo/nx_crypto_*_alt.c` shims
-# wrap. Apps inherit these flags via the `netxduo` interface target.
-set(_RA8_NETXDUO_WRAP_SYMS
-    _nx_crypto_method_aes_init
-    _nx_crypto_method_aes_operation
-    _nx_crypto_method_aes_cleanup
-    _nx_crypto_method_sha256_init
-    _nx_crypto_method_sha256_operation
-    _nx_crypto_method_sha256_cleanup
-)
-set(_RA8_NETXDUO_WRAP_FLAGS "")
-foreach(_sym IN LISTS _RA8_NETXDUO_WRAP_SYMS)
-    list(APPEND _RA8_NETXDUO_WRAP_FLAGS "-Wl,--wrap=${_sym}")
-endforeach()
-
 add_library(netxduo INTERFACE)
 target_sources(netxduo INTERFACE $<TARGET_OBJECTS:netxduo_objs>)
 target_include_directories(netxduo INTERFACE
@@ -135,9 +115,8 @@ target_include_directories(netxduo INTERFACE
     ${_RA8_NETXDUO_SECURE_INC}
     ${_RA8_NETXDUO_PORT_INC})
 target_link_libraries(netxduo INTERFACE threadx)
-target_link_options(netxduo INTERFACE ${_RA8_NETXDUO_WRAP_FLAGS})
 
-# Now pull in our ra8_eth + ra8_rsip <-> NetX Duo shim.
+# Now pull in our ra8_eth <-> NetX Duo Ethernet-driver shim.
 add_subdirectory(${_RA8_NETXDUO_REPO_ROOT}/port/netxduo
                  ${CMAKE_BINARY_DIR}/port_netxduo)
 
