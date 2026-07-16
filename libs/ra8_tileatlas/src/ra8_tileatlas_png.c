@@ -512,6 +512,80 @@ static ra8_err_t png_inflate_idat(ra8_png_state_t* st, uint32_t first_len)
  * ---------------------------------------------------------------------------
  */
 
+/**
+ * @brief The IDAT arm: bind geometry, inflate the stream, finish the walk.
+ * @details Runs once, at the first IDAT chunk; every subsequent IDAT is
+ *          consumed inside the inflate phase.
+ * @param[in,out] st   Decoder state.
+ * @param[in,out] bump Work-arena allocator for the pixel-path carves.
+ * @param[in]     len  Payload length of the first IDAT chunk.
+ * @return Result code.
+ * @retval k_ra8_ok Every row emitted and the datastream consumed to IEND.
+ * @retval other    Propagated from geometry / inflate / the chunk walk.
+ * @pre The IHDR (and any PLTE/tRNS) have been parsed.
+ * @pre @p bump has the PNG carve set available.
+ * @post On success the whole PNG has been consumed.
+ * @post On error the decode aborts.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t png_run_idat(ra8_png_state_t* st, ra8_ta_bump_t* bump, uint32_t len)
+{
+  ra8_err_t err = png_bind_geometry(st, bump);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  err = png_inflate_idat(st, len);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  return ra8_ta_png_priv_finish(st);
+}
+
+/**
+ * @brief Walk the chunk stream: pre-IDAT chunks, then the IDAT arm.
+ * @details Bounded by the shared chunk budget (NASA Rule 2); a stream that
+ *          never reaches an IDAT within it is rejected as hostile.
+ * @param[in,out] st    Decoder state (prologue already parsed).
+ * @param[in,out] bump  Work-arena allocator for the pixel-path carves.
+ * @param[in]     max_w Fail-closed width cap (for the prologue).
+ * @param[in]     max_h Fail-closed height cap (for the prologue).
+ * @return Result code.
+ * @retval k_ra8_ok                 Every row emitted; stream consumed.
+ * @retval k_ra8_err_protocol_error Structure error / chunk budget spent.
+ * @retval other                    Propagated from the chunk / IDAT arms.
+ * @pre The callbacks are bound in @p st.
+ * @pre The source is positioned at byte 0 of the PNG stream.
+ * @post On success the whole PNG has been consumed.
+ * @post On error the decode aborts.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t
+png_walk_chunks(ra8_png_state_t* st, ra8_ta_bump_t* bump, uint16_t max_w, uint16_t max_h)
+{
+  ra8_err_t err = ra8_ta_png_priv_prologue(st, max_w, max_h);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  for (uint32_t guard = 0U; guard < (uint32_t)k_ra8_png_max_chunks; guard++) {
+    uint32_t len  = 0U;
+    uint32_t type = 0U;
+    err           = ra8_ta_png_priv_chunk_hdr(st, &len, &type);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+    if (type == (uint32_t)k_ra8_png_type_idat) {
+      return png_run_idat(st, bump, len);
+    }
+    err = ra8_ta_png_priv_pre_idat(st, len, type);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+  }
+  return k_ra8_err_protocol_error; /* chunk budget exhausted (hostile) */
+}
+
 RA8_PRIV ra8_err_t ra8_ta_priv_png_rows(ra8_tileatlas_pull_fn pull,
                                         void*                 pull_ctx,
                                         ra8_ta_bump_t*        bump,
@@ -532,33 +606,5 @@ RA8_PRIV ra8_err_t ra8_ta_priv_png_rows(ra8_tileatlas_pull_fn pull,
   st->on_geom  = on_geom;
   st->on_rows  = on_rows;
   st->cb_ctx   = cb_ctx;
-
-  ra8_err_t err = ra8_ta_png_priv_prologue(st, max_w, max_h);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  for (uint32_t guard = 0U; guard < (uint32_t)k_ra8_png_max_chunks; guard++) {
-    uint32_t len  = 0U;
-    uint32_t type = 0U;
-    err           = ra8_ta_png_priv_chunk_hdr(st, &len, &type);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    if (type == (uint32_t)k_ra8_png_type_idat) {
-      err = png_bind_geometry(st, bump);
-      if (err != k_ra8_ok) {
-        return err;
-      }
-      err = png_inflate_idat(st, len);
-      if (err != k_ra8_ok) {
-        return err;
-      }
-      return ra8_ta_png_priv_finish(st);
-    }
-    err = ra8_ta_png_priv_pre_idat(st, len, type);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-  }
-  return k_ra8_err_protocol_error; /* chunk budget exhausted (hostile) */
+  return png_walk_chunks(st, bump, max_w, max_h);
 }
