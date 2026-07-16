@@ -328,9 +328,9 @@ printf 'OTTOnot-a-real-font\x00\x00\x00\x00' >"${STBTT_DIR}/seed_garbage.bin"
 # -----------------------------------------------------------------------------
 WEBP_DIR="${CORPUS_ROOT}/fuzz_ra8_webp"
 cp "${ROOT}/tests/fixtures/webp/fixture_lossless.webp" "${WEBP_DIR}/seed_lossless.webp"
-cp "${ROOT}/tests/fixtures/webp/fixture_lossy.webp"    "${WEBP_DIR}/seed_lossy.webp"
-cp "${ROOT}/tests/fixtures/webp/fixture_wide.webp"     "${WEBP_DIR}/seed_wide.webp"
-cp "${ROOT}/tests/fixtures/webp/fixture_tall.webp"     "${WEBP_DIR}/seed_tall.webp"
+cp "${ROOT}/tests/fixtures/webp/fixture_lossy.webp" "${WEBP_DIR}/seed_lossy.webp"
+cp "${ROOT}/tests/fixtures/webp/fixture_wide.webp" "${WEBP_DIR}/seed_wide.webp"
+cp "${ROOT}/tests/fixtures/webp/fixture_tall.webp" "${WEBP_DIR}/seed_tall.webp"
 printf 'RIFF\x08\x00\x00\x00WEBP' >"${WEBP_DIR}/seed_truncated.bin"
 
 echo "Seeded fuzz corpora under ${CORPUS_ROOT}/."

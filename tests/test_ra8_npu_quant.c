@@ -98,14 +98,14 @@ static void test_quantize_i8_affine(void)
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_npu_quantize_i8(in, out, (size_t)k_test_q_count, s_q_scale, k_test_q_zp_i8));
   for (int32_t i = 0; i < k_test_q_count; i++) {
-    TEST_ASSERT_EQ((i + k_test_q_zp_i8), (int32_t)out[i]);
+    TEST_ASSERT_EQ((i + k_test_q_zp_i8), out[i]);
   }
   /* Half-away-from-zero rounding: 0.25/0.5 = 0.5 -> 1; -0.25/0.5 = -0.5 -> -1. */
   float  hin[2]  = {0.25F, -0.25F};
   int8_t hout[2] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_quantize_i8(hin, hout, (size_t)2, s_q_scale, 0));
-  TEST_ASSERT_EQ(1, (int32_t)hout[0]);
-  TEST_ASSERT_EQ(-1, (int32_t)hout[1]);
+  TEST_ASSERT_EQ(1, hout[0]);
+  TEST_ASSERT_EQ(-1, hout[1]);
   TEST_END("npu quant i8 affine round + zero-point");
 }
 
@@ -124,18 +124,18 @@ static void test_quantize_saturates(void)
    * makes round(in/scale) exceed 1e6. */
   float i8in[4] = {-1000.0F, 1000.0F, -5.0e6F, 5.0e6F};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_quantize_i8(i8in, o8, (size_t)4, s_q_scale, 0));
-  TEST_ASSERT_EQ((int32_t)k_ra8_npu_quant_i8_min, (int32_t)o8[0]);
-  TEST_ASSERT_EQ((int32_t)k_ra8_npu_quant_i8_max, (int32_t)o8[1]);
-  TEST_ASSERT_EQ((int32_t)k_ra8_npu_quant_i8_min, (int32_t)o8[2]);
-  TEST_ASSERT_EQ((int32_t)k_ra8_npu_quant_i8_max, (int32_t)o8[3]);
+  TEST_ASSERT_EQ(k_ra8_npu_quant_i8_min, o8[0]);
+  TEST_ASSERT_EQ(k_ra8_npu_quant_i8_max, o8[1]);
+  TEST_ASSERT_EQ(k_ra8_npu_quant_i8_min, o8[2]);
+  TEST_ASSERT_EQ(k_ra8_npu_quant_i8_max, o8[3]);
 
   /* UINT8: below 0 and above 255 saturate. */
   float u8in[4] = {-10.0F, 1000.0F, -5.0e6F, 5.0e6F};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_quantize_u8(u8in, ou8, (size_t)4, s_q_scale, 0));
-  TEST_ASSERT_EQ((int32_t)k_ra8_npu_quant_u8_min, (int32_t)ou8[0]);
-  TEST_ASSERT_EQ((int32_t)k_ra8_npu_quant_u8_max, (int32_t)ou8[1]);
-  TEST_ASSERT_EQ((int32_t)k_ra8_npu_quant_u8_min, (int32_t)ou8[2]);
-  TEST_ASSERT_EQ((int32_t)k_ra8_npu_quant_u8_max, (int32_t)ou8[3]);
+  TEST_ASSERT_EQ(k_ra8_npu_quant_u8_min, ou8[0]);
+  TEST_ASSERT_EQ(k_ra8_npu_quant_u8_max, ou8[1]);
+  TEST_ASSERT_EQ(k_ra8_npu_quant_u8_min, ou8[2]);
+  TEST_ASSERT_EQ(k_ra8_npu_quant_u8_max, ou8[3]);
   TEST_END("npu quant saturates + clamps huge magnitudes");
 }
 
@@ -182,9 +182,9 @@ static void test_zero_count_is_noop(void)
   int8_t  o8  = 42;
   uint8_t ou8 = 42U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_quantize_i8(&in, &o8, (size_t)0, s_q_scale, 0));
-  TEST_ASSERT_EQ(42, (int32_t)o8); /* untouched */
+  TEST_ASSERT_EQ(42, o8); /* untouched */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_quantize_u8(&in, &ou8, (size_t)0, s_q_scale, 0));
-  TEST_ASSERT_EQ(42, (int32_t)ou8);
+  TEST_ASSERT_EQ(42, ou8);
   float f = 7.0F;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_dequantize_i8(&o8, &f, (size_t)0, s_q_scale, 0));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_dequantize_u8(&ou8, &f, (size_t)0, s_q_scale, 0));
