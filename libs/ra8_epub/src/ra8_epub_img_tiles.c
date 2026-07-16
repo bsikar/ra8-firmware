@@ -32,6 +32,7 @@
 
 #include "ra8_check.h"
 #include "ra8_epub.h"
+#include "ra8_epub_entry.h"
 #include "ra8_err.h"
 #include "ra8_tile_cache.h"
 
