@@ -31,6 +31,7 @@
 #include "ra8_check.h"
 #include "ra8_comic.h"
 #include "ra8_comic_internal.h"
+#include "ra8_decomp_limits.h"
 #include "ra8_rar.h"
 
 /** @brief Log tag for CBR-backend diagnostics. */
@@ -81,6 +82,14 @@ s_add_member(ra8_comic_t* c, const ra8_rar_entry_t* ent, const char* name, uint1
   if (!ra8_comic_is_page_name(name, nlen)) {
     return k_ra8_ok;
   }
+  /* Decompression-limits guard: a page whose block header declares an
+   * over-cap or bomb-ratio size rejects the whole archive before any
+   * decode (the same policy every decoder enforces). */
+  const ra8_decomp_limits_t lim  = ra8_decomp_limits_default();
+  const ra8_err_t           derr = ra8_decomp_check_declared(&lim, ent->pack_size, ent->unp_size);
+  if (derr != k_ra8_ok) {
+    return derr;
+  }
   const bool is_store = (ent->method == (uint8_t)k_ra8_rar_method_store);
   const bool is_rar5  = (c->rar.version == k_ra8_rar_ver_5);
   /* STORE always decodes; a compressed member decodes only on RAR5 (the RAR4
@@ -103,10 +112,21 @@ ra8_err_t ra8_comic_cbr_open(ra8_comic_t* c)
   if (c->rar.version == k_ra8_rar_ver_none) {
     return k_ra8_err_invalid_state;
   }
-  uint64_t off = c->rar.first_off;
+  /* Decompression-limits budget for the whole enumeration: every walked
+   * block charges the entry cap, so the many-tiny-blocks bomb dies within
+   * policy long before the static loop cap. Direct field bind (not
+   * ra8_decomp_budget_init) because the default policy cannot fail
+   * validation and the counters start zeroed. */
+  ra8_decomp_budget_t budget = {};
+  budget.limits              = ra8_decomp_limits_default();
+  uint64_t off               = c->rar.first_off;
   for (uint32_t n = 0U; n < (uint32_t)k_cbr_max_blocks; ++n) { /* bound: static block cap */
     if (off >= c->rar.size) {
       break;
+    }
+    const ra8_err_t ce = ra8_decomp_budget_charge_entry(&budget);
+    if (ce != k_ra8_ok) {
+      return ce; /* block-flood bomb: reject the archive */
     }
     char            nb[k_cbr_name_max] = {};
     ra8_rar_entry_t ent                = {};
@@ -115,7 +135,7 @@ ra8_err_t ra8_comic_cbr_open(ra8_comic_t* c)
     }
     const ra8_err_t ae = s_add_member(c, &ent, nb, ent.name_len);
     if (ae != k_ra8_ok) {
-      return ae; /* index / arena full -- a real capacity error, propagate */
+      return ae; /* capacity / policy breach -- a real error, propagate */
     }
     off = ent.next_off;
   }
