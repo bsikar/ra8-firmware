@@ -2,7 +2,7 @@
 # Per-app Makefile for the `fault_div0_hil` firmware.
 #
 # Standalone use:
-#   cd examples/ek_ra8d2/hw_pending/fault_div0_hil/
+#   cd examples/ek_ra8d2/hw_validated/hil/fault_div0_hil/
 #   make             # configure + build -> build/fault_div0_hil.elf
 #   make flash       # JLinkExe load via scripts/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger

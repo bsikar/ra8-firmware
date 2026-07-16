@@ -43,18 +43,25 @@ The full snapshot (frame, CFSR/HFSR/BFAR/MMFAR/SFSR/SFAR) is also in
 `g_ra8_exception_last` (magic `0xFA17DEAD`) for a post-mortem J-Link
 attach.
 
-## Why `hw_pending`
+## Validation
 
-`tools/board_sim` cannot model this trap: the firmware's `CCR` write
-lands in the emulator's plain-memory SCS window and never reaches
-Unicorn's CPU state, so the sim divides by ARM default semantics
-(quotient 0). A sim run therefore proves only the boot path (banner +
-`trap armed` readback) and then honestly prints
-`fault-div0: survived divide quotient=0 (trap not modelled -- board_sim)`
-before idling. The app promotes to `hw_validated/hil/` once the bench
-captures the real fault dump:
+**Silicon (EK-RA8D2, J-Link):** the guarded divide raises UsageFault and
+the shared decoder prints `[EXC] ERROR: exception=6` +
+`[EXC] ERROR: cfsr =33554432` (`0x02000000` = `CFSR.DIVBYZERO`) on the
+SCI8 VCOM console -- proof `CCR.DIV_0_TRP` is set (T2-01) and the frame
+decoder runs on hardware (T2-02). Recorded on tracker issue #191.
+
+**Simulator-in-the-loop (`scripts/sil_all.sh`):** board_sim models the
+divide-by-zero trap faithfully. Its CPU-model seam scans the image for
+every `UDIV`/`SDIV` site and -- **only after** the firmware sets
+`CCR.DIV_0_TRP` (watched via the SCB control-register write hook) --
+overwrites those sites with a `UDF`, then services the resulting trap as
+a UsageFault latching `CFSR.DIVBYZERO`. A SIL run therefore reaches the
+same `cfsr =33554432` gate the bench does, with the same arm-then-fault
+ordering (a firmware that stopped arming the trap would instead print
+`fault-div0: FAIL trap not armed` and halt, tripping the negative gate).
 
 ```
-make -C examples/ek_ra8d2/hw_pending/fault_div0_hil build flash
+make -C examples/ek_ra8d2/hw_validated/hil/fault_div0_hil build flash
 # scrape the SCI8 VCOM console for: cfsr =33554432
 ```
