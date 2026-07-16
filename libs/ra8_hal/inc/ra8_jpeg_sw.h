@@ -41,6 +41,7 @@
 extern "C" {
 #endif
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "ra8_err.h"
@@ -266,6 +267,171 @@ typedef enum : uint8_t {
                                            uint8_t*       out_buf,
                                            uint32_t       out_buf_len,
                                            uint32_t*      out_len);
+
+/* ------------------------------------------------------------------ */
+/* Streaming stripe decode (#231): bounded-RAM MCU-row decoding */
+/* ------------------------------------------------------------------ */
+
+/**
+ * @enum ra8_jpeg_sw_stream_limits_t
+ * @brief Sizing floors for the streaming stripe decoder.
+ *
+ * @details
+ * The sliding window must always be able to materialise one whole marker
+ * segment (a segment length field is 16-bit, so <= 65537 bytes with its
+ * marker) AND keep a comfortable entropy-decode margin ahead of the bit
+ * reader between refills; 128 KiB covers both with 2x headroom. The scan
+ * margin is the refill trigger: the window slides whenever fewer bytes
+ * than this remain unread before an MCU decode.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra8_jpeg_sw_stream_min_window  = 131072U, /**< Minimum window bytes.  */
+  k_ra8_jpeg_sw_stream_scan_margin = 32768U,  /**< Refill trigger, bytes. */
+} ra8_jpeg_sw_stream_limits_t;
+
+/**
+ * @typedef ra8_jpeg_sw_pull_fn
+ * @brief Forward byte source for the streaming decoder (DIP seam).
+ *
+ * @details Strictly sequential: each call appends the next bytes of the
+ *          JPEG stream. `*got == 0` signals a clean end of stream; any
+ *          error return aborts the decode with that code. An EPUB entry
+ *          cursor (`ra8_epub_entry_read`) matches this shape directly.
+ *
+ * @param[in]  ctx Source-specific context.
+ * @param[out] buf Destination buffer (`cap` writable bytes).
+ * @param[in]  cap Capacity of @p buf.
+ * @param[out] got Bytes delivered this call (0 = end of stream).
+ * @return k_ra8_ok on success; any error aborts the decode.
+ * @since 0.1.0
+ */
+typedef ra8_err_t (*ra8_jpeg_sw_pull_fn)(void* ctx, uint8_t* buf, size_t cap, size_t* got);
+
+/**
+ * @typedef ra8_jpeg_sw_geom_fn
+ * @brief Geometry callback: fires once, right after SOF0 parses.
+ *
+ * @details The consumer learns the image dimensions and channel count
+ *          (1 = grayscale, 3 = RGB) before any pixel decodes, sizes its
+ *          own buffers, and hands back the stripe buffer the decoder
+ *          will fill: at least `width * (8 * vmax) * channels` bytes,
+ *          where `8 * vmax` is 8 for 4:4:4/grayscale and 16 for 4:2:0.
+ *          Sizing for ::k_ra8_jpeg_sw_stream_mcu_rows_max rows always
+ *          suffices. Returning any error aborts the decode with that
+ *          code (the fail-closed "image too large for my budget" hook).
+ *
+ * @param[in]  ctx            Consumer context.
+ * @param[in]  width          Image width, pixels (>= 1).
+ * @param[in]  height         Image height, pixels (>= 1).
+ * @param[in]  channels       Output channels per pixel (1 or 3).
+ * @param[in]  stripe_rows    Rows per stripe the decoder will emit (8/16).
+ * @param[out] out_stripe     Receives the consumer's stripe buffer.
+ * @param[out] out_stripe_cap Receives that buffer's capacity, bytes.
+ * @return k_ra8_ok to continue; any error aborts the decode.
+ * @since 0.1.0
+ */
+typedef ra8_err_t (*ra8_jpeg_sw_geom_fn)(void*     ctx,
+                                         uint16_t  width,
+                                         uint16_t  height,
+                                         uint8_t   channels,
+                                         uint16_t  stripe_rows,
+                                         uint8_t** out_stripe,
+                                         uint32_t* out_stripe_cap);
+
+/**
+ * @typedef ra8_jpeg_sw_rows_fn
+ * @brief Stripe sink: receives each completed run of decoded pixel rows.
+ *
+ * @details Rows are tightly packed at `width * channels` bytes per row,
+ *          top-to-bottom, and each stripe is emitted exactly once in
+ *          order (`y0` strictly increasing). The pixels live in the
+ *          stripe buffer the geometry callback supplied and are only
+ *          valid for the duration of the call. Returning any error
+ *          aborts the decode with that code.
+ *
+ * @param[in] ctx      Consumer context.
+ * @param[in] px       Stripe pixels (`nrows * width * channels` bytes).
+ * @param[in] width    Row width, pixels.
+ * @param[in] y0       Image row of the stripe's first row.
+ * @param[in] nrows    Rows in this stripe (edge stripes are shorter).
+ * @param[in] channels Bytes per pixel (1 or 3).
+ * @return k_ra8_ok to continue; any error aborts the decode.
+ * @since 0.1.0
+ */
+typedef ra8_err_t (*ra8_jpeg_sw_rows_fn)(void*          ctx,
+                                         const uint8_t* px,
+                                         uint16_t       width,
+                                         uint16_t       y0,
+                                         uint16_t       nrows,
+                                         uint8_t        channels);
+
+/**
+ * @enum ra8_jpeg_sw_stream_geom_t
+ * @brief Stripe geometry constant exposed for consumer buffer sizing.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra8_jpeg_sw_stream_mcu_rows_max = 16U, /**< Max rows per stripe (4:2:0). */
+} ra8_jpeg_sw_stream_geom_t;
+
+/**
+ * @brief Decode a baseline JPEG in bounded RAM, one MCU-row stripe at a time.
+ *
+ * @details
+ * The streaming counterpart of `ra8_jpeg_sw_decode()` for images whose whole
+ * decoded frame cannot be resident (#231). Input arrives through @p pull
+ * into the caller's sliding @p window (the resident compressed footprint);
+ * output leaves through @p on_rows one MCU row at a time (8 rows for
+ * 4:4:4/grayscale, 16 for 4:2:0), so the resident decoded footprint is one
+ * stripe -- both independent of the image size. Between the two callbacks a
+ * transcoder can tile, convert, or compress each stripe with the whole
+ * image never in memory.
+ *
+ * Same format envelope as `ra8_jpeg_sw_decode()`: baseline sequential
+ * Huffman, 8-bit, grayscale or YCbCr 4:4:4 / 4:2:0; progressive and
+ * restart-marker streams are rejected. Grayscale sources emit 1 channel,
+ * colour sources 3 (packed RGB888). One additional streaming-only bound:
+ * a run of more than the window size of consecutive 0xFF fill bytes is
+ * rejected as malformed rather than buffered unboundedly.
+ *
+ * @param[in] pull       Sequential byte source (non-NULL).
+ * @param[in] pull_ctx   Context for @p pull.
+ * @param[in] window     Sliding compressed-input window buffer.
+ * @param[in] window_cap Window capacity; >= ::k_ra8_jpeg_sw_stream_min_window.
+ * @param[in] on_geom    Geometry callback (non-NULL; supplies the stripe).
+ * @param[in] on_rows    Stripe sink (non-NULL).
+ * @param[in] cb_ctx     Context passed to both callbacks.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 Whole image decoded and emitted.
+ * @retval k_ra8_err_null_ptr       @p pull, @p window, @p on_geom, or
+ *                                  @p on_rows is NULL.
+ * @retval k_ra8_err_invalid_size   @p window_cap below the minimum, or the
+ *                                  supplied stripe buffer too small.
+ * @retval k_ra8_err_protocol_error Malformed / truncated JPEG stream.
+ * @retval k_ra8_err_not_supported  Non-baseline stream (progressive, 12-bit,
+ *                                  exotic chroma layout).
+ * @retval other                    Propagated from @p pull / the callbacks.
+ *
+ * @pre @p window holds @p window_cap writable bytes.
+ * @pre @p pull delivers the stream strictly in order, once.
+ * @post On success every image row was emitted exactly once, in order.
+ * @post On any error emission stops; already-emitted rows stay valid.
+ * @note Not thread-safe (module-static decoder context, like
+ *       `ra8_jpeg_sw_decode()`).
+ * @see ra8_jpeg_sw_decode()  Whole-buffer decode for small images.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_jpeg_sw_decode_stripes(ra8_jpeg_sw_pull_fn pull,
+                                                   void*               pull_ctx,
+                                                   uint8_t*            window,
+                                                   uint32_t            window_cap,
+                                                   ra8_jpeg_sw_geom_fn on_geom,
+                                                   ra8_jpeg_sw_rows_fn on_rows,
+                                                   void*               cb_ctx);
 
 #ifdef __cplusplus
 }
