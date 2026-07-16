@@ -144,15 +144,16 @@ typedef enum : uint8_t {
   k_sh_fmt_epub   = 1U, /**< EPUB parsed on-device by ra8_epub.             */
   k_sh_fmt_cbz    = 2U, /**< Comic archive: ZIP of page images (`.cbz`).    */
   k_sh_fmt_cbr    = 3U, /**< Comic archive: RAR of page images (`.cbr`).    */
+  k_sh_fmt_cbt    = 4U, /**< Comic archive: tar of page images (`.cbt`).    */
 } sh_book_fmt_t;
 
 /**
- * @brief True if @p fmt is a comic-archive container (CBZ or CBR).
+ * @brief True if @p fmt is a comic-archive container (CBZ, CBR, or CBT).
  * @details Both route through sh_comic.c (::ra8_comic) rather than the
  *          text-book screens, so this predicate is the single dispatch test
  *          the shelf/open path branches on.
  * @param[in] fmt Container format from a shelf entry / the open book.
- * @return true for ::k_sh_fmt_cbz or ::k_sh_fmt_cbr; false otherwise.
+ * @return true for ::k_sh_fmt_cbz, ::k_sh_fmt_cbr, or ::k_sh_fmt_cbt.
  * @retval true  @p fmt is a comic archive (image-page reader).
  * @retval false @p fmt is a text book (rabook / epub).
  * @pre @p fmt is a valid ::sh_book_fmt_t.
@@ -162,7 +163,7 @@ typedef enum : uint8_t {
  */
 static inline bool sh_fmt_is_comic(sh_book_fmt_t fmt)
 {
-  return (fmt == k_sh_fmt_cbz) || (fmt == k_sh_fmt_cbr);
+  return (fmt == k_sh_fmt_cbz) || (fmt == k_sh_fmt_cbr) || (fmt == k_sh_fmt_cbt);
 }
 
 /**
