@@ -122,6 +122,11 @@ typedef enum : uint16_t {
   k_ra8_elc_event_icu_irq12 = 0x00DU, /**< External pin interrupt 12 (HUM Ch 14 ELC event 0x00D). */
   k_ra8_elc_event_icu_irq13 = 0x00EU, /**< External pin interrupt 13 (HUM Ch 14 ELC event 0x00E). */
   k_ra8_elc_event_icu_irq15 = 0x010U, /**< External pin interrupt 15. */
+  k_ra8_elc_event_npu_irq   = 0x067U, /**< Ethos-U55 NPU IRQ (RA8P1 only; RA8P1
+                                        HUM R01UH1064EJ Ch 19 Table 19.3). Absent
+                                        on RA8D2; modelled here so the shared ISR
+                                        registrar accepts the NPU event without a
+                                        cast that no enumerator would match. */
   k_ra8_elc_event_ulpt0_ulpti      = 0x080U, /**< ULPT0 underflow (counter reaches 0).
                                               `ULPT0_ULPTI` per HUM Ch 19.2.3
                                               Table 19.3 p 823. Used as the
