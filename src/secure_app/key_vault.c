@@ -111,6 +111,37 @@ typedef struct {
 
 static ra8_key_vault_slot_t s_vault[k_ra8_key_vault_slots];
 
+/** @brief Accepted key-authentication-key (KAK) lengths (AES-128 / AES-256). */
+typedef enum : uint16_t {
+  k_kv_mac_key_128 = 16U, /**< AES-128 KAK length. */
+  k_kv_mac_key_256 = 32U, /**< AES-256 KAK length. */
+} ra8_kv_mac_key_len_t;
+
+/**
+ * @var s_mac_key
+ * @brief Secret key-authentication key (KAK) that keys the import-blob CMAC.
+ *
+ * @details Dedicated storage held *outside* the ``s_vault`` slot array, so it
+ * is never reachable through the Non-Secure key-import path. Provisioned by
+ * ``ra8_key_vault_set_mac_key`` and read only by the secure-side importer via
+ * ``ra8_key_vault_load_mac_key``.
+ *
+ * @note Direct modification from outside this TU is forbidden.
+ * @warning Secret material; never expose across the S/NS boundary.
+ * @since 0.1.0
+ */
+static uint8_t s_mac_key[k_ra8_key_vault_mac_key_bytes];
+
+/**
+ * @var s_mac_key_len
+ * @brief Length in bytes of the provisioned KAK, or 0 when unprovisioned.
+ *
+ * @note Direct modification from outside this TU is forbidden.
+ * @warning A zero value means no KAK is available and imports cannot verify.
+ * @since 0.1.0
+ */
+static uint16_t s_mac_key_len = 0U;
+
 /* =============================================================================
  * Tiny SHA-256 (single-block, 32-byte input)
  * =============================================================================
@@ -401,6 +432,10 @@ ra8_err_t ra8_key_vault_init(void)
       s_vault[s].key[i] = 0U;
     }
   }
+  for (uint16_t i = 0U; i < k_ra8_key_vault_mac_key_bytes; ++i) {
+    s_mac_key[i] = 0U;
+  }
+  s_mac_key_len = 0U;
   return k_ra8_ok;
 }
 
@@ -490,6 +525,36 @@ ra8_err_t ra8_key_vault_sha256_xor_challenge(uint16_t slot, const uint8_t* chall
   return k_ra8_ok;
 }
 
+ra8_err_t ra8_key_vault_set_mac_key(const uint8_t* key, uint16_t key_len)
+{
+  RA8_CHECK_NULL_PTR(key, s_tag, "set_mac_key: key");
+  if ((key_len != (uint16_t)k_kv_mac_key_128) && (key_len != (uint16_t)k_kv_mac_key_256)) {
+    return k_ra8_err_invalid_arg;
+  }
+  for (uint16_t i = 0U; i < k_ra8_key_vault_mac_key_bytes; ++i) {
+    s_mac_key[i] = (i < key_len) ? key[i] : 0U;
+  }
+  s_mac_key_len = key_len;
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_key_vault_load_mac_key(uint8_t* out, uint16_t out_cap, uint16_t* out_len)
+{
+  RA8_CHECK_NULL_PTR(out, s_tag, "load_mac_key: out");
+  RA8_CHECK_NULL_PTR(out_len, s_tag, "load_mac_key: out_len");
+  if (s_mac_key_len == 0U) {
+    return k_ra8_err_not_found;
+  }
+  if (out_cap < s_mac_key_len) {
+    return k_ra8_err_invalid_size;
+  }
+  for (uint16_t i = 0U; i < s_mac_key_len; ++i) {
+    out[i] = s_mac_key[i];
+  }
+  *out_len = s_mac_key_len;
+  return k_ra8_ok;
+}
+
 #else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_SIMULATOR_MODE */
 
 /*
@@ -516,6 +581,21 @@ ra8_err_t ra8_key_vault_sha256_xor_challenge(uint16_t slot, const uint8_t* chall
   RA8_CHECK_NULL_PTR(challenge, s_tag, "challenge: challenge");
   RA8_CHECK_NULL_PTR(out, s_tag, "challenge: out");
   (void)slot;
+  return k_ra8_err_not_supported;
+}
+
+ra8_err_t ra8_key_vault_set_mac_key(const uint8_t* key, uint16_t key_len)
+{
+  RA8_CHECK_NULL_PTR(key, s_tag, "set_mac_key: key");
+  (void)key_len;
+  return k_ra8_err_not_supported;
+}
+
+ra8_err_t ra8_key_vault_load_mac_key(uint8_t* out, uint16_t out_cap, uint16_t* out_len)
+{
+  RA8_CHECK_NULL_PTR(out, s_tag, "load_mac_key: out");
+  RA8_CHECK_NULL_PTR(out_len, s_tag, "load_mac_key: out_len");
+  (void)out_cap;
   return k_ra8_err_not_supported;
 }
 

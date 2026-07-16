@@ -25,6 +25,13 @@ static const uint8_t k_test_chal[k_ra8_key_vault_chal_bytes] = {
   0xB6U, 0xB7U, 0xB8U, 0xB9U, 0xBAU, 0xBBU, 0xBCU, 0xBDU, 0xBEU, 0xBFU,
 };
 
+/** @brief Key-authentication-key (KAK) sizes exercised by the tests. */
+typedef enum : uint16_t {
+  k_test_kak_128     = 16U, /**< AES-128 KAK length (also a too-small cap). */
+  k_test_kak_256     = 32U, /**< AES-256 KAK length.                        */
+  k_test_kak_bad_len = 24U, /**< Unsupported KAK length (not 16 nor 32).    */
+} test_kv_kak_t;
+
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
@@ -138,6 +145,60 @@ static void test_nsc_veneer_forwards(void)
   TEST_END("ra8_nsc_key_vault_challenge forwards through veneer");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the KAK provisioning /
+ * load contract branch by branch; each case toggles one precondition.)
+ */
+static void test_mac_key_provisioning(void)
+{
+  TEST_BEGIN("ra8_key_vault_set/load_mac_key: provision + read back the KAK");
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_vault_init());
+
+  uint8_t  out[k_ra8_key_vault_mac_key_bytes] = {0U};
+  uint16_t out_len                            = 0U;
+
+  /* Before provisioning: no KAK -> not_found. */
+  TEST_ASSERT_EQ(
+    k_ra8_err_not_found,
+    ra8_key_vault_load_mac_key(out, (uint16_t)k_ra8_key_vault_mac_key_bytes, &out_len));
+
+  /* set_mac_key argument validation. */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_key_vault_set_mac_key(nullptr, (uint16_t)k_test_kak_256));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_key_vault_set_mac_key(k_test_key, (uint16_t)k_test_kak_bad_len));
+
+  /* Provision a 32-byte (AES-256) KAK, then read it back verbatim. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_vault_set_mac_key(k_test_key, (uint16_t)k_test_kak_256));
+
+  /* load_mac_key argument validation. */
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_key_vault_load_mac_key(nullptr, (uint16_t)k_ra8_key_vault_mac_key_bytes, &out_len));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_key_vault_load_mac_key(out, (uint16_t)k_ra8_key_vault_mac_key_bytes, nullptr));
+  /* Output buffer smaller than the stored KAK -> invalid_size. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_key_vault_load_mac_key(out, (uint16_t)k_test_kak_128, &out_len));
+
+  /* Successful load returns the exact bytes and length. */
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_key_vault_load_mac_key(out, (uint16_t)k_ra8_key_vault_mac_key_bytes, &out_len));
+  TEST_ASSERT_EQ(k_test_kak_256, out_len);
+  for (uint16_t i = 0U; i < (uint16_t)k_test_kak_256; ++i) {
+    TEST_ASSERT_EQ(k_test_key[i], out[i]);
+  }
+
+  /* Re-provisioning with a 16-byte (AES-128) KAK is also accepted. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_vault_set_mac_key(k_test_key, (uint16_t)k_test_kak_128));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_key_vault_load_mac_key(out, (uint16_t)k_ra8_key_vault_mac_key_bytes, &out_len));
+  TEST_ASSERT_EQ(k_test_kak_128, out_len);
+  TEST_END("ra8_key_vault_set/load_mac_key: provision + read back the KAK");
+}
+
 int32_t main(void)
 {
   test_init_zeroes_vault();
@@ -145,6 +206,7 @@ int32_t main(void)
   test_different_challenge_different_digest();
   test_arg_validation();
   test_nsc_veneer_forwards();
+  test_mac_key_provisioning();
   (void)fprintf(stderr, "[OK ] test_ra8_key_vault.c\n");
   return 0;
 }

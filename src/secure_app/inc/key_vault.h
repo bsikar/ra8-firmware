@@ -54,10 +54,11 @@ extern "C" {
  * @brief Sizing constants for the vault.
  */
 typedef enum : uint16_t {
-  k_ra8_key_vault_slots        = 8U,  /**< Number of stored keys. */
-  k_ra8_key_vault_key_bytes    = 32U, /**< 256-bit symmetric key. */
-  k_ra8_key_vault_chal_bytes   = 32U, /**< Challenge length.      */
-  k_ra8_key_vault_digest_bytes = 32U, /**< SHA-256 output size.   */
+  k_ra8_key_vault_slots         = 8U,  /**< Number of stored keys.      */
+  k_ra8_key_vault_key_bytes     = 32U, /**< 256-bit symmetric key.      */
+  k_ra8_key_vault_chal_bytes    = 32U, /**< Challenge length.           */
+  k_ra8_key_vault_digest_bytes  = 32U, /**< SHA-256 output size.        */
+  k_ra8_key_vault_mac_key_bytes = 32U, /**< Max key-authentication key. */
 } ra8_key_vault_limits_t;
 
 /**
@@ -125,6 +126,68 @@ typedef enum : uint16_t {
  */
 [[nodiscard]] ra8_err_t
 ra8_key_vault_sha256_xor_challenge(uint16_t slot, const uint8_t* challenge, uint8_t* out);
+
+/**
+ * @brief Provision the key-authentication key (KAK) used to MAC key imports.
+ *
+ * @details
+ * The KAK is the secret that keys the AES-CMAC over a wrapped-key blob in
+ * ``ra8_key_import_seal``. It is stored in dedicated secure-side storage that
+ * is *separate from the NS-importable slot array*, so it can never be
+ * overwritten or read through the ``ra8_key_import_*`` / NSC path a
+ * Non-Secure caller reaches. Secure boot (or the host test harness)
+ * provisions it once before any import can occur. This is the single answer
+ * to "where does the CMAC key come from": the secure key vault, never NS.
+ *
+ * @param[in] key     Raw AES-CMAC key material.
+ * @param[in] key_len Key length: 16 (AES-128) or 32 (AES-256) bytes.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok               KAK stored.
+ * @retval k_ra8_err_null_ptr     ``key`` was NULL.
+ * @retval k_ra8_err_invalid_arg  ``key_len`` was neither 16 nor 32.
+ *
+ * @pre Called from secure world only, during provisioning.
+ * @pre ``key`` points to ``key_len`` bytes of secure RAM.
+ * @post The KAK store holds the key and records ``key_len``.
+ *
+ * @note Thread safety: secure-world only, single-threaded provisioning.
+ * @see ra8_key_vault_load_mac_key()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_key_vault_set_mac_key(const uint8_t* key, uint16_t key_len);
+
+/**
+ * @brief Copy the provisioned key-authentication key for a secure caller.
+ *
+ * @details
+ * Secure-world-only accessor used by ``key_import.c`` to key the AES-CMAC. It
+ * copies the KAK into a caller-supplied secure buffer; the material never
+ * crosses to Non-Secure code (no NSC veneer exposes it). The caller wipes the
+ * copy after use.
+ *
+ * @param[out] out     Destination for the KAK (secure scratch).
+ * @param[in]  out_cap Capacity of ``out`` in bytes (``>= key_len``).
+ * @param[out] out_len Receives the KAK length actually copied.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok               KAK copied and ``*out_len`` set.
+ * @retval k_ra8_err_null_ptr     ``out`` or ``out_len`` was NULL.
+ * @retval k_ra8_err_not_found    No KAK has been provisioned yet.
+ * @retval k_ra8_err_invalid_size ``out_cap`` was smaller than the KAK.
+ *
+ * @pre ``out`` and ``out_len`` are non-NULL.
+ * @pre A KAK was provisioned via ::ra8_key_vault_set_mac_key.
+ * @post On success, ``out[0..*out_len-1]`` holds the KAK.
+ * @post On error, no KAK bytes are copied.
+ *
+ * @note Thread safety: not thread-safe; secure-world only.
+ * @warning The caller must ::ra8_secure_memzero the copy after use.
+ * @see ra8_key_vault_set_mac_key()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_key_vault_load_mac_key(uint8_t* out, uint16_t out_cap, uint16_t* out_len);
 
 #ifdef __cplusplus
 }

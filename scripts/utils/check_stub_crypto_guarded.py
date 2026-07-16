@@ -8,7 +8,6 @@ only safe under host simulation or an explicitly-declared insecure dev/eval
 image (issue #180):
 
   - src/secure_app/secure_trng.c        deterministic xorshift PRNG as a "TRNG"
-  - src/secure_app/key_import.c         forgeable length-tagged XOR-fold MAC
   - src/secure_app/key_vault.c          plain secure-SRAM key store (no HW vault)
   - libs/ra8_hal/src/ra8_rsip_key_injection.c  non-cryptographic xorshift key-wrap
   - libs/ra8_hal/src/ra8_rsip_ecc.c       fiction-opcode ECDSA / ECDH / Ed25519 asym
@@ -58,7 +57,6 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # inside the guarded #if region; if it escapes, the insecure body is unguarded.
 STUB_TUS = {
     "src/secure_app/secure_trng.c": "internal_xorshift64",
-    "src/secure_app/key_import.c": "internal_verify_mac",
     "src/secure_app/key_vault.c": "s_vault",
     "libs/ra8_hal/src/ra8_rsip_key_injection.c": "ki_compute_mac",
     "libs/ra8_hal/src/ra8_rsip_ecc.c": "k_ra8_rsip_asym_op_eddsa_sign",
