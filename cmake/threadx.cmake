@@ -103,6 +103,18 @@ add_library(threadx STATIC
     ${RA8_THREADX_PORT_C}
     ${RA8_THREADX_PROJECT_LOW_LEVEL}
     "${RA8_THREADX_PORT_DIR}/src/cortex_m85/tx_systick_ready.c"
+    "${RA8_THREADX_PORT_DIR}/src/cortex_m85/tx_systick_retune.c"
+)
+
+# tx_systick_retune.c reprograms SysTick from the live CGC clock, so it
+# needs the ra8_core / ra8_hal public headers (ra8_err.h, ra8_check.h,
+# ra8_log.h, ra8_cgc.h). PRIVATE: only this library's own TUs need them;
+# the symbols it references (ra8_cgc_get_clock_hz, ra8_log_*) resolve at
+# final-app link time against ra8_hal / ra8_core, which every ThreadX app
+# already links.
+target_include_directories(threadx PRIVATE
+    "${RA8_REPO_ROOT}/libs/ra8_core/inc"
+    "${RA8_REPO_ROOT}/libs/ra8_hal/inc"
 )
 
 # Vendor headers + project tx_user.h. Public so app TUs can #include
