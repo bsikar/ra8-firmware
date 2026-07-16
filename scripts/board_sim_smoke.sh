@@ -415,13 +415,17 @@ uart_expect() { # app -> expected UART substring on stdout
     rtc_alarm) printf 'rtc: alarm fired' ;;
     elc_event_demo) printf 'elc: en=1 trig=' ;;
     timer_capture_demo) printf 'gpt: period=' ;;
-    drw_fill_demo) printf 'drw: fill match=Y' ;;
-    # drw_blend_demo: F0AE5DC5 is board_sim's deterministic a=0x80 source-over
-    # composite -- the emulator self-test truth for THIS gate only. It is NOT a
-    # silicon golden: the DRW has never rasterized on real hardware (#247), so
-    # the hil.conf silicon CRC awaits a true bench render. The old expectation
-    # 47F303C5 was the plain-store bug (the blend degenerated at alpha 0xFF).
-    drw_blend_demo) printf 'drw: blit+blend crc=F0AE5DC5 PASS' ;;
+    # drw_fill_demo: the DRW is modelled INERT (board_periph_drw.c), faithful to
+    # silicon where the D/AVE 2D engine never rasterizes (#247). The fill writes
+    # no pixel, so the centre stays clear and the app honestly reports match=N --
+    # the same result the bench gives until #247 brings the engine to life.
+    drw_fill_demo) printf 'drw: fill match=N' ;;
+    # drw_blend_demo: 76EFDDC5 is FNV-1a-32 over the 4096-byte ZERO framebuffer --
+    # the silicon truth. The DRW never composites on hardware (#247), and the
+    # board_sim model is inert to match, so the app hashes an untouched FB and
+    # prints this exact banner. This is the SILICON golden (also pinned in the
+    # app's hil.conf), NOT a simulator-only self-test value: SIM == HIL here.
+    drw_blend_demo) printf 'drw: blit+blend crc=76EFDDC5 PASS' ;;
     dtc_transfer_demo) printf 'dtc: copied 1024B match=Y' ;;
     cac_accuracy_demo) printf 'cac: meas=ok ferr=0 ovf=0 ok=Y' ;;
     lvd_monitor_demo) printf 'lvd: pvd1 thr=2.80V mon=above det=0 ok=Y' ;;
