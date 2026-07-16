@@ -101,15 +101,16 @@ jobs:
     name: SIL integration (all hil apps in board_sim)
     runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 30
-    # WIP / non-blocking. board_sim does not yet model the USBHS host controller
-    # (0x40351000; the 11 usb_selftest_* / dfu_selftest_* self-loop apps), the
-    # two-image-TZ NS world (cpu1_pingpong_ipc, tz_nsc_cgc_usb), or a bit-exact
-    # DRW/D2 alpha-blend (drw_blend_demo) -- 14 genuine modelling gaps, being
-    # closed one board_sim seam at a time (never SKIP'd or allowlisted). The job
-    # still RUNS and logs every gap on every push, but does not gate main while
-    # the seams are in flight. Drop this line to make it enforcing once
-    # sil_all.sh is green.
-    continue-on-error: true
+    # ENFORCING. Every hw_validated/hil app now runs and passes in board_sim:
+    # sil_all.sh is 147 passed / 0 failed / 0 skipped. The former modelling gaps
+    # are closed -- USBHS host controller (usb_selftest_* / dfu_selftest_*) and
+    # the two-image-TZ NS world (cpu1_pingpong_ipc, tz_nsc_cgc_usb) were modelled
+    # earlier; the SEGGER RTT host side (rtt_log_demo) and the in-process TCP
+    # peer verdict (threadx_netx_tcp_echo) removed the last two SKIPs; and the
+    # DRW/D2 engine is now modelled FAITHFULLY-INERT to match real silicon
+    # (#247, drw_blend_demo hashes the same zero framebuffer the board does), so
+    # SIM == HIL. A board_sim modelling gap or a firmware regression now fails
+    # the gate rather than being logged and ignored.
     steps:
       # Do NOT fetch LFS during checkout (lfs: false). On the persistent
       # self-hosted runner, actions/checkout's `git lfs install --local` aborts
