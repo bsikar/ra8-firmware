@@ -254,7 +254,7 @@ static void test_descriptor(void)
 
   TEST_ASSERT_EQ(true, pv_descriptor(k_pv_action_get_device_desc, &p, &len));
   TEST_ASSERT_NOT_NULL(p);
-  TEST_ASSERT_EQ((uint16_t)k_t_expect_dev_len, len);
+  TEST_ASSERT_EQ(k_t_expect_dev_len, len);
 
   TEST_ASSERT_EQ(true, pv_descriptor(k_pv_action_get_config_desc, &p, &len));
   TEST_ASSERT_NOT_NULL(p);
@@ -285,9 +285,9 @@ static void test_descriptor(void)
 static void test_clamp_len(void)
 {
   TEST_BEGIN("pv_clamp_len bounds");
-  TEST_ASSERT_EQ((uint16_t)8U, pv_clamp_len((uint16_t)8U, (uint16_t)255U));
-  TEST_ASSERT_EQ((uint16_t)9U, pv_clamp_len((uint16_t)55U, (uint16_t)9U));
-  TEST_ASSERT_EQ((uint16_t)4U, pv_clamp_len((uint16_t)4U, (uint16_t)4U));
+  TEST_ASSERT_EQ(8U, pv_clamp_len((uint16_t)8U, (uint16_t)255U));
+  TEST_ASSERT_EQ(9U, pv_clamp_len((uint16_t)55U, (uint16_t)9U));
+  TEST_ASSERT_EQ(4U, pv_clamp_len((uint16_t)4U, (uint16_t)4U));
   TEST_END("pv_clamp_len bounds");
 }
 
@@ -310,9 +310,9 @@ static void test_descriptor_tables(void)
   const uint16_t total = (uint16_t)((uint16_t)cfg[k_t_cfg_total_lo] |
                                     (uint16_t)((uint16_t)cfg[k_t_cfg_total_hi] << k_t_dt_shift));
   TEST_ASSERT_EQ(len, total);
-  TEST_ASSERT_EQ((uint8_t)k_t_expect_numif, cfg[k_t_cfg_numif]);
-  TEST_ASSERT_EQ((uint8_t)k_t_iface_print, cfg[k_t_cfg_if0_class]);
-  TEST_ASSERT_EQ((uint8_t)k_t_iface_vend, cfg[k_t_cfg_if1_class]);
+  TEST_ASSERT_EQ(k_t_expect_numif, cfg[k_t_cfg_numif]);
+  TEST_ASSERT_EQ(k_t_iface_print, cfg[k_t_cfg_if0_class]);
+  TEST_ASSERT_EQ(k_t_iface_vend, cfg[k_t_cfg_if1_class]);
 
   TEST_END("composite descriptor tables consistent");
 }

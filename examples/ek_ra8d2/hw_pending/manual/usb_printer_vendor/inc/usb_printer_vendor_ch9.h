@@ -1,7 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/manual/usb_printer_vendor/inc/usb_printer_vendor_ch9.h
  * @brief Chapter-9 SETUP router + descriptor tables for the printer/vendor demo
- * @ingroup grp_examples
  *
  * @par Tag
  * [Ring 6 / APP] {World: NS}

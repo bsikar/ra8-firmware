@@ -62,20 +62,20 @@
 
 /** @enum iic_facade_tunable_t @brief Console / bus / loop knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_iic_baud      = 115200U, /**< SCI8 J-Link console baud.        */
-  k_iic_bus_hz    = 100000U, /**< IIC_B bit rate (100 kHz Sm).     */
-  k_iic_period_ms = 1000U,   /**< Banner period.                   */
+  k_iic_baud      = 115200U, /**< SCI8 J-Link console baud.    */
+  k_iic_bus_hz    = 100000U, /**< IIC_B bit rate (100 kHz Sm). */
+  k_iic_period_ms = 1000U,   /**< Banner period.               */
 } iic_facade_tunable_t;
 
 /** @enum iic_facade_layout_t @brief Channel + on-bus addresses + register map. */
 typedef enum : uint8_t {
-  k_iic_channel        = 0U,    /**< I3C/IIC_B channel (only 0 on RA8D2).  */
-  k_iic_ctrl_addr_7b   = 0x5DU, /**< On-board GT911 touch 7-bit address.   */
-  k_iic_periph_addr_7b = 0x42U, /**< Own 7-bit address in target mode.     */
-  k_iic_prod_ptr_hi    = 0x81U, /**< GT911 PRODUCT_ID pointer MSB (0x8140).*/
-  k_iic_prod_ptr_lo    = 0x40U, /**< GT911 PRODUCT_ID pointer LSB.         */
-  k_iic_ptr_len        = 2U,    /**< 16-bit register-pointer width.        */
-  k_iic_prod_len       = 4U,    /**< PRODUCT_ID payload length ("911\0").  */
+  k_iic_channel        = 0U,    /**< I3C/IIC_B channel (only 0 on RA8D2).   */
+  k_iic_ctrl_addr_7b   = 0x5DU, /**< On-board GT911 touch 7-bit address.    */
+  k_iic_periph_addr_7b = 0x42U, /**< Own 7-bit address in target mode.      */
+  k_iic_prod_ptr_hi    = 0x81U, /**< GT911 PRODUCT_ID pointer MSB (0x8140). */
+  k_iic_prod_ptr_lo    = 0x40U, /**< GT911 PRODUCT_ID pointer LSB.          */
+  k_iic_ptr_len        = 2U,    /**< 16-bit register-pointer width.         */
+  k_iic_prod_len       = 4U,    /**< PRODUCT_ID payload length ("911\0").   */
 } iic_facade_layout_t;
 
 /** @enum iic_facade_periph_t @brief Target-mode round-trip + poll budget. */
