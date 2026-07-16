@@ -207,7 +207,14 @@ invoke_clang_tidy() {
 
   local device_arg=()
   if [[ -n "$device_def" ]]; then
-    device_arg=(--extra-arg="$device_def")
+    # The RA8P1 pass also lints libs/ra8_board_ra8p1/* -- board TUs that are
+    # not part of the host test build, so their own inc/ dir is absent from the
+    # compile_commands.json. Put it on the quote-include search path so
+    # "ra8_board_ra8p1.h" resolves (otherwise clang-tidy reports a
+    # clang-diagnostic-error and the degraded parse cascades into spurious
+    # readability findings). Harmless for the npu / example TUs in the same pass.
+    device_arg=(--extra-arg="$device_def"
+      --extra-arg="-I$FIRMWARE_DIR/libs/ra8_board_ra8p1/inc")
   fi
 
   # Note: no --config-file. We let clang-tidy auto-discover .clang-tidy

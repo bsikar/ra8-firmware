@@ -285,6 +285,118 @@ static ra8_err_t internal_npu_place_region(const uint8_t*         p,
   return k_ra8_ok;
 }
 
+/**
+ * @brief Resolve every region descriptor into @p job->region_base[].
+ *
+ * @details Walks the @p rcount region descriptors that follow the header and
+ *          resolves each through internal_npu_place_region(), advancing a
+ *          private running arena offset. Extracted from ra8_npu_load() so the
+ *          public entry stays within the NASA Rule 4 function-size budget.
+ *
+ * @param[in]  p      `.npub` byte buffer base.
+ * @param[in]  total  Declared whole-blob length (bounds for baked data).
+ * @param[in]  rcount Region descriptor count (already <= k_ra8_npu_region_count).
+ * @param[in]  arena  Runtime arena for RUNTIME regions.
+ * @param[out] job    Job whose `region_base[0..rcount)` are populated.
+ *
+ * @return `ra8_err_t` error code.
+ * @retval k_ra8_ok Every region resolved; @p job->region_base populated.
+ * @retval k_ra8_err_out_of_range A baked region's bytes fall outside the blob.
+ * @retval k_ra8_err_no_mem A runtime region does not fit in @p arena.
+ *
+ * @pre The region table lies within the blob (caller-checked).
+ * @pre @p job and @p arena are non-NULL (caller-guaranteed).
+ * @post On success @p job->region_base[0..rcount) hold resolved bases.
+ * @post On failure @p job is not relied upon.
+ *
+ * @note Re-entrant; the loop is bounded by @p rcount (NASA Rule 2).
+ * @since 0.1.0
+ */
+static ra8_err_t internal_npu_place_all_regions(const uint8_t*         p,
+                                                uint32_t               total,
+                                                uint32_t               rcount,
+                                                const ra8_npu_arena_t* arena,
+                                                ra8_npu_job_t*         job)
+{
+  uint32_t used = 0U;
+  for (uint32_t r = 0U; r < rcount; r++) {
+    const uint32_t desc_off =
+      (uint32_t)k_ra8_npu_blob_header_bytes + (r * (uint32_t)k_ra8_npu_blob_region_desc_bytes);
+    const ra8_err_t rgn =
+      internal_npu_place_region(p, total, desc_off, arena, &used, &job->region_base[r]);
+    RA8_RETURN_ON_ERROR(rgn, s_tag, "load: region");
+  }
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Parse, verify, and resolve a `.npub` blob into an ::ra8_npu_job_t.
+ *
+ * @details Runs the validated pipeline after the public entry has null-checked
+ *          its pointers: header validation, region-table bounds, whole-payload
+ *          checksum, then per-region base resolution and job finalisation.
+ *          Split out of ra8_npu_load() so the public entry stays within the
+ *          NASA Rule 4 function-size budget.
+ *
+ * @param[in]  p          `.npub` byte buffer base (non-NULL, caller-checked).
+ * @param[in]  blob_bytes Buffer length in bytes.
+ * @param[in]  arena      Runtime arena for RUNTIME regions (non-NULL).
+ * @param[out] out_job    Populated job on success (non-NULL).
+ *
+ * @return `ra8_err_t` error code.
+ * @retval k_ra8_ok Blob valid; @p out_job populated.
+ * @retval k_ra8_err_invalid_size Buffer below the header, or empty command stream.
+ * @retval k_ra8_err_invalid_arg Bad magic, version, or region count.
+ * @retval k_ra8_err_out_of_range A declared span falls outside the buffer.
+ * @retval k_ra8_err_checksum_mismatch The payload digest differs (blob corrupt).
+ * @retval k_ra8_err_no_mem A runtime region does not fit in @p arena.
+ *
+ * @pre @p p, @p arena and @p out_job are non-NULL (caller-guaranteed).
+ * @pre @p p addresses at least @p blob_bytes readable bytes.
+ * @post On success @p out_job locates the command stream and region bases.
+ * @post On failure @p out_job is not modified past a partial write and is not
+ *       relied upon.
+ *
+ * @note Re-entrant; reads the blob only.
+ * @since 0.1.0
+ */
+static ra8_err_t internal_npu_build_job(const uint8_t*         p,
+                                        uint32_t               blob_bytes,
+                                        const ra8_npu_arena_t* arena,
+                                        ra8_npu_job_t*         out_job)
+{
+  uint32_t total  = 0U;
+  uint32_t rcount = 0U;
+  uint32_t coff   = 0U;
+  uint32_t cbytes = 0U;
+  /* Each callee logs its own specific failure, so a plain early return here
+   * propagates the code without a redundant second log line. */
+  const ra8_err_t hdr = internal_npu_check_header(p, blob_bytes, &total, &rcount, &coff, &cbytes);
+  if (hdr != k_ra8_ok) {
+    return hdr;
+  }
+  if (!internal_npu_span_ok((uint32_t)k_ra8_npu_blob_header_bytes,
+                            rcount * (uint32_t)k_ra8_npu_blob_region_desc_bytes,
+                            total)) {
+    ra8_log_error(s_tag, "load: region table outside blob");
+    return k_ra8_err_out_of_range;
+  }
+  const ra8_err_t sum = internal_npu_verify_checksum(p, total);
+  if (sum != k_ra8_ok) {
+    return sum;
+  }
+  ra8_npu_job_t   job = {};
+  const ra8_err_t rgn = internal_npu_place_all_regions(p, total, rcount, arena, &job);
+  if (rgn != k_ra8_ok) {
+    return rgn;
+  }
+  job.cmd_stream       = p + coff;
+  job.cmd_stream_bytes = cbytes;
+  job.region_count     = (uint8_t)rcount;
+  *out_job             = job;
+  return k_ra8_ok;
+}
+
 ra8_err_t ra8_npu_load(const void*            blob,
                        uint32_t               blob_bytes,
                        const ra8_npu_arena_t* arena,
@@ -293,36 +405,7 @@ ra8_err_t ra8_npu_load(const void*            blob,
   RA8_CHECK_NULL_PTR(blob, s_tag, "blob must not be nullptr");
   RA8_CHECK_NULL_PTR(arena, s_tag, "arena must not be nullptr");
   RA8_CHECK_NULL_PTR(out_job, s_tag, "out_job must not be nullptr");
-  const uint8_t*  p      = (const uint8_t*)blob;
-  uint32_t        total  = 0U;
-  uint32_t        rcount = 0U;
-  uint32_t        coff   = 0U;
-  uint32_t        cbytes = 0U;
-  const ra8_err_t hdr = internal_npu_check_header(p, blob_bytes, &total, &rcount, &coff, &cbytes);
-  RA8_RETURN_ON_ERROR(hdr, s_tag, "load: header");
-  if (!internal_npu_span_ok((uint32_t)k_ra8_npu_blob_header_bytes,
-                            rcount * (uint32_t)k_ra8_npu_blob_region_desc_bytes,
-                            total)) {
-    ra8_log_error(s_tag, "load: region table outside blob");
-    return k_ra8_err_out_of_range;
-  }
-  const ra8_err_t sum = internal_npu_verify_checksum(p, total);
-  RA8_RETURN_ON_ERROR(sum, s_tag, "load: checksum");
-
-  ra8_npu_job_t job  = {};
-  uint32_t      used = 0U;
-  for (uint32_t r = 0U; r < rcount; r++) {
-    const uint32_t desc_off =
-      (uint32_t)k_ra8_npu_blob_header_bytes + (r * (uint32_t)k_ra8_npu_blob_region_desc_bytes);
-    const ra8_err_t rgn =
-      internal_npu_place_region(p, total, desc_off, arena, &used, &job.region_base[r]);
-    RA8_RETURN_ON_ERROR(rgn, s_tag, "load: region");
-  }
-  job.cmd_stream       = p + coff;
-  job.cmd_stream_bytes = cbytes;
-  job.region_count     = (uint8_t)rcount;
-  *out_job             = job;
-  return k_ra8_ok;
+  return internal_npu_build_job((const uint8_t*)blob, blob_bytes, arena, out_job);
 }
 
 #else
