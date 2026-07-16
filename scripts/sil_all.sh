@@ -42,12 +42,19 @@
 #                         up-buffer 0, echoing each line as `[rtt] ...` on the
 #                         same console output STOP_ON watches), so the RTT
 #                         banner is asserted with no J-Link attached.
-#   hil_eth_tcp           SKIP: needs a live external TCP peer on the wire;
-#                         board_sim models eth loopback, not a socket peer.
+#   hil_eth_tcp           On hardware scripts/hil_eth_tcp.sh probes the wire
+#                         from the Pi: send N random bytes over TCP, assert a
+#                         byte-exact echo. board_sim ships that peer IN-PROCESS
+#                         (board_net, fed by the register-level R-Switch model):
+#                         it resolves the firmware over ARP, pings it, opens TCP
+#                         to the echo port, sends a payload, and byte-verifies
+#                         the echo. PASS iff the firmware's served-echo banner
+#                         (HIL_EXPECT) shows on the UART AND the peer's NET TCP
+#                         report says "echo MATCH" AND the run did not fault.
 #
 # A SKIP is a clearly-reported "board_sim cannot check this mode" -- never a
 # false pass. Only apps in a SIL-capable mode (uart_scrape / alive /
-# jlink_memprobe / rtt_scrape) can FAIL the suite; SKIPs do not.
+# jlink_memprobe / rtt_scrape / hil_eth_tcp) can FAIL the suite; SKIPs do not.
 #
 # PARALLELISM: unlike hil_all.sh (serial -- one physical board), board_sim
 # instances share no hardware, so apps run CONCURRENTLY in a worker pool of
@@ -320,6 +327,56 @@ verdict_uart() { # <app> <elf> <result_file>
   sil_emit "$rf" PASS "$app" "uart '${expect}'"
 }
 
+# hil_eth_tcp: on hardware scripts/hil_eth_tcp.sh probes the wire from the Pi
+# (send N random bytes over TCP, read them back, assert byte-exact equality).
+# board_sim ships that peer in-process: board_net -- fed frames by the
+# register-level R-Switch model in board_periph_eth.c -- resolves the firmware
+# over ARP, pings it, TCP-connects to the echo port, sends its payload, and
+# byte-verifies the echo, reporting "echo MATCH" in its end-of-run NET TCP
+# summary. The verdict therefore asserts BOTH ends of the exchange: the
+# firmware's served-echo UART banner (HIL_EXPECT, also the STOP_ON so a
+# passing run ends fast) and the peer's byte-exact MATCH verdict.
+verdict_eth_tcp() { # <app> <elf> <result_file>
+  local app="$1" elf="$2" rf="$3"
+  local expect="${HIL_EXPECT:-}" neg="${HIL_EXPECT_NEGATIVE:-}"
+  local peer_ok="echo MATCH"
+  local extra out fault
+  if [ -z "$expect" ]; then
+    sil_emit "$rf" FAIL "$app" "hil.conf has no HIL_EXPECT"
+    return
+  fi
+  # sim_extra_args is the harness's per-app device knowledge (cards); HIL_SIM_ARGS
+  # is the app's own manifest-declared board_sim flags (e.g. --device ra8p1).
+  # shellcheck disable=SC2046  # intentional word-split of sim_extra_args output.
+  extra="$(sim_extra_args "$app") $(sil_ns_elf_args "$elf") ${HIL_SIM_ARGS:-}"
+  # shellcheck disable=SC2086  # intentional word-split of $extra.
+  out="$(BOARD_SIM_STOP_ON="$expect" BOARD_SIM_WALL_S="$SIL_UART_WALL_S" \
+    BOARD_SIM_MAX_CHUNKS="${HIL_SIM_MAX_CHUNKS:-$SIL_UART_MAX_CHUNKS}" \
+    "$SIL_SIM" "$elf" $extra 2>&1 || true)"
+  fault="$(sil_fault_line "$out")"
+  if [ -n "$fault" ]; then
+    sil_emit "$rf" FAIL "$app" "$fault"
+    return
+  fi
+  if [ -n "$neg" ] && grep -qE "$neg" <<<"$out"; then
+    sil_emit "$rf" FAIL "$app" "matched HIL_EXPECT_NEGATIVE"
+    return
+  fi
+  if ! grep -qF "$expect" <<<"$out"; then
+    sil_emit "$rf" FAIL "$app" "UART lacks '${expect}' (echo never served?)"
+    return
+  fi
+  if ! grep -qF "$peer_ok" <<<"$out"; then
+    sil_emit "$rf" FAIL "$app" "peer NET TCP report lacks '${peer_ok}' (echo bytes differ?)"
+    return
+  fi
+  if ! grep -q 'EXECUTED to the run budget' <<<"$out"; then
+    sil_emit "$rf" FAIL "$app" "banner seen but run did not reach budget"
+    return
+  fi
+  sil_emit "$rf" PASS "$app" "uart '${expect}' + peer byte-exact echo MATCH"
+}
+
 # alive: liveness apps that need not print a specific banner (an MPU/fault-
 # recovery demo, a bring-up that just has to keep running). On hardware the
 # probe checks the PC/cycle counter still advances; in board_sim the analog is
@@ -448,12 +505,7 @@ run_one() {
   : "${HIL_SIM_MAX_CHUNKS:=$(sil_app_max_chunks "$app")}"
 
   case "${HIL_MODE:-}" in
-    hil_eth_tcp)
-      sil_emit "$rf" SKIP "$app" "hardware-only: needs a live external TCP peer on the wire"
-      sil_progress "$app" SKIP
-      return 0
-      ;;
-    uart_scrape | alive | jlink_memprobe | rtt_scrape) : ;;
+    uart_scrape | alive | jlink_memprobe | rtt_scrape | hil_eth_tcp) : ;;
     *)
       sil_emit "$rf" FAIL "$app" "unknown HIL_MODE='${HIL_MODE:-}'"
       sil_progress "$app" FAIL
@@ -482,6 +534,7 @@ run_one() {
     uart_scrape | rtt_scrape) verdict_uart "$app" "$elf" "$rf" ;;
     alive) verdict_alive "$app" "$elf" "$rf" ;;
     jlink_memprobe) verdict_memprobe "$app" "$elf" "$rf" ;;
+    hil_eth_tcp) verdict_eth_tcp "$app" "$elf" "$rf" ;;
   esac
   sil_progress "$app" "$(cut -d'|' -f1 "$rf" 2>/dev/null || printf '?')"
   return 0
@@ -542,7 +595,7 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     -h | --help)
-      sed -n '5,79p' "$0"
+      sed -n '5,86p' "$0"
       exit 0
       ;;
     *)

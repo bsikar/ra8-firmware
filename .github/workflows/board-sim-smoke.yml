@@ -90,11 +90,13 @@ jobs:
   # ~145 apps in PARALLEL at -j = the runner's core count; each run is bounded by
   # the SIL_*_MAX_CHUNKS / SIL_*_WALL_S caps so a hung app cannot stall the job.
   # rtt_scrape apps are checked like uart_scrape (board_sim drains the SEGGER
-  # RTT control block and echoes `[rtt]` lines); hil_eth_tcp apps SKIP (a live
-  # TCP peer is not modelled). SKIPs never fail the gate, only genuine board_sim
-  # modelling gaps or firmware regressions do. If the app count ever outgrows one job, shard by passing a
-  # slice of `sil_all.sh --list` app names across a matrix of jobs; today the
-  # parallel single job stays well inside the board-sim-smoke budget.
+  # RTT control block and echoes `[rtt]` lines); hil_eth_tcp apps run for real
+  # against board_sim's in-process TCP peer (board_net completes the ARP / ping /
+  # connect / echo exchange and byte-verifies the reply). Every SIL-capable mode
+  # is now checked -- there are no SKIPs left. If the app count ever outgrows one
+  # job, shard by passing a slice of `sil_all.sh --list` app names across a
+  # matrix of jobs; today the parallel single job stays well inside the
+  # board-sim-smoke budget.
   sil-integration:
     name: SIL integration (all hil apps in board_sim)
     runs-on: [self-hosted, Linux, X64]
