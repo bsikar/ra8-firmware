@@ -1,0 +1,617 @@
+/**
+ * @file test_ra8_tileatlas_png_hostile.c
+ * @brief Hostile-stream corpus for the streaming PNG decoder: every
+ *        fail-closed arm of the chunk and pixel layers (#231).
+ *
+ * @details
+ * Complements `test_ra8_tileatlas_produce.c` (which proves the happy paths
+ * byte-for-byte): this suite hand-crafts pathological PNG byte streams --
+ * bad filters, out-of-range palette indices, row-count lies, truncations at
+ * every chunk phase, oversize fields, empty-IDAT floods, chunk-budget
+ * exhaustion, streams that end mid-zlib, and trailing garbage -- and drives
+ * each to its contracted rejection through the real producer entry. A few
+ * arms only a failing transport can reach are driven through the module
+ * seam `ra8_ta_priv_png_rows()` directly (the CLAUDE.md "test access to
+ * internal symbols" allowance).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ * @since 0.1.0
+ */
+
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
+
+#include "miniz.h"
+#include "ra8_err.h"
+#include "ra8_tileatlas.h"
+#include "ra8_tileatlas_internal.h"
+#include "ra8_tileatlas_produce.h"
+#include "unity_minimal.h"
+
+/** @brief Corpus geometry + buffer sizing. */
+enum : uint32_t {
+  k_t_w         = 8U,             /**< Tiny test image width.     */
+  k_t_h         = 8U,             /**< Tiny test image height.    */
+  k_t_tile      = 8U,             /**< Tile edge under test.      */
+  k_t_src_cap   = 256U * 1024U,   /**< Crafted source capacity.   */
+  k_t_store_cap = 128U * 1024U,   /**< Memstore capacity.         */
+  k_t_work_cap  = 1024U * 1024U,  /**< Producer work arena.       */
+  k_t_many      = 4100U,          /**< Chunk-budget flood count.  */
+  k_t_zout_cap  = 512U,           /**< make_zlib caller capacity. */
+};
+
+/** @brief Crafted source bytes. */
+static uint8_t s_src[k_t_src_cap];
+/** @brief Crafted source length. */
+static size_t s_src_len;
+/** @brief Producer work arena. */
+static uint8_t s_work[k_t_work_cap];
+/** @brief Memstore backing. */
+static uint8_t s_store_buf[k_t_store_cap];
+/** @brief Raw (filtered) scanline staging. */
+static uint8_t s_raw[4096U];
+
+/**
+ * @struct t_pull_t
+ * @brief Memory pull source with an optional hard-failure trigger.
+ */
+typedef struct {
+  size_t pos;     /**< Read cursor.                                   */
+  size_t fail_at; /**< Byte offset that returns an error (0 = never). */
+} t_pull_t;
+
+/** @brief ::ra8_tileatlas_pull_fn over `s_src` with failure injection. */
+static ra8_err_t t_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+{
+  t_pull_t* p = (t_pull_t*)ctx;
+  if ((p->fail_at != 0U) && (p->pos >= p->fail_at)) {
+    *got = 0U;
+    return k_ra8_err_hw_error;
+  }
+  size_t take = s_src_len - p->pos;
+  if (take > cap) {
+    take = cap;
+  }
+  if ((p->fail_at != 0U) && ((p->pos + take) > p->fail_at)) {
+    take = p->fail_at - p->pos;
+  }
+  memcpy(buf, &s_src[p->pos], take);
+  p->pos += take;
+  *got = take;
+  return k_ra8_ok;
+}
+
+/** @brief Append raw bytes to the crafted source. */
+static void put(const uint8_t* d, size_t n)
+{
+  memcpy(&s_src[s_src_len], d, n);
+  s_src_len += n;
+}
+
+/** @brief Append one PNG chunk (big-endian length/type + payload + CRC). */
+static void put_chunk(const char* type, const uint8_t* data, uint32_t len)
+{
+  uint8_t hdr[8];
+  hdr[0] = (uint8_t)(len >> 24U);
+  hdr[1] = (uint8_t)((len >> 16U) & 0xFFU);
+  hdr[2] = (uint8_t)((len >> 8U) & 0xFFU);
+  hdr[3] = (uint8_t)(len & 0xFFU);
+  memcpy(&hdr[4], type, 4U);
+  put(hdr, sizeof(hdr));
+  if (len > 0U) {
+    put(data, len);
+  }
+  const uint8_t crc[4] = {0U, 0U, 0U, 0U}; /* CRCs are not verified */
+  put(crc, sizeof(crc));
+}
+
+/** @brief Start a crafted stream: signature + a gray8 IHDR of (w, h). */
+static void begin_png(uint32_t w, uint32_t h, uint8_t color, uint8_t extra_field, uint8_t extra_val)
+{
+  static const uint8_t sig[8] = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
+  s_src_len                   = 0U;
+  put(sig, sizeof(sig));
+  uint8_t ihdr[13] = {};
+  ihdr[0]          = (uint8_t)(w >> 24U);
+  ihdr[1]          = (uint8_t)((w >> 16U) & 0xFFU);
+  ihdr[2]          = (uint8_t)((w >> 8U) & 0xFFU);
+  ihdr[3]          = (uint8_t)(w & 0xFFU);
+  ihdr[4]          = (uint8_t)(h >> 24U);
+  ihdr[5]          = (uint8_t)((h >> 16U) & 0xFFU);
+  ihdr[6]          = (uint8_t)((h >> 8U) & 0xFFU);
+  ihdr[7]          = (uint8_t)(h & 0xFFU);
+  ihdr[8]          = 8U;
+  ihdr[9]          = color;
+  if (extra_field != 0U) {
+    ihdr[extra_field] = extra_val; /* corrupt one method/interlace byte */
+  }
+  put_chunk("IHDR", ihdr, sizeof(ihdr));
+}
+
+/**
+ * @brief zlib-compress a filtered gray8 frame with a chosen filter byte.
+ * @param[in]  w      Frame width, pixels.
+ * @param[in]  h      Rows to emit.
+ * @param[in]  filter Filter byte stamped on every row.
+ * @param[out] out    Receives the zlib stream.
+ * @return Compressed length.
+ * @retval >0 zlib stream length.
+ * @pre The staging buffers cover the frame.
+ * @pre @p out has ::k_t_zout_cap capacity.
+ * @post @p out holds a valid zlib stream of the filtered rows.
+ * @post No other state mutated.
+ * @note Not thread-safe (shared staging).
+ * @since 0.1.0
+ */
+static uint32_t make_zlib(uint32_t w, uint32_t h, uint8_t filter, uint8_t* out)
+{
+  size_t o = 0U;
+  for (uint32_t y = 0U; y < h; y++) {
+    s_raw[o] = filter;
+    o++;
+    for (uint32_t x = 0U; x < w; x++) {
+      s_raw[o] = (uint8_t)(x + y);
+      o++;
+    }
+  }
+  mz_ulong zlen = (mz_ulong)k_t_zout_cap;
+  TEST_ASSERT_EQ(MZ_OK, mz_compress(out, &zlen, s_raw, (mz_ulong)o));
+  return (uint32_t)zlen;
+}
+
+/** @brief Run the producer over the crafted source; return its code. */
+static ra8_err_t craft_produce(size_t fail_at)
+{
+  static t_pull_t                 pull;
+  static ra8_tileatlas_memstore_t store;
+  pull  = (t_pull_t){.pos = 0U, .fail_at = fail_at};
+  store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  const ra8_tileatlas_produce_cfg_t cfg = {
+    .pull       = t_pull,
+    .pull_ctx   = &pull,
+    .sink       = ra8_tileatlas_memstore_sink,
+    .sink_ctx   = &store,
+    .tile_w     = (uint16_t)k_t_tile,
+    .tile_h     = (uint16_t)k_t_tile,
+    .codec      = (uint8_t)k_ra8_tileatlas_codec_raw,
+    .max_width  = 512U,
+    .max_height = 512U,
+    .work       = s_work,
+    .work_cap   = sizeof(s_work),
+  };
+  ra8_tileatlas_info_t info = {};
+  return ra8_tileatlas_produce(&cfg, &info);
+}
+
+/** @brief Run the producer with custom tile geometry / codec / arena size. */
+static ra8_err_t
+craft_produce_with(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t work_cap)
+{
+  static t_pull_t                 pull;
+  static ra8_tileatlas_memstore_t store;
+  pull  = (t_pull_t){.pos = 0U, .fail_at = 0U};
+  store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  const ra8_tileatlas_produce_cfg_t cfg = {
+    .pull       = t_pull,
+    .pull_ctx   = &pull,
+    .sink       = ra8_tileatlas_memstore_sink,
+    .sink_ctx   = &store,
+    .tile_w     = tile_w,
+    .tile_h     = tile_h,
+    .codec      = codec,
+    .max_width  = 512U,
+    .max_height = 512U,
+    .work       = s_work,
+    .work_cap   = work_cap,
+  };
+  ra8_tileatlas_info_t info = {};
+  return ra8_tileatlas_produce(&cfg, &info);
+}
+
+/**
+ * @test test_png_hostile_pixel_layer
+ * @brief Bad filters, palette overruns and row-count lies fail closed.
+ *
+ * @par MC/DC:
+ * Decision (strict termination): `rows_done != h || rowfill != 0`
+ * (2 conditions)
+ * - Vector 1: exact rows, no residue -> false (happy paths elsewhere)
+ * - Vector 2: fewer rows than IHDR   -> true via rows_done (short-frame case)
+ * - Vector 3: rowfill residue        -> true via rowfill (mid-scanline end)
+ */
+static void test_png_hostile_pixel_layer(void)
+{
+  TEST_BEGIN("png hostile: filters / palette / row-count lies");
+  /* Unknown filter byte (9). */
+  begin_png(k_t_w, k_t_h, 0U, 0U, 0U);
+  uint8_t        z[512];
+  uint32_t       zlen = make_zlib(k_t_w, k_t_h, 9U, z);
+  put_chunk("IDAT", z, zlen);
+  put_chunk("IEND", nullptr, 0U);
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, craft_produce(0U));
+
+  /* Palette index past a 2-entry PLTE. */
+  begin_png(k_t_w, k_t_h, 3U, 0U, 0U);
+  const uint8_t plte[6] = {1U, 2U, 3U, 4U, 5U, 6U};
+  put_chunk("PLTE", plte, sizeof(plte));
+  zlen = make_zlib(k_t_w, k_t_h, 0U, z); /* indices reach 14 > 1 */
+  put_chunk("IDAT", z, zlen);
+  put_chunk("IEND", nullptr, 0U);
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, craft_produce(0U));
+
+  /* More scanlines than IHDR declared (frame lies tall). */
+  begin_png(k_t_w, k_t_h, 0U, 0U, 0U);
+  zlen = make_zlib(k_t_w, k_t_h + 1U, 0U, z);
+  put_chunk("IDAT", z, zlen);
+  put_chunk("IEND", nullptr, 0U);
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, craft_produce(0U));
+
+  /* Fewer scanlines than IHDR declared (short frame). */
+  begin_png(k_t_w, k_t_h, 0U, 0U, 0U);
+  zlen = make_zlib(k_t_w, k_t_h - 2U, 0U, z);
+  put_chunk("IDAT", z, zlen);
+  put_chunk("IEND", nullptr, 0U);
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, craft_produce(0U));
+
+  /* Trailing garbage inside the IDAT after the zlib stream. */
+  begin_png(k_t_w, k_t_h, 0U, 0U, 0U);
+  zlen = make_zlib(k_t_w, k_t_h, 0U, z);
+  z[zlen]      = 0xAAU;
+  z[zlen + 1U] = 0xBBU;
+  z[zlen + 2U] = 0xCCU;
+  put_chunk("IDAT", z, zlen + 3U);
+  put_chunk("IEND", nullptr, 0U);
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, craft_produce(0U));
+  TEST_END("png hostile: filters / palette / row-count lies");
+}
+
+/**
+ * @test test_png_hostile_chunk_layer
+ * @brief IHDR method bytes, oversize fields, tRNS misuse, stray IEND/IDAT
+ *        and ancillary walks all take their contracted arms.
+ *
+ * @par MC/DC:
+ * Decision (IHDR chunk accept): `type != IHDR || len != 13` (2 conditions)
+ * - Vector 1: IHDR/13     -> false (every valid stream)
+ * - Vector 2: "JUNK" first -> true via type
+ * - Vector 3: IHDR len 12  -> true via len
+ */
+static void test_png_hostile_chunk_layer(void)
+{
+  TEST_BEGIN("png hostile: chunk-layer structure arms");
+  uint8_t z[512];
+
+  /* Non-zero compression method. */
+  begin_png(k_t_w, k_t_h, 0U, 10U, 1U);
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, craft_produce(0U));
+  /* Non-zero filter method. */
+  begin_png(k_t_w, k_t_h, 0U, 11U, 1U);
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, craft_produce(0U));
+
+  /* First chunk is not an IHDR. */
+  static const uint8_t sig[8] = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
+  s_src_len                   = 0U;
+  put(sig, sizeof(sig));
+  put_chunk("JUNK", z, 13U);
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, craft_produce(0U));
+
+  /* Oversize chunk length field (> 2^31 - 1). */
+  begin_png(k_t_w, k_t_h, 0U, 0U, 0U);
+  const uint8_t huge[8] = {0x80U, 0U, 0U, 0U, 'j', 'U', 'N', 'K'};
+  put(huge, sizeof(huge));
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, craft_produce(0U));
+
+  /* tRNS with an oversize payload. */
+  begin_png(k_t_w, k_t_h, 3U, 0U, 0U);
+  const uint8_t plte[6] = {1U, 2U, 3U, 4U, 5U, 6U};
+  put_chunk("PLTE", plte, sizeof(plte));
+  static uint8_t big_trns[300];
+  put_chunk("tRNS", big_trns, sizeof(big_trns));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, craft_produce(0U));
+
+  /* IEND before any IDAT. */
+  begin_png(k_t_w, k_t_h, 0U, 0U, 0U);
+  put_chunk("IEND", nullptr, 0U);
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, craft_produce(0U));
+
+  TEST_END("png hostile: chunk-layer structure arms");
+}
+
+/**
+ * @test test_png_hostile_idat_tail
+ * @brief The IDAT tail arms: ancillary skip, stray second IDAT, and a
+ *        stream that ends mid-zlib before a parked ancillary chunk.
+ *
+ * @par MC/DC:
+ * (single-condition arms behind the chunk-accept decision vectored in
+ * test_png_hostile_chunk_layer: each crafted tail drives one refill /
+ * finish early-return independently.)
+ */
+static void test_png_hostile_idat_tail(void)
+{
+  TEST_BEGIN("png hostile: IDAT tail arms");
+  uint8_t  z[512];
+  uint32_t zlen = 0U;
+
+  /* Ancillary chunk between the last IDAT and IEND (skipped cleanly). */
+  begin_png(k_t_w, k_t_h, 0U, 0U, 0U);
+  zlen = make_zlib(k_t_w, k_t_h, 0U, z);
+  put_chunk("IDAT", z, zlen);
+  const uint8_t text[4] = {'o', 'k', 'o', 'k'};
+  put_chunk("tEXt", text, sizeof(text));
+  put_chunk("IEND", nullptr, 0U);
+  TEST_ASSERT_EQ(k_ra8_ok, craft_produce(0U));
+
+  /* A second IDAT after the zlib stream completed. */
+  begin_png(k_t_w, k_t_h, 0U, 0U, 0U);
+  zlen = make_zlib(k_t_w, k_t_h, 0U, z);
+  put_chunk("IDAT", z, zlen);
+  put_chunk("IDAT", z, 4U);
+  put_chunk("IEND", nullptr, 0U);
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, craft_produce(0U));
+
+  /* IDATs end mid-zlib-stream, then a tEXt: the refill parks the pending
+   * chunk and the final flush reports the truncation. */
+  begin_png(k_t_w, k_t_h, 0U, 0U, 0U);
+  zlen = make_zlib(k_t_w, k_t_h, 0U, z);
+  put_chunk("IDAT", z, zlen / 2U);
+  put_chunk("tEXt", text, sizeof(text));
+  put_chunk("IEND", nullptr, 0U);
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, craft_produce(0U));
+  TEST_END("png hostile: IDAT tail arms");
+}
+
+/**
+ * @test test_png_hostile_truncation
+ * @brief Truncations / transport failures at every phase fail closed.
+ *
+ * @par MC/DC:
+ * (single-condition arms: each truncation point exercises one early-return
+ * independently -- signature, IHDR payload, PLTE payload, tRNS payload,
+ * IDAT payload, the last IDAT's CRC, and the post-CRC chunk header.)
+ */
+static void test_png_hostile_truncation(void)
+{
+  TEST_BEGIN("png hostile: truncation / transport failures per phase");
+  uint8_t  z[512];
+  uint32_t zlen = make_zlib(k_t_w, k_t_h, 0U, z);
+
+  /* Full valid stream as the base for offset-based failure injection. */
+  begin_png(k_t_w, k_t_h, 0U, 0U, 0U);
+  const size_t after_ihdr = s_src_len;
+  put_chunk("IDAT", z, zlen);
+  const size_t after_idat_payload = s_src_len - 4U; /* before the CRC  */
+  const size_t after_idat_crc     = s_src_len;      /* before IEND hdr */
+  put_chunk("IEND", nullptr, 0U);
+
+  /* Transport hard-fails inside the IHDR CRC skip. */
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, craft_produce(after_ihdr - 2U));
+  /* Transport hard-fails mid-IDAT payload. */
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, craft_produce(after_ihdr + 20U));
+  /* Truncated at the last IDAT's CRC (finish path, pending unset). */
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, craft_produce(after_idat_payload + 2U));
+  /* Truncated at the post-CRC chunk header (finish path). */
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, craft_produce(after_idat_crc + 2U));
+
+  /* Truncated streams (clean EOF instead of a transport error). */
+  const size_t full = s_src_len;
+  s_src_len         = after_ihdr - 2U; /* inside the IHDR CRC */
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, craft_produce(0U));
+  s_src_len = after_idat_payload + 2U; /* inside the last CRC */
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, craft_produce(0U));
+  s_src_len = after_idat_crc + 3U; /* inside the IEND header */
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, craft_produce(0U));
+  s_src_len = full;
+
+  /* Truncated mid-IHDR payload. */
+  begin_png(k_t_w, k_t_h, 0U, 0U, 0U);
+  s_src_len = 8U + 8U + 6U;
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, craft_produce(0U));
+
+  /* Truncated mid-PLTE payload. */
+  begin_png(k_t_w, k_t_h, 3U, 0U, 0U);
+  const uint8_t plte[6] = {1U, 2U, 3U, 4U, 5U, 6U};
+  put_chunk("PLTE", plte, sizeof(plte));
+  s_src_len -= 7U;
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, craft_produce(0U));
+
+  /* Truncated mid-tRNS payload. */
+  begin_png(k_t_w, k_t_h, 3U, 0U, 0U);
+  put_chunk("PLTE", plte, sizeof(plte));
+  const uint8_t trns[2] = {9U, 9U};
+  put_chunk("tRNS", trns, sizeof(trns));
+  s_src_len -= 5U;
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, craft_produce(0U));
+  TEST_END("png hostile: truncation / transport failures per phase");
+}
+
+/**
+ * @test test_png_hostile_budgets
+ * @brief Chunk-budget floods (pre-IDAT, post-IDAT, empty-IDAT) are cut off.
+ *
+ * @par MC/DC:
+ * (each flood exhausts one bounded walk independently: the pre-IDAT
+ * ancillary walk, the post-IDAT ancillary walk, and the empty-IDAT refill
+ * loop -- NASA Rule 2 loop-bound proof by test.)
+ */
+static void test_png_hostile_budgets(void)
+{
+  TEST_BEGIN("png hostile: chunk-budget floods");
+  uint8_t       z[512];
+  const uint8_t text[1] = {'x'};
+
+  /* Flood of ancillary chunks before any IDAT. */
+  begin_png(k_t_w, k_t_h, 0U, 0U, 0U);
+  for (uint32_t i = 0U; i < (uint32_t)k_t_many; i++) {
+    put_chunk("tEXt", text, sizeof(text));
+  }
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, craft_produce(0U));
+
+  /* Flood of empty IDATs (the refill loop's own budget). */
+  begin_png(k_t_w, k_t_h, 0U, 0U, 0U);
+  for (uint32_t i = 0U; i < (uint32_t)k_t_many; i++) {
+    put_chunk("IDAT", nullptr, 0U);
+  }
+  put_chunk("IEND", nullptr, 0U);
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, craft_produce(0U));
+
+  /* Flood of ancillary chunks after the stream completed. */
+  begin_png(k_t_w, k_t_h, 0U, 0U, 0U);
+  const uint32_t zlen = make_zlib(k_t_w, k_t_h, 0U, z);
+  put_chunk("IDAT", z, zlen);
+  for (uint32_t i = 0U; i < (uint32_t)k_t_many; i++) {
+    put_chunk("tEXt", text, sizeof(text));
+  }
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error, craft_produce(0U));
+  TEST_END("png hostile: chunk-budget floods");
+}
+
+/**
+ * @test test_png_hostile_geometry
+ * @brief Producer-level geometry rejections behind a valid PNG prologue.
+ *
+ * @par MC/DC:
+ * (drives the producer geometry hook's tile-grid cap and the pixel-path
+ * arena exhaustion, both single-condition rejections behind the compound
+ * cap decision already vectored in test_ra8_tileatlas_produce.c.)
+ */
+static void test_png_hostile_geometry(void)
+{
+  TEST_BEGIN("png hostile: grid cap + pixel-path arena exhaustion");
+
+  /* 300x300 at 1x1 tiles = 90000 tiles > the 65536 format cap. */
+  static uint8_t frame[(300U * 301U)];
+  size_t         fo = 0U;
+  for (uint32_t y = 0U; y < 300U; y++) {
+    frame[fo] = 0U;
+    fo++;
+    for (uint32_t x = 0U; x < 300U; x++) {
+      frame[fo] = (uint8_t)(x ^ y);
+      fo++;
+    }
+  }
+  static uint8_t zbig[64U * 1024U];
+  mz_ulong       zl = (mz_ulong)sizeof(zbig);
+  TEST_ASSERT_EQ(MZ_OK, mz_compress(zbig, &zl, frame, (mz_ulong)fo));
+  begin_png(300U, 300U, 0U, 0U, 0U);
+  put_chunk("IDAT", zbig, (uint32_t)zl);
+  put_chunk("IEND", nullptr, 0U);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 craft_produce_with(1U, 1U, (uint8_t)k_ra8_tileatlas_codec_raw, sizeof(s_work)));
+
+  /* Arena large enough for the deflate scratch but not the PNG carve set
+   * (the pixel-path bind fails, not the codec scratch). */
+  uint8_t        zz[512];
+  const uint32_t zzl = make_zlib(k_t_w, k_t_h, 0U, zz);
+  begin_png(k_t_w, k_t_h, 0U, 0U, 0U);
+  put_chunk("IDAT", zz, zzl);
+  put_chunk("IEND", nullptr, 0U);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 craft_produce_with((uint16_t)k_t_tile,
+                                    (uint16_t)k_t_tile,
+                                    (uint8_t)k_ra8_tileatlas_codec_deflate,
+                                    340U * 1024U /* deflate scratch fits; ring set no */));
+  TEST_END("png hostile: grid cap + pixel-path arena exhaustion");
+}
+
+/** @brief No-op ::ra8_ta_geom_fn for the direct-seam arms. */
+static ra8_err_t t_geom_ok(void* ctx, uint16_t width, uint16_t height, uint8_t channels)
+{
+  (void)ctx;
+  (void)width;
+  (void)height;
+  (void)channels;
+  return k_ra8_ok;
+}
+
+/** @brief No-op ::ra8_ta_rows_fn for the direct-seam arms. */
+static ra8_err_t t_rows_ok(void*          ctx,
+                           const uint8_t* px,
+                           uint16_t       width,
+                           uint16_t       y0,
+                           uint16_t       nrows,
+                           uint8_t        channels)
+{
+  (void)ctx;
+  (void)px;
+  (void)width;
+  (void)y0;
+  (void)nrows;
+  (void)channels;
+  return k_ra8_ok;
+}
+
+/**
+ * @test test_png_hostile_direct_seam
+ * @brief Arms only a broken transport can reach, driven through the module
+ *        seam directly (signature pull failure, bad signature, null guards).
+ *
+ * @par MC/DC:
+ * (single-condition guards; one vector each through the RA8_PRIV seam per
+ * the CLAUDE.md internal-symbol test allowance.)
+ */
+static void test_png_hostile_direct_seam(void)
+{
+  TEST_BEGIN("png hostile: direct seam (signature + null guards)");
+  static uint8_t arena[512U * 1024U];
+  ra8_ta_bump_t  bump = {.base = arena, .cap = sizeof(arena), .off = 0U};
+  static t_pull_t pull;
+
+  /* Transport fails during the signature read. */
+  s_src_len = 0U;
+  const uint8_t half_sig[4] = {0x89U, 'P', 'N', 'G'};
+  put(half_sig, sizeof(half_sig));
+  pull = (t_pull_t){.pos = 0U, .fail_at = 2U};
+  TEST_ASSERT_EQ(
+    k_ra8_err_hw_error,
+    ra8_ta_priv_png_rows(t_pull, &pull, &bump, 512U, 512U, t_geom_ok, t_rows_ok, nullptr));
+
+  /* Wrong signature bytes. */
+  s_src_len = 0U;
+  const uint8_t bad_sig[8] = {'N', 'O', 'T', 'A', 'P', 'N', 'G', '!'};
+  put(bad_sig, sizeof(bad_sig));
+  pull = (t_pull_t){.pos = 0U, .fail_at = 0U};
+  TEST_ASSERT_EQ(
+    k_ra8_err_protocol_error,
+    ra8_ta_priv_png_rows(t_pull, &pull, &bump, 512U, 512U, t_geom_ok, t_rows_ok, nullptr));
+
+  /* Null guards on the seam itself: pull, bump, and each hook in turn. */
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_ta_priv_png_rows(nullptr, &pull, &bump, 512U, 512U, t_geom_ok, t_rows_ok, nullptr));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_ta_priv_png_rows(t_pull, &pull, nullptr, 512U, 512U, t_geom_ok, t_rows_ok, nullptr));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_ta_priv_png_rows(t_pull, &pull, &bump, 512U, 512U, nullptr, t_rows_ok, nullptr));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_ta_priv_png_rows(t_pull, &pull, &bump, 512U, 512U, t_geom_ok, nullptr, nullptr));
+  TEST_END("png hostile: direct seam (signature + null guards)");
+}
+
+/**
+ * @brief Test entry point -- runs the hostile-PNG corpus in order.
+ * @return 0 on success; unity_minimal.h exits non-zero on first failure.
+ * @pre None.
+ * @pre None.
+ * @post All tests executed (or the process exited on first failure).
+ * @post stderr carries a per-test RUN/PASS log.
+ * @note Not thread-safe. No SIGALRM / timers used.
+ * @since 0.1.0
+ */
+int32_t main(void)
+{
+  test_png_hostile_pixel_layer();
+  test_png_hostile_chunk_layer();
+  test_png_hostile_idat_tail();
+  test_png_hostile_truncation();
+  test_png_hostile_budgets();
+  test_png_hostile_geometry();
+  test_png_hostile_direct_seam();
+  (void)fprintf(stderr, "[OK  ] test_ra8_tileatlas_png_hostile.c\n");
+  return 0;
+}
