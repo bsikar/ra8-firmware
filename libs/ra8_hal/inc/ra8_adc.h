@@ -7,10 +7,11 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * full build-out of the RA8D2 ADC_B peripheral (14-bit
- * SAR). Extends the polling stub with: descriptor-based
- * init, deinit, runtime resolution reconfigure, status + clear,
- * interrupt-mode attach / dispatch, power transition.
+ * Full build-out of the RA8 ADC16H peripheral (the 16-bit SAR block
+ * shared byte-for-byte by the RA8D2 and RA8P1). Extends the polling
+ * stub with: descriptor-based init, deinit, runtime resolution
+ * reconfigure (ADDOPCRCn.ADPRC per-channel data-format), status +
+ * clear, interrupt-mode attach / dispatch, power transition.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -28,12 +29,28 @@ extern "C" {
 
 /**
  * @enum ra8_adc_resolution_t
- * @brief ADCER.ADPRC resolution selector.
+ * @brief ADDOPCRCn.ADPRC per-channel conversion-resolution (data-format) selector.
+ *
+ * @details
+ * The RA8 ADC16H sets conversion precision per virtual channel through the
+ * ADDOPCRCn.ADPRC[1:0] data-format field (HUM Ch 53.2.3.4 p 3339), NOT through
+ * any unit-wide ADMDR mode. The driver translates each selector below into its
+ * ADPRC code and programs it into every result-producing channel's ADDOPCRCn.
+ * The full 16-bit range is the headline RA8P1 ADC16H capability; the RA8D2
+ * exposes the same block and the identical register set. The 12-bit code that
+ * legacy FSP comments assumed is just one point on this selector, not a fixed
+ * hardware limit.
+ *
+ * @invariant Each value maps 1:1 onto a ::ra8_addopcrc_adprc_t code.
+ *
+ * @see ra8_adc_set_resolution
+ * @see ra8_addopcrc_adprc_t
  */
 typedef enum : uint8_t {
-  k_ra8_adc_res_12bit = 0U,
-  k_ra8_adc_res_10bit = 1U,
-  k_ra8_adc_res_14bit = 2U,
+  k_ra8_adc_res_16bit = 0U, /**< 16-bit conversion result (ADPRC = 0b00). */
+  k_ra8_adc_res_14bit = 1U, /**< 14-bit conversion result (ADPRC = 0b01). */
+  k_ra8_adc_res_12bit = 2U, /**< 12-bit conversion result (ADPRC = 0b10). */
+  k_ra8_adc_res_10bit = 3U, /**< 10-bit conversion result (ADPRC = 0b11). */
 } ra8_adc_resolution_t;
 
 /**
@@ -57,7 +74,7 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra8_adc_resolution_t resolution;    /**< 12 / 10 / 14 bit.        */
+  ra8_adc_resolution_t resolution;    /**< 16 / 14 / 12 / 10 bit.   */
   ra8_adc_trigger_t    trigger;       /**< Trigger source.          */
   bool                 right_aligned; /**< True -> right-align.     */
   bool                 scan_mode;     /**< True -> continuous scan. */
@@ -226,9 +243,27 @@ typedef struct {
  */
 
 /**
- * @brief Change the ADC resolution at runtime.
- * @param[in] resolution New resolution selection.
+ * @brief Change the ADC conversion resolution at runtime.
+ *
+ * @details
+ * Translates @p resolution into its ADDOPCRCn.ADPRC[1:0] data-format code
+ * (HUM Ch 53.2.3.4 p 3339) and programs it into every result-producing
+ * virtual channel's ADDOPCRCn, so the next conversion on any of those
+ * channels reports in the requested precision. The dedicated self-diagnosis
+ * slot is left untouched -- ``ra8_adc_self_diagnose`` forces its own format.
+ *
+ * @param[in] resolution New resolution selector (::ra8_adc_resolution_t).
  * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok              ADPRC updated on every result channel.
+ * @retval k_ra8_err_invalid_arg @p resolution is not a known selector.
+ *
+ * @pre ``ra8_adc_init`` (or ``ra8_adc_init_configured``) has been called.
+ * @pre IRQs masked or single-threaded so no scan races the ADDOPCRC writes.
+ * @post On success every result-channel ADDOPCRCn.ADPRC matches @p resolution.
+ * @post On the error path no register is modified.
+ *
+ * @note Not thread-safe.
+ * @see ra8_adc_resolution_t
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_adc_set_resolution(ra8_adc_resolution_t resolution);

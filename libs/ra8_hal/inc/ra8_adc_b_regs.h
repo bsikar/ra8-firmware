@@ -1,15 +1,19 @@
 /**
  * @file ra8_adc_b_regs.h
- * @brief ADC_B (12 / 14-bit SAR) register layout for the Renesas RA8D2
+ * @brief ADC16H (16-bit SAR) register layout for the Renesas RA8D2 / RA8P1
  * @ingroup grp_hal_analog
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * The RA8D2 ADC_B is a Type-B SAR converter with two independent
- * units (ADC0/ADC1) sharing one 0x2224-byte register window at
- * 0x40338000. The layout was re-derived against FSP
+ * The RA8 ADC_B block is the ADC16H: a 16-bit SAR converter with two
+ * independent units (ADC0/ADC1) sharing one 0x2224-byte register
+ * window at 0x40338000. Conversion precision (10/12/14/16-bit) is a
+ * per-channel ADDOPCRCn.ADPRC data-format selection, not a unit-wide
+ * mode. The register window is byte-identical on the RA8D2 and RA8P1;
+ * the 16-bit range is the headline RA8P1 capability. The layout was
+ * re-derived against FSP
  * ``R_ADC_B0_Type`` in
  * ``ra/fsp/src/bsp/cmsis/Device/RENESAS/Include/R7KA8D2KF_core0.h``
  * lines 20460-24938. The pre-RA8 ``ADCSR / ADANSA / ADCER / ADDRn``

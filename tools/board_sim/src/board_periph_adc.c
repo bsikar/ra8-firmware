@@ -1,25 +1,27 @@
 /**
  * @file board_periph_adc.c
- * @brief ADC_B (12 / 14-bit SAR) peripheral-block model for the board emulator
+ * @brief ADC16H (16-bit SAR) peripheral-block model for the board emulator
  *
  * @details
- * Models the RA8D2 ADC_B converter (ra8_adc_b_regs.h / adc.c) at base
+ * Models the RA8 ADC16H converter (ra8_adc_b_regs.h / adc.c) at base
  * 0x40338000 so a software-triggered conversion produces real result data
  * instead of the sparse fallback's all-ones junk. The driver's single-channel
  * polling read (``ra8_adc_read_channel``) drives the block as:
  *
- *  1. Programme an ADCHCRn slot (CNVCS = physical channel, SGSEL = scan group).
+ *  1. Programme an ADCHCRn slot (CNVCS = physical channel, SGSEL = scan group)
+ *     plus that slot's ADDOPCRCn.ADPRC data-format (conversion resolution).
  *  2. Kick the scan by writing ADSTR[group].ADST = 1.
  *  3. Poll ADSR.ADACT0 until it reads 0 (unit idle), then read ADDR[ch].
  *
  * On the ADSTR write this model walks the configured ADCHCRn slots, populates
- * the matching ADDR[ch] result register with a plausible mid-scale code (the
- * 12-bit half-scale, ::k_adc_sample_code), leaves ADSR.ADACT0 clear (the
- * conversion is modelled as instantaneous, so the firmware's idle poll
- * completes on its first read), and raises the group's scan-complete (ADI)
- * event through the core's ICU -> NVIC path. Control registers read back what
- * was written so the driver's "configure then verify" sequence sees a coherent
- * block.
+ * the matching ADDR[ch] result register with a resolution-appropriate mid-scale
+ * (half-full-scale) code -- read from the slot's ADDOPCRCn.ADPRC field so a
+ * 16-bit conversion reports 0x8000 while a 12-bit one reports 0x0800 (HUM
+ * Ch 53.2.3.4 p 3339) -- leaves ADSR.ADACT0 clear (the conversion is modelled
+ * as instantaneous, so the firmware's idle poll completes on its first read),
+ * and raises the group's scan-complete (ADI) event through the core's ICU ->
+ * NVIC path. Control registers read back what was written so the driver's
+ * "configure then verify" sequence sees a coherent block.
  *
  * Internal / extended-analog channels (CNVCS >= ::k_adc_ext_chan_base: the
  * self-diagnosis source 0x60, the temperature sensor 0x64, the internal Vref
@@ -55,23 +57,24 @@ typedef enum : uint32_t {
 
 /** @brief ADC_B block geometry (ra8_adc_b_regs.h, FSP R_ADC_B0_Type). */
 typedef enum : uint64_t {
-  k_adc_base         = 0x40338000UL, /**< ADC_B register-window base.           */
-  k_adc_span         = 0x2224UL,     /**< Full FSP R_ADC_B0_Type window size.   */
-  k_adc_off_adsger   = 0x0048UL,     /**< ADSGER scan-group enable.             */
-  k_adc_off_adintcr  = 0x005CUL,     /**< ADINTCR per-group scan-end IE.        */
-  k_adc_off_adsgdcr0 = 0x0200UL,     /**< ADSGDCR[0] scan-group self-diag ctrl. */
-  k_adc_off_adchcr0  = 0x0600UL,     /**< ADCHCR[0] per-channel config.         */
-  k_adc_off_adtrgenr = 0x0C08UL,     /**< ADTRGENR per-group HW-trigger enable. */
-  k_adc_off_adstr0   = 0x0C20UL,     /**< ADSTR[0] per-group SW start.          */
-  k_adc_off_adstopr  = 0x0C60UL,     /**< ADSTOPR force-stop.                   */
-  k_adc_off_adsr     = 0x0C80UL,     /**< ADSR conversion status (RO).          */
-  k_adc_off_addr0    = 0x2000UL,     /**< ADDR[0] conversion results.           */
-  k_adc_off_adexdr0  = 0x2180UL,     /**< ADEXDR[0] extended-analog results.    */
-  k_adc_chcr_stride  = 0x10UL,       /**< ADCHCRn occupies 16 bytes per slot.   */
-  k_adc_addr_stride  = 0x04UL,       /**< ADDR[n] is 4 bytes per slot.          */
-  k_adc_str_stride   = 0x04UL,       /**< ADSTR[n] is 4 bytes per slot.         */
-  k_adc_sgdcr_stride = 0x04UL,       /**< ADSGDCRn is 4 bytes per slot.         */
-  k_adc_exdr_stride  = 0x04UL,       /**< ADEXDRn is 4 bytes per slot.          */
+  k_adc_base          = 0x40338000UL, /**< ADC_B register-window base.           */
+  k_adc_span          = 0x2224UL,     /**< Full FSP R_ADC_B0_Type window size.   */
+  k_adc_off_adsger    = 0x0048UL,     /**< ADSGER scan-group enable.             */
+  k_adc_off_adintcr   = 0x005CUL,     /**< ADINTCR per-group scan-end IE.        */
+  k_adc_off_adsgdcr0  = 0x0200UL,     /**< ADSGDCR[0] scan-group self-diag ctrl. */
+  k_adc_off_adchcr0   = 0x0600UL,     /**< ADCHCR[0] per-channel config.         */
+  k_adc_off_addopcrc0 = 0x060CUL,     /**< ADDOPCRC[0] per-channel ADPRC format. */
+  k_adc_off_adtrgenr  = 0x0C08UL,     /**< ADTRGENR per-group HW-trigger enable. */
+  k_adc_off_adstr0    = 0x0C20UL,     /**< ADSTR[0] per-group SW start.          */
+  k_adc_off_adstopr   = 0x0C60UL,     /**< ADSTOPR force-stop.                   */
+  k_adc_off_adsr      = 0x0C80UL,     /**< ADSR conversion status (RO).          */
+  k_adc_off_addr0     = 0x2000UL,     /**< ADDR[0] conversion results.           */
+  k_adc_off_adexdr0   = 0x2180UL,     /**< ADEXDR[0] extended-analog results.    */
+  k_adc_chcr_stride   = 0x10UL,       /**< ADCHCRn occupies 16 bytes per slot.   */
+  k_adc_addr_stride   = 0x04UL,       /**< ADDR[n] is 4 bytes per slot.          */
+  k_adc_str_stride    = 0x04UL,       /**< ADSTR[n] is 4 bytes per slot.         */
+  k_adc_sgdcr_stride  = 0x04UL,       /**< ADSGDCRn is 4 bytes per slot.         */
+  k_adc_exdr_stride   = 0x04UL,       /**< ADEXDRn is 4 bytes per slot.          */
 } adc_map_t;
 
 /** @brief ADC_B array dimensions (mirror ra8_adc_b_limits_t). */
@@ -92,7 +95,41 @@ typedef enum : uint32_t {
   k_adc_chcr_cnvcs_m  = 0x00007F00UL, /**< ADCHCRn.CNVCS[14:8] phys channel. */
   k_adc_chcr_cnvcs_s  = 8U,           /**< ADCHCRn.CNVCS shift.              */
   k_adc_sgdcr_diagval = 0x00000007UL, /**< ADSGDCRn.DIAGVAL[2:0] mode.       */
+  k_adc_opcrc_adprc_m = 0x00030000UL, /**< ADDOPCRCn.ADPRC[17:16] format.    */
+  k_adc_opcrc_adprc_s = 16U,          /**< ADDOPCRCn.ADPRC shift.            */
 } adc_field_t;
+
+/**
+ * @brief ADDOPCRCn.ADPRC[1:0] data-format codes (HUM Ch 53.2.3.4 p 3339).
+ *
+ * @details
+ * Selects the conversion resolution / result width per virtual channel:
+ * 0b00 -> 16-bit, 0b01 -> 14-bit, 0b10 -> 12-bit, 0b11 -> 10-bit. The model
+ * uses this to pick a resolution-appropriate mid-scale (::adc_midscale_t)
+ * result code for a converted channel.
+ */
+typedef enum : uint32_t {
+  k_adc_adprc_16bit = 0x0U, /**< ADPRC 0b00: 16-bit result. */
+  k_adc_adprc_14bit = 0x1U, /**< ADPRC 0b01: 14-bit result. */
+  k_adc_adprc_12bit = 0x2U, /**< ADPRC 0b10: 12-bit result. */
+  k_adc_adprc_10bit = 0x3U, /**< ADPRC 0b11: 10-bit result. */
+} adc_adprc_t;
+
+/**
+ * @brief Resolution-appropriate mid-scale (half-full-scale) result codes.
+ *
+ * @details
+ * A "mid-scale" analog input converts to half of the full-scale code, whose
+ * magnitude tracks the ADPRC data-format width. The model reports these so a
+ * 16-bit conversion looks 16-bit (0x8000) and a 12-bit one looks 12-bit
+ * (0x0800), instead of always the old fixed 12-bit half-scale.
+ */
+typedef enum : uint16_t {
+  k_adc_mid_16bit = 0x8000U, /**< 16-bit half-scale. */
+  k_adc_mid_14bit = 0x2000U, /**< 14-bit half-scale. */
+  k_adc_mid_12bit = 0x0800U, /**< 12-bit half-scale. */
+  k_adc_mid_10bit = 0x0200U, /**< 10-bit half-scale. */
+} adc_midscale_t;
 
 /**
  * @brief Extended-analog (internal) channel CNVCS codes (ra8_adc_b_regs.h).
@@ -236,33 +273,68 @@ static uint16_t adc_ext_value(uint32_t phys, uint32_t group)
   return (uint16_t)k_adc_sample_code; /* internal Vref + any other ext source. */
 }
 
+/** @brief Read ADDOPCRC[slot].ADPRC[1:0] data-format code from the store. */
+static uint32_t adc_adprc(uint32_t slot)
+{
+  const uint64_t off = (uint64_t)k_adc_off_addopcrc0 + (uint64_t)slot * (uint64_t)k_adc_chcr_stride;
+  return (s_adc_reg[adc_word(off)] & (uint32_t)k_adc_opcrc_adprc_m) >>
+         (uint32_t)k_adc_opcrc_adprc_s;
+}
+
+/** @brief Resolution-appropriate mid-scale result code for an ADPRC format. */
+static uint16_t adc_midscale_for_adprc(uint32_t adprc)
+{
+  switch (adprc) {
+    case (uint32_t)k_adc_adprc_16bit:
+      return (uint16_t)k_adc_mid_16bit;
+    case (uint32_t)k_adc_adprc_14bit:
+      return (uint16_t)k_adc_mid_14bit;
+    case (uint32_t)k_adc_adprc_10bit:
+      return (uint16_t)k_adc_mid_10bit;
+    default: /* 12-bit (0b10) and any unmodelled code. */
+      return (uint16_t)k_adc_mid_12bit;
+  }
+}
+
 /**
  * @brief Populate result registers for every channel enrolled in @p group.
  *
  * @details
- * Walks the 24 ADCHCRn slots; any slot whose SGSEL matches the started group
- * gets its CNVCS physical channel's ADDR[ch] filled with the mid-scale sample.
- * ADDR is indexed by the same physical-channel number the driver reads back
- * (driver convention virtual_ch == physical_ch), so the polling read lands on
- * a populated slot.
+ * Walks the 24 ADCHCRn slots; any slot whose SGSEL matches the started group is
+ * a virtual channel that converts. A normal (external-pin) channel reports to
+ * its own virtual-channel result register ADDR[slot] -- the same index the
+ * driver reads back (driver convention virtual_ch == physical_ch) -- filled
+ * with a resolution-scaled mid-scale sample taken from the slot's ADDOPCRCn.ADPRC
+ * data-format. A slot with no ADDR register (the top diagnostic slot) produces
+ * no ordinary result; an internal / extended-analog channel reports through
+ * ADEXDR instead.
  */
 static void adc_convert_group(uint32_t group)
 {
   uint32_t converted = 0U;
+  uint16_t last_code = 0U;
   for (uint32_t slot = 0U; slot < (uint32_t)k_adc_max_channels; slot++) {
     const uint32_t chcr = adc_chcr(slot);
     if ((chcr & (uint32_t)k_adc_chcr_sgsel) != group) {
       continue;
     }
     const uint32_t phys = (chcr & (uint32_t)k_adc_chcr_cnvcs_m) >> (uint32_t)k_adc_chcr_cnvcs_s;
-    /* An internal / extended-analog channel (self-diagnosis, temperature sensor,
-     * internal Vref) reports through ADEXDR[CNVCS - base], not ADDR[]. */
     if (phys >= (uint32_t)k_adc_ext_chan_base) {
-      adc_set_ext_result(phys - (uint32_t)k_adc_ext_chan_base, adc_ext_value(phys, group));
-    } else {
-      adc_set_result(phys, (uint16_t)k_adc_sample_code);
+      /* An internal / extended-analog channel (self-diagnosis, temperature
+       * sensor, internal Vref) reports through ADEXDR[CNVCS - base], not ADDR[]. */
+      last_code = adc_ext_value(phys, group);
+      adc_set_ext_result(phys - (uint32_t)k_adc_ext_chan_base, last_code);
+      converted++;
+    } else if (slot < (uint32_t)k_adc_result_regs) {
+      /* Normal channel -> its virtual-channel result register ADDR[slot].
+       * Resolution is the slot's ADDOPCRCn.ADPRC data-format, so a mid-scale
+       * input converts to that format's half-full-scale code. */
+      last_code = adc_midscale_for_adprc(adc_adprc(slot));
+      adc_set_result(slot, last_code);
+      converted++;
     }
-    converted++;
+    /* else: a normal channel on a virtual slot with no ADDR result register
+     * (the diagnostic slot) produces no ordinary result. */
   }
   /* Console ADC tab: one line per scan-group conversion (coalesced -- a whole
    * group is one push, never one per channel), skipped when the group is empty. */
@@ -273,7 +345,7 @@ static void adc_convert_group(uint32_t group)
                    "ADC grp=%u %uch code=%u",
                    (unsigned)group,
                    (unsigned)converted,
-                   (unsigned)k_adc_sample_code);
+                   (unsigned)last_code);
     board_console_push(k_board_console_ch_adc, ln);
   }
 }
@@ -315,7 +387,7 @@ static void adc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
       (void)fprintf(stderr,
                     "  [trace] ADC_B scan grp%u -> code=%u\n",
                     group,
-                    (unsigned)k_adc_sample_code);
+                    (unsigned)s_adc_last_code);
     }
     return;
   }
