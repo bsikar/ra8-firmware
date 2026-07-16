@@ -1,3 +1,18 @@
+# SECURITY (public-repo hardening): every job below runs on SELF-HOSTED
+# runners and this workflow triggers on `pull_request`. To stop a fork PR
+# from executing untrusted code on the owner's runners, every job carries:
+#
+#   if: github.event_name != 'pull_request'
+#       || github.event.pull_request.head.repo.full_name == github.repository
+#
+# so a job runs on push / schedule / workflow_dispatch, and on PRs ONLY when
+# the PR head branch lives in THIS repo (a collaborator branch, never a fork).
+# Fork PRs skip every self-hosted job -- untrusted code never reaches the
+# runner, independent of any approval setting. Do NOT add `pull_request_target`
+# with a checkout of PR head code; that would re-open the hole with secrets in
+# scope. Workflow files alone cannot fully close this: see SECURITY.md for the
+# GitHub UI / runner-group / ephemeral-VM settings the owner MUST also set
+# before making the repo public.
 name: firmware
 
 on:
@@ -22,6 +37,7 @@ jobs:
   ascii:
     name: ASCII-only source files
     runs-on: [self-hosted, Linux, X64]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - name: Scan
@@ -41,6 +57,7 @@ jobs:
   copyright:
     name: Copyright header check
     runs-on: [self-hosted, Linux, X64]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - name: Scan
@@ -55,6 +72,7 @@ jobs:
   since:
     name: Doxygen @since tags
     runs-on: [self-hosted, Linux, X64]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - name: Scan
@@ -69,6 +87,7 @@ jobs:
   format:
     name: clang-format check
     runs-on: [self-hosted, Linux, X64]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - name: Run format check
@@ -82,6 +101,7 @@ jobs:
   tidy:
     name: clang-tidy
     runs-on: [self-hosted, Linux, X64]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - name: Run clang-tidy
@@ -95,6 +115,7 @@ jobs:
   nsc-cmse:
     name: NSC veneers (-mcmse)
     runs-on: [self-hosted, Linux, X64]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - name: Compile ra8_nsc veneers under -mcmse
@@ -106,6 +127,7 @@ jobs:
   unit-tests:
     name: Unit tests (host)
     runs-on: [self-hosted, Linux, X64]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -127,6 +149,7 @@ jobs:
   ubsan:
     name: UBSan (host tests)
     runs-on: [self-hosted, Linux, X64]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -149,6 +172,7 @@ jobs:
   cache-bench:
     name: Cache benchmarks (#147/#160)
     runs-on: [self-hosted, Linux, X64]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -165,6 +189,7 @@ jobs:
   coverage:
     name: Coverage (gcovr 90/80)
     runs-on: [self-hosted, Linux, X64]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -187,6 +212,7 @@ jobs:
   mcdc:
     name: MC/DC coverage gate
     runs-on: [self-hosted, Linux, X64]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -263,6 +289,7 @@ jobs:
   pre-commit-checks:
     name: Pre-commit gate suite
     runs-on: [self-hosted, Linux, X64]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
         with:
@@ -486,6 +513,7 @@ jobs:
   build-cross:
     name: Cross-build all apps
     runs-on: [self-hosted, Linux, X64]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - name: Prefer the official ARM toolchain (bundles libstdc++)
@@ -544,6 +572,7 @@ jobs:
   docs:
     name: Doxygen warnings
     runs-on: [self-hosted, Linux, X64]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - name: Run doxygen
@@ -602,6 +631,7 @@ jobs:
   misra:
     name: MISRA-C 2012 ratchet
     runs-on: [self-hosted, Linux, X64]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -616,6 +646,7 @@ jobs:
   cppcheck:
     name: cppcheck
     runs-on: [self-hosted, Linux, X64]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - name: Run cppcheck
@@ -663,7 +694,10 @@ jobs:
     name: MC/DC delta comment
     runs-on: [self-hosted, Linux, X64]
     needs: mcdc
-    if: github.event_name == 'pull_request'
+    # PR-only job, and self-hosted: also require the PR head to live in THIS
+    # repo so a fork PR can never reach the runner (defence in depth -- `needs:
+    # mcdc` already skips it when the guarded mcdc job is skipped on a fork PR).
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       pull-requests: write
       contents: read
