@@ -57,6 +57,16 @@ extern "C" {
 #endif
 
 /**
+ * @typedef ra8_rar5_state_t
+ * @brief Forward declaration of the RAR5 decompressor scratch (see ra8_rar5.h).
+ * @details ::ra8_rar_extract routes a compressed RAR5 member through the decoder,
+ *          which needs this caller-owned pool; the full definition lives in
+ *          `ra8_rar5.h` so this header stays free of the decoder internals.
+ * @since Version 0.1.0
+ */
+typedef struct ra8_rar5_state ra8_rar5_state_t;
+
+/**
  * @typedef ra8_rar_read_fn
  * @brief Seek+read backing over the RAR container bytes.
  *
@@ -275,6 +285,50 @@ ra8_rar_open(ra8_rar_t* rar, ra8_rar_read_fn read, void* ctx, uint64_t size);
                                                uint8_t*               buf,
                                                size_t                 cap,
                                                size_t*                got);
+
+/**
+ * @brief Extract any file member -- STORE by copy, RAR5-compressed by decode.
+ *
+ * @details Dispatches on @p ent's normalised method: a STORE member streams through
+ *          ::ra8_rar_extract_stored, while a compressed member of a RAR5 archive is
+ *          inflated through ::ra8_rar5_decompress using the caller-owned @p st pool.
+ *          A compressed member of a RAR4 archive (the legacy codec) is reported
+ *          unsupported. This is the single entry the CBR facade uses so both page
+ *          shapes decode behind one call (SOLID Liskov: STORE and compressed pages
+ *          are interchangeable to the caller).
+ *
+ * @param[in]  rar Archive bound by ::ra8_rar_open (non-NULL).
+ * @param[in]  ent A file member from ::ra8_rar_next (non-NULL, `is_file == 1`).
+ * @param[out] buf Destination for the member's decoded bytes (non-NULL).
+ * @param[in]  cap Capacity of @p buf in bytes; must be >= `ent->unp_size`.
+ * @param[in,out] st RAR5 decoder scratch, required only for a compressed member.
+ * @param[out] got Receives the number of bytes written (non-NULL).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                Member decoded; `*got == ent->unp_size`.
+ * @retval k_ra8_err_null_ptr      A required pointer argument was NULL (incl. @p st
+ *                                for a compressed member).
+ * @retval k_ra8_err_invalid_state @p rar was never bound by ::ra8_rar_open.
+ * @retval k_ra8_err_not_supported A directory, a non-file, or a RAR4-compressed member.
+ * @retval k_ra8_err_no_mem        @p cap is smaller than `ent->unp_size`.
+ * @retval k_ra8_err_invalid_size  A STORE member overruns the archive / short read.
+ * @retval k_ra8_err_validation_failed A malformed / truncated compressed stream.
+ *
+ * @pre @p rar was populated by ::ra8_rar_open.
+ * @pre @p ent came from ::ra8_rar_next on the same @p rar.
+ * @post On k_ra8_ok, `buf[0..*got)` holds the member's original bytes.
+ * @post On any error @p buf contents are unspecified and `*got == 0`.
+ *
+ * @note Not thread-safe.
+ * @see ra8_rar5_decompress()
+ * @since Version 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_rar_extract(const ra8_rar_t*       rar,
+                                        const ra8_rar_entry_t* ent,
+                                        uint8_t*               buf,
+                                        size_t                 cap,
+                                        ra8_rar5_state_t*      st,
+                                        size_t*                got);
 
 #ifdef __cplusplus
 }

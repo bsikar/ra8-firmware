@@ -483,13 +483,13 @@ static void test_comic_page_add_caps(void)
   ra8_comic_t      c =
     {.pages = pg, .page_cap = 1U, .page_count = 1U, .names = nm, .names_cap = 4U, .names_len = 0U};
 
-  /* Page index already at capacity. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_comic_page_add(&c, "x", 1U, 0U, 1U, 0U, 0U, 0U));
+  /* Page index already at capacity. (args: name,len,raw,extractable,method,zip,off,pack) */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_comic_page_add(&c, "x", 1U, 0U, 1U, 0U, 0U, 0U, 0U));
 
   /* Name arena cannot hold the next name. */
   c.page_count = 0U;
   c.names_len  = 3U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_comic_page_add(&c, "xy", 2U, 0U, 1U, 0U, 0U, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_comic_page_add(&c, "xy", 2U, 0U, 1U, 0U, 0U, 0U, 0U));
   TEST_END("comic: page index / name arena overflow guards");
 }
 

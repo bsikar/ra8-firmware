@@ -66,6 +66,7 @@
 
 #include "ra8_err.h"
 #include "ra8_rar.h"
+#include "ra8_rar5.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -119,22 +120,25 @@ typedef enum : uint16_t {
  *          @p raw_size is the encoded image's byte length. The remaining fields
  *          are backend bookkeeping used by ::ra8_comic_page_read: @p zip_index for
  *          CBZ (the miniz central-directory index) and @p data_off / @p pack_size
- *          for CBR (the RAR member's data area). @p extractable is 0 for a CBR
- *          member packed with a RAR compressor this reader does not decode.
+ *          for CBR (the RAR member's data area). @p extractable is 0 only for a CBR
+ *          member packed with a compressor this reader does not decode (RAR4
+ *          legacy); RAR5-compressed members decode and stay extractable. @p rar_method
+ *          is the normalised CBR compression method (::ra8_rar_method_t) used to route
+ *          the page between the STORE copy and the RAR5 decompressor.
  *
  * @invariant `name_off + name_len <= names_len` of the owning comic.
  * @see ra8_comic_open()
  * @since Version 0.1.0
  */
 typedef struct {
-  uint32_t name_off;    /**< Offset of the page name in the name arena.     */
-  uint16_t name_len;    /**< Page name length in bytes.                     */
-  uint8_t  extractable; /**< 1 if this reader can decode the page's bytes.  */
-  uint8_t  reserved;    /**< Padding; must be 0.                            */
-  uint32_t zip_index;   /**< CBZ: miniz central-directory index.            */
-  uint64_t data_off;    /**< CBR: absolute offset of the member data area.  */
-  uint64_t pack_size;   /**< CBR: packed member size in bytes.              */
-  uint64_t raw_size;    /**< Encoded image length in bytes (decoder input). */
+  uint32_t name_off;    /**< Offset of the page name in the name arena.      */
+  uint16_t name_len;    /**< Page name length in bytes.                      */
+  uint8_t  extractable; /**< 1 if this reader can decode the page's bytes.   */
+  uint8_t  rar_method;  /**< CBR: ::ra8_rar_method_t (0 = store); 0 for CBZ. */
+  uint32_t zip_index;   /**< CBZ: miniz central-directory index.             */
+  uint64_t data_off;    /**< CBR: absolute offset of the member data area.   */
+  uint64_t pack_size;   /**< CBR: packed member size in bytes.               */
+  uint64_t raw_size;    /**< Encoded image length in bytes (decoder input).  */
 } ra8_comic_page_t;
 
 /**
@@ -166,19 +170,20 @@ typedef struct {
  * @since Version 0.1.0
  */
 typedef struct {
-  ra8_comic_read_fn  read;       /**< Byte reader over the archive.           */
-  void*              ctx;        /**< Context for @ref read.                  */
-  uint64_t           size;       /**< Archive length in bytes.                */
-  ra8_comic_page_t*  pages;      /**< Caller page-index array.                */
-  uint32_t           page_cap;   /**< Capacity of @ref pages in entries.      */
-  uint32_t           page_count; /**< Populated page count.                   */
-  char*              names;      /**< Caller name arena.                      */
-  uint32_t           names_cap;  /**< Capacity of @ref names in bytes.        */
-  uint32_t           names_len;  /**< Bytes used in @ref names.               */
-  ra8_comic_stream_t stream;     /**< CBZ miniz I/O descriptor (stable addr). */
-  ra8_rar_t          rar;        /**< CBR walker state.                       */
-  ra8_comic_kind_t   kind;       /**< Detected container kind.                */
-  uint8_t            zip_active; /**< 1 = miniz reader is initialised (CBZ).  */
+  ra8_comic_read_fn  read;       /**< Byte reader over the archive.            */
+  void*              ctx;        /**< Context for @ref read.                   */
+  uint64_t           size;       /**< Archive length in bytes.                 */
+  ra8_comic_page_t*  pages;      /**< Caller page-index array.                 */
+  uint32_t           page_cap;   /**< Capacity of @ref pages in entries.       */
+  uint32_t           page_count; /**< Populated page count.                    */
+  char*              names;      /**< Caller name arena.                       */
+  uint32_t           names_cap;  /**< Capacity of @ref names in bytes.         */
+  uint32_t           names_len;  /**< Bytes used in @ref names.                */
+  ra8_comic_stream_t stream;     /**< CBZ miniz I/O descriptor (stable addr).  */
+  ra8_rar_t          rar;        /**< CBR walker state.                        */
+  ra8_rar5_state_t   rar5_state; /**< CBR RAR5 decompressor scratch (no heap). */
+  ra8_comic_kind_t   kind;       /**< Detected container kind.                 */
+  uint8_t            zip_active; /**< 1 = miniz reader is initialised (CBZ).   */
   /** @brief Inline storage for miniz's `mz_zip_archive` (CBZ; no heap). */
   alignas(max_align_t) uint8_t zip_storage[k_ra8_comic_zip_bytes];
 } ra8_comic_t;
@@ -320,9 +325,10 @@ static inline ra8_comic_kind_t ra8_comic_kind(const ra8_comic_t* c)
  *
  * @details Streams the page's encoded image (JPEG / PNG / GIF / BMP) into @p buf:
  *          for a CBZ, miniz inflates the ZIP entry (STORE or DEFLATE) through the
- *          streaming reader; for a CBR, the STORE member's bytes are copied via
- *          the RAR walker. The result is ready to hand to `ra8_img_decode_blit`.
- *          One call is one page's worth of I/O -- the demand-paged model.
+ *          streaming reader; for a CBR, a STORE member is copied and a RAR5-compressed
+ *          member is inflated by the clean-room decompressor, both via the RAR walker.
+ *          The result is ready to hand to `ra8_img_decode_blit`. One call is one
+ *          page's worth of I/O -- the demand-paged model.
  *
  * @param[in]  c    Comic bound by ::ra8_comic_open (non-NULL).
  * @param[in]  page Page index (`< ra8_comic_page_count(c)`).

@@ -177,6 +177,7 @@ ra8_err_t ra8_comic_page_add(ra8_comic_t* c,
                              uint16_t     name_len,
                              uint64_t     raw_size,
                              uint8_t      extractable,
+                             uint8_t      method,
                              uint32_t     zip_index,
                              uint64_t     data_off,
                              uint64_t     pack_size)
@@ -194,6 +195,7 @@ ra8_err_t ra8_comic_page_add(ra8_comic_t* c,
   p->name_off         = c->names_len;
   p->name_len         = name_len;
   p->extractable      = extractable;
+  p->rar_method       = method;
   p->zip_index        = zip_index;
   p->data_off         = data_off;
   p->pack_size        = pack_size;

@@ -62,6 +62,7 @@ bool ra8_comic_is_page_name(const char* name, uint16_t len);
  * @param[in]     name_len    Length of @p name in bytes.
  * @param[in]     raw_size    Encoded image length in bytes.
  * @param[in]     extractable 1 if this reader can decode the page, else 0.
+ * @param[in]     method      CBR ::ra8_rar_method_t (0 = store); 0 for CBZ.
  * @param[in]     zip_index   CBZ miniz central-directory index (0 for CBR).
  * @param[in]     data_off    CBR member data-area offset (0 for CBZ).
  * @param[in]     pack_size   CBR packed size (0 for CBZ).
@@ -80,6 +81,7 @@ ra8_err_t ra8_comic_page_add(ra8_comic_t* c,
                              uint16_t     name_len,
                              uint64_t     raw_size,
                              uint8_t      extractable,
+                             uint8_t      method,
                              uint32_t     zip_index,
                              uint64_t     data_off,
                              uint64_t     pack_size);
@@ -149,8 +151,9 @@ ra8_err_t ra8_comic_cbz_close(ra8_comic_t* c);
 /**
  * @brief Open the CBR (RAR) backend: walk the archive + build the page index.
  * @details Iterates the RAR block chain (`ra8_rar_next`) from `c->rar.first_off`,
- *          appending each image file member via ::ra8_comic_page_add. A member
- *          packed with a RAR compressor is indexed with `extractable == 0`.
+ *          appending each image file member via ::ra8_comic_page_add. STORE and (on
+ *          a RAR5 archive) compressed members are indexed `extractable == 1`; only a
+ *          RAR4-compressed member (legacy codec, unsupported) gets `extractable == 0`.
  * @param[in,out] c Comic with `c->rar` bound by `ra8_rar_open`, `kind == cbr`.
  * @return ra8_err_t status.
  * @retval k_ra8_ok                Archive walked; index populated.
@@ -166,19 +169,21 @@ ra8_err_t ra8_comic_cbz_close(ra8_comic_t* c);
 ra8_err_t ra8_comic_cbr_open(ra8_comic_t* c);
 
 /**
- * @brief Extract one CBR page's encoded image (STORE members only).
- * @details Streams the STORE member's literal bytes (located by `p->data_off` /
- *          `p->raw_size`) into the caller buffer; a compressed page is rejected.
+ * @brief Extract one CBR page's encoded image (STORE copy or RAR5 decode).
+ * @details Routes the page through ::ra8_rar_extract: a STORE member's literal bytes
+ *          are streamed, a RAR5-compressed member is inflated by the decompressor
+ *          into @p buf. A RAR4-compressed page (indexed non-extractable) is rejected.
  * @param[in]  c    Comic with a bound CBR walker.
- * @param[in]  p    Page-index entry (its `data_off` / `raw_size` locate the data).
+ * @param[in]  p    Page-index entry (its `data_off` / `raw_size` / `rar_method`).
  * @param[out] buf  Destination for the encoded image bytes.
  * @param[in]  cap  Capacity of @p buf; must be >= `p->raw_size`.
  * @param[out] got  Receives the bytes written.
  * @return ra8_err_t status.
- * @retval k_ra8_ok                Member copied into @p buf.
- * @retval k_ra8_err_not_supported The page is a compressed RAR member.
+ * @retval k_ra8_ok                Member copied / decoded into @p buf.
+ * @retval k_ra8_err_not_supported The page is a RAR4-compressed member.
  * @retval k_ra8_err_no_mem        @p cap is smaller than `p->raw_size`.
- * @retval k_ra8_err_invalid_size  The member overruns the archive / short read.
+ * @retval k_ra8_err_invalid_size  A STORE member overruns the archive / short read.
+ * @retval k_ra8_err_validation_failed A malformed / truncated compressed stream.
  * @pre @p p came from this comic's CBR index.
  * @pre @p buf holds @p cap writable bytes.
  * @post On k_ra8_ok, `*got == p->raw_size`.

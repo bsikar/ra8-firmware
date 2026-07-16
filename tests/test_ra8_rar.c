@@ -247,8 +247,9 @@ static void tr_build_imgs(void)
 }
 
 /**
- * @brief Build a RAR5 archive into ::s_arc: main, big filler, four images
- *        (one compressed), a directory, end -- scrambled.
+ * @brief Build a RAR5 archive into ::s_arc: main, big filler, four STORE images,
+ *        a directory, end -- scrambled. (Compressed-member decode is exercised in
+ *        test_ra8_rar5.c, which crafts genuine RAR5 packed streams.)
  */
 static void tr_build_rar5(void)
 {
@@ -267,12 +268,8 @@ static void tr_build_rar5(void)
   p +=
     tr5_file(&s_arc[p], s_imgs[0].name, s_imgs[0].png, s_imgs[0].plen, 0U, false); /* img01 store */
   p += tr5_file(&s_arc[p], "emptydir/", nullptr, 0U, 0U, true);                    /* directory */
-  p += tr5_file(&s_arc[p],
-                s_imgs[2].name,
-                s_imgs[2].png,
-                s_imgs[2].plen,
-                0x80U,
-                false); /* img03 compressed */
+  p +=
+    tr5_file(&s_arc[p], s_imgs[2].name, s_imgs[2].png, s_imgs[2].plen, 0U, false); /* img03 store */
   p += tr5_file(&s_arc[p],
                 s_imgs[3].name,
                 s_imgs[3].png,
@@ -361,16 +358,16 @@ static void tr_check_page(ra8_comic_t* c, uint32_t i, const char* name)
 
 /**
  * @test test_comic_cbr5_pages
- * @brief A RAR5 `.cbr` opens by magic, pages sorted, STORE pages extract+decode,
- *        the compressed member reports unsupported, the directory is skipped.
+ * @brief A RAR5 `.cbr` opens by magic, pages sorted, every STORE page extracts +
+ *        decodes, the directory is skipped.
  *
  * @par MC/DC:
  * (no compound decisions under test -- a round-trip oracle over page order,
- * byte-equality, decoded dimensions, and the single-condition unsupported guard.)
+ * byte-equality and decoded dimensions.)
  */
 static void test_comic_cbr5_pages(void)
 {
-  TEST_BEGIN("comic cbr5: sorted pages extract + decode, compressed unsupported");
+  TEST_BEGIN("comic cbr5: sorted pages extract + decode");
   tr_build_rar5();
   ra8_comic_t      c                    = {};
   ra8_comic_page_t pages[k_tr_page_cap] = {};
@@ -388,24 +385,14 @@ static void test_comic_cbr5_pages(void)
   /* Four image members (dir + filler excluded). */
   TEST_ASSERT_EQ(k_tr_img_count, ra8_comic_page_count(&c));
 
-  /* Sorted: img01, img02, img03(compressed), sub/img04. */
+  /* Sorted: img01, img02, img03, sub/img04 -- all STORE, all decode. */
   tr_check_page(&c, 0U, "img01.png");
   tr_check_page(&c, 1U, "img02.png");
+  tr_check_page(&c, 2U, "img03.png");
   tr_check_page(&c, 3U, "sub/img04.png");
 
-  /* The compressed member is indexed but not decodable. */
-  uint8_t  buf[k_cf_png_max] = {};
-  size_t   got               = 0U;
-  uint16_t nl                = 0U;
-  uint64_t raw               = 0U;
-  uint8_t  ex                = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_page_info(&c, 2U, nullptr, 0U, &nl, &raw, &ex));
-  TEST_ASSERT_EQ(0U, ex);
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_comic_page_read(&c, 2U, buf, sizeof(buf), &got));
-  TEST_ASSERT_EQ(0U, got);
-
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_close(&c));
-  TEST_END("comic cbr5: sorted pages extract + decode, compressed unsupported");
+  TEST_END("comic cbr5: sorted pages extract + decode");
 }
 
 /**

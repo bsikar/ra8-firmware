@@ -177,6 +177,7 @@ static ra8_err_t s_add_entry(ra8_comic_t* c, mz_zip_archive* zip, mz_uint i)
                             (uint16_t)nl,
                             (uint64_t)st.m_uncomp_size,
                             1U,
+                            (uint8_t)k_ra8_rar_method_store, /* method unused by CBZ */
                             (uint32_t)i,
                             0U,
                             0U);

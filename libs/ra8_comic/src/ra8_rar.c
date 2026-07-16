@@ -33,6 +33,7 @@
 #include <string.h>
 
 #include "ra8_check.h"
+#include "ra8_rar5.h"
 
 /** @brief Log tag for RAR-walker diagnostics. */
 static const char* const s_tag_rar = "ra8_rar";
@@ -741,4 +742,64 @@ ra8_err_t ra8_rar_extract_stored(const ra8_rar_t*       rar,
   }
   *got = (size_t)ent->unp_size;
   return k_ra8_ok;
+}
+
+/**
+ * @brief Null-check the required arguments of ::ra8_rar_extract.
+ * @details Runs the mandatory guards on the archive, entry, buffer, and count
+ *          pointers; the optional decoder scratch is checked later only on the
+ *          compressed path. Split out so the entry point stays within the
+ *          function-size budget.
+ * @param[in] rar Archive pointer.
+ * @param[in] ent Entry pointer.
+ * @param[in] buf Output buffer pointer.
+ * @param[in] got Byte-count output pointer.
+ * @return ra8_err_t status.
+ * @retval k_ra8_ok           Every required pointer is non-NULL.
+ * @retval k_ra8_err_null_ptr Some required pointer was NULL.
+ * @pre The caller forwards its pointer arguments unchanged.
+ * @pre No argument is dereferenced before this returns k_ra8_ok.
+ * @post On k_ra8_ok each checked pointer is safe to dereference.
+ * @post No state is modified.
+ * @note Thread-safe: reads only its pointer arguments.
+ * @since Version 0.1.0
+ */
+static ra8_err_t s_rar_extract_reject_null(const ra8_rar_t*       rar,
+                                           const ra8_rar_entry_t* ent,
+                                           const uint8_t*         buf,
+                                           const size_t*          got)
+{
+  RA8_CHECK_NULL_PTR(rar, s_tag_rar, "extract: null rar");
+  RA8_CHECK_NULL_PTR(ent, s_tag_rar, "extract: null ent");
+  RA8_CHECK_NULL_PTR(buf, s_tag_rar, "extract: null buf");
+  RA8_CHECK_NULL_PTR(got, s_tag_rar, "extract: null got");
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_rar_extract(const ra8_rar_t*       rar,
+                          const ra8_rar_entry_t* ent,
+                          uint8_t*               buf,
+                          size_t                 cap,
+                          ra8_rar5_state_t*      st,
+                          size_t*                got)
+{
+  const ra8_err_t nchk = s_rar_extract_reject_null(rar, ent, buf, got);
+  if (nchk != k_ra8_ok) {
+    return nchk;
+  }
+  *got = 0U;
+  if (rar->version == k_ra8_rar_ver_none) {
+    return k_ra8_err_invalid_state;
+  }
+  if ((ent->is_file == 0U) || (ent->is_dir != 0U)) {
+    return k_ra8_err_not_supported;
+  }
+  if (ent->method == (uint8_t)k_ra8_rar_method_store) {
+    return ra8_rar_extract_stored(rar, ent, buf, cap, got);
+  }
+  if (rar->version != k_ra8_rar_ver_5) {
+    return k_ra8_err_not_supported; /* RAR4 legacy codec is out of scope */
+  }
+  RA8_CHECK_NULL_PTR(st, s_tag_rar, "extract: null st for compressed");
+  return ra8_rar5_decompress(rar, ent->data_off, ent->pack_size, buf, cap, ent->unp_size, st, got);
 }
