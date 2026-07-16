@@ -82,7 +82,7 @@ extern "C" {
  */
 typedef enum : uint8_t {
   k_ra8_epub_entry_reader_reserved_bytes =
-      7, /**< Padding bytes after `done`; rounds the tail to 8-byte alignment. */
+    7, /**< Padding bytes after `done`; rounds the tail to 8-byte alignment. */
 } ra8_epub_entry_reader_layout_t;
 
 typedef struct {
@@ -241,7 +241,6 @@ ra8_epub_entry_read(ra8_epub_entry_reader_t* reader, uint8_t* buf, size_t cap, s
                                              uint8_t*         buf,
                                              size_t           len,
                                              size_t*          got);
-
 
 #ifdef __cplusplus
 }
