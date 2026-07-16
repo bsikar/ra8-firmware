@@ -26,6 +26,7 @@
 #include "board_console.h"
 #include "board_periph.h"
 #include "board_periph_block.h"
+#include "board_periph_eink.h"
 
 /** @brief LED3 PORT/pin coordinates on the EK-RA8D2 (P10_07). */
 typedef enum : uint32_t { k_led3_port = 10U, k_led3_pin = 7U } gpio_lit_t;
@@ -196,6 +197,11 @@ static void port_reset(void)
     s_led_level[i]       = 0U;
     s_led_transitions[i] = 0U;
   }
+  /* An attached --eink IT8951 controller re-arms its HRDY "ready" GPIO input
+   * high here, AFTER the ports are cleared, so the firmware's ra8_epaper HRDY
+   * poll reads ready (a no-op when no controller is attached). Mirrors the
+   * user-switch seeding above. */
+  board_eink_apply_gpio_defaults();
 }
 
 void board_periph_gpio_set_input(uint8_t port, uint8_t pin, bool level)

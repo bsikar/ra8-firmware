@@ -40,6 +40,7 @@
 
 #include "board_console.h"
 #include "board_periph_block.h"
+#include "board_periph_eink.h"
 #include "board_periph_sd.h"
 
 /**
@@ -154,14 +155,17 @@ static void spi_spdr_write(spi_state_t* s, uint32_t value)
 {
   /* SPLP2 ties the outgoing line back to the receive shifter (rx = tx);
    * SPLP inverts it (rx = ~tx). Without loopback, if a `--sd` card is
-   * attached it answers the exchange (the genuine ra8_sdmmc_spi path); else
-   * nothing drives the line and the receive shifter clocks in an idle 0. */
+   * attached it answers the exchange (the genuine ra8_sdmmc_spi path); an
+   * `--eink` IT8951 controller answers the ra8_epaper path; else nothing
+   * drives the line and the receive shifter clocks in an idle 0. */
   if ((s->reg[spi_word((uint64_t)k_spi_off_spcr2)] & (uint32_t)k_spi_spcr2_splp) != 0U) {
     s->rx = (~value) & (uint32_t)k_spi_byte_mask;
   } else if (s->loopback) {
     s->rx = value;
   } else if (board_sd_attached()) {
     s->rx = (uint32_t)board_sd_exchange((uint8_t)(value & (uint32_t)k_spi_byte_mask));
+  } else if (board_eink_attached()) {
+    s->rx = (uint32_t)board_eink_exchange((uint8_t)(value & (uint32_t)k_spi_byte_mask));
   } else {
     s->rx = 0U;
   }
@@ -236,7 +240,8 @@ static void spi_reset(void)
   for (uint32_t i = 0U; i < (uint32_t)k_spi_count; i++) {
     s_spi[i] = (spi_state_t){};
   }
-  board_sd_reset(); /* clear any attached SD card's command framing */
+  board_sd_reset();   /* clear any attached SD card's command framing   */
+  board_eink_reset(); /* clear any attached IT8951 controller's framing */
 }
 
 /**
@@ -269,6 +274,7 @@ static void spi_report(void)
       board_console_push(k_board_console_ch_spi, ln);
     }
   }
+  board_eink_report(); /* an attached IT8951 controller prints its own line */
 }
 
 /** @brief This block's descriptor (static lifetime; the core keeps the pointer). */
