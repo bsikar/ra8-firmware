@@ -759,7 +759,6 @@ ra8_epub_get_cover_image(ra8_epub_book_t* book, uint8_t* out_buf, size_t max_len
                                               size_t           max_len,
                                               size_t*          got_len);
 
-
 /**
  * @brief Number of `<manifest>` `<item>` entries retained (#151).
  *

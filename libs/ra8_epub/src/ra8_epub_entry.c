@@ -31,6 +31,8 @@
  * {World: NS}
  */
 
+#include "ra8_epub_entry.h"
+
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -38,7 +40,6 @@
 #include "miniz.h"
 #include "ra8_check.h"
 #include "ra8_epub.h"
-#include "ra8_epub_entry.h"
 #include "ra8_epub_internal.h"
 #include "ra8_err.h"
 
