@@ -80,8 +80,9 @@ typedef struct {
  * @invariant `band_fill <= tile_h` and `tiles_done <= tile_count`.
  */
 typedef struct {
-  const ra8_tileatlas_produce_cfg_t* cfg;  /**< Caller configuration. */
-  ra8_ta_bump_t*                     bump; /**< Arena allocator.      */
+  const ra8_tileatlas_produce_cfg_t* cfg;        /**< Caller configuration.    */
+  ra8_ta_bump_t                      bump_store; /**< Arena allocator state.   */
+  ra8_ta_bump_t*                     bump;       /**< Arena allocator (owned). */
 
   uint16_t cap_w; /**< Effective width cap.  */
   uint16_t cap_h; /**< Effective height cap. */
@@ -116,7 +117,7 @@ static const uint8_t s_prod_png_sig[k_ra8_ta_sniff_bytes] =
   {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU}; /* MAGIC-OK: the 8 spec signature bytes */
 
 /** @brief Implementation of `ra8_ta_priv_bump_take()` -- aligned linear carve. */
-RA8_PRIV uint8_t* ra8_ta_priv_bump_take(ra8_ta_bump_t* bump, size_t len)
+RA8_PRIV void* ra8_ta_priv_bump_take(ra8_ta_bump_t* bump, size_t len)
 {
   if ((bump == nullptr) || (len == 0U)) {
     return nullptr;
@@ -297,33 +298,29 @@ static ra8_err_t priv_emit_header(ra8_ta_prod_state_t* st)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t priv_on_geom(void* ctx, uint16_t width, uint16_t height, uint8_t channels)
+/**
+ * @brief Carve the band, stage, index and compressed-tile buffers.
+ * @details Sizes are computed in 64-bit and checked against the u32 format
+ *          cap before any carve; arena exhaustion fails closed.
+ * @param[in,out] st Producer state (geometry fields already bound).
+ * @return Result code.
+ * @retval k_ra8_ok               Every pixel-path buffer is carved.
+ * @retval k_ra8_err_invalid_size Overflow or arena exhaustion.
+ * @pre `st->w`/`st->h`/`st->bpp` and the grid fields are bound.
+ * @pre `st->bump` has the geometry carve set available.
+ * @post On success `band`/`stage`/`idx` (and `cmp` for deflate) are bound.
+ * @post On error the transcode aborts.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t priv_carve_pixel_path(ra8_ta_prod_state_t* st)
 {
-  ra8_ta_prod_state_t* st = (ra8_ta_prod_state_t*)ctx;
-  if (st->geom_done != 0U) {
-    return k_ra8_err_invalid_state;
-  }
-  if ((width == 0U) || (width > st->cap_w) || (height == 0U) || (height > st->cap_h)) {
-    return k_ra8_err_invalid_size;
-  }
-  const uint16_t tw   = st->cfg->tile_w;
-  const uint16_t th   = st->cfg->tile_h;
-  const uint32_t cols = ((uint32_t)width + tw - 1U) / tw;
-  const uint32_t rows = ((uint32_t)height + th - 1U) / th;
-  if ((cols * rows) > (uint32_t)k_ra8_tileatlas_max_tiles) {
-    return k_ra8_err_invalid_size;
-  }
-  st->w          = width;
-  st->h          = height;
-  st->bpp        = channels;
-  st->tile_cols  = (uint16_t)cols;
-  st->tile_rows  = (uint16_t)rows;
-  st->tile_count = cols * rows;
-
-  const uint64_t band_bytes  = (uint64_t)width * (uint64_t)th * (uint64_t)channels;
-  const uint32_t tw_eff      = (tw < width) ? tw : width;
-  const uint32_t th_eff      = (th < height) ? th : height;
-  const uint64_t stage_bytes = (uint64_t)tw_eff * (uint64_t)th_eff * (uint64_t)channels;
+  const uint16_t tw          = st->cfg->tile_w;
+  const uint16_t th          = st->cfg->tile_h;
+  const uint64_t band_bytes  = (uint64_t)st->w * (uint64_t)th * (uint64_t)st->bpp;
+  const uint32_t tw_eff      = (tw < st->w) ? tw : st->w;
+  const uint32_t th_eff      = (th < st->h) ? th : st->h;
+  const uint64_t stage_bytes = (uint64_t)tw_eff * (uint64_t)th_eff * (uint64_t)st->bpp;
   if ((band_bytes > (uint64_t)UINT32_MAX) || (stage_bytes > (uint64_t)UINT32_MAX)) {
     return k_ra8_err_invalid_size;
   }
@@ -341,7 +338,57 @@ static ra8_err_t priv_on_geom(void* ctx, uint16_t width, uint16_t height, uint8_
       return k_ra8_err_invalid_size;
     }
   }
-  const ra8_err_t err = priv_emit_header(st);
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Bind the source geometry: validate caps, carve buffers, emit header.
+ * @details Fires once per transcode (from either decoder). Rejects, fail
+ *          closed: dimensions above the caps, a tile grid above the format
+ *          cap, and any carve the arena cannot fit. On success the 32-byte
+ *          RTA1 header has been sunk. The compound cap decision carries
+ *          MC/DC vectors in `test_ra8_tileatlas_produce.c`.
+ * @param[in] ctx      The producer state.
+ * @param[in] width    Source width, pixels.
+ * @param[in] height   Source height, pixels.
+ * @param[in] channels Output bytes per pixel (1, 3 or 4).
+ * @return Result code.
+ * @retval k_ra8_ok                Geometry bound; header written.
+ * @retval k_ra8_err_invalid_size  Over the caps / grid cap / arena exhausted.
+ * @retval k_ra8_err_invalid_state The geometry hook fired twice.
+ * @retval other                   Propagated from the sink.
+ * @pre The decoder validated @p width/@p height non-zero.
+ * @pre `st->cfg` and `st->bump` are bound.
+ * @post On success the pixel-path buffers are carved and the header sunk.
+ * @post On error the transcode aborts.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t priv_on_geom(void* ctx, uint16_t width, uint16_t height, uint8_t channels)
+{
+  ra8_ta_prod_state_t* st = (ra8_ta_prod_state_t*)ctx;
+  if (st->geom_done != 0U) {
+    return k_ra8_err_invalid_state;
+  }
+  if ((width == 0U) || (width > st->cap_w) || (height == 0U) || (height > st->cap_h)) {
+    return k_ra8_err_invalid_size;
+  }
+  const uint32_t cols = ((uint32_t)width + st->cfg->tile_w - 1U) / st->cfg->tile_w;
+  const uint32_t rows = ((uint32_t)height + st->cfg->tile_h - 1U) / st->cfg->tile_h;
+  if ((cols * rows) > (uint32_t)k_ra8_tileatlas_max_tiles) {
+    return k_ra8_err_invalid_size;
+  }
+  st->w          = width;
+  st->h          = height;
+  st->bpp        = channels;
+  st->tile_cols  = (uint16_t)cols;
+  st->tile_rows  = (uint16_t)rows;
+  st->tile_count = cols * rows;
+  ra8_err_t err  = priv_carve_pixel_path(st);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  err = priv_emit_header(st);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -420,8 +467,8 @@ static ra8_err_t priv_flush_band(ra8_ta_prod_state_t* st, uint32_t th)
                                  : (uint32_t)st->cfg->tile_w;
     const uint32_t row_bytes = tw * (uint32_t)st->bpp;
     for (uint32_t r = 0U; r < th; r++) {
-      (void)memcpy(&st->stage[r * row_bytes],
-                   &st->band[(r * stride) + (x0 * (uint32_t)st->bpp)],
+      (void)memcpy(&st->stage[(size_t)r * (size_t)row_bytes],
+                   &st->band[((size_t)r * (size_t)stride) + ((size_t)x0 * (size_t)st->bpp)],
                    (size_t)row_bytes);
     }
     const ra8_err_t err = priv_encode_tile(st, row_bytes * th);
@@ -477,7 +524,9 @@ static ra8_err_t priv_on_rows(void*          ctx,
   while (left > 0U) {
     const uint32_t room = (uint32_t)st->cfg->tile_h - st->band_fill;
     const uint32_t take = (left < room) ? left : room;
-    (void)memcpy(&st->band[st->band_fill * stride], src, (size_t)take * (size_t)stride);
+    (void)memcpy(&st->band[(size_t)st->band_fill * (size_t)stride],
+                 src,
+                 (size_t)take * (size_t)stride);
     st->band_fill += take;
     st->rows_seen += take;
     src += (size_t)take * (size_t)stride;
@@ -662,27 +711,27 @@ ra8_tileatlas_work_bytes(uint16_t max_width, uint16_t max_height, uint16_t tile_
 
 /**
  * @brief Reset the transcode state and carve the deflate scratch.
- * @details Clamps the caller caps to the format maximum and carves the codec scratch.
- * @param[out]    st   Producer state to (re)initialise.
- * @param[in]     cfg  Caller configuration (validated).
- * @param[in,out] bump Arena allocator over the caller's work buffer.
+ * @details Clamps the caller caps to the format maximum, binds the owned
+ *          bump allocator over the caller's work arena, and carves the codec
+ *          scratch.
+ * @param[out] st  Producer state to (re)initialise.
+ * @param[in]  cfg Caller configuration (validated).
  * @return Result code.
  * @retval k_ra8_ok               State bound; scratch carved when needed.
  * @retval k_ra8_err_invalid_size The arena cannot fit the deflate scratch.
  * @pre @p cfg passed the pointer + geometry guards.
- * @pre @p bump is freshly initialised over the work arena.
+ * @pre @p cfg->work covers `work_cap` bytes.
  * @post On success the effective caps and codec scratch are bound.
  * @post On error the transcode aborts before any sink write.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t priv_init_state(ra8_ta_prod_state_t*               st,
-                                 const ra8_tileatlas_produce_cfg_t* cfg,
-                                 ra8_ta_bump_t*                     bump)
+static ra8_err_t priv_init_state(ra8_ta_prod_state_t* st, const ra8_tileatlas_produce_cfg_t* cfg)
 {
   (void)memset(st, 0, sizeof(*st));
-  st->cfg  = cfg;
-  st->bump = bump;
+  st->cfg        = cfg;
+  st->bump_store = (ra8_ta_bump_t){.base = cfg->work, .cap = cfg->work_cap, .off = 0U};
+  st->bump       = &st->bump_store;
   st->cap_w =
     ((cfg->max_width != 0U) && ((uint32_t)cfg->max_width < (uint32_t)k_ra8_tileatlas_max_dim))
       ? cfg->max_width
@@ -693,7 +742,7 @@ static ra8_err_t priv_init_state(ra8_ta_prod_state_t*               st,
       : (uint16_t)k_ra8_tileatlas_max_dim;
   if (cfg->codec == (uint8_t)k_ra8_tileatlas_codec_deflate) {
     st->dfl_len = (uint32_t)k_ra8_io_compress_scratch_bytes;
-    st->dfl     = ra8_ta_priv_bump_take(bump, (size_t)st->dfl_len);
+    st->dfl     = ra8_ta_priv_bump_take(st->bump, (size_t)st->dfl_len);
     if (st->dfl == nullptr) {
       return k_ra8_err_invalid_size;
     }
@@ -784,6 +833,38 @@ priv_dispatch(ra8_ta_prod_state_t* st, const uint8_t* head, ra8_ta_prefix_pull_t
   return k_ra8_err_not_supported; /* not a JPEG/PNG source */
 }
 
+/**
+ * @brief Post-decode checks, final band flush and trailer emission.
+ * @details The decoder must have bound the geometry and delivered every
+ *          row; a short delivery is a hostile-source abort.
+ * @param[in,out] st       Producer state.
+ * @param[out]    out_info Receives the finished atlas geometry.
+ * @return Result code.
+ * @retval k_ra8_ok                    Atlas fully written to the sink.
+ * @retval k_ra8_err_validation_failed The decoder under-delivered.
+ * @retval other                       Propagated from the flush / trailer.
+ * @pre `priv_dispatch()` returned success.
+ * @pre @p out_info is writable.
+ * @post On success the sink holds one complete, parseable atlas.
+ * @post On error the partial atlas must be discarded.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t priv_epilogue(ra8_ta_prod_state_t* st, ra8_tileatlas_info_t* out_info)
+{
+  if ((st->geom_done == 0U) || (st->rows_seen != (uint32_t)st->h)) {
+    return k_ra8_err_validation_failed; /* decoder under-delivered */
+  }
+  if (st->band_fill > 0U) {
+    const ra8_err_t err = priv_flush_band(st, st->band_fill);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+    st->band_fill = 0U;
+  }
+  return priv_finish(st, out_info);
+}
+
 ra8_err_t ra8_tileatlas_produce(const ra8_tileatlas_produce_cfg_t* cfg,
                                 ra8_tileatlas_info_t*              out_info)
 {
@@ -796,9 +877,8 @@ ra8_err_t ra8_tileatlas_produce(const ra8_tileatlas_produce_cfg_t* cfg,
   if (err != k_ra8_ok) {
     return err;
   }
-  ra8_ta_bump_t        bump = {.base = cfg->work, .cap = cfg->work_cap, .off = 0U};
-  ra8_ta_prod_state_t* st   = &s_prod;
-  err                       = priv_init_state(st, cfg, &bump);
+  ra8_ta_prod_state_t* st = &s_prod;
+  err                     = priv_init_state(st, cfg);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -818,15 +898,5 @@ ra8_err_t ra8_tileatlas_produce(const ra8_tileatlas_produce_cfg_t* cfg,
   if (err != k_ra8_ok) {
     return err;
   }
-  if ((st->geom_done == 0U) || (st->rows_seen != (uint32_t)st->h)) {
-    return k_ra8_err_validation_failed; /* decoder under-delivered */
-  }
-  if (st->band_fill > 0U) {
-    err = priv_flush_band(st, st->band_fill);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    st->band_fill = 0U;
-  }
-  return priv_finish(st, out_info);
+  return priv_epilogue(st, out_info);
 }
