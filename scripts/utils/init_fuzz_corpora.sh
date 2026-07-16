@@ -38,7 +38,11 @@ mkdir -p \
   "${CORPUS_ROOT}/fuzz_ra8_stbtt" \
   "${CORPUS_ROOT}/fuzz_ra8_webp" \
   "${CORPUS_ROOT}/fuzz_ra8_tileatlas" \
-  "${CORPUS_ROOT}/fuzz_ra8_tileatlas_produce"
+  "${CORPUS_ROOT}/fuzz_ra8_tileatlas_produce" \
+  "${CORPUS_ROOT}/fuzz_ra8_unarch_xz" \
+  "${CORPUS_ROOT}/fuzz_ra8_unarch_tar" \
+  "${CORPUS_ROOT}/fuzz_ra8_unarch_gzip" \
+  "${CORPUS_ROOT}/fuzz_ra8_decomp_limits"
 
 # -----------------------------------------------------------------------------
 # fuzz_ra8_jpeg_sw -- minimal baseline JPEGs at five sizes.
@@ -413,5 +417,54 @@ with open(os.path.join(OUTDIR, "seed_sig_only.bin"), "wb") as fh:
 PY
 python3 "${SCRIPT_DIR}/gen_jpeg_fixture.py" --width 16 --height 16 \
   -o "${RTAP_DIR}/seed_16x16.jpg"
+
+# -----------------------------------------------------------------------------
+# fuzz_ra8_unarch_{xz,tar,gzip} + fuzz_ra8_decomp_limits -- one honest seed
+# per wrapper (a small XZ stream at the wrapper's dictionary scale, a
+# two-member ustar comic, a gzip member) plus a raw-word seed for the
+# limits-seam harness.
+# -----------------------------------------------------------------------------
+python3 - "${CORPUS_ROOT}" <<'PY'
+import gzip
+import io
+import lzma
+import os
+import struct
+import sys
+import tarfile
+
+ROOT = sys.argv[1]
+
+def tar_bytes() -> bytes:
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w", format=tarfile.USTAR_FORMAT) as tf:
+        for name, payload in ((b"page1.png", b"PAGE-ONE"), (b"page2.png", b"PAGE-TWO")):
+            info = tarfile.TarInfo(name.decode("ascii"))
+            info.size = len(payload)
+            info.mtime = 0
+            tf.addfile(info, io.BytesIO(payload))
+    return buf.getvalue()
+
+tar = tar_bytes()
+with open(os.path.join(ROOT, "fuzz_ra8_unarch_tar", "seed_two_pages.tar"), "wb") as fh:
+    fh.write(tar)
+
+filters = [{"id": lzma.FILTER_LZMA2, "preset": 6, "dict_size": 1 << 16}]
+xz = lzma.compress(tar, format=lzma.FORMAT_XZ, check=lzma.CHECK_CRC64, filters=filters)
+with open(os.path.join(ROOT, "fuzz_ra8_unarch_xz", "seed_two_pages.tar.xz"), "wb") as fh:
+    fh.write(xz)
+
+gz_buf = io.BytesIO()
+with gzip.GzipFile(fileobj=gz_buf, mode="wb", filename="pages.tar", mtime=0) as gf:
+    gf.write(tar)
+with open(os.path.join(ROOT, "fuzz_ra8_unarch_gzip", "seed_two_pages.tar.gz"), "wb") as fh:
+    fh.write(gz_buf.getvalue())
+
+# Limits seam: eight LE64 words -- a valid tightened policy followed by a
+# hostile declared pair, so the first run already walks every charge arm.
+words = (1 << 20, 8, 4096, 64, 128, 2, 1 << 8, 1 << 16)
+with open(os.path.join(ROOT, "fuzz_ra8_decomp_limits", "seed_policy.bin"), "wb") as fh:
+    fh.write(struct.pack("<8Q", *words))
+PY
 
 echo "Seeded fuzz corpora under ${CORPUS_ROOT}/."

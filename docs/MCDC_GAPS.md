@@ -13,14 +13,14 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **202**
-- Total compound decisions in scope: **1057**
-- Decisions at 100% MC/DC (`yes`): **970**
+- Source files with at least one decision: **205**
+- Total compound decisions in scope: **1064**
+- Decisions at 100% MC/DC (`yes`): **977**
 - Decisions partially covered (`partial`): **52**
 - Decisions fully uncovered (`no`): **35**
-- Coverage rate (yes / total): **91.77%**
+- Coverage rate (yes / total): **91.82%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **87**
-- Reachable-condition denominator (total - deactivated): **970**
+- Reachable-condition denominator (total - deactivated): **977**
 - **Reachable MC/DC rate**: **100.00%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
@@ -234,6 +234,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_reflow_cache | 4 | 4 | 0 | 0 |
 | ra8_rsip_cipher | 4 | 4 | 0 | 0 |
 | ra8_ssie_stream | 4 | 4 | 0 | 0 |
+| ra8_unarch_tar_fields | 4 | 4 | 0 | 0 |
 | ra8_usb_device | 4 | 4 | 0 | 0 |
 | ra8_usb_hhid | 4 | 4 | 0 | 0 |
 | ra8_usb_pvnd | 4 | 4 | 0 | 0 |
@@ -256,6 +257,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_bkup | 2 | 2 | 0 | 0 |
 | ra8_ble_mesh | 2 | 2 | 0 | 0 |
 | ra8_board_ek_ra8d2_audio_usb | 2 | 2 | 0 | 0 |
+| ra8_comic_wrapped | 2 | 2 | 0 | 0 |
 | ra8_display_pal_policy | 2 | 2 | 0 | 0 |
 | ra8_epub_img_import | 2 | 2 | 0 | 0 |
 | ra8_fs_fat_dir | 2 | 2 | 0 | 0 |
@@ -330,6 +332,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_smbus | 1 | 1 | 0 | 0 |
 | ra8_sram | 1 | 1 | 0 | 0 |
 | ra8_tz_secure_boot | 1 | 1 | 0 | 0 |
+| ra8_unarch_tar | 1 | 1 | 0 | 0 |
 | ra8_usb_pmsc | 1 | 1 | 0 | 0 |
 | tx_systick_retune | 1 | 1 | 0 | 0 |
 
