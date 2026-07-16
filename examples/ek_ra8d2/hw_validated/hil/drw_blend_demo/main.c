@@ -28,14 +28,16 @@
  * (``board_sim_smoke.sh`` / ``hil.conf`` ``uart_scrape``) asserts that banner.
  * No display panel is touched -- this is a pure compute + memory test.
  *
- * @note **Headless-emulator status.** ``tools/board_sim`` models the DRW
- * solid-fill rasterizer AND the global-alpha source-over blend op
- * (``board_periph_drw.c``): a ``ra8_drw_fill_rect`` issued while CONTROL2.USEACB
- * is set composites the COLOR1 source over the existing framebuffer pixel with
- * the same integer source-over math the silicon performs, so the emulated
- * framebuffer hash matches the baked-in expected CRC and the gate goes green.
- * The app lives in ``hw_pending/`` until the blend is confirmed on silicon --
- * the simulator proves the driver register sequence, not the real engine.
+ * @note **Headless-emulator status.** ``tools/board_sim`` models the DRW engine
+ * as INERT (``board_periph_drw.c``), faithful to real silicon where the D/AVE 2D
+ * engine never rasterizes (issue #247): register writes are accepted, STATUS
+ * reads idle so ``ra8_drw_wait_idle`` returns, HWREVISION reads 0, and the
+ * ORIGIN render trigger synthesises no pixel. The framebuffer therefore stays
+ * zero, so the FNV-1a-32 hash is ``0x76EFDDC5`` -- the SAME value a real board
+ * produces from its all-zero framebuffer. SIM == HIL: the SIL gate and the
+ * bench print the identical banner. This app lives in ``hw_validated/hil/``
+ * because that zero-framebuffer result is confirmed on silicon; the demo will
+ * only report a genuinely composited CRC once #247 brings the engine to life.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
