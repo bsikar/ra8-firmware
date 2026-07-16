@@ -104,9 +104,9 @@
 /**
  * @defgroup grp_ereader E-reader stack
  * @brief Reflow/layout, EPUB/CBZ parsing, the book model, rendering, the
- *        widget/compositor UI, and the memory hierarchy (libs/ra8_reflow,
+ *        widget UI, and the memory hierarchy (libs/ra8_reflow,
  *        ra8_epub, ra8_comic, ra8_book, ra8_rabook_compile, ra8_rabook_import,
- *        ra8_gfx, ra8_compositor, ra8_widget, ra8_ui, ra8_box, ra8_display_pal,
+ *        ra8_gfx, ra8_widget, ra8_ui, ra8_box, ra8_display_pal,
  *        ra8_mem).
  */
 

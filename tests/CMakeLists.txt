@@ -180,7 +180,6 @@ file(GLOB_RECURSE RA8_RABOOK_COMPILE_CPP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/li
 file(GLOB_RECURSE RA8_RABOOK_IMPORT_SOURCES      CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_rabook_import/src/*.c)
 file(GLOB_RECURSE RA8_BATT_SOURCES    CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_batt/src/*.c)
 file(GLOB_RECURSE RA8_WIDGET_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_widget/src/*.c)
-file(GLOB_RECURSE RA8_COMPOSITOR_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_compositor/src/*.c)
 file(GLOB_RECURSE RA8_APP_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_app/src/*.c)
 file(GLOB_RECURSE RA8_NSC_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_nsc/src/*.c)
 file(GLOB_RECURSE RA8_OTA_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_ota/src/*.c)
@@ -281,7 +280,6 @@ add_library(ra8_core_hal OBJECT
     ${RA8_RABOOK_IMPORT_SOURCES}
     ${RA8_BATT_SOURCES}
     ${RA8_WIDGET_SOURCES}
-    ${RA8_COMPOSITOR_SOURCES}
     ${RA8_APP_SOURCES}
     ${RA8_NSC_SOURCES}
     ${RA8_OTA_SOURCES}
@@ -351,7 +349,6 @@ target_include_directories(ra8_core_hal PUBLIC
     ${FW_ROOT}/libs/ra8_rabook_import/inc
     ${FW_ROOT}/libs/ra8_batt/inc
     ${FW_ROOT}/libs/ra8_widget/inc
-    ${FW_ROOT}/libs/ra8_compositor/inc
     ${FW_ROOT}/libs/ra8_app/inc
     ${FW_ROOT}/libs/ra8_tls/inc
     ${FW_ROOT}/libs/ra8_nsc/inc
@@ -582,7 +579,6 @@ function(ra8_add_test name)
     ${FW_ROOT}/libs/ra8_rabook_import/inc
     ${FW_ROOT}/libs/ra8_batt/inc
     ${FW_ROOT}/libs/ra8_widget/inc
-    ${FW_ROOT}/libs/ra8_compositor/inc
     ${FW_ROOT}/libs/ra8_app/inc
     ${FW_ROOT}/libs/ra8_tls/inc
     ${FW_ROOT}/libs/ra8_nsc/inc
@@ -1188,7 +1184,6 @@ target_include_directories(test_cache_store_demo PRIVATE
   ${FW_ROOT}/libs/ra8_rabook_import/inc
   ${FW_ROOT}/libs/ra8_batt/inc
   ${FW_ROOT}/libs/ra8_widget/inc
-  ${FW_ROOT}/libs/ra8_compositor/inc
   ${FW_ROOT}/libs/ra8_app/inc
   ${FW_ROOT}/libs/ra8_tls/inc
   ${FW_ROOT}/libs/ra8_nsc/inc

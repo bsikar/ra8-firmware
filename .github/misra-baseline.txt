@@ -150,9 +150,6 @@ libs/ra8_comic/src/ra8_rar5.c	misra-c2012-9.2	1
 libs/ra8_comic/src/ra8_rar5_tables.c	misra-c2012-10.7	1
 libs/ra8_comic/src/ra8_rar5_tables.c	misra-c2012-15.5	7
 libs/ra8_comic/src/ra8_rar5_tables.c	misra-c2012-9.2	3
-libs/ra8_compositor/src/ra8_compositor.c	misra-c2012-10.6	1
-libs/ra8_compositor/src/ra8_compositor.c	misra-c2012-15.5	43
-libs/ra8_compositor/src/ra8_compositor.c	misra-c2012-8.4	9
 libs/ra8_core/inc/ra8_attributes.h	misra-c2012-20.10	4
 libs/ra8_core/inc/ra8_attributes.h	misra-c2012-20.7	6
 libs/ra8_core/inc/ra8_register_guard.h	misra-c2012-2.7	1
