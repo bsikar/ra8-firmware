@@ -207,14 +207,19 @@ invoke_clang_tidy() {
 
   local device_arg=()
   if [[ -n "$device_def" ]]; then
-    # The RA8P1 pass also lints libs/ra8_board_ra8p1/* -- board TUs that are
-    # not part of the host test build, so their own inc/ dir is absent from the
-    # compile_commands.json. Put it on the quote-include search path so
-    # "ra8_board_ra8p1.h" resolves (otherwise clang-tidy reports a
-    # clang-diagnostic-error and the degraded parse cascades into spurious
-    # readability findings). Harmless for the npu / example TUs in the same pass.
+    # The RA8P1 pass lints TUs that are not part of the host test build, so
+    # include dirs the CMake targets add are absent from compile_commands.json.
+    # Put them on the quote-include search path so those headers resolve
+    # (otherwise clang-tidy reports a clang-diagnostic-error and the degraded
+    # parse cascades into spurious readability findings). Both are harmless for
+    # the other TUs in the same pass:
+    #   - libs/ra8_board_ra8p1/inc  -- "ra8_board_ra8p1.h" for the board TUs.
+    #   - tools/vela/generated      -- the committed, generated .npub model
+    #                                  header that examples/ra8p1_foundation/npu_vela
+    #                                  includes (its CMake adds the same dir).
     device_arg=(--extra-arg="$device_def"
-      --extra-arg="-I$FIRMWARE_DIR/libs/ra8_board_ra8p1/inc")
+      --extra-arg="-I$FIRMWARE_DIR/libs/ra8_board_ra8p1/inc"
+      --extra-arg="-I$FIRMWARE_DIR/tools/vela/generated")
   fi
 
   # Note: no --config-file. We let clang-tidy auto-discover .clang-tidy
