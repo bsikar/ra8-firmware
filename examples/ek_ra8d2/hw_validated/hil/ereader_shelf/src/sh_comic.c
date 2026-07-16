@@ -98,6 +98,7 @@ static sh_comic_blob_t s_blob;
 static bool s_from_sd;
 
 /** @brief ::ra8_comic_read_fn over a resident archive buffer (bounds-clamped). */
+// cppcheck-suppress constParameterCallback -- ctx is pinned by the ra8_comic_read_fn vtable signature (void* ctx forwarded verbatim into ra8_rar_open); const cannot cascade the shared read seam
 static size_t sh_comic_blob_read(void* ctx, uint64_t off, void* buf, size_t len)
 {
   const sh_comic_blob_t* s = (const sh_comic_blob_t*)ctx;

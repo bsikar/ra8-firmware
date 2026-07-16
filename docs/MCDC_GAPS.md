@@ -13,14 +13,14 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 ## Top-line Numbers
 
-- Source files with at least one decision: **197**
-- Total compound decisions in scope: **1041**
-- Decisions at 100% MC/DC (`yes`): **955**
-- Decisions partially covered (`partial`): **51**
+- Source files with at least one decision: **202**
+- Total compound decisions in scope: **1057**
+- Decisions at 100% MC/DC (`yes`): **970**
+- Decisions partially covered (`partial`): **52**
 - Decisions fully uncovered (`no`): **35**
-- Coverage rate (yes / total): **91.74%**
-- Deactivated gap conditions (DO-178C 6.4.4.3): **86**
-- Reachable-condition denominator (total - deactivated): **955**
+- Coverage rate (yes / total): **91.77%**
+- Deactivated gap conditions (DO-178C 6.4.4.3): **87**
+- Reachable-condition denominator (total - deactivated): **970**
 - **Reachable MC/DC rate**: **100.00%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
@@ -122,6 +122,7 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_tileatlas/src/ra8_tileatlas_produce.c | 2 | priv_epilogue | `if ((st->geom_done == 0U) \|\| (st->rows_seen != (uint32_...` | Annotated deactivation: post-decode contract guard; both ... |
 | libs/ra8_touch_cal/src/ra8_touch_cal.c | 2 | internal_clip32 | `if (!ok_u \|\| !ok_v) {` | Annotated deactivation: TU-local helper internal_clip32 s... |
 | libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c | 2 | ra8_wdt_supervisor_tick | `if (will_refresh && (s_state.refresh != nullptr)) {` | Annotated deactivation: ra8_wdt_supervisor_tick refresh d... |
+| libs/ra8_webtoon/src/ra8_webtoon.c | 2 | ra8_webtoon_tick | `if ((wt->velocity == 0) \|\| wt_fling_should_stop(wt)) {` | Pointer(s) ['wt'] already null-checked upstream in the sa... |
 
 ## Per-module gap counts (full table)
 
@@ -132,7 +133,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_epub_xml_shim | 72 | 54 | 4 | 14 |
 | ra8_psa_crypto_sim | 6 | 1 | 5 | 0 |
 | ra8_jpeg_sw_decode | 16 | 12 | 4 | 0 |
-| ra8_tileatlas_produce | 15 | 11 | 1 | 3 |
+| ra8_tileatlas_produce | 16 | 12 | 1 | 3 |
 | ra8_reflow_svg_shape | 15 | 12 | 3 | 0 |
 | ra8_epub_open | 7 | 4 | 0 | 3 |
 | ra8_tileatlas_png | 7 | 4 | 1 | 2 |
@@ -164,6 +165,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_fs_fat_name | 4 | 3 | 1 | 0 |
 | ra8_reflow_render | 4 | 3 | 1 | 0 |
 | ra8_usb_cdc | 4 | 3 | 0 | 1 |
+| ra8_webtoon | 4 | 3 | 1 | 0 |
 | ra8_ceu | 3 | 2 | 1 | 0 |
 | ra8_epub_fs | 3 | 2 | 0 | 1 |
 | ra8_mipi_phy_timing | 3 | 2 | 1 | 0 |
@@ -220,6 +222,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_usb_haud | 5 | 5 | 0 | 0 |
 | ra8_usb_hcdc_ecm | 5 | 5 | 0 | 0 |
 | ra8_usb_pprn | 5 | 5 | 0 | 0 |
+| sec_cmac | 5 | 5 | 0 | 0 |
 | ra8_batt | 4 | 4 | 0 | 0 |
 | ra8_ble_gatt_client | 4 | 4 | 0 | 0 |
 | ra8_dfu_program | 4 | 4 | 0 | 0 |
@@ -247,6 +250,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_usb_hmsc | 3 | 3 | 0 | 0 |
 | ra8_widget_keyboard | 3 | 3 | 0 | 0 |
 | ra8_widget_panel | 3 | 3 | 0 | 0 |
+| usb_printer_vendor_ch9 | 3 | 3 | 0 | 0 |
 | adc | 2 | 2 | 0 | 0 |
 | ra8_agt | 2 | 2 | 0 | 0 |
 | ra8_bkup | 2 | 2 | 0 | 0 |
@@ -268,6 +272,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_sci_dma_isr | 2 | 2 | 0 | 0 |
 | ra8_sdhi | 2 | 2 | 0 | 0 |
 | ra8_spi_b_dma | 2 | 2 | 0 | 0 |
+| ra8_tileatlas_produce_webp | 2 | 2 | 0 | 0 |
 | ra8_tsn | 2 | 2 | 0 | 0 |
 | ra8_usb_composite | 2 | 2 | 0 | 0 |
 | ra8_usb_hcdc | 2 | 2 | 0 | 0 |
@@ -284,6 +289,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_xspi_flash | 2 | 2 | 0 | 0 |
 | secure_trng | 2 | 2 | 0 | 0 |
 | key_import | 1 | 1 | 0 | 0 |
+| key_vault | 1 | 1 | 0 | 0 |
 | ota_commit | 1 | 1 | 0 | 0 |
 | ra8_ble_security | 1 | 1 | 0 | 0 |
 | ra8_cache | 1 | 1 | 0 | 0 |
@@ -332,7 +338,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | Module | Uncovered | Partial | Covered | Total |
 |--------|----------:|--------:|--------:|------:|
 | ra8_epub_xml_shim | 14 | 4 | 54 | 72 |
-| ra8_tileatlas_produce | 3 | 1 | 11 | 15 |
+| ra8_tileatlas_produce | 3 | 1 | 12 | 16 |
 | ra8_epub_open | 3 | 0 | 4 | 7 |
 | ra8_tileatlas_png | 2 | 1 | 4 | 7 |
 | ra8_ble | 2 | 0 | 6 | 8 |

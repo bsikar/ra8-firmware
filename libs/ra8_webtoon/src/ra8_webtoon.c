@@ -164,9 +164,11 @@ ra8_err_t ra8_webtoon_open(ra8_webtoon_t* wt, const ra8_webtoon_cfg_t* cfg)
   if (err != k_ra8_ok) {
     return err;
   }
-  /* Decision: a webtoon strip is one full-width band column; anything else is
-   * not a scrollable strip (2 conditions -- MC/DC in tests). */
-  if ((info.tile_w != info.width) || (info.tile_cols != 1U)) {
+  /* A webtoon strip is one full-width band column; anything else is not a
+   * scrollable strip. `ra8_tileatlas_parse` derives tile_cols as
+   * ceil(width / tile_w), so `tile_w == width` already implies tile_cols == 1
+   * -- the full-width test alone is necessary and sufficient. */
+  if (info.tile_w != info.width) {
     return k_ra8_err_not_supported;
   }
   priv_webtoon_bind(wt, cfg, &info);
@@ -331,16 +333,21 @@ static bool wt_at_bottom(const ra8_webtoon_t* wt)
 /**
  * @brief True when a fling has hit the boundary it is travelling toward.
  *
- * @details Compound decision (4 conditions -- MC/DC in tests): a downward
- *          (`v > 0`) fling stops only at the bottom, an upward (`v < 0`) fling
- *          only at the top; a fling moving away from a boundary keeps going.
+ * @details The caller (::ra8_webtoon_tick) only reaches this with a non-zero
+ *          velocity -- a zeroed velocity already short-circuits the tick to
+ *          rest -- so the sign alone decides which end halts the fling: an
+ *          upward (`velocity < 0`) fling stops only at the top, a downward
+ *          (`velocity > 0`) fling only at the bottom; a fling moving away from
+ *          a boundary keeps going. Testing the sign once (not twice) keeps both
+ *          arms independently reachable rather than folding the mutually
+ *          exclusive sign tests into one compound decision.
  *
  * @param[in] wt Opened strip (non-NULL by caller contract).
  * @return `true` if the fling should come to rest this tick, else `false`.
  * @retval true  The velocity is driving into the boundary it has reached.
  * @retval false The fling can keep moving (away from, or not yet at, a bound).
  * @pre @p wt was opened by ::ra8_webtoon_open.
- * @pre `wt->velocity` is the post-friction velocity for this tick.
+ * @pre `wt->velocity` is the non-zero post-friction velocity for this tick.
  * @post No state is mutated.
  * @post The result depends only on the velocity sign and the pinned ends.
  * @note Pure; thread-safe.
@@ -348,9 +355,7 @@ static bool wt_at_bottom(const ra8_webtoon_t* wt)
  */
 static bool wt_fling_should_stop(const ra8_webtoon_t* wt)
 {
-  const bool at_top    = wt_at_top(wt);
-  const bool at_bottom = wt_at_bottom(wt);
-  return (((wt->velocity < 0) && at_top) || ((wt->velocity > 0) && at_bottom));
+  return (wt->velocity < 0) ? wt_at_top(wt) : wt_at_bottom(wt);
 }
 
 bool ra8_webtoon_tick(ra8_webtoon_t* wt)
