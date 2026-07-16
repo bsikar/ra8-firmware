@@ -1,5 +1,5 @@
 #
-# Per-app CMake stub for `fault_div0_hil`. All build logic lives in the
+# Per-app CMake stub for `fault_crashlog_hil`. All build logic lives in the
 # shared cmake/ra8_add_app.cmake recipe; this file only names the app.
 #
 # Standalone:  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8d2.cmake

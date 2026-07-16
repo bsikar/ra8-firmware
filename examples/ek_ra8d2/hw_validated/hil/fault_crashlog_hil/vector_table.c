@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/fault_div0_hil/vector_table.c
+ * @file examples/ek_ra8d2/hw_validated/hil/fault_crashlog_hil/vector_table.c
  * @brief Cortex-M85 vector table and default interrupt handlers for RA8D2
  *
  * @details
