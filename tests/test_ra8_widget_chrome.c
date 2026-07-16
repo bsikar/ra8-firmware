@@ -788,18 +788,18 @@ static void test_book_grid_render_edges(void)
   /* Second render: fw > 0 (percent 100) but fill_rect == NULL -> the bar-fill
    * decision's `fill_rect != NULL` false arm. With no fill backend every
    * priv_fill_box is a no-op, so nothing is recorded. */
-  mock_paint_t       mp2 = {.glyph_w = 8, .glyph_h = 16};
-  ra8_widget_paint_t pnf = make_paint(&mp2, true);
-  pnf.fill_rect          = nullptr;
+  mock_paint_t       mp2              = {.glyph_w = 8, .glyph_h = 16};
+  ra8_widget_paint_t pnf              = make_paint(&mp2, true);
+  pnf.fill_rect                       = nullptr;
   static const ra8_widget_book_t full = {.title   = "F",
                                          .author  = nullptr,
                                          .cover   = 0x00112233U,
                                          .percent = 100};
-  ra8_widget_book_grid_t gnf = make_grid(&pnf);
-  gnf.books                  = &full;
-  gnf.count                  = 1;
-  gnf.cols                   = 1;
-  ra8_widget_t wnf           = {};
+  ra8_widget_book_grid_t         gnf  = make_grid(&pnf);
+  gnf.books                           = &full;
+  gnf.count                           = 1;
+  gnf.cols                            = 1;
+  ra8_widget_t wnf                    = {};
   (void)ra8_widget_book_grid_init(&wnf, &gnf);
   wnf.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 100, .h = 120};
   wnf.vt->render(&wnf);

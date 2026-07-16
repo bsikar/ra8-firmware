@@ -192,6 +192,12 @@ ra8_err_t ra8_webp_decode_rgba(const uint8_t*    data,
   RA8_CHECK_NULL_PTR(data, k_ra8_webp_tag, "data");
   RA8_CHECK_NULL_PTR(arena, k_ra8_webp_tag, "arena");
   RA8_CHECK_NULL_PTR(out_rgba, k_ra8_webp_tag, "out_rgba");
-  return internal_webp_decode_impl(
-    data, size, arena, out_rgba, out_stride, out_capacity, out_w, out_h);
+  return internal_webp_decode_impl(data,
+                                   size,
+                                   arena,
+                                   out_rgba,
+                                   out_stride,
+                                   out_capacity,
+                                   out_w,
+                                   out_h);
 }
