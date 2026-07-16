@@ -159,7 +159,7 @@ typedef enum : uint8_t {
  * @details
  * Captures the four orthogonal settings the AGT pulse-output mode
  * needs from a caller. ``period`` is the 16-bit AGT reload (HUM
- * Ch 24.2.1 "AGT : AGT Counter" p 1166); the pin toggles every
+ * Ch 24.2.1 "AGT : AGT Counter" p 1165); the pin toggles every
  * (period + 1) count-source cycles. ``duty`` programmes the
  * AGTCMA / AGTCMB compare-match register that drives the chosen
  * AGTOAn / AGTOBn pin (HUM Ch 24.2.2 p 1166 / 24.2.3 p 1166).
@@ -183,7 +183,7 @@ typedef struct {
  * Configures one AGT channel for HUM Ch 24.3.4 "Pulse Output Mode"
  * (p 1177): TMOD = 001b in AGTMR1, AGTIOC.TOE = 1 (HUM Ch 24.2.7
  * p 1170), AGT counter loaded with ``cfg->period`` (HUM Ch 24.2.1
- * p 1166), AGTCMA/AGTCMB loaded with ``cfg->duty`` when ``cfg->compare``
+ * p 1165), AGTCMA/AGTCMB loaded with ``cfg->duty`` when ``cfg->compare``
  * selects compare channel A or B (HUM Ch 24.2.2 / 24.2.3 p 1166).
  * AGTCMSR enables the matching TCMEA/TOEA/TOPOLA (or B-side) bits
  * (HUM Ch 24.2.9 p 1172). Finally AGTCR.TSTART is set to 1
@@ -249,7 +249,7 @@ typedef struct {
  * (HUM Ch 24.2.5 "AGTMR1 : AGT Mode Register 1" p 1168). Both
  * channels are loaded from ``cfg->reload32`` -- low half into
  * AGT0.AGT, high half into AGT1.AGT (HUM Ch 24.2.1 "AGT : AGT
- * Counter" p 1166). If ``cfg->on_underflow`` is non-NULL the global
+ * Counter" p 1165). If ``cfg->on_underflow`` is non-NULL the global
  * AGT dispatch slot is wired to it so the AGT1 underflow ISR fans
  * out via ``ra8_agt_dispatch``.
  *

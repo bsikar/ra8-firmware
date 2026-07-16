@@ -38,7 +38,7 @@ typedef enum : uint16_t {
 
 /**
  * @brief AGTCR (AGT Control Register) bit positions.
- * @details HUM Ch 24.2.6 "AGTCR : AGT Control Register" p 1175.
+ * @details HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167.
  */
 typedef enum : uint8_t {
   k_ra8_agt_agtcr_tstart_pos = 0U, /**< Start request (RW).      */
@@ -133,7 +133,7 @@ typedef enum : uint8_t {
  * (CMSIS device header `R7KA8D2KF_core0.h`). The 32-bit AGTW view
  * shares the same channel base but widens AGT/AGTCMA/AGTCMB to
  * 32 bits and pushes CTRL to offset 0x0C; this struct is the 16-bit
- * mode driver path. HUM Ch 24.2 "Register Descriptions" p 1167-1180.
+ * mode driver path. HUM Ch 24.2 "Register Descriptions" p 1165-1173.
  */
 typedef struct {
   volatile uint16_t AGT;          /**< +0x00 16-bit counter.         */
