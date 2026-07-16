@@ -74,7 +74,12 @@ typedef enum : uint32_t {
 
 /** @brief Registry capacity + the core's own report slot ordering. */
 typedef enum : uint32_t {
-  k_block_max = 40U, /**< Max registered peripheral blocks. */
+  /* Sized with headroom over the current block population (41 as of the RTT
+   * drain model): overflowing this cap silently un-modelled whichever block
+   * happened to register last (the constructor link order), which surfaced as
+   * a baffling family of app regressions (the XSPI NOR flash apps) rather
+   * than an error. board_periph_register_block now also reports the drop. */
+  k_block_max = 56U, /**< Max registered peripheral blocks. */
   /* The core prints its NVIC-IRQ section after SCI (order 30) and before the
    * touch line (order 40), so it slots its report at this synthetic order. */
   k_core_irq_report_order = 35U, /**< Where the IRQ report sits among blocks. */
@@ -110,7 +115,14 @@ void board_periph_register_block(const board_periph_block_t* block)
     return;
   }
   if (s_block_count >= (uint32_t)k_block_max) {
-    return; /* registry full: extra blocks dropped (raise k_block_max) */
+    /* NEVER drop a block silently: an un-registered block reads as an
+     * unmodelled peripheral and fails its apps with no hint of the cause. */
+    (void)fprintf(stderr,
+                  "board_periph: block registry FULL (k_block_max=%u) -- "
+                  "DROPPING '%s'; raise k_block_max\n",
+                  (unsigned)k_block_max,
+                  (block->name != nullptr) ? block->name : "?");
+    return;
   }
   s_blocks[s_block_count] = block;
   s_block_count++;
