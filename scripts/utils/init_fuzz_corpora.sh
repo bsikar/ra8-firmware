@@ -36,7 +36,9 @@ mkdir -p \
   "${CORPUS_ROOT}/fuzz_ra8_stb_image" \
   "${CORPUS_ROOT}/fuzz_ra8_reflow_xml" \
   "${CORPUS_ROOT}/fuzz_ra8_stbtt" \
-  "${CORPUS_ROOT}/fuzz_ra8_webp"
+  "${CORPUS_ROOT}/fuzz_ra8_webp" \
+  "${CORPUS_ROOT}/fuzz_ra8_tileatlas" \
+  "${CORPUS_ROOT}/fuzz_ra8_tileatlas_produce"
 
 # -----------------------------------------------------------------------------
 # fuzz_ra8_jpeg_sw -- minimal baseline JPEGs at five sizes.
@@ -332,5 +334,84 @@ cp "${ROOT}/tests/fixtures/webp/fixture_lossy.webp" "${WEBP_DIR}/seed_lossy.webp
 cp "${ROOT}/tests/fixtures/webp/fixture_wide.webp" "${WEBP_DIR}/seed_wide.webp"
 cp "${ROOT}/tests/fixtures/webp/fixture_tall.webp" "${WEBP_DIR}/seed_tall.webp"
 printf 'RIFF\x08\x00\x00\x00WEBP' >"${WEBP_DIR}/seed_truncated.bin"
+
+# -----------------------------------------------------------------------------
+# fuzz_ra8_tileatlas -- one hand-built valid RTA1 raw-codec atlas (16x16
+# gray8, 8x8 tiles) so the reader starts past the header validation, plus a
+# truncated header the parser must reject cleanly.
+# -----------------------------------------------------------------------------
+RTA_DIR="${CORPUS_ROOT}/fuzz_ra8_tileatlas"
+python3 - "${RTA_DIR}" <<'PY'
+import os
+import struct
+import sys
+
+OUTDIR = sys.argv[1]
+W = H = 16
+T = 8
+BPP = 1
+cols = rows = W // T
+count = cols * rows
+
+hdr = b"RTA1" + struct.pack("<HHHHBBHI", W, H, T, T, BPP, 0, 0, count) + b"\x00" * 12
+tiles = []
+offs = []
+pos = len(hdr)
+for ty in range(rows):
+    for tx in range(cols):
+        px = bytes(((x + tx * T) * 3 + (y + ty * T) * 7) & 0xFF for y in range(T) for x in range(T))
+        offs.append((pos, len(px)))
+        tiles.append(px)
+        pos += len(px)
+index = b"".join(struct.pack("<II", o, n) for (o, n) in offs)
+index_off = pos
+total = index_off + len(index) + 16
+footer = struct.pack("<III", index_off, count, total) + b"RTAE"
+atlas = hdr + b"".join(tiles) + index + footer
+assert len(atlas) == total
+with open(os.path.join(OUTDIR, "seed_raw_16x16.rta"), "wb") as fh:
+    fh.write(atlas)
+with open(os.path.join(OUTDIR, "seed_truncated.bin"), "wb") as fh:
+    fh.write(atlas[:24])
+PY
+
+# -----------------------------------------------------------------------------
+# fuzz_ra8_tileatlas_produce -- a small gray8 PNG and a small baseline JPEG
+# (both real decodable sources for immediate stripe-decoder coverage) plus a
+# bare PNG signature the sniffer accepts but the chunk walk must reject.
+# -----------------------------------------------------------------------------
+RTAP_DIR="${CORPUS_ROOT}/fuzz_ra8_tileatlas_produce"
+python3 - "${RTAP_DIR}" <<'PY'
+import os
+import struct
+import sys
+import zlib
+
+OUTDIR = sys.argv[1]
+W = H = 16
+
+def chunk(tag: bytes, payload: bytes) -> bytes:
+    return (
+        struct.pack(">I", len(payload))
+        + tag
+        + payload
+        + struct.pack(">I", zlib.crc32(tag + payload) & 0xFFFFFFFF)
+    )
+
+raw = b"".join(b"\x00" + bytes(((x * 3) ^ y) & 0xFF for x in range(W)) for y in range(H))
+ihdr = struct.pack(">IIBBBBB", W, H, 8, 0, 0, 0, 0)
+png = (
+    b"\x89PNG\r\n\x1a\n"
+    + chunk(b"IHDR", ihdr)
+    + chunk(b"IDAT", zlib.compress(raw))
+    + chunk(b"IEND", b"")
+)
+with open(os.path.join(OUTDIR, "seed_gray_16x16.png"), "wb") as fh:
+    fh.write(png)
+with open(os.path.join(OUTDIR, "seed_sig_only.bin"), "wb") as fh:
+    fh.write(b"\x89PNG\r\n\x1a\n")
+PY
+python3 "${SCRIPT_DIR}/gen_jpeg_fixture.py" --width 16 --height 16 \
+  -o "${RTAP_DIR}/seed_16x16.jpg"
 
 echo "Seeded fuzz corpora under ${CORPUS_ROOT}/."
