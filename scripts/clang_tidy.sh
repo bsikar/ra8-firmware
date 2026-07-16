@@ -287,10 +287,13 @@ run_clang_tidy() {
     fi
   fi
 
-  # The RA8P1 build-foundation apps (examples/ra8p1_foundation/*) and the
+  # The RA8P1 build-foundation apps (examples/ra8p1_foundation/*), the
   # RA8P1-only Ethos-U55 NPU driver TUs (libs/ra8_hal/{src/ra8_npu.c,
-  # inc/ra8_npu.h,inc/ra8_npu_regs.h}) carry an `#error` guard that fires unless
-  # RA8_DEVICE_RA8P1 is defined -- they are meant to be built ONLY with
+  # inc/ra8_npu.h,inc/ra8_npu_regs.h}, plus the #227/#228 additions
+  # ra8_npu_loader.*, ra8_npu_quant.*, ra8_ethosu_kernel.{h,cc}), and the
+  # RA8P1 board layer (libs/ra8_board_ra8p1/*) carry -- directly or through
+  # ra8_ethosu_shim.h / ra8_device.h -- an `#error` guard that fires unless
+  # RA8_DEVICE_RA8P1 is defined; they are meant to be built ONLY with
   # cmake/toolchain-ra8p1.cmake. clang-tidy compiles every example / lints every
   # header in the DEFAULT (RA8D2) device context, so those files must be linted
   # in a second pass that adds the RA8P1 device define; otherwise they abort at
@@ -304,7 +307,11 @@ run_clang_tidy() {
   local f
   for f in "${files[@]}"; do
     case "$f" in
-      */examples/ra8p1_foundation/* | */ra8_npu.c | */ra8_npu.h | */ra8_npu_regs.h)
+      */examples/ra8p1_foundation/* | */ra8_npu.c | */ra8_npu.h | */ra8_npu_regs.h \
+        | */ra8_npu_loader.c | */ra8_npu_loader.h \
+        | */ra8_npu_quant.c | */ra8_npu_quant.h \
+        | */ra8_ethosu_kernel.cc | */ra8_ethosu_kernel.h \
+        | */libs/ra8_board_ra8p1/*)
         ra8p1_files+=("$f")
         ;;
       *) main_files+=("$f") ;;

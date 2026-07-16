@@ -147,7 +147,7 @@ static ra8_err_t internal_npu_check_header(const uint8_t* p,
   const uint32_t total = ra8_npu_blob_read_word(p,
                                                 (uint32_t)k_ra8_npu_blob_word_total_bytes *
                                                   (uint32_t)k_ra8_npu_blob_word_bytes);
-  if (internal_npu_span_ok(0U, total, blob_bytes) == false) {
+  if (!internal_npu_span_ok(0U, total, blob_bytes)) {
     ra8_log_error(s_tag, "load: total_bytes exceeds buffer");
     return k_ra8_err_out_of_range;
   }
@@ -168,7 +168,7 @@ static ra8_err_t internal_npu_check_header(const uint8_t* p,
     ra8_log_error(s_tag, "load: empty command stream");
     return k_ra8_err_invalid_size;
   }
-  if (internal_npu_span_ok(coff, cbytes, total) == false) {
+  if (!internal_npu_span_ok(coff, cbytes, total)) {
     ra8_log_error(s_tag, "load: command stream outside blob");
     return k_ra8_err_out_of_range;
   }
@@ -263,7 +263,7 @@ static ra8_err_t internal_npu_place_region(const uint8_t*         p,
       ra8_npu_blob_read_word(p,
                              desc_off + ((uint32_t)k_ra8_npu_blob_rdesc_data_offset *
                                          (uint32_t)k_ra8_npu_blob_word_bytes));
-    if (internal_npu_span_ok(data_off, size, total) == false) {
+    if (!internal_npu_span_ok(data_off, size, total)) {
       ra8_log_error(s_tag, "load: baked region outside blob");
       return k_ra8_err_out_of_range;
     }
@@ -300,9 +300,9 @@ ra8_err_t ra8_npu_load(const void*            blob,
   uint32_t        cbytes = 0U;
   const ra8_err_t hdr = internal_npu_check_header(p, blob_bytes, &total, &rcount, &coff, &cbytes);
   RA8_RETURN_ON_ERROR(hdr, s_tag, "load: header");
-  if (internal_npu_span_ok((uint32_t)k_ra8_npu_blob_header_bytes,
-                           rcount * (uint32_t)k_ra8_npu_blob_region_desc_bytes,
-                           total) == false) {
+  if (!internal_npu_span_ok((uint32_t)k_ra8_npu_blob_header_bytes,
+                            rcount * (uint32_t)k_ra8_npu_blob_region_desc_bytes,
+                            total)) {
     ra8_log_error(s_tag, "load: region table outside blob");
     return k_ra8_err_out_of_range;
   }

@@ -38,6 +38,7 @@
 #include "miniz.h"
 #include "ra8_check.h"
 #include "ra8_epub.h"
+#include "ra8_epub_entry.h"
 #include "ra8_epub_internal.h"
 #include "ra8_err.h"
 
