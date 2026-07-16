@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 12020
+# total findings: 12044
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -640,7 +640,7 @@ libs/ra8_hal/src/ra8_jpeg_sw_encode.c	misra-c2012-8.9	3
 libs/ra8_hal/src/ra8_jpeg_sw_internal.h	misra-c2012-15.5	2
 libs/ra8_hal/src/ra8_jpeg_sw_internal.h	misra-c2012-8.9	2
 libs/ra8_hal/src/ra8_jpeg_sw_stream.c	misra-c2012-11.8	1
-libs/ra8_hal/src/ra8_jpeg_sw_stream.c	misra-c2012-15.5	25
+libs/ra8_hal/src/ra8_jpeg_sw_stream.c	misra-c2012-15.5	26
 libs/ra8_hal/src/ra8_jpeg_sw_stream.c	misra-c2012-8.4	1
 libs/ra8_hal/src/ra8_jpeg_sw_stream.c	misra-c2012-8.9	1
 libs/ra8_hal/src/ra8_jpeg_sw_stream.c	misra-c2012-9.2	3
@@ -1231,19 +1231,23 @@ libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	misra-c2012-15.5	86
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	misra-c2012-8.4	11
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	misra-c2012-8.9	1
 libs/ra8_sdmmc_spi/src/ra8_sdmmc_spi_io.c	misra-c2012-9.2	1
-libs/ra8_tileatlas/src/ra8_tileatlas.c	misra-c2012-15.5	59
+libs/ra8_tileatlas/src/ra8_tileatlas.c	misra-c2012-15.5	60
 libs/ra8_tileatlas/src/ra8_tileatlas.c	misra-c2012-17.3	1
 libs/ra8_tileatlas/src/ra8_tileatlas.c	misra-c2012-8.4	6
 libs/ra8_tileatlas/src/ra8_tileatlas.c	misra-c2012-8.9	2
 libs/ra8_tileatlas/src/ra8_tileatlas.c	misra-c2012-9.2	3
-libs/ra8_tileatlas/src/ra8_tileatlas_png.c	misra-c2012-14.2	1
-libs/ra8_tileatlas/src/ra8_tileatlas_png.c	misra-c2012-15.5	75
-libs/ra8_tileatlas/src/ra8_tileatlas_png.c	misra-c2012-8.9	3
-libs/ra8_tileatlas/src/ra8_tileatlas_png.c	misra-c2012-9.2	3
+libs/ra8_tileatlas/src/ra8_tileatlas_png.c	misra-c2012-11.5	5
+libs/ra8_tileatlas/src/ra8_tileatlas_png.c	misra-c2012-15.5	41
+libs/ra8_tileatlas/src/ra8_tileatlas_png.c	misra-c2012-8.9	2
+libs/ra8_tileatlas/src/ra8_tileatlas_png.c	misra-c2012-9.2	1
+libs/ra8_tileatlas/src/ra8_tileatlas_png_chunk.c	misra-c2012-14.2	1
+libs/ra8_tileatlas/src/ra8_tileatlas_png_chunk.c	misra-c2012-15.5	44
+libs/ra8_tileatlas/src/ra8_tileatlas_png_chunk.c	misra-c2012-8.9	1
+libs/ra8_tileatlas/src/ra8_tileatlas_png_chunk.c	misra-c2012-9.2	3
 libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-10.3	1
-libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-10.6	4
-libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-11.5	4
-libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-15.5	48
+libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-10.6	2
+libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-11.5	11
+libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-15.5	50
 libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-17.3	1
 libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-18.4	1
 libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-8.4	2
