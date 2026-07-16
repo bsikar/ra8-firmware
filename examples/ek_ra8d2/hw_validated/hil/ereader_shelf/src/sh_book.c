@@ -439,7 +439,18 @@ bool sh_book_open(uint16_t idx)
     sh_sd_close_epub(&s_epub);
   }
   sh_paged_close();
+  sh_comic_close(); /* release any open comic before the next book binds */
   sh_entry_t* const e = &g_sh.entry[idx];
+
+  if (sh_fmt_is_comic(e->fmt)) {
+    /* CBZ / CBR route through sh_comic.c (image pages), not the text screens. */
+    if (!sh_comic_open(idx)) {
+      return false;
+    }
+    g_sh.open_fmt      = e->fmt;
+    g_sh.chapter_count = 0U; /* comics paginate by image page, not chapters */
+    return true;
+  }
 
   if (e->fmt == k_sh_fmt_epub) {
     if (!sh_sd_open_epub(e->sd_name, &s_epub)) {
