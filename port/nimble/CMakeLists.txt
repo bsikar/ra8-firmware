@@ -21,6 +21,14 @@
 # the include dir + the source list as a GLOBAL property the per-app
 # CMakeLists splices into its own add_executable() call.
 #
+# UNVALIDATED SCAFFOLD (issue #286): the two sources surfaced here link
+# and pass the static gates, but the NimBLE port has NEVER been
+# hardware-validated and is NOT sim-gated -- board_sim models no RA8D2
+# BLE controller / HCI mailbox, and the underlying ra8_ble transport is
+# itself unproven on this board (see #86, #91). Every app that links
+# `nimble_port_threadx` therefore stays under `examples/_unsupported/`
+# until a NimBLE app is driven to real hardware validation and promoted.
+#
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
 #

@@ -1,5 +1,16 @@
 # threadx_nimble_peripheral
 
+> **Status: UNVALIDATED SCAFFOLD (issue #286).** This app links and
+> passes the static gates, but has **never been hardware-validated** and
+> is **not sim-gated**: `board_sim` models no RA8D2 BLE controller / HCI
+> mailbox, so nothing in CI exercises the air interface, and the
+> underlying `ra8_ble` transport is itself unproven on this board (#86,
+> #91). The `port/nimble/` host port + ThreadX Native Porting Layer it
+> depends on are link-only scaffold. This app stays under
+> `examples/_unsupported/` until a NimBLE app is driven to real hardware
+> validation and promoted. The "Verify" steps below describe the
+> *intended* end state, not a confirmed result.
+
 NimBLE-based replacement for `examples/ble_peripheral`. Same Battery
 Service profile (UUID 0x180F + Battery Level char 0x2A19, Read |
 Notify), same `EK-RA8D2` advertised local name, same 10-second
@@ -62,9 +73,12 @@ image at boot. `ra8_ble_open` currently stubs the patch-load loop
 report success but no air activity will happen until the production
 patch loader is wired in.
 
-This / Phase 1.3 task closes the *software* path -- HCI
-transport bridge + NPL + GATT skeleton -- so the patch-load gap is
-the only blocker remaining before the demo runs end-to-end.
+This / Phase 1.3 task wires the *software* path (HCI transport bridge,
+NPL, and GATT skeleton) so that it links. That path has never been
+exercised on silicon: the patch-load gap is one of several unproven
+links (patch loader, `ra8_ble` transport, the NimBLE port itself), and
+none of them has been demonstrated end-to-end. Do not read this app as
+"one blocker away from working."
 
 ## Files
 
@@ -82,6 +96,8 @@ Uses `ra8_board_ek_ra8d2` BSP for LED1 init/toggle (P600 per EK-RA8D2
 v1 UM Table 24 p 31). The BLE controller is on-chip; no external
 pins are required. SCI8 console on PD02 / PD03 per UM Table 13 p 24.
 
-Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
-Rev 1.01) Tables 13 p 24 / 24 p 31, and Bluetooth Core 5.3 + Apache
-NimBLE host/transport API.
+Pin assignments and API usage checked (on paper only, not on silicon)
+against EK-RA8D2 v1 User's Manual (R20UT5523EG0101 Rev 1.01) Tables 13 p
+24 / 24 p 31, and Bluetooth Core 5.3 + Apache NimBLE host/transport API.
+This is a documentation-citation record, not a hardware-validation
+record -- see the status banner at the top.

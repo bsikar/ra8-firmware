@@ -29,6 +29,15 @@
  * ``MYNEWT_VAL(...)`` macro which expands to ``MYNEWT_VAL_##NAME``;
  * defining those identifiers here pre-empts the upstream defaults.
  *
+ * @warning UNVALIDATED SCAFFOLD (issue #286): these syscfg knobs enable
+ * NimBLE features (SMP, bonding, Mesh, GATT client) that link and pass the
+ * static gates, but the whole NimBLE port has NEVER been hardware-validated
+ * and is NOT sim-gated -- board_sim models no RA8D2 BLE controller / HCI
+ * mailbox, and the underlying ra8_ble transport is itself unproven on this
+ * board (see #86, #91). Enabling a knob here does not imply the feature
+ * runs on silicon; consumers stay under ``examples/_unsupported/`` until a
+ * NimBLE app is driven to real hardware validation and promoted.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
