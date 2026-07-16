@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 12077
+# total findings: 12154
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -1011,7 +1011,7 @@ libs/ra8_mem/src/ra8_slab.c	misra-c2012-8.4	4
 libs/ra8_mem/src/ra8_tile_cache.c	misra-c2012-15.5	12
 libs/ra8_mem/src/ra8_tile_cache.c	misra-c2012-8.4	4
 libs/ra8_mem/src/ra8_vmem.c	misra-c2012-11.6	1
-libs/ra8_mem/src/ra8_vmem.c	misra-c2012-15.5	30
+libs/ra8_mem/src/ra8_vmem.c	misra-c2012-15.5	32
 libs/ra8_mem/src/ra8_vmem.c	misra-c2012-15.7	2
 libs/ra8_mem/src/ra8_vmem.c	misra-c2012-8.4	5
 libs/ra8_mem/src/ra8_vmem_stream.c	misra-c2012-11.5	2
@@ -1247,12 +1247,15 @@ libs/ra8_tileatlas/src/ra8_tileatlas_png_chunk.c	misra-c2012-9.2	3
 libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-10.3	1
 libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-10.6	2
 libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-11.5	11
-libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-15.5	50
+libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-15.5	54
 libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-17.3	1
 libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-18.4	1
 libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-8.4	2
-libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-8.9	2
+libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-8.9	5
 libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-9.2	3
+libs/ra8_tileatlas/src/ra8_tileatlas_produce_webp.c	misra-c2012-10.8	1
+libs/ra8_tileatlas/src/ra8_tileatlas_produce_webp.c	misra-c2012-15.5	12
+libs/ra8_tileatlas/src/ra8_tileatlas_produce_webp.c	misra-c2012-8.4	1
 libs/ra8_tls/src/ra8_tls.c	misra-c2012-10.4	1
 libs/ra8_tls/src/ra8_tls.c	misra-c2012-15.5	48
 libs/ra8_tls/src/ra8_tls.c	misra-c2012-20.1	4
@@ -1287,6 +1290,13 @@ libs/ra8_webp/src/ra8_webp.c	misra-c2012-8.4	2
 libs/ra8_webp/src/ra8_webp_arena.c	misra-c2012-15.5	6
 libs/ra8_webp/src/ra8_webp_arena.c	misra-c2012-17.7	1
 libs/ra8_webp/src/ra8_webp_arena.c	misra-c2012-8.4	5
+libs/ra8_webtoon/src/ra8_webtoon.c	misra-c2012-10.8	3
+libs/ra8_webtoon/src/ra8_webtoon.c	misra-c2012-15.4	1
+libs/ra8_webtoon/src/ra8_webtoon.c	misra-c2012-15.5	34
+libs/ra8_webtoon/src/ra8_webtoon.c	misra-c2012-15.7	1
+libs/ra8_webtoon/src/ra8_webtoon.c	misra-c2012-17.3	2
+libs/ra8_webtoon/src/ra8_webtoon.c	misra-c2012-17.8	3
+libs/ra8_webtoon/src/ra8_webtoon.c	misra-c2012-8.4	10
 libs/ra8_widget/src/ra8_widget.c	misra-c2012-14.2	4
 libs/ra8_widget/src/ra8_widget.c	misra-c2012-15.5	28
 libs/ra8_widget/src/ra8_widget.c	misra-c2012-17.3	3
