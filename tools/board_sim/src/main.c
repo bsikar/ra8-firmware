@@ -6010,7 +6010,8 @@ int main(int argc, char** argv)
     (void)fprintf(
       stderr,
       "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>]"
-      " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>] [--sd <image>]"
+      " [--panel <file.toml>] [--size WxH] [--click X Y] [--touch-seq S] [--input <str>]"
+      " [--sd <image>]"
       " [--usb-in <str>] [--button <1|2>] [--reboot <N>] [--dump-sym <name>]"
       " [--stop-sym <name> <N>]"
       " [--trace-sym <name>] [--sd-new <N[k|m|g][:fat16|fat32]>] [--save-sd <out>] [--fast-sd]"
@@ -6024,6 +6025,8 @@ int main(int argc, char** argv)
       "  --panel <file>  display descriptor (name/width/height) to size the panel\n"
       "  --size WxH      panel size in pixels; overrides --panel (default 1024x600)\n"
       "  --click X Y     headless: inject one touch at X,Y once the UI is up\n"
+      "  --touch-seq S   headless: queue raw GT911 taps \"x0:y0,x1:y1,...\" served\n"
+      "                  one per drained frame (multi-tap flows, e.g. touch_cal)\n"
       "  --input <str>   feed <str> to the console UART RX (SCI8); \\n / \\r / \\t ok\n"
       "  --keys <str>    type <str> via the window-key path -> console UART RX\n"
       "  --usb-in <str>  feed <str> to the USB CDC bulk OUT pipe (echo test)\n"
@@ -6061,6 +6064,7 @@ int main(int argc, char** argv)
   const char* panel_path                       = nullptr;
   const char* input_str                        = nullptr;
   const char* keys_str                         = nullptr;
+  const char* touch_seq_str                    = nullptr; /* --touch-seq raw-point FIFO. */
   const char* usb_in_str                       = nullptr;
   const char* dump_sym_names[k_dump_sym_max]   = {}; /* --dump-sym globals to read.  */
   uint32_t    dump_sym_addrs[k_dump_sym_max]   = {}; /* resolved while ELF is alive. */
@@ -6139,6 +6143,9 @@ int main(int argc, char** argv)
       i++;
     } else if ((strncmp(argv[i], "--keys", sizeof("--keys")) == 0) && ((i + 1) < argc)) {
       keys_str = argv[i + 1];
+      i++;
+    } else if ((strncmp(argv[i], "--touch-seq", sizeof("--touch-seq")) == 0) && ((i + 1) < argc)) {
+      touch_seq_str = argv[i + 1];
       i++;
     } else if ((strncmp(argv[i], "--usb-in", sizeof("--usb-in")) == 0) && ((i + 1) < argc)) {
       usb_in_str = argv[i + 1];
@@ -6391,6 +6398,39 @@ int main(int argc, char** argv)
    * block state. Install the console sink so transmitted bytes reach stdout,
    * and queue any --input as console-channel (SCI8) RX. */
   board_periph_init(want_trace);
+  /* --touch-seq "x0:y0,x1:y1,...": load the modelled GT911 injection FIFO with
+   * synthetic raw points for a headless multi-tap flow (touch_cal's five-point
+   * calibration). Loaded AFTER board_periph_init so the per-block reset above
+   * does not clear it; the GT911 model then serves one queued point per drained
+   * frame through the genuine ra8_touch_read decode. */
+  if (touch_seq_str != nullptr) {
+    enum : uint32_t {
+      k_touch_seq_parse_max = 32U, /**< Bounded pair-parse iterations (NASA R2). */
+    };
+    board_periph_touch_seq_reset();
+    const char* p      = touch_seq_str;
+    uint32_t    pushed = 0U;
+    for (uint32_t n = 0U; (n < (uint32_t)k_touch_seq_parse_max) && (*p != '\0'); n++) {
+      char*      end = nullptr;
+      const long x   = strtol(p, &end, (int)k_strtol_base10);
+      if ((end == p) || (*end != ':')) {
+        break;
+      }
+      p            = end + 1;
+      const long y = strtol(p, &end, (int)k_strtol_base10);
+      if (end == p) {
+        break;
+      }
+      p = end;
+      if ((x >= 0L) && (y >= 0L) && board_periph_touch_seq_push((uint16_t)x, (uint16_t)y)) {
+        pushed++;
+      }
+      if (*p == ',') {
+        p++;
+      }
+    }
+    (void)fprintf(stderr, "board_sim: --touch-seq armed %u raw point(s)\n", (unsigned)pushed);
+  }
   /* Select the emulated part BEFORE the run: gates the RA8P1-only NPU block.
    * Default RA8D2 leaves every RA8D2 run unchanged. */
   board_periph_set_device(sim_device);

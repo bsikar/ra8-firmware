@@ -159,6 +159,7 @@ typedef enum : uint32_t {
   k_gt911_point_bytes  = 8U,    /**< Bytes per per-point record.                    */
   k_gt911_ptr_bytes    = 2U,    /**< 16-bit register-pointer width.                 */
   k_gt911_press        = 0x20U, /**< Synthetic contact pressure (size lsb).         */
+  k_gt911_seq_max      = 8U,    /**< Injected raw-point sequence FIFO depth.        */
 } gt911_const_t;
 
 /** @brief Byte offsets inside one 8-byte GT911 point record (ra8_touch.c). */
@@ -263,14 +264,25 @@ typedef struct {
  * contact is armed; the point0 read returns its x/y and clears the contact
  * (counted in @c reported), so a tap is delivered exactly once -- matching the
  * real GT911, which drops the frame once the controller drains and acks it.
+ *
+ * The @c seq_* fields hold an optional injected raw-point SEQUENCE (loaded via
+ * ::board_periph_touch_seq_push). While the queue is non-empty a status read
+ * auto-arms the head point, so a multi-tap flow (e.g. touch_cal's five-target
+ * calibration) drains one distinct raw point per frame with no per-chunk
+ * re-arm -- the model latches the next queued touch exactly as the real GT911
+ * latches the next physical touch after the current frame is acked.
  */
 typedef struct {
-  uint16_t reg_ptr;       /**< Active 16-bit register pointer.           */
-  uint8_t  ptr_bytes;     /**< Pointer bytes captured this write (0..2). */
-  bool     click_pending; /**< A contact is armed and unread.            */
-  uint16_t click_x;       /**< Armed contact X.                          */
-  uint16_t click_y;       /**< Armed contact Y.                          */
-  uint32_t reported;      /**< Contacts the firmware has drained.        */
+  uint16_t reg_ptr;                /**< Active 16-bit register pointer.           */
+  uint8_t  ptr_bytes;              /**< Pointer bytes captured this write (0..2). */
+  bool     click_pending;          /**< A contact is armed and unread.            */
+  uint16_t click_x;                /**< Armed contact X.                          */
+  uint16_t click_y;                /**< Armed contact Y.                          */
+  uint32_t reported;               /**< Contacts the firmware has drained.        */
+  uint16_t seq_x[k_gt911_seq_max]; /**< Queued raw-point X sequence.              */
+  uint16_t seq_y[k_gt911_seq_max]; /**< Queued raw-point Y sequence.              */
+  uint8_t  seq_len;                /**< Points queued in the FIFO.                */
+  uint8_t  seq_pos;                /**< Next queued point to arm.                 */
 } gt911_state_t;
 
 /**
@@ -392,6 +404,35 @@ void board_periph_touch_inject(uint16_t x, uint16_t y)
   s_gt911.click_pending = true;
 }
 
+void board_periph_touch_seq_reset(void)
+{
+  s_gt911.seq_len       = 0U;
+  s_gt911.seq_pos       = 0U;
+  s_gt911.click_pending = false;
+}
+
+bool board_periph_touch_seq_push(uint16_t x, uint16_t y)
+{
+  if (s_gt911.seq_len >= (uint8_t)k_gt911_seq_max) {
+    return false;
+  }
+  s_gt911.seq_x[s_gt911.seq_len] = x;
+  s_gt911.seq_y[s_gt911.seq_len] = y;
+  s_gt911.seq_len++;
+  return true;
+}
+
+/** @brief Arm the head of the injected sequence FIFO when nothing is pending. */
+static void gt911_arm_next_from_seq(gt911_state_t* g)
+{
+  if (!g->click_pending && (g->seq_pos < g->seq_len)) {
+    g->click_x       = g->seq_x[g->seq_pos];
+    g->click_y       = g->seq_y[g->seq_pos];
+    g->click_pending = true;
+    g->seq_pos++;
+  }
+}
+
 uint32_t board_periph_touch_reported(void)
 {
   return s_gt911.reported;
@@ -430,6 +471,11 @@ static void gt911_write(void* ctx, uint8_t byte)
 /** @brief Fill @p buf with the GT911 status byte for the current frame. */
 static uint32_t gt911_read_status(gt911_state_t* g, uint8_t* buf)
 {
+  /* Auto-arm the next queued raw point (multi-tap sequence path) so a status
+   * read reports buffer-ready while the FIFO is non-empty. A single-shot
+   * --click (seq_len == 0) is unaffected: the arm is a no-op and the directly
+   * injected contact still reports ready on its own. */
+  gt911_arm_next_from_seq(g);
   buf[0] = g->click_pending ? (uint8_t)(k_gt911_status_ready | k_gt911_status_one) : 0U;
   return 1U;
 }

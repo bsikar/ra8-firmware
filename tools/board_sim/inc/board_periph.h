@@ -301,6 +301,46 @@ void board_periph_touch_inject(uint16_t x, uint16_t y);
 uint32_t board_periph_touch_reported(void);
 
 /**
+ * @brief Clear the modelled GT911 injected-touch sequence FIFO.
+ *
+ * @details
+ * The FIFO is the multi-tap analogue of ::board_periph_touch_inject: instead of
+ * one re-armed contact it queues a SEQUENCE of distinct raw points, delivering
+ * the next queued point on each ``ra8_touch_read`` frame the firmware drains.
+ * It exists so an interactive N-point flow -- e.g. the touch-calibration example
+ * (touch_cal, #262), which must collect one raw sample per on-screen target --
+ * can run headless in board_sim: on silicon a human taps N cross-hairs; in SIL
+ * the CLI (@c --touch-seq, ::board_periph_touch_seq_push) supplies N synthetic
+ * raw taps that return through the genuine ``ra8_touch_read`` decode. Resetting
+ * empties the queue and drops any point armed from it.
+ *
+ * @return Nothing.
+ * @post The sequence FIFO is empty; the next status read reports "no frame".
+ * @since 0.1.0
+ */
+void board_periph_touch_seq_reset(void);
+
+/**
+ * @brief Queue one raw touch point onto the modelled GT911 injection FIFO.
+ *
+ * @details
+ * Appends (@p x, @p y) to the sequence the GT911 model serves one point per
+ * drained frame (see ::board_periph_touch_seq_reset). While the FIFO is
+ * non-empty every GT911 status read reports a buffer-ready frame with one
+ * contact, and the matching point0 read returns the head point and advances the
+ * queue -- exactly as a real GT911 latches the next physical touch after the
+ * controller drains and acks the current one. Points are consumed in push
+ * order, so callers push them in the same order the firmware presents targets.
+ *
+ * @param[in] x Panel X coordinate of the queued contact (GT911-native units).
+ * @param[in] y Panel Y coordinate of the queued contact.
+ * @return true if the point was queued; false if the FIFO is full.
+ * @post On true the queued depth grows by one.
+ * @since 0.1.0
+ */
+bool board_periph_touch_seq_push(uint16_t x, uint16_t y);
+
+/**
  * @brief Read the last driven output level of a board LED.
  *
  * @details
