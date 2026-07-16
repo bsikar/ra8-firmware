@@ -181,7 +181,11 @@ def emit_header(desc: dict, blob: bytes) -> str:
     """Render `blob` as a self-contained, linkable C byte-array header."""
     symbol = desc["symbol"]
     name = desc["name"]
-    per_row = 12
+    # 16 bytes/row keeps each data line at 97 columns (2 indent + 16*"0xXX, "
+    # minus the trailing space), inside the .clang-format ColumnLimit of 100, so
+    # the emitted golden is already clang-format-22 clean and `make vela-check`
+    # (generator output vs committed header) and the format gate never disagree.
+    per_row = 16
     rows = []
     for start in range(0, len(blob), per_row):
         chunk = blob[start : start + per_row]
