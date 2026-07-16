@@ -27,6 +27,10 @@ the device (network, modem, removable media):
 | `fuzz_ra8_stb_image` | `stbi_load_from_memory()` (PNG/JPEG/GIF/BMP, stb_image) | EPUB cover / figure images   |
 | `fuzz_ra8_reflow_xml`| `ra8_epub_xml_parse_opf/ncx/nav()` (tinyxml2 XML parse)  | EPUB manifest / TOC (XML)    |
 | `fuzz_ra8_stbtt`     | `stbtt_InitFont()` + glyph raster (stb_truetype font)   | EPUB embedded fonts          |
+| `fuzz_ra8_unarch_xz` | `ra8_unarch_xz_unwrap()` (bounded XZ/LZMA2 over SOUP)   | `.tar.xz` comics             |
+| `fuzz_ra8_unarch_tar`| `ra8_unarch_tar_open/next/read()` (ustar/pax/GNU walk)  | `.cbt` / unwrapped tar       |
+| `fuzz_ra8_unarch_gzip`| `ra8_unarch_gzip_unwrap()` (RFC 1952 over miniz DEFLATE)| `.tar.gz` comics             |
+| `fuzz_ra8_decomp_limits`| `ra8_decomp_*` policy seam (saturating 64-bit bounds) | All decoders' shared seam    |
 
 Add a new harness by dropping `tests/fuzz/fuzz_ra8_<x>.c` next to the
 existing files and listing it in `tests/fuzz/CMakeLists.txt`

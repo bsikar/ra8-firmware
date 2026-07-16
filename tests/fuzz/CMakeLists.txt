@@ -96,6 +96,10 @@ set(RA8_FUZZ_TARGETS
     fuzz_ra8_webp
     fuzz_ra8_tileatlas
     fuzz_ra8_tileatlas_produce
+    fuzz_ra8_unarch_xz
+    fuzz_ra8_unarch_tar
+    fuzz_ra8_unarch_gzip
+    fuzz_ra8_decomp_limits
 )
 
 # Harnesses that dereference real peripheral registers and therefore need
@@ -141,9 +145,11 @@ foreach(_t ${RA8_FUZZ_TARGETS})
       ${FW_ROOT}/libs/ra8_fs/inc
       ${FW_ROOT}/libs/ra8_reflow/inc
       ${FW_ROOT}/libs/ra8_comic/inc
+      ${FW_ROOT}/libs/ra8_unarch/inc
       ${FW_ROOT}/libs/ra8_webp/inc
       ${FW_ROOT}/libs/ra8_tileatlas/inc
       ${FW_ROOT}/libs/third_party/stb
+      ${FW_ROOT}/libs/third_party/xz_embedded
       # tests/ root: shared test fixtures (e.g. eth_frame_fixture.h,
       # the fuzz_ra8_etha parse target).
       ${CMAKE_CURRENT_SOURCE_DIR}/..
