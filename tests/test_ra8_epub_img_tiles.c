@@ -269,6 +269,22 @@ static void bake_atlas(uint32_t w, uint32_t h, uint8_t codec, ra8_tileatlas_mems
  * @note Not thread-safe.
  * @since 0.1.0
  */
+/** @brief Add the hostile stored entries (corrupt atlas, sub-magic stub). */
+static void zip_add_hostile(mz_zip_archive* zip)
+{
+  /* A stored entry with the atlas magic but corrupt structure. */
+  uint8_t bad[64] = {'R', 'T', 'A', '1'};
+  TEST_ASSERT(mz_zip_writer_add_mem(zip, "OEBPS/bad.rta", bad, sizeof(bad), MZ_NO_COMPRESSION) ==
+              MZ_TRUE);
+  /* A stored entry shorter than the atlas magic (import classify: short). */
+  const uint8_t tiny_entry[2] = {0x42U, 0x43U};
+  TEST_ASSERT(mz_zip_writer_add_mem(zip,
+                                    "OEBPS/tiny.bin",
+                                    tiny_entry,
+                                    sizeof(tiny_entry),
+                                    MZ_NO_COMPRESSION) == MZ_TRUE);
+}
+
 static void build_archive(void)
 {
   ra8_tileatlas_memstore_t big  = {.buf = s_big_buf, .cap = sizeof(s_big_buf), .len = 0U};
@@ -314,10 +330,7 @@ static void build_archive(void)
   TEST_ASSERT(
     mz_zip_writer_add_mem(&zip, "OEBPS/fig.png", s_fig, sizeof(s_fig), MZ_DEFAULT_COMPRESSION) ==
     MZ_TRUE);
-  /* A stored entry with the atlas magic but corrupt structure. */
-  uint8_t bad[64] = {'R', 'T', 'A', '1'};
-  TEST_ASSERT(mz_zip_writer_add_mem(&zip, "OEBPS/bad.rta", bad, sizeof(bad), MZ_NO_COMPRESSION) ==
-              MZ_TRUE);
+  zip_add_hostile(&zip);
 
   void*  heap = nullptr;
   size_t hsz  = 0U;
@@ -527,11 +540,40 @@ static void test_tile_edges(void)
  * Decision (import classify): `got == 4 && memcmp(magic, "RTA1") == 0`
  * (2 conditions)
  * - Vector 1: stored atlas entry  -> true  (passthrough test below)
- * - Vector 2: stored short entry  -> false via got (the 20-byte mimetype
- *   serves 4 bytes though -- covered instead by the deflated PNG, which
- *   short-circuits via pread not_supported before the compare)
+ * - Vector 2: stored 2-byte entry -> false via got ("tiny.bin")
  * - Vector 3: stored non-atlas    -> false via memcmp ("mimetype" entry)
+ * Decision (href length): `hlen == 0 || hlen >= k_ra8_epub_max_path_len`
+ * (2 conditions)
+ * - Vector 1: normal href -> false (every import above)
+ * - Vector 2: empty href  -> true via hlen == 0
+ * - Vector 3: oversize href -> true via the length cap
  */
+/** @brief Drive the fail-closed import error arms (missing / deflated / caps / store / null). */
+static void import_error_arms(ra8_epub_tile_binder_t*            binder,
+                              ra8_epub_book_t*                   book,
+                              const ra8_epub_atlas_import_cfg_t* base)
+{
+  TEST_ASSERT_EQ(k_ra8_err_not_found,
+                 ra8_epub_tile_binder_import(binder, book, "missing.png", 40U, base));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+                 ra8_epub_tile_binder_import(binder, book, "ch1.xhtml", 41U, base));
+  ra8_epub_atlas_import_cfg_t small = *base;
+  small.max_width                   = 16U;
+  ra8_tileatlas_memstore_t fresh    = {.buf = s_imp_buf, .cap = sizeof(s_imp_buf), .len = 0U};
+  small.store.sink_ctx              = &fresh;
+  small.store.pread_ctx             = &fresh;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_epub_tile_binder_import(binder, book, "page1.png", 42U, &small));
+  ra8_epub_atlas_import_cfg_t tiny      = *base;
+  ra8_tileatlas_memstore_t    tinystore = {.buf = s_imp_buf, .cap = 64U, .len = 0U};
+  tiny.store.sink_ctx                   = &tinystore;
+  tiny.store.pread_ctx                  = &tinystore;
+  TEST_ASSERT_EQ(k_ra8_err_no_mem,
+                 ra8_epub_tile_binder_import(binder, book, "page1.png", 43U, &tiny));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_epub_tile_binder_import(binder, book, "page1.png", 44U, nullptr));
+}
+
 static void test_import_transcode(void)
 {
   TEST_BEGIN("epub tiles: import-time transcode (PNG entry -> atlas -> tiles)");
@@ -575,29 +617,64 @@ static void test_import_transcode(void)
     }
   }
 
-  /* Import errors, fail-closed. */
-  TEST_ASSERT_EQ(k_ra8_err_not_found,
-                 ra8_epub_tile_binder_import(&binder, &book, "missing.png", 40U, &cfg));
-  TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_epub_tile_binder_import(&binder, &book, "ch1.xhtml", 41U, &cfg));
-  ra8_epub_atlas_import_cfg_t small = cfg;
-  small.max_width                   = 16U;
-  ra8_tileatlas_memstore_t fresh    = {.buf = s_imp_buf, .cap = sizeof(s_imp_buf), .len = 0U};
-  small.store.sink_ctx              = &fresh;
-  small.store.pread_ctx             = &fresh;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_epub_tile_binder_import(&binder, &book, "page1.png", 42U, &small));
-  ra8_epub_atlas_import_cfg_t tiny      = cfg;
-  ra8_tileatlas_memstore_t    tinystore = {.buf = s_imp_buf, .cap = 64U, .len = 0U};
-  tiny.store.sink_ctx                   = &tinystore;
-  tiny.store.pread_ctx                  = &tinystore;
-  TEST_ASSERT_EQ(k_ra8_err_no_mem,
-                 ra8_epub_tile_binder_import(&binder, &book, "page1.png", 43U, &tiny));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epub_tile_binder_import(&binder, &book, "page1.png", 44U, nullptr));
+  import_error_arms(&binder, &book, &cfg);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
   TEST_END("epub tiles: import-time transcode (PNG entry -> atlas -> tiles)");
+}
+
+/**
+ * @test test_import_classify_arms
+ * @brief The classify and href-length arms of the import entry (the MC/DC
+ *        vectors documented on test_import_transcode).
+ *
+ * @par MC/DC:
+ * (vectors 2/3 of the classify decision and 2/3 of the href-length
+ * decision on test_import_transcode's block; vector 1 of each is the
+ * successful "page1.png" import there.)
+ */
+static void test_import_classify_arms(void)
+{
+  TEST_BEGIN("epub tiles: import classify + href-length arms");
+  build_archive();
+  ra8_epub_book_t            book = {};
+  const ra8_epub_mem_media_t mem  = {.data = s_arc, .size = s_arc_size};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open(&mem, "tiles.epub", &book));
+  ra8_epub_tile_binder_t binder = {};
+  init_binder(&binder);
+  s_imp_store = (ra8_tileatlas_memstore_t){.buf = s_imp_buf, .cap = sizeof(s_imp_buf), .len = 0U};
+  const ra8_epub_atlas_import_cfg_t cfg = {
+    .tile_w     = (uint16_t)k_tile,
+    .tile_h     = (uint16_t)k_tile,
+    .codec      = (uint8_t)k_ra8_tileatlas_codec_deflate,
+    .max_width  = (uint16_t)k_big_w,
+    .max_height = (uint16_t)k_big_h,
+    .work       = s_work,
+    .work_cap   = sizeof(s_work),
+    .store      = {.sink      = ra8_tileatlas_memstore_sink,
+                   .sink_ctx  = &s_imp_store,
+                   .pread     = ra8_tileatlas_memstore_pread,
+                   .pread_ctx = &s_imp_store},
+  };
+
+  /* Classify arms: a stored non-atlas (magic compare fails) transcodes and
+   * dies at the sniff; a stored entry shorter than the magic never even
+   * compares. Neither may register a source. */
+  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+                 ra8_epub_tile_binder_import(&binder, &book, "mimetype", 45U, &cfg));
+  TEST_ASSERT_EQ(k_ra8_err_protocol_error,
+                 ra8_epub_tile_binder_import(&binder, &book, "tiny.bin", 46U, &cfg));
+
+  /* Href length arms. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epub_tile_binder_import(&binder, &book, "", 47U, &cfg));
+  char longp[k_ra8_epub_max_path_len + 8U];
+  memset(longp, 'b', sizeof(longp));
+  longp[sizeof(longp) - 1U] = '\0';
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_epub_tile_binder_import(&binder, &book, longp, 48U, &cfg));
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
+  TEST_END("epub tiles: import classify + href-length arms");
 }
 
 /**
@@ -651,6 +728,19 @@ static void test_import_passthrough(void)
  * (no compound decisions authored under test; each guard is an independent
  * single-condition check.)
  */
+/** @brief Drive the binder-add pointer / path-shape argument guards. */
+static void add_arg_guards(ra8_epub_tile_binder_t* binder, ra8_epub_book_t* book)
+{
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_tile_binder_add(nullptr, book, "big.rta", 1U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_tile_binder_add(binder, nullptr, "big.rta", 1U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_tile_binder_add(binder, book, nullptr, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epub_tile_binder_add(binder, book, "", 1U));
+  char longp[k_ra8_epub_max_path_len + 8U];
+  memset(longp, 'a', sizeof(longp));
+  longp[sizeof(longp) - 1U] = '\0';
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epub_tile_binder_add(binder, book, longp, 1U));
+}
+
 static void test_tile_binder_guards(void)
 {
   TEST_BEGIN("epub tiles: binder guards + bad entries");
@@ -667,15 +757,7 @@ static void test_tile_binder_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_tile_binder_init(&binder, nullptr, nullptr, 0U));
   init_binder(&binder);
 
-  /* add guards. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_tile_binder_add(nullptr, &book, "big.rta", 1U));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_tile_binder_add(&binder, nullptr, "big.rta", 1U));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_tile_binder_add(&binder, &book, nullptr, 1U));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epub_tile_binder_add(&binder, &book, "", 1U));
-  char longp[k_ra8_epub_max_path_len + 8U];
-  memset(longp, 'a', sizeof(longp));
-  longp[sizeof(longp) - 1U] = '\0';
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epub_tile_binder_add(&binder, &book, longp, 1U));
+  add_arg_guards(&binder, &book);
   /* A DEFLATE entry cannot be windowed -> pread rejects it as not-supported. */
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_epub_tile_binder_add(&binder, &book, "fig.png", 9U));
   /* A good add succeeds. */
@@ -810,6 +892,7 @@ int32_t main(void)
   test_tile_paging_bounded();
   test_tile_edges();
   test_import_transcode();
+  test_import_classify_arms();
   test_import_passthrough();
   test_tile_binder_guards();
   test_reflow_img_loader();

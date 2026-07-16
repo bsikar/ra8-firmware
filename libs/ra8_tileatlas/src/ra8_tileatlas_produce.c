@@ -321,6 +321,7 @@ static ra8_err_t priv_carve_pixel_path(ra8_ta_prod_state_t* st)
   const uint32_t tw_eff      = (tw < st->w) ? tw : st->w;
   const uint32_t th_eff      = (th < st->h) ? th : st->h;
   const uint64_t stage_bytes = (uint64_t)tw_eff * (uint64_t)th_eff * (uint64_t)st->bpp;
+  // mcdc-deactivated: stage_bytes = tw_eff*th_eff*bpp with tw_eff <= w and th_eff <= tile_h, so stage_bytes <= w*tile_h*bpp = band_bytes always; the stage-overflow arm cannot flip independently of the band arm (which tests/test_ra8_tileatlas_produce_guards.c drives true via a 32768-wide RGBA source and a 65535-tall tile).
   if ((band_bytes > (uint64_t)UINT32_MAX) || (stage_bytes > (uint64_t)UINT32_MAX)) {
     return k_ra8_err_invalid_size;
   }
@@ -511,9 +512,11 @@ static ra8_err_t priv_on_rows(void*          ctx,
 {
   ra8_ta_prod_state_t* st = (ra8_ta_prod_state_t*)ctx;
   RA8_CHECK_NULL_PTR(px, s_tag, "px must not be nullptr");
+  // mcdc-deactivated: row-sink contract guard; both in-tree decoders fire the geometry hook before any row (a failed hook aborts the decode) and pass their bound width/channels verbatim into every on_rows call, so no public-API source can flip geom_done/width/channels here independently.
   if ((st->geom_done == 0U) || (width != st->w) || (channels != st->bpp)) {
     return k_ra8_err_validation_failed;
   }
+  // mcdc-deactivated: row-ordering contract guard; the PNG scanline assembler emits exactly one row per call at y0 == rows_done and the JPEG stripe walker emits edge-clamped nrows >= 1 at strictly increasing MCU-row origins, so zero/duplicated/overshooting deliveries are not constructible from a public-API source.
   if ((nrows == 0U) || ((uint32_t)y0 != st->rows_seen) ||
       (((uint32_t)y0 + (uint32_t)nrows) > (uint32_t)st->h)) {
     return k_ra8_err_validation_failed;
@@ -852,6 +855,7 @@ priv_dispatch(ra8_ta_prod_state_t* st, const uint8_t* head, ra8_ta_prefix_pull_t
  */
 static ra8_err_t priv_epilogue(ra8_ta_prod_state_t* st, ra8_tileatlas_info_t* out_info)
 {
+  // mcdc-deactivated: post-decode contract guard; both in-tree decoders return success only after the geometry hook fired and every declared row was delivered (short/hostile streams abort inside the decoder), so neither condition can be flipped through the public producer entry.
   if ((st->geom_done == 0U) || (st->rows_seen != (uint32_t)st->h)) {
     return k_ra8_err_validation_failed; /* decoder under-delivered */
   }
