@@ -275,14 +275,18 @@ typedef enum : uint8_t {
   k_usb_class_cdc     = 1U, /**< CDC-ACM (virtual serial).    */
   k_usb_class_hid     = 2U, /**< HID (boot mouse / keyboard). */
   k_usb_class_msc     = 3U, /**< Mass storage (BOT/SCSI).     */
+  k_usb_class_printer = 4U, /**< Printer (7/1/x), issue #265. */
+  k_usb_class_vendor  = 5U, /**< Vendor specific (0xFF).      */
 } usb_dev_class_t;
 
 /** @brief bInterfaceClass codes + the INTERFACE descriptor type (USB 2.0). */
 typedef enum : uint8_t {
   k_usb_iclass_cdc_comm = 0x02U, /**< Communications (CDC control). */
   k_usb_iclass_hid      = 0x03U, /**< Human Interface Device.       */
+  k_usb_iclass_printer  = 0x07U, /**< Printer (issue #265).         */
   k_usb_iclass_msc      = 0x08U, /**< Mass Storage.                 */
   k_usb_iclass_cdc_data = 0x0AU, /**< CDC data.                     */
+  k_usb_iclass_vendor   = 0xFFU, /**< Vendor specific (issue #265). */
   k_usb_dt_interface    = 0x04U, /**< INTERFACE descriptor type.    */
 } usb_iclass_t;
 
@@ -302,6 +306,10 @@ static const char* usb_class_active_str(void)
       return "MSC active";
     case k_usb_class_cdc:
       return "CDC-ACM active";
+    case k_usb_class_printer:
+      return "Printer active";
+    case k_usb_class_vendor:
+      return "Vendor active";
     case k_usb_class_unknown:
     default:
       return "configured";
@@ -344,6 +352,14 @@ static void usb_detect_class(const uint8_t* d, uint16_t len)
       }
       if ((icls == (uint8_t)k_usb_iclass_cdc_comm) || (icls == (uint8_t)k_usb_iclass_cdc_data)) {
         s_dev_class = (uint8_t)k_usb_class_cdc;
+        return;
+      }
+      if (icls == (uint8_t)k_usb_iclass_printer) {
+        s_dev_class = (uint8_t)k_usb_class_printer;
+        return;
+      }
+      if (icls == (uint8_t)k_usb_iclass_vendor) {
+        s_dev_class = (uint8_t)k_usb_class_vendor;
         return;
       }
     }
@@ -1648,6 +1664,10 @@ const char* board_usb_state_string(void)
         return "CONFIGURED (MSC active)";
       case k_usb_class_cdc:
         return "CONFIGURED (CDC-ACM active)";
+      case k_usb_class_printer:
+        return "CONFIGURED (Printer active)";
+      case k_usb_class_vendor:
+        return "CONFIGURED (Vendor active)";
       case k_usb_class_unknown:
       default:
         return "CONFIGURED";
