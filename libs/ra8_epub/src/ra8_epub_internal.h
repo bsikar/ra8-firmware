@@ -22,6 +22,9 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+#include "miniz.h"
+#include "ra8_err.h"
+
 /**
  * @brief Concatenate ``dir`` and ``name`` into ``dst``, NUL-terminated.
  *
@@ -112,6 +115,65 @@ bool ra8_epub_internal_glyph_dim_invalid(int w, int h);
  * @since 0.1.0
  */
 bool ra8_epub_internal_book_not_ready(uint8_t in_use, uint8_t zip_archive_active);
+
+/**
+ * @brief Guard a just-opened ZIP archive against the decompression policy.
+ *
+ * @details The archive-level half of the unified decompression-limits
+ *          retrofit (`ra8_decomp_limits.h`): rejects an archive whose
+ *          central directory enumerates more entries than the default
+ *          policy's `max_entries` -- the many-tiny-entries resource bomb
+ *          -- before any entry is touched. Called once per
+ *          `mz_zip_reader_init*` success (both the in-memory and streamed
+ *          open paths funnel through `priv_finish_open`).
+ *
+ * @param[in] zip Initialised miniz reader (non-NULL).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 The entry count is within policy.
+ * @retval k_ra8_err_null_ptr       @p zip was NULL.
+ * @retval k_ra8_err_decomp_entries The central directory exceeds the cap.
+ *
+ * @pre @p zip was initialised by an `mz_zip_reader_init*` call.
+ * @pre The default decompression policy is in force (no per-book override).
+ * @post No archive state is modified (pure count check).
+ * @post On breach the caller must destroy the reader (fail-closed).
+ *
+ * @note Thread-safe: pure read of the reader's entry count.
+ * @see ra8_epub_zip_guard_entry()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_epub_zip_guard_archive(mz_zip_archive* zip);
+
+/**
+ * @brief Guard one ZIP entry's declared sizes against the policy.
+ *
+ * @details The entry-level half of the retrofit: rejects an entry whose
+ *          central-directory record declares an uncompressed size over the
+ *          default policy's per-unit output cap, or over the
+ *          compression-ratio bound relative to its compressed size (the
+ *          lying-header / decompression-bomb signatures) -- before any
+ *          inflation starts. Called after every successful
+ *          `mz_zip_reader_file_stat` that precedes an extraction.
+ *
+ * @param[in] st The entry's stat record (non-NULL).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                    Declared sizes are within policy.
+ * @retval k_ra8_err_null_ptr          @p st was NULL.
+ * @retval k_ra8_err_decomp_output_cap Declared output exceeds the cap.
+ * @retval k_ra8_err_decomp_ratio      Declared output breaks the ratio.
+ *
+ * @pre @p st came from a successful `mz_zip_reader_file_stat`.
+ * @pre The default decompression policy is in force.
+ * @post No state is modified (pure check).
+ * @post On breach the caller must not extract the entry (fail-closed).
+ *
+ * @note Thread-safe: pure read.
+ * @see ra8_epub_zip_guard_archive()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_epub_zip_guard_entry(const mz_zip_archive_file_stat* st);
 
 #ifdef __cplusplus
 }
