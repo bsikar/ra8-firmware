@@ -30,6 +30,15 @@
  *     and the host stack starts pumping HCI commands through the
  *     adapter.
  *
+ * @warning UNVALIDATED SCAFFOLD (issue #286): this NimBLE port and its
+ * ThreadX Native Porting Layer link and pass the static gates, but have
+ * NEVER been hardware-validated and are NOT sim-gated -- board_sim models
+ * no RA8D2 BLE controller / HCI mailbox, and the underlying ra8_ble
+ * transport is itself unproven on this board (see #86, #91). Treat every
+ * symbol here as a link-only stub, not a working BLE stack. Consumers stay
+ * under ``examples/_unsupported/`` until a NimBLE app is driven to real
+ * hardware validation and promoted out of that tier.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
