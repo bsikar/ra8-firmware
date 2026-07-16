@@ -100,6 +100,19 @@ endif()
 file(GLOB_RECURSE _RA8_TFLM_SOURCES CONFIGURE_DEPENDS
     "${_RA8_TFLM_DIR}/tensorflow/*.cc")
 
+# Ethos-U operator: DROP the vendored portable stub (kernels/ethosu.cc, which
+# returns nullptr from Register_ETHOSU) and compile the first-party kernel
+# libs/ra8_hal/src/ra8_ethosu_kernel.cc in its place. The first-party kernel
+# dispatches the Ethos-U55 command stream to the NPU through ra8_ethosu_shim /
+# ra8_npu, so MicroInterpreter resolves the "ethos-u" custom op to real NPU work
+# instead of the stub. Swapping which file provides Register_ETHOSU is a SOUP
+# file-selection change (the only sanctioned deviation from vendored content --
+# see docs/SOUP/tflite-micro.md "Phase 2").
+list(FILTER _RA8_TFLM_SOURCES EXCLUDE REGEX
+    "tensorflow/lite/micro/kernels/ethosu\\.cc$")
+list(APPEND _RA8_TFLM_SOURCES
+    "${_RA8_TFLM_REPO_ROOT}/libs/ra8_hal/src/ra8_ethosu_kernel.cc")
+
 add_library(tflite_micro_objs OBJECT ${_RA8_TFLM_SOURCES})
 
 # Include roots: the tflite-micro tree root (for "tensorflow/..." includes),
@@ -110,6 +123,14 @@ target_include_directories(tflite_micro_objs PUBLIC
     ${_RA8_FLATB_DIR}/include
     ${_RA8_GEMMLOWP_DIR}
     ${_RA8_RUY_DIR})
+
+# The first-party Ethos-U kernel (ra8_ethosu_kernel.cc) added above needs the
+# first-party HAL headers -- ra8_device.h (RA8_HAS_NPU gate), ra8_ethosu_shim.h,
+# ra8_npu_regs.h, ra8_ethosu_kernel.h. PRIVATE: only this object library compiles
+# the kernel, so consumers do not inherit the HAL include path from here.
+target_include_directories(tflite_micro_objs PRIVATE
+    ${_RA8_TFLM_REPO_ROOT}/libs/ra8_core/inc
+    ${_RA8_TFLM_REPO_ROOT}/libs/ra8_hal/inc)
 
 # TFLite-micro is a static-memory build: TF_LITE_STATIC_MEMORY switches the
 # runtime to the no-malloc arena allocator path (NASA Rule 3 friendly).
