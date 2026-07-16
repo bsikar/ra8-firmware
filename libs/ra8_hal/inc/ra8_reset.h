@@ -174,21 +174,23 @@ typedef struct {
  */
 [[nodiscard]] ra8_err_t ra8_reset_init(void);
 
-#ifdef RA8_SIMULATOR_MODE
 /**
  * @brief Reset the cached reset-cause snapshot for host tests.
  *
- * @note Host-test only; not part of the target firmware API.
+ * @details
+ * Zeroes the cached boot-cause snapshot so each host test case starts from the
+ * driver's just-loaded state. Compiled unconditionally (like the other
+ * ``*_test_*`` helpers) but only ever called from ``tests/``; on the target it
+ * is an unreferenced symbol dropped by ``--gc-sections``.
  *
- * @details See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
+ * @note Host-test only; not part of the target firmware API.
+ * @pre The driver is otherwise idle (single-threaded test context).
+ * @pre No caller depends on the current cached snapshot.
+ * @post ``ra8_reset_get_cause`` re-reads the registers on the next call.
+ * @post The cached cause is ``k_ra8_reset_cause_unknown``.
  * @since 0.1.0
  */
 void ra8_reset_test_only_reset_state(void);
-#endif
 
 /* =============================================================================
  * Cause introspection

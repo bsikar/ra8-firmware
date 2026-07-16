@@ -48,6 +48,7 @@
 #include "ra8_ether_regs.h"
 #include "ra8_hal_internal.h"
 #include "ra8_hw_err.h"
+#include "ra8_hw_intrinsics.h"
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 #include "ra8_mstp_regs.h"
@@ -381,11 +382,9 @@ static void internal_mpsm_issue(volatile r_rmac_regs_t* reg,
    * honoured (HUM Note 2: a write while PSME=1 has no effect). */
   /* HUM Ch 33.4.1.1 "MPSM : PHY Station Management Register" p 1707 */
   reg->MPSM = pda | pra | pop | prd | mff_bit | (uint32_t)k_ra8_rmac_mpsm_psme;
-#ifndef RA8_SIMULATOR_MODE
-  /* Ensure the issuing write reaches the peripheral before the
-   * post-wait starts polling MPSM. */
-  __asm__ volatile("dsb" ::: "memory");
-#endif
+  /* Ensure the issuing write reaches the peripheral before the post-wait
+   * starts polling MPSM (host no-op via the ra8_hw_intrinsics seam). */
+  ra8_hw_dsb();
 }
 
 /**

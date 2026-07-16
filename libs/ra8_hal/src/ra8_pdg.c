@@ -40,6 +40,7 @@
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_gpt_regs.h"
+#include "ra8_hw_intrinsics.h"
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 #include "ra8_pdg_regs.h"
@@ -54,8 +55,8 @@ static const char* s_tag = "PDG";
  * - ``k_ra8_pdg_channel_mask_all`` is a 4-bit mask covering channels
  * 0..3 -- used to validate the user's ``cfg->channel_mask``.
  * - ``k_ra8_pdg_dll_lock_us`` matches the >= 20 us DLL-lock wait in
- * HUM Figure 23.2 p 1160. The host-test build collapses the spin
- * to a no-op via ``RA8_SIMULATOR_MODE``.
+ * HUM Figure 23.2 p 1160. The host-test build pads the spin with the
+ * ``ra8_hw_intrinsics`` no-op so it costs nothing.
  * - ``k_ra8_pdg_busy_loops_per_us`` is a conservative lower bound on
  * the loop count needed to absorb one microsecond at the
  * Cortex-M85 1 GHz ceiling.
@@ -165,9 +166,10 @@ static void* s_pdg_event_ctx;
  * @brief Coarse software busy-wait used during init.
  *
  * @details
- * The HAL does not expose a microsecond busy-wait helper; on host
- * test builds the loop collapses to a no-op (``RA8_SIMULATOR_MODE``)
- * because there is no timing requirement for the simulator.
+ * The HAL does not expose a microsecond busy-wait helper; the loop pads each
+ * iteration with ::ra8_hw_nop, which is a real ``nop`` on the target and a
+ * host no-op through the ``ra8_hw_intrinsics`` seam (the host has no timing
+ * requirement to meet).
  *
  * @param[in] usec Microseconds to spin.
  *
@@ -184,9 +186,7 @@ static void internal_busy_wait_us(uint16_t usec)
 {
   for (uint16_t u = 0U; u < usec; ++u) {
     for (uint16_t i = 0U; i < k_ra8_pdg_busy_loops_per_us; ++i) {
-#ifndef RA8_SIMULATOR_MODE
-      __asm__ volatile("nop");
-#endif
+      ra8_hw_nop();
     }
   }
 }
@@ -209,9 +209,7 @@ static void internal_wait_5_gtclk(void)
  * The fastest GTCLK is 300 MHz, so 5 cycles ~= 17 ns; this loop
  * absorbs more than that on any reasonable build. */
   for (uint16_t i = 0U; i < k_ra8_pdg_post_reset_loops; ++i) {
-#ifndef RA8_SIMULATOR_MODE
-    __asm__ volatile("nop");
-#endif
+    ra8_hw_nop();
   }
 }
 
