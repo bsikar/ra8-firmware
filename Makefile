@@ -327,6 +327,32 @@ sbom:
 sbom-check:
 	python3 scripts/utils/gen_sbom.py --check
 
+# ---------------------------------------------------------------------------
+# `make vela-check` -- regenerate the committed Ethos-U55 model container header
+# from its descriptor and diff it against the committed golden (issue #227). This
+# is the regenerate-and-diff gate; it needs NO Vela toolchain, so a CI job that
+# never installs Vela still passes. `make vela-regen` rewrites the golden after a
+# descriptor change. `make vela-compile TFLITE=<model>.tflite` runs the pinned
+# ethos-u-vela on a real quantized .tflite (optional -- skips cleanly with a
+# notice if Vela is not installed). See tools/vela/README.md.
+# ---------------------------------------------------------------------------
+VELA_GEN    := python3 tools/vela/vela_gen.py
+VELA_DESC   := tools/vela/models/npu_addk_sim.json
+VELA_HEADER := tools/vela/generated/ra8_npu_model_addk_sim.h
+
+.PHONY: vela vela-check vela-regen vela-compile
+
+vela: vela-check
+
+vela-check:
+	$(VELA_GEN) check $(VELA_DESC) $(VELA_HEADER)
+
+vela-regen:
+	$(VELA_GEN) emit $(VELA_DESC) -o $(VELA_HEADER)
+
+vela-compile:
+	$(VELA_GEN) compile $(TFLITE) -o $(or $(VELA_OUT),build/vela)
+
 test-docker:
 	bash scripts/test-docker.sh
 
