@@ -24,10 +24,9 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
-#include "ra8_rar5.h"
-
 #include <string.h>
 
+#include "ra8_rar5.h"
 #include "ra8_rar5_internal.h"
 
 /* ---- streaming MSB-first bit reader ------------------------------------- */
@@ -308,7 +307,7 @@ ra8_err_t ra8_rar5_read_block_header(ra8_rar5_state_t* st, r5_block_t* b)
 uint32_t ra8_rar5_fill_zeros(uint8_t* out, uint32_t start, uint32_t count, uint32_t max)
 {
   uint32_t i = start;
-  for (uint32_t c = 0U; c < count && i < max; ++c) { /* bound: count, i<max */
+  for (uint32_t c = 0U; (c < count) && (i < max); ++c) { /* bound: count, i<max */
     out[i] = 0U;
     i += 1U;
   }
@@ -361,13 +360,14 @@ ra8_err_t ra8_rar5_apply_run(ra8_rar5_state_t* st, uint8_t* tbl, uint32_t* idx, 
   const uint32_t count =
     is_long ? (ra8_rar5_get(st, (uint32_t)k_r5_run_long_bits) + (uint32_t)k_r5_run_long_add)
             : (ra8_rar5_get(st, 3U) + 3U);
-  if (!is_zero && *idx == 0U) {
+  if ((!is_zero) && (*idx == 0U)) {
     return k_ra8_err_validation_failed;
   }
   const uint8_t prev = (*idx > 0U) ? tbl[*idx - 1U] : 0U;
   const uint8_t fill = is_zero ? 0U : prev;
   uint32_t      i    = *idx;
-  for (uint32_t c = 0U; c < count && i < (uint32_t)k_ra8_rar5_huff_total; ++c) { /* bound: count */
+  for (uint32_t c = 0U; (c < count) && (i < (uint32_t)k_ra8_rar5_huff_total);
+       ++c) { /* bound: count */
     tbl[i] = fill;
     i += 1U;
   }
