@@ -158,6 +158,7 @@ ra8_err_t ra8_elc_software_trigger(uint8_t event_index)
 ra8_err_t ra8_elc_is_enabled(bool* out_enabled)
 {
   RA8_CHECK_NULL_PTR(out_enabled, s_tag, "is_enabled out");
+  /* HUM Ch 19.2.1 "ELCR : Event Link Control Register", p 817 */
   const uint8_t val = *internal_elcr();
   *out_enabled      = ((val & (uint8_t)(1U << k_ra8_elcr_bit_elcon)) != 0U);
   return k_ra8_ok;
