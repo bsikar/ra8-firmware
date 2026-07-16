@@ -87,6 +87,12 @@ typedef enum : uint32_t {
                                      /* scratch dominates -- see work_bytes()). */
   k_t_webp_cap = 4U * 1024U * 1024U, /**< WebP whole-frame arena. */
   k_t_cell_cap = 64U * 1024U,        /**< Tile page-back buffer.  */
+  /* Two under-sized WebP arenas that make the transcode's arena-room decision
+   * `(used >= acap) || (frame64 >= (acap - used))` fail closed, one per
+   * condition. The lossless fixture is 52 bytes and the bump aligns to 8, so
+   * the resident source occupies `used = ceil(52 / 8) * 8 = 56` bytes. */
+  k_t_webp_cap_srcfill = 56U, /**< == used: the aligned source fills the arena.   */
+  k_t_webp_cap_noframe = 64U, /**< > used, < used + frame: no room for the frame. */
 } t_webp_const_t;
 
 /** @brief Streaming pixel-path work arena. */
@@ -412,6 +418,12 @@ static void test_webp_png_byte_identical(void)
  * @brief A lossy (VP8) WebP normalizes to a valid, reparseable RTA1 atlas; the
  *        whole WebP codec family reaches the one format (pixels not bit-checked,
  *        VP8 is lossy).
+ *
+ * @par MC/DC:
+ * No compound decision under test; this drives the lossy VP8 arm end to end (it
+ * is the both-false control of the transcode arena-room decision -- ample arena,
+ * decode proceeds). The producer's compound decisions carry their vectors in
+ * test_webp_hostile and test_webp_work_bytes.
  */
 static void test_webp_lossy_path(void)
 {
@@ -458,10 +470,20 @@ static void test_webp_lossy_path(void)
  *        crash or a partial atlas trusted as valid.
  *
  * @par MC/DC:
- * Decision (WebP sniff, cond 2): `RIFF && WEBP` with RIFF true but WEBP false
+ * Decision A (WebP sniff, cond 2): `RIFF && WEBP` with RIFF true but WEBP false
  * exercises the "RIFF header that is not WEBP" arm -> the dispatch falls through
  * to `k_ra8_err_not_supported` (pairs with test_webp_lossless_golden's true
  * vector to prove cond 2 independently flips the outcome).
+ *
+ * Decision B (transcode arena room, in `ra8_ta_priv_webp_transcode`):
+ * `if ((used >= acap) || (frame64 >= (uint64_t)(acap - used)))` (2 conditions):
+ * - V1: acap large -> false (both false: the decode proceeds; covered by
+ *   test_webp_lossless_golden / test_webp_png_byte_identical / lossy).
+ * - V2: acap == used (k_t_webp_cap_srcfill) -> true via cond 1 `used >= acap`
+ *   (the aligned source alone fills the arena; cond 2 short-circuited).
+ * - V3: used < acap < used + frame (k_t_webp_cap_noframe) -> cond 1 false,
+ *   cond 2 `frame64 >= acap - used` true (source fits, the frame does not).
+ * V1+V2 prove cond 1's independent influence; V1+V3 prove cond 2's. N+1 = 3.
  */
 static void test_webp_hostile(void)
 {
@@ -498,10 +520,24 @@ static void test_webp_hostile(void)
                                        &store,
                                        &info));
 
-  /* webp_work too small to hold source + frame + scratch -> invalid_size. */
-  TEST_ASSERT_EQ(
-    k_ra8_err_invalid_size,
-    produce_webp(k_webp_lossless, sizeof(k_webp_lossless), s_webp_work, 64U, &store, &info));
+  /* Decision B V2: the aligned source alone fills the arena (used >= acap). */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 produce_webp(k_webp_lossless,
+                              sizeof(k_webp_lossless),
+                              s_webp_work,
+                              (size_t)k_t_webp_cap_srcfill,
+                              &store,
+                              &info));
+
+  /* Decision B V3: source fits but leaves no room for the frame + scratch
+   * (frame64 >= acap - used) -> invalid_size. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 produce_webp(k_webp_lossless,
+                              sizeof(k_webp_lossless),
+                              s_webp_work,
+                              (size_t)k_t_webp_cap_noframe,
+                              &store,
+                              &info));
   TEST_END("produce webp: hostile / unsupported WebP fail closed");
 }
 

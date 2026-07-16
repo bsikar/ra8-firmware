@@ -301,10 +301,12 @@ static void t_wt_open(ra8_webtoon_t* wt)
  * - V3: w=192, h=0   -> true  (varies h only)
  * V1+V2 prove w's independent influence; V1+V3 prove h's. N+1 = 3 vectors.
  *
- * Decision B `if (tile_w != width || tile_cols != 1)` (2 conditions): the
- * valid strip (V1) is the both-false control; a 2-column atlas makes
- * `tile_cols != 1` true (varies the second condition); a narrow-tile atlas
- * makes `tile_w != width` true (varies the first). Built below.
+ * The full-width band-column check `if (info.tile_w != info.width)` is a single
+ * condition (not compound): `ra8_tileatlas_parse` derives tile_cols as
+ * ceil(width / tile_w), so tile_w == width already implies tile_cols == 1 and a
+ * separate `tile_cols != 1` test could never independently flip the outcome. Its
+ * false branch is the valid strip (V1 here); its true branch is
+ * ::t_open_rejects_non_band.
  */
 static void t_open_validates(void)
 {
@@ -349,18 +351,13 @@ static void t_open_validates(void)
  * @test open_rejects_non_band_atlas
  *
  * @par MC/DC:
- * Decision B `if (tile_w != width || tile_cols != 1)` (2 conditions):
- * - V1 (control): tile_w==width, tile_cols==1 -> false (valid strip; covered
- *   by open_validates_inputs V1).
- * - V2: tile_w != width (narrow tiles => 2 columns) -> `tile_w != width` true,
- *   varies condition 1.
- * A multi-column atlas trips condition 2 independently: with tile_w < width the
- * grid also has tile_cols>1, but the FIRST failing condition short-circuits, so
- * this vector demonstrates condition 1's influence; condition 2's independent
- * influence is demonstrated by a tile_w==width atlas whose height forces >1 row
- * only -- which keeps tile_cols==1 -- so instead we hand-build an atlas with
- * tile_w==width but a corrupted tile_cols path is unreachable (cols is derived).
- * The reachable independent case is the narrow-tile atlas, asserted here.
+ * Single-condition guard `if (info.tile_w != info.width)` (no compound): the
+ * two branches are the valid strip (false; covered by open_validates_inputs V1)
+ * and this narrow-tile atlas (tile_w = width/2 => tile_w != width true). A
+ * separate `tile_cols != 1` test was removed as provably redundant --
+ * `ra8_tileatlas_parse` derives tile_cols as ceil(width / tile_w), so
+ * tile_w == width already forces tile_cols == 1 and tile_cols could never
+ * independently flip the outcome (its true arm is a strict subset of this one).
  */
 static void t_open_rejects_non_band(void)
 {
@@ -556,17 +553,16 @@ static void t_scroll_by_end_pin(void)
  * @test fling_converges_and_clamps
  *
  * @par MC/DC:
- * Decision (in `wt_fling_should_stop`)
- * `((v < 0) && at_top) || ((v > 0) && at_bottom)` (4 conditions):
- * - V1: v>0, mid (at_bottom=F)            -> false (keeps moving down)
- * - V2: v>0, at_bottom=T                  -> true  (varies at_bottom / cond 4)
- * - V3: v<0, at_top=T                     -> true  (varies v-sign + at_top pair)
- * - V4: v>0, at_top=T, at_bottom=F        -> false (a downward fling ignores the
- *                                            top boundary: proves the (v<0) guard
- *                                            gates at_top)
- * The downward fling (V1->V2) and upward fling (V3) below exercise these; V4 is
- * implicit in the downward fling starting at the top (at_top true, still moves).
- * Also proves bounded convergence: the fling stops in a finite number of ticks.
+ * `wt_fling_should_stop` tests the velocity sign once --
+ * `return (velocity < 0) ? at_top : at_bottom;` -- so there is no compound
+ * decision to cover (the caller guarantees velocity != 0, which makes
+ * `velocity > 0` merely the negation of `velocity < 0`; folding both sign tests
+ * into one `&&`/`||` expression would leave the second sign condition
+ * structurally unable to flip the outcome independently). Both single-condition
+ * branches are exercised: the
+ * upward fling drives `velocity < 0 -> at_top`, the downward fling
+ * `velocity > 0 -> at_bottom` (each returning both false, mid-fling, and true,
+ * pinned). Also proves bounded convergence: the fling stops in finite ticks.
  */
 static void t_fling(void)
 {
@@ -574,8 +570,9 @@ static void t_fling(void)
   ra8_webtoon_t wt = {};
   t_wt_open(&wt);
 
-  /* Downward fling from the top: V4 (at_top true but v>0 keeps moving), then
-   * V1 (mid, moving), converging to V2 (pinned at bottom). */
+  /* Downward fling from the top (velocity > 0 -> at_bottom arm): starts at the
+   * top (moving away from it), runs through the middle, converges pinned at the
+   * bottom -- the at_bottom branch returns false mid-fling and true when pinned. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_fling(&wt, 200));
   int32_t ticks          = 0;
   bool    moved_from_top = false;
@@ -590,7 +587,7 @@ static void t_fling(void)
   TEST_ASSERT_EQ(0, wt.velocity);
   TEST_ASSERT(wt.scroll_y > 0); /* it advanced downward */
 
-  /* Upward fling from the bottom -> V3 (pinned at top). */
+  /* Upward fling from the bottom (velocity < 0 -> at_top arm): pins at the top. */
   (void)ra8_webtoon_scroll_by(&wt, 100000);
   TEST_ASSERT_EQ(k_t_wt_max_scroll, wt.scroll_y);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_fling(&wt, -200));
