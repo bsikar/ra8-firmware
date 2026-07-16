@@ -304,24 +304,8 @@ ra8_err_t ra8_rar5_read_block_header(ra8_rar5_state_t* st, r5_block_t* b)
   return k_ra8_ok;
 }
 
-/**
- * @brief Extend @p out with @p count zero bit-lengths, bounded by @p max.
- * @details Appends up to @p count zero entries from @p start, stopping at @p max so a
- *          hostile run length can never overflow the array.
- * @param[in,out] out   Bit-length array being filled.
- * @param[in]     start First index to write.
- * @param[in]     count Zero entries to append.
- * @param[in]     max   Array capacity (no write at/after it).
- * @return The next write index after the appended zeros.
- * @retval start When @p start is already at @p max.
- * @pre @p out holds @p max writable bytes.
- * @pre @p start <= @p max.
- * @post `out[start .. min(start+count, max))` are zero.
- * @post The return value is <= @p max.
- * @note Not thread-safe.
- * @since Version 0.1.0
- */
-static uint32_t s_fill_zeros(uint8_t* out, uint32_t start, uint32_t count, uint32_t max)
+/** @brief Implementation of `ra8_rar5_fill_zeros()` -- bounded zero-length append. */
+uint32_t ra8_rar5_fill_zeros(uint8_t* out, uint32_t start, uint32_t count, uint32_t max)
 {
   uint32_t i = start;
   for (uint32_t c = 0U; c < count && i < max; ++c) { /* bound: count, i<max */
@@ -361,31 +345,14 @@ static ra8_err_t s_read_bd_lengths(ra8_rar5_state_t* st, uint8_t* out)
       out[i] = (uint8_t)k_r5_len_escape;
       i += 1U;
     } else {
-      i = s_fill_zeros(out, i, zc + (uint32_t)k_r5_zeros_extra, (uint32_t)k_ra8_rar5_bc);
+      i = ra8_rar5_fill_zeros(out, i, zc + (uint32_t)k_r5_zeros_extra, (uint32_t)k_ra8_rar5_bc);
     }
   }
   return k_ra8_ok;
 }
 
-/**
- * @brief Append one run (copy-previous or zero) to the length table.
- * @details Reads the run length for the continuation code @p num and repeats either
- *          the previous bit length (codes 16/17) or zero (codes 18/19).
- * @param[in,out] st  Decoder state (non-NULL).
- * @param[in,out] tbl Length table being filled (non-NULL).
- * @param[in,out] idx Current fill index; advanced past the run (non-NULL).
- * @param[in]     num Continuation code (16..19).
- * @return ra8_err_t status.
- * @retval k_ra8_ok                    The run was appended.
- * @retval k_ra8_err_validation_failed A copy-previous run with no previous entry.
- * @pre @p tbl holds ::k_ra8_rar5_huff_total writable bytes.
- * @pre `*idx <= k_ra8_rar5_huff_total`.
- * @post `*idx` advanced by the (clamped) run length.
- * @post A copy run repeats `tbl[*idx-1]`; a zero run writes zeros.
- * @note Not thread-safe.
- * @since Version 0.1.0
- */
-static ra8_err_t s_apply_run(ra8_rar5_state_t* st, uint8_t* tbl, uint32_t* idx, uint32_t num)
+/** @brief Implementation of `ra8_rar5_apply_run()` -- copy-previous / zero run append. */
+ra8_err_t ra8_rar5_apply_run(ra8_rar5_state_t* st, uint8_t* tbl, uint32_t* idx, uint32_t num)
 {
   const bool is_long =
     (num == (uint32_t)k_r5_tbl_copy_long) || (num == (uint32_t)k_r5_tbl_zero_long);
@@ -434,7 +401,7 @@ static ra8_err_t s_read_full_table(ra8_rar5_state_t* st, uint8_t* tbl)
       i += 1U;
       continue;
     }
-    const ra8_err_t e = s_apply_run(st, tbl, &i, num);
+    const ra8_err_t e = ra8_rar5_apply_run(st, tbl, &i, num);
     if (e != k_ra8_ok) {
       return e;
     }

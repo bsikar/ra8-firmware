@@ -14,8 +14,8 @@
  *
  * @par Structure
  * - LZ: ::s_decode_token classifies one main symbol into literal / match /
- *   repeat-match / filter, copying matches with ::s_copy_match; ::s_decode_stream
- *   drives the block + token loops.
+ *   repeat-match / filter, copying matches with ::ra8_rar5_copy_match;
+ *   ::s_decode_stream drives the block + token loops.
  * - Filters: ::s_apply_filters replays delta / x86 / ARM transforms post-decode.
  * - Entry: ::ra8_rar5_decompress validates its arguments, resets the state, and
  *   runs the stream to completion.
@@ -200,27 +200,8 @@ static void s_push_dist(ra8_rar5_state_t* st, uint64_t dist)
   st->old_dist[0] = dist;
 }
 
-/**
- * @brief Copy an LZ match of @p length bytes at back-distance @p dist into @p out.
- * @details Byte-by-byte self-overlapping copy (so a short distance repeats), clamped
- *          to @p unp. A distance reaching before the member start (a solid archive)
- *          or of zero is rejected.
- * @param[in,out] out      Output/window buffer (non-NULL).
- * @param[in,out] out_pos  Current output length; advanced by the copy (non-NULL).
- * @param[in]     unp      Target unpacked length (copy clamp).
- * @param[in]     length   Match length in bytes.
- * @param[in]     dist     Back-distance in bytes.
- * @return Whether the match was valid and copied.
- * @retval true  The match copied (possibly clamped at @p unp).
- * @retval false @p dist is zero or reaches before the member start.
- * @pre @p out holds at least @p unp writable bytes.
- * @pre `*out_pos <= unp`.
- * @post On true, `*out_pos` advanced by up to @p length.
- * @post On false no byte is written.
- * @note Not thread-safe.
- * @since Version 0.1.0
- */
-static bool s_copy_match(uint8_t* out, size_t* out_pos, size_t unp, uint32_t length, uint64_t dist)
+/** @brief Implementation of `ra8_rar5_copy_match()` -- self-overlapping back-copy. */
+bool ra8_rar5_copy_match(uint8_t* out, size_t* out_pos, size_t unp, uint32_t length, uint64_t dist)
 {
   size_t pos = *out_pos;
   if (dist == 0U || dist > (uint64_t)pos) {
@@ -300,24 +281,8 @@ static ra8_err_t s_read_filter(ra8_rar5_state_t* st, size_t out_pos)
   return k_ra8_ok;
 }
 
-/**
- * @brief Apply the per-channel byte-delta filter over @p d.
- * @details De-interleaves @p channels streams and runs a running byte-sum per
- *          channel. Bounded by ::k_ra8_rar5_delta_scratch; a longer range is left
- *          untouched (comic pages never carry a delta filter).
- * @param[in,out] st       Decoder state (delta scratch, non-NULL).
- * @param[in,out] d        Output range to transform (non-NULL).
- * @param[in]     len      Range length in bytes.
- * @param[in]     channels Delta channel count (1..32).
- * @return Nothing.
- * @pre @p d holds @p len writable bytes.
- * @pre @p st::delta holds ::k_ra8_rar5_delta_scratch bytes.
- * @post On a supported length, `d` holds the delta-decoded range.
- * @post On an over-long range or zero channels, `d` is unchanged.
- * @note Not thread-safe.
- * @since Version 0.1.0
- */
-static void s_filter_delta(ra8_rar5_state_t* st, uint8_t* d, uint32_t len, uint32_t channels)
+/** @brief Implementation of `ra8_rar5_filter_delta()` -- per-channel running byte-sum. */
+void ra8_rar5_filter_delta(ra8_rar5_state_t* st, uint8_t* d, uint32_t len, uint32_t channels)
 {
   if (len > (uint32_t)k_ra8_rar5_delta_scratch || channels == 0U) {
     return;
@@ -458,7 +423,7 @@ s_apply_one_filter(ra8_rar5_state_t* st, uint8_t* out, size_t unp, const ra8_rar
   }
   uint8_t* d = &out[(size_t)f->start];
   if (f->type == (uint8_t)k_ra8_rar5_filter_delta) {
-    s_filter_delta(st, d, len, f->channels);
+    ra8_rar5_filter_delta(st, d, len, f->channels);
   } else if (f->type == (uint8_t)k_ra8_rar5_filter_e8) {
     s_filter_x86(d, len, f->start, false);
   } else if (f->type == (uint8_t)k_ra8_rar5_filter_e8e9) {
@@ -520,7 +485,7 @@ s_do_match(ra8_rar5_state_t* st, uint32_t slot, uint8_t* out, size_t* out_pos, s
   length                = s_adjust_length(length, dist);
   s_push_dist(st, dist);
   st->last_length = length;
-  if (!s_copy_match(out, out_pos, unp, length, dist)) {
+  if (!ra8_rar5_copy_match(out, out_pos, unp, length, dist)) {
     return k_ra8_err_validation_failed;
   }
   return k_ra8_ok;
@@ -557,7 +522,7 @@ s_do_repdist(ra8_rar5_state_t* st, uint32_t slot, uint8_t* out, size_t* out_pos,
   const uint32_t lenslot = ra8_rar5_decode_num(st, &st->rd);
   const uint32_t length  = s_slot_to_length(st, lenslot);
   st->last_length        = length;
-  if (!s_copy_match(out, out_pos, unp, length, dist)) {
+  if (!ra8_rar5_copy_match(out, out_pos, unp, length, dist)) {
     return k_ra8_err_validation_failed;
   }
   return k_ra8_ok;
@@ -586,7 +551,7 @@ static ra8_err_t s_do_replast(ra8_rar5_state_t* st, uint8_t* out, size_t* out_po
   if (st->last_length == 0U) {
     return k_ra8_ok;
   }
-  if (!s_copy_match(out, out_pos, unp, st->last_length, st->old_dist[0])) {
+  if (!ra8_rar5_copy_match(out, out_pos, unp, st->last_length, st->old_dist[0])) {
     return k_ra8_err_validation_failed;
   }
   return k_ra8_ok;
@@ -673,18 +638,23 @@ static ra8_err_t s_open_block(ra8_rar5_state_t* st, uint64_t* end_bit, bool* las
 
 /**
  * @brief Drive the block + token loops until @p unp bytes are produced.
- * @details Reads a new block header whenever the previous block's bits are exhausted,
- *          decoding tokens into @p out until the output is complete, the stream ends,
- *          or the packed member (plus a small pad) is fully consumed.
+ * @details Opens the first compressed block, then reads a fresh block header
+ *          whenever the current block's bits are exhausted, decoding tokens into
+ *          @p out until the output is complete, the last block ends, or the packed
+ *          member (plus a small pad) is fully consumed. Opening the first block
+ *          before the loop keeps the in-loop block check single-condition -- the
+ *          entry-time `!have_block` / `consumed >= block_end` pair was correlated
+ *          (on the first pass `block_end` is still zero) and so could never reach
+ *          MC/DC; hoisting the open removes that correlated compound decision.
  * @param[in,out] st      Decoder state (non-NULL).
  * @param[in,out] out     Output/window buffer (non-NULL).
  * @param[in]     out_cap Capacity of @p out in bytes.
- * @param[in]     unp     Target unpacked length (<= @p out_cap).
+ * @param[in]     unp     Target unpacked length (<= @p out_cap, > 0).
  * @return ra8_err_t status.
  * @retval k_ra8_ok                    Exactly @p unp bytes were produced.
  * @retval k_ra8_err_validation_failed Truncated / malformed stream, short output.
  * @pre @p out holds @p out_cap writable bytes, @p unp <= @p out_cap.
- * @pre @p st is a freshly reset decoder state.
+ * @pre @p st is a freshly reset decoder state and @p unp > 0.
  * @post On k_ra8_ok, `out[0..unp)` holds the decoded bytes.
  * @post On error the output is incomplete.
  * @note Not thread-safe.
@@ -693,24 +663,26 @@ static ra8_err_t s_open_block(ra8_rar5_state_t* st, uint64_t* end_bit, bool* las
 static ra8_err_t s_decode_stream(ra8_rar5_state_t* st, uint8_t* out, size_t out_cap, size_t unp)
 {
   (void)out_cap;
-  size_t         out_pos    = 0U;
-  bool           have_block = false;
-  bool           last       = false;
-  uint64_t       block_end  = 0U;
+  size_t         out_pos   = 0U;
+  bool           last      = false;
+  uint64_t       block_end = 0U;
   const uint64_t cap_bits = (st->packlen * (uint64_t)k_r5_byte_bits) + (uint64_t)k_r5_max_pad_bits;
+  ra8_err_t      e        = s_open_block(st, &block_end, &last);
+  if (e != k_ra8_ok) {
+    return e;
+  }
   while (out_pos < unp && st->consumed <= cap_bits) { /* bound: consumed strictly rises */
-    if (!have_block || st->consumed >= block_end) {
-      if (have_block && last) {
+    if (st->consumed >= block_end) {
+      if (last) {
         break;
       }
-      const ra8_err_t e = s_open_block(st, &block_end, &last);
+      e = s_open_block(st, &block_end, &last);
       if (e != k_ra8_ok) {
         return e;
       }
-      have_block = true;
       continue;
     }
-    const ra8_err_t e = s_decode_token(st, out, &out_pos, unp);
+    e = s_decode_token(st, out, &out_pos, unp);
     if (e != k_ra8_ok) {
       return e;
     }

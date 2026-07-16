@@ -31,6 +31,7 @@
  */
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "ra8_err.h"
@@ -261,6 +262,113 @@ ra8_err_t ra8_rar5_read_block_header(ra8_rar5_state_t* st, r5_block_t* b);
  * @since Version 0.1.0
  */
 ra8_err_t ra8_rar5_read_tables(ra8_rar5_state_t* st);
+
+/**
+ * @brief Copy an LZ match of @p length bytes at back-distance @p dist into @p out.
+ * @details Byte-by-byte self-overlapping copy (so a short distance repeats), clamped
+ *          to @p unp. A distance reaching before the member start (a solid archive)
+ *          or of zero is rejected. Defined in `ra8_rar5.c`; declared here so the host
+ *          tests can drive its guard/clamp legs directly (see the MC/DC note).
+ * @param[in,out] out      Output/window buffer (non-NULL).
+ * @param[in,out] out_pos  Current output length; advanced by the copy (non-NULL).
+ * @param[in]     unp      Target unpacked length (copy clamp).
+ * @param[in]     length   Match length in bytes.
+ * @param[in]     dist     Back-distance in bytes.
+ * @return Whether the match was valid and copied.
+ * @retval true  The match copied (possibly clamped at @p unp).
+ * @retval false @p dist is zero or reaches before the member start.
+ * @pre @p out holds at least @p unp writable bytes.
+ * @pre `*out_pos <= unp`.
+ * @post On true, `*out_pos` advanced by up to @p length.
+ * @post On false no byte is written.
+ * @note Not thread-safe.
+ * @par MC/DC:
+ * Promoted from file-static so the host suite can reach both guard legs of
+ * `dist == 0 || dist > pos` (a valid stream never decodes distance 0, so that
+ * condition is only reachable by a direct call) and the `pos < unp` clamp leg of
+ * `k < length && pos < unp`. Production callers remain the LZ token helpers in
+ * `ra8_rar5.c`.
+ * @since Version 0.1.0
+ */
+bool ra8_rar5_copy_match(uint8_t* out, size_t* out_pos, size_t unp, uint32_t length, uint64_t dist);
+
+/**
+ * @brief Apply the per-channel byte-delta filter over @p d.
+ * @details De-interleaves @p channels streams and runs a running byte-sum per
+ *          channel. Bounded by ::k_ra8_rar5_delta_scratch; a longer range or a zero
+ *          channel count is left untouched (comic pages never carry a delta filter).
+ *          Defined in `ra8_rar5.c`; declared here for direct MC/DC test reach.
+ * @param[in,out] st       Decoder state (delta scratch, non-NULL).
+ * @param[in,out] d        Output range to transform (non-NULL).
+ * @param[in]     len      Range length in bytes.
+ * @param[in]     channels Delta channel count (1..32 from a stream; 0 rejected).
+ * @return Nothing.
+ * @pre @p d holds @p len writable bytes.
+ * @pre @p st::delta holds ::k_ra8_rar5_delta_scratch bytes.
+ * @post On a supported length, `d` holds the delta-decoded range.
+ * @post On an over-long range or zero channels, `d` is unchanged.
+ * @note Not thread-safe.
+ * @par MC/DC:
+ * Promoted from file-static so the host suite can reach the `channels == 0` leg of
+ * `len > k_ra8_rar5_delta_scratch || channels == 0`: the descriptor parser only
+ * ever yields channels >= 1, so a zero channel count is unreachable through the
+ * public decode path and can only be exercised by a direct call. Production callers
+ * remain ::s_apply_one_filter in `ra8_rar5.c`.
+ * @since Version 0.1.0
+ */
+void ra8_rar5_filter_delta(ra8_rar5_state_t* st, uint8_t* d, uint32_t len, uint32_t channels);
+
+/**
+ * @brief Extend @p out with @p count zero bit-lengths, bounded by @p max.
+ * @details Appends up to @p count zero entries from @p start, stopping at @p max so a
+ *          hostile run length can never overflow the array. Defined in
+ *          `ra8_rar5_tables.c`; declared here for direct MC/DC test reach.
+ * @param[in,out] out   Bit-length array being filled.
+ * @param[in]     start First index to write.
+ * @param[in]     count Zero entries to append.
+ * @param[in]     max   Array capacity (no write at/after it).
+ * @return The next write index after the appended zeros.
+ * @retval start When @p start is already at @p max.
+ * @pre @p out holds @p max writable bytes.
+ * @pre @p start <= @p max.
+ * @post `out[start .. min(start+count, max))` are zero.
+ * @post The return value is <= @p max.
+ * @note Not thread-safe.
+ * @par MC/DC:
+ * Promoted from file-static so the host suite can reach the `i < max` clamp leg of
+ * `c < count && i < max` directly, without crafting a BD length list whose zero run
+ * happens to overshoot the 20-entry array. Production caller remains
+ * ::s_read_bd_lengths in `ra8_rar5_tables.c`.
+ * @since Version 0.1.0
+ */
+uint32_t ra8_rar5_fill_zeros(uint8_t* out, uint32_t start, uint32_t count, uint32_t max);
+
+/**
+ * @brief Append one run (copy-previous or zero) to the length table.
+ * @details Reads the run length for the continuation code @p num and repeats either
+ *          the previous bit length (codes 16/17) or zero (codes 18/19). Defined in
+ *          `ra8_rar5_tables.c`; declared here for direct MC/DC test reach.
+ * @param[in,out] st  Decoder state (non-NULL).
+ * @param[in,out] tbl Length table being filled (non-NULL).
+ * @param[in,out] idx Current fill index; advanced past the run (non-NULL).
+ * @param[in]     num Continuation code (16..19).
+ * @return ra8_err_t status.
+ * @retval k_ra8_ok                    The run was appended.
+ * @retval k_ra8_err_validation_failed A copy-previous run with no previous entry.
+ * @pre @p tbl holds ::k_ra8_rar5_huff_total writable bytes.
+ * @pre `*idx <= k_ra8_rar5_huff_total`.
+ * @post `*idx` advanced by the (clamped) run length.
+ * @post A copy run repeats `tbl[*idx-1]`; a zero run writes zeros.
+ * @note Not thread-safe.
+ * @par MC/DC:
+ * Promoted from file-static so the host suite can reach the `!is_zero && *idx == 0`
+ * copy-with-no-previous leg and the `i < k_ra8_rar5_huff_total` clamp leg of
+ * `c < count && i < k_ra8_rar5_huff_total` directly. The two `||` decisions
+ * (is_long / is_zero) stay covered by the ::ra8_rar5_read_tables round-trip.
+ * Production caller remains ::s_read_full_table in `ra8_rar5_tables.c`.
+ * @since Version 0.1.0
+ */
+ra8_err_t ra8_rar5_apply_run(ra8_rar5_state_t* st, uint8_t* tbl, uint32_t* idx, uint32_t num);
 
 #ifdef __cplusplus
 }
