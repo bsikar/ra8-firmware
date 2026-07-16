@@ -123,7 +123,8 @@ static inline void internal_crc_feed_words(const uint8_t* data, uint32_t len)
     const uint32_t packed = (uint32_t)data[base + 0U] | ((uint32_t)data[base + 1U] << 8U) |
                             ((uint32_t)data[base + 2U] << 16U) |
                             ((uint32_t)data[base + 3U] << k_crc_shift_byte3);
-    reg->CRCDIR           = packed;
+    /* HUM Ch 48.2.3 "CRCDIR : CRC Data Input Register" p 3183 */
+    reg->CRCDIR = packed;
   }
 }
 
@@ -148,6 +149,7 @@ static inline void internal_crc_feed_bytes(const uint8_t* data, uint32_t len)
 {
   volatile r_crc_regs_t* reg = ra8_crc();
   for (uint32_t i = 0U; i < len; i++) {
+    /* HUM Ch 48.2.3 "CRCDIR_BY : CRC Data Input Register" p 3183 */
     reg->CRCDIR_BY = data[i];
   }
 }
@@ -158,14 +160,14 @@ ra8_err_t ra8_crc_init(ra8_crc_poly_t poly)
   const ra8_err_t mst_err = ra8_mstp_enable(k_ra8_mstp_crc);
   RA8_RETURN_ON_ERROR(mst_err, s_tag, "crc_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
-  volatile r_crc_regs_t* reg = ra8_crc();
+  volatile r_crc_regs_t* reg    = ra8_crc();
+  const uint8_t          crccr0 = (uint8_t)((uint8_t)poly | k_ra8_crccr0_dorclr);
   /* HUM Ch 48.2.1 "CRCCR0 : CRC Control Register 0" p 3181.
    * Mirror FSP `R_CRC_Open`: write GPS plus DORCLR=1 in a single
    * store so any stale CRCDOR value from a prior session is cleared
    * atomically with the polynomial select. LMS defaults to 0
    * (LSB-first); use ra8_crc_set_bit_order() to change. */
-  const uint8_t crccr0 = (uint8_t)((uint8_t)poly | k_ra8_crccr0_dorclr);
-  reg->CRCCR0          = crccr0;
+  reg->CRCCR0 = crccr0;
   /* HUM Ch 48.2.2 "CRCCR1 : CRC Control Register 1" p 3182 */ /* snoop off. */
   reg->CRCCR1 = 0U;
   ra8_log_info_val(s_tag, "crc_init poly", (uint32_t)poly);
@@ -203,8 +205,13 @@ ra8_err_t ra8_crc_compute(const uint8_t* data, uint32_t len, uint32_t* out_crc)
    * / CCITT keep the chip's natural init = 0 (HUM example p 3185 shows
    * the same flow). */
   if (is_32_bit) {
+    /* HUM Ch 48.2.4 "CRCDOR : CRC Data Output Register" p 3184 -- pre-seed
+     * CRCDOR with the CRC-32 init value before clocking data through (see
+     * the decision comment above for the init / xor-out rationale). */
     reg->CRCDOR = (uint32_t)k_ra8_crc_32bit_seed;
     internal_crc_feed_words(data, len);
+    /* HUM Ch 48.2.4 "CRCDOR : CRC Data Output Register" p 3184 -- read the
+     * running result back and apply the CRC-32 xor-out. */
     *out_crc = reg->CRCDOR ^ (uint32_t)k_ra8_crc_32bit_seed;
     return k_ra8_ok;
   }
