@@ -1,7 +1,7 @@
 /**
  * @file ra8_tileatlas_produce.h
- * @brief Import-time transcode producer: JPEG/PNG -> RTA1 band-tile atlas in
- *        bounded RAM (#231).
+ * @brief Import-time transcode producer: JPEG/PNG/WebP -> RTA1 band-tile atlas
+ *        in bounded RAM (#231, #290 normalize-on-import).
  * @ingroup grp_ereader
  *
  * @par Tag
@@ -9,15 +9,32 @@
  *
  * @details
  * `ra8_tileatlas_produce()` turns an arbitrary encoded source image into the
- * RTA1 atlas (`ra8_tileatlas.h`) in **one forward pass** with a **constant
- * RAM high-water**: the source arrives through a pull callback (never held
- * whole), the decoder emits pixel rows in bounded stripes (never the whole
- * frame), a band accumulator gathers one tile row at a time, each tile is
- * cut + intra-coded + appended to the sink, and the index/footer trail the
- * data so the sink can be append-only (an SD file, a memstore over SDRAM).
+ * RTA1 atlas (`ra8_tileatlas.h`) -- the single on-device normalized format --
+ * so render time only ever touches one codec regardless of source. The tile
+ * codec is lossless DEFLATE (never a second lossy re-encode of the decoded
+ * pixels), so no source ever loses quality on import.
+ *
+ * The **streaming** formats (JPEG, PNG) transcode in **one forward pass** with
+ * a **constant RAM high-water**: the source arrives through a pull callback
+ * (never held whole), the decoder emits pixel rows in bounded stripes (never
+ * the whole frame), a band accumulator gathers one tile row at a time, each
+ * tile is cut + intra-coded + appended to the sink, and the index/footer trail
+ * the data so the sink can be append-only (an SD file, a memstore over SDRAM).
  * A page whose decoded size exceeds SDRAM transcodes without ever being
  * resident -- the memory ceiling is the caller's fixed work arena plus the
  * caller's buffers, independent of the image.
+ *
+ * **WebP** (VP8 / VP8L, via the `ra8_webp` facade over libwebp) is inherently
+ * a whole-frame codec: its lossless mode uses 2-D backward references, so it
+ * cannot be decoded with a bounded output window the way JPEG/PNG stripe out.
+ * A WebP source is therefore normalized through the same RTA1 tile path but at
+ * a whole-frame memory cost: the caller supplies a second `webp_work` arena
+ * (sized by `ra8_tileatlas_webp_work_bytes()`) that holds the compressed
+ * source, the decoded RGBA frame and libwebp's scratch. `webp_work == NULL`
+ * fail-closed rejects any WebP source as `k_ra8_err_not_supported`, so a
+ * streaming-only caller pays nothing. The RTA1 output is byte-identical to the
+ * atlas produced from a lossless PNG of the same pixels: import genuinely
+ * converges every source codec on one representation.
  *
  * Resident working set (all carved from the caller's single `work` arena;
  * `ra8_tileatlas_work_bytes()` computes the exact requirement):
@@ -27,10 +44,11 @@
  *   - one band (`width * tile_h * bpp`), one tile stage, one compressed
  *     tile bound, and the tile index (8 bytes per tile).
  *
- * Sources: baseline JPEG (grayscale -> 1 bpp, colour -> 3 bpp RGB888) and
- * PNG (8-bit gray -> 1 bpp; RGB / palette -> 3 bpp; gray+alpha / RGBA /
- * palette+tRNS -> 4 bpp). Anything else -- progressive JPEG, 16-bit or
- * interlaced PNG, other formats -- is rejected fail-closed
+ * Sources: baseline JPEG (grayscale -> 1 bpp, colour -> 3 bpp RGB888), PNG
+ * (8-bit gray -> 1 bpp; RGB / palette -> 3 bpp; gray+alpha / RGBA /
+ * palette+tRNS -> 4 bpp) and WebP (VP8 lossy / VP8L lossless -> 4 bpp RGBA,
+ * when a `webp_work` arena is supplied). Anything else -- progressive JPEG,
+ * 16-bit or interlaced PNG, other formats -- is rejected fail-closed
  * (`k_ra8_err_not_supported`); the caller falls back to the whole-decode
  * path for images small enough to afford it. **No downscaling, ever**:
  * output pixels are the decoded pixels, full resolution, lossless.
@@ -107,22 +125,33 @@ typedef ra8_err_t (*ra8_tileatlas_sink_fn)(void* ctx, const uint8_t* buf, size_t
  *          `work`; size it with `ra8_tileatlas_work_bytes()` over the same
  *          caps. The arena is the RAM high-water by construction.
  *
+ * `webp_work`/`webp_work_cap` are the *optional* whole-frame arena for WebP
+ * sources (`ra8_tileatlas_webp_work_bytes()` sizes it): the streaming JPEG/PNG
+ * pixel path always lives in `work`, while a WebP decode additionally needs the
+ * compressed source, the decoded RGBA frame and libwebp scratch, none of which
+ * fit the streaming budget. Leave `webp_work` NULL to fail-closed reject WebP
+ * sources (a streaming-only caller then needs no whole-frame RAM).
+ *
  * @invariant `tile_w`/`tile_h` are non-zero and `work` covers `work_cap`.
+ * @invariant `webp_work` is NULL, or it covers `webp_work_cap` bytes.
  * @see ra8_tileatlas_work_bytes()
+ * @see ra8_tileatlas_webp_work_bytes()
  * @since 0.1.0
  */
 typedef struct {
-  ra8_tileatlas_pull_fn pull;       /**< Encoded-source byte stream.                  */
-  void*                 pull_ctx;   /**< Context for `pull`.                          */
-  ra8_tileatlas_sink_fn sink;       /**< Atlas byte sink (append-only).               */
-  void*                 sink_ctx;   /**< Context for `sink`.                          */
-  uint16_t              tile_w;     /**< Tile width, pixels (>= 1).                   */
-  uint16_t              tile_h;     /**< Tile height, pixels (>= 1).                  */
-  uint8_t               codec;      /**< ::ra8_tileatlas_codec_t member.              */
-  uint16_t              max_width;  /**< Width budget cap (0 = format cap).           */
-  uint16_t              max_height; /**< Height budget cap (0 = format cap).          */
-  uint8_t*              work;       /**< Single working arena (all state lives here). */
-  size_t                work_cap;   /**< Arena size; see ra8_tileatlas_work_bytes().  */
+  ra8_tileatlas_pull_fn pull;          /**< Encoded-source byte stream.                   */
+  void*                 pull_ctx;      /**< Context for `pull`.                           */
+  ra8_tileatlas_sink_fn sink;          /**< Atlas byte sink (append-only).                */
+  void*                 sink_ctx;      /**< Context for `sink`.                           */
+  uint16_t              tile_w;        /**< Tile width, pixels (>= 1).                    */
+  uint16_t              tile_h;        /**< Tile height, pixels (>= 1).                   */
+  uint8_t               codec;         /**< ::ra8_tileatlas_codec_t member.               */
+  uint16_t              max_width;     /**< Width budget cap (0 = format cap).            */
+  uint16_t              max_height;    /**< Height budget cap (0 = format cap).           */
+  uint8_t*              work;          /**< Streaming working arena (JPEG/PNG + tiles).   */
+  size_t                work_cap;      /**< Arena size; see ra8_tileatlas_work_bytes().   */
+  uint8_t*              webp_work;     /**< Whole-frame arena for WebP; NULL disables it. */
+  size_t                webp_work_cap; /**< WebP arena size; see webp_work_bytes().       */
 } ra8_tileatlas_produce_cfg_t;
 
 /**
@@ -158,20 +187,63 @@ typedef struct {
 ra8_tileatlas_work_bytes(uint16_t max_width, uint16_t max_height, uint16_t tile_w, uint16_t tile_h);
 
 /**
- * @brief Transcode one encoded JPEG/PNG source into an RTA1 atlas (#231).
+ * @brief Compute the whole-frame `webp_work` arena a WebP source needs (#290).
  *
  * @details
- * Sniffs the source magic, streams it through the matching bounded stripe
- * decoder, accumulates rows into one band, cuts + encodes each tile through
- * the configured codec, and appends header / tiles / index / footer to the
- * sink in one forward pass. See the file comment for the resident-set
- * breakdown. On success `out_info` describes the finished atlas exactly as
- * `ra8_tileatlas_parse()` would report it.
+ * A WebP transcode cannot stream (its lossless mode back-references the whole
+ * frame), so it holds three regions at once, all carved from `webp_work`: the
+ * compressed source (up to @p max_src_bytes), the decoded RGBA8888 frame
+ * (`max_width * max_height * 4`) and libwebp's decode scratch (a further
+ * whole-frame-scale allocation plus slack). Sizing with the same caps used in
+ * the produce config guarantees `ra8_tileatlas_produce()` never fails on WebP
+ * arena exhaustion for an in-cap WebP source. This is *separate* from
+ * `ra8_tileatlas_work_bytes()`: that arena stays small (the streaming tile
+ * path); only WebP-capable callers pay the whole-frame cost here.
  *
- * The whole decoded image is never resident: every internal buffer -- the
- * decoder window/stripe set, the band, the tile stage, the compressor state
- * and the index -- is carved from `work`, so the transcode's RAM high-water
- * is exactly `work_cap` bytes of working state, independent of the image.
+ * @param[in] max_width     Largest WebP source width to support (>= 1).
+ * @param[in] max_height    Largest WebP source height to support (>= 1).
+ * @param[in] max_src_bytes Largest compressed WebP byte length to support (>= 1).
+ *
+ * @return Required `webp_work` size in bytes, or 0 on nonsense / out-of-cap
+ *         inputs.
+ * @retval 0   A dimension is zero or exceeds the WebP per-axis cap (8192), the
+ *             source-byte cap is zero, or the total exceeds the u32 arena cap.
+ * @retval >0  Byte size to allocate for `webp_work`.
+ *
+ * @pre Arguments describe the caller's real WebP budget caps.
+ * @pre The same `max_width`/`max_height` bound the produce config caps.
+ * @post No state mutated.
+ * @post A `webp_work_cap` of the returned size never exhausts mid-decode for an
+ *       in-cap WebP source of at most @p max_src_bytes compressed bytes.
+ * @note Thread-safe (pure).
+ * @see ra8_tileatlas_produce()
+ * @since 0.1.0
+ */
+[[nodiscard]] uint32_t
+ra8_tileatlas_webp_work_bytes(uint16_t max_width, uint16_t max_height, uint32_t max_src_bytes);
+
+/**
+ * @brief Transcode one encoded JPEG/PNG/WebP source into an RTA1 atlas (#231,
+ *        #290).
+ *
+ * @details
+ * Sniffs the source magic (JPEG SOI, PNG signature, or WebP RIFF/WEBP), then:
+ *   - JPEG/PNG stream through the matching bounded stripe decoder, so the whole
+ *     decoded image is never resident -- every internal buffer (decoder
+ *     window/stripe set, band, tile stage, compressor state, index) is carved
+ *     from `work`, and the RAM high-water is exactly `work_cap` bytes,
+ *     independent of the image.
+ *   - WebP decodes whole-frame through the `ra8_webp` facade into the caller's
+ *     `webp_work` arena (source + RGBA frame + libwebp scratch), then bands
+ *     that frame through the identical tile path. `webp_work == NULL` rejects
+ *     WebP with `k_ra8_err_not_supported`.
+ *
+ * Either way the rows are accumulated into one band, each tile is cut +
+ * encoded through the configured (lossless) codec, and header / tiles / index /
+ * footer are appended to the sink in one forward pass. On success `out_info`
+ * describes the finished atlas exactly as `ra8_tileatlas_parse()` would report
+ * it, and the atlas is byte-identical across source codecs that decode to the
+ * same pixels.
  *
  * @param[in]  cfg      Producer configuration (see the struct contract).
  * @param[out] out_info Receives the finished atlas geometry.
@@ -181,11 +253,13 @@ ra8_tileatlas_work_bytes(uint16_t max_width, uint16_t max_height, uint16_t tile_
  * @retval k_ra8_err_null_ptr          A required pointer in @p cfg is NULL.
  * @retval k_ra8_err_invalid_arg       Zero tile geometry or unknown codec.
  * @retval k_ra8_err_invalid_size      Source exceeds the budget caps, the
- *                                     grid exceeds the tile cap, or `work`
- *                                     is too small (fail-closed).
- * @retval k_ra8_err_not_supported     Source format not JPEG/PNG, or an
- *                                     unsupported variant (progressive,
- *                                     interlaced, 16-bit, ...).
+ *                                     grid exceeds the tile cap, or `work` /
+ *                                     `webp_work` is too small (fail-closed).
+ * @retval k_ra8_err_not_supported     Source format not JPEG/PNG/WebP, a WebP
+ *                                     source with no `webp_work` arena, a WebP
+ *                                     axis over the 8192 cap, or an unsupported
+ *                                     variant (progressive, interlaced,
+ *                                     16-bit, ...).
  * @retval k_ra8_err_protocol_error    Malformed / truncated / hostile
  *                                     source structure.
  * @retval k_ra8_err_validation_failed Pixel-stream inconsistency (row
