@@ -777,6 +777,26 @@ typedef enum : uint8_t {
   k_ra8_board_mikrobus_iic_b_channel = 0U,
 } ra8_board_mikrobus_iic_channel_t;
 
+/**
+ * @brief SCI channel that backs the MikroBUS J22.3/J22.4 UART pins.
+ *
+ * @details
+ * The MikroBUS ``RX``/``TX`` pads (::k_ra8_board_mikrobus_rx = P808 /
+ * ::k_ra8_board_mikrobus_tx = P809, UM Table 21 p 29) are the RXD7 / TXD7
+ * alternate-function pair, i.e. SCI channel 7, enabled by SW4-4 ON. A
+ * MikroE cellular Click (LTE IoT / 4G LTE / NB-IoT, all AT-command
+ * modems) presents its UART on exactly these MikroBUS pins, so firmware
+ * that drives an AT modem should call ``ra8_sci_init`` with this channel.
+ *
+ * Exposed as an enum (not a magic ``7``) so applications reference the
+ * channel through the board layer rather than re-encoding the pin-mux
+ * mapping. Distinct from ::k_ra8_board_uart_console_sci_channel (SCI8,
+ * the J-Link OB VCOM debug console).
+ */
+typedef enum : uint8_t {
+  k_ra8_board_mikrobus_uart_sci_channel = 7U, /**< P808/P809 -> RXD7/TXD7 = SCI7 (SW4-4 ON). */
+} ra8_board_mikrobus_uart_channel_t;
+
 /* =============================================================================
  * 6c. Project SW4 layout (UM Section 4.3 Table 3 p 16 + Table 18 p 26)
  * =============================================================================
