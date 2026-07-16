@@ -351,6 +351,36 @@ REGISTRY: tuple[Component, ...] = (
         ),
     ),
     Component(
+        key="libwebp",
+        name="libwebp (WebP decoder)",
+        version="1.5.0",
+        ctype="library",
+        group="webmproject",
+        url="https://chromium.googlesource.com/webm/libwebp",
+        path="libs/third_party/libwebp",
+        provenance=PROV_COMMIT_PINNED,
+        description="WebP (VP8 / VP8L) decode-only codec for webtoon/manga raster (via ra8_webp).",
+        purl="pkg:github/webmproject/libwebp@v1.5.0",
+        spdx="BSD-3-Clause",
+        license_note="BSD-3-Clause plus an additional PATENTS grant (both mirrored in-tree).",
+        license_file="libs/third_party/libwebp/COPYING",
+        upstream_commit="a4d7a715337ded4451fec90ff8ce79728e04126c",
+        modified=True,
+        extra_notes=(
+            "DECODE-ONLY subset (#290): upstream's libwebpdecoder source set "
+            "(src/dec + the decode subset of src/dsp + src/utils COMMON) plus the "
+            "headers those TUs include; the encoder, mux/demux, sharpyuv and CLI "
+            "tools are not vendored. Byte-identical to release tag v1.5.0.",
+            "MODIFIED SOUP: src/utils/utils.c carries one RA8 LOCAL PATCH that, "
+            "under -DRA8_WEBP_USE_ARENA, routes WebPSafe{Malloc,Calloc,Free} "
+            "through the heap-free ra8_webp bump arena (NASA P10 Rule 3). See "
+            "docs/SOUP/libwebp.md.",
+            "Additional attribution files: libs/third_party/libwebp/PATENTS "
+            "(IP-rights grant) and libs/third_party/libwebp/AUTHORS.",
+            "Ships v1.5.0 which carries the CVE-2023-4863 VP8L fix.",
+        ),
+    ),
+    Component(
         key="tinyxml2",
         name="TinyXML-2",
         version="11.0.0",

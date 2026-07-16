@@ -71,6 +71,7 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | litehtml | git `8836bc1b` (post-v0.9 dev snapshot) | BSD-3-Clause | `libs/third_party/litehtml/` | <https://github.com/litehtml/litehtml> |
 | miniz | 11.0.2 | MIT (zlib-style) | `libs/third_party/miniz/` | <https://github.com/richgel999/miniz> |
 | stb (stb_image + stb_truetype) | image 2.30 / truetype 1.26 | MIT OR Unlicense (public domain) | `libs/third_party/stb/` | <https://github.com/nothings/stb> |
+| libwebp (decode-only, **patched**) | 1.5.0 | BSD-3-Clause (+ PATENTS grant) | `libs/third_party/libwebp/` | <https://chromium.googlesource.com/webm/libwebp> |
 | TinyXML-2 (**patched**) | 11.0.0 | Zlib | `libs/third_party/tinyxml2/` | <https://github.com/leethomason/tinyxml2> |
 | TFLite-micro | git `fddd3707` | Apache-2.0 | `libs/third_party/tflite-micro/` | <https://github.com/tensorflow/tflite-micro> |
 | FlatBuffers | 25.9.23 | Apache-2.0 | `libs/third_party/flatbuffers/` | <https://github.com/google/flatbuffers> |
@@ -80,12 +81,13 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | Renesas BLE controller patch (**not vendored**) | FSP (Renesas SLA) | Renesas SLA | `libs/third_party/fsp_blobs/ble_patch/` (absent) | <https://github.com/renesas/fsp> |
 | Literata (**bundled font**) | 3.103 | OFL-1.1 | `libs/fonts/Literata-Regular.ttf` | <https://github.com/googlefonts/literata> |
 
-Counts: **16 vendored source components** + **1 blob tree** (`fsp_blobs/`, holding
+Counts: **17 vendored source components** + **1 blob tree** (`fsp_blobs/`, holding
 the vendored RSIP-E50D firmware and the absent BLE patch) + **1 bundled font
-asset**. TinyXML-2 carries a local in-tree patch (see below), so it is
-*modified* SOUP. The four ML-stack components (TFLite-micro, FlatBuffers,
+asset**. TinyXML-2 and libwebp each carry a local in-tree patch (see below), so
+both are *modified* SOUP. The four ML-stack components (TFLite-micro, FlatBuffers,
 gemmlowp, ruy) and the two dev-branch snapshots (Apache NimBLE, litehtml)
-are commit-pinned and unmodified. Separately, **Arm Ethos-U
+are commit-pinned and unmodified; libwebp is commit-pinned (release tag
+`v1.5.0`) but modified (one allocator-fronting patch). Separately, **Arm Ethos-U
 Vela** is a build-time host tool (pinned at `tools/vela/requirements.txt`),
 linked into nothing -- see the build-tools note below and
 [`docs/SOUP/vela.md`](docs/SOUP/vela.md).
@@ -95,10 +97,12 @@ linked into nothing -- see the build-tools note below and
 ## Provenance and integrity
 
 Only the Renesas RSIP blob is pinned to an upstream commit with an integrity
-hash. Seven components carry an upstream commit pin (the ML stack, the RSIP
-blob, and the NimBLE / litehtml dev snapshots -- the latter two recovered by
+hash. Eight components carry an upstream commit pin (the ML stack, the RSIP
+blob, the NimBLE / litehtml dev snapshots -- the latter two recovered by
 fingerprinting the vendored trees against their upstream histories, each a
-byte-identical single-commit match). The remaining ten source components'
+byte-identical single-commit match -- and libwebp, pinned to release tag
+`v1.5.0` and byte-identical except its one allocator-fronting patch). The
+remaining ten source components'
 versions are *inferred from an in-tree header* with no upstream commit or
 `SHA256SUMS` manifest recorded -- the open **T5-09** finding; those trees
 are not independently reproducible or tamper-verifiable yet.
@@ -111,6 +115,7 @@ are not independently reproducible or tamper-verifiable yet.
 | miniz | `MZ_VERSION` | none | none | version only |
 | TinyXML-2 | `TIXML2_*_VERSION` | none | none | version only (+patch) |
 | stb | header-tail version comments | none | none | version only |
+| libwebp (decode-only) | release tag `v1.5.0` (byte-identical except 1 patched TU) | `a4d7a715337ded4451fec90ff8ce79728e04126c` | none | **commit-pinned** (+patch) |
 | Apache NimBLE | tree fingerprint vs upstream (859/859 files byte-identical) | `8b6f3e819118a1839e5f238bfe1797d64878dc3d` | none | **commit-pinned** |
 | litehtml | tree fingerprint vs upstream (215/215 files byte-identical) | `8836bc1bc35ca0cfd71dc0386ef841d5cbc3bd5e` | none | **commit-pinned** |
 | TFLite-micro | commit pin (lean subset) | `fddd3707a3c5733af4cb866f18650441e6712504` | none | **commit-pinned** |
@@ -153,6 +158,12 @@ below); this section reproduces the copyright line and points to that text.
   (nothings.org). The license text lives ONLY in the tails of
   `stb_image.h` / `stb_truetype.h` -- there is no standalone `LICENSE` file
   in `libs/third_party/stb/` (see Open items).
+- **libwebp** (decode-only) -- BSD-3-Clause. "Copyright (c) 2010, Google Inc.
+  All rights reserved." Text: `libs/third_party/libwebp/COPYING`; the
+  additional-IP-rights grant is `libs/third_party/libwebp/PATENTS` and the
+  contributor list is `libs/third_party/libwebp/AUTHORS`. Modified SOUP: one
+  allocator-fronting patch in `src/utils/utils.c` (see
+  [`docs/SOUP/libwebp.md`](docs/SOUP/libwebp.md)).
 - **TinyXML-2** -- zlib. Lee Thomason. Text:
   `libs/third_party/tinyxml2/LICENSE.txt`.
 - **TFLite-micro** -- Apache-2.0. "Copyright The TensorFlow Authors."

@@ -26,6 +26,7 @@ basis.
 | litehtml        | 0.9+dev git `8836bc1b` | Yuri Kobets / community     | [litehtml.md](litehtml.md)         |
 | miniz           | 11.0.2   | Rich Geldreich / RAD        | [miniz.md](miniz.md)               |
 | stb             | image v2.30 / truetype v1.26 | Sean Barrett | [stb.md](stb.md)              |
+| libwebp (decode) | 1.5.0   | Google / WebM Project       | [libwebp.md](libwebp.md)           |
 | TinyXML-2       | 11.0.0   | Lee Thomason / community    | [tinyxml2.md](tinyxml2.md)         |
 | TFLite-micro    | git `fddd3707` | Google / TensorFlow   | [tflite-micro.md](tflite-micro.md) |
 | FlatBuffers     | 25.9.23  | Google                      | [flatbuffers.md](flatbuffers.md)   |
@@ -56,6 +57,9 @@ Vela** -- [vela.md](vela.md) (pinned at `tools/vela/requirements.txt`).
 - **miniz** -- Deflate / inflate / ZIP support for EPUB unpacking.
 - **stb** -- PNG / JPEG decoding (`stb_image`) and TTF rasterization
   (`stb_truetype`) for the EPUB reader.
+- **libwebp** (decode-only) -- WebP (VP8 / VP8L) decoding for webtoon / manga
+  raster content, reached through the `libs/ra8_webp/` facade. Not yet wired
+  into the raster decode dispatch (that is #289).
 - **TinyXML-2** -- XML parser for EPUB container metadata.
 - **TFLite-micro** -- On-device neural-network inference runtime
   (MicroInterpreter + a lean reference-kernel set) for the RA8P1 Ethos-U55 NPU.

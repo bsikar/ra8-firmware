@@ -35,7 +35,8 @@ mkdir -p \
   "${CORPUS_ROOT}/fuzz_ra8_fs_fat" \
   "${CORPUS_ROOT}/fuzz_ra8_stb_image" \
   "${CORPUS_ROOT}/fuzz_ra8_reflow_xml" \
-  "${CORPUS_ROOT}/fuzz_ra8_stbtt"
+  "${CORPUS_ROOT}/fuzz_ra8_stbtt" \
+  "${CORPUS_ROOT}/fuzz_ra8_webp"
 
 # -----------------------------------------------------------------------------
 # fuzz_ra8_jpeg_sw -- minimal baseline JPEGs at five sizes.
@@ -319,5 +320,17 @@ printf '<package><metadata><dc:title>oops' >"${REFLOW_XML_DIR}/seed_malformed.xm
 STBTT_DIR="${CORPUS_ROOT}/fuzz_ra8_stbtt"
 cp "${ROOT}/libs/fonts/literata_latin1.ttf" "${STBTT_DIR}/seed_literata_latin1.ttf"
 printf 'OTTOnot-a-real-font\x00\x00\x00\x00' >"${STBTT_DIR}/seed_garbage.bin"
+
+# -----------------------------------------------------------------------------
+# fuzz_ra8_webp -- the four committed WebP decode fixtures (both VP8L lossless
+# and VP8 lossy give the decoder immediate coverage) plus a truncated RIFF
+# header the decoder must reject cleanly.
+# -----------------------------------------------------------------------------
+WEBP_DIR="${CORPUS_ROOT}/fuzz_ra8_webp"
+cp "${ROOT}/tests/fixtures/webp/fixture_lossless.webp" "${WEBP_DIR}/seed_lossless.webp"
+cp "${ROOT}/tests/fixtures/webp/fixture_lossy.webp"    "${WEBP_DIR}/seed_lossy.webp"
+cp "${ROOT}/tests/fixtures/webp/fixture_wide.webp"     "${WEBP_DIR}/seed_wide.webp"
+cp "${ROOT}/tests/fixtures/webp/fixture_tall.webp"     "${WEBP_DIR}/seed_tall.webp"
+printf 'RIFF\x08\x00\x00\x00WEBP' >"${WEBP_DIR}/seed_truncated.bin"
 
 echo "Seeded fuzz corpora under ${CORPUS_ROOT}/."

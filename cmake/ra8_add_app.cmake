@@ -297,6 +297,22 @@ macro(ra8_add_app)
             ${RA8_REPO_ROOT}/libs/ra8_epub/src)
     endif()
 
+    # ra8_webp decodes WebP (VP8 / VP8L) through the vendored libwebp decoder
+    # (libs/third_party/libwebp). Only the decoder subset is vendored, so a
+    # recursive *.c glob is exactly that subset. Its utils.c routes
+    # WebPSafe{Malloc,Calloc,Free} through the heap-free ra8_webp bump arena via
+    # -DRA8_WEBP_USE_ARENA (the RA8 LOCAL PATCH; applied to the SOUP TUs below),
+    # so the firmware reaches no libc malloc. ra8_webp's own .c facade/arena are
+    # globbed by the LIBS loop above; only the vendored TUs + include root are
+    # wired here. (NOTE(#289): not yet in the ra8_reflow/ra8_img raster dispatch.)
+    set(_ra8_webp_vendor "")
+    if("ra8_webp" IN_LIST _RA8_APP_LIBS)
+        file(GLOB_RECURSE _ra8_webp_vendor CONFIGURE_DEPENDS
+            ${RA8_REPO_ROOT}/libs/third_party/libwebp/src/*.c)
+        list(APPEND _ra8_lib_extra ${_ra8_webp_vendor})
+        list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/third_party/libwebp)
+    endif()
+
     # A bare "miniz" in LIBS pulls in just the vendored DEFLATE core, for apps
     # that inflate compressed blobs directly (e.g. ra8_book RBKC containers via the
     # heap-free tinfl_decompress) without ra8_epub's full ZIP + XML stack. Skipped
@@ -483,6 +499,18 @@ macro(ra8_add_app)
             ${_ra8_soup_wno_common} ${_ra8_soup_wno_c})
         target_compile_definitions(${_ra8_elf} PRIVATE
             MINIZ_NO_STDIO MINIZ_NO_TIME MINIZ_NO_ARCHIVE_APIS)
+    endif()
+
+    # The vendored libwebp decoder (SOUP): a 60+ TU codec (VP8/VP8L + the
+    # per-arch SIMD stubs) whose per-TU narrow -Wno tuning is not tractable, so
+    # it takes a blanket -w + -fno-strict-aliasing (it type-puns through byte
+    # buffers), matching tests/CMakeLists.txt. Its attacker-facing memory-safety
+    # net is the ASan/UBSan libFuzzer harness (fuzz_ra8_webp), not -Werror.
+    # -DRA8_WEBP_USE_ARENA activates the utils.c RA8 LOCAL PATCH that routes the
+    # allocator through the heap-free ra8_webp bump arena (see docs/SOUP/libwebp.md).
+    if(_ra8_webp_vendor)
+        set_source_files_properties(${_ra8_webp_vendor} PROPERTIES COMPILE_OPTIONS
+            "-w;-fno-strict-aliasing;-DRA8_WEBP_USE_ARENA")
     endif()
 
     ra8_target_enable_project_warnings(${_ra8_elf} STACK_USAGE_BYTES ${_RA8_APP_STACK_BYTES})
