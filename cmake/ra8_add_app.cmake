@@ -323,8 +323,9 @@ macro(ra8_add_app)
             list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_io/src/ra8_io_compress.c)
         endif()
         # #290 normalize-on-import: the producer normalises WebP manifest images
-        # to RTA1 too, so it calls the ra8_webp facade (ra8_tileatlas_produce.c:
-        # priv_webp_transcode). Compile the facade sources here when the app did
+        # to RTA1 too, so it calls the ra8_webp facade (the WebP arm lives in
+        # ra8_tileatlas_produce_webp.c: ra8_ta_priv_webp_transcode). Compile the
+        # facade sources here when the app did
         # not already list ra8_webp explicitly (the LIBS loop globs them then).
         # The vendored libwebp decoder itself is wired by the shared block below.
         list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/ra8_webp/inc)
