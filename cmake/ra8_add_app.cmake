@@ -307,6 +307,23 @@ macro(ra8_add_app)
             ${RA8_REPO_ROOT}/libs/ra8_epub/src)
     endif()
 
+    # ra8_tileatlas transcodes JPEG/PNG sources into RTA1 tile atlases (#231).
+    # Its PNG decoder inflates through the vendored miniz and its tile codec
+    # reuses ra8_io_compress, so wire the miniz + ra8_io includes when an app
+    # pulls in ra8_tileatlas. The miniz *implementation* TU comes from the
+    # ra8_epub block above or the bare-miniz block below -- an app using
+    # ra8_tileatlas lists one of those alongside it. The single compress TU is
+    # added directly when the app does not already link the whole ra8_io
+    # fabric.
+    if("ra8_tileatlas" IN_LIST _RA8_APP_LIBS)
+        list(APPEND _ra8_lib_inc
+            ${RA8_REPO_ROOT}/libs/third_party/miniz
+            ${RA8_REPO_ROOT}/libs/ra8_io/inc)
+        if(NOT "ra8_io" IN_LIST _RA8_APP_LIBS)
+            list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_io/src/ra8_io_compress.c)
+        endif()
+    endif()
+
     # ra8_webp decodes WebP (VP8 / VP8L) through the vendored libwebp decoder
     # (libs/third_party/libwebp). Only the decoder subset is vendored, so a
     # recursive *.c glob is exactly that subset. Its utils.c routes

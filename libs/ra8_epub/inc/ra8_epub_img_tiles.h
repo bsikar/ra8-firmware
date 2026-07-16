@@ -8,49 +8,43 @@
  * [Ring 4 / EPUB] {World: NS}
  *
  * @details
- * A full-page manga scan in an all-image EPUB inflates to tens of megabytes -- too
- * big to decode whole into the ~10 MB working set, and (`stb_image` has no region
- * decode) impossible to decode a sub-rectangle of an arbitrary JPEG/PNG on device.
- * This module supplies the two runtime pieces #231 asks for, both bounded-RAM by
- * construction and both reading off the streaming reader (`ra8_epub_open_streamed`)
- * so the whole archive is never resident:
+ * A full-page manga scan in an all-image EPUB inflates to tens of megabytes --
+ * too big to decode whole into the ~10 MB working set. This module supplies
+ * the #231 runtime pieces, all bounded-RAM by construction and all reading
+ * off the streaming reader (`ra8_epub_open_streamed`) so the whole archive is
+ * never resident:
  *
- *   1. **Tile binder** (`ra8_epub_tile_binder_*`): pages a large *display-native*
- *      image entry through ::ra8_tile_cache, decode-on-demand keyed by
- *      `(image_id, tile_x, tile_y)`. The entry is a stored (uncompressed) raster
- *      atlas (::ra8_epub_tileimg -- see the on-disk header below), so a single
- *      tile is served by a handful of positioned reads (`ra8_epub_entry_pread`)
- *      into one cache cell; resident decoded pixels stay bounded by the cache's
- *      cell budget regardless of the image size, with no downscaling. The atlas is
- *      the runtime output of an import-time transcode (mirrors
- *      `ra8_rabook_pipeline`); producing it from an arbitrary encoded image is a
- *      separate step (it needs a region/banded pixel decoder) and is not in this
- *      module.
- *   2. **Reflow `<img>` loader** (`ra8_epub_reflow_img_load`): the real
- *      `ra8_reflow_image_loader_fn` -- resolves an `<img src>` href to an EPUB
- *      manifest resource and returns its encoded bytes in a *caller-owned bounded
- *      scratch*. Images that fit the scratch (covers, figures) render exactly as
- *      before (byte-identical); an image larger than the scratch is reported
- *      unavailable rather than blowing the budget (the tile binder is the path for
- *      those). This replaces the demo one-asset binders in the ereader apps.
- *
- * ## Tile-atlas on-disk header (::ra8_epub_tileimg, 16 bytes, little-endian)
- *
- * | Offset | Size | Field                                   |
- * |--------|------|-----------------------------------------|
- * | 0      | 4    | magic `"RTI1"`                          |
- * | 4      | 2    | image width, pixels                     |
- * | 6      | 2    | image height, pixels                    |
- * | 8      | 2    | tile width, pixels                      |
- * | 10     | 2    | tile height, pixels                     |
- * | 12     | 1    | bytes per pixel (1=gray8 .. 4=RGBA)     |
- * | 13     | 3    | reserved (zero)                         |
- *
- * Pixel data follows the header, row-major, `width * bpp` bytes per row.
+ *   1. **Tile binder** (`ra8_epub_tile_binder_*`): pages RTA1 tile atlases
+ *      (`ra8_tileatlas.h` -- the display-native band-tile format shared with
+ *      the webtoon scroll #289 and the #290 codec policy) through
+ *      ::ra8_tile_cache, decode-on-demand keyed by `(image_id, tile_x,
+ *      tile_y)`. An atlas backs onto either a *stored* archive entry
+ *      (`ra8_epub_tile_binder_add()`, host-baked books) or any external
+ *      pread seam (`ra8_epub_tile_binder_add_ext()` -- an SDRAM memstore or
+ *      SD file holding an atlas produced on device). Resident decoded
+ *      pixels stay bounded by the cache's cell budget regardless of the
+ *      image size, with no downscaling.
+ *   2. **Import-time transcode** (`ra8_epub_tile_binder_import()`): the
+ *      #231 producer wired to the open path. Resolves a manifest href,
+ *      streams the encoded JPEG/PNG through
+ *      `ra8_tileatlas_produce()` into a caller-supplied atlas store, and
+ *      registers the result -- after which a page larger than SDRAM at
+ *      native resolution renders full-res via decode-on-demand tiles. An
+ *      entry that already IS a stored RTA1 atlas registers in place with
+ *      no transcode.
+ *   3. **Reflow `<img>` loader** (`ra8_epub_reflow_img_load`): the real
+ *      `ra8_reflow_image_loader_fn` -- resolves an `<img src>` href to an
+ *      EPUB manifest resource and returns its encoded bytes in a
+ *      *caller-owned bounded scratch*. Images that fit the scratch (covers,
+ *      figures) render exactly as before; an image larger than the scratch
+ *      is reported unavailable rather than blowing the budget (the tile
+ *      binder is the path for those).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  *
+ * @see ra8_tileatlas.h          The RTA1 atlas format + reader.
+ * @see ra8_tileatlas_produce.h  The import-time transcode producer.
  * @since 0.1.0
  */
 
@@ -66,81 +60,54 @@ extern "C" {
 #include "ra8_epub.h"
 #include "ra8_err.h"
 #include "ra8_tile_cache.h"
+#include "ra8_tileatlas.h"
+#include "ra8_tileatlas_produce.h"
 
 /**
- * @enum ra8_epub_tileimg_t
- * @brief On-disk tile-atlas header geometry + limits.
+ * @enum ra8_epub_tile_limits_t
+ * @brief Binder capacity limits.
  *
- * @details The 16-byte header (see the file comment) precedes the row-major pixel
- *          data. `k_ra8_epub_tile_bpp_max` caps the bytes-per-pixel the binder will
- *          accept; `k_ra8_epub_tile_max_sources` is how many distinct images one
+ * @details `k_ra8_epub_tile_max_sources` is how many distinct images one
  *          binder can serve from a single cache.
  */
 typedef enum : uint8_t {
-  k_ra8_epub_tileimg_hdr_bytes = 16U, /**< Header length before pixel data. */
-  k_ra8_epub_tileimg_magic_len = 4U,  /**< Magic string length.             */
-  k_ra8_epub_tile_bpp_max      = 4U,  /**< Max bytes per pixel accepted.    */
-  k_ra8_epub_tile_max_sources  = 8U,  /**< Distinct images per binder.      */
-} ra8_epub_tileimg_t;
-
-/**
- * @enum ra8_epub_tileimg_ofs_t
- * @brief Byte offsets of each little-endian field in the tile-atlas header.
- */
-typedef enum : uint8_t {
-  k_ra8_epub_tileimg_ofs_magic  = 0U,  /**< Magic `"RTI1"`.        */
-  k_ra8_epub_tileimg_ofs_width  = 4U,  /**< uint16 image width.    */
-  k_ra8_epub_tileimg_ofs_height = 6U,  /**< uint16 image height.   */
-  k_ra8_epub_tileimg_ofs_tile_w = 8U,  /**< uint16 tile width.     */
-  k_ra8_epub_tileimg_ofs_tile_h = 10U, /**< uint16 tile height.    */
-  k_ra8_epub_tileimg_ofs_bpp    = 12U, /**< uint8 bytes per pixel. */
-} ra8_epub_tileimg_ofs_t;
-
-/**
- * @struct ra8_epub_tileimg_info_t
- * @brief Parsed geometry of a tile-atlas image entry.
- *
- * @details Filled by `ra8_epub_tile_binder_add()` from the on-disk header and
- *          exposed via `ra8_epub_tile_binder_info()` so a renderer can size the
- *          tile grid. `tile_cols`/`tile_rows` are the ceil-division tile counts.
- *
- * @since 0.1.0
- */
-typedef struct {
-  uint16_t width;     /**< Image width, pixels.               */
-  uint16_t height;    /**< Image height, pixels.              */
-  uint16_t tile_w;    /**< Tile width, pixels.                */
-  uint16_t tile_h;    /**< Tile height, pixels.               */
-  uint16_t tile_cols; /**< Ceil(width / tile_w) tile columns. */
-  uint16_t tile_rows; /**< Ceil(height / tile_h) tile rows.   */
-  uint8_t  bpp;       /**< Bytes per pixel (1..4).            */
-} ra8_epub_tileimg_info_t;
+  k_ra8_epub_tile_max_sources = 8U, /**< Distinct images per binder. */
+} ra8_epub_tile_limits_t;
 
 /**
  * @struct ra8_epub_tile_source_t
- * @brief One registered tile-atlas image (private to the binder; treat as opaque).
+ * @brief One registered atlas image (private to the binder; treat as opaque).
  *
- * @invariant `book != NULL` and `info.bpp` in `[1, k_ra8_epub_tile_bpp_max]` while
- *            registered.
+ * @details Book-backed sources (`book != NULL`) read tiles off a stored
+ *          archive entry at `path`; external sources read through their own
+ *          pread seam (`pread`/`pread_ctx`).
+ *
+ * @invariant Exactly one of `book` or `pread` is non-NULL while registered.
  * @since 0.1.0
  */
 typedef struct {
   // cppcheck-suppress unusedStructMember
-  ra8_epub_book_t* book; /**< Book whose archive holds the entry. */
+  ra8_epub_book_t* book; /**< Owning book, or NULL for an external atlas. */
   // cppcheck-suppress unusedStructMember
-  char path[k_ra8_epub_max_path_len]; /**< Entry path (OPF-relative or rooted). */
+  char path[k_ra8_epub_max_path_len]; /**< Entry path (book-backed only). */
+  // cppcheck-suppress unusedStructMember
+  ra8_tileatlas_pread_fn pread; /**< External atlas read seam, or NULL. */
+  // cppcheck-suppress unusedStructMember
+  void* pread_ctx; /**< Context for `pread`. */
+  // cppcheck-suppress unusedStructMember
+  uint64_t total_size; /**< Atlas byte length (backing size). */
   // cppcheck-suppress unusedStructMember
   uint32_t image_id; /**< Tile-cache key namespace for this image. */
   // cppcheck-suppress unusedStructMember
-  ra8_epub_tileimg_info_t info; /**< Parsed geometry. */
+  ra8_tileatlas_info_t info; /**< Parsed + validated atlas geometry. */
 } ra8_epub_tile_source_t;
 
 /**
  * @struct ra8_epub_tile_binder_t
  * @brief Binds up to ::k_ra8_epub_tile_max_sources images to one tile cache.
  *
- * @details Owns a ::ra8_tile_cache whose decode-on-miss reads a tile off the
- *          registered source's entry via `ra8_epub_entry_pread`. Caller-owned;
+ * @details Owns a ::ra8_tile_cache whose decode-on-miss reads + decodes one
+ *          RTA1 tile through `ra8_tileatlas_read_tile()`. Caller-owned;
  *          zero-initialise before `ra8_epub_tile_binder_init()`.
  *
  * @invariant Every valid `sources[i]` has a distinct `image_id`.
@@ -153,6 +120,10 @@ typedef struct {
   ra8_epub_tile_source_t sources[k_ra8_epub_tile_max_sources]; /**< Registered images. */
   // cppcheck-suppress unusedStructMember
   uint8_t source_count; /**< Registered image count. */
+  // cppcheck-suppress unusedStructMember
+  uint8_t* scratch; /**< Stored-tile staging for deflate atlases. */
+  // cppcheck-suppress unusedStructMember
+  uint32_t scratch_cap; /**< Capacity of `scratch`. */
 } ra8_epub_tile_binder_t;
 
 /**
@@ -175,16 +146,77 @@ typedef struct {
 } ra8_epub_img_loader_t;
 
 /**
+ * @struct ra8_epub_atlas_store_t
+ * @brief Where an on-device-produced atlas lives: sink to write, pread to
+ *        read back (DIP -- an SDRAM memstore and an SD file both fit).
+ *
+ * @details The import path writes the transcoded atlas through `sink` and
+ *          registers the image over `pread`; both must address the same
+ *          backing bytes. `ra8_tileatlas_memstore_t` provides a matching
+ *          RAM-backed pair.
+ *
+ * @invariant `sink` and `pread` address the same backing store.
+ * @see ra8_epub_tile_binder_import()
+ * @since 0.1.0
+ */
+typedef struct {
+  ra8_tileatlas_sink_fn sink; /**< Append-only atlas writer. */
+  // cppcheck-suppress unusedStructMember
+  void* sink_ctx; /**< Context for `sink`. */
+  // cppcheck-suppress unusedStructMember
+  ra8_tileatlas_pread_fn pread; /**< Read-back seam for the same bytes. */
+  // cppcheck-suppress unusedStructMember
+  void* pread_ctx; /**< Context for `pread`. */
+} ra8_epub_atlas_store_t;
+
+/**
+ * @struct ra8_epub_atlas_import_cfg_t
+ * @brief Import-time transcode knobs: tile geometry, budget caps, work arena
+ *        and the destination store.
+ *
+ * @details Mirrors the producer configuration (`ra8_tileatlas_produce.h`)
+ *          minus the source, which the import path streams from the archive
+ *          entry itself. Size `work` with `ra8_tileatlas_work_bytes()` over
+ *          the same caps.
+ *
+ * @invariant `tile_w`/`tile_h` non-zero; `work` covers `work_cap`.
+ * @see ra8_epub_tile_binder_import()
+ * @since 0.1.0
+ */
+typedef struct {
+  uint16_t tile_w; /**< Tile width, pixels (>= 1). */
+  // cppcheck-suppress unusedStructMember
+  uint16_t tile_h; /**< Tile height, pixels (>= 1). */
+  // cppcheck-suppress unusedStructMember
+  uint8_t codec; /**< ::ra8_tileatlas_codec_t member. */
+  // cppcheck-suppress unusedStructMember
+  uint16_t max_width; /**< Width budget cap (0 = format cap). */
+  // cppcheck-suppress unusedStructMember
+  uint16_t max_height; /**< Height budget cap (0 = format cap). */
+  // cppcheck-suppress unusedStructMember
+  uint8_t* work; /**< Producer work arena. */
+  // cppcheck-suppress unusedStructMember
+  size_t work_cap; /**< Arena size (ra8_tileatlas_work_bytes()). */
+  // cppcheck-suppress unusedStructMember
+  ra8_epub_atlas_store_t store; /**< Destination atlas store. */
+} ra8_epub_atlas_import_cfg_t;
+
+/**
  * @brief Initialise a tile binder over caller-supplied tile-cache storage (#231).
  *
  * @details
  * Wires @p storage into an owned ::ra8_tile_cache whose decode-on-miss is this
- * module's tile reader. The @p storage `decode` / `decode_ctx` fields are ignored
- * (the binder sets them); all other fields (cell memory + geometry + key/dim/meta
- * arrays + hash buckets) are the caller's and must out-live the binder.
+ * module's RTA1 tile reader. The @p storage `decode` / `decode_ctx` fields are
+ * ignored (the binder sets them); all other fields (cell memory + geometry +
+ * key/dim/meta arrays + hash buckets) are the caller's and must out-live the
+ * binder. @p scratch stages one stored (compressed) tile during a deflate
+ * decode-on-miss: size it with `ra8_tileatlas_stored_bound()` over the cell
+ * size; a binder serving only raw atlases may pass NULL/0.
  *
- * @param[out] binder  Binder to populate (zero-initialised by the caller).
- * @param[in]  storage Tile-cache storage config; `decode`/`decode_ctx` unused.
+ * @param[out] binder      Binder to populate (zero-initialised by the caller).
+ * @param[in]  storage     Tile-cache storage config; `decode`/`decode_ctx` unused.
+ * @param[in]  scratch     Stored-tile staging buffer (may be NULL for raw-only).
+ * @param[in]  scratch_cap Capacity of @p scratch, bytes.
  *
  * @return ra8_err_t
  * @retval k_ra8_ok               Binder ready; no images registered yet.
@@ -192,7 +224,7 @@ typedef struct {
  * @retval k_ra8_err_invalid_size A zero cell/bucket geometry in @p storage.
  *
  * @pre @p binder points at zeroed storage.
- * @pre @p storage arrays cover their sizes and out-live the binder.
+ * @pre @p storage arrays and @p scratch out-live the binder.
  * @post On success the cache is empty and no source is registered.
  * @post On failure @p binder is left unusable.
  * @note Not thread-safe.
@@ -200,14 +232,18 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_epub_tile_binder_init(ra8_epub_tile_binder_t*     binder,
-                                                  const ra8_tile_cache_cfg_t* storage);
+                                                  const ra8_tile_cache_cfg_t* storage,
+                                                  uint8_t*                    scratch,
+                                                  uint32_t                    scratch_cap);
 
 /**
- * @brief Register a tile-atlas image entry under @p image_id (#231).
+ * @brief Register a stored in-archive RTA1 atlas entry under @p image_id (#231).
  *
  * @details
- * Reads + validates the 16-byte atlas header off @p path (a stored entry, via
- * `ra8_epub_entry_pread`) and records the image geometry. After this, tiles of the
+ * Resolves @p path (OPF-relative, then archive-rooted), measures the entry,
+ * and validates the atlas structure via `ra8_tileatlas_parse()` over the
+ * entry pread seam. The entry must be *stored* (uncompressed) in the ZIP so
+ * tiles can be windowed with positioned reads. After this, tiles of the
  * image are fetched with `ra8_epub_tile_binder_get()` keyed by @p image_id.
  *
  * @param[in,out] binder   Initialised binder.
@@ -219,9 +255,10 @@ typedef struct {
  * @retval k_ra8_ok                    Image registered.
  * @retval k_ra8_err_null_ptr          @p binder, @p book, or @p path is NULL.
  * @retval k_ra8_err_no_mem            The binder's source table is full.
- * @retval k_ra8_err_invalid_arg       @p image_id already registered.
- * @retval k_ra8_err_validation_failed Bad magic / zero geometry / unsupported bpp.
- * @retval other                       Propagated from `ra8_epub_entry_pread`.
+ * @retval k_ra8_err_invalid_arg       @p image_id already registered / bad path length.
+ * @retval k_ra8_err_validation_failed The entry is not a structurally valid atlas.
+ * @retval k_ra8_err_not_supported     The entry is DEFLATE-compressed in the ZIP.
+ * @retval other                       Propagated from the entry reader.
  *
  * @pre @p binder came from `ra8_epub_tile_binder_init()`.
  * @pre `path` is longer than 0 and shorter than ::k_ra8_epub_max_path_len.
@@ -237,11 +274,103 @@ typedef struct {
                                                  uint32_t                image_id);
 
 /**
+ * @brief Register an externally-backed RTA1 atlas under @p image_id (#231).
+ *
+ * @details
+ * The external seam serves atlases that live outside the archive: an SDRAM
+ * memstore or SD file filled by the import-time transcode
+ * (`ra8_epub_tile_binder_import()` calls this itself), or any other backing.
+ * The atlas structure is validated via `ra8_tileatlas_parse()` before the
+ * source is accepted.
+ *
+ * @param[in,out] binder     Initialised binder.
+ * @param[in]     pread      Atlas read seam (non-NULL).
+ * @param[in]     pread_ctx  Context for @p pread (must out-live the binder).
+ * @param[in]     total_size Atlas byte length.
+ * @param[in]     image_id   Caller-chosen id (unique within the binder).
+ *
+ * @return ra8_err_t
+ * @retval k_ra8_ok                    Image registered.
+ * @retval k_ra8_err_null_ptr          @p binder or @p pread is NULL.
+ * @retval k_ra8_err_no_mem            The binder's source table is full.
+ * @retval k_ra8_err_invalid_arg       @p image_id already registered.
+ * @retval k_ra8_err_invalid_size      @p total_size cannot hold an atlas.
+ * @retval k_ra8_err_validation_failed The backing is not a valid atlas.
+ * @retval other                       Propagated from @p pread.
+ *
+ * @pre @p binder came from `ra8_epub_tile_binder_init()`.
+ * @pre @p pread serves the atlas bytes for `[0, total_size)`.
+ * @post On success `source_count` grew by one and the geometry is queryable.
+ * @post On any error the source table is unchanged.
+ * @note Not thread-safe.
+ * @see ra8_epub_tile_binder_import()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_epub_tile_binder_add_ext(ra8_epub_tile_binder_t* binder,
+                                                     ra8_tileatlas_pread_fn  pread,
+                                                     void*                   pread_ctx,
+                                                     uint64_t                total_size,
+                                                     uint32_t                image_id);
+
+/**
+ * @brief Import a manifest image through the transcode producer and register
+ *        it for tile paging (#231 -- the open-path wiring).
+ *
+ * @details
+ * Resolves @p href against the book, then:
+ *   1. If the entry is already a *stored* RTA1 atlas, registers it in place
+ *      (`ra8_epub_tile_binder_add()`) -- the host-baked fast path, no
+ *      transcode and no store writes.
+ *   2. Otherwise streams the entry's encoded bytes through
+ *      `ra8_tileatlas_produce()` (bounded stripes; the whole decoded image
+ *      is never resident) into @p cfg->store, then registers the produced
+ *      atlas via `ra8_epub_tile_binder_add_ext()`.
+ *
+ * After a successful import, `ra8_epub_tile_binder_get()` pages the image's
+ * full-resolution tiles on demand -- the #231 goal: a manga page larger than
+ * SDRAM at native resolution renders without whole-image decode and without
+ * downscaling.
+ *
+ * @param[in,out] binder   Initialised binder.
+ * @param[in]     book     Open book (streamed or resident).
+ * @param[in]     href     Manifest image href, NUL-terminated.
+ * @param[in]     image_id Caller-chosen id (unique within the binder).
+ * @param[in]     cfg      Transcode knobs + work arena + atlas store.
+ *
+ * @return ra8_err_t
+ * @retval k_ra8_ok                    Image registered (either path).
+ * @retval k_ra8_err_null_ptr          A required pointer is NULL.
+ * @retval k_ra8_err_invalid_arg       Bad href length / duplicate id / bad cfg.
+ * @retval k_ra8_err_no_mem            Source table full, or the store filled.
+ * @retval k_ra8_err_not_found         @p href resolves to no archive entry.
+ * @retval k_ra8_err_not_supported     The entry is not JPEG/PNG/atlas, or an
+ *                                     unsupported variant.
+ * @retval k_ra8_err_invalid_size      Source exceeds the caps / arena too small.
+ * @retval k_ra8_err_protocol_error    Malformed / hostile source structure.
+ * @retval k_ra8_err_validation_failed Producer or atlas validation failed.
+ * @retval other                       Propagated from the reader / store.
+ *
+ * @pre @p binder came from `ra8_epub_tile_binder_init()`.
+ * @pre @p cfg->work is sized per `ra8_tileatlas_work_bytes()`.
+ * @post On success the image's tiles are servable by @p image_id.
+ * @post On any error the source table is unchanged (a partial store write
+ *       is abandoned and must be reset by the caller before reuse).
+ * @note Not thread-safe.
+ * @see ra8_epub_tile_binder_get()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_epub_tile_binder_import(ra8_epub_tile_binder_t*            binder,
+                                                    ra8_epub_book_t*                   book,
+                                                    const char*                        href,
+                                                    uint32_t                           image_id,
+                                                    const ra8_epub_atlas_import_cfg_t* cfg);
+
+/**
  * @brief Report a registered image's parsed geometry (#231).
  *
  * @param[in]  binder   Binder with @p image_id registered.
  * @param[in]  image_id Image to query.
- * @param[out] out_info Receives the geometry on success.
+ * @param[out] out_info Receives the atlas geometry on success.
  *
  * @return ra8_err_t
  * @retval k_ra8_ok            Geometry reported.
@@ -249,7 +378,7 @@ typedef struct {
  * @retval k_ra8_err_not_found @p image_id is not registered.
  *
  * @pre @p binder is initialised; @p out_info is writable.
- * @pre @p image_id was registered via `ra8_epub_tile_binder_add()`.
+ * @pre @p image_id was registered via an add/import call.
  * @post On success `*out_info` holds the image geometry.
  * @post On failure `*out_info` is unmodified.
  * @note Not thread-safe.
@@ -257,18 +386,18 @@ typedef struct {
  */
 [[nodiscard]] ra8_err_t ra8_epub_tile_binder_info(const ra8_epub_tile_binder_t* binder,
                                                   uint32_t                      image_id,
-                                                  ra8_epub_tileimg_info_t*      out_info);
+                                                  ra8_tileatlas_info_t*         out_info);
 
 /**
  * @brief Get (and pin) one decoded tile of a registered image (#231).
  *
  * @details
  * Builds the tile-cache key `(image_id, tile_x, tile_y)` and fetches it through
- * the owned cache. On a miss the tile's pixels are read off the atlas entry (a
- * handful of positioned reads into one cache cell); on a hit the cell is reused.
- * The returned pixels are tightly packed (`out_tile->width * bpp` bytes per row)
- * and stay valid until `ra8_epub_tile_binder_put()`. Edge tiles report their true
- * (smaller) width/height.
+ * the owned cache. On a miss the tile's stored stream is read off the atlas
+ * backing and decoded into one cache cell (`ra8_tileatlas_read_tile()`); on a
+ * hit the cell is reused. The returned pixels are tightly packed
+ * (`out_tile->width * bpp` bytes per row) and stay valid until
+ * `ra8_epub_tile_binder_put()`. Edge tiles report their true (smaller) size.
  *
  * @param[in]  binder   Binder with @p image_id registered.
  * @param[in]  image_id Image to fetch a tile of.
@@ -281,8 +410,9 @@ typedef struct {
  * @retval k_ra8_err_null_ptr       @p binder or @p out_tile is NULL.
  * @retval k_ra8_err_not_found      @p image_id is not registered.
  * @retval k_ra8_err_out_of_range   @p tile_x / @p tile_y is outside the grid.
- * @retval k_ra8_err_no_mem         Every cell is pinned (cannot evict for the miss).
- * @retval k_ra8_err_validation_failed A tile read came up short (corrupt entry).
+ * @retval k_ra8_err_no_mem         Every cell is pinned, or the tile exceeds
+ *                                  the cell/scratch budget.
+ * @retval k_ra8_err_validation_failed The atlas backing is corrupt.
  *
  * @pre @p binder is initialised and @p image_id registered.
  * @pre The caller will `ra8_epub_tile_binder_put()` the returned tile.
