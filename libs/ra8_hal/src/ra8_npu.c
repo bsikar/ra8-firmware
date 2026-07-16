@@ -142,6 +142,59 @@ static bool s_npu_initialized = false;
 static bool s_npu_job_submitted = false;
 
 /**
+ * @enum ra8_npu_irq_state_t
+ * @brief Interrupt-driven completion latch shared between the ISR and waiter.
+ *
+ * @details `ra8_npu_irq_arm()` sets `armed`; `ra8_npu_irq_handler()` advances it
+ *          to `done` or `fault` from the observed STATUS; `ra8_npu_wait_irq()`
+ *          polls it. `idle` means no IRQ-driven job is in flight.
+ *
+ * @invariant Only these four states are ever stored.
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra8_npu_irq_idle  = 0U, /**< No interrupt-driven job armed.   */
+  k_ra8_npu_irq_armed = 1U, /**< Armed and waiting for the IRQ.   */
+  k_ra8_npu_irq_done  = 2U, /**< ISR observed STATUS.cmd_end.     */
+  k_ra8_npu_irq_fault = 3U, /**< ISR observed a STATUS fault bit. */
+} ra8_npu_irq_state_t;
+
+/**
+ * @var s_npu_irq_state
+ * @brief Completion latch driven by `ra8_npu_irq_handler()` from the NPU ISR.
+ * @details `volatile` because it crosses the ISR / thread boundary; owned by the
+ *          arm / handler / wait logic.
+ * @warning Do not modify directly outside the IRQ helpers.
+ * @since 0.1.0
+ */
+static volatile ra8_npu_irq_state_t s_npu_irq_state = k_ra8_npu_irq_idle;
+
+/**
+ * @brief Sleep the core until the next interrupt (target), or nothing (host).
+ *
+ * @details Emits a `WFI` on an Arm target so `ra8_npu_wait_irq()` idles the CPU
+ *          between latch checks. On the x86_64 unit-test host (`__ARM_ARCH`
+ *          undefined) it compiles to nothing and the test drives the ISR by hand.
+ *
+ * @return None (void).
+ * @retval None This function returns no value.
+ *
+ * @pre None (safe to call in any state).
+ * @pre The caller is in a bounded wait loop.
+ * @post On the target the core has slept until an interrupt (or returned at once).
+ * @post No state is modified.
+ *
+ * @note ISR-safe / re-entrant; touches no shared state.
+ * @since 0.1.0
+ */
+static inline void internal_npu_wait_for_irq(void)
+{
+#ifdef __ARM_ARCH
+  __asm__ volatile("wfi");
+#endif
+}
+
+/**
  * @brief Issue a soft reset and poll STATUS.reset until the NPU is ready.
  *
  * @details Writes NPU_RESET requesting the privileged+secure level (both pending
@@ -212,6 +265,7 @@ ra8_err_t ra8_npu_init(void)
   RA8_RETURN_ON_ERROR(rst, s_tag, "npu_init: reset"); /* GCOVR_EXCL_BR_LINE */
   s_npu_initialized   = true;
   s_npu_job_submitted = false;
+  s_npu_irq_state     = k_ra8_npu_irq_idle;
   ra8_log_info(s_tag, "npu_init");
   return k_ra8_ok;
 }
@@ -223,6 +277,7 @@ ra8_err_t ra8_npu_deinit(void)
   RA8_RETURN_ON_ERROR(dis, s_tag, "npu_deinit: mstp disable"); /* GCOVR_EXCL_BR_LINE */
   s_npu_initialized   = false;
   s_npu_job_submitted = false;
+  s_npu_irq_state     = k_ra8_npu_irq_idle;
   return k_ra8_ok;
 }
 
@@ -232,6 +287,7 @@ ra8_err_t ra8_npu_reset(void)
   const ra8_err_t rst = internal_npu_apply_reset();
   RA8_RETURN_ON_ERROR(rst, s_tag, "npu_reset"); /* GCOVR_EXCL_BR_LINE */
   s_npu_job_submitted = false;
+  s_npu_irq_state     = k_ra8_npu_irq_idle;
   return k_ra8_ok;
 }
 
@@ -330,6 +386,57 @@ ra8_err_t ra8_npu_clear_irq(void)
   /* Ethos-U55 NPU TRM "NPU_CMD" reg @ 0x08 -- write 1 to clear_irq. */
   *ra8_npu_reg(k_ra8_npu_off_cmd) = ((uint32_t)1U << k_ra8_npu_cmd_clear_irq_bit);
   return k_ra8_ok;
+}
+
+ra8_err_t ra8_npu_irq_arm(void)
+{
+  RA8_VALIDATE_INIT(s_npu_initialized, s_tag, "npu_irq_arm: not initialized");
+  if (!s_npu_job_submitted) {
+    ra8_log_error(s_tag, "npu_irq_arm: no job submitted");
+    return k_ra8_err_invalid_state;
+  }
+  s_npu_irq_state = k_ra8_npu_irq_armed;
+  return k_ra8_ok;
+}
+
+void ra8_npu_irq_handler(void* ctx)
+{
+  (void)ctx;
+  /* Delegate register access to the already-cited status/clear accessors so the
+   * ISR itself adds no new MMIO citation and stays a two-op hot path. */
+  ra8_npu_status_t st = {};
+  if (ra8_npu_read_status(&st) == k_ra8_ok) {
+    if (st.fault) {
+      s_npu_irq_state = k_ra8_npu_irq_fault;
+    } else if (st.cmd_end) {
+      s_npu_irq_state = k_ra8_npu_irq_done;
+    } else {
+      /* Spurious / early IRQ with neither terminal bit set: leave the latch
+       * armed and re-wait; the clear below still de-asserts the line. */
+    }
+  }
+  (void)ra8_npu_clear_irq();
+}
+
+ra8_err_t ra8_npu_wait_irq(void)
+{
+  RA8_VALIDATE_INIT(s_npu_initialized, s_tag, "npu_wait_irq: not initialized");
+  if (s_npu_irq_state == k_ra8_npu_irq_idle) {
+    ra8_log_error(s_tag, "npu_wait_irq: not armed");
+    return k_ra8_err_invalid_state;
+  }
+  for (uint32_t i = 0U; i < k_ra8_npu_job_poll_iters; i++) { /* GCOVR_EXCL_BR_LINE */
+    const ra8_npu_irq_state_t state = s_npu_irq_state;
+    if (state == k_ra8_npu_irq_done) { /* GCOVR_EXCL_BR_LINE */
+      return k_ra8_ok;
+    }
+    if (state == k_ra8_npu_irq_fault) { /* GCOVR_EXCL_BR_LINE */
+      ra8_log_error(s_tag, "npu_wait_irq: fault latched");
+      return k_ra8_err_hw_error;
+    }
+    internal_npu_wait_for_irq();
+  }
+  return k_ra8_err_hw_timeout;
 }
 
 #else

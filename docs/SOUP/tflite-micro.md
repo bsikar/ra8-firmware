@@ -35,7 +35,11 @@ Provenance (SOUP).
   `kernel_util.cc`, and `micro_tensor_utils.cc`.
 - **Ethos-U custom operator**: the portable stub
   `tensorflow/lite/micro/kernels/ethosu.cc` (`Register_ETHOSU()` returns
-  `nullptr`). The real NPU dispatch is deferred to Phase 2 (see below).
+  `nullptr`) is present in the vendored tree but **excluded from the build** by
+  `cmake/tflite_micro.cmake`. In its place the build compiles the first-party
+  kernel `libs/ra8_hal/src/ra8_ethosu_kernel.cc`, whose `tflite::Register_ETHOSU()`
+  dispatches the Ethos-U55 command stream to the NPU through the first-party
+  `ra8_ethosu_shim` / `ra8_npu` driver (see "Phase 2" below -- landed).
 - Two declaration-only headers `signal/micro/kernels/{irfft,rfft}.h` are kept
   because `micro_ops.h` includes them; the signal (audio/FFT) op
   implementations and kissfft are NOT vendored.
@@ -108,10 +112,22 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section 12.1.4:
   `libs/third_party/`; this document is the case-by-case justification for that
   exemption.
 
-## Phase 2: Ethos-U operator -> ra8_npu adapter (planned)
+## Phase 2: Ethos-U operator -> ra8_npu adapter (landed, issue #228)
 
-Phase 1 vendors the portable `ethosu.cc` stub. The real dispatch upstream lives
-at `tensorflow/lite/micro/kernels/ethos_u/ethosu.cc` and calls the Arm
+Phase 1 vendored the portable `ethosu.cc` stub. Phase 2 replaces it, in-build,
+with a first-party kernel: `cmake/tflite_micro.cmake` drops the vendored stub
+from the object library (a SOUP *file-selection* change -- see "Deviations")
+and compiles `libs/ra8_hal/src/ra8_ethosu_kernel.cc` in its place. That kernel's
+`tflite::Register_ETHOSU()` returns a real registration whose `invoke` translates
+the node's tensors into the Arm Ethos-U operator ABI and drives the NPU through
+the first-party `ra8_ethosu_shim` (no Arm `ethos-u-core-driver` is vendored). The
+`examples/ra8p1_foundation/npu_infer` app links the runtime (`USES tflite_micro`)
+and asserts the operator is registered via `ra8_ethosu_kernel_available()`; a full
+Vela-model-driven inference additionally needs the offline Vela compiler
+(`tools/vela`) and silicon and remains a follow-up.
+
+The real dispatch upstream lives at
+`tensorflow/lite/micro/kernels/ethos_u/ethosu.cc` and calls the Arm
 `ethos-u-core-driver` (`#include <ethosu_driver.h>`):
 
 ```
@@ -139,8 +155,18 @@ app that reuses the `npu_smoke` boot files; (3) the board_sim Ethos-U model
 
 ## Deviations / patches
 
-None. The vendored files are unmodified upstream content; the only change from
-upstream is the file *selection* (the lean subset) documented above.
+None to the vendored file *contents*: every file under
+`libs/third_party/tflite-micro/` is unmodified upstream content. The changes from
+upstream are both *file-selection* choices, not source edits:
+
+1. the lean subset (which files are vendored), documented above; and
+2. the Ethos-U operator: the vendored portable stub
+   `tensorflow/lite/micro/kernels/ethosu.cc` is left byte-for-byte unmodified but
+   **excluded from the build** by `cmake/tflite_micro.cmake`, which compiles the
+   first-party `libs/ra8_hal/src/ra8_ethosu_kernel.cc` in its place (Phase 2,
+   above). This mirrors upstream's own build-time choice between
+   `kernels/ethosu.cc` (stub) and `kernels/ethos_u/ethosu.cc` (real), so no
+   vendored file is patched.
 
 ## Last review date
 
