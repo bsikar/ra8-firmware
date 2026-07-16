@@ -39,6 +39,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 
 /* ------------------------------------------------------------------ */
@@ -546,3 +547,284 @@ void ra8_jpeg_sw_ycc_to_rgb(int32_t  y,
                             uint8_t* out_r,
                             uint8_t* out_g,
                             uint8_t* out_b);
+
+/* ------------------------------------------------------------------ */
+/* Decoder context + marker/scan primitives (defined in */
+/* ra8_jpeg_sw_decode.c, shared with the streaming driver */
+/* ra8_jpeg_sw_stream.c) */
+/* ------------------------------------------------------------------ */
+
+/**
+ * @struct ra8_jpeg_dec_ctx_t
+ * @brief Decoder state shared by the whole-buffer and streaming drivers.
+ *
+ * @details
+ * `src`/`src_len`/`cursor` describe the byte slice the marker parsers
+ * read from. The whole-buffer driver points them at the entire JPEG
+ * stream; the streaming driver points them at its sliding window (one
+ * fully-materialised marker segment at a time). Tables and per-component
+ * layout persist across segments either way.
+ *
+ * @invariant `hmax`/`vmax` are non-zero after a successful SOF0 parse.
+ * @since 0.1.0
+ */
+typedef struct {
+  const uint8_t* src;     /**< Byte slice the parsers read from. */
+  uint32_t       src_len; /**< Length of `src` in bytes.         */
+  uint32_t       cursor;  /**< Parse cursor into `src`.          */
+
+  uint16_t width;  /**< Image width from SOF0, pixels.  */
+  uint16_t height; /**< Image height from SOF0, pixels. */
+  uint8_t  ncomp;  /**< 1 grayscale, 3 YCbCr.           */
+  uint8_t  hmax;   /**< Max horizontal sampling factor. */
+  uint8_t  vmax;   /**< Max vertical sampling factor.   */
+
+  /* Per-component info (T.81 sec B.2.2). */
+  uint8_t comp_id[k_ra8_jpeg_max_comps];      /**< Component identifiers.      */
+  uint8_t comp_h[k_ra8_jpeg_max_comps];       /**< Horizontal sampling.        */
+  uint8_t comp_v[k_ra8_jpeg_max_comps];       /**< Vertical sampling.          */
+  uint8_t comp_qid[k_ra8_jpeg_max_comps];     /**< Quant-table selector.       */
+  uint8_t comp_dc_id[k_ra8_jpeg_max_comps];   /**< DC Huffman selector.        */
+  uint8_t comp_ac_id[k_ra8_jpeg_max_comps];   /**< AC Huffman selector.        */
+  int32_t comp_dc_pred[k_ra8_jpeg_max_comps]; /**< DC predictors (scan state). */
+
+  uint16_t        qtab[k_ra8_jpeg_quant_tabs][k_ra8_jpeg_block_size]; /**< Dequant tables.    */
+  ra8_jpeg_htab_t hdc[k_ra8_jpeg_huff_ids];                           /**< DC Huffman tables. */
+  ra8_jpeg_htab_t hac[k_ra8_jpeg_huff_ids];                           /**< AC Huffman tables. */
+} ra8_jpeg_dec_ctx_t;
+
+/**
+ * @enum ra8_jpeg_dec_marker_action_t
+ * @brief Result of ra8_jpeg_sw_priv_dispatch(): what the driver does next.
+ */
+typedef enum : uint8_t {
+  k_ra8_jpeg_dec_continue = 0U, /**< Keep scanning markers.                             */
+  k_ra8_jpeg_dec_scan     = 1U, /**< SOS reached; the driver should run its scan loop.  */
+  k_ra8_jpeg_dec_eoi      = 2U, /**< EOI reached; the driver should stop with an error. */
+} ra8_jpeg_dec_marker_action_t;
+
+/**
+ * @brief Skip an unrecognized variable-length segment.
+ *
+ * @details Reads the 16-bit big-endian segment length at `d->cursor` and
+ *          advances past the payload, bounds-checked against `d->src_len`.
+ *
+ * @param[in,out] d Decoder context (cursor advances).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 Segment skipped.
+ * @retval k_ra8_err_protocol_error Truncated / malformed length field.
+ *
+ * @pre `d` is non-NULL with `src`/`src_len` set.
+ * @pre `d->cursor` points at a segment length field.
+ * @post On success `d->cursor` advanced past the whole segment.
+ * @post On error `d->cursor` is unspecified; the decode aborts.
+ * @note Not thread-safe; caller serializes via decoder context.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_skip_segment(ra8_jpeg_dec_ctx_t* d);
+
+/**
+ * @brief Parse a DQT segment (T.81 sec B.2.4.1) into `d->qtab`.
+ * @details T.81 sec B.2.4.1: de-zigzags each 8-bit table into `d->qtab`.
+ *
+ * @param[in,out] d Decoder context (cursor advances; tables written).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 Table(s) parsed.
+ * @retval k_ra8_err_protocol_error Truncated / malformed segment.
+ * @retval k_ra8_err_not_supported  16-bit precision table.
+ *
+ * @pre `d->cursor` points at the DQT length field.
+ * @pre `d->src` covers `d->src_len` readable bytes.
+ * @post On success the referenced quant tables are de-zigzagged in place.
+ * @post On error the decode aborts; table state is partial.
+ * @note Not thread-safe; caller serializes via decoder context.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_dqt(ra8_jpeg_dec_ctx_t* d);
+
+/**
+ * @brief Parse a DHT segment (T.81 sec B.2.4.2) and build its tables.
+ * @details T.81 sec B.2.4.2: reads the BITS/VALS lists and canonical-builds the table.
+ *
+ * @param[in,out] d Decoder context (cursor advances; tables written).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 Table(s) parsed and built.
+ * @retval k_ra8_err_protocol_error Truncated / malformed segment.
+ * @retval k_ra8_err_not_supported  Table class / id out of range.
+ *
+ * @pre `d->cursor` points at the DHT length field.
+ * @pre `d->src` covers `d->src_len` readable bytes.
+ * @post On success the referenced Huffman tables are canonical-built.
+ * @post On error the decode aborts; table state is partial.
+ * @note Not thread-safe; caller serializes via decoder context.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_dht(ra8_jpeg_dec_ctx_t* d);
+
+/**
+ * @brief Parse the SOF0 frame header (T.81 sec B.2.2).
+ * @details T.81 sec B.2.2: reads precision, dimensions and per-component sampling.
+ *
+ * @param[in,out] d Decoder context (dims/sampling written).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 Baseline frame accepted.
+ * @retval k_ra8_err_protocol_error Truncated / malformed segment.
+ * @retval k_ra8_err_not_supported  Non-8-bit precision, component count not
+ *                                  1/3, or a chroma layout other than
+ *                                  4:4:4 / 4:2:0.
+ *
+ * @pre `d->cursor` points at the SOF0 length field.
+ * @pre `d->src` covers `d->src_len` readable bytes.
+ * @post On success `width`/`height`/`ncomp`/`hmax`/`vmax` are set non-zero.
+ * @post On error the decode aborts.
+ * @note Not thread-safe; caller serializes via decoder context.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_sof0(ra8_jpeg_dec_ctx_t* d);
+
+/**
+ * @brief Parse the SOS scan header (T.81 sec B.2.3) selectors.
+ * @details T.81 sec B.2.3: binds each scan component to its DC/AC table selectors.
+ *
+ * @param[in,out] d Decoder context (per-component table ids written).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 Scan header accepted.
+ * @retval k_ra8_err_protocol_error Truncated / malformed segment.
+ * @retval k_ra8_err_not_supported  Component count mismatch or selector
+ *                                  out of range.
+ *
+ * @pre `d->cursor` points at the SOS length field.
+ * @pre A successful SOF0 parse preceded this call.
+ * @post On success `d->cursor` sits at the entropy-coded data.
+ * @post On error the decode aborts.
+ * @note Not thread-safe; caller serializes via decoder context.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_sos(ra8_jpeg_dec_ctx_t* d);
+
+/**
+ * @brief Entropy-decode one 8x8 block of dequantized coefficients.
+ *
+ * @details T.81 sec F.2.2: DC difference + AC run-length decode against the
+ *          component's Huffman tables, dequantized through its quant table,
+ *          de-zigzagged into row-major order.
+ *
+ * @param[in,out] d      Decoder context (DC predictor mutates).
+ * @param[in,out] br     Bit reader over the entropy-coded segment.
+ * @param[in]     ci     Component index (0 = luma).
+ * @param[out]    outblk 64-entry coefficient block.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 Block decoded.
+ * @retval k_ra8_err_protocol_error Stream underflow / illegal symbol.
+ *
+ * @pre `d` tables for component `ci` were parsed.
+ * @pre `outblk` holds 64 writable int32 slots.
+ * @post On success `outblk` holds dequantized row-major coefficients.
+ * @post On error the scan aborts.
+ * @note Not thread-safe; caller serializes via decoder context.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_block(ra8_jpeg_dec_ctx_t*   d,
+                                          ra8_jpeg_bitreader_t* br,
+                                          uint8_t               ci,
+                                          int32_t*              outblk);
+
+/**
+ * @brief IDCT a coefficient block and emit level-shifted 8-bit samples.
+ * @details Runs the shared 8x8 IDCT, then level-shifts and clamps each sample.
+ *
+ * @param[in,out] coeffs 64-entry coefficient block (IDCTed in place).
+ * @param[out]    tile   64-byte destination sample tile.
+ *
+ * @pre `coeffs` holds dequantized coefficients.
+ * @pre `tile` holds 64 writable bytes.
+ * @post `tile` holds clamped 8-bit spatial samples.
+ * @post `coeffs` content is clobbered by the in-place IDCT.
+ * @note Not thread-safe; caller serializes via decoder context.
+ * @since 0.1.0
+ */
+RA8_PRIV void ra8_jpeg_sw_priv_idct_into(int32_t* coeffs, uint8_t* tile);
+
+/**
+ * @brief Decode the hmax*vmax luma blocks of one MCU into the Y tile.
+ * @details Decodes hmax*vmax successive luma blocks into their tile sub-rectangles.
+ *
+ * @param[in,out] d        Decoder context (DC predictors mutate).
+ * @param[in,out] br       Bit-reader positioned at the next luma block.
+ * @param[out]    y_tile   Output tile of (mcu_w_px x mcu_h_px) luma px.
+ * @param[in]     mcu_w_px MCU width in pixels.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 All luma blocks consumed.
+ * @retval k_ra8_err_protocol_error Underlying block decode failed.
+ *
+ * @pre `d->hmax` and `d->vmax` are non-zero (SOF0-enforced).
+ * @pre `y_tile` covers mcu_w_px * (8 * vmax) bytes.
+ * @post On success `y_tile` is fully populated.
+ * @post On error the scan aborts.
+ * @note Not thread-safe; caller serializes via decoder context.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_mcu_y(ra8_jpeg_dec_ctx_t*   d,
+                                          ra8_jpeg_bitreader_t* br,
+                                          uint8_t*              y_tile,
+                                          uint16_t              mcu_w_px);
+
+/**
+ * @brief Decode the Cb and Cr 8x8 blocks of one MCU.
+ * @details Consumes one Cb block then one Cr block, IDCTing each into its tile.
+ *
+ * @param[in,out] d       Decoder context (DC predictors mutate).
+ * @param[in,out] br      Bit-reader positioned at the next chroma block.
+ * @param[out]    cb_tile 64-byte buffer for reconstructed Cb pixels.
+ * @param[out]    cr_tile 64-byte buffer for reconstructed Cr pixels.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 Both chroma blocks decoded.
+ * @retval k_ra8_err_protocol_error Underlying block decode failed.
+ *
+ * @pre `d->ncomp == 3` (caller verifies).
+ * @pre Both tiles hold 64 writable bytes.
+ * @post On success both tiles are fully populated.
+ * @post On error the scan aborts.
+ * @note Not thread-safe; caller serializes via decoder context.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_mcu_chroma(ra8_jpeg_dec_ctx_t*   d,
+                                               ra8_jpeg_bitreader_t* br,
+                                               uint8_t*              cb_tile,
+                                               uint8_t*              cr_tile);
+
+/**
+ * @brief Dispatch one JPEG marker segment in a decode driver loop.
+ *
+ * @details Parses one marker following the 0xFF prefix at `d->cursor` and
+ *          updates the decoder context. Unknown APPn/COM payloads are
+ *          skipped; RST markers are consumed as standalone bytes.
+ *
+ * @param[in,out] d       Decoder context (cursor advances).
+ * @param[in,out] got_sof Tracks whether SOF0 has been parsed yet.
+ * @param[out]    action  What the driver should do next.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 Marker handled (see `*action`).
+ * @retval k_ra8_err_protocol_error Malformed marker / truncated stream /
+ *                                  SOS before SOF.
+ * @retval k_ra8_err_not_supported  Unsupported SOFn (progressive, ...).
+ *
+ * @pre `d->cursor < d->src_len` (caller checks).
+ * @pre The whole next segment is inside `d->src` (window drivers ensure).
+ * @post `d->cursor` advanced past the marker and any sized payload.
+ * @post `*action` is a ::ra8_jpeg_dec_marker_action_t value.
+ * @note Not thread-safe; caller serializes via decoder context.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_dispatch(ra8_jpeg_dec_ctx_t*           d,
+                                             bool*                         got_sof,
+                                             ra8_jpeg_dec_marker_action_t* action);
