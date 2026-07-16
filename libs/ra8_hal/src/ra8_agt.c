@@ -156,16 +156,16 @@ static ra8_err_t agt_mstp_release(uint8_t channel)
   const ra8_err_t mst_err = agt_mstp_acquire(channel);
   RA8_RETURN_ON_ERROR(mst_err, s_tag, "agt_start: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
-  /* HUM Ch 24.2.1 "AGTCR : AGT Control Register" p 1167 */
+  /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
   reg->AGTCR = 0U;
-  /* HUM Ch 24.2.2 "AGTMR1 : AGT Mode Register 1" p 1169 -- timer mode,
+  /* HUM Ch 24.2.5 "AGTMR1 : AGT Mode Register 1" p 1168 -- timer mode,
    * PCLKB source. */
   reg->AGTMR1 = 0U;
-  /* HUM Ch 24.2.3 "AGTMR2 : AGT Mode Register 2" p 1170 */
+  /* HUM Ch 24.2.6 "AGTMR2 : AGT Mode Register 2" p 1169 */
   reg->AGTMR2 = 0U;
-  /* HUM Ch 24.2.4 "AGT : AGT Counter" p 1170 */
+  /* HUM Ch 24.2.1 "AGT : AGT Counter" p 1165 */
   reg->AGT = reload;
-  /* HUM Ch 24.2.1 "AGTCR : AGT Control Register" p 1167 */
+  /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
   /* TSTART = 1. */
   reg->AGTCR = 0x01U;
 
@@ -177,7 +177,7 @@ static ra8_err_t agt_mstp_release(uint8_t channel)
 {
   volatile r_agt_regs_t* reg = ra8_agt(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
-  /* HUM Ch 24.2.1 "AGTCR : AGT Control Register" p 1167 */
+  /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
   reg->AGTCR = 0U;
   return k_ra8_ok;
 }
@@ -194,7 +194,7 @@ static void*              s_agt_ctx;
  * @brief Tear down one AGT channel.
  *
  * @details
- * Clears AGTCR (HUM Ch 24.2.1 "AGTCR : AGT Control Register",
+ * Clears AGTCR (HUM Ch 24.2.4 "AGTCR : AGT Control Register",
  * p 1167) so the counter stops, then drops the matching MSTP
  * reference for AGT0 / AGT1. Channels 2..9 share the LOCO /
  * sub-clock path, so no MSTP work is required for them.
@@ -221,7 +221,7 @@ ra8_err_t ra8_agt_deinit(uint8_t channel)
 {
   volatile r_agt_regs_t* reg = ra8_agt(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
-  /* HUM Ch 24.2.1 "AGTCR : AGT Control Register" p 1167 */
+  /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
   reg->AGTCR = 0U;
   return agt_mstp_release(channel);
 }
@@ -230,8 +230,8 @@ ra8_err_t ra8_agt_deinit(uint8_t channel)
  * @brief Change the AGT reload value at runtime.
  *
  * @details
- * Writes ``reload`` into the AGT counter register (HUM Ch 24.2.4
- * "AGT : AGT Counter", p 1170). Valid only on a stopped channel
+ * Writes ``reload`` into the AGT counter register (HUM Ch 24.2.1
+ * "AGT : AGT Counter", p 1165). Valid only on a stopped channel
  * or while the counter has just been refreshed.
  *
  * @param[in] channel AGT channel index (0..9).
@@ -255,7 +255,7 @@ ra8_err_t ra8_agt_set_reload(uint8_t channel, uint16_t reload)
 {
   volatile r_agt_regs_t* reg = ra8_agt(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
-  /* HUM Ch 24.2.4 "AGT : AGT Counter" p 1170 */
+  /* HUM Ch 24.2.1 "AGT : AGT Counter" p 1165 */
   reg->AGT = reload;
   return k_ra8_ok;
 }
@@ -264,7 +264,7 @@ ra8_err_t ra8_agt_set_reload(uint8_t channel, uint16_t reload)
  * @brief Read the AGTCR status register.
  *
  * @details
- * Returns the raw 8-bit AGTCR value (HUM Ch 24.2.1 "AGTCR : AGT
+ * Returns the raw 8-bit AGTCR value (HUM Ch 24.2.4 "AGTCR : AGT
  * Control Register", p 1167) so callers can inspect the TSTART /
  * TCSTF / TUNDF / TEDGF flags without leaking the register layout.
  *
@@ -290,7 +290,7 @@ ra8_err_t ra8_agt_get_status(uint8_t channel, uint8_t* out_mask)
   RA8_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
   volatile r_agt_regs_t* reg = ra8_agt(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
-  /* HUM Ch 24.2.1 "AGTCR : AGT Control Register" p 1167 */
+  /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
   *out_mask = reg->AGTCR;
   return k_ra8_ok;
 }
@@ -362,7 +362,7 @@ void ra8_agt_dispatch(uint8_t channel)
  * @brief Put one AGT channel into MSTP-gated stop.
  *
  * @details
- * Clears AGTCR (HUM Ch 24.2.1 "AGTCR : AGT Control Register",
+ * Clears AGTCR (HUM Ch 24.2.4 "AGTCR : AGT Control Register",
  * p 1167) so the counter halts, then for AGT0 / AGT1 drops the
  * dedicated MSTPD bit (HUM Ch 11.2.9 "MSTPCRD", p 448) so the
  * peripheral clock can gate.
@@ -388,7 +388,7 @@ ra8_err_t ra8_agt_enter_stop(uint8_t channel)
 {
   volatile r_agt_regs_t* reg = ra8_agt(channel);
   RA8_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
-  /* HUM Ch 24.2.1 "AGTCR : AGT Control Register" p 1167 */
+  /* HUM Ch 24.2.4 "AGTCR : AGT Control Register" p 1167 */
   reg->AGTCR = 0U;
   return agt_mstp_release(channel);
 }
@@ -611,7 +611,7 @@ static void agt_pulse_program_registers(volatile r_agt_regs_t* reg, const ra8_ag
   /* HUM Ch 24.2.9 "AGTCMSR : AGT Compare Match Function Select" p 1172 */
   reg->AGTCMSR = agt_pulse_agtcmsr_value(cfg->compare);
   agt_pulse_program_compare(reg, cfg->compare, cfg->duty);
-  /* HUM Ch 24.2.1 "AGT : AGT Counter" p 1166 */
+  /* HUM Ch 24.2.1 "AGT : AGT Counter" p 1165 */
   reg->AGT = cfg->period;
 }
 
@@ -755,7 +755,7 @@ static void agt_cascade_arm_half(volatile r_agt_regs_t* reg, uint8_t tmr1, uint1
   /* No compare-match output. */
   /* HUM Ch 24.2.9 "AGTCMSR : AGT Compare Match Function Select" p 1172 */
   reg->AGTCMSR = 0U;
-  /* HUM Ch 24.2.1 "AGT : AGT Counter" p 1166 */
+  /* HUM Ch 24.2.1 "AGT : AGT Counter" p 1165 */
   reg->AGT = reload;
 }
 
