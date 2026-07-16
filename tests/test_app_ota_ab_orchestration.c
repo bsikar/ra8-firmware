@@ -40,9 +40,9 @@
 
 /** @brief Mirror of the demo's ::app_outcome_t. */
 typedef enum : uint8_t {
-  k_t_outcome_committed     = 0U, /**< Verify passed and the swap latched.  */
-  k_t_outcome_rolled_back   = 1U, /**< Verify failed; no swap.              */
-  k_t_outcome_indeterminate = 2U, /**< Neither terminal shape matched.      */
+  k_t_outcome_committed     = 0U, /**< Verify passed and the swap latched. */
+  k_t_outcome_rolled_back   = 1U, /**< Verify failed; no swap.             */
+  k_t_outcome_indeterminate = 2U, /**< Neither terminal shape matched.     */
 } t_outcome_t;
 
 /**
@@ -78,9 +78,9 @@ static bool t_ok(bool committed, bool rolled_back)
 
 /** @brief Sizing + demo constants shared with the app. */
 typedef enum : uint32_t {
-  k_t_image_bytes = 256U,        /**< Demo image size.                        */
-  k_t_bank_size   = 4096U,       /**< Advertised bank capacity for the cfg.   */
-  k_t_demo_pubkey = 0x0A8D2C0DU, /**< Demo public-key handle.                 */
+  k_t_image_bytes = 256U,        /**< Demo image size.                      */
+  k_t_bank_size   = 4096U,       /**< Advertised bank capacity for the cfg. */
+  k_t_demo_pubkey = 0x0A8D2C0DU, /**< Demo public-key handle.               */
 } t_const_t;
 
 /** @brief A/B slot indices. */
@@ -96,17 +96,17 @@ typedef enum : uint8_t {
 
 /** @brief Demo image byte-pattern + tag constants (mirror of the app). */
 typedef enum : uint8_t {
-  k_t_img_seed_mul  = 7U,    /**< Golden-image pattern multiplier.      */
-  k_t_img_seed_add  = 3U,    /**< Golden-image pattern additive bias.   */
-  k_t_sig_tag_base  = 0xA5U, /**< Demo signature tag base byte.         */
-  k_t_byte_all_ones = 0xFFU, /**< Corrupt-flip mask / erased byte.      */
+  k_t_img_seed_mul  = 7U,    /**< Golden-image pattern multiplier.    */
+  k_t_img_seed_add  = 3U,    /**< Golden-image pattern additive bias. */
+  k_t_sig_tag_base  = 0xA5U, /**< Demo signature tag base byte.       */
+  k_t_byte_all_ones = 0xFFU, /**< Corrupt-flip mask / erased byte.    */
 } t_pattern_t;
 
 /** @brief In-RAM mock of the inactive bank + boot-select state. */
 typedef struct {
-  uint8_t bank[k_t_image_bytes]; /**< Programmed bank bytes.            */
+  uint8_t bank[k_t_image_bytes]; /**< Programmed bank bytes.              */
   uint8_t bootsel_bank;          /**< Bank named by the last set_startup. */
-  bool    set_startup_called;    /**< Whether commit latched a swap.    */
+  bool    set_startup_called;    /**< Whether commit latched a swap.      */
 } t_flash_t;
 
 /** @brief In-RAM "download" cursor. */
@@ -324,8 +324,8 @@ static void test_classify_mcdc(void)
 static void test_ok_mcdc(void)
 {
   TEST_BEGIN("ota_ab: verdict MC/DC");
-  TEST_ASSERT(t_ok(true, true));   /* control        */
-  TEST_ASSERT(!t_ok(false, true)); /* vary committed */
+  TEST_ASSERT(t_ok(true, true));   /* control         */
+  TEST_ASSERT(!t_ok(false, true)); /* vary committed  */
   TEST_ASSERT(!t_ok(true, false)); /* vary rolledback */
   TEST_END("ota_ab: verdict MC/DC");
 }
@@ -352,7 +352,7 @@ static void test_commit_path(void)
   const t_outcome_t out = t_run(s_image_good, &m);
   TEST_ASSERT_EQ(k_t_outcome_committed, out);
   TEST_ASSERT(s_flash.set_startup_called);
-  TEST_ASSERT_EQ((uint8_t)k_t_bank_b, s_flash.bootsel_bank);
+  TEST_ASSERT_EQ(k_t_bank_b, s_flash.bootsel_bank);
   TEST_END("ota_ab: commit path");
 }
 

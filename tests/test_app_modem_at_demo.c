@@ -545,7 +545,7 @@ static void test_end_to_end_pass(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_modem_at_send_cmd("AT+CREG=1", nullptr, 0U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_modem_at_poll()); /* dispatch the +CREG URC */
   TEST_ASSERT(s_e2e_creg_seen);
-  TEST_ASSERT_EQ((uint8_t)k_t_creg_home, s_e2e_creg_stat);
+  TEST_ASSERT_EQ(k_t_creg_home, s_e2e_creg_stat);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_modem_at_send_cmd("AT+CREG?", nullptr, 0U));
   const bool registered = s_e2e_creg_seen && modem_creg_registered((uint32_t)s_e2e_creg_stat);
   TEST_ASSERT(registered);

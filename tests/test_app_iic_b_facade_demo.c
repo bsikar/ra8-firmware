@@ -42,20 +42,20 @@
 
 /** @brief Mirror of the demo's channel + on-bus addresses + register map. */
 typedef enum : uint8_t {
-  k_t_channel        = 0U,    /**< I3C/IIC_B channel (only 0 on RA8D2).  */
-  k_t_channel_oor    = 1U,    /**< First out-of-range channel.           */
-  k_t_ctrl_addr_7b   = 0x5DU, /**< On-board GT911 touch 7-bit address.   */
-  k_t_periph_addr_7b = 0x42U, /**< Own 7-bit address in target mode.     */
-  k_t_prod_ptr_hi    = 0x81U, /**< GT911 PRODUCT_ID pointer MSB (0x8140).*/
-  k_t_prod_ptr_lo    = 0x40U, /**< GT911 PRODUCT_ID pointer LSB.         */
-  k_t_ptr_len        = 2U,    /**< 16-bit register-pointer width.        */
-  k_t_prod_len       = 4U,    /**< PRODUCT_ID payload length.            */
+  k_t_channel        = 0U,    /**< I3C/IIC_B channel (only 0 on RA8D2).   */
+  k_t_channel_oor    = 1U,    /**< First out-of-range channel.            */
+  k_t_ctrl_addr_7b   = 0x5DU, /**< On-board GT911 touch 7-bit address.    */
+  k_t_periph_addr_7b = 0x42U, /**< Own 7-bit address in target mode.      */
+  k_t_prod_ptr_hi    = 0x81U, /**< GT911 PRODUCT_ID pointer MSB (0x8140). */
+  k_t_prod_ptr_lo    = 0x40U, /**< GT911 PRODUCT_ID pointer LSB.          */
+  k_t_ptr_len        = 2U,    /**< 16-bit register-pointer width.         */
+  k_t_prod_len       = 4U,    /**< PRODUCT_ID payload length.             */
 } t_layout_t;
 
 /** @brief Mirror of the demo's bit-rate config. */
 typedef enum : uint32_t {
-  k_t_bus_hz   = 400000U,   /**< Fast-mode bit-rate.        */
-  k_t_pclka_hz = 60000000U, /**< I3C PCLKA source.          */
+  k_t_bus_hz   = 400000U,   /**< Fast-mode bit-rate. */
+  k_t_pclka_hz = 60000000U, /**< I3C PCLKA source.   */
 } t_clock_t;
 
 /** @brief Mirror of ``iic_facade_ctrl_result_t`` from the demo. */
@@ -137,10 +137,10 @@ static void bring_up_ctrl(void)
 static void test_classify_ctrl_maps_all(void)
 {
   TEST_BEGIN("iic_b_facade_demo: classify_ctrl maps ok/nack/other");
-  TEST_ASSERT_EQ((int)k_t_ctrl_ok, (int)classify_ctrl(k_ra8_ok));
-  TEST_ASSERT_EQ((int)k_t_ctrl_nak, (int)classify_ctrl(k_ra8_err_nack));
-  TEST_ASSERT_EQ((int)k_t_ctrl_idle, (int)classify_ctrl(k_ra8_err_hw_timeout));
-  TEST_ASSERT_EQ((int)k_t_ctrl_idle, (int)classify_ctrl(k_ra8_err_hw_error));
+  TEST_ASSERT_EQ(k_t_ctrl_ok, classify_ctrl(k_ra8_ok));
+  TEST_ASSERT_EQ(k_t_ctrl_nak, classify_ctrl(k_ra8_err_nack));
+  TEST_ASSERT_EQ(k_t_ctrl_idle, classify_ctrl(k_ra8_err_hw_timeout));
+  TEST_ASSERT_EQ(k_t_ctrl_idle, classify_ctrl(k_ra8_err_hw_error));
   TEST_END("iic_b_facade_demo: classify_ctrl maps ok/nack/other");
 }
 
@@ -199,7 +199,7 @@ static void test_controller_transfer_forwards(void)
                                                              id,
                                                              (uint32_t)k_t_prod_len);
   TEST_ASSERT_EQ(k_ra8_ok, err);
-  TEST_ASSERT_EQ((int)k_t_ctrl_ok, (int)classify_ctrl(err));
+  TEST_ASSERT_EQ(k_t_ctrl_ok, classify_ctrl(err));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_deinit((uint8_t)k_t_channel));
   TEST_END("iic_b_facade_demo: facade controller PRODUCT_ID transfer forwards");
