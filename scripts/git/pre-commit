@@ -366,6 +366,17 @@ if [[ -f scripts/utils/check_stub_crypto_guarded.py ]]; then
     fi
 fi
 
+# ---- No RA8_SIMULATOR_MODE-guarded asm in a HAL driver (#293) ------
+# wfi/dsb/isb/nop/cpsie/cpsid/reset-spin route through the shared seam
+# libs/ra8_hal/inc/ra8_hw_intrinsics.h (+ tests/mocks/ra8_host_asm_stub.c), so
+# a driver never carries its own #ifdef RA8_SIMULATOR_MODE around inline asm.
+if [[ -f scripts/utils/check_no_driver_asm_guard.py ]]; then
+    if ! python3 scripts/utils/check_no_driver_asm_guard.py; then
+        echo "[FAIL] check_no_driver_asm_guard.py: a HAL driver guards asm on RA8_SIMULATOR_MODE."
+        error_found=1
+    fi
+fi
+
 # ---- ROADMAP summary stats (strict: refuse stale summaries) -------
 if [[ -f scripts/utils/roadmap_stats.py && -f docs/ROADMAP.md ]]; then
     if ! python3 scripts/utils/roadmap_stats.py --check; then

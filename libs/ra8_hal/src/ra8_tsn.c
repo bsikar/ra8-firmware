@@ -22,6 +22,7 @@
 #include "ra8_adc.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_hw_intrinsics.h"
 #include "ra8_log.h"
 #include "ra8_mstp.h"
 #include "ra8_tsn_regs.h"
@@ -78,10 +79,10 @@ static int16_t s_ra8_tsn_low_ref_degc = k_ra8_tsn_cal_temp_low_n40;
  * helper; ``ra8_delay_ms()`` is the only timed primitive and its
  * 1 ms granularity vastly overshoots the 30 us tTSTBL floor.
  * For a one-shot path that runs only at init it is acceptable to
- * burn an empty loop. The loop body uses ``__asm__ volatile``
- * to keep the compiler from optimising the spin away on target;
- * on the host (RA8_SIMULATOR_MODE) it collapses to a no-op which
- * is fine because the host has no timing requirement.
+ * burn an empty loop. The loop body calls ::ra8_hw_nop, which is a real
+ * ``nop`` on the target (so the compiler cannot optimise the spin away) and
+ * a host no-op through the ``ra8_hw_intrinsics`` seam, which is fine because
+ * the host has no timing requirement.
  *
  * @param[in] usec Microseconds to spin (>= ``k_ra8_tsn_min_stab_us``).
  *
@@ -99,9 +100,7 @@ static void internal_busy_wait_us(uint16_t usec)
 {
   for (uint16_t u = 0U; u < usec; ++u) {
     for (uint16_t i = 0U; i < k_ra8_tsn_busy_loops_per_us; ++i) {
-#ifndef RA8_SIMULATOR_MODE
-      __asm__ volatile("nop");
-#endif
+      ra8_hw_nop();
     }
   }
 }

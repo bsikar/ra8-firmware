@@ -27,6 +27,7 @@
 
 #include "ra8_check.h"
 #include "ra8_err.h"
+#include "ra8_hw_intrinsics.h"
 #include "ra8_log.h"
 #include "ra8_reset_regs.h"
 
@@ -315,35 +316,12 @@ ra8_err_t ra8_reset_init(void)
   return k_ra8_ok;
 }
 
-#ifdef RA8_SIMULATOR_MODE
-/**
- * @brief Drop the cached snapshot (host-test only).
- *
- * @details
- * Production firmware never tears the cached snapshot down -- the
- * boot cause is supposed to live for the lifetime of the program.
- * Unit tests, however, want every test case to start with the
- * driver in its just-loaded state, so this helper zeroes
- * ``s_state`` and is exposed only when ``RA8_SIMULATOR_MODE`` is
- * defined (the test build sets this).
- *
- * @pre None.
- * @pre Caller is the host test harness (else this is a no-op
- *      anyway because the symbol does not exist).
- * @post ``s_state.initialized == false``.
- * @post Subsequent ``ra8_reset_get_cause`` reads fresh from the
- *       sim-mmap registers.
- *
- * @note Thread safety: not thread-safe; tests are single-threaded.
- * @since 0.1.0
- */
 void ra8_reset_test_only_reset_state(void)
 {
   s_state.initialized = false;
   s_state.cause       = k_ra8_reset_cause_unknown;
   s_state.raw         = (ra8_reset_raw_t){};
 }
-#endif /* RA8_SIMULATOR_MODE */
 
 ra8_err_t ra8_reset_get_cause(ra8_reset_cause_t* out)
 {
@@ -429,19 +407,12 @@ void ra8_reset_software_reset(void)
   /* Table 6.1 names AIRCR.SYSRESETREQ as the software-reset trigger. */
   *ra8_reset_aircr() = aircr_value;
 
-#ifndef RA8_SIMULATOR_MODE
-  /* On real hardware the AIRCR write triggers a system reset within a
-   * few cycles; the DSB ensures the write retires before the CPU is
-   * gone. The infinite loop is belt-and-braces -- if the reset takes
-   * longer than expected we don't want to fall through into whatever
-   * follows the call site. */
-  __asm__ volatile("dsb 0xF" ::: "memory");
-  for (;;) {
-    /* GCOVR_EXCL_LINE -- never reached on target. */
-  }
-#endif
-  /* On host (RA8_SIMULATOR_MODE) the function returns so unit tests can
-   * inspect the AIRCR write. */
+  /* On real hardware the AIRCR write triggers a system reset within a few
+   * cycles; ::ra8_hw_wait_for_reset issues a DSB so the write retires, then
+   * spins forever so control never falls through into the caller's tail. On
+   * the host the seam returns at once so a unit test can inspect the AIRCR
+   * write it just staged. */
+  ra8_hw_wait_for_reset();
 }
 
 /* =============================================================================
