@@ -104,6 +104,8 @@ static void test_uninitialized_rejects(void)
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_npu_run());
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_npu_read_id(&id));
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_npu_poll(&done));
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_npu_irq_arm());
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_npu_wait_irq());
   TEST_END("npu rejects ops before init");
 }
 
@@ -312,6 +314,93 @@ static void test_reset_and_deinit(void)
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_npu_submit(&job));
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_npu_reset());
   TEST_END("npu reset + deinit");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- irq_arm's submit guard, wait_irq's
+ * armed guard, and the handler's single-condition status branches are each one
+ * condition; they are driven one path at a time)
+ */
+static void test_irq_arm_gates(void)
+{
+  TEST_BEGIN("npu irq arm/wait gating");
+  npu_prep();
+
+  ra8_npu_job_t job = {};
+  npu_fill_job(&job);
+
+  /* Arm before submit is rejected; wait before arm is rejected. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_npu_irq_arm());
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_npu_wait_irq());
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_submit(&job));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_irq_arm());
+  TEST_END("npu irq arm/wait gating");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- it drives the interrupt completion path:
+ * arm -> run -> ISR latches STATUS.cmd_end -> wait_irq returns ok; each handler
+ * branch is a single condition)
+ */
+static void test_irq_driven_completion(void)
+{
+  TEST_BEGIN("npu irq-driven completion");
+  npu_prep();
+
+  ra8_npu_job_t job = {};
+  npu_fill_job(&job);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_submit(&job));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_irq_arm());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_run());
+
+  /* Spurious IRQ first: STATUS clear (no cmd_end, no fault) -> handler leaves the
+   * latch armed and only acks the line. */
+  *ra8_npu_reg(k_ra8_npu_off_status) = 0U;
+  ra8_npu_irq_handler(nullptr);
+  TEST_ASSERT_EQ(((uint32_t)1U << k_ra8_npu_cmd_clear_irq_bit), *ra8_npu_reg(k_ra8_npu_off_cmd));
+
+  /* Real completion: STATUS.cmd_end latched -> handler advances to done, and the
+   * bounded wait returns immediately. */
+  *ra8_npu_reg(k_ra8_npu_off_status) = ((uint32_t)1U << k_ra8_npu_status_cmd_end_bit);
+  ra8_npu_irq_handler(nullptr);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_wait_irq());
+  TEST_END("npu irq-driven completion");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- the handler's fault branch and
+ * wait_irq's fault branch are each a single condition)
+ */
+static void test_irq_fault_and_timeout(void)
+{
+  TEST_BEGIN("npu irq fault + timeout paths");
+  npu_prep();
+
+  ra8_npu_job_t job = {};
+  npu_fill_job(&job);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_submit(&job));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_irq_arm());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_run());
+
+  /* Fault: STATUS bus-error latched -> handler advances to fault, wait reports it. */
+  *ra8_npu_reg(k_ra8_npu_off_status) = ((uint32_t)1U << k_ra8_npu_status_bus_error_bit);
+  ra8_npu_irq_handler(nullptr);
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_npu_wait_irq());
+
+  /* Timeout: re-arm, never latch a result -> the bounded wait exhausts its budget. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_irq_arm());
+  *ra8_npu_reg(k_ra8_npu_off_status) = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_npu_wait_irq());
+
+  /* Handler while de-initialised: read_status fails, so it latches nothing and
+   * cannot fault (covers the status-read failure branch). */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_deinit());
+  ra8_npu_irq_handler(nullptr);
+  TEST_END("npu irq fault + timeout paths");
 }
 
 /* --------------------------------------------------------------------------
@@ -546,6 +635,9 @@ int32_t main(void)
   test_wait_paths_and_clear_irq();
   test_wait_times_out();
   test_reset_and_deinit();
+  test_irq_arm_gates();
+  test_irq_driven_completion();
+  test_irq_fault_and_timeout();
   test_exec_runs_addk_job();
   test_exec_rejects_non_sim_stream();
   (void)fprintf(stderr, "[OK ] test_ra8_npu.c\n");

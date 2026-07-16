@@ -362,6 +362,92 @@ typedef struct {
  */
 [[nodiscard]] ra8_err_t ra8_npu_clear_irq(void);
 
+/**
+ * @brief Arm the interrupt-driven completion latch for the submitted job.
+ *
+ * @details
+ * Resets the internal completion state to "waiting" so ::ra8_npu_wait_irq can
+ * block until ::ra8_npu_irq_handler observes the job finish. Call it AFTER
+ * ::ra8_npu_submit and BEFORE ::ra8_npu_run when the caller intends to take the
+ * NPU interrupt instead of busy-polling. The interrupt itself must already be
+ * routed to ::ra8_npu_irq_handler via `ra8_isr_register(k_ra8_npu_event_irq, ...)`.
+ *
+ * @return `ra8_err_t` error code.
+ * @retval k_ra8_ok Completion latch armed; the IRQ path may now be used.
+ * @retval k_ra8_err_not_initialized `ra8_npu_init()` had not run.
+ * @retval k_ra8_err_invalid_state No job has been submitted since init/reset.
+ *
+ * @pre `ra8_npu_submit()` programmed a job since the last init/reset.
+ * @pre The NPU interrupt is (or is about to be) routed to `ra8_npu_irq_handler`.
+ * @post On success the completion latch reads "armed" (not done, not faulted).
+ * @post No hardware register is modified.
+ *
+ * @note Not thread-safe.
+ * @see ra8_npu_wait_irq
+ * @see ra8_npu_irq_handler
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_npu_irq_arm(void);
+
+/**
+ * @brief NPU interrupt service routine: latch completion / fault, ack the IRQ.
+ *
+ * @details
+ * Register this with `ra8_isr_register(k_ra8_npu_event_irq, ra8_npu_irq_handler,
+ * nullptr, priority, ...)`. On entry it reads `STATUS`, latches the internal
+ * completion state to "done" (command stream fully consumed) or "faulted" (any
+ * bus / parse / weight-decoder / ECC fault), then writes `CMD.clear_irq` so the
+ * line de-asserts. It performs no logging on the hot path and touches the NPU
+ * only through the already-cited ::ra8_npu_read_status / ::ra8_npu_clear_irq
+ * accessors, so it adds no new register citation. A waiter unblocks via
+ * ::ra8_npu_wait_irq.
+ *
+ * @param[in] ctx Unused registration cookie (kept for `ra8_isr_handler_t` ABI).
+ *
+ * @return None (void).
+ * @retval None This function returns no value.
+ *
+ * @pre `ra8_npu_init()` previously succeeded.
+ * @pre Invoked from the NPU interrupt vector (or an equivalent test driver).
+ * @post The completion latch reflects the observed STATUS (done or fault).
+ * @post `CMD.clear_irq` has been written, so `STATUS.irq_raised` de-asserts.
+ *
+ * @note ISR-safe: single status read + single command write, no logging.
+ * @see ra8_npu_wait_irq
+ * @see ra8_npu_irq_arm
+ * @since 0.1.0
+ */
+void ra8_npu_irq_handler(void* ctx);
+
+/**
+ * @brief Block on the NPU interrupt until the armed job completes or faults.
+ *
+ * @details
+ * The interrupt-driven alternative to the busy-wait ::ra8_npu_wait. Spins a
+ * bounded budget (NASA Rule 2), issuing a `WFI` on the target between checks so
+ * the core sleeps until ::ra8_npu_irq_handler latches a result. On the unit-test
+ * host `WFI` compiles away and the test drives ::ra8_npu_irq_handler directly.
+ * Requires ::ra8_npu_irq_arm to have armed the latch first.
+ *
+ * @return `ra8_err_t` error code.
+ * @retval k_ra8_ok The ISR observed completion (command stream consumed).
+ * @retval k_ra8_err_not_initialized `ra8_npu_init()` had not run.
+ * @retval k_ra8_err_invalid_state The completion latch was not armed.
+ * @retval k_ra8_err_hw_error The ISR latched a STATUS fault.
+ * @retval k_ra8_err_hw_timeout No completion latched within the spin budget.
+ *
+ * @pre `ra8_npu_irq_arm()` armed the latch and `ra8_npu_run()` kicked the job.
+ * @pre The NPU interrupt is routed to `ra8_npu_irq_handler` and IRQs are enabled.
+ * @post On k_ra8_ok the command stream has been fully consumed.
+ * @post No hardware register is modified by the wait itself.
+ *
+ * @note Not thread-safe. Prefer this over `ra8_npu_wait` for long inferences.
+ * @see ra8_npu_irq_arm
+ * @see ra8_npu_wait
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_npu_wait_irq(void);
+
 #ifdef __cplusplus
 }
 #endif
