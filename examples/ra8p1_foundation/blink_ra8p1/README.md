@@ -23,9 +23,12 @@ The peripheral register bases and the memory map are **byte-identical** between
 the RA8D2 and RA8P1 (verified from both chips' FSP CMSIS headers and Zephyr
 device trees; see the RA8P1 difference-analysis issue). The only hardware
 addition is the Arm Ethos-U55 NPU (`libs/ra8_hal/inc/ra8_npu_regs.h`). So this app
-reuses the `ra8_board_ek_ra8d2` board layer unchanged and differs from the RA8D2
-`blink` only in its toolchain file and a RA8P1-accurate `linker_script.ld`
-(1664 KB SRAM, RA8P1 HUM `R01UH1064EJ`).
+builds against the dedicated `ra8_board_ra8p1` board layer (issue #226, selected
+via `ra8_add_app(... BOARD ra8p1)`) and differs from the RA8D2 `blink` only in
+its toolchain file and a RA8P1-accurate `linker_script.ld` (1664 KB SRAM, RA8P1
+HUM `R01UH1064EJ`). That board layer's LED/switch/console pins are provisional
+(mirrored from the pin-compatible EK-RA8D2) with a `TODO(EK-RA8P1 UM /
+ra8p1_kicad)` until an RA8P1 board is defined.
 
 It is **excluded from the top-level RA8D2 unified build** (`ra8p1_foundation` is
 skipped in the repo-root `CMakeLists.txt`) so `make blink` / `make blink_hal`
@@ -33,5 +36,7 @@ and every other RA8D2 target stay byte-for-behaviour unchanged.
 
 ## Status
 
-Build-foundation only -- **not** hardware-validated. There is no RA8P1 board
-layer or on-silicon bring-up yet; those are tracked as follow-up issues.
+Build-foundation only -- **not** hardware-validated. The dedicated
+`ra8_board_ra8p1` board layer now exists (issue #226) and this app builds and
+runs against it under `board_sim --device ra8p1`, but there is no RA8P1 board for
+on-silicon bring-up yet; that is tracked as follow-up.
