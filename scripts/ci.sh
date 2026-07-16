@@ -165,6 +165,12 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
     python3 scripts/utils/check_magic_numbers.py
     python3 scripts/utils/check_no_gnu_attribute.py
     python3 scripts/utils/check_tz_boundary_discard.py
+    # check_hil_sil_parity.py: SIM==HIL -- every hw_validated/hil app must also
+    # be exercised in board_sim (sil_all.sh). Fails if a hil/ app has no
+    # hil.conf, is not in sil_all.sh's run set, or declares a HIL_MODE board_sim
+    # cannot check. Re-derives both harnesses' discovery dynamically so an added
+    # HIL app cannot silently escape SIM coverage.
+    python3 scripts/utils/check_hil_sil_parity.py
   )
 
   # --- gate: clang-tidy (firmware.yml job: tidy) ---------------------------

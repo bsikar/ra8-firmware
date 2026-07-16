@@ -56,6 +56,15 @@
 # false pass. Only apps in a SIL-capable mode (uart_scrape / alive /
 # jlink_memprobe / rtt_scrape / hil_eth_tcp) can FAIL the suite; SKIPs do not.
 #
+# SIM==HIL discipline (enforced by scripts/utils/check_hil_sil_parity.py):
+# "SIM==HIL" means board_sim must reproduce the ACTUAL silicon behaviour of
+# every HIL path -- bugs INCLUDED. There must be NO SIL skips: when a new HIL app
+# exercises a peripheral/path board_sim does not yet model, board_sim MUST be
+# extended (and a new SIL-capable mode added here if needed) so SIL stays
+# complete -- the gate makes skipping impossible, forcing the sim to keep up with
+# the hardware. That gate re-derives this suite's app discovery + SIL-capable
+# mode list, so an added HIL app cannot silently escape SIM coverage.
+#
 # PARALLELISM: unlike hil_all.sh (serial -- one physical board), board_sim
 # instances share no hardware, so apps run CONCURRENTLY in a worker pool of
 # SIL_JOBS (default: the host core count; -j N overrides). Each app builds into

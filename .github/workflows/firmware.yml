@@ -82,6 +82,23 @@ jobs:
           python3 scripts/utils/check-since-version.py $files
 
   # ---------------------------------------------------------------------------
+  # SIM==HIL parity -- every HIL app is also exercised in the simulator (SIL).
+  # Cheap, hardware-free structural gate: it re-derives each harness's app
+  # discovery from hil_all.sh / sil_all.sh (roots + SIL-capable modes) and fails
+  # if a hil/ app has no hil.conf, if hil_all.sh's run set is not covered by
+  # sil_all.sh's, or if a hil/ app declares a HIL_MODE board_sim cannot check
+  # (which would be a SIL skip). Guarantees an added HIL app cannot escape SIM.
+  # ---------------------------------------------------------------------------
+  hil-sil-parity:
+    name: SIM==HIL parity
+    runs-on: [self-hosted, Linux, X64]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check HIL/SIL app + mode parity
+        run: python3 scripts/utils/check_hil_sil_parity.py
+
+  # ---------------------------------------------------------------------------
   # clang-format (dry-run, Werror)
   # ---------------------------------------------------------------------------
   format:

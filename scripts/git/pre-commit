@@ -417,6 +417,20 @@ if [[ -f scripts/utils/check_hil_alive_policy.py ]]; then
     fi
 fi
 
+# ---- SIM==HIL parity gate ---------------------------------------
+# Every hw_validated/hil app must also be exercised in the simulator:
+# it must carry a hil.conf, be discovered by sil_all.sh (not just
+# hil_all.sh), and declare a HIL_MODE board_sim can check (no SIL
+# skips). Cheap structural gate -- re-derives both harnesses' app
+# discovery from hil_all.sh / sil_all.sh, so an added HIL app cannot
+# silently escape SIM coverage.
+if [[ -f scripts/utils/check_hil_sil_parity.py ]]; then
+    if ! python3 scripts/utils/check_hil_sil_parity.py; then
+        echo "[FAIL] check_hil_sil_parity.py: a HIL app is not SIL-covered."
+        error_found=1
+    fi
+fi
+
 # ---- In-tree line-citation gate (warn in Wave 0) ------------------
 # Comments must reference functions/symbols, not `<file>.c:NNN`. Line
 # numbers go stale on the next reformat. External citations (HUM,
