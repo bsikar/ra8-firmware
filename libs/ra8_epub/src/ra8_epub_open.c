@@ -186,6 +186,10 @@ priv_extract(mz_zip_archive* zip, const char* name, uint8_t* buf, size_t cap, si
   if (mz_zip_reader_file_stat(zip, (mz_uint)idx, &st) == MZ_FALSE) {
     return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE -- stat fails only on a corrupt central-directory entry that locate already found; no well-formed in-memory ZIP can produce this */
   }
+  const ra8_err_t gerr = ra8_epub_zip_guard_entry(&st);
+  if (gerr != k_ra8_ok) {
+    return gerr; /* lying header / declared bomb: reject before inflation */
+  }
   if ((size_t)st.m_uncomp_size > cap) {
     return k_ra8_err_no_mem;
   }
@@ -439,6 +443,13 @@ static ra8_err_t priv_finish_open(mz_zip_archive* zip, ra8_epub_book_t* out_book
 {
   if (zip == nullptr || out_book == nullptr) {
     return k_ra8_err_null_ptr; /* GCOVR_EXCL_LINE -- callers pass the book's inline storage + non-NULL out_book */
+  }
+  /* Archive-level decompression-limits guard: an archive whose central
+   * directory floods the policy entry cap dies before any entry work. */
+  const ra8_err_t gerr = ra8_epub_zip_guard_archive(zip);
+  if (gerr != k_ra8_ok) {
+    priv_zip_destroy(zip);
+    return gerr;
   }
   /* Static (file-scope) OPF scratch keeps the firmware stack frame small --
    * the OPF blob can be tens of KiB and would otherwise blow the per-thread

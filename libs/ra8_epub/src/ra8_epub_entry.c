@@ -250,6 +250,10 @@ static ra8_err_t priv_open_iter(ra8_epub_book_t*                   book,
   if (mz_zip_reader_file_stat(zip, (mz_uint)idx, &st) == MZ_FALSE) {
     return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE -- stat cannot fail on a just-located entry */
   }
+  const ra8_err_t gerr = ra8_epub_zip_guard_entry(&st);
+  if (gerr != k_ra8_ok) {
+    return gerr; /* lying header / declared bomb: reject before inflation */
+  }
   mz_zip_reader_extract_iter_state* iter = mz_zip_reader_extract_iter_new(zip, (mz_uint)idx, 0U);
   if (iter == nullptr) {
     return k_ra8_err_validation_failed;
@@ -293,6 +297,10 @@ static ra8_err_t priv_stored_data_offset(ra8_epub_book_t* book,
   mz_zip_archive_file_stat st;
   if (mz_zip_reader_file_stat(zip, (mz_uint)idx, &st) == MZ_FALSE) {
     return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE -- stat cannot fail on a just-located entry */
+  }
+  const ra8_err_t gerr = ra8_epub_zip_guard_entry(&st);
+  if (gerr != k_ra8_ok) {
+    return gerr; /* lying header / declared bomb: reject before the copy */
   }
   if (st.m_method != 0U) {
     return k_ra8_err_not_supported; /* DEFLATE -> use the forward cursor */

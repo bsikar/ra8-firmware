@@ -32,6 +32,7 @@
 #include "ra8_check.h"
 #include "ra8_comic.h"
 #include "ra8_comic_internal.h"
+#include "ra8_decomp_limits.h"
 
 #ifndef RA8_SIMULATOR_MODE
 #include "ra8_epub_miniz_alloc.h"
@@ -172,6 +173,15 @@ static ra8_err_t s_add_entry(ra8_comic_t* c, mz_zip_archive* zip, mz_uint i)
   if (mz_zip_reader_file_stat(zip, i, &st) == MZ_FALSE) {
     return k_ra8_ok; /* GCOVR_EXCL_LINE -- stat cannot fail on an index locate already found */
   }
+  /* Decompression-limits guard: a page whose central-directory record
+   * declares an over-cap or bomb-ratio size rejects the whole archive
+   * before any inflation (the same policy every decoder enforces). */
+  const ra8_decomp_limits_t lim = ra8_decomp_limits_default();
+  const ra8_err_t           derr =
+    ra8_decomp_check_declared(&lim, (uint64_t)st.m_comp_size, (uint64_t)st.m_uncomp_size);
+  if (derr != k_ra8_ok) {
+    return derr;
+  }
   return ra8_comic_page_add(c,
                             nb,
                             (uint16_t)nl,
@@ -196,6 +206,13 @@ ra8_err_t ra8_comic_cbz_open(ra8_comic_t* c)
   }
   c->zip_active     = 1U;
   const mz_uint num = mz_zip_reader_get_num_files(zip);
+  /* Decompression-limits guard: the many-tiny-entries bomb dies before
+   * any central-directory entry is touched. */
+  const ra8_decomp_limits_t lim = ra8_decomp_limits_default();
+  if ((uint64_t)num > (uint64_t)lim.max_entries) {
+    (void)ra8_comic_cbz_close(c);
+    return k_ra8_err_decomp_entries;
+  }
   for (mz_uint i = 0U; i < num; ++i) { /* bound: finite central-directory count */
     const ra8_err_t e = s_add_entry(c, zip, i);
     if (e != k_ra8_ok) {

@@ -180,6 +180,10 @@ static ra8_err_t priv_locate_extract(mz_zip_archive* zip,
   if (mz_zip_reader_file_stat(zip, (mz_uint)file_idx, &st) == MZ_FALSE) {
     return k_ra8_err_validation_failed; /* GCOVR_EXCL_LINE */
   }
+  const ra8_err_t gerr = ra8_epub_zip_guard_entry(&st);
+  if (gerr != k_ra8_ok) {
+    return gerr; /* lying header / declared bomb: reject before inflation */
+  }
   if ((size_t)st.m_uncomp_size > max_len) {
     return k_ra8_err_no_mem;
   }
