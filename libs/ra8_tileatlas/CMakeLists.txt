@@ -6,10 +6,14 @@
 # Layout:
 #   inc/ra8_tileatlas.h          format spec (authoritative), reader, memstore
 #   inc/ra8_tileatlas_produce.h  transcode producer (JPEG/PNG -> atlas)
-#   src/ra8_tileatlas.c          parse/validate + bounded per-tile decode
-#   src/ra8_tileatlas_produce.c  sniff/dispatch, band accumulator, tile encode
-#   src/ra8_tileatlas_png.c      streaming PNG scanline decoder (miniz tinfl)
-#   src/ra8_tileatlas_internal.h producer-private seams (bump arena, hooks)
+#   src/ra8_tileatlas.c              parse/validate + bounded per-tile decode
+#   src/ra8_tileatlas_produce.c      sniff/dispatch, band accumulator, tile encode
+#   src/ra8_tileatlas_png.c          streaming PNG pixel layer (tinfl inflate,
+#                                    unfilter, translate)
+#   src/ra8_tileatlas_png_chunk.c    streaming PNG chunk layer (prologue,
+#                                    PLTE/tRNS, ancillary walk)
+#   src/ra8_tileatlas_png_internal.h shared PNG decode state + prototypes
+#   src/ra8_tileatlas_internal.h     producer-private seams (bump arena, hooks)
 #
 # Dependencies: ra8_core (err/check/log), ra8_hal (the streaming JPEG
 # decoder ra8_jpeg_sw_decode_stripes), ra8_io (ra8_io_compress/decompress),

@@ -33,116 +33,10 @@
 #include "ra8_err.h"
 #include "ra8_log.h"
 #include "ra8_tileatlas_internal.h"
+#include "ra8_tileatlas_png_internal.h"
 
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_ta_png";
-
-/**
- * @enum ra8_png_const_t
- * @brief PNG structural sizes and caps (PNG sec 5 "Datastream structure").
- */
-typedef enum : uint32_t {
-  k_ra8_png_sig_bytes   = 8U,          /**< Signature length.                */
-  k_ra8_png_chunk_hdr   = 8U,          /**< Chunk length + type fields.      */
-  k_ra8_png_crc_bytes   = 4U,          /**< Trailing chunk CRC field.        */
-  k_ra8_png_ihdr_len    = 13U,         /**< IHDR payload length.             */
-  k_ra8_png_max_chunks  = 4096U,       /**< Chunk-walk budget (hostile cap). */
-  k_ra8_png_max_len     = 0x7FFFFFFFU, /**< Max legal chunk length.          */
-  k_ra8_png_ring_bytes  = 65536U,      /**< Inflate ring (power of 2).       */
-  k_ra8_png_inbuf_bytes = 4096U,       /**< Compressed-input chunk buffer.   */
-  k_ra8_png_plte_max    = 768U,        /**< Max PLTE payload (256 * 3).      */
-  k_ra8_png_trns_max    = 256U,        /**< Max palette tRNS payload.        */
-  k_ra8_png_skip_chunk  = 256U,        /**< Discard-buffer granularity.      */
-  k_ra8_png_type_ihdr   = 0x49484452U, /**< "IHDR" big-endian.               */
-  k_ra8_png_type_plte   = 0x504C5445U, /**< "PLTE" big-endian.               */
-  k_ra8_png_type_idat   = 0x49444154U, /**< "IDAT" big-endian.               */
-  k_ra8_png_type_iend   = 0x49454E44U, /**< "IEND" big-endian.               */
-  k_ra8_png_type_trns   = 0x74524E53U, /**< "tRNS" big-endian.               */
-} ra8_png_const_t;
-
-/**
- * @enum ra8_png_field_t
- * @brief IHDR field offsets and legal values (PNG sec 11.2.2 "IHDR").
- */
-typedef enum : uint8_t {
-  k_ra8_png_ihdr_ofs_depth     = 8U,   /**< Bit-depth byte offset.      */
-  k_ra8_png_ihdr_ofs_color     = 9U,   /**< Colour-type byte offset.    */
-  k_ra8_png_ihdr_ofs_compress  = 10U,  /**< Compression-method offset.  */
-  k_ra8_png_ihdr_ofs_filter    = 11U,  /**< Filter-method offset.       */
-  k_ra8_png_ihdr_ofs_interlace = 12U,  /**< Interlace-method offset.    */
-  k_ra8_png_depth_8            = 8U,   /**< Only supported bit depth.   */
-  k_ra8_png_color_gray         = 0U,   /**< Grayscale.                  */
-  k_ra8_png_color_rgb          = 2U,   /**< Truecolour.                 */
-  k_ra8_png_color_pal          = 3U,   /**< Indexed-colour.             */
-  k_ra8_png_color_ga           = 4U,   /**< Grayscale + alpha.          */
-  k_ra8_png_color_rgba         = 6U,   /**< Truecolour + alpha.         */
-  k_ra8_png_filter_none        = 0U,   /**< Row filter: none.           */
-  k_ra8_png_filter_sub         = 1U,   /**< Row filter: sub.            */
-  k_ra8_png_filter_up          = 2U,   /**< Row filter: up.             */
-  k_ra8_png_filter_avg         = 3U,   /**< Row filter: average.        */
-  k_ra8_png_filter_paeth       = 4U,   /**< Row filter: Paeth.          */
-  k_ra8_png_ch_1               = 1U,   /**< 1 byte per pixel.           */
-  k_ra8_png_ch_2               = 2U,   /**< 2 bytes per pixel.          */
-  k_ra8_png_ch_3               = 3U,   /**< 3 bytes per pixel.          */
-  k_ra8_png_ch_4               = 4U,   /**< 4 bytes per pixel.          */
-  k_ra8_png_be_sh24            = 24U,  /**< Big-endian assembly shifts. */
-  k_ra8_png_be_sh16            = 16U,  /**< Big-endian assembly shifts. */
-  k_ra8_png_be_sh8             = 8U,   /**< Big-endian assembly shifts. */
-  k_ra8_png_opaque             = 255U, /**< Fully-opaque alpha value.   */
-} ra8_png_field_t;
-
-/** @brief PNG signature (PNG sec 5.2). */
-static const uint8_t s_png_sig[k_ra8_png_sig_bytes] =
-  {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU}; /* MAGIC-OK: the 8 spec signature bytes */
-
-/**
- * @struct ra8_png_state_t
- * @brief Whole streaming PNG decode state (module-static instance).
- *
- * @details One static instance: the inflate ring pointer set plus palette
- *          tables would blow the stack budget. All heap-sized buffers are
- *          carved from the producer's bump arena.
- *
- * @invariant `rowfill <= rowlen` and `rows_done <= h` at all times.
- */
-typedef struct {
-  ra8_tileatlas_pull_fn pull;     /**< Sequential byte source. */
-  void*                 pull_ctx; /**< Context for `pull`.     */
-  ra8_ta_geom_fn        on_geom;  /**< Producer geometry hook. */
-  ra8_ta_rows_fn        on_rows;  /**< Producer row sink.      */
-  void*                 cb_ctx;   /**< Producer context.       */
-
-  uint16_t w;          /**< Image width, pixels.                 */
-  uint16_t h;          /**< Image height, pixels.                */
-  uint8_t  color_type; /**< IHDR colour type.                    */
-  uint8_t  src_ch;     /**< Source bytes per pixel (filter bpp). */
-  uint8_t  dst_ch;     /**< Output bytes per pixel (1, 3 or 4).  */
-
-  uint8_t  palette[k_ra8_png_plte_max]; /**< PLTE payload (RGB triples). */
-  uint8_t  trns[k_ra8_png_trns_max];    /**< Palette alpha (tRNS).       */
-  uint16_t plte_count;                  /**< Palette entries present.    */
-  uint16_t trns_count;                  /**< tRNS entries present.       */
-  uint8_t  has_plte;                    /**< 1 once PLTE parsed.         */
-  uint8_t  has_trns;                    /**< 1 once tRNS parsed.         */
-
-  tinfl_decompressor* inflator; /**< Carved inflate context.            */
-  uint8_t*            ring;     /**< Carved 64 KiB inflate ring.        */
-  uint8_t*            inbuf;    /**< Carved compressed-input buffer.    */
-  uint8_t*            rowbuf;   /**< Carved scanline (filter + pixels). */
-  uint8_t*            prevrow;  /**< Carved previous unfiltered row.    */
-  uint8_t*            xlat;     /**< Carved translated output row.      */
-
-  uint32_t ring_wr;   /**< Ring write offset.               */
-  uint32_t rowlen;    /**< Scanline bytes (1 + w * src_ch). */
-  uint32_t rowfill;   /**< Scanline bytes assembled so far. */
-  uint16_t rows_done; /**< Rows emitted so far.             */
-
-  uint32_t idat_rem;      /**< Bytes left in the current IDAT chunk.   */
-  uint8_t  source_done;   /**< 1 once a non-IDAT chunk ended the data. */
-  uint8_t  pending_valid; /**< 1 when a pending chunk header is held.  */
-  uint32_t pending_len;   /**< Pending chunk payload length.           */
-  uint32_t pending_type;  /**< Pending chunk type (big-endian value).  */
-} ra8_png_state_t;
 
 /** @brief Module-static decode state (decoder documented not thread-safe). */
 static ra8_png_state_t s_png;
@@ -151,286 +45,6 @@ static ra8_png_state_t s_png;
  * Byte-source helpers.
  * ---------------------------------------------------------------------------
  */
-
-/**
- * @brief Pull exactly @p len bytes; EOF mid-read is a protocol error.
- * @details Bounded by @p len (each non-EOF pull delivers >= 1 byte).
- * @param[in,out] st  Decoder state (source position advances).
- * @param[out]    buf Destination buffer.
- * @param[in]     len Bytes required.
- * @return Result code.
- * @retval k_ra8_ok                 Exactly @p len bytes delivered.
- * @retval k_ra8_err_protocol_error The source ended early.
- * @retval other                    Propagated from the pull callback.
- * @pre @p buf holds @p len writable bytes.
- * @pre @p st->pull is bound.
- * @post On success the source advanced by @p len bytes.
- * @post On error the decode aborts.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static ra8_err_t png_pull_exact(ra8_png_state_t* st, uint8_t* buf, uint32_t len)
-{
-  uint32_t done = 0U;
-  while (done < len) {
-    size_t          got = 0U;
-    const ra8_err_t err = st->pull(st->pull_ctx, &buf[done], (size_t)(len - done), &got);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    if (got == 0U) {
-      return k_ra8_err_protocol_error;
-    }
-    done += (uint32_t)got;
-  }
-  return k_ra8_ok;
-}
-
-/**
- * @brief Discard exactly @p len source bytes (unknown / ancillary chunks).
- * @details Bounded by @p len over a fixed-size stack scratch.
- * @param[in,out] st  Decoder state (source position advances).
- * @param[in]     len Bytes to discard.
- * @return Result code.
- * @retval k_ra8_ok                 Bytes discarded.
- * @retval k_ra8_err_protocol_error The source ended early.
- * @retval other                    Propagated from the pull callback.
- * @pre @p st->pull is bound.
- * @pre @p len came from a validated chunk-length field.
- * @post On success the source advanced by @p len bytes.
- * @post On error the decode aborts.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static ra8_err_t png_skip(ra8_png_state_t* st, uint32_t len)
-{
-  uint8_t  scratch[k_ra8_png_skip_chunk];
-  uint32_t left = len;
-  while (left > 0U) {
-    const uint32_t take =
-      (left < (uint32_t)k_ra8_png_skip_chunk) ? left : (uint32_t)k_ra8_png_skip_chunk;
-    const ra8_err_t err = png_pull_exact(st, scratch, take);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    left -= take;
-  }
-  return k_ra8_ok;
-}
-
-/**
- * @brief Read one 8-byte chunk header (length + type, both big-endian).
- * @details Assembles the big-endian length and type fields and enforces the spec length cap.
- * @param[in,out] st       Decoder state (source position advances).
- * @param[out]    out_len  Receives the payload length.
- * @param[out]    out_type Receives the chunk type value.
- * @return Result code.
- * @retval k_ra8_ok                 Header read; length within the spec cap.
- * @retval k_ra8_err_protocol_error Truncated header or oversize length.
- * @retval other                    Propagated from the pull callback.
- * @pre The source is positioned at a chunk boundary.
- * @pre Both outputs are writable.
- * @post On success the source sits at the chunk payload.
- * @post On error the decode aborts.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static ra8_err_t png_read_chunk_hdr(ra8_png_state_t* st, uint32_t* out_len, uint32_t* out_type)
-{
-  uint8_t         hdr[k_ra8_png_chunk_hdr] = {};
-  const ra8_err_t err                      = png_pull_exact(st, hdr, sizeof(hdr));
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  const uint32_t len  = ((uint32_t)hdr[0] << k_ra8_png_be_sh24) |
-                        ((uint32_t)hdr[1] << k_ra8_png_be_sh16) |
-                        ((uint32_t)hdr[2] << k_ra8_png_be_sh8) | (uint32_t)hdr[3];
-  const uint32_t type = ((uint32_t)hdr[4] << k_ra8_png_be_sh24) |
-                        ((uint32_t)hdr[5] << k_ra8_png_be_sh16) |
-                        ((uint32_t)hdr[6] << k_ra8_png_be_sh8) | (uint32_t)hdr[7];
-  if (len > (uint32_t)k_ra8_png_max_len) {
-    return k_ra8_err_protocol_error;
-  }
-  *out_len  = len;
-  *out_type = type;
-  return k_ra8_ok;
-}
-
-/* ---------------------------------------------------------------------------
- * IHDR / PLTE / tRNS parsing.
- * ---------------------------------------------------------------------------
- */
-
-/**
- * @brief Map an IHDR colour type to its source bytes-per-pixel, or 0.
- * @details The bit depth is fixed at 8, so bytes per pixel equals the channel count.
- * @param[in] color_type IHDR colour-type byte.
- * @return Source channel count for 8-bit depth.
- * @retval 1-4 Legal colour type's bytes per pixel.
- * @retval 0   Unsupported / illegal colour type.
- * @pre The bit depth was validated as 8.
- * @pre None (total over uint8_t).
- * @post No state mutated.
- * @post Return is 0 or a legal bpp.
- * @note Pure; thread-safe.
- * @since 0.1.0
- */
-static uint8_t png_src_channels(uint8_t color_type)
-{
-  switch (color_type) {
-    case k_ra8_png_color_gray:
-      return (uint8_t)k_ra8_png_ch_1;
-    case k_ra8_png_color_rgb:
-      return (uint8_t)k_ra8_png_ch_3;
-    case k_ra8_png_color_pal:
-      return (uint8_t)k_ra8_png_ch_1;
-    case k_ra8_png_color_ga:
-      return (uint8_t)k_ra8_png_ch_2;
-    case k_ra8_png_color_rgba:
-      return (uint8_t)k_ra8_png_ch_4;
-    default:
-      return 0U;
-  }
-}
-
-/**
- * @brief Parse + validate the IHDR chunk into the decode state.
- * @details Rejects, fail-closed: non-8-bit depth, unknown colour types,
- *          non-zero compression/filter methods, interlacing, zero or
- *          over-cap dimensions (PNG sec 11.2.2).
- * @param[in,out] st    Decoder state (geometry fields written).
- * @param[in]     max_w Fail-closed width cap.
- * @param[in]     max_h Fail-closed height cap.
- * @return Result code.
- * @retval k_ra8_ok                 IHDR accepted.
- * @retval k_ra8_err_invalid_size   Dimension zero / over the caps.
- * @retval k_ra8_err_not_supported  Depth / colour / method / interlace.
- * @retval k_ra8_err_protocol_error Structural mismatch (length, order).
- * @retval other                    Propagated from the pull callback.
- * @pre The source sits right after the PNG signature.
- * @pre @p st is zero-initialised apart from the bound callbacks.
- * @post On success `w`/`h`/`color_type`/`src_ch` are set.
- * @post On error the decode aborts.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static ra8_err_t png_parse_ihdr(ra8_png_state_t* st, uint16_t max_w, uint16_t max_h)
-{
-  uint32_t  len  = 0U;
-  uint32_t  type = 0U;
-  ra8_err_t err  = png_read_chunk_hdr(st, &len, &type);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  if ((type != (uint32_t)k_ra8_png_type_ihdr) || (len != (uint32_t)k_ra8_png_ihdr_len)) {
-    return k_ra8_err_protocol_error;
-  }
-  uint8_t ihdr[k_ra8_png_ihdr_len] = {};
-  err                              = png_pull_exact(st, ihdr, sizeof(ihdr));
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  const uint32_t w32 = ((uint32_t)ihdr[0] << k_ra8_png_be_sh24) |
-                       ((uint32_t)ihdr[1] << k_ra8_png_be_sh16) |
-                       ((uint32_t)ihdr[2] << k_ra8_png_be_sh8) | (uint32_t)ihdr[3];
-  const uint32_t h32 = ((uint32_t)ihdr[4] << k_ra8_png_be_sh24) |
-                       ((uint32_t)ihdr[5] << k_ra8_png_be_sh16) |
-                       ((uint32_t)ihdr[6] << k_ra8_png_be_sh8) | (uint32_t)ihdr[7];
-  if ((w32 == 0U) || (w32 > (uint32_t)max_w)) {
-    return k_ra8_err_invalid_size;
-  }
-  if ((h32 == 0U) || (h32 > (uint32_t)max_h)) {
-    return k_ra8_err_invalid_size;
-  }
-  if (ihdr[k_ra8_png_ihdr_ofs_depth] != (uint8_t)k_ra8_png_depth_8) {
-    return k_ra8_err_not_supported;
-  }
-  st->src_ch = png_src_channels(ihdr[k_ra8_png_ihdr_ofs_color]);
-  if (st->src_ch == 0U) {
-    return k_ra8_err_not_supported;
-  }
-  if (ihdr[k_ra8_png_ihdr_ofs_compress] != 0U) {
-    return k_ra8_err_not_supported;
-  }
-  if (ihdr[k_ra8_png_ihdr_ofs_filter] != 0U) {
-    return k_ra8_err_not_supported;
-  }
-  if (ihdr[k_ra8_png_ihdr_ofs_interlace] != 0U) {
-    return k_ra8_err_not_supported; /* Adam7 breaks streaming; fail closed */
-  }
-  st->w          = (uint16_t)w32;
-  st->h          = (uint16_t)h32;
-  st->color_type = ihdr[k_ra8_png_ihdr_ofs_color];
-  return png_skip(st, (uint32_t)k_ra8_png_crc_bytes);
-}
-
-/**
- * @brief Parse a PLTE chunk into the palette table (colour type 3).
- * @details Validates the payload shape, stores the RGB triples, and skips the trailing CRC.
- * @param[in,out] st  Decoder state (palette written).
- * @param[in]     len PLTE payload length.
- * @return Result code.
- * @retval k_ra8_ok                    Palette stored.
- * @retval k_ra8_err_validation_failed Length not a multiple of 3 / over cap
- *                                     / duplicate PLTE.
- * @retval other                       Propagated from the pull callback.
- * @pre IHDR has been parsed.
- * @pre @p len came from a validated chunk header.
- * @post On success `plte_count` reflects the stored entries.
- * @post On error the decode aborts.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static ra8_err_t png_parse_plte(ra8_png_state_t* st, uint32_t len)
-{
-  if ((len == 0U) || ((len % (uint32_t)k_ra8_png_ch_3) != 0U) ||
-      (len > (uint32_t)k_ra8_png_plte_max) || (st->has_plte != 0U)) {
-    return k_ra8_err_validation_failed;
-  }
-  const ra8_err_t err = png_pull_exact(st, st->palette, len);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  st->plte_count = (uint16_t)(len / (uint32_t)k_ra8_png_ch_3);
-  st->has_plte   = 1U;
-  return png_skip(st, (uint32_t)k_ra8_png_crc_bytes);
-}
-
-/**
- * @brief Parse a tRNS chunk (palette alpha; colour type 3 only).
- * @details A tRNS on colour types 0/2 (colour-key transparency) is rejected
- *          `k_ra8_err_not_supported` rather than silently flattened -- this
- *          producer never alters pixels it cannot represent.
- * @param[in,out] st  Decoder state (alpha table written).
- * @param[in]     len tRNS payload length.
- * @return Result code.
- * @retval k_ra8_ok                    Alpha table stored.
- * @retval k_ra8_err_not_supported     tRNS on a non-palette colour type.
- * @retval k_ra8_err_validation_failed Oversize / missing PLTE / duplicate.
- * @retval other                       Propagated from the pull callback.
- * @pre IHDR has been parsed.
- * @pre @p len came from a validated chunk header.
- * @post On success `trns_count`/`has_trns` reflect the table.
- * @post On error the decode aborts.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static ra8_err_t png_parse_trns(ra8_png_state_t* st, uint32_t len)
-{
-  if (st->color_type != (uint8_t)k_ra8_png_color_pal) {
-    return k_ra8_err_not_supported;
-  }
-  if ((len > (uint32_t)k_ra8_png_trns_max) || (st->has_plte == 0U) || (st->has_trns != 0U)) {
-    return k_ra8_err_validation_failed;
-  }
-  const ra8_err_t err = png_pull_exact(st, st->trns, len);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  st->trns_count = (uint16_t)len;
-  st->has_trns   = 1U;
-  return png_skip(st, (uint32_t)k_ra8_png_crc_bytes);
-}
 
 /* ---------------------------------------------------------------------------
  * Scanline reconstruction.
@@ -562,8 +176,8 @@ static ra8_err_t png_translate(ra8_png_state_t* st, const uint8_t* row)
   }
   if (st->color_type == (uint8_t)k_ra8_png_color_ga) {
     for (uint32_t x = 0U; x < w; x++) {
-      const uint8_t  g   = row[x * (uint32_t)k_ra8_png_ch_2];
-      const uint8_t  a   = row[(x * (uint32_t)k_ra8_png_ch_2) + 1U];
+      const uint8_t  g   = row[(size_t)x * (size_t)k_ra8_png_ch_2];
+      const uint8_t  a   = row[((size_t)x * (size_t)k_ra8_png_ch_2) + 1U];
       const uint32_t dst = x * (uint32_t)k_ra8_png_ch_4;
       st->xlat[dst]      = g;
       st->xlat[dst + 1U] = g;
@@ -676,15 +290,14 @@ static ra8_err_t png_bind_geometry(ra8_png_state_t* st, ra8_ta_bump_t* bump)
     return err;
   }
   st->rowlen = 1U + ((uint32_t)st->w * (uint32_t)st->src_ch);
-  /* The bump allocator returns 8-byte-aligned carves, which satisfies the
-   * inflate context's alignment; the void* hop silences -Wcast-align. */
-  st->inflator =
-    (tinfl_decompressor*)(void*)ra8_ta_priv_bump_take(bump, sizeof(tinfl_decompressor));
-  st->ring    = ra8_ta_priv_bump_take(bump, (size_t)k_ra8_png_ring_bytes);
-  st->inbuf   = ra8_ta_priv_bump_take(bump, (size_t)k_ra8_png_inbuf_bytes);
-  st->rowbuf  = ra8_ta_priv_bump_take(bump, (size_t)st->rowlen);
-  st->prevrow = ra8_ta_priv_bump_take(bump, (size_t)(st->rowlen - 1U));
-  st->xlat    = ra8_ta_priv_bump_take(bump, (size_t)st->w * (size_t)st->dst_ch);
+  /* The bump allocator returns 8-byte-aligned void* carves, which satisfies
+   * the inflate context's alignment. */
+  st->inflator = (tinfl_decompressor*)ra8_ta_priv_bump_take(bump, sizeof(tinfl_decompressor));
+  st->ring     = ra8_ta_priv_bump_take(bump, (size_t)k_ra8_png_ring_bytes);
+  st->inbuf    = ra8_ta_priv_bump_take(bump, (size_t)k_ra8_png_inbuf_bytes);
+  st->rowbuf   = ra8_ta_priv_bump_take(bump, (size_t)st->rowlen);
+  st->prevrow  = ra8_ta_priv_bump_take(bump, (size_t)(st->rowlen - 1U));
+  st->xlat     = ra8_ta_priv_bump_take(bump, (size_t)st->w * (size_t)st->dst_ch);
   if ((st->inflator == nullptr) || (st->ring == nullptr) || (st->inbuf == nullptr) ||
       (st->rowbuf == nullptr) || (st->prevrow == nullptr) || (st->xlat == nullptr)) {
     return k_ra8_err_invalid_size;
@@ -721,7 +334,7 @@ static ra8_err_t png_refill_input(ra8_png_state_t* st, uint32_t* out_avail)
       const uint32_t  take = (st->idat_rem < (uint32_t)k_ra8_png_inbuf_bytes)
                                ? st->idat_rem
                                : (uint32_t)k_ra8_png_inbuf_bytes;
-      const ra8_err_t err  = png_pull_exact(st, st->inbuf, take);
+      const ra8_err_t err  = ra8_ta_png_priv_pull_exact(st, st->inbuf, take);
       if (err != k_ra8_ok) {
         return err;
       }
@@ -730,13 +343,13 @@ static ra8_err_t png_refill_input(ra8_png_state_t* st, uint32_t* out_avail)
       return k_ra8_ok;
     }
     /* Current IDAT exhausted: skip its CRC, look at the next chunk. */
-    ra8_err_t err = png_skip(st, (uint32_t)k_ra8_png_crc_bytes);
+    ra8_err_t err = ra8_ta_png_priv_skip(st, (uint32_t)k_ra8_png_crc_bytes);
     if (err != k_ra8_ok) {
       return err;
     }
     uint32_t len  = 0U;
     uint32_t type = 0U;
-    err           = png_read_chunk_hdr(st, &len, &type);
+    err           = ra8_ta_png_priv_chunk_hdr(st, &len, &type);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -776,60 +389,119 @@ static ra8_err_t png_refill_input(ra8_png_state_t* st, uint32_t* out_avail)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+/**
+ * @struct ra8_png_iter_t
+ * @brief Inflate-loop cursor: compressed-input window + progress guard.
+ *
+ * @invariant `in_pos <= in_avail` at all times.
+ */
+typedef struct {
+  uint32_t in_avail; /**< Valid compressed bytes in `inbuf`.    */
+  uint32_t in_pos;   /**< Consumed compressed bytes.            */
+  uint8_t  stalls;   /**< Consecutive zero-progress iterations. */
+  uint8_t  done;     /**< 1 once tinfl reported stream end.     */
+} ra8_png_iter_t;
+
+/**
+ * @brief One inflate iteration: refill, tinfl, progress guard, drain rows.
+ * @details The ring is tinfl's LZ dictionary; each call produces into the
+ *          contiguous run `[ring_wr, ring_end)` which drains into the
+ *          scanline assembler before the write offset wraps. Two
+ *          consecutive zero-progress iterations (or any stall after the
+ *          source ended) abort as a truncated/hostile stream.
+ * @param[in,out] st Decoder state.
+ * @param[in,out] it Loop cursor (input window + guards).
+ * @return Result code.
+ * @retval k_ra8_ok                    Progress made (or clean stream end).
+ * @retval k_ra8_err_protocol_error    Corrupt deflate / no progress.
+ * @retval k_ra8_err_validation_failed Row-stream inconsistency.
+ * @retval other                       Propagated from pull / the hooks.
+ * @pre `png_bind_geometry()` succeeded.
+ * @pre @p it was zero-initialised before the first call.
+ * @post `it->done` is set once the zlib stream terminates.
+ * @post On error the decode aborts.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t png_inflate_step(ra8_png_state_t* st, ra8_png_iter_t* it)
+{
+  ra8_err_t err = k_ra8_ok;
+  if ((it->in_pos == it->in_avail) && (st->source_done == 0U)) {
+    err = png_refill_input(st, &it->in_avail);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+    it->in_pos = 0U;
+  }
+  size_t             in_sz  = (size_t)(it->in_avail - it->in_pos);
+  size_t             out_sz = (size_t)((uint32_t)k_ra8_png_ring_bytes - st->ring_wr);
+  const mz_uint      flags  = (mz_uint)TINFL_FLAG_PARSE_ZLIB_HEADER |
+                              ((st->source_done == 0U) ? (mz_uint)TINFL_FLAG_HAS_MORE_INPUT : 0U);
+  const tinfl_status status = tinfl_decompress(st->inflator,
+                                               &st->inbuf[it->in_pos],
+                                               &in_sz,
+                                               st->ring,
+                                               &st->ring[st->ring_wr],
+                                               &out_sz,
+                                               flags);
+  if (status < TINFL_STATUS_DONE) {
+    return k_ra8_err_protocol_error; /* corrupt deflate / bad zlib header */
+  }
+  if ((in_sz == 0U) && (out_sz == 0U)) {
+    it->stalls++;
+    if ((it->stalls > 1U) || (st->source_done != 0U)) {
+      return k_ra8_err_protocol_error; /* truncated stream / no progress */
+    }
+  } else {
+    it->stalls = 0U;
+  }
+  if (out_sz > 0U) {
+    err = png_consume_rows(st, &st->ring[st->ring_wr], (uint32_t)out_sz);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+    st->ring_wr = (st->ring_wr + (uint32_t)out_sz) & ((uint32_t)k_ra8_png_ring_bytes - 1U);
+  }
+  it->in_pos += (uint32_t)in_sz;
+  it->done = (status == TINFL_STATUS_DONE) ? 1U : 0U;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Inflate the whole IDAT stream, emitting every scanline.
+ * @details Drives ::png_inflate_step until the zlib stream terminates, then
+ *          applies the strict termination checks: every declared row
+ *          arrived, no partial scanline remains, and no compressed bytes
+ *          trail the stream inside the IDAT chunks.
+ * @param[in,out] st        Decoder state.
+ * @param[in]     first_len Payload length of the first IDAT chunk.
+ * @return Result code.
+ * @retval k_ra8_ok                    All rows emitted; stream ended clean.
+ * @retval k_ra8_err_protocol_error    Corrupt / truncated deflate stream.
+ * @retval k_ra8_err_validation_failed Row-count / trailing-byte mismatch.
+ * @retval other                       Propagated from pull / the hooks.
+ * @pre `png_bind_geometry()` succeeded.
+ * @pre The source sits at the first IDAT's payload.
+ * @post On success `rows_done == h` and the pending chunk is parked.
+ * @post On error the decode aborts.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 static ra8_err_t png_inflate_idat(ra8_png_state_t* st, uint32_t first_len)
 {
-  st->idat_rem       = first_len;
-  uint32_t  in_avail = 0U;
-  uint32_t  in_pos   = 0U;
-  uint8_t   stalls   = 0U;
-  ra8_err_t err      = k_ra8_ok;
-  while (true) {
-    if ((in_pos == in_avail) && (st->source_done == 0U)) {
-      err = png_refill_input(st, &in_avail);
-      if (err != k_ra8_ok) {
-        return err;
-      }
-      in_pos = 0U;
-    }
-    size_t             in_sz  = (size_t)(in_avail - in_pos);
-    size_t             out_sz = (size_t)((uint32_t)k_ra8_png_ring_bytes - st->ring_wr);
-    const mz_uint      flags  = (mz_uint)TINFL_FLAG_PARSE_ZLIB_HEADER |
-                                ((st->source_done == 0U) ? (mz_uint)TINFL_FLAG_HAS_MORE_INPUT : 0U);
-    const tinfl_status status = tinfl_decompress(st->inflator,
-                                                 &st->inbuf[in_pos],
-                                                 &in_sz,
-                                                 st->ring,
-                                                 &st->ring[st->ring_wr],
-                                                 &out_sz,
-                                                 flags);
-    if (status < TINFL_STATUS_DONE) {
-      return k_ra8_err_protocol_error; /* corrupt deflate / bad zlib header */
-    }
-    if ((in_sz == 0U) && (out_sz == 0U)) {
-      stalls++;
-      if ((stalls > 1U) || (st->source_done != 0U)) {
-        return k_ra8_err_protocol_error; /* truncated stream / no progress */
-      }
-    } else {
-      stalls = 0U;
-    }
-    if (out_sz > 0U) {
-      err = png_consume_rows(st, &st->ring[st->ring_wr], (uint32_t)out_sz);
-      if (err != k_ra8_ok) {
-        return err;
-      }
-      st->ring_wr = (st->ring_wr + (uint32_t)out_sz) & ((uint32_t)k_ra8_png_ring_bytes - 1U);
-    }
-    in_pos += (uint32_t)in_sz;
-    if (status == TINFL_STATUS_DONE) {
-      break;
+  st->idat_rem      = first_len;
+  ra8_png_iter_t it = {};
+  while (it.done == 0U) {
+    const ra8_err_t err = png_inflate_step(st, &it);
+    if (err != k_ra8_ok) {
+      return err;
     }
   }
   /* Strict termination: every declared row arrived, nothing extra. */
   if ((st->rows_done != st->h) || (st->rowfill != 0U)) {
     return k_ra8_err_validation_failed;
   }
-  if ((in_pos != in_avail) || (st->idat_rem != 0U)) {
+  if ((it.in_pos != it.in_avail) || (st->idat_rem != 0U)) {
     return k_ra8_err_validation_failed; /* trailing garbage inside IDAT */
   }
   return k_ra8_ok;
@@ -839,57 +511,6 @@ static ra8_err_t png_inflate_idat(ra8_png_state_t* st, uint32_t first_len)
  * Entry point.
  * ---------------------------------------------------------------------------
  */
-
-/**
- * @brief Walk the post-IDAT chunks until IEND (ancillary chunks skipped).
- * @details When the zlib stream ended inside the last IDAT (no pending
- *          chunk parked by the refill path), that IDAT's trailing CRC is
- *          still unread: consume it, then resume the chunk walk.
- * @param[in,out] st Decoder state (pending chunk consumed first).
- * @return Result code.
- * @retval k_ra8_ok                 IEND reached.
- * @retval k_ra8_err_protocol_error Chunk budget exhausted / truncation /
- *                                  a stray IDAT after the stream ended.
- * @retval other                    Propagated from the pull callback.
- * @pre The inflate phase finished (`rows_done == h`).
- * @pre `st->idat_rem == 0`.
- * @post On success the datastream is fully consumed through IEND.
- * @post On error the decode aborts.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static ra8_err_t png_finish_chunks(ra8_png_state_t* st)
-{
-  uint32_t len  = st->pending_len;
-  uint32_t type = st->pending_type;
-  if (st->pending_valid == 0U) {
-    ra8_err_t err = png_skip(st, (uint32_t)k_ra8_png_crc_bytes); /* last IDAT's CRC */
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    err = png_read_chunk_hdr(st, &len, &type);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-  }
-  for (uint32_t guard = 0U; guard < (uint32_t)k_ra8_png_max_chunks; guard++) {
-    if (type == (uint32_t)k_ra8_png_type_iend) {
-      return k_ra8_ok;
-    }
-    if (type == (uint32_t)k_ra8_png_type_idat) {
-      return k_ra8_err_protocol_error; /* IDAT after the stream completed */
-    }
-    ra8_err_t err = png_skip(st, len + (uint32_t)k_ra8_png_crc_bytes);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-    err = png_read_chunk_hdr(st, &len, &type);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-  }
-  return k_ra8_err_protocol_error;
-}
 
 RA8_PRIV ra8_err_t ra8_ta_priv_png_rows(ra8_tileatlas_pull_fn pull,
                                         void*                 pull_ctx,
@@ -912,30 +533,18 @@ RA8_PRIV ra8_err_t ra8_ta_priv_png_rows(ra8_tileatlas_pull_fn pull,
   st->on_rows  = on_rows;
   st->cb_ctx   = cb_ctx;
 
-  uint8_t   sig[k_ra8_png_sig_bytes] = {};
-  ra8_err_t err                      = png_pull_exact(st, sig, sizeof(sig));
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  if (memcmp(sig, s_png_sig, sizeof(sig)) != 0) {
-    return k_ra8_err_protocol_error;
-  }
-  err = png_parse_ihdr(st, max_w, max_h);
+  ra8_err_t err = ra8_ta_png_priv_prologue(st, max_w, max_h);
   if (err != k_ra8_ok) {
     return err;
   }
   for (uint32_t guard = 0U; guard < (uint32_t)k_ra8_png_max_chunks; guard++) {
     uint32_t len  = 0U;
     uint32_t type = 0U;
-    err           = png_read_chunk_hdr(st, &len, &type);
+    err           = ra8_ta_png_priv_chunk_hdr(st, &len, &type);
     if (err != k_ra8_ok) {
       return err;
     }
-    if (type == (uint32_t)k_ra8_png_type_plte) {
-      err = png_parse_plte(st, len);
-    } else if (type == (uint32_t)k_ra8_png_type_trns) {
-      err = png_parse_trns(st, len);
-    } else if (type == (uint32_t)k_ra8_png_type_idat) {
+    if (type == (uint32_t)k_ra8_png_type_idat) {
       err = png_bind_geometry(st, bump);
       if (err != k_ra8_ok) {
         return err;
@@ -944,12 +553,9 @@ RA8_PRIV ra8_err_t ra8_ta_priv_png_rows(ra8_tileatlas_pull_fn pull,
       if (err != k_ra8_ok) {
         return err;
       }
-      return png_finish_chunks(st);
-    } else if (type == (uint32_t)k_ra8_png_type_iend) {
-      return k_ra8_err_protocol_error; /* IEND before any IDAT */
-    } else {
-      err = png_skip(st, len + (uint32_t)k_ra8_png_crc_bytes);
+      return ra8_ta_png_priv_finish(st);
     }
+    err = ra8_ta_png_priv_pre_idat(st, len, type);
     if (err != k_ra8_ok) {
       return err;
     }

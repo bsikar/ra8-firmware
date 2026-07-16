@@ -346,6 +346,44 @@ static ra8_err_t priv_check_cross(ra8_tileatlas_info_t* info,
   return k_ra8_ok;
 }
 
+/**
+ * @brief Read + validate the 32-byte header region into @p out_info.
+ * @details Magic, geometry fields and reserved runs; grid cross-checks stay
+ *          with the footer phase.
+ * @param[in]  pread     Backing read seam.
+ * @param[in]  pread_ctx Context for @p pread.
+ * @param[out] hdr       Receives the raw header bytes (for the count field).
+ * @param[out] out_info  Geometry fields filled on success.
+ * @return Result code.
+ * @retval k_ra8_ok                    Header structurally valid.
+ * @retval k_ra8_err_validation_failed Magic / geometry / reserved rejection.
+ * @retval other                       Propagated from @p pread.
+ * @pre @p hdr covers ::k_ra8_tileatlas_hdr_bytes bytes.
+ * @pre The backing size was validated by the caller.
+ * @post On success the header geometry fields are populated.
+ * @post On failure @p out_info must not be used.
+ * @note Thread-safe for distinct outputs.
+ * @since 0.1.0
+ */
+static ra8_err_t priv_parse_header_region(ra8_tileatlas_pread_fn pread,
+                                          void*                  pread_ctx,
+                                          uint8_t*               hdr,
+                                          ra8_tileatlas_info_t*  out_info)
+{
+  ra8_err_t err = priv_pread_exact(pread, pread_ctx, 0U, hdr, (size_t)k_ra8_tileatlas_hdr_bytes);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  if (memcmp(&hdr[k_ra8_tileatlas_ofs_magic], s_magic_hdr, sizeof(s_magic_hdr)) != 0) {
+    return k_ra8_err_validation_failed;
+  }
+  err = priv_parse_hdr_fields(hdr, out_info);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  return priv_check_reserved(hdr);
+}
+
 ra8_err_t ra8_tileatlas_parse(ra8_tileatlas_pread_fn pread,
                               void*                  pread_ctx,
                               uint64_t               total_size,
@@ -359,18 +397,7 @@ ra8_err_t ra8_tileatlas_parse(ra8_tileatlas_pread_fn pread,
     return k_ra8_err_invalid_size;
   }
   uint8_t   hdr[k_ra8_tileatlas_hdr_bytes] = {};
-  ra8_err_t err = priv_pread_exact(pread, pread_ctx, 0U, hdr, sizeof(hdr));
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  if (memcmp(&hdr[k_ra8_tileatlas_ofs_magic], s_magic_hdr, sizeof(s_magic_hdr)) != 0) {
-    return k_ra8_err_validation_failed;
-  }
-  err = priv_parse_hdr_fields(hdr, out_info);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err = priv_check_reserved(hdr);
+  ra8_err_t err = priv_parse_header_region(pread, pread_ctx, hdr, out_info);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -535,6 +562,54 @@ static ra8_err_t priv_decode_stream(ra8_tileatlas_pread_fn      pread,
   return k_ra8_ok;
 }
 
+/**
+ * @brief Fetch tile @p n's index entry, then read + decode its stream.
+ * @details Combines the two bounded backing operations of a tile read so the
+ *          public entry stays within the statement budget.
+ * @param[in]  pread       Backing read seam.
+ * @param[in]  pread_ctx   Context for @p pread.
+ * @param[in]  info        Parsed atlas geometry.
+ * @param[in]  n           Linear tile number.
+ * @param[in]  payload     Exact decoded payload size for this tile.
+ * @param[out] scratch     Deflate staging buffer (unused for raw).
+ * @param[in]  scratch_cap Capacity of @p scratch.
+ * @param[out] out_px      Destination pixels.
+ * @return Result code.
+ * @retval k_ra8_ok Tile decoded; exactly @p payload bytes valid.
+ * @retval other    Propagated from the index fetch / stream decode.
+ * @pre @p n is < `info->tile_count` (caller-bounded).
+ * @pre @p out_px holds at least @p payload writable bytes.
+ * @post On success @p out_px holds the packed tile pixels.
+ * @post On any error @p out_px content is unspecified.
+ * @note Not thread-safe (delegates to the backing).
+ * @since 0.1.0
+ */
+static ra8_err_t priv_fetch_decode(ra8_tileatlas_pread_fn      pread,
+                                   void*                       pread_ctx,
+                                   const ra8_tileatlas_info_t* info,
+                                   uint32_t                    n,
+                                   uint32_t                    payload,
+                                   uint8_t*                    scratch,
+                                   uint32_t                    scratch_cap,
+                                   uint8_t*                    out_px)
+{
+  uint32_t        toff = 0U;
+  uint32_t        tlen = 0U;
+  const ra8_err_t err  = priv_index_entry(pread, pread_ctx, info, n, &toff, &tlen);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  return priv_decode_stream(pread,
+                            pread_ctx,
+                            info,
+                            toff,
+                            tlen,
+                            payload,
+                            scratch,
+                            scratch_cap,
+                            out_px);
+}
+
 ra8_err_t ra8_tileatlas_read_tile(ra8_tileatlas_pread_fn      pread,
                                   void*                       pread_ctx,
                                   const ra8_tileatlas_info_t* info,
@@ -562,15 +637,8 @@ ra8_err_t ra8_tileatlas_read_tile(ra8_tileatlas_pread_fn      pread,
   if (payload > out_cap) {
     return k_ra8_err_invalid_size;
   }
-  const uint32_t n    = ((uint32_t)tile_y * (uint32_t)info->tile_cols) + (uint32_t)tile_x;
-  uint32_t       toff = 0U;
-  uint32_t       tlen = 0U;
-  err                 = priv_index_entry(pread, pread_ctx, info, n, &toff, &tlen);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  err =
-    priv_decode_stream(pread, pread_ctx, info, toff, tlen, payload, scratch, scratch_cap, out_px);
+  const uint32_t n = ((uint32_t)tile_y * (uint32_t)info->tile_cols) + (uint32_t)tile_x;
+  err = priv_fetch_decode(pread, pread_ctx, info, n, payload, scratch, scratch_cap, out_px);
   if (err != k_ra8_ok) {
     return err;
   }

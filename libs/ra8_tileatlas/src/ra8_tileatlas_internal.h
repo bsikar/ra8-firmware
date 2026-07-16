@@ -66,7 +66,8 @@ typedef struct {
  *
  * @return Pointer to the carved region, or NULL on exhaustion.
  * @retval NULL     The arena cannot fit @p len more aligned bytes.
- * @retval non-NULL 8-byte-aligned region of @p len bytes.
+ * @retval non-NULL 8-byte-aligned region of @p len bytes (assignable to any
+ *                  object pointer whose alignment is at most 8).
  *
  * @pre @p bump is non-NULL with `base` covering `cap` bytes.
  * @pre @p len is a real buffer size (> 0).
@@ -75,7 +76,7 @@ typedef struct {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-RA8_PRIV uint8_t* ra8_ta_priv_bump_take(ra8_ta_bump_t* bump, size_t len);
+RA8_PRIV void* ra8_ta_priv_bump_take(ra8_ta_bump_t* bump, size_t len);
 
 /**
  * @typedef ra8_ta_geom_fn

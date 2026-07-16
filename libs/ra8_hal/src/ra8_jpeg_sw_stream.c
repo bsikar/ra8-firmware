@@ -354,6 +354,72 @@ static ra8_err_t js_scan_margin(ra8_jpeg_stream_state_t* st, ra8_jpeg_bitreader_
  * @note Not thread-safe.
  * @since 0.1.0
  */
+/**
+ * @brief Decode + emit one MCU: margin slide, luma, chroma, stripe write.
+ * @details Keeps the window margin ahead of the bit reader, then reuses the
+ *          shared block decoders and the stripe emit stage.
+ * @param[in,out] st      Streaming state.
+ * @param[in,out] br      Bit reader over the window.
+ * @param[in]     y_tile  Luma tile scratch (mcu_w * mcu_h bytes).
+ * @param[in,out] cb_tile Cb tile scratch (64 bytes).
+ * @param[in,out] cr_tile Cr tile scratch (64 bytes).
+ * @param[in]     mx      MCU column index.
+ * @param[in]     rows    Valid rows in this stripe.
+ * @return Result code.
+ * @retval k_ra8_ok                 MCU decoded and emitted into the stripe.
+ * @retval k_ra8_err_protocol_error Entropy stream corrupt / truncated.
+ * @retval other                    Propagated from the pull callback.
+ * @pre The geometry and tables are bound (post `js_parse_markers()`).
+ * @pre All three tile buffers are writable.
+ * @post `br` advanced past one MCU's blocks.
+ * @post On error the scan aborts.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t js_decode_mcu(ra8_jpeg_stream_state_t* st,
+                               ra8_jpeg_bitreader_t*    br,
+                               uint8_t*                 y_tile,
+                               uint8_t*                 cb_tile,
+                               uint8_t*                 cr_tile,
+                               uint16_t                 mx,
+                               uint16_t                 rows)
+{
+  ra8_err_t err = js_scan_margin(st, br);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  err = ra8_jpeg_sw_priv_mcu_y(&st->dec, br, y_tile, st->mcu_w);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  if (st->dec.ncomp == 3U) {
+    err = ra8_jpeg_sw_priv_mcu_chroma(&st->dec, br, cb_tile, cr_tile);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+  }
+  js_emit_mcu(st, y_tile, cb_tile, cr_tile, mx, rows);
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Decode the whole entropy-coded scan, one MCU row per stripe.
+ * @details Outer loops are bounded by the SOF0-derived MCU grid (NASA
+ *          Rule 2). Each MCU row fills the stripe buffer, then the stripe
+ *          callback fires with the row's true (edge-clamped) height.
+ * @param[in,out] st       Streaming state.
+ * @param[in]     scan_pos Window offset of the entropy-coded data.
+ * @return Result code.
+ * @retval k_ra8_ok                 Every stripe emitted.
+ * @retval k_ra8_err_protocol_error Entropy stream corrupt / truncated.
+ * @retval other                    Propagated from pull / the stripe sink.
+ * @pre `js_parse_markers()` succeeded (geometry + tables bound).
+ * @pre `scan_pos <= st->win_len`.
+ * @post On success `mcus_y` stripes were emitted in order.
+ * @post On any error emission stops at the failing stripe.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 static ra8_err_t js_scan(ra8_jpeg_stream_state_t* st, uint32_t scan_pos)
 {
   ra8_jpeg_dec_ctx_t*  d  = &st->dec;
@@ -377,21 +443,10 @@ static ra8_err_t js_scan(ra8_jpeg_stream_state_t* st, uint32_t scan_pos)
     const uint32_t left = (uint32_t)d->height - y0;
     const uint16_t rows = (uint16_t)((left < (uint32_t)st->mcu_h) ? left : (uint32_t)st->mcu_h);
     for (uint16_t mx = 0U; mx < st->mcus_x; mx++) {
-      ra8_err_t err = js_scan_margin(st, &br);
+      const ra8_err_t err = js_decode_mcu(st, &br, y_tile, cb_tile, cr_tile, mx, rows);
       if (err != k_ra8_ok) {
         return err;
       }
-      err = ra8_jpeg_sw_priv_mcu_y(d, &br, y_tile, st->mcu_w);
-      if (err != k_ra8_ok) {
-        return err;
-      }
-      if (d->ncomp == 3U) {
-        err = ra8_jpeg_sw_priv_mcu_chroma(d, &br, cb_tile, cr_tile);
-        if (err != k_ra8_ok) {
-          return err;
-        }
-      }
-      js_emit_mcu(st, y_tile, cb_tile, cr_tile, mx, rows);
     }
     const ra8_err_t err =
       st->on_rows(st->cb_ctx, st->stripe, d->width, (uint16_t)y0, rows, st->channels);
@@ -400,6 +455,57 @@ static ra8_err_t js_scan(ra8_jpeg_stream_state_t* st, uint32_t scan_pos)
     }
   }
   return k_ra8_ok;
+}
+
+/**
+ * @brief Bind the source, prime the window and consume the SOI marker.
+ * @details Resets the module-static state, fills the window once, and
+ *          verifies the stream begins with the SOI marker.
+ * @param[in,out] st         Streaming state (reset + bound).
+ * @param[in]     pull       Sequential byte source.
+ * @param[in]     pull_ctx   Context for @p pull.
+ * @param[in]     window     Sliding window buffer.
+ * @param[in]     window_cap Window capacity, bytes.
+ * @param[in]     on_rows    Stripe sink.
+ * @param[in]     cb_ctx     Consumer context.
+ * @return Result code.
+ * @retval k_ra8_ok                 SOI consumed; marker walk may start.
+ * @retval k_ra8_err_invalid_size   The source is shorter than a marker.
+ * @retval k_ra8_err_protocol_error The stream does not begin with SOI.
+ * @retval other                    Propagated from the pull callback.
+ * @pre The public entry validated every pointer.
+ * @pre @p window covers @p window_cap bytes.
+ * @post On success the window sits right after the SOI marker.
+ * @post On error the decode aborts.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t js_begin(ra8_jpeg_stream_state_t* st,
+                          ra8_jpeg_sw_pull_fn      pull,
+                          void*                    pull_ctx,
+                          uint8_t*                 window,
+                          uint32_t                 window_cap,
+                          ra8_jpeg_sw_rows_fn      on_rows,
+                          void*                    cb_ctx)
+{
+  (void)memset(st, 0, sizeof(*st));
+  st->pull      = pull;
+  st->pull_ctx  = pull_ctx;
+  st->win       = window;
+  st->win_cap   = window_cap;
+  st->on_rows   = on_rows;
+  st->cb_ctx    = cb_ctx;
+  ra8_err_t err = js_refill(st);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  if (st->win_len < (uint32_t)k_ra8_jpeg_stream_soi_bytes) {
+    return k_ra8_err_invalid_size;
+  }
+  if (read_be16(st->win) != (uint16_t)k_ra8_jpeg_marker_soi) {
+    return k_ra8_err_protocol_error;
+  }
+  return js_slide(st, (uint32_t)k_ra8_jpeg_stream_soi_bytes);
 }
 
 ra8_err_t ra8_jpeg_sw_decode_stripes(ra8_jpeg_sw_pull_fn pull,
@@ -417,26 +523,8 @@ ra8_err_t ra8_jpeg_sw_decode_stripes(ra8_jpeg_sw_pull_fn pull,
   if (window_cap < (uint32_t)k_ra8_jpeg_sw_stream_min_window) {
     return k_ra8_err_invalid_size;
   }
-  ra8_jpeg_stream_state_t* st = &s_js;
-  (void)memset(st, 0, sizeof(*st));
-  st->pull     = pull;
-  st->pull_ctx = pull_ctx;
-  st->win      = window;
-  st->win_cap  = window_cap;
-  st->on_rows  = on_rows;
-  st->cb_ctx   = cb_ctx;
-
-  ra8_err_t err = js_refill(st);
-  if (err != k_ra8_ok) {
-    return err;
-  }
-  if (st->win_len < (uint32_t)k_ra8_jpeg_stream_soi_bytes) {
-    return k_ra8_err_invalid_size;
-  }
-  if (read_be16(st->win) != (uint16_t)k_ra8_jpeg_marker_soi) {
-    return k_ra8_err_protocol_error;
-  }
-  err = js_slide(st, (uint32_t)k_ra8_jpeg_stream_soi_bytes);
+  ra8_jpeg_stream_state_t* st  = &s_js;
+  ra8_err_t                err = js_begin(st, pull, pull_ctx, window, window_cap, on_rows, cb_ctx);
   if (err != k_ra8_ok) {
     return err;
   }
