@@ -118,3 +118,38 @@ RA8_PRIV void ra8_widget_priv_fill_box(const ra8_widget_paint_t* paint,
                                        uint32_t                  fill,
                                        uint32_t                  border,
                                        int16_t                   border_w);
+
+/**
+ * @brief Filled width in pixels for a `value / total` bar spanning @p width.
+ *
+ * @details
+ * The proportional-fill maths shared by the progress-bar leaf and the book-card
+ * progress indicator: clamp @p value into `[0, total]` and guard the degenerate
+ * inputs so no caller divides by zero or paints past the rect. A zero @p total or
+ * a non-positive @p width fills nothing; a `value >= total` fills the whole
+ * @p width; otherwise the fill is `width * value / total`. Pure integer compute,
+ * no backend call, so it is exercised on the host through both widgets' renders.
+ *
+ * @param[in] value Current progress value.
+ * @param[in] total Full-scale value; 0 means empty (no fill).
+ * @param[in] width Rect width in pixels the fill spans.
+ *
+ * @return Filled width in pixels, in `[0, width]`.
+ * @retval 0     When @p total is 0, @p width is non-positive, or @p value is 0.
+ * @retval width When @p value is at or above @p total (a full bar).
+ *
+ * @pre None.
+ * @pre None.
+ * @post The result is >= 0 and <= @p width.
+ * @post No state is modified.
+ *
+ * @note Pure; thread-safe.
+ *
+ * @par MC/DC:
+ * Single-condition guards (`total == 0`, `width <= 0`, `value > total`) -- each
+ * driven both true and false through the progress-bar render (empty / partial /
+ * full / zero-width vectors) and the book-card render.
+ *
+ * @since 0.1.0
+ */
+RA8_PRIV int32_t ra8_widget_priv_fill_frac(uint32_t value, uint32_t total, int32_t width);
