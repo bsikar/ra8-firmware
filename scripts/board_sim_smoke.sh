@@ -195,6 +195,16 @@ sd_io_apps="ra8_io_sd_demo ra8_io_sdhi_demo ra8_sdhi_card_demo"
 # it prints. Asserts via uart_expect().
 xspi_io_apps="ra8_io_xspi_demo ra8_io_mram_demo"
 
+# IT8951 e-paper apps (#256): board_sim attaches a modelled IT8951 controller on
+# SPI_B with --eink (board_periph_eink.c), which answers HRDY, the GET_DEV_INFO
+# drain and the LUTAFSR "LUT idle" poll, so epaper_refresh drives the full
+# ra8_epaper -> display-PAL e-ink -> ra8_io_spi_bus path to its PASS banner with
+# no panel. The per-pixel SPI streaming (full + partial refresh) needs a bigger
+# chunk budget than the default; STOP_ON ends the run at the banner. Without
+# --eink HRDY never asserts and the app honestly reports FAIL, so the model is
+# load-bearing (SIM == HIL). Asserts via uart_expect().
+eink_apps="epaper_refresh"
+
 # Deep-idle self-parking apps. lpm_periodic_idle runs a bounded wake/work/standby
 # loop, prints "lpm_periodic_idle PASS", then parks forever in lpi_panic_halt --
 # a deliberate low-power WFI spin (the same success-park its bench-proven sibling
@@ -382,6 +392,7 @@ uart_expect() { # app -> expected UART substring on stdout
     ra8_sdhi_card_demo) printf 'ra8_sdhi_card_demo: native SDHI block round-trip PASS' ;;
     ra8_io_xspi_demo) printf 'ra8_io_xspi_demo: xs:/CFG/SET.BIN 256 bytes PASS' ;;
     ra8_io_mram_demo) printf 'block erase/program/read on extra MRAM PASS' ;;
+    epaper_refresh) printf 'epaper: PASS' ;;
     ra8_io_fsfmt_demo) printf 'ra8_io_fsfmt_demo: probed fat maxname=12 + foreign stub seam PASS' ;;
     ra8_io_cache_demo) printf 'ra8_io_cache_demo: re-read x8 hits=' ;;
     ereader_chrome) printf 'ereader-hil: chrome boxes=7 crc=0DCB740F' ;;
@@ -476,7 +487,7 @@ if [ "${#apps[@]}" -eq 0 ]; then
     gpt_capture_input gpt_dma_demo gpt_one_shot_demo gpt_pwm_demo gpt_three_phase_demo
     i2c_loopback flash_journal eth_loopback clock_check crypto_aes_demo
     compile_on_m33 dualcore_background_m33 dualcore_mailbox
-    import_reader i3c_i2c_peripheral_demo)
+    import_reader i3c_i2c_peripheral_demo epaper_refresh)
 fi
 
 echo "board_sim smoke: building the emulator ..."
@@ -764,6 +775,29 @@ for app in "${apps[@]}"; do
         echo "OK (ra8_io on-chip-NV backend: $want)"
       else
         echo "RA8_IO on-chip-NV FAIL (did not reach the PASS banner)"
+        fail=1
+      fi
+      continue
+      ;;
+  esac
+  # IT8951 e-paper app (see $eink_apps): attach the modelled controller with
+  # --eink, let epaper_refresh drive the full ra8_epaper -> display-PAL e-ink
+  # path (init, full refresh, partial refresh), and assert its PASS banner.
+  # STOP_ON ends the run at the banner (the app heartbeats forever after); the
+  # per-pixel SPI streaming needs a bigger chunk budget than the default. The SD
+  # apps show SPI-bus noise can carry NULs, so strip non-printables before bash.
+  case " $eink_apps " in
+    *" $app "*)
+      want="$(uart_expect "$app")"
+      epclean="$({ BOARD_SIM_MAX_CHUNKS=8000000 BOARD_SIM_STOP_ON="$want" BOARD_SIM_WALL_S=300 \
+        "$sim" "$elf" --eink 2>&1 || true; } | LC_ALL=C tr -cd '[:print:]\n')"
+      if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$epclean"; then
+        echo "FAULT (during e-paper refresh)"
+        fail=1
+      elif grep -qF "$want" <<<"$epclean"; then
+        echo "OK (IT8951 e-paper: $want)"
+      else
+        echo "EINK FAIL (did not reach the PASS banner)"
         fail=1
       fi
       continue

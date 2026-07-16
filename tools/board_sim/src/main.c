@@ -46,6 +46,7 @@
 #include "board_net.h"
 #include "board_overlay.h"
 #include "board_periph.h"
+#include "board_periph_eink.h"
 #include "board_periph_sd.h"
 #include "board_usb.h"
 #include "board_usb_host.h"
@@ -6012,7 +6013,7 @@ int main(int argc, char** argv)
       " [--usb-in <str>] [--button <1|2>] [--reboot <N>] [--dump-sym <name>]"
       " [--stop-sym <name> <N>]"
       " [--trace-sym <name>] [--sd-new <N[k|m|g][:fat16|fat32]>] [--save-sd <out>] [--fast-sd]"
-      " [--device ra8d2|ra8p1]\n"
+      " [--eink] [--device ra8d2|ra8p1]\n"
       "  --view          open a macOS window: live board view; click panel"
       " (touch) / on-screen SW1/SW2, type -> UART\n"
       "  --ppm <file>    write the final composite (panel + status) to a PPM\n"
@@ -6035,6 +6036,8 @@ int main(int argc, char** argv)
       "  --save-sd <out> after the run, dump the SD card image (with firmware writes)\n"
       "  --fast-sd       serve SD blocks direct from the image (skip the per-byte SPI\n"
       "                  protocol; byte-identical render) so a big book loads fast; opt-in\n"
+      "  --eink          attach a modelled IT8951 e-paper controller on SPI_B (drives\n"
+      "                  the ra8_epaper path: HRDY ready, GET_DEV_INFO, load + display)\n"
       "  --dump-sym <s>  print 32-bit global <s> from memory after the run (memprobe)\n"
       "  --stop-sym <s> <N>  end the run once 32-bit global <s> reaches N (counter memprobe)\n"
       "  --trace-sym <s> log every entry to function <s> (+LR): trace a bring-up path\n"
@@ -6200,6 +6203,8 @@ int main(int argc, char** argv)
       i++;
     } else if (strncmp(argv[i], "--fast-sd", sizeof("--fast-sd")) == 0) {
       s_fast_sd = true;
+    } else if (strncmp(argv[i], "--eink", sizeof("--eink")) == 0) {
+      (void)board_eink_attach(); /* answer the ra8_epaper SPI path (IT8951 model) */
     } else if ((strncmp(argv[i], "--click", sizeof("--click")) == 0) && ((i + 2) < argc)) {
       click_x    = (int)strtol(argv[i + 1], nullptr, (int)k_strtol_base10);
       click_y    = (int)strtol(argv[i + 2], nullptr, (int)k_strtol_base10);
