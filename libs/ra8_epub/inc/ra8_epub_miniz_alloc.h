@@ -51,13 +51,28 @@ extern "C" {
  * @brief Static pool geometry for the miniz arena.
  *
  * @details
- * Sized for the peak live footprint of one open `.epub`: the inflate
- * decompressor (~11 KiB) plus the central-directory arrays (grows with the
- * archive's file count). 96 KiB gives several-x headroom for books with
- * hundreds of manifest entries while staying tiny against the 2 MiB SRAM.
+ * Sized for the peak live footprint of one open `.epub`. Two footprints share the
+ * pool and must both fit alongside the central-directory arrays (which grow with
+ * the archive's file count and live for the book's whole open):
+ *
+ *   - Whole-entry extract (`mz_zip_reader_extract_to_mem`, used by
+ *     `ra8_epub_load_chapter` / `..._get_resource`): the ~11 KiB inflate
+ *     decompressor plus, on the streamed path, a bounded compressed-read buffer
+ *     (`MZ_ZIP_MAX_IO_BUF_SIZE`, 64 KiB).
+ *   - Streaming entry cursor (`ra8_epub_entry_open`, #231, over
+ *     `mz_zip_reader_extract_iter_*`): the iterator state (~8.4 KiB, embeds the
+ *     inflator) plus -- for a DEFLATE entry -- a 32 KiB LZ dictionary window and
+ *     the same 64 KiB compressed-read buffer. A *stored* (method-0) entry needs
+ *     only the ~8.4 KiB iterator state (miniz reads it directly, no dict/IO bufs).
+ *
+ * The DEFLATE streaming cursor is therefore the peak: ~8.4 + 32 + 64 = ~105 KiB of
+ * transient inflate state, on top of the resident central directory. 160 KiB gives
+ * that peak room while staying tiny against the 1.6 MiB SRAM. A large in-content
+ * image (a manga page) is the motivating #231 case and is streamed through this
+ * cursor rather than materialised whole.
  */
 typedef enum : uint32_t {
-  k_ra8_epub_miniz_pool_bytes = 98304U, /**< Arena size, bytes (96 KiB). */
+  k_ra8_epub_miniz_pool_bytes = 163840U, /**< Arena size, bytes (160 KiB). */
 } ra8_epub_miniz_alloc_limits_t;
 
 /**
