@@ -136,14 +136,19 @@ static bool sh_sd_classify(const char* name, sh_book_fmt_t* out_fmt)
     *out_fmt = k_sh_fmt_epub;
     return true;
   }
-  /* .cbz / .cbr are already 3-char exts, so they keep their name on FAT 8.3
-   * (no truncation, unlike .epub -> .EPB). Comics route through sh_comic.c. */
+  /* .cbz / .cbr / .cbt are already 3-char exts, so they keep their name on
+   * FAT 8.3 (no truncation, unlike .epub -> .EPB). Comics route through
+   * sh_comic.c; the ra8_comic magic detect picks the container. */
   if (sh_sd_has_ext(name, ".CBZ")) {
     *out_fmt = k_sh_fmt_cbz;
     return true;
   }
   if (sh_sd_has_ext(name, ".CBR")) {
     *out_fmt = k_sh_fmt_cbr;
+    return true;
+  }
+  if (sh_sd_has_ext(name, ".CBT")) {
+    *out_fmt = k_sh_fmt_cbt;
     return true;
   }
   return false;

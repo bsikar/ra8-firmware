@@ -23,6 +23,9 @@ Fixture inventory (all payloads reproducible in C, see the header):
   fx_xz_bomb_1m    1 MiB of zeros in a 284 B stream (~3690:1) -- breaches
                    the DEFAULT decompression-limits ratio bound
                    (1024:1 + 64 KiB grace) and must be rejected mid-decode.
+  fx_xz_cbt        an XZ-wrapped ustar comic (two .png page members with
+                   the payloads "PAGE-ONE" / "PAGE-TWO") for the
+                   ra8_comic_open_wrapped .tar.xz path.
 
 Copyright (c) 2026 Brighton Sikarskie
 SPDX-License-Identifier: MIT
@@ -30,7 +33,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import io
 import lzma
+import tarfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -71,6 +76,21 @@ def c_array(name: str, data: bytes) -> str:
     return "\n".join(lines)
 
 
+def cbt_tar() -> bytes:
+    """A deterministic two-page ustar comic (the .tar.xz fixture core)."""
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w", format=tarfile.USTAR_FORMAT) as tf:
+        for name, payload in (
+            (b"page2.png", b"PAGE-TWO"),
+            (b"page1.png", b"PAGE-ONE"),
+        ):
+            info = tarfile.TarInfo(name.decode("ascii"))
+            info.size = len(payload)
+            info.mtime = 0
+            tf.addfile(info, io.BytesIO(payload))
+    return buf.getvalue()
+
+
 def main() -> int:
     small = b"hello xz stream, bounded and fail-closed\n" * 8
     dict_64k = 1 << 16
@@ -82,6 +102,7 @@ def main() -> int:
         ("k_fx_xz_sha256", xz(small, lzma.CHECK_SHA256, dict_64k)),
         ("k_fx_xz_bigdict", xz(small, lzma.CHECK_CRC64, dict_8m)),
         ("k_fx_xz_bomb_1m", xz(b"\x00" * (1 << 20), lzma.CHECK_CRC64, dict_64k)),
+        ("k_fx_xz_cbt", xz(cbt_tar(), lzma.CHECK_CRC64, dict_64k)),
     ]
 
     body = "\n\n".join(c_array(n, d) for n, d in arrays)

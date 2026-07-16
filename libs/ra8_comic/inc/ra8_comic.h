@@ -67,6 +67,9 @@
 #include "ra8_err.h"
 #include "ra8_rar.h"
 #include "ra8_rar5.h"
+#include "ra8_unarch_gzip.h"
+#include "ra8_unarch_tar.h"
+#include "ra8_unarch_xz.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -99,6 +102,7 @@ typedef enum : uint8_t {
   k_ra8_comic_kind_none = 0U, /**< Not opened / unrecognised. */
   k_ra8_comic_kind_cbz  = 1U, /**< ZIP of images (`.cbz`).    */
   k_ra8_comic_kind_cbr  = 2U, /**< RAR of images (`.cbr`).    */
+  k_ra8_comic_kind_cbt  = 3U, /**< tar of images (`.cbt`).    */
 } ra8_comic_kind_t;
 
 /**
@@ -182,6 +186,7 @@ typedef struct {
   ra8_comic_stream_t stream;     /**< CBZ miniz I/O descriptor (stable addr).  */
   ra8_rar_t          rar;        /**< CBR walker state.                        */
   ra8_rar5_state_t   rar5_state; /**< CBR RAR5 decompressor scratch (no heap). */
+  ra8_unarch_tar_t   tar;        /**< CBT tar walker state.                    */
   ra8_comic_kind_t   kind;       /**< Detected container kind.                 */
   uint8_t            zip_active; /**< 1 = miniz reader is initialised (CBZ).   */
   /** @brief Inline storage for miniz's `mz_zip_archive` (CBZ; no heap). */
@@ -375,6 +380,81 @@ ra8_comic_page_read(ra8_comic_t* c, uint32_t page, uint8_t* buf, size_t cap, siz
  * @since Version 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_comic_close(ra8_comic_t* c);
+
+/**
+ * @enum ra8_comic_wrap_dims_t
+ * @brief Alignment of the unwrap arena a wrapped open consumes.
+ * @details ::ra8_comic_open_wrapped stores its flat-memory descriptor at the
+ *          arena start, so the caller arena must be at least this aligned
+ *          (any static or `alignas(8)` buffer qualifies).
+ * @since Version 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra8_comic_wrap_align = 8U, /**< Required unwrap-arena alignment, bytes. */
+} ra8_comic_wrap_dims_t;
+
+/**
+ * @brief Open a comic that may be gzip- or XZ-wrapped (`.cbt.gz`, `.tar.xz`).
+ *
+ * @details Probes the leading magic: a bare container (ZIP / RAR / tar)
+ *          passes straight through to ::ra8_comic_open; a gzip or XZ
+ *          wrapper is first decoded whole into the caller @p arena under
+ *          the default decompression-limits policy, the unwrapped bytes
+ *          are re-probed (a wrapper inside a wrapper is rejected as a
+ *          nesting bomb), and the inner container is opened from the
+ *          arena. The arena therefore must out-live the comic, exactly
+ *          like the page-index and name buffers.
+ *
+ * @param[out] c           Reader to populate (caller-owned).
+ * @param[in]  read        Byte reader over the outer file (non-NULL).
+ * @param[in]  ctx         Context passed to @p read.
+ * @param[in]  size        Outer file length in bytes (> 0).
+ * @param[in]  pages       Caller page-index array (non-NULL).
+ * @param[in]  page_cap    Capacity of @p pages in entries (> 0).
+ * @param[in]  names       Caller name arena (non-NULL).
+ * @param[in]  names_cap   Capacity of @p names in bytes (> 0).
+ * @param[in]  arena       Unwrap arena (non-NULL, 8-aligned; out-lives @p c).
+ * @param[in]  arena_cap   Capacity of @p arena in bytes.
+ * @param[in]  xz_scratch  XZ session scratch (8-aligned,
+ *                         > `k_ra8_unarch_xz_state_reserve` bytes; may be
+ *                         NULL when XZ content is not expected -- an XZ
+ *                         file is then rejected fail-closed).
+ * @param[in]  xz_scratch_len Scratch length in bytes.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                    Comic opened; @p c bound with >= 1 page.
+ * @retval k_ra8_err_null_ptr          A required pointer argument was NULL.
+ * @retval k_ra8_err_invalid_size      A zero size/capacity, a short magic
+ *                                     read, a misaligned or undersized
+ *                                     arena, or full index buffers.
+ * @retval k_ra8_err_decomp_depth      The unwrapped bytes are another
+ *                                     gzip/XZ wrapper (nesting bomb).
+ * @retval k_ra8_err_decomp_*          The wrapper breached the policy.
+ * @retval k_ra8_err_checksum_mismatch The gzip integrity check failed.
+ * @retval k_ra8_err_not_supported     Not a recognised container or wrapper.
+ * @retval k_ra8_err_*                 An unwrap or inner-open error.
+ *
+ * @pre @p read serves offsets `[0, size)` of the outer file.
+ * @pre @p arena (and every other buffer) out-lives @p c and every read.
+ * @post On k_ra8_ok the comic serves pages exactly like ::ra8_comic_open.
+ * @post On any error @p c is left with `kind == k_ra8_comic_kind_none`.
+ *
+ * @note Not thread-safe (shares the single-client XZ pool / gzip state).
+ * @see ra8_comic_open()
+ * @since Version 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_comic_open_wrapped(ra8_comic_t*      c,
+                                               ra8_comic_read_fn read,
+                                               void*             ctx,
+                                               uint64_t          size,
+                                               ra8_comic_page_t* pages,
+                                               uint32_t          page_cap,
+                                               char*             names,
+                                               uint32_t          names_cap,
+                                               uint8_t*          arena,
+                                               size_t            arena_cap,
+                                               void*             xz_scratch,
+                                               uint32_t          xz_scratch_len);
 
 #ifdef __cplusplus
 }
