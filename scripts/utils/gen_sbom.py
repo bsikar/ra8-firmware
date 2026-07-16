@@ -327,6 +327,40 @@ REGISTRY: tuple[Component, ...] = (
         ),
     ),
     Component(
+        key="xz_embedded",
+        name="XZ Embedded (decode-only)",
+        version="v2024-12-30 (git.ae63ae3a)",
+        ctype="library",
+        group="tukaani-project",
+        url="https://github.com/tukaani-project/xz-embedded",
+        path="libs/third_party/xz_embedded",
+        provenance=PROV_COMMIT_PINNED,
+        description="XZ/LZMA2 decoder behind libs/ra8_unarch (.tar.xz content).",
+        purl="pkg:github/tukaani-project/xz-embedded@ae63ae3a36ed01724674e8f3d750dc47bf125410",
+        spdx="0BSD",
+        license_note="0BSD (upstream COPYING; SPDX headers per file).",
+        license_file="libs/third_party/xz_embedded/COPYING",
+        upstream_commit="ae63ae3a36ed01724674e8f3d750dc47bf125410",
+        aggregate_sha256=("9dc6c2af6988af773cdf64d383a450f70c31a6df467ec5bcf827901c21c95dd9"),
+        extra_notes=(
+            "Pinned by tree fingerprint: all 11 vendored files are "
+            "byte-identical to upstream tag v2024-12-30 (commit ae63ae3a), "
+            "the single exact match among the 169 commits reachable from "
+            "the upstream default branch. The vendored subset is the decode "
+            "core only (linux/lib/xz + linux/include/linux/xz.h flattened, "
+            "plus AUTHORS/COPYING/README); no encoder, no BCJ filters, no "
+            "MicroLZMA callers.",
+            "Aggregate SHA-256 is over the sorted per-file hashes of the "
+            "whole vendored directory.",
+            "Built decode-only via the first-party porting header "
+            "libs/ra8_unarch/inc/xz_config.h: XZ_PREALLOC mode only "
+            "(dictionary allocated once from a caller scratch through the "
+            "zero-heap pool), CRC32 + CRC64 verification, no XZ_DEC_DYNALLOC "
+            "(hostile headers must not size allocations). See "
+            "docs/SOUP/xz_embedded.md.",
+        ),
+    ),
+    Component(
         key="stb",
         name="stb (stb_image + stb_truetype)",
         version="stb_image 2.30 / stb_truetype 1.26",

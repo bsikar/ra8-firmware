@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:e5412e6a-536f-5c80-833a-23e427425fda",
+  "serialNumber": "urn:uuid:9f7fb501-1382-5dbd-92ca-eaacf9a94d4a",
   "version": 1,
   "metadata": {
     "tools": [
@@ -488,6 +488,70 @@
         {
           "name": "ra8:note0",
           "value": "Untrusted-ZIP decoder built with -w + -fno-strict-aliasing; a toolchain-version-specific miscompile is documented (T5-02 / T5-03)."
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "xz_embedded",
+      "name": "XZ Embedded (decode-only)",
+      "group": "tukaani-project",
+      "version": "v2024-12-30 (git.ae63ae3a)",
+      "description": "XZ/LZMA2 decoder behind libs/ra8_unarch (.tar.xz content).",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "0BSD"
+          }
+        }
+      ],
+      "copyright": "0BSD (upstream COPYING; SPDX headers per file).",
+      "purl": "pkg:github/tukaani-project/xz-embedded@ae63ae3a36ed01724674e8f3d750dc47bf125410",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "9dc6c2af6988af773cdf64d383a450f70c31a6df467ec5bcf827901c21c95dd9"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/tukaani-project/xz-embedded"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ra8:provenance",
+          "value": "commit-pinned-sha256"
+        },
+        {
+          "name": "ra8:path",
+          "value": "libs/third_party/xz_embedded"
+        },
+        {
+          "name": "ra8:upstreamCommit",
+          "value": "ae63ae3a36ed01724674e8f3d750dc47bf125410"
+        },
+        {
+          "name": "ra8:licenseFile",
+          "value": "libs/third_party/xz_embedded/COPYING"
+        },
+        {
+          "name": "ra8:modified",
+          "value": "false"
+        },
+        {
+          "name": "ra8:note0",
+          "value": "Pinned by tree fingerprint: all 11 vendored files are byte-identical to upstream tag v2024-12-30 (commit ae63ae3a), the single exact match among the 169 commits reachable from the upstream default branch. The vendored subset is the decode core only (linux/lib/xz + linux/include/linux/xz.h flattened, plus AUTHORS/COPYING/README); no encoder, no BCJ filters, no MicroLZMA callers."
+        },
+        {
+          "name": "ra8:note1",
+          "value": "Aggregate SHA-256 is over the sorted per-file hashes of the whole vendored directory."
+        },
+        {
+          "name": "ra8:note2",
+          "value": "Built decode-only via the first-party porting header libs/ra8_unarch/inc/xz_config.h: XZ_PREALLOC mode only (dictionary allocated once from a caller scratch through the zero-heap pool), CRC32 + CRC64 verification, no XZ_DEC_DYNALLOC (hostile headers must not size allocations). See docs/SOUP/xz_embedded.md."
         }
       ]
     },

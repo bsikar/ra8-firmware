@@ -184,9 +184,8 @@ void ra8_decomp_budget_leave(ra8_decomp_budget_t* b)
   b->depth = (uint8_t)(b->depth - 1U);
 }
 
-ra8_err_t ra8_decomp_check_declared(const ra8_decomp_limits_t* limits,
-                                    uint64_t                   comp_size,
-                                    uint64_t                   out_size)
+ra8_err_t
+ra8_decomp_check_declared(const ra8_decomp_limits_t* limits, uint64_t comp_size, uint64_t out_size)
 {
   RA8_CHECK_NULL_PTR(limits, s_tag_decomp, "check declared: null limits");
   if (out_size > limits->max_output_bytes) {

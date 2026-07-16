@@ -188,6 +188,17 @@ file(GLOB_RECURSE RA8_POWER_PROFILE_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra
 file(GLOB_RECURSE RA8_EPUB_C_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_epub/src/*.c)
 file(GLOB_RECURSE RA8_EPUB_CPP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_epub/src/*.cpp)
 file(GLOB_RECURSE RA8_COMIC_SOURCES   CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_comic/src/*.c)
+file(GLOB_RECURSE RA8_UNARCH_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_unarch/src/*.c)
+# xz-embedded decode-only SOUP: exactly the TUs the XZ wrapper drives. They
+# include the first-party porting header libs/ra8_unarch/inc/xz_config.h
+# (allocator seam + mode selection), so that include dir must stay on the
+# ra8_core_hal PUBLIC list.
+set(RA8_XZ_THIRD_PARTY
+    ${FW_ROOT}/libs/third_party/xz_embedded/xz_crc32.c
+    ${FW_ROOT}/libs/third_party/xz_embedded/xz_crc64.c
+    ${FW_ROOT}/libs/third_party/xz_embedded/xz_dec_lzma2.c
+    ${FW_ROOT}/libs/third_party/xz_embedded/xz_dec_stream.c
+)
 file(GLOB_RECURSE RA8_TILEATLAS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_tileatlas/src/*.c)
 file(GLOB_RECURSE RA8_WEBTOON_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_webtoon/src/*.c)
 # ra8_reflow has two implementations: v1 (hand-rolled, default) and v2
@@ -290,11 +301,13 @@ add_library(ra8_core_hal OBJECT
     ${RA8_EPUB_C_SOURCES}
     ${RA8_EPUB_CPP_SOURCES}
     ${RA8_COMIC_SOURCES}
+    ${RA8_UNARCH_SOURCES}
     ${RA8_TILEATLAS_SOURCES}
     ${RA8_WEBTOON_SOURCES}
     ${RA8_REFLOW_C_SOURCES}
     ${RA8_REFLOW_CPP_SOURCES}
     ${RA8_EPUB_THIRD_PARTY}
+    ${RA8_XZ_THIRD_PARTY}
     ${RA8_WEBP_THIRD_PARTY}
     ${RA8_WEBP_SOURCES}
     ${RA8_SECURE_APP_SOURCES}
@@ -362,6 +375,7 @@ target_include_directories(ra8_core_hal PUBLIC
     ${FW_ROOT}/libs/ra8_power_profile/inc
     ${FW_ROOT}/libs/ra8_epub/inc
     ${FW_ROOT}/libs/ra8_comic/inc
+    ${FW_ROOT}/libs/ra8_unarch/inc
     ${FW_ROOT}/libs/ra8_tileatlas/inc
 
     ${FW_ROOT}/libs/ra8_webtoon/inc
@@ -378,6 +392,7 @@ target_include_directories(ra8_core_hal PUBLIC
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
+    ${FW_ROOT}/libs/third_party/xz_embedded
     # libwebp is included as "src/webp/...", so its ROOT is the include dir.
     ${FW_ROOT}/libs/third_party/libwebp
     ${FW_ROOT}/libs/ra8_webp/inc
@@ -415,6 +430,7 @@ target_include_directories(ra8_core_hal PUBLIC
     ${FW_ROOT}/libs/ra8_lsm6dso/src
     ${FW_ROOT}/libs/ra8_epub/src
     ${FW_ROOT}/libs/ra8_comic/src
+    ${FW_ROOT}/libs/ra8_unarch/src
     ${FW_ROOT}/libs/ra8_tileatlas/src
 
     ${FW_ROOT}/libs/ra8_webtoon/src
@@ -440,6 +456,16 @@ set_source_files_properties(
 # raised to -Og, cannot resurface it (T5-16).
 set_source_files_properties(
     ${RA8_EPUB_THIRD_PARTY}
+    PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing"
+)
+
+# Vendored xz-embedded decoder (SOUP): silence its warnings and disable strict
+# aliasing like the other vendored decoders. Its allocator and mode selection
+# come from the first-party porting header libs/ra8_unarch/inc/xz_config.h
+# (zero-heap pool, XZ_PREALLOC only); the first-party ra8_unarch wrapper
+# sources are held to the full project warning bar and are NOT listed here.
+set_source_files_properties(
+    ${RA8_XZ_THIRD_PARTY}
     PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing"
 )
 
@@ -475,6 +501,7 @@ set_property(SOURCE ${FW_ROOT}/libs/third_party/stb/stb_truetype_impl.c
 if(RA8_MCDC)
   set(RA8_MCDC_THIRD_PARTY_SOURCES
       ${RA8_EPUB_THIRD_PARTY}
+      ${RA8_XZ_THIRD_PARTY}
       ${RA8_WEBP_THIRD_PARTY}
   )
   foreach(_src ${RA8_MCDC_THIRD_PARTY_SOURCES})
@@ -598,6 +625,7 @@ function(ra8_add_test name)
     ${FW_ROOT}/libs/ra8_power_profile/inc
     ${FW_ROOT}/libs/ra8_epub/inc
     ${FW_ROOT}/libs/ra8_comic/inc
+    ${FW_ROOT}/libs/ra8_unarch/inc
     ${FW_ROOT}/libs/ra8_tileatlas/inc
 
     ${FW_ROOT}/libs/ra8_webtoon/inc
@@ -614,6 +642,7 @@ function(ra8_add_test name)
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
+    ${FW_ROOT}/libs/third_party/xz_embedded
     ${FW_ROOT}/src/secure_app
     ${FW_ROOT}/src/secure_app/inc
     # Per-module src/ for MC/DC test access (see CLAUDE.md).
@@ -642,6 +671,7 @@ function(ra8_add_test name)
     ${FW_ROOT}/libs/ra8_lsm6dso/src
     ${FW_ROOT}/libs/ra8_epub/src
     ${FW_ROOT}/libs/ra8_comic/src
+    ${FW_ROOT}/libs/ra8_unarch/src
     ${FW_ROOT}/libs/ra8_tileatlas/src
 
     ${FW_ROOT}/libs/ra8_webtoon/src
@@ -1209,6 +1239,7 @@ target_include_directories(test_cache_store_demo PRIVATE
   ${FW_ROOT}/libs/ra8_power_profile/inc
   ${FW_ROOT}/libs/ra8_epub/inc
   ${FW_ROOT}/libs/ra8_comic/inc
+  ${FW_ROOT}/libs/ra8_unarch/inc
   ${FW_ROOT}/libs/ra8_reflow/inc
   ${FW_ROOT}/libs/ra8_webp/inc
   ${FW_ROOT}/libs/ra8_touch_cal/inc

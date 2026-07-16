@@ -25,6 +25,7 @@ basis.
 | Apache NimBLE   | 1.9.0+dev git `8b6f3e81` | Apache Software Foundation  | [nimble.md](nimble.md)             |
 | litehtml        | 0.9+dev git `8836bc1b` | Yuri Kobets / community     | [litehtml.md](litehtml.md)         |
 | miniz           | 11.0.2   | Rich Geldreich / RAD        | [miniz.md](miniz.md)               |
+| XZ Embedded (decode) | tag `v2024-12-30` git `ae63ae3a` | Lasse Collin / Tukaani | [xz_embedded.md](xz_embedded.md) |
 | stb             | image v2.30 / truetype v1.26 | Sean Barrett | [stb.md](stb.md)              |
 | libwebp (decode) | 1.5.0   | Google / WebM Project       | [libwebp.md](libwebp.md)           |
 | TinyXML-2       | 11.0.0   | Lee Thomason / community    | [tinyxml2.md](tinyxml2.md)         |
@@ -55,6 +56,8 @@ Vela** -- [vela.md](vela.md) (pinned at `tools/vela/requirements.txt`).
   future BLE bring-up; not yet linked to an example.
 - **litehtml** -- HTML/CSS layout engine for the EPUB reader.
 - **miniz** -- Deflate / inflate / ZIP support for EPUB unpacking.
+- **XZ Embedded** (decode-only) -- XZ/LZMA2 decoding for wrapped archive
+  content (`.tar.xz`) behind the bounded `libs/ra8_unarch` wrapper.
 - **stb** -- PNG / JPEG decoding (`stb_image`) and TTF rasterization
   (`stb_truetype`) for the EPUB reader.
 - **libwebp** (decode-only) -- WebP (VP8 / VP8L) decoding for webtoon / manga
