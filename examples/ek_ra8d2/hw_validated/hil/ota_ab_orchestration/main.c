@@ -64,7 +64,7 @@
 #include "ra8_secure.h"
 
 /* -------------------------------------------------------------------------- */
-/* Tunables (no magic numbers -- every literal is a typed enum / const)       */
+/* Tunables (no magic numbers -- every literal is a typed enum / const) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -79,8 +79,8 @@ typedef enum : uint32_t {
   k_app_image_bytes     = 256U,        /**< Demo firmware image size (multiple of 32). */
   k_app_bank_size_bytes = 4096U,       /**< Advertised bank capacity for the OTA cfg.  */
   k_app_report_delay    = 4000000U,    /**< Bounded busy-wait between banner prints.   */
-  k_app_bootsel_magic   = 0xB007A8B1U, /**< Boot-select record magic ("BOOT A/B").   */
-  k_app_demo_pubkey     = 0x0A8D2C0DU, /**< Opaque demo public-key handle.           */
+  k_app_bootsel_magic   = 0xB007A8B1U, /**< Boot-select record magic ("BOOT A/B").     */
+  k_app_demo_pubkey     = 0x0A8D2C0DU, /**< Opaque demo public-key handle.             */
 } app_const_t;
 
 /**
@@ -92,8 +92,8 @@ typedef enum : uint32_t {
  * OTA bank erase never touches it (HUM Ch 59.1 "Address Map" p 3543).
  */
 typedef enum : uintptr_t {
-  k_app_bank_addr    = 0x27000000U, /**< Inactive-bank base (extra-MRAM start).      */
-  k_app_bootsel_addr = 0x27002000U, /**< Persistent boot-select record (own block).  */
+  k_app_bank_addr    = 0x27000000U, /**< Inactive-bank base (extra-MRAM start).     */
+  k_app_bootsel_addr = 0x27002000U, /**< Persistent boot-select record (own block). */
 } app_mram_addr_t;
 
 /**
@@ -101,8 +101,8 @@ typedef enum : uintptr_t {
  * @brief A/B slot identifiers persisted in the boot-select record.
  */
 typedef enum : uint8_t {
-  k_app_bank_a = 0U, /**< Slot A (the initially-active bank).   */
-  k_app_bank_b = 1U, /**< Slot B (the inactive/update target).  */
+  k_app_bank_a = 0U, /**< Slot A (the initially-active bank).  */
+  k_app_bank_b = 1U, /**< Slot B (the inactive/update target). */
 } app_bank_t;
 
 /**
@@ -136,10 +136,10 @@ typedef enum : uint16_t {
  * XOR-ed with its index.
  */
 typedef enum : uint8_t {
-  k_app_img_seed_mul  = 7U,    /**< Golden-image pattern multiplier.       */
-  k_app_img_seed_add  = 3U,    /**< Golden-image pattern additive bias.    */
-  k_app_sig_tag_base  = 0xA5U, /**< Demo signature tag base byte.          */
-  k_app_byte_all_ones = 0xFFU, /**< Corrupt-flip mask / erased MRAM byte.  */
+  k_app_img_seed_mul  = 7U,    /**< Golden-image pattern multiplier.      */
+  k_app_img_seed_add  = 3U,    /**< Golden-image pattern additive bias.   */
+  k_app_sig_tag_base  = 0xA5U, /**< Demo signature tag base byte.         */
+  k_app_byte_all_ones = 0xFFU, /**< Corrupt-flip mask / erased MRAM byte. */
 } app_pattern_t;
 
 /**
@@ -151,16 +151,16 @@ typedef enum : uint8_t {
  * corrupted image yields ``rolled_back``.
  */
 typedef enum : uint8_t {
-  k_app_outcome_committed     = 0U, /**< Verify passed and the bank swap latched. */
+  k_app_outcome_committed     = 0U, /**< Verify passed and the bank swap latched.  */
   k_app_outcome_rolled_back   = 1U, /**< Verify failed; no swap; active bank kept. */
-  k_app_outcome_indeterminate = 2U, /**< Neither terminal shape matched.          */
+  k_app_outcome_indeterminate = 2U, /**< Neither terminal shape matched.           */
 } app_outcome_t;
 
 /** @brief Module log/console tag. */
 static const char* const s_tag = "ota_ab";
 
 /* -------------------------------------------------------------------------- */
-/* Local image source (stands in for a TLS download)                          */
+/* Local image source (stands in for a TLS download) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -198,7 +198,7 @@ static uint8_t s_image_bad[k_app_image_bytes];
 static uint8_t s_image_good_digest[k_ra8_ota_sha256_bytes];
 
 /* -------------------------------------------------------------------------- */
-/* Console helpers                                                            */
+/* Console helpers */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -247,7 +247,7 @@ static void app_print(const char* text)
 }
 
 /* -------------------------------------------------------------------------- */
-/* OTA net interface (local image source)                                     */
+/* OTA net interface (local image source) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -255,13 +255,13 @@ static void app_print(const char* text)
  *
  * @param[in]  ctx     ::app_net_source_t handle; non-NULL.
  * @param[in]  url     Requested URL (ignored -- local source); unused.
- * @param[out] out_len Receives the total image length; non-NULL.
+ * @param[out] out_content_len Receives the total image length; non-NULL.
  * @return ra8_err_t outcome.
- * @retval k_ra8_ok           Cursor reset; ``*out_len`` set.
+ * @retval k_ra8_ok           Cursor reset; ``*out_content_len`` set.
  * @retval k_ra8_err_null_ptr A required pointer was NULL.
- * @pre @p ctx and @p out_len are non-NULL.
+ * @pre @p ctx and @p out_content_len are non-NULL.
  * @pre The source blob was bound by ::app_bind_source.
- * @post ``ctx->pos == 0`` and ``*out_len == ctx->len``.
+ * @post ``ctx->pos == 0`` and ``*out_content_len == ctx->len``.
  * @post No image bytes are consumed yet.
  * @note Not thread-safe; single OTA owner.
  * @since 0.1.0
@@ -333,7 +333,7 @@ static ra8_err_t app_net_close(void* ctx)
 }
 
 /* -------------------------------------------------------------------------- */
-/* OTA crypto interface (real software SHA-256 + demo authenticity)           */
+/* OTA crypto interface (real software SHA-256 + demo authenticity) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -442,7 +442,7 @@ static ra8_err_t app_ecdsa_verify(void*          ctx,
 }
 
 /* -------------------------------------------------------------------------- */
-/* OTA flash interface (real extra-MRAM driver)                               */
+/* OTA flash interface (real extra-MRAM driver) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -638,7 +638,7 @@ static ra8_err_t app_read_bootsel(uint8_t* out_bank, bool* out_valid)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Pure A/B decision logic (unit-tested with MC/DC)                           */
+/* Pure A/B decision logic (unit-tested with MC/DC) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -693,7 +693,7 @@ static bool app_ab_ok(bool committed, bool rolled_back)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Scenario driver + manifest construction                                    */
+/* Scenario driver + manifest construction */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -819,7 +819,7 @@ app_run_attempt(const uint8_t* source, const ra8_ota_manifest_t* m, uint8_t* out
 }
 
 /* -------------------------------------------------------------------------- */
-/* Setup + banner                                                             */
+/* Setup + banner */
 /* -------------------------------------------------------------------------- */
 
 /**
