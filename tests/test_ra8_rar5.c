@@ -713,13 +713,13 @@ static void test_rar5_malformed(void)
 /** @brief Emit one block header + body to @p pk; return bytes written. */
 static size_t enc_block(const bitw_t* body, uint8_t* pk, bool has_tables, bool is_last)
 {
-  const size_t   bsz  = bw_bytes(body);
-  const uint32_t bits = bw_lastbits(body);
-  const uint32_t bcnt = (bsz < 256U) ? 1U : 2U;
-  const uint8_t  flags =
-    (uint8_t)((has_tables ? 0x80U : 0U) | (is_last ? 0x40U : 0U) | ((bcnt - 1U) << 3U) | (bits - 1U));
-  size_t p = 0U;
-  pk[p]    = flags;
+  const size_t   bsz   = bw_bytes(body);
+  const uint32_t bits  = bw_lastbits(body);
+  const uint32_t bcnt  = (bsz < 256U) ? 1U : 2U;
+  const uint8_t  flags = (uint8_t)((has_tables ? 0x80U : 0U) | (is_last ? 0x40U : 0U) |
+                                   ((bcnt - 1U) << 3U) | (bits - 1U));
+  size_t         p     = 0U;
+  pk[p]                = flags;
   p += 1U;
   pk[p] = (uint8_t)(bsz & 0xFFU);
   p += 1U;
@@ -739,24 +739,24 @@ static size_t enc_block(const bitw_t* body, uint8_t* pk, bool has_tables, bool i
 
 /** @brief Persistent backing so a bound ::s_state can pull bits after return. */
 static uint8_t   s_bind_buf[16];
-static buf_src_t s_bind_src; /**< Reader context over ::s_bind_buf. */
+static buf_src_t s_bind_src; /**< Reader context over ::s_bind_buf.    */
 static ra8_rar_t s_bind_rar; /**< Archive handle bound into ::s_state. */
 
 /** @brief Reset ::s_state into a bit reader over @p bytes (for direct helper calls). */
 static void bind_bits(const uint8_t* bytes, size_t len)
 {
   memcpy(s_bind_buf, bytes, len);
-  s_bind_src.data    = s_bind_buf;
-  s_bind_src.len     = len;
-  s_bind_rar.read    = buf_read;
-  s_bind_rar.ctx     = &s_bind_src;
-  s_bind_rar.size    = (uint64_t)len;
+  s_bind_src.data      = s_bind_buf;
+  s_bind_src.len       = len;
+  s_bind_rar.read      = buf_read;
+  s_bind_rar.ctx       = &s_bind_src;
+  s_bind_rar.size      = (uint64_t)len;
   s_bind_rar.first_off = 0U;
-  s_bind_rar.version = k_ra8_rar_ver_5;
-  s_state            = (ra8_rar5_state_t){};
-  s_state.rar        = &s_bind_rar;
-  s_state.base       = 0U;
-  s_state.packlen    = (uint64_t)len;
+  s_bind_rar.version   = k_ra8_rar_ver_5;
+  s_state              = (ra8_rar5_state_t){};
+  s_state.rar          = &s_bind_rar;
+  s_state.base         = 0U;
+  s_state.packlen      = (uint64_t)len;
 }
 
 /**
@@ -786,7 +786,7 @@ static void test_mcdc_copy_match(void)
   }
   /* dist == 0 || dist > pos. */
   size_t pos = 5U;
-  TEST_ASSERT(ra8_rar5_copy_match(out, &pos, 100U, 3U, 2U)); /* (F,F) control  */
+  TEST_ASSERT(ra8_rar5_copy_match(out, &pos, 100U, 3U, 2U)); /* (F,F) control */
   TEST_ASSERT_EQ(8U, pos);
   pos = 5U;
   TEST_ASSERT(!ra8_rar5_copy_match(out, &pos, 100U, 3U, 0U)); /* dist==0 (T,-) */
@@ -799,7 +799,7 @@ static void test_mcdc_copy_match(void)
   TEST_ASSERT(ra8_rar5_copy_match(out, &pos, 100U, 3U, 2U)); /* exit on k==length */
   TEST_ASSERT_EQ(8U, pos);
   pos = 5U;
-  TEST_ASSERT(ra8_rar5_copy_match(out, &pos, 6U, 10U, 2U)); /* clamp on pos==unp  */
+  TEST_ASSERT(ra8_rar5_copy_match(out, &pos, 6U, 10U, 2U)); /* clamp on pos==unp */
   TEST_ASSERT_EQ(6U, pos);
   TEST_END("rar5: ra8_rar5_copy_match MC/DC");
 }
@@ -895,9 +895,9 @@ static void test_mcdc_fill_zeros(void)
 static void test_mcdc_apply_run(void)
 {
   TEST_BEGIN("rar5: ra8_rar5_apply_run MC/DC");
-  static uint8_t   tbl[k_ra8_rar5_huff_total];
-  static uint8_t   idlebits[1] = {0x00U};
-  uint32_t         idx         = 0U;
+  static uint8_t tbl[k_ra8_rar5_huff_total];
+  static uint8_t idlebits[1] = {0x00U};
+  uint32_t       idx         = 0U;
 
   memset(tbl, 0, sizeof(tbl));
   /* num=16, idx=0 -> !is_zero && *idx==0 (T,T) -> reject. */
@@ -933,7 +933,7 @@ static void test_mcdc_apply_run(void)
   tbl[427] = 5U;
   idx      = (uint32_t)k_ra8_rar5_huff_total - 2U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rar5_apply_run(&s_state, tbl, &idx, 16U));
-  TEST_ASSERT_EQ((uint32_t)k_ra8_rar5_huff_total, idx);
+  TEST_ASSERT_EQ(k_ra8_rar5_huff_total, idx);
   TEST_ASSERT_EQ(5U, tbl[(uint32_t)k_ra8_rar5_huff_total - 1U]);
   TEST_END("rar5: ra8_rar5_apply_run MC/DC");
 }

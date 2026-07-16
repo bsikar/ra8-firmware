@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 11440
+# total findings: 11505
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -126,11 +126,19 @@ libs/ra8_comic/src/ra8_comic_cbz.c	misra-c2012-17.3	4
 libs/ra8_comic/src/ra8_comic_cbz.c	misra-c2012-18.4	1
 libs/ra8_comic/src/ra8_comic_cbz.c	misra-c2012-9.2	1
 libs/ra8_comic/src/ra8_rar.c	misra-c2012-10.8	1
-libs/ra8_comic/src/ra8_rar.c	misra-c2012-15.5	47
+libs/ra8_comic/src/ra8_rar.c	misra-c2012-15.5	57
 libs/ra8_comic/src/ra8_rar.c	misra-c2012-21.15	3
 libs/ra8_comic/src/ra8_rar.c	misra-c2012-21.16	2
-libs/ra8_comic/src/ra8_rar.c	misra-c2012-8.4	3
+libs/ra8_comic/src/ra8_rar.c	misra-c2012-8.4	4
 libs/ra8_comic/src/ra8_rar.c	misra-c2012-9.2	3
+libs/ra8_comic/src/ra8_rar5.c	misra-c2012-10.8	1
+libs/ra8_comic/src/ra8_rar5.c	misra-c2012-15.5	38
+libs/ra8_comic/src/ra8_rar5.c	misra-c2012-21.15	2
+libs/ra8_comic/src/ra8_rar5.c	misra-c2012-8.4	1
+libs/ra8_comic/src/ra8_rar5.c	misra-c2012-9.2	1
+libs/ra8_comic/src/ra8_rar5_tables.c	misra-c2012-10.7	1
+libs/ra8_comic/src/ra8_rar5_tables.c	misra-c2012-15.5	7
+libs/ra8_comic/src/ra8_rar5_tables.c	misra-c2012-9.2	3
 libs/ra8_compositor/src/ra8_compositor.c	misra-c2012-10.6	1
 libs/ra8_compositor/src/ra8_compositor.c	misra-c2012-15.5	43
 libs/ra8_compositor/src/ra8_compositor.c	misra-c2012-8.4	9

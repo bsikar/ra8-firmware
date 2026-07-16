@@ -166,16 +166,17 @@ static uint64_t s_decode_distance(ra8_rar5_state_t* st)
  */
 static uint32_t s_adjust_length(uint32_t length, uint64_t dist)
 {
+  uint32_t adjusted = length;
   if (dist > (uint64_t)k_r5_dist_th1) {
-    length += 1U;
+    adjusted += 1U;
     if (dist > (uint64_t)k_r5_dist_th2) {
-      length += 1U;
+      adjusted += 1U;
       if (dist > (uint64_t)k_r5_dist_th3) {
-        length += 1U;
+        adjusted += 1U;
       }
     }
   }
-  return length;
+  return adjusted;
 }
 
 /**
@@ -204,11 +205,11 @@ static void s_push_dist(ra8_rar5_state_t* st, uint64_t dist)
 bool ra8_rar5_copy_match(uint8_t* out, size_t* out_pos, size_t unp, uint32_t length, uint64_t dist)
 {
   size_t pos = *out_pos;
-  if (dist == 0U || dist > (uint64_t)pos) {
+  if ((dist == 0U) || (dist > (uint64_t)pos)) {
     return false;
   }
   const size_t back = (size_t)dist;
-  for (uint32_t k = 0U; k < length && pos < unp; ++k) { /* bound: length, pos<unp */
+  for (uint32_t k = 0U; (k < length) && (pos < unp); ++k) { /* bound: length, pos<unp */
     out[pos] = out[pos - back];
     pos += 1U;
   }
@@ -284,7 +285,7 @@ static ra8_err_t s_read_filter(ra8_rar5_state_t* st, size_t out_pos)
 /** @brief Implementation of `ra8_rar5_filter_delta()` -- per-channel running byte-sum. */
 void ra8_rar5_filter_delta(ra8_rar5_state_t* st, uint8_t* d, uint32_t len, uint32_t channels)
 {
-  if (len > (uint32_t)k_ra8_rar5_delta_scratch || channels == 0U) {
+  if ((len > (uint32_t)k_ra8_rar5_delta_scratch) || (channels == 0U)) {
     return;
   }
   (void)memcpy(st->delta, d, (size_t)len);
@@ -666,12 +667,12 @@ static ra8_err_t s_decode_stream(ra8_rar5_state_t* st, uint8_t* out, size_t out_
   size_t         out_pos   = 0U;
   bool           last      = false;
   uint64_t       block_end = 0U;
-  const uint64_t cap_bits = (st->packlen * (uint64_t)k_r5_byte_bits) + (uint64_t)k_r5_max_pad_bits;
-  ra8_err_t      e        = s_open_block(st, &block_end, &last);
+  const uint64_t cap_bits  = (st->packlen * (uint64_t)k_r5_byte_bits) + (uint64_t)k_r5_max_pad_bits;
+  ra8_err_t      e         = s_open_block(st, &block_end, &last);
   if (e != k_ra8_ok) {
     return e;
   }
-  while (out_pos < unp && st->consumed <= cap_bits) { /* bound: consumed strictly rises */
+  while ((out_pos < unp) && (st->consumed <= cap_bits)) { /* bound: consumed strictly rises */
     if (st->consumed >= block_end) {
       if (last) {
         break;
