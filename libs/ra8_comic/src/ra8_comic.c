@@ -7,7 +7,8 @@
  *
  * @details
  * The container-agnostic half of `ra8_comic.h`. ::ra8_comic_open reads the leading
- * magic, routes a ZIP to the CBZ backend or a RAR to the CBR backend, and lets
+ * magic, routes a ZIP to the CBZ backend, a RAR to the CBR backend, or a tar
+ * (probed by header block -- tar has no leading magic) to the CBT backend, and lets
  * each backend append its image members to the shared page index through
  * ::ra8_comic_page_add; the index is then sorted by entry name so reading order is
  * the sorted names. ::ra8_comic_page_read / ::ra8_comic_page_info / ::ra8_comic_close
@@ -367,11 +368,18 @@ static ra8_err_t s_open_detect(ra8_comic_t* c)
     return ra8_comic_cbz_open(c);
   }
   const ra8_err_t rerr = ra8_rar_open(&c->rar, c->read, c->ctx, c->size);
-  if (rerr != k_ra8_ok) {
-    return k_ra8_err_not_supported;
+  if (rerr == k_ra8_ok) {
+    c->kind = k_ra8_comic_kind_cbr;
+    return ra8_comic_cbr_open(c);
   }
-  c->kind = k_ra8_comic_kind_cbr;
-  return ra8_comic_cbr_open(c);
+  /* tar has no leading magic bytes; the walker's open probes block 0
+   * (ustar magic + checksum), so a non-tar file is rejected cheaply. */
+  const ra8_err_t terr = ra8_unarch_tar_open(&c->tar, c->read, c->ctx, c->size, nullptr);
+  if (terr == k_ra8_ok) {
+    c->kind = k_ra8_comic_kind_cbt;
+    return ra8_comic_cbt_open(c);
+  }
+  return k_ra8_err_not_supported;
 }
 
 ra8_err_t ra8_comic_open(ra8_comic_t*      c,
@@ -470,6 +478,9 @@ ra8_err_t ra8_comic_page_read(ra8_comic_t* c, uint32_t page, uint8_t* buf, size_
   if (c->kind == k_ra8_comic_kind_cbz) {
     return ra8_comic_cbz_extract(c, p, buf, cap, got);
   }
+  if (c->kind == k_ra8_comic_kind_cbt) {
+    return ra8_comic_cbt_extract(c, p, buf, cap, got);
+  }
   return ra8_comic_cbr_extract(c, p, buf, cap, got);
 }
 
@@ -482,5 +493,6 @@ ra8_err_t ra8_comic_close(ra8_comic_t* c)
   c->kind       = k_ra8_comic_kind_none;
   c->page_count = 0U;
   c->zip_active = 0U;
+  c->tar.live   = false; /* the tar walker holds no resources to release */
   return k_ra8_ok;
 }

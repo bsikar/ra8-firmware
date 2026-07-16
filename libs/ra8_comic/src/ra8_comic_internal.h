@@ -197,6 +197,56 @@ ra8_err_t ra8_comic_cbr_extract(ra8_comic_t*            c,
                                 size_t                  cap,
                                 size_t*                 got);
 
+/**
+ * @brief Open the CBT (tar) backend: walk the archive + build the page index.
+ * @details Iterates the tar member chain (`ra8_unarch_tar_next`) from offset 0,
+ *          appending each image file member via ::ra8_comic_page_add. tar stores
+ *          members verbatim, so every indexed page is `extractable == 1` with
+ *          `pack_size == raw_size`. The walk (and each member's declared size)
+ *          is charged against the walker's embedded decompression budget.
+ * @param[in,out] c Comic with `c->tar` bound by `ra8_unarch_tar_open`,
+ *                  `kind == cbt`.
+ * @return ra8_err_t status.
+ * @retval k_ra8_ok                Archive walked; index populated.
+ * @retval k_ra8_err_invalid_size  The page index / name arena was too small.
+ * @retval k_ra8_err_decomp_*      The walk breached the decompression policy.
+ * @retval k_ra8_err_*             A tar-walk error (malformed header, ...).
+ * @pre `c->tar` was bound by `ra8_unarch_tar_open`; buffers are bound.
+ * @pre `c->size` is the archive length.
+ * @post On k_ra8_ok, the index holds every image member in archive order.
+ * @post On any error the index is left partially filled (caller discards @p c).
+ * @note Not thread-safe.
+ * @since Version 0.1.0
+ */
+ra8_err_t ra8_comic_cbt_open(ra8_comic_t* c);
+
+/**
+ * @brief Extract one CBT page's encoded image (verbatim tar member copy).
+ * @details Streams the member's literal bytes through ::ra8_unarch_tar_read,
+ *          which re-validates the (potentially forged) entry bounds against
+ *          the archive before any copy.
+ * @param[in]  c    Comic with a bound CBT walker.
+ * @param[in]  p    Page-index entry (its `data_off` / `raw_size`).
+ * @param[out] buf  Destination for the encoded image bytes.
+ * @param[in]  cap  Capacity of @p buf; must be >= `p->raw_size`.
+ * @param[out] got  Receives the bytes written.
+ * @return ra8_err_t status.
+ * @retval k_ra8_ok               Member copied into @p buf.
+ * @retval k_ra8_err_no_mem       @p cap is smaller than `p->raw_size`.
+ * @retval k_ra8_err_invalid_size The member overruns the archive / short read.
+ * @pre @p p came from this comic's CBT index.
+ * @pre @p buf holds @p cap writable bytes.
+ * @post On k_ra8_ok, `*got == p->raw_size`.
+ * @post On any error `*got == 0`.
+ * @note Not thread-safe.
+ * @since Version 0.1.0
+ */
+ra8_err_t ra8_comic_cbt_extract(ra8_comic_t*            c,
+                                const ra8_comic_page_t* p,
+                                uint8_t*                buf,
+                                size_t                  cap,
+                                size_t*                 got);
+
 #ifdef __cplusplus
 }
 #endif
