@@ -425,10 +425,9 @@ typedef struct {
  */
 static ra8_err_t png_inflate_step(ra8_png_state_t* st, ra8_png_iter_t* it)
 {
-  ra8_err_t err = k_ra8_ok;
   // mcdc-deactivated: refill-first loop structure; entering with a drained window after the source ended requires the source-ending iteration to return >= TINFL_STATUS_DONE without finishing, i.e. tinfl parked output mid-flush at the exact call the source ended -- for every constructible stream that call either completes (DONE exits the loop) or fails closed at the status check, so the (drained, source-done) entry cannot be flipped independently.
   if ((it->in_pos == it->in_avail) && (st->source_done == 0U)) {
-    err = png_refill_input(st, &it->in_avail);
+    const ra8_err_t err = png_refill_input(st, &it->in_avail);
     if (err != k_ra8_ok) {
       return err;
     }
@@ -459,7 +458,7 @@ static ra8_err_t png_inflate_step(ra8_png_state_t* st, ra8_png_iter_t* it)
     it->stalls = 0U;
   }
   if (out_sz > 0U) {
-    err = png_consume_rows(st, &st->ring[st->ring_wr], (uint32_t)out_sz);
+    const ra8_err_t err = png_consume_rows(st, &st->ring[st->ring_wr], (uint32_t)out_sz);
     if (err != k_ra8_ok) {
       return err;
     }
