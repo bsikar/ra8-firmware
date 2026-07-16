@@ -84,6 +84,13 @@ fi
 mkdir -p "${OUTPUT_DIR}"
 cd "${ROOT_DIR}"
 
+# Regenerate the directory/generation-driven navigation trees (the grouped
+# "Guides & Reference" doc sections and the per-tier "Example Applications"
+# index) so the sidebar can never drift from the on-disk tree. Output lands in
+# docs/generated/ (gitignored) and is consumed by the Doxyfile INPUT.
+echo "build_docs.sh: regenerating navigation (scripts/utils/gen_doxygen_nav.py)."
+python3 "${SCRIPT_DIR}/utils/gen_doxygen_nav.py"
+
 if [[ -n "${OVERRIDES}" ]]; then
   {
     cat "${DOXYFILE}"

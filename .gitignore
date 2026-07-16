@@ -63,6 +63,9 @@ build/docs/
 build/docs-gate/
 docs/doxygen/
 doxygen.log
+# Generated Doxygen navigation trees (scripts/utils/gen_doxygen_nav.py, run by
+# build_docs.sh). Regenerated on every `make docs`, so kept out of git.
+docs/generated/
 
 # Per-page PDF splits of the reference manuals (local browsing aid;
 # derived from the committed parent PDFs, 2+ GB if expanded).
