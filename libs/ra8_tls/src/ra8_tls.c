@@ -6,8 +6,10 @@
  * [Ring 4 / PAL] {World: NS}
  *
  * @details
- * Hosts the static session pool, the global CTR_DRBG state, and the
- * thin translation layer between Mbed TLS return codes and ``ra8_err_t``.
+ * Hosts the static session pool and the thin translation layer between
+ * Mbed TLS return codes and ``ra8_err_t``. Randomness comes from the PSA
+ * crypto layer (Mbed TLS 4.x), which the application seeds through its
+ * ``mbedtls_psa_external_get_random`` hook.
  *
  * Mbed TLS is only linked into the firmware build when
  * ``RA8_USE_MBEDTLS=ON`` is set on the top-level CMake invocation. The
@@ -39,10 +41,15 @@ typedef enum : uint8_t {
 
 /* NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity,clang-analyzer-optin.performance.Padding,misc-misplaced-const) */
 #ifndef RA8_SIMULATOR_MODE
-#include "mbedtls/ctr_drbg.h"
-#include "mbedtls/entropy.h"
 #include "mbedtls/error.h"
 #include "mbedtls/ssl.h"
+#include "mbedtls/x509_crt.h"
+#include "psa/crypto.h"
+#endif
+
+#ifdef RA8_SIMULATOR_MODE
+/** @brief Deterministic cipher-suite name reported on the simulator path. */
+static const char* const k_ra8_tls_sim_cipher = "sim-tls-loopback";
 #endif
 
 /* =============================================================================
@@ -72,8 +79,9 @@ struct ra8_tls_session_handle {
   bool                  in_use; /**< Slot allocated.              */
   ra8_tls_session_cfg_t cfg;    /**< Cached caller configuration. */
 #ifndef RA8_SIMULATOR_MODE
-  mbedtls_ssl_context ssl;    /**< Mbed TLS SSL context.             */
-  mbedtls_ssl_config  config; /**< Mbed TLS SSL configuration block. */
+  mbedtls_ssl_context ssl;    /**< Mbed TLS SSL context.                */
+  mbedtls_ssl_config  config; /**< Mbed TLS SSL configuration block.    */
+  mbedtls_x509_crt    ca;     /**< Parsed trust anchor (if cfg.ca_pem). */
 #else
   bool handshake_done; /**< Simulator-only flag for the loopback test path. */
 #endif
@@ -82,15 +90,8 @@ struct ra8_tls_session_handle {
 /** @brief Per-session state pool sized at compile time. */
 static struct ra8_tls_session_handle s_session_pool[k_ra8_tls_max_sessions];
 
-/** @brief One-shot global init flag protecting CTR_DRBG and pool state. */
+/** @brief One-shot global init flag protecting the PSA layer and pool state. */
 static bool s_initialized;
-
-#ifndef RA8_SIMULATOR_MODE
-/** @brief Shared deterministic random byte generator. */
-static mbedtls_ctr_drbg_context s_ctr_drbg;
-/** @brief Backing entropy pool feeding ``s_ctr_drbg``. */
-static mbedtls_entropy_context s_entropy;
-#endif
 
 /* =============================================================================
  * Internal helpers
@@ -166,10 +167,44 @@ static void internal_pool_reset(void)
     if (slot->in_use) {
       mbedtls_ssl_free(&slot->ssl);
       mbedtls_ssl_config_free(&slot->config);
+      mbedtls_x509_crt_free(&slot->ca);
     }
 #endif
     (void)memset(slot, 0, sizeof(*slot));
   }
+}
+
+/**
+ * @brief Bounded, always-NUL-terminating C-string copy.
+ *
+ * @details
+ * Copies at most ``cap - 1`` bytes from ``src`` into ``dst`` and always
+ * writes a terminating NUL, so ``dst`` is a valid C string on return even
+ * when ``src`` is longer than the buffer (the tail is truncated). Used by
+ * ::ra8_tls_get_cipher_suite to hand back the cipher-suite name inside the
+ * caller's fixed buffer.
+ *
+ * @param[out] dst Destination buffer with room for ``cap`` bytes.
+ * @param[in]  src NUL-terminated source string.
+ * @param[in]  cap Capacity of ``dst`` in bytes; must be >= 1.
+ *
+ * @pre ``dst`` and ``src`` are non-NULL and ``cap >= 1``.
+ * @pre ``src`` is NUL-terminated.
+ * @post ``dst`` is NUL-terminated.
+ * @post At most ``cap - 1`` source bytes were copied.
+ *
+ * @note Pure helper; NASA P10 Rule 2 loop bounded by ``cap - 1``.
+ * @since 0.1.0
+ */
+static void internal_copy_cstr(char* dst, const char* src, size_t cap)
+{
+  const size_t last = cap - 1U;
+  size_t       i    = 0U;
+  while ((i < last) && (src[i] != '\0')) {
+    dst[i] = src[i];
+    ++i;
+  }
+  dst[i] = '\0';
 }
 
 /* =============================================================================
@@ -187,14 +222,14 @@ ra8_err_t ra8_tls_global_init(void)
   internal_pool_reset();
 
 #ifndef RA8_SIMULATOR_MODE
-  mbedtls_entropy_init(&s_entropy);
-  mbedtls_ctr_drbg_init(&s_ctr_drbg);
-  const int seed_rc =
-    mbedtls_ctr_drbg_seed(&s_ctr_drbg, mbedtls_entropy_func, &s_entropy, nullptr, 0U);
-  if (seed_rc != 0) {
-    mbedtls_ctr_drbg_free(&s_ctr_drbg);
-    mbedtls_entropy_free(&s_entropy);
-    ra8_log_error(k_ra8_tls_tag, "ctr_drbg_seed failed");
+  /* Mbed TLS 4.x sources randomness from the PSA crypto layer
+   * (``psa_generate_random``) rather than a facade-owned CTR_DRBG. Bring
+   * PSA online here; the actual entropy is pulled lazily on the first
+   * random draw through the application-supplied
+   * ``mbedtls_psa_external_get_random`` hook (RSIP TRNG on hardware). */
+  const psa_status_t psa_rc = psa_crypto_init();
+  if (psa_rc != PSA_SUCCESS) {
+    ra8_log_error(k_ra8_tls_tag, "psa_crypto_init failed");
     return k_ra8_err_hw_error;
   }
 #endif
@@ -211,12 +246,6 @@ ra8_err_t ra8_tls_global_deinit(void)
   }
 
   internal_pool_reset();
-
-#ifndef RA8_SIMULATOR_MODE
-  mbedtls_ctr_drbg_free(&s_ctr_drbg);
-  mbedtls_entropy_free(&s_entropy);
-#endif
-
   s_initialized = false;
   return k_ra8_ok;
 }
@@ -269,6 +298,58 @@ static ra8_err_t internal_session_validate_args(ra8_tls_session_t*           out
 
 #ifndef RA8_SIMULATOR_MODE
 /**
+ * @brief Apply the caller's verify-mode and optional trust anchor to a slot.
+ *
+ * @details
+ * Translates ``cfg->verify_mode`` into the matching Mbed TLS authentication
+ * mode and, when ``cfg->ca_pem`` is supplied, parses it into the slot's
+ * ``mbedtls_x509_crt`` and binds it as the CA chain. A parse failure is
+ * non-fatal here: the handshake still runs and reports the outcome through
+ * ``ra8_tls_get_verify_result`` (a required verify then simply fails).
+ * Hoisted out of ::internal_session_mbedtls_setup to keep that function
+ * within the NASA P10 Rule 4 line cap.
+ *
+ * @param[in,out] slot Pool slot whose ``config`` is being built.
+ * @param[in]     cfg  Caller-supplied session configuration.
+ *
+ * @pre ``slot->config`` has been initialised by ``mbedtls_ssl_config_init``.
+ * @pre ``cfg`` is non-NULL (validated by the caller).
+ * @post ``slot->ca`` is initialised and, on a valid PEM, bound as the chain.
+ * @post The config authmode reflects ``cfg->verify_mode``.
+ *
+ * @note Not thread-safe; pool serialisation is the caller's job.
+ * @since 0.1.0
+ */
+static void internal_apply_verify_cfg(struct ra8_tls_session_handle* slot,
+                                      const ra8_tls_session_cfg_t*   cfg)
+{
+  int authmode = MBEDTLS_SSL_VERIFY_REQUIRED;
+  switch (cfg->verify_mode) {
+    case k_ra8_tls_verify_none:
+      authmode = MBEDTLS_SSL_VERIFY_NONE;
+      break;
+    case k_ra8_tls_verify_optional:
+      authmode = MBEDTLS_SSL_VERIFY_OPTIONAL;
+      break;
+    case k_ra8_tls_verify_default:
+    case k_ra8_tls_verify_required:
+    default:
+      authmode = MBEDTLS_SSL_VERIFY_REQUIRED;
+      break;
+  }
+  mbedtls_ssl_conf_authmode(&slot->config, authmode);
+
+  mbedtls_x509_crt_init(&slot->ca);
+  if ((cfg->ca_pem != nullptr) && (cfg->ca_pem_len > 0U)) {
+    const int ca_rc =
+      mbedtls_x509_crt_parse(&slot->ca, (const unsigned char*)cfg->ca_pem, cfg->ca_pem_len);
+    if (ca_rc == 0) {
+      mbedtls_ssl_conf_ca_chain(&slot->config, &slot->ca, nullptr);
+    }
+  }
+}
+
+/**
  * @brief Run the Mbed TLS init/config/setup sequence for a fresh slot.
  *
  * @details
@@ -310,12 +391,15 @@ static ra8_err_t internal_session_mbedtls_setup(struct ra8_tls_session_handle* s
     (void)memset(slot, 0, sizeof(*slot));
     return k_ra8_err_hw_init_failed;
   }
-  mbedtls_ssl_conf_rng(&slot->config, mbedtls_ctr_drbg_random, &s_ctr_drbg);
+  /* No ``mbedtls_ssl_conf_rng`` on Mbed TLS 4.x: the SSL layer draws random
+   * bytes from PSA crypto, seeded through the app's external-RNG hook. */
+  internal_apply_verify_cfg(slot, cfg);
 
   const int setup_rc = mbedtls_ssl_setup(&slot->ssl, &slot->config);
   if (setup_rc != 0) {
     mbedtls_ssl_free(&slot->ssl);
     mbedtls_ssl_config_free(&slot->config);
+    mbedtls_x509_crt_free(&slot->ca);
     (void)memset(slot, 0, sizeof(*slot));
     return k_ra8_err_hw_init_failed;
   }
@@ -376,6 +460,7 @@ ra8_err_t ra8_tls_session_close(ra8_tls_session_t session)
 #ifndef RA8_SIMULATOR_MODE
   mbedtls_ssl_free(&session->ssl);
   mbedtls_ssl_config_free(&session->config);
+  mbedtls_x509_crt_free(&session->ca);
 #endif
   (void)memset(session, 0, sizeof(*session));
   return k_ra8_ok;
@@ -500,6 +585,73 @@ ra8_err_t ra8_tls_recv(ra8_tls_session_t session, uint8_t* buf, size_t len, size
   *out_received = (size_t)rc;
   return k_ra8_ok;
 #endif
+}
+
+ra8_err_t ra8_tls_get_cipher_suite(ra8_tls_session_t session,
+                                   uint16_t*         out_id,
+                                   char*             out_name,
+                                   size_t            name_cap)
+{
+  if ((out_id == nullptr) || (out_name == nullptr) || (name_cap == 0U)) {
+    return k_ra8_err_invalid_arg;
+  }
+  *out_id     = 0U;
+  out_name[0] = '\0';
+
+  if (!s_initialized) {
+    return k_ra8_err_not_initialized;
+  }
+  if (!internal_handle_valid(session)) {
+    return k_ra8_err_invalid_arg;
+  }
+
+#ifndef RA8_SIMULATOR_MODE
+  const char* name = mbedtls_ssl_get_ciphersuite(&session->ssl);
+  if (name != nullptr) {
+    *out_id = (uint16_t)mbedtls_ssl_get_ciphersuite_id_from_ssl(&session->ssl);
+    internal_copy_cstr(out_name, name, name_cap);
+  }
+  return k_ra8_ok;
+#else
+  internal_copy_cstr(out_name, k_ra8_tls_sim_cipher, name_cap);
+  return k_ra8_ok;
+#endif
+}
+
+ra8_err_t ra8_tls_get_verify_result(ra8_tls_session_t session, uint32_t* out_flags)
+{
+  if (out_flags == nullptr) {
+    return k_ra8_err_invalid_arg;
+  }
+  *out_flags = 0U;
+
+  if (!s_initialized) {
+    return k_ra8_err_not_initialized;
+  }
+  if (!internal_handle_valid(session)) {
+    return k_ra8_err_invalid_arg;
+  }
+
+#ifndef RA8_SIMULATOR_MODE
+  *out_flags = mbedtls_ssl_get_verify_result(&session->ssl);
+#endif
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_tls_mss_clamp(uint16_t mtu, uint16_t* out_mss)
+{
+  if (out_mss == nullptr) {
+    return k_ra8_err_invalid_arg;
+  }
+  *out_mss = 0U;
+
+  const uint16_t overhead =
+    (uint16_t)((uint16_t)k_ra8_tls_ipv4_hdr_bytes + (uint16_t)k_ra8_tls_tcp_hdr_bytes);
+  if ((mtu <= overhead) || ((mtu - overhead) < (int)k_ra8_tls_mss_min)) {
+    return k_ra8_err_invalid_arg;
+  }
+  *out_mss = (uint16_t)(mtu - overhead);
+  return k_ra8_ok;
 }
 
 /* NOLINTEND(readability-function-size,readability-function-cognitive-complexity,clang-analyzer-optin.performance.Padding,misc-misplaced-const) */

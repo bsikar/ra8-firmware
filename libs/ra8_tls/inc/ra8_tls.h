@@ -49,7 +49,7 @@
  *
  * ## Threading
  *
- * One global init protects the shared CTR_DRBG and root-CA bundle. The
+ * One global init brings the PSA crypto layer online. The
  * session-scoped APIs are not internally synchronised: callers that
  * dispatch the same session from multiple threads must serialise the
  * calls themselves (typical embedded usage opens a session from one
@@ -105,7 +105,58 @@ typedef enum : uint8_t {
    *          ``k_ra8_err_no_mem``.
    */
   k_ra8_tls_max_sessions = 4U,
+  /**
+   * @brief Capacity (bytes) a caller must reserve for a cipher-suite name.
+   * @details ``ra8_tls_get_cipher_suite`` never writes more than this many
+   *          bytes (including the terminating NUL) into the caller buffer;
+   *          the longest IANA suite string plus NUL fits comfortably.
+   */
+  k_ra8_tls_cipher_name_cap = 48U,
 } ra8_tls_limits_t;
+
+/**
+ * @enum ra8_tls_net_const_t
+ * @brief Transport-sizing constants used by ``ra8_tls_mss_clamp``.
+ *
+ * @details
+ * The RA8D2 ESWM has a documented large-frame egress defect (issue #21):
+ * frames over roughly half a KiB corrupt on the wire, so the whole
+ * networking stack is pinned to a 128-byte MTU. A TLS client that dials
+ * over TCP must therefore clamp its TCP Maximum Segment Size (MSS) so
+ * every segment -- TLS record bytes included -- fits inside one 128-byte
+ * MTU frame after the fixed IPv4 + TCP header overhead. These constants
+ * express that arithmetic without a bare literal.
+ *
+ * @invariant ``k_ra8_tls_ipv4_hdr_bytes`` + ``k_ra8_tls_tcp_hdr_bytes`` is
+ *            strictly less than ``k_ra8_tls_mtu_min`` so a positive MSS
+ *            always exists at the floor.
+ */
+typedef enum : uint16_t {
+  k_ra8_tls_ipv4_hdr_bytes = 20U,  /**< IPv4 header with no options.    */
+  k_ra8_tls_tcp_hdr_bytes  = 20U,  /**< TCP header with no options.     */
+  k_ra8_tls_mtu_min        = 128U, /**< #21 pinned MTU floor (bytes).   */
+  k_ra8_tls_mss_min        = 64U,  /**< Smallest MSS worth clamping to. */
+} ra8_tls_net_const_t;
+
+/**
+ * @enum ra8_tls_verify_mode_t
+ * @brief Peer-certificate verification policy for a session.
+ *
+ * @details
+ * Maps onto the Mbed TLS ``MBEDTLS_SSL_VERIFY_*`` authentication modes.
+ * The zero value is a safe default (behaves as ``required``) so a
+ * zero-initialised ``ra8_tls_session_cfg_t`` never silently disables
+ * verification.
+ *
+ * @invariant ``k_ra8_tls_verify_default`` is treated identically to
+ *            ``k_ra8_tls_verify_required`` by the facade.
+ */
+typedef enum : uint8_t {
+  k_ra8_tls_verify_default  = 0U, /**< Facade default -- same as ``required``. */
+  k_ra8_tls_verify_none     = 1U, /**< Do not verify the peer certificate.     */
+  k_ra8_tls_verify_optional = 2U, /**< Verify but do not abort on failure.     */
+  k_ra8_tls_verify_required = 3U, /**< Verify and abort the handshake on fail. */
+} ra8_tls_verify_mode_t;
 
 /* =============================================================================
  * BIO callback signatures
@@ -186,10 +237,13 @@ typedef int (*ra8_tls_bio_recv_fn)(void* ctx, uint8_t* buf, size_t len);
  * @since 0.1.0
  */
 typedef struct ra8_tls_session_cfg {
-  ra8_tls_bio_send_fn bio_send;    /**< Transport write callback (required).      */
-  ra8_tls_bio_recv_fn bio_recv;    /**< Transport read callback  (required).      */
-  void*               bio_ctx;     /**< Opaque ctx passed back to BIO callbacks.  */
-  const char*         server_name; /**< Optional SNI hostname; NULL disables SNI. */
+  ra8_tls_bio_send_fn   bio_send;    /**< Transport write callback (required).       */
+  ra8_tls_bio_recv_fn   bio_recv;    /**< Transport read callback  (required).       */
+  void*                 bio_ctx;     /**< Opaque ctx passed back to BIO callbacks.   */
+  const char*           server_name; /**< Optional SNI hostname; NULL disables SNI.  */
+  ra8_tls_verify_mode_t verify_mode; /**< Peer-cert policy; 0 == required (default). */
+  const char*           ca_pem;      /**< Optional trust anchor, PEM; NULL == none.  */
+  size_t                ca_pem_len;  /**< ``ca_pem`` length incl. NUL, else 0.       */
 } ra8_tls_session_cfg_t;
 
 /* =============================================================================
@@ -231,35 +285,37 @@ typedef struct ra8_tls_session_handle* ra8_tls_session_t;
  * @brief One-shot facade initialisation.
  *
  * @details
- * Seeds the shared CTR_DRBG from the RSIP TRNG, registers the static
- * root-CA bundle, and marks the pool empty. Safe to call exactly once
- * per boot; subsequent calls without a matching
+ * Brings the PSA crypto layer online and marks the session pool empty.
+ * Mbed TLS 4.x sources randomness from PSA (``psa_generate_random``)
+ * rather than a facade-owned CTR_DRBG, so the actual entropy is drawn
+ * lazily on the first random call through the application-supplied
+ * ``mbedtls_psa_external_get_random`` hook (the RSIP TRNG on hardware).
+ * Safe to call exactly once per boot; subsequent calls without a matching
  * ``ra8_tls_global_deinit`` return ``k_ra8_err_exists``.
  *
  * Algorithm:
  * 1. If already initialized, return ``k_ra8_err_exists``.
- * 2. Initialise the entropy + CTR_DRBG state in ``.bss``.
- * 3. Walk the session pool and call ``mbedtls_ssl_init`` /
- *    ``mbedtls_ssl_config_init`` on each slot so close-without-open
- *    paths are well-defined.
+ * 2. Reset the session pool so close-without-open paths are well-defined.
+ * 3. Call ``psa_crypto_init`` (skipped in simulator mode).
  * 4. Mark the module initialized.
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok            Facade ready.
  * @retval k_ra8_err_exists    Already initialized this boot.
- * @retval k_ra8_err_hw_error  CTR_DRBG seed (entropy) failed.
+ * @retval k_ra8_err_hw_error  ``psa_crypto_init`` failed.
  *
  * @pre Mbed TLS has been built into the firmware image (``RA8_USE_MBEDTLS=ON``)
  *      OR ``RA8_SIMULATOR_MODE`` is defined for the host unit-test build.
- * @pre RSIP TRNG is reachable (skipped in simulator mode).
+ * @pre On hardware, the RSIP TRNG that backs the PSA external-RNG hook is
+ *      reachable before the first handshake (skipped in simulator mode).
  * @post Module is in the initialized state on success.
  * @post Session pool is fully reset (no slot held).
  *
  * @note Not re-entrant. Call from the boot path before any TLS session
  *       is opened.
- * @warning The root-CA bundle pointer is registered by reference; the
- *          underlying memory must remain valid until
- *          ``ra8_tls_global_deinit``.
+ * @warning Per-session trust anchors passed through
+ *          ``ra8_tls_session_cfg_t::ca_pem`` are referenced, not copied;
+ *          their storage must outlive the session.
  *
  * @par Example:
  * @code{.c}
@@ -465,6 +521,123 @@ ra8_err_t ra8_tls_send(ra8_tls_session_t session, const uint8_t* buf, size_t len
  * @note Not thread-safe unless documented otherwise.
  */
 ra8_err_t ra8_tls_recv(ra8_tls_session_t session, uint8_t* buf, size_t len, size_t* out_received);
+
+/* =============================================================================
+ * Session introspection
+ * =============================================================================
+ */
+
+/**
+ * @brief Report the negotiated cipher suite for a session.
+ *
+ * @details
+ * After a successful ``ra8_tls_handshake`` this returns the IANA
+ * cipher-suite name (e.g. ``TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256``)
+ * and its 16-bit IANA identifier so an application can log exactly what
+ * was negotiated. In ``RA8_SIMULATOR_MODE`` (host unit-test build) the
+ * handshake is a loopback drain rather than a real negotiation, so a
+ * deterministic sentinel is reported: ``out_name`` becomes
+ * ``"sim-tls-loopback"`` and ``*out_id`` becomes ``0``. The output name
+ * is always NUL-terminated and never exceeds ``name_cap`` bytes.
+ *
+ * @param[in]  session  Open session handle in the application-data state.
+ * @param[out] out_id   Receives the 16-bit IANA cipher-suite id
+ *                      (``0`` when unknown / simulator).
+ * @param[out] out_name Receives the NUL-terminated cipher-suite name.
+ *                      Truncated to fit when the real name is longer.
+ * @param[in]  name_cap Capacity of ``out_name`` in bytes; must be >= 1.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                  Cipher reported into the outputs.
+ * @retval k_ra8_err_invalid_arg     Any pointer NULL, ``name_cap`` zero,
+ *                                  or ``session`` invalid.
+ * @retval k_ra8_err_not_initialized Module not initialized.
+ *
+ * @pre ``session`` has completed its handshake.
+ * @pre ``out_id`` and ``out_name`` are non-NULL and ``name_cap >= 1``.
+ * @post On ``k_ra8_ok`` ``out_name`` is NUL-terminated.
+ * @post On any error ``*out_id == 0`` and ``out_name[0] == '\0'`` when
+ *       the buffers are writable.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @see ra8_tls_get_verify_result()
+ * @since 0.1.0
+ */
+ra8_err_t ra8_tls_get_cipher_suite(ra8_tls_session_t session,
+                                   uint16_t*         out_id,
+                                   char*             out_name,
+                                   size_t            name_cap);
+
+/**
+ * @brief Report the peer-certificate verification result for a session.
+ *
+ * @details
+ * Wraps ``mbedtls_ssl_get_verify_result``: ``0`` means the peer chain
+ * satisfied the configured ``verify_mode``; any non-zero value is the OR
+ * of ``MBEDTLS_X509_BADCERT_*`` / ``MBEDTLS_X509_BADCRL_*`` flags. In
+ * ``RA8_SIMULATOR_MODE`` the loopback path reports ``0`` (verified).
+ *
+ * @param[in]  session   Open session handle in the application-data state.
+ * @param[out] out_flags Receives the verification bit set (``0`` == OK).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                  Result written to ``*out_flags``.
+ * @retval k_ra8_err_invalid_arg     ``out_flags`` NULL or ``session`` invalid.
+ * @retval k_ra8_err_not_initialized Module not initialized.
+ *
+ * @pre ``session`` has completed its handshake.
+ * @pre ``out_flags`` is non-NULL.
+ * @post On ``k_ra8_ok`` ``*out_flags`` holds the verification bit set.
+ * @post On any error ``*out_flags == 0`` when the pointer is writable.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @see ra8_tls_get_cipher_suite()
+ * @since 0.1.0
+ */
+ra8_err_t ra8_tls_get_verify_result(ra8_tls_session_t session, uint32_t* out_flags);
+
+/**
+ * @brief Compute the TCP MSS that keeps a segment inside one MTU frame.
+ *
+ * @details
+ * Pure arithmetic helper for TLS-over-TCP clients on the #21-pinned
+ * 128-byte MTU link: subtracts the fixed IPv4 + TCP header overhead from
+ * @p mtu to yield the largest TCP payload (Maximum Segment Size) that
+ * still fits one Ethernet frame the ESWM egress transmits cleanly. The
+ * result is what a caller feeds to the transport (e.g. an Mbed TLS
+ * maximum-fragment-length hint or a NetX Duo socket MSS) so the TLS
+ * record layer never asks the MAC to send an over-length frame.
+ *
+ * @param[in]  mtu     Link MTU in bytes (payload, excluding the 14-byte
+ *                     Ethernet header); must be >= ``k_ra8_tls_mtu_min``.
+ * @param[out] out_mss Receives the clamped MSS
+ *                     (``mtu - IPv4 - TCP``) in bytes.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok              MSS written to ``*out_mss``.
+ * @retval k_ra8_err_invalid_arg ``out_mss`` NULL, or @p mtu too small to
+ *                              leave at least ``k_ra8_tls_mss_min`` bytes.
+ *
+ * @pre ``out_mss`` is non-NULL.
+ * @pre @p mtu leaves room for a >= ``k_ra8_tls_mss_min`` byte segment.
+ * @post On ``k_ra8_ok`` ``*out_mss`` is in ``[k_ra8_tls_mss_min, mtu)``.
+ * @post On any error ``*out_mss == 0`` when the pointer is writable.
+ *
+ * @note Pure function; safe from any context.
+ *
+ * @par Example:
+ * @code{.c}
+ * uint16_t mss = 0U;
+ * if (ra8_tls_mss_clamp(k_ra8_tls_mtu_min, &mss) == k_ra8_ok) {
+ *   // mss == 88 for the 128-byte MTU: 128 - 20 (IP) - 20 (TCP)
+ * }
+ * @endcode
+ *
+ * @since 0.1.0
+ */
+ra8_err_t ra8_tls_mss_clamp(uint16_t mtu, uint16_t* out_mss);
 
 #ifdef __cplusplus
 }
