@@ -304,6 +304,11 @@ add_library(ra8_core_hal OBJECT
     ${RA8_LSM6DSO_SOURCES}
     ${RA8_TZ_SECURE_BOOT_SOURCES}
     ${RA8_DFU_SOURCES}
+    # ThreadX SysTick retune (issue #287). Lives under port/threadx (not
+    # libs/), so it is not caught by the libs/ globs above -- add it by
+    # hand. Its SYST_RVR/CVR writes compile out under RA8_SIMULATOR_MODE,
+    # so the host build exercises only the clock-query + reload arithmetic.
+    ${FW_ROOT}/port/threadx/src/cortex_m85/tx_systick_retune.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_sim_mmap.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_sim_irq.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra8_sim_dma.c
@@ -365,6 +370,7 @@ target_include_directories(ra8_core_hal PUBLIC
     ${FW_ROOT}/libs/ra8_board_ek_ra8d2/inc
     ${FW_ROOT}/libs/ra8_lsm6dso/inc
     ${FW_ROOT}/libs/ra8_tz_secure_boot/inc
+    ${FW_ROOT}/port/threadx/inc
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
@@ -595,6 +601,7 @@ function(ra8_add_test name)
     ${FW_ROOT}/libs/ra8_board_ek_ra8d2/inc
     ${FW_ROOT}/libs/ra8_lsm6dso/inc
     ${FW_ROOT}/libs/ra8_tz_secure_boot/inc
+    ${FW_ROOT}/port/threadx/inc
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
