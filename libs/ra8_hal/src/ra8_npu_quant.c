@@ -48,11 +48,12 @@ static const char* s_tag = "NPUQ";
 static const float s_quant_round_cap = 1.0e6F;
 
 /**
- * @enum ra8_npu_quant_half_t
+ * @var s_quant_half
  * @brief The half-step used for half-away-from-zero rounding without `libm`.
- * @details Held as a `const float` (an enum cannot carry a float); documented as
- *          an enum-style constant for the no-magic-number rule.
- * @invariant Exactly one half.
+ * @details Held as a `const float` because an enum cannot carry a float; this is
+ *          the named constant that keeps the rounding step out of the code as a
+ *          magic number.
+ * @note Read-only; never modified.
  * @since 0.1.0
  */
 static const float s_quant_half = 0.5F;
