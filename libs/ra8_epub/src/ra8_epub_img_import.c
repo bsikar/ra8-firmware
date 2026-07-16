@@ -169,11 +169,27 @@ static ra8_err_t priv_transcode(ra8_epub_book_t*                   book,
   return (err != k_ra8_ok) ? err : close_err;
 }
 
-ra8_err_t ra8_epub_tile_binder_import(ra8_epub_tile_binder_t*            binder,
-                                      ra8_epub_book_t*                   book,
-                                      const char*                        href,
-                                      uint32_t                           image_id,
-                                      const ra8_epub_atlas_import_cfg_t* cfg)
+/**
+ * @brief Reject any NULL import argument (pointer guards, split out).
+ * @details Split out so the public entry stays under the statement budget.
+ * @param[in] binder Binder pointer to validate.
+ * @param[in] book   Book pointer to validate.
+ * @param[in] href   Href pointer to validate.
+ * @param[in] cfg    Import configuration to validate (incl. the store seams).
+ * @return Result code.
+ * @retval k_ra8_ok           Every required pointer is non-NULL.
+ * @retval k_ra8_err_null_ptr Some pointer is NULL.
+ * @pre The caller forwards its own arguments.
+ * @pre Only @p cfg is dereferenced (after its own check).
+ * @post No state mutated.
+ * @post Return depends solely on the inputs.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t priv_import_args_ok(const ra8_epub_tile_binder_t*      binder,
+                                     const ra8_epub_book_t*             book,
+                                     const char*                        href,
+                                     const ra8_epub_atlas_import_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(binder, s_tag, "binder must not be nullptr");
   RA8_CHECK_NULL_PTR(book, s_tag, "book must not be nullptr");
@@ -181,6 +197,19 @@ ra8_err_t ra8_epub_tile_binder_import(ra8_epub_tile_binder_t*            binder,
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   RA8_CHECK_NULL_PTR(cfg->store.sink, s_tag, "store.sink must not be nullptr");
   RA8_CHECK_NULL_PTR(cfg->store.pread, s_tag, "store.pread must not be nullptr");
+  return k_ra8_ok;
+}
+
+ra8_err_t ra8_epub_tile_binder_import(ra8_epub_tile_binder_t*            binder,
+                                      ra8_epub_book_t*                   book,
+                                      const char*                        href,
+                                      uint32_t                           image_id,
+                                      const ra8_epub_atlas_import_cfg_t* cfg)
+{
+  const ra8_err_t nz = priv_import_args_ok(binder, book, href, cfg);
+  if (nz != k_ra8_ok) {
+    return nz;
+  }
   const size_t hlen = strlen(href);
   if ((hlen == 0U) || (hlen >= (size_t)k_ra8_epub_max_path_len)) {
     return k_ra8_err_invalid_arg;

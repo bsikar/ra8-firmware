@@ -232,6 +232,45 @@ static ra8_err_t priv_check_slot(const ra8_epub_tile_binder_t* binder, uint32_t 
   return k_ra8_ok;
 }
 
+/**
+ * @brief Fill + validate a book-backed source slot (measure, then parse).
+ * @details Runs against the final slot address so the entry-pread adapter's
+ *          ctx (the slot itself) is stable; the caller commits the count
+ *          only on success.
+ * @param[in,out] src      The slot to fill (already zeroed).
+ * @param[in]     book     Owning book.
+ * @param[in]     path     Entry path (`plen` bytes + NUL).
+ * @param[in]     plen     `strlen(path)`.
+ * @param[in]     image_id Unique image id.
+ * @return Result code.
+ * @retval k_ra8_ok Slot holds a validated atlas source.
+ * @retval other    Propagated from the measure / parse.
+ * @pre `plen < k_ra8_epub_max_path_len` (caller-validated).
+ * @pre @p src points at the slot's final storage.
+ * @post On success the slot is fully bound.
+ * @post On error the slot is re-zeroed.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t priv_fill_book_source(ra8_epub_tile_source_t* src,
+                                       ra8_epub_book_t*        book,
+                                       const char*             path,
+                                       size_t                  plen,
+                                       uint32_t                image_id)
+{
+  src->book     = book;
+  src->image_id = image_id;
+  (void)memcpy(src->path, path, plen + 1U);
+  ra8_err_t err = priv_measure_entry(book, path, &src->total_size);
+  if (err == k_ra8_ok) {
+    err = ra8_tileatlas_parse(priv_entry_pread, src, src->total_size, &src->info);
+  }
+  if (err != k_ra8_ok) {
+    (void)memset(src, 0, sizeof(*src));
+  }
+  return err;
+}
+
 ra8_err_t ra8_epub_tile_binder_add(ra8_epub_tile_binder_t* binder,
                                    ra8_epub_book_t*        book,
                                    const char*             path,
@@ -248,21 +287,10 @@ ra8_err_t ra8_epub_tile_binder_add(ra8_epub_tile_binder_t* binder,
   if (err != k_ra8_ok) {
     return err;
   }
-  /* Fill the target slot in place so the entry-pread adapter's ctx (the slot
-   * itself) is stable, then only commit the count on full success. */
   ra8_epub_tile_source_t* src = &binder->sources[binder->source_count];
   (void)memset(src, 0, sizeof(*src));
-  src->book     = book;
-  src->image_id = image_id;
-  (void)memcpy(src->path, path, plen + 1U);
-  err = priv_measure_entry(book, path, &src->total_size);
+  err = priv_fill_book_source(src, book, path, plen, image_id);
   if (err != k_ra8_ok) {
-    (void)memset(src, 0, sizeof(*src));
-    return err;
-  }
-  err = ra8_tileatlas_parse(priv_entry_pread, src, src->total_size, &src->info);
-  if (err != k_ra8_ok) {
-    (void)memset(src, 0, sizeof(*src));
     return err;
   }
   binder->source_count++;
