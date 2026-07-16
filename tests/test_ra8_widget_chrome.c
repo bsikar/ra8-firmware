@@ -540,9 +540,12 @@ static void test_nav_bar_render(void)
  *
  * @par MC/DC:
  * `internal_nav_hit`: `count == 0` false + (in guards test) true; `w <= 0`
- * false + true; the in-range guard `px < x || px >= x + w` false (hit) + true
- * (tap off the strip). `internal_nav_on_input`: `kind != touch` false + true;
- * `on_select != NULL` true + false.
+ * false + true; the in-range guard `px < x || px >= x + w`: false-false (hit),
+ * false-true (tap off the right edge, varies the `px >= x + w` term), and
+ * true-false (tap off the left edge at px < x, varies the `px < x` term) -- the
+ * N+1 = 3 vectors that give each term independent influence.
+ * `internal_nav_on_input`: `kind != touch` false + true; `on_select != NULL`
+ * true + false.
  */
 static void test_nav_bar_input(void)
 {
@@ -573,9 +576,15 @@ static void test_nav_bar_input(void)
   TEST_ASSERT_EQ(true, w.vt->on_input(&w, &t2));
   TEST_ASSERT_EQ(2U, nav.selected);
 
-  /* a tap off the right edge (x=120) -> declined. */
+  /* a tap off the right edge (x=120) -> declined (px >= x + w term true). */
   const ra8_widget_event_t off = {.kind = k_ra8_widget_ev_touch, .x = 120, .y = 10};
   TEST_ASSERT_EQ(false, w.vt->on_input(&w, &off));
+
+  /* a tap off the left edge (x=-1 < strip->x) -> declined; this is the
+   * `px < x` true / `px >= x + w` false vector that gives the first term of the
+   * in-range guard its independent MC/DC influence. */
+  const ra8_widget_event_t offl = {.kind = k_ra8_widget_ev_touch, .x = -1, .y = 10};
+  TEST_ASSERT_EQ(false, w.vt->on_input(&w, &offl));
 
   /* a button event is declined. */
   const ra8_widget_event_t bev = {.kind = k_ra8_widget_ev_button};
@@ -740,10 +749,14 @@ static void test_book_grid_render(void)
  *
  * @par MC/DC:
  * `internal_bg_card`: `cover.h > 0` false arm (a short cell whose labels + bar
- * consume the whole height -> no cover fill); `fw > 0 && fill_rect` -- `fw > 0`
- * false arm (a percent-0 book -> track only, no bar fill). `internal_bg_label`
- * `text == NULL` true arm (a book with a NULL author -> author row skipped).
- * `cols >= min` false arm (cols 0 -> clamped to 1 column).
+ * consume the whole height -> no cover fill); `fw > 0 && fill_rect != NULL` --
+ * `fw > 0` false arm (a percent-0 book -> track only, no bar fill) and, in the
+ * second render below, `fill_rect != NULL` false arm (a percent-100 book with a
+ * NULL fill backend -> the `fw > 0` term is true but the bar fill is still
+ * skipped). Those two arms plus the true-true arm in test_book_grid_render()
+ * give each term of the bar-fill decision independent MC/DC influence.
+ * `internal_bg_label` `text == NULL` true arm (a book with a NULL author ->
+ * author row skipped). `cols >= min` false arm (cols 0 -> clamped to 1 column).
  */
 static void test_book_grid_render_edges(void)
 {
@@ -771,6 +784,26 @@ static void test_book_grid_render_edges(void)
   /* bg(1) + track(1); no cover (h==0), no bar fill (percent 0). */
   TEST_ASSERT_EQ(2U, mp.fill_calls);
   TEST_ASSERT_EQ(1U, mp.text_calls); /* title drawn; NULL author skipped */
+
+  /* Second render: fw > 0 (percent 100) but fill_rect == NULL -> the bar-fill
+   * decision's `fill_rect != NULL` false arm. With no fill backend every
+   * priv_fill_box is a no-op, so nothing is recorded. */
+  mock_paint_t       mp2 = {.glyph_w = 8, .glyph_h = 16};
+  ra8_widget_paint_t pnf = make_paint(&mp2, true);
+  pnf.fill_rect          = nullptr;
+  static const ra8_widget_book_t full = {.title   = "F",
+                                         .author  = nullptr,
+                                         .cover   = 0x00112233U,
+                                         .percent = 100};
+  ra8_widget_book_grid_t gnf = make_grid(&pnf);
+  gnf.books                  = &full;
+  gnf.count                  = 1;
+  gnf.cols                   = 1;
+  ra8_widget_t wnf           = {};
+  (void)ra8_widget_book_grid_init(&wnf, &gnf);
+  wnf.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 100, .h = 120};
+  wnf.vt->render(&wnf);
+  TEST_ASSERT_EQ(0U, mp2.fill_calls); /* fill_rect NULL -> no fills recorded */
   TEST_END("ra8_widget_book_grid: short cell + zero progress");
 }
 
