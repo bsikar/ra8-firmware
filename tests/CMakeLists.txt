@@ -794,7 +794,7 @@ endif()
 # for the RSIP device-security path (lifecycle / debug / tamper / DPA arm). The
 # rest of the host build compiles ra8_rsip_devsec.c under RA8_SIMULATOR_MODE (the
 # guarded #if branch, exercised by test_life / test_debug_level / test_tamper in
-# test_ra8_rsip.c). This self-contained target (no ra8_core_hal, no sim) rebuilds
+# test_ra8_rsip_devsec.c). This self-contained target (no ra8_core_hal, no sim) rebuilds
 # JUST that TU with the two guard flags UNDEFINED so the production #else is the
 # compiled body, and asserts every entry point returns k_ra8_err_not_supported and
 # writes no fabricated state. -U wins over the directory-level -D because CMake
