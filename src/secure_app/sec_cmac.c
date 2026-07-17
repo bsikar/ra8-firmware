@@ -255,8 +255,6 @@ static const uint8_t s_aes_sbox[256] = {
   0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16,
 };
 
-// NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity)
-
 /**
  * @brief Multiply a byte by x in GF(2^8) with the AES reduction poly.
  *
@@ -353,6 +351,72 @@ static void internal_aes_key_expand(const uint8_t* key, uint8_t nk, uint8_t nr, 
  * @note Pure compute helper; safe from any context.
  * @since 0.1.0
  */
+/**
+ * @brief Apply SubBytes + ShiftRows to the AES state in place.
+ *
+ * @details FIPS 197 Sec 5.1.1/5.1.2: substitute every state byte
+ * through the S-box, then rotate row ``r`` left by ``r`` columns. The
+ * state is column-major (byte ``4*c+r`` is row ``r`` of column ``c``).
+ *
+ * @param[in,out] s 16-byte AES state.
+ *
+ * @pre ``s`` is a non-NULL 16-byte state block.
+ * @pre The S-box table ``s_aes_sbox`` is the FIPS 197 constant.
+ * @post ``s`` holds ShiftRows(SubBytes(s)).
+ * @post No global state is mutated.
+ *
+ * @note Pure compute helper; safe from any context.
+ * @since 0.1.0
+ */
+static void internal_aes_sub_shift(uint8_t* s)
+{
+  for (uint8_t i = 0U; i < (uint8_t)k_aes_block_bytes; ++i) {
+    s[i] = s_aes_sbox[s[i]];
+  }
+  uint8_t shifted[k_aes_block_bytes];
+  for (uint8_t r = 0U; r < (uint8_t)k_aes_state_cols; ++r) {
+    for (uint8_t c = 0U; c < (uint8_t)k_aes_state_cols; ++c) {
+      shifted[((uint8_t)(c * (uint8_t)k_aes_state_cols)) + r] =
+        s[((uint8_t)(((c + r) & (uint8_t)k_aes_col_mask) * (uint8_t)k_aes_state_cols)) + r];
+    }
+  }
+  for (uint8_t i = 0U; i < (uint8_t)k_aes_block_bytes; ++i) {
+    s[i] = shifted[i];
+  }
+}
+
+/**
+ * @brief Apply MixColumns to the AES state in place.
+ *
+ * @details FIPS 197 Sec 5.1.3: multiply every state column by the
+ * fixed polynomial ``{03}x^3 + {01}x^2 + {01}x + {02}`` in GF(2^8),
+ * expressed through ::internal_aes_xtime doublings.
+ *
+ * @param[in,out] s 16-byte AES state.
+ *
+ * @pre ``s`` is a non-NULL 16-byte state block.
+ * @pre Caller skips this step on the final round per FIPS 197.
+ * @post Every column of ``s`` has been mixed.
+ * @post No global state is mutated.
+ *
+ * @note Pure compute helper; safe from any context.
+ * @since 0.1.0
+ */
+static void internal_aes_mix_columns(uint8_t* s)
+{
+  for (uint8_t c = 0U; c < (uint8_t)k_aes_state_cols; ++c) {
+    uint8_t*      col = &s[(uint8_t)(c * (uint8_t)k_aes_state_cols)];
+    const uint8_t a0  = col[0];
+    const uint8_t a1  = col[1];
+    const uint8_t a2  = col[2];
+    const uint8_t a3  = col[3];
+    col[0] = (uint8_t)(internal_aes_xtime(a0) ^ internal_aes_xtime(a1) ^ a1 ^ a2 ^ a3);
+    col[1] = (uint8_t)(a0 ^ internal_aes_xtime(a1) ^ internal_aes_xtime(a2) ^ a2 ^ a3);
+    col[2] = (uint8_t)(a0 ^ a1 ^ internal_aes_xtime(a2) ^ internal_aes_xtime(a3) ^ a3);
+    col[3] = (uint8_t)(internal_aes_xtime(a0) ^ a0 ^ a1 ^ a2 ^ internal_aes_xtime(a3));
+  }
+}
+
 static void internal_aes_encrypt(const uint8_t* rk, uint8_t nr, const uint8_t* in, uint8_t* out)
 {
   uint8_t s[k_aes_block_bytes];
@@ -360,31 +424,9 @@ static void internal_aes_encrypt(const uint8_t* rk, uint8_t nr, const uint8_t* i
     s[i] = (uint8_t)(in[i] ^ rk[i]);
   }
   for (uint8_t round = 1U; round <= nr; ++round) {
-    for (uint8_t i = 0U; i < (uint8_t)k_aes_block_bytes; ++i) {
-      s[i] = s_aes_sbox[s[i]];
-    }
-    uint8_t shifted[k_aes_block_bytes];
-    for (uint8_t r = 0U; r < (uint8_t)k_aes_state_cols; ++r) {
-      for (uint8_t c = 0U; c < (uint8_t)k_aes_state_cols; ++c) {
-        shifted[((uint8_t)(c * (uint8_t)k_aes_state_cols)) + r] =
-          s[((uint8_t)(((c + r) & (uint8_t)k_aes_col_mask) * (uint8_t)k_aes_state_cols)) + r];
-      }
-    }
-    for (uint8_t i = 0U; i < (uint8_t)k_aes_block_bytes; ++i) {
-      s[i] = shifted[i];
-    }
+    internal_aes_sub_shift(s);
     if (round != nr) {
-      for (uint8_t c = 0U; c < (uint8_t)k_aes_state_cols; ++c) {
-        uint8_t*      col = &s[(uint8_t)(c * (uint8_t)k_aes_state_cols)];
-        const uint8_t a0  = col[0];
-        const uint8_t a1  = col[1];
-        const uint8_t a2  = col[2];
-        const uint8_t a3  = col[3];
-        col[0] = (uint8_t)(internal_aes_xtime(a0) ^ internal_aes_xtime(a1) ^ a1 ^ a2 ^ a3);
-        col[1] = (uint8_t)(a0 ^ internal_aes_xtime(a1) ^ internal_aes_xtime(a2) ^ a2 ^ a3);
-        col[2] = (uint8_t)(a0 ^ a1 ^ internal_aes_xtime(a2) ^ internal_aes_xtime(a3) ^ a3);
-        col[3] = (uint8_t)(internal_aes_xtime(a0) ^ a0 ^ a1 ^ a2 ^ internal_aes_xtime(a3));
-      }
+      internal_aes_mix_columns(s);
     }
     const uint8_t* round_key = &rk[(size_t)round * (size_t)k_aes_block_bytes];
     for (uint8_t i = 0U; i < (uint8_t)k_aes_block_bytes; ++i) {
@@ -448,6 +490,87 @@ static void internal_cmac_double(const uint8_t* in, uint8_t* out)
  * @note Pure compute helper; not thread-safe (uses only stack).
  * @since 0.1.0
  */
+/**
+ * @brief Derive the CMAC subkeys K1 / K2 from the expanded key.
+ *
+ * @details SP 800-38B Sec 6.1: ``L = AES(key, 0^128)``, ``K1 = 2L``
+ * and ``K2 = 2 * K1`` in GF(2^128). The intermediate ``L`` value is
+ * wiped before returning so only the subkeys leave this frame.
+ *
+ * @param[in]  rk Round-key schedule from ::internal_aes_key_expand.
+ * @param[in]  nr Round count (10 or 14).
+ * @param[out] k1 Receives the full-block subkey K1 (16 bytes).
+ * @param[out] k2 Receives the padded-block subkey K2 (16 bytes).
+ *
+ * @pre ``rk`` was expanded for ``nr`` rounds.
+ * @pre ``k1`` and ``k2`` are non-NULL 16-byte buffers.
+ * @post ``k1`` / ``k2`` hold the SP 800-38B subkeys.
+ * @post The intermediate ``L`` stack value has been wiped.
+ *
+ * @note Pure compute helper; uses only stack.
+ * @since 0.1.0
+ */
+static void internal_cmac_subkeys(const uint8_t* rk, uint8_t nr, uint8_t* k1, uint8_t* k2)
+{
+  const uint8_t zero[k_aes_block_bytes] = {};
+  uint8_t       l_val[k_aes_block_bytes];
+  internal_aes_encrypt(rk, nr, zero, l_val);
+  internal_cmac_double(l_val, k1);
+  internal_cmac_double(k1, k2);
+  ra8_secure_memzero(l_val, sizeof(l_val));
+}
+
+/**
+ * @brief Fold the (possibly padded) final CMAC block with its subkey.
+ *
+ * @details SP 800-38B Sec 6.2 step 4: a complete final block is
+ * XOR-ed with K1; an incomplete (or empty-message) block is padded
+ * with ``0x80 0x00...`` and XOR-ed with K2.
+ *
+ * @param[in]  msg      Message bytes (NULL only when ``msg_len==0``).
+ * @param[in]  msg_len  Message length in bytes.
+ * @param[in]  last_off Byte offset of the final block within ``msg``.
+ * @param[in]  complete True when the final block is a whole 16 bytes.
+ * @param[in]  k1       Subkey for complete final blocks.
+ * @param[in]  k2       Subkey for padded final blocks.
+ * @param[out] last     Receives the folded 16-byte final block.
+ *
+ * @pre ``last_off`` and ``complete`` describe ``msg`` per the caller.
+ * @pre ``k1`` / ``k2`` came from ::internal_cmac_subkeys.
+ * @post ``last`` holds the subkey-folded final block.
+ * @post No global state is mutated.
+ *
+ * @note Pure compute helper; safe from any context.
+ * @since 0.1.0
+ */
+static void internal_cmac_build_last(const uint8_t* msg,
+                                     uint32_t       msg_len,
+                                     uint32_t       last_off,
+                                     bool           complete,
+                                     const uint8_t* k1,
+                                     const uint8_t* k2,
+                                     uint8_t*       last)
+{
+  if (complete) {
+    for (uint8_t i = 0U; i < (uint8_t)k_aes_block_bytes; ++i) {
+      last[i] = (uint8_t)(msg[last_off + i] ^ k1[i]);
+    }
+    return;
+  }
+  const uint32_t rem = msg_len - last_off;
+  for (uint8_t i = 0U; i < (uint8_t)k_aes_block_bytes; ++i) {
+    uint8_t byte = 0U;
+    if ((uint32_t)i < rem) {
+      byte = msg[last_off + (uint32_t)i];
+    } else if ((uint32_t)i == rem) {
+      byte = (uint8_t)k_cmac_pad_marker;
+    } else {
+      byte = 0U;
+    }
+    last[i] = (uint8_t)(byte ^ k2[i]);
+  }
+}
+
 static void internal_cmac_tag(const uint8_t* key,
                               uint16_t       key_len,
                               const uint8_t* msg,
@@ -460,13 +583,9 @@ static void internal_cmac_tag(const uint8_t* key,
   uint8_t rk[k_aes_max_rk_bytes];
   internal_aes_key_expand(key, nk, nr, rk);
 
-  const uint8_t zero[k_aes_block_bytes] = {};
-  uint8_t       l_val[k_aes_block_bytes];
-  uint8_t       k1[k_aes_block_bytes];
-  uint8_t       k2[k_aes_block_bytes];
-  internal_aes_encrypt(rk, nr, zero, l_val);
-  internal_cmac_double(l_val, k1);
-  internal_cmac_double(k1, k2);
+  uint8_t k1[k_aes_block_bytes];
+  uint8_t k2[k_aes_block_bytes];
+  internal_cmac_subkeys(rk, nr, k1, k2);
 
   /* Block count and whether the last block is a whole 16 bytes. */
   const uint32_t n_blocks =
@@ -475,24 +594,7 @@ static void internal_cmac_tag(const uint8_t* key,
   const uint32_t last_off = (n_blocks - 1U) * (uint32_t)k_aes_block_bytes;
 
   uint8_t last[k_aes_block_bytes];
-  if (complete) {
-    for (uint8_t i = 0U; i < (uint8_t)k_aes_block_bytes; ++i) {
-      last[i] = (uint8_t)(msg[last_off + i] ^ k1[i]);
-    }
-  } else {
-    const uint32_t rem = msg_len - last_off;
-    for (uint8_t i = 0U; i < (uint8_t)k_aes_block_bytes; ++i) {
-      uint8_t byte = 0U;
-      if ((uint32_t)i < rem) {
-        byte = msg[last_off + (uint32_t)i];
-      } else if ((uint32_t)i == rem) {
-        byte = (uint8_t)k_cmac_pad_marker;
-      } else {
-        byte = 0U;
-      }
-      last[i] = (uint8_t)(byte ^ k2[i]);
-    }
-  }
+  internal_cmac_build_last(msg, msg_len, last_off, complete, k1, k2, last);
 
   uint8_t x[k_aes_block_bytes] = {};
   uint8_t y[k_aes_block_bytes];
@@ -510,10 +612,7 @@ static void internal_cmac_tag(const uint8_t* key,
   ra8_secure_memzero(rk, sizeof(rk));
   ra8_secure_memzero(k1, sizeof(k1));
   ra8_secure_memzero(k2, sizeof(k2));
-  ra8_secure_memzero(l_val, sizeof(l_val));
 }
-
-// NOLINTEND(readability-function-size,readability-function-cognitive-complexity)
 
 ra8_err_t ra8_sec_cmac_compute(const uint8_t* key,
                                uint16_t       key_len,
