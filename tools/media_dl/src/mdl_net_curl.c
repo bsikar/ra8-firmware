@@ -12,13 +12,18 @@
  * before the on-device NetX/Mbed TLS stack exists. One easy handle is reused
  * across requests so the cookie jar and keep-alive connections persist.
  */
-#include "mdl_net.h"
-
+#include <curl/curl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <curl/curl.h>
+#include "mdl_net.h"
+
+/** @brief Backend tunables. */
+typedef enum : uint16_t {
+  k_curl_max_redirects  = 8,   /**< Redirect hops to follow. */
+  k_http_status_err_min = 400, /**< First HTTP status treated as an error. */
+} mdl_curl_limits_t;
 
 /** @brief Concrete libcurl network interface. */
 struct mdl_net_iface {
@@ -34,6 +39,7 @@ typedef struct {
 } buf_sink_t;
 
 /** @brief libcurl write callback: append into a bounded buffer. */
+/* cppcheck-suppress constParameterCallback ; libcurl WRITEFUNCTION ABI is char* */
 static size_t on_buf_write(char* data, size_t size, size_t nmemb, void* user)
 {
   buf_sink_t*  sink  = (buf_sink_t*)user;
@@ -51,6 +57,7 @@ static size_t on_buf_write(char* data, size_t size, size_t nmemb, void* user)
 }
 
 /** @brief libcurl write callback: append to an open FILE*. */
+/* cppcheck-suppress constParameterCallback ; libcurl WRITEFUNCTION ABI is char* */
 static size_t on_file_write(char* data, size_t size, size_t nmemb, void* user)
 {
   FILE* fp = (FILE*)user;
@@ -82,7 +89,7 @@ mdl_net_iface_t* mdl_net_curl_create(void)
 
   /* Options that hold for the life of the handle. */
   curl_easy_setopt(net->curl, CURLOPT_FOLLOWLOCATION, 1L);
-  curl_easy_setopt(net->curl, CURLOPT_MAXREDIRS, 8L);
+  curl_easy_setopt(net->curl, CURLOPT_MAXREDIRS, (long)k_curl_max_redirects);
   curl_easy_setopt(net->curl, CURLOPT_ACCEPT_ENCODING, ""); /* all supported */
   curl_easy_setopt(net->curl, CURLOPT_COOKIEFILE, "");      /* enable jar */
   curl_easy_setopt(net->curl, CURLOPT_NOSIGNAL, 1L);
@@ -126,18 +133,20 @@ static ra8_err_t classify(CURL* curl, CURLcode code, bool overflow)
   }
   long status = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
-  if (status >= 400) {
+  if (status >= (long)k_http_status_err_min) {
     return k_ra8_fail;
   }
   return k_ra8_ok;
 }
 
-ra8_err_t mdl_net_get_buf(mdl_net_iface_t* net, const char* url,
-                          const mdl_net_req_t* req, char* buf, size_t cap,
-                          size_t* out_len)
+ra8_err_t mdl_net_get_buf(mdl_net_iface_t*     net,
+                          const char*          url,
+                          const mdl_net_req_t* req,
+                          char*                buf,
+                          size_t               cap,
+                          size_t*              out_len)
 {
-  if ((net == nullptr) || (url == nullptr) || (req == nullptr) ||
-      (buf == nullptr) || (cap == 0U)) {
+  if ((net == nullptr) || (url == nullptr) || (req == nullptr) || (buf == nullptr) || (cap == 0U)) {
     return k_ra8_err_invalid_arg;
   }
 
@@ -146,8 +155,8 @@ ra8_err_t mdl_net_get_buf(mdl_net_iface_t* net, const char* url,
   curl_easy_setopt(net->curl, CURLOPT_WRITEFUNCTION, on_buf_write);
   curl_easy_setopt(net->curl, CURLOPT_WRITEDATA, &sink);
 
-  const CURLcode code = curl_easy_perform(net->curl);
-  const ra8_err_t rc  = classify(net->curl, code, sink.overflow);
+  const CURLcode  code = curl_easy_perform(net->curl);
+  const ra8_err_t rc   = classify(net->curl, code, sink.overflow);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -161,12 +170,13 @@ ra8_err_t mdl_net_get_buf(mdl_net_iface_t* net, const char* url,
   return k_ra8_ok;
 }
 
-ra8_err_t mdl_net_get_file(mdl_net_iface_t* net, const char* url,
-                           const mdl_net_req_t* req, const char* out_path,
-                           size_t* out_len)
+ra8_err_t mdl_net_get_file(mdl_net_iface_t*     net,
+                           const char*          url,
+                           const mdl_net_req_t* req,
+                           const char*          out_path,
+                           size_t*              out_len)
 {
-  if ((net == nullptr) || (url == nullptr) || (req == nullptr) ||
-      (out_path == nullptr)) {
+  if ((net == nullptr) || (url == nullptr) || (req == nullptr) || (out_path == nullptr)) {
     return k_ra8_err_invalid_arg;
   }
 
@@ -179,8 +189,8 @@ ra8_err_t mdl_net_get_file(mdl_net_iface_t* net, const char* url,
   curl_easy_setopt(net->curl, CURLOPT_WRITEFUNCTION, on_file_write);
   curl_easy_setopt(net->curl, CURLOPT_WRITEDATA, fp);
 
-  const CURLcode code = curl_easy_perform(net->curl);
-  const ra8_err_t rc  = classify(net->curl, code, false);
+  const CURLcode  code = curl_easy_perform(net->curl);
+  const ra8_err_t rc   = classify(net->curl, code, false);
 
   const long fsize = ftell(fp);
   if (fclose(fp) != 0) {

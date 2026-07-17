@@ -15,6 +15,13 @@ typedef enum : uint64_t {
   k_seed_fallback = 0x9E3779B97F4A7C15ULL,
 } mdl_seed_t;
 
+/** @brief xorshift64 shift triple (Marsaglia's 13/7/17). */
+typedef enum : uint8_t {
+  k_xs_shift_a = 13U, /**< First left shift. */
+  k_xs_shift_b = 7U,  /**< Right shift. */
+  k_xs_shift_c = 17U, /**< Second left shift. */
+} mdl_xorshift_t;
+
 void mdl_politeness_init(mdl_politeness_t* p, uint64_t seed)
 {
   if (p == nullptr) {
@@ -27,15 +34,14 @@ void mdl_politeness_init(mdl_politeness_t* p, uint64_t seed)
 static uint64_t next_rand(mdl_politeness_t* p)
 {
   uint64_t x = p->state;
-  x ^= x << 13U;
-  x ^= x >> 7U;
-  x ^= x << 17U;
+  x ^= x << (uint64_t)k_xs_shift_a;
+  x ^= x >> (uint64_t)k_xs_shift_b;
+  x ^= x << (uint64_t)k_xs_shift_c;
   p->state = x;
   return x;
 }
 
-uint32_t mdl_politeness_wait(mdl_politeness_t* p, uint32_t min_ms,
-                             uint32_t max_ms)
+uint32_t mdl_politeness_wait(mdl_politeness_t* p, uint32_t min_ms, uint32_t max_ms)
 {
   if (p == nullptr) {
     return 0U;
