@@ -46,26 +46,26 @@
  */
 /** @brief Row-major flat indices of a 3x3 matrix (a[r*3+c]). */
 typedef enum : uint8_t {
-  k_m3_00  = 0U,
-  k_m3_01  = 1U,
-  k_m3_02  = 2U,
-  k_m3_10  = 3U,
-  k_m3_11  = 4U,
-  k_m3_12  = 5U,
-  k_m3_20  = 6U,
-  k_m3_21  = 7U,
-  k_m3_22  = 8U,
-  k_m3_len = 9U,
+  k_m3_00  = 0U, /**< M3 00.     */
+  k_m3_01  = 1U, /**< M3 01.     */
+  k_m3_02  = 2U, /**< M3 02.     */
+  k_m3_10  = 3U, /**< M3 10.     */
+  k_m3_11  = 4U, /**< M3 11.     */
+  k_m3_12  = 5U, /**< M3 12.     */
+  k_m3_20  = 6U, /**< M3 20.     */
+  k_m3_21  = 7U, /**< M3 21.     */
+  k_m3_22  = 8U, /**< M3 22.     */
+  k_m3_len = 9U, /**< M3 length. */
 } mat3_idx_t;
 
 /** @brief Affine calibration coefficient indices (a..f). */
 typedef enum : uint8_t {
-  k_coeff_a = 0U,
-  k_coeff_b = 1U,
-  k_coeff_c = 2U,
-  k_coeff_d = 3U,
-  k_coeff_e = 4U,
-  k_coeff_f = 5U,
+  k_coeff_a = 0U, /**< Coeff a. */
+  k_coeff_b = 1U, /**< Coeff b. */
+  k_coeff_c = 2U, /**< Coeff c. */
+  k_coeff_d = 3U, /**< Coeff d. */
+  k_coeff_e = 4U, /**< Coeff e. */
+  k_coeff_f = 5U, /**< Coeff f. */
 } affine_coeff_idx_t;
 
 typedef enum : uint32_t {

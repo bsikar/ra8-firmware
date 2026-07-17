@@ -40,15 +40,15 @@ extern "C" {
  * @brief Supported PHY-LSI identifiers.
  */
 typedef enum : uint8_t {
-  k_ra8_rmac_phy_lsi_default    = 0U,
-  k_ra8_rmac_phy_lsi_ksz8091rnb = 1U,
-  k_ra8_rmac_phy_lsi_ksz8041    = 2U,
-  k_ra8_rmac_phy_lsi_dp83620    = 3U,
-  k_ra8_rmac_phy_lsi_ics1894    = 4U,
-  k_ra8_rmac_phy_lsi_gpy111     = 5U,
-  k_ra8_rmac_phy_lsi_vsc8541    = 6U,
-  k_ra8_rmac_phy_lsi_custom     = 7U,
-  k_ra8_rmac_phy_lsi_count      = 8U,
+  k_ra8_rmac_phy_lsi_default    = 0U, /**< RA8 rmac PHY lsi default.    */
+  k_ra8_rmac_phy_lsi_ksz8091rnb = 1U, /**< RA8 rmac PHY lsi ksz8091rnb. */
+  k_ra8_rmac_phy_lsi_ksz8041    = 2U, /**< RA8 rmac PHY lsi ksz8041.    */
+  k_ra8_rmac_phy_lsi_dp83620    = 3U, /**< RA8 rmac PHY lsi dp83620.    */
+  k_ra8_rmac_phy_lsi_ics1894    = 4U, /**< RA8 rmac PHY lsi ics1894.    */
+  k_ra8_rmac_phy_lsi_gpy111     = 5U, /**< RA8 rmac PHY lsi gpy111.     */
+  k_ra8_rmac_phy_lsi_vsc8541    = 6U, /**< RA8 rmac PHY lsi vsc8541.    */
+  k_ra8_rmac_phy_lsi_custom     = 7U, /**< RA8 rmac PHY lsi custom.     */
+  k_ra8_rmac_phy_lsi_count      = 8U, /**< RA8 rmac PHY lsi count.      */
 } ra8_rmac_phy_lsi_t;
 
 /**
@@ -56,13 +56,13 @@ typedef enum : uint8_t {
  * @brief Negotiated link speed.
  */
 typedef enum : uint8_t {
-  k_ra8_rmac_phy_speed_no_link = 0U,
-  k_ra8_rmac_phy_speed_10h     = 1U,
-  k_ra8_rmac_phy_speed_10f     = 2U,
-  k_ra8_rmac_phy_speed_100h    = 3U,
-  k_ra8_rmac_phy_speed_100f    = 4U,
-  k_ra8_rmac_phy_speed_1000h   = 5U,
-  k_ra8_rmac_phy_speed_1000f   = 6U,
+  k_ra8_rmac_phy_speed_no_link = 0U, /**< RA8 rmac PHY speed no link. */
+  k_ra8_rmac_phy_speed_10h     = 1U, /**< RA8 rmac PHY speed 10h.     */
+  k_ra8_rmac_phy_speed_10f     = 2U, /**< RA8 rmac PHY speed 10f.     */
+  k_ra8_rmac_phy_speed_100h    = 3U, /**< RA8 rmac PHY speed 100h.    */
+  k_ra8_rmac_phy_speed_100f    = 4U, /**< RA8 rmac PHY speed 100f.    */
+  k_ra8_rmac_phy_speed_1000h   = 5U, /**< RA8 rmac PHY speed 1000h.   */
+  k_ra8_rmac_phy_speed_1000f   = 6U, /**< RA8 rmac PHY speed 1000f.   */
 } ra8_rmac_phy_speed_t;
 
 /**
@@ -70,8 +70,8 @@ typedef enum : uint8_t {
  * @brief MDIO address constraints.
  */
 typedef enum : uint8_t {
-  k_ra8_rmac_phy_addr_max = 31U,
-  k_ra8_rmac_phy_reg_max  = 31U,
+  k_ra8_rmac_phy_addr_max = 31U, /**< RA8 rmac PHY address maximum.  */
+  k_ra8_rmac_phy_reg_max  = 31U, /**< RA8 rmac PHY register maximum. */
 } ra8_rmac_phy_addr_limit_t;
 
 /**
@@ -79,9 +79,12 @@ typedef enum : uint8_t {
  * @brief Pluggable MDIO bus.
  */
 typedef struct {
-  ra8_err_t (*read)(void* ctx, uint8_t phy_addr, uint8_t reg_addr, uint16_t* out_data);
-  ra8_err_t (*write)(void* ctx, uint8_t phy_addr, uint8_t reg_addr, uint16_t data);
-  void* ctx;
+  ra8_err_t (*read)(void*     ctx,
+                    uint8_t   phy_addr,
+                    uint8_t   reg_addr,
+                    uint16_t* out_data);                                            /**< Read.  */
+  ra8_err_t (*write)(void* ctx, uint8_t phy_addr, uint8_t reg_addr, uint16_t data); /**< Write. */
+  void* ctx;                                                                        /**< Ctx.   */
 } ra8_rmac_phy_io_t;
 
 /**
@@ -89,11 +92,11 @@ typedef struct {
  * @brief Snapshot of resolved link parameters.
  */
 typedef struct {
-  uint8_t              link_up;
-  uint8_t              auto_neg_done;
-  ra8_rmac_phy_speed_t speed;
-  uint16_t             bmsr;
-  uint16_t             partner_ability;
+  uint8_t              link_up;         /**< Link up.         */
+  uint8_t              auto_neg_done;   /**< Auto neg done.   */
+  ra8_rmac_phy_speed_t speed;           /**< Speed.           */
+  uint16_t             bmsr;            /**< Bmsr.            */
+  uint16_t             partner_ability; /**< Partner ability. */
 } ra8_rmac_phy_link_t;
 
 /**
@@ -101,10 +104,10 @@ typedef struct {
  * @brief Configuration descriptor.
  */
 typedef struct {
-  ra8_rmac_phy_io_t  io;
-  ra8_rmac_phy_lsi_t lsi_type;
-  uint8_t            phy_address;
-  uint16_t           reset_poll_max;
+  ra8_rmac_phy_io_t  io;              /**< Io.                         */
+  ra8_rmac_phy_lsi_t lsi_type;        /**< Lsi type.                   */
+  uint8_t            phy_address;     /**< PHY address.                */
+  uint16_t           reset_poll_max;  /**< Reset poll maximum.         */
   uint16_t           local_advertise; /**< Clause-22 reg 4 advertised. */
   uint16_t           gbit_advertise;  /**< Clause-22 reg 9 (1000T).    */
 } ra8_rmac_phy_cfg_t;

@@ -82,8 +82,8 @@ typedef enum : uint16_t {
 } ra8_ble_param_limits_t;
 
 typedef enum : uint8_t {
-  k_ra8_ble_byte_shift = 8U, /**< Bit shift between LE16 halves. */
-  k_ra8_ble_byte_mask  = 0xFFU,
+  k_ra8_ble_byte_shift = 8U,    /**< Bit shift between LE16 halves. */
+  k_ra8_ble_byte_mask  = 0xFFU, /**< RA8 BLE byte mask.             */
 } ra8_ble_byte_const_t;
 
 /**
@@ -119,18 +119,18 @@ typedef enum : uint8_t {
  */
 
 typedef struct {
-  ra8_ble_event_fn_t evt_fn;
-  void*              evt_ctx;
-  ra8_ble_acl_fn_t   acl_fn;
-  void*              acl_ctx;
-  uint8_t            open;
+  ra8_ble_event_fn_t evt_fn;  /**< Evt fn.  */
+  void*              evt_ctx; /**< Evt ctx. */
+  ra8_ble_acl_fn_t   acl_fn;  /**< Acl fn.  */
+  void*              acl_ctx; /**< Acl ctx. */
+  uint8_t            open;    /**< Open.    */
   /* TX capture, used by unit tests to inspect framing. */
-  uint8_t  tx_capture[k_ra8_ble_tx_capture_bytes];
-  uint16_t tx_capture_len;
+  uint8_t  tx_capture[k_ra8_ble_tx_capture_bytes]; /**< TX capture.        */
+  uint16_t tx_capture_len;                         /**< TX capture length. */
   /* RX injection, used by unit tests to deliver synthetic events. */
-  uint8_t  rx_inject[k_ra8_ble_rx_inject_bytes];
-  uint16_t rx_inject_len;
-  uint16_t rx_inject_pos;
+  uint8_t  rx_inject[k_ra8_ble_rx_inject_bytes]; /**< RX inject.        */
+  uint16_t rx_inject_len;                        /**< RX inject length. */
+  uint16_t rx_inject_pos;                        /**< RX inject pos.    */
 } ra8_ble_state_t;
 
 static ra8_ble_state_t s_state = {};

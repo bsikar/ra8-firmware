@@ -121,8 +121,8 @@ ra8_reflow_html_tag_t ra8_reflow_tok_classify(const char* name, size_t len)
   (void)priv_local_lower(name, len, lower);
 
   static const struct {
-    const char*           word;
-    ra8_reflow_html_tag_t tag;
+    const char*           word; /**< Word. */
+    ra8_reflow_html_tag_t tag;  /**< Tag.  */
   } k_map[] = {
     {"p", k_ra8_reflow_tag_p},
     {"h1", k_ra8_reflow_tag_h1},
@@ -223,8 +223,8 @@ bool ra8_reflow_tok_decode_entity(const char* src, size_t avail, uint32_t* out_c
     return priv_decode_numeric(src, window, out_cp, out_used);
   }
   static const struct {
-    const char* word;
-    uint32_t    cp;
+    const char* word; /**< Word. */
+    uint32_t    cp;   /**< Cp.   */
   } k_named[] = {
     {"amp", (uint32_t)'&'},
     {"lt", (uint32_t)'<'},

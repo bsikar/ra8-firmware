@@ -62,8 +62,10 @@ extern "C" {
  */
 
 #ifdef __clang__
+/** @brief RA8 INTERNAL ANNOTATE. */
 #define RA8_INTERNAL_ANNOTATE(tag) [[clang::annotate(tag)]]
 #else
+/** @brief RA8 INTERNAL ANNOTATE. */
 #define RA8_INTERNAL_ANNOTATE(tag) /* annotation: tag */
 #endif
 

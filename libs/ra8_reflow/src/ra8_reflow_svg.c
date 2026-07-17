@@ -553,8 +553,8 @@ static uint32_t priv_hex_color(const uint8_t* s, size_t len)
 static uint32_t priv_named_color(const uint8_t* s, size_t len)
 {
   static const struct {
-    const char* name;
-    uint32_t    rgb;
+    const char* name; /**< Name. */
+    uint32_t    rgb;  /**< RGB.  */
   } k_names[] = {
     {"black", 0x000000U},
     {"white", 0xFFFFFFU},

@@ -56,9 +56,9 @@
  * RTKMIPILCDB00000BE / Focus E45RA-MW276-C datasheet.
  */
 typedef enum : uint16_t {
-  k_ra8_board_mipi_panel_h_active       = 480U,
-  k_ra8_board_mipi_panel_v_active       = 854U,
-  k_ra8_board_mipi_panel_line_rate_mbps = 480U,
+  k_ra8_board_mipi_panel_h_active       = 480U, /**< RA8 board mipi panel h active.       */
+  k_ra8_board_mipi_panel_v_active       = 854U, /**< RA8 board mipi panel v active.       */
+  k_ra8_board_mipi_panel_line_rate_mbps = 480U, /**< RA8 board mipi panel line rate mbps. */
 } ra8_board_mipi_panel_geometry_t;
 
 /**
@@ -200,7 +200,8 @@ static bool s_uart_console_initialized = false;
  * console up as long as PCLKA is in a reasonable UART range.
  */
 typedef enum : uint32_t {
-  k_ra8_board_uart_console_min_pclka_hz = 16000000UL,
+  k_ra8_board_uart_console_min_pclka_hz =
+    16000000UL, /**< RA8 board UART console minimum pclka Hz. */
 } ra8_board_uart_console_clock_t;
 
 ra8_err_t ra8_board_uart_console_init(uint32_t baud)

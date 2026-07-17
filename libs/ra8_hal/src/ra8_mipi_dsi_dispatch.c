@@ -619,7 +619,7 @@ ra8_mipi_dsi_send_command_long(ra8_mipi_dsi_dt_t dt, const uint8_t* payload, uin
    * pack the payload into the 2-parameter header; long writes stage
    * via TXPPD0..3R. */
   enum : uint16_t {
-    k_ra8_mipi_dsi_short_payload_max = 2U,
+    k_ra8_mipi_dsi_short_payload_max = 2U, /**< RA8 mipi dsi short payload maximum. */
   };
   if (len <= k_ra8_mipi_dsi_short_payload_max) {
     const uint8_t p0 = (len > 0U) ? payload[0] : 0U;

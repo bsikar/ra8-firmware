@@ -96,19 +96,19 @@ typedef enum : uint8_t {
  * CPINTCTL + CPMSKCTL at 0x40 / 0x44.
  */
 typedef struct {
-  volatile uint8_t CMPCTL;  /**< +0x00 Control (enable, edges, filter). */
-  volatile uint8_t _r0[3];  /**< Padding.                               */
-  volatile uint8_t CMPSEL0; /**< +0x04 Plus-input selection.            */
-  volatile uint8_t _r1[3];  /**< Padding.                               */
-  volatile uint8_t CMPSEL1; /**< +0x08 Minus-input selection.           */
-  volatile uint8_t _r2[3];  /**< Padding.                               */
-  volatile uint8_t CMPMON;  /**< +0x0C Output monitor (read-only).      */
-  volatile uint8_t _r3[3];  /**< Padding.                               */
-  volatile uint8_t CPIOC;   /**< +0x10 Output polarity / pin control.   */
-  volatile uint8_t _r4[k_ra8_acmphs_reserved_mid];
-  volatile uint8_t CPINTCTL; /**< +0x40 Interrupt control.      */
-  volatile uint8_t _r5[3];   /**< Padding.                      */
-  volatile uint8_t CPMSKCTL; /**< +0x44 Interrupt mask control. */
+  volatile uint8_t CMPCTL;                         /**< +0x00 Control (enable, edges, filter). */
+  volatile uint8_t _r0[3];                         /**< Padding.                               */
+  volatile uint8_t CMPSEL0;                        /**< +0x04 Plus-input selection.            */
+  volatile uint8_t _r1[3];                         /**< Padding.                               */
+  volatile uint8_t CMPSEL1;                        /**< +0x08 Minus-input selection.           */
+  volatile uint8_t _r2[3];                         /**< Padding.                               */
+  volatile uint8_t CMPMON;                         /**< +0x0C Output monitor (read-only).      */
+  volatile uint8_t _r3[3];                         /**< Padding.                               */
+  volatile uint8_t CPIOC;                          /**< +0x10 Output polarity / pin control.   */
+  volatile uint8_t _r4[k_ra8_acmphs_reserved_mid]; /**< Reserved.                              */
+  volatile uint8_t CPINTCTL;                       /**< +0x40 Interrupt control.               */
+  volatile uint8_t _r5[3];                         /**< Padding.                               */
+  volatile uint8_t CPMSKCTL;                       /**< +0x44 Interrupt mask control.          */
 } r_acmphs_regs_t;
 
 /**

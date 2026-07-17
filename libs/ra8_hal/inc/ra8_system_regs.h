@@ -215,13 +215,15 @@ typedef enum : uint8_t {
  * group bit cleared to relock.
  */
 typedef enum : uint16_t {
-  k_ra8_prcr_key        = 0xA500U, /**< Password in upper byte.                   */
-  k_ra8_prcr_grp0_cgc   = 0x0001U, /**< Group 0: CGC + LVD.                       */
-  k_ra8_prcr_grp1_lpm   = 0x0002U, /**< Group 1: Low-power modes + power domains. */
-  k_ra8_prcr_grp2_osc   = 0x0008U, /**< Group 2: LVD reset-detection.             */
-  k_ra8_prcr_unlock_cgc = (uint16_t)(k_ra8_prcr_key | k_ra8_prcr_grp0_cgc),
-  k_ra8_prcr_unlock_lpm = (uint16_t)(k_ra8_prcr_key | k_ra8_prcr_grp1_lpm),
-  k_ra8_prcr_lock_all   = k_ra8_prcr_key,
+  k_ra8_prcr_key      = 0xA500U, /**< Password in upper byte.                   */
+  k_ra8_prcr_grp0_cgc = 0x0001U, /**< Group 0: CGC + LVD.                       */
+  k_ra8_prcr_grp1_lpm = 0x0002U, /**< Group 1: Low-power modes + power domains. */
+  k_ra8_prcr_grp2_osc = 0x0008U, /**< Group 2: LVD reset-detection.             */
+  k_ra8_prcr_unlock_cgc =
+    (uint16_t)(k_ra8_prcr_key | k_ra8_prcr_grp0_cgc), /**< RA8 prcr unlock cgc. */
+  k_ra8_prcr_unlock_lpm =
+    (uint16_t)(k_ra8_prcr_key | k_ra8_prcr_grp1_lpm), /**< RA8 prcr unlock lpm. */
+  k_ra8_prcr_lock_all = k_ra8_prcr_key,               /**< RA8 prcr lock all.   */
 } ra8_prcr_t;
 
 /* =============================================================================

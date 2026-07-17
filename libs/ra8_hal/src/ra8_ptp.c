@@ -43,12 +43,12 @@ typedef enum : uint8_t {
  * @brief Indexes into the 6-byte MAC address.
  */
 typedef enum : uint8_t {
-  k_ra8_ptp_mac_idx_0 = 0U,
-  k_ra8_ptp_mac_idx_1 = 1U,
-  k_ra8_ptp_mac_idx_2 = 2U,
-  k_ra8_ptp_mac_idx_3 = 3U,
-  k_ra8_ptp_mac_idx_4 = 4U,
-  k_ra8_ptp_mac_idx_5 = 5U,
+  k_ra8_ptp_mac_idx_0 = 0U, /**< RA8 ptp MAC index 0. */
+  k_ra8_ptp_mac_idx_1 = 1U, /**< RA8 ptp MAC index 1. */
+  k_ra8_ptp_mac_idx_2 = 2U, /**< RA8 ptp MAC index 2. */
+  k_ra8_ptp_mac_idx_3 = 3U, /**< RA8 ptp MAC index 3. */
+  k_ra8_ptp_mac_idx_4 = 4U, /**< RA8 ptp MAC index 4. */
+  k_ra8_ptp_mac_idx_5 = 5U, /**< RA8 ptp MAC index 5. */
 } ra8_ptp_mac_idx_t;
 
 /**
@@ -56,10 +56,10 @@ typedef enum : uint8_t {
  * @brief Big-endian byte-shift constants for MAC packing.
  */
 typedef enum : uint8_t {
-  k_ra8_ptp_shift_b0 = 0U,
-  k_ra8_ptp_shift_b1 = 8U,
-  k_ra8_ptp_shift_b2 = 16U,
-  k_ra8_ptp_shift_b3 = 24U,
+  k_ra8_ptp_shift_b0 = 0U,  /**< RA8 ptp shift b0. */
+  k_ra8_ptp_shift_b1 = 8U,  /**< RA8 ptp shift b1. */
+  k_ra8_ptp_shift_b2 = 16U, /**< RA8 ptp shift b2. */
+  k_ra8_ptp_shift_b3 = 24U, /**< RA8 ptp shift b3. */
 } ra8_ptp_byte_shift_t;
 
 /**

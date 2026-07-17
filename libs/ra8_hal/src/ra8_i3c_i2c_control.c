@@ -177,8 +177,8 @@ ra8_err_t internal_i3c_i2c_clear_errors(uint8_t channel)
   }
   /* HUM Ch 40.2.46 "BST : Bus Status Register" p 2490 */
   enum : uint32_t {
-    k_ra8_i3c_i2c_err_clear_mask =
-      k_ra8_i3c_i2c_msk_bst_alf | k_ra8_i3c_i2c_msk_bst_nackdf | k_ra8_i3c_i2c_msk_bst_todf,
+    k_ra8_i3c_i2c_err_clear_mask = k_ra8_i3c_i2c_msk_bst_alf | k_ra8_i3c_i2c_msk_bst_nackdf |
+                                   k_ra8_i3c_i2c_msk_bst_todf, /**< RA8 I3C I2C error clear mask. */
   };
   reg->BST = reg->BST & ~k_ra8_i3c_i2c_err_clear_mask;
   return k_ra8_ok;

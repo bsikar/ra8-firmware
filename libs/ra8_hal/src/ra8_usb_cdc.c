@@ -61,7 +61,7 @@ typedef enum : uint8_t {
  * @brief 9600 baud assembled from the two low bytes above.
  */
 typedef enum : uint32_t {
-  k_ra8_cdc_default_baud = 9600U,
+  k_ra8_cdc_default_baud = 9600U, /**< RA8 cdc default baud. */
 } ra8_usb_cdc_default_baud_t;
 
 /**
@@ -70,10 +70,10 @@ typedef enum : uint32_t {
  * accumulator in `internal_apply_line_coding`.
  */
 typedef enum : uint8_t {
-  k_ra8_cdc_shift_byte0 = 0U,
-  k_ra8_cdc_shift_byte1 = 8U,
-  k_ra8_cdc_shift_byte2 = 16U,
-  k_ra8_cdc_shift_byte3 = 24U,
+  k_ra8_cdc_shift_byte0 = 0U,  /**< RA8 cdc shift byte0. */
+  k_ra8_cdc_shift_byte1 = 8U,  /**< RA8 cdc shift byte1. */
+  k_ra8_cdc_shift_byte2 = 16U, /**< RA8 cdc shift byte2. */
+  k_ra8_cdc_shift_byte3 = 24U, /**< RA8 cdc shift byte3. */
 } ra8_usb_cdc_byte_shift_t;
 
 /**
@@ -81,13 +81,13 @@ typedef enum : uint8_t {
  * @brief Indices into the 7-byte SET_LINE_CODING payload.
  */
 typedef enum : uint8_t {
-  k_ra8_cdc_idx_baud_b0     = 0U,
-  k_ra8_cdc_idx_baud_b1     = 1U,
-  k_ra8_cdc_idx_baud_b2     = 2U,
-  k_ra8_cdc_idx_baud_b3     = 3U,
-  k_ra8_cdc_idx_char_format = 4U,
-  k_ra8_cdc_idx_parity_type = 5U,
-  k_ra8_cdc_idx_data_bits   = 6U,
+  k_ra8_cdc_idx_baud_b0     = 0U, /**< RA8 cdc index baud b0.     */
+  k_ra8_cdc_idx_baud_b1     = 1U, /**< RA8 cdc index baud b1.     */
+  k_ra8_cdc_idx_baud_b2     = 2U, /**< RA8 cdc index baud b2.     */
+  k_ra8_cdc_idx_baud_b3     = 3U, /**< RA8 cdc index baud b3.     */
+  k_ra8_cdc_idx_char_format = 4U, /**< RA8 cdc index char format. */
+  k_ra8_cdc_idx_parity_type = 5U, /**< RA8 cdc index parity type. */
+  k_ra8_cdc_idx_data_bits   = 6U, /**< RA8 cdc index data bits.   */
 } ra8_usb_cdc_byte_idx_t;
 
 /**

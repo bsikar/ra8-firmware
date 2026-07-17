@@ -65,16 +65,16 @@ static const char* s_tag = "RSIP_KI";
  */
 /** @brief AES / RSA / ECC key element byte counts. */
 typedef enum : uint16_t {
-  k_aes_192_key_bytes  = 24U,
-  k_rsa_1024_mod_bytes = 128U,
-  k_rsa_2048_mod_bytes = 256U,
-  k_rsa_3072_mod_bytes = 384U,
-  k_rsa_4096_mod_bytes = 512U,
-  k_ecc_256_pub_bytes  = 64U,
-  k_ecc_384_priv_bytes = 48U,
-  k_ecc_384_pub_bytes  = 96U,
-  k_ecc_521_priv_bytes = 66U,
-  k_ecc_521_pub_bytes  = 132U,
+  k_aes_192_key_bytes  = 24U,  /**< AES 192 key bytes.  */
+  k_rsa_1024_mod_bytes = 128U, /**< RSA 1024 mod bytes. */
+  k_rsa_2048_mod_bytes = 256U, /**< RSA 2048 mod bytes. */
+  k_rsa_3072_mod_bytes = 384U, /**< RSA 3072 mod bytes. */
+  k_rsa_4096_mod_bytes = 512U, /**< RSA 4096 mod bytes. */
+  k_ecc_256_pub_bytes  = 64U,  /**< ECC 256 pub bytes.  */
+  k_ecc_384_priv_bytes = 48U,  /**< ECC 384 priv bytes. */
+  k_ecc_384_pub_bytes  = 96U,  /**< ECC 384 pub bytes.  */
+  k_ecc_521_priv_bytes = 66U,  /**< ECC 521 priv bytes. */
+  k_ecc_521_pub_bytes  = 132U, /**< ECC 521 pub bytes.  */
 } rsip_ki_size_t;
 
 typedef enum : uint64_t {

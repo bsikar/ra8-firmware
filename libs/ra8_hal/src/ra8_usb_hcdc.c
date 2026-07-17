@@ -109,10 +109,10 @@ typedef enum : uint16_t {
  *        serialisation.
  */
 typedef enum : uint8_t {
-  k_ra8_hcdc_shift_byte0 = 0U,
-  k_ra8_hcdc_shift_byte1 = 8U,
-  k_ra8_hcdc_shift_byte2 = 16U,
-  k_ra8_hcdc_shift_byte3 = 24U,
+  k_ra8_hcdc_shift_byte0 = 0U,  /**< RA8 hcdc shift byte0. */
+  k_ra8_hcdc_shift_byte1 = 8U,  /**< RA8 hcdc shift byte1. */
+  k_ra8_hcdc_shift_byte2 = 16U, /**< RA8 hcdc shift byte2. */
+  k_ra8_hcdc_shift_byte3 = 24U, /**< RA8 hcdc shift byte3. */
 } ra8_usb_hcdc_byte_shift_t;
 
 /**

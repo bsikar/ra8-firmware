@@ -69,7 +69,7 @@ static const char* s_tag = "USBCOMP";
  */
 /** @brief Low-byte mask for the setup-packet wIndex. */
 typedef enum : uint16_t {
-  k_usbc_byte_mask = 0xFFU,
+  k_usbc_byte_mask = 0xFFU, /**< Usbc byte mask. */
 } usbc_mask_t;
 
 typedef enum : uint8_t {
@@ -142,7 +142,8 @@ typedef enum : uint8_t {
  * comparison with the registered-class index is unambiguous.
  */
 typedef enum : uint8_t {
-  k_ra8_usb_composite_handler_self = (uint8_t)k_ra8_usb_composite_max_classes,
+  k_ra8_usb_composite_handler_self =
+    (uint8_t)k_ra8_usb_composite_max_classes, /**< RA8 USB composite handler self. */
 } ra8_usb_composite_handler_sentinel_t;
 
 /* =============================================================================

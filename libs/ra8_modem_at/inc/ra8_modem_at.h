@@ -88,7 +88,7 @@ typedef enum : uint8_t {
  * @brief Default per-command timeout when caller passes 0 ms.
  */
 typedef enum : uint16_t {
-  k_ra8_modem_at_default_timeout_ms = 1000U,
+  k_ra8_modem_at_default_timeout_ms = 1000U, /**< RA8 modem at default timeout ms. */
 } ra8_modem_at_timeouts_t;
 
 /**

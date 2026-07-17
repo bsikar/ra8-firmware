@@ -59,7 +59,7 @@ static const char* s_tag = "GLCDC";
 
 /** @brief CLUT entry count (16-bit address space). */
 typedef enum : uint32_t {
-  k_glcdc_clut_size = 0x10000UL,
+  k_glcdc_clut_size = 0x10000UL, /**< GLCDC CLUT size. */
 } glcdc_clut_t;
 
 typedef enum : uint8_t {
@@ -125,27 +125,27 @@ typedef enum : uint32_t {
 /* HUM Ch 11.2.1 "PRCR : Protect Register" p 440 -- PRC0 (bit 0)
  * unlocks CGC; PRC1 (bit 1) unlocks LPM. Key = 0xA5xx. */
 enum : uintptr_t {
-  k_addr_prcr       = 0x4001E3FAUL,
-  k_addr_pdctrgd    = 0x4001E110UL,
-  k_addr_lcdckdivcr = 0x4001E05EUL,
-  k_addr_lcdckcr    = 0x4001E05FUL,
-  k_addr_hococr     = 0x4001E036UL,
+  k_addr_prcr       = 0x4001E3FAUL, /**< Address prcr.       */
+  k_addr_pdctrgd    = 0x4001E110UL, /**< Address pdctrgd.    */
+  k_addr_lcdckdivcr = 0x4001E05EUL, /**< Address lcdckdivcr. */
+  k_addr_lcdckcr    = 0x4001E05FUL, /**< Address lcdckcr.    */
+  k_addr_hococr     = 0x4001E036UL, /**< Address hococr.     */
 };
 enum : uint16_t {
-  k_prcr_unlock_lpm = 0xA502U,
-  k_prcr_unlock_cgc = 0xA501U,
-  k_prcr_relock     = 0xA500U,
+  k_prcr_unlock_lpm = 0xA502U, /**< Prcr unlock lpm. */
+  k_prcr_unlock_cgc = 0xA501U, /**< Prcr unlock cgc. */
+  k_prcr_relock     = 0xA500U, /**< Prcr relock.     */
 };
 enum : uint8_t {
-  k_pdctrgd_on      = 0x00U,
-  k_pdctrgd_pdcsf   = 0x40U, /* bit 6: control-in-progress status */
-  k_pdctrgd_pdpgsf  = 0x80U, /* bit 7: gated status               */
-  k_pdctrgd_status  = 0xC0U, /* both status bits                  */
-  k_lcdck_sreq      = 0x40U,
-  k_lcdck_srdy_mask = 0x80U,
-  k_lcdck_sel_pll1r = 0x08U, /* HUM 9.2.58 LCDCKSEL[3:0] = 1000b */
-  k_lcdckdivcr_div4 = 0x02U, /* LCDCLK = PLL1R / 4 = 100 MHz     */
-  k_hococr_run      = 0x00U,
+  k_pdctrgd_on      = 0x00U, /**< Pdctrgd on.                        */
+  k_pdctrgd_pdcsf   = 0x40U, /**< bit 6: control-in-progress status. */
+  k_pdctrgd_pdpgsf  = 0x80U, /**< bit 7: gated status.               */
+  k_pdctrgd_status  = 0xC0U, /**< both status bits.                  */
+  k_lcdck_sreq      = 0x40U, /**< Lcdck sreq.                        */
+  k_lcdck_srdy_mask = 0x80U, /**< Lcdck srdy mask.                   */
+  k_lcdck_sel_pll1r = 0x08U, /**< HUM 9.2.58 LCDCKSEL[3:0] = 1000b.  */
+  k_lcdckdivcr_div4 = 0x02U, /**< LCDCLK = PLL1R / 4 = 100 MHz.      */
+  k_hococr_run      = 0x00U, /**< Hococr run.                        */
 };
 
 /**
@@ -332,30 +332,30 @@ static void internal_graphics_power_on(void)
  * =============================================================================
  */
 typedef enum : uint32_t {
-  k_glcdc_shift_high       = 16U,
-  k_glcdc_shift_flm6_fmt   = 28U,
-  k_glcdc_shift_outset_fmt = 12U,
-  k_glcdc_shift_pdtha_fmt  = 16U,
-  k_glcdc_shift_arcdef     = 16U,
-  k_glcdc_axi_burst_bytes  = 64U,
-  k_glcdc_bpp_rgb565       = 2U,
-  k_glcdc_sync_pos_min     = 1U, /* HUM 63 BG_SYNC.HP / VP min = 1 */
+  k_glcdc_shift_high       = 16U, /**< GLCDC shift high.               */
+  k_glcdc_shift_flm6_fmt   = 28U, /**< GLCDC shift flm6 fmt.           */
+  k_glcdc_shift_outset_fmt = 12U, /**< GLCDC shift outset fmt.         */
+  k_glcdc_shift_pdtha_fmt  = 16U, /**< GLCDC shift pdtha fmt.          */
+  k_glcdc_shift_arcdef     = 16U, /**< GLCDC shift arcdef.             */
+  k_glcdc_axi_burst_bytes  = 64U, /**< GLCDC axi burst bytes.          */
+  k_glcdc_bpp_rgb565       = 2U,  /**< GLCDC bpp rgb565.               */
+  k_glcdc_sync_pos_min     = 1U,  /**< HUM 63 BG_SYNC.HP / VP min = 1. */
 } ra8_glcdc_layout_priv_t;
 
 /* SEL[2:0] values for TCON_STXx2.SEL (HUM 63 p 3805) */
 typedef enum : uint32_t {
-  k_glcdc_sel_stva = 0U,
-  k_glcdc_sel_stvb = 1U,
-  k_glcdc_sel_stha = 2U,
-  k_glcdc_sel_de   = 7U,
+  k_glcdc_sel_stva = 0U, /**< GLCDC sel stva. */
+  k_glcdc_sel_stvb = 1U, /**< GLCDC sel stvb. */
+  k_glcdc_sel_stha = 2U, /**< GLCDC sel stha. */
+  k_glcdc_sel_de   = 7U, /**< GLCDC sel de.   */
 } ra8_glcdc_tcon_sel_t;
 
 /* GR.AB1.DISPSEL[1:0] (HUM 63 p 3744 + FSP enum):
  *   1 = TRANSPARENT  -- layer hidden, lower layer (BG) shows through
  *   2 = NON_TRANSPARENT -- this layer's pixels are output */
 typedef enum : uint32_t {
-  k_glcdc_dispsel_transparent     = 1U,
-  k_glcdc_dispsel_non_transparent = 2U,
+  k_glcdc_dispsel_transparent     = 1U, /**< GLCDC dispsel transparent.     */
+  k_glcdc_dispsel_non_transparent = 2U, /**< GLCDC dispsel non transparent. */
 } ra8_glcdc_dispsel_priv_t;
 
 /* AB7.ARCDEF[23:16] alpha constants. */
@@ -370,16 +370,16 @@ typedef enum : uint32_t {
 
 /* OUT_SET.FORMAT[1:0] codes for output bus. */
 typedef enum : uint32_t {
-  k_glcdc_out_set_rgb888 = 0U,
-  k_glcdc_out_set_rgb666 = 1U,
-  k_glcdc_out_set_rgb565 = 2U,
+  k_glcdc_out_set_rgb888 = 0U, /**< GLCDC out set rgb888. */
+  k_glcdc_out_set_rgb666 = 1U, /**< GLCDC out set rgb666. */
+  k_glcdc_out_set_rgb565 = 2U, /**< GLCDC out set rgb565. */
 } ra8_glcdc_out_set_fmt_t;
 
 /* OUT_PDTHA.FORM[1:0] codes -- must match OUT_SET.FORMAT for non-serial. */
 typedef enum : uint32_t {
-  k_glcdc_pdtha_rgb888 = 0U,
-  k_glcdc_pdtha_rgb666 = 1U,
-  k_glcdc_pdtha_rgb565 = 2U,
+  k_glcdc_pdtha_rgb888 = 0U, /**< GLCDC pdtha rgb888. */
+  k_glcdc_pdtha_rgb666 = 1U, /**< GLCDC pdtha rgb666. */
+  k_glcdc_pdtha_rgb565 = 2U, /**< GLCDC pdtha rgb565. */
 } ra8_glcdc_pdtha_fmt_t;
 
 /**
@@ -595,8 +595,8 @@ static void internal_program_gr2(const ra8_glcdc_panel_timing_t* t)
 static void internal_program_out(void)
 {
   enum : uint32_t {
-    k_bright_mid   = 512UL,
-    k_contrast_mid = 128UL,
+    k_bright_mid   = 512UL, /**< Bright mid.   */
+    k_contrast_mid = 128UL, /**< Contrast mid. */
   };
   *ra8_glcdc_reg32(k_ra8_glcdc_off_out_set) =
     ((uint32_t)k_glcdc_out_set_rgb888 << k_glcdc_shift_outset_fmt);
@@ -679,9 +679,9 @@ ra8_err_t ra8_glcdc_init(const ra8_glcdc_config_t* cfg)
   /* HUM Ch 63 "SYSCNT_PANEL_CLK" p 3813.  CLKSEL=LCDCLK, CLKEN=1,
    * DCDR=/5 -> 240 MHz / 5 = 48 MHz pixel clock. */
   enum : uint32_t {
-    k_panel_clk_clksel_lcdclk = 1U << 8,
-    k_panel_clk_clken         = 1U << 6,
-    k_panel_clk_dcdr_div2     = 0x02U,
+    k_panel_clk_clksel_lcdclk = 1U << 8, /**< Panel clk clksel lcdclk. */
+    k_panel_clk_clken         = 1U << 6, /**< Panel clk clken.         */
+    k_panel_clk_dcdr_div2     = 0x02U,   /**< Panel clk dcdr div2.     */
   };
   /* LCDCLK = 100 MHz (PLL1R / 4), DCDR /2 -> pixel clock = 50 MHz.
    * Matches the LVGL EK-RA8D2 reference for the ER-TFT070-6 panel. */
@@ -703,9 +703,9 @@ ra8_err_t ra8_glcdc_init(const ra8_glcdc_config_t* cfg)
 ra8_err_t ra8_glcdc_start(bool enable)
 {
   enum : uint32_t {
-    k_bit_en    = 1U << 0,
-    k_bit_ven   = 1U << 8,
-    k_bit_swrst = 1U << 16,
+    k_bit_en    = 1U << 0,  /**< Bit en.    */
+    k_bit_ven   = 1U << 8,  /**< Bit ven.   */
+    k_bit_swrst = 1U << 16, /**< Bit swrst. */
   };
 
   if (!enable) {

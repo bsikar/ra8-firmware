@@ -109,8 +109,8 @@ struct ethosu_driver* ethosu_reserve_driver(void)
     }
     s_ethosu_driver_ready = true;
   }
-  s_ethosu_driver.reserved = true;
-  return &s_ethosu_driver;
+  s_ethosu_driver.reserved = true; /**< True.            */
+  return &s_ethosu_driver;         /**< S ethosu driver. */
 }
 
 /**

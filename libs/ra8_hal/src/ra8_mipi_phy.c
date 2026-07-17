@@ -109,7 +109,7 @@ typedef enum : uint8_t {
 typedef enum : uint8_t {
   k_ra8_mipi_phy_lane_mask_default =
     (uint8_t)((1U << k_ra8_mipi_phy_lane_bit_clk) | (1U << k_ra8_mipi_phy_lane_bit_d0) |
-              (1U << k_ra8_mipi_phy_lane_bit_d1)),
+              (1U << k_ra8_mipi_phy_lane_bit_d1)), /**< RA8 mipi PHY lane mask default. */
 } ra8_mipi_phy_lane_mask_t;
 
 /* =============================================================================

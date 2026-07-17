@@ -65,18 +65,18 @@ enum : uint32_t {
  * ra8_eth_gwca_default.c bumps the open / pre trails.
  */
 typedef enum : uint32_t {
-  k_ra8_eth_gwca_step_ok_1   = 1U,
-  k_ra8_eth_gwca_step_ok_2   = 2U,
-  k_ra8_eth_gwca_step_ok_3   = 3U,
-  k_ra8_eth_gwca_step_ok_4   = 4U,
-  k_ra8_eth_gwca_step_ok_5   = 5U,
-  k_ra8_eth_gwca_step_ok_6   = 6U,
-  k_ra8_eth_gwca_step_fail_1 = 0x11U,
-  k_ra8_eth_gwca_step_fail_2 = 0x12U,
-  k_ra8_eth_gwca_step_fail_3 = 0x13U,
-  k_ra8_eth_gwca_step_fail_4 = 0x14U,
-  k_ra8_eth_gwca_step_fail_5 = 0x15U,
-  k_ra8_eth_gwca_step_fail_6 = 0x16U,
+  k_ra8_eth_gwca_step_ok_1   = 1U,    /**< RA8 Ethernet gwca step ok 1.   */
+  k_ra8_eth_gwca_step_ok_2   = 2U,    /**< RA8 Ethernet gwca step ok 2.   */
+  k_ra8_eth_gwca_step_ok_3   = 3U,    /**< RA8 Ethernet gwca step ok 3.   */
+  k_ra8_eth_gwca_step_ok_4   = 4U,    /**< RA8 Ethernet gwca step ok 4.   */
+  k_ra8_eth_gwca_step_ok_5   = 5U,    /**< RA8 Ethernet gwca step ok 5.   */
+  k_ra8_eth_gwca_step_ok_6   = 6U,    /**< RA8 Ethernet gwca step ok 6.   */
+  k_ra8_eth_gwca_step_fail_1 = 0x11U, /**< RA8 Ethernet gwca step fail 1. */
+  k_ra8_eth_gwca_step_fail_2 = 0x12U, /**< RA8 Ethernet gwca step fail 2. */
+  k_ra8_eth_gwca_step_fail_3 = 0x13U, /**< RA8 Ethernet gwca step fail 3. */
+  k_ra8_eth_gwca_step_fail_4 = 0x14U, /**< RA8 Ethernet gwca step fail 4. */
+  k_ra8_eth_gwca_step_fail_5 = 0x15U, /**< RA8 Ethernet gwca step fail 5. */
+  k_ra8_eth_gwca_step_fail_6 = 0x16U, /**< RA8 Ethernet gwca step fail 6. */
 } ra8_eth_gwca_step_t;
 
 /**

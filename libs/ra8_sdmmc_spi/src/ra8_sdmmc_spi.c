@@ -70,15 +70,15 @@ typedef enum : uint32_t {
  * @brief R1 response bit definitions (SD spec PHY v9 section 7.3.2.1).
  */
 typedef enum : uint8_t {
-  k_sd_r1_idle_state           = 0x01U,
-  k_sd_r1_erase_reset          = 0x02U,
-  k_sd_r1_illegal_command      = 0x04U,
-  k_sd_r1_com_crc_error        = 0x08U,
-  k_sd_r1_erase_sequence_error = 0x10U,
-  k_sd_r1_address_error        = 0x20U,
-  k_sd_r1_parameter_error      = 0x40U,
+  k_sd_r1_idle_state           = 0x01U, /**< SD r1 idle state.           */
+  k_sd_r1_erase_reset          = 0x02U, /**< SD r1 erase reset.          */
+  k_sd_r1_illegal_command      = 0x04U, /**< SD r1 illegal command.      */
+  k_sd_r1_com_crc_error        = 0x08U, /**< SD r1 com CRC error.        */
+  k_sd_r1_erase_sequence_error = 0x10U, /**< SD r1 erase sequence error. */
+  k_sd_r1_address_error        = 0x20U, /**< SD r1 address error.        */
+  k_sd_r1_parameter_error      = 0x40U, /**< SD r1 parameter error.      */
   /* The top bit (0x80) is always zero -- used as the R1 sentinel. */
-  k_sd_r1_sentinel = 0x80U,
+  k_sd_r1_sentinel = 0x80U, /**< SD r1 sentinel. */
 } sd_r1_bit_t;
 
 /**
@@ -91,12 +91,12 @@ typedef enum : uint8_t {
  * (CRC7 << 1) | 1.
  */
 typedef enum : uint8_t {
-  k_sd_frame_idx_cmd       = 0U,
-  k_sd_frame_idx_arg_msb   = 1U,
-  k_sd_frame_idx_arg_byte2 = 2U,
-  k_sd_frame_idx_arg_byte1 = 3U,
-  k_sd_frame_idx_arg_lsb   = 4U,
-  k_sd_frame_idx_crc       = 5U,
+  k_sd_frame_idx_cmd       = 0U, /**< SD frame index cmd.       */
+  k_sd_frame_idx_arg_msb   = 1U, /**< SD frame index arg msb.   */
+  k_sd_frame_idx_arg_byte2 = 2U, /**< SD frame index arg byte2. */
+  k_sd_frame_idx_arg_byte1 = 3U, /**< SD frame index arg byte1. */
+  k_sd_frame_idx_arg_lsb   = 4U, /**< SD frame index arg lsb.   */
+  k_sd_frame_idx_crc       = 5U, /**< SD frame index CRC.       */
 } sd_cmd_arg_idx_t;
 
 /**
@@ -105,14 +105,14 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   /* CSD version lives in byte 0 bits 7:6: 0 = CSD v1, 1 = CSD v2. */
-  k_sd_csd_byte_version  = 0U,
-  k_sd_csd_version_shift = 6U,
+  k_sd_csd_byte_version  = 0U, /**< SD csd byte version.  */
+  k_sd_csd_version_shift = 6U, /**< SD csd version shift. */
   /* CSD v2: C_SIZE is a 22-bit field spanning bytes 7..9. */
-  k_sd_csd_v2_byte_csize_msb = 7U,
-  k_sd_csd_v2_byte_csize_mid = 8U,
-  k_sd_csd_v2_byte_csize_lsb = 9U,
+  k_sd_csd_v2_byte_csize_msb = 7U, /**< SD csd v2 byte csize msb. */
+  k_sd_csd_v2_byte_csize_mid = 8U, /**< SD csd v2 byte csize mid. */
+  k_sd_csd_v2_byte_csize_lsb = 9U, /**< SD csd v2 byte csize lsb. */
   /* Bit shift to go from C_SIZE to block count: ((C_SIZE + 1) * 1024). */
-  k_sd_csd_v2_blocks_shift = 10U,
+  k_sd_csd_v2_blocks_shift = 10U, /**< SD csd v2 blocks shift. */
 } sd_csd_layout_t;
 
 /**

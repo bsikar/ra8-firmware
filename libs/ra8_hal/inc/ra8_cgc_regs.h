@@ -297,7 +297,7 @@ typedef enum : uint8_t {
  * crystal on the EK-RA8D2 and yields ~2.7 ms of wait time.
  */
 typedef enum : uint8_t {
-  k_ra8_moscwtcr_2_to_16_cycles = 0x09U,
+  k_ra8_moscwtcr_2_to_16_cycles = 0x09U, /**< RA8 moscwtcr 2 to 16 cycles. */
 } ra8_moscwtcr_val_t;
 
 #ifdef __cplusplus

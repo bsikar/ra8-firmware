@@ -153,8 +153,8 @@ typedef enum : uint8_t {
 
   /** Convenience aliases by the EK-RA8D2 colour order (also provisional). */
   k_ra8_board_led_blue  = k_ra8_board_led1,
-  k_ra8_board_led_green = k_ra8_board_led2,
-  k_ra8_board_led_red   = k_ra8_board_led3,
+  k_ra8_board_led_green = k_ra8_board_led2, /**< RA8 board led green. */
+  k_ra8_board_led_red   = k_ra8_board_led3, /**< RA8 board led red.   */
 
   k_ra8_board_led_count = 3U, /**< Number of user LEDs. */
 } ra8_board_led_id_t;

@@ -55,9 +55,9 @@ static const char* const s_tag = "ra8_display_pal_eink";
  * @since 0.1.0
  */
 typedef struct {
-  display_caps_t caps;
-  display_fb_t   fb;
-  bool           initialised;
+  display_caps_t caps;        /**< Caps.        */
+  display_fb_t   fb;          /**< Fb.          */
+  bool           initialised; /**< Initialised. */
 } eink_ctx_t;
 
 /** @brief Single e-ink backend context. */

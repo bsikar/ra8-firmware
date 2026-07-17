@@ -86,9 +86,9 @@ typedef enum : uint8_t {
  * ``OutputKeyForDotf`` paths (``r_ospi_b.c``).
  */
 typedef enum : uint8_t {
-  k_ra8_dotf_key_words_128 = 4U,
-  k_ra8_dotf_key_words_192 = 6U,
-  k_ra8_dotf_key_words_256 = 8U,
+  k_ra8_dotf_key_words_128 = 4U, /**< RA8 dotf key words 128. */
+  k_ra8_dotf_key_words_192 = 6U, /**< RA8 dotf key words 192. */
+  k_ra8_dotf_key_words_256 = 8U, /**< RA8 dotf key words 256. */
 } ra8_dotf_key_word_count_t;
 
 /**
@@ -96,15 +96,15 @@ typedef enum : uint8_t {
  * @brief Per-channel software state.
  */
 typedef struct {
-  ra8_dotf_region_t     regions[k_ra8_dotf_max_regions];
+  ra8_dotf_region_t     regions[k_ra8_dotf_max_regions];      /**< Regions.                 */
   uint8_t               region_valid[k_ra8_dotf_max_regions]; /**< 1 if slot armed.         */
   uint8_t               active_region_id;                     /**< or k_ra8_dotf_no_region. */
-  ra8_dotf_key_handle_t key;
-  uint32_t              iv_cache[k_ra8_dotf_iv_word_count];
-  uint8_t               iv_valid;
-  ra8_dotf_key_size_t   cached_key_size;
-  ra8_dotf_sca_level_t  cached_sca;
-  uint8_t               enabled;
+  ra8_dotf_key_handle_t key;                                  /**< Key.                     */
+  uint32_t              iv_cache[k_ra8_dotf_iv_word_count];   /**< Iv cache.                */
+  uint8_t               iv_valid;                             /**< Iv valid.                */
+  ra8_dotf_key_size_t   cached_key_size;                      /**< Cached key size.         */
+  ra8_dotf_sca_level_t  cached_sca;                           /**< Cached sca.              */
+  uint8_t               enabled;                              /**< Enabled.                 */
 } ra8_dotf_chan_state_t;
 
 /**

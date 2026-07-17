@@ -31,10 +31,10 @@ static const char* s_tag = "ICU";
 typedef enum : uint32_t {
   /* FSP R_ICU_NMICLR bits 0..14 + 16..18 + 20 are write-1-to-clear; use
    * the full 32-bit mask to cover future extensions. */
-  k_ra8_icu_nmiclr_all = 0xFFFFFFFFUL,
+  k_ra8_icu_nmiclr_all = 0xFFFFFFFFUL, /**< RA8 icu nmiclr all. */
   /* FSP R_ICU_WUPEN0 / WUPEN1 are RW, reset value 0; clearing every
    * bit puts the wake-up matrix back to its post-reset state. */
-  k_ra8_icu_wupen_clear = 0x00000000UL,
+  k_ra8_icu_wupen_clear = 0x00000000UL, /**< RA8 icu wupen clear. */
 } ra8_icu_clear_val_t;
 
 /* =============================================================================

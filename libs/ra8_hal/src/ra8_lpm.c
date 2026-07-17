@@ -61,7 +61,7 @@ static const char* s_tag = "LPM";
  */
 /** @brief Low-byte mask for the PRCR protect register. */
 typedef enum : uint16_t {
-  k_lpm_byte_mask = 0xFFU,
+  k_lpm_byte_mask = 0xFFU, /**< Lpm byte mask. */
 } lpm_byte_mask_t;
 
 typedef enum : uint8_t {

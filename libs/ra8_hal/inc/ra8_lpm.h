@@ -146,7 +146,7 @@ typedef enum : uint8_t {
   k_ra8_lpm_clock_loco  = 2U, /**< Low-Speed On-Chip Oscillator.    */
   k_ra8_lpm_clock_main  = 3U, /**< Main Oscillator.                 */
   k_ra8_lpm_clock_sub   = 4U, /**< Sub-clock Oscillator.            */
-  k_ra8_lpm_clock_count = 5U,
+  k_ra8_lpm_clock_count = 5U, /**< RA8 lpm clock count.             */
 } ra8_lpm_clock_t;
 
 /* =============================================================================

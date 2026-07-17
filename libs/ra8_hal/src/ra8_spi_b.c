@@ -65,7 +65,7 @@ static const ra8_mstp_t s_spi_mstp_table[k_ra8_spi_b_channel_count] = {
  * @brief Polling-loop budget. Used to bound HW waits.
  */
 typedef enum : uint32_t {
-  k_ra8_spi_b_poll_limit = 200000U,
+  k_ra8_spi_b_poll_limit = 200000U, /**< RA8 SPI b poll limit. */
 } ra8_spi_b_poll_t;
 
 /**
@@ -79,8 +79,8 @@ typedef enum : uint32_t {
  * concept in its default extended config.
  */
 typedef enum : uint32_t {
-  k_ra8_spi_b_default_baud_hz  = 1900000UL,
-  k_ra8_spi_b_default_pclka_hz = 125000000UL,
+  k_ra8_spi_b_default_baud_hz  = 1900000UL,   /**< RA8 SPI b default baud Hz.  */
+  k_ra8_spi_b_default_pclka_hz = 125000000UL, /**< RA8 SPI b default pclka Hz. */
 } ra8_spi_b_default_t;
 
 /**

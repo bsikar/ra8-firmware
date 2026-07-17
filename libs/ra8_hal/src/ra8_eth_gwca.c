@@ -284,8 +284,8 @@ ra8_err_t ra8_eth_gwca_axi_init(void)
    * the request, ARR bit is the response. Sequence per FSP
    * r_layer3_switch_initialize_gwca: set ARIOG=1, poll ARR until 1. */
   enum : uint32_t {
-    k_ra8_gwarirm_ariog = 1UL << 0,
-    k_ra8_gwarirm_arr   = 1UL << 1,
+    k_ra8_gwarirm_ariog = 1UL << 0, /**< RA8 gwarirm ariog. */
+    k_ra8_gwarirm_arr   = 1UL << 1, /**< RA8 gwarirm arr.   */
   };
   volatile uint32_t* const gwarirm =
     (volatile uint32_t*)(k_ra8_gwca0_base_addr + (uintptr_t)k_ra8_gwca_off_gwarirm);
@@ -332,7 +332,9 @@ ra8_err_t ra8_eth_gwca_install_linkfix(ra8_gwca_basic_descriptor_t* linkfix_tabl
                                        uint32_t                     entry_count)
 {
   RA8_CHECK_NULL_PTR(linkfix_table, s_tag, "install_linkfix: table must not be null");
-  enum : uint32_t { k_ra8_gwca_linkfix_max_entries = 32U };
+  enum : uint32_t {
+    k_ra8_gwca_linkfix_max_entries = 32U /**< RA8 gwca linkfix maximum entries. */
+  };
   if (entry_count == 0U || entry_count > k_ra8_gwca_linkfix_max_entries) {
     ra8_log_error(s_tag, "install_linkfix: entry_count out of range");
     return k_ra8_err_invalid_arg;
@@ -354,9 +356,9 @@ ra8_err_t ra8_eth_gwca_install_linkfix(ra8_gwca_basic_descriptor_t* linkfix_tabl
    * 40-bit addresses. */
   const uintptr_t addr = (uintptr_t)linkfix_table;
   enum : uintptr_t {
-    k_ra8_linkfix_upper_shift = 32U,
-    k_ra8_linkfix_upper_mask  = 0xFFULL,
-    k_ra8_linkfix_lower_mask  = 0xFFFFFFFFULL,
+    k_ra8_linkfix_upper_shift = 32U,           /**< RA8 linkfix upper shift. */
+    k_ra8_linkfix_upper_mask  = 0xFFULL,       /**< RA8 linkfix upper mask.  */
+    k_ra8_linkfix_lower_mask  = 0xFFFFFFFFULL, /**< RA8 linkfix lower mask.  */
   };
   const uint32_t upper =
     (uint32_t)((uint64_t)addr >> k_ra8_linkfix_upper_shift) & k_ra8_linkfix_upper_mask;

@@ -266,27 +266,27 @@ static void fdct8x8(int32_t* block)
  *        quant tables, DC predictors.
  */
 typedef struct {
-  uint8_t* dst;
-  uint32_t cap;
-  uint32_t pos;
+  uint8_t* dst; /**< Dst. */
+  uint32_t cap; /**< Cap. */
+  uint32_t pos; /**< Pos. */
 
-  uint32_t bit_buf;
-  uint8_t  bit_cnt;
+  uint32_t bit_buf; /**< Bit buffer. */
+  uint8_t  bit_cnt; /**< Bit count.  */
 
-  uint8_t qy[k_ra8_jpeg_block_size];
-  uint8_t qc[k_ra8_jpeg_block_size];
+  uint8_t qy[k_ra8_jpeg_block_size]; /**< Qy. */
+  uint8_t qc[k_ra8_jpeg_block_size]; /**< Qc. */
 
-  int32_t dc_pred[k_ra8_jpeg_max_comps];
+  int32_t dc_pred[k_ra8_jpeg_max_comps]; /**< Dc pred. */
 
-  uint16_t code_dc_l[k_ra8_jpeg_huff_max];
-  uint8_t  size_dc_l[k_ra8_jpeg_huff_max];
-  uint16_t code_ac_l[k_ra8_jpeg_huff_max];
-  uint8_t  size_ac_l[k_ra8_jpeg_huff_max];
-  uint16_t code_dc_c[k_ra8_jpeg_huff_max];
-  uint8_t  size_dc_c[k_ra8_jpeg_huff_max];
-  uint16_t code_ac_c[k_ra8_jpeg_huff_max];
-  uint8_t  size_ac_c[k_ra8_jpeg_huff_max];
-  bool     overflow;
+  uint16_t code_dc_l[k_ra8_jpeg_huff_max]; /**< Code dc l. */
+  uint8_t  size_dc_l[k_ra8_jpeg_huff_max]; /**< Size dc l. */
+  uint16_t code_ac_l[k_ra8_jpeg_huff_max]; /**< Code ac l. */
+  uint8_t  size_ac_l[k_ra8_jpeg_huff_max]; /**< Size ac l. */
+  uint16_t code_dc_c[k_ra8_jpeg_huff_max]; /**< Code dc c. */
+  uint8_t  size_dc_c[k_ra8_jpeg_huff_max]; /**< Size dc c. */
+  uint16_t code_ac_c[k_ra8_jpeg_huff_max]; /**< Code ac c. */
+  uint8_t  size_ac_c[k_ra8_jpeg_huff_max]; /**< Size ac c. */
+  bool     overflow;                       /**< Overflow.  */
 } ra8_jpeg_enc_ctx_t;
 
 /* Append one byte; sets `overflow` on capacity exhaustion -- see surrounding code and HUM citations. */

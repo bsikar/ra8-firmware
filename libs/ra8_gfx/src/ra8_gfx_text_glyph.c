@@ -27,8 +27,8 @@
  * @brief Constants for monochrome glyph bit extraction.
  */
 typedef enum : uint8_t {
-  k_glyph_bits_per_byte = 8,
-  k_glyph_msb_index     = 7,
+  k_glyph_bits_per_byte = 8, /**< Glyph bits per byte. */
+  k_glyph_msb_index     = 7, /**< Glyph msb index.     */
 } ra8_gfx_glyph_bits_t;
 
 /**
@@ -36,7 +36,7 @@ typedef enum : uint8_t {
  * @brief Per-channel masks for colour conversion.
  */
 typedef enum : uint32_t {
-  k_mask_byte = 0xFFU,
+  k_mask_byte = 0xFFU, /**< Mask byte. */
 } ra8_gfx_color_masks_t;
 
 /**
@@ -44,8 +44,8 @@ typedef enum : uint32_t {
  * @brief Per-byte indices for RGB888 packing.
  */
 typedef enum : uint8_t {
-  k_idx_r = 0,
-  k_idx_g = 1,
+  k_idx_r = 0, /**< Index r. */
+  k_idx_g = 1, /**< Index g. */
 } ra8_gfx_byte_idx_t;
 
 /**

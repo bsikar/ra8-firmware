@@ -106,10 +106,10 @@ typedef enum : uint8_t {
 
   /** Convenience aliases by colour. */
   k_ra8_board_led_blue  = k_ra8_board_led1,
-  k_ra8_board_led_green = k_ra8_board_led2,
-  k_ra8_board_led_red   = k_ra8_board_led3,
+  k_ra8_board_led_green = k_ra8_board_led2, /**< RA8 board led green. */
+  k_ra8_board_led_red   = k_ra8_board_led3, /**< RA8 board led red.   */
 
-  k_ra8_board_led_count = 3U,
+  k_ra8_board_led_count = 3U, /**< RA8 board led count. */
 } ra8_board_led_id_t;
 
 /**
@@ -177,7 +177,7 @@ typedef enum : uint8_t {
 typedef enum : uint8_t {
   k_ra8_board_sw1      = 0U, /**< SW1, P009, IRQ13-DS (jumper E31). EK-RA8D2 UM Table 25 p 32. */
   k_ra8_board_sw2      = 1U, /**< SW2, P008, IRQ12-DS (jumper E32). EK-RA8D2 UM Table 25 p 32. */
-  k_ra8_board_sw_count = 2U,
+  k_ra8_board_sw_count = 2U, /**< RA8 board sw count.                                          */
 } ra8_board_sw_id_t;
 
 /**
@@ -195,8 +195,8 @@ typedef enum : uint8_t {
 
 /** @brief Logical "pressed" / "released" state. */
 typedef enum : uint8_t {
-  k_ra8_board_sw_released = 0U,
-  k_ra8_board_sw_pressed  = 1U,
+  k_ra8_board_sw_released = 0U, /**< RA8 board sw released. */
+  k_ra8_board_sw_pressed  = 1U, /**< RA8 board sw pressed.  */
 } ra8_board_sw_state_t;
 
 /**
@@ -420,7 +420,7 @@ typedef enum : uint16_t {
  * EK-RA8D2 board manual, only the chip pins.
  */
 typedef enum : uint8_t {
-  k_ra8_board_audio_ssie_channel = 0U,
+  k_ra8_board_audio_ssie_channel = 0U, /**< RA8 board audio ssie channel. */
 } ra8_board_audio_ch_t;
 
 /**
@@ -530,9 +530,9 @@ typedef enum : uint16_t {
 
 /** @brief Direction mode for an Arduino-header GPIO pin. */
 typedef enum : uint8_t {
-  k_ra8_board_arduino_mode_input        = 0U,
-  k_ra8_board_arduino_mode_input_pullup = 1U,
-  k_ra8_board_arduino_mode_output       = 2U,
+  k_ra8_board_arduino_mode_input        = 0U, /**< RA8 board arduino mode input.        */
+  k_ra8_board_arduino_mode_input_pullup = 1U, /**< RA8 board arduino mode input pullup. */
+  k_ra8_board_arduino_mode_output       = 2U, /**< RA8 board arduino mode output.       */
 } ra8_board_arduino_mode_t;
 
 /**
@@ -569,7 +569,7 @@ typedef enum : uint8_t {
 typedef enum : uint8_t {
   k_ra8_board_pmod1      = 0U, /**< Pmod1 -- J26, SCI2 simple-SPI/UART/I2C. UM Table 17 p 26. */
   k_ra8_board_pmod2      = 1U, /**< Pmod2 -- J25, SPI/UART (RSPI/SCI0).     UM Table 19 p 27. */
-  k_ra8_board_pmod_count = 2U,
+  k_ra8_board_pmod_count = 2U, /**< RA8 board pmod count.                                     */
 } ra8_board_pmod_id_t;
 
 /**
@@ -774,7 +774,7 @@ typedef enum : uint16_t {
  * ``ra8_i3c_i2c_init`` with this channel.
  */
 typedef enum : uint8_t {
-  k_ra8_board_mikrobus_iic_b_channel = 0U,
+  k_ra8_board_mikrobus_iic_b_channel = 0U, /**< RA8 board mikrobus iic b channel. */
 } ra8_board_mikrobus_iic_channel_t;
 
 /**

@@ -38,10 +38,10 @@ typedef enum : uint32_t {
 } gfx_565_mask_t;
 
 typedef enum : uint8_t {
-  k_shift_blue  = 0,
-  k_shift_green = 8,
-  k_shift_red   = 16,
-  k_shift_alpha = 24,
+  k_shift_blue  = 0,  /**< Shift blue.  */
+  k_shift_green = 8,  /**< Shift green. */
+  k_shift_red   = 16, /**< Shift red.   */
+  k_shift_alpha = 24, /**< Shift alpha. */
 } ra8_gfx_color_shifts_t;
 
 /**
@@ -49,7 +49,7 @@ typedef enum : uint8_t {
  * @brief Per-channel masks for colour conversion.
  */
 typedef enum : uint32_t {
-  k_mask_byte = 0xFFU,
+  k_mask_byte = 0xFFU, /**< Mask byte. */
 } ra8_gfx_color_masks_t;
 
 /**
@@ -57,11 +57,11 @@ typedef enum : uint32_t {
  * @brief RGB565 packing constants.
  */
 typedef enum : uint8_t {
-  k_565_r_shift_in  = 3, /**< drop 3 LSBs of R (8 -> 5 bits). */
-  k_565_g_shift_in  = 2, /**< drop 2 LSBs of G (8 -> 6 bits). */
-  k_565_b_shift_in  = 3, /**< drop 3 LSBs of B (8 -> 5 bits). */
-  k_565_r_shift_out = 11,
-  k_565_g_shift_out = 5,
+  k_565_r_shift_in  = 3,  /**< drop 3 LSBs of R (8 -> 5 bits). */
+  k_565_g_shift_in  = 2,  /**< drop 2 LSBs of G (8 -> 6 bits). */
+  k_565_b_shift_in  = 3,  /**< drop 3 LSBs of B (8 -> 5 bits). */
+  k_565_r_shift_out = 11, /**< 565 r shift out.                */
+  k_565_g_shift_out = 5,  /**< 565 g shift out.                */
 } ra8_gfx_565_t;
 
 /**
@@ -69,13 +69,13 @@ typedef enum : uint8_t {
  * @brief Per-byte indices for RGB888 packing.
  */
 typedef enum : uint8_t {
-  k_idx_r      = 0,
-  k_idx_g      = 1,
-  k_idx_b      = 2,
-  k_idx_argb_b = 0,
-  k_idx_argb_g = 1,
-  k_idx_argb_r = 2,
-  k_idx_argb_a = 3,
+  k_idx_r      = 0, /**< Index r.      */
+  k_idx_g      = 1, /**< Index g.      */
+  k_idx_b      = 2, /**< Index b.      */
+  k_idx_argb_b = 0, /**< Index argb b. */
+  k_idx_argb_g = 1, /**< Index argb g. */
+  k_idx_argb_r = 2, /**< Index argb r. */
+  k_idx_argb_a = 3, /**< Index argb a. */
 } ra8_gfx_byte_idx_t;
 
 /**
@@ -83,13 +83,13 @@ typedef enum : uint8_t {
  * @brief Constants for monochrome glyph bit extraction.
  */
 typedef enum : uint8_t {
-  k_glyph_bits_per_byte = 8,
-  k_glyph_msb_index     = 7,
+  k_glyph_bits_per_byte = 8, /**< Glyph bits per byte. */
+  k_glyph_msb_index     = 7, /**< Glyph msb index.     */
 } ra8_gfx_glyph_bits_t;
 
 /** @brief RGB565 bytes per pixel (used to size span byte counts). */
 typedef enum : uint8_t {
-  k_rgb565_bpp = 2,
+  k_rgb565_bpp = 2, /**< Rgb565 bpp. */
 } ra8_gfx_rgb565_bpp_t;
 
 /**

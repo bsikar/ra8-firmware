@@ -54,7 +54,7 @@ extern "C" {
  * @brief POEGG status / enable bit masks (HUM Ch 21.2.1).
  */
 typedef enum : uint32_t {
-  k_ra8_poeg_status_none = 0x00000000UL,
+  k_ra8_poeg_status_none = 0x00000000UL, /**< RA8 poeg status none.    */
   k_ra8_poeg_status_pidf = 0x00000001UL, /**< POEGG.PIDF Port Input.   */
   k_ra8_poeg_status_iocf = 0x00000002UL, /**< POEGG.IOCF Output Short. */
   k_ra8_poeg_status_ovrf = 0x00000004UL, /**< POEGG.OSTPF Osc Stop.    */

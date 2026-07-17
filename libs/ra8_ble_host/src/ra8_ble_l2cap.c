@@ -82,10 +82,10 @@ void ra8_ble_host_att_handle_pdu(uint16_t conn_handle, const uint8_t* pdu, uint1
 void internal_pack_le16(uint8_t* dst, uint16_t v)
 {
   enum : uint8_t {
-    k_byte_lo_idx = 0U,
-    k_byte_hi_idx = 1U,
-    k_byte_shift  = 8U,
-    k_byte_mask   = 0xFFU,
+    k_byte_lo_idx = 0U,    /**< Byte lo index. */
+    k_byte_hi_idx = 1U,    /**< Byte hi index. */
+    k_byte_shift  = 8U,    /**< Byte shift.    */
+    k_byte_mask   = 0xFFU, /**< Byte mask.     */
   };
   dst[k_byte_lo_idx] = (uint8_t)(v & k_byte_mask);
   dst[k_byte_hi_idx] = (uint8_t)((v >> k_byte_shift) & k_byte_mask);
@@ -113,9 +113,9 @@ void internal_pack_le16(uint8_t* dst, uint16_t v)
 static uint16_t internal_unpack_le16(const uint8_t* src)
 {
   enum : uint8_t {
-    k_byte_lo_idx = 0U,
-    k_byte_hi_idx = 1U,
-    k_byte_shift  = 8U,
+    k_byte_lo_idx = 0U, /**< Byte lo index. */
+    k_byte_hi_idx = 1U, /**< Byte hi index. */
+    k_byte_shift  = 8U, /**< Byte shift.    */
   };
   return (uint16_t)((uint16_t)src[k_byte_lo_idx] | ((uint16_t)src[k_byte_hi_idx] << k_byte_shift));
 }
@@ -380,17 +380,17 @@ internal_evt_trampoline(void* ctx, uint8_t evt_code, const uint8_t* params, uint
 {
   (void)ctx;
   enum : uint8_t {
-    k_evt_disconn_complete    = 0x05U,
-    k_evt_le_meta             = 0x3EU,
-    k_subev_le_conn_complete  = 0x01U,
-    k_disconn_handle_lo_idx   = 1U,
-    k_disconn_handle_hi_idx   = 2U,
-    k_lemeta_subev_idx        = 0U,
-    k_lemeta_status_idx       = 1U,
-    k_lemeta_handle_lo_idx    = 2U,
-    k_lemeta_handle_hi_idx    = 3U,
-    k_min_disconn_param_bytes = 4U,
-    k_min_lemeta_param_bytes  = 19U,
+    k_evt_disconn_complete    = 0x05U, /**< Evt disconn complete.        */
+    k_evt_le_meta             = 0x3EU, /**< Evt le meta.                 */
+    k_subev_le_conn_complete  = 0x01U, /**< Subev le conn complete.      */
+    k_disconn_handle_lo_idx   = 1U,    /**< Disconn handle lo index.     */
+    k_disconn_handle_hi_idx   = 2U,    /**< Disconn handle hi index.     */
+    k_lemeta_subev_idx        = 0U,    /**< Lemeta subev index.          */
+    k_lemeta_status_idx       = 1U,    /**< Lemeta status index.         */
+    k_lemeta_handle_lo_idx    = 2U,    /**< Lemeta handle lo index.      */
+    k_lemeta_handle_hi_idx    = 3U,    /**< Lemeta handle hi index.      */
+    k_min_disconn_param_bytes = 4U,    /**< Minimum disconn param bytes. */
+    k_min_lemeta_param_bytes  = 19U,   /**< Minimum lemeta param bytes.  */
   };
 
   if ((params == nullptr) || (s_ble_host_state.initialized == 0U)) {
@@ -500,7 +500,7 @@ ra8_err_t ra8_ble_host_init(const ra8_ble_host_config_t* cfg)
   if (cfg->name != nullptr) {
     /* Copy with bound. */
     enum : uint8_t {
-      k_name_copy_max = 31U,
+      k_name_copy_max = 31U, /**< Name copy maximum. */
     };
     uint8_t i = 0U;
     while ((i < k_name_copy_max) && (cfg->name[i] != '\0')) {

@@ -149,7 +149,7 @@ typedef enum : uint8_t {
  * @brief ADCLKENR bit masks.
  */
 typedef enum : uint32_t {
-  k_ra8_adclkenr_mask_clken = 0x00000001UL,
+  k_ra8_adclkenr_mask_clken = 0x00000001UL, /**< RA8 adclkenr mask clken. */
 } ra8_adclkenr_mask_t;
 
 /**
@@ -157,7 +157,7 @@ typedef enum : uint32_t {
  * @brief ADCLKSR bit masks (RO clock-running flag).
  */
 typedef enum : uint32_t {
-  k_ra8_adclksr_mask_clksr = 0x00000001UL,
+  k_ra8_adclksr_mask_clksr = 0x00000001UL, /**< RA8 adclksr mask clksr. */
 } ra8_adclksr_mask_t;
 
 /**
@@ -383,7 +383,7 @@ typedef enum : uint32_t {
  * @brief ADSGER scan-group-enable mask (SGREn[8:0]).
  */
 typedef enum : uint32_t {
-  k_ra8_adsger_mask_sgren = 0x000001FFUL,
+  k_ra8_adsger_mask_sgren = 0x000001FFUL, /**< RA8 adsger mask sgren. */
 } ra8_adsger_mask_t;
 
 /**
@@ -391,7 +391,7 @@ typedef enum : uint32_t {
  * @brief ADSYSTR synchronous SW start mask (ADSYSTn[8:0]).
  */
 typedef enum : uint32_t {
-  k_ra8_adsystr_mask_adsystn = 0x000001FFUL,
+  k_ra8_adsystr_mask_adsystn = 0x000001FFUL, /**< RA8 adsystr mask adsystn. */
 } ra8_adsystr_mask_t;
 
 /**
@@ -399,7 +399,7 @@ typedef enum : uint32_t {
  * @brief ADSTR[n] per-group SW start mask (ADST[0]).
  */
 typedef enum : uint32_t {
-  k_ra8_adstr_mask_adst = 0x00000001UL,
+  k_ra8_adstr_mask_adst = 0x00000001UL, /**< RA8 adstr mask adst. */
 } ra8_adstr_mask_t;
 
 /**
@@ -418,11 +418,11 @@ typedef enum : uint8_t {
  * @brief ADSR bit masks.
  */
 typedef enum : uint32_t {
-  k_ra8_adsr_mask_adact0  = 0x00000001UL,
-  k_ra8_adsr_mask_adact1  = 0x00000002UL,
-  k_ra8_adsr_mask_adact   = 0x00000003UL, /**< Either unit busy. */
-  k_ra8_adsr_mask_calact0 = 0x00010000UL,
-  k_ra8_adsr_mask_calact1 = 0x00020000UL,
+  k_ra8_adsr_mask_adact0  = 0x00000001UL, /**< RA8 adsr mask adact0.  */
+  k_ra8_adsr_mask_adact1  = 0x00000002UL, /**< RA8 adsr mask adact1.  */
+  k_ra8_adsr_mask_adact   = 0x00000003UL, /**< Either unit busy.      */
+  k_ra8_adsr_mask_calact0 = 0x00010000UL, /**< RA8 adsr mask calact0. */
+  k_ra8_adsr_mask_calact1 = 0x00020000UL, /**< RA8 adsr mask calact1. */
 } ra8_adsr_mask_t;
 
 /**
@@ -448,7 +448,7 @@ typedef enum : uint32_t {
  * @brief ADTRGENR per-group hardware-trigger enable mask (STTRGENn[8:0]).
  */
 typedef enum : uint32_t {
-  k_ra8_adtrgenr_mask_sttrgen = 0x000001FFUL,
+  k_ra8_adtrgenr_mask_sttrgen = 0x000001FFUL, /**< RA8 adtrgenr mask sttrgen. */
 } ra8_adtrgenr_mask_t;
 
 /**
@@ -456,7 +456,7 @@ typedef enum : uint32_t {
  * @brief ADCMPENR compare-table enable mask (CMPENn[7:0]).
  */
 typedef enum : uint32_t {
-  k_ra8_adcmpenr_mask_cmpen = 0x000000FFUL,
+  k_ra8_adcmpenr_mask_cmpen = 0x000000FFUL, /**< RA8 adcmpenr mask cmpen. */
 } ra8_adcmpenr_mask_t;
 
 /**
@@ -473,8 +473,8 @@ typedef enum : uint8_t {
  * @brief ADCMPTBRn field masks (low + high 16-bit thresholds).
  */
 typedef enum : uint32_t {
-  k_ra8_adcmptbr_mask_low  = 0x0000FFFFUL,
-  k_ra8_adcmptbr_mask_high = 0xFFFF0000UL,
+  k_ra8_adcmptbr_mask_low  = 0x0000FFFFUL, /**< RA8 adcmptbr mask low.  */
+  k_ra8_adcmptbr_mask_high = 0xFFFF0000UL, /**< RA8 adcmptbr mask high. */
 } ra8_adcmptbr_mask_t;
 
 /**
@@ -512,9 +512,9 @@ typedef enum : uint8_t {
  *   - CMPTBLEm[23:16] per-channel compare-table enable mask
  */
 typedef enum : uint8_t {
-  k_ra8_addopcrb_bit_avemd    = 0U,
-  k_ra8_addopcrb_bit_adc      = 8U,
-  k_ra8_addopcrb_bit_cmptblem = 16U,
+  k_ra8_addopcrb_bit_avemd    = 0U,  /**< RA8 addopcrb bit avemd.    */
+  k_ra8_addopcrb_bit_adc      = 8U,  /**< RA8 addopcrb bit ADC.      */
+  k_ra8_addopcrb_bit_cmptblem = 16U, /**< RA8 addopcrb bit cmptblem. */
 } ra8_addopcrb_bit_t;
 
 /**
@@ -542,12 +542,12 @@ typedef enum : uint8_t {
  * @brief ADDOPCRB.ADC averaging-times encoding.
  */
 typedef enum : uint8_t {
-  k_ra8_adc_avg_1x  = 0x0U,
-  k_ra8_adc_avg_2x  = 0x1U,
-  k_ra8_adc_avg_4x  = 0x2U,
-  k_ra8_adc_avg_8x  = 0x3U,
-  k_ra8_adc_avg_16x = 0x4U,
-  k_ra8_adc_avg_64x = 0x6U,
+  k_ra8_adc_avg_1x  = 0x0U, /**< RA8 ADC avg 1x.  */
+  k_ra8_adc_avg_2x  = 0x1U, /**< RA8 ADC avg 2x.  */
+  k_ra8_adc_avg_4x  = 0x2U, /**< RA8 ADC avg 4x.  */
+  k_ra8_adc_avg_8x  = 0x3U, /**< RA8 ADC avg 8x.  */
+  k_ra8_adc_avg_16x = 0x4U, /**< RA8 ADC avg 16x. */
+  k_ra8_adc_avg_64x = 0x6U, /**< RA8 ADC avg 64x. */
 } ra8_addopcrb_adc_t;
 
 /**

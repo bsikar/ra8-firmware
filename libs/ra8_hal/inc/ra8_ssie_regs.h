@@ -250,9 +250,9 @@ typedef enum : uint8_t {
  *  - 11b -- Setting prohibited
  */
 typedef enum : uint8_t {
-  k_ra8_ssie_omod_i2s      = 0U,
-  k_ra8_ssie_omod_tdm      = 1U,
-  k_ra8_ssie_omod_monaural = 2U,
+  k_ra8_ssie_omod_i2s      = 0U, /**< RA8 ssie omod i2s.      */
+  k_ra8_ssie_omod_tdm      = 1U, /**< RA8 ssie omod tdm.      */
+  k_ra8_ssie_omod_monaural = 2U, /**< RA8 ssie omod monaural. */
 } ra8_ssie_omod_t;
 
 /**

@@ -78,9 +78,9 @@ static uint32_t internal_compose_gwdcc(const ra8_eth_gwca_queue_cfg_t* cfg)
 void ra8_eth_gwca_set_linkfix_entry(ra8_gwca_basic_descriptor_t* entry, const void* chain_head)
 {
   enum : uintptr_t {
-    k_ra8_linkfix_ptr_upper_shift = 32U,
-    k_ra8_linkfix_ptr_upper_mask  = 0xFFULL,
-    k_ra8_linkfix_ptr_lower_mask  = 0xFFFFFFFFULL,
+    k_ra8_linkfix_ptr_upper_shift = 32U,           /**< RA8 linkfix pointer upper shift. */
+    k_ra8_linkfix_ptr_upper_mask  = 0xFFULL,       /**< RA8 linkfix pointer upper mask.  */
+    k_ra8_linkfix_ptr_lower_mask  = 0xFFFFFFFFULL, /**< RA8 linkfix pointer lower mask.  */
   };
   const uintptr_t head_addr = (uintptr_t)chain_head;
   entry->dt                 = (uint8_t)k_ra8_gwdcc_dt_linkfix;
@@ -266,9 +266,9 @@ ra8_err_t ra8_eth_gwca_set_descriptor_buffer(ra8_gwca_basic_descriptor_t* desc, 
 {
   RA8_CHECK_NULL_PTR(desc, s_tag, "set_descriptor_buffer: desc null");
   enum : uintptr_t {
-    k_ra8_buf_ptr_upper_shift = 32U,
-    k_ra8_buf_ptr_upper_mask  = 0xFFULL,
-    k_ra8_buf_ptr_lower_mask  = 0xFFFFFFFFULL,
+    k_ra8_buf_ptr_upper_shift = 32U,           /**< RA8 buffer pointer upper shift. */
+    k_ra8_buf_ptr_upper_mask  = 0xFFULL,       /**< RA8 buffer pointer upper mask.  */
+    k_ra8_buf_ptr_lower_mask  = 0xFFFFFFFFULL, /**< RA8 buffer pointer lower mask.  */
   };
   const uintptr_t addr = (uintptr_t)buffer;
   desc->ptr_h = (uint8_t)((uint64_t)addr >> k_ra8_buf_ptr_upper_shift) & k_ra8_buf_ptr_upper_mask;
@@ -347,8 +347,8 @@ ra8_err_t ra8_eth_gwca_attach_buffers(ra8_gwca_basic_descriptor_t* chain,
 ra8_err_t ra8_eth_gwca_kick_tx(uint32_t queue_index)
 {
   enum : uint32_t {
-    k_ra8_gwca_max_tx_queues  = 64U,
-    k_ra8_gwca_queues_per_reg = 32U,
+    k_ra8_gwca_max_tx_queues  = 64U, /**< RA8 gwca maximum TX queues.   */
+    k_ra8_gwca_queues_per_reg = 32U, /**< RA8 gwca queues per register. */
   };
   if (queue_index >= k_ra8_gwca_max_tx_queues) {
     return k_ra8_err_invalid_arg;
@@ -427,8 +427,8 @@ uint8_t* ra8_eth_gwca_decode_ptr(const ra8_gwca_basic_descriptor_t* desc)
    * On 32-bit chips ptr_h is always zero so the upper byte is
    * harmlessly truncated when we cast back. */
   enum : uint64_t {
-    k_ra8_ptr_upper_shift = 32ULL,
-    k_ra8_ptr_low_mask    = 0xFFFFFFFFULL,
+    k_ra8_ptr_upper_shift = 32ULL,         /**< RA8 pointer upper shift. */
+    k_ra8_ptr_low_mask    = 0xFFFFFFFFULL, /**< RA8 pointer low mask.    */
   };
   const uint64_t addr64 =
     ((uint64_t)desc->ptr_h << k_ra8_ptr_upper_shift) | ((uint64_t)desc->ptr_l & k_ra8_ptr_low_mask);
@@ -492,9 +492,9 @@ ra8_err_t ra8_eth_gwca_tx_frame(ra8_gwca_basic_descriptor_t* chain,
   }
   (void)memcpy(buf, frame, (size_t)frame_len);
   enum : uint32_t {
-    k_ra8_ds_low_byte_mask = 0xFFU,
-    k_ra8_ds_high_shift    = 8U,
-    k_ra8_ds_high_nibble   = 0xFU,
+    k_ra8_ds_low_byte_mask = 0xFFU, /**< RA8 ds low byte mask. */
+    k_ra8_ds_high_shift    = 8U,    /**< RA8 ds high shift.    */
+    k_ra8_ds_high_nibble   = 0xFU,  /**< RA8 ds high nibble.   */
   };
   chain[slot].ds_l = (uint8_t)(frame_len & k_ra8_ds_low_byte_mask);
   chain[slot].ds_h = (uint8_t)((frame_len >> k_ra8_ds_high_shift) & k_ra8_ds_high_nibble);

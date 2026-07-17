@@ -210,7 +210,7 @@ static uint32_t internal_tx_fdctr(const ra8_canfd_frame_t* frame)
  */
 static void internal_wait_tx_complete(volatile r_canfd_t* reg)
 {
-  enum : uint8_t { k_ra8_tmsts_tmtrf_done = 0x04U };
+  enum : uint8_t { k_ra8_tmsts_tmtrf_done = 0x04U /**< RA8 tmsts tmtrf done. */ };
   for (uint32_t i = 0U; i < k_ra8_canfd_tx_spin; i++) {
 #if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
     if (ra8_sim_mmio_wait_eval(

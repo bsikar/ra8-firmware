@@ -153,6 +153,7 @@
  * @since Version 0.1.0
  */
 #ifndef min
+/** @brief Minimum. */
 #define min(x, y) (((x) < (y)) ? (x) : (y))
 #endif
 
@@ -176,6 +177,7 @@
  * @since Version 0.1.0
  */
 #ifndef fallthrough
+/** @brief Fallthrough. */
 #define fallthrough [[fallthrough]]
 #endif
 
@@ -188,6 +190,7 @@
  * @since Version 0.1.0
  */
 #ifndef __always_inline
+/** @brief Always inline. */
 #define __always_inline inline __attribute__((__always_inline__)) /* ATTR-OK: SOUP porting glue */
 #endif
 

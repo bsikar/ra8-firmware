@@ -110,15 +110,15 @@ typedef enum : uint8_t {
  * @brief Full-width masks for PmnPFS fields.
  */
 typedef enum : uint32_t {
-  k_ra8_pfs_mask_podr  = 0x00000001UL,
-  k_ra8_pfs_mask_pdr   = 0x00000004UL,
-  k_ra8_pfs_mask_pcr   = 0x00000010UL,
-  k_ra8_pfs_mask_ncodr = 0x00000040UL,
-  k_ra8_pfs_mask_dscr  = 0x00000C00UL, /**< bits 11..10. */
-  k_ra8_pfs_mask_eofr  = 0x00003000UL, /**< bits 13..12. */
-  k_ra8_pfs_mask_isel  = 0x00004000UL,
-  k_ra8_pfs_mask_asel  = 0x00008000UL,
-  k_ra8_pfs_mask_pmr   = 0x00010000UL,
+  k_ra8_pfs_mask_podr  = 0x00000001UL, /**< RA8 PFS mask podr.                   */
+  k_ra8_pfs_mask_pdr   = 0x00000004UL, /**< RA8 PFS mask pdr.                    */
+  k_ra8_pfs_mask_pcr   = 0x00000010UL, /**< RA8 PFS mask pcr.                    */
+  k_ra8_pfs_mask_ncodr = 0x00000040UL, /**< RA8 PFS mask ncodr.                  */
+  k_ra8_pfs_mask_dscr  = 0x00000C00UL, /**< bits 11..10.                         */
+  k_ra8_pfs_mask_eofr  = 0x00003000UL, /**< bits 13..12.                         */
+  k_ra8_pfs_mask_isel  = 0x00004000UL, /**< RA8 PFS mask isel.                   */
+  k_ra8_pfs_mask_asel  = 0x00008000UL, /**< RA8 PFS mask asel.                   */
+  k_ra8_pfs_mask_pmr   = 0x00010000UL, /**< RA8 PFS mask pmr.                    */
   k_ra8_pfs_mask_psel  = 0x1F000000UL, /**< bits 28..24 (5-bit function select). */
 } ra8_pfs_mask_t;
 

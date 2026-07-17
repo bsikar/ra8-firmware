@@ -82,54 +82,54 @@ typedef struct ra8_ble_host_attr_t ra8_ble_host_attr_t;
 
 /** @brief Low-byte mask for little-endian handle/value packing. */
 typedef enum : uint32_t {
-  k_ble_byte_mask = 0xFFU,
+  k_ble_byte_mask = 0xFFU, /**< BLE byte mask. */
 } ble_gatt_mask_t;
 
 typedef enum : uint16_t {
-  k_ble_gatt_attr_table_len = 96U,
-  k_ble_gatt_reassembly_len = 256U,
+  k_ble_gatt_attr_table_len = 96U,  /**< BLE GATT attr table length. */
+  k_ble_gatt_reassembly_len = 256U, /**< BLE GATT reassembly length. */
 } ble_gatt_table_size_t;
 
 typedef enum : uint8_t {
-  k_attr_kind_primary_service = 0U,
-  k_attr_kind_char_decl       = 1U,
-  k_attr_kind_char_value      = 2U,
-  k_attr_kind_cccd            = 3U,
+  k_attr_kind_primary_service = 0U, /**< Attr kind primary service. */
+  k_attr_kind_char_decl       = 1U, /**< Attr kind char decl.       */
+  k_attr_kind_char_value      = 2U, /**< Attr kind char value.      */
+  k_attr_kind_cccd            = 3U, /**< Attr kind cccd.            */
 } ra8_ble_host_attr_kind_t;
 
 struct ra8_ble_host_attr_t {
-  uint16_t                 handle;
-  ra8_ble_host_attr_kind_t kind;
-  uint8_t                  props;
-  uint8_t                  uuid[k_ra8_ble_host_uuid_bytes];
-  uint8_t*                 value;
-  uint16_t                 value_len;
-  uint16_t                 value_max;
-  uint16_t                 cccd_value;
-  uint16_t                 value_handle_owner;
+  uint16_t                 handle;                          /**< Handle.             */
+  ra8_ble_host_attr_kind_t kind;                            /**< Kind.               */
+  uint8_t                  props;                           /**< Props.              */
+  uint8_t                  uuid[k_ra8_ble_host_uuid_bytes]; /**< Uuid.               */
+  uint8_t*                 value;                           /**< Value.              */
+  uint16_t                 value_len;                       /**< Value length.       */
+  uint16_t                 value_max;                       /**< Value maximum.      */
+  uint16_t                 cccd_value;                      /**< Cccd value.         */
+  uint16_t                 value_handle_owner;              /**< Value handle owner. */
 };
 
 typedef struct {
-  uint8_t                 initialized;
-  ra8_ble_host_role_t     role;
-  uint16_t                appearance;
-  char                    name[32];
-  uint16_t                next_handle;
-  uint16_t                last_service_handle;
-  ra8_ble_host_attr_t     attrs[k_ble_gatt_attr_table_len];
-  uint8_t                 attr_count;
-  uint8_t                 service_count;
-  uint8_t                 char_count;
-  uint16_t                conn_handle;
-  uint16_t                att_mtu;
-  uint8_t                 reassembly[k_ble_gatt_reassembly_len];
-  uint16_t                reassembly_len;
-  uint16_t                reassembly_expected;
-  uint16_t                reassembly_cid;
-  uint16_t                reassembly_conn;
-  ra8_ble_host_event_fn_t evt_fn;
-  void*                   evt_ctx;
-  uint32_t                evt_count;
+  uint8_t                 initialized;                           /**< Initialized.         */
+  ra8_ble_host_role_t     role;                                  /**< Role.                */
+  uint16_t                appearance;                            /**< Appearance.          */
+  char                    name[32];                              /**< Name.                */
+  uint16_t                next_handle;                           /**< Next handle.         */
+  uint16_t                last_service_handle;                   /**< Last service handle. */
+  ra8_ble_host_attr_t     attrs[k_ble_gatt_attr_table_len];      /**< Attrs.               */
+  uint8_t                 attr_count;                            /**< Attr count.          */
+  uint8_t                 service_count;                         /**< Service count.       */
+  uint8_t                 char_count;                            /**< Char count.          */
+  uint16_t                conn_handle;                           /**< Conn handle.         */
+  uint16_t                att_mtu;                               /**< ATT MTU.             */
+  uint8_t                 reassembly[k_ble_gatt_reassembly_len]; /**< Reassembly.          */
+  uint16_t                reassembly_len;                        /**< Reassembly length.   */
+  uint16_t                reassembly_expected;                   /**< Reassembly expected. */
+  uint16_t                reassembly_cid;                        /**< Reassembly cid.      */
+  uint16_t                reassembly_conn;                       /**< Reassembly conn.     */
+  ra8_ble_host_event_fn_t evt_fn;                                /**< Evt fn.              */
+  void*                   evt_ctx;                               /**< Evt ctx.             */
+  uint32_t                evt_count;                             /**< Evt count.           */
 } ra8_ble_host_state_t;
 
 ra8_ble_host_state_t* ra8_ble_host_state(void);
@@ -173,12 +173,12 @@ ra8_ble_host_attr_t* ra8_ble_host_attr_lookup(uint16_t handle);
 static void internal_uuid16_to_128(uint8_t* dst, uint16_t v)
 {
   enum : uint8_t {
-    k_offset_data1_lo = 12U,
-    k_offset_data1_hi = 13U,
-    k_offset_data2_lo = 10U,
-    k_offset_data2_hi = 11U,
-    k_offset_data3_lo = 8U,
-    k_offset_data3_hi = 9U,
+    k_offset_data1_lo = 12U, /**< Offset data1 lo. */
+    k_offset_data1_hi = 13U, /**< Offset data1 hi. */
+    k_offset_data2_lo = 10U, /**< Offset data2 lo. */
+    k_offset_data2_hi = 11U, /**< Offset data2 hi. */
+    k_offset_data3_lo = 8U,  /**< Offset data3 lo. */
+    k_offset_data3_hi = 9U,  /**< Offset data3 hi. */
   };
   static const uint8_t k_base_le[16] = {
     0xFBU,
@@ -242,7 +242,7 @@ static ra8_ble_host_attr_t* internal_append_attr(ra8_ble_host_attr_kind_t kind,
 {
   ra8_ble_host_state_t* st = ra8_ble_host_state();
   enum : uint8_t {
-    k_attr_table_cap = 96U,
+    k_attr_table_cap = 96U, /**< Attr table cap. */
   };
   if (st->attr_count >= k_attr_table_cap) {
     return nullptr;
@@ -402,7 +402,7 @@ static ra8_err_t internal_register_char_validate(const ra8_ble_host_state_t* st,
                                                  const uint16_t*             out_handle)
 {
   enum : uint16_t {
-    k_max_value_max = 512U,
+    k_max_value_max = 512U, /**< Maximum value maximum. */
   };
   if ((uuid_128 == nullptr) || (out_handle == nullptr)) {
     return k_ra8_err_null_ptr;
@@ -466,7 +466,7 @@ static ra8_err_t internal_register_char_validate(const ra8_ble_host_state_t* st,
 static ra8_err_t internal_maybe_append_cccd(uint8_t props, uint16_t value_handle)
 {
   enum : uint16_t {
-    k_uuid16_cccd = 0x2902U,
+    k_uuid16_cccd = 0x2902U, /**< Uuid16 cccd. */
   };
   const uint8_t notify_or_indicate =
     (uint8_t)(k_ra8_ble_host_char_prop_notify | k_ra8_ble_host_char_prop_indicate);
@@ -652,7 +652,7 @@ ra8_err_t ra8_ble_host_gatt_set_value(uint16_t char_handle, const uint8_t* value
 static bool internal_has_notify_subscriber(const ra8_ble_host_state_t* st, uint16_t char_handle)
 {
   enum : uint8_t {
-    k_cccd_notify_bit = 0x01U,
+    k_cccd_notify_bit = 0x01U, /**< Cccd notify bit. */
   };
   for (uint8_t i = 0U; i < st->attr_count; i++) {
     if ((st->attrs[i].kind == k_attr_kind_cccd) &&
@@ -697,12 +697,12 @@ static bool internal_has_notify_subscriber(const ra8_ble_host_state_t* st, uint1
 ra8_err_t ra8_ble_host_gatt_notify(uint16_t char_handle)
 {
   enum : uint8_t {
-    k_att_op_handle_value_notify = 0x1BU,
-    k_pdu_hdr_bytes              = 3U,
-    k_max_value_bytes            = 20U, /* MTU 23 - opcode(1) - handle(2). */
+    k_att_op_handle_value_notify = 0x1BU, /**< ATT op handle value notify.     */
+    k_pdu_hdr_bytes              = 3U,    /**< Pdu hdr bytes.                  */
+    k_max_value_bytes            = 20U,   /**< MTU 23 - opcode(1) - handle(2). */
   };
   enum : uint16_t {
-    k_l2cap_cid_att = 0x0004U,
+    k_l2cap_cid_att = 0x0004U, /**< L2CAP cid ATT. */
   };
 
   ra8_ble_host_state_t* st = ra8_ble_host_state();

@@ -48,7 +48,7 @@ extern "C" {
 #include <stdint.h>
 
 typedef enum : uintptr_t {
-  k_ra8_elc_base_addr = 0x40201000UL,
+  k_ra8_elc_base_addr = 0x40201000UL, /**< RA8 elc base address. */
 } ra8_elc_addr_t;
 
 /**

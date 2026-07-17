@@ -123,7 +123,7 @@ static void internal_set_vtor(void)
 static void internal_enable_fpu(void)
 {
   enum : uint32_t {
-    k_ra8_cpacr_cp10_cp11_full_access = 0x00F00000UL,
+    k_ra8_cpacr_cp10_cp11_full_access = 0x00F00000UL, /**< RA8 cpacr cp10 cp11 full access. */
   };
   uint32_t cpacr = ra8_boot_read32(k_ra8_scb_cpacr_addr);
   cpacr |= k_ra8_cpacr_cp10_cp11_full_access;
@@ -146,8 +146,8 @@ static void internal_enable_fpu(void)
 static void internal_enable_fpu_lazy_stack(void)
 {
   enum : uint32_t {
-    k_ra8_fpccr_lspen = 1UL << 30,
-    k_ra8_fpccr_aspen = 1UL << 31,
+    k_ra8_fpccr_lspen = 1UL << 30, /**< RA8 fpccr lspen. */
+    k_ra8_fpccr_aspen = 1UL << 31, /**< RA8 fpccr aspen. */
   };
   uint32_t fpccr = ra8_boot_read32(k_ra8_fpu_fpccr_addr);
   fpccr |= k_ra8_fpccr_lspen | k_ra8_fpccr_aspen;
@@ -165,7 +165,7 @@ static void internal_enable_fpu_lazy_stack(void)
   ra8_boot_dsb();
   ra8_boot_isb();
 
-  enum : uint32_t { k_ra8_ccr_ic = 1UL << 17 };
+  enum : uint32_t { k_ra8_ccr_ic = 1UL << 17 /**< RA8 ccr ic. */ };
   uint32_t ccr = ra8_boot_read32(k_ra8_scb_ccr_addr);
   ccr |= k_ra8_ccr_ic;
   ra8_boot_write32(k_ra8_scb_ccr_addr, ccr);
@@ -191,7 +191,7 @@ static void internal_enable_fpu_lazy_stack(void)
   /* Architectural ARMv8-M set/way invalidate of the whole D-cache,
    * driven by CCSIDR (implemented in libs/ra8_hal ra8_cache). */
   ra8_cache_dcache_invalidate_all();
-  enum : uint32_t { k_ra8_ccr_dc = 1UL << 16 };
+  enum : uint32_t { k_ra8_ccr_dc = 1UL << 16 /**< RA8 ccr dc. */ };
   uint32_t ccr = ra8_boot_read32(k_ra8_scb_ccr_addr);
   ccr |= k_ra8_ccr_dc;
   ra8_boot_write32(k_ra8_scb_ccr_addr, ccr);
@@ -204,7 +204,7 @@ static void internal_enable_fpu_lazy_stack(void)
  */
 [[maybe_unused]] static void internal_enable_branch_predictor(void)
 {
-  enum : uint32_t { k_ra8_ccr_bp = 1UL << 18 };
+  enum : uint32_t { k_ra8_ccr_bp = 1UL << 18 /**< RA8 ccr bp. */ };
   uint32_t ccr = ra8_boot_read32(k_ra8_scb_ccr_addr);
   ccr |= k_ra8_ccr_bp;
   ra8_boot_write32(k_ra8_scb_ccr_addr, ccr);
@@ -255,10 +255,10 @@ static void internal_enable_fault_handlers(void)
    * Secure-bank bit (RES0 from NS); this boot executes in the Secure
    * state, see the function contract for the scoping rationale. */
   enum : uint32_t {
-    k_ra8_shcsr_memfaultena    = 1UL << 16,
-    k_ra8_shcsr_busfaultena    = 1UL << 17,
-    k_ra8_shcsr_usgfaultena    = 1UL << 18,
-    k_ra8_shcsr_securefaultena = 1UL << 19,
+    k_ra8_shcsr_memfaultena    = 1UL << 16, /**< RA8 shcsr memfaultena.    */
+    k_ra8_shcsr_busfaultena    = 1UL << 17, /**< RA8 shcsr busfaultena.    */
+    k_ra8_shcsr_usgfaultena    = 1UL << 18, /**< RA8 shcsr usgfaultena.    */
+    k_ra8_shcsr_securefaultena = 1UL << 19, /**< RA8 shcsr securefaultena. */
   };
   uint32_t shcsr = ra8_boot_read32(k_ra8_scb_shcsr_addr);
   shcsr |= k_ra8_shcsr_memfaultena | k_ra8_shcsr_busfaultena | k_ra8_shcsr_usgfaultena |
@@ -303,7 +303,7 @@ static void internal_enable_div0_trap(void)
    * "quotient reads as 0" to a UsageFault with CFSR.DIVBYZERO set.
    * UNALIGN_TRP[3] stays 0 -- see the function contract for evidence. */
   enum : uint32_t {
-    k_ra8_ccr_div_0_trp = 1UL << 4,
+    k_ra8_ccr_div_0_trp = 1UL << 4, /**< RA8 ccr div 0 trp. */
   };
   uint32_t ccr = ra8_boot_read32(k_ra8_scb_ccr_addr);
   ccr |= k_ra8_ccr_div_0_trp;
@@ -367,9 +367,9 @@ static void internal_set_priority_grouping(void)
  * any-privilege, 0b11<<1 = RO any-privilege. The memory TYPE is NOT here --
  * it is the RLAR AttrIndx (see internal_mpu_set_region). */
 enum : uint32_t {
-  k_ra8_rbar_attr_ro_x  = 0x06U, /* AP=RO any-priv, SH=none, XN=0 (executable). */
-  k_ra8_rbar_attr_rw_xn = 0x03U, /* AP=RW any-priv, SH=none, XN=1 (no execute). */
-  k_ra8_mpu_rlar_enable = 1UL << 0,
+  k_ra8_rbar_attr_ro_x  = 0x06U,    /**< AP=RO any-priv, SH=none, XN=0 (executable). */
+  k_ra8_rbar_attr_rw_xn = 0x03U,    /**< AP=RW any-priv, SH=none, XN=1 (no execute). */
+  k_ra8_mpu_rlar_enable = 1UL << 0, /**< RA8 MPU rlar enable.                        */
 };
 
 /* RLAR AttrIndx (bits[3:1]) selects which MAIR byte sets the region's memory
@@ -378,25 +378,25 @@ enum : uint32_t {
  * AttrIndx 0 = MAIR0[0] = Normal cacheable -- so peripheral MMIO was mapped
  * cacheable. The type must be selected here instead. */
 enum : uint32_t {
-  k_ra8_mpu_rlar_attridx_shift   = 1U,
-  k_ra8_mpu_attridx_normal_wbwa  = 0U, /* MAIR0[0] 0xFF: Normal inner/outer WB/WA. */
-  k_ra8_mpu_attridx_noncacheable = 1U, /* MAIR0[1] 0x44: Normal non-cacheable.     */
-  k_ra8_mpu_attridx_device       = 2U, /* MAIR0[2] 0x04: Device-nGnRE (MMIO).      */
+  k_ra8_mpu_rlar_attridx_shift   = 1U, /**< RA8 MPU rlar attridx shift.              */
+  k_ra8_mpu_attridx_normal_wbwa  = 0U, /**< MAIR0[0] 0xFF: Normal inner/outer WB/WA. */
+  k_ra8_mpu_attridx_noncacheable = 1U, /**< MAIR0[1] 0x44: Normal non-cacheable.     */
+  k_ra8_mpu_attridx_device       = 2U, /**< MAIR0[2] 0x04: Device-nGnRE (MMIO).      */
 };
 
 /* Region base and limit addresses. RLAR limits are <region-end> minus
  * the ARMv8-M 32-byte region quantum, OR-ed with the enable bit at write time. */
 enum : uint32_t {
-  k_ra8_mpu_mram_base   = 0x02000000UL, /* 1 MiB MRAM code region. */
-  k_ra8_mpu_mram_limit  = 0x020FFFE0UL,
-  k_ra8_mpu_sram_base   = 0x22000000UL, /* M85 private SRAM0+1, 1 MiB, cacheable. */
-  k_ra8_mpu_sram_limit  = 0x220FFFE0UL,
-  k_ra8_mpu_shram_base  = 0x22100000UL, /* Shared SRAM2+3: M33 mailbox + CPU1 RAM.    */
-  k_ra8_mpu_shram_limit = 0x2219FFE0UL, /* Non-cacheable -> M85<->M33 stays coherent. */
-  k_ra8_mpu_sdram_base  = 0x68000000UL, /* 64 MiB external SDRAM.                     */
-  k_ra8_mpu_sdram_limit = 0x6BFFFFE0UL,
-  k_ra8_mpu_peri_base   = 0x40000000UL, /* Peripheral bus window base. */
-  k_ra8_mpu_peri_limit  = 0x47FFFFE0UL,
+  k_ra8_mpu_mram_base   = 0x02000000UL, /**< 1 MiB MRAM code region.                    */
+  k_ra8_mpu_mram_limit  = 0x020FFFE0UL, /**< RA8 MPU MRAM limit.                        */
+  k_ra8_mpu_sram_base   = 0x22000000UL, /**< M85 private SRAM0+1, 1 MiB, cacheable.     */
+  k_ra8_mpu_sram_limit  = 0x220FFFE0UL, /**< RA8 MPU SRAM limit.                        */
+  k_ra8_mpu_shram_base  = 0x22100000UL, /**< Shared SRAM2+3: M33 mailbox + CPU1 RAM.    */
+  k_ra8_mpu_shram_limit = 0x2219FFE0UL, /**< Non-cacheable -> M85<->M33 stays coherent. */
+  k_ra8_mpu_sdram_base  = 0x68000000UL, /**< 64 MiB external SDRAM.                     */
+  k_ra8_mpu_sdram_limit = 0x6BFFFFE0UL, /**< RA8 MPU SDRAM limit.                       */
+  k_ra8_mpu_peri_base   = 0x40000000UL, /**< Peripheral bus window base.                */
+  k_ra8_mpu_peri_limit  = 0x47FFFFE0UL, /**< RA8 MPU peri limit.                        */
 };
 
 /**
@@ -422,9 +422,9 @@ enum : uint32_t {
 [[maybe_unused]] static void internal_mpu_init(void)
 {
   enum : uint32_t {
-    k_ra8_mpu_ctrl_enable     = 1UL << 0,
-    k_ra8_mpu_ctrl_privdefena = 1UL << 2,
-    k_ra8_mair0_default       = 0x000444FFUL,
+    k_ra8_mpu_ctrl_enable     = 1UL << 0,     /**< RA8 MPU control enable.     */
+    k_ra8_mpu_ctrl_privdefena = 1UL << 2,     /**< RA8 MPU control privdefena. */
+    k_ra8_mair0_default       = 0x000444FFUL, /**< RA8 mair0 default.          */
   };
 
   /* MAIR0: idx0 = Normal WB/WA, idx1 = Normal non-cacheable, idx2 = Device-nGnRE. */

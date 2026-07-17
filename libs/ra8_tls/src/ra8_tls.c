@@ -36,7 +36,7 @@
 
 /** @brief TLS record content type: Handshake (22). */
 typedef enum : uint8_t {
-  k_tls_content_handshake = 0x16U,
+  k_tls_content_handshake = 0x16U, /**< TLS content handshake. */
 } tls_content_type_t;
 
 /* NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity,clang-analyzer-optin.performance.Padding,misc-misplaced-const) */
@@ -84,7 +84,7 @@ struct ra8_tls_session_handle {
   mbedtls_x509_crt    ca;     /**< Parsed trust anchor (if cfg.ca_pem). */
 #else
   bool handshake_done; /**< Simulator-only flag for the loopback test path. */
-#endif
+#endif /**< Endif. */
 };
 
 /** @brief Per-session state pool sized at compile time. */
@@ -142,7 +142,7 @@ static struct ra8_tls_session_handle* internal_pool_acquire(void)
       return &s_session_pool[i];
     }
   }
-  return nullptr;
+  return nullptr; /**< Nullptr. */
 }
 
 /**

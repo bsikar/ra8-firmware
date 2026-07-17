@@ -50,37 +50,37 @@ bool ra8_rmac_phy_internal_speed_ok(ra8_err_t err, uint16_t reg_value, uint16_t 
 static const char* s_tag = "RMPHY";
 
 typedef enum : uint8_t {
-  k_ra8_rmac_phy_reg_control      = 0U,
-  k_ra8_rmac_phy_reg_status       = 1U,
-  k_ra8_rmac_phy_reg_an_advert    = 4U,
-  k_ra8_rmac_phy_reg_an_partner   = 5U,
-  k_ra8_rmac_phy_reg_1000t_ctrl   = 9U,
-  k_ra8_rmac_phy_reg_1000t_status = 10U,
-  k_ra8_rmac_phy_reset_poll_max   = 32U,
+  k_ra8_rmac_phy_reg_control      = 0U,  /**< RA8 rmac PHY register control.       */
+  k_ra8_rmac_phy_reg_status       = 1U,  /**< RA8 rmac PHY register status.        */
+  k_ra8_rmac_phy_reg_an_advert    = 4U,  /**< RA8 rmac PHY register an advert.     */
+  k_ra8_rmac_phy_reg_an_partner   = 5U,  /**< RA8 rmac PHY register an partner.    */
+  k_ra8_rmac_phy_reg_1000t_ctrl   = 9U,  /**< RA8 rmac PHY register 1000t control. */
+  k_ra8_rmac_phy_reg_1000t_status = 10U, /**< RA8 rmac PHY register 1000t status.  */
+  k_ra8_rmac_phy_reset_poll_max   = 32U, /**< RA8 rmac PHY reset poll maximum.     */
 } ra8_rmac_phy_reg_t;
 
 typedef enum : uint16_t {
-  k_ra8_rmac_phy_bmcr_reset       = 0x8000U,
-  k_ra8_rmac_phy_bmcr_an_enable   = 0x1000U,
-  k_ra8_rmac_phy_bmcr_an_restart  = 0x0200U,
-  k_ra8_rmac_phy_bmsr_link_up     = 0x0004U,
-  k_ra8_rmac_phy_bmsr_an_complete = 0x0020U,
-  k_ra8_rmac_phy_lpa_100full      = 0x0100U,
-  k_ra8_rmac_phy_lpa_100half      = 0x0080U,
-  k_ra8_rmac_phy_lpa_10full       = 0x0040U,
-  k_ra8_rmac_phy_lpa_10half       = 0x0020U,
-  k_ra8_rmac_phy_msr_1000full     = 0x0800U,
-  k_ra8_rmac_phy_msr_1000half     = 0x0400U,
+  k_ra8_rmac_phy_bmcr_reset       = 0x8000U, /**< RA8 rmac PHY bmcr reset.       */
+  k_ra8_rmac_phy_bmcr_an_enable   = 0x1000U, /**< RA8 rmac PHY bmcr an enable.   */
+  k_ra8_rmac_phy_bmcr_an_restart  = 0x0200U, /**< RA8 rmac PHY bmcr an restart.  */
+  k_ra8_rmac_phy_bmsr_link_up     = 0x0004U, /**< RA8 rmac PHY bmsr link up.     */
+  k_ra8_rmac_phy_bmsr_an_complete = 0x0020U, /**< RA8 rmac PHY bmsr an complete. */
+  k_ra8_rmac_phy_lpa_100full      = 0x0100U, /**< RA8 rmac PHY lpa 100full.      */
+  k_ra8_rmac_phy_lpa_100half      = 0x0080U, /**< RA8 rmac PHY lpa 100half.      */
+  k_ra8_rmac_phy_lpa_10full       = 0x0040U, /**< RA8 rmac PHY lpa 10full.       */
+  k_ra8_rmac_phy_lpa_10half       = 0x0020U, /**< RA8 rmac PHY lpa 10half.       */
+  k_ra8_rmac_phy_msr_1000full     = 0x0800U, /**< RA8 rmac PHY msr 1000full.     */
+  k_ra8_rmac_phy_msr_1000half     = 0x0400U, /**< RA8 rmac PHY msr 1000half.     */
 } ra8_rmac_phy_bits_t;
 
 typedef struct {
-  bool               opened;
-  uint8_t            phy_address;
-  ra8_rmac_phy_lsi_t lsi_type;
-  uint16_t           local_advertise;
-  uint16_t           gbit_advertise;
-  ra8_rmac_phy_io_t  io;
-  uint16_t           last_bmsr;
+  bool               opened;          /**< Opened.          */
+  uint8_t            phy_address;     /**< PHY address.     */
+  ra8_rmac_phy_lsi_t lsi_type;        /**< Lsi type.        */
+  uint16_t           local_advertise; /**< Local advertise. */
+  uint16_t           gbit_advertise;  /**< Gbit advertise.  */
+  ra8_rmac_phy_io_t  io;              /**< Io.              */
+  uint16_t           last_bmsr;       /**< Last bmsr.       */
 } ra8_rmac_phy_internal_t;
 
 static ra8_rmac_phy_internal_t s_state = {};

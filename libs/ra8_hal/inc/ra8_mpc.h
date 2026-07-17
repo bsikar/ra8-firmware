@@ -112,8 +112,8 @@ typedef enum : uint8_t {
  * @brief Pull-up enable for ``ra8_mpc_set_pull``.
  */
 typedef enum : uint8_t {
-  k_ra8_mpc_pull_off = 0U,
-  k_ra8_mpc_pull_up  = 1U,
+  k_ra8_mpc_pull_off = 0U, /**< RA8 mpc pull off. */
+  k_ra8_mpc_pull_up  = 1U, /**< RA8 mpc pull up.  */
 } ra8_mpc_pull_t;
 
 /* =============================================================================

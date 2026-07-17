@@ -49,7 +49,7 @@ static const char* const s_tag = "ra8_display_pal_lcd";
  */
 /** @brief RGB565 pixel mask. */
 typedef enum : uint32_t {
-  k_rgb565_mask = 0xFFFFU,
+  k_rgb565_mask = 0xFFFFU, /**< Rgb565 mask. */
 } disp_lcd_mask_t;
 
 typedef enum : uint32_t {
@@ -70,9 +70,9 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  display_caps_t caps;
-  display_fb_t   fb;
-  bool           started;
+  display_caps_t caps;    /**< Caps.    */
+  display_fb_t   fb;      /**< Fb.      */
+  bool           started; /**< Started. */
 } lcd_ctx_t;
 
 /** @brief Single LCD backend context -- one display per board. */

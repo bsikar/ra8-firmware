@@ -32,29 +32,29 @@
 static const char* s_tag = "EPHY";
 
 typedef enum : uint8_t {
-  k_ra8_ether_phy_reg_max        = 31U,
-  k_ra8_ether_phy_reset_poll_max = 32U,
+  k_ra8_ether_phy_reg_max        = 31U, /**< RA8 ether PHY register maximum.   */
+  k_ra8_ether_phy_reset_poll_max = 32U, /**< RA8 ether PHY reset poll maximum. */
 } ra8_ether_phy_priv_t;
 
 typedef enum : uint16_t {
-  k_ra8_ether_phy_bmcr_reset       = 0x8000U,
-  k_ra8_ether_phy_bmcr_an_enable   = 0x1000U,
-  k_ra8_ether_phy_bmcr_an_restart  = 0x0200U,
-  k_ra8_ether_phy_bmsr_link_up     = 0x0004U,
-  k_ra8_ether_phy_bmsr_an_complete = 0x0020U,
-  k_ra8_ether_phy_anar_100full     = 0x0100U,
-  k_ra8_ether_phy_anar_100half     = 0x0080U,
-  k_ra8_ether_phy_anar_10full      = 0x0040U,
-  k_ra8_ether_phy_anar_10half      = 0x0020U,
+  k_ra8_ether_phy_bmcr_reset       = 0x8000U, /**< RA8 ether PHY bmcr reset.       */
+  k_ra8_ether_phy_bmcr_an_enable   = 0x1000U, /**< RA8 ether PHY bmcr an enable.   */
+  k_ra8_ether_phy_bmcr_an_restart  = 0x0200U, /**< RA8 ether PHY bmcr an restart.  */
+  k_ra8_ether_phy_bmsr_link_up     = 0x0004U, /**< RA8 ether PHY bmsr link up.     */
+  k_ra8_ether_phy_bmsr_an_complete = 0x0020U, /**< RA8 ether PHY bmsr an complete. */
+  k_ra8_ether_phy_anar_100full     = 0x0100U, /**< RA8 ether PHY anar 100full.     */
+  k_ra8_ether_phy_anar_100half     = 0x0080U, /**< RA8 ether PHY anar 100half.     */
+  k_ra8_ether_phy_anar_10full      = 0x0040U, /**< RA8 ether PHY anar 10full.      */
+  k_ra8_ether_phy_anar_10half      = 0x0020U, /**< RA8 ether PHY anar 10half.      */
 } ra8_ether_phy_bits_t;
 
 typedef struct {
-  bool                opened;
-  uint8_t             phy_address;
-  ra8_ether_phy_mii_t mii_type;
-  uint16_t            reset_wait_us;
-  ra8_ether_phy_io_t  io;
-  uint16_t            last_bmsr;
+  bool                opened;        /**< Opened.        */
+  uint8_t             phy_address;   /**< PHY address.   */
+  ra8_ether_phy_mii_t mii_type;      /**< Mii type.      */
+  uint16_t            reset_wait_us; /**< Reset wait us. */
+  ra8_ether_phy_io_t  io;            /**< Io.            */
+  uint16_t            last_bmsr;     /**< Last bmsr.     */
 } ra8_ether_phy_internal_t;
 
 static ra8_ether_phy_internal_t s_state = {};

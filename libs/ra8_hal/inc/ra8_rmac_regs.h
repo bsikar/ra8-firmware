@@ -87,11 +87,11 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra8_rmac_mac_byte_0 = 0U, /**< First byte (high octet, OUI). */
-  k_ra8_rmac_mac_byte_1 = 1U,
-  k_ra8_rmac_mac_byte_2 = 2U,
-  k_ra8_rmac_mac_byte_3 = 3U,
-  k_ra8_rmac_mac_byte_4 = 4U,
-  k_ra8_rmac_mac_byte_5 = 5U, /**< Last byte (low octet). */
+  k_ra8_rmac_mac_byte_1 = 1U, /**< RA8 rmac MAC byte 1.          */
+  k_ra8_rmac_mac_byte_2 = 2U, /**< RA8 rmac MAC byte 2.          */
+  k_ra8_rmac_mac_byte_3 = 3U, /**< RA8 rmac MAC byte 3.          */
+  k_ra8_rmac_mac_byte_4 = 4U, /**< RA8 rmac MAC byte 4.          */
+  k_ra8_rmac_mac_byte_5 = 5U, /**< Last byte (low octet).        */
 } ra8_rmac_mac_byte_idx_t;
 
 /**
@@ -279,7 +279,7 @@ typedef enum : uint32_t {
     (k_ra8_rmac_mrafc_hash_broadcast | k_ra8_rmac_mrafc_perfect_broadcast), /**< BCENE|BCENP. */
   k_ra8_rmac_mrafc_promiscuous =
     (k_ra8_rmac_mrafc_unicast_match | k_ra8_rmac_mrafc_multicast_hash | k_ra8_rmac_mrafc_broadcast |
-     k_ra8_rmac_mrafc_mc_accept | k_ra8_rmac_mrafc_bc_accept),
+     k_ra8_rmac_mrafc_mc_accept | k_ra8_rmac_mrafc_bc_accept), /**< RA8 rmac mrafc promiscuous. */
 } ra8_rmac_mrafc_t;
 
 /**
@@ -360,9 +360,9 @@ typedef enum : uint8_t {
  * @brief PFC priority group index (MTPFC3t, t = 0..1).
  */
 typedef enum : uint8_t {
-  k_ra8_rmac_pfc_group_0     = 0U, /**< Priority group 0. */
-  k_ra8_rmac_pfc_group_1     = 1U, /**< Priority group 1. */
-  k_ra8_rmac_pfc_group_count = 2U,
+  k_ra8_rmac_pfc_group_0     = 0U, /**< Priority group 0.         */
+  k_ra8_rmac_pfc_group_1     = 1U, /**< Priority group 1.         */
+  k_ra8_rmac_pfc_group_count = 2U, /**< RA8 rmac pfc group count. */
 } ra8_rmac_pfc_group_t;
 
 /**

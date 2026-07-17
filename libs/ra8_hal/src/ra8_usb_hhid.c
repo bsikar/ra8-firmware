@@ -115,8 +115,8 @@ typedef enum : uint16_t {
  * @brief Per-byte left-shift constants for wValue layout.
  */
 typedef enum : uint8_t {
-  k_ra8_hhid_shift_byte0 = 0U,
-  k_ra8_hhid_shift_byte1 = 8U,
+  k_ra8_hhid_shift_byte0 = 0U, /**< RA8 hhid shift byte0. */
+  k_ra8_hhid_shift_byte1 = 8U, /**< RA8 hhid shift byte1. */
 } ra8_usb_hhid_byte_shift_t;
 
 /* =============================================================================
@@ -769,8 +769,8 @@ static uint16_t internal_dcp_in_drain(volatile r_usb_regs_t* reg, uint8_t* out, 
 
   /* HUM Ch 36.2.5 "CFIFO" p 1973 */ /* 16-bit LE drain. */
   enum : uint8_t {
-    k_byte_bits = 8U,
-    k_byte_mask = 0xFFU,
+    k_byte_bits = 8U,    /**< Byte bits. */
+    k_byte_mask = 0xFFU, /**< Byte mask. */
   };
   const uint16_t even = (uint16_t)(take >> 1U);
   for (uint16_t i = 0U; i < even; ++i) {

@@ -93,10 +93,10 @@ typedef enum : uint32_t {
    * drain path) but big enough to absorb the few cycles between BCLR
    * and the FIFO pointer flipping to the other bank when DBLB is on.
    * 256 iters x ~3 cycles == sub-microsecond at 1 GHz. */
-  k_ra8_usb_dblb_frdy_poll_limit = 256UL,
+  k_ra8_usb_dblb_frdy_poll_limit = 256UL, /**< RA8 USB dblb frdy poll limit. */
   /* CFIFOSEL CURPIPE/ISEL readback settle bound (a handful of bus
    * clocks; generous to stay simulator-safe). */
-  k_ra8_usb_fifosel_settle_limit = 1000UL,
+  k_ra8_usb_fifosel_settle_limit = 1000UL, /**< RA8 USB fifosel settle limit. */
 } ra8_usb_internal_lim32_t;
 /* =============================================================================
  * Internal helpers

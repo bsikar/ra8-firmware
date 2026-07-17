@@ -79,7 +79,7 @@ RA8_PRIV void ra8_widget_priv_fill_box(const ra8_widget_paint_t* paint,
 
 /** @brief No filled pixels (0% or a degenerate rect). */
 typedef enum : int32_t {
-  k_ra8_widget_frac_empty = 0,
+  k_ra8_widget_frac_empty = 0, /**< RA8 widget frac empty. */
 } ra8_widget_frac_geom_t;
 
 RA8_PRIV int32_t ra8_widget_priv_fill_frac(uint32_t value, uint32_t total, int32_t width)

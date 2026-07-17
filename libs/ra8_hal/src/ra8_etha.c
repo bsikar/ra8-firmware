@@ -472,8 +472,8 @@ internal_etha_wait_for_mode(ra8_etha_port_t port, volatile r_etha_regs_t* reg, r
     }
   }
   enum : uint32_t {
-    k_ms_budget = 500U,
-    k_inner     = 200000U,
+    k_ms_budget = 500U,    /**< Ms budget. */
+    k_inner     = 200000U, /**< Inner.     */
   };
   const uint32_t target = (uint32_t)mode & k_ra8_etha_mask_ops;
   for (uint32_t ms = 0U; ms < (uint32_t)k_ms_budget; ++ms) {

@@ -48,27 +48,27 @@ typedef struct ra8_ble_host_attr_t ra8_ble_host_attr_t;
 
 /** @brief ATT attribute pool and reassembly buffer sizes. */
 typedef enum : uint16_t {
-  k_ble_att_attr_cap         = 96U,
-  k_ble_att_reassembly_bytes = 256U,
+  k_ble_att_attr_cap         = 96U,  /**< BLE ATT attr cap.         */
+  k_ble_att_reassembly_bytes = 256U, /**< BLE ATT reassembly bytes. */
 } ble_att_size_t;
 
 typedef enum : uint8_t {
-  k_attr_kind_primary_service = 0U,
-  k_attr_kind_char_decl       = 1U,
-  k_attr_kind_char_value      = 2U,
-  k_attr_kind_cccd            = 3U,
+  k_attr_kind_primary_service = 0U, /**< Attr kind primary service. */
+  k_attr_kind_char_decl       = 1U, /**< Attr kind char decl.       */
+  k_attr_kind_char_value      = 2U, /**< Attr kind char value.      */
+  k_attr_kind_cccd            = 3U, /**< Attr kind cccd.            */
 } ra8_ble_host_attr_kind_t;
 
 struct ra8_ble_host_attr_t {
-  uint16_t                 handle;
-  ra8_ble_host_attr_kind_t kind;
-  uint8_t                  props;
-  uint8_t                  uuid[k_ra8_ble_host_uuid_bytes];
-  uint8_t*                 value;
-  uint16_t                 value_len;
-  uint16_t                 value_max;
-  uint16_t                 cccd_value;
-  uint16_t                 value_handle_owner;
+  uint16_t                 handle;                          /**< Handle.             */
+  ra8_ble_host_attr_kind_t kind;                            /**< Kind.               */
+  uint8_t                  props;                           /**< Props.              */
+  uint8_t                  uuid[k_ra8_ble_host_uuid_bytes]; /**< Uuid.               */
+  uint8_t*                 value;                           /**< Value.              */
+  uint16_t                 value_len;                       /**< Value length.       */
+  uint16_t                 value_max;                       /**< Value maximum.      */
+  uint16_t                 cccd_value;                      /**< Cccd value.         */
+  uint16_t                 value_handle_owner;              /**< Value handle owner. */
 };
 
 /**
@@ -78,26 +78,26 @@ struct ra8_ble_host_attr_t {
  * @details Field order MUST match ra8_ble_l2cap.c.
  */
 typedef struct {
-  uint8_t                 initialized;
-  ra8_ble_host_role_t     role;
-  uint16_t                appearance;
-  char                    name[32];
-  uint16_t                next_handle;
-  uint16_t                last_service_handle;
-  ra8_ble_host_attr_t     attrs[k_ble_att_attr_cap];
-  uint8_t                 attr_count;
-  uint8_t                 service_count;
-  uint8_t                 char_count;
-  uint16_t                conn_handle;
-  uint16_t                att_mtu;
-  uint8_t                 reassembly[k_ble_att_reassembly_bytes];
-  uint16_t                reassembly_len;
-  uint16_t                reassembly_expected;
-  uint16_t                reassembly_cid;
-  uint16_t                reassembly_conn;
-  ra8_ble_host_event_fn_t evt_fn;
-  void*                   evt_ctx;
-  uint32_t                evt_count;
+  uint8_t                 initialized;                            /**< Initialized.         */
+  ra8_ble_host_role_t     role;                                   /**< Role.                */
+  uint16_t                appearance;                             /**< Appearance.          */
+  char                    name[32];                               /**< Name.                */
+  uint16_t                next_handle;                            /**< Next handle.         */
+  uint16_t                last_service_handle;                    /**< Last service handle. */
+  ra8_ble_host_attr_t     attrs[k_ble_att_attr_cap];              /**< Attrs.               */
+  uint8_t                 attr_count;                             /**< Attr count.          */
+  uint8_t                 service_count;                          /**< Service count.       */
+  uint8_t                 char_count;                             /**< Char count.          */
+  uint16_t                conn_handle;                            /**< Conn handle.         */
+  uint16_t                att_mtu;                                /**< ATT MTU.             */
+  uint8_t                 reassembly[k_ble_att_reassembly_bytes]; /**< Reassembly.          */
+  uint16_t                reassembly_len;                         /**< Reassembly length.   */
+  uint16_t                reassembly_expected;                    /**< Reassembly expected. */
+  uint16_t                reassembly_cid;                         /**< Reassembly cid.      */
+  uint16_t                reassembly_conn;                        /**< Reassembly conn.     */
+  ra8_ble_host_event_fn_t evt_fn;                                 /**< Evt fn.              */
+  void*                   evt_ctx;                                /**< Evt ctx.             */
+  uint32_t                evt_count;                              /**< Evt count.           */
 } ra8_ble_host_state_t;
 
 ra8_ble_host_state_t* ra8_ble_host_state(void);
@@ -138,13 +138,13 @@ typedef enum : uint8_t {
  *        Table 3.4 + Vol 3 Part F 3.4.1).
  */
 typedef enum : uint8_t {
-  k_att_err_invalid_handle      = 0x01U,
-  k_att_err_read_not_permitted  = 0x02U,
-  k_att_err_write_not_permitted = 0x03U,
-  k_att_err_invalid_pdu         = 0x04U,
-  k_att_err_request_not_supp    = 0x06U,
-  k_att_err_attr_not_found      = 0x0AU,
-  k_att_err_invalid_value_len   = 0x0DU,
+  k_att_err_invalid_handle      = 0x01U, /**< ATT error invalid handle.       */
+  k_att_err_read_not_permitted  = 0x02U, /**< ATT error read not permitted.   */
+  k_att_err_write_not_permitted = 0x03U, /**< ATT error write not permitted.  */
+  k_att_err_invalid_pdu         = 0x04U, /**< ATT error invalid pdu.          */
+  k_att_err_request_not_supp    = 0x06U, /**< ATT error request not supp.     */
+  k_att_err_attr_not_found      = 0x0AU, /**< ATT error attr not found.       */
+  k_att_err_invalid_value_len   = 0x0DU, /**< ATT error invalid value length. */
 } ra8_ble_att_err_t;
 
 /* =============================================================================
@@ -175,10 +175,10 @@ typedef enum : uint8_t {
 static void internal_pack_le16(uint8_t* dst, uint16_t v)
 {
   enum : uint8_t {
-    k_byte_lo_idx = 0U,
-    k_byte_hi_idx = 1U,
-    k_byte_shift  = 8U,
-    k_byte_mask   = 0xFFU,
+    k_byte_lo_idx = 0U,    /**< Byte lo index. */
+    k_byte_hi_idx = 1U,    /**< Byte hi index. */
+    k_byte_shift  = 8U,    /**< Byte shift.    */
+    k_byte_mask   = 0xFFU, /**< Byte mask.     */
   };
   dst[k_byte_lo_idx] = (uint8_t)(v & k_byte_mask);
   dst[k_byte_hi_idx] = (uint8_t)((v >> k_byte_shift) & k_byte_mask);
@@ -207,9 +207,9 @@ static void internal_pack_le16(uint8_t* dst, uint16_t v)
 static uint16_t internal_unpack_le16(const uint8_t* src)
 {
   enum : uint8_t {
-    k_byte_lo_idx = 0U,
-    k_byte_hi_idx = 1U,
-    k_byte_shift  = 8U,
+    k_byte_lo_idx = 0U, /**< Byte lo index. */
+    k_byte_hi_idx = 1U, /**< Byte hi index. */
+    k_byte_shift  = 8U, /**< Byte shift.    */
   };
   return (uint16_t)((uint16_t)src[k_byte_lo_idx] | ((uint16_t)src[k_byte_hi_idx] << k_byte_shift));
 }
@@ -273,10 +273,10 @@ static void internal_send_error(uint16_t          conn_handle,
                                 ra8_ble_att_err_t err)
 {
   enum : uint16_t {
-    k_l2cap_cid_att = 0x0004U,
+    k_l2cap_cid_att = 0x0004U, /**< L2CAP cid ATT. */
   };
   enum : uint8_t {
-    k_err_pdu_bytes = 5U,
+    k_err_pdu_bytes = 5U, /**< Error pdu bytes. */
   };
   uint8_t pdu[k_err_pdu_bytes];
   pdu[0] = k_att_op_error_rsp;
@@ -317,13 +317,13 @@ static void internal_send_error(uint16_t          conn_handle,
 static void internal_handle_find_info(uint16_t conn_handle, const uint8_t* pdu, uint16_t len)
 {
   enum : uint8_t {
-    k_min_param_bytes = 4U,
-    k_format_128bit   = 0x02U,
-    k_pair_bytes      = 18U, /* handle(2) + uuid(16). */
+    k_min_param_bytes = 4U,    /**< Minimum param bytes.  */
+    k_format_128bit   = 0x02U, /**< Format 128bit.        */
+    k_pair_bytes      = 18U,   /**< handle(2) + uuid(16). */
   };
   enum : uint16_t {
-    k_l2cap_cid_att     = 0x0004U,
-    k_max_pairs_per_pdu = 4U, /* default ATT_MTU = 23 -> 2 + 4*18 = 74 too large; cap at 1. */
+    k_l2cap_cid_att     = 0x0004U, /**< L2CAP cid ATT. */
+    k_max_pairs_per_pdu = 4U, /**< default ATT_MTU = 23 -> 2 + 4*18 = 74 too large; cap at 1. */
   };
 
   if (len < k_min_param_bytes) {
@@ -341,7 +341,7 @@ static void internal_handle_find_info(uint16_t conn_handle, const uint8_t* pdu, 
   /* Build response: opcode + format + N x (handle, uuid). At MTU 23 we
    * can fit one 128-bit pair (2 + 18 = 20 bytes payload). */
   enum : uint8_t {
-    k_max_resp_bytes = 22U,
+    k_max_resp_bytes = 22U, /**< Maximum resp bytes. */
   };
   uint8_t  resp[k_max_resp_bytes];
   uint16_t pos = 0U;
@@ -460,8 +460,8 @@ static bool
 internal_emit_first_decl_in_range(uint8_t* resp, uint16_t* pos, uint16_t start, uint16_t end)
 {
   enum : uint8_t {
-    k_pair_bytes     = 21U,
-    k_max_resp_bytes = 23U,
+    k_pair_bytes     = 21U, /**< Pair bytes.         */
+    k_max_resp_bytes = 23U, /**< Maximum resp bytes. */
   };
   const ra8_ble_host_state_t* st = ra8_ble_host_state();
   for (uint8_t i = 0U; i < st->attr_count; i++) {
@@ -511,12 +511,12 @@ internal_emit_first_decl_in_range(uint8_t* resp, uint16_t* pos, uint16_t start, 
 static void internal_handle_read_by_type(uint16_t conn_handle, const uint8_t* pdu, uint16_t len)
 {
   enum : uint8_t {
-    k_short_param_bytes = 6U,
-    k_format_uuid16     = 0x03U,
+    k_short_param_bytes = 6U,    /**< Short param bytes. */
+    k_format_uuid16     = 0x03U, /**< Format uuid16.     */
   };
   enum : uint16_t {
-    k_l2cap_cid_att = 0x0004U,
-    k_uuid16_char   = 0x2803U,
+    k_l2cap_cid_att = 0x0004U, /**< L2CAP cid ATT. */
+    k_uuid16_char   = 0x2803U, /**< Uuid16 char.   */
   };
 
   if (len < k_short_param_bytes) {
@@ -535,9 +535,9 @@ static void internal_handle_read_by_type(uint16_t conn_handle, const uint8_t* pd
   /* Response: opcode + length + N x (handle, char_decl_value).
    * char_decl value is properties(1) + value_handle(2) + uuid(16) = 19. */
   enum : uint8_t {
-    k_decl_value_bytes = 19U,
-    k_pair_bytes       = 21U, /* handle(2) + decl(19). */
-    k_max_resp_bytes   = 23U,
+    k_decl_value_bytes = 19U, /**< Decl value bytes.     */
+    k_pair_bytes       = 21U, /**< handle(2) + decl(19). */
+    k_max_resp_bytes   = 23U, /**< Maximum resp bytes.   */
   };
   uint8_t  resp[k_max_resp_bytes];
   uint16_t pos = 0U;
@@ -575,12 +575,12 @@ static void internal_handle_read_by_type(uint16_t conn_handle, const uint8_t* pd
 static void internal_handle_read(uint16_t conn_handle, const uint8_t* pdu, uint16_t len)
 {
   enum : uint8_t {
-    k_min_param_bytes = 2U,
-    k_max_value_bytes = 22U, /* MTU 23 - opcode(1). */
-    k_resp_hdr_bytes  = 1U,
+    k_min_param_bytes = 2U,  /**< Minimum param bytes. */
+    k_max_value_bytes = 22U, /**< MTU 23 - opcode(1).  */
+    k_resp_hdr_bytes  = 1U,  /**< Resp hdr bytes.      */
   };
   enum : uint16_t {
-    k_l2cap_cid_att = 0x0004U,
+    k_l2cap_cid_att = 0x0004U, /**< L2CAP cid ATT. */
   };
 
   if (len < k_min_param_bytes) {
@@ -601,7 +601,7 @@ static void internal_handle_read(uint16_t conn_handle, const uint8_t* pdu, uint1
   if (a->kind == k_attr_kind_cccd) {
     /* CCCD value is two bytes (notify | indicate enable bits). */
     enum : uint8_t {
-      k_cccd_bytes = 2U,
+      k_cccd_bytes = 2U, /**< Cccd bytes. */
     };
     internal_pack_le16(&resp[pos], a->cccd_value);
     pos = (uint16_t)(pos + k_cccd_bytes);
@@ -654,7 +654,7 @@ static uint8_t internal_write_cccd(ra8_ble_host_attr_t* a,
                                    uint16_t             val_len)
 {
   enum : uint8_t {
-    k_cccd_min_bytes = 2U,
+    k_cccd_min_bytes = 2U, /**< Cccd minimum bytes. */
   };
   if (val_len < k_cccd_min_bytes) {
     return (uint8_t)k_att_err_invalid_value_len;
@@ -749,10 +749,10 @@ static void
 internal_handle_write(uint16_t conn_handle, uint8_t op, const uint8_t* pdu, uint16_t len)
 {
   enum : uint8_t {
-    k_min_param_bytes = 2U,
+    k_min_param_bytes = 2U, /**< Minimum param bytes. */
   };
   enum : uint16_t {
-    k_l2cap_cid_att = 0x0004U,
+    k_l2cap_cid_att = 0x0004U, /**< L2CAP cid ATT. */
   };
 
   if (len < k_min_param_bytes) {

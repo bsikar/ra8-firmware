@@ -33,13 +33,13 @@ extern "C" {
  * @brief Negotiated PHY link speed / duplex.
  */
 typedef enum : uint8_t {
-  k_ra8_ether_phy_speed_no_link = 0U,
-  k_ra8_ether_phy_speed_10h     = 1U,
-  k_ra8_ether_phy_speed_10f     = 2U,
-  k_ra8_ether_phy_speed_100h    = 3U,
-  k_ra8_ether_phy_speed_100f    = 4U,
-  k_ra8_ether_phy_speed_1000h   = 5U,
-  k_ra8_ether_phy_speed_1000f   = 6U,
+  k_ra8_ether_phy_speed_no_link = 0U, /**< RA8 ether PHY speed no link. */
+  k_ra8_ether_phy_speed_10h     = 1U, /**< RA8 ether PHY speed 10h.     */
+  k_ra8_ether_phy_speed_10f     = 2U, /**< RA8 ether PHY speed 10f.     */
+  k_ra8_ether_phy_speed_100h    = 3U, /**< RA8 ether PHY speed 100h.    */
+  k_ra8_ether_phy_speed_100f    = 4U, /**< RA8 ether PHY speed 100f.    */
+  k_ra8_ether_phy_speed_1000h   = 5U, /**< RA8 ether PHY speed 1000h.   */
+  k_ra8_ether_phy_speed_1000f   = 6U, /**< RA8 ether PHY speed 1000f.   */
 } ra8_ether_phy_speed_t;
 
 /**
@@ -47,10 +47,10 @@ typedef enum : uint8_t {
  * @brief Media-independent interface type seen on the MAC side.
  */
 typedef enum : uint8_t {
-  k_ra8_ether_phy_mii   = 0U,
-  k_ra8_ether_phy_rmii  = 1U,
-  k_ra8_ether_phy_gmii  = 2U,
-  k_ra8_ether_phy_rgmii = 3U,
+  k_ra8_ether_phy_mii   = 0U, /**< RA8 ether PHY mii.   */
+  k_ra8_ether_phy_rmii  = 1U, /**< RA8 ether PHY rmii.  */
+  k_ra8_ether_phy_gmii  = 2U, /**< RA8 ether PHY gmii.  */
+  k_ra8_ether_phy_rgmii = 3U, /**< RA8 ether PHY rgmii. */
 } ra8_ether_phy_mii_t;
 
 /**
@@ -72,7 +72,7 @@ typedef enum : uint8_t {
  * @brief Five-bit MDIO PHY address (0..31).
  */
 typedef enum : uint8_t {
-  k_ra8_ether_phy_addr_max = 31U,
+  k_ra8_ether_phy_addr_max = 31U, /**< RA8 ether PHY address maximum. */
 } ra8_ether_phy_addr_limit_t;
 
 /**

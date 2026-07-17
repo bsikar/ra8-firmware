@@ -38,7 +38,7 @@ typedef enum : uint8_t {
   k_ra8_simulator_mode = 1U, /**< Host unit-test build. */
 #else
   k_ra8_simulator_mode = 0U, /**< Arm-none-eabi firmware build. */
-#endif
+#endif /**< (anon). */
 } ra8_simulator_mode_t;
 
 #ifdef __cplusplus

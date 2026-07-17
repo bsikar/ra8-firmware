@@ -50,7 +50,7 @@ static const char* s_tag = "PWR";
  */
 /** @brief Low-byte mask for register/bit decomposition. */
 typedef enum : uint16_t {
-  k_pwr_byte_mask = 0xFFU,
+  k_pwr_byte_mask = 0xFFU, /**< Pwr byte mask. */
 } pwr_mask_t;
 
 typedef enum : uint8_t {

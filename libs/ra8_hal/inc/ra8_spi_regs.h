@@ -138,14 +138,14 @@ typedef enum : uint8_t {
  * @brief SPCR bit-masks. HUM Ch 43.2.4 p 2884.
  */
 typedef enum : uint32_t {
-  k_ra8_spcr_mask_spe    = 0x00000001UL,
-  k_ra8_spcr_mask_modfen = 0x00004000UL,
-  k_ra8_spcr_mask_speie  = 0x00010000UL,
-  k_ra8_spcr_mask_sprie  = 0x00020000UL,
-  k_ra8_spcr_mask_sptie  = 0x00100000UL,
-  k_ra8_spcr_mask_cendie = 0x00200000UL,
-  k_ra8_spcr_mask_sckase = 0x00001000UL,
-  k_ra8_spcr_mask_mstr   = 0x40000000UL,
+  k_ra8_spcr_mask_spe    = 0x00000001UL, /**< RA8 spcr mask spe.          */
+  k_ra8_spcr_mask_modfen = 0x00004000UL, /**< RA8 spcr mask modfen.       */
+  k_ra8_spcr_mask_speie  = 0x00010000UL, /**< RA8 spcr mask speie.        */
+  k_ra8_spcr_mask_sprie  = 0x00020000UL, /**< RA8 spcr mask sprie.        */
+  k_ra8_spcr_mask_sptie  = 0x00100000UL, /**< RA8 spcr mask sptie.        */
+  k_ra8_spcr_mask_cendie = 0x00200000UL, /**< RA8 spcr mask cendie.       */
+  k_ra8_spcr_mask_sckase = 0x00001000UL, /**< RA8 spcr mask sckase.       */
+  k_ra8_spcr_mask_mstr   = 0x40000000UL, /**< RA8 spcr mask mstr.         */
   k_ra8_spcr_mask_txmd   = 0x30000000UL, /**< [29:28] communication mode. */
 } ra8_spcr_mask_t;
 
@@ -170,15 +170,15 @@ typedef enum : uint8_t {
  * @brief SPSR bit-masks. HUM Ch 43.2.9 p 2898.
  */
 typedef enum : uint32_t {
-  k_ra8_spsr_mask_spdrf = 0x00800000UL,
-  k_ra8_spsr_mask_ovrf  = 0x01000000UL,
-  k_ra8_spsr_mask_idlnf = 0x02000000UL,
-  k_ra8_spsr_mask_modf  = 0x04000000UL,
-  k_ra8_spsr_mask_perf  = 0x08000000UL,
-  k_ra8_spsr_mask_udrf  = 0x10000000UL,
-  k_ra8_spsr_mask_sptef = 0x20000000UL,
-  k_ra8_spsr_mask_cendf = 0x40000000UL,
-  k_ra8_spsr_mask_sprf  = 0x80000000UL,
+  k_ra8_spsr_mask_spdrf = 0x00800000UL, /**< RA8 spsr mask spdrf.       */
+  k_ra8_spsr_mask_ovrf  = 0x01000000UL, /**< RA8 spsr mask ovrf.        */
+  k_ra8_spsr_mask_idlnf = 0x02000000UL, /**< RA8 spsr mask idlnf.       */
+  k_ra8_spsr_mask_modf  = 0x04000000UL, /**< RA8 spsr mask modf.        */
+  k_ra8_spsr_mask_perf  = 0x08000000UL, /**< RA8 spsr mask perf.        */
+  k_ra8_spsr_mask_udrf  = 0x10000000UL, /**< RA8 spsr mask udrf.        */
+  k_ra8_spsr_mask_sptef = 0x20000000UL, /**< RA8 spsr mask sptef.       */
+  k_ra8_spsr_mask_cendf = 0x40000000UL, /**< RA8 spsr mask cendf.       */
+  k_ra8_spsr_mask_sprf  = 0x80000000UL, /**< RA8 spsr mask sprf.        */
   k_ra8_spsr_mask_errs  = 0x1D000000UL, /**< OVRF | MODF | PERF | UDRF. */
 } ra8_spsr_mask_t;
 
@@ -187,14 +187,14 @@ typedef enum : uint32_t {
  * @brief SPSRC (status clear, write-1-to-clear) masks. HUM Ch 43.2.13 p 2905.
  */
 typedef enum : uint32_t {
-  k_ra8_spsrc_mask_spdrfc = 0x00800000UL,
-  k_ra8_spsrc_mask_ovrfc  = 0x01000000UL,
-  k_ra8_spsrc_mask_modfc  = 0x04000000UL,
-  k_ra8_spsrc_mask_perfc  = 0x08000000UL,
-  k_ra8_spsrc_mask_udrfc  = 0x10000000UL,
-  k_ra8_spsrc_mask_sptefc = 0x20000000UL,
-  k_ra8_spsrc_mask_cendfc = 0x40000000UL,
-  k_ra8_spsrc_mask_sprfc  = 0x80000000UL,
+  k_ra8_spsrc_mask_spdrfc = 0x00800000UL, /**< RA8 spsrc mask spdrfc.    */
+  k_ra8_spsrc_mask_ovrfc  = 0x01000000UL, /**< RA8 spsrc mask ovrfc.     */
+  k_ra8_spsrc_mask_modfc  = 0x04000000UL, /**< RA8 spsrc mask modfc.     */
+  k_ra8_spsrc_mask_perfc  = 0x08000000UL, /**< RA8 spsrc mask perfc.     */
+  k_ra8_spsrc_mask_udrfc  = 0x10000000UL, /**< RA8 spsrc mask udrfc.     */
+  k_ra8_spsrc_mask_sptefc = 0x20000000UL, /**< RA8 spsrc mask sptefc.    */
+  k_ra8_spsrc_mask_cendfc = 0x40000000UL, /**< RA8 spsrc mask cendfc.    */
+  k_ra8_spsrc_mask_sprfc  = 0x80000000UL, /**< RA8 spsrc mask sprfc.     */
   k_ra8_spsrc_mask_all    = 0xFD800000UL, /**< Clear every flag at once. */
 } ra8_spsrc_mask_t;
 
@@ -220,16 +220,16 @@ typedef enum : uint8_t {
  * @brief SPCMDn bit-masks (HUM Ch 43.2.7 p 2893).
  */
 typedef enum : uint32_t {
-  k_ra8_spcmd_mask_cpha   = 0x00000001UL,
-  k_ra8_spcmd_mask_cpol   = 0x00000002UL,
-  k_ra8_spcmd_mask_brdv   = 0x0000000CUL, /**< [3:2] */
-  k_ra8_spcmd_mask_sslkp  = 0x00000080UL,
-  k_ra8_spcmd_mask_lsbf   = 0x00001000UL,
-  k_ra8_spcmd_mask_spnden = 0x00002000UL,
-  k_ra8_spcmd_mask_slnden = 0x00004000UL,
-  k_ra8_spcmd_mask_sckden = 0x00008000UL,
-  k_ra8_spcmd_mask_spb    = 0x001F0000UL, /**< [20:16] data length */
-  k_ra8_spcmd_mask_ssla   = 0x07000000UL, /**< [26:24] SSL select  */
+  k_ra8_spcmd_mask_cpha   = 0x00000001UL, /**< RA8 spcmd mask cpha.   */
+  k_ra8_spcmd_mask_cpol   = 0x00000002UL, /**< RA8 spcmd mask cpol.   */
+  k_ra8_spcmd_mask_brdv   = 0x0000000CUL, /**< [3:2]                  */
+  k_ra8_spcmd_mask_sslkp  = 0x00000080UL, /**< RA8 spcmd mask sslkp.  */
+  k_ra8_spcmd_mask_lsbf   = 0x00001000UL, /**< RA8 spcmd mask lsbf.   */
+  k_ra8_spcmd_mask_spnden = 0x00002000UL, /**< RA8 spcmd mask spnden. */
+  k_ra8_spcmd_mask_slnden = 0x00004000UL, /**< RA8 spcmd mask slnden. */
+  k_ra8_spcmd_mask_sckden = 0x00008000UL, /**< RA8 spcmd mask sckden. */
+  k_ra8_spcmd_mask_spb    = 0x001F0000UL, /**< [20:16] data length    */
+  k_ra8_spcmd_mask_ssla   = 0x07000000UL, /**< [26:24] SSL select     */
 } ra8_spcmd_mask_t;
 
 /**

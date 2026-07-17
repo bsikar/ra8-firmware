@@ -62,22 +62,22 @@ extern "C" {
  */
 
 typedef enum : uintptr_t {
-  k_ra8_port0_base_addr  = 0x40400000UL,
-  k_ra8_port1_base_addr  = 0x40400020UL,
-  k_ra8_port2_base_addr  = 0x40400040UL,
-  k_ra8_port3_base_addr  = 0x40400060UL,
-  k_ra8_port4_base_addr  = 0x40400080UL,
-  k_ra8_port5_base_addr  = 0x404000A0UL,
-  k_ra8_port6_base_addr  = 0x404000C0UL,
-  k_ra8_port7_base_addr  = 0x404000E0UL,
-  k_ra8_port8_base_addr  = 0x40400100UL,
-  k_ra8_port9_base_addr  = 0x40400120UL,
-  k_ra8_port10_base_addr = 0x40400140UL,
-  k_ra8_port11_base_addr = 0x40400160UL,
-  k_ra8_port12_base_addr = 0x40400180UL,
-  k_ra8_port13_base_addr = 0x404001A0UL,
-  k_ra8_port14_base_addr = 0x404001C0UL,
-  k_ra8_port_stride      = 0x20UL, /**< Bytes between adjacent ports. */
+  k_ra8_port0_base_addr  = 0x40400000UL, /**< RA8 port0 base address.       */
+  k_ra8_port1_base_addr  = 0x40400020UL, /**< RA8 port1 base address.       */
+  k_ra8_port2_base_addr  = 0x40400040UL, /**< RA8 port2 base address.       */
+  k_ra8_port3_base_addr  = 0x40400060UL, /**< RA8 port3 base address.       */
+  k_ra8_port4_base_addr  = 0x40400080UL, /**< RA8 port4 base address.       */
+  k_ra8_port5_base_addr  = 0x404000A0UL, /**< RA8 port5 base address.       */
+  k_ra8_port6_base_addr  = 0x404000C0UL, /**< RA8 port6 base address.       */
+  k_ra8_port7_base_addr  = 0x404000E0UL, /**< RA8 port7 base address.       */
+  k_ra8_port8_base_addr  = 0x40400100UL, /**< RA8 port8 base address.       */
+  k_ra8_port9_base_addr  = 0x40400120UL, /**< RA8 port9 base address.       */
+  k_ra8_port10_base_addr = 0x40400140UL, /**< RA8 port10 base address.      */
+  k_ra8_port11_base_addr = 0x40400160UL, /**< RA8 port11 base address.      */
+  k_ra8_port12_base_addr = 0x40400180UL, /**< RA8 port12 base address.      */
+  k_ra8_port13_base_addr = 0x404001A0UL, /**< RA8 port13 base address.      */
+  k_ra8_port14_base_addr = 0x404001C0UL, /**< RA8 port14 base address.      */
+  k_ra8_port_stride      = 0x20UL,       /**< Bytes between adjacent ports. */
 } ra8_port_addr_t;
 
 /* =============================================================================
@@ -130,7 +130,7 @@ typedef struct {
 
 /** @brief Expected byte size of the per-port register window. */
 typedef enum : uint8_t {
-  k_ra8_port_regs_bytes = 16U,
+  k_ra8_port_regs_bytes = 16U, /**< RA8 port registers bytes. */
 } ra8_port_regs_size_t;
 
 static_assert(sizeof(r_port_regs_t) == (size_t)k_ra8_port_regs_bytes,

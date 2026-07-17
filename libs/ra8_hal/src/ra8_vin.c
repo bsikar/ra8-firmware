@@ -143,15 +143,15 @@ typedef enum : uint8_t {
  * Indexed via the channel parameter to `ra8_vin_set_rgb_to_yc`.
  */
 typedef enum : uint16_t {
-  k_ra8_vin_yc_y_set1  = k_ra8_vin_off_yccr1,
-  k_ra8_vin_yc_y_set2  = k_ra8_vin_off_yccr2,
-  k_ra8_vin_yc_y_set3  = k_ra8_vin_off_yccr3,
-  k_ra8_vin_yc_cb_set1 = k_ra8_vin_off_cbccr1,
-  k_ra8_vin_yc_cb_set2 = k_ra8_vin_off_cbccr2,
-  k_ra8_vin_yc_cb_set3 = k_ra8_vin_off_cbccr3,
-  k_ra8_vin_yc_cr_set1 = k_ra8_vin_off_crccr1,
-  k_ra8_vin_yc_cr_set2 = k_ra8_vin_off_crccr2,
-  k_ra8_vin_yc_cr_set3 = k_ra8_vin_off_crccr3,
+  k_ra8_vin_yc_y_set1  = k_ra8_vin_off_yccr1,  /**< RA8 vin yc y set1.  */
+  k_ra8_vin_yc_y_set2  = k_ra8_vin_off_yccr2,  /**< RA8 vin yc y set2.  */
+  k_ra8_vin_yc_y_set3  = k_ra8_vin_off_yccr3,  /**< RA8 vin yc y set3.  */
+  k_ra8_vin_yc_cb_set1 = k_ra8_vin_off_cbccr1, /**< RA8 vin yc cb set1. */
+  k_ra8_vin_yc_cb_set2 = k_ra8_vin_off_cbccr2, /**< RA8 vin yc cb set2. */
+  k_ra8_vin_yc_cb_set3 = k_ra8_vin_off_cbccr3, /**< RA8 vin yc cb set3. */
+  k_ra8_vin_yc_cr_set1 = k_ra8_vin_off_crccr1, /**< RA8 vin yc cr set1. */
+  k_ra8_vin_yc_cr_set2 = k_ra8_vin_off_crccr2, /**< RA8 vin yc cr set2. */
+  k_ra8_vin_yc_cr_set3 = k_ra8_vin_off_crccr3, /**< RA8 vin yc cr set3. */
 } ra8_vin_chan_offsets_t;
 
 /**

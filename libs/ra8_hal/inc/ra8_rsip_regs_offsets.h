@@ -251,10 +251,12 @@ typedef enum : uint16_t {
  * -------------------------------------------------------------------------- */
 
 /* Every register cell is a 32-bit word. */
+/** @brief RA8 RSIP ASSERT ALIGN. */
 #define RA8_RSIP_ASSERT_ALIGN(off_)                                                                \
   static_assert(((size_t)(off_) & 0x3U) == 0U, #off_ " must be 4-byte aligned")
 
 /* Range check: low <= off <= high. */
+/** @brief RA8 RSIP ASSERT IN WIN. */
 #define RA8_RSIP_ASSERT_IN_WIN(off_, lo_, hi_)                                                     \
   static_assert((size_t)(off_) >= (size_t)(lo_) && (size_t)(off_) <= (size_t)(hi_),                \
                 #off_ " outside window [" #lo_ ", " #hi_ "]")

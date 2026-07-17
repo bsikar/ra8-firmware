@@ -70,6 +70,7 @@ extern "C" {
  * behaviour they have today, with zero source churn.
  */
 #if !defined(RA8_DEVICE_RA8D2) && !defined(RA8_DEVICE_RA8P1)
+/** @brief RA8 DEVICE RA8 D2. */
 #define RA8_DEVICE_RA8D2 1
 #endif
 
@@ -142,10 +143,13 @@ static const ra8_device_id_t k_ra8_device_current = k_ra8_device_ra8d2;
  * ETHERC feature flag. Do not re-add one without a primary-source register map.
  */
 #ifdef RA8_DEVICE_RA8P1
-#define RA8_HAS_NPU    1 /**< Arm Ethos-U55 NPU present (see ra8_npu_regs.h). */
-#define RA8_HAS_NPUCLK 1 /**< CGC drives a dedicated NPUCLK domain.           */
+/** @brief RA8 HAS NPU. */
+#define RA8_HAS_NPU 1 /**< Arm Ethos-U55 NPU present (see ra8_npu_regs.h). */
+/** @brief RA8 HAS NPUCLK. */
+#define RA8_HAS_NPUCLK 1 /**< CGC drives a dedicated NPUCLK domain. */
 /* RA8_HAS_OFS3 intentionally undefined: RA8P1 has no OFS3/WDT1 option register. */
 #else
+/** @brief RA8 HAS OFS3. */
 #define RA8_HAS_OFS3 1 /**< RA8D2 has the OFS3 / WDT1 option-setting register. */
 /* RA8_HAS_NPU / RA8_HAS_NPUCLK intentionally undefined (NPU is RA8P1-only). */
 #endif
@@ -174,7 +178,7 @@ typedef enum : uint8_t {
   k_ra8_feat_npu    = 0U, /**< Ethos-U55 NPU: absent on RA8D2.              */
   k_ra8_feat_npuclk = 0U, /**< NPUCLK clock domain: absent on RA8D2.        */
   k_ra8_feat_ofs3   = 1U, /**< OFS3/WDT1 option register: present on RA8D2. */
-#endif
+#endif /**< (anon). */
 } ra8_device_feature_t;
 
 /* -------------------------------------------------------------------------- */

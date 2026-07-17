@@ -136,12 +136,12 @@ typedef struct {
  *   +0x14 .. 0x1F reserved (3 words)
  */
 typedef struct {
-  volatile uint32_t DCFG;  /**< +0x000 Data Bitrate Config. */
-  volatile uint32_t FDCFG; /**< +0x004 CAN-FD Config.       */
-  volatile uint32_t FDCTR; /**< +0x008 CAN-FD Control.      */
-  volatile uint32_t FDSTS; /**< +0x00C CAN-FD Status.       */
-  volatile uint32_t FDCRC; /**< +0x010 CAN-FD CRC.          */
-  volatile uint8_t  _reserved[k_ra8_canfd_pad_cfdc2_tail_bytes];
+  volatile uint32_t DCFG;                                        /**< +0x000 Data Bitrate Config. */
+  volatile uint32_t FDCFG;                                       /**< +0x004 CAN-FD Config.  */
+  volatile uint32_t FDCTR;                                       /**< +0x008 CAN-FD Control. */
+  volatile uint32_t FDSTS;                                       /**< +0x00C CAN-FD Status.  */
+  volatile uint32_t FDCRC;                                       /**< +0x010 CAN-FD CRC.     */
+  volatile uint8_t  _reserved[k_ra8_canfd_pad_cfdc2_tail_bytes]; /**< Reserved.              */
 } r_canfd_cfdc2_t;
 
 /* =============================================================================
@@ -234,93 +234,104 @@ typedef struct {
  */
 typedef struct {
   /* 0x000 -- per-channel control */
-  r_canfd_cfdc_t    CFDC[1];
-  volatile uint32_t _r_after_cfdc; /* 0x010 */
+  r_canfd_cfdc_t    CFDC[1];       /**< CFDC register.           */
+  volatile uint32_t _r_after_cfdc; /**< Reserved (offset 0x010). */
 
   /* 0x014 -- global control (per-instance copy) */
-  volatile uint32_t CFDGCFG;                                           /* 0x014        */
-  volatile uint32_t CFDGCTR;                                           /* 0x018        */
-  volatile uint32_t CFDGSTS;                                           /* 0x01C        */
-  volatile uint32_t CFDGERFL;                                          /* 0x020        */
-  volatile uint32_t CFDGTSC;                                           /* 0x024        */
-  volatile uint32_t CFDGAFLECTR;                                       /* 0x028        */
-  volatile uint32_t CFDGAFLCFG0;                                       /* 0x02C        */
-  volatile uint32_t CFDRMNB;                                           /* 0x030        */
-  volatile uint32_t CFDRMND0;                                          /* 0x034        */
-  volatile uint32_t CFDRMIEC;                                          /* 0x038        */
-  volatile uint32_t CFDRFCC[k_ra8_canfd_rx_fifo_count];                /* 0x03C..0x043 */
-  volatile uint32_t CFDRFSTS[k_ra8_canfd_rx_fifo_count];               /* 0x044..0x04B */
-  volatile uint32_t CFDRFPCTR[k_ra8_canfd_rx_fifo_count];              /* 0x04C..0x053 */
-  volatile uint32_t CFDCFCC[k_ra8_canfd_cf_count];                     /* 0x054        */
-  volatile uint32_t CFDCFSTS[k_ra8_canfd_cf_count];                    /* 0x058        */
-  volatile uint32_t CFDCFPCTR[k_ra8_canfd_cf_count];                   /* 0x05C        */
-  volatile uint32_t CFDFESTS;                                          /* 0x060        */
-  volatile uint32_t CFDFFSTS;                                          /* 0x064        */
-  volatile uint32_t CFDFMSTS;                                          /* 0x068        */
-  volatile uint32_t CFDRFISTS;                                         /* 0x06C        */
-  volatile uint8_t  CFDTMC[k_ra8_canfd_tx_mb_count];                   /* 0x070        */
-  volatile uint8_t  CFDTMSTS[k_ra8_canfd_tx_mb_count];                 /* 0x074        */
-  volatile uint32_t CFDTMTRSTS[1];                                     /* 0x078        */
-  volatile uint32_t CFDTMTARSTS[1];                                    /* 0x07C        */
-  volatile uint32_t CFDTMTCSTS[1];                                     /* 0x080        */
-  volatile uint32_t CFDTMTASTS[1];                                     /* 0x084        */
-  volatile uint32_t CFDTMIEC[1];                                       /* 0x088        */
-  volatile uint32_t CFDTXQCC0[1];                                      /* 0x08C        */
-  volatile uint32_t CFDTXQSTS0[1];                                     /* 0x090        */
-  volatile uint32_t CFDTXQPCTR0[1];                                    /* 0x094        */
-  volatile uint32_t CFDTHLCC[1];                                       /* 0x098        */
-  volatile uint32_t CFDTHLSTS[1];                                      /* 0x09C        */
-  volatile uint32_t CFDTHLPCTR[1];                                     /* 0x0A0        */
-  volatile uint32_t CFDGTINTSTS0;                                      /* 0x0A4        */
-  volatile uint32_t CFDGTSTCFG;                                        /* 0x0A8        */
-  volatile uint32_t CFDGTSTCTR;                                        /* 0x0AC        */
-  volatile uint32_t CFDGFDCFG;                                         /* 0x0B0        */
-  volatile uint32_t _r_after_gfdcfg;                                   /* 0x0B4        */
-  volatile uint32_t CFDGLOCKK;                                         /* 0x0B8        */
-  volatile uint32_t _r_after_glockk;                                   /* 0x0BC        */
-  volatile uint32_t CFDGAFLIGNENT;                                     /* 0x0C0        */
-  volatile uint32_t CFDGAFLIGNCTR;                                     /* 0x0C4        */
-  volatile uint32_t CFDCDTCT;                                          /* 0x0C8        */
-  volatile uint32_t CFDCDTSTS;                                         /* 0x0CC        */
-  volatile uint32_t _r_before_grstc[k_ra8_canfd_pad_before_grstc];     /* 0x0D0..0x0D7 */
-  volatile uint32_t CFDGRSTC;                                          /* 0x0D8        */
-  volatile uint32_t _r_after_grstc[k_ra8_canfd_pad_after_grstc_words]; /* 0x0DC..0x0FF */
+  volatile uint32_t CFDGCFG;     /**< CFDGCFG register (offset 0x014).     */
+  volatile uint32_t CFDGCTR;     /**< CFDGCTR register (offset 0x018).     */
+  volatile uint32_t CFDGSTS;     /**< CFDGSTS register (offset 0x01C).     */
+  volatile uint32_t CFDGERFL;    /**< CFDGERFL register (offset 0x020).    */
+  volatile uint32_t CFDGTSC;     /**< CFDGTSC register (offset 0x024).     */
+  volatile uint32_t CFDGAFLECTR; /**< CFDGAFLECTR register (offset 0x028). */
+  volatile uint32_t CFDGAFLCFG0; /**< CFDGAFLCFG0 register (offset 0x02C). */
+  volatile uint32_t CFDRMNB;     /**< CFDRMNB register (offset 0x030).     */
+  volatile uint32_t CFDRMND0;    /**< CFDRMND0 register (offset 0x034).    */
+  volatile uint32_t CFDRMIEC;    /**< CFDRMIEC register (offset 0x038).    */
+  volatile uint32_t
+    CFDRFCC[k_ra8_canfd_rx_fifo_count]; /**< CFDRFCC register (offset 0x03C..0x043). */
+  volatile uint32_t
+    CFDRFSTS[k_ra8_canfd_rx_fifo_count]; /**< CFDRFSTS register (offset 0x044..0x04B). */
+  volatile uint32_t
+    CFDRFPCTR[k_ra8_canfd_rx_fifo_count];          /**< CFDRFPCTR register (offset 0x04C..0x053). */
+  volatile uint32_t CFDCFCC[k_ra8_canfd_cf_count]; /**< CFDCFCC register (offset 0x054). */
+  volatile uint32_t CFDCFSTS[k_ra8_canfd_cf_count];    /**< CFDCFSTS register (offset 0x058).    */
+  volatile uint32_t CFDCFPCTR[k_ra8_canfd_cf_count];   /**< CFDCFPCTR register (offset 0x05C).   */
+  volatile uint32_t CFDFESTS;                          /**< CFDFESTS register (offset 0x060).    */
+  volatile uint32_t CFDFFSTS;                          /**< CFDFFSTS register (offset 0x064).    */
+  volatile uint32_t CFDFMSTS;                          /**< CFDFMSTS register (offset 0x068).    */
+  volatile uint32_t CFDRFISTS;                         /**< CFDRFISTS register (offset 0x06C).   */
+  volatile uint8_t  CFDTMC[k_ra8_canfd_tx_mb_count];   /**< CFDTMC register (offset 0x070).      */
+  volatile uint8_t  CFDTMSTS[k_ra8_canfd_tx_mb_count]; /**< CFDTMSTS register (offset 0x074).    */
+  volatile uint32_t CFDTMTRSTS[1];                     /**< CFDTMTRSTS register (offset 0x078).  */
+  volatile uint32_t CFDTMTARSTS[1];                    /**< CFDTMTARSTS register (offset 0x07C). */
+  volatile uint32_t CFDTMTCSTS[1];                     /**< CFDTMTCSTS register (offset 0x080).  */
+  volatile uint32_t CFDTMTASTS[1];                     /**< CFDTMTASTS register (offset 0x084).  */
+  volatile uint32_t CFDTMIEC[1];                       /**< CFDTMIEC register (offset 0x088).    */
+  volatile uint32_t CFDTXQCC0[1];                      /**< CFDTXQCC0 register (offset 0x08C).   */
+  volatile uint32_t CFDTXQSTS0[1];                     /**< CFDTXQSTS0 register (offset 0x090).  */
+  volatile uint32_t CFDTXQPCTR0[1];                    /**< CFDTXQPCTR0 register (offset 0x094). */
+  volatile uint32_t CFDTHLCC[1];                       /**< CFDTHLCC register (offset 0x098).    */
+  volatile uint32_t CFDTHLSTS[1];                      /**< CFDTHLSTS register (offset 0x09C).   */
+  volatile uint32_t CFDTHLPCTR[1];                     /**< CFDTHLPCTR register (offset 0x0A0).  */
+  volatile uint32_t CFDGTINTSTS0;                      /**< CFDGTINTSTS0 register (offset 0x0A4). */
+  volatile uint32_t CFDGTSTCFG;                        /**< CFDGTSTCFG register (offset 0x0A8). */
+  volatile uint32_t CFDGTSTCTR;                        /**< CFDGTSTCTR register (offset 0x0AC). */
+  volatile uint32_t CFDGFDCFG;                         /**< CFDGFDCFG register (offset 0x0B0).  */
+  volatile uint32_t _r_after_gfdcfg;                   /**< Reserved (offset 0x0B4).            */
+  volatile uint32_t CFDGLOCKK;                         /**< CFDGLOCKK register (offset 0x0B8).  */
+  volatile uint32_t _r_after_glockk;                   /**< Reserved (offset 0x0BC).            */
+  volatile uint32_t CFDGAFLIGNENT; /**< CFDGAFLIGNENT register (offset 0x0C0). */
+  volatile uint32_t CFDGAFLIGNCTR; /**< CFDGAFLIGNCTR register (offset 0x0C4). */
+  volatile uint32_t CFDCDTCT;      /**< CFDCDTCT register (offset 0x0C8).      */
+  volatile uint32_t CFDCDTSTS;     /**< CFDCDTSTS register (offset 0x0CC).     */
+  volatile uint32_t
+    _r_before_grstc[k_ra8_canfd_pad_before_grstc]; /**< Reserved (offset 0x0D0..0x0D7).   */
+  volatile uint32_t CFDGRSTC;                      /**< CFDGRSTC register (offset 0x0D8). */
+  volatile uint32_t
+    _r_after_grstc[k_ra8_canfd_pad_after_grstc_words]; /**< Reserved (offset 0x0DC..0x0FF). */
 
   /* 0x100 -- per-channel CAN-FD config */
-  r_canfd_cfdc2_t CFDC2[1]; /* 0x100 (0x20) */
+  r_canfd_cfdc2_t CFDC2[1]; /**< CFDC2 register (offset 0x100 (0x20)). */
 
   /* 0x120 -- AFL page window */
-  r_canfd_cfdgafl_t CFDGAFL[k_ra8_canfd_afl_page_size]; /* 0x120 (0x100) */
+  r_canfd_cfdgafl_t
+    CFDGAFL[k_ra8_canfd_afl_page_size]; /**< CFDGAFL register (offset 0x120 (0x100)). */
 
   /* 0x220 -- reserved (0x60) */
-  volatile uint32_t _r_before_rpgacc[k_ra8_canfd_pad_before_rpgacc]; /* 0x220..0x27F */
+  volatile uint32_t
+    _r_before_rpgacc[k_ra8_canfd_pad_before_rpgacc]; /**< Reserved (offset 0x220..0x27F). */
 
   /* 0x280 -- RAM test page */
-  volatile uint32_t CFDRPGACC[k_ra8_canfd_rpgacc_word_count]; /* 0x280 (0x100) */
+  volatile uint32_t
+    CFDRPGACC[k_ra8_canfd_rpgacc_word_count]; /**< CFDRPGACC register (offset 0x280 (0x100)). */
 
   /* 0x380 -- reserved (0x1A0) */
-  volatile uint32_t _r_before_rf[k_ra8_canfd_pad_before_rf_words]; /* 0x380..0x51F */
+  volatile uint32_t
+    _r_before_rf[k_ra8_canfd_pad_before_rf_words]; /**< Reserved (offset 0x380..0x51F). */
 
   /* 0x520 -- RX FIFO access (2 fifos x 0x4C each = 0x98) */
-  r_canfd_cfdrf_t CFDRF[k_ra8_canfd_rx_fifo_count]; /* 0x520..0x5B7 */
+  r_canfd_cfdrf_t CFDRF[k_ra8_canfd_rx_fifo_count]; /**< CFDRF register (offset 0x520..0x5B7). */
 
   /* 0x5B8 -- common FIFO access (1 fifo x 0x4C) */
-  r_canfd_cfdcf_t CFDCF[k_ra8_canfd_cf_count]; /* 0x5B8..0x603 */
+  r_canfd_cfdcf_t CFDCF[k_ra8_canfd_cf_count]; /**< CFDCF register (offset 0x5B8..0x603). */
 
   /* 0x604 -- TX MB access (4 buffers x 0x4C = 0x130) */
-  r_canfd_cfdtm_t CFDTM[k_ra8_canfd_tx_mb_count]; /* 0x604..0x733 */
+  r_canfd_cfdtm_t CFDTM[k_ra8_canfd_tx_mb_count]; /**< CFDTM register (offset 0x604..0x733). */
 
   /* 0x734 -- reserved before THL (3 words) */
-  volatile uint32_t _r_before_thl[k_ra8_canfd_pad_before_thl_words]; /* 0x734..0x73F */
+  volatile uint32_t
+    _r_before_thl[k_ra8_canfd_pad_before_thl_words]; /**< Reserved (offset 0x734..0x73F). */
 
   /* 0x740 -- TX history list */
-  r_canfd_cfdthl_t CFDTHL[1]; /* 0x740..0x747 */
+  r_canfd_cfdthl_t CFDTHL[1]; /**< CFDTHL register (offset 0x740..0x747). */
 
   /* 0x748 -- reserved before RM cluster (118 words = 0x1D8) */
-  volatile uint32_t _r_before_rm[k_ra8_canfd_pad_before_rm_words]; /* 0x748..0x91F */
+  volatile uint32_t
+    _r_before_rm[k_ra8_canfd_pad_before_rm_words]; /**< Reserved (offset 0x748..0x91F). */
 
   /* 0x920 -- RX MB cluster (4 clusters x 0x400) */
-  r_canfd_cfdrm_t CFDRM[k_ra8_canfd_rm_clusters]; /* 0x920..0x191F */
+  r_canfd_cfdrm_t CFDRM[k_ra8_canfd_rm_clusters]; /**< CFDRM register (offset 0x920..0x191F). */
 } r_canfd_t;
 
 /** @brief Get pointer to CANFD instance N (0..1). */
@@ -417,10 +428,10 @@ typedef enum : uint32_t {
  */
 
 typedef enum : uint8_t {
-  k_ra8_cncfg_shift_nbrp   = 0U,
-  k_ra8_cncfg_shift_nsjw   = 10U,
-  k_ra8_cncfg_shift_ntseg1 = 17U,
-  k_ra8_cncfg_shift_ntseg2 = 25U,
+  k_ra8_cncfg_shift_nbrp   = 0U,  /**< RA8 cncfg shift nbrp.   */
+  k_ra8_cncfg_shift_nsjw   = 10U, /**< RA8 cncfg shift nsjw.   */
+  k_ra8_cncfg_shift_ntseg1 = 17U, /**< RA8 cncfg shift ntseg1. */
+  k_ra8_cncfg_shift_ntseg2 = 25U, /**< RA8 cncfg shift ntseg2. */
 } ra8_cncfg_shift_t;
 
 typedef enum : uint32_t {
@@ -439,10 +450,10 @@ typedef enum : uint32_t {
  */
 
 typedef enum : uint8_t {
-  k_ra8_dcfg_shift_dbrp   = 0U,
-  k_ra8_dcfg_shift_dtseg1 = 8U,
-  k_ra8_dcfg_shift_dtseg2 = 16U,
-  k_ra8_dcfg_shift_dsjw   = 24U,
+  k_ra8_dcfg_shift_dbrp   = 0U,  /**< RA8 dcfg shift dbrp.   */
+  k_ra8_dcfg_shift_dtseg1 = 8U,  /**< RA8 dcfg shift dtseg1. */
+  k_ra8_dcfg_shift_dtseg2 = 16U, /**< RA8 dcfg shift dtseg2. */
+  k_ra8_dcfg_shift_dsjw   = 24U, /**< RA8 dcfg shift dsjw.   */
 } ra8_dcfg_shift_t;
 
 typedef enum : uint32_t {
@@ -479,22 +490,22 @@ typedef enum : uint32_t {
  */
 
 typedef enum : uint32_t {
-  k_ra8_cnerfl_mask_bef     = 1UL << 0U,
-  k_ra8_cnerfl_mask_ewf     = 1UL << 1U,
-  k_ra8_cnerfl_mask_epf     = 1UL << 2U,
-  k_ra8_cnerfl_mask_boef    = 1UL << 3U,
-  k_ra8_cnerfl_mask_borf    = 1UL << 4U,
-  k_ra8_cnerfl_mask_ovlf    = 1UL << 5U,
-  k_ra8_cnerfl_mask_blf     = 1UL << 6U,
-  k_ra8_cnerfl_mask_alf     = 1UL << 7U,
-  k_ra8_cnerfl_mask_serr    = 1UL << 8U,
-  k_ra8_cnerfl_mask_ferr    = 1UL << 9U,
-  k_ra8_cnerfl_mask_aerr    = 1UL << 10U,
-  k_ra8_cnerfl_mask_cerr    = 1UL << 11U,
-  k_ra8_cnerfl_mask_b1err   = 1UL << 12U,
-  k_ra8_cnerfl_mask_b0err   = 1UL << 13U,
-  k_ra8_cnerfl_mask_aderr   = 1UL << 14U,
-  k_ra8_cnerfl_mask_all_w1c = 0x7FFFUL, /**< [14:0] all writable error bits. */
+  k_ra8_cnerfl_mask_bef     = 1UL << 0U,  /**< RA8 cnerfl mask bef.            */
+  k_ra8_cnerfl_mask_ewf     = 1UL << 1U,  /**< RA8 cnerfl mask ewf.            */
+  k_ra8_cnerfl_mask_epf     = 1UL << 2U,  /**< RA8 cnerfl mask epf.            */
+  k_ra8_cnerfl_mask_boef    = 1UL << 3U,  /**< RA8 cnerfl mask boef.           */
+  k_ra8_cnerfl_mask_borf    = 1UL << 4U,  /**< RA8 cnerfl mask borf.           */
+  k_ra8_cnerfl_mask_ovlf    = 1UL << 5U,  /**< RA8 cnerfl mask ovlf.           */
+  k_ra8_cnerfl_mask_blf     = 1UL << 6U,  /**< RA8 cnerfl mask blf.            */
+  k_ra8_cnerfl_mask_alf     = 1UL << 7U,  /**< RA8 cnerfl mask alf.            */
+  k_ra8_cnerfl_mask_serr    = 1UL << 8U,  /**< RA8 cnerfl mask serr.           */
+  k_ra8_cnerfl_mask_ferr    = 1UL << 9U,  /**< RA8 cnerfl mask ferr.           */
+  k_ra8_cnerfl_mask_aerr    = 1UL << 10U, /**< RA8 cnerfl mask aerr.           */
+  k_ra8_cnerfl_mask_cerr    = 1UL << 11U, /**< RA8 cnerfl mask cerr.           */
+  k_ra8_cnerfl_mask_b1err   = 1UL << 12U, /**< RA8 cnerfl mask b1err.          */
+  k_ra8_cnerfl_mask_b0err   = 1UL << 13U, /**< RA8 cnerfl mask b0err.          */
+  k_ra8_cnerfl_mask_aderr   = 1UL << 14U, /**< RA8 cnerfl mask aderr.          */
+  k_ra8_cnerfl_mask_all_w1c = 0x7FFFUL,   /**< [14:0] all writable error bits. */
 } ra8_cnerfl_mask_t;
 
 /* =============================================================================
@@ -510,11 +521,11 @@ typedef enum : uint8_t {
 } ra8_gctr_bit_t;
 
 typedef enum : uint32_t {
-  k_ra8_gctr_mask_gmdc       = 0x3UL, /**< 2-bit GMDC mask. */
-  k_ra8_gctr_mask_gslpr      = 1UL << 2U,
-  k_ra8_gctr_value_operation = 0UL, /**< GMDC = 0: operation. */
-  k_ra8_gctr_value_reset     = 1UL, /**< GMDC = 1: reset.     */
-  k_ra8_gctr_value_halt      = 2UL, /**< GMDC = 2: halt.      */
+  k_ra8_gctr_mask_gmdc       = 0x3UL,     /**< 2-bit GMDC mask.     */
+  k_ra8_gctr_mask_gslpr      = 1UL << 2U, /**< RA8 gctr mask gslpr. */
+  k_ra8_gctr_value_operation = 0UL,       /**< GMDC = 0: operation. */
+  k_ra8_gctr_value_reset     = 1UL,       /**< GMDC = 1: reset.     */
+  k_ra8_gctr_value_halt      = 2UL,       /**< GMDC = 2: halt.      */
 } ra8_gctr_value_t;
 
 /**
@@ -560,8 +571,8 @@ typedef enum : uint32_t {
  */
 
 typedef enum : uint32_t {
-  k_ra8_gaflectr_mask_aflpn = 0xFUL,
-  k_ra8_gaflectr_bit_afldae = 1UL << 8U,
+  k_ra8_gaflectr_mask_aflpn = 0xFUL,     /**< RA8 gaflectr mask aflpn. */
+  k_ra8_gaflectr_bit_afldae = 1UL << 8U, /**< RA8 gaflectr bit afldae. */
 } ra8_gaflectr_bits_t;
 
 /**

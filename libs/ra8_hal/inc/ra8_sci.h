@@ -68,9 +68,9 @@ extern "C" {
  * @brief Parity mode for ``ra8_sci_cfg_t::parity``.
  */
 typedef enum : uint8_t {
-  k_ra8_sci_parity_none = 0U,
-  k_ra8_sci_parity_even = 1U,
-  k_ra8_sci_parity_odd  = 2U,
+  k_ra8_sci_parity_none = 0U, /**< RA8 SCI parity none. */
+  k_ra8_sci_parity_even = 1U, /**< RA8 SCI parity even. */
+  k_ra8_sci_parity_odd  = 2U, /**< RA8 SCI parity odd.  */
 } ra8_sci_parity_t;
 
 /**
@@ -78,8 +78,8 @@ typedef enum : uint8_t {
  * @brief Stop-bit count.
  */
 typedef enum : uint8_t {
-  k_ra8_sci_stop_1 = 0U,
-  k_ra8_sci_stop_2 = 1U,
+  k_ra8_sci_stop_1 = 0U, /**< RA8 SCI stop 1. */
+  k_ra8_sci_stop_2 = 1U, /**< RA8 SCI stop 2. */
 } ra8_sci_stop_bits_t;
 
 /**
@@ -87,8 +87,8 @@ typedef enum : uint8_t {
  * @brief Data-bit count.
  */
 typedef enum : uint8_t {
-  k_ra8_sci_data_7 = 7U,
-  k_ra8_sci_data_8 = 8U,
+  k_ra8_sci_data_7 = 7U, /**< RA8 SCI data 7. */
+  k_ra8_sci_data_8 = 8U, /**< RA8 SCI data 8. */
 } ra8_sci_data_bits_t;
 
 /**
@@ -116,10 +116,10 @@ typedef struct {
  * @brief Bit mask of SCI error flags.
  */
 typedef enum : uint8_t {
-  k_ra8_sci_err_none    = 0x00U,
-  k_ra8_sci_err_overrun = 0x01U, /**< ORER set. */
-  k_ra8_sci_err_framing = 0x02U, /**< FER set.  */
-  k_ra8_sci_err_parity  = 0x04U, /**< PER set.  */
+  k_ra8_sci_err_none    = 0x00U, /**< RA8 SCI error none. */
+  k_ra8_sci_err_overrun = 0x01U, /**< ORER set.           */
+  k_ra8_sci_err_framing = 0x02U, /**< FER set.            */
+  k_ra8_sci_err_parity  = 0x04U, /**< PER set.            */
 } ra8_sci_err_mask_t;
 
 /**

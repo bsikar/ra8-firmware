@@ -112,7 +112,7 @@ typedef enum : uint8_t {
  * @brief Sentinel for "no slot allocated".
  */
 typedef enum : uint16_t {
-  k_ra8_isr_slot_none = 0xFFFFU,
+  k_ra8_isr_slot_none = 0xFFFFU, /**< RA8 ISR slot none. */
 } ra8_isr_invalid_slot_t;
 
 /**

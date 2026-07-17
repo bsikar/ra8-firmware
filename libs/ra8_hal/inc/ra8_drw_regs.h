@@ -193,12 +193,12 @@ typedef enum : uint32_t {
   k_ra8_drw_status_buserrmfb    = (1UL << 8U),  /**< FB bus error.              */
   k_ra8_drw_status_buserrmtxmrl = (1UL << 9U),  /**< Texture/RLE bus error.     */
   k_ra8_drw_status_buserrmdl    = (1UL << 10U), /**< Display list bus error.    */
-  k_ra8_drw_status_busy_mask =
-    (k_ra8_drw_status_busyenum | k_ra8_drw_status_busywrite | k_ra8_drw_status_dlistactive),
-  k_ra8_drw_status_irq_mask =
-    (k_ra8_drw_status_enumirq | k_ra8_drw_status_dlistirq | k_ra8_drw_status_busirq),
-  k_ra8_drw_status_buserr_mask =
-    (k_ra8_drw_status_buserrmfb | k_ra8_drw_status_buserrmtxmrl | k_ra8_drw_status_buserrmdl),
+  k_ra8_drw_status_busy_mask    = (k_ra8_drw_status_busyenum | k_ra8_drw_status_busywrite |
+                                   k_ra8_drw_status_dlistactive), /**< RA8 DRW status busy mask. */
+  k_ra8_drw_status_irq_mask     = (k_ra8_drw_status_enumirq | k_ra8_drw_status_dlistirq |
+                                   k_ra8_drw_status_busirq), /**< RA8 DRW status IRQ mask. */
+  k_ra8_drw_status_buserr_mask  = (k_ra8_drw_status_buserrmfb | k_ra8_drw_status_buserrmtxmrl |
+                                   k_ra8_drw_status_buserrmdl), /**< RA8 DRW status buserr mask. */
 } ra8_drw_status_mask_t;
 
 /* =============================================================================
@@ -225,10 +225,10 @@ typedef enum : uint32_t {
   k_ra8_drw_irqctl_dlistirqclr = (1UL << 3U), /**< Clear DLISTIRQ.  */
   k_ra8_drw_irqctl_busirqen    = (1UL << 4U), /**< BUSIRQ unmask.   */
   k_ra8_drw_irqctl_busirqclr   = (1UL << 5U), /**< Clear BUSIRQ.    */
-  k_ra8_drw_irqctl_all_clr =
-    (k_ra8_drw_irqctl_enumirqclr | k_ra8_drw_irqctl_dlistirqclr | k_ra8_drw_irqctl_busirqclr),
-  k_ra8_drw_irqctl_all_en =
-    (k_ra8_drw_irqctl_enumirqen | k_ra8_drw_irqctl_dlistirqen | k_ra8_drw_irqctl_busirqen),
+  k_ra8_drw_irqctl_all_clr     = (k_ra8_drw_irqctl_enumirqclr | k_ra8_drw_irqctl_dlistirqclr |
+                                  k_ra8_drw_irqctl_busirqclr), /**< RA8 DRW irqctl all clr. */
+  k_ra8_drw_irqctl_all_en      = (k_ra8_drw_irqctl_enumirqen | k_ra8_drw_irqctl_dlistirqen |
+                                  k_ra8_drw_irqctl_busirqen), /**< RA8 DRW irqctl all en. */
 } ra8_drw_irqctl_mask_t;
 
 /* =============================================================================
@@ -254,8 +254,10 @@ typedef enum : uint32_t {
   k_ra8_drw_cachectl_cflushfx  = (1UL << 1U), /**< FB cache flush.       */
   k_ra8_drw_cachectl_cenabletx = (1UL << 2U), /**< Texture cache enable. */
   k_ra8_drw_cachectl_cflushtx  = (1UL << 3U), /**< Texture cache flush.  */
-  k_ra8_drw_cachectl_all_en    = (k_ra8_drw_cachectl_cenablefx | k_ra8_drw_cachectl_cenabletx),
-  k_ra8_drw_cachectl_all_flush = (k_ra8_drw_cachectl_cflushfx | k_ra8_drw_cachectl_cflushtx),
+  k_ra8_drw_cachectl_all_en =
+    (k_ra8_drw_cachectl_cenablefx | k_ra8_drw_cachectl_cenabletx), /**< RA8 DRW cachectl all en. */
+  k_ra8_drw_cachectl_all_flush =
+    (k_ra8_drw_cachectl_cflushfx | k_ra8_drw_cachectl_cflushtx), /**< RA8 DRW cachectl all flush. */
 } ra8_drw_cachectl_mask_t;
 
 /* =============================================================================
@@ -358,13 +360,14 @@ typedef enum : uint32_t {
   k_ra8_drw_control_unioncd       = (1UL << 21U), /**< Union C,D -> final. */
   k_ra8_drw_control_spanabort     = (1UL << 22U), /**< Convex-shape opt.   */
   k_ra8_drw_control_spanstore     = (1UL << 23U), /**< Span-store opt.     */
-  k_ra8_drw_control_quad_box      = (k_ra8_drw_control_lim1en | k_ra8_drw_control_lim2en |
-                                     k_ra8_drw_control_lim3en | k_ra8_drw_control_lim4en),
-  k_ra8_drw_control_triangle =
-    (k_ra8_drw_control_lim1en | k_ra8_drw_control_lim2en | k_ra8_drw_control_lim3en),
+  k_ra8_drw_control_quad_box =
+    (k_ra8_drw_control_lim1en | k_ra8_drw_control_lim2en | k_ra8_drw_control_lim3en |
+     k_ra8_drw_control_lim4en), /**< RA8 DRW control quad box. */
+  k_ra8_drw_control_triangle = (k_ra8_drw_control_lim1en | k_ra8_drw_control_lim2en |
+                                k_ra8_drw_control_lim3en), /**< RA8 DRW control triangle. */
   k_ra8_drw_control_line_quad =
     (k_ra8_drw_control_lim1en | k_ra8_drw_control_lim2en | k_ra8_drw_control_lim3en |
-     k_ra8_drw_control_lim4en | k_ra8_drw_control_union12),
+     k_ra8_drw_control_lim4en | k_ra8_drw_control_union12), /**< RA8 DRW control line quad. */
 } ra8_drw_control_mask_t;
 
 /* =============================================================================

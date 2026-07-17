@@ -74,7 +74,7 @@ typedef enum : uintptr_t {
   k_ra8_mstp_base_addr = 0x50203000UL, /**< R_MSTP block base (NS alias bit[28]=1). */
 #else
   k_ra8_mstp_base_addr = 0x40203000UL, /**< R_MSTP block base. */
-#endif
+#endif /**< (anon). */
 } ra8_mstp_addr_t;
 
 /**
@@ -116,11 +116,11 @@ static inline volatile r_mstp_regs_t* ra8_mstp(void)
  * @brief Which of MSTPCRA..MSTPCRE owns the bit.
  */
 typedef enum : uint8_t {
-  k_ra8_mstp_reg_a = 0U,
-  k_ra8_mstp_reg_b = 1U,
-  k_ra8_mstp_reg_c = 2U,
-  k_ra8_mstp_reg_d = 3U,
-  k_ra8_mstp_reg_e = 4U,
+  k_ra8_mstp_reg_a = 0U, /**< RA8 mstp register a. */
+  k_ra8_mstp_reg_b = 1U, /**< RA8 mstp register b. */
+  k_ra8_mstp_reg_c = 2U, /**< RA8 mstp register c. */
+  k_ra8_mstp_reg_d = 3U, /**< RA8 mstp register d. */
+  k_ra8_mstp_reg_e = 4U, /**< RA8 mstp register e. */
 } ra8_mstp_reg_t;
 
 /**

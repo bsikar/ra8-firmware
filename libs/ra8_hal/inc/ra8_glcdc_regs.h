@@ -44,11 +44,11 @@ extern "C" {
 #include <stdint.h>
 
 typedef enum : uintptr_t {
-  k_ra8_glcdc_base_addr    = 0x40342000UL,
-  k_ra8_mipi_dsi_base_addr = 0x40346000UL,
-  k_ra8_mipi_phy_base_addr = 0x40346C00UL,
-  k_ra8_mipi_csi_base_addr = 0x40347000UL,
-  k_ra8_ceu_base_addr      = 0x40348000UL,
+  k_ra8_glcdc_base_addr    = 0x40342000UL, /**< RA8 GLCDC base address.    */
+  k_ra8_mipi_dsi_base_addr = 0x40346000UL, /**< RA8 mipi dsi base address. */
+  k_ra8_mipi_phy_base_addr = 0x40346C00UL, /**< RA8 mipi PHY base address. */
+  k_ra8_mipi_csi_base_addr = 0x40347000UL, /**< RA8 mipi csi base address. */
+  k_ra8_ceu_base_addr      = 0x40348000UL, /**< RA8 CEU base address.      */
 } ra8_display_addr_t;
 
 /**
@@ -287,14 +287,14 @@ static inline volatile ra8_glcdc_gam_t* ra8_glcdc_gam_regs(uint8_t channel_idx)
  */
 
 typedef enum : uint16_t {
-  k_ra8_glcdc_ek_h_active = 1024U,
-  k_ra8_glcdc_ek_v_active = 600U,
-  k_ra8_glcdc_ek_h_front  = 160U,
-  k_ra8_glcdc_ek_h_back   = 140U,
-  k_ra8_glcdc_ek_h_sync   = 20U,
-  k_ra8_glcdc_ek_v_front  = 12U,
-  k_ra8_glcdc_ek_v_back   = 20U,
-  k_ra8_glcdc_ek_v_sync   = 3U,
+  k_ra8_glcdc_ek_h_active = 1024U, /**< RA8 GLCDC ek h active. */
+  k_ra8_glcdc_ek_v_active = 600U,  /**< RA8 GLCDC ek v active. */
+  k_ra8_glcdc_ek_h_front  = 160U,  /**< RA8 GLCDC ek h front.  */
+  k_ra8_glcdc_ek_h_back   = 140U,  /**< RA8 GLCDC ek h back.   */
+  k_ra8_glcdc_ek_h_sync   = 20U,   /**< RA8 GLCDC ek h sync.   */
+  k_ra8_glcdc_ek_v_front  = 12U,   /**< RA8 GLCDC ek v front.  */
+  k_ra8_glcdc_ek_v_back   = 20U,   /**< RA8 GLCDC ek v back.   */
+  k_ra8_glcdc_ek_v_sync   = 3U,    /**< RA8 GLCDC ek v sync.   */
 } ra8_glcdc_ek_timing_t;
 
 typedef enum : uint32_t {

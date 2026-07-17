@@ -41,7 +41,7 @@ static const ra8_mstp_t s_poeg_mstp_table[k_ra8_poeg_group_count] = {
  */
 typedef enum : uint32_t {
   k_ra8_poeg_status_all = k_ra8_poeg_status_pidf | k_ra8_poeg_status_iocf | k_ra8_poeg_status_ovrf |
-                          k_ra8_poeg_status_ssf | k_ra8_poeg_status_st,
+                          k_ra8_poeg_status_ssf | k_ra8_poeg_status_st, /**< RA8 poeg status all. */
 } ra8_poeg_bits_t;
 
 /**
@@ -49,8 +49,8 @@ typedef enum : uint32_t {
  * @brief Per-group runtime state.
  */
 typedef struct {
-  ra8_poeg_event_fn_t fn;
-  void*               ctx;
+  ra8_poeg_event_fn_t fn;  /**< Fn.  */
+  void*               ctx; /**< Ctx. */
 } ra8_poeg_state_t;
 
 static ra8_poeg_state_t s_poeg_state[k_ra8_poeg_group_count];

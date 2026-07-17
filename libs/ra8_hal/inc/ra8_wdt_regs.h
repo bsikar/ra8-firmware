@@ -199,12 +199,12 @@ typedef enum : uint16_t {
  * others are marked "Setting prohibited".
  */
 typedef enum : uint16_t {
-  k_ra8_wdt_div_value_4    = 4U,
-  k_ra8_wdt_div_value_64   = 64U,
-  k_ra8_wdt_div_value_128  = 128U,
-  k_ra8_wdt_div_value_512  = 512U,
-  k_ra8_wdt_div_value_2048 = 2048U,
-  k_ra8_wdt_div_value_8192 = 8192U,
+  k_ra8_wdt_div_value_4    = 4U,    /**< RA8 wdt div value 4.    */
+  k_ra8_wdt_div_value_64   = 64U,   /**< RA8 wdt div value 64.   */
+  k_ra8_wdt_div_value_128  = 128U,  /**< RA8 wdt div value 128.  */
+  k_ra8_wdt_div_value_512  = 512U,  /**< RA8 wdt div value 512.  */
+  k_ra8_wdt_div_value_2048 = 2048U, /**< RA8 wdt div value 2048. */
+  k_ra8_wdt_div_value_8192 = 8192U, /**< RA8 wdt div value 8192. */
 } ra8_wdt_div_value_t;
 
 /**

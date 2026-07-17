@@ -62,21 +62,21 @@ extern "C" {
  * on the package. Use `k_ra8_port_count` for loop bounds.
  */
 typedef enum : uint8_t {
-  k_ra8_port_0     = 0U,
-  k_ra8_port_1     = 1U,
-  k_ra8_port_2     = 2U,
-  k_ra8_port_3     = 3U,
-  k_ra8_port_4     = 4U,
-  k_ra8_port_5     = 5U,
-  k_ra8_port_6     = 6U,
-  k_ra8_port_7     = 7U,
-  k_ra8_port_8     = 8U,
-  k_ra8_port_9     = 9U,
-  k_ra8_port_10    = 10U,
-  k_ra8_port_11    = 11U,
-  k_ra8_port_12    = 12U,
-  k_ra8_port_13    = 13U,
-  k_ra8_port_14    = 14U,
+  k_ra8_port_0     = 0U,  /**< RA8 port 0.               */
+  k_ra8_port_1     = 1U,  /**< RA8 port 1.               */
+  k_ra8_port_2     = 2U,  /**< RA8 port 2.               */
+  k_ra8_port_3     = 3U,  /**< RA8 port 3.               */
+  k_ra8_port_4     = 4U,  /**< RA8 port 4.               */
+  k_ra8_port_5     = 5U,  /**< RA8 port 5.               */
+  k_ra8_port_6     = 6U,  /**< RA8 port 6.               */
+  k_ra8_port_7     = 7U,  /**< RA8 port 7.               */
+  k_ra8_port_8     = 8U,  /**< RA8 port 8.               */
+  k_ra8_port_9     = 9U,  /**< RA8 port 9.               */
+  k_ra8_port_10    = 10U, /**< RA8 port 10.              */
+  k_ra8_port_11    = 11U, /**< RA8 port 11.              */
+  k_ra8_port_12    = 12U, /**< RA8 port 12.              */
+  k_ra8_port_13    = 13U, /**< RA8 port 13.              */
+  k_ra8_port_14    = 14U, /**< RA8 port 14.              */
   k_ra8_port_count = 15U, /**< Number of ports (0..14).  */
   k_ra8_port_max   = 14U, /**< Highest valid port index. */
 } ra8_port_t;
@@ -91,22 +91,22 @@ typedef enum : uint8_t {
  * @brief Pin indices within an IOPORT port (0..15).
  */
 typedef enum : uint8_t {
-  k_ra8_pin_0     = 0U,
-  k_ra8_pin_1     = 1U,
-  k_ra8_pin_2     = 2U,
-  k_ra8_pin_3     = 3U,
-  k_ra8_pin_4     = 4U,
-  k_ra8_pin_5     = 5U,
-  k_ra8_pin_6     = 6U,
-  k_ra8_pin_7     = 7U,
-  k_ra8_pin_8     = 8U,
-  k_ra8_pin_9     = 9U,
-  k_ra8_pin_10    = 10U,
-  k_ra8_pin_11    = 11U,
-  k_ra8_pin_12    = 12U,
-  k_ra8_pin_13    = 13U,
-  k_ra8_pin_14    = 14U,
-  k_ra8_pin_15    = 15U,
+  k_ra8_pin_0     = 0U,  /**< RA8 pin 0.               */
+  k_ra8_pin_1     = 1U,  /**< RA8 pin 1.               */
+  k_ra8_pin_2     = 2U,  /**< RA8 pin 2.               */
+  k_ra8_pin_3     = 3U,  /**< RA8 pin 3.               */
+  k_ra8_pin_4     = 4U,  /**< RA8 pin 4.               */
+  k_ra8_pin_5     = 5U,  /**< RA8 pin 5.               */
+  k_ra8_pin_6     = 6U,  /**< RA8 pin 6.               */
+  k_ra8_pin_7     = 7U,  /**< RA8 pin 7.               */
+  k_ra8_pin_8     = 8U,  /**< RA8 pin 8.               */
+  k_ra8_pin_9     = 9U,  /**< RA8 pin 9.               */
+  k_ra8_pin_10    = 10U, /**< RA8 pin 10.              */
+  k_ra8_pin_11    = 11U, /**< RA8 pin 11.              */
+  k_ra8_pin_12    = 12U, /**< RA8 pin 12.              */
+  k_ra8_pin_13    = 13U, /**< RA8 pin 13.              */
+  k_ra8_pin_14    = 14U, /**< RA8 pin 14.              */
+  k_ra8_pin_15    = 15U, /**< RA8 pin 15.              */
   k_ra8_pin_count = 16U, /**< Number of pins per port. */
   k_ra8_pin_max   = 15U, /**< Highest valid pin index. */
 } ra8_pin_t;

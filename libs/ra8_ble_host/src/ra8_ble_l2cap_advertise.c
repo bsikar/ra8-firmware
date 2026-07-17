@@ -98,8 +98,8 @@ static ra8_err_t internal_advertise_validate(const uint8_t* adv_data,
                                              uint16_t       interval_ms)
 {
   enum : uint16_t {
-    k_min_interval_ms = 20U,
-    k_max_interval_ms = 10240U,
+    k_min_interval_ms = 20U,    /**< Minimum interval ms. */
+    k_max_interval_ms = 10240U, /**< Maximum interval ms. */
   };
 
   if (s_ble_host_state.initialized == 0U) {
@@ -150,14 +150,14 @@ static ra8_err_t internal_set_adv_params(uint16_t interval_ms)
 {
   enum : uint16_t {
     /* 0.625 ms units per Vol 4 Part E 7.8.5. interval = ms * 1000 / 625 = ms*8/5. */
-    k_us625_per_ms_num     = 8U,
-    k_us625_per_ms_den     = 5U,
-    k_op_le_set_adv_params = 0x2006U,
+    k_us625_per_ms_num     = 8U,      /**< Us625 per ms number.  */
+    k_us625_per_ms_den     = 5U,      /**< Us625 per ms den.     */
+    k_op_le_set_adv_params = 0x2006U, /**< Op le set adv params. */
   };
   enum : uint8_t {
-    k_adv_params_param_byte = 15U,
-    k_offset_chan_map       = 13U,
-    k_chan_map_all          = 0x07U,
+    k_adv_params_param_byte = 15U,   /**< Adv params param byte. */
+    k_offset_chan_map       = 13U,   /**< Offset chan map.       */
+    k_chan_map_all          = 0x07U, /**< Chan map all.          */
   };
   const uint16_t interval_625us =
     (uint16_t)((uint32_t)interval_ms * (uint32_t)k_us625_per_ms_num / (uint32_t)k_us625_per_ms_den);
@@ -198,10 +198,10 @@ static ra8_err_t internal_set_adv_params(uint16_t interval_ms)
 static ra8_err_t internal_set_scan_response(const uint8_t* scan_resp, uint8_t scan_resp_len)
 {
   enum : uint16_t {
-    k_op_le_set_scan_resp_data = 0x2009U,
+    k_op_le_set_scan_resp_data = 0x2009U, /**< Op le set scan resp data. */
   };
   enum : uint8_t {
-    k_scan_resp_param_byte = 32U,
+    k_scan_resp_param_byte = 32U, /**< Scan resp param byte. */
   };
   uint8_t sr[k_scan_resp_param_byte] = {};
   sr[0]                              = scan_resp_len;

@@ -99,7 +99,7 @@ typedef struct {
  * APIs can coexist without one tearing down the other's entry.
  */
 typedef enum : uint8_t {
-  k_ra8_wdt_legacy_slot = 0U,
+  k_ra8_wdt_legacy_slot = 0U, /**< RA8 wdt legacy slot. */
 } ra8_wdt_legacy_slot_t;
 
 /**
@@ -159,7 +159,8 @@ static ra8_wdt_ofs_reader_fn_t s_ofs_reader = internal_default_ofs_reader;
  * @brief Union of the two WDTSR top-flag bits the driver cares about.
  */
 typedef enum : uint16_t {
-  k_ra8_wdt_status_all = k_ra8_wdt_status_underflow | k_ra8_wdt_status_refresh,
+  k_ra8_wdt_status_all =
+    k_ra8_wdt_status_underflow | k_ra8_wdt_status_refresh, /**< RA8 wdt status all. */
 } ra8_wdt_status_combined_t;
 
 /* =============================================================================

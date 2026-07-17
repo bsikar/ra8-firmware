@@ -28,9 +28,9 @@ static const char* s_tag = "TIME";
 static volatile uint32_t s_tick_ms = 0U;
 
 typedef enum : uintptr_t {
-  k_ra8_systick_csr_addr = 0xE000E010UL,
-  k_ra8_systick_rvr_addr = 0xE000E014UL,
-  k_ra8_systick_cvr_addr = 0xE000E018UL,
+  k_ra8_systick_csr_addr = 0xE000E010UL, /**< RA8 systick csr address. */
+  k_ra8_systick_rvr_addr = 0xE000E014UL, /**< RA8 systick rvr address. */
+  k_ra8_systick_cvr_addr = 0xE000E018UL, /**< RA8 systick cvr address. */
   /* DWT (Data Watchpoint and Trace) gives a free-running cycle counter
    * that ticks every CPU cycle regardless of PRIMASK -- needed by
    * ra8_delay_ms when SysTick IRQ can't dispatch (early boot, IRQ-off
@@ -41,8 +41,8 @@ typedef enum : uintptr_t {
 } ra8_systick_addr_t;
 
 typedef enum : uint32_t {
-  k_ra8_systick_csr_enable    = 0x00000001UL,
-  k_ra8_systick_csr_tickint   = 0x00000002UL,
+  k_ra8_systick_csr_enable    = 0x00000001UL, /**< RA8 systick csr enable.     */
+  k_ra8_systick_csr_tickint   = 0x00000002UL, /**< RA8 systick csr tickint.    */
   k_ra8_systick_csr_clksource = 0x00000004UL, /**< 1 = CPU clock, 0 = ext ref. */
   k_ra8_dwt_demcr_trcena      = 0x01000000UL, /**< DEMCR.TRCENA (bit 24).      */
   k_ra8_dwt_ctrl_cyccntena    = 0x00000001UL, /**< DWT_CTRL.CYCCNTENA (bit 0). */

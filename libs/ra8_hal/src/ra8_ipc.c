@@ -44,7 +44,7 @@ static const char* s_tag = "IPC";
  */
 /** @brief Secure->Non-secure address alias offset. */
 typedef enum : uintptr_t {
-  k_ipc_ns_alias_offset = 0x10000000UL,
+  k_ipc_ns_alias_offset = 0x10000000UL, /**< Ipc ns alias offset. */
 } ipc_alias_t;
 
 typedef enum : uint32_t {
@@ -52,7 +52,7 @@ typedef enum : uint32_t {
     k_ra8_ipc_event_irq0 | k_ra8_ipc_event_irq1 | k_ra8_ipc_event_irq2 | k_ra8_ipc_event_irq3 |
     k_ra8_ipc_event_irq4 | k_ra8_ipc_event_irq5 | k_ra8_ipc_event_irq6 | k_ra8_ipc_event_irq7 |
     k_ra8_ipc_event_msg_ready | k_ra8_ipc_event_fifo_full | k_ra8_ipc_event_err_empty |
-    k_ra8_ipc_event_err_full,
+    k_ra8_ipc_event_err_full, /**< RA8 ipc internal event full mask. */
 } ra8_ipc_internal_const_t;
 
 /**

@@ -170,22 +170,22 @@ typedef enum : uint32_t {
  *          == active-low  PWM
  */
 typedef enum : uint32_t {
-  k_ra8_gpt_gtioa_mask       = 0x0000001FUL,
-  k_ra8_gpt_gtioa_shift      = 0U,
-  k_ra8_gpt_oadflt_mask      = 0x00000040UL,
-  k_ra8_gpt_oadflt_shift     = 6U,
-  k_ra8_gpt_oae_mask         = 0x00000100UL,
-  k_ra8_gpt_oadf_mask        = 0x00000600UL,
-  k_ra8_gpt_oadf_shift       = 9U,
-  k_ra8_gpt_gtiob_mask       = 0x001F0000UL,
-  k_ra8_gpt_gtiob_shift      = 16U,
-  k_ra8_gpt_obdflt_mask      = 0x00400000UL,
-  k_ra8_gpt_obdflt_shift     = 22U,
-  k_ra8_gpt_obe_mask         = 0x01000000UL,
-  k_ra8_gpt_obdf_mask        = 0x06000000UL,
-  k_ra8_gpt_obdf_shift       = 25U,
-  k_ra8_gpt_gtio_active_high = 0x9UL,
-  k_ra8_gpt_gtio_active_low  = 0x6UL,
+  k_ra8_gpt_gtioa_mask       = 0x0000001FUL, /**< RA8 GPT gtioa mask.       */
+  k_ra8_gpt_gtioa_shift      = 0U,           /**< RA8 GPT gtioa shift.      */
+  k_ra8_gpt_oadflt_mask      = 0x00000040UL, /**< RA8 GPT oadflt mask.      */
+  k_ra8_gpt_oadflt_shift     = 6U,           /**< RA8 GPT oadflt shift.     */
+  k_ra8_gpt_oae_mask         = 0x00000100UL, /**< RA8 GPT oae mask.         */
+  k_ra8_gpt_oadf_mask        = 0x00000600UL, /**< RA8 GPT oadf mask.        */
+  k_ra8_gpt_oadf_shift       = 9U,           /**< RA8 GPT oadf shift.       */
+  k_ra8_gpt_gtiob_mask       = 0x001F0000UL, /**< RA8 GPT gtiob mask.       */
+  k_ra8_gpt_gtiob_shift      = 16U,          /**< RA8 GPT gtiob shift.      */
+  k_ra8_gpt_obdflt_mask      = 0x00400000UL, /**< RA8 GPT obdflt mask.      */
+  k_ra8_gpt_obdflt_shift     = 22U,          /**< RA8 GPT obdflt shift.     */
+  k_ra8_gpt_obe_mask         = 0x01000000UL, /**< RA8 GPT obe mask.         */
+  k_ra8_gpt_obdf_mask        = 0x06000000UL, /**< RA8 GPT obdf mask.        */
+  k_ra8_gpt_obdf_shift       = 25U,          /**< RA8 GPT obdf shift.       */
+  k_ra8_gpt_gtio_active_high = 0x9UL,        /**< RA8 GPT gtio active high. */
+  k_ra8_gpt_gtio_active_low  = 0x6UL,        /**< RA8 GPT gtio active low.  */
 } ra8_gpt_gtior_bits_t;
 
 /**
@@ -204,10 +204,10 @@ typedef enum : uint32_t {
  * GTCCR[3] respectively per HUM Ch 22.2.20.
  */
 typedef enum : uint32_t {
-  k_ra8_gpt_gtber_ccra_single = 0x00010000UL,
-  k_ra8_gpt_gtber_ccrb_single = 0x00040000UL,
-  k_ra8_gpt_gtdtcr_tde        = 0x00000001UL,
-  k_ra8_gpt_gtcr_cst_mask     = 0x00000001UL,
+  k_ra8_gpt_gtber_ccra_single = 0x00010000UL, /**< RA8 GPT gtber ccra single. */
+  k_ra8_gpt_gtber_ccrb_single = 0x00040000UL, /**< RA8 GPT gtber ccrb single. */
+  k_ra8_gpt_gtdtcr_tde        = 0x00000001UL, /**< RA8 GPT gtdtcr tde.        */
+  k_ra8_gpt_gtcr_cst_mask     = 0x00000001UL, /**< RA8 GPT gtcr cst mask.     */
 } ra8_gpt_buffer_bits_t;
 
 /**
@@ -222,10 +222,10 @@ typedef enum : uint32_t {
  * GTCCRB is GTCCRE.
  */
 typedef enum : uint8_t {
-  k_ra8_gpt_ccr_idx_a = 0U,
-  k_ra8_gpt_ccr_idx_b = 1U,
-  k_ra8_gpt_ccr_idx_c = 2U,
-  k_ra8_gpt_ccr_idx_e = 3U,
+  k_ra8_gpt_ccr_idx_a = 0U, /**< RA8 GPT ccr index a. */
+  k_ra8_gpt_ccr_idx_b = 1U, /**< RA8 GPT ccr index b. */
+  k_ra8_gpt_ccr_idx_c = 2U, /**< RA8 GPT ccr index c. */
+  k_ra8_gpt_ccr_idx_e = 3U, /**< RA8 GPT ccr index e. */
 } ra8_gpt_ccr_idx_t;
 
 /**

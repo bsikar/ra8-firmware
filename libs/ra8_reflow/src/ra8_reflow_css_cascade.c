@@ -509,8 +509,8 @@ static void priv_cascade_emphasis(ra8_css_style_t*       out,
                                   const ra8_css_style_t* inl)
 {
   static const struct {
-    uint8_t setbit;
-    uint8_t stylebit;
+    uint8_t setbit;   /**< Setbit.   */
+    uint8_t stylebit; /**< Stylebit. */
   } k_props[3] = {
     {(uint8_t)k_ra8_css_set_bold, (uint8_t)k_ra8_reflow_style_bold},
     {(uint8_t)k_ra8_css_set_italic, (uint8_t)k_ra8_reflow_style_italic},

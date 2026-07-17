@@ -84,7 +84,7 @@ typedef enum : uint8_t {
   k_ra8_ofs_word_count = 4U, /**< OFS word count on this device (RA8D2: 4).        */
 #else
   k_ra8_ofs_word_count = 3U, /**< OFS word count on this device (RA8P1: 3, no OFS3). */
-#endif
+#endif /**< (anon). */
 } ra8_ofs_word_t;
 
 /**

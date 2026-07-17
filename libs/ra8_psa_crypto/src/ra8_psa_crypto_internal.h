@@ -124,14 +124,14 @@ typedef enum : uint8_t {
  * @brief SHA-256 initial hash values H0..H7 (FIPS 180-4 Sec 5.3.3).
  */
 typedef enum : uint32_t {
-  k_ra8_psa_sha256_h0 = 0x6a09e667U,
-  k_ra8_psa_sha256_h1 = 0xbb67ae85U,
-  k_ra8_psa_sha256_h2 = 0x3c6ef372U,
-  k_ra8_psa_sha256_h3 = 0xa54ff53aU,
-  k_ra8_psa_sha256_h4 = 0x510e527fU,
-  k_ra8_psa_sha256_h5 = 0x9b05688cU,
-  k_ra8_psa_sha256_h6 = 0x1f83d9abU,
-  k_ra8_psa_sha256_h7 = 0x5be0cd19U,
+  k_ra8_psa_sha256_h0 = 0x6a09e667U, /**< RA8 PSA sha256 h0. */
+  k_ra8_psa_sha256_h1 = 0xbb67ae85U, /**< RA8 PSA sha256 h1. */
+  k_ra8_psa_sha256_h2 = 0x3c6ef372U, /**< RA8 PSA sha256 h2. */
+  k_ra8_psa_sha256_h3 = 0xa54ff53aU, /**< RA8 PSA sha256 h3. */
+  k_ra8_psa_sha256_h4 = 0x510e527fU, /**< RA8 PSA sha256 h4. */
+  k_ra8_psa_sha256_h5 = 0x9b05688cU, /**< RA8 PSA sha256 h5. */
+  k_ra8_psa_sha256_h6 = 0x1f83d9abU, /**< RA8 PSA sha256 h6. */
+  k_ra8_psa_sha256_h7 = 0x5be0cd19U, /**< RA8 PSA sha256 h7. */
 } ra8_psa_sha256_iv_t;
 
 /* =============================================================================
@@ -156,7 +156,7 @@ struct ra8_psa_key_handle {
   uint8_t            key[k_ra8_psa_max_key_bytes]; /**< Raw key material (sim).   */
 #ifndef RA8_SIMULATOR_MODE
   psa_key_id_t psa_id; /**< Underlying PSA key identifier. */
-#endif
+#endif                 /**< Endif.                         */
 };
 
 #ifdef RA8_SIMULATOR_MODE

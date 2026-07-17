@@ -51,57 +51,57 @@
  * @brief Misc JPEG masks / offsets.
  */
 typedef enum : uint16_t {
-  k_jpeg_byte_mask    = 0xFFU,
-  k_jpeg_nibble_mask  = 0xFU,
-  k_jpeg_reservoir_lo = 24U,
-  k_jpeg_sof_dims_off = 5U,
-  k_jpeg_mcu_align    = 15U,
-  k_jpeg_zrl_symbol   = 0xF0U,
+  k_jpeg_byte_mask    = 0xFFU, /**< JPEG byte mask.    */
+  k_jpeg_nibble_mask  = 0xFU,  /**< JPEG nibble mask.  */
+  k_jpeg_reservoir_lo = 24U,   /**< JPEG reservoir lo. */
+  k_jpeg_sof_dims_off = 5U,    /**< JPEG sof dims off. */
+  k_jpeg_mcu_align    = 15U,   /**< JPEG mcu align.    */
+  k_jpeg_zrl_symbol   = 0xF0U, /**< JPEG zrl symbol.   */
 } jpeg_misc_t;
 
 /** @brief Fixed-point IDCT / YCbCr shift amounts. */
 typedef enum : uint8_t {
-  k_jpeg_idct_p1_bias_sh = 27U,
-  k_jpeg_idct_p1_sh      = 28U,
-  k_jpeg_idct_p2_bias_sh = 13U,
-  k_jpeg_q14_shift       = 14U,
-  k_jpeg_ycc_q15_shift   = 14U,
+  k_jpeg_idct_p1_bias_sh = 27U, /**< JPEG idct p1 bias sh. */
+  k_jpeg_idct_p1_sh      = 28U, /**< JPEG idct p1 sh.      */
+  k_jpeg_idct_p2_bias_sh = 13U, /**< JPEG idct p2 bias sh. */
+  k_jpeg_q14_shift       = 14U, /**< JPEG q14 shift.       */
+  k_jpeg_ycc_q15_shift   = 14U, /**< JPEG ycc q15 shift.   */
 } jpeg_dsp_shift_t;
 
 /** @brief Q15 BT.601 YCbCr->RGB coefficients (== Q16 / 2). */
 typedef enum : int16_t {
-  k_cr_r_q15 = 22970, /**< 1.40200 / 2 * 2^15. */
-  k_cb_b_q15 = 29032, /**< 1.77200 / 2 * 2^15. */
-  k_cb_g_q15 = -5638,
-  k_cr_g_q15 = -11700,
+  k_cr_r_q15 = 22970,  /**< 1.40200 / 2 * 2^15. */
+  k_cb_b_q15 = 29032,  /**< 1.77200 / 2 * 2^15. */
+  k_cb_g_q15 = -5638,  /**< Cb g q15.           */
+  k_cr_g_q15 = -11700, /**< Cr g q15.           */
 } jpeg_ycc_coeff_t;
 
 /** @brief JPEG SOF marker range and stuffing markers. */
 typedef enum : uint16_t {
-  k_jpeg_marker_sof_lo = 0xFFC0U,
-  k_jpeg_marker_sof1   = 0xFFC1U,
-  k_jpeg_marker_sof_hi = 0xFFCFU,
-  k_jpeg_marker_jpg    = 0xFFC8U,
-  k_jpeg_marker_ff00   = 0xFF00U,
+  k_jpeg_marker_sof_lo = 0xFFC0U, /**< JPEG marker sof lo. */
+  k_jpeg_marker_sof1   = 0xFFC1U, /**< JPEG marker sof1.   */
+  k_jpeg_marker_sof_hi = 0xFFCFU, /**< JPEG marker sof hi. */
+  k_jpeg_marker_jpg    = 0xFFC8U, /**< JPEG marker jpg.    */
+  k_jpeg_marker_ff00   = 0xFF00U, /**< JPEG marker ff00.   */
 } jpeg_marker_range_t;
 
 /** @brief JPEG encoder quality scaling and segment field values. */
 typedef enum : uint16_t {
-  k_jpeg_q_scale_low  = 5000U,
-  k_jpeg_q_scale_high = 200U,
-  k_jpeg_q_round_bias = 50U,
-  k_jpeg_q_percent    = 100U,
-  k_jpeg_sof_seg_len  = 17U,
-  k_jpeg_sos_seg_len  = 12U,
-  k_jpeg_spectral_end = 63U,
+  k_jpeg_q_scale_low  = 5000U, /**< JPEG q scale low.    */
+  k_jpeg_q_scale_high = 200U,  /**< JPEG q scale high.   */
+  k_jpeg_q_round_bias = 50U,   /**< JPEG q round bias.   */
+  k_jpeg_q_percent    = 100U,  /**< JPEG q percent.      */
+  k_jpeg_sof_seg_len  = 17U,   /**< JPEG sof seg length. */
+  k_jpeg_sos_seg_len  = 12U,   /**< JPEG sos seg length. */
+  k_jpeg_spectral_end = 63U,   /**< JPEG spectral end.   */
 } jpeg_enc_t;
 
 /** @brief JPEG component sampling / table-selector bytes (positional). */
 typedef enum : uint8_t {
-  k_jpeg_samp_2x2       = 0x22U,
-  k_jpeg_samp_1x1       = 0x11U,
-  k_jpeg_dht_ac_chroma  = 0x11U,
-  k_jpeg_sos_sel_chroma = 0x11U,
+  k_jpeg_samp_2x2       = 0x22U, /**< JPEG samp 2x2.       */
+  k_jpeg_samp_1x1       = 0x11U, /**< JPEG samp 1x1.       */
+  k_jpeg_dht_ac_chroma  = 0x11U, /**< JPEG dht ac chroma.  */
+  k_jpeg_sos_sel_chroma = 0x11U, /**< JPEG sos sel chroma. */
 } jpeg_enc_field_t;
 
 /**
@@ -136,25 +136,25 @@ typedef enum : uint16_t {
  * @brief Sizes and indices used throughout the codec.
  */
 typedef enum : uint16_t {
-  k_ra8_jpeg_block_dim    = 8U,   /**< 8x8 DCT block edge.            */
-  k_ra8_jpeg_block_size   = 64U,  /**< Coefficients per block.        */
-  k_ra8_jpeg_max_comps    = 3U,   /**< YCbCr or grayscale only.       */
-  k_ra8_jpeg_mcu_max_dim  = 16U,  /**< 4:2:0 MCU is 16x16 luma px.    */
-  k_ra8_jpeg_huff_classes = 2U,   /**< DC + AC.                       */
-  k_ra8_jpeg_huff_ids     = 2U,   /**< Luma + chroma table id.        */
-  k_ra8_jpeg_huff_max     = 256U, /**< Max symbols per Huffman table. */
-  k_ra8_jpeg_marker_byte  = 0xFFU,
-  k_ra8_jpeg_quant_tabs   = 2U,    /**< One luma + one chroma table.  */
-  k_ra8_jpeg_enc_max_w    = 1024U, /**< Encoder max image width (px). */
-  k_ra8_jpeg_min_jpeg_len = 4U,    /**< Smallest plausible stream.    */
-  k_ra8_jpeg_garbage_len  = 5U,    /**< Garbage-input cutoff.         */
-  k_ra8_jpeg_mcu_align    = 15U,   /**< MCU alignment mask.           */
-  k_ra8_jpeg_sof0_min_len = 8U,    /**< Min SOF0 segment length.      */
-  k_ra8_jpeg_dht_hdr      = 1U,    /**< DHT TcTh byte size.           */
-  k_ra8_jpeg_sof0_hdr_len = 17U,   /**< SOF0 segment length we emit.  */
-  k_ra8_jpeg_sos_len      = 12U,   /**< SOS segment length we emit.   */
-  k_ra8_jpeg_app0_len     = 16U,   /**< APP0 (JFIF) segment length.   */
-  k_ra8_jpeg_eob_band_max = 63U,   /**< Last AC zig-zag index.        */
+  k_ra8_jpeg_block_dim    = 8U,    /**< 8x8 DCT block edge.            */
+  k_ra8_jpeg_block_size   = 64U,   /**< Coefficients per block.        */
+  k_ra8_jpeg_max_comps    = 3U,    /**< YCbCr or grayscale only.       */
+  k_ra8_jpeg_mcu_max_dim  = 16U,   /**< 4:2:0 MCU is 16x16 luma px.    */
+  k_ra8_jpeg_huff_classes = 2U,    /**< DC + AC.                       */
+  k_ra8_jpeg_huff_ids     = 2U,    /**< Luma + chroma table id.        */
+  k_ra8_jpeg_huff_max     = 256U,  /**< Max symbols per Huffman table. */
+  k_ra8_jpeg_marker_byte  = 0xFFU, /**< RA8 JPEG marker byte.          */
+  k_ra8_jpeg_quant_tabs   = 2U,    /**< One luma + one chroma table.   */
+  k_ra8_jpeg_enc_max_w    = 1024U, /**< Encoder max image width (px).  */
+  k_ra8_jpeg_min_jpeg_len = 4U,    /**< Smallest plausible stream.     */
+  k_ra8_jpeg_garbage_len  = 5U,    /**< Garbage-input cutoff.          */
+  k_ra8_jpeg_mcu_align    = 15U,   /**< MCU alignment mask.            */
+  k_ra8_jpeg_sof0_min_len = 8U,    /**< Min SOF0 segment length.       */
+  k_ra8_jpeg_dht_hdr      = 1U,    /**< DHT TcTh byte size.            */
+  k_ra8_jpeg_sof0_hdr_len = 17U,   /**< SOF0 segment length we emit.   */
+  k_ra8_jpeg_sos_len      = 12U,   /**< SOS segment length we emit.    */
+  k_ra8_jpeg_app0_len     = 16U,   /**< APP0 (JFIF) segment length.    */
+  k_ra8_jpeg_eob_band_max = 63U,   /**< Last AC zig-zag index.         */
 } ra8_jpeg_const_t;
 
 /**
@@ -162,25 +162,25 @@ typedef enum : uint16_t {
  * @brief Shift amounts and signed-cast helpers.
  */
 typedef enum : uint8_t {
-  k_ra8_jpeg_byte_shift     = 8U,
-  k_ra8_jpeg_nibble_shift   = 4U,
-  k_ra8_jpeg_nibble_mask    = 0x0FU,
-  k_ra8_jpeg_signbit_pos    = 7U,
-  k_ra8_jpeg_signbit_pos16  = 15U,
-  k_ra8_jpeg_level_offset   = 128U,
-  k_ra8_jpeg_pixel_max      = 255U,
-  k_ra8_jpeg_quality_pivot  = 50U,
-  k_ra8_jpeg_huff_lengths   = 16U,   /**< 16 BITS-list slots.          */
-  k_ra8_jpeg_zrl_runlen     = 16U,   /**< Zero-Run-Length symbol skip. */
-  k_ra8_jpeg_zrl_symbol     = 0xF0U, /**< T.81 K.3.3 ZRL byte.         */
-  k_ra8_jpeg_eob_runlen     = 0xFU,  /**< F0 high-nibble RRRR mask.    */
-  k_ra8_jpeg_dht_dc_class   = 0U,
-  k_ra8_jpeg_dht_ac_class   = 0x10U,
+  k_ra8_jpeg_byte_shift     = 8U,    /**< RA8 JPEG byte shift.          */
+  k_ra8_jpeg_nibble_shift   = 4U,    /**< RA8 JPEG nibble shift.        */
+  k_ra8_jpeg_nibble_mask    = 0x0FU, /**< RA8 JPEG nibble mask.         */
+  k_ra8_jpeg_signbit_pos    = 7U,    /**< RA8 JPEG signbit pos.         */
+  k_ra8_jpeg_signbit_pos16  = 15U,   /**< RA8 JPEG signbit pos16.       */
+  k_ra8_jpeg_level_offset   = 128U,  /**< RA8 JPEG level offset.        */
+  k_ra8_jpeg_pixel_max      = 255U,  /**< RA8 JPEG pixel maximum.       */
+  k_ra8_jpeg_quality_pivot  = 50U,   /**< RA8 JPEG quality pivot.       */
+  k_ra8_jpeg_huff_lengths   = 16U,   /**< 16 BITS-list slots.           */
+  k_ra8_jpeg_zrl_runlen     = 16U,   /**< Zero-Run-Length symbol skip.  */
+  k_ra8_jpeg_zrl_symbol     = 0xF0U, /**< T.81 K.3.3 ZRL byte.          */
+  k_ra8_jpeg_eob_runlen     = 0xFU,  /**< F0 high-nibble RRRR mask.     */
+  k_ra8_jpeg_dht_dc_class   = 0U,    /**< RA8 JPEG dht dc class.        */
+  k_ra8_jpeg_dht_ac_class   = 0x10U, /**< RA8 JPEG dht ac class.        */
   k_ra8_jpeg_y_sampling_420 = 0x22U, /**< SOF0 H/V byte for Y in 4:2:0. */
   k_ra8_jpeg_c_sampling     = 0x11U, /**< SOF0 H/V byte for chroma.     */
   k_ra8_jpeg_be_byte_mask   = 0xFFU, /**< Low-byte mask.                */
   k_ra8_jpeg_yuv_shift      = 16U,   /**< BT.601 fixed-point shift.     */
-  k_ra8_jpeg_rgb_components = 3U,
+  k_ra8_jpeg_rgb_components = 3U,    /**< RA8 JPEG RGB components.      */
 } ra8_jpeg_shift_t;
 
 /**
@@ -193,19 +193,19 @@ typedef enum : uint8_t {
  * fixed-point Q16 (multiply by `1 << 16` and round).
  */
 typedef enum : int32_t {
-  k_ra8_jpeg_yr   = 19595, /**< 0.29900 * 65536. */
-  k_ra8_jpeg_yg   = 38470, /**< 0.58700 * 65536. */
-  k_ra8_jpeg_yb   = 7471,  /**< 0.11400 * 65536. */
-  k_ra8_jpeg_cbr  = -11059,
-  k_ra8_jpeg_cbg  = -21709,
-  k_ra8_jpeg_cbb  = 32768,
-  k_ra8_jpeg_crr  = 32768,
-  k_ra8_jpeg_crg  = -27439,
-  k_ra8_jpeg_crb  = -5329,
-  k_ra8_jpeg_cr_r = 91881,  /**< 1.40200. */
-  k_ra8_jpeg_cb_b = 116130, /**< 1.77200. */
-  k_ra8_jpeg_cr_g = -46802,
-  k_ra8_jpeg_cb_g = -22554,
+  k_ra8_jpeg_yr   = 19595,  /**< 0.29900 * 65536. */
+  k_ra8_jpeg_yg   = 38470,  /**< 0.58700 * 65536. */
+  k_ra8_jpeg_yb   = 7471,   /**< 0.11400 * 65536. */
+  k_ra8_jpeg_cbr  = -11059, /**< RA8 JPEG CBR.    */
+  k_ra8_jpeg_cbg  = -21709, /**< RA8 JPEG cbg.    */
+  k_ra8_jpeg_cbb  = 32768,  /**< RA8 JPEG cbb.    */
+  k_ra8_jpeg_crr  = 32768,  /**< RA8 JPEG crr.    */
+  k_ra8_jpeg_crg  = -27439, /**< RA8 JPEG crg.    */
+  k_ra8_jpeg_crb  = -5329,  /**< RA8 JPEG crb.    */
+  k_ra8_jpeg_cr_r = 91881,  /**< 1.40200.         */
+  k_ra8_jpeg_cb_b = 116130, /**< 1.77200.         */
+  k_ra8_jpeg_cr_g = -46802, /**< RA8 JPEG cr g.   */
+  k_ra8_jpeg_cb_g = -22554, /**< RA8 JPEG cb g.   */
 } ra8_jpeg_color_coef_t;
 
 /**
@@ -383,14 +383,14 @@ typedef struct {
  * symbol lookup.
  */
 typedef struct {
-  uint8_t  bits[k_ra8_jpeg_huff_lengths]; /**< BITS list.       */
-  uint8_t  vals[k_ra8_jpeg_huff_max];     /**< Symbol order.    */
-  uint16_t huffcode[k_ra8_jpeg_huff_max]; /**< Code per symbol. */
-  uint8_t  huffsize[k_ra8_jpeg_huff_max]; /**< Code length.     */
-  int32_t  mincode[k_ra8_jpeg_huff_lengths];
-  int32_t  maxcode[k_ra8_jpeg_huff_lengths];
-  uint16_t valptr[k_ra8_jpeg_huff_lengths];
-  uint16_t total;
+  uint8_t  bits[k_ra8_jpeg_huff_lengths];    /**< BITS list.       */
+  uint8_t  vals[k_ra8_jpeg_huff_max];        /**< Symbol order.    */
+  uint16_t huffcode[k_ra8_jpeg_huff_max];    /**< Code per symbol. */
+  uint8_t  huffsize[k_ra8_jpeg_huff_max];    /**< Code length.     */
+  int32_t  mincode[k_ra8_jpeg_huff_lengths]; /**< Mincode.         */
+  int32_t  maxcode[k_ra8_jpeg_huff_lengths]; /**< Maxcode.         */
+  uint16_t valptr[k_ra8_jpeg_huff_lengths];  /**< Valptr.          */
+  uint16_t total;                            /**< Total.           */
 } ra8_jpeg_htab_t;
 
 /* ------------------------------------------------------------------ */

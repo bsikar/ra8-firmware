@@ -56,8 +56,8 @@ typedef enum : uint32_t {
  * @brief Combined CASTR status mask for FERRF | MENDF | OVFF.
  */
 typedef enum : uint8_t {
-  k_ra8_cac_status_mask_all =
-    k_ra8_cac_status_mendf | k_ra8_cac_status_ovff | k_ra8_cac_status_ferrf,
+  k_ra8_cac_status_mask_all = k_ra8_cac_status_mendf | k_ra8_cac_status_ovff |
+                              k_ra8_cac_status_ferrf, /**< RA8 cac status mask all. */
 } ra8_cac_bits_w43_t;
 
 /**
@@ -151,8 +151,8 @@ ra8_err_t ra8_cac_measure(uint16_t* out_count)
  * @brief Driver-wide runtime state.
  */
 typedef struct {
-  ra8_cac_event_fn_t fn;
-  void*              ctx;
+  ra8_cac_event_fn_t fn;  /**< Fn.  */
+  void*              ctx; /**< Ctx. */
 } ra8_cac_state_t;
 
 static ra8_cac_state_t s_cac_state;

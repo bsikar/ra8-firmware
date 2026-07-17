@@ -45,9 +45,9 @@ extern "C" {
  * ``ra8_iwdt_get_counter`` instead.
  */
 typedef enum : uint16_t {
-  k_ra8_iwdt_status_none      = 0x0000U,
-  k_ra8_iwdt_status_underflow = 0x4000U, /**< IWDTSR.UNDFF bit 14. */
-  k_ra8_iwdt_status_refresh   = 0x8000U, /**< IWDTSR.REFEF bit 15. */
+  k_ra8_iwdt_status_none      = 0x0000U, /**< RA8 iwdt status none. */
+  k_ra8_iwdt_status_underflow = 0x4000U, /**< IWDTSR.UNDFF bit 14.  */
+  k_ra8_iwdt_status_refresh   = 0x8000U, /**< IWDTSR.REFEF bit 15.  */
 } ra8_iwdt_status_mask_t;
 
 /**

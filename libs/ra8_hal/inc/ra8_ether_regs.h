@@ -21,15 +21,15 @@ extern "C" {
 #include <stdint.h>
 
 typedef enum : uintptr_t {
-  k_ra8_etha0_base_addr = 0x403CA000UL,
-  k_ra8_etha1_base_addr = 0x403CC000UL,
-  k_ra8_rmac0_base_addr = 0x403CB000UL,
-  k_ra8_rmac1_base_addr = 0x403CD000UL,
-  k_ra8_mfwd_base_addr  = 0x403C0000UL,
-  k_ra8_coma_base_addr  = 0x403C9000UL,
-  k_ra8_gptp_base_addr  = 0x403E0000UL,
-  k_ra8_eswm_base_addr  = 0x403C8000UL,
-  k_ra8_gwca0_base_addr = 0x403CE000UL,
+  k_ra8_etha0_base_addr = 0x403CA000UL, /**< RA8 etha0 base address. */
+  k_ra8_etha1_base_addr = 0x403CC000UL, /**< RA8 etha1 base address. */
+  k_ra8_rmac0_base_addr = 0x403CB000UL, /**< RA8 rmac0 base address. */
+  k_ra8_rmac1_base_addr = 0x403CD000UL, /**< RA8 rmac1 base address. */
+  k_ra8_mfwd_base_addr  = 0x403C0000UL, /**< RA8 mfwd base address.  */
+  k_ra8_coma_base_addr  = 0x403C9000UL, /**< RA8 coma base address.  */
+  k_ra8_gptp_base_addr  = 0x403E0000UL, /**< RA8 gptp base address.  */
+  k_ra8_eswm_base_addr  = 0x403C8000UL, /**< RA8 eswm base address.  */
+  k_ra8_gwca0_base_addr = 0x403CE000UL, /**< RA8 gwca0 base address. */
 } ra8_ether_addr_t;
 
 /**
@@ -291,7 +291,7 @@ typedef enum : uint32_t {
   k_ra8_gwmc_opc_disable   = 0x1U, /**< DR: Disable request.                         */
   k_ra8_gwmc_opc_config    = 0x2U, /**< CR: Config request -- LINKFIX writable here. */
   k_ra8_gwmc_opc_operation = 0x3U, /**< OR: Operation request -- frames flow.        */
-  k_ra8_gwmc_opc_mask      = 0x3U,
+  k_ra8_gwmc_opc_mask      = 0x3U, /**< RA8 gwmc opc mask.                           */
 } ra8_gwmc_opc_t;
 
 /**
@@ -433,15 +433,15 @@ typedef enum : uint16_t {
  * outstanding-transaction stream ID.
  */
 typedef enum : uint32_t {
-  k_ra8_gwdcc_ede        = 1UL << 8U,
-  k_ra8_gwdcc_ets        = 1UL << 9U,
-  k_ra8_gwdcc_sl         = 1UL << 10U,
-  k_ra8_gwdcc_dqt        = 1UL << 11U, /**< 0 = RX queue, 1 = TX queue. */
-  k_ra8_gwdcc_dcp_shift  = 16U,
-  k_ra8_gwdcc_dcp_mask   = 0x7UL << 16U,
-  k_ra8_gwdcc_balr       = 1UL << 24U,
-  k_ra8_gwdcc_osid_shift = 28U,
-  k_ra8_gwdcc_osid_mask  = 0x7UL << 28U,
+  k_ra8_gwdcc_ede        = 1UL << 8U,    /**< RA8 gwdcc ede.              */
+  k_ra8_gwdcc_ets        = 1UL << 9U,    /**< RA8 gwdcc ets.              */
+  k_ra8_gwdcc_sl         = 1UL << 10U,   /**< RA8 gwdcc sl.               */
+  k_ra8_gwdcc_dqt        = 1UL << 11U,   /**< 0 = RX queue, 1 = TX queue. */
+  k_ra8_gwdcc_dcp_shift  = 16U,          /**< RA8 gwdcc dcp shift.        */
+  k_ra8_gwdcc_dcp_mask   = 0x7UL << 16U, /**< RA8 gwdcc dcp mask.         */
+  k_ra8_gwdcc_balr       = 1UL << 24U,   /**< RA8 gwdcc balr.             */
+  k_ra8_gwdcc_osid_shift = 28U,          /**< RA8 gwdcc osid shift.       */
+  k_ra8_gwdcc_osid_mask  = 0x7UL << 28U, /**< RA8 gwdcc osid mask.        */
 } ra8_gwdcc_bits_t;
 
 /**
@@ -453,7 +453,7 @@ typedef enum : uint32_t {
  */
 static inline volatile uint32_t* ra8_gwca_gwdcc(uint32_t queue_index)
 {
-  enum : uint32_t { k_ra8_gwca_max_queues = 32U };
+  enum : uint32_t { k_ra8_gwca_max_queues = 32U /**< RA8 gwca maximum queues. */ };
   if (queue_index >= k_ra8_gwca_max_queues) {
     return nullptr;
   }

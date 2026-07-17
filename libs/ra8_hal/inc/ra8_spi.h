@@ -111,11 +111,11 @@ typedef struct {
  * @brief Bit mask of SPI error flags.
  */
 typedef enum : uint8_t {
-  k_ra8_spi_err_none     = 0x00U,
-  k_ra8_spi_err_overrun  = 0x01U, /**< SPSR.OVRF set.   */
-  k_ra8_spi_err_mode     = 0x02U, /**< SPSR.MODERF set. */
-  k_ra8_spi_err_parity   = 0x04U, /**< SPSR.PERF set.   */
-  k_ra8_spi_err_underrun = 0x08U, /**< SPSR.UDRF set.   */
+  k_ra8_spi_err_none     = 0x00U, /**< RA8 SPI error none. */
+  k_ra8_spi_err_overrun  = 0x01U, /**< SPSR.OVRF set.      */
+  k_ra8_spi_err_mode     = 0x02U, /**< SPSR.MODERF set.    */
+  k_ra8_spi_err_parity   = 0x04U, /**< SPSR.PERF set.      */
+  k_ra8_spi_err_underrun = 0x08U, /**< SPSR.UDRF set.      */
 } ra8_spi_err_mask_t;
 
 /**

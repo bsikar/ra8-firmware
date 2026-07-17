@@ -57,7 +57,8 @@ typedef enum : uint8_t {
  * paper-empty bit clear. Per USB Printer 1.1 sec 4.2.2.
  */
 typedef enum : uint8_t {
-  k_ra8_pprn_default_port_status = (uint8_t)((1U << 4U) | (1U << 3U)),
+  k_ra8_pprn_default_port_status =
+    (uint8_t)((1U << 4U) | (1U << 3U)), /**< RA8 pprn default port status. */
 } ra8_usb_pprn_default_status_t;
 
 /* =============================================================================

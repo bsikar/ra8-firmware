@@ -104,7 +104,7 @@ static struct ra8_psa_key_handle* internal_alloc_slot(void)
       return &s_key_pool[i];
     }
   }
-  return nullptr;
+  return nullptr; /**< Nullptr. */
 }
 
 /* =============================================================================

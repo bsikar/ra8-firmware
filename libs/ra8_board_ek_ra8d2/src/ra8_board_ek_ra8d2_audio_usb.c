@@ -63,28 +63,28 @@ static bool s_audio_initialized = false;
  * want to feed pre-padded streams.
  */
 typedef enum : uint8_t {
-  k_ra8_audio_bits_8  = 8U,
-  k_ra8_audio_bits_16 = 16U,
-  k_ra8_audio_bits_18 = 18U,
-  k_ra8_audio_bits_20 = 20U,
-  k_ra8_audio_bits_22 = 22U,
-  k_ra8_audio_bits_24 = 24U,
-  k_ra8_audio_bits_32 = 32U,
+  k_ra8_audio_bits_8  = 8U,  /**< RA8 audio bits 8.  */
+  k_ra8_audio_bits_16 = 16U, /**< RA8 audio bits 16. */
+  k_ra8_audio_bits_18 = 18U, /**< RA8 audio bits 18. */
+  k_ra8_audio_bits_20 = 20U, /**< RA8 audio bits 20. */
+  k_ra8_audio_bits_22 = 22U, /**< RA8 audio bits 22. */
+  k_ra8_audio_bits_24 = 24U, /**< RA8 audio bits 24. */
+  k_ra8_audio_bits_32 = 32U, /**< RA8 audio bits 32. */
 } ra8_audio_bit_depth_t;
 
 /**
  * @brief Sample-frame channel counts the BSP accepts.
  */
 typedef enum : uint8_t {
-  k_ra8_audio_channels_mono   = 1U,
-  k_ra8_audio_channels_stereo = 2U,
+  k_ra8_audio_channels_mono   = 1U, /**< RA8 audio channels mono.   */
+  k_ra8_audio_channels_stereo = 2U, /**< RA8 audio channels stereo. */
 } ra8_audio_channels_t;
 
 /**
  * @brief Stereo-frame packing factor (two int16_t samples per 32-bit word).
  */
 typedef enum : uint8_t {
-  k_ra8_audio_samples_per_word = 2U,
+  k_ra8_audio_samples_per_word = 2U, /**< RA8 audio samples per word. */
 } ra8_audio_pack_t;
 
 /* Map ``bit_depth`` (significant bits) to SSIE DWL / SWL pair -- see implementation for details. */
@@ -133,9 +133,9 @@ static ra8_err_t internal_audio_route_pins(void)
    * stays in GPIO mode -- the application picks SSIE EXTAL or CGC
    * clock-out explicitly. */
   const struct {
-    ra8_port_pin_t pin;
-    ra8_psel_t     psel;
-    const char*    owner;
+    ra8_port_pin_t pin;   /**< Pin.   */
+    ra8_psel_t     psel;  /**< Psel.  */
+    const char*    owner; /**< Owner. */
     /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
   } routes[] = {
     {(ra8_port_pin_t)k_ra8_board_audio_pin_bclk, k_ra8_psel_ssie, "ra8_board.audio.bclk"},
@@ -367,7 +367,7 @@ static ra8_err_t internal_usbhs_clock_and_mstp(void)
 
 /** @brief PI4IOE5V6408 7-bit I2C address on EK-RA8D2 v1 (SW4 sibling). */
 typedef enum : uint8_t {
-  k_ra8_board_io_expander_addr = 0x43U,
+  k_ra8_board_io_expander_addr = 0x43U, /**< RA8 board io expander address. */
 } ra8_board_io_expander_addr_t;
 
 /**
@@ -397,9 +397,9 @@ typedef enum : uint8_t {
  * routing while still forcing SW4-8 = OFF.
  */
 typedef enum : uint8_t {
-  k_ra8_board_pi4ioe_iodir_all_outputs = 0xFFU,
-  k_ra8_board_pi4ioe_output_all_high   = 0xFFU,
-  k_ra8_board_pi4ioe_hiz_none          = 0x00U,
+  k_ra8_board_pi4ioe_iodir_all_outputs = 0xFFU, /**< RA8 board pi4ioe iodir all outputs. */
+  k_ra8_board_pi4ioe_output_all_high   = 0xFFU, /**< RA8 board pi4ioe output all high.   */
+  k_ra8_board_pi4ioe_hiz_none          = 0x00U, /**< RA8 board pi4ioe hiz none.          */
 } ra8_board_pi4ioe_magic_t;
 
 /** @brief IIC1 (system I2C) configuration shared by every U15 access. */
@@ -410,7 +410,7 @@ typedef enum : uint32_t {
 
 /** @brief IIC channel index used for the U15 expander (RIIC channel 1). */
 typedef enum : uint8_t {
-  k_ra8_board_io_expander_iic_channel = 1U,
+  k_ra8_board_io_expander_iic_channel = 1U, /**< RA8 board io expander iic channel. */
 } ra8_board_io_expander_channel_t;
 
 /**
@@ -496,12 +496,12 @@ volatile uint32_t s_io_expander_probe = 0U;
  * @brief Step values for s_io_expander_probe (see variable docs).
  */
 typedef enum : uint32_t {
-  k_io_exp_probe_pre_pfs       = 1U,
-  k_io_exp_probe_pre_init      = 2U,
-  k_io_exp_probe_pre_write_out = 3U,
-  k_io_exp_probe_pre_write_hiz = 4U,
-  k_io_exp_probe_pre_write_dir = 5U,
-  k_io_exp_probe_success       = 6U,
+  k_io_exp_probe_pre_pfs       = 1U, /**< Io exp probe pre PFS.       */
+  k_io_exp_probe_pre_init      = 2U, /**< Io exp probe pre init.      */
+  k_io_exp_probe_pre_write_out = 3U, /**< Io exp probe pre write out. */
+  k_io_exp_probe_pre_write_hiz = 4U, /**< Io exp probe pre write hiz. */
+  k_io_exp_probe_pre_write_dir = 5U, /**< Io exp probe pre write dir. */
+  k_io_exp_probe_success       = 6U, /**< Io exp probe success.       */
 } io_exp_probe_step_t;
 
 /**
@@ -850,9 +850,9 @@ volatile uint32_t s_usbhs_role_pin_err = 0U;
 
 /** @brief Probe step values for s_usbhs_role_pin_probe. */
 typedef enum : uint32_t {
-  k_usbhs_role_probe_pre_init  = 1U,
-  k_usbhs_role_probe_post_init = 2U,
-  k_usbhs_role_probe_success   = 3U,
+  k_usbhs_role_probe_pre_init  = 1U, /**< Usbhs role probe pre init.  */
+  k_usbhs_role_probe_post_init = 2U, /**< Usbhs role probe post init. */
+  k_usbhs_role_probe_success   = 3U, /**< Usbhs role probe success.   */
 } usbhs_role_probe_step_t;
 
 /**

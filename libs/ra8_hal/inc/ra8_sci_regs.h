@@ -84,16 +84,16 @@ extern "C" {
  * for now, so only the Secure alias is enumerated.
  */
 typedef enum : uintptr_t {
-  k_ra8_sci0_base_addr = 0x40358000UL,
-  k_ra8_sci1_base_addr = 0x40358100UL,
-  k_ra8_sci2_base_addr = 0x40358200UL,
-  k_ra8_sci3_base_addr = 0x40358300UL,
-  k_ra8_sci4_base_addr = 0x40358400UL,
-  k_ra8_sci5_base_addr = 0x40358500UL,
-  k_ra8_sci6_base_addr = 0x40358600UL,
-  k_ra8_sci7_base_addr = 0x40358700UL,
-  k_ra8_sci8_base_addr = 0x40358800UL,
-  k_ra8_sci9_base_addr = 0x40358900UL,
+  k_ra8_sci0_base_addr = 0x40358000UL, /**< RA8 sci0 base address. */
+  k_ra8_sci1_base_addr = 0x40358100UL, /**< RA8 sci1 base address. */
+  k_ra8_sci2_base_addr = 0x40358200UL, /**< RA8 sci2 base address. */
+  k_ra8_sci3_base_addr = 0x40358300UL, /**< RA8 sci3 base address. */
+  k_ra8_sci4_base_addr = 0x40358400UL, /**< RA8 sci4 base address. */
+  k_ra8_sci5_base_addr = 0x40358500UL, /**< RA8 sci5 base address. */
+  k_ra8_sci6_base_addr = 0x40358600UL, /**< RA8 sci6 base address. */
+  k_ra8_sci7_base_addr = 0x40358700UL, /**< RA8 sci7 base address. */
+  k_ra8_sci8_base_addr = 0x40358800UL, /**< RA8 sci8 base address. */
+  k_ra8_sci9_base_addr = 0x40358900UL, /**< RA8 sci9 base address. */
 } ra8_sci_base_addr_t;
 
 /**

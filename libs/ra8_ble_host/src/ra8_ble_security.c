@@ -38,7 +38,7 @@
 
 /** @brief Maximum 6-digit BLE passkey. */
 typedef enum : uint32_t {
-  k_ble_passkey_max = 999999U,
+  k_ble_passkey_max = 999999U, /**< BLE passkey maximum. */
 } ble_passkey_t;
 
 #ifdef RA8_TARGET_BUILD

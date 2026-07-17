@@ -43,7 +43,7 @@ static const char* s_tag = "CRC";
  */
 /** @brief Byte-3 shift for little-endian word assembly. */
 typedef enum : uint8_t {
-  k_crc_shift_byte3 = 24U,
+  k_crc_shift_byte3 = 24U, /**< CRC shift byte3. */
 } crc_shift_t;
 
 typedef enum : uint8_t {

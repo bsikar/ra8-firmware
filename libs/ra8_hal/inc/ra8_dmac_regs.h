@@ -45,8 +45,8 @@ typedef enum : uintptr_t {
 } ra8_dmac_addr_t;
 
 typedef enum : uint8_t {
-  k_ra8_dmac_channel_count  = 8U,
-  k_ra8_dmac_channel_stride = 0x40U,
+  k_ra8_dmac_channel_count  = 8U,    /**< RA8 DMAC channel count.         */
+  k_ra8_dmac_channel_stride = 0x40U, /**< RA8 DMAC channel stride.        */
   k_ra8_dmac_tail_padding   = 0x0CU, /**< Bytes after DMBWR up to stride. */
 } ra8_dmac_limits_t;
 
@@ -65,28 +65,28 @@ typedef enum : uint8_t {
  * bytes of tail padding up to the 0x40 channel stride.
  */
 typedef struct {
-  volatile uint32_t DMSAR; /**< +0x00 Source address.                 */
-  volatile uint32_t DMDAR; /**< +0x04 Destination address.            */
-  volatile uint32_t DMCRA; /**< +0x08 Transfer count (DMCRAL/DMCRAH). */
-  volatile uint32_t DMCRB; /**< +0x0C Block transfer count.           */
-  volatile uint16_t DMTMD; /**< +0x10 Transfer Mode.                  */
-  volatile uint8_t  _r0;   /**< +0x12 reserved.                       */
-  volatile uint8_t  DMINT; /**< +0x13 Interrupt Setting.              */
-  volatile uint16_t DMAMD; /**< +0x14 Address Mode.                   */
-  volatile uint16_t _r1;   /**< +0x16 reserved.                       */
-  volatile uint32_t DMOFR; /**< +0x18 Offset Register.                */
-  volatile uint8_t  DMCNT; /**< +0x1C Transfer Enable (bit DTE).      */
-  volatile uint8_t  DMREQ; /**< +0x1D Software Start (SWREQ/CLRS).    */
-  volatile uint8_t  DMSTS; /**< +0x1E Status (ESIF/DTIF/ACT).         */
-  volatile uint8_t  _r2;   /**< +0x1F reserved.                       */
-  volatile uint32_t DMSRR; /**< +0x20 Source Reload Address.          */
-  volatile uint32_t DMDRR; /**< +0x24 Dest Reload Address.            */
-  volatile uint32_t DMSBS; /**< +0x28 Source Buffer Size.             */
-  volatile uint32_t DMDBS; /**< +0x2C Dest Buffer Size.               */
-  volatile uint8_t  DMBWR; /**< +0x30 Bufferable Write Enable.        */
-  volatile uint8_t  _r3;   /**< +0x31 reserved.                       */
-  volatile uint16_t _r4;   /**< +0x32 reserved.                       */
-  volatile uint8_t  _r5[k_ra8_dmac_tail_padding];
+  volatile uint32_t DMSAR;                        /**< +0x00 Source address.                 */
+  volatile uint32_t DMDAR;                        /**< +0x04 Destination address.            */
+  volatile uint32_t DMCRA;                        /**< +0x08 Transfer count (DMCRAL/DMCRAH). */
+  volatile uint32_t DMCRB;                        /**< +0x0C Block transfer count.           */
+  volatile uint16_t DMTMD;                        /**< +0x10 Transfer Mode.                  */
+  volatile uint8_t  _r0;                          /**< +0x12 reserved.                       */
+  volatile uint8_t  DMINT;                        /**< +0x13 Interrupt Setting.              */
+  volatile uint16_t DMAMD;                        /**< +0x14 Address Mode.                   */
+  volatile uint16_t _r1;                          /**< +0x16 reserved.                       */
+  volatile uint32_t DMOFR;                        /**< +0x18 Offset Register.                */
+  volatile uint8_t  DMCNT;                        /**< +0x1C Transfer Enable (bit DTE).      */
+  volatile uint8_t  DMREQ;                        /**< +0x1D Software Start (SWREQ/CLRS).    */
+  volatile uint8_t  DMSTS;                        /**< +0x1E Status (ESIF/DTIF/ACT).         */
+  volatile uint8_t  _r2;                          /**< +0x1F reserved.                       */
+  volatile uint32_t DMSRR;                        /**< +0x20 Source Reload Address.          */
+  volatile uint32_t DMDRR;                        /**< +0x24 Dest Reload Address.            */
+  volatile uint32_t DMSBS;                        /**< +0x28 Source Buffer Size.             */
+  volatile uint32_t DMDBS;                        /**< +0x2C Dest Buffer Size.               */
+  volatile uint8_t  DMBWR;                        /**< +0x30 Bufferable Write Enable.        */
+  volatile uint8_t  _r3;                          /**< +0x31 reserved.                       */
+  volatile uint16_t _r4;                          /**< +0x32 reserved.                       */
+  volatile uint8_t  _r5[k_ra8_dmac_tail_padding]; /**< Reserved.                             */
 } r_dmac_channel_regs_t;
 
 /* =============================================================================
@@ -139,11 +139,11 @@ typedef enum : uint16_t {
 } ra8_dmtmd_pos_t;
 
 typedef enum : uint16_t {
-  k_ra8_dmtmd_dctg_mask = (uint16_t)(0x3U << k_ra8_dmtmd_dctg_pos),
-  k_ra8_dmtmd_sz_mask   = (uint16_t)(0x3U << k_ra8_dmtmd_sz_pos),
-  k_ra8_dmtmd_tkp_mask  = (uint16_t)(0x1U << k_ra8_dmtmd_tkp_pos),
-  k_ra8_dmtmd_dts_mask  = (uint16_t)(0x3U << k_ra8_dmtmd_dts_pos),
-  k_ra8_dmtmd_md_mask   = (uint16_t)(0x3U << k_ra8_dmtmd_md_pos),
+  k_ra8_dmtmd_dctg_mask = (uint16_t)(0x3U << k_ra8_dmtmd_dctg_pos), /**< RA8 dmtmd dctg mask. */
+  k_ra8_dmtmd_sz_mask   = (uint16_t)(0x3U << k_ra8_dmtmd_sz_pos),   /**< RA8 dmtmd sz mask.   */
+  k_ra8_dmtmd_tkp_mask  = (uint16_t)(0x1U << k_ra8_dmtmd_tkp_pos),  /**< RA8 dmtmd tkp mask.  */
+  k_ra8_dmtmd_dts_mask  = (uint16_t)(0x3U << k_ra8_dmtmd_dts_pos),  /**< RA8 dmtmd dts mask.  */
+  k_ra8_dmtmd_md_mask   = (uint16_t)(0x3U << k_ra8_dmtmd_md_pos),   /**< RA8 dmtmd md mask.   */
 } ra8_dmtmd_mask_t;
 
 typedef enum : uint16_t {
@@ -185,11 +185,11 @@ typedef enum : uint8_t {
 } ra8_dmint_pos_t;
 
 typedef enum : uint8_t {
-  k_ra8_dmint_darie_mask = (uint8_t)(0x1U << k_ra8_dmint_darie_pos),
-  k_ra8_dmint_sarie_mask = (uint8_t)(0x1U << k_ra8_dmint_sarie_pos),
-  k_ra8_dmint_rptie_mask = (uint8_t)(0x1U << k_ra8_dmint_rptie_pos),
-  k_ra8_dmint_esie_mask  = (uint8_t)(0x1U << k_ra8_dmint_esie_pos),
-  k_ra8_dmint_dtie_mask  = (uint8_t)(0x1U << k_ra8_dmint_dtie_pos),
+  k_ra8_dmint_darie_mask = (uint8_t)(0x1U << k_ra8_dmint_darie_pos), /**< RA8 dmint darie mask. */
+  k_ra8_dmint_sarie_mask = (uint8_t)(0x1U << k_ra8_dmint_sarie_pos), /**< RA8 dmint sarie mask. */
+  k_ra8_dmint_rptie_mask = (uint8_t)(0x1U << k_ra8_dmint_rptie_pos), /**< RA8 dmint rptie mask. */
+  k_ra8_dmint_esie_mask  = (uint8_t)(0x1U << k_ra8_dmint_esie_pos),  /**< RA8 dmint esie mask.  */
+  k_ra8_dmint_dtie_mask  = (uint8_t)(0x1U << k_ra8_dmint_dtie_pos),  /**< RA8 dmint dtie mask.  */
 } ra8_dmint_mask_t;
 
 /* =============================================================================
@@ -207,12 +207,12 @@ typedef enum : uint16_t {
 } ra8_dmamd_pos_t;
 
 typedef enum : uint16_t {
-  k_ra8_dmamd_dara_mask = (uint16_t)(0x1FU << k_ra8_dmamd_dara_pos),
-  k_ra8_dmamd_dadr_mask = (uint16_t)(0x1U << k_ra8_dmamd_dadr_pos),
-  k_ra8_dmamd_dm_mask   = (uint16_t)(0x3U << k_ra8_dmamd_dm_pos),
-  k_ra8_dmamd_sara_mask = (uint16_t)(0x1FU << k_ra8_dmamd_sara_pos),
-  k_ra8_dmamd_sadr_mask = (uint16_t)(0x1U << k_ra8_dmamd_sadr_pos),
-  k_ra8_dmamd_sm_mask   = (uint16_t)(0x3U << k_ra8_dmamd_sm_pos),
+  k_ra8_dmamd_dara_mask = (uint16_t)(0x1FU << k_ra8_dmamd_dara_pos), /**< RA8 dmamd dara mask. */
+  k_ra8_dmamd_dadr_mask = (uint16_t)(0x1U << k_ra8_dmamd_dadr_pos),  /**< RA8 dmamd dadr mask. */
+  k_ra8_dmamd_dm_mask   = (uint16_t)(0x3U << k_ra8_dmamd_dm_pos),    /**< RA8 dmamd dm mask.   */
+  k_ra8_dmamd_sara_mask = (uint16_t)(0x1FU << k_ra8_dmamd_sara_pos), /**< RA8 dmamd sara mask. */
+  k_ra8_dmamd_sadr_mask = (uint16_t)(0x1U << k_ra8_dmamd_sadr_pos),  /**< RA8 dmamd sadr mask. */
+  k_ra8_dmamd_sm_mask   = (uint16_t)(0x3U << k_ra8_dmamd_sm_pos),    /**< RA8 dmamd sm mask.   */
 } ra8_dmamd_mask_t;
 
 typedef enum : uint16_t {
@@ -228,29 +228,29 @@ typedef enum : uint16_t {
  */
 
 typedef enum : uint8_t {
-  k_ra8_dmcnt_dte_pos  = 0U, /**< DMCNT.DTE bit 0 (HUM 17.2.14, p 743). */
-  k_ra8_dmcnt_dte_mask = 0x1U,
+  k_ra8_dmcnt_dte_pos  = 0U,   /**< DMCNT.DTE bit 0 (HUM 17.2.14, p 743). */
+  k_ra8_dmcnt_dte_mask = 0x1U, /**< RA8 dmcnt dte mask.                   */
 } ra8_dmcnt_bits_t;
 
 typedef enum : uint8_t {
-  k_ra8_dmreq_swreq_pos  = 0U, /**< DMREQ.SWREQ bit 0. */
-  k_ra8_dmreq_clrs_pos   = 4U, /**< DMREQ.CLRS  bit 4. */
-  k_ra8_dmreq_swreq_mask = (uint8_t)(0x1U << k_ra8_dmreq_swreq_pos),
-  k_ra8_dmreq_clrs_mask  = (uint8_t)(0x1U << k_ra8_dmreq_clrs_pos),
+  k_ra8_dmreq_swreq_pos  = 0U,                                       /**< DMREQ.SWREQ bit 0.    */
+  k_ra8_dmreq_clrs_pos   = 4U,                                       /**< DMREQ.CLRS  bit 4.    */
+  k_ra8_dmreq_swreq_mask = (uint8_t)(0x1U << k_ra8_dmreq_swreq_pos), /**< RA8 dmreq swreq mask. */
+  k_ra8_dmreq_clrs_mask  = (uint8_t)(0x1U << k_ra8_dmreq_clrs_pos),  /**< RA8 dmreq clrs mask.  */
 } ra8_dmreq_bits_t;
 
 typedef enum : uint8_t {
-  k_ra8_dmsts_esif_pos  = 0U, /**< DMSTS.ESIF bit 0. */
-  k_ra8_dmsts_dtif_pos  = 4U, /**< DMSTS.DTIF bit 4. */
-  k_ra8_dmsts_act_pos   = 7U, /**< DMSTS.ACT  bit 7. */
-  k_ra8_dmsts_esif_mask = (uint8_t)(0x1U << k_ra8_dmsts_esif_pos),
-  k_ra8_dmsts_dtif_mask = (uint8_t)(0x1U << k_ra8_dmsts_dtif_pos),
-  k_ra8_dmsts_act_mask  = (uint8_t)(0x1U << k_ra8_dmsts_act_pos),
+  k_ra8_dmsts_esif_pos  = 0U,                                      /**< DMSTS.ESIF bit 0.    */
+  k_ra8_dmsts_dtif_pos  = 4U,                                      /**< DMSTS.DTIF bit 4.    */
+  k_ra8_dmsts_act_pos   = 7U,                                      /**< DMSTS.ACT  bit 7.    */
+  k_ra8_dmsts_esif_mask = (uint8_t)(0x1U << k_ra8_dmsts_esif_pos), /**< RA8 dmsts esif mask. */
+  k_ra8_dmsts_dtif_mask = (uint8_t)(0x1U << k_ra8_dmsts_dtif_pos), /**< RA8 dmsts dtif mask. */
+  k_ra8_dmsts_act_mask  = (uint8_t)(0x1U << k_ra8_dmsts_act_pos),  /**< RA8 dmsts act mask.  */
 } ra8_dmsts_bits_t;
 
 typedef enum : uint8_t {
-  k_ra8_dmast_dmst_pos  = 0U, /**< DMAST.DMST bit 0 (HUM 17.2.20, p 749). */
-  k_ra8_dmast_dmst_mask = 0x1U,
+  k_ra8_dmast_dmst_pos  = 0U,   /**< DMAST.DMST bit 0 (HUM 17.2.20, p 749). */
+  k_ra8_dmast_dmst_mask = 0x1U, /**< RA8 dmast dmst mask.                   */
 } ra8_dmast_bits_t;
 
 /* =============================================================================
@@ -259,17 +259,17 @@ typedef enum : uint8_t {
  */
 
 typedef enum : uint32_t {
-  k_ra8_dmcra_low_pos   = 0U,
-  k_ra8_dmcra_low_mask  = 0x3FFU << k_ra8_dmcra_low_pos,
-  k_ra8_dmcra_high_pos  = 16U,
-  k_ra8_dmcra_high_mask = 0x3FFU << k_ra8_dmcra_high_pos,
+  k_ra8_dmcra_low_pos   = 0U,                             /**< RA8 dmcra low pos.   */
+  k_ra8_dmcra_low_mask  = 0x3FFU << k_ra8_dmcra_low_pos,  /**< RA8 dmcra low mask.  */
+  k_ra8_dmcra_high_pos  = 16U,                            /**< RA8 dmcra high pos.  */
+  k_ra8_dmcra_high_mask = 0x3FFU << k_ra8_dmcra_high_pos, /**< RA8 dmcra high mask. */
 } ra8_dmcra_bits_t;
 
 typedef enum : uint32_t {
-  k_ra8_dmbs_low_pos   = 0U,
-  k_ra8_dmbs_low_mask  = 0xFFFFU << k_ra8_dmbs_low_pos,
-  k_ra8_dmbs_high_pos  = 16U,
-  k_ra8_dmbs_high_mask = (uint32_t)0xFFFFU << k_ra8_dmbs_high_pos,
+  k_ra8_dmbs_low_pos   = 0U,                                       /**< RA8 dmbs low pos.   */
+  k_ra8_dmbs_low_mask  = 0xFFFFU << k_ra8_dmbs_low_pos,            /**< RA8 dmbs low mask.  */
+  k_ra8_dmbs_high_pos  = 16U,                                      /**< RA8 dmbs high pos.  */
+  k_ra8_dmbs_high_mask = (uint32_t)0xFFFFU << k_ra8_dmbs_high_pos, /**< RA8 dmbs high mask. */
 } ra8_dmbs_bits_t;
 
 /* =============================================================================
