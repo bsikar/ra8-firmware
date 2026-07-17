@@ -4,7 +4,7 @@
  */
 /**
  * @file mdl_extract.c
- * @brief v0 `<img>` URL scanner + relative-URL resolver.
+ * @brief v1 `<img>`/`<a>` tag scanner + relative-URL resolver.
  */
 #include "mdl_extract.h"
 
@@ -27,6 +27,13 @@ static bool is_attr_boundary(char c)
 {
   return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') ||
          (c == '"') || (c == '\'') || (c == '<');
+}
+
+/** @brief True if `c` terminates a tag name (so "<a" != "<article"). */
+static bool is_name_end(char c)
+{
+  return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') ||
+         (c == '>') || (c == '/');
 }
 
 /** @brief Case-insensitive search for `needle` in [hay, hay+hay_len). */
@@ -62,10 +69,9 @@ static bool find_attr_value(const char* tag, size_t tag_len, const char* attr,
     if (hit == nullptr) {
       return false;
     }
-    const size_t idx = (size_t)(hit - tag);
-    /* Left boundary: reject "src" matched inside "data-src". */
-    const bool left_ok = (idx == 0U) || is_attr_boundary(tag[idx - 1U]);
-    size_t     k       = idx + alen;
+    const size_t idx     = (size_t)(hit - tag);
+    const bool   left_ok = (idx == 0U) || is_attr_boundary(tag[idx - 1U]);
+    size_t       k       = idx + alen;
     while ((k < tag_len) && ((tag[k] == ' ') || (tag[k] == '\t'))) {
       ++k;
     }
@@ -89,7 +95,7 @@ static bool find_attr_value(const char* tag, size_t tag_len, const char* attr,
         }
       }
     }
-    pos = idx + alen; /* Advance past this occurrence and keep scanning. */
+    pos = idx + alen;
   }
   return false;
 }
@@ -112,9 +118,9 @@ static bool authority_of(const char* base, char* auth, size_t cap)
   if (sep == nullptr) {
     return false;
   }
-  const char* host = sep + 3;
-  const char* end  = strchr(host, '/');
-  const size_t len = (end == nullptr) ? strlen(base) : (size_t)(end - base);
+  const char*  host = sep + 3;
+  const char*  end  = strchr(host, '/');
+  const size_t len  = (end == nullptr) ? strlen(base) : (size_t)(end - base);
   if (len + 1U > cap) {
     return false;
   }
@@ -127,13 +133,12 @@ static bool authority_of(const char* base, char* auth, size_t cap)
 static bool resolve_url(const char* base, const char* raw, char* out,
                         size_t out_cap)
 {
-  /* Trim leading whitespace. */
   while ((*raw == ' ') || (*raw == '\t') || (*raw == '\n') || (*raw == '\r')) {
     ++raw;
   }
   if ((raw[0] == '\0') || (raw[0] == '#') ||
       (strncmp(raw, "data:", 5U) == 0)) {
-    return false; /* empty / fragment / inline data URI */
+    return false;
   }
   if ((strncmp(raw, "http://", 7U) == 0) ||
       (strncmp(raw, "https://", 8U) == 0)) {
@@ -146,8 +151,8 @@ static bool resolve_url(const char* base, const char* raw, char* out,
   }
 
   if ((raw[0] == '/') && (raw[1] == '/')) { /* scheme-relative */
-    const char* colon = strstr(base, "://");
-    const size_t slen = (size_t)(colon - base);
+    const char*  colon = strstr(base, "://");
+    const size_t slen  = (size_t)(colon - base);
     if ((slen + 1U + strlen(raw) + 1U) > out_cap) {
       return false;
     }
@@ -165,7 +170,7 @@ static bool resolve_url(const char* base, const char* raw, char* out,
   }
 
   /* Path-relative: base directory up to and including the last '/'. */
-  const char* q      = strpbrk(base, "?#");
+  const char*  q     = strpbrk(base, "?#");
   const size_t blen  = (q == nullptr) ? strlen(base) : (size_t)(q - base);
   size_t       slash = 0U;
   for (size_t i = 0U; i < blen; ++i) {
@@ -173,9 +178,7 @@ static bool resolve_url(const char* base, const char* raw, char* out,
       slash = i;
     }
   }
-  /* Keep the authority's own slashes out of the "directory" trimming. */
   if (slash < strlen(auth)) {
-    slash = strlen(auth);
     if ((strlen(auth) + 1U + strlen(raw) + 1U) > out_cap) {
       return false;
     }
@@ -201,40 +204,57 @@ static bool already_have(const mdl_url_list_t* list, const char* url)
   return false;
 }
 
-ra8_err_t mdl_extract_images(const char* html, size_t html_len,
-                             const char* base_url, const char* prefer_attr,
-                             mdl_url_list_t* out)
+/** @brief True if `needle` is empty/NULL or a substring of `url`. */
+static bool contains_ok(const char* url, const char* needle)
 {
-  if ((html == nullptr) || (base_url == nullptr) || (prefer_attr == nullptr) ||
+  if ((needle == nullptr) || (needle[0] == '\0')) {
+    return true;
+  }
+  return strstr(url, needle) != nullptr;
+}
+
+/**
+ * @brief Shared scanner for `<img>`/`<a>`: read `attr1` (or `attr2`), resolve,
+ *        filter by `keep`, dedup, append.
+ */
+static ra8_err_t scan_tags(const char* html, size_t html_len,
+                           const char* base_url, const char* tagname,
+                           const char* attr1, const char* attr2,
+                           const char* keep, mdl_url_list_t* out)
+{
+  if ((html == nullptr) || (base_url == nullptr) || (attr1 == nullptr) ||
       (out == nullptr)) {
     return k_ra8_err_invalid_arg;
   }
-  out->count = 0U;
-
-  const char* fallback_attr =
-      (strcmp(prefer_attr, "data-src") == 0) ? "src" : "data-src";
+  out->count            = 0U;
+  const size_t name_len = strlen(tagname);
 
   size_t pos = 0U;
   while (pos < html_len) {
-    const char* tag = find_ci(html + pos, html_len - pos, "<img");
+    const char* tag = find_ci(html + pos, html_len - pos, tagname);
     if (tag == nullptr) {
       break;
     }
     const size_t tag_off = (size_t)(tag - html);
-    const char*  gt      = memchr(tag, '>', html_len - tag_off);
+    const size_t after   = tag_off + name_len;
+    if ((after < html_len) && !is_name_end(html[after])) {
+      pos = tag_off + 1U; /* false match, e.g. "<article" while seeking "<a" */
+      continue;
+    }
+    const char*  gt = memchr(tag, '>', html_len - tag_off);
     const size_t tag_len =
         (gt == nullptr) ? (html_len - tag_off) : (size_t)(gt - tag);
 
     char raw[k_mdl_url_max];
-    bool got = find_attr_value(tag, tag_len, prefer_attr, raw, sizeof(raw));
-    if (!got) {
-      got = find_attr_value(tag, tag_len, fallback_attr, raw, sizeof(raw));
+    bool got = find_attr_value(tag, tag_len, attr1, raw, sizeof(raw));
+    if (!got && (attr2 != nullptr)) {
+      got = find_attr_value(tag, tag_len, attr2, raw, sizeof(raw));
     }
     if (got) {
       char abs[k_mdl_url_max];
       if (resolve_url(base_url, raw, abs, sizeof(abs)) &&
-          !already_have(out, abs)) {
-        if (out->count >= (size_t)k_mdl_max_images) {
+          contains_ok(abs, keep) && !already_have(out, abs)) {
+        if (out->count >= (size_t)k_mdl_max_urls) {
           return k_ra8_err_no_mem;
         }
         (void)copy_fits(out->urls[out->count], k_mdl_url_max, abs);
@@ -244,4 +264,21 @@ ra8_err_t mdl_extract_images(const char* html, size_t html_len,
     pos = tag_off + ((gt == nullptr) ? tag_len : (tag_len + 1U));
   }
   return k_ra8_ok;
+}
+
+ra8_err_t mdl_extract_images(const char* html, size_t html_len,
+                             const char* base_url, const char* prefer_attr,
+                             const char* url_contains, mdl_url_list_t* out)
+{
+  const char* p1 = (prefer_attr == nullptr) ? "data-src" : prefer_attr;
+  const char* p2 = (strcmp(p1, "data-src") == 0) ? "src" : "data-src";
+  return scan_tags(html, html_len, base_url, "<img", p1, p2, url_contains, out);
+}
+
+ra8_err_t mdl_extract_anchors(const char* html, size_t html_len,
+                              const char* base_url, const char* href_contains,
+                              mdl_url_list_t* out)
+{
+  return scan_tags(html, html_len, base_url, "<a", "href", nullptr,
+                   href_contains, out);
 }
