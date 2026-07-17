@@ -196,7 +196,7 @@ if [[ -n "$c_files" ]]; then
     # cross-compiled translation unit (anything pulling in ThreadX/
     # USBX/NetX or MCU register headers).  This source-level checker
     # closes that gap: it scans every .c under libs/, src/, port/,
-    # examples/ regardless of compile-db membership.
+    # examples/, tools/, tests/ regardless of compile-db membership.
     if ! python3 scripts/utils/check_function_size.py; then
         echo "[FAIL] function-size violation(s) above the 60-line cap."
         echo "   Extract helpers or hoist tables to file scope to shrink."
