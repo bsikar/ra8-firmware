@@ -70,12 +70,8 @@ static uint32_t pbook_intern(pbook_t* b, uint32_t* cur, const char* s)
   return off;
 }
 
-/**
- * @brief Populate a valid 2-chapter book fixture with block + whitespace text.
- * @details Chapter 0: `<div><p>"  Hello   world  "</p><p>"Second para."</p></div>`.
- *          Chapter 1: `<section><h1>"Heading One"</h1><p>"Body  with   spaces."</p></section>`.
- */
-static void pbook_setup(pbook_t* b)
+/** @brief Fill the fixture header: magic, section counts, and offsets. */
+static void pbook_fill_header(pbook_t* b)
 {
   memset(b, 0, sizeof(*b));
   memcpy(b->hdr.magic, "RABOOK1", 8);
@@ -96,6 +92,34 @@ static void pbook_setup(pbook_t* b)
   b->hdr.string_size      = (uint32_t)sizeof(b->strings);
   b->hdr.image_pool_off   = (uint32_t)offsetof(pbook_t, strings); /* empty pool, in-bounds */
   b->hdr.image_pool_size  = 0U;
+}
+
+/** @brief Compose one element node row for the fixture DOM. */
+static ra8_book_node_t pbook_elem(uint32_t name_off, uint32_t first_child, uint32_t next_sibling)
+{
+  return (ra8_book_node_t){.kind         = k_ra8_book_node_element,
+                           .name_off     = name_off,
+                           .first_child  = first_child,
+                           .next_sibling = next_sibling};
+}
+
+/** @brief Compose one text node row for the fixture DOM. */
+static ra8_book_node_t pbook_text(uint32_t text_off)
+{
+  return (ra8_book_node_t){.kind         = k_ra8_book_node_text,
+                           .text_off     = text_off,
+                           .first_child  = k_ra8_book_nil,
+                           .next_sibling = k_ra8_book_nil};
+}
+
+/**
+ * @brief Populate a valid 2-chapter book fixture with block + whitespace text.
+ * @details Chapter 0: `<div><p>"  Hello   world  "</p><p>"Second para."</p></div>`.
+ *          Chapter 1: `<section><h1>"Heading One"</h1><p>"Body  with   spaces."</p></section>`.
+ */
+static void pbook_setup(pbook_t* b)
+{
+  pbook_fill_header(b);
 
   uint32_t cur          = 0U;
   b->strings[cur]       = '\0'; /* offset 0 == empty string */
@@ -120,48 +144,18 @@ static void pbook_setup(pbook_t* b)
   b->chapters[1].root_node = 5U;
 
   /* Chapter 0: div > (p > text), (p > text). */
-  b->nodes[0] = (ra8_book_node_t){.kind         = k_ra8_book_node_element,
-                                  .name_off     = s_div,
-                                  .first_child  = 1U,
-                                  .next_sibling = k_ra8_book_nil};
-  b->nodes[1] = (ra8_book_node_t){.kind         = k_ra8_book_node_element,
-                                  .name_off     = s_p,
-                                  .first_child  = 2U,
-                                  .next_sibling = 3U};
-  b->nodes[2] = (ra8_book_node_t){.kind         = k_ra8_book_node_text,
-                                  .text_off     = s_t0,
-                                  .first_child  = k_ra8_book_nil,
-                                  .next_sibling = k_ra8_book_nil};
-  b->nodes[3] = (ra8_book_node_t){.kind         = k_ra8_book_node_element,
-                                  .name_off     = s_p,
-                                  .first_child  = 4U,
-                                  .next_sibling = k_ra8_book_nil};
-  b->nodes[4] = (ra8_book_node_t){.kind         = k_ra8_book_node_text,
-                                  .text_off     = s_t1,
-                                  .first_child  = k_ra8_book_nil,
-                                  .next_sibling = k_ra8_book_nil};
+  b->nodes[0] = pbook_elem(s_div, 1U, k_ra8_book_nil);
+  b->nodes[1] = pbook_elem(s_p, 2U, 3U);
+  b->nodes[2] = pbook_text(s_t0);
+  b->nodes[3] = pbook_elem(s_p, 4U, k_ra8_book_nil);
+  b->nodes[4] = pbook_text(s_t1);
 
   /* Chapter 1: section > (h1 > text), (p > text). */
-  b->nodes[5] = (ra8_book_node_t){.kind         = k_ra8_book_node_element,
-                                  .name_off     = s_section,
-                                  .first_child  = 6U,
-                                  .next_sibling = k_ra8_book_nil};
-  b->nodes[6] = (ra8_book_node_t){.kind         = k_ra8_book_node_element,
-                                  .name_off     = s_h1,
-                                  .first_child  = 7U,
-                                  .next_sibling = 8U};
-  b->nodes[7] = (ra8_book_node_t){.kind         = k_ra8_book_node_text,
-                                  .text_off     = s_t2,
-                                  .first_child  = k_ra8_book_nil,
-                                  .next_sibling = k_ra8_book_nil};
-  b->nodes[8] = (ra8_book_node_t){.kind         = k_ra8_book_node_element,
-                                  .name_off     = s_p,
-                                  .first_child  = 9U,
-                                  .next_sibling = k_ra8_book_nil};
-  b->nodes[9] = (ra8_book_node_t){.kind         = k_ra8_book_node_text,
-                                  .text_off     = s_t3,
-                                  .first_child  = k_ra8_book_nil,
-                                  .next_sibling = k_ra8_book_nil};
+  b->nodes[5] = pbook_elem(s_section, 6U, k_ra8_book_nil);
+  b->nodes[6] = pbook_elem(s_h1, 7U, 8U);
+  b->nodes[7] = pbook_text(s_t2);
+  b->nodes[8] = pbook_elem(s_p, 9U, k_ra8_book_nil);
+  b->nodes[9] = pbook_text(s_t3);
 
   b->attrs[0]       = (ra8_book_attr_t){.name_off = s_class, .value_off = s_main};
   b->stylesheets[0] = (ra8_book_stylesheet_t){.source_off = 0U, .scope_chapter = k_ra8_book_nil};
@@ -366,6 +360,55 @@ static uint64_t pbc_pack(uint8_t* out, const uint8_t* blob, uint32_t blob_len, u
   return (uint64_t)pos + off;
 }
 
+/** @brief Chunk-table + staging scratch for the chunked-open helper. */
+static uint64_t s_pbc_table_buf[k_pbc_table_cap];
+static uint8_t  s_pbc_staging[k_pbc_staging_cap];
+
+/** @brief Open the chunk reader over @p file and bind a paged book source. */
+static void pbc_bind_chunked(ra8_book_src_t*     psrc,
+                             ra8_vsource_t*      vs,
+                             ra8_vsource_obj_t*  objs,
+                             ra8_vmem_t*         vm,
+                             ra8_book_chunked_t* rd,
+                             pbc_file_t*         file)
+{
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_book_chunked_open(rd,
+                                       pbc_file_read,
+                                       file,
+                                       file->len,
+                                       pbc_inflate,
+                                       s_pbc_table_buf,
+                                       k_pbc_table_cap,
+                                       s_pbc_staging,
+                                       k_pbc_staging_cap));
+
+  /* Register the reader as the paged object's backing. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_init(vs, objs, 1U));
+  uint32_t oid = 0U;
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_vsource_add_paged(vs, ra8_book_chunked_read, rd, 0U, rd->inflated_total, &oid));
+
+  ra8_vmem_cfg_t cfg = {
+    .frame_mem    = s_pb_frames,
+    .frame_bytes  = (uint32_t)k_pb_frame_bytes,
+    .frame_count  = (uint32_t)k_pb_frame_count,
+    .meta         = s_pb_meta,
+    .buckets      = s_pb_buckets,
+    .bucket_count = (uint32_t)k_pb_buckets,
+    .loader       = ra8_vsource_loader,
+    .loader_ctx   = vs,
+  };
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_init(vm, &cfg));
+
+  ra8_book_src_t bound = {};
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_book_src_paged(&bound, vm, oid, (uint32_t)k_pb_frame_bytes, (uint32_t)rd->inflated_total));
+  *psrc = bound;
+}
+
 /**
  * @test test_ra8_book_paged_chunked_backing
  * @brief The full production stack -- RBKC container -> ra8_book_chunked_read ->
@@ -399,49 +442,15 @@ static void test_ra8_book_paged_chunked_backing(void)
   const uint64_t file_len =
     pbc_pack(container, (const uint8_t*)&book, (uint32_t)sizeof(book), (uint32_t)k_pb_frame_bytes);
 
-  /* Open the chunk reader over the container "file". */
-  pbc_file_t         file                       = {.data = container, .len = file_len};
-  ra8_book_chunked_t rd                         = {};
-  static uint64_t    table_buf[k_pbc_table_cap] = {};
-  static uint8_t     staging[k_pbc_staging_cap] = {};
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_book_chunked_open(&rd,
-                                       pbc_file_read,
-                                       &file,
-                                       file_len,
-                                       pbc_inflate,
-                                       table_buf,
-                                       k_pbc_table_cap,
-                                       staging,
-                                       k_pbc_staging_cap));
+  /* Open the chunk reader over the container "file" + bind the paged source. */
+  pbc_file_t         file = {.data = container, .len = file_len};
+  ra8_book_chunked_t rd   = {};
+  ra8_vsource_obj_t  objs[1];
+  ra8_vsource_t      vs   = {};
+  ra8_vmem_t         vm   = {};
+  ra8_book_src_t     psrc = {};
+  pbc_bind_chunked(&psrc, &vs, objs, &vm, &rd, &file);
   TEST_ASSERT_EQ(sizeof(book), rd.inflated_total);
-
-  /* Register the reader as the paged object's backing. */
-  ra8_vsource_obj_t objs[1];
-  ra8_vsource_t     vs = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_init(&vs, objs, 1U));
-  uint32_t oid = 0U;
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_vsource_add_paged(&vs, ra8_book_chunked_read, &rd, 0U, rd.inflated_total, &oid));
-
-  ra8_vmem_cfg_t cfg = {
-    .frame_mem    = s_pb_frames,
-    .frame_bytes  = (uint32_t)k_pb_frame_bytes,
-    .frame_count  = (uint32_t)k_pb_frame_count,
-    .meta         = s_pb_meta,
-    .buckets      = s_pb_buckets,
-    .bucket_count = (uint32_t)k_pb_buckets,
-    .loader       = ra8_vsource_loader,
-    .loader_ctx   = &vs,
-  };
-  ra8_vmem_t vm = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_init(&vm, &cfg));
-
-  ra8_book_src_t psrc = {};
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_book_src_paged(&psrc, &vm, oid, (uint32_t)k_pb_frame_bytes, (uint32_t)rd.inflated_total));
 
   /* Both chapters: paged-over-chunked text must equal the resident walk. */
   for (uint32_t ch = 0U; ch < book.hdr.chapter_count; ++ch) {
@@ -755,6 +764,31 @@ typedef struct {
   char               strings[16];           /**< "" then "div".                       */
 } pbook_farchap_t;
 
+/** @brief Populate the far-chapter fixture used by the prefetch fault test. */
+static void pbe_farchap_setup(pbook_farchap_t* b)
+{
+  memset(b, 0, sizeof(*b));
+  pbook_edge_header(&b->hdr,
+                    (uint32_t)sizeof(*b),
+                    (uint32_t)offsetof(pbook_farchap_t, chapters),
+                    (uint32_t)offsetof(pbook_farchap_t, nodes),
+                    2U,
+                    (uint32_t)offsetof(pbook_farchap_t, strings),
+                    (uint32_t)sizeof(b->strings));
+  b->strings[0] = '\0';
+  memcpy(&b->strings[k_pbe_div_off], "div", 4U);
+  b->chapters[0].root_node = 0U;
+  b->nodes[0]              = (ra8_book_node_t){.kind         = k_ra8_book_node_element,
+                                               .name_off     = (uint32_t)k_pbe_div_off,
+                                               .first_child  = 1U,
+                                               .next_sibling = k_ra8_book_nil};
+  b->nodes[1]              = (ra8_book_node_t){.kind         = k_ra8_book_node_text,
+                                               .text_off     = 0U,
+                                               .first_child  = k_ra8_book_nil,
+                                               .next_sibling = k_ra8_book_nil};
+  pbook_stamp_crc(b, (uint32_t)sizeof(*b));
+}
+
 /**
  * @test test_ra8_book_paged_prefetch_record_fault
  * @brief A backing fault on the chapter-record read propagates out of
@@ -775,26 +809,7 @@ static void test_ra8_book_paged_prefetch_record_fault(void)
   TEST_BEGIN("ra8_book prefetch propagates a chapter-record read fault");
 
   static pbook_farchap_t b;
-  memset(&b, 0, sizeof(b));
-  pbook_edge_header(&b.hdr,
-                    (uint32_t)sizeof(b),
-                    (uint32_t)offsetof(pbook_farchap_t, chapters),
-                    (uint32_t)offsetof(pbook_farchap_t, nodes),
-                    2U,
-                    (uint32_t)offsetof(pbook_farchap_t, strings),
-                    (uint32_t)sizeof(b.strings));
-  b.strings[0] = '\0';
-  memcpy(&b.strings[k_pbe_div_off], "div", 4U);
-  b.chapters[0].root_node = 0U;
-  b.nodes[0]              = (ra8_book_node_t){.kind         = k_ra8_book_node_element,
-                                              .name_off     = (uint32_t)k_pbe_div_off,
-                                              .first_child  = 1U,
-                                              .next_sibling = k_ra8_book_nil};
-  b.nodes[1]              = (ra8_book_node_t){.kind         = k_ra8_book_node_text,
-                                              .text_off     = 0U,
-                                              .first_child  = k_ra8_book_nil,
-                                              .next_sibling = k_ra8_book_nil};
-  pbook_stamp_crc(&b, (uint32_t)sizeof(b));
+  pbe_farchap_setup(&b);
 
   s_pbook_bytes       = (const uint8_t*)&b;
   s_pbook_len         = (uint32_t)sizeof(b);
@@ -835,6 +850,26 @@ static void test_ra8_book_paged_prefetch_record_fault(void)
   TEST_END("ra8_book prefetch propagates a chapter-record read fault");
 }
 
+/** @brief Case A -- cold: the root-node frame is not resident, so the read misses. */
+static void prefetch_cold_case(const pbook_t* book, uint32_t node1_off, uint32_t rlen)
+{
+  ra8_book_src_t    psrc = {};
+  ra8_vsource_t     vs   = {};
+  ra8_vsource_obj_t objs[1];
+  ra8_vmem_t        vm       = {};
+  uint8_t           probe[8] = {};
+  pbook_bind_paged(&psrc, &vs, objs, &vm, book, (uint32_t)sizeof(*book));
+
+  uint32_t h0 = 0U;
+  uint32_t m0 = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stats(&vm, &h0, &m0, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_src_read(&psrc, node1_off, probe, rlen));
+  uint32_t h1 = 0U;
+  uint32_t m1 = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stats(&vm, &h1, &m1, nullptr));
+  TEST_ASSERT(m1 > m0); /* cold: the read faulted the frame in */
+}
+
 /**
  * @test test_ra8_book_paged_prefetch_warms
  * @brief ra8_book_src_prefetch_chapter() warms a chapter's first content frame so
@@ -869,23 +904,7 @@ static void test_ra8_book_paged_prefetch_warms(void)
   const uint32_t rlen     = (within < 8U) ? within : 8U;
   uint8_t        probe[8] = {};
 
-  /* Case A -- cold: the root-node frame is not resident, so the read misses. */
-  {
-    ra8_book_src_t    psrc = {};
-    ra8_vsource_t     vs   = {};
-    ra8_vsource_obj_t objs[1];
-    ra8_vmem_t        vm = {};
-    pbook_bind_paged(&psrc, &vs, objs, &vm, &book, (uint32_t)sizeof(book));
-
-    uint32_t h0 = 0U;
-    uint32_t m0 = 0U;
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stats(&vm, &h0, &m0, nullptr));
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_book_src_read(&psrc, node1_off, probe, rlen));
-    uint32_t h1 = 0U;
-    uint32_t m1 = 0U;
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stats(&vm, &h1, &m1, nullptr));
-    TEST_ASSERT(m1 > m0); /* cold: the read faulted the frame in */
-  }
+  prefetch_cold_case(&book, node1_off, rlen);
 
   /* Case B -- prefetched: warm chapter 1, then the same read is a HIT. */
   {

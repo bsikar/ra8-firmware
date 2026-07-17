@@ -381,7 +381,8 @@ typedef struct {
 } kit_fixture_t;
 
 /** @brief Build the kit UI in @p f; return false on a bind error. */
-static bool build_kit_fixture(kit_fixture_t* f)
+/** @brief Fill the kit fixture's paint mock and widget config literals. */
+static void kit_fixture_configs(kit_fixture_t* f)
 {
   *f        = (kit_fixture_t){};
   f->mp     = (mock_paint_t){.glyph_w = 8, .glyph_h = 16};
@@ -414,6 +415,11 @@ static bool build_kit_fixture(kit_fixture_t* f)
                                     .border       = 0x00000000U,
                                     .border_w     = 2,
                                     .align        = k_ra8_widget_align_center};
+}
+
+static bool build_kit_fixture(kit_fixture_t* f)
+{
+  kit_fixture_configs(f);
 
   if (ra8_widget_label_init(&f->root[0], &f->title) != k_ra8_ok) {
     return false;

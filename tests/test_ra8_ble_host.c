@@ -296,9 +296,9 @@ static void test_register_service_and_char(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_set_value_and_notify_paths(void)
+/** @brief Register a notify-capable service + characteristic; return the value handle. */
+static uint16_t setup_notify_char(uint8_t* buf)
 {
-  TEST_BEGIN("ble_host gatt set_value + notify");
   prep_init(k_ra8_ble_host_role_peripheral);
   uint8_t svc_uuid[16];
   uint8_t chr_uuid[16];
@@ -308,7 +308,6 @@ static void test_set_value_and_notify_paths(void)
   uint16_t svc = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(svc_uuid, &svc));
 
-  uint8_t  buf[k_test_value_buf_size];
   uint16_t chr = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ble_host_gatt_register_char(
@@ -318,6 +317,14 @@ static void test_set_value_and_notify_paths(void)
                    buf,
                    (uint16_t)k_test_value_buf_size,
                    &chr));
+  return chr;
+}
+
+static void test_set_value_and_notify_paths(void)
+{
+  TEST_BEGIN("ble_host gatt set_value + notify");
+  uint8_t        buf[k_test_value_buf_size];
+  const uint16_t chr = setup_notify_char(buf);
 
   const uint8_t payload[4] = {0xDEU, 0xADU, 0xBEU, 0xEFU};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_set_value(chr, payload, (uint16_t)sizeof(payload)));

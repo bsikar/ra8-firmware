@@ -318,12 +318,9 @@ static void test_get_device_state(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_configure_endpoint(void)
+/** @brief Rejection legs: bogus speed, pipe range, endpoint range. */
+static void configure_endpoint_rejects_ids(void)
 {
-  TEST_BEGIN("ra8_usb_configure_endpoint validates args + writes PIPECFG");
-  prep_cb();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
-
   /* Bogus speed. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_usb_configure_endpoint((ra8_usb_speed_t)9U,
@@ -362,6 +359,11 @@ static void test_configure_endpoint(void)
                                             k_ra8_usb_ep_dir_in,
                                             k_ra8_usb_ep_type_bulk,
                                             64U));
+}
+
+/** @brief Rejection legs: bogus direction, type, and max packet. */
+static void configure_endpoint_rejects_shape(void)
+{
   /* Bogus direction / type. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_usb_configure_endpoint(k_ra8_usb_speed_fs,
@@ -385,6 +387,16 @@ static void test_configure_endpoint(void)
                                             k_ra8_usb_ep_dir_in,
                                             k_ra8_usb_ep_type_bulk,
                                             0U));
+}
+
+static void test_configure_endpoint(void)
+{
+  TEST_BEGIN("ra8_usb_configure_endpoint validates args + writes PIPECFG");
+  prep_cb();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
+
+  configure_endpoint_rejects_ids();
+  configure_endpoint_rejects_shape();
 
   /* Valid call. */
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -674,9 +686,9 @@ static void test_queue_in_fifo_tail_paths(void)
  * (no compound decisions in this test -- exercises FIFO width/tail
  * branch coverage through the public queue_out API)
  */
-static void test_queue_out_fifo_tail_paths(void)
+/** @brief FS leg: 1-byte and 2-byte CFIFO tail reads via queue_out. */
+static void queue_out_fs_tails(void)
 {
-  TEST_BEGIN("ra8_usb_queue_out covers FS and HS FIFO tail paths");
   prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
@@ -701,7 +713,14 @@ static void test_queue_out_fifo_tail_paths(void)
   TEST_ASSERT_EQ(2U, len);
   TEST_ASSERT_EQ(0xCCU, out[0]);
   TEST_ASSERT_EQ(0xDDU, out[1]);
+}
 
+/** @brief HS leg: 4/2/3-byte CFIFO tail reads at MBW=32 via queue_out. */
+static void queue_out_hs_tails(void)
+{
+  uint8_t               out[4]   = {};
+  uint16_t              len      = 0U;
+  static const uint16_t pipe_bit = (uint16_t)(1U << 1U);
   prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_hs));
   volatile r_usb_regs_t* hreg = ra8_usb_hs();
@@ -750,7 +769,13 @@ static void test_queue_out_fifo_tail_paths(void)
   TEST_ASSERT_EQ(0x66U, out[0]);
   TEST_ASSERT_EQ(0x77U, out[1]);
   TEST_ASSERT_EQ(0x88U, out[2]);
+}
 
+static void test_queue_out_fifo_tail_paths(void)
+{
+  TEST_BEGIN("ra8_usb_queue_out covers FS and HS FIFO tail paths");
+  queue_out_fs_tails();
+  queue_out_hs_tails();
   TEST_END("ra8_usb_queue_out covers FS and HS FIFO tail paths");
 }
 

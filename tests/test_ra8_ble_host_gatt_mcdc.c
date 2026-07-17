@@ -594,12 +594,27 @@ static void test_mcdc_gatt_notify_decl_props(void)
  *
  * @par DO-178C 6.4.4.3 rationale: Full minimal MC/DC achieved.
  */
-static void test_mcdc_gatt_notify_subscriber_walk(void)
+/** @brief Write @p value_lo to a characteristic CCCD over the injected ACL path. */
+static void notify_walk_subscribe(uint16_t conn, uint16_t cccd_handle, uint8_t value_lo)
 {
-  TEST_BEGIN("mcdc gatt_notify subscriber CCCD compound (3-cond AND)");
-  static const uint16_t k_test_conn_local = 0x0040U;
+  uint8_t l2[10] = {
+    5U,
+    0U,
+    0x04U,
+    0U,
+    0x12U,
+    (uint8_t)(cccd_handle & 0xFFU),
+    (uint8_t)((cccd_handle >> 8) & 0xFFU),
+    value_lo,
+    0U,
+    0U,
+  };
+  ra8_ble_host_test_inject_acl(conn, l2, 9U);
+}
 
-  /* V1: subscribed CCCD with notify bit set. */
+/** @brief V1: subscribed CCCD with notify bit set -> HVN constructed, ok. */
+static void notify_walk_v1(uint16_t conn)
+{
   prep_init(k_ra8_ble_host_role_peripheral);
   uint8_t  svc_uuid[16];
   uint8_t  chr_uuid[16];
@@ -617,26 +632,16 @@ static void test_mcdc_gatt_notify_subscriber_walk(void)
                    buf,
                    (uint16_t)k_mcdc_gatt_buf_size,
                    &chr));
-  ra8_ble_host_test_inject_connect(k_test_conn_local);
-  uint16_t cccd_handle = (uint16_t)(chr + 1U);
-  uint8_t  l2[10]      = {
-    5U,
-    0U,
-    0x04U,
-    0U,
-    0x12U,
-    (uint8_t)(cccd_handle & 0xFFU),
-    (uint8_t)((cccd_handle >> 8) & 0xFFU),
-    0x01U,
-    0U,
-    0U,
-  };
-  ra8_ble_host_test_inject_acl(k_test_conn_local, l2, 9U);
+  ra8_ble_host_test_inject_connect(conn);
+  notify_walk_subscribe(conn, (uint16_t)(chr + 1U), 0x01U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_notify(chr));
+}
 
-  /* V3: register two notify-capable chars on a fresh stack, subscribe
-   * char A only, notify char B -> the existing CCCD row mismatches owner. */
+/** @brief V3: the subscribed CCCD belongs to a different characteristic (C2=F). */
+static void notify_walk_v3(uint16_t conn)
+{
   prep_init(k_ra8_ble_host_role_peripheral);
+  uint8_t svc_uuid[16];
   uint8_t chr_a_uuid[16];
   uint8_t chr_b_uuid[16];
   make_uuid(svc_uuid, 0xA3U);
@@ -664,25 +669,20 @@ static void test_mcdc_gatt_notify_subscriber_walk(void)
                    bufb,
                    (uint16_t)k_mcdc_gatt_buf_size,
                    &chrb));
-  ra8_ble_host_test_inject_connect(k_test_conn_local);
-  uint16_t cccd_a  = (uint16_t)(chra + 1U);
-  uint8_t  l2a[10] = {
-    5U,
-    0U,
-    0x04U,
-    0U,
-    0x12U,
-    (uint8_t)(cccd_a & 0xFFU),
-    (uint8_t)((cccd_a >> 8) & 0xFFU),
-    0x01U,
-    0U,
-    0U,
-  };
-  ra8_ble_host_test_inject_acl(k_test_conn_local, l2a, 9U);
+  ra8_ble_host_test_inject_connect(conn);
+  notify_walk_subscribe(conn, (uint16_t)(chra + 1U), 0x01U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_notify(chrb));
+}
 
-  /* V4: subscribed CCCD owner matches but only indicate enabled. */
+/** @brief V4: CCCD owner matches but only the indicate bit is enabled (C3=F). */
+static void notify_walk_v4(uint16_t conn)
+{
   prep_init(k_ra8_ble_host_role_peripheral);
+  uint8_t  svc_uuid[16];
+  uint8_t  chr_uuid[16];
+  uint16_t svc = 0U;
+  uint16_t chr = 0U;
+  uint8_t  buf[k_mcdc_gatt_buf_size];
   make_uuid(svc_uuid, 0xA6U);
   make_uuid(chr_uuid, 0xA7U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(svc_uuid, &svc));
@@ -695,22 +695,18 @@ static void test_mcdc_gatt_notify_subscriber_walk(void)
                                                  buf,
                                                  (uint16_t)k_mcdc_gatt_buf_size,
                                                  &chr));
-  ra8_ble_host_test_inject_connect(k_test_conn_local);
-  cccd_handle        = (uint16_t)(chr + 1U);
-  uint8_t l2_ind[10] = {
-    5U,
-    0U,
-    0x04U,
-    0U,
-    0x12U,
-    (uint8_t)(cccd_handle & 0xFFU),
-    (uint8_t)((cccd_handle >> 8) & 0xFFU),
-    0x02U, /* indicate only */
-    0U,
-    0U,
-  };
-  ra8_ble_host_test_inject_acl(k_test_conn_local, l2_ind, 9U);
+  ra8_ble_host_test_inject_connect(conn);
+  notify_walk_subscribe(conn, (uint16_t)(chr + 1U), 0x02U); /* indicate only */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_notify(chr));
+}
+
+static void test_mcdc_gatt_notify_subscriber_walk(void)
+{
+  TEST_BEGIN("mcdc gatt_notify subscriber CCCD compound (3-cond AND)");
+  static const uint16_t k_test_conn_local = 0x0040U;
+  notify_walk_v1(k_test_conn_local);
+  notify_walk_v3(k_test_conn_local);
+  notify_walk_v4(k_test_conn_local);
   TEST_END("mcdc gatt_notify subscriber CCCD compound (3-cond AND)");
 }
 
