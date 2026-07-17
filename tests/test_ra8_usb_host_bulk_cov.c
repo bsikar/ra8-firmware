@@ -118,6 +118,25 @@ static void test_set_target_rejects_and_applies(void)
 }
 
 /**
+ * @brief Thin wrapper over `ra8_usb_host_pipe_setup` (direction fixed OUT).
+ * @param[in] speed Bus speed selector.
+ * @param[in] pipe  Pipe number.
+ * @param[in] dev   Device address.
+ * @param[in] ep    Endpoint number.
+ * @param[in] mps   Max packet size.
+ * @return The `ra8_usb_host_pipe_setup` result code.
+ * @pre The host controller mock is prepared.
+ * @post No state beyond the pipe register bank is modified.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static ra8_err_t
+thb_setup(ra8_usb_speed_t speed, uint8_t pipe, uint8_t dev, uint8_t ep, uint16_t mps)
+{
+  return ra8_usb_host_pipe_setup(speed, pipe, dev, ep, false, mps);
+}
+
+/**
  * @test test_pipe_setup_arg_validation
  *
  * @par MC/DC:
@@ -131,70 +150,35 @@ static void test_pipe_setup_arg_validation(void)
   TEST_BEGIN("ra8_usb_host_pipe_setup validates every argument field");
   prep();
 
+  const uint8_t  pipe = (uint8_t)k_thb_pipe;
+  const uint8_t  dev  = (uint8_t)k_thb_dev_addr;
+  const uint8_t  ep   = (uint8_t)k_thb_ep;
+  const uint16_t mps  = (uint16_t)k_thb_mps;
+
   /* Bogus speed -> internal_pick returns nullptr. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_usb_host_pipe_setup((ra8_usb_speed_t)k_thb_speed_bogus,
-                                         (uint8_t)k_thb_pipe,
-                                         (uint8_t)k_thb_dev_addr,
-                                         (uint8_t)k_thb_ep,
-                                         false,
-                                         (uint16_t)k_thb_mps));
+                 thb_setup((ra8_usb_speed_t)k_thb_speed_bogus, pipe, dev, ep, mps));
   /* pipe_num == 0. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_usb_host_pipe_setup(k_ra8_usb_speed_fs,
-                                         (uint8_t)k_thb_pipe_zero,
-                                         (uint8_t)k_thb_dev_addr,
-                                         (uint8_t)k_thb_ep,
-                                         false,
-                                         (uint16_t)k_thb_mps));
+                 thb_setup(k_ra8_usb_speed_fs, (uint8_t)k_thb_pipe_zero, dev, ep, mps));
   /* pipe_num > max. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_usb_host_pipe_setup(k_ra8_usb_speed_fs,
-                                         (uint8_t)k_thb_pipe_hi,
-                                         (uint8_t)k_thb_dev_addr,
-                                         (uint8_t)k_thb_ep,
-                                         false,
-                                         (uint16_t)k_thb_mps));
+                 thb_setup(k_ra8_usb_speed_fs, (uint8_t)k_thb_pipe_hi, dev, ep, mps));
   /* dev_addr > max. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_usb_host_pipe_setup(k_ra8_usb_speed_fs,
-                                         (uint8_t)k_thb_pipe,
-                                         (uint8_t)k_thb_dev_addr_hi,
-                                         (uint8_t)k_thb_ep,
-                                         false,
-                                         (uint16_t)k_thb_mps));
+                 thb_setup(k_ra8_usb_speed_fs, pipe, (uint8_t)k_thb_dev_addr_hi, ep, mps));
   /* ep_num == 0. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_usb_host_pipe_setup(k_ra8_usb_speed_fs,
-                                         (uint8_t)k_thb_pipe,
-                                         (uint8_t)k_thb_dev_addr,
-                                         (uint8_t)k_thb_ep_zero,
-                                         false,
-                                         (uint16_t)k_thb_mps));
+                 thb_setup(k_ra8_usb_speed_fs, pipe, dev, (uint8_t)k_thb_ep_zero, mps));
   /* ep_num > mask. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_usb_host_pipe_setup(k_ra8_usb_speed_fs,
-                                         (uint8_t)k_thb_pipe,
-                                         (uint8_t)k_thb_dev_addr,
-                                         (uint8_t)k_thb_ep_hi,
-                                         false,
-                                         (uint16_t)k_thb_mps));
+                 thb_setup(k_ra8_usb_speed_fs, pipe, dev, (uint8_t)k_thb_ep_hi, mps));
   /* max_packet == 0. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_usb_host_pipe_setup(k_ra8_usb_speed_fs,
-                                         (uint8_t)k_thb_pipe,
-                                         (uint8_t)k_thb_dev_addr,
-                                         (uint8_t)k_thb_ep,
-                                         false,
-                                         (uint16_t)k_thb_mps_zero));
+                 thb_setup(k_ra8_usb_speed_fs, pipe, dev, ep, (uint16_t)k_thb_mps_zero));
   /* max_packet > mxps. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_usb_host_pipe_setup(k_ra8_usb_speed_fs,
-                                         (uint8_t)k_thb_pipe,
-                                         (uint8_t)k_thb_dev_addr,
-                                         (uint8_t)k_thb_ep,
-                                         false,
-                                         (uint16_t)k_thb_mps_hi));
+                 thb_setup(k_ra8_usb_speed_fs, pipe, dev, ep, (uint16_t)k_thb_mps_hi));
 
   TEST_END("ra8_usb_host_pipe_setup validates every argument field");
 }
