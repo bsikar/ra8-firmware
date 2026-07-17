@@ -233,7 +233,7 @@ static void thread_rx_entry(ULONG thread_input)
  *
  * @post Both threads are created auto-start at the same priority.
  */
-/* NOLINTNEXTLINE(misc-use-internal-linkage) */
+/* NOLINTNEXTLINE(misc-use-internal-linkage) -- exported symbol expected by ThreadX. */
 void tx_application_define(void* first_unused_memory)
 {
   (void)first_unused_memory;

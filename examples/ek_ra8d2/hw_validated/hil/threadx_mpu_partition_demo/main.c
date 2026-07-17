@@ -196,7 +196,7 @@ static void thread_entry(ULONG thread_input)
   }
 }
 
-/* NOLINTNEXTLINE(misc-use-internal-linkage) */
+/* NOLINTNEXTLINE(misc-use-internal-linkage) -- exported symbol expected by ThreadX. */
 void tx_application_define(void* first_unused_memory)
 {
   (void)first_unused_memory;

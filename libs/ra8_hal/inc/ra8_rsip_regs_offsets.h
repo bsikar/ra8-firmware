@@ -265,7 +265,7 @@ typedef enum : uint16_t {
  * exact byte value already declared in the enum above. The hex literal
  * IS the value being pinned, so the magic-number lint is suppressed
  * for the assert wall. */
-/* NOLINTBEGIN(readability-magic-numbers) */
+/* NOLINTBEGIN(readability-magic-numbers) -- the assert wall pins each declared offset to its literal value. */
 /* ---- CTRL / status mailbox sub-block ------------------------------------- */
 static_assert((size_t)k_ra8_rsip_off_ctrl == 0x0000U, "CTRL offset");
 static_assert((size_t)k_ra8_rsip_off_status == 0x0004U, "STATUS offset");

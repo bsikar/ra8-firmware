@@ -351,7 +351,7 @@ static void test_xspi_pins_init_pfs_conflict(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_board_xspi_pins_init());
   /* Free only the reset pin so the gpio steps succeed on the next call.
    * The 11 OCTA bus pins remain claimed from the first call. */
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   const ra8_port_pin_t reset_pin = (ra8_port_pin_t)k_ra8_board_xspi_reset;
   /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pin_validator_release(reset_pin));

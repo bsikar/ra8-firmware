@@ -127,7 +127,7 @@ typedef enum : uint32_t {
  */
 static ra8_err_t internal_eth_phy_hw_reset(void)
 {
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   const ra8_port_pin_t rstn_pin = (ra8_port_pin_t)k_ra8_board_eth_pin_rstn;
   /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
   ra8_err_t err = ra8_gpio_output_init(rstn_pin, k_ra8_level_low);
@@ -188,7 +188,7 @@ static ra8_err_t internal_eth_phy_hw_reset(void)
  */
 static ra8_err_t internal_eth_route_alt_pins(void)
 {
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   const ra8_port_pin_t rstn_pin = (ra8_port_pin_t)k_ra8_board_eth_pin_rstn;
   for (uint32_t i = 0U; i < sizeof(s_eth_routes) / sizeof(s_eth_routes[0]); ++i) {
     if ((ra8_port_pin_t)s_eth_routes[i].pin == rstn_pin) {
@@ -528,7 +528,7 @@ static ra8_err_t internal_eth_etha_to_operation(void)
  */
 static ra8_err_t internal_eth_rmac_program(uint32_t eswclk_hz)
 {
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- OR-combined MRAFC flags and the board RMAC port are valid values outside the enumerator lists. */
   /* HUM Ch 33.4 "MRAFC : MAC Reception Address Filter Configuration
    * Register" p 1707: each frame class has an ENABLE bit (UCENE/BCENE
    * /MCENE in the [10:0] half + matching UCENP/BCENP/MCENP in the

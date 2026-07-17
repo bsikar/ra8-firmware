@@ -334,7 +334,7 @@ static void test_uart_console_init_txd_pin_conflict(void)
   TEST_BEGIN("uart_console_init: TXD pin conflict propagated (line 236)");
   reset_state();
   cgc_init_with_oscsf_preseed();
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   const ra8_port_pin_t txd_pin = (ra8_port_pin_t)k_ra8_board_uart_console_pin_txd;
   /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pin_validator_claim(txd_pin, "test.txd.conflict"));
@@ -377,7 +377,7 @@ static void test_uart_console_init_rxd_pin_conflict(void)
   reset_state();
   cgc_init_with_oscsf_preseed();
   /* Pre-claim only RXD so TXD succeeds but RXD fails. */
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   const ra8_port_pin_t rxd_pin = (ra8_port_pin_t)k_ra8_board_uart_console_pin_rxd;
   /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pin_validator_claim(rxd_pin, "test.rxd.conflict"));

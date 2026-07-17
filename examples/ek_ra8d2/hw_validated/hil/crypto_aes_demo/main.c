@@ -174,7 +174,7 @@ static void aes_demo_setup_or_halt(void)
  */
 [[nodiscard]] static ra8_err_t aes_demo_one_round_trip(void)
 {
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- OR-combined PSA usage bits form a valid policy mask outside the enumerator list. */
   /* The PSA usage enum is intentionally a bitfield -- combining
    * encrypt + decrypt yields 0x0C, which is a valid policy mask but
    * not a declared enumerator. */

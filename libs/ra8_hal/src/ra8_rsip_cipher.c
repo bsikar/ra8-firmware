@@ -173,7 +173,7 @@ void internal_push_iv_lanes(ra8_rsip_off_t base, const uint8_t* iv)
   for (uint32_t w = 0U; w < k_ra8_rsip_iv_words; ++w) {
     /* Computed lane offset is a HUM-defined register, not an enumerator. */
     const ra8_rsip_off_t off =
-      (ra8_rsip_off_t)( // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange)
+      (ra8_rsip_off_t)( // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange) -- computed register offset is a HUM-defined location, not an enumerator.
         (uint32_t)base + (uint16_t)(w << k_ra8_rsip_word_shift));
     *ra8_rsip_reg32(off) = internal_pack_le(&iv[(size_t)w * (size_t)k_ra8_rsip_trng_word_bytes]);
   }

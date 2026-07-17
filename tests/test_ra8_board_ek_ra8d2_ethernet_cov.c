@@ -121,7 +121,7 @@ static void test_eth_phy_hw_reset_gpio_conflict(void)
   reset_state();
 
   /* Pre-claim the RSTN pin so ra8_gpio_output_init sees a conflict. */
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   const ra8_port_pin_t rstn_pin = (ra8_port_pin_t)k_ra8_board_eth_pin_rstn;
   /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pin_validator_claim(rstn_pin, "test"));
@@ -185,7 +185,7 @@ static void test_eth_route_alt_pins_pfs_conflict(void)
 
   /* Pre-claim MDC (P4.15, index 1 in s_eth_routes) while leaving RSTN
    * (P7.8, index 15) free so internal_eth_phy_hw_reset succeeds. */
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   const ra8_port_pin_t mdc_pin = (ra8_port_pin_t)k_ra8_board_eth_pin_mdc;
   /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pin_validator_claim(mdc_pin, "test"));

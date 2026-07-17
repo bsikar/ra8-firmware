@@ -60,7 +60,7 @@
  * so we must use a reserved identifier here. clang-tidy's
  * bugprone-reserved-identifier / cert-dcl51-cpp complain correctly
  * but we override because the name is fixed by newlib. */
-// NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming)
+// NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming) -- newlib fixes the _sbrk name.
 void* _sbrk(int32_t incr);
 
 /**

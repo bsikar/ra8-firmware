@@ -246,7 +246,7 @@ static void internal_sha256_pull_digest(uint8_t* digest)
     /* Computed digest-word offset is a valid HUM-defined register location,
      * not a literal enumerator -- the analyzer can't see that. */
     const ra8_rsip_off_t off =
-      (ra8_rsip_off_t)( // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange)
+      (ra8_rsip_off_t)( // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange) -- computed register offset is a HUM-defined location, not an enumerator.
         k_ra8_rsip_off_hash_digest + (uint16_t)(w << k_ra8_rsip_word_shift));
     const uint32_t word = *ra8_rsip_reg32(off);
     internal_unpack_le(word, &digest[w << k_ra8_rsip_word_shift]);
@@ -357,7 +357,7 @@ void ra8_rsip_dispatch(void)
 
 // `buf` is an output the RA8_RSIP_TRNG_HARDWARE path fills; the fail-closed build
 // writes nothing, so clang-tidy cannot see a write and wrongly wants it const.
-// NOLINTNEXTLINE(readability-non-const-parameter)
+// NOLINTNEXTLINE(readability-non-const-parameter) -- buf is filled only by the RA8_RSIP_TRNG_HARDWARE path; the fail-closed build writes nothing.
 ra8_err_t ra8_rsip_trng_read(uint8_t* buf, uint32_t len)
 {
   RA8_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
