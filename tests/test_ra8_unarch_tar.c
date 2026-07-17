@@ -364,7 +364,8 @@ static void test_tar_pax_records(void)
  * @brief A mixed honest archive enumerates and extracts byte-exactly.
  *
  * @par MC/DC:
- * Decision: `is_pax || is_longname` in `ra8_unarch_tar_next` (2 conditions)
+ * Decision: `(type == k_ra8_tar_type_pax) || (type == k_ra8_tar_type_longname)`
+ * in libs/ra8_unarch/src/ra8_unarch_tar.c@ra8_unarch_tar_next (2 conditions)
  * - Vector 1: pax member       -> true  (T,-)
  * - Vector 2: longname member  -> true  (F,T)
  * - Vector 3: regular file     -> false (F,F)

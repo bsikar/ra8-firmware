@@ -29,6 +29,7 @@
 
 #include "miniz.h"
 #include "ra8_comic.h"
+#include "ra8_comic_internal.h"
 #include "ra8_err.h"
 #include "unarch_xz_fixture.h"
 #include "unity_minimal.h"
@@ -418,6 +419,28 @@ static void test_cbt_wrapped_bombs_and_guards(void)
 }
 
 /**
+ * @brief Both CBT entry points fail closed on a tar walker that never went live.
+ *
+ * @details
+ * `ra8_comic_cbt_open` and `ra8_comic_cbt_extract` must reject a comic whose
+ * embedded tar walker is not live (`tar.live == 0`) rather than read
+ * uninitialised walker state -- the guard that fires when a probe misclassifies
+ * a container or a caller reuses a comic across a failed open.
+ */
+static void test_cbt_dead_walker_guards(void)
+{
+  TEST_BEGIN("cbt: open/extract reject a dead tar walker");
+  ra8_comic_t c = {}; /* zero-init leaves tar.live == 0 */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_comic_cbt_open(&c));
+  const ra8_comic_page_t p   = {};
+  size_t                 got = 1U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 ra8_comic_cbt_extract(&c, &p, s_out, sizeof(s_out), &got));
+  TEST_ASSERT_EQ(0U, got); /* extract zeroes the out-count before the guard */
+  TEST_END("cbt: open/extract reject a dead tar walker");
+}
+
+/**
  * @brief Test entry point -- runs the CBT / wrapped-open suite in order.
  * @return 0 on success; unity_minimal.h exits non-zero on the first failure.
  */
@@ -426,6 +449,7 @@ int32_t main(void)
   test_cbt_bare_tar_open();
   test_cbt_wrapped_gzip_and_xz();
   test_cbt_wrapped_bombs_and_guards();
+  test_cbt_dead_walker_guards();
   (void)fprintf(stderr, "[OK  ] test_ra8_comic_cbt.c\n");
   return 0;
 }
