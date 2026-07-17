@@ -30,8 +30,6 @@
 #include "ra8_rsip_regs.h"
 #include "ra8_stack_budget.h"
 
-// NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity)
-
 /**
  * @var s_tag
  * @brief Logger tag for this TU.
@@ -54,19 +52,20 @@ static const char* s_tag = "RSIP_P";
  */
 /** @brief RSA modulus / ECC private-scalar byte counts. */
 typedef enum : uint16_t {
-  k_rsa_1024_mod_bytes       = 128U, /**< RSA 1024 mod bytes.       */
-  k_rsa_2048_mod_bytes       = 256U, /**< RSA 2048 mod bytes.       */
-  k_rsa_3072_mod_bytes       = 384U, /**< RSA 3072 mod bytes.       */
-  k_rsa_4096_mod_bytes       = 512U, /**< RSA 4096 mod bytes.       */
-  k_ecc_secp384r1_priv_bytes = 48U,  /**< ECC secp384r1 priv bytes. */
-  k_ecc_secp521r1_priv_bytes = 66U,  /**< ECC secp521r1 priv bytes. */
+  k_rsa_1024_mod_bytes       = 128U,
+  k_rsa_2048_mod_bytes       = 256U,
+  k_rsa_3072_mod_bytes       = 384U,
+  k_rsa_4096_mod_bytes       = 512U,
+  k_ecc_secp256_priv_bytes   = 32U,
+  k_ecc_secp384r1_priv_bytes = 48U,
+  k_ecc_secp521r1_priv_bytes = 66U,
 } rsip_prot_size_t;
 
 /** @brief Measured worst-case stack frames (bytes), scrubbed on unwind. */
 typedef enum : uint16_t {
-  k_unwrap_key_stack_bytes   = 1128U, /**< Unwrap key stack bytes.   */
-  k_rsa4096_priv_stack_bytes = 1720U, /**< Rsa4096 priv stack bytes. */
-  k_ecc_priv_stack_bytes     = 1104U, /**< ECC priv stack bytes.     */
+  k_unwrap_key_stack_bytes   = 1128U,
+  k_rsa4096_priv_stack_bytes = 1720U,
+  k_ecc_priv_stack_bytes     = 1104U,
 } rsip_prot_stack_t;
 
 typedef enum : uint32_t {
@@ -372,6 +371,82 @@ static ra8_rsip_oem_cmd_t internal_rsa_install_cmd(ra8_rsip_rsa_size_t size)
   return k_ra8_rsip_oem_cmd_invalid;
 }
 
+/**
+ * @brief Accept a wrapped RSA blob tagged with either RSA type tag.
+ *
+ * @details
+ * The injection layer tags both private and public RSA blobs with the
+ * public type tag (single-tag stub); this helper accepts either tag so
+ * the protected entry points do not repeat the two-step validate.
+ *
+ * @param[in] wrapped_priv Wrapped RSA key blob.
+ *
+ * @return ``ra8_err_t`` error code from ::ra8_rsip_key_validate.
+ * @retval k_ra8_ok  Blob carries a valid RSA public or private tag.
+ *
+ * @pre ``wrapped_priv`` is non-NULL (checked by the caller).
+ * @pre The injection driver is initialized.
+ * @post No state is mutated.
+ * @post Return value depends only on the blob contents.
+ *
+ * @note Pure validation helper; safe from any context.
+ * @since 0.1.0
+ */
+static ra8_err_t internal_rsa_validate_wrapped(const uint8_t* wrapped_priv)
+{
+  const ra8_err_t rc = ra8_rsip_key_validate(wrapped_priv, k_ra8_rsip_wrapped_type_rsa_pub);
+  if (rc == k_ra8_ok) {
+    return k_ra8_ok;
+  }
+  return ra8_rsip_key_validate(wrapped_priv, k_ra8_rsip_wrapped_type_rsa_priv);
+}
+
+/**
+ * @brief Recover the modulus from a wrapped blob and OEM-install it.
+ *
+ * @details
+ * Re-installs the wrapped key under the RSA OEM opcode so the
+ * downstream ``ra8_rsip_rsa_sign`` accepts it (the stub recognises
+ * ``k_ra8_rsip_oem_cmd_rsa*`` algorithm tags). The raw modulus is
+ * recovered from the payload and pushed through the OEM install path
+ * just like the unprotected install entry points would; the stack
+ * scratch copy is scrubbed before returning.
+ *
+ * @param[in]  wrapped_priv Wrapped RSA private-key blob.
+ * @param[in]  size         RSA key-size enum (already validated).
+ * @param[in]  mod_bytes    Modulus byte count for ``size``.
+ * @param[out] out_handle   Receives the installed key handle.
+ *
+ * @return ``ra8_err_t`` error code from ::ra8_rsip_oem_install.
+ * @retval k_ra8_ok  Key installed; ``*out_handle`` is live.
+ *
+ * @pre ``wrapped_priv`` passed ::internal_rsa_validate_wrapped.
+ * @pre ``mod_bytes`` came from ::internal_rsa_mod_bytes for ``size``.
+ * @post The modulus stack scratch has been scrubbed.
+ * @post On error ``*out_handle`` holds no usable key material.
+ *
+ * @note Not thread-safe; single secure-dispatch context.
+ * @since 0.1.0
+ */
+static ra8_err_t internal_rsa_install_priv(const uint8_t*         wrapped_priv,
+                                           ra8_rsip_rsa_size_t    size,
+                                           uint32_t               mod_bytes,
+                                           ra8_rsip_key_handle_t* out_handle)
+{
+  uint8_t modulus[k_ra8_rsip_wrapped_max_payload] = {};
+  for (uint32_t i = 0U; i < mod_bytes; ++i) {
+    modulus[i] = wrapped_priv[(uint32_t)k_ra8_rsip_p_off_payload + i];
+  }
+  /* Use the OEM install path for RSA private keys: the wrapped layout
+   * fed in here is already the engine-acceptable blob plus a 16-byte
+   * IV that the stub validates trivially. */
+  uint8_t                  install_iv[k_ra8_rsip_p_iv_bytes] = {};
+  const ra8_rsip_oem_cmd_t install_cmd                       = internal_rsa_install_cmd(size);
+  const ra8_err_t rc = ra8_rsip_oem_install(install_cmd, install_iv, modulus, mod_bytes, out_handle);
+  p_scrub(modulus, mod_bytes);
+  return rc;
+}
+
 ra8_err_t ra8_rsip_protected_rsa_decrypt(const uint8_t*      wrapped_priv,
                                          ra8_rsip_rsa_size_t size,
                                          const uint8_t*      ciphertext,
@@ -385,14 +460,9 @@ ra8_err_t ra8_rsip_protected_rsa_decrypt(const uint8_t*      wrapped_priv,
   RA8_CHECK_NULL_PTR(ciphertext, s_tag, "p_rsa_decrypt: ciphertext");
   RA8_CHECK_NULL_PTR(plaintext_out, s_tag, "p_rsa_decrypt: plaintext_out");
 
-  /* The injection layer tags both private and public RSA blobs with
-   * the public type tag (single-tag stub); accept either. */
-  ra8_err_t rc = ra8_rsip_key_validate(wrapped_priv, k_ra8_rsip_wrapped_type_rsa_pub);
+  ra8_err_t rc = internal_rsa_validate_wrapped(wrapped_priv);
   if (rc != k_ra8_ok) {
-    rc = ra8_rsip_key_validate(wrapped_priv, k_ra8_rsip_wrapped_type_rsa_priv);
-    if (rc != k_ra8_ok) {
-      return rc;
-    }
+    return rc;
   }
 
   uint32_t mod_bytes = 0U;
@@ -407,23 +477,8 @@ ra8_err_t ra8_rsip_protected_rsa_decrypt(const uint8_t*      wrapped_priv,
     return k_ra8_err_invalid_arg;
   }
 
-  /* Re-install the wrapped key under the public-RSA opcode so the
-   * downstream ``ra8_rsip_rsa_sign`` accepts it (the stub recognises
-   * ``k_ra8_rsip_oem_cmd_rsa*`` algorithm tags). The raw modulus is
-   * recovered from the payload and pushed through the install path
-   * just like the unprotected install entry points would. */
-  uint8_t               modulus[k_ra8_rsip_wrapped_max_payload] = {};
-  ra8_rsip_key_handle_t handle                                  = {};
-  for (uint32_t i = 0U; i < mod_bytes; ++i) {
-    modulus[i] = wrapped_priv[(uint32_t)k_ra8_rsip_p_off_payload + i];
-  }
-  /* Use the OEM install path for RSA private keys: the wrapped layout
-   * fed in here is already the engine-acceptable blob plus a 16-byte
-   * IV that the stub validates trivially. */
-  uint8_t                  install_iv[k_ra8_rsip_p_iv_bytes] = {};
-  const ra8_rsip_oem_cmd_t install_cmd                       = internal_rsa_install_cmd(size);
-  rc = ra8_rsip_oem_install(install_cmd, install_iv, modulus, mod_bytes, &handle);
-  p_scrub(modulus, mod_bytes);
+  ra8_rsip_key_handle_t handle = {};
+  rc = internal_rsa_install_priv(wrapped_priv, size, mod_bytes, &handle);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -431,6 +486,56 @@ ra8_err_t ra8_rsip_protected_rsa_decrypt(const uint8_t*      wrapped_priv,
   /* RSA "private decrypt" maps onto ra8_rsip_rsa_sign in the stub --
    * both drive the engine's modular-exponentiation path. */
   return ra8_rsip_rsa_sign(&handle, size, ciphertext, ciphertext_len, plaintext_out);
+}
+
+/**
+ * @brief Map an ::ra8_rsip_curve_t to its OEM opcode and scalar size.
+ *
+ * @details
+ * Lookup helper for the protected ECDSA path: resolves the engine
+ * algorithm tag (``k_ra8_rsip_oem_cmd_ecc_*_priv``) and the private
+ * scalar byte count for each supported curve. Unknown curve values
+ * are rejected so the caller never builds a handle from them.
+ *
+ * @param[in]  curve          ECC curve selector.
+ * @param[out] out_alg        Receives the OEM install opcode value.
+ * @param[out] out_priv_bytes Receives the private scalar byte count.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok               Curve mapped; both outputs written.
+ * @retval k_ra8_err_invalid_arg  Unknown curve enum value.
+ *
+ * @pre ``out_alg`` and ``out_priv_bytes`` are non-NULL.
+ * @pre ``curve`` is a value of ::ra8_rsip_curve_t.
+ * @post On success both outputs describe the selected curve.
+ * @post On error neither output has been written.
+ *
+ * @note Pure function; reentrant and ISR-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t
+internal_ecc_priv_params(ra8_rsip_curve_t curve, uint32_t* out_alg, uint32_t* out_priv_bytes)
+{
+  switch (curve) {
+    case k_ra8_rsip_curve_secp256r1:
+      *out_alg        = (uint32_t)k_ra8_rsip_oem_cmd_ecc_secp256r1_priv;
+      *out_priv_bytes = (uint32_t)k_ecc_secp256_priv_bytes;
+      return k_ra8_ok;
+    case k_ra8_rsip_curve_secp384r1:
+      *out_alg        = (uint32_t)k_ra8_rsip_oem_cmd_ecc_secp384r1_priv;
+      *out_priv_bytes = (uint32_t)k_ecc_secp384r1_priv_bytes;
+      return k_ra8_ok;
+    case k_ra8_rsip_curve_secp521r1:
+      *out_alg        = (uint32_t)k_ra8_rsip_oem_cmd_ecc_secp521r1_priv;
+      *out_priv_bytes = (uint32_t)k_ecc_secp521r1_priv_bytes;
+      return k_ra8_ok;
+    case k_ra8_rsip_curve_secp256k1:
+      *out_alg        = (uint32_t)k_ra8_rsip_oem_cmd_ecc_secp256k1_priv;
+      *out_priv_bytes = (uint32_t)k_ecc_secp256_priv_bytes;
+      return k_ra8_ok;
+    default:
+      return k_ra8_err_invalid_arg;
+  }
 }
 
 ra8_err_t ra8_rsip_protected_ecdsa_sign(const uint8_t*   wrapped_priv,
@@ -455,27 +560,11 @@ ra8_err_t ra8_rsip_protected_ecdsa_sign(const uint8_t*   wrapped_priv,
    * just needs a non-NULL handle whose ``alg`` carries an ECC opcode;
    * the wrapped body holds the private scalar bytes copied from the
    * payload. */
-  ra8_rsip_key_handle_t handle = {};
-  uint32_t              priv_bytes;
-  switch (curve) {
-    case k_ra8_rsip_curve_secp256r1:
-      handle.alg = (uint32_t)k_ra8_rsip_oem_cmd_ecc_secp256r1_priv;
-      priv_bytes = 32U;
-      break;
-    case k_ra8_rsip_curve_secp384r1:
-      handle.alg = (uint32_t)k_ra8_rsip_oem_cmd_ecc_secp384r1_priv;
-      priv_bytes = k_ecc_secp384r1_priv_bytes;
-      break;
-    case k_ra8_rsip_curve_secp521r1:
-      handle.alg = (uint32_t)k_ra8_rsip_oem_cmd_ecc_secp521r1_priv;
-      priv_bytes = k_ecc_secp521r1_priv_bytes;
-      break;
-    case k_ra8_rsip_curve_secp256k1:
-      handle.alg = (uint32_t)k_ra8_rsip_oem_cmd_ecc_secp256k1_priv;
-      priv_bytes = 32U;
-      break;
-    default:
-      return k_ra8_err_invalid_arg;
+  ra8_rsip_key_handle_t handle     = {};
+  uint32_t              priv_bytes = 0U;
+  rc = internal_ecc_priv_params(curve, &handle.alg, &priv_bytes);
+  if (rc != k_ra8_ok) {
+    return rc;
   }
   handle.body_words = priv_bytes / sizeof(uint32_t);
 
@@ -488,5 +577,3 @@ ra8_err_t ra8_rsip_protected_ecdsa_sign(const uint8_t*   wrapped_priv,
   p_scrub((uint8_t*)handle.body, priv_bytes);
   return rc;
 }
-
-// NOLINTEND(readability-function-size,readability-function-cognitive-complexity)
