@@ -19,6 +19,10 @@
  *   - multi-paragraph input lays out all glyphs.
  *   - bold / italic toggling propagates the style flag onto glyphs.
  *
+ * The MC/DC vector tests for the public-API guard decisions live in the
+ * split sibling test_ra8_reflow_api_mcdc.c; the shared Literata fixture is
+ * tests/support/reflow_v1_test_util.h.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  *
@@ -35,167 +39,23 @@
 #include "ra8_err.h"
 #include "ra8_gfx.h"
 #include "ra8_reflow.h"
+#include "support/reflow_v1_test_util.h"
 #include "unity_minimal.h"
-
-/* --------------------------------------------------------------------- */
-
-/**
- * @enum test_reflow_sizes_t
- * @brief Synthetic-fixture sizing constants.
- */
-typedef enum : uint32_t {
-  k_test_viewport_w    = 320U, /**< Test viewport width, pixels.       */
-  k_test_viewport_h    = 240U, /**< Test viewport height, pixels.      */
-  k_test_font_px       = 18U,  /**< Default font size for tests.       */
-  k_test_font_px_large = 36U,  /**< Larger font size for re-flow test. */
-  k_test_fb_pixels =
-    (uint32_t)k_test_viewport_w * (uint32_t)k_test_viewport_h, /**< Test fb pixels. */
-  k_test_fb_bytes_argb  = k_test_fb_pixels * 4U, /**< 4 BPP framebuffer.                */
-  k_test_font_buf_bytes = 2U * 1024U * 1024U,    /**< 2 MiB font load capacity.         */
-  k_test_color_body     = 0x00FFFFFFU,           /**< Body colour (white).              */
-  k_test_color_link     = 0x000000FFU,           /**< Link colour (blue).               */
-  k_test_root_path_max  = 1024U,                 /**< Max derived firmware-root path.   */
-  k_test_origin_dx      = 120U,                  /**< Render-origin test x offset (px). */
-  k_test_origin_dy      = 80U,                   /**< Render-origin test y offset (px). */
-} test_reflow_sizes_t;
-
-/* Static storage so the host stack stays small. */
-static uint8_t  s_font_buf[k_test_font_buf_bytes];
-static size_t   s_font_len = 0U;
-static uint32_t s_fb[k_test_fb_pixels];
-
-/* Engine handle is large; keep it static. */
-static ra8_reflow_t s_engine;
-
-/* --------------------------------------------------------------------- */
-/* XHTML fixtures */
-/* --------------------------------------------------------------------- */
-
-static const char* const k_xhtml_simple = "<html><body><h1>Title</h1><p>Body</p></body></html>";
-
-static const char* const k_xhtml_multi = "<html><body>"
-                                         "<p>Paragraph one with several words to wrap.</p>"
-                                         "<p>Paragraph two follows on the next block.</p>"
-                                         "<p>Paragraph three closes out the body content.</p>"
-                                         "</body></html>";
-
-static const char* const k_xhtml_styled =
-  "<html><body><p>plain <b>bold</b> and <i>italic</i> mix</p></body></html>";
-
-/* --------------------------------------------------------------------- */
-/* Helpers */
-/* --------------------------------------------------------------------- */
-
-/**
- * @brief Strip the trailing path component from `path`, in place.
- */
-static void priv_dirname_inplace(char* path)
-{
-  size_t len = strlen(path);
-  while (len > 0U && path[len - 1U] != '/') {
-    --len;
-  }
-  if (len > 0U) {
-    path[len - 1U] = '\0';
-  }
-}
-
-/**
- * @brief Compute the firmware root from __FILE__ (which is the
- *        absolute path of this source file under the cmake build).
- */
-static void priv_resolve_fw_root(char* out, size_t out_cap)
-{
-  /* __FILE__ resolves to ".../tests/test_ra8_reflow.c" -- strip two
-   * trailing components to land on the firmware root. */
-  (void)snprintf(out, out_cap, "%s", __FILE__);
-  priv_dirname_inplace(out); /* drop test_ra8_reflow.c */
-  priv_dirname_inplace(out); /* drop tests/            */
-}
-
-/**
- * @brief Load the Literata font into `s_font_buf`.
- *
- * @return true if loaded, false if the font could not be found.
- */
-static bool priv_load_font(void)
-{
-  static char root[k_test_root_path_max];
-  priv_resolve_fw_root(root, sizeof(root));
-
-  static char path[k_test_root_path_max + 64U];
-  /* GCC's -Wformat-truncation flags the maximally-conservative case
-   * where `root` is the full 1 KiB; concatenate manually so the
-   * checker can see the bound. */
-  const char* const k_font_rel = "/libs/fonts/Literata-Regular.ttf";
-  size_t            root_len   = 0U;
-  while (root_len + 1U < sizeof(path) && root[root_len] != '\0') {
-    path[root_len] = root[root_len];
-    ++root_len;
-  }
-  size_t rel_len = 0U;
-  while (root_len + rel_len + 1U < sizeof(path) && k_font_rel[rel_len] != '\0') {
-    path[root_len + rel_len] = k_font_rel[rel_len];
-    ++rel_len;
-  }
-  path[root_len + rel_len] = '\0';
-  FILE* fp                 = fopen(path, "rb");
-  if (fp == nullptr) {
-    return false;
-  }
-  size_t n = fread(s_font_buf, 1U, sizeof(s_font_buf), fp);
-  (void)fclose(fp);
-  if (n < 16U) {
-    return false;
-  }
-  s_font_len = n;
-  return true;
-}
-
-/**
- * @brief Bind ra8_gfx to the local test framebuffer.
- */
-static void priv_bind_gfx(void)
-{
-  (void)memset(s_fb, 0, sizeof(s_fb));
-  ra8_err_t err = ra8_gfx_init(s_fb,
-                               (uint16_t)k_test_viewport_w,
-                               (uint16_t)k_test_viewport_h,
-                               k_ra8_gfx_format_argb8888);
-  TEST_ASSERT_EQ(k_ra8_ok, err);
-}
-
-/**
- * @brief Count non-zero framebuffer pixels in a rectangular region.
- */
-static uint32_t priv_count_lit_pixels(int32_t x0, int32_t y0, int32_t x1, int32_t y1)
-{
-  uint32_t lit = 0U;
-  for (int32_t y = y0; y < y1; ++y) {
-    for (int32_t x = x0; x < x1; ++x) {
-      if (s_fb[(uint32_t)y * (uint32_t)k_test_viewport_w + (uint32_t)x] != 0U) {
-        ++lit;
-      }
-    }
-  }
-  return lit;
-}
-
 /* --------------------------------------------------------------------- */
 /* Tests */
 /* --------------------------------------------------------------------- */
 
 /**
- * @brief NULL / pre-init guards against every public entry point.
-  *
-  * @par MC/DC:
-  * (no compound decisions in this test -- exercises the public-API
-  * happy path / error-rejection contract; no `&&` or `||` in the
-  * code under test that this case touches)
+ * @brief NULL / bad-arg guards on ra8_reflow_init() and ra8_reflow_close().
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
  */
-static void test_null_and_preinit_guards(void)
+static void test_null_and_preinit_guards_init(void)
 {
-  TEST_BEGIN("test_null_and_preinit_guards");
+  TEST_BEGIN("test_null_and_preinit_guards_init");
 
   /* init() guards. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
@@ -243,6 +103,25 @@ static void test_null_and_preinit_guards(void)
   (void)memset(&closed, 0, sizeof(closed));
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_reflow_close(&closed));
 
+  TEST_END("test_null_and_preinit_guards_init");
+}
+
+/**
+ * @brief Pre-init guards on the layout / render / query entry points.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_null_and_preinit_guards_ops(void)
+{
+  TEST_BEGIN("test_null_and_preinit_guards_ops");
+
+  /* Engine zeroed -> not initialized. */
+  ra8_reflow_t closed;
+  (void)memset(&closed, 0, sizeof(closed));
+
   /* layout_chapter() guards. */
   uint32_t pages = 0U;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
@@ -263,7 +142,7 @@ static void test_null_and_preinit_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_reflow_set_font_size(nullptr, k_test_font_px));
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_reflow_set_font_size(&closed, k_test_font_px));
 
-  TEST_END("test_null_and_preinit_guards");
+  TEST_END("test_null_and_preinit_guards_ops");
 }
 
 /**
@@ -622,7 +501,7 @@ static void test_layout_rejects_empty_input(void)
                                  k_test_color_body,
                                  k_test_color_link,
                                  &s_engine));
-  uint32_t pages = 99U;
+  uint32_t pages = (uint32_t)k_test_pages_poison;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_reflow_layout_chapter(&s_engine, (const uint8_t*)k_xhtml_simple, 0U, &pages));
   /* Malformed XHTML rejected as validation_failed. */
@@ -635,390 +514,41 @@ static void test_layout_rejects_empty_input(void)
   TEST_END("test_layout_rejects_empty_input");
 }
 
-/* --------------------------------------------------------------------- */
-/* MC/DC vector tests for libs/ra8_reflow/src/ra8_reflow_layout.c */
-/* --------------------------------------------------------------------- */
-
-typedef enum : uint16_t {
-  k_mcdc_font_px_too_low  = 4U,   /**< Mcdc font px too low.  */
-  k_mcdc_font_px_too_high = 200U, /**< Mcdc font px too high. */
-  k_mcdc_font_px_ok       = 18U,  /**< Mcdc font px ok.       */
-} reflow_mcdc_t;
-
 /**
- * @test test_mcdc_init_dim_or
+ * @brief Test executable entry point.
  *
- * @par MC/DC:
- * Decision: `if (font_data == NULL || out_engine == NULL)`
- * (2 conditions, libs/ra8_reflow/src/ra8_reflow_layout.c line 535). N+1=3.
- * - V1 both non-NULL  -> both F. F (proceeds; later guards run).
- * - V2 font_data=NULL -> C1=T short-circuits. T -> null_ptr.
- * - V3 out_engine=NULL -> C1=F, C2=T. T -> null_ptr.
+ * @details When the vendored Literata face is unreachable in the sandbox the
+ *          suite skips cleanly after running the guard tests against a small
+ *          synthetic blob (the size check is the only guard exercised).
+ *
+ * @return 0 on success (all tests passed, or clean guards-only skip).
+ *
+ * @pre Host environment provides a filesystem and stderr.
+ * @post The layout / render / guard behaviours above are validated.
+ *
+ * @note Not thread-safe (single-threaded test runner).
+ * @since 0.1.0
  */
-static void test_mcdc_init_font_or(void)
-{
-  TEST_BEGIN("mcdc init font_data || out_engine NULL");
-  /* V1 */
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_reflow_init(k_test_viewport_w,
-                                 k_test_viewport_h,
-                                 s_font_buf,
-                                 s_font_len,
-                                 k_test_font_px,
-                                 k_test_color_body,
-                                 k_test_color_link,
-                                 &s_engine));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_close(&s_engine));
-  /* V2 */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_reflow_init(k_test_viewport_w,
-                                 k_test_viewport_h,
-                                 nullptr,
-                                 s_font_len,
-                                 k_test_font_px,
-                                 k_test_color_body,
-                                 k_test_color_link,
-                                 &s_engine));
-  /* V3 */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_reflow_init(k_test_viewport_w,
-                                 k_test_viewport_h,
-                                 s_font_buf,
-                                 s_font_len,
-                                 k_test_font_px,
-                                 k_test_color_body,
-                                 k_test_color_link,
-                                 nullptr));
-  TEST_END("mcdc init font_data || out_engine NULL");
-}
-
-/**
- * @test test_mcdc_init_viewport_or
- *
- * @par MC/DC:
- * Decision: `if (viewport_w == 0U || viewport_h == 0U)`
- * (2 conditions, line 538). N+1=3.
- */
-static void test_mcdc_init_viewport_or(void)
-{
-  TEST_BEGIN("mcdc init viewport OR");
-  /* V1 */
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_reflow_init(k_test_viewport_w,
-                                 k_test_viewport_h,
-                                 s_font_buf,
-                                 s_font_len,
-                                 k_test_font_px,
-                                 k_test_color_body,
-                                 k_test_color_link,
-                                 &s_engine));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_close(&s_engine));
-  /* V2 w=0 */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_reflow_init(0U,
-                                 k_test_viewport_h,
-                                 s_font_buf,
-                                 s_font_len,
-                                 k_test_font_px,
-                                 k_test_color_body,
-                                 k_test_color_link,
-                                 &s_engine));
-  /* V3 h=0 */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_reflow_init(k_test_viewport_w,
-                                 0U,
-                                 s_font_buf,
-                                 s_font_len,
-                                 k_test_font_px,
-                                 k_test_color_body,
-                                 k_test_color_link,
-                                 &s_engine));
-  TEST_END("mcdc init viewport OR");
-}
-
-/**
- * @test test_mcdc_init_font_px_or
- *
- * @par MC/DC:
- * Decision: `if (font_px < MIN || font_px > MAX)`
- * (2 conditions, line 541). N+1=3.
- */
-static void test_mcdc_init_font_px_or(void)
-{
-  TEST_BEGIN("mcdc init font_px OR");
-  /* V1 in-range */
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_reflow_init(k_test_viewport_w,
-                                 k_test_viewport_h,
-                                 s_font_buf,
-                                 s_font_len,
-                                 (uint16_t)k_mcdc_font_px_ok,
-                                 k_test_color_body,
-                                 k_test_color_link,
-                                 &s_engine));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_close(&s_engine));
-  /* V2 too low */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_reflow_init(k_test_viewport_w,
-                                 k_test_viewport_h,
-                                 s_font_buf,
-                                 s_font_len,
-                                 (uint16_t)k_mcdc_font_px_too_low,
-                                 k_test_color_body,
-                                 k_test_color_link,
-                                 &s_engine));
-  /* V3 too high */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_reflow_init(k_test_viewport_w,
-                                 k_test_viewport_h,
-                                 s_font_buf,
-                                 s_font_len,
-                                 (uint16_t)k_mcdc_font_px_too_high,
-                                 k_test_color_body,
-                                 k_test_color_link,
-                                 &s_engine));
-  TEST_END("mcdc init font_px OR");
-}
-
-/**
- * @test test_mcdc_layout_chapter_null_or3
- *
- * @par MC/DC:
- * Decision: `if (engine == NULL || xhtml_buf == NULL || out_total_pages == NULL)`
- * (3 conditions, line 584). N+1=4. Canonical short-circuit set per
- * DO-178C 6.4.4.3.
- * - V1 all non-NULL              -> all F. F (proceeds).
- * - V2 engine=NULL               -> C1=T. T -> null_ptr.
- * - V3 engine=ok, xhtml=NULL     -> C2=T. T -> null_ptr.
- * - V4 engine=ok, xhtml=ok, out=NULL -> C3=T. T -> null_ptr.
- */
-static void test_mcdc_layout_chapter_null_or3(void)
-{
-  TEST_BEGIN("mcdc layout_chapter NULL OR(3)");
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_reflow_init(k_test_viewport_w,
-                                 k_test_viewport_h,
-                                 s_font_buf,
-                                 s_font_len,
-                                 k_test_font_px,
-                                 k_test_color_body,
-                                 k_test_color_link,
-                                 &s_engine));
-  uint32_t pages = 0U;
-  /* V1 */
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_reflow_layout_chapter(&s_engine,
-                                           (const uint8_t*)k_xhtml_simple,
-                                           strlen(k_xhtml_simple),
-                                           &pages));
-  /* V2 */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_reflow_layout_chapter(nullptr,
-                                           (const uint8_t*)k_xhtml_simple,
-                                           strlen(k_xhtml_simple),
-                                           &pages));
-  /* V3 */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_reflow_layout_chapter(&s_engine, nullptr, strlen(k_xhtml_simple), &pages));
-  /* V4 */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_reflow_layout_chapter(&s_engine,
-                                           (const uint8_t*)k_xhtml_simple,
-                                           strlen(k_xhtml_simple),
-                                           nullptr));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_close(&s_engine));
-  TEST_END("mcdc layout_chapter NULL OR(3)");
-}
-
-/**
- * @test test_mcdc_get_page_count_null_or
- *
- * @par MC/DC:
- * Decision: `if (engine == NULL || out_count == NULL)`
- * (2 conditions, line 615). N+1=3.
- */
-static void test_mcdc_get_page_count_null_or(void)
-{
-  TEST_BEGIN("mcdc get_page_count NULL OR");
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_reflow_init(k_test_viewport_w,
-                                 k_test_viewport_h,
-                                 s_font_buf,
-                                 s_font_len,
-                                 k_test_font_px,
-                                 k_test_color_body,
-                                 k_test_color_link,
-                                 &s_engine));
-  uint32_t pages = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_get_page_count(&s_engine, &pages));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_reflow_get_page_count(nullptr, &pages));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_reflow_get_page_count(&s_engine, nullptr));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_close(&s_engine));
-  TEST_END("mcdc get_page_count NULL OR");
-}
-
-/**
- * @test test_mcdc_set_font_size_range_or
- *
- * @par MC/DC:
- * Decision: `if (new_font_px < MIN || new_font_px > MAX)`
- * (2 conditions, line 633). N+1=3.
- * Plus: decision at line 636 `if (engine->xhtml_buf == NULL ||
- *       engine->xhtml_len == 0U)` argued via the V1 vector below
- * which exercises the not-yet-laid-out path.
- */
-static void test_mcdc_set_font_size_range_or(void)
-{
-  TEST_BEGIN("mcdc set_font_size range OR");
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_reflow_init(k_test_viewport_w,
-                                 k_test_viewport_h,
-                                 s_font_buf,
-                                 s_font_len,
-                                 k_test_font_px,
-                                 k_test_color_body,
-                                 k_test_color_link,
-                                 &s_engine));
-  uint32_t pages = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_reflow_layout_chapter(&s_engine,
-                                           (const uint8_t*)k_xhtml_simple,
-                                           strlen(k_xhtml_simple),
-                                           &pages));
-  /* V1 in-range -> ok (re-flow). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_set_font_size(&s_engine, (uint16_t)k_mcdc_font_px_ok));
-  /* V2 too low. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_reflow_set_font_size(&s_engine, (uint16_t)k_mcdc_font_px_too_low));
-  /* V3 too high. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_reflow_set_font_size(&s_engine, (uint16_t)k_mcdc_font_px_too_high));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_close(&s_engine));
-  TEST_END("mcdc set_font_size range OR");
-}
-
-/**
- * @test test_mcdc_set_font_size_state_or
- *
- * @par MC/DC:
- * Decision: `if (engine->xhtml_buf == NULL || engine->xhtml_len == 0U)`
- * (2 conditions, line 636). N+1=3.
- *
- * @par DO-178C 6.4.4.3 omission rationale:
- * - V1 xhtml_buf set, len>0 -> both F. F (proceeds, re-flow ok).
- * - V2 xhtml_buf=NULL       -> C1=T. T -> invalid_state.
- * - V3 xhtml_buf set, len=0 -> C1=F, C2=T. V3 cannot occur through
- *   the public API: ra8_reflow_layout_chapter sets buf and len atomically
- *   from the caller, and ra8_reflow_init zeroes both. Argued by code
- *   inspection (identical OR form, same return path).
- */
-static void test_mcdc_set_font_size_state_or(void)
-{
-  TEST_BEGIN("mcdc set_font_size state OR (xhtml NULL || len 0)");
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_reflow_init(k_test_viewport_w,
-                                 k_test_viewport_h,
-                                 s_font_buf,
-                                 s_font_len,
-                                 k_test_font_px,
-                                 k_test_color_body,
-                                 k_test_color_link,
-                                 &s_engine));
-  /* V2: no layout_chapter call yet -> xhtml_buf is NULL. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
-                 ra8_reflow_set_font_size(&s_engine, (uint16_t)k_mcdc_font_px_ok));
-  /* V1: after layout_chapter both are set. */
-  uint32_t pages = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_reflow_layout_chapter(&s_engine,
-                                           (const uint8_t*)k_xhtml_simple,
-                                           strlen(k_xhtml_simple),
-                                           &pages));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_set_font_size(&s_engine, (uint16_t)k_mcdc_font_px_ok));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_close(&s_engine));
-  TEST_END("mcdc set_font_size state OR (xhtml NULL || len 0)");
-}
-
-/**
- * @test test_mcdc_run_layout_empty_guard
- *
- * @par MC/DC:
- * Decision: `if (engine->page_count == 0U && engine->token_count > 0U)`
- * (2 conditions, libs/ra8_reflow/src/ra8_reflow_layout.c line 510).
- * Reachable only via ra8_reflow_run_layout (called from
- * ra8_reflow_layout_chapter). The decision drives whether to synthesise
- * a single page when the parser produced tokens that did not generate
- * any glyphs.
- *
- * @par DO-178C 6.4.4.3 omission rationale:
- * - V1 page_count>0, token_count>0 -> C1=F. F (skip synthesis).
- *      Reached by k_xhtml_simple which produces visible text -> >=1 page.
- * - V2 page_count=0, token_count=0 -> C1=T,C2=F. F (skip).
- *      Reached when input contains no parseable elements at all
- *      (e.g. an XHTML doctype-only fragment); but the parser currently
- *      always produces at least one structural token, making this
- *      vector unreachable through the public API. Argued by inspection.
- * - V3 page_count=0, token_count>0 -> both T. T (synthesise page).
- *      Reached when the input is well-formed but produces no rendered
- *      glyphs (e.g. all whitespace inside collapsed blocks). Driven
- *      below by an empty <p> element. The simple-input vector V1
- *      proves C1 independence; V3 proves C2 independence.
- */
-static void test_mcdc_run_layout_empty_guard(void)
-{
-  TEST_BEGIN("mcdc run_layout page-synthesis guard");
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_reflow_init(k_test_viewport_w,
-                                 k_test_viewport_h,
-                                 s_font_buf,
-                                 s_font_len,
-                                 k_test_font_px,
-                                 k_test_color_body,
-                                 k_test_color_link,
-                                 &s_engine));
-  uint32_t pages = 0U;
-  /* V1: rich input -> at least one real page. */
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_reflow_layout_chapter(&s_engine,
-                                           (const uint8_t*)k_xhtml_simple,
-                                           strlen(k_xhtml_simple),
-                                           &pages));
-  TEST_ASSERT(pages >= 1U);
-  /* V3: structurally valid but glyph-less input forces the synthesis
-   * branch. Use a paragraph that contains only whitespace. */
-  static const char* const k_empty_p = "<p>   </p>";
-  pages                              = 0U;
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_reflow_layout_chapter(&s_engine, (const uint8_t*)k_empty_p, strlen(k_empty_p), &pages));
-  /* The synthesis path guarantees at least one page on non-empty input. */
-  TEST_ASSERT(pages >= 1U);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_close(&s_engine));
-  TEST_END("mcdc run_layout page-synthesis guard");
-}
-
-/* --------------------------------------------------------------------- */
-/* main */
-/* --------------------------------------------------------------------- */
-
 int main(void)
 {
   if (!priv_load_font()) {
     /* If the font is unreachable in the test sandbox, skip cleanly:
      * the suite still validates the public API guards by running the
-     * NULL-arg test against a minimal synthetic blob. */
+     * NULL-arg tests against a minimal synthetic blob. */
     (void)fprintf(stderr,
                   "[SKIP] test_ra8_reflow: Literata-Regular.ttf not loadable -- "
                   "running guards-only path\n");
     /* Substitute a small synthetic blob so init() succeeds where the
      * size check is the only guard exercised. */
-    (void)memset(s_font_buf, 0xA5, 32U);
+    (void)memset(s_font_buf, (int)k_test_stub_fill, 32U);
     s_font_len = 32U;
-    test_null_and_preinit_guards();
+    test_null_and_preinit_guards_init();
+    test_null_and_preinit_guards_ops();
     return 0;
   }
 
-  test_null_and_preinit_guards();
+  test_null_and_preinit_guards_init();
+  test_null_and_preinit_guards_ops();
   test_simple_layout();
   test_render_pixels_around_title();
   test_render_at_origin();
@@ -1027,14 +557,6 @@ int main(void)
   test_set_font_size_reflows();
   test_set_font_size_without_layout();
   test_layout_rejects_empty_input();
-  test_mcdc_init_font_or();
-  test_mcdc_init_viewport_or();
-  test_mcdc_init_font_px_or();
-  test_mcdc_layout_chapter_null_or3();
-  test_mcdc_get_page_count_null_or();
-  test_mcdc_set_font_size_range_or();
-  test_mcdc_set_font_size_state_or();
-  test_mcdc_run_layout_empty_guard();
-  (void)fprintf(stderr, "[OK  ] test_ra8_reflow: all MC/DC + 8 tests passed\n");
+  (void)fprintf(stderr, "[OK  ] test_ra8_reflow: layout/render/guard tests passed\n");
   return 0;
 }
