@@ -354,6 +354,29 @@ RA8_PRIV void sim_insn_seams_install(uc_engine* uc);
  */
 RA8_PRIV uint64_t sim_lob_emulated_count(void);
 
+/**
+ * @brief Synthesise a UsageFault (#6) for a trapped divide-by-zero.
+ *
+ * @details
+ * Called by the run loop after emulate_div0_patched() latched a trapping
+ * div-0. Latches CFSR.UFSR.DIVBYZERO (so a fault handler -- and the HIL alive
+ * probe -- see the architectural status), forces PC back to the faulting
+ * divide so the exception entry stacks *that* address, and vectors into the
+ * application's UsageFault_Handler. If no handler is installed the trap is
+ * dropped (no HardFault escalation is modelled).
+ *
+ * @param[in,out] uc        Unicorn engine.
+ * @param[in]     vtor_base Fallback vector base if VTOR reads as 0.
+ * @return Nothing.
+ * @pre A divide-by-zero fault is latched (PC captured at the divide).
+ * @pre The PPB CFSR word and the vector table are mapped as RAM.
+ * @post On a valid vector, the core is in the UsageFault handler with the
+ *       basic frame stacked and IPSR == 6.
+ * @note Faithful to Armv8-M CCR.DIV_0_TRP semantics; no time advances.
+ * @since 0.1.0
+ */
+RA8_PRIV void div0_synth_usagefault(uc_engine* uc, uint32_t vtor_base);
+
 #ifdef __cplusplus
 }
 #endif
