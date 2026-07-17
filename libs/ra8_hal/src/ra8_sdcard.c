@@ -465,11 +465,12 @@ internal_sdcard_negotiate_width(uint8_t instance, ra8_sdhi_bus_width_t width, ui
  * @brief Take an identified SDHI card from power-on to TRAN state.
  *
  * @details
- * Runs the SD Physical Layer bring-up chain after ::ra8_sdhi_init:
+ * Brings up the SDHI module, then runs the SD Physical Layer chain:
  * CMD0/CMD8 identification, the ACMD41 op-cond loop (capturing
  * OCR.CCS), then CMD2/CMD3/CMD9/CMD7 to publish the RCA, decode the
- * CSD, and select the card. On ANY failure the SDHI module is deinit'd
- * so the caller can simply propagate the error.
+ * CSD, and select the card. On any failure after the module came up
+ * the SDHI module is deinit'd, so the caller simply propagates the
+ * error.
  *
  * @param[in]  instance          SDHI instance index.
  * @param[out] out_rca           Receives the published relative address.
@@ -480,10 +481,10 @@ internal_sdcard_negotiate_width(uint8_t instance, ra8_sdhi_bus_width_t width, ui
  * @retval k_ra8_ok                 Card parked in TRAN, outputs valid.
  * @retval k_ra8_err_hw_init_failed Identification / CSD decode failed.
  *
- * @pre ::ra8_sdhi_init succeeded for ``instance``.
+ * @pre The SDHI module for ``instance`` is not yet initialized.
  * @pre All three output pointers are non-NULL.
  * @post On success the card is in TRAN and every output is populated.
- * @post On error SDHI has been deinitialized for ``instance``.
+ * @post On error SDHI has been (or remained) deinitialized.
  *
  * @note Not thread-safe; single-threaded init context.
  * @since 0.1.0
@@ -493,6 +494,10 @@ static ra8_err_t internal_sdcard_card_online(uint8_t   instance,
                                              uint32_t* out_blocks,
                                              uint8_t*  out_high_capacity)
 {
+  /* HUM Ch 47.1 "SDHI Overview" p 3122 */ /* module bring-up first. */
+  const ra8_err_t hw_err = ra8_sdhi_init(instance);
+  RA8_RETURN_ON_ERROR(hw_err, s_tag, "sdhi_init"); /* GCOVR_EXCL_BR_LINE */
+
   const ra8_err_t id_err = internal_sdcard_identify(instance);
   if (id_err != k_ra8_ok) {
     (void)ra8_sdhi_deinit(instance);
@@ -522,10 +527,6 @@ ra8_err_t ra8_sdcard_init(const ra8_sdcard_cfg_t* cfg)
   if (s_sdcard.initialized != 0U) {
     return k_ra8_err_invalid_state;
   }
-
-  /* HUM Ch 47.1 "SDHI Overview" p 3122 */ /* module bring-up first. */
-  const ra8_err_t hw_err = ra8_sdhi_init(cfg->instance);
-  RA8_RETURN_ON_ERROR(hw_err, s_tag, "sdhi_init"); /* GCOVR_EXCL_BR_LINE */
 
   uint16_t        rca           = 0U;
   uint32_t        blocks        = 0U;

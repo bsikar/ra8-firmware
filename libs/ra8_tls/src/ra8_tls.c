@@ -652,4 +652,3 @@ ra8_err_t ra8_tls_mss_clamp(uint16_t mtu, uint16_t* out_mss)
   *out_mss = (uint16_t)(mtu - overhead);
   return k_ra8_ok;
 }
-

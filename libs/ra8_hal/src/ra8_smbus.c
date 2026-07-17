@@ -368,6 +368,61 @@ static ra8_err_t internal_block_read_pec_check(uint8_t        target_7b,
   return k_ra8_ok;
 }
 
+/**
+ * @brief Unpack a completed Block Read transfer into the caller buffer.
+ *
+ * @details
+ * The combined transfer left ``[count] [data...] [optional PEC]`` in
+ * ``rx``. Publish the peripheral-reported count, bound it against the
+ * caller's capacity, copy the payload out, and (when PEC is enabled)
+ * verify the trailing PEC byte via ::internal_block_read_pec_check.
+ *
+ * @param[in]  target_7b 7-bit peripheral address (for the PEC frame).
+ * @param[in]  cmd       Command code that selected the block.
+ * @param[in]  rx        Raw transfer buffer from the bus seam.
+ * @param[in]  cap       Caller buffer capacity in bytes.
+ * @param[out] buf       Receives the payload bytes.
+ * @param[out] out_len   Receives the peripheral-reported byte count.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok               Payload copied (and PEC verified).
+ * @retval k_ra8_err_invalid_size Peripheral count exceeds ``cap``.
+ * @retval k_ra8_err_crc_mismatch PEC byte did not match the frame.
+ *
+ * @pre ``rx`` holds a completed transfer of at least ``cap + 2`` bytes.
+ * @pre ``buf`` and ``out_len`` are non-NULL (checked by the caller).
+ * @post ``*out_len`` is set even when the count exceeds ``cap``.
+ * @post ``buf`` holds ``count`` payload bytes on success.
+ *
+ * @note Reads module PEC state; call from the block-read path only.
+ * @since 0.1.0
+ */
+static ra8_err_t internal_block_read_finish(uint8_t        target_7b,
+                                            uint8_t        cmd,
+                                            const uint8_t* rx,
+                                            uint8_t        cap,
+                                            uint8_t*       buf,
+                                            uint8_t*       out_len)
+{
+  const uint8_t count = rx[0];
+  *out_len            = count;
+  if (count > cap) {
+    return k_ra8_err_invalid_size;
+  }
+  for (uint8_t i = 0U; i < count; ++i) {
+    buf[i] = rx[1U + (uint32_t)i];
+  }
+  if (s_state.pec_enabled) {
+    /* PEC byte sits at rx[1 + count]. */
+    const ra8_err_t pec_err =
+      internal_block_read_pec_check(target_7b, cmd, buf, count, rx[1U + (uint32_t)count]);
+    if (pec_err != k_ra8_ok) {
+      return pec_err;
+    }
+  } /* GCOVR_EXCL_LINE -- reached only when PEC matches; host sim returns constant NTDTBP0 */
+  return k_ra8_ok;
+}
+
 ra8_err_t
 ra8_smbus_block_read(uint8_t target_7b, uint8_t cmd, uint8_t* buf, uint8_t cap, uint8_t* out_len)
 {
@@ -389,23 +444,7 @@ ra8_smbus_block_read(uint8_t target_7b, uint8_t cmd, uint8_t* buf, uint8_t cap, 
   if (err != k_ra8_ok) {
     return err;
   }
-  const uint8_t count = rx[0];
-  *out_len            = count;
-  if (count > cap) {
-    return k_ra8_err_invalid_size;
-  }
-  for (uint8_t i = 0U; i < count; ++i) {
-    buf[i] = rx[1U + (uint32_t)i];
-  }
-  if (s_state.pec_enabled) {
-    /* PEC byte sits at rx[1 + count]. */
-    const ra8_err_t pec_err =
-      internal_block_read_pec_check(target_7b, cmd, buf, count, rx[1U + (uint32_t)count]);
-    if (pec_err != k_ra8_ok) {
-      return pec_err;
-    }
-  } /* GCOVR_EXCL_LINE -- reached only when PEC matches; host sim returns constant NTDTBP0 */
-  return k_ra8_ok;
+  return internal_block_read_finish(target_7b, cmd, rx, cap, buf, out_len);
 }
 
 /* =============================================================================

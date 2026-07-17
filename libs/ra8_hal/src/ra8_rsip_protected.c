@@ -442,7 +442,8 @@ static ra8_err_t internal_rsa_install_priv(const uint8_t*         wrapped_priv,
    * IV that the stub validates trivially. */
   uint8_t                  install_iv[k_ra8_rsip_p_iv_bytes] = {};
   const ra8_rsip_oem_cmd_t install_cmd                       = internal_rsa_install_cmd(size);
-  const ra8_err_t rc = ra8_rsip_oem_install(install_cmd, install_iv, modulus, mod_bytes, out_handle);
+  const ra8_err_t          rc =
+    ra8_rsip_oem_install(install_cmd, install_iv, modulus, mod_bytes, out_handle);
   p_scrub(modulus, mod_bytes);
   return rc;
 }
@@ -478,7 +479,7 @@ ra8_err_t ra8_rsip_protected_rsa_decrypt(const uint8_t*      wrapped_priv,
   }
 
   ra8_rsip_key_handle_t handle = {};
-  rc = internal_rsa_install_priv(wrapped_priv, size, mod_bytes, &handle);
+  rc                           = internal_rsa_install_priv(wrapped_priv, size, mod_bytes, &handle);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -562,7 +563,7 @@ ra8_err_t ra8_rsip_protected_ecdsa_sign(const uint8_t*   wrapped_priv,
    * payload. */
   ra8_rsip_key_handle_t handle     = {};
   uint32_t              priv_bytes = 0U;
-  rc = internal_ecc_priv_params(curve, &handle.alg, &priv_bytes);
+  rc                               = internal_ecc_priv_params(curve, &handle.alg, &priv_bytes);
   if (rc != k_ra8_ok) {
     return rc;
   }
