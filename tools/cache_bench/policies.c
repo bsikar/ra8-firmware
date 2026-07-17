@@ -40,7 +40,7 @@ static uint32_t cb_fifo_victim(cb_cache_t* c, uint32_t* scanned)
   *scanned            = 1U;
   return f;
 }
-static const cache_policy_t cb_policy_fifo = {
+static const cache_policy_t s_cb_policy_fifo = {
   .name        = "FIFO",
   .meta_bytes  = 0U,
   .init        = cb_fifo_init,
@@ -105,7 +105,7 @@ static uint32_t cb_rand_victim(cb_cache_t* c, uint32_t* scanned)
   *scanned = 1U;
   return (uint32_t)(x % (uint64_t)c->capacity);
 }
-static const cache_policy_t cb_policy_random = {
+static const cache_policy_t s_cb_policy_random = {
   .name        = "Random",
   .meta_bytes  = 0U,
   .init        = cb_rand_init,
@@ -193,7 +193,7 @@ static uint32_t cb_lru_victim(cb_cache_t* c, uint32_t* scanned)
   *scanned = 1U;
   return (uint32_t)f;
 }
-static const cache_policy_t cb_policy_lru = {
+static const cache_policy_t s_cb_policy_lru = {
   .name        = "LRU",
   .meta_bytes  = 8U,
   .init        = cb_lru_init,
@@ -236,7 +236,7 @@ static uint32_t cb_clock_victim(cb_cache_t* c, uint32_t* scanned)
     }
   }
 }
-static const cache_policy_t cb_policy_clock = {
+static const cache_policy_t s_cb_policy_clock = {
   .name        = "CLOCK",
   .meta_bytes  = 1U,
   .init        = cb_clock_init,
@@ -248,16 +248,12 @@ static const cache_policy_t cb_policy_clock = {
 
 /* -------------------------------------------------------------- registry -- */
 
-/* Scan-resistant policies (deterministic, no ghost lists) in policy_scanresist.c. */
-extern const cache_policy_t cb_policy_slru;
-extern const cache_policy_t cb_policy_srrip;
-
 const cache_policy_t* const g_cb_policies[] = {
-  &cb_policy_fifo,
-  &cb_policy_random,
-  &cb_policy_lru,
-  &cb_policy_clock,
-  &cb_policy_slru,
-  &cb_policy_srrip,
+  &s_cb_policy_fifo,
+  &s_cb_policy_random,
+  &s_cb_policy_lru,
+  &s_cb_policy_clock,
+  &g_cb_policy_slru,
+  &g_cb_policy_srrip,
 };
 const uint32_t g_cb_policy_count = (uint32_t)(sizeof(g_cb_policies) / sizeof(g_cb_policies[0]));

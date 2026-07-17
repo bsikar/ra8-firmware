@@ -15,6 +15,8 @@
  */
 #include "trace.h"
 
+#include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,7 +37,6 @@ typedef enum : uint32_t {
   k_cb_obj_comic   = 2U,      /**< Object id of the scrolled CBZ tiles.         */
   k_cb_footprint   = 8192U,   /**< Pages in the huge file (>> any cache).       */
   k_cb_accesses    = 120000U, /**< Accesses per synthetic trace.                */
-  k_cb_passes_seq  = 4U,      /**< Linear passes for the sequential flood.      */
   k_cb_hot_pages   = 96U,     /**< Re-read working-set size (locality).         */
   k_cb_reread_pct  = 82U,     /**< % of re-read accesses inside the hotset.     */
   k_cb_jump_pct    = 4U,      /**< % of TOC-jump accesses that teleport.        */
@@ -46,6 +47,7 @@ typedef enum : uint32_t {
   k_cb_pct_full    = 100U,    /**< Divisor for percentage-range decisions.      */
   k_cb_mixed_phase = 2048U,   /**< Accesses per phase in the mixed session.     */
   k_cb_load_init   = 4096U,   /**< Initial key-array capacity in cb_trace_load. */
+  k_cb_line_max    = 128U,    /**< Line-buffer size for the trace-file loader.  */
 } cb_workload_dim_t;
 
 /**
@@ -140,9 +142,8 @@ static cb_trace_t cb_gen_sequential(void)
     return t;
   }
   for (uint64_t i = 0U; i < t.n; ++i) {
-    const uint32_t page =
-      (uint32_t)((i * (uint64_t)k_cb_passes_seq / t.n) * 0U + (i % (uint64_t)k_cb_footprint));
-    t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = page};
+    const uint32_t page = (uint32_t)(i % (uint64_t)k_cb_footprint);
+    t.keys[i]           = (cb_key_t){.object_id = k_cb_obj_book, .page = page};
   }
   t.footprint = k_cb_footprint;
   return t;
@@ -339,6 +340,56 @@ cb_trace_t* cb_traces_synthetic(uint32_t* out_count)
   return out;
 }
 
+/**
+ * @enum cb_radix_t
+ * @brief Numeric radix constants for the trace-line parser.
+ * @details Trace files store both fields in decimal.
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_cb_base_dec = 10U, /**< Decimal radix passed to strtoul. */
+} cb_radix_t;
+
+/**
+ * @brief Parse one `<object> <page>` trace line with full error detection.
+ *
+ * @details Converts the two unsigned decimal fields with `strtoul`, checking
+ *          the end pointer and `errno` for each (the CERT ERR34-C way of
+ *          detecting conversion errors that `fscanf("%u")` cannot report).
+ *
+ * @param[in]  line NUL-terminated text line.
+ * @param[out] obj  Receives the object id field.
+ * @param[out] pg   Receives the page index field.
+ *
+ * @return bool true when both fields parsed cleanly, false otherwise.
+ * @retval true  @p obj and @p pg hold the two parsed values.
+ * @retval false The line is malformed or a value is out of range.
+ *
+ * @pre @p line, @p obj, and @p pg are non-NULL.
+ * @post On false, @p obj / @p pg are unspecified (caller stops the load).
+ *
+ * @note Not thread-safe (reads and writes `errno`).
+ * @since 0.1.0
+ */
+static bool cb_parse_trace_line(const char* line, uint32_t* obj, uint32_t* pg)
+{
+  char* end             = nullptr;
+  errno                 = 0;
+  const unsigned long o = strtoul(line, &end, (int)k_cb_base_dec);
+  if ((end == line) || (errno != 0) || (o > UINT32_MAX)) {
+    return false;
+  }
+  const char* second    = end;
+  errno                 = 0;
+  const unsigned long p = strtoul(second, &end, (int)k_cb_base_dec);
+  if ((end == second) || (errno != 0) || (p > UINT32_MAX)) {
+    return false;
+  }
+  *obj = (uint32_t)o;
+  *pg  = (uint32_t)p;
+  return true;
+}
+
 cb_trace_t cb_trace_load(const char* path, const char* name)
 {
   cb_trace_t t = {.name = name};
@@ -352,9 +403,13 @@ cb_trace_t cb_trace_load(const char* path, const char* name)
     (void)fclose(f);
     return t;
   }
-  uint32_t obj = 0U;
-  uint32_t pg  = 0U;
-  while (fscanf(f, "%u %u", &obj, &pg) == 2) {
+  char line[k_cb_line_max] = {};
+  while (fgets(line, (int)sizeof(line), f) != nullptr) {
+    uint32_t obj = 0U;
+    uint32_t pg  = 0U;
+    if (!cb_parse_trace_line(line, &obj, &pg)) {
+      break; /* stop at the first malformed record, as fscanf did */
+    }
     if (t.n == cap) {
       cap *= 2U;
       cb_key_t* grown = (cb_key_t*)realloc(t.keys, (size_t)cap * sizeof(cb_key_t));
