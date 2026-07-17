@@ -305,6 +305,390 @@ static void test_ra8_cbz_open_happy(void)
 }
 
 /**
+ * @struct ccx_guard_ctx_t
+ * @brief Shared buffers and container image for the open-path guard helpers.
+ *
+ * @details Bundles the caller-provided offset / metadata / staging buffers and
+ *          the packed container image so each `ccx_open_guards_*` helper takes a
+ *          single context pointer instead of the eleven-argument `ra8_cbz_open`
+ *          list. Only the guard-sequence helpers consume it.
+ *
+ * @invariant All pointers reference caller-owned storage that outlives the
+ *            guard sequence; @c file_len is the packed length of @c container.
+ *
+ * @see test_ra8_cbz_open_guards
+ */
+typedef struct {
+  uint8_t*  container; /**< Packed RCBZ container image under test.         */
+  uint64_t  file_len;  /**< Byte length of the packed container.            */
+  uint64_t* offsets;   /**< Caller offset-table buffer (k_ccx_offsets_cap). */
+  uint8_t*  meta;      /**< Caller metadata buffer (k_ccx_meta_cap).        */
+  uint8_t*  staging;   /**< Caller staging buffer (k_ccx_staging_cap).      */
+} ccx_guard_ctx_t;
+
+/**
+ * @enum ccx_fail_call_t
+ * @brief 1-based file-read call indices used to inject a read failure.
+ */
+typedef enum : uint32_t {
+  k_ccx_fail_header  = 1U, /**< Fail the fixed-header read.   */
+  k_ccx_fail_offsets = 2U, /**< Fail the offset-table read.   */
+  k_ccx_fail_meta    = 3U, /**< Fail the metadata-table read. */
+} ccx_fail_call_t;
+
+/**
+ * @brief Assert that a single null `ra8_cbz_open` argument yields null_ptr.
+ *
+ * @details Drives `ra8_cbz_open` at the fixture capacities with every argument
+ *          supplied by the caller, so a single nulled slot exercises exactly one
+ *          of the six `RA8_CHECK_NULL_PTR` guards.
+ *
+ * @param[out] cbz      Container handle (nullptr exercises the cbz guard).
+ * @param[in]  read     File reader (nullptr exercises the file_read guard).
+ * @param[in]  file     File context passed to @p read.
+ * @param[in]  inflate  Decompressor (nullptr exercises the inflate guard).
+ * @param[out] offs     Offset buffer (nullptr exercises the offsets guard).
+ * @param[out] meta     Metadata buffer (nullptr exercises the meta guard).
+ * @param[out] staging  Staging buffer (nullptr exercises the staging guard).
+ * @param[in]  file_len Packed container length in bytes.
+ *
+ * @return None.
+ * @pre Exactly one pointer argument is nullptr.
+ * @post `ra8_cbz_open` returned k_ra8_err_null_ptr.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void ccx_expect_null_open(ra8_cbz_t*          cbz,
+                                 ra8_vsource_read_fn read,
+                                 void*               file,
+                                 ra8_book_inflate_fn inflate,
+                                 uint64_t*           offs,
+                                 uint8_t*            meta,
+                                 uint8_t*            staging,
+                                 uint64_t            file_len)
+{
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_cbz_open(cbz,
+                              read,
+                              file,
+                              file_len,
+                              inflate,
+                              offs,
+                              k_ccx_offsets_cap,
+                              meta,
+                              k_ccx_meta_cap,
+                              staging,
+                              k_ccx_staging_cap));
+}
+
+/**
+ * @brief Open with explicit capacities and assert the expected error.
+ *
+ * @details Rewinds @p file over the container image then opens with the given
+ *          per-table capacities so a single undersized budget exercises one of
+ *          the capacity-return legs.
+ *
+ * @param[in]     want      Expected `ra8_cbz_open` result.
+ * @param[out]    cbz       Container handle under test.
+ * @param[in,out] file      File context, reset to the container image.
+ * @param[in]     g         Shared buffers and container image.
+ * @param[in]     off_cap   Offset-table entry budget.
+ * @param[in]     meta_cap  Metadata-table byte budget.
+ * @param[in]     stage_cap Staging-buffer byte budget.
+ *
+ * @return None.
+ * @pre @p g fields reference valid buffers.
+ * @post `ra8_cbz_open` returned @p want.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void ccx_expect_open_err(ra8_err_t              want,
+                                ra8_cbz_t*             cbz,
+                                ccx_file_t*            file,
+                                const ccx_guard_ctx_t* g,
+                                uint32_t               off_cap,
+                                uint32_t               meta_cap,
+                                uint32_t               stage_cap)
+{
+  *file = (ccx_file_t){.data = g->container, .len = g->file_len, .fail_at = 0U, .calls = 0U};
+  TEST_ASSERT_EQ(want,
+                 ra8_cbz_open(cbz,
+                              ccx_file_read,
+                              file,
+                              g->file_len,
+                              ccx_inflate,
+                              g->offsets,
+                              off_cap,
+                              g->meta,
+                              meta_cap,
+                              g->staging,
+                              stage_cap));
+}
+
+/**
+ * @brief Exercise the six null-pointer guards of `ra8_cbz_open`.
+ *
+ * @param[out]    cbz  Container handle under test.
+ * @param[in,out] file File context bound to the container image.
+ * @param[in]     g    Shared buffers and container image.
+ *
+ * @return None.
+ * @pre @p g fields reference valid buffers.
+ * @post Each guarded argument returned k_ra8_err_null_ptr.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void ccx_open_guards_null(ra8_cbz_t* cbz, ccx_file_t* file, const ccx_guard_ctx_t* g)
+{
+  ccx_expect_null_open(nullptr,
+                       ccx_file_read,
+                       file,
+                       ccx_inflate,
+                       g->offsets,
+                       g->meta,
+                       g->staging,
+                       g->file_len);
+  ccx_expect_null_open(cbz,
+                       nullptr,
+                       file,
+                       ccx_inflate,
+                       g->offsets,
+                       g->meta,
+                       g->staging,
+                       g->file_len);
+  ccx_expect_null_open(cbz,
+                       ccx_file_read,
+                       file,
+                       nullptr,
+                       g->offsets,
+                       g->meta,
+                       g->staging,
+                       g->file_len);
+  ccx_expect_null_open(cbz,
+                       ccx_file_read,
+                       file,
+                       ccx_inflate,
+                       nullptr,
+                       g->meta,
+                       g->staging,
+                       g->file_len);
+  ccx_expect_null_open(cbz,
+                       ccx_file_read,
+                       file,
+                       ccx_inflate,
+                       g->offsets,
+                       nullptr,
+                       g->staging,
+                       g->file_len);
+  ccx_expect_null_open(cbz,
+                       ccx_file_read,
+                       file,
+                       ccx_inflate,
+                       g->offsets,
+                       g->meta,
+                       nullptr,
+                       g->file_len);
+}
+
+/**
+ * @brief Exercise the short-file and header-field rejections of `s_parse_header`.
+ *
+ * @param[out]    cbz  Container handle under test.
+ * @param[in,out] file File context bound to the container image.
+ * @param[in]     g    Shared buffers and container image.
+ *
+ * @return None.
+ * @pre @p g fields reference valid buffers.
+ * @post Every malformed header returned its rejection code.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void ccx_open_guards_header(ra8_cbz_t* cbz, ccx_file_t* file, const ccx_guard_ctx_t* g)
+{
+  /* File shorter than the fixed header. */
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_size,
+    ccx_open(cbz, file, g->container, k_ccx_short_file, g->offsets, g->meta, g->staging));
+  TEST_ASSERT(cbz->offsets == nullptr);
+
+  /* Bad magic. */
+  static uint8_t bad_magic[k_ccx_file_cap];
+  memcpy(bad_magic, g->container, (size_t)g->file_len);
+  bad_magic[0] = (uint8_t)'X';
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ccx_open(cbz, file, bad_magic, g->file_len, g->offsets, g->meta, g->staging));
+
+  /* Zero page count. */
+  static uint8_t zero_pages[k_ccx_file_cap];
+  memcpy(zero_pages, g->container, (size_t)g->file_len);
+  const uint32_t zero = 0U;
+  memcpy(&zero_pages[k_ra8_cbz_hdr_off_page_count], &zero, sizeof(zero));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ccx_open(cbz, file, zero_pages, g->file_len, g->offsets, g->meta, g->staging));
+
+  /* Non-zero reserved word. */
+  static uint8_t bad_rsv[k_ccx_file_cap];
+  memcpy(bad_rsv, g->container, (size_t)g->file_len);
+  const uint32_t one = 1U;
+  memcpy(&bad_rsv[k_ra8_cbz_hdr_off_reserved], &one, sizeof(one));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ccx_open(cbz, file, bad_rsv, g->file_len, g->offsets, g->meta, g->staging));
+
+  /* Unknown feature-flag bit. */
+  static uint8_t bad_flag[k_ccx_file_cap];
+  memcpy(bad_flag, g->container, (size_t)g->file_len);
+  const uint32_t unknown_flag = (uint32_t)k_ra8_book_flag_mask_known + 1U;
+  memcpy(&bad_flag[k_ra8_cbz_hdr_off_flags], &unknown_flag, sizeof(unknown_flag));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ccx_open(cbz, file, bad_flag, g->file_len, g->offsets, g->meta, g->staging));
+}
+
+/**
+ * @brief Exercise the offset / metadata / file-bound / staging capacity returns.
+ *
+ * @param[out]    cbz  Container handle under test.
+ * @param[in,out] file File context bound to the container image.
+ * @param[in]     g    Shared buffers and container image.
+ *
+ * @return None.
+ * @pre @p g fields reference valid buffers.
+ * @post Every undersized budget returned k_ra8_err_invalid_size.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void ccx_open_guards_capacity(ra8_cbz_t* cbz, ccx_file_t* file, const ccx_guard_ctx_t* g)
+{
+  /* Offset table needs more entries than the caller budgeted. */
+  ccx_expect_open_err(k_ra8_err_invalid_size,
+                      cbz,
+                      file,
+                      g,
+                      k_ccx_tiny_off,
+                      k_ccx_meta_cap,
+                      k_ccx_staging_cap);
+  /* Metadata table needs more bytes than the caller budgeted. */
+  ccx_expect_open_err(k_ra8_err_invalid_size,
+                      cbz,
+                      file,
+                      g,
+                      k_ccx_offsets_cap,
+                      k_ccx_tiny_meta,
+                      k_ccx_staging_cap);
+  /* File ends inside the offset table. */
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_size,
+    ccx_open(cbz, file, g->container, k_ccx_table_cut, g->offsets, g->meta, g->staging));
+  /* A compressed page larger than the staging budget. */
+  ccx_expect_open_err(k_ra8_err_invalid_size,
+                      cbz,
+                      file,
+                      g,
+                      k_ccx_offsets_cap,
+                      k_ccx_meta_cap,
+                      k_ccx_tiny_stage);
+}
+
+/**
+ * @brief Exercise the offset-table and zero-raster metadata rejections.
+ *
+ * @param[out]    cbz  Container handle under test.
+ * @param[in,out] file File context bound to the container image.
+ * @param[in]     g    Shared buffers and container image.
+ *
+ * @return None.
+ * @pre @p g fields reference valid buffers.
+ * @post Every corrupt table returned k_ra8_err_invalid_arg.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void ccx_open_guards_table(ra8_cbz_t* cbz, ccx_file_t* file, const ccx_guard_ctx_t* g)
+{
+  const uint32_t zero = 0U;
+
+  /* Corrupt offset table: force a non-monotonic entry (offset[1] == offset[0]). */
+  static uint8_t bad_offs[k_ccx_file_cap];
+  memcpy(bad_offs, g->container, (size_t)g->file_len);
+  const uint64_t zero64 = 0U;
+  memcpy(&bad_offs[k_ra8_cbz_header_len + k_ra8_cbz_offset_len], &zero64, sizeof(zero64));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ccx_open(cbz, file, bad_offs, g->file_len, g->offsets, g->meta, g->staging));
+
+  /* Offset table whose first entry is not zero. */
+  static uint8_t bad_off0[k_ccx_file_cap];
+  memcpy(bad_off0, g->container, (size_t)g->file_len);
+  const uint64_t one64 = 1U;
+  memcpy(&bad_off0[k_ra8_cbz_header_len], &one64, sizeof(one64));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ccx_open(cbz, file, bad_off0, g->file_len, g->offsets, g->meta, g->staging));
+
+  /* File one byte short: the offset table's end disagrees with the payload. */
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    ccx_open(cbz, file, g->container, g->file_len - 1U, g->offsets, g->meta, g->staging));
+
+  /* Zero raster length in the metadata table (page 0). */
+  static uint8_t bad_raw[k_ccx_file_cap];
+  memcpy(bad_raw, g->container, (size_t)g->file_len);
+  const size_t meta0 =
+    (size_t)k_ra8_cbz_header_len + ((size_t)(k_ccx_page_count + 1U) * k_ra8_cbz_offset_len);
+  memcpy(&bad_raw[meta0 + k_ra8_cbz_meta_off_raw], &zero, sizeof(zero));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ccx_open(cbz, file, bad_raw, g->file_len, g->offsets, g->meta, g->staging));
+}
+
+/**
+ * @brief Assert a file-read failure at call @p fail_at propagates verbatim.
+ *
+ * @param[out]    cbz     Container handle under test.
+ * @param[in,out] file    File context bound to the container image.
+ * @param[in]     g       Shared buffers and container image.
+ * @param[in]     fail_at 1-based call index to fail on.
+ *
+ * @return None.
+ * @pre @p g fields reference valid buffers.
+ * @post `ra8_cbz_open` returned k_ra8_err_hw_timeout.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void
+ccx_expect_readfail(ra8_cbz_t* cbz, ccx_file_t* file, const ccx_guard_ctx_t* g, uint32_t fail_at)
+{
+  *file = (ccx_file_t){.data = g->container, .len = g->file_len, .fail_at = fail_at, .calls = 0U};
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
+                 ra8_cbz_open(cbz,
+                              ccx_file_read,
+                              file,
+                              g->file_len,
+                              ccx_inflate,
+                              g->offsets,
+                              k_ccx_offsets_cap,
+                              g->meta,
+                              k_ccx_meta_cap,
+                              g->staging,
+                              k_ccx_staging_cap));
+}
+
+/**
+ * @brief Exercise the three file-read error passthroughs of `ra8_cbz_open`.
+ *
+ * @param[out]    cbz  Container handle under test.
+ * @param[in,out] file File context bound to the container image.
+ * @param[in]     g    Shared buffers and container image.
+ *
+ * @return None.
+ * @pre @p g fields reference valid buffers.
+ * @post Each of the header / offset / metadata reads propagated its error.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void ccx_open_guards_readfail(ra8_cbz_t* cbz, ccx_file_t* file, const ccx_guard_ctx_t* g)
+{
+  ccx_expect_readfail(cbz, file, g, k_ccx_fail_header);
+  ccx_expect_readfail(cbz, file, g, k_ccx_fail_offsets);
+  ccx_expect_readfail(cbz, file, g, k_ccx_fail_meta);
+}
+
+/**
  * @test test_ra8_cbz_open_guards
  * @brief Every open-path guard rejects its malformed input.
  *
@@ -333,239 +717,17 @@ static void test_ra8_cbz_open_guards(void)
   static uint8_t staging[k_ccx_staging_cap];
   file = (ccx_file_t){.data = container, .len = file_len, .fail_at = 0U, .calls = 0U};
 
-  /* Null guards (cbz, file_read, inflate, offsets_buf, meta_buf, staging). */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_cbz_open(nullptr,
-                              ccx_file_read,
-                              &file,
-                              file_len,
-                              ccx_inflate,
-                              offsets_buf,
-                              k_ccx_offsets_cap,
-                              meta_buf,
-                              k_ccx_meta_cap,
-                              staging,
-                              k_ccx_staging_cap));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_cbz_open(&cbz,
-                              nullptr,
-                              &file,
-                              file_len,
-                              ccx_inflate,
-                              offsets_buf,
-                              k_ccx_offsets_cap,
-                              meta_buf,
-                              k_ccx_meta_cap,
-                              staging,
-                              k_ccx_staging_cap));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_cbz_open(&cbz,
-                              ccx_file_read,
-                              &file,
-                              file_len,
-                              nullptr,
-                              offsets_buf,
-                              k_ccx_offsets_cap,
-                              meta_buf,
-                              k_ccx_meta_cap,
-                              staging,
-                              k_ccx_staging_cap));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_cbz_open(&cbz,
-                              ccx_file_read,
-                              &file,
-                              file_len,
-                              ccx_inflate,
-                              nullptr,
-                              k_ccx_offsets_cap,
-                              meta_buf,
-                              k_ccx_meta_cap,
-                              staging,
-                              k_ccx_staging_cap));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_cbz_open(&cbz,
-                              ccx_file_read,
-                              &file,
-                              file_len,
-                              ccx_inflate,
-                              offsets_buf,
-                              k_ccx_offsets_cap,
-                              nullptr,
-                              k_ccx_meta_cap,
-                              staging,
-                              k_ccx_staging_cap));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_cbz_open(&cbz,
-                              ccx_file_read,
-                              &file,
-                              file_len,
-                              ccx_inflate,
-                              offsets_buf,
-                              k_ccx_offsets_cap,
-                              meta_buf,
-                              k_ccx_meta_cap,
-                              nullptr,
-                              k_ccx_staging_cap));
+  const ccx_guard_ctx_t g = {.container = container,
+                             .file_len  = file_len,
+                             .offsets   = offsets_buf,
+                             .meta      = meta_buf,
+                             .staging   = staging};
 
-  /* File shorter than the fixed header. */
-  TEST_ASSERT_EQ(
-    k_ra8_err_invalid_size,
-    ccx_open(&cbz, &file, container, k_ccx_short_file, offsets_buf, meta_buf, staging));
-  TEST_ASSERT(cbz.offsets == nullptr);
-
-  /* Bad magic. */
-  static uint8_t bad_magic[k_ccx_file_cap];
-  memcpy(bad_magic, container, (size_t)file_len);
-  bad_magic[0] = (uint8_t)'X';
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ccx_open(&cbz, &file, bad_magic, file_len, offsets_buf, meta_buf, staging));
-
-  /* Zero page count. */
-  static uint8_t zero_pages[k_ccx_file_cap];
-  memcpy(zero_pages, container, (size_t)file_len);
-  const uint32_t zero = 0U;
-  memcpy(&zero_pages[k_ra8_cbz_hdr_off_page_count], &zero, sizeof(zero));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ccx_open(&cbz, &file, zero_pages, file_len, offsets_buf, meta_buf, staging));
-
-  /* Non-zero reserved word. */
-  static uint8_t bad_rsv[k_ccx_file_cap];
-  memcpy(bad_rsv, container, (size_t)file_len);
-  const uint32_t one = 1U;
-  memcpy(&bad_rsv[k_ra8_cbz_hdr_off_reserved], &one, sizeof(one));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ccx_open(&cbz, &file, bad_rsv, file_len, offsets_buf, meta_buf, staging));
-
-  /* Unknown feature-flag bit. */
-  static uint8_t bad_flag[k_ccx_file_cap];
-  memcpy(bad_flag, container, (size_t)file_len);
-  const uint32_t unknown_flag = (uint32_t)k_ra8_book_flag_mask_known + 1U;
-  memcpy(&bad_flag[k_ra8_cbz_hdr_off_flags], &unknown_flag, sizeof(unknown_flag));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ccx_open(&cbz, &file, bad_flag, file_len, offsets_buf, meta_buf, staging));
-
-  /* Offset table needs more entries than the caller budgeted. */
-  file = (ccx_file_t){.data = container, .len = file_len, .fail_at = 0U, .calls = 0U};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_cbz_open(&cbz,
-                              ccx_file_read,
-                              &file,
-                              file_len,
-                              ccx_inflate,
-                              offsets_buf,
-                              k_ccx_tiny_off,
-                              meta_buf,
-                              k_ccx_meta_cap,
-                              staging,
-                              k_ccx_staging_cap));
-
-  /* Metadata table needs more bytes than the caller budgeted. */
-  file = (ccx_file_t){.data = container, .len = file_len, .fail_at = 0U, .calls = 0U};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_cbz_open(&cbz,
-                              ccx_file_read,
-                              &file,
-                              file_len,
-                              ccx_inflate,
-                              offsets_buf,
-                              k_ccx_offsets_cap,
-                              meta_buf,
-                              k_ccx_tiny_meta,
-                              staging,
-                              k_ccx_staging_cap));
-
-  /* File ends inside the offset table. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ccx_open(&cbz, &file, container, k_ccx_table_cut, offsets_buf, meta_buf, staging));
-
-  /* A compressed page larger than the staging budget. */
-  file = (ccx_file_t){.data = container, .len = file_len, .fail_at = 0U, .calls = 0U};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_cbz_open(&cbz,
-                              ccx_file_read,
-                              &file,
-                              file_len,
-                              ccx_inflate,
-                              offsets_buf,
-                              k_ccx_offsets_cap,
-                              meta_buf,
-                              k_ccx_meta_cap,
-                              staging,
-                              k_ccx_tiny_stage));
-
-  /* Corrupt offset table: force a non-monotonic entry (offset[1] == offset[0]). */
-  static uint8_t bad_offs[k_ccx_file_cap];
-  memcpy(bad_offs, container, (size_t)file_len);
-  const uint64_t zero64 = 0U;
-  memcpy(&bad_offs[k_ra8_cbz_header_len + k_ra8_cbz_offset_len], &zero64, sizeof(zero64));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ccx_open(&cbz, &file, bad_offs, file_len, offsets_buf, meta_buf, staging));
-
-  /* Offset table whose first entry is not zero. */
-  static uint8_t bad_off0[k_ccx_file_cap];
-  memcpy(bad_off0, container, (size_t)file_len);
-  const uint64_t one64 = 1U;
-  memcpy(&bad_off0[k_ra8_cbz_header_len], &one64, sizeof(one64));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ccx_open(&cbz, &file, bad_off0, file_len, offsets_buf, meta_buf, staging));
-
-  /* File one byte short: the offset table's end disagrees with the payload. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ccx_open(&cbz, &file, container, file_len - 1U, offsets_buf, meta_buf, staging));
-
-  /* Zero raster length in the metadata table (page 0). */
-  static uint8_t bad_raw[k_ccx_file_cap];
-  memcpy(bad_raw, container, (size_t)file_len);
-  const size_t meta0 =
-    (size_t)k_ra8_cbz_header_len + ((size_t)(k_ccx_page_count + 1U) * k_ra8_cbz_offset_len);
-  memcpy(&bad_raw[meta0 + k_ra8_cbz_meta_off_raw], &zero, sizeof(zero));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ccx_open(&cbz, &file, bad_raw, file_len, offsets_buf, meta_buf, staging));
-
-  /* File-read failure on the header read propagates verbatim. */
-  file = (ccx_file_t){.data = container, .len = file_len, .fail_at = 1U, .calls = 0U};
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
-                 ra8_cbz_open(&cbz,
-                              ccx_file_read,
-                              &file,
-                              file_len,
-                              ccx_inflate,
-                              offsets_buf,
-                              k_ccx_offsets_cap,
-                              meta_buf,
-                              k_ccx_meta_cap,
-                              staging,
-                              k_ccx_staging_cap));
-
-  /* File-read failure on the offset-table read (call 2) propagates verbatim. */
-  file = (ccx_file_t){.data = container, .len = file_len, .fail_at = 2U, .calls = 0U};
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
-                 ra8_cbz_open(&cbz,
-                              ccx_file_read,
-                              &file,
-                              file_len,
-                              ccx_inflate,
-                              offsets_buf,
-                              k_ccx_offsets_cap,
-                              meta_buf,
-                              k_ccx_meta_cap,
-                              staging,
-                              k_ccx_staging_cap));
-
-  /* File-read failure on the metadata read (call 3) propagates verbatim. */
-  file = (ccx_file_t){.data = container, .len = file_len, .fail_at = 3U, .calls = 0U};
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
-                 ra8_cbz_open(&cbz,
-                              ccx_file_read,
-                              &file,
-                              file_len,
-                              ccx_inflate,
-                              offsets_buf,
-                              k_ccx_offsets_cap,
-                              meta_buf,
-                              k_ccx_meta_cap,
-                              staging,
-                              k_ccx_staging_cap));
+  ccx_open_guards_null(&cbz, &file, &g);
+  ccx_open_guards_header(&cbz, &file, &g);
+  ccx_open_guards_capacity(&cbz, &file, &g);
+  ccx_open_guards_table(&cbz, &file, &g);
+  ccx_open_guards_readfail(&cbz, &file, &g);
 
   TEST_END("ra8_cbz_open guards");
 }
@@ -716,6 +878,72 @@ static void test_ra8_cbz_page_read_equivalence(void)
 }
 
 /**
+ * @brief Exercise the bind / read guards reachable before a container is opened.
+ *
+ * @details Covers the two `ra8_cbz_page_bind` null guards, its invalid-state
+ *          return on an unopened handle, the two `ra8_cbz_page_read` null
+ *          guards, its invalid-state return on an unbound cursor, and a cursor
+ *          whose container was never bound (offsets == NULL).
+ *
+ * @param[in]  cbz An unopened container handle.
+ * @param[out] cur A zero-initialised page cursor used as the read subject.
+ * @param[out] out Raster output buffer, at least k_ccx_p0_raw bytes.
+ *
+ * @return None.
+ * @pre @p cbz is zero-initialised (unopened).
+ * @post Every pre-open guard returned its documented error.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void ccx_page_read_guards_unbound(ra8_cbz_t* cbz, ra8_cbz_page_t* cur, uint8_t* out)
+{
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cbz_page_bind(nullptr, 0U, cur));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cbz_page_bind(cbz, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_cbz_page_bind(cbz, 0U, cur));
+
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cbz_page_read(nullptr, 0U, out, k_ccx_p0_raw));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cbz_page_read(cur, 0U, nullptr, k_ccx_p0_raw));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_cbz_page_read(cur, 0U, out, k_ccx_p0_raw));
+
+  /* Cursor whose container was never bound (offsets == NULL) -> invalid_state. */
+  ra8_cbz_t      unbound_cbz = {};
+  ra8_cbz_page_t orphan_cur  = {.cbz = &unbound_cbz, .page = 0U, .raw_size = k_ccx_p0_raw};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_cbz_page_read(&orphan_cur, 0U, out, k_ccx_p0_raw));
+}
+
+/**
+ * @brief Assert an inflated manifest raster length is rejected on read.
+ *
+ * @details Packs a fresh container whose last page's stored raw_size is one byte
+ *          too long, opens and binds the last page, confirms the inflated
+ *          raw_size, then reads and expects k_ra8_err_invalid_size because the
+ *          produced length no longer matches the manifest.
+ *
+ * @return None.
+ * @pre The page fixtures are already populated (ccx_fill_pages()).
+ * @post `ra8_cbz_page_read` returned k_ra8_err_invalid_size.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void ccx_page_read_guards_badraw(void)
+{
+  static uint8_t badraw_container[k_ccx_file_cap];
+  const uint64_t badraw_len              = ccx_pack(badraw_container, 0U, 1U);
+  ra8_cbz_t      brd                     = {};
+  ccx_file_t     bfile                   = {};
+  uint64_t       boff[k_ccx_offsets_cap] = {};
+  static uint8_t bmeta[k_ccx_meta_cap];
+  static uint8_t bstage[k_ccx_staging_cap];
+  static uint8_t bout[k_ccx_max_raw + 1U];
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ccx_open(&brd, &bfile, badraw_container, badraw_len, boff, bmeta, bstage));
+  ra8_cbz_page_t bcur = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cbz_page_bind(&brd, k_ccx_page_count - 1U, &bcur));
+  TEST_ASSERT_EQ(k_ccx_p2_raw + 1U, bcur.raw_size);
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_cbz_page_read(&bcur, 0U, bout, bcur.raw_size));
+}
+
+/**
  * @test test_ra8_cbz_page_read_guards
  * @brief Every bind / read guard rejects its malformed request.
  *
@@ -743,21 +971,9 @@ static void test_ra8_cbz_page_read_guards(void)
   static uint8_t staging[k_ccx_staging_cap];
   static uint8_t out[k_ccx_max_raw];
 
-  /* Bind guards before a valid open. */
+  /* Bind / read guards reachable before the container is opened. */
   ra8_cbz_page_t cur = {};
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cbz_page_bind(nullptr, 0U, &cur));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cbz_page_bind(&cbz, 0U, nullptr));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_cbz_page_bind(&cbz, 0U, &cur));
-
-  /* Read guards on an unbound cursor. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cbz_page_read(nullptr, 0U, out, k_ccx_p0_raw));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cbz_page_read(&cur, 0U, nullptr, k_ccx_p0_raw));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_cbz_page_read(&cur, 0U, out, k_ccx_p0_raw));
-
-  /* Cursor whose container was never bound (offsets == NULL) -> invalid_state. */
-  ra8_cbz_t      unbound_cbz = {};
-  ra8_cbz_page_t orphan_cur  = {.cbz = &unbound_cbz, .page = 0U, .raw_size = k_ccx_p0_raw};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_cbz_page_read(&orphan_cur, 0U, out, k_ccx_p0_raw));
+  ccx_page_read_guards_unbound(&cbz, &cur, out);
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ccx_open(&cbz, &file, container, file_len, offsets_buf, meta_buf, staging));
@@ -784,23 +1000,7 @@ static void test_ra8_cbz_page_read_guards(void)
   container[p0_at]        = saved;
   TEST_ASSERT(corrupt != k_ra8_ok);
 
-  /* A valid stream whose manifest raster length is too long is rejected: the
-   * last page's stored raw_size is inflated by one, so the produced length no
-   * longer matches. */
-  static uint8_t badraw_container[k_ccx_file_cap];
-  const uint64_t badraw_len              = ccx_pack(badraw_container, 0U, 1U);
-  ra8_cbz_t      brd                     = {};
-  ccx_file_t     bfile                   = {};
-  uint64_t       boff[k_ccx_offsets_cap] = {};
-  static uint8_t bmeta[k_ccx_meta_cap];
-  static uint8_t bstage[k_ccx_staging_cap];
-  static uint8_t bout[k_ccx_max_raw + 1U];
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ccx_open(&brd, &bfile, badraw_container, badraw_len, boff, bmeta, bstage));
-  ra8_cbz_page_t bcur = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_cbz_page_bind(&brd, k_ccx_page_count - 1U, &bcur));
-  TEST_ASSERT_EQ(k_ccx_p2_raw + 1U, bcur.raw_size);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_cbz_page_read(&bcur, 0U, bout, bcur.raw_size));
+  ccx_page_read_guards_badraw();
 
   TEST_END("ra8_cbz_page_read guards");
 }
