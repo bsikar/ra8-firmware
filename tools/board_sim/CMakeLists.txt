@@ -95,6 +95,7 @@ add_executable(board_sim
                src/board_usb_host.c
                src/board_net.c
                src/board_overlay.c
+               src/board_overlay_draw.c
                src/board_console.c
                src/board_input.c
                ${BOARD_VIEW_SRC})
