@@ -245,6 +245,64 @@ static void test_setup_sureq_busy_fs_hs(void)
 }
 
 /**
+ * @brief MC/DC V1: control-WRITE with a multi-packet data stage.
+ * @param[in] data Payload buffer for the DATA-OUT stage.
+ * @return None.
+ * @pre None (prepares its own controller state).
+ * @post The transfer timed out at the IN status stage with rx == 0.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void thc_vector_write_data(uint8_t* data)
+{
+  /* V1: control-WRITE with a data stage -> DATA-OUT drives, IN status times out.
+   * mps=4 with wLength=10 forces the multi-packet loop (chunk > step clamp). */
+  prep();
+  ra8_usb_fs()->INTSTS1 = (uint16_t)k_thc_sack_bit;
+  ra8_usb_fs()->DCPMAXP = (uint16_t)k_thc_mps_multi;
+  ra8_usb_setup_t wr    = {
+    .bm_request_type = (uint8_t)k_thc_dir_out,
+    .b_request       = (uint8_t)k_thc_breq_out,
+    .w_length        = (uint16_t)k_thc_wlen_out,
+  };
+  uint16_t rx = 0xFFFFU;
+  TEST_ASSERT_EQ(
+    k_ra8_err_hw_timeout,
+    ra8_usb_host_control_xfer(k_ra8_usb_speed_fs, &wr, data, (uint16_t)k_thc_wlen_out, &rx));
+  TEST_ASSERT_EQ(0U, rx); /* DATA-OUT reports no received bytes. */
+  TEST_ASSERT_EQ(k_thc_stage_status, ra8_usb_host_ctrl_stage());
+}
+
+/**
+ * @brief MC/DC V3: control-READ entering the DATA-IN stage with a want clamp.
+ * @return None.
+ * @pre None (prepares its own controller state).
+ * @post The transfer reached the DATA-IN stage and timed out.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void thc_vector_read(void)
+{
+  /* V3: control-READ -> DATA-IN entered; NRDYSTS pre-seeded drives the NRDY
+   * re-arm; wLength (64) > buffer (8) exercises the want clamp. */
+  prep();
+  ra8_usb_fs()->INTSTS1 = (uint16_t)k_thc_sack_bit;
+  ra8_usb_fs()->NRDYSTS = (uint16_t)k_thc_dcp_bit;
+  ra8_usb_fs()->DCPMAXP = (uint16_t)k_thc_mps_dcp;
+  ra8_usb_setup_t rd    = {
+    .bm_request_type = (uint8_t)k_thc_dir_in,
+    .b_request       = (uint8_t)k_thc_breq_in,
+    .w_length        = (uint16_t)k_thc_wlen_in,
+  };
+  uint8_t  inbuf[k_thc_buf_in] = {};
+  uint16_t rx                  = 0U;
+  TEST_ASSERT_EQ(
+    k_ra8_err_hw_timeout,
+    ra8_usb_host_control_xfer(k_ra8_usb_speed_fs, &rd, inbuf, (uint16_t)k_thc_buf_in, &rx));
+  TEST_ASSERT_EQ(k_thc_stage_data_in, ra8_usb_host_ctrl_stage());
+}
+
+/**
  * @test test_mcdc_data_phase_direction
  *
  * @par MC/DC:
@@ -276,22 +334,7 @@ static void test_mcdc_data_phase_direction(void)
   uint8_t  data[k_thc_wlen_out] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U, 9U, 10U};
   uint16_t rx                   = 0U;
 
-  /* V1: control-WRITE with a data stage -> DATA-OUT drives, IN status times out.
-   * mps=4 with wLength=10 forces the multi-packet loop (chunk > step clamp). */
-  prep();
-  ra8_usb_fs()->INTSTS1 = (uint16_t)k_thc_sack_bit;
-  ra8_usb_fs()->DCPMAXP = (uint16_t)k_thc_mps_multi;
-  ra8_usb_setup_t wr    = {
-    .bm_request_type = (uint8_t)k_thc_dir_out,
-    .b_request       = (uint8_t)k_thc_breq_out,
-    .w_length        = (uint16_t)k_thc_wlen_out,
-  };
-  rx = 0xFFFFU;
-  TEST_ASSERT_EQ(
-    k_ra8_err_hw_timeout,
-    ra8_usb_host_control_xfer(k_ra8_usb_speed_fs, &wr, data, (uint16_t)k_thc_wlen_out, &rx));
-  TEST_ASSERT_EQ(0U, rx); /* DATA-OUT reports no received bytes. */
-  TEST_ASSERT_EQ(k_thc_stage_status, ra8_usb_host_ctrl_stage());
+  thc_vector_write_data(data);
 
   /* V2: no-data control (wLength == 0) -> no data stage, IN status times out. */
   prep();
@@ -305,22 +348,7 @@ static void test_mcdc_data_phase_direction(void)
                  ra8_usb_host_control_xfer(k_ra8_usb_speed_fs, &nd, data, 0U, &rx));
   TEST_ASSERT_EQ(k_thc_stage_status, ra8_usb_host_ctrl_stage());
 
-  /* V3: control-READ -> DATA-IN entered; NRDYSTS pre-seeded drives the NRDY
-   * re-arm; wLength (64) > buffer (8) exercises the want clamp. */
-  prep();
-  ra8_usb_fs()->INTSTS1 = (uint16_t)k_thc_sack_bit;
-  ra8_usb_fs()->NRDYSTS = (uint16_t)k_thc_dcp_bit;
-  ra8_usb_fs()->DCPMAXP = (uint16_t)k_thc_mps_dcp;
-  ra8_usb_setup_t rd    = {
-    .bm_request_type = (uint8_t)k_thc_dir_in,
-    .b_request       = (uint8_t)k_thc_breq_in,
-    .w_length        = (uint16_t)k_thc_wlen_in,
-  };
-  uint8_t inbuf[k_thc_buf_in] = {};
-  TEST_ASSERT_EQ(
-    k_ra8_err_hw_timeout,
-    ra8_usb_host_control_xfer(k_ra8_usb_speed_fs, &rd, inbuf, (uint16_t)k_thc_buf_in, &rx));
-  TEST_ASSERT_EQ(k_thc_stage_data_in, ra8_usb_host_ctrl_stage());
+  thc_vector_read();
 
   /* V4: control-WRITE with wLength > 0 but a NULL data pointer -> C3 false, no
    * data stage; IN status times out. Isolates the data!=NULL condition. */
