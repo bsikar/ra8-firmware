@@ -22,7 +22,7 @@
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
-  k_test_usb_dcp_max_packet = 64U,
+  k_test_usb_dcp_max_packet = 64U, /**< Test USB dcp maximum packet. */
 } test_usb_dcp_t;
 
 static void prep(void)

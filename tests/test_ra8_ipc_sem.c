@@ -27,8 +27,8 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_ipc_sem_test_idx_a = 5U,
-  k_ipc_sem_test_idx_b = 7U,
+  k_ipc_sem_test_idx_a = 5U, /**< Ipc sem test index a. */
+  k_ipc_sem_test_idx_b = 7U, /**< Ipc sem test index b. */
 } ipc_sem_test_lit_t;
 
 /* ---------- Semaphore tests ---------- */

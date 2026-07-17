@@ -30,10 +30,10 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_flash_ops_stamp_mrcrtea = 0xC0DECAFEUL,
-  k_flash_ops_stamp_mrcpea  = 0x42424242UL,
-  k_flash_ops_lit_xff       = 0xFFU,
-  k_flash_ops_lit_64        = 64,
+  k_flash_ops_stamp_mrcrtea = 0xC0DECAFEUL, /**< Flash ops stamp mrcrtea. */
+  k_flash_ops_stamp_mrcpea  = 0x42424242UL, /**< Flash ops stamp mrcpea.  */
+  k_flash_ops_lit_xff       = 0xFFU,        /**< Flash ops literal 0xFF.  */
+  k_flash_ops_lit_64        = 64,           /**< Flash ops literal 64.    */
 } flash_ops_test_lit_t;
 
 /* ---------------------------------------------------------------------------

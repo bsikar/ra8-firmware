@@ -31,9 +31,9 @@
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
-  k_mcdc_font_px_too_low  = 4U,
-  k_mcdc_font_px_too_high = 200U,
-  k_mcdc_font_px_ok       = 18U,
+  k_mcdc_font_px_too_low  = 4U,   /**< Mcdc font px too low.  */
+  k_mcdc_font_px_too_high = 200U, /**< Mcdc font px too high. */
+  k_mcdc_font_px_ok       = 18U,  /**< Mcdc font px ok.       */
 } reflow_mcdc_t;
 
 /**

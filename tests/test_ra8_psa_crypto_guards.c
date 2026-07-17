@@ -97,7 +97,7 @@ static void teardown(void)
  * @brief Magic-number-free vector inputs for the MC/DC tests below.
  */
 typedef enum : uint16_t {
-  k_psa_mcdc_short_input = 1U,
+  k_psa_mcdc_short_input = 1U, /**< PSA mcdc short input. */
 } ra8_psa_mcdc_const_t;
 
 /** @brief Helper: import a valid AES key with the requested usage mask. */

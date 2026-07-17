@@ -28,18 +28,18 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_etha_mcdc_lit_xaa = 0xAAU,
-  k_etha_mcdc_lit_xbb = 0xBBU,
-  k_etha_mcdc_lit_xcc = 0xCCU,
-  k_etha_mcdc_lit_xdd = 0xDDU,
-  k_etha_mcdc_lit_xee = 0xEEU,
-  k_etha_mcdc_lit_xff = 0xFFU,
-  k_etha_mcdc_lit_x11 = 0x11U,
-  k_etha_mcdc_lit_x22 = 0x22U,
-  k_etha_mcdc_lit_x33 = 0x33U,
-  k_etha_mcdc_lit_x44 = 0x44U,
-  k_etha_mcdc_lit_x55 = 0x55U,
-  k_etha_mcdc_lit_x66 = 0x66U,
+  k_etha_mcdc_lit_xaa = 0xAAU, /**< Etha MCDC literal 0xAA. */
+  k_etha_mcdc_lit_xbb = 0xBBU, /**< Etha MCDC literal 0xBB. */
+  k_etha_mcdc_lit_xcc = 0xCCU, /**< Etha MCDC literal 0xCC. */
+  k_etha_mcdc_lit_xdd = 0xDDU, /**< Etha MCDC literal 0xDD. */
+  k_etha_mcdc_lit_xee = 0xEEU, /**< Etha MCDC literal 0xEE. */
+  k_etha_mcdc_lit_xff = 0xFFU, /**< Etha MCDC literal 0xFF. */
+  k_etha_mcdc_lit_x11 = 0x11U, /**< Etha MCDC literal 0x11. */
+  k_etha_mcdc_lit_x22 = 0x22U, /**< Etha MCDC literal 0x22. */
+  k_etha_mcdc_lit_x33 = 0x33U, /**< Etha MCDC literal 0x33. */
+  k_etha_mcdc_lit_x44 = 0x44U, /**< Etha MCDC literal 0x44. */
+  k_etha_mcdc_lit_x55 = 0x55U, /**< Etha MCDC literal 0x55. */
+  k_etha_mcdc_lit_x66 = 0x66U, /**< Etha MCDC literal 0x66. */
 } etha_mcdc_test_lit_t;
 
 /** @brief Per-test fixture reset: fresh peripheral RAM + MSTP model. */

@@ -51,17 +51,17 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_sd_core_block_bytes      = 512,
-  k_sd_test_ten              = 10U,
-  k_sd_csd_idx_bl_len        = 5,
-  k_sd_csd_bl_len_512        = 0x09U,
-  k_sd_csd_idx_csize_mid     = 7,
-  k_sd_test_ff               = 0xFFU,
-  k_sd_csd_csize_low         = 0xC0U,
-  k_sd_csd_idx_csize_mult_hi = 9,
-  k_sd_csd_csize_mult_low    = 0x80U,
-  k_sd_stamp_rdr             = 0x5AU,
-  k_sd_test_stride_13        = 13U,
+  k_sd_core_block_bytes      = 512,   /**< SD core block bytes.        */
+  k_sd_test_ten              = 10U,   /**< SD test ten.                */
+  k_sd_csd_idx_bl_len        = 5,     /**< SD CSD index bl length.     */
+  k_sd_csd_bl_len_512        = 0x09U, /**< SD CSD bl length 512.       */
+  k_sd_csd_idx_csize_mid     = 7,     /**< SD CSD index csize mid.     */
+  k_sd_test_ff               = 0xFFU, /**< SD test ff.                 */
+  k_sd_csd_csize_low         = 0xC0U, /**< SD CSD csize low.           */
+  k_sd_csd_idx_csize_mult_hi = 9,     /**< SD CSD index csize mult hi. */
+  k_sd_csd_csize_mult_low    = 0x80U, /**< SD CSD csize mult low.      */
+  k_sd_stamp_rdr             = 0x5AU, /**< SD stamp rdr.               */
+  k_sd_test_stride_13        = 13U,   /**< SD test stride 13.          */
 } sdmmc_spi_test_lit_t;
 
 /* ===========================================================================

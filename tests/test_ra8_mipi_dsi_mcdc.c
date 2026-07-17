@@ -34,13 +34,13 @@
  * (DO-178C Level B / IEC 61508 SIL 3 / ISO 26262 ASIL C). */
 
 typedef enum : uint8_t {
-  k_mcdc_dsi_lane_bad_5 = 5U,
+  k_mcdc_dsi_lane_bad_5 = 5U, /**< Mcdc dsi lane bad 5. */
 } mcdc_dsi_lane_t;
 
 typedef enum : uint16_t {
-  k_mcdc_dsi_lp_over  = 200U,
-  k_mcdc_dsi_hs_over  = 1100U,
-  k_mcdc_dsi_long_len = 4U,
+  k_mcdc_dsi_lp_over  = 200U,  /**< Mcdc dsi lp over.     */
+  k_mcdc_dsi_hs_over  = 1100U, /**< Mcdc dsi hs over.     */
+  k_mcdc_dsi_long_len = 4U,    /**< Mcdc dsi long length. */
 } mcdc_dsi_u16_t;
 
 /**

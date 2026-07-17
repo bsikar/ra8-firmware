@@ -28,23 +28,23 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_dotf_ctrl_lit_99        = 99U,
-  k_dotf_ctrl_lit_xdeadbeef = 0xDEADBEEFUL,
+  k_dotf_ctrl_lit_99        = 99U,          /**< Dotf CTRL literal 99.         */
+  k_dotf_ctrl_lit_xdeadbeef = 0xDEADBEEFUL, /**< Dotf CTRL literal 0xDEADBEEF. */
 } dotf_ctrl_test_lit_t;
 
 typedef enum : uint8_t {
-  k_dotf_test_ch0 = 0U,
-  k_dotf_test_ch1 = 1U,
-  k_dotf_test_bad = 2U,
-  k_dotf_test_way = 200U,
+  k_dotf_test_ch0 = 0U,   /**< Dotf test ch0. */
+  k_dotf_test_ch1 = 1U,   /**< Dotf test ch1. */
+  k_dotf_test_bad = 2U,   /**< Dotf test bad. */
+  k_dotf_test_way = 200U, /**< Dotf test way. */
 } dotf_test_ch_t;
 
 typedef enum : uint8_t {
-  k_dotf_test_slot0    = 0U,
-  k_dotf_test_slot1    = 1U,
-  k_dotf_test_slot2    = 2U,
-  k_dotf_test_slot3    = 3U,
-  k_dotf_test_slot_bad = 9U,
+  k_dotf_test_slot0    = 0U, /**< Dotf test slot0.    */
+  k_dotf_test_slot1    = 1U, /**< Dotf test slot1.    */
+  k_dotf_test_slot2    = 2U, /**< Dotf test slot2.    */
+  k_dotf_test_slot3    = 3U, /**< Dotf test slot3.    */
+  k_dotf_test_slot_bad = 9U, /**< Dotf test slot bad. */
 } dotf_test_slot_t;
 
 typedef enum : uint32_t {
@@ -52,37 +52,37 @@ typedef enum : uint32_t {
   k_dotf_test_start_ok  = 0x80000000UL, /**< 4 KB-aligned XSPI0 base.   */
   k_dotf_test_end_ok    = 0x80FFF000UL, /**< 16 MB region inside XSPI0. */
   k_dotf_test_start2    = 0x82000000UL, /**< Second region in DOTF0.    */
-  k_dotf_test_end2      = 0x82FFF000UL,
-  k_dotf_test_start_bad = 0x80000400UL, /**< Misaligned start. */
-  k_dotf_test_end_bad   = 0x80000FFFUL, /**< Misaligned end.   */
-  k_dotf_test_high      = 0x90000000UL,
-  k_dotf_test_low       = 0x80000000UL,
-  k_dotf_test_oob_lo    = 0x60000000UL, /**< Below DOTF1 window. */
-  k_dotf_test_oob_hi    = 0xA0000000UL, /**< Above DOTF0 window. */
+  k_dotf_test_end2      = 0x82FFF000UL, /**< Dotf test end2.            */
+  k_dotf_test_start_bad = 0x80000400UL, /**< Misaligned start.          */
+  k_dotf_test_end_bad   = 0x80000FFFUL, /**< Misaligned end.            */
+  k_dotf_test_high      = 0x90000000UL, /**< Dotf test high.            */
+  k_dotf_test_low       = 0x80000000UL, /**< Dotf test low.             */
+  k_dotf_test_oob_lo    = 0x60000000UL, /**< Below DOTF1 window.        */
+  k_dotf_test_oob_hi    = 0xA0000000UL, /**< Above DOTF0 window.        */
   /* DOTF1 window 0x70000000..0x7FFFFFFF */
-  k_dotf_test_d1_start = 0x70000000UL,
-  k_dotf_test_d1_end   = 0x70FFF000UL,
+  k_dotf_test_d1_start = 0x70000000UL, /**< Dotf test d1 start. */
+  k_dotf_test_d1_end   = 0x70FFF000UL, /**< Dotf test d1 end.   */
 } dotf_test_addr_t;
 
 typedef enum : uint8_t {
-  k_dotf_test_key_idx_a = 7U,
-  k_dotf_test_key_idx_b = 11U,
+  k_dotf_test_key_idx_a = 7U,  /**< Dotf test key index a. */
+  k_dotf_test_key_idx_b = 11U, /**< Dotf test key index b. */
 } dotf_test_key_t;
 
 typedef enum : uint32_t {
-  k_dotf_test_iv0 = 0xDEADBEEFUL,
-  k_dotf_test_iv1 = 0xCAFEBABEUL,
-  k_dotf_test_iv2 = 0x12345678UL,
-  k_dotf_test_iv3 = 0x9ABCDEF0UL,
+  k_dotf_test_iv0 = 0xDEADBEEFUL, /**< Dotf test iv0. */
+  k_dotf_test_iv1 = 0xCAFEBABEUL, /**< Dotf test iv1. */
+  k_dotf_test_iv2 = 0x12345678UL, /**< Dotf test iv2. */
+  k_dotf_test_iv3 = 0x9ABCDEF0UL, /**< Dotf test iv3. */
 } dotf_test_iv_t;
 
 typedef enum : uint32_t {
-  k_dotf_test_keyword_a = 0x01020304UL,
-  k_dotf_test_keyword_b = 0x05060708UL,
+  k_dotf_test_keyword_a = 0x01020304UL, /**< Dotf test keyword a. */
+  k_dotf_test_keyword_b = 0x05060708UL, /**< Dotf test keyword b. */
 } dotf_test_keyword_t;
 
 typedef enum : uint8_t {
-  k_dotf_test_bad_sca = 99U,
+  k_dotf_test_bad_sca = 99U, /**< Dotf test bad sca. */
 } dotf_test_bad_t;
 
 static uint32_t s_cb_count;

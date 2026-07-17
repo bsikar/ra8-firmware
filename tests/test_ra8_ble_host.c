@@ -53,23 +53,23 @@ ra8_err_t ra8_ble_host_l2cap_send(uint16_t       conn_handle,
                                   uint16_t       payload_len);
 
 typedef enum : uint16_t {
-  k_test_op_le_set_adv_params = 0x2006U,
-  k_test_op_le_set_adv_data   = 0x2008U,
-  k_test_op_le_set_adv_enable = 0x200AU,
-  k_test_conn_handle          = 0x0040U,
-  k_test_l2cap_cid_att        = 0x0004U,
-  k_test_default_appearance   = 0x0040U,
-  k_test_adv_interval_ms      = 100U,
-  k_test_adv_interval_too_low = 1U,
-  k_test_value_buf_size       = 32U,
+  k_test_op_le_set_adv_params = 0x2006U, /**< Test op le set adv params. */
+  k_test_op_le_set_adv_data   = 0x2008U, /**< Test op le set adv data.   */
+  k_test_op_le_set_adv_enable = 0x200AU, /**< Test op le set adv enable. */
+  k_test_conn_handle          = 0x0040U, /**< Test conn handle.          */
+  k_test_l2cap_cid_att        = 0x0004U, /**< Test L2CAP cid ATT.        */
+  k_test_default_appearance   = 0x0040U, /**< Test default appearance.   */
+  k_test_adv_interval_ms      = 100U,    /**< Test adv interval ms.      */
+  k_test_adv_interval_too_low = 1U,      /**< Test adv interval too low. */
+  k_test_value_buf_size       = 32U,     /**< Test value buffer size.    */
 } ble_host_test_words_t;
 
 typedef enum : uint8_t {
-  k_test_pkt_cmd_byte     = 0x01U,
-  k_test_pkt_acl_byte     = 0x02U,
-  k_test_att_op_write_req = 0x12U,
-  k_test_att_op_read_req  = 0x0AU,
-  k_test_evt_count_zero   = 0U,
+  k_test_pkt_cmd_byte     = 0x01U, /**< Test pkt cmd byte.     */
+  k_test_pkt_acl_byte     = 0x02U, /**< Test pkt acl byte.     */
+  k_test_att_op_write_req = 0x12U, /**< Test ATT op write req. */
+  k_test_att_op_read_req  = 0x0AU, /**< Test ATT op read req.  */
+  k_test_evt_count_zero   = 0U,    /**< Test evt count zero.   */
 } ble_host_test_bytes_t;
 
 /* --------------------------------------------------------------------- */

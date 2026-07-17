@@ -33,16 +33,16 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_sdmmc_spi_read_lit_7   = 7U,
-  k_sdmmc_spi_read_lit_xff = 0xFFU,
-  k_sdmmc_spi_read_lit_xde = 0xDEU,
-  k_sdmmc_spi_read_lit_xad = 0xADU,
-  k_sdmmc_spi_read_lit_5   = 5,
-  k_sdmmc_spi_read_lit_x9  = 0x09U,
-  k_sdmmc_spi_read_lit_xc0 = 0xC0U,
-  k_sdmmc_spi_read_lit_9   = 9,
-  k_sdmmc_spi_read_lit_10  = 10,
-  k_sdmmc_spi_read_lit_x80 = 0x80U,
+  k_sdmmc_spi_read_lit_7   = 7U,    /**< Sdmmc SPI read literal 7.    */
+  k_sdmmc_spi_read_lit_xff = 0xFFU, /**< Sdmmc SPI read literal 0xFF. */
+  k_sdmmc_spi_read_lit_xde = 0xDEU, /**< Sdmmc SPI read literal 0xDE. */
+  k_sdmmc_spi_read_lit_xad = 0xADU, /**< Sdmmc SPI read literal 0xAD. */
+  k_sdmmc_spi_read_lit_5   = 5,     /**< Sdmmc SPI read literal 5.    */
+  k_sdmmc_spi_read_lit_x9  = 0x09U, /**< Sdmmc SPI read literal 0x9.  */
+  k_sdmmc_spi_read_lit_xc0 = 0xC0U, /**< Sdmmc SPI read literal 0xC0. */
+  k_sdmmc_spi_read_lit_9   = 9,     /**< Sdmmc SPI read literal 9.    */
+  k_sdmmc_spi_read_lit_10  = 10,    /**< Sdmmc SPI read literal 10.   */
+  k_sdmmc_spi_read_lit_x80 = 0x80U, /**< Sdmmc SPI read literal 0x80. */
 } sdmmc_spi_read_test_lit_t;
 
 /* ===========================================================================
