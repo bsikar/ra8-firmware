@@ -10,23 +10,26 @@ preceding Doxygen block for the required tags listed in CLAUDE.md
 
 Modes
 -----
-  (no args)   Function audit report -> docs/DOXYGEN_GAPS.csv + .md
-  --check     Strict function gate (exit 1 on any gap). Wired into CI and
-              the pre-commit hook.
-  --members   REPORT-ONLY member audit. Enumerates every undocumented enum
-              value, struct/union member, and macro across the first-party
-              tree and prints an offender count per top-level dir. This mode
-              never fails the build -- it exists so the owner can size the
-              (large) fallout wave before the member checks are promoted to
-              enforcing alongside the function audit. Optionally takes explicit
-              file paths to audit just those, and --out=PATH to dump the full
-              offender list as CSV.
+  (no args)         Function audit report -> docs/DOXYGEN_GAPS.csv + .md
+  --check           Strict function gate (exit 1 on any gap). Wired into CI
+                    and the pre-commit hook.
+  --members         REPORT-ONLY member audit. Enumerates every undocumented
+                    enum value, struct/union member, and macro across the
+                    first-party tree and prints an offender count per top-level
+                    dir. This mode never fails the build. Optionally takes
+                    explicit file paths to audit just those, and --out=PATH to
+                    dump the full offender list as CSV.
+  --members --check ENFORCING member gate (exit 1 on any undocumented enum
+                    value, struct/union member, or macro). Wired into CI and
+                    the pre-commit hook alongside the function gate (issue
+                    #246). Optionally takes explicit file paths to gate just
+                    those.
 
 CLAUDE.md ("Doxygen Documentation Requirements") demands that *every* enum
 value, struct/union member, and macro carry documentation -- an inline
 ``/**< ... */`` (or a preceding ``/** ... */`` block) on each aggregate member
-and a ``@brief``/``@def`` block on each macro. The function audit does not check
-any of that today; --members closes the measurement gap (issue #246).
+and a ``@brief``/``@def`` block on each macro. ``--members --check`` enforces
+exactly that (issue #246); plain ``--members`` is the sizing report.
 
 Output:
   - docs/DOXYGEN_GAPS.csv  full row-per-function table
@@ -861,6 +864,42 @@ def run_members_report(explicit, out_csv) -> int:
     return 0
 
 
+def run_members_check(explicit) -> int:
+    """ENFORCING member gate: exit 0 if zero offenders, else exit 1.
+
+    Enforces the CLAUDE.md rule that every enum value, struct/union member, and
+    macro carries documentation (issue #246). Wired into the pre-commit hook and
+    CI alongside the function gate. Read-only -- writes no CSV/MD outputs.
+    """
+    all_rows = []
+    for p in _iter_member_files(explicit):
+        all_rows.extend(audit_members_file(p))
+    all_rows.sort(key=lambda r: (r[0], r[1]))
+
+    if not all_rows:
+        print("doxy_audit --members --check: offenders=0 (PASS)")
+        return 0
+
+    by_kind = Counter(r[2] for r in all_rows)
+    print(f"doxy_audit --members --check: offenders={len(all_rows)} (FAIL)")
+    print(
+        "  by kind: "
+        + ", ".join(f"{k}={by_kind[k]}" for k in ("enum-value", "member", "macro") if by_kind[k])
+    )
+    print("Undocumented members (file:line  kind  name  -- reason):")
+    cap = 50
+    for rel, line, kind, name, reason in all_rows[:cap]:
+        print(f"  {rel}:{line}  {kind}  {name}  --  {reason}")
+    if len(all_rows) > cap:
+        print(f"  ... and {len(all_rows) - cap} more")
+    print()
+    print("Every enum value, struct/union member, and macro needs a doc comment:")
+    print("  - aggregate members: an inline /**< ... */ or a preceding /** ... */ block")
+    print("  - macros: a preceding /** @brief ... */ (or @def) block")
+    print("Size the full fallout with: python3 scripts/utils/doxy_audit.py --members")
+    return 1
+
+
 def _parse_members_args(argv):
     """Split --members argv into (explicit_paths, out_csv)."""
     explicit = []
@@ -876,11 +915,13 @@ def _parse_members_args(argv):
 
 
 def main() -> int:  # noqa: PLR0912 PLR0915  # report-generation dispatch, splitting hurts readability
-    if "--check" in sys.argv[1:]:
-        return run_check()
     if "--members" in sys.argv[1:]:
         explicit, out_csv = _parse_members_args(sys.argv[1:])
+        if "--check" in sys.argv[1:]:
+            return run_members_check(explicit)
         return run_members_report(explicit, out_csv)
+    if "--check" in sys.argv[1:]:
+        return run_check()
 
     all_rows = []
     for top in SCAN_DIRS:
