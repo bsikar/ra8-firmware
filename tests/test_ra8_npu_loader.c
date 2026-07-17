@@ -223,6 +223,59 @@ static uint32_t lt_golden_rfield(uint32_t r, ra8_npu_blob_rdesc_t field)
 }
 
 /**
+ * @brief Byte-pin the extracted SE55 add-constant command stream.
+ * @param[in] job The loaded NPU job whose cmd_stream is inspected.
+ * @return None.
+ * @pre @p job was produced by ra8_npu_load over the golden blob.
+ * @post Every command-stream word matched its expected value.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void lt_check_cmd_stream(const ra8_npu_job_t* job)
+{
+  const uint8_t* cs      = (const uint8_t*)job->cmd_stream;
+  const uint32_t exp_op  = (uint32_t)k_ra8_npu_sim_magic | (uint32_t)k_ra8_npu_sim_op_addk;
+  const uint32_t exp_src = (uint32_t)k_ra8_npu_region_1;
+  const uint32_t exp_dst = (uint32_t)k_ra8_npu_region_2;
+  const uint32_t exp_cnt = (uint32_t)k_lt_out_bytes;
+  const uint32_t exp_k   = (uint32_t)k_lt_addk;
+  TEST_ASSERT_EQ(
+    exp_op,
+    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_sim_word_op * (uint32_t)k_lt_word_bytes));
+  TEST_ASSERT_EQ(
+    exp_src,
+    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_sim_word_src * (uint32_t)k_lt_word_bytes));
+  TEST_ASSERT_EQ(
+    exp_dst,
+    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_sim_word_dst * (uint32_t)k_lt_word_bytes));
+  TEST_ASSERT_EQ(
+    exp_cnt,
+    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_sim_word_count * (uint32_t)k_lt_word_bytes));
+  TEST_ASSERT_EQ(
+    exp_k,
+    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_sim_word_const * (uint32_t)k_lt_word_bytes));
+}
+
+/**
+ * @brief Assert the output arena holds input + K byte-for-byte.
+ * @param[in] blob  The golden model blob.
+ * @param[in] i_off Byte offset of the baked input region within @p blob.
+ * @return None.
+ * @pre The job has run and mirrored its output into s_arena.
+ * @post Every output byte equals (input + K) & 0xFF.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void lt_check_output(const uint8_t* blob, uint32_t i_off)
+{
+  const uint8_t* input = blob + i_off;
+  for (uint32_t i = 0U; i < (uint32_t)k_lt_out_bytes; i++) {
+    const uint8_t expected = (uint8_t)((input[i] + (uint32_t)k_lt_addk) & (uint32_t)k_lt_byte_mask);
+    TEST_ASSERT_EQ(expected, s_arena[i]);
+  }
+}
+
+/**
  * @par MC/DC:
  * (no compound decisions in this test -- ra8_npu_load's guards are all single
  * condition; the golden's command stream and region layout are byte-pinned and
@@ -252,27 +305,7 @@ static void test_load_golden_maps_job(void)
   TEST_ASSERT_EQ(cbytes, job.cmd_stream_bytes);
 
   /* Byte-pin the extracted SE55 add-constant command stream. */
-  const uint8_t* cs      = (const uint8_t*)job.cmd_stream;
-  const uint32_t exp_op  = (uint32_t)k_ra8_npu_sim_magic | (uint32_t)k_ra8_npu_sim_op_addk;
-  const uint32_t exp_src = (uint32_t)k_ra8_npu_region_1;
-  const uint32_t exp_dst = (uint32_t)k_ra8_npu_region_2;
-  const uint32_t exp_cnt = (uint32_t)k_lt_out_bytes;
-  const uint32_t exp_k   = (uint32_t)k_lt_addk;
-  TEST_ASSERT_EQ(
-    exp_op,
-    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_sim_word_op * (uint32_t)k_lt_word_bytes));
-  TEST_ASSERT_EQ(
-    exp_src,
-    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_sim_word_src * (uint32_t)k_lt_word_bytes));
-  TEST_ASSERT_EQ(
-    exp_dst,
-    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_sim_word_dst * (uint32_t)k_lt_word_bytes));
-  TEST_ASSERT_EQ(
-    exp_cnt,
-    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_sim_word_count * (uint32_t)k_lt_word_bytes));
-  TEST_ASSERT_EQ(
-    exp_k,
-    ra8_npu_blob_read_word(cs, (uint32_t)k_ra8_npu_sim_word_const * (uint32_t)k_lt_word_bytes));
+  lt_check_cmd_stream(&job);
 
   /* Regions: baked weights/input resolve into the blob; output into the arena. */
   TEST_ASSERT_EQ(3U, job.region_count);
@@ -294,11 +327,7 @@ static void test_load_golden_maps_job(void)
   TEST_ASSERT(done);
 
   /* Output arena holds input + K byte-for-byte (baked input read from the blob). */
-  const uint8_t* input = blob + i_off;
-  for (uint32_t i = 0U; i < (uint32_t)k_lt_out_bytes; i++) {
-    const uint8_t expected = (uint8_t)((input[i] + (uint32_t)k_lt_addk) & (uint32_t)k_lt_byte_mask);
-    TEST_ASSERT_EQ(expected, s_arena[i]);
-  }
+  lt_check_output(blob, i_off);
   TEST_END("loader maps the golden blob into a runnable job");
 }
 
