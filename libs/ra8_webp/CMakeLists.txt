@@ -29,7 +29,7 @@
 # an app that lists ra8_tileatlas in LIBS also compiles this facade + the
 # vendored libwebp (see the ra8_tileatlas block in cmake/ra8_add_app.cmake).
 # NOTE(#289): the small-image ra8_reflow / ra8_img inline raster dispatch does
-# not yet have a WebP arm; that lands with the webtoon render path.
+# not yet have a WebP arm; that lands with the longstrip render path.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT

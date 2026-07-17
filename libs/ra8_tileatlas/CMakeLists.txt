@@ -1,7 +1,7 @@
 #
 # libs/ra8_tileatlas -- RTA1 band-tile atlas: format reader + import-time
 # transcode producer (#231; the normalized image format shared with the
-# webtoon scroll #289 and the codec policy #290).
+# longstrip scroll #289 and the codec policy #290).
 #
 # Layout:
 #   inc/ra8_tileatlas.h          format spec (authoritative), reader, memstore

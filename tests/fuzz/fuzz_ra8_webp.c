@@ -3,7 +3,7 @@
  * @brief libFuzzer harness for the WebP decoder (ra8_webp over libwebp).
  *
  * @details
- * Webtoon corpora are increasingly WebP, and a WebP inside a downloaded book is
+ * Longstrip corpora are increasingly WebP, and a WebP inside a downloaded book is
  * fully attacker-controlled initial-access content. This harness feeds the raw
  * fuzz input to the exact firmware decode path -- ra8_webp_get_info() then
  * ra8_webp_decode_rgba() over the vendored libwebp (VP8 + VP8L) -- backed by the

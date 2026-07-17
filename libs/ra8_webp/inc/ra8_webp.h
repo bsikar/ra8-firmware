@@ -4,7 +4,7 @@
  * @ingroup grp_ereader
  *
  * @details
- * Webtoon corpora are increasingly WebP-heavy, and `stb_image` cannot decode
+ * Longstrip corpora are increasingly WebP-heavy, and `stb_image` cannot decode
  * WebP, so the e-reader vendors libwebp (decode-only) under
  * `libs/third_party/libwebp/` and wraps it here behind a small `ra8_err_t`
  * facade. The facade decodes an in-memory WebP directly into a caller-provided
@@ -20,7 +20,7 @@
  * is decoded whole-frame here and banded into the one normalized band-tile
  * format, so render time touches a single codec regardless of source. The
  * small-image (non-tiled) `ra8_reflow` / `ra8_img` inline raster dispatch does
- * not yet have a WebP arm -- that lands with the #289 webtoon render path; see
+ * not yet have a WebP arm -- that lands with the #289 longstrip render path; see
  * the `TODO(#289)` seam in ra8_webp.c.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
