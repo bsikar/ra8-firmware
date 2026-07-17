@@ -350,7 +350,6 @@ typedef enum : uint8_t {
  * each member is accessed via ``ra8_etha(port)`` in
  * ``libs/ra8_hal/src/ra8_etha.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t EAMC;       /**< +0x0000 Mode command.                   */
   volatile uint32_t EAMS;       /**< +0x0004 Mode status.                    */
@@ -443,7 +442,6 @@ typedef struct {
     reserved52C[k_ra8_etha_rsv_words_eaeid2_to_eascr]; /**< +0x052C..0x057F Reserved.       */
   volatile uint32_t EASCR;                             /**< +0x0580 Security configuration. */
 } r_etha_regs_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @enum ra8_etha_size_t

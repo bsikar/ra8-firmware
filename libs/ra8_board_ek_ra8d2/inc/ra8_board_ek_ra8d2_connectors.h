@@ -61,13 +61,11 @@ extern const char* const k_ra8_board_mcu;     /**< "R7KA8D2KFLCAC".            *
  * @struct ra8_board_info_t
  * @brief Snapshot of board identity strings.
  */
-/* cppcheck-suppress-begin unusedStructMember */
 typedef struct {
   const char* name;    /**< Same value as ``k_ra8_board_name``.    */
   const char* doc_rev; /**< Same value as ``k_ra8_board_doc_rev``. */
   const char* mcu;     /**< Same value as ``k_ra8_board_mcu``.     */
 } ra8_board_info_t;
-/* cppcheck-suppress-end unusedStructMember */
 
 /**
  * @brief Copy the three board-identity strings into ``out``.
@@ -268,12 +266,10 @@ typedef enum : uint8_t {
 } ra8_board_glcdc_fmt_t;
 
 /** @brief One row of the GLCDC pin table -- (signal name, RA8D2 pin). */
-/* cppcheck-suppress-begin unusedStructMember */
 typedef struct {
   const char*    signal; /**< Human-readable signal name (UM Table 33). */
   ra8_port_pin_t pin;    /**< RA8D2 port pin carrying that signal.      */
 } ra8_board_glcdc_pin_t;
-/* cppcheck-suppress-end unusedStructMember */
 
 /**
  * @brief Pin tables for J1 in each pixel format (UM Table 33 p 42).

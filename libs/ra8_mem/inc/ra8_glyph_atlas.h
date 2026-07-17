@@ -161,13 +161,11 @@ typedef struct {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_keycache_t      kc;         /**< Underlying keyed-LRU cache. */
   ra8_glyph_render_fn render;     /**< Caller's glyph renderer.    */
   void*               render_ctx; /**< Caller's renderer context.  */
 } ra8_glyph_atlas_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Initialise a glyph atlas over caller-supplied storage.

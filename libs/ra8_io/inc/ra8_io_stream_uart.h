@@ -40,11 +40,9 @@ extern "C" {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t channel; /**< SCI channel index (private). */
 } ra8_io_stream_uart_state_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Bind a UART stream sink into a caller-owned stream handle.

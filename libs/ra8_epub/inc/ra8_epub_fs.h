@@ -53,7 +53,6 @@ extern "C" {
  * @since 0.1.0
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
   ra8_fs_file_t* file; /**< Open source `.epub`; owned until close. */
 } ra8_epub_stream_fs_ctx_t;
 

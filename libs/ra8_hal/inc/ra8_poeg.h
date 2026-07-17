@@ -82,14 +82,12 @@ typedef enum : uint32_t {
  * each member is read in ``ra8_poeg_init`` in
  * ``libs/ra8_hal/src/ra8_poeg.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool enable_pin;      /**< True -> enable external PIDE input. */
   bool enable_ioc;      /**< True -> enable output short detect. */
   bool enable_osc_stop; /**< True -> enable osc stop detect.     */
   bool invert_input;    /**< True -> invert PIDE input polarity. */
 } ra8_poeg_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_poeg_event_fn_t

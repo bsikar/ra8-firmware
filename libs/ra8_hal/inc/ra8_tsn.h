@@ -118,13 +118,11 @@ typedef enum : int16_t {
  *   names this tTSTBL = 30 us; callers may bump the value to
  *   absorb extra slack on slow boards but must not go below 30.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_tsn_cal_temp_t high_ref_degc; /**< 105 or 125 degC.          */
   ra8_tsn_cal_temp_t low_ref_degc;  /**< Always -40 degC on RA8D2. */
   uint16_t           stab_us;       /**< tTSTBL in microseconds.   */
 } ra8_tsn_config_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Power on the TSN block and enable its ADC output path.

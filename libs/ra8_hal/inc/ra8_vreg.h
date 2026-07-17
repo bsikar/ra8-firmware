@@ -197,7 +197,6 @@ typedef enum : uint8_t {
  * cppcheck cannot see tests/ so it flags every field as unused; each
  * member is read in `ra8_vreg_init` in `libs/ra8_hal/src/ra8_vreg.c`.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_vreg_mode_t       mode;         /**< Initial regulator mode.                         */
   ra8_vreg_vccsel_t     vccsel;       /**< Supply-voltage range (used only in DCDC mode).  */
@@ -206,7 +205,6 @@ typedef struct {
   bool                  ldo_boost;    /**< Enable LDO charge-pump boost (DCDCCTL.LCBOOST). */
   ra8_vreg_lv_profile_t lv_profile;   /**< Low-voltage operation profile (LVOCR).          */
 } ra8_vreg_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_vreg_status_t

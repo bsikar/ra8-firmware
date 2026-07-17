@@ -112,7 +112,6 @@ typedef enum : uint8_t {
  * @invariant ``image_size_bytes`` <= ``k_ra8_ota_max_image_bytes``.
  * @invariant ``signature_len`` <= ``k_ra8_ota_signature_max_bytes``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   char     version[k_ra8_ota_version_str_bytes];     /**< Firmware version string.     */
   char     image_url[k_ra8_ota_url_max_bytes];       /**< HTTPS URL of the image blob. */
@@ -121,20 +120,17 @@ typedef struct {
   uint8_t  signature[k_ra8_ota_signature_max_bytes]; /**< ECDSA signature over digest. */
   uint16_t signature_len;                            /**< Bytes used in ``signature``. */
 } ra8_ota_manifest_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_ota_progress_t
  * @brief Snapshot delivered to the caller's progress callback.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_ota_state_t state;       /**< Current state machine value.          */
   uint32_t        bytes_done;  /**< Bytes successfully programmed so far. */
   uint32_t        bytes_total; /**< Manifest-declared size.               */
   ra8_err_t       last_err;    /**< Last error (k_ra8_ok if healthy).     */
 } ra8_ota_progress_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Caller progress callback type.
@@ -163,7 +159,6 @@ typedef void (*ra8_ota_progress_cb_t)(const ra8_ota_progress_t* p);
  * @invariant All three function pointers are non-NULL when this
  *            struct is passed to ``ra8_ota_init``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   /**
    * @brief Begin a streaming GET against ``url``.
@@ -186,7 +181,6 @@ typedef struct {
   /** @brief Opaque context passed back to every callback. */
   void* ctx;
 } ra8_ota_net_iface_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_ota_crypto_iface_t
@@ -198,7 +192,6 @@ typedef struct {
  * tf-psa-crypto adapter); unit tests pass a mock that scripts
  * happy-path / mismatch behaviour.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   /** @brief Begin a SHA-256 streaming hash. */
   ra8_err_t (*sha256_init)(void* ctx);
@@ -220,7 +213,6 @@ typedef struct {
   /** @brief Opaque context passed back to every callback. */
   void* ctx;
 } ra8_ota_crypto_iface_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_ota_flash_iface_t
@@ -233,7 +225,6 @@ typedef struct {
  * libs/ra8_ota does not transitively pull in libs/ra8_hal at link
  * time. Unit tests register an in-RAM mock backend.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   /** @brief Erase ``len`` bytes starting at ``addr`` in the inactive bank. */
   ra8_err_t (*erase)(void* ctx, uint32_t addr, uint32_t len);
@@ -254,7 +245,6 @@ typedef struct {
   /** @brief Opaque context passed back to every callback. */
   void* ctx;
 } ra8_ota_flash_iface_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_ota_cfg_t
@@ -265,7 +255,6 @@ typedef struct {
  * the manifest URL, the public-key handle, the three injected
  * interfaces, and the optional ThreadX worker selection.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   /** @brief HTTPS URL of the manifest JSON. NUL-terminated. */
   char manifest_url[k_ra8_ota_url_max_bytes];
@@ -288,7 +277,6 @@ typedef struct {
   /** @brief true => spawn the static ThreadX worker thread. */
   bool run_as_thread;
 } ra8_ota_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Initialise the OTA module.

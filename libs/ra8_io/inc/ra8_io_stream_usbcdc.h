@@ -40,11 +40,9 @@ extern "C" {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t ep_addr; /**< USB bulk-IN endpoint address (private). */
 } ra8_io_stream_usbcdc_state_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Bind a USB-CDC stream sink into a caller-owned stream handle.

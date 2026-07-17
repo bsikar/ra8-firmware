@@ -49,7 +49,6 @@ extern "C" {
  * @note The `data` array is sized for the worst case (64-byte CAN-FD
  *       payload). Classic CAN frames only touch the first 8 bytes.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t id;                               /**< Arbitration-ID field.                   */
   uint8_t  dlc;                              /**< DLC code (0..15). See CAN-FD DLC table. */
@@ -58,7 +57,6 @@ typedef struct {
   uint8_t  is_brs;                           /**< 1 = bit-rate switch in data phase.      */
   uint8_t  data[k_ra8_canfd_data_bytes_max]; /**< Payload bytes.                          */
 } ra8_canfd_frame_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Take a CANFD channel out of reset into operation mode.
@@ -264,7 +262,6 @@ typedef enum : uint8_t {
  *
  * @see ra8_canfd_set_accept_filter()
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t id;        /**< Right-aligned accept ID (11- or 29-bit).         */
   uint32_t mask;      /**< ID bit mask: 1 = must match, 0 = don't care.     */
@@ -272,7 +269,6 @@ typedef struct {
   bool     rtr;       /**< true = match remote frames, false = data frames. */
   uint8_t  target_rx; /**< Destination RX FIFO index (0..1).                */
 } ra8_canfd_afl_rule_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Program the channel Acceptance-Filter-List from a rule array.
@@ -386,13 +382,11 @@ ra8_canfd_set_accept_filter(uint8_t channel, const ra8_canfd_afl_rule_t* rules, 
  * @see ra8_canfd_set_tdc()
  * @see ra8_fdcfg_mask_t
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool    enable; /**< true = enable TDC (FDCFG.TDE = 1).                               */
   bool    manual; /**< true = use TDCO offset (FDCOC = 1), false = measured FDSTS.TDCR. */
   uint8_t offset; /**< TDCO offset in time quanta (0..::k_ra8_canfd_tdc_offset_max).    */
 } ra8_canfd_tdc_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Configure Transmitter Delay Compensation on a CANFD channel.

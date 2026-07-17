@@ -205,7 +205,6 @@ typedef enum : uint8_t {
  * each member is consumed in ``ra8_lvd_channel_init`` in
  * ``libs/ra8_hal/src/ra8_lvd.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_lvd_pvdlvl_t     threshold;    /**< PVDLVL[4:0] encoding (see enum).         */
   ra8_lvd_edge_t       edge;         /**< IDTSEL setting (m channels only).        */
@@ -218,7 +217,6 @@ typedef struct {
   bool                 irq_enable;   /**< true -> set RIE on init (IRQ + reset).   */
   bool                 clear_status; /**< true -> write 0 to PVDmSR.DET on init.   */
 } ra8_lvd_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_lvd_status_t
@@ -229,12 +227,10 @@ typedef struct {
  * have a status register and ``ra8_lvd_get_status`` returns
  * ``k_ra8_err_not_supported`` for them.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool crossed; /**< DET flag: a Vdetm crossing was latched.        */
   bool above;   /**< MON flag: VCC currently above Vdetm threshold. */
 } ra8_lvd_status_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_lvd_event_fn_t

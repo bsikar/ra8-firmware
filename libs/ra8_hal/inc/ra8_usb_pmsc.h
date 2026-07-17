@@ -308,16 +308,11 @@ typedef ra8_err_t (*ra8_usb_pmsc_get_inquiry_fn_t)(void*    ctx,
  * @endcode
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
-  ra8_usb_pmsc_read_block_fn_t read_block; /**< Block read hook. */
-  // cppcheck-suppress unusedStructMember
-  ra8_usb_pmsc_write_block_fn_t write_block; /**< Block write hook. */
-  // cppcheck-suppress unusedStructMember
-  ra8_usb_pmsc_get_capacity_fn_t get_capacity; /**< Capacity hook. */
-  // cppcheck-suppress unusedStructMember
-  ra8_usb_pmsc_get_inquiry_fn_t get_inquiry; /**< INQUIRY hook. */
-  // cppcheck-suppress unusedStructMember
-  void* ctx; /**< Opaque context. */
+  ra8_usb_pmsc_read_block_fn_t   read_block;   /**< Block read hook.  */
+  ra8_usb_pmsc_write_block_fn_t  write_block;  /**< Block write hook. */
+  ra8_usb_pmsc_get_capacity_fn_t get_capacity; /**< Capacity hook.    */
+  ra8_usb_pmsc_get_inquiry_fn_t  get_inquiry;  /**< INQUIRY hook.     */
+  void*                          ctx;          /**< Opaque context.   */
 } ra8_usb_pmsc_storage_t;
 
 /* =============================================================================

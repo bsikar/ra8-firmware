@@ -144,7 +144,6 @@ typedef uint64_t (*ra8_power_profile_now_us_fn_t)(void* ctx);
  * @since 0.1.0
  */
 /* clang-format off */
-/* cppcheck-suppress-begin unusedStructMember */
 typedef struct {
   uint64_t entries;       /**< Total number of ``mark_enter`` calls for this region.      */
   uint64_t exits;         /**< Total number of ``mark_exit`` calls for this region.       */
@@ -208,7 +207,6 @@ typedef struct {
   void*                            user_ctx_gpio; /**< Opaque pointer passed to ``pulse``.  */
   void*                            user_ctx_time; /**< Opaque pointer passed to ``now_us``. */
 } ra8_power_profile_config_t;
-/* cppcheck-suppress-end unusedStructMember */
 /* clang-format on */
 
 /**

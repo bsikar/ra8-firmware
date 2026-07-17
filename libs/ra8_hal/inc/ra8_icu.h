@@ -62,13 +62,11 @@ extern "C" {
  * each member is read in ``ra8_icu_configure_irq_pin`` in
  * ``libs/ra8_hal/src/ra8_icu.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_icu_irqmd_t   sense;      /**< Edge / level detection mode.   */
   ra8_icu_fclksel_t filter_div; /**< Filter sampling clock divider. */
   bool              filter_en;  /**< True = enable digital filter.  */
 } ra8_icu_irq_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /* =============================================================================
  * Lifecycle

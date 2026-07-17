@@ -286,7 +286,6 @@ typedef enum : uint8_t {
  * ``libs/ra8_hal/src/ra8_ssie.c`` or by the unit test in
  * ``tests/test_ra8_ssie.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t SSICR;   /**< +0x00 Control register.        */
   volatile uint32_t SSISR;   /**< +0x04 Status register.         */
@@ -298,7 +297,6 @@ typedef struct {
   volatile uint32_t SSIOFR;  /**< +0x20 Audio format register.   */
   volatile uint32_t SSISCR;  /**< +0x24 Status control register. */
 } r_ssie_regs_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Get pointer to an SSIE channel block.

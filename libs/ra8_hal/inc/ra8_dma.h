@@ -112,7 +112,6 @@ typedef void (*ra8_dma_complete_fn_t)(void* ctx);
 /* cppcheck cannot see tests/ so it flags every ra8_dma_request_t
  * field as unused; the fields are read in ra8_dma.c and in
  * tests/mocks/ra8_sim_dma.c. */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uintptr_t             src_addr;    /**< Src address. */
   uintptr_t             dst_addr;    /**< Dst address. */
@@ -124,7 +123,6 @@ typedef struct {
   ra8_dma_complete_fn_t on_complete; /**< On complete. */
   void*                 ctx;         /**< Ctx.         */
 } ra8_dma_request_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /* =============================================================================
  * Lifecycle

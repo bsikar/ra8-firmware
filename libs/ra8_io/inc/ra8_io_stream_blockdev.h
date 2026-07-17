@@ -44,14 +44,12 @@ extern "C" {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   const ra8_io_blockdev_t* bd;   /**< Target device (private). */
   uint32_t                 lba;  /**< Next LBA to write.       */
   uint32_t                 fill; /**< Bytes in the sector buf. */
   uint8_t                  sector[(uint32_t)k_ra8_io_block_size_bytes]; /**< Sector buffer. */
 } ra8_io_stream_blockdev_state_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Bind a block-device stream sink into a caller-owned stream handle.

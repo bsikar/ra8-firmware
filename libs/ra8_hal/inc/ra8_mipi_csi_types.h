@@ -51,7 +51,6 @@ typedef enum : uint8_t {
  * adjust values described in HUM Ch 66.3.3 "MCT2 : Module Control
  * Register 2" p 3937; the caller is expected to compute them.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   /* MCT0 */
   ra8_mipi_csi_lanes_t lanes;        /**< 1 or 2 lanes (MCT0.VDLN).         */
@@ -91,7 +90,6 @@ typedef struct {
   uint8_t short_threshold;    /**< GSCT.SHTH (threshold-1 in stages). */
   bool    short_store_enable; /**< GSCT.GFIF -- 1 = store in FIFO.    */
 } ra8_mipi_csi_config_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_mipi_csi_event_fn_t
@@ -192,7 +190,6 @@ typedef enum : uint8_t {
  * to re-decode them. ``vc == 0xFF`` is used for the catch-all "MLF/ECD"
  * flags which apply to every channel.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t  vc;                /**< Virtual channel that reported, or 0xFF.   */
   bool     ecc_corrected;     /**< VCST.ECC -- 1-bit ECC corrected.          */
@@ -200,7 +197,6 @@ typedef struct {
   bool     crc_error;         /**< VCST.CRC -- payload CRC mismatch.         */
   uint32_t raw_vcst;          /**< Original VCST snapshot (bits as decoded). */
 } ra8_mipi_csi_error_report_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_mipi_csi_error_fn_t

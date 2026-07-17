@@ -223,7 +223,6 @@ ra8_pfs_route_peripheral(ra8_port_pin_t pin, ra8_psel_t psel, const char* owner)
  * each member is read in ``ra8_gpio_attach_irq`` in
  * ``libs/ra8_hal/src/gpio.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_pin_pull_t    pull;       /**< Input pull setting.            */
   ra8_icu_irqmd_t   sense;      /**< Edge / level detection mode.   */
@@ -231,7 +230,6 @@ typedef struct {
   bool              filter_en;  /**< True -> enable digital filter. */
   uint8_t           priority;   /**< NVIC priority 0..15.           */
 } ra8_gpio_irq_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Wire a pin as an external IRQ input and install a handler.

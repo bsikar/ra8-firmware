@@ -98,26 +98,22 @@ typedef enum : uint16_t {
  * member is written by ``ra8_ipc_get_attribution`` in
  * ``libs/ra8_hal/src/ra8_ipc.c`` and read by the unit tests.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool secure;     /**< true -> non-secure, false -> secure (IPCSAR.SAIPCIRn).       */
   bool privileged; /**< true -> unprivileged, false -> privileged (IPCPAR.PAIPCIRn). */
 } ra8_ipc_attr_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_ipc_config_t
  * @brief Per-channel configuration descriptor passed to
  *        ``ra8_ipc_init``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t  channel;      /**< Channel id 0..3.                        */
   bool     reset_fifo;   /**< true -> issue CLR.RST during init.      */
   bool     clear_status; /**< true -> clear all IRQ + error bits.     */
   uint32_t event_mask;   /**< Bitmask of events the user cares about. */
 } ra8_ipc_config_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_ipc_event_fn_t
@@ -167,7 +163,6 @@ typedef void (*ra8_ipc_nmi_fn_t)(void* ctx, uint8_t unit);
  *
  * cppcheck cannot see the tests so it flags every field as unused.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t*     slots;     /**< Backing SRAM array (caller-owned).  */
   volatile uint32_t*     head;      /**< Producer write index (shared).      */
@@ -177,4 +172,3 @@ typedef struct {
   uint8_t                sem_id;    /**< IPCSEM index used for exclusion.    */
   ra8_ipc_irq_event_id_t notify_id; /**< IRQ event line used for notify.     */
 } ra8_ipc_ring_t;
-/* cppcheck-suppress-end [unusedStructMember] */

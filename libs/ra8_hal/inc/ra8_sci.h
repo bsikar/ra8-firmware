@@ -100,7 +100,6 @@ typedef enum : uint8_t {
  * each member is read in ``ra8_sci_init`` in
  * ``libs/ra8_hal/src/ra8_sci.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t            baud;      /**< Target baud rate in bps. */
   ra8_sci_data_bits_t data_bits; /**< 7 or 8 data bits.        */
@@ -109,7 +108,6 @@ typedef struct {
   uint32_t            pclk_hz;   /**< PCLKB frequency in Hz (used
                                       for BRR calculation). */
 } ra8_sci_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @enum ra8_sci_err_mask_t

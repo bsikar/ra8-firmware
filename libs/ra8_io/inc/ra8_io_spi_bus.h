@@ -98,12 +98,10 @@ typedef struct ra8_io_spi_bus_iface ra8_io_spi_bus_iface_t;
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   const ra8_io_spi_bus_iface_t* iface; /**< Bound backend vtable (private).    */
   void*                         ctx;   /**< Backend-private context (private). */
 } ra8_io_spi_bus_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /* =============================================================================
  * Public API

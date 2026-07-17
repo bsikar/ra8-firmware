@@ -123,7 +123,6 @@ typedef enum : uint8_t {
  * encoded as ``ra8_port_pin_t`` packed (port<<8 | pin) values to avoid
  * a dependency on ra8_gpio_constants.h here.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_spi_bus_ops_t bus;          /**< Injected SPI transfer seam (app-bound). */
   uint16_t          reset_pin;    /**< (port<<8)|pin -- panel /RESET line.     */
@@ -131,7 +130,6 @@ typedef struct {
   uint16_t          panel_width;  /**< Native panel width in pixels.           */
   uint16_t          panel_height; /**< Native panel height in pixels.          */
 } ra8_epaper_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_epaper_area_t

@@ -263,13 +263,11 @@ typedef ra8_err_t (*ra8_lsm6dso_write_fn_t)(void*          ctx,
  * ``ra8_spi_xfer8``. Unit tests wire them to a canned-response mock.
  * The ``ctx`` field is passed through to both callbacks unchanged.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_lsm6dso_read_fn_t  read_regs;  /**< Read callback.  Non-NULL. */
   ra8_lsm6dso_write_fn_t write_regs; /**< Write callback. Non-NULL. */
   void*                  ctx;        /**< Caller-supplied context.  */
 } ra8_lsm6dso_bus_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_lsm6dso_t
@@ -282,7 +280,6 @@ typedef struct {
  * to return engineering units. Allocated by the caller (NASA Rule 3:
  * no dynamic allocation inside the driver).
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_lsm6dso_bus_t   bus;           /**< Transport interface.                  */
   ra8_lsm6dso_xl_fs_t accel_fs_code; /**< Last accel full-scale code written.   */
@@ -290,7 +287,6 @@ typedef struct {
   ra8_lsm6dso_odr_t   odr_code;      /**< Last ODR code written to both blocks. */
   bool                initialized;   /**< True after a successful ``_init``.    */
 } ra8_lsm6dso_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /* =============================================================================
  * Lifecycle

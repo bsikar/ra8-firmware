@@ -94,14 +94,12 @@ static inline volatile uint32_t* ra8_coma_cabpirm(void)
  * each member is accessed via ``ra8_eswm()`` in
  * ``libs/ra8_hal/src/ra8_eth.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t ESWM_CTRL; /**< +0x00 Control.          */
   volatile uint32_t ESWM_STS;  /**< +0x04 Status.           */
   volatile uint32_t ESWM_IE;   /**< +0x08 Interrupt Enable. */
   volatile uint32_t ESWM_ICLR; /**< +0x0C Interrupt Clear.  */
 } r_eswm_regs_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /** @brief Get pointer to the ESWM register block. */
 static inline volatile r_eswm_regs_t* ra8_eswm(void)
@@ -194,14 +192,12 @@ static inline volatile uint32_t* ra8_eswm_miicr1(void)
  * full forwarding table programming surface lands with the first
  * routing-aware consumer.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t MFWD_CTRL; /**< +0x00 Forwarding Control. */
   volatile uint32_t MFWD_STS;  /**< +0x04 Status.             */
   volatile uint32_t MFWD_IE;   /**< +0x08 Interrupt Enable.   */
   volatile uint32_t MFWD_ICLR; /**< +0x0C Interrupt Clear.    */
 } r_mfwd_regs_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /** @brief Get pointer to the MFWD register block. */
 static inline volatile r_mfwd_regs_t* ra8_mfwd(void)
@@ -218,14 +214,12 @@ static inline volatile r_mfwd_regs_t* ra8_mfwd(void)
  * counters and the shared per-port descriptor fences. The
  * minimal control surface mirrors the other ethernet blocks.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t COMA_CTRL; /**< +0x00 Common Agent Control. */
   volatile uint32_t COMA_STS;  /**< +0x04 Status.               */
   volatile uint32_t COMA_IE;   /**< +0x08 Interrupt Enable.     */
   volatile uint32_t COMA_ICLR; /**< +0x0C Interrupt Clear.      */
 } r_coma_regs_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /** @brief Get pointer to the COMA register block. */
 static inline volatile r_coma_regs_t* ra8_coma(void)
@@ -261,14 +255,12 @@ static inline volatile r_coma_regs_t* ra8_coma(void)
  * existing ra8_eth_gwca.c API until the full port lands. The real
  * register set lives in r_gwca_regs_full_t below.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t GWCA_CTRL; /**< +0x00 GWMC (Mode Configuration) -- misnamed. */
   volatile uint32_t GWCA_STS;  /**< +0x04 GWMS (Mode Status) -- misnamed.        */
   volatile uint32_t GWCA_IE;   /**< +0x08 reserved -- misnamed as "IE".          */
   volatile uint32_t GWCA_ICLR; /**< +0x0C reserved -- misnamed as "ICLR".        */
 } r_gwca_regs_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /** @brief Get pointer to the GWCA register block. */
 static inline volatile r_gwca_regs_t* ra8_gwca(void)
@@ -472,14 +464,12 @@ static inline volatile uint32_t* ra8_gwca_gwdcc(uint32_t queue_index)
  * timestamp counter / sync-frame encode-decode logic lands with
  * a real PTP stack.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t GPTP_CTRL; /**< +0x00 PTP Timer Control. */
   volatile uint32_t GPTP_STS;  /**< +0x04 Status.            */
   volatile uint32_t GPTP_IE;   /**< +0x08 Interrupt Enable.  */
   volatile uint32_t GPTP_ICLR; /**< +0x0C Interrupt Clear.   */
 } r_gptp_regs_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /** @brief Get pointer to the GPTP register block. */
 static inline volatile r_gptp_regs_t* ra8_gptp(void)

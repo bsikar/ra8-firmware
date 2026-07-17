@@ -44,13 +44,11 @@ extern "C" {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t* storage;     /**< Caller-owned backing buffer (private).            */
   uint32_t block_count; /**< Number of 512-byte logical blocks (private).      */
   bool     read_only;   /**< true => writes and erases are rejected (private). */
 } ra8_io_blockdev_ram_state_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Bind a RAM block-device backend into a caller-owned handle.

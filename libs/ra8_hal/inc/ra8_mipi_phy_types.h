@@ -243,14 +243,12 @@ typedef enum : uint8_t {
  * cppcheck cannot see tests/ so it flags every field as unused;
  * each member is read in ``ra8_mipi_phy_get_status_decoded``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool     ldo_ready;  /**< PWRSF (bit 0) -- LDO power-on stable.  */
   bool     pll_locked; /**< PLLSF (bit 8) -- PLL clock stable.     */
   bool     phy_ready;  /**< (PWRSF & PLLSF) -- driver fully armed. */
   uint32_t raw;        /**< Verbatim DPHYSFR snapshot.             */
 } ra8_mipi_phy_status_decoded_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_mipi_phy_pll_t
@@ -267,14 +265,12 @@ typedef struct {
  * cppcheck cannot see tests/ so it flags every field as unused;
  * each member is read in ``ra8_mipi_phy_init``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_mipi_phy_pll_idiv_t  idiv;     /**< IDIV[1:0] input divisor.       */
   ra8_mipi_phy_pll_pmul_t  pmul;     /**< PMUL[1:0] output divisor.      */
   ra8_mipi_phy_pll_nfmul_t nfmul;    /**< NFMUL[1:0] fractional N.       */
   uint16_t                 nmul_int; /**< NMUL[8:0] integer N (40..375). */
 } ra8_mipi_phy_pll_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_mipi_phy_timing_t
@@ -289,7 +285,6 @@ typedef struct {
  * cppcheck cannot see tests/ so it flags every field as unused;
  * each member is read in ``ra8_mipi_phy_init``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t tinit;    /**< DPHYTIM1.TINIT[18:0].   */
   uint8_t  tclkprep; /**< DPHYTIM2.TCLKPREP[7:0]. */
@@ -306,7 +301,6 @@ typedef struct {
   uint8_t  thsexit;  /**< DPHYTIM5.THSEXIT[7:0].  */
   uint8_t  tlpx;     /**< DPHYTIM6.TLPX[7:0].     */
 } ra8_mipi_phy_timing_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_mipi_phy_config_t
@@ -316,7 +310,6 @@ typedef struct {
  * cppcheck cannot see tests/ so it flags every field as unused;
  * each member is read in ``ra8_mipi_phy_init``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_mipi_phy_mode_t          mode;           /**< Host (DSI) or device (CSI).            */
   uint8_t                      pclka_mhz;      /**< PCLKA frequency, MHz (40..125).        */
@@ -328,7 +321,6 @@ typedef struct {
   uint8_t                      escdiv;         /**< Escape clk divisor (0..31).            */
   const ra8_mipi_phy_timing_t* p_timing;       /**< Non-NULL timing block.                 */
 } ra8_mipi_phy_config_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_mipi_phy_event_fn_t

@@ -110,7 +110,6 @@ typedef enum : uint8_t {
  * member is read or written by the accessors in
  * ``libs/ra8_hal/src/ra8_ptp.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t PTP_CTRL;      /**< +0x00 Control: PORT_EN + ROLE + TX trig. */
   volatile uint32_t PTP_DOMAIN;    /**< +0x04 clockDomain (IEEE 1588 sec 7.1).   */
@@ -126,7 +125,6 @@ typedef struct {
   volatile uint32_t PTP_MAC0;      /**< +0x2C MAC address bytes 0..3.            */
   volatile uint32_t PTP_MAC1;      /**< +0x30 MAC address bytes 4..5 (low half). */
 } r_ptp_regs_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Get pointer to the PTP register block.

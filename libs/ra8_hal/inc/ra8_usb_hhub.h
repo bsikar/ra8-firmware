@@ -138,14 +138,10 @@ typedef enum : uint8_t {
  *        callback.
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
-  uint8_t device_address; /**< Assigned USB address (1..127). */
-  // cppcheck-suppress unusedStructMember
-  uint8_t port_count; /**< bNbrPorts from HUB descriptor. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t vendor_id; /**< idVendor. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t product_id; /**< idProduct. */
+  uint8_t  device_address; /**< Assigned USB address (1..127). */
+  uint8_t  port_count;     /**< bNbrPorts from HUB descriptor. */
+  uint16_t vendor_id;      /**< idVendor.                      */
+  uint16_t product_id;     /**< idProduct.                     */
 } ra8_usb_hhub_device_t;
 
 /**

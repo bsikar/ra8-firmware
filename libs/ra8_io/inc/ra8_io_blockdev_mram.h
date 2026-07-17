@@ -61,13 +61,11 @@ extern "C" {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uintptr_t base;        /**< First MRAM byte address of the window (private).  */
   uint32_t  block_count; /**< Number of 512-byte logical blocks (private).      */
   bool      read_only;   /**< true => writes and erases are rejected (private). */
 } ra8_io_blockdev_mram_state_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Bind a hard-fenced MRAM block-device backend into a caller handle.

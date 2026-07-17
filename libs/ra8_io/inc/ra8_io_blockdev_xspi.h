@@ -53,14 +53,12 @@ extern "C" {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t  instance;    /**< xSPI HAL instance index, 0 or 1 (private).        */
   uint32_t base_off;    /**< Flash byte offset of logical block 0 (private).   */
   uint32_t block_count; /**< Number of 512-byte logical blocks (private).      */
   bool     read_only;   /**< true => writes and erases are rejected (private). */
 } ra8_io_blockdev_xspi_state_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Bind an OSPI NOR block-device backend into a caller-owned handle.

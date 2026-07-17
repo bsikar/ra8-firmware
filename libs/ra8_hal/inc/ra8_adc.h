@@ -72,14 +72,12 @@ typedef enum : uint8_t {
  * each member is read in ``ra8_adc_init_configured`` in
  * ``libs/ra8_hal/src/adc.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_adc_resolution_t resolution;    /**< 16 / 14 / 12 / 10 bit.   */
   ra8_adc_trigger_t    trigger;       /**< Trigger source.          */
   bool                 right_aligned; /**< True -> right-align.     */
   bool                 scan_mode;     /**< True -> continuous scan. */
 } ra8_adc_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @enum ra8_adc_status_mask_t
@@ -177,14 +175,12 @@ typedef enum : uint8_t {
  * == channel index, matching the read-channel convention used by
  * the legacy polling API).
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t               num_channels;                                /**< 1..8.                  */
   uint8_t               channels[k_ra8_adc_scan_group_max_channels]; /**< Physical-channel list. */
   ra8_adc_trigger_src_t trigger;                                     /**< Trigger source.        */
   ra8_adc_priority_t    priority;                                    /**< Priority class.        */
 } ra8_adc_scan_group_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /* =============================================================================
  * Lifecycle

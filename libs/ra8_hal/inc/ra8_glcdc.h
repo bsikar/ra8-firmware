@@ -50,7 +50,6 @@ typedef struct {
  * each member is read in ``ra8_glcdc_init`` in
  * ``libs/ra8_hal/src/ra8_glcdc.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t              framebuffer_addr; /**< SRAM or SDRAM address.   */
   uint16_t              width_px;         /**< Visible width.           */
@@ -58,7 +57,6 @@ typedef struct {
   ra8_glcdc_pixel_fmt_t format;           /**< Pixel format code.       */
   ra8_glcdc_timing_t    timing;           /**< Panel timing (from BSP). */
 } ra8_glcdc_config_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_glcdc_layer2_cfg_t
@@ -71,7 +69,6 @@ typedef struct {
  * line stride, on-panel position, on-panel size, and a constant
  * alpha that gates alpha-blending of the lower layer.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t              framebuffer_addr;  /**< Layer-2 framebuffer base address.     */
   uint32_t              line_stride_bytes; /**< Bytes between successive scan lines.  */
@@ -82,7 +79,6 @@ typedef struct {
   ra8_glcdc_pixel_fmt_t format;            /**< Pixel format code (FLM6.FORMAT).      */
   uint8_t               alpha;             /**< Constant alpha 0..255 (AB7.ARCDEF).   */
 } ra8_glcdc_layer2_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @enum ra8_glcdc_blend_mode_t

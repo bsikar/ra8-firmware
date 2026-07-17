@@ -144,13 +144,11 @@ typedef enum : uint8_t {
  * member is read in ``ra8_bkup_init`` in
  * ``libs/ra8_hal/src/ra8_bkup.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_bkup_vdet_level_t vdet_level;    /**< VDETBATT trip threshold (VBTBPCR2.VDETLVL).         */
   bool                  enable_switch; /**< true -> clear BPWSWSTP, allow VCC->VBATT switching. */
   bool                  enable_backup; /**< true -> set VBTBER.VBAE so VBTBKRn is accessible.   */
 } ra8_bkup_config_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_bkup_status_t
@@ -161,7 +159,6 @@ typedef struct {
  * fields are written by ``ra8_bkup_get_status`` and consumed by
  * application code / tests.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_bkup_source_t source;       /**< Active power source right now.         */
   bool              vbatt_r_ok;   /**< VBPORM: VBATT_R > VPORBATT (post-OK).  */
@@ -169,7 +166,6 @@ typedef struct {
   uint8_t           tamper_flags; /**< Raw VBTADSR.VBTADF[2:0] mask.          */
   uint8_t           raw_vbtbpsr;  /**< Unmodified VBTBPSR (debug aid).        */
 } ra8_bkup_status_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_bkup_tamper_chan_cfg_t
@@ -181,7 +177,6 @@ typedef struct {
  * VBTADCR1..3 / VBTADCR2 in one shot. cppcheck cannot see tests/ so
  * it flags every field as unused.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool                   input_enable;       /**< VCHnINEN: drive RTCICn pad as input.       */
   bool                   noise_canceller_en; /**< VCHnNCE: enable 3-tap synchroniser.        */
@@ -191,7 +186,6 @@ typedef struct {
   bool                   zeroize_huk;        /**< VBTADZEn: assert HUK zeroize on flag.      */
   ra8_bkup_capture_src_t capture_src;        /**< VBRTCESn: RTC time-capture source select.  */
 } ra8_bkup_tamper_chan_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_bkup_tamper_config_t
@@ -203,12 +197,10 @@ typedef struct {
  * "Tamper Detection Function Initialization Setting Flow" steps 1-8.
  * cppcheck cannot see tests/ so it flags every field as unused.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_bkup_nc_width_t        nc_width; /**< VINCW noise-sampling clock. */
   ra8_bkup_tamper_chan_cfg_t channels[(uint8_t)k_ra8_bkup_chan_count]; /**< Channels. */
 } ra8_bkup_tamper_config_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_bkup_security_config_t
@@ -223,14 +215,12 @@ typedef struct {
  *
  * cppcheck cannot see tests/ so it flags every field as unused.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t bbfsar; /**< OR of ``k_ra8_bkup_bbfsar_mask_*`` bits. */
   uint16_t saba;   /**< VBRSABAR.SABA (32-byte aligned).         */
   uint16_t pabas;  /**< VBRPABARS.PABAS (32-byte aligned).       */
   uint16_t pabans; /**< VBRPABARNS.PABANS (32-byte aligned).     */
 } ra8_bkup_security_config_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_bkup_event_fn_t

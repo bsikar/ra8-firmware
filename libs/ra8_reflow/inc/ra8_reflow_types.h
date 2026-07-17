@@ -218,24 +218,15 @@ typedef enum : uint32_t {
  * array of these. Treat fields as read-only outside of `ra8_reflow_*`.
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
-  uint8_t kind; /**< `ra8_reflow_token_kind_t`. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t tag; /**< `ra8_reflow_html_tag_t` (0 if N/A). */
-  // cppcheck-suppress unusedStructMember
-  uint8_t style; /**< Font-style bitmask. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t reserved; /**< Block align / `<a>` link id. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t text_off; /**< Byte offset into the text pool. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t text_len; /**< Byte length within the text pool. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t color; /**< 0xRRGGBB CSS colour, or k_ra8_reflow_color_inherit. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t css_font_px; /**< Block-start CSS font px (0 = none -> UA default). */
-  // cppcheck-suppress unusedStructMember
-  uint16_t reserved16; /**< Padding to 4-byte stride. */
+  uint8_t  kind;        /**< `ra8_reflow_token_kind_t`.                          */
+  uint8_t  tag;         /**< `ra8_reflow_html_tag_t` (0 if N/A).                 */
+  uint8_t  style;       /**< Font-style bitmask.                                 */
+  uint8_t  reserved;    /**< Block align / `<a>` link id.                        */
+  uint32_t text_off;    /**< Byte offset into the text pool.                     */
+  uint32_t text_len;    /**< Byte length within the text pool.                   */
+  uint32_t color;       /**< 0xRRGGBB CSS colour, or k_ra8_reflow_color_inherit. */
+  uint16_t css_font_px; /**< Block-start CSS font px (0 = none -> UA default).   */
+  uint16_t reserved16;  /**< Padding to 4-byte stride.                           */
 } ra8_reflow_token_t;
 
 /**
@@ -248,20 +239,13 @@ typedef struct {
  * body text mix on the same page without re-scanning style state.
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
-  int32_t x; /**< Pixel column of glyph baseline-left. */
-  // cppcheck-suppress unusedStructMember
-  int32_t y; /**< Pixel row of glyph baseline. */
-  // cppcheck-suppress unusedStructMember
-  int32_t cp; /**< Unicode code point. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t color; /**< 32-bit RGB colour. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t font_px; /**< Pixel size used for this glyph. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t style; /**< Font-style bitmask. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t reserved; /**< Padding. */
+  int32_t  x;        /**< Pixel column of glyph baseline-left. */
+  int32_t  y;        /**< Pixel row of glyph baseline.         */
+  int32_t  cp;       /**< Unicode code point.                  */
+  uint32_t color;    /**< 32-bit RGB colour.                   */
+  uint16_t font_px;  /**< Pixel size used for this glyph.      */
+  uint8_t  style;    /**< Font-style bitmask.                  */
+  uint8_t  reserved; /**< Padding.                             */
 } ra8_reflow_glyph_t;
 
 /**
@@ -269,10 +253,8 @@ typedef struct {
  * @brief Index range of glyphs that belong to one page.
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
   uint32_t glyph_first; /**< Index of first glyph in this page. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t glyph_count; /**< Number of glyphs in this page. */
+  uint32_t glyph_count; /**< Number of glyphs in this page.     */
 } ra8_reflow_page_t;
 
 /**
@@ -288,22 +270,14 @@ typedef struct {
  * pixels are never stored -- decode is on-demand per page flip).
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
-  int32_t x; /**< Page-local left edge, pixels. */
-  // cppcheck-suppress unusedStructMember
-  int32_t y; /**< Page-local top edge, pixels. */
-  // cppcheck-suppress unusedStructMember
-  int32_t w; /**< Scaled box width, pixels. */
-  // cppcheck-suppress unusedStructMember
-  int32_t h; /**< Scaled box height, pixels. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t src_off; /**< Href slice offset into text pool. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t src_len; /**< Href slice length, bytes. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t page_index; /**< Page this image belongs to. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t reserved; /**< Padding to 32-byte stride. */
+  int32_t  x;          /**< Page-local left edge, pixels.     */
+  int32_t  y;          /**< Page-local top edge, pixels.      */
+  int32_t  w;          /**< Scaled box width, pixels.         */
+  int32_t  h;          /**< Scaled box height, pixels.        */
+  uint32_t src_off;    /**< Href slice offset into text pool. */
+  uint32_t src_len;    /**< Href slice length, bytes.         */
+  uint32_t page_index; /**< Page this image belongs to.       */
+  uint32_t reserved;   /**< Padding to 32-byte stride.        */
 } ra8_reflow_image_box_t;
 
 /**
@@ -372,10 +346,8 @@ typedef ra8_err_t (*ra8_reflow_css_loader_fn)(void*           ctx,
  * same target by index (a wrapped link spans several rects).
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
   uint32_t href_off; /**< Href slice offset into the text pool. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t href_len; /**< Href slice length, bytes. */
+  uint32_t href_len; /**< Href slice length, bytes.             */
 } ra8_reflow_link_target_t;
 
 /**
@@ -387,18 +359,12 @@ typedef struct {
  * the same `target` index in `engine->link_targets[]`.
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
-  int32_t x; /**< Page-local left edge, pixels. */
-  // cppcheck-suppress unusedStructMember
-  int32_t y; /**< Page-local top edge, pixels. */
-  // cppcheck-suppress unusedStructMember
-  int32_t w; /**< Rect width, pixels. */
-  // cppcheck-suppress unusedStructMember
-  int32_t h; /**< Rect height, pixels. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t target; /**< Index into `engine->link_targets[]`. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t page_index; /**< Page this rect belongs to. */
+  int32_t  x;          /**< Page-local left edge, pixels.        */
+  int32_t  y;          /**< Page-local top edge, pixels.         */
+  int32_t  w;          /**< Rect width, pixels.                  */
+  int32_t  h;          /**< Rect height, pixels.                 */
+  uint32_t target;     /**< Index into `engine->link_targets[]`. */
+  uint32_t page_index; /**< Page this rect belongs to.           */
 } ra8_reflow_link_rect_t;
 
 /**
@@ -409,14 +375,10 @@ typedef struct {
  * fragment link can navigate to its page. The id string is a text-pool slice.
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
-  uint32_t id_off; /**< Id slice offset into the text pool. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t id_len; /**< Id slice length, bytes. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t page_index; /**< Page the id landed on. */
-  // cppcheck-suppress unusedStructMember
-  int32_t y; /**< Page-local top y of the element. */
+  uint32_t id_off;     /**< Id slice offset into the text pool. */
+  uint32_t id_len;     /**< Id slice length, bytes.             */
+  uint32_t page_index; /**< Page the id landed on.              */
+  int32_t  y;          /**< Page-local top y of the element.    */
 } ra8_reflow_anchor_t;
 
 /**
@@ -464,14 +426,10 @@ typedef enum : uint8_t {
 } ra8_reflow_face_pad_t;
 
 typedef struct {
-  // cppcheck-suppress unusedStructMember
-  const uint8_t* blob; /**< TTF/OTF bytes; caller-owned, outlive the engine. */
-  // cppcheck-suppress unusedStructMember
-  size_t len; /**< Length of `blob`, bytes. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t css_face_idx; /**< `@font-face` table index this blob satisfies. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t pad8[k_ra8_reflow_face_pad8]; /**< Padding to an 8-byte stride. */
+  const uint8_t* blob;         /**< TTF/OTF bytes; caller-owned, outlive the engine. */
+  size_t         len;          /**< Length of `blob`, bytes.                         */
+  uint8_t        css_face_idx; /**< `@font-face` table index this blob satisfies.    */
+  uint8_t        pad8[k_ra8_reflow_face_pad8]; /**< Padding to an 8-byte stride. */
 } ra8_reflow_face_t;
 
 /**
@@ -490,96 +448,59 @@ typedef struct {
  */
 typedef struct {
   /* --- viewport + style ------------------------------------------------ */
-  // cppcheck-suppress unusedStructMember
-  uint16_t viewport_w; /**< Viewport width, pixels. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t viewport_h; /**< Viewport height, pixels. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t font_px; /**< Body font size in pixels. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t reserved16; /**< Padding. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t body_color; /**< Body text colour (0xRRGGBB). */
-  // cppcheck-suppress unusedStructMember
+  uint16_t viewport_w; /**< Viewport width, pixels.        */
+  uint16_t viewport_h; /**< Viewport height, pixels.       */
+  uint16_t font_px;    /**< Body font size in pixels.      */
+  uint16_t reserved16; /**< Padding.                       */
+  uint32_t body_color; /**< Body text colour (0xRRGGBB).   */
   uint32_t link_color; /**< Anchor text colour (0xRRGGBB). */
 
   /* --- font (caller-owned TTF blob) ------------------------------------ */
-  // cppcheck-suppress unusedStructMember
-  const uint8_t* font_data; /**< TTF blob; outlives the engine. */
-  // cppcheck-suppress unusedStructMember
-  size_t font_len; /**< Length of `font_data`, bytes. */
-  // cppcheck-suppress unusedStructMember
-  ra8_reflow_face_t faces[k_ra8_reflow_max_faces]; /**< Embedded `@font-face` set. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t face_count; /**< Registered embedded faces (0 = single-face). */
+  const uint8_t*    font_data;                     /**< TTF blob; outlives the engine. */
+  size_t            font_len;                      /**< Length of `font_data`, bytes.  */
+  ra8_reflow_face_t faces[k_ra8_reflow_max_faces]; /**< Embedded `@font-face` set.     */
+  uint8_t           face_count; /**< Registered embedded faces (0 = single-face). */
 
   /* --- cached chapter input ------------------------------------------- */
-  // cppcheck-suppress unusedStructMember
   const uint8_t* xhtml_buf; /**< Last `layout_chapter` input. */
-  // cppcheck-suppress unusedStructMember
-  size_t xhtml_len; /**< Length of `xhtml_buf`. */
+  size_t         xhtml_len; /**< Length of `xhtml_buf`.       */
 
   /* --- token stream --------------------------------------------------- */
-  // cppcheck-suppress unusedStructMember
-  ra8_reflow_token_t tokens[k_ra8_reflow_max_tokens]; /**< Parsed tokens. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t token_count; /**< Tokens used. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t text_pool[k_ra8_reflow_text_pool_bytes]; /**< Text bytes. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t text_pool_used; /**< Bytes consumed in text_pool. */
+  ra8_reflow_token_t tokens[k_ra8_reflow_max_tokens];         /**< Parsed tokens.               */
+  uint32_t           token_count;                             /**< Tokens used.                 */
+  uint8_t            text_pool[k_ra8_reflow_text_pool_bytes]; /**< Text bytes.                  */
+  uint32_t           text_pool_used;                          /**< Bytes consumed in text_pool. */
 
   /* --- laid-out glyphs ------------------------------------------------ */
-  // cppcheck-suppress unusedStructMember
   ra8_reflow_glyph_t glyphs[k_ra8_reflow_max_glyphs]; /**< Positioned glyphs. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t glyph_count; /**< Glyphs used. */
-  // cppcheck-suppress unusedStructMember
-  ra8_reflow_page_t pages[k_ra8_reflow_max_pages]; /**< Page index ranges. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t page_count; /**< Pages used. */
+  uint32_t           glyph_count;                     /**< Glyphs used.       */
+  ra8_reflow_page_t  pages[k_ra8_reflow_max_pages];   /**< Page index ranges. */
+  uint32_t           page_count;                      /**< Pages used.        */
 
   /* --- image rendering (#106) ---------------------------------------- */
-  // cppcheck-suppress unusedStructMember
-  ra8_reflow_image_loader_fn img_loader; /**< `<img>` byte loader (NULL = off). */
-  // cppcheck-suppress unusedStructMember
-  void* img_loader_ctx; /**< Opaque context for `img_loader`. */
-  // cppcheck-suppress unusedStructMember
-  ra8_img_arena_t* img_arena; /**< Decode scratch (NULL = off). */
-  // cppcheck-suppress unusedStructMember
-  ra8_reflow_css_loader_fn css_loader; /**< `<link>` CSS loader (NULL = off). */
-  // cppcheck-suppress unusedStructMember
-  void* css_loader_ctx; /**< Opaque context for `css_loader`. */
-  // cppcheck-suppress unusedStructMember
-  ra8_reflow_image_box_t image_boxes[k_ra8_reflow_max_images]; /**< Laid-out images. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t image_box_count; /**< Image boxes used. */
+  ra8_reflow_image_loader_fn img_loader;     /**< `<img>` byte loader (NULL = off). */
+  void*                      img_loader_ctx; /**< Opaque context for `img_loader`.  */
+  ra8_img_arena_t*           img_arena;      /**< Decode scratch (NULL = off).      */
+  ra8_reflow_css_loader_fn   css_loader;     /**< `<link>` CSS loader (NULL = off). */
+  void*                      css_loader_ctx; /**< Opaque context for `css_loader`.  */
+  ra8_reflow_image_box_t     image_boxes[k_ra8_reflow_max_images]; /**< Laid-out images.  */
+  uint32_t                   image_box_count;                      /**< Image boxes used. */
 
   /* --- hyperlinks + anchors (#110) ----------------------------------- */
-  // cppcheck-suppress unusedStructMember
-  ra8_reflow_link_target_t link_targets[k_ra8_reflow_max_links]; /**< Distinct hrefs. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t link_target_count; /**< Interned link targets. */
-  // cppcheck-suppress unusedStructMember
-  ra8_reflow_link_rect_t link_rects[k_ra8_reflow_max_link_rects]; /**< Tappable rects. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t link_rect_count; /**< Positioned link rects used. */
-  // cppcheck-suppress unusedStructMember
-  ra8_reflow_anchor_t anchors[k_ra8_reflow_max_anchors]; /**< id= anchor positions. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t anchor_count; /**< Anchor positions used. */
+  ra8_reflow_link_target_t link_targets[k_ra8_reflow_max_links];    /**< Distinct hrefs.        */
+  uint32_t                 link_target_count;                       /**< Interned link targets. */
+  ra8_reflow_link_rect_t   link_rects[k_ra8_reflow_max_link_rects]; /**< Tappable rects.        */
+  uint32_t                 link_rect_count;                   /**< Positioned link rects used. */
+  ra8_reflow_anchor_t      anchors[k_ra8_reflow_max_anchors]; /**< id= anchor positions.       */
+  uint32_t                 anchor_count;                      /**< Anchor positions used.      */
 
   /* --- content CSS cascade (#111) ------------------------------------ */
-  // cppcheck-suppress unusedStructMember
   ra8_css_sheet_t css; /**< Parsed `<style>` rules for the chapter. */
 
   /* --- glyph atlas (Layer-3 cache, #164) ----------------------------- */
-  // cppcheck-suppress unusedStructMember
   ra8_glyph_atlas_t* glyph_atlas; /**< Glyph bitmap cache, or NULL for direct raster. */
 
   /* --- lifecycle ------------------------------------------------------ */
-  // cppcheck-suppress unusedStructMember
-  uint8_t in_use; /**< 1 = initialized, 0 = closed. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t reserved8[3]; /**< Padding. */
+  uint8_t in_use;       /**< 1 = initialized, 0 = closed. */
+  uint8_t reserved8[3]; /**< Padding.                     */
 } ra8_reflow_t;

@@ -205,13 +205,11 @@ typedef enum : uint8_t {
  * qwords. Set every flag your downstream consumer needs in one
  * shot via `ra8_ceu_byte_swap_set`.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool swap_8_bit;  /**< COBS: byte-swap inside 16-bit words.   */
   bool swap_16_bit; /**< COWS: word-swap inside 32-bit dwords.  */
   bool swap_32_bit; /**< COLS: dword-swap inside 64-bit qwords. */
 } ra8_ceu_byte_swap_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_ceu_edge_info_t
@@ -221,14 +219,12 @@ typedef struct {
  * HUM Ch 60.2.3 p 3636-3641. Each member maps directly to one
  * CAMCR bit (24, 26, 27, 25 respectively).
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_ceu_edge_t data;  /**< CAMCR.DSEL   (data lines).    */
   ra8_ceu_edge_t hsync; /**< CAMCR.HDSEL  (HD).            */
   ra8_ceu_edge_t vsync; /**< CAMCR.VDSEL  (VD).            */
   ra8_ceu_edge_t field; /**< CAMCR.FLDSEL (FLD interlace). */
 } ra8_ceu_edge_info_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_ceu_scale_t
@@ -241,7 +237,6 @@ typedef struct {
  * disables that axis; the CEU treats the size-clip register as the
  * raw filter input dimensions in that case.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint16_t h_mantissa;    /**< CFLCR.HMANT[3:0].  */
   uint16_t h_fraction;    /**< CFLCR.HFRAC[11:0]. */
@@ -250,7 +245,6 @@ typedef struct {
   uint16_t h_output_clip; /**< CFSZR.HFCLP[11:0]. */
   uint16_t v_output_clip; /**< CFSZR.VFCLP[11:0]. */
 } ra8_ceu_scale_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_ceu_config_t
@@ -269,7 +263,6 @@ typedef struct {
  * each member is read in `ra8_ceu_init` in
  * `libs/ra8_hal/src/ra8_ceu.c`.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint16_t                 width_px;        /**< Captured image width (CMCYR.HCYL).  */
   uint16_t                 height_px;       /**< Captured image height (CMCYR.VCYL). */
@@ -300,7 +293,6 @@ typedef struct {
   bool                     low_pass_filter; /**< CLFCR.LPF = 1 if true.              */
   uint32_t                 image_area_size; /**< For data-enable firewall window.    */
 } ra8_ceu_config_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_ceu_status_t
@@ -310,7 +302,6 @@ typedef struct {
  * Returned by `ra8_ceu_status_snapshot`. Callers that only need the
  * raw event-flag word can use `ra8_ceu_get_status` instead.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t        events;          /**< CETCR raw value (event flags). */
   uint32_t        data_size;       /**< CDSSR last-write byte count.   */
@@ -319,7 +310,6 @@ typedef struct {
   ra8_ceu_plane_t active_plane;    /**< CSTSR.CRST register plane.     */
   bool            top_field;       /**< CSTSR.CPFLD == 1.              */
 } ra8_ceu_status_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_ceu_buffers_t
@@ -331,7 +321,6 @@ typedef struct {
  * required for interlace + bundle-write modes; pass NULL to leave
  * the matching register at zero.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t* y_top;             /**< CDAYR  -- Y / top-field address.       */
   uint8_t* c_top;             /**< CDACR  -- C / top-field C address.     */
@@ -343,7 +332,6 @@ typedef struct {
   uint8_t* c_bottom_2;        /**< CDBCR2 -- bundle-2 C bottom.           */
   uint32_t bundle_size_bytes; /**< CBDSR bundle write size (bytes/lines). */
 } ra8_ceu_buffers_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_ceu_event_fn_t

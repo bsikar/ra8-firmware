@@ -117,11 +117,9 @@ typedef enum : uint8_t {
  */
 /* The bytes field is read by ra8_net_pal_set_mac_addr / get_mac_addr
  * which cppcheck does not see if the test build excludes them. */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t bytes[k_ra8_net_pal_mac_addr_len]; /**< Bytes. */
 } ra8_net_pal_mac_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_net_pal_event_fn_t

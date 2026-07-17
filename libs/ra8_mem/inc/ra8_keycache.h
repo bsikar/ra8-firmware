@@ -88,7 +88,6 @@ typedef ra8_err_t (*ra8_keycache_render_fn)(void*       ctx,
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   int32_t  prev;      /**< LRU link toward MRU, or -1.        */
   int32_t  next;      /**< LRU link toward LRU, or -1.        */
@@ -96,7 +95,6 @@ typedef struct {
   uint16_t pin_count; /**< Outstanding pins (0 => evictable). */
   uint8_t  valid;     /**< 1 => this cell holds an entry.     */
 } ra8_keycache_cell_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_keycache_cfg_t
@@ -132,7 +130,6 @@ typedef struct {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_keycache_cfg_t cfg;       /**< Configuration (copied at init). */
   int32_t            lru_head;  /**< MRU cell, or -1.                */
@@ -141,7 +138,6 @@ typedef struct {
   uint32_t           misses;    /**< Get misses so far.              */
   uint32_t           evictions; /**< Entries evicted so far.         */
 } ra8_keycache_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_keycache_view_t

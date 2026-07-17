@@ -95,7 +95,6 @@ typedef enum : uint32_t {
  * @invariant size is a power of two >= k_ra8_mpu_min_region_size.
  * @invariant (base & (size - 1)) == 0.
  */
-/* cppcheck-suppress-begin unusedStructMember */
 typedef struct {
   uintptr_t          base;       /**< Region base address.                 */
   uint32_t           size;       /**< Region size in bytes (power of two). */
@@ -105,7 +104,6 @@ typedef struct {
   ra8_mpu_share_t    shareable;  /**< SH[1:0] field.                       */
   ra8_mpu_attr_idx_t attr_idx;   /**< MAIR slot index.                     */
 } ra8_mpu_region_t;
-/* cppcheck-suppress-end unusedStructMember */
 
 /**
  * @struct ra8_mpu_cfg_t
@@ -117,7 +115,6 @@ typedef struct {
  *
  * @invariant region_count <= MPU_TYPE.DREGION.
  */
-/* cppcheck-suppress-begin unusedStructMember */
 typedef struct {
   const ra8_mpu_region_t* regions;      /**< Region descriptor array.  */
   uint8_t                 region_count; /**< Entries in regions.       */
@@ -126,7 +123,6 @@ typedef struct {
   bool                    privdefena;   /**< MPU_CTRL.PRIVDEFENA = 1.  */
   bool                    hfnmiena;     /**< MPU_CTRL.HFNMIENA   = 1.  */
 } ra8_mpu_cfg_t;
-/* cppcheck-suppress-end unusedStructMember */
 
 /**
  * @brief Program every MPU region from a static configuration.

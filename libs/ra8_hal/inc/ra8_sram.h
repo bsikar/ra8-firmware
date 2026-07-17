@@ -107,7 +107,6 @@ typedef enum : uint8_t {
  * One of these is filled in for each bank the caller wants to enable
  * ECC on. Defaults to ``ecc_disabled`` so unfilled banks are no-ops.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_sram_ecc_mode_t    ecc_mode;          /**< ECC mode (off / no-check / with-check).  */
   ra8_sram_on_error_t    on_error;          /**< NMI vs Reset on ECC error.               */
@@ -115,7 +114,6 @@ typedef struct {
   ra8_sram_eccrgn_size_t eccrgn;            /**< ECC target region size (SRAMECCRGNn).    */
   bool                   zero_init;         /**< If true, init() runs the zero-init pass. */
 } ra8_sram_bank_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_sram_security_cfg_t
@@ -132,14 +130,12 @@ typedef struct {
  * ``boundary_offset[bank]`` -- one absolute offset per bank, 4 KB
  * aligned per HUM Ch 58.2.1 (p 3527).
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool     bank_ns[k_ra8_sram_bank_count];         /**< Bit n -> SRAMSAn = 1 (NS). */
   bool     wtsc_ns;                                /**< SRAMSAR.SRAMWTSA bit.      */
   bool     ecc_region_ns;                          /**< SRAMESAR.SRAMESA bit.      */
   uint32_t boundary_offset[k_ra8_sram_bank_count]; /**< SRAMSABARn boundary value. */
 } ra8_sram_security_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_sram_config_t
@@ -158,14 +154,12 @@ typedef struct {
  * already know your ICLK frequency, or use
  * ``ra8_sram_set_wait_state_for_clock`` after init.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_sram_bank_cfg_t     banks[k_ra8_sram_bank_count]; /**< Per-bank settings.             */
   ra8_sram_security_cfg_t security;                     /**< CPSCU security attribution.    */
   bool                    apply_security;               /**< Touch CPSCU registers if true. */
   bool                    wait_state;                   /**< SRAMWTSC.WTEN at init time.    */
 } ra8_sram_config_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /* =============================================================================
  * Status / event types
@@ -186,7 +180,6 @@ typedef struct {
  * faulting address (EAR offset + 0x2200_0000), or 0 if no error has
  * fired for that bank/slot.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint16_t  raw_esr;                          /**< Raw SRAMESR value.                     */
   uint8_t   one_bit_mask;                     /**< Bit i = SRAMi 1-bit error.             */
@@ -194,7 +187,6 @@ typedef struct {
   uintptr_t addr_1bit[k_ra8_sram_bank_count]; /**< Captured 1-bit error address per bank. */
   uintptr_t addr_2bit[k_ra8_sram_bank_count]; /**< Captured 2-bit error address per bank. */
 } ra8_sram_status_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_sram_bank_info_t
@@ -204,7 +196,6 @@ typedef struct {
  * Returned by ``ra8_sram_get_bank_info`` so callers do not have to
  * carry the layout constants from ``ra8_sram_regs.h``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t   bank;      /**< Bank index 0..3.                      */
   uintptr_t data_base; /**< Absolute Secure base of data region.  */
@@ -212,7 +203,6 @@ typedef struct {
   uintptr_t ecc_base;  /**< Absolute Secure base of ECC syndrome. */
   uint32_t  ecc_size;  /**< Bytes in the ECC syndrome region.     */
 } ra8_sram_bank_info_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_sram_error_fn_t

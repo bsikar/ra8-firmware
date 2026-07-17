@@ -84,12 +84,10 @@ typedef enum : uint16_t {
  * ``pec_enabled`` flag. SMBus 3.2 makes PEC optional but strongly
  * recommended for safety-critical traffic (battery / power ICs).
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_i2c_bus_ops_t bus;         /**< Injected I2C transfer seam (app-bound). */
   bool              pec_enabled; /**< Append + verify PEC on every xfer.      */
 } ra8_smbus_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_smbus_alert_fn_t

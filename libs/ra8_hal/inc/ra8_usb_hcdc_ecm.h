@@ -170,26 +170,16 @@ typedef enum : uint8_t {
  * `_send_frame` / `_recv_frame` calls land on the right pipes.
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
-  uint8_t device_address; /**< Assigned USB address (1..127). */
-  // cppcheck-suppress unusedStructMember
-  uint8_t bulk_in_ep; /**< Adapter's bulk IN EP num. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t bulk_out_ep; /**< Adapter's bulk OUT EP num. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t intr_in_ep; /**< Adapter's intr IN (notify) EP num. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t bulk_in_max_packet; /**< Adapter bulk-IN wMaxPacketSize. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t bulk_out_max_packet; /**< Adapter bulk-OUT wMaxPacketSize. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t vendor_id; /**< idVendor from device descriptor. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t product_id; /**< idProduct from device descriptor. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t i_mac_address; /**< iMACAddress string descr index. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t mac_address[k_ra8_hcdc_ecm_mac_bytes]; /**< 6-byte MAC parsed from iMACAddress. */
+  uint8_t  device_address;                        /**< Assigned USB address (1..127).      */
+  uint8_t  bulk_in_ep;                            /**< Adapter's bulk IN EP num.           */
+  uint8_t  bulk_out_ep;                           /**< Adapter's bulk OUT EP num.          */
+  uint8_t  intr_in_ep;                            /**< Adapter's intr IN (notify) EP num.  */
+  uint16_t bulk_in_max_packet;                    /**< Adapter bulk-IN wMaxPacketSize.     */
+  uint16_t bulk_out_max_packet;                   /**< Adapter bulk-OUT wMaxPacketSize.    */
+  uint16_t vendor_id;                             /**< idVendor from device descriptor.    */
+  uint16_t product_id;                            /**< idProduct from device descriptor.   */
+  uint8_t  i_mac_address;                         /**< iMACAddress string descr index.     */
+  uint8_t  mac_address[k_ra8_hcdc_ecm_mac_bytes]; /**< 6-byte MAC parsed from iMACAddress. */
 } ra8_usb_hcdc_ecm_device_t;
 
 /**

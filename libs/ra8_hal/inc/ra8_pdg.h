@@ -170,14 +170,12 @@ typedef enum : uint8_t {
  * (void)ra8_pdg_init(&cfg);
  * @endcode
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_pdg_frange_t frange;       /**< GPT core clock band (HUM 23.2.1).         */
   uint8_t          channel_mask; /**< Bit n = enable PDG channel n.             */
   uint8_t          auto_tune;    /**< 1 = ignore frange, derive from gptclk_hz. */
   uint32_t         gptclk_hz;    /**< Measured GTCLK frequency (Hz).            */
 } ra8_pdg_config_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_pdg_status_full_t
@@ -190,7 +188,6 @@ typedef struct {
  * ``per_channel_power[n]`` are decoded bool arrays so the caller
  * does not need to know the inverted DLYEN polarity.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t          dll_enabled;                                     /**< GTDLYCR.DLLEN.         */
   uint8_t          in_reset;                                        /**< GTDLYCR.DLYRST.        */
@@ -200,7 +197,6 @@ typedef struct {
   uint16_t         raw_gtdlycr;                                     /**< Raw GTDLYCR contents.  */
   uint16_t         raw_gtdlycr2;                                    /**< Raw GTDLYCR2 contents. */
 } ra8_pdg_status_full_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_pdg_delay_entry_t
@@ -212,14 +208,12 @@ typedef struct {
  * registers stay coherent until the next GPT overflow / underflow
  * / trough (HUM Ch 23.3.2 Figure 23.3 p 1161).
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t        channel; /**< 0..3.                              */
   ra8_pdg_pin_t  pin;     /**< k_ra8_pdg_pin_a / k_ra8_pdg_pin_b. */
   ra8_pdg_edge_t edge;    /**< Rising or falling.                 */
   uint8_t        code;    /**< DLY[6:0] code, 0..0x7F.            */
 } ra8_pdg_delay_entry_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_pdg_event_fn_t

@@ -87,7 +87,6 @@ typedef ra8_err_t (*ra8_vsource_read_fn)(void* ctx, uint64_t offset, uint8_t* bu
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_vsource_read_fn read; /**< Paged read callback (NULL for an XIP object). */
   void*               ctx;  /**< Context passed to @c read.                    */
@@ -95,7 +94,6 @@ typedef struct {
   uint64_t            base; /**< Paged: absolute base offset of the object.    */
   uint64_t            size; /**< Object length in bytes.                       */
 } ra8_vsource_obj_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_vsource_t

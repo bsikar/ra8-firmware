@@ -65,7 +65,6 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint16_t max_name_len;             /**< Longest file name (incl NUL).         */
   bool     read_only;                /**< true => no writes/creates/erases.     */
@@ -73,7 +72,6 @@ typedef struct {
   bool     supports_streaming_write; /**< true => open-for-write streaming.     */
   bool     case_sensitive;           /**< true => names compare case-sensitive. */
 } ra8_io_fsfmt_caps_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_io_fsfmt_probe_fn_t
@@ -96,13 +94,11 @@ typedef bool (*ra8_io_fsfmt_probe_fn_t)(const ra8_fs_backend_t* backend);
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   const char*             name;  /**< Short format name, e.g. "fat" / "exfat". */
   ra8_io_fsfmt_caps_t     caps;  /**< What the format supports.                */
   ra8_io_fsfmt_probe_fn_t probe; /**< On-disk signature test.                  */
 } ra8_io_fsfmt_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Reset the registry and register the built-in FAT + exFAT formats.

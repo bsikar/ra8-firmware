@@ -76,7 +76,6 @@ extern "C" {
  * if (ra8_drw_init(&cfg) != k_ra8_ok) {... }
  * @endcode
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uintptr_t             framebuffer_addr;       /**< FB base addr (target ARGB). */
   uint16_t              pitch_px;               /**< FB pitch in pixels.         */
@@ -84,7 +83,6 @@ typedef struct {
   bool                  enable_caches;          /**< Enable FB + texture caches. */
   bool                  enable_buffered_writes; /**< Set DBWER.BWE on init.      */
 } ra8_drw_config_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_drw_rect_t
@@ -95,7 +93,6 @@ typedef struct {
  * origin programmed at init time. ``color_argb8888`` is interpreted
  * as ``0xAARRGGBB`` and pushed into the COLOR1 register.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   int16_t  x;              /**< Top-left X in pixels.   */
   int16_t  y;              /**< Top-left Y in pixels.   */
@@ -103,7 +100,6 @@ typedef struct {
   uint16_t height_px;      /**< Height in pixels.       */
   uint32_t color_argb8888; /**< 0xAARRGGBB fill colour. */
 } ra8_drw_rect_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_drw_blend_t
@@ -115,7 +111,6 @@ typedef struct {
  * "Blending" subsection of Ch 62.4.7 p 3729. The standard "source
  * over" combination is BSF=1, BDF=1, BSFA=1, BDFA=1, BDIA=1, USEACB=1.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool    use_alpha_channel; /**< CONTROL2.USEACB                 */
   bool    src_factor;        /**< CONTROL2.BSF (use SRC alpha)    */
@@ -129,7 +124,6 @@ typedef struct {
   bool    use_color2_dst;    /**< CONTROL2.BC2 (COLOR2 as dst)    */
   uint8_t global_alpha;      /**< COLOR1.A (0=fully transparent). */
 } ra8_drw_blend_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_drw_texture_t
@@ -143,7 +137,6 @@ typedef struct {
  * @invariant ``base_addr`` is at least 4-byte aligned.
  * @invariant ``pitch_px`` <= ``k_ra8_drw_max_texpitch_tx`` (HUM 62.2.15).
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uintptr_t            base_addr;        /**< TEXORIGIN -- texel base.      */
   uint16_t             pitch_px;         /**< TEXPITCH (texels per line).   */
@@ -162,7 +155,6 @@ typedef struct {
   ra8_drw_rlepixel_t   rle_pixel_width;  /**< CONTROL2.RLEPIXELWIDTH.       */
   uint8_t              clut_offset;      /**< TEXCLOFFSET CLOFFSET[7:0].    */
 } ra8_drw_texture_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_drw_line_t
@@ -173,7 +165,6 @@ typedef struct {
  * documents the 6-limiter encoding the engine uses internally; this
  * driver pre-computes those limiters from (x0,y0,x1,y1,width).
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   int16_t  x0;             /**< End-point 0 X in pixels.  */
   int16_t  y0;             /**< End-point 0 Y in pixels.  */
@@ -182,7 +173,6 @@ typedef struct {
   uint16_t width_px;       /**< Stroke width in pixels.   */
   uint32_t color_argb8888; /**< 0xAARRGGBB stroke colour. */
 } ra8_drw_line_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_drw_triangle_t
@@ -192,7 +182,6 @@ typedef struct {
  * Three vertices in pixel space. HUM Ch 62.4.5 "Triangles" p 3726
  * uses LIM1..LIM3 with all-intersect to bound a filled triangle.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   int16_t  x0;             /**< Vertex 0 X.  */
   int16_t  y0;             /**< Vertex 0 Y.  */
@@ -202,7 +191,6 @@ typedef struct {
   int16_t  y2;             /**< Vertex 2 Y.  */
   uint32_t color_argb8888; /**< Fill colour. */
 } ra8_drw_triangle_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_drw_gradient_t
@@ -213,12 +201,10 @@ typedef struct {
  * destination ("background") colour for blend ops. Used as a simple
  * flat / 2-stop gradient via the blend unit. HUM Ch 62.2.7-8 p 3697.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t color1_argb8888; /**< COLOR1 ARGB stop. */
   uint32_t color2_argb8888; /**< COLOR2 ARGB stop. */
 } ra8_drw_gradient_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_drw_event_fn_t

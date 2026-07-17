@@ -36,25 +36,21 @@ extern "C" {
  * @struct ra8_layer3_switch_cfg_t
  * @brief Configuration descriptor for `ra8_layer3_switch_open`.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t  port_count;  /**< Number of physical ports.          */
   uint16_t mtu_bytes;   /**< Maximum transfer unit per port.    */
   uint8_t  promiscuous; /**< Non-zero to put switch in promisc. */
 } ra8_layer3_switch_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_layer3_switch_route_t
  * @brief A single forwarding-table entry.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t dst_ip;      /**< Destination IPv4 (network order). */
   uint32_t mask;        /**< Subnet mask.                      */
   uint8_t  egress_port; /**< Egress port index.                */
 } ra8_layer3_switch_route_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Open the Layer-3 switch driver.

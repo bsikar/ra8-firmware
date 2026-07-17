@@ -106,7 +106,6 @@ typedef enum : uint8_t {
  * field, so the unused-field warning is suppressed with a
  * begin/end pair instead of per-member annotations.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t PRTS;                              /**< +0x000 Protocol Selection Register. */
   volatile uint32_t _r_prts[k_ra8_i3c_pad_after_prts]; /**< Reserved.                           */
@@ -163,7 +162,6 @@ typedef struct {
   volatile uint32_t _r_nrsqp[k_ra8_i3c_pad_after_nrsqp]; /**< 0x184..0x1DF reserved gap. */
   volatile uint32_t NTST; /**< +0x1E0 Normal Transfer Status Register. */
 } r_i3c_regs_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_i3c_bctl_bits_t

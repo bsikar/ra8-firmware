@@ -150,9 +150,6 @@ typedef enum : uint8_t {
  * @see ra8_cbz_open()
  * @since Version 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] -- members are read in
- * ra8_cbz_container.c through the bound pointer; cppcheck's per-TU view of this
- * header cannot see those uses (same waiver as ra8_book_chunked_t). */
 typedef struct {
   ra8_vsource_read_fn file_read;   /**< Byte reader over the container file.      */
   void*               file_ctx;    /**< Context for @ref file_read.               */
@@ -165,7 +162,6 @@ typedef struct {
   uint32_t            page_count;  /**< Number of pages.                          */
   uint32_t            flags;       /**< @ref ra8_book_flag_t bits (RTL, ...).     */
 } ra8_cbz_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_cbz_page_t
@@ -183,14 +179,11 @@ typedef struct {
  * @see ra8_cbz_page_read()
  * @since Version 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] -- read in ra8_cbz_container.c
- * through the bound pointer; cppcheck's per-TU header view cannot see it. */
 typedef struct {
   const ra8_cbz_t* cbz;      /**< The open container this page belongs to. */
   uint32_t         page;     /**< Page index (`< cbz->page_count`).        */
   uint32_t         raw_size; /**< Inflated raster length of this page.     */
 } ra8_cbz_page_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Open an "RCBZ" container for per-page demand-paged reads.

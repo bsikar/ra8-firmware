@@ -68,32 +68,37 @@ missingInclude:libs/ra8_core/src/ra8_exception.c
 missingInclude:libs/ra8_core/src/ra8_infrastructure.c
 
 # ---------------------------------------------------------------------------
-# unusedStructMember on hardware register layout structs.
+# unusedStructMember on every public header under libs/*/inc/.
 #
-# Justification: every `r_*_regs_t` struct in libs/ra8_hal/inc/ra8_*_regs.h
-# is a 1:1 map of a peripheral's MMIO window. Individual fields are "used"
-# at runtime by the compiler emitting the correct load/store instructions
-# through volatile pointer dereferences, but cppcheck's static-flow analysis
-# does not model that and flags every field that happens to not appear in a
-# src/ reference yet. Suppressing globally for the reg headers is safer than
-# sprinkling inline suppressions across 30+ files every time a new field is
-# exposed ahead of its driver consumer.
-# ---------------------------------------------------------------------------
-unusedStructMember:libs/ra8_hal/inc/ra8_*_regs.h
-
-# ---------------------------------------------------------------------------
-# unusedStructMember on the ra8_sdfont config struct.
+# Justification: this is a false-positive CLASS on public headers, not a
+# per-site fact. Headers under libs/<lib>/inc/ define two kinds of struct:
 #
-# Justification: every ra8_sdfont_cfg_t field IS consumed in
-# libs/ra8_sdfont/src/ra8_sdfont.c (spi_channel/pclka_hz copied into the
-# transport ctx, sck/cipo/copi/cs routed, filename selected, provision_blob/
-# provision_len gated in the self-provision guards). cppcheck's per-file flow
-# analysis does not reliably track members read across the .h/.c boundary --
-# especially those copied into another struct or compared in guard chains --
-# and flags them. The struct is the public DI seam, so the fields cannot be
-# dropped.
+#   1. Hardware register maps (r_*_regs_t and friends): each field is a 1:1
+#      model of a peripheral's MMIO window. Fields are "used" by the
+#      compiler emitting load/store instructions through volatile pointer
+#      dereferences, and a field can be required purely for layout
+#      (reserved / padding words) without any driver reference at all.
+#   2. Public API structs (config, state, DI seams): members are written
+#      and read across translation units -- populated by a driver .c,
+#      consumed by applications, tests, or a sibling library. cppcheck
+#      analyzes one TU at a time and cannot see reads that happen on the
+#      other side of the header.
+#
+# Before this scoped entry the same fact was restated by ~591 inline
+# cppcheck-suppress comments spread across ~105 headers, added one at a
+# time as each new header tripped the checker. Those inline comments were
+# deleted when this class-level disposition landed; do not reintroduce
+# them for headers this pattern already covers.
+#
+# Scope: cppcheck's suppression glob (matchglob) lets '*' cross directory
+# separators, so the pattern covers every header under any libs/<lib>/inc/
+# tree. The check STAYS LIVE everywhere a genuinely unused member is a real
+# defect signal: all .c files, module-private src-internal headers
+# (libs/*/src/*_internal.h), src/, examples/, tools/, and tests/.
+# libs/third_party is excluded from the scan separately (-i
+# libs/third_party).
 # ---------------------------------------------------------------------------
-unusedStructMember:libs/ra8_sdfont/inc/ra8_sdfont.h
+unusedStructMember:libs/*/inc/*.h
 
 # ---------------------------------------------------------------------------
 # constParameterCallback on the ra8_sdfont transport shims.
@@ -121,31 +126,11 @@ constParameterPointer
 constVariablePointer
 
 
-# unusedStructMember on driver-facing config / matrix structs.
-# Justification: cppcheck cannot follow fields across .h boundaries.
-unusedStructMember:libs/ra8_touch_cal/inc/ra8_touch_cal.h
-unusedStructMember:libs/ra8_ui/inc/ra8_ui.h
-unusedStructMember:libs/ra8_box/inc/ra8_box.h
-
 # unusedStructMember on the ereader_shelf app-state header: sh_entry_t /
 # sh_line_t / sh_* members are populated and read across the app's eight
 # TUs (sh_book.c, sh_cover.c, sh_reader.c, ...); cppcheck analyzes the
 # header per-TU and cannot see the cross-TU reads.
 unusedStructMember:examples/ek_ra8d2/hw_validated/hil/ereader_shelf/sh_app.h
-unusedStructMember:libs/ra8_tls/inc/ra8_tls.h
-unusedStructMember:libs/ra8_hal/inc/ra8_sdcard.h
-unusedStructMember:libs/ra8_hal/inc/ra8_smbus.h
-unusedStructMember:libs/ra8_wdt_supervisor/inc/ra8_wdt_supervisor.h
-unusedStructMember:libs/ra8_hal/inc/ra8_eth.h
-unusedStructMember:libs/ra8_hal/inc/ra8_etha.h
-unusedStructMember:libs/ra8_hal/inc/ra8_rsip.h
-unusedStructMember:libs/ra8_hal/inc/ra8_vreg.h
-unusedStructMember:libs/ra8_hal/inc/ra8_rmac.h
-unusedStructMember:libs/ra8_hal/inc/ra8_touch.h
-unusedStructMember:libs/ra8_hal/inc/ra8_usb.h
-unusedStructMember:libs/ra8_hal/inc/ra8_wdt.h
-unusedStructMember:libs/ra8_hal/inc/ra8_sci_spi.h
-unusedStructMember:libs/ra8_fs/inc/ra8_fs.h
 
 # unusedStructMember on the board_sim board-view status struct. Its fields are
 # read in tools/board_sim/src/board_overlay.c via a pointer to the struct declared
@@ -230,16 +215,11 @@ unusedStructMember:libs/ra8_ble_host/src/ra8_ble_gatt_client.c
 unusedStructMember:libs/ra8_ble_host/src/ra8_ble_l2cap.c
 unusedStructMember:libs/ra8_ble_host/src/ra8_ble_mesh.c
 unusedStructMember:libs/ra8_ble_host/src/ra8_ble_security.c
-unusedStructMember:libs/ra8_ble_host/inc/ra8_ble_host.h
 
 # unusedStructMember in NimBLE NPL-ThreadX bridge headers. Fields are
 # consumed by NimBLE host code at link time, not visible to the per-TU
 # cppcheck pass.
 unusedStructMember:port/nimble/inc/nimble_npl_threadx.h
-
-# Cortex-M exception-frame struct fields populated by fault handlers; not
-# yet visible to the per-TU cppcheck pass.
-unusedStructMember:libs/ra8_core/inc/ra8_exception.h
 
 # knownConditionTrueFalse in ra8_dual_core: internal_is_cpu0() returns
 # a compile-time constant that depends on RA8_BUILD_FOR_CPU1. cppcheck
@@ -348,19 +328,10 @@ misra-c2012-12.1:port/nimble/src/nimble_npl_threadx.c:354
 misra-c2012-12.1:port/nimble/src/nimble_npl_threadx.c:398
 misra-c2012-12.1:port/nimble/src/nimble_npl_threadx.c:417
 
-# ---------------------------------------------------------------------------
-# unusedStructMember on driver-facing config / state structs that are
-# populated by the HAL but only consumed by application code (which
-# cppcheck does not see when scanning the HAL in isolation). These were
-# surfaced after touching doc-comments in these headers triggered the
-# pre-commit cppcheck pass on previously-unstaged files.
-# ---------------------------------------------------------------------------
-unusedStructMember:libs/ra8_hal/inc/ra8_epaper.h
-unusedStructMember:libs/ra8_hal/inc/ra8_rmac_phy.h
-unusedStructMember:libs/ra8_hal/inc/ra8_usb_haud.h
-unusedStructMember:libs/ra8_hal/inc/ra8_usb_cdc.h
-unusedStructMember:libs/ra8_hal/inc/ra8_usb_composite.h
-unusedStructMember:libs/ra8_hal/inc/ra8_usb_paud.h
+# unusedStructMember on the USBX device-controller port TU. Its private
+# controller-state struct is filled by the DCD entry points and read by the
+# vendored USBX host stack at link time, which cppcheck's per-TU pass does
+# not see.
 unusedStructMember:port/usbx/src/ux_dcd_ra8_usb.c
 
 # ---------------------------------------------------------------------------

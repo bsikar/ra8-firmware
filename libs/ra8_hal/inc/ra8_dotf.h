@@ -152,14 +152,12 @@ typedef enum : uint8_t {
  * cppcheck cannot see test code, so it complains about every field
  * being unused; ``ra8_dotf_set_region`` reads them all.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t start_addr; /**< First byte of the encrypted region (incl).      */
   uint32_t end_addr;   /**< Last byte of the encrypted region (incl).       */
   uint8_t  key_index;  /**< RSIP key index (forwarded to install_key flow). */
   uint8_t  region_id;  /**< 0..k_ra8_dotf_max_regions-1 staging slot.       */
 } ra8_dotf_region_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /* =============================================================================
  * Key handle (opaque to ra8_rsip)
@@ -183,14 +181,12 @@ typedef struct {
  * cppcheck cannot see tests/ so it flags every field as unused; all
  * fields are read in the driver.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_dotf_key_size_t size;      /**< 128 / 192 / 256 selector for REG00.   */
   uint8_t             key_index; /**< RSIP key slot this handle came from.  */
   uint8_t             valid;     /**< Non-zero if the wrapped key is real.  */
   uint32_t            words[8];  /**< Wrapped-key payload (up to 256 bits). */
 } ra8_dotf_key_handle_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_dotf_event_fn_t
@@ -683,7 +679,6 @@ void ra8_dotf_dispatch(uint8_t channel);
  * cppcheck cannot see tests/ so it flags every member as unused; all
  * fields are read by ``ra8_dotf_open`` in ``ra8_dotf.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t               channel;      /**< 0 = DOTF0, 1 = DOTF1.          */
   ra8_dotf_key_handle_t key;          /**< RSIP-wrapped key handle.       */
@@ -692,7 +687,6 @@ typedef struct {
   ra8_dotf_sca_level_t  sca_level;    /**< Side-channel level.            */
   bool                  enable_after; /**< true => arm AES after staging. */
 } ra8_dotf_open_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief One-shot DOTF bring-up: init + install_key + set_iv + set_region (+ enable).

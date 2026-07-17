@@ -128,14 +128,12 @@ typedef enum : uint8_t {
  * @invariant ``rstsr0`` and ``rstsr2`` are 8-bit reads; the upper bits
  *            of the wider integer storage are always zero.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t  rstsr0; /**< Raw RSTSR0 byte. */
   uint32_t rstsr1; /**< Raw RSTSR1 word. */
   uint8_t  rstsr2; /**< Raw RSTSR2 byte. */
   uint8_t  rstsr3; /**< Raw RSTSR3 byte. */
 } ra8_reset_raw_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /* =============================================================================
  * Lifecycle

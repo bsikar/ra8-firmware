@@ -225,7 +225,6 @@ typedef enum : uint8_t {
  * each member is read by ``ra8_ssie_init`` in
  * ``libs/ra8_hal/src/ra8_ssie.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_ssie_role_t        role;          /**< Controller or peripheral.         */
   ra8_ssie_format_t      format;        /**< I2S / TDM / monaural.             */
@@ -244,14 +243,12 @@ typedef struct {
   uint8_t                tx_threshold;  /**< SSISCR.TDES[4:0] watermark.       */
   uint8_t                rx_threshold;  /**< SSISCR.RDFS[4:0] watermark.       */
 } ra8_ssie_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_ssie_status_t
  * @brief Snapshot of FIFO levels + error flags returned by
  *        ``ra8_ssie_get_status``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t ssisr;    /**< Raw SSISR value.                     */
   uint32_t ssifsr;   /**< Raw SSIFSR value.                    */
@@ -263,13 +260,11 @@ typedef struct {
   bool     error;    /**< Any of ROIRQ/RUIRQ/TOIRQ/TUIRQ set.  */
   uint8_t  events;   /**< Decoded ra8_ssie_event_t bitmap.     */
 } ra8_ssie_status_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_ssie_dma_cfg_t
  * @brief DMA pump descriptor for ``ra8_ssie_attach_dma``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t   tx_dma_channel; /**< DMAC channel to drain TX (>=8 = unused). */
   uint8_t   rx_dma_channel; /**< DMAC channel to feed RX (>=8 = unused).  */
@@ -278,7 +273,6 @@ typedef struct {
   uint16_t  tx_samples;     /**< TX sample count (must be > 0 if tx).     */
   uint16_t  rx_samples;     /**< RX sample count (must be > 0 if rx).     */
 } ra8_ssie_dma_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_ssie_event_fn_t

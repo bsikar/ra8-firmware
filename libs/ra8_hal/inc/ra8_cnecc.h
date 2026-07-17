@@ -90,14 +90,12 @@ extern "C" {
  * read in ``ra8_cnecc.c`` and flags every member as unused -- the
  * suppression below silences it.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool correct_1bit; /**< true => HW corrects 1-bit faults (clears EC1ECP). */
   bool irq_1bit;     /**< true => raise IRQ on every 1-bit fault.           */
   bool irq_2bit;     /**< true => raise IRQ on every 2-bit fault.           */
   bool enable;       /**< true => leave ECERVF set after init.              */
 } ra8_cnecc_instance_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_cnecc_config_t
@@ -109,11 +107,9 @@ typedef struct {
  * cases, but the HW supports per-instance settings so the descriptor
  * is split out.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_cnecc_instance_cfg_t instances[k_ra8_cnecc_instance_count]; /**< Per-instance settings. */
 } ra8_cnecc_config_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /* =============================================================================
  * Status / event types
@@ -134,7 +130,6 @@ typedef struct {
  * there at least one error" booleans, not a count. HUM Ch 42.2.4
  * p 2872 caps ``last_addr`` at 10 bits.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t raw_ctl;         /**< Live EC710CTL value.                          */
   uint16_t raw_tmc;         /**< Live EC710TMC value.                          */
@@ -156,7 +151,6 @@ typedef struct {
   bool     test_mode;       /**< Live ECTMCE: fault-injection currently armed. */
   bool     reserved1;       /**< Padding.                                      */
 } ra8_cnecc_status_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_cnecc_counters_t
@@ -169,13 +163,11 @@ typedef struct {
  * attached via ``ra8_cnecc_set_counter_mirror`` the values returned
  * here also live in battery-backed RAM.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t one_bit_count;  /**< Lifetime 1-bit fault count for this instance. */
   uint32_t two_bit_count;  /**< Lifetime 2-bit fault count for this instance. */
   uint32_t overflow_count; /**< Lifetime ECOVFF count for this instance.      */
 } ra8_cnecc_counters_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_cnecc_error_fn_t
@@ -600,12 +592,10 @@ typedef void (*ra8_cnecc_error_fn_t)(void* ctx, uint8_t instance, bool is_2bit, 
  *
  * cppcheck cannot see tests/ so it flags every member as unused.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t substitute;   /**< 32-bit value stored in EC710TED.             */
   bool     one_bit_flip; /**< true => 1-bit error variant; false => 2-bit. */
 } ra8_cnecc_inject_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Run the HUM Ch 42.3.2 fault-injection sequence for one instance.

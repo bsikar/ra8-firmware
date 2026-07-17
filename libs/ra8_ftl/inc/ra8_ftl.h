@@ -155,12 +155,10 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t erase_count; /**< Cumulative erases of this block (wear metric). */
   uint8_t  state;       /**< ::ra8_ftl_pstate_t lifecycle state (private).  */
 } ra8_ftl_pblock_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /* =============================================================================
  * Handle
@@ -185,7 +183,6 @@ typedef struct {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   const ra8_io_blockdev_t* raw;             /**< Underlying erase-before-write dev. */
   uint16_t*                map;             /**< logical->physical map (private).   */
@@ -195,7 +192,6 @@ typedef struct {
   uint32_t                 physical_blocks; /**< Blocks in the raw dev (private).   */
   uint8_t                  erase_value;     /**< Raw medium erase byte (private).   */
 } ra8_ftl_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /* =============================================================================
  * API

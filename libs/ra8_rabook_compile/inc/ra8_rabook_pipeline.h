@@ -99,9 +99,6 @@ extern "C" {
  * @see ra8_rabook_compile_from_epub
  * @since Version 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] -- members are consumed in
- * ra8_rabook_pipeline.c through the scratch pointer; cppcheck's per-TU view
- * of this header cannot see those uses (same waiver as ra8_vsource_obj_t). */
 typedef struct {
   uint8_t*         xhtml;          /**< Chapter XHTML scratch buffer.                */
   size_t           xhtml_cap;      /**< Capacity of @p xhtml in bytes.               */
@@ -119,7 +116,6 @@ typedef struct {
                                    *   zoom loupe). Mirrors the desktop tool's
                                    *   opt-in `--max-edge` knob.                  */
 } ra8_rabook_pipeline_scratch_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Compile an open EPUB into a RABOOK1 blob written to @p out_path on

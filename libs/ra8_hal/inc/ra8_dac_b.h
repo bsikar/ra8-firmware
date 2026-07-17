@@ -66,7 +66,6 @@ typedef enum : uint8_t {
  * unused; each member is read in ``ra8_dac_b_init_configured`` in
  * ``libs/ra8_hal/src/ra8_dac_b.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_dac_b_vref_t        vref;                    /**< VREFH range (DACR2.OFSSEL).             */
   ra8_dac_b_data_format_t data_format;             /**< Data placement (DACR1.DPSEL).           */
@@ -74,7 +73,6 @@ typedef struct {
   bool                    enable_channel0;         /**< Initial DACEN0 state.                   */
   bool                    enable_channel1;         /**< Initial DACEN1 state.                   */
 } ra8_dac_b_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_dac_b_update_fn_t

@@ -82,12 +82,10 @@ extern "C" {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   const ra8_io_blockdev_t* bd; /**< Bound block device (private; read-only use). */
   uint8_t scratch[(uint32_t)k_ra8_io_block_size_bytes]; /**< One-sector bounce buffer (private). */
 } ra8_io_blockdev_vsource_ctx_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Bind a block device into a vsource adapter context.
