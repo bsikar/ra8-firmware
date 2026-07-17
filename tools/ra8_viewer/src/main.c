@@ -26,6 +26,7 @@
 #include <time.h>
 
 #include "ra8_err.h"
+#include "ra8_log.h"
 #include "ra8_viewer_reader.h"
 #include "ra8_viewer_view.h"
 
@@ -189,8 +190,25 @@ static int viewer_run_window(ra8_viewer_reader_t* reader, const viewer_opts_t* o
  * @return 0 on success, non-zero on error.
  * @since 0.1.0
  */
+/**
+ * @brief ra8_log byte sink -- routes firmware log bytes to stderr.
+ * @details Registering any sink makes the logger's `internal_itm_ready()` skip
+ *          the ITM debug-register read, which is an unmapped MMIO address on the
+ *          host (a bus fault) -- the host-safe path the tests also use.
+ * @param[in] ctx  Unused cookie.
+ * @param[in] byte Log byte to emit.
+ * @since 0.1.0
+ */
+static void viewer_log_sink(void* ctx, uint8_t byte)
+{
+  (void)ctx;
+  (void)fputc((int)byte, stderr);
+}
+
 int main(int argc, char** argv)
 {
+  ra8_log_set_byte_sink(viewer_log_sink, nullptr);
+
   viewer_opts_t opts = {};
   if (!viewer_parse_args(argc, argv, &opts)) {
     viewer_usage(argv[0]);
