@@ -808,6 +808,38 @@ static void test_spi_multi_bad_channel(void)
 }
 
 /**
+ * @brief MC/DC decision E: `ra8_spi_dispatch_spei` mask/callback short-circuit.
+ * @return None.
+ * @pre The SPI simulation mmap/mmio windows are resettable.
+ * @post No callback fires until both the error mask and the handler are set.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void spi_mcdc_dispatch_spei(void)
+{
+  /* V1: mask=0, cb=NULL (no attach yet on a fresh init).
+   * C1 short-circuits F -> no callback. */
+  ra8_sim_mmap_reset();
+  ra8_sim_mmio_reset();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_spi_controller_init(k_ra8_spi_test_ch_zero));
+  s_spi_cb_count = 0;
+  ra8_spi_dispatch_spei(k_ra8_spi_test_ch_zero);
+  TEST_ASSERT_EQ(0, s_spi_cb_count);
+  /* V2: mask=0, cb=valid (after attach).  C1 short-circuits F. */
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_spi_attach_transfer_handler(k_ra8_spi_test_ch_zero, stub_spi_cb, nullptr));
+  ra8_spi_dispatch_spei(k_ra8_spi_test_ch_zero);
+  TEST_ASSERT_EQ(0, s_spi_cb_count);
+  /* V3: inject an OVRF error so the get_errors mask is non-zero, then
+   * dispatch with cb still attached.  Both C1 and C2 are T -> callback
+   * fires once. */
+  volatile r_spi_regs_t* reg = ra8_spi(k_ra8_spi_test_ch_zero);
+  reg->SPSR                  = k_ra8_spsr_mask_ovrf;
+  ra8_spi_dispatch_spei(k_ra8_spi_test_ch_zero);
+  TEST_ASSERT_EQ(1, s_spi_cb_count);
+}
+
+/**
  * @test test_mcdc_ra8_spi_b
  *
  * @par MC/DC:
@@ -901,26 +933,7 @@ static void test_mcdc_ra8_spi_b(void)
                  ra8_spi_read_dma(k_ra8_spi_test_ch_zero, rxdma, 0U, nullptr, nullptr, &dma_ch));
 
   /* --- Decision E: ra8_spi_dispatch_spei line 1190 ----------------- */
-  /* V1: mask=0, cb=NULL (no attach yet on a fresh init).
-   * C1 short-circuits F -> no callback. */
-  ra8_sim_mmap_reset();
-  ra8_sim_mmio_reset();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_spi_controller_init(k_ra8_spi_test_ch_zero));
-  s_spi_cb_count = 0;
-  ra8_spi_dispatch_spei(k_ra8_spi_test_ch_zero);
-  TEST_ASSERT_EQ(0, s_spi_cb_count);
-  /* V2: mask=0, cb=valid (after attach).  C1 short-circuits F. */
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_spi_attach_transfer_handler(k_ra8_spi_test_ch_zero, stub_spi_cb, nullptr));
-  ra8_spi_dispatch_spei(k_ra8_spi_test_ch_zero);
-  TEST_ASSERT_EQ(0, s_spi_cb_count);
-  /* V3: inject an OVRF error so the get_errors mask is non-zero, then
-   * dispatch with cb still attached.  Both C1 and C2 are T -> callback
-   * fires once. */
-  volatile r_spi_regs_t* reg = ra8_spi(k_ra8_spi_test_ch_zero);
-  reg->SPSR                  = k_ra8_spsr_mask_ovrf;
-  ra8_spi_dispatch_spei(k_ra8_spi_test_ch_zero);
-  TEST_ASSERT_EQ(1, s_spi_cb_count);
+  spi_mcdc_dispatch_spei();
 
   TEST_END("spi_b MC/DC: write/read/dma/dispatch_spei vectors");
 }
