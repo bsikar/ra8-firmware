@@ -322,6 +322,149 @@ typedef enum : uint16_t {
 } test_paud_mcdc_t;
 
 /**
+ * @brief MC/DC decision A: the init speed gate (FS / HS accept, bad rejects).
+ * @return None.
+ * @pre None.
+ * @post FS and HS init succeeded and the out-of-range speed was rejected.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void paud_mcdc_init_speed(void)
+{
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_init(k_ra8_usb_speed_fs));
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_init(k_ra8_usb_speed_hs));
+  prep();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_paud_init((ra8_usb_speed_t)k_test_paud_speed_bad));
+}
+
+/**
+ * @brief MC/DC decisions B + C: the send_frame null/length envelope.
+ * @param[in] buf A valid 4-byte frame for the both-false forwarding vector.
+ * @return None.
+ * @pre The device is initialised at FS (192-byte iso ceiling).
+ * @post Each envelope vector returned its documented code.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void paud_mcdc_send_frame(uint8_t* buf)
+{
+  /* B-V1 / C-V1 collapse: frame=NULL,len=0 -- B returns false (C1=T,C2=F),
+   * then C catches len==0 -> invalid_arg. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_usb_paud_send_frame(nullptr, (uint16_t)k_test_paud_send_len_zero));
+  /* B-V3: frame=NULL,len!=0 -> null_ptr. */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_usb_paud_send_frame(nullptr, (uint16_t)k_test_paud_send_len_small));
+  /* B-V2 + C-V2: frame=buf,len=4 -> both decisions false, forwards into
+   * ra8_usb_queue_in. The FRDY wait converges via the unarmed
+   * ra8_sim_mmio seam (see internal_wait_frdy), so a well-formed call
+   * returns k_ra8_ok. The MC/DC obligation is met because every
+   * pre-check inside ra8_usb_paud_send_frame ran. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_send_frame(buf, (uint16_t)k_test_paud_send_len_small));
+  /* C-V3: frame=buf,len=1024 (> FS iso ceiling 192) -> invalid_arg. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_usb_paud_send_frame(buf, (uint16_t)k_test_paud_send_len_huge));
+}
+
+/**
+ * @brief MC/DC decisions D + E: the set_format channel/bytes-per-sample ranges.
+ * @return None.
+ * @pre The device is initialised.
+ * @post The in-range format accepted and each out-of-range field rejected.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void paud_mcdc_set_format(void)
+{
+  ra8_usb_paud_format_t fmt = {.sample_rate_hz = 48000U, .channels = 2U, .bytes_per_sample = 2U};
+  /* D-V2 + E-V2: in-range. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_set_format(fmt));
+  /* D-V1: channels below min. */
+  fmt.channels = (uint8_t)k_test_paud_chan_bad_low;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_paud_set_format(fmt));
+  /* D-V3: channels above max. */
+  fmt.channels = (uint8_t)k_test_paud_chan_bad_high;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_paud_set_format(fmt));
+  /* E-V1: bps below min. */
+  fmt.channels         = 2U;
+  fmt.bytes_per_sample = (uint8_t)k_test_paud_bps_bad_low;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_paud_set_format(fmt));
+  /* E-V3: bps above max. */
+  fmt.bytes_per_sample = (uint8_t)k_test_paud_bps_bad_high;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_paud_set_format(fmt));
+}
+
+/**
+ * @brief MC/DC decision G: the 4-condition setup-recipient envelope OR chain.
+ * @return None.
+ * @pre The device is initialised.
+ * @post Each recipient lone-true vector accepted and the all-false rejected;
+ *       the setup handler is left attached for the request-code test.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void paud_mcdc_setup_envelope(void)
+{
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_attach_setup_handler(test_setup_cb, nullptr));
+  ra8_usb_setup_t setup = {
+    .bm_request_type = (uint8_t)k_test_paud_iface_in,
+    .b_request       = (uint8_t)k_ra8_paud_req_set_cur,
+    .w_value         = 0U,
+    .w_index         = 0U,
+    .w_length        = 0U,
+  };
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_handle_setup(&setup));
+  setup.bm_request_type = (uint8_t)k_test_paud_iface_out;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_handle_setup(&setup));
+  setup.bm_request_type = (uint8_t)k_test_paud_ep_in;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_handle_setup(&setup));
+  setup.bm_request_type = (uint8_t)k_test_paud_ep_out;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_handle_setup(&setup));
+  /* All-false vector for G. */
+  setup.bm_request_type = (uint8_t)k_test_paud_bm_bogus;
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_paud_handle_setup(&setup));
+}
+
+/**
+ * @brief MC/DC decision F: the 9-condition request-code OR chain.
+ * @return None.
+ * @pre The setup handler is attached (paud_mcdc_setup_envelope ran).
+ * @post Each supported request code accepted and the unknown code rejected.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void paud_mcdc_setup_requests(void)
+{
+  ra8_usb_setup_t setup = {
+    .bm_request_type = (uint8_t)k_test_paud_iface_in,
+    .b_request       = (uint8_t)k_ra8_paud_req_set_cur,
+    .w_value         = 0U,
+    .w_index         = 0U,
+    .w_length        = 0U,
+  };
+  const uint8_t requests[] = {
+    (uint8_t)k_ra8_paud_req_set_cur,
+    (uint8_t)k_ra8_paud_req_get_cur,
+    (uint8_t)k_ra8_paud_req_set_min,
+    (uint8_t)k_ra8_paud_req_get_min,
+    (uint8_t)k_ra8_paud_req_set_max,
+    (uint8_t)k_ra8_paud_req_get_max,
+    (uint8_t)k_ra8_paud_req_set_res,
+    (uint8_t)k_ra8_paud_req_get_res,
+    (uint8_t)k_ra8_paud_req_get_stat,
+  };
+  for (uint8_t i = 0U; i < (uint8_t)(sizeof(requests) / sizeof(requests[0])); ++i) {
+    setup.b_request = requests[i];
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_handle_setup(&setup));
+  }
+  /* All-false vector for F. */
+  setup.b_request = (uint8_t)k_test_paud_breq_unknown;
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_paud_handle_setup(&setup));
+}
+
+/**
  * @test test_mcdc_paud
  *
  * @par MC/DC:
@@ -372,12 +515,7 @@ static void test_mcdc_paud(void)
   prep();
 
   /* ---- Decision A: init speed gate ---- */
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_init(k_ra8_usb_speed_fs));
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_init(k_ra8_usb_speed_hs));
-  prep();
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_paud_init((ra8_usb_speed_t)k_test_paud_speed_bad));
+  paud_mcdc_init_speed();
 
   /* Re-init for the remaining decisions (FS = 192-byte iso ceiling). */
   prep();
@@ -385,81 +523,16 @@ static void test_mcdc_paud(void)
 
   /* ---- Decisions B + C: send_frame ---- */
   uint8_t buf[16] = {};
-  /* B-V1 / C-V1 collapse: frame=NULL,len=0 -- B returns false (C1=T,C2=F),
-   * then C catches len==0 -> invalid_arg. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_usb_paud_send_frame(nullptr, (uint16_t)k_test_paud_send_len_zero));
-  /* B-V3: frame=NULL,len!=0 -> null_ptr. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_usb_paud_send_frame(nullptr, (uint16_t)k_test_paud_send_len_small));
-  /* B-V2 + C-V2: frame=buf,len=4 -> both decisions false, forwards into
-   * ra8_usb_queue_in. The FRDY wait converges via the unarmed
-   * ra8_sim_mmio seam (see internal_wait_frdy), so a well-formed call
-   * returns k_ra8_ok. The MC/DC obligation is met because every
-   * pre-check inside ra8_usb_paud_send_frame ran. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_send_frame(buf, (uint16_t)k_test_paud_send_len_small));
-  /* C-V3: frame=buf,len=1024 (> FS iso ceiling 192) -> invalid_arg. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_usb_paud_send_frame(buf, (uint16_t)k_test_paud_send_len_huge));
+  paud_mcdc_send_frame(buf);
 
   /* ---- Decisions D + E: set_format ranges ---- */
-  ra8_usb_paud_format_t fmt = {.sample_rate_hz = 48000U, .channels = 2U, .bytes_per_sample = 2U};
-  /* D-V2 + E-V2: in-range. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_set_format(fmt));
-  /* D-V1: channels below min. */
-  fmt.channels = (uint8_t)k_test_paud_chan_bad_low;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_paud_set_format(fmt));
-  /* D-V3: channels above max. */
-  fmt.channels = (uint8_t)k_test_paud_chan_bad_high;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_paud_set_format(fmt));
-  /* E-V1: bps below min. */
-  fmt.channels         = 2U;
-  fmt.bytes_per_sample = (uint8_t)k_test_paud_bps_bad_low;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_paud_set_format(fmt));
-  /* E-V3: bps above max. */
-  fmt.bytes_per_sample = (uint8_t)k_test_paud_bps_bad_high;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_paud_set_format(fmt));
+  paud_mcdc_set_format();
 
   /* ---- Decision G (envelope OR chain, 4 conds): per-condition lone-true ---- */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_attach_setup_handler(test_setup_cb, nullptr));
-  ra8_usb_setup_t setup = {
-    .bm_request_type = (uint8_t)k_test_paud_iface_in,
-    .b_request       = (uint8_t)k_ra8_paud_req_set_cur,
-    .w_value         = 0U,
-    .w_index         = 0U,
-    .w_length        = 0U,
-  };
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_handle_setup(&setup));
-  setup.bm_request_type = (uint8_t)k_test_paud_iface_out;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_handle_setup(&setup));
-  setup.bm_request_type = (uint8_t)k_test_paud_ep_in;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_handle_setup(&setup));
-  setup.bm_request_type = (uint8_t)k_test_paud_ep_out;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_handle_setup(&setup));
-  /* All-false vector for G. */
-  setup.bm_request_type = (uint8_t)k_test_paud_bm_bogus;
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_paud_handle_setup(&setup));
+  paud_mcdc_setup_envelope();
 
   /* ---- Decision F (request-code OR chain, 9 conds): per-condition lone-true ---- */
-  setup.bm_request_type    = (uint8_t)k_test_paud_iface_in;
-  const uint8_t requests[] = {
-    (uint8_t)k_ra8_paud_req_set_cur,
-    (uint8_t)k_ra8_paud_req_get_cur,
-    (uint8_t)k_ra8_paud_req_set_min,
-    (uint8_t)k_ra8_paud_req_get_min,
-    (uint8_t)k_ra8_paud_req_set_max,
-    (uint8_t)k_ra8_paud_req_get_max,
-    (uint8_t)k_ra8_paud_req_set_res,
-    (uint8_t)k_ra8_paud_req_get_res,
-    (uint8_t)k_ra8_paud_req_get_stat,
-  };
-  for (uint8_t i = 0U; i < (uint8_t)(sizeof(requests) / sizeof(requests[0])); ++i) {
-    setup.b_request = requests[i];
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_handle_setup(&setup));
-  }
-  /* All-false vector for F. */
-  setup.b_request = (uint8_t)k_test_paud_breq_unknown;
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_paud_handle_setup(&setup));
+  paud_mcdc_setup_requests();
 
   TEST_END("paud MC/DC: init speed, send_frame envelope, set_format ranges, setup OR chains");
 }
