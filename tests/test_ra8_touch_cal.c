@@ -262,6 +262,72 @@ static void test_apply_clip_and_null(void)
 }
 
 /**
+ * @brief Assert the recovered matrix maps every raw sample back to its target.
+ * @param[in] raws    The five synthesised raw samples.
+ * @param[in] targets The five on-screen calibration targets.
+ * @param[in] got     The matrix recovered by ra8_touch_cal_run.
+ * @return None.
+ * @pre @p got is a valid calibration matrix for @p raws / @p targets.
+ * @post Every sample round-tripped within a 5-pixel tolerance.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void tc_verify_roundtrip(const ra8_touch_cal_point_t   raws[5],
+                                const ra8_touch_cal_point_t   targets[5],
+                                const ra8_touch_cal_matrix_t* got)
+{
+  for (uint8_t k = 0U; k < 5U; k++) {
+    ra8_touch_cal_point_t mapped = {0, 0};
+    TEST_ASSERT_EQ(
+      k_ra8_ok,
+      ra8_touch_cal_apply(raws[k], got, (uint16_t)k_tc_screen_w, (uint16_t)k_tc_screen_h, &mapped));
+    const int32_t dx = mapped.x - targets[k].x;
+    const int32_t dy = mapped.y - targets[k].y;
+    TEST_ASSERT((dx <= 5) && (dx >= -5));
+    TEST_ASSERT((dy <= 5) && (dy >= -5));
+  }
+}
+
+/**
+ * @brief Synthesise the raw samples by inverting the ground-truth matrix.
+ * @param[in]  targets The five on-screen calibration targets.
+ * @param[in]  truth   The ground-truth calibration matrix.
+ * @param[out] raws    Receives the five inverted raw samples.
+ * @return None.
+ * @pre @p truth has non-zero a/e scale terms.
+ * @post @p raws holds raw = screen / scale for each target.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void tc_synth_raws(const ra8_touch_cal_point_t   targets[5],
+                          const ra8_touch_cal_matrix_t* truth,
+                          ra8_touch_cal_point_t         raws[5])
+{
+  for (uint8_t k = 0U; k < 5U; k++) {
+    raws[k].x = (int32_t)((float)targets[k].x / truth->a);
+    raws[k].y = (int32_t)((float)targets[k].y / truth->e);
+  }
+}
+
+/**
+ * @brief Assert the utility painted the targets in the expected visit order.
+ * @param[in] targets The five expected targets in visit order.
+ * @param[in] state   The stub state recording draw calls.
+ * @return None.
+ * @pre @p state recorded five draws.
+ * @post Every drawn point matched the expected target.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void tc_verify_draw_order(const ra8_touch_cal_point_t targets[5], const stub_state_t* state)
+{
+  for (uint8_t k = 0U; k < 5U; k++) {
+    TEST_ASSERT_EQ(targets[k].x, state->draws[k].x);
+    TEST_ASSERT_EQ(targets[k].y, state->draws[k].y);
+  }
+}
+
+/**
  * @brief Test 5 -- ``ra8_touch_cal_run`` paints 5 targets and recovers a
  *        matrix that round-trips the synthetic raw samples.
   *
@@ -294,12 +360,9 @@ static void test_run_full_sequence(void)
     {w / 2, h / 2},
   };
   /* Synthesise the raw samples the user "would have produced" by
-   * inverting truth: raw = (screen - t) / scale. */
+     inverting truth: raw = (screen - t) / scale. */
   ra8_touch_cal_point_t raws[5] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
-  for (uint8_t k = 0U; k < 5U; k++) {
-    raws[k].x = (int32_t)((float)targets[k].x / truth.a);
-    raws[k].y = (int32_t)((float)targets[k].y / truth.e);
-  }
+  tc_synth_raws(targets, &truth, raws);
 
   stub_state_t state = {
     .draws      = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
@@ -324,27 +387,12 @@ static void test_run_full_sequence(void)
   TEST_ASSERT_EQ(5, state.reads_idx);
 
   /* Verify the order of targets the utility visited. */
-  for (uint8_t k = 0U; k < 5U; k++) {
-    TEST_ASSERT_EQ(targets[k].x, state.draws[k].x);
-    TEST_ASSERT_EQ(targets[k].y, state.draws[k].y);
-  }
+  tc_verify_draw_order(targets, &state);
 
   /* Recovered matrix must round-trip every raw sample to its target
-   * within a small pixel tolerance (see test_compute_five_point for
-   * the rationale -- least-squares + integer rounding). */
-  for (uint8_t k = 0U; k < 5U; k++) {
-    ra8_touch_cal_point_t mapped = {0, 0};
-    TEST_ASSERT_EQ(k_ra8_ok,
-                   ra8_touch_cal_apply(raws[k],
-                                       &got,
-                                       (uint16_t)k_tc_screen_w,
-                                       (uint16_t)k_tc_screen_h,
-                                       &mapped));
-    const int32_t dx = mapped.x - targets[k].x;
-    const int32_t dy = mapped.y - targets[k].y;
-    TEST_ASSERT((dx <= 5) && (dx >= -5));
-    TEST_ASSERT((dy <= 5) && (dy >= -5));
-  }
+     within a small pixel tolerance (see test_compute_five_point for
+     the rationale -- least-squares + integer rounding). */
+  tc_verify_roundtrip(raws, targets, &got);
 }
 
 /**
