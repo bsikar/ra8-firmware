@@ -174,6 +174,41 @@ if ! make compile_commands >"$LOG_DIR/compile_commands.log" 2>&1; then
   exit 1
 fi
 
+# Prebuild the universal first-party library archive ONCE, then hand every
+# eligible per-app build a pointer to it so it links the archive instead of
+# recompiling ~180 identical library sources (ra8_core / ra8_hal / ra8_net_pal
+# / ra8_usb_pal / board / secure_app) into its own ELF. That redundant
+# recompile -- ~180 sources x ~200 apps -- was the dominant cost of this gate.
+# cmake/ra8_add_app.cmake reads RA8_SHARED_LIB_ARCHIVE at configure time and
+# links it with --whole-archive (+ the toolchain --gc-sections), producing a
+# byte-identical flashable image to the from-source build. Ineligible apps
+# (TrustZone -mcmse, non-ek board, insecure-crypto opt-in) ignore the archive
+# and compile from source, so their objects and gates (e.g. the tz_nsc_cgc_usb
+# SG-veneer offsets) stay correct. Set RA8_NO_SHARED_LIBS=1 to force every app
+# back onto the from-source path (the pre-fast-path behaviour).
+SHARED_LIB_DIR="$REPO_ROOT/build/shared_libs"
+SHARED_LIB_ARCHIVE="$SHARED_LIB_DIR/libra8_shared_ek_ra8d2.a"
+if [ "${RA8_NO_SHARED_LIBS:-0}" != "1" ]; then
+  echo "==> Prebuilding the universal library archive (serial, pre-pool)"
+  if cmake -S "$REPO_ROOT/cmake/shared_libs" -B "$SHARED_LIB_DIR" \
+    -DCMAKE_TOOLCHAIN_FILE="$REPO_ROOT/cmake/toolchain-ra8d2.cmake" \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    >"$LOG_DIR/shared_libs.log" 2>&1 &&
+    cmake --build "$SHARED_LIB_DIR" --parallel "$MAX_JOBS" \
+      >>"$LOG_DIR/shared_libs.log" 2>&1 &&
+    [ -f "$SHARED_LIB_ARCHIVE" ]; then
+    export RA8_SHARED_LIB_ARCHIVE="$SHARED_LIB_ARCHIVE"
+    echo "    archive ready: $SHARED_LIB_ARCHIVE"
+  else
+    echo "error: failed to prebuild $SHARED_LIB_ARCHIVE (log: $LOG_DIR/shared_libs.log)" >&2
+    echo "       the shared libraries do not compile under the canonical flags;" >&2
+    echo "       fix that, or set RA8_NO_SHARED_LIBS=1 to force the from-source path." >&2
+    exit 1
+  fi
+else
+  echo "==> RA8_NO_SHARED_LIBS=1: every app compiles the libraries from source"
+fi
+
 # Bounded worker pool across apps. Prefer xargs -P for portability; app names
 # are bare directory names (no spaces / newlines), so newline-delimited xargs
 # input is safe. Fall back to a strict serial loop if xargs -P is unavailable.
