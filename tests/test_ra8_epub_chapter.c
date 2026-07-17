@@ -675,6 +675,32 @@ static void test_epub_get_embedded_font_guards(void)
 }
 
 /**
+ * @brief Render the fixture code point with the shared glyph buffer and size.
+ *
+ * @param[in]  book Book handle (nullptr exercises the book guard).
+ * @param[in]  px   Glyph pixel size (0 exercises the size guard).
+ * @param[out] buf  Glyph output buffer (nullptr exercises the buffer guard).
+ * @param[out] w    Width sink (nullptr exercises the width guard).
+ * @param[out] h    Height sink (nullptr exercises the height guard).
+ *
+ * @return The `ra8_epub_render_glyph` result code.
+ * @pre None (drives the guard contract).
+ * @post No state beyond @p buf / @p w / @p h is modified.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static ra8_err_t erg_render(ra8_epub_book_t* book, float px, uint8_t* buf, uint32_t* w, uint32_t* h)
+{
+  return ra8_epub_render_glyph(book,
+                               (int32_t)k_test_epub_codepoint,
+                               px,
+                               buf,
+                               sizeof(s_glyph_buf),
+                               w,
+                               h);
+}
+
+/**
  * @test test_epub_render_glyph_guards
  *
  * @par MC/DC:
@@ -704,88 +730,33 @@ static void test_epub_render_glyph_guards(void)
   uint32_t        h    = 1U;
   /* Decision A, V1 control: unopened book, all pointers valid -> not_init. */
   TEST_ASSERT_EQ(k_ra8_err_not_initialized,
-                 ra8_epub_render_glyph(&book,
-                                       (int32_t)k_test_epub_codepoint,
-                                       s_test_glyph_px,
-                                       s_glyph_buf,
-                                       sizeof(s_glyph_buf),
-                                       &w,
-                                       &h));
+                 erg_render(&book, s_test_glyph_px, s_glyph_buf, &w, &h));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epub_render_glyph(nullptr,
-                                       (int32_t)k_test_epub_codepoint,
-                                       s_test_glyph_px,
-                                       s_glyph_buf,
-                                       sizeof(s_glyph_buf),
-                                       &w,
-                                       &h)); /* V2 */
+                 erg_render(nullptr, s_test_glyph_px, s_glyph_buf, &w, &h));               /* V2 */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, erg_render(&book, s_test_glyph_px, nullptr, &w, &h)); /* V3 */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epub_render_glyph(&book,
-                                       (int32_t)k_test_epub_codepoint,
-                                       s_test_glyph_px,
-                                       nullptr,
-                                       sizeof(s_glyph_buf),
-                                       &w,
-                                       &h)); /* V3 */
+                 erg_render(&book, s_test_glyph_px, s_glyph_buf, nullptr, &h)); /* V4 */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epub_render_glyph(&book,
-                                       (int32_t)k_test_epub_codepoint,
-                                       s_test_glyph_px,
-                                       s_glyph_buf,
-                                       sizeof(s_glyph_buf),
-                                       nullptr,
-                                       &h)); /* V4 */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epub_render_glyph(&book,
-                                       (int32_t)k_test_epub_codepoint,
-                                       s_test_glyph_px,
-                                       s_glyph_buf,
-                                       sizeof(s_glyph_buf),
-                                       &w,
-                                       nullptr)); /* V5 */
+                 erg_render(&book, s_test_glyph_px, s_glyph_buf, &w, nullptr)); /* V5 */
 
   /* Decision B, W3: open but no font installed -> not_initialized. */
   book.in_use = 1U;
   TEST_ASSERT_EQ(k_ra8_err_not_initialized,
-                 ra8_epub_render_glyph(&book,
-                                       (int32_t)k_test_epub_codepoint,
-                                       s_test_glyph_px,
-                                       s_glyph_buf,
-                                       sizeof(s_glyph_buf),
-                                       &w,
-                                       &h));
+                 erg_render(&book, s_test_glyph_px, s_glyph_buf, &w, &h));
 
   /* Install a (non-TTF) font blob: W1 holds, then font_size<=0 -> invalid_arg. */
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_epub_set_font(&book, s_bogus_font, (size_t)k_test_epub_font_min_bytes));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_epub_render_glyph(&book,
-                                       (int32_t)k_test_epub_codepoint,
-                                       s_test_glyph_px_zero,
-                                       s_glyph_buf,
-                                       sizeof(s_glyph_buf),
-                                       &w,
-                                       &h));
+                 erg_render(&book, s_test_glyph_px_zero, s_glyph_buf, &w, &h));
   /* W1 + valid size, but the blob is not a TTF -> priv_font_init rejects it. */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 ra8_epub_render_glyph(&book,
-                                       (int32_t)k_test_epub_codepoint,
-                                       s_test_glyph_px,
-                                       s_glyph_buf,
-                                       sizeof(s_glyph_buf),
-                                       &w,
-                                       &h));
+                 erg_render(&book, s_test_glyph_px, s_glyph_buf, &w, &h));
 
   /* Decision B, W2: in_use==0 short-circuits regardless of font_data. */
   book.in_use = 0U;
   TEST_ASSERT_EQ(k_ra8_err_not_initialized,
-                 ra8_epub_render_glyph(&book,
-                                       (int32_t)k_test_epub_codepoint,
-                                       s_test_glyph_px,
-                                       s_glyph_buf,
-                                       sizeof(s_glyph_buf),
-                                       &w,
-                                       &h));
+                 erg_render(&book, s_test_glyph_px, s_glyph_buf, &w, &h));
   TEST_END("epub_render_glyph MC/DC null quad + not-ready + reject");
 }
 
