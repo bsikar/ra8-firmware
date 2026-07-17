@@ -165,6 +165,7 @@ macro(ra8_add_app)
     option(RA8_INSECURE_STUB_CRYPTO "compile insecure placeholder crypto (host/sim only)" OFF)
 
     include(${RA8_REPO_ROOT}/cmake/ra8_warnings.cmake)
+    include(${RA8_REPO_ROOT}/cmake/ra8_shared_libs.cmake)
 
     # ---- sources: per-app main, shared-or-local boot ----------------------
     set(_ra8_src
@@ -505,11 +506,76 @@ macro(ra8_add_app)
     endif()
     set(_ra8_elf ${_RA8_APP_NAME}.elf)
 
+    # ---- prebuilt universal-library fast path (CI cross-build) ------------
+    # When RA8_SHARED_LIB_ARCHIVE points at a prebuilt libra8_shared_<board>.a
+    # (scripts/build_all_examples.sh sets it for the "Cross-build all apps"
+    # gate), link that archive instead of recompiling the ~180 universal
+    # first-party sources (ra8_core / ra8_hal / ra8_net_pal / ra8_usb_pal /
+    # board / secure_app) into THIS executable -- they are compiled once for
+    # the whole cross-build. --whole-archive pulls every member object (so the
+    # link is identical to compiling the sources in) and the toolchain's
+    # --gc-sections then prunes the unused ones, yielding the same final ELF
+    # sections. The archive is board-independent code + the ek_ra8d2 board, and
+    # is built for the RA8D2 (Cortex-M85, fpv5-sp-d16, no device define) with
+    # TrustZone OFF and the placeholder crypto OFF, so an app is eligible only
+    # when its own config matches: any other config falls back to the normal
+    # per-source compile so its objects stay correct and its gates (e.g. the
+    # tz_nsc_cgc_usb SG-veneer offsets) stay meaningful. In particular the RA8P1
+    # tier (cmake/toolchain-ra8p1.cmake) builds the SAME shared sources with a
+    # DIFFERENT device (-DRA8_DEVICE_RA8P1 -> ra8_npu_loader.c and register
+    # bases change) AND a different FP ABI (double-precision fpv5-d16), so its
+    # objects are symbol- and ABI-incompatible with this RA8D2 archive -- it is
+    # excluded by the device-define check below (those apps set no BOARD, so the
+    # board check alone would wrongly admit them).
+    set(_ra8_shared_archive "$ENV{RA8_SHARED_LIB_ARCHIVE}")
+    set(_ra8_use_shared_archive FALSE)
+    if(_ra8_shared_archive
+       AND EXISTS "${_ra8_shared_archive}"
+       AND _RA8_APP_BOARD STREQUAL "ek_ra8d2"
+       AND NOT RA8_TRUSTZONE_ENABLE
+       AND NOT RA8_INSECURE_STUB_CRYPTO
+       AND NOT CMAKE_C_FLAGS MATCHES "RA8_DEVICE_RA8P1")
+        set(_ra8_use_shared_archive TRUE)
+        # Drop the universal set from this app's own compile; the archive
+        # supplies those objects. NSC (per-app subsets / -mcmse) and the extra
+        # per-app libraries + SOUP TUs are NOT in the archive and stay here.
+        set(_ra8_lib_core "")
+        set(_ra8_lib_hal "")
+        set(_ra8_lib_net_pal "")
+        set(_ra8_lib_usb_pal "")
+        set(_ra8_lib_board "")
+        set(_ra8_secure_app "")
+        # ~150 apps also name a universal-set library (usually
+        # ra8_board_ek_ra8d2, some ra8_core / ra8_hal / ra8_usb_pal /
+        # ra8_net_pal) explicitly in LIBS, which globbed its sources into
+        # _ra8_lib_extra above -- a SECOND copy that would multiply-define
+        # against the archive. Filter those exact universal source trees back
+        # out of the extra list (their objects come from the archive; the
+        # include paths the LIBS loop added stay). SIM_LIBS is never a
+        # universal library, so _ra8_lib_extra_sim needs no filtering.
+        foreach(_ra8_univ_frag
+                "/libs/ra8_core/src/"
+                "/libs/ra8_hal/src/"
+                "/libs/ra8_net_pal/src/"
+                "/libs/ra8_usb_pal/src/"
+                "/libs/ra8_board_${_RA8_APP_BOARD}/src/"
+                "/src/secure_app/")
+            list(FILTER _ra8_lib_extra EXCLUDE REGEX "${_ra8_univ_frag}")
+        endforeach()
+    endif()
+
     add_executable(${_ra8_elf}
         ${_ra8_src}
         ${_ra8_lib_core} ${_ra8_lib_hal} ${_ra8_lib_net_pal} ${_ra8_lib_usb_pal}
         ${_ra8_lib_nsc} ${_ra8_lib_board} ${_ra8_secure_app}
         ${_ra8_lib_extra} ${_ra8_lib_extra_sim})
+
+    if(_ra8_use_shared_archive)
+        target_link_libraries(${_ra8_elf} PRIVATE
+            -Wl,--whole-archive ${_ra8_shared_archive} -Wl,--no-whole-archive)
+        set_property(TARGET ${_ra8_elf} APPEND PROPERTY
+            LINK_DEPENDS ${_ra8_shared_archive})
+    endif()
 
     if(_ra8_lib_extra_sim)
         set_source_files_properties(${_ra8_lib_extra_sim}
