@@ -69,11 +69,34 @@ static uint32_t bx_intern(bx_book_t* b, uint32_t* off, const char* s)
 }
 
 /**
- * @brief Build the rich fixture: div > (p > text, img, br, span > wstext).
- * @details Covers element + text + void + block + inline nodes, an attribute
- *          whose value needs `"` escaping, and a text run carrying `& < >`.
+ * @struct bx_offsets_t
+ * @brief Interned string offsets shared between the mock-book build phases.
+ * @see bx_build
  */
-static void bx_build(bx_book_t* b)
+typedef struct {
+  uint32_t div;    /**< "div" element name.        */
+  uint32_t p;      /**< "p" element name.          */
+  uint32_t img;    /**< "img" element name.        */
+  uint32_t br;     /**< "br" element name.         */
+  uint32_t span;   /**< "span" element name.       */
+  uint32_t cls;    /**< "class" attribute name.    */
+  uint32_t classv; /**< class value (needs quote). */
+  uint32_t src;    /**< "src" attribute name.      */
+  uint32_t srcv;   /**< src value.                 */
+  uint32_t ptext;  /**< Paragraph text.            */
+  uint32_t sptext; /**< Span whitespace text.      */
+} bx_offsets_t;
+
+/**
+ * @brief Fill the mock book's fixed header and table offsets.
+ * @param[out] b Mock book to initialise (fully zeroed first).
+ * @return None.
+ * @pre @p b is non-null.
+ * @post Header magic/version and every table offset/count are populated.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void bx_build_header(bx_book_t* b)
 {
   memset(b, 0, sizeof(*b));
   memcpy(b->hdr.magic, "RABOOK1", 8);
@@ -88,64 +111,107 @@ static void bx_build(bx_book_t* b)
   b->hdr.attr_off      = (uint32_t)offsetof(bx_book_t, attrs);
   b->hdr.string_off    = (uint32_t)offsetof(bx_book_t, strings);
   b->hdr.string_size   = k_bx_str_cap;
+}
 
+/**
+ * @brief Intern every element/attribute/text string into the mock book pool.
+ * @param[in,out] b Mock book whose string pool is filled.
+ * @param[out]    o Receives the interned string offsets.
+ * @return None.
+ * @pre bx_build_header(@p b) already ran.
+ * @post @p o holds the offset of every interned string.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void bx_build_strings(bx_book_t* b, bx_offsets_t* o)
+{
   uint32_t off    = 0U;
   b->strings[off] = '\0';
   off += 1U;
-  const uint32_t s_div    = bx_intern(b, &off, "div");
-  const uint32_t s_p      = bx_intern(b, &off, "p");
-  const uint32_t s_img    = bx_intern(b, &off, "img");
-  const uint32_t s_br     = bx_intern(b, &off, "br");
-  const uint32_t s_span   = bx_intern(b, &off, "span");
-  const uint32_t s_class  = bx_intern(b, &off, "class");
-  const uint32_t s_classv = bx_intern(b, &off, "a\"b"); /* needs &quot; */
-  const uint32_t s_src    = bx_intern(b, &off, "src");
-  const uint32_t s_srcv   = bx_intern(b, &off, "x.png");
-  const uint32_t s_ptext  = bx_intern(b, &off, "A & B < C > D"); /* &amp; &lt; &gt; */
-  const uint32_t s_sptext = bx_intern(b, &off, "  hi\tthere\nyou\rzz  ");
+  o->div    = bx_intern(b, &off, "div");
+  o->p      = bx_intern(b, &off, "p");
+  o->img    = bx_intern(b, &off, "img");
+  o->br     = bx_intern(b, &off, "br");
+  o->span   = bx_intern(b, &off, "span");
+  o->cls    = bx_intern(b, &off, "class");
+  o->classv = bx_intern(b, &off, "a\"b"); /* needs &quot; */
+  o->src    = bx_intern(b, &off, "src");
+  o->srcv   = bx_intern(b, &off, "x.png");
+  o->ptext  = bx_intern(b, &off, "A & B < C > D"); /* &amp; &lt; &gt; */
+  o->sptext = bx_intern(b, &off, "  hi\tthere\nyou\rzz  ");
+}
 
+/**
+ * @brief Wire the mock book's DOM node tree and attribute table.
+ * @param[in,out] b Mock book whose node/attr tables are populated.
+ * @param[in]     o Interned string offsets from bx_build_strings.
+ * @return None.
+ * @pre bx_build_strings(@p b, @p o) already ran.
+ * @post The node tree and both attributes are set.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void bx_build_nodes(bx_book_t* b, const bx_offsets_t* o)
+{
   b->chapters[0].root_node = k_bx_node_div;
 
   b->nodes[k_bx_node_div]    = (ra8_book_node_t){.kind         = (uint8_t)k_ra8_book_node_element,
                                                  .attr_count   = 1U,
-                                                 .name_off     = s_div,
+                                                 .name_off     = o->div,
                                                  .first_attr   = k_bx_attr_class,
                                                  .first_child  = k_bx_node_p,
                                                  .next_sibling = k_ra8_book_nil};
   b->nodes[k_bx_node_p]      = (ra8_book_node_t){.kind         = (uint8_t)k_ra8_book_node_element,
-                                                 .name_off     = s_p,
+                                                 .name_off     = o->p,
                                                  .first_attr   = k_ra8_book_nil,
                                                  .first_child  = k_bx_node_ptext,
                                                  .next_sibling = k_bx_node_img};
   b->nodes[k_bx_node_ptext]  = (ra8_book_node_t){.kind         = (uint8_t)k_ra8_book_node_text,
-                                                 .text_off     = s_ptext,
+                                                 .text_off     = o->ptext,
                                                  .first_attr   = k_ra8_book_nil,
                                                  .first_child  = k_ra8_book_nil,
                                                  .next_sibling = k_ra8_book_nil};
   b->nodes[k_bx_node_img]    = (ra8_book_node_t){.kind         = (uint8_t)k_ra8_book_node_element,
                                                  .attr_count   = 1U,
-                                                 .name_off     = s_img,
+                                                 .name_off     = o->img,
                                                  .first_attr   = k_bx_attr_src,
                                                  .first_child  = k_ra8_book_nil,
                                                  .next_sibling = k_bx_node_br};
   b->nodes[k_bx_node_br]     = (ra8_book_node_t){.kind         = (uint8_t)k_ra8_book_node_element,
-                                                 .name_off     = s_br,
+                                                 .name_off     = o->br,
                                                  .first_attr   = k_ra8_book_nil,
                                                  .first_child  = k_ra8_book_nil,
                                                  .next_sibling = k_bx_node_span};
   b->nodes[k_bx_node_span]   = (ra8_book_node_t){.kind         = (uint8_t)k_ra8_book_node_element,
-                                                 .name_off     = s_span,
+                                                 .name_off     = o->span,
                                                  .first_attr   = k_ra8_book_nil,
                                                  .first_child  = k_bx_node_sptext,
                                                  .next_sibling = k_ra8_book_nil};
   b->nodes[k_bx_node_sptext] = (ra8_book_node_t){.kind         = (uint8_t)k_ra8_book_node_text,
-                                                 .text_off     = s_sptext,
+                                                 .text_off     = o->sptext,
                                                  .first_attr   = k_ra8_book_nil,
                                                  .first_child  = k_ra8_book_nil,
                                                  .next_sibling = k_ra8_book_nil};
 
-  b->attrs[k_bx_attr_class] = (ra8_book_attr_t){.name_off = s_class, .value_off = s_classv};
-  b->attrs[k_bx_attr_src]   = (ra8_book_attr_t){.name_off = s_src, .value_off = s_srcv};
+  b->attrs[k_bx_attr_class] = (ra8_book_attr_t){.name_off = o->cls, .value_off = o->classv};
+  b->attrs[k_bx_attr_src]   = (ra8_book_attr_t){.name_off = o->src, .value_off = o->srcv};
+}
+
+/**
+ * @brief Build the complete XHTML-shaped mock book for the escaping tests.
+ * @param[out] b Mock book to populate end to end.
+ * @return None.
+ * @pre @p b is non-null.
+ * @post @p b is a self-consistent XHTML fixture book.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void bx_build(bx_book_t* b)
+{
+  bx_offsets_t o = {};
+  bx_build_header(b);
+  bx_build_strings(b, &o);
+  bx_build_nodes(b, &o);
 }
 
 /** @brief Build a degenerate book with a single self-cyclic text node. */
