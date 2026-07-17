@@ -51,17 +51,17 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_sd_core_block_bytes = 512,
-  k_sdmmc_spi_lit_10    = 10U,
-  k_sdmmc_spi_lit_5     = 5,
-  k_sdmmc_spi_lit_x9    = 0x09U,
-  k_sdmmc_spi_lit_7     = 7,
-  k_sdmmc_spi_lit_xff   = 0xFFU,
-  k_sdmmc_spi_lit_xc0   = 0xC0U,
-  k_sdmmc_spi_lit_9     = 9,
-  k_sdmmc_spi_lit_x80   = 0x80U,
-  k_sdmmc_spi_stamp_rdr = 0x5AU,
-  k_sdmmc_spi_lit_13    = 13U,
+  k_sd_core_block_bytes      = 512,
+  k_sd_test_ten              = 10U,
+  k_sd_csd_idx_bl_len        = 5,
+  k_sd_csd_bl_len_512        = 0x09U,
+  k_sd_csd_idx_csize_mid     = 7,
+  k_sd_test_ff               = 0xFFU,
+  k_sd_csd_csize_low         = 0xC0U,
+  k_sd_csd_idx_csize_mult_hi = 9,
+  k_sd_csd_csize_mult_low    = 0x80U,
+  k_sd_stamp_rdr             = 0x5AU,
+  k_sd_test_stride_13        = 13U,
 } sdmmc_spi_test_lit_t;
 
 /* ===========================================================================
@@ -216,7 +216,7 @@ static void test_init_cmd8_classifies_v1_card(void)
   TEST_BEGIN("CMD8 illegal -> v1 classification");
   per_test_setup();
   /* Wake-up clocks. */
-  mock_queue_idle(k_sdmmc_spi_lit_10);
+  mock_queue_idle(k_sd_test_ten);
   /* CMD0 -> R1 idle. */
   queue_command_response_r1((uint8_t)k_test_r1_idle);
   /* CMD8 -> R1 with illegal-cmd bit set (v1 card). No tail bytes drained. */
@@ -229,16 +229,13 @@ static void test_init_cmd8_classifies_v1_card(void)
    * C_SIZE_MULT=7 -> ~1 GiB. */
   uint8_t csd_v1[k_ra8_sdmmc_spi_csd_response_len];
   memset(csd_v1, 0, sizeof(csd_v1));
-  csd_v1[0] = 0x00U; /* CSD_STRUCTURE = 0                                 */
-  csd_v1[k_sdmmc_spi_lit_5] =
-    k_sdmmc_spi_lit_x9; /* READ_BL_LEN = 9 (low nibble)                      */
-  csd_v1[6] = 0x03U;    /* C_SIZE bits 11:10 = 0b11                          */
-  csd_v1[k_sdmmc_spi_lit_7] =
-    k_sdmmc_spi_lit_xff;             /* C_SIZE bits 9:2 = 0xFF                            */
-  csd_v1[8] = k_sdmmc_spi_lit_xc0;   /* C_SIZE bits 1:0 = 0b11 (-> C_SIZE = 0x3FF = 1023) */
-  csd_v1[k_sdmmc_spi_lit_9] = 0x03U; /* C_SIZE_MULT bits 2:1 = 0b11                       */
-  csd_v1[k_sdmmc_spi_lit_10] =
-    k_sdmmc_spi_lit_x80; /* C_SIZE_MULT bit 0 = 1 (-> C_SIZE_MULT = 7)        */
+  csd_v1[0]                          = 0x00U;               /* CSD_STRUCTURE = 0               */
+  csd_v1[k_sd_csd_idx_bl_len]        = k_sd_csd_bl_len_512; /* READ_BL_LEN = 9 (low nibble)    */
+  csd_v1[6]                          = 0x03U;               /* C_SIZE bits 11:10 = 0b11        */
+  csd_v1[k_sd_csd_idx_csize_mid]     = k_sd_test_ff;        /* C_SIZE bits 9:2 = 0xFF          */
+  csd_v1[8]                          = k_sd_csd_csize_low;  /* C_SIZE bits 1:0 (C_SIZE = 1023) */
+  csd_v1[k_sd_csd_idx_csize_mult_hi] = 0x03U;               /* C_SIZE_MULT bits 2:1 = 0b11     */
+  csd_v1[k_sd_test_ten]              = k_sd_csd_csize_mult_low; /* C_SIZE_MULT bit 0 = 1 */
   queue_csd_read(csd_v1);
   /* CMD16 -> R1 ready. */
   queue_command_response_r1((uint8_t)k_test_r1_ready);
@@ -448,7 +445,7 @@ static void test_transport_sci_factory_and_shims(void)
   /* xfer shim: pre-seed TDRE + RDRF so the SCI poll resolves immediately. */
   volatile r_sci_regs_t* reg = ra8_sci(0U);
   reg->CSR = (1U << (uint8_t)k_ra8_sci_csr_bit_tdre) | (1U << (uint8_t)k_ra8_sci_csr_bit_rdrf);
-  reg->RDR = k_sdmmc_spi_stamp_rdr;
+  reg->RDR = k_sd_stamp_rdr;
   const uint8_t tx[2] = {0xA5U, 0x5AU};
   uint8_t       rx[2] = {0U, 0U};
   TEST_ASSERT_EQ(k_ra8_ok, tr.xfer(tr.ctx, tx, rx, 2U));
@@ -592,7 +589,7 @@ static void test_fs_backend_shims(void)
   /* read_block shim: a one-block fan-out that succeeds. */
   uint8_t block[k_ra8_sdmmc_spi_block_size];
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_sdmmc_spi_block_size; i++) {
-    block[i] = (uint8_t)((i * k_sdmmc_spi_lit_13) & k_sdmmc_spi_lit_xff);
+    block[i] = (uint8_t)((i * k_sd_test_stride_13) & k_sd_test_ff);
   }
   queue_read_back(block);
   TEST_ASSERT_EQ(k_ra8_ok, backend.read_block(backend.ctx, 0U, 1U, buf));
