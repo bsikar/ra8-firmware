@@ -443,15 +443,15 @@ static void test_hash_uninitialized(void)
 /**
  * @par MC/DC:
  * Single-condition guards in ``ra8_psa_sign_hash``, one vector each:
- * `!s_initialized`, `!internal_handle_valid(handle)`,
- * `(usage & k_ra8_psa_usage_sign) == 0`, `hash_len != k_ra8_psa_sha256_len`,
- * and `sig_cap < k_ra8_psa_sha256_len`. Each is a lone condition with no
- * independent-influence obligation; the `hash||sig||sig_len` and alg
- * guards they transit are covered by the dedicated vectors above.
+ * `!s_initialized`, `!internal_handle_valid(handle)`, and
+ * `(usage & k_ra8_psa_usage_sign) == 0`. Each is a lone condition with
+ * no independent-influence obligation; the `hash||sig||sig_len` and alg
+ * guards they transit are covered by the dedicated vectors above. The
+ * two size guards live in test_sign_error_size_legs.
  */
 static void test_sign_error_legs(void)
 {
-  TEST_BEGIN("psa sign_hash error legs (init/handle/usage/sizes)");
+  TEST_BEGIN("psa sign_hash error legs (init/handle/usage)");
   uint8_t hash[k_ra8_psa_sha256_len] = {};
   uint8_t sig[k_ra8_psa_max_sig_bytes];
   size_t  sl = 0U;
@@ -485,6 +485,27 @@ static void test_sign_error_legs(void)
     k_ra8_err_invalid_arg,
     ra8_psa_sign_hash(kv, k_ra8_psa_alg_ecdsa_sha_256, hash, sizeof(hash), sig, sizeof(sig), &sl));
 
+  (void)ra8_psa_key_destroy(kv);
+  teardown();
+  TEST_END("psa sign_hash error legs (init/handle/usage)");
+}
+
+/**
+ * @par MC/DC:
+ * Single-condition size guards in ``ra8_psa_sign_hash``, one vector
+ * each: `hash_len != k_ra8_psa_sha256_len` and
+ * `sig_cap < k_ra8_psa_sha256_len`. Each is a lone condition with no
+ * independent-influence obligation; the init / handle / usage guards
+ * they transit are covered by test_sign_error_legs.
+ */
+static void test_sign_error_size_legs(void)
+{
+  TEST_BEGIN("psa sign_hash error legs (hash_len/sig_cap sizes)");
+  prep_init();
+  uint8_t hash[k_ra8_psa_sha256_len] = {};
+  uint8_t sig[k_ra8_psa_max_sig_bytes];
+  size_t  sl = 0U;
+
   /* sign-capable key for the size legs */
   ra8_psa_key_t ks = errleg_import_ecc_key(k_ra8_psa_key_type_ecc_p256_priv, k_ra8_psa_usage_sign);
   /* hash_len != 32 */
@@ -506,10 +527,9 @@ static void test_sign_error_legs(void)
                                    (size_t)k_psa_leg_small_cap,
                                    &sl));
 
-  (void)ra8_psa_key_destroy(kv);
   (void)ra8_psa_key_destroy(ks);
   teardown();
-  TEST_END("psa sign_hash error legs (init/handle/usage/sizes)");
+  TEST_END("psa sign_hash error legs (hash_len/sig_cap sizes)");
 }
 
 /**
@@ -701,6 +721,7 @@ int32_t main(void)
   test_destroy_uninitialized();
   test_hash_uninitialized();
   test_sign_error_legs();
+  test_sign_error_size_legs();
   test_verify_error_legs();
   test_aead_encrypt_error_legs();
   test_aead_decrypt_error_legs();

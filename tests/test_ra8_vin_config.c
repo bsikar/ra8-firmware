@@ -386,7 +386,30 @@ static void test_set_rgb_to_yc(void)
   };
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vin_set_rgb_to_yc(2U, &cr_row));
   TEST_ASSERT_EQ(0x78U, (*ra8_vin_reg32(k_ra8_vin_off_crccr1) & (uint32_t)k_ra8_vin_yc1_rp));
+  TEST_END("vin set_rgb_to_yc");
+}
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_set_rgb_to_yc_rejects(void)
+{
+  TEST_BEGIN("vin set_rgb_to_yc rejects");
+  prep();
+  const ra8_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vin_init(&cfg));
+
+  const ra8_vin_rgb_to_yc_chan_t y_row = {
+    .r_coeff    = 0x4DU,
+    .g_coeff    = 0x96U,
+    .b_coeff    = 0x1DU,
+    .add_offset = 0x010U,
+    .enable_hen = true,
+    .shift_down = 8U,
+  };
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_vin_set_rgb_to_yc(0U, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vin_set_rgb_to_yc(7U, &y_row));
 
@@ -399,7 +422,7 @@ static void test_set_rgb_to_yc(void)
     .shift_down = 99U,
   };
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vin_set_rgb_to_yc(0U, &bad_shift));
-  TEST_END("vin set_rgb_to_yc");
+  TEST_END("vin set_rgb_to_yc rejects");
 }
 
 /* ----------------------------------------------------------------------------
@@ -812,6 +835,7 @@ int32_t main(void)
   test_lut_program();
   test_set_yc_to_rgb();
   test_set_rgb_to_yc();
+  test_set_rgb_to_yc_rejects();
   test_set_dithering();
   test_set_yuv444_mode();
   test_set_interlace_mode();
