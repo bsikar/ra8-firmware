@@ -433,6 +433,128 @@ static void test_null_slots(void)
 }
 
 /**
+ * @brief Drive the go-by-index / back-stack MC/DC sequence over three apps.
+ * @param[in,out] nav Initialised navigator over @p reg.
+ * @param[in]     reg Registry holding the library/reader/settings apps.
+ * @param[in]     c0  Context of app 0 (library) for enter/leave counters.
+ * @param[in]     c1  Context of app 1 (reader) for enter/leave counters.
+ * @return None.
+ * @pre @p nav and @p reg are initialised with three registered apps.
+ * @post Every go_index / nav_back decision vector held.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void
+nav_check_back_stack(ra8_app_nav_t* nav, ra8_app_registry_t* reg, app_ctx_t* c0, app_ctx_t* c1)
+{
+  /* go_index(0): Decision A false (no prior app) -> nothing pushed, depth 0. */
+  ra8_app_t* act   = nullptr;
+  uint16_t   depth = 99U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_go_index(nav, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_active(reg, &act));
+  TEST_ASSERT_EQ(10, act->id);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_depth(nav, &depth));
+  TEST_ASSERT_EQ(0U, depth);
+
+  /* go_index(1): Decision A true + B true + C false -> push library, depth 1. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_go_index(nav, 1U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_active(reg, &act));
+  TEST_ASSERT_EQ(20, act->id);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_depth(nav, &depth));
+  TEST_ASSERT_EQ(1U, depth);
+  TEST_ASSERT_EQ(1U, c0->leave_calls);
+  TEST_ASSERT_EQ(1U, c1->enter_calls);
+
+  /* nav_back: depth-guard false -> pop library, reader leaves, library re-enters. */
+  bool popped = false;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_back(nav, &popped));
+  TEST_ASSERT_EQ(true, popped);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_active(reg, &act));
+  TEST_ASSERT_EQ(10, act->id);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_depth(nav, &depth));
+  TEST_ASSERT_EQ(0U, depth);
+  TEST_ASSERT_EQ(2U, c0->enter_calls);
+
+  /* go_index(0) re-tap: Decision A true + B false -> idempotent, no push, no
+   * second on_enter (enter count stays 2), depth still 0. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_go_index(nav, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_depth(nav, &depth));
+  TEST_ASSERT_EQ(0U, depth);
+  TEST_ASSERT_EQ(2U, c0->enter_calls);
+
+  /* nav_back: depth-guard true (root) -> nothing popped, not an error. */
+  popped = true;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_back(nav, &popped));
+  TEST_ASSERT_EQ(false, popped);
+
+  /* go_index range guard true: out-of-range index -> out_of_range, focus kept. */
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_app_nav_go_index(nav, 9U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_active(reg, &act));
+  TEST_ASSERT_EQ(10, act->id);
+}
+
+/**
+ * @brief go_index NULL-slot guard: a valid index whose slot is NULL rejects.
+ * @return None.
+ * @pre None.
+ * @post `ra8_app_nav_go_index` returned k_ra8_err_null_ptr.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void nav_check_null_slot(void)
+{
+  ra8_app_t*         nslots[1] = {nullptr};
+  ra8_app_registry_t nreg      = {.apps = nslots, .cap = 1U, .count = 1U, .active = -1};
+  ra8_app_nav_t      nnav      = {};
+  uint16_t           ntrail[1];
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_init(&nnav, &nreg, ntrail, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_app_nav_go_index(&nnav, 0U));
+}
+
+/**
+ * @brief nav_go Decision C true: a full push stack rejects the next switch.
+ * @return None.
+ * @pre None.
+ * @post The over-capacity push returned k_ra8_err_no_mem with focus unchanged.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void nav_check_push_capacity(void)
+{
+  app_ctx_t          mc0 = {}, mc1 = {};
+  ra8_app_t          m0 = make_app(&mc0, 100, "m0"), m1 = make_app(&mc1, 200, "m1");
+  ra8_app_t*         mslots[2];
+  ra8_app_registry_t mreg = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_registry_init(&mreg, mslots, 2U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_register(&mreg, &m0));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_register(&mreg, &m1));
+  uint16_t      mtrail[1];
+  ra8_app_nav_t mnav = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_init(&mnav, &mreg, mtrail, 1U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_go_index(&mnav, 0U)); /* depth 0   */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_go_index(&mnav, 1U)); /* push, d=1 */
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_app_nav_go_index(&mnav, 0U));
+  ra8_app_t* mact = nullptr;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_active(&mreg, &mact));
+  TEST_ASSERT_EQ(200, mact->id); /* still on m1: the full-stack push was rejected */
+}
+
+/**
+ * @brief go_index null-argument guards: NULL nav, then NULL nav->reg.
+ * @return None.
+ * @pre None.
+ * @post Both null arguments returned k_ra8_err_null_ptr.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void nav_check_null_args(void)
+{
+  ra8_app_nav_t bad = {.reg = nullptr};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_app_nav_go_index(nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_app_nav_go_index(&bad, 0U));
+}
+
+/**
  * @test ra8_app_nav_go_index: launcher select-by-position + back-stack MC/DC.
  *
  * @details
@@ -478,82 +600,10 @@ static void test_nav_go_index(void)
   ra8_app_nav_t nav = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_init(&nav, &reg, trail, 4U));
 
-  /* go_index(0): Decision A false (no prior app) -> nothing pushed, depth 0. */
-  ra8_app_t* act   = nullptr;
-  uint16_t   depth = 99U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_go_index(&nav, 0U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_active(&reg, &act));
-  TEST_ASSERT_EQ(10, act->id);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_depth(&nav, &depth));
-  TEST_ASSERT_EQ(0U, depth);
-
-  /* go_index(1): Decision A true + B true + C false -> push library, depth 1. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_go_index(&nav, 1U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_active(&reg, &act));
-  TEST_ASSERT_EQ(20, act->id);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_depth(&nav, &depth));
-  TEST_ASSERT_EQ(1U, depth);
-  TEST_ASSERT_EQ(1U, c0.leave_calls);
-  TEST_ASSERT_EQ(1U, c1.enter_calls);
-
-  /* nav_back: depth-guard false -> pop library, reader leaves, library re-enters. */
-  bool popped = false;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_back(&nav, &popped));
-  TEST_ASSERT_EQ(true, popped);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_active(&reg, &act));
-  TEST_ASSERT_EQ(10, act->id);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_depth(&nav, &depth));
-  TEST_ASSERT_EQ(0U, depth);
-  TEST_ASSERT_EQ(2U, c0.enter_calls);
-
-  /* go_index(0) re-tap: Decision A true + B false -> idempotent, no push, no
-   * second on_enter (enter count stays 2), depth still 0. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_go_index(&nav, 0U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_depth(&nav, &depth));
-  TEST_ASSERT_EQ(0U, depth);
-  TEST_ASSERT_EQ(2U, c0.enter_calls);
-
-  /* nav_back: depth-guard true (root) -> nothing popped, not an error. */
-  popped = true;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_back(&nav, &popped));
-  TEST_ASSERT_EQ(false, popped);
-
-  /* go_index range guard true: out-of-range index -> out_of_range, focus kept. */
-  TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_app_nav_go_index(&nav, 9U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_active(&reg, &act));
-  TEST_ASSERT_EQ(10, act->id);
-
-  /* go_index NULL-slot guard true: a valid index whose slot is NULL -> null_ptr. */
-  ra8_app_t*         nslots[1] = {nullptr};
-  ra8_app_registry_t nreg      = {.apps = nslots, .cap = 1U, .count = 1U, .active = -1};
-  ra8_app_nav_t      nnav      = {};
-  uint16_t           ntrail[1];
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_init(&nnav, &nreg, ntrail, 1U));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_app_nav_go_index(&nnav, 0U));
-
-  /* nav_go Decision C true (push capacity): a cap-1 trail fills after one push,
-   * so a second switch returns k_ra8_err_no_mem with focus unchanged. */
-  app_ctx_t          mc0 = {}, mc1 = {};
-  ra8_app_t          m0 = make_app(&mc0, 100, "m0"), m1 = make_app(&mc1, 200, "m1");
-  ra8_app_t*         mslots[2];
-  ra8_app_registry_t mreg = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_registry_init(&mreg, mslots, 2U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_register(&mreg, &m0));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_register(&mreg, &m1));
-  uint16_t      mtrail[1];
-  ra8_app_nav_t mnav = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_init(&mnav, &mreg, mtrail, 1U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_go_index(&mnav, 0U)); /* depth 0   */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_go_index(&mnav, 1U)); /* push, d=1 */
-  TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_app_nav_go_index(&mnav, 0U));
-  ra8_app_t* mact = nullptr;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_active(&mreg, &mact));
-  TEST_ASSERT_EQ(200, mact->id); /* still on m1: the full-stack push was rejected */
-
-  /* null-arg guards: NULL nav, then NULL nav->reg. */
-  ra8_app_nav_t bad = {.reg = nullptr};
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_app_nav_go_index(nullptr, 0U));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_app_nav_go_index(&bad, 0U));
+  nav_check_back_stack(&nav, &reg, &c0, &c1);
+  nav_check_null_slot();
+  nav_check_push_capacity();
+  nav_check_null_args();
   TEST_END("ra8_app: nav go-by-index + back-stack MC/DC");
 }
 
@@ -708,6 +758,114 @@ static void test_app_state(void)
 }
 
 /**
+ * @brief Drive the core-invariant, busy, compaction and active-fix-up arms.
+ * @param[in,out] reg Registry seeded with library/settings/notes/weather.
+ * @param[in]     c0  Library context (core, deinit counter).
+ * @param[in]     c1  Settings context (removable, deinit counter).
+ * @param[in]     c3  Weather context (removable, deinit counter).
+ * @return None.
+ * @pre @p reg holds the four registered apps.
+ * @post Every not_found / core / busy / compaction / tail-remove vector held.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void
+uninstall_check_core_arms(ra8_app_registry_t* reg, app_ctx_t* c0, app_ctx_t* c1, app_ctx_t* c3)
+{
+  uint16_t        n   = 0U;
+  ra8_app_state_t st  = k_ra8_app_state_unmounted;
+  ra8_app_t*      act = nullptr;
+
+  /* not_found: an unknown id (membership guard true). */
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_app_uninstall(reg, 99));
+
+  /* Core-uninstallable invariant: library is core -> not_supported, nothing torn
+   * down, registry unchanged. */
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_app_uninstall(reg, 1));
+  TEST_ASSERT_EQ(0U, c0->deinit_calls);
+  (void)ra8_app_count(reg, &n);
+  TEST_ASSERT_EQ(4U, n);
+
+  /* Busy: focus settings (removable), then try to uninstall the focused app. The
+   * removable guard passes but the focus guard refuses it. */
+  (void)ra8_app_launch(reg, 2); /* active = idx 1 (settings) */
+  TEST_ASSERT_EQ(k_ra8_err_busy, ra8_app_uninstall(reg, 2));
+  TEST_ASSERT_EQ(0U, c1->deinit_calls);
+  (void)ra8_app_count(reg, &n);
+  TEST_ASSERT_EQ(4U, n);
+
+  /* Focus weather (idx 3), then uninstall settings (idx 1): a removable, NON-
+   * focused app sitting *before* the focused one. Exercises the compaction-loop
+   * entered arm and the active-fix-up TRUE arm. */
+  (void)ra8_app_launch(reg, 4); /* active = idx 3 (weather) */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_uninstall(reg, 2));
+  TEST_ASSERT_EQ(1U, c1->deinit_calls); /* deinit guard true */
+  (void)ra8_app_count(reg, &n);
+  TEST_ASSERT_EQ(3U, n); /* compacted: library, notes, weather */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_state(reg, 2, &st));
+  TEST_ASSERT_EQ(k_ra8_app_state_unmounted, st); /* settings gone */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_active(reg, &act));
+  TEST_ASSERT_EQ(4, act->id); /* weather kept (active index fixed up) */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_state(reg, 4, &st));
+  TEST_ASSERT_EQ(k_ra8_app_state_foreground, st);
+
+  /* Switch focus to notes, then uninstall the tail (weather): removing the last
+   * slot skips the compaction-loop body, and active (before the removed slot)
+   * exercises the active-fix-up FALSE arm. */
+  (void)ra8_app_launch(reg, 3); /* active = idx 1 (notes) */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_uninstall(reg, 4));
+  TEST_ASSERT_EQ(1U, c3->deinit_calls);
+  (void)ra8_app_count(reg, &n);
+  TEST_ASSERT_EQ(2U, n); /* library, notes */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_active(reg, &act));
+  TEST_ASSERT_EQ(3, act->id); /* notes unchanged (active before removed) */
+}
+
+/**
+ * @brief deinit-NULL arm: a removable app with no deinit unmounts cleanly.
+ * @param[in,out] reg Registry (post core-arms: library + notes remain).
+ * @return None.
+ * @pre @p reg has room for one more app.
+ * @post The no-deinit app uninstalled with no crash and count unchanged.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void uninstall_check_deinit_null(ra8_app_registry_t* reg)
+{
+  uint16_t  n    = 0U;
+  app_ctx_t cnd  = {};
+  ra8_app_t andn = make_app_vt(&cnd, 5, "nodeinit", &k_app_vt_null);
+  andn.removable = true;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_register(reg, &andn)); /* idx 2              */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_uninstall(reg, 5));    /* deinit guard false */
+  (void)ra8_app_count(reg, &n);
+  TEST_ASSERT_EQ(2U, n);
+}
+
+/**
+ * @brief active == none arm: uninstalling an unfocused removable app.
+ * @return None.
+ * @pre None.
+ * @post The active-fix-up comparison took its false (active == none) arm.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void uninstall_check_active_none(void)
+{
+  uint16_t  n  = 0U;
+  app_ctx_t fc = {};
+  ra8_app_t fa = make_app(&fc, 7, "free");
+  fa.removable = true;
+  ra8_app_t*         fslots[1];
+  ra8_app_registry_t freg = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_registry_init(&freg, fslots, 1U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_register(&freg, &fa));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_uninstall(&freg, 7));
+  (void)ra8_app_count(&freg, &n);
+  TEST_ASSERT_EQ(0U, n);
+}
+
+/**
  * @test ra8_app_uninstall: core-uninstallable invariant + removable unmount.
  *
  * @details
@@ -757,76 +915,9 @@ static void test_uninstall(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_register(&reg, &a2)); /* idx 2 */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_register(&reg, &a3)); /* idx 3 */
 
-  uint16_t        n   = 0U;
-  ra8_app_state_t st  = k_ra8_app_state_unmounted;
-  ra8_app_t*      act = nullptr;
-
-  /* not_found: an unknown id (membership guard true). */
-  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_app_uninstall(&reg, 99));
-
-  /* Core-uninstallable invariant: library is core -> not_supported, nothing torn
-   * down, registry unchanged. */
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_app_uninstall(&reg, 1));
-  TEST_ASSERT_EQ(0U, c0.deinit_calls);
-  (void)ra8_app_count(&reg, &n);
-  TEST_ASSERT_EQ(4U, n);
-
-  /* Busy: focus settings (removable), then try to uninstall the focused app. The
-   * removable guard passes but the focus guard refuses it. */
-  (void)ra8_app_launch(&reg, 2); /* active = idx 1 (settings) */
-  TEST_ASSERT_EQ(k_ra8_err_busy, ra8_app_uninstall(&reg, 2));
-  TEST_ASSERT_EQ(0U, c1.deinit_calls);
-  (void)ra8_app_count(&reg, &n);
-  TEST_ASSERT_EQ(4U, n);
-
-  /* Focus weather (idx 3), then uninstall settings (idx 1): a removable, NON-
-   * focused app sitting *before* the focused one. Exercises the compaction-loop
-   * entered arm and the active-fix-up TRUE arm. */
-  (void)ra8_app_launch(&reg, 4); /* active = idx 3 (weather) */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_uninstall(&reg, 2));
-  TEST_ASSERT_EQ(1U, c1.deinit_calls); /* deinit guard true */
-  (void)ra8_app_count(&reg, &n);
-  TEST_ASSERT_EQ(3U, n); /* compacted: library, notes, weather */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_state(&reg, 2, &st));
-  TEST_ASSERT_EQ(k_ra8_app_state_unmounted, st); /* settings gone */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_active(&reg, &act));
-  TEST_ASSERT_EQ(4, act->id); /* weather kept (active index fixed up) */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_state(&reg, 4, &st));
-  TEST_ASSERT_EQ(k_ra8_app_state_foreground, st);
-
-  /* Switch focus to notes, then uninstall the tail (weather): removing the last
-   * slot skips the compaction-loop body, and active (before the removed slot)
-   * exercises the active-fix-up FALSE arm. */
-  (void)ra8_app_launch(&reg, 3); /* active = idx 1 (notes) */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_uninstall(&reg, 4));
-  TEST_ASSERT_EQ(1U, c3.deinit_calls);
-  (void)ra8_app_count(&reg, &n);
-  TEST_ASSERT_EQ(2U, n); /* library, notes */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_active(&reg, &act));
-  TEST_ASSERT_EQ(3, act->id); /* notes unchanged (active before removed) */
-
-  /* deinit-NULL arm: a removable app whose vtable has no deinit unmounts with no
-   * deinit call and no crash. */
-  app_ctx_t cnd  = {};
-  ra8_app_t andn = make_app_vt(&cnd, 5, "nodeinit", &k_app_vt_null);
-  andn.removable = true;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_register(&reg, &andn)); /* idx 2              */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_uninstall(&reg, 5));    /* deinit guard false */
-  (void)ra8_app_count(&reg, &n);
-  TEST_ASSERT_EQ(2U, n);
-
-  /* active == none arm: a fresh registry, uninstall a removable with no focus, so
-   * the active-fix-up comparison is false via active == k_ra8_app_none. */
-  app_ctx_t fc = {};
-  ra8_app_t fa = make_app(&fc, 7, "free");
-  fa.removable = true;
-  ra8_app_t*         fslots[1];
-  ra8_app_registry_t freg = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_registry_init(&freg, fslots, 1U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_register(&freg, &fa));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_app_uninstall(&freg, 7));
-  (void)ra8_app_count(&freg, &n);
-  TEST_ASSERT_EQ(0U, n);
+  uninstall_check_core_arms(&reg, &c0, &c1, &c3);
+  uninstall_check_deinit_null(&reg);
+  uninstall_check_active_none();
 
   /* Null guard. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_app_uninstall(nullptr, 1));
