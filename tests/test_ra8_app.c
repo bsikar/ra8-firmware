@@ -19,12 +19,12 @@
 #include "unity_minimal.h"
 
 typedef struct {
-  uint32_t init_calls;
-  uint32_t enter_calls;
-  uint32_t leave_calls;
-  uint32_t input_calls;
-  uint32_t tick_calls;
-  uint32_t render_calls;
+  uint32_t init_calls;   /**< Init calls.                                */
+  uint32_t enter_calls;  /**< Enter calls.                               */
+  uint32_t leave_calls;  /**< Leave calls.                               */
+  uint32_t input_calls;  /**< Input calls.                               */
+  uint32_t tick_calls;   /**< Tick calls.                                */
+  uint32_t render_calls; /**< Render calls.                              */
   uint32_t deinit_calls; /**< Times deinit() fired (uninstall teardown). */
   bool     init_fail;    /**< Make init() return an error.               */
   bool     consume;      /**< on_input return value.                     */

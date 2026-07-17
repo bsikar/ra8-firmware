@@ -22,13 +22,13 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_test_gpt_pwm_period   = 0x0000FFFFU,
-  k_test_gpt_pwm_step_pct = 1024U,
-  k_test_gpt_pwm_mid_duty = 0x0000A000U,
+  k_test_gpt_pwm_period   = 0x0000FFFFU, /**< Test GPT PWM period.   */
+  k_test_gpt_pwm_step_pct = 1024U,       /**< Test GPT PWM step pct. */
+  k_test_gpt_pwm_mid_duty = 0x0000A000U, /**< Test GPT PWM mid duty. */
 } test_gpt_pwm_const_t;
 
 typedef enum : uint8_t {
-  k_test_gpt_pwm_channel     = 0U,
+  k_test_gpt_pwm_channel     = 0U,  /**< Test GPT PWM channel. */
   k_test_gpt_pwm_channel_bad = 99U, /**< Out of range (>= 14). */
 } test_gpt_pwm_chan_t;
 

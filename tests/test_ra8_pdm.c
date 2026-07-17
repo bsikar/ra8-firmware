@@ -23,7 +23,7 @@
 
 /** @brief Channel under test (EK-RA8D2 MEMS mic wiring). */
 enum : uint8_t {
-  k_test_ch = 2U,
+  k_test_ch = 2U, /**< Test channel. */
 };
 
 static void prep(void)

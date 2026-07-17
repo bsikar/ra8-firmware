@@ -27,6 +27,7 @@
 
 #ifdef RA8_SIMULATOR_MODE
 
+/** @brief GNU SOURCE. */
 #define _GNU_SOURCE
 #include "ra8_sim_mmap.h"
 
@@ -76,9 +77,11 @@ extern char __executable_start[];
  * @since 0.1.0
  */
 #if defined(__SANITIZE_ADDRESS__)
+/** @brief RA8 SIM UNDER ASAN. */
 #define RA8_SIM_UNDER_ASAN (1)
 #elif defined(__has_feature)
 #if __has_feature(address_sanitizer)
+/** @brief RA8 SIM UNDER ASAN. */
 #define RA8_SIM_UNDER_ASAN (1)
 #endif
 #endif
@@ -96,7 +99,7 @@ typedef enum : uint8_t {
   k_ra8_sim_region_code_mram  = 5, /**< Code MRAM 0x02000000 (1 MiB).          */
   k_ra8_sim_region_extra_mram = 6, /**< Extra MRAM 0x27000000 (64 KiB).        */
   k_ra8_sim_region_peri_ns    = 7, /**< NS alias of peripheral bus 0x50000000. */
-  k_ra8_sim_region_count      = 8,
+  k_ra8_sim_region_count      = 8, /**< RA8 sim region count.                  */
 } ra8_sim_region_id_t;
 
 /**
@@ -126,11 +129,11 @@ enum : size_t {
 };
 
 enum : uintptr_t {
-  k_ra8_sim_peri_base       = 0x40000000UL,
-  k_ra8_sim_core_base       = 0xE0000000UL,
-  k_ra8_sim_mram_base       = 0x02C00000UL,
-  k_ra8_sim_sram_base       = 0x22000000UL,
-  k_ra8_sim_sdram_base      = 0x68000000UL,
+  k_ra8_sim_peri_base       = 0x40000000UL, /**< RA8 sim peri base.                            */
+  k_ra8_sim_core_base       = 0xE0000000UL, /**< RA8 sim core base.                            */
+  k_ra8_sim_mram_base       = 0x02C00000UL, /**< RA8 sim MRAM base.                            */
+  k_ra8_sim_sram_base       = 0x22000000UL, /**< RA8 sim SRAM base.                            */
+  k_ra8_sim_sdram_base      = 0x68000000UL, /**< RA8 sim SDRAM base.                           */
   k_ra8_sim_code_mram_base  = 0x02000000UL, /**< Code MRAM (matches k_ra8_flash_code_start).   */
   k_ra8_sim_extra_mram_base = 0x27000000UL, /**< Extra MRAM (matches k_ra8_flash_extra_start). */
   k_ra8_sim_peri_ns_base    = 0x50000000UL, /**< Non-Secure alias of peri bus.                 */

@@ -23,9 +23,9 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_aes_app_key_bytes   = 16U,
-  k_test_aes_app_plain_bytes = 8U,
-  k_test_aes_app_aad_bytes   = 4U,
+  k_test_aes_app_key_bytes   = 16U, /**< Test AES app key bytes.   */
+  k_test_aes_app_plain_bytes = 8U,  /**< Test AES app plain bytes. */
+  k_test_aes_app_aad_bytes   = 4U,  /**< Test AES app aad bytes.   */
 } test_aes_app_layout_t;
 
 static const uint8_t k_t_aes_key[k_test_aes_app_key_bytes] = {

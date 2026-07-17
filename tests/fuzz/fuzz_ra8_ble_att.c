@@ -32,14 +32,14 @@ void ra8_ble_host_test_inject_acl(uint16_t conn_handle, const uint8_t* l2cap_fra
 void ra8_ble_host_test_inject_connect(uint16_t conn_handle);
 
 enum : uint16_t {
-  k_fuzz_conn_handle   = 0x0040U,
-  k_fuzz_l2cap_cid_att = 0x0004U,
-  k_fuzz_l2cap_hdr_len = 4U,
-  k_fuzz_max_att_pdu   = 512U,
-  k_fuzz_max_frame_len = (uint16_t)(4U + 512U),
-  k_fuzz_value_buf_len = 16U,
-  k_fuzz_uuid_marker_s = 0xA0U,
-  k_fuzz_uuid_marker_c = 0xB0U,
+  k_fuzz_conn_handle   = 0x0040U,               /**< Fuzz conn handle.          */
+  k_fuzz_l2cap_cid_att = 0x0004U,               /**< Fuzz L2CAP cid ATT.        */
+  k_fuzz_l2cap_hdr_len = 4U,                    /**< Fuzz L2CAP hdr length.     */
+  k_fuzz_max_att_pdu   = 512U,                  /**< Fuzz maximum ATT pdu.      */
+  k_fuzz_max_frame_len = (uint16_t)(4U + 512U), /**< Fuzz maximum frame length. */
+  k_fuzz_value_buf_len = 16U,                   /**< Fuzz value buffer length.  */
+  k_fuzz_uuid_marker_s = 0xA0U,                 /**< Fuzz uuid marker s.        */
+  k_fuzz_uuid_marker_c = 0xB0U,                 /**< Fuzz uuid marker c.        */
 };
 
 static uint8_t s_initialized;

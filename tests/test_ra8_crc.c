@@ -27,8 +27,8 @@ typedef enum : uint8_t {
  * @brief Constant values used by CRC tests.
  */
 typedef enum : uint32_t {
-  k_ra8_crc_test_marker = 0xDEADBEEFUL,
-  k_ra8_crc_test_len    = 4U,
+  k_ra8_crc_test_marker = 0xDEADBEEFUL, /**< RA8 CRC test marker. */
+  k_ra8_crc_test_len    = 4U,           /**< RA8 CRC test length. */
 } ra8_crc_test_const_t;
 
 static const uint8_t s_payload[4] = {0x01U, 0x02U, 0x03U, 0x04U};

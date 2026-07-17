@@ -33,9 +33,9 @@
 
 /** @brief Per-test enums -- mirror the demo's static MPU table. */
 typedef enum : uintptr_t {
-  k_test_mpu_mram_base = 0x02000000UL,
-  k_test_mpu_sram_base = 0x22000000UL,
-  k_test_mpu_peri_base = 0x40000000UL,
+  k_test_mpu_mram_base = 0x02000000UL, /**< Test MPU MRAM base. */
+  k_test_mpu_sram_base = 0x22000000UL, /**< Test MPU SRAM base. */
+  k_test_mpu_peri_base = 0x40000000UL, /**< Test MPU peri base. */
 } test_mpu_base_t;
 
 typedef enum : uint32_t {
@@ -46,14 +46,14 @@ typedef enum : uint32_t {
 } test_mpu_size_t;
 
 typedef enum : uint8_t {
-  k_test_mpu_mair0_normal = 0xFFU,
-  k_test_mpu_mair0_device = 0x04U,
-  k_test_mpu_blink_iters  = 4U,
+  k_test_mpu_mair0_normal = 0xFFU, /**< Test MPU mair0 normal. */
+  k_test_mpu_mair0_device = 0x04U, /**< Test MPU mair0 device. */
+  k_test_mpu_blink_iters  = 4U,    /**< Test MPU blink iters.  */
 } test_mpu_byte_t;
 
 typedef enum : uint32_t {
-  k_test_mpu_mair0_word =
-    ((uint32_t)k_test_mpu_mair0_device << 8U) | (uint32_t)k_test_mpu_mair0_normal,
+  k_test_mpu_mair0_word = ((uint32_t)k_test_mpu_mair0_device << 8U) |
+                          (uint32_t)k_test_mpu_mair0_normal, /**< Test MPU mair0 word. */
 } test_mpu_mair_t;
 
 /** @brief Mock the silicon's region count so the configure() bound check passes. */

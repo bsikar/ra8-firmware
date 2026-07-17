@@ -16,11 +16,11 @@
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
-  k_test_gatt_handle_unknown = 0xBEEFU,
+  k_test_gatt_handle_unknown = 0xBEEFU, /**< Test GATT handle unknown. */
 } test_gatt_t;
 
 typedef enum : uint16_t {
-  k_test_value_buf_size = 32U,
+  k_test_value_buf_size = 32U, /**< Test value buffer size. */
 } test_gatt_buf_t;
 
 static void prep(void)

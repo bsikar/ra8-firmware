@@ -15,7 +15,7 @@
 
 typedef enum : uint32_t {
   k_test_l3_dst_ip = 0xC0A80100U, /**< 192.168.1.0 in net order. */
-  k_test_l3_mask   = 0xFFFFFF00U,
+  k_test_l3_mask   = 0xFFFFFF00U, /**< Test l3 mask.             */
 } test_layer3_const_t;
 
 static void prep(void)

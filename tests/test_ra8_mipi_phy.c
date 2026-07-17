@@ -1036,24 +1036,24 @@ static void test_init_writes_all_timings(void)
  * (DO-178C Level B / IEC 61508 SIL 3 / ISO 26262 ASIL C). */
 
 typedef enum : uint8_t {
-  k_mcdc_phy_pclka_in    = 100U,
-  k_mcdc_phy_pclka_below = 39U,
-  k_mcdc_phy_pclka_above = 126U,
-  k_mcdc_phy_mosc_lo     = 7U,
-  k_mcdc_phy_mosc_hi     = 49U,
-  k_mcdc_phy_mosc_in     = 24U,
-  k_mcdc_phy_lane_bad_5  = 5U,
-  k_mcdc_phy_mode_bad    = 0xFFU,
-  k_mcdc_phy_clk_bad     = 0xFEU,
-  k_mcdc_phy_eotp_bad    = 0xFDU,
+  k_mcdc_phy_pclka_in    = 100U,  /**< Mcdc PHY pclka in.    */
+  k_mcdc_phy_pclka_below = 39U,   /**< Mcdc PHY pclka below. */
+  k_mcdc_phy_pclka_above = 126U,  /**< Mcdc PHY pclka above. */
+  k_mcdc_phy_mosc_lo     = 7U,    /**< Mcdc PHY mosc lo.     */
+  k_mcdc_phy_mosc_hi     = 49U,   /**< Mcdc PHY mosc hi.     */
+  k_mcdc_phy_mosc_in     = 24U,   /**< Mcdc PHY mosc in.     */
+  k_mcdc_phy_lane_bad_5  = 5U,    /**< Mcdc PHY lane bad 5.  */
+  k_mcdc_phy_mode_bad    = 0xFFU, /**< Mcdc PHY mode bad.    */
+  k_mcdc_phy_clk_bad     = 0xFEU, /**< Mcdc PHY clk bad.     */
+  k_mcdc_phy_eotp_bad    = 0xFDU, /**< Mcdc PHY eotp bad.    */
 } mcdc_phy_const_t;
 
 typedef enum : uint16_t {
-  k_mcdc_phy_nmul_below = 39U,
-  k_mcdc_phy_nmul_above = 376U,
-  k_mcdc_phy_rate_below = 79U,
-  k_mcdc_phy_rate_above = 1501U,
-  k_mcdc_phy_rate_in    = 250U,
+  k_mcdc_phy_nmul_below = 39U,   /**< Mcdc PHY nmul below. */
+  k_mcdc_phy_nmul_above = 376U,  /**< Mcdc PHY nmul above. */
+  k_mcdc_phy_rate_below = 79U,   /**< Mcdc PHY rate below. */
+  k_mcdc_phy_rate_above = 1501U, /**< Mcdc PHY rate above. */
+  k_mcdc_phy_rate_in    = 250U,  /**< Mcdc PHY rate in.    */
 } mcdc_phy_u16_t;
 
 /**

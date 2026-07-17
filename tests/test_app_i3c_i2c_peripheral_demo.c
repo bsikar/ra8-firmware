@@ -20,9 +20,9 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_iic_peripheral_channel  = 0U,
-  k_test_iic_peripheral_addr_7b  = 0x42U,
-  k_test_iic_peripheral_bad_chan = 99U,
+  k_test_iic_peripheral_channel  = 0U,    /**< Test iic peripheral channel.    */
+  k_test_iic_peripheral_addr_7b  = 0x42U, /**< Test iic peripheral address 7b. */
+  k_test_iic_peripheral_bad_chan = 99U,   /**< Test iic peripheral bad chan.   */
 } test_iic_peripheral_const_t;
 
 static void reset_world(void)

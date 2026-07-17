@@ -44,10 +44,10 @@ static const uint8_t s_junk[8] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
 /* RGB565 colour helpers: ra8_gfx packs 0x00RRGGBB -> 565; reading back, compare
  * against the same quantisation the framebuffer stores. */
 enum : uint32_t {
-  k_red   = 0xFF0000U,
-  k_green = 0x00FF00U,
-  k_blue  = 0x0000FFU,
-  k_white = 0xFFFFFFU,
+  k_red   = 0xFF0000U, /**< Red.   */
+  k_green = 0x00FF00U, /**< Green. */
+  k_blue  = 0x0000FFU, /**< Blue.  */
+  k_white = 0xFFFFFFU, /**< White. */
 };
 
 /** @brief Read an RGB888 framebuffer pixel back as 0x00RRGGBB. */

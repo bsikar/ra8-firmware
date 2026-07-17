@@ -33,7 +33,7 @@
  * ---------------------------------------------------------------------------
  */
 typedef enum : uint32_t {
-  k_disk_block_size   = 512U,
+  k_disk_block_size   = 512U,        /**< Disk block size.                        */
   k_disk_blocks_fat16 = 8U * 1024U,  /**< ~4 MiB -> FAT16, easily holds the font. */
   k_bpb_sig_off_a     = 510U,        /**< Boot-sector signature byte 0 offset.    */
   k_bpb_sig_off_b     = 511U,        /**< Boot-sector signature byte 1 offset.    */
@@ -44,9 +44,9 @@ typedef enum : uint32_t {
 } ra8_fs_font_disk_t;
 
 typedef struct {
-  uint8_t* bytes;
-  uint32_t block_count;
-  uint32_t byte_count;
+  uint8_t* bytes;       /**< Bytes.       */
+  uint32_t block_count; /**< Block count. */
+  uint32_t byte_count;  /**< Byte count.  */
 } mem_disk_t;
 
 static mem_disk_t s_disk = {};
@@ -120,10 +120,10 @@ static void build_fat16_volume(void)
  */
 enum {
   k_font_cap = 2U * 1024U * 1024U, /**< Literata is < 2 MiB. */
-  k_path_cap = 1024,
-  k_fb_w     = 384,
-  k_fb_h     = 256,
-  k_font_px  = 18,
+  k_path_cap = 1024,               /**< Path cap.            */
+  k_fb_w     = 384,                /**< Fb w.                */
+  k_fb_h     = 256,                /**< Fb h.                */
+  k_font_px  = 18,                 /**< Font px.             */
 };
 
 static uint8_t*  s_src_font;  /**< Font as read from disk.        */

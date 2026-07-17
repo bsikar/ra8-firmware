@@ -213,16 +213,26 @@ static void mock_delay_ms(uint32_t ms)
  * copies keep private storage. s_eth_state / s_eth_mac_speed_resynced /
  * ra8_eth_channel_to_port stay un-renamed and resolve to their single
  * ra8_eth.c definitions in ra8_core_hal. */
-#define ra8_eth_link_status           ra8_eth_link_status_cov
+/** @brief RA8 Ethernet link status. */
+#define ra8_eth_link_status ra8_eth_link_status_cov
+/** @brief G RA8 Ethernet PHY bmsr after wait. */
 #define g_ra8_eth_phy_bmsr_after_wait g_ra8_eth_phy_bmsr_after_wait_cov
-#define g_ra8_eth_anlpar              g_ra8_eth_anlpar_cov
-#define g_ra8_eth_gbsr                g_ra8_eth_gbsr_cov
-#define g_ra8_eth_resync_speed_lsc    g_ra8_eth_resync_speed_lsc_cov
-#define g_ra8_eth_resync_duplex       g_ra8_eth_resync_duplex_cov
-#define ra8_rmac_mdio_c22_read        mock_mdio_read
-#define ra8_rmac_set_link             mock_rmac_set_link
-#define ra8_etha_set_mode             mock_etha_set_mode
-#define ra8_delay_ms                  mock_delay_ms
+/** @brief G RA8 Ethernet anlpar. */
+#define g_ra8_eth_anlpar g_ra8_eth_anlpar_cov
+/** @brief G RA8 Ethernet gbsr. */
+#define g_ra8_eth_gbsr g_ra8_eth_gbsr_cov
+/** @brief G RA8 Ethernet resync speed lsc. */
+#define g_ra8_eth_resync_speed_lsc g_ra8_eth_resync_speed_lsc_cov
+/** @brief G RA8 Ethernet resync duplex. */
+#define g_ra8_eth_resync_duplex g_ra8_eth_resync_duplex_cov
+/** @brief RA8 rmac mdio c22 read. */
+#define ra8_rmac_mdio_c22_read mock_mdio_read
+/** @brief RA8 rmac set link. */
+#define ra8_rmac_set_link mock_rmac_set_link
+/** @brief RA8 etha set mode. */
+#define ra8_etha_set_mode mock_etha_set_mode
+/** @brief RA8 delay ms. */
+#define ra8_delay_ms mock_delay_ms
 
 #include "ra8_eth_link.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
 

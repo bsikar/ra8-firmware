@@ -26,8 +26,8 @@
 #include "ra8_modem_at.h"
 
 enum : uint16_t {
-  k_fuzz_line_buf_len = 256U,
-  k_fuzz_max_input    = 4096U,
+  k_fuzz_line_buf_len = 256U,  /**< Fuzz line buffer length. */
+  k_fuzz_max_input    = 4096U, /**< Fuzz maximum input.      */
 };
 
 static const uint8_t* s_rx_data;

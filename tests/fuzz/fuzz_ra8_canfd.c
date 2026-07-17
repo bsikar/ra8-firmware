@@ -23,9 +23,9 @@
 #include "ra8_sim_mmap.h"
 
 enum : uint32_t {
-  k_fuzz_canfd_max_input = 1024U,
-  k_fuzz_canfd_header    = 12U, /* 3 * uint32 = ID + PTR + FDSTS. */
-  k_fuzz_canfd_channel   = 0U,
+  k_fuzz_canfd_max_input = 1024U, /**< Fuzz CANFD maximum input.      */
+  k_fuzz_canfd_header    = 12U,   /**< 3 * uint32 = ID + PTR + FDSTS. */
+  k_fuzz_canfd_channel   = 0U,    /**< Fuzz CANFD channel.            */
 };
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)

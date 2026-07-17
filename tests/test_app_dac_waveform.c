@@ -22,14 +22,14 @@
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
-  k_test_dac_app_steps    = 64U,
-  k_test_dac_app_max_code = 4095U,
-  k_test_dac_app_oversize = 5000U,
+  k_test_dac_app_steps    = 64U,   /**< Test DAC app steps.        */
+  k_test_dac_app_max_code = 4095U, /**< Test DAC app maximum code. */
+  k_test_dac_app_oversize = 5000U, /**< Test DAC app oversize.     */
 } test_dac_app_const_t;
 
 typedef enum : uint8_t {
-  k_test_dac_app_channel  = 0U,
-  k_test_dac_app_bad_chan = 4U,
+  k_test_dac_app_channel  = 0U, /**< Test DAC app channel.  */
+  k_test_dac_app_bad_chan = 4U, /**< Test DAC app bad chan. */
 } test_dac_app_chan_t;
 
 static void reset_world(void)

@@ -34,11 +34,11 @@
 
 /** @brief Per-test enums. */
 typedef enum : uint32_t {
-  k_test_uart_baud        = 115200U,
+  k_test_uart_baud        = 115200U,    /**< Test UART baud.          */
   k_test_uart_pclk_hz     = 125000000U, /**< Same PCLKA the app sees. */
-  k_test_uart_sci_channel = 8U,
-  k_test_uart_loop_iters  = 3U,
-  k_test_uart_bad_channel = 99U,
+  k_test_uart_sci_channel = 8U,         /**< Test UART SCI channel.   */
+  k_test_uart_loop_iters  = 3U,         /**< Test UART loop iters.    */
+  k_test_uart_bad_channel = 99U,        /**< Test UART bad channel.   */
 } test_uart_const_t;
 
 /** @brief Greeting buffer same shape as the app. */

@@ -14,12 +14,12 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_epub_dummy_byte = 0x42U,
+  k_test_epub_dummy_byte = 0x42U, /**< Test EPUB dummy byte. */
 } test_epub_byte_t;
 
 typedef enum : size_t {
-  k_test_epub_size_zero    = 0U,
-  k_test_epub_size_nonzero = 16U,
+  k_test_epub_size_zero    = 0U,  /**< Test EPUB size zero.    */
+  k_test_epub_size_nonzero = 16U, /**< Test EPUB size nonzero. */
 } test_epub_size_t;
 
 static uint8_t s_blob[16];

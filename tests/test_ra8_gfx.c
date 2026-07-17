@@ -24,8 +24,8 @@
  * @brief Framebuffer dimensions used across the tests.
  */
 typedef enum : uint16_t {
-  k_test_fb_w = 64,
-  k_test_fb_h = 32,
+  k_test_fb_w = 64, /**< Test fb w. */
+  k_test_fb_h = 32, /**< Test fb h. */
 } test_gfx_dim_t;
 
 /** @brief Bytes for a 64x32 RGB565 buffer (4096 B). */

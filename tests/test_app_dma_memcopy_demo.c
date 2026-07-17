@@ -30,9 +30,9 @@
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
-  k_t_dma_words   = 256U,
-  k_t_dma_channel = 0U,
-  k_t_dma_byte_sh = 8U,
+  k_t_dma_words   = 256U, /**< T DMA words.   */
+  k_t_dma_channel = 0U,   /**< T DMA channel. */
+  k_t_dma_byte_sh = 8U,   /**< T DMA byte sh. */
 } t_dma_const_t;
 
 static uint32_t s_src[k_t_dma_words];

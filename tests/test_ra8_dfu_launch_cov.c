@@ -143,11 +143,17 @@ static ra8_err_t mock_rot_antirollback_verify(const ra8_rot_antirollback_store_t
  * root-of-trust arms, and redirect their dependencies to the mocks above. */
 void ra8_dfu_launch_cov(uintptr_t src, uint32_t img_len, uint32_t entry);
 
+/** @brief RA8 ENABLE ROOT OF TRUST. */
 #define RA8_ENABLE_ROOT_OF_TRUST
-#define ra8_dfu_launch                     ra8_dfu_launch_cov
-#define ra8_rot_trailer_after              mock_rot_trailer_after
-#define ra8_rot_verify_image               mock_rot_verify_image
-#define ra8_rot_antirollback_verify        mock_rot_antirollback_verify
+/** @brief RA8 dfu launch. */
+#define ra8_dfu_launch ra8_dfu_launch_cov
+/** @brief RA8 rot trailer after. */
+#define ra8_rot_trailer_after mock_rot_trailer_after
+/** @brief RA8 rot verify image. */
+#define ra8_rot_verify_image mock_rot_verify_image
+/** @brief RA8 rot antirollback verify. */
+#define ra8_rot_antirollback_verify mock_rot_antirollback_verify
+/** @brief RA8 rot antirollback default store. */
 #define ra8_rot_antirollback_default_store mock_rot_antirollback_default_store
 
 #include "ra8_dfu_launch.c" // NOLINT(bugprone-suspicious-include) -- white-box copy

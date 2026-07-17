@@ -28,10 +28,10 @@
  * @brief Channel numbers used by SPI tests.
  */
 typedef enum : uint8_t {
-  k_ra8_spi_test_ch_zero = 0U,
-  k_ra8_spi_test_ch_one  = 1U,
-  k_ra8_spi_test_ch_oor  = 2U, /**< Only SPI0..SPI1 are modelled. */
-  k_ra8_spi_test_ch_huge = 200U,
+  k_ra8_spi_test_ch_zero = 0U,   /**< RA8 SPI test channel zero.    */
+  k_ra8_spi_test_ch_one  = 1U,   /**< RA8 SPI test channel one.     */
+  k_ra8_spi_test_ch_oor  = 2U,   /**< Only SPI0..SPI1 are modelled. */
+  k_ra8_spi_test_ch_huge = 200U, /**< RA8 SPI test channel huge.    */
 } ra8_spi_test_ch_t;
 
 /**
@@ -39,7 +39,7 @@ typedef enum : uint8_t {
  * @brief Sample bytes used by the SPI tests.
  */
 typedef enum : uint32_t {
-  k_ra8_spi_test_tx_byte = 0xA5U,
+  k_ra8_spi_test_tx_byte = 0xA5U, /**< RA8 SPI test TX byte. */
 } ra8_spi_test_val_t;
 
 /**
@@ -67,7 +67,7 @@ typedef enum : uint32_t {
  * The driver drives SPCR = SPE | SCKASE | MSTR.
  */
 typedef enum : uint32_t {
-  k_ra8_spi_test_spcr_en = 0x40001001UL,
+  k_ra8_spi_test_spcr_en = 0x40001001UL, /**< RA8 SPI test spcr en. */
 } ra8_spi_test_spcr_t;
 
 /**
@@ -597,12 +597,12 @@ static void test_spi_dma_arg_validation(void)
  * @brief Constants used by the multi-byte transfer tests.
  */
 typedef enum : uint32_t {
-  k_ra8_spi_test_buf16  = 16U, /**< 16-byte buffer for 8-bit transfers. */
-  k_ra8_spi_test_buf8   = 8U,  /**< 8-element buffer for 16-bit tests.  */
-  k_ra8_spi_test_buf4   = 4U,  /**< 4-element buffer for 32-bit tests.  */
-  k_ra8_spi_test_seed8  = 0x10UL,
-  k_ra8_spi_test_seed16 = 0xC100UL,
-  k_ra8_spi_test_seed32 = 0xCAFE0000UL,
+  k_ra8_spi_test_buf16  = 16U,          /**< 16-byte buffer for 8-bit transfers. */
+  k_ra8_spi_test_buf8   = 8U,           /**< 8-element buffer for 16-bit tests.  */
+  k_ra8_spi_test_buf4   = 4U,           /**< 4-element buffer for 32-bit tests.  */
+  k_ra8_spi_test_seed8  = 0x10UL,       /**< RA8 SPI test seed8.                 */
+  k_ra8_spi_test_seed16 = 0xC100UL,     /**< RA8 SPI test seed16.                */
+  k_ra8_spi_test_seed32 = 0xCAFE0000UL, /**< RA8 SPI test seed32.                */
 } ra8_spi_test_multi_t;
 
 /**

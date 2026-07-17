@@ -50,29 +50,29 @@ const uint8_t* ra8_ble_test_tx_capture(uint16_t* out_len);
 void           ra8_ble_test_reset_capture(void);
 
 typedef enum : uint16_t {
-  k_test_conn_handle   = 0x0040U,
-  k_test_l2cap_cid_att = 0x0004U,
-  k_test_uuid16_char   = 0x2803U,
-  k_test_uuid16_other  = 0x2800U, /* not the Characteristic type. */
+  k_test_conn_handle   = 0x0040U, /**< Test conn handle.            */
+  k_test_l2cap_cid_att = 0x0004U, /**< Test L2CAP cid ATT.          */
+  k_test_uuid16_char   = 0x2803U, /**< Test uuid16 char.            */
+  k_test_uuid16_other  = 0x2800U, /**< not the Characteristic type. */
 } cov_words_t;
 
 typedef enum : uint8_t {
-  k_att_op_error_rsp        = 0x01U,
-  k_att_op_find_info_req    = 0x04U,
-  k_att_op_read_by_type_req = 0x08U,
-  k_att_op_read_req         = 0x0AU,
-  k_att_op_read_rsp         = 0x0BU,
-  k_att_op_write_req        = 0x12U,
-  k_att_op_write_rsp        = 0x13U,
-  k_att_op_write_cmd        = 0x52U,
-  k_att_err_attr_not_found  = 0x0AU,
-  k_att_err_write_not_perm  = 0x03U,
-  k_att_err_invalid_pdu     = 0x04U,
-  k_att_err_invalid_len     = 0x0DU,
-  k_l2cap_hdr_bytes         = 4U,
-  k_uuid_marker_svc         = 0xA0U,
-  k_uuid_marker_chr         = 0xB0U,
-  k_cap_offset_op           = 9U, /* ATT opcode offset in the HCI ACL capture. */
+  k_att_op_error_rsp        = 0x01U, /**< ATT op error rsp.                         */
+  k_att_op_find_info_req    = 0x04U, /**< ATT op find info req.                     */
+  k_att_op_read_by_type_req = 0x08U, /**< ATT op read by type req.                  */
+  k_att_op_read_req         = 0x0AU, /**< ATT op read req.                          */
+  k_att_op_read_rsp         = 0x0BU, /**< ATT op read rsp.                          */
+  k_att_op_write_req        = 0x12U, /**< ATT op write req.                         */
+  k_att_op_write_rsp        = 0x13U, /**< ATT op write rsp.                         */
+  k_att_op_write_cmd        = 0x52U, /**< ATT op write cmd.                         */
+  k_att_err_attr_not_found  = 0x0AU, /**< ATT error attr not found.                 */
+  k_att_err_write_not_perm  = 0x03U, /**< ATT error write not perm.                 */
+  k_att_err_invalid_pdu     = 0x04U, /**< ATT error invalid pdu.                    */
+  k_att_err_invalid_len     = 0x0DU, /**< ATT error invalid length.                 */
+  k_l2cap_hdr_bytes         = 4U,    /**< L2CAP hdr bytes.                          */
+  k_uuid_marker_svc         = 0xA0U, /**< Uuid marker svc.                          */
+  k_uuid_marker_chr         = 0xB0U, /**< Uuid marker chr.                          */
+  k_cap_offset_op           = 9U,    /**< ATT opcode offset in the HCI ACL capture. */
 } cov_bytes_t;
 
 /* Attribute-table layout produced by register_one_char() below:
@@ -81,7 +81,7 @@ typedef enum : uint8_t {
  *   handle 3 = Characteristic Value (value_handle returned to caller)
  *   handle 4 = CCCD (appended because the notify property is set). */
 typedef enum : uint16_t {
-  k_handle_service = 0x0001U,
+  k_handle_service = 0x0001U, /**< Handle service. */
 } cov_handle_t;
 
 /* ---------------------------------------------------------------------------
@@ -153,7 +153,7 @@ static void register_one_char(uint16_t* out_chr, uint8_t* buf, uint16_t cap)
 static void inject_att(const uint8_t* att_pdu, uint16_t att_len)
 {
   enum : uint16_t {
-    k_max_frame_bytes = 64U,
+    k_max_frame_bytes = 64U, /**< Maximum frame bytes. */
   };
   uint8_t frame[k_max_frame_bytes];
   TEST_ASSERT(att_len <= (uint16_t)(k_max_frame_bytes - (uint16_t)k_l2cap_hdr_bytes));
@@ -352,9 +352,9 @@ static void test_read_value_clamp(void)
 {
   TEST_BEGIN("ra8_ble_att READ_REQ oversized value -> copy_len clamp");
   enum : uint16_t {
-    k_big_cap = 40U,
-    k_val_len = 30U,
-    k_expect  = 22U, /* clamped Read_Response value byte count. */
+    k_big_cap = 40U, /**< Big cap.                                */
+    k_val_len = 30U, /**< Val length.                             */
+    k_expect  = 22U, /**< clamped Read_Response value byte count. */
   };
   uint8_t  buf[k_big_cap] = {0U};
   uint16_t chr            = 0U;
@@ -471,8 +471,8 @@ static void test_write_value_too_long(void)
 {
   TEST_BEGIN("ra8_ble_att WRITE_REQ oversized value -> Error_Rsp(invalid_len)");
   enum : uint16_t {
-    k_cap     = 8U,
-    k_payload = 10U,
+    k_cap     = 8U,  /**< Cap.     */
+    k_payload = 10U, /**< Payload. */
   };
   uint8_t  buf[k_cap] = {0U};
   uint16_t chr        = 0U;
@@ -633,8 +633,8 @@ static void test_write_char_value_backing_mcdc(void)
 {
   TEST_BEGIN("ra8_ble_att WRITE_REQ char-value backing guard (MC/DC)");
   enum : uint8_t {
-    k_val_byte     = 0xABU,
-    k_uuid_mark_c2 = 0xC0U,
+    k_val_byte     = 0xABU, /**< Val byte.     */
+    k_uuid_mark_c2 = 0xC0U, /**< Uuid mark c2. */
   };
   uint8_t  buf[8] = {0U};
   uint16_t chr    = 0U;

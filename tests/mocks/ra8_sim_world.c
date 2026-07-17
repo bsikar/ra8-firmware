@@ -16,10 +16,10 @@
 #include "ra8_err.h"
 
 typedef struct {
-  uintptr_t            start;
-  uintptr_t            end;
-  ra8_sim_world_attr_t attr;
-  bool                 in_use;
+  uintptr_t            start;  /**< Start.  */
+  uintptr_t            end;    /**< End.    */
+  ra8_sim_world_attr_t attr;   /**< Attr.   */
+  bool                 in_use; /**< In use. */
 } ra8_sim_world_region_t;
 
 static ra8_sim_world_region_t s_regions[k_ra8_sim_world_max_regions];

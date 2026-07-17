@@ -41,7 +41,7 @@ extern "C" {
  * @enum ra8_sim_world_limits_t
  */
 typedef enum : uint8_t {
-  k_ra8_sim_world_max_regions = 16U,
+  k_ra8_sim_world_max_regions = 16U, /**< RA8 sim world maximum regions. */
 } ra8_sim_world_limits_t;
 
 /**
@@ -49,8 +49,8 @@ typedef enum : uint8_t {
  * @brief Attribute tag for a marked region.
  */
 typedef enum : uint8_t {
-  k_ra8_sim_world_attr_secure = 0U,
-  k_ra8_sim_world_attr_ns     = 1U,
+  k_ra8_sim_world_attr_secure = 0U, /**< RA8 sim world attr secure. */
+  k_ra8_sim_world_attr_ns     = 1U, /**< RA8 sim world attr ns.     */
 } ra8_sim_world_attr_t;
 
 /**

@@ -14,9 +14,9 @@
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
-  k_ra8_cac_test_upper    = 0xAAAAU,
-  k_ra8_cac_test_lower    = 0x5555U,
-  k_ra8_cac_test_captured = 0xBEEFU,
+  k_ra8_cac_test_upper    = 0xAAAAU, /**< RA8 cac test upper.    */
+  k_ra8_cac_test_lower    = 0x5555U, /**< RA8 cac test lower.    */
+  k_ra8_cac_test_captured = 0xBEEFU, /**< RA8 cac test captured. */
 } ra8_cac_test_values_t;
 
 typedef enum : uint8_t {
@@ -165,7 +165,7 @@ static void test_status_read_and_clear(void)
    * FERRF/MENDF/OVFF flags. */
   ra8_cac()->CAICR = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cac_clear_status((uint8_t)k_ra8_cac_status_mendf));
-  enum : uint8_t { k_castr_to_caicr_shift = 4U };
+  enum : uint8_t { k_castr_to_caicr_shift = 4U /**< Castr to caicr shift. */ };
   TEST_ASSERT_EQ(((uint8_t)k_ra8_cac_status_mendf << k_castr_to_caicr_shift), ra8_cac()->CAICR);
 
   ra8_cac()->CAICR = 0U;
@@ -187,7 +187,7 @@ static void test_attach_and_dispatch(void)
   TEST_BEGIN("cac attach + dispatch");
   prep_w43();
 
-  enum : uint8_t { k_castr_to_caicr_shift = 4U };
+  enum : uint8_t { k_castr_to_caicr_shift = 4U /**< Castr to caicr shift. */ };
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cac_attach_handler(stub_cac_cb, (void*)(uintptr_t)0xC0U));
   ra8_cac()->CASTR = (uint8_t)k_ra8_cac_status_mendf;

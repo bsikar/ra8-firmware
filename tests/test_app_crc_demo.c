@@ -23,15 +23,15 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_t_crc_sw_poly_rev = 0xEDB88320UL,
-  k_t_crc_sw_init     = 0xFFFFFFFFUL,
-  k_t_crc_sw_xor_out  = 0xFFFFFFFFUL,
-  k_t_crc_lsb_mask    = 0x1UL,
+  k_t_crc_sw_poly_rev = 0xEDB88320UL, /**< T CRC sw poly rev. */
+  k_t_crc_sw_init     = 0xFFFFFFFFUL, /**< T CRC sw init.     */
+  k_t_crc_sw_xor_out  = 0xFFFFFFFFUL, /**< T CRC sw xor out.  */
+  k_t_crc_lsb_mask    = 0x1UL,        /**< T CRC lsb mask.    */
 } t_crc_sw_const_t;
 
 typedef enum : uint8_t {
-  k_t_crc_bits      = 8U,
-  k_t_crc_payload_n = 16U,
+  k_t_crc_bits      = 8U,  /**< T CRC bits.      */
+  k_t_crc_payload_n = 16U, /**< T CRC payload n. */
 } t_crc_byte_t;
 
 static const uint8_t k_t_crc_payload[k_t_crc_payload_n] = {

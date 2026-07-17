@@ -22,7 +22,7 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_adc_b_channel     = 0U,
+  k_test_adc_b_channel     = 0U,   /**< Test ADC b channel.                     */
   k_test_adc_b_channel_oor = 200U, /**< Way past the implemented channel count. */
 } test_adc_b_chan_t;
 

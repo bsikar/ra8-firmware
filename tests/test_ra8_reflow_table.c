@@ -25,11 +25,11 @@
 static ra8_reflow_t s_eng;
 
 enum : int32_t {
-  k_w      = 200,
-  k_h      = 400,
-  k_margin = 16,
-  k_pad    = 6, /* k_priv_cell_pad_px */
-  k_col_w  = (k_w - (2 * k_margin)) / 2,
+  k_w      = 200,                        /**< W.                  */
+  k_h      = 400,                        /**< H.                  */
+  k_margin = 16,                         /**< Margin.             */
+  k_pad    = 6,                          /**< k_priv_cell_pad_px. */
+  k_col_w  = (k_w - (2 * k_margin)) / 2, /**< Col w.              */
 };
 
 /** @brief Lay out @p doc at @p w x @p h; return the page count. */

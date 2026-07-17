@@ -21,7 +21,7 @@
 #include "ra8_err.h"
 
 enum : uint32_t {
-  k_fuzz_etha_max_input = 2048U,
+  k_fuzz_etha_max_input = 2048U, /**< Fuzz etha maximum input. */
 };
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)

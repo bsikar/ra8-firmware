@@ -28,29 +28,29 @@ void           ra8_ble_test_inject_rx(const uint8_t* bytes, uint16_t len);
 const uint8_t* ra8_ble_test_tx_capture(uint16_t* out_len);
 
 typedef enum : uint8_t {
-  k_test_byte_pkt_cmd      = 0x01U,
-  k_test_byte_pkt_acl      = 0x02U,
-  k_test_byte_pkt_event    = 0x04U,
-  k_test_byte_evt_le_meta  = 0x3EU,
-  k_test_byte_evt_subev_cc = 0x01U, /* LE_Connection_Complete subevent. */
-  k_test_addr_byte_0       = 0x11U,
-  k_test_addr_byte_1       = 0x22U,
-  k_test_addr_byte_2       = 0x33U,
-  k_test_addr_byte_3       = 0x44U,
-  k_test_addr_byte_4       = 0x55U,
-  k_test_addr_byte_5       = 0x66U,
+  k_test_byte_pkt_cmd      = 0x01U, /**< Test byte pkt cmd.               */
+  k_test_byte_pkt_acl      = 0x02U, /**< Test byte pkt acl.               */
+  k_test_byte_pkt_event    = 0x04U, /**< Test byte pkt event.             */
+  k_test_byte_evt_le_meta  = 0x3EU, /**< Test byte evt le meta.           */
+  k_test_byte_evt_subev_cc = 0x01U, /**< LE_Connection_Complete subevent. */
+  k_test_addr_byte_0       = 0x11U, /**< Test address byte 0.             */
+  k_test_addr_byte_1       = 0x22U, /**< Test address byte 1.             */
+  k_test_addr_byte_2       = 0x33U, /**< Test address byte 2.             */
+  k_test_addr_byte_3       = 0x44U, /**< Test address byte 3.             */
+  k_test_addr_byte_4       = 0x55U, /**< Test address byte 4.             */
+  k_test_addr_byte_5       = 0x66U, /**< Test address byte 5.             */
 } ble_test_bytes_t;
 
 typedef enum : uint16_t {
-  k_test_op_le_set_random_addr = 0x2005U,
-  k_test_op_le_set_adv_data    = 0x2008U,
-  k_test_op_le_set_adv_enable  = 0x200AU,
-  k_test_op_le_set_scan_params = 0x200BU,
-  k_test_op_le_set_scan_enable = 0x200CU,
-  k_test_scan_interval         = 0x0040U,
-  k_test_scan_window           = 0x0020U,
-  k_test_scan_bad              = 0x0001U,
-  k_test_acl_handle            = 0x0042U,
+  k_test_op_le_set_random_addr = 0x2005U, /**< Test op le set random address. */
+  k_test_op_le_set_adv_data    = 0x2008U, /**< Test op le set adv data.       */
+  k_test_op_le_set_adv_enable  = 0x200AU, /**< Test op le set adv enable.     */
+  k_test_op_le_set_scan_params = 0x200BU, /**< Test op le set scan params.    */
+  k_test_op_le_set_scan_enable = 0x200CU, /**< Test op le set scan enable.    */
+  k_test_scan_interval         = 0x0040U, /**< Test scan interval.            */
+  k_test_scan_window           = 0x0020U, /**< Test scan window.              */
+  k_test_scan_bad              = 0x0001U, /**< Test scan bad.                 */
+  k_test_acl_handle            = 0x0042U, /**< Test acl handle.               */
 } ble_test_words_t;
 
 static void prep_open(void)

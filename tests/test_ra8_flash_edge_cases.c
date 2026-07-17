@@ -34,9 +34,9 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_flash_edge_addr_extra_in   = 0x02C9F040UL,
-  k_flash_edge_addr_extra_bad  = 0x03100000UL, /**< Past extra-MRAM end. */
-  k_flash_edge_addr_below_mram = 0x01FFFFF0UL,
+  k_flash_edge_addr_extra_in   = 0x02C9F040UL, /**< Flash edge address extra in.   */
+  k_flash_edge_addr_extra_bad  = 0x03100000UL, /**< Past extra-MRAM end.           */
+  k_flash_edge_addr_below_mram = 0x01FFFFF0UL, /**< Flash edge address below MRAM. */
 } ra8_flash_edge_addr_t;
 
 static ra8_flash_cfg_t make_cfg(void)

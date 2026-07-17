@@ -40,12 +40,12 @@
  * ============================================================================= */
 
 typedef enum : uint32_t {
-  k_test_image_size  = 256U,
-  k_test_bank_size   = 4096U,
-  k_test_bank_addr   = 0x02080000UL,
-  k_test_bank_index  = 1U,
-  k_test_pubkey      = 0x1234U,
-  k_test_chunk_short = 64U,
+  k_test_image_size  = 256U,         /**< Test image size.   */
+  k_test_bank_size   = 4096U,        /**< Test bank size.    */
+  k_test_bank_addr   = 0x02080000UL, /**< Test bank address. */
+  k_test_bank_index  = 1U,           /**< Test bank index.   */
+  k_test_pubkey      = 0x1234U,      /**< Test pubkey.       */
+  k_test_chunk_short = 64U,          /**< Test chunk short.  */
 } ra8_ota_test_const_t;
 
 /** @brief Raw bytes of the mock manifest server response. */
