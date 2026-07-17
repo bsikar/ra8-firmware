@@ -231,8 +231,15 @@ apps:
 # refreshes it before the build when a CMake input is newer, and skips it when
 # nothing changed.
 RA8_COMPILE_COMMANDS := $(ROOT)/build/compile_commands.json
+# Only the hand-written source CMakeLists.txt are real inputs. Exclude anything
+# under a build/ tree: a per-app cmake configure drops transient
+# build/CMakeFiles/CMakeScratch/TryCompile-*/CMakeLists.txt files that exist
+# only for the life of a compiler probe. When apps build in parallel, one app's
+# `make` would otherwise glob a sibling's just-created TryCompile CMakeLists.txt
+# into this prerequisite list, and by the time make tries to use it the sibling
+# has deleted it -- "No rule to make target .../TryCompile-*/CMakeLists.txt".
 _RA8_CMAKE_INPUTS := $(ROOT)/CMakeLists.txt $(wildcard $(ROOT)/cmake/*.cmake) \
-	$(shell find $(ROOT)/examples -name CMakeLists.txt 2>/dev/null)
+	$(shell find $(ROOT)/examples -name CMakeLists.txt -not -path '*/build/*' 2>/dev/null)
 
 $(RA8_APPS): $(RA8_COMPILE_COMMANDS)
 	$(MAKE) -C $(RA8_APP_DIR_$@) build
