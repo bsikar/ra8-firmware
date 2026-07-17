@@ -51,7 +51,7 @@ equivalent under `src/secure_app/` and `port/`).
 | UT-HAL-BSCAN-001  | `tests/test_ra8_bscan.c`   | `libs/ra8_hal/src/ra8_bscan.c`             |
 | UT-HAL-CAC-001    | `tests/test_ra8_cac.c`     | `libs/ra8_hal/src/ra8_cac.c`               |
 | UT-HAL-CANFD-001  | `tests/test_ra8_canfd.c`   | `libs/ra8_hal/src/ra8_canfd.c`             |
-| UT-HAL-CEU-001    | `tests/test_ra8_ceu.c`     | `libs/ra8_hal/src/ra8_ceu.c`               |
+| UT-HAL-CEU-001    | `tests/test_ra8_ceu_capture.c`, `tests/test_ra8_ceu_config.c` | `libs/ra8_hal/src/ra8_ceu.c`               |
 | UT-HAL-CGC-001    | `tests/test_ra8_cgc.c`     | `libs/ra8_hal/src/ra8_cgc.c`               |
 | UT-HAL-CNECC-001  | `tests/test_ra8_cnecc.c`   | `libs/ra8_hal/src/ra8_cnecc.c`             |
 | UT-HAL-CRC-001    | `tests/test_ra8_crc.c`     | `libs/ra8_hal/src/ra8_crc.c`               |
@@ -68,11 +68,11 @@ equivalent under `src/secure_app/` and `port/`).
 | UT-HAL-IIC-001    | `tests/test_ra8_iic.c`     | `libs/ra8_hal/src/ra8_iic.c`               |
 | UT-HAL-IPC-001    | `tests/test_ra8_ipc.c`     | `libs/ra8_hal/src/ra8_ipc.c`               |
 | UT-HAL-ISR-001    | `tests/test_ra8_isr.c`     | `libs/ra8_hal/src/ra8_isr.c`               |
-| UT-HAL-MIPI-DSI-001 | `tests/test_ra8_mipi_dsi.c` | `libs/ra8_hal/src/ra8_mipi_dsi.c`     |
-| UT-HAL-MIPI-PHY-001 | `tests/test_ra8_mipi_phy.c` | `libs/ra8_hal/src/ra8_mipi_phy.c`     |
+| UT-HAL-MIPI-DSI-001 | `tests/test_ra8_mipi_dsi_cmd.c`, `tests/test_ra8_mipi_dsi_video.c`, `tests/test_ra8_mipi_dsi_mcdc.c` | `libs/ra8_hal/src/ra8_mipi_dsi.c`     |
+| UT-HAL-MIPI-PHY-001 | `tests/test_ra8_mipi_phy_init.c`, `tests/test_ra8_mipi_phy_lanes.c` | `libs/ra8_hal/src/ra8_mipi_phy.c`     |
 | UT-HAL-MPU-001    | `tests/test_ra8_mpu.c`     | `libs/ra8_mpu/src/ra8_mpu.c`               |
 | UT-HAL-PMC-001    | `tests/test_ra8_pmc.c`     | `libs/ra8_hal/src/ra8_pmc.c`               |
-| UT-HAL-RSIP-001   | `tests/test_ra8_rsip.c`    | `libs/ra8_hal/src/ra8_rsip.c`              |
+| UT-HAL-RSIP-001   | `tests/test_ra8_rsip_core.c`, `tests/test_ra8_rsip_sym.c`, `tests/test_ra8_rsip_devsec.c` | `libs/ra8_hal/src/ra8_rsip.c`              |
 | UT-HAL-RTC-001    | `tests/test_ra8_rtc.c`     | `libs/ra8_hal/src/ra8_rtc.c`               |
 | UT-HAL-SCI-001    | `tests/test_ra8_sci.c`     | `libs/ra8_hal/src/ra8_sci.c`               |
 | UT-HAL-SDCARD-001 | `tests/test_ra8_sdcard.c`  | `libs/ra8_hal/src/ra8_sdcard.c`            |
@@ -95,7 +95,7 @@ equivalent under `src/secure_app/` and `port/`).
 | UT-CORE-LOG-001    | `tests/test_ra8_log.c`           | `libs/ra8_core/src/ra8_log.c`                |
 | UT-CORE-TIME-001   | `tests/test_ra8_time.c`          | `libs/ra8_core/src/ra8_time.c`               |
 | UT-NSC-VENEER-001  | `tests/test_ra8_nsc_*.c`         | `libs/ra8_nsc/src/*.c` (TZ NSC veneers)     |
-| UT-PSA-CRYPTO-001  | `tests/test_ra8_psa_crypto.c`    | `libs/ra8_psa_crypto/src/ra8_psa_crypto.c`   |
+| UT-PSA-CRYPTO-001  | `tests/test_ra8_psa_crypto_api.c`, `tests/test_ra8_psa_crypto_guards.c`, `tests/test_ra8_psa_crypto_aead_mcdc.c` | `libs/ra8_psa_crypto/src/ra8_psa_crypto.c`   |
 | UT-TLS-001         | `tests/test_ra8_tls.c`           | `libs/ra8_tls/src/ra8_tls.c`                 |
 | UT-OTA-001         | `tests/test_ra8_ota.c`           | `libs/ra8_ota/src/ra8_ota.c`                 |
 | UT-USBPAL-001      | `tests/test_ra8_usb_pal.c`       | `libs/ra8_usb_pal/src/ra8_usb_pal.c`         |
