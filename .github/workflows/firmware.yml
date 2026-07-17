@@ -436,6 +436,14 @@ jobs:
           # accumulated (two undocumented ra8_xspi_flash statics + a missing @retval)
           # and are fixed in the same commit that wires this gate.
           python3 scripts/utils/doxy_audit.py --check
+          # doxy_audit.py --members --check: MAXIMUM-documentation gate for
+          # aggregate members -- every enum value, struct/union member, and
+          # macro across the first-party tree (libs/ src/ port/ examples/
+          # tools/ tests/) carries a doc comment (an inline /**< ... */ or a
+          # preceding /** ... */ block on members, a /** @brief ... */ block on
+          # macros). Report-only until #246 backfilled the whole tree; now
+          # enforcing so the coverage never regresses.
+          python3 scripts/utils/doxy_audit.py --members --check
           # check_hil_alive_policy.py: every hw_validated/hil app must be
           # instrumented (a probed counter + HIL_MODE=jlink_memprobe) or explicitly
           # HIL_FAULT_EXPECTED -- a bare HIL_MODE=alive proves nothing. Local-hook-only
