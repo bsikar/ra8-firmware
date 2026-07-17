@@ -372,11 +372,6 @@ static void test_link_loader_guard_arms(void)
   TEST_END("priv_handle_link loader-guard css_bytes/css_len arms (L1230)");
 }
 
-/** @brief Constants for the link-table-full and pool-overflow tests. */
-typedef enum : uint32_t {
-  k_max_links_count = 255U, /**< k_ra8_reflow_max_links (link table capacity). */
-} overflow_consts_t;
-
 /**
  * @test test_intern_link_table_full
  *
