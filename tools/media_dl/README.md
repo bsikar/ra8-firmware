@@ -104,12 +104,21 @@ behind a Cloudflare JS challenge will not work (no challenge solver yet).
 | `cbt.gz` | miniz DEFLATE + RFC-1952 gzip framing | nothing |
 | `cbt.xz` | tar, then the external `xz` CLI (CRC32 check, 1 MiB dict) | `xz` on PATH |
 | `cbr` | the external `rar` CLI | `rar` on PATH |
+| `epub` | a valid EPUB3 of the pages via vendored miniz (`ra8_epub` opens it) | nothing |
+| `rta1` | per-page native RTA1 tile atlas via the firmware `ra8_tileatlas` producer -- a full-width column (`tile_w == width`) the `ra8_webtoon` engine opens directly | nothing |
+| `rabook` | build a CBZ, then `tools/epub_compile/cbz_compile.py` -> the RBKC `.rabook` | `python3` + Pillow |
 
-`cbz`/`cbt`/`cbt.gz` are fully self-contained (in-tree/vendored code, no system
-library or external process). `cbt.xz` and `cbr` are optional: they shell out to
-`xz` / `rar` only when producing that format, and report clearly if the tool is
-absent (RAR and an xz *encoder* have no small in-tree option). The `.gz`/`.xz`
-variants wrap a whole tar and are opened on-device by `ra8_comic_open_wrapped`.
+`cbz`/`cbt`/`cbt.gz`/`epub`/`rta1` are fully self-contained (in-tree/vendored
+code, no system library or external process): `epub` is hand-built with miniz,
+and `rta1` reuses the firmware's own `ra8_tileatlas_produce` host-side, so a
+`.rta1` the CLI writes is byte-identical to one the RA8 produces (webtoon
+column). `cbt.xz` / `cbr` / `rabook` are optional -- they shell out to `xz` /
+`rar` / `python3` only when producing that format and report clearly if the tool
+is absent (RAR and an xz *encoder* have no small in-tree option; the RBKC
+container has no C writer, so rabook uses the desktop python emitter). The
+`.gz`/`.xz` variants wrap a whole tar and are opened on-device by
+`ra8_comic_open_wrapped`. RTA1 writes one `page_NNN.rta1` per page into the
+chapter folder (the webtoon-native form), not a single archive file.
 
 ## Status / roadmap
 

@@ -22,15 +22,18 @@
 #include "mdl_export.h"
 #include "mdl_extract.h"
 #include "miniz.h"
+#include "ra8_tileatlas.h"
+#include "tiny_jpeg_fixture.h"
 #include "unity_minimal.h"
 
 /** @brief Expected fixture counts (named to avoid bare literals). */
 typedef enum : uint16_t {
-  k_expect_imgs   = 2,   /**< /uploads/ images in the page fixture. */
-  k_expect_chaps  = 3,   /**< chapter links in the series fixture. */
-  k_expect_pages  = 2,   /**< pages written into the export fixture. */
-  k_fixture_bytes = 4,   /**< bytes per synthetic page file. */
-  k_name_probe    = 256, /**< zip entry-name probe buffer. */
+  k_expect_imgs      = 2,   /**< /uploads/ images in the page fixture. */
+  k_expect_chaps     = 3,   /**< chapter links in the series fixture. */
+  k_expect_pages     = 2,   /**< pages written into the export fixture. */
+  k_fixture_bytes    = 4,   /**< bytes per synthetic page file. */
+  k_name_probe       = 256, /**< zip entry-name probe buffer. */
+  k_epub_min_entries = 6,   /**< mimetype+container+opf+nav+pages, at least. */
 } test_expect_t;
 
 static mdl_url_list_t s_list;
@@ -45,6 +48,12 @@ static void test_format_mapping(void)
   TEST_ASSERT(mdl_format_from_str("bogus") == k_mdl_fmt_invalid);
   TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_cbz), "cbz") == 0);
   TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_cbt_gz), "cbt.gz") == 0);
+  TEST_ASSERT(mdl_format_from_str("epub") == k_mdl_fmt_epub);
+  TEST_ASSERT(mdl_format_from_str("rta1") == k_mdl_fmt_rta1);
+  TEST_ASSERT(mdl_format_from_str("rabook") == k_mdl_fmt_rabook);
+  TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_epub), "epub") == 0);
+  TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_rta1), "rta1") == 0);
+  TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_rabook), "rabook") == 0);
   TEST_END("format mapping");
 }
 
@@ -154,6 +163,84 @@ static void test_export_cbz_roundtrip(void)
   TEST_END("export cbz round-trip");
 }
 
+/** @brief Write `len` raw bytes to `path`. */
+static void write_bytes(const char* path, const uint8_t* data, size_t len)
+{
+  FILE* f = fopen(path, "wb");
+  if (f != nullptr) {
+    (void)fwrite(data, 1U, len, f);
+    (void)fclose(f);
+  }
+}
+
+/** @brief Read a little-endian u16 from `p`. */
+static uint16_t rd_u16(const uint8_t* p)
+{
+  return (uint16_t)((uint16_t)p[0] | (uint16_t)((uint16_t)p[1] << 8U));
+}
+
+/** @test Export a folder to EPUB; re-open it and assert the OCF layout. */
+static void test_export_epub_roundtrip(void)
+{
+  TEST_BEGIN("export epub round-trip");
+  const char* dir = "/tmp/mdl_epub_chap";
+  const char* out = "/tmp/mdl_epub_chap.epub";
+  (void)mkdir(dir, 0755);
+  write_fixture("/tmp/mdl_epub_chap/page_001.jpg", 'a');
+  write_fixture("/tmp/mdl_epub_chap/page_002.jpg", 'b');
+  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_epub, dir, out) == k_ra8_ok);
+
+  mz_zip_archive zr;
+  memset(&zr, 0, sizeof(zr));
+  TEST_ASSERT(mz_zip_reader_init_file(&zr, out, 0) != MZ_FALSE);
+  char name[k_name_probe];
+  (void)mz_zip_reader_get_filename(&zr, 0, name, sizeof(name));
+  TEST_ASSERT(strcmp(name, "mimetype") == 0); /* OCF: mimetype is first */
+  TEST_ASSERT(mz_zip_reader_get_num_files(&zr) >= (mz_uint)k_epub_min_entries);
+  (void)mz_zip_reader_end(&zr);
+
+  (void)unlink("/tmp/mdl_epub_chap/page_001.jpg");
+  (void)unlink("/tmp/mdl_epub_chap/page_002.jpg");
+  (void)unlink(out);
+  (void)rmdir(dir);
+  TEST_END("export epub round-trip");
+}
+
+/** @test Transcode a real JPEG to RTA1; assert magics + webtoon column geometry. */
+static void test_export_rta1_roundtrip(void)
+{
+  TEST_BEGIN("export rta1 round-trip");
+  const char* dir = "/tmp/mdl_rta1_chap";
+  const char* jpg = "/tmp/mdl_rta1_chap/page_001.jpg";
+  const char* rta = "/tmp/mdl_rta1_chap/page_001.rta1";
+  (void)mkdir(dir, 0755);
+  write_bytes(jpg, k_tiny_jpeg, (size_t)k_tiny_jpeg_len);
+  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_rta1, dir, "unused") == k_ra8_ok);
+
+  FILE* f = fopen(rta, "rb");
+  TEST_ASSERT_NOT_NULL(f);
+  (void)fseek(f, 0, SEEK_END);
+  const long sz = ftell(f);
+  (void)fseek(f, 0, SEEK_SET);
+  TEST_ASSERT(sz > (long)k_ra8_tileatlas_hdr_bytes);
+  uint8_t* buf = (uint8_t*)malloc((size_t)sz);
+  TEST_ASSERT_NOT_NULL(buf);
+  TEST_ASSERT(fread(buf, 1U, (size_t)sz, f) == (size_t)sz);
+  (void)fclose(f);
+
+  const size_t mlen = (size_t)k_ra8_tileatlas_magic_len;
+  TEST_ASSERT(memcmp(buf + k_ra8_tileatlas_ofs_magic, "RTA1", mlen) == 0);
+  TEST_ASSERT(memcmp(buf + ((size_t)sz - mlen), "RTAE", mlen) == 0);
+  /* webtoon-native: a single full-width tile column (tile_w == width). */
+  TEST_ASSERT_EQ(rd_u16(buf + k_ra8_tileatlas_ofs_width), rd_u16(buf + k_ra8_tileatlas_ofs_tile_w));
+  free(buf);
+
+  (void)unlink(jpg);
+  (void)unlink(rta);
+  (void)rmdir(dir);
+  TEST_END("export rta1 round-trip");
+}
+
 int32_t main(void)
 {
   test_format_mapping();
@@ -161,6 +248,8 @@ int32_t main(void)
   test_extract_anchors();
   test_config_load();
   test_export_cbz_roundtrip();
+  test_export_epub_roundtrip();
+  test_export_rta1_roundtrip();
   (void)fprintf(stderr, "[OK  ] test_media_dl.c\n");
   return 0;
 }
