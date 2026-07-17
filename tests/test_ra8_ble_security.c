@@ -153,7 +153,8 @@ static void test_event_callback(void)
  *
  * @par MC/DC:
  * Decision: `(s_state.event_fn != NULL) && (evt != NULL)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_security.c line 301)
+ * (2 conditions, ra8_ble_security_test_emit_event in
+ * ra8_ble_security.c)
  * Reached via the UNIT_TEST hook ra8_ble_security_test_emit_event().
  * - V1 fn=non-NULL, evt=non-NULL -> C1=T, C2=T. Decision T (callback fires).
  * - V2 fn=NULL,     evt=non-NULL -> C1=F short-circuits. Decision F (no fire).
@@ -162,7 +163,7 @@ static void test_event_callback(void)
  *
  * @par DO-178C 6.4.4.3 rationale: Full minimal MC/DC achieved.
  *
- * @par Internal note (ra8_ble_security.c line 224):
+ * @par Internal note (ra8_ble_security.c passkey_reply io_cap arms):
  * The compound `(io_cap==display_yes_no || io_cap==keyboard_display)` in
  * ra8_ble_security_passkey_reply() is wrapped in #ifdef RA8_TARGET_BUILD
  * and is dead in the host (UNIT_TEST) build. Per IEC 61508 / DO-178C

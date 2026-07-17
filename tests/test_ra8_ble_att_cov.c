@@ -190,10 +190,10 @@ static void connect_with_char(uint16_t* out_chr, uint8_t* buf, uint16_t cap)
 /**
  * @test test_find_info_short_pdu
  *
- * @details Drives ra8_ble_att.c internal_handle_find_info line 329
+ * @details Drives the ra8_ble_att.c internal_handle_find_info entry
  *          guard ``if (len < k_min_param_bytes)`` TRUE: a
  *          Find_Information_Request with only 2 body bytes (len == 2 < 4)
- *          takes the invalid-PDU Error_Response return (lines 330-331).
+ *          takes the invalid-PDU Error_Response return.
  */
 static void test_find_info_short_pdu(void)
 {
@@ -217,10 +217,10 @@ static void test_find_info_short_pdu(void)
 /**
  * @test test_read_by_type_short_pdu
  *
- * @details Drives internal_handle_read_by_type line 522 guard
+ * @details Drives the internal_handle_read_by_type entry guard
  *          ``if (len < k_short_param_bytes)`` TRUE: a Read_By_Type_Request
  *          with only 5 body bytes (len == 5 < 6) takes the invalid-PDU
- *          Error_Response return (lines 523-524).
+ *          Error_Response return.
  */
 static void test_read_by_type_short_pdu(void)
 {
@@ -244,10 +244,10 @@ static void test_read_by_type_short_pdu(void)
 /**
  * @test test_read_by_type_wrong_uuid
  *
- * @details Drives internal_handle_read_by_type line 530 guard
+ * @details Drives the internal_handle_read_by_type type-UUID guard
  *          ``if (uuid16 != k_uuid16_char)`` TRUE: a well-formed 6-byte
  *          request whose type UUID is 0x2800 (not 0x2803) takes the
- *          attr-not-found Error_Response return (lines 531-532).
+ *          attr-not-found Error_Response return.
  */
 static void test_read_by_type_wrong_uuid(void)
 {
@@ -278,10 +278,10 @@ static void test_read_by_type_wrong_uuid(void)
 /**
  * @test test_read_short_pdu
  *
- * @details Drives internal_handle_read line 586 guard
+ * @details Drives the internal_handle_read entry guard
  *          ``if (len < k_min_param_bytes)`` TRUE: a Read_Request with a
  *          single body byte (len == 1 < 2) takes the invalid-PDU
- *          Error_Response return (lines 587-588).
+ *          Error_Response return.
  */
 static void test_read_short_pdu(void)
 {
@@ -309,11 +309,11 @@ static void test_read_short_pdu(void)
 /**
  * @test test_read_cccd_arm
  *
- * @details Drives internal_handle_read line 601 arm
+ * @details Drives the internal_handle_read CCCD arm
  *          ``if (a->kind == k_attr_kind_cccd)`` TRUE. The notify property
  *          on the registered characteristic appends a CCCD at handle 4
  *          (value handle + 1); reading it packs the 2-byte cccd_value into
- *          the Read_Response (lines 606-607). The default cccd_value is 0.
+ *          the Read_Response. The default cccd_value is 0.
  */
 static void test_read_cccd_arm(void)
 {
@@ -343,10 +343,10 @@ static void test_read_cccd_arm(void)
 /**
  * @test test_read_value_clamp
  *
- * @details Drives internal_handle_read line 610 guard
+ * @details Drives the internal_handle_read clamp guard
  *          ``if (copy_len > k_max_value_bytes)`` TRUE. The characteristic
  *          value is 30 bytes (> the MTU-23 cap of 22), so the copy length
- *          is clamped to 22 before the memcpy (lines 611-612).
+ *          is clamped to 22 before the memcpy.
  */
 static void test_read_value_clamp(void)
 {
@@ -379,7 +379,7 @@ static void test_read_value_clamp(void)
   TEST_ASSERT_EQ(k_att_op_read_rsp, cap[k_cap_offset_op]);
   /* The L2CAP payload-length field (capture offset 5-6, LE16) equals the
    * ATT PDU length: opcode(1) + clamped value(22) = 23. Without the clamp
-   * the 30-byte value would make this 31, so 23 proves lines 611-612 ran. */
+   * the 30-byte value would make this 31, so 23 proves the clamp ran. */
   const uint16_t att_pdu_len = (uint16_t)((uint16_t)cap[5] | ((uint16_t)cap[6] << 8U));
   TEST_ASSERT_EQ((1U + k_expect), att_pdu_len);
   /* First clamped value byte survives verbatim. */
@@ -390,11 +390,11 @@ static void test_read_value_clamp(void)
 /**
  * @test test_read_primary_service
  *
- * @details Drives internal_handle_read line 615 arm
+ * @details Drives the internal_handle_read primary-service arm
  *          ``else if (a->kind == k_attr_kind_primary_service)`` TRUE.
  *          The Primary Service row (handle 1) has a NULL value pointer,
  *          so the cccd and value arms fall through and the service UUID
- *          is emitted from uuid[] (lines 618-620). uuid[] was seeded with
+ *          is emitted from uuid[]. uuid[] was seeded with
  *          the 0xA0 marker ramp by register_one_char().
  */
 static void test_read_primary_service(void)
@@ -428,10 +428,10 @@ static void test_read_primary_service(void)
 /**
  * @test test_write_cccd_short_value
  *
- * @details Drives internal_write_cccd line 659 guard
+ * @details Drives the internal_write_cccd length guard
  *          ``if (val_len < k_cccd_min_bytes)`` TRUE. A Write_Request to
  *          the CCCD handle carrying a single value byte (val_len == 1 < 2)
- *          returns k_att_err_invalid_value_len (line 660), which the
+ *          returns k_att_err_invalid_value_len, which the
  *          Write handler surfaces as an Error_Response.
  */
 static void test_write_cccd_short_value(void)
@@ -461,11 +461,11 @@ static void test_write_cccd_short_value(void)
 /**
  * @test test_write_value_too_long
  *
- * @details Drives internal_write_value line 706 guard
+ * @details Drives the internal_write_value capacity guard
  *          ``if (val_len > a->value_max)`` TRUE. The characteristic value
  *          buffer holds 8 bytes; a Write_Request carrying 10 payload bytes
- *          exceeds value_max and returns k_att_err_invalid_value_len
- *          (line 707), surfaced as an Error_Response.
+ *          exceeds value_max and returns k_att_err_invalid_value_len,
+ *          surfaced as an Error_Response.
  */
 static void test_write_value_too_long(void)
 {
@@ -505,11 +505,11 @@ static void test_write_value_too_long(void)
 /**
  * @test test_write_req_short_pdu
  *
- * @details Drives internal_handle_write line 758 guard
+ * @details Drives the internal_handle_write entry guard
  *          ``if (len < k_min_param_bytes)`` TRUE with op == Write_Request,
- *          taking the inner line 759 ``if (op == k_att_op_write_req)`` TRUE
- *          arm: an invalid-PDU Error_Response is queued (line 760) and the
- *          function returns (lines 761-762).
+ *          taking the inner ``if (op == k_att_op_write_req)`` TRUE arm:
+ *          an invalid-PDU Error_Response is queued and the function
+ *          returns.
  */
 static void test_write_req_short_pdu(void)
 {
@@ -533,12 +533,12 @@ static void test_write_req_short_pdu(void)
 /**
  * @test test_write_cmd_short_pdu
  *
- * @details Drives internal_handle_write line 758 guard TRUE with
- *          op == Write_Command, taking the inner line 759
+ * @details Drives the internal_handle_write entry guard TRUE with
+ *          op == Write_Command, taking the inner
  *          ``if (op == k_att_op_write_req)`` FALSE arm: no Error_Response
  *          is queued (Write_Command is never answered, Vol 3 Part F
- *          3.4.5.3) and the function returns (line 762). Observed as an
- *          empty TX capture.
+ *          3.4.5.3) and the function returns. Observed as an empty TX
+ *          capture.
  */
 static void test_write_cmd_short_pdu(void)
 {
@@ -559,12 +559,11 @@ static void test_write_cmd_short_pdu(void)
 /**
  * @test test_write_req_unknown_handle
  *
- * @details Drives internal_handle_write line 766 guard
+ * @details Drives the internal_handle_write unknown-handle guard
  *          ``if (a == nullptr)`` TRUE with op == Write_Request, taking the
- *          inner line 767 ``if (op == k_att_op_write_req)`` TRUE arm: an
- *          invalid-handle Error_Response is queued (line 768) and the
- *          function returns (lines 769-770). Handle 0x00FF is not
- *          registered.
+ *          inner ``if (op == k_att_op_write_req)`` TRUE arm: an
+ *          invalid-handle Error_Response is queued and the function
+ *          returns. Handle 0x00FF is not registered.
  */
 static void test_write_req_unknown_handle(void)
 {
@@ -586,11 +585,11 @@ static void test_write_req_unknown_handle(void)
 /**
  * @test test_write_cmd_unknown_handle
  *
- * @details Drives internal_handle_write line 766 guard TRUE with
- *          op == Write_Command, taking the inner line 767
+ * @details Drives the internal_handle_write unknown-handle guard TRUE
+ *          with op == Write_Command, taking the inner
  *          ``if (op == k_att_op_write_req)`` FALSE arm: no Error_Response
- *          is queued and the function returns (line 770). Observed as an
- *          empty TX capture.
+ *          is queued and the function returns. Observed as an empty TX
+ *          capture.
  */
 static void test_write_cmd_unknown_handle(void)
 {

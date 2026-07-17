@@ -94,7 +94,7 @@ static void test_lifecycle(void)
  *
  * @par MC/DC:
  * Decision: `(cfg->element_count == 0U) || (cfg->element_count > MAX)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_mesh.c line 108)
+ * (2 conditions, internal_validate in ra8_ble_mesh.c)
  * Reached through ra8_ble_mesh_init() -> internal_validate().
  * - V1 element_count=1 -> C1=F, C2=F. Decision F (ok).
  * - V2 element_count=0 -> C1=T short-circuits. Decision T -> invalid_arg.
@@ -124,7 +124,7 @@ static void test_mcdc_mesh_validate_element_count(void)
  *
  * @par MC/DC:
  * Decision: `(s_state.event_fn != NULL) && (evt != NULL)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_mesh.c line 215)
+ * (2 conditions, ra8_ble_mesh_test_emit_event in ra8_ble_mesh.c)
  * Reached via the UNIT_TEST hook ra8_ble_mesh_test_emit_event().
  * - V1 fn=non-NULL, evt=non-NULL -> both T. Decision T (callback fires).
  * - V2 fn=NULL,     evt=non-NULL -> C1=F. Decision F (no fire).
