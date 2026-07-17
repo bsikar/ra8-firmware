@@ -186,8 +186,16 @@ static void mg_clamp(mg_reader_t* r)
   if (maxy < 0) {
     maxy = 0;
   }
-  r->view_x = (r->view_x < 0) ? 0 : ((r->view_x > maxx) ? maxx : r->view_x);
-  r->view_y = (r->view_y < 0) ? 0 : ((r->view_y > maxy) ? maxy : r->view_y);
+  if (r->view_x < 0) {
+    r->view_x = 0;
+  } else if (r->view_x > maxx) {
+    r->view_x = maxx;
+  }
+  if (r->view_y < 0) {
+    r->view_y = 0;
+  } else if (r->view_y > maxy) {
+    r->view_y = maxy;
+  }
 }
 
 /* ===========================================================================
