@@ -502,7 +502,7 @@ static inline uint32_t internal_sw_rotr(uint32_t x, uint32_t n)
   return (x >> n) | (x << (k_ra8_rsip_sw_word_bits - n));
 }
 
-/* clang-format off */
+// clang-format off: FIPS 180-4 K[0..63] table, four constants per row.
 /**
  * @brief FIPS PUB 180-4 Section 4.1.2 SHA-256 round constants K[0..63].
  *
@@ -538,7 +538,7 @@ static const uint32_t s_sw_sha256_h0[k_ra8_rsip_sw_sha256_state_w] = {
   0x6a09e667UL, 0xbb67ae85UL, 0x3c6ef372UL, 0xa54ff53aUL,
   0x510e527fUL, 0x9b05688cUL, 0x1f83d9abUL, 0x5be0cd19UL,
 };
-/* clang-format on */
+// clang-format on
 
 /* Build the 64-word SHA-256 message schedule from a 64-byte block -- see surrounding code and HUM citations. */
 static void internal_sw_sha256_schedule(uint32_t      w[k_ra8_rsip_sw_sha256_round_cnt],
