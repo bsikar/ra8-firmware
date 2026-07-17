@@ -100,11 +100,11 @@ typedef enum : uint8_t {
 
 /** @brief TCP control-bit flags. */
 typedef enum : uint8_t {
-  k_tcp_fin = 0x01U,
-  k_tcp_syn = 0x02U,
-  k_tcp_rst = 0x04U,
-  k_tcp_psh = 0x08U,
-  k_tcp_ack = 0x10U,
+  k_tcp_fin = 0x01U, /**< TCP fin. */
+  k_tcp_syn = 0x02U, /**< TCP syn. */
+  k_tcp_rst = 0x04U, /**< TCP rst. */
+  k_tcp_psh = 0x08U, /**< TCP psh. */
+  k_tcp_ack = 0x10U, /**< TCP ack. */
 } net_tcp_flag_t;
 
 static const uint8_t s_peer_mac[k_mac_len] =
@@ -135,7 +135,7 @@ static const uint8_t s_tcp_payload[] = "hello from board_sim\n";
  * drains all available frames per poll, so a handshake burst (ACK + data) can
  * queue several at once. */
 enum : uint32_t {
-  k_net_qdepth = 8U,
+  k_net_qdepth = 8U, /**< Net qdepth. */
 };
 static uint8_t  s_rxq[k_net_qdepth][k_net_buf];
 static uint16_t s_rxq_len[k_net_qdepth];
@@ -550,7 +550,7 @@ void board_net_tick(void)
     return;
   }
   if ((s_state == (uint8_t)k_net_estab) && s_tcp_need_data) {
-    enum : uint32_t { k_net_data_delay = 800U };
+    enum : uint32_t { k_net_data_delay = 800U /**< Net data delay. */ };
     s_tcp_estab_wait++;
     if (s_tcp_estab_wait > k_net_data_delay) {
       net_send_data(); /* connection settled; send the echo payload. */
@@ -560,7 +560,7 @@ void board_net_tick(void)
   }
   /* Retransmit the pending step if the firmware has not answered for a while
    * (the stack may still be bringing the interface up on the first attempts). */
-  enum : uint32_t { k_net_retry = 2000U };
+  enum : uint32_t { k_net_retry = 2000U /**< Net retry. */ };
   if (s_wait > k_net_retry) {
     s_wait = 0U;
     if (s_state == (uint8_t)k_net_arp) {

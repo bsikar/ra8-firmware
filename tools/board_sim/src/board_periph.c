@@ -45,10 +45,10 @@
 
 /** @brief ICU block geometry (ra8_icu_regs.h). */
 typedef enum : uint64_t {
-  k_icu_base      = 0x40006000UL, /**< R_ICU base.                */
-  k_icu_off_ielsr = 0x6300UL,     /**< IELSR[0..95], 32-bit each. */
-  k_icu_ielsr_cnt = 96UL,         /**< IELSR slot count on RA8D2. */
-  k_icu_span      = 0x6300UL + (96UL * 4UL),
+  k_icu_base      = 0x40006000UL,            /**< R_ICU base.                */
+  k_icu_off_ielsr = 0x6300UL,                /**< IELSR[0..95], 32-bit each. */
+  k_icu_ielsr_cnt = 96UL,                    /**< IELSR slot count on RA8D2. */
+  k_icu_span      = 0x6300UL + (96UL * 4UL), /**< Icu span.                  */
 } icu_map_t;
 
 /** @brief ICU IELSR layout -- ra8_ielsr_bit_t / ra8_ielsr_mask_t. */

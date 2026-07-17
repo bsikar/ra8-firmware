@@ -29,7 +29,10 @@
 #include "board_periph_eink.h"
 
 /** @brief LED3 PORT/pin coordinates on the EK-RA8D2 (P10_07). */
-typedef enum : uint32_t { k_led3_port = 10U, k_led3_pin = 7U } gpio_lit_t;
+typedef enum : uint32_t {
+  k_led3_port                   = 10U,
+  /**< Led3 port. */ k_led3_pin = 7U /**< Led3 pin. */
+} gpio_lit_t;
 
 /** @brief Console-tap line buffer capacity for a GPIO edge summary. */
 typedef enum : uint32_t {
@@ -79,10 +82,10 @@ typedef struct {
 
 /** @brief Board LED -> (port index, pin index, lit colour), from the BSP. */
 typedef struct {
-  uint8_t     port;
-  uint8_t     pin;
+  uint8_t     port;  /**< Port.                                         */
+  uint8_t     pin;   /**< Pin.                                          */
   uint16_t    color; /**< RGB565 colour the LED emits when driven high. */
-  const char* name;
+  const char* name;  /**< Name.                                         */
 } led_map_t;
 
 static const led_map_t k_led_map[k_board_led_count] = {

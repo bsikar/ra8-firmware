@@ -64,7 +64,7 @@ typedef enum : uint32_t {
   /* Emulation timeout in run-loop chunks. The demo refreshes about every 50
    * chunks; this is comfortably longer (so a refreshing app never trips) yet
    * well within the run budget once refreshing stops. */
-  k_wdt_timeout_ticks = 400U,
+  k_wdt_timeout_ticks = 400U, /**< Wdt timeout ticks. */
 } wdt_field_t;
 
 /** @brief Per-tick order slot for the WDT block (relative order only). */

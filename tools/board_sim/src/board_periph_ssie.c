@@ -45,11 +45,11 @@ typedef enum : uint32_t {
 
 /** @brief SSIE block geometry (ra8_ssie_regs.h). */
 typedef enum : uint64_t {
-  k_ssie_base   = 0x4025D000UL, /**< SSIE0 base.             */
-  k_ssie_stride = 0x100UL,      /**< Bytes per SSIE channel. */
-  k_ssie_count  = 2UL,          /**< SSIE0, SSIE1.           */
-  k_ssie_span   = 0x100UL * 2UL,
-  k_ssie_regs   = 0x40UL, /**< Shadowed 32-bit words per channel (0x00..0xFC). */
+  k_ssie_base   = 0x4025D000UL,  /**< SSIE0 base.                                     */
+  k_ssie_stride = 0x100UL,       /**< Bytes per SSIE channel.                         */
+  k_ssie_count  = 2UL,           /**< SSIE0, SSIE1.                                   */
+  k_ssie_span   = 0x100UL * 2UL, /**< Ssie span.                                      */
+  k_ssie_regs   = 0x40UL,        /**< Shadowed 32-bit words per channel (0x00..0xFC). */
 } ssie_map_t;
 
 /** @brief Per-channel register byte offsets (ra8_ssie_regs.h). */
