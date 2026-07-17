@@ -75,6 +75,25 @@ static void expect_hmac(const uint8_t* key,
 }
 
 /**
+ * @brief Reset the sim and bring the RSIP up for the KAT vectors.
+ * @return None.
+ * @pre None.
+ * @post The RSIP is initialised (or already-existing), ready for HMAC calls.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void hmac_kat_init(void)
+{
+  ra8_sim_mmap_reset();
+  (void)ra8_mstp_init();
+  const ra8_rsip_config_t cfg      = {.run_bist = false};
+  const ra8_err_t         init_err = ra8_rsip_init(&cfg);
+  if (init_err != k_ra8_ok) {
+    TEST_ASSERT_EQ(k_ra8_err_exists, init_err);
+  }
+}
+
+/**
  * @test test_hmac_sha256_rfc4231
  * @details The RFC 4231 HMAC-SHA-256 vectors TC1-4, TC6, TC7.
  *
@@ -85,13 +104,7 @@ static void expect_hmac(const uint8_t* key,
 static void test_hmac_sha256_rfc4231(void)
 {
   TEST_BEGIN("RSIP HMAC-SHA-256 RFC 4231 known-answer vectors");
-  ra8_sim_mmap_reset();
-  (void)ra8_mstp_init();
-  const ra8_rsip_config_t cfg      = {.run_bist = false};
-  const ra8_err_t         init_err = ra8_rsip_init(&cfg);
-  if (init_err != k_ra8_ok) {
-    TEST_ASSERT_EQ(k_ra8_err_exists, init_err);
-  }
+  hmac_kat_init();
 
   /* TC1: 20-byte 0x0b key, "Hi There". */
   (void)memset(s_key, (int)k_hmac_fill_0b, (size_t)k_hmac_key_20);
