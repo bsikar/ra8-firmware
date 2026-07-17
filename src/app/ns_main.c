@@ -49,7 +49,7 @@ extern uint32_t g_ra8_ls_ns_data_end;
 
 /** @brief Address of NS VTOR register. */
 typedef enum : uintptr_t {
-  k_ns_scb_vtor_addr = 0xE000ED08U,
+  k_ns_scb_vtor_addr = 0xE000ED08U, /**< Ns scb vtor address. */
 } ns_scb_addr_t;
 
 /**

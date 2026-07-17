@@ -46,7 +46,7 @@ static const char* s_tag = "KEYIMP";
 
 /** @brief 5-bit rotate-amount mask (mod 32). */
 typedef enum : uint8_t {
-  k_rotate_mask_5bit = 31U,
+  k_rotate_mask_5bit = 31U, /**< Rotate mask 5bit. */
 } rotate_mask_t;
 
 /**
