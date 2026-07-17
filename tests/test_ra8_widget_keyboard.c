@@ -227,6 +227,126 @@ static void test_keyboard_input(void)
 }
 
 /**
+ * @brief Exercise the render draw_text / OR-guard / paint-ctx guard vectors.
+ * @param[in,out] w     Widget bound to @p kbd.
+ * @param[in,out] kbd   Keyboard widget under test.
+ * @param[in,out] paint Paint sink (draw_text toggled).
+ * @param[in]     ops   The valid ops table to restore between vectors.
+ * @param[in]     mk    Mock keyboard model backing the ops tables.
+ * @param[in,out] mp    Paint-call counters asserted per vector.
+ * @return None.
+ * @pre @p w is initialised over @p kbd.
+ * @post Every render guard vector produced the expected fill/text counts; the
+ *       valid ops/paint/ctx are restored on exit.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void kbd_render_guards(ra8_widget_t*              w,
+                              ra8_widget_keyboard_t*     kbd,
+                              ra8_widget_paint_t*        paint,
+                              ra8_widget_keyboard_ops_t* ops,
+                              mock_kb_t*                 mk,
+                              mock_kp_t*                 mp)
+{
+  /* draw_text == NULL -> key faces only, no glyphs (bg + 3 x 2 = 7 fills). */
+  paint->draw_text = nullptr;
+  w->vt->render(w);
+  TEST_ASSERT_EQ(7U, mp->fill_calls);
+  TEST_ASSERT_EQ(0U, mp->text_calls);
+
+  /* render OR-guard, each condition true independently -> bg only. */
+  *mp              = (mock_kp_t){};
+  paint->draw_text = kp_text;
+  kbd->ops         = nullptr; /* ops == NULL (left) */
+  w->vt->render(w);
+  TEST_ASSERT_EQ(1U, mp->fill_calls);
+  *mp                                = (mock_kp_t){};
+  ra8_widget_keyboard_ops_t no_count = {.user = mk, .count = nullptr, .key_info = mock_kb_info};
+  kbd->ops                           = &no_count; /* count == NULL (middle) */
+  w->vt->render(w);
+  TEST_ASSERT_EQ(1U, mp->fill_calls);
+  *mp                               = (mock_kp_t){};
+  ra8_widget_keyboard_ops_t no_info = {.user = mk, .count = mock_kb_count, .key_info = nullptr};
+  kbd->ops                          = &no_info; /* key_info == NULL (right) */
+  w->vt->render(w);
+  TEST_ASSERT_EQ(1U, mp->fill_calls);
+
+  /* paint == NULL / ctx == NULL. */
+  *mp        = (mock_kp_t){};
+  kbd->ops   = ops;
+  kbd->paint = nullptr;
+  w->vt->render(w);
+  TEST_ASSERT_EQ(0U, mp->fill_calls);
+  w->ctx = nullptr;
+  w->vt->render(w);
+  w->ctx     = kbd;
+  kbd->paint = paint;
+}
+
+/**
+ * @brief Exercise the input OR-guard, commit-without-callback and ctx guards.
+ * @param[in,out] w   Widget bound to @p kbd.
+ * @param[in,out] kbd Keyboard widget under test.
+ * @param[in]     ops The valid ops table to restore for the commit vector.
+ * @param[in]     mk  Mock keyboard model (apply counters).
+ * @return None.
+ * @pre @p w is initialised over @p kbd with valid paint/ctx.
+ * @post Each input guard vector consumed the touch without applying, the commit
+ *       vector applied once with no callback, and the null-ctx vector declined.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void kbd_input_guards(ra8_widget_t*              w,
+                             ra8_widget_keyboard_t*     kbd,
+                             ra8_widget_keyboard_ops_t* ops,
+                             mock_kb_t*                 mk)
+{
+  /* input OR-guard, each condition true independently -> touch consumed, no
+   * apply. ops == NULL (left); hit == NULL (middle); apply == NULL (right). */
+  const ra8_widget_event_t tap = {.kind = k_ra8_widget_ev_touch, .x = 5, .y = 5};
+  kbd->ops                     = nullptr;
+  TEST_ASSERT_EQ(true, w->vt->on_input(w, &tap));
+  ra8_widget_keyboard_ops_t no_hit = {.user = mk, .hit = nullptr, .apply = mock_kb_apply};
+  kbd->ops                         = &no_hit;
+  TEST_ASSERT_EQ(true, w->vt->on_input(w, &tap));
+  ra8_widget_keyboard_ops_t no_apply = {.user = mk, .hit = mock_kb_hit, .apply = nullptr};
+  kbd->ops                           = &no_apply;
+  TEST_ASSERT_EQ(true, w->vt->on_input(w, &tap));
+  TEST_ASSERT_EQ(0U, mk->apply_calls);
+
+  /* a commit with no on_commit callback: applies, no crash, no callback. */
+  kbd->ops          = ops;
+  kbd->on_commit    = nullptr;
+  s_kb_commit_calls = 0U;
+  TEST_ASSERT_EQ(true, w->vt->on_input(w, &tap));
+  TEST_ASSERT_EQ(1U, mk->apply_calls);
+  TEST_ASSERT_EQ(0U, s_kb_commit_calls);
+
+  /* ctx == NULL declines. */
+  w->ctx = nullptr;
+  TEST_ASSERT_EQ(false, w->vt->on_input(w, &tap));
+}
+
+/**
+ * @brief Exercise the ra8_widget_keyboard_init null guards and success path.
+ * @return None.
+ * @pre None.
+ * @post Both null arguments rejected and a valid init wired the vtable.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void kbd_init_guards(void)
+{
+  ra8_widget_keyboard_t any = {};
+  ra8_widget_t          ww  = {};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_widget_keyboard_init(nullptr, &any));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_widget_keyboard_init(&ww, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_keyboard_init(&ww, &any));
+  TEST_ASSERT_EQ(true, ww.vt == ra8_widget_keyboard_vtable());
+  TEST_ASSERT_EQ(true, ww.visible);
+}
+
+/**
  * @test ra8_widget_keyboard render + input + init guard arms.
  *
  * @par MC/DC:
@@ -257,73 +377,9 @@ static void test_keyboard_guards(void)
   (void)ra8_widget_keyboard_init(&w, &kbd);
   w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 80, .h = 20};
 
-  /* draw_text == NULL -> key faces only, no glyphs (bg + 3 x 2 = 7 fills). */
-  paint.draw_text = nullptr;
-  w.vt->render(&w);
-  TEST_ASSERT_EQ(7U, mp.fill_calls);
-  TEST_ASSERT_EQ(0U, mp.text_calls);
-
-  /* render OR-guard, each condition true independently -> bg only. */
-  mp              = (mock_kp_t){};
-  paint.draw_text = kp_text;
-  kbd.ops         = nullptr; /* ops == NULL (left) */
-  w.vt->render(&w);
-  TEST_ASSERT_EQ(1U, mp.fill_calls);
-  mp                                 = (mock_kp_t){};
-  ra8_widget_keyboard_ops_t no_count = {.user = &mk, .count = nullptr, .key_info = mock_kb_info};
-  kbd.ops                            = &no_count; /* count == NULL (middle) */
-  w.vt->render(&w);
-  TEST_ASSERT_EQ(1U, mp.fill_calls);
-  mp                                = (mock_kp_t){};
-  ra8_widget_keyboard_ops_t no_info = {.user = &mk, .count = mock_kb_count, .key_info = nullptr};
-  kbd.ops                           = &no_info; /* key_info == NULL (right) */
-  w.vt->render(&w);
-  TEST_ASSERT_EQ(1U, mp.fill_calls);
-
-  /* paint == NULL / ctx == NULL. */
-  mp        = (mock_kp_t){};
-  kbd.ops   = &ops;
-  kbd.paint = nullptr;
-  w.vt->render(&w);
-  TEST_ASSERT_EQ(0U, mp.fill_calls);
-  w.ctx = nullptr;
-  w.vt->render(&w);
-  w.ctx     = &kbd;
-  kbd.paint = &paint;
-
-  /* input OR-guard, each condition true independently -> touch consumed, no
-   * apply. ops == NULL (left); hit == NULL (middle); apply == NULL (right). */
-  const ra8_widget_event_t tap = {.kind = k_ra8_widget_ev_touch, .x = 5, .y = 5};
-  kbd.ops                      = nullptr;
-  TEST_ASSERT_EQ(true, w.vt->on_input(&w, &tap));
-  ra8_widget_keyboard_ops_t no_hit = {.user = &mk, .hit = nullptr, .apply = mock_kb_apply};
-  kbd.ops                          = &no_hit;
-  TEST_ASSERT_EQ(true, w.vt->on_input(&w, &tap));
-  ra8_widget_keyboard_ops_t no_apply = {.user = &mk, .hit = mock_kb_hit, .apply = nullptr};
-  kbd.ops                            = &no_apply;
-  TEST_ASSERT_EQ(true, w.vt->on_input(&w, &tap));
-  TEST_ASSERT_EQ(0U, mk.apply_calls);
-
-  /* a commit with no on_commit callback: applies, no crash, no callback. */
-  kbd.ops           = &ops;
-  kbd.on_commit     = nullptr;
-  s_kb_commit_calls = 0U;
-  TEST_ASSERT_EQ(true, w.vt->on_input(&w, &tap));
-  TEST_ASSERT_EQ(1U, mk.apply_calls);
-  TEST_ASSERT_EQ(0U, s_kb_commit_calls);
-
-  /* ctx == NULL declines. */
-  w.ctx = nullptr;
-  TEST_ASSERT_EQ(false, w.vt->on_input(&w, &tap));
-
-  /* init guards. */
-  ra8_widget_keyboard_t any = {};
-  ra8_widget_t          ww  = {};
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_widget_keyboard_init(nullptr, &any));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_widget_keyboard_init(&ww, nullptr));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_keyboard_init(&ww, &any));
-  TEST_ASSERT_EQ(true, ww.vt == ra8_widget_keyboard_vtable());
-  TEST_ASSERT_EQ(true, ww.visible);
+  kbd_render_guards(&w, &kbd, &paint, &ops, &mk, &mp);
+  kbd_input_guards(&w, &kbd, &ops, &mk);
+  kbd_init_guards();
   TEST_END("ra8_widget_keyboard: render + input + init guards");
 }
 
