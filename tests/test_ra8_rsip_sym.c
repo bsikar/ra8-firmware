@@ -54,6 +54,24 @@ static void prep_running(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
 }
 
+/**
+ * @brief One-vector ra8_rsip_aes_cipher encrypt call for the alignment guard.
+ *
+ * @details Fixed encrypt direction and 16-byte scratch buffers; only the
+ * mode, IV and length the MC/DC vectors vary are parameters, so each
+ * vector reads as one source line under the NASA Rule 4 cap.
+ * @since 0.1.0
+ */
+static ra8_err_t cipher_vec(const ra8_rsip_key_handle_t* key,
+                            ra8_rsip_aes_mode_t          mode,
+                            const uint8_t*               iv,
+                            uint32_t                     len)
+{
+  const uint8_t pt[16] = {};
+  uint8_t       ct[16] = {};
+  return ra8_rsip_aes_cipher(key, mode, k_ra8_rsip_dir_encrypt, iv, pt, ct, len);
+}
+
 /* ===========================================================================
  * Round-3 tests: key install
  * ===========================================================================
@@ -794,58 +812,22 @@ static void test_mcdc_aes_cipher_block_align_quad(void)
   ra8_rsip_key_handle_t handle     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_aes128_install_plain(kbytes, &handle));
 
-  const uint8_t pt[16] = {};
-  uint8_t       ct[16] = {};
-
   /* V1: ECB + 5 bytes -> reject (block-align). */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-
-                 ra8_rsip_aes_cipher(&handle,
-                                     k_ra8_rsip_aes_mode_ecb,
-                                     k_ra8_rsip_dir_encrypt,
-                                     nullptr,
-                                     pt,
-                                     ct,
-                                     5U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, cipher_vec(&handle, k_ra8_rsip_aes_mode_ecb, nullptr, 5U));
 
   /* V2: CBC + 5 bytes -> reject. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-
-                 ra8_rsip_aes_cipher(&handle,
-                                     k_ra8_rsip_aes_mode_cbc,
-                                     k_ra8_rsip_dir_encrypt,
-                                     nullptr,
-                                     pt,
-                                     ct,
-                                     5U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, cipher_vec(&handle, k_ra8_rsip_aes_mode_cbc, nullptr, 5U));
 
   /* V3: CMAC + 5 bytes -> reject. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_rsip_aes_cipher(&handle,
-                                     k_ra8_rsip_aes_mode_cmac,
-                                     k_ra8_rsip_dir_encrypt,
-                                     nullptr,
-                                     pt,
-                                     ct,
-                                     5U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, cipher_vec(&handle, k_ra8_rsip_aes_mode_cmac, nullptr, 5U));
 
   /* V4: CTR + 5 bytes -> outer-OR is all-false; alignment check skipped;
    * function proceeds to dispatch and returns OK in the simulator. */
   const uint8_t iv[16] = {};
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-
-    ra8_rsip_aes_cipher(&handle, k_ra8_rsip_aes_mode_ctr, k_ra8_rsip_dir_encrypt, iv, pt, ct, 5U));
+  TEST_ASSERT_EQ(k_ra8_ok, cipher_vec(&handle, k_ra8_rsip_aes_mode_ctr, iv, 5U));
 
   /* V5: ECB + 16 bytes -> outer-OR true, alignment OK -> accept. */
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_rsip_aes_cipher(&handle,
-                                     k_ra8_rsip_aes_mode_ecb,
-                                     k_ra8_rsip_dir_encrypt,
-                                     nullptr,
-                                     pt,
-                                     ct,
-                                     16U));
+  TEST_ASSERT_EQ(k_ra8_ok, cipher_vec(&handle, k_ra8_rsip_aes_mode_ecb, nullptr, 16U));
 
   TEST_END("rsip aes_cipher MC/DC: (ECB||CBC||CMAC) && len%16!=0");
 }

@@ -105,6 +105,86 @@ static ra8_psa_key_t mcdc_import_aes_key(ra8_psa_key_usage_t usage)
 }
 
 /**
+ * @brief Run one AES-GCM encrypt MC/DC vector with the fixture nonce.
+ *
+ * @details Fixes the 12-byte nonce and a full-capacity scratch output so
+ * a vector reads as one source line under the NASA Rule 4 function-size
+ * cap; only the arguments the vectors vary are parameters.
+ */
+static ra8_err_t enc_std(ra8_psa_key_t  key,
+                         const uint8_t* aad,
+                         size_t         aad_len,
+                         const uint8_t* plain,
+                         size_t         plain_len)
+{
+  uint8_t out[k_psa_mcdc_plain_len + k_ra8_psa_gcm_tag_len];
+  size_t  ol = 0U;
+  return ra8_psa_aead_encrypt(key,
+                              k_ra8_psa_alg_aes_gcm,
+                              k_test_nonce,
+                              sizeof(k_test_nonce),
+                              aad,
+                              aad_len,
+                              plain,
+                              plain_len,
+                              out,
+                              sizeof(out),
+                              &ol);
+}
+
+/**
+ * @brief Produce a reference ciphertext of `plain_len` zero bytes.
+ *
+ * @details Encrypts with the fixture nonce into the caller's `ct`
+ * buffer, whose capacity must be `plain_len + k_ra8_psa_gcm_tag_len`.
+ */
+static ra8_err_t enc_ct(ra8_psa_key_t  key,
+                        const uint8_t* aad,
+                        size_t         aad_len,
+                        size_t         plain_len,
+                        uint8_t*       ct,
+                        size_t*        ct_len)
+{
+  const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
+  return ra8_psa_aead_encrypt(key,
+                              k_ra8_psa_alg_aes_gcm,
+                              k_test_nonce,
+                              sizeof(k_test_nonce),
+                              aad,
+                              aad_len,
+                              (plain_len == 0U) ? nullptr : plain,
+                              plain_len,
+                              ct,
+                              plain_len + (size_t)k_ra8_psa_gcm_tag_len,
+                              ct_len);
+}
+
+/**
+ * @brief Run one AES-GCM decrypt MC/DC vector with the fixture nonce.
+ */
+static ra8_err_t dec_std(ra8_psa_key_t  key,
+                         const uint8_t* aad,
+                         size_t         aad_len,
+                         const uint8_t* ct,
+                         size_t         ct_len,
+                         uint8_t*       out,
+                         size_t         out_cap,
+                         size_t*        out_len)
+{
+  return ra8_psa_aead_decrypt(key,
+                              k_ra8_psa_alg_aes_gcm,
+                              k_test_nonce,
+                              sizeof(k_test_nonce),
+                              aad,
+                              aad_len,
+                              ct,
+                              ct_len,
+                              out,
+                              out_cap,
+                              out_len);
+}
+
+/**
  * @test test_mcdc_aead_encrypt_check_triple
  * @par MC/DC:
  * Decision: `if ((nonce == NULL) || (out == NULL) || (out_len == NULL))`
@@ -193,68 +273,16 @@ static void test_mcdc_aead_encrypt_check_plain_aad_quad(void)
   TEST_ASSERT_NOT_NULL(k);
   const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
   const uint8_t aad[k_psa_mcdc_short_aad]   = {0U};
-  uint8_t       out[k_psa_mcdc_plain_len + k_ra8_psa_gcm_tag_len];
-  size_t        ol = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_psa_aead_encrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      plain,
-                                      sizeof(plain),
-                                      out,
-                                      sizeof(out),
-                                      &ol));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_psa_aead_encrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      nullptr,
-                                      sizeof(plain),
-                                      out,
-                                      sizeof(out),
-                                      &ol));
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_psa_aead_encrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      nullptr,
-                                      0U,
-                                      out,
-                                      sizeof(out),
-                                      &ol));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_psa_aead_encrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      sizeof(aad),
-                                      plain,
-                                      sizeof(plain),
-                                      out,
-                                      sizeof(out),
-                                      &ol));
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_psa_aead_encrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      aad,
-                                      0U,
-                                      plain,
-                                      sizeof(plain),
-                                      out,
-                                      sizeof(out),
-                                      &ol));
+  /* V1: plain!=NULL, aad=NULL/0 -> both sub-decisions false. */
+  TEST_ASSERT_EQ(k_ra8_ok, enc_std(k, nullptr, 0U, plain, sizeof(plain)));
+  /* V2: plain=NULL with plain_len!=0 -> A=T, B=T. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, enc_std(k, nullptr, 0U, nullptr, sizeof(plain)));
+  /* V3: plain=NULL with plain_len==0 -> A=T, B=F. */
+  TEST_ASSERT_EQ(k_ra8_ok, enc_std(k, nullptr, 0U, nullptr, 0U));
+  /* V4: aad=NULL with aad_len!=0 -> C=T, D=T. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, enc_std(k, nullptr, sizeof(aad), plain, sizeof(plain)));
+  /* V5: aad!=NULL with aad_len==0 -> C=F. */
+  TEST_ASSERT_EQ(k_ra8_ok, enc_std(k, aad, 0U, plain, sizeof(plain)));
   (void)ra8_psa_key_destroy(k);
   teardown();
   TEST_END("psa MC/DC: encrypt_check (plain==NULL&&len) || (aad==NULL&&len)");
@@ -277,30 +305,11 @@ static void test_mcdc_aead_encrypt_handle_alg_usage(void)
   const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
   uint8_t       out[k_psa_mcdc_plain_len + k_ra8_psa_gcm_tag_len];
   size_t        ol = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_psa_aead_encrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      plain,
-                                      sizeof(plain),
-                                      out,
-                                      sizeof(out),
-                                      &ol));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_psa_aead_encrypt(nullptr,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      plain,
-                                      sizeof(plain),
-                                      out,
-                                      sizeof(out),
-                                      &ol));
+  /* V1: valid handle, GCM alg, encrypt usage -> all conditions false. */
+  TEST_ASSERT_EQ(k_ra8_ok, enc_std(k, nullptr, 0U, plain, sizeof(plain)));
+  /* V2: invalid handle short-circuits. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, enc_std(nullptr, nullptr, 0U, plain, sizeof(plain)));
+  /* V3: wrong algorithm tag. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_psa_aead_encrypt(k,
                                       k_ra8_psa_alg_sha_256,
@@ -314,19 +323,9 @@ static void test_mcdc_aead_encrypt_handle_alg_usage(void)
                                       sizeof(out),
                                       &ol));
   (void)ra8_psa_key_destroy(k);
+  /* V4: decrypt-only key lacks the encrypt usage bit. */
   ra8_psa_key_t k2 = mcdc_import_aes_key(k_ra8_psa_usage_decrypt);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_psa_aead_encrypt(k2,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      plain,
-                                      sizeof(plain),
-                                      out,
-                                      sizeof(out),
-                                      &ol));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, enc_std(k2, nullptr, 0U, plain, sizeof(plain)));
   (void)ra8_psa_key_destroy(k2);
   teardown();
   TEST_END("psa MC/DC: encrypt (!valid || alg!=gcm || !usage_encrypt)");
@@ -402,35 +401,14 @@ static void test_mcdc_aead_decrypt_check_triple(void)
   ra8_psa_key_t k =
     mcdc_import_aes_key((ra8_psa_key_usage_t)(k_ra8_psa_usage_encrypt | k_ra8_psa_usage_decrypt));
   TEST_ASSERT_NOT_NULL(k);
-  const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
-  uint8_t       ct[k_psa_mcdc_plain_len + k_ra8_psa_gcm_tag_len];
-  size_t        ctl = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_psa_aead_encrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      plain,
-                                      sizeof(plain),
-                                      ct,
-                                      sizeof(ct),
-                                      &ctl));
+  uint8_t ct[k_psa_mcdc_plain_len + k_ra8_psa_gcm_tag_len];
+  size_t  ctl = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, enc_ct(k, nullptr, 0U, (size_t)k_psa_mcdc_plain_len, ct, &ctl));
   uint8_t out[k_psa_mcdc_plain_len];
   size_t  ol = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_psa_aead_decrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      ct,
-                                      ctl,
-                                      out,
-                                      sizeof(out),
-                                      &ol));
+  /* V1: every pointer valid -> all conditions false. */
+  TEST_ASSERT_EQ(k_ra8_ok, dec_std(k, nullptr, 0U, ct, ctl, out, sizeof(out), &ol));
+  /* V2: nonce=NULL short-circuits. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_psa_aead_decrypt(k,
                                       k_ra8_psa_alg_aes_gcm,
@@ -443,30 +421,12 @@ static void test_mcdc_aead_decrypt_check_triple(void)
                                       out,
                                       sizeof(out),
                                       &ol));
+  /* V3: cipher=NULL. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_psa_aead_decrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      nullptr,
-                                      ctl,
-                                      out,
-                                      sizeof(out),
-                                      &ol));
+                 dec_std(k, nullptr, 0U, nullptr, ctl, out, sizeof(out), &ol));
+  /* V4: out_len=NULL. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_psa_aead_decrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      ct,
-                                      ctl,
-                                      out,
-                                      sizeof(out),
-                                      nullptr));
+                 dec_std(k, nullptr, 0U, ct, ctl, out, sizeof(out), nullptr));
   (void)ra8_psa_key_destroy(k);
   teardown();
   TEST_END("psa MC/DC: decrypt_check (nonce||cipher||out_len) NULL triple");
@@ -484,60 +444,20 @@ static void test_mcdc_aead_decrypt_aad_pair(void)
   prep_init();
   ra8_psa_key_t k =
     mcdc_import_aes_key((ra8_psa_key_usage_t)(k_ra8_psa_usage_encrypt | k_ra8_psa_usage_decrypt));
-  const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
-  const uint8_t aad[k_psa_mcdc_short_aad]   = {0U};
+  const uint8_t aad[k_psa_mcdc_short_aad] = {0U};
   uint8_t       ct[k_psa_mcdc_plain_len + k_ra8_psa_gcm_tag_len];
   size_t        ctl = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_psa_aead_encrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      aad,
-                                      sizeof(aad),
-                                      plain,
-                                      sizeof(plain),
-                                      ct,
-                                      sizeof(ct),
-                                      &ctl));
-  uint8_t         out[k_psa_mcdc_plain_len];
-  size_t          ol = 0U;
-  const ra8_err_t v1 = ra8_psa_aead_decrypt(k,
-                                            k_ra8_psa_alg_aes_gcm,
-                                            k_test_nonce,
-                                            sizeof(k_test_nonce),
-                                            nullptr,
-                                            0U,
-                                            ct,
-                                            ctl,
-                                            out,
-                                            sizeof(out),
-                                            &ol);
+  TEST_ASSERT_EQ(k_ra8_ok, enc_ct(k, aad, sizeof(aad), (size_t)k_psa_mcdc_plain_len, ct, &ctl));
+  uint8_t out[k_psa_mcdc_plain_len];
+  size_t  ol = 0U;
+  /* V1: aad=NULL, aad_len=0 -> C1=T, C2=F -> F (tag mismatch is fine). */
+  const ra8_err_t v1 = dec_std(k, nullptr, 0U, ct, ctl, out, sizeof(out), &ol);
   TEST_ASSERT(v1 == k_ra8_ok || v1 == k_ra8_err_crc_mismatch);
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_psa_aead_decrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      aad,
-                                      sizeof(aad),
-                                      ct,
-                                      ctl,
-                                      out,
-                                      sizeof(out),
-                                      &ol));
+  /* V2: aad valid -> C1=F. */
+  TEST_ASSERT_EQ(k_ra8_ok, dec_std(k, aad, sizeof(aad), ct, ctl, out, sizeof(out), &ol));
+  /* V3: aad=NULL with aad_len!=0 -> C1=T, C2=T -> T. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_psa_aead_decrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      sizeof(aad),
-                                      ct,
-                                      ctl,
-                                      out,
-                                      sizeof(out),
-                                      &ol));
+                 dec_std(k, nullptr, sizeof(aad), ct, ctl, out, sizeof(out), &ol));
   (void)ra8_psa_key_destroy(k);
   teardown();
   TEST_END("psa MC/DC: decrypt_check (aad==NULL && aad_len!=0)");
@@ -558,47 +478,17 @@ static void test_mcdc_aead_decrypt_handle_alg_usage(void)
   prep_init();
   ra8_psa_key_t k =
     mcdc_import_aes_key((ra8_psa_key_usage_t)(k_ra8_psa_usage_encrypt | k_ra8_psa_usage_decrypt));
-  const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
-  uint8_t       ct[k_psa_mcdc_plain_len + k_ra8_psa_gcm_tag_len];
-  size_t        ctl = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_psa_aead_encrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      plain,
-                                      sizeof(plain),
-                                      ct,
-                                      sizeof(ct),
-                                      &ctl));
+  uint8_t ct[k_psa_mcdc_plain_len + k_ra8_psa_gcm_tag_len];
+  size_t  ctl = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, enc_ct(k, nullptr, 0U, (size_t)k_psa_mcdc_plain_len, ct, &ctl));
   uint8_t out[k_psa_mcdc_plain_len];
   size_t  ol = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_psa_aead_decrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      ct,
-                                      ctl,
-                                      out,
-                                      sizeof(out),
-                                      &ol));
+  /* V1: valid handle, GCM alg, decrypt usage -> all conditions false. */
+  TEST_ASSERT_EQ(k_ra8_ok, dec_std(k, nullptr, 0U, ct, ctl, out, sizeof(out), &ol));
+  /* V2: invalid handle short-circuits. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_psa_aead_decrypt(nullptr,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      ct,
-                                      ctl,
-                                      out,
-                                      sizeof(out),
-                                      &ol));
+                 dec_std(nullptr, nullptr, 0U, ct, ctl, out, sizeof(out), &ol));
+  /* V3: wrong algorithm tag. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_psa_aead_decrypt(k,
                                       k_ra8_psa_alg_sha_256,
@@ -612,19 +502,9 @@ static void test_mcdc_aead_decrypt_handle_alg_usage(void)
                                       sizeof(out),
                                       &ol));
   (void)ra8_psa_key_destroy(k);
+  /* V4: encrypt-only key lacks the decrypt usage bit. */
   ra8_psa_key_t k2 = mcdc_import_aes_key(k_ra8_psa_usage_encrypt);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_psa_aead_decrypt(k2,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      ct,
-                                      ctl,
-                                      out,
-                                      sizeof(out),
-                                      &ol));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, dec_std(k2, nullptr, 0U, ct, ctl, out, sizeof(out), &ol));
   (void)ra8_psa_key_destroy(k2);
   teardown();
   TEST_END("psa MC/DC: decrypt (!valid || alg!=gcm || !usage_decrypt)");
@@ -643,35 +523,14 @@ static void test_mcdc_aead_decrypt_size_pair(void)
   prep_init();
   ra8_psa_key_t k =
     mcdc_import_aes_key((ra8_psa_key_usage_t)(k_ra8_psa_usage_encrypt | k_ra8_psa_usage_decrypt));
-  const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
-  uint8_t       ct[k_psa_mcdc_plain_len + k_ra8_psa_gcm_tag_len];
-  size_t        ctl = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_psa_aead_encrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      plain,
-                                      sizeof(plain),
-                                      ct,
-                                      sizeof(ct),
-                                      &ctl));
+  uint8_t ct[k_psa_mcdc_plain_len + k_ra8_psa_gcm_tag_len];
+  size_t  ctl = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, enc_ct(k, nullptr, 0U, (size_t)k_psa_mcdc_plain_len, ct, &ctl));
   uint8_t out[k_psa_mcdc_plain_len];
   size_t  ol = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_psa_aead_decrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      ct,
-                                      ctl,
-                                      out,
-                                      sizeof(out),
-                                      &ol));
+  /* V1: nonce_len ok, cipher_len ok -> both false. */
+  TEST_ASSERT_EQ(k_ra8_ok, dec_std(k, nullptr, 0U, ct, ctl, out, sizeof(out), &ol));
+  /* V2: bad nonce length short-circuits. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_psa_aead_decrypt(k,
                                       k_ra8_psa_alg_aes_gcm,
@@ -684,19 +543,10 @@ static void test_mcdc_aead_decrypt_size_pair(void)
                                       out,
                                       sizeof(out),
                                       &ol));
+  /* V3: cipher shorter than the GCM tag. */
   uint8_t tiny[k_psa_mcdc_tiny_len] = {0U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_psa_aead_decrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      tiny,
-                                      sizeof(tiny),
-                                      out,
-                                      sizeof(out),
-                                      &ol));
+                 dec_std(k, nullptr, 0U, tiny, sizeof(tiny), out, sizeof(out), &ol));
   (void)ra8_psa_key_destroy(k);
   teardown();
   TEST_END("psa MC/DC: decrypt sizes (nonce_len||cipher_len)");
@@ -717,73 +567,20 @@ static void test_mcdc_aead_decrypt_out_pair(void)
   prep_init();
   ra8_psa_key_t k =
     mcdc_import_aes_key((ra8_psa_key_usage_t)(k_ra8_psa_usage_encrypt | k_ra8_psa_usage_decrypt));
-  const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
-  uint8_t       ct8[k_psa_mcdc_plain_len + k_ra8_psa_gcm_tag_len];
-  size_t        ctl8 = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_psa_aead_encrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      plain,
-                                      sizeof(plain),
-                                      ct8,
-                                      sizeof(ct8),
-                                      &ctl8));
+  uint8_t ct8[k_psa_mcdc_plain_len + k_ra8_psa_gcm_tag_len];
+  size_t  ctl8 = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, enc_ct(k, nullptr, 0U, (size_t)k_psa_mcdc_plain_len, ct8, &ctl8));
   uint8_t ct0[k_ra8_psa_gcm_tag_len];
   size_t  ctl0 = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_psa_aead_encrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      nullptr,
-                                      0U,
-                                      ct0,
-                                      sizeof(ct0),
-                                      &ctl0));
+  TEST_ASSERT_EQ(k_ra8_ok, enc_ct(k, nullptr, 0U, 0U, ct0, &ctl0));
   uint8_t out[k_psa_mcdc_plain_len];
   size_t  ol = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_psa_aead_decrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      ct0,
-                                      ctl0,
-                                      nullptr,
-                                      0U,
-                                      &ol));
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_psa_aead_decrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      ct8,
-                                      ctl8,
-                                      out,
-                                      sizeof(out),
-                                      &ol));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_psa_aead_decrypt(k,
-                                      k_ra8_psa_alg_aes_gcm,
-                                      k_test_nonce,
-                                      sizeof(k_test_nonce),
-                                      nullptr,
-                                      0U,
-                                      ct8,
-                                      ctl8,
-                                      nullptr,
-                                      0U,
-                                      &ol));
+  /* V1: out=NULL with plain_len==0 (cipher is exactly the tag) -> F. */
+  TEST_ASSERT_EQ(k_ra8_ok, dec_std(k, nullptr, 0U, ct0, ctl0, nullptr, 0U, &ol));
+  /* V2: out!=NULL -> C1=F. */
+  TEST_ASSERT_EQ(k_ra8_ok, dec_std(k, nullptr, 0U, ct8, ctl8, out, sizeof(out), &ol));
+  /* V3: out=NULL with plain_len!=0 -> T. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, dec_std(k, nullptr, 0U, ct8, ctl8, nullptr, 0U, &ol));
   (void)ra8_psa_key_destroy(k);
   teardown();
   TEST_END("psa MC/DC: decrypt_check (out==NULL && plain_len!=0)");

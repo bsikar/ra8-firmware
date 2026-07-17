@@ -471,8 +471,50 @@ static void test_aead_round_trip(void)
   TEST_ASSERT_EQ(sizeof(plain), rec_len);
   TEST_ASSERT(memcmp(recovered, plain, sizeof(plain)) == 0);
 
+  (void)ra8_psa_key_destroy(k);
+  teardown();
+  TEST_END("psa aead encrypt + decrypt round trip");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_aead_tamper_detected(void)
+{
+  TEST_BEGIN("psa aead decrypt detects a tampered tag");
+  prep_init();
+  const ra8_psa_key_attr_t attr = {
+    .type  = k_ra8_psa_key_type_aes,
+    .alg   = k_ra8_psa_alg_aes_gcm,
+    .usage = (ra8_psa_key_usage_t)(k_ra8_psa_usage_encrypt | k_ra8_psa_usage_decrypt),
+  };
+  ra8_psa_key_t k = nullptr;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_psa_key_import(&k, &attr, k_test_aes_key, sizeof(k_test_aes_key)));
+
+  const uint8_t plain[k_psa_test_plain_len] = {'h', 'e', 'l', 'l', 'o', '!', '!', '\0'};
+  const uint8_t aad[k_psa_test_aad_len]     = {'A', 'A', 'D', '0'};
+  uint8_t       ct[k_psa_test_plain_len + k_ra8_psa_gcm_tag_len];
+  size_t        ct_len = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_psa_aead_encrypt(k,
+                                      k_ra8_psa_alg_aes_gcm,
+                                      k_test_nonce,
+                                      sizeof(k_test_nonce),
+                                      aad,
+                                      sizeof(aad),
+                                      plain,
+                                      sizeof(plain),
+                                      ct,
+                                      sizeof(ct),
+                                      &ct_len));
+
   /* Tamper the tag and ensure decrypt detects it. */
   ct[ct_len - 1U] ^= 0xFFU;
+  uint8_t recovered[k_psa_test_plain_len];
+  size_t  rec_len = 0U;
   TEST_ASSERT_EQ(k_ra8_err_crc_mismatch,
                  ra8_psa_aead_decrypt(k,
                                       k_ra8_psa_alg_aes_gcm,
@@ -488,7 +530,7 @@ static void test_aead_round_trip(void)
 
   (void)ra8_psa_key_destroy(k);
   teardown();
-  TEST_END("psa aead encrypt + decrypt round trip");
+  TEST_END("psa aead decrypt detects a tampered tag");
 }
 
 /**
@@ -571,6 +613,7 @@ int32_t main(void)
   test_sign_verify_round_trip();
   test_sign_wrong_alg();
   test_aead_round_trip();
+  test_aead_tamper_detected();
   test_aead_invalid_args();
   (void)fprintf(stderr, "[OK  ] test_ra8_psa_crypto_api.c\n");
   return 0;

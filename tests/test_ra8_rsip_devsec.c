@@ -72,6 +72,21 @@ static void prep_running(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_init(&cfg));
 }
 
+/**
+ * @brief One-vector ra8_rsip_kdf call with the fixed label and 32-byte output.
+ *
+ * @details Exists so each MC/DC vector reads as one source line under
+ * the NASA Rule 4 function-size cap; only the operation selector and
+ * the IKM handle vary across the vectors.
+ * @since 0.1.0
+ */
+static ra8_err_t
+kdf_vec(ra8_rsip_kdf_op_t op, const ra8_rsip_key_handle_t* ikm, ra8_rsip_key_handle_t* out)
+{
+  const uint8_t label[8] = {'l', 'a', 'b', 'e', 'l', 0U, 0U, 0U};
+  return ra8_rsip_kdf(op, ikm, label, sizeof(label), nullptr, 0U, 32U, out);
+}
+
 /* ===========================================================================
  * Round-3 tests: asymmetric (RSA + ECDSA + ECDH)
  * ===========================================================================
@@ -619,70 +634,24 @@ static void test_mcdc_kdf_hkdf_ikm_required_quad(void)
     k_ra8_ok,
     ra8_rsip_hmac_install_plain(k_ra8_rsip_oem_cmd_hmac_sha256, hmac_key, sizeof(hmac_key), &ikm));
 
-  const uint8_t         label[8] = {'l', 'a', 'b', 'e', 'l', 0U, 0U, 0U};
-  ra8_rsip_key_handle_t out      = {};
+  ra8_rsip_key_handle_t out = {};
 
   /* V1: HKDF-SHA256 + ikm==NULL -> null_ptr. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-
-                 ra8_rsip_kdf(k_ra8_rsip_kdf_op_hkdf_sha256,
-                              nullptr,
-                              label,
-                              sizeof(label),
-                              nullptr,
-                              0U,
-                              32U,
-                              &out));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, kdf_vec(k_ra8_rsip_kdf_op_hkdf_sha256, nullptr, &out));
 
   /* V2: HKDF-SHA384 + ikm==NULL -> null_ptr. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-
-                 ra8_rsip_kdf(k_ra8_rsip_kdf_op_hkdf_sha384,
-                              nullptr,
-                              label,
-                              sizeof(label),
-                              nullptr,
-                              0U,
-                              32U,
-                              &out));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, kdf_vec(k_ra8_rsip_kdf_op_hkdf_sha384, nullptr, &out));
 
   /* V3: HKDF-SHA512 + ikm==NULL -> null_ptr. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-
-                 ra8_rsip_kdf(k_ra8_rsip_kdf_op_hkdf_sha512,
-                              nullptr,
-                              label,
-                              sizeof(label),
-                              nullptr,
-                              0U,
-                              32U,
-                              &out));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, kdf_vec(k_ra8_rsip_kdf_op_hkdf_sha512, nullptr, &out));
 
   /* V4: HUK_LABEL + ikm==NULL -> outer-OR all-false -> proceed (OK). */
   *ra8_rsip_reg32(k_ra8_rsip_off_kdf_out) = (uint32_t)k_ra8_rsip_oem_cmd_hmac_sha256;
-  TEST_ASSERT_EQ(k_ra8_ok,
-
-                 ra8_rsip_kdf(k_ra8_rsip_kdf_op_huk_label,
-                              nullptr,
-                              label,
-                              sizeof(label),
-                              nullptr,
-                              0U,
-                              32U,
-                              &out));
+  TEST_ASSERT_EQ(k_ra8_ok, kdf_vec(k_ra8_rsip_kdf_op_huk_label, nullptr, &out));
 
   /* V5: HKDF-SHA256 + valid ikm -> C4=F -> proceed (OK). */
   *ra8_rsip_reg32(k_ra8_rsip_off_kdf_out) = (uint32_t)k_ra8_rsip_oem_cmd_hmac_sha256;
-  TEST_ASSERT_EQ(k_ra8_ok,
-
-                 ra8_rsip_kdf(k_ra8_rsip_kdf_op_hkdf_sha256,
-                              &ikm,
-                              label,
-                              sizeof(label),
-                              nullptr,
-                              0U,
-                              32U,
-                              &out));
+  TEST_ASSERT_EQ(k_ra8_ok, kdf_vec(k_ra8_rsip_kdf_op_hkdf_sha256, &ikm, &out));
 
   TEST_END("rsip kdf MC/DC: (HKDF256||HKDF384||HKDF512) && ikm==NULL");
 }
