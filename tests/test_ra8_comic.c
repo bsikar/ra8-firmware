@@ -375,6 +375,30 @@ static void test_comic_page_name_filter(void)
 }
 
 /**
+ * @brief Open the fixture archive with the standard page/name budgets.
+ * @param[out] c     Comic handle under test.
+ * @param[out] pages Page-descriptor table.
+ * @param[out] names Name-string buffer.
+ * @param[in]  size  Archive byte length to present.
+ * @return The `ra8_comic_open` result code.
+ * @pre The shared archive buffer holds @p size bytes.
+ * @post No state beyond @p c / @p pages / @p names is modified.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static ra8_err_t tc_open_std(ra8_comic_t* c, ra8_comic_page_t* pages, char* names, uint64_t size)
+{
+  return ra8_comic_open(c,
+                        tc_read,
+                        nullptr,
+                        size,
+                        pages,
+                        (uint32_t)k_tc_page_cap,
+                        names,
+                        (uint32_t)k_tc_name_cap);
+}
+
+/**
  * @test test_comic_facade_edges
  * @brief The facade's NULL-reader accessors, unopened page_info, zero-capacity
  *        opens, a short magic read, and the ZIP-magic discrimination legs.
@@ -413,55 +437,24 @@ static void test_comic_facade_edges(void)
   /* Magic read shorter than the four bytes the ZIP test needs. */
   memcpy(s_arc, "PK", 2U);
   s_arc_size = 2U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_comic_open(&c,
-                                tc_read,
-                                nullptr,
-                                2U,
-                                pages,
-                                (uint32_t)k_tc_page_cap,
-                                names,
-                                (uint32_t)sizeof(names)));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, tc_open_std(&c, pages, names, 2U));
 
   /* 'P' but not "PK" -> neither ZIP nor RAR. */
   memcpy(s_arc, "PX\003\004junk", 8U);
   s_arc_size = 8U;
-  TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_comic_open(&c,
-                                tc_read,
-                                nullptr,
-                                8U,
-                                pages,
-                                (uint32_t)k_tc_page_cap,
-                                names,
-                                (uint32_t)sizeof(names)));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, tc_open_std(&c, pages, names, 8U));
 
   /* "PK" but the 3rd byte is neither a local-file-header nor an EOCD marker. */
   memcpy(s_arc, "PK\001\002junk", 8U);
   s_arc_size = 8U;
-  TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_comic_open(&c,
-                                tc_read,
-                                nullptr,
-                                8U,
-                                pages,
-                                (uint32_t)k_tc_page_cap,
-                                names,
-                                (uint32_t)sizeof(names)));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, tc_open_std(&c, pages, names, 8U));
 
   /* Empty-archive EOCD "PK\x05\x06": the ZIP magic's EOCD leg is taken; an
    * archive with no image entries opens to no pages (or a miniz open error). */
   memset(s_arc, 0, 22U);
   memcpy(s_arc, "PK\005\006", 4U);
   s_arc_size           = 22U;
-  const ra8_err_t eocd = ra8_comic_open(&c,
-                                        tc_read,
-                                        nullptr,
-                                        22U,
-                                        pages,
-                                        (uint32_t)k_tc_page_cap,
-                                        names,
-                                        (uint32_t)sizeof(names));
+  const ra8_err_t eocd = tc_open_std(&c, pages, names, 22U);
   TEST_ASSERT(eocd != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_comic_kind_none, ra8_comic_kind(&c));
   TEST_END("comic: facade guards + magic discrimination");
