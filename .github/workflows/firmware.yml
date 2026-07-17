@@ -345,11 +345,14 @@ jobs:
           # must fit in <=60 lines.  Independent of the clang-tidy
           # compile-db, so it covers cross-compiled TUs the host tidy
           # build never sees (ThreadX/USBX/NetX/HAL register code).
+          # Scans libs/ src/ port/ examples/ tools/ tests/ (board_sim and
+          # the host tests are held to the same page cap as the firmware).
           python3 scripts/utils/check_function_size.py
           # check_file_size.py: maintainability cap -- no single .c/.h
           # over 1000 lines.  Complements the per-function Rule 4 gate,
           # which a multi-thousand-line god-file or copy-pasted sibling
-          # bodies can pass while still being unreviewable.
+          # bodies can pass while still being unreviewable.  Same
+          # libs/ src/ port/ examples/ tools/ tests/ scope.
           python3 scripts/utils/check_file_size.py
           # check_header_file_placement.py: a header under a src/ directory is
           # module-private and must be named *_internal.h.  A non-internal

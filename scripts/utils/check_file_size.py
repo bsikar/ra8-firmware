@@ -10,9 +10,10 @@ while growing into a multi-thousand-line god-file, or the same body can be
 copy-pasted across siblings until each is enormous.
 
 This file-level backstop walks every ``.c``/``.h``/``.cpp``/``.hpp`` under
-``libs/``, ``src/``, ``port/``, and ``examples/`` and fails if any one file is
-over the cap.  Vendor trees (``libs/third_party/``, ``port/threadx/``) and
-generated font tables (``libs/fonts/``) are excluded.
+``libs/``, ``src/``, ``port/``, ``examples/``, ``tools/``, and ``tests/`` and
+fails if any one file is over the cap.  Vendor trees (``libs/third_party/``,
+``port/threadx/``), generated font tables (``libs/fonts/``), and generated
+Vela model blobs (``tools/vela/generated/``) are excluded.
 
 A file may waive the cap with an in-file marker in its head (mirrors the
 repo's MAGIC-OK / CITES-OK family):
@@ -39,11 +40,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 THRESHOLD_LINES = 1000
 
 SOURCE_SUFFIXES = (".c", ".h", ".cpp", ".hpp", ".cc", ".cxx", ".hh", ".hxx")
-SCAN_ROOTS = ("libs", "src", "port", "examples")
+SCAN_ROOTS = ("libs", "src", "port", "examples", "tools", "tests")
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
     "libs/fonts/",
     "port/threadx/",
+    "tools/vela/generated/",
     "/build/",
     "_unsupported/",
 )

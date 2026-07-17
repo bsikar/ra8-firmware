@@ -11,9 +11,8 @@
  * (and therefore by every `ra8_fs_fat*.c` file) and by the prototype sub-headers,
  * whose helper declarations reference these types.
  *
- * This header aggregates the module's on-disk-layout enums, so it legitimately
- * approaches the per-file line cap: FILE-SIZE-OK (declarations-only aggregation
- * header).
+ * This header aggregates the module's on-disk-layout enums shared across the
+ * FAT translation units.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
