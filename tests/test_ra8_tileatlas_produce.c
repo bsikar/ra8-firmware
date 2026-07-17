@@ -503,6 +503,80 @@ static void test_produce_jpeg_parity(void)
 }
 
 /**
+ * @brief Build the big PNG and assert the bounded-RAM working-set invariants.
+ *
+ * @details Confirms the fixed working set is non-zero and within `s_work`, that
+ *          the decoded image is at least 5x that set, and that the full resident
+ *          set stays inside the RAM budget.
+ *
+ * @return The `ra8_tileatlas_work_bytes` working-set size in bytes.
+ * @pre The shared source/store buffers are available.
+ * @post `s_src` holds the big test PNG; all budget invariants held.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static uint32_t produce_bounded_budget(void)
+{
+  png_build(k_t_big_w, k_t_big_h, 0U, false, false);
+  const uint64_t decoded = (uint64_t)k_t_big_w * (uint64_t)k_t_big_h;
+  const uint32_t need    = ra8_tileatlas_work_bytes((uint16_t)k_t_big_w,
+                                                    (uint16_t)k_t_big_h,
+                                                    (uint16_t)k_t_big_tile,
+                                                    (uint16_t)k_t_big_tile);
+  TEST_ASSERT(need > 0U);
+  TEST_ASSERT(need <= (uint32_t)sizeof(s_work));
+  /* The regime under test: decoded image >= 5x the whole working set. */
+  TEST_ASSERT(decoded >= (5U * (uint64_t)need));
+  /* And the full resident set (arena + page-back buffers) is in budget. */
+  TEST_ASSERT(((uint64_t)need + (uint64_t)sizeof(s_cell) + (uint64_t)sizeof(s_scratch)) <=
+              (uint64_t)k_t_ram_budget);
+  return need;
+}
+
+/**
+ * @brief Spot-check page-back parity at the four corners of the tile grid.
+ *
+ * @param[in] info Parsed atlas info from the bounded-RAM produce run.
+ *
+ * @return None.
+ * @pre `s_store` holds the produced atlas.
+ * @post Every sampled corner pixel matched the generator pattern.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void produce_bounded_check_corners(const ra8_tileatlas_info_t* info)
+{
+  const uint16_t corners[4][2] = {
+    {0U, 0U},
+    {(uint16_t)(info->tile_cols - 1U), 0U},
+    {0U, (uint16_t)(info->tile_rows - 1U)},
+    {(uint16_t)(info->tile_cols - 1U), (uint16_t)(info->tile_rows - 1U)}};
+  for (uint32_t i = 0U; i < 4U; i++) {
+    uint16_t w = 0U;
+    uint16_t h = 0U;
+    TEST_ASSERT_EQ(k_ra8_ok,
+                   ra8_tileatlas_read_tile(ra8_tileatlas_memstore_pread,
+                                           &s_store,
+                                           info,
+                                           corners[i][0],
+                                           corners[i][1],
+                                           s_scratch,
+                                           (uint32_t)sizeof(s_scratch),
+                                           s_cell,
+                                           (uint32_t)sizeof(s_cell),
+                                           &w,
+                                           &h));
+    const uint32_t x0 = (uint32_t)corners[i][0] * info->tile_w;
+    const uint32_t y0 = (uint32_t)corners[i][1] * info->tile_h;
+    for (uint32_t r = 0U; r < h; r += 37U) {
+      for (uint32_t c = 0U; c < w; c += 41U) {
+        TEST_ASSERT_EQ(pix(x0 + c, y0 + r, 0U), s_cell[(r * w) + c]);
+      }
+    }
+  }
+}
+
+/**
  * @test test_produce_bounded_ram
  * @brief A source whose decoded size (8 MiB+) dwarfs the fixed working set
  *        transcodes inside it: the #231 bounded high-water proof.
@@ -520,19 +594,7 @@ static void test_produce_jpeg_parity(void)
 static void test_produce_bounded_ram(void)
 {
   TEST_BEGIN("produce: decoded size >> fixed working set (bounded RAM high-water)");
-  png_build(k_t_big_w, k_t_big_h, 0U, false, false);
-  const uint64_t decoded = (uint64_t)k_t_big_w * (uint64_t)k_t_big_h;
-  const uint32_t need    = ra8_tileatlas_work_bytes((uint16_t)k_t_big_w,
-                                                    (uint16_t)k_t_big_h,
-                                                    (uint16_t)k_t_big_tile,
-                                                    (uint16_t)k_t_big_tile);
-  TEST_ASSERT(need > 0U);
-  TEST_ASSERT(need <= (uint32_t)sizeof(s_work));
-  /* The regime under test: decoded image >= 5x the whole working set. */
-  TEST_ASSERT(decoded >= (5U * (uint64_t)need));
-  /* And the full resident set (arena + page-back buffers) is in budget. */
-  TEST_ASSERT(((uint64_t)need + (uint64_t)sizeof(s_cell) + (uint64_t)sizeof(s_scratch)) <=
-              (uint64_t)k_t_ram_budget);
+  const uint32_t need = produce_bounded_budget();
 
   static t_pull_t pull;
   pull    = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
@@ -556,34 +618,7 @@ static void test_produce_bounded_ram(void)
   TEST_ASSERT_EQ(k_t_big_h, info.height);
   TEST_ASSERT_EQ((k_t_big_w / k_t_big_tile) * (k_t_big_h / k_t_big_tile), info.tile_count);
   /* Page-back spot parity at the four corners of the grid. */
-  const uint16_t corners[4][2] = {
-    {0U, 0U},
-    {(uint16_t)(info.tile_cols - 1U), 0U},
-    {0U, (uint16_t)(info.tile_rows - 1U)},
-    {(uint16_t)(info.tile_cols - 1U), (uint16_t)(info.tile_rows - 1U)}};
-  for (uint32_t i = 0U; i < 4U; i++) {
-    uint16_t w = 0U;
-    uint16_t h = 0U;
-    TEST_ASSERT_EQ(k_ra8_ok,
-                   ra8_tileatlas_read_tile(ra8_tileatlas_memstore_pread,
-                                           &s_store,
-                                           &info,
-                                           corners[i][0],
-                                           corners[i][1],
-                                           s_scratch,
-                                           (uint32_t)sizeof(s_scratch),
-                                           s_cell,
-                                           (uint32_t)sizeof(s_cell),
-                                           &w,
-                                           &h));
-    const uint32_t x0 = (uint32_t)corners[i][0] * info.tile_w;
-    const uint32_t y0 = (uint32_t)corners[i][1] * info.tile_h;
-    for (uint32_t r = 0U; r < h; r += 37U) {
-      for (uint32_t c = 0U; c < w; c += 41U) {
-        TEST_ASSERT_EQ(pix(x0 + c, y0 + r, 0U), s_cell[(r * w) + c]);
-      }
-    }
-  }
+  produce_bounded_check_corners(&info);
   TEST_END("produce: decoded size >> fixed working set (bounded RAM high-water)");
 }
 
@@ -609,27 +644,15 @@ static void expect_produce_err(ra8_err_t want)
 }
 
 /**
- * @test test_produce_hostile
- * @brief Hostile / unsupported sources are rejected fail-closed with the
- *        contracted codes -- this is untrusted EPUB content.
- *
- * @par MC/DC:
- * Decision (geometry caps): `width == 0 || width > cap_w || height == 0 ||
- * height > cap_h` (4 conditions)
- * - Vector 1: in-cap dims       -> false (parity tests above)
- * - Vector 2: width > cap_w     -> true  (oversize-width case here)
- * - Vector 3: height > cap_h    -> true  (oversize-height case here)
- * (width==0 / height==0 are unreachable through both decoders -- each
- * rejects zero dims in its own header parse -- and are covered by the
- * producer's direct-geometry unit vectors in the PNG IHDR cases.)
- *
- * Decision (PLTE accept): `len == 0 || len % 3 != 0 || len > 768 ||
- * has_plte` (4 conditions) -- vectors: valid PLTE (parity tests), len
- * indivisible by 3, oversize PLTE, duplicate PLTE.
+ * @brief Reject a non-PNG/JPEG source and a too-short-to-sniff source.
+ * @return None.
+ * @pre The shared source/store buffers are available.
+ * @post Both malformed sniff inputs returned their rejection code.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
  */
-static void test_produce_hostile(void)
+static void produce_hostile_sniff(void)
 {
-  TEST_BEGIN("produce: hostile / unsupported sources fail closed");
   /* Not a JPEG/PNG at all (0xFF then junk: sniff condition-2 vector). */
   s_src[0] = 0xFFU;
   s_src[1] = 0x00U;
@@ -639,35 +662,55 @@ static void test_produce_hostile(void)
   /* Too short to sniff. */
   s_src_len = 4U;
   expect_produce_err(k_ra8_err_protocol_error);
-  /* Pull failure propagates. */
-  {
-    ra8_tileatlas_info_t info = {};
-    s_store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
-    const ra8_tileatlas_produce_cfg_t cfg = {
-      .pull     = t_pull_fail,
-      .pull_ctx = NULL,
-      .sink     = ra8_tileatlas_memstore_sink,
-      .sink_ctx = &s_store,
-      .tile_w   = (uint16_t)k_t_tile,
-      .tile_h   = (uint16_t)k_t_tile,
-      .codec    = (uint8_t)k_ra8_tileatlas_codec_deflate,
-      .work     = s_work,
-      .work_cap = (size_t)k_t_work_small,
-    };
-    TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_tileatlas_produce(&cfg, &info));
-    /* Config guards. */
-    ra8_tileatlas_produce_cfg_t bad = cfg;
-    bad.tile_w                      = 0U;
-    TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tileatlas_produce(&bad, &info));
-    bad       = cfg;
-    bad.codec = 9U;
-    TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tileatlas_produce(&bad, &info));
-    bad      = cfg;
-    bad.pull = NULL;
-    TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_tileatlas_produce(&bad, &info));
-    TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_tileatlas_produce(&cfg, NULL));
-  }
+}
 
+/**
+ * @brief Propagate a pull failure and reject the config-guard vectors.
+ * @return None.
+ * @pre The shared source/store buffers are available.
+ * @post The pull error and each bad-config guard returned their codes.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void produce_hostile_pull_and_cfg(void)
+{
+  ra8_tileatlas_info_t info = {};
+  s_store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  const ra8_tileatlas_produce_cfg_t cfg = {
+    .pull     = t_pull_fail,
+    .pull_ctx = NULL,
+    .sink     = ra8_tileatlas_memstore_sink,
+    .sink_ctx = &s_store,
+    .tile_w   = (uint16_t)k_t_tile,
+    .tile_h   = (uint16_t)k_t_tile,
+    .codec    = (uint8_t)k_ra8_tileatlas_codec_deflate,
+    .work     = s_work,
+    .work_cap = (size_t)k_t_work_small,
+  };
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_tileatlas_produce(&cfg, &info));
+  /* Config guards. */
+  ra8_tileatlas_produce_cfg_t bad = cfg;
+  bad.tile_w                      = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tileatlas_produce(&bad, &info));
+  bad       = cfg;
+  bad.codec = 9U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tileatlas_produce(&bad, &info));
+  bad      = cfg;
+  bad.pull = NULL;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_tileatlas_produce(&bad, &info));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_tileatlas_produce(&cfg, NULL));
+}
+
+/**
+ * @brief Reject the unsupported / out-of-range PNG IHDR malformations.
+ * @return None.
+ * @pre The shared source/store buffers are available.
+ * @post Interlace, depth, colour-type, geometry and chunk faults were rejected.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void produce_hostile_png_ihdr(void)
+{
   /* Interlaced PNG (IHDR interlace byte at sig 8 + chunk hdr 8 + offset 12). */
   png_build(k_t_png_w, k_t_png_h, 0U, false, false);
   s_src[28] = 1U;
@@ -712,6 +755,18 @@ static void test_produce_hostile(void)
   png_build(k_t_png_w, k_t_png_h, 3U, true, false);
   s_src[25] = 2U; /* IHDR says RGB but tRNS+PLTE follow: tRNS now rejects */
   expect_produce_err(k_ra8_err_not_supported);
+}
+
+/**
+ * @brief Propagate the work-arena-too-small and sink-out-of-room budget faults.
+ * @return None.
+ * @pre The shared source/store buffers are available.
+ * @post Under-budgeted work and sink both propagated their error codes.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void produce_hostile_budget(void)
+{
   /* Work arena too small (fail-closed budget). */
   {
     png_build(k_t_png_w, k_t_png_h, 0U, false, false);
@@ -752,6 +807,34 @@ static void test_produce_hostile(void)
     };
     TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_tileatlas_produce(&cfg, &info));
   }
+}
+
+/**
+ * @test test_produce_hostile
+ * @brief Hostile / unsupported sources are rejected fail-closed with the
+ *        contracted codes -- this is untrusted EPUB content.
+ *
+ * @par MC/DC:
+ * Decision (geometry caps): `width == 0 || width > cap_w || height == 0 ||
+ * height > cap_h` (4 conditions)
+ * - Vector 1: in-cap dims       -> false (parity tests above)
+ * - Vector 2: width > cap_w     -> true  (oversize-width case here)
+ * - Vector 3: height > cap_h    -> true  (oversize-height case here)
+ * (width==0 / height==0 are unreachable through both decoders -- each
+ * rejects zero dims in its own header parse -- and are covered by the
+ * producer's direct-geometry unit vectors in the PNG IHDR cases.)
+ *
+ * Decision (PLTE accept): `len == 0 || len % 3 != 0 || len > 768 ||
+ * has_plte` (4 conditions) -- vectors: valid PLTE (parity tests), len
+ * indivisible by 3, oversize PLTE, duplicate PLTE.
+ */
+static void test_produce_hostile(void)
+{
+  TEST_BEGIN("produce: hostile / unsupported sources fail closed");
+  produce_hostile_sniff();
+  produce_hostile_pull_and_cfg();
+  produce_hostile_png_ihdr();
+  produce_hostile_budget();
   /* PLTE MC/DC vectors: indivisible length, oversize, duplicate. */
   png_build(k_t_png_w, k_t_png_h, 3U, false, false);
   s_src[8U + 8U + 13U + 4U + 3U] = 14U; /* PLTE length 15 -> 14 */
