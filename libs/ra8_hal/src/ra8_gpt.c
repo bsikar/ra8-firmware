@@ -490,12 +490,14 @@ ra8_err_t ra8_gpt_write_dma(uint8_t               channel,
 }
 
 /* out_counts is written by the DMAC engine. */
-ra8_err_t ra8_gpt_read_dma(uint8_t   channel,
-                           uint32_t* out_counts, // NOLINT(readability-non-const-parameter) -- written by the DMAC engine via dst_addr, never through the pointer.
-                           uint16_t  count,
-                           ra8_dma_complete_fn_t on_complete,
-                           void*                 ctx,
-                           uint8_t*              out_dma_channel)
+ra8_err_t ra8_gpt_read_dma(
+  uint8_t channel,
+  uint32_t*
+    out_counts, // NOLINT(readability-non-const-parameter) -- written by the DMAC engine via dst_addr, never through the pointer.
+  uint16_t              count,
+  ra8_dma_complete_fn_t on_complete,
+  void*                 ctx,
+  uint8_t*              out_dma_channel)
 {
   RA8_CHECK_NULL_PTR(out_counts, s_tag, "gpt_read_dma: out_counts");
   RA8_CHECK_NULL_PTR(out_dma_channel, s_tag, "gpt_read_dma: out_dma_channel");

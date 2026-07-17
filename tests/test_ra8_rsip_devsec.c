@@ -41,8 +41,8 @@
  * no-magic-numbers rule satisfied.
  */
 typedef enum : uint32_t {
-  k_ra8_rsip_test_kv_fill   = 0x7CU,        /**< Staged KV_DATA fill byte.    */
-  k_ra8_rsip_test_kv_fill_w = 0x7C7C7C7CUL, /**< Fill byte in all 4 lanes.    */
+  k_ra8_rsip_test_kv_fill   = 0x7CU,        /**< Staged KV_DATA fill byte. */
+  k_ra8_rsip_test_kv_fill_w = 0x7C7C7C7CUL, /**< Fill byte in all 4 lanes. */
   k_ra8_rsip_test_kv_tail_w = 0x3F3E3D3CUL, /**< LE pack of bytes 60..63 of a
                                                *   0,1,2,... ramp: the value the
                                                *   single-address KV_DATA port

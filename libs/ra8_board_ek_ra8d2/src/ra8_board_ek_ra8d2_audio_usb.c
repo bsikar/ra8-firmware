@@ -254,14 +254,15 @@ ra8_err_t ra8_board_audio_play_sample_block(const int16_t* buf, uint32_t len)
    * cast-align by going int16_t* -> uint32_t* directly. The caller
    * contract requires ``buf`` to be 32-bit aligned (one stereo frame
    * naturally aligns); see ra8_board_audio_play_sample_block docs. */
-  const uint32_t        words   = len / (uint32_t)k_ra8_audio_samples_per_word;
-  const uintptr_t       addr    = (uintptr_t)buf;
-  const uint32_t* const packed  = (const uint32_t*)addr; /* NOLINT(performance-no-int-to-ptr) -- alignment-safe reinterpret documented above. */
-  uint16_t              written = 0U;
-  const ra8_err_t       err     = ra8_ssie_write_buffer((uint8_t)k_ra8_board_audio_ssie_channel,
-                                                        packed,
-                                                        (uint16_t)words,
-                                                        &written);
+  const uint32_t        words  = len / (uint32_t)k_ra8_audio_samples_per_word;
+  const uintptr_t       addr   = (uintptr_t)buf;
+  const uint32_t* const packed = (const uint32_t*)
+    addr; /* NOLINT(performance-no-int-to-ptr) -- alignment-safe reinterpret documented above. */
+  uint16_t        written = 0U;
+  const ra8_err_t err     = ra8_ssie_write_buffer((uint8_t)k_ra8_board_audio_ssie_channel,
+                                                  packed,
+                                                  (uint16_t)words,
+                                                  &written);
   if (err != k_ra8_ok) {
     return err;
   }

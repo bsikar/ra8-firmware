@@ -178,10 +178,7 @@ ra8_err_t ra8_sdhi_deinit(uint8_t instance)
   return ra8_mstp_disable(s_sdhi_mstp_table[instance]);
 }
 
-ra8_err_t ra8_sdhi_send_command(uint8_t   instance,
-                                uint32_t  cmd,
-                                uint32_t  arg,
-                                uint32_t* out_rsp)
+ra8_err_t ra8_sdhi_send_command(uint8_t instance, uint32_t cmd, uint32_t arg, uint32_t* out_rsp)
 {
   volatile r_sdhi_regs_t* reg = ra8_sdhi(instance);
   RA8_CHECK_NULL_PTR(reg, s_tag, "instance out of range");

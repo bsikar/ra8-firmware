@@ -287,8 +287,8 @@ typedef struct {
    * alignment. Without the alignment specifier the cast is
    * undefined behaviour on strict-alignment architectures. */
   alignas(max_align_t) uint8_t
-    zip_archive_storage[k_ra8_epub_zip_archive_bytes]; /**< Zip archive storage. */
-  uint8_t zip_archive_active; /**< 1 = mz_zip_reader_init succeeded. */
+    zip_archive_storage[k_ra8_epub_zip_archive_bytes]; /**< Zip archive storage.              */
+  uint8_t zip_archive_active;                          /**< 1 = mz_zip_reader_init succeeded. */
 
   /* --- Streamed backing (caller-seekable, no resident blob) (#151) ----- */
   /* For a book opened via `ra8_epub_open_streamed()`, miniz's `m_pIO_opaque`
