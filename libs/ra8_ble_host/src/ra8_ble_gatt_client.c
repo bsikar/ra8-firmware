@@ -342,8 +342,7 @@ static int internal_read_trampoline(uint16_t                     conn_handle,
       uint8_t  buf[k_ra8_ble_gatt_client_max_read_bytes];
       uint16_t out_len = 0U;
       int      mc      = ble_hs_mbuf_to_flat(attr->om, buf, len, &out_len);
-      /* cppcheck-suppress knownConditionTrueFalse
-       * Weak fallback returns 0; strong upstream returns non-zero on copy failure. */
+      /* cppcheck-suppress knownConditionTrueFalse -- the in-tree weak fallback returns 0; the strong upstream NimBLE symbol returns non-zero on failure. */
       cb(ctx, buf, (mc == 0) ? out_len : 0U, status);
     } else {
       cb(ctx, nullptr, 0U, status);
@@ -440,9 +439,7 @@ ra8_err_t ra8_ble_gatt_discover_services(uint16_t conn_handle, ra8_ble_gatt_disc
   s_pending_disc.ctx         = ctx;
 #ifdef RA8_TARGET_BUILD
   int rc = ble_gattc_disc_all_svcs(conn_handle, internal_disc_trampoline, nullptr);
-  /* cppcheck-suppress knownConditionTrueFalse
-   * The weak fallback above returns 0 unconditionally; the strong upstream
-   * symbol returns BLE_HS_E* on real failure. */
+  /* cppcheck-suppress knownConditionTrueFalse -- the in-tree weak fallback returns 0; the strong upstream NimBLE symbol returns non-zero on failure. */
   if (rc != 0) {
     s_pending_disc.in_use = 0U;
     return k_ra8_err_invalid_arg;
@@ -494,8 +491,7 @@ ra8_ble_gatt_read(uint16_t conn_handle, uint16_t value_handle, ra8_ble_gatt_read
   s_pending_read.ctx         = ctx;
 #ifdef RA8_TARGET_BUILD
   int rc = ble_gattc_read(conn_handle, value_handle, internal_read_trampoline, nullptr);
-  /* cppcheck-suppress knownConditionTrueFalse
-   * Weak fallback returns 0; strong upstream returns BLE_HS_E* on failure. */
+  /* cppcheck-suppress knownConditionTrueFalse -- the in-tree weak fallback returns 0; the strong upstream NimBLE symbol returns non-zero on failure. */
   if (rc != 0) {
     s_pending_read.in_use = 0U;
     return k_ra8_err_invalid_arg;
@@ -569,8 +565,7 @@ ra8_err_t ra8_ble_gatt_write(uint16_t                conn_handle,
                                   len,
                                   internal_write_trampoline,
                                   nullptr);
-    /* cppcheck-suppress knownConditionTrueFalse
-     * Weak fallback returns 0; strong upstream returns BLE_HS_E* on failure. */
+    /* cppcheck-suppress knownConditionTrueFalse -- the in-tree weak fallback returns 0; the strong upstream NimBLE symbol returns non-zero on failure. */
     if (rc != 0) {
       s_pending_write.in_use = 0U;
       return k_ra8_err_invalid_arg;
@@ -579,8 +574,7 @@ ra8_err_t ra8_ble_gatt_write(uint16_t                conn_handle,
   } else {
 #ifdef RA8_TARGET_BUILD
     int rc = ble_gattc_write_no_rsp_flat(conn_handle, value_handle, data, len);
-    /* cppcheck-suppress knownConditionTrueFalse
-     * Weak fallback returns 0; strong upstream returns BLE_HS_E* on failure. */
+    /* cppcheck-suppress knownConditionTrueFalse -- the in-tree weak fallback returns 0; the strong upstream NimBLE symbol returns non-zero on failure. */
     if (rc != 0) {
       return k_ra8_err_invalid_arg;
     }

@@ -229,8 +229,7 @@ ra8_err_t ra8_ble_mesh_prov_enable(void)
   }
 #ifdef RA8_TARGET_BUILD
   int rc = bt_mesh_prov_enable((uint32_t)(k_bt_mesh_prov_adv | k_bt_mesh_prov_gatt));
-  /* cppcheck-suppress knownConditionTrueFalse
-   * Weak fallback returns 0; strong upstream returns non-zero on failure. */
+  /* cppcheck-suppress knownConditionTrueFalse -- the in-tree weak fallback returns 0; the strong upstream NimBLE symbol returns non-zero on failure. */
   if (rc != 0) {
     return k_ra8_err_hw_error;
   }
@@ -266,8 +265,7 @@ ra8_err_t ra8_ble_mesh_prov_disable(void)
   }
 #ifdef RA8_TARGET_BUILD
   int rc = bt_mesh_prov_disable((uint32_t)(k_bt_mesh_prov_adv | k_bt_mesh_prov_gatt));
-  /* cppcheck-suppress knownConditionTrueFalse
-   * Weak fallback returns 0; strong upstream returns non-zero on failure. */
+  /* cppcheck-suppress knownConditionTrueFalse -- the in-tree weak fallback returns 0; the strong upstream NimBLE symbol returns non-zero on failure. */
   if (rc != 0) {
     return k_ra8_err_hw_error;
   }

@@ -183,10 +183,8 @@ static inline bool internal_itm_ready(void)
    * IPSR != 0 means we are inside an exception handler. Even if
    * TRCENA happens to be on, dropping log lines is preferable to a
    * second fault that masks the original PC. */
-  /* cppcheck-suppress unreadVariable
-   * cppcheck-suppress knownConditionTrueFalse
-   * Inline asm `mrs` writes IPSR into the variable; cppcheck cannot
-   * see through the asm and assumes the value stays 0. */
+  /* cppcheck-suppress unreadVariable -- the inline asm mrs writes IPSR into the variable; cppcheck cannot see through the asm. */
+  /* cppcheck-suppress knownConditionTrueFalse -- cppcheck assumes the asm-written IPSR value stays 0. */
   volatile uint32_t ipsr = 0U;
   __asm__ volatile("mrs %0, ipsr" : "=r"(ipsr));
   if (ipsr != 0U) {
