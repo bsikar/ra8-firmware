@@ -644,35 +644,15 @@ static void test_sleep_legs(void)
 }
 
 /**
- * @test test_validate_and_size_mcdc
- *
- * @par MC/DC:
- * Decision A libs/ra8_hal/src/ra8_epaper.c@internal_ra8_epaper_validate_cfg:
- * ``if ((bus.xfer8 == NULL) || (panel_w == 0) || (panel_h == 0) ||
- *      (panel_w > MAX) || (panel_h > MAX))``
- * (5 conditions, ``||`` short-circuit chain). N+1 = 6 vectors: an all-false
- * baseline that accepts, plus one vector per condition that flips exactly
- * that Ck true while every other Ci stays false, proving independent
- * influence pair-wise against the baseline.
- * - V0: all Ci=F                 -> accept (init reaches ready)
- * - V1: bus.xfer8=NULL           -> reject
- * - V2: panel_width=0            -> reject
- * - V3: panel_height=0           -> reject
- * - V4: panel_width=0xFFFF>MAX   -> reject
- * - V5: panel_height=0xFFFF>MAX  -> reject
- *
- * Decision B: ``ra8_epaper_load_image`` ``if ((buf_len != expect) ||
- * (expect == 0U))`` (2 conditions, ``||``). N+1 = 3 vectors:
- * - V1: buf_len==expect, expect>0 -> accept
- * - V2: buf_len!=expect           -> reject (varies buf_len only)
- * - V3: expect==0 (0x0 area)      -> reject (varies expect only)
+ * @brief Decision A: validate_cfg 5-condition MC/DC (baseline + lone-true flips).
+ * @return None.
+ * @pre The transfer/fault stubs are armed for success.
+ * @post The baseline accepted and each single bad field was rejected.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
  */
-static void test_validate_and_size_mcdc(void)
+static void epaper_check_validate_cfg(void)
 {
-  TEST_BEGIN("validate_cfg 5-cond + load_image size 2-cond MC/DC");
-  s_xfer_rx = (uint8_t)k_cov_rx_zero;
-  arm_fault((uint32_t)k_cov_fail_never);
-
   /* V0: baseline accept. */
   set_uninit();
   ra8_epaper_cfg_t cfg = cov_cfg();
@@ -699,7 +679,18 @@ static void test_validate_and_size_mcdc(void)
   cfg              = cov_cfg();
   cfg.panel_height = (uint16_t)0xFFFFU;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_init_cov(&cfg));
+}
 
+/**
+ * @brief Decision B: load_image size MC/DC, null-argument guards and double-init.
+ * @return None.
+ * @pre validate_cfg vectors already ran.
+ * @post Each size vector, null guard and the double-init rejection held.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void epaper_check_size_and_guards(void)
+{
   /* Decision B: size check on a ready panel. */
   set_ready();
   const uint8_t           buf[k_cov_buf_len] = {};
@@ -735,7 +726,42 @@ static void test_validate_and_size_mcdc(void)
 
   /* Double-init rejection: a second init while ready. */
   set_ready();
+  ra8_epaper_cfg_t cfg = cov_cfg();
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_epaper_init_cov(&cfg));
+}
+
+/**
+ * @test test_validate_and_size_mcdc
+ *
+ * @par MC/DC:
+ * Decision A libs/ra8_hal/src/ra8_epaper.c@internal_ra8_epaper_validate_cfg:
+ * ``if ((bus.xfer8 == NULL) || (panel_w == 0) || (panel_h == 0) ||
+ *      (panel_w > MAX) || (panel_h > MAX))``
+ * (5 conditions, ``||`` short-circuit chain). N+1 = 6 vectors: an all-false
+ * baseline that accepts, plus one vector per condition that flips exactly
+ * that Ck true while every other Ci stays false, proving independent
+ * influence pair-wise against the baseline.
+ * - V0: all Ci=F                 -> accept (init reaches ready)
+ * - V1: bus.xfer8=NULL           -> reject
+ * - V2: panel_width=0            -> reject
+ * - V3: panel_height=0           -> reject
+ * - V4: panel_width=0xFFFF>MAX   -> reject
+ * - V5: panel_height=0xFFFF>MAX  -> reject
+ *
+ * Decision B: ``ra8_epaper_load_image`` ``if ((buf_len != expect) ||
+ * (expect == 0U))`` (2 conditions, ``||``). N+1 = 3 vectors:
+ * - V1: buf_len==expect, expect>0 -> accept
+ * - V2: buf_len!=expect           -> reject (varies buf_len only)
+ * - V3: expect==0 (0x0 area)      -> reject (varies expect only)
+ */
+static void test_validate_and_size_mcdc(void)
+{
+  TEST_BEGIN("validate_cfg 5-cond + load_image size 2-cond MC/DC");
+  s_xfer_rx = (uint8_t)k_cov_rx_zero;
+  arm_fault((uint32_t)k_cov_fail_never);
+
+  epaper_check_validate_cfg();
+  epaper_check_size_and_guards();
 
   set_uninit();
   TEST_END("validate_cfg 5-cond + load_image size 2-cond MC/DC");
