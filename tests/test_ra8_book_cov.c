@@ -306,6 +306,32 @@ static void test_ra8_book_open_null_guards(void)
 }
 
 /**
+ * @brief Open a container image and assert the expected header-guard result.
+ * @param[in]  want    Expected `ra8_book_open` result code.
+ * @param[in]  cont    Container image under test.
+ * @param[in]  len     Presented image length in bytes.
+ * @param[out] scratch Inflate scratch buffer.
+ * @param[in]  scap    Scratch capacity in bytes.
+ * @param[out] ob      Receives the mapped output base.
+ * @param[out] os      Receives the mapped output size.
+ * @return None.
+ * @pre @p cont references a container image.
+ * @post `ra8_book_open` returned @p want.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void bc_expect_open(ra8_err_t             want,
+                           const bc_container_t* cont,
+                           size_t                len,
+                           uint8_t*              scratch,
+                           size_t                scap,
+                           const void**          ob,
+                           size_t*               os)
+{
+  TEST_ASSERT_EQ(want, ra8_book_open(cont, len, bc_inflate, scratch, scap, ob, os));
+}
+
+/**
  * @test test_mcdc_container_header_fields
  * @brief The "RBKC" header-field guards reject short, mis-magicked, and
  *        geometrically inconsistent files.
@@ -341,74 +367,44 @@ static void test_mcdc_container_header_fields(void)
   bc_build_blob(&b);
   bc_build_container(&c, &b);
 
-  uint8_t     scratch[k_bc_scratch_cap] = {};
-  const void* out_base                  = nullptr;
-  size_t      out_size                  = 0U;
+  uint8_t      scratch[k_bc_scratch_cap] = {};
+  const void*  ob                        = nullptr;
+  size_t       os                        = 0U;
+  const size_t scap                      = sizeof(scratch);
 
   /* File shorter than the fixed container header. */
-  TEST_ASSERT_EQ(
-    k_ra8_err_invalid_size,
-    ra8_book_open(&c, k_bc_short_len, bc_inflate, scratch, sizeof(scratch), &out_base, &out_size));
+  bc_expect_open(k_ra8_err_invalid_size, &c, k_bc_short_len, scratch, scap, &ob, &os);
 
   /* Wrong container magic. */
   bc_container_t bad_magic = c;
   memcpy(bad_magic.magic, "XXXX", k_bc_magic_len);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_book_open(&bad_magic,
-                               sizeof(bad_magic),
-                               bc_inflate,
-                               scratch,
-                               sizeof(scratch),
-                               &out_base,
-                               &out_size));
+  bc_expect_open(k_ra8_err_invalid_arg, &bad_magic, sizeof(bad_magic), scratch, scap, &ob, &os);
 
   /* Zero chunk size. */
   bc_container_t zero_chunk = c;
   zero_chunk.chunk_bytes    = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_book_open(&zero_chunk,
-                               sizeof(zero_chunk),
-                               bc_inflate,
-                               scratch,
-                               sizeof(scratch),
-                               &out_base,
-                               &out_size));
+  bc_expect_open(k_ra8_err_invalid_arg, &zero_chunk, sizeof(zero_chunk), scratch, scap, &ob, &os);
 
   /* Zero inflated total. */
   bc_container_t zero_total = c;
   zero_total.inflated_total = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_book_open(&zero_total,
-                               sizeof(zero_total),
-                               bc_inflate,
-                               scratch,
-                               sizeof(scratch),
-                               &out_base,
-                               &out_size));
+  bc_expect_open(k_ra8_err_invalid_arg, &zero_total, sizeof(zero_total), scratch, scap, &ob, &os);
 
   /* Reserved word must be zero. */
   bc_container_t bad_reserved = c;
   bad_reserved.reserved       = 1U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_book_open(&bad_reserved,
-                               sizeof(bad_reserved),
-                               bc_inflate,
-                               scratch,
-                               sizeof(scratch),
-                               &out_base,
-                               &out_size));
+  bc_expect_open(k_ra8_err_invalid_arg,
+                 &bad_reserved,
+                 sizeof(bad_reserved),
+                 scratch,
+                 scap,
+                 &ob,
+                 &os);
 
   /* Chunk count disagreeing with ceil(total / chunk_bytes). */
   bc_container_t bad_count = c;
   bad_count.chunk_count    = 2U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_book_open(&bad_count,
-                               sizeof(bad_count),
-                               bc_inflate,
-                               scratch,
-                               sizeof(scratch),
-                               &out_base,
-                               &out_size));
+  bc_expect_open(k_ra8_err_invalid_arg, &bad_count, sizeof(bad_count), scratch, scap, &ob, &os);
 
   TEST_END("ra8_book_open container header guards");
 }
