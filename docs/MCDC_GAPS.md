@@ -122,7 +122,7 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra8_tileatlas/src/ra8_tileatlas_produce.c | 2 | priv_epilogue | `if ((st->geom_done == 0U) \|\| (st->rows_seen != (uint32_...` | Annotated deactivation: post-decode contract guard; both ... |
 | libs/ra8_touch_cal/src/ra8_touch_cal.c | 2 | internal_clip32 | `if (!ok_u \|\| !ok_v) {` | Annotated deactivation: TU-local helper internal_clip32 s... |
 | libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c | 2 | ra8_wdt_supervisor_tick | `if (will_refresh && (s_state.refresh != nullptr)) {` | Annotated deactivation: ra8_wdt_supervisor_tick refresh d... |
-| libs/ra8_webtoon/src/ra8_webtoon.c | 2 | ra8_webtoon_tick | `if ((wt->velocity == 0) \|\| wt_fling_should_stop(wt)) {` | Pointer(s) ['wt'] already null-checked upstream in the sa... |
+| libs/ra8_longstrip/src/ra8_longstrip.c | 2 | ra8_longstrip_tick | `if ((wt->velocity == 0) \|\| wt_fling_should_stop(wt)) {` | Pointer(s) ['wt'] already null-checked upstream in the sa... |
 
 ## Per-module gap counts (full table)
 
@@ -165,7 +165,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra8_fs_fat_name | 4 | 3 | 1 | 0 |
 | ra8_reflow_render | 4 | 3 | 1 | 0 |
 | ra8_usb_cdc | 4 | 3 | 0 | 1 |
-| ra8_webtoon | 4 | 3 | 1 | 0 |
+| ra8_longstrip | 4 | 3 | 1 | 0 |
 | ra8_ceu | 3 | 2 | 1 | 0 |
 | ra8_epub_fs | 3 | 2 | 0 | 1 |
 | ra8_mipi_phy_timing | 3 | 2 | 1 | 0 |

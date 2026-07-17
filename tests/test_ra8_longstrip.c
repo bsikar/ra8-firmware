@@ -1,9 +1,9 @@
 /**
- * @file test_ra8_webtoon.c
- * @brief Host unit tests for the continuous vertical-scroll webtoon engine (#289).
+ * @file test_ra8_longstrip.c
+ * @brief Host unit tests for the continuous vertical-scroll longstrip engine (#289).
  *
  * @details
- * Drives ra8_webtoon over a hand-built raw RTA1 band-tile atlas (a synthetic
+ * Drives ra8_longstrip over a hand-built raw RTA1 band-tile atlas (a synthetic
  * tall strip) paged through a real ::ra8_tile_cache. The strip encodes each
  * pixel's absolute canvas coordinate (R=y low, G=y high, B=x low), so the
  * recording blit can assert -- per pixel -- that every band composites at its
@@ -31,9 +31,9 @@
 #include <string.h>
 
 #include "ra8_err.h"
+#include "ra8_longstrip.h"
 #include "ra8_tile_cache.h"
 #include "ra8_tileatlas.h"
-#include "ra8_webtoon.h"
 #include "unity_minimal.h"
 
 /**
@@ -192,9 +192,9 @@ static uint32_t t_wt_build_strip(void)
  * Harness wiring: memstore pread, tile cache, decode ctx, recording blit.
  * ------------------------------------------------------------------------- */
 
-static ra8_tileatlas_memstore_t s_store;
-static ra8_webtoon_decode_ctx_t s_dctx;
-static ra8_tile_cache_t         s_cache;
+static ra8_tileatlas_memstore_t   s_store;
+static ra8_longstrip_decode_ctx_t s_dctx;
+static ra8_tile_cache_t           s_cache;
 
 /** @brief Recording blit context: the current scroll and coverage accounting. */
 typedef struct {
@@ -250,7 +250,7 @@ static ra8_err_t t_wt_blit(void*          ctx,
 }
 
 /** @brief Build the strip, wire the memstore/cache/decoder and open the strip. */
-static void t_wt_open(ra8_webtoon_t* wt)
+static void t_wt_open(ra8_longstrip_t* wt)
 {
   const uint32_t total = t_wt_build_strip();
   s_store = (ra8_tileatlas_memstore_t){.buf = s_atlas, .cap = k_t_atlas_cap, .len = total};
@@ -271,20 +271,20 @@ static void t_wt_open(ra8_webtoon_t* wt)
                                      .dims         = s_dims,
                                      .buckets      = s_buckets,
                                      .bucket_count = (uint32_t)k_t_wt_buckets,
-                                     .decode       = ra8_webtoon_tile_decode,
+                                     .decode       = ra8_longstrip_tile_decode,
                                      .decode_ctx   = &s_dctx};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_init(&s_cache, &ccfg));
 
-  const ra8_webtoon_cfg_t wcfg = {.pread      = ra8_tileatlas_memstore_pread,
-                                  .pread_ctx  = &s_store,
-                                  .atlas_size = total,
-                                  .cache      = &s_cache,
-                                  .image_id   = 1U,
-                                  .viewport_w = (uint16_t)k_t_wt_view_w,
-                                  .viewport_h = (uint16_t)k_t_wt_view_h,
-                                  .blit       = t_wt_blit,
-                                  .blit_ctx   = &s_blit};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_open(wt, &wcfg));
+  const ra8_longstrip_cfg_t wcfg = {.pread      = ra8_tileatlas_memstore_pread,
+                                    .pread_ctx  = &s_store,
+                                    .atlas_size = total,
+                                    .cache      = &s_cache,
+                                    .image_id   = 1U,
+                                    .viewport_w = (uint16_t)k_t_wt_view_w,
+                                    .viewport_h = (uint16_t)k_t_wt_view_h,
+                                    .blit       = t_wt_blit,
+                                    .blit_ctx   = &s_blit};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_open(wt, &wcfg));
 }
 
 /* =========================================================================
@@ -311,39 +311,39 @@ static void t_wt_open(ra8_webtoon_t* wt)
 static void t_open_validates(void)
 {
   TEST_BEGIN("open_validates_inputs");
-  ra8_webtoon_t wt = {};
+  ra8_longstrip_t wt = {};
   t_wt_open(&wt); /* Decision A V1 + Decision B control: valid open */
   TEST_ASSERT_EQ(k_t_wt_bands, wt.band_count);
   TEST_ASSERT_EQ(k_t_wt_band_h, wt.band_h);
   TEST_ASSERT_EQ(k_t_wt_height, wt.canvas_h);
   TEST_ASSERT_EQ(k_t_wt_max_scroll, wt.max_scroll);
 
-  const uint32_t    total = s_store.len;
-  ra8_webtoon_cfg_t cfg   = {.pread      = ra8_tileatlas_memstore_pread,
-                             .pread_ctx  = &s_store,
-                             .atlas_size = total,
-                             .cache      = &s_cache,
-                             .image_id   = 1U,
-                             .viewport_w = (uint16_t)k_t_wt_view_w,
-                             .viewport_h = (uint16_t)k_t_wt_view_h,
-                             .blit       = t_wt_blit,
-                             .blit_ctx   = &s_blit};
+  const uint32_t      total = s_store.len;
+  ra8_longstrip_cfg_t cfg   = {.pread      = ra8_tileatlas_memstore_pread,
+                               .pread_ctx  = &s_store,
+                               .atlas_size = total,
+                               .cache      = &s_cache,
+                               .image_id   = 1U,
+                               .viewport_w = (uint16_t)k_t_wt_view_w,
+                               .viewport_h = (uint16_t)k_t_wt_view_h,
+                               .blit       = t_wt_blit,
+                               .blit_ctx   = &s_blit};
 
   /* Decision A V2: viewport_w == 0 -> invalid_arg. */
   cfg.viewport_w = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_webtoon_open(&wt, &cfg));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_longstrip_open(&wt, &cfg));
   cfg.viewport_w = (uint16_t)k_t_wt_view_w;
   /* Decision A V3: viewport_h == 0 -> invalid_arg. */
   cfg.viewport_h = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_webtoon_open(&wt, &cfg));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_longstrip_open(&wt, &cfg));
   cfg.viewport_h = (uint16_t)k_t_wt_view_h;
 
   /* Null-seam guards. */
-  ra8_webtoon_cfg_t nn = cfg;
-  nn.pread             = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_webtoon_open(&wt, &nn));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_webtoon_open(nullptr, &cfg));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_webtoon_open(&wt, nullptr));
+  ra8_longstrip_cfg_t nn = cfg;
+  nn.pread               = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_longstrip_open(&wt, &nn));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_longstrip_open(nullptr, &cfg));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_longstrip_open(&wt, nullptr));
   TEST_END("open_validates_inputs");
 }
 
@@ -363,7 +363,7 @@ static void t_open_rejects_non_band(void)
 {
   TEST_BEGIN("open_rejects_non_band_atlas");
   /* Re-tile the SAME pixel dimensions with tile_w = width/2 -> 2 columns, so
-   * tile_w != width AND tile_cols != 1. ra8_webtoon_open must reject it. */
+   * tile_w != width AND tile_cols != 1. ra8_longstrip_open must reject it. */
   const uint16_t width  = 64U;
   const uint16_t height = 128U;
   const uint16_t tw     = 32U; /* half width -> 2 columns */
@@ -402,17 +402,17 @@ static void t_open_rejects_non_band(void)
   (void)memcpy(&s_atlas[off + 12U], "RTAE", 4U);
 
   s_store = (ra8_tileatlas_memstore_t){.buf = s_atlas, .cap = k_t_atlas_cap, .len = total};
-  const ra8_webtoon_cfg_t cfg = {.pread      = ra8_tileatlas_memstore_pread,
-                                 .pread_ctx  = &s_store,
-                                 .atlas_size = total,
-                                 .cache      = &s_cache,
-                                 .image_id   = 2U,
-                                 .viewport_w = 64U,
-                                 .viewport_h = 64U,
-                                 .blit       = t_wt_blit,
-                                 .blit_ctx   = &s_blit};
-  ra8_webtoon_t           wt  = {};
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_webtoon_open(&wt, &cfg));
+  const ra8_longstrip_cfg_t cfg = {.pread      = ra8_tileatlas_memstore_pread,
+                                   .pread_ctx  = &s_store,
+                                   .atlas_size = total,
+                                   .cache      = &s_cache,
+                                   .image_id   = 2U,
+                                   .viewport_w = 64U,
+                                   .viewport_h = 64U,
+                                   .blit       = t_wt_blit,
+                                   .blit_ctx   = &s_blit};
+  ra8_longstrip_t           wt  = {};
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_longstrip_open(&wt, &cfg));
   TEST_END("open_rejects_non_band_atlas");
 }
 
@@ -425,34 +425,34 @@ static void t_open_rejects_non_band(void)
 static void t_geometry(void)
 {
   TEST_BEGIN("geometry_band_math");
-  ra8_webtoon_t wt = {};
+  ra8_longstrip_t wt = {};
   t_wt_open(&wt);
 
   uint16_t band = 0xFFFFU;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_band_at_y(&wt, 0U, &band));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_band_at_y(&wt, 0U, &band));
   TEST_ASSERT_EQ(0, band);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_band_at_y(&wt, 63U, &band));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_band_at_y(&wt, 63U, &band));
   TEST_ASSERT_EQ(0, band);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_band_at_y(&wt, 64U, &band));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_band_at_y(&wt, 64U, &band));
   TEST_ASSERT_EQ(1, band);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_band_at_y(&wt, 799U, &band));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_band_at_y(&wt, 799U, &band));
   TEST_ASSERT_EQ(12, band); /* last (edge) band */
-  TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_webtoon_band_at_y(&wt, 800U, &band));
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_longstrip_band_at_y(&wt, 800U, &band));
 
   /* clamp: below/above/inside. */
-  TEST_ASSERT_EQ(0, ra8_webtoon_clamp_scroll(&wt, -100));
-  TEST_ASSERT_EQ(k_t_wt_max_scroll, ra8_webtoon_clamp_scroll(&wt, 100000));
-  TEST_ASSERT_EQ(300, ra8_webtoon_clamp_scroll(&wt, 300));
+  TEST_ASSERT_EQ(0, ra8_longstrip_clamp_scroll(&wt, -100));
+  TEST_ASSERT_EQ(k_t_wt_max_scroll, ra8_longstrip_clamp_scroll(&wt, 100000));
+  TEST_ASSERT_EQ(300, ra8_longstrip_clamp_scroll(&wt, 300));
 
   /* visible range at the top: rows [0,256) -> bands 0..3. */
   uint16_t first = 0xFFU;
   uint16_t last  = 0xFFU;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_visible_bands(&wt, 0, &first, &last));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_visible_bands(&wt, 0, &first, &last));
   TEST_ASSERT_EQ(0, first);
   TEST_ASSERT_EQ(3, last);
   /* at the bottom: rows [544,800) -> bands 8..12. */
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_webtoon_visible_bands(&wt, (int32_t)k_t_wt_max_scroll, &first, &last));
+                 ra8_longstrip_visible_bands(&wt, (int32_t)k_t_wt_max_scroll, &first, &last));
   TEST_ASSERT_EQ(8, first);
   TEST_ASSERT_EQ(12, last);
   TEST_END("geometry_band_math");
@@ -462,7 +462,7 @@ static void t_geometry(void)
  * @test scroll_zero_skip_full_traversal
  *
  * @details The #289 contract. Scrolls the whole strip top -> bottom in 40-px
- *          steps; at every step `ra8_webtoon_render` must report `skipped == 0`
+ *          steps; at every step `ra8_longstrip_render` must report `skipped == 0`
  *          and `covered_rows == min(view_h, canvas_h - scroll_y)`, and the
  *          recording blit verifies every composited pixel equals the strip
  *          generator at its true canvas coordinate (no seam, no gap). After the
@@ -472,7 +472,7 @@ static void t_geometry(void)
 static void t_zero_skip(void)
 {
   TEST_BEGIN("scroll_zero_skip_full_traversal");
-  ra8_webtoon_t wt = {};
+  ra8_longstrip_t wt = {};
   t_wt_open(&wt);
   (void)memset(s_canvas_covered, 0, sizeof(s_canvas_covered));
 
@@ -486,13 +486,13 @@ static void t_zero_skip(void)
       done = true;
     }
     /* seek to `t` via a direct scroll (fast-seek path). */
-    (void)ra8_webtoon_scroll_by(&wt, t - wt.scroll_y);
+    (void)ra8_longstrip_scroll_by(&wt, t - wt.scroll_y);
     TEST_ASSERT_EQ(t, wt.scroll_y);
     s_blit.scroll_y   = wt.scroll_y;
     s_blit.px_checked = 0U;
 
-    ra8_webtoon_render_stats_t st = {};
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_render(&wt, &st));
+    ra8_longstrip_render_stats_t st = {};
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_render(&wt, &st));
     TEST_ASSERT_EQ(0, st.skipped); /* ZERO skipped bands */
     const uint32_t expect_rows =
       ((uint32_t)k_t_wt_height - (uint32_t)wt.scroll_y < (uint32_t)k_t_wt_view_h)
@@ -526,24 +526,24 @@ static void t_zero_skip(void)
 static void t_scroll_by_end_pin(void)
 {
   TEST_BEGIN("scroll_by_end_pin");
-  ra8_webtoon_t wt = {};
+  ra8_longstrip_t wt = {};
   t_wt_open(&wt);
 
   /* V1: land mid-strip with a live velocity -> velocity retained. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_fling(&wt, 7));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_scroll_by(&wt, 300));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_fling(&wt, 7));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_scroll_by(&wt, 300));
   TEST_ASSERT_EQ(300, wt.scroll_y);
   TEST_ASSERT_EQ(7, wt.velocity);
 
   /* V3: drive to the bottom -> pinned at max_scroll -> velocity zeroed. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_fling(&wt, 9));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_scroll_by(&wt, 100000));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_fling(&wt, 9));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_scroll_by(&wt, 100000));
   TEST_ASSERT_EQ(k_t_wt_max_scroll, wt.scroll_y);
   TEST_ASSERT_EQ(0, wt.velocity);
 
   /* V2: drive to the top -> pinned at 0 -> velocity zeroed. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_fling(&wt, -9));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_scroll_by(&wt, -100000));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_fling(&wt, -9));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_scroll_by(&wt, -100000));
   TEST_ASSERT_EQ(0, wt.scroll_y);
   TEST_ASSERT_EQ(0, wt.velocity);
   TEST_END("scroll_by_end_pin");
@@ -567,16 +567,16 @@ static void t_scroll_by_end_pin(void)
 static void t_fling(void)
 {
   TEST_BEGIN("fling_converges_and_clamps");
-  ra8_webtoon_t wt = {};
+  ra8_longstrip_t wt = {};
   t_wt_open(&wt);
 
   /* Downward fling from the top (velocity > 0 -> at_bottom arm): starts at the
    * top (moving away from it), runs through the middle, converges pinned at the
    * bottom -- the at_bottom branch returns false mid-fling and true when pinned. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_fling(&wt, 200));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_fling(&wt, 200));
   int32_t ticks          = 0;
   bool    moved_from_top = false;
-  while (ra8_webtoon_tick(&wt)) {
+  while (ra8_longstrip_tick(&wt)) {
     if (wt.scroll_y > 0) {
       moved_from_top = true;
     }
@@ -588,11 +588,11 @@ static void t_fling(void)
   TEST_ASSERT(wt.scroll_y > 0); /* it advanced downward */
 
   /* Upward fling from the bottom (velocity < 0 -> at_top arm): pins at the top. */
-  (void)ra8_webtoon_scroll_by(&wt, 100000);
+  (void)ra8_longstrip_scroll_by(&wt, 100000);
   TEST_ASSERT_EQ(k_t_wt_max_scroll, wt.scroll_y);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_fling(&wt, -200));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_fling(&wt, -200));
   ticks = 0;
-  while (ra8_webtoon_tick(&wt)) {
+  while (ra8_longstrip_tick(&wt)) {
     ticks++;
     TEST_ASSERT(ticks < 1000);
   }
@@ -600,7 +600,7 @@ static void t_fling(void)
   TEST_ASSERT(wt.scroll_y < (int32_t)k_t_wt_max_scroll);
 
   /* A zero-velocity tick is immediately at rest. */
-  TEST_ASSERT(!ra8_webtoon_tick(&wt));
+  TEST_ASSERT(!ra8_longstrip_tick(&wt));
   TEST_END("fling_converges_and_clamps");
 }
 
@@ -620,7 +620,7 @@ static void t_fling(void)
 static void t_prefetch(void)
 {
   TEST_BEGIN("prefetch_bounded");
-  ra8_webtoon_t wt = {};
+  ra8_longstrip_t wt = {};
   t_wt_open(&wt);
 
   uint32_t hits0 = 0;
@@ -628,31 +628,31 @@ static void t_prefetch(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_stats(&s_cache, &hits0, &miss0, nullptr));
 
   /* V2: depth 0 -> no prefetch, no new misses. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_prefetch(&wt, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_prefetch(&wt, 0U));
   uint32_t miss1 = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_stats(&s_cache, nullptr, &miss1, nullptr));
   TEST_ASSERT_EQ(miss0, miss1);
 
   /* V1: downward prefetch (at rest -> downward) warms bands below the view. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_fling(&wt, 5)); /* velocity>=0 -> downward */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_prefetch(&wt, 2U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_fling(&wt, 5)); /* velocity>=0 -> downward */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_prefetch(&wt, 2U));
   uint32_t miss2 = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_stats(&s_cache, nullptr, &miss2, nullptr));
   TEST_ASSERT(miss2 > miss1); /* prefetch decoded ahead */
 
   /* prefetch left no pin held: a full render still succeeds with 4 cells. */
-  s_blit.scroll_y               = wt.scroll_y;
-  s_blit.px_checked             = 0U;
-  ra8_webtoon_render_stats_t st = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_render(&wt, &st));
+  s_blit.scroll_y                 = wt.scroll_y;
+  s_blit.px_checked               = 0U;
+  ra8_longstrip_render_stats_t st = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_render(&wt, &st));
   TEST_ASSERT_EQ(0, st.skipped);
 
   /* V3: a short strip that fully fits the viewport -> band_count <= span. */
-  ra8_webtoon_t small = wt;
-  small.band_count    = 1U; /* pretend one band that fits: skip branch taken */
-  small.scroll_y      = 0;
-  small.max_scroll    = 0;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_prefetch(&small, 2U));
+  ra8_longstrip_t small = wt;
+  small.band_count      = 1U; /* pretend one band that fits: skip branch taken */
+  small.scroll_y        = 0;
+  small.max_scroll      = 0;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_prefetch(&small, 2U));
   TEST_END("prefetch_bounded");
 }
 
@@ -668,14 +668,14 @@ static void t_prefetch(void)
 static void t_bounded_memory(void)
 {
   TEST_BEGIN("bounded_resident_memory");
-  ra8_webtoon_t wt = {};
+  ra8_longstrip_t wt = {};
   t_wt_open(&wt);
 
   for (int32_t target = 0; target <= (int32_t)k_t_wt_max_scroll; target += 32) {
-    (void)ra8_webtoon_scroll_by(&wt, target - wt.scroll_y);
-    s_blit.scroll_y               = wt.scroll_y;
-    ra8_webtoon_render_stats_t st = {};
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_render(&wt, &st));
+    (void)ra8_longstrip_scroll_by(&wt, target - wt.scroll_y);
+    s_blit.scroll_y                 = wt.scroll_y;
+    ra8_longstrip_render_stats_t st = {};
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_render(&wt, &st));
     TEST_ASSERT_EQ(0, st.skipped);
   }
   uint32_t ev = 0;
@@ -685,10 +685,10 @@ static void t_bounded_memory(void)
   /* Return to the top: band 0 was long evicted -> a fresh miss decodes it. */
   uint32_t miss_before = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_stats(&s_cache, nullptr, &miss_before, nullptr));
-  (void)ra8_webtoon_scroll_by(&wt, -100000);
-  s_blit.scroll_y               = wt.scroll_y;
-  ra8_webtoon_render_stats_t st = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_webtoon_render(&wt, &st));
+  (void)ra8_longstrip_scroll_by(&wt, -100000);
+  s_blit.scroll_y                 = wt.scroll_y;
+  ra8_longstrip_render_stats_t st = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_render(&wt, &st));
   uint32_t miss_after = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_stats(&s_cache, nullptr, &miss_after, nullptr));
   TEST_ASSERT(miss_after > miss_before); /* band 0 was reclaimed and re-decoded */
@@ -710,6 +710,6 @@ int32_t main(void)
   t_fling();
   t_prefetch();
   t_bounded_memory();
-  (void)fprintf(stderr, "[PASS] test_ra8_webtoon: all cases passed\n");
+  (void)fprintf(stderr, "[PASS] test_ra8_longstrip: all cases passed\n");
   return 0;
 }

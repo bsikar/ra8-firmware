@@ -168,7 +168,7 @@ static ra8_err_t internal_webp_decode_impl(const uint8_t*    data,
    * bands the decoded canvas into RTA1 tiles so render time touches one codec
    * regardless of source. TODO(#289): the ra8_reflow / ra8_img inline raster
    * dispatch (libs/ra8_reflow/src/ra8_reflow_image.c) does not yet have a WebP
-   * arm for the small-image (non-tiled) path -- that lands with the webtoon
+   * arm for the small-image (non-tiled) path -- that lands with the longstrip
    * render work; large WebP pages already normalize through the producer above.
    */
 

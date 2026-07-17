@@ -601,7 +601,7 @@
       "name": "libwebp (WebP decoder)",
       "group": "webmproject",
       "version": "1.5.0",
-      "description": "WebP (VP8 / VP8L) decode-only codec for webtoon/manga raster (via ra8_webp).",
+      "description": "WebP (VP8 / VP8L) decode-only codec for longstrip/manga raster (via ra8_webp).",
       "scope": "required",
       "licenses": [
         {

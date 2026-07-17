@@ -34,7 +34,7 @@ into this firmware as Software Of Unknown Provenance (SOUP).
 
 ## Use case in this firmware
 
-- **WebP decode** (VP8 lossy + VP8L lossless) for webtoon / manga / EPUB
+- **WebP decode** (VP8 lossy + VP8L lossless) for longstrip / manga / EPUB
   raster content, which is increasingly shipped as WebP that `stb_image`
   cannot decode. Reached through the first-party `ra8_webp` facade
   (`libs/ra8_webp/`) -- `ra8_webp_get_info()` / `ra8_webp_decode_rgba()` --

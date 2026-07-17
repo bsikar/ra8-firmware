@@ -32,7 +32,7 @@
  * ```
  *
  * The volume is a concatenation of byte-identical RTA1 atlases, each a legal
- * 768 x 32768 webtoon strip: `tile_w == width` (one tile column), so a tile row
+ * 768 x 32768 longstrip strip: `tile_w == width` (one tile column), so a tile row
  * IS a scroll band (#289) with O(1) seek to any scroll-y. Its bytes -- header,
  * every band's pixels, the tile index, the footer -- are produced on the fly by
  * a pure content function, so a 2.75 GB book is modelled in a few hundred KiB of
@@ -67,7 +67,7 @@
 
 /**
  * @enum t_mg_geom_t
- * @brief Synthetic RTA1 atlas geometry: one legal webtoon strip (#289 bands).
+ * @brief Synthetic RTA1 atlas geometry: one legal longstrip strip (#289 bands).
  *
  * @details A single tile column (`tile_w == width`) of `tile_h`-tall bands at
  *          the maximum legal 32768-px height, gray8, raw codec. The derived
@@ -77,7 +77,7 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_mg_img_w      = 768U,      /**< Webtoon strip width, pixels (== tile_w).   */
+  k_mg_img_w      = 768U,      /**< Longstrip strip width, pixels (== tile_w). */
   k_mg_img_h      = 32768U,    /**< Strip height, pixels (RTA1 max_dim).       */
   k_mg_tile_w     = 768U,      /**< Tile width == image width -> one column.   */
   k_mg_tile_h     = 64U,       /**< Band height, pixels.                       */

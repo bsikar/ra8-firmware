@@ -1,8 +1,8 @@
 /**
- * @file ra8_webtoon.c
- * @brief Continuous vertical-scroll (webtoon) engine over an RTA1 atlas (#289).
+ * @file ra8_longstrip.c
+ * @brief Continuous vertical-scroll (longstrip) engine over an RTA1 atlas (#289).
  *
- * @details Implements ra8_webtoon.h: virtual-canvas geometry, the scroll +
+ * @details Implements ra8_longstrip.h: virtual-canvas geometry, the scroll +
  *          fling state machine, bounded directional prefetch and the visible
  *          band composite. The whole file is pure integer arithmetic over the
  *          parsed atlas geometry plus calls into `ra8_tile_cache` (band paging)
@@ -17,7 +17,7 @@
  * @since 0.1.0
  */
 
-#include "ra8_webtoon.h"
+#include "ra8_longstrip.h"
 
 #include <stdint.h>
 
@@ -27,7 +27,7 @@
 #include "ra8_tileatlas.h"
 
 /** @brief Component tag for `RA8_CHECK_*` log lines. */
-static const char* const s_tag = "ra8_webtoon";
+static const char* const s_tag = "ra8_longstrip";
 
 /**
  * @enum wt_consts_t
@@ -38,30 +38,30 @@ static const char* const s_tag = "ra8_webtoon";
  *          monotonically to zero (truncation toward zero snaps small speeds
  *          to rest), so a fling always terminates in a bounded number of
  *          ticks. `k_wt_tile_x` is the single full-width band column; a
- *          webtoon strip has exactly one.
+ *          longstrip strip has exactly one.
  *
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_wt_fling_num = 7U, /**< Velocity retained per tick (numerator).    */
-  k_wt_fling_den = 8U, /**< Velocity retention denominator.            */
-  k_wt_tile_x    = 0U, /**< Webtoon band column index (single column). */
-  k_wt_zoom      = 0U, /**< Native zoom / mip level.                   */
+  k_wt_fling_num = 7U, /**< Velocity retained per tick (numerator).      */
+  k_wt_fling_den = 8U, /**< Velocity retention denominator.              */
+  k_wt_tile_x    = 0U, /**< Longstrip band column index (single column). */
+  k_wt_zoom      = 0U, /**< Native zoom / mip level.                     */
 } wt_consts_t;
 
-ra8_err_t ra8_webtoon_tile_decode(void*                 ctx,
-                                  const ra8_tile_key_t* key,
-                                  uint8_t*              cell,
-                                  uint32_t              cell_bytes,
-                                  uint16_t*             out_w,
-                                  uint16_t*             out_h)
+ra8_err_t ra8_longstrip_tile_decode(void*                 ctx,
+                                    const ra8_tile_key_t* key,
+                                    uint8_t*              cell,
+                                    uint32_t              cell_bytes,
+                                    uint16_t*             out_w,
+                                    uint16_t*             out_h)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "decode ctx must not be nullptr");
   RA8_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
   RA8_CHECK_NULL_PTR(cell, s_tag, "cell must not be nullptr");
   RA8_CHECK_NULL_PTR(out_w, s_tag, "out_w must not be nullptr");
   RA8_CHECK_NULL_PTR(out_h, s_tag, "out_h must not be nullptr");
-  ra8_webtoon_decode_ctx_t* dc = (ra8_webtoon_decode_ctx_t*)ctx;
+  ra8_longstrip_decode_ctx_t* dc = (ra8_longstrip_decode_ctx_t*)ctx;
   return ra8_tileatlas_read_tile(dc->pread,
                                  dc->pread_ctx,
                                  &dc->info,
@@ -78,7 +78,7 @@ ra8_err_t ra8_webtoon_tile_decode(void*                 ctx,
 /**
  * @brief Bind the parsed atlas geometry and config into the engine state.
  *
- * @details The state-population half of ::ra8_webtoon_open, split out to keep
+ * @details The state-population half of ::ra8_longstrip_open, split out to keep
  *          the entry point under the statement-complexity threshold. Homes the
  *          scroll to the top and derives the max-scroll clamp from the canvas
  *          height against the viewport (a strip no taller than the viewport
@@ -96,8 +96,9 @@ ra8_err_t ra8_webtoon_tile_decode(void*                 ctx,
  * @note Not thread-safe (mutates @p wt).
  * @since 0.1.0
  */
-static void
-priv_webtoon_bind(ra8_webtoon_t* wt, const ra8_webtoon_cfg_t* cfg, const ra8_tileatlas_info_t* info)
+static void priv_longstrip_bind(ra8_longstrip_t*            wt,
+                                const ra8_longstrip_cfg_t*  cfg,
+                                const ra8_tileatlas_info_t* info)
 {
   wt->info       = *info;
   wt->canvas_w   = info->width;
@@ -120,7 +121,7 @@ priv_webtoon_bind(ra8_webtoon_t* wt, const ra8_webtoon_cfg_t* cfg, const ra8_til
 /**
  * @brief Reject a NULL engine, config, or any NULL callback / cache it carries.
  *
- * @details The null-guard half of ::ra8_webtoon_open, split out so the entry
+ * @details The null-guard half of ::ra8_longstrip_open, split out so the entry
  *          point stays under the statement-complexity threshold. Validates the
  *          three seams the engine must hold before it can page or composite.
  *
@@ -139,7 +140,8 @@ priv_webtoon_bind(ra8_webtoon_t* wt, const ra8_webtoon_cfg_t* cfg, const ra8_til
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t priv_webtoon_check_ptrs(const ra8_webtoon_t* wt, const ra8_webtoon_cfg_t* cfg)
+static ra8_err_t priv_longstrip_check_ptrs(const ra8_longstrip_t*     wt,
+                                           const ra8_longstrip_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(wt, s_tag, "wt must not be nullptr");
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -149,9 +151,9 @@ static ra8_err_t priv_webtoon_check_ptrs(const ra8_webtoon_t* wt, const ra8_webt
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_webtoon_open(ra8_webtoon_t* wt, const ra8_webtoon_cfg_t* cfg)
+ra8_err_t ra8_longstrip_open(ra8_longstrip_t* wt, const ra8_longstrip_cfg_t* cfg)
 {
-  const ra8_err_t ptr_err = priv_webtoon_check_ptrs(wt, cfg);
+  const ra8_err_t ptr_err = priv_longstrip_check_ptrs(wt, cfg);
   if (ptr_err != k_ra8_ok) {
     return ptr_err;
   }
@@ -164,18 +166,18 @@ ra8_err_t ra8_webtoon_open(ra8_webtoon_t* wt, const ra8_webtoon_cfg_t* cfg)
   if (err != k_ra8_ok) {
     return err;
   }
-  /* A webtoon strip is one full-width band column; anything else is not a
+  /* A longstrip strip is one full-width band column; anything else is not a
    * scrollable strip. `ra8_tileatlas_parse` derives tile_cols as
    * ceil(width / tile_w), so `tile_w == width` already implies tile_cols == 1
    * -- the full-width test alone is necessary and sufficient. */
   if (info.tile_w != info.width) {
     return k_ra8_err_not_supported;
   }
-  priv_webtoon_bind(wt, cfg, &info);
+  priv_longstrip_bind(wt, cfg, &info);
   return k_ra8_ok;
 }
 
-int32_t ra8_webtoon_clamp_scroll(const ra8_webtoon_t* wt, int32_t y)
+int32_t ra8_longstrip_clamp_scroll(const ra8_longstrip_t* wt, int32_t y)
 {
   if (wt == nullptr) {
     return 0;
@@ -189,7 +191,7 @@ int32_t ra8_webtoon_clamp_scroll(const ra8_webtoon_t* wt, int32_t y)
   return y;
 }
 
-ra8_err_t ra8_webtoon_band_at_y(const ra8_webtoon_t* wt, uint32_t y, uint16_t* out_band)
+ra8_err_t ra8_longstrip_band_at_y(const ra8_longstrip_t* wt, uint32_t y, uint16_t* out_band)
 {
   RA8_CHECK_NULL_PTR(wt, s_tag, "wt must not be nullptr");
   RA8_CHECK_NULL_PTR(out_band, s_tag, "out_band must not be nullptr");
@@ -200,15 +202,15 @@ ra8_err_t ra8_webtoon_band_at_y(const ra8_webtoon_t* wt, uint32_t y, uint16_t* o
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_webtoon_visible_bands(const ra8_webtoon_t* wt,
-                                    int32_t              scroll_y,
-                                    uint16_t*            out_first,
-                                    uint16_t*            out_last)
+ra8_err_t ra8_longstrip_visible_bands(const ra8_longstrip_t* wt,
+                                      int32_t                scroll_y,
+                                      uint16_t*              out_first,
+                                      uint16_t*              out_last)
 {
   RA8_CHECK_NULL_PTR(wt, s_tag, "wt must not be nullptr");
   RA8_CHECK_NULL_PTR(out_first, s_tag, "out_first must not be nullptr");
   RA8_CHECK_NULL_PTR(out_last, s_tag, "out_last must not be nullptr");
-  const int32_t  top    = ra8_webtoon_clamp_scroll(wt, scroll_y);
+  const int32_t  top    = ra8_longstrip_clamp_scroll(wt, scroll_y);
   const uint32_t bh     = (uint32_t)wt->band_h;
   const uint32_t first  = (uint32_t)top / bh;
   uint32_t       bottom = (uint32_t)top + (uint32_t)wt->viewport_h - 1U;
@@ -252,10 +254,10 @@ static int32_t wt_sat_add(int32_t a, int32_t b)
   return (int32_t)sum;
 }
 
-ra8_err_t ra8_webtoon_scroll_by(ra8_webtoon_t* wt, int32_t delta)
+ra8_err_t ra8_longstrip_scroll_by(ra8_longstrip_t* wt, int32_t delta)
 {
   RA8_CHECK_NULL_PTR(wt, s_tag, "wt must not be nullptr");
-  wt->scroll_y = ra8_webtoon_clamp_scroll(wt, wt_sat_add(wt->scroll_y, delta));
+  wt->scroll_y = ra8_longstrip_clamp_scroll(wt, wt_sat_add(wt->scroll_y, delta));
   /* Decision: pinned at either end stops a running fling (2 conditions). */
   if ((wt->scroll_y == 0) || (wt->scroll_y == wt->max_scroll)) {
     wt->velocity = 0;
@@ -263,7 +265,7 @@ ra8_err_t ra8_webtoon_scroll_by(ra8_webtoon_t* wt, int32_t delta)
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_webtoon_fling(ra8_webtoon_t* wt, int32_t v0)
+ra8_err_t ra8_longstrip_fling(ra8_longstrip_t* wt, int32_t v0)
 {
   RA8_CHECK_NULL_PTR(wt, s_tag, "wt must not be nullptr");
   wt->velocity = v0;
@@ -298,14 +300,14 @@ static int32_t wt_apply_friction(int32_t v)
  * @return `true` when `scroll_y <= 0`, else `false`.
  * @retval true  The viewport top is at the strip top.
  * @retval false The viewport has scrolled below the top.
- * @pre @p wt was opened by ::ra8_webtoon_open.
+ * @pre @p wt was opened by ::ra8_longstrip_open.
  * @pre The clamp invariant `scroll_y >= 0` holds.
  * @post No state is mutated.
  * @post The result depends only on `scroll_y`.
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-static bool wt_at_top(const ra8_webtoon_t* wt)
+static bool wt_at_top(const ra8_longstrip_t* wt)
 {
   return wt->scroll_y <= 0;
 }
@@ -318,14 +320,14 @@ static bool wt_at_top(const ra8_webtoon_t* wt)
  * @return `true` when `scroll_y >= max_scroll`, else `false`.
  * @retval true  The viewport is at the strip bottom.
  * @retval false The viewport is above the bottom.
- * @pre @p wt was opened by ::ra8_webtoon_open.
+ * @pre @p wt was opened by ::ra8_longstrip_open.
  * @pre The clamp invariant `scroll_y <= max_scroll` holds.
  * @post No state is mutated.
  * @post The result depends only on `scroll_y` and `max_scroll`.
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-static bool wt_at_bottom(const ra8_webtoon_t* wt)
+static bool wt_at_bottom(const ra8_longstrip_t* wt)
 {
   return wt->scroll_y >= wt->max_scroll;
 }
@@ -333,7 +335,7 @@ static bool wt_at_bottom(const ra8_webtoon_t* wt)
 /**
  * @brief True when a fling has hit the boundary it is travelling toward.
  *
- * @details The caller (::ra8_webtoon_tick) only reaches this with a non-zero
+ * @details The caller (::ra8_longstrip_tick) only reaches this with a non-zero
  *          velocity -- a zeroed velocity already short-circuits the tick to
  *          rest -- so the sign alone decides which end halts the fling: an
  *          upward (`velocity < 0`) fling stops only at the top, a downward
@@ -346,19 +348,19 @@ static bool wt_at_bottom(const ra8_webtoon_t* wt)
  * @return `true` if the fling should come to rest this tick, else `false`.
  * @retval true  The velocity is driving into the boundary it has reached.
  * @retval false The fling can keep moving (away from, or not yet at, a bound).
- * @pre @p wt was opened by ::ra8_webtoon_open.
+ * @pre @p wt was opened by ::ra8_longstrip_open.
  * @pre `wt->velocity` is the non-zero post-friction velocity for this tick.
  * @post No state is mutated.
  * @post The result depends only on the velocity sign and the pinned ends.
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
-static bool wt_fling_should_stop(const ra8_webtoon_t* wt)
+static bool wt_fling_should_stop(const ra8_longstrip_t* wt)
 {
   return (wt->velocity < 0) ? wt_at_top(wt) : wt_at_bottom(wt);
 }
 
-bool ra8_webtoon_tick(ra8_webtoon_t* wt)
+bool ra8_longstrip_tick(ra8_longstrip_t* wt)
 {
   if (wt == nullptr) {
     return false;
@@ -366,7 +368,7 @@ bool ra8_webtoon_tick(ra8_webtoon_t* wt)
   if (wt->velocity == 0) {
     return false;
   }
-  wt->scroll_y = ra8_webtoon_clamp_scroll(wt, wt_sat_add(wt->scroll_y, wt->velocity));
+  wt->scroll_y = ra8_longstrip_clamp_scroll(wt, wt_sat_add(wt->scroll_y, wt->velocity));
   wt->velocity = wt_apply_friction(wt->velocity);
   /* Decision: come to rest when the speed hits zero or a boundary is reached. */
   if ((wt->velocity == 0) || wt_fling_should_stop(wt)) {
@@ -384,14 +386,14 @@ bool ra8_webtoon_tick(ra8_webtoon_t* wt)
  *          decodes it on demand -- so any error is intentionally swallowed.
  * @param[in,out] wt   Opened strip whose cache is warmed.
  * @param[in]     band Band index to warm (caller keeps it in range).
- * @pre @p wt was opened by ::ra8_webtoon_open.
+ * @pre @p wt was opened by ::ra8_longstrip_open.
  * @pre @p band is a valid band index for @p wt.
  * @post No engine geometry or scroll state is mutated.
  * @post No cache pin is held on return.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void wt_warm_band(ra8_webtoon_t* wt, uint16_t band)
+static void wt_warm_band(ra8_longstrip_t* wt, uint16_t band)
 {
   ra8_tile_key_t key = {};
   key.image_id       = wt->image_id;
@@ -404,17 +406,17 @@ static void wt_warm_band(ra8_webtoon_t* wt, uint16_t band)
   }
 }
 
-ra8_err_t ra8_webtoon_prefetch(ra8_webtoon_t* wt, uint16_t depth)
+ra8_err_t ra8_longstrip_prefetch(ra8_longstrip_t* wt, uint16_t depth)
 {
   RA8_CHECK_NULL_PTR(wt, s_tag, "wt must not be nullptr");
   uint16_t        first = 0;
   uint16_t        last  = 0;
-  const ra8_err_t err   = ra8_webtoon_visible_bands(wt, wt->scroll_y, &first, &last);
+  const ra8_err_t err   = ra8_longstrip_visible_bands(wt, wt->scroll_y, &first, &last);
   if (err != k_ra8_ok) {
     return err;
   }
-  if (depth > (uint16_t)k_ra8_webtoon_max_prefetch) {
-    depth = (uint16_t)k_ra8_webtoon_max_prefetch;
+  if (depth > (uint16_t)k_ra8_longstrip_max_prefetch) {
+    depth = (uint16_t)k_ra8_longstrip_max_prefetch;
   }
   const uint16_t visible_span = (uint16_t)((last - first) + 1U);
   /* Decision: nothing to prefetch with zero depth or a strip that fits (2). */
@@ -422,7 +424,7 @@ ra8_err_t ra8_webtoon_prefetch(ra8_webtoon_t* wt, uint16_t depth)
     return k_ra8_ok;
   }
   const bool downward = (wt->velocity >= 0);
-  for (uint16_t i = 1U; i <= depth; i++) { /* bounded by k_ra8_webtoon_max_prefetch */
+  for (uint16_t i = 1U; i <= depth; i++) { /* bounded by k_ra8_longstrip_max_prefetch */
     uint16_t target = 0;
     if (downward) {
       const uint32_t t = (uint32_t)last + (uint32_t)i;
@@ -452,17 +454,17 @@ ra8_err_t ra8_webtoon_prefetch(ra8_webtoon_t* wt, uint16_t depth)
  * @param[in]     dst_y  Band destination top in the viewport (may be negative).
  * @param[in]     band_h Band height, pixels.
  * @param[in,out] stats  Frame accounting whose `covered_rows` is advanced.
- * @pre @p wt was opened by ::ra8_webtoon_open.
+ * @pre @p wt was opened by ::ra8_longstrip_open.
  * @pre @p stats is a live per-frame accumulator.
  * @post `stats->covered_rows` grew by the clipped on-screen row count (>= 0).
  * @post No other field of @p stats or @p wt is mutated.
  * @note Not thread-safe (mutates @p stats).
  * @since 0.1.0
  */
-static void wt_accumulate_coverage(const ra8_webtoon_t*        wt,
-                                   int32_t                     dst_y,
-                                   uint16_t                    band_h,
-                                   ra8_webtoon_render_stats_t* stats)
+static void wt_accumulate_coverage(const ra8_longstrip_t*        wt,
+                                   int32_t                       dst_y,
+                                   uint16_t                      band_h,
+                                   ra8_longstrip_render_stats_t* stats)
 {
   int32_t       top = (dst_y > 0) ? dst_y : 0;
   int32_t       bot = dst_y + (int32_t)band_h;
@@ -489,7 +491,7 @@ static void wt_accumulate_coverage(const ra8_webtoon_t*        wt,
  * @return Result code.
  * @retval k_ra8_ok The band drew, or a miss was recorded as a skip.
  * @retval other    The blit sink or the cache release failed (fatal).
- * @pre @p wt was opened by ::ra8_webtoon_open.
+ * @pre @p wt was opened by ::ra8_longstrip_open.
  * @pre @p stats is a live per-frame accumulator.
  * @post The band was blitted at most once and no pin remains held.
  * @post Exactly one of `bands_drawn` / `skipped` advanced for this band.
@@ -497,7 +499,7 @@ static void wt_accumulate_coverage(const ra8_webtoon_t*        wt,
  * @since 0.1.0
  */
 static ra8_err_t
-wt_draw_band(ra8_webtoon_t* wt, uint16_t band, int32_t dst_x, ra8_webtoon_render_stats_t* stats)
+wt_draw_band(ra8_longstrip_t* wt, uint16_t band, int32_t dst_x, ra8_longstrip_render_stats_t* stats)
 {
   ra8_tile_key_t key = {};
   key.image_id       = wt->image_id;
@@ -522,14 +524,14 @@ wt_draw_band(ra8_webtoon_t* wt, uint16_t band, int32_t dst_x, ra8_webtoon_render
   return (berr != k_ra8_ok) ? berr : perr;
 }
 
-ra8_err_t ra8_webtoon_render(ra8_webtoon_t* wt, ra8_webtoon_render_stats_t* stats)
+ra8_err_t ra8_longstrip_render(ra8_longstrip_t* wt, ra8_longstrip_render_stats_t* stats)
 {
   RA8_CHECK_NULL_PTR(wt, s_tag, "wt must not be nullptr");
-  ra8_webtoon_render_stats_t local = {};
-  wt->scroll_y                     = ra8_webtoon_clamp_scroll(wt, wt->scroll_y);
-  uint16_t  first                  = 0;
-  uint16_t  last                   = 0;
-  ra8_err_t err                    = ra8_webtoon_visible_bands(wt, wt->scroll_y, &first, &last);
+  ra8_longstrip_render_stats_t local = {};
+  wt->scroll_y                       = ra8_longstrip_clamp_scroll(wt, wt->scroll_y);
+  uint16_t  first                    = 0;
+  uint16_t  last                     = 0;
+  ra8_err_t err                      = ra8_longstrip_visible_bands(wt, wt->scroll_y, &first, &last);
   if (err != k_ra8_ok) {
     return err;
   }

@@ -1000,6 +1000,13 @@ libs/ra8_keyboard/src/ra8_keyboard.c	misra-c2012-15.5	17
 libs/ra8_keyboard/src/ra8_keyboard.c	misra-c2012-16.2	6
 libs/ra8_keyboard/src/ra8_keyboard.c	misra-c2012-17.3	1
 libs/ra8_keyboard/src/ra8_keyboard.c	misra-c2012-8.9	11
+libs/ra8_longstrip/src/ra8_longstrip.c	misra-c2012-10.8	3
+libs/ra8_longstrip/src/ra8_longstrip.c	misra-c2012-15.4	1
+libs/ra8_longstrip/src/ra8_longstrip.c	misra-c2012-15.5	34
+libs/ra8_longstrip/src/ra8_longstrip.c	misra-c2012-15.7	1
+libs/ra8_longstrip/src/ra8_longstrip.c	misra-c2012-17.3	2
+libs/ra8_longstrip/src/ra8_longstrip.c	misra-c2012-17.8	3
+libs/ra8_longstrip/src/ra8_longstrip.c	misra-c2012-8.4	10
 libs/ra8_lsm6dso/src/ra8_lsm6dso.c	misra-c2012-10.8	4
 libs/ra8_lsm6dso/src/ra8_lsm6dso.c	misra-c2012-15.5	45
 libs/ra8_lsm6dso/src/ra8_lsm6dso.c	misra-c2012-8.4	9
@@ -1331,13 +1338,6 @@ libs/ra8_webp/src/ra8_webp.c	misra-c2012-8.4	2
 libs/ra8_webp/src/ra8_webp_arena.c	misra-c2012-15.5	6
 libs/ra8_webp/src/ra8_webp_arena.c	misra-c2012-17.7	1
 libs/ra8_webp/src/ra8_webp_arena.c	misra-c2012-8.4	5
-libs/ra8_webtoon/src/ra8_webtoon.c	misra-c2012-10.8	3
-libs/ra8_webtoon/src/ra8_webtoon.c	misra-c2012-15.4	1
-libs/ra8_webtoon/src/ra8_webtoon.c	misra-c2012-15.5	34
-libs/ra8_webtoon/src/ra8_webtoon.c	misra-c2012-15.7	1
-libs/ra8_webtoon/src/ra8_webtoon.c	misra-c2012-17.3	2
-libs/ra8_webtoon/src/ra8_webtoon.c	misra-c2012-17.8	3
-libs/ra8_webtoon/src/ra8_webtoon.c	misra-c2012-8.4	10
 libs/ra8_widget/src/ra8_widget.c	misra-c2012-14.2	4
 libs/ra8_widget/src/ra8_widget.c	misra-c2012-15.5	28
 libs/ra8_widget/src/ra8_widget.c	misra-c2012-17.3	3

@@ -60,7 +60,7 @@ Vela** -- [vela.md](vela.md) (pinned at `tools/vela/requirements.txt`).
   content (`.tar.xz`) behind the bounded `libs/ra8_unarch` wrapper.
 - **stb** -- PNG / JPEG decoding (`stb_image`) and TTF rasterization
   (`stb_truetype`) for the EPUB reader.
-- **libwebp** (decode-only) -- WebP (VP8 / VP8L) decoding for webtoon / manga
+- **libwebp** (decode-only) -- WebP (VP8 / VP8L) decoding for longstrip / manga
   raster content, reached through the `libs/ra8_webp/` facade. Not yet wired
   into the raster decode dispatch (that is #289).
 - **TinyXML-2** -- XML parser for EPUB container metadata.

@@ -16,7 +16,7 @@
  *
  *   1. **Tile binder** (`ra8_epub_tile_binder_*`): pages RTA1 tile atlases
  *      (`ra8_tileatlas.h` -- the display-native band-tile format shared with
- *      the webtoon scroll #289 and the #290 codec policy) through
+ *      the longstrip scroll #289 and the #290 codec policy) through
  *      ::ra8_tile_cache, decode-on-demand keyed by `(image_id, tile_x,
  *      tile_y)`. An atlas backs onto either a *stored* archive entry
  *      (`ra8_epub_tile_binder_add()`, host-baked books) or any external

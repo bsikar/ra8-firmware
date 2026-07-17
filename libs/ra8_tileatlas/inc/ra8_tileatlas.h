@@ -1,14 +1,14 @@
 /**
  * @file ra8_tileatlas.h
  * @brief RTA1 band-tile atlas: the display-native normalized image format
- *        (#231, shared with the webtoon scroll #289 and codec policy #290).
+ *        (#231, shared with the longstrip scroll #289 and codec policy #290).
  * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 4 / Domain] {World: NS}
  *
  * @details
- * A huge raster (a manga page or webtoon slice whose *decoded* size exceeds
+ * A huge raster (a manga page or longstrip slice whose *decoded* size exceeds
  * the ~10 MB SDRAM working set) cannot be decoded whole on this device, and
  * JPEG/PNG offer no random access. RTA1 solves both at *import time*: the
  * source image is transcoded once (`ra8_tileatlas_produce()`) into a grid of
@@ -19,7 +19,7 @@
  * One format serves three consumers:
  *   - **#231** full-resolution in-EPUB manga pages: 2-D tile grids paged
  *     through `ra8_tile_cache` via the `ra8_epub_img_tiles` binder.
- *   - **#289** webtoon band-scroll: a band-tile is simply a tile the full
+ *   - **#289** longstrip band-scroll: a band-tile is simply a tile the full
  *     image width (`tile_w == width`, one tile column); the tile index THEN
  *     IS the band index (byte offset + length per band), giving O(1) seek to
  *     any scroll position.
@@ -94,7 +94,7 @@
  * source image, which the no-quality-loss rule forbids; DEFLATE is lossless,
  * already in-tree (miniz, reused via `ra8_io_compress`/`ra8_io_decompress`),
  * decodes a 64 KiB tile in bounded RAM with zero heap, and compresses
- * manga/webtoon line art well. Raw (codec 0) remains for zero-decode paging
+ * manga/longstrip line art well. Raw (codec 0) remains for zero-decode paging
  * of already-tiny atlases.
  *
  * ## Validation model
