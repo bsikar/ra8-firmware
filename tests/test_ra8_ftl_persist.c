@@ -347,6 +347,121 @@ static void test_persist_save_errors(void)
 }
 
 /**
+ * @brief Save a checkpoint from an FTL with one fewer logical block, expect reject.
+ * @param[in,out] ftl     The reference FTL the checkpoint is loaded into.
+ * @param[out]    buf     Checkpoint scratch buffer.
+ * @param[in]     buf_cap Capacity of @p buf in bytes.
+ * @param[in]     need    The reference FTL's checkpoint size.
+ * @return None.
+ * @pre @p ftl is initialised at the reference geometry.
+ * @post The geometry-mismatched load returned k_ra8_err_invalid_arg.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void
+persist_load_geometry_logical(ra8_ftl_t* ftl, uint8_t* buf, uint32_t buf_cap, uint32_t need)
+{
+  persist_fake_t    lt_st = {};
+  ra8_io_blockdev_t lt    = {};
+  persist_bind(&lt, &lt_st, (uint32_t)k_persist_phys);
+  ra8_ftl_t        lt_ftl = {};
+  uint16_t         lt_map[(size_t)k_persist_logical - 1U];
+  ra8_ftl_pblock_t lt_pb[(size_t)k_persist_phys] = {};
+  uint8_t          lt_scratch[(size_t)k_persist_block];
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_ftl_init(&lt_ftl,
+                              &lt,
+                              lt_map,
+                              (uint32_t)k_persist_logical - 1U,
+                              lt_pb,
+                              (uint32_t)k_persist_phys,
+                              lt_scratch));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_checkpoint_save(&lt_ftl, buf, buf_cap));
+  /* Magic + physical match; logical (5 vs 6) differs -> invalid_arg. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ftl_checkpoint_load(ftl, buf, need));
+}
+
+/**
+ * @brief Save a checkpoint from an FTL with one fewer physical block, expect reject.
+ * @param[in,out] ftl     The reference FTL the checkpoint is loaded into.
+ * @param[out]    buf     Checkpoint scratch buffer.
+ * @param[in]     buf_cap Capacity of @p buf in bytes.
+ * @param[in]     need    The reference FTL's checkpoint size.
+ * @return None.
+ * @pre @p ftl is initialised at the reference geometry.
+ * @post The geometry-mismatched load returned k_ra8_err_invalid_arg.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void
+persist_load_geometry_physical(ra8_ftl_t* ftl, uint8_t* buf, uint32_t buf_cap, uint32_t need)
+{
+  persist_fake_t    lp_st = {};
+  ra8_io_blockdev_t lp    = {};
+  persist_bind(&lp, &lp_st, (uint32_t)k_persist_phys - 1U);
+  ra8_ftl_t        lp_ftl = {};
+  uint16_t         lp_map[(size_t)k_persist_logical];
+  ra8_ftl_pblock_t lp_pb[(size_t)k_persist_phys - 1U] = {};
+  uint8_t          lp_scratch[(size_t)k_persist_block];
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_ftl_init(&lp_ftl,
+                              &lp,
+                              lp_map,
+                              (uint32_t)k_persist_logical,
+                              lp_pb,
+                              (uint32_t)k_persist_phys - 1U,
+                              lp_scratch));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_checkpoint_save(&lp_ftl, buf, buf_cap));
+  /* Magic + logical match; physical (11 vs 12) differs -> invalid_arg. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ftl_checkpoint_load(ftl, buf, need));
+}
+
+/**
+ * @brief Write every logical block (with a wear-spreading overwrite of block 2).
+ * @param[in,out] bd The FTL exposed as a block device.
+ * @return None.
+ * @pre @p bd is a valid FTL block device.
+ * @post Every logical block holds its generator pattern.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void persist_write_all(ra8_io_blockdev_t* bd)
+{
+  for (uint32_t lbn = 0; lbn < (uint32_t)k_persist_logical; ++lbn) {
+    uint8_t blk[(size_t)k_persist_block];
+    persist_pattern(blk, lbn, lbn + 1U);
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(bd, lbn, 1U, blk));
+  }
+  for (uint32_t rep = 0; rep < 4U; ++rep) {
+    uint8_t blk[(size_t)k_persist_block];
+    persist_pattern(blk, 2U, 100U + rep);
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(bd, 2U, 1U, blk));
+  }
+}
+
+/**
+ * @brief After a naive re-open (no checkpoint), block 2 reads the erase value.
+ * @param[in,out] bd The freshly re-inited FTL block device.
+ * @return None.
+ * @pre @p bd was re-inited over retained media with no checkpoint load.
+ * @post Logical block 2 read all erase bytes (the lost-mapping proof).
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void persist_check_naive_lost(ra8_io_blockdev_t* bd)
+{
+  uint8_t got[(size_t)k_persist_block];
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(bd, 2U, 1U, got));
+  bool pre_all_ff = true;
+  for (size_t i = 0; i < sizeof(got); ++i) {
+    if (got[i] != (uint8_t)k_persist_erase_byte) {
+      pre_all_ff = false;
+    }
+  }
+  TEST_ASSERT(pre_all_ff);
+}
+
+/**
  * @test ra8_ftl_checkpoint_load validation arms
  *
  * @par MC/DC:
@@ -390,44 +505,10 @@ static void test_persist_load_errors(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_ftl_checkpoint_load(&ftl, buf, need));
 
   /* Valid checkpoint with a smaller logical count -> geometry mismatch. */
-  persist_fake_t    lt_st = {};
-  ra8_io_blockdev_t lt    = {};
-  persist_bind(&lt, &lt_st, (uint32_t)k_persist_phys);
-  ra8_ftl_t        lt_ftl = {};
-  uint16_t         lt_map[(size_t)k_persist_logical - 1U];
-  ra8_ftl_pblock_t lt_pb[(size_t)k_persist_phys] = {};
-  uint8_t          lt_scratch[(size_t)k_persist_block];
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_ftl_init(&lt_ftl,
-                              &lt,
-                              lt_map,
-                              (uint32_t)k_persist_logical - 1U,
-                              lt_pb,
-                              (uint32_t)k_persist_phys,
-                              lt_scratch));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_checkpoint_save(&lt_ftl, buf, (uint32_t)sizeof(buf)));
-  /* Magic + physical match; logical (5 vs 6) differs -> invalid_arg. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ftl_checkpoint_load(&ftl, buf, need));
+  persist_load_geometry_logical(&ftl, buf, (uint32_t)sizeof(buf), need);
 
   /* Valid checkpoint with a smaller physical count -> geometry mismatch. */
-  persist_fake_t    lp_st = {};
-  ra8_io_blockdev_t lp    = {};
-  persist_bind(&lp, &lp_st, (uint32_t)k_persist_phys - 1U);
-  ra8_ftl_t        lp_ftl = {};
-  uint16_t         lp_map[(size_t)k_persist_logical];
-  ra8_ftl_pblock_t lp_pb[(size_t)k_persist_phys - 1U] = {};
-  uint8_t          lp_scratch[(size_t)k_persist_block];
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_ftl_init(&lp_ftl,
-                              &lp,
-                              lp_map,
-                              (uint32_t)k_persist_logical,
-                              lp_pb,
-                              (uint32_t)k_persist_phys - 1U,
-                              lp_scratch));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_checkpoint_save(&lp_ftl, buf, (uint32_t)sizeof(buf)));
-  /* Magic + logical match; physical (11 vs 12) differs -> invalid_arg. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ftl_checkpoint_load(&ftl, buf, need));
+  persist_load_geometry_physical(&ftl, buf, (uint32_t)sizeof(buf), need);
 
   TEST_END("ftl checkpoint_load errors");
 }
@@ -436,6 +517,38 @@ static void test_persist_load_errors(void)
  * Power-cycle survival round-trip
  * =============================================================================
  */
+
+/**
+ * @brief Initialise the FTL at the reference geometry and expose it as a blockdev.
+ * @param[out]    ftl     FTL handle to initialise.
+ * @param[in,out] fake    Backing block device.
+ * @param[out]    map     Logical->physical map table.
+ * @param[out]    pb      Physical-block table.
+ * @param[out]    scratch Scratch block buffer.
+ * @param[out]    bd      Receives the FTL block-device facade.
+ * @return None.
+ * @pre All buffers are sized for the reference geometry.
+ * @post @p ftl is initialised and @p bd is bound to it.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void persist_ftl_open(ra8_ftl_t*         ftl,
+                             ra8_io_blockdev_t* fake,
+                             uint16_t*          map,
+                             ra8_ftl_pblock_t*  pb,
+                             uint8_t*           scratch,
+                             ra8_io_blockdev_t* bd)
+{
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_ftl_init(ftl,
+                              fake,
+                              map,
+                              (uint32_t)k_persist_logical,
+                              pb,
+                              (uint32_t)k_persist_phys,
+                              scratch));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_as_blockdev(ftl, bd));
+}
 
 /**
  * @test checkpoint save + restore survives a simulated power cycle
@@ -456,32 +569,15 @@ static void test_persist_power_cycle_roundtrip(void)
   persist_fake_t    fake_st = {};
   ra8_io_blockdev_t fake    = {};
   persist_bind(&fake, &fake_st, (uint32_t)k_persist_phys);
-  ra8_ftl_t        ftl = {};
-  uint16_t         map[(size_t)k_persist_logical];
-  ra8_ftl_pblock_t pb[(size_t)k_persist_phys] = {};
-  uint8_t          scratch[(size_t)k_persist_block];
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_ftl_init(&ftl,
-                              &fake,
-                              map,
-                              (uint32_t)k_persist_logical,
-                              pb,
-                              (uint32_t)k_persist_phys,
-                              scratch));
+  ra8_ftl_t         ftl = {};
+  uint16_t          map[(size_t)k_persist_logical];
+  ra8_ftl_pblock_t  pb[(size_t)k_persist_phys] = {};
+  uint8_t           scratch[(size_t)k_persist_block];
   ra8_io_blockdev_t bd = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_as_blockdev(&ftl, &bd));
+  persist_ftl_open(&ftl, &fake, map, pb, scratch, &bd);
 
   /* Write every logical block; overwrite one a few times to spread wear. */
-  for (uint32_t lbn = 0; lbn < (uint32_t)k_persist_logical; ++lbn) {
-    uint8_t blk[(size_t)k_persist_block];
-    persist_pattern(blk, lbn, lbn + 1U);
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, lbn, 1U, blk));
-  }
-  for (uint32_t rep = 0; rep < 4U; ++rep) {
-    uint8_t blk[(size_t)k_persist_block];
-    persist_pattern(blk, 2U, 100U + rep);
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 2U, 1U, blk));
-  }
+  persist_write_all(&bd);
 
   /* Snapshot expected contents through the FTL before teardown. */
   uint8_t expect[(size_t)k_persist_logical][(size_t)k_persist_block];
@@ -503,27 +599,12 @@ static void test_persist_power_cycle_roundtrip(void)
   (void)memset(&bd, 0, sizeof(bd));
 
   /* Re-init over the retained backing store (fake_st.store is untouched). */
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_ftl_init(&ftl,
-                              &fake,
-                              map,
-                              (uint32_t)k_persist_logical,
-                              pb,
-                              (uint32_t)k_persist_phys,
-                              scratch));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_as_blockdev(&ftl, &bd));
+  persist_ftl_open(&ftl, &fake, map, pb, scratch, &bd);
 
   /* Naive re-open has lost the map: logical block 2 now reads the erase value. */
-  uint8_t got[(size_t)k_persist_block];
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(&bd, 2U, 1U, got));
-  bool pre_all_ff = true;
-  for (size_t i = 0; i < sizeof(got); ++i) {
-    if (got[i] != (uint8_t)k_persist_erase_byte) {
-      pre_all_ff = false;
-    }
-  }
-  TEST_ASSERT(pre_all_ff);
+  persist_check_naive_lost(&bd);
 
+  uint8_t got[(size_t)k_persist_block];
   /* Restore the checkpoint and read every logical block back intact. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_checkpoint_load(&ftl, ckbuf, need));
   for (uint32_t lbn = 0; lbn < (uint32_t)k_persist_logical; ++lbn) {
