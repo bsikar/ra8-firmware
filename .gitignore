@@ -1,11 +1,17 @@
 # CMake build artifacts
 build/
 build-*/
+build_*/
 cmake-build-*/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
 compile_commands.json
+
+# Downloaded media (comics/manga/manhwa fetched by tools/media_dl). This is
+# third-party copyrighted content pulled for LOCAL testing only -- never commit
+# or publish it. Applies to the default `downloads/` root anywhere in the tree.
+downloads/
 
 # Real-world EPUB test fixtures (copyrighted books used for local pipeline
 # testing only -- never committed/published; see tests/fixtures/epub/README.md)
