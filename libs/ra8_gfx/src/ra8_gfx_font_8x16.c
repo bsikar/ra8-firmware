@@ -37,7 +37,7 @@ typedef enum : uint8_t {
   k_font_8x16_last   = 0x7E, /**< Last codepoint stored.  */
 } ra8_gfx_font_8x16_constants_t;
 
-/* clang-format off */
+// clang-format off: hand-aligned glyph bitmap table, 16 bytes per row.
 /* ------------------------------------------------------------------------
  * Glyph bitmap table: 95 glyphs x 16 rows = 1520 bytes.
  *
@@ -142,7 +142,7 @@ static const uint8_t s_font_8x16_glyphs[(k_font_8x16_last - k_font_8x16_first + 
   /* 0x7D '}' */ 0,0,0x70,0x18,0x18,0x18,0x0E,0x18,0x18,0x18,0x18,0x70,0,0,0,0,
   /* 0x7E '~' */ 0,0,0x76,0xDC,0,0,0,0,0,0,0,0,0,0,0,0,
 };
-/* clang-format on */
+// clang-format on
 
 /**
  * @var ra8_gfx_font_8x16
