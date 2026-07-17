@@ -357,6 +357,22 @@ static void net_send_data(void)
   s_tcp_our_seq += (uint32_t)n;
 }
 
+/** @brief ESTAB state: echo-match the payload, then start our active (FIN) close. */
+static void net_tcp_on_estab(uint32_t seq, const uint8_t* pdata, uint32_t plen)
+{
+  s_tcp_echoed = plen;
+  s_tcp_match =
+    (plen == (uint32_t)(sizeof(s_tcp_payload) - 1U)) && (memcmp(pdata, s_tcp_payload, plen) == 0);
+  s_tcp_their_seq = seq + plen;
+  net_send_tcp((uint8_t)k_tcp_ack, nullptr, 0U);
+  net_send_tcp((uint8_t)(k_tcp_fin | k_tcp_ack), nullptr, 0U);
+  s_tcp_our_seq += 1U; /* FIN consumes one. */
+  s_state = (uint8_t)k_net_fin;
+  if (s_trace) {
+    (void)fprintf(stderr, "  [net] TCP echo %u byte(s) match=%s\n", plen, s_tcp_match ? "Y" : "N");
+  }
+}
+
 /** @brief Handle an inbound TCP segment: drive the connect / echo / close FSM. */
 static void net_rx_tcp(const uint8_t* t, uint32_t len)
 {
@@ -399,18 +415,7 @@ static void net_rx_tcp(const uint8_t* t, uint32_t len)
     return;
   }
   if ((s_state == (uint8_t)k_net_estab) && (plen > 0U)) {
-    s_tcp_echoed = plen;
-    s_tcp_match =
-      (plen == (uint32_t)(sizeof(s_tcp_payload) - 1U)) && (memcmp(pdata, s_tcp_payload, plen) == 0);
-    s_tcp_their_seq = seq + plen;
-    net_send_tcp((uint8_t)k_tcp_ack, nullptr, 0U);
-    net_send_tcp((uint8_t)(k_tcp_fin | k_tcp_ack), nullptr, 0U);
-    s_tcp_our_seq += 1U; /* FIN consumes one. */
-    s_state = (uint8_t)k_net_fin;
-    if (s_trace) {
-      (void)
-        fprintf(stderr, "  [net] TCP echo %u byte(s) match=%s\n", plen, s_tcp_match ? "Y" : "N");
-    }
+    net_tcp_on_estab(seq, pdata, plen);
     return;
   }
   if ((s_state == (uint8_t)k_net_fin) && ((flags & (uint8_t)k_tcp_fin) != 0U)) {

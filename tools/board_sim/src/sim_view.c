@@ -195,20 +195,8 @@ int write_ppm(const char* path, const uint16_t* fb, uint16_t width_px, uint16_t 
   return 0;
 }
 
-/**
- * @brief Snapshot the live peripheral state into a board-view status struct.
- *
- * @details
- * Reads the read-only board_periph / board_usb getters -- per-LED level + lit
- * colour, the USB device-state string, the last captured UART line, the NVIC
- * IRQ totals, and the last drained touch point -- so the overlay can render the
- * status sidebar without reaching into any model's internals.
- *
- * @param[out] st        Status struct to fill.
- * @param[in]  app_name  Window / app title to caption the sidebar with.
- * @return Nothing.
- */
-static void fill_status(board_status_t* st, const char* app_name)
+/** @brief Snapshot the LED / USB / UART / IRQ / switch / battery / SD state. */
+static void fill_status_hw(board_status_t* st, const char* app_name)
 {
   static const char* const k_led_labels[k_overlay_led_count] = {"LED1", "LED2", "LED3"};
   *st                                                        = (board_status_t){};
@@ -231,6 +219,11 @@ static void fill_status(board_status_t* st, const char* app_name)
   st->core_is_m33 = (s_primary_core == k_core_m33);
   st->app_name    = app_name;
   board_sd_info(&st->sd_attached, &st->sd_bytes, &st->sd_fat_bits, &st->sd_label);
+}
+
+/** @brief Snapshot the tabbed-console metadata and the active scrollback window. */
+static void fill_status_console(board_status_t* st)
+{
   /* Tabbed console: each board_console channel (ALL | UART | ITM | SPI | I2C) is
    * a tab; the active one (s_view_console_ch) fills the console panel. Populate
    * the tab-bar metadata (names + live line counts + which tab is active) so the
@@ -289,6 +282,25 @@ static void fill_status(board_status_t* st, const char* app_name)
   st->mmio_reads    = sim_mmio_reads();
   st->mmio_writes   = sim_mmio_writes();
   st->uart_tx_total = board_periph_uart_tx_total();
+}
+
+/**
+ * @brief Snapshot the live peripheral state into a board-view status struct.
+ *
+ * @details
+ * Reads the read-only board_periph / board_usb getters -- per-LED level + lit
+ * colour, the USB device-state string, the last captured UART line, the NVIC
+ * IRQ totals, and the last drained touch point -- so the overlay can render the
+ * status sidebar without reaching into any model's internals.
+ *
+ * @param[out] st        Status struct to fill.
+ * @param[in]  app_name  Window / app title to caption the sidebar with.
+ * @return Nothing.
+ */
+static void fill_status(board_status_t* st, const char* app_name)
+{
+  fill_status_hw(st, app_name);
+  fill_status_console(st);
 }
 
 /**
