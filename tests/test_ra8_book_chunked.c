@@ -229,6 +229,179 @@ static void test_ra8_book_chunked_open_happy(void)
 }
 
 /**
+ * @struct bcx_guard_ctx_t
+ * @brief Shared buffers and container image for the chunked open-guard helpers.
+ * @invariant All pointers reference caller-owned storage; @c file_len is the
+ *            packed length of @c container.
+ * @see test_ra8_book_chunked_open_guards
+ */
+typedef struct {
+  uint8_t*  container; /**< Packed container image under test.        */
+  uint64_t  file_len;  /**< Byte length of the packed container.      */
+  uint64_t* table;     /**< Caller chunk-table buffer.                */
+  uint8_t*  staging;   /**< Caller staging buffer.                    */
+} bcx_guard_ctx_t;
+
+/**
+ * @brief Assert one null `ra8_book_chunked_open` argument yields null_ptr.
+ * @param[out] rd       Reader handle (nullptr exercises the rd guard).
+ * @param[in]  read     File reader (nullptr exercises the file_read guard).
+ * @param[in]  file     File context passed to @p read.
+ * @param[in]  inflate  Decompressor (nullptr exercises the inflate guard).
+ * @param[out] table    Chunk-table buffer (nullptr exercises the table guard).
+ * @param[out] staging  Staging buffer (nullptr exercises the staging guard).
+ * @param[in]  file_len Packed container length in bytes.
+ * @return None.
+ * @pre Exactly one pointer argument is nullptr.
+ * @post `ra8_book_chunked_open` returned k_ra8_err_null_ptr.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void bcx_expect_null_open(ra8_book_chunked_t* rd,
+                                 ra8_vsource_read_fn read,
+                                 void*               file,
+                                 ra8_book_inflate_fn inflate,
+                                 uint64_t*           table,
+                                 uint8_t*            staging,
+                                 uint64_t            file_len)
+{
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_book_chunked_open(rd,
+                                       read,
+                                       file,
+                                       file_len,
+                                       inflate,
+                                       table,
+                                       k_bcx_table_cap,
+                                       staging,
+                                       k_bcx_staging_cap));
+}
+
+/**
+ * @brief Open with explicit capacities and assert the expected error.
+ * @param[in]     want      Expected result code.
+ * @param[out]    rd        Reader handle under test.
+ * @param[in,out] file      File context, reset to the container image.
+ * @param[in]     g         Shared buffers and container image.
+ * @param[in]     table_cap Chunk-table entry budget.
+ * @param[in]     stage_cap Staging-buffer byte budget.
+ * @return None.
+ * @pre @p g fields reference valid buffers.
+ * @post `ra8_book_chunked_open` returned @p want.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void bcx_expect_open_err(ra8_err_t              want,
+                                ra8_book_chunked_t*    rd,
+                                bcx_file_t*            file,
+                                const bcx_guard_ctx_t* g,
+                                uint32_t               table_cap,
+                                uint32_t               stage_cap)
+{
+  *file = (bcx_file_t){.data = g->container, .len = g->file_len, .fail_at = 0U, .calls = 0U};
+  TEST_ASSERT_EQ(want,
+                 ra8_book_chunked_open(rd,
+                                       bcx_file_read,
+                                       file,
+                                       g->file_len,
+                                       bcx_inflate,
+                                       g->table,
+                                       table_cap,
+                                       g->staging,
+                                       stage_cap));
+}
+
+/**
+ * @brief Exercise the five null-pointer guards of `ra8_book_chunked_open`.
+ * @param[out]    rd   Reader handle under test.
+ * @param[in,out] file File context bound to the container image.
+ * @param[in]     g    Shared buffers and container image.
+ * @return None.
+ * @pre @p g fields reference valid buffers.
+ * @post Each guarded argument returned k_ra8_err_null_ptr.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void bcx_open_guards_null(ra8_book_chunked_t* rd, bcx_file_t* file, const bcx_guard_ctx_t* g)
+{
+  bcx_expect_null_open(nullptr,
+                       bcx_file_read,
+                       file,
+                       bcx_inflate,
+                       g->table,
+                       g->staging,
+                       g->file_len);
+  bcx_expect_null_open(rd, nullptr, file, bcx_inflate, g->table, g->staging, g->file_len);
+  bcx_expect_null_open(rd, bcx_file_read, file, nullptr, g->table, g->staging, g->file_len);
+  bcx_expect_null_open(rd, bcx_file_read, file, bcx_inflate, nullptr, g->staging, g->file_len);
+  bcx_expect_null_open(rd, bcx_file_read, file, bcx_inflate, g->table, nullptr, g->file_len);
+}
+
+/**
+ * @brief Exercise the short-file, bad-magic and capacity rejections of open.
+ * @param[out]    rd   Reader handle under test.
+ * @param[in,out] file File context bound to the container image.
+ * @param[in]     g    Shared buffers and container image.
+ * @return None.
+ * @pre @p g fields reference valid buffers.
+ * @post Every malformed size / magic / budget returned its rejection code.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void
+bcx_open_guards_capacity(ra8_book_chunked_t* rd, bcx_file_t* file, const bcx_guard_ctx_t* g)
+{
+  /* File shorter than the fixed header. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 bcx_open(rd, file, g->container, k_bcx_short_file, g->table, g->staging));
+  TEST_ASSERT(rd->table == nullptr);
+
+  /* Bad magic. */
+  static uint8_t bad_magic[k_bcx_file_cap];
+  memcpy(bad_magic, g->container, (size_t)g->file_len);
+  bad_magic[0] = (uint8_t)'X';
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 bcx_open(rd, file, bad_magic, g->file_len, g->table, g->staging));
+
+  /* Table needs more entries than the caller budgeted. */
+  bcx_expect_open_err(k_ra8_err_invalid_size, rd, file, g, k_bcx_tiny_table, k_bcx_staging_cap);
+
+  /* File ends inside the chunk table. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 bcx_open(rd, file, g->container, k_bcx_table_cut, g->table, g->staging));
+
+  /* A compressed chunk larger than the staging budget. */
+  bcx_expect_open_err(k_ra8_err_invalid_size, rd, file, g, k_bcx_table_cap, k_bcx_tiny_staging);
+}
+
+/**
+ * @brief Assert a file-read failure on the header read propagates verbatim.
+ * @param[out]    rd   Reader handle under test.
+ * @param[in,out] file File context bound to the container image.
+ * @param[in]     g    Shared buffers and container image.
+ * @return None.
+ * @pre @p g fields reference valid buffers.
+ * @post `ra8_book_chunked_open` returned k_ra8_err_hw_timeout.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void
+bcx_open_guards_readfail(ra8_book_chunked_t* rd, bcx_file_t* file, const bcx_guard_ctx_t* g)
+{
+  *file = (bcx_file_t){.data = g->container, .len = g->file_len, .fail_at = 1U, .calls = 0U};
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
+                 ra8_book_chunked_open(rd,
+                                       bcx_file_read,
+                                       file,
+                                       g->file_len,
+                                       bcx_inflate,
+                                       g->table,
+                                       k_bcx_table_cap,
+                                       g->staging,
+                                       k_bcx_staging_cap));
+}
+
+/**
  * @test test_ra8_book_chunked_open_guards
  * @brief Every open-path guard rejects its malformed input.
  *
@@ -255,112 +428,14 @@ static void test_ra8_book_chunked_open_guards(void)
   static uint8_t     staging[k_bcx_staging_cap];
   file = (bcx_file_t){.data = container, .len = file_len, .fail_at = 0U, .calls = 0U};
 
-  /* Null guards. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_book_chunked_open(nullptr,
-                                       bcx_file_read,
-                                       &file,
-                                       file_len,
-                                       bcx_inflate,
-                                       table_buf,
-                                       k_bcx_table_cap,
-                                       staging,
-                                       k_bcx_staging_cap));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_book_chunked_open(&rd,
-                                       nullptr,
-                                       &file,
-                                       file_len,
-                                       bcx_inflate,
-                                       table_buf,
-                                       k_bcx_table_cap,
-                                       staging,
-                                       k_bcx_staging_cap));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_book_chunked_open(&rd,
-                                       bcx_file_read,
-                                       &file,
-                                       file_len,
-                                       nullptr,
-                                       table_buf,
-                                       k_bcx_table_cap,
-                                       staging,
-                                       k_bcx_staging_cap));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_book_chunked_open(&rd,
-                                       bcx_file_read,
-                                       &file,
-                                       file_len,
-                                       bcx_inflate,
-                                       nullptr,
-                                       k_bcx_table_cap,
-                                       staging,
-                                       k_bcx_staging_cap));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_book_chunked_open(&rd,
-                                       bcx_file_read,
-                                       &file,
-                                       file_len,
-                                       bcx_inflate,
-                                       table_buf,
-                                       k_bcx_table_cap,
-                                       nullptr,
-                                       k_bcx_staging_cap));
+  const bcx_guard_ctx_t g = {.container = container,
+                             .file_len  = file_len,
+                             .table     = table_buf,
+                             .staging   = staging};
 
-  /* File shorter than the fixed header. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 bcx_open(&rd, &file, container, k_bcx_short_file, table_buf, staging));
-  TEST_ASSERT(rd.table == nullptr);
-
-  /* Bad magic. */
-  static uint8_t bad_magic[k_bcx_file_cap];
-  memcpy(bad_magic, container, (size_t)file_len);
-  bad_magic[0] = (uint8_t)'X';
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 bcx_open(&rd, &file, bad_magic, file_len, table_buf, staging));
-
-  /* Table needs more entries than the caller budgeted. */
-  file = (bcx_file_t){.data = container, .len = file_len, .fail_at = 0U, .calls = 0U};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_book_chunked_open(&rd,
-                                       bcx_file_read,
-                                       &file,
-                                       file_len,
-                                       bcx_inflate,
-                                       table_buf,
-                                       k_bcx_tiny_table,
-                                       staging,
-                                       k_bcx_staging_cap));
-
-  /* File ends inside the chunk table. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 bcx_open(&rd, &file, container, k_bcx_table_cut, table_buf, staging));
-
-  /* A compressed chunk larger than the staging budget. */
-  file = (bcx_file_t){.data = container, .len = file_len, .fail_at = 0U, .calls = 0U};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_book_chunked_open(&rd,
-                                       bcx_file_read,
-                                       &file,
-                                       file_len,
-                                       bcx_inflate,
-                                       table_buf,
-                                       k_bcx_table_cap,
-                                       staging,
-                                       k_bcx_tiny_staging));
-
-  /* File-read failure on the header read propagates verbatim. */
-  file = (bcx_file_t){.data = container, .len = file_len, .fail_at = 1U, .calls = 0U};
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
-                 ra8_book_chunked_open(&rd,
-                                       bcx_file_read,
-                                       &file,
-                                       file_len,
-                                       bcx_inflate,
-                                       table_buf,
-                                       k_bcx_table_cap,
-                                       staging,
-                                       k_bcx_staging_cap));
+  bcx_open_guards_null(&rd, &file, &g);
+  bcx_open_guards_capacity(&rd, &file, &g);
+  bcx_open_guards_readfail(&rd, &file, &g);
 
   TEST_END("ra8_book_chunked_open guards");
 }
@@ -405,6 +480,45 @@ static void test_ra8_book_chunked_read_happy(void)
 }
 
 /**
+ * @brief Exercise the null and unbound-reader guards of `ra8_book_chunked_read`.
+ * @param[out] rd  A zero-initialised (unopened) reader handle.
+ * @param[out] out Output buffer, at least k_bcx_chunk_bytes long.
+ * @return None.
+ * @pre @p rd is zero-initialised.
+ * @post Both null guards and the unbound-state guard returned their codes.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void bcx_read_guards_unbound(ra8_book_chunked_t* rd, uint8_t* out)
+{
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_book_chunked_read(nullptr, 0U, out, k_bcx_chunk_bytes));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_book_chunked_read(rd, 0U, nullptr, k_bcx_chunk_bytes));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_book_chunked_read(rd, 0U, out, k_bcx_chunk_bytes));
+}
+
+/**
+ * @brief Assert a stream that inflates to the wrong span is rejected.
+ * @param[out] out     Output buffer, at least k_bcx_chunk_bytes long.
+ * @param[in]  staging Shared staging buffer for the open.
+ * @return None.
+ * @pre The chunk blob fixtures are populated (bcx_fill_blob()).
+ * @post `ra8_book_chunked_read` returned k_ra8_err_invalid_size.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void bcx_read_guards_shortspan(uint8_t* out, uint8_t* staging)
+{
+  static uint8_t     short_container[k_bcx_file_cap];
+  const uint64_t     short_len               = bcx_pack(short_container, true);
+  ra8_book_chunked_t srd                     = {};
+  bcx_file_t         sfile                   = {};
+  uint64_t           stable[k_bcx_table_cap] = {};
+  TEST_ASSERT_EQ(k_ra8_ok, bcx_open(&srd, &sfile, short_container, short_len, stable, staging));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_book_chunked_read(&srd, 2U * k_bcx_chunk_bytes, out, k_bcx_last_span));
+}
+
+/**
  * @test test_ra8_book_chunked_read_guards
  * @brief Every read-path guard rejects its malformed request.
  *
@@ -432,9 +546,7 @@ static void test_ra8_book_chunked_read_guards(void)
   static uint8_t     out[k_bcx_chunk_bytes];
 
   /* Null + unbound guards. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_book_chunked_read(nullptr, 0U, out, k_bcx_chunk_bytes));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_book_chunked_read(&rd, 0U, nullptr, k_bcx_chunk_bytes));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_book_chunked_read(&rd, 0U, out, k_bcx_chunk_bytes));
+  bcx_read_guards_unbound(&rd, out);
 
   TEST_ASSERT_EQ(k_ra8_ok, bcx_open(&rd, &file, container, file_len, table_buf, staging));
 
@@ -469,14 +581,7 @@ static void test_ra8_book_chunked_read_guards(void)
   TEST_ASSERT(corrupt_err != k_ra8_ok);
 
   /* A valid stream that inflates to the wrong span is rejected. */
-  static uint8_t     short_container[k_bcx_file_cap];
-  const uint64_t     short_len               = bcx_pack(short_container, true);
-  ra8_book_chunked_t srd                     = {};
-  bcx_file_t         sfile                   = {};
-  uint64_t           stable[k_bcx_table_cap] = {};
-  TEST_ASSERT_EQ(k_ra8_ok, bcx_open(&srd, &sfile, short_container, short_len, stable, staging));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_book_chunked_read(&srd, 2U * k_bcx_chunk_bytes, out, k_bcx_last_span));
+  bcx_read_guards_shortspan(out, staging);
 
   TEST_END("ra8_book_chunked_read guards");
 }
