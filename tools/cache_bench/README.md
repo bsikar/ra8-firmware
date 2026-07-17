@@ -45,8 +45,9 @@ the run.
 
 ### Backends (the hardware seam)
 
-Backends implement the `cbs_backend_t` seam in `sweep_block.h` -- a
-`setup`/`teardown` pair that publishes an `ra8_vsource_read_fn`, exactly what
+Backends implement the `cbs_backend_t` seam in `sweep_block_internal.h`
+(implementations live in `sweep_block_backends.c`) -- a `setup`/`teardown`
+pair that publishes an `ra8_vsource_read_fn`, exactly what
 `ra8_vsource_add_paged` consumes. Two synthetic host backends ship in-tree:
 
 - **`mem`** -- bounds-checked `memcpy` from a resident blob. The harness
