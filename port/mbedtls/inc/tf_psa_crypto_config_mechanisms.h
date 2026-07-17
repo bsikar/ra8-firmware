@@ -34,6 +34,7 @@
  * It is equal to the #TF_PSA_CRYPTO_VERSION_NUMBER of the TF-PSA-Crypto
  * version introduced the config format we want to be compatible with.
  */
+/** @brief TF PSA CRYPTO CONFIG VERSION. */
 #define TF_PSA_CRYPTO_CONFIG_VERSION (0x01000000)
 
 /**
@@ -43,79 +44,148 @@
  * \{
  */
 
+/** @brief PSA WANT ALG CBC NO PADDING. */
 #define PSA_WANT_ALG_CBC_NO_PADDING          (1)
+/** @brief PSA WANT ALG CBC PKCS7. */
 #define PSA_WANT_ALG_CBC_PKCS7               (1)
+/** @brief PSA WANT ALG CCM. */
 #define PSA_WANT_ALG_CCM                     (1)
+/** @brief PSA WANT ALG CCM STAR NO TAG. */
 #define PSA_WANT_ALG_CCM_STAR_NO_TAG         (1)
+/** @brief PSA WANT ALG CMAC. */
 #define PSA_WANT_ALG_CMAC                    (1)
+/** @brief PSA WANT ALG CFB. */
 #define PSA_WANT_ALG_CFB                     (1)
+/** @brief PSA WANT ALG CHACHA20 POLY1305. */
 #define PSA_WANT_ALG_CHACHA20_POLY1305       (1)
+/** @brief PSA WANT ALG CTR. */
 #define PSA_WANT_ALG_CTR                     (1)
+/** @brief PSA WANT ALG DETERMINISTIC ECDSA. */
 #define PSA_WANT_ALG_DETERMINISTIC_ECDSA     (1)
+/** @brief PSA WANT ALG ECB NO PADDING. */
 #define PSA_WANT_ALG_ECB_NO_PADDING          (1)
+/** @brief PSA WANT ALG ECDH. */
 #define PSA_WANT_ALG_ECDH                    (1)
+/** @brief PSA WANT ALG FFDH. */
 #define PSA_WANT_ALG_FFDH                    (1)
+/** @brief PSA WANT ALG ECDSA. */
 #define PSA_WANT_ALG_ECDSA                   (1)
+/** @brief PSA WANT ALG JPAKE. */
 #define PSA_WANT_ALG_JPAKE                   (1)
+/** @brief PSA WANT ALG GCM. */
 #define PSA_WANT_ALG_GCM                     (1)
+/** @brief PSA WANT ALG HKDF. */
 #define PSA_WANT_ALG_HKDF                    (1)
+/** @brief PSA WANT ALG HKDF EXTRACT. */
 #define PSA_WANT_ALG_HKDF_EXTRACT            (1)
+/** @brief PSA WANT ALG HKDF EXPAND. */
 #define PSA_WANT_ALG_HKDF_EXPAND             (1)
+/** @brief PSA WANT ALG HMAC. */
 #define PSA_WANT_ALG_HMAC                    (1)
+/** @brief PSA WANT ALG MD5. */
 #define PSA_WANT_ALG_MD5                     (1)
+/** @brief PSA WANT ALG OFB. */
 #define PSA_WANT_ALG_OFB                     (1)
+/** @brief PSA WANT ALG PBKDF2 HMAC. */
 #define PSA_WANT_ALG_PBKDF2_HMAC             (1)
+/** @brief PSA WANT ALG PBKDF2 AES CMAC PRF 128. */
 #define PSA_WANT_ALG_PBKDF2_AES_CMAC_PRF_128 (1)
+/** @brief PSA WANT ALG RIPEMD160. */
 #define PSA_WANT_ALG_RIPEMD160               (1)
+/** @brief PSA WANT ALG RSA OAEP. */
 #define PSA_WANT_ALG_RSA_OAEP                (1)
+/** @brief PSA WANT ALG RSA PKCS1 V15 CRYPT. */
 #define PSA_WANT_ALG_RSA_PKCS1V15_CRYPT      (1)
+/** @brief PSA WANT ALG RSA PKCS1 V15 SIGN. */
 #define PSA_WANT_ALG_RSA_PKCS1V15_SIGN       (1)
+/** @brief PSA WANT ALG RSA PSS. */
 #define PSA_WANT_ALG_RSA_PSS                 (1)
+/** @brief PSA WANT ALG SHA 1. */
 #define PSA_WANT_ALG_SHA_1                   (1)
+/** @brief PSA WANT ALG SHA 224. */
 #define PSA_WANT_ALG_SHA_224                 (1)
+/** @brief PSA WANT ALG SHA 256. */
 #define PSA_WANT_ALG_SHA_256                 (1)
+/** @brief PSA WANT ALG SHA 384. */
 #define PSA_WANT_ALG_SHA_384                 (1)
+/** @brief PSA WANT ALG SHA 512. */
 #define PSA_WANT_ALG_SHA_512                 (1)
+/** @brief PSA WANT ALG SHA3 224. */
 #define PSA_WANT_ALG_SHA3_224                (1)
+/** @brief PSA WANT ALG SHA3 256. */
 #define PSA_WANT_ALG_SHA3_256                (1)
+/** @brief PSA WANT ALG SHA3 384. */
 #define PSA_WANT_ALG_SHA3_384                (1)
+/** @brief PSA WANT ALG SHA3 512. */
 #define PSA_WANT_ALG_SHA3_512                (1)
+/** @brief PSA WANT ALG STREAM CIPHER. */
 #define PSA_WANT_ALG_STREAM_CIPHER           (1)
+/** @brief PSA WANT ALG TLS12 PRF. */
 #define PSA_WANT_ALG_TLS12_PRF               (1)
+/** @brief PSA WANT ALG TLS12 PSK TO MS. */
 #define PSA_WANT_ALG_TLS12_PSK_TO_MS         (1)
+/** @brief PSA WANT ALG TLS12 ECJPAKE TO PMS. */
 #define PSA_WANT_ALG_TLS12_ECJPAKE_TO_PMS    (1)
+/** @brief PSA WANT ALG SHAKE128. */
 #define PSA_WANT_ALG_SHAKE128                (1)
+/** @brief PSA WANT ALG SHAKE256. */
 #define PSA_WANT_ALG_SHAKE256                (1)
 
+/** @brief PSA WANT ECC BRAINPOOL p R1 256. */
 #define PSA_WANT_ECC_BRAINPOOL_P_R1_256 (1)
+/** @brief PSA WANT ECC BRAINPOOL p R1 384. */
 #define PSA_WANT_ECC_BRAINPOOL_P_R1_384 (1)
+/** @brief PSA WANT ECC BRAINPOOL p R1 512. */
 #define PSA_WANT_ECC_BRAINPOOL_P_R1_512 (1)
+/** @brief PSA WANT ECC MONTGOMERY 255. */
 #define PSA_WANT_ECC_MONTGOMERY_255     (1)
+/** @brief PSA WANT ECC MONTGOMERY 448. */
 #define PSA_WANT_ECC_MONTGOMERY_448     (1)
+/** @brief PSA WANT ECC SECP K1 256. */
 #define PSA_WANT_ECC_SECP_K1_256        (1)
 /* For secp256r1, consider enabling #MBEDTLS_PSA_P256M_DRIVER_ENABLED
  * (see the description in psa/crypto_config.h for details). */
+/** @brief PSA WANT ECC SECP R1 256. */
 #define PSA_WANT_ECC_SECP_R1_256 (1)
+/** @brief PSA WANT ECC SECP R1 384. */
 #define PSA_WANT_ECC_SECP_R1_384 (1)
+/** @brief PSA WANT ECC SECP R1 521. */
 #define PSA_WANT_ECC_SECP_R1_521 (1)
 
+/** @brief PSA WANT DH RFC7919 2048. */
 #define PSA_WANT_DH_RFC7919_2048 (1)
+/** @brief PSA WANT DH RFC7919 3072. */
 #define PSA_WANT_DH_RFC7919_3072 (1)
+/** @brief PSA WANT DH RFC7919 4096. */
 #define PSA_WANT_DH_RFC7919_4096 (1)
+/** @brief PSA WANT DH RFC7919 6144. */
 #define PSA_WANT_DH_RFC7919_6144 (1)
+/** @brief PSA WANT DH RFC7919 8192. */
 #define PSA_WANT_DH_RFC7919_8192 (1)
 
+/** @brief PSA WANT KEY TYPE DERIVE. */
 #define PSA_WANT_KEY_TYPE_DERIVE         (1)
+/** @brief PSA WANT KEY TYPE PASSWORD. */
 #define PSA_WANT_KEY_TYPE_PASSWORD       (1)
+/** @brief PSA WANT KEY TYPE PASSWORD HASH. */
 #define PSA_WANT_KEY_TYPE_PASSWORD_HASH  (1)
+/** @brief PSA WANT KEY TYPE HMAC. */
 #define PSA_WANT_KEY_TYPE_HMAC           (1)
+/** @brief PSA WANT KEY TYPE AES. */
 #define PSA_WANT_KEY_TYPE_AES            (1)
+/** @brief PSA WANT KEY TYPE ARIA. */
 #define PSA_WANT_KEY_TYPE_ARIA           (1)
+/** @brief PSA WANT KEY TYPE CAMELLIA. */
 #define PSA_WANT_KEY_TYPE_CAMELLIA       (1)
+/** @brief PSA WANT KEY TYPE CHACHA20. */
 #define PSA_WANT_KEY_TYPE_CHACHA20       (1)
+/** @brief PSA WANT KEY TYPE ECC PUBLIC KEY. */
 #define PSA_WANT_KEY_TYPE_ECC_PUBLIC_KEY (1)
+/** @brief PSA WANT KEY TYPE DH PUBLIC KEY. */
 #define PSA_WANT_KEY_TYPE_DH_PUBLIC_KEY  (1)
+/** @brief PSA WANT KEY TYPE RAW DATA. */
 #define PSA_WANT_KEY_TYPE_RAW_DATA       (1)
+/** @brief PSA WANT KEY TYPE RSA PUBLIC KEY. */
 #define PSA_WANT_KEY_TYPE_RSA_PUBLIC_KEY (1)
 
 /*
@@ -125,21 +195,34 @@
  * a generic suport, whereas other ones add more features on top of that and
  * they are more specific.
  */
+/** @brief PSA WANT KEY TYPE ECC KEY PAIR BASIC. */
 #define PSA_WANT_KEY_TYPE_ECC_KEY_PAIR_BASIC    (1)
+/** @brief PSA WANT KEY TYPE ECC KEY PAIR IMPORT. */
 #define PSA_WANT_KEY_TYPE_ECC_KEY_PAIR_IMPORT   (1)
+/** @brief PSA WANT KEY TYPE ECC KEY PAIR EXPORT. */
 #define PSA_WANT_KEY_TYPE_ECC_KEY_PAIR_EXPORT   (1)
+/** @brief PSA WANT KEY TYPE ECC KEY PAIR GENERATE. */
 #define PSA_WANT_KEY_TYPE_ECC_KEY_PAIR_GENERATE (1)
+/** @brief PSA WANT KEY TYPE ECC KEY PAIR DERIVE. */
 #define PSA_WANT_KEY_TYPE_ECC_KEY_PAIR_DERIVE   (1)
 
+/** @brief PSA WANT KEY TYPE RSA KEY PAIR BASIC. */
 #define PSA_WANT_KEY_TYPE_RSA_KEY_PAIR_BASIC    (1)
+/** @brief PSA WANT KEY TYPE RSA KEY PAIR IMPORT. */
 #define PSA_WANT_KEY_TYPE_RSA_KEY_PAIR_IMPORT   (1)
+/** @brief PSA WANT KEY TYPE RSA KEY PAIR EXPORT. */
 #define PSA_WANT_KEY_TYPE_RSA_KEY_PAIR_EXPORT   (1)
+/** @brief PSA WANT KEY TYPE RSA KEY PAIR GENERATE. */
 #define PSA_WANT_KEY_TYPE_RSA_KEY_PAIR_GENERATE (1)
 //#define PSA_WANT_KEY_TYPE_RSA_KEY_PAIR_DERIVE   1 /* Not supported */
 
+/** @brief PSA WANT KEY TYPE DH KEY PAIR BASIC. */
 #define PSA_WANT_KEY_TYPE_DH_KEY_PAIR_BASIC    (1)
+/** @brief PSA WANT KEY TYPE DH KEY PAIR IMPORT. */
 #define PSA_WANT_KEY_TYPE_DH_KEY_PAIR_IMPORT   (1)
+/** @brief PSA WANT KEY TYPE DH KEY PAIR EXPORT. */
 #define PSA_WANT_KEY_TYPE_DH_KEY_PAIR_EXPORT   (1)
+/** @brief PSA WANT KEY TYPE DH KEY PAIR GENERATE. */
 #define PSA_WANT_KEY_TYPE_DH_KEY_PAIR_GENERATE (1)
 //#define PSA_WANT_KEY_TYPE_DH_KEY_PAIR_DERIVE    1 /* Not supported */
 /** \} name SECTION Cryptographic mechanism selection (PSA API) */
@@ -163,6 +246,7 @@
  *
  * Uncomment to enable the LMS verification algorithm and public key operations.
  */
+/** @brief MBEDTLS LMS c. */
 #define MBEDTLS_LMS_C
 
 /**
@@ -196,6 +280,7 @@
  *
  * Uncomment to enable generic message digest wrappers.
  */
+/** @brief MBEDTLS MD c. */
 #define MBEDTLS_MD_C
 
 /**
@@ -209,6 +294,7 @@
  *
  * Auto enables: PSA_WANT_ALG_ECB_NO_PADDING
  */
+/** @brief MBEDTLS NIST KW c. */
 #define MBEDTLS_NIST_KW_C
 
 /**
@@ -225,6 +311,7 @@
  *
  * Uncomment to enable generic public key wrappers.
  */
+/** @brief MBEDTLS PK c. */
 #define MBEDTLS_PK_C
 
 /**
@@ -238,6 +325,7 @@
  *
  * This module adds support for the PKCS#5 functions.
  */
+/** @brief MBEDTLS PKCS5 c. */
 #define MBEDTLS_PKCS5_C
 
 /**
@@ -251,6 +339,7 @@
  *
  * Uncomment to enable generic public key parse functions.
  */
+/** @brief MBEDTLS PK PARSE c. */
 #define MBEDTLS_PK_PARSE_C
 
 /**
@@ -265,6 +354,7 @@
  *
  * Disable if you only need to support RFC 5915 + 5480 key formats.
  */
+/** @brief MBEDTLS PK PARSE EC EXTENDED. */
 #define MBEDTLS_PK_PARSE_EC_EXTENDED
 
 /**
@@ -274,6 +364,7 @@
  * (PSA_ECC_FAMILY_SECP_XXX and PSA_ECC_FAMILY_BRAINPOOL_XXX) which are using the
  * compressed point format.
  */
+/** @brief MBEDTLS PK PARSE EC COMPRESSED. */
 #define MBEDTLS_PK_PARSE_EC_COMPRESSED
 
 /**
@@ -287,6 +378,7 @@
  *
  * Uncomment to enable generic public key write functions.
  */
+/** @brief MBEDTLS PK WRITE c. */
 #define MBEDTLS_PK_WRITE_C
 
 /** \} name SECTION: Cryptographic mechanism selection (extended API) */
@@ -307,6 +399,7 @@
  * Caller:  extras/pkparse.c
  *          utilities/pkcs5.c
  */
+/** @brief MBEDTLS ASN1 PARSE c. */
 #define MBEDTLS_ASN1_PARSE_C
 
 /**
@@ -318,6 +411,7 @@
  * Caller:  drivers/builtin/src/ecdsa.c
  *          extras/pkwrite.c
  */
+/** @brief MBEDTLS ASN1 WRITE c. */
 #define MBEDTLS_ASN1_WRITE_C
 
 /**
@@ -330,6 +424,7 @@
  *
  * This module is required for PEM support (required by X.509).
  */
+/** @brief MBEDTLS BASE64 c. */
 #define MBEDTLS_BASE64_C
 
 /**
@@ -345,6 +440,7 @@
  *
  * This modules adds support for decoding / parsing PEM files.
  */
+/** @brief MBEDTLS PEM PARSE c. */
 #define MBEDTLS_PEM_PARSE_C
 
 /**
@@ -359,6 +455,7 @@
  *
  * This modules adds support for encoding / writing PEM files.
  */
+/** @brief MBEDTLS PEM WRITE c. */
 #define MBEDTLS_PEM_WRITE_C
 
 /** \} name SECTION: Data format support */
@@ -387,6 +484,7 @@
  *
  * This module provides the CTR_DRBG AES random number generator.
  */
+/** @brief MBEDTLS CTR DRBG c. */
 #define MBEDTLS_CTR_DRBG_C
 
 /**
@@ -448,6 +546,7 @@
  *
  * Uncomment to enable the HMAC_DRBG random number generator.
  */
+/** @brief MBEDTLS HMAC DRBG c. */
 #define MBEDTLS_HMAC_DRBG_C
 
 /**
@@ -475,6 +574,7 @@
  *
  *       A future version may reevaluate the prioritization of DRBG mechanisms.
  */
+/** @brief MBEDTLS PSA CRYPTO c. */
 #define MBEDTLS_PSA_CRYPTO_C
 
 /**
@@ -533,6 +633,7 @@
  * via MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG (see below).
  */
 //#define MBEDTLS_PSA_BUILTIN_GET_ENTROPY
+/** @brief MBEDTLS PSA CRYPTO EXTERNAL RNG. */
 #define MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG
 
 /** \def MBEDTLS_PSA_CRYPTO_BUILTIN_KEYS
@@ -710,6 +811,7 @@
  * Module:  core/psa_crypto.c
  * Requires: MBEDTLS_PSA_CRYPTO_C
  */
+/** @brief MBEDTLS PSA KEY STORE DYNAMIC. */
 #define MBEDTLS_PSA_KEY_STORE_DYNAMIC
 
 /**

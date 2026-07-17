@@ -83,12 +83,12 @@ typedef enum : uint16_t {
  * @brief Indices into the local 6-byte MAC array.
  */
 typedef enum : uint8_t {
-  k_nx_ra8_eth_mac_byte_0 = 0U,
-  k_nx_ra8_eth_mac_byte_1 = 1U,
-  k_nx_ra8_eth_mac_byte_2 = 2U,
-  k_nx_ra8_eth_mac_byte_3 = 3U,
-  k_nx_ra8_eth_mac_byte_4 = 4U,
-  k_nx_ra8_eth_mac_byte_5 = 5U,
+  k_nx_ra8_eth_mac_byte_0 = 0U, /**< Nx RA8 Ethernet MAC byte 0. */
+  k_nx_ra8_eth_mac_byte_1 = 1U, /**< Nx RA8 Ethernet MAC byte 1. */
+  k_nx_ra8_eth_mac_byte_2 = 2U, /**< Nx RA8 Ethernet MAC byte 2. */
+  k_nx_ra8_eth_mac_byte_3 = 3U, /**< Nx RA8 Ethernet MAC byte 3. */
+  k_nx_ra8_eth_mac_byte_4 = 4U, /**< Nx RA8 Ethernet MAC byte 4. */
+  k_nx_ra8_eth_mac_byte_5 = 5U, /**< Nx RA8 Ethernet MAC byte 5. */
 } nx_ra8_eth_mac_byte_idx_t;
 
 /**
@@ -102,11 +102,11 @@ typedef enum : uint8_t {
  * magic numbers the casts would otherwise contain.
  */
 typedef enum : uint8_t {
-  k_nx_ra8_eth_msw_shift_byte0 = 8U,
-  k_nx_ra8_eth_lsw_shift_byte2 = 24U,
-  k_nx_ra8_eth_lsw_shift_byte3 = 16U,
-  k_nx_ra8_eth_lsw_shift_byte4 = 8U,
-  k_nx_ra8_eth_lsw_shift_byte5 = 0U,
+  k_nx_ra8_eth_msw_shift_byte0 = 8U, /**< Nx RA8 Ethernet msw shift byte0. */
+  k_nx_ra8_eth_lsw_shift_byte2 = 24U, /**< Nx RA8 Ethernet lsw shift byte2. */
+  k_nx_ra8_eth_lsw_shift_byte3 = 16U, /**< Nx RA8 Ethernet lsw shift byte3. */
+  k_nx_ra8_eth_lsw_shift_byte4 = 8U, /**< Nx RA8 Ethernet lsw shift byte4. */
+  k_nx_ra8_eth_lsw_shift_byte5 = 0U, /**< Nx RA8 Ethernet lsw shift byte5. */
 } nx_ra8_eth_mac_word_shift_t;
 
 /**
@@ -259,8 +259,8 @@ typedef struct {
   uint32_t init_last_status;     /**< Last NetX status priv_handle_init set.     */
   uint32_t send_last_status;     /**< Last NetX status priv_handle_send set.     */
   uint32_t enable_last_link_up;  /**< 1 = last set_link_state was UP.            */
-  uint32_t init_ra8_eth_open_err; /**< Last ra8_eth_open return code.              */
-  uint32_t init_iface_null_hits; /**< Times INITIALIZE saw a NULL interface.     */
+  uint32_t init_ra8_eth_open_err; /**< Last ra8_eth_open return code. */
+  uint32_t init_iface_null_hits; /**< Times INITIALIZE saw a NULL interface. */
 } nx_ether_diag_t;
 
 /**
@@ -290,9 +290,9 @@ volatile nx_ether_diag_t g_nx_ether_diag = {};
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_nx_ra8_eth_worker_stack_bytes  = 4096U,
-  k_nx_ra8_eth_worker_priority     = 4U,
-  k_nx_ra8_eth_worker_period_ticks = 1U,
+  k_nx_ra8_eth_worker_stack_bytes  = 4096U, /**< Nx RA8 Ethernet worker stack bytes. */
+  k_nx_ra8_eth_worker_priority     = 4U, /**< Nx RA8 Ethernet worker priority.     */
+  k_nx_ra8_eth_worker_period_ticks = 1U, /**< Nx RA8 Ethernet worker period ticks. */
 } nx_ra8_eth_worker_t;
 
 static TX_THREAD s_rx_thread;
@@ -374,8 +374,8 @@ typedef enum : uint16_t {
 } nx_ra8_eth_ethertype_t;
 
 typedef enum : uint16_t {
-  k_nx_ra8_eth_hdr_bytes = 14U,
-  k_nx_ra8_eth_etype_off = 12U,
+  k_nx_ra8_eth_hdr_bytes = 14U, /**< Nx RA8 Ethernet hdr bytes. */
+  k_nx_ra8_eth_etype_off = 12U, /**< Nx RA8 Ethernet etype off. */
 } nx_ra8_eth_hdr_t;
 
 /**

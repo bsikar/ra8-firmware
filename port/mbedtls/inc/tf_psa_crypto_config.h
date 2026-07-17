@@ -30,6 +30,7 @@
  */
 
 #ifndef PSA_CRYPTO_CONFIG_H
+/** @brief PSA CRYPTO CONFIG h. */
 #define PSA_CRYPTO_CONFIG_H
 
 /*
