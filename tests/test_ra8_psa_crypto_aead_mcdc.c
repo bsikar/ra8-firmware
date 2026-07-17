@@ -84,11 +84,11 @@ static void teardown(void)
  * @brief Magic-number-free vector inputs for the MC/DC tests below.
  */
 typedef enum : uint16_t {
-  k_psa_mcdc_short_aad    = 4U,
-  k_psa_mcdc_plain_len    = 8U,
-  k_psa_mcdc_tiny_len     = 8U,
-  k_psa_mcdc_bad_nonce    = 8U,
-  k_psa_mcdc_small_outcap = 2U,
+  k_psa_mcdc_short_aad    = 4U, /**< PSA mcdc short aad.    */
+  k_psa_mcdc_plain_len    = 8U, /**< PSA mcdc plain length. */
+  k_psa_mcdc_tiny_len     = 8U, /**< PSA mcdc tiny length.  */
+  k_psa_mcdc_bad_nonce    = 8U, /**< PSA mcdc bad nonce.    */
+  k_psa_mcdc_small_outcap = 2U, /**< PSA mcdc small outcap. */
 } ra8_psa_mcdc_const_t;
 
 /** @brief Helper: import a valid AES key with the requested usage mask. */

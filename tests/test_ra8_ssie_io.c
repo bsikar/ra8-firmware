@@ -27,12 +27,12 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_ssie_io_lit_40             = 40,
-  k_ssie_io_lit_xaa00          = 0xAA00U,
-  k_ssie_io_lit_99             = 99U,
-  k_ssie_io_cfg_tx_dma_channel = 0xFFU,
-  k_ssie_io_cfg_rx_dma_channel = 0xFFU,
-  k_ssie_io_stamp_ssifrdr      = 0xDEAD0001UL,
+  k_ssie_io_lit_40             = 40,           /**< Ssie IO literal 40.            */
+  k_ssie_io_lit_xaa00          = 0xAA00U,      /**< Ssie IO literal 0xAA00.        */
+  k_ssie_io_lit_99             = 99U,          /**< Ssie IO literal 99.            */
+  k_ssie_io_cfg_tx_dma_channel = 0xFFU,        /**< Ssie IO config tx DMA channel. */
+  k_ssie_io_cfg_rx_dma_channel = 0xFFU,        /**< Ssie IO config rx DMA channel. */
+  k_ssie_io_stamp_ssifrdr      = 0xDEAD0001UL, /**< Ssie IO stamp ssifrdr.         */
 } ssie_io_test_lit_t;
 
 /* ---------------------------------------------------------------------------

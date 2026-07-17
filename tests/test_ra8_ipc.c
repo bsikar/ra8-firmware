@@ -28,10 +28,10 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_ipc_test_sentinel = 0xFFU,
-  k_ipc_lit_xcafe     = 0xCAFEU,
-  k_ipc_lit_xff       = 0xFFU,
-  k_ipc_stamp_clr     = 0xA5A5A5A5UL,
+  k_ipc_test_sentinel = 0xFFU,        /**< Ipc test sentinel.  */
+  k_ipc_lit_xcafe     = 0xCAFEU,      /**< Ipc literal 0xCAFE. */
+  k_ipc_lit_xff       = 0xFFU,        /**< Ipc literal 0xFF.   */
+  k_ipc_stamp_clr     = 0xA5A5A5A5UL, /**< Ipc stamp clr.      */
 } ipc_test_lit_t;
 
 /* ---------- Lifecycle tests ---------- */

@@ -29,12 +29,12 @@
  * ============================================================================= */
 
 typedef enum : uint32_t {
-  k_cov_image_size = 256U,
-  k_cov_bank_size  = 4096U,
-  k_cov_bank_addr  = 0x02080000UL,
-  k_cov_bank_index = 1U,
-  k_cov_pubkey     = 0xBEEFU,
-  k_cov_huge_len   = 9999U,
+  k_cov_image_size = 256U,         /**< Cov image size.   */
+  k_cov_bank_size  = 4096U,        /**< Cov bank size.    */
+  k_cov_bank_addr  = 0x02080000UL, /**< Cov bank address. */
+  k_cov_bank_index = 1U,           /**< Cov bank index.   */
+  k_cov_pubkey     = 0xBEEFU,      /**< Cov pubkey.       */
+  k_cov_huge_len   = 9999U,        /**< Cov huge length.  */
 } ra8_ota_cov_const_t;
 
 /* =============================================================================

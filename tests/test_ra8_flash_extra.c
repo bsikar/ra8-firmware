@@ -33,14 +33,14 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_flash_extra_stamp_mcntdtr1  = 0x80000000UL,
-  k_flash_extra_stamp_mcntdtr0  = 0xFFFFFFFFUL,
-  k_flash_extra_stamp_mcntdtr12 = 0xFFFFFFFFUL,
-  k_flash_extra_stamp_mrcrtea   = 0x11111111UL,
-  k_flash_extra_stamp_mrcrdea   = 0x22222222UL,
-  k_flash_extra_stamp_mrertea   = 0x33333333UL,
-  k_flash_extra_stamp_mrerdea   = 0x44444444UL,
-  k_flash_extra_stamp_mrcpea    = 0xCAFEBABEUL,
+  k_flash_extra_stamp_mcntdtr1  = 0x80000000UL, /**< Flash extra stamp mcntdtr1.  */
+  k_flash_extra_stamp_mcntdtr0  = 0xFFFFFFFFUL, /**< Flash extra stamp mcntdtr0.  */
+  k_flash_extra_stamp_mcntdtr12 = 0xFFFFFFFFUL, /**< Flash extra stamp mcntdtr12. */
+  k_flash_extra_stamp_mrcrtea   = 0x11111111UL, /**< Flash extra stamp mrcrtea.   */
+  k_flash_extra_stamp_mrcrdea   = 0x22222222UL, /**< Flash extra stamp mrcrdea.   */
+  k_flash_extra_stamp_mrertea   = 0x33333333UL, /**< Flash extra stamp mrertea.   */
+  k_flash_extra_stamp_mrerdea   = 0x44444444UL, /**< Flash extra stamp mrerdea.   */
+  k_flash_extra_stamp_mrcpea    = 0xCAFEBABEUL, /**< Flash extra stamp mrcpea.    */
 } flash_extra_test_lit_t;
 
 /* ---------------------------------------------------------------------------

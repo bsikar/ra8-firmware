@@ -21,19 +21,19 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_ra8_gpt_test_channel_valid  = 0U,
-  k_ra8_gpt_test_channel_middle = 7U,
-  k_ra8_gpt_test_channel_last   = 13U,
-  k_ra8_gpt_test_channel_bad    = 14U,
-  k_ra8_gpt_test_channel_huge   = 250U,
+  k_ra8_gpt_test_channel_valid  = 0U,   /**< RA8 GPT test channel valid.  */
+  k_ra8_gpt_test_channel_middle = 7U,   /**< RA8 GPT test channel middle. */
+  k_ra8_gpt_test_channel_last   = 13U,  /**< RA8 GPT test channel last.   */
+  k_ra8_gpt_test_channel_bad    = 14U,  /**< RA8 GPT test channel bad.    */
+  k_ra8_gpt_test_channel_huge   = 250U, /**< RA8 GPT test channel huge.   */
 } ra8_gpt_test_channel_t;
 
 typedef enum : uint32_t {
-  k_ra8_gpt_test_period   = 0xCAFEBABEUL,
-  k_ra8_gpt_test_count    = 0x01234567UL,
-  k_ra8_gpt_test_gtstp1   = 0x00000001UL,
-  k_ra8_gpt_test_gtstr1   = 0x00000001UL,
-  k_ra8_gpt_test_gtcr_saw = 0x00000001UL,
+  k_ra8_gpt_test_period   = 0xCAFEBABEUL, /**< RA8 GPT test period.   */
+  k_ra8_gpt_test_count    = 0x01234567UL, /**< RA8 GPT test count.    */
+  k_ra8_gpt_test_gtstp1   = 0x00000001UL, /**< RA8 GPT test gtstp1.   */
+  k_ra8_gpt_test_gtstr1   = 0x00000001UL, /**< RA8 GPT test gtstr1.   */
+  k_ra8_gpt_test_gtcr_saw = 0x00000001UL, /**< RA8 GPT test gtcr saw. */
 } ra8_gpt_test_const_t;
 
 /**
@@ -200,8 +200,8 @@ static void test_read_bad_channel(void)
  */
 
 typedef enum : uint32_t {
-  k_ra8_gpt_test_duty_a = 0x00010000UL,
-  k_ra8_gpt_test_duty_b = 0x00008000UL,
+  k_ra8_gpt_test_duty_a = 0x00010000UL, /**< RA8 GPT test duty a. */
+  k_ra8_gpt_test_duty_b = 0x00008000UL, /**< RA8 GPT test duty b. */
 } ra8_gpt_test_duty_t;
 
 static uint32_t s_gpt_cb_count;

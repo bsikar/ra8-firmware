@@ -37,8 +37,8 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_xspi_ctrl_stamp_comstt = 0x12345678U,
-  k_xspi_ctrl_stamp_ints   = 0xCAFEBABEUL,
+  k_xspi_ctrl_stamp_comstt = 0x12345678U,  /**< Xspi CTRL stamp comstt. */
+  k_xspi_ctrl_stamp_ints   = 0xCAFEBABEUL, /**< Xspi CTRL stamp ints.   */
 } xspi_ctrl_test_lit_t;
 
 /* ---- full build-out ---- */
@@ -317,13 +317,13 @@ static void test_suspend_resume_null(void)
  * @brief Numeric vectors used by the MC/DC tests below.
  */
 typedef enum : uint8_t {
-  k_test_xspi_addr_bytes_3    = 3U, /**< Valid 24-bit address mode.   */
-  k_test_xspi_addr_bytes_4    = 4U, /**< Valid 32-bit address mode.   */
-  k_test_xspi_addr_bytes_bad  = 5U, /**< Neither 3 nor 4: rejected.   */
-  k_test_xspi_reset_bytes_1s  = 1U, /**< Reset cmd width for 1S mode. */
-  k_test_xspi_reset_bytes_8d  = 2U, /**< Reset cmd width for 8D mode. */
-  k_test_xspi_reset_bytes_bad = 3U, /**< Neither 1 nor 2: rejected.   */
-  k_test_xspi_xip_read_cmd    = 0xEBU,
+  k_test_xspi_addr_bytes_3    = 3U,    /**< Valid 24-bit address mode.   */
+  k_test_xspi_addr_bytes_4    = 4U,    /**< Valid 32-bit address mode.   */
+  k_test_xspi_addr_bytes_bad  = 5U,    /**< Neither 3 nor 4: rejected.   */
+  k_test_xspi_reset_bytes_1s  = 1U,    /**< Reset cmd width for 1S mode. */
+  k_test_xspi_reset_bytes_8d  = 2U,    /**< Reset cmd width for 8D mode. */
+  k_test_xspi_reset_bytes_bad = 3U,    /**< Neither 1 nor 2: rejected.   */
+  k_test_xspi_xip_read_cmd    = 0xEBU, /**< Test XSPI xip read cmd.      */
 } test_xspi_mcdc_t;
 
 /**

@@ -83,7 +83,7 @@ typedef struct {
 
 /** @brief Div-0 seam sizing: max tracked divide sites (real counts tiny). */
 enum : uint32_t {
-  k_div0_sites_max = 4096U,
+  k_div0_sites_max = 4096U, /**< Div0 sites maximum. */
 };
 static div0_site_t s_div0_site[k_div0_sites_max]; /**< Tracked divide sites.        */
 static uint32_t    s_div0_site_n;                 /**< Count of tracked sites.      */

@@ -39,9 +39,9 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_ssie_cfg_tx_threshold  = 7U,
-  k_ssie_cfg_tx_threshold2 = 0x40U,
-  k_ssie_cfg_rx_threshold  = 0x40U,
+  k_ssie_cfg_tx_threshold  = 7U,    /**< Ssie config tx threshold.  */
+  k_ssie_cfg_tx_threshold2 = 0x40U, /**< Ssie config tx threshold2. */
+  k_ssie_cfg_rx_threshold  = 0x40U, /**< Ssie config rx threshold.  */
 } ssie_test_lit_t;
 
 /* ---------------------------------------------------------------------------
@@ -120,10 +120,10 @@ static void test_init_all_formats(void)
   TEST_BEGIN("ssie init covers all seven formats");
 
   const struct {
-    ra8_ssie_format_t fmt;
-    uint8_t           omod;
-    uint8_t           frm;
-    bool              expect_pdta;
+    ra8_ssie_format_t fmt;         /**< Fmt.         */
+    uint8_t           omod;        /**< Omod.        */
+    uint8_t           frm;         /**< Frm.         */
+    bool              expect_pdta; /**< Expect pdta. */
   } cases[] = {
     {k_ra8_ssie_format_i2s, (uint8_t)k_ra8_ssie_omod_i2s, (uint8_t)k_ra8_ssie_frm_default, false},
     {k_ra8_ssie_format_left_just,

@@ -223,7 +223,7 @@ typedef enum : uint16_t {
    * (<?xml...?><html><body><h1>Chapter One</h1><p>Hello.</p>...) which
    * is ~80 bytes. Sized so the V1 vectors that exercise the success
    * path do not trip the chapter buffer's no_mem guard. */
-  k_mcdc_buf_small = 256U,
+  k_mcdc_buf_small = 256U, /**< Mcdc buffer small. */
 } epub_mcdc_caps_t;
 
 /* --------------------------------------------------------------------- */

@@ -37,7 +37,7 @@
  * @brief Sample field values for the field-detect tests.
  */
 typedef enum : uint8_t {
-  k_ra8_vin_test_field_even_one = 1U,
+  k_ra8_vin_test_field_even_one = 1U, /**< RA8 vin test field even one. */
 } ra8_vin_test_field_t;
 
 static uint32_t s_vin_cb_count;

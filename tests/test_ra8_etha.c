@@ -25,24 +25,24 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_etha_stamp_eaeis0   = 0xCAFEBABEU,
-  k_etha_stamp_eaeis1   = 0xAABBCCDDU,
-  k_etha_stamp_eaeis2   = 0x11223344U,
-  k_etha_stamp_eaeis02  = 0xFFFFFFFFU,
-  k_etha_stamp_eaeis12  = 0xFFFFFFFFU,
-  k_etha_stamp_eaeis22  = 0xFFFFFFFFU,
-  k_etha_stamp_eaeis03  = 0xABCDU,
-  k_etha_stamp_eaeis13  = 0x1234U,
-  k_etha_stamp_eaeis23  = 0x5678U,
-  k_etha_stamp_eaeis04  = 0xDEADU,
-  k_etha_stamp_eatdqm   = 0x0123U,
-  k_etha_stamp_eatdqmlm = 0x0456U,
-  k_etha_stamp_eairc    = 0xDEADBEEFU,
-  k_etha_stamp_eacoivm  = 0x9999U,
-  k_etha_stamp_eacoulm  = 0x77777777U,
-  k_etha_stamp_eafsecn  = 0x0030U,
-  k_etha_stamp_eadqoecn = 0x0040U,
-  k_etha_stamp_eadqsecn = 0x0050U,
+  k_etha_stamp_eaeis0   = 0xCAFEBABEU, /**< Etha stamp eaeis0.   */
+  k_etha_stamp_eaeis1   = 0xAABBCCDDU, /**< Etha stamp eaeis1.   */
+  k_etha_stamp_eaeis2   = 0x11223344U, /**< Etha stamp eaeis2.   */
+  k_etha_stamp_eaeis02  = 0xFFFFFFFFU, /**< Etha stamp eaeis02.  */
+  k_etha_stamp_eaeis12  = 0xFFFFFFFFU, /**< Etha stamp eaeis12.  */
+  k_etha_stamp_eaeis22  = 0xFFFFFFFFU, /**< Etha stamp eaeis22.  */
+  k_etha_stamp_eaeis03  = 0xABCDU,     /**< Etha stamp eaeis03.  */
+  k_etha_stamp_eaeis13  = 0x1234U,     /**< Etha stamp eaeis13.  */
+  k_etha_stamp_eaeis23  = 0x5678U,     /**< Etha stamp eaeis23.  */
+  k_etha_stamp_eaeis04  = 0xDEADU,     /**< Etha stamp eaeis04.  */
+  k_etha_stamp_eatdqm   = 0x0123U,     /**< Etha stamp eatdqm.   */
+  k_etha_stamp_eatdqmlm = 0x0456U,     /**< Etha stamp eatdqmlm. */
+  k_etha_stamp_eairc    = 0xDEADBEEFU, /**< Etha stamp eairc.    */
+  k_etha_stamp_eacoivm  = 0x9999U,     /**< Etha stamp eacoivm.  */
+  k_etha_stamp_eacoulm  = 0x77777777U, /**< Etha stamp eacoulm.  */
+  k_etha_stamp_eafsecn  = 0x0030U,     /**< Etha stamp eafsecn.  */
+  k_etha_stamp_eadqoecn = 0x0040U,     /**< Etha stamp eadqoecn. */
+  k_etha_stamp_eadqsecn = 0x0050U,     /**< Etha stamp eadqsecn. */
 } etha_test_lit_t;
 
 static uint32_t        s_etha_cb_count;

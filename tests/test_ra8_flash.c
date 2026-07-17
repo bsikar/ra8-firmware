@@ -48,9 +48,9 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_flash_cfg_mrefreq_mhz = 0xFFU,
-  k_flash_stamp_mrcps     = 0x21U,
-  k_flash_stamp_mrcps2    = 0xFFU,
+  k_flash_cfg_mrefreq_mhz = 0xFFU, /**< Flash config mrefreq mhz. */
+  k_flash_stamp_mrcps     = 0x21U, /**< Flash stamp mrcps.        */
+  k_flash_stamp_mrcps2    = 0xFFU, /**< Flash stamp mrcps2.       */
 } flash_test_lit_t;
 
 /* ---------------------------------------------------------------------------

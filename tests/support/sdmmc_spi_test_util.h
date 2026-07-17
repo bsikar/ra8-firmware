@@ -37,7 +37,7 @@
 
 typedef enum : uint32_t {
   k_mock_buf_bytes      = 4096U, /**< Max captured + queued bytes per test. */
-  k_mock_xfer_byte_idle = 0xFFU,
+  k_mock_xfer_byte_idle = 0xFFU, /**< Mock xfer byte idle.                  */
 } mock_const_t;
 
 /**
@@ -219,22 +219,22 @@ static void mock_arm_xfer_fail(uint32_t nth)
  */
 
 typedef enum : uint8_t {
-  k_test_r1_idle              = 0x01U,
-  k_test_r1_ready             = 0x00U,
-  k_test_r1_illegal_cmd       = 0x05U,
-  k_test_data_token_start     = 0xFEU,
-  k_test_data_response_accept = 0x05U,
+  k_test_r1_idle              = 0x01U, /**< Test r1 idle.                     */
+  k_test_r1_ready             = 0x00U, /**< Test r1 ready.                    */
+  k_test_r1_illegal_cmd       = 0x05U, /**< Test r1 illegal cmd.              */
+  k_test_data_token_start     = 0xFEU, /**< Test data token start.            */
+  k_test_data_response_accept = 0x05U, /**< Test data response accept.        */
   k_test_busy_done            = 0xFFU, /**< Not-busy token after CMD38 erase. */
 } test_resp_const_t;
 
 typedef enum : uint32_t {
-  k_test_cmd8_echo       = 0x000001AAUL,
+  k_test_cmd8_echo       = 0x000001AAUL, /**< Test cmd8 echo.                 */
   k_test_ocr_ccs_ready   = 0xC0FF8000UL, /**< busy=1 | CCS=1 | voltage window */
-  k_test_cmd_frame_bytes = 6U,
+  k_test_cmd_frame_bytes = 6U,           /**< Test cmd frame bytes.           */
   /* Allow a generous post-frame N_CR gap so the driver's R1 polling
    * never times out -- the mock queues idle 0xFF bytes for every clock
    * after the command frame until the response token is queued. */
-  k_test_r1_padding_bytes = 1U,
+  k_test_r1_padding_bytes = 1U, /**< Test r1 padding bytes. */
 } test_resp_int_const_t;
 
 /**

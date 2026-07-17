@@ -34,10 +34,10 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_sdmmc_spi_write_lit_xff = 0xFFU,
-  k_sdmmc_spi_write_lit_xd  = 0x0DU,
-  k_sdmmc_spi_write_lit_5   = 5U,
-  k_sdmmc_spi_write_lit_11  = 11U,
+  k_sdmmc_spi_write_lit_xff = 0xFFU, /**< Sdmmc SPI write literal 0xFF. */
+  k_sdmmc_spi_write_lit_xd  = 0x0DU, /**< Sdmmc SPI write literal 0xD.  */
+  k_sdmmc_spi_write_lit_5   = 5U,    /**< Sdmmc SPI write literal 5.    */
+  k_sdmmc_spi_write_lit_11  = 11U,   /**< Sdmmc SPI write literal 11.   */
 } sdmmc_spi_write_test_lit_t;
 
 /**

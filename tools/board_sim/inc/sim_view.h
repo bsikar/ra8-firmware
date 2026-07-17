@@ -90,9 +90,9 @@ typedef enum : uint32_t {
 
 /** @brief Display descriptor loaded from a flat key=value panel file. */
 typedef struct {
-  char     name[k_panel_name_max];
-  uint16_t width;
-  uint16_t height;
+  char     name[k_panel_name_max]; /**< Name.         */
+  uint16_t width;                  /**< Pixel width.  */
+  uint16_t height;                 /**< Pixel height. */
 } board_panel_t;
 
 /**

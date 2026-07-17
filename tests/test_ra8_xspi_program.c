@@ -35,9 +35,9 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_xspi_program_lit_xff = 0xFFU,
-  k_xspi_program_lit_x60 = 0x60U,
-  k_xspi_program_lit_x40 = 0x40U,
+  k_xspi_program_lit_xff = 0xFFU, /**< Xspi program literal 0xFF. */
+  k_xspi_program_lit_x60 = 0x60U, /**< Xspi program literal 0x60. */
+  k_xspi_program_lit_x40 = 0x40U, /**< Xspi program literal 0x40. */
 } xspi_program_test_lit_t;
 
 /**

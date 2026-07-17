@@ -172,7 +172,7 @@ static void on_long_shift(uc_engine* uc, uint64_t address, uint32_t size, void* 
 
 /** @brief Max long-shift sites hooked per image (generous; real counts tiny). */
 enum : uint32_t {
-  k_lsh_sites_max = 4096U,
+  k_lsh_sites_max = 4096U, /**< Lsh sites maximum. */
 };
 /** @brief Hook handles for the installed long-shift sites (kept for the run). */
 static uc_hook s_lsh_hooks[k_lsh_sites_max];

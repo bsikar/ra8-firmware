@@ -20,10 +20,10 @@
 #include "ra8_flash.h"
 
 typedef enum : uint32_t {
-  k_test_mrcfreq_mhz = 200U,
-  k_test_mrefreq_mhz = 100U,
-  k_test_bad_freq    = 0xFFFFU,
-  k_test_bad_efreq   = 0x0200U,
+  k_test_mrcfreq_mhz = 200U,    /**< Test mrcfreq MHz.   */
+  k_test_mrefreq_mhz = 100U,    /**< Test mrefreq MHz.   */
+  k_test_bad_freq    = 0xFFFFU, /**< Test bad frequency. */
+  k_test_bad_efreq   = 0x0200U, /**< Test bad efreq.     */
 } ra8_flash_test_const_t;
 
 typedef enum : uint32_t {

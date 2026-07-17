@@ -25,15 +25,15 @@
  * @brief Magic numbers used by the tests promoted to a typed enum.
  */
 typedef enum : uint16_t {
-  k_ra8_ssie_test_ch0      = 0U,
-  k_ra8_ssie_test_ch1      = 1U,
-  k_ra8_ssie_test_ch_bad   = 2U,
-  k_ra8_ssie_test_ch_way   = 250U,
-  k_ra8_ssie_test_sample_a = 0xCAFEU,
-  k_ra8_ssie_test_sample_b = 0xBEEFU,
-  k_ra8_ssie_test_dma_tx   = 3U,
-  k_ra8_ssie_test_dma_rx   = 4U,
-  k_ra8_ssie_test_dma_bad  = 100U,
+  k_ra8_ssie_test_ch0      = 0U,      /**< RA8 ssie test ch0.         */
+  k_ra8_ssie_test_ch1      = 1U,      /**< RA8 ssie test ch1.         */
+  k_ra8_ssie_test_ch_bad   = 2U,      /**< RA8 ssie test channel bad. */
+  k_ra8_ssie_test_ch_way   = 250U,    /**< RA8 ssie test channel way. */
+  k_ra8_ssie_test_sample_a = 0xCAFEU, /**< RA8 ssie test sample a.    */
+  k_ra8_ssie_test_sample_b = 0xBEEFU, /**< RA8 ssie test sample b.    */
+  k_ra8_ssie_test_dma_tx   = 3U,      /**< RA8 ssie test DMA TX.      */
+  k_ra8_ssie_test_dma_rx   = 4U,      /**< RA8 ssie test DMA RX.      */
+  k_ra8_ssie_test_dma_bad  = 100U,    /**< RA8 ssie test DMA bad.     */
 } ra8_ssie_test_const_t;
 
 /**
@@ -42,8 +42,8 @@ typedef enum : uint16_t {
  */
 typedef enum : uint32_t {
   k_ra8_ssie_test_ssifsr_demo =
-    (0x0AUL << 24U) | (0x05UL << 8U) | 0x00010001UL,       /* TDC=10, RDC=5, TDE+RDF */
-  k_ra8_ssie_test_ssisr_err = 0x04000000UL | 0x10000000UL, /* ROIRQ + TOIRQ          */
+    (0x0AUL << 24U) | (0x05UL << 8U) | 0x00010001UL,       /**< TDC=10, RDC=5, TDE+RDF. */
+  k_ra8_ssie_test_ssisr_err = 0x04000000UL | 0x10000000UL, /**< ROIRQ + TOIRQ.          */
 } ra8_ssie_test_status_t;
 
 static uint32_t s_ssie_cb_count;

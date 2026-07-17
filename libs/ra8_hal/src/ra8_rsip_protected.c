@@ -52,20 +52,20 @@ static const char* s_tag = "RSIP_P";
  */
 /** @brief RSA modulus / ECC private-scalar byte counts. */
 typedef enum : uint16_t {
-  k_rsa_1024_mod_bytes       = 128U,
-  k_rsa_2048_mod_bytes       = 256U,
-  k_rsa_3072_mod_bytes       = 384U,
-  k_rsa_4096_mod_bytes       = 512U,
-  k_ecc_secp256_priv_bytes   = 32U,
-  k_ecc_secp384r1_priv_bytes = 48U,
-  k_ecc_secp521r1_priv_bytes = 66U,
+  k_rsa_1024_mod_bytes       = 128U, /**< RSA 1024 mod bytes.       */
+  k_rsa_2048_mod_bytes       = 256U, /**< RSA 2048 mod bytes.       */
+  k_rsa_3072_mod_bytes       = 384U, /**< RSA 3072 mod bytes.       */
+  k_rsa_4096_mod_bytes       = 512U, /**< RSA 4096 mod bytes.       */
+  k_ecc_secp256_priv_bytes   = 32U,  /**< ECC secp256 priv bytes.   */
+  k_ecc_secp384r1_priv_bytes = 48U,  /**< ECC secp384r1 priv bytes. */
+  k_ecc_secp521r1_priv_bytes = 66U,  /**< ECC secp521r1 priv bytes. */
 } rsip_prot_size_t;
 
 /** @brief Measured worst-case stack frames (bytes), scrubbed on unwind. */
 typedef enum : uint16_t {
-  k_unwrap_key_stack_bytes   = 1128U,
-  k_rsa4096_priv_stack_bytes = 1720U,
-  k_ecc_priv_stack_bytes     = 1104U,
+  k_unwrap_key_stack_bytes   = 1128U, /**< Unwrap key stack bytes.   */
+  k_rsa4096_priv_stack_bytes = 1720U, /**< Rsa4096 priv stack bytes. */
+  k_ecc_priv_stack_bytes     = 1104U, /**< ECC priv stack bytes.     */
 } rsip_prot_stack_t;
 
 typedef enum : uint32_t {
