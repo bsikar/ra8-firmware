@@ -374,25 +374,25 @@ int cb_sweep_block(void)
                (unsigned)k_cbs_hot_reads,
                MZ_BEST_COMPRESSION);
 
-  static cbs_row_t rows[k_cbs_max_rows] = {};
-  uint32_t         nrows                = 0U;
-  int              rc                   = 0;
-  uint32_t         nbe                  = 0U;
-  cbs_backend_t*   backends             = cbs_priv_backends(&nbe);
+  static cbs_row_t s_rows[k_cbs_max_rows] = {};
+  uint32_t         nrows                  = 0U;
+  int              rc                     = 0;
+  uint32_t         nbe                    = 0U;
+  cbs_backend_t*   backends               = cbs_priv_backends(&nbe);
   const uint32_t   nblocks = (uint32_t)(sizeof(s_cbs_blocks) / sizeof(s_cbs_blocks[0]));
   for (uint32_t b = 0U; (b < nbe) && (rc == 0); ++b) {
     for (uint32_t s = 0U; (s < nblocks) && (rc == 0); ++s) {
-      rc = cbs_run_block(&backends[b], blob, s_cbs_blocks[s], rows, &nrows);
+      rc = cbs_run_block(&backends[b], blob, s_cbs_blocks[s], s_rows, &nrows);
     }
   }
   if (rc == 0) {
     (void)printf("\n## Summary (payload 8 MiB, cache budget 1 MiB, %u B reader requests)\n",
                  (unsigned)k_cbs_req_bytes);
     for (uint32_t b = 0U; b < nbe; ++b) {
-      cbs_priv_print_seq_table(rows, nrows, backends[b].name, s_cbs_blocks, nblocks);
-      cbs_priv_print_hot_table(rows, nrows, backends[b].name, s_cbs_blocks, nblocks);
+      cbs_priv_print_seq_table(s_rows, nrows, backends[b].name, s_cbs_blocks, nblocks);
+      cbs_priv_print_hot_table(s_rows, nrows, backends[b].name, s_cbs_blocks, nblocks);
     }
-    cbs_priv_print_crossover(rows, nrows, s_cbs_blocks, nblocks);
+    cbs_priv_print_crossover(s_rows, nrows, s_cbs_blocks, nblocks);
   } else {
     (void)fprintf(stderr, "sweep-block: sweep aborted\n");
   }

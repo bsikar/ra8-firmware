@@ -104,6 +104,26 @@ int cb_replay(const cache_policy_t* pol,
               uint32_t              capacity,
               cb_result_t*          out);
 
+/**
+ * @var g_cb_policy_slru
+ * @brief Segmented-LRU: the scan-resistant candidate (policy_scanresist.c).
+ * @details A probationary + protected LRU pair; one-time scans churn only
+ *          the probationary segment, so the re-referenced hot set survives.
+ * @note Read-only after load; registered in ::g_cb_policies.
+ * @since 0.1.0
+ */
+extern const cache_policy_t g_cb_policy_slru;
+
+/**
+ * @var g_cb_policy_srrip
+ * @brief SRRIP: the 2-bit re-reference-interval candidate (policy_scanresist.c).
+ * @details Inserts predict a distant re-reference so scanned-once pages are
+ *          evicted before re-referenced ones; a hit predicts immediate reuse.
+ * @note Read-only after load; registered in ::g_cb_policies.
+ * @since 0.1.0
+ */
+extern const cache_policy_t g_cb_policy_srrip;
+
 /** @brief The registered policy table (defined in policies.c). */
 extern const cache_policy_t* const g_cb_policies[];
 /** @brief Number of entries in ::g_cb_policies. */

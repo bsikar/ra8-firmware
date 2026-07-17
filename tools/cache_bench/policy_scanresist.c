@@ -169,7 +169,7 @@ static uint32_t slru_victim(cb_cache_t* c, uint32_t* scanned)
   return (uint32_t)f;
 }
 
-const cache_policy_t cb_policy_slru = {
+const cache_policy_t g_cb_policy_slru = {
   .name        = "SLRU",
   .meta_bytes  = (size_t)k_slru_meta_bytes,
   .init        = slru_init,
@@ -226,7 +226,7 @@ static uint32_t srrip_victim(cb_cache_t* c, uint32_t* scanned)
   }
 }
 
-const cache_policy_t cb_policy_srrip = {
+const cache_policy_t g_cb_policy_srrip = {
   .name        = "SRRIP",
   .meta_bytes  = 1U,
   .init        = srrip_init,
