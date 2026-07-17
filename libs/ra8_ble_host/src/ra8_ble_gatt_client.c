@@ -19,7 +19,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-// NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity)
 #include "ra8_ble_gatt_client.h"
 
 #include <stddef.h>
@@ -633,6 +632,47 @@ ra8_err_t ra8_ble_gatt_write(uint16_t                conn_handle,
  *
  * @since 0.1.0
  */
+/**
+ * @brief Find or allocate a subscription-table slot for (conn, cccd).
+ *
+ * @details First scans the table for a live slot already tracking the
+ *          same (conn_handle, cccd_handle) pair so a re-subscribe
+ *          reuses its row; otherwise falls back to the first free
+ *          slot. Mirrors the CCCD-per-client bookkeeping model of
+ *          Bluetooth Core 5.3 Vol 3 Part G 3.3.3.3.
+ *
+ * @param[in] conn_handle ACL handle the subscription belongs to.
+ * @param[in] cccd_handle Attribute handle of the peer's CCCD.
+ *
+ * @return Pointer to the matching or freshly allocated slot.
+ * @retval NULL  Table is full and no matching slot exists.
+ * @retval !NULL Slot inside s_subs (existing match preferred).
+ *
+ * @pre Caller is the application thread (single-threaded access).
+ * @pre s_subs is the singleton subscription table of this TU.
+ * @post No slot fields are mutated (allocation is by the caller).
+ * @post Returned pointer (if non-NULL) points into s_subs.
+ *
+ * @note Not thread-safe; called from the application thread.
+ *
+ * @since 0.1.0
+ */
+static ra8_ble_gatt_client_sub_t* internal_sub_slot(uint16_t conn_handle, uint16_t cccd_handle)
+{
+  for (uint8_t i = 0U; i < (uint8_t)k_ra8_gatt_client_max_subs; i++) {
+    if (s_subs[i].in_use != 0U && s_subs[i].conn_handle == conn_handle &&
+        s_subs[i].cccd_handle == cccd_handle) {
+      return &s_subs[i];
+    }
+  }
+  for (uint8_t i = 0U; i < (uint8_t)k_ra8_gatt_client_max_subs; i++) {
+    if (s_subs[i].in_use == 0U) {
+      return &s_subs[i];
+    }
+  }
+  return nullptr;
+}
+
 ra8_err_t ra8_ble_gatt_subscribe(uint16_t                 conn_handle,
                                  uint16_t                 cccd_handle,
                                  uint8_t                  enable_notify,
@@ -645,22 +685,7 @@ ra8_err_t ra8_ble_gatt_subscribe(uint16_t                 conn_handle,
   }
 
   /* Find or allocate a subscription slot. */
-  ra8_ble_gatt_client_sub_t* slot = nullptr;
-  for (uint8_t i = 0U; i < (uint8_t)k_ra8_gatt_client_max_subs; i++) {
-    if (s_subs[i].in_use != 0U && s_subs[i].conn_handle == conn_handle &&
-        s_subs[i].cccd_handle == cccd_handle) {
-      slot = &s_subs[i];
-      break;
-    }
-  }
-  if (slot == nullptr) {
-    for (uint8_t i = 0U; i < (uint8_t)k_ra8_gatt_client_max_subs; i++) {
-      if (s_subs[i].in_use == 0U) {
-        slot = &s_subs[i];
-        break;
-      }
-    }
-  }
+  ra8_ble_gatt_client_sub_t* slot = internal_sub_slot(conn_handle, cccd_handle);
   if (slot == nullptr) {
     return k_ra8_err_no_mem;
   }
@@ -794,5 +819,3 @@ void ra8_ble_gatt_client_test_reset(void)
   memset(s_subs, 0, sizeof(s_subs));
 }
 #endif /* UNIT_TEST */
-
-// NOLINTEND(readability-function-size,readability-function-cognitive-complexity)

@@ -27,7 +27,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-// NOLINTBEGIN(readability-function-size)
 #include "ra8_ble_security.h"
 
 #include <stddef.h>
@@ -515,5 +514,3 @@ void ra8_ble_security_test_set_bond_count(uint8_t count)
   s_state.bond_count = count;
 }
 #endif /* UNIT_TEST */
-
-// NOLINTEND(readability-function-size)
