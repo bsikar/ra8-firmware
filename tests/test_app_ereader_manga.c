@@ -310,22 +310,22 @@ static void test_manga_tap_nav(void)
   TEST_ASSERT_EQ(0, s_reader.view_x);
   /* One right-edge tap slides the viewport one step. */
   TEST_ASSERT(mg_reader_tap(&s_reader, 950, 300));
-  TEST_ASSERT_EQ((int32_t)k_t_pan_step, s_reader.view_x);
+  TEST_ASSERT_EQ(k_t_pan_step, s_reader.view_x);
   /* A second lands at the page edge (page_w - fb_w = 512). */
   TEST_ASSERT(mg_reader_tap(&s_reader, 950, 300));
-  TEST_ASSERT_EQ((int32_t)(k_t_page_w - k_t_fb_w), s_reader.view_x);
+  TEST_ASSERT_EQ(k_t_page_w - k_t_fb_w, s_reader.view_x);
   /* A third is clamped: no change, no redraw. */
   TEST_ASSERT(!mg_reader_tap(&s_reader, 950, 300));
   /* A centre tap toggles to fit-page and re-pins the viewport to (0,0). */
   TEST_ASSERT(mg_reader_tap(&s_reader, 500, 300));
-  TEST_ASSERT_EQ((uint8_t)k_mg_zoom_fit, s_reader.zoom);
+  TEST_ASSERT_EQ(k_mg_zoom_fit, s_reader.zoom);
   TEST_ASSERT_EQ(0, s_reader.view_x);
   /* Panning is a no-op while the whole page is shown. */
   TEST_ASSERT(!mg_reader_tap(&s_reader, 950, 300));
   /* A down-edge tap at 1:1 slides the viewport vertically. */
   TEST_ASSERT(mg_reader_tap(&s_reader, 500, 300)); /* back to 1:1 */
   TEST_ASSERT(mg_reader_tap(&s_reader, 500, 500));
-  TEST_ASSERT_EQ((int32_t)k_t_pan_step, s_reader.view_y);
+  TEST_ASSERT_EQ(k_t_pan_step, s_reader.view_y);
   TEST_END("ereader_manga: mg_reader_tap pan / clamp / zoom");
 }
 
