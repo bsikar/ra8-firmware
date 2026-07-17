@@ -30,11 +30,11 @@ typedef enum : uint8_t {
 
 /** @brief Fixed field sizes for a site descriptor. */
 typedef enum : uint16_t {
-  k_mdl_name_max    = 64,  /**< Site display name bytes. */
-  k_mdl_host_max    = 128, /**< Host bytes. */
-  k_mdl_kind_max    = 16,  /**< "manga"/"manhwa"/... bytes. */
-  k_mdl_match_max   = 128, /**< Selector/substring field bytes. */
-  k_mdl_attr_max    = 16,  /**< Image attribute name bytes. */
+  k_mdl_name_max  = 64,  /**< Site display name bytes. */
+  k_mdl_host_max  = 128, /**< Host bytes. */
+  k_mdl_kind_max  = 16,  /**< "manga"/"manhwa"/... bytes. */
+  k_mdl_match_max = 128, /**< Selector/substring field bytes. */
+  k_mdl_attr_max  = 16,  /**< Image attribute name bytes. */
 } mdl_config_limits_t;
 
 /**
@@ -47,11 +47,11 @@ typedef struct {
   char kind[k_mdl_kind_max]; /**< Content kind hint (reader mode). */
 
   /* Chapter list, found on a series page. */
-  char chapter_url_contains[k_mdl_match_max]; /**< href must contain this. */
-  mdl_chapter_order_t chapter_order;          /**< Ordering to apply. */
+  char                chapter_url_contains[k_mdl_match_max]; /**< href must contain this. */
+  mdl_chapter_order_t chapter_order;                         /**< Ordering to apply. */
 
   /* Page images, found on a chapter page. */
-  char page_img_attr[k_mdl_attr_max];         /**< Preferred attr (fallback other). */
+  char page_img_attr[k_mdl_attr_max];          /**< Preferred attr (fallback other). */
   char page_img_url_contains[k_mdl_match_max]; /**< Keep only URLs with this. */
 
   /* Politeness (milliseconds); jittered in [min,max]. */
