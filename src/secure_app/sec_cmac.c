@@ -332,26 +332,6 @@ static void internal_aes_key_expand(const uint8_t* key, uint8_t nk, uint8_t nr, 
 }
 
 /**
- * @brief Encrypt one 16-byte block with AES-``nr``.
- *
- * @details FIPS 197 Sec 5.1 cipher: initial AddRoundKey, ``nr-1`` full
- * rounds (SubBytes/ShiftRows/MixColumns/AddRoundKey), final partial round.
- * The state is column-major (byte ``4*c+r`` is row ``r`` of column ``c``).
- *
- * @param[in]  rk  Round-key schedule.
- * @param[in]  nr  Round count (10 or 14).
- * @param[in]  in  16-byte plaintext block.
- * @param[out] out 16-byte ciphertext block.
- *
- * @pre ``rk``, ``in`` and ``out`` are non-NULL.
- * @pre ``rk`` was produced by ::internal_aes_key_expand for ``nr``.
- * @post ``out`` holds the AES ciphertext of ``in``.
- * @post No global state is mutated.
- *
- * @note Pure compute helper; safe from any context.
- * @since 0.1.0
- */
-/**
  * @brief Apply SubBytes + ShiftRows to the AES state in place.
  *
  * @details FIPS 197 Sec 5.1.1/5.1.2: substitute every state byte
@@ -417,6 +397,28 @@ static void internal_aes_mix_columns(uint8_t* s)
   }
 }
 
+/**
+ * @brief Encrypt one 16-byte block with AES-``nr``.
+ *
+ * @details FIPS 197 Sec 5.1 cipher: initial AddRoundKey, ``nr-1`` full
+ * rounds (SubBytes/ShiftRows/MixColumns/AddRoundKey), final partial
+ * round -- the per-step transforms live in ::internal_aes_sub_shift
+ * and ::internal_aes_mix_columns. The state is column-major (byte
+ * ``4*c+r`` is row ``r`` of column ``c``).
+ *
+ * @param[in]  rk  Round-key schedule.
+ * @param[in]  nr  Round count (10 or 14).
+ * @param[in]  in  16-byte plaintext block.
+ * @param[out] out 16-byte ciphertext block.
+ *
+ * @pre ``rk``, ``in`` and ``out`` are non-NULL.
+ * @pre ``rk`` was produced by ::internal_aes_key_expand for ``nr``.
+ * @post ``out`` holds the AES ciphertext of ``in``.
+ * @post No global state is mutated.
+ *
+ * @note Pure compute helper; safe from any context.
+ * @since 0.1.0
+ */
 static void internal_aes_encrypt(const uint8_t* rk, uint8_t nr, const uint8_t* in, uint8_t* out)
 {
   uint8_t s[k_aes_block_bytes];
@@ -468,28 +470,6 @@ static void internal_cmac_double(const uint8_t* in, uint8_t* out)
   }
 }
 
-/**
- * @brief Compute the AES-CMAC tag of a message (SP 800-38B).
- *
- * @details
- * Derives subkeys K1/K2 from ``AES(key, 0)``, chains the full blocks, and
- * folds the (possibly padded) final block before the last AES call. Handles
- * the empty message as a single padded block per the standard.
- *
- * @param[in]  key     AES key bytes.
- * @param[in]  key_len Key length (16 or 32).
- * @param[in]  msg     Message (NULL only when ``msg_len==0``).
- * @param[in]  msg_len Message length (``<= k_ra8_sec_cmac_max_msg_bytes``).
- * @param[out] out_mac 16-byte tag output.
- *
- * @pre All pointers valid per the caller's validation.
- * @pre ``msg_len`` is within the static cap.
- * @post ``out_mac`` holds the CMAC tag.
- * @post Local subkey material is wiped before return.
- *
- * @note Pure compute helper; not thread-safe (uses only stack).
- * @since 0.1.0
- */
 /**
  * @brief Derive the CMAC subkeys K1 / K2 from the expanded key.
  *
@@ -571,6 +551,29 @@ static void internal_cmac_build_last(const uint8_t* msg,
   }
 }
 
+/**
+ * @brief Compute the AES-CMAC tag of a message (SP 800-38B).
+ *
+ * @details
+ * Derives subkeys K1/K2 via ::internal_cmac_subkeys, chains the full
+ * blocks, and folds the (possibly padded) final block built by
+ * ::internal_cmac_build_last before the last AES call. Handles the
+ * empty message as a single padded block per the standard.
+ *
+ * @param[in]  key     AES key bytes.
+ * @param[in]  key_len Key length (16 or 32).
+ * @param[in]  msg     Message (NULL only when ``msg_len==0``).
+ * @param[in]  msg_len Message length (``<= k_ra8_sec_cmac_max_msg_bytes``).
+ * @param[out] out_mac 16-byte tag output.
+ *
+ * @pre All pointers valid per the caller's validation.
+ * @pre ``msg_len`` is within the static cap.
+ * @post ``out_mac`` holds the CMAC tag.
+ * @post Local subkey material is wiped before return.
+ *
+ * @note Pure compute helper; not thread-safe (uses only stack).
+ * @since 0.1.0
+ */
 static void internal_cmac_tag(const uint8_t* key,
                               uint16_t       key_len,
                               const uint8_t* msg,
