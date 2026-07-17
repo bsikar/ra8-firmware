@@ -489,7 +489,7 @@ static uint32_t main_reset_vector(uc_engine* uc)
   (void)uc_mem_read(uc, sim_memmap_mram_base() + 0U, &sp, 4); /* MRAM[0]                 */
   (void)uc_mem_read(uc, sim_memmap_mram_base() + 4U, &pc, 4); /* MRAM[4] (Thumb: bit0=1) */
   pc |= 1U;                               /* M-profile is always Thumb (EPSR.T must be 1). */
-  uint32_t xpsr = (uint32_t)k_xpsr_t_bit; /* xPSR.T */
+  uint32_t xpsr = (uint32_t)k_xpsr_t_bit; /* xPSR.T                                        */
   (void)uc_reg_write(uc, UC_ARM_REG_SP, &sp);
   (void)uc_reg_write(uc, UC_ARM_REG_PC, &pc);
   (void)uc_reg_write(uc, UC_ARM_REG_XPSR, &xpsr);
@@ -576,8 +576,8 @@ main_install_run_seams(uc_engine* uc, uint8_t* elf, long elf_len, const sim_args
     mve_seam_install(uc, elf, elf_len);
   }
   div0_seam_install(elf, elf_len);        /* UDIV/SDIV sites, patched only under DIV_0_TRP. */
-  fast_sd_seam_install(uc, elf, elf_len); /* --fast-sd whole-block serve; else inert. */
-  prof_load(elf, elf_len);                /* BOARD_SIM_PROFILE FUNC symbols + code hook. */
+  fast_sd_seam_install(uc, elf, elf_len); /* --fast-sd whole-block serve; else inert.       */
+  prof_load(elf, elf_len);                /* BOARD_SIM_PROFILE FUNC symbols + code hook.    */
   sim_prof_install(uc);
   sim_cpu1_init(elf, elf_len); /* dual-core cpu1 engine (shares SRAM); NULL for single-core. */
 }
