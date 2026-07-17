@@ -6,13 +6,15 @@
  * The desktop viewer links the firmware's platform-agnostic reader libraries
  * (compiled host-side with RA8_SIMULATOR_MODE) and calls them directly -- there
  * is no ARM emulation. This module is the C core: it opens a file from disk
- * behind a seek+read callback, drives the comic engine (ra8_comic) to page
- * through a `.cbz` / `.cbr` archive, and rasterises one page at a time into an
- * owned RGB565 framebuffer via ra8_reflow's `ra8_img_decode_blit` over ra8_gfx.
+ * behind a seek+read callback and drives the comic (ra8_comic) and webtoon
+ * (ra8_webtoon) engines. It exposes two render surfaces: a fixed RGB565
+ * framebuffer (::ra8_viewer_render_page, for the headless dump) and a
+ * continuous-scroll tile API (::ra8_viewer_render_tile565) the window scales to
+ * width -- both built on ra8_reflow's `ra8_img_decode_blit` over ra8_gfx.
  *
- * The Objective-C window backend (ra8_viewer_view.h) presents that framebuffer;
- * the two halves share nothing but the RGB565 buffer, so the reader is testable
- * and dumpable without a display.
+ * The Objective-C window backend (ra8_viewer_view.h) consumes the tiles; the C
+ * core shares nothing with it but plain buffers, so it stays testable and
+ * dumpable without a display.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -56,9 +58,10 @@ typedef struct ra8_viewer_reader ra8_viewer_reader_t;
  * @brief Open a document from disk and prepare it for paged rasterisation.
  *
  * @details Detects the format by file extension and container magic. Comic
- *          archives (`.cbz` / `.cbr` / `.cbt`) are opened through the ra8_comic
- *          engine; other formats return ::k_ra8_err_not_supported for now (EPUB
- *          and webtoon are TODO seams -- see the .c file).
+ *          archives (`.cbz` / `.cbr` / `.cbt`, and gzip/xz-wrapped variants) open
+ *          through ra8_comic and RTA1 webtoons (`.rta1`) through ra8_webtoon;
+ *          EPUB / RABOOK return ::k_ra8_err_not_supported for now (reflow render
+ *          is a TODO seam -- see the .c file).
  *
  * @param[out] out  Receives the newly allocated reader handle on success.
  * @param[in]  path NUL-terminated filesystem path to the document.
@@ -109,29 +112,62 @@ typedef struct ra8_viewer_reader ra8_viewer_reader_t;
 [[nodiscard]] ra8_err_t ra8_viewer_render_page(ra8_viewer_reader_t* r, uint32_t page);
 
 /**
- * @brief Borrow the reader's RGB565 framebuffer (little-endian, row-major).
- * @param[in] r Reader from ::ra8_viewer_open (non-NULL).
- * @return Pointer to `width * height` RGB565 pixels, or NULL if @p r is NULL.
- * @note The buffer is owned by @p r and valid until ::ra8_viewer_close.
+ * @brief Number of vertically-stacked tiles in the document.
+ *
+ * @details The desktop window reads the document as a continuous vertical strip
+ *          of tiles, each rendered at native resolution and scaled to the window
+ *          width by the view. For comics one tile == one page; for an RTA1
+ *          webtoon the tall strip is split into framebuffer-height bands. This is
+ *          the same count as ::ra8_viewer_page_count, named for the scroll model.
+ * @param[in] r Reader (may be NULL).
+ * @return Tile count, or 0 for a NULL reader.
  * @since 0.1.0
  */
-[[nodiscard]] const uint16_t* ra8_viewer_framebuffer(const ra8_viewer_reader_t* r);
+[[nodiscard]] uint32_t ra8_viewer_tile_count(const ra8_viewer_reader_t* r);
 
 /**
- * @brief Framebuffer width in pixels.
- * @param[in] r Reader (may be NULL).
- * @return Width, or 0 for a NULL reader.
+ * @brief Native pixel dimensions of tile @p i (for laying out the scroll canvas).
+ * @param[in]  r Reader (non-NULL).
+ * @param[in]  i Tile index (`< ra8_viewer_tile_count(r)`).
+ * @param[out] w Receives the tile's native width in pixels.
+ * @param[out] h Receives the tile's native height in pixels.
+ * @return ra8_err_t; ::k_ra8_err_out_of_range if @p i is past the tile count.
+ * @note Sizes are cached at open, so this is cheap to call for every tile.
  * @since 0.1.0
  */
-[[nodiscard]] uint16_t ra8_viewer_fb_width(const ra8_viewer_reader_t* r);
+[[nodiscard]] ra8_err_t
+ra8_viewer_tile_size(const ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h);
 
 /**
- * @brief Framebuffer height in pixels.
- * @param[in] r Reader (may be NULL).
- * @return Height, or 0 for a NULL reader.
+ * @brief Render tile @p i at native resolution into a fresh RGB565 buffer.
+ *
+ * @details Allocates a `w*h` RGB565 buffer, rasterises tile @p i into it via the
+ *          document's engine (comic page decode, or one webtoon band), and
+ *          transfers ownership to the caller (who must `free` it). Unlike
+ *          ::ra8_viewer_render_page this does not touch the shared framebuffer,
+ *          so window tiles and the headless framebuffer path never interfere.
+ *
+ * @param[in,out] r   Reader (non-NULL).
+ * @param[in]     i   Tile index (`< ra8_viewer_tile_count(r)`).
+ * @param[out]    w   Receives the rendered width in pixels.
+ * @param[out]    h   Receives the rendered height in pixels.
+ * @param[out]    out Receives a malloc'd `w*h` RGB565 buffer (caller frees).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok               Tile rendered; `*out` owns `w*h` pixels.
+ * @retval k_ra8_err_null_ptr     A required pointer was NULL.
+ * @retval k_ra8_err_out_of_range @p i is at or past the tile count.
+ * @retval k_ra8_err_no_mem       The output buffer could not be allocated.
+ * @retval k_ra8_err_*            An engine / decode error (e.g. a page too tall
+ *                                for the whole-image decoder); `*out` stays NULL.
+ * @post On any error `*out` is left NULL and nothing is leaked.
  * @since 0.1.0
  */
-[[nodiscard]] uint16_t ra8_viewer_fb_height(const ra8_viewer_reader_t* r);
+[[nodiscard]] ra8_err_t ra8_viewer_render_tile565(ra8_viewer_reader_t* r,
+                                                  uint32_t             i,
+                                                  uint32_t*            w,
+                                                  uint32_t*            h,
+                                                  uint16_t**           out);
 
 /**
  * @brief Write the current framebuffer to a binary PPM (P6) file.

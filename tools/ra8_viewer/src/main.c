@@ -3,15 +3,15 @@
  * @brief Entry point for the RA8 desktop reader viewer (direct-call, no emulation).
  *
  * @details
- * Opens a comic/e-book file with the host-linked reader core (ra8_viewer_reader),
- * renders a page into an RGB565 framebuffer, and either dumps it for a headless
- * rendering proof or shows it in a Cocoa window (ra8_viewer_view) with Left/Right
- * arrow page turns. This is a viewer, not an emulator: it links the firmware's
+ * Opens a comic/e-book file with the host-linked reader core (ra8_viewer_reader)
+ * and either shows it in a resizable, fit-to-width, continuously-scrolling Cocoa
+ * window (ra8_viewer_view) or, headless, dumps a single page/tile for a rendering
+ * proof. This is a viewer, not an emulator: it links the firmware's
  * platform-agnostic reader libraries and calls them directly on the host.
  *
  * Usage:
- *   ra8_viewer <file.cbz|.cbr|.cbt> [--page N] [--dump-ppm PATH] [--dump-png PATH]
- *              [--headless]
+ *   ra8_viewer <file.cbz|.cbr|.cbt[.gz|.xz]|.rta1>            # scrolling window
+ *   ra8_viewer <file> --headless --dump-ppm P [--page N | --dump-tile N]
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -47,11 +47,11 @@ typedef enum : int32_t {
  * @since 0.1.0
  */
 typedef struct {
-  const char* path;     /**< Input document path (required).       */
-  const char* dump_ppm; /**< PPM dump path, or NULL.               */
-  const char* dump_png; /**< PNG dump path, or NULL.               */
-  uint32_t    page;     /**< Initial page index.                   */
-  bool        headless; /**< Skip opening a window when true.      */
+  const char* path;      /**< Input document path (required).       */
+  const char* dump_ppm;  /**< PPM dump path, or NULL.               */
+  uint32_t    page;      /**< Page to render for --dump-ppm.        */
+  int64_t     dump_tile; /**< Tile to dump via the scroll API, or -1. */
+  bool        headless;  /**< Skip opening a window when true.      */
 } viewer_opts_t;
 
 /**
@@ -62,8 +62,10 @@ typedef struct {
 static void viewer_usage(const char* argv0)
 {
   (void)fprintf(stderr,
-                "usage: %s <file.cbz|.cbr|.cbt> [--page N] [--dump-ppm PATH]"
-                " [--dump-png PATH] [--headless]\n",
+                "usage: %s <file.cbz|.cbr|.cbt[.gz|.xz]|.rta1> [--headless]\n"
+                "         [--dump-ppm PATH [--page N | --dump-tile N]]\n"
+                "  window: resizable, fit-to-width, continuous scroll "
+                "(wheel/trackpad/PageUp-Dn/Home/End)\n",
                 argv0);
 }
 
@@ -81,14 +83,15 @@ static bool viewer_parse_args(int argc, char** argv, viewer_opts_t* opts)
     return false;
   }
   memset(opts, 0, sizeof(*opts));
-  opts->path = argv[1];
+  opts->path      = argv[1];
+  opts->dump_tile = -1;
   for (int i = 2; i < argc; ++i) {
     if ((strcmp(argv[i], "--page") == 0) && ((i + 1) < argc)) {
       opts->page = (uint32_t)strtoul(argv[++i], nullptr, (int)k_viewer_radix_dec);
     } else if ((strcmp(argv[i], "--dump-ppm") == 0) && ((i + 1) < argc)) {
       opts->dump_ppm = argv[++i];
-    } else if ((strcmp(argv[i], "--dump-png") == 0) && ((i + 1) < argc)) {
-      opts->dump_png = argv[++i];
+    } else if ((strcmp(argv[i], "--dump-tile") == 0) && ((i + 1) < argc)) {
+      opts->dump_tile = (int64_t)strtoll(argv[++i], nullptr, (int)k_viewer_radix_dec);
     } else if (strcmp(argv[i], "--headless") == 0) {
       opts->headless = true;
     } else {
@@ -114,7 +117,7 @@ static uint32_t viewer_clamp_page(uint32_t page, uint32_t count)
 }
 
 /**
- * @brief Render @p page and write any requested PPM/PNG dumps.
+ * @brief Render @p page into the framebuffer and write the requested PPM dump.
  * @param[in]  reader Open reader.
  * @param[in]  opts   Parsed options.
  * @param[in]  page   Page to render.
@@ -140,43 +143,20 @@ viewer_render_and_dump(ra8_viewer_reader_t* reader, const viewer_opts_t* opts, u
 }
 
 /**
- * @brief Windowed loop: present the current page, turn pages on arrow keys.
- * @param[in] reader Open reader.
- * @param[in] opts   Parsed options.
- * @param[in] start  Initial page.
- * @return 0 on clean exit.
+ * @brief Open the scrolling reader window and pump events until it closes.
+ * @param[in] reader Open reader (the window's tile source).
+ * @return 0 on clean exit; 1 if no window could be created (headless host).
  * @since 0.1.0
  */
-static int viewer_run_window(ra8_viewer_reader_t* reader, const viewer_opts_t* opts, uint32_t start)
+static int viewer_run_window(ra8_viewer_reader_t* reader)
 {
-  const uint16_t     w    = ra8_viewer_fb_width(reader);
-  const uint16_t     h    = ra8_viewer_fb_height(reader);
-  ra8_viewer_view_t* view = ra8_viewer_view_open(w, h, "RA8 Viewer");
+  ra8_viewer_view_t* view = ra8_viewer_view_open(reader, "RA8 Viewer");
   if (view == nullptr) {
-    (void)fprintf(stderr, "no window (headless host?); use --dump-ppm/--dump-png\n");
+    (void)fprintf(stderr, "no window (headless host?); use --headless --dump-ppm PATH\n");
     return 1;
   }
-  const uint32_t count = ra8_viewer_page_count(reader);
-  uint32_t       page  = start;
-  ra8_viewer_view_present(view, ra8_viewer_framebuffer(reader), w, h);
-  if (opts->dump_png != nullptr) {
-    (void)ra8_viewer_view_save_png(view, opts->dump_png);
-    (void)fprintf(stderr, "wrote %s\n", opts->dump_png);
-  }
-
   const struct timespec frame = {.tv_sec = 0, .tv_nsec = k_viewer_frame_ns};
   while (!ra8_viewer_view_pump(view)) {
-    const int32_t nav = ra8_viewer_view_poll_nav(view);
-    if (nav != 0) {
-      const int64_t  want    = (int64_t)page + nav;
-      const int64_t  clamped = (want < 0) ? 0 : want;
-      const uint32_t next    = viewer_clamp_page((uint32_t)clamped, count);
-      if ((next != page) && (ra8_viewer_render_page(reader, next) == k_ra8_ok)) {
-        page = next;
-        ra8_viewer_view_present(view, ra8_viewer_framebuffer(reader), w, h);
-      }
-    }
-    (void)ra8_viewer_view_poll_scroll(view); /* TODO: webtoon vertical scroll. */
     (void)nanosleep(&frame, nullptr);
   }
   ra8_viewer_view_close(view);
@@ -205,6 +185,48 @@ static void viewer_log_sink(void* ctx, uint8_t byte)
   (void)fputc((int)byte, stderr);
 }
 
+/**
+ * @brief Render one scroll tile via the tile API and write it as a P6 PPM.
+ * @details Headless verification of the continuous-scroll render path (the same
+ *          tiles the window composites), independent of the fixed framebuffer.
+ * @param[in] reader Open reader.
+ * @param[in] tile   Tile index.
+ * @param[in] path   Output PPM path.
+ * @return true on success.
+ * @since 0.1.0
+ */
+static bool viewer_dump_tile(ra8_viewer_reader_t* reader, uint32_t tile, const char* path)
+{
+  uint32_t        w   = 0U;
+  uint32_t        h   = 0U;
+  uint16_t*       buf = nullptr;
+  const ra8_err_t rc  = ra8_viewer_render_tile565(reader, tile, &w, &h, &buf);
+  if (rc != k_ra8_ok) {
+    (void)fprintf(stderr, "render tile %u failed: 0x%x\n", tile, (unsigned)rc);
+    return false;
+  }
+  FILE* fp = fopen(path, "wb");
+  if (fp == nullptr) {
+    free(buf);
+    return false;
+  }
+  (void)fprintf(fp, "P6\n%u %u\n255\n", (unsigned)w, (unsigned)h);
+  for (size_t i = 0U; i < ((size_t)w * (size_t)h); ++i) {
+    const uint16_t p      = buf[i];
+    const uint32_t r5     = (uint32_t)((p >> 11) & 0x1FU);
+    const uint32_t g6     = (uint32_t)((p >> 5) & 0x3FU);
+    const uint32_t b5     = (uint32_t)(p & 0x1FU);
+    const uint8_t  rgb[3] = {(uint8_t)((r5 << 3) | (r5 >> 2)),
+                             (uint8_t)((g6 << 2) | (g6 >> 4)),
+                             (uint8_t)((b5 << 3) | (b5 >> 2))};
+    (void)fwrite(rgb, 1U, sizeof(rgb), fp);
+  }
+  (void)fclose(fp);
+  free(buf);
+  (void)fprintf(stderr, "wrote tile %u (%ux%u) -> %s\n", tile, w, h, path);
+  return true;
+}
+
 int main(int argc, char** argv)
 {
   ra8_log_set_byte_sink(viewer_log_sink, nullptr);
@@ -225,11 +247,19 @@ int main(int argc, char** argv)
   const uint32_t page  = viewer_clamp_page(opts.page, count);
   (void)fprintf(stderr, "opened '%s': %u page(s)\n", opts.path, count);
 
+  /* Headless tile dump: verify the scroll render path independent of a window. */
+  if (opts.dump_tile >= 0) {
+    const char* out    = (opts.dump_ppm != nullptr) ? opts.dump_ppm : "/tmp/ra8_tile.ppm";
+    const int   status = viewer_dump_tile(reader, (uint32_t)opts.dump_tile, out) ? 0 : 1;
+    ra8_viewer_close(reader);
+    return status;
+  }
+
   int status = 0;
-  if (!viewer_render_and_dump(reader, &opts, page)) {
-    status = 1;
-  } else if (!opts.headless) {
-    status = viewer_run_window(reader, &opts, page);
+  if (opts.headless || (opts.dump_ppm != nullptr)) {
+    status = viewer_render_and_dump(reader, &opts, page) ? 0 : 1;
+  } else {
+    status = viewer_run_window(reader);
   }
   ra8_viewer_close(reader);
   return status;
