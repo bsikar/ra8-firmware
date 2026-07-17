@@ -30,10 +30,10 @@
 
 /** @brief LCG multiplier (Numerical Recipes) for the deterministic test RNG. */
 typedef enum : uint32_t {
-  k_shim_lcg_mul   = 1664525U,
-  k_shim_lcg_add   = 1013904223U,
-  k_shim_seed      = 0x1234ABCDU,
-  k_shim_top_shift = 24U,
+  k_shim_lcg_mul   = 1664525U,    /**< Shim lcg mul.   */
+  k_shim_lcg_add   = 1013904223U, /**< Shim lcg add.   */
+  k_shim_seed      = 0x1234ABCDU, /**< Shim seed.      */
+  k_shim_top_shift = 24U,         /**< Shim top shift. */
 } shim_const_t;
 
 psa_status_t mbedtls_psa_external_get_random(mbedtls_psa_external_random_context_t* context,

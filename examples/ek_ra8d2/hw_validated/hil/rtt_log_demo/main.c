@@ -39,12 +39,12 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_rtt_demo_period_ms = 1000U,
-  k_rtt_up_buf_bytes   = 1024U,
-  k_rtt_down_buf_bytes = 32U,
-  k_rtt_decimal_base   = 10U,
-  k_rtt_max_digits     = 10U,
-  k_rtt_msg_buf_bytes  = 32U,
+  k_rtt_demo_period_ms = 1000U, /**< Rtt demo period ms.       */
+  k_rtt_up_buf_bytes   = 1024U, /**< Rtt up buffer bytes.      */
+  k_rtt_down_buf_bytes = 32U,   /**< Rtt down buffer bytes.    */
+  k_rtt_decimal_base   = 10U,   /**< Rtt decimal base.         */
+  k_rtt_max_digits     = 10U,   /**< Rtt maximum digits.       */
+  k_rtt_msg_buf_bytes  = 32U,   /**< Rtt message buffer bytes. */
 } rtt_demo_const_t;
 
 /**

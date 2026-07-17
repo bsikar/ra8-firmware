@@ -36,13 +36,13 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_icu_extint_demo_baud    = 115200U,
-  k_icu_extint_demo_poll_ms = 20U,
+  k_icu_extint_demo_baud    = 115200U, /**< Icu extint demo baud.    */
+  k_icu_extint_demo_poll_ms = 20U,     /**< Icu extint demo poll ms. */
 } icu_extint_demo_const_t;
 
 /** @brief SW1 -> IRQ13-DS (EK-RA8D2 UM Table 25 p 32). */
 typedef enum : uint8_t {
-  k_icu_extint_demo_irq_num   = 13U,
+  k_icu_extint_demo_irq_num   = 13U,   /**< Icu extint demo IRQ number.      */
   k_icu_extint_demo_irqf_mask = 0x40U, /**< IRQCRi.IRQ_DETECT (HUM 14.2.12). */
 } icu_extint_demo_irq_t;
 

@@ -54688,7 +54688,7 @@ typedef struct {
 } library_book_t;
 
 typedef enum : uint16_t {
-  k_library_count = 3U,
+  k_library_count = 3U, /**< Library count. */
 } library_count_t;
 
 static const library_book_t k_library[k_library_count] = {

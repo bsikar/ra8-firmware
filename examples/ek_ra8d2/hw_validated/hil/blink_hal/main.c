@@ -37,12 +37,12 @@
  * @brief CPU clock at reset (MOCO ~8.4 MHz on RA8D2 before CGC bring-up).
  */
 typedef enum : uint32_t {
-  k_blink_cpu_hz_at_reset = 8400000U,
+  k_blink_cpu_hz_at_reset = 8400000U, /**< Blink CPU Hz at reset. */
 } blink_clock_t;
 
 /** @brief Half-period of the visible blink, in milliseconds. */
 typedef enum : uint32_t {
-  k_blink_half_period_ms = 500U,
+  k_blink_half_period_ms = 500U, /**< Blink half period ms. */
 } blink_period_t;
 
 /**

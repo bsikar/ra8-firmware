@@ -38,30 +38,30 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_canfd_filter_period_ms  = 500U,
-  k_canfd_filter_bitrate    = 500000U,
-  k_canfd_filter_id_exact   = 0x100U,
-  k_canfd_filter_id_mask    = 0x110U,
-  k_canfd_filter_mask_low4  = 0x7F0U,
-  k_canfd_filter_mask_full  = 0x7FFU,
-  k_canfd_filter_id_nomatch = 0x200U,
+  k_canfd_filter_period_ms  = 500U,    /**< CANFD filter period ms.         */
+  k_canfd_filter_bitrate    = 500000U, /**< CANFD filter bitrate.           */
+  k_canfd_filter_id_exact   = 0x100U,  /**< CANFD filter ID exact.          */
+  k_canfd_filter_id_mask    = 0x110U,  /**< CANFD filter ID mask.           */
+  k_canfd_filter_mask_low4  = 0x7F0U,  /**< CANFD filter mask low4.         */
+  k_canfd_filter_mask_full  = 0x7FFU,  /**< CANFD filter mask full.         */
+  k_canfd_filter_id_nomatch = 0x200U,  /**< CANFD filter ID nomatch.        */
   k_canfd_filter_rx_spin    = 200000U, /**< ~10 ms RX poll budget at 1 GHz. */
   k_canfd_filter_drain_max  = 8U,      /**< Bounded RX FIFO drain count.    */
 } canfd_filter_const_t;
 
 /** @brief Channel + filter slots. */
 typedef enum : uint8_t {
-  k_canfd_filter_channel    = 0U,
-  k_canfd_filter_slot_a     = 0U,
-  k_canfd_filter_slot_b     = 1U,
-  k_canfd_filter_dlc        = 8U,
-  k_canfd_filter_byte_shift = 8U,
-  k_canfd_filter_payload_b2 = 0xA5U,
-  k_canfd_filter_payload_b3 = 0x5AU,
-  k_canfd_filter_payload_b4 = 0xDEU,
-  k_canfd_filter_payload_b5 = 0xADU,
-  k_canfd_filter_payload_b6 = 0xBEU,
-  k_canfd_filter_payload_b7 = 0xEFU,
+  k_canfd_filter_channel    = 0U,    /**< CANFD filter channel.    */
+  k_canfd_filter_slot_a     = 0U,    /**< CANFD filter slot a.     */
+  k_canfd_filter_slot_b     = 1U,    /**< CANFD filter slot b.     */
+  k_canfd_filter_dlc        = 8U,    /**< CANFD filter dlc.        */
+  k_canfd_filter_byte_shift = 8U,    /**< CANFD filter byte shift. */
+  k_canfd_filter_payload_b2 = 0xA5U, /**< CANFD filter payload b2. */
+  k_canfd_filter_payload_b3 = 0x5AU, /**< CANFD filter payload b3. */
+  k_canfd_filter_payload_b4 = 0xDEU, /**< CANFD filter payload b4. */
+  k_canfd_filter_payload_b5 = 0xADU, /**< CANFD filter payload b5. */
+  k_canfd_filter_payload_b6 = 0xBEU, /**< CANFD filter payload b6. */
+  k_canfd_filter_payload_b7 = 0xEFU, /**< CANFD filter payload b7. */
 } canfd_filter_layout_t;
 
 /* CFDC[0].CTR test-mode bits live in ra8_canfd_set_test_mode() now.

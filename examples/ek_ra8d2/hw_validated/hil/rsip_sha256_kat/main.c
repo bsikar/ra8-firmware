@@ -42,13 +42,13 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_kat_baud      = 115200U,
-  k_kat_period_ms = 1000U,
+  k_kat_baud      = 115200U, /**< Kat baud.      */
+  k_kat_period_ms = 1000U,   /**< Kat period ms. */
 } kat_const_t;
 
 /** @brief Length of the 56-byte NIST two-block message (excludes the NUL). */
 typedef enum : uint8_t {
-  k_kat_msg2_len = 56U,
+  k_kat_msg2_len = 56U, /**< Kat msg2 length. */
 } kat_msg_len_t;
 
 /** @brief NIST vector 2 input: "abc". */

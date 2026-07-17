@@ -38,8 +38,8 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_iwdt_demo_baud    = 115200U,
-  k_iwdt_demo_poll_ms = 50U,
+  k_iwdt_demo_baud    = 115200U, /**< Iwdt demo baud.    */
+  k_iwdt_demo_poll_ms = 50U,     /**< Iwdt demo poll ms. */
 } iwdt_demo_const_t;
 
 /** @brief Window bounds in 14-bit IWDTSR.CNTVAL units (HUM 28.2.2). */

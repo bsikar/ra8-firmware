@@ -13,7 +13,7 @@
 #include <stdint.h>
 
 /** @brief Signed body length (bytes ra8_dfu_launch copies + the digest covers). */
-enum : uint32_t { k_sb_payload_body_len = 32U };
+enum : uint32_t { k_sb_payload_body_len = 32U /**< Sb payload body length. */ };
 
 /** @brief Signed copy-to-run image: 32-byte body + 116-byte RoT trailer. */
 alignas(4) static const uint8_t g_sb_signed_payload[148] = {

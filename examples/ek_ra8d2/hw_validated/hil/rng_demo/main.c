@@ -45,17 +45,17 @@
 
 /** @brief Compile-time settings for the demo. */
 typedef enum : uint32_t {
-  k_rng_demo_baud      = 115200U,
-  k_rng_demo_period_ms = 1000U,
+  k_rng_demo_baud      = 115200U, /**< Rng demo baud.      */
+  k_rng_demo_period_ms = 1000U,   /**< Rng demo period ms. */
 } rng_demo_config_t;
 
 /** @brief Per-emit byte counts. */
 typedef enum : uint8_t {
-  k_rng_demo_bytes_per_line  = 32U,
-  k_rng_demo_hex_per_byte    = 2U,
-  k_rng_demo_nibble_mask     = 0x0FU,
-  k_rng_demo_nibble_shift    = 4U,
-  k_rng_demo_alpha_threshold = 10U,
+  k_rng_demo_bytes_per_line  = 32U,   /**< Rng demo bytes per line.  */
+  k_rng_demo_hex_per_byte    = 2U,    /**< Rng demo hex per byte.    */
+  k_rng_demo_nibble_mask     = 0x0FU, /**< Rng demo nibble mask.     */
+  k_rng_demo_nibble_shift    = 4U,    /**< Rng demo nibble shift.    */
+  k_rng_demo_alpha_threshold = 10U,   /**< Rng demo alpha threshold. */
 } rng_demo_byte_t;
 
 /** @brief Fixed prefix and CR/LF tail used on every emit. */

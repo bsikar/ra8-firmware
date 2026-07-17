@@ -41,12 +41,12 @@ typedef enum : uint16_t {
 } dac_b_demo_const_t;
 
 typedef enum : uint32_t {
-  k_dac_b_demo_step_ms = 20U,
+  k_dac_b_demo_step_ms = 20U, /**< DAC b demo step ms. */
 } dac_b_demo_time_t;
 
 /** @brief DAC_B channel under test. */
 typedef enum : uint8_t {
-  k_dac_b_demo_channel = 0U,
+  k_dac_b_demo_channel = 0U, /**< DAC b demo channel. */
 } dac_b_demo_chan_t;
 
 /**

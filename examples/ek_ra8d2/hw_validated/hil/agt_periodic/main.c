@@ -40,21 +40,21 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_agt_periodic_baud    = 115200U,
-  k_agt_periodic_poll_ms = 10U,
+  k_agt_periodic_baud    = 115200U, /**< AGT periodic baud.    */
+  k_agt_periodic_poll_ms = 10U,     /**< AGT periodic poll ms. */
 } agt_periodic_const_t;
 
 /** @brief AGT channel + reload (16-bit, ~1 Hz at PCLKB / 8192 div). */
 typedef enum : uint16_t {
-  k_agt_periodic_channel = 0U,
+  k_agt_periodic_channel = 0U, /**< AGT periodic channel. */
   /* Reload tuned for the simulator -- on real silicon AGT prescaler
    * setup happens inside ra8_agt_start_free_run. */
-  k_agt_periodic_reload = 0x7FFFU,
+  k_agt_periodic_reload = 0x7FFFU, /**< AGT periodic reload. */
 } agt_periodic_timer_t;
 
 /** @brief AGTCR underflow status bit (HUM Ch 24, AGTCR.TUNDF). */
 typedef enum : uint8_t {
-  k_agt_periodic_undf_bit = 0x20U,
+  k_agt_periodic_undf_bit = 0x20U, /**< AGT periodic undf bit. */
 } agt_periodic_status_t;
 
 static const uint8_t k_agt_periodic_log_msg[] = "agt: tick OK\r\n";

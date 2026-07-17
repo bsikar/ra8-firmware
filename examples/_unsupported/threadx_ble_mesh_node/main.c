@@ -55,10 +55,10 @@ typedef enum : uint16_t {
 } mesh_company_id_t;
 
 typedef enum : uint32_t {
-  k_demo_baud         = 115200U,
-  k_demo_thread_stack = 8192U,
-  k_demo_thread_prio  = 8U,
-  k_demo_idle_ms      = 5000U,
+  k_demo_baud         = 115200U, /**< Demo baud.         */
+  k_demo_thread_stack = 8192U,   /**< Demo thread stack. */
+  k_demo_thread_prio  = 8U,      /**< Demo thread prio.  */
+  k_demo_idle_ms      = 5000U,   /**< Demo idle ms.      */
 } demo_mesh_cfg_t;
 
 /**
@@ -66,8 +66,8 @@ typedef enum : uint32_t {
  * @brief SIG model identifiers used in the composition.
  */
 typedef enum : uint16_t {
-  k_demo_model_config_server  = 0x0000U,
-  k_demo_model_generic_on_off = 0x1000U,
+  k_demo_model_config_server  = 0x0000U, /**< Demo model config server.  */
+  k_demo_model_generic_on_off = 0x1000U, /**< Demo model generic on off. */
 } demo_mesh_models_t;
 
 /** @brief Mesh device UUID literal. */

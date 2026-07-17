@@ -40,27 +40,27 @@
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
-  k_crc_demo_baud      = 115200U,
-  k_crc_demo_period_ms = 1000U,
+  k_crc_demo_baud      = 115200U, /**< CRC demo baud.      */
+  k_crc_demo_period_ms = 1000U,   /**< CRC demo period ms. */
 } crc_demo_config_t;
 
 /** @brief Software CRC-32 polynomial + bit constants (reflected). */
 typedef enum : uint32_t {
-  k_crc_demo_sw_poly_rev = 0xEDB88320UL,
-  k_crc_demo_sw_init     = 0xFFFFFFFFUL,
-  k_crc_demo_sw_xor_out  = 0xFFFFFFFFUL,
-  k_crc_demo_byte_mask   = 0xFFUL,
-  k_crc_demo_lsb_mask    = 0x1UL,
+  k_crc_demo_sw_poly_rev = 0xEDB88320UL, /**< CRC demo sw poly rev. */
+  k_crc_demo_sw_init     = 0xFFFFFFFFUL, /**< CRC demo sw init.     */
+  k_crc_demo_sw_xor_out  = 0xFFFFFFFFUL, /**< CRC demo sw xor out.  */
+  k_crc_demo_byte_mask   = 0xFFUL,       /**< CRC demo byte mask.   */
+  k_crc_demo_lsb_mask    = 0x1UL,        /**< CRC demo lsb mask.    */
 } crc_demo_sw_const_t;
 
 /** @brief Inner-loop bit count for the software CRC. */
 typedef enum : uint8_t {
-  k_crc_demo_bits_per_byte = 8U,
-  k_crc_demo_nibble_mask   = 0x0FU,
-  k_crc_demo_nibble_shift  = 4U,
-  k_crc_demo_alpha_thresh  = 10U,
-  k_crc_demo_payload_len   = 16U,
-  k_crc_demo_hex_per_word  = 8U,
+  k_crc_demo_bits_per_byte = 8U,    /**< CRC demo bits per byte.  */
+  k_crc_demo_nibble_mask   = 0x0FU, /**< CRC demo nibble mask.    */
+  k_crc_demo_nibble_shift  = 4U,    /**< CRC demo nibble shift.   */
+  k_crc_demo_alpha_thresh  = 10U,   /**< CRC demo alpha thresh.   */
+  k_crc_demo_payload_len   = 16U,   /**< CRC demo payload length. */
+  k_crc_demo_hex_per_word  = 8U,    /**< CRC demo hex per word.   */
 } crc_demo_byte_t;
 
 /** @brief Fixed 16-byte test payload. */

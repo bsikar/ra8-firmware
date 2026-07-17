@@ -164,8 +164,8 @@ static bool sh_parse_numeric(const char* s, size_t n, size_t* consumed, uint32_t
 static bool sh_decode_entity(const char* s, size_t n, size_t* consumed, uint32_t* cp)
 {
   static const struct {
-    const char* name;
-    uint32_t    cp;
+    const char* name; /**< Name. */
+    uint32_t    cp;   /**< Cp.   */
   } k_named[] = {{"&amp;", '&'}, {"&lt;", '<'}, {"&gt;", '>'}, {"&quot;", '"'}, {"&apos;", '\''}};
   for (size_t i = 0U; i < (sizeof(k_named) / sizeof(k_named[0])); ++i) {
     const size_t ln = strlen(k_named[i].name);

@@ -57,10 +57,10 @@
 
 /** @brief Compile-time settings for the echo demo. */
 typedef enum : uint32_t {
-  k_uart_irq_baud     = 115200U,
-  k_uart_irq_loop_ms  = 100U,
-  k_uart_irq_sci_chan = 8U, /**< Console channel: SCI8 (PD02/PD03). */
-  k_uart_irq_isr_prio = 4U, /**< NVIC priority for the SCI events.  */
+  k_uart_irq_baud     = 115200U, /**< UART IRQ baud.                     */
+  k_uart_irq_loop_ms  = 100U,    /**< UART IRQ loop ms.                  */
+  k_uart_irq_sci_chan = 8U,      /**< Console channel: SCI8 (PD02/PD03). */
+  k_uart_irq_isr_prio = 4U,      /**< NVIC priority for the SCI events.  */
 } uart_irq_config_t;
 
 /** @brief SCI8 ELC event numbers (FSP ra8d2 bsp_elc: RXI/TXI/TEI). */

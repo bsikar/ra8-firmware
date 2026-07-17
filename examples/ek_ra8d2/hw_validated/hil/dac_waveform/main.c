@@ -42,10 +42,10 @@
 
 /** @brief Channel + sample-rate tunables. */
 typedef enum : uint16_t {
-  k_dac_demo_channel  = 0U,
-  k_dac_demo_steps    = 64U,
-  k_dac_demo_step_ms  = 1U, /**< 1 ms x 64 x 2 = 128 ms full triangle period. */
-  k_dac_demo_max_code = 4095U,
+  k_dac_demo_channel  = 0U,    /**< DAC demo channel.                            */
+  k_dac_demo_steps    = 64U,   /**< DAC demo steps.                              */
+  k_dac_demo_step_ms  = 1U,    /**< 1 ms x 64 x 2 = 128 ms full triangle period. */
+  k_dac_demo_max_code = 4095U, /**< DAC demo maximum code.                       */
 } dac_demo_const_t;
 
 /**

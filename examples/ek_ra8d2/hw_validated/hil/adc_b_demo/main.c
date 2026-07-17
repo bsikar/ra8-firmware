@@ -43,10 +43,10 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_adc_b_demo_baud       = 115200U,
-  k_adc_b_demo_period_ms  = 500U,
-  k_adc_b_demo_vref_mv    = 3300U, /**< EK-RA8D2 VREFH = 3.3V. */
-  k_adc_b_demo_full_scale = 4095U, /**< 12-bit max code.       */
+  k_adc_b_demo_baud       = 115200U, /**< ADC b demo baud.       */
+  k_adc_b_demo_period_ms  = 500U,    /**< ADC b demo period ms.  */
+  k_adc_b_demo_vref_mv    = 3300U,   /**< EK-RA8D2 VREFH = 3.3V. */
+  k_adc_b_demo_full_scale = 4095U,   /**< 12-bit max code.       */
 } adc_b_demo_const_t;
 
 /** @brief ADC channel selection. */
@@ -56,11 +56,11 @@ typedef enum : uint8_t {
 
 /** @brief Formatting constants. */
 typedef enum : uint8_t {
-  k_adc_b_demo_dec_digits = 5U,  /**< Max decimal digits for uint16_t (65535). */
-  k_adc_b_demo_line_max   = 32U, /**< "adc: raw=XXXXX mv=XXXXX\r\n" fits here. */
-  k_adc_b_demo_radix      = 10U,
-  k_adc_b_demo_cr         = '\r',
-  k_adc_b_demo_lf         = '\n',
+  k_adc_b_demo_dec_digits = 5U,   /**< Max decimal digits for uint16_t (65535). */
+  k_adc_b_demo_line_max   = 32U,  /**< "adc: raw=XXXXX mv=XXXXX\r\n" fits here. */
+  k_adc_b_demo_radix      = 10U,  /**< ADC b demo radix.                        */
+  k_adc_b_demo_cr         = '\r', /**< ADC b demo cr.                           */
+  k_adc_b_demo_lf         = '\n', /**< ADC b demo lf.                           */
 } adc_b_demo_fmt_t;
 
 static const uint8_t k_adc_b_demo_log_prefix[] = "adc: raw=";

@@ -41,16 +41,16 @@
 
 /** @brief App-wide tunables. */
 typedef enum : uint32_t {
-  k_combo_baud        = 115200U,
-  k_combo_period_ms   = 1000U,
-  k_combo_bus_hz      = 100000U,
-  k_combo_i2c_channel = 1U, /**< RIIC ch1 -- U15 (P512/P511). */
-  k_combo_i3c_channel = 0U, /**< I3C ch0 -- J27 (P400/P401).  */
+  k_combo_baud        = 115200U, /**< Combo baud.                  */
+  k_combo_period_ms   = 1000U,   /**< Combo period ms.             */
+  k_combo_bus_hz      = 100000U, /**< Combo bus Hz.                */
+  k_combo_i2c_channel = 1U,      /**< RIIC ch1 -- U15 (P512/P511). */
+  k_combo_i3c_channel = 0U,      /**< I3C ch0 -- J27 (P400/P401).  */
 } combo_const_t;
 
 /** @brief Probe address: U15 on RIIC ch1; reused as the I3C scan target. */
 typedef enum : uint8_t {
-  k_combo_probe_addr = 0x43U,
+  k_combo_probe_addr = 0x43U, /**< Combo probe address. */
 } combo_byte_t;
 
 /** @brief I3C ch0 pins (P400 SCL0 / P401 SDA0). RIIC ch1 pins are routed

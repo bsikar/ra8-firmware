@@ -36,16 +36,16 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_ulpt_demo_baud    = 115200U,
-  k_ulpt_demo_poll_ms = 50U,
+  k_ulpt_demo_baud    = 115200U, /**< Ulpt demo baud.    */
+  k_ulpt_demo_poll_ms = 50U,     /**< Ulpt demo poll ms. */
   /* 32 768 LOCO ticks ~= 1 s (chosen so the period fits in the
    * 32-bit reload field while still being legible at host-test scale). */
-  k_ulpt_demo_period_ticks = 0x8000U,
+  k_ulpt_demo_period_ticks = 0x8000U, /**< Ulpt demo period ticks. */
 } ulpt_demo_const_t;
 
 /** @brief ULPT channel + status. */
 typedef enum : uint8_t {
-  k_ulpt_demo_channel  = 0U,
+  k_ulpt_demo_channel  = 0U,    /**< Ulpt demo channel.                    */
   k_ulpt_demo_undf_bit = 0x20U, /**< ULPTCR.TUNDF -- mirrors AGTCR layout. */
 } ulpt_demo_chan_t;
 

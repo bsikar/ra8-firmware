@@ -40,8 +40,8 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_wdt_window_demo_baud    = 115200U,
-  k_wdt_window_demo_poll_ms = 5U,
+  k_wdt_window_demo_baud    = 115200U, /**< Wdt window demo baud.    */
+  k_wdt_window_demo_poll_ms = 5U,      /**< Wdt window demo poll ms. */
 } wdt_window_demo_const_t;
 
 /**
@@ -60,8 +60,8 @@ typedef enum : uint32_t {
  * missing the window.
  */
 typedef enum : uint16_t {
-  k_wdt_window_demo_window_low  = 256U,
-  k_wdt_window_demo_window_high = 768U,
+  k_wdt_window_demo_window_low  = 256U, /**< Wdt window demo window low.  */
+  k_wdt_window_demo_window_high = 768U, /**< Wdt window demo window high. */
 } wdt_window_demo_window_t;
 
 static const uint8_t k_wdt_window_demo_msg_refresh[] = "wdt: window_tick=ok\r\n";

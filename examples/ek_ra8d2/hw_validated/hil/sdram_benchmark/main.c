@@ -45,18 +45,18 @@
 
 /** @brief App-wide tunables. */
 typedef enum : uint32_t {
-  k_sdram_demo_baud        = 115200U,
-  k_sdram_demo_period_ms   = 1000U,
-  k_sdram_demo_block_bytes = 65536U, /**< 64 KB window per pass.          */
-  k_sdram_demo_block_words = 16384U, /**< 65536 / sizeof(uint32_t).       */
-  k_sdram_demo_us_per_ms   = 1000U,  /**< Conversion factor used in mbps. */
+  k_sdram_demo_baud        = 115200U, /**< SDRAM demo baud.                */
+  k_sdram_demo_period_ms   = 1000U,   /**< SDRAM demo period ms.           */
+  k_sdram_demo_block_bytes = 65536U,  /**< 64 KB window per pass.          */
+  k_sdram_demo_block_words = 16384U,  /**< 65536 / sizeof(uint32_t).       */
+  k_sdram_demo_us_per_ms   = 1000U,   /**< Conversion factor used in mbps. */
 } sdram_demo_const_t;
 
 /** @brief Single-byte ASCII conversion constants. */
 typedef enum : uint8_t {
-  k_sdram_demo_ascii_zero   = '0',
-  k_sdram_demo_ascii_a      = 'a',
-  k_sdram_demo_dec_base     = 10U,
+  k_sdram_demo_ascii_zero   = '0',   /**< SDRAM demo ascii zero.            */
+  k_sdram_demo_ascii_a      = 'a',   /**< SDRAM demo ascii a.               */
+  k_sdram_demo_dec_base     = 10U,   /**< SDRAM demo dec base.              */
   k_sdram_demo_uint_dec_max = 10U,   /**< Max digits in a uint32 base-10.   */
   k_sdram_demo_print_buf    = 64U,   /**< Max bytes in one throughput line. */
   k_sdram_demo_fail_buf     = 96U,   /**< Max bytes in the FAIL diag line.  */
@@ -82,7 +82,7 @@ typedef struct {
 
 /** @brief Pattern seed -- recognisable hex word for SWD inspection. */
 typedef enum : uint32_t {
-  k_sdram_demo_pattern_seed = 0xC0FFEE00UL,
+  k_sdram_demo_pattern_seed = 0xC0FFEE00UL, /**< SDRAM demo pattern seed. */
 } sdram_demo_seed_t;
 
 /** @brief Verdict line emitted only when a read-back pass matched every

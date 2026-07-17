@@ -92,13 +92,13 @@
  *   as 256 update steps spaced ``2000 / 256`` ~= 8 ms apart.
  */
 typedef enum : uint32_t {
-  k_motor_3phase_baud          = 115200U,
-  k_motor_3phase_period        = 0x0000FFFFUL,
-  k_motor_3phase_half_period   = 0x00007FFFUL,
-  k_motor_3phase_dead_time     = 125U,
-  k_motor_3phase_update_ms     = 8U,
-  k_motor_3phase_print_period  = 100U,
-  k_motor_3phase_revolution_ms = 2000U,
+  k_motor_3phase_baud          = 115200U,      /**< Motor 3phase baud.          */
+  k_motor_3phase_period        = 0x0000FFFFUL, /**< Motor 3phase period.        */
+  k_motor_3phase_half_period   = 0x00007FFFUL, /**< Motor 3phase half period.   */
+  k_motor_3phase_dead_time     = 125U,         /**< Motor 3phase dead time.     */
+  k_motor_3phase_update_ms     = 8U,           /**< Motor 3phase update ms.     */
+  k_motor_3phase_print_period  = 100U,         /**< Motor 3phase print period.  */
+  k_motor_3phase_revolution_ms = 2000U,        /**< Motor 3phase revolution ms. */
 } motor_3phase_config_t;
 
 /**
@@ -111,9 +111,9 @@ typedef enum : uint32_t {
  * ``ra8_gpt_three_phase_open``.
  */
 typedef enum : uint8_t {
-  k_motor_3phase_ch_u = 0U,
-  k_motor_3phase_ch_v = 1U,
-  k_motor_3phase_ch_w = 2U,
+  k_motor_3phase_ch_u = 0U, /**< Motor 3phase channel u. */
+  k_motor_3phase_ch_v = 1U, /**< Motor 3phase channel v. */
+  k_motor_3phase_ch_w = 2U, /**< Motor 3phase channel w. */
 } motor_3phase_channel_t;
 
 /**
@@ -125,8 +125,8 @@ typedef enum : uint8_t {
  * uses. A single ``s_sine_step`` advances on each update tick.
  */
 typedef enum : uint16_t {
-  k_motor_3phase_sine_size = 256U,
-  k_motor_3phase_sine_mask = 255U,
+  k_motor_3phase_sine_size = 256U, /**< Motor 3phase sine size.      */
+  k_motor_3phase_sine_mask = 255U, /**< Motor 3phase sine mask.      */
   k_motor_3phase_phase_120 = 85U,  /**< 256 / 3 ~= 85.3 (truncated). */
   k_motor_3phase_phase_240 = 171U, /**< 2 * 256 / 3 ~= 170.6.        */
 } motor_3phase_sine_t;
@@ -210,12 +210,12 @@ static void motor_3phase_build_sine(void)
 {
   /* Use a Q16 representation of pi and 2*pi for the Bhaskara math. */
   enum : uint64_t {
-    k_q16_pi      = 205887ULL, /**< pi  * 65536 ~= 205887. */
-    k_q16_two_pi  = 411775ULL, /**< 2pi * 65536 ~= 411775. */
-    k_q16_5_pi_sq = 3236018ULL,
-    k_q16_one     = 65536ULL,
-    k_q16_numer_k = 16ULL,
-    k_q16_denom_k = 4ULL,
+    k_q16_pi      = 205887ULL,  /**< pi  * 65536 ~= 205887. */
+    k_q16_two_pi  = 411775ULL,  /**< 2pi * 65536 ~= 411775. */
+    k_q16_5_pi_sq = 3236018ULL, /**< Q16 5 pi sq.           */
+    k_q16_one     = 65536ULL,   /**< Q16 one.               */
+    k_q16_numer_k = 16ULL,      /**< Q16 numer k.           */
+    k_q16_denom_k = 4ULL,       /**< Q16 denom k.           */
   };
   const uint64_t period_u64  = k_motor_3phase_period;
   const uint64_t half_period = k_motor_3phase_half_period;
@@ -289,7 +289,7 @@ static void motor_3phase_build_sine(void)
 [[nodiscard]] static ra8_err_t motor_3phase_pin_configure_all(void)
 {
   enum : uint8_t {
-    k_phase_count = 3U,
+    k_phase_count = 3U, /**< Phase count. */
   };
   const ra8_gpt_pwm_pin_cfg_t pin_cfg = {
     .output_enable    = true,
@@ -441,9 +441,9 @@ static void motor_3phase_init_pwm(void)
 static uint32_t motor_3phase_u32_to_dec(uint32_t value, uint8_t* buf)
 {
   enum : uint8_t {
-    k_ascii_zero = 0x30U,
-    k_radix      = 10U,
-    k_max_digits = 10U,
+    k_ascii_zero = 0x30U, /**< Ascii zero.     */
+    k_radix      = 10U,   /**< Radix.          */
+    k_max_digits = 10U,   /**< Maximum digits. */
   };
   uint8_t  tmp[k_max_digits];
   uint32_t n = 0U;
@@ -479,7 +479,7 @@ static uint32_t motor_3phase_u32_to_dec(uint32_t value, uint8_t* buf)
 static void motor_3phase_print_duty(uint32_t u_duty, uint32_t v_duty, uint32_t w_duty)
 {
   enum : uint8_t {
-    k_dec_buf = 12U,
+    k_dec_buf = 12U, /**< Dec buffer. */
   };
   uint8_t  digits[k_dec_buf];
   uint32_t n = 0U;

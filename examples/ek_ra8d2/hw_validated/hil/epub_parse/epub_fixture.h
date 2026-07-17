@@ -18,7 +18,7 @@
 #include <stdint.h>
 
 /** @brief Length of the baked EPUB blob, bytes. */
-enum : size_t { k_epub_fixture_len = 1355U };
+enum : size_t { k_epub_fixture_len = 1355U /**< EPUB fixture length. */ };
 
 /** @brief Baked seed_two_chapters.epub byte stream. */
 static const uint8_t k_epub_fixture[k_epub_fixture_len] = {

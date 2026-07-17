@@ -38,14 +38,14 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_rot_baud       = 115200U,
-  k_rot_period_ms  = 1000U,
+  k_rot_baud       = 115200U,  /**< Rot baud.                                     */
+  k_rot_period_ms  = 1000U,    /**< Rot period ms.                                */
   k_rot_heap_bytes = 0x10000U, /**< 64 KiB static heap for tf-psa mbedtls_calloc. */
 } rot_const_t;
 
 /** @brief Byte flipped in the tamper copy (first body octet). */
 typedef enum : uint8_t {
-  k_rot_tamper_bit = 0x01U,
+  k_rot_tamper_bit = 0x01U, /**< Rot tamper bit. */
 } rot_bit_t;
 
 static const uint8_t k_rot_msg_pass[]      = "rot verify: PASS\r\n";
