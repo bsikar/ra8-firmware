@@ -236,10 +236,10 @@ static void test_ra8_book_chunked_open_happy(void)
  * @see test_ra8_book_chunked_open_guards
  */
 typedef struct {
-  uint8_t*  container; /**< Packed container image under test.        */
-  uint64_t  file_len;  /**< Byte length of the packed container.      */
-  uint64_t* table;     /**< Caller chunk-table buffer.                */
-  uint8_t*  staging;   /**< Caller staging buffer.                    */
+  uint8_t*  container; /**< Packed container image under test.   */
+  uint64_t  file_len;  /**< Byte length of the packed container. */
+  uint64_t* table;     /**< Caller chunk-table buffer.           */
+  uint8_t*  staging;   /**< Caller staging buffer.               */
 } bcx_guard_ctx_t;
 
 /**

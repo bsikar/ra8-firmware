@@ -50,15 +50,15 @@ typedef struct {
  * @see setup_mock_book
  */
 typedef struct {
-  uint32_t ch_title;     /**< "Chapter 1" chapter title.        */
-  uint32_t ch_href;      /**< "ch1.xhtml" chapter href.         */
-  uint32_t div_tag;      /**< "div" element name.               */
-  uint32_t class_attr;   /**< "class" attribute name.           */
-  uint32_t main_val;     /**< "main" attribute value.           */
-  uint32_t text_content; /**< "Hello World" text node.          */
-  uint32_t css_content;  /**< Inline stylesheet source.         */
-  uint32_t img_href;     /**< "img1.png" raster image id.       */
-  uint32_t svg_href;     /**< "svg1.svg" vector image id.       */
+  uint32_t ch_title;     /**< "Chapter 1" chapter title.  */
+  uint32_t ch_href;      /**< "ch1.xhtml" chapter href.   */
+  uint32_t div_tag;      /**< "div" element name.         */
+  uint32_t class_attr;   /**< "class" attribute name.     */
+  uint32_t main_val;     /**< "main" attribute value.     */
+  uint32_t text_content; /**< "Hello World" text node.    */
+  uint32_t css_content;  /**< Inline stylesheet source.   */
+  uint32_t img_href;     /**< "img1.png" raster image id. */
+  uint32_t svg_href;     /**< "svg1.svg" vector image id. */
 } mock_book_offsets_t;
 
 /**
