@@ -19,7 +19,8 @@ add_executable(media_dl
   src/main.c
   src/mdl_net_curl.c
   src/mdl_extract.c
-  src/mdl_politeness.c)
+  src/mdl_politeness.c
+  src/mdl_config.c)
 
 target_include_directories(media_dl PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/inc
