@@ -24,6 +24,10 @@
 
 /* ---------- Lifecycle tests ---------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
 static void test_init_happy(void)
