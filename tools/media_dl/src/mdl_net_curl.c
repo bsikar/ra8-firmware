@@ -21,7 +21,7 @@
 
 /** @brief Backend tunables. */
 typedef enum : uint16_t {
-  k_curl_max_redirects  = 8,   /**< Redirect hops to follow. */
+  k_curl_max_redirects  = 8,   /**< Redirect hops to follow.               */
   k_http_status_err_min = 400, /**< First HTTP status treated as an error. */
 } mdl_curl_limits_t;
 
@@ -32,9 +32,9 @@ struct mdl_net_iface {
 
 /** @brief Bounded-buffer sink state for a page fetch. */
 typedef struct {
-  char*  buf;      /**< Destination buffer. */
-  size_t cap;      /**< Capacity in bytes. */
-  size_t len;      /**< Bytes written so far. */
+  char*  buf;      /**< Destination buffer.              */
+  size_t cap;      /**< Capacity in bytes.               */
+  size_t len;      /**< Bytes written so far.            */
   bool   overflow; /**< Set once the body exceeds `cap`. */
 } buf_sink_t;
 
@@ -91,7 +91,7 @@ mdl_net_iface_t* mdl_net_curl_create(void)
   curl_easy_setopt(net->curl, CURLOPT_FOLLOWLOCATION, 1L);
   curl_easy_setopt(net->curl, CURLOPT_MAXREDIRS, (long)k_curl_max_redirects);
   curl_easy_setopt(net->curl, CURLOPT_ACCEPT_ENCODING, ""); /* all supported */
-  curl_easy_setopt(net->curl, CURLOPT_COOKIEFILE, "");      /* enable jar */
+  curl_easy_setopt(net->curl, CURLOPT_COOKIEFILE, "");      /* enable jar    */
   curl_easy_setopt(net->curl, CURLOPT_NOSIGNAL, 1L);
   return net;
 }

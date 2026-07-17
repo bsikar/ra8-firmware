@@ -24,9 +24,9 @@ typedef enum : uint8_t {
 
 /** @brief Default politeness bounds (ms) applied before the file is read. */
 typedef enum : uint16_t {
-  k_def_img_delay_min     = 500,  /**< Per-image spacing floor. */
-  k_def_img_delay_max     = 1200, /**< Per-image spacing ceiling. */
-  k_def_chapter_delay_min = 1500, /**< Inter-chapter spacing floor. */
+  k_def_img_delay_min     = 500,  /**< Per-image spacing floor.       */
+  k_def_img_delay_max     = 1200, /**< Per-image spacing ceiling.     */
+  k_def_chapter_delay_min = 1500, /**< Inter-chapter spacing floor.   */
   k_def_chapter_delay_max = 3000, /**< Inter-chapter spacing ceiling. */
 } mdl_config_defaults_t;
 

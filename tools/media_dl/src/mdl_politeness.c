@@ -17,8 +17,8 @@ typedef enum : uint64_t {
 
 /** @brief xorshift64 shift triple (Marsaglia's 13/7/17). */
 typedef enum : uint8_t {
-  k_xs_shift_a = 13U, /**< First left shift. */
-  k_xs_shift_b = 7U,  /**< Right shift. */
+  k_xs_shift_a = 13U, /**< First left shift.  */
+  k_xs_shift_b = 7U,  /**< Right shift.       */
   k_xs_shift_c = 17U, /**< Second left shift. */
 } mdl_xorshift_t;
 

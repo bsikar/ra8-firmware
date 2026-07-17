@@ -35,8 +35,8 @@ typedef struct mdl_net_iface mdl_net_iface_t;
  */
 typedef struct {
   const char* user_agent; /**< Session User-Agent; never per-request random. */
-  const char* referer;    /**< Referer header value, or NULL to omit. */
-  uint32_t    timeout_ms; /**< Whole-request time budget, milliseconds. */
+  const char* referer;    /**< Referer header value, or NULL to omit.        */
+  uint32_t    timeout_ms; /**< Whole-request time budget, milliseconds.      */
 } mdl_net_req_t;
 
 /**

@@ -23,18 +23,18 @@
 
 /** @brief How to order chapters extracted from a series page. */
 typedef enum : uint8_t {
-  k_mdl_order_doc     = 0, /**< Keep document order. */
+  k_mdl_order_doc     = 0, /**< Keep document order.                          */
   k_mdl_order_reverse = 1, /**< Reverse document order (newest-first -> old). */
-  k_mdl_order_asc     = 2, /**< Sort by the number parsed from the URL. */
+  k_mdl_order_asc     = 2, /**< Sort by the number parsed from the URL.       */
 } mdl_chapter_order_t;
 
 /** @brief Fixed field sizes for a site descriptor. */
 typedef enum : uint16_t {
-  k_mdl_name_max  = 64,  /**< Site display name bytes. */
-  k_mdl_host_max  = 128, /**< Host bytes. */
-  k_mdl_kind_max  = 16,  /**< "manga"/"manhwa"/... bytes. */
+  k_mdl_name_max  = 64,  /**< Site display name bytes.        */
+  k_mdl_host_max  = 128, /**< Host bytes.                     */
+  k_mdl_kind_max  = 16,  /**< "manga"/"manhwa"/... bytes.     */
   k_mdl_match_max = 128, /**< Selector/substring field bytes. */
-  k_mdl_attr_max  = 16,  /**< Image attribute name bytes. */
+  k_mdl_attr_max  = 16,  /**< Image attribute name bytes.     */
 } mdl_config_limits_t;
 
 /**
@@ -42,22 +42,22 @@ typedef enum : uint16_t {
  * @invariant Every string field is NUL-terminated.
  */
 typedef struct {
-  char name[k_mdl_name_max]; /**< Human-readable site name. */
-  char host[k_mdl_host_max]; /**< Site host, e.g. "manhwaus.net". */
+  char name[k_mdl_name_max]; /**< Human-readable site name.        */
+  char host[k_mdl_host_max]; /**< Site host, e.g. "manhwaus.net".  */
   char kind[k_mdl_kind_max]; /**< Content kind hint (reader mode). */
 
   /* Chapter list, found on a series page. */
   char                chapter_url_contains[k_mdl_match_max]; /**< href must contain this. */
-  mdl_chapter_order_t chapter_order;                         /**< Ordering to apply. */
+  mdl_chapter_order_t chapter_order;                         /**< Ordering to apply.      */
 
   /* Page images, found on a chapter page. */
   char page_img_attr[k_mdl_attr_max];          /**< Preferred attr (fallback other). */
-  char page_img_url_contains[k_mdl_match_max]; /**< Keep only URLs with this. */
+  char page_img_url_contains[k_mdl_match_max]; /**< Keep only URLs with this.        */
 
   /* Politeness (milliseconds); jittered in [min,max]. */
-  uint32_t img_delay_min;     /**< Per-image spacing floor. */
-  uint32_t img_delay_max;     /**< Per-image spacing ceiling. */
-  uint32_t chapter_delay_min; /**< Inter-chapter spacing floor. */
+  uint32_t img_delay_min;     /**< Per-image spacing floor.       */
+  uint32_t img_delay_max;     /**< Per-image spacing ceiling.     */
+  uint32_t chapter_delay_min; /**< Inter-chapter spacing floor.   */
   uint32_t chapter_delay_max; /**< Inter-chapter spacing ceiling. */
 } mdl_site_t;
 
