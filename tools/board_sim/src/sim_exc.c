@@ -113,33 +113,6 @@ static uint32_t exc_priority(uc_engine* uc, uint32_t exc_num)
   return (uint32_t)k_exc_prio_max;
 }
 
-/**
- * @brief Enter a Cortex-M exception: stack the basic frame and vector in.
- *
- * @details
- * Reproduces Armv7E-M / Armv8-M exception entry that Unicorn's core does not
- * model. The active stack is chosen exactly as hardware would: PSP when in
- * Thread mode with CONTROL.SPSEL set, else MSP. The 8-word basic frame
- * {R0,R1,R2,R3,R12,LR,PC,xPSR} is pushed with 8-byte alignment (the realign
- * pad is recorded in the stacked xPSR bit 9 so exit can undo it), the banked SP
- * is updated, the core is switched to Handler mode on MSP, LR is loaded with
- * the matching EXC_RETURN, IPSR is set to @p exc_num, and PC is vectored to the
- * handler fetched from the VTOR-relative table. The handler's priority is
- * pushed on the active-exception stack so nesting respects priority.
- *
- * @param[in,out] uc      Unicorn engine.
- * @param[in]     exc_num Exception number to take (11, 14, or 15).
- * @param[in]     handler Handler entry address (Thumb bit ignored).
- * @return Nothing.
- *
- * @pre @p uc has MSP/PSP/CONTROL/xPSR readable and the target stack mapped.
- * @pre Taking @p exc_num is permitted now (priority/PRIMASK already checked).
- * @post The core is in Handler mode (IPSR == @p exc_num) running on MSP.
- * @post LR holds a valid EXC_RETURN and the outgoing frame is on the old stack.
- * @note When CONTROL.FPCA is set, the FP extended frame (S0-S15 + FPSCR) is
- *       stacked above the basic frame and EXC_RETURN bit4 (FType) is cleared.
- * @since 0.1.0
- */
 /** @brief Stack the basic {R0-R3,R12,LR,PC,xPSR} frame + optional FP frame at @p sp. */
 static void exc_stack_frame(uc_engine* uc, uint32_t sp, bool fp_active, uint32_t frame_xpsr)
 {
@@ -183,6 +156,33 @@ static uint32_t exc_return_value(bool in_thread, bool use_psp, bool fp_active)
   return exc_ret;
 }
 
+/**
+ * @brief Enter a Cortex-M exception: stack the basic frame and vector in.
+ *
+ * @details
+ * Reproduces Armv7E-M / Armv8-M exception entry that Unicorn's core does not
+ * model. The active stack is chosen exactly as hardware would: PSP when in
+ * Thread mode with CONTROL.SPSEL set, else MSP. The 8-word basic frame
+ * {R0,R1,R2,R3,R12,LR,PC,xPSR} is pushed with 8-byte alignment (the realign
+ * pad is recorded in the stacked xPSR bit 9 so exit can undo it), the banked SP
+ * is updated, the core is switched to Handler mode on MSP, LR is loaded with
+ * the matching EXC_RETURN, IPSR is set to @p exc_num, and PC is vectored to the
+ * handler fetched from the VTOR-relative table. The handler's priority is
+ * pushed on the active-exception stack so nesting respects priority.
+ *
+ * @param[in,out] uc      Unicorn engine.
+ * @param[in]     exc_num Exception number to take (11, 14, or 15).
+ * @param[in]     handler Handler entry address (Thumb bit ignored).
+ * @return Nothing.
+ *
+ * @pre @p uc has MSP/PSP/CONTROL/xPSR readable and the target stack mapped.
+ * @pre Taking @p exc_num is permitted now (priority/PRIMASK already checked).
+ * @post The core is in Handler mode (IPSR == @p exc_num) running on MSP.
+ * @post LR holds a valid EXC_RETURN and the outgoing frame is on the old stack.
+ * @note When CONTROL.FPCA is set, the FP extended frame (S0-S15 + FPSCR) is
+ *       stacked above the basic frame and EXC_RETURN bit4 (FType) is cleared.
+ * @since 0.1.0
+ */
 void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler)
 {
   const uint32_t xpsr_in   = reg_get(uc, UC_ARM_REG_XPSR);
@@ -232,30 +232,6 @@ void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler)
   }
 }
 
-/**
- * @brief Perform a Cortex-M exception return for an observed EXC_RETURN branch.
- *
- * @details
- * The inverse of ::exc_enter. @p exc_return (the magic value the core branched
- * to) selects the stack to unstack from (bit2: PSP vs MSP) and the mode to
- * return to (bit3: Thread vs Handler). The 8-word basic frame is popped (plus
- * the S0-S15 + FPSCR words when FType, bit4, is clear), the recorded 8-byte
- * realignment (stacked xPSR bit 9) is undone, the banked SP and CONTROL.SPSEL
- * are restored, xPSR (hence IPSR) is reloaded, the active-exception stack is
- * popped, and PC resumes the interrupted instruction stream.
- *
- * @param[in,out] uc      Unicorn engine.
- * @param[in]     exc_ret The EXC_RETURN value (prefix bits[31:7] set) returned to.
- * @return Nothing.
- *
- * @pre @p uc is in Handler mode with a valid basic frame on the indicated stack.
- * @pre @p exc_ret has the EXC_RETURN prefix (bits[31:7] all set).
- * @post The core has resumed the unstacked context (PC/SP/xPSR restored).
- * @post The active-exception nesting depth has decreased by one (if non-zero).
- * @note When FType (bit4) is clear, the FP extended frame (S0-S15 + FPSCR) is
- *       unstacked too, matching ::exc_enter.
- * @since 0.1.0
- */
 /** @brief Restore the Armv8-M FP extended frame (S0-S15 + FPSCR) from @p sp. */
 static void exc_restore_fp_frame(uc_engine* uc, uint32_t sp)
 {
@@ -291,6 +267,30 @@ static void exc_restore_mode(uc_engine* uc, uint32_t xpsr, bool to_thread, bool 
   reg_set(uc, UC_ARM_REG_XPSR, new_xpsr);
 }
 
+/**
+ * @brief Perform a Cortex-M exception return for an observed EXC_RETURN branch.
+ *
+ * @details
+ * The inverse of ::exc_enter. @p exc_ret (the magic value the core branched
+ * to) selects the stack to unstack from (bit2: PSP vs MSP) and the mode to
+ * return to (bit3: Thread vs Handler). The 8-word basic frame is popped (plus
+ * the S0-S15 + FPSCR words when FType, bit4, is clear), the recorded 8-byte
+ * realignment (stacked xPSR bit 9) is undone, the banked SP and CONTROL.SPSEL
+ * are restored, xPSR (hence IPSR) is reloaded, the active-exception stack is
+ * popped, and PC resumes the interrupted instruction stream.
+ *
+ * @param[in,out] uc      Unicorn engine.
+ * @param[in]     exc_ret The EXC_RETURN value (prefix bits[31:7] set) returned to.
+ * @return Nothing.
+ *
+ * @pre @p uc is in Handler mode with a valid basic frame on the indicated stack.
+ * @pre @p exc_ret has the EXC_RETURN prefix (bits[31:7] all set).
+ * @post The core has resumed the unstacked context (PC/SP/xPSR restored).
+ * @post The active-exception nesting depth has decreased by one (if non-zero).
+ * @note When FType (bit4) is clear, the FP extended frame (S0-S15 + FPSCR) is
+ *       unstacked too, matching ::exc_enter.
+ * @since 0.1.0
+ */
 void exc_return(uc_engine* uc, uint32_t exc_ret)
 {
   const bool to_psp    = (exc_ret & (uint32_t)k_exc_ret_spsel) != 0U;
