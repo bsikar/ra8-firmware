@@ -443,7 +443,6 @@ typedef enum : uint32_t {
  *
  * @return ``k_ra8_ok`` on RSPEND, ``k_ra8_err_hw_timeout`` otherwise.
  */
-// NOLINTNEXTLINE(readability-non-const-parameter)
 /**
  * @brief Internal helper.
  * @details See implementation.
@@ -493,7 +492,6 @@ static ra8_err_t internal_sdhi_send(volatile r_sdhi_regs_t* reg, uint32_t cmd, u
  * SD_STOP must be cleared. SD_SIZE is always 512 bytes for SD card
  * sector access.
  */
-// NOLINTNEXTLINE(readability-non-const-parameter)
 /**
  * @brief Internal helper.
  * @details See implementation.
@@ -530,7 +528,6 @@ static void internal_sdhi_setup_xfer(volatile r_sdhi_regs_t* reg, uint32_t block
  * ``k_ra8_sdhi_fifo_spin`` budget. The split into a helper keeps
  * ::ra8_sdhi_read_block under the NASA Rule 4 (60 statements) limit.
  */
-// NOLINTNEXTLINE(readability-non-const-parameter)
 /**
  * @brief Internal helper.
  * @details See implementation.
@@ -586,7 +583,6 @@ static ra8_err_t internal_sdhi_drain(volatile r_sdhi_regs_t* reg, uint8_t* buf, 
  * ::internal_sdhi_drain, also factored out to keep
  * ::ra8_sdhi_write_block under the NASA Rule 4 limit.
  */
-// NOLINTNEXTLINE(readability-non-const-parameter)
 /**
  * @brief Internal helper.
  * @details See implementation.
@@ -641,7 +637,6 @@ static ra8_err_t internal_sdhi_fill(volatile r_sdhi_regs_t* reg, const uint8_t* 
  * sees a clean slate. Factored out so the public read/write helpers
  * stay under the NASA Rule 4 statement limit.
  */
-// NOLINTNEXTLINE(readability-non-const-parameter)
 /**
  * @brief Internal helper.
  * @details See implementation.

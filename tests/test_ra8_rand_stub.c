@@ -127,7 +127,7 @@ static void test_rand_advances_each_call(void)
  *
  * @since 0.1.0
  */
-static void test_rand_within_range(void) // NOLINT(readability-function-size)
+static void test_rand_within_range(void)
 {
   TEST_BEGIN("rand() stays within [0, RAND_MAX]");
   srand((unsigned int)k_rand_seed_range); // NOLINT(cert-msc32-c,cert-msc51-cpp)

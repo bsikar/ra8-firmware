@@ -128,12 +128,12 @@ bool ra8_rot_antirollback_on_probe_fault(uint32_t* exc_frame)
   exc_frame[6] +=
     ((instr & (uint16_t)k_ra8_ar_thumb_hw_msk) >= (uint16_t)k_ra8_ar_thumb32_min) ? 4U : 2U;
   /* W1C-clear the sticky Configurable Fault Status so this deliberate fault does
-   * not shadow a later real one. The volatile read-back write is a real
-   * read-modify-write on the device (each set bit clears); cppcheck sees a bare
-   * self-assignment and cannot model the W1C hardware semantics. */
-  volatile uint32_t* const cfsr = (volatile uint32_t*)(uintptr_t)k_ra8_ar_cfsr_addr;
-  /* cppcheck-suppress selfAssignment */
-  *cfsr = *cfsr;
+   * not shadow a later real one. Reading the live value and writing it back is
+   * a real read-modify-write on the device: every bit that reads as 1 is
+   * written as 1, which clears it (write-1-to-clear semantics). */
+  volatile uint32_t* const cfsr        = (volatile uint32_t*)(uintptr_t)k_ra8_ar_cfsr_addr;
+  const uint32_t           cfsr_sticky = *cfsr;
+  *cfsr                                = cfsr_sticky;
   __asm__ volatile("dsb 0xF\n isb 0xF\n" ::: "memory");
   return true;
 }
