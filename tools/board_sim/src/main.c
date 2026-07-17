@@ -52,6 +52,7 @@
 #include "board_usb.h"
 #include "board_usb_host.h"
 #include "board_view.h"
+#include "sim_elf.h"
 
 /* RA8D2 memory map (EK board) -- from the linker script / HUM R01UH1065EJ. */
 typedef struct {
@@ -306,23 +307,6 @@ typedef enum : uint32_t {
  * @brief Named constants for ELF parsing, Thumb decode, and assorted literals.
  */
 typedef enum : uint32_t {
-  /* ELF32 layout, in bytes. */
-  k_elf_ehdr_size      = 52U,   /**< ELF32 file-header size.            */
-  k_elf_em_arm         = 40U,   /**< e_machine == EM_ARM.               */
-  k_elf_e_phoff_off    = 28U,   /**< e_phoff in the file header.        */
-  k_elf_ph_offset_off  = 4U,    /**< p_offset in a program header.      */
-  k_elf_ph_vaddr_off   = 8U,    /**< p_vaddr (VMA) in a program header. */
-  k_elf_ph_paddr_off   = 12U,   /**< p_paddr in a program header.       */
-  k_elf_ph_filesz_off  = 16U,   /**< p_filesz in a program header.      */
-  k_elf_ph_flags_off   = 24U,   /**< p_flags in a program header.       */
-  k_elf_pf_x           = 1U,    /**< PF_X: segment is executable.       */
-  k_elf_pt_load        = 1U,    /**< p_type == PT_LOAD.                 */
-  k_elf_shentsize_min  = 40U,   /**< ELF32 section-header entry size.   */
-  k_elf_sh_size_off    = 20U,   /**< sh_size in a section header.       */
-  k_elf_sh_link_off    = 24U,   /**< sh_link in a section header.       */
-  k_elf_sh_entsize_off = 36U,   /**< sh_entsize in a section header.    */
-  k_elf_sym_info_off   = 12U,   /**< st_info in a symbol-table entry.   */
-  k_elf_st_type_mask   = 0x0FU, /**< Low nibble of st_info is the type. */
   /* Thumb / conditional-select instruction decode. */
   k_thumb_op5_shift = 11U,   /**< op5 = hw0[15:11].                  */
   k_thumb_op5_mask  = 0x1FU, /**< 5-bit op5 field.                   */
@@ -3039,25 +3023,6 @@ static void seed_tsn_calibration(uc_engine* uc)
   (void)uc_mem_write(uc, (uint64_t)k_tsn_cal_addr + sizeof(tscdr), &tscdr2, sizeof(tscdr2));
 }
 
-static uint8_t* read_file(const char* path, long* out_len)
-{
-  FILE* f = fopen(path, "rb");
-  if (f == nullptr) {
-    return nullptr;
-  }
-  (void)fseek(f, 0, SEEK_END);
-  const long len = ftell(f);
-  (void)fseek(f, 0, SEEK_SET);
-  uint8_t* buf = (uint8_t*)malloc((size_t)len);
-  if ((buf != nullptr) && (fread(buf, 1U, (size_t)len, f) != (size_t)len)) {
-    free(buf);
-    buf = nullptr;
-  }
-  (void)fclose(f);
-  *out_len = len;
-  return buf;
-}
-
 /* =============================================================================
  * Function-entry seam helpers -- emulate "return <r0> to LR" and hook one ELF
  * symbol's entry to a C callback. Shared by the USB host-mode and virtual-
@@ -3066,9 +3031,6 @@ static uint8_t* read_file(const char* path, long* out_len)
  * registers, so the genuine ra8_eth driver now runs the descriptor DMA path.
  * =============================================================================
  */
-
-/** @brief Resolve a symbol from the ELF .symtab (defined below load_elf). */
-static uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name, uint32_t* size_out);
 
 /** @brief Emulate "return r0;" from a hooked function: set R0, branch to LR. */
 static void eth_hook_return(uc_engine* uc, uint32_t r0)
@@ -3929,191 +3891,6 @@ static bool usbh_seam_install(uc_engine* uc, const uint8_t* elf, long len)
                 "  usb-host seam : control=0x%08X (virtual HID boot keyboard \"RA8D2\")\n",
                 cx);
   return true;
-}
-
-/** @brief Load ELF32 PT_LOAD segments into emulated memory at their LMA. */
-static int load_elf(uc_engine* uc, const uint8_t* elf, long len)
-{
-  if ((len < (long)k_elf_ehdr_size) ||
-      (memcmp(elf,
-              "\x7F"
-              "ELF",
-              4) != 0) ||
-      (elf[4] != 1) /* ELFCLASS32 */) {
-    (void)fprintf(stderr, "not a 32-bit ELF\n");
-    return -1;
-  }
-  const uint16_t e_machine = (uint16_t)(elf[18] | (elf[19] << 8));
-  if (e_machine != (uint16_t)k_elf_em_arm) {
-    (void)fprintf(stderr, "ELF e_machine %u != ARM(40)\n", e_machine);
-    return -1;
-  }
-  uint32_t phoff = 0U;
-  (void)memcpy(&phoff, elf + (uint32_t)k_elf_e_phoff_off, 4);
-  uint16_t phentsize = (uint16_t)(elf[42] | (elf[43] << 8));
-  uint16_t phnum     = (uint16_t)(elf[44] | (elf[45] << 8));
-  int      loaded    = 0;
-  for (uint16_t i = 0U; i < phnum; i++) {
-    const uint8_t* ph = elf + phoff + ((uint32_t)i * phentsize);
-    uint32_t       p_type;
-    uint32_t       p_offset;
-    uint32_t       p_paddr;
-    uint32_t       p_filesz;
-    (void)memcpy(&p_type, ph + 0, 4);
-    (void)memcpy(&p_offset, ph + 4, 4);
-    (void)memcpy(&p_paddr, ph + (uint32_t)k_elf_ph_paddr_off, 4); /* load address (LMA) */
-    (void)memcpy(&p_filesz, ph + 16, 4);
-    if ((p_type != 1U /* PT_LOAD */) || (p_filesz == 0U)) {
-      continue;
-    }
-    if (uc_mem_write(uc, p_paddr, elf + p_offset, p_filesz) != UC_ERR_OK) {
-      (void)fprintf(stderr, "uc_mem_write seg @0x%08X (%u bytes) failed\n", p_paddr, p_filesz);
-      return -1;
-    }
-    (void)fprintf(stderr, "  loaded %u bytes @ 0x%08X\n", p_filesz, p_paddr);
-    loaded++;
-  }
-  return (loaded > 0) ? 0 : -1;
-}
-
-/**
- * @brief Vector-table base of an ELF: lowest executable PT_LOAD VMA.
- *
- * @details
- * Walks the program headers and returns the lowest p_vaddr among non-empty,
- * executable (PF_X) PT_LOAD segments. On Cortex-M the vector table is linked at
- * the start of the executable text region, so this is the image's vector base:
- * 0x32100000 for the RAM-resident NS layout (a single RWE segment runs from the
- * NS_SRAM2 alias) and 0x90000000 for the OSPI-XIP layout (the R-E segment
- * executes in place from the flash window). The executable filter is essential
- * for XIP: that image also carries a writable .data segment whose VMA is
- * 0x32100000 (its initialisers live in flash, copied to RAM at NS startup) --
- * lower than the vectors -- so a plain minimum-VMA scan would wrongly pick the
- * RAM alias. board_sim feeds the result to ::s_ns_vector_base so the BLXNS world
- * switch reads the NS MSP/reset from wherever the loaded image placed them.
- *
- * @param[in] elf Mapped ELF image (little-endian ELF32 ARM).
- * @param[in] len ELF image length in bytes.
- * @return Lowest executable PT_LOAD p_vaddr, or 0 if none / the header is bad.
- *
- * @pre @p elf points to at least @ref k_elf_ehdr_size bytes.
- * @pre The program-header table lies within the first @p len bytes.
- * @post The return value is the VMA of some executable PT_LOAD segment, or 0.
- * @note Not thread-safe; board_sim is single-threaded.
- * @since 0.1.0
- */
-static uint32_t elf_vector_base(const uint8_t* elf, long len)
-{
-  if ((elf == nullptr) || (len < (long)k_elf_ehdr_size)) {
-    return 0U;
-  }
-  uint32_t phoff = 0U;
-  (void)memcpy(&phoff, elf + (uint32_t)k_elf_e_phoff_off, 4);
-  const uint16_t phentsize = (uint16_t)(elf[42] | (elf[43] << 8));
-  const uint16_t phnum     = (uint16_t)(elf[44] | (elf[45] << 8));
-  if (((uint64_t)phoff + ((uint64_t)phnum * (uint64_t)phentsize)) > (uint64_t)len) {
-    return 0U;
-  }
-  uint32_t min_vaddr = 0U;
-  bool     found     = false;
-  for (uint16_t i = 0U; i < phnum; i++) {
-    const uint8_t* ph       = elf + phoff + ((uint32_t)i * phentsize);
-    uint32_t       p_type   = 0U;
-    uint32_t       p_vaddr  = 0U;
-    uint32_t       p_filesz = 0U;
-    uint32_t       p_flags  = 0U;
-    (void)memcpy(&p_type, ph + 0, 4);
-    (void)memcpy(&p_vaddr, ph + (uint32_t)k_elf_ph_vaddr_off, 4);
-    (void)memcpy(&p_filesz, ph + (uint32_t)k_elf_ph_filesz_off, 4);
-    (void)memcpy(&p_flags, ph + (uint32_t)k_elf_ph_flags_off, 4);
-    if ((p_type != (uint32_t)k_elf_pt_load) || (p_filesz == 0U) ||
-        ((p_flags & (uint32_t)k_elf_pf_x) == 0U)) {
-      continue;
-    }
-    if (!found || (p_vaddr < min_vaddr)) {
-      min_vaddr = p_vaddr;
-      found     = true;
-    }
-  }
-  return found ? min_vaddr : 0U;
-}
-
-/**
- * @brief Resolve a function symbol's entry address from the ELF .symtab.
- *
- * @details
- * Walks the ELF32 section headers for the SHT_SYMTAB table and its linked string
- * table, then matches @p name and returns its st_value with the Thumb bit
- * cleared (so it can be used as a UC_HOOK_CODE address). Used to shim the
- * firmware's ra8_eth_* frame API for the virtual network peer. Returns 0 if the
- * symbol (or a symbol table) is absent.
- *
- * @param[in]  elf      Mapped ELF image.
- * @param[in]  len      ELF image length in bytes.
- * @param[in]  name     NUL-terminated symbol name to find.
- * @param[out] size_out If non-NULL, receives the symbol's st_size (0 if absent).
- * @return Even (Thumb-cleared) symbol address, or 0 if not found.
- */
-static uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name, uint32_t* size_out)
-{
-  if (size_out != nullptr) {
-    *size_out = 0U;
-  }
-  if (len < (long)k_elf_ehdr_size) {
-    return 0U;
-  }
-  uint32_t shoff = 0U;
-  (void)memcpy(&shoff, elf + 32, 4);
-  const uint16_t shentsize = (uint16_t)(elf[46] | (elf[47] << 8));
-  const uint16_t shnum     = (uint16_t)(elf[48] | (elf[49] << 8));
-  const size_t   nlen      = strlen(name) + 1U;
-  if ((shoff == 0U) || (shentsize < (uint32_t)k_elf_shentsize_min)) {
-    return 0U;
-  }
-  for (uint16_t i = 0U; i < shnum; i++) {
-    const uint8_t* sh = elf + shoff + ((uint32_t)i * shentsize);
-    if (((size_t)(sh - elf) + (size_t)k_elf_shentsize_min) > (size_t)len) {
-      break;
-    }
-    uint32_t sh_type = 0U;
-    (void)memcpy(&sh_type, sh + 4, 4);
-    if (sh_type != 2U /* SHT_SYMTAB */) {
-      continue;
-    }
-    uint32_t sym_off = 0U, sym_size = 0U, sym_link = 0U, sym_entsize = 0U;
-    (void)memcpy(&sym_off, sh + 16, 4);
-    (void)memcpy(&sym_size, sh + (uint32_t)k_elf_sh_size_off, 4);
-    (void)memcpy(&sym_link, sh + (uint32_t)k_elf_sh_link_off, 4);
-    (void)memcpy(&sym_entsize, sh + (uint32_t)k_elf_sh_entsize_off, 4);
-    if ((sym_entsize < 16U) || (sym_link >= shnum)) {
-      continue;
-    }
-    const uint8_t* strsh   = elf + shoff + ((uint32_t)sym_link * shentsize);
-    uint32_t       str_off = 0U;
-    (void)memcpy(&str_off, strsh + 16, 4);
-    const uint32_t nsym = sym_size / sym_entsize;
-    for (uint32_t s = 0U; s < nsym; s++) {
-      const uint8_t* sym = elf + sym_off + (s * sym_entsize);
-      if (((size_t)(sym - elf) + 16U) > (size_t)len) {
-        break;
-      }
-      uint32_t st_name = 0U, st_value = 0U, st_size = 0U;
-      (void)memcpy(&st_name, sym + 0, 4);
-      (void)memcpy(&st_value, sym + 4, 4);
-      (void)memcpy(&st_size, sym + 8, 4);
-      const size_t pos = (size_t)str_off + (size_t)st_name;
-      if ((st_name == 0U) || ((pos + nlen) > (size_t)len)) {
-        continue;
-      }
-      if (memcmp(elf + pos, name, nlen) == 0) {
-        if (size_out != nullptr) {
-          *size_out = st_size;
-        }
-        return st_value & ~1U; /* clear the Thumb bit for the hook address. */
-      }
-    }
-  }
-  return 0U;
 }
 
 /** @brief Read a 32-bit little-endian word from emulated memory. */

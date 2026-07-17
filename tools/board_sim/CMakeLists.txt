@@ -65,6 +65,7 @@ endif()
 
 add_executable(board_sim
                src/main.c
+               src/sim_elf.c
                src/board_periph.c
                ${BOARD_PERIPH_BLOCKS}
                src/board_usb.c
@@ -80,10 +81,13 @@ if(APPLE)
 endif()
 
 # The USB model includes the firmware's register/ELC headers for the exact
-# offsets + ELC event numbers it must mirror (ra8_usb_regs.h, ra8_elc_regs.h).
+# offsets + ELC event numbers it must mirror (ra8_usb_regs.h, ra8_elc_regs.h);
+# ra8_core/inc supplies ra8_attributes.h for the RA8_PRIV annotations on the
+# sim_* module-private cross-TU helpers.
 target_include_directories(board_sim PRIVATE
                            ${CMAKE_CURRENT_SOURCE_DIR}/inc
-                           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_hal/inc)
+                           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_hal/inc
+                           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc)
 
 # Unicorn + Capstone discovery: Homebrew prefix on macOS (unchanged); on Linux
 # use CMake's native find_* (the self-hosted CI runner has no pkg-config). It
