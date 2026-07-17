@@ -377,6 +377,36 @@ RA8_PRIV uint64_t sim_lob_emulated_count(void);
  */
 RA8_PRIV void div0_synth_usagefault(uc_engine* uc, uint32_t vtor_base);
 
+/**
+ * @brief Opt in to the --fast-sd block-serving seam for this run.
+ *
+ * @return Nothing.
+ * @pre Called from the CLI parser before the seams are installed.
+ * @pre None otherwise.
+ * @post fast_sd_seam_install() will arm the block hook when possible.
+ * @note Not thread-safe; single-threaded setup only.
+ * @since 0.1.0
+ */
+RA8_PRIV void sim_fast_sd_enable(void);
+
+/**
+ * @brief Install the `--fast-sd` block-read hook if opted-in and the symbol exists.
+ *
+ * @param[in,out] uc  Active Unicorn engine.
+ * @param[in]     elf Loaded ELF image (for symbol resolution).
+ * @param[in]     len ELF image length in bytes.
+ * @return Nothing.
+ * @pre @p uc is initialised and @p elf holds @p len valid bytes.
+ * @pre The SD card model is attached when the fast path should serve blocks.
+ * @post With the opt-in and the symbol present, a UC_HOOK_CODE serves whole
+ *       512-byte blocks at ra8_sdmmc_spi_read_block's entry; otherwise
+ *       nothing is armed.
+ * @note A firmware without the symbol (no SD path) is reported once and left
+ *       on the default per-byte MMIO path.
+ * @since 0.1.0
+ */
+RA8_PRIV void fast_sd_seam_install(uc_engine* uc, const uint8_t* elf, long len);
+
 #ifdef __cplusplus
 }
 #endif

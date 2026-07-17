@@ -72,12 +72,14 @@ add_executable(board_sim
                src/sim_mmio.c
                src/sim_mpu.c
                src/sim_prof.c
+               src/sim_trace.c
                src/sim_cpu1.c
                src/sim_exc.c
                src/sim_exc_scs.c
                src/sim_insn_seams.c
                src/sim_seam_div0.c
                src/sim_seam_longshift.c
+               src/sim_seam_sd.c
                src/sim_seam_mve.c
                src/board_periph.c
                ${BOARD_PERIPH_BLOCKS}

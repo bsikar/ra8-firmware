@@ -62,6 +62,7 @@
 #include "sim_mpu.h"
 #include "sim_prof.h"
 #include "sim_seams.h"
+#include "sim_trace.h"
 
 typedef enum : uint32_t {
   k_run_chunk_insns = 500000U, /**< Instructions per emulation chunk.     */
@@ -127,7 +128,6 @@ typedef enum : uint32_t {
   k_max_panel_px     = 4096U,  /**< Largest accepted --size dimension.   */
   k_record_dir_mode  = 0755U,  /**< mkdir mode for the --record dir.     */
   k_dump_sym_max     = 8U,     /**< Max --dump-sym globals per run.      */
-  k_trace_sym_max    = 16U,    /**< Max --trace-sym functions per run.   */
   k_sectors_per_mib  = 2048U,  /**< 512-byte sectors per MiB (--sd-new). */
 } board_sim_misc_t;
 
@@ -314,244 +314,6 @@ static void on_blxns(uc_engine* uc, uint64_t address, uint32_t size, void* user)
   (void)uc_reg_write(uc, UC_ARM_REG_SP, &ns_msp);
   (void)uc_reg_write(uc, UC_ARM_REG_PC, &ns_pc);
   (void)uc_emu_stop(uc);
-}
-
-/* =============================================================================
- * Function-entry seam helpers -- emulate "return <r0> to LR" and hook one ELF
- * symbol's entry to a C callback. Shared by the USB host-mode and virtual-
- * keyboard seams below. The Ethernet frame seam that first introduced them was
- * retired once board_periph_eth modelled the R-Switch (ESWM/ETHA/RMAC/GWCA)
- * registers, so the genuine ra8_eth driver now runs the descriptor DMA path.
- * =============================================================================
- */
-
-/** @brief Emulate "return r0;" from a hooked function: set R0, branch to LR. */
-static void eth_hook_return(uc_engine* uc, uint32_t r0)
-{
-  uint32_t lr = 0U;
-  (void)uc_reg_read(uc, UC_ARM_REG_LR, &lr);
-  (void)uc_reg_write(uc, UC_ARM_REG_R0, &r0);
-  uint32_t pc = lr & ~1U; /* drop the Thumb bit; the M-class core stays Thumb. */
-  (void)uc_reg_write(uc, UC_ARM_REG_PC, &pc);
-  (void)uc_emu_stop(uc); /* relaunch from the returned PC (chunk contract). */
-}
-
-/** @brief Hook one symbol (if present) to @p cb; record it for the report. */
-static void eth_seam_hook(uc_engine* uc, const uint8_t* elf, long len, const char* name, void* cb)
-{
-  const uint32_t addr = elf_sym_addr(elf, len, name, nullptr);
-  if (addr == 0U) {
-    return;
-  }
-  static uc_hook  handles[24];
-  static uint32_t n;
-  if (n < (uint32_t)(sizeof(handles) / sizeof(handles[0]))) {
-    (void)uc_hook_add(uc, &handles[n], UC_HOOK_CODE, cb, nullptr, addr, addr);
-    n++;
-  }
-}
-
-/**
- * @brief Generic `--trace-sym` hook: log the first time control reaches a named
- *        symbol, plus the calling LR, so a stuck bring-up sequence is visible.
- *
- * @details Installed by ::sym_trace_install over each `--trace-sym <name>`. The
- * UC_HOOK_CODE fires on every execution of the symbol's entry address; we print
- * the entry address and the link register (return address) so a poll loop that
- * re-enters, or a thread that reaches step N but never N+1, is obvious in the
- * log without a full instruction trace.
- *
- * @param[in] uc      Active Unicorn engine (read for LR).
- * @param[in] address Entry address that fired the hook.
- * @param[in] size    Decoded instruction size (unused).
- * @param[in] user    The symbol name passed at install (stable argv pointer).
- *
- * @pre @p user names the hooked symbol.
- * @post One stderr line is emitted per hit.
- *
- * @note Not thread-safe; the run loop is single-threaded host-side.
- * @since 0.1.0
- */
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
-static void on_sym_trace(uc_engine* uc, uint64_t address, uint32_t size, void* user)
-{
-  (void)size;
-  uint32_t lr = 0U;
-  (void)uc_reg_read(uc, UC_ARM_REG_LR, &lr);
-  (void)fprintf(stderr,
-                "  [symtrace] %s @ 0x%08X  (LR 0x%08X)\n",
-                (const char*)user,
-                (unsigned)address,
-                lr);
-}
-
-/* =============================================================================
- * --fast-sd: serve whole SD blocks in C instead of clocking 512 SPI bytes each.
- * =============================================================================
- *
- * The firmware reads an SD card over SCI0 in Simple-SPI mode one byte at a time:
- * ra8_sci_spi_xfer8() issues a FIXED five MMIO accesses per byte (poll TDRE, write
- * TDR, poll RDRF, read RDR, clear RDRF), and a 512-byte block is 512 of those. A
- * book-sized read is millions of MMIO callbacks -- tens of wall-clock seconds in
- * Unicorn (QEMU-TCG) -- versus ~0.1 s on the real 25 MHz bus, so the cost is a
- * pure emulation artifact, not firmware behaviour.
- *
- * The right granularity to skip is the BLOCK, not the byte: redirecting a hooked
- * function back to its caller needs a uc_emu_stop/relaunch, which is far more
- * expensive than an MMIO callback, so a per-byte hook is a net loss (millions of
- * relaunches). Opt-in --fast-sd instead installs a UC_HOOK_CODE at the entry of
- * ra8_sdmmc_spi_read_block(lba, buf): with a card attached it copies the 512-byte
- * block straight from the image via ::board_sd_read_block -- the byte-identical
- * data the CMD17 path would stream -- writes it to @c buf, returns k_ra8_ok and
- * jumps to LR. One relaunch per sector (hundreds per book) instead of millions
- * per byte, so the rendered framebuffer is byte-for-byte identical while the read
- * drops from tens of seconds to well under one.
- *
- * Faithfulness: this serves block DATA directly, bypassing the SD-over-SPI block
- * protocol (CMD17 / 0xFE token / CRC16 / the per-byte SPI loop) for the data
- * path. The FAT parse, inflate, and render all still run on the real firmware and
- * see identical bytes; the bypassed block protocol is covered by the host unit
- * test (tests/test_ra8_sdmmc_card_reflow.c) and by hardware. It is OFF by default:
- * HIL gates and the default run exercise the full handshake; turn it on only to
- * load a large book fast for an interactive or recorded capture. A card-absent
- * call, an out-of-range LBA, or a firmware without the symbol falls through to
- * the real driver, so nothing else is affected.
- */
-
-/** @enum fast_sd_const_t @brief --fast-sd block-serving constants. */
-typedef enum : uint16_t {
-  k_fast_sd_block = 512U, /**< SD block size served per hook entry. */
-} fast_sd_const_t;
-
-/**
- * @var s_fast_sd
- * @brief True once `--fast-sd` is requested on the command line.
- * @details Gates ::fast_sd_seam_install; when false the hook is never armed and
- *          the SD path runs the full faithful per-byte MMIO block protocol.
- * @warning Single-threaded run loop only.
- * @since 0.1.0
- */
-static bool s_fast_sd;
-
-/**
- * @brief UC_HOOK_CODE at `ra8_sdmmc_spi_read_block`: serve one 512-byte block in C.
- *
- * @details
- * Reads the AAPCS arguments (r0 = lba, r1 = destination buffer) at the function's
- * entry. With a card attached and the LBA in range it copies the block straight
- * from the image via ::board_sd_read_block -- byte-identical to the CMD17 stream
- * the per-byte path would produce -- writes it to @c buf, sets the return value to
- * k_ra8_ok and jumps to LR, skipping the SPI block protocol. With no card or a
- * bad LBA it returns immediately so Unicorn runs the real driver (which errors as
- * it would on hardware).
- *
- * @param[in,out] uc      Active Unicorn engine.
- * @param[in]     address Hook site (the resolved entry VMA); unused.
- * @param[in]     size    Instruction size at the site; unused.
- * @param[in]     user    Unused hook cookie.
- *
- * @pre @p uc is at ra8_sdmmc_spi_read_block's entry with args still in r0-r1.
- * @post On the fast path, @c buf holds the block, r0 = k_ra8_ok and PC = LR;
- *       otherwise CPU state is intact and the real body runs.
- *
- * @note Not thread-safe; the run loop is single-threaded.
- * @since 0.1.0
- */
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
-static void on_sdmmc_read_block(uc_engine* uc, uint64_t address, uint32_t size, void* user)
-{
-  (void)address;
-  (void)size;
-  (void)user;
-  uint32_t lba     = 0U;
-  uint32_t buf_ptr = 0U;
-  (void)uc_reg_read(uc, UC_ARM_REG_R0, &lba);
-  (void)uc_reg_read(uc, UC_ARM_REG_R1, &buf_ptr);
-  uint8_t blk[k_fast_sd_block];
-  /* No card, a null buffer, or an out-of-range LBA -> run the real driver so the
-   * card-absent / error path stays exactly as on hardware. */
-  if (!board_sd_attached() || (buf_ptr == 0U) || !board_sd_read_block(lba, blk)) {
-    return;
-  }
-  (void)uc_mem_write(uc, (uint64_t)buf_ptr, blk, sizeof blk);
-  /* Relaunch as a zero-time seam (no chunk / SysTick cost) so a whole book-sized
-   * read drains within one settle window. */
-  sim_seam_request_relaunch();
-  eth_hook_return(uc, 0U); /* k_ra8_ok: set r0 + jump to LR, skipping the body. */
-}
-
-/**
- * @brief Install the `--fast-sd` block-read hook if opted-in and the symbol exists.
- *
- * @param[in,out] uc  Active Unicorn engine.
- * @param[in]     elf Loaded ELF image (for symbol resolution).
- * @param[in]     len ELF image length in bytes.
- *
- * @pre @p uc is initialised and @p elf holds @p len valid bytes.
- * @post With @c s_fast_sd and the symbol present, a UC_HOOK_CODE fires
- *       ::on_sdmmc_read_block at the function entry; otherwise nothing is armed.
- *
- * @note A firmware without ra8_sdmmc_spi_read_block (no SD path) is reported once
- *       and left on the default per-byte MMIO path.
- * @since 0.1.0
- */
-static void fast_sd_seam_install(uc_engine* uc, const uint8_t* elf, long len)
-{
-  if (!s_fast_sd) {
-    return;
-  }
-  const uint32_t addr = elf_sym_addr(elf, len, "ra8_sdmmc_spi_read_block", nullptr);
-  if (addr == 0U) {
-    (void)fprintf(
-      stderr,
-      "  [fast-sd] ra8_sdmmc_spi_read_block not found -- SD stays on the per-byte path\n");
-    return;
-  }
-  static uc_hook h;
-  (void)uc_hook_add(uc,
-                    &h,
-                    UC_HOOK_CODE,
-                    (void*)on_sdmmc_read_block,
-                    nullptr,
-                    (uint64_t)addr,
-                    (uint64_t)addr);
-  (void)fprintf(stderr,
-                "  [fast-sd] ra8_sdmmc_spi_read_block block-hook armed @ 0x%08X "
-                "(SD blocks served direct from the image)\n",
-                (unsigned)addr);
-}
-
-/**
- * @brief Install a `--trace-sym` entry hook for every requested symbol present.
- *
- * @param[in,out] uc    Active Unicorn engine.
- * @param[in]     elf   Loaded ELF image (for symbol resolution).
- * @param[in]     len   ELF image length in bytes.
- * @param[in]     names Symbol names from the CLI (stable for the run).
- * @param[in]     count Number of names in @p names.
- *
- * @pre @p uc is initialised and @p elf holds @p len valid bytes.
- * @post A UC_HOOK_CODE fires ::on_sym_trace at each resolved symbol's entry.
- *
- * @note A name that does not resolve is reported once and skipped.
- * @since 0.1.0
- */
-static void sym_trace_install(uc_engine*         uc,
-                              const uint8_t*     elf,
-                              long               len,
-                              const char* const* names,
-                              uint32_t           count)
-{
-  static uc_hook th[k_trace_sym_max];
-  for (uint32_t i = 0U; (i < count) && (i < (uint32_t)k_trace_sym_max); i++) {
-    const uint32_t addr = elf_sym_addr(elf, len, names[i], nullptr);
-    if (addr == 0U) {
-      (void)fprintf(stderr, "  [symtrace] %s: symbol not found -- skipped\n", names[i]);
-      continue;
-    }
-    (void)uc_hook_add(uc, &th[i], UC_HOOK_CODE, (void*)on_sym_trace, (void*)names[i], addr, addr);
-    (void)fprintf(stderr, "  [symtrace] %s armed @ 0x%08X\n", names[i], (unsigned)addr);
-  }
 }
 
 /* ============================================================================
@@ -1960,7 +1722,7 @@ int main(int argc, char** argv)
       }
       i++;
     } else if (strncmp(argv[i], "--fast-sd", sizeof("--fast-sd")) == 0) {
-      s_fast_sd = true;
+      sim_fast_sd_enable();
     } else if (strncmp(argv[i], "--eink", sizeof("--eink")) == 0) {
       (void)board_eink_attach(); /* answer the ra8_epaper SPI path (IT8951 model) */
     } else if (strncmp(argv[i], "--modem", sizeof("--modem")) == 0) {
