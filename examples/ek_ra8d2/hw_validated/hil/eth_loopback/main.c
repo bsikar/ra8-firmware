@@ -47,15 +47,15 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_eth_loopback_baud        = 115200U,
-  k_eth_loopback_burst_count = 4U,
+  k_eth_loopback_baud        = 115200U, /**< Ethernet loopback baud.        */
+  k_eth_loopback_burst_count = 4U,      /**< Ethernet loopback burst count. */
 } eth_loopback_const_t;
 
 /** @brief Descriptor-ring sizing. */
 typedef enum : uint16_t {
-  k_eth_loopback_ring_tx     = 4U,
-  k_eth_loopback_ring_rx     = 4U,
-  k_eth_loopback_buffer_size = 1536U,
+  k_eth_loopback_ring_tx     = 4U,    /**< Ethernet loopback ring TX.     */
+  k_eth_loopback_ring_rx     = 4U,    /**< Ethernet loopback ring RX.     */
+  k_eth_loopback_buffer_size = 1536U, /**< Ethernet loopback buffer size. */
 } eth_loopback_ring_t;
 
 static const uint8_t k_eth_loopback_log_msg[]  = "etha: loopback ok\r\n";

@@ -42,19 +42,19 @@
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
-  k_timer_demo_baud        = 115200U,
-  k_timer_demo_period_ms   = 1000U,
-  k_timer_demo_capture_ms  = 50U,
-  k_timer_demo_gpt_channel = 0U,
-  k_timer_demo_gpt_period  = 0xFFFFFFFFUL,
+  k_timer_demo_baud        = 115200U,      /**< Timer demo baud.        */
+  k_timer_demo_period_ms   = 1000U,        /**< Timer demo period ms.   */
+  k_timer_demo_capture_ms  = 50U,          /**< Timer demo capture ms.  */
+  k_timer_demo_gpt_channel = 0U,           /**< Timer demo GPT channel. */
+  k_timer_demo_gpt_period  = 0xFFFFFFFFUL, /**< Timer demo GPT period.  */
 } timer_demo_config_t;
 
 /** @brief Single-byte constants. */
 typedef enum : uint8_t {
-  k_timer_demo_nibble_mask  = 0x0FU,
-  k_timer_demo_nibble_shift = 4U,
-  k_timer_demo_alpha_thresh = 10U,
-  k_timer_demo_hex_per_word = 8U,
+  k_timer_demo_nibble_mask  = 0x0FU, /**< Timer demo nibble mask.  */
+  k_timer_demo_nibble_shift = 4U,    /**< Timer demo nibble shift. */
+  k_timer_demo_alpha_thresh = 10U,   /**< Timer demo alpha thresh. */
+  k_timer_demo_hex_per_word = 8U,    /**< Timer demo hex per word. */
 } timer_demo_byte_t;
 
 /** @brief Output line tags. */

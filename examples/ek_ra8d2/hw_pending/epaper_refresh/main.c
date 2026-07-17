@@ -127,11 +127,11 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_ep_line_max   = 48U, /**< Max chars in one console line.     */
-  k_ep_dec_digits = 10U, /**< Max decimal digits for a uint32_t. */
-  k_ep_radix      = 10U, /**< Decimal radix.                     */
-  k_ep_cr         = '\r',
-  k_ep_lf         = '\n',
+  k_ep_line_max   = 48U,  /**< Max chars in one console line.     */
+  k_ep_dec_digits = 10U,  /**< Max decimal digits for a uint32_t. */
+  k_ep_radix      = 10U,  /**< Decimal radix.                     */
+  k_ep_cr         = '\r', /**< Ep cr.                             */
+  k_ep_lf         = '\n', /**< Ep lf.                             */
 } ep_fmt_t;
 
 /**

@@ -51,19 +51,19 @@
 
 /** @brief App-wide tunables. */
 typedef enum : uint32_t {
-  k_elc_demo_baud      = 115200U,
-  k_elc_demo_period_ms = 1000U,
+  k_elc_demo_baud      = 115200U, /**< Elc demo baud.      */
+  k_elc_demo_period_ms = 1000U,   /**< Elc demo period ms. */
 } elc_demo_const_t;
 
 /** @brief ELC slot / software-event indices used by the demo. */
 typedef enum : uint8_t {
-  k_elc_demo_slot         = 0U, /**< ELSR0 -- arbitrary; HUM Tbl 19.2 maps to GPT capture. */
-  k_elc_demo_sw_event_idx = 0U, /**< ELSEGR0 -- software event 0.                          */
-  k_elc_demo_ascii_zero   = '0',
-  k_elc_demo_ascii_one    = '1',
-  k_elc_demo_dec_base     = 10U,
-  k_elc_demo_uint_dec_max = 10U, /**< Max digits in a uint32 base-10. */
-  k_elc_demo_print_buf    = 48U, /**< Max bytes in one print line.    */
+  k_elc_demo_slot         = 0U,  /**< ELSR0 -- arbitrary; HUM Tbl 19.2 maps to GPT capture. */
+  k_elc_demo_sw_event_idx = 0U,  /**< ELSEGR0 -- software event 0.                          */
+  k_elc_demo_ascii_zero   = '0', /**< Elc demo ascii zero.                                  */
+  k_elc_demo_ascii_one    = '1', /**< Elc demo ascii one.                                   */
+  k_elc_demo_dec_base     = 10U, /**< Elc demo dec base.                                    */
+  k_elc_demo_uint_dec_max = 10U, /**< Max digits in a uint32 base-10.                       */
+  k_elc_demo_print_buf    = 48U, /**< Max bytes in one print line.                          */
 } elc_demo_byte_t;
 
 /** @brief Park forever after a fatal init failure.

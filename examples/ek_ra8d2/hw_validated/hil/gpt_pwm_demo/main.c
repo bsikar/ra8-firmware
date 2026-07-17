@@ -44,7 +44,7 @@ typedef enum : uint32_t {
 
 /** @brief GPT channel. */
 typedef enum : uint8_t {
-  k_gpt_pwm_demo_channel = 0U,
+  k_gpt_pwm_demo_channel = 0U, /**< GPT PWM demo channel. */
 } gpt_pwm_demo_chan_t;
 
 /**

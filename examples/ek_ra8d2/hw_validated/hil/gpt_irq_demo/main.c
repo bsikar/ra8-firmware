@@ -46,7 +46,7 @@ typedef enum : uint32_t {
 
 /** @brief GPT channel and its counter-overflow ELC event (FSP ra8d2 0x0C1). */
 typedef enum : uint16_t {
-  k_gpt_irq_demo_channel   = 0U,
+  k_gpt_irq_demo_channel   = 0U,     /**< GPT IRQ demo channel.              */
   k_gpt_irq_demo_ovf_event = 0x0C1U, /**< GPT0 GTCIV counter-overflow event. */
 } gpt_irq_demo_event_t;
 

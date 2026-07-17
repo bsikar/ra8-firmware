@@ -41,7 +41,7 @@ typedef enum : uint32_t {
 
 /** @brief GPT channel. */
 typedef enum : uint8_t {
-  k_gpt_os_demo_channel = 0U,
+  k_gpt_os_demo_channel = 0U, /**< GPT os demo channel. */
 } gpt_os_demo_chan_t;
 
 /**
@@ -137,7 +137,7 @@ static void gpt_os_demo_setup_or_halt(void)
  */
 static bool gpt_os_demo_wait_ovf(void)
 {
-  enum : uint32_t { k_poll_budget = 200000U };
+  enum : uint32_t { k_poll_budget = 200000U /**< Poll budget. */ };
   for (uint32_t i = 0U; i < k_poll_budget; ++i) {
     uint32_t status = 0U;
     if (ra8_gpt_get_status((uint8_t)k_gpt_os_demo_channel, &status) != k_ra8_ok) {

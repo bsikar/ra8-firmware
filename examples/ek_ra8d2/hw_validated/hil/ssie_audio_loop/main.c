@@ -39,15 +39,15 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_ssie_loop_baud = 115200U,
+  k_ssie_loop_baud = 115200U, /**< Ssie loop baud. */
 } ssie_loop_const_t;
 
 /** @brief SSIE channel + FIFO watermarks. */
 typedef enum : uint8_t {
-  k_ssie_loop_channel      = 0U,
-  k_ssie_loop_tx_threshold = 4U,
-  k_ssie_loop_rx_threshold = 4U,
-  k_ssie_loop_sample_count = 16U,
+  k_ssie_loop_channel      = 0U,  /**< Ssie loop channel.      */
+  k_ssie_loop_tx_threshold = 4U,  /**< Ssie loop TX threshold. */
+  k_ssie_loop_rx_threshold = 4U,  /**< Ssie loop RX threshold. */
+  k_ssie_loop_sample_count = 16U, /**< Ssie loop sample count. */
 } ssie_loop_chan_t;
 
 static const uint8_t k_ssie_loop_log_msg[] = "ssie: loop ok\r\n";

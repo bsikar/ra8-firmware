@@ -61,28 +61,28 @@
  * @brief Stack size, in bytes, for the SD card thread.
  */
 typedef enum : uint16_t {
-  k_sdcard_thread_stack_bytes = 4096U,
+  k_sdcard_thread_stack_bytes = 4096U, /**< Sdcard thread stack bytes. */
 } sdcard_stack_t;
 
 /**
  * @brief Thread priority for the SD card thread.
  */
 typedef enum : uint8_t {
-  k_sdcard_thread_priority = 4U,
+  k_sdcard_thread_priority = 4U, /**< Sdcard thread priority. */
 } sdcard_priority_t;
 
 /**
  * @brief Console baud (115200 8N1).
  */
 typedef enum : uint32_t {
-  k_sdcard_console_baud = 115200U,
+  k_sdcard_console_baud = 115200U, /**< Sdcard console baud. */
 } sdcard_baud_t;
 
 /**
  * @brief Loop period in ThreadX ticks (port/threadx/inc/tx_user.h pins to 1 ms).
  */
 typedef enum : uint16_t {
-  k_sdcard_loop_ticks = 5000U,
+  k_sdcard_loop_ticks = 5000U, /**< Sdcard loop ticks. */
 } sdcard_period_t;
 
 /**
@@ -107,7 +107,7 @@ typedef enum : uint8_t {
  * @brief SD logical block size (512 bytes for SDHC/SDXC).
  */
 typedef enum : uint16_t {
-  k_sdcard_block_bytes = 512U,
+  k_sdcard_block_bytes = 512U, /**< Sdcard block bytes. */
 } sdcard_block_size_t;
 
 /* ---------------------------------------------------------------------------

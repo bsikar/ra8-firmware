@@ -43,18 +43,18 @@ typedef enum : uint32_t {
 } gpt_demo_duty_t;
 
 typedef enum : uint32_t {
-  k_gpt_3p_demo_period  = 0x0000FFFFU,
-  k_gpt_3p_demo_step_ms = 20U,
-  k_gpt_3p_demo_duty_u  = 0x00002000U, /**< ~12.5 %. */
-  k_gpt_3p_demo_duty_v  = 0x00006000U, /**< ~37.5 %. */
-  k_gpt_3p_demo_duty_w  = 0x0000A000U, /**< ~62.5 %. */
+  k_gpt_3p_demo_period  = 0x0000FFFFU, /**< GPT 3p demo period.  */
+  k_gpt_3p_demo_step_ms = 20U,         /**< GPT 3p demo step ms. */
+  k_gpt_3p_demo_duty_u  = 0x00002000U, /**< ~12.5 %.             */
+  k_gpt_3p_demo_duty_v  = 0x00006000U, /**< ~37.5 %.             */
+  k_gpt_3p_demo_duty_w  = 0x0000A000U, /**< ~62.5 %.             */
 } gpt_3p_demo_const_t;
 
 /** @brief Three-phase channel ids. */
 typedef enum : uint8_t {
-  k_gpt_3p_demo_ch_u = 0U,
-  k_gpt_3p_demo_ch_v = 1U,
-  k_gpt_3p_demo_ch_w = 2U,
+  k_gpt_3p_demo_ch_u = 0U, /**< GPT 3p demo channel u. */
+  k_gpt_3p_demo_ch_v = 1U, /**< GPT 3p demo channel v. */
+  k_gpt_3p_demo_ch_w = 2U, /**< GPT 3p demo channel w. */
 } gpt_3p_demo_chan_t;
 
 /**

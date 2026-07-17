@@ -36,12 +36,12 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_acmphs_demo_period_ms = 1000U,
+  k_acmphs_demo_period_ms = 1000U, /**< Acmphs demo period ms. */
 } acmphs_demo_const_t;
 
 /** @brief Channel + register-field selectors. */
 typedef enum : uint8_t {
-  k_acmphs_demo_channel  = 0U,
+  k_acmphs_demo_channel  = 0U, /**< Acmphs demo channel.                     */
   k_acmphs_demo_ivpsel   = 0U, /**< Default IVCMP selector (CMPSEL0).        */
   k_acmphs_demo_ivrefsel = 0U, /**< Default IVREF selector (CMPSEL1, IVREF). */
 } acmphs_demo_chan_t;

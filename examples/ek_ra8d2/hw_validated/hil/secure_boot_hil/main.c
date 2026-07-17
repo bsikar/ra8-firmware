@@ -47,13 +47,13 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_sb_baud       = 115200U,
+  k_sb_baud       = 115200U,  /**< Sb baud.                                      */
   k_sb_heap_bytes = 0x10000U, /**< 64 KiB static heap for tf-psa mbedtls_calloc. */
 } sb_const_t;
 
 /** @brief Byte flipped in the tampered copy (first body octet). */
 typedef enum : uint8_t {
-  k_sb_tamper_bit = 0x01U,
+  k_sb_tamper_bit = 0x01U, /**< Sb tamper bit. */
 } sb_bit_t;
 
 static const uint8_t k_sb_msg_start[]     = "secure-boot: start\r\n";

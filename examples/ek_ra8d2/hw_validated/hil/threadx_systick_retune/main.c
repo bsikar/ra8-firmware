@@ -71,21 +71,21 @@
  * @brief Stack size, in bytes, for the worker thread.
  */
 typedef enum : uint16_t {
-  k_retune_thread_stack_bytes = 1024U,
+  k_retune_thread_stack_bytes = 1024U, /**< Retune thread stack bytes. */
 } retune_stack_t;
 
 /**
  * @brief Thread priority for the worker thread.
  */
 typedef enum : uint8_t {
-  k_retune_thread_priority = 4U,
+  k_retune_thread_priority = 4U, /**< Retune thread priority. */
 } retune_priority_t;
 
 /**
  * @brief Worker sleep period in ThreadX ticks (tx_user.h pins a tick to 1 ms).
  */
 typedef enum : uint16_t {
-  k_retune_loop_ticks = 250U,
+  k_retune_loop_ticks = 250U, /**< Retune loop ticks. */
 } retune_period_t;
 
 /**
@@ -97,7 +97,7 @@ typedef enum : uint16_t {
  * programmed.
  */
 typedef enum : uintptr_t {
-  k_retune_syst_rvr_addr = 0xE000E014UL,
+  k_retune_syst_rvr_addr = 0xE000E014UL, /**< Retune syst rvr address. */
 } retune_syst_addr_t;
 
 /* ---------------------------------------------------------------------------

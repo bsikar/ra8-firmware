@@ -51,9 +51,9 @@ typedef enum : uint32_t {
 } wdt_demo_time_unit_t;
 
 typedef enum : uint32_t {
-  k_wdt_demo_baud          = 115200U,
-  k_wdt_demo_refresh_ms    = 100U,
-  k_wdt_demo_alive_seconds = 30U,
+  k_wdt_demo_baud          = 115200U, /**< Wdt demo baud.          */
+  k_wdt_demo_refresh_ms    = 100U,    /**< Wdt demo refresh ms.    */
+  k_wdt_demo_alive_seconds = 30U,     /**< Wdt demo alive seconds. */
 } wdt_demo_const_t;
 
 /** @brief Banner emitted when the cause is ``power_on``. */

@@ -50,19 +50,19 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_lpm_dpsby1_baud = 115200U,
+  k_lpm_dpsby1_baud = 115200U, /**< Lpm dpsby1 baud. */
 } lpm_dpsby1_const_t;
 
 /** @brief Single-byte demo constants. */
 typedef enum : uint16_t {
-  k_lpm_dpsby1_alarm_offset_s = 5U,
-  k_lpm_dpsby1_seed_year_lo   = 26U,
+  k_lpm_dpsby1_alarm_offset_s = 5U,    /**< Lpm dpsby1 alarm offset s.              */
+  k_lpm_dpsby1_seed_year_lo   = 26U,   /**< Lpm dpsby1 seed year lo.                */
   k_lpm_dpsby1_year_base      = 2000U, /**< Calendar epoch base for the year field. */
-  k_lpm_dpsby1_seed_month     = 1U,
-  k_lpm_dpsby1_seed_day       = 1U,
-  k_lpm_dpsby1_secs_per_min   = 60U,
-  k_lpm_dpsby1_mins_per_hour  = 60U,
-  k_lpm_dpsby1_hours_per_day  = 24U,
+  k_lpm_dpsby1_seed_month     = 1U,    /**< Lpm dpsby1 seed month.                  */
+  k_lpm_dpsby1_seed_day       = 1U,    /**< Lpm dpsby1 seed day.                    */
+  k_lpm_dpsby1_secs_per_min   = 60U,   /**< Lpm dpsby1 secs per minimum.            */
+  k_lpm_dpsby1_mins_per_hour  = 60U,   /**< Lpm dpsby1 mins per hour.               */
+  k_lpm_dpsby1_hours_per_day  = 24U,   /**< Lpm dpsby1 hours per day.               */
 } lpm_dpsby1_byte_t;
 
 /** @brief Boot banner -- this is the HIL gate string. */

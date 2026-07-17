@@ -37,26 +37,26 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_rtc_demo_baud         = 115200U,
-  k_rtc_demo_poll_ms      = 100U,
-  k_rtc_demo_advance_secs = 10U,
-  k_rtc_demo_ms_per_sec   = 1000U,
+  k_rtc_demo_baud         = 115200U, /**< Rtc demo baud.         */
+  k_rtc_demo_poll_ms      = 100U,    /**< Rtc demo poll ms.      */
+  k_rtc_demo_advance_secs = 10U,     /**< Rtc demo advance secs. */
+  k_rtc_demo_ms_per_sec   = 1000U,   /**< Rtc demo ms per sec.   */
 } rtc_demo_const_t;
 
 /** @brief Calendar-arithmetic moduli for the +5 s alarm calc. */
 typedef enum : uint8_t {
-  k_rtc_demo_secs_per_min  = 60U,
-  k_rtc_demo_mins_per_hour = 60U,
-  k_rtc_demo_hours_per_day = 24U,
+  k_rtc_demo_secs_per_min  = 60U, /**< Rtc demo secs per minimum. */
+  k_rtc_demo_mins_per_hour = 60U, /**< Rtc demo mins per hour.    */
+  k_rtc_demo_hours_per_day = 24U, /**< Rtc demo hours per day.    */
 } rtc_demo_calendar_t;
 
 /** @brief Alarm offset from the current RTC reading. */
 typedef enum : uint16_t {
-  k_rtc_demo_alarm_offset_s = 5U,
+  k_rtc_demo_alarm_offset_s = 5U,    /**< Rtc demo alarm offset s.                */
   k_rtc_demo_seed_year_lo   = 26U,   /**< 2026 - 2000.                            */
   k_rtc_demo_year_base      = 2000U, /**< Calendar epoch base for the year field. */
-  k_rtc_demo_seed_month     = 1U,
-  k_rtc_demo_seed_day       = 1U,
+  k_rtc_demo_seed_month     = 1U,    /**< Rtc demo seed month.                    */
+  k_rtc_demo_seed_day       = 1U,    /**< Rtc demo seed day.                      */
 } rtc_demo_seed_t;
 
 static const uint8_t k_rtc_demo_log_msg[]  = "rtc_per: tick\r\n";

@@ -45,9 +45,9 @@ typedef enum : uint32_t {
 } wdt_rr_mask_t;
 
 typedef enum : uint32_t {
-  k_wdt_rr_baud       = 115200U,
-  k_wdt_rr_refresh_ms = 50U,
-  k_wdt_rr_arm_iters  = 30U, /**< 30 * 50 ms = 1.5 s alive before stop. */
+  k_wdt_rr_baud       = 115200U, /**< Wdt rr baud.                          */
+  k_wdt_rr_refresh_ms = 50U,     /**< Wdt rr refresh ms.                    */
+  k_wdt_rr_arm_iters  = 30U,     /**< 30 * 50 ms = 1.5 s alive before stop. */
 } wdt_rr_const_t;
 
 static const uint8_t k_wdt_rr_msg_pwr[]       = "wdt_rr: boot reason=power_on\r\n";

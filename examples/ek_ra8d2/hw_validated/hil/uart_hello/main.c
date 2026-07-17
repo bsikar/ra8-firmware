@@ -56,8 +56,8 @@
 
 /** @brief Compile-time settings for the demo. */
 typedef enum : uint32_t {
-  k_uart_hello_baud      = 115200U,
-  k_uart_hello_period_ms = 1000U,
+  k_uart_hello_baud      = 115200U, /**< UART hello baud.      */
+  k_uart_hello_period_ms = 1000U,   /**< UART hello period ms. */
 } uart_hello_config_t;
 
 /** @brief Greeting string sent every period. Must remain ASCII. */

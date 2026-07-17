@@ -41,17 +41,17 @@
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
-  k_dma_demo_baud       = 115200U,
-  k_dma_demo_period_ms  = 1000U,
-  k_dma_demo_buf_bytes  = 1024U,
-  k_dma_demo_buf_words  = 256U,
-  k_dma_demo_poll_limit = 100000U,
+  k_dma_demo_baud       = 115200U, /**< DMA demo baud.         */
+  k_dma_demo_period_ms  = 1000U,   /**< DMA demo period ms.    */
+  k_dma_demo_buf_bytes  = 1024U,   /**< DMA demo buffer bytes. */
+  k_dma_demo_buf_words  = 256U,    /**< DMA demo buffer words. */
+  k_dma_demo_poll_limit = 100000U, /**< DMA demo poll limit.   */
 } dma_demo_config_t;
 
 /** @brief Single-byte constants. */
 typedef enum : uint8_t {
-  k_dma_demo_channel = 0U,
-  k_dma_demo_byte_sh = 8U,
+  k_dma_demo_channel = 0U, /**< DMA demo channel. */
+  k_dma_demo_byte_sh = 8U, /**< DMA demo byte sh. */
 } dma_demo_byte_t;
 
 /** @brief Output line tags. */

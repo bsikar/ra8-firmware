@@ -36,17 +36,17 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_kat_baud       = 115200U,
-  k_kat_period_ms  = 1000U,
+  k_kat_baud       = 115200U,  /**< Kat baud.                                     */
+  k_kat_period_ms  = 1000U,    /**< Kat period ms.                                */
   k_kat_heap_bytes = 0x10000U, /**< 64 KiB static heap for tf-psa mbedtls_calloc. */
 } kat_const_t;
 
 /** @brief Buffer/length sizing constants for the vectors. */
 typedef enum : uint8_t {
-  k_sha_len   = 32U,
-  k_gcm_key   = 16U,
-  k_gcm_nonce = 12U,
-  k_gcm_pt    = 64U,
+  k_sha_len   = 32U, /**< SHA length.             */
+  k_gcm_key   = 16U, /**< Gcm key.                */
+  k_gcm_nonce = 12U, /**< Gcm nonce.              */
+  k_gcm_pt    = 64U, /**< Gcm pt.                 */
   k_gcm_ct    = 80U, /**< 64 ciphertext + 16 tag. */
   k_ec_point  = 65U, /**< 0x04 || X || Y.         */
   k_ec_sig    = 64U, /**< r || s.                 */

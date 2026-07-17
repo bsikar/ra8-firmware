@@ -67,6 +67,7 @@
 
 /** @brief Build-time guard for the optional `Settings` app (#146 exclusion). */
 #ifndef WA_APP_SETTINGS
+/** @brief WA APP SETTINGS. */
 #define WA_APP_SETTINGS 1
 #endif
 

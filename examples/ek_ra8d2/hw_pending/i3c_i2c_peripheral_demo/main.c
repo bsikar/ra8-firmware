@@ -35,13 +35,13 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_iic_peripheral_period_ms = 1U,
+  k_iic_peripheral_period_ms = 1U, /**< Iic peripheral period ms. */
 } iic_peripheral_const_t;
 
 /** @brief Channel + peripheral address. */
 typedef enum : uint8_t {
-  k_iic_peripheral_channel = 0U,
-  k_iic_peripheral_addr_7b = 0x42U,
+  k_iic_peripheral_channel = 0U,    /**< Iic peripheral channel.    */
+  k_iic_peripheral_addr_7b = 0x42U, /**< Iic peripheral address 7b. */
 } iic_peripheral_layout_t;
 
 /** @brief Park the CPU after a fatal init failure. */
