@@ -552,9 +552,9 @@ static bool ra8_board_glcdc_signal_is_output(const char* signal)
 static void ra8_board_glcdc_force_pin_output(ra8_port_pin_t pin)
 {
   enum : uint32_t {
-    k_pfs_psel_shift = 24U,
-    k_pfs_pmr_bit    = 1U << 16,
-    k_pfs_pdr_bit    = 1U << 2,
+    k_pfs_psel_shift = 24U,      /**< PFS psel shift. */
+    k_pfs_pmr_bit    = 1U << 16, /**< PFS pmr bit.    */
+    k_pfs_pdr_bit    = 1U << 2,  /**< PFS pdr bit.    */
   };
   const ra8_port_t         port = RA8_PIN_PORT(pin);
   const ra8_pin_t          bit  = RA8_PIN_PIN(pin);
@@ -629,7 +629,7 @@ ra8_err_t ra8_board_glcdc_init(ra8_board_glcdc_fmt_t fmt)
 ra8_err_t ra8_board_lcd_panel_power_on(void)
 {
   enum : uint32_t {
-    k_reset_pulse_ms = 50U,
+    k_reset_pulse_ms = 50U, /**< Reset pulse ms. */
   };
   ra8_err_t err = ra8_gpio_output_init(k_ra8_pin_lcd_reset_l, k_ra8_level_low);
   if (err != k_ra8_ok) {

@@ -45,7 +45,7 @@ extern "C" {
  */
 /** @brief GATT attribute pool capacity (worst case ~104, rounded). */
 typedef enum : uint16_t {
-  k_ble_l2cap_attr_cap = 96U,
+  k_ble_l2cap_attr_cap = 96U, /**< BLE L2CAP attr cap. */
 } ble_l2cap_cap_t;
 
 typedef enum : uint16_t {
@@ -59,8 +59,8 @@ typedef enum : uint16_t {
   k_tx_scratch_bytes       = 256U,    /**< Outbound L2CAP scratch.       */
   k_invalid_handle         = 0x0000U, /**< Sentinel for "no connection". */
   k_pb_first_non_flushable = 0x0000U, /**< Vol 4 Part E 5.4.2 PB flags.  */
-  k_pb_continuation        = 0x1000U,
-  k_pb_first_complete      = 0x2000U,
+  k_pb_continuation        = 0x1000U, /**< Pb continuation.              */
+  k_pb_first_complete      = 0x2000U, /**< Pb first complete.            */
 } ra8_ble_host_constants_t;
 
 /**
@@ -108,26 +108,26 @@ typedef struct {
  * cap with a runtime check that rejects further inserts when full).
  */
 typedef struct {
-  uint8_t                 initialized;
-  ra8_ble_host_role_t     role;
-  uint16_t                appearance;
-  char                    name[32];
-  uint16_t                next_handle;
-  uint16_t                last_service_handle;
-  ra8_ble_host_attr_t     attrs[k_ble_l2cap_attr_cap];
-  uint8_t                 attr_count;
-  uint8_t                 service_count;
-  uint8_t                 char_count;
-  uint16_t                conn_handle;
-  uint16_t                att_mtu;
-  uint8_t                 reassembly[k_reassembly_buf_bytes];
-  uint16_t                reassembly_len;
-  uint16_t                reassembly_expected;
-  uint16_t                reassembly_cid;
-  uint16_t                reassembly_conn;
-  ra8_ble_host_event_fn_t evt_fn;
-  void*                   evt_ctx;
-  uint32_t                evt_count;
+  uint8_t                 initialized;                        /**< Initialized.         */
+  ra8_ble_host_role_t     role;                               /**< Role.                */
+  uint16_t                appearance;                         /**< Appearance.          */
+  char                    name[32];                           /**< Name.                */
+  uint16_t                next_handle;                        /**< Next handle.         */
+  uint16_t                last_service_handle;                /**< Last service handle. */
+  ra8_ble_host_attr_t     attrs[k_ble_l2cap_attr_cap];        /**< Attrs.               */
+  uint8_t                 attr_count;                         /**< Attr count.          */
+  uint8_t                 service_count;                      /**< Service count.       */
+  uint8_t                 char_count;                         /**< Char count.          */
+  uint16_t                conn_handle;                        /**< Conn handle.         */
+  uint16_t                att_mtu;                            /**< ATT MTU.             */
+  uint8_t                 reassembly[k_reassembly_buf_bytes]; /**< Reassembly.          */
+  uint16_t                reassembly_len;                     /**< Reassembly length.   */
+  uint16_t                reassembly_expected;                /**< Reassembly expected. */
+  uint16_t                reassembly_cid;                     /**< Reassembly cid.      */
+  uint16_t                reassembly_conn;                    /**< Reassembly conn.     */
+  ra8_ble_host_event_fn_t evt_fn;                             /**< Evt fn.              */
+  void*                   evt_ctx;                            /**< Evt ctx.             */
+  uint32_t                evt_count;                          /**< Evt count.           */
 } ra8_ble_host_state_t;
 
 /**

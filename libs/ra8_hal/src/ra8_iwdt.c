@@ -41,8 +41,8 @@ static const char* s_tag = "IWDT";
  * @brief Driver-wide runtime state.
  */
 typedef struct {
-  ra8_iwdt_event_fn_t fn;
-  void*               ctx;
+  ra8_iwdt_event_fn_t fn;  /**< Fn.  */
+  void*               ctx; /**< Ctx. */
 } ra8_iwdt_state_t;
 
 static ra8_iwdt_state_t s_iwdt_state;
@@ -52,7 +52,8 @@ static ra8_iwdt_state_t s_iwdt_state;
  * @brief Combined IWDTSR flag mask (UNDFF | REFEF).
  */
 typedef enum : uint16_t {
-  k_ra8_iwdt_status_all = k_ra8_iwdt_status_underflow | k_ra8_iwdt_status_refresh,
+  k_ra8_iwdt_status_all =
+    k_ra8_iwdt_status_underflow | k_ra8_iwdt_status_refresh, /**< RA8 iwdt status all. */
 } ra8_iwdt_mask_t;
 
 /**

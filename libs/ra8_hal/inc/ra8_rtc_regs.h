@@ -41,7 +41,7 @@ extern "C" {
 #include <stdint.h>
 
 typedef enum : uintptr_t {
-  k_ra8_rtc_base_addr = 0x40202000UL,
+  k_ra8_rtc_base_addr = 0x40202000UL, /**< RA8 rtc base address. */
 } ra8_rtc_addr_t;
 
 /**
@@ -107,7 +107,7 @@ typedef struct {
 
   /* +0x32..+0x3F reserved (7 x uint16_t in FSP). */
   /* NOLINTNEXTLINE(readability-magic-numbers) */
-  volatile uint16_t _r15[7];
+  volatile uint16_t _r15[7]; /**< Reserved. */
 
   /**
    * +0x40..+0x4F: RTCCR[3] -- Time Capture Control Register (3 ch x
@@ -118,7 +118,7 @@ typedef struct {
   volatile uint8_t RTCCR[12];
   /* +0x4C..+0x4F reserved (5 halfwords minus RTCCR overlap = 2 hw). */
   /* NOLINTNEXTLINE(readability-magic-numbers) */
-  volatile uint16_t _r16[2];
+  volatile uint16_t _r16[2]; /**< Reserved. */
 
   /**
    * +0x50..+0x7F: CP[3] -- Capture registers (sec, min, hour, day,

@@ -28,12 +28,12 @@ extern "C" {
  *          tests can read the return value of internal_classify().
  */
 typedef enum : uint8_t {
-  k_ra8_modem_line_kind_empty     = 0U,
-  k_ra8_modem_line_kind_echo      = 1U,
-  k_ra8_modem_line_kind_urc       = 2U,
-  k_ra8_modem_line_kind_final_ok  = 3U,
-  k_ra8_modem_line_kind_final_err = 4U,
-  k_ra8_modem_line_kind_payload   = 5U,
+  k_ra8_modem_line_kind_empty     = 0U, /**< RA8 modem line kind empty.       */
+  k_ra8_modem_line_kind_echo      = 1U, /**< RA8 modem line kind echo.        */
+  k_ra8_modem_line_kind_urc       = 2U, /**< RA8 modem line kind urc.         */
+  k_ra8_modem_line_kind_final_ok  = 3U, /**< RA8 modem line kind final ok.    */
+  k_ra8_modem_line_kind_final_err = 4U, /**< RA8 modem line kind final error. */
+  k_ra8_modem_line_kind_payload   = 5U, /**< RA8 modem line kind payload.     */
 } ra8_modem_line_kind_t;
 
 /**

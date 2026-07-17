@@ -49,9 +49,9 @@ static const char* s_tag = "USB";
  * run the DCD bridge on one controller and a different driver (e.g.
  * bare-CDC) on the other. */
 typedef enum : uint8_t {
-  k_ra8_usb_cb_slot_fs = 0U,
-  k_ra8_usb_cb_slot_hs = 1U,
-  k_ra8_usb_cb_slot_n  = 2U,
+  k_ra8_usb_cb_slot_fs = 0U, /**< RA8 USB cb slot fs. */
+  k_ra8_usb_cb_slot_hs = 1U, /**< RA8 USB cb slot hs. */
+  k_ra8_usb_cb_slot_n  = 2U, /**< RA8 USB cb slot n.  */
 } ra8_usb_cb_slot_t;
 
 static ra8_usb_event_fn_t s_usb_fn[k_ra8_usb_cb_slot_n];

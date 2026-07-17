@@ -51,7 +51,7 @@ static const char* s_tag = "XSPI";
 
 /** @brief Low-byte mask for status/JEDEC-id extraction. */
 typedef enum : uint32_t {
-  k_xspi_byte_mask = 0xFFUL,
+  k_xspi_byte_mask = 0xFFUL, /**< XSPI byte mask. */
 } xspi_mask_t;
 
 /**

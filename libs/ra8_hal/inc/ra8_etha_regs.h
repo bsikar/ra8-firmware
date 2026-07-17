@@ -244,7 +244,7 @@ typedef enum : uint8_t {
   k_ra8_etha_irq_class_0     = 0U, /**< Block 0: ECC + frame errors + TAS gate-events. */
   k_ra8_etha_irq_class_1     = 1U, /**< Block 1: CBS overflow + TAS gate-states.       */
   k_ra8_etha_irq_class_2     = 2U, /**< Block 2: descriptor queue overflow + security. */
-  k_ra8_etha_irq_class_count = 3U,
+  k_ra8_etha_irq_class_count = 3U, /**< RA8 etha IRQ class count.                      */
 } ra8_etha_irq_class_t;
 
 /**

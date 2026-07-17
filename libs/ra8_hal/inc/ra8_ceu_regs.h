@@ -224,16 +224,16 @@ typedef enum : uint8_t {
  * @brief CAMCR field masks.
  */
 typedef enum : uint32_t {
-  k_ra8_ceu_camcr_mask_hdpol  = (1UL << 0),
-  k_ra8_ceu_camcr_mask_vdpol  = (1UL << 1),
-  k_ra8_ceu_camcr_mask_jpg    = (3UL << 4),
-  k_ra8_ceu_camcr_mask_dtary  = (3UL << 8),
-  k_ra8_ceu_camcr_mask_dtif   = (1UL << 12),
-  k_ra8_ceu_camcr_mask_fldpol = (1UL << 16),
-  k_ra8_ceu_camcr_mask_dsel   = (1UL << 24),
-  k_ra8_ceu_camcr_mask_fldsel = (1UL << 25),
-  k_ra8_ceu_camcr_mask_hdsel  = (1UL << 26),
-  k_ra8_ceu_camcr_mask_vdsel  = (1UL << 27),
+  k_ra8_ceu_camcr_mask_hdpol  = (1UL << 0),  /**< RA8 CEU camcr mask hdpol.  */
+  k_ra8_ceu_camcr_mask_vdpol  = (1UL << 1),  /**< RA8 CEU camcr mask vdpol.  */
+  k_ra8_ceu_camcr_mask_jpg    = (3UL << 4),  /**< RA8 CEU camcr mask jpg.    */
+  k_ra8_ceu_camcr_mask_dtary  = (3UL << 8),  /**< RA8 CEU camcr mask dtary.  */
+  k_ra8_ceu_camcr_mask_dtif   = (1UL << 12), /**< RA8 CEU camcr mask dtif.   */
+  k_ra8_ceu_camcr_mask_fldpol = (1UL << 16), /**< RA8 CEU camcr mask fldpol. */
+  k_ra8_ceu_camcr_mask_dsel   = (1UL << 24), /**< RA8 CEU camcr mask dsel.   */
+  k_ra8_ceu_camcr_mask_fldsel = (1UL << 25), /**< RA8 CEU camcr mask fldsel. */
+  k_ra8_ceu_camcr_mask_hdsel  = (1UL << 26), /**< RA8 CEU camcr mask hdsel.  */
+  k_ra8_ceu_camcr_mask_vdsel  = (1UL << 27), /**< RA8 CEU camcr mask vdsel.  */
 } ra8_ceu_camcr_mask_t;
 
 /**
@@ -304,8 +304,8 @@ typedef enum : uint8_t {
  * @brief CAPWR field masks.
  */
 typedef enum : uint32_t {
-  k_ra8_ceu_capwr_mask_hwdth = 0x00001FFFUL,
-  k_ra8_ceu_capwr_mask_vwdth = 0x0FFF0000UL,
+  k_ra8_ceu_capwr_mask_hwdth = 0x00001FFFUL, /**< RA8 CEU capwr mask hwdth. */
+  k_ra8_ceu_capwr_mask_vwdth = 0x0FFF0000UL, /**< RA8 CEU capwr mask vwdth. */
 } ra8_ceu_capwr_mask_t;
 
 /**
@@ -379,10 +379,10 @@ typedef enum : uint32_t {
  *  - bits 31:28 VMANT[3:0]: vertical scale mantissa bits.
  */
 typedef enum : uint8_t {
-  k_ra8_ceu_cflcr_shift_hfrac = 0U,
-  k_ra8_ceu_cflcr_shift_hmant = 12U,
-  k_ra8_ceu_cflcr_shift_vfrac = 16U,
-  k_ra8_ceu_cflcr_shift_vmant = 28U,
+  k_ra8_ceu_cflcr_shift_hfrac = 0U,  /**< RA8 CEU cflcr shift hfrac. */
+  k_ra8_ceu_cflcr_shift_hmant = 12U, /**< RA8 CEU cflcr shift hmant. */
+  k_ra8_ceu_cflcr_shift_vfrac = 16U, /**< RA8 CEU cflcr shift vfrac. */
+  k_ra8_ceu_cflcr_shift_vmant = 28U, /**< RA8 CEU cflcr shift vmant. */
 } ra8_ceu_cflcr_shift_t;
 
 /**
@@ -390,10 +390,10 @@ typedef enum : uint8_t {
  * @brief CFLCR field masks.
  */
 typedef enum : uint32_t {
-  k_ra8_ceu_cflcr_mask_hfrac = 0x00000FFFUL,
-  k_ra8_ceu_cflcr_mask_hmant = 0x0000F000UL,
-  k_ra8_ceu_cflcr_mask_vfrac = 0x0FFF0000UL,
-  k_ra8_ceu_cflcr_mask_vmant = 0xF0000000UL,
+  k_ra8_ceu_cflcr_mask_hfrac = 0x00000FFFUL, /**< RA8 CEU cflcr mask hfrac. */
+  k_ra8_ceu_cflcr_mask_hmant = 0x0000F000UL, /**< RA8 CEU cflcr mask hmant. */
+  k_ra8_ceu_cflcr_mask_vfrac = 0x0FFF0000UL, /**< RA8 CEU cflcr mask vfrac. */
+  k_ra8_ceu_cflcr_mask_vmant = 0xF0000000UL, /**< RA8 CEU cflcr mask vmant. */
 } ra8_ceu_cflcr_mask_t;
 
 /**
@@ -406,8 +406,8 @@ typedef enum : uint32_t {
  *  - bits 27:16 VFCLP[11:0]: vertical clip in 4-pixel units.
  */
 typedef enum : uint8_t {
-  k_ra8_ceu_cfszr_shift_hfclp = 0U,
-  k_ra8_ceu_cfszr_shift_vfclp = 16U,
+  k_ra8_ceu_cfszr_shift_hfclp = 0U,  /**< RA8 CEU cfszr shift hfclp. */
+  k_ra8_ceu_cfszr_shift_vfclp = 16U, /**< RA8 CEU cfszr shift vfclp. */
 } ra8_ceu_cfszr_shift_t;
 
 /**
@@ -415,8 +415,8 @@ typedef enum : uint8_t {
  * @brief CFSZR field masks.
  */
 typedef enum : uint32_t {
-  k_ra8_ceu_cfszr_mask_hfclp = 0x00000FFFUL,
-  k_ra8_ceu_cfszr_mask_vfclp = 0x0FFF0000UL,
+  k_ra8_ceu_cfszr_mask_hfclp = 0x00000FFFUL, /**< RA8 CEU cfszr mask hfclp. */
+  k_ra8_ceu_cfszr_mask_vfclp = 0x0FFF0000UL, /**< RA8 CEU cfszr mask vfclp. */
 } ra8_ceu_cfszr_mask_t;
 
 /**
@@ -458,8 +458,8 @@ typedef enum : uint32_t {
  *                         implicitly 0x1F).
  */
 typedef enum : uint8_t {
-  k_ra8_ceu_cfwcr_shift_fwe = 0U,
-  k_ra8_ceu_cfwcr_shift_fwv = 5U,
+  k_ra8_ceu_cfwcr_shift_fwe = 0U, /**< RA8 CEU cfwcr shift fwe. */
+  k_ra8_ceu_cfwcr_shift_fwv = 5U, /**< RA8 CEU cfwcr shift fwv. */
 } ra8_ceu_cfwcr_shift_t;
 
 /**
@@ -498,11 +498,11 @@ typedef enum : uint32_t {
  *  - bit 16 CBE : bundle write enable.
  */
 typedef enum : uint8_t {
-  k_ra8_ceu_cdocr_shift_cobs = 0U,
-  k_ra8_ceu_cdocr_shift_cows = 1U,
-  k_ra8_ceu_cdocr_shift_cols = 2U,
-  k_ra8_ceu_cdocr_shift_cds  = 4U,
-  k_ra8_ceu_cdocr_shift_cbe  = 16U,
+  k_ra8_ceu_cdocr_shift_cobs = 0U,  /**< RA8 CEU cdocr shift cobs. */
+  k_ra8_ceu_cdocr_shift_cows = 1U,  /**< RA8 CEU cdocr shift cows. */
+  k_ra8_ceu_cdocr_shift_cols = 2U,  /**< RA8 CEU cdocr shift cols. */
+  k_ra8_ceu_cdocr_shift_cds  = 4U,  /**< RA8 CEU cdocr shift cds.  */
+  k_ra8_ceu_cdocr_shift_cbe  = 16U, /**< RA8 CEU cdocr shift cbe.  */
 } ra8_ceu_cdocr_shift_t;
 
 /**
@@ -510,11 +510,11 @@ typedef enum : uint8_t {
  * @brief CDOCR field masks.
  */
 typedef enum : uint32_t {
-  k_ra8_ceu_cdocr_mask_cobs = (1UL << 0),
-  k_ra8_ceu_cdocr_mask_cows = (1UL << 1),
-  k_ra8_ceu_cdocr_mask_cols = (1UL << 2),
-  k_ra8_ceu_cdocr_mask_cds  = (1UL << 4),
-  k_ra8_ceu_cdocr_mask_cbe  = (1UL << 16),
+  k_ra8_ceu_cdocr_mask_cobs = (1UL << 0),  /**< RA8 CEU cdocr mask cobs. */
+  k_ra8_ceu_cdocr_mask_cows = (1UL << 1),  /**< RA8 CEU cdocr mask cows. */
+  k_ra8_ceu_cdocr_mask_cols = (1UL << 2),  /**< RA8 CEU cdocr mask cols. */
+  k_ra8_ceu_cdocr_mask_cds  = (1UL << 4),  /**< RA8 CEU cdocr mask cds.  */
+  k_ra8_ceu_cdocr_mask_cbe  = (1UL << 16), /**< RA8 CEU cdocr mask cbe.  */
 } ra8_ceu_cdocr_mask_t;
 
 /**
@@ -601,12 +601,14 @@ typedef enum : uint32_t {
   k_ra8_ceu_evt_mask_all_errors =
     (k_ra8_ceu_evt_igrw | k_ra8_ceu_evt_cram_overflow | k_ra8_ceu_evt_hd_mismatch |
      k_ra8_ceu_evt_vd_mismatch | k_ra8_ceu_evt_vd_error | k_ra8_ceu_evt_firewall |
-     k_ra8_ceu_evt_hd_missing | k_ra8_ceu_evt_vd_missing),
-  k_ra8_ceu_evt_mask_all_bundle =
-    (k_ra8_ceu_evt_cpbe1 | k_ra8_ceu_evt_cpbe2 | k_ra8_ceu_evt_cpbe3 | k_ra8_ceu_evt_cpbe4),
-  k_ra8_ceu_evt_mask_all_sync = (k_ra8_ceu_evt_hd | k_ra8_ceu_evt_vd),
-  k_ra8_ceu_evt_mask_all_end  = (k_ra8_ceu_evt_cpe | k_ra8_ceu_evt_cfe),
-  k_ra8_ceu_evt_mask_all      = 0x03F7F713UL,
+     k_ra8_ceu_evt_hd_missing | k_ra8_ceu_evt_vd_missing), /**< RA8 CEU evt mask all errors. */
+  k_ra8_ceu_evt_mask_all_bundle = (k_ra8_ceu_evt_cpbe1 | k_ra8_ceu_evt_cpbe2 | k_ra8_ceu_evt_cpbe3 |
+                                   k_ra8_ceu_evt_cpbe4), /**< RA8 CEU evt mask all bundle. */
+  k_ra8_ceu_evt_mask_all_sync =
+    (k_ra8_ceu_evt_hd | k_ra8_ceu_evt_vd), /**< RA8 CEU evt mask all sync. */
+  k_ra8_ceu_evt_mask_all_end =
+    (k_ra8_ceu_evt_cpe | k_ra8_ceu_evt_cfe), /**< RA8 CEU evt mask all end. */
+  k_ra8_ceu_evt_mask_all = 0x03F7F713UL,     /**< RA8 CEU evt mask all.     */
 } ra8_ceu_evt_mask_group_t;
 
 /**
@@ -635,7 +637,7 @@ typedef enum : uint32_t {
  * 60.2.16 "CDBCR" p 3656-3658.
  */
 typedef enum : uint32_t {
-  k_ra8_ceu_buffer_align_bytes = 8U,
+  k_ra8_ceu_buffer_align_bytes = 8U, /**< RA8 CEU buffer align bytes. */
 } ra8_ceu_align_t;
 
 /**
@@ -646,7 +648,7 @@ typedef enum : uint32_t {
  * HUM Ch 60.2.17 p 3660 says CBDSR writes ignore the lower 3 bits.
  */
 typedef enum : uint32_t {
-  k_ra8_ceu_bundle_align_mask = 0x7U,
+  k_ra8_ceu_bundle_align_mask = 0x7U, /**< RA8 CEU bundle align mask. */
 } ra8_ceu_burst_align_t;
 
 /**
@@ -659,7 +661,7 @@ typedef enum : uint32_t {
  * mask is used by `ra8_ceu_firewall_set` to compose the value.
  */
 typedef enum : uint32_t {
-  k_ra8_ceu_firewall_align_mask = 0x1FU,
+  k_ra8_ceu_firewall_align_mask = 0x1FU, /**< RA8 CEU firewall align mask. */
 } ra8_ceu_firewall_align_t;
 
 /**

@@ -144,9 +144,13 @@ typedef enum : uint8_t {
  */
 /* HUM Ch 23.2.1 "GTDLYCR" p 1154 */
 typedef enum : uint16_t {
-  k_ra8_pdg_gtdlycr_mask_dllen  = (uint16_t)(1U << (uint16_t)k_ra8_pdg_gtdlycr_bit_dllen),
-  k_ra8_pdg_gtdlycr_mask_dlyrst = (uint16_t)(1U << (uint16_t)k_ra8_pdg_gtdlycr_bit_dlyrst),
-  k_ra8_pdg_gtdlycr_mask_frange = (uint16_t)(0x3U << (uint16_t)k_ra8_pdg_gtdlycr_shift_frange),
+  k_ra8_pdg_gtdlycr_mask_dllen =
+    (uint16_t)(1U << (uint16_t)k_ra8_pdg_gtdlycr_bit_dllen), /**< RA8 pdg gtdlycr mask dllen. */
+  k_ra8_pdg_gtdlycr_mask_dlyrst =
+    (uint16_t)(1U << (uint16_t)k_ra8_pdg_gtdlycr_bit_dlyrst), /**< RA8 pdg gtdlycr mask dlyrst. */
+  k_ra8_pdg_gtdlycr_mask_frange =
+    (uint16_t)(0x3U << (uint16_t)
+                 k_ra8_pdg_gtdlycr_shift_frange), /**< RA8 pdg gtdlycr mask frange. */
 } ra8_pdg_gtdlycr_mask_t;
 
 /**
@@ -189,8 +193,12 @@ typedef enum : uint8_t {
  */
 /* HUM Ch 23.2.2 "GTDLYCR2" p 1155 */
 typedef enum : uint16_t {
-  k_ra8_pdg_gtdlycr2_mask_dlybs = (uint16_t)(0xFU << (uint16_t)k_ra8_pdg_gtdlycr2_shift_dlybs),
-  k_ra8_pdg_gtdlycr2_mask_dlyen = (uint16_t)(0xFU << (uint16_t)k_ra8_pdg_gtdlycr2_shift_dlyen),
+  k_ra8_pdg_gtdlycr2_mask_dlybs =
+    (uint16_t)(0xFU << (uint16_t)
+                 k_ra8_pdg_gtdlycr2_shift_dlybs), /**< RA8 pdg gtdlycr2 mask dlybs. */
+  k_ra8_pdg_gtdlycr2_mask_dlyen =
+    (uint16_t)(0xFU << (uint16_t)
+                 k_ra8_pdg_gtdlycr2_shift_dlyen), /**< RA8 pdg gtdlycr2 mask dlyen. */
 } ra8_pdg_gtdlycr2_mask_t;
 
 /**

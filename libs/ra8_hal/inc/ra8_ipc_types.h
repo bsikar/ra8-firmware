@@ -62,14 +62,14 @@ typedef enum : uint32_t {
  * @brief Index of an IRQ event line within a channel (0..7).
  */
 typedef enum : uint8_t {
-  k_ra8_ipc_irq_event_0 = 0U,
-  k_ra8_ipc_irq_event_1 = 1U,
-  k_ra8_ipc_irq_event_2 = 2U,
-  k_ra8_ipc_irq_event_3 = 3U,
-  k_ra8_ipc_irq_event_4 = 4U,
-  k_ra8_ipc_irq_event_5 = 5U,
-  k_ra8_ipc_irq_event_6 = 6U,
-  k_ra8_ipc_irq_event_7 = 7U,
+  k_ra8_ipc_irq_event_0 = 0U, /**< RA8 ipc IRQ event 0. */
+  k_ra8_ipc_irq_event_1 = 1U, /**< RA8 ipc IRQ event 1. */
+  k_ra8_ipc_irq_event_2 = 2U, /**< RA8 ipc IRQ event 2. */
+  k_ra8_ipc_irq_event_3 = 3U, /**< RA8 ipc IRQ event 3. */
+  k_ra8_ipc_irq_event_4 = 4U, /**< RA8 ipc IRQ event 4. */
+  k_ra8_ipc_irq_event_5 = 5U, /**< RA8 ipc IRQ event 5. */
+  k_ra8_ipc_irq_event_6 = 6U, /**< RA8 ipc IRQ event 6. */
+  k_ra8_ipc_irq_event_7 = 7U, /**< RA8 ipc IRQ event 7. */
 } ra8_ipc_irq_event_id_t;
 
 /**

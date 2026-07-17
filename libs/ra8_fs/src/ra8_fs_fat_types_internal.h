@@ -88,8 +88,8 @@ typedef enum : uint8_t {
  * @brief Required boot-sector signature bytes (0x55 0xAA at off 510..511).
  */
 typedef enum : uint8_t {
-  k_bpb_sig_lo = 0x55,
-  k_bpb_sig_hi = 0xAA,
+  k_bpb_sig_lo = 0x55, /**< Bpb sig lo. */
+  k_bpb_sig_hi = 0xAA, /**< Bpb sig hi. */
 } ra8_fs_sig_t;
 
 /**
@@ -281,14 +281,14 @@ typedef enum : uint32_t {
   k_cluster_eoc_min_fat32   = 0x0FFFFFF8,  /**< MS FAT spec sec 4.2 EOC threshold. */
   k_cluster_mask_fat32      = 0x0FFFFFFFU, /**< Top 4 bits reserved on FAT32.      */
   k_cluster_eoc_write_fat12 = 0x0FFF,      /**< Value we write to terminate.       */
-  k_cluster_eoc_write_fat16 = 0xFFFF,
-  k_cluster_eoc_write_fat32 = 0x0FFFFFFFU,
-  k_cluster_free            = 0,
-  k_cluster_count_fat12_max = 4085,    /**< MS FAT spec sec 3.5 boundary.    */
-  k_cluster_count_fat16_max = 65525,   /**< MS FAT spec sec 3.5 boundary.    */
-  k_fat12_value_mask        = 0x0FFFU, /**< 12-bit FAT12 entry mask.         */
-  k_fat12_low_nibble_mask   = 0x000FU, /**< Untouched nibble (even cluster). */
-  k_fat12_high_nibble_mask  = 0xF000U, /**< Untouched nibble (odd cluster).  */
+  k_cluster_eoc_write_fat16 = 0xFFFF,      /**< Cluster eoc write fat16.           */
+  k_cluster_eoc_write_fat32 = 0x0FFFFFFFU, /**< Cluster eoc write fat32.           */
+  k_cluster_free            = 0,           /**< Cluster free.                      */
+  k_cluster_count_fat12_max = 4085,        /**< MS FAT spec sec 3.5 boundary.      */
+  k_cluster_count_fat16_max = 65525,       /**< MS FAT spec sec 3.5 boundary.      */
+  k_fat12_value_mask        = 0x0FFFU,     /**< 12-bit FAT12 entry mask.           */
+  k_fat12_low_nibble_mask   = 0x000FU,     /**< Untouched nibble (even cluster).   */
+  k_fat12_high_nibble_mask  = 0xF000U,     /**< Untouched nibble (odd cluster).    */
 } ra8_fs_cluster_t;
 
 /**
@@ -379,20 +379,20 @@ typedef enum : uint32_t {
  * @brief Misc small constants used by parsing/formatting code.
  */
 typedef enum : uint16_t {
-  k_byte_mask              = 0xFFU,
-  k_shift_byte             = 8,
-  k_shift_two_bytes        = 16,
-  k_shift_three_bytes      = 24,
-  k_shift_nibble           = 4,
-  k_nibble_mask            = 0x0F,
-  k_byte_mask_full         = 0xFF,
-  k_word_mask              = 0xFFFFU,
-  k_max_8_3_name           = 11, /**< 8.3 packed length without dot.            */
-  k_dot_pos                = 8,  /**< In an 8.3 packed name, dot would go here. */
-  k_filename_base_len      = 8,
-  k_filename_ext_len       = 3,
-  k_dir_entries_per_sector = 16, /**< 512 / 32 */
-  k_path_max               = 64,
+  k_byte_mask              = 0xFFU,   /**< Byte mask.                                */
+  k_shift_byte             = 8,       /**< Shift byte.                               */
+  k_shift_two_bytes        = 16,      /**< Shift two bytes.                          */
+  k_shift_three_bytes      = 24,      /**< Shift three bytes.                        */
+  k_shift_nibble           = 4,       /**< Shift nibble.                             */
+  k_nibble_mask            = 0x0F,    /**< Nibble mask.                              */
+  k_byte_mask_full         = 0xFF,    /**< Byte mask full.                           */
+  k_word_mask              = 0xFFFFU, /**< Word mask.                                */
+  k_max_8_3_name           = 11,      /**< 8.3 packed length without dot.            */
+  k_dot_pos                = 8,       /**< In an 8.3 packed name, dot would go here. */
+  k_filename_base_len      = 8,       /**< Filename base length.                     */
+  k_filename_ext_len       = 3,       /**< Filename ext length.                      */
+  k_dir_entries_per_sector = 16,      /**< 512 / 32                                  */
+  k_path_max               = 64,      /**< Path maximum.                             */
 } ra8_fs_misc_t;
 
 /* ===========================================================================

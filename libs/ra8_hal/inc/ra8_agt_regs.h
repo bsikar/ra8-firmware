@@ -28,12 +28,12 @@ extern "C" {
 #include <stdint.h>
 
 typedef enum : uintptr_t {
-  k_ra8_agt0_base_addr = 0x40221000UL,
+  k_ra8_agt0_base_addr = 0x40221000UL, /**< RA8 agt0 base address. */
 } ra8_agt_addr_t;
 
 typedef enum : uint16_t {
-  k_ra8_agt_channel_count  = 10U,
-  k_ra8_agt_channel_stride = 0x100U,
+  k_ra8_agt_channel_count  = 10U,    /**< RA8 AGT channel count.  */
+  k_ra8_agt_channel_stride = 0x100U, /**< RA8 AGT channel stride. */
 } ra8_agt_limits_t;
 
 /**
@@ -55,13 +55,13 @@ typedef enum : uint8_t {
  * @details Mirror of `ra8_agt_agtcr_bits_t` for ALU use.
  */
 typedef enum : uint8_t {
-  k_ra8_agt_agtcr_tstart_msk = 0x01U,
-  k_ra8_agt_agtcr_tcstf_msk  = 0x02U,
-  k_ra8_agt_agtcr_tstop_msk  = 0x04U,
-  k_ra8_agt_agtcr_tundf_msk  = 0x20U, /**< Underflow flag.         */
-  k_ra8_agt_agtcr_tcmaf_msk  = 0x40U, /**< Compare-match A flag.   */
-  k_ra8_agt_agtcr_tcmbf_msk  = 0x80U, /**< Compare-match B flag.   */
-  k_ra8_agt_agtcr_status_msk = 0xF0U, /**< TEDGF|TUNDF|TCMAF|TCMBF */
+  k_ra8_agt_agtcr_tstart_msk = 0x01U, /**< RA8 AGT agtcr tstart msk. */
+  k_ra8_agt_agtcr_tcstf_msk  = 0x02U, /**< RA8 AGT agtcr tcstf msk.  */
+  k_ra8_agt_agtcr_tstop_msk  = 0x04U, /**< RA8 AGT agtcr tstop msk.  */
+  k_ra8_agt_agtcr_tundf_msk  = 0x20U, /**< Underflow flag.           */
+  k_ra8_agt_agtcr_tcmaf_msk  = 0x40U, /**< Compare-match A flag.     */
+  k_ra8_agt_agtcr_tcmbf_msk  = 0x80U, /**< Compare-match B flag.     */
+  k_ra8_agt_agtcr_status_msk = 0xF0U, /**< TEDGF|TUNDF|TCMAF|TCMBF   */
 } ra8_agt_agtcr_masks_t;
 
 /**
@@ -96,7 +96,7 @@ typedef enum : uint8_t {
  *          A is not used." Same applies to AGTCMB (HUM Ch 24.2.3 p 1166).
  */
 typedef enum : uint16_t {
-  k_ra8_agt_compare_parked_value = 0xFFFFU,
+  k_ra8_agt_compare_parked_value = 0xFFFFU, /**< RA8 AGT compare parked value. */
 } ra8_agt_compare_sentinel_t;
 
 /**

@@ -41,9 +41,9 @@
 static const char* s_tag = "RTC";
 
 typedef enum : uint8_t {
-  k_ra8_bcd_digit_mask  = 0x0FU,
-  k_ra8_bcd_digit_shift = 4U,
-  k_ra8_bcd_digit_base  = 10U,
+  k_ra8_bcd_digit_mask  = 0x0FU, /**< RA8 bcd digit mask.  */
+  k_ra8_bcd_digit_shift = 4U,    /**< RA8 bcd digit shift. */
+  k_ra8_bcd_digit_base  = 10U,   /**< RA8 bcd digit base.  */
 } ra8_rtc_bcd_t;
 
 typedef enum : uint16_t {
@@ -62,7 +62,7 @@ typedef enum : uint16_t {
  * loudly if the hardware never honours the write.
  */
 typedef enum : uint16_t {
-  k_ra8_rtc_wait_iters = 10000U,
+  k_ra8_rtc_wait_iters = 10000U, /**< RA8 rtc wait iters. */
 } ra8_rtc_wait_t;
 
 typedef enum : uint8_t {
@@ -388,10 +388,10 @@ ra8_err_t ra8_rtc_get(ra8_rtc_datetime_t* out)
  * (alarm enable) flag; the lower 7 bits hold the BCD value to match.
  */
 typedef enum : uint8_t {
-  k_ra8_rtc_alarm_enb_bit = 7U,
-  k_ra8_rtc_alarm_max_hr  = 23U,
-  k_ra8_rtc_alarm_max_min = 59U,
-  k_ra8_rtc_alarm_max_sec = 59U,
+  k_ra8_rtc_alarm_enb_bit = 7U,  /**< RA8 rtc alarm enb bit.         */
+  k_ra8_rtc_alarm_max_hr  = 23U, /**< RA8 rtc alarm maximum hr.      */
+  k_ra8_rtc_alarm_max_min = 59U, /**< RA8 rtc alarm maximum minimum. */
+  k_ra8_rtc_alarm_max_sec = 59U, /**< RA8 rtc alarm maximum sec.     */
 } ra8_rtc_alarm_t;
 
 /**
@@ -452,12 +452,13 @@ ra8_err_t ra8_rtc_set_alarm(const ra8_rtc_datetime_t* alarm)
  * @brief Combined IRQ mask.
  */
 typedef enum : uint8_t {
-  k_ra8_rtc_irq_all = k_ra8_rtc_irq_alarm | k_ra8_rtc_irq_carry | k_ra8_rtc_irq_periodic,
+  k_ra8_rtc_irq_all =
+    k_ra8_rtc_irq_alarm | k_ra8_rtc_irq_carry | k_ra8_rtc_irq_periodic, /**< RA8 rtc IRQ all. */
 } ra8_rtc_mask_t;
 
 typedef struct {
-  ra8_rtc_event_fn_t fn;
-  void*              ctx;
+  ra8_rtc_event_fn_t fn;  /**< Fn.  */
+  void*              ctx; /**< Ctx. */
 } ra8_rtc_state_t;
 
 static ra8_rtc_state_t s_rtc_state;

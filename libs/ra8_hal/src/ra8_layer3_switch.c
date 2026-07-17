@@ -25,8 +25,8 @@
 static const char* s_tag = "L3SW";
 
 typedef struct {
-  bool opened;
-  bool promiscuous;
+  bool opened;      /**< Opened.      */
+  bool promiscuous; /**< Promiscuous. */
 } ra8_layer3_switch_state_t;
 
 static ra8_layer3_switch_state_t s_state = {};

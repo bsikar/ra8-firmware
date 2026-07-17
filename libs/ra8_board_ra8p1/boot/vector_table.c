@@ -117,15 +117,17 @@ extern void SysTick_Handler(void);
  */
 
 enum : uint16_t {
-  k_ra8_irq_count = 112U,
+  k_ra8_irq_count = 112U, /**< RA8 IRQ count. */
 };
 
 /* Mach-O does not support `alias`; on Apple hosts we keep only
  * `weak` so the symbols exist but are not aliased. The host build
  * never invokes these vectors. */
 #ifndef __APPLE__
+/** @brief RA8 IRQ STUB. */
 #define RA8_IRQ_STUB(n) [[gnu::weak, gnu::alias("Default_Handler")]] void IRQ##n##_Handler(void)
 #else
+/** @brief RA8 IRQ STUB. */
 #define RA8_IRQ_STUB(n) [[gnu::weak]] void IRQ##n##_Handler(void)
 #endif
 
@@ -282,6 +284,7 @@ const exc_handler_t g_ra8_vector_table_start[16U + k_ra8_irq_count] = {
   SysTick_Handler,                    /* 15 SysTick.                    */
 
 /* Peripheral IRQs 0..111. */
+/** @brief `E` helper macro. */
 #define E(n) IRQ##n##_Handler
   E(0),
   E(1),
@@ -457,10 +460,10 @@ extern void ra8_exception_report(const void* frame, uint32_t exc_number);
  * @brief Exception numbers matching the Cortex-M vector table slots.
  */
 typedef enum : uint32_t {
-  k_ra8_vector_hardfault  = 3U,
-  k_ra8_vector_memmanage  = 4U,
-  k_ra8_vector_busfault   = 5U,
-  k_ra8_vector_usagefault = 6U,
+  k_ra8_vector_hardfault  = 3U, /**< RA8 vector hardfault.  */
+  k_ra8_vector_memmanage  = 4U, /**< RA8 vector memmanage.  */
+  k_ra8_vector_busfault   = 5U, /**< RA8 vector busfault.   */
+  k_ra8_vector_usagefault = 6U, /**< RA8 vector usagefault. */
 } ra8_vector_exc_t;
 
 #ifndef RA8_SIMULATOR_MODE

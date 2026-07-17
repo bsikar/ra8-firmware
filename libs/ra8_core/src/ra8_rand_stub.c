@@ -41,7 +41,7 @@ typedef enum : uint32_t {
 } xorshift32_param_t;
 
 typedef enum : uint32_t {
-  k_ra8_rand_default_seed = 0x9E3779B9UL,
+  k_ra8_rand_default_seed = 0x9E3779B9UL, /**< RA8 rand default seed. */
 } ra8_rand_const_t;
 
 static uint32_t s_state = (uint32_t)k_ra8_rand_default_seed;

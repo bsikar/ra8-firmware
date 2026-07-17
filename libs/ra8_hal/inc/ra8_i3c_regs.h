@@ -47,9 +47,9 @@ extern "C" {
  * layout, so the same struct overlay can describe either base.
  */
 typedef enum : uintptr_t {
-  k_ra8_i3c0_base_addr = 0x4035F000UL, /**< I3C0 peripheral base. */
-  k_ra8_i3c1_base_addr = 0x4035F100UL, /**< I3C1 peripheral base. */
-  k_ra8_i3c_base_addr  = k_ra8_i3c0_base_addr,
+  k_ra8_i3c0_base_addr = 0x4035F000UL,         /**< I3C0 peripheral base. */
+  k_ra8_i3c1_base_addr = 0x4035F100UL,         /**< I3C1 peripheral base. */
+  k_ra8_i3c_base_addr  = k_ra8_i3c0_base_addr, /**< RA8 I3C base address. */
 } ra8_i3c_addr_t;
 
 /**
@@ -63,7 +63,7 @@ typedef enum : uintptr_t {
  * symbol in compiler errors.
  */
 typedef enum : uint8_t {
-  k_ra8_i3c_instance_count    = 2U,
+  k_ra8_i3c_instance_count    = 2U, /**< RA8 I3C instance count.       */
   k_ra8_i3c_pad_after_prts    = 3U, /**< RESERVED[3]   after PRTS.     */
   k_ra8_i3c_pad_after_msdvad  = 1U, /**< RESERVED1     after MSDVAD.   */
   k_ra8_i3c_pad_after_prsst   = 2U, /**< RESERVED2[2]  after PRSST.    */
@@ -108,27 +108,27 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  volatile uint32_t PRTS; /**< +0x000 Protocol Selection Register. */
-  volatile uint32_t _r_prts[k_ra8_i3c_pad_after_prts];
+  volatile uint32_t PRTS;                              /**< +0x000 Protocol Selection Register. */
+  volatile uint32_t _r_prts[k_ra8_i3c_pad_after_prts]; /**< Reserved.                           */
   volatile uint32_t CECTL;  /**< +0x010 Clock Enable Control Register.      */
   volatile uint32_t BCTL;   /**< +0x014 Bus Control Register.               */
   volatile uint32_t MSDVAD; /**< +0x018 Controller Device Address Register. */
-  volatile uint32_t _r_msdvad[k_ra8_i3c_pad_after_msdvad];
-  volatile uint32_t RSTCTL; /**< +0x020 Reset Control Register. */
-  volatile uint32_t PRSST;  /**< +0x024 Present State Register. */
-  volatile uint32_t _r_prsst[k_ra8_i3c_pad_after_prsst];
+  volatile uint32_t _r_msdvad[k_ra8_i3c_pad_after_msdvad]; /**< Reserved.                      */
+  volatile uint32_t RSTCTL;                                /**< +0x020 Reset Control Register. */
+  volatile uint32_t PRSST;                                 /**< +0x024 Present State Register. */
+  volatile uint32_t _r_prsst[k_ra8_i3c_pad_after_prsst];   /**< Reserved.                      */
   volatile uint32_t INST;   /**< +0x030 Internal Status Register.           */
   volatile uint32_t INSTE;  /**< +0x034 Internal Status Enable Register.    */
   volatile uint32_t INIE;   /**< +0x038 Internal Interrupt Enable Register. */
   volatile uint32_t INSTFC; /**< +0x03C Internal Status Force Register.     */
-  volatile uint32_t _r_instfc[k_ra8_i3c_pad_after_instfc];
+  volatile uint32_t _r_instfc[k_ra8_i3c_pad_after_instfc]; /**< Reserved. */
   volatile uint32_t DVCT; /**< +0x044 Device Characteristic Table Register. */
-  volatile uint32_t _r_dvct[k_ra8_i3c_pad_after_dvct];
-  volatile uint32_t IBINCTL; /**< +0x058 IBI Notify Control Register. */
-  volatile uint32_t _r_ibinctl[k_ra8_i3c_pad_after_ibinctl];
+  volatile uint32_t _r_dvct[k_ra8_i3c_pad_after_dvct]; /**< Reserved.                           */
+  volatile uint32_t IBINCTL;                           /**< +0x058 IBI Notify Control Register. */
+  volatile uint32_t _r_ibinctl[k_ra8_i3c_pad_after_ibinctl]; /**< Reserved. */
   volatile uint32_t BFCTL; /**< +0x060 Bus Function Control Register. */
   volatile uint32_t SVCTL; /**< +0x064 Peripheral Control Register.   */
-  volatile uint32_t _r_svctl[k_ra8_i3c_pad_after_svctl];
+  volatile uint32_t _r_svctl[k_ra8_i3c_pad_after_svctl]; /**< Reserved. */
   volatile uint32_t REFCKCTL; /**< +0x070 Reference Clock Control Register.                */
   volatile uint32_t STDBR;    /**< +0x074 Standard Bit Rate Register.                      */
   volatile uint32_t EXTBR;    /**< +0x078 Extended Bit Rate Register.                      */
@@ -138,12 +138,12 @@ typedef struct {
   volatile uint32_t OUTCTL;   /**< +0x088 Output Control Register.                         */
   volatile uint32_t INCTL;    /**< +0x08C Input Control Register.                          */
   volatile uint32_t TMOCTL;   /**< +0x090 Timeout Control Register.                        */
-  volatile uint32_t _r_tmoctl[k_ra8_i3c_pad_after_tmoctl];
+  volatile uint32_t _r_tmoctl[k_ra8_i3c_pad_after_tmoctl]; /**< Reserved. */
   volatile uint32_t WUCTL; /**< +0x098 Wake-Up Unit Control Register. */
-  volatile uint32_t _r_wuctl[k_ra8_i3c_pad_after_wuctl];
+  volatile uint32_t _r_wuctl[k_ra8_i3c_pad_after_wuctl]; /**< Reserved. */
   volatile uint32_t ACKCTL;   /**< +0x0A0 Acknowledge Control Register. */
   volatile uint32_t SCSTRCTL; /**< +0x0A4 SCL Stretch Control Register. */
-  volatile uint32_t _r_scstr[k_ra8_i3c_pad_after_scstr];
+  volatile uint32_t _r_scstr[k_ra8_i3c_pad_after_scstr]; /**< Reserved. */
   volatile uint32_t SCSTLCTL;  /**< +0x0B0 SCL Stalling Control Register. */
   volatile uint32_t NSDVAD;    /**< +0x0B4 Peripheral Device Address Register
                                     (peripheral-mode dynamic address + valid).
@@ -153,7 +153,7 @@ typedef struct {
                                     (peripheral-side IBI queue valid count).
                                     See HUM Ch 40 "IBI Valid Control"
                                     pp 2445-2701. */
-  volatile uint32_t _r_scstlctl[k_ra8_i3c_pad_after_scstlctl];
+  volatile uint32_t _r_scstlctl[k_ra8_i3c_pad_after_scstlctl]; /**< Reserved. */
   volatile uint32_t NCMDQP;  /**< +0x150 Normal Command Queue Port Register.          */
   volatile uint32_t NRSPQP;  /**< +0x154 Normal Response Queue Port Register.         */
   volatile uint32_t NTDTBP0; /**< +0x158 Normal Transfer Data Buffer Port Register 0. */
@@ -189,9 +189,9 @@ typedef enum : uint32_t {
  * "Peripheral Device Address Register" pp 2445-2701.
  */
 typedef enum : uint32_t {
-  k_ra8_i3c_nsdvad_sdyad_shift = 16U, /**< SDYAD bits [22:16]. */
-  k_ra8_i3c_nsdvad_sdyad_mask  = 0x007F0000UL,
-  k_ra8_i3c_nsdvad_sdyadv_mask = 0x80000000UL, /**< SDYADV bit 31. */
+  k_ra8_i3c_nsdvad_sdyad_shift = 16U,          /**< SDYAD bits [22:16].        */
+  k_ra8_i3c_nsdvad_sdyad_mask  = 0x007F0000UL, /**< RA8 I3C nsdvad sdyad mask. */
+  k_ra8_i3c_nsdvad_sdyadv_mask = 0x80000000UL, /**< SDYADV bit 31.             */
 } ra8_i3c_nsdvad_bits_t;
 
 /**
@@ -204,8 +204,8 @@ typedef enum : uint32_t {
  * pp 2445-2701.
  */
 typedef enum : uint32_t {
-  k_ra8_i3c_ntibivctl_vlcnt_mask  = 0x000000FFUL, /**< Valid-entry count [7:0]. */
-  k_ra8_i3c_ntibivctl_vlcnt_shift = 0U,
+  k_ra8_i3c_ntibivctl_vlcnt_mask  = 0x000000FFUL, /**< Valid-entry count [7:0].       */
+  k_ra8_i3c_ntibivctl_vlcnt_shift = 0U,           /**< RA8 I3C ntibivctl vlcnt shift. */
 } ra8_i3c_ntibivctl_bits_t;
 
 /**
@@ -217,10 +217,10 @@ typedef enum : uint32_t {
  * HUM Ch 40 "Command Descriptor" pp 2445-2701.
  */
 typedef enum : uint32_t {
-  k_ra8_i3c_cmd_hdr_mode_sdr  = 0UL, /**< Plain SDR transfer (default). */
-  k_ra8_i3c_cmd_hdr_mode_ddr  = 1UL, /**< HDR-DDR.                      */
-  k_ra8_i3c_cmd_hdr_mode_ts   = 2UL, /**< HDR-TS.                       */
-  k_ra8_i3c_cmd_hdr_mode_mask = 0x3UL,
+  k_ra8_i3c_cmd_hdr_mode_sdr  = 0UL,   /**< Plain SDR transfer (default). */
+  k_ra8_i3c_cmd_hdr_mode_ddr  = 1UL,   /**< HDR-DDR.                      */
+  k_ra8_i3c_cmd_hdr_mode_ts   = 2UL,   /**< HDR-TS.                       */
+  k_ra8_i3c_cmd_hdr_mode_mask = 0x3UL, /**< RA8 I3C cmd hdr mode mask.    */
 } ra8_i3c_cmd_hdr_mode_t;
 
 /**
@@ -228,10 +228,10 @@ typedef enum : uint32_t {
  * @brief MSDVAD register bit positions / masks.
  */
 typedef enum : uint32_t {
-  k_ra8_i3c_msdvad_mdyad_shift = 16U, /**< MDYAD bits [22:16]. */
-  k_ra8_i3c_msdvad_mdyad_mask  = 0x007F0000UL,
-  k_ra8_i3c_msdvad_mdyadv_mask = 0x80000000UL, /**< MDYADV bit 31.         */
-  k_ra8_i3c_msdvad_addr_max    = 0x7FUL,       /**< 7-bit dynamic address. */
+  k_ra8_i3c_msdvad_mdyad_shift = 16U,          /**< MDYAD bits [22:16].        */
+  k_ra8_i3c_msdvad_mdyad_mask  = 0x007F0000UL, /**< RA8 I3C msdvad mdyad mask. */
+  k_ra8_i3c_msdvad_mdyadv_mask = 0x80000000UL, /**< MDYADV bit 31.             */
+  k_ra8_i3c_msdvad_addr_max    = 0x7FUL,       /**< 7-bit dynamic address.     */
 } ra8_i3c_msdvad_bits_t;
 
 /**
@@ -254,7 +254,8 @@ typedef enum : uint32_t {
   k_ra8_i3c_rstctl_intlrst_mask = 0x00010000UL, /**< Internal software reset.    */
   k_ra8_i3c_rstctl_fifo_mask =
     (k_ra8_i3c_rstctl_cmdqrst_mask | k_ra8_i3c_rstctl_rspqrst_mask | k_ra8_i3c_rstctl_tdbrst_mask |
-     k_ra8_i3c_rstctl_rdbrst_mask | k_ra8_i3c_rstctl_ibiqrst_mask | k_ra8_i3c_rstctl_rsqrst_mask),
+     k_ra8_i3c_rstctl_rdbrst_mask | k_ra8_i3c_rstctl_ibiqrst_mask |
+     k_ra8_i3c_rstctl_rsqrst_mask), /**< RA8 I3C rstctl FIFO mask. */
 } ra8_i3c_rstctl_bits_t;
 
 /**
@@ -315,22 +316,22 @@ typedef enum : uint8_t {
  * See HUM Ch 40 "Command Descriptor" pp 2445-2701.
  */
 typedef enum : uint32_t {
-  k_ra8_i3c_cmd_attr_shift        = 0U,
-  k_ra8_i3c_cmd_attr_xfer         = 0U,  /**< Regular transfer attribute.        */
-  k_ra8_i3c_cmd_attr_immed        = 1U,  /**< Immediate-data transfer attribute. */
-  k_ra8_i3c_cmd_attr_addr_assgn   = 2U,  /**< Address-assignment attribute.      */
-  k_ra8_i3c_cmd_tid_shift         = 3U,  /**< Transaction ID position.           */
-  k_ra8_i3c_cmd_code_shift        = 7U,  /**< CCC opcode position.               */
-  k_ra8_i3c_cmd_dev_index_shift   = 16U, /**< Device-table index.                */
-  k_ra8_i3c_cmd_cp_shift          = 15U, /**< Command Present (CCC) flag.        */
-  k_ra8_i3c_cmd_xfer_mode_shift   = 26U,
-  k_ra8_i3c_cmd_addr_count_shift  = 26U, /**< ENTDAA device count.            */
-  k_ra8_i3c_cmd_rnw_shift         = 29U, /**< Read-not-Write direction bit.   */
-  k_ra8_i3c_cmd_roc_shift         = 30U, /**< Response-on-Completion.         */
-  k_ra8_i3c_cmd_toc_shift         = 31U, /**< Terminate-on-Completion (STOP). */
-  k_ra8_i3c_cmd_immed_bytes_shift = 23U, /**< Immediate byte count [24:23].   */
-  k_ra8_i3c_cmd_xfer_length_shift = 16U, /**< Transfer length [31:16].        */
-  k_ra8_i3c_cmd_xfer_length_max   = 0xFFFFUL,
+  k_ra8_i3c_cmd_attr_shift        = 0U,       /**< RA8 I3C cmd attr shift.            */
+  k_ra8_i3c_cmd_attr_xfer         = 0U,       /**< Regular transfer attribute.        */
+  k_ra8_i3c_cmd_attr_immed        = 1U,       /**< Immediate-data transfer attribute. */
+  k_ra8_i3c_cmd_attr_addr_assgn   = 2U,       /**< Address-assignment attribute.      */
+  k_ra8_i3c_cmd_tid_shift         = 3U,       /**< Transaction ID position.           */
+  k_ra8_i3c_cmd_code_shift        = 7U,       /**< CCC opcode position.               */
+  k_ra8_i3c_cmd_dev_index_shift   = 16U,      /**< Device-table index.                */
+  k_ra8_i3c_cmd_cp_shift          = 15U,      /**< Command Present (CCC) flag.        */
+  k_ra8_i3c_cmd_xfer_mode_shift   = 26U,      /**< RA8 I3C cmd xfer mode shift.       */
+  k_ra8_i3c_cmd_addr_count_shift  = 26U,      /**< ENTDAA device count.               */
+  k_ra8_i3c_cmd_rnw_shift         = 29U,      /**< Read-not-Write direction bit.      */
+  k_ra8_i3c_cmd_roc_shift         = 30U,      /**< Response-on-Completion.            */
+  k_ra8_i3c_cmd_toc_shift         = 31U,      /**< Terminate-on-Completion (STOP).    */
+  k_ra8_i3c_cmd_immed_bytes_shift = 23U,      /**< Immediate byte count [24:23].      */
+  k_ra8_i3c_cmd_xfer_length_shift = 16U,      /**< Transfer length [31:16].           */
+  k_ra8_i3c_cmd_xfer_length_max   = 0xFFFFUL, /**< RA8 I3C cmd xfer length maximum.   */
 } ra8_i3c_cmd_desc_bits_t;
 
 /**
@@ -356,12 +357,12 @@ typedef enum : uint32_t {
  * encoded by IBI_ST.  See HUM Ch 40 "IBI Status Descriptor".
  */
 typedef enum : uint32_t {
-  k_ra8_i3c_ibi_status_length_shift = 0U,
-  k_ra8_i3c_ibi_status_length_mask  = 0x000000FFUL,
-  k_ra8_i3c_ibi_status_id_shift     = 8U,
-  k_ra8_i3c_ibi_status_id_mask      = 0x0000FF00UL,
-  k_ra8_i3c_ibi_status_last_shift   = 24U,
-  k_ra8_i3c_ibi_status_ibi_st_mask  = 0x80000000UL, /**< IBI status type bit 31. */
+  k_ra8_i3c_ibi_status_length_shift = 0U,           /**< RA8 I3C ibi status length shift. */
+  k_ra8_i3c_ibi_status_length_mask  = 0x000000FFUL, /**< RA8 I3C ibi status length mask.  */
+  k_ra8_i3c_ibi_status_id_shift     = 8U,           /**< RA8 I3C ibi status ID shift.     */
+  k_ra8_i3c_ibi_status_id_mask      = 0x0000FF00UL, /**< RA8 I3C ibi status ID mask.      */
+  k_ra8_i3c_ibi_status_last_shift   = 24U,          /**< RA8 I3C ibi status last shift.   */
+  k_ra8_i3c_ibi_status_ibi_st_mask  = 0x80000000UL, /**< IBI status type bit 31.          */
 } ra8_i3c_ibi_status_bits_t;
 
 /**
@@ -398,22 +399,22 @@ typedef enum : uint32_t {
  * @brief FSP-canonical byte offsets used by the layout asserts below.
  */
 typedef enum : uint16_t {
-  k_ra8_i3c_off_bctl     = 0x014U,
-  k_ra8_i3c_off_msdvad   = 0x018U,
-  k_ra8_i3c_off_rstctl   = 0x020U,
-  k_ra8_i3c_off_inst     = 0x030U,
-  k_ra8_i3c_off_dvct     = 0x044U,
-  k_ra8_i3c_off_ibinctl  = 0x058U,
-  k_ra8_i3c_off_bfctl    = 0x060U,
-  k_ra8_i3c_off_refckctl = 0x070U,
-  k_ra8_i3c_off_ackctl   = 0x0A0U,
-  k_ra8_i3c_off_scstlctl = 0x0B0U,
-  k_ra8_i3c_off_ncmdqp   = 0x150U,
-  k_ra8_i3c_off_nrspqp   = 0x154U,
-  k_ra8_i3c_off_ntdtbp0  = 0x158U,
-  k_ra8_i3c_off_nibiqp   = 0x17CU,
-  k_ra8_i3c_off_nrsqp    = 0x180U,
-  k_ra8_i3c_off_ntst     = 0x1E0U,
+  k_ra8_i3c_off_bctl     = 0x014U, /**< RA8 I3C off bctl.     */
+  k_ra8_i3c_off_msdvad   = 0x018U, /**< RA8 I3C off msdvad.   */
+  k_ra8_i3c_off_rstctl   = 0x020U, /**< RA8 I3C off rstctl.   */
+  k_ra8_i3c_off_inst     = 0x030U, /**< RA8 I3C off inst.     */
+  k_ra8_i3c_off_dvct     = 0x044U, /**< RA8 I3C off dvct.     */
+  k_ra8_i3c_off_ibinctl  = 0x058U, /**< RA8 I3C off ibinctl.  */
+  k_ra8_i3c_off_bfctl    = 0x060U, /**< RA8 I3C off bfctl.    */
+  k_ra8_i3c_off_refckctl = 0x070U, /**< RA8 I3C off refckctl. */
+  k_ra8_i3c_off_ackctl   = 0x0A0U, /**< RA8 I3C off ackctl.   */
+  k_ra8_i3c_off_scstlctl = 0x0B0U, /**< RA8 I3C off scstlctl. */
+  k_ra8_i3c_off_ncmdqp   = 0x150U, /**< RA8 I3C off ncmdqp.   */
+  k_ra8_i3c_off_nrspqp   = 0x154U, /**< RA8 I3C off nrspqp.   */
+  k_ra8_i3c_off_ntdtbp0  = 0x158U, /**< RA8 I3C off ntdtbp0.  */
+  k_ra8_i3c_off_nibiqp   = 0x17CU, /**< RA8 I3C off nibiqp.   */
+  k_ra8_i3c_off_nrsqp    = 0x180U, /**< RA8 I3C off nrsqp.    */
+  k_ra8_i3c_off_ntst     = 0x1E0U, /**< RA8 I3C off ntst.     */
 } ra8_i3c_offset_t;
 
 /* Compile-time guards: every register that the I3C driver reads or

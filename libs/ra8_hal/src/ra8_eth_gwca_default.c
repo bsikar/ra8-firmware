@@ -52,9 +52,9 @@ static const char* s_tag = "ETHGWC";
 static uint32_t internal_decode_ds(const ra8_gwca_basic_descriptor_t* desc)
 {
   enum : uint32_t {
-    k_ra8_ds_low_mask   = 0xFFU,
-    k_ra8_ds_high_shift = 8U,
-    k_ra8_ds_high_mask  = 0xFU,
+    k_ra8_ds_low_mask   = 0xFFU, /**< RA8 ds low mask.   */
+    k_ra8_ds_high_shift = 8U,    /**< RA8 ds high shift. */
+    k_ra8_ds_high_mask  = 0xFU,  /**< RA8 ds high mask.  */
   };
   return ((uint32_t)desc->ds_l & k_ra8_ds_low_mask) |
          (((uint32_t)desc->ds_h & k_ra8_ds_high_mask) << k_ra8_ds_high_shift);
@@ -221,8 +221,8 @@ internal_tx_ext_rearm(ra8_gwca_ext_descriptor_t* chain, uint32_t depth, uint32_t
     return;
   }
   enum : uintptr_t {
-    k_ptr_hi_shift = 32U,
-    k_ptr_hi_mask  = 0xFFULL,
+    k_ptr_hi_shift = 32U,     /**< Pointer hi shift. */
+    k_ptr_hi_mask  = 0xFFULL, /**< Pointer hi mask.  */
   };
   const uintptr_t head = (uintptr_t)&chain[0];
   term->ptr_h          = (uint8_t)(((uint64_t)head >> k_ptr_hi_shift) & (uint64_t)k_ptr_hi_mask);

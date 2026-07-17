@@ -57,12 +57,12 @@ typedef enum : uint8_t {
 
 /** @brief XYZ sample byte offsets within the 6-byte burst. */
 typedef enum : uint8_t {
-  k_lsm6dso_xyz_off_x_l = 0U,
-  k_lsm6dso_xyz_off_x_h = 1U,
-  k_lsm6dso_xyz_off_y_l = 2U,
-  k_lsm6dso_xyz_off_y_h = 3U,
-  k_lsm6dso_xyz_off_z_l = 4U,
-  k_lsm6dso_xyz_off_z_h = 5U,
+  k_lsm6dso_xyz_off_x_l = 0U, /**< Lsm6dso xyz off x l. */
+  k_lsm6dso_xyz_off_x_h = 1U, /**< Lsm6dso xyz off x h. */
+  k_lsm6dso_xyz_off_y_l = 2U, /**< Lsm6dso xyz off y l. */
+  k_lsm6dso_xyz_off_y_h = 3U, /**< Lsm6dso xyz off y h. */
+  k_lsm6dso_xyz_off_z_l = 4U, /**< Lsm6dso xyz off z l. */
+  k_lsm6dso_xyz_off_z_h = 5U, /**< Lsm6dso xyz off z h. */
 } ra8_lsm6dso_xyz_off_t;
 
 /** @brief CTRL1_XL / CTRL2_G field positions (DS12140 sec 9.12 / 9.13). */
@@ -92,10 +92,10 @@ typedef enum : int32_t {
 
 /** @brief Enum upper bounds used by RA8_CHECK_RANGE_TAG. */
 typedef enum : uint8_t {
-  k_lsm6dso_xl_fs_max = (uint8_t)k_lsm6dso_g_fs_2000dps, /* shared cap value 0x04 */
-  k_lsm6dso_xl_fs_cap = (uint8_t)k_lsm6dso_xl_fs_8g,     /**< Highest XL FS code. */
-  k_lsm6dso_g_fs_cap  = (uint8_t)k_lsm6dso_g_fs_2000dps, /**< Highest G  FS code. */
-  k_lsm6dso_odr_cap   = (uint8_t)k_lsm6dso_odr_6660hz,   /**< Highest ODR code.   */
+  k_lsm6dso_xl_fs_max = (uint8_t)k_lsm6dso_g_fs_2000dps, /**< shared cap value 0x04. */
+  k_lsm6dso_xl_fs_cap = (uint8_t)k_lsm6dso_xl_fs_8g,     /**< Highest XL FS code.    */
+  k_lsm6dso_g_fs_cap  = (uint8_t)k_lsm6dso_g_fs_2000dps, /**< Highest G  FS code.    */
+  k_lsm6dso_odr_cap   = (uint8_t)k_lsm6dso_odr_6660hz,   /**< Highest ODR code.      */
 } ra8_lsm6dso_cap_t;
 
 /* =============================================================================

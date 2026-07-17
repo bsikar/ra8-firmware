@@ -69,10 +69,10 @@ typedef enum : uint16_t {
  * @brief Per-byte left-shift constants for serialisation.
  */
 typedef enum : uint8_t {
-  k_ra8_pmsc_shift_byte0 = 0U,
-  k_ra8_pmsc_shift_byte1 = 8U,
-  k_ra8_pmsc_shift_byte2 = 16U,
-  k_ra8_pmsc_shift_byte3 = 24U,
+  k_ra8_pmsc_shift_byte0 = 0U,  /**< RA8 pmsc shift byte0. */
+  k_ra8_pmsc_shift_byte1 = 8U,  /**< RA8 pmsc shift byte1. */
+  k_ra8_pmsc_shift_byte2 = 16U, /**< RA8 pmsc shift byte2. */
+  k_ra8_pmsc_shift_byte3 = 24U, /**< RA8 pmsc shift byte3. */
 } ra8_usb_pmsc_byte_shift_t;
 
 /**
@@ -80,7 +80,7 @@ typedef enum : uint8_t {
  * @brief Single-byte extraction mask.
  */
 typedef enum : uint32_t {
-  k_ra8_pmsc_byte_mask = 0xFFU,
+  k_ra8_pmsc_byte_mask = 0xFFU, /**< RA8 pmsc byte mask. */
 } ra8_usb_pmsc_byte_mask_t;
 
 /**

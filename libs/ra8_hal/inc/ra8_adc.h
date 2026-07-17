@@ -86,7 +86,7 @@ typedef struct {
  * @brief ADCSR status mask.
  */
 typedef enum : uint16_t {
-  k_ra8_adc_status_none = 0x0000U,
+  k_ra8_adc_status_none = 0x0000U, /**< RA8 ADC status none.               */
   k_ra8_adc_status_busy = 0x8000U, /**< ADCSR.ADST (conversion in flight). */
   k_ra8_adc_status_ie   = 0x1000U, /**< ADCSR.ADIE.                        */
 } ra8_adc_status_mask_t;
@@ -133,8 +133,8 @@ typedef enum : uint8_t {
  * changing the public surface.
  */
 typedef enum : uint8_t {
-  k_ra8_adc_priority_low  = 0U,
-  k_ra8_adc_priority_high = 1U,
+  k_ra8_adc_priority_low  = 0U, /**< RA8 ADC priority low.  */
+  k_ra8_adc_priority_high = 1U, /**< RA8 ADC priority high. */
 } ra8_adc_priority_t;
 
 /**

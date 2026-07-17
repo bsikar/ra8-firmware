@@ -99,7 +99,7 @@ typedef enum : uint32_t {
  * flag is observed on the very next poll regardless of host load.
  */
 typedef enum : uint32_t {
-  k_ra8_sdhi_cmd_spin = 2000000U,
+  k_ra8_sdhi_cmd_spin = 2000000U, /**< RA8 SDHI cmd spin. */
 } ra8_sdhi_timing_t;
 
 ra8_err_t ra8_sdhi_init(uint8_t instance)
@@ -405,7 +405,7 @@ ra8_err_t ra8_sdhi_exit_stop(uint8_t instance)
  * returning ``k_ra8_err_hw_timeout``.
  */
 typedef enum : uint32_t {
-  k_ra8_sdhi_fifo_spin = 1000000U,
+  k_ra8_sdhi_fifo_spin = 1000000U, /**< RA8 SDHI FIFO spin. */
 } ra8_sdhi_fifo_timing_t;
 
 /**

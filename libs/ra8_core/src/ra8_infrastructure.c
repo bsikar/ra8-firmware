@@ -40,7 +40,7 @@ extern uint32_t g_ra8_ls_stack_canary_end[];
 #endif
 
 typedef enum : uint32_t {
-  k_ra8_stack_canary_pattern = 0xDEADBEEFUL,
+  k_ra8_stack_canary_pattern = 0xDEADBEEFUL, /**< RA8 stack canary pattern. */
 } ra8_stack_canary_pattern_t;
 
 /**

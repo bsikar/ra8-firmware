@@ -40,7 +40,7 @@ static const char* s_tag = "AGT";
  * their clock from the shared LOCO / sub-clock path.
  */
 typedef enum : uint8_t {
-  k_ra8_agt_mstp_id_count = 2U,
+  k_ra8_agt_mstp_id_count = 2U, /**< RA8 AGT mstp ID count. */
 } ra8_agt_mstp_limit_t;
 
 /**
@@ -761,8 +761,8 @@ static void agt_cascade_arm_half(volatile r_agt_regs_t* reg, uint8_t tmr1, uint1
 
 /** @brief Shift / mask used to split the cascade 32-bit reload. */
 typedef enum : uint32_t {
-  k_ra8_agt_cascade_lo_mask  = 0xFFFFU,
-  k_ra8_agt_cascade_hi_shift = 16U,
+  k_ra8_agt_cascade_lo_mask  = 0xFFFFU, /**< RA8 AGT cascade lo mask.  */
+  k_ra8_agt_cascade_hi_shift = 16U,     /**< RA8 AGT cascade hi shift. */
 } ra8_agt_cascade_split_t;
 
 /**

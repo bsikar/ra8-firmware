@@ -56,38 +56,38 @@ extern "C" {
  * analysis and clang-tidy's naming rules both see them.
  */
 typedef enum : uint8_t {
-  k_ra8_bit_0  = 0U,
-  k_ra8_bit_1  = 1U,
-  k_ra8_bit_2  = 2U,
-  k_ra8_bit_3  = 3U,
-  k_ra8_bit_4  = 4U,
-  k_ra8_bit_5  = 5U,
-  k_ra8_bit_6  = 6U,
-  k_ra8_bit_7  = 7U,
-  k_ra8_bit_8  = 8U,
-  k_ra8_bit_9  = 9U,
-  k_ra8_bit_10 = 10U,
-  k_ra8_bit_11 = 11U,
-  k_ra8_bit_12 = 12U,
-  k_ra8_bit_13 = 13U,
-  k_ra8_bit_14 = 14U,
-  k_ra8_bit_15 = 15U,
-  k_ra8_bit_16 = 16U,
-  k_ra8_bit_17 = 17U,
-  k_ra8_bit_18 = 18U,
-  k_ra8_bit_19 = 19U,
-  k_ra8_bit_20 = 20U,
-  k_ra8_bit_21 = 21U,
-  k_ra8_bit_22 = 22U,
-  k_ra8_bit_23 = 23U,
-  k_ra8_bit_24 = 24U,
-  k_ra8_bit_25 = 25U,
-  k_ra8_bit_26 = 26U,
-  k_ra8_bit_27 = 27U,
-  k_ra8_bit_28 = 28U,
-  k_ra8_bit_29 = 29U,
-  k_ra8_bit_30 = 30U,
-  k_ra8_bit_31 = 31U,
+  k_ra8_bit_0  = 0U,  /**< RA8 bit 0.  */
+  k_ra8_bit_1  = 1U,  /**< RA8 bit 1.  */
+  k_ra8_bit_2  = 2U,  /**< RA8 bit 2.  */
+  k_ra8_bit_3  = 3U,  /**< RA8 bit 3.  */
+  k_ra8_bit_4  = 4U,  /**< RA8 bit 4.  */
+  k_ra8_bit_5  = 5U,  /**< RA8 bit 5.  */
+  k_ra8_bit_6  = 6U,  /**< RA8 bit 6.  */
+  k_ra8_bit_7  = 7U,  /**< RA8 bit 7.  */
+  k_ra8_bit_8  = 8U,  /**< RA8 bit 8.  */
+  k_ra8_bit_9  = 9U,  /**< RA8 bit 9.  */
+  k_ra8_bit_10 = 10U, /**< RA8 bit 10. */
+  k_ra8_bit_11 = 11U, /**< RA8 bit 11. */
+  k_ra8_bit_12 = 12U, /**< RA8 bit 12. */
+  k_ra8_bit_13 = 13U, /**< RA8 bit 13. */
+  k_ra8_bit_14 = 14U, /**< RA8 bit 14. */
+  k_ra8_bit_15 = 15U, /**< RA8 bit 15. */
+  k_ra8_bit_16 = 16U, /**< RA8 bit 16. */
+  k_ra8_bit_17 = 17U, /**< RA8 bit 17. */
+  k_ra8_bit_18 = 18U, /**< RA8 bit 18. */
+  k_ra8_bit_19 = 19U, /**< RA8 bit 19. */
+  k_ra8_bit_20 = 20U, /**< RA8 bit 20. */
+  k_ra8_bit_21 = 21U, /**< RA8 bit 21. */
+  k_ra8_bit_22 = 22U, /**< RA8 bit 22. */
+  k_ra8_bit_23 = 23U, /**< RA8 bit 23. */
+  k_ra8_bit_24 = 24U, /**< RA8 bit 24. */
+  k_ra8_bit_25 = 25U, /**< RA8 bit 25. */
+  k_ra8_bit_26 = 26U, /**< RA8 bit 26. */
+  k_ra8_bit_27 = 27U, /**< RA8 bit 27. */
+  k_ra8_bit_28 = 28U, /**< RA8 bit 28. */
+  k_ra8_bit_29 = 29U, /**< RA8 bit 29. */
+  k_ra8_bit_30 = 30U, /**< RA8 bit 30. */
+  k_ra8_bit_31 = 31U, /**< RA8 bit 31. */
 } ra8_bit_position_t;
 
 /* =============================================================================

@@ -40,8 +40,8 @@ static const char* s_tag = "SMBUS";
  */
 /** @brief SMBus scratch buffer sizes (max 255-byte payload + overhead). */
 typedef enum : uint16_t {
-  k_smbus_frame_bytes = 258U,
-  k_smbus_rx_bytes    = 257U,
+  k_smbus_frame_bytes = 258U, /**< Smbus frame bytes. */
+  k_smbus_rx_bytes    = 257U, /**< Smbus RX bytes.    */
 } smbus_buf_size_t;
 
 typedef enum : uint16_t {

@@ -300,7 +300,8 @@ typedef struct {
    * alignment. Without the alignment specifier the cast is
    * undefined behaviour on strict-alignment architectures. */
   // cppcheck-suppress unusedStructMember
-  alignas(max_align_t) uint8_t zip_archive_storage[k_ra8_epub_zip_archive_bytes];
+  alignas(max_align_t) uint8_t
+    zip_archive_storage[k_ra8_epub_zip_archive_bytes]; /**< Zip archive storage. */
   // cppcheck-suppress unusedStructMember
   uint8_t zip_archive_active; /**< 1 = mz_zip_reader_init succeeded. */
 

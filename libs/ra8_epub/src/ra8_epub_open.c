@@ -53,7 +53,7 @@ static const char* const k_container_path = "META-INF/container.xml";
  */
 
 typedef struct {
-  char opf_path[k_ra8_epub_max_path_len];
+  char opf_path[k_ra8_epub_max_path_len]; /**< Opf path. */
 } ra8_epub_container_result_t;
 
 ra8_err_t ra8_epub_xml_parse_container(const uint8_t*               xml_bytes,

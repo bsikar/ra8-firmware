@@ -60,7 +60,8 @@ typedef enum : uint32_t {
  * 8-byte-aligned address must be zero.
  */
 typedef enum : uintptr_t {
-  k_ra8_ceu_buffer_align_mask = (uintptr_t)k_ra8_ceu_buffer_align_bytes - 1U,
+  k_ra8_ceu_buffer_align_mask =
+    (uintptr_t)k_ra8_ceu_buffer_align_bytes - 1U, /**< RA8 CEU buffer align mask. */
 } ra8_ceu_align_mask_t;
 
 /**
@@ -73,7 +74,7 @@ typedef enum : uintptr_t {
  * test the lower bits cheaply.
  */
 typedef enum : uint32_t {
-  k_ra8_ceu_dma_byte_align_mask = 3U,
+  k_ra8_ceu_dma_byte_align_mask = 3U, /**< RA8 CEU DMA byte align mask.         */
   k_ra8_ceu_dma_count_shift     = 2U, /**< divide-by-4 to convert bytes->words. */
 } ra8_ceu_dma_align_t;
 

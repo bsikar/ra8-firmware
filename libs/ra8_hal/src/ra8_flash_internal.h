@@ -121,9 +121,9 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra8_flash_freq_key_shift = 24U, /**< KEY[7:0] @ [31:24] in MRCFREQ/MREFREQ. */
-  k_ra8_flash_mrcfreq_key    = 0x1EU,
-  k_ra8_flash_mrefreq_key    = 0xE1U,
+  k_ra8_flash_freq_key_shift = 24U,   /**< KEY[7:0] @ [31:24] in MRCFREQ/MREFREQ. */
+  k_ra8_flash_mrcfreq_key    = 0x1EU, /**< RA8 flash mrcfreq key.                 */
+  k_ra8_flash_mrefreq_key    = 0xE1U, /**< RA8 flash mrefreq key.                 */
 } ra8_flash_key_t;
 
 /**

@@ -53,11 +53,11 @@ typedef enum : uint32_t {
   k_ra8_mipi_dsi_clear_all = 0xFFFFFFFFUL, /**< RW1C all-ones write mask. */
   k_ra8_mipi_dsi_isr_all = k_ra8_mipi_dsi_isr_sq0 | k_ra8_mipi_dsi_isr_sq1 | k_ra8_mipi_dsi_isr_vm |
                            k_ra8_mipi_dsi_isr_rcv | k_ra8_mipi_dsi_isr_ferr |
-                           k_ra8_mipi_dsi_isr_ppi,
-  k_ra8_mipi_dsi_byte_mask = 0xFFUL, /**< 8-bit byte field.      */
-  k_ra8_mipi_dsi_vc_mask   = 0x3UL,  /**< 2-bit virtual-channel. */
-  k_ra8_mipi_dsi_dt_mask   = 0x3FUL, /**< 6-bit DSI Data Type.   */
-  k_ra8_mipi_dsi_bta_mask  = 0x3UL,  /**< 2-bit BTA selector.    */
+                           k_ra8_mipi_dsi_isr_ppi, /**< RA8 mipi dsi ISR all.  */
+  k_ra8_mipi_dsi_byte_mask = 0xFFUL,               /**< 8-bit byte field.      */
+  k_ra8_mipi_dsi_vc_mask   = 0x3UL,                /**< 2-bit virtual-channel. */
+  k_ra8_mipi_dsi_dt_mask   = 0x3FUL,               /**< 6-bit DSI Data Type.   */
+  k_ra8_mipi_dsi_bta_mask  = 0x3UL,                /**< 2-bit BTA selector.    */
 } ra8_mipi_dsi_internal_t;
 
 /**
@@ -70,14 +70,14 @@ typedef enum : uint32_t {
  * receive-result, and ack/error registers.
  */
 typedef enum : uint8_t {
-  k_shift_8              = 8U,
-  k_ulpssetr_wkup_shift  = 0U,
-  k_dsisetr_mrpsz_shift  = 0U,
-  k_dsisetr_vc_crc_shift = 20U,
-  k_rxrss_data1_shift    = 8U,
-  k_rxrss_dt_shift       = 16U,
-  k_rxrss_vc_shift       = 22U,
-  k_akep_vc_shift        = 16U,
+  k_shift_8              = 8U,  /**< Shift 8.              */
+  k_ulpssetr_wkup_shift  = 0U,  /**< Ulpssetr wkup shift.  */
+  k_dsisetr_mrpsz_shift  = 0U,  /**< Dsisetr mrpsz shift.  */
+  k_dsisetr_vc_crc_shift = 20U, /**< Dsisetr vc CRC shift. */
+  k_rxrss_data1_shift    = 8U,  /**< Rxrss data1 shift.    */
+  k_rxrss_dt_shift       = 16U, /**< Rxrss dt shift.       */
+  k_rxrss_vc_shift       = 22U, /**< Rxrss vc shift.       */
+  k_akep_vc_shift        = 16U, /**< Akep vc shift.        */
 } ra8_mipi_dsi_shifts_t;
 
 /**

@@ -58,7 +58,7 @@ typedef enum : uint8_t {
  * (NASA Power of 10 Rule 2).
  */
 typedef enum : uint16_t {
-  k_ra8_mstp_readback_spin = 0x100U,
+  k_ra8_mstp_readback_spin = 0x100U, /**< RA8 mstp readback spin. */
 } ra8_mstp_spin_t;
 
 /**
@@ -76,7 +76,7 @@ typedef enum : uint16_t {
  * HUM Ch 11.2.6 p 443, MSTPA0..MSTPA3.
  */
 typedef enum : uint32_t {
-  k_ra8_mstp_all_stopped    = 0xFFFFFFFFU,
+  k_ra8_mstp_all_stopped    = 0xFFFFFFFFU, /**< RA8 mstp all stopped.               */
   k_ra8_mstp_safe_stopped_a = 0xFFFFFFF0U, /**< MSTPCRA: bits 0-3 (SRAM0-3) kept 0. */
 } ra8_mstp_init_val_t;
 

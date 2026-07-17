@@ -26,15 +26,15 @@ extern "C" {
 #include <stdint.h>
 
 typedef enum : uintptr_t {
-  k_ra8_gpt0_base_addr    = 0x40322000UL,
+  k_ra8_gpt0_base_addr    = 0x40322000UL, /**< RA8 gpt0 base address.  */
   k_ra8_gpt_gtclk_addr    = 0x40323F10UL, /**< Shared GTCLK regs.      */
   k_ra8_gpt_odc_base_addr = 0x40324000UL, /**< Output Disable Control. */
   k_ra8_gpt_ops_base_addr = 0x40323F00UL, /**< Output Phase Switching. */
 } ra8_gpt_addr_t;
 
 typedef enum : uint16_t {
-  k_ra8_gpt_channel_count  = 14U,
-  k_ra8_gpt_channel_stride = 0x100U,
+  k_ra8_gpt_channel_count  = 14U,    /**< RA8 GPT channel count.  */
+  k_ra8_gpt_channel_stride = 0x100U, /**< RA8 GPT channel stride. */
 } ra8_gpt_limits_t;
 
 /**

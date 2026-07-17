@@ -135,10 +135,10 @@ typedef enum : uint8_t {
  * @brief RCR1 IRQ enable bits.
  */
 typedef enum : uint8_t {
-  k_ra8_rtc_irq_none     = 0x00U,
-  k_ra8_rtc_irq_alarm    = 0x01U, /**< RCR1.AIE. */
-  k_ra8_rtc_irq_carry    = 0x02U, /**< RCR1.CIE. */
-  k_ra8_rtc_irq_periodic = 0x04U, /**< RCR1.PIE. */
+  k_ra8_rtc_irq_none     = 0x00U, /**< RA8 rtc IRQ none. */
+  k_ra8_rtc_irq_alarm    = 0x01U, /**< RCR1.AIE.         */
+  k_ra8_rtc_irq_carry    = 0x02U, /**< RCR1.CIE.         */
+  k_ra8_rtc_irq_periodic = 0x04U, /**< RCR1.PIE.         */
 } ra8_rtc_irq_mask_t;
 
 /**

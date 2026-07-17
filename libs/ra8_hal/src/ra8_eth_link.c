@@ -196,8 +196,8 @@ static void internal_pick_negotiated_speed(uint16_t           anlpar,
  * read (typically zero -> 10M HD).
  */
 typedef enum : uint32_t {
-  k_ra8_eth_an_poll_period_ms = 50U,
-  k_ra8_eth_an_poll_max_iters = 80U, /**< 80 * 50 ms = 4 s ceiling. */
+  k_ra8_eth_an_poll_period_ms = 50U, /**< RA8 Ethernet an poll period ms. */
+  k_ra8_eth_an_poll_max_iters = 80U, /**< 80 * 50 ms = 4 s ceiling.       */
 } ra8_eth_an_poll_t;
 
 /**

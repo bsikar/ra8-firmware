@@ -88,7 +88,7 @@ typedef enum : uint8_t {
  * 110 "write error". Mask with ``k_sd_data_response_mask`` first.
  */
 typedef enum : uint8_t {
-  k_sd_data_response_mask      = 0x1FU,
+  k_sd_data_response_mask      = 0x1FU, /**< SD data response mask.    */
   k_sd_data_response_accepted  = 0x05U, /**< 0b00101 -- data accepted. */
   k_sd_data_response_crc_err   = 0x0BU, /**< 0b01011 -- CRC error.     */
   k_sd_data_response_write_err = 0x0DU, /**< 0b01101 -- write error.   */
@@ -102,17 +102,17 @@ typedef enum : uint32_t {
   /* CMD0 has a static CRC7-shifted-and-tagged byte of 0x95 (SD spec PHY
    * v9 section 7.3.1.1 example). Pre-computing avoids running CRC7 over
    * the all-zero argument every probe. */
-  k_sd_crc7_cmd0_byte = 0x95U,
+  k_sd_crc7_cmd0_byte = 0x95U, /**< SD crc7 cmd0 byte. */
   /* CMD8 with argument 0x000001AA uses the documented "pattern 0xAA at
    * 2.7-3.6 V" check (SD spec PHY v9 section 7.3.2.6). The CRC7-shifted
    * byte for this exact frame is 0x87, also published in the spec. */
-  k_sd_cmd8_arg_check_pattern = 0x000001AAUL,
-  k_sd_crc7_cmd8_byte         = 0x87U,
+  k_sd_cmd8_arg_check_pattern = 0x000001AAUL, /**< SD cmd8 arg check pattern. */
+  k_sd_crc7_cmd8_byte         = 0x87U,        /**< SD crc7 cmd8 byte.         */
   /* ACMD41 with HCS=1 for v2.x cards. */
-  k_sd_acmd41_arg_hcs = 0x40000000UL,
+  k_sd_acmd41_arg_hcs = 0x40000000UL, /**< SD acmd41 arg hcs. */
   /* OCR bit set when CCS = 1 (block-addressed SDHC/SDXC). */
-  k_sd_ocr_ccs_bit  = 0x40000000UL,
-  k_sd_ocr_busy_bit = 0x80000000UL,
+  k_sd_ocr_ccs_bit  = 0x40000000UL, /**< SD ocr ccs bit.  */
+  k_sd_ocr_busy_bit = 0x80000000UL, /**< SD ocr busy bit. */
   /* Retry budgets -- bounded loops, NASA P10 Rule 2. */
   k_sd_max_r1_wait_bytes    = 16U, /**< R1 must appear within 8 bytes per spec; allow 2x slack. */
   k_sd_max_data_token_polls = 50000U,  /**< ~500 ms at 100 us / poll.                           */
@@ -130,9 +130,9 @@ typedef enum : uint32_t {
  * @brief Bit-shift constants reused across byte packing.
  */
 typedef enum : uint8_t {
-  k_sd_bit_byte       = 8U,
-  k_sd_bit_two_byte   = 16U,
-  k_sd_bit_three_byte = 24U,
+  k_sd_bit_byte       = 8U,  /**< SD bit byte.       */
+  k_sd_bit_two_byte   = 16U, /**< SD bit two byte.   */
+  k_sd_bit_three_byte = 24U, /**< SD bit three byte. */
 } sd_bit_shift_t;
 
 /**

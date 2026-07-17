@@ -24,15 +24,15 @@ extern "C" {
 #include <stdint.h>
 
 typedef enum : uintptr_t {
-  k_ra8_poeg0_base_addr = 0x40212000UL,
-  k_ra8_poeg1_base_addr = 0x40212100UL,
-  k_ra8_poeg2_base_addr = 0x40212200UL,
-  k_ra8_poeg3_base_addr = 0x40212300UL,
+  k_ra8_poeg0_base_addr = 0x40212000UL, /**< RA8 poeg0 base address. */
+  k_ra8_poeg1_base_addr = 0x40212100UL, /**< RA8 poeg1 base address. */
+  k_ra8_poeg2_base_addr = 0x40212200UL, /**< RA8 poeg2 base address. */
+  k_ra8_poeg3_base_addr = 0x40212300UL, /**< RA8 poeg3 base address. */
 } ra8_poeg_addr_t;
 
 typedef enum : uint16_t {
-  k_ra8_poeg_group_count  = 4U,
-  k_ra8_poeg_group_stride = 0x100U,
+  k_ra8_poeg_group_count  = 4U,     /**< RA8 poeg group count.  */
+  k_ra8_poeg_group_stride = 0x100U, /**< RA8 poeg group stride. */
 } ra8_poeg_limits_t;
 
 typedef struct {

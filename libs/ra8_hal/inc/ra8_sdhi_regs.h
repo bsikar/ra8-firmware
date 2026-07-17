@@ -29,13 +29,13 @@ extern "C" {
 #include <stdint.h>
 
 typedef enum : uintptr_t {
-  k_ra8_sdhi0_base_addr = 0x40252000UL,
-  k_ra8_sdhi1_base_addr = 0x40252400UL,
-  k_ra8_sdhi_stride     = 0x400UL,
+  k_ra8_sdhi0_base_addr = 0x40252000UL, /**< RA8 sdhi0 base address. */
+  k_ra8_sdhi1_base_addr = 0x40252400UL, /**< RA8 sdhi1 base address. */
+  k_ra8_sdhi_stride     = 0x400UL,      /**< RA8 SDHI stride.        */
 } ra8_sdhi_addr_t;
 
 typedef enum : uint8_t {
-  k_ra8_sdhi_instance_count = 2U,
+  k_ra8_sdhi_instance_count = 2U, /**< RA8 SDHI instance count. */
 } ra8_sdhi_limits_t;
 
 /**
@@ -246,8 +246,8 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  volatile uint32_t SD_CMD; /**< +0x00 Command Type Register. */
-  volatile uint32_t _r0;
+  volatile uint32_t SD_CMD;          /**< +0x00 Command Type Register. */
+  volatile uint32_t _r0;             /**< Reserved.                    */
   volatile uint32_t SD_ARG;          /**< +0x08 Argument (32-bit).     */
   volatile uint32_t SD_ARG1;         /**< +0x0C Argument 1 (16-bit).   */
   volatile uint32_t SD_STOP;         /**< +0x10 Stop.                  */

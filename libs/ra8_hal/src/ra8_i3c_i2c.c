@@ -163,8 +163,8 @@ static uint8_t internal_i3c_i2c_half_period(uint32_t bus_hz, uint32_t pclka_hz)
     return 0U;
   }
   enum : uint32_t {
-    k_ra8_i3c_i2c_period_split = 2U,
-    k_ra8_i3c_i2c_max_field    = 0xFFU,
+    k_ra8_i3c_i2c_period_split = 2U,    /**< RA8 I3C I2C period split.  */
+    k_ra8_i3c_i2c_max_field    = 0xFFU, /**< RA8 I3C I2C maximum field. */
   };
   const uint32_t total = pclka_hz / bus_hz;
   const uint32_t half  = total / k_ra8_i3c_i2c_period_split;
@@ -337,7 +337,8 @@ void internal_i3c_i2c_clear_bst(volatile r_i3c_i2c_regs_t* reg)
   enum : uint32_t {
     k_ra8_i3c_i2c_bst_clear_mask = k_ra8_i3c_i2c_msk_bst_stcnddf | k_ra8_i3c_i2c_msk_bst_spcnddf |
                                    k_ra8_i3c_i2c_msk_bst_nackdf | k_ra8_i3c_i2c_msk_bst_tendf |
-                                   k_ra8_i3c_i2c_msk_bst_alf | k_ra8_i3c_i2c_msk_bst_todf,
+                                   k_ra8_i3c_i2c_msk_bst_alf |
+                                   k_ra8_i3c_i2c_msk_bst_todf, /**< RA8 I3C I2C bst clear mask. */
   };
   /* HUM Ch 40.2.46 "BST : Bus Status Register" p 2490 */
   reg->BST = reg->BST & ~k_ra8_i3c_i2c_bst_clear_mask;

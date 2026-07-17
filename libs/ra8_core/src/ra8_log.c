@@ -234,7 +234,7 @@ static inline void internal_itm_putc(uint8_t byte)
    * now we poll with a small bound so a disconnected debugger never
    * stalls the firmware. */
   enum : uint32_t {
-    k_ra8_itm_poll_limit = 1000U,
+    k_ra8_itm_poll_limit = 1000U, /**< RA8 itm poll limit. */
   };
   for (uint32_t i = 0U; i < k_ra8_itm_poll_limit; i++) {
     if (*internal_itm_stim0() != 0U) {

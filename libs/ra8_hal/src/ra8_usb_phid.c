@@ -67,8 +67,8 @@ typedef enum : uint8_t {
  * @brief Per-byte shift constants for `wValue` decoding.
  */
 typedef enum : uint8_t {
-  k_ra8_phid_shift_byte0 = 0U,
-  k_ra8_phid_shift_byte1 = 8U,
+  k_ra8_phid_shift_byte0 = 0U, /**< RA8 phid shift byte0. */
+  k_ra8_phid_shift_byte1 = 8U, /**< RA8 phid shift byte1. */
 } ra8_usb_phid_byte_shift_t;
 
 /**
@@ -76,7 +76,7 @@ typedef enum : uint8_t {
  * @brief Per-byte mask constants for `wValue` decoding.
  */
 typedef enum : uint16_t {
-  k_ra8_phid_mask_byte = 0xFFU,
+  k_ra8_phid_mask_byte = 0xFFU, /**< RA8 phid mask byte. */
 } ra8_usb_phid_byte_mask_t;
 
 /* =============================================================================

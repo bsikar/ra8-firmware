@@ -88,12 +88,12 @@ typedef struct {
   union {
     volatile uint32_t CRCDIR;    /**< +0x04 Input Data (32-bit, CRC-32/32C). */
     volatile uint8_t  CRCDIR_BY; /**< +0x04 Input Data (8-bit alias).        */
-  };
+  }; /**< (anon) register. */
   union {
     volatile uint32_t CRCDOR;    /**< +0x08 Output Data (32-bit, CRC-32/32C). */
     volatile uint16_t CRCDOR_HA; /**< +0x08 Output Data (16-bit alias).       */
     volatile uint8_t  CRCDOR_BY; /**< +0x08 Output Data (8-bit alias).        */
-  };
+  }; /**< (anon) register. */
   volatile uint16_t CRCSAR; /**< +0x0C Snoop Address Register (14-bit). */
   volatile uint16_t _r1;    /**< +0x0E Reserved.                        */
 } r_crc_regs_t;

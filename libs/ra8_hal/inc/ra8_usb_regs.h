@@ -94,7 +94,7 @@ typedef enum : uintptr_t {
 #else
   k_ra8_usb_fs0_base_addr = 0x40250000UL, /**< USB Full-Speed base. */
   k_ra8_usb_hs0_base_addr = 0x40351000UL, /**< USB High-Speed base. */
-#endif
+#endif /**< (anon). */
 } ra8_usb_addr_t;
 
 /**
@@ -122,21 +122,21 @@ typedef enum : uint8_t {
  * the driver does not enable HS-PHY power-down sequences yet.
  */
 typedef struct {
-  volatile uint16_t SYSCFG;   /**< +0x000 System Configuration. */
-  volatile uint16_t BUSWAIT;  /**< +0x002 CPU bus wait.         */
-  volatile uint16_t SYSSTS0;  /**< +0x004 System Status 0.      */
-  volatile uint16_t _r0;      /**< +0x006 Reserved.             */
-  volatile uint16_t DVSTCTR0; /**< +0x008 Device State Control. */
-  volatile uint16_t _r1[k_ra8_usb_pad_5];
-  volatile uint16_t CFIFO;    /**< +0x014 Control FIFO data port. */
-  volatile uint16_t _r2;      /**< +0x016 Reserved.               */
-  volatile uint16_t D0FIFO;   /**< +0x018 DMA FIFO 0 data port.   */
-  volatile uint16_t _r3;      /**< +0x01A Reserved.               */
-  volatile uint16_t D1FIFO;   /**< +0x01C DMA FIFO 1 data port.   */
-  volatile uint16_t _r4;      /**< +0x01E Reserved.               */
-  volatile uint16_t CFIFOSEL; /**< +0x020 Control FIFO select.    */
-  volatile uint16_t CFIFOCTR; /**< +0x022 Control FIFO control.   */
-  volatile uint16_t _r5[k_ra8_usb_pad_2];
+  volatile uint16_t SYSCFG;                           /**< +0x000 System Configuration.      */
+  volatile uint16_t BUSWAIT;                          /**< +0x002 CPU bus wait.              */
+  volatile uint16_t SYSSTS0;                          /**< +0x004 System Status 0.           */
+  volatile uint16_t _r0;                              /**< +0x006 Reserved.                  */
+  volatile uint16_t DVSTCTR0;                         /**< +0x008 Device State Control.      */
+  volatile uint16_t _r1[k_ra8_usb_pad_5];             /**< Reserved.                         */
+  volatile uint16_t CFIFO;                            /**< +0x014 Control FIFO data port.    */
+  volatile uint16_t _r2;                              /**< +0x016 Reserved.                  */
+  volatile uint16_t D0FIFO;                           /**< +0x018 DMA FIFO 0 data port.      */
+  volatile uint16_t _r3;                              /**< +0x01A Reserved.                  */
+  volatile uint16_t D1FIFO;                           /**< +0x01C DMA FIFO 1 data port.      */
+  volatile uint16_t _r4;                              /**< +0x01E Reserved.                  */
+  volatile uint16_t CFIFOSEL;                         /**< +0x020 Control FIFO select.       */
+  volatile uint16_t CFIFOCTR;                         /**< +0x022 Control FIFO control.      */
+  volatile uint16_t _r5[k_ra8_usb_pad_2];             /**< Reserved.                         */
   volatile uint16_t D0FIFOSEL;                        /**< +0x028 DMA FIFO 0 select.         */
   volatile uint16_t D0FIFOCTR;                        /**< +0x02A DMA FIFO 0 control.        */
   volatile uint16_t D1FIFOSEL;                        /**< +0x02C DMA FIFO 1 select.         */
@@ -663,10 +663,10 @@ typedef enum : uint16_t {
  * (BUFSIZE=15) holds 2x512 packets for HS bulk MPS=512.
  */
 typedef enum : uint16_t {
-  k_ra8_pipebuf_bufnmb_mask   = 0x00FFU,
-  k_ra8_pipebuf_bufsize_mask  = 0x7C00U,
-  k_ra8_pipebuf_bufsize_shift = 10U,
-  k_ra8_pipebuf_block_bytes   = 64U, /**< Each buffer block is 64 bytes. */
+  k_ra8_pipebuf_bufnmb_mask   = 0x00FFU, /**< RA8 pipebuf bufnmb mask.       */
+  k_ra8_pipebuf_bufsize_mask  = 0x7C00U, /**< RA8 pipebuf bufsize mask.      */
+  k_ra8_pipebuf_bufsize_shift = 10U,     /**< RA8 pipebuf bufsize shift.     */
+  k_ra8_pipebuf_block_bytes   = 64U,     /**< Each buffer block is 64 bytes. */
 } ra8_usb_pipebuf_field_t;
 
 /* =============================================================================

@@ -65,7 +65,7 @@ extern "C" {
  * @brief Number of channels the DMAC backend exposes.
  */
 typedef enum : uint8_t {
-  k_ra8_dma_channel_count = 8U,
+  k_ra8_dma_channel_count = 8U, /**< RA8 DMA channel count. */
 } ra8_dma_channel_count_t;
 
 /**
@@ -73,7 +73,7 @@ typedef enum : uint8_t {
  * @brief Sentinel for "no channel allocated".
  */
 typedef enum : uint8_t {
-  k_ra8_dma_channel_none = 0xFFU,
+  k_ra8_dma_channel_none = 0xFFU, /**< RA8 DMA channel none. */
 } ra8_dma_invalid_channel_t;
 
 /**
@@ -114,15 +114,15 @@ typedef void (*ra8_dma_complete_fn_t)(void* ctx);
  * tests/mocks/ra8_sim_dma.c. */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uintptr_t             src_addr;
-  uintptr_t             dst_addr;
-  uint16_t              count;
-  ra8_dmac_width_t      width;
-  bool                  src_inc;
-  bool                  dst_inc;
-  ra8_elc_event_t       trigger;
-  ra8_dma_complete_fn_t on_complete;
-  void*                 ctx;
+  uintptr_t             src_addr;    /**< Src address. */
+  uintptr_t             dst_addr;    /**< Dst address. */
+  uint16_t              count;       /**< Count.       */
+  ra8_dmac_width_t      width;       /**< Width.       */
+  bool                  src_inc;     /**< Src inc.     */
+  bool                  dst_inc;     /**< Dst inc.     */
+  ra8_elc_event_t       trigger;     /**< Trigger.     */
+  ra8_dma_complete_fn_t on_complete; /**< On complete. */
+  void*                 ctx;         /**< Ctx.         */
 } ra8_dma_request_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

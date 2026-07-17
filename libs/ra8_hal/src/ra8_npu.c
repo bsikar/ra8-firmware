@@ -107,10 +107,11 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra8_npu_status_fault_mask = ((uint32_t)1U << k_ra8_npu_status_bus_error_bit) |
-                                ((uint32_t)1U << k_ra8_npu_status_cmd_parse_bit) |
-                                ((uint32_t)1U << k_ra8_npu_status_wd_fault_bit) |
-                                ((uint32_t)1U << k_ra8_npu_status_ecc_fault_bit),
+  k_ra8_npu_status_fault_mask =
+    ((uint32_t)1U << k_ra8_npu_status_bus_error_bit) |
+    ((uint32_t)1U << k_ra8_npu_status_cmd_parse_bit) |
+    ((uint32_t)1U << k_ra8_npu_status_wd_fault_bit) |
+    ((uint32_t)1U << k_ra8_npu_status_ecc_fault_bit), /**< RA8 npu status fault mask. */
 } ra8_npu_mask_t;
 
 /**
