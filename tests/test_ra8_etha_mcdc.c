@@ -22,6 +22,26 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum etha_mcdc_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_etha_mcdc_lit_xaa = 0xAAU,
+  k_etha_mcdc_lit_xbb = 0xBBU,
+  k_etha_mcdc_lit_xcc = 0xCCU,
+  k_etha_mcdc_lit_xdd = 0xDDU,
+  k_etha_mcdc_lit_xee = 0xEEU,
+  k_etha_mcdc_lit_xff = 0xFFU,
+  k_etha_mcdc_lit_x11 = 0x11U,
+  k_etha_mcdc_lit_x22 = 0x22U,
+  k_etha_mcdc_lit_x33 = 0x33U,
+  k_etha_mcdc_lit_x44 = 0x44U,
+  k_etha_mcdc_lit_x55 = 0x55U,
+  k_etha_mcdc_lit_x66 = 0x66U,
+} etha_mcdc_test_lit_t;
+
 /** @brief Per-test fixture reset: fresh peripheral RAM + MSTP model. */
 static void prep(void)
 {
@@ -500,18 +520,18 @@ static void test_mcdc_eth_frame_parse_quad(void)
   enum : uint16_t {
     k_test_etype_ipv4 = 0x0800U, /**< IPv4 EtherType encoded in the fixture frame. */
   };
-  uint8_t  frame[16] = {0xAAU,
-                        0xBBU,
-                        0xCCU,
-                        0xDDU,
-                        0xEEU,
-                        0xFFU, /* dst */
-                        0x11U,
-                        0x22U,
-                        0x33U,
-                        0x44U,
-                        0x55U,
-                        0x66U, /* src */
+  uint8_t  frame[16] = {k_etha_mcdc_lit_xaa,
+                        k_etha_mcdc_lit_xbb,
+                        k_etha_mcdc_lit_xcc,
+                        k_etha_mcdc_lit_xdd,
+                        k_etha_mcdc_lit_xee,
+                        k_etha_mcdc_lit_xff, /* dst */
+                        k_etha_mcdc_lit_x11,
+                        k_etha_mcdc_lit_x22,
+                        k_etha_mcdc_lit_x33,
+                        k_etha_mcdc_lit_x44,
+                        k_etha_mcdc_lit_x55,
+                        k_etha_mcdc_lit_x66, /* src */
                         0x08U,
                         0x00U, /* etype = IPv4 */
                         0x00U,

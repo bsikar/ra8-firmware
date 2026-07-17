@@ -22,6 +22,21 @@
 #include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum rmac_mdio_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_rmac_mdio_cfg_err_irq_enable  = 0xCAFEBABEU,
+  k_rmac_mdio_cfg_mon0_irq_enable = 0x00001FFFU,
+  k_rmac_mdio_cfg_mon1_irq_enable = 0x0000000FU,
+  k_rmac_mdio_cfg_mon2_irq_enable = 0x00000007U,
+  k_rmac_mdio_lit_xcafe           = 0xCAFEU,
+  k_rmac_mdio_cfg_eswclk_hz       = 125000000U,
+  k_rmac_mdio_cfg_mdc_hz          = 1000000U,
+} rmac_mdio_test_lit_t;
+
 /** @brief Per-test fixture reset: fresh peripheral RAM, MMIO seam, MSTP. */
 static void prep(void)
 {
@@ -34,10 +49,10 @@ static ra8_rmac_config_t default_cfg(void)
 {
   return (ra8_rmac_config_t){
     .rx_filter       = k_ra8_rmac_mrafc_unicast_match,
-    .err_irq_enable  = 0xCAFEBABEU,
-    .mon0_irq_enable = 0x00001FFFU,
-    .mon1_irq_enable = 0x0000000FU,
-    .mon2_irq_enable = 0x00000007U,
+    .err_irq_enable  = k_rmac_mdio_cfg_err_irq_enable,
+    .mon0_irq_enable = k_rmac_mdio_cfg_mon0_irq_enable,
+    .mon1_irq_enable = k_rmac_mdio_cfg_mon1_irq_enable,
+    .mon2_irq_enable = k_rmac_mdio_cfg_mon2_irq_enable,
     .phy_interface   = k_ra8_rmac_pis_gmii,
     .link_speed      = k_ra8_rmac_lsc_1000mbit,
     .duplex          = k_ra8_rmac_duplex_full,
@@ -68,7 +83,7 @@ static void test_mdio_c22(void)
                  (mpsm_w & (0x3UL << 13U))); /* POP */
 
   /* Now stage a read: pre-load a PRD value the issue must overwrite. */
-  ra8_rmac(k_ra8_rmac_port_0)->MPSM = ((uint32_t)0xCAFEU << 16U);
+  ra8_rmac(k_ra8_rmac_port_0)->MPSM = ((uint32_t)k_rmac_mdio_lit_xcafe << 16U);
   uint16_t v                        = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_mdio_c22_read(k_ra8_rmac_port_0, 0x05U, 0x10U, &v));
   /* The driver issued an MPSM write that overwrote the PRD field with 0,
@@ -378,8 +393,8 @@ static void test_mcdc_ra8_rmac_psmcs_clamp(void)
   const uint32_t psmcs_mask  = 0x7FUL;
   /* V1: both inputs valid -> compute path, PSMCS = (125M/1M/2)-1 = 61. */
   ra8_rmac_config_t cfg = default_cfg();
-  cfg.eswclk_hz         = 125000000U;
-  cfg.mdc_hz            = 1000000U;
+  cfg.eswclk_hz         = k_rmac_mdio_cfg_eswclk_hz;
+  cfg.mdc_hz            = k_rmac_mdio_cfg_mdc_hz;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_init(k_ra8_rmac_port_0, &cfg));
   uint32_t mpic       = ra8_rmac(k_ra8_rmac_port_0)->MPIC;
   uint32_t psmcs_read = (mpic >> psmcs_shift) & psmcs_mask;
@@ -388,7 +403,7 @@ static void test_mcdc_ra8_rmac_psmcs_clamp(void)
   prep();
   cfg           = default_cfg();
   cfg.eswclk_hz = 0U;
-  cfg.mdc_hz    = 1000000U;
+  cfg.mdc_hz    = k_rmac_mdio_cfg_mdc_hz;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_init(k_ra8_rmac_port_0, &cfg));
   mpic       = ra8_rmac(k_ra8_rmac_port_0)->MPIC;
   psmcs_read = (mpic >> psmcs_shift) & psmcs_mask;

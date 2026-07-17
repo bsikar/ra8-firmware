@@ -42,6 +42,17 @@
 #include "support/flash_test_util.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum flash_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_flash_cfg_mrefreq_mhz = 0xFFU,
+  k_flash_stamp_mrcps     = 0x21U,
+  k_flash_stamp_mrcps2    = 0xFFU,
+} flash_test_lit_t;
+
 /* ---------------------------------------------------------------------------
  * Init / deinit
   *
@@ -115,7 +126,7 @@ static void test_init_bad_mrefreq(void)
   ra8_flash_cfg_t cfg = make_cfg();
   cfg.mrefreq_mhz     = (uint8_t)k_test_bad_efreq; /* truncates to 0 only if uint8_t */
   /* Use a value > 0x7D to actually trigger validation. */
-  cfg.mrefreq_mhz = 0xFFU;
+  cfg.mrefreq_mhz = k_flash_cfg_mrefreq_mhz;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_flash_init(&cfg));
   TEST_END("flash init bad mrefreq");
 }
@@ -209,7 +220,7 @@ static void test_get_extended_status(void)
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_flash_get_extended_status(nullptr));
 
-  *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps)   = 0x21U;
+  *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps)   = k_flash_stamp_mrcps;
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mastat)  = (uint8_t)k_ra8_mastat_mask_cmdlk;
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrezs)   = (uint8_t)k_ra8_mrezs_mask_whukzf;
   *ra8_mram_reg16((uint16_t)k_ra8_mram_off_mcmdr)  = (uint16_t)k_ra8_mcmdr_mask_cmd_progress;
@@ -240,7 +251,7 @@ static void test_clear_status_paths(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_flash_clear_status((uint8_t)k_ra8_mrcps_mask_prgbsyc));
 
   /* Valid mask: PRGERRC + ECCERRC. */
-  *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) = 0xFFU;
+  *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps) = k_flash_stamp_mrcps2;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_clear_status((uint8_t)k_ra8_mrcps_mask_errors));
   /* The driver writes the W1C mask; the sim mmap stores whatever we wrote. */
   TEST_ASSERT_EQ(k_ra8_mrcps_mask_errors, (*ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps)));

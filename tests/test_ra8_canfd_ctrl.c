@@ -24,6 +24,17 @@
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum canfd_ctrl_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_canfd_ctrl_stamp_cfdc  = 0xDEADBEEFU,
+  k_canfd_ctrl_stamp_cfdc2 = 0xFFFFFFFFU,
+  k_canfd_ctrl_stamp_cfdc3 = 0xCAFEU,
+} canfd_ctrl_test_lit_t;
+
 typedef enum : uint8_t {
   k_ra8_canfd_test_channel_0   = 0U,
   k_ra8_canfd_test_channel_1   = 1U,
@@ -80,7 +91,7 @@ static void test_get_status(void)
 {
   TEST_BEGIN("canfd get_status");
   prep_w53();
-  ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0)->CFDC[0].STS = 0xDEADBEEFU;
+  ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0)->CFDC[0].STS = k_canfd_ctrl_stamp_cfdc;
   uint32_t mask                                               = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_get_status((uint8_t)k_ra8_canfd_test_channel_0, &mask));
   TEST_ASSERT_EQ(0xDEADBEEFU, mask);
@@ -101,7 +112,7 @@ static void test_clear_status(void)
 {
   TEST_BEGIN("canfd clear_status");
   prep_w53();
-  ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0)->CFDC[0].ERFL = 0xFFFFFFFFU;
+  ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0)->CFDC[0].ERFL = k_canfd_ctrl_stamp_cfdc2;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_canfd_clear_status((uint8_t)k_ra8_canfd_test_channel_0, 0x0000FF00U));
   TEST_ASSERT_EQ(0xFFFF00FFU, ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0)->CFDC[0].ERFL);
@@ -122,7 +133,7 @@ static void test_attach_and_dispatch(void)
   prep_w53();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_attach_handler(stub_canfd_cb, (void*)(uintptr_t)0xABU));
-  ra8_canfd((uint8_t)k_ra8_canfd_test_channel_1)->CFDC[0].ERFL = 0xCAFEU;
+  ra8_canfd((uint8_t)k_ra8_canfd_test_channel_1)->CFDC[0].ERFL = k_canfd_ctrl_stamp_cfdc3;
   ra8_canfd_dispatch((uint8_t)k_ra8_canfd_test_channel_1);
   TEST_ASSERT_EQ(1, s_canfd_cb_count);
   TEST_ASSERT_EQ(0xCAFEU, s_canfd_cb_last_mask);

@@ -32,6 +32,25 @@
 #include "ra8_sdmmc_spi_internal.h"
 #include "support/sdmmc_spi_cov_test_util.h"
 
+/**
+ * @enum sdmmc_spi_cov_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_sdmmc_spi_cov_cfg_cs_fail_at    = 5U,
+  k_sdmmc_spi_cov_cfg_xfer_fail_at  = 18U,
+  k_sdmmc_spi_cov_cfg_xfer_fail_at2 = 21U,
+  k_sdmmc_spi_cov_cfg_xfer_fail_at3 = 27U,
+  k_sdmmc_spi_cov_cfg_xfer_fail_at4 = 29U,
+  k_sdmmc_spi_cov_cfg_cs_fail_at2   = 10U,
+  k_sdmmc_spi_cov_cfg_xfer_fail_at5 = 34U,
+  k_sdmmc_spi_cov_cfg_xfer_fail_at6 = 35U,
+  k_sdmmc_spi_cov_lit_x80           = 0x80U,
+  k_sdmmc_spi_cov_cfg_cs_fail_at3   = 12U,
+  k_sdmmc_spi_cov_cfg_xfer_fail_at7 = 55U,
+} sdmmc_spi_cov_test_lit_t;
+
 /* ===========================================================================
  * Low-level helper error legs (bound transport, direct call)
  * ===========================================================================
@@ -232,8 +251,8 @@ static void test_init_recover_phase2_cs_failure(void)
 {
   TEST_BEGIN("init recovery phase-2 cs failure");
   cov_bind(&s_tr);
-  mock_queue_idle((uint32_t)k_cov_wake_bytes); /* CMD0 R1 then under-runs -> timeout. */
-  s_mock.cs_fail_at = 5U;                      /* recovery phase-2 cs(true).          */
+  mock_queue_idle((uint32_t)k_cov_wake_bytes);        /* CMD0 R1 then under-runs -> timeout. */
+  s_mock.cs_fail_at = k_sdmmc_spi_cov_cfg_cs_fail_at; /* recovery phase-2 cs(true).          */
   TEST_ASSERT(ra8_sdmmc_spi_run_init_sequence() != k_ra8_ok);
   TEST_END("init recovery phase-2 cs failure");
 }
@@ -328,11 +347,11 @@ static void test_init_cmd8_tail_fallback_fault(void)
   TEST_BEGIN("init CMD8 tail fallback fault");
   cov_bind(&s_tr);
   mock_queue_idle((uint32_t)k_cov_wake_bytes);
-  q_cmd_r1((uint8_t)k_cov_r1_idle);             /* CMD0 (calls 11..14).        */
-  mock_queue_idle(1U);                          /* CMD8 cs_assert (15).        */
-  mock_queue_idle((uint32_t)k_cov_frame_bytes); /* CMD8 frame (16).            */
-  mock_queue_byte((uint8_t)k_cov_r1_idle);      /* CMD8 R1 (17).               */
-  s_mock.xfer_fail_at = 18U;                    /* bulk tail + fallback fault. */
+  q_cmd_r1((uint8_t)k_cov_r1_idle);                       /* CMD0 (calls 11..14).        */
+  mock_queue_idle(1U);                                    /* CMD8 cs_assert (15).        */
+  mock_queue_idle((uint32_t)k_cov_frame_bytes);           /* CMD8 frame (16).            */
+  mock_queue_byte((uint8_t)k_cov_r1_idle);                /* CMD8 R1 (17).               */
+  s_mock.xfer_fail_at = k_sdmmc_spi_cov_cfg_xfer_fail_at; /* bulk tail + fallback fault. */
   TEST_ASSERT(ra8_sdmmc_spi_run_init_sequence() != k_ra8_ok);
   TEST_END("init CMD8 tail fallback fault");
 }
@@ -373,7 +392,7 @@ static void test_init_acmd41_send_acmd_fault(void)
   mock_queue_idle((uint32_t)k_cov_wake_bytes);
   q_cmd_r1((uint8_t)k_cov_r1_idle);
   q_cmd_r3r7((uint8_t)k_cov_r1_idle, (uint32_t)k_cov_cmd8_echo);
-  s_mock.xfer_fail_at = 21U; /* CMD55 frame of ACMD41. */
+  s_mock.xfer_fail_at = k_sdmmc_spi_cov_cfg_xfer_fail_at2; /* CMD55 frame of ACMD41. */
   TEST_ASSERT(ra8_sdmmc_spi_run_init_sequence() != k_ra8_ok);
   TEST_END("init ACMD41 send_acmd fault");
 }
@@ -424,7 +443,7 @@ static void test_init_read_ocr_send_command_fault(void)
   TEST_BEGIN("init CMD58 send_command fault");
   cov_bind(&s_tr);
   q_prefix_through_acmd41();
-  s_mock.xfer_fail_at = 27U; /* CMD58 frame. */
+  s_mock.xfer_fail_at = k_sdmmc_spi_cov_cfg_xfer_fail_at3; /* CMD58 frame. */
   TEST_ASSERT(ra8_sdmmc_spi_run_init_sequence() != k_ra8_ok);
   TEST_END("init CMD58 send_command fault");
 }
@@ -444,7 +463,7 @@ static void test_init_read_ocr_tail_fault(void)
   mock_queue_idle(1U);
   mock_queue_idle((uint32_t)k_cov_frame_bytes);
   mock_queue_byte((uint8_t)k_cov_r1_ready);
-  s_mock.xfer_fail_at = 29U;
+  s_mock.xfer_fail_at = k_sdmmc_spi_cov_cfg_xfer_fail_at4;
   TEST_ASSERT(ra8_sdmmc_spi_run_init_sequence() != k_ra8_ok);
   TEST_END("init CMD58 tail fault");
 }
@@ -484,7 +503,7 @@ static void test_init_read_csd_cs_assert_failure(void)
   TEST_BEGIN("init CMD9 cs_assert failure");
   cov_bind(&s_tr);
   q_prefix_through_ocr((uint32_t)k_cov_ocr_ccs);
-  s_mock.cs_fail_at = 10U; /* CMD9 cs_assert. */
+  s_mock.cs_fail_at = k_sdmmc_spi_cov_cfg_cs_fail_at2; /* CMD9 cs_assert. */
   TEST_ASSERT(ra8_sdmmc_spi_run_init_sequence() != k_ra8_ok);
   TEST_END("init CMD9 cs_assert failure");
 }
@@ -534,10 +553,10 @@ static void test_init_read_csd_data_token_fault(void)
   TEST_BEGIN("init CMD9 data-token fault");
   cov_bind(&s_tr);
   q_prefix_through_ocr((uint32_t)k_cov_ocr_ccs);
-  mock_queue_idle(1U);                          /* CMD9 cs_assert (31).    */
-  mock_queue_idle((uint32_t)k_cov_frame_bytes); /* CMD9 frame (32).        */
-  mock_queue_byte((uint8_t)k_cov_r1_ready);     /* R1 == 0 (33).           */
-  s_mock.xfer_fail_at = 34U;                    /* data-token poll faults. */
+  mock_queue_idle(1U);                                     /* CMD9 cs_assert (31).    */
+  mock_queue_idle((uint32_t)k_cov_frame_bytes);            /* CMD9 frame (32).        */
+  mock_queue_byte((uint8_t)k_cov_r1_ready);                /* R1 == 0 (33).           */
+  s_mock.xfer_fail_at = k_sdmmc_spi_cov_cfg_xfer_fail_at5; /* data-token poll faults. */
   TEST_ASSERT(ra8_sdmmc_spi_run_init_sequence() != k_ra8_ok);
   TEST_END("init CMD9 data-token fault");
 }
@@ -553,11 +572,11 @@ static void test_init_read_csd_body_fault(void)
   TEST_BEGIN("init CMD9 body fault");
   cov_bind(&s_tr);
   q_prefix_through_ocr((uint32_t)k_cov_ocr_ccs);
-  mock_queue_idle(1U);                          /* CMD9 cs_assert (31).        */
-  mock_queue_idle((uint32_t)k_cov_frame_bytes); /* CMD9 frame (32).            */
-  mock_queue_byte((uint8_t)k_cov_r1_ready);     /* R1 == 0 (33).               */
-  mock_queue_byte((uint8_t)k_cov_token_data);   /* data token (34).            */
-  s_mock.xfer_fail_at = 35U;                    /* first CSD body byte faults. */
+  mock_queue_idle(1U);                                     /* CMD9 cs_assert (31).        */
+  mock_queue_idle((uint32_t)k_cov_frame_bytes);            /* CMD9 frame (32).            */
+  mock_queue_byte((uint8_t)k_cov_r1_ready);                /* R1 == 0 (33).               */
+  mock_queue_byte((uint8_t)k_cov_token_data);              /* data token (34).            */
+  s_mock.xfer_fail_at = k_sdmmc_spi_cov_cfg_xfer_fail_at6; /* first CSD body byte faults. */
   TEST_ASSERT(ra8_sdmmc_spi_run_init_sequence() != k_ra8_ok);
   TEST_END("init CMD9 body fault");
 }
@@ -576,7 +595,7 @@ static void test_init_csd_bad_version(void)
   q_prefix_through_ocr((uint32_t)k_cov_ocr_ccs);
   uint8_t csd[k_ra8_sdmmc_spi_csd_response_len];
   memset(csd, 0, sizeof(csd));
-  csd[0] = 0x80U; /* CSD_STRUCTURE bits 7:6 == 0b10 (reserved). */
+  csd[0] = k_sdmmc_spi_cov_lit_x80; /* CSD_STRUCTURE bits 7:6 == 0b10 (reserved). */
   q_csd(csd);
   TEST_ASSERT_EQ(k_ra8_err_protocol_error, ra8_sdmmc_spi_run_init_sequence());
   TEST_END("init CSD bad version -> zero blocks");
@@ -600,7 +619,7 @@ static void test_init_set_block_len_cs_assert_failure(void)
   uint8_t csd[k_ra8_sdmmc_spi_csd_response_len];
   build_csd_v2(csd);
   q_csd(csd);
-  s_mock.cs_fail_at = 12U; /* CMD16 cs_assert. */
+  s_mock.cs_fail_at = k_sdmmc_spi_cov_cfg_cs_fail_at3; /* CMD16 cs_assert. */
   TEST_ASSERT(ra8_sdmmc_spi_run_init_sequence() != k_ra8_ok);
   TEST_END("init CMD16 cs_assert failure");
 }
@@ -618,7 +637,7 @@ static void test_init_set_block_len_send_command_fault(void)
   uint8_t csd[k_ra8_sdmmc_spi_csd_response_len];
   build_csd_v2(csd);
   q_csd(csd);
-  s_mock.xfer_fail_at = 55U; /* CMD16 frame. */
+  s_mock.xfer_fail_at = k_sdmmc_spi_cov_cfg_xfer_fail_at7; /* CMD16 frame. */
   TEST_ASSERT(ra8_sdmmc_spi_run_init_sequence() != k_ra8_ok);
   TEST_END("init CMD16 send_command fault");
 }

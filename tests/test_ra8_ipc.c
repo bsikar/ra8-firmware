@@ -22,6 +22,18 @@
 #include "support/ipc_test_util.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum ipc_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_ipc_test_sentinel = 0xFFU,
+  k_ipc_lit_xcafe     = 0xCAFEU,
+  k_ipc_lit_xff       = 0xFFU,
+  k_ipc_stamp_clr     = 0xA5A5A5A5UL,
+} ipc_test_lit_t;
+
 /* ---------- Lifecycle tests ---------- */
 
 /**
@@ -157,7 +169,7 @@ static void test_channel_pair_convention(void)
 {
   TEST_BEGIN("ipc channel-pair convention");
   prep();
-  uint8_t ch = 0xFFU;
+  uint8_t ch = k_ipc_test_sentinel;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_channel_for_send(k_ra8_ipc_core_cpu0, 0U, &ch));
   TEST_ASSERT_EQ(2, ch);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_channel_for_send(k_ra8_ipc_core_cpu0, 1U, &ch));
@@ -350,7 +362,7 @@ static void test_send_burst_partial_on_full(void)
     0x55555555U,
     0x66666666U,
   };
-  uint32_t written = 0xFFU;
+  uint32_t written = k_ipc_test_sentinel;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ipc_send_burst((uint8_t)k_ra8_ipc_test_ch_first,
                                     data,
@@ -362,7 +374,7 @@ static void test_send_burst_partial_on_full(void)
 
   /* Force STA.FULL high -> 0 written, still k_ra8_ok. */
   reg->STA = (uint32_t)k_ra8_ipc_sta_mask_full;
-  written  = 0xFFU;
+  written  = k_ipc_test_sentinel;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ipc_send_burst((uint8_t)k_ra8_ipc_test_ch_first, data, 3U, &written));
   TEST_ASSERT_EQ(0, written);
@@ -389,7 +401,7 @@ static void test_recv_message_no_data(void)
 {
   TEST_BEGIN("ipc recv_message no data");
   prep();
-  uint32_t msg = 0xCAFEU;
+  uint32_t msg = k_ipc_lit_xcafe;
   TEST_ASSERT_EQ(k_ra8_err_no_data, ra8_ipc_recv_message((uint8_t)k_ra8_ipc_test_ch_first, &msg));
   TEST_ASSERT_EQ(0xCAFEU, msg);
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
@@ -476,14 +488,14 @@ static void test_recv_burst(void)
   reg->STA        = (uint32_t)k_ra8_ipc_sta_mask_rdy;
   reg->RXD        = (uint32_t)k_ra8_ipc_test_msg_a;
   uint32_t buf[3] = {0U, 0U, 0U};
-  uint32_t got    = 0xFFU;
+  uint32_t got    = k_ipc_lit_xff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_recv_burst((uint8_t)k_ra8_ipc_test_ch_first, buf, 3U, &got));
   TEST_ASSERT(got == 3U);
   TEST_ASSERT_EQ(k_ra8_ipc_test_msg_a, buf[0]);
 
   /* RDY low -> 0 read */
   reg->STA = 0U;
-  got      = 0xFFU;
+  got      = k_ipc_lit_xff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_recv_burst((uint8_t)k_ra8_ipc_test_ch_first, buf, 3U, &got));
   TEST_ASSERT_EQ(0, got);
 
@@ -542,7 +554,7 @@ static void test_clear_status_translates_bits(void)
   const uint32_t expected = ((uint32_t)1U << 2U) | (uint32_t)k_ra8_ipc_clr_mask_rst |
                             (uint32_t)k_ra8_ipc_clr_mask_rclr | (uint32_t)k_ra8_ipc_clr_mask_fclr;
   TEST_ASSERT_EQ(expected, reg->CLR);
-  reg->CLR = 0xA5A5A5A5UL;
+  reg->CLR = k_ipc_stamp_clr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_clear_status((uint8_t)k_ra8_ipc_test_ch_first, 0U));
   TEST_ASSERT_EQ(0xA5A5A5A5UL, reg->CLR);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ipc_clear_status((uint8_t)k_ra8_ipc_test_ch_bad, 0U));

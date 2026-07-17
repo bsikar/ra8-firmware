@@ -19,6 +19,32 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum etha_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_etha_stamp_eaeis0   = 0xCAFEBABEU,
+  k_etha_stamp_eaeis1   = 0xAABBCCDDU,
+  k_etha_stamp_eaeis2   = 0x11223344U,
+  k_etha_stamp_eaeis02  = 0xFFFFFFFFU,
+  k_etha_stamp_eaeis12  = 0xFFFFFFFFU,
+  k_etha_stamp_eaeis22  = 0xFFFFFFFFU,
+  k_etha_stamp_eaeis03  = 0xABCDU,
+  k_etha_stamp_eaeis13  = 0x1234U,
+  k_etha_stamp_eaeis23  = 0x5678U,
+  k_etha_stamp_eaeis04  = 0xDEADU,
+  k_etha_stamp_eatdqm   = 0x0123U,
+  k_etha_stamp_eatdqmlm = 0x0456U,
+  k_etha_stamp_eairc    = 0xDEADBEEFU,
+  k_etha_stamp_eacoivm  = 0x9999U,
+  k_etha_stamp_eacoulm  = 0x77777777U,
+  k_etha_stamp_eafsecn  = 0x0030U,
+  k_etha_stamp_eadqoecn = 0x0040U,
+  k_etha_stamp_eadqsecn = 0x0050U,
+} etha_test_lit_t;
+
 static uint32_t        s_etha_cb_count;
 static uint32_t        s_etha_cb_eaeis0;
 static uint32_t        s_etha_cb_eaeis1;
@@ -120,9 +146,9 @@ static void test_status_read_and_clear(void)
                                  .eaeie2_mask  = 0U};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_etha_init(k_ra8_etha_port_1, &cfg));
   ra8_etha(k_ra8_etha_port_1)->EAMS   = (uint32_t)k_ra8_etha_ops_operation;
-  ra8_etha(k_ra8_etha_port_1)->EAEIS0 = 0xCAFEBABEU;
-  ra8_etha(k_ra8_etha_port_1)->EAEIS1 = 0xAABBCCDDU;
-  ra8_etha(k_ra8_etha_port_1)->EAEIS2 = 0x11223344U;
+  ra8_etha(k_ra8_etha_port_1)->EAEIS0 = k_etha_stamp_eaeis0;
+  ra8_etha(k_ra8_etha_port_1)->EAEIS1 = k_etha_stamp_eaeis1;
+  ra8_etha(k_ra8_etha_port_1)->EAEIS2 = k_etha_stamp_eaeis2;
 
   ra8_etha_status_t snap = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_etha_get_status(k_ra8_etha_port_1, &snap));
@@ -156,9 +182,9 @@ static void test_clear_status_blocks(void)
                                  .eaeie1_mask  = 0U,
                                  .eaeie2_mask  = 0U};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_etha_init(k_ra8_etha_port_0, &cfg));
-  ra8_etha(k_ra8_etha_port_0)->EAEIS0 = 0xFFFFFFFFU;
-  ra8_etha(k_ra8_etha_port_0)->EAEIS1 = 0xFFFFFFFFU;
-  ra8_etha(k_ra8_etha_port_0)->EAEIS2 = 0xFFFFFFFFU;
+  ra8_etha(k_ra8_etha_port_0)->EAEIS0 = k_etha_stamp_eaeis02;
+  ra8_etha(k_ra8_etha_port_0)->EAEIS1 = k_etha_stamp_eaeis12;
+  ra8_etha(k_ra8_etha_port_0)->EAEIS2 = k_etha_stamp_eaeis22;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_etha_clear_status(k_ra8_etha_port_0, k_ra8_etha_irq_class_0, 0x000000FFU));
   TEST_ASSERT_EQ(0xFFFFFF00U, ra8_etha(k_ra8_etha_port_0)->EAEIS0);
@@ -234,9 +260,9 @@ static void test_attach_and_dispatch(void)
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_etha_attach_handler(k_ra8_etha_port_0, stub_etha_cb, (void*)(uintptr_t)0xE0U));
 
-  ra8_etha(k_ra8_etha_port_0)->EAEIS0 = 0xABCDU;
-  ra8_etha(k_ra8_etha_port_0)->EAEIS1 = 0x1234U;
-  ra8_etha(k_ra8_etha_port_0)->EAEIS2 = 0x5678U;
+  ra8_etha(k_ra8_etha_port_0)->EAEIS0 = k_etha_stamp_eaeis03;
+  ra8_etha(k_ra8_etha_port_0)->EAEIS1 = k_etha_stamp_eaeis13;
+  ra8_etha(k_ra8_etha_port_0)->EAEIS2 = k_etha_stamp_eaeis23;
   ra8_etha_dispatch(k_ra8_etha_port_0);
   TEST_ASSERT_EQ(1, s_etha_cb_count);
   TEST_ASSERT_EQ(0xABCDU, s_etha_cb_eaeis0);
@@ -246,7 +272,7 @@ static void test_attach_and_dispatch(void)
 
   /* Detach -- next dispatch must NOT increment the counter. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_etha_attach_handler(k_ra8_etha_port_0, nullptr, nullptr));
-  ra8_etha(k_ra8_etha_port_0)->EAEIS0 = 0xDEADU;
+  ra8_etha(k_ra8_etha_port_0)->EAEIS0 = k_etha_stamp_eaeis04;
   ra8_etha_dispatch(k_ra8_etha_port_0);
   TEST_ASSERT_EQ(1, s_etha_cb_count);
 
@@ -372,8 +398,8 @@ static void test_get_queue_level(void)
                                  .eaeie1_mask  = 0U,
                                  .eaeie2_mask  = 0U};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_etha_init(k_ra8_etha_port_0, &cfg));
-  ra8_etha(k_ra8_etha_port_0)->EATDQM[3]   = 0x0123U;
-  ra8_etha(k_ra8_etha_port_0)->EATDQMLM[3] = 0x0456U;
+  ra8_etha(k_ra8_etha_port_0)->EATDQM[3]   = k_etha_stamp_eatdqm;
+  ra8_etha(k_ra8_etha_port_0)->EATDQMLM[3] = k_etha_stamp_eatdqmlm;
   uint16_t cur                             = 0U;
   uint16_t pk                              = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_etha_get_queue_level(k_ra8_etha_port_0, k_ra8_etha_tc_3, &cur, &pk));
@@ -468,7 +494,7 @@ static void test_set_ipv_remap(void)
   TEST_ASSERT_EQ(0x76543210U, ra8_etha(k_ra8_etha_port_0)->EAIRC);
 
   /* Bad arg: entry > 7 -> reject without writing. */
-  ra8_etha(k_ra8_etha_port_0)->EAIRC = 0xDEADBEEFU;
+  ra8_etha(k_ra8_etha_port_0)->EAIRC = k_etha_stamp_eairc;
   const uint8_t bad_map[8]           = {0U, 1U, 8U, 3U, 4U, 5U, 6U, 7U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_etha_set_ipv_remap(k_ra8_etha_port_0, bad_map));
   TEST_ASSERT_EQ(0xDEADBEEFU, ra8_etha(k_ra8_etha_port_0)->EAIRC);
@@ -592,8 +618,8 @@ static void test_cbs_configure_and_state(void)
   /* Read oper-side mirrors. */
   ra8_etha(k_ra8_etha_port_0)->EACOEM     = (1U << 2);
   ra8_etha(k_ra8_etha_port_0)->EACGSM     = (1U << 2);
-  ra8_etha(k_ra8_etha_port_0)->EACOIVM[2] = 0x9999U;
-  ra8_etha(k_ra8_etha_port_0)->EACOULM[2] = 0x77777777U;
+  ra8_etha(k_ra8_etha_port_0)->EACOIVM[2] = k_etha_stamp_eacoivm;
+  ra8_etha(k_ra8_etha_port_0)->EACOULM[2] = k_etha_stamp_eacoulm;
   uint8_t              en                 = 0U;
   uint8_t              gs                 = 0U;
   ra8_etha_cbs_param_t op                 = {};
@@ -683,9 +709,9 @@ static void test_read_clear_stats(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_etha_init(k_ra8_etha_port_0, &cfg));
   ra8_etha(k_ra8_etha_port_0)->EAUSMFSECN = 0x0010U;
   ra8_etha(k_ra8_etha_port_0)->EATFECN    = 0x0020U;
-  ra8_etha(k_ra8_etha_port_0)->EAFSECN    = 0x0030U;
-  ra8_etha(k_ra8_etha_port_0)->EADQOECN   = 0x0040U;
-  ra8_etha(k_ra8_etha_port_0)->EADQSECN   = 0x0050U;
+  ra8_etha(k_ra8_etha_port_0)->EAFSECN    = k_etha_stamp_eafsecn;
+  ra8_etha(k_ra8_etha_port_0)->EADQOECN   = k_etha_stamp_eadqoecn;
+  ra8_etha(k_ra8_etha_port_0)->EADQSECN   = k_etha_stamp_eadqsecn;
 
   ra8_etha_stats_t st = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_etha_read_stats(k_ra8_etha_port_0, &st));

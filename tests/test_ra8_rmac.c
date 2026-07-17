@@ -18,6 +18,67 @@
 #include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum rmac_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_rmac_cfg_err_irq_enable  = 0xCAFEBABEU,
+  k_rmac_cfg_mon0_irq_enable = 0x00001FFFU,
+  k_rmac_cfg_mon1_irq_enable = 0x0000000FU,
+  k_rmac_cfg_mon2_irq_enable = 0x00000007U,
+  k_rmac_stamp_meis          = 0xC0FFEE00U,
+  k_rmac_stamp_mmis0         = 0x00001234U,
+  k_rmac_stamp_mmis1         = 0x0000000FU,
+  k_rmac_stamp_mmis2         = 0x00000005U,
+  k_rmac_stamp_mapftct       = 0x11U,
+  k_rmac_stamp_mpfrct        = 0x12U,
+  k_rmac_stamp_mfcict        = 0x13U,
+  k_rmac_stamp_meeect        = 0x14U,
+  k_rmac_stamp_mmpcftct      = 0x21U,
+  k_rmac_stamp_mapcftct      = 0x30U,
+  k_rmac_stamp_mapcftct2     = 0x31U,
+  k_rmac_lit_x40             = 0x40U,
+  k_rmac_stamp_mrovfc        = 0x50U,
+  k_rmac_stamp_mrhcrcec      = 0x51U,
+  k_rmac_stamp_mrgfce        = 0x52U,
+  k_rmac_stamp_mrgfcp        = 0x53U,
+  k_rmac_stamp_mrbfc         = 0x54U,
+  k_rmac_stamp_mrmfc         = 0x55U,
+  k_rmac_stamp_mrufc         = 0x56U,
+  k_rmac_stamp_mrpefc        = 0x57U,
+  k_rmac_stamp_mrnefc        = 0x58U,
+  k_rmac_stamp_mrfmefc       = 0x59U,
+  k_rmac_stamp_mrffmefc      = 0x5AU,
+  k_rmac_stamp_mrcfcefc      = 0x5BU,
+  k_rmac_stamp_mrfcefc       = 0x5CU,
+  k_rmac_stamp_mrrcfefc      = 0x5DU,
+  k_rmac_stamp_mrfc          = 0x5EU,
+  k_rmac_stamp_mrguefc       = 0x5FU,
+  k_rmac_stamp_mrbuefc       = 0x60U,
+  k_rmac_stamp_mrgoefc       = 0x61U,
+  k_rmac_stamp_mrboefc       = 0x62U,
+  k_rmac_stamp_mrxbceu       = 0x63U,
+  k_rmac_stamp_mrxbcel       = 0x64U,
+  k_rmac_stamp_mrxbcpu       = 0x65U,
+  k_rmac_stamp_mrxbcpl       = 0x66U,
+  k_rmac_stamp_mtgfce        = 0x70U,
+  k_rmac_stamp_mtgfcp        = 0x71U,
+  k_rmac_stamp_mtbfc         = 0x72U,
+  k_rmac_stamp_mtmfc         = 0x73U,
+  k_rmac_stamp_mtufc         = 0x74U,
+  k_rmac_stamp_mtefc         = 0x75U,
+  k_rmac_stamp_mtxbceu       = 0x76U,
+  k_rmac_stamp_mtxbcel       = 0x77U,
+  k_rmac_stamp_mtxbcpu       = 0x78U,
+  k_rmac_stamp_mtxbcpl       = 0x79U,
+  k_rmac_stamp_meis2         = 0x12345678U,
+  k_rmac_stamp_mmis02        = 0x00000F00U,
+  k_rmac_stamp_mmis12        = 0x0000000AU,
+  k_rmac_stamp_meis3         = 0xDEADBEEFU,
+} rmac_test_lit_t;
+
 static uint32_t        s_cb_count;
 static uint32_t        s_cb_last_err;
 static uint32_t        s_cb_last_m0;
@@ -54,10 +115,10 @@ static ra8_rmac_config_t default_cfg(void)
 {
   return (ra8_rmac_config_t){
     .rx_filter       = k_ra8_rmac_mrafc_unicast_match,
-    .err_irq_enable  = 0xCAFEBABEU,
-    .mon0_irq_enable = 0x00001FFFU,
-    .mon1_irq_enable = 0x0000000FU,
-    .mon2_irq_enable = 0x00000007U,
+    .err_irq_enable  = k_rmac_cfg_err_irq_enable,
+    .mon0_irq_enable = k_rmac_cfg_mon0_irq_enable,
+    .mon1_irq_enable = k_rmac_cfg_mon1_irq_enable,
+    .mon2_irq_enable = k_rmac_cfg_mon2_irq_enable,
     .phy_interface   = k_ra8_rmac_pis_gmii,
     .link_speed      = k_ra8_rmac_lsc_1000mbit,
     .duplex          = k_ra8_rmac_duplex_full,
@@ -212,10 +273,10 @@ static void test_status_read_and_clear(void)
   prep();
   const ra8_rmac_config_t cfg = default_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_init(k_ra8_rmac_port_0, &cfg));
-  ra8_rmac(k_ra8_rmac_port_0)->MEIS  = 0xC0FFEE00U;
-  ra8_rmac(k_ra8_rmac_port_0)->MMIS0 = 0x00001234U;
-  ra8_rmac(k_ra8_rmac_port_0)->MMIS1 = 0x0000000FU;
-  ra8_rmac(k_ra8_rmac_port_0)->MMIS2 = 0x00000005U;
+  ra8_rmac(k_ra8_rmac_port_0)->MEIS  = k_rmac_stamp_meis;
+  ra8_rmac(k_ra8_rmac_port_0)->MMIS0 = k_rmac_stamp_mmis0;
+  ra8_rmac(k_ra8_rmac_port_0)->MMIS1 = k_rmac_stamp_mmis1;
+  ra8_rmac(k_ra8_rmac_port_0)->MMIS2 = k_rmac_stamp_mmis2;
   ra8_rmac(k_ra8_rmac_port_0)->MPIM  = (uint32_t)k_ra8_rmac_mpim_pls;
 
   ra8_rmac_status_t snap = {};
@@ -485,50 +546,50 @@ static void test_ptp_filter(void)
 static void stamp_stats_counters(volatile r_rmac_regs_t* reg)
 {
   reg->MMPFTCT     = 0x10U;
-  reg->MAPFTCT     = 0x11U;
-  reg->MPFRCT      = 0x12U;
-  reg->MFCICT      = 0x13U;
-  reg->MEEECT      = 0x14U;
+  reg->MAPFTCT     = k_rmac_stamp_mapftct;
+  reg->MPFRCT      = k_rmac_stamp_mpfrct;
+  reg->MFCICT      = k_rmac_stamp_mfcict;
+  reg->MEEECT      = k_rmac_stamp_meeect;
   reg->MMPCFTCT[0] = 0x20U;
-  reg->MMPCFTCT[1] = 0x21U;
-  reg->MAPCFTCT[0] = 0x30U;
-  reg->MAPCFTCT[1] = 0x31U;
+  reg->MMPCFTCT[1] = k_rmac_stamp_mmpcftct;
+  reg->MAPCFTCT[0] = k_rmac_stamp_mapcftct;
+  reg->MAPCFTCT[1] = k_rmac_stamp_mapcftct2;
   for (uint8_t i = 0; i < (uint8_t)k_ra8_rmac_pfc_rx_count; ++i) {
-    reg->MPCFRCT[i] = (uint32_t)0x40U + i;
+    reg->MPCFRCT[i] = (uint32_t)k_rmac_lit_x40 + i;
   }
-  reg->MROVFC   = 0x50U;
-  reg->MRHCRCEC = 0x51U;
-  reg->MRGFCE   = 0x52U;
-  reg->MRGFCP   = 0x53U;
-  reg->MRBFC    = 0x54U;
-  reg->MRMFC    = 0x55U;
-  reg->MRUFC    = 0x56U;
-  reg->MRPEFC   = 0x57U;
-  reg->MRNEFC   = 0x58U;
-  reg->MRFMEFC  = 0x59U;
-  reg->MRFFMEFC = 0x5AU;
-  reg->MRCFCEFC = 0x5BU;
-  reg->MRFCEFC  = 0x5CU;
-  reg->MRRCFEFC = 0x5DU;
-  reg->MRFC     = 0x5EU;
-  reg->MRGUEFC  = 0x5FU;
-  reg->MRBUEFC  = 0x60U;
-  reg->MRGOEFC  = 0x61U;
-  reg->MRBOEFC  = 0x62U;
-  reg->MRXBCEU  = 0x63U;
-  reg->MRXBCEL  = 0x64U;
-  reg->MRXBCPU  = 0x65U;
-  reg->MRXBCPL  = 0x66U;
-  reg->MTGFCE   = 0x70U;
-  reg->MTGFCP   = 0x71U;
-  reg->MTBFC    = 0x72U;
-  reg->MTMFC    = 0x73U;
-  reg->MTUFC    = 0x74U;
-  reg->MTEFC    = 0x75U;
-  reg->MTXBCEU  = 0x76U;
-  reg->MTXBCEL  = 0x77U;
-  reg->MTXBCPU  = 0x78U;
-  reg->MTXBCPL  = 0x79U;
+  reg->MROVFC   = k_rmac_stamp_mrovfc;
+  reg->MRHCRCEC = k_rmac_stamp_mrhcrcec;
+  reg->MRGFCE   = k_rmac_stamp_mrgfce;
+  reg->MRGFCP   = k_rmac_stamp_mrgfcp;
+  reg->MRBFC    = k_rmac_stamp_mrbfc;
+  reg->MRMFC    = k_rmac_stamp_mrmfc;
+  reg->MRUFC    = k_rmac_stamp_mrufc;
+  reg->MRPEFC   = k_rmac_stamp_mrpefc;
+  reg->MRNEFC   = k_rmac_stamp_mrnefc;
+  reg->MRFMEFC  = k_rmac_stamp_mrfmefc;
+  reg->MRFFMEFC = k_rmac_stamp_mrffmefc;
+  reg->MRCFCEFC = k_rmac_stamp_mrcfcefc;
+  reg->MRFCEFC  = k_rmac_stamp_mrfcefc;
+  reg->MRRCFEFC = k_rmac_stamp_mrrcfefc;
+  reg->MRFC     = k_rmac_stamp_mrfc;
+  reg->MRGUEFC  = k_rmac_stamp_mrguefc;
+  reg->MRBUEFC  = k_rmac_stamp_mrbuefc;
+  reg->MRGOEFC  = k_rmac_stamp_mrgoefc;
+  reg->MRBOEFC  = k_rmac_stamp_mrboefc;
+  reg->MRXBCEU  = k_rmac_stamp_mrxbceu;
+  reg->MRXBCEL  = k_rmac_stamp_mrxbcel;
+  reg->MRXBCPU  = k_rmac_stamp_mrxbcpu;
+  reg->MRXBCPL  = k_rmac_stamp_mrxbcpl;
+  reg->MTGFCE   = k_rmac_stamp_mtgfce;
+  reg->MTGFCP   = k_rmac_stamp_mtgfcp;
+  reg->MTBFC    = k_rmac_stamp_mtbfc;
+  reg->MTMFC    = k_rmac_stamp_mtmfc;
+  reg->MTUFC    = k_rmac_stamp_mtufc;
+  reg->MTEFC    = k_rmac_stamp_mtefc;
+  reg->MTXBCEU  = k_rmac_stamp_mtxbceu;
+  reg->MTXBCEL  = k_rmac_stamp_mtxbcel;
+  reg->MTXBCPU  = k_rmac_stamp_mtxbcpu;
+  reg->MTXBCPL  = k_rmac_stamp_mtxbcpl;
 }
 
 /**
@@ -578,9 +639,9 @@ static void test_attach_and_dispatch(void)
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_rmac_attach_handler(k_ra8_rmac_port_1, stub_cb, (void*)(uintptr_t)0xABCDU));
 
-  ra8_rmac(k_ra8_rmac_port_1)->MEIS  = 0x12345678U;
-  ra8_rmac(k_ra8_rmac_port_1)->MMIS0 = 0x00000F00U;
-  ra8_rmac(k_ra8_rmac_port_1)->MMIS1 = 0x0000000AU;
+  ra8_rmac(k_ra8_rmac_port_1)->MEIS  = k_rmac_stamp_meis2;
+  ra8_rmac(k_ra8_rmac_port_1)->MMIS0 = k_rmac_stamp_mmis02;
+  ra8_rmac(k_ra8_rmac_port_1)->MMIS1 = k_rmac_stamp_mmis12;
   ra8_rmac(k_ra8_rmac_port_1)->MMIS2 = 0x00000003U;
 
   ra8_rmac_dispatch(k_ra8_rmac_port_1);
@@ -597,7 +658,7 @@ static void test_attach_and_dispatch(void)
 
   /* Detach */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_attach_handler(k_ra8_rmac_port_1, nullptr, nullptr));
-  ra8_rmac(k_ra8_rmac_port_1)->MEIS = 0xDEADBEEFU;
+  ra8_rmac(k_ra8_rmac_port_1)->MEIS = k_rmac_stamp_meis3;
   ra8_rmac_dispatch(k_ra8_rmac_port_1);
   TEST_ASSERT_EQ(1, s_cb_count);
 

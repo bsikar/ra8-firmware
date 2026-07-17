@@ -30,6 +30,17 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum xspi_program_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_xspi_program_lit_xff = 0xFFU,
+  k_xspi_program_lit_x60 = 0x60U,
+  k_xspi_program_lit_x40 = 0x40U,
+} xspi_program_test_lit_t;
+
+/**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
@@ -107,7 +118,7 @@ static void test_flash_program_and_read_multipage(void)
 
   uint8_t src[k_test_xspi_len_multipage];
   for (uint32_t i = 0U; i < (uint32_t)k_test_xspi_len_multipage; i++) {
-    src[i] = (uint8_t)(i & 0xFFU);
+    src[i] = (uint8_t)(i & k_xspi_program_lit_xff);
   }
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_xspi_flash_program((uint8_t)k_test_xspi_valid_inst0,
@@ -361,7 +372,7 @@ static void test_flash_program_page_tail_clamp(void)
 
   uint8_t src[16];
   for (uint8_t i = 0U; i < 16U; i++) {
-    src[i] = (uint8_t)(i + 0x60U);
+    src[i] = (uint8_t)(i + k_xspi_program_lit_x60);
   }
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_xspi_flash_program((uint8_t)k_test_xspi_valid_inst0,
@@ -392,7 +403,7 @@ static void test_flash_program_command_timeout_legs(void)
   TEST_BEGIN("ra8_xspi_flash_program per-command CMDCMP timeout legs");
   uint8_t src[16];
   for (uint8_t i = 0U; i < 16U; i++) {
-    src[i] = (uint8_t)(i + 0x40U);
+    src[i] = (uint8_t)(i + k_xspi_program_lit_x40);
   }
 
   /* Leg 1: the WREN command never retires -> internal_flash_stage_program

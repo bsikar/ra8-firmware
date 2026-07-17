@@ -33,6 +33,17 @@
 #include "support/ssie_test_util.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum ssie_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_ssie_cfg_tx_threshold  = 7U,
+  k_ssie_cfg_tx_threshold2 = 0x40U,
+  k_ssie_cfg_rx_threshold  = 0x40U,
+} ssie_test_lit_t;
+
 /* ---------------------------------------------------------------------------
  * Lifecycle
  * ---------------------------------------------------------------------------
@@ -256,7 +267,7 @@ static void test_init_polarity_and_flags(void)
   cfg.spdp_high      = true;
   cfg.byte_swap      = true;
   cfg.enable_aucke   = true;
-  cfg.tx_threshold   = 7U;
+  cfg.tx_threshold   = k_ssie_cfg_tx_threshold;
   cfg.rx_threshold   = 1U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ssie_init((uint8_t)k_ra8_ssie_test_ch0, &cfg));
 
@@ -357,10 +368,10 @@ static void test_init_bad_threshold(void)
   TEST_BEGIN("ssie init rejects threshold > 0x1F");
   prep();
   ra8_ssie_cfg_t cfg = make_controller_i2s_cfg();
-  cfg.tx_threshold   = 0x40U;
+  cfg.tx_threshold   = k_ssie_cfg_tx_threshold2;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ssie_init((uint8_t)k_ra8_ssie_test_ch0, &cfg));
   cfg              = make_controller_i2s_cfg();
-  cfg.rx_threshold = 0x40U;
+  cfg.rx_threshold = k_ssie_cfg_rx_threshold;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ssie_init((uint8_t)k_ra8_ssie_test_ch0, &cfg));
   TEST_END("ssie init rejects threshold > 0x1F");
 }

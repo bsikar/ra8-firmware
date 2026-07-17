@@ -18,6 +18,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum dotf_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_dotf_stamp_reg00      = 0xFFFFFFFFUL,
+  k_dotf_stamp_convareast = 0xDEADBEEFUL,
+  k_dotf_stamp_convaread  = 0xCAFEBABEUL,
+  k_dotf_lit_xdeadbeef    = 0xDEADBEEFUL,
+  k_dotf_lit_xcafebabe    = 0xCAFEBABEUL,
+} dotf_test_lit_t;
+
 typedef enum : uint8_t {
   k_dotf_test_ch0 = 0U,   /**< Dotf test ch0. */
   k_dotf_test_ch1 = 1U,   /**< Dotf test ch1. */
@@ -146,9 +159,9 @@ static void test_init_happy(void)
   /* Pre-poison REG00 so we can confirm init clears it. */
   volatile ra8_dotf_regs_t* reg0 = ra8_dotf_regs((uint8_t)k_dotf_test_ch0);
   TEST_ASSERT_NOT_NULL((void*)reg0);
-  reg0->REG00      = 0xFFFFFFFFUL;
-  reg0->CONVAREAST = 0xDEADBEEFUL;
-  reg0->CONVAREAD  = 0xCAFEBABEUL;
+  reg0->REG00      = k_dotf_stamp_reg00;
+  reg0->CONVAREAST = k_dotf_stamp_convareast;
+  reg0->CONVAREAD  = k_dotf_stamp_convaread;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dotf_init());
   TEST_ASSERT_EQ(0, reg0->REG00);
@@ -542,7 +555,7 @@ static void test_install_key_invalid(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_dotf_install_key((uint8_t)k_dotf_test_ch0, &h));
 
   h.valid = 1U;
-  h.size  = (ra8_dotf_key_size_t)0xDEADBEEFUL;
+  h.size  = (ra8_dotf_key_size_t)k_dotf_lit_xdeadbeef;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_dotf_install_key((uint8_t)k_dotf_test_ch0, &h));
 
   h.size = k_ra8_dotf_key_size_128;
@@ -648,7 +661,7 @@ static void test_rotate_key_invalid(void)
 
   /* Invalid handle.size */
   ra8_dotf_key_handle_t bad = h;
-  bad.size                  = (ra8_dotf_key_size_t)0xCAFEBABEUL;
+  bad.size                  = (ra8_dotf_key_size_t)k_dotf_lit_xcafebabe;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_dotf_rotate_key((uint8_t)k_dotf_test_ch0, &bad, nullptr));
 
