@@ -45,6 +45,133 @@
 #include "sim_usbh_seam.h"
 #include "sim_view.h"
 
+/**
+ * @brief Run one outer chunk's inner exception-resolve loop.
+ *
+ * @details
+ * Runs a chunk, then services exceptions to a steady state before the next
+ * chunk: zero-time seam relaunches re-enter directly; an EXC_RETURN branch is
+ * unstacked and the NVIC re-checked so a still-pending lower-priority
+ * exception tail-chains (e.g. PendSV right after SysTick) exactly as hardware
+ * would, instead of briefly resuming the interrupted code; MPU / div-0 faults
+ * are synthesised at the boundary; SVCall (taken in on_intr) just leaves PC
+ * at the handler, which the next relaunch runs. Returns once the full budget
+ * elapsed with nothing pending, or on a fault / BKPT / stop request.
+ *
+ * @param[in,out] uc        Unicorn engine.
+ * @param[in]     vtor_base VTOR fallback for exception vectoring.
+ * @param[in,out] run_pc_io Resume PC in, final PC out.
+ * @param[out]    err_out   Final uc_emu_start status for the report.
+ * @return true when the run must end (fault or BKPT), false to continue.
+ * @retval true  The outer loop breaks and reports the stop cause.
+ * @retval false The chunk resolved cleanly; the outer loop continues.
+ * @pre The engine is set up and @p run_pc_io holds a valid resume PC.
+ * @pre The seams / exception hooks are installed.
+ * @post @p run_pc_io and @p err_out reflect the loop's final state.
+ * @note Not thread-safe; this is the single-threaded run core.
+ * @since 0.1.0
+ */
+static bool run_inner(uc_engine* uc, uint32_t vtor_base, uint32_t* run_pc_io, uc_err* err_out)
+{
+  uint32_t run_pc  = *run_pc_io;
+  uc_err   err     = UC_ERR_OK;
+  bool     faulted = false;
+  for (uint32_t inner = 0U; inner < (uint32_t)k_run_inner_max; inner++) {
+    sim_exc_clear_pendsv_stop(); /* set by on_icsr_write iff this run ends on PENDSVSET */
+    /* Idle fast-forward: when the core is parked on a wait-for-interrupt spin
+     * (ThreadX's __tx_wait_here `b .`, or a `wfi` halt), running a full
+     * k_run_chunk_insns just burns wall time to reach the SAME SysTick that is
+     * already armed once per outer chunk. Cap the budget to k_idle_spin_insns
+     * so the spin returns at once and the boundary below takes the tick now.
+     * This skips only idle wall-time: the tick stays armed once per outer
+     * chunk and fired once, so ThreadX's tick COUNT -- and every sleep/heartbeat
+     * deadline measured in ticks -- is identical to a full idle chunk. Busy
+     * firmware never parks on these opcodes, so it runs the full budget. */
+    /* Low-power (Model A): the M33 runs ~4x slower than the M85, so a busy
+     * chunk advances 1/4 as many instructions per modelled tick. Idle spins
+     * still collapse to k_idle_spin_insns regardless. */
+    size_t busy_budget = (size_t)k_run_chunk_insns;
+    if (sim_low_power()) {
+      busy_budget = (size_t)k_run_chunk_insns / (size_t)k_low_power_div;
+    }
+    const size_t run_budget = idle_spin_at(uc, run_pc) ? (size_t)k_idle_spin_insns : busy_budget;
+    err                     = uc_emu_start(uc, (uint64_t)run_pc | 1U, 0, 0, run_budget);
+    (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
+    if (sim_seam_take_relaunch()) {
+      /* A --fast-sd byte-exchange returned to its caller. This consumed no
+       * modelled time, so relaunch from the returned PC without advancing the
+       * SysTick or charging a chunk (the inner-loop cap still bounds the run). */
+      continue;
+    }
+    if (sim_prof_stop_hit()) {
+      break; /* BOARD_SIM_STOP_PC reached (set in prof_insn_hook) -- end the run. */
+    }
+    if (sim_exc_reboot_requested()) {
+      break; /* AIRCR.SYSRESETREQ -- the outer wrapper performs the reboot. */
+    }
+    if (sim_exc_bkpt_hit()) {
+      faulted = true; /* firmware trapped on a BKPT -- end the run, report it. */
+      break;
+    }
+    uint64_t exc_ret_pc = 0U;
+    if (sim_exc_take_exc_return(&exc_ret_pc)) {
+      exc_return(uc, (uint32_t)exc_ret_pc);
+      /* Tail-chain the next pend, but do NOT advance the SysTick: an exception
+       * return consumes no modelled time, so time advances only on a full
+       * instruction budget (below). This keeps a deferred tick from firing the
+       * instant a PendSV context switch unstacks into the new thread. */
+      (void)exc_take_pending(uc, vtor_base, false);
+      (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
+      continue;
+    }
+    if (err != UC_ERR_OK) {
+      faulted = true;
+      break;
+    }
+    if (sim_mpu_fault_pending()) {
+      /* A store hit a read-only MPU region (on_mpu_ro_write stopped us).
+       * Synthesise MemManage at this boundary -- no time advances (a fault is
+       * synchronous), and the stacked PC is the faulting store. */
+      sim_mpu_clear_fault();
+      mpu_synth_memmanage(uc, vtor_base);
+      (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
+      continue;
+    }
+    if (sim_div0_fault_pending()) {
+      /* A UDIV/SDIV by zero with CCR.DIV_0_TRP set (emulate_div0_patched stopped
+       * us). Synthesise UsageFault at this boundary -- synchronous, no time
+       * advances, and the stacked PC is the trapping divide. */
+      sim_div0_clear_fault();
+      div0_synth_usagefault(uc, vtor_base);
+      (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
+      continue;
+    }
+    if (sim_exc_pendsv_stop()) {
+      /* Context-switch stop: a thread wrote PENDSVSET to yield. Take PendSV
+       * but do NOT advance the SysTick -- a context switch consumes no
+       * modelled time, so a thread that just suspended on a tick wait keeps
+       * waiting and the scheduler runs the highest-priority READY thread. This
+       * is what lets a low-priority worker (e.g. the NetX echo thread) run to
+       * completion before a higher-priority sleeper's tick expires. */
+      (void)exc_take_pending(uc, vtor_base, false);
+      (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
+      continue;
+    }
+    /* Full instruction budget elapsed: a tick's worth of genuine execution (or
+     * an idle spin) has passed, so advance time -- take the highest-priority
+     * pending exception (SysTick this period, and/or PendSV) and resolve it in
+     * this same chunk so a context switch does not cost a scheduling quantum. */
+    if (exc_take_pending(uc, vtor_base, true)) {
+      (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
+      continue;
+    }
+    break;
+  }
+  *run_pc_io = run_pc;
+  *err_out   = err;
+  return faulted;
+}
+
 /** @brief Implementation of `sim_run_and_report()` -- the whole run phase. */
 int sim_run_and_report(const sim_run_cfg_t* cfg)
 {
@@ -60,7 +187,6 @@ int sim_run_and_report(const sim_run_cfg_t* cfg)
   const int          click_y         = cfg->click_y;
   const char* const  ppm_path        = cfg->ppm_path;
   const char* const  record_dir      = cfg->record_dir;
-  const uint32_t     record_secs     = cfg->record_secs;
   const uint32_t     rotate_deg      = cfg->rotate_deg;
   int                reboot_count    = cfg->reboot_count;
   const char* const  save_sd_path    = cfg->save_sd_path;
@@ -109,203 +235,39 @@ int sim_run_and_report(const sim_run_cfg_t* cfg)
   if (want_click) {
     (void)fprintf(stderr, "board_sim: --click armed at (%d,%d)\n", click_x, click_y);
   }
-  enum : uint32_t {
-    /* ra8_delay_ms(16) in the render loop spins on SysTick, which advances one
-     * tick per chunk, so ~16 chunks == one loop iteration. Give the injected
-     * tap many iterations to flow DOWN -> UP -> CLICKED -> tab switch -> repaint. */
-    k_click_settle_chunks = 512U, /**< Extra chunks after the click lands. */
-  };
-  /* BOARD_SIM_CLICK_SETTLE=N: widen the post-click drain for a tap that kicks off
-   * a long operation (e.g. opening a big book from SD: read + inflate + decode +
-   * render can need far more than the default window). Mirrors BOARD_SIM_MAX_CHUNKS;
-   * unset keeps the default so ordinary tap captures stay snappy. */
-  uint32_t click_settle_chunks = (uint32_t)k_click_settle_chunks;
-  {
-    const char* e_settle = getenv("BOARD_SIM_CLICK_SETTLE");
-    if (e_settle != nullptr) {
-      const long v = strtol(e_settle, nullptr, (int)k_env_strtol_base);
-      if (v > 0L) {
-        click_settle_chunks = (uint32_t)v;
-      }
-    }
-  }
-
-  /* Chunked run: emulate a block, take a SysTick (and any pending PendSV),
-   * repeat. Within a chunk, exception returns (a handler's "BX lr" into an
-   * EXC_RETURN magic) and SVCalls are resolved inline -- the inner loop unstacks
-   * / vectors and relaunches from the new PC without consuming a chunk -- so a
-   * context switch does not cost a whole scheduling quantum and the once-per-
-   * chunk SysTick cadence (one ThreadX tick) is preserved. Headless runs stop on
-   * a chunk budget + wall-clock guard; in --view the loop runs until the window
-   * is closed, presenting the live GLCDC output every k_view_present_every. */
-  uint32_t max_chunks =
-    (view != nullptr) ? (uint32_t)k_view_max_chunks : (uint32_t)k_run_max_chunks;
-  /* Headless runs of heavy apps (e.g. sd_font_render: a 400 KB SD font read
-   * plus stb_truetype rasterisation) can need more than the default budget.
-   * BOARD_SIM_WALL_S / BOARD_SIM_MAX_CHUNKS override the guards without a
-   * recompile; they have no effect in --view (window-driven) mode.
-   *
-   * The wall-clock guard is CPU-time (clock(), see the run loop), so a
-   * heavily-loaded host burns it faster than wall time -- which made it
-   * truncate the otherwise instruction-deterministic chunk budget under CI load
-   * and silently drop a late-printing banner (#168). A run that must stay
-   * deterministic regardless of host load sets BOARD_SIM_WALL_S=0 to DISABLE the
-   * guard entirely and rely on the deterministic BOARD_SIM_MAX_CHUNKS bound (and
-   * BOARD_SIM_STOP_ON) instead. (Previously WALL_S=0 silently fell back to the
-   * default -- the footgun that hid the #168 root cause.) */
-  double wall_s        = (double)k_run_wall_s;
-  bool   wall_guard_on = true;
-  {
-    const char* e_wall = getenv("BOARD_SIM_WALL_S");
-    if (e_wall != nullptr) {
-      const long v = strtol(e_wall, nullptr, (int)k_env_strtol_base);
-      if (v > 0L) {
-        wall_s = (double)v;
-      } else if (v == 0L) {
-        wall_guard_on = false; /* explicit opt-out: bound the run by chunks only */
-      }
-    }
-    const char* e_chunks = getenv("BOARD_SIM_MAX_CHUNKS");
-    if ((e_chunks != nullptr) && (view == nullptr)) {
-      const long v = strtol(e_chunks, nullptr, (int)k_env_strtol_base);
-      if (v > 0L) {
-        max_chunks = (uint32_t)v;
-      }
-    }
-  }
-  /* Headless --record-secs bounds the run to exactly the recording window so the
-   * dumped frame sequence spans the requested emulated duration. */
-  if ((record_dir != nullptr) && (record_secs > 0U) && (view == nullptr)) {
-    max_chunks = record_secs * (uint32_t)k_record_ms_per_sec;
-  }
-  if (record_dir != nullptr) {
-    (void)mkdir(record_dir, (mode_t)k_record_dir_mode);
-    (void)fprintf(stderr,
-                  "board_sim: recording to %s/frame_NNNNNN.ppm (every %u chunks, ~%u fps)\n",
-                  record_dir,
-                  (unsigned)k_record_every,
-                  (unsigned)k_record_fps);
-  }
-  /* BOARD_SIM_IDLE_STOP=N: in a plain headless run, stop early once observable
-   * state has not changed for N consecutive chunks -- the firmware has reached
-   * steady-state idle (an RTOS idle spin, a `while(1) wfi`), so there is nothing
-   * left to run. Off (0) by default, so normal runs are unaffected; opt in for
-   * RTOS/idle apps that would otherwise burn the whole wall-clock budget. The
-   * tracked counters (peripheral MMIO reads/writes, PendSV/SVCall, peripheral
-   * IRQs) are all monotonic, so an unchanged sum means none of them advanced. */
-  uint32_t idle_stop_chunks = 0U;
-  {
-    const char* e_idle = getenv("BOARD_SIM_IDLE_STOP");
-    if ((e_idle != nullptr) && (view == nullptr)) {
-      const long v = strtol(e_idle, nullptr, (int)k_env_strtol_base);
-      if (v > 0L) {
-        idle_stop_chunks = (uint32_t)v;
-      }
-    }
-  }
-  /* BOARD_SIM_USB_STOP=N: stop a plain headless run N chunks after the virtual USB
-   * host reports the device CONFIGURED. The USB device apps never go idle -- HID
-   * jiggles its boot mouse forever, MSC keeps answering host polls -- so the
-   * idle-stop above never fires for them. This makes the smoke gate fast and
-   * deterministic: it runs exactly long enough to confirm enumeration + the first
-   * class traffic, then stops, instead of burning the whole chunk/wall budget. */
-  uint32_t usb_stop_settle = 0U;
-  {
-    const char* e_usb = getenv("BOARD_SIM_USB_STOP");
-    if ((e_usb != nullptr) && (view == nullptr)) {
-      const long v = strtol(e_usb, nullptr, (int)k_env_strtol_base);
-      if (v > 0L) {
-        usb_stop_settle = (uint32_t)v;
-      }
-    }
-  }
-  /* BOARD_SIM_USBH_STOP=N: as above but for a USB HOST-mode app -- stop N chunks
-   * after the virtual host-mode keyboard has streamed its reports. Kept distinct
-   * from USB_STOP so a host app that also runs a device worker is not stopped by
-   * that worker reaching CONFIGURED before the host side completes. */
-  uint32_t usbh_stop_settle = 0U;
-  {
-    const char* e_usbh = getenv("BOARD_SIM_USBH_STOP");
-    if ((e_usbh != nullptr) && (view == nullptr)) {
-      const long v = strtol(e_usbh, nullptr, (int)k_env_strtol_base);
-      if (v > 0L) {
-        usbh_stop_settle = (uint32_t)v;
-      }
-    }
-  }
-  /* BOARD_SIM_STOP_ON="<substr>": stop the headless run as soon as the console
-   * UART's last line contains <substr> -- a generic "stop on a banner" guard for
-   * apps that loop forever after a success line (e.g. usb_host_file_ops retries
-   * its ladder every 5 s). Empty / unset disables it. */
-  const char* stop_on = getenv("BOARD_SIM_STOP_ON");
-  if ((stop_on != nullptr) && ((stop_on[0] == '\0') || (view != nullptr))) {
-    stop_on = nullptr;
-  }
-  /* BOARD_SIM_STOP_PC=0x...: end the run the first time PC reaches this address
-   * (effective in profile insn mode, via prof_insn_hook). Lets the profiler cover
-   * exactly the boot path -- the idle main-loop PC the firmware parks at -- when
-   * the build-stable compute-idle auto-stop below is not specific enough. */
-  {
-    const char* e_spc = getenv("BOARD_SIM_STOP_PC");
-    if (e_spc != nullptr) {
-      const unsigned long v = strtoul(e_spc, nullptr, (int)k_env_strtol_base);
-      sim_prof_set_stop_pc((uint32_t)(v & ~1UL)); /* clear the Thumb bit if supplied. */
-    }
-  }
-  /* BOARD_SIM_PROFILE compute-idle stop (insn mode, build-stable): once boot has
-   * fallen into the steady frame loop the firmware retires almost no instructions
-   * per chunk (each frame polls a little, then WFI-halts), whereas boot chunks are
-   * compute-heavy. Stop after k_prof_idle_need consecutive chunks that each retire
-   * fewer than k_prof_idle_insns instructions, so the profile spans boot + the
-   * first rendered frame and not the idle tail. Armed only after k_prof_idle_arm
-   * chunks so an early cheap chunk cannot trip it. */
-  enum : uint32_t {
-    k_prof_idle_insns = 4000U, /**< Per-chunk insns below which a chunk is idle. */
-    k_prof_idle_need  = 600U,  /**< Consecutive idle chunks that end the run.    */
-    k_prof_idle_arm   = 16U,   /**< Chunks to run before the stop is armed.      */
-  };
-  /* All three are overridable so the boot window can be tuned per app (a long
-   * boot-time settle delay is a run of cheap chunks that must not be mistaken
-   * for the steady idle loop). NEED defaults high enough to clear the settle
-   * delays in these apps; raise it (or set BOARD_SIM_STOP_PC) for a longer boot. */
-  uint32_t prof_idle_insns = (uint32_t)k_prof_idle_insns;
-  uint32_t prof_idle_need  = (uint32_t)k_prof_idle_need;
-  uint32_t prof_idle_arm   = (uint32_t)k_prof_idle_arm;
-  {
-    const char* e_pi = getenv("BOARD_SIM_PROFILE_IDLE_INSNS");
-    const char* e_pn = getenv("BOARD_SIM_PROFILE_IDLE_NEED");
-    const char* e_pa = getenv("BOARD_SIM_PROFILE_IDLE_ARM");
-    if (e_pi != nullptr) {
-      prof_idle_insns = (uint32_t)strtoul(e_pi, nullptr, (int)k_strtol_base10);
-    }
-    if (e_pn != nullptr) {
-      prof_idle_need = (uint32_t)strtoul(e_pn, nullptr, (int)k_strtol_base10);
-    }
-    if (e_pa != nullptr) {
-      prof_idle_arm = (uint32_t)strtoul(e_pa, nullptr, (int)k_strtol_base10);
-    }
-  }
-  uint64_t            prof_idle_prev_i = 0U;
-  uint32_t            prof_idle_run    = 0U;
-  bool                prof_stopped     = false;
-  uint64_t            idle_sig_prev    = 0U;
-  uint32_t            idle_run         = 0U;
-  bool                idle_stopped     = false;
-  uint32_t            usb_stop_run     = 0U;
-  uint32_t            usbh_stop_run    = 0U;
-  bool                usb_stopped      = false;
-  bool                stop_sym_hit     = false; /* --stop-sym threshold reached.           */
-  uint32_t            rec_frames       = 0U;    /* frames written when --record is active. */
-  const clock_t       t0               = clock();
-  uc_err              err              = UC_ERR_OK;
-  uint32_t            run_pc           = pc;
-  uint32_t            chunks           = 0U;
-  bool                timed_out        = false;
-  bool                closed           = false;
-  uint32_t            settle_left      = 0U;    /* >0 once the click landed: chunks to drain. */
-  uint32_t            last_boot_chunk  = 0U;    /* chunk of the last (re)boot for --reboot.   */
-  bool                slider_grab      = false; /* true while a press grabbed the battery slider. */
-  board_overlay_btn_t held_btn = k_board_overlay_btn_none; /* SW held down (released on up). */
+  const run_guards_t  guards              = run_read_guards(cfg, view);
+  const uint32_t      click_settle_chunks = guards.click_settle_chunks;
+  uint32_t            max_chunks          = guards.max_chunks;
+  const double        wall_s              = guards.wall_s;
+  const bool          wall_guard_on       = guards.wall_guard_on;
+  const uint32_t      idle_stop_chunks    = guards.idle_stop_chunks;
+  const uint32_t      usb_stop_settle     = guards.usb_stop_settle;
+  const uint32_t      usbh_stop_settle    = guards.usbh_stop_settle;
+  const char* const   stop_on             = guards.stop_on;
+  const uint32_t      prof_idle_insns     = guards.prof_idle_insns;
+  const uint32_t      prof_idle_need      = guards.prof_idle_need;
+  const uint32_t      prof_idle_arm       = guards.prof_idle_arm;
+  uint64_t            prof_idle_prev_i    = 0U;
+  uint32_t            prof_idle_run       = 0U;
+  bool                prof_stopped        = false;
+  uint64_t            idle_sig_prev       = 0U;
+  uint32_t            idle_run            = 0U;
+  bool                idle_stopped        = false;
+  uint32_t            usb_stop_run        = 0U;
+  uint32_t            usbh_stop_run       = 0U;
+  bool                usb_stopped         = false;
+  bool                stop_sym_hit        = false; /* --stop-sym threshold reached.           */
+  uint32_t            rec_frames          = 0U;    /* frames written when --record is active. */
+  const clock_t       t0                  = clock();
+  uc_err              err                 = UC_ERR_OK;
+  uint32_t            run_pc              = pc;
+  uint32_t            chunks              = 0U;
+  bool                timed_out           = false;
+  bool                closed              = false;
+  uint32_t            settle_left         = 0U; /* >0 once the click landed: chunks to drain. */
+  uint32_t            last_boot_chunk     = 0U; /* chunk of the last (re)boot for --reboot.   */
+  bool                slider_grab = false;      /* true while a press grabbed the battery slider. */
+  board_overlay_btn_t held_btn    = k_board_overlay_btn_none; /* SW held down (released on up). */
   uint64_t            last_present_us = 0U; /* wall-us of the last live --view present. */
   /* Classify a headless --click once. A click on the console tab bar switches the
    * active console channel (a one-shot view change, same as the window path); an
@@ -427,104 +389,9 @@ int sim_run_and_report(const sim_run_cfg_t* cfg)
       board_periph_touch_inject(cnx, cny);
     }
 
-    /* Inner loop: run a chunk, then service exceptions to a steady state before
-     * the next chunk. An EXC_RETURN branch is unstacked and the NVIC re-checked
-     * so a still-pending lower-priority exception tail-chains (e.g. PendSV right
-     * after SysTick) exactly as hardware would, instead of briefly resuming the
-     * interrupted code. SVCall (taken in on_intr) just leaves PC at the handler,
-     * which the next relaunch runs. */
-    bool faulted = false;
-    for (uint32_t inner = 0U; inner < (uint32_t)k_run_inner_max; inner++) {
-      sim_exc_clear_pendsv_stop(); /* set by on_icsr_write iff this run ends on PENDSVSET */
-      /* Idle fast-forward: when the core is parked on a wait-for-interrupt spin
-       * (ThreadX's __tx_wait_here `b .`, or a `wfi` halt), running a full
-       * k_run_chunk_insns just burns wall time to reach the SAME SysTick that is
-       * already armed once per outer chunk. Cap the budget to k_idle_spin_insns
-       * so the spin returns at once and the boundary below takes the tick now.
-       * This skips only idle wall-time: the tick stays armed once per outer
-       * chunk and fired once, so ThreadX's tick COUNT -- and every sleep/heartbeat
-       * deadline measured in ticks -- is identical to a full idle chunk. Busy
-       * firmware never parks on these opcodes, so it runs the full budget. */
-      /* Low-power (Model A): the M33 runs ~4x slower than the M85, so a busy
-       * chunk advances 1/4 as many instructions per modelled tick. Idle spins
-       * still collapse to k_idle_spin_insns regardless. */
-      size_t busy_budget = (size_t)k_run_chunk_insns;
-      if (sim_low_power()) {
-        busy_budget = (size_t)k_run_chunk_insns / (size_t)k_low_power_div;
-      }
-      const size_t run_budget = idle_spin_at(uc, run_pc) ? (size_t)k_idle_spin_insns : busy_budget;
-      err                     = uc_emu_start(uc, (uint64_t)run_pc | 1U, 0, 0, run_budget);
-      (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
-      if (sim_seam_take_relaunch()) {
-        /* A --fast-sd byte-exchange returned to its caller. This consumed no
-         * modelled time, so relaunch from the returned PC without advancing the
-         * SysTick or charging a chunk (the inner-loop cap still bounds the run). */
-        continue;
-      }
-      if (sim_prof_stop_hit()) {
-        break; /* BOARD_SIM_STOP_PC reached (set in prof_insn_hook) -- end the run. */
-      }
-      if (sim_exc_reboot_requested()) {
-        break; /* AIRCR.SYSRESETREQ -- the outer wrapper performs the reboot. */
-      }
-      if (sim_exc_bkpt_hit()) {
-        faulted = true; /* firmware trapped on a BKPT -- end the run, report it. */
-        break;
-      }
-      uint64_t exc_ret_pc = 0U;
-      if (sim_exc_take_exc_return(&exc_ret_pc)) {
-        exc_return(uc, (uint32_t)exc_ret_pc);
-        /* Tail-chain the next pend, but do NOT advance the SysTick: an exception
-         * return consumes no modelled time, so time advances only on a full
-         * instruction budget (below). This keeps a deferred tick from firing the
-         * instant a PendSV context switch unstacks into the new thread. */
-        (void)exc_take_pending(uc, vtor_base, false);
-        (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
-        continue;
-      }
-      if (err != UC_ERR_OK) {
-        faulted = true;
-        break;
-      }
-      if (sim_mpu_fault_pending()) {
-        /* A store hit a read-only MPU region (on_mpu_ro_write stopped us).
-         * Synthesise MemManage at this boundary -- no time advances (a fault is
-         * synchronous), and the stacked PC is the faulting store. */
-        sim_mpu_clear_fault();
-        mpu_synth_memmanage(uc, vtor_base);
-        (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
-        continue;
-      }
-      if (sim_div0_fault_pending()) {
-        /* A UDIV/SDIV by zero with CCR.DIV_0_TRP set (emulate_div0_patched stopped
-         * us). Synthesise UsageFault at this boundary -- synchronous, no time
-         * advances, and the stacked PC is the trapping divide. */
-        sim_div0_clear_fault();
-        div0_synth_usagefault(uc, vtor_base);
-        (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
-        continue;
-      }
-      if (sim_exc_pendsv_stop()) {
-        /* Context-switch stop: a thread wrote PENDSVSET to yield. Take PendSV
-         * but do NOT advance the SysTick -- a context switch consumes no
-         * modelled time, so a thread that just suspended on a tick wait keeps
-         * waiting and the scheduler runs the highest-priority READY thread. This
-         * is what lets a low-priority worker (e.g. the NetX echo thread) run to
-         * completion before a higher-priority sleeper's tick expires. */
-        (void)exc_take_pending(uc, vtor_base, false);
-        (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
-        continue;
-      }
-      /* Full instruction budget elapsed: a tick's worth of genuine execution (or
-       * an idle spin) has passed, so advance time -- take the highest-priority
-       * pending exception (SysTick this period, and/or PendSV) and resolve it in
-       * this same chunk so a context switch does not cost a scheduling quantum. */
-      if (exc_take_pending(uc, vtor_base, true)) {
-        (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
-        continue;
-      }
-      break;
-    }
+    /* Inner loop (run_inner): run a chunk, then service exceptions to a steady
+     * state before the next chunk. */
+    const bool faulted = run_inner(uc, vtor_base, &run_pc, &err);
     if (faulted) {
       break;
     }
