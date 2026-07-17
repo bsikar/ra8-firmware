@@ -22,78 +22,127 @@
 #include "sim_run.h"
 #include "sim_view.h"
 
-run_guards_t run_read_guards(const sim_run_cfg_t* cfg, const board_view_t* view)
+/** @brief Default post-click drain window used when the env override is unset. */
+enum : uint32_t {
+  /* ra8_delay_ms(16) in the render loop spins on SysTick, which advances one
+   * tick per chunk, so ~16 chunks == one loop iteration. Give the injected
+   * tap many iterations to flow DOWN -> UP -> CLICKED -> tab switch -> repaint. */
+  k_click_settle_chunks = 512U, /**< Extra chunks after the click lands. */
+};
+
+/**
+ * @brief Read a BOARD_SIM_* env var as a positive decimal uint32.
+ *
+ * @details Parses @p name with strtol (base ::k_env_strtol_base). A missing
+ * variable or a non-positive value leaves @p dflt in force, matching the
+ * "unset keeps the default" contract every budget knob documents.
+ *
+ * @param[in] name The environment variable name.
+ * @param[in] dflt Value returned when unset or parsed as <= 0.
+ * @return The parsed positive value, else @p dflt.
+ * @retval dflt The variable is unset or did not parse to a positive integer.
+ * @pre @p name is a valid NUL-terminated string.
+ * @pre The environment is stable for the duration of the call.
+ * @post No global state is modified (pure query).
+ * @post The returned value is @p dflt or a strictly-positive parse result.
+ * @note Not thread-safe; getenv is called on the single setup thread.
+ * @since 0.1.0
+ */
+static uint32_t guard_env_u32(const char* name, uint32_t dflt)
+{
+  const char* const e = getenv(name);
+  if (e == nullptr) {
+    return dflt;
+  }
+  const long v = strtol(e, nullptr, (int)k_env_strtol_base);
+  return (v > 0L) ? (uint32_t)v : dflt;
+}
+
+/**
+ * @brief Read a headless-only BOARD_SIM_* positive uint32 knob.
+ *
+ * @details The idle / USB / MAX_CHUNKS stop knobs have no effect in --view
+ * (window-driven) mode; when @p view is live the override is ignored and
+ * @p dflt is returned, exactly as the inline env parsing did.
+ *
+ * @param[in] name The environment variable name.
+ * @param[in] dflt Value returned when live-view or unset / non-positive.
+ * @param[in] view The live window handle (NULL when headless).
+ * @return @p dflt when a window is open, otherwise ::guard_env_u32.
+ * @retval dflt A live --view window suppresses the override.
+ * @pre @p name is a valid NUL-terminated string.
+ * @pre @p view is NULL or a valid window handle.
+ * @post No global state is modified (pure query).
+ * @post The override is honoured only in headless mode.
+ * @note Not thread-safe; part of single-threaded setup.
+ * @since 0.1.0
+ */
+static uint32_t guard_env_u32_headless(const char* name, uint32_t dflt, const board_view_t* view)
+{
+  if (view != nullptr) {
+    return dflt;
+  }
+  return guard_env_u32(name, dflt);
+}
+
+/**
+ * @brief Apply the BOARD_SIM_WALL_S CPU-time guard override.
+ *
+ * @details A positive value sets the bound in seconds; an explicit 0 DISABLES
+ * the guard (the #168 footgun fix -- WALL_S=0 no longer silently falls back to
+ * the default), leaving the run bounded by chunks alone. Unset keeps both
+ * defaults untouched.
+ *
+ * @param[in,out] wall_s        In: default bound; out: override when > 0.
+ * @param[in,out] wall_guard_on In: true; out: false on an explicit WALL_S=0.
+ * @return void
+ * @pre @p wall_s and @p wall_guard_on are non-NULL and pre-seeded to defaults.
+ * @pre The environment is stable for the call.
+ * @post @p wall_s holds the effective CPU-time bound in seconds.
+ * @post @p wall_guard_on is false iff BOARD_SIM_WALL_S was exactly 0.
+ * @note Not thread-safe; part of single-threaded setup.
+ * @since 0.1.0
+ */
+static void guard_read_wall(double* wall_s, bool* wall_guard_on)
+{
+  const char* const e_wall = getenv("BOARD_SIM_WALL_S");
+  if (e_wall == nullptr) {
+    return;
+  }
+  const long v = strtol(e_wall, nullptr, (int)k_env_strtol_base);
+  if (v > 0L) {
+    *wall_s = (double)v;
+  } else if (v == 0L) {
+    *wall_guard_on = false; /* explicit opt-out: bound the run by chunks only */
+  }
+}
+
+/**
+ * @brief Apply the --record chunk bound and create the frame directory.
+ *
+ * @details Headless --record-secs bounds the run to exactly the recording
+ * window (so the dumped frame sequence spans the requested emulated duration);
+ * then, whenever a record directory is set, the directory is created and the
+ * recording banner is printed. Both steps are inert when --record is off.
+ *
+ * @param[in]     cfg        The run configuration (record dir / seconds).
+ * @param[in]     view       The live window handle (NULL when headless).
+ * @param[in,out] max_chunks In: current budget; out: record-secs bound when set.
+ * @return void
+ * @pre @p cfg and @p max_chunks are non-NULL.
+ * @pre @p view is NULL or a valid window handle.
+ * @post With headless --record-secs, @p max_chunks equals the recording window.
+ * @post With --record active, the frame directory exists and the banner printed.
+ * @note Not thread-safe; performs mkdir + stderr output during setup.
+ * @since 0.1.0
+ */
+static void
+guard_setup_record(const sim_run_cfg_t* cfg, const board_view_t* view, uint32_t* max_chunks)
 {
   const char* const record_dir  = cfg->record_dir;
   const uint32_t    record_secs = cfg->record_secs;
-  enum : uint32_t {
-    /* ra8_delay_ms(16) in the render loop spins on SysTick, which advances one
-     * tick per chunk, so ~16 chunks == one loop iteration. Give the injected
-     * tap many iterations to flow DOWN -> UP -> CLICKED -> tab switch -> repaint. */
-    k_click_settle_chunks = 512U, /**< Extra chunks after the click lands. */
-  };
-  /* BOARD_SIM_CLICK_SETTLE=N: widen the post-click drain for a tap that kicks off
-   * a long operation (e.g. opening a big book from SD: read + inflate + decode +
-   * render can need far more than the default window). Mirrors BOARD_SIM_MAX_CHUNKS;
-   * unset keeps the default so ordinary tap captures stay snappy. */
-  uint32_t click_settle_chunks = (uint32_t)k_click_settle_chunks;
-  {
-    const char* e_settle = getenv("BOARD_SIM_CLICK_SETTLE");
-    if (e_settle != nullptr) {
-      const long v = strtol(e_settle, nullptr, (int)k_env_strtol_base);
-      if (v > 0L) {
-        click_settle_chunks = (uint32_t)v;
-      }
-    }
-  }
-
-  /* Chunked run: emulate a block, take a SysTick (and any pending PendSV),
-   * repeat. Within a chunk, exception returns (a handler's "BX lr" into an
-   * EXC_RETURN magic) and SVCalls are resolved inline -- the inner loop unstacks
-   * / vectors and relaunches from the new PC without consuming a chunk -- so a
-   * context switch does not cost a whole scheduling quantum and the once-per-
-   * chunk SysTick cadence (one ThreadX tick) is preserved. Headless runs stop on
-   * a chunk budget + wall-clock guard; in --view the loop runs until the window
-   * is closed, presenting the live GLCDC output every k_view_present_every. */
-  uint32_t max_chunks =
-    (view != nullptr) ? (uint32_t)k_view_max_chunks : (uint32_t)k_run_max_chunks;
-  /* Headless runs of heavy apps (e.g. sd_font_render: a 400 KB SD font read
-   * plus stb_truetype rasterisation) can need more than the default budget.
-   * BOARD_SIM_WALL_S / BOARD_SIM_MAX_CHUNKS override the guards without a
-   * recompile; they have no effect in --view (window-driven) mode.
-   *
-   * The wall-clock guard is CPU-time (clock(), see the run loop), so a
-   * heavily-loaded host burns it faster than wall time -- which made it
-   * truncate the otherwise instruction-deterministic chunk budget under CI load
-   * and silently drop a late-printing banner (#168). A run that must stay
-   * deterministic regardless of host load sets BOARD_SIM_WALL_S=0 to DISABLE the
-   * guard entirely and rely on the deterministic BOARD_SIM_MAX_CHUNKS bound (and
-   * BOARD_SIM_STOP_ON) instead. (Previously WALL_S=0 silently fell back to the
-   * default -- the footgun that hid the #168 root cause.) */
-  double wall_s        = (double)k_run_wall_s;
-  bool   wall_guard_on = true;
-  {
-    const char* e_wall = getenv("BOARD_SIM_WALL_S");
-    if (e_wall != nullptr) {
-      const long v = strtol(e_wall, nullptr, (int)k_env_strtol_base);
-      if (v > 0L) {
-        wall_s = (double)v;
-      } else if (v == 0L) {
-        wall_guard_on = false; /* explicit opt-out: bound the run by chunks only */
-      }
-    }
-    const char* e_chunks = getenv("BOARD_SIM_MAX_CHUNKS");
-    if ((e_chunks != nullptr) && (view == nullptr)) {
-      const long v = strtol(e_chunks, nullptr, (int)k_env_strtol_base);
-      if (v > 0L) {
-        max_chunks = (uint32_t)v;
-      }
-    }
-  }
-  /* Headless --record-secs bounds the run to exactly the recording window so the
-   * dumped frame sequence spans the requested emulated duration. */
   if ((record_dir != nullptr) && (record_secs > 0U) && (view == nullptr)) {
-    max_chunks = record_secs * (uint32_t)k_record_ms_per_sec;
+    *max_chunks = record_secs * (uint32_t)k_record_ms_per_sec;
   }
   if (record_dir != nullptr) {
     (void)mkdir(record_dir, (mode_t)k_record_dir_mode);
@@ -103,105 +152,134 @@ run_guards_t run_read_guards(const sim_run_cfg_t* cfg, const board_view_t* view)
                   (unsigned)k_record_every,
                   (unsigned)k_record_fps);
   }
-  /* BOARD_SIM_IDLE_STOP=N: in a plain headless run, stop early once observable
-   * state has not changed for N consecutive chunks -- the firmware has reached
-   * steady-state idle (an RTOS idle spin, a `while(1) wfi`), so there is nothing
-   * left to run. Off (0) by default, so normal runs are unaffected; opt in for
-   * RTOS/idle apps that would otherwise burn the whole wall-clock budget. The
-   * tracked counters (peripheral MMIO reads/writes, PendSV/SVCall, peripheral
-   * IRQs) are all monotonic, so an unchanged sum means none of them advanced. */
-  uint32_t idle_stop_chunks = 0U;
-  {
-    const char* e_idle = getenv("BOARD_SIM_IDLE_STOP");
-    if ((e_idle != nullptr) && (view == nullptr)) {
-      const long v = strtol(e_idle, nullptr, (int)k_env_strtol_base);
-      if (v > 0L) {
-        idle_stop_chunks = (uint32_t)v;
-      }
-    }
-  }
-  /* BOARD_SIM_USB_STOP=N: stop a plain headless run N chunks after the virtual USB
-   * host reports the device CONFIGURED. The USB device apps never go idle -- HID
-   * jiggles its boot mouse forever, MSC keeps answering host polls -- so the
-   * idle-stop above never fires for them. This makes the smoke gate fast and
-   * deterministic: it runs exactly long enough to confirm enumeration + the first
-   * class traffic, then stops, instead of burning the whole chunk/wall budget. */
-  uint32_t usb_stop_settle = 0U;
-  {
-    const char* e_usb = getenv("BOARD_SIM_USB_STOP");
-    if ((e_usb != nullptr) && (view == nullptr)) {
-      const long v = strtol(e_usb, nullptr, (int)k_env_strtol_base);
-      if (v > 0L) {
-        usb_stop_settle = (uint32_t)v;
-      }
-    }
-  }
-  /* BOARD_SIM_USBH_STOP=N: as above but for a USB HOST-mode app -- stop N chunks
-   * after the virtual host-mode keyboard has streamed its reports. Kept distinct
-   * from USB_STOP so a host app that also runs a device worker is not stopped by
-   * that worker reaching CONFIGURED before the host side completes. */
-  uint32_t usbh_stop_settle = 0U;
-  {
-    const char* e_usbh = getenv("BOARD_SIM_USBH_STOP");
-    if ((e_usbh != nullptr) && (view == nullptr)) {
-      const long v = strtol(e_usbh, nullptr, (int)k_env_strtol_base);
-      if (v > 0L) {
-        usbh_stop_settle = (uint32_t)v;
-      }
-    }
-  }
-  /* BOARD_SIM_STOP_ON="<substr>": stop the headless run as soon as the console
-   * UART's last line contains <substr> -- a generic "stop on a banner" guard for
-   * apps that loop forever after a success line (e.g. usb_host_file_ops retries
-   * its ladder every 5 s). Empty / unset disables it. */
+}
+
+/**
+ * @brief Resolve the BOARD_SIM_STOP_ON console-banner stop substring.
+ *
+ * @details Stops the headless run as soon as the console UART's last line
+ * contains the substring -- a generic "stop on a banner" guard for apps that
+ * loop forever after a success line. Empty, unset, or --view all disable it.
+ *
+ * @param[in] view The live window handle (NULL when headless).
+ * @return The stop substring, or NULL when disabled.
+ * @retval NULL BOARD_SIM_STOP_ON is unset, empty, or a window is open.
+ * @pre @p view is NULL or a valid window handle.
+ * @pre The environment is stable for the call.
+ * @post No global state is modified (pure query).
+ * @post A non-NULL result points at a non-empty env string.
+ * @note Not thread-safe; part of single-threaded setup.
+ * @since 0.1.0
+ */
+static const char* guard_read_stop_on(const board_view_t* view)
+{
   const char* stop_on = getenv("BOARD_SIM_STOP_ON");
   if ((stop_on != nullptr) && ((stop_on[0] == '\0') || (view != nullptr))) {
     stop_on = nullptr;
   }
-  /* BOARD_SIM_STOP_PC=0x...: end the run the first time PC reaches this address
-   * (effective in profile insn mode, via prof_insn_hook). Lets the profiler cover
-   * exactly the boot path -- the idle main-loop PC the firmware parks at -- when
-   * the build-stable compute-idle auto-stop below is not specific enough. */
-  {
-    const char* e_spc = getenv("BOARD_SIM_STOP_PC");
-    if (e_spc != nullptr) {
-      const unsigned long v = strtoul(e_spc, nullptr, (int)k_env_strtol_base);
-      sim_prof_set_stop_pc((uint32_t)(v & ~1UL)); /* clear the Thumb bit if supplied. */
-    }
+  return stop_on;
+}
+
+/**
+ * @brief Hand BOARD_SIM_STOP_PC (if set) to the profiler stop hook.
+ *
+ * @details Ends the run the first time PC reaches this address (effective in
+ * profile insn mode, via prof_insn_hook), letting the profiler cover exactly
+ * the boot path. The supplied address has its Thumb bit cleared.
+ *
+ * @return void
+ * @pre The environment is stable for the call.
+ * @pre The profiler module is initialised.
+ * @post With BOARD_SIM_STOP_PC set, the profiler stop PC is armed.
+ * @post Without it set, no profiler state changes.
+ * @note Not thread-safe; part of single-threaded setup.
+ * @since 0.1.0
+ */
+static void guard_apply_stop_pc(void)
+{
+  const char* const e_spc = getenv("BOARD_SIM_STOP_PC");
+  if (e_spc != nullptr) {
+    const unsigned long v = strtoul(e_spc, nullptr, (int)k_env_strtol_base);
+    sim_prof_set_stop_pc((uint32_t)(v & ~1UL)); /* clear the Thumb bit if supplied. */
   }
-  /* BOARD_SIM_PROFILE compute-idle stop (insn mode, build-stable): once boot has
-   * fallen into the steady frame loop the firmware retires almost no instructions
-   * per chunk (each frame polls a little, then WFI-halts), whereas boot chunks are
-   * compute-heavy. Stop after k_prof_idle_need consecutive chunks that each retire
-   * fewer than k_prof_idle_insns instructions, so the profile spans boot + the
-   * first rendered frame and not the idle tail. Armed only after k_prof_idle_arm
-   * chunks so an early cheap chunk cannot trip it. */
+}
+
+/**
+ * @brief Read the profiler compute-idle early-stop tunables.
+ *
+ * @details Once boot has fallen into the steady frame loop the firmware
+ * retires almost no instructions per chunk, whereas boot chunks are
+ * compute-heavy. Stop after @p need consecutive chunks that each retire fewer
+ * than @p insns instructions, armed only after @p arm chunks. All three are
+ * BOARD_SIM_PROFILE_IDLE_* overridable (strtoul, base ::k_strtol_base10) so
+ * the boot window can be tuned per app.
+ *
+ * @param[out] insns Per-chunk insn count below which a chunk is idle.
+ * @param[out] need  Consecutive idle chunks that end the run.
+ * @param[out] arm   Chunks to run before the stop is armed.
+ * @return void
+ * @pre @p insns, @p need and @p arm are non-NULL.
+ * @pre The environment is stable for the call.
+ * @post Each output holds its default or its env override.
+ * @post No other global state is modified.
+ * @note Not thread-safe; part of single-threaded setup.
+ * @since 0.1.0
+ */
+static void guard_read_prof_idle(uint32_t* insns, uint32_t* need, uint32_t* arm)
+{
   enum : uint32_t {
     k_prof_idle_insns = 4000U, /**< Per-chunk insns below which a chunk is idle. */
     k_prof_idle_need  = 600U,  /**< Consecutive idle chunks that end the run.    */
     k_prof_idle_arm   = 16U,   /**< Chunks to run before the stop is armed.      */
   };
-  /* All three are overridable so the boot window can be tuned per app (a long
-   * boot-time settle delay is a run of cheap chunks that must not be mistaken
-   * for the steady idle loop). NEED defaults high enough to clear the settle
-   * delays in these apps; raise it (or set BOARD_SIM_STOP_PC) for a longer boot. */
-  uint32_t prof_idle_insns = (uint32_t)k_prof_idle_insns;
-  uint32_t prof_idle_need  = (uint32_t)k_prof_idle_need;
-  uint32_t prof_idle_arm   = (uint32_t)k_prof_idle_arm;
-  {
-    const char* e_pi = getenv("BOARD_SIM_PROFILE_IDLE_INSNS");
-    const char* e_pn = getenv("BOARD_SIM_PROFILE_IDLE_NEED");
-    const char* e_pa = getenv("BOARD_SIM_PROFILE_IDLE_ARM");
-    if (e_pi != nullptr) {
-      prof_idle_insns = (uint32_t)strtoul(e_pi, nullptr, (int)k_strtol_base10);
-    }
-    if (e_pn != nullptr) {
-      prof_idle_need = (uint32_t)strtoul(e_pn, nullptr, (int)k_strtol_base10);
-    }
-    if (e_pa != nullptr) {
-      prof_idle_arm = (uint32_t)strtoul(e_pa, nullptr, (int)k_strtol_base10);
-    }
+  *insns                 = (uint32_t)k_prof_idle_insns;
+  *need                  = (uint32_t)k_prof_idle_need;
+  *arm                   = (uint32_t)k_prof_idle_arm;
+  const char* const e_pi = getenv("BOARD_SIM_PROFILE_IDLE_INSNS");
+  const char* const e_pn = getenv("BOARD_SIM_PROFILE_IDLE_NEED");
+  const char* const e_pa = getenv("BOARD_SIM_PROFILE_IDLE_ARM");
+  if (e_pi != nullptr) {
+    *insns = (uint32_t)strtoul(e_pi, nullptr, (int)k_strtol_base10);
   }
+  if (e_pn != nullptr) {
+    *need = (uint32_t)strtoul(e_pn, nullptr, (int)k_strtol_base10);
+  }
+  if (e_pa != nullptr) {
+    *arm = (uint32_t)strtoul(e_pa, nullptr, (int)k_strtol_base10);
+  }
+}
+
+run_guards_t run_read_guards(const sim_run_cfg_t* cfg, const board_view_t* view)
+{
+  /* BOARD_SIM_CLICK_SETTLE=N: widen the post-click drain for a tap that kicks off
+   * a long operation (e.g. opening a big book from SD). Unset keeps the default. */
+  const uint32_t click_settle_chunks =
+    guard_env_u32("BOARD_SIM_CLICK_SETTLE", (uint32_t)k_click_settle_chunks);
+
+  /* Chunked run: one SysTick (one ThreadX tick) per outer chunk. Headless runs
+   * stop on a chunk budget + wall-clock guard; --view runs until the window is
+   * closed. BOARD_SIM_WALL_S / MAX_CHUNKS override the guards without a recompile
+   * and have no effect in --view mode. */
+  uint32_t max_chunks =
+    (view != nullptr) ? (uint32_t)k_view_max_chunks : (uint32_t)k_run_max_chunks;
+  double wall_s        = (double)k_run_wall_s;
+  bool   wall_guard_on = true;
+  guard_read_wall(&wall_s, &wall_guard_on);
+  max_chunks = guard_env_u32_headless("BOARD_SIM_MAX_CHUNKS", max_chunks, view);
+  guard_setup_record(cfg, view, &max_chunks);
+
+  /* Headless-only early-stop knobs: idle steady-state (IDLE_STOP), USB device
+   * CONFIGURED (USB_STOP) and USB host complete (USBH_STOP). Off (0) by default. */
+  const uint32_t    idle_stop_chunks = guard_env_u32_headless("BOARD_SIM_IDLE_STOP", 0U, view);
+  const uint32_t    usb_stop_settle  = guard_env_u32_headless("BOARD_SIM_USB_STOP", 0U, view);
+  const uint32_t    usbh_stop_settle = guard_env_u32_headless("BOARD_SIM_USBH_STOP", 0U, view);
+  const char* const stop_on          = guard_read_stop_on(view);
+  guard_apply_stop_pc();
+  uint32_t prof_idle_insns = 0U;
+  uint32_t prof_idle_need  = 0U;
+  uint32_t prof_idle_arm   = 0U;
+  guard_read_prof_idle(&prof_idle_insns, &prof_idle_need, &prof_idle_arm);
+
   return (run_guards_t){
     .click_settle_chunks = click_settle_chunks,
     .max_chunks          = max_chunks,
