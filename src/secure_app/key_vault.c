@@ -153,11 +153,7 @@ static uint16_t s_mac_key_len = 0U;
  * The SHA-256 sponge is a transcription of the FIPS 180-4 spec.
  * Every magic number below comes directly from the standard;
  * giving them names would inflate the code without adding clarity.
- * Same for the function size: SHA-256 is one big loop and is
- * routinely written as a single function.
  */
-
-// NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity)
 
 static const uint32_t k_sha256_k[64] = {
   0x428a2f98U, 0x71374491U, 0xb5c0fbcfU, 0xe9b5dba5U, 0x3956c25bU, 0x59f111f1U, 0x923f82a4U,
@@ -397,8 +393,6 @@ static void internal_sha256_32(const uint8_t* in32, uint8_t* out32)
   internal_sha256_schedule(block, w);
   internal_sha256_compress(w, out32);
 }
-
-// NOLINTEND(readability-function-size,readability-function-cognitive-complexity)
 
 /* =============================================================================
  * Public API
