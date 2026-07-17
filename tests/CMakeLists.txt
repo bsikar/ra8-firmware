@@ -788,6 +788,20 @@ foreach(src ${RA8_TEST_SOURCES})
 endforeach()
 
 # ---------------------------------------------------------------------------
+# test_app_ereader_manga: the ereader_manga host twin drives the app's shared
+# pan/zoom presentation model directly, so compile the app's src/mg_reader.c into
+# the test target (and expose its inc/) -- the tested render IS the production
+# render. The tile-atlas / gfx / tile-cache libraries it calls already come from
+# the ra8_core_hal object library the auto-glob linked.
+# ---------------------------------------------------------------------------
+if(TARGET test_app_ereader_manga)
+  target_sources(test_app_ereader_manga PRIVATE
+    ${FW_ROOT}/examples/ek_ra8d2/hw_pending/ereader_manga/src/mg_reader.c)
+  target_include_directories(test_app_ereader_manga PRIVATE
+    ${FW_ROOT}/examples/ek_ra8d2/hw_pending/ereader_manga/inc)
+endif()
+
+# ---------------------------------------------------------------------------
 # test_stub_crypto_gate (issue #180): reachability half of the stub-vs-production
 # crypto gate. The auto-glob above already registered it (it links ra8_core_hal,
 # built under RA8_SIMULATOR_MODE, so the guarded #if branch is active). Define
