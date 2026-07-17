@@ -280,6 +280,26 @@ static void test_cbr_rar4_compressed_unsupported(void)
   TEST_END("comic cbr: RAR4-compressed page unsupported");
 }
 
+/** @brief Unopened-archive and NULL-argument guard legs of the extract dispatch. */
+static void extract_dispatch_guards(const ra8_rar_t*       rar,
+                                    const ra8_rar_entry_t* store,
+                                    uint8_t*               obuf,
+                                    size_t                 obuf_len)
+{
+  size_t got = 0U;
+
+  /* Unopened archive -> invalid_state. */
+  ra8_rar_t none = *rar;
+  none.version   = k_ra8_rar_ver_none;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
+                 ra8_rar_extract(&none, store, obuf, obuf_len, &s_state, &got));
+
+  /* NULL argument guards. */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_rar_extract(nullptr, store, obuf, obuf_len, &s_state, &got));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_rar_extract(rar, nullptr, obuf, obuf_len, &s_state, &got));
+}
+
 /**
  * @test test_rar_extract_dispatch
  * @brief `ra8_rar_extract` routes STORE by copy, decodes RAR5-compressed, and
@@ -343,17 +363,7 @@ static void test_rar_extract_dispatch(void)
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
                  ra8_rar_extract(&r4, &comp, obuf, sizeof(obuf), &s_state, &got));
 
-  /* Unopened archive -> invalid_state. */
-  ra8_rar_t none = rar;
-  none.version   = k_ra8_rar_ver_none;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
-                 ra8_rar_extract(&none, &store, obuf, sizeof(obuf), &s_state, &got));
-
-  /* NULL argument guards. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rar_extract(nullptr, &store, obuf, sizeof(obuf), &s_state, &got));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rar_extract(&rar, nullptr, obuf, sizeof(obuf), &s_state, &got));
+  extract_dispatch_guards(&rar, &store, obuf, sizeof(obuf));
   TEST_END("rar: extract dispatch (store / compressed / guards)");
 }
 

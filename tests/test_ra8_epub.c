@@ -160,6 +160,71 @@ static uint8_t s_epub_buf[k_test_epub_buf_bytes];
  */
 static size_t s_epub_size;
 
+/** @brief Add the mimetype + XML document entries to the synthetic archive. */
+static void synth_add_docs(mz_zip_archive* zip)
+{
+  /* mimetype is by spec the first entry, stored uncompressed. */
+  mz_bool ok = mz_zip_writer_add_mem(zip,
+                                     "mimetype",
+                                     k_synth_mimetype,
+                                     strlen(k_synth_mimetype),
+                                     MZ_NO_COMPRESSION);
+  TEST_ASSERT(ok == MZ_TRUE);
+
+  ok = mz_zip_writer_add_mem(zip,
+                             "META-INF/container.xml",
+                             k_synth_container_xml,
+                             strlen(k_synth_container_xml),
+                             MZ_DEFAULT_COMPRESSION);
+  TEST_ASSERT(ok == MZ_TRUE);
+
+  ok = mz_zip_writer_add_mem(zip,
+                             "OEBPS/content.opf",
+                             k_synth_content_opf,
+                             strlen(k_synth_content_opf),
+                             MZ_DEFAULT_COMPRESSION);
+  TEST_ASSERT(ok == MZ_TRUE);
+
+  ok = mz_zip_writer_add_mem(zip,
+                             "OEBPS/nav.xhtml",
+                             k_synth_nav,
+                             strlen(k_synth_nav),
+                             MZ_DEFAULT_COMPRESSION);
+  TEST_ASSERT(ok == MZ_TRUE);
+}
+
+/** @brief Add the chapter bodies + cover + stylesheet to the synthetic archive. */
+static void synth_add_assets(mz_zip_archive* zip)
+{
+  mz_bool ok = mz_zip_writer_add_mem(zip,
+                                     "OEBPS/ch1.xhtml",
+                                     k_synth_ch1,
+                                     strlen(k_synth_ch1),
+                                     MZ_DEFAULT_COMPRESSION);
+  TEST_ASSERT(ok == MZ_TRUE);
+
+  ok = mz_zip_writer_add_mem(zip,
+                             "OEBPS/ch2.xhtml",
+                             k_synth_ch2,
+                             strlen(k_synth_ch2),
+                             MZ_DEFAULT_COMPRESSION);
+  TEST_ASSERT(ok == MZ_TRUE);
+
+  ok = mz_zip_writer_add_mem(zip,
+                             "OEBPS/cover.png",
+                             k_synth_cover_bytes,
+                             sizeof(k_synth_cover_bytes),
+                             MZ_NO_COMPRESSION);
+  TEST_ASSERT(ok == MZ_TRUE);
+
+  ok = mz_zip_writer_add_mem(zip,
+                             "OEBPS/style.css",
+                             k_synth_css,
+                             strlen(k_synth_css),
+                             MZ_DEFAULT_COMPRESSION);
+  TEST_ASSERT(ok == MZ_TRUE);
+}
+
 static void build_synth_epub(void)
 {
   mz_zip_archive zip;
@@ -169,62 +234,8 @@ static void build_synth_epub(void)
   mz_bool ok = mz_zip_writer_init_heap(&zip, 0U, k_test_epub_buf_bytes);
   TEST_ASSERT(ok == MZ_TRUE);
 
-  /* mimetype is by spec the first entry, stored uncompressed. */
-  ok = mz_zip_writer_add_mem(&zip,
-                             "mimetype",
-                             k_synth_mimetype,
-                             strlen(k_synth_mimetype),
-                             MZ_NO_COMPRESSION);
-  TEST_ASSERT(ok == MZ_TRUE);
-
-  ok = mz_zip_writer_add_mem(&zip,
-                             "META-INF/container.xml",
-                             k_synth_container_xml,
-                             strlen(k_synth_container_xml),
-                             MZ_DEFAULT_COMPRESSION);
-  TEST_ASSERT(ok == MZ_TRUE);
-
-  ok = mz_zip_writer_add_mem(&zip,
-                             "OEBPS/content.opf",
-                             k_synth_content_opf,
-                             strlen(k_synth_content_opf),
-                             MZ_DEFAULT_COMPRESSION);
-  TEST_ASSERT(ok == MZ_TRUE);
-
-  ok = mz_zip_writer_add_mem(&zip,
-                             "OEBPS/nav.xhtml",
-                             k_synth_nav,
-                             strlen(k_synth_nav),
-                             MZ_DEFAULT_COMPRESSION);
-  TEST_ASSERT(ok == MZ_TRUE);
-
-  ok = mz_zip_writer_add_mem(&zip,
-                             "OEBPS/ch1.xhtml",
-                             k_synth_ch1,
-                             strlen(k_synth_ch1),
-                             MZ_DEFAULT_COMPRESSION);
-  TEST_ASSERT(ok == MZ_TRUE);
-
-  ok = mz_zip_writer_add_mem(&zip,
-                             "OEBPS/ch2.xhtml",
-                             k_synth_ch2,
-                             strlen(k_synth_ch2),
-                             MZ_DEFAULT_COMPRESSION);
-  TEST_ASSERT(ok == MZ_TRUE);
-
-  ok = mz_zip_writer_add_mem(&zip,
-                             "OEBPS/cover.png",
-                             k_synth_cover_bytes,
-                             sizeof(k_synth_cover_bytes),
-                             MZ_NO_COMPRESSION);
-  TEST_ASSERT(ok == MZ_TRUE);
-
-  ok = mz_zip_writer_add_mem(&zip,
-                             "OEBPS/style.css",
-                             k_synth_css,
-                             strlen(k_synth_css),
-                             MZ_DEFAULT_COMPRESSION);
-  TEST_ASSERT(ok == MZ_TRUE);
+  synth_add_docs(&zip);
+  synth_add_assets(&zip);
 
   void*  heap_buf  = nullptr;
   size_t heap_size = 0U;
@@ -239,7 +250,6 @@ static void build_synth_epub(void)
 
   mz_zip_writer_end(&zip);
 }
-
 /* --------------------------------------------------------------------- */
 /* Test cases. */
 /* --------------------------------------------------------------------- */

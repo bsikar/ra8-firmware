@@ -47,6 +47,108 @@ static void fill_gradient(uint8_t* rgb, uint16_t w, uint16_t h)
   }
 }
 
+static const uint8_t pad_jpeg[] = {
+  0xFFU, 0xD8U, 0xFFU, 0xFFU, 0xFFU, 0xC0U, 0x00U, 0x0BU, 0x08U, 0x00U,
+  0x10U, 0x00U, 0x10U, 0x01U, 0x01U, 0x11U, 0x00U, 0xFFU, 0xD9U,
+};
+
+static const uint8_t soi_eoi_jpeg[] = {
+  0xFFU,
+  0xD8U,
+  0xFFU,
+  0xD9U,
+  0xFFU,
+  0xC0U,
+  0x00U,
+  0x0BU,
+  0x08U,
+  0x00U,
+  0x20U,
+  0x00U,
+  0x10U,
+  0x01U,
+  0x01U,
+  0x11U,
+  0x00U,
+};
+
+static const uint8_t bad_seg_jpeg[] = {
+  0xFFU,
+  0xD8U,
+  0xFFU,
+  0xC0U,
+  0x00U,
+  0x01U,
+};
+
+static const uint8_t over_seg_jpeg[] = {
+  0xFFU,
+  0xD8U,
+  0xFFU,
+  0xC0U,
+  0x00U,
+  0xFFU,
+};
+
+static const uint8_t w0_jpeg[] = {
+  0xFFU,
+  0xD8U,
+  0xFFU,
+  0xC0U,
+  0x00U,
+  0x0BU,
+  0x08U,
+  0x00U,
+  0x10U,
+  0x00U,
+  0x00U,
+  0x01U,
+  0x01U,
+  0x11U,
+  0x00U,
+};
+
+static const uint8_t h0_jpeg[] = {
+  0xFFU,
+  0xD8U,
+  0xFFU,
+  0xC0U,
+  0x00U,
+  0x0BU,
+  0x08U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x10U,
+  0x01U,
+  0x01U,
+  0x11U,
+  0x00U,
+};
+
+static const uint8_t sof2_jpeg[] = {
+  0xFFU,
+  0xD8U,
+  0xFFU,
+  0xC2U,
+  0x00U,
+  0x0BU,
+  0x08U,
+  0x00U,
+  0x10U,
+  0x00U,
+  0x10U,
+  0x01U,
+  0x01U,
+  0x11U,
+  0x00U,
+};
+
+static const uint8_t dht_then_sof0[] = {
+  0xFFU, 0xD8U, 0xFFU, 0xC4U, 0x00U, 0x02U, 0xFFU, 0xC0U, 0x00U, 0x0BU,
+  0x08U, 0x00U, 0x10U, 0x00U, 0x10U, 0x01U, 0x01U, 0x11U, 0x00U,
+};
+
 /**
  * @test test_mcdc_get_dimensions_pad_and_marker
  * @par MC/DC:
@@ -63,117 +165,23 @@ static void fill_gradient(uint8_t* rgb, uint16_t w, uint16_t h)
 static void test_mcdc_get_dimensions_pad_and_marker(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC get_dimensions: pad+marker+seg+wh decisions");
-  uint16_t             w = 0U, h = 0U;
-  static const uint8_t pad_jpeg[] = {
-    0xFFU, 0xD8U, 0xFFU, 0xFFU, 0xFFU, 0xC0U, 0x00U, 0x0BU, 0x08U, 0x00U,
-    0x10U, 0x00U, 0x10U, 0x01U, 0x01U, 0x11U, 0x00U, 0xFFU, 0xD9U,
-  };
+  uint16_t w = 0U, h = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_jpeg_sw_get_dimensions(pad_jpeg, (uint32_t)sizeof pad_jpeg, &w, &h));
   TEST_ASSERT_EQ(16, w);
-  static const uint8_t soi_eoi_jpeg[] = {
-    0xFFU,
-    0xD8U,
-    0xFFU,
-    0xD9U,
-    0xFFU,
-    0xC0U,
-    0x00U,
-    0x0BU,
-    0x08U,
-    0x00U,
-    0x20U,
-    0x00U,
-    0x10U,
-    0x01U,
-    0x01U,
-    0x11U,
-    0x00U,
-  };
   w = 0U;
   h = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_jpeg_sw_get_dimensions(soi_eoi_jpeg, (uint32_t)sizeof soi_eoi_jpeg, &w, &h));
   TEST_ASSERT_EQ(16, w);
   TEST_ASSERT_EQ(32, h);
-  static const uint8_t bad_seg_jpeg[] = {
-    0xFFU,
-    0xD8U,
-    0xFFU,
-    0xC0U,
-    0x00U,
-    0x01U,
-  };
   TEST_ASSERT(ra8_jpeg_sw_get_dimensions(bad_seg_jpeg, (uint32_t)sizeof bad_seg_jpeg, &w, &h) !=
               k_ra8_ok);
-  static const uint8_t over_seg_jpeg[] = {
-    0xFFU,
-    0xD8U,
-    0xFFU,
-    0xC0U,
-    0x00U,
-    0xFFU,
-  };
   TEST_ASSERT(ra8_jpeg_sw_get_dimensions(over_seg_jpeg, (uint32_t)sizeof over_seg_jpeg, &w, &h) !=
               k_ra8_ok);
-  static const uint8_t w0_jpeg[] = {
-    0xFFU,
-    0xD8U,
-    0xFFU,
-    0xC0U,
-    0x00U,
-    0x0BU,
-    0x08U,
-    0x00U,
-    0x10U,
-    0x00U,
-    0x00U,
-    0x01U,
-    0x01U,
-    0x11U,
-    0x00U,
-  };
   TEST_ASSERT(ra8_jpeg_sw_get_dimensions(w0_jpeg, (uint32_t)sizeof w0_jpeg, &w, &h) != k_ra8_ok);
-  static const uint8_t h0_jpeg[] = {
-    0xFFU,
-    0xD8U,
-    0xFFU,
-    0xC0U,
-    0x00U,
-    0x0BU,
-    0x08U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x10U,
-    0x01U,
-    0x01U,
-    0x11U,
-    0x00U,
-  };
   TEST_ASSERT(ra8_jpeg_sw_get_dimensions(h0_jpeg, (uint32_t)sizeof h0_jpeg, &w, &h) != k_ra8_ok);
-  static const uint8_t sof2_jpeg[] = {
-    0xFFU,
-    0xD8U,
-    0xFFU,
-    0xC2U,
-    0x00U,
-    0x0BU,
-    0x08U,
-    0x00U,
-    0x10U,
-    0x00U,
-    0x10U,
-    0x01U,
-    0x01U,
-    0x11U,
-    0x00U,
-  };
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
                  ra8_jpeg_sw_get_dimensions(sof2_jpeg, (uint32_t)sizeof sof2_jpeg, &w, &h));
-  static const uint8_t dht_then_sof0[] = {
-    0xFFU, 0xD8U, 0xFFU, 0xC4U, 0x00U, 0x02U, 0xFFU, 0xC0U, 0x00U, 0x0BU,
-    0x08U, 0x00U, 0x10U, 0x00U, 0x10U, 0x01U, 0x01U, 0x11U, 0x00U,
-  };
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_jpeg_sw_get_dimensions(dht_then_sof0, (uint32_t)sizeof dht_then_sof0, &w, &h));
   TEST_END("jpeg_sw MC/DC get_dimensions: pad+marker+seg+wh decisions");
@@ -251,6 +259,37 @@ static void test_mcdc_decode_pad_and_rst_marker(void)
   TEST_END("jpeg_sw MC/DC decode: pad-skip + sof unsupported + RST marker");
 }
 
+static const uint8_t dqt_short[] = {
+  0xFFU,
+  0xD8U,
+  0xFFU,
+  0xDBU,
+  0x00U,
+  0x01U,
+};
+
+static const uint8_t dqt_bad_pq[] = {
+  0xFFU, 0xD8U, 0xFFU, 0xDBU, 0x00U, 0x43U, 0x10U, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0,     0,     0,     0,     0,     0,     0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0,     0,     0,     0,     0,     0,     0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0,     0,     0,     0,     0,     0,     0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+};
+
+static const uint8_t dqt_bad_tq[] = {
+  0xFFU, 0xD8U, 0xFFU, 0xDBU, 0x00U, 0x43U, 0x04U, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0,     0,     0,     0,     0,     0,     0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0,     0,     0,     0,     0,     0,     0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0,     0,     0,     0,     0,     0,     0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+};
+
+static const uint8_t dht_bad_tc[] = {
+  0xFFU, 0xD8U, 0xFFU, 0xC4U, 0x00U, 0x14U, 0x20U, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+};
+
+static const uint8_t dht_bad_th[] = {
+  0xFFU, 0xD8U, 0xFFU, 0xC4U, 0x00U, 0x14U, 0x02U, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+};
+
 /**
  * @test test_mcdc_decode_dqt_dht_validation
  * @par MC/DC:
@@ -265,59 +304,33 @@ static void test_mcdc_decode_pad_and_rst_marker(void)
 static void test_mcdc_decode_dqt_dht_validation(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC dec_parse_dqt + dec_parse_dht guards");
-  uint8_t              out[256]    = {};
-  uint16_t             dw          = 0U;
-  uint16_t             dh          = 0U;
-  static const uint8_t dqt_short[] = {
-    0xFFU,
-    0xD8U,
-    0xFFU,
-    0xDBU,
-    0x00U,
-    0x01U,
-  };
+  uint8_t  out[256] = {};
+  uint16_t dw       = 0U;
+  uint16_t dh       = 0U;
   TEST_ASSERT(ra8_jpeg_sw_decode(dqt_short,
                                  (uint32_t)sizeof dqt_short,
                                  out,
                                  (uint32_t)sizeof out,
                                  &dw,
                                  &dh) != k_ra8_ok);
-  static const uint8_t dqt_bad_pq[] = {
-    0xFFU, 0xD8U, 0xFFU, 0xDBU, 0x00U, 0x43U, 0x10U, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0,     0,     0,     0,     0,     0,     0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0,     0,     0,     0,     0,     0,     0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0,     0,     0,     0,     0,     0,     0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  };
   TEST_ASSERT(ra8_jpeg_sw_decode(dqt_bad_pq,
                                  (uint32_t)sizeof dqt_bad_pq,
                                  out,
                                  (uint32_t)sizeof out,
                                  &dw,
                                  &dh) != k_ra8_ok);
-  static const uint8_t dqt_bad_tq[] = {
-    0xFFU, 0xD8U, 0xFFU, 0xDBU, 0x00U, 0x43U, 0x04U, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0,     0,     0,     0,     0,     0,     0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0,     0,     0,     0,     0,     0,     0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0,     0,     0,     0,     0,     0,     0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  };
   TEST_ASSERT(ra8_jpeg_sw_decode(dqt_bad_tq,
                                  (uint32_t)sizeof dqt_bad_tq,
                                  out,
                                  (uint32_t)sizeof out,
                                  &dw,
                                  &dh) != k_ra8_ok);
-  static const uint8_t dht_bad_tc[] = {
-    0xFFU, 0xD8U, 0xFFU, 0xC4U, 0x00U, 0x14U, 0x20U, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  };
   TEST_ASSERT(ra8_jpeg_sw_decode(dht_bad_tc,
                                  (uint32_t)sizeof dht_bad_tc,
                                  out,
                                  (uint32_t)sizeof out,
                                  &dw,
                                  &dh) != k_ra8_ok);
-  static const uint8_t dht_bad_th[] = {
-    0xFFU, 0xD8U, 0xFFU, 0xC4U, 0x00U, 0x14U, 0x02U, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  };
   TEST_ASSERT(ra8_jpeg_sw_decode(dht_bad_th,
                                  (uint32_t)sizeof dht_bad_th,
                                  out,
@@ -405,6 +418,55 @@ static void test_mcdc_decode_sof0_chroma_subsampling(void)
 /* independent and reachable. */
 /* ------------------------------------------------------------------ */
 
+static const uint8_t app1_short[] = {
+  0xFFU,
+  0xD8U,
+  0xFFU,
+  0xE1U,
+  0x00U,
+  0x01U,
+};
+
+static const uint8_t app1_overrun[] = {
+  0xFFU,
+  0xD8U,
+  0xFFU,
+  0xE1U,
+  0xFFU,
+  0xFFU,
+  0x00U,
+  0x00U,
+};
+
+static const uint8_t sof1_jpeg[] = {
+  0xFFU,
+  0xD8U,
+  0xFFU,
+  0xC1U,
+  0x00U,
+  0x0BU,
+  0x08U,
+  0x00U,
+  0x10U,
+  0x00U,
+  0x10U,
+  0x01U,
+  0x01U,
+  0x11U,
+  0x00U,
+};
+
+static const uint8_t dac_then_short[] = {
+  0xFFU,
+  0xD8U,
+  0xFFU,
+  0xC8U,
+  0x00U,
+  0x02U,
+  0xFFU,
+  0xD9U,
+};
+
 /**
  * @test test_mcdc_decode_skip_unrecognized_segment
  * @par MC/DC:
@@ -433,14 +495,6 @@ static void test_mcdc_decode_skip_unrecognized_segment(void)
   uint16_t dh       = 0U;
 
   /* V_short: APP1 (0xFFE1) with seglen=1  -> dec_skip_segment len<2. */
-  static const uint8_t app1_short[] = {
-    0xFFU,
-    0xD8U,
-    0xFFU,
-    0xE1U,
-    0x00U,
-    0x01U,
-  };
   TEST_ASSERT(ra8_jpeg_sw_decode(app1_short,
                                  (uint32_t)sizeof app1_short,
                                  out,
@@ -449,16 +503,6 @@ static void test_mcdc_decode_skip_unrecognized_segment(void)
                                  &dh) != k_ra8_ok);
 
   /* V_overrun: APP1 with seglen claiming 0xFFFF bytes. */
-  static const uint8_t app1_overrun[] = {
-    0xFFU,
-    0xD8U,
-    0xFFU,
-    0xE1U,
-    0xFFU,
-    0xFFU,
-    0x00U,
-    0x00U,
-  };
   TEST_ASSERT(ra8_jpeg_sw_decode(app1_overrun,
                                  (uint32_t)sizeof app1_overrun,
                                  out,
@@ -469,23 +513,6 @@ static void test_mcdc_decode_skip_unrecognized_segment(void)
   /* V_sof1: SOF1 (0xFFC1) is in [SOF0..SOF15] and != DHT/DAC ->
      not_supported. Independently flips the SOF-range decision vs the
      DAC (0xFFC8) skip. */
-  static const uint8_t sof1_jpeg[] = {
-    0xFFU,
-    0xD8U,
-    0xFFU,
-    0xC1U,
-    0x00U,
-    0x0BU,
-    0x08U,
-    0x00U,
-    0x10U,
-    0x00U,
-    0x10U,
-    0x01U,
-    0x01U,
-    0x11U,
-    0x00U,
-  };
   TEST_ASSERT_EQ(
     k_ra8_err_not_supported,
     ra8_jpeg_sw_decode(sof1_jpeg, (uint32_t)sizeof sof1_jpeg, out, (uint32_t)sizeof out, &dw, &dh));
@@ -493,16 +520,6 @@ static void test_mcdc_decode_skip_unrecognized_segment(void)
   /* V_dac_skip: DAC (0xFFC8) is in SOF range BUT is excluded by the
      decision, so it falls to the dec_skip_segment arm; with a valid
      seglen this proves the != 0xFFC8 sub-condition flips outcome. */
-  static const uint8_t dac_then_short[] = {
-    0xFFU,
-    0xD8U,
-    0xFFU,
-    0xC8U,
-    0x00U,
-    0x02U,
-    0xFFU,
-    0xD9U,
-  };
   TEST_ASSERT(ra8_jpeg_sw_decode(dac_then_short,
                                  (uint32_t)sizeof dac_then_short,
                                  out,
@@ -511,6 +528,44 @@ static void test_mcdc_decode_skip_unrecognized_segment(void)
                                  &dh) != k_ra8_ok);
   TEST_END("jpeg_sw MC/DC dec_skip_segment + decode SOF-range");
 }
+
+static const uint8_t rst0_jpeg[] = {
+  0xFFU,
+  0xD8U,
+  0xFFU,
+  0xD0U,
+  0xFFU,
+  0xD9U,
+};
+
+static const uint8_t rst7_jpeg[] = {
+  0xFFU,
+  0xD8U,
+  0xFFU,
+  0xD7U,
+  0xFFU,
+  0xD9U,
+};
+
+static const uint8_t dri_jpeg[] = {
+  0xFFU,
+  0xD8U,
+  0xFFU,
+  0xDDU,
+  0x00U,
+  0x04U,
+  0x00U,
+  0x10U,
+  0xFFU,
+  0xD9U,
+};
+
+static const uint8_t eoi_only[] = {
+  0xFFU,
+  0xD8U,
+  0xFFU,
+  0xD9U,
+};
 
 /**
  * @test test_mcdc_decode_rst_in_marker_chain
@@ -535,14 +590,6 @@ static void test_mcdc_decode_rst_in_marker_chain(void)
   uint16_t dw       = 0U;
   uint16_t dh       = 0U;
 
-  static const uint8_t rst0_jpeg[] = {
-    0xFFU,
-    0xD8U,
-    0xFFU,
-    0xD0U,
-    0xFFU,
-    0xD9U,
-  };
   TEST_ASSERT(ra8_jpeg_sw_decode(rst0_jpeg,
                                  (uint32_t)sizeof rst0_jpeg,
                                  out,
@@ -550,14 +597,6 @@ static void test_mcdc_decode_rst_in_marker_chain(void)
                                  &dw,
                                  &dh) != k_ra8_ok);
 
-  static const uint8_t rst7_jpeg[] = {
-    0xFFU,
-    0xD8U,
-    0xFFU,
-    0xD7U,
-    0xFFU,
-    0xD9U,
-  };
   TEST_ASSERT(ra8_jpeg_sw_decode(rst7_jpeg,
                                  (uint32_t)sizeof rst7_jpeg,
                                  out,
@@ -566,29 +605,11 @@ static void test_mcdc_decode_rst_in_marker_chain(void)
                                  &dh) != k_ra8_ok);
 
   /* DRI (0xFFDD): C1=F (mk < rst0). */
-  static const uint8_t dri_jpeg[] = {
-    0xFFU,
-    0xD8U,
-    0xFFU,
-    0xDDU,
-    0x00U,
-    0x04U,
-    0x00U,
-    0x10U,
-    0xFFU,
-    0xD9U,
-  };
   TEST_ASSERT(
     ra8_jpeg_sw_decode(dri_jpeg, (uint32_t)sizeof dri_jpeg, out, (uint32_t)sizeof out, &dw, &dh) !=
     k_ra8_ok);
 
   /* EOI: C2=F (mk > rst7). */
-  static const uint8_t eoi_only[] = {
-    0xFFU,
-    0xD8U,
-    0xFFU,
-    0xD9U,
-  };
   TEST_ASSERT(
     ra8_jpeg_sw_decode(eoi_only, (uint32_t)sizeof eoi_only, out, (uint32_t)sizeof out, &dw, &dh) !=
     k_ra8_ok);
