@@ -187,6 +187,36 @@ RA8_PRIV uint32_t elf_vector_base(const uint8_t* elf, long len);
  */
 RA8_PRIV uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name, uint32_t* size_out);
 
+/**
+ * @brief Warm-reboot the firmware: re-run from the reset vector in place.
+ *
+ * @details
+ * Mirrors a Cortex-M reset without tearing down the Unicorn engine. Restores
+ * the code image and the .data initial values by re-writing the ELF's
+ * PT_LOAD segments (the firmware's own Reset_Handler then re-zeroes .bss and
+ * re-copies .data), re-reads SP/PC from the vector table, resets the
+ * peripheral models (the reset-cause RSTSRn and the VBATT backup domain
+ * deliberately survive their reset hooks, so the reboot cause and
+ * battery-backed state persist), and clears the host-side exception /
+ * scheduler bookkeeping so the next boot starts clean. The installed Unicorn
+ * hooks persist across this, so they are NOT re-added, and one-shot CLI
+ * input (--keys / --input / --usb-in) is NOT re-injected.
+ *
+ * @param[in,out] uc    Unicorn engine to reboot (kept alive).
+ * @param[in]     elf   The firmware ELF image bytes (re-loaded).
+ * @param[in]     len   ELF image length in bytes.
+ * @param[in]     trace Whether --trace is active (forwarded to the models).
+ * @return The reset-vector PC to resume the run loop from (Thumb bit set).
+ * @retval 0 The image re-load failed; the caller must end the run.
+ * @pre The same @p elf / @p len loaded successfully at startup.
+ * @pre The engine is idle (between chunks).
+ * @post On success the core state matches a fresh boot of the image.
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ * @see load_elf()  Performs the segment re-write.
+ * @since 0.1.0
+ */
+RA8_PRIV uint32_t warm_reboot(uc_engine* uc, const uint8_t* elf, long len, bool trace);
+
 #ifdef __cplusplus
 }
 #endif
