@@ -100,18 +100,28 @@ static void slru_push_head(slru_t* l, int32_t f, int32_t* head, int32_t* tail)
 static int slru_init(cb_cache_t* c)
 {
   slru_t* l = (slru_t*)calloc(1U, sizeof(slru_t));
+  /* cppcheck-suppress memleak ; false positive: cppcheck 2.13 does not model
+   * the C23 nullptr keyword, so it cannot see l is NULL on this path. */
   if (l == nullptr) {
     return 1;
   }
-  l->prev        = (int32_t*)malloc((size_t)c->capacity * sizeof(int32_t));
-  l->next        = (int32_t*)malloc((size_t)c->capacity * sizeof(int32_t));
-  l->pb_head     = -1;
-  l->pb_tail     = -1;
-  l->pt_head     = -1;
-  l->pt_tail     = -1;
-  l->pt_cap      = (c->capacity * (uint32_t)k_slru_protected_pct) / (uint32_t)k_slru_pct_full_scale;
+  l->prev    = (int32_t*)malloc((size_t)c->capacity * sizeof(int32_t));
+  l->next    = (int32_t*)malloc((size_t)c->capacity * sizeof(int32_t));
+  l->pb_head = -1;
+  l->pb_tail = -1;
+  l->pt_head = -1;
+  l->pt_tail = -1;
+  l->pt_cap  = (c->capacity * (uint32_t)k_slru_protected_pct) / (uint32_t)k_slru_pct_full_scale;
+  if ((l->prev == nullptr) || (l->next == nullptr)) {
+    /* The replay harness never deinits a policy whose init failed, so a
+     * partial allocation must be released here, not left on policy_data. */
+    free(l->prev);
+    free(l->next);
+    free(l);
+    return 1;
+  }
   c->policy_data = l;
-  return ((l->prev == nullptr) || (l->next == nullptr)) ? 1 : 0;
+  return 0;
 }
 
 static void slru_deinit(cb_cache_t* c)
