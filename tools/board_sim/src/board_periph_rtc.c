@@ -112,12 +112,12 @@ typedef enum : uint8_t {
 
 /** @brief Calendar moduli + the modelled time:tick ratio. */
 typedef enum : uint32_t {
-  k_rtc_secs_per_min  = 60U,
-  k_rtc_mins_per_hour = 60U,
-  k_rtc_hours_per_day = 24U,
-  k_rtc_days_per_mon  = 28U, /**< Conservative roll-over (model only). */
-  k_rtc_mons_per_year = 12U,
-  k_rtc_ticks_per_sec = 8U, /**< Emulation chunks per modelled second. */
+  k_rtc_secs_per_min  = 60U, /**< Rtc secs per minimum.                 */
+  k_rtc_mins_per_hour = 60U, /**< Rtc mins per hour.                    */
+  k_rtc_hours_per_day = 24U, /**< Rtc hours per day.                    */
+  k_rtc_days_per_mon  = 28U, /**< Conservative roll-over (model only).  */
+  k_rtc_mons_per_year = 12U, /**< Rtc mons per year.                    */
+  k_rtc_ticks_per_sec = 8U,  /**< Emulation chunks per modelled second. */
 } rtc_calendar_t;
 
 /** @brief 64 Hz counter range (R64CNT is 6 bits). */
