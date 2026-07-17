@@ -68,9 +68,12 @@ void mdl_net_curl_destroy(mdl_net_iface_t* net);
  * @retval k_ra8_err_timeout   Request exceeded `req->timeout_ms`.
  * @retval k_ra8_fail          Transport error or HTTP status >= 400.
  */
-ra8_err_t mdl_net_get_buf(mdl_net_iface_t* net, const char* url,
-                          const mdl_net_req_t* req, char* buf, size_t cap,
-                          size_t* out_len);
+ra8_err_t mdl_net_get_buf(mdl_net_iface_t*     net,
+                          const char*          url,
+                          const mdl_net_req_t* req,
+                          char*                buf,
+                          size_t               cap,
+                          size_t*              out_len);
 
 /**
  * @brief GET `url` and stream the body to a file (used for images).
@@ -86,6 +89,8 @@ ra8_err_t mdl_net_get_buf(mdl_net_iface_t* net, const char* url,
  * @retval k_ra8_err_timeout   Request exceeded `req->timeout_ms`.
  * @retval k_ra8_fail          Transport error, HTTP status >= 400, or file I/O.
  */
-ra8_err_t mdl_net_get_file(mdl_net_iface_t* net, const char* url,
-                           const mdl_net_req_t* req, const char* out_path,
-                           size_t* out_len);
+ra8_err_t mdl_net_get_file(mdl_net_iface_t*     net,
+                           const char*          url,
+                           const mdl_net_req_t* req,
+                           const char*          out_path,
+                           size_t*              out_len);

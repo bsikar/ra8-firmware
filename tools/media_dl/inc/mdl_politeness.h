@@ -36,5 +36,4 @@ void mdl_politeness_init(mdl_politeness_t* p, uint64_t seed);
  * @param[in]     max_ms Upper bound, milliseconds (clamped up to min_ms).
  * @return The delay actually slept, in milliseconds (0 if `p` is NULL).
  */
-uint32_t mdl_politeness_wait(mdl_politeness_t* p, uint32_t min_ms,
-                             uint32_t max_ms);
+uint32_t mdl_politeness_wait(mdl_politeness_t* p, uint32_t min_ms, uint32_t max_ms);
