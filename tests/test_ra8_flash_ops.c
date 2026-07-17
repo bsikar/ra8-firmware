@@ -23,6 +23,19 @@
 #include "ra8_sim_mmio.h"
 #include "support/flash_test_util.h"
 #include "unity_minimal.h"
+
+/**
+ * @enum flash_ops_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_flash_ops_stamp_mrcrtea = 0xC0DECAFEUL,
+  k_flash_ops_stamp_mrcpea  = 0x42424242UL,
+  k_flash_ops_lit_xff       = 0xFFU,
+  k_flash_ops_lit_64        = 64,
+} flash_ops_test_lit_t;
+
 /* ---------------------------------------------------------------------------
  * IRQ enable + dispatcher
  * ------------------------------------------------------------------------ */
@@ -116,9 +129,9 @@ static void test_callback_set_and_dispatch(void)
   /* Register a callback and stage three events. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_callback_set(test_callback, (void*)0xDEADBEEFUL));
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcraes)  = (uint8_t)k_ra8_mrcraes_mask_tederrc;
-  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mrcrtea) = 0xC0DECAFEUL;
+  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mrcrtea) = k_flash_ops_stamp_mrcrtea;
   *ra8_mram_reg8((uint16_t)k_ra8_mram_off_mrcps)    = (uint8_t)k_ra8_mrcps_mask_prgerrc;
-  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mrcpea)  = 0x42424242UL;
+  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mrcpea)  = k_flash_ops_stamp_mrcpea;
   *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mstatr)  = (uint32_t)k_ra8_mstatr_mask_mrdy;
 
   const uint32_t n = ra8_flash_dispatch_isr();
@@ -289,7 +302,7 @@ static void test_blank_check_paths(void)
   /* Blank region: stage 16 bytes of 0xFF inside the OFS sim window. */
   volatile uint8_t* ofs_ptr = (volatile uint8_t*)(uintptr_t)k_test_addr_extra_in;
   for (uint32_t i = 0U; i < 16U; ++i) {
-    ofs_ptr[i] = 0xFFU;
+    ofs_ptr[i] = k_flash_ops_lit_xff;
   }
   blank = false;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_blank_check((uintptr_t)k_test_addr_extra_in, 16U, &blank));
@@ -533,7 +546,7 @@ static void test_write_validation_mcdc(void)
   const ra8_flash_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_init(&cfg));
 
-  uint8_t buf[64] = {};
+  uint8_t buf[k_flash_ops_lit_64] = {};
 
   /* Vector 1: len=0. C1=T short-circuits. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,

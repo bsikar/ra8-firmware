@@ -21,6 +21,20 @@
 #include "support/ssie_test_util.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum ssie_io_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_ssie_io_lit_40             = 40,
+  k_ssie_io_lit_xaa00          = 0xAA00U,
+  k_ssie_io_lit_99             = 99U,
+  k_ssie_io_cfg_tx_dma_channel = 0xFFU,
+  k_ssie_io_cfg_rx_dma_channel = 0xFFU,
+  k_ssie_io_stamp_ssifrdr      = 0xDEAD0001UL,
+} ssie_io_test_lit_t;
+
 /* ---------------------------------------------------------------------------
  * Data path
  * ---------------------------------------------------------------------------
@@ -85,9 +99,9 @@ static void test_write_buffer(void)
   /* Pretend the FIFO has 2 entries already; depth is 32, so we
    * should write only 30. */
   reg->SSIFSR = (uint32_t)(2U << (uint8_t)k_ra8_ssie_shift_tdc);
-  uint32_t buf[40];
-  for (uint8_t i = 0U; i < 40U; i++) {
-    buf[i] = 0xAA00U + i;
+  uint32_t buf[k_ssie_io_lit_40];
+  for (uint8_t i = 0U; i < k_ssie_io_lit_40; i++) {
+    buf[i] = k_ssie_io_lit_xaa00 + i;
     /* keep TDC at 2 so the loop sees space (sim mmap is just RAM). */
   }
   uint16_t written = 0U;
@@ -119,7 +133,7 @@ static void test_write_buffer_stops_when_full(void)
   /* Pre-load TDC=32 so the FIFO is at depth and zero stages fit. */
   reg->SSIFSR      = (uint32_t)((uint32_t)k_ra8_ssie_fifo_depth << (uint8_t)k_ra8_ssie_shift_tdc);
   uint32_t buf[4]  = {1U, 2U, 3U, 4U};
-  uint16_t written = 99U;
+  uint16_t written = k_ssie_io_lit_99;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ssie_write_buffer((uint8_t)k_ra8_ssie_test_ch0, buf, 4U, &written));
   TEST_ASSERT_EQ(0, written);
   TEST_END("ssie write_buffer stops when TDC reaches depth");
@@ -169,7 +183,7 @@ static void test_read_buffer_empty_fifo(void)
   volatile r_ssie_regs_t* reg = ra8_ssie((uint8_t)k_ra8_ssie_test_ch0);
   reg->SSIFSR                 = 0U;
   uint32_t buf[1]             = {};
-  uint16_t read               = 99U;
+  uint16_t read               = k_ssie_io_lit_99;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ssie_read_buffer((uint8_t)k_ra8_ssie_test_ch0, buf, 1U, &read));
   TEST_ASSERT_EQ(0, read);
   TEST_END("ssie read_buffer returns 0 when RDC=0");
@@ -247,8 +261,8 @@ static void test_attach_dma_bad_args(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ssie_attach_dma((uint8_t)k_ra8_ssie_test_ch0, nullptr));
 
   ra8_ssie_dma_cfg_t dma = {
-    .tx_dma_channel = 0xFFU,
-    .rx_dma_channel = 0xFFU,
+    .tx_dma_channel = k_ssie_io_cfg_tx_dma_channel,
+    .rx_dma_channel = k_ssie_io_cfg_rx_dma_channel,
     .tx_buffer      = nullptr,
     .rx_buffer      = nullptr,
     .tx_samples     = 0U,
@@ -566,7 +580,7 @@ static void test_recv_iso_drains_fifo(void)
    * deciding the FIFO is empty. */
   volatile r_ssie_regs_t* reg = ra8_ssie((uint8_t)k_ra8_ssie_test_ch0);
   reg->SSIFSR                 = (uint32_t)1U << (uint8_t)k_ra8_ssie_shift_rdc;
-  reg->SSIFRDR                = 0xDEAD0001UL;
+  reg->SSIFRDR                = k_ssie_io_stamp_ssifrdr;
 
   uint32_t out[2] = {0U, 0U};
   uint16_t got    = 0U;

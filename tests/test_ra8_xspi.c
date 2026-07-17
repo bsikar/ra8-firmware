@@ -28,6 +28,20 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum xspi_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_xspi_lit_x11 = 0x11U,
+  k_xspi_lit_x22 = 0x22U,
+  k_xspi_lit_x33 = 0x33U,
+  k_xspi_lit_x44 = 0x44U,
+  k_xspi_lit_5   = 5,
+  k_xspi_lit_x55 = 0x55U,
+} xspi_test_lit_t;
+
+/**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
@@ -141,7 +155,7 @@ static void test_direct_command_packs_aligned(void)
   TEST_BEGIN("ra8_xspi_direct_command packs 4-byte-aligned payload");
   prep_flash();
 
-  uint8_t buf[4] = {0x11U, 0x22U, 0x33U, 0x44U};
+  uint8_t buf[4] = {k_xspi_lit_x11, k_xspi_lit_x22, k_xspi_lit_x33, k_xspi_lit_x44};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_direct_command((uint8_t)k_test_xspi_valid_inst0, buf, 4U));
 
   volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_test_xspi_valid_inst0);
@@ -161,7 +175,11 @@ static void test_direct_command_packs_unaligned(void)
   TEST_BEGIN("ra8_xspi_direct_command flushes trailing partial word");
   prep_flash();
 
-  uint8_t buf[5] = {0x11U, 0x22U, 0x33U, 0x44U, 0x55U};
+  uint8_t buf[k_xspi_lit_5] = {k_xspi_lit_x11,
+                               k_xspi_lit_x22,
+                               k_xspi_lit_x33,
+                               k_xspi_lit_x44,
+                               k_xspi_lit_x55};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_direct_command((uint8_t)k_test_xspi_valid_inst0, buf, 5U));
 
   volatile r_xspi_regs_t* reg = ra8_xspi((uint8_t)k_test_xspi_valid_inst0);

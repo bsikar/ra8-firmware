@@ -22,6 +22,16 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum dotf_ctrl_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_dotf_ctrl_lit_99        = 99U,
+  k_dotf_ctrl_lit_xdeadbeef = 0xDEADBEEFUL,
+} dotf_ctrl_test_lit_t;
+
 typedef enum : uint8_t {
   k_dotf_test_ch0 = 0U,
   k_dotf_test_ch1 = 1U,
@@ -588,7 +598,7 @@ static void test_mcdc_dotf_rotate_key_size_and_chain(void)
   hdl.size = k_ra8_dotf_key_size_256;
   TEST_ASSERT(ra8_dotf_rotate_key((uint8_t)k_dotf_test_ch0, &hdl, iv) != k_ra8_err_invalid_arg);
   /* V4: size=99 -> all T -> invalid_arg. */
-  hdl.size = (ra8_dotf_key_size_t)99U;
+  hdl.size = (ra8_dotf_key_size_t)k_dotf_ctrl_lit_99;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_dotf_rotate_key((uint8_t)k_dotf_test_ch0, &hdl, iv));
   TEST_END("dotf MC/DC: rotate_key 3-cond size AND-chain (lines 734-736)");
 }
@@ -625,7 +635,7 @@ static void test_mcdc_dotf_install_key_size_3cond(void)
     make_key_handle(k_ra8_dotf_key_size_256, (uint8_t)k_dotf_test_key_idx_a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dotf_install_key((uint8_t)k_dotf_test_ch0, &h3));
   ra8_dotf_key_handle_t h4 = h1;
-  h4.size                  = (ra8_dotf_key_size_t)0xDEADBEEFUL;
+  h4.size                  = (ra8_dotf_key_size_t)k_dotf_ctrl_lit_xdeadbeef;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_dotf_install_key((uint8_t)k_dotf_test_ch0, &h4));
   TEST_END("dotf install_key MC/DC: size != 128 && != 192 && != 256");
 }

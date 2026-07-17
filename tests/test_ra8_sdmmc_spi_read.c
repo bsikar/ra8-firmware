@@ -27,6 +27,24 @@
 #include "support/sdmmc_spi_test_util.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum sdmmc_spi_read_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_sdmmc_spi_read_lit_7   = 7U,
+  k_sdmmc_spi_read_lit_xff = 0xFFU,
+  k_sdmmc_spi_read_lit_xde = 0xDEU,
+  k_sdmmc_spi_read_lit_xad = 0xADU,
+  k_sdmmc_spi_read_lit_5   = 5,
+  k_sdmmc_spi_read_lit_x9  = 0x09U,
+  k_sdmmc_spi_read_lit_xc0 = 0xC0U,
+  k_sdmmc_spi_read_lit_9   = 9,
+  k_sdmmc_spi_read_lit_10  = 10,
+  k_sdmmc_spi_read_lit_x80 = 0x80U,
+} sdmmc_spi_read_test_lit_t;
+
 /* ===========================================================================
  * Block I/O
  * ===========================================================================
@@ -78,7 +96,7 @@ static void test_read_block_happy_path(void)
   /* Build a deterministic 512-byte payload. */
   uint8_t expected[k_ra8_sdmmc_spi_block_size];
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_sdmmc_spi_block_size; i++) {
-    expected[i] = (uint8_t)((i * 7U) & 0xFFU);
+    expected[i] = (uint8_t)((i * k_sdmmc_spi_read_lit_7) & k_sdmmc_spi_read_lit_xff);
   }
   const uint16_t crc16 = ra8_sdmmc_spi_crc16(expected, (uint32_t)k_ra8_sdmmc_spi_block_size);
 
@@ -87,8 +105,8 @@ static void test_read_block_happy_path(void)
   /* Data token + payload + CRC16 trailer. */
   mock_queue_byte((uint8_t)k_test_data_token_start);
   mock_queue_bytes(expected, (uint32_t)k_ra8_sdmmc_spi_block_size);
-  mock_queue_byte((uint8_t)((crc16 >> 8U) & 0xFFU));
-  mock_queue_byte((uint8_t)(crc16 & 0xFFU));
+  mock_queue_byte((uint8_t)((crc16 >> 8U) & k_sdmmc_spi_read_lit_xff));
+  mock_queue_byte((uint8_t)(crc16 & k_sdmmc_spi_read_lit_xff));
 
   uint8_t buf[k_ra8_sdmmc_spi_block_size];
   memset(buf, 0xA5U, sizeof(buf));
@@ -115,8 +133,8 @@ static void test_read_block_detects_crc_mismatch(void)
   mock_queue_byte((uint8_t)k_test_data_token_start);
   mock_queue_bytes(expected, (uint32_t)k_ra8_sdmmc_spi_block_size);
   /* Wrong CRC bytes. */
-  mock_queue_byte(0xDEU);
-  mock_queue_byte(0xADU);
+  mock_queue_byte(k_sdmmc_spi_read_lit_xde);
+  mock_queue_byte(k_sdmmc_spi_read_lit_xad);
 
   uint8_t buf[k_ra8_sdmmc_spi_block_size];
   TEST_ASSERT_EQ(k_ra8_err_crc_mismatch, ra8_sdmmc_spi_read_block(0U, buf));
@@ -152,13 +170,13 @@ static void test_read_block_rejects_uninit(void)
 static void build_csd_v1_1gib(uint8_t* out)
 {
   memset(out, 0, (size_t)k_ra8_sdmmc_spi_csd_response_len);
-  out[0]  = 0x00U; /* CSD_STRUCTURE = 0 */
-  out[5]  = 0x09U; /* READ_BL_LEN = 9   */
-  out[6]  = 0x03U; /* C_SIZE[11:10]     */
-  out[7]  = 0xFFU; /* C_SIZE[9:2]       */
-  out[8]  = 0xC0U; /* C_SIZE[1:0]       */
-  out[9]  = 0x03U; /* C_SIZE_MULT[2:1]  */
-  out[10] = 0x80U; /* C_SIZE_MULT[0]    */
+  out[0]                       = 0x00U;                    /* CSD_STRUCTURE = 0 */
+  out[k_sdmmc_spi_read_lit_5]  = k_sdmmc_spi_read_lit_x9;  /* READ_BL_LEN = 9   */
+  out[6]                       = 0x03U;                    /* C_SIZE[11:10]     */
+  out[k_sdmmc_spi_read_lit_7]  = k_sdmmc_spi_read_lit_xff; /* C_SIZE[9:2]       */
+  out[8]                       = k_sdmmc_spi_read_lit_xc0; /* C_SIZE[1:0]       */
+  out[k_sdmmc_spi_read_lit_9]  = 0x03U;                    /* C_SIZE_MULT[2:1]  */
+  out[k_sdmmc_spi_read_lit_10] = k_sdmmc_spi_read_lit_x80; /* C_SIZE_MULT[0]    */
 }
 
 /**
@@ -166,7 +184,7 @@ static void build_csd_v1_1gib(uint8_t* out)
  */
 static void queue_full_init_sdv1_1gib(void)
 {
-  mock_queue_idle(10U);
+  mock_queue_idle(k_sdmmc_spi_read_lit_10);
   queue_command_response_r1((uint8_t)k_test_r1_idle);        /* CMD0         */
   queue_command_response_r1((uint8_t)k_test_r1_illegal_cmd); /* CMD8 -> v1   */
   queue_command_response_r1((uint8_t)k_test_r1_idle);        /* CMD55        */
@@ -197,7 +215,7 @@ static void test_read_block_byte_addressed_v1(void)
 
   uint8_t block[k_ra8_sdmmc_spi_block_size];
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_sdmmc_spi_block_size; i++) {
-    block[i] = (uint8_t)((i * 3U) & 0xFFU);
+    block[i] = (uint8_t)((i * 3U) & k_sdmmc_spi_read_lit_xff);
   }
   queue_read_back(block);
 
@@ -251,7 +269,7 @@ static void test_read_block_error_legs(void)
   mock_queue_idle((uint32_t)k_test_cmd_frame_bytes);
   mock_queue_byte((uint8_t)k_test_r1_ready);
   mock_queue_byte((uint8_t)k_test_data_token_start);
-  mock_arm_xfer_fail(5U);
+  mock_arm_xfer_fail(k_sdmmc_spi_read_lit_5);
   TEST_ASSERT(ra8_sdmmc_spi_read_block(0U, buf) != k_ra8_ok);
   TEST_END("read_block protocol / timeout / xfer-fault legs");
 }
@@ -309,8 +327,8 @@ static void queue_multi_read_block(const uint8_t* block)
   mock_queue_byte((uint8_t)k_test_data_token_start);
   mock_queue_bytes(block, (uint32_t)k_ra8_sdmmc_spi_block_size);
   const uint16_t crc = ra8_sdmmc_spi_crc16(block, (uint32_t)k_ra8_sdmmc_spi_block_size);
-  mock_queue_byte((uint8_t)((crc >> 8U) & 0xFFU));
-  mock_queue_byte((uint8_t)(crc & 0xFFU));
+  mock_queue_byte((uint8_t)((crc >> 8U) & k_sdmmc_spi_read_lit_xff));
+  mock_queue_byte((uint8_t)(crc & k_sdmmc_spi_read_lit_xff));
 }
 
 /**
@@ -322,8 +340,8 @@ static void queue_multi_read_block_bad_crc(const uint8_t* block)
   mock_queue_byte((uint8_t)k_test_data_token_start);
   mock_queue_bytes(block, (uint32_t)k_ra8_sdmmc_spi_block_size);
   const uint16_t crc = ra8_sdmmc_spi_crc16(block, (uint32_t)k_ra8_sdmmc_spi_block_size);
-  mock_queue_byte((uint8_t)(~(crc >> 8U) & 0xFFU)); /* inverted -> mismatch. */
-  mock_queue_byte((uint8_t)(crc & 0xFFU));
+  mock_queue_byte((uint8_t)(~(crc >> 8U) & k_sdmmc_spi_read_lit_xff)); /* inverted -> mismatch. */
+  mock_queue_byte((uint8_t)(crc & k_sdmmc_spi_read_lit_xff));
 }
 
 /**
@@ -381,7 +399,7 @@ static void test_read_blocks_arg_guards(void)
   /* count == 1 -> single-block CMD17 delegation. Queue one CMD17 read. */
   uint8_t block[k_ra8_sdmmc_spi_block_size];
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_sdmmc_spi_block_size; i++) {
-    block[i] = (uint8_t)((i * 9U) & 0xFFU);
+    block[i] = (uint8_t)((i * k_sdmmc_spi_read_lit_9) & k_sdmmc_spi_read_lit_xff);
   }
   queue_read_back(block);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_read_blocks(6U, buf, 1U));
@@ -407,8 +425,8 @@ static void test_read_blocks_multi_happy(void)
   uint8_t block0[k_ra8_sdmmc_spi_block_size];
   uint8_t block1[k_ra8_sdmmc_spi_block_size];
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_sdmmc_spi_block_size; i++) {
-    block0[i] = (uint8_t)((i * 3U) & 0xFFU);
-    block1[i] = (uint8_t)((i * 5U) + 1U);
+    block0[i] = (uint8_t)((i * 3U) & k_sdmmc_spi_read_lit_xff);
+    block1[i] = (uint8_t)((i * k_sdmmc_spi_read_lit_5) + 1U);
   }
   queue_multi_read_lead((uint8_t)k_test_r1_ready);
   queue_multi_read_block(block0);

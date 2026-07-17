@@ -21,6 +21,16 @@
 #include "support/ipc_test_util.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum ipc_sem_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_ipc_sem_test_idx_a = 5U,
+  k_ipc_sem_test_idx_b = 7U,
+} ipc_sem_test_lit_t;
+
 /* ---------- Semaphore tests ---------- */
 
 /**
@@ -158,7 +168,7 @@ static void test_sem_take_timeout_spins_then_acquires(void)
 {
   TEST_BEGIN("ipc sem take_timeout spins then acquires");
   prep();
-  volatile uint32_t* sem = ra8_ipc_sem(5U);
+  volatile uint32_t* sem = ra8_ipc_sem(k_ipc_sem_test_idx_a);
   TEST_ASSERT_NOT_NULL((void*)sem);
   /* Peer core currently owns the semaphore. */
   *sem = (uint32_t)k_ra8_ipc_sem_mask_lock;
@@ -190,7 +200,7 @@ static void test_sem_take_timeout_succeeds(void)
 {
   TEST_BEGIN("ipc sem take_timeout succeeds");
   prep();
-  volatile uint32_t* sem = ra8_ipc_sem(7U);
+  volatile uint32_t* sem = ra8_ipc_sem(k_ipc_sem_test_idx_b);
   *sem                   = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_sem_take_timeout(7U, 16U));
   TEST_END("ipc sem take_timeout succeeds");
