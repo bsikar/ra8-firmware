@@ -88,6 +88,10 @@ add_executable(board_sim
                src/board_periph.c
                ${BOARD_PERIPH_BLOCKS}
                src/board_usb.c
+               src/board_usb_bridge.c
+               src/board_usb_dev.c
+               src/board_usb_loop.c
+               src/board_usb_vhost.c
                src/board_usb_host.c
                src/board_net.c
                src/board_overlay.c
