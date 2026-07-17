@@ -483,36 +483,68 @@ static uint8_t board_sd_write_byte(board_sd_state_t* c, uint8_t tx)
 }
 
 /**
- * @brief Build the response for a completed 6-byte command frame.
+ * @brief Stage the 16-byte CSD v2.0 data block for a CMD9 (SEND_CSD) reply.
  *
- * @param[in,out] c Card state holding the collected command.
+ * @details
+ * Builds a CSD version 2.0 register whose capacity field (C_SIZE, the 22-bit
+ * value in bytes 7..9) is derived from the attached image so `--sd` / `--sd-new`
+ * present their real size to the firmware instead of a fixed 8 MiB. CSD v2.0
+ * capacity is `(C_SIZE + 1) * 512 KiB`; a card smaller than one 512 KiB unit
+ * falls back to the fixed `k_sd_csd_csize`. Hands the block to
+ * `board_sd_stage_block()` for streaming. Extracted verbatim from the CMD9
+ * arm of `board_sd_process_cmd()`.
+ *
+ * @param[in,out] c Card state whose response buffer receives the CSD block.
  * @return None.
  * @retval None Void.
- * @pre `c` is non-null and `c->cmd` holds a full frame.
- * @pre A card image is attached.
- * @post `c->resp` / `c->resp_len` describe the reply; `c->resp_pos` reset.
+ * @pre `c` is non-null with a staging response buffer.
+ * @pre `c->image_len` reflects the attached card size.
+ * @post `c->resp` / `c->resp_len` hold the staged 16-byte CSD block.
  * @post The backing image is not modified.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void board_sd_process_cmd(board_sd_state_t* c)
+static void board_sd_cmd_send_csd(board_sd_state_t* c)
 {
-  const uint8_t  idx     = (uint8_t)(c->cmd[0] & (uint8_t)k_sd_idx_mask);
-  const uint32_t arg     = ((uint32_t)c->cmd[1] << (uint32_t)k_sd_arg_sh0) |
-                           ((uint32_t)c->cmd[2] << (uint32_t)k_sd_arg_sh1) |
-                           ((uint32_t)c->cmd[3] << (uint32_t)k_sd_byte_bits) | (uint32_t)c->cmd[4];
-  const bool     was_app = c->app_cmd;
-  const uint8_t  r1      = c->ready ? (uint8_t)k_sd_r1_ready : (uint8_t)k_sd_r1_idle;
-  c->app_cmd             = false;
-  c->resp_pos            = 0U;
-  c->resp_len            = 0U;
-
-  if ((idx == (uint8_t)k_sd_idx_acmd41) && was_app) { /* ACMD41 -- init done. */
-    c->ready    = true;
-    c->resp[0]  = (uint8_t)k_sd_r1_ready;
-    c->resp_len = 1U;
-    return;
+  uint8_t csd[k_sd_csd_len];
+  memset(csd, 0, sizeof(csd));
+  csd[0]         = (uint8_t)k_sd_csd_v2;
+  uint32_t csize = (uint32_t)k_sd_csd_csize; /* fallback: 8 MiB. */
+  if (c->image_len >= (uint32_t)k_sd_csd_unit) {
+    csize = (c->image_len / (uint32_t)k_sd_csd_unit) - 1U;
   }
+  csd[k_sd_csd_csize_b7] =
+    (uint8_t)((csize >> (uint32_t)k_sd_arg_sh1) & (uint32_t)k_sd_csize_b7_mask);
+  csd[k_sd_csd_csize_b8] =
+    (uint8_t)((csize >> (uint32_t)k_sd_byte_bits) & (uint16_t)k_sd_byte_mask);
+  csd[k_sd_csd_off] = (uint8_t)(csize & (uint16_t)k_sd_byte_mask);
+  board_sd_stage_block(c, csd, (uint32_t)k_sd_csd_len);
+}
+
+/**
+ * @brief Handle the identification / configuration commands (CMD0/8/55/58/16).
+ *
+ * @details
+ * Builds the fixed R1/R3/R7 responses for the card-identification and block-len
+ * commands. Returns whether `idx` was one of these so the caller can fall
+ * through to the data-transfer dispatch otherwise. Extracted verbatim from the
+ * corresponding arms of `board_sd_process_cmd()`.
+ *
+ * @param[in,out] c   Card state whose response buffer is populated.
+ * @param[in]     idx 6-bit command index already masked from the frame.
+ * @param[in]     r1  Pre-computed R1 status byte (idle vs ready).
+ * @return Whether the command was recognised and handled here.
+ * @retval true  `idx` was an identification/config command; `c->resp` is set.
+ * @retval false `idx` is not handled here; caller must dispatch elsewhere.
+ * @pre `c` is non-null with a staging response buffer.
+ * @pre `idx` is the masked command index of a complete frame.
+ * @post On true, `c->resp` / `c->resp_len` describe the reply.
+ * @post On false, `c->resp` / `c->resp_len` are left unchanged.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static bool board_sd_dispatch_ident(board_sd_state_t* c, uint8_t idx, uint8_t r1)
+{
   switch (idx) {
     case (uint8_t)k_sd_idx_cmd0:
       c->resp[0]  = (uint8_t)k_sd_r1_idle;
@@ -543,25 +575,41 @@ static void board_sd_process_cmd(board_sd_state_t* c)
       c->resp[0]  = (uint8_t)k_sd_r1_ready;
       c->resp_len = 1U;
       break;
-    case (uint8_t)k_sd_idx_cmd9: { /* SEND_CSD: 16-byte CSD v2.0 data block. */
-      uint8_t csd[k_sd_csd_len];
-      memset(csd, 0, sizeof(csd));
-      csd[0] = (uint8_t)k_sd_csd_v2;
-      /* CSD v2.0 capacity = (C_SIZE + 1) * 512 KiB. Derive C_SIZE (22-bit field
-       * in bytes 7..9) from the actual image so --sd / --sd-new present their real
-       * size to the firmware instead of a fixed 8 MiB. */
-      uint32_t csize = (uint32_t)k_sd_csd_csize; /* fallback: 8 MiB. */
-      if (c->image_len >= (uint32_t)k_sd_csd_unit) {
-        csize = (c->image_len / (uint32_t)k_sd_csd_unit) - 1U;
-      }
-      csd[k_sd_csd_csize_b7] =
-        (uint8_t)((csize >> (uint32_t)k_sd_arg_sh1) & (uint32_t)k_sd_csize_b7_mask);
-      csd[k_sd_csd_csize_b8] =
-        (uint8_t)((csize >> (uint32_t)k_sd_byte_bits) & (uint16_t)k_sd_byte_mask);
-      csd[k_sd_csd_off] = (uint8_t)(csize & (uint16_t)k_sd_byte_mask);
-      board_sd_stage_block(c, csd, (uint32_t)k_sd_csd_len);
+    default:
+      return false;
+  }
+  return true;
+}
+
+/**
+ * @brief Handle the data-transfer and erase commands (CMD9/17/18/12/24/25/32/33/38).
+ *
+ * @details
+ * Dispatches the block read/write, stop, and erase commands, plus the CMD9 CSD
+ * reply (via `board_sd_cmd_send_csd()`). Any unrecognised index falls to the
+ * default R1 reply. Extracted verbatim from the corresponding arms of
+ * `board_sd_process_cmd()`; called only after `board_sd_dispatch_ident()`
+ * declines the frame.
+ *
+ * @param[in,out] c   Card state whose response / stream is updated.
+ * @param[in]     idx 6-bit command index already masked from the frame.
+ * @param[in]     arg 32-bit big-endian argument decoded from the frame.
+ * @param[in]     r1  Pre-computed R1 status byte (idle vs ready).
+ * @return None.
+ * @retval None Void.
+ * @pre `c` is non-null with a staging response buffer.
+ * @pre `board_sd_dispatch_ident()` already declined `idx`.
+ * @post `c->resp` / `c->resp_len` (and any read/write stream state) describe the reply.
+ * @post The backing image is modified only for the erase (CMD38) command.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void board_sd_dispatch_data(board_sd_state_t* c, uint8_t idx, uint32_t arg, uint8_t r1)
+{
+  switch (idx) {
+    case (uint8_t)k_sd_idx_cmd9: /* SEND_CSD: 16-byte CSD v2.0 data block. */
+      board_sd_cmd_send_csd(c);
       break;
-    }
     case (uint8_t)k_sd_idx_cmd17: /* READ_SINGLE_BLOCK   (SDHC: arg = block). */
     case (uint8_t)k_sd_idx_cmd18: /* READ_MULTIPLE_BLOCK -- streams to CMD12. */
       board_sd_begin_read(c, idx, arg);
@@ -601,6 +649,43 @@ static void board_sd_process_cmd(board_sd_state_t* c)
       c->resp_len = 1U;
       break;
   }
+}
+
+/**
+ * @brief Build the response for a completed 6-byte command frame.
+ *
+ * @param[in,out] c Card state holding the collected command.
+ * @return None.
+ * @retval None Void.
+ * @pre `c` is non-null and `c->cmd` holds a full frame.
+ * @pre A card image is attached.
+ * @post `c->resp` / `c->resp_len` describe the reply; `c->resp_pos` reset.
+ * @post The backing image is not modified.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void board_sd_process_cmd(board_sd_state_t* c)
+{
+  const uint8_t  idx     = (uint8_t)(c->cmd[0] & (uint8_t)k_sd_idx_mask);
+  const uint32_t arg     = ((uint32_t)c->cmd[1] << (uint32_t)k_sd_arg_sh0) |
+                           ((uint32_t)c->cmd[2] << (uint32_t)k_sd_arg_sh1) |
+                           ((uint32_t)c->cmd[3] << (uint32_t)k_sd_byte_bits) | (uint32_t)c->cmd[4];
+  const bool     was_app = c->app_cmd;
+  const uint8_t  r1      = c->ready ? (uint8_t)k_sd_r1_ready : (uint8_t)k_sd_r1_idle;
+  c->app_cmd             = false;
+  c->resp_pos            = 0U;
+  c->resp_len            = 0U;
+
+  if ((idx == (uint8_t)k_sd_idx_acmd41) && was_app) { /* ACMD41 -- init done. */
+    c->ready    = true;
+    c->resp[0]  = (uint8_t)k_sd_r1_ready;
+    c->resp_len = 1U;
+    return;
+  }
+  if (board_sd_dispatch_ident(c, idx, r1)) {
+    return;
+  }
+  board_sd_dispatch_data(c, idx, arg, r1);
 }
 
 bool board_sd_attach(const char* path)
@@ -646,21 +731,37 @@ bool board_sd_attached(void)
   return s_sd.attached;
 }
 
-bool board_sd_attach_blank(uint32_t total_sectors, uint8_t fat_bits, const char* label)
+/**
+ * @brief Allocate a sparse, anonymous mmap-backed image buffer for a blank card.
+ *
+ * @details
+ * Backs the card with a sparse mmap'd temp file so a multi-GB card only ever
+ * materialises the few sectors the formatter + firmware actually touch (e.g. a
+ * 30 GB card costs kilobytes of host RAM, not 30 GB). Creates an anonymous temp
+ * file with `mkstemp` + `unlink`, sizes it with `ftruncate`, then maps it
+ * read/write and shared. On any failure it emits the same diagnostic the caller
+ * used to emit inline, closes the descriptor if one was opened, and returns
+ * `nullptr`. Extracted verbatim from `board_sd_attach_blank()`.
+ *
+ * @param[in]  bytes  Card size in bytes to reserve for the mapping.
+ * @param[out] out_fd Receives the backing file descriptor on success only.
+ * @return Pointer to the mapped image buffer, or `nullptr` on failure.
+ * @retval nullptr mkstemp, ftruncate, or mmap failed (descriptor already closed).
+ * @retval non-null Mapped buffer of `bytes`; `*out_fd` holds its live descriptor.
+ * @pre `out_fd` is non-null.
+ * @pre `bytes` is non-zero.
+ * @post On success `*out_fd` is an open descriptor owning the mapping's storage.
+ * @post On failure no descriptor leaks and `*out_fd` is left unmodified.
+ * @note Not thread-safe; intended for single-threaded card setup.
+ * @since 0.1.0
+ */
+static uint8_t* board_sd_map_blank_image(uint64_t bytes, int* out_fd)
 {
-  if (total_sectors < (uint32_t)k_sd_min_sectors) {
-    (void)fprintf(stderr, "board_sim: --sd-new: size too small (need >= 32 KiB)\n");
-    return false;
-  }
-  const uint64_t bytes = (uint64_t)total_sectors * (uint64_t)k_fmt_sec_bytes;
-  /* Back the card with a sparse mmap'd temp file: a multi-GB card only ever
-   * materialises the few sectors the formatter + firmware actually touch, so
-   * selecting e.g. 30 GB costs kilobytes of host RAM, not 30 GB. */
   char tmpl[] = "/tmp/board_sim_sd.XXXXXX";
   int  fd     = mkstemp(tmpl);
   if (fd < 0) {
     (void)fprintf(stderr, "board_sim: --sd-new: mkstemp failed\n");
-    return false;
+    return nullptr;
   }
   (void)unlink(tmpl); /* anonymous: the storage lives until the fd is closed. */
   if (ftruncate(fd, (off_t)bytes) != 0) {
@@ -668,7 +769,7 @@ bool board_sd_attach_blank(uint32_t total_sectors, uint8_t fat_bits, const char*
     (void)fprintf(stderr,
                   "board_sim: --sd-new: ftruncate to %llu bytes failed\n",
                   (unsigned long long)bytes);
-    return false;
+    return nullptr;
   }
   uint8_t* img = (uint8_t*)mmap(nullptr, (size_t)bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (img == MAP_FAILED) {
@@ -676,6 +777,60 @@ bool board_sd_attach_blank(uint32_t total_sectors, uint8_t fat_bits, const char*
     (void)fprintf(stderr,
                   "board_sim: --sd-new: mmap of %llu bytes failed\n",
                   (unsigned long long)bytes);
+    return nullptr;
+  }
+  *out_fd = fd;
+  return img;
+}
+
+/**
+ * @brief Emit the "SD card created" diagnostic for a freshly formatted card.
+ *
+ * @details
+ * Prints the card geometry to stderr in GiB when the card is at least 1 GiB and
+ * in MiB otherwise, matching the two-branch message the caller used to emit
+ * inline. Extracted verbatim from `board_sd_attach_blank()`.
+ *
+ * @param[in] bytes    Card size in bytes.
+ * @param[in] fat_bits FAT width just applied (16 or 32).
+ * @param[in] spc      Sectors-per-cluster chosen by the formatter.
+ * @return None.
+ * @retval None Void.
+ * @pre `bytes` is the size of an already-attached card.
+ * @pre `spc` is the formatter's returned sectors-per-cluster.
+ * @post Exactly one diagnostic line is written to stderr.
+ * @post No program state other than the stderr stream is modified.
+ * @note Not thread-safe; writes to the shared stderr stream.
+ * @since 0.1.0
+ */
+static void board_sd_report_created(uint64_t bytes, uint8_t fat_bits, uint32_t spc)
+{
+  if (bytes >= ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib * (uint64_t)k_unit_kib)) {
+    (void)fprintf(stderr,
+                  "board_sim: SD card created (%llu GiB FAT%u, %u sec/clus) sparse + attached\n",
+                  (unsigned long long)(bytes / ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib *
+                                                (uint64_t)k_unit_kib)),
+                  (unsigned)fat_bits,
+                  (unsigned)spc);
+  } else {
+    (void)fprintf(stderr,
+                  "board_sim: SD card created (%llu MiB FAT%u, %u sec/clus) sparse + attached\n",
+                  (unsigned long long)(bytes / ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib)),
+                  (unsigned)fat_bits,
+                  (unsigned)spc);
+  }
+}
+
+bool board_sd_attach_blank(uint32_t total_sectors, uint8_t fat_bits, const char* label)
+{
+  if (total_sectors < (uint32_t)k_sd_min_sectors) {
+    (void)fprintf(stderr, "board_sim: --sd-new: size too small (need >= 32 KiB)\n");
+    return false;
+  }
+  const uint64_t bytes = (uint64_t)total_sectors * (uint64_t)k_fmt_sec_bytes;
+  int            fd    = -1;
+  uint8_t*       img   = board_sd_map_blank_image(bytes, &fd);
+  if (img == nullptr) {
     return false;
   }
   const uint32_t spc = (fat_bits == (uint8_t)k_fat32_bits)
@@ -692,20 +847,7 @@ bool board_sd_attach_blank(uint32_t total_sectors, uint8_t fat_bits, const char*
     (fat_bits == (uint8_t)k_fat32_bits) ? (uint8_t)k_fat32_bits : (uint8_t)k_fat16_bits;
   sd_label_field((uint8_t*)s_sd.label, label);
   s_sd.label[k_fmt_label_len] = '\0';
-  if (bytes >= ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib * (uint64_t)k_unit_kib)) {
-    (void)fprintf(stderr,
-                  "board_sim: SD card created (%llu GiB FAT%u, %u sec/clus) sparse + attached\n",
-                  (unsigned long long)(bytes / ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib *
-                                                (uint64_t)k_unit_kib)),
-                  (unsigned)s_sd.fat_bits,
-                  (unsigned)spc);
-  } else {
-    (void)fprintf(stderr,
-                  "board_sim: SD card created (%llu MiB FAT%u, %u sec/clus) sparse + attached\n",
-                  (unsigned long long)(bytes / ((uint64_t)k_unit_kib * (uint64_t)k_unit_kib)),
-                  (unsigned)s_sd.fat_bits,
-                  (unsigned)spc);
-  }
+  board_sd_report_created(bytes, s_sd.fat_bits, spc);
   return true;
 }
 
