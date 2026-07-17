@@ -39,7 +39,6 @@ typedef enum : uint8_t {
   k_tls_content_handshake = 0x16U, /**< TLS content handshake. */
 } tls_content_type_t;
 
-/* NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity,clang-analyzer-optin.performance.Padding,misc-misplaced-const) */
 #ifndef RA8_SIMULATOR_MODE
 #include "mbedtls/error.h"
 #include "mbedtls/ssl.h"
@@ -117,7 +116,7 @@ static bool s_initialized;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static bool internal_handle_valid(const ra8_tls_session_t session)
+static bool internal_handle_valid(const struct ra8_tls_session_handle* session)
 {
   if (session == nullptr) {
     return false;
@@ -654,4 +653,3 @@ ra8_err_t ra8_tls_mss_clamp(uint16_t mtu, uint16_t* out_mss)
   return k_ra8_ok;
 }
 
-/* NOLINTEND(readability-function-size,readability-function-cognitive-complexity,clang-analyzer-optin.performance.Padding,misc-misplaced-const) */
