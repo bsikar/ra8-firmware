@@ -82,6 +82,149 @@ static bool cb_key_eq(cb_key_t a, cb_key_t b)
   return (a.object_id == b.object_id) && (a.page == b.page);
 }
 
+/**
+ * @struct cb_index_t
+ * @brief Exact key->frame lookup over the resident set (chained hash).
+ * @details One chain node per frame, no tombstones, so hit accounting is
+ *          precise; only eviction ordering is delegated to the policy.
+ * @invariant `mask + 1` is the (power-of-two) bucket count.
+ * @since 0.1.0
+ */
+typedef struct {
+  int32_t* bucket; /**< Head frame index per bucket, or -1. */
+  int32_t* next;   /**< Per-frame chain link, or -1.        */
+  uint32_t mask;   /**< Bucket-count-minus-one bit mask.    */
+} cb_index_t;
+
+/** @brief Find the resident frame holding @p key, or -1. */
+static int32_t cb_index_find(const cb_index_t* idx, const cb_frame_t* frames, cb_key_t key)
+{
+  for (int32_t j = idx->bucket[cb_hash(key) & idx->mask]; j != -1; j = idx->next[j]) {
+    if (cb_key_eq(frames[j].key, key)) {
+      return j;
+    }
+  }
+  return -1;
+}
+
+/** @brief Unlink @p frame's current key from its bucket chain (pre-evict). */
+static void cb_index_remove(cb_index_t* idx, const cb_frame_t* frames, uint32_t frame)
+{
+  const uint32_t ob   = cb_hash(frames[frame].key) & idx->mask;
+  int32_t        prev = -1;
+  for (int32_t j = idx->bucket[ob]; j != -1; prev = j, j = idx->next[j]) {
+    if (j == (int32_t)frame) {
+      if (prev == -1) {
+        idx->bucket[ob] = idx->next[j];
+      } else {
+        idx->next[prev] = idx->next[j];
+      }
+      break;
+    }
+  }
+}
+
+/** @brief Link @p frame into the bucket chain for @p key (post-insert). */
+static void cb_index_push(cb_index_t* idx, uint32_t frame, cb_key_t key)
+{
+  const uint32_t b = cb_hash(key) & idx->mask;
+  idx->next[frame] = idx->bucket[b];
+  idx->bucket[b]   = (int32_t)frame;
+}
+
+/**
+ * @brief Pick the frame that receives @p key: a free frame while the cache
+ *        fills, else the policy's victim (accounted + unlinked).
+ *
+ * @details Charges eviction stats (count, total/worst scan) to @p out and
+ *          unlinks an evicted frame's old key from the index, so the caller
+ *          only relinks the new key.
+ *
+ * @param[in]     pol    Policy under test (its `pick_victim` may run).
+ * @param[in,out] cache  The frame cache (frames + policy state).
+ * @param[in,out] idx    Resident-set index (victim unlinked in place).
+ * @param[in,out] filled Frames used so far; grows while cold.
+ * @param[in,out] out    Metrics row receiving eviction accounting.
+ *
+ * @return uint32_t Frame index to (re)populate (always < capacity).
+ *
+ * @pre The cache is missing the current key (lookup already failed).
+ * @pre `pol->pick_victim` is bound (every registered policy binds it).
+ * @post On the eviction path, the victim's old key is no longer findable.
+ * @post `*filled <= cache->capacity`.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static uint32_t cb_replay_take_frame(const cache_policy_t* pol,
+                                     cb_cache_t*           cache,
+                                     cb_index_t*           idx,
+                                     uint32_t*             filled,
+                                     cb_result_t*          out)
+{
+  if (*filled < cache->capacity) {
+    const uint32_t frame = *filled;
+    (*filled)++;
+    return frame;
+  }
+  uint32_t       scanned = 0U;
+  const uint32_t frame   = pol->pick_victim(cache, &scanned);
+  out->evictions++;
+  out->total_scan += scanned;
+  if (scanned > out->worst_scan) {
+    out->worst_scan = scanned;
+  }
+  cb_index_remove(idx, cache->frames, frame);
+  return frame;
+}
+
+/**
+ * @brief Allocate the frame array + resident-set index for one replay run.
+ *
+ * @details Sizes the bucket table at four buckets per frame (power-of-two)
+ *          and marks every bucket empty. On a partial allocation failure the
+ *          acquired buffers stay bound to @p idx / @p frames; the caller
+ *          releases them through ::cb_replay_close on every exit path.
+ *
+ * @param[out] idx      Receives the initialized (empty) index.
+ * @param[out] frames   Receives the zeroed frame array.
+ * @param[in]  capacity Frame count (> 0).
+ *
+ * @return bool true when everything allocated, false on OOM.
+ * @retval true  @p idx and @p frames are ready for the replay loop.
+ * @retval false At least one buffer is NULL; free via ::cb_replay_close.
+ *
+ * @pre @p idx and @p frames are non-NULL.
+ * @post On true, every bucket head is -1 (empty resident set).
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static bool cb_replay_open(cb_index_t* idx, cb_frame_t** frames, uint32_t capacity)
+{
+  const uint32_t hsize = cb_pow2_ceil(capacity * 4U);
+  *frames              = (cb_frame_t*)calloc((size_t)capacity, sizeof(cb_frame_t));
+  *idx                 = (cb_index_t){.bucket = (int32_t*)malloc((size_t)hsize * sizeof(int32_t)),
+                                      .next   = (int32_t*)malloc((size_t)capacity * sizeof(int32_t)),
+                                      .mask   = hsize - 1U};
+  if ((*frames == nullptr) || (idx->bucket == nullptr) || (idx->next == nullptr)) {
+    return false;
+  }
+  for (uint32_t i = 0U; i < hsize; ++i) {
+    idx->bucket[i] = -1;
+  }
+  return true;
+}
+
+/** @brief Free everything ::cb_replay_open acquired (idempotent). */
+static void cb_replay_close(cb_index_t* idx, cb_frame_t* frames)
+{
+  free(frames);
+  free(idx->bucket);
+  free(idx->next);
+  *idx = (cb_index_t){};
+}
+
 int cb_replay(const cache_policy_t* pol,
               const cb_key_t*       keys,
               uint64_t              n,
@@ -93,43 +236,20 @@ int cb_replay(const cache_policy_t* pol,
     return 1;
   }
 
-  cb_frame_t*    frames = (cb_frame_t*)calloc((size_t)capacity, sizeof(cb_frame_t));
-  const uint32_t hsize  = cb_pow2_ceil(capacity * 4U);
-  int32_t*       bucket = (int32_t*)malloc((size_t)hsize * sizeof(int32_t));
-  int32_t*       next   = (int32_t*)malloc((size_t)capacity * sizeof(int32_t));
-  if ((frames == nullptr) || (bucket == nullptr) || (next == nullptr)) {
-    free(frames);
-    free(bucket);
-    free(next);
-    return 1;
-  }
-  for (uint32_t i = 0U; i < hsize; ++i) {
-    bucket[i] = -1;
-  }
-  const uint32_t mask = hsize - 1U;
-
-  cb_cache_t cache = {.frames = frames, .capacity = capacity, .policy_data = nullptr};
-  if ((pol->init != nullptr) && (pol->init(&cache) != 0)) {
-    free(frames);
-    free(bucket);
-    free(next);
+  cb_frame_t* frames = nullptr;
+  cb_index_t  idx    = {};
+  const bool  ready  = cb_replay_open(&idx, &frames, capacity);
+  cb_cache_t  cache  = {.frames = frames, .capacity = capacity, .policy_data = nullptr};
+  if (!ready || ((pol->init != nullptr) && (pol->init(&cache) != 0))) {
+    cb_replay_close(&idx, frames);
     return 1;
   }
 
   uint32_t filled = 0U;
   for (uint64_t i = 0U; i < n; ++i) {
-    const cb_key_t key = keys[i];
-    const uint32_t b   = cb_hash(key) & mask;
-
-    int32_t found = -1;
-    for (int32_t j = bucket[b]; j != -1; j = next[j]) {
-      if (cb_key_eq(frames[j].key, key)) {
-        found = j;
-        break;
-      }
-    }
+    const cb_key_t key   = keys[i];
+    const int32_t  found = cb_index_find(&idx, frames, key);
     out->accesses++;
-
     if (found != -1) {
       out->hits++;
       if (pol->on_access != nullptr) {
@@ -137,37 +257,10 @@ int cb_replay(const cache_policy_t* pol,
       }
       continue;
     }
-
-    uint32_t frame;
-    if (filled < capacity) {
-      frame = filled++;
-    } else {
-      uint32_t scanned = 0U;
-      frame            = pol->pick_victim(&cache, &scanned);
-      out->evictions++;
-      out->total_scan += scanned;
-      if (scanned > out->worst_scan) {
-        out->worst_scan = scanned;
-      }
-      /* Unlink the victim's old key from its bucket chain. */
-      const uint32_t ob   = cb_hash(frames[frame].key) & mask;
-      int32_t        prev = -1;
-      for (int32_t j = bucket[ob]; j != -1; prev = j, j = next[j]) {
-        if (j == (int32_t)frame) {
-          if (prev == -1) {
-            bucket[ob] = next[j];
-          } else {
-            next[prev] = next[j];
-          }
-          break;
-        }
-      }
-    }
-
-    frames[frame].key  = key;
-    frames[frame].live = true;
-    next[frame]        = bucket[b];
-    bucket[b]          = (int32_t)frame;
+    const uint32_t frame = cb_replay_take_frame(pol, &cache, &idx, &filled, out);
+    frames[frame].key    = key;
+    frames[frame].live   = true;
+    cb_index_push(&idx, frame, key);
     if (pol->on_insert != nullptr) {
       pol->on_insert(&cache, frame);
     }
@@ -176,9 +269,7 @@ int cb_replay(const cache_policy_t* pol,
   if (pol->deinit != nullptr) {
     pol->deinit(&cache);
   }
-  free(frames);
-  free(bucket);
-  free(next);
+  cb_replay_close(&idx, frames);
   return 0;
 }
 
@@ -280,6 +371,49 @@ static void cb_report_summary(cb_trace_t* traces, uint32_t ntr)
   }
 }
 
+/** @brief Capacity of the extra captured-trace table filled from argv. */
+typedef enum : uint8_t {
+  k_cb_max_loaded = 8U, /**< Most `<name>=<path>` traces accepted per run. */
+} cb_loaded_cap_t;
+
+/**
+ * @brief Load the extra captured traces named on the command line.
+ *
+ * @details Each argv of the form `<name>=<path>` (e.g. `hw-reader=t.trace`)
+ *          is split in place and loaded via ::cb_trace_load; arguments
+ *          without `=` are ignored (they are mode flags). Traces that fail
+ *          to load (n == 0) are dropped silently, exactly as before.
+ *
+ * @param[in]  argc   Argument count from main.
+ * @param[in]  argv   Argument vector from main (mutated at the `=` split).
+ * @param[out] loaded Receives up to ::k_cb_max_loaded loaded traces.
+ *
+ * @return uint32_t Number of traces actually loaded.
+ *
+ * @pre @p loaded has capacity ::k_cb_max_loaded.
+ * @pre @p argv is writable (the `=` is overwritten with a NUL).
+ * @post Entries `loaded[0..return)` all have `n > 0`.
+ *
+ * @note Not thread-safe (mutates argv in place).
+ * @since 0.1.0
+ */
+static uint32_t cb_load_argv_traces(int argc, char** argv, cb_trace_t* loaded)
+{
+  uint32_t nloaded = 0U;
+  for (int a = 1; (a < argc) && (nloaded < (uint32_t)k_cb_max_loaded); ++a) {
+    char* eq = strchr(argv[a], '=');
+    if (eq == nullptr) {
+      continue;
+    }
+    *eq             = '\0';
+    loaded[nloaded] = cb_trace_load(eq + 1, argv[a]);
+    if (loaded[nloaded].n > 0U) {
+      nloaded++;
+    }
+  }
+  return nloaded;
+}
+
 int main(int argc, char** argv)
 {
   if ((argc > 1) && (strcmp(argv[1], "--sweep-block") == 0)) {
@@ -294,19 +428,8 @@ int main(int argc, char** argv)
   }
 
   /* Extra captured traces: each argv is `<name>=<path>` (e.g. hw-reader=...). */
-  cb_trace_t loaded[8] = {};
-  uint32_t   nloaded   = 0U;
-  for (int a = 1; (a < argc) && (nloaded < 8U); ++a) {
-    char* eq = strchr(argv[a], '=');
-    if (eq == nullptr) {
-      continue;
-    }
-    *eq             = '\0';
-    loaded[nloaded] = cb_trace_load(eq + 1, argv[a]);
-    if (loaded[nloaded].n > 0U) {
-      nloaded++;
-    }
-  }
+  cb_trace_t     loaded[k_cb_max_loaded] = {};
+  const uint32_t nloaded                 = cb_load_argv_traces(argc, argv, loaded);
 
   (void)printf("# #147 eviction-policy benchmark\n");
   (void)printf("\nHit rate (%%) by cache size (frames). Higher is better.\n");
