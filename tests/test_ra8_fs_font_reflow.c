@@ -161,32 +161,15 @@ static bool load_src_font(void)
 }
 
 /**
- * @test test_font_on_fat_renders_via_reflow
- *
- * @par MC/DC:
- * Integration test -- no compound decision of its own. It drives the
- * already-MC/DC-covered ra8_fs / ra8_reflow APIs through one round trip:
- * write font -> read font -> layout -> render. The single boolean checks
- * here (font present, size match, ink present) are each exercised true on
- * the success path and would fail the assert otherwise.
+ * @brief Make a FAT16 volume, write the font, and read it back byte-identically.
+ * @return None.
+ * @pre s_src_font holds the loaded font of length s_font_len.
+ * @post s_card_font holds the font read back through the real FAT path.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
  */
-static void test_font_on_fat_renders_via_reflow(void)
+static void fat_reflow_write_read_font(void)
 {
-  TEST_BEGIN("font on FAT volume -> ra8_fs -> ra8_reflow render");
-
-  s_src_font  = (uint8_t*)malloc(k_font_cap);
-  s_card_font = (uint8_t*)malloc(k_font_cap);
-  s_fb        = (uint32_t*)malloc((size_t)k_fb_w * (size_t)k_fb_h * sizeof(uint32_t));
-  TEST_ASSERT_NOT_NULL(s_src_font);
-  TEST_ASSERT_NOT_NULL(s_card_font);
-  TEST_ASSERT_NOT_NULL(s_fb);
-
-  if (!load_src_font()) {
-    (void)fprintf(stderr, "[SKIP] Literata font not found; skipping\n");
-    TEST_END("font on FAT volume -> ra8_fs -> ra8_reflow render");
-    return;
-  }
-
   /* 1. Make a fresh FAT16 "card" and mount it. */
   build_fat16_volume();
   ra8_fs_mount_t* mnt = nullptr;
@@ -211,7 +194,18 @@ static void test_font_on_fat_renders_via_reflow(void)
   /* Bytes round-tripped intact through the FAT layer. */
   TEST_ASSERT_EQ(0, memcmp(s_src_font, s_card_font, s_font_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(mnt));
+}
 
+/**
+ * @brief Render a paragraph with the card-loaded font and assert real ink.
+ * @return None.
+ * @pre s_card_font holds a valid font of length s_font_len.
+ * @post At least one non-background pixel was inked into s_fb.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void fat_reflow_render_and_count(void)
+{
   /* 4. Render a paragraph with the card-loaded font (heap-free glyphs). */
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gfx_init(s_fb, (uint16_t)k_fb_w, (uint16_t)k_fb_h, k_ra8_gfx_format_argb8888));
@@ -248,6 +242,37 @@ static void test_font_on_fat_renders_via_reflow(void)
                 ink,
                 pages);
   TEST_ASSERT(ink > 0U);
+}
+
+/**
+ * @test test_font_on_fat_renders_via_reflow
+ *
+ * @par MC/DC:
+ * Integration test -- no compound decision of its own. It drives the
+ * already-MC/DC-covered ra8_fs / ra8_reflow APIs through one round trip:
+ * write font -> read font -> layout -> render. The single boolean checks
+ * here (font present, size match, ink present) are each exercised true on
+ * the success path and would fail the assert otherwise.
+ */
+static void test_font_on_fat_renders_via_reflow(void)
+{
+  TEST_BEGIN("font on FAT volume -> ra8_fs -> ra8_reflow render");
+
+  s_src_font  = (uint8_t*)malloc(k_font_cap);
+  s_card_font = (uint8_t*)malloc(k_font_cap);
+  s_fb        = (uint32_t*)malloc((size_t)k_fb_w * (size_t)k_fb_h * sizeof(uint32_t));
+  TEST_ASSERT_NOT_NULL(s_src_font);
+  TEST_ASSERT_NOT_NULL(s_card_font);
+  TEST_ASSERT_NOT_NULL(s_fb);
+
+  if (!load_src_font()) {
+    (void)fprintf(stderr, "[SKIP] Literata font not found; skipping\n");
+    TEST_END("font on FAT volume -> ra8_fs -> ra8_reflow render");
+    return;
+  }
+
+  fat_reflow_write_read_font();
+  fat_reflow_render_and_count();
 
   free(s_disk.bytes);
   s_disk.bytes = nullptr;
