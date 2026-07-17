@@ -65,7 +65,9 @@ endif()
 
 add_executable(board_sim
                src/main.c
+               src/sim_console.c
                src/sim_elf.c
+               src/sim_engine.c
                src/board_periph.c
                ${BOARD_PERIPH_BLOCKS}
                src/board_usb.c
