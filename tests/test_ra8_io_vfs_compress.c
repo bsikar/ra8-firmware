@@ -148,6 +148,37 @@ static void test_vfs_compress_round_trip(void)
 }
 
 /**
+ * @brief Wrapper over `ra8_io_vfs_write_compressed` (payload len + blob cap fixed).
+ * @param[in]  path    VFS destination path (nullptr exercises the path guard).
+ * @param[in]  payload Source payload (nullptr exercises the payload guard).
+ * @param[in]  scratch Compressor scratch (nullptr exercises the scratch guard).
+ * @param[in]  scap    Scratch capacity in bytes.
+ * @param[out] blob    Output blob buffer (nullptr exercises the blob guard).
+ * @param[out] out     Blob-length sink (nullptr exercises the length guard).
+ * @return The `ra8_io_vfs_write_compressed` result code.
+ * @pre A RAM mount is set up.
+ * @post No state beyond @p blob / @p out and the mount is modified.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static ra8_err_t vc_write(const char*    path,
+                          const uint8_t* payload,
+                          uint8_t*       scratch,
+                          uint32_t       scap,
+                          uint8_t*       blob,
+                          uint32_t*      out)
+{
+  return ra8_io_vfs_write_compressed(path,
+                                     payload,
+                                     k_t_payload,
+                                     scratch,
+                                     scap,
+                                     blob,
+                                     (uint32_t)sizeof(s_blob),
+                                     out);
+}
+
+/**
  * @par MC/DC:
  * (no compound decisions under test -- each of the five write-path pointer
  * guards is an independent single-condition check, and undersized scratch is a
@@ -158,64 +189,28 @@ static void test_vfs_compress_write_validation(void)
   TEST_BEGIN("vfs compress write validation");
   fill_payload();
   setup_ram_mount();
-  uint32_t blob_len = 0;
+  uint32_t       blob_len = 0;
+  const uint32_t scap     = (uint32_t)sizeof(s_scratch);
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_io_vfs_write_compressed(nullptr,
-                                             s_payload,
-                                             k_t_payload,
-                                             s_scratch,
-                                             (uint32_t)sizeof(s_scratch),
-                                             s_blob,
-                                             (uint32_t)sizeof(s_blob),
-                                             &blob_len));
+                 vc_write(nullptr, s_payload, s_scratch, scap, s_blob, &blob_len));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_io_vfs_write_compressed("ram:/X.RBK",
-                                             nullptr,
-                                             k_t_payload,
-                                             s_scratch,
-                                             (uint32_t)sizeof(s_scratch),
-                                             s_blob,
-                                             (uint32_t)sizeof(s_blob),
-                                             &blob_len));
+                 vc_write("ram:/X.RBK", nullptr, s_scratch, scap, s_blob, &blob_len));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_io_vfs_write_compressed("ram:/X.RBK",
-                                             s_payload,
-                                             k_t_payload,
-                                             nullptr,
-                                             (uint32_t)sizeof(s_scratch),
-                                             s_blob,
-                                             (uint32_t)sizeof(s_blob),
-                                             &blob_len));
+                 vc_write("ram:/X.RBK", s_payload, nullptr, scap, s_blob, &blob_len));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_io_vfs_write_compressed("ram:/X.RBK",
-                                             s_payload,
-                                             k_t_payload,
-                                             s_scratch,
-                                             (uint32_t)sizeof(s_scratch),
-                                             nullptr,
-                                             (uint32_t)sizeof(s_blob),
-                                             &blob_len));
+                 vc_write("ram:/X.RBK", s_payload, s_scratch, scap, nullptr, &blob_len));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_io_vfs_write_compressed("ram:/X.RBK",
-                                             s_payload,
-                                             k_t_payload,
-                                             s_scratch,
-                                             (uint32_t)sizeof(s_scratch),
-                                             s_blob,
-                                             (uint32_t)sizeof(s_blob),
-                                             nullptr));
+                 vc_write("ram:/X.RBK", s_payload, s_scratch, scap, s_blob, nullptr));
 
   /* undersized scratch -> the compressor rejects with invalid_size */
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_io_vfs_write_compressed("ram:/X.RBK",
-                                             s_payload,
-                                             k_t_payload,
-                                             s_scratch,
-                                             (uint32_t)k_ra8_io_compress_scratch_bytes - 1u,
-                                             s_blob,
-                                             (uint32_t)sizeof(s_blob),
-                                             &blob_len));
+                 vc_write("ram:/X.RBK",
+                          s_payload,
+                          s_scratch,
+                          (uint32_t)k_ra8_io_compress_scratch_bytes - 1u,
+                          s_blob,
+                          &blob_len));
   TEST_END("vfs compress write validation");
 }
 
