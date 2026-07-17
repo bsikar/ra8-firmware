@@ -29,8 +29,6 @@
 #include "ra8_i2c_bus_ops.h"
 #include "ra8_log.h"
 
-/* NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity) */
-
 /** @brief Log tag for this driver. */
 static const char* s_tag = "SMBUS";
 
@@ -321,6 +319,55 @@ ra8_err_t ra8_smbus_block_write(uint8_t target_7b, uint8_t cmd, const uint8_t* d
   return s_state.bus.write(s_state.bus.ctx, target_7b, frame, fi, true);
 }
 
+/**
+ * @brief Verify the PEC byte of a completed Block Read transfer.
+ *
+ * @details
+ * Recomputes the SMBus 3.2 5.4 CRC-8 over the full wire frame of the
+ * combined transfer -- write-address byte, command, read-address byte,
+ * byte count, then the ``count`` payload bytes -- and compares it with
+ * the PEC byte the peripheral appended after the payload.
+ *
+ * @param[in] target_7b 7-bit peripheral address.
+ * @param[in] cmd       Command code that selected the block.
+ * @param[in] buf       Payload bytes copied out of the transfer.
+ * @param[in] count     Payload byte count reported by the peripheral.
+ * @param[in] pec_rx    PEC byte received after the payload.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok               PEC matches the received frame.
+ * @retval k_ra8_err_crc_mismatch Computed PEC differs from ``pec_rx``.
+ *
+ * @pre ``buf`` holds at least ``count`` bytes.
+ * @pre PEC was enabled at init time (caller checks ``pec_enabled``).
+ * @post No state is mutated.
+ * @post Return value depends only on the inputs.
+ *
+ * @note Pure computation; safe from any context.
+ * @since 0.1.0
+ */
+static ra8_err_t internal_block_read_pec_check(uint8_t        target_7b,
+                                               uint8_t        cmd,
+                                               const uint8_t* buf,
+                                               uint8_t        count,
+                                               uint8_t        pec_rx)
+{
+  const uint8_t addr_w = make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_write);
+  const uint8_t addr_r = make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_read);
+  uint8_t       pec    = pec_update((uint8_t)k_ra8_smbus_pec_init, addr_w);
+  pec                  = pec_update(pec, cmd);
+  pec                  = pec_update(pec, addr_r);
+  pec                  = pec_update(pec, count);
+  for (uint8_t i = 0U; i < count; ++i) {
+    pec = pec_update(pec, buf[i]);
+  }
+  if (pec != pec_rx) {
+    ra8_log_error(s_tag, "block_read: PEC mismatch");
+    return k_ra8_err_crc_mismatch;
+  }
+  return k_ra8_ok;
+}
+
 ra8_err_t
 ra8_smbus_block_read(uint8_t target_7b, uint8_t cmd, uint8_t* buf, uint8_t cap, uint8_t* out_len)
 {
@@ -351,19 +398,11 @@ ra8_smbus_block_read(uint8_t target_7b, uint8_t cmd, uint8_t* buf, uint8_t cap, 
     buf[i] = rx[1U + (uint32_t)i];
   }
   if (s_state.pec_enabled) {
-    const uint8_t addr_w = make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_write);
-    const uint8_t addr_r = make_addr_byte(target_7b, (uint8_t)k_ra8_smbus_rw_read);
-    uint8_t       pec    = pec_update((uint8_t)k_ra8_smbus_pec_init, addr_w);
-    pec                  = pec_update(pec, cmd);
-    pec                  = pec_update(pec, addr_r);
-    pec                  = pec_update(pec, count);
-    for (uint8_t i = 0U; i < count; ++i) {
-      pec = pec_update(pec, buf[i]);
-    }
     /* PEC byte sits at rx[1 + count]. */
-    if (pec != rx[1U + (uint32_t)count]) {
-      ra8_log_error(s_tag, "block_read: PEC mismatch");
-      return k_ra8_err_crc_mismatch;
+    const ra8_err_t pec_err =
+      internal_block_read_pec_check(target_7b, cmd, buf, count, rx[1U + (uint32_t)count]);
+    if (pec_err != k_ra8_ok) {
+      return pec_err;
     }
   } /* GCOVR_EXCL_LINE -- reached only when PEC matches; host sim returns constant NTDTBP0 */
   return k_ra8_ok;
@@ -403,5 +442,3 @@ ra8_err_t ra8_smbus_alert_dispatch(void)
   }
   return k_ra8_ok;
 }
-
-/* NOLINTEND(readability-function-size,readability-function-cognitive-complexity) */
