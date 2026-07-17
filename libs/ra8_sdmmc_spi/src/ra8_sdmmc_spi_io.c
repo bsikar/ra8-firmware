@@ -77,9 +77,7 @@ typedef struct {
  */
 static sci_bus_ctx_t s_sci_ctx;
 
-/* cppcheck-suppress constParameterCallback
- * Reason: bound to ra8_sdmmc_spi_transport_t::set_clock, whose signature is
- * `ra8_err_t (*)(void*, uint32_t)`; constifying ctx would break the binding. */
+/* cppcheck-suppress constParameterCallback -- bound to ra8_sdmmc_spi_transport_t::set_clock, `ra8_err_t (*)(void*, uint32_t)`; constifying ctx would break the binding. */
 /**
  * @brief Factory transport set-clock shim: retune the SCI baud divider.
  * @details Recovers the SCI channel + PCLKA from the bus context and forwards

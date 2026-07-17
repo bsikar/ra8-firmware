@@ -183,11 +183,7 @@ static void sd_demo_panic_halt(void)
  * pointer so we can compute the SPBR divisor without reaching into a
  * file-scope global. ``ctx`` is a ``uint32_t*`` to the cached PCLKA Hz.
  */
-/* cppcheck-suppress constParameterCallback
- * Reason: this function is bound to ra8_sdmmc_spi_transport_t::set_clock,
- * whose signature is `ra8_err_t (*)(void*, uint32_t)` -- changing `ctx`
- * to `const void*` would also require changing the function-pointer
- * type, which would break every other transport binding. */
+/* cppcheck-suppress constParameterCallback -- bound to ra8_sdmmc_spi_transport_t::set_clock, `ra8_err_t (*)(void*, uint32_t)`; constifying ctx would break the binding. */
 static ra8_err_t sd_demo_spi_set_clock(void* ctx, uint32_t hz)
 {
   const uint32_t pclka_hz = *(const uint32_t*)ctx;

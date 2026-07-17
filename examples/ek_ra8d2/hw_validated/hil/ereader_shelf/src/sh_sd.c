@@ -58,9 +58,7 @@ static const char*      s_sd_tag = "sh_sd"; /**< Log tag for SD-read diagnostics
 /** @brief Held-open streamed `.epub` source (#230); valid while an EPUB is open. */
 static ra8_epub_stream_fs_ctx_t s_epub_io;
 
-/* cppcheck-suppress constParameterCallback
- * Reason: bound to ra8_sdmmc_spi_transport_t::set_clock; the void* ctx signature
- * is fixed by the seam. */
+/* cppcheck-suppress constParameterCallback -- bound to ra8_sdmmc_spi_transport_t::set_clock; the void* ctx signature is fixed by the seam. */
 static ra8_err_t sh_sd_set_clock(void* ctx, uint32_t hz)
 {
   const uint32_t pclka_hz = *(const uint32_t*)ctx;

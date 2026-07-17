@@ -291,8 +291,7 @@ ra8_err_t ra8_ble_security_pair(uint16_t conn_handle)
   }
 #ifdef RA8_TARGET_BUILD
   int rc = ble_gap_security_initiate(conn_handle);
-  /* cppcheck-suppress knownConditionTrueFalse
-   * Weak fallback returns 0; strong upstream returns BLE_HS_E* on failure. */
+  /* cppcheck-suppress knownConditionTrueFalse -- the in-tree weak fallback returns 0; the strong upstream NimBLE symbol returns non-zero on failure. */
   if (rc != 0) {
     return k_ra8_err_invalid_arg;
   }
@@ -350,8 +349,7 @@ ra8_err_t ra8_ble_security_passkey_reply(uint16_t conn_handle, uint32_t passkey,
     io.passkey = passkey;
   }
   int rc = ble_sm_inject_io(conn_handle, &io);
-  /* cppcheck-suppress knownConditionTrueFalse
-   * Weak fallback returns 0; strong upstream returns BLE_HS_E* on failure. */
+  /* cppcheck-suppress knownConditionTrueFalse -- the in-tree weak fallback returns 0; the strong upstream NimBLE symbol returns non-zero on failure. */
   if (rc != 0) {
     return k_ra8_err_invalid_arg;
   }
@@ -391,8 +389,7 @@ ra8_err_t ra8_ble_security_clear_bonds(void)
   }
 #ifdef RA8_TARGET_BUILD
   int rc = ble_store_clear();
-  /* cppcheck-suppress knownConditionTrueFalse
-   * Weak fallback returns 0; strong upstream returns non-zero on store error. */
+  /* cppcheck-suppress knownConditionTrueFalse -- the in-tree weak fallback returns 0; the strong upstream NimBLE symbol returns non-zero on failure. */
   if (rc != 0) {
     return k_ra8_err_hw_error;
   }

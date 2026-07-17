@@ -202,9 +202,7 @@ static bool pc_blob_equal(const uint8_t* a, const uint8_t* b, size_t len)
 
 /* ---- SPI -> ra8_sdmmc_spi transport adapter (mirror of epub_open) ------ */
 
-/* cppcheck-suppress constParameterCallback
- * Reason: bound to ra8_sdmmc_spi_transport_t::set_clock, whose signature is
- * `ra8_err_t (*)(void*, uint32_t)`; constifying ctx would break the binding. */
+/* cppcheck-suppress constParameterCallback -- bound to ra8_sdmmc_spi_transport_t::set_clock, `ra8_err_t (*)(void*, uint32_t)`; constifying ctx would break the binding. */
 static ra8_err_t pc_spi_set_clock(void* ctx, uint32_t hz)
 {
   const uint32_t pclka_hz = *(const uint32_t*)ctx;

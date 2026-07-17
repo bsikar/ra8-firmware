@@ -233,8 +233,7 @@ static void mpu_simple_setup_or_halt(void)
 [[nodiscard]] static ra8_err_t mpu_simple_probe(void)
 {
   s_ro_buffer[0] = (uint8_t)k_mpu_simple_probe_byte;
-  /* cppcheck-suppress knownConditionTrueFalse
-   * (host: write succeeds; silicon: handler skipped the store). */
+  /* cppcheck-suppress knownConditionTrueFalse -- host: the write succeeds; silicon: the MemManage handler skipped the store. */
   if (s_ro_buffer[0] == (uint8_t)k_mpu_simple_probe_byte) {
     return k_ra8_ok;
   }
