@@ -467,17 +467,11 @@ ycc_to_rgb_row_mve(const int16_t* y, const int16_t* cb, const int16_t* cr, uint8
     int16x8_t vr   = vaddq_s16(vy, vrr);
     int16x8_t vg   = vaddq_s16(vy, vaddq_s16(vgg1, vgg2));
     int16x8_t vb   = vaddq_s16(vy, vbb);
-    /* Saturating narrow-store to u8 with interleave R,G,B. */
-    /* cppcheck-suppress unassignedVariable
-     * justification: kept as a vector-typed placeholder for the future
-     * vst3q_u8 path; the (void)vrgb cast below proves the intent. */
-    uint8x16_t vrgb;
     /* Interleave: build R,G,B byte triples in scalar-friendly form. */
     int16_t rb[8], gb[8], bb_[8];
     vst1q_s16(rb, vr);
     vst1q_s16(gb, vg);
     vst1q_s16(bb_, vb);
-    (void)vrgb;
     for (uint8_t k = 0U; k < 8U; k++) {
       dst[0] = clamp_u8((int32_t)rb[k]);
       dst[1] = clamp_u8((int32_t)gb[k]);
