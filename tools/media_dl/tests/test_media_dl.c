@@ -28,11 +28,11 @@
 
 /** @brief Expected fixture counts (named to avoid bare literals). */
 typedef enum : uint16_t {
-  k_expect_imgs      = 2,   /**< /uploads/ images in the page fixture. */
-  k_expect_chaps     = 3,   /**< chapter links in the series fixture. */
-  k_expect_pages     = 2,   /**< pages written into the export fixture. */
-  k_fixture_bytes    = 4,   /**< bytes per synthetic page file. */
-  k_name_probe       = 256, /**< zip entry-name probe buffer. */
+  k_expect_imgs      = 2,   /**< /uploads/ images in the page fixture.       */
+  k_expect_chaps     = 3,   /**< chapter links in the series fixture.        */
+  k_expect_pages     = 2,   /**< pages written into the export fixture.      */
+  k_fixture_bytes    = 4,   /**< bytes per synthetic page file.              */
+  k_name_probe       = 256, /**< zip entry-name probe buffer.                */
   k_epub_min_entries = 6,   /**< mimetype+container+opf+nav+pages, at least. */
 } test_expect_t;
 

@@ -47,11 +47,11 @@ typedef enum : int32_t {
  * @since 0.1.0
  */
 typedef struct {
-  const char* path;      /**< Input document path (required).       */
-  const char* dump_ppm;  /**< PPM dump path, or NULL.               */
-  uint32_t    page;      /**< Page to render for --dump-ppm.        */
+  const char* path;      /**< Input document path (required).         */
+  const char* dump_ppm;  /**< PPM dump path, or NULL.                 */
+  uint32_t    page;      /**< Page to render for --dump-ppm.          */
   int64_t     dump_tile; /**< Tile to dump via the scroll API, or -1. */
-  bool        headless;  /**< Skip opening a window when true.      */
+  bool        headless;  /**< Skip opening a window when true.        */
 } viewer_opts_t;
 
 /**

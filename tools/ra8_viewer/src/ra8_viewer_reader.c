@@ -60,11 +60,11 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_viewer_page_cap     = 8192U,                /**< Max pages in the sorted index. */
-  k_viewer_name_cap     = 512U * 1024U,         /**< Page-name arena, bytes.        */
-  k_viewer_arena_bytes  = 160U * 1024U * 1024U, /**< stb_image decode scratch.     */
-  k_viewer_unwrap_bytes = 128U * 1024U * 1024U, /**< gzip/xz decompressed container.*/
-  k_viewer_xz_scratch   = 4U * 1024U * 1024U,   /**< xz decoder state + <=1MiB dict.*/
+  k_viewer_page_cap     = 8192U,                /**< Max pages in the sorted index.  */
+  k_viewer_name_cap     = 512U * 1024U,         /**< Page-name arena, bytes.         */
+  k_viewer_arena_bytes  = 160U * 1024U * 1024U, /**< stb_image decode scratch.       */
+  k_viewer_unwrap_bytes = 128U * 1024U * 1024U, /**< gzip/xz decompressed container. */
+  k_viewer_xz_scratch   = 4U * 1024U * 1024U,   /**< xz decoder state + <=1MiB dict. */
 } ra8_viewer_budget_t;
 
 /**
@@ -98,8 +98,8 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_viewer_bg         = 0x00FFFFFFU, /**< Page background: white (e-ink), gfx word.  */
-  k_viewer_white_byte = 0xFFU,       /**< memset fill giving 0xFFFF RGB565 (white).  */
+  k_viewer_bg         = 0x00FFFFFFU, /**< Page background: white (e-ink), gfx word. */
+  k_viewer_white_byte = 0xFFU,       /**< memset fill giving 0xFFFF RGB565 (white). */
 } ra8_viewer_color_t;
 
 /**
@@ -109,9 +109,9 @@ typedef enum : uint32_t {
  */
 typedef enum : uint8_t {
   k_rgb565_r_shift = 11U, /**< Red field position in the 16-bit word.   */
-  k_rgb565_g_shift = 5U,  /**< Green field position in the 16-bit word.  */
-  k_rgb565_r5_drop = 3U,  /**< 8->5-bit reduction for red/blue.          */
-  k_rgb565_g6_drop = 2U,  /**< 8->6-bit reduction for green.             */
+  k_rgb565_g_shift = 5U,  /**< Green field position in the 16-bit word. */
+  k_rgb565_r5_drop = 3U,  /**< 8->5-bit reduction for red/blue.         */
+  k_rgb565_g6_drop = 2U,  /**< 8->6-bit reduction for green.            */
 } ra8_viewer_rgb565_t;
 
 /**
@@ -134,19 +134,19 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t*                 atlas;      /**< Whole `.rta1` file (owned).            */
-  ra8_tileatlas_memstore_t store;      /**< Memstore pread over @ref atlas.        */
-  ra8_webtoon_decode_ctx_t dctx;       /**< Decode ctx: pread + parsed info + scr. */
-  ra8_tile_cache_t         cache;      /**< Band cache (uses the arrays below).    */
-  ra8_webtoon_t            wt;         /**< Opened webtoon strip.                  */
-  uint8_t*                 cells;      /**< `cell_count * band_bytes` tile storage.*/
-  ra8_keycache_cell_t*     meta;       /**< `cell_count` cache link-metadata.      */
-  ra8_tile_key_t*          keys;       /**< `cell_count` cache keys.               */
-  ra8_tile_dims_t*         dims;       /**< `cell_count` cache dims.               */
-  int32_t*                 buckets;    /**< `k_viewer_rta1_buckets` bucket heads.  */
-  uint8_t*                 scratch;    /**< DEFLATE staging (one band + pad).      */
-  uint32_t                 viewport_h; /**< Page height on the canvas (== fb h).   */
-  int32_t                  x_off;      /**< Horizontal centring offset in the fb.  */
+  uint8_t*                 atlas;      /**< Whole `.rta1` file (owned).             */
+  ra8_tileatlas_memstore_t store;      /**< Memstore pread over @ref atlas.         */
+  ra8_webtoon_decode_ctx_t dctx;       /**< Decode ctx: pread + parsed info + scr.  */
+  ra8_tile_cache_t         cache;      /**< Band cache (uses the arrays below).     */
+  ra8_webtoon_t            wt;         /**< Opened webtoon strip.                   */
+  uint8_t*                 cells;      /**< `cell_count * band_bytes` tile storage. */
+  ra8_keycache_cell_t*     meta;       /**< `cell_count` cache link-metadata.       */
+  ra8_tile_key_t*          keys;       /**< `cell_count` cache keys.                */
+  ra8_tile_dims_t*         dims;       /**< `cell_count` cache dims.                */
+  int32_t*                 buckets;    /**< `k_viewer_rta1_buckets` bucket heads.   */
+  uint8_t*                 scratch;    /**< DEFLATE staging (one band + pad).       */
+  uint32_t                 viewport_h; /**< Page height on the canvas (== fb h).    */
+  int32_t                  x_off;      /**< Horizontal centring offset in the fb.   */
 } viewer_rta1_t;
 
 /**
@@ -155,30 +155,30 @@ typedef struct {
  * @since 0.1.0
  */
 struct ra8_viewer_reader {
-  viewer_fmt_t      fmt;  /**< Which engine this document uses.       */
-  viewer_file_ctx_t file; /**< File backing for the read callback.    */
-  uint16_t*         fb;   /**< RGB565 framebuffer (owned).            */
+  viewer_fmt_t      fmt;  /**< Which engine this document uses.    */
+  viewer_file_ctx_t file; /**< File backing for the read callback. */
+  uint16_t*         fb;   /**< RGB565 framebuffer (owned).         */
   /* --- continuous-scroll tile model (native-resolution, window path) --- */
-  uint32_t* tile_wpx; /**< Cached native width per tile (tile_n).   */
-  uint32_t* tile_hpx; /**< Cached native height per tile (tile_n).  */
-  uint32_t  tile_n;   /**< Number of tiles (== page count).         */
+  uint32_t* tile_wpx; /**< Cached native width per tile (tile_n).  */
+  uint32_t* tile_hpx; /**< Cached native height per tile (tile_n). */
+  uint32_t  tile_n;   /**< Number of tiles (== page count).        */
   /* RTA1 composite target: the webtoon blit writes RGB565 here. Points at @ref
    * fb for the headless framebuffer path, or a native-width tile buffer for the
    * window's scroll tiles -- so the two never interfere. */
-  uint16_t* rt565; /**< Current RTA1 blit target (RGB565).       */
-  uint32_t  rt_w;  /**< Target width, pixels.                    */
-  uint32_t  rt_h;  /**< Target height, pixels.                   */
+  uint16_t* rt565; /**< Current RTA1 blit target (RGB565). */
+  uint32_t  rt_w;  /**< Target width, pixels.              */
+  uint32_t  rt_h;  /**< Target height, pixels.             */
   /* --- comic engine (k_vfmt_comic / k_vfmt_comic_wrap) --- */
-  ra8_comic_t       comic;      /**< Comic engine (CBZ / CBR / CBT).        */
-  ra8_comic_page_t* pages;      /**< Page index (k_viewer_page_cap entries).*/
-  char*             names;      /**< Page-name arena.                       */
-  uint8_t*          page_buf;   /**< Encoded-image scratch (grows on demand).*/
-  size_t            page_cap;   /**< Capacity of @ref page_buf, bytes.      */
-  uint8_t*          arena_mem;  /**< Backing store for the decode arena.    */
-  uint8_t*          unwrap;     /**< gzip/xz unwrap arena (out-lives comic). */
-  uint8_t*          xz_scratch; /**< xz decoder scratch (dict + state).     */
+  ra8_comic_t       comic;      /**< Comic engine (CBZ / CBR / CBT).          */
+  ra8_comic_page_t* pages;      /**< Page index (k_viewer_page_cap entries).  */
+  char*             names;      /**< Page-name arena.                         */
+  uint8_t*          page_buf;   /**< Encoded-image scratch (grows on demand). */
+  size_t            page_cap;   /**< Capacity of @ref page_buf, bytes.        */
+  uint8_t*          arena_mem;  /**< Backing store for the decode arena.      */
+  uint8_t*          unwrap;     /**< gzip/xz unwrap arena (out-lives comic).  */
+  uint8_t*          xz_scratch; /**< xz decoder scratch (dict + state).       */
   /* --- webtoon / RTA1 engine (k_vfmt_rta1) --- */
-  viewer_rta1_t rta1; /**< RTA1 strip state (unused for comics).  */
+  viewer_rta1_t rta1; /**< RTA1 strip state (unused for comics). */
 };
 
 /**
