@@ -27,6 +27,20 @@
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum canfd_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_canfd_test_dlc_bad   = 15U,
+  k_canfd_test_shift_dlc = 28U,
+  k_canfd_test_df0       = 0x11U,
+  k_canfd_test_df1       = 0x22U,
+  k_canfd_test_df2       = 0x33U,
+  k_canfd_test_df3       = 0x44U,
+} canfd_test_lit_t;
+
 typedef enum : uint8_t {
   k_ra8_canfd_test_channel_0   = 0U, /**< RA8 CANFD test channel 0.   */
   k_ra8_canfd_test_channel_1   = 1U, /**< RA8 CANFD test channel 1.   */
@@ -418,7 +432,7 @@ static void test_transmit_extended_fd_frame(void)
 
   ra8_canfd_frame_t frame = {};
   frame.id                = (uint32_t)k_ra8_test_ext_id;
-  frame.dlc               = 15U;
+  frame.dlc               = k_canfd_test_dlc_bad;
   frame.is_extended       = 1U;
   frame.is_fd             = 1U;
   frame.is_brs            = 1U;
@@ -570,12 +584,12 @@ static void test_receive_standard_frame(void)
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_ra8_canfd_test_channel_0);
   reg->CFDRFSTS[0]        = 0U; /* not empty */
   reg->CFDRF[0].ID        = (uint32_t)k_ra8_test_std_id;
-  reg->CFDRF[0].PTR       = (uint32_t)(8UL << 28U); /* DLC = 8 */
+  reg->CFDRF[0].PTR       = (uint32_t)(8UL << k_canfd_test_shift_dlc); /* DLC = 8 */
   reg->CFDRF[0].FDSTS     = 0U;
-  reg->CFDRF[0].DF[0]     = 0x11U;
-  reg->CFDRF[0].DF[1]     = 0x22U;
-  reg->CFDRF[0].DF[2]     = 0x33U;
-  reg->CFDRF[0].DF[3]     = 0x44U;
+  reg->CFDRF[0].DF[0]     = k_canfd_test_df0;
+  reg->CFDRF[0].DF[1]     = k_canfd_test_df1;
+  reg->CFDRF[0].DF[2]     = k_canfd_test_df2;
+  reg->CFDRF[0].DF[3]     = k_canfd_test_df3;
 
   ra8_canfd_frame_t out = {};
   const ra8_err_t   err = ra8_canfd_receive((uint8_t)k_ra8_canfd_test_channel_0, &out);
@@ -604,7 +618,7 @@ static void test_receive_extended_fd_frame(void)
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_ra8_canfd_test_channel_1);
   reg->CFDRFSTS[0]        = 0U;
   reg->CFDRF[0].ID        = (uint32_t)k_ra8_test_ext_id | (uint32_t)k_ra8_canfd_id_ide;
-  reg->CFDRF[0].PTR       = (uint32_t)(15UL << 28U);
+  reg->CFDRF[0].PTR       = (uint32_t)(k_canfd_test_dlc_bad << k_canfd_test_shift_dlc);
   reg->CFDRF[0].FDSTS     = (uint32_t)k_ra8_canfd_fd_fdf | (uint32_t)k_ra8_canfd_fd_brs;
 
   ra8_canfd_frame_t out = {};

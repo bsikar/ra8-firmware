@@ -27,6 +27,22 @@
 #include "support/flash_test_util.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum flash_extra_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_flash_extra_stamp_mcntdtr1  = 0x80000000UL,
+  k_flash_extra_stamp_mcntdtr0  = 0xFFFFFFFFUL,
+  k_flash_extra_stamp_mcntdtr12 = 0xFFFFFFFFUL,
+  k_flash_extra_stamp_mrcrtea   = 0x11111111UL,
+  k_flash_extra_stamp_mrcrdea   = 0x22222222UL,
+  k_flash_extra_stamp_mrertea   = 0x33333333UL,
+  k_flash_extra_stamp_mrerdea   = 0x44444444UL,
+  k_flash_extra_stamp_mrcpea    = 0xCAFEBABEUL,
+} flash_extra_test_lit_t;
+
 /* ---------------------------------------------------------------------------
  * Configuration-set / extra MRAM
   *
@@ -292,7 +308,7 @@ static void test_arc_oembl_read_increment_paths(void)
 
   *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mstatr)   = (uint32_t)k_ra8_mstatr_mask_mrdy;
   *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mcntdtr0) = 0x00000003UL;
-  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mcntdtr1) = 0x80000000UL;
+  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mcntdtr1) = k_flash_extra_stamp_mcntdtr1;
   uint32_t count                                     = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_arc_read(k_ra8_flash_arc_oembl, &count));
   TEST_ASSERT_EQ(3, count);
@@ -305,8 +321,8 @@ static void test_arc_oembl_read_increment_paths(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_arc_increment(k_ra8_flash_arc_oembl));
 
   *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mstatr)   = (uint32_t)k_ra8_mstatr_mask_mrdy;
-  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mcntdtr0) = 0xFFFFFFFFUL;
-  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mcntdtr1) = 0xFFFFFFFFUL;
+  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mcntdtr0) = k_flash_extra_stamp_mcntdtr0;
+  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mcntdtr1) = k_flash_extra_stamp_mcntdtr12;
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_flash_arc_increment(k_ra8_flash_arc_oembl));
 
   *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mstatr) = 0U;
@@ -444,10 +460,10 @@ static void test_get_ecc_error_addr(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_flash_get_ecc_error_addr(nullptr, nullptr, nullptr, nullptr));
 
-  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mrcrtea) = 0x11111111UL;
-  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mrcrdea) = 0x22222222UL;
-  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mrertea) = 0x33333333UL;
-  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mrerdea) = 0x44444444UL;
+  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mrcrtea) = k_flash_extra_stamp_mrcrtea;
+  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mrcrdea) = k_flash_extra_stamp_mrcrdea;
+  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mrertea) = k_flash_extra_stamp_mrertea;
+  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mrerdea) = k_flash_extra_stamp_mrerdea;
   uint32_t a                                        = 0;
   uint32_t b                                        = 0;
   uint32_t c                                        = 0;
@@ -474,7 +490,7 @@ static void test_get_program_error_addr(void)
   TEST_BEGIN("flash get_program_error_addr");
   ra8_sim_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_flash_get_program_error_addr(nullptr));
-  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mrcpea) = 0xCAFEBABEUL;
+  *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mrcpea) = k_flash_extra_stamp_mrcpea;
   uint32_t addr                                    = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_get_program_error_addr(&addr));
   TEST_ASSERT_EQ(0xCAFEBABEUL, addr);

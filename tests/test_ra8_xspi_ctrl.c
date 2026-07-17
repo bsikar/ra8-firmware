@@ -31,6 +31,16 @@
 #include "support/xspi_test_util.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum xspi_ctrl_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_xspi_ctrl_stamp_comstt = 0x12345678U,
+  k_xspi_ctrl_stamp_ints   = 0xCAFEBABEUL,
+} xspi_ctrl_test_lit_t;
+
 /* ---- full build-out ---- */
 
 static uint32_t s_xspi_cb_count;
@@ -77,7 +87,7 @@ static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("xspi status read + clear");
   prep_w51();
-  ra8_xspi((uint8_t)k_test_xspi_valid_inst0)->COMSTT = 0x12345678U;
+  ra8_xspi((uint8_t)k_test_xspi_valid_inst0)->COMSTT = k_xspi_ctrl_stamp_comstt;
 
   uint32_t mask = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_get_status((uint8_t)k_test_xspi_valid_inst0, &mask));
@@ -105,7 +115,7 @@ static void test_attach_and_dispatch(void)
   /* Dispatch snapshots INTS (command-complete + error flags) and
    * hands it to the callback -- match that in the host test by
    * poking the INTS backing word before dispatching. */
-  ra8_xspi((uint8_t)k_test_xspi_valid_inst0)->INTS = 0xCAFEBABEUL;
+  ra8_xspi((uint8_t)k_test_xspi_valid_inst0)->INTS = k_xspi_ctrl_stamp_ints;
   ra8_xspi_dispatch((uint8_t)k_test_xspi_valid_inst0);
   TEST_ASSERT_EQ(1, s_xspi_cb_count);
   TEST_ASSERT_EQ(0xCAFEBABEUL, s_xspi_cb_last_mask);

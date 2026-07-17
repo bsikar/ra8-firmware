@@ -29,6 +29,18 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum sdmmc_spi_write_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_sdmmc_spi_write_lit_xff = 0xFFU,
+  k_sdmmc_spi_write_lit_xd  = 0x0DU,
+  k_sdmmc_spi_write_lit_5   = 5U,
+  k_sdmmc_spi_write_lit_11  = 11U,
+} sdmmc_spi_write_test_lit_t;
+
+/**
  * @par MC/DC:
  * Happy path -- companion to *_detects_write_error; together they flip the data-response token check decision ``(response & mask) != accepted``.
  */
@@ -46,7 +58,7 @@ static void test_write_block_happy_path(void)
 
   uint8_t buf[k_ra8_sdmmc_spi_block_size];
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_sdmmc_spi_block_size; i++) {
-    buf[i] = (uint8_t)(i & 0xFFU);
+    buf[i] = (uint8_t)(i & k_sdmmc_spi_write_lit_xff);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_write_block(1U, buf));
   TEST_END("write_block happy path");
@@ -65,7 +77,7 @@ static void test_write_block_detects_write_error(void)
 
   queue_command_response_r1((uint8_t)k_test_r1_ready);
   /* Data-response = write error (0x0D). Card releases busy promptly. */
-  queue_write_block_tail(0x0DU, 0U);
+  queue_write_block_tail(k_sdmmc_spi_write_lit_xd, 0U);
 
   uint8_t buf[k_ra8_sdmmc_spi_block_size];
   memset(buf, 0, sizeof(buf));
@@ -222,7 +234,7 @@ static void test_write_block_per_byte_fallback(void)
 
   uint8_t buf[k_ra8_sdmmc_spi_block_size];
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_sdmmc_spi_block_size; i++) {
-    buf[i] = (uint8_t)((i * 5U) & 0xFFU);
+    buf[i] = (uint8_t)((i * k_sdmmc_spi_write_lit_5) & k_sdmmc_spi_write_lit_xff);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_write_block(1U, buf));
   TEST_END("write_block per-byte fallback (no bulk xfer)");
@@ -332,7 +344,7 @@ static void test_write_blocks_multi_happy(void)
 
   uint8_t buf[k_ra8_sdmmc_spi_block_size * 2U];
   for (uint32_t i = 0U; i < (uint32_t)(k_ra8_sdmmc_spi_block_size * 2U); i++) {
-    buf[i] = (uint8_t)((i * 11U) & 0xFFU);
+    buf[i] = (uint8_t)((i * k_sdmmc_spi_write_lit_11) & k_sdmmc_spi_write_lit_xff);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_write_blocks(2U, buf, 2U));
   TEST_END("write_blocks multi-block CMD25 stream");

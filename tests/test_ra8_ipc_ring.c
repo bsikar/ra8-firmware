@@ -20,6 +20,15 @@
 #include "support/ipc_test_util.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum ipc_ring_test_lit_t
+ * @brief Named constants for the register stamp patterns and literal
+ *        test vectors previously inlined in this file's test bodies.
+ */
+typedef enum : uint32_t {
+  k_ipc_ring_lit_xff = 0xFFU,
+} ipc_ring_test_lit_t;
+
 /* ---------- Ring-buffer tests ---------- */
 
 static ra8_ipc_ring_t make_ring(void)
@@ -120,7 +129,7 @@ static void test_ring_produce_consume(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_ring_init(&r));
 
   /* Empty -> consume returns no_data. */
-  uint32_t got = 0xFFU;
+  uint32_t got = k_ipc_ring_lit_xff;
   TEST_ASSERT_EQ(k_ra8_err_no_data, ra8_ipc_ring_consume(&r, &got));
   TEST_ASSERT_EQ(0xFFU, got);
 
@@ -179,7 +188,7 @@ static void test_send_via_channel_for_send_helper(void)
   TEST_BEGIN("ipc send through channel_for_send (happy)");
   prep();
 
-  uint8_t send_ch = 0xFFU;
+  uint8_t send_ch = k_ipc_ring_lit_xff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_channel_for_send(k_ra8_ipc_core_cpu0, 0U, &send_ch));
   TEST_ASSERT(send_ch < (uint8_t)k_ra8_ipc_test_ch_bad);
 
@@ -207,7 +216,7 @@ static void test_recv_via_channel_for_recv_helper(void)
   TEST_BEGIN("ipc recv through channel_for_recv (happy)");
   prep();
 
-  uint8_t recv_ch = 0xFFU;
+  uint8_t recv_ch = k_ipc_ring_lit_xff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_channel_for_recv(k_ra8_ipc_core_cpu0, 0U, &recv_ch));
   TEST_ASSERT(recv_ch < (uint8_t)k_ra8_ipc_test_ch_bad);
 
