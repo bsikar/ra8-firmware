@@ -117,7 +117,7 @@ typedef enum : uint16_t {
  *
  * @par MC/DC:
  * Decision: `if ((payload == NULL) && (payload_len > 0U))`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_l2cap.c line 291)
+ * (2 conditions, ra8_ble_host_l2cap_send in ra8_ble_l2cap.c)
  * - Vector 1: payload=NULL, len=0 -> C1=T, C2=F. Decision F.
  *   (proceeds; len=0 also bypasses copy; returns ok or HCI rc)
  * - Vector 2: payload=non-NULL, len=4 -> C1=F (short-circuits). Decision F.
@@ -161,7 +161,7 @@ static void test_mcdc_l2cap_send_null_guard(void)
  *
  * @par MC/DC:
  * Decision: `if ((payload == NULL) || (len == 0U))`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_l2cap.c line 349)
+ * (2 conditions, ra8_ble_host_acl_in in ra8_ble_l2cap.c)
  * Routes via ra8_ble_host_test_inject_acl which calls ra8_ble_host_acl_in.
  * - Vector 1: payload=non-NULL, len=4 -> C1=F, C2=F. Decision F (proceeds).
  * - Vector 2: payload=NULL, len=4 -> C1=T short-circuits. Decision T (returns).
@@ -197,7 +197,7 @@ static void test_mcdc_acl_in_null_or_zero(void)
  * @par MC/DC:
  * Decision: `(role != peripheral) && (role != central) &&
  *           (role != observer) && (role != broadcaster)`
- * (4 conditions, libs/ra8_ble_host/src/ra8_ble_l2cap.c line 522)
+ * (4 conditions, ra8_ble_host_init in ra8_ble_l2cap.c)
  *
  * @par DO-178C 6.4.4.3 omission rationale:
  * Full MC/DC for N=4 of identical short-circuit form requires N+1=5
@@ -253,7 +253,8 @@ static void test_mcdc_init_role_4cond(void)
  *
  * @par MC/DC:
  * Decision: `(role != peripheral) && (role != broadcaster)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_l2cap.c line 591)
+ * (2 conditions, internal_advertise_validate in
+ * ra8_ble_l2cap_advertise.c)
  * - V1 role=peripheral  -> C1=F short-circuits. F (proceeds).
  * - V2 role=broadcaster -> C1=T,C2=F. F (proceeds).
  * - V3 role=central     -> C1=T,C2=T. T -> invalid_arg.
@@ -295,7 +296,8 @@ static void test_mcdc_advertise_role_guard(void)
  *
  * @par MC/DC:
  * Decision: `(adv_data == NULL) && (adv_data_len > 0)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_l2cap.c line 595)
+ * (2 conditions, internal_advertise_validate in
+ * ra8_ble_l2cap_advertise.c)
  * - V1 ptr=NULL, len=0 -> C1=T, C2=F. F (proceeds).
  * - V2 ptr=non-NULL, len=4 -> C1=F short-circuits. F (proceeds).
  * - V3 ptr=NULL, len=4 -> both T. T -> null_ptr.
@@ -332,7 +334,8 @@ static void test_mcdc_advertise_adv_data_null(void)
  *
  * @par MC/DC:
  * Decision: `(adv_data_len > MAX) || (scan_resp_len > MAX)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_l2cap.c line 601)
+ * (2 conditions, internal_advertise_validate in
+ * ra8_ble_l2cap_advertise.c)
  * - V1 adv=4, sr=0 -> both F. F (proceeds).
  * - V2 adv=64, sr=0 -> C1=T short-circuits. T -> invalid_arg.
  * - V3 adv=4, sr=64 -> C1=F, C2=T. T -> invalid_arg.
@@ -372,7 +375,8 @@ static void test_mcdc_advertise_lengths_too_big(void)
  *
  * @par MC/DC:
  * Decision: `(interval_ms < MIN) || (interval_ms > MAX)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_l2cap.c line 604)
+ * (2 conditions, internal_advertise_validate in
+ * ra8_ble_l2cap_advertise.c)
  * - V1 interval=100 -> both F. F (proceeds, ok).
  * - V2 interval=1   -> C1=T short-circuits. T -> invalid_arg.
  * - V3 interval=20000 -> C1=F, C2=T. T -> invalid_arg.
@@ -422,7 +426,8 @@ typedef enum : uint16_t {
  *
  * @par MC/DC:
  * Decision: `(scan_resp == NULL) && (scan_resp_len > 0)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_l2cap.c line 598)
+ * (2 conditions, internal_advertise_validate in
+ * ra8_ble_l2cap_advertise.c)
  * - V1 ptr=NULL, len=0 -> C1=T, C2=F. Decision F (proceeds).
  * - V2 ptr=non-NULL, len=4 -> C1=F short-circuits. Decision F (proceeds).
  * - V3 ptr=NULL, len=4 -> both T. Decision T -> null_ptr.
@@ -464,7 +469,8 @@ static void test_mcdc_advertise_scan_resp_null(void)
  *
  * @par MC/DC:
  * Decision: `while ((i < k_name_copy_max) && (cfg->name[i] != '\\0'))`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_l2cap.c line 545)
+ * (2 conditions, the name-copy loop of ra8_ble_host_init in
+ * ra8_ble_l2cap.c)
  * Loop continuation predicate.
  * - V1 name="x"            -> iter0: C1=T,C2=T (enter). iter1: C2=F (exit
  *   via C2). Independent flip of C2 with C1 held T (T-T -> T-F).
