@@ -382,6 +382,78 @@ static void test_stream_direct_parse_equivalence(void)
  */
 
 /**
+ * @brief Assert the bounded-RAM invariants after the streamed open+parse.
+ * @param[in] vm The page-cache under test.
+ * @return None.
+ * @pre The book was opened and parsed through @p vm.
+ * @post Resident set, budget ratio, partial-read and hit/miss checks all held.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void stream_check_bounded_invariant(ra8_vmem_t* vm)
+{
+  /* 1. Resident set never exceeds the fixed pool -- the RAM budget. */
+  TEST_ASSERT(count_valid_frames() <= (uint32_t)k_frames);
+  /* 2. The budget is many times smaller than the archive it served. */
+  const uint32_t budget = (uint32_t)k_frames * (uint32_t)k_frame_bytes;
+  TEST_ASSERT(((size_t)budget * (size_t)k_budget_ratio) <= s_arc_size);
+  /* 3. The whole archive was never read: fewer bytes fetched than the filler holds. */
+  TEST_ASSERT(g_storage_bytes < (uint64_t)k_filler_bytes);
+  /* 4. The cache actually worked: hot pages (re-read headers/dir) were reused. */
+  uint32_t hits = 0U;
+  uint32_t miss = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stats(vm, &hits, &miss, nullptr));
+  TEST_ASSERT(hits > 0U);
+  TEST_ASSERT(miss > 0U);
+}
+
+/**
+ * @brief Scattered-churn phase: prove eviction and byte-correct cold re-fetch.
+ * @param[in] vm The page-cache under test.
+ * @param[in] st The stream over @p vm.
+ * @return None.
+ * @pre @p vm and @p st are initialised over the archive.
+ * @post The churn drove eviction while every byte stayed correct.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void stream_check_churn(ra8_vmem_t* vm, ra8_vmem_stream_t* st)
+{
+  uint32_t evic_before = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stats(vm, nullptr, nullptr, &evic_before));
+  for (uint32_t i = 0U; i < (uint32_t)k_churn; ++i) {
+    const uint64_t off = ((uint64_t)i * (uint64_t)k_churn_stride) % (uint64_t)s_arc_size;
+    uint8_t        one = 0U;
+    const size_t   got = ra8_vmem_stream_read(st, off, &one, 1U);
+    TEST_ASSERT_EQ(1U, got);
+    TEST_ASSERT_EQ(s_arc[off], one); /* byte-correct through the cache */
+    TEST_ASSERT(count_valid_frames() <= (uint32_t)k_frames);
+  }
+  uint32_t evic_after = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stats(vm, nullptr, nullptr, &evic_after));
+  /* The churn touched far more distinct pages than the pool holds -> eviction. */
+  TEST_ASSERT(evic_after > evic_before);
+}
+
+/**
+ * @brief Assert a read spanning a frame boundary reassembles correctly.
+ * @param[in] st The stream over the page cache.
+ * @return None.
+ * @pre @p st is initialised over the archive.
+ * @post The boundary-spanning read matched the backing bytes.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void stream_check_span(ra8_vmem_stream_t* st)
+{
+  const uint64_t span_off           = (uint64_t)k_frame_bytes - 10U;
+  uint8_t        span[k_span_probe] = {};
+  const size_t   span_got = ra8_vmem_stream_read(st, span_off, span, (size_t)k_span_probe);
+  TEST_ASSERT_EQ(k_span_probe, span_got);
+  TEST_ASSERT_EQ(0, memcmp(span, &s_arc[span_off], (size_t)k_span_probe));
+}
+
+/**
  * @test test_stream_via_pagecache_bounded
  * @brief Open + parse the large EPUB through a fixed, tiny `ra8_vmem` frame pool:
  *        residency never exceeds the pool (the RAM budget, many times smaller than
@@ -443,42 +515,13 @@ static void test_stream_via_pagecache_bounded(void)
   TEST_ASSERT_EQ(0, memcmp(cover, k_cover, cover_got));
 
   /* ---- The bounded-RAM invariant ------------------------------------------ */
-  /* 1. Resident set never exceeds the fixed pool -- the RAM budget. */
-  TEST_ASSERT(count_valid_frames() <= (uint32_t)k_frames);
-  /* 2. The budget is many times smaller than the archive it served. */
-  const uint32_t budget = (uint32_t)k_frames * (uint32_t)k_frame_bytes;
-  TEST_ASSERT(((size_t)budget * (size_t)k_budget_ratio) <= s_arc_size);
-  /* 3. The whole archive was never read: fewer bytes fetched than the filler holds. */
-  TEST_ASSERT(g_storage_bytes < (uint64_t)k_filler_bytes);
-  /* 4. The cache actually worked: hot pages (re-read headers/dir) were reused. */
-  uint32_t hits = 0U;
-  uint32_t miss = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stats(&vm, &hits, &miss, nullptr));
-  TEST_ASSERT(hits > 0U);
-  TEST_ASSERT(miss > 0U);
+  stream_check_bounded_invariant(&vm);
 
   /* ---- Phase B: scattered churn proves eviction + correct cold re-fetch ---- */
-  uint32_t evic_before = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stats(&vm, nullptr, nullptr, &evic_before));
-  for (uint32_t i = 0U; i < (uint32_t)k_churn; ++i) {
-    const uint64_t off = ((uint64_t)i * (uint64_t)k_churn_stride) % (uint64_t)s_arc_size;
-    uint8_t        one = 0U;
-    const size_t   got = ra8_vmem_stream_read(&st, off, &one, 1U);
-    TEST_ASSERT_EQ(1U, got);
-    TEST_ASSERT_EQ(s_arc[off], one); /* byte-correct through the cache */
-    TEST_ASSERT(count_valid_frames() <= (uint32_t)k_frames);
-  }
-  uint32_t evic_after = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stats(&vm, nullptr, nullptr, &evic_after));
-  /* The churn touched far more distinct pages than the pool holds -> eviction. */
-  TEST_ASSERT(evic_after > evic_before);
+  stream_check_churn(&vm, &st);
 
   /* A read spanning a frame boundary is reassembled correctly. */
-  const uint64_t span_off           = (uint64_t)k_frame_bytes - 10U;
-  uint8_t        span[k_span_probe] = {};
-  const size_t   span_got = ra8_vmem_stream_read(&st, span_off, span, (size_t)k_span_probe);
-  TEST_ASSERT_EQ(k_span_probe, span_got);
-  TEST_ASSERT_EQ(0, memcmp(span, &s_arc[span_off], (size_t)k_span_probe));
+  stream_check_span(&st);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
   TEST_END("epub stream: bounded residency through ra8_vmem page cache");
