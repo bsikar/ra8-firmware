@@ -1,49 +1,82 @@
-# ereader_manga -- #231 full-resolution image path, end to end
+# ereader_manga -- viewable pan/zoom manga reader (Demo B)
 
-Headless gate for the #231 producer chain: an all-image EPUB's PNG page is
-transcoded **at import time** into the RTA1 band-tile atlas
-(`libs/ra8_tileatlas`) and then rendered **decode-on-demand** through the
-EPUB tile binder (`ra8_epub_img_tiles`) -- full resolution, no downscaling,
-whole decoded image never resident.
+A **viewable** reader for a page far larger than the 1024x600 panel. The baked
+page is transcoded into an RTA1 band-tile atlas (`libs/ra8_tileatlas`) and paged
+**decode-on-demand** through a small `ra8_tile_cache`, with the viewport being
+the GLCDC panel itself. Navigation is discrete **tap-zones** (board_sim's GT911
+model has no gestures): the four screen edges pan the viewport, a centre tap
+toggles zoom.
 
 ## What it does
 
-1. Opens the baked 15 KB fixture EPUB (`manga_hil_fixture.h`) through the
-   production streamed open (`ra8_epub_open_streamed`).
-2. `ra8_epub_tile_binder_import("page1.png")` streams the DEFLATE-compressed
-   PNG entry through the bounded transcode producer
-   (`ra8_tileatlas_produce`): the 512x512 grayscale page (256 KiB decoded)
-   flows one 64 KiB band at a time into 16 deflate-coded 128x128 tiles in an
-   SDRAM memstore. The producer's whole working set is one fixed SDRAM
-   arena; the decoded page is never resident.
-3. Renders a 160x120 centre crop by paging the 4 covering tiles through a
-   deliberately tiny **2-cell** tile cache -- decode-on-demand with forced
-   evictions -- expanding gray8 to RGB565.
-4. Prints the atlas geometry, atlas byte count and an FNV-1a-32 framebuffer
-   hash over the SCI8 J-Link OB console:
+1. Boots clocks / MSTP / SysTick / LEDs, then SDRAM + the 1024x600 GLCDC panel
+   (`ra8_display_pal` with `k_display_backend_lcd_ra8_glcdc`), and binds
+   `ra8_gfx` to the RGB565 framebuffer in SDRAM.
+2. Transcodes the baked **1536x2048** grayscale PNG page (`mg_page_fixture.h`,
+   larger than the screen) through `ra8_tileatlas_produce` into a 6x8 = **48**
+   deflate-coded 256x256 tile RTA1 atlas in an SDRAM memstore -- one bounded
+   band at a time, the decoded page never resident whole.
+3. Serves the atlas through a deliberately small **4-cell** `ra8_tile_cache`
+   (decode-on-miss = one bounded `ra8_tileatlas_read_tile` inflate into the
+   pinned cell), so a viewport spanning more tiles than the cache holds forces
+   LRU eviction every frame.
+4. Renders the current viewport crop to the panel with the shared `mg_reader`:
+   gray8 -> RGB565, a top status bar (`MANGA  1:1  x=.. y=..`), and a
+   bottom-right minimap showing the viewport rectangle over the page bounds.
+5. Prints one deterministic banner over the SCI console at boot so the headless
+   SIL gate still asserts a fixed render:
 
-   `ereader-manga-hil: import 512x512 tiles=16 atlas=<N> crc=<8hex> ok`
+   `ereader-manga: page 1536x2048 tiles=48 atlas=20384 view=0,0 zoom=1:1 crc=5CBD900B ok`
 
-Every stage is a deterministic integer pipeline, so the banner is identical
-on the host twin (`tests/test_app_ereader_manga.c`), board_sim, and silicon.
+The render (software gfx + integer tile decode) is deterministic, so the banner
+is identical on the host twin (`tests/test_app_ereader_manga.c`), board_sim, and
+silicon.
+
+## Navigation (tap-zones)
+
+| Tap zone (panel px)                 | Action                          |
+|-------------------------------------|---------------------------------|
+| Top edge band                       | Pan the viewport up             |
+| Bottom edge band                    | Pan down                        |
+| Left edge band                      | Pan left                        |
+| Right edge band                     | Pan right                       |
+| Centre                              | Toggle zoom 1:1 <-> fit-page    |
+
+Panning is one 256px step per tap and clamps at the page bounds; at fit-page the
+whole page is shown, so an edge tap is a no-op until a centre tap returns to 1:1.
 
 ## Fixture provenance
 
-`manga_hil_fixture.h` is generated: a Python `zipfile` EPUB (stored
-`mimetype` first, everything else `ZIP_DEFLATED`) whose single page is a
-Python-built 512x512 gray8 PNG (all rows filter 0, IDAT `zlib.compress(...,
-6)`). The pixel at `(x, y)` is `(uint8_t)((x ^ y) + ((x + y) >> 2))` -- the
-host twin regenerates the same pattern independently for byte-parity
-assertions, so fixture and test cannot drift apart silently.
+`mg_page_fixture.h` is **@generated** by
+`scripts/utils/gen_manga_page_fixture.py`: a 1536x2048 8-bit grayscale PNG (all
+rows filter 0, IDAT `zlib.compress(..., 9)`) laid out as a 6x8 grid of 256px
+tiles, each a distinct solid gray with a black inner frame and a big blocky
+`C<col>R<row>` label -- so panning visibly changes which labels are on screen.
+Solid tile blocks compress to ~20 KB of PNG, small enough to bake into the 1 MB
+code MRAM. The host twin re-decodes a tile and byte-checks its frame + fill
+grays against the generator, so fixture and reader cannot drift apart silently.
+
+Regenerate with `python3 scripts/utils/gen_manga_page_fixture.py`.
 
 ## Status
 
-Sim-gated (`hw_pending`): the pipeline is pure computation + UART, fully
-modelled by board_sim; not yet run on a bench board.
+Sim-viewable (`hw_pending`): the panel bring-up + tile pipeline are fully
+modelled by board_sim (`--ppm` / `--view` show the real reader screen); not yet
+run on a bench board.
 
-## Build / run
+## Build / view / drive
 
 ```
-make ereader_manga                      # from the repo root
-tools/board_sim/build/board_sim examples/ek_ra8d2/hw_pending/ereader_manga/build/ereader_manga.elf
+make ereader_manga                      # cross-build from the repo root
+make sim-ereader_manga                  # live macOS window; click to navigate
+
+# Headless snapshot to a viewable image (initial 1:1 top-left):
+tools/board_sim/build/board_sim \
+    examples/ek_ra8d2/hw_pending/ereader_manga/build/ereader_manga.elf \
+    --panel tools/board_sim/panels/ek_ra8d2.toml --ppm topleft.ppm
+
+# Drive navigation headless (one tap lands per run):
+#   right edge  -> pan right   |  bottom edge -> pan down  |  centre -> zoom
+tools/board_sim/build/board_sim <elf> --panel <toml> --touch-seq "950:300" --ppm panned.ppm
+tools/board_sim/build/board_sim <elf> --panel <toml> --touch-seq "512:300" --ppm fit.ppm
 ```
