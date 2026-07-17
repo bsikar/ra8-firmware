@@ -38,7 +38,62 @@ typedef struct {
   uint8_t               image_pool[64]; /**< Image pool.  */
 } mock_book_t;
 
-static void setup_mock_book(mock_book_t* b)
+/**
+ * @struct mock_book_offsets_t
+ * @brief String-pool offsets shared between the mock-book build phases.
+ *
+ * @details `setup_mock_book_strings` interns each label and records its offset
+ *          here; `setup_mock_book_structs` reads them back when wiring the
+ *          chapter / node / attribute / stylesheet / image tables.
+ *
+ * @invariant Every field is a byte offset into `mock_book_t::strings`.
+ * @see setup_mock_book
+ */
+typedef struct {
+  uint32_t ch_title;     /**< "Chapter 1" chapter title.        */
+  uint32_t ch_href;      /**< "ch1.xhtml" chapter href.         */
+  uint32_t div_tag;      /**< "div" element name.               */
+  uint32_t class_attr;   /**< "class" attribute name.           */
+  uint32_t main_val;     /**< "main" attribute value.           */
+  uint32_t text_content; /**< "Hello World" text node.          */
+  uint32_t css_content;  /**< Inline stylesheet source.         */
+  uint32_t img_href;     /**< "img1.png" raster image id.       */
+  uint32_t svg_href;     /**< "svg1.svg" vector image id.       */
+} mock_book_offsets_t;
+
+/**
+ * @brief Intern one NUL-terminated string into the mock book's string pool.
+ *
+ * @param[in,out] b      Mock book whose string pool receives the copy.
+ * @param[in,out] offset Running write cursor, advanced past the copy + NUL.
+ * @param[in]     s      NUL-terminated string to append.
+ *
+ * @return The pool offset the string was written at.
+ * @pre @p offset points at a value within `b->strings`.
+ * @post @p *offset advanced by strlen(@p s) + 1.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static uint32_t mock_intern(mock_book_t* b, int* offset, const char* s)
+{
+  uint32_t at = (uint32_t)*offset;
+  strcpy(&b->strings[*offset], s);
+  *offset += (int)strlen(s) + 1;
+  return at;
+}
+
+/**
+ * @brief Fill the mock book's fixed header (magic, version, table counts/offsets).
+ *
+ * @param[out] b Mock book to initialise; fully zeroed first.
+ *
+ * @return None.
+ * @pre @p b is non-null and writable.
+ * @post Header magic, version and every table offset/count are populated.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void setup_mock_book_header(mock_book_t* b)
 {
   memset(b, 0, sizeof(*b));
 
@@ -67,84 +122,64 @@ static void setup_mock_book(mock_book_t* b)
 
   b->hdr.image_pool_off  = offsetof(mock_book_t, image_pool);
   b->hdr.image_pool_size = sizeof(b->image_pool);
+}
 
+/**
+ * @brief Intern every mock-book label and record the shared table offsets.
+ *
+ * @param[in,out] b   Mock book whose string pool and header offsets are filled.
+ * @param[out]    off Receives the offsets consumed by setup_mock_book_structs.
+ *
+ * @return None.
+ * @pre setup_mock_book_header(@p b) already ran (string_off/size set).
+ * @post Header title/author/language/identifier offsets and @p off are set.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void setup_mock_book_strings(mock_book_t* b, mock_book_offsets_t* off)
+{
   int offset         = 0;
   b->strings[offset] = '\0';
   offset += 1;
 
-  const char* title = "Title";
-  b->hdr.title_off  = offset;
-  strcpy(&b->strings[offset], title);
-  offset += strlen(title) + 1;
+  b->hdr.title_off      = mock_intern(b, &offset, "Title");
+  b->hdr.author_off     = mock_intern(b, &offset, "Author");
+  b->hdr.language_off   = mock_intern(b, &offset, "en");
+  b->hdr.identifier_off = mock_intern(b, &offset, "ID123");
 
-  const char* author = "Author";
-  b->hdr.author_off  = offset;
-  strcpy(&b->strings[offset], author);
-  offset += strlen(author) + 1;
+  off->ch_title     = mock_intern(b, &offset, "Chapter 1");
+  off->ch_href      = mock_intern(b, &offset, "ch1.xhtml");
+  off->div_tag      = mock_intern(b, &offset, "div");
+  off->class_attr   = mock_intern(b, &offset, "class");
+  off->main_val     = mock_intern(b, &offset, "main");
+  off->text_content = mock_intern(b, &offset, "Hello World");
+  off->css_content  = mock_intern(b, &offset, "body { margin: 0; }");
+  off->img_href     = mock_intern(b, &offset, "img1.png");
+  off->svg_href     = mock_intern(b, &offset, "svg1.svg");
+}
 
-  const char* language = "en";
-  b->hdr.language_off  = offset;
-  strcpy(&b->strings[offset], language);
-  offset += strlen(language) + 1;
-
-  const char* identifier = "ID123";
-  b->hdr.identifier_off  = offset;
-  strcpy(&b->strings[offset], identifier);
-  offset += strlen(identifier) + 1;
-
-  const char* ch_title     = "Chapter 1";
-  uint32_t    ch_title_off = offset;
-  strcpy(&b->strings[offset], ch_title);
-  offset += strlen(ch_title) + 1;
-
-  const char* ch_href     = "ch1.xhtml";
-  uint32_t    ch_href_off = offset;
-  strcpy(&b->strings[offset], ch_href);
-  offset += strlen(ch_href) + 1;
-
-  const char* div_tag     = "div";
-  uint32_t    div_tag_off = offset;
-  strcpy(&b->strings[offset], div_tag);
-  offset += strlen(div_tag) + 1;
-
-  const char* class_attr     = "class";
-  uint32_t    class_attr_off = offset;
-  strcpy(&b->strings[offset], class_attr);
-  offset += strlen(class_attr) + 1;
-
-  const char* main_val     = "main";
-  uint32_t    main_val_off = offset;
-  strcpy(&b->strings[offset], main_val);
-  offset += strlen(main_val) + 1;
-
-  const char* text_content     = "Hello World";
-  uint32_t    text_content_off = offset;
-  strcpy(&b->strings[offset], text_content);
-  offset += strlen(text_content) + 1;
-
-  const char* css_content     = "body { margin: 0; }";
-  uint32_t    css_content_off = offset;
-  strcpy(&b->strings[offset], css_content);
-  offset += strlen(css_content) + 1;
-
-  const char* img_href     = "img1.png";
-  uint32_t    img_href_off = offset;
-  strcpy(&b->strings[offset], img_href);
-  offset += strlen(img_href) + 1;
-
-  const char* svg_href     = "svg1.svg";
-  uint32_t    svg_href_off = offset;
-  strcpy(&b->strings[offset], svg_href);
-  offset += strlen(svg_href) + 1;
-
-  b->chapters[0].title_off = ch_title_off;
-  b->chapters[0].href_off  = ch_href_off;
+/**
+ * @brief Wire the mock book's chapter, node, attribute, stylesheet and image tables.
+ *
+ * @param[in,out] b   Mock book whose structural tables are populated.
+ * @param[in]     off Interned string offsets from setup_mock_book_strings.
+ *
+ * @return None.
+ * @pre setup_mock_book_strings(@p b, @p off) already ran.
+ * @post All structural tables and the cover-image index are set.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void setup_mock_book_structs(mock_book_t* b, const mock_book_offsets_t* off)
+{
+  b->chapters[0].title_off = off->ch_title;
+  b->chapters[0].href_off  = off->ch_href;
   b->chapters[0].root_node = 0;
 
   b->nodes[0].kind         = k_ra8_book_node_element;
   b->nodes[0].reserved     = 0;
   b->nodes[0].attr_count   = 1;
-  b->nodes[0].name_off     = div_tag_off;
+  b->nodes[0].name_off     = off->div_tag;
   b->nodes[0].text_off     = 0;
   b->nodes[0].first_attr   = 0;
   b->nodes[0].first_child  = 1;
@@ -154,18 +189,18 @@ static void setup_mock_book(mock_book_t* b)
   b->nodes[1].reserved     = 0;
   b->nodes[1].attr_count   = 0;
   b->nodes[1].name_off     = 0;
-  b->nodes[1].text_off     = text_content_off;
+  b->nodes[1].text_off     = off->text_content;
   b->nodes[1].first_attr   = k_ra8_book_nil;
   b->nodes[1].first_child  = k_ra8_book_nil;
   b->nodes[1].next_sibling = k_ra8_book_nil;
 
-  b->attrs[0].name_off  = class_attr_off;
-  b->attrs[0].value_off = main_val_off;
+  b->attrs[0].name_off  = off->class_attr;
+  b->attrs[0].value_off = off->main_val;
 
-  b->stylesheets[0].source_off    = css_content_off;
+  b->stylesheets[0].source_off    = off->css_content;
   b->stylesheets[0].scope_chapter = k_ra8_book_nil;
 
-  b->images[0].id_off    = img_href_off;
+  b->images[0].id_off    = off->img_href;
   b->images[0].width     = 16;
   b->images[0].height    = 16;
   b->images[0].format    = k_ra8_book_image_gray4;
@@ -175,7 +210,7 @@ static void setup_mock_book(mock_book_t* b)
   b->images[0].data_size = 10;
   b->images[0].raw_size  = 128;
 
-  b->images[1].id_off    = svg_href_off;
+  b->images[1].id_off    = off->svg_href;
   b->images[1].width     = 0;
   b->images[1].height    = 0;
   b->images[1].format    = k_ra8_book_image_svg;
@@ -186,6 +221,25 @@ static void setup_mock_book(mock_book_t* b)
   b->images[1].raw_size  = 50;
 
   b->hdr.cover_image_index = 0;
+}
+
+/**
+ * @brief Build a complete, CRC-valid in-memory mock book for the reader tests.
+ *
+ * @param[out] b Mock book to populate end to end.
+ *
+ * @return None.
+ * @pre @p b is non-null and writable.
+ * @post @p b is a self-consistent book whose header CRC covers the body.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void setup_mock_book(mock_book_t* b)
+{
+  mock_book_offsets_t off = {};
+  setup_mock_book_header(b);
+  setup_mock_book_strings(b, &off);
+  setup_mock_book_structs(b, &off);
 
   const uint8_t* body     = (const uint8_t*)b + sizeof(ra8_book_header_t);
   uint32_t       body_len = sizeof(*b) - sizeof(ra8_book_header_t);
@@ -240,6 +294,80 @@ static void test_ra8_book_invalid(void)
 }
 
 /**
+ * @brief Assert the two-node div/text tree and its single class attribute.
+ *
+ * @param[in] b   Validated mock book.
+ * @param[in] hdr Parsed header (for node_count).
+ *
+ * @return None.
+ * @pre @p b passed ra8_book_validate().
+ * @post The element node, its attribute, and the text child all match.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void book_walk_check_nodes(const mock_book_t* b, const ra8_book_header_t* hdr)
+{
+  TEST_ASSERT_EQ(2, hdr->node_count);
+  const ra8_book_node_t* nodes = ra8_book_nodes(b);
+  TEST_ASSERT_NOT_NULL(nodes);
+
+  const ra8_book_node_t* n0 = &nodes[0];
+  TEST_ASSERT_EQ(k_ra8_book_node_element, n0->kind);
+  TEST_ASSERT_EQ(0, strcmp(ra8_book_node_name(b, n0), "div"));
+  TEST_ASSERT_EQ(1, n0->attr_count);
+  TEST_ASSERT_EQ(1, n0->first_child);
+  TEST_ASSERT_EQ(k_ra8_book_nil, n0->next_sibling);
+
+  const ra8_book_attr_t* attrs = ra8_book_attrs(b);
+  TEST_ASSERT_NOT_NULL(attrs);
+  const ra8_book_attr_t* a0 = &attrs[n0->first_attr];
+  TEST_ASSERT_EQ(0, strcmp(ra8_book_string(b, a0->name_off), "class"));
+  TEST_ASSERT_EQ(0, strcmp(ra8_book_string(b, a0->value_off), "main"));
+
+  const ra8_book_node_t* n1 = &nodes[n0->first_child];
+  TEST_ASSERT_EQ(k_ra8_book_node_text, n1->kind);
+  TEST_ASSERT_EQ(0, strcmp(ra8_book_node_text(b, n1), "Hello World"));
+  TEST_ASSERT_EQ(0, n1->attr_count);
+  TEST_ASSERT_EQ(k_ra8_book_nil, n1->first_child);
+  TEST_ASSERT_EQ(k_ra8_book_nil, n1->next_sibling);
+}
+
+/**
+ * @brief Assert the raster and vector image manifest entries.
+ *
+ * @param[in] b   Validated mock book.
+ * @param[in] hdr Parsed header (for image_count).
+ *
+ * @return None.
+ * @pre @p b passed ra8_book_validate().
+ * @post Both image records match their fixture geometry and data pointers.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void book_walk_check_images(const mock_book_t* b, const ra8_book_header_t* hdr)
+{
+  TEST_ASSERT_EQ(2, hdr->image_count);
+  const ra8_book_image_t* imgs = ra8_book_images(b);
+  TEST_ASSERT_NOT_NULL(imgs);
+
+  TEST_ASSERT_EQ(0, strcmp(ra8_book_string(b, imgs[0].id_off), "img1.png"));
+  TEST_ASSERT_EQ(16, imgs[0].width);
+  TEST_ASSERT_EQ(16, imgs[0].height);
+  TEST_ASSERT_EQ(k_ra8_book_image_gray4, imgs[0].format);
+  TEST_ASSERT_EQ(10, imgs[0].data_size);
+  TEST_ASSERT_EQ(128, imgs[0].raw_size);
+  TEST_ASSERT_NOT_NULL(ra8_book_image_data(b, &imgs[0]));
+
+  TEST_ASSERT_EQ(0, strcmp(ra8_book_string(b, imgs[1].id_off), "svg1.svg"));
+  TEST_ASSERT_EQ(0, imgs[1].width);
+  TEST_ASSERT_EQ(0, imgs[1].height);
+  TEST_ASSERT_EQ(k_ra8_book_image_svg, imgs[1].format);
+  TEST_ASSERT_EQ(20, imgs[1].data_size);
+  TEST_ASSERT_EQ(50, imgs[1].raw_size);
+  TEST_ASSERT_NOT_NULL(ra8_book_image_data(b, &imgs[1]));
+}
+
+/**
  * @test test_ra8_book_valid_walk
  * @brief A valid mock blob passes validation and every inline accessor
  *        resolves the expected strings, nodes, attributes, and images.
@@ -274,29 +402,7 @@ static void test_ra8_book_valid_walk(void)
   TEST_ASSERT_EQ(0, strcmp(ra8_book_string(&b, chaps[0].href_off), "ch1.xhtml"));
   TEST_ASSERT_EQ(0, chaps[0].root_node);
 
-  TEST_ASSERT_EQ(2, hdr->node_count);
-  const ra8_book_node_t* nodes = ra8_book_nodes(&b);
-  TEST_ASSERT_NOT_NULL(nodes);
-
-  const ra8_book_node_t* n0 = &nodes[0];
-  TEST_ASSERT_EQ(k_ra8_book_node_element, n0->kind);
-  TEST_ASSERT_EQ(0, strcmp(ra8_book_node_name(&b, n0), "div"));
-  TEST_ASSERT_EQ(1, n0->attr_count);
-  TEST_ASSERT_EQ(1, n0->first_child);
-  TEST_ASSERT_EQ(k_ra8_book_nil, n0->next_sibling);
-
-  const ra8_book_attr_t* attrs = ra8_book_attrs(&b);
-  TEST_ASSERT_NOT_NULL(attrs);
-  const ra8_book_attr_t* a0 = &attrs[n0->first_attr];
-  TEST_ASSERT_EQ(0, strcmp(ra8_book_string(&b, a0->name_off), "class"));
-  TEST_ASSERT_EQ(0, strcmp(ra8_book_string(&b, a0->value_off), "main"));
-
-  const ra8_book_node_t* n1 = &nodes[n0->first_child];
-  TEST_ASSERT_EQ(k_ra8_book_node_text, n1->kind);
-  TEST_ASSERT_EQ(0, strcmp(ra8_book_node_text(&b, n1), "Hello World"));
-  TEST_ASSERT_EQ(0, n1->attr_count);
-  TEST_ASSERT_EQ(k_ra8_book_nil, n1->first_child);
-  TEST_ASSERT_EQ(k_ra8_book_nil, n1->next_sibling);
+  book_walk_check_nodes(&b, hdr);
 
   TEST_ASSERT_EQ(1, hdr->stylesheet_count);
   const ra8_book_stylesheet_t* styles = ra8_book_stylesheets(&b);
@@ -304,25 +410,7 @@ static void test_ra8_book_valid_walk(void)
   TEST_ASSERT_EQ(0, strcmp(ra8_book_string(&b, styles[0].source_off), "body { margin: 0; }"));
   TEST_ASSERT_EQ(k_ra8_book_nil, styles[0].scope_chapter);
 
-  TEST_ASSERT_EQ(2, hdr->image_count);
-  const ra8_book_image_t* imgs = ra8_book_images(&b);
-  TEST_ASSERT_NOT_NULL(imgs);
-
-  TEST_ASSERT_EQ(0, strcmp(ra8_book_string(&b, imgs[0].id_off), "img1.png"));
-  TEST_ASSERT_EQ(16, imgs[0].width);
-  TEST_ASSERT_EQ(16, imgs[0].height);
-  TEST_ASSERT_EQ(k_ra8_book_image_gray4, imgs[0].format);
-  TEST_ASSERT_EQ(10, imgs[0].data_size);
-  TEST_ASSERT_EQ(128, imgs[0].raw_size);
-  TEST_ASSERT_NOT_NULL(ra8_book_image_data(&b, &imgs[0]));
-
-  TEST_ASSERT_EQ(0, strcmp(ra8_book_string(&b, imgs[1].id_off), "svg1.svg"));
-  TEST_ASSERT_EQ(0, imgs[1].width);
-  TEST_ASSERT_EQ(0, imgs[1].height);
-  TEST_ASSERT_EQ(k_ra8_book_image_svg, imgs[1].format);
-  TEST_ASSERT_EQ(20, imgs[1].data_size);
-  TEST_ASSERT_EQ(50, imgs[1].raw_size);
-  TEST_ASSERT_NOT_NULL(ra8_book_image_data(&b, &imgs[1]));
+  book_walk_check_images(&b, hdr);
 
   TEST_END("ra8_book validation and walking valid book");
 }
