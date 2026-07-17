@@ -18,12 +18,14 @@
  *
  * No CBZ packaging or image conversion yet; those are the next milestones.
  */
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 
 #include "mdl_config.h"
+#include "mdl_export.h"
 #include "mdl_extract.h"
 #include "mdl_net.h"
 #include "mdl_politeness.h"
@@ -290,11 +292,33 @@ static ra8_err_t prepare_chapters(mdl_net_iface_t*  net,
   return k_ra8_ok;
 }
 
-/** @brief Download `chapters` chapters from `start`; returns page-failure count. */
+/** @brief Package one downloaded chapter into `format`; 0 ok, 1 on failure. */
+static size_t export_one(mdl_format_t format, const char* series_dir, const char* chapter_url)
+{
+  char chap[k_chap_name_bytes];
+  last_segment(chapter_url, chap, sizeof(chap));
+  const char* ext = mdl_format_ext(format);
+
+  char dir[k_dir_path_bytes];
+  (void)snprintf(dir, sizeof(dir), "%s/%s", series_dir, chap);
+  char out[k_dir_path_bytes];
+  (void)snprintf(out, sizeof(out), "%s/%s.%s", series_dir, chap, ext);
+
+  const ra8_err_t rc = mdl_export_chapter(format, dir, out);
+  if (rc != k_ra8_ok) {
+    (void)fprintf(stderr, "  export %s.%s FAILED (err 0x%X)\n", chap, ext, (unsigned)rc);
+    return 1U;
+  }
+  (void)printf("  packaged %s.%s\n", chap, ext);
+  return 0U;
+}
+
+/** @brief Download `chapters` chapters from `start`; returns failure count. */
 static size_t download_chapters(mdl_net_iface_t*  net,
                                 const mdl_site_t* site,
                                 const char*       series_url,
                                 const char*       series_dir,
+                                mdl_format_t      format,
                                 size_t            chapters,
                                 size_t            start,
                                 uint64_t          seed,
@@ -309,21 +333,26 @@ static size_t download_chapters(mdl_net_iface_t*  net,
     if (got_ch > 0U) {
       (void)mdl_politeness_wait(&pol, site->chapter_delay_min, site->chapter_delay_max);
     }
-    fails += download_chapter(net, site, series_url, s_chapters.urls[i], series_dir, &pol, timeout);
+    const char* curl = s_chapters.urls[i];
+    fails += download_chapter(net, site, series_url, curl, series_dir, &pol, timeout);
+    if (format != k_mdl_fmt_loose) {
+      fails += export_one(format, series_dir, curl);
+    }
     ++got_ch;
   }
-  (void)printf("done: %zu chapter(s) into %s/ (%zu page failure(s))\n", got_ch, series_dir, fails);
+  (void)printf("done: %zu chapter(s) into %s/ (%zu failure(s))\n", got_ch, series_dir, fails);
   return fails;
 }
 
 /** @brief series mode: config + series URL -> download N chapters. */
-static int run_series(const char* cfg_path,
-                      const char* series_url,
-                      const char* out_dir,
-                      size_t      chapters,
-                      size_t      start,
-                      uint64_t    seed,
-                      uint32_t    timeout)
+static int run_series(const char*  cfg_path,
+                      const char*  series_url,
+                      const char*  out_dir,
+                      mdl_format_t format,
+                      size_t       chapters,
+                      size_t       start,
+                      uint64_t     seed,
+                      uint32_t     timeout)
 {
   mdl_site_t site;
   if (mdl_config_load(cfg_path, &site) != k_ra8_ok) {
@@ -357,8 +386,17 @@ static int run_series(const char* cfg_path,
   (void)mkdir(out_dir, (mode_t)k_dir_mode);
   (void)mkdir(series_dir, (mode_t)k_dir_mode);
 
+  /* Archive export spawns the archiver with cwd set to the chapter dir, so the
+   * output paths must be absolute -- resolve the series dir now that it exists. */
+  char abs_dir[PATH_MAX];
+  if (realpath(series_dir, abs_dir) == nullptr) {
+    (void)fprintf(stderr, "media_dl: cannot resolve %s\n", series_dir);
+    mdl_net_curl_destroy(net);
+    return 1;
+  }
+
   const size_t fails =
-    download_chapters(net, &site, series_url, series_dir, chapters, start, seed, timeout);
+    download_chapters(net, &site, series_url, abs_dir, format, chapters, start, seed, timeout);
   mdl_net_curl_destroy(net);
   return (fails == 0U) ? 0 : 1;
 }
@@ -417,7 +455,8 @@ static void usage(const char* a0)
   (void)fprintf(stderr,
                 "usage:\n"
                 "  series: %s --config SITE.conf --series URL [--chapters N] "
-                "[--start K] [--out DIR] [--seed S] [--timeout MS]\n"
+                "[--start K] [--out DIR] [--format cbz|cbt|cbr|cbt.xz|cbt.gz] "
+                "[--seed S] [--timeout MS]\n"
                 "  page:   %s URL [--out DIR] [--max N] [--attr data-src|src] "
                 "[--seed S] [--timeout MS]\n",
                 a0,
@@ -436,6 +475,7 @@ typedef struct {
   const char* max;      /**< --max. */
   const char* seed;     /**< --seed. */
   const char* timeout;  /**< --timeout. */
+  const char* format;   /**< --format (cbz/cbt/cbr/cbt.xz/cbt.gz/loose). */
   bool        bad;      /**< An unrecognised argument was seen. */
 } mdl_args_t;
 
@@ -468,6 +508,7 @@ static void parse_args(int argc, char** argv, mdl_args_t* a)
     {"--max", &a->max},
     {"--seed", &a->seed},
     {"--timeout", &a->timeout},
+    {"--format", &a->format},
   };
   for (int i = 1; i < argc; ++i) {
     bool matched = false;
@@ -506,6 +547,14 @@ int main(int argc, char** argv)
   const uint32_t timeout = (uint32_t)to_ul(a.timeout, (unsigned long)k_req_timeout_def);
   const size_t   start   = (size_t)to_ul(a.start, 0UL);
 
+  const mdl_format_t format = mdl_format_from_str(a.format);
+  if (format == k_mdl_fmt_invalid) {
+    (void)fprintf(stderr,
+                  "media_dl: bad --format '%s' (loose|cbz|cbt|cbr|cbt.xz|cbt.gz)\n",
+                  a.format);
+    return 2;
+  }
+
   if (a.cfg != nullptr) {
     if (a.series == nullptr) {
       (void)fprintf(stderr, "media_dl: --config requires --series URL\n");
@@ -515,7 +564,7 @@ int main(int argc, char** argv)
     if (chapters == 0U) {
       chapters = 1U;
     }
-    return run_series(a.cfg, a.series, a.out, chapters, start, seed, timeout);
+    return run_series(a.cfg, a.series, a.out, format, chapters, start, seed, timeout);
   }
   if (a.page_url != nullptr) {
     const uint32_t max_imgs = (uint32_t)to_ul(a.max, 0UL);
