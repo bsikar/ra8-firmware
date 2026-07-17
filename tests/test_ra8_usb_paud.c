@@ -299,26 +299,26 @@ static void test_volume_shadow(void)
  * @brief Numeric vectors driving the MC/DC tests below.
  */
 typedef enum : uint16_t {
-  k_test_paud_speed_fs       = 0U, /**< k_ra8_usb_speed_fs alias. */
-  k_test_paud_speed_hs       = 1U, /**< k_ra8_usb_speed_hs alias. */
-  k_test_paud_speed_bad      = 9U, /**< Neither FS nor HS.        */
-  k_test_paud_iface_in       = 0xA1U,
-  k_test_paud_iface_out      = 0x21U,
-  k_test_paud_ep_in          = 0xA2U,
-  k_test_paud_ep_out         = 0x22U,
-  k_test_paud_bm_bogus       = 0x40U,
-  k_test_paud_breq_unknown   = 0x77U,
-  k_test_paud_send_len_zero  = 0U,
-  k_test_paud_send_len_small = 4U,
-  k_test_paud_send_len_huge  = 1024U,
-  k_test_paud_chan_min       = 1U,
-  k_test_paud_chan_max       = 8U,
-  k_test_paud_chan_bad_low   = 0U,
-  k_test_paud_chan_bad_high  = 9U,
-  k_test_paud_bps_min        = 1U,
-  k_test_paud_bps_max        = 4U,
-  k_test_paud_bps_bad_low    = 0U,
-  k_test_paud_bps_bad_high   = 5U,
+  k_test_paud_speed_fs       = 0U,    /**< k_ra8_usb_speed_fs alias.    */
+  k_test_paud_speed_hs       = 1U,    /**< k_ra8_usb_speed_hs alias.    */
+  k_test_paud_speed_bad      = 9U,    /**< Neither FS nor HS.           */
+  k_test_paud_iface_in       = 0xA1U, /**< Test paud iface in.          */
+  k_test_paud_iface_out      = 0x21U, /**< Test paud iface out.         */
+  k_test_paud_ep_in          = 0xA2U, /**< Test paud ep in.             */
+  k_test_paud_ep_out         = 0x22U, /**< Test paud ep out.            */
+  k_test_paud_bm_bogus       = 0x40U, /**< Test paud bm bogus.          */
+  k_test_paud_breq_unknown   = 0x77U, /**< Test paud breq unknown.      */
+  k_test_paud_send_len_zero  = 0U,    /**< Test paud send length zero.  */
+  k_test_paud_send_len_small = 4U,    /**< Test paud send length small. */
+  k_test_paud_send_len_huge  = 1024U, /**< Test paud send length huge.  */
+  k_test_paud_chan_min       = 1U,    /**< Test paud chan minimum.      */
+  k_test_paud_chan_max       = 8U,    /**< Test paud chan maximum.      */
+  k_test_paud_chan_bad_low   = 0U,    /**< Test paud chan bad low.      */
+  k_test_paud_chan_bad_high  = 9U,    /**< Test paud chan bad high.     */
+  k_test_paud_bps_min        = 1U,    /**< Test paud bps minimum.       */
+  k_test_paud_bps_max        = 4U,    /**< Test paud bps maximum.       */
+  k_test_paud_bps_bad_low    = 0U,    /**< Test paud bps bad low.       */
+  k_test_paud_bps_bad_high   = 5U,    /**< Test paud bps bad high.      */
 } test_paud_mcdc_t;
 
 /**
@@ -481,10 +481,10 @@ static void test_mcdc_paud(void)
  * file-private to ra8_usb_paud.c.
  */
 typedef enum : uint8_t {
-  k_test_paud_bm_class_iface_in  = 0xA1U,
-  k_test_paud_bm_class_iface_out = 0x21U,
-  k_test_paud_bm_class_ep_in     = 0xA2U,
-  k_test_paud_bm_class_ep_out    = 0x22U,
+  k_test_paud_bm_class_iface_in  = 0xA1U, /**< Test paud bm class iface in.  */
+  k_test_paud_bm_class_iface_out = 0x21U, /**< Test paud bm class iface out. */
+  k_test_paud_bm_class_ep_in     = 0xA2U, /**< Test paud bm class ep in.     */
+  k_test_paud_bm_class_ep_out    = 0x22U, /**< Test paud bm class ep out.    */
 } test_paud_bm_t;
 
 static bool mirror_paud_is_class_envelope(uint8_t bm)

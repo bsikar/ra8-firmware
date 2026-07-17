@@ -25,13 +25,13 @@
 
 /** @brief Mirror of the demo's app-local constants. */
 typedef enum : uint32_t {
-  k_t_bkup_sentinel = 0x600DCAFEU,
-  k_t_bkup_mult     = 0x01010101U,
-  k_t_bkup_xor      = 0xA5A5A5A5U,
+  k_t_bkup_sentinel = 0x600DCAFEU, /**< T bkup sentinel. */
+  k_t_bkup_mult     = 0x01010101U, /**< T bkup mult.     */
+  k_t_bkup_xor      = 0xA5A5A5A5U, /**< T bkup xor.      */
 } t_bkup_word_t;
 
 typedef enum : uint8_t {
-  k_t_bkup_data_words = 30U,
+  k_t_bkup_data_words = 30U, /**< T bkup data words. */
 } t_bkup_layout_t;
 
 /** @brief Mirror of bkup_demo_pattern(). */

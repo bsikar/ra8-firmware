@@ -19,8 +19,8 @@
 #include "unity_minimal.h"
 
 enum : int32_t {
-  k_w = 200,
-  k_h = 200,
+  k_w = 200, /**< W. */
+  k_h = 200, /**< H. */
 };
 
 /** @brief Host framebuffer (ARGB8888) bound by the render tests. */

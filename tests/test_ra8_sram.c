@@ -47,21 +47,21 @@
  */
 
 typedef enum : uint8_t {
-  k_ra8_sram_test_bank_first = 0U,
-  k_ra8_sram_test_bank_one   = 1U,
-  k_ra8_sram_test_bank_mid   = 2U,
-  k_ra8_sram_test_bank_last  = 3U,
-  k_ra8_sram_test_bank_bad   = 4U,
-  k_ra8_sram_test_slot_bad   = 2U,
+  k_ra8_sram_test_bank_first = 0U, /**< RA8 SRAM test bank first. */
+  k_ra8_sram_test_bank_one   = 1U, /**< RA8 SRAM test bank one.   */
+  k_ra8_sram_test_bank_mid   = 2U, /**< RA8 SRAM test bank mid.   */
+  k_ra8_sram_test_bank_last  = 3U, /**< RA8 SRAM test bank last.  */
+  k_ra8_sram_test_bank_bad   = 4U, /**< RA8 SRAM test bank bad.   */
+  k_ra8_sram_test_slot_bad   = 2U, /**< RA8 SRAM test slot bad.   */
 } ra8_sram_test_bank_t;
 
 typedef enum : uintptr_t {
-  k_ra8_sram_test_ctx_token      = 0xC0FFEE12UL,
-  k_ra8_sram_test_bank_ctx_token = 0xBEEF0001UL,
+  k_ra8_sram_test_ctx_token      = 0xC0FFEE12UL, /**< RA8 SRAM test ctx token.      */
+  k_ra8_sram_test_bank_ctx_token = 0xBEEF0001UL, /**< RA8 SRAM test bank ctx token. */
 } ra8_sram_test_ctx_t;
 
 typedef enum : uintptr_t {
-  k_ra8_sram_test_fault_addr = 0x12340U,
+  k_ra8_sram_test_fault_addr = 0x12340U, /**< RA8 SRAM test fault address. */
 } ra8_sram_test_addr_t;
 
 typedef enum : uint32_t {

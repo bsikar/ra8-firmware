@@ -35,9 +35,9 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_rsip_edge_trng_chunk = 64U,
-  k_rsip_edge_trng_total = 4096U,
-  k_rsip_edge_blob_bytes = 64U,
+  k_rsip_edge_trng_chunk = 64U,   /**< Rsip edge trng chunk. */
+  k_rsip_edge_trng_total = 4096U, /**< Rsip edge trng total. */
+  k_rsip_edge_blob_bytes = 64U,   /**< Rsip edge blob bytes. */
 } ra8_rsip_edge_const_t;
 
 static void prep_running(void)

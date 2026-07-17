@@ -49,13 +49,13 @@
  */
 
 typedef enum : uint16_t {
-  k_test_fb_width  = 64U,
-  k_test_fb_height = 32U,
+  k_test_fb_width  = 64U, /**< Test fb width.  */
+  k_test_fb_height = 32U, /**< Test fb height. */
 } test_fb_dim_t;
 
 typedef enum : uint32_t {
-  k_test_fb_pixels = (uint32_t)k_test_fb_width * (uint32_t)k_test_fb_height,
-  k_test_fb_bytes  = k_test_fb_pixels * 2U,
+  k_test_fb_pixels = (uint32_t)k_test_fb_width * (uint32_t)k_test_fb_height, /**< Test fb pixels. */
+  k_test_fb_bytes  = k_test_fb_pixels * 2U,                                  /**< Test fb bytes. */
 } test_fb_size_t;
 
 /* Static framebuffer the LCD and e-ink backends share -- one test

@@ -32,11 +32,11 @@
  * @brief Test addresses and payload constants.
  */
 typedef enum : uint8_t {
-  k_ra8_i3c_i2c_test_target  = 0x50U,
-  k_ra8_i3c_i2c_test_byte_a  = 0xA5U,
-  k_ra8_i3c_i2c_test_byte_b  = 0x5AU,
-  k_ra8_i3c_i2c_test_byte_c  = 0x33U,
-  k_ra8_i3c_i2c_test_rx_byte = 0xC3U,
+  k_ra8_i3c_i2c_test_target  = 0x50U, /**< RA8 I3C I2C test target.  */
+  k_ra8_i3c_i2c_test_byte_a  = 0xA5U, /**< RA8 I3C I2C test byte a.  */
+  k_ra8_i3c_i2c_test_byte_b  = 0x5AU, /**< RA8 I3C I2C test byte b.  */
+  k_ra8_i3c_i2c_test_byte_c  = 0x33U, /**< RA8 I3C I2C test byte c.  */
+  k_ra8_i3c_i2c_test_rx_byte = 0xC3U, /**< RA8 I3C I2C test RX byte. */
 } ra8_i3c_i2c_test_addr_t;
 
 /**
@@ -44,9 +44,9 @@ typedef enum : uint8_t {
  * @brief Channel constants used by tests.
  */
 typedef enum : uint8_t {
-  k_ra8_i3c_i2c_test_ch_zero = 0U,
-  k_ra8_i3c_i2c_test_ch_oor  = 1U, /**< IIC_B has only ch 0 on RA8D2. */
-  k_ra8_i3c_i2c_test_ch_huge = 200U,
+  k_ra8_i3c_i2c_test_ch_zero = 0U,   /**< RA8 I3C I2C test channel zero. */
+  k_ra8_i3c_i2c_test_ch_oor  = 1U,   /**< IIC_B has only ch 0 on RA8D2.  */
+  k_ra8_i3c_i2c_test_ch_huge = 200U, /**< RA8 I3C I2C test channel huge. */
 } ra8_i3c_i2c_test_ch_t;
 
 /**
@@ -54,7 +54,7 @@ typedef enum : uint8_t {
  * @brief Payload length used by the long-buffer timeout tests.
  */
 typedef enum : uint32_t {
-  k_ra8_i3c_i2c_test_long_len = 1000000U,
+  k_ra8_i3c_i2c_test_long_len = 1000000U, /**< RA8 I3C I2C test long length. */
 } ra8_i3c_i2c_test_wait_t;
 
 /**

@@ -178,9 +178,9 @@ typedef enum : uint32_t {
  */
 typedef enum : uint32_t {
   k_cov_csd_bad_rsp76 = 0x80000000UL, /**< CSD_STRUCTURE=2 (unknown). */
-  k_cov_csd_bad_rsp54 = 0x00000000UL,
-  k_cov_csd_bad_rsp32 = 0x00000000UL,
-  k_cov_csd_bad_rsp10 = 0x00000000UL,
+  k_cov_csd_bad_rsp54 = 0x00000000UL, /**< Cov csd bad rsp54.         */
+  k_cov_csd_bad_rsp32 = 0x00000000UL, /**< Cov csd bad rsp32.         */
+  k_cov_csd_bad_rsp10 = 0x00000000UL, /**< Cov csd bad rsp10.         */
 } cov_csd_bad_t;
 
 /* ---------------------------------------------------------------------------

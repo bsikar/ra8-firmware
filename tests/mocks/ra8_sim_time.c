@@ -28,7 +28,7 @@
  * documented as a sentinel "host test" value.
  */
 typedef enum : uint32_t {
-  k_ra8_sim_time_cpu_hz = 1000000U,
+  k_ra8_sim_time_cpu_hz = 1000000U, /**< RA8 sim time CPU Hz. */
 } ra8_sim_time_cpu_hz_t;
 
 void ra8_sim_time_reset(void)

@@ -19,11 +19,11 @@
 #include "unity_minimal.h"
 
 enum : int32_t {
-  k_fx             = 0,
-  k_fy             = 600,
-  k_fw             = 1024,
-  k_fh             = 360,
-  k_expect_letters = 31, /* 10 + 9 + (1+7+1) + (1+1+1) */
+  k_fx             = 0,    /**< Fx.                                          */
+  k_fy             = 600,  /**< Fy.                                          */
+  k_fw             = 1024, /**< Fw.                                          */
+  k_fh             = 360,  /**< Fh.                                          */
+  k_expect_letters = 31,   /**< Expect letters (10 + 9 + (1+7+1) + (1+1+1)). */
 };
 
 /** @brief Shared laid-out grid. */

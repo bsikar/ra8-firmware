@@ -45,7 +45,7 @@
  * SRAM-touching helpers might use.
  */
 enum : uintptr_t {
-  k_sram_tx_pool_addr = 0x22080000UL,
+  k_sram_tx_pool_addr = 0x22080000UL, /**< SRAM TX pool address. */
 };
 
 /**

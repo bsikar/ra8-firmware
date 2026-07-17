@@ -16,26 +16,26 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_block_size       = 512U,
-  k_fat12_blocks     = 1024U,
-  k_fat16_blocks     = 8192U,
-  k_fat32_blocks     = 70000U,
-  k_fat12_fat_secs   = 4U,
-  k_fat16_fat_secs   = 32U,
-  k_fat32_fat_secs   = 512U,
-  k_fat_root_entries = 16U,
+  k_block_size       = 512U,   /**< Block size.       */
+  k_fat12_blocks     = 1024U,  /**< Fat12 blocks.     */
+  k_fat16_blocks     = 8192U,  /**< Fat16 blocks.     */
+  k_fat32_blocks     = 70000U, /**< Fat32 blocks.     */
+  k_fat12_fat_secs   = 4U,     /**< Fat12 fat secs.   */
+  k_fat16_fat_secs   = 32U,    /**< Fat16 fat secs.   */
+  k_fat32_fat_secs   = 512U,   /**< Fat32 fat secs.   */
+  k_fat_root_entries = 16U,    /**< Fat root entries. */
 } fat_variant_disk_t;
 
 typedef struct {
-  uint8_t* bytes;
-  uint32_t block_count;
-  uint32_t byte_count;
+  uint8_t* bytes;       /**< Bytes.       */
+  uint32_t block_count; /**< Block count. */
+  uint32_t byte_count;  /**< Byte count.  */
 } mem_disk_t;
 
 typedef struct {
-  uint32_t count;
-  uint32_t total_size;
-  char     last_name[k_ra8_fs_short_name_len];
+  uint32_t count;                              /**< Count.      */
+  uint32_t total_size;                         /**< Total size. */
+  char     last_name[k_ra8_fs_short_name_len]; /**< Last name.  */
 } list_ctx_t;
 
 static mem_disk_t s_disk = {};

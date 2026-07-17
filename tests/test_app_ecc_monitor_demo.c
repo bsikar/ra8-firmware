@@ -20,8 +20,8 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_t_ecc_xor   = 0x5A5A5A5AU,
-  k_t_ecc_words = 64U,
+  k_t_ecc_xor   = 0x5A5A5A5AU, /**< T ECC xor.   */
+  k_t_ecc_words = 64U,         /**< T ECC words. */
 } t_ecc_const_t;
 
 /** @brief Mirror of ecc_demo_pattern(). */

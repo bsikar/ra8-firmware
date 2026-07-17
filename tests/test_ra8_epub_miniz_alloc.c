@@ -19,9 +19,9 @@
 #include "unity_minimal.h"
 
 enum : size_t {
-  k_small  = 64,
-  k_medium = 4096,
-  k_big    = 11000, /* ~ a miniz tinfl_decompressor */
+  k_small  = 64,    /**< Small.                        */
+  k_medium = 4096,  /**< Medium.                       */
+  k_big    = 11000, /**< ~ a miniz tinfl_decompressor. */
 };
 
 /**

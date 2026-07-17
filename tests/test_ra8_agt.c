@@ -14,19 +14,19 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_ra8_agt_test_channel_valid  = 0U,
-  k_ra8_agt_test_channel_middle = 5U,
-  k_ra8_agt_test_channel_last   = 9U,
-  k_ra8_agt_test_channel_bad    = 10U,
-  k_ra8_agt_test_channel_way    = 200U,
+  k_ra8_agt_test_channel_valid  = 0U,   /**< RA8 AGT test channel valid.  */
+  k_ra8_agt_test_channel_middle = 5U,   /**< RA8 AGT test channel middle. */
+  k_ra8_agt_test_channel_last   = 9U,   /**< RA8 AGT test channel last.   */
+  k_ra8_agt_test_channel_bad    = 10U,  /**< RA8 AGT test channel bad.    */
+  k_ra8_agt_test_channel_way    = 200U, /**< RA8 AGT test channel way.    */
 } ra8_agt_test_channel_t;
 
 typedef enum : uint16_t {
-  k_ra8_agt_test_reload = 0x1234U,
+  k_ra8_agt_test_reload = 0x1234U, /**< RA8 AGT test reload. */
 } ra8_agt_test_reload_t;
 
 typedef enum : uint8_t {
-  k_ra8_agt_test_tstart_bit = 0x01U,
+  k_ra8_agt_test_tstart_bit = 0x01U, /**< RA8 AGT test tstart bit. */
 } ra8_agt_test_bits_t;
 
 /**
@@ -280,8 +280,8 @@ static void test_no_mstp_channel_power(void)
 /* ---- pulse-output mode ---- */
 
 typedef enum : uint16_t {
-  k_ra8_agt_test_pulse_period = 0x4000U,
-  k_ra8_agt_test_pulse_duty   = 0x2000U,
+  k_ra8_agt_test_pulse_period = 0x4000U, /**< RA8 AGT test pulse period. */
+  k_ra8_agt_test_pulse_duty   = 0x2000U, /**< RA8 AGT test pulse duty.   */
 } ra8_agt_test_pulse_const_t;
 
 /**
@@ -462,12 +462,12 @@ static void test_start_pulse_output_bad_polarity(void)
 /* ---- cascade mode ---- */
 
 typedef enum : uint32_t {
-  k_ra8_agt_test_cas_reload32 = 0x12345678UL,
+  k_ra8_agt_test_cas_reload32 = 0x12345678UL, /**< RA8 AGT test cas reload32. */
 } ra8_agt_test_cas_const_t;
 
 typedef enum : uint16_t {
-  k_ra8_agt_test_cas_lo16 = 0x5678U,
-  k_ra8_agt_test_cas_hi16 = 0x1234U,
+  k_ra8_agt_test_cas_lo16 = 0x5678U, /**< RA8 AGT test cas lo16. */
+  k_ra8_agt_test_cas_hi16 = 0x1234U, /**< RA8 AGT test cas hi16. */
 } ra8_agt_test_cas_halves_t;
 
 static uint32_t s_cas_cb_count;

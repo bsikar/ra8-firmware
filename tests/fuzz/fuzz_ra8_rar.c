@@ -25,8 +25,8 @@
 
 /** @brief Flat backing served to the walker. */
 typedef struct {
-  const uint8_t* data;
-  size_t         size;
+  const uint8_t* data; /**< Data. */
+  size_t         size; /**< Size. */
 } fz_src_t;
 
 static size_t fz_read(void* ctx, uint64_t off, void* dst, size_t len)

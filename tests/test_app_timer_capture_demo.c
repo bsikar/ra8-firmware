@@ -22,12 +22,12 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_t_timer_period   = 0xFFFFFFFFUL,
-  k_t_timer_wrap_max = 0xFFFFFFFFUL,
+  k_t_timer_period   = 0xFFFFFFFFUL, /**< T timer period.       */
+  k_t_timer_wrap_max = 0xFFFFFFFFUL, /**< T timer wrap maximum. */
 } t_timer_const_t;
 
 typedef enum : uint8_t {
-  k_t_timer_channel = 0U,
+  k_t_timer_channel = 0U, /**< T timer channel. */
 } t_timer_byte_t;
 
 /** @brief Copy of the demo's wrap-aware delta helper. */

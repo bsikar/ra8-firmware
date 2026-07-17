@@ -21,7 +21,7 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_test_sdram_app_block_bytes = 65536U,
+  k_test_sdram_app_block_bytes = 65536U, /**< Test SDRAM app block bytes. */
 } test_sdram_app_const_t;
 
 static void reset_world(void)

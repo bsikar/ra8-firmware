@@ -31,19 +31,19 @@
 #include "ra8_tls.h"
 
 enum : uint16_t {
-  k_fuzz_max_input  = 4096U,
-  k_fuzz_loop_cap   = 4096U,
-  k_fuzz_recv_chunk = 256U,
+  k_fuzz_max_input  = 4096U, /**< Fuzz maximum input. */
+  k_fuzz_loop_cap   = 4096U, /**< Fuzz loop cap.      */
+  k_fuzz_recv_chunk = 256U,  /**< Fuzz recv chunk.    */
 };
 
 typedef struct {
-  uint8_t        buf[k_fuzz_loop_cap];
-  uint16_t       count;
-  uint16_t       head;
-  uint16_t       tail;
-  const uint8_t* feed_data;
-  size_t         feed_size;
-  size_t         feed_pos;
+  uint8_t        buf[k_fuzz_loop_cap]; /**< Buffer.    */
+  uint16_t       count;                /**< Count.     */
+  uint16_t       head;                 /**< Head.      */
+  uint16_t       tail;                 /**< Tail.      */
+  const uint8_t* feed_data;            /**< Feed data. */
+  size_t         feed_size;            /**< Feed size. */
+  size_t         feed_pos;             /**< Feed pos.  */
 } loop_ctx_t;
 
 static loop_ctx_t s_loop;

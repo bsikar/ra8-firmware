@@ -21,19 +21,19 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_test_can_classic_bitrate = 250000U,
-  k_test_can_classic_id      = 0x456U,
+  k_test_can_classic_bitrate = 250000U, /**< Test CAN classic bitrate. */
+  k_test_can_classic_id      = 0x456U,  /**< Test CAN classic ID.      */
   /* HUM Ch 41 "CFDCnCTR" p 2710 -- CTME = bit 24, CTMS = bits [26:25],
    * CTMS = 11b selects Self-test 1 (Internal Loopback). */
-  k_test_can_classic_ctme_mask  = 1UL << 24U,
-  k_test_can_classic_ctms_shift = 25U,
-  k_test_can_classic_ctms_intl  = 0x3UL,
+  k_test_can_classic_ctme_mask  = 1UL << 24U, /**< Test CAN classic ctme mask.  */
+  k_test_can_classic_ctms_shift = 25U,        /**< Test CAN classic ctms shift. */
+  k_test_can_classic_ctms_intl  = 0x3UL,      /**< Test CAN classic ctms intl.  */
 } test_can_classic_const_t;
 
 typedef enum : uint8_t {
-  k_test_can_classic_channel  = 0U,
-  k_test_can_classic_dlc      = 8U,
-  k_test_can_classic_bad_chan = 9U,
+  k_test_can_classic_channel  = 0U, /**< Test CAN classic channel.  */
+  k_test_can_classic_dlc      = 8U, /**< Test CAN classic dlc.      */
+  k_test_can_classic_bad_chan = 9U, /**< Test CAN classic bad chan. */
 } test_can_classic_chan_t;
 
 static void reset_world(void)

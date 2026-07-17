@@ -18,8 +18,8 @@
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
-  k_test_trng_buf_bytes   = 256U, /**< Matches k_ra8_secure_trng_max_bytes. */
-  k_test_trng_len_one     = 1U,
+  k_test_trng_buf_bytes   = 256U, /**< Matches k_ra8_secure_trng_max_bytes.    */
+  k_test_trng_len_one     = 1U,   /**< Test trng length one.                   */
   k_test_trng_len_seven   = 7U,   /**< Forces inner loop to terminate by C2=F. */
   k_test_trng_len_eight   = 8U,   /**< Forces inner loop to terminate by C1=F. */
   k_test_trng_len_max     = 256U, /**< Largest legal length.                   */

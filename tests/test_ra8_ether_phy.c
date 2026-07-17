@@ -15,16 +15,16 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_phy_addr      = 1U,
-  k_test_reg_count     = 32U,
-  k_test_phy_addr_high = 31U,
+  k_test_phy_addr      = 1U,  /**< Test PHY address.      */
+  k_test_reg_count     = 32U, /**< Test register count.   */
+  k_test_phy_addr_high = 31U, /**< Test PHY address high. */
 } test_ephy_const_t;
 
 typedef struct {
-  uint16_t regs[k_test_reg_count];
-  uint16_t reset_reads_remaining;
-  uint8_t  fail_next_read;
-  uint8_t  fail_next_write;
+  uint16_t regs[k_test_reg_count]; /**< Registers.             */
+  uint16_t reset_reads_remaining;  /**< Reset reads remaining. */
+  uint8_t  fail_next_read;         /**< Fail next read.        */
+  uint8_t  fail_next_write;        /**< Fail next write.       */
 } test_io_state_t;
 
 static test_io_state_t s_io = {};

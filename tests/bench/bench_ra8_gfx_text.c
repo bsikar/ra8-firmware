@@ -33,9 +33,9 @@
  * @brief Off-screen framebuffer dimensions used by the benchmark.
  */
 typedef enum : uint16_t {
-  k_bench_text_fb_w = 512U,
-  k_bench_text_fb_h = 32U,
-  k_bench_text_bpp  = 2U, /* RGB565 */
+  k_bench_text_fb_w = 512U, /**< Bench text fb w. */
+  k_bench_text_fb_h = 32U,  /**< Bench text fb h. */
+  k_bench_text_bpp  = 2U,   /**< RGB565.          */
 } bench_text_dims_t;
 
 /**
@@ -43,8 +43,8 @@ typedef enum : uint16_t {
  * @brief Colours used for fg/bg in the rendered string.
  */
 typedef enum : uint32_t {
-  k_bench_text_fg = 0x00FFFFFFU,
-  k_bench_text_bg = 0x00000000U,
+  k_bench_text_fg = 0x00FFFFFFU, /**< Bench text fg. */
+  k_bench_text_bg = 0x00000000U, /**< Bench text bg. */
 } bench_text_colors_t;
 
 static uint8_t

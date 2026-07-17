@@ -23,11 +23,11 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_ssie_app_channel      = 0U,
-  k_test_ssie_app_bad_channel  = 4U,
-  k_test_ssie_app_tx_threshold = 4U,
-  k_test_ssie_app_rx_threshold = 4U,
-  k_test_ssie_app_sample_count = 16U,
+  k_test_ssie_app_channel      = 0U,  /**< Test ssie app channel.      */
+  k_test_ssie_app_bad_channel  = 4U,  /**< Test ssie app bad channel.  */
+  k_test_ssie_app_tx_threshold = 4U,  /**< Test ssie app TX threshold. */
+  k_test_ssie_app_rx_threshold = 4U,  /**< Test ssie app RX threshold. */
+  k_test_ssie_app_sample_count = 16U, /**< Test ssie app sample count. */
 } test_ssie_app_chan_t;
 
 static const uint32_t k_test_ssie_pattern[16] = {

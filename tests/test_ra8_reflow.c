@@ -44,11 +44,12 @@
  * @brief Synthetic-fixture sizing constants.
  */
 typedef enum : uint32_t {
-  k_test_viewport_w     = 320U, /**< Test viewport width, pixels.       */
-  k_test_viewport_h     = 240U, /**< Test viewport height, pixels.      */
-  k_test_font_px        = 18U,  /**< Default font size for tests.       */
-  k_test_font_px_large  = 36U,  /**< Larger font size for re-flow test. */
-  k_test_fb_pixels      = (uint32_t)k_test_viewport_w * (uint32_t)k_test_viewport_h,
+  k_test_viewport_w    = 320U, /**< Test viewport width, pixels.       */
+  k_test_viewport_h    = 240U, /**< Test viewport height, pixels.      */
+  k_test_font_px       = 18U,  /**< Default font size for tests.       */
+  k_test_font_px_large = 36U,  /**< Larger font size for re-flow test. */
+  k_test_fb_pixels =
+    (uint32_t)k_test_viewport_w * (uint32_t)k_test_viewport_h, /**< Test fb pixels. */
   k_test_fb_bytes_argb  = k_test_fb_pixels * 4U, /**< 4 BPP framebuffer.                */
   k_test_font_buf_bytes = 2U * 1024U * 1024U,    /**< 2 MiB font load capacity.         */
   k_test_color_body     = 0x00FFFFFFU,           /**< Body colour (white).              */
@@ -639,9 +640,9 @@ static void test_layout_rejects_empty_input(void)
 /* --------------------------------------------------------------------- */
 
 typedef enum : uint16_t {
-  k_mcdc_font_px_too_low  = 4U,
-  k_mcdc_font_px_too_high = 200U,
-  k_mcdc_font_px_ok       = 18U,
+  k_mcdc_font_px_too_low  = 4U,   /**< Mcdc font px too low.  */
+  k_mcdc_font_px_too_high = 200U, /**< Mcdc font px too high. */
+  k_mcdc_font_px_ok       = 18U,  /**< Mcdc font px ok.       */
 } reflow_mcdc_t;
 
 /**

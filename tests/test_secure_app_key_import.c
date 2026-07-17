@@ -21,11 +21,11 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_kimp_xor_flip_bit       = 0x01U,
-  k_test_kimp_invalid_size_short = 47U, /**< One short of the 48-byte blob. */
-  k_test_kimp_invalid_size_long  = 49U, /**< One over the 48-byte blob.     */
-  k_test_kimp_kak_bytes          = 32U, /**< AES-256 KAK provisioned here.  */
-  k_test_kimp_mac_byte0          = 32U, /**< Index of the first CMAC byte.  */
+  k_test_kimp_xor_flip_bit       = 0x01U, /**< Test kimp xor flip bit.        */
+  k_test_kimp_invalid_size_short = 47U,   /**< One short of the 48-byte blob. */
+  k_test_kimp_invalid_size_long  = 49U,   /**< One over the 48-byte blob.     */
+  k_test_kimp_kak_bytes          = 32U,   /**< AES-256 KAK provisioned here.  */
+  k_test_kimp_mac_byte0          = 32U,   /**< Index of the first CMAC byte.  */
 } test_kimp_consts_t;
 
 static uint8_t s_key_pattern[k_ra8_key_import_key_bytes];

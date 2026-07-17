@@ -14,16 +14,16 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_ra8_dac_b_test_ch_0   = 0U,
-  k_ra8_dac_b_test_ch_1   = 1U,
-  k_ra8_dac_b_test_ch_bad = 2U,
-  k_ra8_dac_b_test_ch_way = 200U,
+  k_ra8_dac_b_test_ch_0   = 0U,   /**< RA8 DAC b test channel 0.   */
+  k_ra8_dac_b_test_ch_1   = 1U,   /**< RA8 DAC b test channel 1.   */
+  k_ra8_dac_b_test_ch_bad = 2U,   /**< RA8 DAC b test channel bad. */
+  k_ra8_dac_b_test_ch_way = 200U, /**< RA8 DAC b test channel way. */
 } ra8_dac_b_test_ch_t;
 
 typedef enum : uint16_t {
-  k_ra8_dac_b_test_mid  = 0x0800U,
-  k_ra8_dac_b_test_over = 0xFFFFU,
-  k_ra8_dac_b_test_max  = 0x0FFFU,
+  k_ra8_dac_b_test_mid  = 0x0800U, /**< RA8 DAC b test mid.     */
+  k_ra8_dac_b_test_over = 0xFFFFU, /**< RA8 DAC b test over.    */
+  k_ra8_dac_b_test_max  = 0x0FFFU, /**< RA8 DAC b test maximum. */
 } ra8_dac_b_test_value_t;
 
 /**

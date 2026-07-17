@@ -21,9 +21,9 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_t_rng_bytes_per_line = 32U,
-  k_t_rng_nibble_mask    = 0x0FU,
-  k_t_rng_nibble_shift   = 4U,
+  k_t_rng_bytes_per_line = 32U,   /**< T rng bytes per line. */
+  k_t_rng_nibble_mask    = 0x0FU, /**< T rng nibble mask.    */
+  k_t_rng_nibble_shift   = 4U,    /**< T rng nibble shift.   */
 } t_rng_demo_const_t;
 
 /** @brief Copy of rng_demo_nibble_to_hex from main.c. */

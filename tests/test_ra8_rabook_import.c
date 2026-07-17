@@ -90,8 +90,8 @@ typedef enum : uint32_t {
 } import_misc_t;
 
 typedef struct {
-  uint8_t* bytes;
-  uint32_t block_count;
+  uint8_t* bytes;       /**< Bytes.       */
+  uint32_t block_count; /**< Block count. */
 } mem_disk_t;
 
 static mem_disk_t s_disk = {};

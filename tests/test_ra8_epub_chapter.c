@@ -16,7 +16,7 @@
 #include "unity_minimal.h"
 
 typedef enum : size_t {
-  k_test_epub_font_min_bytes = 16U,
+  k_test_epub_font_min_bytes = 16U, /**< Test EPUB font minimum bytes. */
 } test_epub_font_t;
 
 /**

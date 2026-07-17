@@ -20,12 +20,12 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_test_gpt_capture_period = 0xFFFFFFFFUL,
+  k_test_gpt_capture_period = 0xFFFFFFFFUL, /**< Test GPT capture period. */
 } test_gpt_capture_const_t;
 
 typedef enum : uint8_t {
-  k_test_gpt_capture_channel  = 0U,
-  k_test_gpt_capture_bad_chan = 99U,
+  k_test_gpt_capture_channel  = 0U,  /**< Test GPT capture channel.  */
+  k_test_gpt_capture_bad_chan = 99U, /**< Test GPT capture bad chan. */
 } test_gpt_capture_chan_t;
 
 static void reset_world(void)

@@ -30,10 +30,10 @@
  * @brief Test-only numeric constants.
  */
 typedef enum : uint16_t {
-  k_tc_screen_w = 1024U,
-  k_tc_screen_h = 600U,
-  k_tc_inset    = 32U,
-  k_tc_blob     = 36U, /**< Mirrors ::k_ra8_touch_cal_blob_size. */
+  k_tc_screen_w = 1024U, /**< Tc screen w.                         */
+  k_tc_screen_h = 600U,  /**< Tc screen h.                         */
+  k_tc_inset    = 32U,   /**< Tc inset.                            */
+  k_tc_blob     = 36U,   /**< Mirrors ::k_ra8_touch_cal_blob_size. */
 } tc_test_const_t;
 
 /**
@@ -41,10 +41,10 @@ typedef enum : uint16_t {
  * @brief Raw controller axis ranges used by the synthetic ground truth.
  */
 typedef enum : uint16_t {
-  k_tc_raw_min    = 100U,
-  k_tc_raw_max    = 3900U,
-  k_tc_raw_centre = 2000U,
-  k_tc_raw_step   = 1000U,
+  k_tc_raw_min    = 100U,  /**< Tc raw minimum. */
+  k_tc_raw_max    = 3900U, /**< Tc raw maximum. */
+  k_tc_raw_centre = 2000U, /**< Tc raw centre.  */
+  k_tc_raw_step   = 1000U, /**< Tc raw step.    */
 } tc_raw_const_t;
 
 /**
@@ -56,12 +56,12 @@ typedef enum : uint16_t {
  * ``reads_idx`` walks a caller-provided array of synthetic raw samples.
  */
 typedef struct {
-  ra8_touch_cal_point_t        draws[k_ra8_touch_cal_n_targets];
-  uint8_t                      n_draws;
-  const ra8_touch_cal_point_t* reads;
-  uint8_t                      reads_idx;
-  uint8_t                      n_reads;
-  ra8_err_t                    forced_err;
+  ra8_touch_cal_point_t        draws[k_ra8_touch_cal_n_targets]; /**< Draws.        */
+  uint8_t                      n_draws;                          /**< N draws.      */
+  const ra8_touch_cal_point_t* reads;                            /**< Reads.        */
+  uint8_t                      reads_idx;                        /**< Reads index.  */
+  uint8_t                      n_reads;                          /**< N reads.      */
+  ra8_err_t                    forced_err;                       /**< Forced error. */
 } stub_state_t;
 
 /**

@@ -14,9 +14,9 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_ra8_poeg_test_group_valid = 0U,
-  k_ra8_poeg_test_group_last  = 3U,
-  k_ra8_poeg_test_group_bad   = 4U,
+  k_ra8_poeg_test_group_valid = 0U, /**< RA8 poeg test group valid. */
+  k_ra8_poeg_test_group_last  = 3U, /**< RA8 poeg test group last.  */
+  k_ra8_poeg_test_group_bad   = 4U, /**< RA8 poeg test group bad.   */
 } ra8_poeg_test_group_t;
 
 static uint32_t s_poeg_cb_count;

@@ -14,16 +14,16 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_ra8_dmac_test_src    = 0x22000100UL,
-  k_ra8_dmac_test_dst    = 0x22000200UL,
-  k_ra8_dmac_test_count  = 0x0040U,
-  k_ra8_dmac_test_enable = 0x01U,
+  k_ra8_dmac_test_src    = 0x22000100UL, /**< RA8 DMAC test src.    */
+  k_ra8_dmac_test_dst    = 0x22000200UL, /**< RA8 DMAC test dst.    */
+  k_ra8_dmac_test_count  = 0x0040U,      /**< RA8 DMAC test count.  */
+  k_ra8_dmac_test_enable = 0x01U,        /**< RA8 DMAC test enable. */
 } ra8_dmac_test_const_t;
 
 typedef enum : uint8_t {
-  k_ra8_dmac_test_channel_valid = 0U,
-  k_ra8_dmac_test_channel_last  = 7U,
-  k_ra8_dmac_test_channel_bad   = 8U,
+  k_ra8_dmac_test_channel_valid = 0U, /**< RA8 DMAC test channel valid. */
+  k_ra8_dmac_test_channel_last  = 7U, /**< RA8 DMAC test channel last.  */
+  k_ra8_dmac_test_channel_bad   = 8U, /**< RA8 DMAC test channel bad.   */
 } ra8_dmac_test_channel_t;
 
 /**

@@ -21,22 +21,22 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_xspi_bad_instance = 99U,
-  k_test_xspi_valid_inst0  = 0U,
-  k_test_xspi_valid_inst1  = 1U,
-  k_test_xspi_too_many     = 20U,
+  k_test_xspi_bad_instance = 99U, /**< Test XSPI bad instance. */
+  k_test_xspi_valid_inst0  = 0U,  /**< Test XSPI valid inst0.  */
+  k_test_xspi_valid_inst1  = 1U,  /**< Test XSPI valid inst1.  */
+  k_test_xspi_too_many     = 20U, /**< Test XSPI too many.     */
 } test_xspi_inst_t;
 
 typedef enum : uint32_t {
-  k_test_xspi_flash_addr_start    = 0U,
-  k_test_xspi_flash_addr_middle   = 128U,
+  k_test_xspi_flash_addr_start    = 0U,           /**< Test XSPI flash address start.       */
+  k_test_xspi_flash_addr_middle   = 128U,         /**< Test XSPI flash address middle.      */
   k_test_xspi_flash_addr_pagetail = 250U,         /**< 6 bytes below the 256-byte page end. */
   k_test_xspi_flash_addr_overflow = 0x10000000UL, /**< Past 2^24 (3-byte space).            */
   k_test_xspi_flash_addr_near_top = 0xFFFFF8UL,   /**< 8 bytes below 2^24.                  */
-  k_test_xspi_len_zero            = 0U,
-  k_test_xspi_len_small           = 16U,
-  k_test_xspi_len_multipage       = 320U, /**< > 256-byte page; crosses a page from addr 128. */
-  k_test_xspi_len_too_big         = 8192U,
+  k_test_xspi_len_zero            = 0U,           /**< Test XSPI length zero.               */
+  k_test_xspi_len_small           = 16U,          /**< Test XSPI length small.              */
+  k_test_xspi_len_multipage       = 320U,  /**< > 256-byte page; crosses a page from addr 128. */
+  k_test_xspi_len_too_big         = 8192U, /**< Test XSPI length too big.                      */
   k_test_xspi_expected_jedec      = 0x9D5A1AUL, /**< ISSI IS25LX512M (on-board).      */
   k_test_xspi_expected_status     = 0x02U,      /**< WEL=1 (model's implicit latch).  */
   k_test_xspi_wip_busy_polls      = 3U,         /**< RDSR busy polls for the retry.   */
@@ -1210,13 +1210,13 @@ static void test_suspend_resume_null(void)
  * @brief Numeric vectors used by the MC/DC tests below.
  */
 typedef enum : uint8_t {
-  k_test_xspi_addr_bytes_3    = 3U, /**< Valid 24-bit address mode.   */
-  k_test_xspi_addr_bytes_4    = 4U, /**< Valid 32-bit address mode.   */
-  k_test_xspi_addr_bytes_bad  = 5U, /**< Neither 3 nor 4: rejected.   */
-  k_test_xspi_reset_bytes_1s  = 1U, /**< Reset cmd width for 1S mode. */
-  k_test_xspi_reset_bytes_8d  = 2U, /**< Reset cmd width for 8D mode. */
-  k_test_xspi_reset_bytes_bad = 3U, /**< Neither 1 nor 2: rejected.   */
-  k_test_xspi_xip_read_cmd    = 0xEBU,
+  k_test_xspi_addr_bytes_3    = 3U,    /**< Valid 24-bit address mode.   */
+  k_test_xspi_addr_bytes_4    = 4U,    /**< Valid 32-bit address mode.   */
+  k_test_xspi_addr_bytes_bad  = 5U,    /**< Neither 3 nor 4: rejected.   */
+  k_test_xspi_reset_bytes_1s  = 1U,    /**< Reset cmd width for 1S mode. */
+  k_test_xspi_reset_bytes_8d  = 2U,    /**< Reset cmd width for 8D mode. */
+  k_test_xspi_reset_bytes_bad = 3U,    /**< Neither 1 nor 2: rejected.   */
+  k_test_xspi_xip_read_cmd    = 0xEBU, /**< Test XSPI xip read cmd.      */
 } test_xspi_mcdc_t;
 
 /**

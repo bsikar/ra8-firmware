@@ -47,24 +47,24 @@
  * the intent of each seeded argument obvious at the call site.
  */
 typedef enum : uint16_t {
-  k_thb_pipe        = 1U,    /**< Valid data pipe (1..9).                  */
-  k_thb_pipe_zero   = 0U,    /**< Rejected: pipe 0 is the DCP.             */
-  k_thb_pipe_hi     = 99U,   /**< Rejected: pipe > k_ra8_usb_max_pipe_num. */
-  k_thb_dev_addr    = 5U,    /**< Valid device address slot.               */
-  k_thb_dev_addr_hi = 200U,  /**< Rejected: addr > k_ra8_usb_dev_addr_max. */
-  k_thb_ep          = 1U,    /**< Valid endpoint number (1..15).           */
-  k_thb_ep_zero     = 0U,    /**< Rejected: endpoint 0.                    */
-  k_thb_ep_hi       = 99U,   /**< Rejected: ep > k_ra8_pipecfg_epnum_mask. */
-  k_thb_mps         = 64U,   /**< Common FS bulk max packet size.          */
-  k_thb_mps_zero    = 0U,    /**< Rejected: max packet 0.                  */
-  k_thb_mps_hi      = 9999U, /**< Rejected: mps > k_ra8_usb_pipemaxp_mxps. */
-  k_thb_speed_bogus = 9U,    /**< Not FS, not HS.                          */
-  k_thb_dtln_short  = 8U,    /**< Short packet (< mps) DTLN.               */
-  k_thb_room_small  = 4U,    /**< Destination smaller than the packet.     */
-  k_thb_len_ok      = 4U,    /**< In-range bulk-OUT length.                */
-  k_thb_len_too_big = 2000U, /**< Exceeds k_ra8_usb_pipe_max_packet.       */
-  k_thb_lnst_j      = 1U,    /**< SYSSTS0.LNST J-state sample.             */
-  k_thb_cfifo_seed  = 0xBBAAU,
+  k_thb_pipe        = 1U,      /**< Valid data pipe (1..9).                  */
+  k_thb_pipe_zero   = 0U,      /**< Rejected: pipe 0 is the DCP.             */
+  k_thb_pipe_hi     = 99U,     /**< Rejected: pipe > k_ra8_usb_max_pipe_num. */
+  k_thb_dev_addr    = 5U,      /**< Valid device address slot.               */
+  k_thb_dev_addr_hi = 200U,    /**< Rejected: addr > k_ra8_usb_dev_addr_max. */
+  k_thb_ep          = 1U,      /**< Valid endpoint number (1..15).           */
+  k_thb_ep_zero     = 0U,      /**< Rejected: endpoint 0.                    */
+  k_thb_ep_hi       = 99U,     /**< Rejected: ep > k_ra8_pipecfg_epnum_mask. */
+  k_thb_mps         = 64U,     /**< Common FS bulk max packet size.          */
+  k_thb_mps_zero    = 0U,      /**< Rejected: max packet 0.                  */
+  k_thb_mps_hi      = 9999U,   /**< Rejected: mps > k_ra8_usb_pipemaxp_mxps. */
+  k_thb_speed_bogus = 9U,      /**< Not FS, not HS.                          */
+  k_thb_dtln_short  = 8U,      /**< Short packet (< mps) DTLN.               */
+  k_thb_room_small  = 4U,      /**< Destination smaller than the packet.     */
+  k_thb_len_ok      = 4U,      /**< In-range bulk-OUT length.                */
+  k_thb_len_too_big = 2000U,   /**< Exceeds k_ra8_usb_pipe_max_packet.       */
+  k_thb_lnst_j      = 1U,      /**< SYSSTS0.LNST J-state sample.             */
+  k_thb_cfifo_seed  = 0xBBAAU, /**< Thb cfifo seed.                          */
 } thb_const_t;
 
 /**

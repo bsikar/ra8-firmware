@@ -15,11 +15,11 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_ra8_acmphs_test_ch_first = 0U,
-  k_ra8_acmphs_test_ch_mid   = 3U,
-  k_ra8_acmphs_test_ch_last  = 5U,
-  k_ra8_acmphs_test_ch_bad   = 6U,
-  k_ra8_acmphs_test_ch_way   = 200U,
+  k_ra8_acmphs_test_ch_first = 0U,   /**< RA8 acmphs test channel first. */
+  k_ra8_acmphs_test_ch_mid   = 3U,   /**< RA8 acmphs test channel mid.   */
+  k_ra8_acmphs_test_ch_last  = 5U,   /**< RA8 acmphs test channel last.  */
+  k_ra8_acmphs_test_ch_bad   = 6U,   /**< RA8 acmphs test channel bad.   */
+  k_ra8_acmphs_test_ch_way   = 200U, /**< RA8 acmphs test channel way.   */
 } ra8_acmphs_test_ch_t;
 
 /**

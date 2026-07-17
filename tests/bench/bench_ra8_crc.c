@@ -31,9 +31,9 @@
  * @brief Buffer sizes exercised by this benchmark.
  */
 typedef enum : uint32_t {
-  k_bench_crc_1k  = 1024U,
-  k_bench_crc_16k = 16U * 1024U,
-  k_bench_crc_1m  = 1024U * 1024U,
+  k_bench_crc_1k  = 1024U,         /**< Bench CRC 1k.  */
+  k_bench_crc_16k = 16U * 1024U,   /**< Bench CRC 16k. */
+  k_bench_crc_1m  = 1024U * 1024U, /**< Bench CRC 1m.  */
 } bench_crc_sizes_t;
 
 /** @brief Static input buffer sized to the largest case. */

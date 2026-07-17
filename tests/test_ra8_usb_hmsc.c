@@ -29,18 +29,18 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_cbw_off_signature   = 0U,
-  k_test_cbw_off_tag         = 4U,
-  k_test_cbw_off_data_length = 8U,
-  k_test_cbw_off_flags       = 12U,
-  k_test_cbw_off_lun         = 13U,
-  k_test_cbw_off_cdb_length  = 14U,
-  k_test_cbw_off_cdb         = 15U,
-  k_test_cbw_len             = 31U,
-  k_test_csw_off_signature   = 0U,
-  k_test_csw_off_tag         = 4U,
-  k_test_csw_off_status      = 12U,
-  k_test_csw_len             = 13U,
+  k_test_cbw_off_signature   = 0U,  /**< Test cbw off signature.   */
+  k_test_cbw_off_tag         = 4U,  /**< Test cbw off tag.         */
+  k_test_cbw_off_data_length = 8U,  /**< Test cbw off data length. */
+  k_test_cbw_off_flags       = 12U, /**< Test cbw off flags.       */
+  k_test_cbw_off_lun         = 13U, /**< Test cbw off lun.         */
+  k_test_cbw_off_cdb_length  = 14U, /**< Test cbw off cdb length.  */
+  k_test_cbw_off_cdb         = 15U, /**< Test cbw off cdb.         */
+  k_test_cbw_len             = 31U, /**< Test cbw length.          */
+  k_test_csw_off_signature   = 0U,  /**< Test csw off signature.   */
+  k_test_csw_off_tag         = 4U,  /**< Test csw off tag.         */
+  k_test_csw_off_status      = 12U, /**< Test csw off status.      */
+  k_test_csw_len             = 13U, /**< Test csw length.          */
 } test_hmsc_layout_t;
 
 /** @brief SYSSTS0.LNST J-state mirror value (D+ pulled up, FS idle). */

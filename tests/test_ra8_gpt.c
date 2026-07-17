@@ -16,19 +16,19 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_ra8_gpt_test_channel_valid  = 0U,
-  k_ra8_gpt_test_channel_middle = 7U,
-  k_ra8_gpt_test_channel_last   = 13U,
-  k_ra8_gpt_test_channel_bad    = 14U,
-  k_ra8_gpt_test_channel_huge   = 250U,
+  k_ra8_gpt_test_channel_valid  = 0U,   /**< RA8 GPT test channel valid.  */
+  k_ra8_gpt_test_channel_middle = 7U,   /**< RA8 GPT test channel middle. */
+  k_ra8_gpt_test_channel_last   = 13U,  /**< RA8 GPT test channel last.   */
+  k_ra8_gpt_test_channel_bad    = 14U,  /**< RA8 GPT test channel bad.    */
+  k_ra8_gpt_test_channel_huge   = 250U, /**< RA8 GPT test channel huge.   */
 } ra8_gpt_test_channel_t;
 
 typedef enum : uint32_t {
-  k_ra8_gpt_test_period   = 0xCAFEBABEUL,
-  k_ra8_gpt_test_count    = 0x01234567UL,
-  k_ra8_gpt_test_gtstp1   = 0x00000001UL,
-  k_ra8_gpt_test_gtstr1   = 0x00000001UL,
-  k_ra8_gpt_test_gtcr_saw = 0x00000001UL,
+  k_ra8_gpt_test_period   = 0xCAFEBABEUL, /**< RA8 GPT test period.   */
+  k_ra8_gpt_test_count    = 0x01234567UL, /**< RA8 GPT test count.    */
+  k_ra8_gpt_test_gtstp1   = 0x00000001UL, /**< RA8 GPT test gtstp1.   */
+  k_ra8_gpt_test_gtstr1   = 0x00000001UL, /**< RA8 GPT test gtstr1.   */
+  k_ra8_gpt_test_gtcr_saw = 0x00000001UL, /**< RA8 GPT test gtcr saw. */
 } ra8_gpt_test_const_t;
 
 /**
@@ -195,8 +195,8 @@ static void test_read_bad_channel(void)
  */
 
 typedef enum : uint32_t {
-  k_ra8_gpt_test_duty_a = 0x00010000UL,
-  k_ra8_gpt_test_duty_b = 0x00008000UL,
+  k_ra8_gpt_test_duty_a = 0x00010000UL, /**< RA8 GPT test duty a. */
+  k_ra8_gpt_test_duty_b = 0x00008000UL, /**< RA8 GPT test duty b. */
 } ra8_gpt_test_duty_t;
 
 static uint32_t s_gpt_cb_count;
@@ -646,28 +646,28 @@ static void test_gpt_dma_arg_validation(void)
  */
 
 typedef enum : uint32_t {
-  k_ra8_gpt_t2_period         = 0x0000FFFFUL,
-  k_ra8_gpt_t2_duty_u         = 0x00001000UL,
-  k_ra8_gpt_t2_duty_v         = 0x00002000UL,
-  k_ra8_gpt_t2_duty_w         = 0x00003000UL,
-  k_ra8_gpt_t2_dt_rise        = 0x00000100UL,
-  k_ra8_gpt_t2_dt_fall        = 0x00000200UL,
-  k_ra8_gpt_t2_period_2       = 0x00007777UL,
-  k_ra8_gpt_t2_duty_huge      = 0xFFFFFFFFUL,
-  k_ra8_gpt_t2_gtdtcr_tde     = 0x00000001UL,
-  k_ra8_gpt_t2_oae_mask       = 0x00000100UL,
-  k_ra8_gpt_t2_obe_mask       = 0x01000000UL,
-  k_ra8_gpt_t2_oadflt         = 0x00000040UL,
-  k_ra8_gpt_t2_active_high_a  = 0x00000009UL,
-  k_ra8_gpt_t2_active_low_a   = 0x00000006UL,
-  k_ra8_gpt_t2_oadf_drive_low = 0x00000400UL, /* 2 << 9 */
+  k_ra8_gpt_t2_period         = 0x0000FFFFUL, /**< RA8 GPT t2 period.                  */
+  k_ra8_gpt_t2_duty_u         = 0x00001000UL, /**< RA8 GPT t2 duty u.                  */
+  k_ra8_gpt_t2_duty_v         = 0x00002000UL, /**< RA8 GPT t2 duty v.                  */
+  k_ra8_gpt_t2_duty_w         = 0x00003000UL, /**< RA8 GPT t2 duty w.                  */
+  k_ra8_gpt_t2_dt_rise        = 0x00000100UL, /**< RA8 GPT t2 dt rise.                 */
+  k_ra8_gpt_t2_dt_fall        = 0x00000200UL, /**< RA8 GPT t2 dt fall.                 */
+  k_ra8_gpt_t2_period_2       = 0x00007777UL, /**< RA8 GPT t2 period 2.                */
+  k_ra8_gpt_t2_duty_huge      = 0xFFFFFFFFUL, /**< RA8 GPT t2 duty huge.               */
+  k_ra8_gpt_t2_gtdtcr_tde     = 0x00000001UL, /**< RA8 GPT t2 gtdtcr tde.              */
+  k_ra8_gpt_t2_oae_mask       = 0x00000100UL, /**< RA8 GPT t2 oae mask.                */
+  k_ra8_gpt_t2_obe_mask       = 0x01000000UL, /**< RA8 GPT t2 obe mask.                */
+  k_ra8_gpt_t2_oadflt         = 0x00000040UL, /**< RA8 GPT t2 oadflt.                  */
+  k_ra8_gpt_t2_active_high_a  = 0x00000009UL, /**< RA8 GPT t2 active high a.           */
+  k_ra8_gpt_t2_active_low_a   = 0x00000006UL, /**< RA8 GPT t2 active low a.            */
+  k_ra8_gpt_t2_oadf_drive_low = 0x00000400UL, /**< RA8 GPT t2 oadf drive low (2 << 9). */
 } ra8_gpt_t2_const_t;
 
 typedef enum : uint8_t {
-  k_ra8_gpt_t2_ch_u   = 0U,
-  k_ra8_gpt_t2_ch_v   = 1U,
-  k_ra8_gpt_t2_ch_w   = 2U,
-  k_ra8_gpt_t2_ch_bad = 200U,
+  k_ra8_gpt_t2_ch_u   = 0U,   /**< RA8 GPT t2 channel u.   */
+  k_ra8_gpt_t2_ch_v   = 1U,   /**< RA8 GPT t2 channel v.   */
+  k_ra8_gpt_t2_ch_w   = 2U,   /**< RA8 GPT t2 channel w.   */
+  k_ra8_gpt_t2_ch_bad = 200U, /**< RA8 GPT t2 channel bad. */
 } ra8_gpt_t2_ch_t;
 
 /**

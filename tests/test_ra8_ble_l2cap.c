@@ -21,17 +21,17 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_l2cap_role_bogus  = 99U,
-  k_test_evt_disconn       = 0x05U,
-  k_test_evt_le_meta       = 0x3EU,
-  k_test_evt_unrecognised  = 0x12U,
-  k_test_subev_conn_compl  = 0x01U,
-  k_test_subev_other       = 0x0AU,
-  k_test_min_disconn_bytes = 4U,
-  k_test_min_lemeta_bytes  = 19U,
-  k_test_status_success    = 0x00U,
-  k_test_handle_lo         = 0x42U,
-  k_test_handle_hi         = 0x00U,
+  k_test_l2cap_role_bogus  = 99U,   /**< Test L2CAP role bogus.      */
+  k_test_evt_disconn       = 0x05U, /**< Test evt disconn.           */
+  k_test_evt_le_meta       = 0x3EU, /**< Test evt le meta.           */
+  k_test_evt_unrecognised  = 0x12U, /**< Test evt unrecognised.      */
+  k_test_subev_conn_compl  = 0x01U, /**< Test subev conn compl.      */
+  k_test_subev_other       = 0x0AU, /**< Test subev other.           */
+  k_test_min_disconn_bytes = 4U,    /**< Test minimum disconn bytes. */
+  k_test_min_lemeta_bytes  = 19U,   /**< Test minimum lemeta bytes.  */
+  k_test_status_success    = 0x00U, /**< Test status success.        */
+  k_test_handle_lo         = 0x42U, /**< Test handle lo.             */
+  k_test_handle_hi         = 0x00U, /**< Test handle hi.             */
 } test_l2cap_t;
 
 static void prep(void)

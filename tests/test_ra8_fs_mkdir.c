@@ -32,14 +32,14 @@
  * @brief Synthetic block-device sizes.
  */
 typedef enum : uint32_t {
-  k_disk_block_size   = 512U,
-  k_disk_blocks_fat16 = 8U * 1024U,
+  k_disk_block_size   = 512U,       /**< Disk block size.   */
+  k_disk_blocks_fat16 = 8U * 1024U, /**< Disk blocks fat16. */
 } ra8_fs_mkdir_disk_t;
 
 typedef struct {
-  uint8_t* bytes;
-  uint32_t block_count;
-  uint32_t byte_count;
+  uint8_t* bytes;       /**< Bytes.       */
+  uint32_t block_count; /**< Block count. */
+  uint32_t byte_count;  /**< Byte count.  */
 } mem_disk_t;
 
 static mem_disk_t s_disk = {};

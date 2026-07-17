@@ -51,8 +51,8 @@ typedef enum : uint16_t {
 
 /** @brief Decimal-format sizing (mirror of the app). */
 typedef enum : uint8_t {
-  k_t_ep_dec_digits = 10U,
-  k_t_ep_radix      = 10U,
+  k_t_ep_dec_digits = 10U, /**< T ep dec digits. */
+  k_t_ep_radix      = 10U, /**< T ep radix.      */
 } t_ep_fmt_t;
 
 /** @brief Mirror of ep_checker_px(). */

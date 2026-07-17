@@ -86,8 +86,8 @@
 /* -------------------------------------------------------------------------- */
 
 typedef enum : uint8_t {
-  k_test_pass = 0U,
-  k_test_fail = 1U,
+  k_test_pass = 0U, /**< Test pass. */
+  k_test_fail = 1U, /**< Test fail. */
 } test_result_t;
 
 static uint32_t s_total = 0U;

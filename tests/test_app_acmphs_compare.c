@@ -22,8 +22,8 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_acmphs_app_channel = 0U,
-  k_test_acmphs_app_bad_ch  = 9U,
+  k_test_acmphs_app_channel = 0U, /**< Test acmphs app channel.     */
+  k_test_acmphs_app_bad_ch  = 9U, /**< Test acmphs app bad channel. */
 } test_acmphs_chan_t;
 
 static void reset_world(void)

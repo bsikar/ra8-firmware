@@ -21,19 +21,19 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_test_filter_id_exact   = 0x100U,
-  k_test_filter_id_mask    = 0x110U,
-  k_test_filter_mask_low4  = 0x7F0U,
-  k_test_filter_mask_full  = 0x7FFU,
-  k_test_filter_id_nomatch = 0x200U,
-  k_test_filter_bitrate    = 500000U,
+  k_test_filter_id_exact   = 0x100U,  /**< Test filter ID exact.   */
+  k_test_filter_id_mask    = 0x110U,  /**< Test filter ID mask.    */
+  k_test_filter_mask_low4  = 0x7F0U,  /**< Test filter mask low4.  */
+  k_test_filter_mask_full  = 0x7FFU,  /**< Test filter mask full.  */
+  k_test_filter_id_nomatch = 0x200U,  /**< Test filter ID nomatch. */
+  k_test_filter_bitrate    = 500000U, /**< Test filter bitrate.    */
 } test_filter_const_t;
 
 typedef enum : uint8_t {
-  k_test_filter_channel = 0U,
-  k_test_filter_slot_a  = 0U,
-  k_test_filter_slot_b  = 1U,
-  k_test_filter_dlc     = 8U,
+  k_test_filter_channel = 0U, /**< Test filter channel. */
+  k_test_filter_slot_a  = 0U, /**< Test filter slot a.  */
+  k_test_filter_slot_b  = 1U, /**< Test filter slot b.  */
+  k_test_filter_dlc     = 8U, /**< Test filter dlc.     */
 } test_filter_layout_t;
 
 static void reset_world(void)

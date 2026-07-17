@@ -34,7 +34,7 @@
 
 /** @brief Capacity (bytes) of the loopback BIO ring buffer. */
 typedef enum : uint16_t {
-  k_loop_buf_capacity = 256U,
+  k_loop_buf_capacity = 256U, /**< Loop buffer capacity. */
 } loop_buf_capacity_t;
 
 /**

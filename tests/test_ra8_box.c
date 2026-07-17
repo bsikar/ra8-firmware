@@ -22,7 +22,7 @@
 #include "unity_minimal.h"
 
 /** @brief Node-storage capacity for the test trees. */
-enum : uint16_t { k_box_cap = 32U };
+enum : uint16_t { k_box_cap = 32U /**< Box cap. */ };
 
 /** @brief A leaf node template. */
 static ra8_box_t leaf(int16_t fixed, uint16_t flex)

@@ -24,21 +24,21 @@
  * ------------------------------------------------------------------------- */
 
 enum : uint8_t {
-  k_mock_pulse_log_capacity = 32,
+  k_mock_pulse_log_capacity = 32, /**< Mock pulse log capacity. */
 };
 
 typedef struct {
-  ra8_power_profile_region_id_t region_id;
-  bool                          entering;
+  ra8_power_profile_region_id_t region_id; /**< Region ID. */
+  bool                          entering;  /**< Entering.  */
 } mock_pulse_record_t;
 
 typedef struct {
-  mock_pulse_record_t log[k_mock_pulse_log_capacity];
-  uint8_t             count;
+  mock_pulse_record_t log[k_mock_pulse_log_capacity]; /**< Log.   */
+  uint8_t             count;                          /**< Count. */
 } mock_gpio_t;
 
 typedef struct {
-  uint64_t now_us;
+  uint64_t now_us; /**< Now us. */
 } mock_rtc_t;
 
 static void mock_gpio_pulse(void* ctx, ra8_power_profile_region_id_t region_id, bool entering)

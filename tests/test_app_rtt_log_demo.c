@@ -21,14 +21,14 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_test_rtt_buf_bytes = 16U,
+  k_test_rtt_buf_bytes = 16U, /**< Test rtt buffer bytes. */
 } test_rtt_const_t;
 
 typedef struct {
-  uint8_t  buf[k_test_rtt_buf_bytes];
-  uint32_t wr_off;
-  uint32_t rd_off;
-  uint32_t size;
+  uint8_t  buf[k_test_rtt_buf_bytes]; /**< Buffer. */
+  uint32_t wr_off;                    /**< Wr off. */
+  uint32_t rd_off;                    /**< Rd off. */
+  uint32_t size;                      /**< Size.   */
 } test_rtt_ring_t;
 
 static test_rtt_ring_t s_ring;

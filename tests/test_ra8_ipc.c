@@ -15,25 +15,25 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_ra8_ipc_test_ch_first = 0U,
-  k_ra8_ipc_test_ch_one   = 1U,
-  k_ra8_ipc_test_ch_mid   = 2U,
-  k_ra8_ipc_test_ch_last  = 3U,
-  k_ra8_ipc_test_ch_bad   = 4U,
-  k_ra8_ipc_test_ch_way   = 200U,
-  k_ra8_ipc_test_unit_bad = 7U,
-  k_ra8_ipc_test_sem_bad  = 16U,
-  k_ra8_ipc_test_ring_cap = 4U,
-  k_ra8_ipc_test_burst    = 6U,
+  k_ra8_ipc_test_ch_first = 0U,   /**< RA8 ipc test channel first. */
+  k_ra8_ipc_test_ch_one   = 1U,   /**< RA8 ipc test channel one.   */
+  k_ra8_ipc_test_ch_mid   = 2U,   /**< RA8 ipc test channel mid.   */
+  k_ra8_ipc_test_ch_last  = 3U,   /**< RA8 ipc test channel last.  */
+  k_ra8_ipc_test_ch_bad   = 4U,   /**< RA8 ipc test channel bad.   */
+  k_ra8_ipc_test_ch_way   = 200U, /**< RA8 ipc test channel way.   */
+  k_ra8_ipc_test_unit_bad = 7U,   /**< RA8 ipc test unit bad.      */
+  k_ra8_ipc_test_sem_bad  = 16U,  /**< RA8 ipc test sem bad.       */
+  k_ra8_ipc_test_ring_cap = 4U,   /**< RA8 ipc test ring cap.      */
+  k_ra8_ipc_test_burst    = 6U,   /**< RA8 ipc test burst.         */
 } ra8_ipc_test_ch_t;
 
 typedef enum : uint32_t {
-  k_ra8_ipc_test_msg_a    = 0xDEADBEEFUL,
-  k_ra8_ipc_test_msg_b    = 0x12345678UL,
-  k_ra8_ipc_test_msg_c    = 0xCAFEBABEUL,
-  k_ra8_ipc_test_attr_ctx = 0xA5A5A5A5UL,
-  k_ra8_ipc_test_irq_ctx  = 0x5A5A5A5AUL,
-  k_ra8_ipc_test_nmi_ctx  = 0xC0FFEE00UL,
+  k_ra8_ipc_test_msg_a    = 0xDEADBEEFUL, /**< RA8 ipc test message a. */
+  k_ra8_ipc_test_msg_b    = 0x12345678UL, /**< RA8 ipc test message b. */
+  k_ra8_ipc_test_msg_c    = 0xCAFEBABEUL, /**< RA8 ipc test message c. */
+  k_ra8_ipc_test_attr_ctx = 0xA5A5A5A5UL, /**< RA8 ipc test attr ctx.  */
+  k_ra8_ipc_test_irq_ctx  = 0x5A5A5A5AUL, /**< RA8 ipc test IRQ ctx.   */
+  k_ra8_ipc_test_nmi_ctx  = 0xC0FFEE00UL, /**< RA8 ipc test nmi ctx.   */
 } ra8_ipc_test_const_t;
 
 static uint32_t s_ipc_cb_count;

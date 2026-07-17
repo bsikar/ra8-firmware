@@ -25,19 +25,19 @@
 
 /** @brief Mirror of the demo's app-local clock-pair constants. */
 typedef enum : uint32_t {
-  k_t_cac_main_hz   = 24000000U,
-  k_t_cac_loco_hz   = 32768U,
-  k_t_cac_ref_div   = 32U,
-  k_t_cac_tol_shift = 4U,
-  k_t_cac_expected  = 23437U, /**< 24e6 * 32 / 32768. */
+  k_t_cac_main_hz   = 24000000U, /**< T cac main Hz.     */
+  k_t_cac_loco_hz   = 32768U,    /**< T cac loco Hz.     */
+  k_t_cac_ref_div   = 32U,       /**< T cac ref div.     */
+  k_t_cac_tol_shift = 4U,        /**< T cac tol shift.   */
+  k_t_cac_expected  = 23437U,    /**< 24e6 * 32 / 32768. */
 } t_cac_calc_t;
 
 typedef enum : uint8_t {
-  k_t_cac_cacr1_main = 0x00U,
-  k_t_cac_cacr2_loco = 0x09U,
-  k_t_cac_ferrf      = 0x01U, /**< CASTR FERRF bit. */
-  k_t_cac_mendf      = 0x02U, /**< CASTR MENDF bit. */
-  k_t_cac_ovff       = 0x04U, /**< CASTR OVFF bit.  */
+  k_t_cac_cacr1_main = 0x00U, /**< T cac cacr1 main. */
+  k_t_cac_cacr2_loco = 0x09U, /**< T cac cacr2 loco. */
+  k_t_cac_ferrf      = 0x01U, /**< CASTR FERRF bit.  */
+  k_t_cac_mendf      = 0x02U, /**< CASTR MENDF bit.  */
+  k_t_cac_ovff       = 0x04U, /**< CASTR OVFF bit.   */
 } t_cac_bits_t;
 
 /** @brief Mirror of cac_demo_expected(). */

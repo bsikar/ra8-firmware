@@ -393,9 +393,9 @@ static void test_produce_png_colortypes(void)
 {
   TEST_BEGIN("produce: PNG colour types 0/2/3/3+tRNS/4/6, filtered rows, parity");
   const struct {
-    uint8_t ct;
-    bool    trns;
-    uint8_t bpp;
+    uint8_t ct;   /**< Ct.   */
+    bool    trns; /**< Trns. */
+    uint8_t bpp;  /**< Bpp.  */
   } cases[6] = {
     {0U, false, 1U},
     {2U, false, 3U},

@@ -28,9 +28,10 @@
 #include "ra8_jpeg_sw.h"
 
 enum : uint32_t {
-  k_fuzz_jpeg_block_max_input  = 16U * 1024U,
-  k_fuzz_jpeg_block_out_pixels = 16U * 16U,
-  k_fuzz_jpeg_block_out_bytes  = k_fuzz_jpeg_block_out_pixels * 3U,
+  k_fuzz_jpeg_block_max_input  = 16U * 1024U, /**< Fuzz JPEG block maximum input. */
+  k_fuzz_jpeg_block_out_pixels = 16U * 16U,   /**< Fuzz JPEG block out pixels.    */
+  k_fuzz_jpeg_block_out_bytes =
+    k_fuzz_jpeg_block_out_pixels * 3U, /**< Fuzz JPEG block out bytes. */
 };
 
 /*

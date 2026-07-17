@@ -20,7 +20,7 @@ typedef enum : uint8_t {
 } test_rcr2_t;
 
 typedef enum : uint16_t {
-  k_test_rtc_year = 2026U,
+  k_test_rtc_year = 2026U, /**< Test rtc year. */
 } test_rtc_year_t;
 
 /**

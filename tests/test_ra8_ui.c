@@ -25,15 +25,15 @@
  * @brief Test-only screen ids and geometry.
  */
 typedef enum : uint16_t {
-  k_ui_scr_library = 1U,
-  k_ui_scr_reading = 2U,
-  k_ui_scr_toc     = 3U,
-  k_ui_act_open    = 100U,
-  k_ui_act_back    = 101U,
-  k_ui_rect_x      = 10U,
-  k_ui_rect_y      = 20U,
-  k_ui_rect_w      = 30U,
-  k_ui_rect_h      = 40U,
+  k_ui_scr_library = 1U,   /**< Ui scr library. */
+  k_ui_scr_reading = 2U,   /**< Ui scr reading. */
+  k_ui_scr_toc     = 3U,   /**< Ui scr TOC.     */
+  k_ui_act_open    = 100U, /**< Ui act open.    */
+  k_ui_act_back    = 101U, /**< Ui act back.    */
+  k_ui_rect_x      = 10U,  /**< Ui rect x.      */
+  k_ui_rect_y      = 20U,  /**< Ui rect y.      */
+  k_ui_rect_w      = 30U,  /**< Ui rect w.      */
+  k_ui_rect_h      = 40U,  /**< Ui rect h.      */
 } ui_test_const_t;
 
 /* ===========================================================================

@@ -25,7 +25,7 @@
 
 /** @brief Bit-cast widths used for packing WUPEN1 into the high word. */
 typedef enum : uint8_t {
-  k_wake_matrix_test_wupen1_shift = 32U,
+  k_wake_matrix_test_wupen1_shift = 32U, /**< Wake matrix test wupen1 shift. */
 } wake_matrix_test_shifts_t;
 
 static void reset_world(void)

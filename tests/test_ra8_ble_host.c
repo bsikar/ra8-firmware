@@ -50,23 +50,23 @@ ra8_err_t ra8_ble_host_l2cap_send(uint16_t       conn_handle,
                                   uint16_t       payload_len);
 
 typedef enum : uint16_t {
-  k_test_op_le_set_adv_params = 0x2006U,
-  k_test_op_le_set_adv_data   = 0x2008U,
-  k_test_op_le_set_adv_enable = 0x200AU,
-  k_test_conn_handle          = 0x0040U,
-  k_test_l2cap_cid_att        = 0x0004U,
-  k_test_default_appearance   = 0x0040U,
-  k_test_adv_interval_ms      = 100U,
-  k_test_adv_interval_too_low = 1U,
-  k_test_value_buf_size       = 32U,
+  k_test_op_le_set_adv_params = 0x2006U, /**< Test op le set adv params. */
+  k_test_op_le_set_adv_data   = 0x2008U, /**< Test op le set adv data.   */
+  k_test_op_le_set_adv_enable = 0x200AU, /**< Test op le set adv enable. */
+  k_test_conn_handle          = 0x0040U, /**< Test conn handle.          */
+  k_test_l2cap_cid_att        = 0x0004U, /**< Test L2CAP cid ATT.        */
+  k_test_default_appearance   = 0x0040U, /**< Test default appearance.   */
+  k_test_adv_interval_ms      = 100U,    /**< Test adv interval ms.      */
+  k_test_adv_interval_too_low = 1U,      /**< Test adv interval too low. */
+  k_test_value_buf_size       = 32U,     /**< Test value buffer size.    */
 } ble_host_test_words_t;
 
 typedef enum : uint8_t {
-  k_test_pkt_cmd_byte     = 0x01U,
-  k_test_pkt_acl_byte     = 0x02U,
-  k_test_att_op_write_req = 0x12U,
-  k_test_att_op_read_req  = 0x0AU,
-  k_test_evt_count_zero   = 0U,
+  k_test_pkt_cmd_byte     = 0x01U, /**< Test pkt cmd byte.     */
+  k_test_pkt_acl_byte     = 0x02U, /**< Test pkt acl byte.     */
+  k_test_att_op_write_req = 0x12U, /**< Test ATT op write req. */
+  k_test_att_op_read_req  = 0x0AU, /**< Test ATT op read req.  */
+  k_test_evt_count_zero   = 0U,    /**< Test evt count zero.   */
 } ble_host_test_bytes_t;
 
 /* --------------------------------------------------------------------- */
@@ -475,18 +475,18 @@ static void test_advertise_stop_sends_disable(void)
 /* --------------------------------------------------------------------- */
 
 typedef enum : uint16_t {
-  k_mcdc_payload_len_zero     = 0U,
-  k_mcdc_payload_len_small    = 4U,
-  k_mcdc_test_cid_att         = 0x0004U,
-  k_mcdc_test_conn            = 0x0040U,
-  k_mcdc_acl_len_zero         = 0U,
-  k_mcdc_acl_len_minimal      = 4U,
-  k_mcdc_adv_data_len_zero    = 0U,
-  k_mcdc_adv_data_len_small   = 4U,
-  k_mcdc_adv_data_len_too_big = 64U,
-  k_mcdc_interval_too_low     = 1U,
-  k_mcdc_interval_ok          = 100U,
-  k_mcdc_interval_too_high    = 20000U,
+  k_mcdc_payload_len_zero     = 0U,      /**< Mcdc payload length zero.     */
+  k_mcdc_payload_len_small    = 4U,      /**< Mcdc payload length small.    */
+  k_mcdc_test_cid_att         = 0x0004U, /**< Mcdc test cid ATT.            */
+  k_mcdc_test_conn            = 0x0040U, /**< Mcdc test conn.               */
+  k_mcdc_acl_len_zero         = 0U,      /**< Mcdc acl length zero.         */
+  k_mcdc_acl_len_minimal      = 4U,      /**< Mcdc acl length minimal.      */
+  k_mcdc_adv_data_len_zero    = 0U,      /**< Mcdc adv data length zero.    */
+  k_mcdc_adv_data_len_small   = 4U,      /**< Mcdc adv data length small.   */
+  k_mcdc_adv_data_len_too_big = 64U,     /**< Mcdc adv data length too big. */
+  k_mcdc_interval_too_low     = 1U,      /**< Mcdc interval too low.        */
+  k_mcdc_interval_ok          = 100U,    /**< Mcdc interval ok.             */
+  k_mcdc_interval_too_high    = 20000U,  /**< Mcdc interval too high.       */
 } ble_l2cap_mcdc_vals_t;
 
 /**
@@ -790,8 +790,8 @@ static void test_mcdc_advertise_interval_range(void)
 void ra8_ble_host_att_handle_pdu(uint16_t conn_handle, const uint8_t* pdu, uint16_t pdu_len);
 
 typedef enum : uint16_t {
-  k_mcdc_att_pdu_len_zero  = 0U,
-  k_mcdc_att_pdu_len_small = 5U,
+  k_mcdc_att_pdu_len_zero  = 0U, /**< Mcdc ATT pdu length zero.  */
+  k_mcdc_att_pdu_len_small = 5U, /**< Mcdc ATT pdu length small. */
 } ble_att_mcdc_vals_t;
 
 /**
@@ -936,9 +936,9 @@ static void test_mcdc_att_handle_pdu_null_or_zero(void)
 /* --------------------------------------------------------------------- */
 
 typedef enum : uint16_t {
-  k_mcdc_gatt_buf_size      = 16U,
-  k_mcdc_gatt_payload_small = 4U,
-  k_mcdc_gatt_bad_handle    = 0xCAFEU,
+  k_mcdc_gatt_buf_size      = 16U,     /**< Mcdc GATT buffer size.   */
+  k_mcdc_gatt_payload_small = 4U,      /**< Mcdc GATT payload small. */
+  k_mcdc_gatt_bad_handle    = 0xCAFEU, /**< Mcdc GATT bad handle.    */
 } ble_gatt_mcdc_vals_t;
 
 /**

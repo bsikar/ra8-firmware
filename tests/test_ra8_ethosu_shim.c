@@ -60,13 +60,14 @@ static uint8_t s_shim_output[k_test_shim_arena_bytes];
  */
 static struct ethosu_driver* shim_prep(void)
 {
-  ra8_sim_mmap_reset();
-  struct ethosu_driver* drv = ethosu_reserve_driver();
-  TEST_ASSERT_NOT_NULL(drv);
+  ra8_sim_mmap_reset();                                /**< RA8 sim mmap reset.    */
+  struct ethosu_driver* drv = ethosu_reserve_driver(); /**< Ethosu reserve driver. */
+  TEST_ASSERT_NOT_NULL(drv);                           /**< Drv.                   */
   /* No real NPU reaches cmd_end here: latch it so the blocking ra8_npu_wait()
    * inside ethosu_invoke_v3() returns immediately (as the sim model would). */
-  *ra8_npu_reg(k_ra8_npu_off_status) = ((uint32_t)1U << k_ra8_npu_status_cmd_end_bit);
-  return drv;
+  *ra8_npu_reg(k_ra8_npu_off_status) =
+    ((uint32_t)1U << k_ra8_npu_status_cmd_end_bit); /**< RA8 npu status cmd end bit. */
+  return drv;                                       /**< Drv.                        */
 }
 
 /**

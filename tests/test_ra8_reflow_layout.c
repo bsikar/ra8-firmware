@@ -15,20 +15,20 @@
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
-  k_test_reflow_dim_zero  = 0U,
-  k_test_reflow_dim_ok    = 320U,
-  k_test_reflow_font_ok   = 16U,
-  k_test_reflow_font_low  = 4U,
-  k_test_reflow_font_high = 200U,
+  k_test_reflow_dim_zero  = 0U,   /**< Test reflow dim zero.  */
+  k_test_reflow_dim_ok    = 320U, /**< Test reflow dim ok.    */
+  k_test_reflow_font_ok   = 16U,  /**< Test reflow font ok.   */
+  k_test_reflow_font_low  = 4U,   /**< Test reflow font low.  */
+  k_test_reflow_font_high = 200U, /**< Test reflow font high. */
 } test_reflow_t;
 
 typedef enum : uint32_t {
-  k_test_reflow_color_black = 0x000000FFU,
-  k_test_reflow_color_blue  = 0x0000FFFFU,
+  k_test_reflow_color_black = 0x000000FFU, /**< Test reflow color black. */
+  k_test_reflow_color_blue  = 0x0000FFFFU, /**< Test reflow color blue.  */
 } test_reflow_color_t;
 
 typedef enum : size_t {
-  k_test_reflow_font_len_ok = 64U,
+  k_test_reflow_font_len_ok = 64U, /**< Test reflow font length ok. */
 } test_reflow_len_t;
 
 static const uint8_t s_dummy_font[64];

@@ -40,29 +40,29 @@ void ra8_ble_host_test_inject_acl(uint16_t conn_handle, const uint8_t* l2cap_fra
 void ra8_ble_host_test_inject_connect(uint16_t conn_handle);
 
 typedef enum : uint16_t {
-  k_test_conn_handle   = 0x0040U,
-  k_test_l2cap_cid_att = 0x0004U,
-  k_test_uuid16_char   = 0x2803U,
+  k_test_conn_handle   = 0x0040U, /**< Test conn handle.   */
+  k_test_l2cap_cid_att = 0x0004U, /**< Test L2CAP cid ATT. */
+  k_test_uuid16_char   = 0x2803U, /**< Test uuid16 char.   */
 } dispatch_words_t;
 
 typedef enum : uint8_t {
-  k_att_op_find_info_req    = 0x04U,
-  k_att_op_find_info_rsp    = 0x05U,
-  k_att_op_read_by_type_req = 0x08U,
-  k_att_op_read_by_type_rsp = 0x09U,
-  k_att_op_read_req         = 0x0AU,
-  k_att_op_read_rsp         = 0x0BU,
-  k_att_op_write_req        = 0x12U,
-  k_att_op_write_rsp        = 0x13U,
-  k_att_op_error_rsp        = 0x01U,
-  k_att_err_invalid_handle  = 0x01U,
-  k_att_err_attr_not_found  = 0x0AU,
-  k_l2cap_hdr_bytes         = 4U,
-  k_appearance_lo           = 0x40U,
-  k_appearance_hi           = 0x00U,
-  k_uuid_marker_svc         = 0xA0U,
-  k_uuid_marker_chr         = 0xB0U,
-  k_value_buf_bytes         = 8U,
+  k_att_op_find_info_req    = 0x04U, /**< ATT op find info req.     */
+  k_att_op_find_info_rsp    = 0x05U, /**< ATT op find info rsp.     */
+  k_att_op_read_by_type_req = 0x08U, /**< ATT op read by type req.  */
+  k_att_op_read_by_type_rsp = 0x09U, /**< ATT op read by type rsp.  */
+  k_att_op_read_req         = 0x0AU, /**< ATT op read req.          */
+  k_att_op_read_rsp         = 0x0BU, /**< ATT op read rsp.          */
+  k_att_op_write_req        = 0x12U, /**< ATT op write req.         */
+  k_att_op_write_rsp        = 0x13U, /**< ATT op write rsp.         */
+  k_att_op_error_rsp        = 0x01U, /**< ATT op error rsp.         */
+  k_att_err_invalid_handle  = 0x01U, /**< ATT error invalid handle. */
+  k_att_err_attr_not_found  = 0x0AU, /**< ATT error attr not found. */
+  k_l2cap_hdr_bytes         = 4U,    /**< L2CAP hdr bytes.          */
+  k_appearance_lo           = 0x40U, /**< Appearance lo.            */
+  k_appearance_hi           = 0x00U, /**< Appearance hi.            */
+  k_uuid_marker_svc         = 0xA0U, /**< Uuid marker svc.          */
+  k_uuid_marker_chr         = 0xB0U, /**< Uuid marker chr.          */
+  k_value_buf_bytes         = 8U,    /**< Value buffer bytes.       */
 } dispatch_bytes_t;
 
 /* ---------------------------------------------------------------------------
@@ -130,7 +130,7 @@ static void inject_att(const uint8_t* att_pdu, uint16_t att_len)
 {
   /* L2CAP header: payload_len(LE16) + cid(LE16) + payload. */
   enum : uint16_t {
-    k_max_frame_bytes = 64U,
+    k_max_frame_bytes = 64U, /**< Maximum frame bytes. */
   };
   uint8_t frame[k_max_frame_bytes];
   TEST_ASSERT(att_len <= (uint16_t)(k_max_frame_bytes - (uint16_t)k_l2cap_hdr_bytes));
@@ -623,7 +623,7 @@ static void test_dispatch_write_req_to_service_handle(void)
    * so writing to handle 1 hits a `kind == primary_service` row, taking the
    * C1=F branch of the AND at line 658. */
   enum : uint16_t {
-    k_svc_handle = 0x0001U,
+    k_svc_handle = 0x0001U, /**< Svc handle. */
   };
   const uint8_t pdu[5] = {
     (uint8_t)k_att_op_write_req,

@@ -19,13 +19,15 @@
  * @brief Numeric constants used by the tests.
  */
 typedef enum : uint32_t {
-  k_ra8_i3c_i2c_peripheral_test_ch0         = 0U,
-  k_ra8_i3c_i2c_peripheral_test_ch_oor      = 9U,
-  k_ra8_i3c_i2c_peripheral_test_addr_7b     = 0x42U,
-  k_ra8_i3c_i2c_peripheral_test_byte_a      = 0xA5U,
-  k_ra8_i3c_i2c_peripheral_test_byte_b      = 0x5AU,
-  k_ra8_i3c_i2c_peripheral_test_ntst_tdbef0 = 0x01U,
-  k_ra8_i3c_i2c_peripheral_test_ntst_rdbff0 = 0x02U,
+  k_ra8_i3c_i2c_peripheral_test_ch0     = 0U,    /**< RA8 I3C I2C peripheral test ch0.         */
+  k_ra8_i3c_i2c_peripheral_test_ch_oor  = 9U,    /**< RA8 I3C I2C peripheral test channel oor. */
+  k_ra8_i3c_i2c_peripheral_test_addr_7b = 0x42U, /**< RA8 I3C I2C peripheral test address 7b.  */
+  k_ra8_i3c_i2c_peripheral_test_byte_a  = 0xA5U, /**< RA8 I3C I2C peripheral test byte a.      */
+  k_ra8_i3c_i2c_peripheral_test_byte_b  = 0x5AU, /**< RA8 I3C I2C peripheral test byte b.      */
+  k_ra8_i3c_i2c_peripheral_test_ntst_tdbef0 =
+    0x01U, /**< RA8 I3C I2C peripheral test ntst tdbef0. */
+  k_ra8_i3c_i2c_peripheral_test_ntst_rdbff0 =
+    0x02U, /**< RA8 I3C I2C peripheral test ntst rdbff0. */
 } ra8_i3c_i2c_peripheral_test_const_t;
 
 static const ra8_i3c_i2c_peripheral_cfg_t k_cfg = {

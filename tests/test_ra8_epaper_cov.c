@@ -152,10 +152,14 @@ ra8_err_t ra8_epaper_display_area_cov(const ra8_epaper_area_t* area,
                                       ra8_epaper_waveform_t    waveform);
 ra8_err_t ra8_epaper_sleep_cov(void);
 
-#define ra8_epaper_init         ra8_epaper_init_cov
-#define ra8_epaper_load_image   ra8_epaper_load_image_cov
+/** @brief RA8 epaper init. */
+#define ra8_epaper_init ra8_epaper_init_cov
+/** @brief RA8 epaper load image. */
+#define ra8_epaper_load_image ra8_epaper_load_image_cov
+/** @brief RA8 epaper display area. */
 #define ra8_epaper_display_area ra8_epaper_display_area_cov
-#define ra8_epaper_sleep        ra8_epaper_sleep_cov
+/** @brief RA8 epaper sleep. */
+#define ra8_epaper_sleep ra8_epaper_sleep_cov
 
 #include "ra8_epaper.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
 

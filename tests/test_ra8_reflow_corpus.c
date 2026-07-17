@@ -363,9 +363,9 @@ static int build_gutenberg_epub(void)
     return 0;
   }
   struct {
-    const char* path;
-    const char* data;
-    mz_uint     flags;
+    const char* path;  /**< Path.  */
+    const char* data;  /**< Data.  */
+    mz_uint     flags; /**< Flags. */
   } entries[] = {
     {"mimetype", k_g_mimetype, MZ_NO_COMPRESSION},
     {"META-INF/container.xml", k_g_container, MZ_DEFAULT_COMPRESSION},

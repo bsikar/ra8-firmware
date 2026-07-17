@@ -22,56 +22,56 @@ typedef enum : uint16_t {
 } test_pmsc_lim_t;
 
 typedef enum : uint8_t {
-  k_test_pmsc_cbw_off_signature   = 0U,
-  k_test_pmsc_cbw_off_tag         = 4U,
-  k_test_pmsc_cbw_off_data_length = 8U,
-  k_test_pmsc_cbw_off_flags       = 12U,
-  k_test_pmsc_cbw_off_lun         = 13U,
-  k_test_pmsc_cbw_off_cdb_length  = 14U,
-  k_test_pmsc_cbw_off_cdb         = 15U,
-  k_test_pmsc_cbw_len             = 31U,
-  k_test_pmsc_csw_off_signature   = 0U,
-  k_test_pmsc_csw_off_tag         = 4U,
-  k_test_pmsc_csw_off_status      = 12U,
-  k_test_pmsc_csw_len             = 13U,
+  k_test_pmsc_cbw_off_signature   = 0U,  /**< Test pmsc cbw off signature.   */
+  k_test_pmsc_cbw_off_tag         = 4U,  /**< Test pmsc cbw off tag.         */
+  k_test_pmsc_cbw_off_data_length = 8U,  /**< Test pmsc cbw off data length. */
+  k_test_pmsc_cbw_off_flags       = 12U, /**< Test pmsc cbw off flags.       */
+  k_test_pmsc_cbw_off_lun         = 13U, /**< Test pmsc cbw off lun.         */
+  k_test_pmsc_cbw_off_cdb_length  = 14U, /**< Test pmsc cbw off cdb length.  */
+  k_test_pmsc_cbw_off_cdb         = 15U, /**< Test pmsc cbw off cdb.         */
+  k_test_pmsc_cbw_len             = 31U, /**< Test pmsc cbw length.          */
+  k_test_pmsc_csw_off_signature   = 0U,  /**< Test pmsc csw off signature.   */
+  k_test_pmsc_csw_off_tag         = 4U,  /**< Test pmsc csw off tag.         */
+  k_test_pmsc_csw_off_status      = 12U, /**< Test pmsc csw off status.      */
+  k_test_pmsc_csw_len             = 13U, /**< Test pmsc csw length.          */
 } test_pmsc_layout_t;
 
 typedef enum : uint32_t {
-  k_test_pmsc_block_count = 1000U,
-  k_test_pmsc_block_size  = 512U,
+  k_test_pmsc_block_count = 1000U, /**< Test pmsc block count. */
+  k_test_pmsc_block_size  = 512U,  /**< Test pmsc block size.  */
 } test_pmsc_capacity_t;
 
 typedef enum : uint8_t {
-  k_test_pmsc_scsi_inquiry          = 0x12U,
-  k_test_pmsc_scsi_read_capacity_10 = 0x25U,
-  k_test_pmsc_scsi_read_10          = 0x28U,
-  k_test_pmsc_scsi_write_10         = 0x2AU,
-  k_test_pmsc_scsi_test_unit_ready  = 0x00U,
-  k_test_pmsc_scsi_request_sense    = 0x03U,
-  k_test_pmsc_scsi_mode_sense_6     = 0x1AU,
+  k_test_pmsc_scsi_inquiry          = 0x12U, /**< Test pmsc scsi inquiry.          */
+  k_test_pmsc_scsi_read_capacity_10 = 0x25U, /**< Test pmsc scsi read capacity 10. */
+  k_test_pmsc_scsi_read_10          = 0x28U, /**< Test pmsc scsi read 10.          */
+  k_test_pmsc_scsi_write_10         = 0x2AU, /**< Test pmsc scsi write 10.         */
+  k_test_pmsc_scsi_test_unit_ready  = 0x00U, /**< Test pmsc scsi test unit ready.  */
+  k_test_pmsc_scsi_request_sense    = 0x03U, /**< Test pmsc scsi request sense.    */
+  k_test_pmsc_scsi_mode_sense_6     = 0x1AU, /**< Test pmsc scsi mode sense 6.     */
 } test_pmsc_scsi_t;
 
 typedef enum : uint16_t {
   /* One below the ra8_mstp refcount ceiling (UINT8_MAX). Enabling the
    * USB module this many times leaves the refcount saturated so the
    * next enable (inside ra8_usb_pmsc_init) returns an error. */
-  k_test_pmsc_mstp_saturate = 255U,
+  k_test_pmsc_mstp_saturate = 255U, /**< Test pmsc mstp saturate. */
   /* Buffer capacity below the 36-byte INQUIRY response but non-zero,
    * so the capacity guard passes and the handler's size guard fires. */
-  k_test_pmsc_tiny_cap = 4U,
+  k_test_pmsc_tiny_cap = 4U, /**< Test pmsc tiny cap. */
 } test_pmsc_sat_t;
 
 /* ---- Stub storage backend ---- */
 
 typedef struct {
-  uint32_t read_calls;
-  uint32_t write_calls;
-  uint32_t inquiry_calls;
-  uint32_t capacity_calls;
-  uint32_t last_lba;
-  uint32_t last_block_count;
-  uint8_t  last_write_byte;
-  uint8_t  read_fill_byte;
+  uint32_t read_calls;       /**< Read calls.       */
+  uint32_t write_calls;      /**< Write calls.      */
+  uint32_t inquiry_calls;    /**< Inquiry calls.    */
+  uint32_t capacity_calls;   /**< Capacity calls.   */
+  uint32_t last_lba;         /**< Last lba.         */
+  uint32_t last_block_count; /**< Last block count. */
+  uint8_t  last_write_byte;  /**< Last write byte.  */
+  uint8_t  read_fill_byte;   /**< Read fill byte.   */
 } test_storage_state_t;
 
 static test_storage_state_t s_storage_state;

@@ -32,10 +32,10 @@
 
 /** @brief Per-test enums. */
 typedef enum : uint32_t {
-  k_test_ipc_pair_zero = 0U,
-  k_test_ipc_ping_word = 0x70696E67U, /**< ASCII "ping". */
-  k_test_ipc_retry_max = 16U,
-  k_test_ipc_bad_pair  = 99U,
+  k_test_ipc_pair_zero = 0U,          /**< Test ipc pair zero.     */
+  k_test_ipc_ping_word = 0x70696E67U, /**< ASCII "ping".           */
+  k_test_ipc_retry_max = 16U,         /**< Test ipc retry maximum. */
+  k_test_ipc_bad_pair  = 99U,         /**< Test ipc bad pair.      */
 } test_ipc_const_t;
 
 /**

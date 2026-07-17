@@ -53,6 +53,7 @@
 #include "ra8_fs.h"
 
 #ifndef RA8_EXFAT_FIXTURE
+/** @brief RA8 EXFAT FIXTURE. */
 #define RA8_EXFAT_FIXTURE "exfat_small.img"
 #endif
 
@@ -60,7 +61,7 @@ static const char k_expect[] = "Hello exFAT from the ra_fs standalone test 12345
 
 /* #104: a payload that spans several 4 KiB exFAT clusters (with an odd tail) so
  * the write/read/free paths exercise their multi-cluster branches. */
-enum : uint32_t { k_mc_payload_bytes = 12425U };
+enum : uint32_t { k_mc_payload_bytes = 12425U /**< Mc payload bytes. */ };
 
 static uint8_t* g_img;
 static uint32_t g_blocks;

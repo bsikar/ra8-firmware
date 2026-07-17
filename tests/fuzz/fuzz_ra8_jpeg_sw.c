@@ -28,8 +28,8 @@
  * decoding, but the decoder itself enforces buffer sizing.
  */
 enum : uint32_t {
-  k_fuzz_jpeg_max_pixels = 256U * 256U,
-  k_fuzz_jpeg_out_bytes  = k_fuzz_jpeg_max_pixels * 3U,
+  k_fuzz_jpeg_max_pixels = 256U * 256U,                 /**< Fuzz JPEG maximum pixels. */
+  k_fuzz_jpeg_out_bytes  = k_fuzz_jpeg_max_pixels * 3U, /**< Fuzz JPEG out bytes.      */
 };
 
 static uint8_t s_out_buf[k_fuzz_jpeg_out_bytes];

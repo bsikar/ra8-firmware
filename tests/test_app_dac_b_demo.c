@@ -20,14 +20,14 @@
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
-  k_test_dac_b_full_scale = 4095U,
-  k_test_dac_b_mid        = 2048U,
-  k_test_dac_b_over       = 0xFFFFU,
+  k_test_dac_b_full_scale = 4095U,   /**< Test DAC b full scale. */
+  k_test_dac_b_mid        = 2048U,   /**< Test DAC b mid.        */
+  k_test_dac_b_over       = 0xFFFFU, /**< Test DAC b over.       */
 } test_dac_b_const_t;
 
 typedef enum : uint8_t {
-  k_test_dac_b_channel     = 0U,
-  k_test_dac_b_channel_bad = 99U,
+  k_test_dac_b_channel     = 0U,  /**< Test DAC b channel.     */
+  k_test_dac_b_channel_bad = 99U, /**< Test DAC b channel bad. */
 } test_dac_b_chan_t;
 
 static void reset_world(void)

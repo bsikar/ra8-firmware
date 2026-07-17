@@ -21,6 +21,7 @@
 
 /* Make every level visible so the macros bind to the internal_*
  * entry points rather than no-ops. */
+/** @brief RA8 LOG LEVEL. */
 #define RA8_LOG_LEVEL k_ra8_log_level_debug
 
 #include "ra8_err.h"
@@ -35,9 +36,9 @@
  * state and drive the full emit path.
  */
 typedef enum : uintptr_t {
-  k_test_itm_stim0 = 0xE0000000UL,
-  k_test_itm_tcr   = 0xE0000E80UL,
-  k_test_itm_tenr  = 0xE0000E00UL,
+  k_test_itm_stim0 = 0xE0000000UL, /**< Test itm stim0. */
+  k_test_itm_tcr   = 0xE0000E80UL, /**< Test itm tcr.   */
+  k_test_itm_tenr  = 0xE0000E00UL, /**< Test itm tenr.  */
 } test_itm_addr_t;
 
 /**
@@ -292,8 +293,8 @@ static void test_log_ready_fifo_full(void)
  * ------------------------------------------------------------------------- */
 
 typedef struct {
-  ra8_err_t   code;
-  const char* text;
+  ra8_err_t   code; /**< Code. */
+  const char* text; /**< Text. */
 } test_err_entry_t;
 
 static const test_err_entry_t s_all_err_codes[] = {

@@ -40,65 +40,65 @@
 
 /** @brief Slab fixture sizing (matches main.c). */
 typedef enum : uint32_t {
-  k_slab_pool_bytes = 512U,
-  k_slab_cell_bytes = 64U,
-  k_slab_cells      = 8U,
-  k_slab_freed      = 3U,
+  k_slab_pool_bytes = 512U, /**< Slab pool bytes. */
+  k_slab_cell_bytes = 64U,  /**< Slab cell bytes. */
+  k_slab_cells      = 8U,   /**< Slab cells.      */
+  k_slab_freed      = 3U,   /**< Slab freed.      */
 } slab_fix_t;
 
 /** @brief Arena fixture sizing (matches main.c). */
 typedef enum : uint32_t {
-  k_arena_pool_bytes = 4096U,
-  k_arena_carve0     = 1000U,
-  k_arena_carve1     = 2000U,
-  k_arena_big        = 2000U,
-  k_arena_align0     = 8U,
-  k_arena_align1     = 16U,
+  k_arena_pool_bytes = 4096U, /**< Arena pool bytes. */
+  k_arena_carve0     = 1000U, /**< Arena carve0.     */
+  k_arena_carve1     = 2000U, /**< Arena carve1.     */
+  k_arena_big        = 2000U, /**< Arena big.        */
+  k_arena_align0     = 8U,    /**< Arena align0.     */
+  k_arena_align1     = 16U,   /**< Arena align1.     */
 } arena_fix_t;
 
 /** @brief Tile-cache fixture sizing + expected counters (matches main.c). */
 typedef enum : uint32_t {
-  k_tile_cell_bytes = 64U,
-  k_tile_cells      = 4U,
-  k_tile_buckets    = 8U,
-  k_tile_distinct   = 8U,
-  k_tile_exp_hits   = 4U,
-  k_tile_exp_miss   = 9U,
-  k_tile_exp_evict  = 5U,
-  k_tile_dim        = 16U,
+  k_tile_cell_bytes = 64U, /**< Tile cell bytes. */
+  k_tile_cells      = 4U,  /**< Tile cells.      */
+  k_tile_buckets    = 8U,  /**< Tile buckets.    */
+  k_tile_distinct   = 8U,  /**< Tile distinct.   */
+  k_tile_exp_hits   = 4U,  /**< Tile exp hits.   */
+  k_tile_exp_miss   = 9U,  /**< Tile exp miss.   */
+  k_tile_exp_evict  = 5U,  /**< Tile exp evict.  */
+  k_tile_dim        = 16U, /**< Tile dim.        */
 } tile_fix_t;
 
 /** @brief vmem_stream fixture sizing + windows + expected CRC (matches main.c). */
 typedef enum : uint32_t {
-  k_vmem_frame_bytes = 512U,
-  k_vmem_frames      = 4U,
-  k_vmem_buckets     = 8U,
-  k_vmem_objs        = 1U,
-  k_vmem_obj_bytes   = 1048576U,
-  k_win_buf_bytes    = 1024U,
-  k_win0_off         = 0U,
-  k_win0_len         = 100U,
-  k_win1_off         = 500U,
-  k_win1_len         = 100U,
-  k_win2_off         = 1000U,
-  k_win2_len         = 1000U,
-  k_win_eof_back     = 50U,
-  k_win_eof_len      = 100U,
-  k_win_past_len     = 10U,
-  k_vmem_exp_crc     = 0xD1E67963U,
+  k_vmem_frame_bytes = 512U,        /**< Vmem frame bytes. */
+  k_vmem_frames      = 4U,          /**< Vmem frames.      */
+  k_vmem_buckets     = 8U,          /**< Vmem buckets.     */
+  k_vmem_objs        = 1U,          /**< Vmem objs.        */
+  k_vmem_obj_bytes   = 1048576U,    /**< Vmem obj bytes.   */
+  k_win_buf_bytes    = 1024U,       /**< Win buffer bytes. */
+  k_win0_off         = 0U,          /**< Win0 off.         */
+  k_win0_len         = 100U,        /**< Win0 length.      */
+  k_win1_off         = 500U,        /**< Win1 off.         */
+  k_win1_len         = 100U,        /**< Win1 length.      */
+  k_win2_off         = 1000U,       /**< Win2 off.         */
+  k_win2_len         = 1000U,       /**< Win2 length.      */
+  k_win_eof_back     = 50U,         /**< Win eof back.     */
+  k_win_eof_len      = 100U,        /**< Win eof length.   */
+  k_win_past_len     = 10U,         /**< Win past length.  */
+  k_vmem_exp_crc     = 0xD1E67963U, /**< Vmem exp CRC.     */
 } vmem_fix_t;
 
 /** @brief Deterministic generator + CRC-32 constants (match main.c). */
 typedef enum : uint32_t {
-  k_gen_mul       = 0x9E3779B1U,
-  k_gen_add       = 0x00A5A5A5U,
-  k_gen_shift_a   = 5U,
-  k_gen_shift_b   = 13U,
-  k_gen_shift_out = 24U,
-  k_crc_init      = 0xFFFFFFFFU,
-  k_crc_xorout    = 0xFFFFFFFFU,
-  k_crc_poly      = 0xEDB88320U,
-  k_crc_bits      = 8U,
+  k_gen_mul       = 0x9E3779B1U, /**< Gen mul.       */
+  k_gen_add       = 0x00A5A5A5U, /**< Gen add.       */
+  k_gen_shift_a   = 5U,          /**< Gen shift a.   */
+  k_gen_shift_b   = 13U,         /**< Gen shift b.   */
+  k_gen_shift_out = 24U,         /**< Gen shift out. */
+  k_crc_init      = 0xFFFFFFFFU, /**< CRC init.      */
+  k_crc_xorout    = 0xFFFFFFFFU, /**< CRC xorout.    */
+  k_crc_poly      = 0xEDB88320U, /**< CRC poly.      */
+  k_crc_bits      = 8U,          /**< CRC bits.      */
 } gen_crc_t;
 
 /* --- shared drive helpers (identical logic to the app) -------------------- */

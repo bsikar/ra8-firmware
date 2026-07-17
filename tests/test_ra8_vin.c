@@ -45,7 +45,7 @@ typedef enum : uint32_t {
  * @brief Sample field values for the field-detect tests.
  */
 typedef enum : uint8_t {
-  k_ra8_vin_test_field_even_one = 1U,
+  k_ra8_vin_test_field_even_one = 1U, /**< RA8 vin test field even one. */
 } ra8_vin_test_field_t;
 
 /* ----------------------------------------------------------------------------
@@ -1100,12 +1100,12 @@ static void test_power_transition(void)
  * @brief Magic-free geometry for the new high-level capture tests.
  */
 typedef enum : uint16_t {
-  k_ra8_vin_test_w        = 640U,
-  k_ra8_vin_test_h        = 480U,
-  k_ra8_vin_test_window_x = 16U,
-  k_ra8_vin_test_window_y = 8U,
-  k_ra8_vin_test_window_w = 320U,
-  k_ra8_vin_test_window_h = 240U,
+  k_ra8_vin_test_w        = 640U, /**< RA8 vin test w.        */
+  k_ra8_vin_test_h        = 480U, /**< RA8 vin test h.        */
+  k_ra8_vin_test_window_x = 16U,  /**< RA8 vin test window x. */
+  k_ra8_vin_test_window_y = 8U,   /**< RA8 vin test window y. */
+  k_ra8_vin_test_window_w = 320U, /**< RA8 vin test window w. */
+  k_ra8_vin_test_window_h = 240U, /**< RA8 vin test window h. */
 } ra8_vin_test_geom_t;
 
 static uint32_t s_vin_frame_count;

@@ -28,14 +28,14 @@ static uint32_t compute_crc32(const uint8_t* data, size_t len)
 }
 
 typedef struct {
-  ra8_book_header_t     hdr;
-  ra8_book_chapter_t    chapters[1];
-  ra8_book_node_t       nodes[2];
-  ra8_book_attr_t       attrs[1];
-  ra8_book_stylesheet_t stylesheets[1];
-  ra8_book_image_t      images[2];
-  char                  strings[128];
-  uint8_t               image_pool[64];
+  ra8_book_header_t     hdr;            /**< Hdr.         */
+  ra8_book_chapter_t    chapters[1];    /**< Chapters.    */
+  ra8_book_node_t       nodes[2];       /**< Nodes.       */
+  ra8_book_attr_t       attrs[1];       /**< Attrs.       */
+  ra8_book_stylesheet_t stylesheets[1]; /**< Stylesheets. */
+  ra8_book_image_t      images[2];      /**< Images.      */
+  char                  strings[128];   /**< Strings.     */
+  uint8_t               image_pool[64]; /**< Image pool.  */
 } mock_book_t;
 
 static void setup_mock_book(mock_book_t* b)

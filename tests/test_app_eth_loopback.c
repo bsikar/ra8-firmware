@@ -22,10 +22,10 @@
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
-  k_test_eth_app_ring_tx     = 4U,
-  k_test_eth_app_ring_rx     = 4U,
-  k_test_eth_app_buffer_size = 1536U,
-  k_test_eth_app_burst       = 4U,
+  k_test_eth_app_ring_tx     = 4U,    /**< Test Ethernet app ring TX.     */
+  k_test_eth_app_ring_rx     = 4U,    /**< Test Ethernet app ring RX.     */
+  k_test_eth_app_buffer_size = 1536U, /**< Test Ethernet app buffer size. */
+  k_test_eth_app_burst       = 4U,    /**< Test Ethernet app burst.       */
 } test_eth_app_const_t;
 
 static void reset_world(void)

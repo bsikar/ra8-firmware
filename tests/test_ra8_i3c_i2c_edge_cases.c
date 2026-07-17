@@ -30,14 +30,14 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_iic_b_edge_target = 0x42U,
-  k_iic_b_edge_byte_a = 0xA5U,
-  k_iic_b_edge_byte_b = 0x5AU,
-  k_iic_b_edge_byte_c = 0x33U,
+  k_iic_b_edge_target = 0x42U, /**< Iic b edge target. */
+  k_iic_b_edge_byte_a = 0xA5U, /**< Iic b edge byte a. */
+  k_iic_b_edge_byte_b = 0x5AU, /**< Iic b edge byte b. */
+  k_iic_b_edge_byte_c = 0x33U, /**< Iic b edge byte c. */
 } ra8_i3c_i2c_edge_const_t;
 
 typedef enum : uint32_t {
-  k_iic_b_edge_long_len = 1000000U,
+  k_iic_b_edge_long_len = 1000000U, /**< Iic b edge long length. */
 } ra8_i3c_i2c_edge_timing_t;
 
 static const ra8_i3c_i2c_cfg_t k_iic_b_edge_cfg = {

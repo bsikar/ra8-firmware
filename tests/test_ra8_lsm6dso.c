@@ -53,17 +53,17 @@ typedef enum : uint32_t {
 
 /** @brief One recorded write transaction. */
 typedef struct {
-  uint8_t  reg;
-  uint8_t  data[k_mock_burst_cap];
-  uint32_t len;
+  uint8_t  reg;                    /**< Register. */
+  uint8_t  data[k_mock_burst_cap]; /**< Data.     */
+  uint32_t len;                    /**< Length.   */
 } mock_write_t;
 
 /** @brief Mock state -- one instance per test. */
 typedef struct {
-  uint8_t      regs[k_mock_regs_cap];
-  mock_write_t writes[k_mock_log_cap];
-  uint32_t     write_count;
-  ra8_err_t    forced_err; /**< Override return; ``k_ra8_ok`` to disable. */
+  uint8_t      regs[k_mock_regs_cap];  /**< Registers.                                */
+  mock_write_t writes[k_mock_log_cap]; /**< Writes.                                   */
+  uint32_t     write_count;            /**< Write count.                              */
+  ra8_err_t    forced_err;             /**< Override return; ``k_ra8_ok`` to disable. */
 } mock_t;
 
 static mock_t s_mock;

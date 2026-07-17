@@ -25,19 +25,19 @@
 /* --- RAM block device + minimal FAT16 volume (mirrors test_ra8_fs_fat.c) --- */
 
 typedef enum : uint32_t {
-  k_block_size    = 512U,
-  k_blocks        = 8U * 1024U,
-  k_reserved      = 1U,
-  k_num_fats      = 2U,
-  k_sectors_fat   = 32U,
-  k_root_lba      = k_reserved + (k_num_fats * k_sectors_fat), /* = 65 */
-  k_dir_entry_len = 32U,
+  k_block_size    = 512U,                                      /**< Block size.       */
+  k_blocks        = 8U * 1024U,                                /**< Blocks.           */
+  k_reserved      = 1U,                                        /**< Reserved.         */
+  k_num_fats      = 2U,                                        /**< Number fats.      */
+  k_sectors_fat   = 32U,                                       /**< Sectors fat.      */
+  k_root_lba      = k_reserved + (k_num_fats * k_sectors_fat), /**< Root lba (= 65).  */
+  k_dir_entry_len = 32U,                                       /**< Dir entry length. */
 } fs_lfn_geom_t;
 
 typedef struct {
-  uint8_t* bytes;
-  uint32_t block_count;
-  uint32_t byte_count;
+  uint8_t* bytes;       /**< Bytes.       */
+  uint32_t block_count; /**< Block count. */
+  uint32_t byte_count;  /**< Byte count.  */
 } mem_disk_t;
 
 static mem_disk_t s_disk = {};
@@ -162,8 +162,8 @@ static void free_volume(void)
 /* --- listdir capture --- */
 
 typedef struct {
-  char    last[64];
-  uint8_t count;
+  char    last[64]; /**< Last.  */
+  uint8_t count;    /**< Count. */
 } listdir_capture_t;
 
 static void capture_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)

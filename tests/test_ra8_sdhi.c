@@ -63,9 +63,9 @@ static void sdhi_flags_hook_disarm(void)
 }
 
 typedef enum : uint8_t {
-  k_ra8_sdhi_test_inst_0   = 0U,
-  k_ra8_sdhi_test_inst_1   = 1U,
-  k_ra8_sdhi_test_inst_bad = 9U,
+  k_ra8_sdhi_test_inst_0   = 0U, /**< RA8 SDHI test inst 0.   */
+  k_ra8_sdhi_test_inst_1   = 1U, /**< RA8 SDHI test inst 1.   */
+  k_ra8_sdhi_test_inst_bad = 9U, /**< RA8 SDHI test inst bad. */
 } ra8_sdhi_test_inst_t;
 
 static uint32_t s_sdhi_cb_count;
@@ -294,9 +294,9 @@ static void test_set_clock(void)
  * with the same word, which is exactly what we assert below.
  */
 typedef enum : uint32_t {
-  k_ra8_sdhi_test_pattern   = 0xA5B6C7D8UL,
-  k_ra8_sdhi_test_lba       = 0x00001234UL,
-  k_ra8_sdhi_test_multi_lba = 0x00005678UL,
+  k_ra8_sdhi_test_pattern   = 0xA5B6C7D8UL, /**< RA8 SDHI test pattern.   */
+  k_ra8_sdhi_test_lba       = 0x00001234UL, /**< RA8 SDHI test lba.       */
+  k_ra8_sdhi_test_multi_lba = 0x00005678UL, /**< RA8 SDHI test multi lba. */
 } ra8_sdhi_test_const_t;
 
 /**

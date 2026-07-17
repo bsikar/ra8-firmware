@@ -479,15 +479,15 @@ static void test_handle_setup_callback_stalls(void)
  * @brief Numeric vectors driving the MC/DC tests below.
  */
 typedef enum : uint16_t {
-  k_test_phid_speed_bad     = 9U,
-  k_test_phid_iface_in      = 0xA1U,
-  k_test_phid_iface_out     = 0x21U,
-  k_test_phid_bm_bogus      = 0x80U,
-  k_test_phid_breq_unknown  = 0x77U,
-  k_test_phid_send_len_zero = 0U,
-  k_test_phid_send_len_some = 4U,
-  k_test_phid_desc_len_zero = 0U,
-  k_test_phid_desc_len_some = 8U,
+  k_test_phid_speed_bad     = 9U,    /**< Test phid speed bad.        */
+  k_test_phid_iface_in      = 0xA1U, /**< Test phid iface in.         */
+  k_test_phid_iface_out     = 0x21U, /**< Test phid iface out.        */
+  k_test_phid_bm_bogus      = 0x80U, /**< Test phid bm bogus.         */
+  k_test_phid_breq_unknown  = 0x77U, /**< Test phid breq unknown.     */
+  k_test_phid_send_len_zero = 0U,    /**< Test phid send length zero. */
+  k_test_phid_send_len_some = 4U,    /**< Test phid send length some. */
+  k_test_phid_desc_len_zero = 0U,    /**< Test phid desc length zero. */
+  k_test_phid_desc_len_some = 8U,    /**< Test phid desc length some. */
 } test_phid_mcdc_t;
 
 static const uint8_t s_dummy_desc_a[8] = {};

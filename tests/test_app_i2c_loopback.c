@@ -25,14 +25,14 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_test_i2c_app_bus_hz   = 100000U,
-  k_test_i2c_app_pclkb_hz = 62500000U,
+  k_test_i2c_app_bus_hz   = 100000U,   /**< Test I2C app bus Hz.   */
+  k_test_i2c_app_pclkb_hz = 62500000U, /**< Test I2C app pclkb Hz. */
 } test_i2c_app_const_t;
 
 typedef enum : uint8_t {
-  k_test_i2c_app_channel     = 1U, /**< RIIC ch1 -- where U15 lives. */
-  k_test_i2c_app_probe_addr  = 0x43U,
-  k_test_i2c_app_bad_channel = 99U,
+  k_test_i2c_app_channel     = 1U,    /**< RIIC ch1 -- where U15 lives. */
+  k_test_i2c_app_probe_addr  = 0x43U, /**< Test I2C app probe address.  */
+  k_test_i2c_app_bad_channel = 99U,   /**< Test I2C app bad channel.    */
 } test_i2c_app_byte_t;
 
 static void reset_world(void)

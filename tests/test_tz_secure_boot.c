@@ -33,18 +33,18 @@
  */
 
 typedef enum : uint32_t {
-  k_test_tz_code_nsc_base   = 0x10000000U,
-  k_test_tz_code_nsc_limit  = 0x100FFFE0U,
-  k_test_tz_ns_mram_base    = 0x02080000U,
-  k_test_tz_ns_mram_limit   = 0x020FFFE0U,
-  k_test_tz_sram_nsc_base   = 0x12000000U,
-  k_test_tz_sram_nsc_limit  = 0x1200FFE0U,
-  k_test_tz_ns_sram_base    = 0x22100000U,
-  k_test_tz_ns_sram_limit   = 0x221FFFE0U,
-  k_test_tz_ns_per_base     = 0x50000000U,
-  k_test_tz_ns_per_limit    = 0x5FFFFFE0U,
-  k_test_tz_ipcsar_expected = 0x00050000U,
-  k_test_tz_ipcpar_expected = 0x00000000U,
+  k_test_tz_code_nsc_base   = 0x10000000U, /**< Test TrustZone code NSC base.   */
+  k_test_tz_code_nsc_limit  = 0x100FFFE0U, /**< Test TrustZone code NSC limit.  */
+  k_test_tz_ns_mram_base    = 0x02080000U, /**< Test TrustZone ns MRAM base.    */
+  k_test_tz_ns_mram_limit   = 0x020FFFE0U, /**< Test TrustZone ns MRAM limit.   */
+  k_test_tz_sram_nsc_base   = 0x12000000U, /**< Test TrustZone SRAM NSC base.   */
+  k_test_tz_sram_nsc_limit  = 0x1200FFE0U, /**< Test TrustZone SRAM NSC limit.  */
+  k_test_tz_ns_sram_base    = 0x22100000U, /**< Test TrustZone ns SRAM base.    */
+  k_test_tz_ns_sram_limit   = 0x221FFFE0U, /**< Test TrustZone ns SRAM limit.   */
+  k_test_tz_ns_per_base     = 0x50000000U, /**< Test TrustZone ns per base.     */
+  k_test_tz_ns_per_limit    = 0x5FFFFFE0U, /**< Test TrustZone ns per limit.    */
+  k_test_tz_ipcsar_expected = 0x00050000U, /**< Test TrustZone ipcsar expected. */
+  k_test_tz_ipcpar_expected = 0x00000000U, /**< Test TrustZone ipcpar expected. */
 } test_tz_const_t;
 
 /**
@@ -293,10 +293,11 @@ static void test_tz_ns_signed_body_len_header(void)
 
   /* Header sits at ns_base + 0x40 == word index 16. */
   enum : uint32_t {
-    k_hdr_word_magic = (uint32_t)k_ra8_tz_ns_rot_header_offset / (uint32_t)sizeof(uint32_t),
-    k_hdr_word_len   = k_hdr_word_magic + 1U,
-    k_img_words      = k_hdr_word_len + 1U,
-    k_test_body_len  = 0x1234U,
+    k_hdr_word_magic =
+      (uint32_t)k_ra8_tz_ns_rot_header_offset / (uint32_t)sizeof(uint32_t), /**< Hdr word magic. */
+    k_hdr_word_len  = k_hdr_word_magic + 1U,                                /**< Hdr word length. */
+    k_img_words     = k_hdr_word_len + 1U,                                  /**< Img words. */
+    k_test_body_len = 0x1234U, /**< Test body length. */
   };
   uint32_t img[k_img_words];
   for (uint32_t i = 0U; i < (uint32_t)k_img_words; ++i) {

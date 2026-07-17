@@ -15,14 +15,14 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_ra8_ulpt_test_ch_0   = 0U,
-  k_ra8_ulpt_test_ch_1   = 1U,
-  k_ra8_ulpt_test_ch_bad = 2U,
-  k_ra8_ulpt_test_ch_way = 200U,
+  k_ra8_ulpt_test_ch_0   = 0U,   /**< RA8 ulpt test channel 0.   */
+  k_ra8_ulpt_test_ch_1   = 1U,   /**< RA8 ulpt test channel 1.   */
+  k_ra8_ulpt_test_ch_bad = 2U,   /**< RA8 ulpt test channel bad. */
+  k_ra8_ulpt_test_ch_way = 200U, /**< RA8 ulpt test channel way. */
 } ra8_ulpt_test_ch_t;
 
 typedef enum : uint32_t {
-  k_ra8_ulpt_test_period = 0x00ABCDEFUL,
+  k_ra8_ulpt_test_period = 0x00ABCDEFUL, /**< RA8 ulpt test period. */
 } ra8_ulpt_test_period_t;
 
 /**

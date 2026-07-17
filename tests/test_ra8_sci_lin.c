@@ -85,17 +85,17 @@ typedef enum : uint8_t {
  * examples (including the 0x3C/0x3D diagnostic frame ids).
  */
 typedef enum : uint8_t {
-  k_lin_id_00     = 0x00U,
-  k_lin_pid_00    = 0x80U, /**< id 0  -> 0x80. */
-  k_lin_id_01     = 0x01U,
-  k_lin_pid_01    = 0xC1U, /**< id 1  -> 0xC1. */
-  k_lin_id_02     = 0x02U,
-  k_lin_pid_02    = 0x42U, /**< id 2  -> 0x42. */
-  k_lin_id_03     = 0x03U,
-  k_lin_pid_03    = 0x03U, /**< id 3  -> 0x03. */
-  k_lin_id_3c     = 0x3CU,
-  k_lin_pid_3c    = 0x3CU, /**< id 60 -> 0x3C. */
-  k_lin_id_3d     = 0x3DU,
+  k_lin_id_00     = 0x00U, /**< Lin ID 00.               */
+  k_lin_pid_00    = 0x80U, /**< id 0  -> 0x80.           */
+  k_lin_id_01     = 0x01U, /**< Lin ID 01.               */
+  k_lin_pid_01    = 0xC1U, /**< id 1  -> 0xC1.           */
+  k_lin_id_02     = 0x02U, /**< Lin ID 02.               */
+  k_lin_pid_02    = 0x42U, /**< id 2  -> 0x42.           */
+  k_lin_id_03     = 0x03U, /**< Lin ID 03.               */
+  k_lin_pid_03    = 0x03U, /**< id 3  -> 0x03.           */
+  k_lin_id_3c     = 0x3CU, /**< Lin ID 3c.               */
+  k_lin_pid_3c    = 0x3CU, /**< id 60 -> 0x3C.           */
+  k_lin_id_3d     = 0x3DU, /**< Lin ID 3d.               */
   k_lin_pid_3d    = 0x7DU, /**< id 61 -> 0x7D.           */
   k_lin_id_masked = 0xBCU, /**< 0xBC & 0x3F = 0x3C.      */
   k_lin_id_bad    = 0x40U, /**< 64: above the 6-bit max. */

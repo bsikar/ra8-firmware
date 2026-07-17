@@ -25,6 +25,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/** @brief STBI NO STDIO. */
 #define STBI_NO_STDIO
 #include "ra8_img_arena.h" /* ra8_img_arena_t, ra8_img_arena_bind/_unbind  */
 #include "stb_image.h"     /* stbi_info_from_memory, stbi_load_from_memory */
