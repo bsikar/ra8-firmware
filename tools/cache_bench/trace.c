@@ -331,6 +331,8 @@ cb_trace_t* cb_traces_synthetic(uint32_t* out_count)
   cb_trace_t*    out   = (cb_trace_t*)calloc((size_t)count, sizeof(cb_trace_t));
   if (out == nullptr) {
     *out_count = 0U;
+    /* cppcheck-suppress memleak ; false positive: cppcheck 2.13 does not
+     * model the C23 nullptr keyword, so it cannot see out is NULL here. */
     return nullptr;
   }
   for (uint32_t i = 0U; i < count; ++i) {
@@ -395,6 +397,8 @@ cb_trace_t cb_trace_load(const char* path, const char* name)
   cb_trace_t t = {.name = name};
   FILE*      f = fopen(path, "r");
   if (f == nullptr) {
+    /* cppcheck-suppress resourceLeak ; false positive: cppcheck 2.13 does not
+     * model the C23 nullptr keyword, so it cannot see f is NULL here. */
     return t;
   }
   uint64_t cap = (uint64_t)k_cb_load_init;
