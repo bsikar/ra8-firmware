@@ -41,28 +41,28 @@
 /** @brief Page-list limits. */
 typedef enum : uint16_t {
   k_max_pages = 2048, /**< Max page entries per chapter. */
-  k_name_max  = 256,  /**< Max entry-name bytes. */
+  k_name_max  = 256,  /**< Max entry-name bytes.         */
 } mdl_export_limits_t;
 
 /** @brief ustar (POSIX tar) header field offsets and lengths. */
 typedef enum : uint16_t {
-  k_tar_block   = 512, /**< Tar block size. */
-  k_off_name    = 0,   /**< name field offset. */
-  k_len_name    = 100, /**< name field width. */
-  k_off_mode    = 100, /**< mode field offset. */
-  k_off_uid     = 108, /**< uid field offset. */
-  k_off_gid     = 116, /**< gid field offset. */
+  k_tar_block   = 512, /**< Tar block size.           */
+  k_off_name    = 0,   /**< name field offset.        */
+  k_len_name    = 100, /**< name field width.         */
+  k_off_mode    = 100, /**< mode field offset.        */
+  k_off_uid     = 108, /**< uid field offset.         */
+  k_off_gid     = 116, /**< gid field offset.         */
   k_len_id      = 8,   /**< mode/uid/gid field width. */
-  k_off_size    = 124, /**< size field offset. */
-  k_len_size    = 12,  /**< size field width. */
-  k_off_mtime   = 136, /**< mtime field offset. */
-  k_len_mtime   = 12,  /**< mtime field width. */
-  k_off_chksum  = 148, /**< checksum field offset. */
-  k_len_chksum  = 8,   /**< checksum field width. */
-  k_off_type    = 156, /**< typeflag field offset. */
-  k_off_magic   = 257, /**< "ustar" magic offset. */
-  k_len_magic   = 6,   /**< "ustar" magic width. */
-  k_off_version = 263, /**< version field offset. */
+  k_off_size    = 124, /**< size field offset.        */
+  k_len_size    = 12,  /**< size field width.         */
+  k_off_mtime   = 136, /**< mtime field offset.       */
+  k_len_mtime   = 12,  /**< mtime field width.        */
+  k_off_chksum  = 148, /**< checksum field offset.    */
+  k_len_chksum  = 8,   /**< checksum field width.     */
+  k_off_type    = 156, /**< typeflag field offset.    */
+  k_off_magic   = 257, /**< "ustar" magic offset.     */
+  k_len_magic   = 6,   /**< "ustar" magic width.      */
+  k_off_version = 263, /**< version field offset.     */
 } mdl_tar_layout_t;
 
 /** @brief File mode written into tar headers and the zip STORE flag source. */
@@ -72,17 +72,17 @@ typedef enum : uint16_t {
 
 /** @brief gzip framing constants (RFC 1952). */
 typedef enum : uint8_t {
-  k_gz_id1 = 0x1F, /**< gzip magic byte 1. */
-  k_gz_id2 = 0x8B, /**< gzip magic byte 2. */
+  k_gz_id1 = 0x1F, /**< gzip magic byte 1.           */
+  k_gz_id2 = 0x8B, /**< gzip magic byte 2.           */
   k_gz_cm  = 0x08, /**< compression method: DEFLATE. */
-  k_gz_os  = 0xFF, /**< OS: unknown. */
+  k_gz_os  = 0xFF, /**< OS: unknown.                 */
 } mdl_gzip_hdr_t;
 
 /** @brief Byte-serialisation constants. */
 typedef enum : uint16_t {
-  k_byte_bits    = 8,    /**< Bits per byte. */
-  k_byte_mask    = 0xFF, /**< Low-byte mask. */
-  k_u32_bytes    = 4,    /**< Bytes in a u32. */
+  k_byte_bits    = 8,    /**< Bits per byte.            */
+  k_byte_mask    = 0xFF, /**< Low-byte mask.            */
+  k_u32_bytes    = 4,    /**< Bytes in a u32.           */
   k_gzip_hdr_len = 10,   /**< gzip fixed header length. */
 } mdl_serial_t;
 
@@ -459,9 +459,9 @@ export_cbt_xz(const char* dir, char names[][k_name_max], size_t count, const cha
 /** @brief EPUB string-buffer sizing (grows with the page count). */
 typedef enum : uint32_t {
   k_epub_frag_max       = 512U,  /**< One manifest/spine/nav fragment. */
-  k_epub_xhtml_max      = 1024U, /**< One page's xhtml document. */
-  k_epub_base_bytes     = 4096U, /**< Fixed opf/nav overhead. */
-  k_epub_per_page_bytes = 512U,  /**< Per-page opf/nav growth. */
+  k_epub_xhtml_max      = 1024U, /**< One page's xhtml document.       */
+  k_epub_base_bytes     = 4096U, /**< Fixed opf/nav overhead.          */
+  k_epub_per_page_bytes = 512U,  /**< Per-page opf/nav growth.         */
 } mdl_epub_size_t;
 
 /** @brief OCF container pointing at the OPF package (fixed). */
@@ -652,8 +652,8 @@ typedef enum : uint16_t {
 /** @brief Pull cursor over an in-RAM encoded image. */
 typedef struct {
   const uint8_t* data; /**< Encoded bytes. */
-  size_t         len;  /**< Total length. */
-  size_t         pos;  /**< Read cursor. */
+  size_t         len;  /**< Total length.  */
+  size_t         pos;  /**< Read cursor.   */
 } rta1_pull_ctx_t;
 
 /** @brief ra8_log byte sink -> stderr (host-safe; avoids the ITM MMIO read). */

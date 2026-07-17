@@ -24,13 +24,13 @@
 /** @brief Fixed capacities for an extracted URL list (zero dynamic alloc). */
 typedef enum : uint16_t {
   k_mdl_max_urls = 2048, /**< Max URLs captured per page (chapters or images). */
-  k_mdl_url_max  = 512,  /**< Max bytes per URL, including the NUL. */
+  k_mdl_url_max  = 512,  /**< Max bytes per URL, including the NUL.            */
 } mdl_extract_limits_t;
 
 /** @brief Bounded list of absolute URLs found on a page. */
 typedef struct {
   char   urls[k_mdl_max_urls][k_mdl_url_max]; /**< Absolute, NUL-terminated. */
-  size_t count;                               /**< Number of valid entries. */
+  size_t count;                               /**< Number of valid entries.  */
 } mdl_url_list_t;
 
 /**

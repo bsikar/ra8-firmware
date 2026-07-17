@@ -28,16 +28,16 @@
 
 /** @brief Output container selected by `--format`. */
 typedef enum : uint8_t {
-  k_mdl_fmt_loose   = 0,   /**< Leave loose page images (no archive). */
-  k_mdl_fmt_cbz     = 1,   /**< ZIP of images (`.cbz`). */
-  k_mdl_fmt_cbt     = 2,   /**< tar of images (`.cbt`). */
-  k_mdl_fmt_cbr     = 3,   /**< RAR of images (`.cbr`); needs external `rar`. */
-  k_mdl_fmt_cbt_xz  = 4,   /**< xz-compressed tar (`.cbt.xz`). */
-  k_mdl_fmt_cbt_gz  = 5,   /**< gzip-compressed tar (`.cbt.gz`). */
-  k_mdl_fmt_epub    = 6,   /**< EPUB of images (`.epub`). */
-  k_mdl_fmt_rta1    = 7,   /**< Native RTA1 tile atlas per page (`.rta1`). */
+  k_mdl_fmt_loose   = 0,   /**< Leave loose page images (no archive).             */
+  k_mdl_fmt_cbz     = 1,   /**< ZIP of images (`.cbz`).                           */
+  k_mdl_fmt_cbt     = 2,   /**< tar of images (`.cbt`).                           */
+  k_mdl_fmt_cbr     = 3,   /**< RAR of images (`.cbr`); needs external `rar`.     */
+  k_mdl_fmt_cbt_xz  = 4,   /**< xz-compressed tar (`.cbt.xz`).                    */
+  k_mdl_fmt_cbt_gz  = 5,   /**< gzip-compressed tar (`.cbt.gz`).                  */
+  k_mdl_fmt_epub    = 6,   /**< EPUB of images (`.epub`).                         */
+  k_mdl_fmt_rta1    = 7,   /**< Native RTA1 tile atlas per page (`.rta1`).        */
   k_mdl_fmt_rabook  = 8,   /**< Native RABOOK (`.rabook`); needs external python. */
-  k_mdl_fmt_invalid = 255, /**< Unrecognised `--format` string. */
+  k_mdl_fmt_invalid = 255, /**< Unrecognised `--format` string.                   */
 } mdl_format_t;
 
 /**
