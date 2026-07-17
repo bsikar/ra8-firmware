@@ -39,271 +39,31 @@
 
 #include "ra8_err.h"
 #include "ra8_fs.h"
+#include "support/fs_fat_mount_test_util.h"
 #include "unity_minimal.h"
 
-/* ===========================================================================
- * Constants
- * ===========================================================================
- */
-
 /**
- * @enum ra8_fs_mc_k_t
- * @brief Geometry constants used throughout these tests.
+ * @enum mount_cov_vec_t
+ * @brief Per-test disk geometries and GPT vector values.
+ *
+ * @details Sector counts are deliberately tiny so out-of-range reads fire at
+ *          exact positions; the GPT values pair a spec-conforming entry size
+ *          (128) with the deviant values each test needs.
+ *
+ * @invariant k_gpt_count_overmax exceeds the mount path's 128-entry scan cap.
+ * @see write_gpt_header()
  */
 typedef enum : uint32_t {
-  k_mc_blk   = 512U,       /**< Bytes per 512-byte sector.       */
-  k_mc_fat16 = 8U * 1024U, /**< 4 MiB FAT16 disk (8192 sectors). */
-} ra8_fs_mc_k_t;
-
-/* ===========================================================================
- * Normal in-memory block device
- * ===========================================================================
- */
-
-/**
- * @struct mc_disk_t
- * @brief Heap-backed flat sector store for the normal backend.
- */
-typedef struct {
-  uint8_t* bytes;       /**< Heap-backed byte array. */
-  uint32_t block_count; /**< Total 512-byte sectors. */
-} mc_disk_t;
-
-/** @var s_disk
- * @brief Shared disk image used by most tests in this file.
- * @warning Direct access only from setup/teardown helpers.
- * @since 0.1.0
- */
-static mc_disk_t s_disk = {};
-
-static ra8_err_t mc_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
-{
-  mc_disk_t* d = (mc_disk_t*)ctx;
-  if (lba + count > d->block_count) {
-    return k_ra8_err_out_of_range;
-  }
-  memcpy(buf, &d->bytes[lba * (uint32_t)k_mc_blk], count * (uint32_t)k_mc_blk);
-  return k_ra8_ok;
-}
-
-static ra8_err_t mc_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
-{
-  mc_disk_t* d = (mc_disk_t*)ctx;
-  if (lba + count > d->block_count) {
-    return k_ra8_err_out_of_range;
-  }
-  memcpy(&d->bytes[lba * (uint32_t)k_mc_blk], buf, count * (uint32_t)k_mc_blk);
-  return k_ra8_ok;
-}
-
-static ra8_err_t mc_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
-{
-  mc_disk_t* d = (mc_disk_t*)ctx;
-  *block_count = d->block_count;
-  *block_size  = (uint32_t)k_mc_blk;
-  return k_ra8_ok;
-}
-
-/** @brief Backend wired to s_disk. */
-static const ra8_fs_backend_t s_backend = {
-  .read_block   = mc_read,
-  .write_block  = mc_write,
-  .get_capacity = mc_capacity,
-  .ctx          = &s_disk,
-};
-
-/* ===========================================================================
- * Fail / dummy backends for error injection
- * ===========================================================================
- */
-
-static ra8_err_t always_fail_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
-{
-  (void)ctx;
-  (void)lba;
-  (void)count;
-  (void)buf;
-  return k_ra8_err_hw_error;
-}
-
-static ra8_err_t dummy_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
-{
-  (void)ctx;
-  (void)lba;
-  (void)count;
-  (void)buf;
-  return k_ra8_ok;
-}
-
-static ra8_err_t dummy_capacity_ok(void* ctx, uint32_t* block_count, uint32_t* block_size)
-{
-  (void)ctx;
-  *block_count = (uint32_t)k_mc_fat16;
-  *block_size  = (uint32_t)k_mc_blk;
-  return k_ra8_ok;
-}
-
-static ra8_err_t fail_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
-{
-  (void)ctx;
-  (void)block_count;
-  (void)block_size;
-  return k_ra8_err_hw_error;
-}
-
-static ra8_err_t zero_count_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
-{
-  (void)ctx;
-  *block_count = 0U; /* well-formed sector size, no sectors */
-  *block_size  = (uint32_t)k_mc_blk;
-  return k_ra8_ok;
-}
-
-/* ===========================================================================
- * Helpers
- * ===========================================================================
- */
-
-static void put16(uint8_t* p, uint32_t off, uint16_t v)
-{
-  p[off]     = (uint8_t)(v & 0xFFU);
-  p[off + 1] = (uint8_t)((v >> 8U) & 0xFFU);
-}
-
-static void put32(uint8_t* p, uint32_t off, uint32_t v)
-{
-  p[off]     = (uint8_t)(v & 0xFFU);
-  p[off + 1] = (uint8_t)((v >> 8U) & 0xFFU);
-  p[off + 2] = (uint8_t)((v >> 16U) & 0xFFU);
-  p[off + 3] = (uint8_t)((v >> 24U) & 0xFFU);
-}
-
-/**
- * @brief Allocate a zeroed multi-sector disk and install it as s_disk.
- *
- * @param[in] sectors Number of 512-byte sectors to allocate.
- *
- * @pre sectors > 0.
- * @post s_disk.bytes holds a calloc-zeroed array; s_disk.block_count == sectors.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static void alloc_disk(uint32_t sectors)
-{
-  if (s_disk.bytes != nullptr) {
-    free(s_disk.bytes);
-    s_disk.bytes = nullptr;
-  }
-  s_disk.block_count = sectors;
-  s_disk.bytes       = (uint8_t*)calloc(1, (size_t)sectors * (size_t)k_mc_blk);
-  if (s_disk.bytes == nullptr) {
-    TEST_FAIL_FMT("%s", "calloc failed");
-  }
-}
-
-/**
- * @brief Free s_disk.bytes and reset the disk descriptor.
- *
- * @pre None.
- * @post s_disk.bytes is nullptr.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static void free_disk(void)
-{
-  if (s_disk.bytes != nullptr) {
-    free(s_disk.bytes);
-    s_disk.bytes = nullptr;
-  }
-}
-
-/**
- * @brief Build a minimal valid FAT16 BPB at sector 0 of s_disk.
- *
- * @details SPC=1, 2 FATs each 32 sectors, 16 root entries, 8192 total sectors.
- *          Geometry: first_fat=1, first_root=65, first_data=66.
- *
- * @pre s_disk.bytes is nullptr.
- * @post s_disk holds a calloc-zeroed 4 MiB image with a valid FAT16 BPB.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static void build_fat16_volume(void)
-{
-  alloc_disk((uint32_t)k_mc_fat16);
-  uint8_t* bpb = s_disk.bytes;
-  put16(bpb, 11U, 512U);
-  bpb[13] = 1U;
-  put16(bpb, 14U, 1U);
-  bpb[16] = 2U;
-  put16(bpb, 17U, 16U);
-  put16(bpb, 19U, (uint16_t)k_mc_fat16);
-  put16(bpb, 22U, 32U);
-  bpb[510] = 0x55U;
-  bpb[511] = 0xAAU;
-}
-
-/**
- * @brief Write a protective MBR into a sector buffer.
- *
- * @details Sets the 0x55/0xAA boot signature, partition type 0xEE (GPT
- *          protective), and the partition's first LBA at MBR offset 0x1C6.
- *          Leaves bytes_per_sector (offset 11-12) at zero so the subsequent
- *          BPB parse fails and the MBR-detection branch is taken.
- *
- * @param[in] buf      Pointer to a 512-byte sector buffer.
- * @param[in] part_lba Partition first LBA to embed (little-endian).
- *
- * @pre buf is non-NULL and points to at least 512 writable bytes.
- * @post buf[510]=0x55, buf[511]=0xAA, buf[0x1C2]=0xEE.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static void write_protective_mbr(uint8_t* buf, uint32_t part_lba)
-{
-  buf[510]   = 0x55U;
-  buf[511]   = 0xAAU;
-  buf[0x1C2] = 0xEEU;
-  put32(buf, 0x1C6U, part_lba);
-}
-
-/**
- * @brief Write a GPT header with the "EFI PART" signature into a sector buffer.
- *
- * @details Only the four fields consulted by priv_gpt_locate_volume are set:
- *          signature (bytes 0-7), entry_lba (0x48), entry_lba_hi (0x4C),
- *          entry_count (0x50), and entry_size (0x54).
- *
- * @param[in] buf          Pointer to a 512-byte sector buffer (LBA 1).
- * @param[in] entry_lba    Low 32 bits of the partition-entry-array first LBA.
- * @param[in] entry_lba_hi High 32 bits of the same field (0 for standard disks).
- * @param[in] count        Number of partition entries.
- * @param[in] size         Bytes per partition entry (128 for standard GPT).
- *
- * @pre buf is non-NULL and points to at least 512 writable bytes.
- * @post buf[0..7] == "EFI PART"; geometry fields are set at their GPT offsets.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-static void write_gpt_header(uint8_t* buf,
-                             uint32_t entry_lba,
-                             uint32_t entry_lba_hi,
-                             uint32_t count,
-                             uint32_t size)
-{
-  /* "EFI PART" -- UEFI spec 2.10 table 5.5. */
-  static const uint8_t k_efi[8] = {0x45U, 0x46U, 0x49U, 0x20U, 0x50U, 0x41U, 0x52U, 0x54U};
-  memcpy(buf, k_efi, 8U);
-  put32(buf, 0x48U, entry_lba);
-  put32(buf, 0x4CU, entry_lba_hi);
-  put32(buf, 0x50U, count);
-  put32(buf, 0x54U, size);
-}
+  k_geo_probe_sectors  = 20U,   /**< Small disk; only LBA 0 is meaningful.    */
+  k_geo_bad_total      = 10U,   /**< BPB total-sectors < first_data_lba (66). */
+  k_geo_gpt_disk       = 10U,   /**< MBR + GPT hdr + entries + partition.     */
+  k_mbr_far_part_lba   = 50U,   /**< Partition LBA beyond a 3-sector disk.    */
+  k_gpt_entry_size     = 128U,  /**< Spec-conforming GPT entry size.          */
+  k_gpt_entry_size_bad = 64U,   /**< Non-conforming GPT entry size.           */
+  k_gpt_count_overmax  = 200U,  /**< Entry count above the 128 scan cap.      */
+  k_gpt_ent_off_lba_hi = 0x24U, /**< first_lba high-word offset in an entry.  */
+  k_gpt_ent_off_lba_lo = 0x20U, /**< first_lba low-word offset in an entry.   */
+} mount_cov_vec_t;
 
 /* ===========================================================================
  * Test: mount table full (lines 68-69, 546)
@@ -448,20 +208,20 @@ static void test_geometry_validation_fail(void)
 {
   TEST_BEGIN("ra8_fs_fat_mount cov: total_sectors < first_data_lba returns validation_failed");
   /* Allocate 20 sectors to avoid OOB reads; only LBA 0 is meaningful here. */
-  alloc_disk(20U);
+  alloc_disk((uint32_t)k_geo_probe_sectors);
   uint8_t* bpb = s_disk.bytes;
   /* BPB: bytes_per_sec=512, spc=1, rsvd=1, num_fats=2, root_ents=16,
    * fat_sz=32, tot_sec=10.  first_data_lba = 1+64+1 = 66 > 10. */
-  put16(bpb, 11U, 512U);
-  bpb[13] = 1U;
-  put16(bpb, 14U, 1U);
-  bpb[16] = 2U;
-  put16(bpb, 17U, 16U);
-  put16(bpb, 19U, 10U);
-  put16(bpb, 22U, 32U);
-  bpb[510]          = 0x55U;
-  bpb[511]          = 0xAAU;
-  ra8_fs_mount_t* h = nullptr;
+  put16(bpb, (uint32_t)k_bpb_off_bytes_per_sec, (uint16_t)k_mc_blk);
+  bpb[k_bpb_off_sec_per_clus] = 1U;
+  put16(bpb, (uint32_t)k_bpb_off_rsvd_sec_cnt, 1U);
+  bpb[k_bpb_off_num_fats] = 2U;
+  put16(bpb, (uint32_t)k_bpb_off_root_ent_cnt, 16U);
+  put16(bpb, (uint32_t)k_bpb_off_tot_sec16, (uint16_t)k_geo_bad_total);
+  put16(bpb, (uint32_t)k_bpb_off_fat_sz16, 32U);
+  bpb[k_bpb_off_sig0] = (uint8_t)k_bpb_sig0_val;
+  bpb[k_bpb_off_sig1] = (uint8_t)k_bpb_sig1_val;
+  ra8_fs_mount_t* h   = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_fs_mount(&s_backend, &h));
   free_disk();
   TEST_END("ra8_fs_fat_mount cov: total_sectors < first_data_lba returns validation_failed");
@@ -660,10 +420,10 @@ static void test_mbr_second_read_fails(void)
   uint8_t* lba0 = s_disk.bytes;
   /* Non-GPT MBR: type 0x01, partition LBA 50. bytes_per_sec left at 0 so
    * the first BPB parse fails and the MBR path is taken. */
-  lba0[510]   = 0x55U;
-  lba0[511]   = 0xAAU;
-  lba0[0x1C2] = 0x01U;
-  put32(lba0, 0x1C6U, 50U);
+  lba0[k_bpb_off_sig0]      = (uint8_t)k_bpb_sig0_val;
+  lba0[k_bpb_off_sig1]      = (uint8_t)k_bpb_sig1_val;
+  lba0[k_mbr_off_part_type] = 0x01U;
+  put32(lba0, (uint32_t)k_mbr_off_part_lba, (uint32_t)k_mbr_far_part_lba);
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_fs_mount(&s_backend, &h));
   free_disk();
@@ -777,8 +537,8 @@ static void test_gpt_entry_lba_hi_nonzero(void)
   TEST_BEGIN("ra8_fs_fat_mount cov: GPT entry_lba hi nonzero returns not_supported");
   alloc_disk(3U);
   write_protective_mbr(s_disk.bytes, 1U);
-  uint8_t* lba1 = &s_disk.bytes[512U];
-  write_gpt_header(lba1, 2U, 1U, 4U, 128U); /* entry_lba_hi = 1 (nonzero) */
+  uint8_t* lba1 = &s_disk.bytes[(uint32_t)k_mc_blk];
+  write_gpt_header(lba1, 2U, 1U, 4U, (uint32_t)k_gpt_entry_size); /* entry_lba_hi = 1 (nonzero) */
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_fs_mount(&s_backend, &h));
   free_disk();
@@ -815,8 +575,8 @@ static void test_gpt_entry_lba_zero(void)
   TEST_BEGIN("ra8_fs_fat_mount cov: GPT entry_lba zero returns validation_failed");
   alloc_disk(3U);
   write_protective_mbr(s_disk.bytes, 1U);
-  uint8_t* lba1 = &s_disk.bytes[512U];
-  write_gpt_header(lba1, 0U, 0U, 4U, 128U); /* entry_lba = 0 */
+  uint8_t* lba1 = &s_disk.bytes[(uint32_t)k_mc_blk];
+  write_gpt_header(lba1, 0U, 0U, 4U, (uint32_t)k_gpt_entry_size); /* entry_lba = 0 */
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_fs_mount(&s_backend, &h));
   free_disk();
@@ -853,8 +613,8 @@ static void test_gpt_entry_size_bad(void)
   TEST_BEGIN("ra8_fs_fat_mount cov: GPT entry_size != 128 returns not_supported");
   alloc_disk(3U);
   write_protective_mbr(s_disk.bytes, 1U);
-  uint8_t* lba1 = &s_disk.bytes[512U];
-  write_gpt_header(lba1, 2U, 0U, 4U, 64U); /* entry_size = 64, not 128 */
+  uint8_t* lba1 = &s_disk.bytes[(uint32_t)k_mc_blk];
+  write_gpt_header(lba1, 2U, 0U, 4U, (uint32_t)k_gpt_entry_size_bad); /* entry_size != 128 */
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_fs_mount(&s_backend, &h));
   free_disk();
@@ -896,8 +656,12 @@ static void test_gpt_count_clamped_scan_fails(void)
   TEST_BEGIN("ra8_fs_fat_mount cov: GPT count clamped, scan read fails at line 378");
   alloc_disk(3U);
   write_protective_mbr(s_disk.bytes, 1U);
-  uint8_t* lba1 = &s_disk.bytes[512U];
-  write_gpt_header(lba1, 2U, 0U, 200U, 128U); /* count 200 > 128 -> clamped */
+  uint8_t* lba1 = &s_disk.bytes[(uint32_t)k_mc_blk];
+  write_gpt_header(lba1,
+                   2U,
+                   0U,
+                   (uint32_t)k_gpt_count_overmax,
+                   (uint32_t)k_gpt_entry_size); /* count > 128 -> clamped */
   /* LBA 2 stays all-zero (null GUIDs, no candidates). LBA 3 does not exist. */
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_fs_mount(&s_backend, &h));
@@ -940,17 +704,17 @@ static void test_gpt_entry_hi_first_lba(void)
   TEST_BEGIN("ra8_fs_fat_mount cov: GPT entry hi first_lba nonzero -> not_found");
   alloc_disk(4U);
   write_protective_mbr(s_disk.bytes, 1U);
-  uint8_t* lba1 = &s_disk.bytes[512U];
-  write_gpt_header(lba1, 2U, 0U, 4U, 128U);
+  uint8_t* lba1 = &s_disk.bytes[(uint32_t)k_mc_blk];
+  write_gpt_header(lba1, 2U, 0U, 4U, (uint32_t)k_gpt_entry_size);
   /* Entry 0 in LBA 2: non-zero GUID (bytes 0-15 = 1) + hi first_lba = 1. */
-  uint8_t* lba2   = &s_disk.bytes[1024U];
+  uint8_t* lba2   = &s_disk.bytes[2U * (uint32_t)k_mc_blk];
   uint8_t* entry0 = lba2;
   /* Type GUID: all bytes 1 (non-zero -> priv_gpt_entry_first_lba skips null check). */
   for (uint32_t i = 0U; i < 16U; i++) {
     entry0[i] = 1U;
   }
   /* first_lba low (offset 0x20) = 0, high (offset 0x24) = 1 -> line 279. */
-  entry0[0x24] = 1U;
+  entry0[k_gpt_ent_off_lba_hi] = 1U;
   /* Entries 1-3 remain all-zero (null GUIDs). */
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_mount(&s_backend, &h));
@@ -993,16 +757,16 @@ static void test_gpt_non_basic_data_fallback(void)
 {
   TEST_BEGIN("ra8_fs_fat_mount cov: non-Basic-Data GUID uses any_lba fallback");
   /* 10 sectors: MBR(0)+GPT_hdr(1)+entries(2)+spare(3)+partition_start(4-9). */
-  alloc_disk(10U);
+  alloc_disk((uint32_t)k_geo_gpt_disk);
   write_protective_mbr(s_disk.bytes, 1U);
-  uint8_t* lba1 = &s_disk.bytes[512U];
-  write_gpt_header(lba1, 2U, 0U, 4U, 128U);
+  uint8_t* lba1 = &s_disk.bytes[(uint32_t)k_mc_blk];
+  write_gpt_header(lba1, 2U, 0U, 4U, (uint32_t)k_gpt_entry_size);
   /* Entry 0: GUID[0]=0x02 (not 0xA2 = Basic Data[0]) -> line 305 triggered.
    * first_lba low=4 (within 10 sectors), high=0. */
-  uint8_t* lba2   = &s_disk.bytes[1024U];
+  uint8_t* lba2   = &s_disk.bytes[2U * (uint32_t)k_mc_blk];
   uint8_t* entry0 = lba2;
-  entry0[0]       = 0x02U;  /* type GUID byte 0: non-zero, non-basic-data */
-  put32(entry0, 0x20U, 4U); /* first_lba low = 4                          */
+  entry0[0]       = 0x02U; /* type GUID byte 0: non-zero, non-basic-data */
+  put32(entry0, (uint32_t)k_gpt_ent_off_lba_lo, 4U); /* first_lba low = 4 */
   /* Entries 1-3 remain all-zero. LBA 4-9 all-zero (no valid BPB). */
   ra8_fs_mount_t* h = nullptr;
   /* The FAT parse at LBA 4 finds no 0x55/0xAA -> k_ra8_err_validation_failed. */
