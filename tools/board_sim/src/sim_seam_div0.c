@@ -396,6 +396,45 @@ void div0_seam_install(const uint8_t* elf, long len)
   }
 }
 
+/**
+ * @brief Synthesise a UsageFault (#6) for a trapped divide-by-zero.
+ *
+ * @details
+ * Called by the run loop after ::emulate_div0_patched latched a trapping div-0.
+ * Latches CFSR.UFSR.DIVBYZERO (so a fault handler -- and the HIL alive probe -- see
+ * the
+ * architectural status: ``cfsr == 0x02000000``), forces PC back to the faulting
+ * divide so ::exc_enter stacks *that* address (a real div-0 UsageFault stacks the
+ * divide), and vectors into the application's UsageFault_Handler. If no handler
+ * is installed the trap is dropped (no HardFault escalation is modelled -- the
+ * firmware that arms DIV_0_TRP always installs the handler).
+ *
+ * @param[in,out] uc        Unicorn engine.
+ * @param[in]     vtor_base Fallback vector base if VTOR reads as 0.
+ * @return Nothing.
+ *
+ * @pre ::s_div0_fault_pc holds the trapping divide's address.
+ * @pre The PPB CFSR word and the vector table are mapped as RAM.
+ * @post On a valid vector, the core is in the UsageFault handler with the basic
+ *       frame stacked (stacked PC == the faulting divide) and IPSR == 6.
+ * @post CFSR.UFSR.DIVBYZERO reads set and ::s_div0_traps is incremented.
+ * @note Faithful to Armv8-M CCR.DIV_0_TRP semantics; no time advances (a fault
+ *       is synchronous).
+ * @since 0.1.0
+ */
+void div0_synth_usagefault(uc_engine* uc, uint32_t vtor_base)
+{
+  const uint32_t cfsr = rd32(uc, (uint64_t)k_scb_cfsr) | (uint32_t)k_div0_cfsr_divzero;
+  wr32(uc, (uint64_t)k_scb_cfsr, cfsr);
+  const uint32_t fault_pc = sim_div0_fault_pc();
+  (void)uc_reg_write(uc, UC_ARM_REG_PC, &fault_pc);
+  const uint32_t handler = exc_vector(uc, vtor_base, (uint32_t)k_exc_usagefault);
+  if (handler != 0U) {
+    sim_div0_count_trap();
+    exc_enter(uc, (uint32_t)k_exc_usagefault, handler);
+  }
+}
+
 /** @brief Implementation of `sim_div0_fault_pending()` -- plain flag read. */
 bool sim_div0_fault_pending(void)
 {
