@@ -41,9 +41,9 @@ static void make_uuid_g(uint8_t out[16], uint8_t seed)
  *
  * @par MC/DC:
  * Decision A: ``if (st->initialized == 0U)``
- *   (1 condition, libs/ra8_ble_host/src/ra8_ble_gatt.c around line 528)
+ *   (1 condition, ra8_ble_host_gatt_notify in ra8_ble_gatt.c)
  * Decision B: ``if ((a == NULL) || (a->kind != k_attr_kind_char_value))``
- *   (2 conditions, libs/ra8_ble_host/src/ra8_ble_gatt.c around line 532)
+ *   (2 conditions, ra8_ble_host_gatt_notify in ra8_ble_gatt.c)
  *
  * Per DO-178C 6.4.4.3 the standalone fixture covers V_A1 (uninit) +
  * V_A2 (init) + V_B2 (a==NULL via unknown handle). The remaining
@@ -112,7 +112,8 @@ static void test_mcdc_gatt_set_value_zero_len(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_set_value(chr, payload, 0U));
 
   /* Notify with no connection still returns ok and exercises the
-   * value_len==0 branch at line 569 (same shape decision). */
+   * value_len==0 branch in ra8_ble_host_gatt_notify (same shape
+   * decision). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_notify(chr));
   TEST_END("ra8_ble_host_gatt_set_value MC/DC: len==0 path");
 }
@@ -121,8 +122,9 @@ static void test_mcdc_gatt_set_value_zero_len(void)
  * @test test_mcdc_gatt_internal_should_copy
  *
  * @par MC/DC:
- * Decision at libs/ra8_ble_host/src/ra8_ble_gatt.c lines 480 and 569
- * (call sites) -> helper at libs/ra8_ble_host/src/ra8_ble_gatt.c:
+ * Decision at the ra8_ble_host_gatt_set_value and
+ * ra8_ble_host_gatt_notify call sites -> helper
+ * ra8_ble_gatt_internal_should_copy in ra8_ble_gatt.c:
  *   ``len > 0 && value != NULL`` (2 conditions, AND).
  * - V1: len=0,  val!=NULL -> false (left varies vs V2)
  * - V2: len>0,  val!=NULL -> true

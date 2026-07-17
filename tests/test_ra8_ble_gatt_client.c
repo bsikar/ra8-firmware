@@ -154,7 +154,7 @@ static void test_subscribe_invalid(void)
  *
  * @par MC/DC:
  * Decision: `(data == NULL) && (len > 0U)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_gatt_client.c line 342)
+ * (2 conditions, ra8_ble_gatt_write in ra8_ble_gatt_client.c)
  * - V1 data=NULL, len=0 -> C1=T, C2=F. Decision F (proceeds).
  * - V2 data=non-NULL, len>0 -> C1=F. Decision F (proceeds).
  * - V3 data=NULL, len>0 -> both T. Decision T -> null_ptr.
@@ -162,7 +162,7 @@ static void test_subscribe_invalid(void)
  *
  * @par DO-178C 6.4.4.3 rationale: Full minimal MC/DC achieved.
  *
- * @par Internal note (gatt_client.c lines 189, 236):
+ * @par Internal note (gatt_client.c trampolines):
  * Compounds in internal_disc_trampoline() (`service != NULL && cb != NULL`)
  * and internal_read_trampoline() (`attr != NULL && attr->om != NULL`) are
  * inside #ifdef RA8_TARGET_BUILD bodies and are unreachable in the host
@@ -188,7 +188,7 @@ static void test_mcdc_gatt_write_data_null_with_len(void)
  * @par MC/DC:
  * Decision: `(enable_notify == 0U) && (enable_indicate == 0U) &&
  *           (notify_cb == NULL)`
- * (3 conditions, libs/ra8_ble_host/src/ra8_ble_gatt_client.c line 393)
+ * (3 conditions, ra8_ble_gatt_subscribe in ra8_ble_gatt_client.c)
  * - V1 (T,T,T) all-zero/NULL -> Decision T. invalid_arg.
  * - V2 (F,*,*) enable_notify=1 -> C1=F short-circuits. Decision F (proceeds).
  * - V3 (T,F,*) enable_indicate=1 -> C2=F short-circuits. Decision F.
@@ -220,8 +220,8 @@ static void test_mcdc_gatt_subscribe_invalid_args_3cond(void)
  * @par MC/DC:
  * Decision: `(s_subs[i].in_use != 0U) && (conn_handle matches) &&
  *           (cccd_handle matches)`
- * (3 conditions, libs/ra8_ble_host/src/ra8_ble_gatt_client.c line 400)
- * Slot-search predicate inside ra8_ble_gatt_subscribe(). The reachable
+ * (3 conditions, internal_sub_slot in ra8_ble_gatt_client.c)
+ * Slot-search predicate serving ra8_ble_gatt_subscribe(). The reachable
  * outcome only manifests as "slot reused vs new slot allocated"; a
  * match returns the SAME slot.
  * - V1 (T,T,T): subscribe, then subscribe again with same conn+cccd ->
@@ -267,7 +267,8 @@ static void test_mcdc_gatt_subscribe_slot_match_3cond(void)
  * @par MC/DC:
  * Decision: `(s_subs[i].in_use != 0U) && (conn_handle matches) &&
  *           (notify_cb != NULL)`
- * (3 conditions, libs/ra8_ble_host/src/ra8_ble_gatt_client.c line 464)
+ * (3 conditions, ra8_ble_gatt_client_test_inject_notify in
+ * ra8_ble_gatt_client.c)
  * Test-hook ra8_ble_gatt_client_test_inject_notify walk predicate.
  * - V1 (T,T,T): in-use slot, conn matches, cb non-NULL -> callback fires.
  * - V2 (F,*,*): inject after reset (no slot in_use) -> no fire.

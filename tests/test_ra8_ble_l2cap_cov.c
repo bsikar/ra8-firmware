@@ -121,7 +121,7 @@ static ra8_err_t bring_up(void)
  */
 static void test_cov_l2cap_send_oversize(void)
 {
-  TEST_BEGIN("ra8_ble_l2cap cov: l2cap_send oversize -> invalid_arg (222)");
+  TEST_BEGIN("ra8_ble_l2cap cov: l2cap_send oversize -> invalid_arg");
   TEST_ASSERT_EQ(k_ra8_ok, bring_up());
   static const uint8_t s_dummy[1] = {0U};
   const ra8_err_t      rc         = ra8_ble_host_l2cap_send(k_cov_conn_handle,
@@ -129,7 +129,7 @@ static void test_cov_l2cap_send_oversize(void)
                                                             s_dummy,
                                                             (uint16_t)k_cov_send_oversize);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, rc);
-  TEST_END("ra8_ble_l2cap cov: l2cap_send oversize -> invalid_arg (222)");
+  TEST_END("ra8_ble_l2cap cov: l2cap_send oversize -> invalid_arg");
 }
 
 /**
@@ -147,13 +147,13 @@ static void test_cov_l2cap_send_oversize(void)
  */
 static void test_cov_acl_in_uninitialized(void)
 {
-  TEST_BEGIN("ra8_ble_l2cap cov: acl_in before init -> early return (284)");
+  TEST_BEGIN("ra8_ble_l2cap cov: acl_in before init -> early return");
   prep(); /* host closed -> initialized == 0 */
   static const uint8_t s_frame[5] = {0x01U, 0x00U, 0x04U, 0x00U, 0x00U};
   ra8_ble_host_test_inject_acl(k_cov_conn_handle, s_frame, (uint16_t)sizeof(s_frame));
   /* Not initialized: nothing dispatched, count stays at its reset value. */
   TEST_ASSERT_EQ(0U, ra8_ble_host_test_event_count());
-  TEST_END("ra8_ble_l2cap cov: acl_in before init -> early return (284)");
+  TEST_END("ra8_ble_l2cap cov: acl_in before init -> early return");
 }
 
 /**
@@ -162,7 +162,8 @@ static void test_cov_acl_in_uninitialized(void)
  * @details With no reassembly in progress, injects a frame shorter than
  *          the 4-byte L2CAP header. The ``reassembly_len > 0U`` decision
  *          is false, so control enters the else branch and the
- *          ``len < k_l2cap_hdr_bytes`` guard returns (lines 301-303).
+ *          ``len < k_l2cap_hdr_bytes`` guard in
+ *          internal_acl_fresh_frame returns.
  *
  * @par MC/DC:
  * Decision: ``if (len < k_l2cap_hdr_bytes)`` (single condition). One
@@ -170,24 +171,25 @@ static void test_cov_acl_in_uninitialized(void)
  */
 static void test_cov_acl_in_bogus_short(void)
 {
-  TEST_BEGIN("ra8_ble_l2cap cov: acl_in sub-header frame dropped (301-303)");
+  TEST_BEGIN("ra8_ble_l2cap cov: acl_in sub-header frame dropped");
   TEST_ASSERT_EQ(k_ra8_ok, bring_up());
   const uint32_t       before   = ra8_ble_host_test_event_count();
   static const uint8_t s_two[2] = {0x00U, 0x00U};
   ra8_ble_host_test_inject_acl(k_cov_conn_handle, s_two, (uint16_t)sizeof(s_two));
   TEST_ASSERT_EQ(before, ra8_ble_host_test_event_count());
-  TEST_END("ra8_ble_l2cap cov: acl_in sub-header frame dropped (301-303)");
+  TEST_END("ra8_ble_l2cap cov: acl_in sub-header frame dropped");
 }
 
 /**
  * @test test_cov_acl_reassembly_complete
  *
  * @details Starts an inbound L2CAP frame that is incomplete in its first
- *          ACL fragment (start-reassembly path, lines 318-326), then
- *          delivers the continuation that completes it (lines 330-335).
+ *          ACL fragment (the internal_acl_fresh_frame start-reassembly
+ *          path), then delivers the continuation that completes it via
+ *          internal_reassembly_append + internal_reassembly_dispatch.
  *          Two sub-cases: an ATT CID (0x0004) drives the dispatch-to-ATT
- *          branch (lines 331-333); a signaling CID (0x0005) drives the
- *          silently-consumed branch. Both then reset reassembly_len.
+ *          branch; a signaling CID (0x0005) drives the silently-consumed
+ *          branch. Both then reset reassembly_len.
  *
  *          Fragment 1 carries a 4-byte L2CAP header (length=4, CID) plus
  *          2 payload bytes -> 6 buffered, expected complete size 8.
@@ -201,10 +203,10 @@ static void test_cov_acl_in_bogus_short(void)
  */
 static void test_cov_acl_reassembly_complete(void)
 {
-  TEST_BEGIN("ra8_ble_l2cap cov: reassembly completes + dispatch (318-335)");
+  TEST_BEGIN("ra8_ble_l2cap cov: reassembly completes + dispatch");
   TEST_ASSERT_EQ(k_ra8_ok, bring_up());
 
-  /* Sub-case A: ATT CID -> dispatch branch (331-333). */
+  /* Sub-case A: ATT CID -> internal_reassembly_dispatch ATT branch. */
   static const uint8_t s_att_frag1[6] = {
     0x04U,
     0x00U, /* L2CAP length = 4 */
@@ -217,7 +219,8 @@ static void test_cov_acl_reassembly_complete(void)
   ra8_ble_host_test_inject_acl(k_cov_conn_handle, s_att_frag1, (uint16_t)sizeof(s_att_frag1));
   ra8_ble_host_test_inject_acl(k_cov_conn_handle, s_att_frag2, (uint16_t)sizeof(s_att_frag2));
 
-  /* Sub-case B: signaling CID -> silently consumed (330 false, 335). */
+  /* Sub-case B: signaling CID -> silently consumed (ATT-CID check
+   * false; reassembly reset only). */
   static const uint8_t s_sig_frag1[6] = {
     0x04U,
     0x00U, /* L2CAP length = 4 */
@@ -230,7 +233,7 @@ static void test_cov_acl_reassembly_complete(void)
   ra8_ble_host_test_inject_acl(k_cov_conn_handle, s_sig_frag1, (uint16_t)sizeof(s_sig_frag1));
   ra8_ble_host_test_inject_acl(k_cov_conn_handle, s_sig_frag2, (uint16_t)sizeof(s_sig_frag2));
 
-  TEST_END("ra8_ble_l2cap cov: reassembly completes + dispatch (318-335)");
+  TEST_END("ra8_ble_l2cap cov: reassembly completes + dispatch");
 }
 
 /**
@@ -238,8 +241,8 @@ static void test_cov_acl_reassembly_complete(void)
  *
  * @details Starts reassembly with a large declared L2CAP length, then
  *          appends a continuation that is still short of the expected
- *          total. This drives the append + still-incomplete return
- *          (lines 295-299) without completing the frame.
+ *          total. This drives the internal_reassembly_append
+ *          still-incomplete return without completing the frame.
  *
  *          Fragment 1: header (length=20, ATT CID) + 2 payload -> 6
  *          buffered, expected total 24. Fragment 2: 4 continuation bytes
@@ -251,7 +254,7 @@ static void test_cov_acl_reassembly_complete(void)
  */
 static void test_cov_acl_reassembly_incomplete_continuation(void)
 {
-  TEST_BEGIN("ra8_ble_l2cap cov: continuation still incomplete (295-299)");
+  TEST_BEGIN("ra8_ble_l2cap cov: continuation still incomplete");
   TEST_ASSERT_EQ(k_ra8_ok, bring_up());
   static const uint8_t s_frag1[6] = {
     0x14U,
@@ -264,7 +267,7 @@ static void test_cov_acl_reassembly_incomplete_continuation(void)
   static const uint8_t s_cont[4] = {0x00U, 0x00U, 0x00U, 0x00U};
   ra8_ble_host_test_inject_acl(k_cov_conn_handle, s_frag1, (uint16_t)sizeof(s_frag1));
   ra8_ble_host_test_inject_acl(k_cov_conn_handle, s_cont, (uint16_t)sizeof(s_cont));
-  TEST_END("ra8_ble_l2cap cov: continuation still incomplete (295-299)");
+  TEST_END("ra8_ble_l2cap cov: continuation still incomplete");
 }
 
 /**
@@ -273,8 +276,8 @@ static void test_cov_acl_reassembly_incomplete_continuation(void)
  * @details Starts reassembly with a nearly-full first fragment, then
  *          appends a continuation whose length pushes the buffered total
  *          past the 256-byte reassembly buffer, driving the overflow
- *          drop (lines 289, 292, 293): reassembly_len is reset to 0 and
- *          the frame is discarded.
+ *          drop in internal_reassembly_append: reassembly_len is reset
+ *          to 0 and the frame is discarded.
  *
  *          Fragment 1: 250 bytes, declared L2CAP length 300 (never fits
  *          in one packet) -> start reassembly, 250 buffered. Fragment 2:
@@ -286,7 +289,7 @@ static void test_cov_acl_reassembly_incomplete_continuation(void)
  */
 static void test_cov_acl_reassembly_overflow_drop(void)
 {
-  TEST_BEGIN("ra8_ble_l2cap cov: mid-reassembly overflow dropped (289-293)");
+  TEST_BEGIN("ra8_ble_l2cap cov: mid-reassembly overflow dropped");
   TEST_ASSERT_EQ(k_ra8_ok, bring_up());
   uint8_t s_frag1[250]            = {};
   s_frag1[0]                      = 0x2CU; /* L2CAP length = 300 (0x012C) */
@@ -296,7 +299,7 @@ static void test_cov_acl_reassembly_overflow_drop(void)
   static const uint8_t s_cont[10] = {0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U};
   ra8_ble_host_test_inject_acl(k_cov_conn_handle, s_frag1, (uint16_t)sizeof(s_frag1));
   ra8_ble_host_test_inject_acl(k_cov_conn_handle, s_cont, (uint16_t)sizeof(s_cont));
-  TEST_END("ra8_ble_l2cap cov: mid-reassembly overflow dropped (289-293)");
+  TEST_END("ra8_ble_l2cap cov: mid-reassembly overflow dropped");
 }
 
 /**
@@ -304,7 +307,8 @@ static void test_cov_acl_reassembly_overflow_drop(void)
  *
  * @details Injects a first fragment that cannot fit the reassembly
  *          buffer (len > k_reassembly_buf_bytes) yet is incomplete,
- *          driving the too-long start-fragment reject (lines 318-319).
+ *          driving the internal_acl_fresh_frame too-long
+ *          start-fragment reject.
  *          The declared L2CAP length (400) keeps the "complete in one
  *          packet" decision false, and the 300-byte length trips the
  *          buffer-capacity guard before any memcpy.
@@ -315,7 +319,7 @@ static void test_cov_acl_reassembly_overflow_drop(void)
  */
 static void test_cov_acl_start_reassembly_too_long(void)
 {
-  TEST_BEGIN("ra8_ble_l2cap cov: start fragment too long dropped (318-319)");
+  TEST_BEGIN("ra8_ble_l2cap cov: start fragment too long dropped");
   TEST_ASSERT_EQ(k_ra8_ok, bring_up());
   uint8_t s_frag[300] = {};
   s_frag[0]           = 0x90U; /* L2CAP length = 400 (0x0190) */
@@ -323,13 +327,13 @@ static void test_cov_acl_start_reassembly_too_long(void)
   s_frag[2]           = 0x04U; /* CID = ATT */
   s_frag[3]           = 0x00U;
   ra8_ble_host_test_inject_acl(k_cov_conn_handle, s_frag, (uint16_t)sizeof(s_frag));
-  TEST_END("ra8_ble_l2cap cov: start fragment too long dropped (318-319)");
+  TEST_END("ra8_ble_l2cap cov: start fragment too long dropped");
 }
 
 /**
  * @test test_cov_acl_trampoline_via_dispatch
  *
- * @details Reaches internal_acl_trampoline (lines 340-347) by pumping a
+ * @details Reaches internal_acl_trampoline by pumping a
  *          raw H4-framed HCI ACL packet through the controller's
  *          ra8_ble_dispatch drain loop. ra8_ble_host_init registered the
  *          trampoline as the controller ACL handler, so the drained
@@ -346,7 +350,7 @@ static void test_cov_acl_start_reassembly_too_long(void)
  */
 static void test_cov_acl_trampoline_via_dispatch(void)
 {
-  TEST_BEGIN("ra8_ble_l2cap cov: acl trampoline via ra8_ble_dispatch (340-347)");
+  TEST_BEGIN("ra8_ble_l2cap cov: acl trampoline via ra8_ble_dispatch");
   TEST_ASSERT_EQ(k_ra8_ok, bring_up());
   ra8_ble_test_reset_capture();
 
@@ -364,7 +368,7 @@ static void test_cov_acl_trampoline_via_dispatch(void)
   };
   ra8_ble_test_inject_rx(s_hci_acl, (uint16_t)sizeof(s_hci_acl));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_dispatch());
-  TEST_END("ra8_ble_l2cap cov: acl trampoline via ra8_ble_dispatch (340-347)");
+  TEST_END("ra8_ble_l2cap cov: acl trampoline via ra8_ble_dispatch");
 }
 
 /**
@@ -374,7 +378,8 @@ static void test_cov_acl_trampoline_via_dispatch(void)
  *          characteristic (which appends a CCCD row), forces the host
  *          into the connected state, then injects a matching
  *          Disconnection_Complete. This exercises the CCCD-clearing loop
- *          body (lines 424-428): iterating attributes, matching the
+ *          body of internal_on_disconn_complete: iterating attributes,
+ *          matching the
  *          CCCD kind, and zeroing its value. A disconnected event is
  *          dispatched, verified by the event count.
  *
@@ -385,7 +390,7 @@ static void test_cov_acl_trampoline_via_dispatch(void)
  */
 static void test_cov_disconnect_clears_cccd(void)
 {
-  TEST_BEGIN("ra8_ble_l2cap cov: disconnect clears CCCD rows (424-428)");
+  TEST_BEGIN("ra8_ble_l2cap cov: disconnect clears CCCD rows");
   TEST_ASSERT_EQ(k_ra8_ok, bring_up());
 
   static const uint8_t s_svc_uuid[k_ra8_ble_host_uuid_bytes] = {
@@ -446,14 +451,14 @@ static void test_cov_disconnect_clears_cccd(void)
   ra8_ble_host_test_inject_event(0x05U, s_disconn, 4U);
   TEST_ASSERT(ra8_ble_host_test_event_count() == before + 1U);
 
-  TEST_END("ra8_ble_l2cap cov: disconnect clears CCCD rows (424-428)");
+  TEST_END("ra8_ble_l2cap cov: disconnect clears CCCD rows");
 }
 
 /**
  * @test test_cov_init_open_failed
  *
- * @details Drives ra8_ble_host_init down its ``ra8_ble_open`` failure leg
- *          (lines 489-490). The controller is opened directly first, so
+ * @details Drives ra8_ble_host_init down its ``ra8_ble_open`` failure
+ *          leg. The controller is opened directly first, so
  *          the host-init call reaches ra8_ble_open with the controller
  *          already open; ra8_ble_open then returns k_ra8_err_invalid_arg
  *          and host-init maps that to k_ra8_err_invalid_state. The
@@ -466,7 +471,7 @@ static void test_cov_disconnect_clears_cccd(void)
  */
 static void test_cov_init_open_failed(void)
 {
-  TEST_BEGIN("ra8_ble_l2cap cov: init with ra8_ble_open failure (489-490)");
+  TEST_BEGIN("ra8_ble_l2cap cov: init with ra8_ble_open failure");
 
   /* Clean baseline: bring the host up then close it so the controller
    * open-flag is known to be clear and the host is uninitialized. */
@@ -487,7 +492,7 @@ static void test_cov_init_open_failed(void)
   /* Restore a closed controller for any subsequent tests. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_close());
 
-  TEST_END("ra8_ble_l2cap cov: init with ra8_ble_open failure (489-490)");
+  TEST_END("ra8_ble_l2cap cov: init with ra8_ble_open failure");
 }
 
 /**

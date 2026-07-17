@@ -8,8 +8,10 @@
  * (internal_handle_find_info / internal_handle_read_by_type /
  * internal_handle_read / internal_handle_write) because no attributes
  * are registered before the dispatcher runs. As a result the coverage
- * reachability gap analysis for lists ra8_ble_att.c lines 385,
- * 404, 492 and 658 as uncovered.
+ * reachability gap analysis listed the handler-internal decisions
+ * (the find_info handle-range guard, the in-range skip filters of
+ * internal_emit_info_pairs / internal_emit_first_decl_in_range, and
+ * the internal_handle_write writable-value arm) as uncovered.
  *
  * This TU registers a small Primary Service + characteristic table
  * via the public ra8_ble_host_gatt_register_* API, drives the stack
@@ -154,8 +156,8 @@ static void inject_att(const uint8_t* att_pdu, uint16_t att_len)
  *
  * @par MC/DC:
  * Decision: ``if ((a->handle < start) || (a->handle > end))``
- * (libs/ra8_ble_host/src/ra8_ble_att.c line 404, attribute-in-range
- * skip-filter inside internal_handle_find_info)
+ * (internal_emit_info_pairs in ra8_ble_att.c, the attribute-in-range
+ * skip-filter serving internal_handle_find_info)
  *  - V1 (this test): a->handle in [start,end]    -> C1=F, C2=F. Decision F (include).
  *  - V2 (test_dispatch_find_info_below_range)    -> C1=T shorts. Decision T (skip).
  *  - V3 (test_dispatch_find_info_above_range)    -> C1=F, C2=T. Decision T (skip).
@@ -198,7 +200,8 @@ static void test_dispatch_find_info_in_range_match(void)
  * @test test_dispatch_find_info_above_range
  *
  * @par MC/DC:
- * Decision: ``if ((a->handle < start) || (a->handle > end))`` line 404.
+ * Decision: ``if ((a->handle < start) || (a->handle > end))``
+ * (internal_emit_info_pairs).
  *  - V3 in this test: end below smallest registered handle ->
  *    C1=F, C2=T. Decision T (skip every entry; pairs==0; Error_Rsp).
  *
@@ -207,7 +210,7 @@ static void test_dispatch_find_info_in_range_match(void)
  * three rows of the 2-condition MC/DC table are covered.
  *
  * @par DO-178C 6.4.4.3 rationale:
- * Provides the C2-varies vector for line 404.
+ * Provides the C2-varies vector for the internal_emit_info_pairs filter.
  */
 static void test_dispatch_find_info_above_range(void)
 {
@@ -243,16 +246,16 @@ static void test_dispatch_find_info_above_range(void)
  *
  * @par MC/DC:
  * Decision: ``if ((a->handle < start) || (a->handle > end))``
- * (libs/ra8_ble_host/src/ra8_ble_att.c line 492, in
+ * (internal_emit_first_decl_in_range in ra8_ble_att.c, serving
  * internal_handle_read_by_type)
  *  - V1 (this test): char-decl handle in [start,end] -> C1=F, C2=F.
  *    Decision F (emit pair, RSP carries the declaration).
  *  - V2 (test_dispatch_read_by_type_above_range)     -> C1=F, C2=T.
  *
- * Combined with V2 below, MC/DC is satisfied for line 492. The C1=T
- * row is structurally identical to the line-404 mirror covered by
- * test_ra8_ble_att.c (same condition shape) per DO-178C 6.4.4.3
- * "structurally equivalent decisions" guidance.
+ * Combined with V2 below, MC/DC is satisfied for this filter. The
+ * C1=T row is structurally identical to the internal_emit_info_pairs
+ * mirror covered by test_ra8_ble_att.c (same condition shape) per
+ * DO-178C 6.4.4.3 "structurally equivalent decisions" guidance.
  *
  * @par DO-178C 6.4.4.3 rationale:
  * 2-condition decision; this test plus the above-range twin satisfy
@@ -291,13 +294,16 @@ static void test_dispatch_read_by_type_in_range_decl(void)
  * @test test_dispatch_read_by_type_above_range
  *
  * @par MC/DC:
- * Decision: ``if ((a->handle < start) || (a->handle > end))`` line 492.
+ * Decision: ``if ((a->handle < start) || (a->handle > end))``
+ * (internal_emit_first_decl_in_range).
  *  - V2 in this test: end below registered handles -> C1=F, C2=T.
  *
- * Pairs with test_dispatch_read_by_type_in_range_decl above for line 492.
+ * Pairs with test_dispatch_read_by_type_in_range_decl above for the
+ * same filter.
  *
  * @par DO-178C 6.4.4.3 rationale:
- * Provides the C2-varies vector for line 492.
+ * Provides the C2-varies vector for the
+ * internal_emit_first_decl_in_range filter.
  */
 static void test_dispatch_read_by_type_above_range(void)
 {
@@ -332,7 +338,8 @@ static void test_dispatch_read_by_type_above_range(void)
  * @par MC/DC:
  * Decision: ``else if (a->value != NULL)`` and the implicit
  * ``a->kind == k_attr_kind_cccd`` first arm in internal_handle_read
- * (libs/ra8_ble_host/src/ra8_ble_att.c, branches near line 565-584).
+ * (the read-response builder arms of internal_handle_read in
+ * ra8_ble_att.c).
  *  - V1 (this test): value-attribute, a->value!=NULL -> takes the
  *    memcpy(a->value) path.
  *
@@ -378,14 +385,14 @@ static void test_dispatch_read_req_value_path(void)
  *
  * @par MC/DC:
  * Decision: ``else if ((a->kind == k_attr_kind_char_value) && (a->value != NULL))``
- * (libs/ra8_ble_host/src/ra8_ble_att.c line 658)
+ * (internal_handle_write in ra8_ble_att.c)
  *  - V1 (this test): kind==char_value AND value!=NULL ->
  *    C1=T, C2=T. Decision T (memcpy + dispatch write event +
  *    write-response).
  *
  * Pairs with the mirror in test_ra8_ble_att.c which already covers the
  * C1=F and C2=F vectors via static-inline mirrors. Together the three
- * vectors satisfy MC/DC for line 658.
+ * vectors satisfy MC/DC for the internal_handle_write arm.
  *
  * @par DO-178C 6.4.4.3 rationale:
  * Closes the C1=T/C2=T row that the mirror cannot directly reach
@@ -424,8 +431,8 @@ static void test_dispatch_write_req_value_path(void)
  * @test test_dispatch_find_info_start_zero
  *
  * @par MC/DC:
- * Decision: ``if ((start == 0U) || (start > end))`` line 385 of
- * ra8_ble_att.c (internal_handle_find_info entry guard, 2-cond OR).
+ * Decision: ``if ((start == 0U) || (start > end))``
+ * (internal_handle_find_info entry guard in ra8_ble_att.c, 2-cond OR).
  *  - V1 (this test): start=0, end=0xFFFF -> C1=T (short-circ). Decision T,
  *    Error_Rsp(invalid_handle) emitted.
  *  - V2 (test_dispatch_find_info_start_above_end): start=0x0010, end=0x0005
@@ -436,7 +443,7 @@ static void test_dispatch_write_req_value_path(void)
  * vectors satisfy MC/DC for the 2-condition OR.
  *
  * @par DO-178C 6.4.4.3 rationale:
- * Provides the C1=T-only vector for line 385.
+ * Provides the C1=T-only vector for the find_info entry guard.
  */
 static void test_dispatch_find_info_start_zero(void)
 {
@@ -467,14 +474,15 @@ static void test_dispatch_find_info_start_zero(void)
  * @test test_dispatch_find_info_start_above_end
  *
  * @par MC/DC:
- * Decision: ``if ((start == 0U) || (start > end))`` line 385.
+ * Decision: ``if ((start == 0U) || (start > end))``
+ * (internal_handle_find_info entry guard).
  *  - V2: start=0x0010, end=0x0005 -> C1=F, C2=T. Decision T.
  * Pairs with test_dispatch_find_info_start_zero (V1, C1=T) and
  * test_dispatch_find_info_in_range_match (V3, C1=F C2=F). N+1=3 vectors
  * for the 2-cond OR are now complete.
  *
  * @par DO-178C 6.4.4.3 rationale:
- * Provides the C2-varies-only vector for line 385.
+ * Provides the C2-varies-only vector for the find_info entry guard.
  */
 static void test_dispatch_find_info_start_above_end(void)
 {
@@ -505,8 +513,8 @@ static void test_dispatch_find_info_start_above_end(void)
  * @test test_dispatch_find_info_below_range
  *
  * @par MC/DC:
- * Decision: ``if ((a->handle < start) || (a->handle > end))`` line 404
- * (skip-filter inside internal_handle_find_info, 2-cond OR).
+ * Decision: ``if ((a->handle < start) || (a->handle > end))``
+ * (internal_emit_info_pairs skip-filter, 2-cond OR).
  *  - V4 (this test): start=0xFFFE,end=0xFFFE -> every registered handle
  *    is < start -> C1=T (short-circ). Decision T (skip every entry,
  *    pairs==0, Error_Rsp(attr_not_found) emitted).
@@ -516,7 +524,7 @@ static void test_dispatch_find_info_start_above_end(void)
  * vectors satisfy MC/DC fully.
  *
  * @par DO-178C 6.4.4.3 rationale:
- * Provides the C1=T-only vector for line 404.
+ * Provides the C1=T-only vector for the internal_emit_info_pairs filter.
  */
 static void test_dispatch_find_info_below_range(void)
 {
@@ -549,15 +557,16 @@ static void test_dispatch_find_info_below_range(void)
  * @test test_dispatch_read_by_type_below_range
  *
  * @par MC/DC:
- * Decision: ``if ((a->handle < start) || (a->handle > end))`` line 492
- * (skip-filter inside internal_handle_read_by_type, 2-cond OR).
+ * Decision: ``if ((a->handle < start) || (a->handle > end))``
+ * (internal_emit_first_decl_in_range skip-filter, 2-cond OR).
  *  - V3 (this test): start=end=0xFFFE -> every registered handle is
  *    < start -> C1=T (short-circ). Decision T (skip).
  * Pairs with the in-range (F||F) and above-range (F||T) vectors for
  * the 2-cond OR; N+1=3 vectors complete MC/DC.
  *
  * @par DO-178C 6.4.4.3 rationale:
- * Provides the C1=T-only vector for line 492.
+ * Provides the C1=T-only vector for the
+ * internal_emit_first_decl_in_range filter.
  */
 static void test_dispatch_read_by_type_below_range(void)
 {
@@ -590,7 +599,7 @@ static void test_dispatch_read_by_type_below_range(void)
  * @test test_dispatch_write_req_to_service_handle
  *
  * @par MC/DC:
- * Decision (internal_handle_write line 658):
+ * Decision (internal_handle_write):
  *   ``else if ((a->kind == k_attr_kind_char_value) && (a->value != NULL))``
  * (2 conditions, AND).
  *  - V1 (this test): write to the primary-service handle (kind=primary_svc,
@@ -607,7 +616,7 @@ static void test_dispatch_read_by_type_below_range(void)
  * combinations" guidance, the (T,F) vector is documented as such.
  *
  * @par DO-178C 6.4.4.3 rationale:
- * Provides the C1=F-only vector for line 658.
+ * Provides the C1=F-only vector for the internal_handle_write arm.
  */
 static void test_dispatch_write_req_to_service_handle(void)
 {
@@ -621,7 +630,7 @@ static void test_dispatch_write_req_to_service_handle(void)
 
   /* The primary service handle is the first registered attribute (handle 1)
    * so writing to handle 1 hits a `kind == primary_service` row, taking the
-   * C1=F branch of the AND at line 658. */
+   * C1=F branch of the internal_handle_write AND. */
   enum : uint16_t {
     k_svc_handle = 0x0001U, /**< Svc handle. */
   };
