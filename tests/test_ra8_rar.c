@@ -827,6 +827,29 @@ static void test_rar_open_next_extract_edges(void)
 }
 
 /**
+ * @brief Open the shared RAR fixture with the standard page/name budgets.
+ * @param[out] c     Comic handle under test.
+ * @param[out] pages Page-descriptor table.
+ * @param[out] names Name-string buffer.
+ * @return The `ra8_comic_open` result code.
+ * @pre The shared archive buffer holds s_arc_size bytes.
+ * @post No state beyond @p c / @p pages / @p names is modified.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static ra8_err_t tr_open(ra8_comic_t* c, ra8_comic_page_t* pages, char* names)
+{
+  return ra8_comic_open(c,
+                        tr_read,
+                        nullptr,
+                        (uint64_t)s_arc_size,
+                        pages,
+                        (uint32_t)k_tr_page_cap,
+                        names,
+                        (uint32_t)k_tr_name_cap);
+}
+
+/**
  * @test test_comic_cbr_sort_and_empty
  * @brief The comic name-sort resolves shared-prefix names by length (both
  *        directions and equal), and a RAR with no image members reports
@@ -858,15 +881,7 @@ static void test_comic_cbr_sort_and_empty(void)
   ra8_comic_t      c                    = {};
   ra8_comic_page_t pages[k_tr_page_cap] = {};
   char             names[k_tr_name_cap] = {};
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_comic_open(&c,
-                                tr_read,
-                                nullptr,
-                                (uint64_t)s_arc_size,
-                                pages,
-                                (uint32_t)k_tr_page_cap,
-                                names,
-                                (uint32_t)sizeof(names)));
+  TEST_ASSERT_EQ(k_ra8_ok, tr_open(&c, pages, names));
   TEST_ASSERT_EQ(4U, ra8_comic_page_count(&c));
   char     nb[k_tr_name_buf] = {};
   uint16_t nl                = 0U;
@@ -888,15 +903,7 @@ static void test_comic_cbr_sort_and_empty(void)
   ra8_comic_t      c2                    = {};
   ra8_comic_page_t pages2[k_tr_page_cap] = {};
   char             names2[k_tr_name_cap] = {};
-  TEST_ASSERT_EQ(k_ra8_err_not_found,
-                 ra8_comic_open(&c2,
-                                tr_read,
-                                nullptr,
-                                (uint64_t)s_arc_size,
-                                pages2,
-                                (uint32_t)k_tr_page_cap,
-                                names2,
-                                (uint32_t)sizeof(names2)));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, tr_open(&c2, pages2, names2));
   TEST_END("comic cbr: name-sort length tiebreak + no-image not_found");
 }
 
