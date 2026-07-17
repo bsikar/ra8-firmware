@@ -340,6 +340,47 @@ static void test_protected_ecdsa_sign(void)
 }
 
 /**
+ * @brief Thin wrapper over `ra8_rsip_protected_rsa_decrypt` (RSA-2048 fixed).
+ * @param[in]  blob Wrapped-key blob (nullptr exercises the blob guard).
+ * @param[in]  in   Ciphertext input (nullptr exercises the input guard).
+ * @param[out] out  Plaintext output (nullptr exercises the output guard).
+ * @return The `ra8_rsip_protected_rsa_decrypt` result code.
+ * @pre The RSIP mock is prepared.
+ * @post No state beyond @p out is modified.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static ra8_err_t rp_rsa(uint8_t* blob, uint8_t* in, uint8_t* out)
+{
+  return ra8_rsip_protected_rsa_decrypt(blob,
+                                        k_ra8_rsip_rsa_2048,
+                                        in,
+                                        (uint32_t)k_test_aes_block,
+                                        out,
+                                        (uint32_t)k_test_rsa2048_bytes);
+}
+
+/**
+ * @brief Thin wrapper over `ra8_rsip_protected_ecdsa_sign` (secp256r1 fixed).
+ * @param[in]  blob Wrapped-key blob (nullptr exercises the blob guard).
+ * @param[in]  hash Digest input (nullptr exercises the hash guard).
+ * @param[out] sig  Signature output (nullptr exercises the signature guard).
+ * @return The `ra8_rsip_protected_ecdsa_sign` result code.
+ * @pre The RSIP mock is prepared.
+ * @post No state beyond @p sig is modified.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static ra8_err_t rp_ecdsa(uint8_t* blob, uint8_t* hash, uint8_t* sig)
+{
+  return ra8_rsip_protected_ecdsa_sign(blob,
+                                       k_ra8_rsip_curve_secp256r1,
+                                       hash,
+                                       (uint32_t)k_test_sha256_digest,
+                                       sig);
+}
+
+/**
  * @brief NULL-pointer rejection on every protected-layer entry.
  * @since 0.1.0
   *
@@ -372,46 +413,13 @@ static void test_protected_null_args(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_state,
                  ra8_rsip_protected_aes_encrypt(nullptr, buf, (uint32_t)k_test_aes_block));
 
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rsip_protected_rsa_decrypt(nullptr,
-                                                k_ra8_rsip_rsa_2048,
-                                                buf,
-                                                (uint32_t)k_test_aes_block,
-                                                buf,
-                                                (uint32_t)k_test_rsa2048_bytes));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rsip_protected_rsa_decrypt(blob,
-                                                k_ra8_rsip_rsa_2048,
-                                                nullptr,
-                                                (uint32_t)k_test_aes_block,
-                                                buf,
-                                                (uint32_t)k_test_rsa2048_bytes));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rsip_protected_rsa_decrypt(blob,
-                                                k_ra8_rsip_rsa_2048,
-                                                buf,
-                                                (uint32_t)k_test_aes_block,
-                                                nullptr,
-                                                (uint32_t)k_test_rsa2048_bytes));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, rp_rsa(nullptr, buf, buf));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, rp_rsa(blob, nullptr, buf));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, rp_rsa(blob, buf, nullptr));
 
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rsip_protected_ecdsa_sign(nullptr,
-                                               k_ra8_rsip_curve_secp256r1,
-                                               hash,
-                                               (uint32_t)k_test_sha256_digest,
-                                               sig));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rsip_protected_ecdsa_sign(blob,
-                                               k_ra8_rsip_curve_secp256r1,
-                                               nullptr,
-                                               (uint32_t)k_test_sha256_digest,
-                                               sig));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rsip_protected_ecdsa_sign(blob,
-                                               k_ra8_rsip_curve_secp256r1,
-                                               hash,
-                                               (uint32_t)k_test_sha256_digest,
-                                               nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, rp_ecdsa(nullptr, hash, sig));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, rp_ecdsa(blob, nullptr, sig));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, rp_ecdsa(blob, hash, nullptr));
 
   TEST_END("rsip protected null args");
 }
