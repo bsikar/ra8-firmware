@@ -20,6 +20,7 @@
 #include "mdl_export.h"
 
 #include <crt_externs.h>
+#include <ctype.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -149,7 +150,44 @@ static int name_cmp(const void* a, const void* b)
   return strcmp((const char*)a, (const char*)b);
 }
 
-/** @brief List a chapter's non-hidden page files into `names`, sorted. */
+/** @brief True if `name` ends (case-insensitively) with `suffix`. */
+static bool ends_with_ci(const char* name, const char* suffix)
+{
+  const size_t nl = strlen(name);
+  const size_t sl = strlen(suffix);
+  if (sl > nl) {
+    return false;
+  }
+  const char* tail = name + (nl - sl);
+  for (size_t i = 0U; i < sl; ++i) {
+    if (tolower((unsigned char)tail[i]) != tolower((unsigned char)suffix[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * @brief True if `name` is a raster page image a reader engine can decode.
+ *
+ * Packaging must include ONLY page images. A chapter folder often also holds
+ * this tool's own prior output (a sibling `.rta1`/`.cbz`, a `.tar.tmp`) or OS
+ * junk; folding those into an archive makes the reader choke when it decodes a
+ * non-image "page" (the 0x107 that bit re-runs). Filtering by extension keeps
+ * packaging idempotent -- re-running any format on a folder is safe.
+ */
+static bool is_page_image(const char* name)
+{
+  static const char* const k_img_exts[] = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"};
+  for (size_t i = 0U; i < (sizeof(k_img_exts) / sizeof(k_img_exts[0])); ++i) {
+    if (ends_with_ci(name, k_img_exts[i])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** @brief List a chapter's page-image files (only) into `names`, sorted. */
 static size_t list_pages(const char* dir, char names[][k_name_max], size_t cap)
 {
   DIR* d = opendir(dir);
@@ -159,7 +197,9 @@ static size_t list_pages(const char* dir, char names[][k_name_max], size_t cap)
   size_t               n = 0U;
   const struct dirent* e = readdir(d);
   while ((e != nullptr) && (n < cap)) {
-    if (e->d_name[0] != '.') { /* skip hidden / AppleDouble, like the reader */
+    /* Skip hidden / AppleDouble, and anything that is not a page image so a
+     * dir already holding this tool's output re-packages cleanly. */
+    if ((e->d_name[0] != '.') && is_page_image(e->d_name)) {
       (void)snprintf(names[n], k_name_max, "%s", e->d_name);
       ++n;
     }
