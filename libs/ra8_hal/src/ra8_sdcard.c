@@ -295,30 +295,6 @@ static ra8_err_t internal_sdcard_identify(uint8_t instance)
 }
 
 /**
- * @brief Publish the RCA, decode the CSD, and put the card in TRAN.
- *
- * @details
- * HUM Ch 47.2.5 response registers / SD Physical Layer Spec
- * Section 4.7. Runs CMD2 (CID), CMD3 (publish RCA), CMD9 (CSD), then
- * CMD7 with the published RCA to move the card into TRAN.
- *
- * @param[in]  instance    SDHI instance index.
- * @param[out] out_rca     Receives the card's relative address.
- * @param[out] out_blocks  Receives capacity in 512-byte blocks.
- *
- * @return ``ra8_err_t`` error code.
- * @retval k_ra8_ok                   Card parked in TRAN.
- * @retval k_ra8_err_hw_init_failed   CSD decode rejected the layout.
- *
- * @pre Card has cleared ACMD41 (ready state).
- * @pre Both output pointers are non-NULL.
- * @post Card is in TRAN; ``*out_rca`` / ``*out_blocks`` populated.
- * @post On error the card may be in any state; caller deinits SDHI.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
-/**
  * @brief Run CMD2 + CMD3 so the card publishes its relative address.
  *
  * @details
@@ -359,6 +335,31 @@ static ra8_err_t internal_sdcard_publish_rca(uint8_t instance, uint16_t* out_rca
   return k_ra8_ok;
 }
 
+/**
+ * @brief Publish the RCA, decode the CSD, and put the card in TRAN.
+ *
+ * @details
+ * HUM Ch 47.2.5 response registers / SD Physical Layer Spec
+ * Section 4.7. Delegates CMD2/CMD3 to ::internal_sdcard_publish_rca,
+ * then runs CMD9 (CSD) and CMD7 with the published RCA to move the
+ * card into TRAN.
+ *
+ * @param[in]  instance    SDHI instance index.
+ * @param[out] out_rca     Receives the card's relative address.
+ * @param[out] out_blocks  Receives capacity in 512-byte blocks.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok                   Card parked in TRAN.
+ * @retval k_ra8_err_hw_init_failed   CSD decode rejected the layout.
+ *
+ * @pre Card has cleared ACMD41 (ready state).
+ * @pre Both output pointers are non-NULL.
+ * @post Card is in TRAN; ``*out_rca`` / ``*out_blocks`` populated.
+ * @post On error the card may be in any state; caller deinits SDHI.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 static ra8_err_t
 internal_sdcard_publish_and_select(uint8_t instance, uint16_t* out_rca, uint32_t* out_blocks)
 {
