@@ -28,6 +28,7 @@
 #include "ra8_comic.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
+#include "ra8_img_arena.h"
 #include "ra8_reflow_image.h"
 
 /**
@@ -339,9 +340,15 @@ ra8_err_t ra8_viewer_render_page(ra8_viewer_reader_t* r, uint32_t page)
   }
   (void)ra8_gfx_clear((uint32_t)k_viewer_bg);
 
-  int32_t src_w = 0;
-  int32_t src_h = 0;
-  rc            = ra8_img_probe_size(r->page_buf, got, &src_w, &src_h);
+  /* stb's allocator is routed through ra8_img_arena; a JPEG header probe needs a
+   * bound arena to allocate its decode context (PNG does not), so bind around the
+   * probe. ra8_img_decode_blit binds its own arena below. */
+  int32_t         src_w       = 0;
+  int32_t         src_h       = 0;
+  ra8_img_arena_t probe_arena = {.base = r->arena_mem, .cap = (size_t)k_viewer_arena_bytes};
+  ra8_img_arena_bind(&probe_arena);
+  rc = ra8_img_probe_size(r->page_buf, got, &src_w, &src_h);
+  ra8_img_arena_unbind();
   if (rc != k_ra8_ok) {
     return rc;
   }
