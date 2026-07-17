@@ -1,18 +1,22 @@
 /**
  * @file test_app_ereader_manga.c
- * @brief Host twin of examples/ek_ra8d2/hw_pending/ereader_manga: the #231
- *        import-transcode + tile-render pipeline over the same baked fixture.
+ * @brief Host twin of examples/ek_ra8d2/hw_pending/ereader_manga: the viewable
+ *        pan/zoom manga reader (Demo B) over the same baked page fixture.
  *
  * @details
- * Runs the app's exact pipeline against the app's exact fixture header:
- * streamed EPUB open -> `ra8_epub_tile_binder_import("page1.png")` (PNG ->
- * deflate RTA1 atlas in a memstore) -> a 160x120 centre-crop render through
- * a 2-cell tile cache -> FNV-1a-32 over the RGB565 framebuffer. Every stage
- * is a deterministic integer pipeline, so the asserted numbers ARE the
- * `hil.conf` banner: this test is the golden the board_sim / silicon run is
- * compared against. It also re-derives the fixture's pixel pattern
- * independently and byte-checks a paged tile against it, so the committed
- * fixture and the generator formula cannot drift apart silently.
+ * Runs the app's exact presentation pipeline against the app's exact fixture:
+ * transcode the baked 1536x2048 grayscale PNG through `ra8_tileatlas_produce`
+ * into an RTA1 atlas, page it through a small `ra8_tile_cache`, and render the
+ * initial 1:1 top-left viewport with the shared `mg_reader` into a 1024x600
+ * RGB565 framebuffer. Every stage is a deterministic integer pipeline, so the
+ * framebuffer FNV asserted here IS the `hil.conf` banner crc: this test is the
+ * golden the board_sim / silicon run is compared against.
+ *
+ * The reader's pure navigation logic (tap-zone hit-test + pan/zoom mutation) is
+ * unit-tested directly, and one decoded tile is byte-checked against the
+ * generator's page pattern so the committed fixture and the reader cannot drift
+ * apart silently. The app's `src/mg_reader.c` is compiled into this target (see
+ * tests/CMakeLists.txt), so the tested render IS the production render.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -21,12 +25,13 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
-#include "../examples/ek_ra8d2/hw_pending/ereader_manga/manga_hil_fixture.h"
-#include "ra8_epub.h"
-#include "ra8_epub_img_tiles.h"
+#include "../examples/ek_ra8d2/hw_pending/ereader_manga/inc/mg_reader.h"
+#include "../examples/ek_ra8d2/hw_pending/ereader_manga/mg_page_fixture.h"
 #include "ra8_err.h"
+#include "ra8_gfx.h"
 #include "ra8_tile_cache.h"
 #include "ra8_tileatlas.h"
 #include "ra8_tileatlas_produce.h"
@@ -34,41 +39,40 @@
 
 /** @brief The app's geometry + budget constants (kept in lockstep with main.c). */
 enum : uint32_t {
-  k_t_fb_w       = 160U,          /**< Framebuffer width, pixels.        */
-  k_t_fb_h       = 120U,          /**< Framebuffer height, pixels.       */
-  k_t_img_edge   = 512U,          /**< Fixture page edge, pixels.        */
-  k_t_tile_edge  = 128U,          /**< Import tile edge, pixels.         */
-  k_t_cap_edge   = 1024U,         /**< Import budget cap, pixels.        */
-  k_t_cell_bytes = 16384U,        /**< Cache cell = one gray8 tile.      */
-  k_t_cells      = 2U,            /**< Deliberately tiny (evictions).    */
-  k_t_buckets    = 8U,            /**< Cache hash buckets.               */
-  k_t_scratch    = 18688U,        /**< stored_bound(16384) staging.      */
-  k_t_work       = 1024U * 1024U, /**< Producer work arena.              */
-  k_t_store      = 512U * 1024U,  /**< Atlas memstore.                   */
-  k_t_image_id   = 1U,            /**< Binder image id for the page.     */
-  k_t_view_x0    = 176U,          /**< Crop left edge (centre 160x120).  */
-  k_t_view_y0    = 196U,          /**< Crop top edge (centre 160x120).   */
-  k_t_fnv_offset = 2166136261U,   /**< FNV-1a-32 offset basis.           */
-  k_t_fnv_prime  = 16777619U,     /**< FNV-1a-32 prime.                  */
-  k_t_col_bg     = 0x202028U,     /**< App clear colour (unused pixels). */
-  k_t_tiles_want = 16U,           /**< Expected 4x4 tile grid.           */
+  k_t_fb_w       = 1024U,              /**< Panel framebuffer width, pixels.  */
+  k_t_fb_h       = 600U,               /**< Panel framebuffer height, pixels. */
+  k_t_tile_edge  = 256U,               /**< Import + cache tile edge, pixels. */
+  k_t_cap_edge   = 2048U,              /**< Produce budget cap, pixels.       */
+  k_t_cell_bytes = 256U * 256U,        /**< Cache cell = one gray8 256 tile.  */
+  k_t_cells      = 4U,                 /**< Small budget (forces evictions).  */
+  k_t_buckets    = 8U,                 /**< Cache hash buckets.               */
+  k_t_scratch    = 96U * 1024U,        /**< read_tile deflate staging.        */
+  k_t_work       = 2U * 1024U * 1024U, /**< Producer work arena.              */
+  k_t_store      = 4U * 1024U * 1024U, /**< Atlas memstore.                   */
+  k_t_image_id   = 1U,                 /**< Tile-cache key image id.          */
+  k_t_pan_step   = 256U,               /**< One edge-tap viewport slide.      */
 };
 
 /**
- * @brief Golden banner numbers (must match the app's UART banner and the
- *        `hil.conf` HIL_EXPECT line).
+ * @brief Golden banner numbers (must match the app's UART banner + hil.conf).
  */
 enum : uint32_t {
-  k_t_golden_atlas_bytes = 67331U,      /**< Expected atlas total_size. */
-  k_t_golden_crc         = 0x4095FBB5U, /**< Expected framebuffer FNV.  */
+  k_t_page_w             = 1536U,       /**< Baked page width.          */
+  k_t_page_h             = 2048U,       /**< Baked page height.         */
+  k_t_tiles_want         = 48U,         /**< 6x8 tile grid.             */
+  k_t_golden_atlas_bytes = 20384U,      /**< Expected atlas total_size. */
+  k_t_golden_crc         = 0x5CBD900BU, /**< Expected framebuffer FNV.  */
 };
 
-/** @brief RGB565 framebuffer (the app's render target twin). */
+/** @brief Expected tile-fill grays (must match gen_manga_page_fixture.py). */
+enum : uint8_t {
+  k_t_gray_c0r0 = 60U, /**< tile_gray(0,0) = 60 + 0.    */
+  k_t_gray_c5r7 = 92U, /**< tile_gray(5,7) = 60 + 2*16. */
+  k_t_gray_edge = 0U,  /**< Black inner tile frame.     */
+};
+
+/** @brief RGB565 panel framebuffer (the app's render target twin). */
 static uint16_t s_fb[(size_t)k_t_fb_h * (size_t)k_t_fb_w];
-/** @brief The open streamed book. */
-static ra8_epub_book_t s_book;
-/** @brief The tile binder. */
-static ra8_epub_tile_binder_t s_binder;
 /** @brief Tile-cache cell storage. */
 static uint8_t s_cell_mem[(size_t)k_t_cells * (size_t)k_t_cell_bytes];
 /** @brief Tile-cache keys. */
@@ -79,187 +83,290 @@ static ra8_tile_dims_t s_dims[k_t_cells];
 static ra8_keycache_cell_t s_meta[k_t_cells];
 /** @brief Tile-cache buckets. */
 static int32_t s_buckets[k_t_buckets];
-/** @brief Binder stored-tile staging. */
+/** @brief read_tile deflate staging. */
 static uint8_t s_scratch[k_t_scratch];
 /** @brief Producer work arena. */
 static uint8_t s_work[k_t_work];
 /** @brief Atlas memstore backing. */
 static uint8_t s_store_buf[k_t_store];
-/** @brief Atlas memstore. */
+
+/** @brief The atlas memstore. */
 static ra8_tileatlas_memstore_t s_store;
-
-/** @brief The fixture's generator pattern (independent re-derivation). */
-static uint8_t fixture_pix(uint32_t x, uint32_t y)
-{
-  return (uint8_t)((x ^ y) + ((x + y) >> 2U));
-}
-
-/** @brief Streamed-media read over the baked fixture. */
-static size_t media_read(void* ctx, uint64_t offset, void* buf, size_t len)
-{
-  (void)ctx;
-  if (offset >= (uint64_t)k_manga_epub_len) {
-    return 0U;
-  }
-  const uint64_t avail = (uint64_t)k_manga_epub_len - offset;
-  const size_t   take  = (len > (size_t)avail) ? (size_t)avail : len;
-  memcpy(buf, &k_manga_epub[(size_t)offset], take);
-  return take;
-}
-
-/** @brief The app's gray8 -> RGB565 pack. */
-static uint16_t pack565(uint8_t g)
-{
-  return (uint16_t)(((uint16_t)(g >> 3U) << 11U) | ((uint16_t)(g >> 2U) << 5U) |
-                    (uint16_t)(g >> 3U));
-}
-
-/** @brief FNV-1a-32 over the framebuffer bytes (the app's hash twin). */
-static uint32_t fb_hash(void)
-{
-  const uint8_t* p   = (const uint8_t*)s_fb;
-  uint32_t       hsh = (uint32_t)k_t_fnv_offset;
-  for (size_t i = 0U; i < sizeof(s_fb); i++) {
-    hsh = (hsh ^ (uint32_t)p[i]) * (uint32_t)k_t_fnv_prime;
-  }
-  return hsh;
-}
-
-/** @brief Blit one pinned tile's viewport overlap (the app's blit twin). */
-static void blit_tile(const ra8_tile_t* tile, uint16_t tx, uint16_t ty)
-{
-  const uint32_t px0 = (uint32_t)tx * (uint32_t)k_t_tile_edge;
-  const uint32_t py0 = (uint32_t)ty * (uint32_t)k_t_tile_edge;
-  for (uint32_t r = 0U; r < (uint32_t)tile->height; r++) {
-    const uint32_t iy = py0 + r;
-    if ((iy < (uint32_t)k_t_view_y0) || (iy >= ((uint32_t)k_t_view_y0 + (uint32_t)k_t_fb_h))) {
-      continue;
-    }
-    for (uint32_t c = 0U; c < (uint32_t)tile->width; c++) {
-      const uint32_t ix = px0 + c;
-      if ((ix < (uint32_t)k_t_view_x0) || (ix >= ((uint32_t)k_t_view_x0 + (uint32_t)k_t_fb_w))) {
-        continue;
-      }
-      s_fb[((iy - (uint32_t)k_t_view_y0) * (uint32_t)k_t_fb_w) + (ix - (uint32_t)k_t_view_x0)] =
-        pack565(tile->pixels[(r * (uint32_t)tile->width) + c]);
-    }
-  }
-}
+/** @brief Parsed atlas geometry. */
+static ra8_tileatlas_info_t s_info;
+/** @brief Tile cache paging the atlas. */
+static ra8_tile_cache_t s_cache;
+/** @brief Decode-on-miss context. */
+static mg_tile_src_t s_tile_src;
+/** @brief The reader under test. */
+static mg_reader_t s_reader;
+/** @brief Decoded-tile probe buffer (off-stack: one full 256x256 gray8 tile). */
+static uint8_t s_probe_cell[k_t_cell_bytes];
 
 /**
- * @test test_manga_app_pipeline
- * @brief The full app pipeline over the committed fixture reproduces the
- *        golden banner numbers (atlas byte count + framebuffer CRC) --
- *        the exact values `hil.conf` asserts on board_sim / silicon.
- *
- * @par MC/DC:
- * (integration gate: the compound decisions inside the producer, atlas
- * reader and binder carry their vectors in test_ra8_tileatlas*.c and
- * test_ra8_epub_img_tiles.c; here the oracle is the end-to-end golden.)
+ * @struct t_png_cursor
+ * @brief Forward cursor over the baked PNG for the produce pull seam.
  */
-static void test_manga_app_pipeline(void)
-{
-  TEST_BEGIN("ereader_manga app twin: import + tile render == golden banner");
-  const ra8_epub_stream_media_t media = {.read = media_read,
-                                         .ctx  = NULL,
-                                         .size = (uint64_t)k_manga_epub_len};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open_streamed(&media, "manga.epub", &s_book));
+typedef struct {
+  const uint8_t* data; /**< Baked PNG bytes.        */
+  uint32_t       len;  /**< Total length.           */
+  uint32_t       pos;  /**< Bytes delivered so far. */
+} t_png_cursor;
 
-  const ra8_tile_cache_cfg_t storage = {.cell_mem     = s_cell_mem,
-                                        .cell_bytes   = (uint32_t)k_t_cell_bytes,
-                                        .cell_count   = (uint32_t)k_t_cells,
-                                        .meta         = s_meta,
-                                        .keys         = s_keys,
-                                        .dims         = s_dims,
-                                        .buckets      = s_buckets,
-                                        .bucket_count = (uint32_t)k_t_buckets};
+/** @brief produce pull seam over the baked PNG. */
+static ra8_err_t png_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+{
+  t_png_cursor*  c     = (t_png_cursor*)ctx;
+  const uint32_t avail = c->len - c->pos;
+  const size_t   take  = ((uint32_t)cap < avail) ? cap : (size_t)avail;
+  memcpy(buf, &c->data[c->pos], take);
+  c->pos += (uint32_t)take;
+  *got = take;
+  return k_ra8_ok;
+}
+
+/** @brief Produce + parse the atlas and bind the cache + reader (shared setup). */
+static void setup_reader(void)
+{
+  t_png_cursor cur = {.data = k_mg_png, .len = k_mg_png_len, .pos = 0U};
+  s_store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  const ra8_tileatlas_produce_cfg_t pcfg = {.pull       = png_pull,
+                                            .pull_ctx   = &cur,
+                                            .sink       = ra8_tileatlas_memstore_sink,
+                                            .sink_ctx   = &s_store,
+                                            .tile_w     = (uint16_t)k_t_tile_edge,
+                                            .tile_h     = (uint16_t)k_t_tile_edge,
+                                            .codec      = (uint8_t)k_ra8_tileatlas_codec_deflate,
+                                            .max_width  = (uint16_t)k_t_cap_edge,
+                                            .max_height = (uint16_t)k_t_cap_edge,
+                                            .work       = s_work,
+                                            .work_cap   = sizeof(s_work),
+                                            .webp_work  = NULL};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_tileatlas_produce(&pcfg, &s_info));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_tileatlas_parse(ra8_tileatlas_memstore_pread, &s_store, s_store.len, &s_info));
+  s_tile_src                      = (mg_tile_src_t){.info        = &s_info,
+                                                    .pread       = ra8_tileatlas_memstore_pread,
+                                                    .pread_ctx   = &s_store,
+                                                    .scratch     = s_scratch,
+                                                    .scratch_cap = (uint32_t)sizeof(s_scratch)};
+  const ra8_tile_cache_cfg_t ccfg = {.cell_mem     = s_cell_mem,
+                                     .cell_bytes   = (uint32_t)k_t_cell_bytes,
+                                     .cell_count   = (uint32_t)k_t_cells,
+                                     .meta         = s_meta,
+                                     .keys         = s_keys,
+                                     .dims         = s_dims,
+                                     .buckets      = s_buckets,
+                                     .bucket_count = (uint32_t)k_t_buckets,
+                                     .decode       = mg_tile_decode,
+                                     .decode_ctx   = &s_tile_src};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_init(&s_cache, &ccfg));
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_epub_tile_binder_init(&s_binder, &storage, s_scratch, (uint32_t)sizeof(s_scratch)));
-
-  s_store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
-  const ra8_epub_atlas_import_cfg_t cfg = {
-    .tile_w     = (uint16_t)k_t_tile_edge,
-    .tile_h     = (uint16_t)k_t_tile_edge,
-    .codec      = (uint8_t)k_ra8_tileatlas_codec_deflate,
-    .max_width  = (uint16_t)k_t_cap_edge,
-    .max_height = (uint16_t)k_t_cap_edge,
-    .work       = s_work,
-    .work_cap   = sizeof(s_work),
-    .store      = {.sink      = ra8_tileatlas_memstore_sink,
-                   .sink_ctx  = &s_store,
-                   .pread     = ra8_tileatlas_memstore_pread,
-                   .pread_ctx = &s_store},
-  };
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_epub_tile_binder_import(&s_binder, &s_book, "page1.png", k_t_image_id, &cfg));
-
-  ra8_tileatlas_info_t info = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_info(&s_binder, k_t_image_id, &info));
-  TEST_ASSERT_EQ(k_t_img_edge, info.width);
-  TEST_ASSERT_EQ(k_t_img_edge, info.height);
-  TEST_ASSERT_EQ(k_t_tiles_want, info.tile_count);
-
-  /* Fixture <-> generator-pattern parity on one paged tile. */
-  ra8_tile_t probe = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_get(&s_binder, k_t_image_id, 1U, 1U, &probe));
-  for (uint32_t r = 0U; r < probe.height; r += 17U) {
-    for (uint32_t c = 0U; c < probe.width; c += 13U) {
-      TEST_ASSERT_EQ(fixture_pix((uint32_t)k_t_tile_edge + c, (uint32_t)k_t_tile_edge + r),
-                     probe.pixels[(r * probe.width) + c]);
-    }
-  }
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_put(&s_binder, probe.pixels));
-
-  /* The app's clear + centre-crop render through the 2-cell cache. */
-  for (size_t i = 0U; i < ((size_t)k_t_fb_h * (size_t)k_t_fb_w); i++) {
-    /* The app clears via ra8_gfx_clear(0x202028): RGB565 pack of the bg. */
-    s_fb[i] = (uint16_t)((((uint32_t)k_t_col_bg >> 19U) << 11U) |
-                         ((((uint32_t)k_t_col_bg >> 10U) & 0x3FU) << 5U) |
-                         (((uint32_t)k_t_col_bg >> 3U) & 0x1FU));
-  }
-  const uint16_t tx0 = (uint16_t)(k_t_view_x0 / k_t_tile_edge);
-  const uint16_t ty0 = (uint16_t)(k_t_view_y0 / k_t_tile_edge);
-  const uint16_t tx1 = (uint16_t)((k_t_view_x0 + k_t_fb_w - 1U) / k_t_tile_edge);
-  const uint16_t ty1 = (uint16_t)((k_t_view_y0 + k_t_fb_h - 1U) / k_t_tile_edge);
-  for (uint16_t ty = ty0; ty <= ty1; ty++) {
-    for (uint16_t tx = tx0; tx <= tx1; tx++) {
-      ra8_tile_t tile = {};
-      TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_get(&s_binder, k_t_image_id, tx, ty, &tile));
-      blit_tile(&tile, tx, ty);
-      TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_put(&s_binder, tile.pixels));
-    }
-  }
-
-  /* The golden banner numbers. */
-  const uint32_t crc = fb_hash();
-  (void)fprintf(stderr,
-                "[INFO] ereader-manga golden: import %ux%u tiles=%u atlas=%u crc=%08X\n",
-                (unsigned)info.width,
-                (unsigned)info.height,
-                (unsigned)info.tile_count,
-                (unsigned)info.total_size,
-                (unsigned)crc);
-  TEST_ASSERT_EQ(k_t_golden_atlas_bytes, info.total_size);
-  TEST_ASSERT_EQ(k_t_golden_crc, crc);
-
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&s_book));
-  TEST_END("ereader_manga app twin: import + tile render == golden banner");
+    ra8_gfx_init(s_fb, (uint16_t)k_t_fb_w, (uint16_t)k_t_fb_h, k_ra8_gfx_format_rgb565));
+  const mg_reader_cfg_t rcfg = {.fb       = s_fb,
+                                .fb_w     = (int32_t)k_t_fb_w,
+                                .fb_h     = (int32_t)k_t_fb_h,
+                                .cache    = &s_cache,
+                                .info     = &s_info,
+                                .image_id = (uint32_t)k_t_image_id};
+  TEST_ASSERT_EQ(k_ra8_ok, mg_reader_init(&s_reader, &rcfg));
 }
 
 /**
- * @brief Test entry point -- runs the app-twin gate.
+ * @test test_manga_render_golden
+ * @brief produce -> tile-cache -> mg_reader initial render reproduces the golden
+ *        banner numbers (page geometry, atlas byte count, framebuffer crc) --
+ *        the exact values hil.conf asserts on board_sim / silicon.
+ *
+ * @par MC/DC:
+ * (integration gate: the compound decisions in the producer, atlas reader and
+ * tile cache carry their vectors in test_ra8_tileatlas*.c / test_ra8_tile_cache*;
+ * here the oracle is the end-to-end golden framebuffer hash.)
+ */
+static void test_manga_render_golden(void)
+{
+  TEST_BEGIN("ereader_manga: produce + tile render == golden banner");
+  setup_reader();
+  TEST_ASSERT_EQ(k_t_page_w, s_info.width);
+  TEST_ASSERT_EQ(k_t_page_h, s_info.height);
+  TEST_ASSERT_EQ(k_t_tiles_want, s_info.tile_count);
+  TEST_ASSERT_EQ(k_t_golden_atlas_bytes, s_info.total_size);
+
+  TEST_ASSERT_EQ(k_ra8_ok, mg_reader_render(&s_reader));
+  const uint32_t crc = mg_fnv1a(s_fb, (uint32_t)sizeof(s_fb));
+  (void)fprintf(stderr,
+                "[INFO] ereader-manga golden: page %ux%u tiles=%u atlas=%u crc=%08X\n",
+                (unsigned)s_info.width,
+                (unsigned)s_info.height,
+                (unsigned)s_info.tile_count,
+                (unsigned)s_info.total_size,
+                (unsigned)crc);
+  TEST_ASSERT_EQ(k_t_golden_crc, crc);
+  TEST_END("ereader_manga: produce + tile render == golden banner");
+}
+
+/**
+ * @test test_manga_fixture_pattern
+ * @brief One decoded tile matches the generator's page pattern (frame + fill),
+ *        so the committed PNG fixture and gen_manga_page_fixture.py cannot drift.
+ *
+ * @par MC/DC:
+ * (fixture-integrity check; the read_tile decode decisions are covered in
+ * test_ra8_tileatlas.c. Here the oracle is the known solid-fill / frame pixels.)
+ */
+static void test_manga_fixture_pattern(void)
+{
+  TEST_BEGIN("ereader_manga: decoded tile matches the baked page pattern");
+  setup_reader();
+  uint16_t tw = 0U;
+  uint16_t th = 0U;
+  /* Tile (0,0): black inner frame at the corner, solid gray fill left of label. */
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_tileatlas_read_tile(ra8_tileatlas_memstore_pread,
+                                         &s_store,
+                                         &s_info,
+                                         0U,
+                                         0U,
+                                         s_scratch,
+                                         (uint32_t)sizeof(s_scratch),
+                                         s_probe_cell,
+                                         (uint32_t)sizeof(s_probe_cell),
+                                         &tw,
+                                         &th));
+  TEST_ASSERT_EQ(k_t_tile_edge, tw);
+  TEST_ASSERT_EQ(k_t_tile_edge, th);
+  TEST_ASSERT_EQ(k_t_gray_edge, s_probe_cell[0U]);                /* top-left frame pixel   */
+  TEST_ASSERT_EQ(k_t_gray_c0r0, s_probe_cell[(128U * tw) + 10U]); /* fill left of the label */
+  /* Tile (5,7): the bottom-right tile carries its own distinct fill gray. */
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_tileatlas_read_tile(ra8_tileatlas_memstore_pread,
+                                         &s_store,
+                                         &s_info,
+                                         5U,
+                                         7U,
+                                         s_scratch,
+                                         (uint32_t)sizeof(s_scratch),
+                                         s_probe_cell,
+                                         (uint32_t)sizeof(s_probe_cell),
+                                         &tw,
+                                         &th));
+  TEST_ASSERT_EQ(k_t_gray_c5r7, s_probe_cell[(128U * tw) + 10U]);
+  TEST_END("ereader_manga: decoded tile matches the baked page pattern");
+}
+
+/**
+ * @test test_manga_zone_hit
+ * @brief mg_zone_hit classifies every tap-zone (status / four edges / centre)
+ *        and rejects out-of-bounds taps.
+ *
+ * @par MC/DC:
+ * Decision cascade in mg_zone_hit (each arm a single-condition decision):
+ * - x<0            -> none  : (-1,300) true;   others false.
+ * - x>=fb_w        -> none  : (1024,300) true; (950,300) false.
+ * - y<statusbar    -> none  : (500,20) true;   (500,100) false.
+ * - y>=fb_h        -> none  : (500,600) true;  (500,500) false.
+ * - y<status+band  -> up    : (500,100) true.
+ * - y>=fb_h-band   -> down  : (500,500) true.
+ * - x<band         -> left  : (50,300) true.
+ * - x>=fb_w-band   -> right : (950,300) true.
+ * - else           -> zoom  : (500,300).
+ * Each independent-influence pair varies exactly one condition across the two
+ * listed vectors, so the nine vectors give MC/DC over the cascade.
+ */
+static void test_manga_zone_hit(void)
+{
+  TEST_BEGIN("ereader_manga: mg_zone_hit tap-zone classification");
+  setup_reader();
+  TEST_ASSERT_EQ(k_mg_zone_none, mg_zone_hit(&s_reader, 500, 20));   /* status bar     */
+  TEST_ASSERT_EQ(k_mg_zone_none, mg_zone_hit(&s_reader, -1, 300));   /* left of panel  */
+  TEST_ASSERT_EQ(k_mg_zone_none, mg_zone_hit(&s_reader, 1024, 300)); /* right of panel */
+  TEST_ASSERT_EQ(k_mg_zone_none, mg_zone_hit(&s_reader, 500, 600));  /* below panel    */
+  TEST_ASSERT_EQ(k_mg_zone_pan_up, mg_zone_hit(&s_reader, 500, 100));
+  TEST_ASSERT_EQ(k_mg_zone_pan_down, mg_zone_hit(&s_reader, 500, 500));
+  TEST_ASSERT_EQ(k_mg_zone_pan_left, mg_zone_hit(&s_reader, 50, 300));
+  TEST_ASSERT_EQ(k_mg_zone_pan_right, mg_zone_hit(&s_reader, 950, 300));
+  TEST_ASSERT_EQ(k_mg_zone_zoom, mg_zone_hit(&s_reader, 500, 300));
+  TEST_ASSERT_EQ(k_mg_zone_none, mg_zone_hit(NULL, 500, 300)); /* null guard */
+  TEST_END("ereader_manga: mg_zone_hit tap-zone classification");
+}
+
+/**
+ * @test test_manga_tap_nav
+ * @brief mg_reader_tap pans the viewport, clamps at the page edge, and toggles
+ *        zoom; panning is a no-op while fit-page shows the whole page.
+ *
+ * @par MC/DC:
+ * Decision `(view_x != old) || (view_y != old)` in mg_pan (2 conditions):
+ * - Vector 1: pan right from (0,0)   -> view_x changes -> true (varies x).
+ * - Vector 2: pan right again at max  -> neither changes -> false (control).
+ * - Vector 3: pan down from (0,0)    -> view_y changes -> true (varies y).
+ * Vectors 1+2 prove view_x independently drives the outcome; 2+3 prove view_y.
+ */
+static void test_manga_tap_nav(void)
+{
+  TEST_BEGIN("ereader_manga: mg_reader_tap pan / clamp / zoom");
+  setup_reader();
+  TEST_ASSERT_EQ(0, s_reader.view_x);
+  /* One right-edge tap slides the viewport one step. */
+  TEST_ASSERT(mg_reader_tap(&s_reader, 950, 300));
+  TEST_ASSERT_EQ((int32_t)k_t_pan_step, s_reader.view_x);
+  /* A second lands at the page edge (page_w - fb_w = 512). */
+  TEST_ASSERT(mg_reader_tap(&s_reader, 950, 300));
+  TEST_ASSERT_EQ((int32_t)(k_t_page_w - k_t_fb_w), s_reader.view_x);
+  /* A third is clamped: no change, no redraw. */
+  TEST_ASSERT(!mg_reader_tap(&s_reader, 950, 300));
+  /* A centre tap toggles to fit-page and re-pins the viewport to (0,0). */
+  TEST_ASSERT(mg_reader_tap(&s_reader, 500, 300));
+  TEST_ASSERT_EQ((uint8_t)k_mg_zoom_fit, s_reader.zoom);
+  TEST_ASSERT_EQ(0, s_reader.view_x);
+  /* Panning is a no-op while the whole page is shown. */
+  TEST_ASSERT(!mg_reader_tap(&s_reader, 950, 300));
+  /* A down-edge tap at 1:1 slides the viewport vertically. */
+  TEST_ASSERT(mg_reader_tap(&s_reader, 500, 300)); /* back to 1:1 */
+  TEST_ASSERT(mg_reader_tap(&s_reader, 500, 500));
+  TEST_ASSERT_EQ((int32_t)k_t_pan_step, s_reader.view_y);
+  TEST_END("ereader_manga: mg_reader_tap pan / clamp / zoom");
+}
+
+/**
+ * @test test_manga_status_text
+ * @brief mg_reader_status renders the zoom + viewport into the status string.
+ *
+ * @par MC/DC:
+ * Decision `r->zoom == k_mg_zoom_full` selecting the "1:1"/"FIT" fragment:
+ * - full zoom -> "1:1" branch (true); fit zoom -> "FIT" branch (false).
+ */
+static void test_manga_status_text(void)
+{
+  TEST_BEGIN("ereader_manga: mg_reader_status formatting");
+  setup_reader();
+  char line[48] = {};
+  TEST_ASSERT_EQ(k_ra8_ok, mg_reader_status(&s_reader, line, (uint32_t)sizeof(line)));
+  TEST_ASSERT_EQ(0, strcmp(line, "MANGA  1:1  x=0 y=0"));
+  TEST_ASSERT(mg_reader_tap(&s_reader, 950, 300)); /* pan right one step */
+  TEST_ASSERT_EQ(k_ra8_ok, mg_reader_status(&s_reader, line, (uint32_t)sizeof(line)));
+  TEST_ASSERT_EQ(0, strcmp(line, "MANGA  1:1  x=256 y=0"));
+  TEST_END("ereader_manga: mg_reader_status formatting");
+}
+
+/**
+ * @brief Test entry point -- runs the ereader_manga host-twin gates.
  * @return 0 on success; unity_minimal.h exits non-zero on first failure.
  * @pre None.
  * @pre None.
- * @post The pipeline ran (or the process exited on first failure).
+ * @post Every gate ran (or the process exited on first failure).
  * @post stderr carries the derived golden banner numbers.
  * @note Not thread-safe. No SIGALRM / timers used.
  * @since 0.1.0
  */
 int32_t main(void)
 {
-  test_manga_app_pipeline();
+  test_manga_render_golden();
+  test_manga_fixture_pattern();
+  test_manga_zone_hit();
+  test_manga_tap_nav();
+  test_manga_status_text();
   (void)fprintf(stderr, "[OK  ] test_app_ereader_manga.c\n");
   return 0;
 }
