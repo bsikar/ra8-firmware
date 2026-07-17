@@ -52,21 +52,6 @@
 #include "ra8_jpeg_sw_internal.h"
 #include "ra8_log.h"
 
-/* The Huffman / quantization tables and marker codes used by this
- * codec are taken verbatim from ITU-T T.81 / ISO 10918-1 Annex K. The
- * state-machine functions (`ra8_jpeg_sw_htab_build`) are above
- * clang-tidy's default function-size and cognitive-complexity
- * thresholds because each step of the JPEG codec maps 1:1 onto the
- * spec text -- splitting them further would obscure the spec citations
- * rather than help readability. The `readability-magic-numbers`
- * suppression covers spec-defined byte values such as the marker codes
- * (`0xFFC0`..`0xFFCF`) and JFIF segment-length constants; each
- * occurrence carries a `T.81 sec X.Y` citation. The
- * `readability-redundant-casting` suppression covers the
- * `(uint8_t)k_ra8_jpeg_*_t` form used to make enum membership explicit
- * at use sites that mix multiple enum families. */
-// NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity,readability-redundant-casting,readability-math-missing-parentheses,bugprone-implicit-widening-of-multiplication-result,clang-analyzer-core.DivideZero,clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
-
 /** @brief Component log tag. */
 static const char* s_tag = "JPEG_SW";
 
@@ -188,6 +173,43 @@ int32_t ra8_jpeg_sw_br_get_bits(ra8_jpeg_bitreader_t* br, uint8_t n)
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
+/**
+ * @brief Build the F.2.2.3 mincode/maxcode/valptr decode tables.
+ *
+ * @details
+ * Second phase of `ra8_jpeg_sw_htab_build()`: walks the BITS list and
+ * the canonical `huffcode` array produced by the Annex C phase and
+ * derives, per code length, the smallest code (`mincode`), the largest
+ * code (`maxcode`, -1 for unused lengths) and the index of the first
+ * symbol of that length (`valptr`) exactly as T.81 Annex F.2.2.3
+ * "Decoder tables" specifies.
+ *
+ * @param[in,out] h Huffman table (huffcode/bits in, lookup tables out).
+ *
+ * @pre ``h`` is non-NULL.
+ * @pre ``h->huffcode`` was populated by the Annex C canonical build.
+ * @post ``h->mincode``/``h->maxcode``/``h->valptr`` are populated.
+ * @post ``h->maxcode[i]`` is -1 for every length with zero codes.
+ *
+ * @note Internal helper; not thread-safe.
+ * @since 0.1.0
+ */
+static void htab_build_lookup(ra8_jpeg_htab_t* h)
+{
+  uint16_t j = 0U;
+  for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_huff_lengths; i++) {
+    if (h->bits[i] == 0U) {
+      h->maxcode[i] = -1;
+    } else {
+      h->valptr[i]  = j;
+      h->mincode[i] = (int32_t)h->huffcode[j];
+      j             = (uint16_t)((j + h->bits[i]) - 1U);
+      h->maxcode[i] = (int32_t)h->huffcode[j];
+      j++;
+    }
+  }
+}
+
 void ra8_jpeg_sw_htab_build(ra8_jpeg_htab_t* h)
 {
   /* T.81 Annex C, "Generation of size table" + "Generation of code
@@ -221,18 +243,7 @@ void ra8_jpeg_sw_htab_build(ra8_jpeg_htab_t* h)
   }
 
   /* T.81 Annex F.2.2.3 mincode/maxcode/valptr build. */
-  uint16_t j = 0U;
-  for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_huff_lengths; i++) {
-    if (h->bits[i] == 0U) {
-      h->maxcode[i] = -1;
-    } else {
-      h->valptr[i]  = j;
-      h->mincode[i] = (int32_t)h->huffcode[j];
-      j             = (uint16_t)(j + h->bits[i] - 1U);
-      h->maxcode[i] = (int32_t)h->huffcode[j];
-      j++;
-    }
-  }
+  htab_build_lookup(h);
 }
 
 /**
@@ -367,20 +378,20 @@ void ra8_jpeg_sw_idct8x8(int32_t* block)
   int32_t out[(uint32_t)k_ra8_jpeg_block_dim];
   for (uint8_t r = 0U; r < (uint8_t)k_ra8_jpeg_block_dim; r++) {
     for (uint8_t c = 0U; c < (uint8_t)k_ra8_jpeg_block_dim; c++) {
-      row[c] = block[r * (uint8_t)k_ra8_jpeg_block_dim + c];
+      row[c] = block[(r * (uint8_t)k_ra8_jpeg_block_dim) + c];
     }
     inv_dct_1d_norm(row, out);
     for (uint8_t c = 0U; c < (uint8_t)k_ra8_jpeg_block_dim; c++) {
-      tmp[r * (uint8_t)k_ra8_jpeg_block_dim + c] = out[c];
+      tmp[(r * (uint8_t)k_ra8_jpeg_block_dim) + c] = out[c];
     }
   }
   for (uint8_t c = 0U; c < (uint8_t)k_ra8_jpeg_block_dim; c++) {
     for (uint8_t r = 0U; r < (uint8_t)k_ra8_jpeg_block_dim; r++) {
-      col[r] = tmp[r * (uint8_t)k_ra8_jpeg_block_dim + c];
+      col[r] = tmp[(r * (uint8_t)k_ra8_jpeg_block_dim) + c];
     }
     inv_dct_1d_norm(col, out);
     for (uint8_t r = 0U; r < (uint8_t)k_ra8_jpeg_block_dim; r++) {
-      block[r * (uint8_t)k_ra8_jpeg_block_dim + c] = out[r];
+      block[(r * (uint8_t)k_ra8_jpeg_block_dim) + c] = out[r];
     }
   }
 }
@@ -491,6 +502,171 @@ ycc_to_rgb_row_mve(const int16_t* y, const int16_t* cb, const int16_t* cr, uint8
 /* Public API: get_dimensions */
 /* ------------------------------------------------------------------ */
 
+/**
+ * @brief Advance past 0xFF pad bytes and read one marker code.
+ *
+ * @details
+ * Implements the T.81 sec B.1.1.2 "Markers" scan step of the
+ * `ra8_jpeg_sw_get_dimensions()` walk: verifies the cursor sits on a
+ * 0xFF prefix, skips any run of 0xFF fill bytes, and returns the
+ * 0xFFxx marker code assembled from the byte that follows. The cursor
+ * is left one past the marker's low byte.
+ *
+ * @param[in]     jpeg_buf JPEG byte stream.
+ * @param[in]     jpeg_len Total stream length in bytes.
+ * @param[in,out] i        Parse cursor (advanced past the marker).
+ * @param[out]    out_mk   Receives the 0xFFxx marker code.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 Marker code stored in `*out_mk`.
+ * @retval k_ra8_err_protocol_error Cursor not on 0xFF, or the stream
+ *                                  ends inside the pad run.
+ *
+ * @pre `jpeg_buf`, `i` and `out_mk` are non-NULL (caller-checked).
+ * @pre `*i < jpeg_len` (enforced by the caller's loop bound).
+ * @post On success `*i` points at the first byte after the marker.
+ * @post On error `*i` is unspecified; the caller aborts the walk.
+ *
+ * @note Internal helper; not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t
+dims_next_marker(const uint8_t* jpeg_buf, uint32_t jpeg_len, uint32_t* i, uint16_t* out_mk)
+{
+  if (jpeg_buf[*i] != (uint8_t)k_ra8_jpeg_marker_byte) {
+    return k_ra8_err_protocol_error;
+  }
+  /* Skip pad bytes. */
+  // mcdc-deactivated: dims_next_marker JPEG marker-pad skip; the jpeg_len bound is checked by the caller's enclosing while and the marker-byte equality follows the JFIF spec (0xFF padding bytes always within the segment); both conditions are co-dependent in any well-formed stream.
+  while (*i < jpeg_len && jpeg_buf[*i] == (uint8_t)k_ra8_jpeg_marker_byte) {
+    (*i)++;
+  }
+  if (*i >= jpeg_len) {
+    return k_ra8_err_protocol_error;
+  }
+  uint8_t m = jpeg_buf[*i];
+  *out_mk   = (uint16_t)(((uint16_t)k_jpeg_byte_mask << k_ra8_jpeg_byte_shift) | m);
+  (*i)++;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Extract width/height from an SOF0 payload (T.81 sec B.2.2).
+ *
+ * @details
+ * Reads the precision byte and the two big-endian dimension fields of
+ * the SOF0 frame header whose length field starts at `i`, rejecting
+ * non-8-bit precision and zero dimensions exactly as the previous
+ * monolithic `ra8_jpeg_sw_get_dimensions()` body did.
+ *
+ * @param[in]  jpeg_buf JPEG byte stream.
+ * @param[in]  i        Offset of the SOF0 segment-length field.
+ * @param[in]  seglen   Validated segment length (>= 2, in bounds).
+ * @param[out] out_w    Receives the image width in pixels.
+ * @param[out] out_h    Receives the image height in pixels.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 Dimensions stored.
+ * @retval k_ra8_err_protocol_error Segment too short or zero dimension.
+ * @retval k_ra8_err_not_supported  Sample precision is not 8-bit.
+ *
+ * @pre `seglen` was bounds-checked against the stream by the caller.
+ * @pre `out_w` and `out_h` are non-NULL (caller-checked).
+ * @post On success `*out_w` and `*out_h` are non-zero.
+ * @post No global state is touched.
+ *
+ * @note Internal helper; not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t dims_parse_sof0(const uint8_t* jpeg_buf,
+                                 uint32_t       i,
+                                 uint16_t       seglen,
+                                 uint16_t*      out_w,
+                                 uint16_t*      out_h)
+{
+  if (seglen < 8U) {
+    return k_ra8_err_protocol_error;
+  }
+  uint8_t precision = jpeg_buf[i + 2U];
+  if (precision != 8U) {
+    return k_ra8_err_not_supported;
+  }
+  *out_h = read_be16(&jpeg_buf[i + 3U]);
+  *out_w = read_be16(&jpeg_buf[i + k_jpeg_sof_dims_off]);
+  if (*out_w == 0U || *out_h == 0U) {
+    return k_ra8_err_protocol_error;
+  }
+  return k_ra8_ok;
+}
+
+/**
+ * @brief One step of the dimension walk: read a marker, handle it.
+ *
+ * @details
+ * Loop body of `ra8_jpeg_sw_get_dimensions()`: reads the next marker
+ * via `dims_next_marker()`, skips standalone SOI/EOI codes, validates
+ * the segment length, extracts the dimensions on SOF0 (setting
+ * `*done`), rejects unsupported SOFn frames, and otherwise advances
+ * the cursor past the segment.
+ *
+ * @param[in]     jpeg_buf JPEG byte stream.
+ * @param[in]     jpeg_len Total stream length in bytes.
+ * @param[in,out] i        Parse cursor (advances).
+ * @param[out]    done     Set true when SOF0 delivered the dimensions.
+ * @param[out]    out_w    Receives the image width on SOF0.
+ * @param[out]    out_h    Receives the image height on SOF0.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 Step handled; check `*done`.
+ * @retval k_ra8_err_protocol_error Malformed marker / length field.
+ * @retval k_ra8_err_not_supported  Unsupported SOFn or precision.
+ *
+ * @pre `*i + 4 <= jpeg_len` (caller's loop bound).
+ * @pre All pointers are non-NULL (public API validated them).
+ * @post On success with `*done` false, `*i` advanced past the segment.
+ * @post On success with `*done` true, the dimensions are stored.
+ *
+ * @note Internal helper; not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t dims_step(const uint8_t* jpeg_buf,
+                           uint32_t       jpeg_len,
+                           uint32_t*      i,
+                           bool*          done,
+                           uint16_t*      out_w,
+                           uint16_t*      out_h)
+{
+  uint16_t  mk = 0U;
+  ra8_err_t e  = dims_next_marker(jpeg_buf, jpeg_len, i, &mk);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  if (mk == (uint16_t)k_ra8_jpeg_marker_soi || mk == (uint16_t)k_ra8_jpeg_marker_eoi) {
+    return k_ra8_ok;
+  }
+  if (*i + 2U > jpeg_len) {
+    return k_ra8_err_protocol_error;
+  }
+  uint16_t seglen = read_be16(&jpeg_buf[*i]);
+  if (seglen < 2U || (uint32_t)seglen > jpeg_len - *i) {
+    return k_ra8_err_protocol_error;
+  }
+  if (mk == (uint16_t)k_ra8_jpeg_marker_sof0) {
+    e = dims_parse_sof0(jpeg_buf, *i, seglen, out_w, out_h);
+    if (e == k_ra8_ok) {
+      *done = true;
+    }
+    return e;
+  }
+  // mcdc-deactivated: dims_step unsupported-SOFn detector; the 4-condition AND identifies SOF1..SOF15 except DHT/SOF8, but markers >= 0xFFC0 are by definition <= 0xFFCF in the JPEG marker space (range is 16 values), and SOF0 is handled above -- the upper-bound condition cannot independently flip on any reachable SOFn marker.
+  if (mk >= k_jpeg_marker_sof_lo && mk <= k_jpeg_marker_sof_hi &&
+      mk != (uint16_t)k_ra8_jpeg_marker_dht && mk != k_jpeg_marker_jpg) {
+    return k_ra8_err_not_supported;
+  }
+  *i += seglen;
+  return k_ra8_ok;
+}
+
 ra8_err_t ra8_jpeg_sw_get_dimensions(const uint8_t* jpeg_buf,
                                      uint32_t       jpeg_len,
                                      uint16_t*      out_w,
@@ -507,53 +683,14 @@ ra8_err_t ra8_jpeg_sw_get_dimensions(const uint8_t* jpeg_buf,
   }
   uint32_t i = 2U;
   while (i + 4U <= jpeg_len) {
-    if (jpeg_buf[i] != (uint8_t)k_ra8_jpeg_marker_byte) {
-      return k_ra8_err_protocol_error;
+    bool      done = false;
+    ra8_err_t e    = dims_step(jpeg_buf, jpeg_len, &i, &done, out_w, out_h);
+    if (e != k_ra8_ok) {
+      return e;
     }
-    /* Skip pad bytes. */
-    // mcdc-deactivated: dec_parse_sos JPEG marker-pad skip; jpeg_len bound is checked by the enclosing while at line above and the marker-byte equality follows the JFIF spec (0xFF padding bytes always within the segment); both conditions are co-dependent in any well-formed stream.
-    while (i < jpeg_len && jpeg_buf[i] == (uint8_t)k_ra8_jpeg_marker_byte) {
-      i++;
-    }
-    if (i >= jpeg_len) {
-      return k_ra8_err_protocol_error;
-    }
-    uint8_t  m  = jpeg_buf[i];
-    uint16_t mk = (uint16_t)(((uint16_t)k_jpeg_byte_mask << k_ra8_jpeg_byte_shift) | m);
-    i++;
-    if (mk == (uint16_t)k_ra8_jpeg_marker_soi || mk == (uint16_t)k_ra8_jpeg_marker_eoi) {
-      continue;
-    }
-    if (i + 2U > jpeg_len) {
-      return k_ra8_err_protocol_error;
-    }
-    uint16_t seglen = read_be16(&jpeg_buf[i]);
-    if (seglen < 2U || (uint32_t)seglen > jpeg_len - i) {
-      return k_ra8_err_protocol_error;
-    }
-    if (mk == (uint16_t)k_ra8_jpeg_marker_sof0) {
-      if (seglen < 8U) {
-        return k_ra8_err_protocol_error;
-      }
-      uint8_t precision = jpeg_buf[i + 2U];
-      if (precision != 8U) {
-        return k_ra8_err_not_supported;
-      }
-      *out_h = read_be16(&jpeg_buf[i + 3U]);
-      *out_w = read_be16(&jpeg_buf[i + k_jpeg_sof_dims_off]);
-      if (*out_w == 0U || *out_h == 0U) {
-        return k_ra8_err_protocol_error;
-      }
+    if (done) {
       return k_ra8_ok;
     }
-    // mcdc-deactivated: dec_parse_sof0 unsupported-SOFn detector; the 4-condition AND identifies SOF1..SOF15 except DHT/SOF8, but markers >= 0xFFC0 are by definition <= 0xFFCF in the JPEG marker space (range is 16 values), and SOF0 is handled above -- the upper-bound condition cannot independently flip on any reachable SOFn marker.
-    if (mk >= k_jpeg_marker_sof_lo && mk <= k_jpeg_marker_sof_hi &&
-        mk != (uint16_t)k_ra8_jpeg_marker_dht && mk != k_jpeg_marker_jpg) {
-      return k_ra8_err_not_supported;
-    }
-    i += seglen;
   }
   return k_ra8_err_protocol_error;
 }
-
-// NOLINTEND(readability-function-size,readability-function-cognitive-complexity,readability-redundant-casting,readability-math-missing-parentheses,bugprone-implicit-widening-of-multiplication-result,clang-analyzer-core.DivideZero,clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)

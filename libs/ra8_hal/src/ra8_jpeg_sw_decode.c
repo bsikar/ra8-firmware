@@ -38,19 +38,6 @@
 #include "ra8_jpeg_sw_internal.h"
 #include "ra8_log.h"
 
-/* The state-machine functions (`dec_decode_scan`, `dec_parse_*`) are
- * above clang-tidy's default function-size and cognitive-complexity
- * thresholds because each step of the JPEG codec maps 1:1 onto the
- * spec text -- splitting them further would obscure the spec citations
- * rather than help readability. The `readability-magic-numbers`
- * suppression covers spec-defined byte values such as the marker codes
- * (`0xFFC0`..`0xFFCF`) and JFIF segment-length constants; each
- * occurrence carries a `T.81 sec X.Y` citation. The
- * `readability-redundant-casting` suppression covers the
- * `(uint8_t)k_ra8_jpeg_*_t` form used to make enum membership explicit
- * at use sites that mix multiple enum families. */
-// NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity,readability-redundant-casting,readability-math-missing-parentheses,bugprone-implicit-widening-of-multiplication-result,clang-analyzer-core.DivideZero,clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
-
 /** @brief Component log tag. */
 static const char* s_tag = "JPEG_SW";
 
@@ -78,7 +65,7 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_skip_segment(ra8_jpeg_dec_ctx_t* d)
   return k_ra8_ok;
 }
 
-/* Parse a DQT segment (T -- see surrounding code and HUM citations. */
+/** @brief Implementation of `ra8_jpeg_sw_priv_parse_dqt()` -- T.81 B.2.4.1 de-zigzag parse. */
 RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_dqt(ra8_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
@@ -109,7 +96,66 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_dqt(ra8_jpeg_dec_ctx_t* d)
   return k_ra8_ok;
 }
 
-/* Parse a DHT segment (T -- see surrounding code and HUM citations. */
+/**
+ * @brief Parse one (TcTh, BITS, HUFFVAL) table out of a DHT segment.
+ *
+ * @details
+ * Consumes exactly one Huffman-table record starting at `d->cursor`
+ * (T.81 sec B.2.4.2): the TcTh selector byte, the 16-entry BITS list
+ * and the HUFFVAL symbol list, then canonical-builds the table via
+ * `ra8_jpeg_sw_htab_build()`. Called in a loop by
+ * `ra8_jpeg_sw_priv_parse_dht()` until the segment is exhausted.
+ *
+ * @param[in,out] d   Decoder context (cursor advances; table written).
+ * @param[in]     end One-past-the-end offset of the DHT segment.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 One table parsed and built.
+ * @retval k_ra8_err_protocol_error Truncated record or symbol overflow.
+ * @retval k_ra8_err_not_supported  Table class / id out of range.
+ *
+ * @pre `d->cursor < end` (caller's loop condition).
+ * @pre `end <= d->src_len` (validated by the caller).
+ * @post On success `d->cursor` sits at the next record (or `end`).
+ * @post On error the decode aborts; table state is partial.
+ *
+ * @note Internal helper; not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t dec_parse_dht_one(ra8_jpeg_dec_ctx_t* d, uint32_t end)
+{
+  uint8_t tc_th = d->src[d->cursor];
+  d->cursor++;
+  uint8_t tc = (uint8_t)(tc_th >> k_ra8_jpeg_nibble_shift);
+  uint8_t th = (uint8_t)(tc_th & k_ra8_jpeg_nibble_mask);
+  if (tc >= (uint8_t)k_ra8_jpeg_huff_classes || th >= (uint8_t)k_ra8_jpeg_huff_ids) {
+    return k_ra8_err_not_supported;
+  }
+  if (d->cursor + (uint32_t)k_ra8_jpeg_huff_lengths > end) {
+    return k_ra8_err_protocol_error;
+  }
+  ra8_jpeg_htab_t* h     = (tc == 0U) ? &d->hdc[th] : &d->hac[th];
+  uint16_t         total = 0U;
+  for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_huff_lengths; i++) {
+    h->bits[i] = d->src[d->cursor];
+    d->cursor++;
+    total = (uint16_t)(total + h->bits[i]);
+  }
+  if (total > (uint16_t)k_ra8_jpeg_huff_max) {
+    return k_ra8_err_protocol_error;
+  }
+  if (d->cursor + total > end) {
+    return k_ra8_err_protocol_error;
+  }
+  for (uint16_t i = 0U; i < total; i++) {
+    h->vals[i] = d->src[d->cursor];
+    d->cursor++;
+  }
+  ra8_jpeg_sw_htab_build(h);
+  return k_ra8_ok;
+}
+
+/** @brief Implementation of `ra8_jpeg_sw_priv_parse_dht()` -- T.81 B.2.4.2 record loop. */
 RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_dht(ra8_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
@@ -122,39 +168,94 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_dht(ra8_jpeg_dec_ctx_t* d)
   uint32_t end = d->cursor + len;
   d->cursor += 2U;
   while (d->cursor < end) {
-    uint8_t tc_th = d->src[d->cursor];
-    d->cursor++;
-    uint8_t tc = (uint8_t)(tc_th >> k_ra8_jpeg_nibble_shift);
-    uint8_t th = (uint8_t)(tc_th & k_ra8_jpeg_nibble_mask);
-    if (tc >= (uint8_t)k_ra8_jpeg_huff_classes || th >= (uint8_t)k_ra8_jpeg_huff_ids) {
-      return k_ra8_err_not_supported;
+    ra8_err_t e = dec_parse_dht_one(d, end);
+    if (e != k_ra8_ok) {
+      return e;
     }
-    if (d->cursor + (uint32_t)k_ra8_jpeg_huff_lengths > end) {
-      return k_ra8_err_protocol_error;
-    }
-    ra8_jpeg_htab_t* h     = (tc == 0U) ? &d->hdc[th] : &d->hac[th];
-    uint16_t         total = 0U;
-    for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_huff_lengths; i++) {
-      h->bits[i] = d->src[d->cursor];
-      d->cursor++;
-      total = (uint16_t)(total + h->bits[i]);
-    }
-    if (total > (uint16_t)k_ra8_jpeg_huff_max) {
-      return k_ra8_err_protocol_error;
-    }
-    if (d->cursor + total > end) {
-      return k_ra8_err_protocol_error;
-    }
-    for (uint16_t i = 0U; i < total; i++) {
-      h->vals[i] = d->src[d->cursor];
-      d->cursor++;
-    }
-    ra8_jpeg_sw_htab_build(h);
   }
   return k_ra8_ok;
 }
 
-/* Parse SOF0 (T -- see surrounding code and HUM citations. */
+/**
+ * @brief Read the per-component id/sampling/quant fields of an SOF0.
+ *
+ * @details
+ * Consumes `d->ncomp` three-byte component records (T.81 sec B.2.2:
+ * Ci, HiVi, Tqi) starting at `*s`, filling the per-component arrays
+ * and folding the running `hmax`/`vmax` maxima exactly as the previous
+ * monolithic `ra8_jpeg_sw_priv_parse_sof0()` body did.
+ *
+ * @param[in,out] d Decoder context (component tables + hmax/vmax written).
+ * @param[in,out] s Byte cursor into the SOF0 payload (advances 3/comp).
+ *
+ * @pre `d->ncomp` is 1 or 3 (validated by the caller).
+ * @pre The `3 * ncomp` record bytes are inside the segment (caller-checked).
+ * @post `d->comp_*[0..ncomp-1]` and `d->hmax`/`d->vmax` are populated.
+ * @post `*s` advanced past the last component record.
+ *
+ * @note Internal helper; not thread-safe.
+ * @since 0.1.0
+ */
+static void dec_parse_sof0_components(ra8_jpeg_dec_ctx_t* d, uint32_t* s)
+{
+  d->hmax = 0U;
+  d->vmax = 0U;
+  for (uint8_t i = 0U; i < d->ncomp; i++) {
+    d->comp_id[i] = d->src[*s];
+    (*s)++;
+    uint8_t hv = d->src[*s];
+    (*s)++;
+    d->comp_h[i]   = (uint8_t)(hv >> k_ra8_jpeg_nibble_shift);
+    d->comp_v[i]   = (uint8_t)(hv & k_ra8_jpeg_nibble_mask);
+    d->comp_qid[i] = d->src[*s];
+    (*s)++;
+    if (d->comp_h[i] > d->hmax) {
+      d->hmax = d->comp_h[i];
+    }
+    if (d->comp_v[i] > d->vmax) {
+      d->vmax = d->comp_v[i];
+    }
+  }
+}
+
+/**
+ * @brief Accept only the 4:4:4 and 4:2:0 3-component chroma layouts.
+ *
+ * @details
+ * Applies the codec's format envelope to the sampling factors parsed
+ * from SOF0: for 3-component streams only 4:4:4 (all 1x1) and 4:2:0
+ * (luma 2x2, both chromas 1x1) are decodable; grayscale streams pass
+ * unconditionally.
+ *
+ * @param[in] d Decoder context with `ncomp`/`hmax`/`vmax`/`comp_*` set.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                Layout is 4:4:4, 4:2:0 or grayscale.
+ * @retval k_ra8_err_not_supported Any other chroma layout.
+ *
+ * @pre `d` is non-NULL (module-internal call chain).
+ * @pre `dec_parse_sof0_components()` ran for this frame.
+ * @post No decoder state is mutated.
+ * @post Return value fully determines whether the scan may proceed.
+ *
+ * @note Internal helper; not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t dec_check_chroma_layout(const ra8_jpeg_dec_ctx_t* d)
+{
+  /* Only 4:4:4 (1,1,1) and 4:2:0 (2,1,1) accepted. */
+  if (d->ncomp == 3U) {
+    bool is_444 = (d->hmax == 1U && d->vmax == 1U);
+    bool is_420 = (d->hmax == 2U && d->vmax == 2U && d->comp_h[1] == 1U && d->comp_v[1] == 1U &&
+                   d->comp_h[2] == 1U && d->comp_v[2] == 1U);
+    if (!is_444 && !is_420) {
+      return k_ra8_err_not_supported;
+    }
+  }
+  return k_ra8_ok;
+}
+
+/** @brief Implementation of `ra8_jpeg_sw_priv_parse_sof0()` -- T.81 B.2.2 frame header. */
 RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_sof0(ra8_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
@@ -179,41 +280,15 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_sof0(ra8_jpeg_dec_ctx_t* d)
   if (d->ncomp != 1U && d->ncomp != 3U) {
     return k_ra8_err_not_supported;
   }
-  if ((uint32_t)d->ncomp * 3U + (s - d->cursor) > (uint32_t)len) {
+  if (((uint32_t)d->ncomp * 3U) + (s - d->cursor) > (uint32_t)len) {
     return k_ra8_err_protocol_error;
   }
-  d->hmax = 0U;
-  d->vmax = 0U;
-  for (uint8_t i = 0U; i < d->ncomp; i++) {
-    d->comp_id[i] = d->src[s];
-    s++;
-    uint8_t hv = d->src[s];
-    s++;
-    d->comp_h[i]   = (uint8_t)(hv >> k_ra8_jpeg_nibble_shift);
-    d->comp_v[i]   = (uint8_t)(hv & k_ra8_jpeg_nibble_mask);
-    d->comp_qid[i] = d->src[s];
-    s++;
-    if (d->comp_h[i] > d->hmax) {
-      d->hmax = d->comp_h[i];
-    }
-    if (d->comp_v[i] > d->vmax) {
-      d->vmax = d->comp_v[i];
-    }
-  }
+  dec_parse_sof0_components(d, &s);
   d->cursor += len;
-  /* Only 4:4:4 (1,1,1) and 4:2:0 (2,1,1) accepted. */
-  if (d->ncomp == 3U) {
-    bool is_444 = (d->hmax == 1U && d->vmax == 1U);
-    bool is_420 = (d->hmax == 2U && d->vmax == 2U && d->comp_h[1] == 1U && d->comp_v[1] == 1U &&
-                   d->comp_h[2] == 1U && d->comp_v[2] == 1U);
-    if (!is_444 && !is_420) {
-      return k_ra8_err_not_supported;
-    }
-  }
-  return k_ra8_ok;
+  return dec_check_chroma_layout(d);
 }
 
-/* Parse SOS scan-component selectors (T -- see surrounding code and HUM citations. */
+/** @brief Implementation of `ra8_jpeg_sw_priv_parse_sos()` -- T.81 B.2.3 selector binding. */
 RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_sos(ra8_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
@@ -253,36 +328,37 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_parse_sos(ra8_jpeg_dec_ctx_t* d)
   return k_ra8_ok;
 }
 
-/* Decode one 8x8 block of coefficients -- see surrounding code and HUM citations. */
-RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_block(ra8_jpeg_dec_ctx_t*   d,
-                                          ra8_jpeg_bitreader_t* br,
-                                          uint8_t               ci,
-                                          int32_t*              outblk)
+/**
+ * @brief Run-length decode the 63 AC coefficients of one block.
+ *
+ * @details
+ * Implements the T.81 sec F.2.2.2 AC decode loop: each Huffman symbol
+ * packs a zero-run nibble (RRRR) and a magnitude-bit count (SSSS);
+ * ZRL (0xF0) skips 16 zeros, SSSS == 0 with RRRR == 0 is EOB. Each
+ * non-zero coefficient is sign-extended, dequantized through the
+ * component's quant table and de-zigzagged into `outblk`.
+ *
+ * @param[in,out] d      Decoder context (read-only tables used).
+ * @param[in,out] br     Bit reader over the entropy-coded segment.
+ * @param[in]     ci     Component index (0 = luma).
+ * @param[out]    outblk 64-entry coefficient block (AC slots written).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 AC coefficients decoded (or EOB hit).
+ * @retval k_ra8_err_protocol_error Stream underflow, illegal symbol, or
+ *                                  zig-zag index overflow.
+ *
+ * @pre `outblk` was zero-filled and DC-populated by the caller.
+ * @pre `d`'s AC Huffman/quant tables for `ci` were parsed.
+ * @post On success every non-zero AC coefficient is dequantized in place.
+ * @post On error the scan aborts.
+ *
+ * @note Internal helper; not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t
+dec_block_ac(ra8_jpeg_dec_ctx_t* d, ra8_jpeg_bitreader_t* br, uint8_t ci, int32_t* outblk)
 {
-  for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_block_size; i++) {
-    outblk[i] = 0;
-  }
-  /* DC. */
-  int32_t t = ra8_jpeg_sw_htab_decode(br, &d->hdc[d->comp_dc_id[ci]]);
-  if (t < 0) {
-    return k_ra8_err_protocol_error;
-  }
-  int32_t r = ra8_jpeg_sw_br_get_bits(br, (uint8_t)t);
-  /* mcdc-deactivated: ra8_jpeg_sw_br_get_bits returns -1 only when the bitstream
-   * is exhausted; reaching this branch with t != 0 requires a
-   * truncated entropy-coded segment after every parser stage has
-   * succeeded -- the public-API contract (well-formed JFIF stream
-   * with EOI) makes this branch unreachable. Defensive guard for
-   * fault injection. */
-  // mcdc-deactivated: dec_parse_sos ra8_jpeg_sw_br_get_bits exhaustion guard; well-formed JFIF streams (public-API contract) cannot exhaust the bitstream mid-coefficient with t != 0 because every parser stage upstream has validated the segment-length budget.
-  if (r < 0 && t != 0) {
-    return k_ra8_err_protocol_error;
-  }
-  int32_t diff = ra8_jpeg_sw_huff_extend(r, (uint8_t)t);
-  d->comp_dc_pred[ci] += diff;
-  outblk[0] = d->comp_dc_pred[ci] * (int32_t)d->qtab[d->comp_qid[ci]][0];
-
-  /* AC. */
   uint8_t k = 1U;
   while (k < (uint8_t)k_ra8_jpeg_block_size) {
     int32_t rs = ra8_jpeg_sw_htab_decode(br, &d->hac[d->comp_ac_id[ci]]);
@@ -313,11 +389,44 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_block(ra8_jpeg_dec_ctx_t*   d,
   return k_ra8_ok;
 }
 
+/** @brief Implementation of `ra8_jpeg_sw_priv_block()` -- T.81 F.2.2 DC diff + AC run-length. */
+RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_block(ra8_jpeg_dec_ctx_t*   d,
+                                          ra8_jpeg_bitreader_t* br,
+                                          uint8_t               ci,
+                                          int32_t*              outblk)
+{
+  for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_block_size; i++) {
+    outblk[i] = 0;
+  }
+  /* DC. */
+  int32_t t = ra8_jpeg_sw_htab_decode(br, &d->hdc[d->comp_dc_id[ci]]);
+  if (t < 0) {
+    return k_ra8_err_protocol_error;
+  }
+  int32_t r = ra8_jpeg_sw_br_get_bits(br, (uint8_t)t);
+  /* mcdc-deactivated: ra8_jpeg_sw_br_get_bits returns -1 only when the bitstream
+   * is exhausted; reaching this branch with t != 0 requires a
+   * truncated entropy-coded segment after every parser stage has
+   * succeeded -- the public-API contract (well-formed JFIF stream
+   * with EOI) makes this branch unreachable. Defensive guard for
+   * fault injection. */
+  // mcdc-deactivated: ra8_jpeg_sw_priv_block ra8_jpeg_sw_br_get_bits exhaustion guard; well-formed JFIF streams (public-API contract) cannot exhaust the bitstream mid-coefficient with t != 0 because every parser stage upstream has validated the segment-length budget.
+  if (r < 0 && t != 0) {
+    return k_ra8_err_protocol_error;
+  }
+  int32_t diff = ra8_jpeg_sw_huff_extend(r, (uint8_t)t);
+  d->comp_dc_pred[ci] += diff;
+  outblk[0] = d->comp_dc_pred[ci] * (int32_t)d->qtab[d->comp_qid[ci]][0];
+
+  /* AC. */
+  return dec_block_ac(d, br, ci, outblk);
+}
+
 /* ------------------------------------------------------------------ */
 /* Public API: decode */
 /* ------------------------------------------------------------------ */
 
-/* Render a fully-dequantized+IDCTed component sample into a tile -- see surrounding code and HUM citations. */
+/** @brief Implementation of `ra8_jpeg_sw_priv_idct_into()` -- IDCT + level shift + clamp. */
 RA8_PRIV void ra8_jpeg_sw_priv_idct_into(int32_t* coeffs, uint8_t* tile)
 {
   ra8_jpeg_sw_idct8x8(coeffs);
@@ -328,30 +437,43 @@ RA8_PRIV void ra8_jpeg_sw_priv_idct_into(int32_t* coeffs, uint8_t* tile)
 }
 
 /**
- * @brief Decode the hmax*vmax luma blocks of one MCU and write them into the Y tile.
+ * @brief Copy one reconstructed 8x8 luma block into its Y-tile slot.
  *
  * @details
- * Pulls successive 8x8 luma blocks from the entropy stream, IDCTs each
- * one, and copies it into the correct sub-rectangle of `y_tile` so the
- * MCU pixel-emit loop can address it linearly.
+ * Writes the 64 samples of `blk` into the (bx, by) sub-rectangle of
+ * the MCU's luma tile, whose rows are `mcu_w_px` samples wide, so the
+ * MCU pixel-emit loop can address the tile linearly.
  *
- * @param[in,out] d        Decoder context (DC predictors mutate).
- * @param[in,out] br       Bit-reader positioned at the next luma block.
- * @param[out]    y_tile   Output tile of (mcu_w_px x mcu_h_px) luma px.
- * @param[in]     mcu_w_px MCU width in pixels (k_ra8_jpeg_block_dim * d->hmax).
+ * @param[in]  blk      64-byte reconstructed luma block (row-major).
+ * @param[out] y_tile   Destination MCU luma tile.
+ * @param[in]  bx       Block column inside the MCU (0..hmax-1).
+ * @param[in]  by       Block row inside the MCU (0..vmax-1).
+ * @param[in]  mcu_w_px MCU width in pixels (tile row stride).
  *
- * @return ra8_err_t Error code.
- * @retval k_ra8_ok               Success, all luma blocks consumed.
- * @retval k_ra8_err_protocol_error Underlying dec_block() reported a stream error.
+ * @pre `blk` holds 64 valid samples.
+ * @pre `y_tile` covers `mcu_w_px * 8 * (by + 1)` bytes.
+ * @post The (bx, by) sub-rectangle of `y_tile` is populated.
+ * @post No other tile bytes are touched.
  *
- * @pre `d`, `br`, `y_tile` are non-NULL.
- * @pre `d->hmax` and `d->vmax` are non-zero (enforced by dec_parse_sof0).
- * @post On success `br->pos` advanced past hmax*vmax luma blocks.
- * @post On success `y_tile` fully populated with reconstructed Y pixels.
- *
- * @note Not thread-safe; caller serializes access via decoder context.
+ * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
+static void dec_copy_block_to_tile(const uint8_t* blk,
+                                   uint8_t*       y_tile,
+                                   uint8_t        bx,
+                                   uint8_t        by,
+                                   uint16_t       mcu_w_px)
+{
+  for (uint8_t r = 0U; r < (uint8_t)k_ra8_jpeg_block_dim; r++) {
+    for (uint8_t c = 0U; c < (uint8_t)k_ra8_jpeg_block_dim; c++) {
+      uint16_t ty                  = (uint16_t)((by * (uint16_t)k_ra8_jpeg_block_dim) + r);
+      uint16_t tx                  = (uint16_t)((bx * (uint16_t)k_ra8_jpeg_block_dim) + c);
+      y_tile[(ty * mcu_w_px) + tx] = blk[(r * (uint8_t)k_ra8_jpeg_block_dim) + c];
+    }
+  }
+}
+
+/** @brief Implementation of `ra8_jpeg_sw_priv_mcu_y()` -- hmax*vmax luma block loop. */
 RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_mcu_y(ra8_jpeg_dec_ctx_t*   d,
                                           ra8_jpeg_bitreader_t* br,
                                           uint8_t*              y_tile,
@@ -366,43 +488,13 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_mcu_y(ra8_jpeg_dec_ctx_t*   d,
       }
       uint8_t blk[(uint32_t)k_ra8_jpeg_block_size];
       ra8_jpeg_sw_priv_idct_into(coeffs, blk);
-      for (uint8_t r = 0U; r < (uint8_t)k_ra8_jpeg_block_dim; r++) {
-        for (uint8_t c = 0U; c < (uint8_t)k_ra8_jpeg_block_dim; c++) {
-          uint16_t ty                = (uint16_t)(by * (uint16_t)k_ra8_jpeg_block_dim + r);
-          uint16_t tx                = (uint16_t)(bx * (uint16_t)k_ra8_jpeg_block_dim + c);
-          y_tile[ty * mcu_w_px + tx] = blk[r * (uint8_t)k_ra8_jpeg_block_dim + c];
-        }
-      }
+      dec_copy_block_to_tile(blk, y_tile, bx, by, mcu_w_px);
     }
   }
   return k_ra8_ok;
 }
 
-/**
- * @brief Decode the Cb and Cr 8x8 blocks of one MCU into their tile buffers.
- *
- * @details
- * For 3-component YCbCr streams, consumes one Cb block then one Cr block
- * from the entropy stream, IDCTs each, and stores the result in the
- * caller's tile arrays. Caller must skip this for grayscale streams.
- *
- * @param[in,out] d       Decoder context (DC predictors mutate).
- * @param[in,out] br      Bit-reader positioned at the next chroma block.
- * @param[out]    cb_tile 64-byte buffer for reconstructed Cb pixels.
- * @param[out]    cr_tile 64-byte buffer for reconstructed Cr pixels.
- *
- * @return ra8_err_t Error code.
- * @retval k_ra8_ok               Both chroma blocks decoded successfully.
- * @retval k_ra8_err_protocol_error Stream error reported by dec_block().
- *
- * @pre `d->ncomp == 3` (caller verifies before invocation).
- * @pre `cb_tile` and `cr_tile` each point to >= 64 writable bytes.
- * @post `br->pos` advanced past two 8x8 chroma blocks.
- * @post Both tile buffers fully populated.
- *
- * @note Not thread-safe; caller serializes access via decoder context.
- * @since 0.1.0
- */
+/** @brief Implementation of `ra8_jpeg_sw_priv_mcu_chroma()` -- one Cb then one Cr block. */
 RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_mcu_chroma(ra8_jpeg_dec_ctx_t*   d,
                                                ra8_jpeg_bitreader_t* br,
                                                uint8_t*              cb_tile,
@@ -463,35 +555,149 @@ static void dec_emit_mcu_rgb(const ra8_jpeg_dec_ctx_t* d,
                              uint8_t*                  out_buf)
 {
   for (uint16_t r = 0U; r < mcu_h_px; r++) {
-    uint16_t py = (uint16_t)(my * mcu_h_px + r);
+    uint16_t py = (uint16_t)((my * mcu_h_px) + r);
     if (py >= d->height) {
       break;
     }
     for (uint16_t c = 0U; c < mcu_w_px; c++) {
-      uint16_t px = (uint16_t)(mx * mcu_w_px + c);
+      uint16_t px = (uint16_t)((mx * mcu_w_px) + c);
       if (px >= d->width) {
         break;
       }
-      int32_t y = (int32_t)y_tile[r * mcu_w_px + c];
+      int32_t y = (int32_t)y_tile[(r * mcu_w_px) + c];
       int32_t cb;
       int32_t cr;
       if (d->ncomp == 3U) {
         uint16_t cr_x = (uint16_t)(c / d->hmax);
         uint16_t cr_y = (uint16_t)(r / d->vmax);
-        cb            = (int32_t)cb_tile[cr_y * (uint16_t)k_ra8_jpeg_block_dim + cr_x];
-        cr            = (int32_t)cr_tile[cr_y * (uint16_t)k_ra8_jpeg_block_dim + cr_x];
+        cb            = (int32_t)cb_tile[(cr_y * (uint16_t)k_ra8_jpeg_block_dim) + cr_x];
+        cr            = (int32_t)cr_tile[(cr_y * (uint16_t)k_ra8_jpeg_block_dim) + cr_x];
       } else {
         cb = (int32_t)k_ra8_jpeg_level_offset;
         cr = (int32_t)k_ra8_jpeg_level_offset;
       }
       uint32_t idx =
-        ((uint32_t)py * (uint32_t)d->width + (uint32_t)px) * (uint32_t)k_ra8_jpeg_rgb_components;
+        (((uint32_t)py * (uint32_t)d->width) + (uint32_t)px) * (uint32_t)k_ra8_jpeg_rgb_components;
       ra8_jpeg_sw_ycc_to_rgb(y, cb, cr, &out_buf[idx], &out_buf[idx + 1U], &out_buf[idx + 2U]);
     }
   }
 }
 
-/* Walk the entropy-coded segment, MCU by MCU -- see surrounding code and HUM citations. */
+/**
+ * @brief Decode one MCU (luma + optional chroma) and emit its RGB pixels.
+ *
+ * @details
+ * Loop body of `dec_decode_scan()`: entropy-decodes the MCU's
+ * `hmax*vmax` luma blocks into `y_tile`, the Cb/Cr pair for
+ * 3-component streams, and converts the reconstructed tiles into
+ * output RGB at MCU position (mx, my).
+ *
+ * @param[in,out] d        Decoder context (DC predictors mutate).
+ * @param[in,out] br       Bit reader over the entropy-coded segment.
+ * @param[out]    y_tile   Scratch luma tile (mcu_w_px * mcu_h_px bytes).
+ * @param[out]    cb_tile  Scratch 64-byte Cb tile.
+ * @param[out]    cr_tile  Scratch 64-byte Cr tile.
+ * @param[in]     mx       MCU column index in the output image.
+ * @param[in]     my       MCU row index in the output image.
+ * @param[in]     mcu_w_px MCU width in pixels.
+ * @param[in]     mcu_h_px MCU height in pixels.
+ * @param[out]    out_buf  Destination RGB888 image buffer.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 MCU decoded and emitted.
+ * @retval k_ra8_err_protocol_error Entropy-stream error in any block.
+ *
+ * @pre All tile buffers are sized for the stream's sampling layout.
+ * @pre `out_buf` covers the full decoded image (caller-checked).
+ * @post On success the MCU's visible pixels are written to `out_buf`.
+ * @post On error the scan aborts; already-emitted pixels stay valid.
+ *
+ * @note Internal helper; not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t dec_decode_mcu(ra8_jpeg_dec_ctx_t*   d,
+                                ra8_jpeg_bitreader_t* br,
+                                uint8_t*              y_tile,
+                                uint8_t*              cb_tile,
+                                uint8_t*              cr_tile,
+                                uint16_t              mx,
+                                uint16_t              my,
+                                uint16_t              mcu_w_px,
+                                uint16_t              mcu_h_px,
+                                uint8_t*              out_buf)
+{
+  ra8_err_t e = ra8_jpeg_sw_priv_mcu_y(d, br, y_tile, mcu_w_px);
+  if (e != k_ra8_ok) {
+    return e;
+  }
+  if (d->ncomp == 3U) {
+    e = ra8_jpeg_sw_priv_mcu_chroma(d, br, cb_tile, cr_tile);
+    if (e != k_ra8_ok) {
+      return e;
+    }
+  }
+  dec_emit_mcu_rgb(d, y_tile, cb_tile, cr_tile, mx, my, mcu_w_px, mcu_h_px, out_buf);
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Prime the bit reader and reset the DC predictors for a scan.
+ *
+ * @details
+ * Positions the entropy bit reader at the decoder cursor and zeroes
+ * every component's DC predictor, exactly as T.81 sec F.2.1.3.1
+ * requires at the start of a scan.
+ *
+ * @param[in,out] d  Decoder context (DC predictors reset).
+ * @param[out]    br Bit reader to initialise over the scan data.
+ *
+ * @pre `d->cursor` sits at the first entropy-coded byte (post-SOS).
+ * @pre `br` is non-NULL (module-internal call chain).
+ * @post `br` reads from `d->src` starting at `d->cursor`.
+ * @post All `d->comp_dc_pred[]` entries are zero.
+ *
+ * @note Internal helper; not thread-safe.
+ * @since 0.1.0
+ */
+static void dec_scan_begin(ra8_jpeg_dec_ctx_t* d, ra8_jpeg_bitreader_t* br)
+{
+  br->buf     = d->src;
+  br->len     = d->src_len;
+  br->pos     = d->cursor;
+  br->acc     = 0U;
+  br->nbits   = 0U;
+  br->had_eoi = 0U;
+  for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_max_comps; i++) {
+    d->comp_dc_pred[i] = 0;
+  }
+}
+
+/**
+ * @brief Decode the whole entropy-coded segment, MCU by MCU.
+ *
+ * @details
+ * T.81 sec F.2.2 scan decode: sizes the MCU grid from the SOF0
+ * sampling factors, primes the bit reader and DC predictors via
+ * `dec_scan_begin()`, then walks every MCU through
+ * `dec_decode_mcu()`, which reconstructs and emits its RGB pixels.
+ *
+ * @param[in,out] d           Decoder context (cursor lands after the scan).
+ * @param[out]    out_buf     Destination RGB888 image buffer.
+ * @param[in]     out_buf_len Capacity of `out_buf` in bytes.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 Whole image decoded.
+ * @retval k_ra8_err_invalid_size   `out_buf` smaller than w*h*3 bytes.
+ * @retval k_ra8_err_protocol_error Entropy-stream error in any MCU.
+ *
+ * @pre A successful SOF0 + SOS parse preceded this call.
+ * @pre `d->cursor` sits at the first entropy-coded byte.
+ * @post On success `d->cursor` advanced past the scan data.
+ * @post On error already-emitted pixels remain valid in `out_buf`.
+ *
+ * @note Internal helper; not thread-safe.
+ * @since 0.1.0
+ */
 static ra8_err_t dec_decode_scan(ra8_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32_t out_buf_len)
 {
   uint32_t need = (uint32_t)d->width * (uint32_t)d->height * (uint32_t)k_ra8_jpeg_rgb_components;
@@ -499,19 +705,13 @@ static ra8_err_t dec_decode_scan(ra8_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32
     return k_ra8_err_invalid_size;
   }
 
-  ra8_jpeg_bitreader_t br = {
-    .buf     = d->src,
-    .len     = d->src_len,
-    .pos     = d->cursor,
-    .acc     = 0U,
-    .nbits   = 0U,
-    .had_eoi = 0U,
-  };
+  ra8_jpeg_bitreader_t br;
+  dec_scan_begin(d, &br);
 
   /*
-   * Cross-function invariant: dec_parse_sof0() only returns success for
-   * 4:4:4, 4:2:2 (h+v), 4:2:2 (h-only), and 4:2:0 chroma layouts, all of
-   * which set hmax and vmax to a non-zero value (see dec_parse_sof0).
+   * Cross-function invariant: ra8_jpeg_sw_priv_parse_sof0() only returns
+   * success for the 4:4:4 and 4:2:0 chroma layouts (and grayscale), all
+   * of which set hmax and vmax to a non-zero value.
    * The clang static analyzer (scan-build, core.DivideZero) cannot follow
    * the cross-function invariant, so re-state it here as an assertion to
    * make the property locally provable to the analyzer and to NASA Power-
@@ -522,30 +722,20 @@ static ra8_err_t dec_decode_scan(ra8_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32
 
   uint16_t mcu_w_px = (uint16_t)((uint16_t)k_ra8_jpeg_block_dim * d->hmax);
   uint16_t mcu_h_px = (uint16_t)((uint16_t)k_ra8_jpeg_block_dim * d->vmax);
-  uint16_t mcus_x   = (uint16_t)((d->width + mcu_w_px - 1U) / mcu_w_px);
-  uint16_t mcus_y   = (uint16_t)((d->height + mcu_h_px - 1U) / mcu_h_px);
+  uint16_t mcus_x   = (uint16_t)(((d->width + mcu_w_px) - 1U) / mcu_w_px);
+  uint16_t mcus_y   = (uint16_t)(((d->height + mcu_h_px) - 1U) / mcu_h_px);
 
   uint8_t y_tile[(uint32_t)k_ra8_jpeg_mcu_max_dim * (uint32_t)k_ra8_jpeg_mcu_max_dim];
   uint8_t cb_tile[(uint32_t)k_ra8_jpeg_block_size];
   uint8_t cr_tile[(uint32_t)k_ra8_jpeg_block_size];
 
-  for (uint8_t i = 0U; i < (uint8_t)k_ra8_jpeg_max_comps; i++) {
-    d->comp_dc_pred[i] = 0;
-  }
-
   for (uint16_t my = 0U; my < mcus_y; my++) {
     for (uint16_t mx = 0U; mx < mcus_x; mx++) {
-      ra8_err_t e = ra8_jpeg_sw_priv_mcu_y(d, &br, y_tile, mcu_w_px);
+      ra8_err_t e =
+        dec_decode_mcu(d, &br, y_tile, cb_tile, cr_tile, mx, my, mcu_w_px, mcu_h_px, out_buf);
       if (e != k_ra8_ok) {
         return e;
       }
-      if (d->ncomp == 3U) {
-        e = ra8_jpeg_sw_priv_mcu_chroma(d, &br, cb_tile, cr_tile);
-        if (e != k_ra8_ok) {
-          return e;
-        }
-      }
-      dec_emit_mcu_rgb(d, y_tile, cb_tile, cr_tile, mx, my, mcu_w_px, mcu_h_px, out_buf);
     }
   }
   d->cursor = br.pos;
@@ -553,31 +743,66 @@ static ra8_err_t dec_decode_scan(ra8_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32
 }
 
 /**
- * @brief Dispatch one JPEG marker segment in the top-level decode loop.
+ * @brief Handle a non-SOF marker in the decode dispatch chain.
  *
  * @details
- * Parses one marker following the 0xFF prefix at `d->cursor` and updates
- * the decoder context accordingly. Tracks whether an SOF0 has been seen
- * via `*got_sof`. Unknown segments are skipped with `dec_skip_segment()`
- * so unrecognised APPn/COM payloads do not abort decoding.
+ * Tail of `ra8_jpeg_sw_priv_dispatch()`: routes the already-extracted
+ * marker code to the DQT/DHT/SOS parsers, flags EOI, consumes RST
+ * markers as standalone bytes, and skips unrecognized APPn/COM
+ * segments via `ra8_jpeg_sw_priv_skip_segment()`.
  *
- * @param[in,out] d        Decoder context (cursor advances).
- * @param[in,out] got_sof  Tracks whether SOF0 has been parsed yet.
- * @param[out]    action   What the caller should do next.
+ * @param[in,out] d       Decoder context (cursor advances).
+ * @param[in]     mk      Marker code (0xFFxx) to route.
+ * @param[in]     got_sof Whether SOF0 has been parsed yet.
+ * @param[out]    action  What the driver should do next.
  *
  * @return ra8_err_t Error code.
- * @retval k_ra8_ok                Marker parsed successfully (see *action).
- * @retval k_ra8_err_protocol_error Malformed marker, truncated stream, or SOS before SOF.
- * @retval k_ra8_err_not_supported  Unsupported SOFn (progressive, lossless, ...).
+ * @retval k_ra8_ok                 Marker handled (see `*action`).
+ * @retval k_ra8_err_protocol_error Malformed payload or SOS before SOF.
+ * @retval k_ra8_err_not_supported  Propagated from the segment parsers.
  *
- * @pre `d`, `got_sof`, `action` are non-NULL.
- * @pre `d->cursor < d->src_len` (caller checks).
- * @post `d->cursor` advanced past the marker byte and (for sized markers) past its payload.
- * @post `*action` is one of the ra8_jpeg_dec_marker_action_t values.
+ * @pre `mk` is not SOF0 and not an unsupported SOFn (caller-routed).
+ * @pre `*action` was preset to k_ra8_jpeg_dec_continue.
+ * @post `d->cursor` advanced past any sized payload.
+ * @post `*action` is a ::ra8_jpeg_dec_marker_action_t value.
  *
- * @note Not thread-safe; caller serializes via decoder context.
+ * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
+static ra8_err_t dec_dispatch_tail(ra8_jpeg_dec_ctx_t*           d,
+                                   uint16_t                      mk,
+                                   bool                          got_sof,
+                                   ra8_jpeg_dec_marker_action_t* action)
+{
+  if (mk == (uint16_t)k_ra8_jpeg_marker_dqt) {
+    return ra8_jpeg_sw_priv_parse_dqt(d);
+  }
+  if (mk == (uint16_t)k_ra8_jpeg_marker_dht) {
+    return ra8_jpeg_sw_priv_parse_dht(d);
+  }
+  if (mk == (uint16_t)k_ra8_jpeg_marker_sos) {
+    if (!got_sof) {
+      return k_ra8_err_protocol_error;
+    }
+    ra8_err_t e = ra8_jpeg_sw_priv_parse_sos(d);
+    if (e != k_ra8_ok) {
+      return e;
+    }
+    *action = k_ra8_jpeg_dec_scan;
+    return k_ra8_ok;
+  }
+  if (mk == (uint16_t)k_ra8_jpeg_marker_eoi) {
+    *action = k_ra8_jpeg_dec_eoi;
+    return k_ra8_ok;
+  }
+  if (mk >= (uint16_t)k_ra8_jpeg_marker_rst0 && mk <= (uint16_t)k_ra8_jpeg_marker_rst7) {
+    /* Standalone marker, no length. */
+    return k_ra8_ok;
+  }
+  return ra8_jpeg_sw_priv_skip_segment(d);
+}
+
+/** @brief Implementation of `ra8_jpeg_sw_priv_dispatch()` -- marker extraction + routing. */
 RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_dispatch(ra8_jpeg_dec_ctx_t*           d,
                                              bool*                         got_sof,
                                              ra8_jpeg_dec_marker_action_t* action)
@@ -603,38 +828,66 @@ RA8_PRIV ra8_err_t ra8_jpeg_sw_priv_dispatch(ra8_jpeg_dec_ctx_t*           d,
     }
     *got_sof = true;
     return k_ra8_ok;
-    // mcdc-deactivated: dec_decode_scan unsupported-SOFn detector (SOF1..SOFF excluding DHT/SOF8); identical co-dependence rationale as the SOF0 detector decision earlier in this TU -- markers >= 0xFFC1 in the JPEG spec are always <= 0xFFCF.
+    // mcdc-deactivated: ra8_jpeg_sw_priv_dispatch unsupported-SOFn detector (SOF1..SOFF excluding DHT/SOF8); identical co-dependence rationale as the SOF0 detector decision in ra8_jpeg_sw_get_dimensions -- markers >= 0xFFC1 in the JPEG spec are always <= 0xFFCF.
   }
   if (mk >= k_jpeg_marker_sof1 && mk <= k_jpeg_marker_sof_hi &&
       mk != (uint16_t)k_ra8_jpeg_marker_dht && mk != k_jpeg_marker_jpg) {
     return k_ra8_err_not_supported;
   }
-  if (mk == (uint16_t)k_ra8_jpeg_marker_dqt) {
-    return ra8_jpeg_sw_priv_parse_dqt(d);
-  }
-  if (mk == (uint16_t)k_ra8_jpeg_marker_dht) {
-    return ra8_jpeg_sw_priv_parse_dht(d);
-  }
-  if (mk == (uint16_t)k_ra8_jpeg_marker_sos) {
-    if (!*got_sof) {
-      return k_ra8_err_protocol_error;
-    }
-    ra8_err_t e = ra8_jpeg_sw_priv_parse_sos(d);
+  return dec_dispatch_tail(d, mk, *got_sof, action);
+}
+
+/**
+ * @brief Marker-walk driver for the whole-buffer decode.
+ *
+ * @details
+ * Loops `ra8_jpeg_sw_priv_dispatch()` over the stream until an SOS
+ * hands off to `dec_decode_scan()`, an EOI ends the walk without a
+ * scan (protocol error), or the stream is exhausted.
+ *
+ * @param[in,out] d           Initialised decoder context (cursor at 2).
+ * @param[out]    out_buf     Destination RGB888 buffer.
+ * @param[in]     out_buf_len Capacity of `out_buf` in bytes.
+ * @param[out]    out_w       Receives the image width on scan start.
+ * @param[out]    out_h       Receives the image height on scan start.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                 Image decoded into `out_buf`.
+ * @retval k_ra8_err_invalid_size   `out_buf` too small for the frame.
+ * @retval k_ra8_err_protocol_error Malformed stream or no scan found.
+ * @retval k_ra8_err_not_supported  Non-baseline stream feature.
+ *
+ * @pre `d->src`/`d->src_len` describe an SOI-verified stream.
+ * @pre All output pointers are non-NULL (public API validated them).
+ * @post On success `*out_w`/`*out_h` hold the SOF0 dimensions.
+ * @post On error the output buffer contents are unspecified.
+ *
+ * @note Internal helper; not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t dec_run(ra8_jpeg_dec_ctx_t* d,
+                         uint8_t*            out_buf,
+                         uint32_t            out_buf_len,
+                         uint16_t*           out_w,
+                         uint16_t*           out_h)
+{
+  bool got_sof = false;
+  while (d->cursor < d->src_len) {
+    ra8_jpeg_dec_marker_action_t action = k_ra8_jpeg_dec_continue;
+    ra8_err_t                    e      = ra8_jpeg_sw_priv_dispatch(d, &got_sof, &action);
     if (e != k_ra8_ok) {
       return e;
     }
-    *action = k_ra8_jpeg_dec_scan;
-    return k_ra8_ok;
+    if (action == k_ra8_jpeg_dec_scan) {
+      *out_w = d->width;
+      *out_h = d->height;
+      return dec_decode_scan(d, out_buf, out_buf_len);
+    }
+    if (action == k_ra8_jpeg_dec_eoi) {
+      break;
+    }
   }
-  if (mk == (uint16_t)k_ra8_jpeg_marker_eoi) {
-    *action = k_ra8_jpeg_dec_eoi;
-    return k_ra8_ok;
-  }
-  if (mk >= (uint16_t)k_ra8_jpeg_marker_rst0 && mk <= (uint16_t)k_ra8_jpeg_marker_rst7) {
-    /* Standalone marker, no length. */
-    return k_ra8_ok;
-  }
-  return ra8_jpeg_sw_priv_skip_segment(d);
+  return k_ra8_err_protocol_error;
 }
 
 ra8_err_t ra8_jpeg_sw_decode(const uint8_t* jpeg_buf,
@@ -667,23 +920,5 @@ ra8_err_t ra8_jpeg_sw_decode(const uint8_t* jpeg_buf,
   }
   d->cursor = 2U;
 
-  bool got_sof = false;
-  while (d->cursor < d->src_len) {
-    ra8_jpeg_dec_marker_action_t action = k_ra8_jpeg_dec_continue;
-    ra8_err_t                    e      = ra8_jpeg_sw_priv_dispatch(d, &got_sof, &action);
-    if (e != k_ra8_ok) {
-      return e;
-    }
-    if (action == k_ra8_jpeg_dec_scan) {
-      *out_w = d->width;
-      *out_h = d->height;
-      return dec_decode_scan(d, out_buf, out_buf_len);
-    }
-    if (action == k_ra8_jpeg_dec_eoi) {
-      break;
-    }
-  }
-  return k_ra8_err_protocol_error;
+  return dec_run(d, out_buf, out_buf_len, out_w, out_h);
 }
-
-// NOLINTEND(readability-function-size,readability-function-cognitive-complexity,readability-redundant-casting,readability-math-missing-parentheses,bugprone-implicit-widening-of-multiplication-result,clang-analyzer-core.DivideZero,clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
