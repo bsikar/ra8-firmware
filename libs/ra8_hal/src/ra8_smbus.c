@@ -389,7 +389,8 @@ static ra8_err_t internal_block_read_pec_check(uint8_t        target_7b,
  * @retval k_ra8_err_invalid_size Peripheral count exceeds ``cap``.
  * @retval k_ra8_err_crc_mismatch PEC byte did not match the frame.
  *
- * @pre ``rx`` holds a completed transfer of at least ``cap + 2`` bytes.
+ * @pre ``rx`` holds a completed transfer of ``cap + 1`` bytes (one more
+ *      with PEC enabled), so every index this helper reads is in range.
  * @pre ``buf`` and ``out_len`` are non-NULL (checked by the caller).
  * @post ``*out_len`` is set even when the count exceeds ``cap``.
  * @post ``buf`` holds ``count`` payload bytes on success.
