@@ -33,8 +33,6 @@
 
 #include "ra8_err.h"
 
-/* NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity,readability-isolate-declaration,readability-identifier-naming,readability-redundant-casting,readability-math-missing-parentheses,bugprone-implicit-widening-of-multiplication-result) */
-
 /* ===========================================================================
  * Internal constants
  * ===========================================================================
@@ -400,8 +398,8 @@ ra8_err_t ra8_touch_cal_compute(const ra8_touch_cal_point_t* raw,
   internal_lsq_sums_t s;
   internal_accumulate_sums(raw, screen, n, &s);
 
-  const float fn   = (float)n;
-  const float A[9] = {
+  const float fn          = (float)n;
+  const float norm_mat[9] = {
     s.Sxx,
     s.Sxy,
     s.Sx,
@@ -412,15 +410,15 @@ ra8_err_t ra8_touch_cal_compute(const ra8_touch_cal_point_t* raw,
     s.Sy,
     fn,
   };
-  const float Bu[3] = {s.Sxu, s.Syu, s.Su};
-  const float Bv[3] = {s.Sxv, s.Syv, s.Sv};
+  const float rhs_u[3] = {s.Sxu, s.Syu, s.Su};
+  const float rhs_v[3] = {s.Sxv, s.Syv, s.Sv};
 
   float sol_u[3] = {0.0F, 0.0F, 0.0F};
   float sol_v[3] = {0.0F, 0.0F, 0.0F};
   bool  ok_u     = false;
   bool  ok_v     = false;
-  internal_solve3(A, Bu, sol_u, &ok_u);
-  internal_solve3(A, Bv, sol_v, &ok_v);
+  internal_solve3(norm_mat, rhs_u, sol_u, &ok_u);
+  internal_solve3(norm_mat, rhs_v, sol_v, &ok_v);
   // mcdc-deactivated: TU-local helper internal_clip32 solver-success gate; A is the same 3x3 calibration matrix for both Bu and Bv solves, so internal_solve3 either succeeds for both right-hand sides (det(A) != 0) or fails for both (det(A) == 0) -- ok_u and ok_v are co-determined by the matrix conditioning.
   if (!ok_u || !ok_v) {
     return k_ra8_err_invalid_arg;
@@ -611,4 +609,3 @@ ra8_touch_cal_load(const uint8_t* src, size_t src_size, ra8_touch_cal_matrix_t* 
   return k_ra8_ok;
 }
 
-/* NOLINTEND(readability-function-size,readability-function-cognitive-complexity,readability-isolate-declaration,readability-identifier-naming,readability-redundant-casting,readability-math-missing-parentheses,bugprone-implicit-widening-of-multiplication-result) */
