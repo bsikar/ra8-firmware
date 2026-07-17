@@ -309,7 +309,16 @@ static void fill_status(board_status_t* st, const char* app_name)
  * @return Nothing.
  */
 
-/** @brief Rotate a row-major RGB565 panel (@p sw x @p sh) into @p dst, @p deg CW. */
+/**
+ * @brief Rotate a row-major RGB565 panel (@p sw x @p sh) into @p dst, @p deg CW.
+ *
+ * @param[in]  src Source RGB565 panel, row-major, @p sw by @p sh.
+ * @param[in]  sw  Source panel width in pixels.
+ * @param[in]  sh  Source panel height in pixels.
+ * @param[out] dst Destination RGB565 buffer sized for the rotated panel.
+ * @param[in]  deg Clockwise rotation in degrees (0, 90, 180, 270).
+ * @return Nothing.
+ */
 static void rotate_panel(const uint16_t* src, uint16_t sw, uint16_t sh, uint16_t* dst, uint32_t deg)
 {
   for (uint16_t y = 0U; y < sh; y++) {
