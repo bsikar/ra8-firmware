@@ -22,6 +22,34 @@ set(MDL_MINIZ ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz/miniz.c)
 set_source_files_properties(${MDL_MINIZ} PROPERTIES
   COMPILE_OPTIONS "-w;-fno-strict-aliasing")
 
+# The RTA1 exporter reuses the firmware's own tile-atlas producer + streaming
+# JPEG decoder host-side (RA8_SIMULATOR_MODE), so a .rta1 the CLI writes is
+# byte-identical to one the RA8 produces. Compiled quietly: the repo lints these
+# via its own build, not this tool's scope.
+set(FW ${CMAKE_CURRENT_SOURCE_DIR}/../../libs)
+set(MDL_RTA1_SRC
+  ${FW}/ra8_tileatlas/src/ra8_tileatlas.c
+  ${FW}/ra8_tileatlas/src/ra8_tileatlas_produce.c
+  ${FW}/ra8_tileatlas/src/ra8_tileatlas_png.c
+  ${FW}/ra8_tileatlas/src/ra8_tileatlas_png_chunk.c
+  ${FW}/ra8_hal/src/ra8_jpeg_sw.c
+  ${FW}/ra8_hal/src/ra8_jpeg_sw_decode.c
+  ${FW}/ra8_hal/src/ra8_jpeg_sw_stream.c
+  ${FW}/ra8_io/src/ra8_io_compress.c
+  ${FW}/ra8_core/src/ra8_log.c
+  ${FW}/ra8_core/src/ra8_error_handler.c
+  ${FW}/ra8_core/src/ra8_decomp_limits.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/webp_stub.c)
+set_source_files_properties(${MDL_RTA1_SRC} PROPERTIES
+  COMPILE_OPTIONS "-w;-fno-strict-aliasing")
+set(MDL_RTA1_INC
+  ${FW}/ra8_tileatlas/inc ${FW}/ra8_tileatlas/src
+  ${FW}/ra8_hal/inc ${FW}/ra8_hal/src
+  ${FW}/ra8_io/inc)
+# rabook shells out to this python emitter (the RBKC container the C path can't
+# write); pass its directory so the CLI can find cbz_compile.py at runtime.
+set(MDL_EPUB_COMPILE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../epub_compile)
+
 add_executable(media_dl
   src/main.c
   src/mdl_net_curl.c
@@ -29,6 +57,7 @@ add_executable(media_dl
   src/mdl_politeness.c
   src/mdl_config.c
   src/mdl_export.c
+  ${MDL_RTA1_SRC}
   ${MDL_MINIZ})
 
 target_include_directories(media_dl PRIVATE
@@ -37,9 +66,12 @@ target_include_directories(media_dl PRIVATE
   # switch the host unit-test build uses so register-reaching code takes the
   # host-safe path.
   ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz)
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
+  ${MDL_RTA1_INC})
 
-target_compile_definitions(media_dl PRIVATE RA8_SIMULATOR_MODE)
+target_compile_definitions(media_dl PRIVATE
+  RA8_SIMULATOR_MODE
+  MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}")
 target_compile_options(media_dl PRIVATE -Wall -Wextra)
 target_link_libraries(media_dl PRIVATE CURL::libcurl)
 
@@ -52,12 +84,16 @@ add_executable(test_media_dl
   src/mdl_extract.c
   src/mdl_config.c
   src/mdl_export.c
+  ${MDL_RTA1_SRC}
   ${MDL_MINIZ})
 target_include_directories(test_media_dl PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/inc
   ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
   ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../tests)
-target_compile_definitions(test_media_dl PRIVATE RA8_SIMULATOR_MODE)
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+  ${MDL_RTA1_INC})
+target_compile_definitions(test_media_dl PRIVATE
+  RA8_SIMULATOR_MODE
+  MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}")
 target_compile_options(test_media_dl PRIVATE -Wall -Wextra)
 add_test(NAME test_media_dl COMMAND test_media_dl)
