@@ -608,6 +608,39 @@ static void test_write_cmd_unknown_handle(void)
 }
 
 /**
+ * @brief Inject a WRITE_REQ to @p handle and assert the response opcode.
+ *
+ * @details Resets the TX capture, injects a 4-byte WRITE_REQ carrying @p val,
+ *          and asserts the captured response opcode. For an error response the
+ *          error code is additionally asserted to be write_not_permitted.
+ *
+ * @param[in] handle    Target attribute handle.
+ * @param[in] val       Single value byte written.
+ * @param[in] expect_op Expected response opcode (write_rsp or error_rsp).
+ * @return None.
+ * @pre A connection has been injected.
+ * @post The captured response matched @p expect_op (and the error code if error).
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void att_write_char(uint16_t handle, uint8_t val, uint8_t expect_op)
+{
+  ra8_ble_test_reset_capture();
+  const uint8_t pdu[4] = {(uint8_t)k_att_op_write_req,
+                          (uint8_t)(handle & 0xFFU),
+                          (uint8_t)((handle >> 8U) & 0xFFU),
+                          val};
+  inject_att(pdu, (uint16_t)sizeof(pdu));
+  uint16_t       cl  = 0U;
+  const uint8_t* cap = ra8_ble_test_tx_capture(&cl);
+  TEST_ASSERT(cl > 0U);
+  TEST_ASSERT_EQ(expect_op, cap[k_cap_offset_op]);
+  if (expect_op == (uint8_t)k_att_op_error_rsp) {
+    TEST_ASSERT_EQ(k_att_err_write_not_perm, cap[k_cap_offset_op + 4U]);
+  }
+}
+
+/**
  * @test test_write_char_value_backing_mcdc
  *
  * @details Drives the ``internal_handle_write`` characteristic-value dispatch
@@ -656,50 +689,13 @@ static void test_write_char_value_backing_mcdc(void)
                                                  &chr_null));
 
   ra8_ble_host_test_inject_connect((uint16_t)k_test_conn_handle);
-  ra8_ble_test_reset_capture();
 
   /* V1 (C1=T,C2=T): normal char write succeeds -> Write_Response. */
-  {
-    const uint8_t pdu[4] = {(uint8_t)k_att_op_write_req,
-                            (uint8_t)(chr & 0xFFU),
-                            (uint8_t)((chr >> 8U) & 0xFFU),
-                            (uint8_t)k_val_byte};
-    inject_att(pdu, (uint16_t)sizeof(pdu));
-    uint16_t       cl  = 0U;
-    const uint8_t* cap = ra8_ble_test_tx_capture(&cl);
-    TEST_ASSERT(cl > 0U);
-    TEST_ASSERT_EQ(k_att_op_write_rsp, cap[k_cap_offset_op]);
-  }
-
+  att_write_char(chr, (uint8_t)k_val_byte, (uint8_t)k_att_op_write_rsp);
   /* V2 (C1=T,C2=F): NULL-backed char -> write_not_permitted (guard else arm). */
-  ra8_ble_test_reset_capture();
-  {
-    const uint8_t pdu[4] = {(uint8_t)k_att_op_write_req,
-                            (uint8_t)(chr_null & 0xFFU),
-                            (uint8_t)((chr_null >> 8U) & 0xFFU),
-                            (uint8_t)k_val_byte};
-    inject_att(pdu, (uint16_t)sizeof(pdu));
-    uint16_t       cl  = 0U;
-    const uint8_t* cap = ra8_ble_test_tx_capture(&cl);
-    TEST_ASSERT(cl > 0U);
-    TEST_ASSERT_EQ(k_att_op_error_rsp, cap[k_cap_offset_op]);
-    TEST_ASSERT_EQ(k_att_err_write_not_perm, cap[k_cap_offset_op + 4U]);
-  }
-
+  att_write_char(chr_null, (uint8_t)k_val_byte, (uint8_t)k_att_op_error_rsp);
   /* V3 (C1=F): write to the Primary Service handle -> write_not_permitted. */
-  ra8_ble_test_reset_capture();
-  {
-    const uint8_t pdu[4] = {(uint8_t)k_att_op_write_req,
-                            (uint8_t)((uint16_t)k_handle_service & 0xFFU),
-                            (uint8_t)(((uint16_t)k_handle_service >> 8U) & 0xFFU),
-                            (uint8_t)k_val_byte};
-    inject_att(pdu, (uint16_t)sizeof(pdu));
-    uint16_t       cl  = 0U;
-    const uint8_t* cap = ra8_ble_test_tx_capture(&cl);
-    TEST_ASSERT(cl > 0U);
-    TEST_ASSERT_EQ(k_att_op_error_rsp, cap[k_cap_offset_op]);
-    TEST_ASSERT_EQ(k_att_err_write_not_perm, cap[k_cap_offset_op + 4U]);
-  }
+  att_write_char((uint16_t)k_handle_service, (uint8_t)k_val_byte, (uint8_t)k_att_op_error_rsp);
   TEST_END("ra8_ble_att WRITE_REQ char-value backing guard (MC/DC)");
 }
 
