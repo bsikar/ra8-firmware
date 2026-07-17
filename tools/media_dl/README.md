@@ -94,6 +94,23 @@ A `.conf` is flat `key = value` (`#` comments, `[section]` lines ignored). See
 `page_img_url_contains`, and the `*_delay_min/max` politeness bounds. Sites
 behind a Cloudflare JS challenge will not work (no challenge solver yet).
 
+## Export formats (`--format`)
+
+| `--format` | How it's made | Needs |
+|------------|---------------|-------|
+| `loose` (default) | page images in a folder | nothing |
+| `cbz` | vendored miniz ZIP writer (STORE) | nothing |
+| `cbt` | hand-written POSIX ustar tar | nothing |
+| `cbt.gz` | miniz DEFLATE + RFC-1952 gzip framing | nothing |
+| `cbt.xz` | tar, then the external `xz` CLI (CRC32 check, 1 MiB dict) | `xz` on PATH |
+| `cbr` | the external `rar` CLI | `rar` on PATH |
+
+`cbz`/`cbt`/`cbt.gz` are fully self-contained (in-tree/vendored code, no system
+library or external process). `cbt.xz` and `cbr` are optional: they shell out to
+`xz` / `rar` only when producing that format, and report clearly if the tool is
+absent (RAR and an xz *encoder* have no small in-tree option). The `.gz`/`.xz`
+variants wrap a whole tar and are opened on-device by `ra8_comic_open_wrapped`.
+
 ## Status / roadmap
 
 Working: config-driven series -> chapter list -> per-chapter page images,

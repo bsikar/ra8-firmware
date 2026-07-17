@@ -7,19 +7,21 @@
  * @brief Package a chapter folder into a reader-openable container.
  *
  * @details
- * Formats are produced from vendored, in-tree code -- CBZ via the firmware's own
- * miniz ZIP writer, CBT via a hand-written ustar tar, CBT.GZ via miniz DEFLATE +
- * RFC-1952 framing -- so no system library or external process is needed. Two
- * formats are exceptions: CBR spawns the proprietary `rar` tool (RAR has no open
- * writer) only when it is installed; CBT.XZ awaits a vendored xz encoder (the
- * in-tree `xz_embedded` is decode-only), so it is reported unsupported for now.
- * The gzip variant wraps the whole tar -- the reader's `ra8_comic_open_wrapped`
- * decodes the layer, then re-probes the inner archive.
+ * The self-contained formats are produced from vendored, in-tree code with no
+ * system library or external process -- CBZ via the firmware's own miniz ZIP
+ * writer, CBT via a hand-written ustar tar, CBT.GZ via miniz DEFLATE + RFC-1952
+ * framing. Two formats are OPTIONAL external tools, spawned only when installed:
+ * CBR (`rar`, since RAR has no open writer) and CBT.XZ (`xz`, since the in-tree
+ * `xz_embedded` is decode-only -- vendoring a full encoder was judged overkill).
+ * The gzip/xz variants wrap the whole tar -- the reader's `ra8_comic_open_wrapped`
+ * decodes the layer, then re-probes the inner archive; xz is emitted with a
+ * CRC32 check and a 1 MiB dictionary so the on-device xz scratch accepts it.
  */
 #include "mdl_export.h"
 
 #include <crt_externs.h>
 #include <dirent.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <spawn.h>
 #include <stdio.h>
@@ -27,6 +29,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include "miniz.h"
 
@@ -340,6 +343,58 @@ static ra8_err_t export_cbr(const char* dir, const char* out_path)
   return ok ? k_ra8_ok : k_ra8_fail;
 }
 
+/** @brief Spawn `argv` with stdout redirected to `out_path`; wait for it. */
+static ra8_err_t run_to_file(const char* const argv[], const char* out_path)
+{
+  posix_spawn_file_actions_t actions;
+  (void)posix_spawn_file_actions_init(&actions);
+  (void)posix_spawn_file_actions_addopen(&actions,
+                                         STDOUT_FILENO,
+                                         out_path,
+                                         O_WRONLY | O_CREAT | O_TRUNC,
+                                         (mode_t)k_file_mode);
+  pid_t     pid = 0;
+  const int rc =
+    posix_spawnp(&pid, argv[0], &actions, nullptr, (char* const*)argv, *_NSGetEnviron());
+  (void)posix_spawn_file_actions_destroy(&actions);
+  if (rc != 0) {
+    (void)fprintf(stderr,
+                  "media_dl: cbt.xz needs the 'xz' tool (brew install xz): %s\n",
+                  strerror(rc));
+    return k_ra8_err_not_supported;
+  }
+  int status = 0;
+  if (waitpid(pid, &status, 0) < 0) {
+    return k_ra8_fail;
+  }
+  const bool ok = (WIFEXITED(status) != 0) && (WEXITSTATUS(status) == 0);
+  return ok ? k_ra8_ok : k_ra8_fail;
+}
+
+/** @brief Optional external xz: tar the folder, then `xz` it with reader-safe flags. */
+static ra8_err_t
+export_cbt_xz(const char* dir, char names[][k_name_max], size_t count, const char* out_path)
+{
+  uint8_t*  tarbuf = nullptr;
+  size_t    tarlen = 0U;
+  ra8_err_t rc     = build_tar(dir, names, count, &tarbuf, &tarlen);
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+  char tmp[PATH_MAX];
+  (void)snprintf(tmp, sizeof(tmp), "%s.tar.tmp", out_path);
+  rc = write_buf(tmp, tarbuf, tarlen);
+  free(tarbuf);
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+  /* CRC32 check + 1 MiB dict so the on-device xz scratch accepts the stream. */
+  const char* const a[] = {"xz", "--check=crc32", "--lzma2=preset=6,dict=1MiB", "-c", tmp, nullptr};
+  rc                    = run_to_file(a, out_path);
+  (void)remove(tmp);
+  return rc;
+}
+
 ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const char* out_path)
 {
   if ((chapter_dir == nullptr) || (out_path == nullptr) || (fmt == k_mdl_fmt_loose) ||
@@ -372,8 +427,7 @@ ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const ch
     case k_mdl_fmt_cbt_gz:
       return export_tar_wrapped(chapter_dir, s_names, count, out_path, gzip_buf);
     case k_mdl_fmt_cbt_xz:
-      (void)fprintf(stderr, "media_dl: cbt.xz needs a vendored xz encoder (not yet in-tree)\n");
-      return k_ra8_err_not_supported;
+      return export_cbt_xz(chapter_dir, s_names, count, out_path);
     default:
       return k_ra8_err_invalid_arg;
   }
