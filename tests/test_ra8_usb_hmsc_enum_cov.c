@@ -562,20 +562,15 @@ static void test_iface_is_msc_all_fields(void)
 }
 
 /**
- * @test test_walk_cfg_success_and_errors
- *
- * @par MC/DC:
- * (no compound decisions in the code under test -- the descriptor stride uses
- * nested single-condition guards, not `&&`/`||`.)
+ * @brief Walk a rich config blob (non-MSC iface + stray EP + MSC bulk pair).
+ * @return None.
+ * @pre The enumeration state has been reset.
+ * @post The MSC bulk IN/OUT endpoints were discovered.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
  */
-static void test_walk_cfg_success_and_errors(void)
+static void walk_cfg_rich_blob(void)
 {
-  TEST_BEGIN("walk_cfg: finds MSC bulk pair; reports missing IN/OUT and zero len");
-
-  /* Rich blob: a non-MSC interface + stray endpoint precede the MSC interface
-   * so the "not in MSC" and "interface not MSC" legs are walked before the
-   * matching pair. */
-  reset_state();
   s_usb_hmsc_state.device = (ra8_usb_hmsc_device_t){};
   uint8_t  blob[64]       = {};
   uint16_t o              = 0U;
@@ -616,8 +611,18 @@ static void test_walk_cfg_success_and_errors(void)
   TEST_ASSERT_EQ(k_ra8_ok, internal_enum_walk_cfg(blob, o));
   TEST_ASSERT_EQ(1U, s_usb_hmsc_state.device.bulk_in_ep);
   TEST_ASSERT_EQ(2U, s_usb_hmsc_state.device.bulk_out_ep);
+}
 
-  /* IN present, OUT absent -> hw_error (missing bulk OUT). */
+/**
+ * @brief Walk an MSC config with a bulk IN but no bulk OUT (hw_error).
+ * @return None.
+ * @pre None.
+ * @post `internal_enum_walk_cfg` reported the missing bulk OUT.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void walk_cfg_in_only(void)
+{
   s_usb_hmsc_state.device = (ra8_usb_hmsc_device_t){};
   uint8_t  in_only[32]    = {};
   uint16_t p              = 0U;
@@ -633,8 +638,18 @@ static void test_walk_cfg_success_and_errors(void)
   in_only[p + 3U]         = (uint8_t)k_tc_attr_bulk;
   p                       = (uint16_t)(p + k_tc_ep_desc_len);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, internal_enum_walk_cfg(in_only, p));
+}
 
-  /* OUT present, IN absent -> hw_error (missing bulk IN). */
+/**
+ * @brief Walk an MSC config with a bulk OUT but no bulk IN (hw_error).
+ * @return None.
+ * @pre None.
+ * @post `internal_enum_walk_cfg` reported the missing bulk IN.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void walk_cfg_out_only(void)
+{
   s_usb_hmsc_state.device = (ra8_usb_hmsc_device_t){};
   uint8_t  out_only[32]   = {};
   uint16_t q              = 0U;
@@ -650,6 +665,30 @@ static void test_walk_cfg_success_and_errors(void)
   out_only[q + 3U]        = (uint8_t)k_tc_attr_bulk;
   q                       = (uint16_t)(q + k_tc_ep_desc_len);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, internal_enum_walk_cfg(out_only, q));
+}
+
+/**
+ * @test test_walk_cfg_success_and_errors
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- the descriptor stride uses
+ * nested single-condition guards, not `&&`/`||`.)
+ */
+static void test_walk_cfg_success_and_errors(void)
+{
+  TEST_BEGIN("walk_cfg: finds MSC bulk pair; reports missing IN/OUT and zero len");
+
+  /* Rich blob: a non-MSC interface + stray endpoint precede the MSC interface
+   * so the "not in MSC" and "interface not MSC" legs are walked before the
+   * matching pair. */
+  reset_state();
+  walk_cfg_rich_blob();
+
+  /* IN present, OUT absent -> hw_error (missing bulk OUT). */
+  walk_cfg_in_only();
+
+  /* OUT present, IN absent -> hw_error (missing bulk IN). */
+  walk_cfg_out_only();
 
   /* A zero-length descriptor breaks the walk before any endpoint is found. */
   s_usb_hmsc_state.device = (ra8_usb_hmsc_device_t){};
