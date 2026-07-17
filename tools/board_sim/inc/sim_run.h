@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <unicorn/unicorn.h>
 
+#include "board_view.h"
 #include "ra8_attributes.h"
 
 #ifdef __cplusplus
@@ -142,6 +143,56 @@ typedef struct {
   uint16_t           view_h;          /**< Panel height in pixels.                   */
   const char*        win_title;       /**< Window / sidebar caption.                 */
 } sim_run_cfg_t;
+
+/**
+ * @struct run_guards_t
+ * @brief The run-guard knobs (env-tunable budgets + stop conditions).
+ *
+ * @details Read once before the run loop from the BOARD_SIM_* environment
+ * (CLICK_SETTLE / WALL_S / MAX_CHUNKS / IDLE_STOP / USB_STOP / USBH_STOP /
+ * STOP_ON / STOP_PC / the profiler idle-stop tunables), preserving the
+ * documented semantics -- notably WALL_S=0 truly DISABLES the CPU-time guard
+ * (the #168 footgun).
+ *
+ * @invariant Values are fixed for the whole run once read.
+ * @see run_read_guards()  The reader.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t    click_settle_chunks; /**< Post-click drain window (chunks).        */
+  uint32_t    max_chunks;          /**< Outer-chunk budget.                      */
+  double      wall_s;              /**< CPU-time guard bound, seconds.           */
+  bool        wall_guard_on;       /**< false: WALL_S=0 disabled the guard.      */
+  uint32_t    idle_stop_chunks;    /**< Idle steady-state stop (0 = off).        */
+  uint32_t    usb_stop_settle;     /**< USB device-mode early-stop settle.       */
+  uint32_t    usbh_stop_settle;    /**< USB host-mode early-stop settle.         */
+  const char* stop_on;             /**< Console-banner stop substring (or NULL). */
+  uint32_t    prof_idle_insns;     /**< Profiler idle chunk threshold.           */
+  uint32_t    prof_idle_need;      /**< Consecutive idle chunks that stop.       */
+  uint32_t    prof_idle_arm;       /**< Chunks before the profiler stop arms.    */
+} run_guards_t;
+
+/**
+ * @brief Read the run-guard environment knobs (see ::run_guards_t).
+ *
+ * @details Moved verbatim from the run preamble: every default, override
+ * precedence and --view/--record interaction is unchanged, including the
+ * --record-secs chunk bound and the BOARD_SIM_STOP_PC hand-off to the
+ * profiler.
+ *
+ * @param[in] cfg  The run configuration (record/click fields).
+ * @param[in] view The live window handle (NULL when headless).
+ * @return The populated guard set.
+ * @retval (by value) Every field holds its default or env override.
+ * @pre The environment is stable for the run.
+ * @pre @p cfg outlives the call.
+ * @post BOARD_SIM_STOP_PC (if set) has been handed to the profiler.
+ * @post With --record active, the frame directory exists (mkdir) and the
+ *       recording banner has been printed to stderr.
+ * @note Not thread-safe; call once during setup.
+ * @since 0.1.0
+ */
+RA8_PRIV run_guards_t run_read_guards(const sim_run_cfg_t* cfg, const board_view_t* view);
 
 /**
  * @brief Run the firmware to a stop condition, print the report, map the exit code.
