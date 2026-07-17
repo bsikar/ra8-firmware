@@ -200,6 +200,48 @@ static uc_hook s_lsh_hooks[k_lsh_sites_max];
  * @note Not thread-safe; call once during setup before the run loop.
  * @since 0.1.0
  */
+/**
+ * @brief Scan one executable segment for long-shift sites, arming a hook each.
+ *
+ * @param[in]     uc       Engine to arm hooks on.
+ * @param[in]     elf      Base of the resident ELF image.
+ * @param[in]     p_offset Segment file offset.
+ * @param[in]     p_vaddr  Segment virtual base (hook VA = p_vaddr + off).
+ * @param[in]     p_filesz Segment size in the file, bytes.
+ * @param[in,out] n_hooks  Running installed-site count, advanced per hook.
+ * @return false if the global site cap (::k_lsh_sites_max) was reached and the
+ *         caller must stop scanning further segments; true otherwise.
+ */
+static bool install_seg_hooks(uc_engine*     uc,
+                              const uint8_t* elf,
+                              uint32_t       p_offset,
+                              uint32_t       p_vaddr,
+                              uint32_t       p_filesz,
+                              uint32_t*      n_hooks)
+{
+  for (uint32_t off = 0U; (off + (uint32_t)k_lsh_insn_len) <= p_filesz; off += 2U) {
+    const uint8_t* p     = elf + p_offset + off;
+    const uint16_t hw1   = (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
+    const uint16_t hw2   = (uint16_t)(p[2] | ((uint16_t)p[3] << 8));
+    uint32_t       rdalo = 0U;
+    uint32_t       rdahi = 0U;
+    uint32_t       op    = 0U;
+    uint32_t       shift = 0U;
+    if (!long_shift_decode(hw1, hw2, &rdalo, &rdahi, &op, &shift)) {
+      continue;
+    }
+    if (*n_hooks >= (uint32_t)k_lsh_sites_max) {
+      (void)fprintf(stderr, "  long-shift seam: site cap %u reached\n", (unsigned)k_lsh_sites_max);
+      return false;
+    }
+    const uint64_t va = (uint64_t)p_vaddr + (uint64_t)off;
+    (void)
+      uc_hook_add(uc, &s_lsh_hooks[*n_hooks], UC_HOOK_CODE, (void*)on_long_shift, nullptr, va, va);
+    (*n_hooks)++;
+  }
+  return true;
+}
+
 void long_shift_seam_install(uc_engine* uc, const uint8_t* elf, long len)
 {
   if ((elf == nullptr) || (len < (long)k_elf_ehdr_size)) {
@@ -235,27 +277,8 @@ void long_shift_seam_install(uc_engine* uc, const uint8_t* elf, long len)
     if (((uint64_t)p_offset + (uint64_t)p_filesz) > (uint64_t)len) {
       continue; /* truncated / out-of-file segment -- skip. */
     }
-    for (uint32_t off = 0U; (off + (uint32_t)k_lsh_insn_len) <= p_filesz; off += 2U) {
-      const uint8_t* p     = elf + p_offset + off;
-      const uint16_t hw1   = (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-      const uint16_t hw2   = (uint16_t)(p[2] | ((uint16_t)p[3] << 8));
-      uint32_t       rdalo = 0U;
-      uint32_t       rdahi = 0U;
-      uint32_t       op    = 0U;
-      uint32_t       shift = 0U;
-      if (!long_shift_decode(hw1, hw2, &rdalo, &rdahi, &op, &shift)) {
-        continue;
-      }
-      if (n_hooks >= (uint32_t)k_lsh_sites_max) {
-        (void)fprintf(stderr,
-                      "  long-shift seam: site cap %u reached\n",
-                      (unsigned)k_lsh_sites_max);
-        return;
-      }
-      const uint64_t va = (uint64_t)p_vaddr + (uint64_t)off;
-      (void)
-        uc_hook_add(uc, &s_lsh_hooks[n_hooks], UC_HOOK_CODE, (void*)on_long_shift, nullptr, va, va);
-      n_hooks++;
+    if (!install_seg_hooks(uc, elf, p_offset, p_vaddr, p_filesz, &n_hooks)) {
+      return;
     }
   }
   if (n_hooks > 0U) {

@@ -228,6 +228,88 @@ static void rv_phase_scan_resist(rv_driver_t* d)
   }
 }
 
+/** @brief Owned page-cache backing buffers freed together on every exit path. */
+typedef struct {
+  uint8_t*          frame_mem; /**< Page-frame pool.        */
+  ra8_vmem_frame_t* meta;      /**< Per-frame metadata.     */
+  int32_t*          buckets;   /**< Hash-bucket index heads. */
+} rv_res_t;
+
+/** @brief Release the vmem backing buffers (each free() tolerates nullptr). */
+static void rv_res_free(rv_res_t* res)
+{
+  free(res->frame_mem);
+  free(res->meta);
+  free(res->buckets);
+}
+
+/** @brief Allocate and deterministically pattern-fill the modelled book bytes. */
+static bool rv_alloc_book(rv_driver_t* d)
+{
+  s_book_bytes   = (uint64_t)d->total_frames * (uint64_t)k_rv_frame_bytes;
+  s_book_backing = (uint8_t*)malloc((size_t)s_book_bytes);
+  if (s_book_backing == nullptr) {
+    (void)fprintf(stderr,
+                  "reader_vmem: OOM allocating %llu-byte book\n",
+                  (unsigned long long)s_book_bytes);
+    return false;
+  }
+  for (uint64_t i = 0U; i < s_book_bytes; ++i) {
+    s_book_backing[i] = (uint8_t)(i * (uint64_t)k_rv_fill_mul >> (uint32_t)k_rv_fill_shift);
+  }
+  return true;
+}
+
+/** @brief Allocate the frame pool + metadata and initialise the SLRU vmem. */
+static bool rv_vmem_setup(ra8_vmem_t* vm, rv_res_t* res, uint32_t budget, ra8_vsource_t* vs)
+{
+  res->frame_mem = (uint8_t*)malloc((size_t)budget * (size_t)k_rv_frame_bytes);
+  res->meta      = (ra8_vmem_frame_t*)calloc((size_t)budget, sizeof(ra8_vmem_frame_t));
+  res->buckets   = (int32_t*)malloc((size_t)k_rv_buckets * sizeof(int32_t));
+  if ((res->frame_mem == nullptr) || (res->meta == nullptr) || (res->buckets == nullptr)) {
+    return false;
+  }
+  ra8_vmem_cfg_t cfg = {.frame_mem    = res->frame_mem,
+                        .frame_bytes  = (uint32_t)k_rv_frame_bytes,
+                        .frame_count  = budget,
+                        .meta         = res->meta,
+                        .buckets      = res->buckets,
+                        .bucket_count = (uint32_t)k_rv_buckets,
+                        .loader       = ra8_vsource_loader,
+                        .loader_ctx   = vs};
+  return ra8_vmem_init(vm, &cfg) == k_ra8_ok;
+}
+
+/** @brief Run the three navigation phases, close the trace, print SLRU stats. */
+static void
+rv_run_and_report(rv_driver_t* d, ra8_vmem_t* vm, uint32_t budget, const char* trace_path)
+{
+  rv_phase_linear(d);
+  rv_phase_toc_jumps(d);
+  rv_phase_scan_resist(d);
+  (void)fclose(d->trace);
+
+  uint32_t hits = 0U;
+  uint32_t miss = 0U;
+  uint32_t ev   = 0U;
+  (void)ra8_vmem_stats(vm, &hits, &miss, &ev);
+  const double hit_pct =
+    (d->accesses == 0U) ? 0.0 : ((double)k_rv_pct_base * (double)hits / (double)d->accesses);
+  (void)fprintf(stderr,
+                "reader_vmem: book=%u frames (%llu bytes), budget=%u frames\n"
+                "  accesses=%llu  trace=%s\n"
+                "  ra8_vmem SLRU: hits=%u misses=%u evictions=%u  hit_rate=%.2f%%\n",
+                d->total_frames,
+                (unsigned long long)s_book_bytes,
+                budget,
+                (unsigned long long)d->accesses,
+                trace_path,
+                hits,
+                miss,
+                ev,
+                hit_pct);
+}
+
 int main(int argc, char** argv)
 {
   const char*    trace_path = (argc > 1) ? argv[1] : "reader_vmem.trace";
@@ -237,55 +319,24 @@ int main(int argc, char** argv)
   rv_driver_t d = {};
   d.rng         = (uint64_t)k_rv_rng_seed;
   rv_layout_book(&d);
-
-  s_book_bytes   = (uint64_t)d.total_frames * (uint64_t)k_rv_frame_bytes;
-  s_book_backing = (uint8_t*)malloc((size_t)s_book_bytes);
-  if (s_book_backing == nullptr) {
-    (void)fprintf(stderr,
-                  "reader_vmem: OOM allocating %llu-byte book\n",
-                  (unsigned long long)s_book_bytes);
+  if (!rv_alloc_book(&d)) {
     return 1;
-  }
-  for (uint64_t i = 0U; i < s_book_bytes; ++i) {
-    s_book_backing[i] = (uint8_t)(i * (uint64_t)k_rv_fill_mul >> (uint32_t)k_rv_fill_shift);
   }
 
   ra8_vsource_obj_t objs[k_rv_max_objs] = {};
   ra8_vsource_t     vs                  = {};
-  if (ra8_vsource_init(&vs, objs, (uint32_t)k_rv_max_objs) != k_ra8_ok) {
-    free(s_book_backing);
-    return 1;
-  }
-  uint32_t id = 0U;
-  if (ra8_vsource_add_paged(&vs, rv_read, nullptr, 0U, s_book_bytes, &id) != k_ra8_ok) {
+  uint32_t          id                  = 0U;
+  if ((ra8_vsource_init(&vs, objs, (uint32_t)k_rv_max_objs) != k_ra8_ok) ||
+      (ra8_vsource_add_paged(&vs, rv_read, nullptr, 0U, s_book_bytes, &id) != k_ra8_ok)) {
     free(s_book_backing);
     return 1;
   }
   d.object_id = id;
 
-  uint8_t*          frame_mem = (uint8_t*)malloc((size_t)budget * (size_t)k_rv_frame_bytes);
-  ra8_vmem_frame_t* meta      = (ra8_vmem_frame_t*)calloc((size_t)budget, sizeof(ra8_vmem_frame_t));
-  int32_t*          buckets   = (int32_t*)malloc((size_t)k_rv_buckets * sizeof(int32_t));
-  if ((frame_mem == nullptr) || (meta == nullptr) || (buckets == nullptr)) {
-    free(frame_mem);
-    free(meta);
-    free(buckets);
-    free(s_book_backing);
-    return 1;
-  }
-  ra8_vmem_cfg_t cfg = {.frame_mem    = frame_mem,
-                        .frame_bytes  = (uint32_t)k_rv_frame_bytes,
-                        .frame_count  = budget,
-                        .meta         = meta,
-                        .buckets      = buckets,
-                        .bucket_count = (uint32_t)k_rv_buckets,
-                        .loader       = ra8_vsource_loader,
-                        .loader_ctx   = &vs};
-  ra8_vmem_t     vm  = {};
-  if (ra8_vmem_init(&vm, &cfg) != k_ra8_ok) {
-    free(frame_mem);
-    free(meta);
-    free(buckets);
+  ra8_vmem_t vm  = {};
+  rv_res_t   res = {};
+  if (!rv_vmem_setup(&vm, &res, budget, &vs)) {
+    rv_res_free(&res);
     free(s_book_backing);
     return 1;
   }
@@ -293,41 +344,14 @@ int main(int argc, char** argv)
   d.trace = fopen(trace_path, "w");
   if (d.trace == nullptr) {
     (void)fprintf(stderr, "reader_vmem: cannot open trace file %s\n", trace_path);
-    free(frame_mem);
-    free(meta);
-    free(buckets);
+    rv_res_free(&res);
     free(s_book_backing);
     return 1;
   }
 
-  rv_phase_linear(&d);
-  rv_phase_toc_jumps(&d);
-  rv_phase_scan_resist(&d);
-  (void)fclose(d.trace);
+  rv_run_and_report(&d, &vm, budget, trace_path);
 
-  uint32_t hits = 0U;
-  uint32_t miss = 0U;
-  uint32_t ev   = 0U;
-  (void)ra8_vmem_stats(&vm, &hits, &miss, &ev);
-  const double hit_pct =
-    (d.accesses == 0U) ? 0.0 : ((double)k_rv_pct_base * (double)hits / (double)d.accesses);
-  (void)fprintf(stderr,
-                "reader_vmem: book=%u frames (%llu bytes), budget=%u frames\n"
-                "  accesses=%llu  trace=%s\n"
-                "  ra8_vmem SLRU: hits=%u misses=%u evictions=%u  hit_rate=%.2f%%\n",
-                d.total_frames,
-                (unsigned long long)s_book_bytes,
-                budget,
-                (unsigned long long)d.accesses,
-                trace_path,
-                hits,
-                miss,
-                ev,
-                hit_pct);
-
-  free(frame_mem);
-  free(meta);
-  free(buckets);
+  rv_res_free(&res);
   free(s_book_backing);
   return 0;
 }
