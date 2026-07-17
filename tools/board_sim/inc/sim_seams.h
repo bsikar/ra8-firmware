@@ -303,6 +303,57 @@ RA8_PRIV void sim_div0_count_trap(void);
  */
 RA8_PRIV void sim_div0_disarm(void);
 
+/**
+ * @brief UC_HOOK_INSN_INVALID dispatcher: service or report a trapped opcode.
+ *
+ * @details Tries each trap-path seam in a fixed order -- the armed div-0 UDF
+ * service first (it matches only exact patched addresses), then the Armv8-M
+ * security scrubs, the conditional-select family, the barrier NOPs, the MVE
+ * run consumer and the low-overhead-branch loops. A handled seam edits PC and
+ * stops the engine (the run loop relaunches on valid code); anything else is
+ * disassembled and reported, then the engine stops with the invalid-opcode
+ * error.
+ *
+ * @param[in,out] uc   Unicorn engine at the trapped instruction.
+ * @param[in]     user Hook user pointer (unused; Unicorn ABI).
+ * @return true when a seam handled the instruction, false to fault.
+ * @retval true  PC advanced past the emulated instruction; engine stopped.
+ * @retval false Genuinely invalid: report printed, emulation errors out.
+ * @pre The engine trapped an instruction its core cannot decode.
+ * @pre The seams were installed for this run.
+ * @post On true, engine state reflects the emulated instruction.
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ * @see sim_insn_seams_install()  Arms this dispatcher.
+ * @since 0.1.0
+ */
+RA8_PRIV bool on_invalid_insn(uc_engine* uc, void* user);
+
+/**
+ * @brief Arm the invalid-instruction dispatcher on the engine.
+ *
+ * @return Nothing.
+ * @pre @p uc is initialised (no code has run yet).
+ * @pre Called once during setup, before any other hook that relies on the
+ *      dispatcher's seams.
+ * @post The UC_HOOK_INSN_INVALID hook is installed for the whole run.
+ * @note Not thread-safe; call once during single-threaded setup.
+ * @since 0.1.0
+ */
+RA8_PRIV void sim_insn_seams_install(uc_engine* uc);
+
+/**
+ * @brief Count of LOB (DLS/LE) instructions emulated this run (telemetry).
+ *
+ * @return Emulated low-overhead-branch instruction count.
+ * @retval 0 No LOB instruction was emulated.
+ * @pre None.
+ * @pre None.
+ * @post No state is modified.
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ * @since 0.1.0
+ */
+RA8_PRIV uint64_t sim_lob_emulated_count(void);
+
 #ifdef __cplusplus
 }
 #endif
