@@ -104,13 +104,32 @@ static ra8_rabook_buffers_t full_buffers(void)
 }
 
 /**
- * @test test_rabook_compile_roundtrip
- * @brief Build a blob, validate it, and read every field back identical.
+ * @struct rabook_rt_t
+ * @brief Round-trip handles carried from the build phase into verification.
+ * @invariant Node/image indices are those returned by the compiler builders.
+ * @see test_rabook_compile_roundtrip
  */
-static void test_rabook_compile_roundtrip(void)
-{
-  TEST_BEGIN("ra8_rabook_compile: build -> validate -> read back");
+typedef struct {
+  const void* blob;      /**< Finalised book blob.                    */
+  uint32_t    blob_len;  /**< Blob length in bytes.                   */
+  uint32_t    body_idx;  /**< Node index of the <body> element.       */
+  uint32_t    p_idx;     /**< Node index of the <p> element.          */
+  uint32_t    text_idx;  /**< Node index of the "Hello" text node.    */
+  uint32_t    img_idx;   /**< Image index of the cover image.         */
+  uint32_t    body_name; /**< Interned offset of the "body" tag name. */
+} rabook_rt_t;
 
+/**
+ * @brief Initialise the compiler context over the shared scratch buffers.
+ * @param[out] ctx Compiler context to initialise.
+ * @return None.
+ * @pre The shared scratch buffers are available.
+ * @post `ra8_rabook_compile_init` succeeded on @p ctx.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void rabook_rt_init(ra8_rabook_ctx_t* ctx)
+{
   const ra8_rabook_buffers_t buf = {
     .chapters       = s_chapters,
     .chapter_cap    = (uint32_t)k_t_chapter_cap,
@@ -129,63 +148,82 @@ static void test_rabook_compile_roundtrip(void)
     .out            = s_out,
     .out_cap        = (uint32_t)k_t_out_cap,
   };
-  ra8_rabook_ctx_t ctx = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_init(&ctx, &buf));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_compile_init(ctx, &buf));
+}
 
+/**
+ * @brief Build the fixture book (metadata, cover, stylesheet, DOM, chapter).
+ * @param[in,out] ctx Initialised compiler context.
+ * @param[out]    rt  Receives the node / image indices and the "body" offset.
+ * @return None.
+ * @pre rabook_rt_init(@p ctx) already ran.
+ * @post @p rt index fields are set; the book is ready to finalise.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void rabook_rt_populate(ra8_rabook_ctx_t* ctx, rabook_rt_t* rt)
+{
   /* Intern "" first so empty/default offsets resolve to "" at offset 0. */
-  TEST_ASSERT_EQ(0U, ra8_rabook_intern(&ctx, ""));
+  TEST_ASSERT_EQ(0U, ra8_rabook_intern(ctx, ""));
 
-  const uint32_t title_off  = ra8_rabook_intern(&ctx, "The Title");
-  const uint32_t author_off = ra8_rabook_intern(&ctx, "An Author");
-  const uint32_t lang_off   = ra8_rabook_intern(&ctx, "en");
-  const uint32_t id_off     = ra8_rabook_intern(&ctx, "urn:isbn:123");
+  const uint32_t title_off  = ra8_rabook_intern(ctx, "The Title");
+  const uint32_t author_off = ra8_rabook_intern(ctx, "An Author");
+  const uint32_t lang_off   = ra8_rabook_intern(ctx, "en");
+  const uint32_t id_off     = ra8_rabook_intern(ctx, "urn:isbn:123");
 
   /* A 2x2 gray4 cover image (high/low nibble pixels). */
   static const uint8_t img_bytes[2] = {0xF0U, 0x0FU};
-  const uint32_t       img_href     = ra8_rabook_intern(&ctx, "cover.png");
-  const uint32_t       img_idx      = ra8_rabook_add_image(&ctx,
+  const uint32_t       img_href     = ra8_rabook_intern(ctx, "cover.png");
+  rt->img_idx                       = ra8_rabook_add_image(ctx,
                                                            img_href,
                                                            (uint16_t)k_t_img_w,
                                                            (uint16_t)k_t_img_h,
                                                            (uint8_t)k_ra8_book_image_gray4,
                                                            img_bytes,
                                                            (uint32_t)sizeof(img_bytes));
-  TEST_ASSERT_EQ(0U, img_idx);
+  TEST_ASSERT_EQ(0U, rt->img_idx);
 
-  const uint32_t css_off = ra8_rabook_intern(&ctx, "p{margin:0}");
-  (void)ra8_rabook_add_stylesheet(&ctx, css_off, (uint32_t)k_ra8_book_nil);
+  const uint32_t css_off = ra8_rabook_intern(ctx, "p{margin:0}");
+  (void)ra8_rabook_add_stylesheet(ctx, css_off, (uint32_t)k_ra8_book_nil);
 
   /* DOM: <body class="ch"><p>Hello</p></body> */
-  const uint32_t body_name  = ra8_rabook_intern(&ctx, "body");
-  const uint32_t p_name     = ra8_rabook_intern(&ctx, "p");
-  const uint32_t class_name = ra8_rabook_intern(&ctx, "class");
-  const uint32_t class_val  = ra8_rabook_intern(&ctx, "ch");
-  const uint32_t hello_off  = ra8_rabook_intern(&ctx, "Hello");
+  rt->body_name             = ra8_rabook_intern(ctx, "body");
+  const uint32_t p_name     = ra8_rabook_intern(ctx, "p");
+  const uint32_t class_name = ra8_rabook_intern(ctx, "class");
+  const uint32_t class_val  = ra8_rabook_intern(ctx, "ch");
+  const uint32_t hello_off  = ra8_rabook_intern(ctx, "Hello");
 
   const ra8_book_attr_t body_attrs[1] = {
     {.name_off = class_name, .value_off = class_val},
   };
-  const uint32_t body_idx = ra8_rabook_add_element(&ctx, body_name, body_attrs, 1U);
-  const uint32_t p_idx    = ra8_rabook_add_element(&ctx, p_name, nullptr, 0U);
-  const uint32_t text_idx = ra8_rabook_add_text(&ctx, hello_off);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_link_child(&ctx, body_idx, p_idx));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_link_child(&ctx, p_idx, text_idx));
+  rt->body_idx = ra8_rabook_add_element(ctx, rt->body_name, body_attrs, 1U);
+  rt->p_idx    = ra8_rabook_add_element(ctx, p_name, nullptr, 0U);
+  rt->text_idx = ra8_rabook_add_text(ctx, hello_off);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_link_child(ctx, rt->body_idx, rt->p_idx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_link_child(ctx, rt->p_idx, rt->text_idx));
 
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_rabook_set_metadata(&ctx, title_off, author_off, lang_off, id_off, img_idx));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_rabook_set_metadata(ctx, title_off, author_off, lang_off, id_off, rt->img_idx));
 
-  const uint32_t toc1   = ra8_rabook_intern(&ctx, "Chapter One");
-  const uint32_t href1  = ra8_rabook_intern(&ctx, "ch1.xhtml");
-  const uint32_t ch_idx = ra8_rabook_add_chapter(&ctx, toc1, href1, body_idx);
+  const uint32_t toc1   = ra8_rabook_intern(ctx, "Chapter One");
+  const uint32_t href1  = ra8_rabook_intern(ctx, "ch1.xhtml");
+  const uint32_t ch_idx = ra8_rabook_add_chapter(ctx, toc1, href1, rt->body_idx);
   TEST_ASSERT_EQ(0U, ch_idx);
+}
 
-  const void* blob     = nullptr;
-  uint32_t    blob_len = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_finalize(&ctx, &blob, &blob_len));
-  TEST_ASSERT_NOT_NULL(blob);
-
-  /* The blob the emitter produced must satisfy the on-device reader. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_validate(blob, (size_t)blob_len));
+/**
+ * @brief Assert the finalised blob reads back through the on-device reader.
+ * @param[in] rt Round-trip handles from the build phase.
+ * @return None.
+ * @pre @p rt->blob passed ra8_book_validate().
+ * @post Header, chapter, DOM, attribute, image and stylesheet all matched.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void rabook_rt_verify(const rabook_rt_t* rt)
+{
+  const void* blob = rt->blob;
 
   const ra8_book_header_t* hdr = ra8_book_header(blob);
   TEST_ASSERT_EQ(0, strcmp(ra8_book_string(blob, hdr->title_off), "The Title"));
@@ -193,28 +231,28 @@ static void test_rabook_compile_roundtrip(void)
   TEST_ASSERT_EQ(0, strcmp(ra8_book_string(blob, hdr->language_off), "en"));
   TEST_ASSERT_EQ(0, strcmp(ra8_book_string(blob, hdr->identifier_off), "urn:isbn:123"));
   TEST_ASSERT_EQ(1U, hdr->chapter_count);
-  TEST_ASSERT_EQ(img_idx, hdr->cover_image_index);
+  TEST_ASSERT_EQ(rt->img_idx, hdr->cover_image_index);
 
   const ra8_book_chapter_t* chaps = ra8_book_chapters(blob);
   TEST_ASSERT_EQ(0, strcmp(ra8_book_string(blob, chaps[0].title_off), "Chapter One"));
   TEST_ASSERT_EQ(0, strcmp(ra8_book_string(blob, chaps[0].href_off), "ch1.xhtml"));
-  TEST_ASSERT_EQ(body_idx, chaps[0].root_node);
+  TEST_ASSERT_EQ(rt->body_idx, chaps[0].root_node);
 
   const ra8_book_node_t* nodes = ra8_book_nodes(blob);
-  const ra8_book_node_t* body  = &nodes[body_idx];
+  const ra8_book_node_t* body  = &nodes[rt->body_idx];
   TEST_ASSERT_EQ(k_ra8_book_node_element, body->kind);
   TEST_ASSERT_EQ(0, strcmp(ra8_book_node_name(blob, body), "body"));
   TEST_ASSERT_EQ(1U, body->attr_count);
-  TEST_ASSERT_EQ(p_idx, body->first_child);
+  TEST_ASSERT_EQ(rt->p_idx, body->first_child);
 
   const ra8_book_attr_t* attrs = ra8_book_attrs(blob);
   const ra8_book_attr_t* attr0 = &attrs[body->first_attr];
   TEST_ASSERT_EQ(0, strcmp(ra8_book_string(blob, attr0->name_off), "class"));
   TEST_ASSERT_EQ(0, strcmp(ra8_book_string(blob, attr0->value_off), "ch"));
 
-  const ra8_book_node_t* para = &nodes[p_idx];
-  TEST_ASSERT_EQ(text_idx, para->first_child);
-  const ra8_book_node_t* text = &nodes[text_idx];
+  const ra8_book_node_t* para = &nodes[rt->p_idx];
+  TEST_ASSERT_EQ(rt->text_idx, para->first_child);
+  const ra8_book_node_t* text = &nodes[rt->text_idx];
   TEST_ASSERT_EQ(k_ra8_book_node_text, text->kind);
   TEST_ASSERT_EQ(0, strcmp(ra8_book_node_text(blob, text), "Hello"));
 
@@ -230,9 +268,35 @@ static void test_rabook_compile_roundtrip(void)
   TEST_ASSERT_EQ(0x0F, idata[1]);
 
   TEST_ASSERT_EQ(1U, hdr->stylesheet_count);
+}
+
+/**
+ * @test test_rabook_compile_roundtrip
+ * @brief Build a blob, validate it, and read every field back identical.
+ */
+static void test_rabook_compile_roundtrip(void)
+{
+  TEST_BEGIN("ra8_rabook_compile: build -> validate -> read back");
+
+  ra8_rabook_ctx_t ctx = {};
+  rabook_rt_init(&ctx);
+
+  rabook_rt_t rt = {};
+  rabook_rt_populate(&ctx, &rt);
+
+  const void* blob     = nullptr;
+  uint32_t    blob_len = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rabook_finalize(&ctx, &blob, &blob_len));
+  TEST_ASSERT_NOT_NULL(blob);
+  rt.blob     = blob;
+  rt.blob_len = blob_len;
+
+  /* The blob the emitter produced must satisfy the on-device reader. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_validate(blob, (size_t)blob_len));
+  rabook_rt_verify(&rt);
 
   /* String interning de-dups: re-interning "body" returns the same offset. */
-  TEST_ASSERT_EQ(body_name, ra8_rabook_intern(&ctx, "body"));
+  TEST_ASSERT_EQ(rt.body_name, ra8_rabook_intern(&ctx, "body"));
 
   TEST_END("ra8_rabook_compile: build -> validate -> read back");
 }
