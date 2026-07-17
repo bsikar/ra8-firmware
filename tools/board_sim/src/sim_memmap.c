@@ -146,97 +146,87 @@ static void seed_tsn_calibration(uc_engine* uc)
   (void)uc_mem_write(uc, (uint64_t)k_tsn_cal_addr + sizeof(tscdr), &tscdr2, sizeof(tscdr2));
 }
 
-/** @brief Implementation of `sim_memmap_init()` -- regions, TSN seed, MMIO windows. */
-bool sim_memmap_init(uc_engine* uc)
+/**
+ * @brief Allocate a zeroed, page-aligned host buffer for a host-backed region.
+ *
+ * The three physical apertures (SRAM, OSPI, SDRAM) are host-backed so their
+ * Non-secure bit[28] aliases can mirror the SAME bytes.  Factored out so each
+ * arm of `map_one_region()` reads as one line instead of an alloc/null/memset
+ * triple.  Returns nullptr (and logs) on allocation failure.
+ */
+static uint8_t* alloc_backing(uint64_t size, const char* what)
 {
-  for (size_t i = 0U; i < (sizeof(k_regions) / sizeof(k_regions[0])); i++) {
-    /* On-chip SRAM is host-backed so a second engine (cpu1) can share the same
-     * physical bytes -- the two cores' IPC over shared SRAM is then coherent.
-     * Transparent for cpu0 (uc_mem_map_ptr behaves like uc_mem_map otherwise).*/
-    uc_err mr = UC_ERR_OK;
-    if (k_regions[i].base == (uint64_t)k_sram_base) {
-      s_sram_buf = (uint8_t*)aligned_alloc((size_t)k_page_size, (size_t)k_regions[i].size);
-      if (s_sram_buf == nullptr) {
-        (void)fprintf(stderr, "SRAM host buffer alloc failed\n");
-        return false;
-      }
-      (void)memset(s_sram_buf, 0, (size_t)k_regions[i].size);
-      mr =
-        uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, s_sram_buf);
-    } else if (k_regions[i].base == (uint64_t)k_ns_sram2_base) {
-      /* The SRAM2 Non-secure alias (bit[28]=1) is the SAME physical bytes as
-       * 0x22100000, so back it with the shared SRAM host buffer at that offset.
-       * Keeping the Secure (0x22..) and Non-secure (0x32..) views coherent lets
-       * the BLXNS land on the copied NS image whether the core uses the alias or
-       * the bit[28]-stripped physical address (s_sram_buf is mapped above first,
-       * since SRAM precedes NS_SRAM2 in k_regions). */
-      uint8_t* const ns_host =
-        s_sram_buf + ((size_t)k_ns_sram2_base - (size_t)k_ns_alias_bit - (size_t)k_sram_base);
-      mr = uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, ns_host);
-    } else if (k_regions[i].base == (uint64_t)k_ospi_xip_base) {
-      /* OSPI XIP flash (Secure physical view). Host-backed -- like the on-chip
-       * SRAM -- so its Non-secure alias (0x90000000) can mirror the SAME bytes:
-       * an execute-in-place image is then fetchable through either view. The
-       * window is mapped UC_PROT_ALL (read + write + EXEC) so the CPU may fetch
-       * instructions from it. */
-      s_ospi_buf = (uint8_t*)aligned_alloc((size_t)k_page_size, (size_t)k_regions[i].size);
-      if (s_ospi_buf == nullptr) {
-        (void)fprintf(stderr, "OSPI host buffer alloc failed\n");
-        return false;
-      }
-      (void)memset(s_ospi_buf, 0, (size_t)k_regions[i].size);
-      mr =
-        uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, s_ospi_buf);
-    } else if (k_regions[i].base == (uint64_t)k_ospi_ns_base) {
-      /* OSPI XIP Non-secure alias (bit[28]=1): the SAME flash array as
-       * 0x80000000, so back it with the shared OSPI host buffer (stripping
-       * bit[28] from 0x90000000 yields the Secure base, i.e. offset 0). The NS
-       * reader image is linked for XIP at 0x90000000, so the CPU fetches its
-       * .text from this view; load_elf writes each PT_LOAD to its p_paddr, which
-       * lands in this same backing whether the segment names 0x80.. or 0x90..
-       * (s_ospi_buf is mapped above first, since OSPI precedes NS_OSPI in
-       * k_regions). */
-      uint8_t* const ns_host =
-        s_ospi_buf + ((size_t)k_ospi_ns_base - (size_t)k_ns_alias_bit - (size_t)k_ospi_xip_base);
-      mr = uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, ns_host);
-    } else if (k_regions[i].base == (uint64_t)k_sdram_base) {
-      /* External SDRAM (Secure physical view). Host-backed -- like the on-chip
-       * SRAM and OSPI -- so its Non-secure alias (0x78000000) can mirror the
-       * SAME bytes. The Secure GLCDC model scans the framebuffer from here while
-       * the Non-secure e-reader writes pixels through the alias below; one
-       * backing keeps the two views coherent. */
-      s_sdram_buf = (uint8_t*)aligned_alloc((size_t)k_page_size, (size_t)k_regions[i].size);
-      if (s_sdram_buf == nullptr) {
-        (void)fprintf(stderr, "SDRAM host buffer alloc failed\n");
-        return false;
-      }
-      (void)memset(s_sdram_buf, 0, (size_t)k_regions[i].size);
-      mr =
-        uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, s_sdram_buf);
-    } else if (k_regions[i].base == (uint64_t)k_ns_sdram_base) {
-      /* External SDRAM Non-secure alias (bit[28]=1): the SAME array as
-       * 0x68000000, so back it with the shared SDRAM host buffer (stripping
-       * bit[28] from 0x78000000 yields the Secure base, i.e. offset 0). The NS
-       * world draws the framebuffer through this alias; the Secure GLCDC reads it
-       * back from 0x68000000 over the same bytes (s_sdram_buf is mapped above
-       * first, since SDRAM precedes NS_SDRAM in k_regions). */
-      uint8_t* const ns_host =
-        s_sdram_buf + ((size_t)k_ns_sdram_base - (size_t)k_ns_alias_bit - (size_t)k_sdram_base);
-      mr = uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, ns_host);
-    } else {
-      mr = uc_mem_map(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL);
-    }
-    if (mr != UC_ERR_OK) {
-      (void)fprintf(stderr,
-                    "map %s @0x%08llX failed\n",
-                    k_regions[i].name,
-                    (unsigned long long)k_regions[i].base);
+  uint8_t* const buf = (uint8_t*)aligned_alloc((size_t)k_page_size, (size_t)size);
+  if (buf == nullptr) {
+    (void)fprintf(stderr, "%s host buffer alloc failed\n", what);
+    return nullptr;
+  }
+  (void)memset(buf, 0, (size_t)size);
+  return buf;
+}
+
+/**
+ * @brief Map one memory region into the engine.
+ *
+ * Three physical apertures -- on-chip SRAM (0x22..), OSPI XIP flash (0x80..)
+ * and external SDRAM (0x68..) -- are host-backed (``uc_mem_map_ptr``) rather
+ * than engine-backed so their IDAU bit[28]=1 Non-secure aliases (0x32.. /
+ * 0x90.. / 0x78..) can mirror the SAME host bytes, keeping the Secure and
+ * Non-secure views coherent: SRAM lets cpu1 share IPC memory and BLXNS land on
+ * the copied NS image; OSPI lets an execute-in-place image be fetched through
+ * either view (UC_PROT_ALL includes EXEC); SDRAM lets the NS e-reader draw the
+ * framebuffer the Secure GLCDC scans back.  Each physical region precedes its
+ * alias in ``k_regions``, so its host buffer is allocated first and the alias
+ * arm reuses it at the bit[28]-stripped offset.  Every other region is plainly
+ * engine-mapped.  Transparent for cpu0 (uc_mem_map_ptr behaves like
+ * uc_mem_map otherwise).
+ */
+static bool map_one_region(uc_engine* uc, const mem_region_t* r)
+{
+  uc_err mr = UC_ERR_OK;
+  if (r->base == (uint64_t)k_sram_base) {
+    s_sram_buf = alloc_backing(r->size, "SRAM");
+    if (s_sram_buf == nullptr) {
       return false;
     }
+    mr = uc_mem_map_ptr(uc, r->base, (size_t)r->size, UC_PROT_ALL, s_sram_buf);
+  } else if (r->base == (uint64_t)k_ns_sram2_base) {
+    uint8_t* const ns_host =
+      s_sram_buf + ((size_t)k_ns_sram2_base - (size_t)k_ns_alias_bit - (size_t)k_sram_base);
+    mr = uc_mem_map_ptr(uc, r->base, (size_t)r->size, UC_PROT_ALL, ns_host);
+  } else if (r->base == (uint64_t)k_ospi_xip_base) {
+    s_ospi_buf = alloc_backing(r->size, "OSPI");
+    if (s_ospi_buf == nullptr) {
+      return false;
+    }
+    mr = uc_mem_map_ptr(uc, r->base, (size_t)r->size, UC_PROT_ALL, s_ospi_buf);
+  } else if (r->base == (uint64_t)k_ospi_ns_base) {
+    uint8_t* const ns_host =
+      s_ospi_buf + ((size_t)k_ospi_ns_base - (size_t)k_ns_alias_bit - (size_t)k_ospi_xip_base);
+    mr = uc_mem_map_ptr(uc, r->base, (size_t)r->size, UC_PROT_ALL, ns_host);
+  } else if (r->base == (uint64_t)k_sdram_base) {
+    s_sdram_buf = alloc_backing(r->size, "SDRAM");
+    if (s_sdram_buf == nullptr) {
+      return false;
+    }
+    mr = uc_mem_map_ptr(uc, r->base, (size_t)r->size, UC_PROT_ALL, s_sdram_buf);
+  } else if (r->base == (uint64_t)k_ns_sdram_base) {
+    uint8_t* const ns_host =
+      s_sdram_buf + ((size_t)k_ns_sdram_base - (size_t)k_ns_alias_bit - (size_t)k_sdram_base);
+    mr = uc_mem_map_ptr(uc, r->base, (size_t)r->size, UC_PROT_ALL, ns_host);
+  } else {
+    mr = uc_mem_map(uc, r->base, (size_t)r->size, UC_PROT_ALL);
   }
-  /* Factory-programmed on silicon; seed it now the TRIM page is mapped so the
-   * temperature-sensor two-point conversion reads real data (see the helper). */
-  seed_tsn_calibration(uc);
+  if (mr != UC_ERR_OK) {
+    (void)fprintf(stderr, "map %s @0x%08llX failed\n", r->name, (unsigned long long)r->base);
+    return false;
+  }
+  return true;
+}
+
+/** @brief Map the Secure peripheral window and its IDAU bit[28] NS alias. */
+static bool map_periph_mmio(uc_engine* uc)
+{
   if (uc_mmio_map(uc,
                   (uint64_t)k_periph_base,
                   (size_t)k_periph_size,
@@ -266,6 +256,20 @@ bool sim_memmap_init(uc_engine* uc)
     return false;
   }
   return true;
+}
+
+/** @brief Implementation of `sim_memmap_init()` -- regions, TSN seed, MMIO windows. */
+bool sim_memmap_init(uc_engine* uc)
+{
+  for (size_t i = 0U; i < (sizeof(k_regions) / sizeof(k_regions[0])); i++) {
+    if (!map_one_region(uc, &k_regions[i])) {
+      return false;
+    }
+  }
+  /* Factory-programmed on silicon; seed it now the TRIM page is mapped so the
+   * temperature-sensor two-point conversion reads real data (see the helper). */
+  seed_tsn_calibration(uc);
+  return map_periph_mmio(uc);
 }
 
 /** @brief Implementation of `sim_memmap_regions()` -- static table access. */
