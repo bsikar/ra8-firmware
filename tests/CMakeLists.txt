@@ -700,11 +700,13 @@ endfunction()
 # on the next build if the directory contents changed.)
 file(GLOB RA8_TEST_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/test_*.c)
 
-# v1's test_ra8_reflow.c asserts on glyph-array internals that v2
-# deliberately does not populate; drop it under v2 and add the
-# C++ v2 test below in its place.
+# v1's test_ra8_reflow.c and its split sibling test_ra8_reflow_api_mcdc.c
+# assert on glyph-array internals that v2 deliberately does not populate
+# (shared fixture: tests/support/reflow_v1_test_util.h); drop them under
+# v2 and add the C++ v2 test below in their place.
 if(RA8_REFLOW_USE_LITEHTML)
   list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_reflow.c)
+  list(REMOVE_ITEM RA8_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra8_reflow_api_mcdc.c)
 endif()
 
 # test_coverage_compile_all.c is the coverage aggregator: a single
