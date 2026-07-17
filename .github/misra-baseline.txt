@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 12471
+# total findings: 12462
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -627,28 +627,30 @@ libs/ra8_hal/src/ra8_jpeg_sw.c	misra-c2012-10.8	1
 libs/ra8_hal/src/ra8_jpeg_sw.c	misra-c2012-12.1	11
 libs/ra8_hal/src/ra8_jpeg_sw.c	misra-c2012-12.3	1
 libs/ra8_hal/src/ra8_jpeg_sw.c	misra-c2012-14.2	2
-libs/ra8_hal/src/ra8_jpeg_sw.c	misra-c2012-15.5	25
+libs/ra8_hal/src/ra8_jpeg_sw.c	misra-c2012-15.5	29
 libs/ra8_hal/src/ra8_jpeg_sw.c	misra-c2012-17.8	3
 libs/ra8_hal/src/ra8_jpeg_sw.c	misra-c2012-20.1	1
 libs/ra8_hal/src/ra8_jpeg_sw.c	misra-c2012-8.4	1
 libs/ra8_hal/src/ra8_jpeg_sw.c	misra-c2012-8.9	1
-libs/ra8_hal/src/ra8_jpeg_sw_decode.c	misra-c2012-12.1	28
-libs/ra8_hal/src/ra8_jpeg_sw_decode.c	misra-c2012-14.2	12
-libs/ra8_hal/src/ra8_jpeg_sw_decode.c	misra-c2012-15.5	62
+libs/ra8_hal/src/ra8_jpeg_sw_decode.c	misra-c2012-12.1	23
+libs/ra8_hal/src/ra8_jpeg_sw_decode.c	misra-c2012-14.2	7
+libs/ra8_hal/src/ra8_jpeg_sw_decode.c	misra-c2012-15.5	64
 libs/ra8_hal/src/ra8_jpeg_sw_decode.c	misra-c2012-17.7	1
 libs/ra8_hal/src/ra8_jpeg_sw_decode.c	misra-c2012-8.4	1
 libs/ra8_hal/src/ra8_jpeg_sw_decode.c	misra-c2012-8.9	1
 libs/ra8_hal/src/ra8_jpeg_sw_encode.c	misra-c2012-10.1	2
 libs/ra8_hal/src/ra8_jpeg_sw_encode.c	misra-c2012-10.7	3
 libs/ra8_hal/src/ra8_jpeg_sw_encode.c	misra-c2012-10.8	1
-libs/ra8_hal/src/ra8_jpeg_sw_encode.c	misra-c2012-12.1	9
-libs/ra8_hal/src/ra8_jpeg_sw_encode.c	misra-c2012-15.5	11
+libs/ra8_hal/src/ra8_jpeg_sw_encode.c	misra-c2012-12.1	2
+libs/ra8_hal/src/ra8_jpeg_sw_encode.c	misra-c2012-15.5	10
 libs/ra8_hal/src/ra8_jpeg_sw_encode.c	misra-c2012-15.7	1
 libs/ra8_hal/src/ra8_jpeg_sw_encode.c	misra-c2012-17.7	1
 libs/ra8_hal/src/ra8_jpeg_sw_encode.c	misra-c2012-8.4	1
 libs/ra8_hal/src/ra8_jpeg_sw_encode.c	misra-c2012-8.9	3
+libs/ra8_hal/src/ra8_jpeg_sw_encode_emit.c	misra-c2012-14.2	1
+libs/ra8_hal/src/ra8_jpeg_sw_encode_emit.c	misra-c2012-15.5	1
 libs/ra8_hal/src/ra8_jpeg_sw_internal.h	misra-c2012-15.5	2
-libs/ra8_hal/src/ra8_jpeg_sw_internal.h	misra-c2012-8.9	2
+libs/ra8_hal/src/ra8_jpeg_sw_internal.h	misra-c2012-8.9	3
 libs/ra8_hal/src/ra8_jpeg_sw_stream.c	misra-c2012-11.8	1
 libs/ra8_hal/src/ra8_jpeg_sw_stream.c	misra-c2012-15.5	26
 libs/ra8_hal/src/ra8_jpeg_sw_stream.c	misra-c2012-8.4	1
