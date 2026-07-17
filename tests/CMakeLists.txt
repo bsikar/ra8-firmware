@@ -139,6 +139,17 @@ set(RA8_SANITIZE "" CACHE STRING "Comma-separated -fsanitize list for host tests
 if(RA8_SANITIZE)
   add_compile_options(-fsanitize=${RA8_SANITIZE} -fno-omit-frame-pointer)
   add_link_options(-fsanitize=${RA8_SANITIZE})
+  # UBSan reserves no low-memory shadow (unlike ASan), so it can still take the
+  # image pin below that keeps text/.data/.bss/brk clear of the MAP_FIXED
+  # peripheral windows. Without it a ~40 MiB test image -- the 32 MiB XSPI sim
+  # backing bundled into ra8_core_hal dominates every test's .bss -- loads at
+  # 0x400000 and its .bss crosses the code-MRAM window at 0x02000000, so
+  # ra8_sim_mmap_install aborts before main(). Apply the pin for every sanitizer
+  # except address, which owns its own low-address layout and skips the
+  # shadow-gap window at runtime instead.
+  if(NOT RA8_SANITIZE MATCHES "address")
+    add_link_options(-no-pie -Wl,-Ttext-segment=0x70000000)
+  endif()
 else()
   # The MAP_FIXED peripheral windows span [0x02000000, 0x68100000) (see
   # tests/mocks/ra8_sim_mmap.c). On toolchains that default to non-PIE the
@@ -146,9 +157,9 @@ else()
   # coverage build crossed 0x02000000 in practice) pushes static data and the
   # brk heap INTO a window; the constructor's mmap then silently replaces live
   # pages and glibc aborts on the first heap extension. Pin the image above
-  # every window so text/.data/.bss/brk can never intersect one. Sanitizer
-  # builds are excluded: ASan/UBSan own their layout and skip the shadow-gap
-  # window instead (ra8_sim_mmap_install still checks overlap at runtime).
+  # every window so text/.data/.bss/brk can never intersect one. AddressSanitizer
+  # is excluded above: it owns its low layout and skips the shadow-gap window
+  # instead (ra8_sim_mmap_install still checks overlap at runtime).
   add_link_options(-no-pie -Wl,-Ttext-segment=0x70000000)
 endif()
 
