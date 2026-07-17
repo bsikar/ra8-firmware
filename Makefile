@@ -185,6 +185,12 @@ help:
 	@echo "  make app-sizes         summarise per-app .text/.data/.bss footprints"
 	@echo "  make audit-init        per-app init-order audit (docs/INIT_ORDER_AUDIT.md)"
 	@echo ""
+	@echo "READER TOOLS  (host-native, not firmware -- macOS)"
+	@echo "  make media_dl          build the comic/manga/manhwa downloader CLI (tools/media_dl)"
+	@echo "  make test-media_dl     build + run the downloader unit tests (ctest)"
+	@echo "  make viewer            build the native reader viewer (tools/ra8_viewer)"
+	@echo "  make view FILE=<f.cbz> open a document in the viewer (arrows page; HEADLESS=1 dumps a PPM)"
+	@echo ""
 	@echo "DEV SETUP / DISCOVERY"
 	@echo "  make hooks             (re)install the tracked git hooks (auto-runs on every make)"
 	@echo "  make apps              list every discovered firmware app"
@@ -299,7 +305,8 @@ clean:
 		[ -f "$$d" ] || continue; \
 		$(MAKE) -C "$$(dirname $$d)" clean; \
 	done
-	rm -rf $(TESTS_BUILD) $(TESTS_BUILD_COV) $(TESTS_BUILD_UBSAN) $(TIDY_BUILD)
+	rm -rf $(TESTS_BUILD) $(TESTS_BUILD_COV) $(TESTS_BUILD_UBSAN) $(TIDY_BUILD) \
+	       $(MEDIA_DL_DIR)/build $(RA8_VIEWER_DIR)/build
 
 format:
 	bash scripts/format_code.sh
@@ -999,5 +1006,50 @@ flash-ocd:
 debug-ocd:
 	@test -n "$(APP)" || { echo "usage: make debug-ocd APP=<app>"; exit 2; }
 	bash scripts/openocd_debug.sh $(RA8_APP_DIR_$(APP))/build/$(APP).elf
+
+# ---------------------------------------------------------------------------
+# Host READER TOOLS (native, NOT cross-compiled). Two companion dev tools that
+# link the firmware's platform-agnostic libraries on the host and build with
+# plain cmake, like tools/board_sim:
+#   * tools/media_dl   -- comic/manga/manhwa downloader CLI (config-driven
+#                         scrape + download + package to cbz/cbt/cbt.gz/...).
+#   * tools/ra8_viewer -- direct-call macOS reader that renders a document in a
+#                         Cocoa window via the real ra8_comic/ra8_reflow engines
+#                         (a viewer, not the board_sim emulator). macOS only.
+#
+#   make media_dl                        build the downloader CLI
+#   make test-media_dl                   build + ctest the downloader unit tests
+#   make viewer                          build the reader viewer
+#   make view FILE=<f.cbz> [HEADLESS=1]  build the viewer + open FILE (arrows page)
+# ---------------------------------------------------------------------------
+MEDIA_DL_DIR   := $(ROOT)/tools/media_dl
+RA8_VIEWER_DIR := $(ROOT)/tools/ra8_viewer
+
+.PHONY: media_dl test-media_dl viewer view
+
+media_dl:
+	$(CMAKE) -B $(MEDIA_DL_DIR)/build -S $(MEDIA_DL_DIR)
+	$(CMAKE) --build $(MEDIA_DL_DIR)/build -j
+	@echo "  built $(MEDIA_DL_DIR)/build/media_dl"
+	@echo "  e.g.  ./tools/media_dl/build/media_dl --config tools/media_dl/sites/manhwaus.conf \\"
+	@echo "          --series <series-url> --chapters 2 --format cbz"
+
+test-media_dl:
+	$(CMAKE) -B $(MEDIA_DL_DIR)/build -S $(MEDIA_DL_DIR)
+	$(CMAKE) --build $(MEDIA_DL_DIR)/build -j
+	ctest --test-dir $(MEDIA_DL_DIR)/build --output-on-failure
+
+viewer:
+	$(CMAKE) -B $(RA8_VIEWER_DIR)/build -S $(RA8_VIEWER_DIR) -DCMAKE_BUILD_TYPE=Release
+	$(CMAKE) --build $(RA8_VIEWER_DIR)/build -j
+	@echo "  built $(RA8_VIEWER_DIR)/build/ra8_viewer -- open a document: make view FILE=<file.cbz>"
+
+# `make view FILE=<file.cbz|.cbr|.cbt>` -- build the viewer and open FILE in a
+# window (Left/Right arrows turn pages). HEADLESS=1 renders page 0 to a PPM and
+# exits, for a no-display proof.
+view: viewer
+	@test -n "$(FILE)" || { echo "usage: make view FILE=<file.cbz|.cbr|.cbt> [HEADLESS=1]"; exit 2; }
+	$(RA8_VIEWER_DIR)/build/ra8_viewer "$(FILE)" \
+		$(if $(filter-out 0,$(HEADLESS)),--headless --dump-ppm /tmp/ra8_view.ppm,)
 
 all: format tidy test default
