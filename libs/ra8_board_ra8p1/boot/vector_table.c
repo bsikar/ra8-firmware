@@ -406,7 +406,7 @@ const exc_handler_t g_ra8_vector_table_start[16U + k_ra8_irq_count] = {
  * =============================================================================
  */
 
-/* NOLINTBEGIN(clang-analyzer-security.ArrayBound,misc-use-internal-linkage) */
+/* NOLINTBEGIN(clang-analyzer-security.ArrayBound,misc-use-internal-linkage) -- the .data/.bss copy loops walk linker-symbol bounds the analyzer cannot model, and Reset_Handler must be extern for the vector table. */
 void Reset_Handler(void)
 {
   /* Must be first: clear LPSCR / SBYCR / DPSBYCR before any code
