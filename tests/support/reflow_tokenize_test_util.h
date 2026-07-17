@@ -48,7 +48,7 @@ typedef enum : uint32_t {
   k_link_color       = 0x3060FFU,   /**< Link colour for the layout engine.       */
   k_face_css_idx     = 0U,          /**< `@font-face` table index to register.    */
   k_count_one        = 1U,          /**< Expected count of exactly one token.     */
-  k_no_text_sentinel = 0xDEADBEEFU, /**< first_text_color(): no text token.   */
+  k_no_text_sentinel = 0xDEADBEEFU, /**< first_text_color(): no text token.       */
 } test_consts_t;
 
 /**

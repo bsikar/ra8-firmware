@@ -34,9 +34,9 @@
  * @see build_long_path()
  */
 typedef enum : uint16_t {
-  k_path_buf_cap    = 1024U, /**< Capacity for the flattener-cap paths.     */
-  k_poly_buf_cap    = 1536U, /**< Capacity for the winding polygon string.  */
-  k_long_path_x_pin = 90U,   /**< X coordinates cycle within the viewBox.   */
+  k_path_buf_cap    = 1024U, /**< Capacity for the flattener-cap paths.    */
+  k_poly_buf_cap    = 1536U, /**< Capacity for the winding polygon string. */
+  k_long_path_x_pin = 90U,   /**< X coordinates cycle within the viewBox.  */
 } svg_shape_buf_t;
 
 /**

@@ -41,15 +41,15 @@
  * @see build_fat16_vol()
  */
 typedef enum : uint16_t {
-  k_bpb_off_bytes_per_sec = 11U,  /**< BPB_BytsPerSec (u16).           */
-  k_bpb_off_sec_per_clus  = 13U,  /**< BPB_SecPerClus (u8).            */
-  k_bpb_off_rsvd_sec_cnt  = 14U,  /**< BPB_RsvdSecCnt (u16).           */
-  k_bpb_off_num_fats      = 16U,  /**< BPB_NumFATs (u8).               */
-  k_bpb_off_root_ent_cnt  = 17U,  /**< BPB_RootEntCnt (u16).           */
-  k_bpb_off_tot_sec16     = 19U,  /**< BPB_TotSec16 (u16).             */
-  k_bpb_off_fat_sz16      = 22U,  /**< BPB_FATSz16 (u16).              */
-  k_bpb_off_sig0          = 510U, /**< Boot signature low byte (0x55). */
-  k_bpb_off_sig1          = 511U, /**< Boot signature high byte (0xAA).*/
+  k_bpb_off_bytes_per_sec = 11U,  /**< BPB_BytsPerSec (u16).            */
+  k_bpb_off_sec_per_clus  = 13U,  /**< BPB_SecPerClus (u8).             */
+  k_bpb_off_rsvd_sec_cnt  = 14U,  /**< BPB_RsvdSecCnt (u16).            */
+  k_bpb_off_num_fats      = 16U,  /**< BPB_NumFATs (u8).                */
+  k_bpb_off_root_ent_cnt  = 17U,  /**< BPB_RootEntCnt (u16).            */
+  k_bpb_off_tot_sec16     = 19U,  /**< BPB_TotSec16 (u16).              */
+  k_bpb_off_fat_sz16      = 22U,  /**< BPB_FATSz16 (u16).               */
+  k_bpb_off_sig0          = 510U, /**< Boot signature low byte (0x55).  */
+  k_bpb_off_sig1          = 511U, /**< Boot signature high byte (0xAA). */
 } fat_bpb_off_t;
 
 /**
@@ -61,9 +61,9 @@ typedef enum : uint16_t {
  * @see put16()
  */
 typedef enum : uint8_t {
-  k_bpb_sig0_val = 0x55U, /**< First boot-signature byte.       */
-  k_bpb_sig1_val = 0xAAU, /**< Second boot-signature byte.      */
-  k_byte_mask    = 0xFFU, /**< Low-byte mask used by put16().   */
+  k_bpb_sig0_val = 0x55U, /**< First boot-signature byte.     */
+  k_bpb_sig1_val = 0xAAU, /**< Second boot-signature byte.    */
+  k_byte_mask    = 0xFFU, /**< Low-byte mask used by put16(). */
 } fat_bpb_val_t;
 
 /* ===========================================================================
