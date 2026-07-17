@@ -148,22 +148,14 @@ typedef enum : uint8_t {
  * right pipes.
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
-  uint8_t device_address; /**< Assigned USB address (1..127). */
-  // cppcheck-suppress unusedStructMember
-  uint8_t bulk_in_ep; /**< Attached device's bulk IN EP num. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t bulk_out_ep; /**< Attached device's bulk OUT EP num. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t intr_in_ep; /**< Attached device's intr IN EP num. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t bulk_in_max_packet; /**< Attached bulk-IN wMaxPacketSize. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t bulk_out_max_packet; /**< Attached bulk-OUT wMaxPacketSize. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t vendor_id; /**< idVendor from device descriptor. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t product_id; /**< idProduct from device descriptor. */
+  uint8_t  device_address;      /**< Assigned USB address (1..127).     */
+  uint8_t  bulk_in_ep;          /**< Attached device's bulk IN EP num.  */
+  uint8_t  bulk_out_ep;         /**< Attached device's bulk OUT EP num. */
+  uint8_t  intr_in_ep;          /**< Attached device's intr IN EP num.  */
+  uint16_t bulk_in_max_packet;  /**< Attached bulk-IN wMaxPacketSize.   */
+  uint16_t bulk_out_max_packet; /**< Attached bulk-OUT wMaxPacketSize.  */
+  uint16_t vendor_id;           /**< idVendor from device descriptor.   */
+  uint16_t product_id;          /**< idProduct from device descriptor.  */
 } ra8_usb_hcdc_device_t;
 
 /**

@@ -105,7 +105,6 @@ typedef struct {
  * member is read in ``ra8_touch_open`` in
  * ``libs/ra8_hal/src/ra8_touch.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_i2c_bus_ops_t bus;        /**< Injected I2C transfer seam (app-bound). */
   uint8_t           target_7b;  /**< 7-bit GT911 address (0x5D or 0x14).     */
@@ -113,7 +112,6 @@ typedef struct {
                                     ::k_ra8_touch_irq_pin_unset for polling-only. */
   uint8_t           max_points; /**< Cap on touches reported (clamped to 5). */
 } ra8_touch_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_touch_event_fn_t

@@ -161,13 +161,11 @@ typedef struct {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_keycache_t     kc;         /**< Underlying keyed-LRU cache. */
   ra8_tile_decode_fn decode;     /**< Caller's tile decoder.      */
   void*              decode_ctx; /**< Caller's decoder context.   */
 } ra8_tile_cache_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Initialise a tile cache over caller-supplied storage.

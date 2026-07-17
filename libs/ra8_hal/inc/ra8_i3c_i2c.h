@@ -74,12 +74,10 @@ typedef enum : uint32_t {
  * each member is read in ``internal_i3c_i2c_init`` in
  * ``libs/ra8_hal/src/ra8_i3c_i2c.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t bus_hz;   /**< Target I2C clock rate in Hz.                     */
   uint32_t pclka_hz; /**< Current PCLKA / I3CCLK frequency for STDBR calc. */
 } ra8_i3c_i2c_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @enum ra8_i3c_i2c_err_mask_t

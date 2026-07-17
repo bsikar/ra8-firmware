@@ -118,7 +118,6 @@ typedef enum : uint8_t {
 /* cppcheck reads ra8_dmac.h without seeing tests/ra8_sim_dma.c or the
  * DMAC register accesses in libs/ra8_hal/src/ra8_dmac.c, so it flags
  * every field as unused even though the driver reads all of them. */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t               src;         /**< Source address (DMSAR).           */
   uint32_t               dst;         /**< Destination address (DMDAR).      */
@@ -132,7 +131,6 @@ typedef struct {
   bool                   irq_each;    /**< Enable RPTIE/ESIE per repeat.     */
   bool                   enable_dtie; /**< Enable DMINT.DTIE on full end.    */
 } ra8_dmac_config_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Programme and enable a DMAC0 channel.

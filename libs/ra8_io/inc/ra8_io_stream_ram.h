@@ -41,13 +41,11 @@ extern "C" {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t* buf; /**< Caller-owned capture buffer (private). */
   uint32_t cap; /**< Buffer capacity in bytes (private).    */
   uint32_t len; /**< Bytes captured so far (private).       */
 } ra8_io_stream_ram_state_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Bind a RAM stream sink into a caller-owned stream handle.

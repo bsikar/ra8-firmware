@@ -104,7 +104,6 @@ typedef enum : uint32_t {
  * reproduce the manual's address map so the offsets of live registers
  * stay correct.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t PDSTRTR;                       /**< +0x00 Software Start Trigger.         */
   volatile uint32_t PDSTPTR;                       /**< +0x04 Software Stop Trigger.          */
@@ -135,7 +134,6 @@ typedef struct {
   volatile uint32_t PDDSR;                           /**< +0xEC Data Status (FIFO fill count).   */
   volatile uint32_t RESERVED2[4];                    /**< +0xF0 reserved.                        */
 } r_pdm_ch_regs_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 static_assert(sizeof(r_pdm_ch_regs_t) == (size_t)k_ra8_pdm_ch_bank_bytes,
               "PDM channel bank must be 256 bytes");
@@ -158,7 +156,6 @@ static_assert(offsetof(r_pdm_ch_regs_t, PDDSR) == (size_t)k_ra8_pdm_off_pddsr, "
  * start/stop/status; ``CH[n]`` carries the per-channel configuration and
  * data path.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t PDCSTRTR;     /**< +0x00 Channel Software Start Trigger.  */
   volatile uint32_t PDCSTPTR;     /**< +0x04 Channel Software Stop Trigger.   */
@@ -175,7 +172,6 @@ typedef struct {
   volatile uint32_t RESERVED2[k_ra8_pdm_common_rsvd2_words]; /**< +0x84 reserved. */
   r_pdm_ch_regs_t   CH[3]; /**< +0x100 Per-channel register banks. */
 } r_pdm_regs_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 static_assert(offsetof(r_pdm_regs_t, PDCSR) == (size_t)k_ra8_pdm_off_pdcsr, "PDCSR offset");
 static_assert(offsetof(r_pdm_regs_t, PDVR) == (size_t)k_ra8_pdm_off_pdvr, "PDVR offset");

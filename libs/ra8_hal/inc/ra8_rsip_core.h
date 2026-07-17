@@ -49,11 +49,9 @@ extern "C" {
  * unused; it is read in ``ra8_rsip_init`` in
  * ``libs/ra8_hal/src/ra8_rsip.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool run_bist; /**< true -> arm BIST after MSTP release. */
 } ra8_rsip_config_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_rsip_event_fn_t

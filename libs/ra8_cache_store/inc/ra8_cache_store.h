@@ -133,7 +133,6 @@ typedef enum : uint8_t {
  * @invariant `sector_count >= 1` when @ref k_ra8_cache_store_flag_in_use is set.
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin unusedStructMember */
 typedef struct {
   uint32_t key;          /**< Content key (source CRC-32); valid iff in-use. */
   uint32_t start_sector; /**< Logical sector of the entry header.            */
@@ -142,7 +141,6 @@ typedef struct {
   uint8_t  flags;        /**< ::ra8_cache_store_flag_t bit set.              */
   uint8_t  reserved;     /**< Padding; keeps the slot 16 bytes.              */
 } ra8_cache_store_entry_t;
-/* cppcheck-suppress-end unusedStructMember */
 
 /**
  * @struct ra8_cache_store_t
@@ -155,7 +153,6 @@ typedef struct {
  * @invariant `log_start < logical_sectors` after a successful init.
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin unusedStructMember */
 typedef struct {
   struct LX_NOR_FLASH_STRUCT* flash;           /**< LevelX control block (borrowed).        */
   ra8_cache_store_entry_t*    index;           /**< Caller-owned index slot array.          */
@@ -170,7 +167,6 @@ typedef struct {
   uint8_t                     flash_state;     /**< RAM shadow of sector 0 (dirty/clean).   */
   bool                        inited;          /**< True between init and close.            */
 } ra8_cache_store_t;
-/* cppcheck-suppress-end unusedStructMember */
 
 /**
  * @struct ra8_cache_store_reader_t
@@ -184,14 +180,12 @@ typedef struct {
  * @invariant `data_start >= store->log_start + 1` for a valid reader.
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin unusedStructMember */
 typedef struct {
   const ra8_cache_store_t* store;        /**< Parent store (flash + staging).   */
   uint32_t                 data_start;   /**< First payload logical sector.     */
   uint32_t                 data_sectors; /**< Payload sector count.             */
   uint32_t                 byte_len;     /**< Payload length (== vsource size). */
 } ra8_cache_store_reader_t;
-/* cppcheck-suppress-end unusedStructMember */
 
 /**
  * @struct ra8_cache_store_cfg_t
@@ -207,7 +201,6 @@ typedef struct {
  *            non-NULL; `index_cap > 0`; `staging_bytes >= sector size`.
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin unusedStructMember */
 typedef struct {
   struct LX_NOR_FLASH_STRUCT* nor_flash;         /**< Caller-owned LevelX control block.   */
   ra8_cache_store_nor_init_fn nor_driver_init;   /**< Injected physical-flash bind.        */
@@ -220,7 +213,6 @@ typedef struct {
   uint8_t                     overprovision_pct; /**< GC headroom margin (0 => default).   */
   bool                        format;            /**< Format (wipe) before open.           */
 } ra8_cache_store_cfg_t;
-/* cppcheck-suppress-end unusedStructMember */
 
 /**
  * @brief Bind a LevelX NOR flash instance and mount (or format) the store.

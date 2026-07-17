@@ -164,7 +164,6 @@ typedef enum : uint8_t {
  *
  * @invariant ``break_field_len`` <= ``k_ra8_sci_xcr2_bflw_max`` (0xFFFE).
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_sci_cfg_t           uart;            /**< Base async-UART baud + framing. */
   ra8_sci_lin_role_t      role;            /**< Commander (generate) or responder
@@ -175,7 +174,6 @@ typedef struct {
                                                clock. >= 13 bit-times per the
                                                LIN standard; 0xFFFF prohibited. */
 } ra8_sci_lin_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /* =============================================================================
  * Lifecycle

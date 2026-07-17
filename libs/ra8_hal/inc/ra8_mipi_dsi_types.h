@@ -156,21 +156,18 @@ typedef enum : uint8_t {
  * each value is consumed by `ra8_mipi_dsi_init()` in
  * `libs/ra8_hal/src/ra8_mipi_dsi.c`.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint16_t clock_stop_time;       /**< CLSTPTSETR.CLKSTPT[11:2].  */
   uint8_t  clock_beforehand_time; /**< CLSTPTSETR.CLKBFHT[23:16]. */
   uint8_t  clock_keep_time;       /**< CLSTPTSETR.CLKKPT[31:24].  */
   uint16_t go_lp_and_back;        /**< LPTRNSTSETR.GOLPBKT[9:0].  */
 } ra8_mipi_dsi_timing_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_mipi_dsi_timeouts_t
  * @brief Bus timeout counters (HSTXTOSETR / LRXHTOSETR / TATOSETR /
  *        PRESPTO* registers).
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t hs_tx_timeout;      /**< HSTXTOSETR.                        */
   uint32_t lp_rx_host_timeout; /**< LRXHTOSETR.                        */
@@ -179,7 +176,6 @@ typedef struct {
   uint32_t lp_rw_timeout;      /**< PRESPTOLPSETR (split LPRTO|LPWTO). */
   uint32_t hs_rw_timeout;      /**< PRESPTOHSSETR (split HSRTO|HSWTO). */
 } ra8_mipi_dsi_timeouts_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_mipi_dsi_video_cfg_t
@@ -190,7 +186,6 @@ typedef struct {
  * VMVPSETR / VMHSSETR / VMHPSETR. All counts are in panel pixels /
  * lines (the hardware multiplies by the per-lane byte clock as needed).
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_mipi_dsi_dt_t pixel_format;             /**< RGB565 / RGB666 / RGB888.  */
   ra8_mipi_dsi_vc_t virtual_channel;          /**< VC for the pixel stream.   */
@@ -210,7 +205,6 @@ typedef struct {
   uint16_t          horizontal_front_porch;   /**< VMHPSETR.HFP[28:16].       */
   uint16_t          video_mode_delay;         /**< VMSET1R.DLY[13:2] x 4.     */
 } ra8_mipi_dsi_video_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_mipi_dsi_command_t
@@ -221,7 +215,6 @@ typedef struct {
  * channel descriptor. `tx_len > 2` triggers long-packet mode; otherwise
  * the bytes are packed into the descriptor header.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_mipi_dsi_dt_t  cmd_id;          /**< Data Type / command opcode.    */
   ra8_mipi_dsi_vc_t  virtual_channel; /**< VC[1:0] in the packet header.  */
@@ -234,13 +227,11 @@ typedef struct {
   const uint8_t*     p_tx_buffer;     /**< Source bytes for long packet.  */
   uint8_t*           p_rx_buffer;     /**< Sink bytes for read responses. */
 } ra8_mipi_dsi_command_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_mipi_dsi_rx_result_t
  * @brief Decoded view of a single RXRSS slot register.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t           data[2];              /**< Header DATA0 / DATA1 bytes. */
   ra8_mipi_dsi_dt_t cmd_id;               /**< DT[5:0] received.           */
@@ -254,13 +245,11 @@ typedef struct {
   bool              rx_ack_and_error;     /**< RXAKE flag.                 */
   bool              info_overwritten;     /**< INFOOW flag.                */
 } ra8_mipi_dsi_rx_result_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_mipi_dsi_link_status_t
  * @brief Decoded view of LINKSR.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool sequence_ch0_running; /**< LINKSR.SQ0RUN. */
   bool sequence_ch1_running; /**< LINKSR.SQ1RUN. */
@@ -268,18 +257,15 @@ typedef struct {
   bool hs_busy;              /**< LINKSR.HSBUSY. */
   bool lp_busy;              /**< LINKSR.LPBUSY. */
 } ra8_mipi_dsi_link_status_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_mipi_dsi_ack_error_t
  * @brief Decoded view of AKEPLATIR / AKEPACMSR.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint16_t          error_report;    /**< 16-bit DSI ack/error bitmap. */
   ra8_mipi_dsi_vc_t virtual_channel; /**< VC tag of the report.        */
 } ra8_mipi_dsi_ack_error_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_mipi_dsi_config_t
@@ -293,7 +279,6 @@ typedef struct {
  * @invariant `lane_count` is one of `k_ra8_mipi_dsi_lanes_1` or
  *            `k_ra8_mipi_dsi_lanes_2` -- any other value is rejected.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_mipi_dsi_lane_count_t lane_count;             /**< 1 or 2.          */
   ra8_mipi_dsi_clock_mode_t clock_mode;             /**< HS clock mode.   */
@@ -307,7 +292,6 @@ typedef struct {
   ra8_mipi_dsi_timing_t     timing;                 /**< Guard timings.   */
   ra8_mipi_dsi_timeouts_t   timeouts;               /**< Bus timeouts.    */
 } ra8_mipi_dsi_config_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_mipi_dsi_event_fn_t

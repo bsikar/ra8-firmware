@@ -566,7 +566,6 @@ typedef enum : uint16_t {
  * every field as unused; each member is accessed via ``ra8_rmac(port)``
  * in ``libs/ra8_hal/src/ra8_rmac.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t MPSM;                               /**< +0x0000 PHY Station Mgmt.        */
   volatile uint32_t MPIC;                               /**< +0x0004 PHY Interfaces Cfg.      */
@@ -677,7 +676,6 @@ typedef struct {
   volatile uint32_t MTXBCPU;                             /**< +0x0528 TX byte cnt P upper. */
   volatile uint32_t MTXBCPL;                             /**< +0x052C TX byte cnt P lower. */
 } r_rmac_regs_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Compile-time check that the RMAC register window matches FSP.

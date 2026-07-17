@@ -92,18 +92,12 @@ typedef enum : uint8_t {
 } ra8_epub_entry_reader_layout_t;
 
 typedef struct {
-  // cppcheck-suppress unusedStructMember
-  void* iter; /**< Opaque `mz_zip_reader_extract_iter_state*`; NULL when closed. */
-  // cppcheck-suppress unusedStructMember
-  ra8_epub_book_t* book; /**< Owning book (archive + allocator); borrowed. */
-  // cppcheck-suppress unusedStructMember
-  uint64_t total; /**< Entry uncompressed size, bytes. */
-  // cppcheck-suppress unusedStructMember
-  uint64_t consumed; /**< Bytes delivered to the caller so far. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t done; /**< 1 once EOF has been reached / reported. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t reserved[k_ra8_epub_entry_reader_reserved_bytes]; /**< Padding; keep zero. */
+  void*            iter;     /**< Opaque `mz_zip_reader_extract_iter_state*`; NULL when closed. */
+  ra8_epub_book_t* book;     /**< Owning book (archive + allocator); borrowed.                  */
+  uint64_t         total;    /**< Entry uncompressed size, bytes.                               */
+  uint64_t         consumed; /**< Bytes delivered to the caller so far.                         */
+  uint8_t          done;     /**< 1 once EOF has been reached / reported.                       */
+  uint8_t          reserved[k_ra8_epub_entry_reader_reserved_bytes]; /**< Padding; keep zero. */
 } ra8_epub_entry_reader_t;
 
 /**

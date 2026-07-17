@@ -71,7 +71,6 @@ typedef enum : uint8_t {
  * each member is read in `ra8_vin_init` in
  * `libs/ra8_hal/src/ra8_vin.c`.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_vin_input_fmt_t input_fmt;          /**< MC.INF: input format.             */
   bool                bypass_csc;         /**< MC.BPS: skip colour conversion.   */
@@ -85,7 +84,6 @@ typedef struct {
   uint32_t            interrupt_enable;   /**< IE register mask.                 */
   uint16_t            scanline_compare;   /**< SI register; 0 disables.          */
 } ra8_vin_config_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_vin_preclip_t
@@ -96,14 +94,12 @@ typedef struct {
  * 12-bit indices; setting end < start triggers `k_ra8_err_invalid_arg`
  * from the setter.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint16_t line_start;  /**< SLPRC: first line that survives the clip. */
   uint16_t line_end;    /**< ELPRC: last line that survives the clip.  */
   uint16_t pixel_start; /**< SPPRC: first pixel within each line.      */
   uint16_t pixel_end;   /**< EPPRC: last pixel within each line.       */
 } ra8_vin_preclip_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_vin_uds_scale_t
@@ -114,14 +110,12 @@ typedef struct {
  * and a 12-bit fractional part. Set both halves of an axis to zero
  * to disable scaling on that axis (UDS_SCALE = 0).
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t  v_mantissa; /**< VMANT[3:0].  */
   uint16_t v_fraction; /**< VFRAC[11:0]. */
   uint8_t  h_mantissa; /**< HMANT[3:0].  */
   uint16_t h_fraction; /**< HFRAC[11:0]. */
 } ra8_vin_uds_scale_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_vin_uds_ctrl_t
@@ -132,7 +126,6 @@ typedef struct {
  * nearest; the per-channel `*_nearest` flags only matter when
  * `multitap` is false.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool b_cb_nearest; /**< NE_BCB: 1 = nearest-neighbour for B/Cb.  */
   bool g_y_nearest;  /**< NE_GY: 1 = nearest-neighbour for G/Y.    */
@@ -141,7 +134,6 @@ typedef struct {
   bool advanced_bl;  /**< BLADV: advanced bilinear-mode tweak.     */
   bool advanced_amd; /**< AMD: advanced pixel-count formula.       */
 } ra8_vin_uds_ctrl_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_vin_yc_to_rgb_t
@@ -154,7 +146,6 @@ typedef struct {
  * - CSCE3: low/high 14-bit multipliers used by Cr.
  * - CSCE4: low/high 14-bit multipliers used by Cb.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint16_t y_multiplier; /**< YMUL2[13:0].       */
   bool     enable_round; /**< ROUND[16].         */
@@ -165,7 +156,6 @@ typedef struct {
   uint16_t cb_mul_lo;    /**< CSCE4 low [13:0].  */
   uint16_t cb_mul_hi;    /**< CSCE4 high[29:16]. */
 } ra8_vin_yc_to_rgb_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_vin_rgb_to_yc_chan_t
@@ -176,7 +166,6 @@ typedef struct {
  * 13/12/12-bit signed values; the additive offset is 12-bit and the
  * shift / round controls live in setting 3.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint16_t r_coeff;    /**< Setting 1 R coefficient.                   */
   uint16_t g_coeff;    /**< Setting 2 G coefficient.                   */
@@ -185,7 +174,6 @@ typedef struct {
   bool     enable_hen; /**< Setting 3 round-off enable (LHEN).         */
   uint8_t  shift_down; /**< Setting 3 shift-down volume (LSFT, 5-bit). */
 } ra8_vin_rgb_to_yc_chan_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_vin_data_mode_t
@@ -196,7 +184,6 @@ typedef struct {
  * YMODE / A8BIT in one C struct so the driver can build the full
  * 32-bit register from a typed view.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t conv_mode;  /**< DTMD (`ra8_vin_dtmd_value_t`).   */
   bool    alpha_bit;  /**< ABIT for ARGB-1555 alpha.        */
@@ -206,7 +193,6 @@ typedef struct {
   uint8_t y_mode;     /**< YMODE (`ra8_vin_ymode_value_t`). */
   uint8_t alpha_byte; /**< A8BIT ARGB-8888 alpha byte.      */
 } ra8_vin_data_mode_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_vin_csi_input_t
@@ -217,13 +203,11 @@ typedef struct {
  * type, and whether to sign-extend (false) or zero-extend (true)
  * the data lane samples.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t virtual_channel; /**< VC_SEL (0..15).                         */
   uint8_t data_type;       /**< DT (`ra8_vin_csi_dt_value_t`).          */
   bool    zero_extend;     /**< DES0: 1 = zero-extend, 0 = sign-extend. */
 } ra8_vin_csi_input_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_vin_field_detect_t
@@ -232,13 +216,11 @@ typedef struct {
  * @details
  * HUM Ch 67.2.9 p 3983.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool    enable;         /**< FLD_EN.                               */
   bool    even_field_sel; /**< FLD_SEL (bit-4 of FLD_SEL[5:4]).      */
   uint8_t even_field_num; /**< FLD_NUM (`ra8_vin_field_polarity_t`). */
 } ra8_vin_field_detect_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_vin_module_status_t
@@ -248,7 +230,6 @@ typedef struct {
  * HUM Ch 67.2.2 p 3978. `frame_buffer_id` / `latest_frame_buffer`
  * carry `ra8_vin_ms_fbs_t` values.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool    capture_active;      /**< MS.CA.             */
   bool    active_video;        /**< MS.AV.             */
@@ -257,7 +238,6 @@ typedef struct {
   bool    memory_active;       /**< MS.MA.             */
   uint8_t latest_frame_buffer; /**< MS.FMS.            */
 } ra8_vin_module_status_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_vin_event_fn_t

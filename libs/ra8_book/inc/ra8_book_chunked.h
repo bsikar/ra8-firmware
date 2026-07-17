@@ -78,9 +78,6 @@ extern "C" {
  * @see ra8_book_chunked_open()
  * @since Version 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] -- members are read in
- * ra8_book_chunked.c through the bound pointer; cppcheck's per-TU view of
- * this header cannot see those uses (same waiver as ra8_vsource_obj_t). */
 typedef struct {
   ra8_vsource_read_fn file_read;      /**< Byte reader over the container file.       */
   void*               file_ctx;       /**< Context for @ref file_read.                */
@@ -93,7 +90,6 @@ typedef struct {
   uint32_t            chunk_bytes;    /**< Inflated bytes per chunk (last short).     */
   uint32_t            chunk_count;    /**< Number of chunks.                          */
 } ra8_book_chunked_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Open a chunked `.rabook` container for demand-paged chunk reads.

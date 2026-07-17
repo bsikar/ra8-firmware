@@ -76,7 +76,6 @@ extern "C" {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   /**
    * @brief Controller write of `len` bytes to 7-bit address `addr`.
@@ -139,7 +138,6 @@ typedef struct {
 
   void* ctx; /**< Opaque cookie handed to every callback (binder-owned). */
 } ra8_i2c_bus_ops_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 #ifdef __cplusplus
 }

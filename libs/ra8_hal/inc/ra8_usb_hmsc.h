@@ -184,24 +184,15 @@ typedef enum : uint16_t {
  * copy it) so subsequent SCSI calls land on the right LUN.
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
-  uint8_t device_address; /**< Assigned USB address (1..127). */
-  // cppcheck-suppress unusedStructMember
-  uint8_t bulk_in_ep; /**< Attached device's bulk IN EP num. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t bulk_out_ep; /**< Attached device's bulk OUT EP num. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t max_lun; /**< Get-Max-LUN response (0..15). */
-  // cppcheck-suppress unusedStructMember
-  uint8_t interface_number; /**< MSC bInterfaceNumber. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t bulk_in_max_packet; /**< Attached bulk-IN wMaxPacketSize. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t bulk_out_max_packet; /**< Attached bulk-OUT wMaxPacketSize. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t vendor_id; /**< idVendor from device descriptor. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t product_id; /**< idProduct from device descriptor. */
+  uint8_t  device_address;      /**< Assigned USB address (1..127).     */
+  uint8_t  bulk_in_ep;          /**< Attached device's bulk IN EP num.  */
+  uint8_t  bulk_out_ep;         /**< Attached device's bulk OUT EP num. */
+  uint8_t  max_lun;             /**< Get-Max-LUN response (0..15).      */
+  uint8_t  interface_number;    /**< MSC bInterfaceNumber.              */
+  uint16_t bulk_in_max_packet;  /**< Attached bulk-IN wMaxPacketSize.   */
+  uint16_t bulk_out_max_packet; /**< Attached bulk-OUT wMaxPacketSize.  */
+  uint16_t vendor_id;           /**< idVendor from device descriptor.   */
+  uint16_t product_id;          /**< idProduct from device descriptor.  */
 } ra8_usb_hmsc_device_t;
 
 /**
@@ -213,20 +204,13 @@ typedef struct {
  * wire; the driver copies them in unchanged.
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
-  uint8_t peripheral_qualifier; /**< Bits [7:5] of byte 0. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t peripheral_device_type; /**< Bits [4:0] of byte 0. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t removable; /**< 1 = removable medium. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t version; /**< SPC version code. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t vendor_id[8]; /**< T10 Vendor ID, ASCII. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t product_id[16]; /**< Product ID, ASCII. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t product_revision[4]; /**< Product revision, ASCII. */
+  uint8_t peripheral_qualifier;   /**< Bits [7:5] of byte 0.    */
+  uint8_t peripheral_device_type; /**< Bits [4:0] of byte 0.    */
+  uint8_t removable;              /**< 1 = removable medium.    */
+  uint8_t version;                /**< SPC version code.        */
+  uint8_t vendor_id[8];           /**< T10 Vendor ID, ASCII.    */
+  uint8_t product_id[16];         /**< Product ID, ASCII.       */
+  uint8_t product_revision[4];    /**< Product revision, ASCII. */
 } ra8_usb_hmsc_inquiry_response_t;
 
 /**

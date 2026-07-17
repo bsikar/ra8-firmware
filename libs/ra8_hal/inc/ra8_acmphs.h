@@ -48,7 +48,6 @@ typedef enum : uint8_t {
  * each member is read in ``ra8_acmphs_channel_init`` in
  * ``libs/ra8_hal/src/ra8_acmphs.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t           ivpsel;     /**< Plus-input select (CMPSEL0).  */
   uint8_t           ivrefsel;   /**< Minus-input select (CMPSEL1). */
@@ -56,7 +55,6 @@ typedef struct {
   bool              filter_en;  /**< True -> enable filter.        */
   bool              invert_out; /**< True -> invert output.        */
 } ra8_acmphs_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_acmphs_event_fn_t

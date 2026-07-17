@@ -137,7 +137,6 @@ typedef enum : uint32_t {
  * @see ra8_xspi()            Pointer accessor.
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t WRAPCFG;                  /**< +0x000 Wrapper config (CK/DS shift).    */
   volatile uint32_t COMCFG;                   /**< +0x004 Channel arbitration + INT en.    */
@@ -169,7 +168,6 @@ typedef struct {
   volatile uint32_t INTC;                              /**< +0x194 Interrupt clear (W1C).        */
   volatile uint32_t INTE;                              /**< +0x198 Interrupt enable.             */
 } r_xspi_regs_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 static_assert(sizeof(r_xspi_regs_t) == (uint32_t)k_ra8_xspi_regs_size,
               "r_xspi_regs_t must match FSP R_XSPI0_Type size (412 bytes)");

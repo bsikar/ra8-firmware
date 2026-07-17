@@ -183,33 +183,20 @@ typedef enum : uint16_t {
  * report calls land on the right interface.
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
-  uint8_t device_address; /**< Assigned USB address (1..127). */
-  // cppcheck-suppress unusedStructMember
-  uint8_t intr_in_ep; /**< Attached device's intr IN EP num. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t intr_out_ep; /**< Attached device's intr OUT EP num
+  uint8_t        device_address;        /**< Assigned USB address (1..127).    */
+  uint8_t        intr_in_ep;            /**< Attached device's intr IN EP num. */
+  uint8_t        intr_out_ep;           /**< Attached device's intr OUT EP num
                                           (0 if absent).                      */
-  // cppcheck-suppress unusedStructMember
-  uint8_t interface_number; /**< HID bInterfaceNumber. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t subclass; /**< bInterfaceSubClass (boot=1). */
-  // cppcheck-suppress unusedStructMember
-  uint8_t protocol; /**< bInterfaceProtocol (kb=1, ms=2). */
-  // cppcheck-suppress unusedStructMember
-  uint16_t intr_in_max_packet; /**< Attached intr-IN wMaxPacketSize. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t intr_out_max_packet; /**< Attached intr-OUT wMaxPacketSize. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t vendor_id; /**< idVendor from device descriptor. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t product_id; /**< idProduct from device descriptor. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t report_descriptor_len; /**< Cached Report desc length. */
-  // cppcheck-suppress unusedStructMember
-  const uint8_t* hid_descriptor; /**< Pointer to cached HID class desc. */
-  // cppcheck-suppress unusedStructMember
-  const uint8_t* report_descriptor; /**< Pointer to cached HID Report desc. */
+  uint8_t        interface_number;      /**< HID bInterfaceNumber.              */
+  uint8_t        subclass;              /**< bInterfaceSubClass (boot=1).       */
+  uint8_t        protocol;              /**< bInterfaceProtocol (kb=1, ms=2).   */
+  uint16_t       intr_in_max_packet;    /**< Attached intr-IN wMaxPacketSize.   */
+  uint16_t       intr_out_max_packet;   /**< Attached intr-OUT wMaxPacketSize.  */
+  uint16_t       vendor_id;             /**< idVendor from device descriptor.   */
+  uint16_t       product_id;            /**< idProduct from device descriptor.  */
+  uint16_t       report_descriptor_len; /**< Cached Report desc length.         */
+  const uint8_t* hid_descriptor;        /**< Pointer to cached HID class desc.  */
+  const uint8_t* report_descriptor;     /**< Pointer to cached HID Report desc. */
 } ra8_usb_hhid_device_t;
 
 /**
