@@ -98,7 +98,7 @@ static mem_disk_t s_disk = {};
 
 static inline ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
-  mem_disk_t* d = (mem_disk_t*)ctx;
+  const mem_disk_t* d = (const mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
@@ -118,9 +118,9 @@ static inline ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const
 
 static inline ra8_err_t mem_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
-  mem_disk_t* d = (mem_disk_t*)ctx;
-  *block_count  = d->block_count;
-  *block_size   = (uint32_t)k_cov_block_size;
+  const mem_disk_t* d = (const mem_disk_t*)ctx;
+  *block_count        = d->block_count;
+  *block_size         = (uint32_t)k_cov_block_size;
   return k_ra8_ok;
 }
 
@@ -186,9 +186,9 @@ static inline ra8_err_t inj_write(void* ctx, uint32_t lba, uint32_t count, const
 
 static inline ra8_err_t inj_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
-  inject_disk_t* d = (inject_disk_t*)ctx;
-  *block_count     = d->block_count;
-  *block_size      = (uint32_t)k_cov_block_size;
+  const inject_disk_t* d = (const inject_disk_t*)ctx;
+  *block_count           = d->block_count;
+  *block_size            = (uint32_t)k_cov_block_size;
   return k_ra8_ok;
 }
 

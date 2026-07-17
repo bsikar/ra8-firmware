@@ -123,7 +123,7 @@ static mc_disk_t s_disk = {};
 
 static inline ra8_err_t mc_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
-  mc_disk_t* d = (mc_disk_t*)ctx;
+  const mc_disk_t* d = (const mc_disk_t*)ctx;
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
@@ -143,9 +143,9 @@ static inline ra8_err_t mc_write(void* ctx, uint32_t lba, uint32_t count, const 
 
 static inline ra8_err_t mc_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
-  mc_disk_t* d = (mc_disk_t*)ctx;
-  *block_count = d->block_count;
-  *block_size  = (uint32_t)k_mc_blk;
+  const mc_disk_t* d = (const mc_disk_t*)ctx;
+  *block_count       = d->block_count;
+  *block_size        = (uint32_t)k_mc_blk;
   return k_ra8_ok;
 }
 
