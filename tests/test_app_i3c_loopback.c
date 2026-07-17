@@ -25,14 +25,14 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_test_i3c_app_bus_hz   = 100000U,
-  k_test_i3c_app_pclka_hz = 125000000U,
+  k_test_i3c_app_bus_hz   = 100000U,    /**< Test I3C app bus Hz.   */
+  k_test_i3c_app_pclka_hz = 125000000U, /**< Test I3C app pclka Hz. */
 } test_i3c_app_const_t;
 
 typedef enum : uint8_t {
-  k_test_i3c_app_channel     = 0U,
-  k_test_i3c_app_probe_addr  = 0x43U,
-  k_test_i3c_app_bad_channel = 99U,
+  k_test_i3c_app_channel     = 0U,    /**< Test I3C app channel.       */
+  k_test_i3c_app_probe_addr  = 0x43U, /**< Test I3C app probe address. */
+  k_test_i3c_app_bad_channel = 99U,   /**< Test I3C app bad channel.   */
 } test_i3c_app_byte_t;
 
 /** @brief Mirrors main.c pin map for SCL0 / SDA0. */

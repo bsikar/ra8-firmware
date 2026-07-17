@@ -44,8 +44,8 @@ typedef enum : uint32_t {
   k_test_canfd_nominal_bps   = 500000U,  /**< 500 kbit/s nominal.           */
   k_test_canfd_data_bps      = 2000000U, /**< 2 Mbit/s data phase.          */
   k_test_canfd_heartbeat_id  = 0x123U,   /**< Same ID main.c uses.          */
-  k_test_canfd_heartbeat_dlc = 8U,
-  k_test_canfd_bad_channel   = 99U,
+  k_test_canfd_heartbeat_dlc = 8U,       /**< Test CANFD heartbeat dlc.     */
+  k_test_canfd_bad_channel   = 99U,      /**< Test CANFD bad channel.       */
 } test_canfd_const_t;
 
 /**

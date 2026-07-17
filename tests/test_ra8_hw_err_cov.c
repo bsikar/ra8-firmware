@@ -48,7 +48,7 @@ typedef enum : uint32_t {
 
 /** @brief One past the fault-table capacity, to drive the no_mem path. */
 typedef enum : uint8_t {
-  k_test_overflow_regs = (uint8_t)k_ra8_sim_mmio_max_faults + 1U,
+  k_test_overflow_regs = (uint8_t)k_ra8_sim_mmio_max_faults + 1U, /**< Test overflow registers. */
 } test_overflow_t;
 
 /**

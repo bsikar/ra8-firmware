@@ -14,13 +14,13 @@
 #include "unity_minimal.h"
 
 typedef enum : int64_t {
-  k_test_ptp_sec     = 1234567,
-  k_test_ptp_nsec    = 500000000,
-  k_test_ptp_bad_ns  = 1000000001,
-  k_test_ptp_offset  = 250,
-  k_test_ptp_neg_off = -250,
-  k_test_ptp_ppb     = 12345,
-  k_test_ctx_marker  = 0xCAFE,
+  k_test_ptp_sec     = 1234567,    /**< Test ptp sec.     */
+  k_test_ptp_nsec    = 500000000,  /**< Test ptp nsec.    */
+  k_test_ptp_bad_ns  = 1000000001, /**< Test ptp bad ns.  */
+  k_test_ptp_offset  = 250,        /**< Test ptp offset.  */
+  k_test_ptp_neg_off = -250,       /**< Test ptp neg off. */
+  k_test_ptp_ppb     = 12345,      /**< Test ptp ppb.     */
+  k_test_ctx_marker  = 0xCAFE,     /**< Test ctx marker.  */
 } test_ptp_const_t;
 
 static uint32_t           s_cb_count;

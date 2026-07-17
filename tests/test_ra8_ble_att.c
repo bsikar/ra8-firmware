@@ -130,8 +130,8 @@ static void test_mcdc_writable_char_value(void)
    * production enum is not exposed from the public header; the mirror
    * only cares about equality semantics). */
   enum {
-    k_kind_char_value = 4U,
-    k_kind_other      = 7U,
+    k_kind_char_value = 4U, /**< Kind char value. */
+    k_kind_other      = 7U, /**< Kind other.      */
   };
   TEST_ASSERT_EQ(1, mirror_writable_char_value(k_kind_char_value, k_kind_char_value, buf));
   TEST_ASSERT_EQ(0, mirror_writable_char_value(k_kind_other, k_kind_char_value, buf));

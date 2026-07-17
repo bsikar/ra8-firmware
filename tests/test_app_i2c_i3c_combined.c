@@ -24,15 +24,15 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_combo_test_bus_hz   = 100000U,
-  k_combo_test_pclka_hz = 125000000U,
-  k_combo_test_pclkb_hz = 62500000U,
+  k_combo_test_bus_hz   = 100000U,    /**< Combo test bus Hz.   */
+  k_combo_test_pclka_hz = 125000000U, /**< Combo test pclka Hz. */
+  k_combo_test_pclkb_hz = 62500000U,  /**< Combo test pclkb Hz. */
 } combo_test_const_t;
 
 typedef enum : uint8_t {
-  k_combo_test_i2c_ch = 1U, /**< RIIC ch1 -- U15. */
-  k_combo_test_i3c_ch = 0U, /**< I3C ch0.         */
-  k_combo_test_probe  = 0x43U,
+  k_combo_test_i2c_ch = 1U,    /**< RIIC ch1 -- U15.  */
+  k_combo_test_i3c_ch = 0U,    /**< I3C ch0.          */
+  k_combo_test_probe  = 0x43U, /**< Combo test probe. */
 } combo_test_byte_t;
 
 static void reset_world(void)

@@ -31,11 +31,11 @@
 
 /** @brief Per-test enums. */
 typedef enum : uint32_t {
-  k_test_hmsc_psel_usbhs  = 0x14U,
-  k_test_hmsc_target_lun  = 0U,
-  k_test_hmsc_block_size  = 512U,
-  k_test_hmsc_ctx_token   = 0x484DU, /**< 'HM' */
-  k_test_hmsc_bogus_speed = 9U,
+  k_test_hmsc_psel_usbhs  = 0x14U,   /**< Test hmsc psel usbhs.  */
+  k_test_hmsc_target_lun  = 0U,      /**< Test hmsc target lun.  */
+  k_test_hmsc_block_size  = 512U,    /**< Test hmsc block size.  */
+  k_test_hmsc_ctx_token   = 0x484DU, /**< 'HM'                   */
+  k_test_hmsc_bogus_speed = 9U,      /**< Test hmsc bogus speed. */
 } test_hmsc_const_t;
 
 /** @brief Captured attach state. */

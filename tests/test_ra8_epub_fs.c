@@ -31,14 +31,14 @@
 /* --- RAM block device + minimal FAT16 volume (mirrors test_ra8_fs_fat.c) --- */
 
 typedef enum : uint32_t {
-  k_disk_block_size = 512U,
+  k_disk_block_size = 512U,       /**< Disk block size.    */
   k_disk_blocks     = 8U * 1024U, /**< 4 MiB FAT16 volume. */
 } epub_fs_disk_t;
 
 typedef struct {
-  uint8_t* bytes;
-  uint32_t block_count;
-  uint32_t byte_count;
+  uint8_t* bytes;       /**< Bytes.       */
+  uint32_t block_count; /**< Block count. */
+  uint32_t byte_count;  /**< Byte count.  */
 } mem_disk_t;
 
 static mem_disk_t s_disk = {};
@@ -106,8 +106,8 @@ static void build_fat16_volume(void)
 /* --- A real (minimal) EPUB assembled in memory with miniz --- */
 
 typedef enum : size_t {
-  k_epub_cap = 8U * 1024U,
-  k_read_cap = 8U * 1024U,
+  k_epub_cap = 8U * 1024U, /**< EPUB cap. */
+  k_read_cap = 8U * 1024U, /**< Read cap. */
 } epub_fs_cap_t;
 
 static uint8_t s_epub[k_epub_cap];
@@ -144,9 +144,9 @@ static void build_epub(void)
   memset(&zip, 0, sizeof(zip));
   TEST_ASSERT(mz_zip_writer_init_heap(&zip, 0U, (size_t)k_epub_cap) == MZ_TRUE);
   struct {
-    const char* path;
-    const char* data;
-    mz_uint     flags;
+    const char* path;  /**< Path.  */
+    const char* data;  /**< Data.  */
+    mz_uint     flags; /**< Flags. */
   } e[] = {
     {"mimetype", k_mimetype, MZ_NO_COMPRESSION},
     {"META-INF/container.xml", k_container, MZ_DEFAULT_COMPRESSION},

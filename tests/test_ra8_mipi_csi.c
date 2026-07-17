@@ -24,20 +24,20 @@
  * @brief Constants used across multiple test cases.
  */
 typedef enum : uint32_t {
-  k_ra8_mipi_csi_test_frrclk         = 3U, /**< vclk/hsclk = 125/90 example. */
-  k_ra8_mipi_csi_test_frrskw         = 5U, /**< vclk/hsclk = 125/90 example. */
-  k_ra8_mipi_csi_test_ractdet_marker = 0x00020000UL,
-  k_ra8_mipi_csi_test_ctx_marker     = 0xCAFEU,
-  k_ra8_mipi_csi_test_dl_marker      = 0xC0DEU,
-  k_ra8_mipi_csi_test_vc_marker      = 0xBEEFU,
-  k_ra8_mipi_csi_test_pm_marker      = 0xFACEU,
-  k_ra8_mipi_csi_test_gst_marker     = 0xBABEU,
-  k_ra8_mipi_csi_test_mcg_value      = 0x00100A02UL, /**< VER=2 SDLN=0xA STAGES=0x10. */
-  k_ra8_mipi_csi_test_dt_low_value   = 0xC0008010UL, /**< YUV422_8/10 + GSP1 + EOT.   */
-  k_ra8_mipi_csi_test_dt_high_value  = 0x00000010UL, /**< RGB888.                     */
-  k_ra8_mipi_csi_test_threshold      = 7U,
-  k_ra8_mipi_csi_test_pkt_value      = 0x0A083412UL, /**< VC=0xA DT=0x08 SPDT=0x3412. */
-  k_ra8_mipi_csi_test_pmst_marker    = 0x00C00055UL, /**< Lower 8 W1C-able + RO bits. */
+  k_ra8_mipi_csi_test_frrclk         = 3U,           /**< vclk/hsclk = 125/90 example.      */
+  k_ra8_mipi_csi_test_frrskw         = 5U,           /**< vclk/hsclk = 125/90 example.      */
+  k_ra8_mipi_csi_test_ractdet_marker = 0x00020000UL, /**< RA8 mipi csi test ractdet marker. */
+  k_ra8_mipi_csi_test_ctx_marker     = 0xCAFEU,      /**< RA8 mipi csi test ctx marker.     */
+  k_ra8_mipi_csi_test_dl_marker      = 0xC0DEU,      /**< RA8 mipi csi test dl marker.      */
+  k_ra8_mipi_csi_test_vc_marker      = 0xBEEFU,      /**< RA8 mipi csi test vc marker.      */
+  k_ra8_mipi_csi_test_pm_marker      = 0xFACEU,      /**< RA8 mipi csi test pm marker.      */
+  k_ra8_mipi_csi_test_gst_marker     = 0xBABEU,      /**< RA8 mipi csi test gst marker.     */
+  k_ra8_mipi_csi_test_mcg_value      = 0x00100A02UL, /**< VER=2 SDLN=0xA STAGES=0x10.       */
+  k_ra8_mipi_csi_test_dt_low_value   = 0xC0008010UL, /**< YUV422_8/10 + GSP1 + EOT.         */
+  k_ra8_mipi_csi_test_dt_high_value  = 0x00000010UL, /**< RGB888.                           */
+  k_ra8_mipi_csi_test_threshold      = 7U,           /**< RA8 mipi csi test threshold.      */
+  k_ra8_mipi_csi_test_pkt_value      = 0x0A083412UL, /**< VC=0xA DT=0x08 SPDT=0x3412.       */
+  k_ra8_mipi_csi_test_pmst_marker    = 0x00C00055UL, /**< Lower 8 W1C-able + RO bits.       */
 } ra8_mipi_csi_test_const_t;
 
 /**
@@ -1166,10 +1166,10 @@ static void test_deinit(void)
  */
 
 typedef enum : uint32_t {
-  k_ra8_mipi_csi_test_vc_keep_mask = 0x0005U,  /**< Keep VC0 + VC2.      */
-  k_ra8_mipi_csi_test_vc_seed      = 0xABCDUL, /**< Pre-seeded VCIE val. */
-  k_ra8_mipi_csi_test_err_marker   = 0xDEC0DE0U,
-  k_ra8_mipi_csi_test_err_ctx_val  = 0xCAFEU,
+  k_ra8_mipi_csi_test_vc_keep_mask = 0x0005U,    /**< Keep VC0 + VC2.                  */
+  k_ra8_mipi_csi_test_vc_seed      = 0xABCDUL,   /**< Pre-seeded VCIE val.             */
+  k_ra8_mipi_csi_test_err_marker   = 0xDEC0DE0U, /**< RA8 mipi csi test error marker.  */
+  k_ra8_mipi_csi_test_err_ctx_val  = 0xCAFEU,    /**< RA8 mipi csi test error ctx val. */
 } ra8_mipi_csi_sw6_const_t;
 
 static uint32_t                    s_err_calls;

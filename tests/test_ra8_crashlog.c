@@ -152,7 +152,7 @@ static void test_crashlog_counter_saturates(void)
   const ra8_exception_last_t synth = make_synth(5U, 0x02000200UL);
   /* k_ra8_crashlog_loops_max is 255 in ra8_crashlog.c; overshoot it. */
   enum : uint32_t {
-    k_overshoot = 300U,
+    k_overshoot = 300U, /**< Overshoot. */
   };
   for (uint32_t i = 0U; i < (uint32_t)k_overshoot; i++) {
     ra8_crashlog_record_fault(&synth);

@@ -88,10 +88,10 @@ static const char s_ds_golden_sha256[] =
 
 /** @brief Fixture dimensions and golden length (bytes). */
 enum : uint32_t {
-  k_ds_src_w      = 37U,
-  k_ds_src_h      = 21U,
-  k_ds_max_edge   = 16U,
-  k_ds_out_w      = 16U,
-  k_ds_out_h      = 9U,
-  k_ds_golden_len = 72U,
+  k_ds_src_w      = 37U, /**< Ds src w.         */
+  k_ds_src_h      = 21U, /**< Ds src h.         */
+  k_ds_max_edge   = 16U, /**< Ds maximum edge.  */
+  k_ds_out_w      = 16U, /**< Ds out w.         */
+  k_ds_out_h      = 9U,  /**< Ds out h.         */
+  k_ds_golden_len = 72U, /**< Ds golden length. */
 };

@@ -18,35 +18,36 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_comp_cdc_first = 0U, /**< CDC starts at IF0.  */
-  k_test_comp_cdc_count = 2U, /**< CDC owns IF0 + IF1. */
-  k_test_comp_hid_first = 2U, /**< HID at IF2.         */
-  k_test_comp_hid_count = 1U,
-  k_test_comp_msc_first = 3U, /**< MSC at IF3. */
-  k_test_comp_msc_count = 1U,
+  k_test_comp_cdc_first = 0U, /**< CDC starts at IF0.   */
+  k_test_comp_cdc_count = 2U, /**< CDC owns IF0 + IF1.  */
+  k_test_comp_hid_first = 2U, /**< HID at IF2.          */
+  k_test_comp_hid_count = 1U, /**< Test comp hid count. */
+  k_test_comp_msc_first = 3U, /**< MSC at IF3.          */
+  k_test_comp_msc_count = 1U, /**< Test comp msc count. */
 } test_comp_layout_t;
 
 typedef enum : uint8_t {
-  k_test_comp_bm_class_to_if    = 0x21U, /**< Class, OUT, interface. */
-  k_test_comp_bm_class_to_if_in = 0xA1U, /**< Class, IN,  interface. */
-  k_test_comp_bm_std_to_dev     = 0x00U, /**< Standard, OUT, device. */
-  k_test_comp_bm_std_to_dev_in  = 0x80U, /**< Standard, IN,  device. */
-  k_test_comp_std_set_address   = 0x05U,
-  k_test_comp_std_get_status    = 0x00U,
+  k_test_comp_bm_class_to_if    = 0x21U, /**< Class, OUT, interface.     */
+  k_test_comp_bm_class_to_if_in = 0xA1U, /**< Class, IN,  interface.     */
+  k_test_comp_bm_std_to_dev     = 0x00U, /**< Standard, OUT, device.     */
+  k_test_comp_bm_std_to_dev_in  = 0x80U, /**< Standard, IN,  device.     */
+  k_test_comp_std_set_address   = 0x05U, /**< Test comp std set address. */
+  k_test_comp_std_get_status    = 0x00U, /**< Test comp std get status.  */
 } test_comp_setup_t;
 
 typedef enum : uint8_t {
-  k_test_comp_handler_self = (uint8_t)k_ra8_usb_composite_max_classes,
+  k_test_comp_handler_self =
+    (uint8_t)k_ra8_usb_composite_max_classes, /**< Test comp handler self. */
 } test_comp_handler_t;
 
 /* ---- Stub class layers ---- */
 
 typedef struct {
-  uint32_t init_calls;
-  uint32_t setup_calls;
-  uint32_t close_calls;
-  uint16_t last_w_index;
-  uint8_t  last_b_request;
+  uint32_t init_calls;     /**< Init calls.     */
+  uint32_t setup_calls;    /**< Setup calls.    */
+  uint32_t close_calls;    /**< Close calls.    */
+  uint16_t last_w_index;   /**< Last w index.   */
+  uint8_t  last_b_request; /**< Last b request. */
 } test_class_state_t;
 
 static test_class_state_t s_cdc_state;

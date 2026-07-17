@@ -25,7 +25,7 @@ typedef enum : uint32_t {
   k_test_mpu_region_size   = 0x00001000UL, /**< 4 KiB power-of-two size. */
   k_test_mpu_region_base   = 0x20000000UL, /**< Aligned base.            */
   k_test_mpu_mair0         = 0x44440000UL, /**< Arbitrary MAIR pattern.  */
-  k_test_mpu_mair1         = 0x00000044UL,
+  k_test_mpu_mair1         = 0x00000044UL, /**< Test MPU mair1.          */
 } test_mpu_layout_t;
 
 /**

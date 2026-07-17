@@ -26,12 +26,12 @@
  * @brief Sizes used by the test fixtures.
  */
 typedef enum : uint16_t {
-  k_jt_w              = 16U,                   /**< Test image width.  */
-  k_jt_h              = 16U,                   /**< Test image height. */
-  k_jt_pixels         = (uint16_t)(16U * 16U), /**< Pixel count.       */
-  k_jt_rgb_bytes      = (uint16_t)(16U * 16U * 3U),
-  k_jt_jpeg_cap       = 4096U, /**< Encoder out cap.       */
-  k_jt_mse_psnr30_max = 65U,   /**< MSE for PSNR ~= 30 dB. */
+  k_jt_w              = 16U,                        /**< Test image width.      */
+  k_jt_h              = 16U,                        /**< Test image height.     */
+  k_jt_pixels         = (uint16_t)(16U * 16U),      /**< Pixel count.           */
+  k_jt_rgb_bytes      = (uint16_t)(16U * 16U * 3U), /**< Jt RGB bytes.          */
+  k_jt_jpeg_cap       = 4096U,                      /**< Encoder out cap.       */
+  k_jt_mse_psnr30_max = 65U,                        /**< MSE for PSNR ~= 30 dB. */
 } ra8_jpeg_test_const_t;
 
 /**
@@ -257,8 +257,8 @@ static void test_encode_out_of_buffer(void)
  * (DO-178C Level B / IEC 61508 SIL 3 / ISO 26262 ASIL C). */
 
 typedef enum : uint8_t {
-  k_mcdc_jpeg_q_below = 0U,
-  k_mcdc_jpeg_q_above = 101U,
+  k_mcdc_jpeg_q_below = 0U,   /**< Mcdc JPEG q below. */
+  k_mcdc_jpeg_q_above = 101U, /**< Mcdc JPEG q above. */
 } mcdc_jpeg_const_t;
 
 /**

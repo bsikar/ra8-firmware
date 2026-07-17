@@ -28,9 +28,9 @@
 
 /** @brief Framebuffer geometry + palette for the render cases. */
 enum : int32_t {
-  k_w     = 200,
-  k_h     = 200,
-  k_white = 0x00FFFFFF,
+  k_w     = 200,        /**< W.     */
+  k_h     = 200,        /**< H.     */
+  k_white = 0x00FFFFFF, /**< White. */
 };
 
 /** @brief Host framebuffer (ARGB8888) bound by every render/draw case. */

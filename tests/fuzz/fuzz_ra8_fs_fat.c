@@ -20,9 +20,9 @@
 #include "ra8_fs.h"
 
 enum : uint32_t {
-  k_fuzz_fat_max_input    = 65536U,
-  k_fuzz_fat_sector_bytes = 512U,
-  k_fuzz_fat_block_count  = 1024U,
+  k_fuzz_fat_max_input    = 65536U, /**< Fuzz fat maximum input. */
+  k_fuzz_fat_sector_bytes = 512U,   /**< Fuzz fat sector bytes.  */
+  k_fuzz_fat_block_count  = 1024U,  /**< Fuzz fat block count.   */
 };
 
 static const uint8_t* s_blob;

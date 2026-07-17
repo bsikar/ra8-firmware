@@ -39,7 +39,7 @@
  * ===========================================================================
  */
 typedef enum : uint16_t {
-  k_sd_block      = 512U,
+  k_sd_block      = 512U,  /**< SD block.                             */
   k_sd_cmd_len    = 6U,    /**< opcode + 4 arg + crc.                 */
   k_sd_resp_cap   = 520U,  /**< R1 + token + 512 data + 2 CRC.        */
   k_sd_cmd_start  = 0x40U, /**< SPI command lead bits (01xxxxxx).     */
@@ -76,16 +76,16 @@ typedef enum : uint8_t {
 } sd_cmd_idx_t;
 
 typedef struct {
-  const uint8_t* image; /**< Backing card image (FAT volume). */
-  uint32_t       image_len;
-  bool           collecting;
-  bool           app_cmd; /**< Previous command was CMD55 (APP_CMD). */
-  bool           ready;   /**< ACMD41 has completed.                 */
-  uint8_t        cmd[k_sd_cmd_len];
-  uint32_t       cmd_idx;
-  uint8_t        resp[k_sd_resp_cap];
-  uint32_t       resp_len;
-  uint32_t       resp_pos;
+  const uint8_t* image;               /**< Backing card image (FAT volume).      */
+  uint32_t       image_len;           /**< Image length.                         */
+  bool           collecting;          /**< Collecting.                           */
+  bool           app_cmd;             /**< Previous command was CMD55 (APP_CMD). */
+  bool           ready;               /**< ACMD41 has completed.                 */
+  uint8_t        cmd[k_sd_cmd_len];   /**< Cmd.                                  */
+  uint32_t       cmd_idx;             /**< Cmd index.                            */
+  uint8_t        resp[k_sd_resp_cap]; /**< Resp.                                 */
+  uint32_t       resp_len;            /**< Resp length.                          */
+  uint32_t       resp_pos;            /**< Resp pos.                             */
 } sd_card_t;
 
 static sd_card_t s_card;
@@ -233,19 +233,19 @@ static ra8_err_t t_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
  * ===========================================================================
  */
 typedef enum : uint32_t {
-  k_disk_block_size   = 512U,
-  k_disk_blocks_fat16 = 8U * 1024U,
-  k_bpb_off_secperfat = 22U,
-  k_bpb_sig_off_a     = 510U,
-  k_bpb_sig_off_b     = 511U,
-  k_bpb_sig_a         = 0x55U,
-  k_bpb_sig_b         = 0xAAU,
-  k_bg_argb           = 0xFF000000U,
+  k_disk_block_size   = 512U,        /**< Disk block size.   */
+  k_disk_blocks_fat16 = 8U * 1024U,  /**< Disk blocks fat16. */
+  k_bpb_off_secperfat = 22U,         /**< Bpb off secperfat. */
+  k_bpb_sig_off_a     = 510U,        /**< Bpb sig off a.     */
+  k_bpb_sig_off_b     = 511U,        /**< Bpb sig off b.     */
+  k_bpb_sig_a         = 0x55U,       /**< Bpb sig a.         */
+  k_bpb_sig_b         = 0xAAU,       /**< Bpb sig b.         */
+  k_bg_argb           = 0xFF000000U, /**< Bg argb.           */
 } test_disk_const_t;
 
 typedef struct {
-  uint8_t* bytes;
-  uint32_t block_count;
+  uint8_t* bytes;       /**< Bytes.       */
+  uint32_t block_count; /**< Block count. */
 } mem_disk_t;
 
 static mem_disk_t s_disk;
@@ -303,11 +303,11 @@ static void build_fat16(void)
 
 /* ---- font + framebuffer -------------------------------------------------- */
 enum {
-  k_font_cap = 2U * 1024U * 1024U,
-  k_path_cap = 1024,
-  k_fb_w     = 384,
-  k_fb_h     = 256,
-  k_font_px  = 18,
+  k_font_cap = 2U * 1024U * 1024U, /**< Font cap. */
+  k_path_cap = 1024,               /**< Path cap. */
+  k_fb_w     = 384,                /**< Fb w.     */
+  k_fb_h     = 256,                /**< Fb h.     */
+  k_font_px  = 18,                 /**< Font px.  */
 };
 static uint8_t*  s_src_font;
 static uint8_t*  s_card_font;

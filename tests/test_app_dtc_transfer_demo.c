@@ -32,22 +32,22 @@
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
-  k_t_dtc_words   = 256U,
-  k_t_dtc_byte_sh = 8U,
+  k_t_dtc_words   = 256U, /**< T dtc words.   */
+  k_t_dtc_byte_sh = 8U,   /**< T dtc byte sh. */
 } t_dtc_const_t;
 
 /* Mirror of the demo's TI mode-bit field values (HUM Ch 18.2.2 / 18.2.3). */
 typedef enum : uint8_t {
-  k_t_dtc_md_block   = 0x2U,
-  k_t_dtc_sz_word    = 0x2U,
-  k_t_dtc_sm_inc     = 0x2U,
-  k_t_dtc_dm_inc     = 0x2U,
-  k_t_dtc_mra_md_pos = 6U,
-  k_t_dtc_mra_sz_pos = 4U,
-  k_t_dtc_mra_sm_pos = 2U,
-  k_t_dtc_mrb_dm_pos = 2U,
-  k_t_dtc_mra_bpos   = 24U,
-  k_t_dtc_mrb_bpos   = 16U,
+  k_t_dtc_md_block   = 0x2U, /**< T dtc md block.   */
+  k_t_dtc_sz_word    = 0x2U, /**< T dtc sz word.    */
+  k_t_dtc_sm_inc     = 0x2U, /**< T dtc sm inc.     */
+  k_t_dtc_dm_inc     = 0x2U, /**< T dtc dm inc.     */
+  k_t_dtc_mra_md_pos = 6U,   /**< T dtc mra md pos. */
+  k_t_dtc_mra_sz_pos = 4U,   /**< T dtc mra sz pos. */
+  k_t_dtc_mra_sm_pos = 2U,   /**< T dtc mra sm pos. */
+  k_t_dtc_mrb_dm_pos = 2U,   /**< T dtc mrb dm pos. */
+  k_t_dtc_mra_bpos   = 24U,  /**< T dtc mra bpos.   */
+  k_t_dtc_mrb_bpos   = 16U,  /**< T dtc mrb bpos.   */
 } t_dtc_mr_t;
 
 typedef enum : uint32_t {

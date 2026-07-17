@@ -31,11 +31,11 @@
  * @brief Magic numbers used only inside this test TU.
  */
 typedef enum : uint32_t {
-  k_ra8_reset_test_aircr_zero    = 0UL,
-  k_ra8_reset_test_attribution_v = 0x0000001FUL,
-  k_ra8_reset_test_clear_all_r0  = 0x000000FFUL,
-  k_ra8_reset_test_clear_swrf    = ((uint32_t)0x00000004UL << 8U),
-  k_ra8_reset_test_clear_cwsf    = 0x80000000UL, /**< Bit 31 triggers RSTSR2 write path. */
+  k_ra8_reset_test_aircr_zero    = 0UL,          /**< RA8 reset test aircr zero.    */
+  k_ra8_reset_test_attribution_v = 0x0000001FUL, /**< RA8 reset test attribution v. */
+  k_ra8_reset_test_clear_all_r0  = 0x000000FFUL, /**< RA8 reset test clear all r0.  */
+  k_ra8_reset_test_clear_swrf = ((uint32_t)0x00000004UL << 8U), /**< RA8 reset test clear swrf. */
+  k_ra8_reset_test_clear_cwsf = 0x80000000UL, /**< Bit 31 triggers RSTSR2 write path. */
 } ra8_reset_test_const_t;
 
 /**

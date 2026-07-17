@@ -164,14 +164,22 @@ ra8_err_t ra8_cgc_usbfs_clock_enable_cov2(void);
 ra8_err_t ra8_cgc_usbhs_pll_enable_cov2(void);
 ra8_err_t ra8_cgc_ensure_hoco_running_for_usb_ck_cov2(void);
 
-#define ra8_cgc_pll2_enable                    ra8_cgc_pll2_enable_cov2
-#define ra8_cgc_usbfs_clock_enable             ra8_cgc_usbfs_clock_enable_cov2
-#define ra8_cgc_usbhs_pll_enable               ra8_cgc_usbhs_pll_enable_cov2
+/** @brief RA8 cgc pll2 enable. */
+#define ra8_cgc_pll2_enable ra8_cgc_pll2_enable_cov2
+/** @brief RA8 cgc usbfs clock enable. */
+#define ra8_cgc_usbfs_clock_enable ra8_cgc_usbfs_clock_enable_cov2
+/** @brief RA8 cgc usbhs pll enable. */
+#define ra8_cgc_usbhs_pll_enable ra8_cgc_usbhs_pll_enable_cov2
+/** @brief RA8 cgc ensure hoco running for USB ck. */
 #define ra8_cgc_ensure_hoco_running_for_usb_ck ra8_cgc_ensure_hoco_running_for_usb_ck_cov2
-#define ra8_cgc_wait_oscsf_set                 mock_wait_oscsf_set
-#define ra8_cgc_wait_oscsf_clear               mock_wait_oscsf_clear
-#define ra8_sys_usbckcr                        mock_ra8_sys_usbckcr
-#define ra8_sys_usb60ckcr                      mock_ra8_sys_usb60ckcr
+/** @brief RA8 cgc wait oscsf set. */
+#define ra8_cgc_wait_oscsf_set mock_wait_oscsf_set
+/** @brief RA8 cgc wait oscsf clear. */
+#define ra8_cgc_wait_oscsf_clear mock_wait_oscsf_clear
+/** @brief RA8 sys usbckcr. */
+#define ra8_sys_usbckcr mock_ra8_sys_usbckcr
+/** @brief RA8 sys usb60ckcr. */
+#define ra8_sys_usb60ckcr mock_ra8_sys_usb60ckcr
 
 /* Undefine RA8_SIMULATOR_MODE for the driver body ONLY so the static SRDY poll
  * helpers read the (mocked) register model instead of faking the handshake. */

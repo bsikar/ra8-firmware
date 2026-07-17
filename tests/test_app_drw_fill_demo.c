@@ -24,14 +24,14 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_t_drw_fill_argb = 0xFF00FF00U,
+  k_t_drw_fill_argb = 0xFF00FF00U, /**< T DRW fill argb. */
 } t_drw_color_t;
 
 typedef enum : uint16_t {
-  k_t_drw_fb_dim  = 32U,
-  k_t_drw_rect_xy = 8U,
-  k_t_drw_rect_wh = 16U,
-  k_t_drw_center  = 16U,
+  k_t_drw_fb_dim  = 32U, /**< T DRW fb dim.  */
+  k_t_drw_rect_xy = 8U,  /**< T DRW rect xy. */
+  k_t_drw_rect_wh = 16U, /**< T DRW rect wh. */
+  k_t_drw_center  = 16U, /**< T DRW center.  */
 } t_drw_geom_t;
 
 static uint32_t s_fb[(uint32_t)k_t_drw_fb_dim * (uint32_t)k_t_drw_fb_dim];

@@ -20,12 +20,12 @@
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
-  k_test_agt_app_reload   = 0x7FFFU,
-  k_test_agt_app_bad_chan = 16U,
+  k_test_agt_app_reload   = 0x7FFFU, /**< Test AGT app reload.   */
+  k_test_agt_app_bad_chan = 16U,     /**< Test AGT app bad chan. */
 } test_agt_app_const_t;
 
 typedef enum : uint8_t {
-  k_test_agt_app_channel = 0U,
+  k_test_agt_app_channel = 0U, /**< Test AGT app channel. */
 } test_agt_app_chan_t;
 
 static void reset_world(void)

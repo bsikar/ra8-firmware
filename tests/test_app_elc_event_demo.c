@@ -22,10 +22,10 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_elc_app_slot         = 0U,
-  k_test_elc_app_sw_event_idx = 0U,
-  k_test_elc_app_bad_slot     = 99U,
-  k_test_elc_app_bad_sw_event = 99U,
+  k_test_elc_app_slot         = 0U,  /**< Test elc app slot.           */
+  k_test_elc_app_sw_event_idx = 0U,  /**< Test elc app sw event index. */
+  k_test_elc_app_bad_slot     = 99U, /**< Test elc app bad slot.       */
+  k_test_elc_app_bad_sw_event = 99U, /**< Test elc app bad sw event.   */
 } test_elc_app_byte_t;
 
 static void reset_world(void)

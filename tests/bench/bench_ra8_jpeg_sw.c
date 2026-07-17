@@ -34,9 +34,9 @@
  * @brief Bench fixture dimensions.
  */
 typedef enum : uint16_t {
-  k_bench_jpeg_w       = 64U,
-  k_bench_jpeg_h       = 64U,
-  k_bench_jpeg_quality = 75U,
+  k_bench_jpeg_w       = 64U, /**< Bench JPEG w.       */
+  k_bench_jpeg_h       = 64U, /**< Bench JPEG h.       */
+  k_bench_jpeg_quality = 75U, /**< Bench JPEG quality. */
 } bench_jpeg_sizes_t;
 
 /**
@@ -44,8 +44,10 @@ typedef enum : uint16_t {
  * @brief Bench fixture byte counts.
  */
 typedef enum : uint32_t {
-  k_bench_jpeg_rgb_bytes = (uint32_t)k_bench_jpeg_w * (uint32_t)k_bench_jpeg_h * 3U,
-  k_bench_jpeg_buf_cap   = (uint32_t)k_bench_jpeg_w * (uint32_t)k_bench_jpeg_h * 3U,
+  k_bench_jpeg_rgb_bytes =
+    (uint32_t)k_bench_jpeg_w * (uint32_t)k_bench_jpeg_h * 3U, /**< Bench JPEG RGB bytes. */
+  k_bench_jpeg_buf_cap =
+    (uint32_t)k_bench_jpeg_w * (uint32_t)k_bench_jpeg_h * 3U, /**< Bench JPEG buffer cap. */
 } bench_jpeg_buffers_t;
 
 static uint8_t s_rgb_in[(uint32_t)k_bench_jpeg_rgb_bytes];

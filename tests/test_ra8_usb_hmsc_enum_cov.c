@@ -346,15 +346,24 @@ static void reset_state(void)
  * the hardware-transport calls to the deterministic mocks above. */
 ra8_err_t ra8_usb_hmsc_enumerate_cov(ra8_usb_hmsc_device_t* out_device);
 
-#define ra8_usb_hmsc_enumerate    ra8_usb_hmsc_enumerate_cov
+/** @brief RA8 USB hmsc enumerate. */
+#define ra8_usb_hmsc_enumerate ra8_usb_hmsc_enumerate_cov
+/** @brief RA8 USB host control xfer. */
 #define ra8_usb_host_control_xfer mock_ctrl_xfer
-#define ra8_usb_host_line_state   mock_line_state
-#define ra8_usb_host_bus_reset    mock_bus_reset
-#define ra8_usb_host_set_uact     mock_set_uact
-#define ra8_usb_host_set_target   mock_set_target
-#define ra8_usb_host_pipe_setup   mock_pipe_setup
-#define ra8_delay_ms              mock_delay_ms
-#define ra8_time_ms               mock_time_ms
+/** @brief RA8 USB host line state. */
+#define ra8_usb_host_line_state mock_line_state
+/** @brief RA8 USB host bus reset. */
+#define ra8_usb_host_bus_reset mock_bus_reset
+/** @brief RA8 USB host set uact. */
+#define ra8_usb_host_set_uact mock_set_uact
+/** @brief RA8 USB host set target. */
+#define ra8_usb_host_set_target mock_set_target
+/** @brief RA8 USB host pipe setup. */
+#define ra8_usb_host_pipe_setup mock_pipe_setup
+/** @brief RA8 delay ms. */
+#define ra8_delay_ms mock_delay_ms
+/** @brief RA8 time ms. */
+#define ra8_time_ms mock_time_ms
 
 #include "ra8_usb_hmsc_enum.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
 

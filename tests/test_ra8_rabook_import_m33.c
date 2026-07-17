@@ -95,8 +95,8 @@ static uint8_t s_blob[k_blob_cap];
 static uint8_t s_readback[k_readback_cap];
 
 typedef struct {
-  uint8_t* bytes;
-  uint32_t block_count;
+  uint8_t* bytes;       /**< Bytes.       */
+  uint32_t block_count; /**< Block count. */
 } mem_disk_t;
 
 static mem_disk_t s_disk = {};

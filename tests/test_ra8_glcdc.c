@@ -22,25 +22,25 @@ typedef enum : uint32_t {
 } test_glcdc_fb_t;
 
 typedef enum : uint16_t {
-  k_test_glcdc_width  = 1024U,
-  k_test_glcdc_height = 600U,
-  k_test_layer2_w     = 320U,
-  k_test_layer2_h     = 240U,
-  k_test_layer2_x     = 64U,
-  k_test_layer2_y     = 32U,
-  k_test_layer2_strd  = 640U, /**< 320 * 2bpp (RGB565). */
+  k_test_glcdc_width  = 1024U, /**< Test GLCDC width.    */
+  k_test_glcdc_height = 600U,  /**< Test GLCDC height.   */
+  k_test_layer2_w     = 320U,  /**< Test layer2 w.       */
+  k_test_layer2_h     = 240U,  /**< Test layer2 h.       */
+  k_test_layer2_x     = 64U,   /**< Test layer2 x.       */
+  k_test_layer2_y     = 32U,   /**< Test layer2 y.       */
+  k_test_layer2_strd  = 640U,  /**< 320 * 2bpp (RGB565). */
 } test_glcdc_dim_t;
 
 /* ER-TFT070-6 raw panel timing handed to ra8_glcdc_init (the values that used
  * to be hardcoded in the driver). The expected register layouts below are
  * derived from these, so this fixture pins the driver's output value-for-value. */
 typedef enum : uint16_t {
-  k_test_glcdc_h_front = 160U,
-  k_test_glcdc_h_back  = 160U,
-  k_test_glcdc_h_sync  = 4U,
-  k_test_glcdc_v_front = 12U,
-  k_test_glcdc_v_back  = 23U,
-  k_test_glcdc_v_sync  = 3U,
+  k_test_glcdc_h_front = 160U, /**< Test GLCDC h front. */
+  k_test_glcdc_h_back  = 160U, /**< Test GLCDC h back.  */
+  k_test_glcdc_h_sync  = 4U,   /**< Test GLCDC h sync.  */
+  k_test_glcdc_v_front = 12U,  /**< Test GLCDC v front. */
+  k_test_glcdc_v_back  = 23U,  /**< Test GLCDC v back.  */
+  k_test_glcdc_v_sync  = 3U,   /**< Test GLCDC v sync.  */
 } test_glcdc_timing_t;
 
 static const ra8_glcdc_timing_t k_test_glcdc_timing = {
@@ -55,10 +55,10 @@ static const ra8_glcdc_timing_t k_test_glcdc_timing = {
 };
 
 typedef enum : uint8_t {
-  k_test_alpha_half = 0x80U,
-  k_test_layer1     = 0U,
-  k_test_layer2     = 1U,
-  k_test_clut_small = 4U,
+  k_test_alpha_half = 0x80U, /**< Test alpha half. */
+  k_test_layer1     = 0U,    /**< Test layer1.     */
+  k_test_layer2     = 1U,    /**< Test layer2.     */
+  k_test_clut_small = 4U,    /**< Test CLUT small. */
 } test_glcdc_byte_t;
 
 /**
@@ -101,12 +101,12 @@ typedef enum : uint16_t {
 } test_glcdc_prcr_val_t;
 
 typedef enum : uint32_t {
-  k_test_bgc_color = 0xFF112233UL,
-  k_test_clut_e0   = 0xAA000001UL,
-  k_test_clut_e1   = 0xAA000002UL,
-  k_test_clut_e2   = 0xAA000003UL,
-  k_test_clut_e3   = 0xAA000004UL,
-  k_test_clut_dist = 0xDEADBEEFUL,
+  k_test_bgc_color = 0xFF112233UL, /**< Test bgc color. */
+  k_test_clut_e0   = 0xAA000001UL, /**< Test CLUT e0.   */
+  k_test_clut_e1   = 0xAA000002UL, /**< Test CLUT e1.   */
+  k_test_clut_e2   = 0xAA000003UL, /**< Test CLUT e2.   */
+  k_test_clut_e3   = 0xAA000004UL, /**< Test CLUT e3.   */
+  k_test_clut_dist = 0xDEADBEEFUL, /**< Test CLUT dist. */
 } test_glcdc_word_t;
 
 /* Packed register layouts the driver writes for the supplied ER-TFT070-6
@@ -114,19 +114,22 @@ typedef enum : uint32_t {
  * carry `(back+1) << 16 | active`, GR1_LINE carries `(h-1) << 16 | (line_bytes/64 - 1)`,
  * and GR1_FMT carries `format << 28`. */
 typedef enum : uint32_t {
-  k_test_pgeb1_h_back_plus_1   = 161U, /* 160 + sync_pos_min(1) */
-  k_test_pgeb1_v_back_plus_1   = 24U,  /* 23  + sync_pos_min(1) */
-  k_test_glcdc_shift_high      = 16U,
-  k_test_glcdc_shift_flm6_fmt  = 28U,
-  k_test_glcdc_axi_burst_bytes = 64U,
-  k_test_glcdc_bpp_rgb565      = 2U,
-  k_test_exp_bg_hsize = ((uint32_t)k_test_pgeb1_h_back_plus_1 << 16) | (uint32_t)k_test_glcdc_width,
-  k_test_exp_bg_vsize =
-    ((uint32_t)k_test_pgeb1_v_back_plus_1 << 16) | (uint32_t)k_test_glcdc_height,
-  k_test_exp_gr1_fmt        = ((uint32_t)k_ra8_glcdc_fmt_rgb565 << 28),
-  k_test_exp_gr1_line_bytes = (uint32_t)k_test_glcdc_width * (uint32_t)k_test_glcdc_bpp_rgb565,
+  k_test_pgeb1_h_back_plus_1   = 161U, /**< 160 + sync_pos_min(1).      */
+  k_test_pgeb1_v_back_plus_1   = 24U,  /**< 23  + sync_pos_min(1).      */
+  k_test_glcdc_shift_high      = 16U,  /**< Test GLCDC shift high.      */
+  k_test_glcdc_shift_flm6_fmt  = 28U,  /**< Test GLCDC shift flm6 fmt.  */
+  k_test_glcdc_axi_burst_bytes = 64U,  /**< Test GLCDC axi burst bytes. */
+  k_test_glcdc_bpp_rgb565      = 2U,   /**< Test GLCDC bpp rgb565.      */
+  k_test_exp_bg_hsize          = ((uint32_t)k_test_pgeb1_h_back_plus_1 << 16) |
+                                 (uint32_t)k_test_glcdc_width, /**< Test exp bg hsize. */
+  k_test_exp_bg_vsize          = ((uint32_t)k_test_pgeb1_v_back_plus_1 << 16) |
+                                 (uint32_t)k_test_glcdc_height, /**< Test exp bg vsize. */
+  k_test_exp_gr1_fmt           = ((uint32_t)k_ra8_glcdc_fmt_rgb565 << 28), /**< Test exp gr1 fmt. */
+  k_test_exp_gr1_line_bytes    = (uint32_t)k_test_glcdc_width *
+                                 (uint32_t)k_test_glcdc_bpp_rgb565, /**< Test exp gr1 line bytes. */
   k_test_exp_gr1_line = (((uint32_t)k_test_glcdc_height - 1U) << 16) |
-                        ((k_test_exp_gr1_line_bytes / (uint32_t)k_test_glcdc_axi_burst_bytes) - 1U),
+                        ((k_test_exp_gr1_line_bytes / (uint32_t)k_test_glcdc_axi_burst_bytes) -
+                         1U), /**< Test exp gr1 line. */
 } test_glcdc_packed_t;
 
 /**

@@ -16,15 +16,15 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_adc_ch_in_range     = 0U,
-  k_test_adc_ch_max_idx      = 23U,
-  k_test_adc_ch_oob          = 24U,
-  k_test_adc_ch_huge         = 200U,
-  k_test_adc_group_zero      = 0U,
-  k_test_adc_chan_count_zero = 0U,
-  k_test_adc_chan_count_one  = 1U,
-  k_test_adc_chan_count_max  = 8U,
-  k_test_adc_chan_count_over = 9U,
+  k_test_adc_ch_in_range     = 0U,   /**< Test ADC channel in range.      */
+  k_test_adc_ch_max_idx      = 23U,  /**< Test ADC channel maximum index. */
+  k_test_adc_ch_oob          = 24U,  /**< Test ADC channel oob.           */
+  k_test_adc_ch_huge         = 200U, /**< Test ADC channel huge.          */
+  k_test_adc_group_zero      = 0U,   /**< Test ADC group zero.            */
+  k_test_adc_chan_count_zero = 0U,   /**< Test ADC chan count zero.       */
+  k_test_adc_chan_count_one  = 1U,   /**< Test ADC chan count one.        */
+  k_test_adc_chan_count_max  = 8U,   /**< Test ADC chan count maximum.    */
+  k_test_adc_chan_count_over = 9U,   /**< Test ADC chan count over.       */
 } test_adc_t;
 
 /**

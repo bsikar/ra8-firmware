@@ -36,13 +36,13 @@
 
 /** @brief Per-test enums. */
 typedef enum : uint32_t {
-  k_test_hkbd_baud         = 115200U,
-  k_test_hkbd_pclk_hz      = 125000000U,
-  k_test_hkbd_sci_channel  = 8U,
-  k_test_hkbd_psel_usbhs   = 0x14U,
-  k_test_hkbd_report_bytes = 8U,
-  k_test_hkbd_ctx_token    = 0x4842U, /**< 'HB' */
-  k_test_hkbd_bogus_speed  = 9U,
+  k_test_hkbd_baud         = 115200U,    /**< Test hkbd baud.         */
+  k_test_hkbd_pclk_hz      = 125000000U, /**< Test hkbd pclk Hz.      */
+  k_test_hkbd_sci_channel  = 8U,         /**< Test hkbd SCI channel.  */
+  k_test_hkbd_psel_usbhs   = 0x14U,      /**< Test hkbd psel usbhs.   */
+  k_test_hkbd_report_bytes = 8U,         /**< Test hkbd report bytes. */
+  k_test_hkbd_ctx_token    = 0x4842U,    /**< 'HB'                    */
+  k_test_hkbd_bogus_speed  = 9U,         /**< Test hkbd bogus speed.  */
 } test_hkbd_const_t;
 
 /** @brief PD_02 TXD8 / PD_03 RXD8 -- mirrors the app. */

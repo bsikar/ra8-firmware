@@ -35,12 +35,13 @@
 
 typedef enum : uint16_t {
   k_test_app_fb_w = 64U, /**< Same shape as the production app, smaller. */
-  k_test_app_fb_h = 32U,
+  k_test_app_fb_h = 32U, /**< Test app fb h.                             */
 } test_app_dim_t;
 
 typedef enum : uint32_t {
-  k_test_app_fb_pixels = (uint32_t)k_test_app_fb_w * (uint32_t)k_test_app_fb_h,
-  k_test_app_fb_bytes  = k_test_app_fb_pixels * 2U,
+  k_test_app_fb_pixels =
+    (uint32_t)k_test_app_fb_w * (uint32_t)k_test_app_fb_h, /**< Test app fb pixels. */
+  k_test_app_fb_bytes = k_test_app_fb_pixels * 2U,         /**< Test app fb bytes.  */
 } test_app_size_t;
 
 [[gnu::aligned(64)]] static uint16_t s_test_fb[k_test_app_fb_pixels];

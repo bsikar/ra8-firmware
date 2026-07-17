@@ -23,8 +23,8 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_kint_app_irq_chan     = 13U, /**< SW1 -> IRQ13-DS. */
-  k_test_kint_app_irq_chan_bad = 33U,
+  k_test_kint_app_irq_chan     = 13U, /**< SW1 -> IRQ13-DS.            */
+  k_test_kint_app_irq_chan_bad = 33U, /**< Test kint app IRQ chan bad. */
 } test_kint_app_chan_t;
 
 static void reset_world(void)

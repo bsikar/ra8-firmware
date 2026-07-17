@@ -25,7 +25,7 @@ typedef enum : uint8_t {
 typedef enum : uint32_t {
   k_test_ota_raw_full    = 0xFFFFFFFFU, /**< All bits set, expect masked. */
   k_test_ota_raw_partial = 0x12345003U, /**< Only low 2 bits survive.     */
-  k_test_ota_raw_zero    = 0x00000000U,
+  k_test_ota_raw_zero    = 0x00000000U, /**< Test ota raw zero.           */
 } test_ota_raw_t;
 
 /**

@@ -50,7 +50,7 @@ typedef enum : uint16_t {
   k_test_usb_intenb0_seed = 0x0001U, /**< Bogus INTENB0 seed overwritten by the re-arm. */
   /* Expected INTENB0 mask re-armed by ra8_usb_device_busreset_rearm:
    * BRDY(8) | NRDY(9) | BEMP(10) | CTRT(11) | DVST(12) | VBSE(15). */
-  k_test_usb_intenb0_mask = 0x9F00U
+  k_test_usb_intenb0_mask = 0x9F00U /**< Test USB intenb0 mask. */
 } test_usb_dev_const_t;
 
 static void prep(void)

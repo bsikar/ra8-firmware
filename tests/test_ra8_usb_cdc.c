@@ -254,10 +254,10 @@ static void test_send_recv_arg_validation(void)
  * @enum test_cdc_mcdc_t
  */
 typedef enum : uint16_t {
-  k_test_cdc_speed_bad      = 9U,
+  k_test_cdc_speed_bad      = 9U,    /**< Test cdc speed bad.             */
   k_test_cdc_iface_class    = 0x21U, /**< k_ra8_cdc_bm_class_recip_iface. */
   k_test_cdc_iface_class_in = 0xA1U, /**< k_ra8_cdc_bm_class_recip_in.    */
-  k_test_cdc_bm_bogus       = 0x80U,
+  k_test_cdc_bm_bogus       = 0x80U, /**< Test cdc bm bogus.              */
 } test_cdc_mcdc_t;
 
 /**

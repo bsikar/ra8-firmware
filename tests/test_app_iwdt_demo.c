@@ -23,11 +23,11 @@
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
-  k_test_iwdt_window_low  = 0x0400U,
-  k_test_iwdt_window_high = 0x0C00U,
-  k_test_iwdt_below       = 0x0100U, /**< Below window_low.  */
-  k_test_iwdt_inside      = 0x0800U, /**< Inside window.     */
-  k_test_iwdt_above       = 0x1000U, /**< Above window_high. */
+  k_test_iwdt_window_low  = 0x0400U, /**< Test iwdt window low.  */
+  k_test_iwdt_window_high = 0x0C00U, /**< Test iwdt window high. */
+  k_test_iwdt_below       = 0x0100U, /**< Below window_low.      */
+  k_test_iwdt_inside      = 0x0800U, /**< Inside window.         */
+  k_test_iwdt_above       = 0x1000U, /**< Above window_high.     */
 } test_iwdt_const_t;
 
 static void reset_world(void)

@@ -39,14 +39,14 @@
  * @brief Bench harness tuning knobs.
  */
 typedef enum : uint32_t {
-  k_ra8_bench_min_iters    = 3U,        /**< Floor on iteration count.           */
-  k_ra8_bench_max_iters    = 10000000U, /**< Ceiling on iteration count.         */
-  k_ra8_bench_calibrate_n  = 1U,        /**< Calibration runs before timing.     */
-  k_ra8_bench_min_us       = 100000U,   /**< Min wall time per measurement (us). */
-  k_ra8_bench_ns_per_us    = 1000U,
-  k_ra8_bench_us_per_s     = 1000000U,
-  k_ra8_bench_ns_per_s     = 1000000000U,
-  k_ra8_bench_bytes_per_mb = 1000000U,
+  k_ra8_bench_min_iters    = 3U,          /**< Floor on iteration count.           */
+  k_ra8_bench_max_iters    = 10000000U,   /**< Ceiling on iteration count.         */
+  k_ra8_bench_calibrate_n  = 1U,          /**< Calibration runs before timing.     */
+  k_ra8_bench_min_us       = 100000U,     /**< Min wall time per measurement (us). */
+  k_ra8_bench_ns_per_us    = 1000U,       /**< RA8 bench ns per us.                */
+  k_ra8_bench_us_per_s     = 1000000U,    /**< RA8 bench us per s.                 */
+  k_ra8_bench_ns_per_s     = 1000000000U, /**< RA8 bench ns per s.                 */
+  k_ra8_bench_bytes_per_mb = 1000000U,    /**< RA8 bench bytes per mb.             */
 } ra8_bench_limits_t;
 
 /**

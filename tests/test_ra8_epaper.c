@@ -50,11 +50,11 @@
  * @brief Test fixtures.
  */
 typedef enum : uint32_t {
-  k_ra8_epaper_test_pclka_hz   = 100000000U, /**< 100 MHz PCLKA.    */
-  k_ra8_epaper_test_baud_hz    = 12000000U,  /**< 12 MHz SPI clock. */
-  k_ra8_epaper_test_panel_w    = 800U,
-  k_ra8_epaper_test_panel_h    = 600U,
-  k_ra8_epaper_test_buf_pixels = 64U, /**< 8x8 = 64 px. */
+  k_ra8_epaper_test_pclka_hz   = 100000000U, /**< 100 MHz PCLKA.           */
+  k_ra8_epaper_test_baud_hz    = 12000000U,  /**< 12 MHz SPI clock.        */
+  k_ra8_epaper_test_panel_w    = 800U,       /**< RA8 epaper test panel w. */
+  k_ra8_epaper_test_panel_h    = 600U,       /**< RA8 epaper test panel h. */
+  k_ra8_epaper_test_buf_pixels = 64U,        /**< 8x8 = 64 px.             */
 } ra8_epaper_test_const_t;
 
 /** @brief Bound SPI_B bus handle -- the seam's ctx and the mmio-seam key. */

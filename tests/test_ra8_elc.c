@@ -20,12 +20,12 @@ static void prep(void)
 }
 
 typedef enum : uint8_t {
-  k_ra8_elc_test_slot_first = 0U,
-  k_ra8_elc_test_slot_mid   = 10U,
-  k_ra8_elc_test_slot_last  = 52U, /**< FSP R_ELC has ELSR[0..52]. */
-  k_ra8_elc_test_slot_bad   = 53U,
-  k_ra8_elc_test_slot_huge  = 200U,
-  k_ra8_elc_test_seg_bad    = 4U, /**< RA8D2 has ELSEGR[0..3]. */
+  k_ra8_elc_test_slot_first = 0U,   /**< RA8 elc test slot first.   */
+  k_ra8_elc_test_slot_mid   = 10U,  /**< RA8 elc test slot mid.     */
+  k_ra8_elc_test_slot_last  = 52U,  /**< FSP R_ELC has ELSR[0..52]. */
+  k_ra8_elc_test_slot_bad   = 53U,  /**< RA8 elc test slot bad.     */
+  k_ra8_elc_test_slot_huge  = 200U, /**< RA8 elc test slot huge.    */
+  k_ra8_elc_test_seg_bad    = 4U,   /**< RA8D2 has ELSEGR[0..3].    */
 } ra8_elc_test_const_t;
 
 static volatile uint8_t* test_elcr(void)

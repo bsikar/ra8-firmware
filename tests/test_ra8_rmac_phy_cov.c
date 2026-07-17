@@ -40,28 +40,28 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_phy_addr  = 1U,
-  k_test_reg_count = 32U,
+  k_test_phy_addr  = 1U,  /**< Test PHY address.    */
+  k_test_reg_count = 32U, /**< Test register count. */
 } test_rmac_cov_const_t;
 
 /* Clause-22 register indices and bit masks used by the fixtures. */
 typedef enum : uint8_t {
-  k_reg_control      = 0U,
-  k_reg_status       = 1U,
-  k_reg_an_advert    = 4U,
-  k_reg_an_partner   = 5U,
-  k_reg_1000t_ctrl   = 9U,
-  k_reg_1000t_status = 10U,
+  k_reg_control      = 0U,  /**< Register control.       */
+  k_reg_status       = 1U,  /**< Register status.        */
+  k_reg_an_advert    = 4U,  /**< Register an advert.     */
+  k_reg_an_partner   = 5U,  /**< Register an partner.    */
+  k_reg_1000t_ctrl   = 9U,  /**< Register 1000t control. */
+  k_reg_1000t_status = 10U, /**< Register 1000t status.  */
 } test_rmac_cov_reg_t;
 
 typedef enum : uint16_t {
-  k_bmsr_link_up     = 0x0004U,
-  k_bmsr_an_complete = 0x0020U,
-  k_msr_1000full     = 0x0800U,
-  k_msr_1000half     = 0x0400U,
-  k_lpa_100full      = 0x0100U,
-  k_lpa_10full       = 0x0040U,
-  k_lpa_10half       = 0x0020U,
+  k_bmsr_link_up     = 0x0004U, /**< Bmsr link up.     */
+  k_bmsr_an_complete = 0x0020U, /**< Bmsr an complete. */
+  k_msr_1000full     = 0x0800U, /**< Msr 1000full.     */
+  k_msr_1000half     = 0x0400U, /**< Msr 1000half.     */
+  k_lpa_100full      = 0x0100U, /**< Lpa 100full.      */
+  k_lpa_10full       = 0x0040U, /**< Lpa 10full.       */
+  k_lpa_10half       = 0x0020U, /**< Lpa 10half.       */
 } test_rmac_cov_bits_t;
 
 /**

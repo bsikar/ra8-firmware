@@ -912,14 +912,14 @@ static void test_async_null_arg_rejection(void)
  * ===================================================================== */
 
 typedef enum : uint32_t {
-  k_mcdc_sci_ch_ok     = 0U,  /**< In-range SCI channel index.                    */
-  k_mcdc_sci_ch_bad    = 99U, /**< Out-of-range channel -> internal_reg() = NULL. */
-  k_mcdc_sci_baud_zero = 0U,
-  k_mcdc_sci_baud_ok   = 115200U,
-  k_mcdc_sci_pclk_zero = 0U,
-  k_mcdc_sci_pclk_ok   = 60000000U,
-  k_mcdc_sci_len_zero  = 0U,
-  k_mcdc_sci_len_one   = 1U,
+  k_mcdc_sci_ch_ok     = 0U,        /**< In-range SCI channel index.                    */
+  k_mcdc_sci_ch_bad    = 99U,       /**< Out-of-range channel -> internal_reg() = NULL. */
+  k_mcdc_sci_baud_zero = 0U,        /**< Mcdc SCI baud zero.                            */
+  k_mcdc_sci_baud_ok   = 115200U,   /**< Mcdc SCI baud ok.                              */
+  k_mcdc_sci_pclk_zero = 0U,        /**< Mcdc SCI pclk zero.                            */
+  k_mcdc_sci_pclk_ok   = 60000000U, /**< Mcdc SCI pclk ok.                              */
+  k_mcdc_sci_len_zero  = 0U,        /**< Mcdc SCI length zero.                          */
+  k_mcdc_sci_len_one   = 1U,        /**< Mcdc SCI length one.                           */
 } mcdc_sci_const_t;
 
 /**

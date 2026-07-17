@@ -17,29 +17,30 @@
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
-  k_test_ceu_width  = 1280U,
-  k_test_ceu_height = 720U,
-  k_test_ceu_stride = 2560U,
+  k_test_ceu_width  = 1280U, /**< Test CEU width.  */
+  k_test_ceu_height = 720U,  /**< Test CEU height. */
+  k_test_ceu_stride = 2560U, /**< Test CEU stride. */
 } test_ceu_dim_t;
 
 typedef enum : uint32_t {
-  k_test_ceu_ints = (uint32_t)((uint32_t)k_ra8_ceu_evt_cpe | (uint32_t)k_ra8_ceu_evt_vd),
+  k_test_ceu_ints =
+    (uint32_t)((uint32_t)k_ra8_ceu_evt_cpe | (uint32_t)k_ra8_ceu_evt_vd), /**< Test CEU ints. */
 } test_ceu_ints_t;
 
 typedef enum : uintptr_t {
   /* Picked so the lower 3 bits are zero (8-byte aligned). SDRAM head
    * range mapped by `ra8_sim_mmap`. */
-  k_test_ceu_buffer_addr = 0x68000040UL,
-  k_test_ceu_buffer_b    = 0x68001000UL,
-  k_test_ceu_buffer_c    = 0x68002000UL,
-  k_test_ceu_buffer_d    = 0x68003000UL,
-  k_test_ceu_unaligned   = 0x68000043UL, /* lower 3 bits != 0. */
-  k_test_ceu_dma_src     = 0x68010000UL,
-  k_test_ceu_dma_dst     = 0x68020000UL,
+  k_test_ceu_buffer_addr = 0x68000040UL, /**< Test CEU buffer address. */
+  k_test_ceu_buffer_b    = 0x68001000UL, /**< Test CEU buffer b.       */
+  k_test_ceu_buffer_c    = 0x68002000UL, /**< Test CEU buffer c.       */
+  k_test_ceu_buffer_d    = 0x68003000UL, /**< Test CEU buffer d.       */
+  k_test_ceu_unaligned   = 0x68000043UL, /**< lower 3 bits != 0.       */
+  k_test_ceu_dma_src     = 0x68010000UL, /**< Test CEU DMA src.        */
+  k_test_ceu_dma_dst     = 0x68020000UL, /**< Test CEU DMA dst.        */
 } test_ceu_buf_t;
 
 typedef enum : uint32_t {
-  k_test_ceu_dma_bytes = 2048U,
+  k_test_ceu_dma_bytes = 2048U, /**< Test CEU DMA bytes. */
 } test_ceu_dma_t;
 
 static uint32_t s_ceu_cb_count;

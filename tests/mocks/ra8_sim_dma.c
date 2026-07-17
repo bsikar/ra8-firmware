@@ -24,9 +24,9 @@
  * @brief Bytes-per-element lookup indexed by ``ra8_dmac_width_t``.
  */
 typedef enum : uint8_t {
-  k_ra8_sim_dma_bpe_byte = 1U,
-  k_ra8_sim_dma_bpe_half = 2U,
-  k_ra8_sim_dma_bpe_word = 4U,
+  k_ra8_sim_dma_bpe_byte = 1U, /**< RA8 sim DMA bpe byte. */
+  k_ra8_sim_dma_bpe_half = 2U, /**< RA8 sim DMA bpe half. */
+  k_ra8_sim_dma_bpe_word = 4U, /**< RA8 sim DMA bpe word. */
 } ra8_sim_dma_bpe_t;
 
 /**

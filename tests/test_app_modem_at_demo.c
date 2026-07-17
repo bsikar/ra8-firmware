@@ -45,24 +45,24 @@ typedef enum : uint8_t {
 
 /** @brief Mirror of the demo's +CREG status codes. */
 typedef enum : uint8_t {
-  k_t_creg_not_registered = 0U,
-  k_t_creg_home           = 1U,
-  k_t_creg_searching      = 2U,
-  k_t_creg_denied         = 3U,
-  k_t_creg_unknown        = 4U,
-  k_t_creg_roaming        = 5U,
+  k_t_creg_not_registered = 0U, /**< T creg not registered. */
+  k_t_creg_home           = 1U, /**< T creg home.           */
+  k_t_creg_searching      = 2U, /**< T creg searching.      */
+  k_t_creg_denied         = 3U, /**< T creg denied.         */
+  k_t_creg_unknown        = 4U, /**< T creg unknown.        */
+  k_t_creg_roaming        = 5U, /**< T creg roaming.        */
 } t_creg_t;
 
 /** @brief Mirror of the demo's CGATT flag values. */
 typedef enum : uint8_t {
-  k_t_cgatt_detached = 0U,
-  k_t_cgatt_attached = 1U,
+  k_t_cgatt_detached = 0U, /**< T cgatt detached. */
+  k_t_cgatt_attached = 1U, /**< T cgatt attached. */
 } t_cgatt_t;
 
 /** @brief Static scan bound shared by the parse mirrors (NASA P10 Rule 2). */
 typedef enum : uint32_t {
-  k_t_scan_max = 64U,
-  k_t_dec_base = 10U,
+  k_t_scan_max = 64U, /**< T scan maximum. */
+  k_t_dec_base = 10U, /**< T dec base.     */
 } t_scan_t;
 
 /** @brief Mirror of ``modem_creg_registered``. */
@@ -350,30 +350,30 @@ static void test_line_contains(void)
 
 /** @brief FIFO sizing for the in-test transport. */
 typedef enum : uint16_t {
-  k_t_fifo_cap = 1024U,
-  k_t_cmd_cap  = 64U,
+  k_t_fifo_cap = 1024U, /**< T FIFO cap. */
+  k_t_cmd_cap  = 64U,   /**< T cmd cap.  */
 } t_fifo_t;
 
 /** @brief One byte FIFO (modem<->MCU). */
 typedef struct {
-  uint8_t  buf[k_t_fifo_cap];
-  uint16_t head;
-  uint16_t tail;
+  uint8_t  buf[k_t_fifo_cap]; /**< Buffer. */
+  uint16_t head;              /**< Head.   */
+  uint16_t tail;              /**< Tail.   */
 } t_fifo_state_t;
 
 /** @brief In-test transport: mirrors board_periph_modem.c line semantics. */
 typedef struct {
-  t_fifo_state_t modem_to_mcu; /**< Bytes the modem sends the MCU (rx path). */
-  char           cmd[k_t_cmd_cap];
-  uint16_t       cmd_len;
+  t_fifo_state_t modem_to_mcu;     /**< Bytes the modem sends the MCU (rx path). */
+  char           cmd[k_t_cmd_cap]; /**< Cmd.                                     */
+  uint16_t       cmd_len;          /**< Cmd length.                              */
 } t_modem_io_t;
 
 static t_modem_io_t s_io;
 
 /** @brief The AT script (identical to board_periph_modem.c's k_modem_script). */
 typedef struct {
-  const char* cmd;
-  const char* resp;
+  const char* cmd;  /**< Cmd.  */
+  const char* resp; /**< Resp. */
 } t_reply_t;
 
 static const t_reply_t k_t_script[] = {

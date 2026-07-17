@@ -33,8 +33,8 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_ra8_sdcard_test_inst     = 0U,
-  k_ra8_sdcard_test_inst_alt = 1U,
+  k_ra8_sdcard_test_inst     = 0U, /**< RA8 sdcard test inst.     */
+  k_ra8_sdcard_test_inst_alt = 1U, /**< RA8 sdcard test inst alt. */
 } ra8_sdcard_test_inst_t;
 
 typedef enum : uint32_t {
@@ -44,11 +44,11 @@ typedef enum : uint32_t {
   /* CSD v2: CSD_STRUCTURE=1 in rsp[3][31:30], C_SIZE=0xF000 (61440)
    * lives in rsp[1][31:16] = 0xF0000000 plus rsp[2][5:0] = 0.
    * Capacity = (61440 + 1) * 1024 = 62,915,584 blocks ~ 32 GiB. */
-  k_ra8_sdcard_test_csd_w0 = 0x00000000UL,
+  k_ra8_sdcard_test_csd_w0 = 0x00000000UL, /**< RA8 sdcard test csd w0.                   */
   k_ra8_sdcard_test_csd_w1 = 0xF0000000UL, /**< C_SIZE bits [29:8] of rsp[1] -> upper 16b */
-  k_ra8_sdcard_test_csd_w2 = 0x00000000UL,
-  k_ra8_sdcard_test_csd_w3 = 0x40000000UL,                       /**< CSD_STRUCTURE = 1 */
-  k_ra8_sdcard_test_expected_blocks = (0xF000UL + 1UL) * 1024UL, /**< (C_SIZE+1)*1024   */
+  k_ra8_sdcard_test_csd_w2 = 0x00000000UL, /**< RA8 sdcard test csd w2.                   */
+  k_ra8_sdcard_test_csd_w3 = 0x40000000UL, /**< CSD_STRUCTURE = 1                         */
+  k_ra8_sdcard_test_expected_blocks = (0xF000UL + 1UL) * 1024UL, /**< (C_SIZE+1)*1024 */
 } ra8_sdcard_test_const_t;
 
 /** @brief When non-zero the CMD55 mock withholds APP_CMD, forcing a 4-bit decline. */

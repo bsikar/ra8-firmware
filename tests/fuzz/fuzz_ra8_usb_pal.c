@@ -35,13 +35,13 @@
 #include "ra8_usb_pal.h"
 
 enum : uint16_t {
-  k_fuzz_min_input    = 5U,
-  k_fuzz_max_input    = 1024U,
-  k_fuzz_recv_cap     = 1024U,
-  k_fuzz_hdr_bytes    = 4U,
-  k_fuzz_ep_dir_bit   = 0x80U,
-  k_fuzz_ep_addr_mask = 0x7FU,
-  k_fuzz_ep_type_mod  = 4U,
+  k_fuzz_min_input    = 5U,    /**< Fuzz minimum input.   */
+  k_fuzz_max_input    = 1024U, /**< Fuzz maximum input.   */
+  k_fuzz_recv_cap     = 1024U, /**< Fuzz recv cap.        */
+  k_fuzz_hdr_bytes    = 4U,    /**< Fuzz hdr bytes.       */
+  k_fuzz_ep_dir_bit   = 0x80U, /**< Fuzz ep dir bit.      */
+  k_fuzz_ep_addr_mask = 0x7FU, /**< Fuzz ep address mask. */
+  k_fuzz_ep_type_mod  = 4U,    /**< Fuzz ep type mod.     */
 };
 
 static uint8_t s_initialized;

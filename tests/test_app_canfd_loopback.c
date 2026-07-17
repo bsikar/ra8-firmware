@@ -22,19 +22,19 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_test_canfd_app_bitrate = 500000U,
-  k_test_canfd_app_id      = 0x123U,
+  k_test_canfd_app_bitrate = 500000U, /**< Test CANFD app bitrate. */
+  k_test_canfd_app_id      = 0x123U,  /**< Test CANFD app ID.      */
   /* HUM Ch 41 "CFDCnCTR" p 2710 -- CTME = bit 24, CTMS = bits [26:25],
    * CTMS = 11b selects Self-test 1 (Internal Loopback). */
-  k_test_canfd_app_ctme_mask  = 1UL << 24U,
-  k_test_canfd_app_ctms_shift = 25U,
-  k_test_canfd_app_ctms_intl  = 0x3UL,
+  k_test_canfd_app_ctme_mask  = 1UL << 24U, /**< Test CANFD app ctme mask.  */
+  k_test_canfd_app_ctms_shift = 25U,        /**< Test CANFD app ctms shift. */
+  k_test_canfd_app_ctms_intl  = 0x3UL,      /**< Test CANFD app ctms intl.  */
 } test_canfd_app_const_t;
 
 typedef enum : uint8_t {
-  k_test_canfd_app_channel  = 0U,
-  k_test_canfd_app_dlc      = 8U,
-  k_test_canfd_app_bad_chan = 9U,
+  k_test_canfd_app_channel  = 0U, /**< Test CANFD app channel.  */
+  k_test_canfd_app_dlc      = 8U, /**< Test CANFD app dlc.      */
+  k_test_canfd_app_bad_chan = 9U, /**< Test CANFD app bad chan. */
 } test_canfd_app_chan_t;
 
 static void reset_world(void)

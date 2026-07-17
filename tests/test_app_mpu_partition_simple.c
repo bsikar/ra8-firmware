@@ -24,9 +24,9 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_test_mpu_simple_size     = 32U,
-  k_test_mpu_simple_size_bad = 17U, /**< Not a power of two. */
-  k_test_mpu_simple_mair0    = 0x000000FFU,
+  k_test_mpu_simple_size     = 32U,         /**< Test MPU simple size.  */
+  k_test_mpu_simple_size_bad = 17U,         /**< Not a power of two.    */
+  k_test_mpu_simple_mair0    = 0x000000FFU, /**< Test MPU simple mair0. */
   k_test_mpu_simple_dregion16 =
     0x00001000UL, /**< MPU_TYPE.DREGION = 16 (Cortex-M85 silicon value). */
 } test_mpu_simple_const_t;

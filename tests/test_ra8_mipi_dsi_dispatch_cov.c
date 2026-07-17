@@ -55,7 +55,8 @@ typedef enum : uint32_t {
   k_cov_rstcr_seed      = 0xFFFFFFFFUL, /**< Sentinel pre-seed of RSTCR.     */
   k_cov_all_isr         = (uint32_t)k_ra8_mipi_dsi_isr_sq0 | (uint32_t)k_ra8_mipi_dsi_isr_sq1 |
                           (uint32_t)k_ra8_mipi_dsi_isr_vm | (uint32_t)k_ra8_mipi_dsi_isr_rcv |
-                          (uint32_t)k_ra8_mipi_dsi_isr_ferr | (uint32_t)k_ra8_mipi_dsi_isr_ppi,
+                          (uint32_t)k_ra8_mipi_dsi_isr_ferr |
+                          (uint32_t)k_ra8_mipi_dsi_isr_ppi, /**< Cov all ISR. */
   k_cov_expected_fanout = 6U, /**< One user callback per interrupt class. */
 } ra8_mipi_dsi_cov_const_t;
 

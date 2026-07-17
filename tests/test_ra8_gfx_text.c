@@ -14,9 +14,9 @@
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
-  k_test_gfx_dim_zero   = 0U,
-  k_test_gfx_dim_normal = 64U,
-  k_test_gfx_dim_over   = 4097U,
+  k_test_gfx_dim_zero   = 0U,    /**< Test gfx dim zero.   */
+  k_test_gfx_dim_normal = 64U,   /**< Test gfx dim normal. */
+  k_test_gfx_dim_over   = 4097U, /**< Test gfx dim over.   */
 } test_gfx_dim_t;
 
 typedef enum : int32_t {

@@ -20,13 +20,13 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_test_ulpt_app_period   = 0x8000U,
-  k_test_ulpt_app_period_2 = 0x4000U,
+  k_test_ulpt_app_period   = 0x8000U, /**< Test ulpt app period.   */
+  k_test_ulpt_app_period_2 = 0x4000U, /**< Test ulpt app period 2. */
 } test_ulpt_app_const_t;
 
 typedef enum : uint8_t {
-  k_test_ulpt_app_channel = 0U,
-  k_test_ulpt_app_bad     = 8U,
+  k_test_ulpt_app_channel = 0U, /**< Test ulpt app channel. */
+  k_test_ulpt_app_bad     = 8U, /**< Test ulpt app bad.     */
 } test_ulpt_app_chan_t;
 
 static void reset_world(void)

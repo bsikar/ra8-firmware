@@ -264,7 +264,7 @@ static const uint8_t s_parity_golden_noimg[] = {
 
 /** @brief Sizes of the embedded fixture and golden blobs (bytes). */
 enum : uint32_t {
-  k_parity_epub_len         = 2629U,
-  k_parity_golden_len       = 673U,
-  k_parity_golden_noimg_len = 387U,
+  k_parity_epub_len         = 2629U, /**< Parity EPUB length.         */
+  k_parity_golden_len       = 673U,  /**< Parity golden length.       */
+  k_parity_golden_noimg_len = 387U,  /**< Parity golden noimg length. */
 };

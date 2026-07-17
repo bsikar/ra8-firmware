@@ -28,10 +28,10 @@
 static ra8_reflow_t s_eng;
 
 enum : int32_t {
-  k_w           = 200,
-  k_h           = 400,
-  k_margin      = 16,
-  k_right_limit = k_w - k_margin, /* 184 */
+  k_w           = 200,            /**< W.                 */
+  k_h           = 400,            /**< H.                 */
+  k_margin      = 16,             /**< Margin.            */
+  k_right_limit = k_w - k_margin, /**< Right limit (184). */
 };
 
 /** @brief Lay out @p doc into the shared engine; return the glyph count. */

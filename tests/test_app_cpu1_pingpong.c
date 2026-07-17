@@ -26,14 +26,14 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_test_ppong_magic_ping  = 0x1234U,
-  k_test_ppong_magic_pong  = 0x4321U,
-  k_test_ppong_dummy_entry = 0x02080000U,
-  k_test_ppong_dummy_sp    = 0x22180000U,
+  k_test_ppong_magic_ping  = 0x1234U,     /**< Test ppong magic ping.  */
+  k_test_ppong_magic_pong  = 0x4321U,     /**< Test ppong magic pong.  */
+  k_test_ppong_dummy_entry = 0x02080000U, /**< Test ppong dummy entry. */
+  k_test_ppong_dummy_sp    = 0x22180000U, /**< Test ppong dummy sp.    */
 } test_ppong_const_t;
 
 typedef enum : uint8_t {
-  k_test_ppong_pair_zero = 0U,
+  k_test_ppong_pair_zero = 0U, /**< Test ppong pair zero. */
 } test_ppong_pair_t;
 
 /**

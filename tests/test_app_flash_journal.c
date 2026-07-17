@@ -23,9 +23,9 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_test_flash_record_bytes = 16U,
-  k_test_flash_record_addr  = 0x0U,
-  k_test_flash_instance     = 0U,
+  k_test_flash_record_bytes = 16U,  /**< Test flash record bytes.   */
+  k_test_flash_record_addr  = 0x0U, /**< Test flash record address. */
+  k_test_flash_instance     = 0U,   /**< Test flash instance.       */
 } test_flash_const_t;
 
 static void reset_world(void)

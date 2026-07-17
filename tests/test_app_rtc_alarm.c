@@ -23,14 +23,14 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_rtc_app_seed_year_lo = 26U,
-  k_test_rtc_app_seed_month   = 1U,
-  k_test_rtc_app_seed_day     = 1U,
-  k_test_rtc_app_alarm_offset = 5U,
-  k_test_rtc_app_alarm_enb    = 0x80U,
-  k_test_rtc_app_bad_hour     = 25U,
-  k_test_rtc_app_bad_min      = 60U,
-  k_test_rtc_app_bad_sec      = 60U,
+  k_test_rtc_app_seed_year_lo = 26U,   /**< Test rtc app seed year lo. */
+  k_test_rtc_app_seed_month   = 1U,    /**< Test rtc app seed month.   */
+  k_test_rtc_app_seed_day     = 1U,    /**< Test rtc app seed day.     */
+  k_test_rtc_app_alarm_offset = 5U,    /**< Test rtc app alarm offset. */
+  k_test_rtc_app_alarm_enb    = 0x80U, /**< Test rtc app alarm enb.    */
+  k_test_rtc_app_bad_hour     = 25U,   /**< Test rtc app bad hour.     */
+  k_test_rtc_app_bad_min      = 60U,   /**< Test rtc app bad minimum.  */
+  k_test_rtc_app_bad_sec      = 60U,   /**< Test rtc app bad sec.      */
 } test_rtc_app_const_t;
 
 static void reset_world(void)

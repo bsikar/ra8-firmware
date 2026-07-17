@@ -20,7 +20,7 @@
 #include "unity_minimal.h"
 
 /** @brief Local cadence used by the cadence/MC-DC tests. */
-enum : uint16_t { k_test_clean_every = 4U };
+enum : uint16_t { k_test_clean_every = 4U /**< Test clean every. */ };
 
 static void test_policy_init_validates(void)
 {

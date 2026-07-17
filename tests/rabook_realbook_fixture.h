@@ -8407,6 +8407,6 @@ static const uint8_t s_realbook_golden_noimg[] = {
 
 /** @brief Sizes of the embedded fixture and golden blob (bytes). */
 enum : uint32_t {
-  k_realbook_epub_len         = 65476U,
-  k_realbook_golden_noimg_len = 68527U,
+  k_realbook_epub_len         = 65476U, /**< Realbook EPUB length.         */
+  k_realbook_golden_noimg_len = 68527U, /**< Realbook golden noimg length. */
 };

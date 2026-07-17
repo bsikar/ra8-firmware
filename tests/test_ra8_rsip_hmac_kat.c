@@ -31,14 +31,14 @@
 
 /** @brief Test constants for the RFC 4231 vectors. */
 typedef enum : uint32_t {
-  k_hmac_key_20  = 20U,  /**< TC1/TC3 key length.                   */
-  k_hmac_key_25  = 25U,  /**< TC4 incrementing key length.          */
-  k_hmac_key_131 = 131U, /**< TC6/TC7 larger-than-block key length. */
-  k_hmac_data_50 = 50U,  /**< TC3/TC4 repeated-byte data length.    */
-  k_hmac_fill_0b = 0x0BU,
-  k_hmac_fill_aa = 0xAAU,
-  k_hmac_fill_dd = 0xDDU,
-  k_hmac_fill_cd = 0xCDU,
+  k_hmac_key_20  = 20U,   /**< TC1/TC3 key length.                   */
+  k_hmac_key_25  = 25U,   /**< TC4 incrementing key length.          */
+  k_hmac_key_131 = 131U,  /**< TC6/TC7 larger-than-block key length. */
+  k_hmac_data_50 = 50U,   /**< TC3/TC4 repeated-byte data length.    */
+  k_hmac_fill_0b = 0x0BU, /**< Hmac fill 0b.                         */
+  k_hmac_fill_aa = 0xAAU, /**< Hmac fill aa.                         */
+  k_hmac_fill_dd = 0xDDU, /**< Hmac fill dd.                         */
+  k_hmac_fill_cd = 0xCDU, /**< Hmac fill cd.                         */
 } hmac_kat_const_t;
 
 /* Scratch buffers for the byte-pattern keys/data (largest case is 131 bytes). */
