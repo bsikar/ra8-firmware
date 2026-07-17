@@ -51,9 +51,12 @@ typedef struct {
  * @note Duplicate URLs are dropped. Values longer than ::k_mdl_url_max are
  *       skipped rather than truncated.
  */
-ra8_err_t mdl_extract_images(const char* html, size_t html_len,
-                             const char* base_url, const char* prefer_attr,
-                             const char* url_contains, mdl_url_list_t* out);
+ra8_err_t mdl_extract_images(const char*     html,
+                             size_t          html_len,
+                             const char*     base_url,
+                             const char*     prefer_attr,
+                             const char*     url_contains,
+                             mdl_url_list_t* out);
 
 /**
  * @brief Scan `html` for `<a href>` links, resolved to absolute form.
@@ -69,6 +72,8 @@ ra8_err_t mdl_extract_images(const char* html, size_t html_len,
  * @retval k_ra8_err_invalid_arg  NULL argument.
  * @retval k_ra8_err_no_mem    Reached ::k_mdl_max_urls; remainder skipped.
  */
-ra8_err_t mdl_extract_anchors(const char* html, size_t html_len,
-                              const char* base_url, const char* href_contains,
+ra8_err_t mdl_extract_anchors(const char*     html,
+                              size_t          html_len,
+                              const char*     base_url,
+                              const char*     href_contains,
                               mdl_url_list_t* out);
