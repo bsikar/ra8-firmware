@@ -260,6 +260,56 @@ static void test_ecdsa_rejects_ed25519(void)
 }
 
 /**
+ * @brief Thin wrapper over `ra8_rsip_rsa_encrypt` for the opcode-reach test.
+ * @param[in]  key   Key handle (nullptr exercises the key guard).
+ * @param[in]  size  RSA modulus-size selector.
+ * @param[in]  pad   Padding scheme selector.
+ * @param[in]  pt    Plaintext input (nullptr exercises the input guard).
+ * @param[in]  ptlen Plaintext length in bytes.
+ * @param[out] ct    Ciphertext output (nullptr exercises the output guard).
+ * @return The `ra8_rsip_rsa_encrypt` result code.
+ * @pre The RSIP mock is running.
+ * @post No state beyond @p ct is modified.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static ra8_err_t rsa_enc(ra8_rsip_key_handle_t* key,
+                         ra8_rsip_rsa_size_t    size,
+                         ra8_rsip_rsa_pad_t     pad,
+                         const uint8_t*         pt,
+                         uint32_t               ptlen,
+                         uint8_t*               ct)
+{
+  return ra8_rsip_rsa_encrypt(key, size, pad, pt, ptlen, ct);
+}
+
+/**
+ * @brief Thin wrapper over `ra8_rsip_rsa_decrypt` for the opcode-reach test.
+ * @param[in]  key   Key handle (nullptr exercises the key guard).
+ * @param[in]  size  RSA modulus-size selector.
+ * @param[in]  pad   Padding scheme selector.
+ * @param[in]  ct    Ciphertext input (nullptr exercises the input guard).
+ * @param[out] pt    Plaintext output (nullptr exercises the output guard).
+ * @param[in]  cap   Plaintext buffer capacity in bytes.
+ * @param[out] rlen  Recovered-length sink (nullptr exercises the length guard).
+ * @return The `ra8_rsip_rsa_decrypt` result code.
+ * @pre The RSIP mock is running.
+ * @post No state beyond @p pt / @p rlen is modified.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static ra8_err_t rsa_dec(ra8_rsip_key_handle_t* key,
+                         ra8_rsip_rsa_size_t    size,
+                         ra8_rsip_rsa_pad_t     pad,
+                         const uint8_t*         ct,
+                         uint8_t*               pt,
+                         uint32_t               cap,
+                         uint32_t*              rlen)
+{
+  return ra8_rsip_rsa_decrypt(key, size, pad, ct, pt, cap, rlen);
+}
+
+/**
  * @brief RSA public-encrypt reaches its opcode and plumbs size + pad.
  *
  * @par MC/DC:
@@ -284,58 +334,40 @@ static void test_rsa_encrypt_reaches_opcode(void)
   uint8_t       ct[k_rsa_test_modulus_bytes] = {};
 
   /* Null matrix. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rsip_rsa_encrypt(nullptr,
-                                      k_ra8_rsip_rsa_2048,
-                                      k_ra8_rsip_rsa_pad_oaep,
-                                      pt,
-                                      sizeof(pt),
-                                      ct));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rsip_rsa_encrypt(&key,
-                                      k_ra8_rsip_rsa_2048,
-                                      k_ra8_rsip_rsa_pad_oaep,
-                                      nullptr,
-                                      sizeof(pt),
-                                      ct));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rsip_rsa_encrypt(&key,
-                                      k_ra8_rsip_rsa_2048,
-                                      k_ra8_rsip_rsa_pad_oaep,
-                                      pt,
-                                      sizeof(pt),
-                                      nullptr));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    rsa_enc(nullptr, k_ra8_rsip_rsa_2048, k_ra8_rsip_rsa_pad_oaep, pt, sizeof(pt), ct));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    rsa_enc(&key, k_ra8_rsip_rsa_2048, k_ra8_rsip_rsa_pad_oaep, nullptr, sizeof(pt), ct));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    rsa_enc(&key, k_ra8_rsip_rsa_2048, k_ra8_rsip_rsa_pad_oaep, pt, sizeof(pt), nullptr));
 
   /* Single-condition guards, true side. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_rsip_rsa_encrypt(&key,
-                                      (ra8_rsip_rsa_size_t)k_rsa_test_bad_size,
-                                      k_ra8_rsip_rsa_pad_oaep,
-                                      pt,
-                                      sizeof(pt),
-                                      ct));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_rsip_rsa_encrypt(&key,
-                                      k_ra8_rsip_rsa_2048,
-                                      (ra8_rsip_rsa_pad_t)k_rsa_test_bad_pad,
-                                      pt,
-                                      sizeof(pt),
-                                      ct));
+                 rsa_enc(&key,
+                         (ra8_rsip_rsa_size_t)k_rsa_test_bad_size,
+                         k_ra8_rsip_rsa_pad_oaep,
+                         pt,
+                         sizeof(pt),
+                         ct));
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_arg,
-    ra8_rsip_rsa_encrypt(&key, k_ra8_rsip_rsa_2048, k_ra8_rsip_rsa_pad_oaep, pt, 0U, ct));
+    rsa_enc(&key, k_ra8_rsip_rsa_2048, (ra8_rsip_rsa_pad_t)k_rsa_test_bad_pad, pt, sizeof(pt), ct));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_rsip_rsa_encrypt(&key,
-                                      k_ra8_rsip_rsa_2048,
-                                      k_ra8_rsip_rsa_pad_oaep,
-                                      pt,
-                                      (uint32_t)k_rsa_test_oversize_pt,
-                                      ct));
+                 rsa_enc(&key, k_ra8_rsip_rsa_2048, k_ra8_rsip_rsa_pad_oaep, pt, 0U, ct));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 rsa_enc(&key,
+                         k_ra8_rsip_rsa_2048,
+                         k_ra8_rsip_rsa_pad_oaep,
+                         pt,
+                         (uint32_t)k_rsa_test_oversize_pt,
+                         ct));
 
   /* Happy path: all guards false -> opcode + arguments reach the engine. */
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_rsip_rsa_encrypt(&key, k_ra8_rsip_rsa_2048, k_ra8_rsip_rsa_pad_oaep, pt, sizeof(pt), ct));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 rsa_enc(&key, k_ra8_rsip_rsa_2048, k_ra8_rsip_rsa_pad_oaep, pt, sizeof(pt), ct));
   TEST_ASSERT_EQ(k_ra8_rsip_asym_op_rsa_encrypt, *ra8_rsip_reg32(k_ra8_rsip_off_asym_ctrl));
   TEST_ASSERT_EQ(k_ra8_rsip_asym_op_rsa_encrypt, *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op));
   TEST_ASSERT_EQ(k_ra8_rsip_rsa_pad_oaep, *ra8_rsip_reg32(k_ra8_rsip_off_asym_arg));
@@ -375,71 +407,45 @@ static void test_rsa_decrypt_reaches_opcode(void)
   uint32_t      rlen                         = 0U;
 
   /* Null matrix. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rsip_rsa_decrypt(nullptr,
-                                      k_ra8_rsip_rsa_2048,
-                                      k_ra8_rsip_rsa_pad_oaep,
-                                      ct,
-                                      pt,
-                                      sizeof(pt),
-                                      &rlen));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rsip_rsa_decrypt(&key,
-                                      k_ra8_rsip_rsa_2048,
-                                      k_ra8_rsip_rsa_pad_oaep,
-                                      nullptr,
-                                      pt,
-                                      sizeof(pt),
-                                      &rlen));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rsip_rsa_decrypt(&key,
-                                      k_ra8_rsip_rsa_2048,
-                                      k_ra8_rsip_rsa_pad_oaep,
-                                      ct,
-                                      nullptr,
-                                      sizeof(pt),
-                                      &rlen));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rsip_rsa_decrypt(&key,
-                                      k_ra8_rsip_rsa_2048,
-                                      k_ra8_rsip_rsa_pad_oaep,
-                                      ct,
-                                      pt,
-                                      sizeof(pt),
-                                      nullptr));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    rsa_dec(nullptr, k_ra8_rsip_rsa_2048, k_ra8_rsip_rsa_pad_oaep, ct, pt, sizeof(pt), &rlen));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    rsa_dec(&key, k_ra8_rsip_rsa_2048, k_ra8_rsip_rsa_pad_oaep, nullptr, pt, sizeof(pt), &rlen));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    rsa_dec(&key, k_ra8_rsip_rsa_2048, k_ra8_rsip_rsa_pad_oaep, ct, nullptr, sizeof(pt), &rlen));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    rsa_dec(&key, k_ra8_rsip_rsa_2048, k_ra8_rsip_rsa_pad_oaep, ct, pt, sizeof(pt), nullptr));
 
   /* Single-condition guards, true side. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_rsip_rsa_decrypt(&key,
-                                      (ra8_rsip_rsa_size_t)k_rsa_test_bad_size,
-                                      k_ra8_rsip_rsa_pad_oaep,
-                                      ct,
-                                      pt,
-                                      sizeof(pt),
-                                      &rlen));
+                 rsa_dec(&key,
+                         (ra8_rsip_rsa_size_t)k_rsa_test_bad_size,
+                         k_ra8_rsip_rsa_pad_oaep,
+                         ct,
+                         pt,
+                         sizeof(pt),
+                         &rlen));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_rsip_rsa_decrypt(&key,
-                                      k_ra8_rsip_rsa_2048,
-                                      (ra8_rsip_rsa_pad_t)k_rsa_test_bad_pad,
-                                      ct,
-                                      pt,
-                                      sizeof(pt),
-                                      &rlen));
+                 rsa_dec(&key,
+                         k_ra8_rsip_rsa_2048,
+                         (ra8_rsip_rsa_pad_t)k_rsa_test_bad_pad,
+                         ct,
+                         pt,
+                         sizeof(pt),
+                         &rlen));
 
   /* recovered (== pad descriptor in sim == 2) > cap=1 -> invalid_arg. */
-  TEST_ASSERT_EQ(
-    k_ra8_err_invalid_arg,
-    ra8_rsip_rsa_decrypt(&key, k_ra8_rsip_rsa_2048, k_ra8_rsip_rsa_pad_oaep, ct, pt, 1U, &rlen));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 rsa_dec(&key, k_ra8_rsip_rsa_2048, k_ra8_rsip_rsa_pad_oaep, ct, pt, 1U, &rlen));
 
   /* Happy path: opcode + arguments reach the engine, length read back. */
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_rsip_rsa_decrypt(&key,
-                                      k_ra8_rsip_rsa_2048,
-                                      k_ra8_rsip_rsa_pad_oaep,
-                                      ct,
-                                      pt,
-                                      sizeof(pt),
-                                      &rlen));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    rsa_dec(&key, k_ra8_rsip_rsa_2048, k_ra8_rsip_rsa_pad_oaep, ct, pt, sizeof(pt), &rlen));
   TEST_ASSERT_EQ(k_ra8_rsip_asym_op_rsa_decrypt, *ra8_rsip_reg32(k_ra8_rsip_off_asym_ctrl));
   TEST_ASSERT_EQ(k_ra8_rsip_asym_op_rsa_decrypt, *ra8_rsip_reg32(k_ra8_rsip_off_mbox_op));
   TEST_ASSERT_EQ(k_ra8_rsip_rsa_2048, *ra8_rsip_reg32(k_ra8_rsip_off_asym_rsa_size));
