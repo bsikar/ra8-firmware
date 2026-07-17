@@ -147,24 +147,58 @@ class StackEntry:
         )
 
 
-def find_su_files(repo_root: Path) -> list:
-    """Collect every gcc ``.su`` file under any app's ``build*`` tree.
+# The CI cross-build fast path (scripts/build_all_examples.sh) compiles the
+# universal first-party library set (ra8_core / ra8_hal / ra8_net_pal /
+# ra8_usb_pal / board / secure_app) ONCE into a static archive under
+# build/shared_libs/ instead of recompiling it into every app, so those
+# sources' .su files land there rather than under examples/<app>/build/. That
+# archive holds the critical-path modules (ra8_isr / ra8_check / ra8_err /
+# ra8_mpu / ra8_cgc / ra8_pfs), so it MUST be aggregated too -- otherwise the
+# gate would silently lose its whole shared-library surface. See
+# cmake/ra8_shared_libs.cmake.
+SHARED_LIB_BUILD_SUBDIR = "build/shared_libs"
+SHARED_LIB_APP_NAME = "ra8_shared"
 
-    App directories nest 2-4 levels below ``examples/`` (``examples/<tier>/
-    .../<app>/``) and each app's per-app CMake output lives in ``<app>/
-    build*/``. A ``.su`` is only ever emitted inside such a build tree, so
-    we recurse to any depth rather than assume the old fixed
-    ``examples/<tier>/<app>/build*`` layout -- that 2-level glob silently
-    missed every EK-tier firmware app (they sit 3-4 levels deep) and only
-    ever matched the two-level ``_unsupported`` / ``host`` demos.
+
+def find_su_files(repo_root: Path) -> list:
+    """Collect every gcc ``.su`` file the cross-build emits.
+
+    Two roots:
+
+    * ``examples/`` -- each app's per-app CMake output lives in ``<app>/
+      build*/``, nested 2-4 levels below ``examples/`` (``examples/<tier>/
+      .../<app>/``). A ``.su`` is only ever emitted inside such a build tree,
+      so we recurse to any depth rather than assume a fixed layout. This also
+      covers the ineligible apps (TrustZone, non-ek board) that the fast path
+      still compiles from source per-app.
+
+    * ``build/shared_libs/`` -- the prebuilt universal-library archive the
+      fast path compiles once (see ``SHARED_LIB_BUILD_SUBDIR``). Absent on a
+      per-app-only build, so this is additive and never regresses the old
+      examples-only sweep.
     """
+    found: list = []
     examples = repo_root / "examples"
-    if not examples.is_dir():
-        return []
-    return sorted(p for p in examples.rglob("*.su") if p.is_file())
+    if examples.is_dir():
+        found.extend(p for p in examples.rglob("*.su") if p.is_file())
+    shared = repo_root / SHARED_LIB_BUILD_SUBDIR
+    if shared.is_dir():
+        found.extend(p for p in shared.rglob("*.su") if p.is_file())
+    return sorted(found)
 
 
 def app_name_for(su_file: Path, repo_root: Path) -> str:
+    # Archive .su files live under build/shared_libs/, not examples/. Attribute
+    # them to a synthetic app so the per-app report groups them; the
+    # critical-path and first-party gates key off the real TU path (e.g.
+    # libs/ra8_hal/src/ra8_isr.c), which is preserved inside the .su, so those
+    # gates still fire on shared-library frames.
+    try:
+        su_file.relative_to(repo_root / SHARED_LIB_BUILD_SUBDIR)
+    except ValueError:
+        pass
+    else:
+        return SHARED_LIB_APP_NAME
     try:
         rel = su_file.relative_to(repo_root / "examples")
     except ValueError:
