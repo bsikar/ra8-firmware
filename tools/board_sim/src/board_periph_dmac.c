@@ -54,7 +54,7 @@ typedef enum : uint32_t {
 } dmac_console_t;
 
 /** @brief Field mask for the DMAC block-count register. */
-typedef enum : uint32_t { k_u16_mask = 0xFFFFU } dmac_lit_t;
+typedef enum : uint32_t { k_u16_mask = 0xFFFFU /**< U16 mask. */ } dmac_lit_t;
 
 /**
  * @brief Per-tick order slot for the DMAC / DTC windows.
@@ -76,7 +76,7 @@ typedef enum : uint64_t {
   k_dmac_base   = 0x4000A000UL, /**< DMAC0 channel 0 base.   */
   k_dmac_stride = 0x40UL,       /**< Bytes per DMAC channel. */
   k_dmac_count  = 8UL,          /**< DMAC0 channel 0..7.     */
-  k_dmac_span   = 0x40UL * 8UL,
+  k_dmac_span   = 0x40UL * 8UL, /**< DMAC span.              */
 } dmac_geom_t;
 
 /** @brief Shared DMA module-control bank geometry (R_DMA at 0x4000A800). */

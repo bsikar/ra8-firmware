@@ -55,9 +55,9 @@
 
 /* RA8D2 memory map (EK board) -- from the linker script / HUM R01UH1065EJ. */
 typedef struct {
-  const char* name;
-  uint64_t    base;
-  uint64_t    size;
+  const char* name; /**< Name. */
+  uint64_t    base; /**< Base. */
+  uint64_t    size; /**< Size. */
 } mem_region_t;
 
 static const mem_region_t k_regions[] = {
@@ -122,8 +122,8 @@ static const mem_region_t k_regions[] = {
 /* Renesas peripheral space -- modelled as logged MMIO (returns all-ones so
  * "wait for ready bit" polls fall through instead of spinning forever). */
 typedef enum : uint64_t {
-  k_periph_base = 0x40000000UL,
-  k_periph_size = 0x10000000UL, /* 0x40000000-0x4FFFFFFF: all Renesas peripherals */
+  k_periph_base = 0x40000000UL, /**< Periph base.                                    */
+  k_periph_size = 0x10000000UL, /**< 0x40000000-0x4FFFFFFF: all Renesas peripherals. */
 } periph_map_t;
 
 /* Octo-SPI (XSPI) execute-in-place flash window. The XSPI controller's register
@@ -136,9 +136,9 @@ typedef enum : uint64_t {
  * alias pair). A Non-secure reader image linked for XIP places .text/.rodata at
  * 0x90000000 and the CPU fetches Non-secure instructions from there. */
 typedef enum : uint64_t {
-  k_ospi_xip_base = 0x80000000UL, /* OSPI XIP window: Secure physical base.      */
-  k_ospi_ns_base  = 0x90000000UL, /* OSPI XIP window: NS alias (IDAU bit[28]=1). */
-  k_ospi_xip_size = 0x04000000UL, /* 64 MiB execute-in-place flash array.        */
+  k_ospi_xip_base = 0x80000000UL, /**< OSPI XIP window: Secure physical base.      */
+  k_ospi_ns_base  = 0x90000000UL, /**< OSPI XIP window: NS alias (IDAU bit[28]=1). */
+  k_ospi_xip_size = 0x04000000UL, /**< 64 MiB execute-in-place flash array.        */
 } ospi_xip_map_t;
 
 /* On-chip temperature-sensor factory calibration. The TSN two-point trim words
@@ -152,9 +152,9 @@ typedef enum : uint64_t {
  * reports (k_adc_temp_code = 1800 in board_periph_adc.c), the two-point math
  * yields ~26 degC. This is factory-constant data, not a masked poll. */
 typedef enum : uint32_t {
-  k_tsn_cal_addr   = 0x02C1EDA0U, /* TSCDR (+0x00), TSCDR2 (+0x04).        */
-  k_tsn_cal_tscdr  = 3000U,       /* 12-bit calibration code at +125 degC. */
-  k_tsn_cal_tscdr2 = 1000U,       /* 12-bit calibration code at -40 degC.  */
+  k_tsn_cal_addr   = 0x02C1EDA0U, /**< TSCDR (+0x00), TSCDR2 (+0x04).        */
+  k_tsn_cal_tscdr  = 3000U,       /**< 12-bit calibration code at +125 degC. */
+  k_tsn_cal_tscdr2 = 1000U,       /**< 12-bit calibration code at -40 degC.  */
 } tsn_cal_seed_t;
 
 typedef enum : uint32_t {
@@ -1488,7 +1488,7 @@ static void on_long_shift(uc_engine* uc, uint64_t address, uint32_t size, void* 
 
 /** @brief Max long-shift sites hooked per image (generous; real counts tiny). */
 enum : uint32_t {
-  k_lsh_sites_max = 4096U,
+  k_lsh_sites_max = 4096U, /**< Lsh sites maximum. */
 };
 /** @brief Hook handles for the installed long-shift sites (kept for the run). */
 static uc_hook s_lsh_hooks[k_lsh_sites_max];
@@ -4660,7 +4660,7 @@ typedef struct {
 
 /** @brief Div-0 seam sizing: max tracked divide sites (real counts tiny). */
 enum : uint32_t {
-  k_div0_sites_max = 4096U,
+  k_div0_sites_max = 4096U, /**< Div0 sites maximum. */
 };
 static div0_site_t s_div0_site[k_div0_sites_max]; /**< Tracked divide sites.        */
 static uint32_t    s_div0_site_n;                 /**< Count of tracked sites.      */
@@ -5702,9 +5702,9 @@ typedef enum : uint32_t {
 
 /** @brief Display descriptor loaded from a flat key=value panel file. */
 typedef struct {
-  char     name[k_panel_name_max];
-  uint16_t width;
-  uint16_t height;
+  char     name[k_panel_name_max]; /**< Name.   */
+  uint16_t width;                  /**< Width.  */
+  uint16_t height;                 /**< Height. */
 } board_panel_t;
 
 /** @brief Trim trailing space/tab/CR/LF in place. */

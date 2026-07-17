@@ -33,30 +33,30 @@
 
 /** @brief AGT block geometry (ra8_agt_regs.h, 16-bit view). */
 typedef enum : uint64_t {
-  k_agt_base    = 0x40221000UL, /**< AGT0 base.             */
-  k_agt_stride  = 0x100UL,      /**< Bytes per AGT channel. */
-  k_agt_count   = 10UL,         /**< AGT0..AGT9.            */
-  k_agt_span    = 0x100UL * 10UL,
-  k_agt_off_agt = 0x00UL, /**< AGT counter (16-bit down).    */
-  k_agt_off_cma = 0x02UL, /**< AGTCMA compare-match A.       */
-  k_agt_off_cmb = 0x04UL, /**< AGTCMB compare-match B.       */
-  k_agt_off_cr  = 0x08UL, /**< AGTCR control/status (8-bit). */
-  k_agt_off_mr1 = 0x09UL, /**< AGTMR1 mode 1 (8-bit).        */
+  k_agt_base    = 0x40221000UL,   /**< AGT0 base.                    */
+  k_agt_stride  = 0x100UL,        /**< Bytes per AGT channel.        */
+  k_agt_count   = 10UL,           /**< AGT0..AGT9.                   */
+  k_agt_span    = 0x100UL * 10UL, /**< AGT span.                     */
+  k_agt_off_agt = 0x00UL,         /**< AGT counter (16-bit down).    */
+  k_agt_off_cma = 0x02UL,         /**< AGTCMA compare-match A.       */
+  k_agt_off_cmb = 0x04UL,         /**< AGTCMB compare-match B.       */
+  k_agt_off_cr  = 0x08UL,         /**< AGTCR control/status (8-bit). */
+  k_agt_off_mr1 = 0x09UL,         /**< AGTMR1 mode 1 (8-bit).        */
 } agt_map_t;
 
 /** @brief GPT block geometry (ra8_gpt_regs.h, 32-bit channels). */
 typedef enum : uint64_t {
-  k_gpt_base      = 0x40322000UL, /**< GPT0 base.             */
-  k_gpt_stride    = 0x100UL,      /**< Bytes per GPT channel. */
-  k_gpt_count     = 14UL,         /**< GPT0..GPT13.           */
-  k_gpt_span      = 0x100UL * 14UL,
-  k_gpt_off_gtstr = 0x04UL, /**< GTSTR software start.      */
-  k_gpt_off_gtstp = 0x08UL, /**< GTSTP software stop.       */
-  k_gpt_off_gtclr = 0x0CUL, /**< GTCLR software clear.      */
-  k_gpt_off_gtcr  = 0x2CUL, /**< GTCR control (CST bit0).   */
-  k_gpt_off_gtst  = 0x3CUL, /**< GTST status.               */
-  k_gpt_off_gtcnt = 0x48UL, /**< GTCNT counter (32-bit up). */
-  k_gpt_off_gtpr  = 0x64UL, /**< GTPR period.               */
+  k_gpt_base      = 0x40322000UL,   /**< GPT0 base.                 */
+  k_gpt_stride    = 0x100UL,        /**< Bytes per GPT channel.     */
+  k_gpt_count     = 14UL,           /**< GPT0..GPT13.               */
+  k_gpt_span      = 0x100UL * 14UL, /**< GPT span.                  */
+  k_gpt_off_gtstr = 0x04UL,         /**< GTSTR software start.      */
+  k_gpt_off_gtstp = 0x08UL,         /**< GTSTP software stop.       */
+  k_gpt_off_gtclr = 0x0CUL,         /**< GTCLR software clear.      */
+  k_gpt_off_gtcr  = 0x2CUL,         /**< GTCR control (CST bit0).   */
+  k_gpt_off_gtst  = 0x3CUL,         /**< GTST status.               */
+  k_gpt_off_gtcnt = 0x48UL,         /**< GTCNT counter (32-bit up). */
+  k_gpt_off_gtpr  = 0x64UL,         /**< GTPR period.               */
 } gpt_map_t;
 
 /** @brief 16-bit counter wrap value (also the GPT default period). */

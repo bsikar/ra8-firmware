@@ -44,25 +44,25 @@
 
 /** @brief CANFD block geometry (ra8_canfd_regs.h, FSP R_CANFD_Type). */
 typedef enum : uint64_t {
-  k_canfd0_base       = 0x40380000UL, /**< CANFD0 channel-window base.        */
-  k_canfd1_base       = 0x40382000UL, /**< CANFD1 channel-window base.        */
-  k_canfd_span        = 0x1920UL,     /**< Full FSP R_CANFD_Type window size. */
-  k_canfd_count       = 2UL,          /**< CANFD0 / CANFD1.                   */
-  k_canfd_words       = 0x1920UL / 4UL,
-  k_canfd_off_cnctr   = 0x004UL,      /**< CFDC[0].CTR channel control.          */
-  k_canfd_off_cnsts   = 0x008UL,      /**< CFDC[0].STS channel status.           */
-  k_canfd_off_gctr    = 0x018UL,      /**< CFDGCTR global control.               */
-  k_canfd_off_gsts    = 0x01CUL,      /**< CFDGSTS global status.                */
-  k_canfd_off_rfsts0  = 0x044UL,      /**< CFDRFSTS[0] RX FIFO 0 status.         */
-  k_canfd_off_rfpctr0 = 0x04CUL,      /**< CFDRFPCTR[0] RX FIFO 0 pointer ctrl.  */
-  k_canfd_off_tmc0    = 0x070UL,      /**< CFDTMC[0] TX MB 0 control byte.       */
-  k_canfd_off_tmsts0  = 0x074UL,      /**< CFDTMSTS[0] TX MB 0 status byte.      */
-  k_canfd_off_rf0     = 0x520UL,      /**< CFDRF[0] RX FIFO 0 access window.     */
-  k_canfd_off_tm0     = 0x604UL,      /**< CFDTM[0] TX MB 0 access window.       */
-  k_canfd_frame_words = 0x4CUL / 4UL, /**< ID+PTR+FDSTS+DF[64] = 19 words.       */
-  k_canfd_off_afl     = 0x120UL,      /**< CFDGAFL[] acceptance-filter window.   */
-  k_canfd_afl_stride  = 0x10UL,       /**< Bytes per CFDGAFL entry (ID/M/P0/P1). */
-  k_canfd_afl_count   = 16UL,         /**< Entries in one CFDGAFL page window.   */
+  k_canfd0_base       = 0x40380000UL,   /**< CANFD0 channel-window base.           */
+  k_canfd1_base       = 0x40382000UL,   /**< CANFD1 channel-window base.           */
+  k_canfd_span        = 0x1920UL,       /**< Full FSP R_CANFD_Type window size.    */
+  k_canfd_count       = 2UL,            /**< CANFD0 / CANFD1.                      */
+  k_canfd_words       = 0x1920UL / 4UL, /**< CANFD words.                          */
+  k_canfd_off_cnctr   = 0x004UL,        /**< CFDC[0].CTR channel control.          */
+  k_canfd_off_cnsts   = 0x008UL,        /**< CFDC[0].STS channel status.           */
+  k_canfd_off_gctr    = 0x018UL,        /**< CFDGCTR global control.               */
+  k_canfd_off_gsts    = 0x01CUL,        /**< CFDGSTS global status.                */
+  k_canfd_off_rfsts0  = 0x044UL,        /**< CFDRFSTS[0] RX FIFO 0 status.         */
+  k_canfd_off_rfpctr0 = 0x04CUL,        /**< CFDRFPCTR[0] RX FIFO 0 pointer ctrl.  */
+  k_canfd_off_tmc0    = 0x070UL,        /**< CFDTMC[0] TX MB 0 control byte.       */
+  k_canfd_off_tmsts0  = 0x074UL,        /**< CFDTMSTS[0] TX MB 0 status byte.      */
+  k_canfd_off_rf0     = 0x520UL,        /**< CFDRF[0] RX FIFO 0 access window.     */
+  k_canfd_off_tm0     = 0x604UL,        /**< CFDTM[0] TX MB 0 access window.       */
+  k_canfd_frame_words = 0x4CUL / 4UL,   /**< ID+PTR+FDSTS+DF[64] = 19 words.       */
+  k_canfd_off_afl     = 0x120UL,        /**< CFDGAFL[] acceptance-filter window.   */
+  k_canfd_afl_stride  = 0x10UL,         /**< Bytes per CFDGAFL entry (ID/M/P0/P1). */
+  k_canfd_afl_count   = 16UL,           /**< Entries in one CFDGAFL page window.   */
 } canfd_map_t;
 
 /** @brief Global status (CFDGSTS) bit masks the model drives. */

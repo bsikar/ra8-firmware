@@ -21,6 +21,7 @@
  * @since 0.1.0
  */
 #ifndef BOARD_PERIPH_SD_H
+/** @brief BOARD PERIPH SD h. */
 #define BOARD_PERIPH_SD_H
 
 #include <stdint.h>

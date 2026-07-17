@@ -154,20 +154,20 @@ typedef struct {
   bool                collecting;            /**< Mid command-frame collection.                */
   bool                app_cmd;               /**< Previous command was CMD55 (APP_CMD).        */
   bool                ready;                 /**< ACMD41 has completed.                        */
-  uint8_t             cmd[k_sd_cmd_len];
-  uint32_t            cmd_idx;
-  uint8_t             resp[k_sd_resp_cap];
-  uint32_t            resp_len;
-  uint32_t            resp_pos;
-  board_sd_wr_phase_t wr_phase;    /**< CMD24/CMD25 write sub-state.      */
-  bool                wr_multi;    /**< Write is CMD25 (multi-block).     */
-  uint64_t            wr_off;      /**< Byte offset of the current block. */
-  uint32_t            wr_cnt;      /**< Bytes seen in the data/CRC phase. */
-  bool                rd_multi;    /**< An open CMD18 read stream.        */
-  uint64_t            rd_off;      /**< Byte offset of the next streamed
+  uint8_t             cmd[k_sd_cmd_len];     /**< Cmd.                                         */
+  uint32_t            cmd_idx;               /**< Cmd index.                                   */
+  uint8_t             resp[k_sd_resp_cap];   /**< Resp.                                        */
+  uint32_t            resp_len;              /**< Resp length.                                 */
+  uint32_t            resp_pos;              /**< Resp pos.                                    */
+  board_sd_wr_phase_t wr_phase;              /**< CMD24/CMD25 write sub-state.                 */
+  bool                wr_multi;              /**< Write is CMD25 (multi-block).                */
+  uint64_t            wr_off;                /**< Byte offset of the current block.            */
+  uint32_t            wr_cnt;                /**< Bytes seen in the data/CRC phase.            */
+  bool                rd_multi;              /**< An open CMD18 read stream.                   */
+  uint64_t            rd_off;                /**< Byte offset of the next streamed
                                     *   CMD18 block.                      */
-  uint32_t            erase_start; /**< CMD32 ERASE_WR_BLK_START block. */
-  uint32_t            erase_end;   /**< CMD33 ERASE_WR_BLK_END block.   */
+  uint32_t            erase_start;           /**< CMD32 ERASE_WR_BLK_START block. */
+  uint32_t            erase_end;             /**< CMD33 ERASE_WR_BLK_END block.   */
 } board_sd_state_t;
 
 /** @brief The single modelled SD card. */

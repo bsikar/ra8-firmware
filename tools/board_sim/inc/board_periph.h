@@ -53,7 +53,7 @@ typedef enum : uint8_t {
   k_board_led1      = 0U, /**< LED1, BLUE,  P600 (port 6, pin 0).  */
   k_board_led2      = 1U, /**< LED2, GREEN, P303 (port 3, pin 3).  */
   k_board_led3      = 2U, /**< LED3, RED,   PA07 (port 10, pin 7). */
-  k_board_led_count = 3U,
+  k_board_led_count = 3U, /**< Board led count.                    */
 } board_led_id_t;
 
 /**

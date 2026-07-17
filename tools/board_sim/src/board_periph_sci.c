@@ -40,18 +40,18 @@
 
 /** @brief SCI_B block geometry (ra8_sci_regs.h, 32-bit-register variant). */
 typedef enum : uint64_t {
-  k_sci_base      = 0x40358000UL, /**< SCI0 base (Secure alias). */
-  k_sci_stride    = 0x100UL,      /**< Bytes per SCI channel.    */
-  k_sci_count     = 10UL,         /**< SCI0..SCI9.               */
-  k_sci_span      = 0x100UL * 10UL,
-  k_sci_off_rdr   = 0x00UL, /**< RDR receive data (RDAT[7:0]).  */
-  k_sci_off_tdr   = 0x04UL, /**< TDR transmit data (TDAT[7:0]). */
-  k_sci_off_ccr0  = 0x08UL, /**< CCR0 (TE/RE/RIE/TIE/TEIE).     */
-  k_sci_off_csr   = 0x48UL, /**< CSR (TDRE/TEND/RDRF + errors). */
-  k_sci_off_frsr  = 0x50UL, /**< FRSR FIFO receive status.      */
-  k_sci_off_ftsr  = 0x54UL, /**< FTSR FIFO transmit status.     */
-  k_sci_off_cfclr = 0x68UL, /**< CFCLR common flag clear (W1C). */
-  k_sci_off_ffclr = 0x70UL, /**< FFCLR FIFO flag clear (W1C).   */
+  k_sci_base      = 0x40358000UL,   /**< SCI0 base (Secure alias).      */
+  k_sci_stride    = 0x100UL,        /**< Bytes per SCI channel.         */
+  k_sci_count     = 10UL,           /**< SCI0..SCI9.                    */
+  k_sci_span      = 0x100UL * 10UL, /**< SCI span.                      */
+  k_sci_off_rdr   = 0x00UL,         /**< RDR receive data (RDAT[7:0]).  */
+  k_sci_off_tdr   = 0x04UL,         /**< TDR transmit data (TDAT[7:0]). */
+  k_sci_off_ccr0  = 0x08UL,         /**< CCR0 (TE/RE/RIE/TIE/TEIE).     */
+  k_sci_off_csr   = 0x48UL,         /**< CSR (TDRE/TEND/RDRF + errors). */
+  k_sci_off_frsr  = 0x50UL,         /**< FRSR FIFO receive status.      */
+  k_sci_off_ftsr  = 0x54UL,         /**< FTSR FIFO transmit status.     */
+  k_sci_off_cfclr = 0x68UL,         /**< CFCLR common flag clear (W1C). */
+  k_sci_off_ffclr = 0x70UL,         /**< FFCLR FIFO flag clear (W1C).   */
 } sci_map_t;
 
 /** @brief SCI_B CCR0 interrupt/enable bits (ra8_sci_ccr0_bit_t). */
