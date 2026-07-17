@@ -75,8 +75,11 @@ static const char* const k_ra8_tls_tag = "ra8_tls";
  * @invariant ``in_use`` is true if and only if ``cfg.bio_send`` is non-NULL.
  */
 struct ra8_tls_session_handle {
-  bool                  in_use; /**< Slot allocated.              */
+  /* Field order places the aligned cfg block first so the host
+   * (RA8_SIMULATOR_MODE) slot -- cfg, in_use, handshake_done -- carries no
+   * excess padding (clang-analyzer-optin.performance.Padding). */
   ra8_tls_session_cfg_t cfg;    /**< Cached caller configuration. */
+  bool                  in_use; /**< Slot allocated.              */
 #ifndef RA8_SIMULATOR_MODE
   mbedtls_ssl_context ssl;    /**< Mbed TLS SSL context.                */
   mbedtls_ssl_config  config; /**< Mbed TLS SSL configuration block.    */
