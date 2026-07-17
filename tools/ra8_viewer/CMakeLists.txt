@@ -43,8 +43,11 @@ get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 # the CBZ backend uses miniz's default (malloc) allocator, so no ra8_epub source
 # is needed -- only its header (ra8_epub_miniz_alloc.h) sits on the include path.
 # ---------------------------------------------------------------------------
-file(GLOB RA8_COMIC_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_comic/src/*.c)
-file(GLOB RA8_GFX_SRC   CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/*.c)
+file(GLOB RA8_COMIC_SRC  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_comic/src/*.c)
+file(GLOB RA8_GFX_SRC    CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/*.c)
+# ra8_comic pulls in the gzip/xz/tar wrapped-container decoders (ra8_unarch),
+# and ra8_unarch_xz sits on the vendored xz-embedded decoder.
+file(GLOB RA8_UNARCH_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_unarch/src/*.c)
 
 set(RA8_REFLOW_SRC
     ${FW_ROOT}/libs/ra8_reflow/src/ra8_reflow_image.c
@@ -58,15 +61,20 @@ set(RA8_REFLOW_SRC
 set(RA8_CORE_SRC
     ${FW_ROOT}/libs/ra8_core/src/ra8_log.c
     ${FW_ROOT}/libs/ra8_core/src/ra8_error_handler.c
+    ${FW_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
 )
+file(GLOB RA8_XZ_EMBEDDED_SRC CONFIGURE_DEPENDS
+    ${FW_ROOT}/libs/third_party/xz_embedded/*.c)
 set(RA8_THIRD_PARTY_SRC
     ${FW_ROOT}/libs/third_party/miniz/miniz.c
     ${FW_ROOT}/libs/third_party/stb/stb_image_impl.c
+    ${RA8_XZ_EMBEDDED_SRC}
 )
 
 add_library(ra8_reader STATIC
     ${RA8_COMIC_SRC}
     ${RA8_GFX_SRC}
+    ${RA8_UNARCH_SRC}
     ${RA8_REFLOW_SRC}
     ${RA8_CORE_SRC}
     ${RA8_THIRD_PARTY_SRC}
@@ -78,12 +86,14 @@ target_include_directories(ra8_reader PUBLIC
     ${FW_ROOT}/libs/ra8_comic/inc
     ${FW_ROOT}/libs/ra8_reflow/inc
     ${FW_ROOT}/libs/ra8_epub/inc
+    ${FW_ROOT}/libs/ra8_unarch/inc
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/stb
+    ${FW_ROOT}/libs/third_party/xz_embedded
 )
 # The vendored decoders (miniz, stb_image) type-pun through byte buffers; silence
 # their warnings and disable strict aliasing exactly as the host-test build does.
-set_source_files_properties(${RA8_THIRD_PARTY_SRC}
+set_source_files_properties(${RA8_THIRD_PARTY_SRC} ${RA8_XZ_EMBEDDED_SRC}
     PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing")
 
 # ---------------------------------------------------------------------------
