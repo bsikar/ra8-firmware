@@ -242,6 +242,65 @@ static void test_tar_block_primitives(void)
 }
 
 /**
+ * @brief Parse a malformed pax record and assert fail-closed rejection.
+ *
+ * @details Runs `ra8_unarch_tar_pax_parse` over @p d with fresh output sinks
+ *          (the malformed cases only assert the return code, never the outputs).
+ *
+ * @param[in] d Encoded pax extended-header data.
+ * @param[in] n Byte length of @p d.
+ * @return None.
+ * @pre @p d is non-null.
+ * @post `ra8_unarch_tar_pax_parse` returned k_ra8_err_validation_failed.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void tpx_expect_bad(const uint8_t* d, size_t n)
+{
+  uint16_t nlen   = 0U;
+  bool     hpath  = false;
+  uint64_t sz     = 0U;
+  bool     hsize  = false;
+  char     nb[32] = {};
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 ra8_unarch_tar_pax_parse(d, n, nb, 32U, &nlen, &hpath, &sz, &hsize));
+}
+
+/**
+ * @brief Reject every malformed pax-record shape fail-closed.
+ * @return None.
+ * @pre None.
+ * @post Each malformed record returned k_ra8_err_validation_failed.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void tpx_malformed(void)
+{
+  const uint8_t d_nodig[]   = " path=x\n";
+  const uint8_t d_nospace[] = "15path=x/y.png\n";
+  const uint8_t d_runout[]  = "123456";
+  const uint8_t d_toolong[] = "12345678 a=b\n";
+  const uint8_t d_short[]   = "2 a=b\n";     /* reclen cannot cover its prefix */
+  const uint8_t d_overrun[] = "99 path=x\n"; /* reclen past the data end */
+  const uint8_t d_nonl[]    = "9 path=xy";   /* no trailing newline */
+  const uint8_t d_noeq[]    = "8 pathx\n";   /* no key/value delimiter */
+  const uint8_t d_badsz[]   = "12 size=12x\n";
+  const uint8_t d_emptysz[] = "8 size=\n";
+  const uint8_t d_ovsz[]    = "29 size=99999999999999999999\n";
+  tpx_expect_bad(d_nodig, sizeof(d_nodig) - 1U);
+  tpx_expect_bad(d_nospace, sizeof(d_nospace) - 1U);
+  tpx_expect_bad(d_runout, sizeof(d_runout) - 1U);
+  tpx_expect_bad(d_toolong, sizeof(d_toolong) - 1U);
+  tpx_expect_bad(d_short, sizeof(d_short) - 1U);
+  tpx_expect_bad(d_overrun, sizeof(d_overrun) - 1U);
+  tpx_expect_bad(d_nonl, sizeof(d_nonl) - 1U);
+  tpx_expect_bad(d_noeq, sizeof(d_noeq) - 1U);
+  tpx_expect_bad(d_badsz, sizeof(d_badsz) - 1U);
+  tpx_expect_bad(d_emptysz, sizeof(d_emptysz) - 1U);
+  tpx_expect_bad(d_ovsz, sizeof(d_ovsz) - 1U);
+}
+
+/**
  * @test test_tar_pax_records
  * @brief pax record parsing: overrides applied, every malformation rejected.
  *
@@ -288,75 +347,41 @@ static void test_tar_pax_records(void)
   TEST_ASSERT_EQ(3U, nlen);
 
   /* Malformed shapes, each rejected fail-closed. */
-  const uint8_t d_nodig[] = " path=x\n";
-  TEST_ASSERT_EQ(
-    k_ra8_err_validation_failed,
-    ra8_unarch_tar_pax_parse(d_nodig, sizeof(d_nodig) - 1U, nb, 32U, &nlen, &hpath, &sz, &hsize));
-  const uint8_t d_nospace[] = "15path=x/y.png\n";
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 ra8_unarch_tar_pax_parse(d_nospace,
-                                          sizeof(d_nospace) - 1U,
-                                          nb,
-                                          32U,
-                                          &nlen,
-                                          &hpath,
-                                          &sz,
-                                          &hsize));
-  const uint8_t d_runout[] = "123456";
-  TEST_ASSERT_EQ(
-    k_ra8_err_validation_failed,
-    ra8_unarch_tar_pax_parse(d_runout, sizeof(d_runout) - 1U, nb, 32U, &nlen, &hpath, &sz, &hsize));
-  const uint8_t d_toolong[] = "12345678 a=b\n";
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 ra8_unarch_tar_pax_parse(d_toolong,
-                                          sizeof(d_toolong) - 1U,
-                                          nb,
-                                          32U,
-                                          &nlen,
-                                          &hpath,
-                                          &sz,
-                                          &hsize));
-  const uint8_t d_short[] = "2 a=b\n"; /* reclen cannot cover its prefix */
-  TEST_ASSERT_EQ(
-    k_ra8_err_validation_failed,
-    ra8_unarch_tar_pax_parse(d_short, sizeof(d_short) - 1U, nb, 32U, &nlen, &hpath, &sz, &hsize));
-  const uint8_t d_overrun[] = "99 path=x\n"; /* reclen past the data end */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 ra8_unarch_tar_pax_parse(d_overrun,
-                                          sizeof(d_overrun) - 1U,
-                                          nb,
-                                          32U,
-                                          &nlen,
-                                          &hpath,
-                                          &sz,
-                                          &hsize));
-  const uint8_t d_nonl[] = "9 path=xy"; /* no trailing newline */
-  TEST_ASSERT_EQ(
-    k_ra8_err_validation_failed,
-    ra8_unarch_tar_pax_parse(d_nonl, sizeof(d_nonl) - 1U, nb, 32U, &nlen, &hpath, &sz, &hsize));
-  const uint8_t d_noeq[] = "8 pathx\n"; /* no key/value delimiter */
-  TEST_ASSERT_EQ(
-    k_ra8_err_validation_failed,
-    ra8_unarch_tar_pax_parse(d_noeq, sizeof(d_noeq) - 1U, nb, 32U, &nlen, &hpath, &sz, &hsize));
-  const uint8_t d_badsz[] = "12 size=12x\n";
-  TEST_ASSERT_EQ(
-    k_ra8_err_validation_failed,
-    ra8_unarch_tar_pax_parse(d_badsz, sizeof(d_badsz) - 1U, nb, 32U, &nlen, &hpath, &sz, &hsize));
-  const uint8_t d_emptysz[] = "8 size=\n";
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 ra8_unarch_tar_pax_parse(d_emptysz,
-                                          sizeof(d_emptysz) - 1U,
-                                          nb,
-                                          32U,
-                                          &nlen,
-                                          &hpath,
-                                          &sz,
-                                          &hsize));
-  const uint8_t d_ovsz[] = "29 size=99999999999999999999\n";
-  TEST_ASSERT_EQ(
-    k_ra8_err_validation_failed,
-    ra8_unarch_tar_pax_parse(d_ovsz, sizeof(d_ovsz) - 1U, nb, 32U, &nlen, &hpath, &sz, &hsize));
+  tpx_malformed();
   TEST_END("tar: pax record parser");
+}
+
+/**
+ * @brief Walk and verify the pax member, the symlink entry and the end marker.
+ *
+ * @param[in,out] t  Open tar walker.
+ * @param[in,out] e  Entry cursor positioned at the longname member (updated).
+ * @param[in]     d3 Expected pax-member payload for the byte-exact check.
+ *
+ * @return None.
+ * @pre @p e references the entry just before the pax member.
+ * @post The pax overrides, the symlink classification and the end marker all
+ *       matched.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void tar_walk_tail(ra8_unarch_tar_t* t, ra8_unarch_tar_entry_t* e, const char* d3)
+{
+  size_t got = 0U;
+  /* 4: the pax member (path + size overrides applied). */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_unarch_tar_next(t, e->next_off, s_name, sizeof(s_name), e));
+  TEST_ASSERT_EQ(1U, e->is_file);
+  TEST_ASSERT_EQ(0, memcmp(s_name, "pax/page2.png", 13U));
+  TEST_ASSERT(e->size == (uint64_t)(strlen(d3)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_unarch_tar_read(t, e, s_out, sizeof(s_out), &got));
+  TEST_ASSERT_EQ(0, memcmp(s_out, d3, got));
+  /* 5: the symlink -- enumerated, neither file nor dir. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_unarch_tar_next(t, e->next_off, s_name, sizeof(s_name), e));
+  TEST_ASSERT_EQ(0U, e->is_file);
+  TEST_ASSERT_EQ(0U, e->is_dir);
+  /* 6: the end marker. */
+  TEST_ASSERT_EQ(k_ra8_err_not_found,
+                 ra8_unarch_tar_next(t, e->next_off, s_name, sizeof(s_name), e));
 }
 
 /**
@@ -420,20 +445,7 @@ static void test_tar_walk_honest_archive(void)
   TEST_ASSERT_EQ(0, memcmp(s_name, lname, e.name_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_unarch_tar_read(&t, &e, s_out, sizeof(s_out), &got));
   TEST_ASSERT_EQ(0, memcmp(s_out, d2, got));
-  /* 4: the pax member (path + size overrides applied). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_unarch_tar_next(&t, e.next_off, s_name, sizeof(s_name), &e));
-  TEST_ASSERT_EQ(1U, e.is_file);
-  TEST_ASSERT_EQ(0, memcmp(s_name, "pax/page2.png", 13U));
-  TEST_ASSERT(e.size == (uint64_t)(sizeof(d3) - 1U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_unarch_tar_read(&t, &e, s_out, sizeof(s_out), &got));
-  TEST_ASSERT_EQ(0, memcmp(s_out, d3, got));
-  /* 5: the symlink -- enumerated, neither file nor dir. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_unarch_tar_next(&t, e.next_off, s_name, sizeof(s_name), &e));
-  TEST_ASSERT_EQ(0U, e.is_file);
-  TEST_ASSERT_EQ(0U, e.is_dir);
-  /* 6: the end marker. */
-  TEST_ASSERT_EQ(k_ra8_err_not_found,
-                 ra8_unarch_tar_next(&t, e.next_off, s_name, sizeof(s_name), &e));
+  tar_walk_tail(&t, &e, d3);
   TEST_END("tar: honest archive walk + extract");
 }
 
@@ -487,6 +499,67 @@ static void test_tar_open_probe_guards(void)
 }
 
 /**
+ * @brief Reject pax meta-floods, oversize/malformed pax, and handle clean EOF.
+ *
+ * @param[in,out] t    Tar walker handle (reused per case).
+ * @param[in,out] mem  Backing-memory descriptor (reused per case).
+ * @param[in,out] e    Entry cursor (reused per case).
+ * @param[in]     data Small regular-file payload for the trailing member.
+ *
+ * @return None.
+ * @pre The shared archive buffer is available.
+ * @post Every hostile pax shape was rejected and the marker-less EOF returned
+ *       not_found cleanly.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void tar_hostile_pax_floods(ra8_unarch_tar_t*       t,
+                                   ra8_unarch_mem_t*       mem,
+                                   ra8_unarch_tar_entry_t* e,
+                                   const char*             data)
+{
+  const size_t dlen = strlen(data);
+
+  /* Meta flood: more pax blocks than the per-member cap. */
+  const char paxr[] = "11 size=5\n";
+  size_t     off    = 0U;
+  for (uint32_t i = 0U; i < 5U; ++i) {
+    off = tb_add(off, "x", nullptr, (uint8_t)'x', paxr, sizeof(paxr) - 1U);
+  }
+  off       = tb_add(off, "a.png", nullptr, (uint8_t)'0', data, dlen);
+  s_arc_len = tb_end(off);
+  TEST_ASSERT_EQ(k_ra8_ok, tt_open(t, mem, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 ra8_unarch_tar_next(t, 0U, s_name, sizeof(s_name), e));
+
+  /* Oversized pax data (over k_ra8_unarch_tar_pax_max). */
+  uint8_t big[4096];
+  memset(big, (int)'a', sizeof(big));
+  off       = tb_add(0U, "x", nullptr, (uint8_t)'x', big, sizeof(big));
+  off       = tb_add(off, "a.png", nullptr, (uint8_t)'0', data, dlen);
+  s_arc_len = tb_end(off);
+  TEST_ASSERT_EQ(k_ra8_ok, tt_open(t, mem, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 ra8_unarch_tar_next(t, 0U, s_name, sizeof(s_name), e));
+
+  /* Malformed pax data inside a well-formed member. */
+  const char paxbad[] = "99 path=x\n";
+  off                 = tb_add(0U, "x", nullptr, (uint8_t)'x', paxbad, sizeof(paxbad) - 1U);
+  off                 = tb_add(off, "a.png", nullptr, (uint8_t)'0', data, dlen);
+  s_arc_len           = tb_end(off);
+  TEST_ASSERT_EQ(k_ra8_ok, tt_open(t, mem, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 ra8_unarch_tar_next(t, 0U, s_name, sizeof(s_name), e));
+
+  /* EOF without an end marker: a clean not_found, not a crash. */
+  s_arc_len = tb_add(0U, "a.png", nullptr, (uint8_t)'0', data, dlen);
+  TEST_ASSERT_EQ(k_ra8_ok, tt_open(t, mem, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_unarch_tar_next(t, 0U, s_name, sizeof(s_name), e));
+  TEST_ASSERT_EQ(k_ra8_err_not_found,
+                 ra8_unarch_tar_next(t, e->next_off, s_name, sizeof(s_name), e));
+}
+
+/**
  * @test test_tar_hostile_headers
  * @brief Corrupt, lying, and flooding headers are rejected fail-closed.
  *
@@ -529,43 +602,8 @@ static void test_tar_hostile_headers(void)
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  ra8_unarch_tar_next(&t, 0U, s_name, sizeof(s_name), &e));
 
-  /* Meta flood: more pax blocks than the per-member cap. */
-  const char paxr[] = "11 size=5\n";
-  off               = 0U;
-  for (uint32_t i = 0U; i < 5U; ++i) {
-    off = tb_add(off, "x", nullptr, (uint8_t)'x', paxr, sizeof(paxr) - 1U);
-  }
-  off       = tb_add(off, "a.png", nullptr, (uint8_t)'0', data, sizeof(data) - 1U);
-  s_arc_len = tb_end(off);
-  TEST_ASSERT_EQ(k_ra8_ok, tt_open(&t, &mem, nullptr));
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 ra8_unarch_tar_next(&t, 0U, s_name, sizeof(s_name), &e));
+  tar_hostile_pax_floods(&t, &mem, &e, data);
 
-  /* Oversized pax data (over k_ra8_unarch_tar_pax_max). */
-  uint8_t big[4096];
-  memset(big, (int)'a', sizeof(big));
-  off       = tb_add(0U, "x", nullptr, (uint8_t)'x', big, sizeof(big));
-  off       = tb_add(off, "a.png", nullptr, (uint8_t)'0', data, sizeof(data) - 1U);
-  s_arc_len = tb_end(off);
-  TEST_ASSERT_EQ(k_ra8_ok, tt_open(&t, &mem, nullptr));
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 ra8_unarch_tar_next(&t, 0U, s_name, sizeof(s_name), &e));
-
-  /* Malformed pax data inside a well-formed member. */
-  const char paxbad[] = "99 path=x\n";
-  off                 = tb_add(0U, "x", nullptr, (uint8_t)'x', paxbad, sizeof(paxbad) - 1U);
-  off                 = tb_add(off, "a.png", nullptr, (uint8_t)'0', data, sizeof(data) - 1U);
-  s_arc_len           = tb_end(off);
-  TEST_ASSERT_EQ(k_ra8_ok, tt_open(&t, &mem, nullptr));
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 ra8_unarch_tar_next(&t, 0U, s_name, sizeof(s_name), &e));
-
-  /* EOF without an end marker: a clean not_found, not a crash. */
-  s_arc_len = tb_add(0U, "a.png", nullptr, (uint8_t)'0', data, sizeof(data) - 1U);
-  TEST_ASSERT_EQ(k_ra8_ok, tt_open(&t, &mem, nullptr));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_unarch_tar_next(&t, 0U, s_name, sizeof(s_name), &e));
-  TEST_ASSERT_EQ(k_ra8_err_not_found,
-                 ra8_unarch_tar_next(&t, e.next_off, s_name, sizeof(s_name), &e));
   TEST_END("tar: hostile headers rejected");
 }
 
