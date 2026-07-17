@@ -28,13 +28,13 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_rmac_mdio_cfg_err_irq_enable  = 0xCAFEBABEU,
-  k_rmac_mdio_cfg_mon0_irq_enable = 0x00001FFFU,
-  k_rmac_mdio_cfg_mon1_irq_enable = 0x0000000FU,
-  k_rmac_mdio_cfg_mon2_irq_enable = 0x00000007U,
-  k_rmac_mdio_lit_xcafe           = 0xCAFEU,
-  k_rmac_mdio_cfg_eswclk_hz       = 125000000U,
-  k_rmac_mdio_cfg_mdc_hz          = 1000000U,
+  k_rmac_mdio_cfg_err_irq_enable  = 0xCAFEBABEU, /**< Rmac mdio config error IRQ enable. */
+  k_rmac_mdio_cfg_mon0_irq_enable = 0x00001FFFU, /**< Rmac mdio config mon0 IRQ enable.  */
+  k_rmac_mdio_cfg_mon1_irq_enable = 0x0000000FU, /**< Rmac mdio config mon1 IRQ enable.  */
+  k_rmac_mdio_cfg_mon2_irq_enable = 0x00000007U, /**< Rmac mdio config mon2 IRQ enable.  */
+  k_rmac_mdio_lit_xcafe           = 0xCAFEU,     /**< Rmac mdio literal 0xCAFE.          */
+  k_rmac_mdio_cfg_eswclk_hz       = 125000000U,  /**< Rmac mdio config eswclk hz.        */
+  k_rmac_mdio_cfg_mdc_hz          = 1000000U,    /**< Rmac mdio config mdc hz.           */
 } rmac_mdio_test_lit_t;
 
 /** @brief Per-test fixture reset: fresh peripheral RAM, MMIO seam, MSTP. */

@@ -33,12 +33,12 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_xspi_lit_x11 = 0x11U,
-  k_xspi_lit_x22 = 0x22U,
-  k_xspi_lit_x33 = 0x33U,
-  k_xspi_lit_x44 = 0x44U,
-  k_xspi_lit_5   = 5,
-  k_xspi_lit_x55 = 0x55U,
+  k_xspi_lit_x11 = 0x11U, /**< Xspi literal 0x11. */
+  k_xspi_lit_x22 = 0x22U, /**< Xspi literal 0x22. */
+  k_xspi_lit_x33 = 0x33U, /**< Xspi literal 0x33. */
+  k_xspi_lit_x44 = 0x44U, /**< Xspi literal 0x44. */
+  k_xspi_lit_5   = 5,     /**< Xspi literal 5.    */
+  k_xspi_lit_x55 = 0x55U, /**< Xspi literal 0x55. */
 } xspi_test_lit_t;
 
 /**

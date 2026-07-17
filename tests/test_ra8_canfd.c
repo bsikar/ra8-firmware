@@ -33,12 +33,12 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_canfd_test_dlc_bad   = 15U,
-  k_canfd_test_shift_dlc = 28U,
-  k_canfd_test_df0       = 0x11U,
-  k_canfd_test_df1       = 0x22U,
-  k_canfd_test_df2       = 0x33U,
-  k_canfd_test_df3       = 0x44U,
+  k_canfd_test_dlc_bad   = 15U,   /**< Canfd test DLC bad.   */
+  k_canfd_test_shift_dlc = 28U,   /**< Canfd test shift DLC. */
+  k_canfd_test_df0       = 0x11U, /**< Canfd test DF0.       */
+  k_canfd_test_df1       = 0x22U, /**< Canfd test df1.       */
+  k_canfd_test_df2       = 0x33U, /**< Canfd test df2.       */
+  k_canfd_test_df3       = 0x44U, /**< Canfd test df3.       */
 } canfd_test_lit_t;
 
 typedef enum : uint8_t {

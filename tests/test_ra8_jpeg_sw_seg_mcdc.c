@@ -26,12 +26,12 @@
  * @brief Sizes used by the test fixtures.
  */
 typedef enum : uint16_t {
-  k_jt_w              = 16U,                   /**< Test image width.  */
-  k_jt_h              = 16U,                   /**< Test image height. */
-  k_jt_pixels         = (uint16_t)(16U * 16U), /**< Pixel count.       */
-  k_jt_rgb_bytes      = (uint16_t)(16U * 16U * 3U),
-  k_jt_jpeg_cap       = 4096U, /**< Encoder out cap.       */
-  k_jt_mse_psnr30_max = 65U,   /**< MSE for PSNR ~= 30 dB. */
+  k_jt_w              = 16U,                        /**< Test image width.      */
+  k_jt_h              = 16U,                        /**< Test image height.     */
+  k_jt_pixels         = (uint16_t)(16U * 16U),      /**< Pixel count.           */
+  k_jt_rgb_bytes      = (uint16_t)(16U * 16U * 3U), /**< Jt RGB bytes.          */
+  k_jt_jpeg_cap       = 4096U,                      /**< Encoder out cap.       */
+  k_jt_mse_psnr30_max = 65U,                        /**< MSE for PSNR ~= 30 dB. */
 } ra8_jpeg_test_const_t;
 
 /** @brief Fill an RGB888 buffer with a deterministic gradient. */

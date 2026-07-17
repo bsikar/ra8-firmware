@@ -26,7 +26,7 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_ipc_ring_lit_xff = 0xFFU,
+  k_ipc_ring_lit_xff = 0xFFU, /**< Ipc ring literal 0xFF. */
 } ipc_ring_test_lit_t;
 
 /* ---------- Ring-buffer tests ---------- */

@@ -30,32 +30,32 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_canfd_ctrl_stamp_cfdc  = 0xDEADBEEFU,
-  k_canfd_ctrl_stamp_cfdc2 = 0xFFFFFFFFU,
-  k_canfd_ctrl_stamp_cfdc3 = 0xCAFEU,
+  k_canfd_ctrl_stamp_cfdc  = 0xDEADBEEFU, /**< Canfd CTRL stamp cfdc.  */
+  k_canfd_ctrl_stamp_cfdc2 = 0xFFFFFFFFU, /**< Canfd CTRL stamp cfdc2. */
+  k_canfd_ctrl_stamp_cfdc3 = 0xCAFEU,     /**< Canfd CTRL stamp cfdc3. */
 } canfd_ctrl_test_lit_t;
 
 typedef enum : uint8_t {
-  k_ra8_canfd_test_channel_0   = 0U,
-  k_ra8_canfd_test_channel_1   = 1U,
-  k_ra8_canfd_test_channel_bad = 2U,
+  k_ra8_canfd_test_channel_0   = 0U, /**< RA8 CANFD test channel 0.   */
+  k_ra8_canfd_test_channel_1   = 1U, /**< RA8 CANFD test channel 1.   */
+  k_ra8_canfd_test_channel_bad = 2U, /**< RA8 CANFD test channel bad. */
 } ra8_canfd_test_channel_t;
 
 typedef enum : uint32_t {
-  k_ra8_test_bitrate_500k     = 500000U,
-  k_ra8_test_bitrate_1m       = 1000000U,
-  k_ra8_test_bitrate_250k     = 250000U,
-  k_ra8_test_bitrate_zero     = 0U,
-  k_ra8_test_bitrate_invalid  = 999999U,
-  k_ra8_test_bitrate_bad_data = 1234567U,
-  k_ra8_test_ext_id           = 0x1FABCDEFU,
-  k_ra8_test_std_id           = 0x123U,
-  k_ra8_test_oversized_std_id = 0x800U,
-  k_ra8_test_invalid_ext_id   = 0x40000000U,
+  k_ra8_test_bitrate_500k     = 500000U,     /**< RA8 test bitrate 500k.     */
+  k_ra8_test_bitrate_1m       = 1000000U,    /**< RA8 test bitrate 1m.       */
+  k_ra8_test_bitrate_250k     = 250000U,     /**< RA8 test bitrate 250k.     */
+  k_ra8_test_bitrate_zero     = 0U,          /**< RA8 test bitrate zero.     */
+  k_ra8_test_bitrate_invalid  = 999999U,     /**< RA8 test bitrate invalid.  */
+  k_ra8_test_bitrate_bad_data = 1234567U,    /**< RA8 test bitrate bad data. */
+  k_ra8_test_ext_id           = 0x1FABCDEFU, /**< RA8 test ext ID.           */
+  k_ra8_test_std_id           = 0x123U,      /**< RA8 test std ID.           */
+  k_ra8_test_oversized_std_id = 0x800U,      /**< RA8 test oversized std ID. */
+  k_ra8_test_invalid_ext_id   = 0x40000000U, /**< RA8 test invalid ext ID.   */
   /* TEC = 0x55 in [31:24], REC = 0xAA in [23:16] of CFDC[0].STS. */
-  k_ra8_test_sts_encoded  = 0x55AA0000U,
-  k_ra8_test_expected_tec = 0x55U,
-  k_ra8_test_expected_rec = 0xAAU,
+  k_ra8_test_sts_encoded  = 0x55AA0000U, /**< RA8 test status encoded. */
+  k_ra8_test_expected_tec = 0x55U,       /**< RA8 test expected TEC.   */
+  k_ra8_test_expected_rec = 0xAAU,       /**< RA8 test expected REC.   */
 } ra8_canfd_test_vals_t;
 
 /* ---- status + IRQ + power ---- */

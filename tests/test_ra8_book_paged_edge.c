@@ -51,13 +51,13 @@ static uint32_t pbook_crc32(const uint8_t* data, size_t len)
  *          a real inflated blob would; the paged backing reads these bytes.
  */
 typedef struct {
-  ra8_book_header_t     hdr;
-  ra8_book_chapter_t    chapters[2];
-  ra8_book_node_t       nodes[10];
-  ra8_book_attr_t       attrs[1];
-  ra8_book_stylesheet_t stylesheets[1];
-  ra8_book_image_t      images[1];
-  char                  strings[320];
+  ra8_book_header_t     hdr;            /**< Hdr.         */
+  ra8_book_chapter_t    chapters[2];    /**< Chapters.    */
+  ra8_book_node_t       nodes[10];      /**< Nodes.       */
+  ra8_book_attr_t       attrs[1];       /**< Attrs.       */
+  ra8_book_stylesheet_t stylesheets[1]; /**< Stylesheets. */
+  ra8_book_image_t      images[1];      /**< Images.      */
+  char                  strings[320];   /**< Strings.     */
 } pbook_t;
 
 /** @brief Intern a NUL-terminated string into the pool; returns its offset. */
@@ -210,9 +210,9 @@ static ra8_err_t pbook_read_fault(void* ctx, uint64_t offset, uint8_t* buf, uint
 
 /* Tiny page cache: 8 frames x 64 bytes < the ~520-byte blob, so the walk evicts. */
 typedef enum : uint32_t {
-  k_pb_frame_bytes = 64U,
-  k_pb_frame_count = 8U,
-  k_pb_buckets     = 16U,
+  k_pb_frame_bytes = 64U, /**< Pb frame bytes. */
+  k_pb_frame_count = 8U,  /**< Pb frame count. */
+  k_pb_buckets     = 16U, /**< Pb buckets.     */
 } pbook_cache_dim_t;
 
 static uint8_t          s_pb_frames[(size_t)k_pb_frame_count * (size_t)k_pb_frame_bytes];

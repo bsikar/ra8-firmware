@@ -47,10 +47,10 @@ typedef enum : uint16_t {
   k_mcdc_usb_mp_lo_bad   = 0U,    /**< max_packet == 0 -> rejected.       */
   k_mcdc_usb_mp_hi_bad   = 9999U, /**< max_packet > pipe_max_packet.      */
   k_mcdc_usb_mp_ok       = 64U,   /**< common bulk max packet.            */
-  k_mcdc_usb_len_zero    = 0U,
-  k_mcdc_usb_len_ok      = 4U,
-  k_mcdc_usb_len_too_big = 9999U,
-  k_mcdc_usb_speed_bogus = 9U, /**< not FS, not HS. */
+  k_mcdc_usb_len_zero    = 0U,    /**< Mcdc USB length zero.              */
+  k_mcdc_usb_len_ok      = 4U,    /**< Mcdc USB length ok.                */
+  k_mcdc_usb_len_too_big = 9999U, /**< Mcdc USB length too big.           */
+  k_mcdc_usb_speed_bogus = 9U,    /**< not FS, not HS.                    */
 } mcdc_usb_const_t;
 
 /**

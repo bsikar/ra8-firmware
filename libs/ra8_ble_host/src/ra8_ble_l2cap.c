@@ -81,10 +81,10 @@ void ra8_ble_host_att_handle_pdu(uint16_t conn_handle, const uint8_t* pdu, uint1
 void internal_pack_le16(uint8_t* dst, uint16_t v)
 {
   enum : uint8_t {
-    k_byte_lo_idx = 0U,
-    k_byte_hi_idx = 1U,
-    k_byte_shift  = 8U,
-    k_byte_mask   = 0xFFU,
+    k_byte_lo_idx = 0U,    /**< Byte lo index. */
+    k_byte_hi_idx = 1U,    /**< Byte hi index. */
+    k_byte_shift  = 8U,    /**< Byte shift.    */
+    k_byte_mask   = 0xFFU, /**< Byte mask.     */
   };
   dst[k_byte_lo_idx] = (uint8_t)(v & k_byte_mask);
   dst[k_byte_hi_idx] = (uint8_t)((v >> k_byte_shift) & k_byte_mask);
@@ -112,9 +112,9 @@ void internal_pack_le16(uint8_t* dst, uint16_t v)
 static uint16_t internal_unpack_le16(const uint8_t* src)
 {
   enum : uint8_t {
-    k_byte_lo_idx = 0U,
-    k_byte_hi_idx = 1U,
-    k_byte_shift  = 8U,
+    k_byte_lo_idx = 0U, /**< Byte lo index. */
+    k_byte_hi_idx = 1U, /**< Byte hi index. */
+    k_byte_shift  = 8U, /**< Byte shift.    */
   };
   return (uint16_t)((uint16_t)src[k_byte_lo_idx] | ((uint16_t)src[k_byte_hi_idx] << k_byte_shift));
 }
@@ -392,6 +392,35 @@ static void internal_acl_fresh_frame(uint16_t conn_handle, const uint8_t* payloa
   s_ble_host_state.reassembly_conn     = conn_handle;
 }
 
+/**
+ * @brief Bottom-half of the HCI ACL data path: reassemble L2CAP
+ *        frames and dispatch them to the right channel handler.
+ *
+ * @details
+ * Called from the per-host HCI ACL callback. The 4-byte ACL header
+ * has already been stripped by the controller driver, so what we see
+ * in ``payload`` is the L2CAP B-frame -- but possibly only the first
+ * fragment. Continuation fragments are detected by an in-progress
+ * reassembly (``reassembly_len > 0``) and routed through
+ * internal_reassembly_append / internal_reassembly_dispatch; fresh
+ * frames go to internal_acl_fresh_frame, which either dispatches a
+ * complete frame immediately or opens the reassembly buffer. That
+ * conflation of first-fragment and continuation is safe for the
+ * LE-U-only scope of this starter stack.
+ *
+ * @param[in] conn_handle Connection handle (12 bits).
+ * @param[in] payload     ACL data payload bytes.
+ * @param[in] len         Byte count.
+ *
+ * @pre payload != NULL and len > 0 (otherwise the function early-returns).
+ * @pre Stack is initialized (otherwise the function early-returns).
+ * @post Inbound complete L2CAP frames have been dispatched to ATT.
+ * @post Reassembly state may have advanced or reset.
+ *
+ * @note Not thread-safe; called from the HCI ACL trampoline only.
+ *
+ * @since 0.1.0
+ */
 static void ra8_ble_host_acl_in(uint16_t conn_handle, const uint8_t* payload, uint16_t len)
 {
   if ((payload == nullptr) || (len == 0U)) {
@@ -638,7 +667,7 @@ ra8_err_t ra8_ble_host_init(const ra8_ble_host_config_t* cfg)
   if (cfg->name != nullptr) {
     /* Copy with bound. */
     enum : uint8_t {
-      k_name_copy_max = 31U,
+      k_name_copy_max = 31U, /**< Name copy maximum. */
     };
     uint8_t i = 0U;
     while ((i < k_name_copy_max) && (cfg->name[i] != '\0')) {

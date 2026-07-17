@@ -92,9 +92,9 @@ static const mem_region_t k_regions[] = {
  * alias pair). A Non-secure reader image linked for XIP places .text/.rodata at
  * 0x90000000 and the CPU fetches Non-secure instructions from there. */
 typedef enum : uint64_t {
-  k_ospi_xip_base = 0x80000000UL, /* OSPI XIP window: Secure physical base.      */
-  k_ospi_ns_base  = 0x90000000UL, /* OSPI XIP window: NS alias (IDAU bit[28]=1). */
-  k_ospi_xip_size = 0x04000000UL, /* 64 MiB execute-in-place flash array.        */
+  k_ospi_xip_base = 0x80000000UL, /**< OSPI XIP window: Secure physical base.      */
+  k_ospi_ns_base  = 0x90000000UL, /**< OSPI XIP window: NS alias (IDAU bit[28]=1). */
+  k_ospi_xip_size = 0x04000000UL, /**< 64 MiB execute-in-place flash array.        */
 } ospi_xip_map_t;
 
 /* On-chip temperature-sensor factory calibration. The TSN two-point trim words
@@ -108,9 +108,9 @@ typedef enum : uint64_t {
  * reports (k_adc_temp_code = 1800 in board_periph_adc.c), the two-point math
  * yields ~26 degC. This is factory-constant data, not a masked poll. */
 typedef enum : uint32_t {
-  k_tsn_cal_addr   = 0x02C1EDA0U, /* TSCDR (+0x00), TSCDR2 (+0x04).        */
-  k_tsn_cal_tscdr  = 3000U,       /* 12-bit calibration code at +125 degC. */
-  k_tsn_cal_tscdr2 = 1000U,       /* 12-bit calibration code at -40 degC.  */
+  k_tsn_cal_addr   = 0x02C1EDA0U, /**< TSCDR (+0x00), TSCDR2 (+0x04).        */
+  k_tsn_cal_tscdr  = 3000U,       /**< 12-bit calibration code at +125 degC. */
+  k_tsn_cal_tscdr2 = 1000U,       /**< 12-bit calibration code at -40 degC.  */
 } tsn_cal_seed_t;
 
 /** @brief Host-backed on-chip SRAM (shared with the cpu1 engine). */

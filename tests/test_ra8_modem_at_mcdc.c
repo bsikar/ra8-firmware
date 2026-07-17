@@ -26,20 +26,20 @@
 /* ------------------------------------------------------------------------- */
 
 typedef enum : uint16_t {
-  k_test_fifo_cap = 1024U,
+  k_test_fifo_cap = 1024U, /**< Test FIFO cap. */
 } test_fifo_caps_t;
 
 typedef struct {
-  uint8_t  buf[k_test_fifo_cap];
-  uint16_t head;
-  uint16_t tail;
+  uint8_t  buf[k_test_fifo_cap]; /**< Buffer. */
+  uint16_t head;                 /**< Head.   */
+  uint16_t tail;                 /**< Tail.   */
 } test_fifo_t;
 
 typedef struct {
-  test_fifo_t modem_to_mcu; /**< Bytes the modem sends to the MCU (rx_byte). */
-  test_fifo_t mcu_to_modem; /**< Bytes the MCU sends out (tx_byte).          */
-  uint32_t    fake_now_ms;
-  uint32_t    auto_advance_ms; /**< Advance time by this on every poll. */
+  test_fifo_t modem_to_mcu;    /**< Bytes the modem sends to the MCU (rx_byte). */
+  test_fifo_t mcu_to_modem;    /**< Bytes the MCU sends out (tx_byte).          */
+  uint32_t    fake_now_ms;     /**< Fake now ms.                                */
+  uint32_t    auto_advance_ms; /**< Advance time by this on every poll.         */
 } test_io_state_t;
 
 static test_io_state_t s_io;
@@ -127,9 +127,9 @@ static ra8_err_t bring_up(void)
 /* ------------------------------------------------------------------------- */
 
 typedef enum : uint16_t {
-  k_mcdc_capture_buf_bytes = 64U,
-  k_mcdc_prefix_too_big    = 64U,
-  k_mcdc_default_timeout   = 1000U,
+  k_mcdc_capture_buf_bytes = 64U,   /**< Mcdc capture buffer bytes. */
+  k_mcdc_prefix_too_big    = 64U,   /**< Mcdc prefix too big.       */
+  k_mcdc_default_timeout   = 1000U, /**< Mcdc default timeout.      */
 } modem_mcdc_caps_t;
 
 static void mcdc_dummy_urc(const char* line, void* ctx)

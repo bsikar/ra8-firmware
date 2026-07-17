@@ -27,23 +27,23 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_ra8_adc_test_ch_zero  = 0U,
-  k_ra8_adc_test_ch_valid = 5U,
-  k_ra8_adc_test_ch_max   = 22U, /**< Highest ADDR[] slot (23 results). */
-  k_ra8_adc_test_ch_oor   = 24U,
-  k_ra8_adc_test_ch_huge  = 200U,
+  k_ra8_adc_test_ch_zero  = 0U,   /**< RA8 ADC test channel zero.        */
+  k_ra8_adc_test_ch_valid = 5U,   /**< RA8 ADC test channel valid.       */
+  k_ra8_adc_test_ch_max   = 22U,  /**< Highest ADDR[] slot (23 results). */
+  k_ra8_adc_test_ch_oor   = 24U,  /**< RA8 ADC test channel oor.         */
+  k_ra8_adc_test_ch_huge  = 200U, /**< RA8 ADC test channel huge.        */
 } ra8_adc_test_ch_t;
 
 typedef enum : uint16_t {
-  k_ra8_adc_test_result_a = 0x1234U,
-  k_ra8_adc_test_result_b = 0x0BEEU,
+  k_ra8_adc_test_result_a = 0x1234U, /**< RA8 ADC test result a. */
+  k_ra8_adc_test_result_b = 0x0BEEU, /**< RA8 ADC test result b. */
 } ra8_adc_test_val_t;
 
 typedef enum : uint32_t {
-  k_ra8_adc_test_default_group_mask = 0x00000001UL, /**< ADSGER bit for group 0.     */
-  k_ra8_adc_test_admd0_one_cycle    = 0x00000001UL, /**< Expected ADMDR.ADMD0 value. */
-  k_ra8_adc_test_admd0_continuous   = 0x00000002UL,
-  k_ra8_adc_test_mdr1_sentinel      = 0x5A5A5A5AUL, /**< Live-window read-back proof. */
+  k_ra8_adc_test_default_group_mask = 0x00000001UL, /**< ADSGER bit for group 0.        */
+  k_ra8_adc_test_admd0_one_cycle    = 0x00000001UL, /**< Expected ADMDR.ADMD0 value.    */
+  k_ra8_adc_test_admd0_continuous   = 0x00000002UL, /**< RA8 ADC test admd0 continuous. */
+  k_ra8_adc_test_mdr1_sentinel      = 0x5A5A5A5AUL, /**< Live-window read-back proof.   */
 } ra8_adc_test_const_t;
 
 /**
@@ -75,20 +75,20 @@ typedef enum : uint8_t {
  * --------------------------------------------------------------------------- */
 
 typedef enum : uint8_t {
-  k_ra8_adc_test_group_one  = 1U,
-  k_ra8_adc_test_group_oor  = 9U,
-  k_ra8_adc_test_group_huge = 200U,
-  k_ra8_adc_test_cmp_table  = 3U,
-  k_ra8_adc_test_cmp_oor    = 8U,
+  k_ra8_adc_test_group_one  = 1U,   /**< RA8 ADC test group one.  */
+  k_ra8_adc_test_group_oor  = 9U,   /**< RA8 ADC test group oor.  */
+  k_ra8_adc_test_group_huge = 200U, /**< RA8 ADC test group huge. */
+  k_ra8_adc_test_cmp_table  = 3U,   /**< RA8 ADC test cmp table.  */
+  k_ra8_adc_test_cmp_oor    = 8U,   /**< RA8 ADC test cmp oor.    */
 } ra8_adc_test_group_t;
 
 typedef enum : uint16_t {
-  k_ra8_adc_test_window_low  = 0x0100U,
-  k_ra8_adc_test_window_high = 0x0FFFU,
+  k_ra8_adc_test_window_low  = 0x0100U, /**< RA8 ADC test window low.  */
+  k_ra8_adc_test_window_high = 0x0FFFU, /**< RA8 ADC test window high. */
 } ra8_adc_test_window_t;
 
 typedef enum : uint32_t {
-  k_ra8_adc_test_admd0_disabled = 0x00000000UL,
+  k_ra8_adc_test_admd0_disabled = 0x00000000UL, /**< RA8 ADC test admd0 disabled. */
 } ra8_adc_test_admd_t;
 
 static ra8_adc_scan_group_cfg_t make_scan_cfg(void)

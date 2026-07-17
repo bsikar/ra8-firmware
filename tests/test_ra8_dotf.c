@@ -24,11 +24,11 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_dotf_stamp_reg00      = 0xFFFFFFFFUL,
-  k_dotf_stamp_convareast = 0xDEADBEEFUL,
-  k_dotf_stamp_convaread  = 0xCAFEBABEUL,
-  k_dotf_lit_xdeadbeef    = 0xDEADBEEFUL,
-  k_dotf_lit_xcafebabe    = 0xCAFEBABEUL,
+  k_dotf_stamp_reg00      = 0xFFFFFFFFUL, /**< Dotf stamp reg00.        */
+  k_dotf_stamp_convareast = 0xDEADBEEFUL, /**< Dotf stamp convareast.   */
+  k_dotf_stamp_convaread  = 0xCAFEBABEUL, /**< Dotf stamp convaread.    */
+  k_dotf_lit_xdeadbeef    = 0xDEADBEEFUL, /**< Dotf literal 0xDEADBEEF. */
+  k_dotf_lit_xcafebabe    = 0xCAFEBABEUL, /**< Dotf literal 0xCAFEBABE. */
 } dotf_test_lit_t;
 
 typedef enum : uint8_t {

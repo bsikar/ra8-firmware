@@ -38,17 +38,17 @@
  *        test vectors previously inlined in this file's test bodies.
  */
 typedef enum : uint32_t {
-  k_sdmmc_spi_cov_cfg_cs_fail_at    = 5U,
-  k_sdmmc_spi_cov_cfg_xfer_fail_at  = 18U,
-  k_sdmmc_spi_cov_cfg_xfer_fail_at2 = 21U,
-  k_sdmmc_spi_cov_cfg_xfer_fail_at3 = 27U,
-  k_sdmmc_spi_cov_cfg_xfer_fail_at4 = 29U,
-  k_sdmmc_spi_cov_cfg_cs_fail_at2   = 10U,
-  k_sdmmc_spi_cov_cfg_xfer_fail_at5 = 34U,
-  k_sdmmc_spi_cov_cfg_xfer_fail_at6 = 35U,
-  k_sdmmc_spi_cov_lit_x80           = 0x80U,
-  k_sdmmc_spi_cov_cfg_cs_fail_at3   = 12U,
-  k_sdmmc_spi_cov_cfg_xfer_fail_at7 = 55U,
+  k_sdmmc_spi_cov_cfg_cs_fail_at    = 5U,    /**< Sdmmc SPI COV config CS fail at.    */
+  k_sdmmc_spi_cov_cfg_xfer_fail_at  = 18U,   /**< Sdmmc SPI COV config xfer fail at.  */
+  k_sdmmc_spi_cov_cfg_xfer_fail_at2 = 21U,   /**< Sdmmc SPI COV config xfer fail at2. */
+  k_sdmmc_spi_cov_cfg_xfer_fail_at3 = 27U,   /**< Sdmmc SPI COV config xfer fail at3. */
+  k_sdmmc_spi_cov_cfg_xfer_fail_at4 = 29U,   /**< Sdmmc SPI COV config xfer fail at4. */
+  k_sdmmc_spi_cov_cfg_cs_fail_at2   = 10U,   /**< Sdmmc SPI COV config CS fail at2.   */
+  k_sdmmc_spi_cov_cfg_xfer_fail_at5 = 34U,   /**< Sdmmc SPI COV config xfer fail at5. */
+  k_sdmmc_spi_cov_cfg_xfer_fail_at6 = 35U,   /**< Sdmmc SPI COV config xfer fail at6. */
+  k_sdmmc_spi_cov_lit_x80           = 0x80U, /**< Sdmmc SPI COV literal 0x80.         */
+  k_sdmmc_spi_cov_cfg_cs_fail_at3   = 12U,   /**< Sdmmc SPI COV config CS fail at3.   */
+  k_sdmmc_spi_cov_cfg_xfer_fail_at7 = 55U,   /**< Sdmmc SPI COV config xfer fail at7. */
 } sdmmc_spi_cov_test_lit_t;
 
 /* ===========================================================================
