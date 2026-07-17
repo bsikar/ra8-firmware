@@ -281,9 +281,9 @@ static void tpx_malformed(void)
   const uint8_t d_runout[]  = "123456";
   const uint8_t d_toolong[] = "12345678 a=b\n";
   const uint8_t d_short[]   = "2 a=b\n";     /* reclen cannot cover its prefix */
-  const uint8_t d_overrun[] = "99 path=x\n"; /* reclen past the data end */
-  const uint8_t d_nonl[]    = "9 path=xy";   /* no trailing newline */
-  const uint8_t d_noeq[]    = "8 pathx\n";   /* no key/value delimiter */
+  const uint8_t d_overrun[] = "99 path=x\n"; /* reclen past the data end       */
+  const uint8_t d_nonl[]    = "9 path=xy";   /* no trailing newline            */
+  const uint8_t d_noeq[]    = "8 pathx\n";   /* no key/value delimiter         */
   const uint8_t d_badsz[]   = "12 size=12x\n";
   const uint8_t d_emptysz[] = "8 size=\n";
   const uint8_t d_ovsz[]    = "29 size=99999999999999999999\n";
