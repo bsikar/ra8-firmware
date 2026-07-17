@@ -450,7 +450,7 @@ ra8_err_t mg_reader_status(const mg_reader_t* r, char* buf, uint32_t cap)
   pos = mg_append_str(buf, cap, pos, (r->zoom == (uint8_t)k_mg_zoom_full) ? "1:1  x=" : "FIT  x=");
   pos = mg_append_uint(buf, cap, pos, r->view_x);
   pos = mg_append_str(buf, cap, pos, " y=");
-  pos = mg_append_uint(buf, cap, pos, r->view_y);
+  (void)mg_append_uint(buf, cap, pos, r->view_y);
   return k_ra8_ok;
 }
 

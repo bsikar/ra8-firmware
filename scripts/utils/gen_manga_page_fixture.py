@@ -22,13 +22,18 @@
 
 import struct
 import zlib
-import os
+from pathlib import Path
 
 PAGE_W = 1536
 PAGE_H = 2048
 TILE = 256
 COLS = PAGE_W // TILE
 ROWS = PAGE_H // TILE
+
+# Tile geometry + emit formatting (named so the arithmetic reads clearly).
+FRAME_PX = 4
+LABEL_SCALE = 8
+BYTES_PER_ROW = 16
 
 # 5x7 blocky font for the tile labels (only the glyphs the labels use).
 FONT = {
@@ -55,66 +60,73 @@ def tile_gray(col, row):
     return 60 + idx * 16  # 60..236
 
 
-def draw_glyph(px, x0, y0, ch, scale, val):
-    rows = FONT.get(ch)
-    if rows is None:
-        return
-    for gy in range(GLYPH_H):
-        for gx in range(GLYPH_W):
-            if rows[gy][gx] != "1":
-                continue
-            for sy in range(scale):
-                for sx in range(scale):
-                    x = x0 + gx * scale + sx
-                    y = y0 + gy * scale + sy
-                    if 0 <= x < PAGE_W and 0 <= y < PAGE_H:
-                        px[y * PAGE_W + x] = val
+class Page:
+    """A flat 8-bit grayscale page the drawing helpers paint into."""
 
+    def __init__(self):
+        self.px = bytearray(PAGE_W * PAGE_H)
 
-def draw_label(px, tx, ty, col, row):
-    """Draw 'C<col>R<row>' centred in tile (tx,ty), black on the tile fill."""
-    label = "C%dR%d" % (col, row)
-    scale = 8
-    text_w = len(label) * (GLYPH_W + 1) * scale
-    x0 = tx + (TILE - text_w) // 2
-    y0 = ty + (TILE - GLYPH_H * scale) // 2
-    for i, ch in enumerate(label):
-        gx0 = x0 + i * (GLYPH_W + 1) * scale
-        draw_glyph(px, gx0, y0, ch, scale, 0)
+    def draw_glyph(self, x0, y0, ch, scale, val):
+        """Blit one scaled blocky glyph at (x0, y0) into the page."""
+        rows = FONT.get(ch)
+        if rows is None:
+            return
+        for gy in range(GLYPH_H):
+            for gx in range(GLYPH_W):
+                if rows[gy][gx] != "1":
+                    continue
+                for sy in range(scale):
+                    for sx in range(scale):
+                        x = x0 + gx * scale + sx
+                        y = y0 + gy * scale + sy
+                        if 0 <= x < PAGE_W and 0 <= y < PAGE_H:
+                            self.px[y * PAGE_W + x] = val
 
+    def draw_label(self, tx, ty, col, row):
+        """Draw 'C<col>R<row>' centred in tile (tx,ty), black on the tile fill."""
+        label = f"C{col}R{row}"
+        text_w = len(label) * (GLYPH_W + 1) * LABEL_SCALE
+        x0 = tx + (TILE - text_w) // 2
+        y0 = ty + (TILE - GLYPH_H * LABEL_SCALE) // 2
+        for i, ch in enumerate(label):
+            gx0 = x0 + i * (GLYPH_W + 1) * LABEL_SCALE
+            self.draw_glyph(gx0, y0, ch, LABEL_SCALE, 0)
 
-def build_page():
-    px = bytearray(PAGE_W * PAGE_H)
-    for row in range(ROWS):
-        for col in range(COLS):
-            tx = col * TILE
-            ty = row * TILE
-            g = tile_gray(col, row)
-            # Solid tile fill.
+    def draw_tile(self, col, row):
+        """Fill one tile with its solid gray, a black frame, and its label."""
+        tx = col * TILE
+        ty = row * TILE
+        g = tile_gray(col, row)
+        for y in range(ty, ty + TILE):
+            base = y * PAGE_W + tx
+            for x in range(TILE):
+                self.px[base + x] = g
+        for t in range(FRAME_PX):
+            for x in range(tx, tx + TILE):
+                self.px[(ty + t) * PAGE_W + x] = 0
+                self.px[(ty + TILE - 1 - t) * PAGE_W + x] = 0
             for y in range(ty, ty + TILE):
-                base = y * PAGE_W + tx
-                for x in range(TILE):
-                    px[base + x] = g
-            # Black inner frame (4 px) so tile boundaries read clearly.
-            for t in range(4):
-                for x in range(tx, tx + TILE):
-                    px[(ty + t) * PAGE_W + x] = 0
-                    px[(ty + TILE - 1 - t) * PAGE_W + x] = 0
-                for y in range(ty, ty + TILE):
-                    px[y * PAGE_W + tx + t] = 0
-                    px[y * PAGE_W + tx + TILE - 1 - t] = 0
-            draw_label(px, tx, ty, col, row)
-    return px
+                self.px[y * PAGE_W + tx + t] = 0
+                self.px[y * PAGE_W + tx + TILE - 1 - t] = 0
+        self.draw_label(tx, ty, col, row)
+
+    def build(self):
+        """Paint every tile and return the raw grayscale pixel buffer."""
+        for row in range(ROWS):
+            for col in range(COLS):
+                self.draw_tile(col, row)
+        return self.px
 
 
 def png_chunk(tag, data):
+    """Wrap one PNG chunk (length + tag + data + CRC-32)."""
     out = struct.pack(">I", len(data)) + tag + data
     crc = zlib.crc32(tag + data) & 0xFFFFFFFF
     return out + struct.pack(">I", crc)
 
 
 def encode_png(px):
-    # 8-bit grayscale (color type 0), filter type 0 (None) on every row.
+    """8-bit grayscale PNG (color type 0), filter type 0 (None) on every row."""
     raw = bytearray()
     for y in range(PAGE_H):
         raw.append(0)
@@ -130,84 +142,52 @@ def encode_png(px):
 
 
 def emit_header(png):
-    here = os.path.dirname(os.path.abspath(__file__))
-    root = os.path.dirname(os.path.dirname(here))
-    dst = os.path.join(
-        root,
-        "examples",
-        "ek_ra8d2",
-        "hw_pending",
-        "ereader_manga",
-        "mg_page_fixture.h",
-    )
-    lines = []
-    lines.append("/**")
-    lines.append(" * @file mg_page_fixture.h")
-    lines.append(
-        " * @brief Baked demo manga page for the ereader_manga viewer (@generated)."
-    )
-    lines.append(" *")
-    lines.append(" * @details")
-    lines.append(
-        " * One %dx%d 8-bit grayscale PNG, larger than the 1024x600 panel, laid out"
-        % (PAGE_W, PAGE_H)
-    )
-    lines.append(
-        " * as a %dx%d grid of %dpx tiles. Each tile is a distinct solid gray with a"
-        % (COLS, ROWS, TILE)
-    )
-    lines.append(
-        ' * black inner frame and a big blocky "C<col>R<row>" label, so panning the'
-    )
-    lines.append(
-        " * viewport across the page visibly changes which labels are on screen. The"
-    )
-    lines.append(
-        " * page is the source ra8_tileatlas_produce() transcodes into an RTA1 atlas"
-    )
-    lines.append(
-        " * at boot; it decodes to identical pixels on host, board_sim and silicon."
-    )
-    lines.append(" *")
-    lines.append(
-        " * Regenerate: python3 scripts/utils/gen_manga_page_fixture.py"
-    )
-    lines.append(" *")
-    lines.append(" * @copyright Copyright (c) 2026 Brighton Sikarskie")
-    lines.append(" * SPDX-License-Identifier: MIT")
-    lines.append(" */")
-    lines.append("#pragma once")
-    lines.append("")
-    lines.append("#include <stdint.h>")
-    lines.append("")
-    lines.append(
-        "/** @brief Baked %d-byte %dx%d grayscale PNG page. */" % (len(png), PAGE_W, PAGE_H)
-    )
-    lines.append("static const uint8_t k_mg_png[] = {")
-    row = "  "
-    for i, b in enumerate(png):
-        row += "0x%02X," % b
-        if (i % 16) == 15:
-            lines.append(row)
-            row = "  "
-        else:
-            row += " "
-    if row.strip():
-        lines.append(row.rstrip())
-    lines.append("};")
-    lines.append("")
-    lines.append("/** @brief Length of ::k_mg_png in bytes. */")
-    lines.append("static const uint32_t k_mg_png_len = %du;" % len(png))
-    with open(dst, "w", encoding="ascii") as f:
-        f.write("\n".join(lines) + "\n")
+    """Write the generated pure-ASCII C header holding the baked PNG bytes."""
+    root = Path(__file__).resolve().parents[2]
+    dst = root / "examples" / "ek_ra8d2" / "hw_pending" / "ereader_manga" / "mg_page_fixture.h"
+    lines = [
+        "/**",
+        " * @file mg_page_fixture.h",
+        " * @brief Baked demo manga page for the ereader_manga viewer (@generated).",
+        " *",
+        " * @details",
+        f" * One {PAGE_W}x{PAGE_H} 8-bit grayscale PNG, larger than the 1024x600 panel, laid out",
+        f" * as a {COLS}x{ROWS} grid of {TILE}px tiles. Each tile is a distinct solid gray with a",
+        ' * black inner frame and a big blocky "C<col>R<row>" label, so panning the',
+        " * viewport across the page visibly changes which labels are on screen. The",
+        " * page is the source ra8_tileatlas_produce() transcodes into an RTA1 atlas",
+        " * at boot; it decodes to identical pixels on host, board_sim and silicon.",
+        " *",
+        " * Regenerate: python3 scripts/utils/gen_manga_page_fixture.py",
+        " *",
+        " * @copyright Copyright (c) 2026 Brighton Sikarskie",
+        " * SPDX-License-Identifier: MIT",
+        " */",
+        "#pragma once",
+        "",
+        "#include <stdint.h>",
+        "",
+        f"/** @brief Baked {len(png)}-byte {PAGE_W}x{PAGE_H} grayscale PNG page. */",
+        "static const uint8_t k_mg_png[] = {",
+    ]
+    for start in range(0, len(png), BYTES_PER_ROW):
+        chunk = png[start : start + BYTES_PER_ROW]
+        lines.append("  " + " ".join(f"0x{byte:02X}," for byte in chunk))
+    lines += [
+        "};",
+        "",
+        "/** @brief Length of ::k_mg_png in bytes. */",
+        f"static const uint32_t k_mg_png_len = {len(png)}u;",
+    ]
+    dst.write_text("\n".join(lines) + "\n", encoding="ascii")
     return dst, len(png)
 
 
 def main():
-    px = build_page()
+    px = Page().build()
     png = encode_png(px)
     dst, n = emit_header(png)
-    print("wrote %s (%d PNG bytes)" % (dst, n))
+    print(f"wrote {dst} ({n} PNG bytes)")
 
 
 if __name__ == "__main__":
