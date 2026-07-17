@@ -136,7 +136,7 @@ static ra8_err_t internal_audio_route_pins(void)
     ra8_port_pin_t pin;   /**< Pin.   */
     ra8_psel_t     psel;  /**< Psel.  */
     const char*    owner; /**< Owner. */
-    /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+    /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   } routes[] = {
     {(ra8_port_pin_t)k_ra8_board_audio_pin_bclk, k_ra8_psel_ssie, "ra8_board.audio.bclk"},
     {(ra8_port_pin_t)k_ra8_board_audio_pin_wclk, k_ra8_psel_ssie, "ra8_board.audio.wclk"},
@@ -256,7 +256,7 @@ ra8_err_t ra8_board_audio_play_sample_block(const int16_t* buf, uint32_t len)
    * naturally aligns); see ra8_board_audio_play_sample_block docs. */
   const uint32_t        words   = len / (uint32_t)k_ra8_audio_samples_per_word;
   const uintptr_t       addr    = (uintptr_t)buf;
-  const uint32_t* const packed  = (const uint32_t*)addr; /* NOLINT(performance-no-int-to-ptr) */
+  const uint32_t* const packed  = (const uint32_t*)addr; /* NOLINT(performance-no-int-to-ptr) -- alignment-safe reinterpret documented above. */
   uint16_t              written = 0U;
   const ra8_err_t       err     = ra8_ssie_write_buffer((uint8_t)k_ra8_board_audio_ssie_channel,
                                                         packed,
@@ -881,7 +881,7 @@ static ra8_err_t internal_usbhs_role_select_device(void)
    * pins, so any other packed value lands outside the enumerator set
    * and trips clang-analyzer EnumCastOutOfRange; suppress in the same
    * pattern used elsewhere in this file for board-specific pins. */
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   const ra8_port_pin_t pd07 = (ra8_port_pin_t)RA8_PIN(k_ra8_port_13, k_ra8_pin_7);
   /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
   const ra8_err_t err    = ra8_gpio_output_init(pd07, k_ra8_level_low);

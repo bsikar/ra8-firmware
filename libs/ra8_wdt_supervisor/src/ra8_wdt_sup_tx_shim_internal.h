@@ -36,19 +36,19 @@ extern "C" {
  * @typedef ULONG
  * @brief ThreadX-compatible unsigned long (host stub).
  */
-typedef unsigned long ULONG; /* NOLINT(readability-identifier-naming) */
+typedef unsigned long ULONG; /* NOLINT(readability-identifier-naming) -- ThreadX vendor type name. */
 
 /**
  * @typedef UINT
  * @brief ThreadX-compatible unsigned int (host stub).
  */
-typedef unsigned int UINT; /* NOLINT(readability-identifier-naming) */
+typedef unsigned int UINT; /* NOLINT(readability-identifier-naming) -- ThreadX vendor type name. */
 
 /**
  * @typedef CHAR
  * @brief ThreadX-compatible CHAR (host stub).
  */
-typedef char CHAR; /* NOLINT(readability-identifier-naming) */
+typedef char CHAR; /* NOLINT(readability-identifier-naming) -- ThreadX vendor type name. */
 
 /** @def TX_SUCCESS Successful ThreadX status code (host stub). */
 #define TX_SUCCESS (0U)
@@ -84,16 +84,16 @@ typedef enum : uint32_t {
  * @brief Opaque mutex stand-in for the host build.
  */
 typedef struct {
-  uint32_t magic; /**< Sentinel for "created".             */
-} TX_MUTEX;       /* NOLINT(readability-identifier-naming) */
+  uint32_t magic; /**< Sentinel for "created".                                          */
+} TX_MUTEX;       /* NOLINT(readability-identifier-naming) -- ThreadX vendor type name. */
 
 /**
  * @struct TX_THREAD
  * @brief Opaque thread stand-in for the host build.
  */
 typedef struct {
-  uint32_t magic; /**< Sentinel for "created".             */
-} TX_THREAD;      /* NOLINT(readability-identifier-naming) */
+  uint32_t magic; /**< Sentinel for "created".                                          */
+} TX_THREAD;      /* NOLINT(readability-identifier-naming) -- ThreadX vendor type name. */
 
 /**
  * @brief Host stub for tx_mutex_create.
@@ -112,7 +112,7 @@ typedef struct {
  * @since 0.1.0
  */
 static inline UINT
-tx_mutex_create(TX_MUTEX* m, CHAR* name /* NOLINT(readability-non-const-parameter) */, UINT inherit)
+tx_mutex_create(TX_MUTEX* m, CHAR* name /* NOLINT(readability-non-const-parameter) -- ThreadX tx_mutex_create signature. */, UINT inherit)
 {
   (void)name;
   (void)inherit;
@@ -208,7 +208,7 @@ static inline UINT tx_mutex_delete(TX_MUTEX* m)
  * @since 0.1.0
  */
 static inline UINT tx_thread_create(TX_THREAD* t,
-                                    CHAR*      name /* NOLINT(readability-non-const-parameter) */,
+                                    CHAR*      name /* NOLINT(readability-non-const-parameter) -- ThreadX tx_thread_create signature. */,
                                     void (*entry)(ULONG),
                                     ULONG arg,
                                     void* stack,

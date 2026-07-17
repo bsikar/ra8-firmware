@@ -288,7 +288,7 @@ ra8_err_t ra8_board_uart_console_init(uint32_t baud)
   }
 
   /* Route PD02 -> TXD8, PD03 -> RXD8 (PSEL = SCI async). */
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   err = ra8_pfs_route_peripheral((ra8_port_pin_t)k_ra8_board_uart_console_pin_txd,
                                  k_ra8_psel_sci_async,
                                  "ra8_board.uart.console.txd");

@@ -78,7 +78,7 @@ static unsigned int s_sim_fail_writes;
  * @since 0.1.0
  */
 /* Signature is fixed by the LevelX driver-read callback type (non-const). */
-/* NOLINTNEXTLINE(readability-non-const-parameter) */
+/* NOLINTNEXTLINE(readability-non-const-parameter) -- LevelX driver callback signature is fixed by the vendor seam. */
 static UINT sim_read(ULONG* flash_address, ULONG* destination, ULONG words)
 {
   if (flash_address == LX_NULL) {
@@ -108,7 +108,7 @@ static UINT sim_read(ULONG* flash_address, ULONG* destination, ULONG words)
  * @since 0.1.0
  */
 /* Signature is fixed by the LevelX driver-write callback type (non-const). */
-/* NOLINTNEXTLINE(readability-non-const-parameter) */
+/* NOLINTNEXTLINE(readability-non-const-parameter) -- LevelX driver callback signature is fixed by the vendor seam. */
 static UINT sim_write(ULONG* flash_address, ULONG* source, ULONG words)
 {
   if (flash_address == LX_NULL) {

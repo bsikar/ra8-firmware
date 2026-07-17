@@ -588,7 +588,7 @@ static void modem_clocks_or_halt(uint32_t* out_pclka_hz)
  */
 static void modem_pfs_or_halt(void)
 {
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   if (ra8_pfs_route_peripheral((ra8_port_pin_t)k_ra8_board_mikrobus_tx,
                                k_ra8_psel_sci_async,
                                "modem_at_demo.txd7") != k_ra8_ok) {

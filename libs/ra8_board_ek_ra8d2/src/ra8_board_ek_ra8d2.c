@@ -675,7 +675,7 @@ ra8_err_t ra8_board_backlight_set(bool on)
  * the cast cluster is wrapped in a NOLINT region matching the
  * board-pin convention used throughout this BSP.
  */
-/* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+/* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
 static const ra8_port_pin_t s_xspi_octa_pins[] = {
   (ra8_port_pin_t)k_ra8_board_xspi_cs,  /**< OSPI_FLASH_S_L,   P104. */
   (ra8_port_pin_t)k_ra8_board_xspi_clk, /**< OSPI_FLASH_C,     P808. */
@@ -722,7 +722,7 @@ ra8_err_t ra8_board_xspi_pins_init(void)
    * + PDR=output is the IS25LX512M strap that holds the chip in
    * reset (datasheet Ch 9.2). EK-RA8D2 UM Table 29 maps RESET_L to
    * P106. */
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   const ra8_port_pin_t reset_pin = (ra8_port_pin_t)k_ra8_board_xspi_reset;
   /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
   ra8_err_t err = ra8_gpio_output_init(reset_pin, k_ra8_level_low);
@@ -774,7 +774,7 @@ ra8_err_t ra8_board_xspi_pins_init(void)
  * cast cluster is wrapped in a NOLINT region matching the board-pin
  * convention used throughout this BSP.
  */
-/* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+/* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
 static const ra8_port_pin_t s_sdhi_bus_pins[] = {
   (ra8_port_pin_t)k_ra8_board_sdhi_cmd,  /**< SDHI0 CMD,  P400. */
   (ra8_port_pin_t)k_ra8_board_sdhi_clk,  /**< SDHI0 CLK,  P401. */

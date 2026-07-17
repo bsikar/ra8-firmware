@@ -152,14 +152,14 @@ static void internal_hash_pull_digest(uint8_t* digest, uint32_t to_read)
   while ((i + (uint32_t)k_ra8_rsip_trng_word_bytes) <= to_read) {
     /* Computed digest-word offset is a modelled register location (sim-only
      * fiction), not a literal enumerator -- the analyzer can't see that. */
-    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
+    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) -- computed digest-word offset, not an enumerator.
     const uint32_t word = *ra8_rsip_reg32((ra8_rsip_off_t)off);
     internal_unpack_le(word, &digest[i]);
     i += (uint32_t)k_ra8_rsip_trng_word_bytes;
     off += (uint32_t)k_ra8_rsip_trng_word_bytes;
   }
   if (i < to_read) {
-    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
+    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) -- computed digest-word offset, not an enumerator.
     const uint32_t word = *ra8_rsip_reg32((ra8_rsip_off_t)off);
     for (uint32_t b = 0U; (i + b) < to_read; ++b) {
       digest[i + b] = (uint8_t)((word >> (b * k_ra8_rsip_byte_bits)) & k_ra8_rsip_byte_mask);

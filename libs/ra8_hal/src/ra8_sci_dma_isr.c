@@ -93,7 +93,7 @@ ra8_err_t ra8_sci_write_dma(uint8_t               channel,
  * through the pointer directly, so clang-tidy would otherwise flag
  * it as a const candidate. */
 ra8_err_t ra8_sci_read_dma(uint8_t               channel,
-                           uint8_t*              out_buf, // NOLINT(readability-non-const-parameter)
+                           uint8_t*              out_buf, // NOLINT(readability-non-const-parameter) -- written by the DMAC engine via dst_addr, never through the pointer.
                            uint16_t              len,
                            ra8_dma_complete_fn_t on_complete,
                            void*                 ctx,
