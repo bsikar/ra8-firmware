@@ -35,25 +35,25 @@
 
 /** @brief Fixed sizing for the CLI (large buffers live in .bss). */
 typedef enum : uint32_t {
-  k_page_buf_bytes  = 8U * 1024U * 1024U, /**< Max HTML page size. */
+  k_page_buf_bytes  = 8U * 1024U * 1024U, /**< Max HTML page size.             */
   k_req_timeout_def = 25000U,             /**< Default per-request budget, ms. */
 } mdl_cli_limits_t;
 
 /** @brief On-stack string buffer sizes and page-mode delays. */
 typedef enum : uint16_t {
-  k_chap_name_bytes    = 128,  /**< Chapter folder-name buffer. */
-  k_slug_bytes         = 128,  /**< Series slug buffer. */
-  k_dir_path_bytes     = 1024, /**< Directory-path buffer. */
-  k_file_path_bytes    = 1200, /**< File-path buffer. */
-  k_numbuf_bytes       = 16,   /**< Digit-run parse buffer. */
-  k_extbuf_bytes       = 8,    /**< File-extension buffer. */
-  k_page_img_delay_min = 400,  /**< page-mode per-image floor, ms. */
+  k_chap_name_bytes    = 128,  /**< Chapter folder-name buffer.      */
+  k_slug_bytes         = 128,  /**< Series slug buffer.              */
+  k_dir_path_bytes     = 1024, /**< Directory-path buffer.           */
+  k_file_path_bytes    = 1200, /**< File-path buffer.                */
+  k_numbuf_bytes       = 16,   /**< Digit-run parse buffer.          */
+  k_extbuf_bytes       = 8,    /**< File-extension buffer.           */
+  k_page_img_delay_min = 400,  /**< page-mode per-image floor, ms.   */
   k_page_img_delay_max = 800,  /**< page-mode per-image ceiling, ms. */
 } mdl_bufsize_t;
 
 /** @brief Filesystem + parse constants. */
 typedef enum : uint16_t {
-  k_dir_mode = 0755, /**< mkdir() permission bits. */
+  k_dir_mode = 0755, /**< mkdir() permission bits.  */
   k_dec_base = 10,   /**< strtoul()/strtol() radix. */
 } mdl_misc_t;
 
@@ -554,20 +554,20 @@ static void usage(const char* a0)
 
 /** @brief Parsed command-line options in string form (converted by main). */
 typedef struct {
-  const char* cfg;      /**< --config path. */
-  const char* series;   /**< --series URL. */
-  const char* page_url; /**< positional page URL (page mode). */
-  const char* out;      /**< --out dir. */
-  const char* attr;     /**< --attr. */
-  const char* chapters; /**< --chapters. */
-  const char* start;    /**< --start. */
-  const char* max;      /**< --max. */
-  const char* seed;     /**< --seed. */
-  const char* timeout;  /**< --timeout. */
-  const char* format;   /**< --format (cbz/cbt/cbr/cbt.xz/cbt.gz/epub/rta1/rabook). */
-  const char* pack;     /**< --pack DIR: package an existing folder, no network. */
+  const char* cfg;      /**< --config path.                                          */
+  const char* series;   /**< --series URL.                                           */
+  const char* page_url; /**< positional page URL (page mode).                        */
+  const char* out;      /**< --out dir.                                              */
+  const char* attr;     /**< --attr.                                                 */
+  const char* chapters; /**< --chapters.                                             */
+  const char* start;    /**< --start.                                                */
+  const char* max;      /**< --max.                                                  */
+  const char* seed;     /**< --seed.                                                 */
+  const char* timeout;  /**< --timeout.                                              */
+  const char* format;   /**< --format (cbz/cbt/cbr/cbt.xz/cbt.gz/epub/rta1/rabook).  */
+  const char* pack;     /**< --pack DIR: package an existing folder, no network.     */
   bool        separate; /**< --separate: one archive per chapter (default: combine). */
-  bool        bad;      /**< An unrecognised argument was seen. */
+  bool        bad;      /**< An unrecognised argument was seen.                      */
 } mdl_args_t;
 
 /** @brief If argv[*i] == `flag`, store its value in *dst and advance `*i`. */
