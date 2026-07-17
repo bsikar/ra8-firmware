@@ -29,7 +29,7 @@ extern void ra8_ble_host_att_handle_pdu(uint16_t conn_handle, const uint8_t* pdu
  * ---------------------------------------------------------------------------
  */
 
-/** Mirror of line 286 (and structurally identical line 567 form):
+/** Mirror of the internal_handle_find_info handle-range guard:
  *  ``if ((start == 0U) || (start > end))``. */
 static inline uint8_t mirror_find_info_handle_range(uint16_t start, uint16_t end)
 {
@@ -39,8 +39,8 @@ static inline uint8_t mirror_find_info_handle_range(uint16_t start, uint16_t end
   return 0U;
 }
 
-/** Mirror of line 305 / line 385:
- *  ``if ((a->handle < start) || (a->handle > end))``. */
+/** Mirror of the internal_emit_info_pairs / internal_emit_first_decl_in_range
+ *  skip filter: ``if ((a->handle < start) || (a->handle > end))``. */
 static inline uint8_t mirror_attr_in_range(uint16_t a_handle, uint16_t start, uint16_t end)
 {
   if ((a_handle < start) || (a_handle > end)) {
@@ -49,7 +49,7 @@ static inline uint8_t mirror_attr_in_range(uint16_t a_handle, uint16_t start, ui
   return 0U;
 }
 
-/** Mirror of line 530:
+/** Mirror of the internal_handle_write writable-value arm:
  *  ``else if ((a->kind == k_attr_kind_char_value) && (a->value != NULL))``. */
 static inline uint8_t mirror_writable_char_value(uint8_t kind, uint8_t want_kind, const void* value)
 {
@@ -64,7 +64,7 @@ static inline uint8_t mirror_writable_char_value(uint8_t kind, uint8_t want_kind
  *
  * @par MC/DC:
  * Decision: ``if ((start == 0U) || (start > end))``
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_att.c line 286)
+ * (2 conditions, internal_handle_find_info in ra8_ble_att.c)
  *  - V1: start=1, end=10  -> C1=F, C2=F. Decision F (proceed).
  *  - V2: start=0, end=10  -> C1=T shorts. Decision T (invalid range).
  *  - V3: start=20,end=10  -> C1=F, C2=T. Decision T (invalid range).
@@ -87,7 +87,8 @@ static void test_mcdc_find_info_handle_range(void)
  *
  * @par MC/DC:
  * Decision: ``if ((a->handle < start) || (a->handle > end))``
- * (2 conditions; lines 305 and 385 are textually identical)
+ * (2 conditions; internal_emit_info_pairs and
+ * internal_emit_first_decl_in_range carry textually identical copies)
  *  - V1: a=5, [1,10]   -> C1=F, C2=F. Decision F (in-range).
  *  - V2: a=0, [1,10]   -> C1=T shorts. Decision T (skip).
  *  - V3: a=20,[1,10]   -> C1=F, C2=T. Decision T (skip).
@@ -95,7 +96,8 @@ static void test_mcdc_find_info_handle_range(void)
  *
  * @par DO-178C 6.4.4.3 rationale:
  * 2-condition decision; N+1 = 3 vectors satisfy MC/DC fully. Two
- * production line numbers (305, 385) share this exact decision
+ * production sites (internal_emit_info_pairs and
+ * internal_emit_first_decl_in_range) share this exact decision
  * (textually identical), so one vector set discharges both per
  * DO-178C 6.4.4.3 "structurally equivalent decisions" guidance.
  */
@@ -113,7 +115,7 @@ static void test_mcdc_attr_in_range(void)
  *
  * @par MC/DC:
  * Decision: ``else if ((a->kind == k_attr_kind_char_value) && (a->value != NULL))``
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_att.c line 530)
+ * (2 conditions, internal_handle_write in ra8_ble_att.c)
  *  - V1: kind=char_value, value!=NULL -> C1=T, C2=T. Decision T (write).
  *  - V2: kind=other,      value!=NULL -> C1=F shorts. Decision F.
  *  - V3: kind=char_value, value=NULL  -> C1=T, C2=F. Decision F.
@@ -144,7 +146,7 @@ static void test_mcdc_writable_char_value(void)
  *
  * @par MC/DC:
  * Decision: ``if ((pdu == NULL) || (pdu_len == 0U))``
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_att.c line 665, public symbol)
+ * (2 conditions, ra8_ble_host_att_handle_pdu in ra8_ble_att.c, public symbol)
  *  - V1: pdu non-NULL, len=1   -> C1=F, C2=F. Decision F (dispatch).
  *  - V2: pdu NULL, len=1       -> C1=T shorts. Decision T (early return).
  *  - V3: pdu non-NULL, len=0   -> C1=F, C2=T. Decision T (early return).

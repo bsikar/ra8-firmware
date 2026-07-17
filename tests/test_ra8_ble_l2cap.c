@@ -4,9 +4,9 @@
  *
  * @details
  * Provides labeled MC/DC vector sets for the public-API decisions in
- * ``ra8_ble_l2cap.c`` flagged by docs/MCDC_GAPS.csv, including the HCI
- * event-trampoline guards (lines 576/580/597) reached via the
- * UNIT_TEST-only ``ra8_ble_host_test_inject_event`` veneer.
+ * ``ra8_ble_l2cap.c`` flagged by docs/MCDC_GAPS.csv, including the
+ * internal_evt_trampoline guards reached via the UNIT_TEST-only
+ * ``ra8_ble_host_test_inject_event`` veneer.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -57,8 +57,7 @@ static ra8_err_t bring_up(void)
  *                 (cfg->role != k_ra8_ble_host_role_central) &&
  *                 (cfg->role != k_ra8_ble_host_role_observer) &&
  *                 (cfg->role != k_ra8_ble_host_role_broadcaster))``
- * (4 conditions, libs/ra8_ble_host/src/ra8_ble_l2cap.c around line 662 --
- * ra8_ble_host_init)
+ * (4 conditions, ra8_ble_host_init in ra8_ble_l2cap.c)
  *
  * Per DO-178C 6.4.4.3 representative-subset for chained ``&&`` decision
  * is N+1 = 5 vectors. Pairs (V1,V5)..(V4,V5) flip C1..C4 in turn.
@@ -89,7 +88,7 @@ static void test_mcdc_l2cap_init_role_4cond(void)
  * @test test_mcdc_l2cap_evt_trampoline_initguard
  *
  * @par MC/DC:
- * Decision (libs/ra8_ble_host/src/ra8_ble_l2cap.c line 576):
+ * Decision (internal_evt_trampoline in ra8_ble_l2cap.c):
  *   ``if ((params == NULL) || (s_state.initialized == 0U))``
  * (2 conditions, OR; N+1 = 3 vectors).
  *
@@ -102,7 +101,7 @@ static void test_mcdc_l2cap_init_role_4cond(void)
  */
 static void test_mcdc_l2cap_evt_trampoline_initguard(void)
 {
-  TEST_BEGIN("ra8_ble_l2cap MC/DC: evt-trampoline init/null guard (576)");
+  TEST_BEGIN("ra8_ble_l2cap MC/DC: evt-trampoline init/null guard");
   static const uint8_t s_dummy_params[1] = {0U};
 
   /* V1: not initialized, params!=NULL -> C2=T (early return; no event). */
@@ -123,14 +122,14 @@ static void test_mcdc_l2cap_evt_trampoline_initguard(void)
   ra8_ble_host_test_inject_event((uint8_t)k_test_evt_unrecognised, s_dummy_params, 1U);
   TEST_ASSERT_EQ(before_v3, ra8_ble_host_test_event_count());
 
-  TEST_END("ra8_ble_l2cap MC/DC: evt-trampoline init/null guard (576)");
+  TEST_END("ra8_ble_l2cap MC/DC: evt-trampoline init/null guard");
 }
 
 /**
  * @test test_mcdc_l2cap_evt_trampoline_lemeta_3cond
  *
  * @par MC/DC:
- * Decision (libs/ra8_ble_host/src/ra8_ble_l2cap.c line 580):
+ * Decision (internal_evt_trampoline in ra8_ble_l2cap.c):
  *   ``if ((evt_code == k_evt_le_meta) &&
  *         (params_len >= k_min_lemeta_param_bytes) &&
  *         (params[k_lemeta_subev_idx] == k_subev_le_conn_complete))``
@@ -184,7 +183,7 @@ static void test_mcdc_l2cap_evt_trampoline_lemeta_3cond(void)
  * @test test_mcdc_l2cap_evt_trampoline_disconn_2cond
  *
  * @par MC/DC:
- * Decision (libs/ra8_ble_host/src/ra8_ble_l2cap.c line 597):
+ * Decision (internal_evt_trampoline in ra8_ble_l2cap.c):
  *   ``else if ((evt_code == k_evt_disconn_complete) &&
  *              (params_len >= k_min_disconn_param_bytes))``
  * (2 conditions, AND; N+1 = 3 vectors).
