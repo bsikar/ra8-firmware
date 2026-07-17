@@ -300,6 +300,98 @@ static void test_cbt_wrapped_gzip_and_xz(void)
 }
 
 /**
+ * @brief Open the wrapped fixture archive with the shared page / name / scratch
+ *        buffers, varying only the handle, reader, size and arena.
+ *
+ * @param[out] c         Comic handle (nullptr exercises the c guard).
+ * @param[in]  read      Archive reader (nullptr exercises the read guard).
+ * @param[in]  file_len  Wrapped-archive size in bytes.
+ * @param[in]  arena     Working arena (nullptr / misaligned exercise guards).
+ * @param[in]  arena_len Arena size in bytes.
+ *
+ * @return The `ra8_comic_open_wrapped` result code.
+ * @pre The shared fixture buffers are populated.
+ * @post No state beyond @p c is modified.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static ra8_err_t tcb_open_full(ra8_comic_t*      c,
+                               ra8_comic_read_fn read,
+                               uint64_t          file_len,
+                               uint8_t*          arena,
+                               size_t            arena_len)
+{
+  return ra8_comic_open_wrapped(c,
+                                read,
+                                nullptr,
+                                file_len,
+                                s_pages,
+                                (uint32_t)k_tcb_page_cap,
+                                s_names,
+                                (uint32_t)sizeof(s_names),
+                                arena,
+                                arena_len,
+                                s_scratch,
+                                (uint32_t)sizeof(s_scratch));
+}
+
+/**
+ * @brief Exercise the nesting-bomb rejections of the wrapped-open path.
+ * @param[out] c Comic handle under test.
+ * @return None.
+ * @pre The shared fixture buffers are available.
+ * @post Every nesting bomb returned its documented rejection code.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void tcb_bombs(ra8_comic_t* c)
+{
+  /* gzip-of-gzip: the classic nesting bomb shape. */
+  tcb_gzip_wrap((const uint8_t*)"payload", 7U);
+  memcpy(s_inner, s_arc, s_arc_len);
+  tcb_gzip_wrap(s_inner, s_arc_len);
+  TEST_ASSERT_EQ(k_ra8_err_decomp_depth, tcb_open_wrapped(c));
+  TEST_ASSERT_EQ(k_ra8_comic_kind_none, ra8_comic_kind(c));
+
+  /* gzip-of-xz: the other wrapper inside a wrapper. */
+  tcb_gzip_wrap(k_fx_xz_crc32, sizeof(k_fx_xz_crc32));
+  TEST_ASSERT_EQ(k_ra8_err_decomp_depth, tcb_open_wrapped(c));
+
+  /* gzip of non-container garbage: the inner open rejects it. */
+  tcb_gzip_wrap((const uint8_t*)"not an archive at all, promise!!", 32U);
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, tcb_open_wrapped(c));
+}
+
+/**
+ * @brief Exercise the null / size / alignment argument guards of wrapped-open.
+ * @param[out] c Comic handle under test.
+ * @return None.
+ * @pre The shared fixture buffers are available.
+ * @post Every malformed argument returned its documented rejection code.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void tcb_arg_guards(ra8_comic_t* c)
+{
+  const size_t tar_len = tcb_build_tar(s_inner);
+  tcb_gzip_wrap(s_inner, tar_len);
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 tcb_open_full(nullptr, tcb_read, (uint64_t)s_arc_len, s_arena, sizeof(s_arena)));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 tcb_open_full(c, nullptr, (uint64_t)s_arc_len, s_arena, sizeof(s_arena)));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 tcb_open_full(c, tcb_read, (uint64_t)s_arc_len, nullptr, sizeof(s_arena)));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, tcb_open_full(c, tcb_read, 0U, s_arena, sizeof(s_arena)));
+  /* Misaligned arena (the descriptor slot needs 8-byte alignment). */
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_size,
+    tcb_open_full(c, tcb_read, (uint64_t)s_arc_len, &s_arena[1], sizeof(s_arena) - 1U));
+  /* Arena with no room past the descriptor slot. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 tcb_open_full(c, tcb_read, (uint64_t)s_arc_len, s_arena, 8U));
+}
+
+/**
  * @test test_cbt_wrapped_bombs_and_guards
  * @brief Nesting bombs and bad wrapped-open arguments fail closed.
  *
@@ -316,105 +408,8 @@ static void test_cbt_wrapped_bombs_and_guards(void)
 {
   TEST_BEGIN("cbt: nesting bombs + wrapped-open guards");
   ra8_comic_t c = {};
-
-  /* gzip-of-gzip: the classic nesting bomb shape. */
-  tcb_gzip_wrap((const uint8_t*)"payload", 7U);
-  memcpy(s_inner, s_arc, s_arc_len);
-  tcb_gzip_wrap(s_inner, s_arc_len);
-  TEST_ASSERT_EQ(k_ra8_err_decomp_depth, tcb_open_wrapped(&c));
-  TEST_ASSERT_EQ(k_ra8_comic_kind_none, ra8_comic_kind(&c));
-
-  /* gzip-of-xz: the other wrapper inside a wrapper. */
-  tcb_gzip_wrap(k_fx_xz_crc32, sizeof(k_fx_xz_crc32));
-  TEST_ASSERT_EQ(k_ra8_err_decomp_depth, tcb_open_wrapped(&c));
-
-  /* gzip of non-container garbage: the inner open rejects it. */
-  tcb_gzip_wrap((const uint8_t*)"not an archive at all, promise!!", 32U);
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, tcb_open_wrapped(&c));
-
-  /* Argument guards. */
-  const size_t tar_len = tcb_build_tar(s_inner);
-  tcb_gzip_wrap(s_inner, tar_len);
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_comic_open_wrapped(nullptr,
-                                        tcb_read,
-                                        nullptr,
-                                        (uint64_t)s_arc_len,
-                                        s_pages,
-                                        (uint32_t)k_tcb_page_cap,
-                                        s_names,
-                                        (uint32_t)sizeof(s_names),
-                                        s_arena,
-                                        sizeof(s_arena),
-                                        s_scratch,
-                                        (uint32_t)sizeof(s_scratch)));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_comic_open_wrapped(&c,
-                                        nullptr,
-                                        nullptr,
-                                        (uint64_t)s_arc_len,
-                                        s_pages,
-                                        (uint32_t)k_tcb_page_cap,
-                                        s_names,
-                                        (uint32_t)sizeof(s_names),
-                                        s_arena,
-                                        sizeof(s_arena),
-                                        s_scratch,
-                                        (uint32_t)sizeof(s_scratch)));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_comic_open_wrapped(&c,
-                                        tcb_read,
-                                        nullptr,
-                                        (uint64_t)s_arc_len,
-                                        s_pages,
-                                        (uint32_t)k_tcb_page_cap,
-                                        s_names,
-                                        (uint32_t)sizeof(s_names),
-                                        nullptr,
-                                        sizeof(s_arena),
-                                        s_scratch,
-                                        (uint32_t)sizeof(s_scratch)));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_comic_open_wrapped(&c,
-                                        tcb_read,
-                                        nullptr,
-                                        0U,
-                                        s_pages,
-                                        (uint32_t)k_tcb_page_cap,
-                                        s_names,
-                                        (uint32_t)sizeof(s_names),
-                                        s_arena,
-                                        sizeof(s_arena),
-                                        s_scratch,
-                                        (uint32_t)sizeof(s_scratch)));
-  /* Misaligned arena (the descriptor slot needs 8-byte alignment). */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_comic_open_wrapped(&c,
-                                        tcb_read,
-                                        nullptr,
-                                        (uint64_t)s_arc_len,
-                                        s_pages,
-                                        (uint32_t)k_tcb_page_cap,
-                                        s_names,
-                                        (uint32_t)sizeof(s_names),
-                                        &s_arena[1],
-                                        sizeof(s_arena) - 1U,
-                                        s_scratch,
-                                        (uint32_t)sizeof(s_scratch)));
-  /* Arena with no room past the descriptor slot. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_comic_open_wrapped(&c,
-                                        tcb_read,
-                                        nullptr,
-                                        (uint64_t)s_arc_len,
-                                        s_pages,
-                                        (uint32_t)k_tcb_page_cap,
-                                        s_names,
-                                        (uint32_t)sizeof(s_names),
-                                        s_arena,
-                                        8U,
-                                        s_scratch,
-                                        (uint32_t)sizeof(s_scratch)));
+  tcb_bombs(&c);
+  tcb_arg_guards(&c);
   TEST_END("cbt: nesting bombs + wrapped-open guards");
 }
 
