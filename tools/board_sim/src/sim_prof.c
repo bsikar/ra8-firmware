@@ -106,6 +106,45 @@ static int prof_cmp(const void* a, const void* b)
   return (la < lb) ? -1 : ((la > lb) ? 1 : 0);
 }
 
+/** @brief Collect the STT_FUNC symbols of one SHT_SYMTAB section into s_prof. */
+static void prof_collect_symtab(const uint8_t* elf,
+                                const uint8_t* sh,
+                                uint32_t       shoff,
+                                uint16_t       shentsize,
+                                uint16_t       shnum)
+{
+  uint32_t sym_off = 0U, sym_size = 0U, sym_link = 0U, sym_entsize = 0U;
+  (void)memcpy(&sym_off, sh + 16, 4);
+  (void)memcpy(&sym_size, sh + (uint32_t)k_elf_sh_size_off, 4);
+  (void)memcpy(&sym_link, sh + (uint32_t)k_elf_sh_link_off, 4);
+  (void)memcpy(&sym_entsize, sh + (uint32_t)k_elf_sh_entsize_off, 4);
+  if ((sym_entsize < 16U) || (sym_link >= shnum)) {
+    return;
+  }
+  const uint8_t* strsh   = elf + shoff + ((uint32_t)sym_link * shentsize);
+  uint32_t       str_off = 0U;
+  (void)memcpy(&str_off, strsh + 16, 4);
+  const uint32_t nsym = sym_size / sym_entsize;
+  for (uint32_t s = 0U; (s < nsym) && (s_prof_n < (uint32_t)k_prof_max_syms); s++) {
+    const uint8_t* sym     = elf + sym_off + (s * sym_entsize);
+    uint32_t       st_name = 0U, st_value = 0U, st_size = 0U;
+    (void)memcpy(&st_name, sym + 0, 4);
+    (void)memcpy(&st_value, sym + 4, 4);
+    (void)memcpy(&st_size, sym + 8, 4);
+    if (((sym[k_elf_sym_info_off] & (uint8_t)k_elf_st_type_mask) != 2U) || (st_size == 0U) ||
+        (st_name == 0U)) { /* STT_FUNC */
+      continue;
+    }
+    s_prof[s_prof_n].lo    = st_value & ~1U;
+    s_prof[s_prof_n].hi    = (st_value & ~1U) + st_size;
+    s_prof[s_prof_n].name  = (const char*)(elf + str_off + st_name);
+    s_prof[s_prof_n].secs  = 0.0;
+    s_prof[s_prof_n].insns = 0U;
+    s_prof[s_prof_n].calls = 0U;
+    s_prof_n++;
+  }
+}
+
 /** @brief Collect + sort FUNC symbols (BOARD_SIM_PROFILE only) for PC bucketing. */
 void prof_load(const uint8_t* elf, long len)
 {
@@ -133,36 +172,7 @@ void prof_load(const uint8_t* elf, long len)
     if (sh_type != 2U) { /* SHT_SYMTAB */
       continue;
     }
-    uint32_t sym_off = 0U, sym_size = 0U, sym_link = 0U, sym_entsize = 0U;
-    (void)memcpy(&sym_off, sh + 16, 4);
-    (void)memcpy(&sym_size, sh + (uint32_t)k_elf_sh_size_off, 4);
-    (void)memcpy(&sym_link, sh + (uint32_t)k_elf_sh_link_off, 4);
-    (void)memcpy(&sym_entsize, sh + (uint32_t)k_elf_sh_entsize_off, 4);
-    if ((sym_entsize < 16U) || (sym_link >= shnum)) {
-      continue;
-    }
-    const uint8_t* strsh   = elf + shoff + ((uint32_t)sym_link * shentsize);
-    uint32_t       str_off = 0U;
-    (void)memcpy(&str_off, strsh + 16, 4);
-    const uint32_t nsym = sym_size / sym_entsize;
-    for (uint32_t s = 0U; (s < nsym) && (s_prof_n < (uint32_t)k_prof_max_syms); s++) {
-      const uint8_t* sym     = elf + sym_off + (s * sym_entsize);
-      uint32_t       st_name = 0U, st_value = 0U, st_size = 0U;
-      (void)memcpy(&st_name, sym + 0, 4);
-      (void)memcpy(&st_value, sym + 4, 4);
-      (void)memcpy(&st_size, sym + 8, 4);
-      if (((sym[k_elf_sym_info_off] & (uint8_t)k_elf_st_type_mask) != 2U) || (st_size == 0U) ||
-          (st_name == 0U)) { /* STT_FUNC */
-        continue;
-      }
-      s_prof[s_prof_n].lo    = st_value & ~1U;
-      s_prof[s_prof_n].hi    = (st_value & ~1U) + st_size;
-      s_prof[s_prof_n].name  = (const char*)(elf + str_off + st_name);
-      s_prof[s_prof_n].secs  = 0.0;
-      s_prof[s_prof_n].insns = 0U;
-      s_prof[s_prof_n].calls = 0U;
-      s_prof_n++;
-    }
+    prof_collect_symtab(elf, sh, shoff, shentsize, shnum);
   }
   qsort(s_prof, (size_t)s_prof_n, sizeof(s_prof[0]), prof_cmp);
   (void)fprintf(stderr,
@@ -447,28 +457,20 @@ static void prof_write_html(const char* path, uint64_t total)
   (void)fclose(f);
 }
 
-/** @brief Speedscope export + inclusive/self breakdown + phase timeline (insn mode). */
 /** @brief Fraction-to-per-cent scale (fraction * 100.0 == per-cent). */
 static const double s_percent_scale = 100.0;
 
-static void prof_report_flamechart(void)
-{
-  enum : uint32_t {
-    k_no_fn        = 0xFFFFFFFFU, /**< Sentinel for "no phase frame".        */
-    k_phase_depth  = 2U,          /**< Chain depth used as the boot "phase". */
-    k_phase_lines  = 24U,         /**< Cap on printed timeline segments.     */
-    k_phase_pct_x1 = 100U,        /**< Per-cent base: keep segments >= 1%.   */
-  };
-  const char* out = getenv("BOARD_SIM_PROFILE_OUT");
-  if ((out == nullptr) || (out[0] == '\0')) {
-    out = "board_sim_profile.speedscope.json";
-  }
-  const char* html = getenv("BOARD_SIM_PROFILE_HTML");
-  if ((html == nullptr) || (html[0] == '\0')) {
-    html = "board_sim_profile.html";
-  }
-  prof_write_speedscope(out);
+/** @brief Boot-timeline "phase" collapse constants for prof_print_boot_timeline. */
+typedef enum : uint32_t {
+  k_no_fn        = 0xFFFFFFFFU, /**< Sentinel for "no phase frame".        */
+  k_phase_depth  = 2U,          /**< Chain depth used as the boot "phase". */
+  k_phase_lines  = 24U,         /**< Cap on printed timeline segments.     */
+  k_phase_pct_x1 = 100U,        /**< Per-cent base: keep segments >= 1%.   */
+} prof_phase_t;
 
+/** @brief Reset then fill s_incl/s_self from the samples; return total weight. */
+static uint64_t prof_accumulate_incl_self(void)
+{
   /* Inclusive (anywhere on the chain) + self (leaf) weights, from the samples.
    * No recursion (NASA Rule 1) -> each function appears at most once per sample,
    * so a straight per-frame add needs no dedup. */
@@ -488,11 +490,12 @@ static void prof_report_flamechart(void)
       s_self[s_samp[i][d - 1U]] += w;
     }
   }
-  if (total == 0U) {
-    return;
-  }
-  prof_write_html(html, total); /* self-contained local GUI flamechart. */
+  return total;
+}
 
+/** @brief Print the boot timeline: each contiguous shallow-depth phase run. */
+static void prof_print_boot_timeline(uint64_t total)
+{
   /* Phase timeline: collapse each sample's chain to a fixed shallow depth (the
    * major subsystem under main) and print each contiguous run as a boot phase,
    * so the terminal shows "what ran when" even without opening speedscope. */
@@ -533,7 +536,11 @@ static void prof_report_flamechart(void)
       segw += s_samp_w[i];
     }
   }
+}
 
+/** @brief Print the inclusive/self table (sorted by inclusive weight). */
+static void prof_print_incl_self_table(const char* html, const char* out, uint64_t total)
+{
   /* Inclusive/self table -- the "why is it slow" view (sorted by inclusive). */
   (void)fprintf(stderr,
                 "  [profile] flamechart GUI -> %s  (interactive: hover/zoom/search)\n"
@@ -562,6 +569,28 @@ static void prof_report_flamechart(void)
                   s_prof[best].name);
     s_incl[best] = 0U; /* consume so the next pick is the runner-up. */
   }
+}
+
+/** @brief Speedscope export + inclusive/self breakdown + phase timeline (insn mode). */
+static void prof_report_flamechart(void)
+{
+  const char* out = getenv("BOARD_SIM_PROFILE_OUT");
+  if ((out == nullptr) || (out[0] == '\0')) {
+    out = "board_sim_profile.speedscope.json";
+  }
+  const char* html = getenv("BOARD_SIM_PROFILE_HTML");
+  if ((html == nullptr) || (html[0] == '\0')) {
+    html = "board_sim_profile.html";
+  }
+  prof_write_speedscope(out);
+
+  const uint64_t total = prof_accumulate_incl_self();
+  if (total == 0U) {
+    return;
+  }
+  prof_write_html(html, total); /* self-contained local GUI flamechart. */
+  prof_print_boot_timeline(total);
+  prof_print_incl_self_table(html, out, total);
 }
 
 /** @brief Print the top hot functions (by wall time or instruction count) at run end. */
