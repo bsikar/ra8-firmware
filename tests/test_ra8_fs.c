@@ -107,6 +107,59 @@ static void put32(uint8_t* p, uint32_t off, uint32_t v)
 }
 
 /**
+ * @struct fat_geom_t
+ * @brief BPB geometry parameters selected per target FAT type.
+ * @see build_volume
+ */
+typedef struct {
+  uint32_t total;     /**< Total block count.                   */
+  uint32_t spc;       /**< Sectors per cluster.                 */
+  uint32_t rsvd;      /**< Reserved sector count.               */
+  uint32_t fats;      /**< Number of FAT copies.                */
+  uint32_t root_ents; /**< Root-directory entry count.          */
+  uint32_t fat_sz;    /**< Sectors per FAT.                     */
+  uint32_t root_clus; /**< FAT32 root cluster (0 for FAT12/16). */
+} fat_geom_t;
+
+/**
+ * @brief Select the BPB geometry parameters for the target FAT type.
+ * @param[in] target FAT12 / FAT16 / FAT32 selector.
+ * @return The geometry parameters for @p target.
+ * @pre @p target is one of the supported FAT types.
+ * @post Returned geometry is self-consistent for @p target.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static fat_geom_t build_volume_geometry(ra8_fs_type_t target)
+{
+  fat_geom_t g = {.total     = k_disk_blocks_fat16,
+                  .spc       = 1,
+                  .rsvd      = 1,
+                  .fats      = 2,
+                  .root_ents = 16,
+                  .fat_sz    = 0,
+                  .root_clus = 0};
+  if (target == k_ra8_fs_type_fat12) {
+    g.total  = k_disk_blocks_fat12;
+    g.spc    = 1;
+    g.fat_sz = 2;
+  } else if (target == k_ra8_fs_type_fat16) {
+    g.total  = k_disk_blocks_fat16;
+    g.spc    = 1;
+    g.fat_sz = 32;
+  } else {
+    /* FAT32: BPB_RootEntCnt must be 0; root dir lives in cluster chain. */
+    g.total     = k_disk_blocks_fat32;
+    g.spc       = 1;
+    g.rsvd      = 32;
+    g.root_ents = 0;
+    g.fat_sz    = 640; /* >=512 so FAT32 entries cover all clusters. */
+    g.root_clus = 2;
+  }
+  return g;
+}
+
+/**
  * @brief Synthesise a FAT volume of the requested type.
  *
  * @param[in] target Which FAT type the BPB cluster-count rule should produce.
@@ -130,57 +183,32 @@ static void build_volume(ra8_fs_type_t target)
     TEST_FAIL_FMT("%s", "calloc failed");
   }
 
-  uint32_t total_blocks = k_disk_blocks_fat16;
-  uint32_t spc          = 1; /* Sectors per cluster. */
-  uint32_t rsvd         = 1;
-  uint32_t fats         = 2;
-  uint32_t root_ents    = 16; /* 1 root sector. */
-  uint32_t fat_sz       = 0;
-  uint32_t root_clus    = 0;
-
-  if (target == k_ra8_fs_type_fat12) {
-    total_blocks = k_disk_blocks_fat12;
-    spc          = 1;
-    fat_sz       = 2;
-  } else if (target == k_ra8_fs_type_fat16) {
-    total_blocks = k_disk_blocks_fat16;
-    spc          = 1;
-    fat_sz       = 32;
-  } else {
-    /* FAT32: BPB_RootEntCnt must be 0; root dir lives in cluster chain. */
-    total_blocks = k_disk_blocks_fat32;
-    spc          = 1;
-    rsvd         = 32;
-    root_ents    = 0;
-    fat_sz       = 640; /* >=512 so FAT32 entries cover all clusters. */
-    root_clus    = 2;
-  }
-
-  s_disk.block_count = total_blocks;
+  const fat_geom_t g = build_volume_geometry(target);
+  s_disk.block_count = g.total;
 
   uint8_t* bpb = &s_disk.bytes[0];
   put16(bpb, 11, (uint16_t)k_disk_block_size);
-  bpb[13] = (uint8_t)spc;
-  put16(bpb, 14, (uint16_t)rsvd);
-  bpb[16] = (uint8_t)fats;
-  put16(bpb, 17, (uint16_t)root_ents);
+  bpb[13] = (uint8_t)g.spc;
+  put16(bpb, 14, (uint16_t)g.rsvd);
+  bpb[16] = (uint8_t)g.fats;
+  put16(bpb, 17, (uint16_t)g.root_ents);
   if (target == k_ra8_fs_type_fat32) {
     put16(bpb, 19, 0);
-    put32(bpb, 32, total_blocks);
+    put32(bpb, 32, g.total);
     put16(bpb, 22, 0);
-    put32(bpb, 36, fat_sz);
-    put32(bpb, 44, root_clus);
+    put32(bpb, 36, g.fat_sz);
+    put32(bpb, 44, g.root_clus);
   } else {
-    put16(bpb, 19, (uint16_t)total_blocks);
-    put16(bpb, 22, (uint16_t)fat_sz);
+    put16(bpb, 19, (uint16_t)g.total);
+    put16(bpb, 22, (uint16_t)g.fat_sz);
   }
   bpb[510] = 0x55;
   bpb[511] = 0xAA;
 
   /* For FAT32, mark the root cluster as end-of-chain in every FAT copy. */
   if (target == k_ra8_fs_type_fat32) {
-    for (uint32_t i = 0; i < fats; i++) {
-      uint32_t fat_lba = rsvd + (i * fat_sz);
+    for (uint32_t i = 0; i < g.fats; i++) {
+      uint32_t fat_lba = g.rsvd + (i * g.fat_sz);
       uint8_t* fat     = &s_disk.bytes[fat_lba * k_disk_block_size];
       /* Cluster 0 + 1 are reserved; cluster 2 = root = EOC. */
       put32(fat, 0, 0x0FFFFFFFU);
