@@ -360,6 +360,8 @@ int cb_sweep_block(void)
   uint8_t* blob = (uint8_t*)malloc((size_t)k_cbs_blob_bytes);
   if (blob == nullptr) {
     (void)fprintf(stderr, "sweep-block: payload allocation failed\n");
+    /* cppcheck-suppress memleak ; false positive: cppcheck 2.13 does not
+     * model the C23 nullptr keyword, so it cannot see blob is NULL here. */
     return 1;
   }
   cbs_priv_fill_text(blob, (uint32_t)k_cbs_blob_bytes);

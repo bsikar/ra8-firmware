@@ -128,15 +128,25 @@ typedef struct {
 static int cb_lru_init(cb_cache_t* c)
 {
   cb_lru_t* l = (cb_lru_t*)calloc(1U, sizeof(cb_lru_t));
+  /* cppcheck-suppress memleak ; false positive: cppcheck 2.13 does not model
+   * the C23 nullptr keyword, so it cannot see l is NULL on this path. */
   if (l == nullptr) {
     return 1;
   }
-  l->prev        = (int32_t*)malloc((size_t)c->capacity * sizeof(int32_t));
-  l->next        = (int32_t*)malloc((size_t)c->capacity * sizeof(int32_t));
-  l->head        = -1;
-  l->tail        = -1;
+  l->prev = (int32_t*)malloc((size_t)c->capacity * sizeof(int32_t));
+  l->next = (int32_t*)malloc((size_t)c->capacity * sizeof(int32_t));
+  l->head = -1;
+  l->tail = -1;
+  if ((l->prev == nullptr) || (l->next == nullptr)) {
+    /* The replay harness never deinits a policy whose init failed, so a
+     * partial allocation must be released here, not left on policy_data. */
+    free(l->prev);
+    free(l->next);
+    free(l);
+    return 1;
+  }
   c->policy_data = l;
-  return ((l->prev == nullptr) || (l->next == nullptr)) ? 1 : 0;
+  return 0;
 }
 static void cb_lru_deinit(cb_cache_t* c)
 {

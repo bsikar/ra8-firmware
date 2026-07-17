@@ -153,6 +153,10 @@ typedef struct {
   uint64_t       len;  /**< Span length in bytes. */
 } cbs_memspan_t;
 
+/* cppcheck-suppress constParameterCallback
+ * Reason: bound as an ra8_vsource_read_fn, whose signature is
+ * `ra8_err_t (*)(void*, uint64_t, uint8_t*, uint32_t)`; constifying ctx
+ * would break the function-pointer binding. */
 /** @brief `ra8_vsource_read_fn` over a ::cbs_memspan_t (bounds-checked memcpy). */
 static ra8_err_t cbs_memspan_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
 {
