@@ -282,7 +282,18 @@ static CGImageRef ra8_viewer_cgimage_from_565(const uint16_t* rgb565, uint32_t w
     }
     NSImage* im = [self imageForTile:i];
     if (im != nil) {
-      [im drawInRect:r fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1.0];
+      /* Draw the tile with an explicit local y-flip: the tile buffer is stored
+       * top row first, but this NSView is flipped, so a plain draw would render
+       * the page upside-down. Undo the view flip for the image only. */
+      CGImageRef   cg  = [im CGImageForProposedRect:NULL context:nil hints:nil];
+      CGContextRef ctx = [NSGraphicsContext currentContext].CGContext;
+      if ((cg != NULL) && (ctx != NULL)) {
+        CGContextSaveGState(ctx);
+        CGContextTranslateCTM(ctx, NSMinX(r), NSMinY(r) + NSHeight(r));
+        CGContextScaleCTM(ctx, 1.0, -1.0);
+        CGContextDrawImage(ctx, CGRectMake(0.0, 0.0, NSWidth(r), NSHeight(r)), cg);
+        CGContextRestoreGState(ctx);
+      }
     } else {
       /* Placeholder for an unrenderable page (e.g. a strip too tall for the
        * whole-image decoder -- re-download that title as RTA1). */
