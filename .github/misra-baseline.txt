@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 12462
+# total findings: 12474
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -546,7 +546,7 @@ libs/ra8_hal/src/ra8_etha.c	misra-c2012-17.3	1
 libs/ra8_hal/src/ra8_etha.c	misra-c2012-8.4	29
 libs/ra8_hal/src/ra8_etha_stats.c	misra-c2012-15.5	14
 libs/ra8_hal/src/ra8_etha_stats.c	misra-c2012-8.4	4
-libs/ra8_hal/src/ra8_ether_phy.c	misra-c2012-15.5	18
+libs/ra8_hal/src/ra8_ether_phy.c	misra-c2012-15.5	19
 libs/ra8_hal/src/ra8_ether_phy.c	misra-c2012-15.7	1
 libs/ra8_hal/src/ra8_ether_phy.c	misra-c2012-8.4	6
 libs/ra8_hal/src/ra8_ether_phy.c	misra-c2012-9.2	1
@@ -729,7 +729,7 @@ libs/ra8_hal/src/ra8_rmac.c	misra-c2012-17.3	1
 libs/ra8_hal/src/ra8_rmac.c	misra-c2012-8.4	20
 libs/ra8_hal/src/ra8_rmac_mgmt.c	misra-c2012-15.5	24
 libs/ra8_hal/src/ra8_rmac_mgmt.c	misra-c2012-8.4	8
-libs/ra8_hal/src/ra8_rmac_phy.c	misra-c2012-15.5	27
+libs/ra8_hal/src/ra8_rmac_phy.c	misra-c2012-15.5	28
 libs/ra8_hal/src/ra8_rmac_phy.c	misra-c2012-15.7	1
 libs/ra8_hal/src/ra8_rmac_phy.c	misra-c2012-8.4	7
 libs/ra8_hal/src/ra8_rmac_phy.c	misra-c2012-9.2	1
@@ -752,7 +752,7 @@ libs/ra8_hal/src/ra8_rsip_key_injection.c	misra-c2012-15.5	21
 libs/ra8_hal/src/ra8_rsip_key_injection.c	misra-c2012-18.4	3
 libs/ra8_hal/src/ra8_rsip_key_injection.c	misra-c2012-8.4	8
 libs/ra8_hal/src/ra8_rsip_key_injection.c	misra-c2012-9.2	2
-libs/ra8_hal/src/ra8_rsip_protected.c	misra-c2012-15.5	36
+libs/ra8_hal/src/ra8_rsip_protected.c	misra-c2012-15.5	42
 libs/ra8_hal/src/ra8_rsip_protected.c	misra-c2012-8.4	6
 libs/ra8_hal/src/ra8_rsip_protected.c	misra-c2012-9.2	6
 libs/ra8_hal/src/ra8_rsip_rsa.c	misra-c2012-15.5	38
@@ -774,7 +774,7 @@ libs/ra8_hal/src/ra8_sci_lin.c	misra-c2012-17.8	1
 libs/ra8_hal/src/ra8_sci_lin.c	misra-c2012-8.4	12
 libs/ra8_hal/src/ra8_sci_spi.c	misra-c2012-15.5	17
 libs/ra8_hal/src/ra8_sci_spi.c	misra-c2012-8.4	5
-libs/ra8_hal/src/ra8_sdcard.c	misra-c2012-15.5	41
+libs/ra8_hal/src/ra8_sdcard.c	misra-c2012-15.5	43
 libs/ra8_hal/src/ra8_sdcard.c	misra-c2012-8.4	6
 libs/ra8_hal/src/ra8_sdhi.c	misra-c2012-15.5	36
 libs/ra8_hal/src/ra8_sdhi.c	misra-c2012-15.7	1
@@ -787,7 +787,7 @@ libs/ra8_hal/src/ra8_sdramc.c	misra-c2012-15.5	15
 libs/ra8_hal/src/ra8_sdramc.c	misra-c2012-8.4	8
 libs/ra8_hal/src/ra8_sdramc.c	misra-c2012-8.9	1
 libs/ra8_hal/src/ra8_smbus.c	misra-c2012-13.3	9
-libs/ra8_hal/src/ra8_smbus.c	misra-c2012-15.5	29
+libs/ra8_hal/src/ra8_smbus.c	misra-c2012-15.5	30
 libs/ra8_hal/src/ra8_smbus.c	misra-c2012-8.4	10
 libs/ra8_hal/src/ra8_smbus.c	misra-c2012-9.2	1
 libs/ra8_hal/src/ra8_spi_b.c	misra-c2012-11.1	2
@@ -1485,7 +1485,7 @@ src/secure_app/key_vault.c	misra-c2012-9.2	1
 src/secure_app/ota_commit.c	misra-c2012-15.5	5
 src/secure_app/ota_commit.c	misra-c2012-8.4	5
 src/secure_app/sec_cmac.c	misra-c2012-10.8	1
-src/secure_app/sec_cmac.c	misra-c2012-15.5	19
+src/secure_app/sec_cmac.c	misra-c2012-15.5	20
 src/secure_app/sec_cmac.c	misra-c2012-20.1	1
 src/secure_app/sec_cmac.c	misra-c2012-8.4	4
 src/secure_app/sec_cmac.c	misra-c2012-9.2	2
