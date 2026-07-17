@@ -15,8 +15,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-/* NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity) */
-
 #include "ra8_rmac_phy.h"
 
 #include <stdint.h>
@@ -86,34 +84,43 @@ typedef struct {
 static ra8_rmac_phy_internal_t s_state = {};
 
 /**
- * @brief Open the off-chip Ethernet PHY via Clause-22 MDIO.
+ * @brief Validate an ::ra8_rmac_phy_cfg_t before it is latched by open.
  *
  * @details
- * Validates the injected MDIO IO callbacks, drives BMCR.RESET (IEEE
- * 802.3 Clause 22) and polls until the PHY clears it, then writes the
- * caller's auto-negotiation advertisement registers (LPA + optional
- * 1000T-CTRL). The MDIO transport itself is provided through the RMAC
- * MDIO interface (HUM Ch 41 "RMAC", p 1893 -- "Station Management").
+ * Shared precondition gate for ::ra8_rmac_phy_open: rejects NULL
+ * configuration / IO callbacks, an out-of-range Clause-22 PHY address,
+ * and an unknown LSI family tag. Extracted so the open path stays
+ * within the NASA P10 Rule 4 statement cap.
  *
- * @param[in] cfg Non-NULL configuration block (PHY address, advertise
- *                masks and IO function pointers).
+ * @param[in] cfg Caller-supplied configuration block (may be NULL).
  *
  * @return ``ra8_err_t`` error code.
- * @retval k_ra8_ok                 PHY reset and advertised.
- * @retval k_ra8_err_null_ptr       ``cfg`` or required IO callback NULL.
- * @retval k_ra8_err_invalid_arg    ``phy_address`` or ``lsi_type`` bad.
- * @retval k_ra8_err_exists         Driver already opened.
- * @retval k_ra8_err_hw_timeout     BMCR.RESET did not self-clear.
+ * @retval k_ra8_ok               Configuration is well-formed.
+ * @retval k_ra8_err_null_ptr     ``cfg`` or a required IO callback NULL.
+ * @retval k_ra8_err_invalid_arg  ``phy_address`` or ``lsi_type`` bad.
  *
- * @pre IRQs masked or single-threaded init context.
- * @pre RMAC station-management clock has been brought up.
+ * @pre None -- this IS the argument validation.
+ * @pre ``k_ra8_rmac_phy_lsi_count`` bounds the LSI enum.
+ * @post No state is mutated.
+ * @post Return value depends only on ``cfg``.
  *
- * @post Driver state holds the validated configuration on success.
- * @post PHY is in a known reset-then-advertised state.
- *
- * @note Not thread-safe; one PHY per driver instance.
+ * @note Pure validation helper; safe from any context.
  * @since 0.1.0
  */
+static ra8_err_t internal_open_validate(const ra8_rmac_phy_cfg_t* cfg)
+{
+  RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+  RA8_CHECK_NULL_PTR(cfg->io.read, s_tag, "io.read required");
+  RA8_CHECK_NULL_PTR(cfg->io.write, s_tag, "io.write required");
+  if (cfg->phy_address > k_ra8_rmac_phy_addr_max) {
+    return k_ra8_err_invalid_arg;
+  }
+  if ((uint8_t)cfg->lsi_type >= k_ra8_rmac_phy_lsi_count) {
+    return k_ra8_err_invalid_arg;
+  }
+  return k_ra8_ok;
+}
+
 /**
  * @brief Issue BMCR.RESET to the PHY and poll until it self-clears.
  *
@@ -239,14 +246,9 @@ static ra8_err_t internal_program_advertise(void)
  */
 ra8_err_t ra8_rmac_phy_open(const ra8_rmac_phy_cfg_t* cfg)
 {
-  RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
-  RA8_CHECK_NULL_PTR(cfg->io.read, s_tag, "io.read required");
-  RA8_CHECK_NULL_PTR(cfg->io.write, s_tag, "io.write required");
-  if (cfg->phy_address > k_ra8_rmac_phy_addr_max) {
-    return k_ra8_err_invalid_arg;
-  }
-  if ((uint8_t)cfg->lsi_type >= k_ra8_rmac_phy_lsi_count) {
-    return k_ra8_err_invalid_arg;
+  const ra8_err_t varg = internal_open_validate(cfg);
+  if (varg != k_ra8_ok) {
+    return varg;
   }
   if (s_state.opened) {
     return k_ra8_err_exists;
@@ -412,6 +414,60 @@ ra8_err_t ra8_rmac_phy_auto_negotiate_start(void)
 }
 
 /**
+ * @brief Resolve the negotiated speed once the link is up and AN done.
+ *
+ * @details
+ * Consults the 1000BASE-T status register (MSR, Clause-22 register 10)
+ * first when gigabit was advertised, then falls back to the partner
+ * ability word (LPA, register 5) for the 10/100 speeds. ``out->speed``
+ * keeps its ``k_ra8_rmac_phy_speed_no_link`` preset when neither
+ * register yields a resolvable speed.
+ *
+ * @param[in,out] out Link snapshot being populated by the caller;
+ *                    ``speed`` / ``partner_ability`` are written here.
+ *
+ * @pre ``out`` is non-NULL with ``speed`` preset to no-link.
+ * @pre Driver is open and BMSR reported link-up + AN-complete.
+ * @post ``out->speed`` holds the best resolved speed (or no-link).
+ * @post ``out->partner_ability`` caches LPA when the LPA read succeeded.
+ *
+ * @note Not thread-safe; called only from link_status_get.
+ * @since 0.1.0
+ */
+static void internal_resolve_speed(ra8_rmac_phy_link_t* out)
+{
+  ra8_err_t err = k_ra8_ok;
+  /* 1000T status first; if no gbit, fall back to LPA. */
+  if (s_state.gbit_advertise != 0U) {
+    uint16_t msr = 0U;
+    err =
+      s_state.io.read(s_state.io.ctx, s_state.phy_address, k_ra8_rmac_phy_reg_1000t_status, &msr);
+    if (ra8_rmac_phy_internal_speed_ok(err, msr, (uint16_t)k_ra8_rmac_phy_msr_1000full)) {
+      out->speed = k_ra8_rmac_phy_speed_1000f;
+      return;
+    }
+    if (ra8_rmac_phy_internal_speed_ok(err, msr, (uint16_t)k_ra8_rmac_phy_msr_1000half)) {
+      out->speed = k_ra8_rmac_phy_speed_1000h;
+      return;
+    }
+  }
+  uint16_t lpa = 0U;
+  err = s_state.io.read(s_state.io.ctx, s_state.phy_address, k_ra8_rmac_phy_reg_an_partner, &lpa);
+  if (err == k_ra8_ok) {
+    out->partner_ability = lpa;
+    if ((lpa & k_ra8_rmac_phy_lpa_100full) != 0U) {
+      out->speed = k_ra8_rmac_phy_speed_100f;
+    } else if ((lpa & k_ra8_rmac_phy_lpa_100half) != 0U) {
+      out->speed = k_ra8_rmac_phy_speed_100h;
+    } else if ((lpa & k_ra8_rmac_phy_lpa_10full) != 0U) {
+      out->speed = k_ra8_rmac_phy_speed_10f;
+    } else if ((lpa & k_ra8_rmac_phy_lpa_10half) != 0U) {
+      out->speed = k_ra8_rmac_phy_speed_10h;
+    }
+  }
+}
+
+/**
  * @brief Read BMSR / 1000T-status / LPA and decode the link state.
  *
  * @details
@@ -456,34 +512,7 @@ ra8_err_t ra8_rmac_phy_link_status_get(ra8_rmac_phy_link_t* out)
   out->partner_ability = 0U;
 
   if ((out->link_up != 0U) && (out->auto_neg_done != 0U)) {
-    /* 1000T status first; if no gbit, fall back to LPA. */
-    uint16_t msr = 0U;
-    if (s_state.gbit_advertise != 0U) {
-      err =
-        s_state.io.read(s_state.io.ctx, s_state.phy_address, k_ra8_rmac_phy_reg_1000t_status, &msr);
-      if (ra8_rmac_phy_internal_speed_ok(err, msr, (uint16_t)k_ra8_rmac_phy_msr_1000full)) {
-        out->speed = k_ra8_rmac_phy_speed_1000f;
-        return k_ra8_ok;
-      }
-      if (ra8_rmac_phy_internal_speed_ok(err, msr, (uint16_t)k_ra8_rmac_phy_msr_1000half)) {
-        out->speed = k_ra8_rmac_phy_speed_1000h;
-        return k_ra8_ok;
-      }
-    }
-    uint16_t lpa = 0U;
-    err = s_state.io.read(s_state.io.ctx, s_state.phy_address, k_ra8_rmac_phy_reg_an_partner, &lpa);
-    if (err == k_ra8_ok) {
-      out->partner_ability = lpa;
-      if ((lpa & k_ra8_rmac_phy_lpa_100full) != 0U) {
-        out->speed = k_ra8_rmac_phy_speed_100f;
-      } else if ((lpa & k_ra8_rmac_phy_lpa_100half) != 0U) {
-        out->speed = k_ra8_rmac_phy_speed_100h;
-      } else if ((lpa & k_ra8_rmac_phy_lpa_10full) != 0U) {
-        out->speed = k_ra8_rmac_phy_speed_10f;
-      } else if ((lpa & k_ra8_rmac_phy_lpa_10half) != 0U) {
-        out->speed = k_ra8_rmac_phy_speed_10h;
-      }
-    }
+    internal_resolve_speed(out);
   }
   return k_ra8_ok;
 }
@@ -520,5 +549,3 @@ ra8_err_t ra8_rmac_phy_lsi_get(ra8_rmac_phy_lsi_t* out)
   *out = s_state.lsi_type;
   return k_ra8_ok;
 }
-
-/* NOLINTEND(readability-function-size,readability-function-cognitive-complexity) */
