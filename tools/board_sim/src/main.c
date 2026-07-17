@@ -52,7 +52,9 @@
 #include "board_usb.h"
 #include "board_usb_host.h"
 #include "board_view.h"
+#include "sim_console.h"
 #include "sim_elf.h"
+#include "sim_engine.h"
 
 /* RA8D2 memory map (EK board) -- from the linker script / HUM R01UH1065EJ. */
 typedef struct {
@@ -773,27 +775,6 @@ typedef enum : uint32_t {
   k_apsr_v = 28U, /**< Overflow. */
 } apsr_bit_t;
 
-/* ARM register index (0..15) -> Unicorn register id. PC(15)/SP(13)/LR(14) are
- * never CSx destinations in practice but are mapped for completeness. */
-static const int k_arm_reg_id[16] = {
-  UC_ARM_REG_R0,
-  UC_ARM_REG_R1,
-  UC_ARM_REG_R2,
-  UC_ARM_REG_R3,
-  UC_ARM_REG_R4,
-  UC_ARM_REG_R5,
-  UC_ARM_REG_R6,
-  UC_ARM_REG_R7,
-  UC_ARM_REG_R8,
-  UC_ARM_REG_R9,
-  UC_ARM_REG_R10,
-  UC_ARM_REG_R11,
-  UC_ARM_REG_R12,
-  UC_ARM_REG_SP,
-  UC_ARM_REG_LR,
-  UC_ARM_REG_PC,
-};
-
 /**
  * @brief Evaluate an ARM condition code against the APSR flags.
  *
@@ -985,11 +966,6 @@ static uint32_t exc_active_prio(void);
  * helpers are defined with the div-0 seam below. */
 static void div0_patch_sites(uc_engine* uc);
 static bool emulate_div0_patched(uc_engine* uc, uint32_t pc, const uint8_t code[4]);
-/* PPB RAM word + register accessors (defined with the memory helpers below); the
- * MPU enforcement hooks above use them before their definitions appear. */
-static uint32_t rd32(uc_engine* uc, uint64_t addr);
-static void     wr32(uc_engine* uc, uint64_t addr, uint32_t v);
-static uint32_t reg_get(uc_engine* uc, int reg);
 
 /**
  * @brief Emulate the Armv8-M security register-scrub ops as NOPs.
@@ -2474,37 +2450,6 @@ on_icsr_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t 
   (void)uc_emu_stop(uc);
 }
 
-/* ===========================================================================
- * ITM (Instrumented Trace Macrocell) echo -- surface ra8_log in the emulator.
- *
- * `[itm] ...` lines are board_sim's echo of the Arm CoreSight ITM stimulus
- * port 0. It is the direct analog of the `[uart] SCI8:` echo: where that
- * surfaces the firmware's UART console, this surfaces ra8_log's debug trace --
- * the same bytes that on real hardware leave through the ITM/SWO pin to the
- * J-Link SWO console. So `[itm]` == "what you would see on the SWO trace
- * console", and `[uart] SCI8:` == "what you would see on the serial console".
- *
- * ra8_log writes log bytes to ITM stimulus port 0 (0xE0000000) after checking
- * DEMCR.TRCENA + ITM TCR/TENR + a non-zero STIM0 "FIFO ready" read. With no
- * debugger attached those PPB bytes are all zero, so internal_itm_ready() returns
- * false and every byte is dropped -- which is why the e-reader (and any ra8_log
- * user) prints nothing in board_sim. We seed the ready bits into PPB RAM at boot
- * (itm_seed_ready: sets DEMCR.TRCENA + TCR.ITMENA + TENR port 0 + a ready STIM0)
- * and hook stimulus-port writes (on_itm_stim_write) to echo the bytes as
- * `[itm] <line>` on stdout. This surfaces ra8_log for every app, not just the
- * TrustZone e-reader.
- * ===========================================================================
- */
-typedef enum : uint64_t {
-  k_itm_stim0_addr = 0xE0000000UL, /**< ITM stimulus port 0 (byte FIFO).         */
-  k_itm_tcr_addr   = 0xE0000E80UL, /**< ITM Trace Control Register (ITMENA).     */
-  k_itm_tenr_addr  = 0xE0000E00UL, /**< ITM Trace Enable Register (port 0).      */
-  k_scb_demcr_addr = 0xE000EDFCUL, /**< Debug Exception + Monitor Control.       */
-  k_sau_type_addr  = 0xE000EDD4UL, /**< SAU_TYPE (SREGION = implemented regs).   */
-  k_ns_sram2_base  = 0x32100000UL, /**< SRAM2 Non-secure alias (bit[28]=1).      */
-  k_ns_alias_bit   = 0x10000000UL, /**< IDAU bit[28]: NS alias of a Secure addr. */
-} itm_addr_t;
-
 /**
  * @brief Fallback NS vector-table base for the BLXNS world switch.
  * @details ::on_blxns first reads the live VTOR_NS word (the Secure boot's
@@ -2527,111 +2472,6 @@ static uint32_t s_ns_vector_base = (uint32_t)k_ns_sram2_base;
 typedef enum : uint64_t {
   k_scb_vtor_ns_addr = 0xE002ED08UL, /**< VTOR_NS: NS vector-table base. */
 } vtor_ns_addr_t;
-
-typedef enum : uint32_t {
-  k_itm_line_max     = 240U,        /**< Max chars buffered before a forced flush. */
-  k_itm_tcr_itmena   = 0x00000001U, /**< TCR bit 0: ITM global enable.             */
-  k_itm_tenr_port0   = 0x00000001U, /**< TENR bit 0: stimulus port 0 enabled.      */
-  k_itm_stim_ready   = 0x00000001U, /**< Non-zero STIM0 read = FIFO ready.         */
-  k_scb_demcr_trcena = 0x01000000U, /**< DEMCR bit 24: trace subsystem enable.     */
-  k_sau_type_regs    = 0x00000008U, /**< SAU_TYPE.SREGION: M85 implements 8.       */
-} itm_bits_t;
-
-/** @brief Accumulated current ITM line (flushed on newline or when full). */
-static char s_itm_line[k_itm_line_max + 1U];
-
-/** @brief Bytes currently buffered in ::s_itm_line. */
-static uint32_t s_itm_len;
-
-/**
- * @brief UC_HOOK_MEM_WRITE handler for ITM stimulus port 0 -- echo the byte.
- *
- * @details Buffers the low byte of each stimulus write and prints `[itm] <line>`
- *          to stdout on a newline (or when the line buffer fills), so ra8_log
- *          output is visible in the emulator. Carriage returns are dropped so
- *          the `\r\n` ra8_log line ending yields one clean line.
- *
- * @param[in] uc    Unicorn engine (unused; the byte rides in @p value).
- * @param[in] type  Memory access type (write); unused.
- * @param[in] addr  Observed address (the stimulus port); unused.
- * @param[in] size  Access width in bytes; unused.
- * @param[in] value The value being written; its low byte is the log character.
- * @param[in] user  Hook user pointer; unused.
- * @return Nothing.
- *
- * @pre The hook is registered for the 4-byte STIM0 word only.
- * @pre @p value holds the character ra8_log is emitting.
- * @post On a newline the buffered line is printed and the buffer reset.
- * @post Non-newline printable bytes are appended to @ref s_itm_line.
- * @note Not thread-safe; board_sim is single-threaded.
- * @since 0.1.0
- */
-static void on_itm_stim_write(uc_engine*  uc,
-                              uc_mem_type type,
-                              uint64_t    addr,
-                              int         size,
-                              int64_t     value,
-                              void*       user)
-{
-  (void)uc;
-  (void)type;
-  (void)addr;
-  (void)size;
-  (void)user;
-  const char c = (char)((uint32_t)value & 0xFFU); /* MAGIC-OK: low-byte mask */
-  if (c == '\r') {
-    return;
-  }
-  if ((c == '\n') || (s_itm_len >= (uint32_t)k_itm_line_max)) {
-    s_itm_line[s_itm_len] = '\0';
-    /* Emit one ra8_log line as `[itm] <line>` -- the CoreSight ITM/SWO-trace
-     * analog of the `[uart] SCI8:` console echo (see the ITM model block above). */
-    (void)fprintf(stdout, "[itm] %s\n", s_itm_line);
-    (void)fflush(stdout);
-    /* Also route it to the board_console ITM channel so the tabbed board-view
-     * console shows ITM/SWO trace in its own tab (a different endpoint than the
-     * UART line). The stdout echo above is unchanged -- this is purely additive. */
-    board_console_push(k_board_console_ch_itm, s_itm_line);
-    s_itm_len = 0U;
-    if (c == '\n') {
-      return;
-    }
-  }
-  s_itm_line[s_itm_len] = c;
-  s_itm_len++;
-}
-
-/**
- * @brief Seed the ITM "ready" bits into PPB RAM so ra8_log emits.
- *
- * @details On hardware a debugger sets DEMCR.TRCENA and enables the ITM; with
- *          none attached those PPB registers read zero and ra8_log drops every
- *          byte. board_sim maps the PPB as plain RAM, so writing the enable bits
- *          here makes internal_itm_ready() see a live ITM. The firmware only ever
- *          reads these registers (it never re-disables the ITM), so the seed
- *          persists for the run.
- *
- * @param[in] uc Initialised Unicorn engine with the PPB region mapped.
- * @return Nothing.
- *
- * @pre @p uc has the PPB region (0xE0000000) mapped as RAM.
- * @pre Called once before emulation starts.
- * @post DEMCR.TRCENA, ITM TCR.ITMENA, TENR port-0, and a ready STIM0 are set.
- * @post ra8_log's internal_itm_ready() returns true for the run.
- * @note Not thread-safe; call during single-threaded setup.
- * @since 0.1.0
- */
-static void itm_seed_ready(uc_engine* uc)
-{
-  const uint32_t demcr = (uint32_t)k_scb_demcr_trcena;
-  const uint32_t tcr   = (uint32_t)k_itm_tcr_itmena;
-  const uint32_t tenr  = (uint32_t)k_itm_tenr_port0;
-  const uint32_t stim  = (uint32_t)k_itm_stim_ready;
-  (void)uc_mem_write(uc, (uint64_t)k_scb_demcr_addr, &demcr, sizeof(demcr));
-  (void)uc_mem_write(uc, (uint64_t)k_itm_tcr_addr, &tcr, sizeof(tcr));
-  (void)uc_mem_write(uc, (uint64_t)k_itm_tenr_addr, &tenr, sizeof(tenr));
-  (void)uc_mem_write(uc, (uint64_t)k_itm_stim0_addr, &stim, sizeof(stim));
-}
 
 /**
  * @enum blxns_op_t
@@ -3893,20 +3733,6 @@ static bool usbh_seam_install(uc_engine* uc, const uint8_t* elf, long len)
   return true;
 }
 
-/** @brief Read a 32-bit little-endian word from emulated memory. */
-static uint32_t rd32(uc_engine* uc, uint64_t addr)
-{
-  uint32_t v = 0U;
-  (void)uc_mem_read(uc, addr, &v, sizeof(v));
-  return v;
-}
-
-/** @brief Write a 32-bit little-endian word to emulated memory. */
-static void wr32(uc_engine* uc, uint64_t addr, uint32_t v)
-{
-  (void)uc_mem_write(uc, addr, &v, sizeof(v));
-}
-
 /**
  * @brief Data Watchpoint and Trace (DWT) cycle-counter register model.
  *
@@ -3971,20 +3797,6 @@ static void dwt_cyccnt_advance(uc_engine* uc)
   }
   const uint32_t next = rd32(uc, (uint64_t)k_dwt_cyccnt_addr) + (uint32_t)k_dwt_cyccnt_per_chunk;
   wr32(uc, (uint64_t)k_dwt_cyccnt_addr, next);
-}
-
-/** @brief Read a Unicorn 32-bit register by its UC_ARM_REG_* id. */
-static uint32_t reg_get(uc_engine* uc, int reg)
-{
-  uint32_t v = 0U;
-  (void)uc_reg_read(uc, reg, &v);
-  return v;
-}
-
-/** @brief Write a Unicorn 32-bit register by its UC_ARM_REG_* id. */
-static void reg_set(uc_engine* uc, int reg, uint32_t v)
-{
-  (void)uc_reg_write(uc, reg, &v);
 }
 
 /** @brief Priority value (lower = higher) of the active handler, or sentinel. */
@@ -5451,7 +5263,7 @@ static uint32_t warm_reboot(uc_engine* uc, const uint8_t* elf, long len, bool tr
    * the tabbed-console view so the rebooted firmware starts with an empty
    * console on the ALL tab (the SCI model's own reset clears its line buffers). */
   board_console_reset();
-  s_itm_len         = 0U;
+  sim_console_reset();
   s_view_console_ch = k_board_console_ch_all;
   s_view_scroll     = 0U;
   s_view_autoscroll = true;
@@ -5565,103 +5377,6 @@ static bool load_panel(const char* path, board_panel_t* out)
     return false;
   }
   return true;
-}
-
-/* Console-UART presentation. The SCI_B model captures every byte the firmware
- * transmits and hands it to console_tx_sink, which echoes it to stdout with a
- * clear [uart] prefix so a console example's output is captured and greppable.
- * The same byte is mirrored raw so piping board_sim's stdout reconstructs the
- * exact serial stream. RX is fed from --input / stdin into the console channel
- * (SCI8 on the EK-RA8D2). */
-typedef enum : uint32_t {
-  k_uart_line_max = 256U, /**< Pretty-print line buffer for the [uart] prefix. */
-} console_cfg_t;
-
-static char     s_uart_line[k_uart_line_max]; /**< Pending [uart] line text.   */
-static uint32_t s_uart_line_len;              /**< Chars buffered in the line. */
-
-/** @brief Flush the pending [uart] line to stdout with its channel prefix. */
-static void console_flush_line(uint8_t channel)
-{
-  if (s_uart_line_len == 0U) {
-    return;
-  }
-  s_uart_line[s_uart_line_len] = '\0';
-  (void)fprintf(stdout, "[uart] SCI%u: %s\n", channel, s_uart_line);
-  (void)fflush(stdout);
-  s_uart_line_len = 0U;
-}
-
-/**
- * @brief SCI TX sink: print each transmitted byte (prefixed line + raw mirror).
- *
- * @details
- * Installed via board_periph_sci_set_tx_sink. Printable bytes accumulate into a
- * line that is flushed -- with an @c [uart] SCIn: prefix -- on newline or when
- * the buffer fills, so console output reads cleanly in the log; CR is dropped
- * from the pretty line. Every byte is also written verbatim to a raw mirror on
- * stdout so redirecting board_sim reproduces the exact serial stream.
- *
- * @param[in] channel SCI channel that transmitted the byte.
- * @param[in] byte    The transmitted data byte.
- * @return Nothing.
- */
-static void console_tx_sink(uint8_t channel, uint8_t byte)
-{
-  if (byte == (uint8_t)'\n') {
-    console_flush_line(channel);
-    return;
-  }
-  if ((byte != (uint8_t)'\r') && (s_uart_line_len < (uint32_t)(k_uart_line_max - 1U))) {
-    s_uart_line[s_uart_line_len++] = (char)byte;
-  }
-  if (s_uart_line_len == (uint32_t)(k_uart_line_max - 1U)) {
-    console_flush_line(channel); /* avoid an unbounded line on a stream with no LF */
-  }
-}
-
-/**
- * @brief Decode a C-style escaped --input string into a raw byte buffer.
- *
- * @details
- * Translates @c \\n / @c \\r / @c \\t / @c \\0 / @c \\\\ in @p in so a shell
- * argument can carry the line endings a console example expects (e.g.
- * @c --input "ping\r\n"); any other character (including an unrecognised
- * escape's backslash) is copied verbatim. Bounded by @p cap; never overruns.
- *
- * @param[in]  in  NUL-terminated source string.
- * @param[out] out Destination byte buffer.
- * @param[in]  cap Capacity of @p out in bytes.
- * @return Number of bytes written to @p out.
- */
-static uint32_t decode_escapes(const char* in, uint8_t* out, uint32_t cap)
-{
-  uint32_t n = 0U;
-  for (uint32_t i = 0U; (in[i] != '\0') && (n < cap); i++) {
-    char c = in[i];
-    if ((c == '\\') && (in[i + 1U] != '\0')) {
-      i++;
-      switch (in[i]) {
-        case 'n':
-          c = '\n';
-          break;
-        case 'r':
-          c = '\r';
-          break;
-        case 't':
-          c = '\t';
-          break;
-        case '0':
-          c = '\0';
-          break;
-        default:
-          c = in[i]; /* \\ -> \, and any other escape is taken literally */
-          break;
-      }
-    }
-    out[n++] = (uint8_t)c;
-  }
-  return n;
 }
 
 /**
@@ -6428,16 +6143,8 @@ int main(int argc, char** argv)
   /* Seed the ITM "ready" bits in PPB RAM and echo stimulus-port writes, so
    * ra8_log output (e.g. the TrustZone e-reader's ra8_nsc_log_emit lines) prints
    * as `[itm] ...`. STIM0 is in PPB RAM, so the write-hook is the only way to
-   * observe the log bytes (see itm_seed_ready / on_itm_stim_write). */
-  itm_seed_ready(uc);
-  uc_hook h_itm;
-  (void)uc_hook_add(uc,
-                    &h_itm,
-                    UC_HOOK_MEM_WRITE,
-                    (void*)on_itm_stim_write,
-                    nullptr,
-                    (uint64_t)k_itm_stim0_addr,
-                    (uint64_t)k_itm_stim0_addr + 3U);
+   * observe the log bytes (see sim_console_install in sim_console.c). */
+  sim_console_install(uc);
   /* TrustZone S->NS boot seams -- armed whenever the firmware links the secure
    * boot's ra8_tz_secure_boot_jump_ns: a two-image --ns app, OR a single-image
    * app whose NS half is embedded at its MRAM LMA (cpu1_pingpong_ipc). The
