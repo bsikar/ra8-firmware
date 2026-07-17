@@ -319,26 +319,38 @@ static void cov_set_csd(volatile r_sdhi_regs_t* reg, cov_hook_mode_t mode)
  *
  * @since 0.1.0
  */
-static void cov_sdcard_step(void)
+/**
+ * @brief Zero all four SD response-register lanes (R2-style content).
+ * @param[in,out] reg SDHI register block.
+ * @return None.
+ * @pre @p reg is non-null.
+ * @post SD_RSP10/32/54/76 are all zero.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void cov_clear_rsp(volatile r_sdhi_regs_t* reg)
 {
-  volatile r_sdhi_regs_t* reg = ra8_sdhi(s_cov_cfg.inst);
-  if (reg == nullptr) {
-    return;
-  }
+  reg->SD_RSP10 = 0U;
+  reg->SD_RSP32 = 0U;
+  reg->SD_RSP54 = 0U;
+  reg->SD_RSP76 = 0U;
+}
 
-  const uint32_t cmd = reg->SD_CMD;
-
-  /* Sentinel: this command was already handled; wait for the next one. */
-  if (cmd > (uint32_t)k_cov_sd_cmd_max_valid) {
-    return;
-  }
-
+/**
+ * @brief Model the SDHI response for one command per the active coverage mode.
+ * @param[in,out] reg SDHI register block whose response lanes are written.
+ * @param[in]     cmd The command index latched in SD_CMD.
+ * @return true to assert RSPEND afterwards; false for the no-RSPEND fail modes.
+ * @pre @p reg is non-null.
+ * @post The response lanes reflect @p cmd and the active mode.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static bool cov_dispatch_cmd(volatile r_sdhi_regs_t* reg, uint32_t cmd)
+{
   switch (cmd) {
     case 0U: /* CMD0 GO_IDLE_STATE: always succeeds; no response content. */
-      reg->SD_RSP10 = 0U;
-      reg->SD_RSP32 = 0U;
-      reg->SD_RSP54 = 0U;
-      reg->SD_RSP76 = 0U;
+      cov_clear_rsp(reg);
       break;
 
     case 8U: /* CMD8 SEND_IF_COND: echo depends on mode. */
@@ -354,23 +366,20 @@ static void cov_sdcard_step(void)
 
     case 55U: /* CMD55 APP_CMD: fail modes do not assert RSPEND. */
       if (s_cov_cfg.mode == k_cov_mode_fail_cmd55) {
-        return; /* no RSPEND -> driver spin-loop times out naturally */
+        return false; /* no RSPEND -> driver spin-loop times out naturally */
       }
       reg->SD_RSP10 = 0U;
       break;
 
     case 41U: /* ACMD41 SD_SEND_OP_COND: fail / busy modes. */
       if (s_cov_cfg.mode == k_cov_mode_fail_acmd41) {
-        return; /* no RSPEND */
+        return false; /* no RSPEND */
       }
       reg->SD_RSP10 = cov_ocr_for_mode(s_cov_cfg.mode);
       break;
 
     case 2U: /* CMD2 ALL_SEND_CID: R2, content not used by driver. */
-      reg->SD_RSP10 = 0U;
-      reg->SD_RSP32 = 0U;
-      reg->SD_RSP54 = 0U;
-      reg->SD_RSP76 = 0U;
+      cov_clear_rsp(reg);
       break;
 
     case 3U: /* CMD3 SEND_RELATIVE_ADDR: RCA in rsp[0][31:16]. */
@@ -388,6 +397,26 @@ static void cov_sdcard_step(void)
     default: /* CMD17/CMD24 and any other command: just signal completion. */
       reg->SD_RSP10 = 0U;
       break;
+  }
+  return true;
+}
+
+static void cov_sdcard_step(void)
+{
+  volatile r_sdhi_regs_t* reg = ra8_sdhi(s_cov_cfg.inst);
+  if (reg == nullptr) {
+    return;
+  }
+
+  const uint32_t cmd = reg->SD_CMD;
+
+  /* Sentinel: this command was already handled; wait for the next one. */
+  if (cmd > (uint32_t)k_cov_sd_cmd_max_valid) {
+    return;
+  }
+
+  if (!cov_dispatch_cmd(reg, cmd)) {
+    return;
   }
 
   /* Assert RSPEND (bit 0) and BRE/BWE (bits 9:8) then write sentinel. */
