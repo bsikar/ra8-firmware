@@ -455,7 +455,8 @@ static void usage(const char* a0)
   (void)fprintf(stderr,
                 "usage:\n"
                 "  series: %s --config SITE.conf --series URL [--chapters N] "
-                "[--start K] [--out DIR] [--format cbz|cbt|cbr|cbt.xz|cbt.gz] "
+                "[--start K] [--out DIR] "
+                "[--format cbz|cbt|cbr|cbt.xz|cbt.gz|epub|rta1|rabook] "
                 "[--seed S] [--timeout MS]\n"
                 "  page:   %s URL [--out DIR] [--max N] [--attr data-src|src] "
                 "[--seed S] [--timeout MS]\n",
@@ -550,7 +551,8 @@ int main(int argc, char** argv)
   const mdl_format_t format = mdl_format_from_str(a.format);
   if (format == k_mdl_fmt_invalid) {
     (void)fprintf(stderr,
-                  "media_dl: bad --format '%s' (loose|cbz|cbt|cbr|cbt.xz|cbt.gz)\n",
+                  "media_dl: bad --format '%s' "
+                  "(loose|cbz|cbt|cbr|cbt.xz|cbt.gz|epub|rta1|rabook)\n",
                   a.format);
     return 2;
   }

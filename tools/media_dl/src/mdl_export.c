@@ -32,6 +32,10 @@
 #include <unistd.h>
 
 #include "miniz.h"
+#include "ra8_jpeg_sw.h"
+#include "ra8_log.h"
+#include "ra8_tileatlas.h"
+#include "ra8_tileatlas_produce.h"
 
 /** @brief Page-list limits. */
 typedef enum : uint16_t {
@@ -101,6 +105,15 @@ mdl_format_t mdl_format_from_str(const char* s)
   if (strcmp(s, "cbt.gz") == 0) {
     return k_mdl_fmt_cbt_gz;
   }
+  if (strcmp(s, "epub") == 0) {
+    return k_mdl_fmt_epub;
+  }
+  if (strcmp(s, "rta1") == 0) {
+    return k_mdl_fmt_rta1;
+  }
+  if (strcmp(s, "rabook") == 0) {
+    return k_mdl_fmt_rabook;
+  }
   return k_mdl_fmt_invalid;
 }
 
@@ -117,6 +130,12 @@ const char* mdl_format_ext(mdl_format_t fmt)
       return "cbt.xz";
     case k_mdl_fmt_cbt_gz:
       return "cbt.gz";
+    case k_mdl_fmt_epub:
+      return "epub";
+    case k_mdl_fmt_rta1:
+      return "rta1";
+    case k_mdl_fmt_rabook:
+      return "rabook";
     case k_mdl_fmt_loose:
     case k_mdl_fmt_invalid:
     default:
@@ -395,6 +414,377 @@ export_cbt_xz(const char* dir, char names[][k_name_max], size_t count, const cha
   return rc;
 }
 
+/* --- EPUB (self-contained: a valid EPUB3 of the page images via miniz) ---- */
+
+/** @brief EPUB string-buffer sizing (grows with the page count). */
+typedef enum : uint32_t {
+  k_epub_frag_max       = 512U,  /**< One manifest/spine/nav fragment. */
+  k_epub_xhtml_max      = 1024U, /**< One page's xhtml document. */
+  k_epub_base_bytes     = 4096U, /**< Fixed opf/nav overhead. */
+  k_epub_per_page_bytes = 512U,  /**< Per-page opf/nav growth. */
+} mdl_epub_size_t;
+
+/** @brief OCF container pointing at the OPF package (fixed). */
+static const char* const k_epub_container_xml =
+  "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+  "<container version=\"1.0\" "
+  "xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\"><rootfiles>"
+  "<rootfile full-path=\"OEBPS/content.opf\" "
+  "media-type=\"application/oebps-package+xml\"/></rootfiles></container>";
+
+/** @brief Image media-type for a page filename extension. */
+static const char* epub_media_type(const char* name)
+{
+  const char* dot = strrchr(name, '.');
+  if (dot != nullptr) {
+    if (strcmp(dot, ".png") == 0) {
+      return "image/png";
+    }
+    if (strcmp(dot, ".gif") == 0) {
+      return "image/gif";
+    }
+    if (strcmp(dot, ".webp") == 0) {
+      return "image/webp";
+    }
+    if (strcmp(dot, ".bmp") == 0) {
+      return "image/bmp";
+    }
+  }
+  return "image/jpeg";
+}
+
+/** @brief Append `text` to NUL-terminated `dst` if it fits (truncation-safe). */
+static void str_cat(char* dst, size_t cap, const char* text)
+{
+  const size_t cur = strlen(dst);
+  if (cur + 1U < cap) {
+    (void)snprintf(dst + cur, cap - cur, "%s", text);
+  }
+}
+
+/** @brief Add an in-memory string as a STORED zip entry. */
+static bool epub_add_str(mz_zip_archive* zip, const char* name, const char* body)
+{
+  return mz_zip_writer_add_mem(zip, name, body, strlen(body), MZ_NO_COMPRESSION) != MZ_FALSE;
+}
+
+/** @brief Add one page's xhtml + image, and append its opf/spine/nav fragments. */
+static ra8_err_t epub_add_page(mz_zip_archive* zip,
+                               const char*     dir,
+                               const char*     name,
+                               size_t          idx,
+                               char*           mani,
+                               char*           spine,
+                               char*           nav,
+                               size_t          cap)
+{
+  const unsigned n = (unsigned)(idx + 1U);
+  char           xhtml[k_epub_xhtml_max];
+  (void)snprintf(xhtml,
+                 sizeof(xhtml),
+                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                 "<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>Page %u"
+                 "</title></head><body><img src=\"images/%s\" alt=\"Page %u\"/>"
+                 "</body></html>",
+                 n,
+                 name,
+                 n);
+  char entry[k_name_max];
+  (void)snprintf(entry, sizeof(entry), "OEBPS/page_%03u.xhtml", n);
+  if (!epub_add_str(zip, entry, xhtml)) {
+    return k_ra8_fail;
+  }
+  char src[PATH_MAX];
+  (void)snprintf(src, sizeof(src), "%s/%s", dir, name);
+  (void)snprintf(entry, sizeof(entry), "OEBPS/images/%s", name);
+  if (mz_zip_writer_add_file(zip, entry, src, nullptr, 0, MZ_NO_COMPRESSION) == MZ_FALSE) {
+    return k_ra8_fail;
+  }
+  char frag[k_epub_frag_max];
+  (void)snprintf(frag,
+                 sizeof(frag),
+                 "<item id=\"pg%zu\" href=\"page_%03u.xhtml\" "
+                 "media-type=\"application/xhtml+xml\"/>"
+                 "<item id=\"img%zu\" href=\"images/%s\" media-type=\"%s\"/>",
+                 idx,
+                 n,
+                 idx,
+                 name,
+                 epub_media_type(name));
+  str_cat(mani, cap, frag);
+  (void)snprintf(frag, sizeof(frag), "<itemref idref=\"pg%zu\"/>", idx);
+  str_cat(spine, cap, frag);
+  (void)snprintf(frag, sizeof(frag), "<li><a href=\"page_%03u.xhtml\">Page %u</a></li>", n, n);
+  str_cat(nav, cap, frag);
+  return k_ra8_ok;
+}
+
+/** @brief Build + add content.opf and nav.xhtml, then finalize the archive. */
+static ra8_err_t
+epub_add_meta(mz_zip_archive* zip, const char* mani, const char* spine, const char* nav)
+{
+  const size_t opf_cap = strlen(mani) + strlen(spine) + (size_t)k_epub_base_bytes;
+  const size_t nav_cap = strlen(nav) + (size_t)k_epub_base_bytes;
+  char*        opf     = (char*)malloc(opf_cap);
+  char*        navdoc  = (char*)malloc(nav_cap);
+  if ((opf == nullptr) || (navdoc == nullptr)) {
+    free(opf);
+    free(navdoc);
+    return k_ra8_err_no_mem;
+  }
+  (void)snprintf(opf,
+                 opf_cap,
+                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                 "<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" "
+                 "unique-identifier=\"bookid\"><metadata "
+                 "xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
+                 "<dc:identifier id=\"bookid\">media_dl-chapter</dc:identifier>"
+                 "<dc:title>chapter</dc:title><dc:language>en</dc:language>"
+                 "<meta property=\"dcterms:modified\">2026-01-01T00:00:00Z</meta>"
+                 "</metadata><manifest><item id=\"nav\" href=\"nav.xhtml\" "
+                 "media-type=\"application/xhtml+xml\" properties=\"nav\"/>%s</manifest>"
+                 "<spine>%s</spine></package>",
+                 mani,
+                 spine);
+  (void)snprintf(navdoc,
+                 nav_cap,
+                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                 "<html xmlns=\"http://www.w3.org/1999/xhtml\" "
+                 "xmlns:epub=\"http://www.idpf.org/2007/ops\"><head><title>Contents"
+                 "</title></head><body><nav epub:type=\"toc\"><ol>%s</ol></nav>"
+                 "</body></html>",
+                 nav);
+  const bool ok = epub_add_str(zip, "OEBPS/content.opf", opf) &&
+                  epub_add_str(zip, "OEBPS/nav.xhtml", navdoc) &&
+                  (mz_zip_writer_finalize_archive(zip) != MZ_FALSE);
+  free(opf);
+  free(navdoc);
+  return ok ? k_ra8_ok : k_ra8_fail;
+}
+
+/** @brief Package `dir`'s pages into a valid EPUB3 at `out_path`. */
+static ra8_err_t
+export_epub(const char* dir, char names[][k_name_max], size_t count, const char* out_path)
+{
+  const size_t cap   = (size_t)k_epub_base_bytes + (count * (size_t)k_epub_per_page_bytes);
+  char*        mani  = (char*)calloc(1U, cap);
+  char*        spine = (char*)calloc(1U, cap);
+  char*        nav   = (char*)calloc(1U, cap);
+  if ((mani == nullptr) || (spine == nullptr) || (nav == nullptr)) {
+    free(mani);
+    free(spine);
+    free(nav);
+    return k_ra8_err_no_mem;
+  }
+  mz_zip_archive zip;
+  memset(&zip, 0, sizeof(zip));
+  const bool zip_open = (mz_zip_writer_init_file(&zip, out_path, 0) != MZ_FALSE);
+  ra8_err_t  rc       = zip_open ? k_ra8_ok : k_ra8_fail;
+  if ((rc == k_ra8_ok) && (!epub_add_str(&zip, "mimetype", "application/epub+zip") ||
+                           !epub_add_str(&zip, "META-INF/container.xml", k_epub_container_xml))) {
+    rc = k_ra8_fail;
+  }
+  for (size_t i = 0U; (rc == k_ra8_ok) && (i < count); ++i) {
+    rc = epub_add_page(&zip, dir, names[i], i, mani, spine, nav, cap);
+  }
+  if (rc == k_ra8_ok) {
+    rc = epub_add_meta(&zip, mani, spine, nav);
+  }
+  if (zip_open) {
+    (void)mz_zip_writer_end(&zip);
+  }
+  free(mani);
+  free(spine);
+  free(nav);
+  if (rc != k_ra8_ok) {
+    (void)remove(out_path);
+  }
+  return rc;
+}
+
+/* --- RTA1 (native tile atlas: reuse the firmware ra8_tileatlas producer) -- */
+
+/** @brief RTA1 tile-band height; tile_w is set to the image width (webtoon). */
+typedef enum : uint16_t {
+  k_rta1_band_h = 256,
+} mdl_rta1_geom_t;
+
+/** @brief Pull cursor over an in-RAM encoded image. */
+typedef struct {
+  const uint8_t* data; /**< Encoded bytes. */
+  size_t         len;  /**< Total length. */
+  size_t         pos;  /**< Read cursor. */
+} rta1_pull_ctx_t;
+
+/** @brief ra8_log byte sink -> stderr (host-safe; avoids the ITM MMIO read). */
+static void rta1_log_sink(void* ctx, uint8_t byte)
+{
+  (void)ctx;
+  (void)fputc((int)byte, stderr);
+}
+
+/** @brief Producer pull callback: hand over the next source bytes. */
+static ra8_err_t rta1_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+{
+  rta1_pull_ctx_t* s = (rta1_pull_ctx_t*)ctx;
+  size_t           n = s->len - s->pos;
+  if (n > cap) {
+    n = cap;
+  }
+  memcpy(buf, s->data + s->pos, n);
+  s->pos += n;
+  *got = n;
+  return k_ra8_ok;
+}
+
+/** @brief Producer sink callback: append atlas bytes to an open file. */
+static ra8_err_t rta1_sink(void* ctx, const uint8_t* buf, size_t len)
+{
+  return (fwrite(buf, 1U, len, (FILE*)ctx) == len) ? k_ra8_ok : k_ra8_fail;
+}
+
+/** @brief Read a whole file into a malloc'd buffer. */
+static ra8_err_t slurp(const char* path, uint8_t** out_buf, size_t* out_len)
+{
+  FILE* f = fopen(path, "rb");
+  if (f == nullptr) {
+    return k_ra8_fail;
+  }
+  (void)fseek(f, 0, SEEK_END);
+  const long sz = ftell(f);
+  (void)fseek(f, 0, SEEK_SET);
+  if (sz <= 0) {
+    (void)fclose(f);
+    return k_ra8_fail;
+  }
+  uint8_t* buf = (uint8_t*)malloc((size_t)sz);
+  if ((buf == nullptr) || (fread(buf, 1U, (size_t)sz, f) != (size_t)sz)) {
+    free(buf);
+    (void)fclose(f);
+    return k_ra8_fail;
+  }
+  (void)fclose(f);
+  *out_buf = buf;
+  *out_len = (size_t)sz;
+  return k_ra8_ok;
+}
+
+/** @brief Transcode one baseline-JPEG page to a `.rta1` full-width-column atlas. */
+static ra8_err_t rta1_one(const char* in_path, const char* out_path)
+{
+  uint8_t*  src  = nullptr;
+  size_t    slen = 0U;
+  ra8_err_t rc   = slurp(in_path, &src, &slen);
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+  uint16_t w = 0U;
+  uint16_t h = 0U;
+  if (ra8_jpeg_sw_get_dimensions(src, (uint32_t)slen, &w, &h) != k_ra8_ok) {
+    free(src);
+    return k_ra8_err_not_supported;
+  }
+  const uint16_t tile_h   = (h < (uint16_t)k_rta1_band_h) ? h : (uint16_t)k_rta1_band_h;
+  const uint32_t work_cap = ra8_tileatlas_work_bytes(w, h, w, tile_h);
+  uint8_t*       work     = (work_cap > 0U) ? (uint8_t*)malloc(work_cap) : nullptr;
+  FILE*          out      = (work != nullptr) ? fopen(out_path, "wb") : nullptr;
+  if (out == nullptr) {
+    free(work);
+    free(src);
+    return (work_cap == 0U) ? k_ra8_err_invalid_size : k_ra8_fail;
+  }
+  rta1_pull_ctx_t             pull = {.data = src, .len = slen, .pos = 0U};
+  ra8_tileatlas_produce_cfg_t cfg  = {.pull          = rta1_pull,
+                                      .pull_ctx      = &pull,
+                                      .sink          = rta1_sink,
+                                      .sink_ctx      = out,
+                                      .tile_w        = w,
+                                      .tile_h        = tile_h,
+                                      .codec         = (uint8_t)k_ra8_tileatlas_codec_deflate,
+                                      .max_width     = w,
+                                      .max_height    = h,
+                                      .work          = work,
+                                      .work_cap      = work_cap,
+                                      .webp_work     = nullptr,
+                                      .webp_work_cap = 0U};
+  ra8_tileatlas_info_t        info = {};
+  rc                               = ra8_tileatlas_produce(&cfg, &info);
+  (void)fclose(out);
+  free(work);
+  free(src);
+  if (rc != k_ra8_ok) {
+    (void)remove(out_path);
+  }
+  return rc;
+}
+
+/** @brief Convert every page in `dir` to a sibling `.rta1` atlas (in place). */
+static ra8_err_t export_rta1(const char* dir, const char names[][k_name_max], size_t count)
+{
+  ra8_log_set_byte_sink(rta1_log_sink, nullptr);
+  ra8_err_t rc = k_ra8_ok;
+  for (size_t i = 0U; (rc == k_ra8_ok) && (i < count); ++i) {
+    char in_path[PATH_MAX];
+    char stem[k_name_max];
+    char out_path[PATH_MAX];
+    (void)snprintf(in_path, sizeof(in_path), "%s/%s", dir, names[i]);
+    (void)snprintf(stem, sizeof(stem), "%s", names[i]);
+    char* dot = strrchr(stem, '.');
+    if (dot != nullptr) {
+      *dot = '\0';
+    }
+    (void)snprintf(out_path, sizeof(out_path), "%s/%s.rta1", dir, stem);
+    rc = rta1_one(in_path, out_path);
+  }
+  return rc;
+}
+
+/* --- RABOOK (optional external: the tools/epub_compile python emitter) ---- */
+
+/** @brief Run cbz_compile.py to turn `cbz` into an RBKC `.rabook` at `out_path`. */
+static ra8_err_t run_rabook_python(const char* cbz, const char* out_path)
+{
+#ifdef MDL_EPUB_COMPILE_DIR
+  char script[PATH_MAX];
+  (void)snprintf(script, sizeof(script), "%s/cbz_compile.py", MDL_EPUB_COMPILE_DIR);
+  (void)setenv("PYTHONPATH", MDL_EPUB_COMPILE_DIR, 1);
+  const char* const argv[] = {"python3", script, cbz, out_path, "--rtl", nullptr};
+  pid_t             pid    = 0;
+  const int         rc =
+    posix_spawnp(&pid, argv[0], nullptr, nullptr, (char* const*)argv, *_NSGetEnviron());
+  if (rc != 0) {
+    (void)fprintf(stderr, "media_dl: rabook needs python3 + Pillow: %s\n", strerror(rc));
+    return k_ra8_err_not_supported;
+  }
+  int status = 0;
+  if (waitpid(pid, &status, 0) < 0) {
+    return k_ra8_fail;
+  }
+  const bool ok = (WIFEXITED(status) != 0) && (WEXITSTATUS(status) == 0);
+  return ok ? k_ra8_ok : k_ra8_fail;
+#else
+  (void)cbz;
+  (void)out_path;
+  (void)fprintf(stderr, "media_dl: rabook support not built (MDL_EPUB_COMPILE_DIR unset)\n");
+  return k_ra8_err_not_supported;
+#endif
+}
+
+/** @brief Build a temp CBZ of the pages, then compile it to `.rabook`. */
+static ra8_err_t
+export_rabook(const char* dir, char names[][k_name_max], size_t count, const char* out_path)
+{
+  char tmp_cbz[PATH_MAX];
+  (void)snprintf(tmp_cbz, sizeof(tmp_cbz), "%s.tmp.cbz", out_path);
+  ra8_err_t rc = export_cbz(dir, names, count, tmp_cbz);
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+  rc = run_rabook_python(tmp_cbz, out_path);
+  (void)remove(tmp_cbz);
+  return rc;
+}
+
 ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const char* out_path)
 {
   if ((chapter_dir == nullptr) || (out_path == nullptr) || (fmt == k_mdl_fmt_loose) ||
@@ -428,6 +818,12 @@ ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const ch
       return export_tar_wrapped(chapter_dir, s_names, count, out_path, gzip_buf);
     case k_mdl_fmt_cbt_xz:
       return export_cbt_xz(chapter_dir, s_names, count, out_path);
+    case k_mdl_fmt_epub:
+      return export_epub(chapter_dir, s_names, count, out_path);
+    case k_mdl_fmt_rta1:
+      return export_rta1(chapter_dir, s_names, count);
+    case k_mdl_fmt_rabook:
+      return export_rabook(chapter_dir, s_names, count, out_path);
     default:
       return k_ra8_err_invalid_arg;
   }
