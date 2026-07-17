@@ -432,6 +432,32 @@ static void test_xz_unwrap_rejects_hostile_streams(void)
 }
 
 /**
+ * @brief Unwrap an xz stream into the shared small arena via the memory reader.
+ * @param[in]  mem   Backing-memory descriptor over the xz stream.
+ * @param[in]  inlen Consumable input length in bytes.
+ * @param[in]  lim   Optional decompression limits (nullptr for defaults).
+ * @param[out] got   Receives the number of output bytes produced.
+ * @return The `ra8_unarch_xz_unwrap` result code.
+ * @pre @p mem references a valid xz stream.
+ * @post No state beyond the shared arena and @p got is modified.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static ra8_err_t
+tx_unwrap_arena(ra8_unarch_mem_t* mem, size_t inlen, ra8_decomp_limits_t* lim, size_t* got)
+{
+  return ra8_unarch_xz_unwrap(ra8_unarch_mem_read,
+                              mem,
+                              (uint64_t)inlen,
+                              s_arena,
+                              (size_t)k_tx_small_out,
+                              s_scratch,
+                              (uint32_t)sizeof(s_scratch),
+                              lim,
+                              got);
+}
+
+/**
  * @test test_xz_unwrap_policy_bounds
  * @brief Each decompression-limits axis fires: ratio (default policy),
  *        output cap, iteration budget, and the undersized-arena shapes.
@@ -474,16 +500,7 @@ static void test_xz_unwrap_policy_bounds(void)
    * never end, the backing runs dry, and the full arena maps to no_mem. */
   got                  = 1U;
   ra8_unarch_mem_t mem = {.base = k_fx_xz_crc64_4k, .len = sizeof(k_fx_xz_crc64_4k)};
-  TEST_ASSERT_EQ(k_ra8_err_no_mem,
-                 ra8_unarch_xz_unwrap(ra8_unarch_mem_read,
-                                      &mem,
-                                      (uint64_t)sizeof(k_fx_xz_crc64_4k),
-                                      s_arena,
-                                      (size_t)k_tx_small_out,
-                                      s_scratch,
-                                      (uint32_t)sizeof(s_scratch),
-                                      nullptr,
-                                      &got));
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, tx_unwrap_arena(&mem, sizeof(k_fx_xz_crc64_4k), nullptr, &got));
   TEST_ASSERT_EQ(0U, got);
 
   /* Arena smaller than the payload with input left over: the decoder stalls
@@ -494,16 +511,7 @@ static void test_xz_unwrap_policy_bounds(void)
   ra8_decomp_limits_t loose = ra8_decomp_limits_default();
   loose.max_ratio           = 1000000U;
   ra8_unarch_mem_t bomb     = {.base = k_fx_xz_bomb_1m, .len = sizeof(k_fx_xz_bomb_1m)};
-  TEST_ASSERT_EQ(k_ra8_err_no_mem,
-                 ra8_unarch_xz_unwrap(ra8_unarch_mem_read,
-                                      &bomb,
-                                      (uint64_t)sizeof(k_fx_xz_bomb_1m),
-                                      s_arena,
-                                      (size_t)k_tx_small_out,
-                                      s_scratch,
-                                      (uint32_t)sizeof(s_scratch),
-                                      &loose,
-                                      &got));
+  TEST_ASSERT_EQ(k_ra8_err_no_mem, tx_unwrap_arena(&bomb, sizeof(k_fx_xz_bomb_1m), &loose, &got));
   TEST_ASSERT_EQ(0U, got);
   TEST_END("xz: policy bounds fire");
 }

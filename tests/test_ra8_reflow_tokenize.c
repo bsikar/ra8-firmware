@@ -150,6 +150,55 @@ static void test_utf8_encode(void)
 }
 
 /**
+ * @brief Walk void + self-close + quoted-attr markup and assert the token kinds.
+ * @return None.
+ * @pre The tokenizer engine is initialised.
+ * @post break / image / rule tokens were all emitted.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void walk_check_void_selfclose(void)
+{
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    walk("<html><body><p>a<br/>b<img src=\"x\" alt=\"a > b\"/></p><hr/></body></html>"));
+  bool saw_break = false;
+  bool saw_image = false;
+  bool saw_rule  = false;
+  for (uint32_t i = 0U; i < s_engine.token_count; ++i) {
+    saw_break = saw_break || (s_engine.tokens[i].kind == k_ra8_reflow_tok_break);
+    saw_image = saw_image || (s_engine.tokens[i].kind == k_ra8_reflow_tok_image);
+    saw_rule  = saw_rule || (s_engine.tokens[i].kind == k_ra8_reflow_tok_rule);
+  }
+  TEST_ASSERT(saw_break);
+  TEST_ASSERT(saw_image);
+  TEST_ASSERT(saw_rule);
+}
+
+/**
+ * @brief Walk CDATA markup and assert the inner text is emitted verbatim.
+ * @return None.
+ * @pre The tokenizer engine is initialised.
+ * @post A text token containing a literal '&' (no entity decode) was emitted.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void walk_check_cdata(void)
+{
+  TEST_ASSERT_EQ(k_ra8_ok, walk("<html><body><p><![CDATA[raw & <x>]]></p></body></html>"));
+  bool saw_amp_literal = false;
+  for (uint32_t i = 0U; i < s_engine.token_count; ++i) {
+    if (s_engine.tokens[i].kind == k_ra8_reflow_tok_text) {
+      const uint8_t* t = &s_engine.text_pool[s_engine.tokens[i].text_off];
+      if (memchr(t, '&', s_engine.tokens[i].text_len) != nullptr) {
+        saw_amp_literal = true;
+      }
+    }
+  }
+  TEST_ASSERT(saw_amp_literal);
+}
+
+/**
  * @test test_walk_end_to_end
  *
  * @par MC/DC:
@@ -199,33 +248,10 @@ static void test_walk_end_to_end(void)
   TEST_ASSERT(saw_block_end);
 
   /* Void + self-close + quoted attribute containing '>'. */
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    walk("<html><body><p>a<br/>b<img src=\"x\" alt=\"a > b\"/></p><hr/></body></html>"));
-  bool saw_break = false;
-  bool saw_image = false;
-  bool saw_rule  = false;
-  for (uint32_t i = 0U; i < s_engine.token_count; ++i) {
-    saw_break = saw_break || (s_engine.tokens[i].kind == k_ra8_reflow_tok_break);
-    saw_image = saw_image || (s_engine.tokens[i].kind == k_ra8_reflow_tok_image);
-    saw_rule  = saw_rule || (s_engine.tokens[i].kind == k_ra8_reflow_tok_rule);
-  }
-  TEST_ASSERT(saw_break);
-  TEST_ASSERT(saw_image);
-  TEST_ASSERT(saw_rule);
+  walk_check_void_selfclose();
 
   /* CDATA inner text is emitted verbatim (no entity decode). */
-  TEST_ASSERT_EQ(k_ra8_ok, walk("<html><body><p><![CDATA[raw & <x>]]></p></body></html>"));
-  bool saw_amp_literal = false;
-  for (uint32_t i = 0U; i < s_engine.token_count; ++i) {
-    if (s_engine.tokens[i].kind == k_ra8_reflow_tok_text) {
-      const uint8_t* t = &s_engine.text_pool[s_engine.tokens[i].text_off];
-      if (memchr(t, '&', s_engine.tokens[i].text_len) != nullptr) {
-        saw_amp_literal = true;
-      }
-    }
-  }
-  TEST_ASSERT(saw_amp_literal);
+  walk_check_cdata();
 
   /* Unbalanced (unclosed) -> validation failed. */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, walk("<html><body><p>oops"));
