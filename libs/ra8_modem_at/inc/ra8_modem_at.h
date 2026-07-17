@@ -106,7 +106,6 @@ typedef enum : uint16_t {
  *
  * @see ra8_modem_at_init()
  */
-/* clang-format off */
 typedef struct {
   /**
    * @brief Transmit a single byte (blocking).
@@ -154,11 +153,10 @@ typedef struct {
  */
 typedef struct {
   ra8_modem_at_io_t io;                 /**< Byte transport (must be fully populated). */
-  uint8_t*         line_buf;           /**< Caller-owned line accumulator buffer. */
-  uint16_t         line_buf_len;       /**< Bytes in ``line_buf`` (>= 16).        */
-  uint16_t         default_timeout_ms; /**< 0 means use compiled default.         */
+  uint8_t*          line_buf;           /**< Caller-owned line accumulator buffer.     */
+  uint16_t          line_buf_len;       /**< Bytes in ``line_buf`` (>= 16).            */
+  uint16_t          default_timeout_ms; /**< 0 means use compiled default.             */
 } ra8_modem_at_cfg_t;
-/* clang-format on */
 
 /**
  * @brief Unsolicited result-code (URC) handler signature.

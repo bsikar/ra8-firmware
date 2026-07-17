@@ -143,7 +143,6 @@ typedef uint64_t (*ra8_power_profile_now_us_fn_t)(void* ctx);
  * @see ra8_power_profile_stats_t
  * @since 0.1.0
  */
-/* clang-format off */
 typedef struct {
   uint64_t entries;       /**< Total number of ``mark_enter`` calls for this region.      */
   uint64_t exits;         /**< Total number of ``mark_exit`` calls for this region.       */
@@ -204,10 +203,9 @@ typedef struct {
 typedef struct {
   ra8_power_profile_gpio_pulse_fn_t pulse;  /**< GPIO edge hook (may be ``nullptr``).         */
   ra8_power_profile_now_us_fn_t     now_us; /**< Microsecond clock hook (may be ``nullptr``). */
-  void*                            user_ctx_gpio; /**< Opaque pointer passed to ``pulse``.  */
-  void*                            user_ctx_time; /**< Opaque pointer passed to ``now_us``. */
+  void*                             user_ctx_gpio; /**< Opaque pointer passed to ``pulse``.  */
+  void*                             user_ctx_time; /**< Opaque pointer passed to ``now_us``. */
 } ra8_power_profile_config_t;
-/* clang-format on */
 
 /**
  * @brief Initialise the power profiler.

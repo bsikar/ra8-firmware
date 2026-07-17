@@ -35,11 +35,6 @@
 extern "C" {
 #endif
 
-/* The field/value enums below pin hardware bit positions and command
- * words by their exact numeric value; the hex/decimal literal IS the
- * value being declared, so the magic-number lint is suppressed for the
- * enum wall (matched by the NOLINTEND at the tail of this file). */
-/* NOLINTBEGIN(readability-magic-numbers) */
 /**
  * @enum ra8_rsip_ctrl_bits_t
  * @brief Field positions inside the CTRL mailbox word.
@@ -469,8 +464,6 @@ typedef enum : uint16_t {
   k_ra8_rsip_kv_slot_bytes           = 64U, /**< Wrapped-key blob size.  */
   k_ra8_rsip_kv_slot_count           = 16U, /**< Number of vault slots.  */
 } ra8_rsip_sizes_t;
-
-/* NOLINTEND(readability-magic-numbers) */
 
 /**
  * @brief Volatile pointer to a 32-bit RSIP register at ``offset``.
