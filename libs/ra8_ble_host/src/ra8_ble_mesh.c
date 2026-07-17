@@ -17,7 +17,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-// NOLINTBEGIN(readability-function-size)
 #include "ra8_ble_mesh.h"
 
 #include <stddef.h>
@@ -370,5 +369,3 @@ uint8_t ra8_ble_mesh_test_prov_active(void)
   return s_state.provisioning_on;
 }
 #endif
-
-// NOLINTEND(readability-function-size)

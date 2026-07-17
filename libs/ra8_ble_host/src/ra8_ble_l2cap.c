@@ -35,7 +35,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-// NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity)
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -82,10 +81,10 @@ void ra8_ble_host_att_handle_pdu(uint16_t conn_handle, const uint8_t* pdu, uint1
 void internal_pack_le16(uint8_t* dst, uint16_t v)
 {
   enum : uint8_t {
-    k_byte_lo_idx = 0U,    /**< Byte lo index. */
-    k_byte_hi_idx = 1U,    /**< Byte hi index. */
-    k_byte_shift  = 8U,    /**< Byte shift.    */
-    k_byte_mask   = 0xFFU, /**< Byte mask.     */
+    k_byte_lo_idx = 0U,
+    k_byte_hi_idx = 1U,
+    k_byte_shift  = 8U,
+    k_byte_mask   = 0xFFU,
   };
   dst[k_byte_lo_idx] = (uint8_t)(v & k_byte_mask);
   dst[k_byte_hi_idx] = (uint8_t)((v >> k_byte_shift) & k_byte_mask);
@@ -113,9 +112,9 @@ void internal_pack_le16(uint8_t* dst, uint16_t v)
 static uint16_t internal_unpack_le16(const uint8_t* src)
 {
   enum : uint8_t {
-    k_byte_lo_idx = 0U, /**< Byte lo index. */
-    k_byte_hi_idx = 1U, /**< Byte hi index. */
-    k_byte_shift  = 8U, /**< Byte shift.    */
+    k_byte_lo_idx = 0U,
+    k_byte_hi_idx = 1U,
+    k_byte_shift  = 8U,
   };
   return (uint16_t)((uint16_t)src[k_byte_lo_idx] | ((uint16_t)src[k_byte_hi_idx] << k_byte_shift));
 }
@@ -275,6 +274,124 @@ ra8_err_t ra8_ble_host_l2cap_send(uint16_t       conn_handle,
  *
  * @since 0.1.0
  */
+/**
+ * @brief Append a continuation fragment to the reassembly buffer.
+ *
+ * @details Implements the continuation leg of the Vol 3 Part A 7.2.1
+ *          fragment recombination: the fragment is appended to the
+ *          singleton reassembly buffer, aborting (and resetting) the
+ *          whole reassembly when it would overflow the buffer.
+ *
+ * @param[in] payload Continuation fragment bytes.
+ * @param[in] len     Fragment byte count (> 0).
+ *
+ * @return Boolean frame-complete flag.
+ * @retval true  The buffered frame now spans the expected L2CAP length.
+ * @retval false Fragment dropped (overflow) or frame still incomplete.
+ *
+ * @pre s_ble_host_state.reassembly_len > 0 (a reassembly is open).
+ * @pre payload != NULL and len > 0 (guarded by the caller).
+ * @post On overflow the reassembly state is reset (len == 0).
+ * @post Otherwise reassembly_len has grown by len.
+ *
+ * @note Not thread-safe; called from the HCI ACL trampoline only.
+ *
+ * @since 0.1.0
+ */
+static bool internal_reassembly_append(const uint8_t* payload, uint16_t len)
+{
+  if ((uint32_t)s_ble_host_state.reassembly_len + (uint32_t)len >
+      (uint32_t)k_reassembly_buf_bytes) {
+    /* Drop, abort reassembly. */
+    s_ble_host_state.reassembly_len = 0U;
+    return false;
+  }
+  (void)memcpy(&s_ble_host_state.reassembly[s_ble_host_state.reassembly_len], payload, len);
+  s_ble_host_state.reassembly_len = (uint16_t)(s_ble_host_state.reassembly_len + len);
+  return s_ble_host_state.reassembly_len >=
+         (s_ble_host_state.reassembly_expected + k_l2cap_hdr_bytes);
+}
+
+/**
+ * @brief Dispatch the completed reassembly buffer and reset it.
+ *
+ * @details Hands the reassembled B-frame payload to the ATT layer when
+ *          the buffered CID is 0x0004 (LE ATT, Vol 3 Part A 2.1
+ *          Table 2.3); other CIDs are silently consumed. Always resets
+ *          the reassembly state afterwards.
+ *
+ * @pre A complete frame is buffered (reassembly_len spans the header
+ *      plus reassembly_expected bytes).
+ * @pre Stack is initialized.
+ * @post s_ble_host_state.reassembly_len == 0.
+ * @post ATT frames have been handed to ra8_ble_host_att_handle_pdu.
+ *
+ * @note Not thread-safe; called from the HCI ACL trampoline only.
+ *
+ * @since 0.1.0
+ */
+static void internal_reassembly_dispatch(void)
+{
+  if (s_ble_host_state.reassembly_cid == k_l2cap_cid_att) {
+    ra8_ble_host_att_handle_pdu(s_ble_host_state.reassembly_conn,
+                                &s_ble_host_state.reassembly[k_l2cap_hdr_bytes],
+                                s_ble_host_state.reassembly_expected);
+  }
+  s_ble_host_state.reassembly_len = 0U;
+}
+
+/**
+ * @brief Handle an ACL packet that starts a fresh L2CAP frame.
+ *
+ * @details First-fragment leg of the Vol 3 Part A 7.2.1 recombination:
+ *          a frame whose declared L2CAP length fits inside this single
+ *          ACL packet is dispatched immediately (ATT CID only; other
+ *          CIDs are silently consumed in this starter stack -- the
+ *          controller already answers default LE_LL events such as
+ *          LL_CONNECTION_PARAM_REQ on its own). A longer frame opens
+ *          the reassembly buffer instead, unless the fragment itself
+ *          exceeds the buffer, in which case it is dropped.
+ *
+ * @param[in] conn_handle Connection handle (12 bits).
+ * @param[in] payload     ACL data payload bytes (the L2CAP header +
+ *                        first fragment).
+ * @param[in] len         Byte count (>= 1; sub-header runts are dropped).
+ *
+ * @pre No reassembly is in progress (reassembly_len == 0).
+ * @pre payload != NULL and len > 0 (guarded by the caller).
+ * @post A complete ATT frame has been dispatched, or reassembly state
+ *       holds the first fragment, or the packet was dropped.
+ * @post No other host state is mutated.
+ *
+ * @note Not thread-safe; called from the HCI ACL trampoline only.
+ *
+ * @since 0.1.0
+ */
+static void internal_acl_fresh_frame(uint16_t conn_handle, const uint8_t* payload, uint16_t len)
+{
+  if (len < k_l2cap_hdr_bytes) {
+    return; /* bogus -- not even a full L2CAP header */
+  }
+  const uint16_t l2cap_len = internal_unpack_le16(&payload[0]);
+  const uint16_t cid       = internal_unpack_le16(&payload[2]);
+  if ((uint32_t)l2cap_len + (uint32_t)k_l2cap_hdr_bytes <= (uint32_t)len) {
+    /* Complete frame in this one ACL packet. */
+    if (cid == k_l2cap_cid_att) {
+      ra8_ble_host_att_handle_pdu(conn_handle, &payload[k_l2cap_hdr_bytes], l2cap_len);
+    }
+    return;
+  }
+  /* Need to start reassembly. */
+  if ((uint32_t)len > (uint32_t)k_reassembly_buf_bytes) {
+    return;
+  }
+  (void)memcpy(s_ble_host_state.reassembly, payload, len);
+  s_ble_host_state.reassembly_len      = len;
+  s_ble_host_state.reassembly_expected = l2cap_len;
+  s_ble_host_state.reassembly_cid      = cid;
+  s_ble_host_state.reassembly_conn     = conn_handle;
+}
+
 static void ra8_ble_host_acl_in(uint16_t conn_handle, const uint8_t* payload, uint16_t len)
 {
   if ((payload == nullptr) || (len == 0U)) {
@@ -286,53 +403,12 @@ static void ra8_ble_host_acl_in(uint16_t conn_handle, const uint8_t* payload, ui
 
   /* Are we mid-reassembly for the same connection? */
   if (s_ble_host_state.reassembly_len > 0U) {
-    if ((uint32_t)s_ble_host_state.reassembly_len + (uint32_t)len >
-        (uint32_t)k_reassembly_buf_bytes) {
-      /* Drop, abort reassembly. */
-      s_ble_host_state.reassembly_len = 0U;
-      return;
-    }
-    (void)memcpy(&s_ble_host_state.reassembly[s_ble_host_state.reassembly_len], payload, len);
-    s_ble_host_state.reassembly_len = (uint16_t)(s_ble_host_state.reassembly_len + len);
-    if (s_ble_host_state.reassembly_len <
-        s_ble_host_state.reassembly_expected + k_l2cap_hdr_bytes) {
-      return; /* still incomplete */
+    if (internal_reassembly_append(payload, len)) {
+      internal_reassembly_dispatch();
     }
   } else {
-    if (len < k_l2cap_hdr_bytes) {
-      return; /* bogus -- not even a full L2CAP header */
-    }
-    const uint16_t l2cap_len = internal_unpack_le16(&payload[0]);
-    const uint16_t cid       = internal_unpack_le16(&payload[2]);
-    if ((uint32_t)l2cap_len + (uint32_t)k_l2cap_hdr_bytes <= (uint32_t)len) {
-      /* Complete frame in this one ACL packet. */
-      if (cid == k_l2cap_cid_att) {
-        ra8_ble_host_att_handle_pdu(conn_handle, &payload[k_l2cap_hdr_bytes], l2cap_len);
-      }
-      /* Other CIDs (LE signaling) are silently consumed in this starter
-       * stack -- the controller already answers default LE_LL events
-       * (LL_CONNECTION_PARAM_REQ etc) on its own. */
-      return;
-    }
-    /* Need to start reassembly. */
-    if ((uint32_t)len > (uint32_t)k_reassembly_buf_bytes) {
-      return;
-    }
-    (void)memcpy(s_ble_host_state.reassembly, payload, len);
-    s_ble_host_state.reassembly_len      = len;
-    s_ble_host_state.reassembly_expected = l2cap_len;
-    s_ble_host_state.reassembly_cid      = cid;
-    s_ble_host_state.reassembly_conn     = conn_handle;
-    return;
+    internal_acl_fresh_frame(conn_handle, payload, len);
   }
-
-  /* Reassembly complete -- dispatch. */
-  if (s_ble_host_state.reassembly_cid == k_l2cap_cid_att) {
-    ra8_ble_host_att_handle_pdu(s_ble_host_state.reassembly_conn,
-                                &s_ble_host_state.reassembly[k_l2cap_hdr_bytes],
-                                s_ble_host_state.reassembly_expected);
-  }
-  s_ble_host_state.reassembly_len = 0U;
 }
 
 /* HCI ACL -> host trampoline registered via ra8_ble_attach_acl_handler -- see implementation for details. */
@@ -352,13 +428,122 @@ internal_acl_trampoline(void* ctx, uint16_t handle, const uint8_t* payload, uint
  */
 
 /**
+ * @enum ra8_ble_hci_evt_const_t
+ * @brief HCI event codes and parameter-block offsets consumed by the
+ *        host's connection bookkeeping.
+ *
+ * @details Bluetooth Core 5.3 Vol 4 Part E: 7.7.5
+ *          Disconnection_Complete (event code 0x05, handle at
+ *          parameter bytes 1..2) and 7.7.65.1 LE_Connection_Complete
+ *          (subevent 0x01 of the 0x3E LE Meta event, status at byte 1,
+ *          handle at bytes 2..3). Handle offsets name the low byte;
+ *          the high byte is adjacent (LE16).
+ */
+typedef enum : uint8_t {
+  k_evt_disconn_complete    = 0x05U, /**< Disconnection_Complete code.      */
+  k_evt_le_meta             = 0x3EU, /**< LE Meta event code.               */
+  k_subev_le_conn_complete  = 0x01U, /**< LE_Connection_Complete subevent.  */
+  k_disconn_handle_lo_idx   = 1U,    /**< Disconn handle LE16 low byte.     */
+  k_lemeta_subev_idx        = 0U,    /**< Subevent code offset.             */
+  k_lemeta_status_idx       = 1U,    /**< Status byte offset (0 = success). */
+  k_lemeta_handle_lo_idx    = 2U,    /**< Conn handle LE16 low byte.        */
+  k_min_disconn_param_bytes = 4U,    /**< Minimum Disconnection_Complete.   */
+  k_min_lemeta_param_bytes  = 19U,   /**< Minimum LE_Connection_Complete.   */
+} ra8_ble_hci_evt_const_t;
+
+/**
+ * @brief Apply a successful LE_Connection_Complete to the host state.
+ *
+ * @details Vol 4 Part E 7.7.65.1: on status 0x00 the new ACL handle is
+ *          latched, the ATT MTU resets to the 23-byte default
+ *          (Vol 3 Part F 3.4.2), and a connected event is dispatched.
+ *          Non-zero status bytes are ignored.
+ *
+ * @param[in] params LE Meta parameter bytes (>= 19, validated upstream).
+ *
+ * @pre params != NULL with at least k_min_lemeta_param_bytes bytes.
+ * @pre params[k_lemeta_subev_idx] == k_subev_le_conn_complete.
+ * @post On success status the host tracks the new connection and a
+ *       connected event has been dispatched.
+ * @post On failure status no state is mutated.
+ *
+ * @note Not thread-safe; called only from the HCI driver callback.
+ *
+ * @since 0.1.0
+ */
+static void internal_on_le_conn_complete(const uint8_t* params)
+{
+  /* Status byte 0x00 == success. */
+  if (params[k_lemeta_status_idx] != 0U) {
+    return;
+  }
+  const uint16_t h             = internal_unpack_le16(&params[k_lemeta_handle_lo_idx]);
+  s_ble_host_state.conn_handle = h;
+  s_ble_host_state.att_mtu     = k_att_mtu_default;
+  const ra8_ble_host_event_t e = {
+    .kind        = k_ra8_ble_host_event_connected,
+    .conn_handle = h,
+    .attr_handle = 0U,
+    .data        = nullptr,
+    .data_len    = 0U,
+  };
+  ra8_ble_host_dispatch_event(&e);
+}
+
+/**
+ * @brief Apply a Disconnection_Complete to the host state.
+ *
+ * @details Vol 4 Part E 7.7.5: when the disconnected handle matches
+ *          the tracked connection, the handle is invalidated, every
+ *          CCCD subscription is cleared (LE bonded devices would
+ *          persist these per Vol 3 Part G 3.3.3.3; we don't bond), and
+ *          a disconnected event is dispatched. Foreign handles are
+ *          ignored.
+ *
+ * @param[in] params Disconnection_Complete parameter bytes (>= 4,
+ *                   validated upstream).
+ *
+ * @pre params != NULL with at least k_min_disconn_param_bytes bytes.
+ * @pre Stack is initialized.
+ * @post On a handle match the host is disconnected and CCCDs cleared.
+ * @post On a foreign handle no state is mutated.
+ *
+ * @note Not thread-safe; called only from the HCI driver callback.
+ *
+ * @since 0.1.0
+ */
+static void internal_on_disconn_complete(const uint8_t* params)
+{
+  const uint16_t h = internal_unpack_le16(&params[k_disconn_handle_lo_idx]);
+  if (h != s_ble_host_state.conn_handle) {
+    return;
+  }
+  s_ble_host_state.conn_handle = k_invalid_handle;
+  for (uint8_t i = 0U; i < s_ble_host_state.attr_count; i++) {
+    if (s_ble_host_state.attrs[i].kind == k_attr_kind_cccd) {
+      s_ble_host_state.attrs[i].cccd_value = 0U;
+    }
+  }
+  const ra8_ble_host_event_t e = {
+    .kind        = k_ra8_ble_host_event_disconnected,
+    .conn_handle = h,
+    .attr_handle = 0U,
+    .data        = nullptr,
+    .data_len    = 0U,
+  };
+  ra8_ble_host_dispatch_event(&e);
+}
+
+/**
  * @brief HCI event trampoline: spot LE_Connection_Complete /
  *        Disconnection_Complete and update the host state.
  *
  * @details
  * Bluetooth Core 5.3 Vol 4 Part E:
- *   - 7.7.65.1 LE_Connection_Complete (subevent 0x01 of 0x3E LE Meta).
- *   - 7.7.5    Disconnection_Complete (event code 0x05).
+ *   - 7.7.65.1 LE_Connection_Complete (subevent 0x01 of 0x3E LE Meta),
+ *     handled by internal_on_le_conn_complete.
+ *   - 7.7.5    Disconnection_Complete (event code 0x05), handled by
+ *     internal_on_disconn_complete.
  *
  * @param[in] ctx       Unused.
  * @param[in] evt_code  HCI event code.
@@ -379,62 +564,15 @@ static void
 internal_evt_trampoline(void* ctx, uint8_t evt_code, const uint8_t* params, uint8_t params_len)
 {
   (void)ctx;
-  enum : uint8_t {
-    k_evt_disconn_complete    = 0x05U, /**< Evt disconn complete.        */
-    k_evt_le_meta             = 0x3EU, /**< Evt le meta.                 */
-    k_subev_le_conn_complete  = 0x01U, /**< Subev le conn complete.      */
-    k_disconn_handle_lo_idx   = 1U,    /**< Disconn handle lo index.     */
-    k_disconn_handle_hi_idx   = 2U,    /**< Disconn handle hi index.     */
-    k_lemeta_subev_idx        = 0U,    /**< Lemeta subev index.          */
-    k_lemeta_status_idx       = 1U,    /**< Lemeta status index.         */
-    k_lemeta_handle_lo_idx    = 2U,    /**< Lemeta handle lo index.      */
-    k_lemeta_handle_hi_idx    = 3U,    /**< Lemeta handle hi index.      */
-    k_min_disconn_param_bytes = 4U,    /**< Minimum disconn param bytes. */
-    k_min_lemeta_param_bytes  = 19U,   /**< Minimum lemeta param bytes.  */
-  };
-
   if ((params == nullptr) || (s_ble_host_state.initialized == 0U)) {
     return;
   }
 
   if ((evt_code == k_evt_le_meta) && (params_len >= k_min_lemeta_param_bytes) &&
       (params[k_lemeta_subev_idx] == k_subev_le_conn_complete)) {
-    /* Status byte 0x00 == success. */
-    if (params[k_lemeta_status_idx] == 0U) {
-      const uint16_t h             = (uint16_t)((uint16_t)params[k_lemeta_handle_lo_idx] |
-                                                ((uint16_t)params[k_lemeta_handle_hi_idx] << 8U));
-      s_ble_host_state.conn_handle = h;
-      s_ble_host_state.att_mtu     = k_att_mtu_default;
-      const ra8_ble_host_event_t e = {
-        .kind        = k_ra8_ble_host_event_connected,
-        .conn_handle = h,
-        .attr_handle = 0U,
-        .data        = nullptr,
-        .data_len    = 0U,
-      };
-      ra8_ble_host_dispatch_event(&e);
-    }
+    internal_on_le_conn_complete(params);
   } else if ((evt_code == k_evt_disconn_complete) && (params_len >= k_min_disconn_param_bytes)) {
-    const uint16_t h = (uint16_t)((uint16_t)params[k_disconn_handle_lo_idx] |
-                                  ((uint16_t)params[k_disconn_handle_hi_idx] << 8U));
-    if (h == s_ble_host_state.conn_handle) {
-      s_ble_host_state.conn_handle = k_invalid_handle;
-      /* Clear all CCCD subscriptions on disconnect (LE bonded devices
-       * would persist these; we don't bond). */
-      for (uint8_t i = 0U; i < s_ble_host_state.attr_count; i++) {
-        if (s_ble_host_state.attrs[i].kind == k_attr_kind_cccd) {
-          s_ble_host_state.attrs[i].cccd_value = 0U;
-        }
-      }
-      const ra8_ble_host_event_t e = {
-        .kind        = k_ra8_ble_host_event_disconnected,
-        .conn_handle = h,
-        .attr_handle = 0U,
-        .data        = nullptr,
-        .data_len    = 0U,
-      };
-      ra8_ble_host_dispatch_event(&e);
-    }
+    internal_on_disconn_complete(params);
   }
 }
 
@@ -500,7 +638,7 @@ ra8_err_t ra8_ble_host_init(const ra8_ble_host_config_t* cfg)
   if (cfg->name != nullptr) {
     /* Copy with bound. */
     enum : uint8_t {
-      k_name_copy_max = 31U, /**< Name copy maximum. */
+      k_name_copy_max = 31U,
     };
     uint8_t i = 0U;
     while ((i < k_name_copy_max) && (cfg->name[i] != '\0')) {
@@ -674,8 +812,9 @@ void ra8_ble_host_test_inject_connect(uint16_t conn_handle)
  * @details Forwards directly to the static
  *          ``internal_evt_trampoline`` so tests can vary
  *          (params, params_len, evt_code, subev) and exercise the
- *          line-576 params-NULL-or-uninit guard and the line-580 /
- *          line-597 decisions on the production source.
+ *          params-NULL-or-uninit guard plus the LE_Connection_Complete
+ *          and Disconnection_Complete dispatch decisions on the
+ *          production source.
  *
  * @param[in] evt_code   HCI event code.
  * @param[in] params     Parameter bytes (may be NULL).
@@ -697,4 +836,3 @@ void ra8_ble_host_test_inject_event(uint8_t evt_code, const uint8_t* params, uin
   internal_evt_trampoline(nullptr, evt_code, params, params_len);
 }
 #endif
-// NOLINTEND(readability-function-size,readability-function-cognitive-complexity)

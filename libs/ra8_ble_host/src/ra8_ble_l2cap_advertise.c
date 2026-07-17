@@ -20,7 +20,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-// NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity)
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -314,4 +313,3 @@ ra8_err_t ra8_ble_host_advertise_stop(void)
   }
   return ra8_ble_set_advertising_enable(0U);
 }
-// NOLINTEND(readability-function-size,readability-function-cognitive-complexity)

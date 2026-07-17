@@ -21,7 +21,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-// NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity)
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -746,4 +745,3 @@ ra8_err_t ra8_ble_host_gatt_notify(uint16_t char_handle)
                                  pdu,
                                  (uint16_t)(k_pdu_hdr_bytes + value_len));
 }
-// NOLINTEND(readability-function-size,readability-function-cognitive-complexity)
