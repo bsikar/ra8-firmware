@@ -494,6 +494,103 @@ static const uint8_t s_dummy_desc_a[8] = {};
 static const uint8_t s_dummy_desc_b[8] = {};
 
 /**
+ * @brief MC/DC decision A: init speed gate, then re-init at FS for the rest.
+ * @return None.
+ * @pre None.
+ * @post FS/HS accept, the bad speed rejects, and the device is left at FS.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void phid_mcdc_init(void)
+{
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_hs));
+  prep();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_phid_init((ra8_usb_speed_t)k_test_phid_speed_bad));
+
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
+}
+
+/**
+ * @brief MC/DC decisions C + D: the send_report null/length envelope.
+ * @return None.
+ * @pre The device is initialised.
+ * @post Each C/D vector returned (or avoided) invalid_arg as documented.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void phid_mcdc_send_report(void)
+{
+  uint8_t buf[8] = {};
+  /* C-V3: NULL with len -> null_ptr. */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_usb_phid_send_report(0U, nullptr, (uint16_t)k_test_phid_send_len_some));
+  /* D-V1: rid=0, len=0 -> invalid_arg. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_usb_phid_send_report(0U, buf, (uint16_t)k_test_phid_send_len_zero));
+  /* C-V1 + D-V1: NULL,0 -> still invalid_arg via D path. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_usb_phid_send_report(0U, nullptr, (uint16_t)k_test_phid_send_len_zero));
+  /* D-V2: rid!=0, len=0 -> exits via len overflow check or queue_in;
+   * either way decision D stays false. The send may return ok or
+   * hw_error from the simulator; we only assert it is NOT invalid_arg. */
+  const ra8_err_t d_v2 = ra8_usb_phid_send_report(1U, buf, (uint16_t)k_test_phid_send_len_zero);
+  TEST_ASSERT(d_v2 != k_ra8_err_invalid_arg);
+  /* D-V3: rid=0, len!=0 -> decision D false. */
+  const ra8_err_t d_v3 = ra8_usb_phid_send_report(0U, buf, (uint16_t)k_test_phid_send_len_some);
+  TEST_ASSERT(d_v3 != k_ra8_err_invalid_arg);
+}
+
+/**
+ * @brief MC/DC decisions E + F: the handle_setup envelope and request-code chain.
+ * @return None.
+ * @pre The device is initialised.
+ * @post Each envelope and request-code vector returned its documented code.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void phid_mcdc_handle_setup(void)
+{
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_attach_setup_handler(test_setup_cb, nullptr));
+  ra8_usb_setup_t setup = {
+    .bm_request_type = (uint8_t)k_test_phid_iface_in,
+    .b_request       = (uint8_t)k_ra8_phid_req_get_report,
+    .w_value         = 0U,
+    .w_index         = 0U,
+    .w_length        = 0U,
+  };
+  /* E-V1 iface_in -> envelope ok. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_handle_setup(&setup));
+  /* E-V2 iface_out -> envelope ok. */
+  setup.bm_request_type = (uint8_t)k_test_phid_iface_out;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_handle_setup(&setup));
+  /* E-V3 standard envelope -> not_supported. */
+  setup.bm_request_type = (uint8_t)k_test_phid_bm_bogus;
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_phid_handle_setup(&setup));
+
+  /* F: 6 lone-true vectors. */
+  setup.bm_request_type    = (uint8_t)k_test_phid_iface_in;
+  const uint8_t requests[] = {
+    (uint8_t)k_ra8_phid_req_get_report,
+    (uint8_t)k_ra8_phid_req_set_report,
+    (uint8_t)k_ra8_phid_req_get_idle,
+    (uint8_t)k_ra8_phid_req_set_idle,
+    (uint8_t)k_ra8_phid_req_get_protocol,
+    (uint8_t)k_ra8_phid_req_set_protocol,
+  };
+  for (uint8_t i = 0U; i < (uint8_t)(sizeof(requests) / sizeof(requests[0])); ++i) {
+    setup.b_request = requests[i];
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_handle_setup(&setup));
+  }
+  /* F all-false vector. */
+  setup.b_request = (uint8_t)k_test_phid_breq_unknown;
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_phid_handle_setup(&setup));
+}
+
+/**
  * @test test_mcdc_phid
  *
  * @par MC/DC:
@@ -535,15 +632,7 @@ static void test_mcdc_phid(void)
   TEST_BEGIN("phid MC/DC: init/desc/send_report/handle_setup compound decisions");
 
   /* Decision A: init speed gate. */
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_hs));
-  prep();
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_phid_init((ra8_usb_speed_t)k_test_phid_speed_bad));
-
-  prep();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
+  phid_mcdc_init();
 
   /* Decision B: set_descriptors len OR. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_set_descriptors(s_dummy_desc_a, 8U, s_dummy_desc_b, 8U));
@@ -553,60 +642,10 @@ static void test_mcdc_phid(void)
                  ra8_usb_phid_set_descriptors(s_dummy_desc_a, 8U, s_dummy_desc_b, 0U));
 
   /* Decision C + D: send_report. */
-  uint8_t buf[8] = {};
-  /* C-V3: NULL with len -> null_ptr. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_usb_phid_send_report(0U, nullptr, (uint16_t)k_test_phid_send_len_some));
-  /* D-V1: rid=0, len=0 -> invalid_arg. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_usb_phid_send_report(0U, buf, (uint16_t)k_test_phid_send_len_zero));
-  /* C-V1 + D-V1: NULL,0 -> still invalid_arg via D path. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_usb_phid_send_report(0U, nullptr, (uint16_t)k_test_phid_send_len_zero));
-  /* D-V2: rid!=0, len=0 -> exits via len overflow check or queue_in;
-   * either way decision D stays false. The send may return ok or
-   * hw_error from the simulator; we only assert it is NOT invalid_arg. */
-  const ra8_err_t d_v2 = ra8_usb_phid_send_report(1U, buf, (uint16_t)k_test_phid_send_len_zero);
-  TEST_ASSERT(d_v2 != k_ra8_err_invalid_arg);
-  /* D-V3: rid=0, len!=0 -> decision D false. */
-  const ra8_err_t d_v3 = ra8_usb_phid_send_report(0U, buf, (uint16_t)k_test_phid_send_len_some);
-  TEST_ASSERT(d_v3 != k_ra8_err_invalid_arg);
+  phid_mcdc_send_report();
 
   /* Decision E + F: handle_setup. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_attach_setup_handler(test_setup_cb, nullptr));
-  ra8_usb_setup_t setup = {
-    .bm_request_type = (uint8_t)k_test_phid_iface_in,
-    .b_request       = (uint8_t)k_ra8_phid_req_get_report,
-    .w_value         = 0U,
-    .w_index         = 0U,
-    .w_length        = 0U,
-  };
-  /* E-V1 iface_in -> envelope ok. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_handle_setup(&setup));
-  /* E-V2 iface_out -> envelope ok. */
-  setup.bm_request_type = (uint8_t)k_test_phid_iface_out;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_handle_setup(&setup));
-  /* E-V3 standard envelope -> not_supported. */
-  setup.bm_request_type = (uint8_t)k_test_phid_bm_bogus;
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_phid_handle_setup(&setup));
-
-  /* F: 6 lone-true vectors. */
-  setup.bm_request_type    = (uint8_t)k_test_phid_iface_in;
-  const uint8_t requests[] = {
-    (uint8_t)k_ra8_phid_req_get_report,
-    (uint8_t)k_ra8_phid_req_set_report,
-    (uint8_t)k_ra8_phid_req_get_idle,
-    (uint8_t)k_ra8_phid_req_set_idle,
-    (uint8_t)k_ra8_phid_req_get_protocol,
-    (uint8_t)k_ra8_phid_req_set_protocol,
-  };
-  for (uint8_t i = 0U; i < (uint8_t)(sizeof(requests) / sizeof(requests[0])); ++i) {
-    setup.b_request = requests[i];
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_handle_setup(&setup));
-  }
-  /* F all-false vector. */
-  setup.b_request = (uint8_t)k_test_phid_breq_unknown;
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_phid_handle_setup(&setup));
+  phid_mcdc_handle_setup();
 
   TEST_END("phid MC/DC: init/desc/send_report/handle_setup compound decisions");
 }
