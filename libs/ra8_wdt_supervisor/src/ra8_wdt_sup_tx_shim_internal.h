@@ -36,19 +36,19 @@ extern "C" {
  * @typedef ULONG
  * @brief ThreadX-compatible unsigned long (host stub).
  */
-typedef unsigned long ULONG; /* NOLINT(readability-identifier-naming) -- ThreadX vendor type name. */
+typedef unsigned long ULONG; /* NOLINT(readability-identifier-naming) -- ThreadX name. */
 
 /**
  * @typedef UINT
  * @brief ThreadX-compatible unsigned int (host stub).
  */
-typedef unsigned int UINT; /* NOLINT(readability-identifier-naming) -- ThreadX vendor type name. */
+typedef unsigned int UINT; /* NOLINT(readability-identifier-naming) -- ThreadX name. */
 
 /**
  * @typedef CHAR
  * @brief ThreadX-compatible CHAR (host stub).
  */
-typedef char CHAR; /* NOLINT(readability-identifier-naming) -- ThreadX vendor type name. */
+typedef char CHAR; /* NOLINT(readability-identifier-naming) -- ThreadX name. */
 
 /** @def TX_SUCCESS Successful ThreadX status code (host stub). */
 #define TX_SUCCESS (0U)
@@ -84,16 +84,16 @@ typedef enum : uint32_t {
  * @brief Opaque mutex stand-in for the host build.
  */
 typedef struct {
-  uint32_t magic; /**< Sentinel for "created".                                          */
-} TX_MUTEX;       /* NOLINT(readability-identifier-naming) -- ThreadX vendor type name. */
+  uint32_t magic; /**< Sentinel for "created".                              */
+} TX_MUTEX;       /* NOLINT(readability-identifier-naming) -- ThreadX name. */
 
 /**
  * @struct TX_THREAD
  * @brief Opaque thread stand-in for the host build.
  */
 typedef struct {
-  uint32_t magic; /**< Sentinel for "created".                                          */
-} TX_THREAD;      /* NOLINT(readability-identifier-naming) -- ThreadX vendor type name. */
+  uint32_t magic; /**< Sentinel for "created".                              */
+} TX_THREAD;      /* NOLINT(readability-identifier-naming) -- ThreadX name. */
 
 /**
  * @brief Host stub for tx_mutex_create.
@@ -111,8 +111,8 @@ typedef struct {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static inline UINT
-tx_mutex_create(TX_MUTEX* m, CHAR* name /* NOLINT(readability-non-const-parameter) -- ThreadX tx_mutex_create signature. */, UINT inherit)
+// NOLINTNEXTLINE(readability-non-const-parameter) -- ThreadX pins CHAR* name non-const.
+static inline UINT tx_mutex_create(TX_MUTEX* m, CHAR* name, UINT inherit)
 {
   (void)name;
   (void)inherit;
@@ -207,8 +207,9 @@ static inline UINT tx_mutex_delete(TX_MUTEX* m)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+// NOLINTBEGIN(readability-non-const-parameter) -- ThreadX pins CHAR* name non-const.
 static inline UINT tx_thread_create(TX_THREAD* t,
-                                    CHAR*      name /* NOLINT(readability-non-const-parameter) -- ThreadX tx_thread_create signature. */,
+                                    CHAR*      name,
                                     void (*entry)(ULONG),
                                     ULONG arg,
                                     void* stack,
@@ -232,6 +233,7 @@ static inline UINT tx_thread_create(TX_THREAD* t,
   }
   return TX_SUCCESS;
 }
+// NOLINTEND(readability-non-const-parameter)
 
 /**
  * @brief Host stub for tx_thread_terminate.
