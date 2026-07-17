@@ -210,13 +210,13 @@ volatile uint8_t s_state_at_dispatch = 0U;
 typedef enum : uint8_t {
   /* bmRequestType bit 7 -- USB 2.0 spec sec 9.3 Table 9-2:
    * 0 = Host-to-Device (write or no-data), 1 = Device-to-Host (read). */
-  k_ra8_usb_setup_dir_mask = 0x80U,
+  k_ra8_usb_setup_dir_mask = 0x80U, /**< RA8 USB setup dir mask. */
   /* SET_ADDRESS standard request code. USB 2.0 spec sec 9.4.6
    * Table 9-4 ("Standard Request Codes"): bRequest = 5 = SET_ADDRESS.
    * Used to gate out the manual CCPL pulse for SET_ADDRESS, which
    * the Renesas USBHS SIE auto-handles per HUM Ch 37.3 (auto
    * response function, p 2147). */
-  k_ra8_usb_breq_set_address = 0x05U,
+  k_ra8_usb_breq_set_address = 0x05U, /**< RA8 USB breq set address. */
 } ra8_usb_setup_local_t;
 
 /**

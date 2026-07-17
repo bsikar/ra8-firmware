@@ -58,7 +58,7 @@ typedef enum : uint8_t {
    * preempt the USB ISR. With same priority, SysTick cannot interrupt the
    * USB ISR and the 8 kHz SOFR + per-pipe NRDY events starve thread mode,
    * preventing tx_thread_sleep from ever waking. HUM Ch 13 NVIC priorities. */
-  k_ra8_usb_dcd_isr_prio = 8U,
+  k_ra8_usb_dcd_isr_prio = 8U, /**< RA8 USB dcd ISR prio. */
 } ra8_usb_dcd_isr_prio_t;
 
 /* Tag used by ra8_log_*. Must be a static lifetime string. */
