@@ -42,3 +42,22 @@ target_include_directories(media_dl PRIVATE
 target_compile_definitions(media_dl PRIVATE RA8_SIMULATOR_MODE)
 target_compile_options(media_dl PRIVATE -Wall -Wextra)
 target_link_libraries(media_dl PRIVATE CURL::libcurl)
+
+# Host unit tests (unity_minimal harness, like the repo's tests/). The pure
+# logic under test (extract/config/export) needs no libcurl, so the test binary
+# links only those units + vendored miniz.
+enable_testing()
+add_executable(test_media_dl
+  tests/test_media_dl.c
+  src/mdl_extract.c
+  src/mdl_config.c
+  src/mdl_export.c
+  ${MDL_MINIZ})
+target_include_directories(test_media_dl PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/inc
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../tests)
+target_compile_definitions(test_media_dl PRIVATE RA8_SIMULATOR_MODE)
+target_compile_options(test_media_dl PRIVATE -Wall -Wextra)
+add_test(NAME test_media_dl COMMAND test_media_dl)
