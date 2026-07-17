@@ -18,8 +18,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-/* NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity) */
-
 #include "ra8_ether_phy.h"
 
 #include <stdint.h>
@@ -59,6 +57,49 @@ typedef struct {
 
 static ra8_ether_phy_internal_t s_state = {};
 
+/**
+ * @brief Issue BMCR.RESET to the PHY and poll until it self-clears.
+ *
+ * @details
+ * IEEE 802.3 Clause 22 requires BMCR bit 15 (RESET) to self-clear once
+ * the PHY has re-initialized its internal state. Polls up to
+ * ``k_ra8_ether_phy_reset_poll_max`` MDIO reads before giving up.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok             BMCR.RESET observed clear.
+ * @retval k_ra8_err_hw_timeout BMCR.RESET still set after the poll budget.
+ *
+ * @pre ``s_state.io.read`` and ``s_state.io.write`` are non-NULL.
+ * @pre ``s_state.phy_address`` names the PHY being opened.
+ * @post On success the PHY is back in its post-reset default state.
+ * @post On error the PHY may be partway through reset; the caller
+ *       rolls the driver state back to closed.
+ *
+ * @note Not thread-safe; called from open under single-threaded init.
+ * @since 0.1.0
+ */
+static ra8_err_t internal_reset_and_wait(void)
+{
+  ra8_err_t err = s_state.io.write(s_state.io.ctx,
+                                   s_state.phy_address,
+                                   k_ra8_ether_phy_reg_control,
+                                   k_ra8_ether_phy_bmcr_reset);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  for (uint8_t i = 0U; i < k_ra8_ether_phy_reset_poll_max; ++i) { /* GCOVR_EXCL_BR_LINE */
+    uint16_t reg = 0U;
+    err = s_state.io.read(s_state.io.ctx, s_state.phy_address, k_ra8_ether_phy_reg_control, &reg);
+    if (err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
+      return err;
+    }
+    if ((reg & k_ra8_ether_phy_bmcr_reset) == 0U) {
+      return k_ra8_ok;
+    }
+  }
+  return k_ra8_err_hw_timeout;
+}
+
 ra8_err_t ra8_ether_phy_open(const ra8_ether_phy_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -78,28 +119,13 @@ ra8_err_t ra8_ether_phy_open(const ra8_ether_phy_cfg_t* cfg)
   s_state.last_bmsr     = 0U;
 
   /* Issue BMCR reset and poll for self-clear. */
-  ra8_err_t err = s_state.io.write(s_state.io.ctx,
-                                   s_state.phy_address,
-                                   k_ra8_ether_phy_reg_control,
-                                   k_ra8_ether_phy_bmcr_reset);
+  const ra8_err_t err = internal_reset_and_wait();
   if (err != k_ra8_ok) {
     s_state.opened = false;
     return err;
   }
-  for (uint8_t i = 0U; i < k_ra8_ether_phy_reset_poll_max; ++i) { /* GCOVR_EXCL_BR_LINE */
-    uint16_t reg = 0U;
-    err = s_state.io.read(s_state.io.ctx, s_state.phy_address, k_ra8_ether_phy_reg_control, &reg);
-    if (err != k_ra8_ok) { /* GCOVR_EXCL_BR_LINE */
-      s_state.opened = false;
-      return err;
-    }
-    if ((reg & k_ra8_ether_phy_bmcr_reset) == 0U) {
-      ra8_log_info_val(s_tag, "phy ready addr", (uint32_t)cfg->phy_address);
-      return k_ra8_ok;
-    }
-  }
-  s_state.opened = false;
-  return k_ra8_err_hw_timeout;
+  ra8_log_info_val(s_tag, "phy ready addr", (uint32_t)cfg->phy_address);
+  return k_ra8_ok;
 }
 
 ra8_err_t ra8_ether_phy_close(void)
@@ -181,5 +207,3 @@ ra8_err_t ra8_ether_phy_link_status_get(ra8_ether_phy_link_t* out)
   }
   return k_ra8_ok;
 }
-
-/* NOLINTEND(readability-function-size,readability-function-cognitive-complexity) */
