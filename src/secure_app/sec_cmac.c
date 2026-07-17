@@ -410,10 +410,10 @@ static void internal_aes_mix_columns(uint8_t* s)
     const uint8_t a1  = col[1];
     const uint8_t a2  = col[2];
     const uint8_t a3  = col[3];
-    col[0] = (uint8_t)(internal_aes_xtime(a0) ^ internal_aes_xtime(a1) ^ a1 ^ a2 ^ a3);
-    col[1] = (uint8_t)(a0 ^ internal_aes_xtime(a1) ^ internal_aes_xtime(a2) ^ a2 ^ a3);
-    col[2] = (uint8_t)(a0 ^ a1 ^ internal_aes_xtime(a2) ^ internal_aes_xtime(a3) ^ a3);
-    col[3] = (uint8_t)(internal_aes_xtime(a0) ^ a0 ^ a1 ^ a2 ^ internal_aes_xtime(a3));
+    col[0]            = (uint8_t)(internal_aes_xtime(a0) ^ internal_aes_xtime(a1) ^ a1 ^ a2 ^ a3);
+    col[1]            = (uint8_t)(a0 ^ internal_aes_xtime(a1) ^ internal_aes_xtime(a2) ^ a2 ^ a3);
+    col[2]            = (uint8_t)(a0 ^ a1 ^ internal_aes_xtime(a2) ^ internal_aes_xtime(a3) ^ a3);
+    col[3]            = (uint8_t)(internal_aes_xtime(a0) ^ a0 ^ a1 ^ a2 ^ internal_aes_xtime(a3));
   }
 }
 

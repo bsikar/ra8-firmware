@@ -608,4 +608,3 @@ ra8_touch_cal_load(const uint8_t* src, size_t src_size, ra8_touch_cal_matrix_t* 
   out_matrix->f = coeffs[k_coeff_f];
   return k_ra8_ok;
 }
-
