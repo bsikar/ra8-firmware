@@ -59,7 +59,7 @@
 /* The porting-seam macro names below (kmalloc, memeq, min_t, get_le32, ...) are
  * fixed by the xz-embedded SOUP contract (see the @details above) and cannot be
  * renamed to project UPPER_CASE conventions without forking the vendored tree. */
-/* NOLINTBEGIN(readability-identifier-naming) */
+/* NOLINTBEGIN(readability-identifier-naming) -- porting-seam names fixed by the xz-embedded SOUP contract. */
 
 /**
  * @def XZ_DEC_PREALLOC

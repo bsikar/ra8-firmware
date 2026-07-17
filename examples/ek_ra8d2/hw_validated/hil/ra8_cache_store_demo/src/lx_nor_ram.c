@@ -77,7 +77,7 @@ static ULONG s_ram_sector_buf[LX_NOR_SECTOR_SIZE];
 /* cppcheck-suppress constParameterCallback
  * Reason: bound to the LevelX LX_NOR_FLASH read callback typedef; the ULONG*
  * flash_address signature is fixed by the driver seam and cannot take const. */
-/* NOLINTNEXTLINE(readability-non-const-parameter) */
+/* NOLINTNEXTLINE(readability-non-const-parameter) -- LevelX driver callback signature is fixed by the vendor seam. */
 static UINT ram_read(ULONG* flash_address, ULONG* destination, ULONG words)
 {
   if (flash_address == LX_NULL) {
@@ -111,7 +111,7 @@ static UINT ram_read(ULONG* flash_address, ULONG* destination, ULONG words)
 /* cppcheck-suppress constParameterCallback
  * Reason: bound to the LevelX LX_NOR_FLASH write callback typedef; the ULONG*
  * source signature is fixed by the driver seam and cannot take const. */
-/* NOLINTNEXTLINE(readability-non-const-parameter) */
+/* NOLINTNEXTLINE(readability-non-const-parameter) -- LevelX driver callback signature is fixed by the vendor seam. */
 static UINT ram_write(ULONG* flash_address, ULONG* source, ULONG words)
 {
   if (flash_address == LX_NULL) {

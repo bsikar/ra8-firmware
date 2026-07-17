@@ -42,9 +42,9 @@ typedef enum : uint8_t {
 static void test_srand_zero_does_not_lock(void)
 {
   TEST_BEGIN("srand(0) remaps to default seed");
-  srand(0U); // NOLINT(cert-msc32-c,cert-msc51-cpp)
+  srand(0U); // NOLINT(cert-msc32-c,cert-msc51-cpp) -- srand() is the deterministic stub under test.
   /* If s_state were left zero xorshift returns 0 forever. */
-  const int r = rand(); // NOLINT(cert-msc30-c,cert-msc50-cpp)
+  const int r = rand(); // NOLINT(cert-msc30-c,cert-msc50-cpp) -- rand() is the deterministic stub under test.
   TEST_ASSERT(r != 0);
   TEST_END("srand(0) remaps to default seed");
 }
@@ -70,11 +70,11 @@ static void test_srand_zero_does_not_lock(void)
 static void test_srand_nonzero_seeds_deterministically(void)
 {
   TEST_BEGIN("srand(non-zero) produces deterministic sequence");
-  srand((unsigned int)k_rand_seed_repro); // NOLINT(cert-msc32-c,cert-msc51-cpp)
-  const int r1 = rand();                  // NOLINT(cert-msc30-c,cert-msc50-cpp)
+  srand((unsigned int)k_rand_seed_repro); // NOLINT(cert-msc32-c,cert-msc51-cpp) -- srand() is the deterministic stub under test.
+  const int r1 = rand();                  // NOLINT(cert-msc30-c,cert-msc50-cpp) -- rand() is the deterministic stub under test.
 
-  srand((unsigned int)k_rand_seed_repro); // NOLINT(cert-msc32-c,cert-msc51-cpp)
-  const int r2 = rand();                  // NOLINT(cert-msc30-c,cert-msc50-cpp)
+  srand((unsigned int)k_rand_seed_repro); // NOLINT(cert-msc32-c,cert-msc51-cpp) -- srand() is the deterministic stub under test.
+  const int r2 = rand();                  // NOLINT(cert-msc30-c,cert-msc50-cpp) -- rand() is the deterministic stub under test.
 
   TEST_ASSERT_EQ(r1, r2);
   TEST_END("srand(non-zero) produces deterministic sequence");
@@ -101,10 +101,10 @@ static void test_srand_nonzero_seeds_deterministically(void)
 static void test_rand_advances_each_call(void)
 {
   TEST_BEGIN("rand() advances state each call");
-  srand((unsigned int)k_rand_seed_differ1); // NOLINT(cert-msc32-c,cert-msc51-cpp)
-  const int a = rand();                     // NOLINT(cert-msc30-c,cert-msc50-cpp)
-  const int b = rand();                     // NOLINT(cert-msc30-c,cert-msc50-cpp)
-  const int c = rand();                     // NOLINT(cert-msc30-c,cert-msc50-cpp)
+  srand((unsigned int)k_rand_seed_differ1); // NOLINT(cert-msc32-c,cert-msc51-cpp) -- srand() is the deterministic stub under test.
+  const int a = rand();                     // NOLINT(cert-msc30-c,cert-msc50-cpp) -- rand() is the deterministic stub under test.
+  const int b = rand();                     // NOLINT(cert-msc30-c,cert-msc50-cpp) -- rand() is the deterministic stub under test.
+  const int c = rand();                     // NOLINT(cert-msc30-c,cert-msc50-cpp) -- rand() is the deterministic stub under test.
   /* All three values must not be identical -- xorshift cannot cycle
    * in fewer than 2^32-1 steps from a non-zero seed. */
   TEST_ASSERT(a != b || b != c);
@@ -130,9 +130,9 @@ static void test_rand_advances_each_call(void)
 static void test_rand_within_range(void)
 {
   TEST_BEGIN("rand() stays within [0, RAND_MAX]");
-  srand((unsigned int)k_rand_seed_range); // NOLINT(cert-msc32-c,cert-msc51-cpp)
+  srand((unsigned int)k_rand_seed_range); // NOLINT(cert-msc32-c,cert-msc51-cpp) -- srand() is the deterministic stub under test.
   for (uint8_t i = 0U; i < (uint8_t)k_rand_range_iters; ++i) {
-    const int r = rand(); // NOLINT(cert-msc30-c,cert-msc50-cpp)
+    const int r = rand(); // NOLINT(cert-msc30-c,cert-msc50-cpp) -- rand() is the deterministic stub under test.
     TEST_ASSERT(r >= 0);
     TEST_ASSERT(r <= RAND_MAX);
   }
@@ -158,11 +158,11 @@ static void test_rand_within_range(void)
 static void test_srand_different_seeds_differ(void)
 {
   TEST_BEGIN("srand with different seeds produces different sequences");
-  srand((unsigned int)k_rand_seed_differ1); // NOLINT(cert-msc32-c,cert-msc51-cpp)
-  const int r1 = rand();                    // NOLINT(cert-msc30-c,cert-msc50-cpp)
+  srand((unsigned int)k_rand_seed_differ1); // NOLINT(cert-msc32-c,cert-msc51-cpp) -- srand() is the deterministic stub under test.
+  const int r1 = rand();                    // NOLINT(cert-msc30-c,cert-msc50-cpp) -- rand() is the deterministic stub under test.
 
-  srand((unsigned int)k_rand_seed_differ2); // NOLINT(cert-msc32-c,cert-msc51-cpp)
-  const int r2 = rand();                    // NOLINT(cert-msc30-c,cert-msc50-cpp)
+  srand((unsigned int)k_rand_seed_differ2); // NOLINT(cert-msc32-c,cert-msc51-cpp) -- srand() is the deterministic stub under test.
+  const int r2 = rand();                    // NOLINT(cert-msc30-c,cert-msc50-cpp) -- rand() is the deterministic stub under test.
 
   TEST_ASSERT(r1 != r2);
   TEST_END("srand with different seeds produces different sequences");

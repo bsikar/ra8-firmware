@@ -815,7 +815,7 @@ static void internal_ra8_ipc_isr(void* ctx)
    * value-preserving since the enum's underlying type is ``uint16_t``.
    * The analyzer's enumerator-list check is suppressed for this
    * boundary cross only. */
-  /* NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  /* NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) -- value-preserving cast to a not-yet-enumerated ELC event. */
   const ra8_elc_event_t event = (ra8_elc_event_t)event_raw;
   /* HUM Ch 18 "Event Link Controller" event-list -- IPC IRQs route
    * through the ICU like every other peripheral; ra8_isr_register
@@ -840,7 +840,7 @@ static void internal_ra8_ipc_isr(void* ctx)
   }
   const uint16_t event_raw = internal_ra8_ipc_unit_to_event(unit);
   /* See ra8_ipc_install_isr() for the rationale on this NOLINT. */
-  /* NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  /* NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) -- value-preserving cast to a not-yet-enumerated ELC event. */
   const ra8_elc_event_t event = (ra8_elc_event_t)event_raw;
   const ra8_err_t       err   = ra8_isr_unregister(event);
   if (err != k_ra8_ok) {

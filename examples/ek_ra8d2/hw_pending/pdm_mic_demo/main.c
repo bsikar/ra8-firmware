@@ -102,7 +102,7 @@ static const ra8_port_pin_t k_pdm_demo_pin_dat = RA8_PIN(k_ra8_port_5, k_ra8_pin
 /* The decimation codes (SINCDEC/SINCRNG) are a HUM Table 49.7 row and the FIR
  * coefficients are the RA8D2 reset-default SPH0690 filter set (HUM Ch 49.2
  * register reset values) -- a hardware data table, not tunable constants. */
-/* NOLINTBEGIN(readability-magic-numbers) */
+/* NOLINTBEGIN(readability-magic-numbers) -- HUM Table 49.7 decimation row + reset-default filter coefficients. */
 static const ra8_pdm_channel_cfg_t k_pdm_demo_cfg = {
   .sinc_order   = 4U,
   .clock_div    = 0U,
