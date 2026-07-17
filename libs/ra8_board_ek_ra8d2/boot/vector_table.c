@@ -12,9 +12,12 @@
  * the standard ARM core exceptions. Slots 16+ are peripheral IRQs
  * routed through the ICU's IELSR table.
  *
- * Every handler is declared weak and aliased to `Default_Handler`, so
- * application code can override any of them by declaring a non-weak
- * function with the same name.
+ * The core exceptions are declared weak and aliased to `Default_Handler`,
+ * while every peripheral IRQ trampoline forwards to the `ra8_isr`
+ * substrate dispatcher (`ra8_isr_dispatch`) so a driver that armed a
+ * line through `ra8_isr_register` runs its `(handler, ctx)` pair in
+ * NVIC handler-mode. Any single handler can still be overridden by
+ * declaring a non-weak function with the same name.
  *
  * ## Linker-provided symbols
  *
@@ -100,28 +103,54 @@ void UsageFault_Handler(void);
 /* SysTick provided by libs/ra8_core/src/ra8_time.c (weak) so RTOS apps may override. */
 extern void SysTick_Handler(void);
 
+/* Each peripheral IRQ trampoline forwards to the ra8_isr substrate dispatcher so
+ * drivers that called ra8_isr_register run in NVIC handler-mode. */
+extern void ra8_isr_dispatch(uint16_t slot);
+
 /* =============================================================================
  * Peripheral IRQ handlers
  * =============================================================================
  *
  * The RA Interrupt Control Unit exposes 112 routable interrupt lines
- * to the NVIC (per HUM table 13.x). We declare them all weak-aliased
- * to Default_Handler so a driver can override any single one.
+ * to the NVIC (per HUM table 13.x).
+ *
+ * Each peripheral IRQ vector forwards to ra8_isr_dispatch(slot) so any
+ * (handler, ctx) registered through the substrate (ra8_isr_register)
+ * runs in NVIC handler-mode. Slots that were never registered land in
+ * the dispatcher's bounds-checked no-op path. The trampolines are
+ * weak so a driver can still install a fully-custom IRQ handler by
+ * defining a non-weak ``IRQ<n>_Handler``. HUM Ch 13 NVIC + Ch 14 ICU
+ * IELSR.
+ *
+ * NB: a prior revision aliased every IRQn_Handler directly to
+ * Default_Handler (which contains ``bkpt #0``). On debug-disabled
+ * silicon a stray bkpt escalates to HardFault, so the first SCI/SPI/USB
+ * IRQ a driver armed via ra8_isr_register would halt the chip. The
+ * dispatching form below avoids that and matches the working apps.
  */
 
 enum : uint16_t {
   k_ra8_irq_count = 112U, /**< RA8 IRQ count. */
 };
 
-/* Mach-O does not support `alias`; on Apple hosts we keep only
- * `weak` so the symbols exist but are not aliased. The host build
- * never invokes these vectors. */
+/* On Apple host syntax-check we drop ra8_isr_dispatch (the host build
+ * never branches through these vectors) and keep only a weak empty
+ * body so the `&IRQn_Handler` references in the table are well-formed. */
 #ifndef __APPLE__
 /** @brief RA8 IRQ STUB. */
-#define RA8_IRQ_STUB(n) [[gnu::weak, gnu::alias("Default_Handler")]] void IRQ##n##_Handler(void)
+#define RA8_IRQ_STUB(n)                                                                            \
+  void               IRQ##n##_Handler(void);                                                       \
+  [[gnu::weak]] void IRQ##n##_Handler(void)                                                        \
+  {                                                                                                \
+    ra8_isr_dispatch((uint16_t)(n));                                                               \
+  }                                                                                                \
+  static_assert(1, "ra8_irq_stub_" #n)
 #else
 /** @brief RA8 IRQ STUB. */
-#define RA8_IRQ_STUB(n) [[gnu::weak]] void IRQ##n##_Handler(void)
+#define RA8_IRQ_STUB(n)                                                                            \
+  void               IRQ##n##_Handler(void);                                                       \
+  [[gnu::weak]] void IRQ##n##_Handler(void) {}                                                     \
+  static_assert(1, "ra8_irq_stub_" #n)
 #endif
 
 RA8_IRQ_STUB(0);
