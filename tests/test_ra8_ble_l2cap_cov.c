@@ -372,6 +372,56 @@ static void test_cov_acl_trampoline_via_dispatch(void)
 }
 
 /**
+ * @var s_svc_uuid
+ * @brief 128-bit service UUID fixture for the CCCD-clear coverage test.
+ * @note Read-only host-test fixture.
+ * @since 0.1.0
+ */
+static const uint8_t s_svc_uuid[k_ra8_ble_host_uuid_bytes] = {
+  0x01U,
+  0x02U,
+  0x03U,
+  0x04U,
+  0x05U,
+  0x06U,
+  0x07U,
+  0x08U,
+  0x09U,
+  0x0AU,
+  0x0BU,
+  0x0CU,
+  0x0DU,
+  0x0EU,
+  0x0FU,
+  0x10U,
+};
+
+/**
+ * @var s_chr_uuid
+ * @brief 128-bit characteristic UUID fixture for the CCCD-clear test.
+ * @note Read-only host-test fixture.
+ * @since 0.1.0
+ */
+static const uint8_t s_chr_uuid[k_ra8_ble_host_uuid_bytes] = {
+  0x11U,
+  0x12U,
+  0x13U,
+  0x14U,
+  0x15U,
+  0x16U,
+  0x17U,
+  0x18U,
+  0x19U,
+  0x1AU,
+  0x1BU,
+  0x1CU,
+  0x1DU,
+  0x1EU,
+  0x1FU,
+  0x20U,
+};
+
+/**
  * @test test_cov_disconnect_clears_cccd
  *
  * @details Populates the GATT attribute table with a notify
@@ -393,42 +443,6 @@ static void test_cov_disconnect_clears_cccd(void)
   TEST_BEGIN("ra8_ble_l2cap cov: disconnect clears CCCD rows");
   TEST_ASSERT_EQ(k_ra8_ok, bring_up());
 
-  static const uint8_t s_svc_uuid[k_ra8_ble_host_uuid_bytes] = {
-    0x01U,
-    0x02U,
-    0x03U,
-    0x04U,
-    0x05U,
-    0x06U,
-    0x07U,
-    0x08U,
-    0x09U,
-    0x0AU,
-    0x0BU,
-    0x0CU,
-    0x0DU,
-    0x0EU,
-    0x0FU,
-    0x10U,
-  };
-  static const uint8_t s_chr_uuid[k_ra8_ble_host_uuid_bytes] = {
-    0x11U,
-    0x12U,
-    0x13U,
-    0x14U,
-    0x15U,
-    0x16U,
-    0x17U,
-    0x18U,
-    0x19U,
-    0x1AU,
-    0x1BU,
-    0x1CU,
-    0x1DU,
-    0x1EU,
-    0x1FU,
-    0x20U,
-  };
   static uint8_t s_chr_value[k_cov_char_value_max] = {};
 
   uint16_t svc_handle = 0U;
