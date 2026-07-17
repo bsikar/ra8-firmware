@@ -230,8 +230,8 @@ static void rv_phase_scan_resist(rv_driver_t* d)
 
 /** @brief Owned page-cache backing buffers freed together on every exit path. */
 typedef struct {
-  uint8_t*          frame_mem; /**< Page-frame pool.        */
-  ra8_vmem_frame_t* meta;      /**< Per-frame metadata.     */
+  uint8_t*          frame_mem; /**< Page-frame pool.         */
+  ra8_vmem_frame_t* meta;      /**< Per-frame metadata.      */
   int32_t*          buckets;   /**< Hash-bucket index heads. */
 } rv_res_t;
 

@@ -51,44 +51,44 @@ extern "C" {
 typedef struct {
   const sim_run_cfg_t* cfg;              /**< Setup products (engine, image, CLI knobs). */
   run_guards_t         guards;           /**< Env-tunable budgets + stop conditions.     */
-  uint16_t             panel_w;          /**< Firmware render width in pixels.          */
-  uint16_t             panel_h;          /**< Firmware render height in pixels.         */
-  uint16_t             disp_w;           /**< Displayed width (rotation-swapped).       */
-  uint16_t             disp_h;           /**< Displayed height (rotation-swapped).      */
-  uint16_t             comp_w;           /**< Composite (panel + sidebar) width.        */
-  uint16_t             comp_h;           /**< Composite (panel + sidebar) height.       */
-  board_view_t*        view;             /**< Live window (NULL when headless).         */
-  uint16_t*            panel_fb;         /**< GLCDC render scratch (or NULL).        */
-  uint16_t*            rot_fb;           /**< Rotation scratch (or NULL).            */
-  uint16_t*            composite;        /**< Composite frame buffer (or NULL).      */
-  board_overlay_btn_t  click_btn;        /**< Classified --click target button.      */
-  bool                 click_was_tab;    /**< --click landed on a console tab.    */
-  int                  reboot_count;     /**< --reboot warm reboots remaining.    */
-  uint32_t             run_pc;           /**< Current resume PC.                 */
-  uint32_t             chunks;           /**< Outer chunks executed so far.      */
-  uint32_t             last_boot_chunk;  /**< Chunk of the last (re)boot.       */
-  uint32_t             settle_left;      /**< Post-click drain countdown.       */
-  uint32_t             rec_frames;       /**< --record frames written.          */
-  uint32_t             prof_idle_run;    /**< Consecutive profiler-idle chunks. */
-  uint32_t             idle_run;         /**< Consecutive steady-idle chunks.   */
-  uint32_t             usb_stop_run;     /**< USB device settle countup.        */
-  uint32_t             usbh_stop_run;    /**< USB host settle countup.          */
-  uint64_t             prof_idle_prev_i; /**< Prior total insns (profiler).    */
-  uint64_t             idle_sig_prev;    /**< Prior idle-signature sum.        */
-  uint64_t             last_present_us;  /**< wall-us of the last live present. */
-  uint32_t             prof_prev_pc;     /**< PC charged by the wall profiler.  */
-  double               prof_prev_t;      /**< Start time of the prior chunk.    */
-  clock_t              t0;               /**< CPU-time origin for the guard.    */
-  uc_err               err;              /**< Latest uc_emu_start status.       */
-  bool                 prof_stopped;     /**< Profiler stop fired.              */
-  bool                 idle_stopped;     /**< Idle steady-state stop fired.     */
-  bool                 usb_stopped;      /**< USB / banner early stop fired.    */
-  bool                 stop_sym_hit;     /**< --stop-sym threshold reached.     */
-  bool                 timed_out;        /**< Wall-clock guard fired.           */
-  bool                 closed;           /**< Live window was closed.           */
-  bool                 button_fired;     /**< Headless click button fired once. */
-  bool                 slider_grab;      /**< Battery slider grabbed by a drag. */
-  board_overlay_btn_t  held_btn;         /**< SW held down (released on up).    */
+  uint16_t             panel_w;          /**< Firmware render width in pixels.           */
+  uint16_t             panel_h;          /**< Firmware render height in pixels.          */
+  uint16_t             disp_w;           /**< Displayed width (rotation-swapped).        */
+  uint16_t             disp_h;           /**< Displayed height (rotation-swapped).       */
+  uint16_t             comp_w;           /**< Composite (panel + sidebar) width.         */
+  uint16_t             comp_h;           /**< Composite (panel + sidebar) height.        */
+  board_view_t*        view;             /**< Live window (NULL when headless).          */
+  uint16_t*            panel_fb;         /**< GLCDC render scratch (or NULL).            */
+  uint16_t*            rot_fb;           /**< Rotation scratch (or NULL).                */
+  uint16_t*            composite;        /**< Composite frame buffer (or NULL).          */
+  board_overlay_btn_t  click_btn;        /**< Classified --click target button.          */
+  bool                 click_was_tab;    /**< --click landed on a console tab.           */
+  int                  reboot_count;     /**< --reboot warm reboots remaining.           */
+  uint32_t             run_pc;           /**< Current resume PC.                         */
+  uint32_t             chunks;           /**< Outer chunks executed so far.              */
+  uint32_t             last_boot_chunk;  /**< Chunk of the last (re)boot.                */
+  uint32_t             settle_left;      /**< Post-click drain countdown.                */
+  uint32_t             rec_frames;       /**< --record frames written.                   */
+  uint32_t             prof_idle_run;    /**< Consecutive profiler-idle chunks.          */
+  uint32_t             idle_run;         /**< Consecutive steady-idle chunks.            */
+  uint32_t             usb_stop_run;     /**< USB device settle countup.                 */
+  uint32_t             usbh_stop_run;    /**< USB host settle countup.                   */
+  uint64_t             prof_idle_prev_i; /**< Prior total insns (profiler).              */
+  uint64_t             idle_sig_prev;    /**< Prior idle-signature sum.                  */
+  uint64_t             last_present_us;  /**< wall-us of the last live present.          */
+  uint32_t             prof_prev_pc;     /**< PC charged by the wall profiler.           */
+  double               prof_prev_t;      /**< Start time of the prior chunk.             */
+  clock_t              t0;               /**< CPU-time origin for the guard.             */
+  uc_err               err;              /**< Latest uc_emu_start status.                */
+  bool                 prof_stopped;     /**< Profiler stop fired.                       */
+  bool                 idle_stopped;     /**< Idle steady-state stop fired.              */
+  bool                 usb_stopped;      /**< USB / banner early stop fired.             */
+  bool                 stop_sym_hit;     /**< --stop-sym threshold reached.              */
+  bool                 timed_out;        /**< Wall-clock guard fired.                    */
+  bool                 closed;           /**< Live window was closed.                    */
+  bool                 button_fired;     /**< Headless click button fired once.          */
+  bool                 slider_grab;      /**< Battery slider grabbed by a drag.          */
+  board_overlay_btn_t  held_btn;         /**< SW held down (released on up).             */
 } run_loop_t;
 
 /**

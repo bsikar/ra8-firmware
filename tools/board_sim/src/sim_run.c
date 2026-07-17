@@ -58,9 +58,9 @@
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_loop_next     = 0, /**< Fall through to the next phase in the body.       */
-  k_loop_continue = 1, /**< Restart the outer loop (reboot / tail-chain).     */
-  k_loop_break    = 2, /**< Leave the outer loop (stop condition / fault).    */
+  k_loop_next     = 0, /**< Fall through to the next phase in the body.    */
+  k_loop_continue = 1, /**< Restart the outer loop (reboot / tail-chain).  */
+  k_loop_break    = 2, /**< Leave the outer loop (stop condition / fault). */
 } loop_action_t;
 
 /**
