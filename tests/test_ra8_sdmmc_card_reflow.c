@@ -91,6 +91,79 @@ typedef struct {
 static sd_card_t s_card;
 
 /** @brief Build the response for a completed 6-byte command frame. */
+/**
+ * @brief CMD58 READ_OCR: fill an R3 response (R1 + OCR, CCS=1 => SDHC).
+ * @param[in,out] c  Mock card whose response buffer is filled.
+ * @param[in]     r1 The R1 status byte for the current ready state.
+ * @return None.
+ * @pre @p c is non-null.
+ * @post @p c holds a 5-byte R3 response.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void sd_cmd_read_ocr(sd_card_t* c, uint8_t r1)
+{
+  c->resp[0]  = r1;
+  c->resp[1]  = (uint8_t)k_sd_ocr_pwrccs;
+  c->resp[2]  = (uint8_t)k_sd_idle;
+  c->resp[3]  = (uint8_t)k_sd_ocr_volt;
+  c->resp[4]  = 0U;
+  c->resp_len = (uint8_t)k_sd_r7_len;
+}
+
+/**
+ * @brief CMD9 SEND_CSD: fill R1 + token + 16-byte CSD + CRC.
+ * @param[in,out] c Mock card whose response buffer is filled.
+ * @return None.
+ * @pre @p c is non-null.
+ * @post @p c holds the CSD response with a valid CRC16.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void sd_cmd_send_csd(sd_card_t* c)
+{
+  const uint8_t  bm = (uint8_t)k_sd_byte_mask;
+  const uint32_t bb = (uint32_t)k_sd_byte_bits;
+  c->resp[0]        = (uint8_t)k_sd_r1_ready;
+  c->resp[1]        = (uint8_t)k_sd_tok_data;
+  uint8_t csd[k_sd_csd_len];
+  memset(csd, 0, sizeof(csd));
+  csd[0]            = (uint8_t)k_sd_csd_v2;    /* CSD_STRUCTURE = v2.0. */
+  csd[k_sd_csd_off] = (uint8_t)k_sd_csd_csize; /* C_SIZE => 8 MiB card. */
+  memcpy(&c->resp[2], csd, sizeof(csd));
+  const uint16_t crc9                       = ra8_sdmmc_spi_crc16(&c->resp[2], k_sd_csd_len);
+  c->resp[2U + (uint32_t)k_sd_csd_len]      = (uint8_t)(crc9 >> bb);
+  c->resp[2U + (uint32_t)k_sd_csd_len + 1U] = (uint8_t)(crc9 & bm);
+  c->resp_len                               = 2U + (uint32_t)k_sd_csd_len + 2U;
+}
+
+/**
+ * @brief CMD17 READ_SINGLE_BLOCK: fill R1 + token + one 512-byte block + CRC.
+ * @param[in,out] c   Mock card whose response buffer is filled.
+ * @param[in]     arg The SDHC block index requested.
+ * @return None.
+ * @pre @p c is non-null.
+ * @post @p c holds the block data (zero-filled past the image) with a valid CRC.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void sd_cmd_read_block(sd_card_t* c, uint32_t arg)
+{
+  const uint8_t  bm  = (uint8_t)k_sd_byte_mask;
+  const uint32_t bb  = (uint32_t)k_sd_byte_bits;
+  c->resp[0]         = (uint8_t)k_sd_r1_ready;
+  c->resp[1]         = (uint8_t)k_sd_tok_data;
+  const uint32_t off = arg * (uint32_t)k_sd_block;
+  for (uint32_t i = 0U; i < (uint32_t)k_sd_block; ++i) {
+    const uint32_t a = off + i;
+    c->resp[2U + i]  = (a < c->image_len) ? c->image[a] : 0U;
+  }
+  const uint16_t crc17                    = ra8_sdmmc_spi_crc16(&c->resp[2], (uint32_t)k_sd_block);
+  c->resp[2U + (uint32_t)k_sd_block]      = (uint8_t)(crc17 >> bb);
+  c->resp[2U + (uint32_t)k_sd_block + 1U] = (uint8_t)(crc17 & bm);
+  c->resp_len                             = 2U + (uint32_t)k_sd_block + 2U;
+}
+
 static void sd_process_cmd(sd_card_t* c)
 {
   const uint8_t  idx     = (uint8_t)(c->cmd[0] & (uint8_t)k_sd_idx_mask);
@@ -101,9 +174,7 @@ static void sd_process_cmd(sd_card_t* c)
   c->app_cmd             = false;
   c->resp_pos            = 0U;
   c->resp_len            = 0U;
-  const uint8_t  r1      = c->ready ? (uint8_t)k_sd_r1_ready : (uint8_t)k_sd_r1_idle;
-  const uint8_t  bm      = (uint8_t)k_sd_byte_mask;
-  const uint32_t bb      = (uint32_t)k_sd_byte_bits;
+  const uint8_t r1       = c->ready ? (uint8_t)k_sd_r1_ready : (uint8_t)k_sd_r1_idle;
 #ifdef SD_DBG
   (void)fprintf(stderr, "SD cmd=%u arg=%08x app=%d\n", idx, arg, (int)was_app);
 #endif
@@ -133,43 +204,18 @@ static void sd_process_cmd(sd_card_t* c)
       c->resp_len = 1U;
       break;
     case (uint8_t)k_sd_idx_cmd58: /* READ_OCR -> R3 (R1 + OCR, CCS=1 => SDHC) */
-      c->resp[0]  = r1;
-      c->resp[1]  = (uint8_t)k_sd_ocr_pwrccs;
-      c->resp[2]  = (uint8_t)k_sd_idle;
-      c->resp[3]  = (uint8_t)k_sd_ocr_volt;
-      c->resp[4]  = 0U;
-      c->resp_len = (uint8_t)k_sd_r7_len;
+      sd_cmd_read_ocr(c, r1);
       break;
     case (uint8_t)k_sd_idx_cmd16: /* SET_BLOCKLEN */
       c->resp[0]  = (uint8_t)k_sd_r1_ready;
       c->resp_len = 1U;
       break;
     case (uint8_t)k_sd_idx_cmd9: { /* SEND_CSD -> R1 + token + 16-byte CSD + CRC */
-      c->resp[0] = (uint8_t)k_sd_r1_ready;
-      c->resp[1] = (uint8_t)k_sd_tok_data;
-      uint8_t csd[k_sd_csd_len];
-      memset(csd, 0, sizeof(csd));
-      csd[0]            = (uint8_t)k_sd_csd_v2;    /* CSD_STRUCTURE = v2.0. */
-      csd[k_sd_csd_off] = (uint8_t)k_sd_csd_csize; /* C_SIZE => 8 MiB card. */
-      memcpy(&c->resp[2], csd, sizeof(csd));
-      const uint16_t crc9                       = ra8_sdmmc_spi_crc16(&c->resp[2], k_sd_csd_len);
-      c->resp[2U + (uint32_t)k_sd_csd_len]      = (uint8_t)(crc9 >> bb);
-      c->resp[2U + (uint32_t)k_sd_csd_len + 1U] = (uint8_t)(crc9 & bm);
-      c->resp_len                               = 2U + (uint32_t)k_sd_csd_len + 2U;
+      sd_cmd_send_csd(c);
       break;
     }
     case (uint8_t)k_sd_idx_cmd17: { /* READ_SINGLE_BLOCK (SDHC: arg = block) */
-      c->resp[0]         = (uint8_t)k_sd_r1_ready;
-      c->resp[1]         = (uint8_t)k_sd_tok_data;
-      const uint32_t off = arg * (uint32_t)k_sd_block;
-      for (uint32_t i = 0U; i < (uint32_t)k_sd_block; ++i) {
-        const uint32_t a = off + i;
-        c->resp[2U + i]  = (a < c->image_len) ? c->image[a] : 0U;
-      }
-      const uint16_t crc17               = ra8_sdmmc_spi_crc16(&c->resp[2], (uint32_t)k_sd_block);
-      c->resp[2U + (uint32_t)k_sd_block] = (uint8_t)(crc17 >> bb);
-      c->resp[2U + (uint32_t)k_sd_block + 1U] = (uint8_t)(crc17 & bm);
-      c->resp_len                             = 2U + (uint32_t)k_sd_block + 2U;
+      sd_cmd_read_block(c, arg);
       break;
     }
     default:
@@ -343,33 +389,15 @@ static bool load_src_font(void)
 }
 
 /**
- * @test test_sd_card_serves_font_to_reflow
- *
- * @par MC/DC:
- * Integration test -- no compound decision of its own. It exercises the
- * already-covered ra8_sdmmc_spi / ra8_fs / ra8_reflow APIs end to end through
- * a modelled SD card. The single boolean checks (init ok, bytes match, ink
- * present) each pass on the success path and fail the assert otherwise.
+ * @brief Format a FAT16 image and write the source font through the mem backend.
+ * @return None.
+ * @pre The source font is loaded into s_src_font (length s_font_len).
+ * @post FONT.OTF is present in the card image, ready for SD read-back.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
  */
-static void test_sd_card_serves_font_to_reflow(void)
+static void sd_reflow_populate_card(void)
 {
-  TEST_BEGIN("SD card (SPI) serves FAT font -> ra8_fs -> ra8_reflow");
-
-  s_src_font  = (uint8_t*)malloc(k_font_cap);
-  s_card_font = (uint8_t*)malloc(k_font_cap);
-  s_fb        = (uint32_t*)malloc((size_t)k_fb_w * (size_t)k_fb_h * sizeof(uint32_t));
-  TEST_ASSERT_NOT_NULL(s_src_font);
-  TEST_ASSERT_NOT_NULL(s_card_font);
-  TEST_ASSERT_NOT_NULL(s_fb);
-
-  if (!load_src_font()) {
-    (void)fprintf(stderr, "[SKIP] Literata font not found; skipping\n");
-    TEST_END("SD card (SPI) serves FAT font -> ra8_fs -> ra8_reflow");
-    return;
-  }
-
-  /* Populate the card image: format + write the font via the direct mem
-   * backend (the SD model only needs to serve reads). */
   build_fat16();
   ra8_fs_mount_t* setup = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_mem_backend, &setup));
@@ -378,8 +406,18 @@ static void test_sd_card_serves_font_to_reflow(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(wf, s_src_font, s_font_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(wf));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(setup));
+}
 
-  /* Bring up the SD card through the REAL ra8_sdmmc_spi driver. */
+/**
+ * @brief Bring up the real SD-SPI driver, mount the card FAT and read the font.
+ * @return None.
+ * @pre The card image holds FONT.OTF (sd_reflow_populate_card ran).
+ * @post s_card_font holds the byte-identical font read back off the SD model.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void sd_reflow_read_font_back(void)
+{
   s_card.image                          = s_disk.bytes;
   s_card.image_len                      = s_disk.block_count * (uint32_t)k_disk_block_size;
   const ra8_sdmmc_spi_transport_t trans = {.set_clock = t_set_clock,
@@ -388,7 +426,6 @@ static void test_sd_card_serves_font_to_reflow(void)
                                            .ctx       = &s_card};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_init(&trans));
 
-  /* Mount the card as a FAT filesystem and read the font back off it. */
   ra8_fs_backend_t sd_backend = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_bind_fs_backend(&sd_backend));
   ra8_fs_mount_t* mnt = nullptr;
@@ -401,8 +438,18 @@ static void test_sd_card_serves_font_to_reflow(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(rf));
   TEST_ASSERT_EQ(0, memcmp(s_src_font, s_card_font, s_font_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(mnt));
+}
 
-  /* Render with the font that came off the (modelled) SD card. */
+/**
+ * @brief Render a page with the SD-sourced font and assert non-blank output.
+ * @return None.
+ * @pre s_card_font holds a valid font of length s_font_len.
+ * @post At least one non-background pixel was inked into s_fb.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void sd_reflow_render_and_count(void)
+{
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gfx_init(s_fb, (uint16_t)k_fb_w, (uint16_t)k_fb_h, k_ra8_gfx_format_argb8888));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_clear((uint32_t)k_bg_argb));
@@ -432,6 +479,41 @@ static void test_sd_card_serves_font_to_reflow(void)
   }
   (void)fprintf(stderr, "[info] %u-byte font via SD-SPI+FAT; %u inked pixels\n", s_font_len, ink);
   TEST_ASSERT(ink > 0U);
+}
+
+/**
+ * @test test_sd_card_serves_font_to_reflow
+ *
+ * @par MC/DC:
+ * Integration test -- no compound decision of its own. It exercises the
+ * already-covered ra8_sdmmc_spi / ra8_fs / ra8_reflow APIs end to end through
+ * a modelled SD card. The single boolean checks (init ok, bytes match, ink
+ * present) each pass on the success path and fail the assert otherwise.
+ */
+static void test_sd_card_serves_font_to_reflow(void)
+{
+  TEST_BEGIN("SD card (SPI) serves FAT font -> ra8_fs -> ra8_reflow");
+
+  s_src_font  = (uint8_t*)malloc(k_font_cap);
+  s_card_font = (uint8_t*)malloc(k_font_cap);
+  s_fb        = (uint32_t*)malloc((size_t)k_fb_w * (size_t)k_fb_h * sizeof(uint32_t));
+  TEST_ASSERT_NOT_NULL(s_src_font);
+  TEST_ASSERT_NOT_NULL(s_card_font);
+  TEST_ASSERT_NOT_NULL(s_fb);
+
+  if (!load_src_font()) {
+    (void)fprintf(stderr, "[SKIP] Literata font not found; skipping\n");
+    TEST_END("SD card (SPI) serves FAT font -> ra8_fs -> ra8_reflow");
+    return;
+  }
+
+  /* Populate the card image: format + write the font via the direct mem
+   * backend (the SD model only needs to serve reads). */
+  sd_reflow_populate_card();
+  /* Bring up the SD card and read the font back off the FAT it serves. */
+  sd_reflow_read_font_back();
+  /* Render with the font that came off the (modelled) SD card. */
+  sd_reflow_render_and_count();
 
   (void)ra8_sdmmc_spi_deinit();
   free(s_disk.bytes);
