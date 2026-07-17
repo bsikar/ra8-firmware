@@ -601,6 +601,54 @@ static void test_nav_bar_input(void)
 }
 
 /**
+ * @brief Exercise the render OR-guard arms (count / items / draw_text / labels).
+ * @param[in,out] w     Widget bound to @p nav.
+ * @param[in,out] nav   Nav-bar widget under test.
+ * @param[in,out] paint Paint sink (draw_text toggled).
+ * @param[in,out] mp    Paint-call counters asserted per vector.
+ * @return None.
+ * @pre @p w is initialised over @p nav.
+ * @post Each render arm produced the expected fill/text counts; valid items and
+ *       draw_text are restored on exit.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void nav_render_guards(ra8_widget_t*         w,
+                              ra8_widget_nav_bar_t* nav,
+                              ra8_widget_paint_t*   paint,
+                              mock_paint_t*         mp)
+{
+  /* count == 0 -> bg only. */
+  w->vt->render(w);
+  TEST_ASSERT_EQ(1U, mp->fill_calls);
+  TEST_ASSERT_EQ(0U, mp->text_calls);
+
+  /* items == NULL -> bg only (right arm of the render OR-guard). */
+  *mp        = (mock_paint_t){.glyph_w = 8, .glyph_h = 16};
+  nav->count = 3;
+  nav->items = nullptr;
+  w->vt->render(w);
+  TEST_ASSERT_EQ(1U, mp->fill_calls);
+  TEST_ASSERT_EQ(0U, mp->text_calls);
+
+  /* draw_text == NULL -> bg only (left arm of the render OR-guard). */
+  *mp              = (mock_paint_t){.glyph_w = 8, .glyph_h = 16};
+  nav->items       = k_nav_items;
+  paint->draw_text = nullptr;
+  w->vt->render(w);
+  TEST_ASSERT_EQ(1U, mp->fill_calls);
+  TEST_ASSERT_EQ(0U, mp->text_calls);
+  paint->draw_text = mock_paint_text;
+
+  /* an item with a NULL label is skipped. */
+  static const char* const holey[] = {"A", nullptr, "C"};
+  *mp                              = (mock_paint_t){.glyph_w = 8, .glyph_h = 16};
+  nav->items                       = holey;
+  w->vt->render(w);
+  TEST_ASSERT_EQ(2U, mp->text_calls); /* only A + C */
+}
+
+/**
  * @test ra8_widget_nav_bar render + hit + init guard arms.
  *
  * @par MC/DC:
@@ -619,34 +667,7 @@ static void test_nav_bar_guards(void)
   (void)ra8_widget_nav_bar_init(&w, &nav);
   w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 120, .h = 24};
 
-  /* count == 0 -> bg only. */
-  w.vt->render(&w);
-  TEST_ASSERT_EQ(1U, mp.fill_calls);
-  TEST_ASSERT_EQ(0U, mp.text_calls);
-
-  /* items == NULL -> bg only (right arm of the render OR-guard). */
-  mp        = (mock_paint_t){.glyph_w = 8, .glyph_h = 16};
-  nav.count = 3;
-  nav.items = nullptr;
-  w.vt->render(&w);
-  TEST_ASSERT_EQ(1U, mp.fill_calls);
-  TEST_ASSERT_EQ(0U, mp.text_calls);
-
-  /* draw_text == NULL -> bg only (left arm of the render OR-guard). */
-  mp              = (mock_paint_t){.glyph_w = 8, .glyph_h = 16};
-  nav.items       = k_nav_items;
-  paint.draw_text = nullptr;
-  w.vt->render(&w);
-  TEST_ASSERT_EQ(1U, mp.fill_calls);
-  TEST_ASSERT_EQ(0U, mp.text_calls);
-  paint.draw_text = mock_paint_text;
-
-  /* an item with a NULL label is skipped. */
-  static const char* const holey[] = {"A", nullptr, "C"};
-  mp                               = (mock_paint_t){.glyph_w = 8, .glyph_h = 16};
-  nav.items                        = holey;
-  w.vt->render(&w);
-  TEST_ASSERT_EQ(2U, mp.text_calls); /* only A + C */
+  nav_render_guards(&w, &nav, &paint, &mp);
 
   /* hit guards: count == 0 and w <= 0 both decline a touch. */
   const ra8_widget_event_t t = {.kind = k_ra8_widget_ev_touch, .x = 10, .y = 10};

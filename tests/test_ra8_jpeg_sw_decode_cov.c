@@ -406,6 +406,24 @@ static void test_decode_dht_guards(void)
 /* ------------------------------------------------------------------ */
 
 /**
+ * @brief Decode a malformed SOF0 fixture and assert the expected rejection.
+ * @param[in] d    Encoded JPEG bytes.
+ * @param[in] n    Length of @p d in bytes.
+ * @param[in] want Expected `ra8_jpeg_sw_decode` result code.
+ * @return None.
+ * @pre @p d is non-null.
+ * @post `ra8_jpeg_sw_decode` returned @p want.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void jd_expect(const uint8_t* d, uint32_t n, ra8_err_t want)
+{
+  uint16_t w = 0U;
+  uint16_t h = 0U;
+  TEST_ASSERT_EQ(want, ra8_jpeg_sw_decode(d, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+}
+
+/**
  * @brief Drive four guard returns of dec_parse_sof0().
  *
  * @details
@@ -426,26 +444,12 @@ static void test_decode_dht_guards(void)
 static void test_decode_sof0_guards(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_parse_sof0 header/len/precision/comp guards");
-  uint16_t w = 0U;
-  uint16_t h = 0U;
 
   static const uint8_t sof0_hdr[] = {0xFFU, 0xD8U, 0xFFU, 0xC0U};
-  TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(sof0_hdr,
-                                    (uint32_t)sizeof sof0_hdr,
-                                    s_out,
-                                    (uint32_t)k_cov_out_big,
-                                    &w,
-                                    &h));
+  jd_expect(sof0_hdr, (uint32_t)sizeof sof0_hdr, k_ra8_err_protocol_error);
 
   static const uint8_t sof0_len[] = {0xFFU, 0xD8U, 0xFFU, 0xC0U, 0x00U, 0x05U};
-  TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(sof0_len,
-                                    (uint32_t)sizeof sof0_len,
-                                    s_out,
-                                    (uint32_t)k_cov_out_big,
-                                    &w,
-                                    &h));
+  jd_expect(sof0_len, (uint32_t)sizeof sof0_len, k_ra8_err_protocol_error);
 
   static const uint8_t sof0_prec[] = {
     0xFFU,
@@ -461,13 +465,7 @@ static void test_decode_sof0_guards(void)
     0x10U,
     0x01U,
   };
-  TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_jpeg_sw_decode(sof0_prec,
-                                    (uint32_t)sizeof sof0_prec,
-                                    s_out,
-                                    (uint32_t)k_cov_out_big,
-                                    &w,
-                                    &h));
+  jd_expect(sof0_prec, (uint32_t)sizeof sof0_prec, k_ra8_err_not_supported);
 
   static const uint8_t sof0_comp[] = {
     0xFFU,
@@ -483,13 +481,7 @@ static void test_decode_sof0_guards(void)
     0x10U,
     0x01U,
   };
-  TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(sof0_comp,
-                                    (uint32_t)sizeof sof0_comp,
-                                    s_out,
-                                    (uint32_t)k_cov_out_big,
-                                    &w,
-                                    &h));
+  jd_expect(sof0_comp, (uint32_t)sizeof sof0_comp, k_ra8_err_protocol_error);
 
   TEST_END("jpeg_dec_cov: dec_parse_sof0 header/len/precision/comp guards");
 }
