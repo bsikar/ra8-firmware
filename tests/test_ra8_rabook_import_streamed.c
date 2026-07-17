@@ -545,6 +545,40 @@ static void test_streamed_compile_bounded_high_water(void)
 }
 
 /**
+ * @brief Exercise the argument-null and cookie-null guards of the adapter.
+ * @param[in] ctx   A fully-populated compiler context.
+ * @param[in] mount The mounted source/destination volume.
+ * @return None.
+ * @pre "SRC.EPB" is present on @p mount.
+ * @post Every null argument and null cookie returned k_ra8_err_null_ptr.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void streamed_guards_null(ra8_rabook_import_compiler_ctx_t* ctx, ra8_fs_mount_t* mount)
+{
+  /* Argument null guards -- each flipped independently. */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_rabook_import_compile_adapter(nullptr, mount, "SRC.EPB", "OUT.RAB"));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_rabook_import_compile_adapter(ctx, nullptr, "SRC.EPB", "OUT.RAB"));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_rabook_import_compile_adapter(ctx, mount, nullptr, "OUT.RAB"));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_rabook_import_compile_adapter(ctx, mount, "SRC.EPB", nullptr));
+
+  /* Cookie null guards: open-book storage, then the cache. */
+  ra8_rabook_import_compiler_ctx_t bad = {};
+  make_ctx(&bad);
+  bad.epub = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_rabook_import_compile_adapter(&bad, mount, "SRC.EPB", "OUT.RAB"));
+  make_ctx(&bad);
+  bad.cache = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_rabook_import_compile_adapter(&bad, mount, "SRC.EPB", "OUT.RAB"));
+}
+
+/**
  * @test test_streamed_adapter_guards
  * @brief NULL arguments, a missing source, and an empty source fail cleanly
  *        with no output written.
@@ -563,26 +597,8 @@ static void test_streamed_adapter_guards(void)
   ra8_rabook_import_compiler_ctx_t ctx = {};
   make_ctx(&ctx);
 
-  /* Argument null guards -- each flipped independently. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rabook_import_compile_adapter(nullptr, mount, "SRC.EPB", "OUT.RAB"));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rabook_import_compile_adapter(&ctx, nullptr, "SRC.EPB", "OUT.RAB"));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rabook_import_compile_adapter(&ctx, mount, nullptr, "OUT.RAB"));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rabook_import_compile_adapter(&ctx, mount, "SRC.EPB", nullptr));
-
-  /* Cookie null guards: open-book storage, then the cache. */
+  streamed_guards_null(&ctx, mount);
   ra8_rabook_import_compiler_ctx_t bad = {};
-  make_ctx(&bad);
-  bad.epub = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rabook_import_compile_adapter(&bad, mount, "SRC.EPB", "OUT.RAB"));
-  make_ctx(&bad);
-  bad.cache = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rabook_import_compile_adapter(&bad, mount, "SRC.EPB", "OUT.RAB"));
 
   /* Missing source -> the ra8_fs open error propagates, nothing written. */
   TEST_ASSERT(ra8_rabook_import_compile_adapter(&ctx, mount, "NOPE.EPB", "OUT.RAB") != k_ra8_ok);
