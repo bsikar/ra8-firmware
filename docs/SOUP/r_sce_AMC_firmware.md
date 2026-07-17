@@ -64,7 +64,8 @@ and DO-178C Section 12.1.4 (previously developed software):
   whose internal structure cannot be re-verified (no source-level
   MC/DC, no MISRA-C audit, no Doxygen audit). The compensating
   controls are the host-side PSA-Crypto self-tests under
-  `tests/test_ra8_psa_crypto.c` and the Phase-6 hardware-in-the-loop
+  `tests/test_ra8_psa_crypto_api.c` (and its `_guards` / `_aead_mcdc`
+  siblings) and the Phase-6 hardware-in-the-loop
   smoke (per `docs/HIL_DEVELOPER_WORKFLOW.md`).
 - **Bug tracker review**: Renesas FSP issue tracker
   <https://github.com/renesas/fsp/issues> is reviewed at the

@@ -56,4 +56,4 @@ software fallback, so they could not catch it.
 hardware register sequence is retained but never compiled, behind
 `RA8_RSIP_HASH_HARDWARE`, as a reference for a future FSP port. `ra8_rot`'s
 on-silicon image digest therefore works, and the three former register-plumbing
-host tests in `test_ra8_rsip.c` are now real SHA-256 known-answer tests.
+host tests in `test_ra8_rsip_core.c` are now real SHA-256 known-answer tests.
