@@ -204,8 +204,32 @@ uint32_t sd_format_fat16(uint8_t* img, uint32_t total_sectors, const char* label
   return spc;
 }
 
-/** @brief Format an empty FAT32 volume; returns the chosen sectors-per-cluster. */
-uint32_t sd_format_fat32(uint8_t* img, uint32_t total_sectors, const char* label)
+/**
+ * @brief Compute FAT32 volume geometry for a card of `total_sectors`.
+ *
+ * @details
+ * Iteratively grows the sectors-per-cluster (spc) so the FAT stays bounded and
+ * the cluster size is realistic (8 KiB at ~2 GiB, 32 KiB at ~8 GiB+), capped at
+ * the FAT32 cluster ceiling `k_fmt_spc_max`; `k_fmt_fat32_pref` keeps small
+ * cards at 1 spc. For each candidate spc it derives the FAT size (in sectors)
+ * using the Microsoft FAT32 divisor `((256 * spc) + NumFATs) / 2 = 128 * spc + 1`
+ * and the resulting cluster count. Extracted verbatim from `sd_format_fat32()`.
+ *
+ * @param[in]  total_sectors Card size in 512-byte sectors.
+ * @param[out] out_fatsz     Receives the chosen FAT size in sectors.
+ * @param[out] out_clusters  Receives the resulting data-cluster count.
+ * @return The chosen sectors-per-cluster value.
+ * @retval spc Sectors-per-cluster (power of two, 1 .. k_fmt_spc_max).
+ * @pre `out_fatsz` and `out_clusters` are non-null.
+ * @pre `total_sectors` exceeds the FAT32 reserved-sector count.
+ * @post `*out_fatsz` and `*out_clusters` hold the geometry for the return value.
+ * @post The returned spc is a power of two not exceeding k_fmt_spc_max.
+ * @note Pure computation; touches no image buffer. Not thread-safe by contract
+ *       (operates only on caller-provided locals).
+ * @since 0.1.0
+ */
+static uint32_t
+sd_fat32_geometry(uint32_t total_sectors, uint32_t* out_fatsz, uint32_t* out_clusters)
 {
   uint32_t spc      = 1U;
   uint32_t fatsz    = 1U;
@@ -230,6 +254,17 @@ uint32_t sd_format_fat32(uint8_t* img, uint32_t total_sectors, const char* label
       break;
     }
   }
+  *out_fatsz    = fatsz;
+  *out_clusters = clusters;
+  return spc;
+}
+
+/** @brief Format an empty FAT32 volume; returns the chosen sectors-per-cluster. */
+uint32_t sd_format_fat32(uint8_t* img, uint32_t total_sectors, const char* label)
+{
+  uint32_t       fatsz    = 0U;
+  uint32_t       clusters = 0U;
+  const uint32_t spc      = sd_fat32_geometry(total_sectors, &fatsz, &clusters);
   sd_boot_frame(img, "MSDOS5.0");
   sd_put16(&img[k_bpb_bytes_per_sec], (uint16_t)k_fmt_sec_bytes);
   img[k_bpb_sec_per_clus] = (uint8_t)spc;
