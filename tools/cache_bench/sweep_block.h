@@ -19,7 +19,8 @@
  * Unlike the capacity sweep (a re-modelled policy harness), this mode drives
  * the REAL firmware stack: ::ra8_vmem (SLRU page cache, Layer 2) over
  * ::ra8_vsource (Layer 1) with the swept size as `frame_bytes`, fed through
- * the ::cbs_backend_t seam below. Two synthetic host backends ship in-tree:
+ * the ::cbs_backend_t seam (declared in sweep_block_internal.h, implemented
+ * in sweep_block_backends.c). Two synthetic host backends ship in-tree:
  *
  *  - `mem`     -- plain memcpy from a resident blob (the harness floor).
  *  - `rbkc-z9` -- a real "RBKC" chunked `.rabook` container built in memory
@@ -40,74 +41,6 @@
  * @since 0.1.0
  */
 #pragma once
-
-#include <stdint.h>
-
-#include "ra8_vsource.h"
-
-/**
- * @struct cbs_backend_t
- * @brief One byte-addressed backing store the sweep reads through -- the
- *        backend DIP seam the #208 hardware leg will implement.
- *
- * @details `setup` prepares a backing for one (blob, block size) pair and
- *          publishes `read`/`read_ctx` (an ::ra8_vsource_read_fn, so the
- *          backing plugs straight into ::ra8_vsource_add_paged); `teardown`
- *          releases whatever `setup` acquired. `backing_bytes` reports the
- *          on-medium size of the backing (the container size for a chunked
- *          backend), and `src_bytes`, when non-NULL, points at a counter of
- *          raw medium bytes transferred (compressed stream bytes for the
- *          RBKC backend) so the report can separate bytes-on-the-wire from
- *          bytes-delivered-to-the-cache.
- *
- * @invariant After a successful `setup`, `read` is non-NULL until `teardown`.
- * @invariant `setup`/`teardown` calls alternate (no nested setups).
- *
- * @see cb_sweep_block()  The driver that exercises a backend at every size.
- * @since 0.1.0
- */
-typedef struct cbs_backend cbs_backend_t;
-struct cbs_backend {
-  const char* name; /**< Backend name for the report rows. */
-  /** @brief Build the backing for @p blob at @p block_bytes; 0 on success. */
-  int (*setup)(cbs_backend_t* be, const uint8_t* blob, uint32_t blob_bytes, uint32_t block_bytes);
-  /** @brief Release everything `setup` acquired (idempotent). */
-  void (*teardown)(cbs_backend_t* be);
-  ra8_vsource_read_fn read;          /**< Byte reader over the backing (set by `setup`).    */
-  void*               read_ctx;      /**< Context for @ref read (set by `setup`).           */
-  uint64_t            backing_bytes; /**< On-medium size of the backing, in bytes.          */
-  const uint64_t*     src_bytes;     /**< Raw medium-byte counter, or NULL if == delivered. */
-};
-
-/**
- * @struct cbs_row_t
- * @brief One measured (backend, leg, block size) result row.
- *
- * @details Filled by the sweep driver; `be_calls`/`be_bytes` are counted at
- *          the ::ra8_vsource_read_fn seam (one call per cache miss), while
- *          `src_bytes` counts raw medium traffic (compressed bytes for the
- *          RBKC backend; equal to `be_bytes` for uncompressed backends).
- *
- * @invariant `hits + misses == reads` for every completed row.
- *
- * @see cb_sweep_block()
- * @since 0.1.0
- */
-typedef struct {
-  const char* backend;       /**< Backend name (::cbs_backend_t.name).          */
-  const char* leg;           /**< Workload leg: "seq" or "hot".                 */
-  uint32_t    block_bytes;   /**< Swept block / frame / chunk size in bytes.    */
-  uint32_t    frames;        /**< Cache frames at this size (budget / block).   */
-  uint64_t    reads;         /**< Reader requests issued.                       */
-  uint64_t    hits;          /**< ra8_vmem hits.                                */
-  uint64_t    misses;        /**< ra8_vmem misses.                              */
-  uint64_t    evictions;     /**< ra8_vmem evictions.                           */
-  uint64_t    be_calls;      /**< Backend read calls (storage commands).        */
-  uint64_t    be_bytes;      /**< Bytes delivered to the cache by the backend.  */
-  uint64_t    src_bytes;     /**< Raw medium bytes moved (compressed for RBKC). */
-  uint64_t    backing_bytes; /**< On-medium backing size at this block size.    */
-  uint64_t    wall_ns;       /**< Wall-clock time of the timed loop, in ns.     */
-} cbs_row_t;
 
 /**
  * @brief Run the #208 block/frame-size sweep and print the report.
