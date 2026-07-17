@@ -425,7 +425,7 @@ uart_expect() { # app -> expected UART substring on stdout
     ereader_svg) printf 'ereader-svg-hil: svg 100x100 crc=A6450BE6 PASS' ;;
     ereader_imgfmt) printf 'ereader-imgfmt-hil: bmp=D53617C5 gif=350551C5 PASS' ;;
     ereader_jpeg) printf 'ereader-jpeg-hil: img 160x120 crc=F71D21E8' ;;
-    ereader_webtoon) printf 'ereader-webtoon: bands=20 steps=29 skipped=0 crc=482C6145' ;;
+    ereader_longstrip) printf 'ereader-longstrip: bands=16 view=1024x600 scroll=0 crc=795D27E6' ;;
     epub_parse) printf 'epub: chapters=2 ch0_crc=CF23AEEE PASS' ;;
     epub_stress) printf 'epub-stress-hil: files=125 chapters=60 toc=60 cover=ok PASS' ;;
     widget_app) printf 'widget-app-hil: apps=2 lib=D3FB85C5 rdr=E9E475C5 flush=160x16 hint=fast PASS' ;;
@@ -501,7 +501,7 @@ if [ "${#apps[@]}" -eq 0 ]; then
     dotf_selftest_demo ecc_monitor_demo mem_ecc_fault_demo
     bkup_survival_demo reset_cause_demo wdt_reset_recovery_demo
     lpm_idle_demo lpm_deep_sleep_demo lpm_periodic_idle
-    ereader_cover ereader_svg ereader_imgfmt ereader_jpeg ereader_webtoon
+    ereader_cover ereader_svg ereader_imgfmt ereader_jpeg ereader_longstrip
     epub_parse epub_stress widget_app widget_app_demo glcdc_render
     acmphs_compare can_classic_loopback canfd_filter_demo dac_b_demo dac_waveform
     gpt_capture_input gpt_dma_demo gpt_one_shot_demo gpt_pwm_demo gpt_three_phase_demo

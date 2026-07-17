@@ -1,9 +1,9 @@
 #
-# Per-app Makefile for the `ereader_webtoon` firmware.
+# Per-app Makefile for the `ereader_longstrip` firmware.
 #
 # Standalone use:
-#   cd examples/ek_ra8d2/hw_pending/ereader_webtoon/
-#   make             # configure + build -> build/ereader_webtoon.elf
+#   cd examples/ek_ra8d2/hw_pending/ereader_longstrip/
+#   make             # configure + build -> build/ereader_longstrip.elf
 #   make flash       # JLinkExe load via scripts/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger
 #   make clean       # rm -rf ./build
@@ -14,7 +14,7 @@
 
 SHELL     := /bin/bash
 
-APP        := ereader_webtoon
+APP        := ereader_longstrip
 ROOT       := $(shell git -C "$(CURDIR)" rev-parse --show-toplevel)
 HERE       := $(CURDIR)
 BUILD_DIR  := $(HERE)/build
