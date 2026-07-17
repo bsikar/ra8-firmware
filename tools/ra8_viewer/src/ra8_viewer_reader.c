@@ -37,10 +37,26 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_viewer_page_cap    = 8192U,                /**< Max pages in the sorted index. */
-  k_viewer_name_cap    = 512U * 1024U,         /**< Page-name arena, bytes.        */
-  k_viewer_arena_bytes = 160U * 1024U * 1024U, /**< stb_image decode scratch.    */
+  k_viewer_page_cap     = 8192U,                /**< Max pages in the sorted index. */
+  k_viewer_name_cap     = 512U * 1024U,         /**< Page-name arena, bytes.        */
+  k_viewer_arena_bytes  = 160U * 1024U * 1024U, /**< stb_image decode scratch.     */
+  k_viewer_unwrap_bytes = 128U * 1024U * 1024U, /**< gzip/xz decompressed container.*/
+  k_viewer_xz_scratch   = 4U * 1024U * 1024U,   /**< xz decoder state + <=1MiB dict.*/
 } ra8_viewer_budget_t;
+
+/**
+ * @enum viewer_fmt_t
+ * @brief Document formats the viewer routes to a reader engine.
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_vfmt_unsupported = 0, /**< Unrecognised extension.               */
+  k_vfmt_comic       = 1, /**< Bare CBZ/CBR/CBT (ra8_comic).         */
+  k_vfmt_comic_wrap  = 2, /**< gzip/xz-wrapped comic (open_wrapped). */
+  k_vfmt_epub        = 3, /**< EPUB (ra8_epub + ra8_reflow).         */
+  k_vfmt_rta1        = 4, /**< RTA1 atlas (ra8_webtoon).             */
+  k_vfmt_rabook      = 5, /**< RABOOK (ra8_book + ra8_reflow).       */
+} viewer_fmt_t;
 
 /**
  * @enum ra8_viewer_color_t
@@ -67,14 +83,16 @@ typedef struct {
  * @since 0.1.0
  */
 struct ra8_viewer_reader {
-  viewer_file_ctx_t file;      /**< File backing for the read callback.    */
-  ra8_comic_t       comic;     /**< Comic engine (CBZ / CBR).              */
-  ra8_comic_page_t* pages;     /**< Page index (k_viewer_page_cap entries).*/
-  char*             names;     /**< Page-name arena.                       */
-  uint16_t*         fb;        /**< RGB565 framebuffer (owned).            */
-  uint8_t*          page_buf;  /**< Encoded-image scratch (grows on demand).*/
-  size_t            page_cap;  /**< Capacity of @ref page_buf, bytes.      */
-  uint8_t*          arena_mem; /**< Backing store for the decode arena.    */
+  viewer_file_ctx_t file;       /**< File backing for the read callback.    */
+  ra8_comic_t       comic;      /**< Comic engine (CBZ / CBR).              */
+  ra8_comic_page_t* pages;      /**< Page index (k_viewer_page_cap entries).*/
+  char*             names;      /**< Page-name arena.                       */
+  uint16_t*         fb;         /**< RGB565 framebuffer (owned).            */
+  uint8_t*          page_buf;   /**< Encoded-image scratch (grows on demand).*/
+  size_t            page_cap;   /**< Capacity of @ref page_buf, bytes.      */
+  uint8_t*          arena_mem;  /**< Backing store for the decode arena.    */
+  uint8_t*          unwrap;     /**< gzip/xz unwrap arena (out-lives comic). */
+  uint8_t*          xz_scratch; /**< xz decoder scratch (dict + state).     */
 };
 
 /**
@@ -117,6 +135,8 @@ static void viewer_free(ra8_viewer_reader_t* r)
   if (r->file.fp != nullptr) {
     (void)fclose(r->file.fp);
   }
+  free(r->xz_scratch);
+  free(r->unwrap);
   free(r->arena_mem);
   free(r->page_buf);
   free(r->fb);
@@ -153,15 +173,31 @@ static bool viewer_ends_with(const char* path, const char* ext)
 }
 
 /**
- * @brief Whether @p path names a comic archive by extension (`.cbz`/`.cbr`/`.cbt`).
+ * @brief Classify @p path by extension into a reader-engine format.
  * @param[in] path Path to classify.
- * @return true for a comic-archive extension.
+ * @return the ::viewer_fmt_t for @p path (::k_vfmt_unsupported if unknown).
  * @since 0.1.0
  */
-static bool viewer_is_comic_path(const char* path)
+static viewer_fmt_t viewer_classify(const char* path)
 {
-  return viewer_ends_with(path, ".cbz") || viewer_ends_with(path, ".cbr") ||
-         viewer_ends_with(path, ".cbt");
+  /* Compression suffix wins: a `.cbt.gz` is a wrapped comic, not a `.gz`. */
+  if (viewer_ends_with(path, ".gz") || viewer_ends_with(path, ".xz")) {
+    return k_vfmt_comic_wrap;
+  }
+  if (viewer_ends_with(path, ".cbz") || viewer_ends_with(path, ".cbr") ||
+      viewer_ends_with(path, ".cbt")) {
+    return k_vfmt_comic;
+  }
+  if (viewer_ends_with(path, ".epub") || viewer_ends_with(path, ".epb")) {
+    return k_vfmt_epub;
+  }
+  if (viewer_ends_with(path, ".rta1")) {
+    return k_vfmt_rta1;
+  }
+  if (viewer_ends_with(path, ".rabook") || viewer_ends_with(path, ".rbk")) {
+    return k_vfmt_rabook;
+  }
+  return k_vfmt_unsupported;
 }
 
 /**
@@ -181,8 +217,10 @@ static ra8_err_t viewer_alloc(ra8_viewer_reader_t** out)
   r->names               = (char*)calloc((size_t)k_viewer_name_cap, sizeof(char));
   r->fb                  = (uint16_t*)calloc(fb_pixels, sizeof(uint16_t));
   r->arena_mem           = (uint8_t*)malloc((size_t)k_viewer_arena_bytes);
+  r->unwrap              = (uint8_t*)malloc((size_t)k_viewer_unwrap_bytes);
+  r->xz_scratch          = (uint8_t*)malloc((size_t)k_viewer_xz_scratch);
   if ((r->pages == nullptr) || (r->names == nullptr) || (r->fb == nullptr) ||
-      (r->arena_mem == nullptr)) {
+      (r->arena_mem == nullptr) || (r->unwrap == nullptr) || (r->xz_scratch == nullptr)) {
     viewer_free(r);
     return k_ra8_err_no_mem;
   }
@@ -214,15 +252,56 @@ static ra8_err_t viewer_open_file(ra8_viewer_reader_t* r, const char* path)
   return k_ra8_ok;
 }
 
+/** @brief Open a bare CBZ/CBR/CBT via ra8_comic. */
+static ra8_err_t viewer_open_comic(ra8_viewer_reader_t* r)
+{
+  return ra8_comic_open(&r->comic,
+                        viewer_read,
+                        &r->file,
+                        r->file.size,
+                        r->pages,
+                        (uint32_t)k_viewer_page_cap,
+                        r->names,
+                        (uint32_t)k_viewer_name_cap);
+}
+
+/** @brief Open a gzip/xz-wrapped comic (`.cbt.gz`/`.cbt.xz`) via ra8_comic. */
+static ra8_err_t viewer_open_comic_wrapped(ra8_viewer_reader_t* r)
+{
+  return ra8_comic_open_wrapped(&r->comic,
+                                viewer_read,
+                                &r->file,
+                                r->file.size,
+                                r->pages,
+                                (uint32_t)k_viewer_page_cap,
+                                r->names,
+                                (uint32_t)k_viewer_name_cap,
+                                r->unwrap,
+                                (size_t)k_viewer_unwrap_bytes,
+                                r->xz_scratch,
+                                (uint32_t)k_viewer_xz_scratch);
+}
+
 ra8_err_t ra8_viewer_open(ra8_viewer_reader_t** out, const char* path)
 {
   if ((out == nullptr) || (path == nullptr)) {
     return k_ra8_err_null_ptr;
   }
   *out = nullptr;
-  if (!viewer_is_comic_path(path)) {
-    /* TODO: dispatch `.epub` -> ra8_epub + ra8_reflow, and vertical-scroll
-     * `.webtoon` bundles -> ra8_webtoon + ra8_tileatlas. Comic is done here. */
+
+  const viewer_fmt_t fmt = viewer_classify(path);
+  if ((fmt == k_vfmt_epub) || (fmt == k_vfmt_rta1) || (fmt == k_vfmt_rabook)) {
+    /* Recognised, but the epub (ra8_epub), webtoon/RTA1 (ra8_webtoon) and rabook
+     * (ra8_book) render paths are not wired into the viewer yet -- a clear
+     * message beats a silent error code. TODO: route these engines. */
+    (void)fprintf(stderr,
+                  "ra8_viewer: '%s' recognised but its reader engine is not wired "
+                  "into the viewer yet (comics render today)\n",
+                  path);
+    return k_ra8_err_not_supported;
+  }
+  if (fmt == k_vfmt_unsupported) {
+    (void)fprintf(stderr, "ra8_viewer: unsupported file type: %s\n", path);
     return k_ra8_err_not_supported;
   }
 
@@ -236,14 +315,7 @@ ra8_err_t ra8_viewer_open(ra8_viewer_reader_t** out, const char* path)
     viewer_free(r);
     return rc;
   }
-  rc = ra8_comic_open(&r->comic,
-                      viewer_read,
-                      &r->file,
-                      r->file.size,
-                      r->pages,
-                      (uint32_t)k_viewer_page_cap,
-                      r->names,
-                      (uint32_t)k_viewer_name_cap);
+  rc = (fmt == k_vfmt_comic_wrap) ? viewer_open_comic_wrapped(r) : viewer_open_comic(r);
   if (rc != k_ra8_ok) {
     viewer_free(r);
     return rc;
