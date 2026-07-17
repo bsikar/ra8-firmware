@@ -146,6 +146,7 @@
  *
  * This module enables abstraction of common (libc) functions.
  */
+/** @brief MBEDTLS PLATFORM c. */
 #define MBEDTLS_PLATFORM_C
 
 /**
@@ -261,6 +262,7 @@
  * ThreadX byte pool via mbedtls_platform_set_calloc_free() so the
  * "no malloc after init" rule is preserved.
  */
+/** @brief MBEDTLS PLATFORM MEMORY. */
 #define MBEDTLS_PLATFORM_MEMORY
 
 /**
@@ -576,6 +578,7 @@
  *
  * Enable the checkup functions (*_self_test).
  */
+/** @brief MBEDTLS SELF TEST. */
 #define MBEDTLS_SELF_TEST
 
 /**
@@ -642,6 +645,7 @@
  * This option enables functions for getting the version of TF-PSA-Crypto
  * at runtime defined in include/tf-psa-crypto/version.h.
  */
+/** @brief TF PSA CRYPTO VERSION. */
 #define TF_PSA_CRYPTO_VERSION
 
 /** \} name SECTION: General and test configuration options */

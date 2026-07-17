@@ -52,19 +52,19 @@
  * upstream header is unavailable (e.g. clang-tidy host walk).
  */
 typedef enum : uint32_t {
-  k_ble_npl_ok              = 0U,
-  k_ble_npl_enomem          = 1U,
-  k_ble_npl_einval          = 2U,
-  k_ble_npl_invalid_param   = 3U,
-  k_ble_npl_mem_not_aligned = 4U,
-  k_ble_npl_bad_mutex       = 5U,
-  k_ble_npl_timeout         = 6U,
-  k_ble_npl_err_in_isr      = 7U,
-  k_ble_npl_err_priv        = 8U,
-  k_ble_npl_os_not_started  = 9U,
-  k_ble_npl_enoent          = 10U,
-  k_ble_npl_ebusy           = 11U,
-  k_ble_npl_error           = 12U,
+  k_ble_npl_ok              = 0U, /**< BLE npl ok.                 */
+  k_ble_npl_enomem          = 1U, /**< BLE npl enomem.             */
+  k_ble_npl_einval          = 2U, /**< BLE npl einval.             */
+  k_ble_npl_invalid_param   = 3U, /**< BLE npl invalid param.      */
+  k_ble_npl_mem_not_aligned = 4U, /**< BLE npl memory not aligned. */
+  k_ble_npl_bad_mutex       = 5U, /**< BLE npl bad mutex.          */
+  k_ble_npl_timeout         = 6U, /**< BLE npl timeout.            */
+  k_ble_npl_err_in_isr      = 7U, /**< BLE npl error in ISR.       */
+  k_ble_npl_err_priv        = 8U, /**< BLE npl error priv.         */
+  k_ble_npl_os_not_started  = 9U, /**< BLE npl os not started.     */
+  k_ble_npl_enoent          = 10U, /**< BLE npl enoent. */
+  k_ble_npl_ebusy           = 11U, /**< BLE npl ebusy.  */
+  k_ble_npl_error           = 12U, /**< BLE npl error.  */
 } ble_npl_error_local_t;
 
 /* =============================================================================
@@ -222,15 +222,15 @@ struct ble_npl_event* ble_npl_eventq_get(struct ble_npl_eventq* evq, ble_npl_tim
   if (evq == nullptr) {
     return nullptr;
   }
-  ULONG slot = 0U;
+  ULONG slot = 0U; /**< U. */
   if (tx_queue_receive(&evq->q, &slot, priv_tmo_to_tx(tmo)) != TX_SUCCESS) {
     return nullptr;
   }
-  struct ble_npl_event* ev = (struct ble_npl_event*)(uintptr_t)slot;
+  struct ble_npl_event* ev = (struct ble_npl_event*)(uintptr_t)slot; /**< Slot. */
   if (ev != nullptr) {
     ev->queued = 0U;
   }
-  return ev;
+  return ev; /**< Ev. */
 }
 
 /* Post an event into an NPL event queue (idempotent) -- see implementation for details. */
@@ -513,7 +513,7 @@ void nimble_port_init(void)
  */
 struct ble_npl_eventq* nimble_port_get_dflt_eventq(void)
 {
-  return &s_dflt_eventq;
+  return &s_dflt_eventq; /**< S dflt eventq. */
 }
 
 /**
@@ -581,7 +581,7 @@ void nimble_port_run(void)
  */
 [[gnu::weak]] struct os_mbuf* ble_transport_alloc_acl_from_ll(void)
 {
-  return nullptr;
+  return nullptr; /**< Nullptr. */
 }
 
 /* Weak stub for the NimBLE event-buffer freer -- see implementation for details. */

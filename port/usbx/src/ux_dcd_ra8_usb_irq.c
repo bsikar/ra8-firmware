@@ -173,7 +173,7 @@ volatile uint8_t s_dvsq_history[(uint32_t)k_ra8_usb_dcd_intsts0_hist_n] = {};
  * static and reused across BRDY events. Set ::s_dcd_auto_echo_enable to 1
  * via ::ux_dcd_ra8_usb_auto_echo_enable() to opt in. */
 typedef enum : uint16_t {
-  k_ux_dcd_ra8_usb_auto_echo_max = 512U,
+  k_ux_dcd_ra8_usb_auto_echo_max = 512U, /**< Ux dcd RA8 USB auto echo maximum. */
 } ux_dcd_ra8_usb_auto_echo_cfg_t;
 
 volatile uint32_t s_dcd_auto_echo_drain_ok = 0U;

@@ -35,15 +35,23 @@
 #pragma once
 
 /* Tick + scheduler tuning. */
+/** @brief TX TIMER TICKS PER SECOND. */
 #define TX_TIMER_TICKS_PER_SECOND (1000)
+/** @brief TX MAX PRIORITIES. */
 #define TX_MAX_PRIORITIES         (32)
+/** @brief TX MINIMUM STACK. */
 #define TX_MINIMUM_STACK          (512)
 
 /* Performance / size knobs (see ThreadX user-guide chapter 4). */
+/** @brief TX TIMER PROCESS IN ISR. */
 #define TX_TIMER_PROCESS_IN_ISR
+/** @brief TX REACTIVATE INLINE. */
 #define TX_REACTIVATE_INLINE
+/** @brief TX DISABLE PREEMPTION THRESHOLD. */
 #define TX_DISABLE_PREEMPTION_THRESHOLD
+/** @brief TX DISABLE REDUNDANT CLEARING. */
 #define TX_DISABLE_REDUNDANT_CLEARING
+/** @brief TX DISABLE NOTIFY CALLBACKS. */
 #define TX_DISABLE_NOTIFY_CALLBACKS
 
 /* Single-mode selection.
@@ -56,7 +64,9 @@
  * instead. Selecting exactly one single-mode keeps the scheduler off the
  * dual-world secure-stack path. */
 #if defined(RA8_THREADX_NON_SECURE)
+/** @brief TX SINGLE MODE NON SECURE. */
 #define TX_SINGLE_MODE_NON_SECURE
 #else
+/** @brief TX SINGLE MODE SECURE. */
 #define TX_SINGLE_MODE_SECURE
 #endif

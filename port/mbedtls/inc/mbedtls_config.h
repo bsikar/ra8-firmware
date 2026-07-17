@@ -57,15 +57,20 @@
 
 /* Tell Mbed TLS which config-file format we are using. The vendored
  * tree is 4.1.0 / 4.x; bump this when we move to 5.x. */
+/** @brief MBEDTLS CONFIG VERSION. */
 #define MBEDTLS_CONFIG_VERSION (0x04000000)
 
 /* =============================================================================
  * Error / debug / version
  * =============================================================================
  */
+/** @brief MBEDTLS ERROR c. */
 #define MBEDTLS_ERROR_C
+/** @brief MBEDTLS ERROR STRERROR DUMMY. */
 #define MBEDTLS_ERROR_STRERROR_DUMMY
+/** @brief MBEDTLS VERSION c. */
 #define MBEDTLS_VERSION_C
+/** @brief MBEDTLS VERSION FEATURES. */
 #define MBEDTLS_VERSION_FEATURES
 
 /* =============================================================================
@@ -76,38 +81,61 @@
  * The underlying primitives (AES-GCM, SHA-256, ECDHE math) are
  * configured in tf_psa_crypto_config.h.
  */
+/** @brief MBEDTLS KEY EXCHANGE ECDHE ECDSA ENABLED. */
 #define MBEDTLS_KEY_EXCHANGE_ECDHE_ECDSA_ENABLED
+/** @brief MBEDTLS KEY EXCHANGE ECDHE RSA ENABLED. */
 #define MBEDTLS_KEY_EXCHANGE_ECDHE_RSA_ENABLED
 
 /* =============================================================================
  * SSL / TLS layer
  * =============================================================================
  */
+/** @brief MBEDTLS SSL TLS c. */
 #define MBEDTLS_SSL_TLS_C
+/** @brief MBEDTLS SSL CLI c. */
 #define MBEDTLS_SSL_CLI_C
+/** @brief MBEDTLS SSL PROTO TLS1 2. */
 #define MBEDTLS_SSL_PROTO_TLS1_2
+/** @brief MBEDTLS SSL PROTO TLS1 3. */
 #define MBEDTLS_SSL_PROTO_TLS1_3
+/** @brief MBEDTLS SSL TLS1 3 KEY EXCHANGE MODE EPHEMERAL ENABLED. */
 #define MBEDTLS_SSL_TLS1_3_KEY_EXCHANGE_MODE_EPHEMERAL_ENABLED
+/** @brief MBEDTLS SSL TLS1 3 COMPATIBILITY MODE. */
 #define MBEDTLS_SSL_TLS1_3_COMPATIBILITY_MODE
+/** @brief MBEDTLS SSL KEEP PEER CERTIFICATE. */
 #define MBEDTLS_SSL_KEEP_PEER_CERTIFICATE
+/** @brief MBEDTLS SSL SESSION TICKETS. */
 #define MBEDTLS_SSL_SESSION_TICKETS
+/** @brief MBEDTLS SSL SERVER NAME INDICATION. */
 #define MBEDTLS_SSL_SERVER_NAME_INDICATION
+/** @brief MBEDTLS SSL ALL ALERT MESSAGES. */
 #define MBEDTLS_SSL_ALL_ALERT_MESSAGES
+/** @brief MBEDTLS SSL ALPN. */
 #define MBEDTLS_SSL_ALPN
+/** @brief MBEDTLS SSL ENCRYPT THEN MAC. */
 #define MBEDTLS_SSL_ENCRYPT_THEN_MAC
+/** @brief MBEDTLS SSL EXTENDED MASTER SECRET. */
 #define MBEDTLS_SSL_EXTENDED_MASTER_SECRET
+/** @brief MBEDTLS SSL RENEGOTIATION. */
 #define MBEDTLS_SSL_RENEGOTIATION
+/** @brief MBEDTLS SSL MAX CONTENT LEN. */
 #define MBEDTLS_SSL_MAX_CONTENT_LEN (16384)
 
 /* =============================================================================
  * X.509 chain validation (client cert parse only -- we don't write certs)
  * =============================================================================
  */
+/** @brief MBEDTLS X509 USE c. */
 #define MBEDTLS_X509_USE_C
+/** @brief MBEDTLS X509 CRT PARSE c. */
 #define MBEDTLS_X509_CRT_PARSE_C
+/** @brief MBEDTLS X509 CRL PARSE c. */
 #define MBEDTLS_X509_CRL_PARSE_C
+/** @brief MBEDTLS X509 RSASSA PSS SUPPORT. */
 #define MBEDTLS_X509_RSASSA_PSS_SUPPORT
+/** @brief MBEDTLS X509 CHECK KEY USAGE. */
 #define MBEDTLS_X509_CHECK_KEY_USAGE
+/** @brief MBEDTLS X509 CHECK EXTENDED KEY USAGE. */
 #define MBEDTLS_X509_CHECK_EXTENDED_KEY_USAGE
 
 /* =============================================================================
