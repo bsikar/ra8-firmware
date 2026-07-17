@@ -384,6 +384,67 @@ static void test_render_register_face_both_arms(void)
 }
 
 /**
+ * @brief Clear `s_fb`, re-init gfx over it, render page @p page and assert output.
+ * @param[in] page Page index to render into the shared framebuffer.
+ * @return None.
+ * @pre The engine has a laid-out chapter with at least @p page pages.
+ * @post The page rendered and drew at least one pixel.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void reflow_render_drawn(uint32_t page)
+{
+  memset(s_fb, 0, sizeof s_fb);
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_gfx_init(s_fb, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra8_gfx_format_rgb888));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page(&s_engine, page, nullptr));
+  TEST_ASSERT(fb_has_drawn_pixel());
+}
+
+/**
+ * @brief Clear `s_fb`, render page 0 and assert byte-identity with `s_fb_ref`.
+ * @return None.
+ * @pre A reference page render already populated `s_fb_ref`.
+ * @post The page rendered identically to the reference (cache is pure opt).
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void atlas_render_and_check(void)
+{
+  memset(s_fb, 0, sizeof s_fb);
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_gfx_init(s_fb, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra8_gfx_format_rgb888));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page(&s_engine, 0U, nullptr));
+  TEST_ASSERT(fb_equal_ref());
+}
+
+/**
+ * @brief Bind a glyph atlas over the shared caller-owned storage.
+ * @param[in] cell_bytes Bytes-per-cell budget (tiny values force the direct path).
+ * @return None.
+ * @pre The engine is initialised.
+ * @post The atlas is bound to `s_engine` with the given cell budget.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void bind_glyph_atlas(uint32_t cell_bytes)
+{
+  const ra8_reflow_glyph_atlas_storage_t storage = {
+    .cell_mem     = s_atlas_cells,
+    .cell_bytes   = cell_bytes,
+    .cell_count   = (uint32_t)k_ra8_cell_count,
+    .meta         = s_atlas_meta,
+    .keys         = s_atlas_keys,
+    .dims         = s_atlas_dims,
+    .buckets      = s_atlas_buckets,
+    .bucket_count = (uint32_t)k_ra8_buckets,
+  };
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_set_glyph_atlas(&s_engine, &s_atlas, &storage));
+}
+
+/**
  * @test test_render_images_loader_both_arms
  *
  * @par MC/DC:
@@ -429,13 +490,7 @@ static void test_render_images_loader_both_arms(void)
   TEST_ASSERT(pages >= 1U);
   TEST_ASSERT(s_engine.image_box_count >= 1U);
 
-  memset(s_fb, 0, sizeof s_fb);
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_gfx_init(s_fb, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra8_gfx_format_rgb888));
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_reflow_render_page(&s_engine, s_engine.image_boxes[0].page_index, nullptr));
-  TEST_ASSERT(fb_has_drawn_pixel());
+  reflow_render_drawn(s_engine.image_boxes[0].page_index);
   /* Arena drains after the on-demand decode (zero heap). */
   TEST_ASSERT_EQ(0, arena.offset);
   TEST_ASSERT_EQ(0, arena.live);
@@ -446,12 +501,7 @@ static void test_render_images_loader_both_arms(void)
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_reflow_layout_chapter(&s_engine, (const uint8_t*)text, strlen(text), &pages));
   TEST_ASSERT(pages >= 1U);
-  memset(s_fb, 0, sizeof s_fb);
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_gfx_init(s_fb, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra8_gfx_format_rgb888));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page(&s_engine, 0U, nullptr));
-  TEST_ASSERT(fb_has_drawn_pixel());
+  reflow_render_drawn(0U);
 
   /* V3 -- true arm via C2: loader bound (C1 false) but arena nulled (C2 true).
      Inject the loader/arena fields directly so C1 cannot short-circuit C2. */
@@ -462,12 +512,7 @@ static void test_render_images_loader_both_arms(void)
   s_engine.img_loader     = png_loader;
   s_engine.img_loader_ctx = nullptr;
   s_engine.img_arena      = nullptr;
-  memset(s_fb, 0, sizeof s_fb);
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_gfx_init(s_fb, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra8_gfx_format_rgb888));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page(&s_engine, 0U, nullptr));
-  TEST_ASSERT(fb_has_drawn_pixel());
+  reflow_render_drawn(0U);
   TEST_END("ra8_reflow_render: priv_render_images loader/arena MC/DC");
 }
 
@@ -518,28 +563,12 @@ static void test_render_glyph_atlas_equivalence(void)
     k_ra8_ok,
     ra8_gfx_init(s_fb_ref, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra8_gfx_format_rgb888));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page(&s_engine, 0U, nullptr));
-  /* (Sanity: s_fb_ref now holds the canonical glyphs; compared against below.) */
 
   /* Bind a glyph atlas over caller-owned storage -- exactly as the ereader app. */
-  const ra8_reflow_glyph_atlas_storage_t storage = {
-    .cell_mem     = s_atlas_cells,
-    .cell_bytes   = (uint32_t)k_ra8_cell_bytes,
-    .cell_count   = (uint32_t)k_ra8_cell_count,
-    .meta         = s_atlas_meta,
-    .keys         = s_atlas_keys,
-    .dims         = s_atlas_dims,
-    .buckets      = s_atlas_buckets,
-    .bucket_count = (uint32_t)k_ra8_buckets,
-  };
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_set_glyph_atlas(&s_engine, &s_atlas, &storage));
+  bind_glyph_atlas((uint32_t)k_ra8_cell_bytes);
 
   /* Cached render #1 (cold cache): must equal the direct render byte-for-byte. */
-  memset(s_fb, 0, sizeof s_fb);
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_gfx_init(s_fb, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra8_gfx_format_rgb888));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page(&s_engine, 0U, nullptr));
-  TEST_ASSERT(fb_equal_ref());
+  atlas_render_and_check();
 
   uint32_t hits1 = 0U;
   uint32_t miss1 = 0U;
@@ -548,12 +577,7 @@ static void test_render_glyph_atlas_equivalence(void)
 
   /* Cached render #2 (warm cache): still byte-identical, and crucially renders
      ZERO new glyphs -- the miss count does not move, every glyph is a hit. */
-  memset(s_fb, 0, sizeof s_fb);
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_gfx_init(s_fb, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra8_gfx_format_rgb888));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page(&s_engine, 0U, nullptr));
-  TEST_ASSERT(fb_equal_ref());
+  atlas_render_and_check();
 
   uint32_t hits2 = 0U;
   uint32_t miss2 = 0U;
@@ -565,32 +589,12 @@ static void test_render_glyph_atlas_equivalence(void)
      forces every glyph down the direct path (priv_atlas_render_glyph returns
      k_ra8_err_invalid_size -> priv_glyph_render_cached returns false). Output
      must stay byte-identical -- the cache is a pure optimisation. */
-  const ra8_reflow_glyph_atlas_storage_t tiny = {
-    .cell_mem     = s_atlas_cells,
-    .cell_bytes   = (uint32_t)k_ra8_tiny_cell_bytes,
-    .cell_count   = (uint32_t)k_ra8_cell_count,
-    .meta         = s_atlas_meta,
-    .keys         = s_atlas_keys,
-    .dims         = s_atlas_dims,
-    .buckets      = s_atlas_buckets,
-    .bucket_count = (uint32_t)k_ra8_buckets,
-  };
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_set_glyph_atlas(&s_engine, &s_atlas, &tiny));
-  memset(s_fb, 0, sizeof s_fb);
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_gfx_init(s_fb, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra8_gfx_format_rgb888));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page(&s_engine, 0U, nullptr));
-  TEST_ASSERT(fb_equal_ref());
+  bind_glyph_atlas((uint32_t)k_ra8_tiny_cell_bytes);
+  atlas_render_and_check();
 
   /* Detach reverts to the direct path and still renders identically. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_set_glyph_atlas(&s_engine, nullptr, nullptr));
-  memset(s_fb, 0, sizeof s_fb);
-  TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_gfx_init(s_fb, (uint16_t)k_r_vp_w, (uint16_t)k_r_vp_h, k_ra8_gfx_format_rgb888));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_render_page(&s_engine, 0U, nullptr));
-  TEST_ASSERT(fb_equal_ref());
+  atlas_render_and_check();
   TEST_END("ra8_reflow_render: glyph atlas byte-identity + zero re-raster");
 }
 
