@@ -93,7 +93,6 @@ extern "C" {
  * as unused; every member is consumed in ``ra8_lpm_init`` in
  * ``libs/ra8_hal/src/ra8_lpm.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool                  io_port_keep;     /**< DPSBYCR.IOKEEP -- retain IOs across DSBY. */
   bool                  opa_bus_keep;     /**< SBYCR.OPE -- keep bus signals driven.     */
@@ -101,7 +100,6 @@ typedef struct {
   ra8_lpm_dcssmode_t    dcdc_softstart;   /**< DCSSMODE encoding (k_ra8_lpm_dcssmode_*). */
   ra8_lpm_sscr1_ss2lp_t sscr_low_power;   /**< SSCR1.SS2LP encoding.                     */
 } ra8_lpm_config_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_lpm_ldo_cfg_t
@@ -111,13 +109,11 @@ typedef struct {
  * Mirrors PLL1LDOCR.SKEEP / PLL2LDOCR.SKEEP / HOCOLDOCR.SKEEP for
  * configuration in software standby mode.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_lpm_ldo_state_t pll1; /**< PLL1 LDO state in standby. */
   ra8_lpm_ldo_state_t pll2; /**< PLL2 LDO state in standby. */
   ra8_lpm_ldo_state_t hoco; /**< HOCO LDO state in standby. */
 } ra8_lpm_ldo_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_lpm_ram_retention_t
@@ -128,13 +124,11 @@ typedef struct {
  * ``k_ra8_lpm_pdramscr0_*`` masks to assemble per-bank groups). The
  * boolean members write the corresponding RKEEP* bits in PDRAMSCR1.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint16_t pdramscr0_bits; /**< Raw PDRAMSCR0 RKEEP[12:0] value.   */
   bool     cpu0_tcm_keep;  /**< PDRAMSCR1.RKEEP0.                  */
   bool     cpu1_tcm_keep;  /**< PDRAMSCR1.RKEEP1 (dual-core only). */
 } ra8_lpm_ram_retention_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @enum ra8_lpm_clock_t

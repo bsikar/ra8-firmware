@@ -73,7 +73,6 @@ extern "C" {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   /**
    * @brief Full-duplex single-byte exchange on the bound bus.
@@ -93,7 +92,6 @@ typedef struct {
 
   void* ctx; /**< Opaque cookie handed to `xfer8` (binder-owned). */
 } ra8_spi_bus_ops_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 #ifdef __cplusplus
 }

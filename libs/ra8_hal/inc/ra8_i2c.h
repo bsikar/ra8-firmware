@@ -94,12 +94,10 @@ typedef enum : uint32_t {
  *
  * @invariant ``bus_hz`` is non-zero and ``pclkb_hz`` is non-zero.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t bus_hz;   /**< Target I2C clock rate in Hz.                     */
   uint32_t pclkb_hz; /**< Current PCLKB frequency in Hz for bit-rate calc. */
 } ra8_i2c_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @enum ra8_i2c_err_mask_t
@@ -481,7 +479,6 @@ typedef void (*ra8_i2c_peripheral_event_fn_t)(void* ctx, ra8_i2c_peripheral_even
  * @see ra8_i2c_peripheral_init
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t                   own_addr_7b;   /**< 7-bit own address to answer on.    */
   ra8_i2c_peripheral_slot_t slot;          /**< Own-address comparator slot.       */
@@ -489,7 +486,6 @@ typedef struct {
   bool                      clock_stretch; /**< Arm ICMR3.WAIT clock stretching.   */
   bool                      irq_enable;    /**< Arm ICIER RIE / TIE / SPIE.        */
 } ra8_i2c_peripheral_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Arm an IIC channel to answer as an I2C target (peripheral).

@@ -48,12 +48,10 @@ extern "C" {
  * member is read in ``internal_i3c_i2c_peripheral_open`` /
  * ``libs/ra8_hal/src/ra8_i3c_i2c_peripheral.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t peripheral_addr_7b; /**< 7-bit own address.                       */
   uint8_t general_call;       /**< Non-zero -> answer general-call address. */
 } ra8_i3c_i2c_peripheral_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @enum ra8_i3c_i2c_peripheral_status_t

@@ -143,7 +143,6 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint16_t         width_px;                /**< Display visible width.            */
   uint16_t         height_px;               /**< Display visible height.           */
@@ -153,7 +152,6 @@ typedef struct {
   bool             supports_partial_update; /**< true => sub-rect flush honoured.  */
   bool             continuous_refresh;      /**< true => panel scans continuously. */
 } display_caps_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct display_fb_t
@@ -167,7 +165,6 @@ typedef struct {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   void*            pixels;       /**< Base of pixel data (RGB565 unless noted). */
   uint16_t         width_px;     /**< Framebuffer width.                        */
@@ -175,7 +172,6 @@ typedef struct {
   uint32_t         stride_bytes; /**< Row stride in bytes.                      */
   display_pixfmt_t pixfmt;       /**< Pixel format of ``pixels``.               */
 } display_fb_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct display_rect_t
@@ -190,14 +186,12 @@ typedef struct {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint16_t x; /**< Left edge in pixels. */
   uint16_t y; /**< Top edge in pixels.  */
   uint16_t w; /**< Width in pixels.     */
   uint16_t h; /**< Height in pixels.    */
 } display_rect_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct display_backend_iface
@@ -244,7 +238,6 @@ typedef struct display_handle display_handle_t;
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   /** @brief Backend vtable (one of the ``k_display_backend_*`` consts). */
   const display_backend_iface_t* iface;
@@ -267,7 +260,6 @@ typedef struct {
    */
   const void* panel_timing;
 } display_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /* =============================================================================
  * Public API

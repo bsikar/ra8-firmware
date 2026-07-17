@@ -93,11 +93,9 @@ extern "C" {
  * from the CPU.
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
   bool              initialized;      /**< True once ``ra8_bscan_init`` ran.         */
   ra8_bscan_instr_t last_instruction; /**< Last JTIR opcode reported by the fixture. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t expected_idcode; /**< JTIDR value the fixture should observe. */
+  uint32_t          expected_idcode;  /**< JTIDR value the fixture should observe.   */
 } ra8_bscan_status_t;
 
 /* =============================================================================

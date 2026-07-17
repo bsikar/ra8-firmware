@@ -718,7 +718,6 @@ void ra8_mipi_dsi_dispatch_phy(void);
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint16_t horizontal_sync;        /**< HSA pixel count -> VMHSSETR.HSA.   */
   uint16_t horizontal_back_porch;  /**< HBP pixel count -> VMHPSETR.HBP.   */
@@ -729,7 +728,6 @@ typedef struct {
   uint16_t vertical_active;        /**< VACT line count -> VMVSSETR.VACT.  */
   uint16_t vertical_front_porch;   /**< VFP line count  -> VMVPSETR.VFP.   */
 } ra8_mipi_dsi_video_timing_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Load only the HSA/HBP/HACT/HFP/VSA/VBP/VACT/VFP video-timing

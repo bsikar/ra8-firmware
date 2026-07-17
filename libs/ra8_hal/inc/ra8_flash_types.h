@@ -94,7 +94,6 @@ typedef enum : uint8_t {
  * every field as unused; the suppress comment matches what
  * ra8_acmphs.h does.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint16_t mrcfreq_mhz;        /**< Code MRAM clock in MHz, 0..0x0FA (250 MHz).  */
   uint8_t  mrefreq_mhz;        /**< Extra MRAM clock in MHz, 0..0x07D (125 MHz). */
@@ -102,7 +101,6 @@ typedef struct {
   bool     ecc_encoder_enable; /**< true -> MRCEECC.ECCEN=1 (default).           */
   bool     ecc_decoder_enable; /**< true -> MRCDECC.DECECEN=1 (default).         */
 } ra8_flash_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_flash_status_ext_t
@@ -113,7 +111,6 @@ typedef struct {
  * inspect after an operation. Populated by
  * ``ra8_flash_get_extended_status``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t  mrcps;  /**< MRCPS bits (HUM Ch 59 p 3601).  */
   uint8_t  mastat; /**< MASTAT bits (HUM Ch 59 p 3577). */
@@ -121,7 +118,6 @@ typedef struct {
   uint16_t mcmdr;  /**< MCMDR bits (HUM Ch 59 p 3589).  */
   uint32_t mstatr; /**< MSTATR bits (HUM Ch 59 p 3578). */
 } ra8_flash_status_ext_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_flash_status_t
@@ -133,7 +129,6 @@ typedef struct {
  * second ``ra8_flash_get_extended_status`` call. Populated by
  * ``ra8_flash_status``. HUM Ch 59 p 3577..3578.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool programming_busy; /**< MRCPS.PRGBSYC or MENTRYR.MENTRY set. */
   bool erase_busy;       /**< Same as programming_busy on MRAM.    */
@@ -143,7 +138,6 @@ typedef struct {
   bool program_error;    /**< MRCPS.PRGERRC.                       */
   bool ecc_error;        /**< MRCPS.ECCERRC.                       */
 } ra8_flash_status_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_flash_isr_event_t
@@ -153,14 +147,12 @@ typedef struct {
  * The dispatcher records which source fired and (where applicable)
  * the captured fault address from MRCRTEA / MRCRDEA / MRCPEA.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_flash_irq_src_t src;         /**< Which source fired.         */
   uint32_t            fault_addr;  /**< MRCRTEA / MRCRDEA / MRCPEA. */
   uint32_t            status_word; /**< Snapshot of the source reg. */
   void*               user_ctx;    /**< Caller-provided context.    */
 } ra8_flash_isr_event_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Callback signature for the unified flash IRQ dispatcher.

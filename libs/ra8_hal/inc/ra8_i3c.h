@@ -134,14 +134,12 @@ typedef void (*ra8_i3c_event_fn_t)(void* ctx, uint32_t status);
  * @see ra8_i3c_dynamic_address_assign
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t pid[6];          /**< 48-bit Provisional ID (BE order).    */
   uint8_t bcr;             /**< Bus Characteristic Register byte.    */
   uint8_t dcr;             /**< Device Characteristic Register byte. */
   uint8_t dynamic_address; /**< Address assigned to this target.     */
 } ra8_i3c_daa_target_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @enum ra8_i3c_ibi_type_t
@@ -168,7 +166,6 @@ typedef enum : uint8_t {
  * @see ra8_i3c_ibi_read
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t            address;     /**< Originating dynamic address.     */
   ra8_i3c_ibi_type_t type;        /**< IBI / HJ / MR classification.    */
@@ -176,7 +173,6 @@ typedef struct {
   uint8_t            payload[8];  /**< Up to 8 bytes of payload.        */
   uint8_t            last;        /**< 1 if this is the final fragment. */
 } ra8_i3c_ibi_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @enum ra8_i3c_hdr_mode_t

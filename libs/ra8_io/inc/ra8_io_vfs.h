@@ -67,14 +67,12 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t size_bytes;   /**< File size in bytes (0 for directories). */
   uint8_t  attr;         /**< FAT attribute byte (::ra8_fs_attr_t).   */
   bool     is_directory; /**< true => path names a directory.         */
   bool     exists;       /**< true => the path resolves to an entry.  */
 } ra8_io_vfs_stat_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Reset the VFS mount table to empty.

@@ -80,7 +80,6 @@ typedef enum : uint8_t {
  * each member is read in ``ra8_gpt_init`` in
  * ``libs/ra8_hal/src/ra8_gpt.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_gpt_mode_t      mode;       /**< Counter mode.                */
   ra8_gpt_prescaler_t prescaler;  /**< Clock divider.               */
@@ -89,7 +88,6 @@ typedef struct {
   uint32_t            duty_b;     /**< GTCCRB compare/duty (PWM B). */
   bool                auto_start; /**< True -> start after init.    */
 } ra8_gpt_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @enum ra8_gpt_status_mask_t
@@ -198,14 +196,12 @@ typedef enum : uint8_t {
  * ``ra8_gpt_pwm_pin_configure`` in
  * ``libs/ra8_hal/src/ra8_gpt.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   bool                     output_enable;    /**< OAE / OBE -- enable pin.   */
   ra8_gpt_pwm_polarity_t   polarity;         /**< Active-high vs active-low. */
   ra8_gpt_pwm_stop_level_t stop_level;       /**< OADFLT / OBDFLT.           */
   ra8_gpt_pwm_disable_t    disable_on_fault; /**< OADF / OBDF (POEG).        */
 } ra8_gpt_pwm_pin_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /* =============================================================================
  * Three-phase PWM (Sweep 3 Task 2 -- mirrors FSP r_gpt_three_phase)
@@ -239,7 +235,6 @@ typedef enum : uint8_t {
  * Each member is read inside ``ra8_gpt_three_phase_open`` in
  * ``libs/ra8_hal/src/ra8_gpt.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t             channels[k_ra8_gpt_three_phase_count]; /**< U/V/W ch ids.   */
   ra8_gpt_mode_t      mode;                                  /**< Triangle/saw.   */
@@ -249,7 +244,6 @@ typedef struct {
   uint32_t            initial_duty_v;                        /**< Initial duty V. */
   uint32_t            initial_duty_w;                        /**< Initial duty W. */
 } ra8_gpt_three_phase_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /* =============================================================================
  * Lifecycle

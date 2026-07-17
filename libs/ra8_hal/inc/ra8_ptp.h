@@ -121,14 +121,12 @@ typedef enum : uint32_t {
  * cppcheck cannot see tests/ so it flags every field as unused; each
  * member is read in ``ra8_ptp_open`` in ``libs/ra8_hal/src/ra8_ptp.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t                 domain;                             /**< clockDomain (0..127). */
   ra8_ptp_sync_interval_t sync_interval;                      /**< log2 sync interval in seconds. */
   uint8_t                 mac_addr[k_ra8_ptp_mac_byte_count]; /**< Local MAC.             */
   ra8_ptp_clock_class_t   clock_class;                        /**< Advertised clockClass. */
 } ra8_ptp_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra8_ptp_msg_fn_t

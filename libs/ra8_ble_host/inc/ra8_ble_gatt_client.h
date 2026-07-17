@@ -62,12 +62,9 @@ typedef enum : uint16_t {
  * primary service.
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
-  uint16_t start_handle; /**< First attribute handle. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t end_handle; /**< Last attribute handle. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t uuid_128[k_ra8_ble_gatt_client_uuid_bytes]; /**< 128-bit service UUID. */
+  uint16_t start_handle;                               /**< First attribute handle. */
+  uint16_t end_handle;                                 /**< Last attribute handle.  */
+  uint8_t  uuid_128[k_ra8_ble_gatt_client_uuid_bytes]; /**< 128-bit service UUID.   */
 } ra8_ble_gatt_service_t;
 
 /**

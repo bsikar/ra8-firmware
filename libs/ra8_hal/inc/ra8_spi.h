@@ -96,7 +96,6 @@ typedef enum : uint8_t {
  * each member is read in ``ra8_spi_init`` in
  * ``libs/ra8_hal/src/ra8_spi_b.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t       baud_hz;   /**< Target SPI clock in Hz.                          */
   uint32_t       pclka_hz;  /**< Current PCLKA in Hz (for SPBR calc).             */
@@ -104,7 +103,6 @@ typedef struct {
   bool           lsb_first; /**< True for LSB-first transfers.                    */
   bool           loopback;  /**< SPCR2.SPLP=1: internal COPI->CIPO tie (no pins). */
 } ra8_spi_cfg_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @enum ra8_spi_err_mask_t

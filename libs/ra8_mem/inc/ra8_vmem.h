@@ -104,7 +104,6 @@ typedef ra8_err_t (*ra8_vmem_loader_fn)(void*    ctx,
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t object_id; /**< Cached object id (valid only when in use).           */
   uint64_t offset;    /**< Frame-aligned byte offset of the cached page.        */
@@ -115,7 +114,6 @@ typedef struct {
   uint8_t  seg;       /**< SLRU segment tag (probationary / protected).         */
   uint8_t  valid;     /**< 1 => this frame holds a cached page.                 */
 } ra8_vmem_frame_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra8_vmem_cfg_t
@@ -151,7 +149,6 @@ typedef struct {
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra8_vmem_cfg_t cfg;             /**< The configuration (copied at init). */
   int32_t        pb_head;         /**< Probationary MRU frame, or -1.      */
@@ -165,7 +162,6 @@ typedef struct {
   uint32_t       misses;          /**< Get misses so far.                  */
   uint32_t       evictions;       /**< Pages evicted so far.               */
 } ra8_vmem_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Initialise a page cache over caller-supplied storage.

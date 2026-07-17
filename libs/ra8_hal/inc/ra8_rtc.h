@@ -26,7 +26,6 @@ extern "C" {
  * each member is read in ``ra8_rtc_get`` and ``ra8_rtc_set`` in
  * ``libs/ra8_hal/src/ra8_rtc.c``.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint16_t year;    /**< 2000..2099.         */
   uint8_t  month;   /**< 1..12.              */
@@ -36,7 +35,6 @@ typedef struct {
   uint8_t  minute;  /**< 0..59.              */
   uint8_t  second;  /**< 0..59.              */
 } ra8_rtc_datetime_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @enum ra8_rtc_clk_src_t

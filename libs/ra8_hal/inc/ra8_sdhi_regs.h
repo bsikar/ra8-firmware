@@ -244,7 +244,6 @@ typedef enum : uint8_t {
  * FIFO registers are documented here for future block-transfer
  * work.
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t SD_CMD;          /**< +0x00 Command Type Register. */
   volatile uint32_t _r0;             /**< Reserved.                    */
@@ -285,7 +284,6 @@ typedef struct {
   volatile uint32_t _r6[4];    /**< +0x1D0..+0x1DC Reserved.    */
   volatile uint32_t EXT_SWAP;  /**< +0x1E0 Endian Swap Control. */
 } r_sdhi_regs_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /** @brief Get pointer to SDHI instance N (0 or 1). */
 static inline volatile r_sdhi_regs_t* ra8_sdhi(uint8_t instance)

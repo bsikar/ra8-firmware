@@ -74,12 +74,10 @@ typedef struct ra8_io_stream_iface ra8_io_stream_iface_t;
  *
  * @since 0.1.0
  */
-/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   const ra8_io_stream_iface_t* iface; /**< Bound sink vtable (private).    */
   void*                        ctx;   /**< Sink-private context (private). */
 } ra8_io_stream_t;
-/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Write `len` bytes to the bound sink.

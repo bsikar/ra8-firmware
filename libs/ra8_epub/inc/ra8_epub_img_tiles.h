@@ -86,20 +86,13 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
-  ra8_epub_book_t* book; /**< Owning book, or NULL for an external atlas. */
-  // cppcheck-suppress unusedStructMember
-  char path[k_ra8_epub_max_path_len]; /**< Entry path (book-backed only). */
-  // cppcheck-suppress unusedStructMember
-  ra8_tileatlas_pread_fn pread; /**< External atlas read seam, or NULL. */
-  // cppcheck-suppress unusedStructMember
-  void* pread_ctx; /**< Context for `pread`. */
-  // cppcheck-suppress unusedStructMember
-  uint64_t total_size; /**< Atlas byte length (backing size). */
-  // cppcheck-suppress unusedStructMember
-  uint32_t image_id; /**< Tile-cache key namespace for this image. */
-  // cppcheck-suppress unusedStructMember
-  ra8_tileatlas_info_t info; /**< Parsed + validated atlas geometry. */
+  ra8_epub_book_t*       book; /**< Owning book, or NULL for an external atlas. */
+  char                   path[k_ra8_epub_max_path_len]; /**< Entry path (book-backed only).     */
+  ra8_tileatlas_pread_fn pread;                         /**< External atlas read seam, or NULL. */
+  void*                  pread_ctx;                     /**< Context for `pread`.               */
+  uint64_t               total_size;                    /**< Atlas byte length (backing size).  */
+  uint32_t               image_id; /**< Tile-cache key namespace for this image. */
+  ra8_tileatlas_info_t   info;     /**< Parsed + validated atlas geometry.       */
 } ra8_epub_tile_source_t;
 
 /**
@@ -114,16 +107,11 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
-  ra8_tile_cache_t cache; /**< Owned tile cache (decode wired to the binder). */
-  // cppcheck-suppress unusedStructMember
-  ra8_epub_tile_source_t sources[k_ra8_epub_tile_max_sources]; /**< Registered images. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t source_count; /**< Registered image count. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t* scratch; /**< Stored-tile staging for deflate atlases. */
-  // cppcheck-suppress unusedStructMember
-  uint32_t scratch_cap; /**< Capacity of `scratch`. */
+  ra8_tile_cache_t       cache; /**< Owned tile cache (decode wired to the binder). */
+  ra8_epub_tile_source_t sources[k_ra8_epub_tile_max_sources]; /**< Registered images.      */
+  uint8_t                source_count;                         /**< Registered image count. */
+  uint8_t*               scratch;     /**< Stored-tile staging for deflate atlases. */
+  uint32_t               scratch_cap; /**< Capacity of `scratch`.                   */
 } ra8_epub_tile_binder_t;
 
 /**
@@ -137,12 +125,9 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  // cppcheck-suppress unusedStructMember
-  ra8_epub_book_t* book; /**< Book to resolve `<img src>` hrefs against. */
-  // cppcheck-suppress unusedStructMember
-  uint8_t* scratch; /**< Caller-owned encoded-bytes scratch. */
-  // cppcheck-suppress unusedStructMember
-  size_t scratch_cap; /**< Scratch capacity (bounded RAM ceiling). */
+  ra8_epub_book_t* book;        /**< Book to resolve `<img src>` hrefs against. */
+  uint8_t*         scratch;     /**< Caller-owned encoded-bytes scratch.        */
+  size_t           scratch_cap; /**< Scratch capacity (bounded RAM ceiling).    */
 } ra8_epub_img_loader_t;
 
 /**
@@ -160,13 +145,10 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  ra8_tileatlas_sink_fn sink; /**< Append-only atlas writer. */
-  // cppcheck-suppress unusedStructMember
-  void* sink_ctx; /**< Context for `sink`. */
-  // cppcheck-suppress unusedStructMember
-  ra8_tileatlas_pread_fn pread; /**< Read-back seam for the same bytes. */
-  // cppcheck-suppress unusedStructMember
-  void* pread_ctx; /**< Context for `pread`. */
+  ra8_tileatlas_sink_fn  sink;      /**< Append-only atlas writer.          */
+  void*                  sink_ctx;  /**< Context for `sink`.                */
+  ra8_tileatlas_pread_fn pread;     /**< Read-back seam for the same bytes. */
+  void*                  pread_ctx; /**< Context for `pread`.               */
 } ra8_epub_atlas_store_t;
 
 /**
@@ -188,25 +170,16 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  uint16_t tile_w; /**< Tile width, pixels (>= 1). */
-  // cppcheck-suppress unusedStructMember
-  uint16_t tile_h; /**< Tile height, pixels (>= 1). */
-  // cppcheck-suppress unusedStructMember
-  uint8_t codec; /**< ::ra8_tileatlas_codec_t member. */
-  // cppcheck-suppress unusedStructMember
-  uint16_t max_width; /**< Width budget cap (0 = format cap). */
-  // cppcheck-suppress unusedStructMember
-  uint16_t max_height; /**< Height budget cap (0 = format cap). */
-  // cppcheck-suppress unusedStructMember
-  uint8_t* work; /**< Producer streaming work arena (JPEG/PNG). */
-  // cppcheck-suppress unusedStructMember
-  size_t work_cap; /**< Arena size (ra8_tileatlas_work_bytes()). */
-  // cppcheck-suppress unusedStructMember
-  uint8_t* webp_work; /**< WebP whole-frame arena, or NULL to reject WebP. */
-  // cppcheck-suppress unusedStructMember
-  size_t webp_work_cap; /**< WebP arena size (ra8_tileatlas_webp_work_bytes()). */
-  // cppcheck-suppress unusedStructMember
-  ra8_epub_atlas_store_t store; /**< Destination atlas store. */
+  uint16_t               tile_w;        /**< Tile width, pixels (>= 1).                         */
+  uint16_t               tile_h;        /**< Tile height, pixels (>= 1).                        */
+  uint8_t                codec;         /**< ::ra8_tileatlas_codec_t member.                    */
+  uint16_t               max_width;     /**< Width budget cap (0 = format cap).                 */
+  uint16_t               max_height;    /**< Height budget cap (0 = format cap).                */
+  uint8_t*               work;          /**< Producer streaming work arena (JPEG/PNG).          */
+  size_t                 work_cap;      /**< Arena size (ra8_tileatlas_work_bytes()).           */
+  uint8_t*               webp_work;     /**< WebP whole-frame arena, or NULL to reject WebP.    */
+  size_t                 webp_work_cap; /**< WebP arena size (ra8_tileatlas_webp_work_bytes()). */
+  ra8_epub_atlas_store_t store;         /**< Destination atlas store.                           */
 } ra8_epub_atlas_import_cfg_t;
 
 /**
