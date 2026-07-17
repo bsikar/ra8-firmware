@@ -30,8 +30,6 @@
 #include "ra8_log.h"
 #include "ra8_secure.h"
 
-// NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity)
-
 /**
  * @var s_tag
  * @brief Logger tag for this TU.
@@ -586,5 +584,3 @@ ra8_err_t ra8_rsip_key_validate(const uint8_t*              installed_key_buf,
 }
 
 #endif /* RA8_INSECURE_STUB_CRYPTO || RA8_SIMULATOR_MODE */
-
-// NOLINTEND(readability-function-size,readability-function-cognitive-complexity)
