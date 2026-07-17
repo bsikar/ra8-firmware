@@ -192,6 +192,77 @@ static bool ra8_sim_region_mappable(bool asan_shadow_gap)
 }
 
 /**
+ * @brief Abort if any mappable backing window overlaps the loaded image/heap.
+ *
+ * @details A MAP_FIXED window that intersects the live image or brk heap would
+ *          silently replace those pages; this pre-check turns a future layout
+ *          regression into an immediate, diagnosable abort.
+ *
+ * @param[in] image_lo Lowest byte of the loaded image (`__executable_start`).
+ * @param[in] image_hi One past the current program break.
+ *
+ * @return None.
+ * @pre @p image_lo <= @p image_hi.
+ * @post Returns only if no mappable window overlaps [image_lo, image_hi).
+ * @note Not thread-safe; runs once during the mmap installer.
+ * @since 0.1.0
+ */
+static void ra8_sim_mmap_check_overlap(uintptr_t image_lo, uintptr_t image_hi)
+{
+  for (uint8_t i = 0U; i < (uint8_t)k_ra8_sim_region_count; ++i) {
+    const ra8_sim_region_t region = s_ra8_sim_regions[i];
+    if (!ra8_sim_region_mappable(region.asan_shadow_gap)) {
+      continue;
+    }
+    if ((region.base < image_hi) && (image_lo < (region.base + region.size))) {
+      (void)fprintf(stderr,
+                    "ra8_sim_mmap: window 0x%llx..0x%llx overlaps the loaded "
+                    "image/heap 0x%llx..0x%llx -- relink the test binary "
+                    "clear of the backing windows (tests/CMakeLists.txt "
+                    "-Ttext-segment pin)\n",
+                    (unsigned long long)region.base,
+                    (unsigned long long)(region.base + region.size),
+                    (unsigned long long)image_lo,
+                    (unsigned long long)image_hi);
+      abort();
+    }
+  }
+}
+
+/**
+ * @brief MAP_FIXED-map and zero every mappable backing window.
+ *
+ * @return None.
+ * @pre The backing windows do not overlap the loaded image/heap.
+ * @post Every mappable window is mapped read/write and zero-filled, or aborts.
+ * @note Not thread-safe; runs once during the mmap installer.
+ * @since 0.1.0
+ */
+static void ra8_sim_mmap_map_regions(void)
+{
+  for (uint8_t i = 0U; i < (uint8_t)k_ra8_sim_region_count; ++i) {
+    const ra8_sim_region_t region = s_ra8_sim_regions[i];
+    if (!ra8_sim_region_mappable(region.asan_shadow_gap)) {
+      continue;
+    }
+    void* p = mmap((void*)region.base,
+                   region.size,
+                   PROT_READ | PROT_WRITE,
+                   MAP_FIXED | MAP_ANONYMOUS | MAP_PRIVATE,
+                   -1,
+                   0);
+    if (p == MAP_FAILED || (uintptr_t)p != region.base) {
+      (void)fprintf(stderr,
+                    "ra8_sim_mmap: failed to map 0x%llx..0x%llx\n",
+                    (unsigned long long)region.base,
+                    (unsigned long long)(region.base + region.size));
+      abort();
+    }
+    (void)memset(p, 0, region.size);
+  }
+}
+
+/**
  * @brief Install RAM backings for every hardware window.
  *
  * @details
@@ -239,44 +310,8 @@ static bool ra8_sim_region_mappable(bool asan_shadow_gap)
   void* const     brk_now  = sbrk(0);
   const uintptr_t image_lo = (uintptr_t)__executable_start;
   const uintptr_t image_hi = (uintptr_t)brk_now;
-  for (uint8_t i = 0U; i < (uint8_t)k_ra8_sim_region_count; ++i) {
-    const ra8_sim_region_t region = s_ra8_sim_regions[i];
-    if (!ra8_sim_region_mappable(region.asan_shadow_gap)) {
-      continue;
-    }
-    if ((region.base < image_hi) && (image_lo < (region.base + region.size))) {
-      (void)fprintf(stderr,
-                    "ra8_sim_mmap: window 0x%llx..0x%llx overlaps the loaded "
-                    "image/heap 0x%llx..0x%llx -- relink the test binary "
-                    "clear of the backing windows (tests/CMakeLists.txt "
-                    "-Ttext-segment pin)\n",
-                    (unsigned long long)region.base,
-                    (unsigned long long)(region.base + region.size),
-                    (unsigned long long)image_lo,
-                    (unsigned long long)image_hi);
-      abort();
-    }
-  }
-  for (uint8_t i = 0U; i < (uint8_t)k_ra8_sim_region_count; ++i) {
-    const ra8_sim_region_t region = s_ra8_sim_regions[i];
-    if (!ra8_sim_region_mappable(region.asan_shadow_gap)) {
-      continue;
-    }
-    void* p = mmap((void*)region.base,
-                   region.size,
-                   PROT_READ | PROT_WRITE,
-                   MAP_FIXED | MAP_ANONYMOUS | MAP_PRIVATE,
-                   -1,
-                   0);
-    if (p == MAP_FAILED || (uintptr_t)p != region.base) {
-      (void)fprintf(stderr,
-                    "ra8_sim_mmap: failed to map 0x%llx..0x%llx\n",
-                    (unsigned long long)region.base,
-                    (unsigned long long)(region.base + region.size));
-      abort();
-    }
-    (void)memset(p, 0, region.size);
-  }
+  ra8_sim_mmap_check_overlap(image_lo, image_hi);
+  ra8_sim_mmap_map_regions();
   s_ra8_sim_mapped = 1U;
 }
 
