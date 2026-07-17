@@ -95,6 +95,7 @@ typedef struct {
   uint32_t magic; /**< Sentinel for "created".                              */
 } TX_THREAD;      /* NOLINT(readability-identifier-naming) -- ThreadX name. */
 
+/* NOLINTBEGIN(readability-non-const-parameter) -- ThreadX pins CHAR* name non-const. */
 /**
  * @brief Host stub for tx_mutex_create.
  *
@@ -111,7 +112,6 @@ typedef struct {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-// NOLINTNEXTLINE(readability-non-const-parameter) -- ThreadX pins CHAR* name non-const.
 static inline UINT tx_mutex_create(TX_MUTEX* m, CHAR* name, UINT inherit)
 {
   (void)name;
@@ -121,6 +121,7 @@ static inline UINT tx_mutex_create(TX_MUTEX* m, CHAR* name, UINT inherit)
   }
   return TX_SUCCESS;
 }
+/* NOLINTEND(readability-non-const-parameter) */
 
 /**
  * @brief Host stub for tx_mutex_get.
@@ -184,6 +185,7 @@ static inline UINT tx_mutex_delete(TX_MUTEX* m)
   return TX_SUCCESS;
 }
 
+/* NOLINTBEGIN(readability-non-const-parameter) -- ThreadX pins CHAR* name non-const. */
 /**
  * @brief Host stub for tx_thread_create.
  *
@@ -207,7 +209,6 @@ static inline UINT tx_mutex_delete(TX_MUTEX* m)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-// NOLINTBEGIN(readability-non-const-parameter) -- ThreadX pins CHAR* name non-const.
 static inline UINT tx_thread_create(TX_THREAD* t,
                                     CHAR*      name,
                                     void (*entry)(ULONG),
@@ -233,7 +234,7 @@ static inline UINT tx_thread_create(TX_THREAD* t,
   }
   return TX_SUCCESS;
 }
-// NOLINTEND(readability-non-const-parameter)
+/* NOLINTEND(readability-non-const-parameter) */
 
 /**
  * @brief Host stub for tx_thread_terminate.
