@@ -32,5 +32,5 @@ endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(NAME ereader_comic STACK_BYTES 32768
-           DESCRIPTION "Headless CBZ + CBR open -> page-0 decode+blit -> framebuffer CRC over UART (sim gate)"
-           LIBS ra8_gfx ra8_reflow ra8_comic ra8_epub ra8_board_ek_ra8d2)
+           DESCRIPTION "Viewable page-turn comic reader: baked CBZ decoded to the 1024x600 GLCDC panel, tap-zone nav (sim-viewable)"
+           LIBS ra8_gfx ra8_reflow ra8_comic ra8_epub ra8_display_pal ra8_io_bus ra8_board_ek_ra8d2)
