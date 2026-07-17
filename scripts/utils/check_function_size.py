@@ -84,6 +84,76 @@ _CONTROL_PREFIXES = (
 )
 
 
+def _brace_delta(line: str, in_block_comment: bool) -> tuple[int, int, bool]:
+    """Count net ``{`` / ``}`` on `line`, skipping braces that sit inside
+    string literals, character literals, or comments.
+
+    A naive ``line.count("{")`` miscounts every brace that appears in a
+    textual constant -- a JSON/CSS/JS blob written as a C string literal
+    (``"{\\"$schema\\":..."``) or a ``case '{':`` character literal in a
+    tokenizer.  Those braces do not open a real scope, so counting them
+    runs the depth tracker off the true closing ``}`` and reports a short
+    function (e.g. ``prof_write_speedscope``, 49 lines) as hundreds of
+    lines.  This scanner walks the line character by character and ignores
+    any brace that is not live C punctuation.
+
+    Only ``in_block_comment`` persists across lines: C string and character
+    literals do not span source lines in this codebase (no backslash-newline
+    line-continued literals -- adjacent string concatenation is used
+    instead), so they are always resolved within the one line.
+
+    Returns ``(opens, closes, in_block_comment_after)``.
+    """
+    opens = 0
+    closes = 0
+    i = 0
+    n = len(line)
+    in_string = False
+    in_char = False
+    while i < n:
+        c = line[i]
+        if in_block_comment:
+            if c == "*" and i + 1 < n and line[i + 1] == "/":
+                in_block_comment = False
+                i += 2
+                continue
+            i += 1
+            continue
+        if in_string:
+            if c == "\\":  # skip the escaped character (e.g. \" or \\)
+                i += 2
+                continue
+            if c == '"':
+                in_string = False
+            i += 1
+            continue
+        if in_char:
+            if c == "\\":
+                i += 2
+                continue
+            if c == "'":
+                in_char = False
+            i += 1
+            continue
+        # Outside any literal or comment: interpret the punctuation.
+        if c == "/" and i + 1 < n and line[i + 1] == "/":
+            break  # line comment: the remainder of the line is inert
+        if c == "/" and i + 1 < n and line[i + 1] == "*":
+            in_block_comment = True
+            i += 2
+            continue
+        if c == '"':
+            in_string = True
+        elif c == "'":
+            in_char = True
+        elif c == "{":
+            opens += 1
+        elif c == "}":
+            closes += 1
+        i += 1
+    return opens, closes, in_block_comment
+
+
 def _looks_like_function_body_open(prev: str) -> bool:
     """Return True if `prev` is the last line of a function signature.
 
@@ -150,23 +220,28 @@ def _scan_file(path: Path) -> list[tuple[int, int, str]]:
             # counting while inside any non-first arm so the textual brace
             # balance matches what actually compiles.
             cpp_arms: list[bool] = []
+            # Block comments straddle lines, so their open/close state has to
+            # persist across the body scan; string/char literals do not.
+            in_block_comment = False
             while j < n and depth > 0:
-                stripped = lines[j].lstrip()
-                if stripped.startswith("#"):
-                    directive = stripped[1:].lstrip()
-                    if directive.startswith("endif"):
-                        if cpp_arms:
-                            cpp_arms.pop()
-                    elif directive.startswith(("else", "elif")):
-                        if cpp_arms:
-                            cpp_arms[-1] = True
-                    elif directive.startswith("if"):  # if / ifdef / ifndef
-                        cpp_arms.append(False)
-                    j += 1
-                    continue
+                if not in_block_comment:
+                    stripped = lines[j].lstrip()
+                    if stripped.startswith("#"):
+                        directive = stripped[1:].lstrip()
+                        if directive.startswith("endif"):
+                            if cpp_arms:
+                                cpp_arms.pop()
+                        elif directive.startswith(("else", "elif")):
+                            if cpp_arms:
+                                cpp_arms[-1] = True
+                        elif directive.startswith("if"):  # if / ifdef / ifndef
+                            cpp_arms.append(False)
+                        j += 1
+                        continue
+                opens, closes, in_block_comment = _brace_delta(lines[j], in_block_comment)
                 if not any(cpp_arms):
-                    depth += lines[j].count("{")
-                    depth -= lines[j].count("}")
+                    depth += opens
+                    depth -= closes
                 j += 1
             length = j - i
             if length > THRESHOLD_LINES:
