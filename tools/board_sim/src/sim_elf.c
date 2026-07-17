@@ -19,6 +19,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "board_console.h"
+#include "board_net.h"
+#include "board_periph.h"
+#include "sim_console.h"
+#include "sim_exc.h"
+#include "sim_memmap.h"
+#include "sim_mpu.h"
+#include "sim_seams.h"
+#include "sim_view.h"
+
 uint8_t* read_file(const char* path, long* out_len)
 {
   FILE* f = fopen(path, "rb");
@@ -178,4 +188,46 @@ uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name, uint32_t* 
     }
   }
   return 0U;
+}
+
+/** @brief Implementation of `warm_reboot()` -- PT_LOAD re-write + model resets. */
+uint32_t warm_reboot(uc_engine* uc, const uint8_t* elf, long len, bool trace)
+{
+  /* 1. Restore the code + .data initial image from the ELF PT_LOAD segments.
+   * The same elf/len loaded successfully at startup, so a failure here means the
+   * engine's memory writes started failing -- report and return PC=0 so the
+   * caller ends the run rather than execute a stale image. */
+  if (load_elf(uc, elf, len) != 0) {
+    (void)fprintf(stderr, "board_sim: warm_reboot: load_elf failed -- ending run\n");
+    return 0U;
+  }
+
+  /* 2. Reset the peripheral + network models (RSTSRn / VBATT backup survive). */
+  board_periph_init(trace);
+  board_net_init(trace);
+
+  /* 3. Clear host-side exception / scheduler bookkeeping. */
+  sim_exc_reset();
+  sim_mpu_clear_fault();
+  sim_div0_clear_fault();
+  sim_div0_disarm(); /* a warm reboot re-loads the image, un-patching sites. */
+  /* Clear the multi-channel console store + the in-flight ITM line, and reset
+   * the tabbed-console view so the rebooted firmware starts with an empty
+   * console on the ALL tab (the SCI model's own reset clears its line buffers). */
+  board_console_reset();
+  sim_console_reset();
+  sim_view_reset_console();
+
+  /* 4. Re-read the Cortex-M reset vector (SP = vectors[0], PC = vectors[1]). */
+  uint32_t sp = 0U;
+  uint32_t pc = 0U;
+  (void)uc_mem_read(uc, sim_memmap_mram_base() + 0U, &sp, 4);
+  (void)uc_mem_read(uc, sim_memmap_mram_base() + 4U, &pc, 4);
+  pc |= 1U; /* Thumb */
+  uint32_t xpsr = (uint32_t)k_xpsr_t_bit;
+  (void)uc_reg_write(uc, UC_ARM_REG_SP, &sp);
+  (void)uc_reg_write(uc, UC_ARM_REG_PC, &pc);
+  (void)uc_reg_write(uc, UC_ARM_REG_XPSR, &xpsr);
+  (void)fprintf(stderr, "board_sim: warm reboot -- reset SP=0x%08X PC=0x%08X\n", sp, pc);
+  return pc;
 }

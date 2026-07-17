@@ -74,6 +74,7 @@ add_executable(board_sim
                src/sim_prof.c
                src/sim_trace.c
                src/sim_tz.c
+               src/sim_view.c
                src/sim_usbh_seam.c
                src/sim_cpu1.c
                src/sim_exc.c
