@@ -338,6 +338,107 @@ static void test_jpeg_stream_errors(void)
 }
 
 /**
+ * @var s_jpeg_gray_hdr
+ * @brief SOI + DQT(table 0) prefix of the minimal grayscale JFIF fixture.
+ * @details Followed at build time by 64 all-ones quantisation entries.
+ * @note Read-only host-test fixture.
+ * @since 0.1.0
+ */
+static const uint8_t s_jpeg_gray_hdr[] = {
+  0xFFU,
+  0xD8U, /* SOI */
+  0xFFU,
+  0xDBU,
+  0x00U,
+  0x43U,
+  0x00U, /* DQT, table 0 */
+  /* 64 quantisation entries of 1 follow. */
+};
+
+/**
+ * @var s_jpeg_gray_body
+ * @brief SOF0 + DHT(DC0/AC0) + SOS + scan + EOI body of the grayscale fixture.
+ * @note Read-only host-test fixture.
+ * @since 0.1.0
+ */
+static const uint8_t s_jpeg_gray_body[] = {
+  0xFFU,
+  0xC0U,
+  0x00U,
+  0x0BU,
+  0x08U,
+  0x00U,
+  0x08U,
+  0x00U,
+  0x08U,
+  0x01U,
+  0x01U,
+  0x11U,
+  0x00U, /* SOF0: 8x8, 1 comp, q0 */
+  /* DHT DC0: one code of length 2 -> symbol 0. */
+  0xFFU,
+  0xC4U,
+  0x00U,
+  0x14U,
+  0x00U,
+  0x00U,
+  0x01U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  /* DHT AC0: one code of length 2 -> symbol 0 (EOB). */
+  0xFFU,
+  0xC4U,
+  0x00U,
+  0x14U,
+  0x10U,
+  0x00U,
+  0x01U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  /* SOS: 1 comp, DC0/AC0. */
+  0xFFU,
+  0xDAU,
+  0x00U,
+  0x08U,
+  0x01U,
+  0x01U,
+  0x00U,
+  0x00U,
+  0x3FU,
+  0x00U,
+  /* Scan: DC cat 0 ('00') + EOB ('00') + padding -> one byte. */
+  0x0FU,
+  0xFFU,
+  0xD9U, /* EOI */
+};
+
+/**
  * @test test_jpeg_stream_grayscale
  * @brief A grayscale baseline stream emits 1-channel stripes.
  *
@@ -354,99 +455,13 @@ static void test_jpeg_stream_grayscale(void)
   TEST_BEGIN("jpeg stream: grayscale stripes (1 channel)");
   /* Build: SOI, DQT(all 1s), SOF0 8x8 1-comp, DHT(DC0: code '00' for cat 0),
    * DHT(AC0: code '10' for EOB via a 2-entry table), SOS, scan, EOI. */
-  static const uint8_t hdr[] = {
-    0xFFU,
-    0xD8U, /* SOI */
-    0xFFU,
-    0xDBU,
-    0x00U,
-    0x43U,
-    0x00U, /* DQT, table 0 */
-    /* 64 quantisation entries of 1 follow. */
-  };
-  static const uint8_t sof_sos[] = {
-    0xFFU,
-    0xC0U,
-    0x00U,
-    0x0BU,
-    0x08U,
-    0x00U,
-    0x08U,
-    0x00U,
-    0x08U,
-    0x01U,
-    0x01U,
-    0x11U,
-    0x00U, /* SOF0: 8x8, 1 comp, q0 */
-    /* DHT DC0: one code of length 2 -> symbol 0. */
-    0xFFU,
-    0xC4U,
-    0x00U,
-    0x14U,
-    0x00U,
-    0x00U,
-    0x01U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    /* DHT AC0: one code of length 2 -> symbol 0 (EOB). */
-    0xFFU,
-    0xC4U,
-    0x00U,
-    0x14U,
-    0x10U,
-    0x00U,
-    0x01U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    0x00U,
-    /* SOS: 1 comp, DC0/AC0. */
-    0xFFU,
-    0xDAU,
-    0x00U,
-    0x08U,
-    0x01U,
-    0x01U,
-    0x00U,
-    0x00U,
-    0x3FU,
-    0x00U,
-    /* Scan: DC cat 0 ('00') + EOB ('00') + padding -> one byte. */
-    0x0FU,
-    0xFFU,
-    0xD9U, /* EOI */
-  };
   s_src_len = 0U;
-  memcpy(s_src, hdr, sizeof(hdr));
-  s_src_len = sizeof(hdr);
+  memcpy(s_src, s_jpeg_gray_hdr, sizeof(s_jpeg_gray_hdr));
+  s_src_len = sizeof(s_jpeg_gray_hdr);
   memset(&s_src[s_src_len], 1, 64U); /* the all-ones quant table */
   s_src_len += 64U;
-  memcpy(&s_src[s_src_len], sof_sos, sizeof(sof_sos));
-  s_src_len += (uint32_t)sizeof(sof_sos);
+  memcpy(&s_src[s_src_len], s_jpeg_gray_body, sizeof(s_jpeg_gray_body));
+  s_src_len += (uint32_t)sizeof(s_jpeg_gray_body);
 
   static t_src_t src;
   src           = (t_src_t){.pos = 0U, .chunk = 0U};
