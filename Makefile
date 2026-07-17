@@ -121,6 +121,7 @@ help:
 	@echo "  make media_dl          build the comic/manga/manhwa downloader CLI (tools/media_dl)"
 	@echo "  make dl ARGS='...'     build + run the downloader with ARGS (e.g. --format cbz)"
 	@echo "  make test-media_dl     build + run the downloader unit tests (ctest)"
+	@echo "  make test-integration  pack synthetic pages in EVERY format + view each (end-to-end gate)"
 	@echo "  make viewer            build the native reader viewer (tools/ra8_viewer)"
 	@echo "  make view FILE=<doc>   open a document in the viewer (arrows page; HEADLESS=1 dumps a PPM)"
 	@echo ""

@@ -19,17 +19,27 @@ grow into other downloadable media later.
 ## What it does
 
 **series mode** (the real one): read a per-site descriptor, list a series'
-chapters, and download the first N as folders of page images:
+chapters, download the first N, and package them into a reader-openable file.
+By default the N chapters **combine into one archive** named for the chapter
+range:
 
 ```
-downloads/<series-slug>/<chapter>/page_001.jpg ...
+downloads/<series-slug>/<slug>-<lo>-<hi>.<ext>     e.g. nano-machine-1-2.cbz
 ```
+
+Pass `--separate` for one archive per chapter instead, or `--format loose` (the
+default when `--format` is omitted) to stop at page-image folders and skip
+packaging. Continuous page numbering across chapters means the combined archive
+reads as one contiguous book.
+
+**pack mode** (`--pack DIR --format FMT`): package an existing folder of page
+images -- no network. Handy for re-encoding a download into another format and
+for the integration harness.
 
 **page mode** (debug): fetch one URL and download its `<img>` URLs.
 
-No CBZ packaging or image conversion yet -- those are the next milestones. The
-scope is deliberately small (unlike the half-baked Kotlin original): fetch,
-extract, download, politely.
+The scope is deliberately small (unlike the half-baked Kotlin original): fetch,
+extract, download politely, package.
 
 ## Design (why it maps cleanly to the RA8 later)
 
@@ -66,19 +76,28 @@ Requires libcurl (present on macOS by default) and a C23 host compiler
 
 ## Run
 
-Series mode:
+Series mode (combined by default -- two chapters into one `nano-machine-1-2.cbz`):
 
 ```sh
 ./build/media_dl --config sites/manhwaus.conf \
                  --series "https://manhwaus.net/webtoon/nano-machine/" \
-                 --chapters 2 [--start K] [--out DIR] [--seed S] [--timeout MS]
+                 --chapters 2 --format cbz \
+                 [--separate] [--start K] [--out DIR] [--seed S] [--timeout MS]
 ```
 
 - `--config FILE`  site descriptor (see `sites/manhwaus.conf`)
 - `--series URL`   the series page URL
 - `--chapters N`   how many chapters to download (default 1)
+- `--format FMT`   output container (default `loose`; see the table below)
+- `--separate`     one archive per chapter instead of one combined archive
 - `--start K`      skip the first K chapters (default 0)
 - `--out DIR`      output root (default `downloads/`)
+
+Pack mode (re-package a folder, no network):
+
+```sh
+./build/media_dl --pack downloads/nano-machine/nano-machine-1-2 --format rta1
+```
 
 Page mode (debug):
 
@@ -120,11 +139,42 @@ container has no C writer, so rabook uses the desktop python emitter). The
 `ra8_comic_open_wrapped`. RTA1 writes one `page_NNN.rta1` per page into the
 chapter folder (the webtoon-native form), not a single archive file.
 
+### Which format for a webtoon / manhwa?
+
+**Use `--format rta1` for vertical-scroll webtoons.** Their pages are single
+tall strips -- real chapters run 5,000-12,000 px high. The comic formats
+(`cbz`/`cbt`/`cbr`/...) decode each page as one whole image through stb_image,
+which is deliberately capped at **8192 px per side** (`STBI_MAX_DIMENSIONS` in
+`libs/third_party/stb/stb_image_impl.c`, bounding `w*h*bpp` so the on-device
+decode fits its memory budget). A strip taller than that is rejected -- by
+design, not a bug. RTA1 exists precisely for this: it tiles the strip via the
+firmware's streaming JPEG decoder (`ra8_jpeg_sw_stream`, no whole-image
+allocation) and the `ra8_webtoon` engine scrolls it a viewport at a time. So a
+webtoon downloaded as `cbz` will open but some tall pages won't render; the same
+series as `rta1` renders every page. Standard fixed-page comics (each page a
+normal book-sized image) are fine as `cbz`.
+
+Packaging is **idempotent**: only real page images (`.jpg/.jpeg/.png/.webp/.gif/
+.bmp`) are ingested, so a folder that already holds this tool's own output (a
+sibling `.rta1`, a previous `.cbz`) or OS junk re-packages cleanly instead of
+folding a non-image "page" into the archive.
+
+### Verifying a build
+
+`tools/media_dl/tests/integration.sh` (also `make test-integration`) is the
+cross-tool end-to-end gate: it packages synthetic, non-copyright pages into
+*every* format and opens each result in the native `ra8_viewer` headless,
+asserting a non-blank render -- the check that catches "packages fine but the
+reader can't open it". Formats whose optional tool is absent (`rar`) are
+skipped, not failed.
+
 ## Status / roadmap
 
-Working: config-driven series -> chapter list -> per-chapter page images,
-downloaded politely (verified against manhwaus.net). Known limits: naive
-extension naming (Content-Type/magic-byte typing is a planned fix), single-site
-descriptor format (richer TOML later), no proxy/Cloudflare handling. Next: CBZ
-packaging (miniz + `ra8_comic`), then RTA1 convert-on-download
-(`ra8_tileatlas_produce`) for the webtoon/manhwa vertical-scroll reader.
+Working: config-driven series -> chapter list -> polite download -> combined
+(or `--separate`) packaging into every reader format, verified end-to-end by
+`make test-integration` and against manhwaus.net. Known limits: naive extension
+naming from the URL (Content-Type/magic-byte typing is a planned fix -- pages
+are named `.jpg` even when the bytes are PNG/WebP, though the readers sniff the
+real magic on open), single-site descriptor format (richer TOML later), and no
+proxy/Cloudflare handling. Next: the full politeness governor (per-host token
+bucket, 429/503 Retry-After backoff) and Content-Type-driven page naming.

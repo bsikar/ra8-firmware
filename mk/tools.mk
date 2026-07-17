@@ -3,7 +3,7 @@
 # from the top Makefile.
 # SPDX-License-Identifier: MIT
 
-.PHONY: tools tools-help media_dl test-media_dl viewer view dl \
+.PHONY: tools tools-help media_dl test-media_dl test-integration viewer view dl \
         mcp books rabook-golden-update bench-cache
 
 # `make tools` -- build every compiled host tool in one go.
@@ -27,6 +27,7 @@ tools-help:
 	@echo "  make media_dl                        build the comic/manga/manhwa downloader CLI"
 	@echo "  make dl ARGS='--config S.conf ...'    build + run the downloader with ARGS"
 	@echo "  make test-media_dl                   build + run the downloader unit tests (ctest)"
+	@echo "  make test-integration [FMT='cbz ...'] pack synthetic pages in EVERY format + view each (end-to-end)"
 	@echo "  make viewer                          build the native reader viewer"
 	@echo "  make view FILE=<doc> [HEADLESS=1]    build the viewer + open a document (arrows page)"
 	@echo ""
@@ -57,6 +58,15 @@ test-media_dl:
 	$(CMAKE) -B $(MEDIA_DL_DIR)/build -S $(MEDIA_DL_DIR)
 	$(CMAKE) --build $(MEDIA_DL_DIR)/build -j
 	ctest --test-dir $(MEDIA_DL_DIR)/build --output-on-failure
+
+# `make test-integration [FMT='cbz rta1 ...']` -- the cross-tool end-to-end gate:
+# build media_dl + the viewer, package synthetic (non-copyright) pages into EVERY
+# export format, then open each result in the viewer headless and assert a
+# non-blank render. This is what catches "packages fine but the reader can't open
+# it" (the 0x107 class). Formats needing an absent optional tool (rar) are
+# skipped, not failed. Exit status = number of failed formats.
+test-integration:
+	bash $(MEDIA_DL_DIR)/tests/integration.sh $(FMT)
 
 # --- ra8_viewer (reader) ----------------------------------------------------
 # `viewer` only BUILDS; `view FILE=<doc>` builds and OPENS a document.

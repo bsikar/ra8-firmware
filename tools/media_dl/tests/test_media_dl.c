@@ -163,6 +163,47 @@ static void test_export_cbz_roundtrip(void)
   TEST_END("export cbz round-trip");
 }
 
+/** @test Packaging ingests ONLY page images; sibling output/junk is skipped. */
+static void test_export_skips_non_images(void)
+{
+  TEST_BEGIN("export skips non-images");
+  const char* dir = "/tmp/mdl_mixed_chap";
+  const char* out = "/tmp/mdl_mixed_chap.cbz";
+  (void)mkdir(dir, 0755);
+  /* Two real pages... */
+  write_fixture("/tmp/mdl_mixed_chap/page_001.jpg", 'a');
+  write_fixture("/tmp/mdl_mixed_chap/page_002.PNG", 'b'); /* upper-case ext too */
+  /* ...amid this tool's own prior output + OS junk, which must be ignored so a
+   * re-packaged folder does not fold a non-image "page" into the archive (the
+   * 0x107 the reader hits when it tries to decode one). */
+  write_fixture("/tmp/mdl_mixed_chap/page_001.rta1", 'r');
+  write_fixture("/tmp/mdl_mixed_chap/mdl_mixed_chap.cbz", 'z');
+  write_fixture("/tmp/mdl_mixed_chap/notes.txt", 't');
+  write_fixture("/tmp/mdl_mixed_chap/.DS_Store", 'd');
+
+  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_cbz, dir, out) == k_ra8_ok);
+  mz_zip_archive zr;
+  memset(&zr, 0, sizeof(zr));
+  TEST_ASSERT(mz_zip_reader_init_file(&zr, out, 0) != MZ_FALSE);
+  TEST_ASSERT_EQ(k_expect_pages, (uint16_t)mz_zip_reader_get_num_files(&zr));
+  char name[k_name_probe];
+  (void)mz_zip_reader_get_filename(&zr, 0, name, sizeof(name));
+  TEST_ASSERT(strcmp(name, "page_001.jpg") == 0);
+  (void)mz_zip_reader_get_filename(&zr, 1, name, sizeof(name));
+  TEST_ASSERT(strcmp(name, "page_002.PNG") == 0);
+  (void)mz_zip_reader_end(&zr);
+
+  (void)unlink("/tmp/mdl_mixed_chap/page_001.jpg");
+  (void)unlink("/tmp/mdl_mixed_chap/page_002.PNG");
+  (void)unlink("/tmp/mdl_mixed_chap/page_001.rta1");
+  (void)unlink("/tmp/mdl_mixed_chap/mdl_mixed_chap.cbz");
+  (void)unlink("/tmp/mdl_mixed_chap/notes.txt");
+  (void)unlink("/tmp/mdl_mixed_chap/.DS_Store");
+  (void)unlink(out);
+  (void)rmdir(dir);
+  TEST_END("export skips non-images");
+}
+
 /** @brief Write `len` raw bytes to `path`. */
 static void write_bytes(const char* path, const uint8_t* data, size_t len)
 {
@@ -248,6 +289,7 @@ int32_t main(void)
   test_extract_anchors();
   test_config_load();
   test_export_cbz_roundtrip();
+  test_export_skips_non_images();
   test_export_epub_roundtrip();
   test_export_rta1_roundtrip();
   (void)fprintf(stderr, "[OK  ] test_media_dl.c\n");
