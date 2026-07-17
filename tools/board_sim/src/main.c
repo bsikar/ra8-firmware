@@ -53,115 +53,14 @@
 #include "board_usb_host.h"
 #include "board_view.h"
 #include "sim_console.h"
+#include "sim_cpu1.h"
 #include "sim_elf.h"
 #include "sim_engine.h"
 #include "sim_exc.h"
+#include "sim_memmap.h"
+#include "sim_mmio.h"
 #include "sim_prof.h"
 #include "sim_seams.h"
-
-/* RA8D2 memory map (EK board) -- from the linker script / HUM R01UH1065EJ. */
-typedef struct {
-  const char* name;
-  uint64_t    base;
-  uint64_t    size;
-} mem_region_t;
-
-static const mem_region_t k_regions[] = {
-  {"ITCM", 0x00000000UL, 0x00010000UL},     /* 64 KiB tightly-coupled code */
-  {"MRAM", 0x02000000UL, 0x00100000UL},     /* 1 MiB code flash + vectors  */
-  {"TRIM", 0x02C1E000UL, 0x00001000UL},     /* MRAM factory-trim page: the
-                                             * on-chip temperature-sensor
-                                             * calibration cells (TSCDR/TSCDR2 at
-                                             * 0x02C1EDA0) live here. Mapped +
-                                             * seeded (see k_tsn_cal_*) so
-                                             * ra8_tsn reads a real two-point pair
-                                             * instead of bus-faulting on the
-                                             * previously-unmapped read. */
-  {"OFS", 0x0300A000UL, 0x00001000UL},      /* option-setting flash        */
-  {"DTCM", 0x20000000UL, 0x00010000UL},     /* 64 KiB tightly-coupled data */
-  {"SRAM", 0x22000000UL, 0x00400000UL},     /* On-chip SRAM: CPU0 1 MiB + shared mailbox +
-                                             * CPU1 bank. Intentionally a wide 4 MiB window so
-                                             * the placeholder NS_SRAM and every dual-core
-                                             * example map cleanly; it does NOT reflect the
-                                             * 1.6 MB silicon limit (real ECC SRAM is
-                                             * 0x22000000..0x221A0000). */
-  {"NS_SRAM2", 0x32100000UL, 0x00080000UL}, /* SRAM2 Non-secure alias (bit[28]=1): the
-                                             * TrustZone NS image run region. The Secure
-                                             * boot copies the NS image here then BLXNS-es
-                                             * to it; mapping it lets two-image TZ apps
-                                             * (src/app) run their NS world in board_sim. */
-  {"DATA_FLASH", 0x27000000UL, 0x00004000UL},
-  {"SDRAM", 0x68000000UL, 0x04000000UL},    /* 64 MiB external SDRAM (Secure
-                                             * physical view). Host-backed so the
-                                             * NS alias below mirrors the bytes:
-                                             * the GLCDC model scans the
-                                             * framebuffer from here while the NS
-                                             * world draws it through 0x78000000. */
-  {"NS_SDRAM", 0x78000000UL, 0x04000000UL}, /* External SDRAM Non-secure alias
-                                             * (IDAU bit[28]=1): the SAME 64 MiB
-                                             * array as SDRAM. The Non-secure
-                                             * e-reader writes framebuffer pixels
-                                             * through this alias; sharing one
-                                             * host buffer makes them visible to
-                                             * the Secure GLCDC read at
-                                             * 0x68000000. Must follow SDRAM in
-                                             * this table so the shared host
-                                             * buffer is allocated first. */
-  {"OSPI", 0x80000000UL, 0x04000000UL},     /* 64 MiB Octo-SPI XIP flash (Secure
-                                             * physical view). Memory-mapped and
-                                             * executable: an NS reader image runs
-                                             * execute-in-place from here. Host-
-                                             * backed and shared with NS_OSPI so
-                                             * the alias below mirrors the bytes. */
-  {"NS_OSPI", 0x90000000UL, 0x04000000UL},  /* OSPI XIP Non-secure alias
-                                             * (IDAU bit[28]=1): the SAME 64 MiB
-                                             * flash array as OSPI. The XIP-linked
-                                             * NS image's .text/.rodata live at
-                                             * 0x90000000; the M85 fetches NS
-                                             * instructions from this alias. Must
-                                             * follow OSPI in this table so the
-                                             * shared host buffer is allocated
-                                             * before the alias maps onto it. */
-  {"PPB", 0xE0000000UL, 0x00100000UL},      /* ARM private peripheral bus */
-};
-
-/* Renesas peripheral space -- modelled as logged MMIO (returns all-ones so
- * "wait for ready bit" polls fall through instead of spinning forever). */
-typedef enum : uint64_t {
-  k_periph_base = 0x40000000UL,
-  k_periph_size = 0x10000000UL, /* 0x40000000-0x4FFFFFFF: all Renesas peripherals */
-} periph_map_t;
-
-/* Octo-SPI (XSPI) execute-in-place flash window. The XSPI controller's register
- * command-engine is modelled in peripheral space (board_periph_xspi.c, base
- * 0x40268000); this is the SEPARATE memory-mapped, executable view of the 64 MiB
- * flash array the controller exposes once the firmware enters XIP mode. The
- * Secure physical window sits at 0x80000000; its TrustZone Non-secure alias
- * (IDAU bit[28]=1) sits at 0x90000000. Both views address the same flash array,
- * so board_sim backs them with a single host buffer (mirrors the SRAM/NS_SRAM2
- * alias pair). A Non-secure reader image linked for XIP places .text/.rodata at
- * 0x90000000 and the CPU fetches Non-secure instructions from there. */
-typedef enum : uint64_t {
-  k_ospi_xip_base = 0x80000000UL, /* OSPI XIP window: Secure physical base.      */
-  k_ospi_ns_base  = 0x90000000UL, /* OSPI XIP window: NS alias (IDAU bit[28]=1). */
-  k_ospi_xip_size = 0x04000000UL, /* 64 MiB execute-in-place flash array.        */
-} ospi_xip_map_t;
-
-/* On-chip temperature-sensor factory calibration. The TSN two-point trim words
- * TSCDR (code at the high reference) and TSCDR2 (code at the low reference) live
- * in the MRAM factory-trim region at 0x02C1EDA0 (HUM Ch 55.2.2 p 3498-3499).
- * Real silicon ships them factory-programmed; board_sim's blank map left the
- * region unreadable, so ra8_tsn_convert_to_milli_c bus-faulted (UC_ERR_READ_-
- * UNMAPPED) reading them and adc_diag_tsn_demo aborted. Seed a deterministic,
- * plausible positive-slope pair (TSCDR @ +125C > TSCDR2 @ -40C) into the mapped
- * TRIM page after mem-map. Paired with the ADC temperature code the ADC model
- * reports (k_adc_temp_code = 1800 in board_periph_adc.c), the two-point math
- * yields ~26 degC. This is factory-constant data, not a masked poll. */
-typedef enum : uint32_t {
-  k_tsn_cal_addr   = 0x02C1EDA0U, /* TSCDR (+0x00), TSCDR2 (+0x04).        */
-  k_tsn_cal_tscdr  = 3000U,       /* 12-bit calibration code at +125 degC. */
-  k_tsn_cal_tscdr2 = 1000U,       /* 12-bit calibration code at -40 degC.  */
-} tsn_cal_seed_t;
 
 typedef enum : uint32_t {
   k_run_chunk_insns = 500000U, /**< Instructions per emulation chunk.     */
@@ -190,9 +89,6 @@ typedef enum : uint32_t {
   k_idle_loop_max   = 32U,     /**< Largest idle loop (bytes) that may hold PC. */
   k_run_wall_s      = 120U,    /**< Wall-clock safety bound (seconds).          */
   k_run_inner_max   = 4096U,   /**< Per-chunk exception-resolve relaunch cap.   */
-  k_mmio_slots      = 2048U,   /**< Distinct MMIO addresses tracked.            */
-  k_mmio_settle     = 8U,      /**< Same-addr reads before a poll "settles".    */
-  k_mmio_print_max  = 256U,    /**< Max MMIO rows printed in the summary.       */
   k_env_strtol_base = 10U,     /**< Decimal base for env-var integer parse.     */
 } sim_budget_t;
 
@@ -224,16 +120,15 @@ typedef enum : uint32_t {
   k_cs_op_shift     = 12U,   /**< CSEL-family op = hw2[13:12].       */
   k_cs_op_mask      = 0x3U,  /**< 2-bit op field.                    */
   /* Assorted. */
-  k_u32_all_ones     = 0xFFFFFFFFU, /**< All bits set (MMIO read toggle).     */
-  k_ra8_err_no_data  = 0x10AU,      /**< ra8_err_t value: no RX data.         */
-  k_ra8_err_inval_st = 0x104U,      /**< ra8_err_t value: invalid state.      */
-  k_strtol_base10    = 10U,         /**< Base-10 radix for strtol.            */
-  k_max_panel_px     = 4096U,       /**< Largest accepted --size dimension.   */
-  k_record_dir_mode  = 0755U,       /**< mkdir mode for the --record dir.     */
-  k_byte_mask        = 0xFFU,       /**< Low 8 bits of a value (one byte).    */
-  k_dump_sym_max     = 8U,          /**< Max --dump-sym globals per run.      */
-  k_trace_sym_max    = 16U,         /**< Max --trace-sym functions per run.   */
-  k_sectors_per_mib  = 2048U,       /**< 512-byte sectors per MiB (--sd-new). */
+  k_ra8_err_no_data  = 0x10AU, /**< ra8_err_t value: no RX data.         */
+  k_ra8_err_inval_st = 0x104U, /**< ra8_err_t value: invalid state.      */
+  k_strtol_base10    = 10U,    /**< Base-10 radix for strtol.            */
+  k_max_panel_px     = 4096U,  /**< Largest accepted --size dimension.   */
+  k_record_dir_mode  = 0755U,  /**< mkdir mode for the --record dir.     */
+  k_byte_mask        = 0xFFU,  /**< Low 8 bits of a value (one byte).    */
+  k_dump_sym_max     = 8U,     /**< Max --dump-sym globals per run.      */
+  k_trace_sym_max    = 16U,    /**< Max --trace-sym functions per run.   */
+  k_sectors_per_mib  = 2048U,  /**< 512-byte sectors per MiB (--sd-new). */
 } board_sim_misc_t;
 
 /** @brief 64-bit byte/size units used by --sd-new card sizing. */
@@ -257,32 +152,6 @@ typedef enum : uint8_t {
  * models as an I2C bus with a GT911 device. board_sim feeds --click / window
  * clicks into that device (board_periph_touch_inject), so a tap returns through
  * the genuine ra8_touch -> I3C -> GT911 path -- there is no function-level stub. */
-
-/* Renesas peripheral quirks that the generic sparse model cannot reproduce.
- *
- * MRMS frequency latches: the CGC driver (libs/ra8_hal/src/ra8_cgc.c,
- * internal_wait_mrm_freq) writes ``key | freq_mhz`` to MRCFREQ / MREFREQ and
- * spins until the register reads back == freq_mhz. Real silicon validates the
- * upper key byte then strips it, so the readback is the bare frequency. The
- * generic model reflects the full written word (key still in bits[31:24]), so
- * the readback never equals freq and the poll runs to its 0x40000 timeout ->
- * lcd_panic_halt. Model the hardware: on readback of these two registers,
- * return the stored value with the key byte masked off. */
-typedef enum : uint64_t {
-  k_mrms_mrcfreq   = 0x4013C004UL, /**< MRICLK freq latch (write key 0x1E). */
-  k_mrms_mrefreq   = 0x4013C008UL, /**< MRPCLK freq latch (write key 0xE1). */
-  k_mrms_freq_mask = 0x00FFFFFFUL, /**< Key byte (bits[31:24]) stripped.    */
-} mrms_quirk_t;
-
-/* GLCDC observation point. The lcd_color_cycle demo proves a live panel by
- * re-writing BG_BGC (background colour) every frame and pulsing BG_EN.VEN to
- * commit it. The generic model only keeps the last value per address, so the
- * distinct colours cycled are tracked separately as the tool's success witness.
- * GLCDC base 0x40342000 + 0x1014 = BG_BGC (HUM Ch 63). */
-typedef enum : uint64_t {
-  k_glcdc_bg_bgc  = 0x40343014UL, /**< GLCDC BG.BGC background colour.    */
-  k_bgc_track_max = 32UL,         /**< Distinct BG_BGC values remembered. */
-} glcdc_obs_t;
 
 /* Live-view (--view) and snapshot (--ppm) presentation settings. */
 typedef enum : uint32_t {
@@ -324,22 +193,6 @@ typedef enum : uint32_t {
   k_glcdc_lnnum_mask  = 0x7FFU,  /**< FLM5.LNNUM is 11 bits.                   */
 } glcdc_decode_t;
 
-/* Sparse model of the Renesas peripheral space. Each touched address gets a
- * slot: control writes are reflected back on read so "configure then verify"
- * works, but once the firmware spins reading one address (a "wait for
- * ready/idle" poll) past k_mmio_settle, reads alternate 0 / all-ones so a
- * single-bit poll for either edge (flag set OR flag clear) completes instead
- * of running to its timeout. */
-static uint64_t s_mmio_addr[k_mmio_slots];
-static uint32_t s_mmio_val[k_mmio_slots];
-static bool     s_mmio_written[k_mmio_slots];
-static uint32_t s_mmio_rcount[k_mmio_slots];
-static uint32_t s_mmio_wcount[k_mmio_slots];
-static uint32_t s_mmio_n;
-static uint32_t s_mmio_reads;
-static uint32_t s_mmio_writes;
-static uint32_t s_mmio_toggle;
-
 /* Run-state telemetry the board view shows (updated by the run loop each
  * present): the current PC, the emulation-chunk counter, and whether the run
  * loop is still live (set false once the run parks / faults / exits). */
@@ -373,9 +226,6 @@ typedef enum : uint8_t {
 static board_primary_core_t s_primary_core = k_core_m85;
 static bool                 s_low_power    = false;
 
-static int      s_mmio_cache    = -1; /**< 1-entry address->slot lookup cache. */
-static int      s_mmio_run_slot = -1; /**< Slot of the current read run.       */
-static uint32_t s_mmio_run;           /**< Consecutive reads of that slot.     */
 static uint32_t s_systick_fires;
 
 /* Hand-modelled Cortex-M exception state. Unicorn's M33 core has no NVIC /
@@ -439,185 +289,6 @@ static uint32_t     s_mpu_ro_hook_n;                  /**< Installed hook count.
 static bool         s_mpu_fault;                      /**< RO write trapped.     */
 static uint32_t     s_mpu_fault_pc;                   /**< PC of faulting store. */
 static uint32_t     s_mpu_fault_addr;                 /**< Address written.      */
-
-/**
- * @enum dual_core_addr_t
- * @brief CPU_CTRL registers + activation bit for the second core (cpu1).
- *
- * @details
- * The RA8D2 boots cpu0 (Cortex-M85); the application releases cpu1
- * (Cortex-M33) by writing CPU1INITVTOR (its vector table) then
- * CPU1ACTCSR.ACTREQ. board_sim emulates cpu1 in a second Unicorn engine
- * that shares the on-chip SRAM with cpu0 (host-backed), so cpu1_pingpong's
- * cross-core IPC over shared SRAM actually runs. Inert unless the firmware
- * carries a cpu1 image and asserts ACTREQ.
- */
-typedef enum : uint64_t {
-  k_cpu1_initvtor_addr = 0x4000F044UL, /**< CPU_CTRL.CPU1INITVTOR (32-bit). */
-  k_cpu1_actcsr_addr   = 0x4000F064UL, /**< CPU_CTRL.CPU1ACTCSR  (16-bit).  */
-  k_cpu1_mram_base     = 0x020C0000UL, /**< MRAM_CPU1: cpu1 image base.     */
-  k_cpu1_mram_end      = 0x02100000UL, /**< MRAM_CPU1 end (256 KiB).        */
-} dual_core_addr_t;
-
-typedef enum : uint32_t {
-  k_cpu1_actcsr_actreq    = 1U << 0U, /**< CPU1ACTCSR.ACTREQ -> release cpu1.   */
-  k_cpu1_actcsr_key       = 0xA5U,    /**< KEY[15:8] required to honor a write. */
-  k_cpu1_actcsr_key_shift = 8U,       /**< KEY byte position (bits [15:8]).     */
-  k_cpu1_actcsr_key_mask  = 0xFFU,    /**< KEY byte mask after the shift.       */
-  k_cpu1_chunk_insns      = 100000U,  /**< cpu1 instructions per interleave.    */
-} dual_core_bits_t;
-
-static uint8_t*   s_sram_buf;         /**< Host-backed on-chip SRAM (shared).   */
-static uint8_t*   s_ospi_buf;         /**< Host-backed OSPI XIP flash (shared). */
-static uint8_t*   s_sdram_buf;        /**< Host-backed external SDRAM (shared). */
-static uc_engine* s_cpu1_uc;          /**< 2nd engine for cpu1 (NULL if N/A).   */
-static bool       s_cpu1_active;      /**< cpu1 released and stepping.          */
-static bool       s_cpu1_release_req; /**< CPU1ACTCSR.ACTREQ observed.          */
-static uint32_t   s_cpu1_initvtor;    /**< Captured CPU1INITVTOR value.         */
-static uint32_t   s_cpu1_pc;          /**< cpu1 run PC across interleaves.      */
-
-/* BG_BGC colour-cycle witness: total writes and the distinct values seen. */
-static uint32_t s_bgc_writes;
-static uint32_t s_bgc_distinct[k_bgc_track_max];
-static uint32_t s_bgc_distinct_n;
-
-/** @brief Record a BG_BGC write; remember the value if it is a new colour. */
-static void bgc_track(uint32_t value)
-{
-  s_bgc_writes++;
-  for (uint32_t i = 0U; i < s_bgc_distinct_n; i++) {
-    if (s_bgc_distinct[i] == value) {
-      return;
-    }
-  }
-  if (s_bgc_distinct_n < (uint32_t)k_bgc_track_max) {
-    s_bgc_distinct[s_bgc_distinct_n++] = value;
-  }
-}
-
-/** @brief Find (or add) a slot for a distinct MMIO address; -1 if table full. */
-static int mmio_index(uint64_t addr)
-{
-  if ((s_mmio_cache >= 0) && (s_mmio_addr[s_mmio_cache] == addr)) {
-    return s_mmio_cache;
-  }
-  for (uint32_t i = 0U; i < s_mmio_n; i++) {
-    if (s_mmio_addr[i] == addr) {
-      s_mmio_cache = (int)i;
-      return (int)i;
-    }
-  }
-  if (s_mmio_n < (uint32_t)k_mmio_slots) {
-    s_mmio_addr[s_mmio_n] = addr;
-    s_mmio_cache          = (int)s_mmio_n;
-    return (int)(s_mmio_n++);
-  }
-  return -1;
-}
-
-static uint64_t mmio_read(uc_engine* uc, uint64_t offset, unsigned size, void* user)
-{
-  (void)user;
-  s_mmio_reads++;
-  /* A modelled peripheral block answers first; the sparse fallback below is
-   * only reached for addresses no block in board_periph owns. */
-  bool           handled = false;
-  const uint64_t modeled = board_periph_read(uc, (uint64_t)k_periph_base + offset, size, &handled);
-  if (handled) {
-    return modeled;
-  }
-  const int idx = mmio_index((uint64_t)k_periph_base + offset);
-  if (idx >= 0) {
-    s_mmio_rcount[idx]++;
-    if (idx == s_mmio_run_slot) {
-      s_mmio_run++;
-    } else {
-      s_mmio_run_slot = idx;
-      s_mmio_run      = 1U;
-    }
-    /* Reflect a written control value until a spin-poll forces it to settle. */
-    if (s_mmio_written[idx] && (s_mmio_run <= (uint32_t)k_mmio_settle)) {
-      const uint64_t addr = (uint64_t)k_periph_base + offset;
-      /* MRMS frequency latches strip the write key byte on readback so the
-       * driver's "wait until reg == freq" poll completes (see mrms_quirk_t). */
-      if ((addr == (uint64_t)k_mrms_mrcfreq) || (addr == (uint64_t)k_mrms_mrefreq)) {
-        return (uint64_t)(s_mmio_val[idx] & (uint32_t)k_mrms_freq_mask);
-      }
-      return (uint64_t)s_mmio_val[idx];
-    }
-  }
-  s_mmio_toggle ^= (uint32_t)k_u32_all_ones;
-  return (uint64_t)s_mmio_toggle;
-}
-
-/**
- * @brief Side-effect-free read of the last value written to a peripheral reg.
- *
- * @details
- * Returns the value last written to @p addr, or 0 if it was never written --
- * searching the MMIO shadow WITHOUT allocating a slot and WITHOUT advancing the
- * spin-settle toggle that ::mmio_read uses. board_sim's own introspection (e.g.
- * ::build_frame reading GLCDC registers to compose the panel) must see stable
- * state: a firmware that never programs the GLCDC (blink, USB, UART demos) would
- * otherwise read the status-poll fallthrough (an alternating 0/0xFFFFFFFF), which
- * made the panel strobe black<->white every frame. A real read of an unwritten
- * register reset-defaults to 0 here, so the panel is a steady background.
- */
-static uint32_t mmio_peek(uint64_t addr)
-{
-  for (uint32_t i = 0U; i < s_mmio_n; i++) {
-    if (s_mmio_addr[i] == addr) {
-      return s_mmio_written[i] ? s_mmio_val[i] : 0U;
-    }
-  }
-  return 0U;
-}
-
-static void mmio_write(uc_engine* uc, uint64_t offset, unsigned size, uint64_t value, void* user)
-{
-  (void)user;
-  s_mmio_writes++;
-  const uint64_t mmio_abs = (uint64_t)k_periph_base + offset;
-  /* Dual-core release: the firmware stages cpu1's vector table in
-   * CPU1INITVTOR, then asserts CPU1ACTCSR.ACTREQ to start cpu1. Capture both
-   * so the run loop can boot the second engine (see cpu1_engine_init). */
-  if (mmio_abs == (uint64_t)k_cpu1_initvtor_addr) {
-    s_cpu1_initvtor = (uint32_t)value;
-  } else if (mmio_abs == (uint64_t)k_cpu1_actcsr_addr) {
-    /* HUM Ch 2.9.1.9 "CPU1ACTCSR" p 130 -- a write is honored only with
-     * KEY=0xA5 in bits [15:8]; the firmware writes 0xA501 (KEY | ACTREQ).
-     * Model the key gate so a keyless ACTREQ does not release cpu1. */
-    const uint32_t key =
-      ((uint32_t)value >> (uint32_t)k_cpu1_actcsr_key_shift) & (uint32_t)k_cpu1_actcsr_key_mask;
-    if ((key == (uint32_t)k_cpu1_actcsr_key) &&
-        (((uint32_t)value & (uint32_t)k_cpu1_actcsr_actreq) != 0U)) {
-      s_cpu1_release_req = true;
-    }
-  }
-  if (mmio_abs == (uint64_t)k_glcdc_bg_bgc) {
-    bgc_track((uint32_t)value);
-  }
-  /* A modelled peripheral block consumes the write first (so GPIO latches,
-   * timer control, and ICU event links take real effect); the sparse fallback
-   * still records the write for the MMIO table and unmodelled blocks. */
-  bool handled = false;
-  board_periph_write(uc, (uint64_t)k_periph_base + offset, size, value, &handled);
-  if (handled) {
-    return;
-  }
-  const int idx = mmio_index((uint64_t)k_periph_base + offset);
-  if (idx >= 0) {
-    s_mmio_wcount[idx]++;
-    s_mmio_val[idx]     = (uint32_t)value;
-    s_mmio_written[idx] = true;
-    if (idx == s_mmio_run_slot) {
-      s_mmio_run++; /* same-addr read-modify-write spin accumulates toward settle */
-    } else {
-      s_mmio_run_slot = idx; /* new register -> following reads should see its value */
-      s_mmio_run      = 1U;
-    }
-  }
-}
 
 /* Forward declarations for the Cortex-M exception engine (defined below, after
  * the ELF/memory helpers they build on). The memory hooks above need to vector
@@ -768,7 +439,7 @@ static void on_intr(uc_engine* uc, uint32_t int_no, void* user_data)
    * paths do. The VTOR fallback is the MRAM vector-table base; the live VTOR
    * (set by SystemInit) is read inside exc_vector. */
   (void)user_data;
-  const uint32_t vtor_base = (uint32_t)k_regions[1].base;
+  const uint32_t vtor_base = (uint32_t)sim_memmap_mram_base();
   const uint32_t handler   = exc_vector(uc, vtor_base, (uint32_t)k_exc_svcall);
   if (handler != 0U) {
     exc_enter(uc, (uint32_t)k_exc_svcall, handler);
@@ -1245,30 +916,6 @@ static void on_mpu_ctrl_write(uc_engine*  uc,
     mpu_remove_ro_hooks(uc);
     s_mpu_enabled = false;
   }
-}
-
-/**
- * @brief Seed the on-chip temperature-sensor factory calibration into memory.
- *
- * @details
- * Writes the two-point trim words TSCDR / TSCDR2 (see ::tsn_cal_seed_t) into the
- * mapped MRAM factory-trim page at ::k_tsn_cal_addr. On silicon these cells are
- * factory-programmed; the emulator's map is blank, so without this seed
- * ra8_tsn_convert_to_milli_c reads an unmapped address and the run bus-faults.
- * Must be called after the memory regions (including "TRIM") are mapped.
- *
- * @param[in,out] uc Unicorn engine whose "TRIM" page receives the seed.
- * @return Nothing.
- * @pre The TRIM region covering ::k_tsn_cal_addr has been mem-mapped on @p uc.
- * @post @p uc holds TSCDR at ::k_tsn_cal_addr and TSCDR2 at the next word.
- * @since 0.1.0
- */
-static void seed_tsn_calibration(uc_engine* uc)
-{
-  const uint32_t tscdr  = (uint32_t)k_tsn_cal_tscdr;
-  const uint32_t tscdr2 = (uint32_t)k_tsn_cal_tscdr2;
-  (void)uc_mem_write(uc, (uint64_t)k_tsn_cal_addr, &tscdr, sizeof(tscdr));
-  (void)uc_mem_write(uc, (uint64_t)k_tsn_cal_addr + sizeof(tscdr), &tscdr2, sizeof(tscdr2));
 }
 
 /* =============================================================================
@@ -2822,21 +2469,6 @@ static uint16_t rgb888_to_565(uint32_t rgb)
                     (b >> (uint32_t)k_rgb565_b_drop));
 }
 
-/**
- * @enum ram_region_t
- * @brief Emulated RAM windows a GLCDC framebuffer may legally live in.
- */
-typedef enum : uint32_t {
-  k_dtcm_base     = 0x20000000U, /**< Data TCM start.                              */
-  k_dtcm_end      = 0x20010000U, /**< Data TCM end.                                */
-  k_sram_base     = 0x22000000U, /**< On-chip SRAM start.                          */
-  k_sram_end      = 0x22100000U, /**< On-chip SRAM end.                            */
-  k_sdram_base    = 0x68000000U, /**< External SDRAM start.                        */
-  k_sdram_end     = 0x6C000000U, /**< External SDRAM end.                          */
-  k_ns_sdram_base = 0x78000000U, /**< External SDRAM Non-secure alias (bit[28]=1). */
-  k_page_size     = 0x1000U,     /**< 4 KiB host-map alignment for SRAM buffer.    */
-} ram_region_t;
-
 /** @brief True if addr is in an emulated RAM region a framebuffer could use. */
 static bool addr_is_ram(uint32_t addr)
 {
@@ -3011,8 +2643,8 @@ static void fill_status(board_status_t* st, const char* app_name)
   st->pc            = s_view_pc;
   st->chunks        = s_view_chunks;
   st->running       = s_view_running;
-  st->mmio_reads    = s_mmio_reads;
-  st->mmio_writes   = s_mmio_writes;
+  st->mmio_reads    = sim_mmio_reads();
+  st->mmio_writes   = sim_mmio_writes();
   st->uart_tx_total = board_periph_uart_tx_total();
 }
 
@@ -3288,8 +2920,8 @@ static uint32_t warm_reboot(uc_engine* uc, const uint8_t* elf, long len, bool tr
   /* 4. Re-read the Cortex-M reset vector (SP = vectors[0], PC = vectors[1]). */
   uint32_t sp = 0U;
   uint32_t pc = 0U;
-  (void)uc_mem_read(uc, k_regions[1].base + 0U, &sp, 4);
-  (void)uc_mem_read(uc, k_regions[1].base + 4U, &pc, 4);
+  (void)uc_mem_read(uc, sim_memmap_mram_base() + 0U, &sp, 4);
+  (void)uc_mem_read(uc, sim_memmap_mram_base() + 4U, &pc, 4);
   pc |= 1U; /* Thumb */
   uint32_t xpsr = (uint32_t)k_xpsr_t_bit;
   (void)uc_reg_write(uc, UC_ARM_REG_SP, &sp);
@@ -3393,123 +3025,6 @@ static bool load_panel(const char* path, board_panel_t* out)
     return false;
   }
   return true;
-}
-
-/**
- * @brief Create the second emulator engine for cpu1 (Cortex-M33), if present.
- *
- * @details
- * Only dual-core firmware (one exporting ``cpu1_reset_handler``) gets a cpu1
- * engine, so single-core apps pay nothing. The engine maps the same regions as
- * cpu0 but binds the on-chip SRAM to the shared host buffer (::s_sram_buf) so
- * cross-core IPC over shared SRAM is coherent; the full ELF (which carries
- * cpu1's image at MRAM_CPU1) is loaded so cpu1 can boot from its own vector
- * table when released. The engine is left idle -- the run loop boots it on the
- * CPU1ACTCSR release.
- *
- * @param[in] elf     The firmware image (cpu0 + cpu1).
- * @param[in] elf_len Length of @p elf, bytes.
- *
- * @return The cpu1 engine, or NULL if this is not a dual-core image (or setup
- *         failed -- cpu0 then runs alone, exactly as before).
- * @retval NULL Not a dual-core image / engine setup failed.
- *
- * @pre ::s_sram_buf is allocated (cpu0 SRAM is host-backed).
- * @pre @p elf is a valid ELF still resident (called before it is freed).
- * @post On success a Cortex-M33 engine mirrors cpu0's map with shared SRAM.
- * @post No cpu1 instruction has executed yet (idle until released).
- * @note cpu1's PPB / peripheral writes stay private to its engine.
- * @since 0.1.0
- */
-static uc_engine* cpu1_engine_init(const uint8_t* elf, long elf_len)
-{
-  /* Dual-core only: cpu1's image is embedded as raw bytes (.cpu1_image, not a
-   * cpu0 symbol), so detect it by a PT_LOAD segment in the MRAM_CPU1 window. */
-  uint32_t phoff = 0U;
-  (void)memcpy(&phoff, elf + (uint32_t)k_elf_e_phoff_off, 4);
-  const uint16_t phentsize = (uint16_t)(elf[42] | (elf[43] << 8));
-  const uint16_t phnum     = (uint16_t)(elf[44] | (elf[45] << 8));
-  bool           has_cpu1  = false;
-  for (uint16_t i = 0U; i < phnum; i++) {
-    const uint8_t* ph = elf + phoff + ((uint32_t)i * phentsize);
-    uint32_t       p_type;
-    uint32_t       p_paddr;
-    (void)memcpy(&p_type, ph + 0, 4);
-    (void)memcpy(&p_paddr, ph + (uint32_t)k_elf_ph_paddr_off, 4);
-    if ((p_type == 1U) && (p_paddr >= (uint32_t)k_cpu1_mram_base) &&
-        (p_paddr < (uint32_t)k_cpu1_mram_end)) {
-      has_cpu1 = true;
-      break;
-    }
-  }
-  if (!has_cpu1) {
-    return nullptr; /* single-core firmware -- no second engine. */
-  }
-  uc_engine* c1 = nullptr;
-  if (uc_open(UC_ARCH_ARM, (uc_mode)(UC_MODE_THUMB | UC_MODE_MCLASS), &c1) != UC_ERR_OK) {
-    return nullptr;
-  }
-  (void)uc_ctl_set_cpu_model(c1, UC_CPU_ARM_CORTEX_M33);
-  for (size_t i = 0U; i < (sizeof(k_regions) / sizeof(k_regions[0])); i++) {
-    uc_err mr = UC_ERR_OK;
-    if (k_regions[i].base == (uint64_t)k_sram_base) {
-      mr =
-        uc_mem_map_ptr(c1, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, s_sram_buf);
-    } else if (k_regions[i].base == (uint64_t)k_ns_sram2_base) {
-      /* SRAM2 Non-secure alias: the SAME physical bytes as 0x22100000, so back
-       * it with the shared SRAM host buffer at that offset (mirroring cpu0's
-       * map). cpu1 stamps its bring-up markers through this alias
-       * (cpu1_pingpong_ipc's cpu1_main writes 0x321002xx); a private mapping
-       * here would hide them from cpu0 and the --dump-sym probe. */
-      uint8_t* const ns_host =
-        s_sram_buf + ((size_t)k_ns_sram2_base - (size_t)k_ns_alias_bit - (size_t)k_sram_base);
-      mr = uc_mem_map_ptr(c1, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, ns_host);
-    } else {
-      mr = uc_mem_map(c1, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL);
-    }
-    if (mr != UC_ERR_OK) {
-      (void)uc_close(c1);
-      return nullptr;
-    }
-  }
-  /* Map the Renesas peripheral space through the SAME board_periph models cpu0
-   * uses -- the peripherals are shared hardware, so the M33's MMIO (GPIO LED
-   * toggles, SCI, timers, ...) reaches the models and the board view instead of
-   * faulting on unmapped space. cpu0 maps this region separately via uc_mmio_map
-   * (it is absent from k_regions); cpu1 needs the identical mapping. */
-  if (uc_mmio_map(c1,
-                  (uint64_t)k_periph_base,
-                  (size_t)k_periph_size,
-                  mmio_read,
-                  nullptr,
-                  mmio_write,
-                  nullptr) != UC_ERR_OK) {
-    (void)uc_close(c1);
-    return nullptr;
-  }
-  /* The M33 runs as a permanent non-secure bus controller (SECEXT off): the
-   * peripheral channels it owns -- e.g. the IPC unit it pokes to wake the M85 --
-   * are NS-attributed, so its accesses route through the bit[28] non-secure
-   * alias (0x5xxxxxxx) rather than the Secure 0x4xxxxxxx the M85 uses. Map that
-   * alias to the SAME models with the SAME hooks: the hooks rebuild the absolute
-   * address as k_periph_base + window-relative offset, so a 0x50020000 access
-   * (offset 0x20000) dispatches to 0x40020000 identically to a Secure one. */
-  if (uc_mmio_map(c1,
-                  (uint64_t)k_periph_base | (uint64_t)k_ns_alias_bit,
-                  (size_t)k_periph_size,
-                  mmio_read,
-                  nullptr,
-                  mmio_write,
-                  nullptr) != UC_ERR_OK) {
-    (void)uc_close(c1);
-    return nullptr;
-  }
-  if (load_elf(c1, elf, elf_len) != 0) {
-    (void)uc_close(c1);
-    return nullptr;
-  }
-  (void)fprintf(stderr, "  cpu1 engine   : Cortex-M33, shared SRAM + peripherals (dual-core)\n");
-  return c1;
 }
 
 int main(int argc, char** argv)
@@ -3776,120 +3291,7 @@ int main(int argc, char** argv)
   /* Closest emulated core to the M85: M33 (Armv8-M). */
   (void)uc_ctl_set_cpu_model(uc, UC_CPU_ARM_CORTEX_M33);
 
-  for (size_t i = 0U; i < (sizeof(k_regions) / sizeof(k_regions[0])); i++) {
-    /* On-chip SRAM is host-backed so a second engine (cpu1) can share the same
-     * physical bytes -- the two cores' IPC over shared SRAM is then coherent.
-     * Transparent for cpu0 (uc_mem_map_ptr behaves like uc_mem_map otherwise).*/
-    uc_err mr = UC_ERR_OK;
-    if (k_regions[i].base == (uint64_t)k_sram_base) {
-      s_sram_buf = (uint8_t*)aligned_alloc((size_t)k_page_size, (size_t)k_regions[i].size);
-      if (s_sram_buf == nullptr) {
-        (void)fprintf(stderr, "SRAM host buffer alloc failed\n");
-        return 1;
-      }
-      (void)memset(s_sram_buf, 0, (size_t)k_regions[i].size);
-      mr =
-        uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, s_sram_buf);
-    } else if (k_regions[i].base == (uint64_t)k_ns_sram2_base) {
-      /* The SRAM2 Non-secure alias (bit[28]=1) is the SAME physical bytes as
-       * 0x22100000, so back it with the shared SRAM host buffer at that offset.
-       * Keeping the Secure (0x22..) and Non-secure (0x32..) views coherent lets
-       * the BLXNS land on the copied NS image whether the core uses the alias or
-       * the bit[28]-stripped physical address (s_sram_buf is mapped above first,
-       * since SRAM precedes NS_SRAM2 in k_regions). */
-      uint8_t* const ns_host =
-        s_sram_buf + ((size_t)k_ns_sram2_base - (size_t)k_ns_alias_bit - (size_t)k_sram_base);
-      mr = uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, ns_host);
-    } else if (k_regions[i].base == (uint64_t)k_ospi_xip_base) {
-      /* OSPI XIP flash (Secure physical view). Host-backed -- like the on-chip
-       * SRAM -- so its Non-secure alias (0x90000000) can mirror the SAME bytes:
-       * an execute-in-place image is then fetchable through either view. The
-       * window is mapped UC_PROT_ALL (read + write + EXEC) so the CPU may fetch
-       * instructions from it. */
-      s_ospi_buf = (uint8_t*)aligned_alloc((size_t)k_page_size, (size_t)k_regions[i].size);
-      if (s_ospi_buf == nullptr) {
-        (void)fprintf(stderr, "OSPI host buffer alloc failed\n");
-        return 1;
-      }
-      (void)memset(s_ospi_buf, 0, (size_t)k_regions[i].size);
-      mr =
-        uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, s_ospi_buf);
-    } else if (k_regions[i].base == (uint64_t)k_ospi_ns_base) {
-      /* OSPI XIP Non-secure alias (bit[28]=1): the SAME flash array as
-       * 0x80000000, so back it with the shared OSPI host buffer (stripping
-       * bit[28] from 0x90000000 yields the Secure base, i.e. offset 0). The NS
-       * reader image is linked for XIP at 0x90000000, so the CPU fetches its
-       * .text from this view; load_elf writes each PT_LOAD to its p_paddr, which
-       * lands in this same backing whether the segment names 0x80.. or 0x90..
-       * (s_ospi_buf is mapped above first, since OSPI precedes NS_OSPI in
-       * k_regions). */
-      uint8_t* const ns_host =
-        s_ospi_buf + ((size_t)k_ospi_ns_base - (size_t)k_ns_alias_bit - (size_t)k_ospi_xip_base);
-      mr = uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, ns_host);
-    } else if (k_regions[i].base == (uint64_t)k_sdram_base) {
-      /* External SDRAM (Secure physical view). Host-backed -- like the on-chip
-       * SRAM and OSPI -- so its Non-secure alias (0x78000000) can mirror the
-       * SAME bytes. The Secure GLCDC model scans the framebuffer from here while
-       * the Non-secure e-reader writes pixels through the alias below; one
-       * backing keeps the two views coherent. */
-      s_sdram_buf = (uint8_t*)aligned_alloc((size_t)k_page_size, (size_t)k_regions[i].size);
-      if (s_sdram_buf == nullptr) {
-        (void)fprintf(stderr, "SDRAM host buffer alloc failed\n");
-        return 1;
-      }
-      (void)memset(s_sdram_buf, 0, (size_t)k_regions[i].size);
-      mr =
-        uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, s_sdram_buf);
-    } else if (k_regions[i].base == (uint64_t)k_ns_sdram_base) {
-      /* External SDRAM Non-secure alias (bit[28]=1): the SAME array as
-       * 0x68000000, so back it with the shared SDRAM host buffer (stripping
-       * bit[28] from 0x78000000 yields the Secure base, i.e. offset 0). The NS
-       * world draws the framebuffer through this alias; the Secure GLCDC reads it
-       * back from 0x68000000 over the same bytes (s_sdram_buf is mapped above
-       * first, since SDRAM precedes NS_SDRAM in k_regions). */
-      uint8_t* const ns_host =
-        s_sdram_buf + ((size_t)k_ns_sdram_base - (size_t)k_ns_alias_bit - (size_t)k_sdram_base);
-      mr = uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, ns_host);
-    } else {
-      mr = uc_mem_map(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL);
-    }
-    if (mr != UC_ERR_OK) {
-      (void)fprintf(stderr,
-                    "map %s @0x%08llX failed\n",
-                    k_regions[i].name,
-                    (unsigned long long)k_regions[i].base);
-      return 1;
-    }
-  }
-  /* Factory-programmed on silicon; seed it now the TRIM page is mapped so the
-   * temperature-sensor two-point conversion reads real data (see the helper). */
-  seed_tsn_calibration(uc);
-  if (uc_mmio_map(uc,
-                  (uint64_t)k_periph_base,
-                  (size_t)k_periph_size,
-                  mmio_read,
-                  nullptr,
-                  mmio_write,
-                  nullptr) != UC_ERR_OK) {
-    (void)fprintf(stderr, "mmio_map failed\n");
-    return 1;
-  }
-  /* IDAU bit[28]=1 Non-secure peripheral alias (0x50000000): the SAME silicon
-   * registers as 0x40000000, reached by TrustZone Non-secure code (an NS image
-   * built with RA8_PERIPH_NS_ALIAS -- MSTP at 0x5020_3000, USBFS at 0x5025_0000,
-   * USBHS at 0x5035_1000 -- or the NS-side IPC ping-pong at 0x5002_0000). The
-   * hooks rebuild the absolute address as k_periph_base + window-relative
-   * offset, so a 0x50020000 access (offset 0x20000) dispatches to 0x40020000
-   * identically to a Secure one -- the exact mapping the cpu1 engine already
-   * carries (see cpu1_engine_init). */
-  if (uc_mmio_map(uc,
-                  (uint64_t)k_periph_base | (uint64_t)k_ns_alias_bit,
-                  (size_t)k_periph_size,
-                  mmio_read,
-                  nullptr,
-                  mmio_write,
-                  nullptr) != UC_ERR_OK) {
-    (void)fprintf(stderr, "mmio_map (NS alias) failed\n");
+  if (!sim_memmap_init(uc)) {
     return 1;
   }
 
@@ -4116,8 +3518,8 @@ int main(int argc, char** argv)
   /* Cortex-M reset: SP = vectors[0], PC = vectors[1] (Thumb, clear bit0). */
   uint32_t sp = 0U;
   uint32_t pc = 0U;
-  (void)uc_mem_read(uc, k_regions[1].base + 0U, &sp, 4); /* MRAM[0]                 */
-  (void)uc_mem_read(uc, k_regions[1].base + 4U, &pc, 4); /* MRAM[4] (Thumb: bit0=1) */
+  (void)uc_mem_read(uc, sim_memmap_mram_base() + 0U, &sp, 4); /* MRAM[0]                 */
+  (void)uc_mem_read(uc, sim_memmap_mram_base() + 4U, &pc, 4); /* MRAM[4] (Thumb: bit0=1) */
   /* M-profile is always Thumb (EPSR.T must be 1). Keep the reset vector's bit0
    * and set the xPSR Thumb bit so Unicorn enters Thumb, not ARM, decoding. */
   pc |= 1U;
@@ -4135,7 +3537,7 @@ int main(int argc, char** argv)
 
   /* MRAM holds the vector table; the run loop passes this as the VTOR fallback
    * to exc_take_pending (the live VTOR, set by SystemInit, is read inside). */
-  const uint32_t vtor_base = (uint32_t)k_regions[1].base;
+  const uint32_t vtor_base = (uint32_t)sim_memmap_mram_base();
 
   sim_insn_seams_install(uc);
   uc_hook h_unmapped;
@@ -4311,7 +3713,7 @@ int main(int argc, char** argv)
    * buffer is kept alive for the whole run (freed after the run loop) because a
    * warm reboot re-loads its PT_LOAD segments from it; cpu1_engine_init also
    * reads cpu1's image from it. */
-  s_cpu1_uc = cpu1_engine_init(elf, elf_len);
+  sim_cpu1_init(elf, elf_len);
 
   /* The board view is the panel framebuffer (panel_w x panel_h, left) plus a
    * status sidebar (LEDs / USB / UART / IRQ / touch); the composite buffer is
@@ -4797,23 +4199,7 @@ int main(int argc, char** argv)
      * its pong reply is visible back to cpu0 -- a real second core, not a model.
      * cpu1 is a tight poll loop (no interrupts), so a plain stepped run suffices;
      * a cpu1 fault just stops cpu1 (cpu0 keeps running). */
-    if (s_cpu1_uc != nullptr) {
-      if (s_cpu1_release_req && !s_cpu1_active) {
-        s_cpu1_release_req     = false;
-        const uint32_t cpu1_sp = rd32(s_cpu1_uc, (uint64_t)s_cpu1_initvtor);
-        s_cpu1_pc              = rd32(s_cpu1_uc, (uint64_t)s_cpu1_initvtor + 4U);
-        (void)uc_reg_write(s_cpu1_uc, UC_ARM_REG_SP, &cpu1_sp);
-        s_cpu1_active = true;
-      }
-      if (s_cpu1_active) {
-        const uc_err e1 =
-          uc_emu_start(s_cpu1_uc, (uint64_t)s_cpu1_pc | 1U, 0, 0, (size_t)k_cpu1_chunk_insns);
-        (void)uc_reg_read(s_cpu1_uc, UC_ARM_REG_PC, &s_cpu1_pc);
-        if (e1 != UC_ERR_OK) {
-          s_cpu1_active = false; /* cpu1 hit a fault -- halt it, cpu0 continues */
-        }
-      }
-    }
+    sim_cpu1_step();
     /* --record: dump the composite (panel + status) every k_record_every chunks
      * as a numbered PPM, so the run becomes a frame sequence (assemble to a video
      * with ffmpeg, e.g. `ffmpeg -framerate 20 -i frame_%06d.ppm out.mp4`). */
@@ -4956,7 +4342,7 @@ int main(int argc, char** argv)
        * span its full window). All tracked counters are monotonic, so an
        * unchanged sum means no MMIO / IRQ / context switch happened this chunk. */
       if ((idle_stop_chunks > 0U) && (record_dir == nullptr)) {
-        const uint64_t idle_sig = (uint64_t)s_mmio_reads + (uint64_t)s_mmio_writes +
+        const uint64_t idle_sig = (uint64_t)sim_mmio_reads() + (uint64_t)sim_mmio_writes() +
                                   (uint64_t)s_pendsv_takes + (uint64_t)s_svc_takes +
                                   (uint64_t)board_periph_irq_total();
         if (idle_sig == idle_sig_prev) {
@@ -5087,11 +4473,7 @@ int main(int argc, char** argv)
    * SCI byte totals. */
   board_periph_report(uc);
   board_net_report();
-  (void)fprintf(stderr,
-                "  MMIO reads    : %u   writes: %u   distinct addrs: %u\n",
-                s_mmio_reads,
-                s_mmio_writes,
-                s_mmio_n);
+  sim_mmio_print_counts();
   /* Device summary: surface the attached microSD card so a headless run shows
    * its size / format the same way the --view sidebar does. */
   {
@@ -5117,38 +4499,7 @@ int main(int argc, char** argv)
       (void)fprintf(stderr, "  SD card       : %lu %s image attached\n", sd_sz, sd_u);
     }
   }
-  /* GLCDC colour-cycle witness: BG_BGC write count + the distinct colours. */
-  (void)fprintf(stderr,
-                "  BG_BGC writes : %u   distinct colours: %u   [",
-                s_bgc_writes,
-                s_bgc_distinct_n);
-  for (uint32_t i = 0U; i < s_bgc_distinct_n; i++) {
-    (void)fprintf(stderr, "%s0x%06X", (i == 0U) ? "" : " ", s_bgc_distinct[i]);
-  }
-  (void)fprintf(stderr, "]\n");
-  (void)fprintf(stderr, "    %-12s %10s %10s %12s\n", "addr", "reads", "writes", "last-write");
-  const bool     truncated = (s_mmio_n > (uint32_t)k_mmio_print_max);
-  const uint32_t shown     = truncated ? (uint32_t)k_mmio_print_max : s_mmio_n;
-  for (uint32_t i = 0U; i < shown; i++) {
-    if (s_mmio_written[i]) {
-      (void)fprintf(stderr,
-                    "    0x%08llX %10u %10u   0x%08X\n",
-                    (unsigned long long)s_mmio_addr[i],
-                    s_mmio_rcount[i],
-                    s_mmio_wcount[i],
-                    s_mmio_val[i]);
-    } else {
-      (void)fprintf(stderr,
-                    "    0x%08llX %10u %10u %12s\n",
-                    (unsigned long long)s_mmio_addr[i],
-                    s_mmio_rcount[i],
-                    s_mmio_wcount[i],
-                    "-");
-    }
-  }
-  if (truncated) {
-    (void)fprintf(stderr, "    ... (%u more)\n", s_mmio_n - shown);
-  }
+  sim_mmio_print_bgc_and_table();
   if (timed_out && !idle_stopped && !usb_stopped && !stop_sym_hit && !prof_stopped && !s_bkpt_hit) {
     /* The wall-clock guard fired (clock() is CPU-time, so a heavily-loaded host
      * burns the budget faster). This is a TRUNCATED run, NOT a completed one --
