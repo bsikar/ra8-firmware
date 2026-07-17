@@ -345,15 +345,9 @@ static bool emulate_lob(uc_engine* uc, uint32_t pc, const uint8_t code[4])
   return false;
 }
 
-/** @brief Disassemble + report an instruction the core could not decode. */
-bool on_invalid_insn(uc_engine* uc, void* user)
+/** @brief Try each Armv8.1-M / security seam in turn; true (and stop) if handled. */
+static bool dispatch_insn_seam(uc_engine* uc, uint32_t pc, const uint8_t code[4])
 {
-  (void)user;
-  uint32_t pc = 0U;
-  (void)uc_reg_read(uc, UC_ARM_REG_PC, &pc);
-  uint8_t code[4] = {};
-  (void)uc_mem_read(uc, pc, code, sizeof(code));
-
   /* Divide-by-zero trap: a UDIV/SDIV overwritten with UDF once the firmware set
    * CCR.DIV_0_TRP. emulate_div0_patched either latches a UsageFault (zero divisor)
    * or emulates the divide and advances PC; either way stop + relaunch. Checked
@@ -403,7 +397,12 @@ bool on_invalid_insn(uc_engine* uc, void* user)
     (void)uc_emu_stop(uc);
     return true; /* handled -- run loop resumes at the loop top or past the loop */
   }
+  return false;
+}
 
+/** @brief Report + capstone-disassemble an instruction no seam could decode. */
+static void report_unhandled_insn(uint32_t pc, const uint8_t code[4])
+{
   (void)fprintf(stderr,
                 "  INVALID INSN @ 0x%08X: bytes %02X %02X %02X %02X\n",
                 pc,
@@ -424,6 +423,22 @@ bool on_invalid_insn(uc_engine* uc, void* user)
     }
     cs_close(&cs);
   }
+}
+
+/** @brief Disassemble + report an instruction the core could not decode. */
+bool on_invalid_insn(uc_engine* uc, void* user)
+{
+  (void)user;
+  uint32_t pc = 0U;
+  (void)uc_reg_read(uc, UC_ARM_REG_PC, &pc);
+  uint8_t code[4] = {};
+  (void)uc_mem_read(uc, pc, code, sizeof(code));
+
+  if (dispatch_insn_seam(uc, pc, code)) {
+    return true; /* handled -- run loop resumes at the advanced PC */
+  }
+
+  report_unhandled_insn(pc, code);
   return false; /* not handled -> stop emulation with UC_ERR_INSN_INVALID */
 }
 

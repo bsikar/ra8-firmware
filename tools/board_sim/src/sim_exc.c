@@ -140,6 +140,49 @@ static uint32_t exc_priority(uc_engine* uc, uint32_t exc_num)
  *       stacked above the basic frame and EXC_RETURN bit4 (FType) is cleared.
  * @since 0.1.0
  */
+/** @brief Stack the basic {R0-R3,R12,LR,PC,xPSR} frame + optional FP frame at @p sp. */
+static void exc_stack_frame(uc_engine* uc, uint32_t sp, bool fp_active, uint32_t frame_xpsr)
+{
+  wr32(uc, (uint64_t)sp + 0U, reg_get(uc, UC_ARM_REG_R0));
+  wr32(uc, (uint64_t)sp + 4U, reg_get(uc, UC_ARM_REG_R1));
+  wr32(uc, (uint64_t)sp + 8U, reg_get(uc, UC_ARM_REG_R2));
+  wr32(uc, (uint64_t)sp + (uint64_t)k_frame_off_r3, reg_get(uc, UC_ARM_REG_R3));
+  wr32(uc, (uint64_t)sp + 16U, reg_get(uc, UC_ARM_REG_R12));
+  wr32(uc, (uint64_t)sp + (uint64_t)k_frame_off_lr, reg_get(uc, UC_ARM_REG_LR));
+  wr32(uc, (uint64_t)sp + (uint64_t)k_frame_off_pc, reg_get(uc, UC_ARM_REG_PC));
+  wr32(uc, (uint64_t)sp + (uint64_t)k_frame_off_xpsr, frame_xpsr);
+
+  /* Armv8-M FP extended frame: S0-S15 + FPSCR sit directly above the 8-word
+   * basic frame (ThreadX's PendSV adds S16-S31 on top of this). */
+  if (fp_active) {
+    for (uint32_t i = 0U; i < (uint32_t)k_fp_s_words; i++) {
+      wr32(uc,
+           (uint64_t)sp + (uint64_t)k_frame_off_s0 + (uint64_t)(i * (uint32_t)k_word_bytes),
+           reg_get(uc, UC_ARM_REG_S0 + (int)i));
+    }
+    wr32(uc, (uint64_t)sp + (uint64_t)k_frame_off_fpscr, reg_get(uc, UC_ARM_REG_FPSCR));
+  }
+}
+
+/** @brief Select the EXC_RETURN magic for the outgoing mode/stack/FP state. */
+static uint32_t exc_return_value(bool in_thread, bool use_psp, bool fp_active)
+{
+  /* EXC_RETURN encodes where to unstack: Thread/PSP, Thread/MSP, or (when an
+   * exception pre-empts another) Handler/MSP. */
+  uint32_t exc_ret;
+  if (!in_thread) {
+    exc_ret = (uint32_t)k_exc_ret_handler;
+  } else if (use_psp) {
+    exc_ret = (uint32_t)k_exc_ret_psp;
+  } else {
+    exc_ret = (uint32_t)k_exc_ret_msp;
+  }
+  if (fp_active) {
+    exc_ret &= ~(uint32_t)k_exc_ret_ftype; /* FType=0: an FP frame was stacked. */
+  }
+  return exc_ret;
+}
+
 void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler)
 {
   const uint32_t xpsr_in   = reg_get(uc, UC_ARM_REG_XPSR);
@@ -165,42 +208,12 @@ void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler)
     sp -= (uint32_t)k_fp_frame_extra;
   }
 
-  wr32(uc, (uint64_t)sp + 0U, reg_get(uc, UC_ARM_REG_R0));
-  wr32(uc, (uint64_t)sp + 4U, reg_get(uc, UC_ARM_REG_R1));
-  wr32(uc, (uint64_t)sp + 8U, reg_get(uc, UC_ARM_REG_R2));
-  wr32(uc, (uint64_t)sp + (uint64_t)k_frame_off_r3, reg_get(uc, UC_ARM_REG_R3));
-  wr32(uc, (uint64_t)sp + 16U, reg_get(uc, UC_ARM_REG_R12));
-  wr32(uc, (uint64_t)sp + (uint64_t)k_frame_off_lr, reg_get(uc, UC_ARM_REG_LR));
-  wr32(uc, (uint64_t)sp + (uint64_t)k_frame_off_pc, reg_get(uc, UC_ARM_REG_PC));
-  wr32(uc, (uint64_t)sp + (uint64_t)k_frame_off_xpsr, frame_xpsr);
-
-  /* Armv8-M FP extended frame: S0-S15 + FPSCR sit directly above the 8-word
-   * basic frame (ThreadX's PendSV adds S16-S31 on top of this). */
-  if (fp_active) {
-    for (uint32_t i = 0U; i < (uint32_t)k_fp_s_words; i++) {
-      wr32(uc,
-           (uint64_t)sp + (uint64_t)k_frame_off_s0 + (uint64_t)(i * (uint32_t)k_word_bytes),
-           reg_get(uc, UC_ARM_REG_S0 + (int)i));
-    }
-    wr32(uc, (uint64_t)sp + (uint64_t)k_frame_off_fpscr, reg_get(uc, UC_ARM_REG_FPSCR));
-  }
+  exc_stack_frame(uc, sp, fp_active, frame_xpsr);
 
   /* Commit the new value of whichever stack the frame went onto. */
   reg_set(uc, sp_reg, sp);
 
-  /* EXC_RETURN encodes where to unstack: Thread/PSP, Thread/MSP, or (when an
-   * exception pre-empts another) Handler/MSP. */
-  uint32_t exc_ret;
-  if (!in_thread) {
-    exc_ret = (uint32_t)k_exc_ret_handler;
-  } else if (use_psp) {
-    exc_ret = (uint32_t)k_exc_ret_psp;
-  } else {
-    exc_ret = (uint32_t)k_exc_ret_msp;
-  }
-  if (fp_active) {
-    exc_ret &= ~(uint32_t)k_exc_ret_ftype; /* FType=0: an FP frame was stacked. */
-  }
+  const uint32_t exc_ret = exc_return_value(in_thread, use_psp, fp_active);
 
   /* Handler mode always runs on MSP with CONTROL.SPSEL clear. */
   reg_set(uc, UC_ARM_REG_CONTROL, control & ~(uint32_t)k_control_spsel);
@@ -243,6 +256,41 @@ void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler)
  *       unstacked too, matching ::exc_enter.
  * @since 0.1.0
  */
+/** @brief Restore the Armv8-M FP extended frame (S0-S15 + FPSCR) from @p sp. */
+static void exc_restore_fp_frame(uc_engine* uc, uint32_t sp)
+{
+  /* Armv8-M FP extended frame (EXC_RETURN bit4 clear): S0-S15 + FPSCR sit above
+   * the basic frame. Restore them so the thread's scalar FP state survives.
+   * PC/xPSR keep their basic-frame offsets (accounted for by the caller). */
+  for (uint32_t i = 0U; i < (uint32_t)k_fp_s_words; i++) {
+    reg_set(
+      uc,
+      UC_ARM_REG_S0 + (int)i,
+      rd32(uc, (uint64_t)sp + (uint64_t)k_frame_off_s0 + (uint64_t)(i * (uint32_t)k_word_bytes)));
+  }
+  reg_set(uc, UC_ARM_REG_FPSCR, rd32(uc, (uint64_t)sp + (uint64_t)k_frame_off_fpscr));
+}
+
+/** @brief Restore CONTROL.SPSEL + xPSR/IPSR for the returned-to context. */
+static void exc_restore_mode(uc_engine* uc, uint32_t xpsr, bool to_thread, bool to_psp)
+{
+  /* Restore mode: on return to Thread, CONTROL.SPSEL follows EXC_RETURN bit2;
+   * on return to a pre-empted handler the core stays on MSP. */
+  uint32_t control = reg_get(uc, UC_ARM_REG_CONTROL);
+  if (to_thread && to_psp) {
+    control |= (uint32_t)k_control_spsel;
+  } else {
+    control &= ~(uint32_t)k_control_spsel;
+  }
+  reg_set(uc, UC_ARM_REG_CONTROL, control);
+
+  uint32_t new_xpsr = xpsr | (uint32_t)k_xpsr_t_bit;
+  if (to_thread) {
+    new_xpsr &= ~(uint32_t)k_xpsr_ipsr_mask; /* Thread mode: IPSR == 0 */
+  }
+  reg_set(uc, UC_ARM_REG_XPSR, new_xpsr);
+}
+
 void exc_return(uc_engine* uc, uint32_t exc_ret)
 {
   const bool to_psp    = (exc_ret & (uint32_t)k_exc_ret_spsel) != 0U;
@@ -260,17 +308,8 @@ void exc_return(uc_engine* uc, uint32_t exc_ret)
   const uint32_t pc   = rd32(uc, (uint64_t)sp + (uint64_t)k_frame_off_pc);
   const uint32_t xpsr = rd32(uc, (uint64_t)sp + (uint64_t)k_frame_off_xpsr);
 
-  /* Armv8-M FP extended frame (EXC_RETURN bit4 clear): S0-S15 + FPSCR sit above
-   * the basic frame. Restore them so the thread's scalar FP state survives, then
-   * account for those words when popping. PC/xPSR keep their basic-frame offsets. */
   if (fp_frame) {
-    for (uint32_t i = 0U; i < (uint32_t)k_fp_s_words; i++) {
-      reg_set(
-        uc,
-        UC_ARM_REG_S0 + (int)i,
-        rd32(uc, (uint64_t)sp + (uint64_t)k_frame_off_s0 + (uint64_t)(i * (uint32_t)k_word_bytes)));
-    }
-    reg_set(uc, UC_ARM_REG_FPSCR, rd32(uc, (uint64_t)sp + (uint64_t)k_frame_off_fpscr));
+    exc_restore_fp_frame(uc, sp);
   }
 
   sp += (uint32_t)k_exc_frame_bytes;
@@ -289,21 +328,7 @@ void exc_return(uc_engine* uc, uint32_t exc_ret)
   reg_set(uc, UC_ARM_REG_R12, r12);
   reg_set(uc, UC_ARM_REG_LR, lr);
 
-  /* Restore mode: on return to Thread, CONTROL.SPSEL follows EXC_RETURN bit2;
-   * on return to a pre-empted handler the core stays on MSP. */
-  uint32_t control = reg_get(uc, UC_ARM_REG_CONTROL);
-  if (to_thread && to_psp) {
-    control |= (uint32_t)k_control_spsel;
-  } else {
-    control &= ~(uint32_t)k_control_spsel;
-  }
-  reg_set(uc, UC_ARM_REG_CONTROL, control);
-
-  uint32_t new_xpsr = xpsr | (uint32_t)k_xpsr_t_bit;
-  if (to_thread) {
-    new_xpsr &= ~(uint32_t)k_xpsr_ipsr_mask; /* Thread mode: IPSR == 0 */
-  }
-  reg_set(uc, UC_ARM_REG_XPSR, new_xpsr);
+  exc_restore_mode(uc, xpsr, to_thread, to_psp);
 
   /* Active SP becomes whichever stack the returned-to context uses. */
   reg_set(uc, UC_ARM_REG_SP, reg_get(uc, to_psp && to_thread ? UC_ARM_REG_PSP : UC_ARM_REG_MSP));
@@ -644,6 +669,82 @@ on_unmapped(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t va
  *       ignored so unrelated traps fall through.
  * @since 0.1.0
  */
+/**
+ * @brief Model the Armv8-M Security-Extension opcodes Unicorn's M33 lacks.
+ *
+ * @details
+ * board_sim is a single flat (no Secure/Non-Secure split) address space, so
+ * these reduce to their plain effects here:
+ *   - `SG` (secure gateway, 32-bit): a NOP -- the following B.W reaches the
+ *     __acle_se_ entry directly.
+ *   - `VSTR FPCXTNS,[sp,#-4]!` / `VLDR FPCXTNS,[sp],#4`: the FP context across
+ *     the security boundary is meaningless with one FP bank, so model only the
+ *     stack push/pop they perform (keeping SP balanced for the C frame).
+ * Without this the unrecognised opcode is mis-taken as an `svc`, vectors to
+ * Default_Handler's bkpt, and re-traps forever until the stack underflows (the
+ * tz_nsc_cgc_usb fault). On a match PC (and SP) are advanced and emulation is
+ * stopped so the run loop relaunches from the next instruction.
+ *
+ * @param[in,out] uc   Unicorn engine.
+ * @param[in]     pc   PC of the trapping instruction.
+ * @param[in]     insn The 32-bit opcode word read at @p pc.
+ * @return true if @p insn was an SG / FPCXTNS opcode and was handled.
+ */
+static bool on_intr_sec_insn(uc_engine* uc, uint32_t pc, uint32_t insn)
+{
+  if (insn == (uint32_t)k_armv8m_sg_opcode) {
+    const uint32_t next = pc + (uint32_t)k_thumb2_insn_bytes;
+    (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
+    (void)uc_emu_stop(uc);
+    return true;
+  }
+  if ((insn == (uint32_t)k_fpcxtns_push) || (insn == (uint32_t)k_fpcxtns_pop)) {
+    uint32_t sp = 0U;
+    (void)uc_reg_read(uc, UC_ARM_REG_SP, &sp);
+    if (insn == (uint32_t)k_fpcxtns_push) {
+      sp -= (uint32_t)k_word_bytes;
+      const uint32_t zero = 0U;
+      (void)uc_mem_write(uc, (uint64_t)sp, &zero, sizeof(zero));
+    } else {
+      sp += (uint32_t)k_word_bytes;
+    }
+    const uint32_t next = pc + (uint32_t)k_thumb2_insn_bytes;
+    (void)uc_reg_write(uc, UC_ARM_REG_SP, &sp);
+    (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
+    (void)uc_emu_stop(uc);
+    return true;
+  }
+  return false;
+}
+
+/**
+ * @brief Model a firmware `BKPT` as a halt (record the site and stop).
+ *
+ * @details A `BKPT` (0xBExx) is a deliberate firmware trap -- Default_Handler's
+ * `bkpt #0`, a failed assert, or a fault give-up. It is NOT an `svc`: taking
+ * SVCall here would stack a frame, vector to the (often Default_Handler) SVC
+ * slot, return to the same bkpt, and re-trap forever -- the stack grows until
+ * it underflows (the historical tz_nsc_cgc_usb storm). Model it as a halt:
+ * record the site and stop so the run loop ends and the report shows where the
+ * firmware trapped.
+ *
+ * @param[in,out] uc   Unicorn engine.
+ * @param[in]     pc   PC of the trapping instruction.
+ * @param[in]     insn The 32-bit opcode word read at @p pc.
+ * @return true if @p insn was a BKPT and the core was halted.
+ */
+static bool on_intr_bkpt(uc_engine* uc, uint32_t pc, uint32_t insn)
+{
+  if (((uint16_t)(insn & (uint32_t)k_lo16_mask) & (uint16_t)k_bkpt_hw_mask) ==
+      (uint16_t)k_bkpt_hw_base) {
+    s_bkpt_hit = true;
+    s_bkpt_pc  = pc;
+    (void)uc_emu_stop(uc);
+    return true;
+  }
+  return false;
+}
+
 static void on_intr(uc_engine* uc, uint32_t int_no, void* user_data)
 {
   (void)int_no;
@@ -675,52 +776,12 @@ static void on_intr(uc_engine* uc, uint32_t int_no, void* user_data)
   uint32_t insn = 0U;
   (void)uc_mem_read(uc, (uint64_t)pc, &insn, sizeof(insn));
 
-  /* Armv8-M Security Extension instructions Unicorn's M33 does not implement.
-   * board_sim is a single flat (no Secure/Non-Secure split) address space, so
-   * these reduce to their plain effects here:
-   *   - `SG` (secure gateway, 32-bit): a NOP -- the following B.W reaches the
-   *     __acle_se_ entry directly.
-   *   - `VSTR FPCXTNS,[sp,#-4]!` / `VLDR FPCXTNS,[sp],#4`: the FP context across
-   *     the security boundary is meaningless with one FP bank, so model only the
-   *     stack push/pop they perform (keeping SP balanced for the C frame).
-   * Without this the unrecognised opcode is mis-taken as an `svc`, vectors to
-   * Default_Handler's bkpt, and re-traps forever until the stack underflows
-   * (the tz_nsc_cgc_usb fault). */
-  if (insn == (uint32_t)k_armv8m_sg_opcode) {
-    const uint32_t next = pc + (uint32_t)k_thumb2_insn_bytes;
-    (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
-    (void)uc_emu_stop(uc);
+  /* Armv8-M Security Extension instructions (SG / FPCXTNS) reduce to their plain
+   * effects in this single-domain model; a BKPT is a deliberate firmware halt. */
+  if (on_intr_sec_insn(uc, pc, insn)) {
     return;
   }
-  if ((insn == (uint32_t)k_fpcxtns_push) || (insn == (uint32_t)k_fpcxtns_pop)) {
-    uint32_t sp = 0U;
-    (void)uc_reg_read(uc, UC_ARM_REG_SP, &sp);
-    if (insn == (uint32_t)k_fpcxtns_push) {
-      sp -= (uint32_t)k_word_bytes;
-      const uint32_t zero = 0U;
-      (void)uc_mem_write(uc, (uint64_t)sp, &zero, sizeof(zero));
-    } else {
-      sp += (uint32_t)k_word_bytes;
-    }
-    const uint32_t next = pc + (uint32_t)k_thumb2_insn_bytes;
-    (void)uc_reg_write(uc, UC_ARM_REG_SP, &sp);
-    (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
-    (void)uc_emu_stop(uc);
-    return;
-  }
-
-  /* A `BKPT` (0xBExx) is a deliberate firmware trap -- Default_Handler's
-   * `bkpt #0`, a failed assert, or a fault give-up. It is NOT an `svc`: taking
-   * SVCall here would stack a frame, vector to the (often Default_Handler) SVC
-   * slot, return to the same bkpt, and re-trap forever -- the stack grows until
-   * it underflows (the historical tz_nsc_cgc_usb storm). Model it as a halt:
-   * record the site and stop so the run loop ends and the report shows where the
-   * firmware trapped. */
-  if (((uint16_t)(insn & (uint32_t)k_lo16_mask) & (uint16_t)k_bkpt_hw_mask) ==
-      (uint16_t)k_bkpt_hw_base) {
-    s_bkpt_hit = true;
-    s_bkpt_pc  = pc;
-    (void)uc_emu_stop(uc);
+  if (on_intr_bkpt(uc, pc, insn)) {
     return;
   }
 
