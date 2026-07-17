@@ -1,6 +1,6 @@
 /**
- * @file ra8_webtoon.h
- * @brief Continuous vertical-scroll (webtoon / manhwa) reading mode over an
+ * @file ra8_longstrip.h
+ * @brief Continuous vertical-scroll (longstrip / manhwa) reading mode over an
  *        RTA1 band-tile atlas (#289).
  * @ingroup grp_ereader
  *
@@ -14,7 +14,7 @@
  * scrolling, with no page boundaries. On RA8D2/RA8P1 there is no hardware
  * JPEG decoder and a single slice can decode to tens of megabytes, so the
  * strip is normalised at import into the shared **RTA1 band-tile atlas**
- * (`ra8_tileatlas.h`): a webtoon band is simply an RTA1 tile the full image
+ * (`ra8_tileatlas.h`): a longstrip band is simply an RTA1 tile the full image
  * width (`tile_w == width`, one tile column), so the RTA1 tile index **is**
  * the band index -- byte offset + exact height per band -- giving O(1) random
  * access to any scroll position with a single bounded read + decode. No
@@ -43,11 +43,11 @@
  * ## Zero post-init allocation (NASA P10 Rule 3)
  * The engine allocates nothing. Band pixels live in the caller's tile-cache
  * cells (SDRAM); the atlas bytes live behind the caller's `pread` seam; the
- * engine state is one caller-owned ::ra8_webtoon_t. The tile cache bounds the
+ * engine state is one caller-owned ::ra8_longstrip_t. The tile cache bounds the
  * resident decoded-pixel set.
  *
  * ## Untrusted content (fail-closed)
- * The atlas arrives from untrusted EPUB/CBZ content. `ra8_webtoon_open()`
+ * The atlas arrives from untrusted EPUB/CBZ content. `ra8_longstrip_open()`
  * validates the geometry through `ra8_tileatlas_parse()` and additionally
  * rejects any atlas that is not a single full-width band column, so the O(1)
  * band math can never index outside the grid.
@@ -73,25 +73,25 @@ extern "C" {
 #include "ra8_tileatlas.h"
 
 /**
- * @enum ra8_webtoon_limits_t
+ * @enum ra8_longstrip_limits_t
  * @brief Fixed engine bounds (NASA P10 Rule 2: every loop provably bounded).
  *
- * @details `k_ra8_webtoon_max_visible_bands` caps the visible-band loop: a
+ * @details `k_ra8_longstrip_max_visible_bands` caps the visible-band loop: a
  *          viewport can straddle at most `ceil(viewport_h / 1) + 1` bands in
- *          the degenerate `band_h == 1` case, but a webtoon band is hundreds
+ *          the degenerate `band_h == 1` case, but a longstrip band is hundreds
  *          of pixels tall, so this is a comfortable ceiling that also bounds
  *          the render loop independent of the untrusted band height.
- *          `k_ra8_webtoon_max_prefetch` caps the prefetch depth per call.
+ *          `k_ra8_longstrip_max_prefetch` caps the prefetch depth per call.
  *
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_ra8_webtoon_max_visible_bands = 4096U, /**< Visible + render loop bound. */
-  k_ra8_webtoon_max_prefetch      = 8U,    /**< Max prefetch depth per call. */
-} ra8_webtoon_limits_t;
+  k_ra8_longstrip_max_visible_bands = 4096U, /**< Visible + render loop bound. */
+  k_ra8_longstrip_max_prefetch      = 8U,    /**< Max prefetch depth per call. */
+} ra8_longstrip_limits_t;
 
 /**
- * @typedef ra8_webtoon_blit_fn
+ * @typedef ra8_longstrip_blit_fn
  * @brief Composite one decoded band sub-window onto the display (DIP seam).
  *
  * @details The engine computes each visible band's destination top-left
@@ -111,19 +111,19 @@ typedef enum : uint16_t {
  * @return k_ra8_ok on success; any error aborts the render with that code.
  * @since 0.1.0
  */
-typedef ra8_err_t (*ra8_webtoon_blit_fn)(void*          ctx,
-                                         const uint8_t* pixels,
-                                         uint16_t       src_w,
-                                         uint16_t       src_h,
-                                         uint8_t        bpp,
-                                         int32_t        dst_x,
-                                         int32_t        dst_y);
+typedef ra8_err_t (*ra8_longstrip_blit_fn)(void*          ctx,
+                                           const uint8_t* pixels,
+                                           uint16_t       src_w,
+                                           uint16_t       src_h,
+                                           uint8_t        bpp,
+                                           int32_t        dst_x,
+                                           int32_t        dst_y);
 
 /**
- * @struct ra8_webtoon_decode_ctx_t
+ * @struct ra8_longstrip_decode_ctx_t
  * @brief Context binding an RTA1 atlas to a ::ra8_tile_cache decode-on-miss.
  *
- * @details Bind ::ra8_webtoon_tile_decode as the tile cache's `decode` and a
+ * @details Bind ::ra8_longstrip_tile_decode as the tile cache's `decode` and a
  *          pointer to this struct as its `decode_ctx`. The cache then pages any
  *          band in with one bounded RTA1 tile read. `scratch` is the deflate
  *          staging buffer required only for `k_ra8_tileatlas_codec_deflate`
@@ -131,7 +131,7 @@ typedef ra8_err_t (*ra8_webtoon_blit_fn)(void*          ctx,
  *          payload); a raw-codec atlas may leave it NULL / zero.
  *
  * @invariant `pread` serves the same atlas `info` was parsed from.
- * @see ra8_webtoon_tile_decode()
+ * @see ra8_longstrip_tile_decode()
  * @since 0.1.0
  */
 typedef struct {
@@ -140,21 +140,21 @@ typedef struct {
   ra8_tileatlas_info_t   info;        /**< Parsed atlas geometry.          */
   uint8_t*               scratch;     /**< Deflate staging (codec 1 only). */
   uint32_t               scratch_cap; /**< Capacity of `scratch`.          */
-} ra8_webtoon_decode_ctx_t;
+} ra8_longstrip_decode_ctx_t;
 
 /**
- * @struct ra8_webtoon_cfg_t
- * @brief One-shot configuration handed to ::ra8_webtoon_open.
+ * @struct ra8_longstrip_cfg_t
+ * @brief One-shot configuration handed to ::ra8_longstrip_open.
  *
  * @details The atlas is reached through `pread`/`pread_ctx`/`atlas_size`
  *          (same seam ::ra8_tileatlas_parse uses). `cache` is a tile cache the
- *          caller has already initialised with ::ra8_webtoon_tile_decode over
+ *          caller has already initialised with ::ra8_longstrip_tile_decode over
  *          the SAME atlas; `image_id` is the cache key namespace for this
  *          strip. The viewport is the on-screen window in pixels; `blit`
  *          composites bands into it.
  *
  * @invariant `viewport_w` and `viewport_h` are non-zero.
- * @see ra8_webtoon_open()
+ * @see ra8_longstrip_open()
  * @since 0.1.0
  */
 typedef struct {
@@ -165,15 +165,15 @@ typedef struct {
   uint32_t               image_id;   /**< Tile-cache key namespace for strip. */
   uint16_t               viewport_w; /**< On-screen viewport width, pixels.   */
   uint16_t               viewport_h; /**< On-screen viewport height, pixels.  */
-  ra8_webtoon_blit_fn    blit;       /**< Band composite sink.                */
+  ra8_longstrip_blit_fn  blit;       /**< Band composite sink.                */
   void*                  blit_ctx;   /**< Context for `blit`.                 */
-} ra8_webtoon_cfg_t;
+} ra8_longstrip_cfg_t;
 
 /**
- * @struct ra8_webtoon_t
- * @brief Opened webtoon-strip scroll state (caller-owned; treat as private).
+ * @struct ra8_longstrip_t
+ * @brief Opened longstrip-strip scroll state (caller-owned; treat as private).
  *
- * @details Filled by ::ra8_webtoon_open; the geometry fields are read-only
+ * @details Filled by ::ra8_longstrip_open; the geometry fields are read-only
  *          afterwards while `scroll_y`/`velocity` evolve through the scroll
  *          API. `max_scroll == max(0, canvas_h - viewport_h)` is the clamp
  *          ceiling.
@@ -183,25 +183,25 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  ra8_tileatlas_info_t info;       /**< Parsed atlas geometry.                 */
-  uint32_t             canvas_w;   /**< Strip width, pixels (== info.width).   */
-  uint32_t             canvas_h;   /**< Strip height, pixels (== info.height). */
-  uint16_t             band_h;     /**< Band height, pixels (== info.tile_h).  */
-  uint16_t             band_count; /**< Bands (== info.tile_rows).             */
-  uint16_t             viewport_w; /**< Viewport width, pixels.                */
-  uint16_t             viewport_h; /**< Viewport height, pixels.               */
-  int32_t              scroll_y;   /**< Viewport top on the canvas, clamped.   */
-  int32_t              max_scroll; /**< Clamp ceiling (>= 0).                  */
-  int32_t              velocity;   /**< Fling velocity, px/tick (signed).      */
-  ra8_tile_cache_t*    cache;      /**< Band cache.                            */
-  uint32_t             image_id;   /**< Tile-cache key namespace.              */
-  ra8_webtoon_blit_fn  blit;       /**< Band composite sink.                   */
-  void*                blit_ctx;   /**< Context for `blit`.                    */
-} ra8_webtoon_t;
+  ra8_tileatlas_info_t  info;       /**< Parsed atlas geometry.                 */
+  uint32_t              canvas_w;   /**< Strip width, pixels (== info.width).   */
+  uint32_t              canvas_h;   /**< Strip height, pixels (== info.height). */
+  uint16_t              band_h;     /**< Band height, pixels (== info.tile_h).  */
+  uint16_t              band_count; /**< Bands (== info.tile_rows).             */
+  uint16_t              viewport_w; /**< Viewport width, pixels.                */
+  uint16_t              viewport_h; /**< Viewport height, pixels.               */
+  int32_t               scroll_y;   /**< Viewport top on the canvas, clamped.   */
+  int32_t               max_scroll; /**< Clamp ceiling (>= 0).                  */
+  int32_t               velocity;   /**< Fling velocity, px/tick (signed).      */
+  ra8_tile_cache_t*     cache;      /**< Band cache.                            */
+  uint32_t              image_id;   /**< Tile-cache key namespace.              */
+  ra8_longstrip_blit_fn blit;       /**< Band composite sink.                   */
+  void*                 blit_ctx;   /**< Context for `blit`.                    */
+} ra8_longstrip_t;
 
 /**
- * @struct ra8_webtoon_render_stats_t
- * @brief Per-frame render accounting returned by ::ra8_webtoon_render.
+ * @struct ra8_longstrip_render_stats_t
+ * @brief Per-frame render accounting returned by ::ra8_longstrip_render.
  *
  * @details `bands_drawn` is how many visible bands composited this frame;
  *          `skipped` is how many visible bands FAILED to composite (a cache /
@@ -216,18 +216,18 @@ typedef struct {
   uint16_t bands_drawn;  /**< Visible bands composited this frame.      */
   uint16_t skipped;      /**< Visible bands that failed to composite.   */
   uint32_t covered_rows; /**< Viewport rows covered by the drawn bands. */
-} ra8_webtoon_render_stats_t;
+} ra8_longstrip_render_stats_t;
 
 /**
  * @brief RTA1-backed ::ra8_tile_decode_fn: page one band in on a cache miss.
  *
  * @details Adapts ::ra8_tile_cache's decode-on-miss to `ra8_tileatlas_read_tile`:
  *          the tile key's `(tile_x, tile_y)` select the band (`tile_x` is
- *          always 0 for a webtoon column), and the tile is read + decoded into
+ *          always 0 for a longstrip column), and the tile is read + decoded into
  *          the cache cell in bounded RAM. Bind this as the cache's `decode`
- *          with a ::ra8_webtoon_decode_ctx_t as `decode_ctx`.
+ *          with a ::ra8_longstrip_decode_ctx_t as `decode_ctx`.
  *
- * @param[in]  ctx        A ::ra8_webtoon_decode_ctx_t*.
+ * @param[in]  ctx        A ::ra8_longstrip_decode_ctx_t*.
  * @param[in]  key        Band to decode (`tile_y` = band index).
  * @param[out] cell       Destination cell pixels.
  * @param[in]  cell_bytes Cell capacity in bytes.
@@ -245,18 +245,18 @@ typedef struct {
  * @post On success `(*out_w) * (*out_h) * info.bpp` cell bytes are valid.
  * @post On any error the cell contents are unspecified.
  * @note Not thread-safe (shares the decode context's scratch).
- * @see ra8_webtoon_open()
+ * @see ra8_longstrip_open()
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_webtoon_tile_decode(void*                 ctx,
-                                                const ra8_tile_key_t* key,
-                                                uint8_t*              cell,
-                                                uint32_t              cell_bytes,
-                                                uint16_t*             out_w,
-                                                uint16_t*             out_h);
+[[nodiscard]] ra8_err_t ra8_longstrip_tile_decode(void*                 ctx,
+                                                  const ra8_tile_key_t* key,
+                                                  uint8_t*              cell,
+                                                  uint32_t              cell_bytes,
+                                                  uint16_t*             out_w,
+                                                  uint16_t*             out_h);
 
 /**
- * @brief Open a webtoon strip over a parsed + validated RTA1 atlas.
+ * @brief Open a longstrip strip over a parsed + validated RTA1 atlas.
  *
  * @details
  * Parses the atlas through `ra8_tileatlas_parse()` and then fail-closed
@@ -276,16 +276,16 @@ typedef struct {
  * @retval k_ra8_err_not_supported     Atlas is not a full-width band column.
  * @retval other                       Propagated from `ra8_tileatlas_parse()`.
  *
- * @pre @p cfg->cache was initialised with ::ra8_webtoon_tile_decode over the
+ * @pre @p cfg->cache was initialised with ::ra8_longstrip_tile_decode over the
  *      SAME atlas @p cfg->pread serves.
  * @pre @p cfg->pread serves `[0, cfg->atlas_size)` of the atlas.
  * @post On success `*wt` satisfies the documented invariants.
  * @post On any error `*wt` must not be used.
  * @note Not thread-safe.
- * @see ra8_webtoon_render()
+ * @see ra8_longstrip_render()
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_webtoon_open(ra8_webtoon_t* wt, const ra8_webtoon_cfg_t* cfg);
+[[nodiscard]] ra8_err_t ra8_longstrip_open(ra8_longstrip_t* wt, const ra8_longstrip_cfg_t* cfg);
 
 /**
  * @brief Clamp a candidate scroll position to the strip's legal range.
@@ -297,14 +297,14 @@ typedef struct {
  * @retval 0             @p y was at/below the top, or the strip fits fully.
  * @retval wt->max_scroll @p y was at/beyond the bottom.
  *
- * @pre @p wt was opened by ::ra8_webtoon_open.
+ * @pre @p wt was opened by ::ra8_longstrip_open.
  * @pre `wt->max_scroll >= 0` (guaranteed by open).
  * @post The result is in `[0, wt->max_scroll]`.
  * @post No engine state is modified.
  * @note Thread-safe (pure over its inputs). Returns 0 on a NULL @p wt.
  * @since 0.1.0
  */
-[[nodiscard]] int32_t ra8_webtoon_clamp_scroll(const ra8_webtoon_t* wt, int32_t y);
+[[nodiscard]] int32_t ra8_longstrip_clamp_scroll(const ra8_longstrip_t* wt, int32_t y);
 
 /**
  * @brief Report the band index containing canvas row @p y.
@@ -318,7 +318,7 @@ typedef struct {
  * @retval k_ra8_err_null_ptr     @p wt or @p out_band is NULL.
  * @retval k_ra8_err_out_of_range @p y is at/beyond `canvas_h`.
  *
- * @pre @p wt was opened by ::ra8_webtoon_open.
+ * @pre @p wt was opened by ::ra8_longstrip_open.
  * @pre @p out_band is writable.
  * @post On success `*out_band < wt->band_count`.
  * @post On any error `*out_band` is unmodified.
@@ -326,7 +326,7 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t
-ra8_webtoon_band_at_y(const ra8_webtoon_t* wt, uint32_t y, uint16_t* out_band);
+ra8_longstrip_band_at_y(const ra8_longstrip_t* wt, uint32_t y, uint16_t* out_band);
 
 /**
  * @brief Compute the inclusive visible band range for a scroll position.
@@ -345,17 +345,17 @@ ra8_webtoon_band_at_y(const ra8_webtoon_t* wt, uint32_t y, uint16_t* out_band);
  * @retval k_ra8_ok           Range reported.
  * @retval k_ra8_err_null_ptr @p wt, @p out_first or @p out_last is NULL.
  *
- * @pre @p wt was opened by ::ra8_webtoon_open.
+ * @pre @p wt was opened by ::ra8_longstrip_open.
  * @pre @p out_first and @p out_last are writable.
  * @post `*out_first <= *out_last < wt->band_count`.
  * @post No engine state is modified.
  * @note Thread-safe (pure).
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_webtoon_visible_bands(const ra8_webtoon_t* wt,
-                                                  int32_t              scroll_y,
-                                                  uint16_t*            out_first,
-                                                  uint16_t*            out_last);
+[[nodiscard]] ra8_err_t ra8_longstrip_visible_bands(const ra8_longstrip_t* wt,
+                                                    int32_t                scroll_y,
+                                                    uint16_t*              out_first,
+                                                    uint16_t*              out_last);
 
 /**
  * @brief Scroll by a signed pixel delta (a finger drag), clamping at the ends.
@@ -371,14 +371,14 @@ ra8_webtoon_band_at_y(const ra8_webtoon_t* wt, uint32_t y, uint16_t* out_band);
  * @retval k_ra8_ok           Position updated.
  * @retval k_ra8_err_null_ptr @p wt is NULL.
  *
- * @pre @p wt was opened by ::ra8_webtoon_open.
+ * @pre @p wt was opened by ::ra8_longstrip_open.
  * @pre The engine invariant `0 <= scroll_y <= max_scroll` held on entry.
  * @post `0 <= wt->scroll_y <= wt->max_scroll`.
  * @post `velocity` is 0 if the new position pinned at an end.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_webtoon_scroll_by(ra8_webtoon_t* wt, int32_t delta);
+[[nodiscard]] ra8_err_t ra8_longstrip_scroll_by(ra8_longstrip_t* wt, int32_t delta);
 
 /**
  * @brief Start a momentum fling with initial velocity @p v0.
@@ -390,15 +390,15 @@ ra8_webtoon_band_at_y(const ra8_webtoon_t* wt, uint32_t y, uint16_t* out_band);
  * @retval k_ra8_ok           Fling armed.
  * @retval k_ra8_err_null_ptr @p wt is NULL.
  *
- * @pre @p wt was opened by ::ra8_webtoon_open.
+ * @pre @p wt was opened by ::ra8_longstrip_open.
  * @pre A caller ticks the engine to animate the fling.
  * @post `wt->velocity == v0`.
- * @post `wt->scroll_y` is unchanged until the first ::ra8_webtoon_tick.
+ * @post `wt->scroll_y` is unchanged until the first ::ra8_longstrip_tick.
  * @note Not thread-safe.
- * @see ra8_webtoon_tick()
+ * @see ra8_longstrip_tick()
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_webtoon_fling(ra8_webtoon_t* wt, int32_t v0);
+[[nodiscard]] ra8_err_t ra8_longstrip_fling(ra8_longstrip_t* wt, int32_t v0);
 
 /**
  * @brief Advance the fling one physics step (integer velocity + friction).
@@ -416,14 +416,14 @@ ra8_webtoon_band_at_y(const ra8_webtoon_t* wt, uint32_t y, uint16_t* out_band);
  * @retval true  The fling advanced and still has velocity to run.
  * @retval false The fling came to rest this tick, or @p wt is NULL.
  *
- * @pre @p wt was opened by ::ra8_webtoon_open.
- * @pre A prior ::ra8_webtoon_fling (or scroll) set the velocity.
+ * @pre @p wt was opened by ::ra8_longstrip_open.
+ * @pre A prior ::ra8_longstrip_fling (or scroll) set the velocity.
  * @post `0 <= wt->scroll_y <= wt->max_scroll`.
  * @post `|velocity|` did not increase.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-bool ra8_webtoon_tick(ra8_webtoon_t* wt);
+bool ra8_longstrip_tick(ra8_longstrip_t* wt);
 
 /**
  * @brief Warm the cache with bands just beyond the viewport, in scroll order.
@@ -438,7 +438,7 @@ bool ra8_webtoon_tick(ra8_webtoon_t* wt);
  *
  * @param[in,out] wt    Opened strip.
  * @param[in]     depth Bands to warm ahead (clamped to
- *                      ::k_ra8_webtoon_max_prefetch).
+ *                      ::k_ra8_longstrip_max_prefetch).
  *
  * @return ra8_err_t
  * @retval k_ra8_ok           Prefetch attempted (misses that fail to decode are
@@ -446,14 +446,14 @@ bool ra8_webtoon_tick(ra8_webtoon_t* wt);
  *                            decodes on demand).
  * @retval k_ra8_err_null_ptr @p wt is NULL.
  *
- * @pre @p wt was opened by ::ra8_webtoon_open.
+ * @pre @p wt was opened by ::ra8_longstrip_open.
  * @pre @p wt->cache has at least one unpinned cell to spare.
  * @post No engine geometry or scroll state changed.
- * @post At most `min(depth, k_ra8_webtoon_max_prefetch)` bands were touched.
+ * @post At most `min(depth, k_ra8_longstrip_max_prefetch)` bands were touched.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_webtoon_prefetch(ra8_webtoon_t* wt, uint16_t depth);
+[[nodiscard]] ra8_err_t ra8_longstrip_prefetch(ra8_longstrip_t* wt, uint16_t depth);
 
 /**
  * @brief Composite every visible band at the current scroll position.
@@ -478,7 +478,7 @@ bool ra8_webtoon_tick(ra8_webtoon_t* wt);
  * @retval other              Propagated from the blit sink or the cache release
  *                            (a genuine I/O failure aborts the frame).
  *
- * @pre @p wt was opened by ::ra8_webtoon_open.
+ * @pre @p wt was opened by ::ra8_longstrip_open.
  * @pre The blit sink clips to the framebuffer.
  * @post Each visible band was blitted at most once; all pins are released.
  * @post `stats->covered_rows == min(viewport_h, canvas_h - scroll_y)` when
@@ -486,7 +486,8 @@ bool ra8_webtoon_tick(ra8_webtoon_t* wt);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_webtoon_render(ra8_webtoon_t* wt, ra8_webtoon_render_stats_t* stats);
+[[nodiscard]] ra8_err_t ra8_longstrip_render(ra8_longstrip_t*              wt,
+                                             ra8_longstrip_render_stats_t* stats);
 
 #ifdef __cplusplus
 }

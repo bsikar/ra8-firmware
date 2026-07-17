@@ -31,7 +31,7 @@
  *
  *  - **Default (`protected_pct == 0` selects 75%).** Good general default: most
  *    of the cache protects re-referenced data and a quarter absorbs scans.
- *  - **Manga / webtoon streaming (a page-turn flood over a >SDRAM book).** The
+ *  - **Manga / longstrip streaming (a page-turn flood over a >SDRAM book).** The
  *    reader scrolls forward through thousands of never-revisited band pages (a
  *    huge one-shot scan) while a *small* hot set -- the archive central
  *    directory, the current chapter's tile index, the RTA1 atlas headers/footers

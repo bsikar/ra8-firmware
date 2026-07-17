@@ -211,7 +211,7 @@ set(RA8_XZ_THIRD_PARTY
     ${FW_ROOT}/libs/third_party/xz_embedded/xz_dec_stream.c
 )
 file(GLOB_RECURSE RA8_TILEATLAS_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_tileatlas/src/*.c)
-file(GLOB_RECURSE RA8_WEBTOON_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_webtoon/src/*.c)
+file(GLOB_RECURSE RA8_LONGSTRIP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_longstrip/src/*.c)
 # ra8_reflow has two implementations: v1 (hand-rolled, default) and v2
 # (LiteHTML-backed, RA8_REFLOW_USE_LITEHTML=ON). Only one set is compiled.
 option(RA8_REFLOW_USE_LITEHTML "Use the LiteHTML v2 ra8_reflow engine" OFF)
@@ -314,7 +314,7 @@ add_library(ra8_core_hal OBJECT
     ${RA8_COMIC_SOURCES}
     ${RA8_UNARCH_SOURCES}
     ${RA8_TILEATLAS_SOURCES}
-    ${RA8_WEBTOON_SOURCES}
+    ${RA8_LONGSTRIP_SOURCES}
     ${RA8_REFLOW_C_SOURCES}
     ${RA8_REFLOW_CPP_SOURCES}
     ${RA8_EPUB_THIRD_PARTY}
@@ -389,7 +389,7 @@ target_include_directories(ra8_core_hal PUBLIC
     ${FW_ROOT}/libs/ra8_unarch/inc
     ${FW_ROOT}/libs/ra8_tileatlas/inc
 
-    ${FW_ROOT}/libs/ra8_webtoon/inc
+    ${FW_ROOT}/libs/ra8_longstrip/inc
     ${FW_ROOT}/libs/ra8_reflow/inc
     ${FW_ROOT}/libs/ra8_webp/inc
     ${FW_ROOT}/libs/ra8_touch_cal/inc
@@ -444,7 +444,7 @@ target_include_directories(ra8_core_hal PUBLIC
     ${FW_ROOT}/libs/ra8_unarch/src
     ${FW_ROOT}/libs/ra8_tileatlas/src
 
-    ${FW_ROOT}/libs/ra8_webtoon/src
+    ${FW_ROOT}/libs/ra8_longstrip/src
     ${FW_ROOT}/libs/ra8_reflow/src
     ${FW_ROOT}/libs/ra8_tz_secure_boot/src
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
@@ -639,7 +639,7 @@ function(ra8_add_test name)
     ${FW_ROOT}/libs/ra8_unarch/inc
     ${FW_ROOT}/libs/ra8_tileatlas/inc
 
-    ${FW_ROOT}/libs/ra8_webtoon/inc
+    ${FW_ROOT}/libs/ra8_longstrip/inc
     ${FW_ROOT}/libs/ra8_reflow/inc
     ${FW_ROOT}/libs/ra8_webp/inc
     ${FW_ROOT}/libs/ra8_touch_cal/inc
@@ -685,7 +685,7 @@ function(ra8_add_test name)
     ${FW_ROOT}/libs/ra8_unarch/src
     ${FW_ROOT}/libs/ra8_tileatlas/src
 
-    ${FW_ROOT}/libs/ra8_webtoon/src
+    ${FW_ROOT}/libs/ra8_longstrip/src
     ${FW_ROOT}/libs/ra8_reflow/src
     ${FW_ROOT}/libs/ra8_tz_secure_boot/src
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
