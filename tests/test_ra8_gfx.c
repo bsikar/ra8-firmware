@@ -230,7 +230,7 @@ static void test_blit(void)
 {
   TEST_BEGIN("ra8_gfx_blit copies pixels");
   rebind_8888();
-  /* clang-format off */
+  // clang-format off: one ARGB pixel per row with its coordinate label.
   /* Tiny 2x2 ARGB source: red, green, blue, white. */
   static const uint8_t src[] = {
     /* (0,0) red    */ 0x00, 0x00, 0xFF, 0xFF,
@@ -238,7 +238,7 @@ static void test_blit(void)
     /* (0,1) blue   */ 0xFF, 0x00, 0x00, 0xFF,
     /* (1,1) white  */ 0xFF, 0xFF, 0xFF, 0xFF,
   };
-  /* clang-format on */
+  // clang-format on
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_blit(src, 2, 2, k_ra8_gfx_format_argb8888, 5, 5));
   const uint32_t off = (5u * k_test_fb_w + 5u) * 4u;
   /* (5,5) was red (B=0,G=0,R=FF). */
