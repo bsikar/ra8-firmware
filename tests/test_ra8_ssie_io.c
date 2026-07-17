@@ -594,33 +594,35 @@ static void test_recv_iso_bad_args(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_ssie_recv_iso((uint8_t)k_ra8_ssie_test_ch_bad, &out, 1U, &got));
   TEST_END("ssie recv_iso rejects null + bad channel");
-  int32_t main(void)
-  {
-    test_write_sample();
-    test_read_sample();
-    test_write_buffer();
-    test_write_buffer_stops_when_full();
-    test_read_buffer();
-    test_read_buffer_empty_fifo();
+}
 
-    test_attach_detach_dma();
-    test_attach_dma_tx_only();
-    test_attach_dma_bad_args();
+int32_t main(void)
+{
+  test_write_sample();
+  test_read_sample();
+  test_write_buffer();
+  test_write_buffer_stops_when_full();
+  test_read_buffer();
+  test_read_buffer_empty_fifo();
 
-    test_get_status_decodes_fifo_levels();
-    test_clear_status_masks_to_writeable();
-    test_set_irq_enable();
-    test_attach_and_dispatch();
-    test_power_transition();
+  test_attach_detach_dma();
+  test_attach_dma_tx_only();
+  test_attach_dma_bad_args();
 
-    test_set_fifo_threshold_happy();
-    test_set_fifo_threshold_bad_args();
-    test_attach_dma_pair_happy();
-    test_attach_dma_pair_bad_args();
-    test_send_iso_happy();
-    test_send_iso_bad_args();
-    test_recv_iso_drains_fifo();
-    test_recv_iso_bad_args();
-    (void)fprintf(stderr, "[OK  ] test_ra8_ssie_io.c\n");
-    return 0;
-  }
+  test_get_status_decodes_fifo_levels();
+  test_clear_status_masks_to_writeable();
+  test_set_irq_enable();
+  test_attach_and_dispatch();
+  test_power_transition();
+
+  test_set_fifo_threshold_happy();
+  test_set_fifo_threshold_bad_args();
+  test_attach_dma_pair_happy();
+  test_attach_dma_pair_bad_args();
+  test_send_iso_happy();
+  test_send_iso_bad_args();
+  test_recv_iso_drains_fifo();
+  test_recv_iso_bad_args();
+  (void)fprintf(stderr, "[OK  ] test_ra8_ssie_io.c\n");
+  return 0;
+}

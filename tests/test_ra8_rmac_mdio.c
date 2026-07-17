@@ -447,7 +447,7 @@ static void test_mdio_wait_timeout_legs(void)
   TEST_END("rmac mdio drain + post-wait timeout legs (c22 + c45 stages)");
 }
 
-int32_t main(void) int32_t main(void)
+int32_t main(void)
 {
   test_mdio_c22();
   test_mdio_c45();
