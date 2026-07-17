@@ -56,6 +56,11 @@
 
 #include "ra8_unarch_xz_pool.h"
 
+/* The porting-seam macro names below (kmalloc, memeq, min_t, get_le32, ...) are
+ * fixed by the xz-embedded SOUP contract (see the @details above) and cannot be
+ * renamed to project UPPER_CASE conventions without forking the vendored tree. */
+/* NOLINTBEGIN(readability-identifier-naming) */
+
 /**
  * @def XZ_DEC_PREALLOC
  * @brief Enable xz-embedded's preallocated-dictionary streaming mode.
@@ -183,7 +188,7 @@
  * @since Version 0.1.0
  */
 #ifndef __always_inline
-#define __always_inline inline __attribute__((__always_inline__))
+#define __always_inline inline __attribute__((__always_inline__)) /* ATTR-OK: SOUP porting glue */
 #endif
 
 /**
@@ -238,3 +243,4 @@ static inline uint32_t ra8_xz_cfg_get_unaligned_le32(const uint8_t* buf)
  * @since Version 0.1.0
  */
 #define get_le32(buf) ra8_xz_cfg_get_unaligned_le32(buf)
+/* NOLINTEND(readability-identifier-naming) */

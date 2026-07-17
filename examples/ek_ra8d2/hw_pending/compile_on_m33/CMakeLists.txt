@@ -88,6 +88,10 @@ if(TARGET compile_on_m33_cpu1.elf)
     file(GLOB _c1_epub_cpp CONFIGURE_DEPENDS ${RA8_REPO_ROOT}/libs/ra8_epub/src/*.cpp)
     target_sources(compile_on_m33_cpu1.elf PRIVATE
         ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
+        # ra8_epub now guards its ZIP entries through the shared decompression
+        # limits policy (ra8_epub_zip_guard.c -> ra8_decomp_limits_*); the M33
+        # image hand-picks its sources, so link the core policy TU explicitly.
+        ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_decomp_limits.c
         ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_compile.c
         ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_gray4.c
         ${RA8_REPO_ROOT}/libs/ra8_rabook_compile/src/ra8_rabook_xml_shim.cpp

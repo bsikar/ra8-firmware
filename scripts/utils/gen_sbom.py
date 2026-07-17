@@ -350,8 +350,7 @@ REGISTRY: tuple[Component, ...] = (
             "core only (linux/lib/xz + linux/include/linux/xz.h flattened, "
             "plus AUTHORS/COPYING/README); no encoder, no BCJ filters, no "
             "MicroLZMA callers.",
-            "Aggregate SHA-256 is over the sorted per-file hashes of the "
-            "whole vendored directory.",
+            "Aggregate SHA-256 is over the sorted per-file hashes of the whole vendored directory.",
             "Built decode-only via the first-party porting header "
             "libs/ra8_unarch/inc/xz_config.h: XZ_PREALLOC mode only "
             "(dictionary allocated once from a caller scratch through the "
@@ -839,7 +838,10 @@ def run_check() -> int:
     expected = serialize(build_bom())
     out = REPO_ROOT / SBOM_REL_PATH
     if not out.is_file():
-        print(f"{GENERATOR_NAME}: {SBOM_REL_PATH} is missing; run gen_sbom.py", file=sys.stderr)
+        print(
+            f"{GENERATOR_NAME}: {SBOM_REL_PATH} is missing; run gen_sbom.py",
+            file=sys.stderr,
+        )
         return EXIT_DRIFT
     actual = out.read_text(encoding="utf-8")
     if actual != expected:

@@ -27,6 +27,13 @@
 /** @brief Log tag for tar field-parser diagnostics. */
 static const char* const s_tag_tar_f = "ra8_unarch_tar";
 
+/* The pax extended-header record parser walks length-prefixed key=value records
+ * with a fail-closed guard at every step: the parse body clears clang-tidy's
+ * statement/nesting/cognitive thresholds while staying within the 60-line NASA
+ * Rule 4 gate. Same disposition as the other decode state machines in the tree
+ * (ra8_jpeg_sw_encode, ra8_rmac_phy). */
+/* NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity) */
+
 /**
  * @enum tar_field_const_t
  * @brief Grammar constants for the numeric and pax record parsers.
@@ -430,3 +437,4 @@ ra8_err_t ra8_unarch_tar_pax_parse(const uint8_t* data,
   }
   return k_ra8_ok;
 }
+/* NOLINTEND(readability-function-size,readability-function-cognitive-complexity) */

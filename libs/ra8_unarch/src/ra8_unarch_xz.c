@@ -35,6 +35,13 @@
 /** @brief Log tag for XZ-wrapper diagnostics. */
 static const char* const s_tag_xz = "ra8_unarch_xz";
 
+/* The XZ session driver pumps the vendored xz-embedded stream decoder through a
+ * bounded refill/flush loop with fail-closed guards on every return code: the
+ * run and unwrap bodies clear clang-tidy's statement/nesting/cognitive
+ * thresholds while staying within the 60-line NASA Rule 4 gate. Same
+ * disposition as the other decode state machines (ra8_jpeg_sw_encode). */
+/* NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity) */
+
 /**
  * @enum xz_wrap_dims_t
  * @brief Fixed sizes for the unwrap input loop.
@@ -388,3 +395,4 @@ ra8_err_t ra8_unarch_xz_unwrap(ra8_unarch_read_fn         read,
   *out_len = st.total_out;
   return k_ra8_ok;
 }
+/* NOLINTEND(readability-function-size,readability-function-cognitive-complexity) */

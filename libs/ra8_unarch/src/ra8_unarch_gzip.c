@@ -30,6 +30,13 @@
 /** @brief Log tag for gzip-decoder diagnostics. */
 static const char* const s_tag_gz = "ra8_unarch_gzip";
 
+/* The gzip member + windowed-inflate state machines are dense sequential
+ * validators: many fail-closed guards and a bounded refill loop push several
+ * bodies past clang-tidy's statement/nesting/cognitive thresholds while each
+ * stays within the 60-line NASA Rule 4 gate. Same disposition as the other
+ * decode state machines in the tree (ra8_jpeg_sw_encode, ra8_rmac_phy). */
+/* NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity) */
+
 /**
  * @enum gz_grammar_t
  * @brief RFC 1952 constants and this decoder's loop windows.
@@ -148,6 +155,42 @@ static ra8_err_t s_skip_string(gz_src_t* s)
 }
 
 /**
+ * @brief Skip the FEXTRA subfield block (RFC 1952 XLEN + XLEN bytes), bounded.
+ * @details Reads the 2-byte little-endian XLEN, then consumes exactly that
+ *          many bytes in ::k_gz_in_chunk-sized pieces. XLEN is at most
+ *          65535, so the loop is statically bounded.
+ * @param[in,out] s Byte source positioned at the FEXTRA XLEN field.
+ * @return ra8_err_t status.
+ * @retval k_ra8_ok                    XLEN and its payload consumed.
+ * @retval k_ra8_err_validation_failed XLEN or the subfield ran past the member.
+ * @pre @p s was bound to a live reader.
+ * @pre The FEXTRA header flag was set.
+ * @post On k_ra8_ok the cursor sits just past the subfield block.
+ * @post On any error the parse must stop (fail-closed).
+ * @note Not thread-safe.
+ * @since Version 0.1.0
+ */
+static ra8_err_t s_skip_fextra(gz_src_t* s)
+{
+  uint8_t         xl[k_gz_xlen_bytes] = {};
+  const ra8_err_t xerr                = s_src_take(s, xl, sizeof(xl));
+  if (xerr != k_ra8_ok) {
+    return xerr;
+  }
+  uint32_t xlen = (uint32_t)xl[0] | ((uint32_t)xl[1] << (uint32_t)k_gz_shift_byte);
+  uint8_t  skip[k_gz_in_chunk];
+  while (xlen > 0U) { /* bound: xlen <= 65535, consumed in chunks */
+    const size_t    n    = (xlen > (uint32_t)sizeof(skip)) ? sizeof(skip) : (size_t)xlen;
+    const ra8_err_t serr = s_src_take(s, skip, n);
+    if (serr != k_ra8_ok) {
+      return serr;
+    }
+    xlen -= (uint32_t)n;
+  }
+  return k_ra8_ok;
+}
+
+/**
  * @brief Parse the whole RFC 1952 header, leaving the cursor at the data.
  * @details Fixed fields first (magic, method, flags -- reserved bits
  *          rejected), then the optional fields in wire order: FEXTRA
@@ -188,20 +231,9 @@ static ra8_err_t s_parse_header(gz_src_t* s)
     return k_ra8_err_not_supported; /* reserved bits: unknown format */
   }
   if ((flg & (uint8_t)k_gz_flg_fextra) != 0U) {
-    uint8_t         xl[k_gz_xlen_bytes] = {};
-    const ra8_err_t xerr                = s_src_take(s, xl, sizeof(xl));
+    const ra8_err_t xerr = s_skip_fextra(s);
     if (xerr != k_ra8_ok) {
       return xerr;
-    }
-    uint32_t xlen = (uint32_t)xl[0] | ((uint32_t)xl[1] << (uint32_t)k_gz_shift_byte);
-    uint8_t  skip[k_gz_in_chunk];
-    while (xlen > 0U) { /* bound: xlen <= 65535, consumed in chunks */
-      const size_t    n    = (xlen > (uint32_t)sizeof(skip)) ? sizeof(skip) : (size_t)xlen;
-      const ra8_err_t serr = s_src_take(s, skip, n);
-      if (serr != k_ra8_ok) {
-        return serr;
-      }
-      xlen -= (uint32_t)n;
     }
   }
   if ((flg & (uint8_t)k_gz_flg_fname) != 0U) {
@@ -449,3 +481,4 @@ ra8_err_t ra8_unarch_gzip_unwrap(ra8_unarch_read_fn         read,
   *out_len = st.total;
   return k_ra8_ok;
 }
+/* NOLINTEND(readability-function-size,readability-function-cognitive-complexity) */
