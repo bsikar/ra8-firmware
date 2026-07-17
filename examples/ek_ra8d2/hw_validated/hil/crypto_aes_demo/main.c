@@ -48,15 +48,15 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_aes_demo_baud      = 115200U,
-  k_aes_demo_period_ms = 1000U,
+  k_aes_demo_baud      = 115200U, /**< AES demo baud.      */
+  k_aes_demo_period_ms = 1000U,   /**< AES demo period ms. */
 } aes_demo_const_t;
 
 /** @brief AES-128 key + plaintext sizing. */
 typedef enum : uint8_t {
-  k_aes_demo_key_bytes   = 16U,
-  k_aes_demo_plain_bytes = 8U,
-  k_aes_demo_aad_bytes   = 4U,
+  k_aes_demo_key_bytes   = 16U, /**< AES demo key bytes.   */
+  k_aes_demo_plain_bytes = 8U,  /**< AES demo plain bytes. */
+  k_aes_demo_aad_bytes   = 4U,  /**< AES demo aad bytes.   */
 } aes_demo_layout_t;
 
 /**
@@ -68,7 +68,8 @@ typedef enum : uint8_t {
  * (clang-tidy ``clang-analyzer-optin.core.EnumCastOutOfRange``).
  */
 typedef enum : uint32_t {
-  k_aes_demo_usage_aead = (uint32_t)k_ra8_psa_usage_encrypt | (uint32_t)k_ra8_psa_usage_decrypt,
+  k_aes_demo_usage_aead = (uint32_t)k_ra8_psa_usage_encrypt |
+                          (uint32_t)k_ra8_psa_usage_decrypt, /**< AES demo usage aead. */
 } aes_demo_usage_t;
 
 /** @brief Fixed 128-bit AES key. */

@@ -215,8 +215,8 @@ static void ble_peripheral_uuid16_to_128(uint8_t* out, uint16_t uuid_16)
   /* Bluetooth Base UUID (LE byte order):
    * FB-34-9B-5F-80-00-00-80-00-10-00-00-XX-XX-00-00. */
   enum : uint8_t {
-    k_idx_uuid_lo = 12U,
-    k_idx_uuid_hi = 13U,
+    k_idx_uuid_lo = 12U, /**< Index uuid lo. */
+    k_idx_uuid_hi = 13U, /**< Index uuid hi. */
   };
   static const uint8_t base[k_ble_uuid128_bytes] = {
     0xFBU,

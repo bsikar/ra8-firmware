@@ -33,12 +33,12 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_doc_demo_period_ms = 1000U,
+  k_doc_demo_period_ms = 1000U, /**< Doc demo period ms. */
 } doc_demo_const_t;
 
 /** @brief Operand-table layout. */
 typedef enum : uint8_t {
-  k_doc_demo_table_len = 8U,
+  k_doc_demo_table_len = 8U, /**< Doc demo table length. */
 } doc_demo_layout_t;
 
 /** @brief Eight 16-bit operands chained through DOC.add. */

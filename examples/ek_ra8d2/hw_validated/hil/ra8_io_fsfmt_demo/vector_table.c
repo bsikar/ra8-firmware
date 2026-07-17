@@ -122,12 +122,13 @@ extern void ra8_isr_dispatch(uint16_t slot);
  */
 
 enum : uint16_t {
-  k_ra8_irq_count = 112U,
+  k_ra8_irq_count = 112U, /**< RA8 IRQ count. */
 };
 
 /* On Apple host syntax-check we drop ra8_isr_dispatch (host build
  * never branches through these) and keep only a weak empty body. */
 #ifndef __APPLE__
+/** @brief RA8 IRQ STUB. */
 #define RA8_IRQ_STUB(n)                                                                            \
   void               IRQ##n##_Handler(void);                                                       \
   [[gnu::weak]] void IRQ##n##_Handler(void)                                                        \
@@ -136,6 +137,7 @@ enum : uint16_t {
   }                                                                                                \
   static_assert(1, "ra8_irq_stub_" #n)
 #else
+/** @brief RA8 IRQ STUB. */
 #define RA8_IRQ_STUB(n)                                                                            \
   void               IRQ##n##_Handler(void);                                                       \
   [[gnu::weak]] void IRQ##n##_Handler(void) {}                                                     \
@@ -295,6 +297,7 @@ const exc_handler_t g_ra8_vector_table_start[16U + k_ra8_irq_count] = {
   SysTick_Handler,                    /* 15 SysTick.                    */
 
 /* Peripheral IRQs 0..111. */
+/** @brief `E` helper macro. */
 #define E(n) IRQ##n##_Handler
   E(0),
   E(1),
@@ -470,10 +473,10 @@ extern void ra8_exception_report(const void* frame, uint32_t exc_number);
  * @brief Exception numbers matching the Cortex-M vector table slots.
  */
 typedef enum : uint32_t {
-  k_ra8_vector_hardfault  = 3U,
-  k_ra8_vector_memmanage  = 4U,
-  k_ra8_vector_busfault   = 5U,
-  k_ra8_vector_usagefault = 6U,
+  k_ra8_vector_hardfault  = 3U, /**< RA8 vector hardfault.  */
+  k_ra8_vector_memmanage  = 4U, /**< RA8 vector memmanage.  */
+  k_ra8_vector_busfault   = 5U, /**< RA8 vector busfault.   */
+  k_ra8_vector_usagefault = 6U, /**< RA8 vector usagefault. */
 } ra8_vector_exc_t;
 
 #ifndef RA8_SIMULATOR_MODE

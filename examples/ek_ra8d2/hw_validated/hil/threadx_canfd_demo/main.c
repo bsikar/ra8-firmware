@@ -55,24 +55,24 @@
  */
 /** @brief Fixed marker bytes following the sequence counter in the test frame. */
 typedef enum : uint8_t {
-  k_canfd_marker_0 = 0xA5U,
-  k_canfd_marker_1 = 0x5AU,
-  k_canfd_marker_2 = 0x12U,
-  k_canfd_marker_3 = 0x34U,
-  k_canfd_marker_4 = 0x56U,
-  k_canfd_marker_5 = 0x78U,
-  k_canfd_marker_6 = 0x9AU,
+  k_canfd_marker_0 = 0xA5U, /**< CANFD marker 0. */
+  k_canfd_marker_1 = 0x5AU, /**< CANFD marker 1. */
+  k_canfd_marker_2 = 0x12U, /**< CANFD marker 2. */
+  k_canfd_marker_3 = 0x34U, /**< CANFD marker 3. */
+  k_canfd_marker_4 = 0x56U, /**< CANFD marker 4. */
+  k_canfd_marker_5 = 0x78U, /**< CANFD marker 5. */
+  k_canfd_marker_6 = 0x9AU, /**< CANFD marker 6. */
 } canfd_marker_t;
 
 typedef enum : uint16_t {
-  k_canfd_thread_stack_bytes = 1024U,
+  k_canfd_thread_stack_bytes = 1024U, /**< CANFD thread stack bytes. */
 } canfd_stack_t;
 
 /**
  * @brief Thread priorities.
  */
 typedef enum : uint8_t {
-  k_canfd_thread_priority = 4U,
+  k_canfd_thread_priority = 4U, /**< CANFD thread priority. */
 } canfd_priority_t;
 
 /**

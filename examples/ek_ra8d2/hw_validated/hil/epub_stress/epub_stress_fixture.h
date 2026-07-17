@@ -19,7 +19,7 @@
 #include <stdint.h>
 
 /** @brief Length of the baked stress EPUB blob, bytes. */
-enum : size_t { k_epub_stress_fixture_len = 21944U };
+enum : size_t { k_epub_stress_fixture_len = 21944U /**< EPUB stress fixture length. */ };
 
 /** @brief Baked synthetic large-structure EPUB3 byte stream. */
 /* clang-format off */

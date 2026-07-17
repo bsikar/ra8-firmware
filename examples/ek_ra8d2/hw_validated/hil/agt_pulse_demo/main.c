@@ -37,22 +37,22 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_agt_pulse_baud    = 115200U,
-  k_agt_pulse_poll_ms = 10U,
+  k_agt_pulse_baud    = 115200U, /**< AGT pulse baud.    */
+  k_agt_pulse_poll_ms = 10U,     /**< AGT pulse poll ms. */
 } agt_pulse_const_t;
 
 /** @brief AGT channel + pulse-output settings. */
 typedef enum : uint16_t {
-  k_agt_pulse_channel = 0U,
+  k_agt_pulse_channel = 0U,      /**< AGT pulse channel.              */
   k_agt_pulse_period  = 0x7FFFU, /**< ~1 Hz at the simulator default. */
   k_agt_pulse_duty    = 0x3FFFU, /**< 50% via compare-match A.        */
 } agt_pulse_timer_t;
 
 /** @brief Hex-digit width + mask for the per-tick banner formatter. */
 typedef enum : uint32_t {
-  k_agt_pulse_hex_digits = 8U,
-  k_agt_pulse_hex_shift  = 4U,
-  k_agt_pulse_hex_mask   = 0xFU,
+  k_agt_pulse_hex_digits = 8U,   /**< AGT pulse hex digits. */
+  k_agt_pulse_hex_shift  = 4U,   /**< AGT pulse hex shift.  */
+  k_agt_pulse_hex_mask   = 0xFU, /**< AGT pulse hex mask.   */
 } agt_pulse_fmt_t;
 
 /** @brief Hex print map for the tick counter. */

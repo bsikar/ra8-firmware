@@ -95,13 +95,13 @@ typedef enum : uint32_t {
   /* ULPTLCLK = LOCO / 1 = 32.768 kHz; 0x4000 (16384) ticks ~= 0.5 s. A
    * sub-second period keeps the bench heartbeat prompt without spinning
    * the console. */
-  k_lpi_period_ticks = 0x4000U,
+  k_lpi_period_ticks = 0x4000U, /**< Lpi period ticks. */
   /* Bounded spin (NASA P10 Rule 2) waiting for ULPTCR.TCSTF to confirm
    * the count actually started before we drop into standby. */
-  k_lpi_tcstf_poll_limit = 0x100000U,
+  k_lpi_tcstf_poll_limit = 0x100000U, /**< Lpi tcstf poll limit. */
   /* Number of wake-work-standby periods before the app reports PASS and
    * parks. Bounds the outer loop (NASA P10 Rule 2). */
-  k_lpi_period_count = 8U,
+  k_lpi_period_count = 8U, /**< Lpi period count. */
 } lpi_const_t;
 
 /**

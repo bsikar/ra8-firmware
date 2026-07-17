@@ -70,22 +70,22 @@
  * the 2 MiB SRAM budget.
  */
 typedef enum : uint32_t {
-  k_demo_baud           = 115200U,
-  k_demo_thread_stack   = 8192U,
-  k_demo_ip_thread_pri  = 1U,
-  k_demo_app_thread_pri = 8U,
-  k_demo_packet_size    = 1568U,
-  k_demo_packet_count   = 16U,
-  k_demo_pool_bytes     = 98304U, /* large pool: MTU=128 fragments a frame into
+  k_demo_baud           = 115200U,     /**< Demo baud.                */
+  k_demo_thread_stack   = 8192U,       /**< Demo thread stack.        */
+  k_demo_ip_thread_pri  = 1U,          /**< Demo IP thread priority.  */
+  k_demo_app_thread_pri = 8U,          /**< Demo app thread priority. */
+  k_demo_packet_size    = 1568U,       /**< Demo packet size.         */
+  k_demo_packet_count   = 16U,         /**< Demo packet count.        */
+  k_demo_pool_bytes     = 98304U,      /**< large pool: MTU=128 fragments a frame into
                                    * ~12 packets, so reassembly + echo needs a
                                    * deep pool to avoid exhaustion stalls. */
-  k_demo_ip_stack       = 4096U,
-  k_demo_arp_cache      = 1024U,
-  k_demo_echo_port      = 7U,
-  k_demo_recv_window    = 4096U,
-  k_demo_socket_ttl     = 64U,
-  k_demo_recv_timeout   = 0xFFFFFFFFU, /* TX_WAIT_FOREVER on this port. */
-  k_demo_log_buf_bytes  = 80U,
+  k_demo_ip_stack       = 4096U,       /**< Demo IP stack.                */
+  k_demo_arp_cache      = 1024U,       /**< Demo arp cache.               */
+  k_demo_echo_port      = 7U,          /**< Demo echo port.               */
+  k_demo_recv_window    = 4096U,       /**< Demo recv window.             */
+  k_demo_socket_ttl     = 64U,         /**< Demo socket ttl.              */
+  k_demo_recv_timeout   = 0xFFFFFFFFU, /**< TX_WAIT_FOREVER on this port. */
+  k_demo_log_buf_bytes  = 80U,         /**< Demo log buffer bytes.        */
 } demo_config_t;
 
 /**
@@ -93,10 +93,10 @@ typedef enum : uint32_t {
  * @brief Octet indices into a packed IPv4 address.
  */
 typedef enum : uint8_t {
-  k_demo_ip_oct_a = 0U,
-  k_demo_ip_oct_b = 1U,
-  k_demo_ip_oct_c = 2U,
-  k_demo_ip_oct_d = 3U,
+  k_demo_ip_oct_a = 0U, /**< Demo IP oct a. */
+  k_demo_ip_oct_b = 1U, /**< Demo IP oct b. */
+  k_demo_ip_oct_c = 2U, /**< Demo IP oct c. */
+  k_demo_ip_oct_d = 3U, /**< Demo IP oct d. */
 } demo_ip_octet_t;
 
 /**
@@ -104,10 +104,10 @@ typedef enum : uint8_t {
  * @brief Bit shifts that pack a 4-octet IPv4 into NetX's ULONG.
  */
 typedef enum : uint8_t {
-  k_demo_ip_shift_a = 24U,
-  k_demo_ip_shift_b = 16U,
-  k_demo_ip_shift_c = 8U,
-  k_demo_ip_shift_d = 0U,
+  k_demo_ip_shift_a = 24U, /**< Demo IP shift a. */
+  k_demo_ip_shift_b = 16U, /**< Demo IP shift b. */
+  k_demo_ip_shift_c = 8U,  /**< Demo IP shift c. */
+  k_demo_ip_shift_d = 0U,  /**< Demo IP shift d. */
 } demo_ip_shift_t;
 
 /**
@@ -115,12 +115,12 @@ typedef enum : uint8_t {
  * @brief Shifts that pack the 6-byte MAC into msw/lsw ULONG pairs.
  */
 typedef enum : uint8_t {
-  k_demo_mac_msw_shift_b0 = 8U,
-  k_demo_mac_msw_shift_b1 = 0U,
-  k_demo_mac_lsw_shift_b2 = 24U,
-  k_demo_mac_lsw_shift_b3 = 16U,
-  k_demo_mac_lsw_shift_b4 = 8U,
-  k_demo_mac_lsw_shift_b5 = 0U,
+  k_demo_mac_msw_shift_b0 = 8U,  /**< Demo MAC msw shift b0. */
+  k_demo_mac_msw_shift_b1 = 0U,  /**< Demo MAC msw shift b1. */
+  k_demo_mac_lsw_shift_b2 = 24U, /**< Demo MAC lsw shift b2. */
+  k_demo_mac_lsw_shift_b3 = 16U, /**< Demo MAC lsw shift b3. */
+  k_demo_mac_lsw_shift_b4 = 8U,  /**< Demo MAC lsw shift b4. */
+  k_demo_mac_lsw_shift_b5 = 0U,  /**< Demo MAC lsw shift b5. */
 } demo_mac_word_shift_t;
 
 /**
@@ -134,22 +134,22 @@ typedef enum : uint8_t {
 /** @brief Locally-administered unicast MAC for this board. */
 /** @brief Demo IPv4 address + netmask octets and helper masks. */
 typedef enum : uint16_t {
-  k_demo_ipaddr_0   = 192U, /**< 192.168.1.42 */
-  k_demo_ipaddr_1   = 168U,
-  k_demo_ipaddr_2   = 1U,
-  k_demo_ipaddr_3   = 42U,
+  k_demo_ipaddr_0   = 192U,  /**< 192.168.1.42                         */
+  k_demo_ipaddr_1   = 168U,  /**< Demo ipaddr 1.                       */
+  k_demo_ipaddr_2   = 1U,    /**< Demo ipaddr 2.                       */
+  k_demo_ipaddr_3   = 42U,   /**< Demo ipaddr 3.                       */
   k_demo_netmask_b  = 255U,  /**< 255.255.255.0 (first three octets).  */
   k_demo_octet_mask = 0xFFU, /**< Mask one octet out of a packed IPv4. */
 } demo_ipv4_t;
 
 /** @brief MAC-address byte indices. */
 typedef enum : uint8_t {
-  k_demo_mac_idx_0 = 0U,
-  k_demo_mac_idx_1 = 1U,
-  k_demo_mac_idx_2 = 2U,
-  k_demo_mac_idx_3 = 3U,
-  k_demo_mac_idx_4 = 4U,
-  k_demo_mac_idx_5 = 5U,
+  k_demo_mac_idx_0 = 0U, /**< Demo MAC index 0. */
+  k_demo_mac_idx_1 = 1U, /**< Demo MAC index 1. */
+  k_demo_mac_idx_2 = 2U, /**< Demo MAC index 2. */
+  k_demo_mac_idx_3 = 3U, /**< Demo MAC index 3. */
+  k_demo_mac_idx_4 = 4U, /**< Demo MAC index 4. */
+  k_demo_mac_idx_5 = 5U, /**< Demo MAC index 5. */
 } demo_mac_idx_t;
 
 static const uint8_t k_demo_mac[6] = {0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U};

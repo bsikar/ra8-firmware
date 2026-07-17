@@ -74,7 +74,7 @@ typedef enum : int32_t {
 
 /** @brief Sizing for the decimal serialiser buffer ("-2147483648" + NUL). */
 typedef enum : uint32_t {
-  k_pdm_demo_int_str_cap = 12U,
+  k_pdm_demo_int_str_cap = 12U, /**< Pdm demo int str cap. */
 } pdm_demo_str_cap_t;
 
 /** @brief Integer-sqrt bit-window constants (64-bit radicand). */
@@ -179,7 +179,7 @@ static int32_t s_pdm_demo_buf[k_pdm_demo_window];
 
 /** @brief Result magic marker ('PDM1'). */
 typedef enum : uint32_t {
-  k_pdm_demo_magic = 0x50444D31U,
+  k_pdm_demo_magic = 0x50444D31U, /**< Pdm demo magic. */
 } pdm_demo_magic_t;
 
 /* =============================================================================

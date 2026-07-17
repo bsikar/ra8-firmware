@@ -57,12 +57,12 @@
  */
 /** @brief MAC-address byte indices. */
 typedef enum : uint8_t {
-  k_mac_byte_0 = 0U,
-  k_mac_byte_1 = 1U,
-  k_mac_byte_2 = 2U,
-  k_mac_byte_3 = 3U,
-  k_mac_byte_4 = 4U,
-  k_mac_byte_5 = 5U,
+  k_mac_byte_0 = 0U, /**< MAC byte 0. */
+  k_mac_byte_1 = 1U, /**< MAC byte 1. */
+  k_mac_byte_2 = 2U, /**< MAC byte 2. */
+  k_mac_byte_3 = 3U, /**< MAC byte 3. */
+  k_mac_byte_4 = 4U, /**< MAC byte 4. */
+  k_mac_byte_5 = 5U, /**< MAC byte 5. */
 } mac_byte_idx_t;
 
 typedef enum : uint32_t {
@@ -82,7 +82,7 @@ typedef enum : uint32_t {
  * carry monotonic timestamps after this seed.
  */
 typedef enum : uint64_t {
-  k_ptp_time_transmitter_seed_seconds = 1767225600ULL,
+  k_ptp_time_transmitter_seed_seconds = 1767225600ULL, /**< Ptp time transmitter seed seconds. */
 } ptp_time_transmitter_epoch_t;
 
 /**

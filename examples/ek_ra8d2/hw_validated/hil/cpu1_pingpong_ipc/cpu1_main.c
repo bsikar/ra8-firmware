@@ -28,12 +28,12 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
 [[noreturn]] void cpu1_reset_handler(void);
 
 typedef enum : uint32_t {
-  k_cpu1_pingpong_magic_ping = 0x1234U,
-  k_cpu1_pingpong_magic_pong = 0x4321U,
+  k_cpu1_pingpong_magic_ping = 0x1234U, /**< Cpu1 pingpong magic ping. */
+  k_cpu1_pingpong_magic_pong = 0x4321U, /**< Cpu1 pingpong magic pong. */
 } cpu1_main_const_t;
 
 typedef enum : uint8_t {
-  k_cpu1_pingpong_pair_zero = 0U,
+  k_cpu1_pingpong_pair_zero = 0U, /**< Cpu1 pingpong pair zero. */
 } cpu1_main_pair_t;
 
 /**
@@ -56,15 +56,15 @@ typedef enum : uintptr_t {
 } cpu1_ipc_addr_t;
 
 typedef enum : uint8_t {
-  k_cpu1_ipc_off_sta = 0x00U,
-  k_cpu1_ipc_off_txd = 0x08U,
-  k_cpu1_ipc_off_rxd = 0x0CU,
-  k_cpu1_ipc_off_clr = 0x10U,
+  k_cpu1_ipc_off_sta = 0x00U, /**< Cpu1 ipc off sta. */
+  k_cpu1_ipc_off_txd = 0x08U, /**< Cpu1 ipc off txd. */
+  k_cpu1_ipc_off_rxd = 0x0CU, /**< Cpu1 ipc off rxd. */
+  k_cpu1_ipc_off_clr = 0x10U, /**< Cpu1 ipc off clr. */
 } cpu1_ipc_off_t;
 
 typedef enum : uint32_t {
-  k_cpu1_ipc_sta_rdy = 0x00010000UL,
-  k_cpu1_ipc_clr_all = 0x030100FFUL,
+  k_cpu1_ipc_sta_rdy = 0x00010000UL, /**< Cpu1 ipc sta rdy. */
+  k_cpu1_ipc_clr_all = 0x030100FFUL, /**< Cpu1 ipc clr all. */
 } cpu1_ipc_mask_t;
 
 [[noreturn]] static void cpu1_main(void)

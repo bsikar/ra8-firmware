@@ -46,10 +46,10 @@
 
 /** @brief App-wide tunables. */
 typedef enum : uint32_t {
-  k_i2c_demo_baud        = 115200U,
-  k_i2c_demo_period_ms   = 1000U,
-  k_i2c_demo_bus_hz      = 100000U,
-  k_i2c_demo_iic_channel = 1U, /* RIIC ch1 (P512 SCL1 / P511 SDA1) -- U15 lives here, per #46 */
+  k_i2c_demo_baud        = 115200U, /**< I2C demo baud.      */
+  k_i2c_demo_period_ms   = 1000U,   /**< I2C demo period ms. */
+  k_i2c_demo_bus_hz      = 100000U, /**< I2C demo bus Hz.    */
+  k_i2c_demo_iic_channel = 1U, /**< RIIC ch1 (P512 SCL1 / P511 SDA1) -- U15 lives here, per #46. */
 } i2c_demo_const_t;
 
 /** @brief Probe target -- on-board PI4IOE5V6408 I/O port expander U15
@@ -58,7 +58,7 @@ typedef enum : uint32_t {
  *         every address-only probe, so a successful scan proves both
  *         the bus and the controller are alive. */
 typedef enum : uint8_t {
-  k_i2c_demo_probe_addr = 0x43U,
+  k_i2c_demo_probe_addr = 0x43U, /**< I2C demo probe address. */
 } i2c_demo_byte_t;
 
 /* SCI8 console (PD02 TXD / PD03 RXD) pin routing + baud are owned by the

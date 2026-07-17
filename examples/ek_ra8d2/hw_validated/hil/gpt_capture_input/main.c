@@ -37,9 +37,9 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_gpt_capture_period         = 0xFFFFFFFFUL,
-  k_gpt_capture_poll_period_ms = 10U,
-  k_gpt_capture_min_delta_ms   = 50U,
+  k_gpt_capture_period         = 0xFFFFFFFFUL, /**< GPT capture period.           */
+  k_gpt_capture_poll_period_ms = 10U,          /**< GPT capture poll period ms.   */
+  k_gpt_capture_min_delta_ms   = 50U,          /**< GPT capture minimum delta ms. */
 } gpt_capture_const_t;
 
 /**
@@ -60,7 +60,7 @@ volatile uint32_t g_gpt_capture_tick = 0U;
 
 /** @brief Channel + LED selection. */
 typedef enum : uint8_t {
-  k_gpt_capture_channel = 0U,
+  k_gpt_capture_channel = 0U, /**< GPT capture channel. */
 } gpt_capture_layout_t;
 
 /** @brief Park the CPU after a fatal init failure. */

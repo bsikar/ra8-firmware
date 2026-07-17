@@ -181,14 +181,14 @@ volatile uint32_t s_pendsv_observed_run_count = 0U;
  * @brief Demo-loop counters; read via JLink to localise stalls.
  */
 typedef struct {
-  volatile uint32_t loop_iter;
-  volatile uint32_t loop_cdc_null;
-  volatile uint32_t loop_pre_read;
-  volatile uint32_t loop_post_read;
-  volatile uint32_t loop_read_ok;
-  volatile uint32_t loop_read_zero;
-  volatile uint32_t loop_pre_write;
-  volatile uint32_t loop_post_write;
+  volatile uint32_t loop_iter;       /**< loop_iter register.       */
+  volatile uint32_t loop_cdc_null;   /**< loop_cdc_null register.   */
+  volatile uint32_t loop_pre_read;   /**< loop_pre_read register.   */
+  volatile uint32_t loop_post_read;  /**< loop_post_read register.  */
+  volatile uint32_t loop_read_ok;    /**< loop_read_ok register.    */
+  volatile uint32_t loop_read_zero;  /**< loop_read_zero register.  */
+  volatile uint32_t loop_pre_write;  /**< loop_pre_write register.  */
+  volatile uint32_t loop_post_write; /**< loop_post_write register. */
 } demo_diag_t;
 
 /**

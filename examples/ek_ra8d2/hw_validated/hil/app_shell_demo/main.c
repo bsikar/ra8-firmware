@@ -175,6 +175,7 @@ static void app_shell_hil_emit_pass(void)
  * @since 0.1.0
  */
 #ifndef APP_SHELL_SETTINGS
+/** @brief APP SHELL SETTINGS. */
 #define APP_SHELL_SETTINGS 1
 #endif
 

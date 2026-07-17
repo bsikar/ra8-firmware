@@ -90,13 +90,13 @@
  * scheduler hiccup.
  */
 typedef enum : uint32_t {
-  k_ipc_demo_baud           = 115200U,
-  k_ipc_demo_period_ms      = 1000U,
-  k_ipc_demo_period_ticks   = 1000U, /**< 1000 ticks @ 1 kHz SysTick = 1 s. */
-  k_ipc_demo_thread_stack   = 2048U,
-  k_ipc_demo_producer_prio  = 5U,
-  k_ipc_demo_consumer_prio  = 4U, /**< Higher prio -> blocks on receive. */
-  k_ipc_demo_queue_capacity = 8U, /**< Slots in the inter-thread queue.  */
+  k_ipc_demo_baud           = 115200U, /**< Ipc demo baud.                    */
+  k_ipc_demo_period_ms      = 1000U,   /**< Ipc demo period ms.               */
+  k_ipc_demo_period_ticks   = 1000U,   /**< 1000 ticks @ 1 kHz SysTick = 1 s. */
+  k_ipc_demo_thread_stack   = 2048U,   /**< Ipc demo thread stack.            */
+  k_ipc_demo_producer_prio  = 5U,      /**< Ipc demo producer prio.           */
+  k_ipc_demo_consumer_prio  = 4U,      /**< Higher prio -> blocks on receive. */
+  k_ipc_demo_queue_capacity = 8U,      /**< Slots in the inter-thread queue.  */
 } ipc_demo_cfg_t;
 
 /**

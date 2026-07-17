@@ -37,9 +37,9 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_kint_demo_baud        = 115200U,
-  k_kint_demo_poll_ms     = 20U,
-  k_kint_demo_debounce_ms = 50U,
+  k_kint_demo_baud        = 115200U, /**< Kint demo baud.        */
+  k_kint_demo_poll_ms     = 20U,     /**< Kint demo poll ms.     */
+  k_kint_demo_debounce_ms = 50U,     /**< Kint demo debounce ms. */
 } kint_demo_const_t;
 
 /** @brief KIN0 / IRQ channel selection (SW1 -> IRQ13-DS). */

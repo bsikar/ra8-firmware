@@ -262,7 +262,7 @@ volatile uint32_t g_er_loop_ticks; /**< Free-running main-loop counter -- HIL li
 
 /** @brief Default clean-refresh cadence: a GC16 every N fast turns. */
 enum : uint16_t {
-  k_er_clean_every = 8U,
+  k_er_clean_every = 8U, /**< Er clean every. */
 };
 
 /** @brief Reading back-stack for link round-trips (footnote + chapter) (#110). */

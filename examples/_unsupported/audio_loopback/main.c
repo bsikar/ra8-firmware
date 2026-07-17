@@ -58,15 +58,15 @@
  * frames per block that is one log line every ~1.3 s.
  */
 typedef enum : uint32_t {
-  k_audio_loopback_baud         = 115200U,
-  k_audio_loopback_print_period = 1000U,
-  k_audio_loopback_sample_rate  = 48000U,
+  k_audio_loopback_baud         = 115200U, /**< Audio loopback baud.         */
+  k_audio_loopback_print_period = 1000U,   /**< Audio loopback print period. */
+  k_audio_loopback_sample_rate  = 48000U,  /**< Audio loopback sample rate.  */
 } audio_loopback_config_t;
 
 /** @brief uint8_t format ids consumed by the BSP audio path. */
 typedef enum : uint8_t {
-  k_audio_loopback_bit_depth = 16U,
-  k_audio_loopback_channels  = 2U,
+  k_audio_loopback_bit_depth = 16U, /**< Audio loopback bit depth. */
+  k_audio_loopback_channels  = 2U,  /**< Audio loopback channels.  */
 } audio_loopback_chan_t;
 
 /** @brief Stereo block size in interleaved L/R 16-bit samples. */
@@ -202,9 +202,9 @@ static void audio_loopback_init_codec(void)
 static uint32_t audio_loopback_u32_to_dec(uint32_t value, uint8_t* buf)
 {
   enum : uint8_t {
-    k_ascii_zero = 0x30U, /**< '0'. */
-    k_radix      = 10U,
-    k_max_digits = 10U, /**< 2^32 - 1 has at most 10 digits. */
+    k_ascii_zero = 0x30U, /**< '0'.                            */
+    k_radix      = 10U,   /**< Radix.                          */
+    k_max_digits = 10U,   /**< 2^32 - 1 has at most 10 digits. */
   };
   uint8_t  tmp[k_max_digits];
   uint32_t n = 0U;
@@ -238,7 +238,7 @@ static uint32_t audio_loopback_u32_to_dec(uint32_t value, uint8_t* buf)
 static void audio_loopback_print_count(uint32_t block_count)
 {
   enum : uint8_t {
-    k_dec_buf = 12U,
+    k_dec_buf = 12U, /**< Dec buffer. */
   };
   uint8_t  digits[k_dec_buf];
   uint32_t n = audio_loopback_u32_to_dec(block_count, digits);

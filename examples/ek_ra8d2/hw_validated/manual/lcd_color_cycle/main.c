@@ -57,8 +57,8 @@
 #include "ra8_time.h"
 
 typedef enum : uint16_t {
-  k_lcd_panel_w = 1024U,
-  k_lcd_panel_h = 600U,
+  k_lcd_panel_w = 1024U, /**< LCD panel w. */
+  k_lcd_panel_h = 600U,  /**< LCD panel h. */
 } lcd_panel_dim_t;
 
 typedef enum : uint32_t {
@@ -70,14 +70,14 @@ typedef enum : uint32_t {
 
 /* BG_BGC format: bits[23:16]=R, [15:8]=G, [7:0]=B; bits[31:24] reserved. */
 typedef enum : uint32_t {
-  k_bgc_red   = 0xFF0000U,
-  k_bgc_green = 0x00FF00U,
-  k_bgc_blue  = 0x0000FFU,
-  k_bgc_white = 0xFFFFFFU,
+  k_bgc_red   = 0xFF0000U, /**< Bgc red.   */
+  k_bgc_green = 0x00FF00U, /**< Bgc green. */
+  k_bgc_blue  = 0x0000FFU, /**< Bgc blue.  */
+  k_bgc_white = 0xFFFFFFU, /**< Bgc white. */
 } lcd_bgc_t;
 
 typedef enum : uint8_t {
-  k_bgc_cycle_count = 4U,
+  k_bgc_cycle_count = 4U, /**< Bgc cycle count. */
 } lcd_bgc_count_t;
 
 static const uint32_t k_lcd_bgc_cycle[k_bgc_cycle_count] = {

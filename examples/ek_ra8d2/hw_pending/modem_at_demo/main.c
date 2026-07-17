@@ -76,7 +76,7 @@ typedef enum : uint32_t {
 
 /** @brief Per-command timeout handed to ``ra8_modem_at`` (ms). */
 typedef enum : uint16_t {
-  k_modem_cmd_timeout_ms = 2000U,
+  k_modem_cmd_timeout_ms = 2000U, /**< Modem cmd timeout ms. */
 } modem_timeout_t;
 
 /** @brief Small fixed buffer capacities. */

@@ -38,14 +38,14 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_gpt_dma_demo_initial_period = 0x0000FFFFU,
-  k_gpt_dma_demo_period_count   = 4U, /**< 4 periods per DMA burst. */
-  k_gpt_dma_demo_rearm_delay_ms = 10U,
+  k_gpt_dma_demo_initial_period = 0x0000FFFFU, /**< GPT DMA demo initial period. */
+  k_gpt_dma_demo_period_count   = 4U,          /**< 4 periods per DMA burst.     */
+  k_gpt_dma_demo_rearm_delay_ms = 10U,         /**< GPT DMA demo rearm delay ms. */
 } gpt_dma_demo_const_t;
 
 /** @brief GPT channel. */
 typedef enum : uint8_t {
-  k_gpt_dma_demo_channel = 0U,
+  k_gpt_dma_demo_channel = 0U, /**< GPT DMA demo channel. */
 } gpt_dma_demo_chan_t;
 
 /**
@@ -203,7 +203,7 @@ static bool gpt_dma_demo_run_one(void)
   }
   /* Best-effort wait -- on real IRQ wiring the callback fires fast;
    * without it the bounded wait simply elapses. */
-  enum : uint32_t { k_wait_iters = 5U };
+  enum : uint32_t { k_wait_iters = 5U /**< Wait iters. */ };
   for (uint32_t i = 0U; i < k_wait_iters; ++i) {
     if (s_dma_done != 0U) {
       break;

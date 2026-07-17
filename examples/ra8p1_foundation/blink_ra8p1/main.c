@@ -54,8 +54,8 @@
  * @brief CPU clock at reset (MOCO ~8.4 MHz -- shared RA8 CGC default).
  */
 typedef enum : uint32_t {
-  k_blink_cpu_hz_at_reset = 8400000U,
-  k_blink_half_period_ms  = 500U, /**< 500 ms on / 500 ms off -> 1 Hz square wave. */
+  k_blink_cpu_hz_at_reset = 8400000U, /**< Blink CPU Hz at reset.                      */
+  k_blink_half_period_ms  = 500U,     /**< 500 ms on / 500 ms off -> 1 Hz square wave. */
 } blink_ra8p1_const_t;
 
 /**

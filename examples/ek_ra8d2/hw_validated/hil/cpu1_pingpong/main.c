@@ -87,7 +87,7 @@ volatile uint32_t g_cpu1_pingpong_step = 0U;
  */
 /** @brief Sentinel for ::g_cpu1_pingpong_release_err ("none yet"). */
 typedef enum : uint32_t {
-  k_cpu1_pingpong_err_none = 0xFFFFFFFFU,
+  k_cpu1_pingpong_err_none = 0xFFFFFFFFU, /**< Cpu1 pingpong error none. */
 } cpu1_pingpong_err_sentinel_t;
 
 volatile uint32_t g_cpu1_pingpong_release_err = k_cpu1_pingpong_err_none;

@@ -45,24 +45,24 @@
  * --------------------------------------------------------------------------- */
 
 typedef enum : uint16_t {
-  k_mpu_thread_stack_bytes = 1024U,
+  k_mpu_thread_stack_bytes = 1024U, /**< MPU thread stack bytes. */
 } mpu_stack_t;
 
 typedef enum : uint8_t {
-  k_mpu_thread_priority = 4U,
+  k_mpu_thread_priority = 4U, /**< MPU thread priority. */
 } mpu_priority_t;
 
 typedef enum : uint16_t {
-  k_mpu_blink_ticks = 1000U,
+  k_mpu_blink_ticks = 1000U, /**< MPU blink ticks. */
 } mpu_period_t;
 
 /**
  * @brief Region base addresses for the MPU partition table.
  */
 typedef enum : uintptr_t {
-  k_mpu_region_mram_base = 0x02000000UL,
-  k_mpu_region_sram_base = 0x22000000UL,
-  k_mpu_region_peri_base = 0x40000000UL,
+  k_mpu_region_mram_base = 0x02000000UL, /**< MPU region MRAM base. */
+  k_mpu_region_sram_base = 0x22000000UL, /**< MPU region SRAM base. */
+  k_mpu_region_peri_base = 0x40000000UL, /**< MPU region peri base. */
 } mpu_region_base_t;
 
 /**
@@ -86,13 +86,13 @@ typedef enum : uint32_t {
  * (encoding 0x04) for the peripheral region.
  */
 typedef enum : uint8_t {
-  k_mpu_mair_attr0_normal_wb = 0xFFU,
-  k_mpu_mair_attr1_device    = 0x04U,
+  k_mpu_mair_attr0_normal_wb = 0xFFU, /**< MPU mair attr0 normal wb. */
+  k_mpu_mair_attr1_device    = 0x04U, /**< MPU mair attr1 device.    */
 } mpu_mair_encoding_t;
 
 typedef enum : uint32_t {
-  k_mpu_mair0_word =
-    ((uint32_t)k_mpu_mair_attr1_device << 8U) | (uint32_t)k_mpu_mair_attr0_normal_wb,
+  k_mpu_mair0_word = ((uint32_t)k_mpu_mair_attr1_device << 8U) |
+                     (uint32_t)k_mpu_mair_attr0_normal_wb, /**< MPU mair0 word. */
 } mpu_mair0_t;
 
 /**
@@ -130,7 +130,8 @@ static const ra8_mpu_region_t s_mpu_regions[] = {
 };
 
 typedef enum : uint8_t {
-  k_mpu_region_count = (uint8_t)(sizeof(s_mpu_regions) / sizeof(s_mpu_regions[0])),
+  k_mpu_region_count =
+    (uint8_t)(sizeof(s_mpu_regions) / sizeof(s_mpu_regions[0])), /**< MPU region count. */
 } mpu_region_count_t;
 
 /**

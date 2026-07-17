@@ -131,7 +131,7 @@ static void internal_set_vtor(void)
 static void internal_enable_fpu(void)
 {
   enum : uint32_t {
-    k_ra8_cpacr_cp10_cp11_full_access = 0x00F00000UL,
+    k_ra8_cpacr_cp10_cp11_full_access = 0x00F00000UL, /**< RA8 cpacr cp10 cp11 full access. */
   };
   uint32_t cpacr = internal_read32(k_ra8_scb_cpacr_addr);
   cpacr |= k_ra8_cpacr_cp10_cp11_full_access;
@@ -146,8 +146,8 @@ static void internal_enable_fpu(void)
 static void internal_enable_fpu_lazy_stack(void)
 {
   enum : uint32_t {
-    k_ra8_fpccr_lspen = 1UL << 30,
-    k_ra8_fpccr_aspen = 1UL << 31,
+    k_ra8_fpccr_lspen = 1UL << 30, /**< RA8 fpccr lspen. */
+    k_ra8_fpccr_aspen = 1UL << 31, /**< RA8 fpccr aspen. */
   };
   uint32_t fpccr = internal_read32(k_ra8_fpu_fpccr_addr);
   fpccr |= k_ra8_fpccr_lspen | k_ra8_fpccr_aspen;
@@ -165,7 +165,7 @@ static void internal_enable_fpu_lazy_stack(void)
   internal_dsb();
   internal_isb();
 
-  enum : uint32_t { k_ra8_ccr_ic = 1UL << 17 };
+  enum : uint32_t { k_ra8_ccr_ic = 1UL << 17 /**< RA8 ccr ic. */ };
   uint32_t ccr = internal_read32(k_ra8_scb_ccr_addr);
   ccr |= k_ra8_ccr_ic;
   internal_write32(k_ra8_scb_ccr_addr, ccr);
@@ -184,7 +184,7 @@ static void internal_enable_fpu_lazy_stack(void)
  */
 [[maybe_unused]] static void internal_enable_dcache(void)
 {
-  enum : uint32_t { k_ra8_ccr_dc = 1UL << 16 };
+  enum : uint32_t { k_ra8_ccr_dc = 1UL << 16 /**< RA8 ccr dc. */ };
   uint32_t ccr = internal_read32(k_ra8_scb_ccr_addr);
   ccr |= k_ra8_ccr_dc;
   internal_write32(k_ra8_scb_ccr_addr, ccr);
@@ -197,7 +197,7 @@ static void internal_enable_fpu_lazy_stack(void)
  */
 [[maybe_unused]] static void internal_enable_branch_predictor(void)
 {
-  enum : uint32_t { k_ra8_ccr_bp = 1UL << 18 };
+  enum : uint32_t { k_ra8_ccr_bp = 1UL << 18 /**< RA8 ccr bp. */ };
   uint32_t ccr = internal_read32(k_ra8_scb_ccr_addr);
   ccr |= k_ra8_ccr_bp;
   internal_write32(k_ra8_scb_ccr_addr, ccr);
@@ -242,23 +242,23 @@ static void internal_set_priority_grouping(void)
  */
 /* RBAR attribute-byte encodings (bottom 5 bits of RBAR). */
 enum : uint32_t {
-  k_ra8_rbar_attr_ro_x      = 0x02U, /* AP=RO, SH=none, XN=0.                        */
-  k_ra8_rbar_attr_rw_xn     = 0x03U, /* AP=RW, SH=none, XN=1.                        */
-  k_ra8_rbar_attr_device_rw = 0x23U, /* AP=RW, SH=outer sh, XN=1, MAIR idx = device. */
-  k_ra8_mpu_rlar_enable     = 1UL << 0,
+  k_ra8_rbar_attr_ro_x      = 0x02U,    /**< AP=RO, SH=none, XN=0.                        */
+  k_ra8_rbar_attr_rw_xn     = 0x03U,    /**< AP=RW, SH=none, XN=1.                        */
+  k_ra8_rbar_attr_device_rw = 0x23U,    /**< AP=RW, SH=outer sh, XN=1, MAIR idx = device. */
+  k_ra8_mpu_rlar_enable     = 1UL << 0, /**< RA8 MPU rlar enable.                         */
 };
 
 /* Region base and limit addresses. RLAR limits are <region-end> minus
  * the ARMv8-M 32-byte region quantum, OR-ed with the enable bit at write time. */
 enum : uint32_t {
-  k_ra8_mpu_mram_base   = 0x02000000UL, /* 1 MiB MRAM code region. */
-  k_ra8_mpu_mram_limit  = 0x020FFFE0UL,
-  k_ra8_mpu_sram_base   = 0x22000000UL, /* 2 MiB ECC SRAM region. */
-  k_ra8_mpu_sram_limit  = 0x221FFFE0UL,
-  k_ra8_mpu_sdram_base  = 0x68000000UL, /* 64 MiB external SDRAM. */
-  k_ra8_mpu_sdram_limit = 0x6BFFFFE0UL,
-  k_ra8_mpu_peri_base   = 0x40000000UL, /* Peripheral bus window base. */
-  k_ra8_mpu_peri_limit  = 0x47FFFFE0UL,
+  k_ra8_mpu_mram_base   = 0x02000000UL, /**< 1 MiB MRAM code region.     */
+  k_ra8_mpu_mram_limit  = 0x020FFFE0UL, /**< RA8 MPU MRAM limit.         */
+  k_ra8_mpu_sram_base   = 0x22000000UL, /**< 2 MiB ECC SRAM region.      */
+  k_ra8_mpu_sram_limit  = 0x221FFFE0UL, /**< RA8 MPU SRAM limit.         */
+  k_ra8_mpu_sdram_base  = 0x68000000UL, /**< 64 MiB external SDRAM.      */
+  k_ra8_mpu_sdram_limit = 0x6BFFFFE0UL, /**< RA8 MPU SDRAM limit.        */
+  k_ra8_mpu_peri_base   = 0x40000000UL, /**< Peripheral bus window base. */
+  k_ra8_mpu_peri_limit  = 0x47FFFFE0UL, /**< RA8 MPU peri limit.         */
 };
 
 /**
@@ -278,9 +278,9 @@ internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enab
 [[maybe_unused]] static void internal_mpu_init(void)
 {
   enum : uint32_t {
-    k_ra8_mpu_ctrl_enable     = 1UL << 0,
-    k_ra8_mpu_ctrl_privdefena = 1UL << 2,
-    k_ra8_mair0_default       = 0x000404FFUL,
+    k_ra8_mpu_ctrl_enable     = 1UL << 0,     /**< RA8 MPU control enable.     */
+    k_ra8_mpu_ctrl_privdefena = 1UL << 2,     /**< RA8 MPU control privdefena. */
+    k_ra8_mair0_default       = 0x000404FFUL, /**< RA8 mair0 default.          */
   };
 
   /* MAIR0: idx 0 = WB/WA, idx 1 = non-cacheable, idx 2 = device-nGnRE. */

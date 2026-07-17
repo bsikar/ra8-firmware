@@ -102,14 +102,14 @@ typedef enum : uint32_t {
  * upper bound minus 32 OR-ed with the enable bits at write time.
  */
 typedef enum : uint32_t {
-  k_ra8_tz_ns_mram_base    = 0x02080000UL,
-  k_ra8_tz_ns_mram_limit   = 0x020FFFE0UL,
-  k_ra8_tz_ns_sram_base    = 0x22100000UL,
-  k_ra8_tz_ns_sram_limit   = 0x221FFFE0UL,
-  k_ra8_tz_ns_sdram_base   = 0x6A000000UL,
-  k_ra8_tz_ns_sdram_limit  = 0x6BFFFFE0UL,
-  k_ra8_tz_nsc_veneer_base = 0x10000000UL,
-  k_ra8_tz_nsc_veneer_lim  = 0x100FFFE0UL,
+  k_ra8_tz_ns_mram_base    = 0x02080000UL, /**< RA8 TrustZone ns MRAM base.    */
+  k_ra8_tz_ns_mram_limit   = 0x020FFFE0UL, /**< RA8 TrustZone ns MRAM limit.   */
+  k_ra8_tz_ns_sram_base    = 0x22100000UL, /**< RA8 TrustZone ns SRAM base.    */
+  k_ra8_tz_ns_sram_limit   = 0x221FFFE0UL, /**< RA8 TrustZone ns SRAM limit.   */
+  k_ra8_tz_ns_sdram_base   = 0x6A000000UL, /**< RA8 TrustZone ns SDRAM base.   */
+  k_ra8_tz_ns_sdram_limit  = 0x6BFFFFE0UL, /**< RA8 TrustZone ns SDRAM limit.  */
+  k_ra8_tz_nsc_veneer_base = 0x10000000UL, /**< RA8 TrustZone NSC veneer base. */
+  k_ra8_tz_nsc_veneer_lim  = 0x100FFFE0UL, /**< RA8 TrustZone NSC veneer lim.  */
 } ra8_tz_partition_t;
 
 /* =============================================================================

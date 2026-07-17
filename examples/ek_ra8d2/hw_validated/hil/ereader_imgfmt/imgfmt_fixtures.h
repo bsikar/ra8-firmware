@@ -15,7 +15,7 @@
 #include <stdint.h>
 
 /** @brief Length of the baked BMP image, bytes. */
-enum : size_t { k_bmp_len = 3654U };
+enum : size_t { k_bmp_len = 3654U /**< Bmp length. */ };
 
 /** @brief Baked 40x30 four-quadrant BMP image. */
 /* clang-format off */
@@ -253,7 +253,7 @@ static const uint8_t k_bmp[k_bmp_len] = {
 /* clang-format on */
 
 /** @brief Length of the baked GIF image, bytes. */
-enum : size_t { k_gif_len = 161U };
+enum : size_t { k_gif_len = 161U /**< Gif length. */ };
 
 /** @brief Baked 40x30 four-quadrant GIF image. */
 /* clang-format off */

@@ -40,9 +40,9 @@
 #include "ra8_time.h"
 
 typedef enum : uint16_t {
-  k_fb_w           = 512U,
-  k_fb_h           = 512U,
-  k_fb_align_bytes = 64U, /**< AXI-burst alignment for clean GLCDC fetches. */
+  k_fb_w           = 512U, /**< Fb w.                                        */
+  k_fb_h           = 512U, /**< Fb h.                                        */
+  k_fb_align_bytes = 64U,  /**< AXI-burst alignment for clean GLCDC fetches. */
 } lcd_fb_dim_t;
 
 typedef enum : uint16_t {
@@ -51,12 +51,12 @@ typedef enum : uint16_t {
 } lcd_color_t;
 
 typedef enum : uint8_t {
-  k_lcd_x_thickness = 4U,
+  k_lcd_x_thickness = 4U, /**< LCD x thickness. */
 } lcd_x_param_t;
 
 typedef enum : uint32_t {
-  k_lcd_powerup_delay_ms = 500U,
-  k_lcd_heartbeat_ms     = 500U,
+  k_lcd_powerup_delay_ms = 500U, /**< LCD powerup delay ms. */
+  k_lcd_heartbeat_ms     = 500U, /**< LCD heartbeat ms.     */
 } lcd_pace_t;
 
 /* Static framebuffer in SRAM, 64-byte AXI-burst aligned so the GLCDC

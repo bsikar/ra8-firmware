@@ -53,16 +53,16 @@
 
 /** @brief App-wide tunables. */
 typedef enum : uint32_t {
-  k_pp_demo_baud       = 115200U,
-  k_pp_demo_period_ms  = 1000U,
-  k_pp_demo_busy_iters = 100000U,
-  k_pp_demo_us_per_ms  = 1000U,
+  k_pp_demo_baud       = 115200U, /**< Pp demo baud.       */
+  k_pp_demo_period_ms  = 1000U,   /**< Pp demo period ms.  */
+  k_pp_demo_busy_iters = 100000U, /**< Pp demo busy iters. */
+  k_pp_demo_us_per_ms  = 1000U,   /**< Pp demo us per ms.  */
 } pp_demo_const_t;
 
 /** @brief Single-byte ASCII conversion constants. */
 typedef enum : uint8_t {
-  k_pp_demo_ascii_zero   = '0',
-  k_pp_demo_dec_base     = 10U,
+  k_pp_demo_ascii_zero   = '0', /**< Pp demo ascii zero.             */
+  k_pp_demo_dec_base     = 10U, /**< Pp demo dec base.               */
   k_pp_demo_uint_dec_max = 10U, /**< Max digits in a uint32 base-10. */
   k_pp_demo_print_buf    = 96U, /**< Max bytes in one print line.    */
 } pp_demo_byte_t;

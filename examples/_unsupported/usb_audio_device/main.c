@@ -236,8 +236,8 @@ static void usb_audio_log(const char* s)
 static void usb_audio_u32_to_ascii(uint32_t value, char* buf, uint32_t cap)
 {
   enum : uint32_t {
-    k_dec_radix  = 10U,
-    k_max_digits = 10U,
+    k_dec_radix  = 10U, /**< Dec radix.      */
+    k_max_digits = 10U, /**< Maximum digits. */
   };
   if (buf == nullptr || cap == 0U) {
     return;

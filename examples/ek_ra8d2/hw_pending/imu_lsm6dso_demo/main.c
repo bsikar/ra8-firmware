@@ -60,11 +60,12 @@
 
 /** @brief App-wide tunables. */
 typedef enum : uint32_t {
-  k_imu_decimal_base     = 10U, /**< Radix for integer-to-ASCII. */
-  k_imu_demo_baud        = 115200U,
-  k_imu_demo_period_ms   = 250U,
-  k_imu_demo_bus_hz      = 100000U,
-  k_imu_demo_iic_channel = (uint32_t)k_ra8_board_mikrobus_iic_b_channel,
+  k_imu_decimal_base   = 10U,     /**< Radix for integer-to-ASCII. */
+  k_imu_demo_baud      = 115200U, /**< Imu demo baud.              */
+  k_imu_demo_period_ms = 250U,    /**< Imu demo period ms.         */
+  k_imu_demo_bus_hz    = 100000U, /**< Imu demo bus Hz.            */
+  k_imu_demo_iic_channel =
+    (uint32_t)k_ra8_board_mikrobus_iic_b_channel, /**< Imu demo iic channel. */
 } imu_demo_const_t;
 
 /** @brief MikroBUS SDA/SCL routed through Arduino D14/D15 to SDA1/SCL1. */
@@ -105,7 +106,7 @@ static void imu_demo_panic_halt(void)
 /** @brief Result buffer for one decimal int16_t (max "-32768" = 6 bytes
  *         plus the trailing NUL). */
 typedef enum : uint32_t {
-  k_imu_demo_int_str_cap = 8U,
+  k_imu_demo_int_str_cap = 8U, /**< Imu demo int str cap. */
 } imu_demo_str_cap_t;
 
 /**
@@ -212,7 +213,7 @@ static ra8_err_t imu_demo_iic_read(void* ctx, uint8_t reg, uint8_t* buf, uint32_
  * @return Forwarded ``ra8_i3c_write`` return code.
  */
 typedef enum : uint32_t {
-  k_imu_demo_iic_tx_cap = 16U,
+  k_imu_demo_iic_tx_cap = 16U, /**< Imu demo iic TX cap. */
 } imu_demo_iic_cap_t;
 
 /* cppcheck-suppress constParameterCallback ; ctx must stay non-const to match

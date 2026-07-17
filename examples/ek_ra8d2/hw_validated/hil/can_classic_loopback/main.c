@@ -34,26 +34,26 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_can_demo_period_ms = 1000U,
-  k_can_demo_bitrate   = 250000U,
-  k_can_demo_id        = 0x456U,
+  k_can_demo_period_ms = 1000U,   /**< CAN demo period ms. */
+  k_can_demo_bitrate   = 250000U, /**< CAN demo bitrate.   */
+  k_can_demo_id        = 0x456U,  /**< CAN demo ID.        */
 } can_demo_const_t;
 
 /** @brief Channel + payload layout. */
 typedef enum : uint8_t {
-  k_can_demo_channel = 0U,
-  k_can_demo_dlc     = 8U,
+  k_can_demo_channel = 0U, /**< CAN demo channel. */
+  k_can_demo_dlc     = 8U, /**< CAN demo dlc.     */
 } can_demo_layout_t;
 
 /** @brief Constant payload bytes for the heartbeat frame. */
 typedef enum : uint8_t {
-  k_can_demo_byte_marker_a = 0xC1U,
-  k_can_demo_byte_marker_b = 0xA5U,
-  k_can_demo_byte_marker_c = 0x5CU,
-  k_can_demo_byte_marker_d = 0x10U,
-  k_can_demo_byte_marker_e = 0x20U,
-  k_can_demo_byte_marker_f = 0x30U,
-  k_can_demo_byte_marker_g = 0x40U,
+  k_can_demo_byte_marker_a = 0xC1U, /**< CAN demo byte marker a. */
+  k_can_demo_byte_marker_b = 0xA5U, /**< CAN demo byte marker b. */
+  k_can_demo_byte_marker_c = 0x5CU, /**< CAN demo byte marker c. */
+  k_can_demo_byte_marker_d = 0x10U, /**< CAN demo byte marker d. */
+  k_can_demo_byte_marker_e = 0x20U, /**< CAN demo byte marker e. */
+  k_can_demo_byte_marker_f = 0x30U, /**< CAN demo byte marker f. */
+  k_can_demo_byte_marker_g = 0x40U, /**< CAN demo byte marker g. */
 } can_demo_byte_t;
 
 /* CFDC[0].CTR test-mode bits live in ra8_canfd_set_test_mode() now.

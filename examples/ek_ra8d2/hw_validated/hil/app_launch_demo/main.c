@@ -152,6 +152,7 @@ static void app_launch_hil_emit_pass(void)
  * @since 0.1.0
  */
 #ifndef APP_LAUNCH_SETTINGS
+/** @brief APP LAUNCH SETTINGS. */
 #define APP_LAUNCH_SETTINGS 1
 #endif
 

@@ -35,13 +35,13 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_wdt_sup_demo_stack_bytes          = 1024U,
-  k_wdt_sup_demo_priority             = 5U,
-  k_wdt_sup_demo_worker_a_period_ms   = 100U,
-  k_wdt_sup_demo_worker_b_period_ms   = 250U,
-  k_wdt_sup_demo_worker_a_deadline_ms = 500U,
-  k_wdt_sup_demo_worker_b_deadline_ms = 750U,
-  k_wdt_sup_demo_sup_period_ms        = 50U,
+  k_wdt_sup_demo_stack_bytes          = 1024U, /**< Wdt sup demo stack bytes.          */
+  k_wdt_sup_demo_priority             = 5U,    /**< Wdt sup demo priority.             */
+  k_wdt_sup_demo_worker_a_period_ms   = 100U,  /**< Wdt sup demo worker a period ms.   */
+  k_wdt_sup_demo_worker_b_period_ms   = 250U,  /**< Wdt sup demo worker b period ms.   */
+  k_wdt_sup_demo_worker_a_deadline_ms = 500U,  /**< Wdt sup demo worker a deadline ms. */
+  k_wdt_sup_demo_worker_b_deadline_ms = 750U,  /**< Wdt sup demo worker b deadline ms. */
+  k_wdt_sup_demo_sup_period_ms        = 50U,   /**< Wdt sup demo sup period ms.        */
 } wdt_sup_demo_const_t;
 
 [[gnu::aligned(8)]] static uint8_t s_thread_a_stack[k_wdt_sup_demo_stack_bytes];
@@ -105,7 +105,7 @@ volatile uint32_t g_wdt_supervisor_demo_step = k_wdt_sup_step_start;
  */
 /** @brief Sentinel for ::g_wdt_supervisor_demo_last_err ("none yet"). */
 typedef enum : uint32_t {
-  k_wdt_sup_err_none = 0xFFFFFFFFU,
+  k_wdt_sup_err_none = 0xFFFFFFFFU, /**< Wdt sup error none. */
 } wdt_sup_err_sentinel_t;
 
 volatile uint32_t g_wdt_supervisor_demo_last_err = k_wdt_sup_err_none;

@@ -38,24 +38,24 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_agt_cas_baud    = 115200U,
-  k_agt_cas_poll_ms = 10U,
+  k_agt_cas_baud    = 115200U, /**< AGT cas baud.    */
+  k_agt_cas_poll_ms = 10U,     /**< AGT cas poll ms. */
   /* 32-bit virtual reload. Low 16 bits go to AGT0, high 16 bits to
    * AGT1. Keep it small enough that AGT1 underflows within the HIL
    * timeout but large enough to demonstrate the cascade chain. */
-  k_agt_cas_reload32 = 0x00017FFFU,
+  k_agt_cas_reload32 = 0x00017FFFU, /**< AGT cas reload32. */
 } agt_cas_const_t;
 
 /** @brief Hex-digit width + mask for the per-tick banner formatter. */
 typedef enum : uint32_t {
-  k_agt_cas_hex_digits = 8U,
-  k_agt_cas_hex_shift  = 4U,
-  k_agt_cas_hex_mask   = 0xFU,
+  k_agt_cas_hex_digits = 8U,   /**< AGT cas hex digits. */
+  k_agt_cas_hex_shift  = 4U,   /**< AGT cas hex shift.  */
+  k_agt_cas_hex_mask   = 0xFU, /**< AGT cas hex mask.   */
 } agt_cas_fmt_t;
 
 /** @brief AGT1 = "high half" channel; its TUNDF flags a full cascade tick. */
 typedef enum : uint8_t {
-  k_agt_cas_hi_channel = 1U,
+  k_agt_cas_hi_channel = 1U, /**< AGT cas hi channel. */
 } agt_cas_chan_t;
 
 /** @brief Hex print map for the tick counter. */

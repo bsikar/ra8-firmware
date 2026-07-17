@@ -34,13 +34,13 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_journal_period_ms     = 1000U,
-  k_journal_record_bytes  = 16U,
-  k_journal_record_addr   = 0x0U,
-  k_journal_xspi_instance = 0U,
-  k_journal_counter_bytes = 4U,
-  k_journal_byte_mask     = 0xFFU,
-  k_journal_byte_shift    = 8U,
+  k_journal_period_ms     = 1000U, /**< Journal period ms.      */
+  k_journal_record_bytes  = 16U,   /**< Journal record bytes.   */
+  k_journal_record_addr   = 0x0U,  /**< Journal record address. */
+  k_journal_xspi_instance = 0U,    /**< Journal XSPI instance.  */
+  k_journal_counter_bytes = 4U,    /**< Journal counter bytes.  */
+  k_journal_byte_mask     = 0xFFU, /**< Journal byte mask.      */
+  k_journal_byte_shift    = 8U,    /**< Journal byte shift.     */
 } flash_journal_const_t;
 
 /**
@@ -177,7 +177,7 @@ volatile uint32_t g_fj_jedec_id = 0U;
  */
 /** @brief Sentinel for ::g_fj_expander_err meaning "no error captured yet". */
 typedef enum : uint32_t {
-  k_fj_err_none = 0xFFFFFFFFU,
+  k_fj_err_none = 0xFFFFFFFFU, /**< Fj error none. */
 } fj_err_sentinel_t;
 
 volatile uint32_t g_fj_expander_err = k_fj_err_none;

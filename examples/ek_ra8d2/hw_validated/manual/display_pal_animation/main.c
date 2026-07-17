@@ -67,7 +67,7 @@ typedef enum : uint16_t {
  * @brief Number of horizontal colour bars rendered per frame.
  */
 typedef enum : uint8_t {
-  k_app_bar_count = 6U,
+  k_app_bar_count = 6U, /**< App bar count. */
 } app_bar_count_t;
 
 /**
@@ -78,12 +78,12 @@ typedef enum : uint8_t {
  *          blue, magenta.  Wraps every ``k_app_bar_count`` rows.
  */
 typedef enum : uint16_t {
-  k_app_color_red     = 0xF800U,
-  k_app_color_yellow  = 0xFFE0U,
-  k_app_color_green   = 0x07E0U,
-  k_app_color_cyan    = 0x07FFU,
-  k_app_color_blue    = 0x001FU,
-  k_app_color_magenta = 0xF81FU,
+  k_app_color_red     = 0xF800U, /**< App color red.     */
+  k_app_color_yellow  = 0xFFE0U, /**< App color yellow.  */
+  k_app_color_green   = 0x07E0U, /**< App color green.   */
+  k_app_color_cyan    = 0x07FFU, /**< App color cyan.    */
+  k_app_color_blue    = 0x001FU, /**< App color blue.    */
+  k_app_color_magenta = 0xF81FU, /**< App color magenta. */
 } app_color_t;
 
 /**
@@ -93,7 +93,7 @@ typedef enum : uint16_t {
  *          fast enough that the panel feels responsive.
  */
 typedef enum : uint16_t {
-  k_app_frame_period_ms = 60U,
+  k_app_frame_period_ms = 60U,  /**< App frame period ms.         */
   k_app_powerup_ms      = 500U, /**< PLL / panel power-on settle. */
 } app_pace_t;
 

@@ -27,7 +27,7 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_gpio_demo_poll_ms = 100U,
+  k_gpio_demo_poll_ms = 100U, /**< GPIO demo poll ms. */
 } gpio_demo_const_t;
 
 /**

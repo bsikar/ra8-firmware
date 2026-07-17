@@ -63,8 +63,8 @@
 
 /** @brief Compile-time tunables for the deep-sleep demo. */
 typedef enum : uint32_t {
-  k_lpm_deep_park_blink_ms = 500U,
-  k_lpm_deep_baud          = 115200U,
+  k_lpm_deep_park_blink_ms = 500U,    /**< Lpm deep park blink ms. */
+  k_lpm_deep_baud          = 115200U, /**< Lpm deep baud.          */
 } lpm_deep_config_t;
 
 /** @brief Boot + wake banners. */

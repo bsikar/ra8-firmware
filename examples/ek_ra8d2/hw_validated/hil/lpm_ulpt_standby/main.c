@@ -66,10 +66,10 @@ typedef enum : uint32_t {
   /* ULPTLCLK = LOCO / 1 = 32.768 kHz; 0x4000 (16384) ticks ~= 0.5 s. A
    * sub-second period keeps the bench wake banner prompt without
    * spinning the console. */
-  k_lus_period_ticks = 0x4000U,
+  k_lus_period_ticks = 0x4000U, /**< Lus period ticks. */
   /* Bounded spin (NASA P10 Rule 2) waiting for ULPTCR.TCSTF to confirm
    * the count actually started before we drop into standby. */
-  k_lus_tcstf_poll_limit = 0x100000U,
+  k_lus_tcstf_poll_limit = 0x100000U, /**< Lus tcstf poll limit. */
 } lus_const_t;
 
 /** @brief ULPT channel selector. */

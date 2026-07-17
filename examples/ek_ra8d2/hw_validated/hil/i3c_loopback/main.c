@@ -50,10 +50,10 @@
 
 /** @brief App-wide tunables. */
 typedef enum : uint32_t {
-  k_i3c_demo_baud        = 115200U,
-  k_i3c_demo_period_ms   = 1000U,
-  k_i3c_demo_bus_hz      = 100000U,
-  k_i3c_demo_iic_channel = 0U,
+  k_i3c_demo_baud        = 115200U, /**< I3C demo baud.        */
+  k_i3c_demo_period_ms   = 1000U,   /**< I3C demo period ms.   */
+  k_i3c_demo_bus_hz      = 100000U, /**< I3C demo bus Hz.      */
+  k_i3c_demo_iic_channel = 0U,      /**< I3C demo iic channel. */
 } i3c_demo_const_t;
 
 /** @brief Probe address on the I3C ch0 bus. 0x43 is U15's address on
@@ -61,7 +61,7 @@ typedef enum : uint32_t {
  *         device at 0x43 on the I3C bus, so a bare EVM NACKs (ack=0) --
  *         a completed scan (k_ra8_ok) still proves the controller clocks. */
 typedef enum : uint8_t {
-  k_i3c_demo_probe_addr = 0x43U,
+  k_i3c_demo_probe_addr = 0x43U, /**< I3C demo probe address. */
 } i3c_demo_byte_t;
 
 /** @brief Pinout for I3C channel 0 (P400 SCL0 / P401 SDA0 on EK-RA8D2),

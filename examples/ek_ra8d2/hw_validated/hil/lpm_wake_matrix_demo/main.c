@@ -57,7 +57,7 @@ typedef enum : uint32_t {
 } lpm_wupen_mask_t;
 
 typedef enum : uint32_t {
-  k_lpm_wake_baud = 115200U,
+  k_lpm_wake_baud = 115200U, /**< Lpm wake baud. */
 } lpm_wake_const_t;
 
 /** @brief Boot banner -- HIL gate string. */

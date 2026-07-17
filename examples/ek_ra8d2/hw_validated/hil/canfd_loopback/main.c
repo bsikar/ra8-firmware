@@ -40,27 +40,27 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_canfd_demo_period_ms = 1000U,
-  k_canfd_demo_bitrate   = 500000U,
-  k_canfd_demo_id        = 0x123U,
+  k_canfd_demo_period_ms = 1000U,   /**< CANFD demo period ms.               */
+  k_canfd_demo_bitrate   = 500000U, /**< CANFD demo bitrate.                 */
+  k_canfd_demo_id        = 0x123U,  /**< CANFD demo ID.                      */
   k_canfd_demo_rx_spin   = 200000U, /**< ~10 ms RX poll budget at 1 GHz CPU. */
 } canfd_demo_const_t;
 
 /** @brief Channel + payload layout. */
 typedef enum : uint8_t {
-  k_canfd_demo_channel = 0U,
-  k_canfd_demo_dlc     = 8U,
+  k_canfd_demo_channel = 0U, /**< CANFD demo channel. */
+  k_canfd_demo_dlc     = 8U, /**< CANFD demo dlc.     */
 } canfd_demo_layout_t;
 
 /** @brief Constant payload bytes for the heartbeat frame. */
 typedef enum : uint8_t {
-  k_canfd_demo_payload_b1 = 0xA5U,
-  k_canfd_demo_payload_b2 = 0x5AU,
-  k_canfd_demo_payload_b3 = 0xFFU,
-  k_canfd_demo_payload_b4 = 0x00U,
-  k_canfd_demo_payload_b5 = 0xDEU,
-  k_canfd_demo_payload_b6 = 0xADU,
-  k_canfd_demo_payload_b7 = 0xBEU,
+  k_canfd_demo_payload_b1 = 0xA5U, /**< CANFD demo payload b1. */
+  k_canfd_demo_payload_b2 = 0x5AU, /**< CANFD demo payload b2. */
+  k_canfd_demo_payload_b3 = 0xFFU, /**< CANFD demo payload b3. */
+  k_canfd_demo_payload_b4 = 0x00U, /**< CANFD demo payload b4. */
+  k_canfd_demo_payload_b5 = 0xDEU, /**< CANFD demo payload b5. */
+  k_canfd_demo_payload_b6 = 0xADU, /**< CANFD demo payload b6. */
+  k_canfd_demo_payload_b7 = 0xBEU, /**< CANFD demo payload b7. */
 } canfd_demo_payload_t;
 
 /* CFDC[0].CTR test-mode bits live in ra8_canfd_set_test_mode() now.

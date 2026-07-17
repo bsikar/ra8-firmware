@@ -74,14 +74,14 @@
  * compatible with NASA Power of 10 Rule 3 (no dynamic memory).
  */
 typedef enum : uint16_t {
-  k_blink_thread_stack_bytes = 1024U,
+  k_blink_thread_stack_bytes = 1024U, /**< Blink thread stack bytes. */
 } blink_stack_t;
 
 /**
  * @brief Thread priority for both blink threads.
  */
 typedef enum : uint8_t {
-  k_blink_thread_priority = 4U,
+  k_blink_thread_priority = 4U, /**< Blink thread priority. */
 } blink_priority_t;
 
 /**
@@ -93,8 +93,8 @@ typedef enum : uint8_t {
  * `k_blink_b_ticks` lights LED2 at 0.5 Hz.
  */
 typedef enum : uint16_t {
-  k_blink_a_ticks = 500U,
-  k_blink_b_ticks = 1000U,
+  k_blink_a_ticks = 500U,  /**< Blink a ticks. */
+  k_blink_b_ticks = 1000U, /**< Blink b ticks. */
 } blink_period_t;
 
 #ifndef RA8_SIMULATOR_MODE

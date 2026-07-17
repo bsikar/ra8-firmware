@@ -69,14 +69,14 @@ typedef enum : uint32_t {
 
 /** @brief MAIR slot encoding + probe sentinel. */
 typedef enum : uint8_t {
-  k_mpu_simple_attr_normal_wb = 0xFFU,
+  k_mpu_simple_attr_normal_wb = 0xFFU, /**< MPU simple attr normal wb.                 */
   k_mpu_simple_probe_byte     = 0x42U, /**< Sentinel byte written by mpu_simple_probe. */
 } mpu_simple_attr_t;
 
 /** @brief Heartbeat cadence + UART line rate. */
 typedef enum : uint32_t {
-  k_mpu_simple_period_ms = 1000U,
-  k_mpu_simple_baud      = 115200U,
+  k_mpu_simple_period_ms = 1000U,   /**< MPU simple period ms. */
+  k_mpu_simple_baud      = 115200U, /**< MPU simple baud.      */
 } mpu_simple_timing_t;
 
 /** @brief Stacked-frame layout for an Armv8-M exception entry (no FP). */

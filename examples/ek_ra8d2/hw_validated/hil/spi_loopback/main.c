@@ -46,16 +46,16 @@
 
 /** @brief App-wide tunables. */
 typedef enum : uint32_t {
-  k_spi_demo_baud        = 115200U,
-  k_spi_demo_period_ms   = 1000U,
-  k_spi_demo_spi_baud_hz = 1000000U,
-  k_spi_demo_spi_channel = 0U,
+  k_spi_demo_baud        = 115200U,  /**< SPI demo baud.        */
+  k_spi_demo_period_ms   = 1000U,    /**< SPI demo period ms.   */
+  k_spi_demo_spi_baud_hz = 1000000U, /**< SPI demo SPI baud Hz. */
+  k_spi_demo_spi_channel = 0U,       /**< SPI demo SPI channel. */
 } spi_demo_const_t;
 
 /** @brief Test pattern width and seed. */
 typedef enum : uint8_t {
-  k_spi_demo_pattern_len  = 16U,
-  k_spi_demo_pattern_base = 0xA0U,
+  k_spi_demo_pattern_len  = 16U,   /**< SPI demo pattern length. */
+  k_spi_demo_pattern_base = 0xA0U, /**< SPI demo pattern base.   */
 } spi_demo_byte_t;
 
 static const uint8_t k_spi_demo_msg_pass[] = "spi: pass\r\n";

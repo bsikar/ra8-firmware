@@ -59,7 +59,7 @@
 
 /** @brief Half-period of the visible blink, in milliseconds. */
 typedef enum : uint32_t {
-  k_clock_check_half_period_ms = 500U,
+  k_clock_check_half_period_ms = 500U, /**< Clock check half period ms. */
 } clock_check_period_t;
 
 /**

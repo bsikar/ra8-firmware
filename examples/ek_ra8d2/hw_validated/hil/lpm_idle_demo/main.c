@@ -43,16 +43,16 @@
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
-  k_lpm_demo_baud      = 115200U,
-  k_lpm_demo_period_ms = 100U,
+  k_lpm_demo_baud      = 115200U, /**< Lpm demo baud.      */
+  k_lpm_demo_period_ms = 100U,    /**< Lpm demo period ms. */
 } lpm_demo_config_t;
 
 /** @brief Single-byte constants. */
 typedef enum : uint8_t {
-  k_lpm_demo_nibble_mask  = 0x0FU,
-  k_lpm_demo_nibble_shift = 4U,
-  k_lpm_demo_alpha_thresh = 10U,
-  k_lpm_demo_hex_per_word = 8U,
+  k_lpm_demo_nibble_mask  = 0x0FU, /**< Lpm demo nibble mask.  */
+  k_lpm_demo_nibble_shift = 4U,    /**< Lpm demo nibble shift. */
+  k_lpm_demo_alpha_thresh = 10U,   /**< Lpm demo alpha thresh. */
+  k_lpm_demo_hex_per_word = 8U,    /**< Lpm demo hex per word. */
 } lpm_demo_byte_t;
 
 /** @brief Output line tags. */

@@ -17,7 +17,7 @@
 #include <stdint.h>
 
 /** @brief Length of the signed body (bytes the digest covers). */
-enum : uint32_t { k_rot_fixture_body_len = 66U };
+enum : uint32_t { k_rot_fixture_body_len = 66U /**< Rot fixture body length. */ };
 
 /** @brief Signed image: 66-byte body followed by the 116-byte trailer. */
 static const uint8_t k_rot_fixture_image[182] = {

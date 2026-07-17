@@ -17,7 +17,7 @@
 #include <stdint.h>
 
 /** @brief Length of the baked cover EPUB blob, bytes. */
-enum : size_t { k_epub_cover_fixture_len = 1566U };
+enum : size_t { k_epub_cover_fixture_len = 1566U /**< EPUB cover fixture length. */ };
 
 /** @brief Baked cover-art EPUB3 byte stream. */
 static const uint8_t k_epub_cover_fixture[k_epub_cover_fixture_len] = {
