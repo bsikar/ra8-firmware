@@ -75,6 +75,8 @@ add_executable(board_sim
                src/sim_args.c
                src/sim_run.c
                src/sim_run_guards.c
+               src/sim_run_inner.c
+               src/sim_run_report.c
                src/sim_trace.c
                src/sim_tz.c
                src/sim_view.c
