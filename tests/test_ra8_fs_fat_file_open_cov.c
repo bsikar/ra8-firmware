@@ -39,7 +39,7 @@
  * @see test_enter_subdir_zero_cluster()
  */
 typedef enum : uint32_t {
-  k_stale_sentinel = 99U,  /**< Poison preload proving out-params get set. */
+  k_stale_sentinel = 99U,  /**< Poison preload proving out-params get set.  */
   k_root_dir_lba   = 65U,  /**< Root-dir LBA of the hand-built FAT16 image. */
   k_de_off_clus_hi = 20U,  /**< DIR_FstClusHI byte offset in a dir entry.   */
   k_de_off_clus_lo = 26U,  /**< DIR_FstClusLO byte offset in a dir entry.   */
