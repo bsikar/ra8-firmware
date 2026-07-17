@@ -34,7 +34,7 @@ static const char* s_tag = "ra8_widget_label";
  *          paints exactly one fill (no frame), unlike the bordered button.
  */
 typedef enum : int16_t {
-  k_ra8_widget_label_no_border = 0,
+  k_ra8_widget_label_no_border = 0, /**< RA8 widget label no border. */
 } ra8_widget_label_geom_t;
 
 /**

@@ -54,7 +54,8 @@ static const char* s_tag = "NPU-LOAD";
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra8_npu_loader_align_mask = (uint32_t)k_ra8_npu_blob_arena_align - 1U,
+  k_ra8_npu_loader_align_mask =
+    (uint32_t)k_ra8_npu_blob_arena_align - 1U, /**< RA8 npu loader align mask. */
 } ra8_npu_loader_const_t;
 
 /**

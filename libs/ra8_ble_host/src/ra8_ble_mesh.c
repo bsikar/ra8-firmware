@@ -34,8 +34,8 @@
  * three function signatures + the bearer enum below to compile.
  */
 typedef enum {
-  k_bt_mesh_prov_adv  = 1 << 0,
-  k_bt_mesh_prov_gatt = 1 << 1,
+  k_bt_mesh_prov_adv  = 1 << 0, /**< Bt mesh prov adv.  */
+  k_bt_mesh_prov_gatt = 1 << 1, /**< Bt mesh prov GATT. */
 } ra8_internal_bt_mesh_prov_bearer_t;
 
 extern int  bt_mesh_prov_enable(uint32_t bearers);

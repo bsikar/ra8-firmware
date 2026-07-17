@@ -131,14 +131,14 @@ typedef enum : uint16_t {
  * minus the ARMv8-M 32-byte region quantum.
  */
 typedef enum : uint32_t {
-  k_ra8_tz_part_code_nsc_base  = 0x10000000U,
-  k_ra8_tz_part_code_nsc_limit = 0x100FFFE0U,
-  k_ra8_tz_part_ns_mram_base   = 0x02080000U,
-  k_ra8_tz_part_ns_mram_limit  = 0x020FFFE0U,
-  k_ra8_tz_part_sram_nsc_base  = 0x12000000U,
-  k_ra8_tz_part_sram_nsc_limit = 0x1200FFE0U,
-  k_ra8_tz_part_ns_sram_base   = 0x22100000U,
-  k_ra8_tz_part_ns_sram_limit  = 0x221FFFE0U,
+  k_ra8_tz_part_code_nsc_base  = 0x10000000U, /**< RA8 TrustZone part code NSC base.  */
+  k_ra8_tz_part_code_nsc_limit = 0x100FFFE0U, /**< RA8 TrustZone part code NSC limit. */
+  k_ra8_tz_part_ns_mram_base   = 0x02080000U, /**< RA8 TrustZone part ns MRAM base.   */
+  k_ra8_tz_part_ns_mram_limit  = 0x020FFFE0U, /**< RA8 TrustZone part ns MRAM limit.  */
+  k_ra8_tz_part_sram_nsc_base  = 0x12000000U, /**< RA8 TrustZone part SRAM NSC base.  */
+  k_ra8_tz_part_sram_nsc_limit = 0x1200FFE0U, /**< RA8 TrustZone part SRAM NSC limit. */
+  k_ra8_tz_part_ns_sram_base   = 0x22100000U, /**< RA8 TrustZone part ns SRAM base.   */
+  k_ra8_tz_part_ns_sram_limit  = 0x221FFFE0U, /**< RA8 TrustZone part ns SRAM limit.  */
   /* NS peripheral region needs to cover BOTH the standard Cortex-M
    * peripheral window at 0x40000000 (where IPC lives at 0x40020000)
    * AND the alias window at 0x50000000. With the original 0x5xxxxxxx-
@@ -149,8 +149,8 @@ typedef enum : uint32_t {
    * evidence on 2026-05-27: with 0x5xxxxxxx-only the ping-pong
    * counters stay at zero (CPU0 sends, CPU1 SecureFaults on recv);
    * extending the region down to 0x40000000 unblocks the round-trip. */
-  k_ra8_tz_part_ns_per_base  = 0x50000000U,
-  k_ra8_tz_part_ns_per_limit = 0x5FFFFFE0U,
+  k_ra8_tz_part_ns_per_base  = 0x50000000U, /**< RA8 TrustZone part ns per base.  */
+  k_ra8_tz_part_ns_per_limit = 0x5FFFFFE0U, /**< RA8 TrustZone part ns per limit. */
 } ra8_tz_secure_boot_partition_t;
 
 #ifdef RA8_SIMULATOR_MODE

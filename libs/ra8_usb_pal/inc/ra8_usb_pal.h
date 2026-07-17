@@ -107,10 +107,10 @@ typedef enum : uint8_t {
  * @brief USB endpoint transfer type.
  */
 typedef enum : uint8_t {
-  k_ra8_usb_pal_ep_type_control = 0U,
-  k_ra8_usb_pal_ep_type_iso     = 1U,
-  k_ra8_usb_pal_ep_type_bulk    = 2U,
-  k_ra8_usb_pal_ep_type_intr    = 3U,
+  k_ra8_usb_pal_ep_type_control = 0U, /**< RA8 USB pal ep type control. */
+  k_ra8_usb_pal_ep_type_iso     = 1U, /**< RA8 USB pal ep type iso.     */
+  k_ra8_usb_pal_ep_type_bulk    = 2U, /**< RA8 USB pal ep type bulk.    */
+  k_ra8_usb_pal_ep_type_intr    = 3U, /**< RA8 USB pal ep type intr.    */
 } ra8_usb_pal_ep_type_t;
 
 /**
@@ -136,7 +136,7 @@ typedef enum : uint8_t {
  * @brief Event mask bits passed to ``ra8_usb_pal_event_fn_t``.
  */
 typedef enum : uint16_t {
-  k_ra8_usb_pal_event_none    = 0x0000U,
+  k_ra8_usb_pal_event_none    = 0x0000U, /**< RA8 USB pal event none.   */
   k_ra8_usb_pal_event_reset   = 0x0001U, /**< Bus reset.                */
   k_ra8_usb_pal_event_suspend = 0x0002U, /**< Bus suspend (idle).       */
   k_ra8_usb_pal_event_resume  = 0x0004U, /**< Bus resume.               */

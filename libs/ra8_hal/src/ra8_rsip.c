@@ -71,6 +71,7 @@
  * for the host register-plumbing tests, which drive it against ra8_sim_mmap.
  */
 #ifndef RA8_RSIP_SOFTWARE_BACKEND
+/** @brief RA8 RSIP SOFTWARE BACKEND. */
 #define RA8_RSIP_SOFTWARE_BACKEND (1)
 #endif
 
@@ -480,19 +481,19 @@ typedef enum : uint32_t {
   k_ra8_rsip_sw_sha256_w_back_7  = 7U,    /**< W[i-7]  schedule lookback.     */
   k_ra8_rsip_sw_sha256_w_back_15 = 15U,   /**< W[i-15] schedule lookback.     */
   k_ra8_rsip_sw_sha256_w_back_16 = 16U,   /**< W[i-16] schedule lookback.     */
-  k_ra8_rsip_sw_rotr_2           = 2U,
-  k_ra8_rsip_sw_rotr_3           = 3U,
-  k_ra8_rsip_sw_rotr_6           = 6U,
-  k_ra8_rsip_sw_rotr_7           = 7U,
-  k_ra8_rsip_sw_rotr_10          = 10U,
-  k_ra8_rsip_sw_rotr_11          = 11U,
-  k_ra8_rsip_sw_rotr_13          = 13U,
-  k_ra8_rsip_sw_rotr_17          = 17U,
-  k_ra8_rsip_sw_rotr_18          = 18U,
-  k_ra8_rsip_sw_rotr_19          = 19U,
-  k_ra8_rsip_sw_rotr_22          = 22U,
-  k_ra8_rsip_sw_rotr_25          = 25U,
-  k_ra8_rsip_sw_word_bits        = 32U, /**< Word width in bits. */
+  k_ra8_rsip_sw_rotr_2           = 2U,    /**< RA8 rsip sw rotr 2.            */
+  k_ra8_rsip_sw_rotr_3           = 3U,    /**< RA8 rsip sw rotr 3.            */
+  k_ra8_rsip_sw_rotr_6           = 6U,    /**< RA8 rsip sw rotr 6.            */
+  k_ra8_rsip_sw_rotr_7           = 7U,    /**< RA8 rsip sw rotr 7.            */
+  k_ra8_rsip_sw_rotr_10          = 10U,   /**< RA8 rsip sw rotr 10.           */
+  k_ra8_rsip_sw_rotr_11          = 11U,   /**< RA8 rsip sw rotr 11.           */
+  k_ra8_rsip_sw_rotr_13          = 13U,   /**< RA8 rsip sw rotr 13.           */
+  k_ra8_rsip_sw_rotr_17          = 17U,   /**< RA8 rsip sw rotr 17.           */
+  k_ra8_rsip_sw_rotr_18          = 18U,   /**< RA8 rsip sw rotr 18.           */
+  k_ra8_rsip_sw_rotr_19          = 19U,   /**< RA8 rsip sw rotr 19.           */
+  k_ra8_rsip_sw_rotr_22          = 22U,   /**< RA8 rsip sw rotr 22.           */
+  k_ra8_rsip_sw_rotr_25          = 25U,   /**< RA8 rsip sw rotr 25.           */
+  k_ra8_rsip_sw_word_bits        = 32U,   /**< Word width in bits.            */
 } ra8_rsip_sw_sha256_t;
 
 /* 32-bit right-rotate -- see surrounding code and HUM citations. */
@@ -565,14 +566,14 @@ static void internal_sw_sha256_schedule(uint32_t      w[k_ra8_rsip_sw_sha256_rou
 /* 64-round SHA-256 main loop running on an a -- see surrounding code and HUM citations. */
 /** @brief FIPS 180-4 6.2.2 SHA-256 working-state lane indices a..h. */
 typedef enum : uint8_t {
-  k_sha256_lane_a = 0U,
-  k_sha256_lane_b = 1U,
-  k_sha256_lane_c = 2U,
-  k_sha256_lane_d = 3U,
-  k_sha256_lane_e = 4U,
-  k_sha256_lane_f = 5U,
-  k_sha256_lane_g = 6U,
-  k_sha256_lane_h = 7U,
+  k_sha256_lane_a = 0U, /**< Sha256 lane a. */
+  k_sha256_lane_b = 1U, /**< Sha256 lane b. */
+  k_sha256_lane_c = 2U, /**< Sha256 lane c. */
+  k_sha256_lane_d = 3U, /**< Sha256 lane d. */
+  k_sha256_lane_e = 4U, /**< Sha256 lane e. */
+  k_sha256_lane_f = 5U, /**< Sha256 lane f. */
+  k_sha256_lane_g = 6U, /**< Sha256 lane g. */
+  k_sha256_lane_h = 7U, /**< Sha256 lane h. */
 } sha256_lane_t;
 
 /**

@@ -68,7 +68,7 @@ static void* s_eth_ctx;
 
 /** @brief Per-port FWPBFC filter mask (7-bit). */
 typedef enum : uint8_t {
-  k_eth_fwpbfc_mask = 0x7FU,
+  k_eth_fwpbfc_mask = 0x7FU, /**< Ethernet fwpbfc mask. */
 } eth_fwpbfc_t;
 
 /**
@@ -100,13 +100,13 @@ typedef enum : uint16_t {
  * whether the chip parked on a happy-path step or an error path.
  */
 typedef enum : uint32_t {
-  k_ra8_eth_step_ok_1   = 1U,
-  k_ra8_eth_step_ok_2   = 2U,
-  k_ra8_eth_step_ok_3   = 3U,
-  k_ra8_eth_step_ok_4   = 4U,
-  k_ra8_eth_step_fail_1 = 0x11U,
-  k_ra8_eth_step_fail_3 = 0x13U,
-  k_ra8_eth_step_fail_4 = 0x14U,
+  k_ra8_eth_step_ok_1   = 1U,    /**< RA8 Ethernet step ok 1.   */
+  k_ra8_eth_step_ok_2   = 2U,    /**< RA8 Ethernet step ok 2.   */
+  k_ra8_eth_step_ok_3   = 3U,    /**< RA8 Ethernet step ok 3.   */
+  k_ra8_eth_step_ok_4   = 4U,    /**< RA8 Ethernet step ok 4.   */
+  k_ra8_eth_step_fail_1 = 0x11U, /**< RA8 Ethernet step fail 1. */
+  k_ra8_eth_step_fail_3 = 0x13U, /**< RA8 Ethernet step fail 3. */
+  k_ra8_eth_step_fail_4 = 0x14U, /**< RA8 Ethernet step fail 4. */
 } ra8_eth_step_t;
 
 /**

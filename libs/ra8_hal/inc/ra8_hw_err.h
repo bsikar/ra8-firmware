@@ -169,10 +169,10 @@ void ra8_sim_mmio_write1_clear32(volatile uint32_t* reg, uint32_t w1c_mask, uint
  * - ``k_ra8_hw_budget_xlong`` ~1 ms -- PLL relock
  */
 typedef enum : uint32_t {
-  k_ra8_hw_budget_short  = 0x00000400U,
-  k_ra8_hw_budget_medium = 0x00004000U,
-  k_ra8_hw_budget_long   = 0x00040000U,
-  k_ra8_hw_budget_xlong  = 0x00400000U,
+  k_ra8_hw_budget_short  = 0x00000400U, /**< RA8 hw budget short.  */
+  k_ra8_hw_budget_medium = 0x00004000U, /**< RA8 hw budget medium. */
+  k_ra8_hw_budget_long   = 0x00040000U, /**< RA8 hw budget long.   */
+  k_ra8_hw_budget_xlong  = 0x00400000U, /**< RA8 hw budget xlong.  */
 } ra8_hw_err_budget_t;
 
 /* =============================================================================

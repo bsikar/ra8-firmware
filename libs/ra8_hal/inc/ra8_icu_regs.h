@@ -187,7 +187,7 @@ static inline volatile uint32_t* ra8_icu_wupen1(void)
 static inline volatile uint32_t* ra8_icu_delsr(uint8_t index)
 {
   enum : uint8_t {
-    k_ra8_icu_num_delsr = 8U,
+    k_ra8_icu_num_delsr = 8U, /**< RA8 icu number delsr. */
   };
   if (index >= k_ra8_icu_num_delsr) {
     return nullptr;

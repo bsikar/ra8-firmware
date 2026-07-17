@@ -194,7 +194,7 @@ ra8_err_t ra8_etha_account_traffic(ra8_etha_port_t channel,
  */
 static ra8_err_t internal_etha_to_operation(ra8_etha_port_t channel)
 {
-  enum : uint32_t { k_ra8_etha_mode_spin = 200000U };
+  enum : uint32_t { k_ra8_etha_mode_spin = 200000U /**< RA8 etha mode spin. */ };
   /* HUM Ch 32.3.1.1 "EAMC : Mode Command Register" p 1631 +
    * HUM Ch 32.3.1.2 "EAMS : Mode Status Register" p 1631 */
   volatile r_etha_regs_t* reg = ra8_etha(channel);

@@ -119,7 +119,7 @@ typedef enum : uint8_t {
  * which cppcheck does not see if the test build excludes them. */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t bytes[k_ra8_net_pal_mac_addr_len];
+  uint8_t bytes[k_ra8_net_pal_mac_addr_len]; /**< Bytes. */
 } ra8_net_pal_mac_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -140,7 +140,7 @@ typedef void (*ra8_net_pal_event_fn_t)(void* ctx, uint32_t event_mask);
  * @brief Bits passed to ``ra8_net_pal_event_fn_t``.
  */
 typedef enum : uint32_t {
-  k_ra8_net_pal_event_none      = 0x00U,
+  k_ra8_net_pal_event_none      = 0x00U, /**< RA8 net pal event none. */
   k_ra8_net_pal_event_link_up   = 0x01U, /**< Link came up.           */
   k_ra8_net_pal_event_link_down = 0x02U, /**< Link went down.         */
   k_ra8_net_pal_event_rx_ready  = 0x04U, /**< RX descriptor has data. */

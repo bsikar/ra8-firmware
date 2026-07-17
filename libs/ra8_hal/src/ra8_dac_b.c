@@ -39,8 +39,8 @@ static const char* s_tag = "DAC_B";
  * @brief Named channel indices.
  */
 typedef enum : uint8_t {
-  k_ra8_dac_b_channel_0 = 0U,
-  k_ra8_dac_b_channel_1 = 1U,
+  k_ra8_dac_b_channel_0 = 0U, /**< RA8 DAC b channel 0. */
+  k_ra8_dac_b_channel_1 = 1U, /**< RA8 DAC b channel 1. */
 } ra8_dac_b_channel_t;
 
 /**
@@ -184,8 +184,8 @@ static void internal_stop_channel(uint8_t channel)
  * @brief Driver-wide runtime state.
  */
 typedef struct {
-  ra8_dac_b_update_fn_t fn;
-  void*                 ctx;
+  ra8_dac_b_update_fn_t fn;  /**< Fn.  */
+  void*                 ctx; /**< Ctx. */
 } ra8_dac_b_state_t;
 
 static ra8_dac_b_state_t s_dac_b_state;

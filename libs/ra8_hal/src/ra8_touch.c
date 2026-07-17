@@ -147,7 +147,7 @@ static ra8_err_t priv_gt911_read(uint16_t reg, uint8_t* buf, uint32_t len)
 static ra8_err_t priv_gt911_write_byte(uint16_t reg, uint8_t value)
 {
   enum : uint8_t {
-    k_payload_len = k_ra8_touch_gt911_reg_ptr_bytes + 1U,
+    k_payload_len = k_ra8_touch_gt911_reg_ptr_bytes + 1U, /**< Payload length. */
   };
   uint8_t payload[k_payload_len];
   priv_pack_reg(reg, payload);

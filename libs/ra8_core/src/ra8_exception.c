@@ -43,8 +43,10 @@
 #ifdef RA8_SIMULATOR_MODE
 /* Host-side test builds get the legacy halt-via-fatal-error path so
  * tests can override `internal_ra8_fatal_error` to longjmp out. */
+/** @brief RA8 EXCEPTION HALT. */
 #define RA8_EXCEPTION_HALT(tag, msg, exc) internal_ra8_fatal_error((tag), (msg), (exc))
 #else
+/** @brief RA8 EXCEPTION HALT. */
 #define RA8_EXCEPTION_HALT(tag, msg, exc)                                                          \
   do {                                                                                             \
     (void)(tag);                                                                                   \
@@ -55,14 +57,14 @@
 #endif
 
 typedef enum : uintptr_t {
-  k_ra8_scb_cfsr_addr  = 0xE000ED28UL,
-  k_ra8_scb_hfsr_addr  = 0xE000ED2CUL,
-  k_ra8_scb_dfsr_addr  = 0xE000ED30UL,
-  k_ra8_scb_mmfar_addr = 0xE000ED34UL,
-  k_ra8_scb_bfar_addr  = 0xE000ED38UL,
-  k_ra8_scb_afsr_addr  = 0xE000ED3CUL,
-  k_ra8_scb_sfsr_addr  = 0xE000EDE4UL, /* ARMv8-M SFSR -- Secure-banked, RAZ from NS. */
-  k_ra8_scb_sfar_addr  = 0xE000EDE8UL, /* ARMv8-M SFAR -- valid when SFSR.SFARVALID.  */
+  k_ra8_scb_cfsr_addr  = 0xE000ED28UL, /**< RA8 scb cfsr address.                       */
+  k_ra8_scb_hfsr_addr  = 0xE000ED2CUL, /**< RA8 scb hfsr address.                       */
+  k_ra8_scb_dfsr_addr  = 0xE000ED30UL, /**< RA8 scb dfsr address.                       */
+  k_ra8_scb_mmfar_addr = 0xE000ED34UL, /**< RA8 scb mmfar address.                      */
+  k_ra8_scb_bfar_addr  = 0xE000ED38UL, /**< RA8 scb bfar address.                       */
+  k_ra8_scb_afsr_addr  = 0xE000ED3CUL, /**< RA8 scb afsr address.                       */
+  k_ra8_scb_sfsr_addr  = 0xE000EDE4UL, /**< ARMv8-M SFSR -- Secure-banked, RAZ from NS. */
+  k_ra8_scb_sfar_addr  = 0xE000EDE8UL, /**< ARMv8-M SFAR -- valid when SFSR.SFARVALID.  */
 } ra8_scb_addr_t;
 
 /**

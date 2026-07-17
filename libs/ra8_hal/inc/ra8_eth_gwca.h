@@ -541,9 +541,9 @@ typedef struct {
   uint32_t linkfix_count;
   /** RX descriptor chain (FEMPTY ring of ``rx_depth`` entries). */
   ra8_gwca_basic_descriptor_t* rx_chain;
-  uint32_t                     rx_depth;
-  uint8_t*                     rx_pool;
-  uint32_t                     rx_slot_bytes;
+  uint32_t                     rx_depth;       /**< RX depth.                       */
+  uint8_t*                     rx_pool;        /**< RX pool.                        */
+  uint32_t                     rx_slot_bytes;  /**< RX slot bytes.                  */
   uint32_t                     rx_queue_index; /**< LINKFIX entry + GWDCC[i] index. */
   uint32_t                     rx_head;        /**< Round-robin read cursor.        */
   /** TX descriptor chain -- 16-byte EXTENDED descriptors (EDE = 1).
@@ -552,11 +552,11 @@ typedef struct {
    *  carries its INFO1 routing metadata (direct-descriptor format +
    *  destination vector). */
   ra8_gwca_ext_descriptor_t* tx_chain;
-  uint32_t                   tx_depth;
-  uint8_t*                   tx_pool;
-  uint32_t                   tx_slot_bytes;
-  uint32_t                   tx_queue_index;
-  uint32_t                   tx_tail; /**< Round-robin write cursor. */
+  uint32_t                   tx_depth;       /**< TX depth.                 */
+  uint8_t*                   tx_pool;        /**< TX pool.                  */
+  uint32_t                   tx_slot_bytes;  /**< TX slot bytes.            */
+  uint32_t                   tx_queue_index; /**< TX queue index.           */
+  uint32_t                   tx_tail;        /**< Round-robin write cursor. */
   /** MAC port (0..3) that frames are sourced from / sent to. */
   uint8_t mac_port;
 } ra8_eth_gwca_default_state_t;

@@ -220,7 +220,8 @@ static void internal_i2c_clear_status(volatile r_i2c_regs_t* reg)
   enum : uint8_t {
     k_ra8_i2c_status_clear_mask =
       (uint8_t)((1U << (uint8_t)k_ra8_i2c_icsr2_start_pos) | (uint8_t)k_ra8_i2c_msk_icsr2_stop |
-                (uint8_t)k_ra8_i2c_msk_icsr2_nackf | (uint8_t)k_ra8_i2c_msk_icsr2_al),
+                (uint8_t)k_ra8_i2c_msk_icsr2_nackf |
+                (uint8_t)k_ra8_i2c_msk_icsr2_al), /**< RA8 I2C status clear mask. */
   };
   /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2 -- W0C" p 2384 */
   reg->ICSR2 = (uint8_t)(reg->ICSR2 & (uint8_t)~(uint8_t)k_ra8_i2c_status_clear_mask);

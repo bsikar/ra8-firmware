@@ -43,7 +43,7 @@ static const char* s_tag = "ACMPHS";
  * a separate MSTP id for them.
  */
 typedef enum : uint8_t {
-  k_ra8_acmphs_mstp_id_count = 4U,
+  k_ra8_acmphs_mstp_id_count = 4U, /**< RA8 acmphs mstp ID count. */
 } ra8_acmphs_mstp_limit_t;
 
 /**
@@ -150,7 +150,8 @@ typedef enum : uint8_t {
   k_ra8_acmphs_cdfs_shift         = 5U, /**< CMPCTL.CDFS[1:0] at [6:5].           */
   k_ra8_acmphs_cdfs_enabled_value = 1U, /**< "Any sampling clock" when filter on. */
   k_ra8_acmphs_ctl_mask = k_ra8_acmphs_mask_hcen | k_ra8_acmphs_mask_ceg | k_ra8_acmphs_mask_cinv |
-                          k_ra8_acmphs_mask_coe | k_ra8_acmphs_mask_cdfs,
+                          k_ra8_acmphs_mask_coe |
+                          k_ra8_acmphs_mask_cdfs, /**< RA8 acmphs ctl mask. */
 } ra8_acmphs_bits_t;
 
 static ra8_acmphs_event_fn_t s_acmphs_fn;

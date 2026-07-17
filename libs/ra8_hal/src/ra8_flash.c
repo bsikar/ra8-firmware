@@ -865,9 +865,9 @@ ra8_err_t ra8_flash_lock_set(uintptr_t addr, uint16_t lock_bits)
   /* Validate the keyed value: bits [15:8] must be one of the two
    * documented keys (0x88 for MRCBPROT0, 0x44 for MRCBPROT1). */
   enum : uint16_t {
-    k_ra8_mrcbprot_key_byte_mask = 0xFF00U,
-    k_ra8_mrcbprot_key_ns        = 0x8800U,
-    k_ra8_mrcbprot_key_s         = 0x4400U,
+    k_ra8_mrcbprot_key_byte_mask = 0xFF00U, /**< RA8 mrcbprot key byte mask. */
+    k_ra8_mrcbprot_key_ns        = 0x8800U, /**< RA8 mrcbprot key ns.        */
+    k_ra8_mrcbprot_key_s         = 0x4400U, /**< RA8 mrcbprot key s.         */
   };
   enum : uint32_t {
     k_ra8_mrcbprot_secure_bit = 0x00080000UL, /**< Address bit 19. */

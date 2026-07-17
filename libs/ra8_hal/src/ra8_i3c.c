@@ -489,9 +489,9 @@ ra8_err_t ra8_i3c_dynamic_address_assign(ra8_i3c_daa_target_t* targets, uint8_t 
   for (uint8_t i = 0U; i < target_count; ++i) {
     /* PID(6) + BCR(1) + DCR(1) = 8 bytes per target. */
     enum : uint8_t {
-      k_pid_bcr_dcr_bytes = 8U,
-      k_idx_bcr           = 6U,
-      k_idx_dcr           = 7U,
+      k_pid_bcr_dcr_bytes = 8U, /**< Pid bcr dcr bytes. */
+      k_idx_bcr           = 6U, /**< Index bcr.         */
+      k_idx_dcr           = 7U, /**< Index dcr.         */
     };
     uint8_t pid_bcr_dcr[k_pid_bcr_dcr_bytes] = {};
     priv_ra8_i3c_fifo_read(reg, pid_bcr_dcr, sizeof(pid_bcr_dcr));
@@ -868,7 +868,7 @@ ra8_err_t ra8_i3c_ibi_enable(uint8_t target_addr)
   /* HUM Ch 40 "IBI Valid Control Register" pp 2445-2701 -- VLCNT[7:0]
    * carries the count of IBI entries the controller will accept. */
   enum : uint32_t {
-    k_ra8_i3c_ntibivctl_one_target = 1U,
+    k_ra8_i3c_ntibivctl_one_target = 1U, /**< RA8 I3C ntibivctl one target. */
   };
   volatile r_i3c_regs_t* reg = ra8_i3c();
   reg->NTIBIVCTL             = (k_ra8_i3c_ntibivctl_one_target << k_ra8_i3c_ntibivctl_vlcnt_shift) &
@@ -932,7 +932,7 @@ ra8_err_t ra8_i3c_ibi_read(ra8_i3c_ibi_t* out_ibi)
    * separates IBI from HJ/MR; IBI_ID 0x02 == hot-join, 0x04 ==
    * mainship-request in the MIPI I3C spec. */
   enum : uint8_t {
-    k_ibi_id_hot_join = 0x02U,
+    k_ibi_id_hot_join = 0x02U, /**< Ibi ID hot join. */
   };
   if ((status & k_ra8_i3c_ibi_status_ibi_st_mask) == 0U) {
     out_ibi->type = k_ra8_i3c_ibi_type_interrupt;
@@ -955,7 +955,7 @@ ra8_err_t ra8_i3c_ibi_read(ra8_i3c_ibi_t* out_ibi)
     priv_ra8_i3c_fifo_read(reg, out_ibi->payload, (uint32_t)to_copy);
   }
   enum : uint32_t {
-    k_ibi_last_mask = 1U,
+    k_ibi_last_mask = 1U, /**< Ibi last mask. */
   };
   out_ibi->last = (uint8_t)((status >> k_ra8_i3c_ibi_status_last_shift) & k_ibi_last_mask);
 

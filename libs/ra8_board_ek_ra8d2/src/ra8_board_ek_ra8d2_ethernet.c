@@ -60,8 +60,8 @@
  * RMAC.MPIC.PIS field selects RGMII vs RMII for the data path).
  */
 static const struct {
-  ra8_board_eth_pin_t pin;
-  const char*         owner;
+  ra8_board_eth_pin_t pin;   /**< Pin.   */
+  const char*         owner; /**< Owner. */
 } s_eth_routes[] = {
   {k_ra8_board_eth_pin_mdint, "ra8_board.eth.mdint"},
   {k_ra8_board_eth_pin_mdc, "ra8_board.eth.mdc"},

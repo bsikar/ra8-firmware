@@ -125,9 +125,9 @@ typedef enum : uint16_t {
  * @brief Per-byte shift constants for descriptor / wValue serialisation.
  */
 typedef enum : uint8_t {
-  k_ra8_hcdc_ecm_shift_byte0  = 0U,
-  k_ra8_hcdc_ecm_shift_byte1  = 8U,
-  k_ra8_hcdc_ecm_shift_nibble = 4U,
+  k_ra8_hcdc_ecm_shift_byte0  = 0U,    /**< RA8 hcdc ecm shift byte0.        */
+  k_ra8_hcdc_ecm_shift_byte1  = 8U,    /**< RA8 hcdc ecm shift byte1.        */
+  k_ra8_hcdc_ecm_shift_nibble = 4U,    /**< RA8 hcdc ecm shift nibble.       */
   k_ra8_hcdc_ecm_hex_alpha    = 0x0AU, /**< Offset for 'A'/'a' in hex digit. */
 } ra8_usb_hcdc_ecm_byte_shift_t;
 
@@ -136,7 +136,7 @@ typedef enum : uint8_t {
  * @brief Single-byte mask used during serialisation.
  */
 typedef enum : uint32_t {
-  k_ra8_hcdc_ecm_byte_mask = 0xFFU,
+  k_ra8_hcdc_ecm_byte_mask = 0xFFU, /**< RA8 hcdc ecm byte mask. */
 } ra8_usb_hcdc_ecm_byte_mask_t;
 
 /* =============================================================================

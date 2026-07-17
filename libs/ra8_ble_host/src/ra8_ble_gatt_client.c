@@ -176,12 +176,12 @@ ble_hs_mbuf_to_flat(const struct os_mbuf* om, void* flat, uint16_t max_len, uint
  * @brief Per-request bookkeeping (one in flight at a time).
  */
 typedef struct {
-  uint8_t                 in_use;
-  uint16_t                conn_handle;
-  ra8_ble_gatt_disc_fn_t  disc_cb;
-  ra8_ble_gatt_read_fn_t  read_cb;
-  ra8_ble_gatt_write_fn_t write_cb;
-  void*                   ctx;
+  uint8_t                 in_use;      /**< In use.      */
+  uint16_t                conn_handle; /**< Conn handle. */
+  ra8_ble_gatt_disc_fn_t  disc_cb;     /**< Disc cb.     */
+  ra8_ble_gatt_read_fn_t  read_cb;     /**< Read cb.     */
+  ra8_ble_gatt_write_fn_t write_cb;    /**< Write cb.    */
+  void*                   ctx;         /**< Ctx.         */
 } ra8_ble_gatt_client_pending_t;
 
 /**
@@ -189,11 +189,11 @@ typedef struct {
  * @brief Tracked notification subscription.
  */
 typedef struct {
-  uint8_t                  in_use;
-  uint16_t                 conn_handle;
-  uint16_t                 cccd_handle;
-  ra8_ble_gatt_notify_fn_t notify_cb;
-  void*                    ctx;
+  uint8_t                  in_use;      /**< In use.      */
+  uint16_t                 conn_handle; /**< Conn handle. */
+  uint16_t                 cccd_handle; /**< Cccd handle. */
+  ra8_ble_gatt_notify_fn_t notify_cb;   /**< Notify cb.   */
+  void*                    ctx;         /**< Ctx.         */
 } ra8_ble_gatt_client_sub_t;
 
 /** @brief Little-endian byte packing for 16/32-bit UUIDs and CCCD. */
@@ -203,7 +203,7 @@ typedef enum : uint32_t {
 } ble_gattc_pack_t;
 
 typedef enum : uint8_t {
-  k_ra8_gatt_client_max_subs = 4U,
+  k_ra8_gatt_client_max_subs = 4U, /**< RA8 GATT client maximum subs. */
 } ra8_ble_gatt_client_internal_t;
 
 /**

@@ -61,11 +61,11 @@ typedef enum : uint32_t {
 } ra8_glcdc_priv_mask_t;
 
 typedef enum : uint32_t {
-  k_glcdc_shift_high      = 16U,
-  k_glcdc_shift_flm6_fmt  = 28U,
-  k_glcdc_shift_arcdef    = 16U,
-  k_glcdc_axi_burst_bytes = 64U,
-  k_glcdc_bpp_rgb565      = 2U,
+  k_glcdc_shift_high      = 16U, /**< GLCDC shift high.      */
+  k_glcdc_shift_flm6_fmt  = 28U, /**< GLCDC shift flm6 fmt.  */
+  k_glcdc_shift_arcdef    = 16U, /**< GLCDC shift arcdef.    */
+  k_glcdc_axi_burst_bytes = 64U, /**< GLCDC axi burst bytes. */
+  k_glcdc_bpp_rgb565      = 2U,  /**< GLCDC bpp rgb565.      */
 } ra8_glcdc_layout_priv_t;
 
 /* AB7.ARCDEF[23:16] alpha constants. */
@@ -75,7 +75,7 @@ typedef enum : uint32_t {
 
 /* OUT_SET.FORMAT[1:0] / FLM6.FORMAT codes for RGB565 framebuffers. */
 typedef enum : uint32_t {
-  k_glcdc_out_set_rgb565 = 2U,
+  k_glcdc_out_set_rgb565 = 2U, /**< GLCDC out set rgb565. */
 } ra8_glcdc_out_set_fmt_t;
 
 /* =============================================================================
@@ -192,8 +192,8 @@ ra8_err_t ra8_glcdc_set_background_color(uint32_t argb)
    * scan starts with the new colour.  FSP polls BG.EN.VEN_b in
    * exactly this way (see r_glcdc.c FSP_ERROR_RETURN checks). */
   enum : uint32_t {
-    k_bg_en_ven   = 1UL << 8,
-    k_ven_timeout = 0x40000UL, /* > 1 frame at 1 GHz CPU. */
+    k_bg_en_ven   = 1UL << 8,  /**< Bg en ven.              */
+    k_ven_timeout = 0x40000UL, /**< > 1 frame at 1 GHz CPU. */
   };
 
   uint32_t bg_en = *ra8_glcdc_reg32(k_ra8_glcdc_off_bg_en);
@@ -234,8 +234,8 @@ ra8_err_t ra8_glcdc_set_background_color(uint32_t argb)
 ra8_err_t ra8_glcdc_layer1_show(uintptr_t fb_addr)
 {
   enum : uint32_t {
-    k_gr1_ven           = 1UL << 0,
-    k_gr1_dispsel_lower = 3UL, /**< AB1.DISPSEL = ON_LOWER (FSP's BLEND_ON_LOWER_LAYER). */
+    k_gr1_ven           = 1UL << 0, /**< Gr1 ven.                                             */
+    k_gr1_dispsel_lower = 3UL,      /**< AB1.DISPSEL = ON_LOWER (FSP's BLEND_ON_LOWER_LAYER). */
   };
   *ra8_glcdc_reg32(k_ra8_glcdc_off_gr1_saddr) = (uint32_t)fb_addr;
   *ra8_glcdc_reg32(k_ra8_glcdc_off_gr1_ab7) =
@@ -284,15 +284,15 @@ ra8_err_t ra8_glcdc_layer1_show(uintptr_t fb_addr)
 ra8_err_t ra8_glcdc_layer2_chroma_key_enable(uint32_t key_rgb888)
 {
   enum : uint32_t {
-    k_gr2_ven = 1UL << 0,
+    k_gr2_ven = 1UL << 0, /**< Gr2 ven. */
     /* Try several plausible CKON bit positions at once -- the HUM
      * isn't in front of me and different RA parts have moved the
      * bit around (0, 16, 24).  Setting all three is safe: at most
      * one is meaningful, the others land in reserved bits which
      * the chip ignores. */
-    k_ab7_ckon          = (1UL << 0) | (1UL << 16) | (1UL << 24),
-    k_ab1_arcon         = 1UL << 12,
-    k_arcdef_op         = ((uint32_t)k_glcdc_alpha_opaque << k_glcdc_shift_arcdef),
+    k_ab7_ckon  = (1UL << 0) | (1UL << 16) | (1UL << 24),                   /**< Ab7 ckon.  */
+    k_ab1_arcon = 1UL << 12,                                                /**< Ab1 arcon. */
+    k_arcdef_op = ((uint32_t)k_glcdc_alpha_opaque << k_glcdc_shift_arcdef), /**< Arcdef op. */
     k_alpha_opaque_byte = 0xFFUL << 24, /**< AB8 alpha-byte = opaque. */
     k_rgb888_mask       = 0x00FFFFFFUL, /**< 24-bit colour mask.      */
     k_ab9_transparent   = 0x00000000UL, /**< AB9 = alpha-0 replace.   */
@@ -341,8 +341,8 @@ ra8_err_t ra8_glcdc_layer2_show(uintptr_t fb_addr,
                                 uint16_t  fb_h)
 {
   enum : uint32_t {
-    k_gr2_ven           = 1UL << 0,
-    k_gr2_dispsel_lower = 3UL, /**< AB1.DISPSEL = ON_LOWER (FSP's BLEND_ON_LOWER_LAYER). */
+    k_gr2_ven           = 1UL << 0, /**< Gr2 ven.                                             */
+    k_gr2_dispsel_lower = 3UL,      /**< AB1.DISPSEL = ON_LOWER (FSP's BLEND_ON_LOWER_LAYER). */
   };
   /* HUM 63: GR2_FLM6.FORMAT[30:28] = 2 (RGB565). */
   *ra8_glcdc_reg32(k_ra8_glcdc_off_gr2_fmt) =

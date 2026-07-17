@@ -345,7 +345,7 @@ typedef enum : uint8_t {
   k_ra8_lpm_dpsier_idx_2 = 2U, /**< DPSIER2 / DPSIFR2 / DPSIEGR2. */
   k_ra8_lpm_dpsier_idx_3 =
     3U, /**< DPSIER3 / DPSIFR3 (HUM Ch 11.2.25 p 461 -- DPSIEGR3 exists at offset 0xA34 but is not exposed by this driver). */
-  k_ra8_lpm_dpsier_idx_count = 4U,
+  k_ra8_lpm_dpsier_idx_count = 4U, /**< RA8 lpm dpsier index count. */
 } ra8_lpm_dpsier_idx_t;
 
 /**
@@ -386,27 +386,27 @@ typedef enum : uint8_t {
  * writes work for everything else.
  */
 typedef enum : uint32_t {
-  k_ra8_lpm_wupen0_irq0    = 1UL << 0,              /**< IRQ0  @ bit 0.           */
-  k_ra8_lpm_wupen0_irq1    = 1UL << 1,              /**< IRQ1  @ bit 1.           */
-  k_ra8_lpm_wupen0_irq2    = 1UL << 2,              /**< IRQ2  @ bit 2.           */
-  k_ra8_lpm_wupen0_irq3    = 1UL << 3,              /**< IRQ3  @ bit 3.           */
-  k_ra8_lpm_wupen0_irq4    = 1UL << 4,              /**< IRQ4  @ bit 4.           */
-  k_ra8_lpm_wupen0_irq5    = 1UL << 5,              /**< IRQ5  @ bit 5.           */
-  k_ra8_lpm_wupen0_irq6    = 1UL << 6,              /**< IRQ6  @ bit 6.           */
-  k_ra8_lpm_wupen0_irq7    = 1UL << 7,              /**< IRQ7  @ bit 7.           */
-  k_ra8_lpm_wupen0_iwdt    = 1UL << 16,             /**< IWDTWUPEN.               */
-  k_ra8_lpm_wupen0_pvd1    = 1UL << 18,             /**< PVD1WUPEN.               */
-  k_ra8_lpm_wupen0_pvd2    = 1UL << 19,             /**< PVD2WUPEN.               */
-  k_ra8_lpm_wupen0_vbatt   = 1UL << 20,             /**< VBATTWUPEN.              */
-  k_ra8_lpm_wupen0_rtcalm  = 1UL << 24,             /**< RTCALMWUPEN.             */
-  k_ra8_lpm_wupen0_rtcprd  = 1UL << 25,             /**< RTCPRDWUPEN.             */
-  k_ra8_lpm_wupen0_usbhs   = 1UL << 26,             /**< USBHSWUPEN.              */
-  k_ra8_lpm_wupen0_usbfs   = 1UL << 27,             /**< USBFS0WUPEN.             */
-  k_ra8_lpm_wupen0_agt1ud  = 1UL << 28,             /**< AGT1UDWUPEN.             */
-  k_ra8_lpm_wupen0_agt1ca  = 1UL << 29,             /**< AGT1CAWUPEN.             */
-  k_ra8_lpm_wupen0_agt1cb  = 1UL << 30,             /**< AGT1CBWUPEN.             */
-  k_ra8_lpm_wupen0_riic0   = 1UL << 31,             /**< RIIC0WUPEN.              */
-  k_ra8_lpm_wupen0_acmphs0 = k_ra8_lpm_wupen0_pvd1, /* legacy alias for PVD1 path */
+  k_ra8_lpm_wupen0_irq0    = 1UL << 0,              /**< IRQ0  @ bit 0.              */
+  k_ra8_lpm_wupen0_irq1    = 1UL << 1,              /**< IRQ1  @ bit 1.              */
+  k_ra8_lpm_wupen0_irq2    = 1UL << 2,              /**< IRQ2  @ bit 2.              */
+  k_ra8_lpm_wupen0_irq3    = 1UL << 3,              /**< IRQ3  @ bit 3.              */
+  k_ra8_lpm_wupen0_irq4    = 1UL << 4,              /**< IRQ4  @ bit 4.              */
+  k_ra8_lpm_wupen0_irq5    = 1UL << 5,              /**< IRQ5  @ bit 5.              */
+  k_ra8_lpm_wupen0_irq6    = 1UL << 6,              /**< IRQ6  @ bit 6.              */
+  k_ra8_lpm_wupen0_irq7    = 1UL << 7,              /**< IRQ7  @ bit 7.              */
+  k_ra8_lpm_wupen0_iwdt    = 1UL << 16,             /**< IWDTWUPEN.                  */
+  k_ra8_lpm_wupen0_pvd1    = 1UL << 18,             /**< PVD1WUPEN.                  */
+  k_ra8_lpm_wupen0_pvd2    = 1UL << 19,             /**< PVD2WUPEN.                  */
+  k_ra8_lpm_wupen0_vbatt   = 1UL << 20,             /**< VBATTWUPEN.                 */
+  k_ra8_lpm_wupen0_rtcalm  = 1UL << 24,             /**< RTCALMWUPEN.                */
+  k_ra8_lpm_wupen0_rtcprd  = 1UL << 25,             /**< RTCPRDWUPEN.                */
+  k_ra8_lpm_wupen0_usbhs   = 1UL << 26,             /**< USBHSWUPEN.                 */
+  k_ra8_lpm_wupen0_usbfs   = 1UL << 27,             /**< USBFS0WUPEN.                */
+  k_ra8_lpm_wupen0_agt1ud  = 1UL << 28,             /**< AGT1UDWUPEN.                */
+  k_ra8_lpm_wupen0_agt1ca  = 1UL << 29,             /**< AGT1CAWUPEN.                */
+  k_ra8_lpm_wupen0_agt1cb  = 1UL << 30,             /**< AGT1CBWUPEN.                */
+  k_ra8_lpm_wupen0_riic0   = 1UL << 31,             /**< RIIC0WUPEN.                 */
+  k_ra8_lpm_wupen0_acmphs0 = k_ra8_lpm_wupen0_pvd1, /**< legacy alias for PVD1 path. */
 } ra8_lpm_wupen0_bits_t;
 
 /**

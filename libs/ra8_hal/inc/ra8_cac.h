@@ -53,7 +53,7 @@ extern "C" {
  * OVFFCL=bit6 (HUM Ch 10.2.4 "CAICR" p 423).
  */
 typedef enum : uint8_t {
-  k_ra8_cac_status_none  = 0x00U,
+  k_ra8_cac_status_none  = 0x00U, /**< RA8 cac status none.            */
   k_ra8_cac_status_ferrf = 0x01U, /**< Frequency error  (CASTR bit 0). */
   k_ra8_cac_status_mendf = 0x02U, /**< Measurement end  (CASTR bit 1). */
   k_ra8_cac_status_ovff  = 0x04U, /**< Counter overflow (CASTR bit 2). */

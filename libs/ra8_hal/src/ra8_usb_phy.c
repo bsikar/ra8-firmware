@@ -58,19 +58,19 @@ static const char* s_tag = "USB";
  * - ``probe_lo_mask`` -- mask of the low half of the probe word.
  */
 typedef enum : uint32_t {
-  k_ra8_usbhs_delay_1us_iters = 2000U,
+  k_ra8_usbhs_delay_1us_iters = 2000U, /**< RA8 usbhs delay 1us iters. */
   /* PHY analog PLL can take multiple ms to lock at cold start; FSP
    * uses an unbounded while loop. We pick 5 million NOP-spins
    * (~5 ms ceiling at 1 GHz Cortex-M85) which is well above the
    * worst-case observed lock time but still bounded for NASA Rule 2. */
-  k_ra8_usbhs_pll_lock_poll_limit = 5000000U,
+  k_ra8_usbhs_pll_lock_poll_limit = 5000000U, /**< RA8 usbhs pll lock poll limit. */
   /* Per-CLKSEL bisect attempt: ~50 ms ceiling at 1 GHz so the 4-attempt
    * sweep stays under the 250 ms total wall-time budget mandated by the
    * USB-HS bring-up debug spec. */
-  k_ra8_usbhs_pll_lock_attempt_limit = 50000000U / 100U,
-  k_ra8_usbhs_scke_poll_limit        = 200000U,
-  k_ra8_usbhs_probe_hi_shift         = 16U,
-  k_ra8_usbhs_probe_lo_mask          = 0x0000FFFFU,
+  k_ra8_usbhs_pll_lock_attempt_limit = 50000000U / 100U, /**< RA8 usbhs pll lock attempt limit. */
+  k_ra8_usbhs_scke_poll_limit        = 200000U,          /**< RA8 usbhs scke poll limit.        */
+  k_ra8_usbhs_probe_hi_shift         = 16U,              /**< RA8 usbhs probe hi shift.         */
+  k_ra8_usbhs_probe_lo_mask          = 0x0000FFFFU,      /**< RA8 usbhs probe lo mask.          */
 } ra8_usbhs_init_local_t;
 
 /**
@@ -94,8 +94,8 @@ typedef enum : uint32_t {
  * into ::s_clksel_winner.
  */
 typedef enum : uint8_t {
-  k_ra8_usbhs_clksel_attempts_n = 4U,
-  k_ra8_usbhs_clksel_no_winner  = 0xFFU, /**< Sentinel: bisect exhausted. */
+  k_ra8_usbhs_clksel_attempts_n = 4U,    /**< RA8 usbhs clksel attempts n. */
+  k_ra8_usbhs_clksel_no_winner  = 0xFFU, /**< Sentinel: bisect exhausted.  */
 } ra8_usbhs_clksel_attempt_t;
 
 /**

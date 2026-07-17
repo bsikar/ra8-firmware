@@ -71,10 +71,14 @@ extern "C" {
  * @enum ra8_log_level_t
  * @brief Compile-time and runtime log level.
  */
-#define RA8_LOG_LEVEL_NONE  (0)
+#define RA8_LOG_LEVEL_NONE (0)
+/** @brief RA8 LOG LEVEL ERROR. */
 #define RA8_LOG_LEVEL_ERROR (1)
-#define RA8_LOG_LEVEL_WARN  (2)
-#define RA8_LOG_LEVEL_INFO  (3)
+/** @brief RA8 LOG LEVEL WARN. */
+#define RA8_LOG_LEVEL_WARN (2)
+/** @brief RA8 LOG LEVEL INFO. */
+#define RA8_LOG_LEVEL_INFO (3)
+/** @brief RA8 LOG LEVEL DEBUG. */
 #define RA8_LOG_LEVEL_DEBUG (4)
 
 typedef enum : uint8_t {
@@ -87,8 +91,10 @@ typedef enum : uint8_t {
 
 #ifndef RA8_LOG_LEVEL
 #ifdef DEBUG
+/** @brief RA8 LOG LEVEL. */
 #define RA8_LOG_LEVEL RA8_LOG_LEVEL_INFO
 #else
+/** @brief RA8 LOG LEVEL. */
 #define RA8_LOG_LEVEL RA8_LOG_LEVEL_WARN
 #endif
 #endif
@@ -326,34 +332,50 @@ void internal_ra8_log_debug_val(const char* tag, const char* message, int32_t va
  */
 
 #if RA8_LOG_LEVEL >= RA8_LOG_LEVEL_ERROR
-#define ra8_log_error(tag, message)            internal_ra8_log_error((tag), (message))
+/** @brief RA8 log error. */
+#define ra8_log_error(tag, message) internal_ra8_log_error((tag), (message))
+/** @brief RA8 log error val. */
 #define ra8_log_error_val(tag, message, value) internal_ra8_log_error_val((tag), (message), (value))
 #else
+/** @brief RA8 log error. */
 #define ra8_log_error(tag, message)            ((void)0)
+/** @brief RA8 log error val. */
 #define ra8_log_error_val(tag, message, value) ((void)0)
 #endif
 
 #if RA8_LOG_LEVEL >= RA8_LOG_LEVEL_WARN
-#define ra8_log_warn(tag, message)            internal_ra8_log_warn((tag), (message))
+/** @brief RA8 log warn. */
+#define ra8_log_warn(tag, message) internal_ra8_log_warn((tag), (message))
+/** @brief RA8 log warn val. */
 #define ra8_log_warn_val(tag, message, value) internal_ra8_log_warn_val((tag), (message), (value))
 #else
+/** @brief RA8 log warn. */
 #define ra8_log_warn(tag, message)            ((void)0)
+/** @brief RA8 log warn val. */
 #define ra8_log_warn_val(tag, message, value) ((void)0)
 #endif
 
 #if RA8_LOG_LEVEL >= RA8_LOG_LEVEL_INFO
-#define ra8_log_info(tag, message)            internal_ra8_log_info((tag), (message))
+/** @brief RA8 log info. */
+#define ra8_log_info(tag, message) internal_ra8_log_info((tag), (message))
+/** @brief RA8 log info val. */
 #define ra8_log_info_val(tag, message, value) internal_ra8_log_info_val((tag), (message), (value))
 #else
+/** @brief RA8 log info. */
 #define ra8_log_info(tag, message)            ((void)0)
+/** @brief RA8 log info val. */
 #define ra8_log_info_val(tag, message, value) ((void)0)
 #endif
 
 #if RA8_LOG_LEVEL >= RA8_LOG_LEVEL_DEBUG
-#define ra8_log_debug(tag, message)            internal_ra8_log_debug((tag), (message))
+/** @brief RA8 log debug. */
+#define ra8_log_debug(tag, message) internal_ra8_log_debug((tag), (message))
+/** @brief RA8 log debug val. */
 #define ra8_log_debug_val(tag, message, value) internal_ra8_log_debug_val((tag), (message), (value))
 #else
+/** @brief RA8 log debug. */
 #define ra8_log_debug(tag, message)            ((void)0)
+/** @brief RA8 log debug val. */
 #define ra8_log_debug_val(tag, message, value) ((void)0)
 #endif
 

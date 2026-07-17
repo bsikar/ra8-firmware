@@ -37,7 +37,7 @@ static const char* const s_tag = "ra8_dual_core";
 /** @brief Per-module enums replacing magic numbers. */
 /** @brief Low-byte mask for ACTCSR field extraction. */
 typedef enum : uint16_t {
-  k_dc_byte_mask = 0xFFU,
+  k_dc_byte_mask = 0xFFU, /**< Dc byte mask. */
 } dc_mask_t;
 
 typedef enum : uint32_t {

@@ -112,8 +112,8 @@ typedef enum : uint16_t {
  * @brief Per-byte left-shift constants for wValue / wIndex layout.
  */
 typedef enum : uint8_t {
-  k_ra8_haud_shift_byte0 = 0U,
-  k_ra8_haud_shift_byte1 = 8U,
+  k_ra8_haud_shift_byte0 = 0U, /**< RA8 haud shift byte0. */
+  k_ra8_haud_shift_byte1 = 8U, /**< RA8 haud shift byte1. */
 } ra8_usb_haud_byte_shift_t;
 
 /**

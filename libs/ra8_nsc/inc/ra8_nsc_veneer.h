@@ -94,8 +94,11 @@ extern "C" {
 
 #else /* !RA8_TRUSTZONE_ENABLE or a non-Secure-world compile */
 
+/** @brief RA8 NSC VENEER. */
 #define RA8_NSC_VENEER
+/** @brief RA8 NSC CHECK NS RANGE r. */
 #define RA8_NSC_CHECK_NS_RANGE_R(ptr, len)  ((void)(ptr), (void)(len))
+/** @brief RA8 NSC CHECK NS RANGE RW. */
 #define RA8_NSC_CHECK_NS_RANGE_RW(ptr, len) ((void)(ptr), (void)(len))
 
 #endif /* RA8_TRUSTZONE_ENABLE && Secure-world (-mcmse) compile */

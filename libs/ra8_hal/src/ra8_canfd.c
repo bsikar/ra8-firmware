@@ -597,7 +597,7 @@ void ra8_canfd_dispatch(uint8_t channel)
 
 /** @brief Number of AFL slots that live on page 0. */
 enum : uint16_t {
-  k_ra8_canfd_afl_per_page = 16U,
+  k_ra8_canfd_afl_per_page = 16U, /**< RA8 CANFD afl per page. */
 };
 
 /**
