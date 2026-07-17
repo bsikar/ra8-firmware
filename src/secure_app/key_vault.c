@@ -56,16 +56,16 @@ typedef enum : uint16_t {
 
 /** @brief SHA-256 padding layout and big-endian packing. */
 typedef enum : uint8_t {
-  k_sha256_pad_pos        = 32U,   /**< First padding byte (== message length). */
-  k_sha256_pad_marker     = 0x80U, /**< Padding marker 0b1000_0000.             */
-  k_sha256_pad_zero_start = 33U,   /**< First zero-fill byte after the marker.  */
-  k_sha256_len_b0         = 56U,
-  k_sha256_len_b1         = 57U,
-  k_sha256_len_b2         = 58U,
-  k_sha256_len_b3         = 59U,
-  k_sha256_len_b4         = 60U,
-  k_sha256_len_b5         = 61U,
-  k_sha256_len_b6         = 62U,
+  k_sha256_pad_pos        = 32U,   /**< First padding byte (== message length).       */
+  k_sha256_pad_marker     = 0x80U, /**< Padding marker 0b1000_0000.                   */
+  k_sha256_pad_zero_start = 33U,   /**< First zero-fill byte after the marker.        */
+  k_sha256_len_b0         = 56U,   /**< Sha256 length b0.                             */
+  k_sha256_len_b1         = 57U,   /**< Sha256 length b1.                             */
+  k_sha256_len_b2         = 58U,   /**< Sha256 length b2.                             */
+  k_sha256_len_b3         = 59U,   /**< Sha256 length b3.                             */
+  k_sha256_len_b4         = 60U,   /**< Sha256 length b4.                             */
+  k_sha256_len_b5         = 61U,   /**< Sha256 length b5.                             */
+  k_sha256_len_b6         = 62U,   /**< Sha256 length b6.                             */
   k_sha256_len_b7         = 63U,   /**< 64-bit big-endian length.                     */
   k_sha256_len_hi         = 0x01U, /**< 256-bit length high byte (0x0100).            */
   k_sha256_byte_shift     = 24U,   /**< Byte-3 shift for BE word pack (8/16 ignored). */
@@ -73,32 +73,32 @@ typedef enum : uint8_t {
 
 /** @brief FIPS 180-4 4.1.2 sigma rotation/shift amounts and back-refs. */
 typedef enum : uint8_t {
-  k_sha256_ssig0_r0 = 7U,
-  k_sha256_ssig0_r1 = 18U,
-  k_sha256_ssig0_sh = 3U,
-  k_sha256_ssig1_r0 = 17U,
-  k_sha256_ssig1_r1 = 19U,
-  k_sha256_ssig1_sh = 10U,
-  k_sha256_bsig1_r0 = 6U,
-  k_sha256_bsig1_r1 = 11U,
-  k_sha256_bsig1_r2 = 25U,
-  k_sha256_bsig0_r0 = 2U,
-  k_sha256_bsig0_r1 = 13U,
-  k_sha256_bsig0_r2 = 22U,
-  k_sha256_back15   = 15U,
-  k_sha256_back7    = 7U,
+  k_sha256_ssig0_r0 = 7U,  /**< Sha256 ssig0 r0. */
+  k_sha256_ssig0_r1 = 18U, /**< Sha256 ssig0 r1. */
+  k_sha256_ssig0_sh = 3U,  /**< Sha256 ssig0 sh. */
+  k_sha256_ssig1_r0 = 17U, /**< Sha256 ssig1 r0. */
+  k_sha256_ssig1_r1 = 19U, /**< Sha256 ssig1 r1. */
+  k_sha256_ssig1_sh = 10U, /**< Sha256 ssig1 sh. */
+  k_sha256_bsig1_r0 = 6U,  /**< Sha256 bsig1 r0. */
+  k_sha256_bsig1_r1 = 11U, /**< Sha256 bsig1 r1. */
+  k_sha256_bsig1_r2 = 25U, /**< Sha256 bsig1 r2. */
+  k_sha256_bsig0_r0 = 2U,  /**< Sha256 bsig0 r0. */
+  k_sha256_bsig0_r1 = 13U, /**< Sha256 bsig0 r1. */
+  k_sha256_bsig0_r2 = 22U, /**< Sha256 bsig0 r2. */
+  k_sha256_back15   = 15U, /**< Sha256 back15.   */
+  k_sha256_back7    = 7U,  /**< Sha256 back7.    */
 } sha256_rot_t;
 
 /** @brief SHA-256 hash-state word indices (a..h). */
 typedef enum : uint8_t {
-  k_sha256_st_a = 0U,
-  k_sha256_st_b = 1U,
-  k_sha256_st_c = 2U,
-  k_sha256_st_d = 3U,
-  k_sha256_st_e = 4U,
-  k_sha256_st_f = 5U,
-  k_sha256_st_g = 6U,
-  k_sha256_st_h = 7U,
+  k_sha256_st_a = 0U, /**< Sha256 st a. */
+  k_sha256_st_b = 1U, /**< Sha256 st b. */
+  k_sha256_st_c = 2U, /**< Sha256 st c. */
+  k_sha256_st_d = 3U, /**< Sha256 st d. */
+  k_sha256_st_e = 4U, /**< Sha256 st e. */
+  k_sha256_st_f = 5U, /**< Sha256 st f. */
+  k_sha256_st_g = 6U, /**< Sha256 st g. */
+  k_sha256_st_h = 7U, /**< Sha256 st h. */
 } sha256_state_idx_t;
 
 /**
@@ -106,7 +106,7 @@ typedef enum : uint8_t {
  * @brief A single symmetric-key slot.
  */
 typedef struct {
-  uint8_t key[k_ra8_key_vault_key_bytes];
+  uint8_t key[k_ra8_key_vault_key_bytes]; /**< Key. */
 } ra8_key_vault_slot_t;
 
 static ra8_key_vault_slot_t s_vault[k_ra8_key_vault_slots];
