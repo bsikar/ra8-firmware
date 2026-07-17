@@ -15,19 +15,29 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 find_package(CURL REQUIRED)
 
+# Vendored miniz (the same third-party ZIP/DEFLATE the firmware comic reader
+# uses) provides CBZ writing and gzip DEFLATE -- so archive export needs no
+# system libraries. SOUP: compiled warning-free, exempt from our style bar.
+set(MDL_MINIZ ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz/miniz.c)
+set_source_files_properties(${MDL_MINIZ} PROPERTIES
+  COMPILE_OPTIONS "-w;-fno-strict-aliasing")
+
 add_executable(media_dl
   src/main.c
   src/mdl_net_curl.c
   src/mdl_extract.c
   src/mdl_politeness.c
-  src/mdl_config.c)
+  src/mdl_config.c
+  src/mdl_export.c
+  ${MDL_MINIZ})
 
 target_include_directories(media_dl PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/inc
   # Reuse the firmware error contract host-side. RA8_SIMULATOR_MODE is the same
   # switch the host unit-test build uses so register-reaching code takes the
   # host-safe path.
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc)
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz)
 
 target_compile_definitions(media_dl PRIVATE RA8_SIMULATOR_MODE)
 target_compile_options(media_dl PRIVATE -Wall -Wextra)
