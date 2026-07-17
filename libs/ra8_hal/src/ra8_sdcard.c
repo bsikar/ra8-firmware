@@ -39,8 +39,6 @@
 #include "ra8_log.h"
 #include "ra8_sdhi.h"
 
-/* NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity) */
-
 /** @brief Module log tag. */
 static const char* s_tag = "SDCARD";
 
@@ -320,8 +318,30 @@ static ra8_err_t internal_sdcard_identify(uint8_t instance)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t
-internal_sdcard_publish_and_select(uint8_t instance, uint16_t* out_rca, uint32_t* out_blocks)
+/**
+ * @brief Run CMD2 + CMD3 so the card publishes its relative address.
+ *
+ * @details
+ * SD Physical Layer Spec Section 4.2.2 identification flow: CMD2
+ * ALL_SEND_CID broadcasts the 136-bit CID (which this host does not
+ * decode), then CMD3 SEND_RELATIVE_ADDR asks the card to publish the
+ * 16-bit RCA in ``rsp[0][31:16]``.
+ *
+ * @param[in]  instance SDHI instance index.
+ * @param[out] out_rca  Receives the card-published relative address.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok  RCA published and captured.
+ *
+ * @pre Card has cleared ACMD41 (ready state).
+ * @pre ``out_rca`` is non-NULL.
+ * @post ``*out_rca`` holds the published RCA on success.
+ * @post On error the card may be in any state; caller deinits SDHI.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t internal_sdcard_publish_rca(uint8_t instance, uint16_t* out_rca)
 {
   uint32_t rsp[4] = {0U, 0U, 0U, 0U};
 
@@ -335,8 +355,20 @@ internal_sdcard_publish_and_select(uint8_t instance, uint16_t* out_rca, uint32_t
   const ra8_err_t e3 =
     ra8_sdhi_send_command(instance, (uint32_t)k_ra8_sdcard_cmd3_send_rca, 0U, rsp);
   RA8_RETURN_ON_ERROR(e3, s_tag, "cmd3"); /* GCOVR_EXCL_BR_LINE */
-  const uint16_t rca     = (uint16_t)((rsp[0] >> 16U) & k_sd_rca_mask);
+  *out_rca = (uint16_t)((rsp[0] >> 16U) & k_sd_rca_mask);
+  return k_ra8_ok;
+}
+
+static ra8_err_t
+internal_sdcard_publish_and_select(uint8_t instance, uint16_t* out_rca, uint32_t* out_blocks)
+{
+  uint16_t        rca     = 0U;
+  const ra8_err_t rca_err = internal_sdcard_publish_rca(instance, &rca);
+  if (rca_err != k_ra8_ok) {
+    return rca_err;
+  }
   const uint32_t rca_arg = ((uint32_t)rca) << 16U;
+  uint32_t       rsp[4]  = {0U, 0U, 0U, 0U};
 
   /* CMD9 SEND_CSD -- arg = RCA<<16; R2 holds the 128-bit CSD. */
   const ra8_err_t e9 =
@@ -429,6 +461,61 @@ internal_sdcard_negotiate_width(uint8_t instance, ra8_sdhi_bus_width_t width, ui
   }
 }
 
+/**
+ * @brief Take an identified SDHI card from power-on to TRAN state.
+ *
+ * @details
+ * Runs the SD Physical Layer bring-up chain after ::ra8_sdhi_init:
+ * CMD0/CMD8 identification, the ACMD41 op-cond loop (capturing
+ * OCR.CCS), then CMD2/CMD3/CMD9/CMD7 to publish the RCA, decode the
+ * CSD, and select the card. On ANY failure the SDHI module is deinit'd
+ * so the caller can simply propagate the error.
+ *
+ * @param[in]  instance          SDHI instance index.
+ * @param[out] out_rca           Receives the published relative address.
+ * @param[out] out_blocks        Receives capacity in 512-byte blocks.
+ * @param[out] out_high_capacity Receives 1 when OCR.CCS = 1 (SDHC/SDXC).
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok                 Card parked in TRAN, outputs valid.
+ * @retval k_ra8_err_hw_init_failed Identification / CSD decode failed.
+ *
+ * @pre ::ra8_sdhi_init succeeded for ``instance``.
+ * @pre All three output pointers are non-NULL.
+ * @post On success the card is in TRAN and every output is populated.
+ * @post On error SDHI has been deinitialized for ``instance``.
+ *
+ * @note Not thread-safe; single-threaded init context.
+ * @since 0.1.0
+ */
+static ra8_err_t internal_sdcard_card_online(uint8_t   instance,
+                                             uint16_t* out_rca,
+                                             uint32_t* out_blocks,
+                                             uint8_t*  out_high_capacity)
+{
+  const ra8_err_t id_err = internal_sdcard_identify(instance);
+  if (id_err != k_ra8_ok) {
+    (void)ra8_sdhi_deinit(instance);
+    return id_err;
+  }
+
+  /* ACMD41 op-cond loop -- card moves from idle to ready. */
+  uint32_t        ocr = 0U;
+  const ra8_err_t e41 = internal_run_acmd41(instance, &ocr);
+  if (e41 != k_ra8_ok) {
+    (void)ra8_sdhi_deinit(instance);
+    return e41;
+  }
+  *out_high_capacity = ((ocr & (uint32_t)k_ra8_sdcard_ocr_ccs_mask) != 0U) ? 1U : 0U;
+
+  const ra8_err_t pub_err = internal_sdcard_publish_and_select(instance, out_rca, out_blocks);
+  if (pub_err != k_ra8_ok) {
+    (void)ra8_sdhi_deinit(instance);
+    return pub_err;
+  }
+  return k_ra8_ok;
+}
+
 ra8_err_t ra8_sdcard_init(const ra8_sdcard_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg");
@@ -440,27 +527,13 @@ ra8_err_t ra8_sdcard_init(const ra8_sdcard_cfg_t* cfg)
   const ra8_err_t hw_err = ra8_sdhi_init(cfg->instance);
   RA8_RETURN_ON_ERROR(hw_err, s_tag, "sdhi_init"); /* GCOVR_EXCL_BR_LINE */
 
-  const ra8_err_t id_err = internal_sdcard_identify(cfg->instance);
-  if (id_err != k_ra8_ok) {
-    (void)ra8_sdhi_deinit(cfg->instance);
-    return id_err;
-  }
-
-  /* ACMD41 op-cond loop -- card moves from idle to ready. */
-  uint32_t        ocr = 0U;
-  const ra8_err_t e41 = internal_run_acmd41(cfg->instance, &ocr);
-  if (e41 != k_ra8_ok) {
-    (void)ra8_sdhi_deinit(cfg->instance);
-    return e41;
-  }
-  const uint8_t high_capacity = ((ocr & (uint32_t)k_ra8_sdcard_ocr_ccs_mask) != 0U) ? 1U : 0U;
-
-  uint16_t        rca     = 0U;
-  uint32_t        blocks  = 0U;
-  const ra8_err_t pub_err = internal_sdcard_publish_and_select(cfg->instance, &rca, &blocks);
-  if (pub_err != k_ra8_ok) {
-    (void)ra8_sdhi_deinit(cfg->instance);
-    return pub_err;
+  uint16_t        rca           = 0U;
+  uint32_t        blocks        = 0U;
+  uint8_t         high_capacity = 0U;
+  const ra8_err_t on_err =
+    internal_sdcard_card_online(cfg->instance, &rca, &blocks, &high_capacity);
+  if (on_err != k_ra8_ok) {
+    return on_err;
   }
 
   /* Optional bus-width widening (best-effort, never fatal) while still
@@ -583,5 +656,3 @@ ra8_err_t ra8_sdcard_deinit(void)
   }
   return k_ra8_ok;
 }
-
-/* NOLINTEND(readability-function-size,readability-function-cognitive-complexity) */
