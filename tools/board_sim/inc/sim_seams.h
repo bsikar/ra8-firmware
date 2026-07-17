@@ -134,6 +134,175 @@ RA8_PRIV uint64_t sim_mve_emulated_count(void);
  */
 RA8_PRIV void long_shift_seam_install(uc_engine* uc, const uint8_t* elf, long len);
 
+/** @brief UDIV/SDIV decode masks + fault field bits for the div-0 seam. */
+typedef enum : uint32_t {
+  k_div0_hw1_mask     = 0xFFF0U,     /**< hw1[15:4] selects the divide opcode.    */
+  k_div0_hw1_udiv     = 0xFBB0U,     /**< UDIV T1: hw1[15:4] == 0xFBB.            */
+  k_div0_hw1_sdiv     = 0xFB90U,     /**< SDIV T1: hw1[15:4] == 0xFB9.            */
+  k_div0_hw2_mask     = 0xF0F0U,     /**< hw2[15:12] and hw2[7:4] must be 1111.   */
+  k_div0_hw2_fixed    = 0xF0F0U,     /**< Their required value for a real divide. */
+  k_div0_reg_mask     = 0x000FU,     /**< 4-bit register field (Rn / Rm / Rd).    */
+  k_div0_rd_shift     = 8U,          /**< hw2[11:8] = Rd (destination register).  */
+  k_div0_reg_sp       = 13U,         /**< r13 (SP): UNPREDICTABLE as UDIV d/n/m.  */
+  k_div0_reg_pc       = 15U,         /**< r15 (PC): UNPREDICTABLE as UDIV d/n/m.  */
+  k_div0_insn_len     = 4U,          /**< UDIV/SDIV are 32-bit Thumb-2.           */
+  k_div0_cfsr_divzero = 1U << 25U,   /**< CFSR.UFSR.DIVBYZERO (0x02000000).       */
+  k_div0_int32_min    = 0x80000000U, /**< INT32_MIN: the SDIV / -1 overflow edge. */
+  k_div0_udf_b0       = 0xF0U,       /**< UDF.W #0 little-endian byte 0.          */
+  k_div0_udf_b1       = 0xF7U,       /**< UDF.W #0 little-endian byte 1.          */
+  k_div0_udf_b3       = 0xA0U,       /**< UDF.W #0 little-endian byte 3.          */
+} div0_field_t;
+
+/**
+ * @brief Scan the image for UDIV/SDIV sites so the div-0 trap can arm later.
+ *
+ * @details
+ * Walks the ELF32 PT_LOAD executable segments on 2-byte boundaries for the
+ * UDIV/SDIV encoding, recording each site's VMA (p_vaddr based, so a ramfunc
+ * is tracked at its execution address) and its original halfwords. Nothing is
+ * patched here; the SCB control-write watcher overwrites the sites with UDF
+ * via div0_patch_sites() only if the firmware sets CCR.DIV_0_TRP. Tracked for
+ * every core (UDIV/SDIV exist on the M85 and the M33 alike). A scan
+ * false-positive is harmless: the site is only ever patched after opt-in, and
+ * emulate_div0_patched() re-decodes before acting.
+ *
+ * @param[in] elf In-memory ELF image (still alive at call time).
+ * @param[in] len Length of @p elf in bytes.
+ * @return Nothing.
+ * @pre @p elf is a 32-bit ARM ELF (already validated by load_elf).
+ * @pre @p len is the true byte length of @p elf.
+ * @post Up to the site cap of divide sites are tracked, none patched yet.
+ * @post The armed flag is cleared (a fresh scan starts un-armed).
+ * @note Not thread-safe; call once during setup before the run loop.
+ * @see div0_patch_sites()  Arms the tracked sites on firmware opt-in.
+ * @since 0.1.0
+ */
+RA8_PRIV void div0_seam_install(const uint8_t* elf, long len);
+
+/**
+ * @brief Overwrite every tracked divide with UDF so divide-by-zero can trap.
+ *
+ * @details
+ * Called from the SCB control-register write hook the first time the firmware
+ * sets CCR.DIV_0_TRP. The patch is deferred to opt-in so a firmware that
+ * never arms the trap keeps its original divides (native, quotient-0
+ * semantics) and pays nothing. Patching to UDF -- rather than installing a
+ * UC_HOOK_CODE at each site -- is deliberate: a code hook disables Unicorn's
+ * engine-wide block chaining and would roughly quarter the throughput of any
+ * busy loop in a DIV_0_TRP firmware, whereas the already-armed
+ * undefined-instruction hook has no such cost. Idempotent; re-applied after
+ * a warm reboot re-loads the image (the reboot path calls sim_div0_disarm()).
+ *
+ * @param[in,out] uc Unicorn engine whose memory is patched.
+ * @return Nothing.
+ * @pre The tracked divide sites hold valid addresses.
+ * @pre @p uc permits uc_mem_write to the code image.
+ * @post Every tracked site holds the UDF encoding and the seam is armed.
+ * @post A no-op when already armed.
+ * @note Not thread-safe (single engine).
+ * @since 0.1.0
+ */
+RA8_PRIV void div0_patch_sites(uc_engine* uc);
+
+/**
+ * @brief Service an undefined-instruction trap that landed on an armed divide.
+ *
+ * @details
+ * Called from the invalid-instruction dispatcher. When @p pc is a patched
+ * divide site this recovers the original encoding, reads the operands, and
+ * either (a) latches the pending div-0 fault when the divisor is zero and
+ * DIV_0_TRP is set -- so the run loop synthesises the decoded UsageFault with
+ * @p pc stacked -- or (b) computes the quotient in software, writes Rd and
+ * steps PC past the 4-byte instruction as a zero-time seam relaunch. A trap
+ * at any other address is not ours.
+ *
+ * @param[in,out] uc   Unicorn engine.
+ * @param[in]     pc   Address of the trapping instruction.
+ * @param[in]     code The 4 bytes at @p pc (the UDF, unused -- the original
+ *                     encoding comes from the tracked sites).
+ * @return Whether the trap was an armed divide this handler serviced.
+ * @retval true  @p pc was a patched divide; state (or the fault latch) was
+ *               updated and the caller should stop + resume.
+ * @retval false @p pc is not a patched divide; try the next handler.
+ * @pre The tracked sites hold the armed divide addresses.
+ * @pre The PPB CCR word is mapped as RAM.
+ * @post On a trapping div-0 the pending fault is latched with @p pc; else Rd
+ *       and PC are advanced.
+ * @note Not thread-safe (single engine).
+ * @since 0.1.0
+ */
+RA8_PRIV bool emulate_div0_patched(uc_engine* uc, uint32_t pc, const uint8_t code[4]);
+
+/**
+ * @brief Whether a trapping divide-by-zero is latched for the run loop.
+ *
+ * @return true while a div-0 UsageFault awaits synthesis.
+ * @retval false No divide-by-zero is pending.
+ * @pre None.
+ * @pre None.
+ * @post No state is modified.
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ * @since 0.1.0
+ */
+RA8_PRIV bool sim_div0_fault_pending(void);
+
+/**
+ * @brief Clear the latched divide-by-zero fault.
+ *
+ * @details The run loop clears the latch right before synthesising the
+ * UsageFault; the warm-reboot path clears it so a rebooted image starts
+ * clean.
+ *
+ * @return Nothing.
+ * @pre A fault was latched (or the call is a harmless reset).
+ * @pre None otherwise.
+ * @post No divide-by-zero is pending.
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ * @since 0.1.0
+ */
+RA8_PRIV void sim_div0_clear_fault(void);
+
+/**
+ * @brief PC of the divide that latched the pending fault.
+ *
+ * @return The trapping divide's address (stacked by the synthesised fault).
+ * @retval 0 No fault has ever been latched.
+ * @pre A fault was latched this run (else the value is stale/zero).
+ * @pre None otherwise.
+ * @post No state is modified.
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ * @since 0.1.0
+ */
+RA8_PRIV uint32_t sim_div0_fault_pc(void);
+
+/**
+ * @brief Count one synthesised divide-by-zero UsageFault (telemetry).
+ *
+ * @return Nothing.
+ * @pre A UsageFault is being synthesised for a latched div-0.
+ * @pre None otherwise.
+ * @post The run's div-0 trap count grew by one.
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ * @since 0.1.0
+ */
+RA8_PRIV void sim_div0_count_trap(void);
+
+/**
+ * @brief Drop the armed state after a warm reboot re-loads the image.
+ *
+ * @details Re-loading the ELF restores the original divide encodings, so the
+ * seam must re-arm on the next CCR.DIV_0_TRP write; this clears the
+ * idempotence latch.
+ *
+ * @return Nothing.
+ * @pre A warm reboot just re-wrote the PT_LOAD segments.
+ * @pre None otherwise.
+ * @post The next div0_patch_sites() call patches again.
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ * @since 0.1.0
+ */
+RA8_PRIV void sim_div0_disarm(void);
+
 #ifdef __cplusplus
 }
 #endif

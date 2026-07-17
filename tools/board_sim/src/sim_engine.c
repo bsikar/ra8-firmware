@@ -33,3 +33,32 @@ const int k_arm_reg_id[16] = {
   UC_ARM_REG_LR,
   UC_ARM_REG_PC,
 };
+
+/**
+ * @var s_seam_relaunch
+ * @brief Set by a C-seam to relaunch WITHOUT consuming a chunk.
+ * @details A block-serve or emulated-instruction seam stops emulation to
+ *          return to the caller; left alone the inner run loop would treat
+ *          that clean stop as a full instruction budget elapsing and advance
+ *          SysTick + charge a chunk. This latch marks the stop as a zero-time
+ *          seam relaunch -- the inner loop just re-enters at the returned PC,
+ *          exactly like the exception-return path.
+ * @note Single-threaded run loop only; cleared by each take.
+ * @warning Producers must stop the engine right after setting it.
+ * @since 0.1.0
+ */
+static bool s_seam_relaunch;
+
+/** @brief Implementation of `sim_seam_request_relaunch()` -- set the latch. */
+void sim_seam_request_relaunch(void)
+{
+  s_seam_relaunch = true;
+}
+
+/** @brief Implementation of `sim_seam_take_relaunch()` -- read + clear. */
+bool sim_seam_take_relaunch(void)
+{
+  const bool hit  = s_seam_relaunch;
+  s_seam_relaunch = false;
+  return hit;
+}

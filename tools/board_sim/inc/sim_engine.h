@@ -133,6 +133,43 @@ static inline void reg_set(uc_engine* uc, int reg, uint32_t v)
   (void)uc_reg_write(uc, reg, &v);
 }
 
+/**
+ * @brief Mark the pending engine stop as a zero-time seam relaunch.
+ *
+ * @details A C-seam that returned to the firmware's caller (a --fast-sd block
+ * serve, an emulated armed divide) consumed no modelled time: the inner run
+ * loop must relaunch from the returned PC WITHOUT advancing SysTick or
+ * charging an outer chunk. The seam sets this latch right before stopping the
+ * engine; the run loop consumes it via sim_seam_take_relaunch().
+ *
+ * @return Nothing.
+ * @pre A seam is about to stop the engine after editing PC.
+ * @pre The run loop is mid-chunk (single-threaded).
+ * @post The next engine stop is treated as a zero-time relaunch.
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ * @see sim_seam_take_relaunch()  The run-loop consumer.
+ * @since 0.1.0
+ */
+RA8_PRIV void sim_seam_request_relaunch(void);
+
+/**
+ * @brief Consume the zero-time seam-relaunch latch.
+ *
+ * @details Returns whether the latch was set and clears it, so the run loop
+ * can `continue` at the returned PC without advancing modelled time. Exactly
+ * one consumer (the inner run loop) per stop.
+ *
+ * @return true if a seam requested a zero-time relaunch since the last take.
+ * @retval false No seam relaunch is pending (normal stop handling proceeds).
+ * @pre The engine just stopped (uc_emu_start returned).
+ * @pre The run loop is the only caller.
+ * @post The latch is clear.
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ * @see sim_seam_request_relaunch()  The seam-side producer.
+ * @since 0.1.0
+ */
+RA8_PRIV bool sim_seam_take_relaunch(void);
+
 #ifdef __cplusplus
 }
 #endif
