@@ -11,9 +11,7 @@
  * helpers live in `ra8_fs_fat_protos_a_internal.h`. Both are aggregated by the
  * `ra8_fs_fat_internal.h` umbrella, which every `ra8_fs_fat*.c` file includes.
  *
- * This header aggregates each cross-TU helper's full Doxygen contract, so it
- * legitimately approaches the per-file line cap: FILE-SIZE-OK
- * (declarations-only aggregation header).
+ * This header aggregates each cross-TU helper's full Doxygen contract.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

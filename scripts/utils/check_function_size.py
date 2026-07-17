@@ -16,10 +16,10 @@ large parts of ``libs/ra8_hal/``, and every cross-compiled example
 
 This checker is a backstop that walks the source text directly so the
 gate is enforced for **every** ``.c`` file under ``libs/``, ``src/``,
-``port/``, and ``examples/`` regardless of which compile database it
-ended up in.  Third-party vendor trees (``libs/third_party/``,
-``port/threadx/``) are excluded -- those are SOUP and
-their function sizes are the upstream maintainer's call, not ours.
+``port/``, ``examples/``, ``tools/``, and ``tests/`` regardless of which
+compile database it ended up in.  Third-party vendor trees
+(``libs/third_party/``, ``port/threadx/``) are excluded -- those are SOUP
+and their function sizes are the upstream maintainer's call, not ours.
 
 Run::
 
@@ -47,14 +47,16 @@ SIG_DISPLAY_MAX = 70
 SIG_DISPLAY_TRUNCATED = SIG_DISPLAY_MAX - 3  # reserve three chars for "..."
 
 # Directories to scan when called with no argument.
-SCAN_ROOTS = ("libs", "src", "port", "examples")
+SCAN_ROOTS = ("libs", "src", "port", "examples", "tools", "tests")
 
 # Path fragments that exclude the file from the scan.  Vendor / build
-# trees are intentionally exempt; ``_unsupported/`` examples are kept
-# off the bench pending hardware bring-up.
+# trees are intentionally exempt; generated Vela model blobs are machine
+# output; ``_unsupported/`` examples are kept off the bench pending
+# hardware bring-up.
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
     "port/threadx/",
+    "tools/vela/generated/",
     "/build/",
     "_unsupported/",
 )
