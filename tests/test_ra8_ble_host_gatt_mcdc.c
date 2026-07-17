@@ -115,7 +115,7 @@ typedef enum : uint16_t {
  *
  * @par MC/DC:
  * Decision: `(pdu == NULL) || (pdu_len == 0U)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_att.c line 567)
+ * (2 conditions, ra8_ble_host_att_handle_pdu in ra8_ble_att.c)
  * - V1 pdu=non-NULL, len=5 -> C1=F, C2=F. Decision F (proceeds).
  * - V2 pdu=NULL,     len=5 -> C1=T short-circuits. Decision T (return).
  * - V3 pdu=non-NULL, len=0 -> C1=F, C2=T. Decision T (return).
@@ -123,17 +123,17 @@ typedef enum : uint16_t {
  *
  * @par DO-178C 6.4.4.3 rationale: Full minimal MC/DC achieved.
  *
- * @par Internal note (ra8_ble_l2cap.c lines 464/468/485 evt_trampoline):
+ * @par Internal note (ra8_ble_l2cap.c internal_evt_trampoline):
  * The internal_evt_trampoline() compound decisions ((params==NULL ||
- * !initialized), the 3-condition LE-meta predicate at line 468, and the
- * 2-condition disconn predicate at line 485) are static and not exposed
+ * !initialized), the 3-condition LE-meta predicate, and the
+ * 2-condition disconn predicate) are static and not exposed
  * via any UNIT_TEST hook. The task plan forbids modifying production
  * code, so per IEC 61508 / DO-178C 6.4.4.3 these are documented as
  * harness-unreachable; their MC/DC is taken on the target build via the
  * NimBLE controller event path (port/nimble/src/ble_hci_ra8_ble.c) where
  * internal_evt_trampoline is registered as the live HCI event sink.
  *
- * @par Internal note (ra8_ble_att.c lines 286/305/385/530):
+ * @par Internal note (ra8_ble_att.c handler-internal decisions):
  * The static internal_handle_find_info(), internal_handle_read_by_type()
  * and internal_handle_write() compound decisions (start==0||start>end,
  * a->handle range checks, a->kind==char_value && a->value!=NULL) are
@@ -178,7 +178,7 @@ typedef enum : uint16_t {
  *
  * @par MC/DC:
  * Decision: `(uuid_128 == NULL) || (out_handle == NULL)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_gatt.c line 208)
+ * (2 conditions, ra8_ble_host_gatt_register_service in ra8_ble_gatt.c)
  * - V1 both non-NULL -> C1=F, C2=F. Decision F (ok).
  * - V2 uuid=NULL     -> C1=T short-circuits. Decision T -> null_ptr.
  * - V3 out=NULL      -> C1=F, C2=T. Decision T -> null_ptr.
@@ -204,7 +204,7 @@ static void test_mcdc_gatt_register_service_null_guard(void)
  *
  * @par MC/DC:
  * Decision: `(uuid_128 == NULL) || (out_handle == NULL)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_gatt.c line 246)
+ * (2 conditions, internal_register_char_validate in ra8_ble_gatt.c)
  * Vectors as for service variant. N+1=3.
  *
  * @par DO-178C 6.4.4.3 rationale: Full minimal MC/DC achieved.
@@ -250,7 +250,7 @@ static void test_mcdc_gatt_register_char_uuid_or_out_null(void)
  *
  * @par MC/DC:
  * Decision: `(value_buf == NULL) && (value_max > 0U)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_gatt.c line 249)
+ * (2 conditions, internal_register_char_validate in ra8_ble_gatt.c)
  * - V1 buf=NULL, max=0 -> C1=T, C2=F. Decision F (proceeds).
  * - V2 buf=non-NULL, max>0 -> C1=F. Decision F (proceeds).
  * - V3 buf=NULL, max>0 -> both T. Decision T -> null_ptr.
@@ -301,7 +301,8 @@ static void test_mcdc_gatt_register_char_value_buf_null_with_max(void)
  *
  * @par MC/DC:
  * Decision: `(attrs[i].handle == svc_handle) && (attrs[i].kind == primary_service)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_gatt.c line 265)
+ * (2 conditions, the service-lookup loop of
+ * internal_register_char_validate in ra8_ble_gatt.c)
  * - V1 svc_handle=registered_svc -> on svc row C1=T,C2=T. ok.
  * - V2 svc_handle=bogus          -> every row C1=F. invalid_arg.
  * - V3 svc_handle=registered_chr_value -> on chr_value row C1=T,C2=F.
@@ -353,7 +354,7 @@ static void test_mcdc_gatt_register_char_svc_match(void)
  *
  * @par MC/DC:
  * Decision: `(value == NULL) && (len > 0U)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_gatt.c line 337)
+ * (2 conditions, ra8_ble_host_gatt_set_value in ra8_ble_gatt.c)
  * - V1 value=NULL, len=0 -> C1=T, C2=F. Decision F (proceeds).
  * - V2 value=non-NULL, len>0 -> C1=F. Decision F (proceeds).
  * - V3 value=NULL, len>0 -> both T. Decision T -> null_ptr.
@@ -394,7 +395,7 @@ static void test_mcdc_gatt_set_value_null_with_len(void)
  *
  * @par MC/DC:
  * Decision: `(a == NULL) || (a->kind != char_value)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_gatt.c line 345)
+ * (2 conditions, ra8_ble_host_gatt_set_value in ra8_ble_gatt.c)
  * - V1 valid char value handle -> C1=F, C2=F. ok.
  * - V2 bogus handle (lookup miss) -> C1=T. not_found.
  * - V3 svc handle (kind!=char_value) -> C1=F, C2=T. not_found.
@@ -434,14 +435,15 @@ static void test_mcdc_gatt_set_value_attr_lookup(void)
  *
  * @par MC/DC:
  * Decision: `(len > 0U) && (a->value != NULL)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_gatt.c line 351)
+ * (2 conditions, ra8_ble_gatt_internal_should_copy serving
+ * ra8_ble_host_gatt_set_value in ra8_ble_gatt.c)
  * - V1 len=0 -> C1=F. Decision F (skip memcpy).
  * - V2 len>0 with a->value!=NULL -> both T. Decision T (memcpy).
  *
  * @par DO-178C 6.4.4.3 omission rationale:
  * Combination (len>0 && a->value==NULL) is structurally dead because
  * the firmware invariant at registration enforces "value==NULL implies
- * value_max==0", and the upstream guard at line 348 (`len > a->value_max`)
+ * value_max==0", and the upstream set_value guard (`len > a->value_max`)
  * rejects any len>0 against a NULL-buf char before reaching this
  * compound. Per IEC 61508 / DO-178C 6.4.4.3 we omit the (T,F) vector
  * and document the upstream check as the elimination guarantor; full
@@ -479,7 +481,7 @@ static void test_mcdc_gatt_set_value_copy_guard(void)
  *
  * @par MC/DC:
  * Decision: `(a == NULL) || (a->kind != char_value)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_gatt.c line 375)
+ * (2 conditions, ra8_ble_host_gatt_notify in ra8_ble_gatt.c)
  * - V1 valid char value handle -> both F. ok.
  * - V2 bogus handle -> C1=T. not_found.
  * - V3 svc handle -> C1=F, C2=T. not_found.
@@ -518,7 +520,8 @@ static void test_mcdc_gatt_notify_attr_lookup(void)
  *
  * @par MC/DC:
  * Decision: `(decl == NULL) || ((decl->props & notify_bit) == 0U)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_gatt.c line 381)
+ * (2 conditions, ra8_ble_gatt_internal_notify_invalid serving
+ * ra8_ble_host_gatt_notify in ra8_ble_gatt.c)
  * - V1 decl=non-NULL && notify_bit set -> both F. Proceeds (ok).
  * - V3 decl=non-NULL && notify_bit clear (read-only char) -> C1=F, C2=T.
  *   invalid_arg. (Independent flip of C2 with C1 held F.)
@@ -526,7 +529,7 @@ static void test_mcdc_gatt_notify_attr_lookup(void)
  * @par DO-178C 6.4.4.3 omission rationale:
  * Vector (C1=T, decl==NULL) is structurally unreachable: every char_value
  * created via ra8_ble_host_gatt_register_char is preceded by a char_decl
- * row at handle=value-1 (see ra8_ble_gatt.c lines 286-298). The harness
+ * row at handle=value-1 (see ra8_ble_host_gatt_register_char). The harness
  * cannot evict a decl row through any public API without violating
  * stack invariants. Per IEC 61508 / DO-178C 6.4.4.3 we document the
  * (T,*) branch as dead-from-construction; V1 and V3 give full MC/DC
@@ -576,7 +579,7 @@ static void test_mcdc_gatt_notify_decl_props(void)
  * @par MC/DC:
  * Decision: `(kind==cccd) && (value_handle_owner==char_handle) &&
  *           ((cccd_value & notify_bit) != 0U)`
- * (3 conditions, libs/ra8_ble_host/src/ra8_ble_gatt.c line 393)
+ * (3 conditions, internal_has_notify_subscriber in ra8_ble_gatt.c)
  * - V1 (T,T,T) subscribed CCCD with notify enabled -> match. notify
  *   constructs HVN PDU and returns ok.
  * - V2 (F,*,*) walked over non-CCCD rows (svc/decl/char_value); these
@@ -715,12 +718,13 @@ static void test_mcdc_gatt_notify_subscriber_walk(void)
  *
  * @par MC/DC:
  * Decision: `(value_len > 0U) && (a->value != NULL)`
- * (2 conditions, libs/ra8_ble_host/src/ra8_ble_gatt.c line 412)
+ * (2 conditions, ra8_ble_gatt_internal_should_copy serving
+ * ra8_ble_host_gatt_notify in ra8_ble_gatt.c)
  * - V1 value_len=0 -> C1=F. Decision F (skip memcpy).
  * - V2 value_len>0, a->value!=NULL -> both T. Decision T (memcpy).
  *
  * @par DO-178C 6.4.4.3 omission rationale:
- * Same structural argument as line 351 (set_value): chars registered
+ * Same structural argument as the set_value copy guard: chars registered
  * with NULL backing buffer have value_max==0, so set_value can never
  * push value_len above 0; the (value_len>0 && a->value==NULL) row is
  * dead-from-invariant. V1 (C1=F) and V2 (both T) cover the reachable
