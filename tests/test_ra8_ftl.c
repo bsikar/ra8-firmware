@@ -272,6 +272,72 @@ static void pattern_fill(uint8_t* blk, uint32_t lbn, uint32_t tag)
 }
 
 /**
+ * @brief Random read/write soak: drive writes and check reads against a shadow.
+ * @param[in,out] bd         The FTL block device under test.
+ * @param[in,out] shadow_tag Per-logical generation tags (0 == never written).
+ * @param[out]    writes     Receives the number of write operations performed.
+ * @return None.
+ * @pre @p bd is a valid FTL block device; @p shadow_tag is zeroed.
+ * @post Every read of a written block matched its shadow pattern.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void ftl_soak_loop(ra8_io_blockdev_t* bd, uint32_t* shadow_tag, uint32_t* writes)
+{
+  uint32_t rng = (uint32_t)k_test_rng_seed;
+  *writes      = 0;
+  for (uint32_t op = 0; op < (uint32_t)k_test_ftl_ops; ++op) {
+    rng                 = (rng * (uint32_t)k_test_rng_mul) + (uint32_t)k_test_rng_add;
+    const uint32_t lbn  = rng % (uint32_t)k_test_ftl_logical;
+    rng                 = (rng * (uint32_t)k_test_rng_mul) + (uint32_t)k_test_rng_add;
+    const bool do_write = ((rng >> 16) & 1u) != 0u;
+
+    if (do_write) {
+      const uint32_t tag = op + 1u;
+      uint8_t        blk[(size_t)k_test_ftl_block];
+      pattern_fill(blk, lbn, tag);
+      TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(bd, lbn, 1U, blk));
+      shadow_tag[lbn] = tag;
+      ++(*writes);
+      continue;
+    }
+
+    uint8_t got[(size_t)k_test_ftl_block];
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(bd, lbn, 1U, got));
+    if (shadow_tag[lbn] == 0u) {
+      continue; /* never written -- value is erase byte, not pattern */
+    }
+    uint8_t want[(size_t)k_test_ftl_block];
+    pattern_fill(want, lbn, shadow_tag[lbn]);
+    TEST_ASSERT(memcmp(got, want, sizeof(want)) == 0);
+  }
+}
+
+/**
+ * @brief Full read-back of every written logical block against the shadow.
+ * @param[in,out] bd         The FTL block device under test.
+ * @param[in]     shadow_tag Per-logical generation tags from the soak loop.
+ * @return None.
+ * @pre @p bd is a valid FTL block device.
+ * @post Every written block read back byte-identical to its shadow pattern.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void ftl_soak_verify(ra8_io_blockdev_t* bd, const uint32_t* shadow_tag)
+{
+  for (uint32_t lbn = 0; lbn < (uint32_t)k_test_ftl_logical; ++lbn) {
+    if (shadow_tag[lbn] == 0u) {
+      continue;
+    }
+    uint8_t got[(size_t)k_test_ftl_block];
+    uint8_t want[(size_t)k_test_ftl_block];
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(bd, lbn, 1U, got));
+    pattern_fill(want, lbn, shadow_tag[lbn]);
+    TEST_ASSERT(memcmp(got, want, sizeof(want)) == 0);
+  }
+}
+
+/**
  * @par MC/DC:
  * (the soak loop has no compound decisions; each integrity / wear assertion is a
  * single comparison driven by the shadow model)
@@ -292,46 +358,11 @@ static void test_ftl_soak_integrity_wear(void)
 
   /* Shadow: per-logical-block generation tag (0 == never written). */
   uint32_t shadow_tag[(size_t)k_test_ftl_logical] = {};
-  uint32_t rng                                    = (uint32_t)k_test_rng_seed;
   uint32_t writes                                 = 0;
-
-  for (uint32_t op = 0; op < (uint32_t)k_test_ftl_ops; ++op) {
-    rng                 = (rng * (uint32_t)k_test_rng_mul) + (uint32_t)k_test_rng_add;
-    const uint32_t lbn  = rng % (uint32_t)k_test_ftl_logical;
-    rng                 = (rng * (uint32_t)k_test_rng_mul) + (uint32_t)k_test_rng_add;
-    const bool do_write = ((rng >> 16) & 1u) != 0u;
-
-    if (do_write) {
-      const uint32_t tag = op + 1u;
-      uint8_t        blk[(size_t)k_test_ftl_block];
-      pattern_fill(blk, lbn, tag);
-      TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, lbn, 1U, blk));
-      shadow_tag[lbn] = tag;
-      ++writes;
-      continue;
-    }
-
-    uint8_t got[(size_t)k_test_ftl_block];
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(&bd, lbn, 1U, got));
-    if (shadow_tag[lbn] == 0u) {
-      continue; /* never written -- value is erase byte, not pattern */
-    }
-    uint8_t want[(size_t)k_test_ftl_block];
-    pattern_fill(want, lbn, shadow_tag[lbn]);
-    TEST_ASSERT(memcmp(got, want, sizeof(want)) == 0);
-  }
+  ftl_soak_loop(&bd, shadow_tag, &writes);
 
   /* Final full read-back against the shadow proves end-state integrity. */
-  for (uint32_t lbn = 0; lbn < (uint32_t)k_test_ftl_logical; ++lbn) {
-    if (shadow_tag[lbn] == 0u) {
-      continue;
-    }
-    uint8_t got[(size_t)k_test_ftl_block];
-    uint8_t want[(size_t)k_test_ftl_block];
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(&bd, lbn, 1U, got));
-    pattern_fill(want, lbn, shadow_tag[lbn]);
-    TEST_ASSERT(memcmp(got, want, sizeof(want)) == 0);
-  }
+  ftl_soak_verify(&bd, shadow_tag);
 
   /* Overwrites must have driven real physical erases on the underlying device. */
   TEST_ASSERT(writes > 0u);
