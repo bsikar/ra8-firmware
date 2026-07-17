@@ -100,15 +100,17 @@ static inline void priv_dirname_inplace(char* path)
 
 /**
  * @brief Compute the firmware root from __FILE__ (which is the
- *        absolute path of this source file under the cmake build).
+ *        absolute path of this header under the cmake build).
  */
 static inline void priv_resolve_fw_root(char* out, size_t out_cap)
 {
-  /* __FILE__ resolves to ".../tests/test_ra8_reflow.c" -- strip two
-   * trailing components to land on the firmware root. */
+  /* __FILE__ expands where the macro is spelled, so it resolves to
+   * ".../tests/support/reflow_v1_test_util.h" -- strip three trailing
+   * components to land on the firmware root. */
   (void)snprintf(out, out_cap, "%s", __FILE__);
-  priv_dirname_inplace(out); /* drop test_ra8_reflow.c */
-  priv_dirname_inplace(out); /* drop tests/            */
+  priv_dirname_inplace(out); /* drop reflow_v1_test_util.h */
+  priv_dirname_inplace(out); /* drop support/              */
+  priv_dirname_inplace(out); /* drop tests/                */
 }
 
 /**
