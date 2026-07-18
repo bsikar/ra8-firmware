@@ -24,6 +24,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_comic.h"
 #include "ra8_err.h"
 
@@ -50,7 +51,7 @@ extern "C" {
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
-bool ra8_comic_is_page_name(const char* name, uint16_t len);
+RA8_PRIV bool ra8_comic_is_page_name(const char* name, uint16_t len);
 
 /**
  * @brief Append one image member to the resident page index.
@@ -76,15 +77,15 @@ bool ra8_comic_is_page_name(const char* name, uint16_t len);
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-ra8_err_t ra8_comic_page_add(ra8_comic_t* c,
-                             const char*  name,
-                             uint16_t     name_len,
-                             uint64_t     raw_size,
-                             uint8_t      extractable,
-                             uint8_t      method,
-                             uint32_t     zip_index,
-                             uint64_t     data_off,
-                             uint64_t     pack_size);
+RA8_PRIV ra8_err_t ra8_comic_page_add(ra8_comic_t* c,
+                                      const char*  name,
+                                      uint16_t     name_len,
+                                      uint64_t     raw_size,
+                                      uint8_t      extractable,
+                                      uint8_t      method,
+                                      uint32_t     zip_index,
+                                      uint64_t     data_off,
+                                      uint64_t     pack_size);
 
 /**
  * @brief Open the CBZ (ZIP) backend: init the streaming miniz reader + page index.
@@ -104,7 +105,7 @@ ra8_err_t ra8_comic_page_add(ra8_comic_t* c,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-ra8_err_t ra8_comic_cbz_open(ra8_comic_t* c);
+RA8_PRIV ra8_err_t ra8_comic_cbz_open(ra8_comic_t* c);
 
 /**
  * @brief Extract one CBZ page's encoded image through the streaming ZIP reader.
@@ -126,11 +127,11 @@ ra8_err_t ra8_comic_cbz_open(ra8_comic_t* c);
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-ra8_err_t ra8_comic_cbz_extract(ra8_comic_t*            c,
-                                const ra8_comic_page_t* p,
-                                uint8_t*                buf,
-                                size_t                  cap,
-                                size_t*                 got);
+RA8_PRIV ra8_err_t ra8_comic_cbz_extract(ra8_comic_t*            c,
+                                         const ra8_comic_page_t* p,
+                                         uint8_t*                buf,
+                                         size_t                  cap,
+                                         size_t*                 got);
 
 /**
  * @brief Tear down the CBZ backend's miniz reader.
@@ -146,7 +147,7 @@ ra8_err_t ra8_comic_cbz_extract(ra8_comic_t*            c,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-ra8_err_t ra8_comic_cbz_close(ra8_comic_t* c);
+RA8_PRIV ra8_err_t ra8_comic_cbz_close(ra8_comic_t* c);
 
 /**
  * @brief Open the CBR (RAR) backend: walk the archive + build the page index.
@@ -166,7 +167,7 @@ ra8_err_t ra8_comic_cbz_close(ra8_comic_t* c);
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-ra8_err_t ra8_comic_cbr_open(ra8_comic_t* c);
+RA8_PRIV ra8_err_t ra8_comic_cbr_open(ra8_comic_t* c);
 
 /**
  * @brief Extract one CBR page's encoded image (STORE copy or RAR5 decode).
@@ -191,11 +192,11 @@ ra8_err_t ra8_comic_cbr_open(ra8_comic_t* c);
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-ra8_err_t ra8_comic_cbr_extract(ra8_comic_t*            c,
-                                const ra8_comic_page_t* p,
-                                uint8_t*                buf,
-                                size_t                  cap,
-                                size_t*                 got);
+RA8_PRIV ra8_err_t ra8_comic_cbr_extract(ra8_comic_t*            c,
+                                         const ra8_comic_page_t* p,
+                                         uint8_t*                buf,
+                                         size_t                  cap,
+                                         size_t*                 got);
 
 /**
  * @brief Open the CBT (tar) backend: walk the archive + build the page index.
@@ -218,7 +219,7 @@ ra8_err_t ra8_comic_cbr_extract(ra8_comic_t*            c,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-ra8_err_t ra8_comic_cbt_open(ra8_comic_t* c);
+RA8_PRIV ra8_err_t ra8_comic_cbt_open(ra8_comic_t* c);
 
 /**
  * @brief Extract one CBT page's encoded image (verbatim tar member copy).
@@ -241,11 +242,11 @@ ra8_err_t ra8_comic_cbt_open(ra8_comic_t* c);
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
-ra8_err_t ra8_comic_cbt_extract(ra8_comic_t*            c,
-                                const ra8_comic_page_t* p,
-                                uint8_t*                buf,
-                                size_t                  cap,
-                                size_t*                 got);
+RA8_PRIV ra8_err_t ra8_comic_cbt_extract(ra8_comic_t*            c,
+                                         const ra8_comic_page_t* p,
+                                         uint8_t*                buf,
+                                         size_t                  cap,
+                                         size_t*                 got);
 
 #ifdef __cplusplus
 }

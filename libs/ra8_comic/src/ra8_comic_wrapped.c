@@ -39,6 +39,7 @@
  * 60-line NASA Rule 4 gate. Same disposition as the decode state machines in
  * the tree (ra8_jpeg_sw_encode, ra8_rmac_phy). */
 /* NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity) */
+#include "ra8_attributes.h"
 #include "ra8_unarch_gzip.h"
 #include "ra8_unarch_io.h"
 #include "ra8_unarch_xz.h"
@@ -84,6 +85,7 @@ typedef enum : uint16_t {
  * @note Not thread-safe (single-client decoder states).
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_unwrap(ra8_comic_read_fn read,
                           void*             ctx,
                           uint64_t          size,

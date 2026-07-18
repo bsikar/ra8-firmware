@@ -34,6 +34,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_rar5.h"
 
@@ -200,7 +201,7 @@ typedef struct {
  * @see ra8_rar5_decode_num()
  * @since Version 0.1.0
  */
-uint32_t ra8_rar5_get(ra8_rar5_state_t* st, uint32_t n);
+RA8_PRIV uint32_t ra8_rar5_get(ra8_rar5_state_t* st, uint32_t n);
 
 /**
  * @brief Decode one Huffman symbol from @p d, consuming its code bits.
@@ -221,7 +222,7 @@ uint32_t ra8_rar5_get(ra8_rar5_state_t* st, uint32_t n);
  * @see ra8_rar5_get()
  * @since Version 0.1.0
  */
-uint32_t ra8_rar5_decode_num(ra8_rar5_state_t* st, const ra8_rar5_dtab_t* d);
+RA8_PRIV uint32_t ra8_rar5_decode_num(ra8_rar5_state_t* st, const ra8_rar5_dtab_t* d);
 
 /**
  * @brief Read and validate one RAR5 block header at the current bit position.
@@ -241,7 +242,7 @@ uint32_t ra8_rar5_decode_num(ra8_rar5_state_t* st, const ra8_rar5_dtab_t* d);
  * @see ra8_rar5_read_tables()
  * @since Version 0.1.0
  */
-ra8_err_t ra8_rar5_read_block_header(ra8_rar5_state_t* st, r5_block_t* b);
+RA8_PRIV ra8_err_t ra8_rar5_read_block_header(ra8_rar5_state_t* st, r5_block_t* b);
 
 /**
  * @brief Parse a table block: build the BD pre-table then the four LZ tables.
@@ -261,7 +262,7 @@ ra8_err_t ra8_rar5_read_block_header(ra8_rar5_state_t* st, r5_block_t* b);
  * @see ra8_rar5_read_block_header()
  * @since Version 0.1.0
  */
-ra8_err_t ra8_rar5_read_tables(ra8_rar5_state_t* st);
+RA8_PRIV ra8_err_t ra8_rar5_read_tables(ra8_rar5_state_t* st);
 
 /**
  * @brief Copy an LZ match of @p length bytes at back-distance @p dist into @p out.
@@ -290,7 +291,8 @@ ra8_err_t ra8_rar5_read_tables(ra8_rar5_state_t* st);
  * `ra8_rar5.c`.
  * @since Version 0.1.0
  */
-bool ra8_rar5_copy_match(uint8_t* out, size_t* out_pos, size_t unp, uint32_t length, uint64_t dist);
+RA8_PRIV bool
+ra8_rar5_copy_match(uint8_t* out, size_t* out_pos, size_t unp, uint32_t length, uint64_t dist);
 
 /**
  * @brief Apply the per-channel byte-delta filter over @p d.
@@ -316,7 +318,8 @@ bool ra8_rar5_copy_match(uint8_t* out, size_t* out_pos, size_t unp, uint32_t len
  * remain ::s_apply_one_filter in `ra8_rar5.c`.
  * @since Version 0.1.0
  */
-void ra8_rar5_filter_delta(ra8_rar5_state_t* st, uint8_t* d, uint32_t len, uint32_t channels);
+RA8_PRIV void
+ra8_rar5_filter_delta(ra8_rar5_state_t* st, uint8_t* d, uint32_t len, uint32_t channels);
 
 /**
  * @brief Extend @p out with @p count zero bit-lengths, bounded by @p max.
@@ -341,7 +344,7 @@ void ra8_rar5_filter_delta(ra8_rar5_state_t* st, uint8_t* d, uint32_t len, uint3
  * ::s_read_bd_lengths in `ra8_rar5_tables.c`.
  * @since Version 0.1.0
  */
-uint32_t ra8_rar5_fill_zeros(uint8_t* out, uint32_t start, uint32_t count, uint32_t max);
+RA8_PRIV uint32_t ra8_rar5_fill_zeros(uint8_t* out, uint32_t start, uint32_t count, uint32_t max);
 
 /**
  * @brief Append one run (copy-previous or zero) to the length table.
@@ -368,7 +371,10 @@ uint32_t ra8_rar5_fill_zeros(uint8_t* out, uint32_t start, uint32_t count, uint3
  * Production caller remains ::s_read_full_table in `ra8_rar5_tables.c`.
  * @since Version 0.1.0
  */
-ra8_err_t ra8_rar5_apply_run(ra8_rar5_state_t* st, uint8_t* tbl, uint32_t* idx, uint32_t num);
+RA8_PRIV ra8_err_t ra8_rar5_apply_run(ra8_rar5_state_t* st,
+                                      uint8_t*          tbl,
+                                      uint32_t*         idx,
+                                      uint32_t          num);
 
 #ifdef __cplusplus
 }
