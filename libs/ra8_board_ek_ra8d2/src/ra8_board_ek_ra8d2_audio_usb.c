@@ -29,6 +29,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -88,9 +89,9 @@ typedef enum : uint8_t {
 } ra8_audio_pack_t;
 
 /* Map ``bit_depth`` (significant bits) to SSIE DWL / SWL pair -- see implementation for details. */
-static ra8_err_t internal_audio_bits_to_word(uint8_t                 bit_depth,
-                                             ra8_ssie_data_word_t*   out_dwl,
-                                             ra8_ssie_system_word_t* out_swl)
+RA8_INTERNAL static ra8_err_t internal_audio_bits_to_word(uint8_t                 bit_depth,
+                                                          ra8_ssie_data_word_t*   out_dwl,
+                                                          ra8_ssie_system_word_t* out_swl)
 {
   switch ((ra8_audio_bit_depth_t)bit_depth) {
     case k_ra8_audio_bits_8:
@@ -127,7 +128,7 @@ static ra8_err_t internal_audio_bits_to_word(uint8_t                 bit_depth,
 }
 
 /* Route the six DA7212 audio pins (4 SSIE + 2 IIC) to their alt fns -- see implementation for details. */
-static ra8_err_t internal_audio_route_pins(void)
+RA8_INTERNAL static ra8_err_t internal_audio_route_pins(void)
 {
   /* k_ra8_psel_ssie comes from HUM Ch 19 PFS PSEL field. MCLK on PD06
    * stays in GPIO mode -- the application picks SSIE EXTAL or CGC
@@ -175,9 +176,9 @@ static ra8_err_t internal_audio_route_pins(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra8_ssie_cfg_t internal_audio_build_ssie_cfg(uint8_t                channels,
-                                                    ra8_ssie_data_word_t   dwl,
-                                                    ra8_ssie_system_word_t swl)
+RA8_INTERNAL static ra8_ssie_cfg_t internal_audio_build_ssie_cfg(uint8_t                channels,
+                                                                 ra8_ssie_data_word_t   dwl,
+                                                                 ra8_ssie_system_word_t swl)
 {
   return (ra8_ssie_cfg_t){
     .role          = k_ra8_ssie_role_controller,
@@ -334,7 +335,7 @@ typedef enum : uint32_t {
  * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
-static ra8_err_t internal_usbhs_clock_and_mstp(void)
+RA8_INTERNAL static ra8_err_t internal_usbhs_clock_and_mstp(void)
 {
   s_usbhs_probe = (uint32_t)k_usbhs_probe_pre_pll_enable;
   ra8_err_t err = ra8_cgc_usbhs_pll_enable();
@@ -455,7 +456,7 @@ typedef enum : uint32_t {
 } ra8_board_i2c_recover_t;
 
 /* internal_io_expander_write_reg -- see implementation for details. */
-static ra8_err_t internal_io_expander_write_reg(uint8_t reg, uint8_t val)
+RA8_INTERNAL static ra8_err_t internal_io_expander_write_reg(uint8_t reg, uint8_t val)
 {
   const uint8_t buf[2] = {reg, val};
   /* Each PI4IOE5V6408 register write is a complete START..STOP
@@ -518,7 +519,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe (timing only).
  * @since 0.1.0
  */
-static void internal_io_expander_bus_settle(void)
+RA8_INTERNAL static void internal_io_expander_bus_settle(void)
 {
   for (volatile uint32_t i = 0U; i < (uint32_t)k_ra8_board_i2c_recover_spins; i++) {
     __asm__ volatile("nop");
@@ -543,7 +544,7 @@ static void internal_io_expander_bus_settle(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_io_expander_bus_recover(void)
+RA8_INTERNAL static ra8_err_t internal_io_expander_bus_recover(void)
 {
   const ra8_port_pin_t scl = k_ra8_board_io_expander_pin_scl;
   const ra8_port_pin_t sda = k_ra8_board_io_expander_pin_sda;
@@ -598,7 +599,7 @@ static ra8_err_t internal_io_expander_bus_recover(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_io_expander_enable_pullups(void)
+RA8_INTERNAL static ra8_err_t internal_io_expander_enable_pullups(void)
 {
   ra8_err_t err = ra8_gpio_output_init(k_ra8_board_io_expander_pin_pullup_a, k_ra8_level_high);
   if (err != k_ra8_ok) {
@@ -620,7 +621,7 @@ static ra8_err_t internal_io_expander_enable_pullups(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_io_expander_route_pins(void)
+RA8_INTERNAL static ra8_err_t internal_io_expander_route_pins(void)
 {
   ra8_err_t err = ra8_pfs_route_peripheral(k_ra8_board_io_expander_pin_scl,
                                            k_ra8_psel_iic,
@@ -663,7 +664,7 @@ static ra8_err_t internal_io_expander_route_pins(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_io_expander_program_u15(uint8_t output_byte)
+RA8_INTERNAL static ra8_err_t internal_io_expander_program_u15(uint8_t output_byte)
 {
   s_io_expander_probe = (uint32_t)k_io_exp_probe_pre_write_out;
   ra8_err_t err =
@@ -710,7 +711,7 @@ static ra8_err_t internal_io_expander_program_u15(uint8_t output_byte)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_io_expander_apply(uint8_t output_byte)
+RA8_INTERNAL static ra8_err_t internal_io_expander_apply(uint8_t output_byte)
 {
   /* Step -1: clock out any wedged peripheral (stuck SDA) before touching
    * the bus, so a prior aborted transfer cannot deadlock every START. */
@@ -875,7 +876,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_usbhs_role_select_device(void)
+RA8_INTERNAL static ra8_err_t internal_usbhs_role_select_device(void)
 {
   s_usbhs_role_pin_probe = (uint32_t)k_usbhs_role_probe_pre_init;
   /* PD07 (port 13, pin 7). The ra8_port_pin_t enum only pre-defines LED

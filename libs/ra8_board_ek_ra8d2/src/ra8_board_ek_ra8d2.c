@@ -26,6 +26,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_elc_regs.h"
 #include "ra8_err.h"
 #include "ra8_gpio_constants.h"
@@ -441,7 +442,7 @@ const uint32_t g_ra8_board_glcdc_rgb565_pin_count =
  * @note Init-time helper; single-threaded.
  * @since 0.1.0
  */
-static bool ra8_board_glcdc_signal_starts_with(const char* s, const char* prefix)
+RA8_INTERNAL static bool ra8_board_glcdc_signal_starts_with(const char* s, const char* prefix)
 {
   for (uint32_t i = 0U; i < 4U; i++) { /* longest prefix here is "TCON" = 4. */
     if (prefix[i] == '\0') {
@@ -475,7 +476,7 @@ static bool ra8_board_glcdc_signal_starts_with(const char* s, const char* prefix
  * @note Init-time helper; single-threaded.
  * @since 0.1.0
  */
-static bool ra8_board_glcdc_signal_is_color_data(const char* signal)
+RA8_INTERNAL static bool ra8_board_glcdc_signal_is_color_data(const char* signal)
 {
   /* Match R0..R9 / G0..G9 / B0..B9; digit in [1] excludes BLEN. */
   const char c0 = signal[0];
@@ -519,7 +520,7 @@ static bool ra8_board_glcdc_signal_is_color_data(const char* signal)
  * @note Single-threaded init-time helper.
  * @since 0.1.0
  */
-static bool ra8_board_glcdc_signal_is_output(const char* signal)
+RA8_INTERNAL static bool ra8_board_glcdc_signal_is_output(const char* signal)
 {
   if (ra8_board_glcdc_signal_starts_with(signal, "TCON")) {
     return true;
@@ -549,7 +550,7 @@ static bool ra8_board_glcdc_signal_is_output(const char* signal)
  * @note Single-threaded init context only.
  * @since 0.1.0
  */
-static void ra8_board_glcdc_force_pin_output(ra8_port_pin_t pin)
+RA8_INTERNAL static void ra8_board_glcdc_force_pin_output(ra8_port_pin_t pin)
 {
   enum : uint32_t {
     k_pfs_psel_shift = 24U,      /**< PFS psel shift. */
