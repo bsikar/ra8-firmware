@@ -30,6 +30,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_ble.h"
 
 #include <stddef.h>
@@ -141,9 +142,9 @@ static ra8_ble_state_t s_state = {};
  * =============================================================================
  */
 
-void           ra8_ble_test_reset_capture(void);
-void           ra8_ble_test_inject_rx(const uint8_t* bytes, uint16_t len);
-const uint8_t* ra8_ble_test_tx_capture(uint16_t* out_len);
+RA8_TEST_HELPER void           ra8_ble_test_reset_capture(void);
+RA8_TEST_HELPER void           ra8_ble_test_inject_rx(const uint8_t* bytes, uint16_t len);
+RA8_TEST_HELPER const uint8_t* ra8_ble_test_tx_capture(uint16_t* out_len);
 
 /* =============================================================================
  * Internal helpers
@@ -478,14 +479,14 @@ ra8_err_t ra8_ble_scan_start(uint8_t active, uint16_t interval, uint16_t window)
  * =============================================================================
  */
 
-void ra8_ble_test_reset_capture(void)
+RA8_TEST_HELPER void ra8_ble_test_reset_capture(void)
 {
   s_state.tx_capture_len = 0U;
   s_state.rx_inject_len  = 0U;
   s_state.rx_inject_pos  = 0U;
 }
 
-void ra8_ble_test_inject_rx(const uint8_t* bytes, uint16_t len)
+RA8_TEST_HELPER void ra8_ble_test_inject_rx(const uint8_t* bytes, uint16_t len)
 {
   if ((bytes == nullptr) || (len == 0U)) {
     return;
@@ -498,7 +499,7 @@ void ra8_ble_test_inject_rx(const uint8_t* bytes, uint16_t len)
   s_state.rx_inject_pos = 0U;
 }
 
-const uint8_t* ra8_ble_test_tx_capture(uint16_t* out_len)
+RA8_TEST_HELPER const uint8_t* ra8_ble_test_tx_capture(uint16_t* out_len)
 {
   if (out_len != nullptr) {
     *out_len = s_state.tx_capture_len;

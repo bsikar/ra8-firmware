@@ -21,6 +21,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_flash.h"
 
@@ -143,7 +144,7 @@ typedef enum : uint32_t {
  * @note Internal helper, not thread-safe.
  * @since 0.1.0
  */
-void ra8_flash_internal_set_prefetch(bool enable);
+RA8_PRIV void ra8_flash_internal_set_prefetch(bool enable);
 
 /**
  * @brief Send a single byte through the MACI command-issuing area.
@@ -161,7 +162,7 @@ void ra8_flash_internal_set_prefetch(bool enable);
  * @note Internal helper, not thread-safe.
  * @since 0.1.0
  */
-void ra8_flash_internal_maci_cmd8(uint8_t byte);
+RA8_PRIV void ra8_flash_internal_maci_cmd8(uint8_t byte);
 
 /**
  * @brief Send a halfword through the MACI command-issuing area.
@@ -179,7 +180,7 @@ void ra8_flash_internal_maci_cmd8(uint8_t byte);
  * @note Internal helper, not thread-safe.
  * @since 0.1.0
  */
-void ra8_flash_internal_maci_cmd16(uint16_t half);
+RA8_PRIV void ra8_flash_internal_maci_cmd16(uint16_t half);
 
 /**
  * @brief Spin until MSTATR.MRDY rises or limit elapses.
@@ -200,7 +201,7 @@ void ra8_flash_internal_maci_cmd16(uint16_t half);
  * @note Internal helper, not thread-safe.
  * @since 0.1.0
  */
-ra8_err_t ra8_flash_internal_wait_mrdy(uint32_t limit);
+RA8_PRIV ra8_err_t ra8_flash_internal_wait_mrdy(uint32_t limit);
 
 /**
  * @brief Test whether [addr, addr+len) lies inside the soft window.
@@ -227,7 +228,7 @@ ra8_err_t ra8_flash_internal_wait_mrdy(uint32_t limit);
  * @note Internal helper, not thread-safe.
  * @since 0.1.0
  */
-bool ra8_flash_internal_window_allows(uintptr_t addr, uint32_t len);
+RA8_PRIV bool ra8_flash_internal_window_allows(uintptr_t addr, uint32_t len);
 
 /**
  * @brief Pure (state-free) reimplementation of @c internal_window_allows.
@@ -265,7 +266,7 @@ bool ra8_flash_internal_window_allows(uintptr_t addr, uint32_t len);
  *
  * @since 0.1.0
  */
-bool ra8_flash_internal_window_allows_pure(uintptr_t addr,
+RA8_PRIV bool ra8_flash_internal_window_allows_pure(uintptr_t addr,
                                            uint32_t  len,
                                            uintptr_t win_low,
                                            uintptr_t win_high);
@@ -298,7 +299,7 @@ bool ra8_flash_internal_window_allows_pure(uintptr_t addr,
  *
  * @since 0.1.0
  */
-ra8_err_t ra8_flash_internal_wait_buffer_ready_call(uint32_t limit);
+RA8_PRIV ra8_err_t ra8_flash_internal_wait_buffer_ready_call(uint32_t limit);
 
 /**
  * @brief Direct-call test access to @c internal_wait_commit_done.
@@ -328,7 +329,7 @@ ra8_err_t ra8_flash_internal_wait_buffer_ready_call(uint32_t limit);
  *
  * @since 0.1.0
  */
-ra8_err_t ra8_flash_internal_wait_commit_done_call(uint32_t limit);
+RA8_PRIV ra8_err_t ra8_flash_internal_wait_commit_done_call(uint32_t limit);
 
 #if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
 /**

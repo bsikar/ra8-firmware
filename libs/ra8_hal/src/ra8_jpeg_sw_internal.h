@@ -421,7 +421,7 @@ typedef struct {
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-int32_t ra8_jpeg_sw_br_get_bits(ra8_jpeg_bitreader_t* br, uint8_t n);
+RA8_PRIV int32_t ra8_jpeg_sw_br_get_bits(ra8_jpeg_bitreader_t* br, uint8_t n);
 
 /**
  * @brief Build canonical code/size and mincode/maxcode tables.
@@ -443,7 +443,7 @@ int32_t ra8_jpeg_sw_br_get_bits(ra8_jpeg_bitreader_t* br, uint8_t n);
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-void ra8_jpeg_sw_htab_build(ra8_jpeg_htab_t* h);
+RA8_PRIV void ra8_jpeg_sw_htab_build(ra8_jpeg_htab_t* h);
 
 /**
  * @brief Decode one Huffman symbol from `br` using table `h`.
@@ -468,7 +468,7 @@ void ra8_jpeg_sw_htab_build(ra8_jpeg_htab_t* h);
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-int32_t ra8_jpeg_sw_htab_decode(ra8_jpeg_bitreader_t* br, const ra8_jpeg_htab_t* h);
+RA8_PRIV int32_t ra8_jpeg_sw_htab_decode(ra8_jpeg_bitreader_t* br, const ra8_jpeg_htab_t* h);
 
 /**
  * @brief Decode a signed `n`-bit DCT coefficient (T.81 F.1.2.1.3).
@@ -495,7 +495,7 @@ int32_t ra8_jpeg_sw_htab_decode(ra8_jpeg_bitreader_t* br, const ra8_jpeg_htab_t*
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
-int32_t ra8_jpeg_sw_huff_extend(int32_t v, uint8_t n);
+RA8_PRIV int32_t ra8_jpeg_sw_huff_extend(int32_t v, uint8_t n);
 
 /**
  * @brief Full 8x8 inverse DCT, in place.
@@ -515,7 +515,7 @@ int32_t ra8_jpeg_sw_huff_extend(int32_t v, uint8_t n);
  * @note Internal helper; not thread-safe.
  * @since 0.1.0
  */
-void ra8_jpeg_sw_idct8x8(int32_t* block);
+RA8_PRIV void ra8_jpeg_sw_idct8x8(int32_t* block);
 
 /**
  * @brief Convert a YCbCr triple to RGB (BT.601, fixed-point).
@@ -541,7 +541,7 @@ void ra8_jpeg_sw_idct8x8(int32_t* block);
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-void ra8_jpeg_sw_ycc_to_rgb(int32_t  y,
+RA8_PRIV void ra8_jpeg_sw_ycc_to_rgb(int32_t  y,
                             int32_t  cb,
                             int32_t  cr,
                             uint8_t* out_r,

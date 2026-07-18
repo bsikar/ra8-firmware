@@ -129,7 +129,7 @@ static inline int32_t internal_iabs(int32_t v)
  * @note Not thread-safe; writes MMIO.
  * @since 0.1.0
  */
-void internal_program_rect_limiters(const ra8_drw_rect_t* rect);
+RA8_PRIV void internal_program_rect_limiters(const ra8_drw_rect_t* rect);
 
 /**
  * @brief Pure predicate for the "rect is below min dim" rejection.

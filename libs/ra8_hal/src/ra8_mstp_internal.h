@@ -25,6 +25,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 
 /**
@@ -60,7 +61,7 @@ extern "C" {
  * @note Not thread-safe; init-time single-threaded context only.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t
+RA8_PRIV [[nodiscard]] ra8_err_t
 ra8_mstp_wait_reg_settle_internal(uint8_t reg, uint32_t expect, uint32_t care_mask);
 
 /**
@@ -87,7 +88,7 @@ ra8_mstp_wait_reg_settle_internal(uint8_t reg, uint32_t expect, uint32_t care_ma
  * @note Not thread-safe; init-time single-threaded context only.
  * @since 0.1.0
  */
-[[nodiscard]] uint32_t ra8_mstp_ns_mask_internal(uint8_t reg);
+RA8_PRIV [[nodiscard]] uint32_t ra8_mstp_ns_mask_internal(uint8_t reg);
 
 #ifdef __cplusplus
 }

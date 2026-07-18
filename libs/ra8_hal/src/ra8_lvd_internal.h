@@ -20,6 +20,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_lvd.h"
 
@@ -103,7 +104,7 @@ extern const ra8_lvd_channel_map_t s_lvd_map[k_ra8_lvd_map_idx_count];
  * @note Pure helper; safe from any context. Driver-internal.
  * @since 0.1.0
  */
-ra8_err_t ra8_lvd_internal_channel_to_idx(ra8_lvd_channel_t channel, uint8_t* out_idx);
+RA8_PRIV ra8_err_t ra8_lvd_internal_channel_to_idx(ra8_lvd_channel_t channel, uint8_t* out_idx);
 
 /**
  * @brief Validate FSAMP[1:0] candidate (0..3).
@@ -126,7 +127,7 @@ ra8_err_t ra8_lvd_internal_channel_to_idx(ra8_lvd_channel_t channel, uint8_t* ou
  * @note Pure helper; safe from any context. Driver-internal.
  * @since 0.1.0
  */
-ra8_err_t ra8_lvd_internal_validate_div(ra8_lvd_loco_div_t div);
+RA8_PRIV ra8_err_t ra8_lvd_internal_validate_div(ra8_lvd_loco_div_t div);
 
 /**
  * @brief Read PVDmCR0.RI for an m channel.
@@ -149,7 +150,7 @@ ra8_err_t ra8_lvd_internal_validate_div(ra8_lvd_loco_div_t div);
  * @note Read-only; safe under simple races. Driver-internal.
  * @since 0.1.0
  */
-uint8_t ra8_lvd_internal_read_ri(const ra8_lvd_channel_map_t* map);
+RA8_PRIV uint8_t ra8_lvd_internal_read_ri(const ra8_lvd_channel_map_t* map);
 
 /**
  * @brief Read-modify-write helper for PVDmCR0 / PVDnCR0 with reserved-bit
@@ -172,7 +173,7 @@ uint8_t ra8_lvd_internal_read_ri(const ra8_lvd_channel_map_t* map);
  * @note Internal helper; not thread-safe. Driver-internal.
  * @since 0.1.0
  */
-void ra8_lvd_internal_cr0_rmw(const ra8_lvd_channel_map_t* map,
+RA8_PRIV void ra8_lvd_internal_cr0_rmw(const ra8_lvd_channel_map_t* map,
                               uint8_t                      clear_mask,
                               uint8_t                      set_bits);
 
@@ -208,7 +209,7 @@ void ra8_lvd_internal_cr0_rmw(const ra8_lvd_channel_map_t* map,
  *
  * @since 0.1.0
  */
-bool ra8_lvd_internal_reject_hvd_after(uint32_t hvd_val,
+RA8_PRIV bool ra8_lvd_internal_reject_hvd_after(uint32_t hvd_val,
                                        uint32_t after_assert_val,
                                        uint32_t hysteresis,
                                        uint32_t negate);
@@ -244,7 +245,7 @@ bool ra8_lvd_internal_reject_hvd_after(uint32_t hvd_val,
  *
  * @since 0.1.0
  */
-bool ra8_lvd_internal_set_ri_bit(uint32_t reset_val, uint32_t reset_on_rise_val, uint32_t response);
+RA8_PRIV bool ra8_lvd_internal_set_ri_bit(uint32_t reset_val, uint32_t reset_on_rise_val, uint32_t response);
 
 #ifdef __cplusplus
 }

@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "tx_api.h"
 
 /**
@@ -127,4 +128,4 @@ extern CHAR s_ns_host_thread_name[];
  * @note Polled host (no IRQ); shares a time-sliced priority with the device.
  * @since 0.1.0
  */
-VOID ns_host_worker(ULONG arg);
+RA8_PRIV VOID ns_host_worker(ULONG arg);
