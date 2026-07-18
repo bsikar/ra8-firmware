@@ -58,10 +58,26 @@ extern "C" {
  * parses the same syntax silently but does not surface it; either way, codegen
  * is unaffected. We still gate on `__clang__` so non-clang toolchains
  * compile a literal no-op (a pure comment placeholder).
+ *
+ * `__CPPCHECK__` is excluded because cppcheck's C parser cannot represent a
+ * scoped attribute carrying a string argument: on `[[clang::annotate("x")]]`
+ * it mis-parses the declaration that follows, and the damaged parse surfaces
+ * as phantom MISRA findings in the annotated function (14.2 / 16.2 / 17.3
+ * appearing where the source has no loop, no switch and no implicit
+ * declaration, plus inflated 15.5 exit-point counts). cppcheck explores both
+ * arms of the `#ifdef` above, so without this exclusion the audit reports the
+ * defects of a configuration that is never built. The firmware ships compiled
+ * by arm-none-eabi-gcc, where these macros are already comments -- pinning
+ * cppcheck to that arm analyses the code that actually ships, and keeps the
+ * annotation visible to clang-tidy and to the libclang annotation gate
+ * (`scripts/utils/check_annotations.py`), neither of which defines
+ * `__CPPCHECK__`. Suppressing the rules or absorbing the findings into the
+ * MISRA baseline instead would blind the ratchet to real defects in every
+ * annotated file.
  * =============================================================================
  */
 
-#ifdef __clang__
+#if defined(__clang__) && !defined(__CPPCHECK__)
 /** @brief RA8 INTERNAL ANNOTATE. */
 #define RA8_INTERNAL_ANNOTATE(tag) [[clang::annotate(tag)]]
 #else
