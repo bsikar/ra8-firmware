@@ -17,8 +17,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ra8_attributes.h"
 #include "mdl_net.h"
+#include "ra8_attributes.h"
 
 /** @brief Backend tunables. */
 typedef enum : uint16_t {

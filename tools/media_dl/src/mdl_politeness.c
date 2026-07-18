@@ -6,10 +6,11 @@
  * @file mdl_politeness.c
  * @brief Seeded xorshift64 jitter + host sleep for v0 politeness.
  */
-#include "ra8_attributes.h"
 #include "mdl_politeness.h"
 
 #include <time.h>
+
+#include "ra8_attributes.h"
 
 /**
  * @enum mdl_seed_t

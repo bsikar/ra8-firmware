@@ -6,11 +6,12 @@
  * @file mdl_extract.c
  * @brief v1 `<img>`/`<a>` tag scanner + relative-URL resolver.
  */
-#include "ra8_attributes.h"
 #include "mdl_extract.h"
 
 #include <stdio.h>
 #include <string.h>
+
+#include "ra8_attributes.h"
 
 /** @brief Local scan/resolve limits. */
 typedef enum : uint16_t {
@@ -68,7 +69,8 @@ RA8_INTERNAL static size_t skip_ws(const char* tag, size_t tag_len, size_t k)
  * @brief From position `k` just after an attr name, read `="value"`.
  * @return true and fills `out` (NUL-terminated) if a quoted value was parsed.
  */
-RA8_INTERNAL static bool read_eq_value(const char* tag, size_t tag_len, size_t k, char* out, size_t out_cap)
+RA8_INTERNAL static bool
+read_eq_value(const char* tag, size_t tag_len, size_t k, char* out, size_t out_cap)
 {
   k = skip_ws(tag, tag_len, k);
   if (!((k < tag_len) && (tag[k] == '='))) {
@@ -147,7 +149,8 @@ RA8_INTERNAL static bool authority_of(const char* base, char* auth, size_t cap)
 }
 
 /** @brief Resolve a scheme-relative ("//host/...") URL against `base`. */
-RA8_INTERNAL static bool resolve_scheme_rel(const char* base, const char* raw, char* out, size_t out_cap)
+RA8_INTERNAL static bool
+resolve_scheme_rel(const char* base, const char* raw, char* out, size_t out_cap)
 {
   const char*  colon = strstr(base, "://");
   const size_t slen  = (size_t)(colon - base);
@@ -161,7 +164,8 @@ RA8_INTERNAL static bool resolve_scheme_rel(const char* base, const char* raw, c
 }
 
 /** @brief Resolve a root-relative ("/path") URL against authority `auth`. */
-RA8_INTERNAL static bool resolve_root_rel(const char* auth, const char* raw, char* out, size_t out_cap)
+RA8_INTERNAL static bool
+resolve_root_rel(const char* auth, const char* raw, char* out, size_t out_cap)
 {
   if ((strlen(auth) + strlen(raw) + 1U) > out_cap) {
     return false;
@@ -250,12 +254,12 @@ RA8_INTERNAL static bool contains_ok(const char* url, const char* needle)
  * @retval k_ra8_err_no_mem  List already at ::k_mdl_max_urls.
  */
 RA8_INTERNAL static ra8_err_t emit_tag_url(const char*     base_url,
-                              const char*     attr1,
-                              const char*     attr2,
-                              const char*     keep,
-                              const char*     tag,
-                              size_t          tag_len,
-                              mdl_url_list_t* out)
+                                           const char*     attr1,
+                                           const char*     attr2,
+                                           const char*     keep,
+                                           const char*     tag,
+                                           size_t          tag_len,
+                                           mdl_url_list_t* out)
 {
   char raw[k_mdl_url_max];
   bool got = find_attr_value(tag, tag_len, attr1, raw, sizeof(raw));
@@ -282,13 +286,13 @@ RA8_INTERNAL static ra8_err_t emit_tag_url(const char*     base_url,
  * @brief Shared scanner for `<img>`/`<a>`: emit each tag's resolved URL.
  */
 RA8_INTERNAL static ra8_err_t scan_tags(const char*     html,
-                           size_t          html_len,
-                           const char*     base_url,
-                           const char*     tagname,
-                           const char*     attr1,
-                           const char*     attr2,
-                           const char*     keep,
-                           mdl_url_list_t* out)
+                                        size_t          html_len,
+                                        const char*     base_url,
+                                        const char*     tagname,
+                                        const char*     attr1,
+                                        const char*     attr2,
+                                        const char*     keep,
+                                        mdl_url_list_t* out)
 {
   if ((html == nullptr) || (base_url == nullptr) || (attr1 == nullptr) || (out == nullptr)) {
     return k_ra8_err_invalid_arg;
