@@ -382,28 +382,47 @@ static void test_reg_write_read_legs(void)
 }
 
 /**
- * @test test_drain_dev_info_legs
+ * @test test_read_dev_info_legs
  *
  * @par MC/DC:
- * (no compound decisions -- the GET_DEV_INFO drain is a bounded loop of
+ * (no compound decisions -- the GET_DEV_INFO read is a bounded loop of
  * single-condition read guards.)
+ *
+ * @details
+ * The block is now decoded rather than discarded, so the clean leg also
+ * pins the decode: every response byte is ::k_cov_rx_zero, which is
+ * outside printable ASCII, so both version strings must come back empty
+ * (the decoder drops non-printable bytes to NUL rather than letting a
+ * garbled read reach a log line).
  */
-static void test_drain_dev_info_legs(void)
+static void test_read_dev_info_legs(void)
 {
-  TEST_BEGIN("drain_dev_info: command fault, in-loop read fault, clean drain");
-  s_xfer_rx = (uint8_t)k_cov_rx_zero;
+  TEST_BEGIN("read_dev_info: command fault, in-loop read fault, clean decode");
+  s_xfer_rx                  = (uint8_t)k_cov_rx_zero;
+  ra8_epaper_dev_info_t info = {};
 
   /* Fault the GET_DEV_INFO command. */
   arm_fault((uint32_t)k_cov_fail_1);
-  TEST_ASSERT_EQ(k_ra8_err_hw_error, internal_ra8_epaper_drain_dev_info());
-  /* Fault the first read of the 20-word drain (command spent 4 transfers). */
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, internal_ra8_epaper_read_dev_info(&info));
+  /* Fault the first read of the 20-word block (command spent 4 transfers). */
   arm_fault((uint32_t)k_cov_fail_5);
-  TEST_ASSERT_EQ(k_ra8_err_hw_error, internal_ra8_epaper_drain_dev_info());
-  /* Clean drain of all 20 words. */
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, internal_ra8_epaper_read_dev_info(&info));
+  /* Clean read + decode of all 20 words. */
   arm_fault((uint32_t)k_cov_fail_never);
-  TEST_ASSERT_EQ(k_ra8_ok, internal_ra8_epaper_drain_dev_info());
+  TEST_ASSERT_EQ(k_ra8_ok, internal_ra8_epaper_read_dev_info(&info));
+  TEST_ASSERT_EQ('\0', info.fw_version[0]);
+  TEST_ASSERT_EQ('\0', info.lut_version[0]);
 
-  TEST_END("drain_dev_info: command fault, in-loop read fault, clean drain");
+  /* A printable response decodes into the version strings, which is what
+   * ra8_epaper_waveform_cfg_for_lut consumes. */
+  s_xfer_rx = (uint8_t)'A';
+  arm_fault((uint32_t)k_cov_fail_never);
+  TEST_ASSERT_EQ(k_ra8_ok, internal_ra8_epaper_read_dev_info(&info));
+  TEST_ASSERT_EQ('A', info.lut_version[0]);
+  TEST_ASSERT_EQ('\0', info.lut_version[k_ra8_epaper_ver_chars]);
+  s_xfer_rx = (uint8_t)k_cov_rx_zero;
+
+  TEST_END("read_dev_info: command fault, in-loop read fault, clean decode");
 }
 
 /**
@@ -806,7 +825,7 @@ int32_t main(void)
   test_wait_ready_sim_leg();
   test_write_cmd_data_read_legs();
   test_reg_write_read_legs();
-  test_drain_dev_info_legs();
+  test_read_dev_info_legs();
   test_load_display_args_legs();
   test_stream_pixels_even_odd();
   test_init_ladder_legs();
