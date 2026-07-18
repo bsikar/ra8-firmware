@@ -32,6 +32,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_sdmmc_spi.h"
 
@@ -205,7 +206,7 @@ extern sd_state_t s_sdmmc_spi_state;
  * @note Not thread-safe.
  * @since 0.1.0
  */
-ra8_err_t ra8_sdmmc_spi_xfer_one(uint8_t tx, uint8_t* rx);
+RA8_PRIV ra8_err_t ra8_sdmmc_spi_xfer_one(uint8_t tx, uint8_t* rx);
 
 /**
  * @brief Shift @p n idle bytes (0xFF) and discard the response.
@@ -221,7 +222,7 @@ ra8_err_t ra8_sdmmc_spi_xfer_one(uint8_t tx, uint8_t* rx);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-ra8_err_t ra8_sdmmc_spi_send_idle(uint32_t n);
+RA8_PRIV ra8_err_t ra8_sdmmc_spi_send_idle(uint32_t n);
 
 /**
  * @brief Drive CS low and clock a single idle byte so CIPO is sampled.
@@ -236,7 +237,7 @@ ra8_err_t ra8_sdmmc_spi_send_idle(uint32_t n);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-ra8_err_t ra8_sdmmc_spi_cs_assert(void);
+RA8_PRIV ra8_err_t ra8_sdmmc_spi_cs_assert(void);
 
 /**
  * @brief Drive CS high after clocking one idle byte (SD spec section 7.2.4).
@@ -252,7 +253,7 @@ ra8_err_t ra8_sdmmc_spi_cs_assert(void);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-ra8_err_t ra8_sdmmc_spi_cs_release(void);
+RA8_PRIV ra8_err_t ra8_sdmmc_spi_cs_release(void);
 
 /**
  * @brief Send a command frame and capture the R1 response byte.
@@ -272,7 +273,7 @@ ra8_err_t ra8_sdmmc_spi_cs_release(void);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-ra8_err_t ra8_sdmmc_spi_send_command(sd_cmd_t cmd, uint32_t arg, uint8_t* out_r1);
+RA8_PRIV ra8_err_t ra8_sdmmc_spi_send_command(sd_cmd_t cmd, uint32_t arg, uint8_t* out_r1);
 
 /**
  * @brief Send an ACMD by prefixing it with CMD55 (APP_CMD).
@@ -291,7 +292,7 @@ ra8_err_t ra8_sdmmc_spi_send_command(sd_cmd_t cmd, uint32_t arg, uint8_t* out_r1
  * @note Not thread-safe.
  * @since 0.1.0
  */
-ra8_err_t ra8_sdmmc_spi_send_acmd(sd_cmd_t acmd, uint32_t arg, uint8_t* out_r1);
+RA8_PRIV ra8_err_t ra8_sdmmc_spi_send_acmd(sd_cmd_t acmd, uint32_t arg, uint8_t* out_r1);
 
 /**
  * @brief Send CMD12 (STOP_TRANSMISSION) and capture its R1 response byte.
@@ -313,7 +314,7 @@ ra8_err_t ra8_sdmmc_spi_send_acmd(sd_cmd_t acmd, uint32_t arg, uint8_t* out_r1);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-ra8_err_t ra8_sdmmc_spi_send_stop_transmission(uint8_t* out_r1);
+RA8_PRIV ra8_err_t ra8_sdmmc_spi_send_stop_transmission(uint8_t* out_r1);
 
 /**
  * @brief Poll for the data-start token (0xFE), bounded by a retry budget.
@@ -330,7 +331,7 @@ ra8_err_t ra8_sdmmc_spi_send_stop_transmission(uint8_t* out_r1);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-ra8_err_t ra8_sdmmc_spi_wait_data_token(void);
+RA8_PRIV ra8_err_t ra8_sdmmc_spi_wait_data_token(void);
 
 /**
  * @brief Wait for the card to release busy (CIPO -> 0xFF), bounded by @p max_polls.
@@ -348,7 +349,7 @@ ra8_err_t ra8_sdmmc_spi_wait_data_token(void);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-ra8_err_t ra8_sdmmc_spi_wait_not_busy_bounded(uint32_t max_polls);
+RA8_PRIV ra8_err_t ra8_sdmmc_spi_wait_not_busy_bounded(uint32_t max_polls);
 
 /**
  * @brief Wait for the card to release the busy token (CIPO returns to 0xFF).
@@ -365,7 +366,7 @@ ra8_err_t ra8_sdmmc_spi_wait_not_busy_bounded(uint32_t max_polls);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-ra8_err_t ra8_sdmmc_spi_wait_not_busy(void);
+RA8_PRIV ra8_err_t ra8_sdmmc_spi_wait_not_busy(void);
 
 /**
  * @brief Validate the transport descriptor: every callback non-NULL.
@@ -382,7 +383,7 @@ ra8_err_t ra8_sdmmc_spi_wait_not_busy(void);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-ra8_err_t ra8_sdmmc_spi_validate_transport(const ra8_sdmmc_spi_transport_t* transport);
+RA8_PRIV ra8_err_t ra8_sdmmc_spi_validate_transport(const ra8_sdmmc_spi_transport_t* transport);
 
 /**
  * @brief Walk the full SD identification sequence and learn capacity / type.
@@ -399,7 +400,7 @@ ra8_err_t ra8_sdmmc_spi_validate_transport(const ra8_sdmmc_spi_transport_t* tran
  * @note Not thread-safe; single-threaded init.
  * @since 0.1.0
  */
-ra8_err_t ra8_sdmmc_spi_run_init_sequence(void);
+RA8_PRIV ra8_err_t ra8_sdmmc_spi_run_init_sequence(void);
 
 #ifdef __cplusplus
 }

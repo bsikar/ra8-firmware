@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_canfd_regs.h"
 #include "ra8_dotf.h"
 #include "ra8_err.h"
@@ -122,7 +123,7 @@ static inline bool internal_port_ok(ra8_rmac_port_t port)
  * @note Not thread-safe; the caller must serialise concurrent access.
  * @since 0.1.0
  */
-void ra8_mipi_csi_detach_all_handlers(void);
+RA8_PRIV void ra8_mipi_csi_detach_all_handlers(void);
 
 /* =============================================================================
  * ra8_ssie: split between ra8_ssie.c (lifecycle / register knobs / polled FIFO /
@@ -192,7 +193,7 @@ extern ra8_ssie_runtime_t s_ssie_runtime[k_ra8_ssie_channel_count];
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-volatile r_ssie_regs_t* ra8_ssie_internal_regs(uint8_t channel);
+RA8_PRIV volatile r_ssie_regs_t* ra8_ssie_internal_regs(uint8_t channel);
 
 /* =============================================================================
  * ra8_usb_hmsc: split between ra8_usb_hmsc.c (CBW/CSW helpers, lifecycle, attach
@@ -282,4 +283,4 @@ extern ra8_usb_hmsc_state_t s_usb_hmsc_state;
  * @note Module-private to ``libs/ra8_hal/src``; not part of the public surface.
  * @since 0.1.0
  */
-ra8_err_t ra8_canfd_internal_set_channel_mode(volatile r_canfd_t* reg, ra8_chmdc_mode_t mode);
+RA8_PRIV ra8_err_t ra8_canfd_internal_set_channel_mode(volatile r_canfd_t* reg, ra8_chmdc_mode_t mode);
