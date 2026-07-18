@@ -78,6 +78,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_glcdc_regs.h" /* pulls in k_ra8_ceu_base_addr */
 
 /**
@@ -687,6 +688,7 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_ceu_reg32(ra8_ceu_off_t offset)
 {
   return (volatile uint32_t*)(k_ra8_ceu_base_addr + (uint16_t)offset);
@@ -721,6 +723,7 @@ static inline volatile uint32_t* ra8_ceu_reg32(ra8_ceu_off_t offset)
  *
  * @since 0.1.0
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_ceu_reg32_plane(ra8_ceu_off_t       offset,
                                                      ra8_ceu_plane_off_t plane)
 {

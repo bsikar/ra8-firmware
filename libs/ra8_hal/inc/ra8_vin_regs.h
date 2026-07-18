@@ -77,6 +77,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum ra8_vin_addr_t
  * @brief Memory-mapped base addresses for the VIN block.
@@ -927,6 +929,7 @@ typedef enum : uint32_t {
  * @see k_ra8_vin0_base_addr
  * @since 0.1.0
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_vin_reg32(ra8_vin_off_t off)
 {
   return (volatile uint32_t*)(k_ra8_vin0_base_addr + (uintptr_t)(uint16_t)off);

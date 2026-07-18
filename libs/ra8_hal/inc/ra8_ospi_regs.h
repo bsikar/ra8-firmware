@@ -82,6 +82,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum ra8_xspi_addr_t
  * @brief xSPI / DOTF window base addresses on the peripheral bus.
@@ -183,6 +185,7 @@ static_assert(sizeof(r_xspi_regs_t) == (uint32_t)k_ra8_xspi_regs_size,
  * @note Thread-safe; returns a constant address per instance.
  * @since 0.1.0
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_xspi_regs_t* ra8_xspi(uint8_t instance)
 {
   if (instance >= k_ra8_xspi_instance_count) {

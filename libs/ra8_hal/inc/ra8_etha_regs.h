@@ -40,6 +40,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_ether_regs.h"
 
 /**
@@ -551,6 +552,7 @@ static_assert(offsetof(r_etha_regs_t, EASCR) == (size_t)k_ra8_etha_off_eascr, "E
  * @note Not thread-safe; per-port serialisation is the caller's job.
  * @since 0.1.0
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_etha_regs_t* ra8_etha(ra8_etha_port_t port)
 {
   uintptr_t base = k_ra8_etha0_base_addr;

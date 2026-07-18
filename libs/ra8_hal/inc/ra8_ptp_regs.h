@@ -48,6 +48,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum ra8_ptp_addr_t
  * @brief PTP control-window base address.
@@ -131,6 +133,7 @@ typedef struct {
  *
  * @return Volatile pointer to the PTP SYNFP/STCA window.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_ptp_regs_t* ra8_ptp_regs(void)
 {
   return (volatile r_ptp_regs_t*)k_ra8_ptp_base_addr;
