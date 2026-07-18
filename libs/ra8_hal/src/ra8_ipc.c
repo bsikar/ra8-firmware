@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_elc_regs.h"
 #include "ra8_err.h"
@@ -113,6 +114,7 @@ static ra8_ipc_isr_state_t     s_ipc_isr_state[k_ra8_ipc_nmi_unit_count];
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_ra8_ipc_event_to_clr(uint32_t event_mask)
 {
   uint32_t clr = 0U;
@@ -138,6 +140,7 @@ static uint32_t internal_ra8_ipc_event_to_clr(uint32_t event_mask)
 /**
  * @brief Validate channel id and return the channel reg pointer.
  */
+RA8_INTERNAL
 static volatile r_ipc_channel_regs_t* internal_ra8_ipc_get_regs(uint8_t channel)
 {
   if ((uint16_t)channel >= (uint16_t)k_ra8_ipc_channel_count) {
@@ -178,6 +181,7 @@ static volatile r_ipc_channel_regs_t* internal_ra8_ipc_get_regs(uint8_t channel)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t internal_ra8_ipc_unit_to_event(uint8_t unit)
 {
   /* HUM Ch 18 "Event Link Controller" event-list -- IPC0_* feeds
@@ -202,6 +206,7 @@ static uint16_t internal_ra8_ipc_unit_to_event(uint8_t unit)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_ra8_ipc_dispatch_irq_lines(uint8_t channel, uint32_t mask)
 {
   const uint32_t irq_bits = mask & k_ra8_ipc_event_irq_all;
@@ -788,6 +793,7 @@ void ra8_ipc_dispatch(uint8_t channel)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_ra8_ipc_isr(void* ctx)
 {
   const uint8_t unit = (uint8_t)(uintptr_t)ctx;
