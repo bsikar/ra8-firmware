@@ -23,6 +23,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 
 /**
@@ -51,7 +52,7 @@ extern "C" {
  *
  * @since 0.1.0
  */
-void ra8_epub_internal_join_path(const char* dir, const char* name, char* dst, size_t cap);
+RA8_PRIV void ra8_epub_internal_join_path(const char* dir, const char* name, char* dst, size_t cap);
 
 /**
  * @brief Pure predicate: width OR height is negative.
@@ -82,7 +83,7 @@ void ra8_epub_internal_join_path(const char* dir, const char* name, char* dst, s
  *
  * @since 0.1.0
  */
-bool ra8_epub_internal_glyph_dim_invalid(int w, int h);
+RA8_PRIV bool ra8_epub_internal_glyph_dim_invalid(int w, int h);
 
 /**
  * @brief Pure predicate: book unused OR zip archive inactive.
@@ -114,7 +115,7 @@ bool ra8_epub_internal_glyph_dim_invalid(int w, int h);
  *
  * @since 0.1.0
  */
-bool ra8_epub_internal_book_not_ready(uint8_t in_use, uint8_t zip_archive_active);
+RA8_PRIV bool ra8_epub_internal_book_not_ready(uint8_t in_use, uint8_t zip_archive_active);
 
 /**
  * @brief Guard a just-opened ZIP archive against the decompression policy.
@@ -143,7 +144,7 @@ bool ra8_epub_internal_book_not_ready(uint8_t in_use, uint8_t zip_archive_active
  * @see ra8_epub_zip_guard_entry()
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_epub_zip_guard_archive(mz_zip_archive* zip);
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_epub_zip_guard_archive(mz_zip_archive* zip);
 
 /**
  * @brief Guard one ZIP entry's declared sizes against the policy.
@@ -173,7 +174,7 @@ bool ra8_epub_internal_book_not_ready(uint8_t in_use, uint8_t zip_archive_active
  * @see ra8_epub_zip_guard_archive()
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_epub_zip_guard_entry(const mz_zip_archive_file_stat* st);
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_epub_zip_guard_entry(const mz_zip_archive_file_stat* st);
 
 #ifdef __cplusplus
 }

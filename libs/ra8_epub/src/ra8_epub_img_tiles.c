@@ -33,6 +33,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_epub.h"
 #include "ra8_epub_entry.h"
@@ -63,6 +64,7 @@ static const char* const s_tag = "ra8_epub_img_tiles";
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t priv_find(const ra8_epub_tile_binder_t* binder, uint32_t image_id)
 {
   for (uint8_t i = 0U; i < binder->source_count; ++i) {
@@ -91,6 +93,7 @@ static int32_t priv_find(const ra8_epub_tile_binder_t* binder, uint32_t image_id
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_entry_pread(void* ctx, uint64_t offset, uint8_t* buf, size_t len, size_t* got)
 {
   const ra8_epub_tile_source_t* src = (const ra8_epub_tile_source_t*)ctx;
@@ -114,6 +117,7 @@ static ra8_err_t priv_entry_pread(void* ctx, uint64_t offset, uint8_t* buf, size
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_measure_entry(ra8_epub_book_t* book, const char* path, uint64_t* out_size)
 {
   ra8_epub_entry_reader_t reader = {};
@@ -152,6 +156,7 @@ static ra8_err_t priv_measure_entry(ra8_epub_book_t* book, const char* path, uin
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_tile_decode(void*                 ctx,
                                   const ra8_tile_key_t* key,
                                   uint8_t*              cell,
@@ -221,6 +226,7 @@ ra8_err_t ra8_epub_tile_binder_init(ra8_epub_tile_binder_t*     binder,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_check_slot(const ra8_epub_tile_binder_t* binder, uint32_t image_id)
 {
   if (binder->source_count >= (uint8_t)k_ra8_epub_tile_max_sources) {
@@ -252,6 +258,7 @@ static ra8_err_t priv_check_slot(const ra8_epub_tile_binder_t* binder, uint32_t 
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_fill_book_source(ra8_epub_tile_source_t* src,
                                        ra8_epub_book_t*        book,
                                        const char*             path,
@@ -389,6 +396,7 @@ ra8_err_t ra8_epub_tile_binder_put(ra8_epub_tile_binder_t* binder, const uint8_t
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_loader_args_ok(const ra8_epub_img_loader_t* ld, uint32_t href_len)
 {
   if (ld->book == nullptr) {
@@ -427,6 +435,7 @@ static ra8_err_t priv_loader_args_ok(const ra8_epub_img_loader_t* ld, uint32_t h
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_loader_null_ok(const void*     ctx,
                                      const char*     href,
                                      const uint8_t** out_bytes,
