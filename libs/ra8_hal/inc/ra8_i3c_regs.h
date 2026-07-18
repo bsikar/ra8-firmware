@@ -36,7 +36,11 @@
 extern "C" {
 #endif
 
+#include <assert.h>
+#include <stddef.h>
 #include <stdint.h>
+
+#include "ra8_attributes.h"
 
 /**
  * @typedef ra8_i3c_addr_t
@@ -388,11 +392,6 @@ typedef enum : uint32_t {
   k_ra8_i3c_addr_shift_in_ibi_id = 1U,    /**< IBI ID = (addr << 1) | RnW. */
   k_ra8_i3c_word_size            = 4U,    /**< Bytes per FIFO word.        */
 } ra8_i3c_byte_t;
-
-#include <assert.h>
-#include <stddef.h>
-
-#include "ra8_attributes.h"
 
 /**
  * @typedef ra8_i3c_offset_t

@@ -102,6 +102,7 @@ gap-closure plan in `docs/MISRA.md`:
 | D-003 | misra-c2012-9.2  | Required  | Tooling gap       | Active   | 2026-11-02 |
 | D-004 | misra-c2012-12.1 | Advisory  | Partial deviation | Active   | 2027-05-02 |
 | D-005 | misra-c2012-8.4  | Required  | Tooling gap       | Active   | 2026-11-02 |
+| D-006 | misra-c2012-20.5 | Advisory  | Project deviation | Active   | 2027-05-02 |
 
 `MAR` = mandatory annual review date (or earlier review trigger when
 the underlying tooling assumption changes).
@@ -542,8 +543,113 @@ rules; the unqualified open-source audit tool is supplementary.
 
 ---
 
+## D-006: Rule 20.5 -- #undef shall not be used
+
+- **Rule ID**: misra-c2012-20.5.
+- **Rule text (paraphrased per MISRA licence)**: `#undef` shall not
+  be used.
+- **Category**: Advisory.
+- **Disposition**: Project deviation (deliberate, safety-motivated).
+- **Scope**: exactly one site, `libs/ra8_nsc/inc/ra8_nsc_veneer.h`.
+- **Files affected**:
+
+  | File                                | Hits |
+  |-------------------------------------|-----:|
+  | `libs/ra8_nsc/inc/ra8_nsc_veneer.h` |   1  |
+
+### Root cause
+
+`RA8_NSC_VENEER` must mean two different things in two different
+compilations of the same declaration. In a Secure-world translation
+unit (`-mcmse`) it must carry
+`__attribute__((cmse_nonsecure_entry))`, which is what makes the
+linker emit the secure-gateway (SG) veneer that the Non-Secure world
+branches through. Everywhere else -- Non-Secure images, single-world
+firmware and the host unit tests -- it must be a plain no-op, because
+gcc ignores the attribute without `-mcmse` and the resulting
+`-Wattributes` diagnostic is fatal under the project `-Werror`
+profile.
+
+`libs/ra8_core/inc/ra8_attributes.h` also defines `RA8_NSC_VENEER`,
+as an annotation-only marker, so that translation units which never
+touch the NSC boundary can still be scanned by the libclang
+annotation gate. Two headers therefore define the same macro, and
+before this deviation whichever header a translation unit included
+last silently won.
+
+That is not a stylistic concern. When `ra8_attributes.h` won inside
+an NSC translation unit -- as it did in `ra8_nsc_wdt.c` and
+`ra8_nsc_xspi.c` -- the CMSE attribute was dropped, the SG veneer was
+never emitted, and the Secure/Non-Secure boundary was broken with no
+diagnostic beyond a macro-redefinition warning.
+
+### Why `#undef` is the correct construct
+
+`ra8_nsc_veneer.h` is designated the single authority for the macro.
+It includes `ra8_attributes.h`, `#undef`s the generic marker, and
+re-defines `RA8_NSC_VENEER` to carry the annotation and the CMSE
+attribute together. The `#undef` is what makes the correct
+definition win **regardless of include order**, which is the whole
+safety property: a future edit that reorders includes in an NSC
+translation unit cannot silently disarm the boundary.
+
+### Alternatives considered and rejected
+
+1. **Include-order convention** (require `ra8_nsc_veneer.h` last).
+   Rejected: unenforceable by the compiler, and the failure mode is
+   silent and security-critical.
+2. **`#ifndef` guard in `ra8_attributes.h`**. Rejected: it makes the
+   winner depend on include order in the opposite direction, so the
+   same silent failure remains reachable.
+3. **Move the CMSE logic into `ra8_attributes.h`** so only one
+   definition exists. Rejected: `ra8_core` is the foundation library
+   and is included by host tests and by both worlds;
+   `check_core_layering.py` exists to keep TrustZone-specific
+   concerns out of it, and `<arm_cmse.h>` is not available on the
+   host.
+
+### Alternative mitigation
+
+The intent of Rule 20.5 -- that a macro's meaning be unambiguous at
+every use site -- is met more strongly here than by the rule itself:
+
+- `scripts/utils/check_nsc_cmse.sh` compiles every NSC translation
+  unit under `-mcmse` with `-Wall -Wextra -Werror`, so a macro clash
+  of this class fails the gate rather than warning past it.
+- `scripts/utils/check_sg_offsets.py` inspects the linked Secure ELF
+  and asserts the SG veneer slot offsets still match the `k_sg_off_*`
+  enum the Non-Secure image reaches them by. A dropped veneer fails
+  this gate at the object level, not merely at the source level.
+- Both headers carry a `@warning` block naming the other and stating
+  which one is authoritative.
+
+### Standards basis
+
+Rule 20.5 is **Advisory**, the weakest MISRA category, and MISRA
+C:2012 permits a documented deviation for Advisory rules where the
+alternative carries greater risk. The alternative here is a silent
+TrustZone boundary break.
+
+### Risk assessment
+
+Low. One site, in a header whose sole purpose is to define this
+macro, guarded by two independent automated checks (source-level and
+object-level).
+
+### Review
+
+- **MAR**: 2027-05-02.
+- **Earlier review trigger**: any change to the `RA8_NSC_VENEER`
+  definition in either header; any toolchain that provides a
+  portable `[[gnu::cmse_nonsecure_entry]]` spelling, which would
+  allow the annotation and the attribute to be composed without
+  redefinition.
+
+---
+
 ## Change log
 
 | Date       | Author              | Change                              |
 |------------|---------------------|-------------------------------------|
 | 2026-05-02 | Brighton Sikarskie  | Initial population (D-001..D-005).  |
+| 2026-07-18 | Brighton Sikarskie  | Add D-006 (Rule 20.5, NSC veneer).  |
