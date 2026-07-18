@@ -40,6 +40,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -231,6 +232,7 @@ uint8_t internal_aes_alg_byte(uint32_t alg)
 #if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
 
 /* Stream ``len`` bytes into the data input window -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static void internal_push_data(const uint8_t* in, uint32_t len)
 {
   /* Stream 32-bit words through DATA_IN0..3 round-robin. */
@@ -258,6 +260,7 @@ static void internal_push_data(const uint8_t* in, uint32_t len)
 }
 
 /* Pull ``len`` bytes back from the data output window -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static void internal_pull_data(uint8_t* out, uint32_t len)
 {
   uint32_t i    = 0U;
@@ -283,6 +286,7 @@ static void internal_pull_data(uint8_t* out, uint32_t len)
 }
 
 /* Push a 16-byte IV / nonce into the SYM_IV0 lanes -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static void internal_push_iv(const uint8_t* iv)
 {
   if (iv == nullptr) {
@@ -292,6 +296,7 @@ static void internal_push_iv(const uint8_t* iv)
 }
 
 /* Issue an OEM key-install opcode and read the wrapped body back -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static ra8_err_t internal_oem_install(ra8_rsip_oem_cmd_t     cmd,
                                       const uint8_t*         iv,
                                       const uint8_t*         src,
@@ -435,6 +440,7 @@ ra8_err_t ra8_rsip_oem_install(ra8_rsip_oem_cmd_t     cmd,
  */
 
 /* Drive one block / multi-block cipher transaction -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static ra8_err_t internal_sym_run(const ra8_rsip_key_handle_t* key,
                                   uint8_t                      alg_byte,
                                   ra8_rsip_aes_mode_t          mode,
@@ -490,6 +496,7 @@ ra8_err_t ra8_rsip_aes_cipher(const ra8_rsip_key_handle_t* key,
 }
 
 /* Push 16 tag bytes through the SYM_TAG port (decrypt path) -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static void internal_aead_push_tag(const uint8_t* tag)
 {
   for (uint32_t w = 0U; w < k_ra8_rsip_aes_block_w; ++w) {
@@ -499,6 +506,7 @@ static void internal_aead_push_tag(const uint8_t* tag)
 }
 
 /* Pull 16 tag bytes from the SYM_TAG port (encrypt path) -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static void internal_aead_pull_tag(uint8_t* tag)
 {
   for (uint32_t w = 0U; w < k_ra8_rsip_aes_block_w; ++w) {
@@ -508,6 +516,7 @@ static void internal_aead_pull_tag(uint8_t* tag)
 }
 
 /* internal aead run -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static ra8_err_t internal_aead_run(const ra8_rsip_key_handle_t* key,
                                    uint8_t                      alg_byte,
                                    ra8_rsip_aes_mode_t          mode,
@@ -624,6 +633,7 @@ ra8_err_t ra8_rsip_aes_ccm(const ra8_rsip_key_handle_t* key,
  */
 
 /* Stage the ChaCha20-style 16-byte IV (counter || 12-byte nonce) -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static void internal_chacha20_push_iv(uint32_t counter, const uint8_t* nonce)
 {
   /* ChaCha20 IV layout: counter || 12-byte nonce. */

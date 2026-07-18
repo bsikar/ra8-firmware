@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_dmac.h"
 #include "ra8_err.h"
@@ -64,6 +65,7 @@ static const char* s_tag = "SSIE";
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 internal_validate_dma_cfg(const ra8_ssie_dma_cfg_t* dma, bool* want_tx, bool* want_rx)
 {
@@ -98,6 +100,7 @@ internal_validate_dma_cfg(const ra8_ssie_dma_cfg_t* dma, bool* want_tx, bool* wa
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 internal_start_tx_dma(volatile r_ssie_regs_t* reg, uint8_t channel, const ra8_ssie_dma_cfg_t* dma)
 {
@@ -133,6 +136,7 @@ internal_start_tx_dma(volatile r_ssie_regs_t* reg, uint8_t channel, const ra8_ss
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 internal_start_rx_dma(volatile r_ssie_regs_t* reg, uint8_t channel, const ra8_ssie_dma_cfg_t* dma)
 {
@@ -164,6 +168,7 @@ internal_start_rx_dma(volatile r_ssie_regs_t* reg, uint8_t channel, const ra8_ss
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_unwind_tx_dma(uint8_t channel, uint8_t tx_dma_channel)
 {
   (void)ra8_dmac_stop(tx_dma_channel);
@@ -192,6 +197,7 @@ static void internal_unwind_tx_dma(uint8_t channel, uint8_t tx_dma_channel)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_attach_dma_dirs(volatile r_ssie_regs_t*   reg,
                                           uint8_t                   channel,
                                           const ra8_ssie_dma_cfg_t* dma,

@@ -34,6 +34,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -171,6 +172,7 @@ static ra8_usb_hcdc_state_t s_state = {};
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t internal_bulk_max_packet(ra8_usb_speed_t speed)
 {
   return (speed == k_ra8_usb_speed_hs) ? k_ra8_hcdc_bulk_max_packet_hs
@@ -194,6 +196,7 @@ static uint16_t internal_bulk_max_packet(ra8_usb_speed_t speed)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_configure_pipes(void)
 {
   const uint16_t bulk_mp = internal_bulk_max_packet(s_state.speed);
@@ -240,6 +243,7 @@ static ra8_err_t internal_configure_pipes(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_setup_get_descriptor(uint8_t desc_type, uint16_t length)
 {
   const ra8_usb_setup_t setup = {
@@ -266,6 +270,7 @@ static ra8_err_t internal_setup_get_descriptor(uint8_t desc_type, uint16_t lengt
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_setup_set_address(uint8_t address)
 {
   const ra8_usb_setup_t setup = {
@@ -292,6 +297,7 @@ static ra8_err_t internal_setup_set_address(uint8_t address)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_setup_set_config(uint8_t config_value)
 {
   const ra8_usb_setup_t setup = {
@@ -317,6 +323,7 @@ static ra8_err_t internal_setup_set_config(uint8_t config_value)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_setup_set_interface(void)
 {
   const ra8_usb_setup_t setup = {
@@ -349,6 +356,7 @@ static ra8_err_t internal_setup_set_interface(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_walk_config_descriptor(void)
 {
   s_state.device.device_address      = k_ra8_hcdc_assigned_address;
@@ -374,6 +382,7 @@ static void internal_walk_config_descriptor(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_do_idle(void)
 {
   s_state.step = k_ra8_hcdc_step_bus_reset;
@@ -393,6 +402,7 @@ static ra8_err_t internal_do_idle(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_do_bus_reset(void)
 {
   const ra8_err_t rel = ra8_usb_host_bus_reset(s_state.speed, false);
@@ -415,6 +425,7 @@ static ra8_err_t internal_do_bus_reset(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_do_set_address(void)
 {
   const ra8_err_t addr_err = ra8_usb_set_address(s_state.speed, k_ra8_hcdc_assigned_address);
@@ -436,6 +447,7 @@ static ra8_err_t internal_do_set_address(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_do_get_dev_desc(void)
 {
   s_state.step = k_ra8_hcdc_step_get_cfg_desc;
@@ -455,6 +467,7 @@ static ra8_err_t internal_do_get_dev_desc(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_do_get_cfg_desc(void)
 {
   s_state.step = k_ra8_hcdc_step_set_config;
@@ -474,6 +487,7 @@ static ra8_err_t internal_do_get_cfg_desc(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_do_set_config(void)
 {
   s_state.step = k_ra8_hcdc_step_set_interface;
@@ -493,6 +507,7 @@ static ra8_err_t internal_do_set_config(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_do_set_interface(void)
 {
   internal_walk_config_descriptor();
@@ -513,6 +528,7 @@ static ra8_err_t internal_do_set_interface(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_do_walk_desc(void)
 {
   const ra8_err_t pipes_err = internal_configure_pipes();
@@ -541,6 +557,7 @@ static ra8_err_t internal_do_walk_desc(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_step_advance(void)
 {
   switch (s_state.step) {

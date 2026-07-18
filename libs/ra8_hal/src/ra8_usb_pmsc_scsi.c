@@ -22,6 +22,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_usb.h"
 #include "ra8_usb_pmsc.h"
@@ -138,6 +139,7 @@ typedef enum : uint8_t {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_pack_u32_be(uint32_t value, uint8_t* dst)
 {
   dst[0] = (uint8_t)((value >> k_ra8_pmsc_shift_byte3) & k_ra8_pmsc_byte_mask);
@@ -159,6 +161,7 @@ static void internal_pack_u32_be(uint32_t value, uint8_t* dst)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_pad_space(uint8_t* dst, uint32_t len)
 {
   for (uint32_t i = 0U; i < len; ++i) {
@@ -185,6 +188,7 @@ static void internal_pad_space(uint8_t* dst, uint32_t len)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_decode_rw10(const uint8_t* cdb, uint32_t* out_lba, uint32_t* out_block_count)
 {
   *out_lba         = ((uint32_t)cdb[k_ra8_pmsc_cdb_off_lba_msb] << k_ra8_pmsc_shift_byte3) |

@@ -36,6 +36,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_canfd.h"
 #include "ra8_canfd_regs.h"
 #include "ra8_check.h"
@@ -85,6 +86,7 @@ typedef enum : uint8_t {
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_validate_frame(const ra8_canfd_frame_t* frame)
 {
   if (frame->dlc > k_ra8_canfd_dlc_max) {
@@ -120,6 +122,7 @@ static ra8_err_t internal_validate_frame(const ra8_canfd_frame_t* frame)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_write_tx_data(volatile r_canfd_t* reg, const ra8_canfd_frame_t* frame)
 {
   for (uint8_t b = 0U; b < k_ra8_canfd_data_bytes_max; b++) {
@@ -144,6 +147,7 @@ static void internal_write_tx_data(volatile r_canfd_t* reg, const ra8_canfd_fram
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_tx_id(const ra8_canfd_frame_t* frame)
 {
   const uint32_t masked = (frame->is_extended != 0U) ? (frame->id & k_ra8_canfd_id_ext_mask)
@@ -169,6 +173,7 @@ static uint32_t internal_tx_id(const ra8_canfd_frame_t* frame)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_tx_fdctr(const ra8_canfd_frame_t* frame)
 {
   uint32_t w = 0U;
@@ -208,6 +213,7 @@ static uint32_t internal_tx_fdctr(const ra8_canfd_frame_t* frame)
  * @note Not thread-safe; fire-and-forget TX path only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_wait_tx_complete(volatile r_canfd_t* reg)
 {
   enum : uint8_t { k_ra8_tmsts_tmtrf_done = 0x04U /**< RA8 tmsts tmtrf done. */ };
@@ -277,6 +283,7 @@ ra8_err_t ra8_canfd_transmit(uint8_t channel, const ra8_canfd_frame_t* frame)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_read_rx_data(volatile r_canfd_t* reg, ra8_canfd_frame_t* out)
 {
   for (uint8_t b = 0U; b < k_ra8_canfd_data_bytes_max; b++) {
@@ -301,6 +308,7 @@ static void internal_read_rx_data(volatile r_canfd_t* reg, ra8_canfd_frame_t* ou
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_decode_rx_header(uint32_t           id_word,
                                       uint32_t           ptr_word,
                                       uint32_t           fdsts_word,

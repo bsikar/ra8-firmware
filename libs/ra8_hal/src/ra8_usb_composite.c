@@ -47,6 +47,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -190,6 +191,7 @@ static ra8_usb_composite_state_data_t s_state = {};
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_clear_if_owners(void)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_usb_composite_max_ifs; ++i) {
@@ -214,6 +216,7 @@ static void internal_clear_if_owners(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_validate_class(const ra8_usb_composite_class_t* cl)
 {
   if (cl == nullptr) {
@@ -250,6 +253,7 @@ static ra8_err_t internal_validate_class(const ra8_usb_composite_class_t* cl)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_check_collision(const ra8_usb_composite_class_t* cl)
 {
   for (uint8_t i = 0U; i < cl->interface_number_count; ++i) {
@@ -276,6 +280,7 @@ static ra8_err_t internal_check_collision(const ra8_usb_composite_class_t* cl)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_mark_ownership(const ra8_usb_composite_class_t* cl, uint8_t class_index)
 {
   for (uint8_t i = 0U; i < cl->interface_number_count; ++i) {
@@ -301,6 +306,7 @@ static void internal_mark_ownership(const ra8_usb_composite_class_t* cl, uint8_t
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_lookup_class_for_if(uint8_t if_num, uint8_t* out_idx)
 {
   if (if_num >= (uint8_t)k_ra8_usb_composite_max_ifs) {
@@ -338,6 +344,7 @@ static ra8_err_t internal_lookup_class_for_if(uint8_t if_num, uint8_t* out_idx)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_handle_standard(const ra8_usb_setup_t* setup)
 {
   /* USB 2.0 sec 9.4 "Standard Device Requests" -- the starter
@@ -376,6 +383,7 @@ static ra8_err_t internal_handle_standard(const ra8_usb_setup_t* setup)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_route_class(const ra8_usb_setup_t* setup, uint8_t* out_idx)
 {
   const uint8_t   if_num = (uint8_t)(setup->w_index & k_usbc_byte_mask);
@@ -403,6 +411,7 @@ static ra8_err_t internal_route_class(const ra8_usb_setup_t* setup, uint8_t* out
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline ra8_err_t internal_require_init(void)
 {
   if (!s_state.initialized) {

@@ -38,6 +38,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -106,6 +107,7 @@ typedef enum : uint32_t {
 } ra8_rsip_curve_bytes_t;
 
 /* internal curve bytes -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static uint32_t internal_curve_bytes(ra8_rsip_curve_t curve)
 {
   switch (curve) {
@@ -279,6 +281,7 @@ ra8_err_t ra8_rsip_eddsa_verify(const ra8_rsip_key_handle_t* key,
  * @note Internal helper.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_ecdh_pull_shared(ra8_rsip_key_handle_t* out)
 {
   /* The wrapped shared secret is delivered as an HMAC-SHA-256 handle. */

@@ -50,6 +50,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -97,6 +98,7 @@ static const char* s_tag = "RSIP";
  */
 
 /* Map a hash algorithm selector to its natural digest length -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static uint32_t internal_hash_size(ra8_rsip_hash_alg_t alg)
 {
   switch (alg) {
@@ -124,6 +126,7 @@ static uint32_t internal_hash_size(ra8_rsip_hash_alg_t alg)
 }
 
 /* Validate the hash + digest length arguments before any MMIO -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static ra8_err_t internal_hash_validate(ra8_rsip_hash_alg_t alg,
                                         const uint8_t*      msg,
                                         uint32_t            msg_len,
@@ -145,6 +148,7 @@ static ra8_err_t internal_hash_validate(ra8_rsip_hash_alg_t alg,
 }
 
 /* Read a variable-length digest from the modelled HASH_DIGEST window -- see implementation for details. */
+RA8_INTERNAL
 static void internal_hash_pull_digest(uint8_t* digest, uint32_t to_read)
 {
   uint32_t i   = 0U;
@@ -321,6 +325,7 @@ ra8_err_t ra8_rsip_oem_bl_version_lock(void)
  */
 
 /* Issue a vault command and wait for completion -- see implementation for details. */
+RA8_INTERNAL
 static ra8_err_t internal_kv_op(ra8_rsip_kv_op_t op, uint8_t slot)
 {
   *ra8_rsip_reg32(k_ra8_rsip_off_kv_slot) = slot;
@@ -400,6 +405,7 @@ ra8_err_t ra8_rsip_kv_count(uint32_t* out)
  * @since 0.1.0
  * @pre Module/state preconditions hold (see function body).
  */
+RA8_INTERNAL
 static void internal_kw_stage_kek(const ra8_rsip_key_handle_t* kek, const uint8_t* iv)
 {
   *ra8_rsip_reg32(k_ra8_rsip_off_kw_kek) = kek->alg;
@@ -408,6 +414,7 @@ static void internal_kw_stage_kek(const ra8_rsip_key_handle_t* kek, const uint8_
 }
 
 /* Stream the wrap-engine output blob (16 words) into a byte buffer -- see implementation for details. */
+RA8_INTERNAL
 static void internal_kw_pull_blob(uint8_t* blob)
 {
   for (uint32_t w = 0U; w < k_ra8_rsip_kv_slot_w; ++w) {
@@ -417,6 +424,7 @@ static void internal_kw_pull_blob(uint8_t* blob)
 }
 
 /* Push the source-handle body into the wrap-engine input FIFO -- see implementation for details. */
+RA8_INTERNAL
 static void internal_kw_push_src(const ra8_rsip_key_handle_t* src)
 {
   *ra8_rsip_reg32(k_ra8_rsip_off_kw_handle) = src->alg;
@@ -451,6 +459,7 @@ ra8_err_t ra8_rsip_key_wrap(const ra8_rsip_key_handle_t* kek,
 }
 
 /* Pull the unwrapped algorithm + body into a destination handle -- see implementation for details. */
+RA8_INTERNAL
 static ra8_err_t internal_kw_pull_handle(ra8_rsip_key_handle_t* dest)
 {
   /* Pull the unwrapped algorithm + body out. */
@@ -500,6 +509,7 @@ ra8_err_t ra8_rsip_key_unwrap(const ra8_rsip_key_handle_t* kek,
  */
 
 /* Validate the KDF arguments before any MMIO is touched -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static ra8_err_t internal_kdf_validate(ra8_rsip_kdf_op_t            op,
                                        const ra8_rsip_key_handle_t* ikm,
                                        const uint8_t*               label,
@@ -527,6 +537,7 @@ static ra8_err_t internal_kdf_validate(ra8_rsip_kdf_op_t            op,
 }
 
 /* Stage the KDF inputs (op + length + optional IKM + label + salt) -- see implementation for details. */
+RA8_INTERNAL
 static void internal_kdf_stage(ra8_rsip_kdf_op_t            op,
                                const ra8_rsip_key_handle_t* ikm,
                                const uint8_t*               label,
@@ -550,6 +561,7 @@ static void internal_kdf_stage(ra8_rsip_kdf_op_t            op,
 }
 
 /* Pull the wrapped derived-key handle out of the KDF engine -- see implementation for details. */
+RA8_INTERNAL
 static void internal_kdf_pull_handle(ra8_rsip_key_handle_t* out)
 {
   /* Wrapped derived key delivered through KDF_OUT. */

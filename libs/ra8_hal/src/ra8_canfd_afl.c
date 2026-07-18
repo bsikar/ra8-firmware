@@ -34,6 +34,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_canfd.h"
 #include "ra8_canfd_regs.h"
 #include "ra8_check.h"
@@ -82,6 +83,7 @@ typedef enum : uint32_t {
  * @note Internal helper, not exported. Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_afl_validate_rule(const ra8_canfd_afl_rule_t* rule)
 {
   if (rule->target_rx >= (uint8_t)k_ra8_canfd_rx_fifo_count) {
@@ -126,6 +128,7 @@ static ra8_err_t internal_afl_validate_rule(const ra8_canfd_afl_rule_t* rule)
  * @note Internal helper, not exported. Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_afl_id_word(const ra8_canfd_afl_rule_t* rule)
 {
   const uint32_t masked = rule->extended ? (rule->id & (uint32_t)k_ra8_canfd_id_ext_mask)
@@ -162,6 +165,7 @@ static uint32_t internal_afl_id_word(const ra8_canfd_afl_rule_t* rule)
  * @note Internal helper, not exported. Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_afl_mask_word(const ra8_canfd_afl_rule_t* rule)
 {
   const uint32_t masked = rule->extended ? (rule->mask & (uint32_t)k_ra8_canfd_id_ext_mask)
@@ -191,6 +195,7 @@ static uint32_t internal_afl_mask_word(const ra8_canfd_afl_rule_t* rule)
  * @note Internal helper, not exported. Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_afl_p1_word(const ra8_canfd_afl_rule_t* rule)
 {
   return (uint32_t)k_ra8_gaflp1_bit_gaflfdp0 << rule->target_rx;
@@ -216,6 +221,7 @@ static uint32_t internal_afl_p1_word(const ra8_canfd_afl_rule_t* rule)
  * @note Internal helper, not exported. Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 internal_afl_write_slot(volatile r_canfd_t* reg, uint8_t slot, const ra8_canfd_afl_rule_t* rule)
 {
@@ -248,6 +254,7 @@ internal_afl_write_slot(volatile r_canfd_t* reg, uint8_t slot, const ra8_canfd_a
  * @note Internal helper, not exported. Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_afl_set_rule_count(volatile r_canfd_t* reg, uint8_t count)
 {
   /* HUM Ch 41.2.18 "CFDGAFLCFG0 : Global AFL Configuration Register 0" p 2735 */
@@ -280,6 +287,7 @@ static void internal_afl_set_rule_count(volatile r_canfd_t* reg, uint8_t count)
  * @note Internal helper, not exported. Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_afl_validate_all(const ra8_canfd_afl_rule_t* rules, uint8_t count)
 {
   for (uint8_t i = 0U; i < count; i++) {

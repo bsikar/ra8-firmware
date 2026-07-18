@@ -34,6 +34,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -146,6 +147,7 @@ typedef struct {
 static ra8_sdcard_state_t s_sdcard;
 
 /* Issue ACMD41 with the host capacity-support bit set and loop -- see implementation for details. */
+RA8_INTERNAL
 static ra8_err_t internal_run_acmd41(uint8_t instance, uint32_t* out_ocr)
 {
   RA8_CHECK_NULL_PTR(out_ocr, s_tag, "ocr");
@@ -206,6 +208,7 @@ static ra8_err_t internal_run_acmd41(uint8_t instance, uint32_t* out_ocr)
  * @post Side effects bounded to documented state.
  * @note Not thread-safe unless documented otherwise.
  */
+RA8_INTERNAL
 static ra8_err_t internal_decode_csd(const uint32_t* rsp, uint32_t* out_blocks)
 {
   RA8_CHECK_NULL_PTR(rsp, s_tag, "rsp");
@@ -268,6 +271,7 @@ static ra8_err_t internal_decode_csd(const uint32_t* rsp, uint32_t* out_blocks)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_sdcard_identify(uint8_t instance)
 {
   uint32_t rsp[4] = {0U, 0U, 0U, 0U};
@@ -317,6 +321,7 @@ static ra8_err_t internal_sdcard_identify(uint8_t instance)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_sdcard_publish_rca(uint8_t instance, uint16_t* out_rca)
 {
   uint32_t rsp[4] = {0U, 0U, 0U, 0U};
@@ -360,6 +365,7 @@ static ra8_err_t internal_sdcard_publish_rca(uint8_t instance, uint16_t* out_rca
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 internal_sdcard_publish_and_select(uint8_t instance, uint16_t* out_rca, uint32_t* out_blocks)
 {
@@ -414,6 +420,7 @@ internal_sdcard_publish_and_select(uint8_t instance, uint16_t* out_rca, uint32_t
  * @note Pure function; reentrant and ISR-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_sdcard_card_type_t internal_classify(uint8_t high_capacity, uint32_t blocks)
 {
   if (high_capacity == 0U) {
@@ -449,6 +456,7 @@ static ra8_sdcard_card_type_t internal_classify(uint8_t high_capacity, uint32_t 
  * @note Not thread-safe; single-threaded init context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 internal_sdcard_negotiate_width(uint8_t instance, ra8_sdhi_bus_width_t width, uint16_t rca)
 {
@@ -490,6 +498,7 @@ internal_sdcard_negotiate_width(uint8_t instance, ra8_sdhi_bus_width_t width, ui
  * @note Not thread-safe; single-threaded init context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_sdcard_card_online(uint8_t   instance,
                                              uint16_t* out_rca,
                                              uint32_t* out_blocks,
@@ -579,6 +588,7 @@ ra8_err_t ra8_sdcard_init(const ra8_sdcard_cfg_t* cfg)
  * @post State reflects operation result.
  * @note Not thread-safe unless documented otherwise.
  */
+RA8_INTERNAL
 static uint32_t internal_to_card_address(uint32_t lba)
 {
   if (s_sdcard.type == k_ra8_sdcard_type_sdsc) {

@@ -55,6 +55,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
@@ -553,6 +554,7 @@ typedef uint32_t __attribute__((may_alias)) ra8_usb_cfifo32_t; /* ATTR-OK: no cl
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 internal_fifo_write_hs_tail(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_t len)
 {
@@ -604,6 +606,7 @@ internal_fifo_write_hs_tail(volatile r_usb_regs_t* reg, const uint8_t* data, uin
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 internal_fifo_write_hs_head(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_t len)
 {
@@ -683,6 +686,7 @@ void internal_fifo_write(volatile r_usb_regs_t* reg, const uint8_t* data, uint16
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_fifo_read_hs_head(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len)
 {
   volatile ra8_usb_cfifo32_t* const cfifo32 = (volatile ra8_usb_cfifo32_t*)(uintptr_t)&reg->CFIFO;
@@ -711,6 +715,7 @@ static void internal_fifo_read_hs_head(volatile r_usb_regs_t* reg, uint8_t* data
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_fifo_read_hs_tail(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len)
 {
   const uint16_t tail = (uint16_t)(len & 0x3U);

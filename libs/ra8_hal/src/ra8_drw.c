@@ -33,6 +33,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_drw_internal.h"
 #include "ra8_drw_regs.h"
@@ -203,6 +204,7 @@ void ra8_drw_internal_color1_write(uint32_t argb8888)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint32_t internal_pack_writeformat(ra8_drw_writeformat_t fmt)
 {
   const uint32_t low  = ((uint32_t)fmt & 0x3U) << k_ra8_drw_control2_writeformat_pos;
@@ -230,6 +232,7 @@ static inline uint32_t internal_pack_writeformat(ra8_drw_writeformat_t fmt)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint32_t internal_pack_readformat(ra8_drw_readformat_t fmt)
 {
   const uint32_t code = (uint32_t)fmt;
@@ -256,6 +259,7 @@ static inline uint32_t internal_pack_readformat(ra8_drw_readformat_t fmt)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint32_t internal_control2_rmw(uint32_t clear_mask, uint32_t set_mask)
 {
   /* CONTROL2 is write-only on silicon (HUM Ch 62.2.2, R/W column "W"), so the
@@ -575,6 +579,7 @@ void ra8_drw_dispatch(void)
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_pack_blend_bits(const ra8_drw_blend_t* blend)
 {
   uint32_t set_bits = 0UL;
@@ -673,6 +678,7 @@ static uint32_t internal_pack_blend_bits(const ra8_drw_blend_t* blend)
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_pack_texture_bits(const ra8_drw_texture_t* tex)
 {
   uint32_t set_bits = k_ra8_drw_control2_textureenable;

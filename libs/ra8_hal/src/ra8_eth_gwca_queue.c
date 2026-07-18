@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_eth_gwca.h"
@@ -55,6 +56,7 @@ static const char* s_tag = "ETHGWC";
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_compose_gwdcc(const ra8_eth_gwca_queue_cfg_t* cfg)
 {
   /* GWDCC value: DQT + DCP[18:16] + SL + EDE. SM[1:0] stays 00b
