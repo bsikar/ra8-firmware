@@ -22,6 +22,7 @@
  */
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_book.h"
 #include "ra8_book_internal.h"
 #include "ra8_book_paged.h"
@@ -70,6 +71,7 @@ typedef struct {
  *
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool ra8_book_emit(char* out, size_t cap, size_t* pos, const char* src, size_t len)
 {
   if (*pos + len > cap) {
@@ -108,6 +110,7 @@ static bool ra8_book_emit(char* out, size_t cap, size_t* pos, const char* src, s
  *
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool ra8_book_emit_cstr(char* out, size_t cap, size_t* pos, const char* str)
 {
   return ra8_book_emit(out, cap, pos, str, strlen(str));
@@ -152,6 +155,7 @@ static bool ra8_book_emit_cstr(char* out, size_t cap, size_t* pos, const char* s
  *
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool ra8_book_emit_escaped(char* out, size_t cap, size_t* pos, const char* str, bool in_attr)
 {
   for (const char* p = str; *p != '\0'; ++p) {
@@ -208,6 +212,7 @@ static bool ra8_book_emit_escaped(char* out, size_t cap, size_t* pos, const char
  *
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool ra8_book_is_void(const char* name)
 {
   static const char* const k_void[] = {
@@ -267,6 +272,7 @@ static bool ra8_book_is_void(const char* name)
  *
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool ra8_book_emit_attrs(const void*            base,
                                 const ra8_book_node_t* node,
                                 char*                  out,
@@ -328,6 +334,7 @@ static bool ra8_book_emit_attrs(const void*            base,
  *
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool ra8_book_open_element(const void*            base,
                                   const ra8_book_node_t* node,
                                   char*                  out,
@@ -388,6 +395,7 @@ static bool ra8_book_open_element(const void*            base,
  *
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool ra8_book_walk_to_xhtml(const void* base,
                                    uint32_t    root,
                                    uint32_t    node_count,
@@ -624,6 +632,7 @@ bool ra8_book_emit_break(char* out, size_t cap, size_t* pos, bool* at_break)
  *
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool ra8_book_walk_text(const void* base,
                                uint32_t    root,
                                uint32_t    node_count,
