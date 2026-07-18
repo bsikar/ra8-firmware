@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
@@ -115,6 +116,7 @@ void internal_host_program_devadd(volatile r_usb_regs_t* reg, uint8_t dev_addr)
  * @note Bounded busy-wait; FS control stages settle well inside the bound.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_host_wait_sts(volatile const uint16_t* sts, uint16_t mask)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_usb_ctrl_poll_limit; ++i) {
@@ -145,6 +147,7 @@ static ra8_err_t internal_host_wait_sts(volatile const uint16_t* sts, uint16_t m
  * @note Blocking; bounded by ::k_ra8_usb_ctrl_poll_limit.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_host_dcp_in_wait(volatile r_usb_regs_t* reg)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_usb_ctrl_poll_limit; ++i) {
@@ -188,6 +191,7 @@ static ra8_err_t internal_host_dcp_in_wait(volatile r_usb_regs_t* reg)
  * @note Blocking; bounded by ::k_ra8_usb_ctrl_poll_limit.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_host_setup_wait(volatile r_usb_regs_t* reg)
 {
   const uint16_t sack  = (uint16_t)(1U << k_ra8_int1_bit_sack);
@@ -240,6 +244,7 @@ static ra8_err_t internal_host_setup_wait(volatile r_usb_regs_t* reg)
  * @note Blocking; bounded by ::k_ra8_usb_ctrl_poll_limit.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_host_ctrl_setup(volatile r_usb_regs_t* reg, const ra8_usb_setup_t* setup)
 {
   const uint16_t sureq = (uint16_t)(1U << k_ra8_dcpctr_bit_sureq);
@@ -309,6 +314,7 @@ static ra8_err_t internal_host_ctrl_setup(volatile r_usb_regs_t* reg, const ra8_
  * @note Helper split out for the clang-tidy size/complexity gate.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_host_ctrl_data_arm(volatile r_usb_regs_t* reg)
 {
   internal_select_cfifo(reg, 0U, false);
@@ -341,6 +347,7 @@ static void internal_host_ctrl_data_arm(volatile r_usb_regs_t* reg)
  * @note Blocking; each packet is bounded by the poll limit.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_host_ctrl_data_in(volatile r_usb_regs_t* reg,
                                             uint8_t*               data,
                                             uint16_t               want,
@@ -411,6 +418,7 @@ static ra8_err_t internal_host_ctrl_data_in(volatile r_usb_regs_t* reg,
  *       BOT/CSW exchange (bulk).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool write_zlp)
 {
   const uint16_t ccpl = (uint16_t)(1U << k_ra8_dcpctr_bit_ccpl);
@@ -513,6 +521,7 @@ static ra8_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool writ
  * @note Blocking; each packet is bounded by the control poll limit.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_host_ctrl_data_out(volatile r_usb_regs_t* reg,
                                              const uint8_t*         data,
                                              uint16_t               want,
@@ -732,6 +741,7 @@ ra8_err_t ra8_usb_dcp_out_read(ra8_usb_speed_t speed, uint8_t* buf, uint16_t cap
  * @note Not thread-safe; caller (::ra8_usb_host_control_xfer) serialises access.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_host_data_phase(volatile r_usb_regs_t* reg,
                                           const ra8_usb_setup_t* setup,
                                           uint8_t*               data,

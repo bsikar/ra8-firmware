@@ -22,6 +22,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -157,6 +158,7 @@ static bool s_p_aes_active;
  * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
  */
+RA8_INTERNAL
 static void p_scrub(uint8_t* buf, uint32_t n)
 {
   for (uint32_t i = 0U; i < n; ++i) {
@@ -183,6 +185,7 @@ static void p_scrub(uint8_t* buf, uint32_t n)
  * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
  */
+RA8_INTERNAL
 static ra8_err_t
 p_aes_install(const uint8_t* raw_key, ra8_rsip_aes_key_bits_t key_bits, ra8_rsip_key_handle_t* out)
 {
@@ -312,6 +315,7 @@ ra8_err_t ra8_rsip_protected_aes_finish(void)
  * @note Pure function; no side effects.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_rsa_mod_bytes(ra8_rsip_rsa_size_t size, uint32_t* out_bytes)
 {
   switch (size) {
@@ -357,6 +361,7 @@ static ra8_err_t internal_rsa_mod_bytes(ra8_rsip_rsa_size_t size, uint32_t* out_
  * @note Pure function; reentrant and ISR-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_rsip_oem_cmd_t internal_rsa_install_cmd(ra8_rsip_rsa_size_t size)
 {
   if (size == k_ra8_rsip_rsa_2048) {
@@ -392,6 +397,7 @@ static ra8_rsip_oem_cmd_t internal_rsa_install_cmd(ra8_rsip_rsa_size_t size)
  * @note Pure validation helper; safe from any context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_rsa_validate_wrapped(const uint8_t* wrapped_priv)
 {
   const ra8_err_t rc = ra8_rsip_key_validate(wrapped_priv, k_ra8_rsip_wrapped_type_rsa_pub);
@@ -428,6 +434,7 @@ static ra8_err_t internal_rsa_validate_wrapped(const uint8_t* wrapped_priv)
  * @note Not thread-safe; single secure-dispatch context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_rsa_install_priv(const uint8_t*         wrapped_priv,
                                            ra8_rsip_rsa_size_t    size,
                                            uint32_t               mod_bytes,
@@ -514,6 +521,7 @@ ra8_err_t ra8_rsip_protected_rsa_decrypt(const uint8_t*      wrapped_priv,
  * @note Pure function; reentrant and ISR-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 internal_ecc_priv_params(ra8_rsip_curve_t curve, uint32_t* out_alg, uint32_t* out_priv_bytes)
 {

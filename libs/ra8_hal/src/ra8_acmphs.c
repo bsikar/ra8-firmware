@@ -22,6 +22,7 @@
 #include <stdint.h>
 
 #include "ra8_acmphs_regs.h"
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -76,6 +77,7 @@ static const ra8_mstp_t s_acmphs_mstp_table[k_ra8_acmphs_mstp_id_count] = {
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_reset_channel(uint8_t ch)
 {
   volatile r_acmphs_regs_t* reg = ra8_acmphs(ch);

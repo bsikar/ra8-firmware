@@ -21,6 +21,7 @@
  * @since 0.1.0
  */
 
+#include "ra8_attributes.h"
 #include "ra8_device.h"
 
 #ifdef RA8_HAS_NPU
@@ -139,6 +140,7 @@ struct ethosu_driver* ethosu_reserve_driver(void)
  * @note Not thread-safe (shares the module log tag).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_invoke_args_ok(const struct ethosu_driver* drv,
                                     const void*                 custom_data_ptr,
                                     int                         custom_data_size,

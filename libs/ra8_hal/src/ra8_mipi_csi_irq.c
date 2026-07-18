@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hal_internal.h"
@@ -372,6 +373,7 @@ void ra8_mipi_csi_detach_all_handlers(void)
  */
 
 /* Translate a public ::ra8_mipi_csi_data_format_t to its DT bit -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static ra8_err_t
 internal_format_to_bit(ra8_mipi_csi_data_format_t format, bool* is_high, uint32_t* bit)
 {
@@ -411,6 +413,7 @@ internal_format_to_bit(ra8_mipi_csi_data_format_t format, bool* is_high, uint32_
 }
 
 /* Recompute DTEL/DTEH from the per-VC format shadow -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static void internal_recompute_dt_filter(void)
 {
   uint32_t low  = 0UL;

@@ -35,6 +35,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_canfd.h"
 #include "ra8_canfd_regs.h"
 #include "ra8_cgc.h"
@@ -98,6 +99,7 @@ typedef struct {
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_solve_timing(uint32_t            clock_hz,
                                        uint32_t            bitrate_bps,
                                        uint32_t            prescaler_max,
@@ -147,6 +149,7 @@ static ra8_err_t internal_solve_timing(uint32_t            clock_hz,
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_pack_ncfg(const ra8_canfd_timing_t* t)
 {
   const uint32_t brp_field   = ((t->prescaler - 1U) & k_ra8_cncfg_mask_nbrp)
@@ -178,6 +181,7 @@ static uint32_t internal_pack_ncfg(const ra8_canfd_timing_t* t)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_pack_dcfg(const ra8_canfd_timing_t* t)
 {
   const uint32_t brp_field   = ((t->prescaler - 1U) & k_ra8_dcfg_mask_dbrp)
@@ -269,6 +273,7 @@ ra8_err_t ra8_canfd_set_bitrate(uint8_t channel, uint32_t bitrate_bps, uint32_t 
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_program_data_phase(volatile r_canfd_t* reg, uint32_t data_bitrate)
 {
   if (data_bitrate == 0U) {

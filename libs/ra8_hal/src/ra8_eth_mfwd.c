@@ -19,6 +19,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_ether_regs.h"
@@ -147,6 +148,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* internal_mfwd_fwpbfcsdc(uint8_t port)
 {
   const uintptr_t addr =

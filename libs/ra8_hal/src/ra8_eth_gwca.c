@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_eth_gwca_internal.h"
@@ -396,6 +397,7 @@ ra8_err_t ra8_eth_gwca_install_linkfix(ra8_gwca_basic_descriptor_t* linkfix_tabl
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_bring_up_to_config(ra8_gwca_basic_descriptor_t* linkfix_table,
                                              uint32_t                     entry_count)
 {

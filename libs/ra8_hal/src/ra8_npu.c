@@ -24,6 +24,7 @@
  * @since 0.1.0
  */
 
+#include "ra8_attributes.h"
 #include "ra8_device.h"
 
 #ifdef RA8_HAS_NPU
@@ -188,6 +189,7 @@ static volatile ra8_npu_irq_state_t s_npu_irq_state = k_ra8_npu_irq_idle;
  * @note ISR-safe / re-entrant; touches no shared state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline void internal_npu_wait_for_irq(void)
 {
 #ifdef __ARM_ARCH
@@ -213,6 +215,7 @@ static inline void internal_npu_wait_for_irq(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_npu_apply_reset(void)
 {
   /* Ethos-U55 NPU TRM "NPU_RESET" reg @ 0x0C -- request reset, privileged +
@@ -248,6 +251,7 @@ static ra8_err_t internal_npu_apply_reset(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_npu_write_region(ra8_npu_region_idx_t idx, uint64_t base)
 {
   const uint32_t lo_off =

@@ -43,6 +43,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_glcdc_regs.h"
@@ -164,6 +165,7 @@ enum : uint8_t {
  * @note Not thread-safe; touches CGC MMIO under PRC0 unlock.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_hoco_enable(void)
 {
   volatile uint16_t* const prcr   = (volatile uint16_t*)k_addr_prcr;
@@ -192,6 +194,7 @@ static void internal_hoco_enable(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_graphics_domain_power_on(void)
 {
   volatile uint16_t* const prcr    = (volatile uint16_t*)k_addr_prcr;
@@ -246,6 +249,7 @@ static void internal_graphics_domain_power_on(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_lcdclk_switch_pll1r(void)
 {
   volatile uint16_t* const prcr       = (volatile uint16_t*)k_addr_prcr;
@@ -305,6 +309,7 @@ static void internal_lcdclk_switch_pll1r(void)
  * @note Not thread-safe; touches CGC + LPM MMIO under PRC0/PRC1 unlocks.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_graphics_power_on(void)
 {
   internal_hoco_enable();
@@ -425,6 +430,7 @@ typedef struct {
  * @note Single-threaded init context only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_program_tcon(const ra8_glcdc_panel_timing_t* t)
 {
   *ra8_glcdc_reg32(k_ra8_glcdc_off_out_clkphase) = 0U; /* all rising edge */
@@ -469,6 +475,7 @@ static void internal_program_tcon(const ra8_glcdc_panel_timing_t* t)
  * @note Single-threaded init context only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_program_bg(const ra8_glcdc_panel_timing_t* t)
 {
   const uint32_t bg_h_pos                  = t->h_back + k_glcdc_sync_pos_min; /* FSP: back+1 */
@@ -506,6 +513,7 @@ static void internal_program_bg(const ra8_glcdc_panel_timing_t* t)
  * @note Single-threaded init context only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_program_gr1(const ra8_glcdc_panel_timing_t* t,
                                  uintptr_t                       fb_addr,
                                  uint16_t                        fb_format,
@@ -564,6 +572,7 @@ static void internal_program_gr1(const ra8_glcdc_panel_timing_t* t,
  * @note Single-threaded init context only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_program_gr2(const ra8_glcdc_panel_timing_t* t)
 {
   *ra8_glcdc_reg32(k_ra8_glcdc_off_gr2_size)  = (t->h_back << k_glcdc_shift_high) | t->h_active;
@@ -592,6 +601,7 @@ static void internal_program_gr2(const ra8_glcdc_panel_timing_t* t)
  * @note Single-threaded init context only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_program_out(void)
 {
   enum : uint32_t {
@@ -630,6 +640,7 @@ static void internal_program_out(void)
  * @note Single-threaded init context only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_panel_program(uintptr_t                 fb_addr,
                                    uint16_t                  fb_format,
                                    uint16_t                  fb_w,

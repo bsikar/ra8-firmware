@@ -20,6 +20,7 @@
 #include <stdint.h>
 
 #include "ra8_adc.h"
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_intrinsics.h"
@@ -96,6 +97,7 @@ static int16_t s_ra8_tsn_low_ref_degc = k_ra8_tsn_cal_temp_low_n40;
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_busy_wait_us(uint16_t usec)
 {
   for (uint16_t u = 0U; u < usec; ++u) {
@@ -123,6 +125,7 @@ static void internal_busy_wait_us(uint16_t usec)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_validate_cfg(const ra8_tsn_config_t* cfg)
 {
   bool high_ok = false;

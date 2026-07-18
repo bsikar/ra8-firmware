@@ -43,6 +43,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_ether_regs.h"
@@ -131,6 +132,7 @@ static ra8_rmac_slot_t s_slots[k_ra8_rmac_port_count];
  * @note Pure function; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline bool internal_pis_ok(ra8_rmac_pis_t iface)
 {
   if (iface == k_ra8_rmac_pis_mii) {
@@ -166,6 +168,7 @@ static inline bool internal_pis_ok(ra8_rmac_pis_t iface)
  * @note Pure function.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint32_t internal_calc_psmcs(uint32_t eswclk_hz, uint32_t mdc_hz)
 {
   /* Defensive clamp: ESWCLK = 0 means the chip's CGC has not been
@@ -217,6 +220,7 @@ static inline uint32_t internal_calc_psmcs(uint32_t eswclk_hz, uint32_t mdc_hz)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint32_t internal_make_mpic(ra8_rmac_pis_t    iface,
                                           ra8_rmac_lsc_t    speed,
                                           ra8_rmac_duplex_t duplex,
@@ -259,6 +263,7 @@ static inline uint32_t internal_make_mpic(ra8_rmac_pis_t    iface,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_mdio_drain(volatile r_rmac_regs_t* reg)
 {
   /* Bounded wait for MPSM.PSME to self-clear to 0 (HUM Note 2: a write
@@ -306,6 +311,7 @@ static ra8_err_t internal_mdio_drain(volatile r_rmac_regs_t* reg)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_mdio_wait(volatile r_rmac_regs_t* reg, uint32_t mask)
 {
   for (uint32_t i = 0; i < k_ra8_rmac_mdio_poll_budget; ++i) {
@@ -351,6 +357,7 @@ static ra8_err_t internal_mdio_wait(volatile r_rmac_regs_t* reg, uint32_t mask)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_mpsm_issue(volatile r_rmac_regs_t* reg,
                                 uint8_t                 pda_5bit,
                                 uint8_t                 pra_5bit,
@@ -406,6 +413,7 @@ static void internal_mpsm_issue(volatile r_rmac_regs_t* reg,
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_program_mac_config(volatile r_rmac_regs_t* reg, const ra8_rmac_config_t* cfg)
 {
   reg->MIOC             = 0U;
@@ -440,6 +448,7 @@ static void internal_program_mac_config(volatile r_rmac_regs_t* reg, const ra8_r
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_program_irq_block(volatile r_rmac_regs_t* reg, const ra8_rmac_config_t* cfg)
 {
   reg->MEID  = k_ra8_rmac_mask_all;

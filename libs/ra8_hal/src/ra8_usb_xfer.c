@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -118,6 +119,7 @@ ra8_usb_queue_in(ra8_usb_speed_t speed, uint8_t pipe_num, const uint8_t* data, u
  * @note Not thread-safe; caller holds the DCP lock.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 internal_dcp_in_payload(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_t len)
 {
@@ -163,6 +165,7 @@ internal_dcp_in_payload(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_
  * @note Not thread-safe; caller holds the DCP lock.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_dcp_in_zlp(volatile r_usb_regs_t* reg)
 {
   const ra8_err_t ready = internal_wait_frdy(reg);
@@ -293,6 +296,7 @@ ra8_err_t ra8_usb_dcp_in_data(ra8_usb_speed_t speed, const uint8_t* data, uint16
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 internal_check_queue_out_args(uint8_t pipe_num, const uint8_t* out_buf, const uint16_t* inout_len)
 {

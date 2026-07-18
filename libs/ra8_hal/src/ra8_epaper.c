@@ -32,6 +32,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
@@ -151,6 +152,7 @@ static ra8_epaper_panel_t s_panel;
  * @pre  ``ra8_epaper_init`` validated the injected bus seam.
  * @post One word has been clocked out; receive bytes discarded.
  */
+RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epaper_send16(uint16_t word)
 {
   const ra8_spi_bus_ops_t* bus = &s_panel.cfg.bus;
@@ -175,6 +177,7 @@ static ra8_epaper_panel_t s_panel;
  * @pre  ``out_word`` non-NULL.
  * @post On success, ``*out_word`` contains the received word.
  */
+RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epaper_recv16(uint16_t* out_word)
 {
   const ra8_spi_bus_ops_t* bus = &s_panel.cfg.bus;
@@ -206,6 +209,7 @@ static ra8_epaper_panel_t s_panel;
  * @retval k_ra8_ok              HRDY high.
  * @retval k_ra8_err_hw_timeout  Budget exhausted with HRDY still low.
  */
+RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epaper_wait_ready(void)
 {
   const ra8_port_pin_t pin = (ra8_port_pin_t)s_panel.cfg.busy_pin;
@@ -239,6 +243,7 @@ static ra8_epaper_panel_t s_panel;
  *
  * @return ``ra8_err_t`` -- propagates SPI / busy-poll errors.
  */
+RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epaper_write_cmd(uint16_t cmd)
 {
   ra8_err_t err = internal_ra8_epaper_wait_ready();
@@ -262,6 +267,7 @@ static ra8_epaper_panel_t s_panel;
  * @param[in] word Data word.
  * @return ``ra8_err_t`` error code.
  */
+RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epaper_write_data16(uint16_t word)
 {
   ra8_err_t err = internal_ra8_epaper_wait_ready();
@@ -285,6 +291,7 @@ static ra8_epaper_panel_t s_panel;
  * @param[out] out_word Receive slot; non-NULL.
  * @return ``ra8_err_t`` error code.
  */
+RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epaper_read_data16(uint16_t* out_word)
 {
   ra8_err_t err = internal_ra8_epaper_wait_ready();
@@ -319,6 +326,7 @@ static ra8_epaper_panel_t s_panel;
  * @param[in] value Value to write.
  * @return ``ra8_err_t`` error code.
  */
+RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epaper_reg_write(uint16_t reg, uint16_t value)
 {
   ra8_err_t err = internal_ra8_epaper_write_cmd((uint16_t)k_ra8_epaper_cmd_reg_wr);
@@ -339,6 +347,7 @@ static ra8_epaper_panel_t s_panel;
  * @param[out] value Receive slot; non-NULL.
  * @return ``ra8_err_t`` error code.
  */
+RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epaper_reg_read(uint16_t reg, uint16_t* value)
 {
   ra8_err_t err = internal_ra8_epaper_write_cmd((uint16_t)k_ra8_epaper_cmd_reg_rd);
@@ -373,6 +382,7 @@ static ra8_epaper_panel_t s_panel;
  * @note Not thread-safe; init path only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_ra8_epaper_pulse_reset(void)
 {
   const ra8_port_pin_t pin = (ra8_port_pin_t)s_panel.cfg.reset_pin;
@@ -391,6 +401,7 @@ static void internal_ra8_epaper_pulse_reset(void)
  * @return ``k_ra8_ok`` if every field is in range, ``k_ra8_err_invalid_arg``
  *         otherwise.
  */
+RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epaper_validate_cfg(const ra8_epaper_cfg_t* cfg)
 {
   if ((cfg->bus.xfer8 == nullptr) || (cfg->panel_width == 0U) || (cfg->panel_height == 0U) ||
@@ -406,6 +417,7 @@ static void internal_ra8_epaper_pulse_reset(void)
  *
  * @return ``ra8_err_t`` propagating SPI errors.
  */
+RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epaper_drain_dev_info(void)
 {
   ra8_err_t err = internal_ra8_epaper_write_cmd((uint16_t)k_ra8_epaper_cmd_get_dev_info);
@@ -430,6 +442,7 @@ static void internal_ra8_epaper_pulse_reset(void)
  * @param[in] endian  Source-buffer endianness.
  * @return ``ra8_err_t`` error code.
  */
+RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epaper_send_load_args(const ra8_epaper_area_t* area,
                                                                   ra8_epaper_endian_t      endian)
 {
@@ -470,6 +483,7 @@ static void internal_ra8_epaper_pulse_reset(void)
  * @param[in] buf_len Total number of bytes.
  * @return ``ra8_err_t`` error code.
  */
+RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epaper_stream_pixels(const uint8_t* buf, size_t buf_len)
 {
   for (size_t i = 0U; (i + 1U) < buf_len; i += 2U) {
@@ -496,6 +510,7 @@ static void internal_ra8_epaper_pulse_reset(void)
  * @param[in] waveform Waveform mode.
  * @return ``ra8_err_t`` error code.
  */
+RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epaper_send_display_args(const ra8_epaper_area_t* area,
                                                                      ra8_epaper_waveform_t waveform)
 {

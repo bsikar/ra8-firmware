@@ -39,6 +39,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
@@ -125,6 +126,7 @@ typedef enum : uint8_t {
  * @note Not thread-safe; the caller must serialise concurrent access.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_make_cdt(uint8_t opcode,
                                   uint8_t cmd_bytes,
                                   uint8_t addr_bytes,
@@ -199,6 +201,7 @@ typedef enum : uint8_t {
  * @note Thread-safe (pure comparison).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_flash_range_check(uint32_t flash_addr, uint32_t len)
 {
   if (flash_addr >= (uint32_t)k_ra8_xspi_addr_space_3byte) {
@@ -239,6 +242,7 @@ static ra8_err_t internal_flash_range_check(uint32_t flash_addr, uint32_t len)
  * @note Not thread-safe; the XSPI manual-command path is single-owner.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_wait_command_done(volatile r_xspi_regs_t* reg)
 {
   ra8_err_t wait = k_ra8_err_hw_timeout;
@@ -315,6 +319,7 @@ ra8_err_t ra8_xspi_issue_simple_opcode(volatile r_xspi_regs_t* reg, uint8_t opco
  * @note Not thread-safe; the caller must serialise concurrent access.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 internal_issue_read_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode, uint8_t resp_bytes)
 {
@@ -352,6 +357,7 @@ internal_issue_read_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode, uint8_t 
  * @note Not thread-safe; the caller must serialise concurrent access.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_build_chunk_header(volatile r_xspi_regs_t* reg,
                                         uint8_t                 opcode,
                                         uint32_t                addr,
@@ -396,6 +402,7 @@ static void internal_build_chunk_header(volatile r_xspi_regs_t* reg,
  * @note Not thread-safe; caller serialises bus access.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_flash_read_chunk(volatile r_xspi_regs_t* reg,
                                            uint32_t                flash_addr,
                                            uint8_t*                buf,
@@ -496,6 +503,7 @@ ra8_err_t ra8_xspi_flash_read(uint8_t instance, uint32_t flash_addr, uint8_t* bu
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 internal_flash_stage_program(volatile r_xspi_regs_t* reg, uint32_t flash_addr, uint32_t len)
 {
@@ -547,6 +555,7 @@ internal_flash_stage_program(volatile r_xspi_regs_t* reg, uint32_t flash_addr, u
  * @note Not thread-safe; the XSPI program path is single-owner.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_poll_wip_clear(uint8_t instance)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_flash_program_timeout_us; i++) {
@@ -594,6 +603,7 @@ static ra8_err_t internal_poll_wip_clear(uint8_t instance)
  * @note Not thread-safe; caller serialises bus access.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 internal_xspi_stage_payload(volatile r_xspi_regs_t* reg, const uint8_t* data, uint32_t len)
 {
@@ -651,6 +661,7 @@ internal_xspi_stage_payload(volatile r_xspi_regs_t* reg, const uint8_t* data, ui
  * @note Not thread-safe; caller serialises bus access.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_flash_program_chunk(volatile r_xspi_regs_t* reg,
                                               uint8_t                 instance,
                                               uint32_t                flash_addr,

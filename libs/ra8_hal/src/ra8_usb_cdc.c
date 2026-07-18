@@ -36,6 +36,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -120,6 +121,7 @@ static ra8_usb_cdc_state_t s_state = {};
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_default_coding(ra8_usb_cdc_line_coding_t* coding)
 {
   coding->dte_rate    = k_ra8_cdc_default_baud;
@@ -142,6 +144,7 @@ static void internal_default_coding(ra8_usb_cdc_line_coding_t* coding)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_configure_pipes(ra8_usb_speed_t speed)
 {
   const uint16_t bulk_mp =
@@ -193,6 +196,7 @@ static ra8_err_t internal_configure_pipes(ra8_usb_speed_t speed)
  * @note Not thread-safe; call only from the USB control-transfer context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_apply_line_coding(const uint8_t* data, uint16_t len)
 {
   // mcdc-deactivated: TU-local helper internal_apply_line_coding; the USB stack delivers SET_LINE_CODING control transfers with a 7-byte payload buffer (USB CDC PSTN spec 6.3.10), so data is always non-NULL and len is always exactly k_ra8_cdc_line_coding_len -- both short-circuit conditions cannot independently flip on any reachable path.
@@ -321,6 +325,7 @@ ra8_err_t ra8_usb_cdc_recv(uint8_t* out_buf, uint16_t* inout_len)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_pull_data_stage(const uint8_t* buf, uint16_t cap, const uint16_t* out_len)
 {
   (void)buf;
@@ -345,6 +350,7 @@ static ra8_err_t internal_pull_data_stage(const uint8_t* buf, uint16_t cap, cons
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_dispatch_class_setup(const ra8_usb_setup_t* setup)
 {
   switch (setup->b_request) {

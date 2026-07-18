@@ -57,6 +57,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
@@ -153,6 +154,7 @@ static const ra8_mstp_t s_xspi_mstp_table[] = {
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_wait_octacksrdy(uint8_t expected)
 {
   /* SRDY (clock-source ready) is bit 7 of OCTACKCR. */
@@ -219,6 +221,7 @@ static ra8_err_t internal_wait_octacksrdy(uint8_t expected)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_xspi_clock_block_init(void)
 {
   static bool s_xspi_clock_inited = false;
@@ -279,6 +282,7 @@ static ra8_err_t internal_xspi_clock_block_init(void)
  *       code path is compiled out of the coverage build.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_xspi_reset_spin(void)
 {
   for (volatile uint32_t i = 0U; i < (uint32_t)k_ra8_xspi_reset_spin; i++) {
@@ -310,6 +314,7 @@ static void internal_xspi_reset_spin(void)
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_xspi_reset_device(volatile r_xspi_regs_t* reg)
 {
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
@@ -349,6 +354,7 @@ static void internal_xspi_reset_device(volatile r_xspi_regs_t* reg)
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_xspi_apply_config(volatile r_xspi_regs_t* reg, ra8_xspi_lio_mode_t mode)
 {
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
@@ -715,6 +721,7 @@ ra8_err_t ra8_xspi_resume(uint8_t instance)
  * @note Not thread-safe; the caller must serialise concurrent access.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 internal_issue_reset_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode, uint8_t cmd_bytes)
 {

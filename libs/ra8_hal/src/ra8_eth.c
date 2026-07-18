@@ -33,6 +33,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_eth_gwca.h"
@@ -212,6 +213,7 @@ typedef enum : uintptr_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint8_t* internal_eth_rx_pool(void)
 {
 #ifdef UNIT_TEST
@@ -237,6 +239,7 @@ static inline uint8_t* internal_eth_rx_pool(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint8_t* internal_eth_tx_pool(void)
 {
 #ifdef UNIT_TEST
@@ -304,6 +307,7 @@ bool s_eth_mac_speed_resynced = false;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline void internal_stat_inc(uint32_t* counter)
 {
   if (*counter != UINT32_MAX) {
@@ -332,6 +336,7 @@ static inline void internal_stat_inc(uint32_t* counter)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline void internal_byte_copy(uint8_t* dst, const uint8_t* src, uint32_t n)
 {
   for (uint32_t i = 0U; i < n; ++i) {
@@ -368,6 +373,7 @@ ra8_rmac_port_t ra8_eth_channel_to_port(uint8_t channel)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_resolve_sizes(const ra8_eth_cfg_t* cfg,
                                         uint16_t*            tx_count,
                                         uint16_t*            rx_count,
@@ -418,6 +424,7 @@ static ra8_err_t internal_resolve_sizes(const ra8_eth_cfg_t* cfg,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_bring_up_rmac(const ra8_eth_cfg_t* cfg)
 {
   /* The board-level ``ra8_board_ethernet_init`` (or its equivalent for
@@ -573,6 +580,7 @@ ra8_err_t ra8_eth_exit_stop(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_capture_state(const ra8_eth_cfg_t* cfg)
 {
   s_eth_state.opened       = 1U;
@@ -597,6 +605,7 @@ static void internal_capture_state(const ra8_eth_cfg_t* cfg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_populate_gwca_state(const ra8_eth_cfg_t* cfg)
 {
   s_gwca_state.linkfix_table  = s_linkfix_table;
@@ -640,6 +649,7 @@ static void internal_populate_gwca_state(const ra8_eth_cfg_t* cfg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_open_prep(const ra8_eth_cfg_t* cfg)
 {
   if (cfg->channel > 1U) {
@@ -709,6 +719,7 @@ volatile uint32_t g_ra8_eth_open_step;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_open_gwca_path(void)
 {
   /* Note: ``ra8_board_ethernet_init`` already runs its own COMA reset
@@ -902,6 +913,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_test_rx_slot(void)
 {
   const uint32_t data_slots = s_gwca_state.rx_depth - 1U;

@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_eth_gwca.h"
@@ -49,6 +50,7 @@ static const char* s_tag = "ETHGWC";
  * @note Pure helper.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_decode_ds(const ra8_gwca_basic_descriptor_t* desc)
 {
   enum : uint32_t {
@@ -93,6 +95,7 @@ static uint32_t internal_decode_ds(const ra8_gwca_basic_descriptor_t* desc)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_drain_rx_slot(ra8_gwca_basic_descriptor_t* desc,
                                         uint8_t*                     out_frame,
                                         uint32_t                     out_capacity,
@@ -148,6 +151,7 @@ static ra8_err_t internal_drain_rx_slot(ra8_gwca_basic_descriptor_t* desc,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_tx_ext_init(ra8_gwca_ext_descriptor_t* chain,
                                       uint32_t                   depth,
                                       uint32_t                   slot_bytes,
@@ -213,6 +217,7 @@ static ra8_err_t internal_tx_ext_init(ra8_gwca_ext_descriptor_t* chain,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 internal_tx_ext_rearm(ra8_gwca_ext_descriptor_t* chain, uint32_t depth, uint32_t queue_index)
 {
@@ -259,6 +264,7 @@ internal_tx_ext_rearm(ra8_gwca_ext_descriptor_t* chain, uint32_t depth, uint32_t
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_default_open_rings(ra8_eth_gwca_default_state_t* state)
 {
   ra8_err_t err = ra8_eth_gwca_init_ring(state->rx_chain, state->rx_depth, state->rx_slot_bytes);
@@ -296,6 +302,7 @@ static ra8_err_t internal_default_open_rings(ra8_eth_gwca_default_state_t* state
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_default_open_queues(ra8_eth_gwca_default_state_t* state)
 {
   const ra8_eth_gwca_queue_cfg_t rx_cfg = {.priority     = 0U,
@@ -335,6 +342,7 @@ static ra8_err_t internal_default_open_queues(ra8_eth_gwca_default_state_t* stat
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_default_open_pre(ra8_eth_gwca_default_state_t* state)
 {
   g_ra8_eth_gwca_pre_step = 0U;
@@ -464,6 +472,7 @@ ra8_err_t ra8_eth_gwca_default_open(ra8_eth_gwca_default_state_t* state)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_rearm_queue_if_disabled(ra8_gwca_basic_descriptor_t* chain,
                                              uint32_t                     ring_depth,
                                              uint32_t                     queue_index,
@@ -499,6 +508,7 @@ static void internal_rearm_queue_if_disabled(ra8_gwca_basic_descriptor_t* chain,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_tx_info1_hi(uint8_t mac_port)
 {
   const uint32_t dv = (uint32_t)1U << (uint32_t)mac_port;
@@ -531,6 +541,7 @@ static uint32_t internal_tx_info1_hi(uint8_t mac_port)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_wait_tx0_done(ra8_eth_gwca_default_state_t* state)
 {
   for (uint32_t i = 0U; i < k_ra8_eth_gwca_tx_done_spin; ++i) {

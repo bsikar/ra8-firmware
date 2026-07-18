@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_glcdc.h"
@@ -383,6 +384,7 @@ ra8_err_t ra8_glcdc_layer2_show(uintptr_t fb_addr,
  * =============================================================================
  */
 
+RA8_INTERNAL
 static volatile uint32_t* internal_clut_plane(uint8_t layer, uint8_t plane)
 {
   uint16_t off;
@@ -395,6 +397,7 @@ static volatile uint32_t* internal_clut_plane(uint8_t layer, uint8_t plane)
 }
 
 /* internal_clutint_reg -- see header for full description. */
+RA8_INTERNAL
 static volatile uint32_t* internal_clutint_reg(uint8_t layer)
 {
   if (layer == k_ra8_glcdc_layer1) {

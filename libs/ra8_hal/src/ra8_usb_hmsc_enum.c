@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hal_internal.h"
@@ -105,6 +106,7 @@ typedef enum : uint8_t {
  * @note Blocking (polled control transfer).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_enum_read_dev_desc(uint8_t* desc)
 {
   const ra8_usb_setup_t setup = {
@@ -149,6 +151,7 @@ static ra8_err_t internal_enum_read_dev_desc(uint8_t* desc)
  * @note Blocking; worst case a few seconds.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_enum_hunt(uint8_t* desc, uint8_t* out_addr)
 {
   ra8_delay_ms(k_ra8_hmsc_vbus_settle_ms);
@@ -200,6 +203,7 @@ static ra8_err_t internal_enum_hunt(uint8_t* desc, uint8_t* out_addr)
  * @note Blocking (one polled control transfer + settle).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_enum_assign_addr(uint8_t* dev_addr)
 {
   if (*dev_addr != 0U) {
@@ -235,6 +239,7 @@ static ra8_err_t internal_enum_assign_addr(uint8_t* dev_addr)
  * @note Pure helper for the config-descriptor walk.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_enum_note_endpoint(const uint8_t* d)
 {
   const uint8_t attr = (uint8_t)(d[k_ra8_hmsc_off_ep_attr] & (uint8_t)k_ra8_hmsc_ep_attr_mask);
@@ -275,6 +280,7 @@ static void internal_enum_note_endpoint(const uint8_t* d)
  * @note Pure helper for ::internal_enum_walk_cfg.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_enum_iface_is_msc(const uint8_t* d)
 {
   if (d[k_ra8_hmsc_off_iface_class] != (uint8_t)k_ra8_hmsc_class_msc) {
@@ -308,6 +314,7 @@ static bool internal_enum_iface_is_msc(const uint8_t* d)
  * @note Pure helper for ::internal_enum_read_config.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_enum_walk_cfg(const uint8_t* cfg, uint16_t len)
 {
   uint16_t off    = 0U;
@@ -357,6 +364,7 @@ static ra8_err_t internal_enum_walk_cfg(const uint8_t* cfg, uint16_t len)
  * @note Blocking (two polled control reads).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_enum_read_config(uint8_t* out_cfg_value)
 {
   uint8_t         cfg[k_ra8_hmsc_cfg_buf_len] = {};
@@ -406,6 +414,7 @@ static ra8_err_t internal_enum_read_config(uint8_t* out_cfg_value)
  * @note Blocking (polled control transfers).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_enum_configure(uint8_t dev_addr, uint8_t cfg_value)
 {
   const ra8_usb_setup_t set_cfg = {
@@ -481,6 +490,7 @@ static ra8_err_t internal_enum_configure(uint8_t dev_addr, uint8_t cfg_value)
  * @note Pure helper for ::ra8_usb_hmsc_enumerate.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_enum_fill_ids(const uint8_t* desc)
 {
   s_usb_hmsc_state.device.vendor_id =
@@ -506,6 +516,7 @@ static void internal_enum_fill_ids(const uint8_t* desc)
  * @note Helper for ::ra8_usb_hmsc_enumerate.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_enum_publish(uint8_t dev_addr, ra8_usb_hmsc_device_t* out_device)
 {
   s_usb_hmsc_state.device.device_address = dev_addr;
@@ -535,6 +546,7 @@ static void internal_enum_publish(uint8_t dev_addr, ra8_usb_hmsc_device_t* out_d
  * @note Helper for ::ra8_usb_hmsc_enumerate (statement-count split).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_enum_ladder(uint8_t* out_addr)
 {
   uint8_t   desc[k_ra8_hmsc_dev_desc_len] = {};

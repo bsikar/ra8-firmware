@@ -48,6 +48,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_etha_internal.h"
@@ -142,6 +143,7 @@ ra8_etha_slot_t s_etha_slots[k_ra8_etha_port_count];
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline bool internal_tc_ok(ra8_etha_tc_t tc)
 {
   return (uint8_t)tc < k_ra8_etha_tc_count;
@@ -165,6 +167,7 @@ static inline bool internal_tc_ok(ra8_etha_tc_t tc)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline bool internal_irq_block_ok(ra8_etha_irq_class_t block)
 {
   return (uint8_t)block < k_ra8_etha_irq_class_count;
@@ -456,6 +459,7 @@ ra8_err_t ra8_etha_reset(ra8_etha_port_t port)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 internal_etha_wait_for_mode(ra8_etha_port_t port, volatile r_etha_regs_t* reg, ra8_etha_opc_t mode)
 {

@@ -53,6 +53,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hal_internal.h"
@@ -251,6 +252,7 @@ ra8_usb_hmsc_state_t s_usb_hmsc_state = {};
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t internal_bulk_max_packet(ra8_usb_speed_t speed)
 {
   return (speed == k_ra8_usb_speed_hs) ? k_ra8_hmsc_bulk_max_packet_hs
@@ -279,6 +281,7 @@ static uint16_t internal_bulk_max_packet(ra8_usb_speed_t speed)
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_next_tag(void)
 {
   const uint32_t tag = s_usb_hmsc_state.next_cbw_tag;
@@ -287,6 +290,7 @@ static uint32_t internal_next_tag(void)
 }
 
 /* Pack a uint32 into 4 little-endian bytes -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static void internal_pack_u32_le(uint32_t value, uint8_t* dst)
 {
   dst[0] = (uint8_t)((value >> k_ra8_hmsc_shift_byte0) & k_ra8_hmsc_byte_mask);
@@ -296,6 +300,7 @@ static void internal_pack_u32_le(uint32_t value, uint8_t* dst)
 }
 
 /* Unpack a uint32 from 4 little-endian bytes -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static uint32_t internal_unpack_u32_le(const uint8_t* src)
 {
   return ((uint32_t)src[0] << k_ra8_hmsc_shift_byte0) |
@@ -323,6 +328,7 @@ static uint32_t internal_unpack_u32_le(const uint8_t* src)
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_unpack_u32_be(const uint8_t* src)
 {
   return ((uint32_t)src[0] << k_ra8_hmsc_shift_byte3) |
@@ -353,6 +359,7 @@ static uint32_t internal_unpack_u32_be(const uint8_t* src)
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_zero_bytes(uint8_t* dst, uint16_t len)
 {
   for (uint16_t i = 0U; i < len; ++i) {
@@ -361,6 +368,7 @@ static void internal_zero_bytes(uint8_t* dst, uint16_t len)
 }
 
 /* Copy `len` bytes from `src` to `dst` byte-by-byte -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static void internal_copy_bytes(uint8_t* dst, const uint8_t* src, uint16_t len)
 {
   for (uint16_t i = 0U; i < len; ++i) {
@@ -514,6 +522,7 @@ ra8_err_t ra8_usb_hmsc_attach_callback(ra8_usb_hmsc_attach_fn_t on_attach, void*
  */
 
 /* Validate driver state + LUN before issuing a SCSI command -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static ra8_err_t internal_check_ready(uint8_t target_lun)
 {
   if (!s_usb_hmsc_state.initialized) {
@@ -545,6 +554,7 @@ static ra8_err_t internal_check_ready(uint8_t target_lun)
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_send_cbw(const uint8_t* cbw)
 {
   return ra8_usb_host_bulk_out(s_usb_hmsc_state.speed,
@@ -570,6 +580,7 @@ static ra8_err_t internal_send_cbw(const uint8_t* cbw)
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_recv_bytes(uint8_t* dst, uint16_t* inout_len)
 {
   const uint16_t cap = *inout_len;
@@ -578,6 +589,7 @@ static ra8_err_t internal_recv_bytes(uint8_t* dst, uint16_t* inout_len)
 /* GCOVR_EXCL_STOP */
 
 /* Build a 6-byte CDB for SCSI INQUIRY -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static void internal_build_inquiry_cdb(uint8_t* cdb)
 {
   internal_zero_bytes(cdb, k_ra8_hmsc_cdb6_len);
@@ -586,6 +598,7 @@ static void internal_build_inquiry_cdb(uint8_t* cdb)
 }
 
 /* Build a 10-byte CDB for SCSI READ_CAPACITY(10) -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static void internal_build_read_capacity_cdb(uint8_t* cdb)
 {
   internal_zero_bytes(cdb, k_ra8_hmsc_cdb10_len);
@@ -612,6 +625,7 @@ static void internal_build_read_capacity_cdb(uint8_t* cdb)
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 internal_build_rw10_cdb(uint8_t opcode, uint32_t lba, uint16_t block_count, uint8_t* cdb)
 {
@@ -631,6 +645,7 @@ internal_build_rw10_cdb(uint8_t opcode, uint32_t lba, uint16_t block_count, uint
 }
 
 /* Build CBW + push it on bulk-OUT -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static ra8_err_t internal_issue_cbw(uint8_t        target_lun,
                                     uint32_t       xfer_len,
                                     bool           data_in,
@@ -664,6 +679,7 @@ static ra8_err_t internal_issue_cbw(uint8_t        target_lun,
  * @note Blocking (one bounded bulk-IN wait).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_read_csw(uint32_t expected_tag)
 {
   uint8_t   csw[k_ra8_hmsc_csw_len] = {};
@@ -684,6 +700,7 @@ static ra8_err_t internal_read_csw(uint32_t expected_tag)
 /* GCOVR_EXCL_STOP */
 
 /* function -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static ra8_err_t internal_run_data_in(uint8_t        target_lun,
                                       const uint8_t* cdb,
                                       uint8_t        cdb_len,
@@ -703,6 +720,7 @@ static ra8_err_t internal_run_data_in(uint8_t        target_lun,
 /* GCOVR_EXCL_STOP */
 
 /* function -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static ra8_err_t internal_run_data_out(uint8_t        target_lun,
                                        const uint8_t* cdb,
                                        uint8_t        cdb_len,
@@ -771,6 +789,7 @@ static ra8_err_t internal_run_data_out(uint8_t        target_lun,
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_decode_inquiry(const uint8_t* raw, ra8_usb_hmsc_inquiry_response_t* response)
 {
   internal_zero_bytes((uint8_t*)response, (uint16_t)sizeof(*response));

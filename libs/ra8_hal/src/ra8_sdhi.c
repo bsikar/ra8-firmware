@@ -44,6 +44,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
@@ -455,6 +456,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_sdhi_send(volatile r_sdhi_regs_t* reg, uint32_t cmd, uint32_t arg)
 {
   /* HUM Ch 47.2.2 "SD_ARG : SD Command Argument" p 3128 */
@@ -501,6 +503,7 @@ static ra8_err_t internal_sdhi_send(volatile r_sdhi_regs_t* reg, uint32_t cmd, u
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_sdhi_setup_xfer(volatile r_sdhi_regs_t* reg, uint32_t block_count)
 {
   /* HUM Ch 47.2.4 "SD_STOP : Data Stop Register"     p 3130 */
@@ -540,6 +543,7 @@ static void internal_sdhi_setup_xfer(volatile r_sdhi_regs_t* reg, uint32_t block
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_sdhi_drain(volatile r_sdhi_regs_t* reg, uint8_t* buf, uint32_t words)
 {
   uint8_t* cursor = buf;
@@ -595,6 +599,7 @@ static ra8_err_t internal_sdhi_drain(volatile r_sdhi_regs_t* reg, uint8_t* buf, 
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_sdhi_fill(volatile r_sdhi_regs_t* reg, const uint8_t* buf, uint32_t words)
 {
   const uint8_t* cursor = buf;
@@ -648,6 +653,7 @@ static ra8_err_t internal_sdhi_fill(volatile r_sdhi_regs_t* reg, const uint8_t* 
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_sdhi_finish_xfer(volatile r_sdhi_regs_t* reg, uint32_t block_count)
 {
   if (block_count > 1U) {

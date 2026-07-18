@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -103,6 +104,7 @@ static void* s_msg_ctx;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint32_t internal_pack_mac4(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3)
 {
   return ((uint32_t)b0 << k_ra8_ptp_shift_b0) | ((uint32_t)b1 << k_ra8_ptp_shift_b1) |
@@ -197,6 +199,7 @@ ra8_err_t ra8_ptp_set_role(ra8_ptp_role_t role)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_send(uint32_t trig_mask)
 {
   if (s_state != k_ra8_ptp_state_open) {

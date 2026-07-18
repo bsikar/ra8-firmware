@@ -36,6 +36,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_canfd_regs.h"
 #include "ra8_cgc.h"
 #include "ra8_check.h"
@@ -91,6 +92,7 @@ typedef enum : uint32_t {
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_wait_status_bit(volatile r_canfd_t* reg, uint8_t status_bit)
 {
   /* HUM Ch 41 p 2766 "CFDCnSTS" -- wait for the requested mode-ack bit
@@ -198,6 +200,7 @@ ra8_err_t ra8_canfd_internal_set_channel_mode(volatile r_canfd_t* reg, ra8_chmdc
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_set_global_mode(volatile r_canfd_t* reg, uint32_t gmdc_value)
 {
   /* HUM Ch 41 "CFDGCTR.GMDC" p 2742 */ /* "CFDGCTR.GMDC" + GSLPR clear. */
@@ -252,6 +255,7 @@ static ra8_err_t internal_set_global_mode(volatile r_canfd_t* reg, uint32_t gmdc
  * @note Internal helper, not exported.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_install_default_afl(volatile r_canfd_t* reg)
 {
   /* HUM Ch 41 "CFDGAFLCFG0" p 2730 */ /* RNC0 = 1 -> one rule on page 0. */
@@ -297,6 +301,7 @@ static void internal_install_default_afl(volatile r_canfd_t* reg)
  * @note Internal helper, not exported.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_configure_rx_fifo0(volatile r_canfd_t* reg)
 {
   /* Programme depth + payload in GL_RESET (RFE bit left zero -- it
@@ -326,6 +331,7 @@ static void internal_configure_rx_fifo0(volatile r_canfd_t* reg)
  * @note Not thread-safe; caller serialises ra8_canfd_init.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_enable_rx_fifo0(volatile r_canfd_t* reg)
 {
   /* HUM Ch 41 "CFDRFCCa.RFE" p 2742 -- separate write after the rest of
@@ -354,6 +360,7 @@ static void internal_enable_rx_fifo0(volatile r_canfd_t* reg)
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_wait_canfdcksrdy(uint8_t expected)
 {
   /* SRDY (clock-source ready) is bit 7 of CANFDCKCR. @p expected is
@@ -415,6 +422,7 @@ static ra8_err_t internal_wait_canfdcksrdy(uint8_t expected)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_canfd_clock_block_init(void)
 {
   static bool s_canfd_clock_inited = false;
@@ -480,6 +488,7 @@ static ra8_err_t internal_canfd_clock_block_init(void)
  * @note Not thread-safe; caller serialises ra8_canfd_init.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_canfd_open_channel(volatile r_canfd_t* reg)
 {
   (void)internal_set_global_mode(reg, k_ra8_gctr_value_reset);
@@ -613,6 +622,7 @@ enum : uint16_t {
  * @note Not thread-safe; serialise filter edits.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_bump_rnc0_locked(volatile r_canfd_t* reg, uint16_t filter_id)
 {
   if (filter_id >= (uint16_t)k_ra8_canfd_afl_per_page) {
@@ -648,6 +658,7 @@ static void internal_bump_rnc0_locked(volatile r_canfd_t* reg, uint16_t filter_i
  * @note Not thread-safe; caller serialises AFL edits.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_write_afl_slot(volatile r_canfd_t* reg,
                                     uint16_t            slot,
                                     uint32_t            accept_id,

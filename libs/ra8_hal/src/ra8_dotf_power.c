@@ -89,6 +89,7 @@ static const ra8_mstp_t s_dotf_mstp_table[k_ra8_dotf_channel_count] = {
  *
  * @since
  */
+RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_open_validate_init(const ra8_dotf_open_cfg_t* cfg)
 {
   if (!ra8_dotf_internal_channel_in_range(cfg->channel)) {
@@ -133,6 +134,7 @@ static const ra8_mstp_t s_dotf_mstp_table[k_ra8_dotf_channel_count] = {
  *
  * @since
  */
+RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_open_stage_key_iv_region(const ra8_dotf_open_cfg_t* cfg)
 {
   /* Step 2: Install the wrapped key. HUM Ch 45.3 p 3049 (REG03 staging). */
@@ -181,6 +183,7 @@ static const ra8_mstp_t s_dotf_mstp_table[k_ra8_dotf_channel_count] = {
  *
  * @since
  */
+RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_open_finalise(const ra8_dotf_open_cfg_t* cfg)
 {
   /* Step 6: Side-channel level. */

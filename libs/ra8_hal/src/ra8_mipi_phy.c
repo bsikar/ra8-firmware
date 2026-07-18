@@ -42,6 +42,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -181,6 +182,7 @@ static ra8_mipi_phy_eotp_t s_eotp = k_ra8_mipi_phy_eotp_disabled;
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_mipi_phy_mstp_unstop(void)
 {
   /* HUM Ch 64.4.2 "Module-Stop Function Setting", p 3838 */
@@ -189,6 +191,7 @@ static void internal_mipi_phy_mstp_unstop(void)
 }
 
 /* Spin until ``(reg & mask) == mask`` or the budget runs out -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static ra8_err_t internal_mipi_phy_wait_set(volatile const uint32_t* reg, uint32_t mask)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_mipi_phy_spin_budget; ++i) { /* GCOVR_EXCL_BR_LINE */
@@ -200,6 +203,7 @@ static ra8_err_t internal_mipi_phy_wait_set(volatile const uint32_t* reg, uint32
 }
 
 /* Pack a validated PLL config into the DPHYPLFCR register layout -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static uint32_t internal_mipi_phy_pack_plfcr(const ra8_mipi_phy_pll_t* pll)
 {
   uint32_t v = 0U;
@@ -231,6 +235,7 @@ static uint32_t internal_mipi_phy_pack_plfcr(const ra8_mipi_phy_pll_t* pll)
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_mipi_phy_validate_pll(const ra8_mipi_phy_pll_t* pll)
 {
   if ((pll->nmul_int < k_ra8_mipi_phy_nmul_min) || (pll->nmul_int > k_ra8_mipi_phy_nmul_max)) {
@@ -310,6 +315,7 @@ void internal_mipi_phy_write_timing(const ra8_mipi_phy_timing_t* t)
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_mipi_phy_validate_init_cfg(const ra8_mipi_phy_config_t* cfg)
 {
   if (cfg == nullptr || cfg->p_timing == nullptr) {
@@ -355,6 +361,7 @@ static ra8_err_t internal_mipi_phy_validate_init_cfg(const ra8_mipi_phy_config_t
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_mipi_phy_init_power_up(const ra8_mipi_phy_config_t* cfg)
 {
   internal_mipi_phy_mstp_unstop();
@@ -387,6 +394,7 @@ static ra8_err_t internal_mipi_phy_init_power_up(const ra8_mipi_phy_config_t* cf
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_mipi_phy_init_host(const ra8_mipi_phy_config_t* cfg)
 {
   *ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_plfcr) = internal_mipi_phy_pack_plfcr(&cfg->pll);
@@ -411,6 +419,7 @@ static ra8_err_t internal_mipi_phy_init_host(const ra8_mipi_phy_config_t* cfg)
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_mipi_phy_cache_state(const ra8_mipi_phy_config_t* cfg)
 {
   s_lane_count       = cfg->lane_count;

@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
@@ -209,6 +210,7 @@ static volatile uint16_t s_clksel_attempt_pllsta[4] = {0U, 0U, 0U, 0U};
  * @note Not thread-safe; calibrated for 1 GHz Cortex-M85.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_usb_delay_1us(void)
 {
   for (volatile uint32_t i = 0U; i < (uint32_t)k_ra8_usbhs_delay_1us_iters;
@@ -238,6 +240,7 @@ static void internal_usb_delay_1us(void)
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_usbhs_enable_syscfg(volatile r_usb_regs_t* reg)
 {
   /* HUM Ch 37.2.1 "SYSCFG : System Configuration Control Register", p 2060 */
@@ -269,6 +272,7 @@ static void internal_usbhs_enable_syscfg(volatile r_usb_regs_t* reg)
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_usbhs_wait_pll_lock_short(void)
 {
   volatile uint16_t* const pllsta = ra8_usbhs_pllsta();
@@ -314,6 +318,7 @@ static ra8_err_t internal_usbhs_wait_pll_lock_short(void)
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_usbhs_arm_phy_reset(volatile uint16_t* physet_reg, uint16_t clksel_value)
 {
   /* HUM Ch 37.2.17 PHYSET, p 2080: assert PHY power-down and PLL
@@ -357,6 +362,7 @@ static void internal_usbhs_arm_phy_reset(volatile uint16_t* physet_reg, uint16_t
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_usbhs_try_clksel(volatile uint16_t* physet,
                                            volatile uint16_t* lpsts,
                                            uint16_t           clksel_value)

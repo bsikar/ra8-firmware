@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -79,6 +80,7 @@ static void*              s_usb_ctx[k_ra8_usb_cb_slot_n];
  * @note Pure / thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t internal_cb_slot(ra8_usb_speed_t speed)
 {
   return (speed == k_ra8_usb_speed_hs) ? (uint8_t)k_ra8_usb_cb_slot_hs
@@ -272,6 +274,7 @@ typedef enum : uint8_t {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t internal_host_syscfg_word(ra8_usb_speed_t speed)
 {
   uint16_t syscfg = (uint16_t)(1U << k_ra8_syscfg_bit_scke);
@@ -302,6 +305,7 @@ static uint16_t internal_host_syscfg_word(ra8_usb_speed_t speed)
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_host_init_defaults(volatile r_usb_regs_t* reg)
 {
   /* HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
@@ -353,6 +357,7 @@ static void internal_host_init_defaults(volatile r_usb_regs_t* reg)
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_host_hs_bringup(volatile r_usb_regs_t* reg)
 {
   const ra8_err_t phy_err = internal_usbhs_phy_bringup(reg);

@@ -32,6 +32,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_dotf_regs.h"
 #include "ra8_err.h"
@@ -170,6 +171,7 @@ static const ra8_mstp_t s_dotf_mstp_table[k_ra8_dotf_channel_count] = {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline bool internal_channel_in_range(uint8_t channel)
 {
   return (uint16_t)channel < (uint16_t)k_ra8_dotf_channel_count;
@@ -189,6 +191,7 @@ static inline bool internal_channel_in_range(uint8_t channel)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint32_t internal_window_lo(uint8_t channel)
 {
   return (channel == 0U) ? k_ra8_dotf0_window_lo : k_ra8_dotf1_window_lo;
@@ -208,6 +211,7 @@ static inline uint32_t internal_window_lo(uint8_t channel)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint32_t internal_window_hi(uint8_t channel)
 {
   return (channel == 0U) ? k_ra8_dotf0_window_hi : k_ra8_dotf1_window_hi;
@@ -227,6 +231,7 @@ static inline uint32_t internal_window_hi(uint8_t channel)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint8_t internal_key_words(ra8_dotf_key_size_t size)
 {
   if (size == k_ra8_dotf_key_size_192) {
@@ -252,6 +257,7 @@ static inline uint8_t internal_key_words(ra8_dotf_key_size_t size)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint32_t internal_sca_bits(ra8_dotf_sca_level_t level)
 {
   if (level == k_ra8_dotf_sca_max) {
@@ -282,6 +288,7 @@ static inline uint32_t internal_sca_bits(ra8_dotf_sca_level_t level)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint32_t internal_bswap32(uint32_t v)
 {
   return ((v & k_ra8_dotf_bswap_byte0) << (uint32_t)k_ra8_dotf_bswap_shift_word) |
@@ -305,6 +312,7 @@ static inline uint32_t internal_bswap32(uint32_t v)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_validate_region(uint8_t channel, const ra8_dotf_region_t* region)
 {
   if ((region->start_addr & k_ra8_dotf_addr_low_mask) != 0U) {
@@ -346,6 +354,7 @@ static ra8_err_t internal_validate_region(uint8_t channel, const ra8_dotf_region
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_check_overlap(uint8_t channel, const ra8_dotf_region_t* region)
 {
   for (uint8_t other = 0U; other < k_ra8_dotf_channel_count; ++other) {
@@ -381,6 +390,7 @@ static ra8_err_t internal_check_overlap(uint8_t channel, const ra8_dotf_region_t
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_assemble_reg00(const ra8_dotf_chan_state_t* st, bool enable)
 {
   uint32_t v = k_ra8_dotf_reg00_mode_ctr; /* HUM 45.1 mode = CTR. */
@@ -405,6 +415,7 @@ static uint32_t internal_assemble_reg00(const ra8_dotf_chan_state_t* st, bool en
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_stage_key(volatile ra8_dotf_regs_t* reg, const ra8_dotf_key_handle_t* h)
 {
   const uint8_t words = internal_key_words(h->size);
@@ -430,6 +441,7 @@ static void internal_stage_key(volatile ra8_dotf_regs_t* reg, const ra8_dotf_key
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_stage_iv(volatile ra8_dotf_regs_t* reg, const uint32_t* iv)
 {
   for (uint8_t i = 0U; i < k_ra8_dotf_iv_word_count; ++i) {
@@ -452,6 +464,7 @@ static void internal_stage_iv(volatile ra8_dotf_regs_t* reg, const uint32_t* iv)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline void internal_channel_reset(volatile ra8_dotf_regs_t* reg)
 {
   /* HUM Ch 45.3.1 "CONVAREAST : DOTF Conversion Area Start Address Register" p 3049 */
@@ -475,6 +488,7 @@ static inline void internal_channel_reset(volatile ra8_dotf_regs_t* reg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_state_reset(uint8_t channel)
 {
   ra8_dotf_chan_state_t* st = &s_dotf_state[channel];
@@ -683,6 +697,7 @@ static void internal_state_reset(uint8_t channel)
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_rotate_iv(ra8_dotf_chan_state_t*    st,
                                volatile ra8_dotf_regs_t* reg,
                                const uint32_t*           iv_words)
@@ -724,6 +739,7 @@ static void internal_rotate_iv(ra8_dotf_chan_state_t*    st,
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_validate_rotate_inputs(uint8_t                      channel,
                                                  const ra8_dotf_key_handle_t* new_handle)
 {

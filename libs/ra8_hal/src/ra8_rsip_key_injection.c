@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -135,6 +136,7 @@ typedef enum : uint32_t {
  * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
  */
+RA8_INTERNAL
 static uint64_t ki_xorshift(uint64_t state)
 {
   uint64_t x = state;
@@ -162,6 +164,7 @@ static uint64_t ki_xorshift(uint64_t state)
  * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
  */
+RA8_INTERNAL
 static uint64_t ki_mix_byte(uint64_t state, uint8_t b)
 {
   return ki_xorshift(state ^ (uint64_t)b);
@@ -185,6 +188,7 @@ static uint64_t ki_mix_byte(uint64_t state, uint8_t b)
  * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
  */
+RA8_INTERNAL
 static void ki_compute_mac(const uint8_t* buf, uint32_t len, uint8_t* mac_out)
 {
   uint64_t state = k_ra8_rsip_ki_seed;
@@ -213,6 +217,7 @@ static void ki_compute_mac(const uint8_t* buf, uint32_t len, uint8_t* mac_out)
  * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
  */
+RA8_INTERNAL
 static void ki_write_type(uint8_t* buf, uint32_t tag)
 {
   buf[k_ra8_rsip_ki_word_byte0] = (uint8_t)((tag >> 0U) & (uint32_t)k_ra8_rsip_ki_byte_low);
@@ -241,6 +246,7 @@ static void ki_write_type(uint8_t* buf, uint32_t tag)
  * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
  */
+RA8_INTERNAL
 static uint32_t ki_read_type(const uint8_t* buf)
 {
   uint32_t v = 0U;
@@ -268,6 +274,7 @@ static uint32_t ki_read_type(const uint8_t* buf)
  * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
  */
+RA8_INTERNAL
 static void ki_fill_mgmt_info(uint8_t* mgmt, const uint8_t* raw, uint32_t len)
 {
   uint64_t state = k_ra8_rsip_ki_seed ^ (uint64_t)len;
@@ -297,6 +304,7 @@ static void ki_fill_mgmt_info(uint8_t* mgmt, const uint8_t* raw, uint32_t len)
  * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
  */
+RA8_INTERNAL
 static bool ki_aes_bytes(ra8_rsip_aes_key_bits_t key_bits, uint32_t* out)
 {
   bool ok = true;
@@ -334,6 +342,7 @@ static bool ki_aes_bytes(ra8_rsip_aes_key_bits_t key_bits, uint32_t* out)
  * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
  */
+RA8_INTERNAL
 static bool ki_rsa_bytes(ra8_rsip_rsa_size_t size, uint32_t* out)
 {
   bool ok = true;
@@ -375,6 +384,7 @@ static bool ki_rsa_bytes(ra8_rsip_rsa_size_t size, uint32_t* out)
  * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
  */
+RA8_INTERNAL
 static bool ki_ecc_bytes(ra8_rsip_curve_t curve, uint32_t* priv, uint32_t* pub)
 {
   bool ok = true;
@@ -424,6 +434,7 @@ static bool ki_ecc_bytes(ra8_rsip_curve_t curve, uint32_t* priv, uint32_t* pub)
  * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
  */
+RA8_INTERNAL
 static void ki_pack(uint8_t* dst, uint32_t type, const uint8_t* payload, uint32_t payload_len)
 {
   /* Zero the entire blob so unused slack is deterministic. */

@@ -39,6 +39,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -77,6 +78,7 @@ static const char* s_tag = "MIPI_DSI";
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_ra8_mipi_dsi_decode_rx(uint32_t raw, ra8_mipi_dsi_rx_result_t* out_result)
 {
   out_result->data[0] = (uint8_t)(raw & k_ra8_mipi_dsi_rxrss_data0_mask);
@@ -407,6 +409,7 @@ ra8_mipi_dsi_irq_enable(ra8_mipi_dsi_event_t event, uint32_t mask, bool enable)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_ra8_mipi_dsi_call_user(ra8_mipi_dsi_event_t event, uint32_t mask)
 {
   const ra8_mipi_dsi_event_fn_t fn  = s_mipi_dsi_event_fn;

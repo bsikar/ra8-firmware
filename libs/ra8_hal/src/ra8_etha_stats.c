@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_etha.h"
@@ -76,6 +77,7 @@ typedef enum : uint16_t {
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline bool internal_ring_args_ok(uint16_t num_tx, uint16_t num_rx, uint16_t buffer_size)
 {
   return (num_tx >= k_ra8_etha_ring_count_min) && (num_tx <= k_ra8_etha_ring_count_max) &&
@@ -101,6 +103,7 @@ static inline bool internal_ring_args_ok(uint16_t num_tx, uint16_t num_rx, uint1
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint32_t internal_sat_add_u32(uint32_t base, uint32_t inc)
 {
   if (inc > (UINT32_MAX - base)) {
@@ -192,6 +195,7 @@ ra8_err_t ra8_etha_account_traffic(ra8_etha_port_t channel,
  * @note Not thread-safe; serialise ETHA mode changes.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_etha_to_operation(ra8_etha_port_t channel)
 {
   enum : uint32_t { k_ra8_etha_mode_spin = 200000U /**< RA8 etha mode spin. */ };

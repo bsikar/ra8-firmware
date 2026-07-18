@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_dmac.h"
 #include "ra8_err.h"
@@ -126,6 +127,7 @@ volatile r_ssie_regs_t* ra8_ssie_internal_regs(uint8_t channel)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_format_decode(ra8_ssie_format_t format,
                                    uint8_t*          out_omod,
                                    uint8_t*          out_frm,
@@ -187,6 +189,7 @@ static bool internal_format_decode(ra8_ssie_format_t format,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t internal_decode_event(uint32_t ssisr, uint32_t ssifsr)
 {
   uint8_t events = k_ra8_ssie_evt_none;
@@ -236,6 +239,7 @@ static uint8_t internal_decode_event(uint32_t ssisr, uint32_t ssifsr)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t
 internal_build_ssicr(const ra8_ssie_cfg_t* cfg, uint8_t frm, uint8_t pdta, uint8_t sdta)
 {
@@ -302,6 +306,7 @@ internal_build_ssicr(const ra8_ssie_cfg_t* cfg, uint8_t frm, uint8_t pdta, uint8
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_wait_ssirst_clear(volatile r_ssie_regs_t* reg)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_ssie_reset_poll_max; i++) { /* GCOVR_EXCL_BR_LINE */
@@ -327,6 +332,7 @@ static ra8_err_t internal_wait_ssirst_clear(volatile r_ssie_regs_t* reg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_wait_fifo_reset_clear(volatile r_ssie_regs_t* reg)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_ssie_reset_poll_max; i++) { /* GCOVR_EXCL_BR_LINE */
@@ -357,6 +363,7 @@ static ra8_err_t internal_wait_fifo_reset_clear(volatile r_ssie_regs_t* reg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_build_ssiofr(const ra8_ssie_cfg_t* cfg, uint8_t omod)
 {
   uint32_t ssiofr = (uint32_t)omod & k_ra8_ssie_mask_omod;
@@ -384,6 +391,7 @@ static uint32_t internal_build_ssiofr(const ra8_ssie_cfg_t* cfg, uint8_t omod)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_build_ssifcr(const ra8_ssie_cfg_t* cfg)
 {
   uint32_t ssifcr = 0U;
@@ -412,6 +420,7 @@ static uint32_t internal_build_ssifcr(const ra8_ssie_cfg_t* cfg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_build_ssiscr(uint8_t tx_threshold, uint8_t rx_threshold)
 {
   const uint32_t scr_tdes =
@@ -439,6 +448,7 @@ static uint32_t internal_build_ssiscr(uint8_t tx_threshold, uint8_t rx_threshold
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_pulse_fifo_reset(volatile r_ssie_regs_t* reg, uint32_t ssifcr_base)
 {
   reg->SSIFCR = ssifcr_base | k_ra8_ssie_mask_rfrst_tfrst;
@@ -463,6 +473,7 @@ static ra8_err_t internal_pulse_fifo_reset(volatile r_ssie_regs_t* reg, uint32_t
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_apply_dir_irq_bits(uint32_t desired_ren_ten, uint32_t* ssicr, uint32_t* ssifcr)
 {
   if ((desired_ren_ten & k_ra8_ssie_mask_ten) != 0U) {
@@ -496,6 +507,7 @@ static void internal_apply_dir_irq_bits(uint32_t desired_ren_ten, uint32_t* ssic
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_validate_init_cfg(const ra8_ssie_cfg_t* cfg,
                                             uint8_t*              out_omod,
                                             uint8_t*              out_frm,
@@ -532,6 +544,7 @@ static ra8_err_t internal_validate_init_cfg(const ra8_ssie_cfg_t* cfg,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_pulse_ssi_reset(volatile r_ssie_regs_t* reg)
 {
   reg->SSIFCR = k_ra8_ssie_mask_ssirst;
@@ -558,6 +571,7 @@ static ra8_err_t internal_pulse_ssi_reset(volatile r_ssie_regs_t* reg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_ssie_power_up(uint8_t channel, volatile r_ssie_regs_t* reg)
 {
   const ra8_err_t mst_err = ra8_mstp_enable(s_ssie_mstp_table[channel]);
@@ -584,6 +598,7 @@ static ra8_err_t internal_ssie_power_up(uint8_t channel, volatile r_ssie_regs_t*
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_apply_init_regs(volatile r_ssie_regs_t* reg,
                                      const ra8_ssie_cfg_t*   cfg,
                                      uint8_t                 frm,

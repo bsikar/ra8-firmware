@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -147,6 +148,7 @@ volatile uint16_t s_syscfg_before_dprpu = 0U;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_usb_dev_state_t internal_decode_dvsq(uint16_t intsts0)
 {
   const uint16_t dvsq = (uint16_t)(intsts0 & k_ra8_intsts0_mask_dvsq);
@@ -465,6 +467,7 @@ ra8_err_t ra8_usb_set_address(ra8_usb_speed_t speed, uint8_t address)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_dcp_reset_defaults(volatile r_usb_regs_t* reg)
 {
   reg->DCPCFG  = 0U;
@@ -563,6 +566,7 @@ ra8_err_t ra8_usb_device_busreset_rearm(ra8_usb_speed_t speed)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_check_ep_args(uint8_t           pipe_num,
                                         uint8_t           ep_addr,
                                         ra8_usb_ep_dir_t  dir,
@@ -604,6 +608,7 @@ static ra8_err_t internal_check_ep_args(uint8_t           pipe_num,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 internal_pipe_finalize(volatile r_usb_regs_t* reg, uint8_t pipe_num, ra8_usb_ep_dir_t dir)
 {
@@ -636,6 +641,7 @@ internal_pipe_finalize(volatile r_usb_regs_t* reg, uint8_t pipe_num, ra8_usb_ep_
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 internal_pipe_arm_irq(volatile r_usb_regs_t* reg, uint8_t pipe_num, ra8_usb_ep_dir_t dir)
 {

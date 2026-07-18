@@ -35,6 +35,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hal_internal.h"
@@ -72,6 +73,7 @@ typedef enum : uint16_t {
  */
 
 /* Spin until RTST -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static ra8_err_t internal_wait_reset_idle(void)
 {
   for (uint16_t i = 0U; i < k_ra8_mipi_csi_reset_spin_max; ++i) { /* GCOVR_EXCL_BR_LINE */
@@ -85,6 +87,7 @@ static ra8_err_t internal_wait_reset_idle(void)
 }
 
 /* Build the MCT0 32-bit value from a config struct -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static uint32_t internal_encode_mct0(const ra8_mipi_csi_config_t* cfg)
 {
   uint32_t mct0 = (uint32_t)cfg->lanes & k_ra8_mipi_csi_mct0_vdln_mask;
@@ -110,6 +113,7 @@ static uint32_t internal_encode_mct0(const ra8_mipi_csi_config_t* cfg)
 }
 
 /* Refuse a write that requires RXEN = 0 if RXEN is set -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static ra8_err_t internal_reject_if_running(void)
 {
   /* HUM Ch 66.3.4 "MCT3 : Module Control Register 3" p 3938 */
@@ -147,6 +151,7 @@ static ra8_err_t internal_reject_if_running(void)
  * @post Documented side effects are visible on success.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_validate_cfg(const ra8_mipi_csi_config_t* cfg)
 {
   if ((cfg->lanes != k_ra8_mipi_csi_lanes_1) && (cfg->lanes != k_ra8_mipi_csi_lanes_2)) {
@@ -185,6 +190,7 @@ static ra8_err_t internal_validate_cfg(const ra8_mipi_csi_config_t* cfg)
  * @post Documented side effects are visible on success.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_program_receiver(const ra8_mipi_csi_config_t* cfg)
 {
   /* HUM Ch 66.3.2 "MCT0 : Module Control Register 0" p 3936
@@ -252,6 +258,7 @@ static void internal_program_receiver(const ra8_mipi_csi_config_t* cfg)
  * @post Documented side effects are visible on success.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_program_irq_masks(const ra8_mipi_csi_config_t* cfg)
 {
   /* HUM Ch 66.3.14 "RXIE : Receive Interrupt Enable Register" p 3946 */

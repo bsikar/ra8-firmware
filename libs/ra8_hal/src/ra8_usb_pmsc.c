@@ -45,6 +45,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -157,6 +158,7 @@ ra8_usb_pmsc_state_data_t s_usb_pmsc_state = {};
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t internal_bulk_max_packet(ra8_usb_speed_t speed)
 {
   return (speed == k_ra8_usb_speed_hs) ? k_ra8_pmsc_bulk_max_packet_hs
@@ -180,6 +182,7 @@ static uint16_t internal_bulk_max_packet(ra8_usb_speed_t speed)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_configure_pipes(void)
 {
   const uint16_t bulk_mp = internal_bulk_max_packet(s_usb_pmsc_state.speed);
@@ -214,6 +217,7 @@ static ra8_err_t internal_configure_pipes(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_pack_u32_le(uint32_t value, uint8_t* dst)
 {
   dst[0] = (uint8_t)((value >> k_ra8_pmsc_shift_byte0) & k_ra8_pmsc_byte_mask);
@@ -236,6 +240,7 @@ static void internal_pack_u32_le(uint32_t value, uint8_t* dst)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_unpack_u32_le(const uint8_t* src)
 {
   return ((uint32_t)src[0] << k_ra8_pmsc_shift_byte0) |
@@ -265,6 +270,7 @@ void internal_zero_bytes(uint8_t* dst, uint32_t len)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_copy_bytes(uint8_t* dst, const uint8_t* src, uint32_t len)
 {
   for (uint32_t i = 0U; i < len; ++i) {
@@ -335,6 +341,7 @@ ra8_err_t ra8_usb_pmsc_feed_cbw(const uint8_t* cbw)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_dispatch_scsi(uint8_t*                   data_buf,
                                         uint32_t                   data_buf_capacity,
                                         uint32_t*                  data_len,
@@ -379,6 +386,7 @@ static ra8_err_t internal_dispatch_scsi(uint8_t*                   data_buf,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_dispatch_preconditions(uint32_t data_buf_capacity)
 {
   if (!s_usb_pmsc_state.initialized) {
@@ -408,6 +416,7 @@ static ra8_err_t internal_dispatch_preconditions(uint32_t data_buf_capacity)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_dispatch_advance_state(uint32_t data_len)
 {
   s_usb_pmsc_state.last_data_len = data_len;

@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_i2c_bus_ops.h"
@@ -104,6 +105,7 @@ static ra8_smbus_state_t s_state = {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t pec_update(uint8_t crc, uint8_t b)
 {
   uint8_t c = (uint8_t)(crc ^ b);
@@ -135,6 +137,7 @@ uint8_t ra8_smbus_pec(const uint8_t* data, uint32_t len)
  */
 
 /* Build the on-the-wire address byte for a 7-bit target -- see implementation for details. */
+RA8_INTERNAL
 static uint8_t make_addr_byte(uint8_t target_7b, uint8_t rw_bit)
 {
   return (uint8_t)(((uint32_t)target_7b << (uint32_t)k_ra8_smbus_addr_shift) |
@@ -346,6 +349,7 @@ ra8_err_t ra8_smbus_block_write(uint8_t target_7b, uint8_t cmd, const uint8_t* d
  * @note Pure computation; safe from any context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_block_read_pec_check(uint8_t        target_7b,
                                                uint8_t        cmd,
                                                const uint8_t* buf,
@@ -398,6 +402,7 @@ static ra8_err_t internal_block_read_pec_check(uint8_t        target_7b,
  * @note Reads module PEC state; call from the block-read path only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_block_read_finish(uint8_t        target_7b,
                                             uint8_t        cmd,
                                             const uint8_t* rx,
