@@ -125,6 +125,7 @@ ra8_gfx_state_t s_gfx_text_state = {};
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint8_t internal_color_r(uint32_t color)
 {
   return (uint8_t)((color >> k_shift_red) & k_mask_byte);
@@ -142,6 +143,7 @@ static inline uint8_t internal_color_r(uint32_t color)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint8_t internal_color_g(uint32_t color)
 {
   return (uint8_t)((color >> k_shift_green) & k_mask_byte);
@@ -159,6 +161,7 @@ static inline uint8_t internal_color_g(uint32_t color)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint8_t internal_color_b(uint32_t color)
 {
   return (uint8_t)((color >> k_shift_blue) & k_mask_byte);
@@ -176,6 +179,7 @@ static inline uint8_t internal_color_b(uint32_t color)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint8_t internal_color_a(uint32_t color)
 {
   return (uint8_t)((color >> k_shift_alpha) & k_mask_byte);
@@ -204,6 +208,7 @@ uint16_t s_gfx_text_pack_565(uint32_t color)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint8_t internal_bpp(ra8_gfx_format_t format)
 {
   return (uint8_t)format;
@@ -223,6 +228,7 @@ static inline uint8_t internal_bpp(ra8_gfx_format_t format)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline bool internal_format_ok(ra8_gfx_format_t f)
 {
   return (f == k_ra8_gfx_format_rgb565) || (f == k_ra8_gfx_format_rgb888) ||
@@ -247,6 +253,7 @@ static inline bool internal_format_ok(ra8_gfx_format_t f)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_put_pixel(uint8_t*         dst,
                                size_t           stride,
                                ra8_gfx_format_t format,
@@ -296,6 +303,7 @@ static void internal_put_pixel(uint8_t*         dst,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t
 internal_get_pixel(const uint8_t* src, size_t stride, ra8_gfx_format_t format, size_t x, size_t y)
 {
@@ -366,6 +374,7 @@ void s_gfx_text_plot(int32_t x, int32_t y, uint32_t color)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline void internal_fill_565(uint8_t* p, size_t count, uint8_t lo, uint8_t hi)
 {
   if (lo == hi) {
@@ -404,6 +413,7 @@ static inline void internal_fill_565(uint8_t* p, size_t count, uint8_t lo, uint8
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_fill_rect_565(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color)
 {
   /* Clip against the active clip rectangle (which is itself within the
@@ -458,6 +468,7 @@ static void internal_fill_rect_565(int32_t x, int32_t y, int32_t w, int32_t h, u
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_fill_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color)
 {
   if (s_gfx_text_state.format == k_ra8_gfx_format_rgb565) {
@@ -493,6 +504,7 @@ static void internal_fill_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint3
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_rect_outline(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color)
 {
   for (int32_t col = 0; col < w; col++) {
@@ -650,6 +662,7 @@ ra8_err_t ra8_gfx_pixel(int32_t x, int32_t y, uint32_t color)
  * @note Not thread-safe; reads only compile-time constants, so concurrent calls are harmless.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline uint32_t internal_gray_to_color(uint32_t g)
 {
   return (g << (uint32_t)k_shift_red) | (g << (uint32_t)k_shift_green) |
@@ -684,6 +697,7 @@ static inline uint32_t internal_gray_to_color(uint32_t g)
  * @note Not thread-safe; shares s_gfx_text_state with all other rasteriser functions.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_blit_gray8_565(const uint8_t* src,
                                     int32_t        w,
                                     int32_t        dst_x,
@@ -730,6 +744,7 @@ static void internal_blit_gray8_565(const uint8_t* src,
  * @note Not thread-safe; shares s_gfx_text_state with all other rasteriser functions.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 internal_blit_gray8_slow(const uint8_t* src, int32_t w, int32_t h, int32_t dx, int32_t dy)
 {
@@ -834,6 +849,7 @@ ra8_err_t ra8_gfx_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t colo
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 internal_circle_outline_step(int32_t cx, int32_t cy, int32_t x, int32_t y, uint32_t color)
 {
@@ -863,6 +879,7 @@ internal_circle_outline_step(int32_t cx, int32_t cy, int32_t x, int32_t y, uint3
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 internal_circle_filled_step(int32_t cx, int32_t cy, int32_t x, int32_t y, uint32_t color)
 {
