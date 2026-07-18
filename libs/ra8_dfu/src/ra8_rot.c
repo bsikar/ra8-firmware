@@ -105,7 +105,7 @@ static const uint8_t s_rot_root_pubkey[k_ra8_rot_pubkey_bytes] = {
  * @note Thread-safe (pure; no statics).
  * @since 0.1.0
  */
-static bool internal_ct_equal(const uint8_t* a, const uint8_t* b, uint32_t len)
+RA8_INTERNAL static bool internal_ct_equal(const uint8_t* a, const uint8_t* b, uint32_t len)
 {
   if ((a == nullptr) || (b == nullptr)) {
     return false;
@@ -147,7 +147,8 @@ static bool internal_ct_equal(const uint8_t* a, const uint8_t* b, uint32_t len)
  * @note Not thread-safe (the hash engines are single-context).
  * @since 0.1.0
  */
-static ra8_err_t internal_compute_digest(const uint8_t* body, uint32_t body_len, uint8_t* digest)
+RA8_INTERNAL static ra8_err_t
+internal_compute_digest(const uint8_t* body, uint32_t body_len, uint8_t* digest)
 {
   RA8_CHECK_NULL_PTR(body, s_tag, "body");
   RA8_CHECK_NULL_PTR(digest, s_tag, "digest");
@@ -206,7 +207,8 @@ typedef enum : uint8_t {
  * @note Not thread-safe (shares the single-context hash engine).
  * @since 0.1.0
  */
-static ra8_err_t internal_bind_version(uint32_t img_version, const uint8_t* digest, uint8_t* out)
+RA8_INTERNAL static ra8_err_t
+internal_bind_version(uint32_t img_version, const uint8_t* digest, uint8_t* out)
 {
   RA8_CHECK_NULL_PTR(digest, s_tag, "digest");
   RA8_CHECK_NULL_PTR(out, s_tag, "out");
@@ -248,7 +250,8 @@ static ra8_err_t internal_bind_version(uint32_t img_version, const uint8_t* dige
  * @note Not thread-safe: mutates the shared PSA static key pool.
  * @since 0.1.0
  */
-static ra8_err_t internal_verify_sig(const uint8_t* digest, const uint8_t* sig, uint32_t sig_len)
+RA8_INTERNAL static ra8_err_t
+internal_verify_sig(const uint8_t* digest, const uint8_t* sig, uint32_t sig_len)
 {
   RA8_CHECK_NULL_PTR(digest, s_tag, "digest");
   RA8_CHECK_NULL_PTR(sig, s_tag, "sig");
