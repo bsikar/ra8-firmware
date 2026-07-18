@@ -17,6 +17,15 @@ except ImportError:
     sys.stderr.write("gen_pages.py: needs Pillow (pip install Pillow)\n")
     sys.exit(3)
 
+# argv layout: OUTDIR COUNT W H (plus argv[0]).
+ARGV_REQUIRED = 5
+
+EXIT_OK = 0
+EXIT_USAGE = 2
+
+# Encoder quality for the synthetic baseline-JPEG pages.
+JPEG_QUALITY = 90
+
 
 def make_page(idx, count, w, h):
     # Two-tone diagonal split gives a large, JPEG-robust set of distinct colors.
@@ -38,17 +47,17 @@ def make_page(idx, count, w, h):
 
 
 def main():
-    if len(sys.argv) < 5:
+    if len(sys.argv) < ARGV_REQUIRED:
         sys.stderr.write("usage: gen_pages.py OUTDIR COUNT W H\n")
-        return 2
+        return EXIT_USAGE
     outdir, count, w, h = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
     for i in range(count):
         page = make_page(i, count, w, h)
         # Baseline JPEG (what real scraped pages are) so the JPEG-decode paths
         # (viewer probe, rta1 producer) are exercised, not just PNG.
-        page.save("%s/page_%04d.jpg" % (outdir, i + 1), "JPEG", quality=90)
-    print("gen_pages: wrote %d page(s) (%dx%d) to %s" % (count, w, h, outdir))
-    return 0
+        page.save(f"{outdir}/page_{i + 1:04d}.jpg", "JPEG", quality=JPEG_QUALITY)
+    print(f"gen_pages: wrote {count} page(s) ({w}x{h}) to {outdir}")
+    return EXIT_OK
 
 
 if __name__ == "__main__":
