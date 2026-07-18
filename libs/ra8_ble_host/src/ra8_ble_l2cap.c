@@ -39,6 +39,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_ble.h"
 #include "ra8_ble_host.h"
 #include "ra8_ble_host_internal.h"
@@ -109,6 +110,7 @@ void internal_pack_le16(uint8_t* dst, uint16_t v)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t internal_unpack_le16(const uint8_t* src)
 {
   enum : uint8_t {
@@ -143,6 +145,7 @@ static uint16_t internal_unpack_le16(const uint8_t* src)
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_ble_host_state_t* ra8_ble_host_state(void)
 {
   return &s_ble_host_state;
@@ -166,6 +169,7 @@ ra8_ble_host_state_t* ra8_ble_host_state(void)
  *
  * @since 0.1.0
  */
+RA8_PRIV
 void ra8_ble_host_dispatch_event(const ra8_ble_host_event_t* evt)
 {
   s_ble_host_state.evt_count++;
@@ -209,6 +213,7 @@ void ra8_ble_host_dispatch_event(const ra8_ble_host_event_t* evt)
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t ra8_ble_host_l2cap_send(uint16_t       conn_handle,
                                   uint16_t       cid,
                                   const uint8_t* payload,
@@ -298,6 +303,7 @@ ra8_err_t ra8_ble_host_l2cap_send(uint16_t       conn_handle,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_reassembly_append(const uint8_t* payload, uint16_t len)
 {
   if ((uint32_t)s_ble_host_state.reassembly_len + (uint32_t)len >
@@ -330,6 +336,7 @@ static bool internal_reassembly_append(const uint8_t* payload, uint16_t len)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_reassembly_dispatch(void)
 {
   if (s_ble_host_state.reassembly_cid == k_l2cap_cid_att) {
@@ -367,6 +374,7 @@ static void internal_reassembly_dispatch(void)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_acl_fresh_frame(uint16_t conn_handle, const uint8_t* payload, uint16_t len)
 {
   if (len < k_l2cap_hdr_bytes) {
@@ -421,6 +429,7 @@ static void internal_acl_fresh_frame(uint16_t conn_handle, const uint8_t* payloa
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void ra8_ble_host_acl_in(uint16_t conn_handle, const uint8_t* payload, uint16_t len)
 {
   if ((payload == nullptr) || (len == 0U)) {
@@ -441,6 +450,7 @@ static void ra8_ble_host_acl_in(uint16_t conn_handle, const uint8_t* payload, ui
 }
 
 /* HCI ACL -> host trampoline registered via ra8_ble_attach_acl_handler -- see implementation for details. */
+RA8_INTERNAL
 static void
 internal_acl_trampoline(void* ctx, uint16_t handle, const uint8_t* payload, uint16_t len)
 {
@@ -500,6 +510,7 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_on_le_conn_complete(const uint8_t* params)
 {
   /* Status byte 0x00 == success. */
@@ -541,6 +552,7 @@ static void internal_on_le_conn_complete(const uint8_t* params)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_on_disconn_complete(const uint8_t* params)
 {
   const uint16_t h = internal_unpack_le16(&params[k_disconn_handle_lo_idx]);
@@ -589,6 +601,7 @@ static void internal_on_disconn_complete(const uint8_t* params)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 internal_evt_trampoline(void* ctx, uint8_t evt_code, const uint8_t* params, uint8_t params_len)
 {

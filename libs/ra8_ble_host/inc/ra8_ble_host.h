@@ -44,6 +44,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_ble.h"
 #include "ra8_err.h"
 
@@ -468,7 +469,8 @@ ra8_ble_host_gatt_set_value(uint16_t char_handle, const uint8_t* value, uint16_t
  *
  * @since 0.1.0
  */
-void ra8_ble_host_test_inject_acl(uint16_t conn_handle, const uint8_t* l2cap_frame, uint16_t len);
+RA8_TEST_HELPER void
+ra8_ble_host_test_inject_acl(uint16_t conn_handle, const uint8_t* l2cap_frame, uint16_t len);
 
 /**
  * @brief Test hook: report whether the application event handler has
@@ -490,7 +492,7 @@ void ra8_ble_host_test_inject_acl(uint16_t conn_handle, const uint8_t* l2cap_fra
  *
  * @since 0.1.0
  */
-uint32_t ra8_ble_host_test_event_count(void);
+RA8_TEST_HELPER uint32_t ra8_ble_host_test_event_count(void);
 
 /**
  * @brief Test hook: synthesize an LE_Connection_Complete subevent to
@@ -511,7 +513,7 @@ uint32_t ra8_ble_host_test_event_count(void);
  *
  * @since 0.1.0
  */
-void ra8_ble_host_test_inject_connect(uint16_t conn_handle);
+RA8_TEST_HELPER void ra8_ble_host_test_inject_connect(uint16_t conn_handle);
 
 /**
  * @brief Test hook: synthesize an inbound HCI event as if delivered by
@@ -542,7 +544,8 @@ void ra8_ble_host_test_inject_connect(uint16_t conn_handle);
  *
  * @since 0.1.0
  */
-void ra8_ble_host_test_inject_event(uint8_t evt_code, const uint8_t* params, uint8_t params_len);
+RA8_TEST_HELPER void
+ra8_ble_host_test_inject_event(uint8_t evt_code, const uint8_t* params, uint8_t params_len);
 #endif
 
 #ifdef __cplusplus

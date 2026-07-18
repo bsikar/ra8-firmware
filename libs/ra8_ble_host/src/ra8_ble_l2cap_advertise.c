@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_ble.h"
 #include "ra8_ble_host.h"
 #include "ra8_ble_host_internal.h"
@@ -90,6 +91,7 @@
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_advertise_validate(const uint8_t* adv_data,
                                              uint8_t        adv_data_len,
                                              const uint8_t* scan_resp,
@@ -145,6 +147,7 @@ static ra8_err_t internal_advertise_validate(const uint8_t* adv_data,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_set_adv_params(uint16_t interval_ms)
 {
   enum : uint16_t {
@@ -194,6 +197,7 @@ static ra8_err_t internal_set_adv_params(uint16_t interval_ms)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_set_scan_response(const uint8_t* scan_resp, uint8_t scan_resp_len)
 {
   enum : uint16_t {

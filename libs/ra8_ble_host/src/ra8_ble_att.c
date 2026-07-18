@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_ble_host.h"
 #include "ra8_err.h"
 
@@ -171,6 +172,7 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_pack_le16(uint8_t* dst, uint16_t v)
 {
   enum : uint8_t {
@@ -203,6 +205,7 @@ static void internal_pack_le16(uint8_t* dst, uint16_t v)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t internal_unpack_le16(const uint8_t* src)
 {
   enum : uint8_t {
@@ -234,6 +237,7 @@ static uint16_t internal_unpack_le16(const uint8_t* src)
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_ble_host_attr_t* ra8_ble_host_attr_lookup(uint16_t handle)
 {
   ra8_ble_host_state_t* st = ra8_ble_host_state();
@@ -266,6 +270,7 @@ ra8_ble_host_attr_t* ra8_ble_host_attr_lookup(uint16_t handle)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_send_error(uint16_t          conn_handle,
                                 uint8_t           op_in_error,
                                 uint16_t          handle,
@@ -320,6 +325,7 @@ static void internal_send_error(uint16_t          conn_handle,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t internal_emit_info_pairs(uint8_t* resp, uint16_t* pos, uint16_t start, uint16_t end)
 {
   enum : uint8_t {
@@ -369,6 +375,7 @@ static uint8_t internal_emit_info_pairs(uint8_t* resp, uint16_t* pos, uint16_t s
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_handle_find_info(uint16_t conn_handle, const uint8_t* pdu, uint16_t len)
 {
   enum : uint8_t {
@@ -448,6 +455,7 @@ static void internal_handle_find_info(uint16_t conn_handle, const uint8_t* pdu, 
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_emit_char_decl_pair(uint8_t* resp, uint16_t* pos, const ra8_ble_host_attr_t* a)
 {
   uint16_t p = *pos;
@@ -488,6 +496,7 @@ static void internal_emit_char_decl_pair(uint8_t* resp, uint16_t* pos, const ra8
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool
 internal_emit_first_decl_in_range(uint8_t* resp, uint16_t* pos, uint16_t start, uint16_t end)
 {
@@ -540,6 +549,7 @@ internal_emit_first_decl_in_range(uint8_t* resp, uint16_t* pos, uint16_t start, 
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_handle_read_by_type(uint16_t conn_handle, const uint8_t* pdu, uint16_t len)
 {
   enum : uint8_t {
@@ -604,6 +614,7 @@ static void internal_handle_read_by_type(uint16_t conn_handle, const uint8_t* pd
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_handle_read(uint16_t conn_handle, const uint8_t* pdu, uint16_t len)
 {
   enum : uint8_t {
@@ -680,6 +691,7 @@ static void internal_handle_read(uint16_t conn_handle, const uint8_t* pdu, uint1
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t internal_write_cccd(ra8_ble_host_attr_t* a,
                                    uint16_t             conn_handle,
                                    const uint8_t*       val,
@@ -729,6 +741,7 @@ static uint8_t internal_write_cccd(ra8_ble_host_attr_t* a,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t internal_write_value(ra8_ble_host_attr_t* a,
                                     uint16_t             conn_handle,
                                     uint16_t             handle,
@@ -777,6 +790,7 @@ static uint8_t internal_write_value(ra8_ble_host_attr_t* a,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 internal_handle_write(uint16_t conn_handle, uint8_t op, const uint8_t* pdu, uint16_t len)
 {
@@ -854,6 +868,7 @@ internal_handle_write(uint16_t conn_handle, uint8_t op, const uint8_t* pdu, uint
  *
  * @since 0.1.0
  */
+RA8_PRIV
 void ra8_ble_host_att_handle_pdu(uint16_t conn_handle, const uint8_t* pdu, uint16_t pdu_len)
 {
   if ((pdu == nullptr) || (pdu_len == 0U)) {

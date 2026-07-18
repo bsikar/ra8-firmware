@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_ble_gatt_internal.h"
 #include "ra8_ble_host.h"
 #include "ra8_err.h"
@@ -169,6 +170,7 @@ ra8_ble_host_attr_t* ra8_ble_host_attr_lookup(uint16_t handle);
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_uuid16_to_128(uint8_t* dst, uint16_t v)
 {
   enum : uint8_t {
@@ -233,6 +235,7 @@ static void internal_uuid16_to_128(uint8_t* dst, uint16_t v)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_ble_host_attr_t* internal_append_attr(ra8_ble_host_attr_kind_t kind,
                                                  const uint8_t*           uuid_le_128,
                                                  uint8_t                  props,
@@ -392,6 +395,7 @@ ra8_err_t ra8_ble_host_gatt_register_service(const uint8_t* uuid_128, uint16_t* 
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_register_char_validate(const ra8_ble_host_state_t* st,
                                                  uint16_t                    svc_handle,
                                                  const uint8_t*              uuid_128,
@@ -462,6 +466,7 @@ static ra8_err_t internal_register_char_validate(const ra8_ble_host_state_t* st,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_maybe_append_cccd(uint8_t props, uint16_t value_handle)
 {
   enum : uint16_t {
@@ -648,6 +653,7 @@ ra8_err_t ra8_ble_host_gatt_set_value(uint16_t char_handle, const uint8_t* value
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_has_notify_subscriber(const ra8_ble_host_state_t* st, uint16_t char_handle)
 {
   enum : uint8_t {

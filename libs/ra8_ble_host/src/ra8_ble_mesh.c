@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 
 #ifdef RA8_TARGET_BUILD
@@ -110,6 +111,7 @@ static ra8_ble_mesh_state_t s_state;
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_validate(const ra8_ble_mesh_config_t* cfg)
 {
   if (cfg == nullptr) {
@@ -315,8 +317,8 @@ ra8_err_t ra8_ble_mesh_attach_event_handler(ra8_ble_mesh_event_fn_t fn, void* ct
 
 #ifdef UNIT_TEST
 /* Test-hook prototypes (external linkage). */
-void    ra8_ble_mesh_test_emit_event(const ra8_ble_mesh_event_t* evt);
-uint8_t ra8_ble_mesh_test_prov_active(void);
+RA8_TEST_HELPER void    ra8_ble_mesh_test_emit_event(const ra8_ble_mesh_event_t* evt);
+RA8_TEST_HELPER uint8_t ra8_ble_mesh_test_prov_active(void);
 
 /**
  * @brief Test hook -- emit a mesh lifecycle event.

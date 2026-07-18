@@ -33,6 +33,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 
 /** @brief Maximum 6-digit BLE passkey. */
@@ -125,6 +126,7 @@ static ra8_ble_security_state_t s_state;
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_validate_cfg(const ra8_ble_security_config_t* cfg)
 {
   if (cfg == nullptr) {
@@ -162,6 +164,7 @@ static ra8_err_t internal_validate_cfg(const ra8_ble_security_config_t* cfg)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t internal_map_io_cap(ra8_ble_security_io_cap_t io_cap)
 {
   switch (io_cap) {
@@ -461,8 +464,8 @@ ra8_err_t ra8_ble_security_attach_event_handler(ra8_ble_security_event_fn_t fn, 
 
 #ifdef UNIT_TEST
 /* Test-hook prototypes (external linkage). */
-void ra8_ble_security_test_emit_event(const ra8_ble_security_event_t* evt);
-void ra8_ble_security_test_set_bond_count(uint8_t count);
+RA8_TEST_HELPER void ra8_ble_security_test_emit_event(const ra8_ble_security_event_t* evt);
+RA8_TEST_HELPER void ra8_ble_security_test_set_bond_count(uint8_t count);
 
 /**
  * @brief Test hook -- synthesize a security event up to the application.

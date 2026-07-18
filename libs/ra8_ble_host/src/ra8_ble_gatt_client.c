@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 
 #ifdef RA8_TARGET_BUILD
@@ -258,6 +259,7 @@ static ra8_ble_gatt_client_sub_t s_subs[k_ra8_gatt_client_max_subs];
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int internal_disc_trampoline(uint16_t                     conn_handle,
                                     const struct ble_gatt_error* error,
                                     const struct ble_gatt_svc*   service,
@@ -322,6 +324,7 @@ static int internal_disc_trampoline(uint16_t                     conn_handle,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int internal_read_trampoline(uint16_t                     conn_handle,
                                     const struct ble_gatt_error* error,
                                     struct ble_gatt_attr*        attr,
@@ -375,6 +378,7 @@ static int internal_read_trampoline(uint16_t                     conn_handle,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int internal_write_trampoline(uint16_t                     conn_handle,
                                      const struct ble_gatt_error* error,
                                      struct ble_gatt_attr*        attr,
@@ -651,6 +655,7 @@ ra8_err_t ra8_ble_gatt_write(uint16_t                conn_handle,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_ble_gatt_client_sub_t* internal_sub_slot(uint16_t conn_handle, uint16_t cccd_handle)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_gatt_client_max_subs; i++) {
@@ -712,12 +717,12 @@ ra8_err_t ra8_ble_gatt_subscribe(uint16_t                 conn_handle,
 
 #ifdef UNIT_TEST
 /* Test-hook prototypes (external linkage). */
-void     ra8_ble_gatt_client_test_inject_notify(uint16_t       conn_handle,
-                                                uint16_t       attr_handle,
-                                                const uint8_t* data,
-                                                uint16_t       len);
-uint32_t ra8_ble_gatt_client_test_pending_count(void);
-void     ra8_ble_gatt_client_test_reset(void);
+RA8_TEST_HELPER void     ra8_ble_gatt_client_test_inject_notify(uint16_t       conn_handle,
+                                                                uint16_t       attr_handle,
+                                                                const uint8_t* data,
+                                                                uint16_t       len);
+RA8_TEST_HELPER uint32_t ra8_ble_gatt_client_test_pending_count(void);
+RA8_TEST_HELPER void     ra8_ble_gatt_client_test_reset(void);
 
 /**
  * @brief Test hook -- inject an HVN/HVI on a registered subscription.
