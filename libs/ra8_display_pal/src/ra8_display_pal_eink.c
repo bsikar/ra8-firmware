@@ -78,6 +78,10 @@ typedef enum : uint32_t {
   k_eink_luma_g             = 150U,    /**< Rec.601 G weight (0.587*256).  */
   k_eink_luma_b             = 29U,     /**< Rec.601 B weight (0.114*256).  */
   k_eink_luma_shift         = 8U,      /**< Luma weight denominator shift. */
+  k_eink_nibble_shift       = 4U,      /**< 8bpp luma -> 4bpp nibble shift. */
+  k_eink_px_per_byte_4bpp   = 2U,      /**< Pixels packed per 4bpp byte.   */
+  k_eink_nibble_mask        = 0x0FU,   /**< Low-nibble mask.               */
+  k_eink_white_nibble       = 0x0FU,   /**< 4bpp white, used to pad tails. */
 } ra8_display_pal_eink_const_t;
 
 /**
@@ -94,7 +98,20 @@ typedef enum : uint16_t {
   k_eink_b5_mask  = 0x1FU, /**< 5-bit blue mask.             */
 } ra8_display_pal_eink_rgb_t;
 
-/** @brief Bounded RGB565->8bpp conversion scratch (one panel row). */
+/**
+ * @var s_eink_line
+ * @brief Bounded RGB565 -> 4 bpp conversion scratch (one panel row).
+ *
+ * @details
+ * Sized for a full-width row at 8 bpp even though the flush path packs at
+ * 4 bpp, so the buffer stays correct if a future caller needs the wider
+ * depth. At 4 bpp only the first ``ceil(width / 2)`` bytes are used.
+ *
+ * @note Written by the flush path only; not reentrant.
+ * @warning Do not read this outside a flush -- it holds the last converted
+ *          row, not a framebuffer.
+ * @since 0.1.0
+ */
 static uint8_t s_eink_line[k_eink_line_max_px];
 
 /* =============================================================================
@@ -278,20 +295,71 @@ static ra8_err_t internal_eink_check_rect(const display_caps_t* caps, display_re
 }
 
 /**
+ * @brief Pack one RGB565 span into ``s_eink_line`` as 4 bpp greyscale.
+ *
+ * @details
+ * Converts each pixel to 8 bpp Rec.601 luma, keeps its high nibble, and
+ * packs two pixels per byte -- first pixel in the high nibble. An odd
+ * trailing pixel is paired with white so the row still ends on a byte
+ * boundary, which is what the controller's row stride assumes.
+ *
+ * 4 bpp is the panel's real depth: it renders 16 grey levels and the
+ * IT8951 discards the low nibble of 8 bpp data anyway, so this halves the
+ * bytes on the wire at no optical cost.
+ *
+ * @param[in] src   First RGB565 pixel of the row; non-NULL, ``width`` long.
+ * @param[in] width Pixels to convert; ``1 .. k_eink_line_max_px``.
+ *
+ * @pre  ``src`` holds at least ``width`` readable pixels.
+ * @pre  ``width <= k_eink_line_max_px``.
+ * @post ``s_eink_line[0 .. ceil(width/2))`` holds the packed row.
+ * @post No panel traffic is generated.
+ *
+ * @note Not thread-safe -- writes the shared ``s_eink_line`` scratch.
+ *
+ * @see ra8_display_pal_eink_luma_from_rgb565
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void internal_eink_pack_row_4bpp(const uint16_t* src, uint16_t width)
+{
+  const uint32_t px_per_byte = (uint32_t)k_eink_px_per_byte_4bpp;
+  for (uint32_t col = 0U; col < (uint32_t)width; col += px_per_byte) {
+    /* The controller keeps only the high nibble of an 8 bpp byte, so
+     * dropping the low nibble here costs nothing optically and halves the
+     * bytes on the wire. */
+    const uint8_t  hi_px = ra8_display_pal_eink_luma_from_rgb565(src[col]);
+    const uint32_t next  = col + 1U;
+    const uint8_t  lo_px = (next < (uint32_t)width)
+                             ? ra8_display_pal_eink_luma_from_rgb565(src[next])
+                             : (uint8_t)(k_eink_white_nibble << k_eink_nibble_shift);
+    const uint8_t  hi_n  = (uint8_t)((hi_px >> k_eink_nibble_shift) & k_eink_nibble_mask);
+    const uint8_t  lo_n  = (uint8_t)((lo_px >> k_eink_nibble_shift) & k_eink_nibble_mask);
+    s_eink_line[col / px_per_byte] =
+      (uint8_t)((uint8_t)(hi_n << k_eink_nibble_shift) | lo_n);
+  }
+}
+
+/**
  * @brief Convert + stream each row of ``rect`` into the IT8951 frame RAM.
  *
  * @details
- * For every framebuffer row in ``rect``: convert the RGB565 span to 8 bpp
- * luma in the bounded ``s_eink_line`` buffer, then ``ra8_epaper_load_image``
- * that 1-row sub-area (the controller places it via the area's x/y). The
- * panel is refreshed once by the caller after all rows are loaded.
+ * For every framebuffer row in ``rect``: pack the RGB565 span to 4 bpp
+ * greyscale in the bounded ``s_eink_line`` buffer, then
+ * ``ra8_epaper_load_image`` that 1-row sub-area (the controller places it
+ * via the area's x/y). The byte count comes from
+ * ``ra8_epaper_image_bytes`` rather than being recomputed here, so the
+ * PAL's packing and the driver's expectation cannot drift apart. The panel
+ * is refreshed once by the caller after all rows are loaded.
  *
  * @param[in] c    Backend context (validated).
  * @param[in] rect Region to push (already bounds-checked).
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok            All rows loaded into frame RAM.
- * @retval (from ra8_epaper)   Forwarded from ``ra8_epaper_load_image``.
+ * @retval (from ra8_epaper)   Forwarded from ``ra8_epaper_image_bytes`` or
+ *                             ``ra8_epaper_load_image``.
  *
  * @pre  ``ra8_epaper_init`` succeeded; ``rect`` lies in the framebuffer.
  * @pre  ``rect.w <= k_eink_line_max_px``.
@@ -309,15 +377,22 @@ static ra8_err_t internal_eink_load_rect(const eink_ctx_t* c, display_rect_t rec
   const uint32_t  width = (uint32_t)c->fb.width_px;
   for (uint16_t row = 0U; row < rect.h; ++row) {
     const uint16_t* src = &fb[(((uint32_t)rect.y + row) * width) + rect.x];
-    for (uint16_t col = 0U; col < rect.w; ++col) {
-      s_eink_line[col] = ra8_display_pal_eink_luma_from_rgb565(src[col]);
-    }
+    internal_eink_pack_row_4bpp(src, rect.w);
     const ra8_epaper_area_t area = {.x      = rect.x,
                                     .y      = (uint16_t)(rect.y + row),
                                     .width  = rect.w,
                                     .height = 1U};
-    const ra8_err_t         err =
-      ra8_epaper_load_image(&area, s_eink_line, (size_t)rect.w, k_ra8_epaper_endian_little);
+    size_t                  need = 0U;
+    const ra8_err_t         serr =
+      ra8_epaper_image_bytes(&area, k_ra8_epaper_pf_4bpp, &need);
+    if (serr != k_ra8_ok) {
+      return serr;
+    }
+    const ra8_err_t err = ra8_epaper_load_image(&area,
+                                                s_eink_line,
+                                                need,
+                                                k_ra8_epaper_pf_4bpp,
+                                                k_ra8_epaper_endian_little);
     if (err != k_ra8_ok) {
       return err;
     }
