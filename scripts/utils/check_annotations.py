@@ -25,6 +25,7 @@ Usage::
     python3 scripts/utils/check_annotations.py            # warn-only
     python3 scripts/utils/check_annotations.py --check    # CI gate
     python3 scripts/utils/check_annotations.py --list     # dump symbols
+    python3 scripts/utils/check_annotations.py --selftest # regression test
 """
 
 from __future__ import annotations
@@ -355,13 +356,43 @@ def parse_tu(path: pathlib.Path) -> cindex.TranslationUnit | None:
     return tu
 
 
+def symbol_key(node: cindex.Cursor) -> str:
+    """Identity key for ``node`` in the symbol table.
+
+    Keyed on the canonical USR, never on the bare name. C gives every
+    translation unit its own namespace for ``static`` helpers and this
+    repo has several namesakes: three unrelated ``internal_zero_bytes``
+    (net_pal, usb_hmsc, usb_pmsc) and two ``priv_byte_copy`` (fs, epub).
+
+    Keying by name merged those into one entry whose ``annotations`` were
+    the *union* of every namesake, whose ``file`` came from the last
+    definition walked and whose ``usr`` came from the first declaration
+    walked -- so the recorded module and the recorded USR could describe
+    two different functions. That is what made ``_same_symbol`` match a
+    module's call to its own file-local ``static`` against another
+    module's RA8_PRIV tag and report a cross-module violation.
+
+    The canonical USR merges a function's header declaration with its
+    definition (both share the canonical first declaration) while keeping
+    distinct functions apart, which is exactly the grouping the rules
+    need. Falls back to a name-derived key only when this libclang cannot
+    produce a USR, degrading to the previous behaviour rather than
+    dropping the symbol entirely.
+    """
+    with contextlib.suppress(Exception):
+        usr = node.canonical.get_usr()
+        if usr:
+            return usr
+    return f"name:{node.spelling}"
+
+
 def walk_tu(
     tu: cindex.TranslationUnit,
     _tu_path: pathlib.Path,
     symbols: dict[str, AnnotatedSymbol],
     calls: list[CallSite],
 ) -> None:
-    """Single-pass AST walk that fills ``symbols`` and ``calls``."""
+    """Single-pass AST walk that fills ``symbols`` (keyed by USR) and ``calls``."""
 
     def file_of(c: cindex.Cursor) -> str:
         if c.location.file is None:
@@ -373,10 +404,12 @@ def walk_tu(
         if node.kind == cindex.CursorKind.FUNCTION_DECL:
             anns = collect_annotations(node)
             if anns:
-                # Promote / merge into the symbol table
+                # Promote / merge into the symbol table, keyed by canonical
+                # USR so same-named statics in different TUs stay distinct.
                 fname = node.spelling
+                key = symbol_key(node)
                 sym = symbols.setdefault(
-                    fname,
+                    key,
                     AnnotatedSymbol(name=fname, file=file_of(node), line=node.location.line),
                 )
                 for a in anns:
@@ -386,9 +419,11 @@ def walk_tu(
                 sym.return_type = node.result_type.spelling
                 if any(arg.type.kind == cindex.TypeKind.POINTER for arg in node.get_arguments()):
                     sym.has_pointer_param = True
-                if not sym.usr:
-                    with contextlib.suppress(Exception):
-                        sym.usr = node.canonical.get_usr()
+                # The key *is* the USR whenever libclang produced one, so the
+                # recorded USR can never describe a different function than
+                # the rest of this entry.
+                if not sym.usr and not key.startswith("name:"):
+                    sym.usr = key
                 if node.is_definition():
                     sym.file = file_of(node)
                     sym.line = node.location.line
@@ -501,11 +536,19 @@ def _same_symbol(cs: CallSite, sym: AnnotatedSymbol) -> bool:
     C lets every translation unit have its own ``static`` helper with the
     same name, and this repo does exactly that (three unrelated
     ``internal_zero_bytes`` live in net_pal, usb_hmsc and usb_pmsc). The
-    symbol table is keyed by name, so without this check an annotation on
-    one of them is attributed to calls of all of them -- reporting a
+    candidate call sites still arrive keyed by bare name via
+    ``direct_calls_by_callee``, so without this check an annotation on one
+    namesake is attributed to calls of all of them -- reporting a
     cross-module violation against a module that only ever called its own
     file-local copy. USRs encode the defining file for internal-linkage
     symbols, so they separate the namesakes exactly.
+
+    This check is only sound because ``symbols`` is keyed by USR too (see
+    ``symbol_key``). While the table was keyed by name, one entry merged
+    every namesake and its ``usr`` came from the first declaration walked
+    while its ``file`` came from the last definition walked, so this
+    comparison could succeed against a symbol whose recorded module
+    belonged to an entirely different function.
 
     Falls back to the name match when either USR is unavailable, so a
     libclang build that cannot produce USRs degrades to the old behaviour
@@ -567,6 +610,32 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
         direct_calls_by_caller.setdefault(cs.caller_name, []).append(cs)
 
     address_taken: set[str] = {cs.callee_name for cs in calls if cs.in_address_of}
+
+    # ``symbols`` is keyed by USR, so the rules that ask "what is annotated on
+    # the thing this call resolved to" must go through resolve_callees() rather
+    # than a bare-name dict hit. Namesake statics would otherwise answer for
+    # each other -- the defect this gate itself shipped.
+    symbols_by_name: dict[str, list[AnnotatedSymbol]] = {}
+    for sym in symbols.values():
+        symbols_by_name.setdefault(sym.name, []).append(sym)
+
+    def resolve_callees(cs: CallSite) -> list[AnnotatedSymbol]:
+        """Annotated symbols a call site may have bound to.
+
+        With a USR the answer is exact and at most one symbol: either that
+        function carries annotations or it does not, and a namesake in
+        another TU must never answer for it. Without a USR (libclang too
+        old to emit one) fall back to every namesake, which is the old
+        name-based behaviour and never stricter than it.
+        """
+        if cs.callee_usr:
+            exact = symbols.get(cs.callee_usr)
+            if exact is not None:
+                return [exact]
+            # Symbols recorded before a USR was available keep a name: key.
+            fallback = symbols.get(f"name:{cs.callee_name}")
+            return [fallback] if fallback is not None else []
+        return symbols_by_name.get(cs.callee_name, [])
 
     for sym in symbols.values():
         for ann in sym.annotations:
@@ -796,21 +865,21 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
 
             # 12. ra8_host_friendly
             elif rule == "ra8_host_friendly":
-                for cs in direct_calls_by_caller.get(sym.name, []):
-                    callee_sym = symbols.get(cs.callee_name)
-                    if callee_sym and any(
+                out.extend(
+                    Violation(
+                        rule,
+                        cs.caller_file,
+                        cs.caller_line,
+                        f"host-friendly '{sym.name}' calls MMIO "
+                        f"accessor '{cs.callee_name}' (would break in sim)",
+                    )
+                    for cs in direct_calls_by_caller.get(sym.name, [])
+                    if any(
                         a.startswith(("ra8_hw_register_access", "RA8_HW_REGISTER_ACCESS"))
+                        for callee_sym in resolve_callees(cs)
                         for a in callee_sym.annotations
-                    ):
-                        out.append(
-                            Violation(
-                                rule,
-                                cs.caller_file,
-                                cs.caller_line,
-                                f"host-friendly '{sym.name}' calls MMIO "
-                                f"accessor '{cs.callee_name}' (would break in sim)",
-                            )
-                        )
+                    )
+                )
 
             # 13. ra8_latency_max_ns -- warn-only TODO until WCET pass exists.
             elif rule == "ra8_latency_max_ns":
@@ -922,9 +991,10 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                 body = direct_calls_by_caller.get(sym.name, [])
                 released = False
                 for c in body:
-                    callee = symbols.get(c.callee_name)
-                    if callee and any(
-                        a == f"ra8_releases_resource:{kind}" for a in callee.annotations
+                    if any(
+                        a == f"ra8_releases_resource:{kind}"
+                        for callee in resolve_callees(c)
+                        for a in callee.annotations
                     ):
                         released = True
                         break
@@ -1013,8 +1083,8 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                     if cs.in_address_of:
                         continue
                     callee = cs.callee_name
-                    callee_sym = symbols.get(callee)
-                    if callee_sym is None:
+                    callee_syms = resolve_callees(cs)
+                    if not callee_syms:
                         # External / libc -- treat as unsafe.
                         out.append(
                             Violation(
@@ -1025,7 +1095,7 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                             )
                         )
                         continue
-                    if not any(a == "ra8_isr_safe" for a in callee_sym.annotations):
+                    if not any(a == "ra8_isr_safe" for s in callee_syms for a in s.annotations):
                         out.append(
                             Violation(
                                 "ra8_isr_safe",
@@ -1041,6 +1111,142 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
 
 
 # --------------------------------------------------------------------------
+# Self-test
+# --------------------------------------------------------------------------
+#: Synthetic TUs for run_selftest(). Layout mirrors libs/<module>/src/ so
+#: module_of() resolves, and the annotations are spelled the way
+#: ra8_attributes.h lowers them so no project header is needed.
+#:
+#: Insertion order is load-bearing: it reproduces the walk order that took
+#: dev red. The namesake `static` is walked first, so under the old
+#: name-keyed table its USR was the one latched into the single merged
+#: entry, while the entry's `file` was then overwritten by the RA8_PRIV
+#: module's definition. `_same_symbol` therefore matched mod_other's call
+#: to its own file-local helper against a tag recorded as living in
+#: mod_priv -- the shape of all 6 CI failures.
+_SELFTEST_SOURCES: dict[str, str] = {
+    # A namesake `static`, walked FIRST. Its call binds to its own
+    # file-local copy and must never be attributed to mod_priv's RA8_PRIV
+    # symbol. This is the exact shape of the false positive that took dev
+    # red: three `internal_zero_bytes` and two `priv_byte_copy` in-tree.
+    "libs/mod_other/src/other.c": """
+__attribute__((annotate("ra8_internal"))) static void shared_helper(unsigned char* p,
+                                                                    unsigned short n)
+{
+  for (unsigned short i = 0U; i < n; ++i) {
+    p[i] = 0U;
+  }
+}
+
+void other_caller(unsigned char* p)
+{
+  shared_helper(p, 4U);
+}
+""",
+    # The RA8_PRIV owner: external linkage, tagged on the declaration the
+    # way a *_internal.h does it. Clang propagates the attribute onto the
+    # definition in the same TU, which is how the merged entry used to pick
+    # up this module's path.
+    "libs/mod_priv/src/priv.c": """
+__attribute__((annotate("ra8_priv"))) void shared_helper(unsigned char* p, unsigned int n);
+
+void shared_helper(unsigned char* p, unsigned int n)
+{
+  for (unsigned int i = 0U; i < n; ++i) {
+    p[i] = 0U;
+  }
+}
+
+void priv_owner_caller(unsigned char* p)
+{
+  shared_helper(p, 4U);
+}
+""",
+    # A genuine cross-module call to the external RA8_PRIV symbol. This one
+    # MUST still be reported, otherwise the fix above would have silenced
+    # the rule instead of making it accurate.
+    "libs/mod_stranger/src/stranger.c": """
+void shared_helper(unsigned char* p, unsigned int n);
+
+void stranger_caller(unsigned char* p)
+{
+  shared_helper(p, 4U);
+}
+""",
+}
+
+
+def run_selftest() -> int:
+    """Regression-test namesake resolution. Returns a process exit code.
+
+    Guards the defect that keying the symbol table by bare name merged
+    distinct same-named functions into one entry, so a module calling its
+    own file-local ``static`` was reported for calling another module's
+    RA8_PRIV symbol. Checks both directions: the namesake call is clean
+    and the genuine cross-module call is still caught, so the rule cannot
+    be "fixed" by disabling it.
+    """
+    import tempfile  # noqa: PLC0415  # self-test only; keep the gate path import-light
+
+    failures: list[str] = []
+    with tempfile.TemporaryDirectory() as td:
+        root = pathlib.Path(td)
+        tu_paths: list[pathlib.Path] = []
+        for rel, body in _SELFTEST_SOURCES.items():
+            path = root / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(body)
+            tu_paths.append(path)
+
+        symbols: dict[str, AnnotatedSymbol] = {}
+        calls: list[CallSite] = []
+        index = cindex.Index.create()
+        for path in tu_paths:
+            tu = index.parse(
+                str(path),
+                args=["-std=c23", "-x", "c"],
+                options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD,
+            )
+            walk_tu(tu, path, symbols, calls)
+
+        priv_violations = [v for v in enforce_rules(symbols, calls) if v.rule == "ra8_priv"]
+        offenders = {pathlib.Path(v.file).name for v in priv_violations}
+
+        if "other.c" in offenders:
+            failures.append(
+                "namesake regression: a module's call to its own file-local static "
+                "'shared_helper' was reported as a cross-module RA8_PRIV call"
+            )
+        if "priv.c" in offenders:
+            failures.append(
+                "same-module regression: mod_priv calling its own RA8_PRIV symbol was reported"
+            )
+        if "stranger.c" not in offenders:
+            failures.append(
+                "rule went toothless: the genuine cross-module call to RA8_PRIV "
+                "'shared_helper' from mod_stranger was NOT reported"
+            )
+
+        # A merged symbol table is the underlying defect, so assert the
+        # shape directly too: the three declarations must stay distinct.
+        namesakes = [s for s in symbols.values() if s.name == "shared_helper"]
+        expected_namesakes = 2  # one external (mod_priv) + one static (mod_other)
+        if len(namesakes) != expected_namesakes:
+            failures.append(
+                f"symbol table merged namesakes: expected {expected_namesakes} distinct "
+                f"'shared_helper' entries, found {len(namesakes)}"
+            )
+
+    if failures:
+        for f in failures:
+            sys.stderr.write(f"[FAIL] check_annotations selftest: {f}\n")
+        sys.stderr.write(f"check_annotations selftest: {len(failures)} failure(s)\n")
+        return 1
+    print("check_annotations selftest: OK (namesake statics resolved by USR)")
+    return 0
+
+
+# --------------------------------------------------------------------------
 # Entry point
 # --------------------------------------------------------------------------
 def main(argv: list[str]) -> int:  # noqa: PLR0912  # gate/parser dispatch, splitting hurts readability
@@ -1050,8 +1256,16 @@ def main(argv: list[str]) -> int:  # noqa: PLR0912  # gate/parser dispatch, spli
     )
     ap.add_argument("--list", action="store_true", help="dump every annotated symbol and exit")
     ap.add_argument("--quiet", action="store_true", help="suppress per-TU progress output")
+    ap.add_argument(
+        "--selftest",
+        action="store_true",
+        help="run the namesake-resolution regression test on synthetic TUs and exit",
+    )
     ap.add_argument("paths", nargs="*", help="optional explicit file list (else scan everything)")
     args = ap.parse_args(argv)
+
+    if args.selftest:
+        return run_selftest()
 
     if args.paths:
         tus = [
