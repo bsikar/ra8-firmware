@@ -955,6 +955,7 @@ static ra8_err_t internal_validate_rotate_inputs(uint8_t                      ch
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_dotf_dispatch(uint8_t channel)
 {
   if (!internal_channel_in_range(channel)) {

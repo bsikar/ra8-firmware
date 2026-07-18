@@ -419,6 +419,7 @@ static void internal_ra8_mipi_dsi_call_user(ra8_mipi_dsi_event_t event, uint32_t
   }
 }
 
+RA8_ISR_SAFE
 void ra8_mipi_dsi_dispatch_seq0(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
@@ -429,6 +430,7 @@ void ra8_mipi_dsi_dispatch_seq0(void)
   internal_ra8_mipi_dsi_call_user(k_ra8_mipi_dsi_event_seq0, bits);
 }
 
+RA8_ISR_SAFE
 void ra8_mipi_dsi_dispatch_seq1(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
@@ -439,6 +441,7 @@ void ra8_mipi_dsi_dispatch_seq1(void)
   internal_ra8_mipi_dsi_call_user(k_ra8_mipi_dsi_event_seq1, bits);
 }
 
+RA8_ISR_SAFE
 void ra8_mipi_dsi_dispatch_video(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
@@ -456,6 +459,7 @@ void ra8_mipi_dsi_dispatch_video(void)
   internal_ra8_mipi_dsi_call_user(k_ra8_mipi_dsi_event_video, bits);
 }
 
+RA8_ISR_SAFE
 void ra8_mipi_dsi_dispatch_receive(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
@@ -480,6 +484,7 @@ void ra8_mipi_dsi_dispatch_receive(void)
   internal_ra8_mipi_dsi_call_user(k_ra8_mipi_dsi_event_receive, bits);
 }
 
+RA8_ISR_SAFE
 void ra8_mipi_dsi_dispatch_fatal(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
@@ -490,6 +495,7 @@ void ra8_mipi_dsi_dispatch_fatal(void)
   internal_ra8_mipi_dsi_call_user(k_ra8_mipi_dsi_event_fatal, bits);
 }
 
+RA8_ISR_SAFE
 void ra8_mipi_dsi_dispatch_phy(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
@@ -500,6 +506,7 @@ void ra8_mipi_dsi_dispatch_phy(void)
   internal_ra8_mipi_dsi_call_user(k_ra8_mipi_dsi_event_phy, bits);
 }
 
+RA8_ISR_SAFE
 void ra8_mipi_dsi_dispatch(void)
 {
   /* HUM Ch 65.2 "ISR : Interrupt Status Register", p 3840 */

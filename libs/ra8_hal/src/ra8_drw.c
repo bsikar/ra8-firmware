@@ -426,6 +426,7 @@ void internal_program_rect_limiters(const ra8_drw_rect_t* rect)
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_drw_dispatch(void)
 {
   /* HUM Ch 62.2.5 "STATUS: Status Control Register", p 3695 */

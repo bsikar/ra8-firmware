@@ -224,6 +224,7 @@ ra8_err_t ra8_mipi_csi_attach_short_packet_handler(ra8_mipi_csi_short_event_fn_t
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_mipi_csi_dispatch(void)
 {
   /* HUM Ch 66.3.12 "RXST : Receive Status Register" p 3944 */
@@ -239,6 +240,7 @@ void ra8_mipi_csi_dispatch(void)
   }
 }
 
+RA8_ISR_SAFE
 void ra8_mipi_csi_dispatch_dl(void)
 {
   /* HUM Ch 66.3.9 "MIST : Module Interrupt Status" p 3941 */
@@ -267,6 +269,7 @@ void ra8_mipi_csi_dispatch_dl(void)
   }
 }
 
+RA8_ISR_SAFE
 void ra8_mipi_csi_dispatch_vc(void)
 {
   /* HUM Ch 66.3.9 "MIST : Module Interrupt Status" p 3941 */
@@ -323,6 +326,7 @@ void ra8_mipi_csi_dispatch_vc(void)
   }
 }
 
+RA8_ISR_SAFE
 void ra8_mipi_csi_dispatch_pm(void)
 {
   /* HUM Ch 66.3.21 "PMST : Power Management Status" p 3954 */
@@ -338,6 +342,7 @@ void ra8_mipi_csi_dispatch_pm(void)
   }
 }
 
+RA8_ISR_SAFE
 void ra8_mipi_csi_dispatch_short_packet(void)
 {
   /* HUM Ch 66.3.25 "GSST : Generic Short Packet Status" p 3957 */

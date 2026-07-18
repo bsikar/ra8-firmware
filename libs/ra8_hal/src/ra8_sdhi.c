@@ -360,6 +360,7 @@ ra8_err_t ra8_sdhi_attach_handler(ra8_sdhi_event_fn_t fn, void* ctx)
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_sdhi_dispatch(uint8_t instance)
 {
   volatile r_sdhi_regs_t* reg = ra8_sdhi(instance);

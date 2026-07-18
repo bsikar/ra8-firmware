@@ -488,6 +488,7 @@ ra8_err_t ra8_xspi_attach_handler(uint8_t instance, ra8_xspi_event_fn_t fn, void
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_xspi_dispatch(uint8_t instance)
 {
   if (instance >= k_ra8_xspi_instance_count) {

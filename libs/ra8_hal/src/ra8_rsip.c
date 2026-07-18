@@ -339,6 +339,7 @@ ra8_err_t ra8_rsip_attach_handler(ra8_rsip_event_fn_t fn, void* ctx)
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_rsip_dispatch(void)
 {
   /* HUM Ch 52.1 "Overview" p 3302 */

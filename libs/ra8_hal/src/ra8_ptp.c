@@ -316,6 +316,7 @@ ra8_err_t ra8_ptp_get_offset(int32_t* offset_ns)
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_ptp_dispatch_message(ra8_ptp_msg_type_t type, uint64_t sec, uint32_t nsec)
 {
   const ra8_ptp_msg_fn_t fn  = s_msg_fn;

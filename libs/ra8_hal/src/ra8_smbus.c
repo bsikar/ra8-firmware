@@ -468,6 +468,7 @@ ra8_err_t ra8_smbus_alert_register_callback(ra8_smbus_alert_fn_t fn, void* ctx)
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 ra8_err_t ra8_smbus_alert_dispatch(void)
 {
   if (!s_state.initialized) {

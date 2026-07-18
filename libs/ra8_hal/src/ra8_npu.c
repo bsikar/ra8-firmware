@@ -404,6 +404,7 @@ ra8_err_t ra8_npu_irq_arm(void)
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_npu_irq_handler(void* ctx)
 {
   (void)ctx;

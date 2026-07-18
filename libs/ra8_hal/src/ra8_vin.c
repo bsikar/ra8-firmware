@@ -846,6 +846,7 @@ internal_yc_offsets(uint8_t channel, ra8_vin_off_t* off1, ra8_vin_off_t* off2, r
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_vin_dispatch(void)
 {
   /* HUM Ch 67.2.16 "INTS: Interrupt Status Register" p 3989 */
