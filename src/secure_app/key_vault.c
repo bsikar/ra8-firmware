@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_secure.h"
@@ -200,7 +201,7 @@ static const uint32_t k_sha256_h0[8] = {
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
-static uint32_t internal_rotr(uint32_t x, uint32_t n)
+RA8_INTERNAL static uint32_t internal_rotr(uint32_t x, uint32_t n)
 {
   return (x >> n) | (x << (32U - n));
 }
@@ -232,7 +233,7 @@ static uint32_t internal_rotr(uint32_t x, uint32_t n)
  * @note Pure compute helper; safe from any context.
  * @since 0.1.0
  */
-static void internal_sha256_build_block(const uint8_t* in32, uint8_t* block)
+RA8_INTERNAL static void internal_sha256_build_block(const uint8_t* in32, uint8_t* block)
 {
   /* Build the 64-byte block: 32 input bytes, 0x80, zeros, then
    * the 64-bit length in bits at the end (SHA-256 uses BIG-endian
@@ -275,7 +276,7 @@ static void internal_sha256_build_block(const uint8_t* in32, uint8_t* block)
  * @note Pure compute helper; safe from any context.
  * @since 0.1.0
  */
-static void internal_sha256_schedule(const uint8_t* block, uint32_t* w)
+RA8_INTERNAL static void internal_sha256_schedule(const uint8_t* block, uint32_t* w)
 {
   for (uint32_t i = 0U; i < 16U; ++i) {
     w[i] = ((uint32_t)block[(i * 4U) + 0U] << k_sha256_byte_shift) |
@@ -315,7 +316,7 @@ static void internal_sha256_schedule(const uint8_t* block, uint32_t* w)
  * @note Pure compute helper; safe from any context.
  * @since 0.1.0
  */
-static void internal_sha256_compress(const uint32_t* w, uint8_t* out32)
+RA8_INTERNAL static void internal_sha256_compress(const uint32_t* w, uint8_t* out32)
 {
   uint32_t a = k_sha256_h0[k_sha256_st_a];
   uint32_t b = k_sha256_h0[k_sha256_st_b];
@@ -385,7 +386,7 @@ static void internal_sha256_compress(const uint32_t* w, uint8_t* out32)
  * @note Pure compute function; safe from any context.
  * @since 0.1.0
  */
-static void internal_sha256_32(const uint8_t* in32, uint8_t* out32)
+RA8_INTERNAL static void internal_sha256_32(const uint8_t* in32, uint8_t* out32)
 {
   uint8_t  block[k_sha256_block_bytes];
   uint32_t w[k_sha256_words];
