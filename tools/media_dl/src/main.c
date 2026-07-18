@@ -26,6 +26,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "ra8_attributes.h"
 #include "mdl_config.h"
 #include "mdl_export.h"
 #include "mdl_extract.h"
@@ -105,7 +106,7 @@ static mdl_url_list_t s_images;
 static char s_rowtmp[k_mdl_url_max];
 
 /** @brief Pick a file extension from a URL, defaulting to "jpg". */
-static const char* ext_of(const char* url)
+RA8_INTERNAL static const char* ext_of(const char* url)
 {
   const char* slash = strrchr(url, '/');
   const char* seg   = (slash == nullptr) ? url : slash + 1;
@@ -132,7 +133,7 @@ static const char* ext_of(const char* url)
 }
 
 /** @brief Last non-empty path segment of a URL, sanitised, into `out`. */
-static void last_segment(const char* url, char* out, size_t cap)
+RA8_INTERNAL static void last_segment(const char* url, char* out, size_t cap)
 {
   const char* q   = strpbrk(url, "?#");
   size_t      end = (q == nullptr) ? strlen(url) : (size_t)(q - url);
@@ -158,7 +159,7 @@ static void last_segment(const char* url, char* out, size_t cap)
 }
 
 /** @brief Parse the last run of digits in `url` (0 if none). */
-static long chapter_num(const char* url)
+RA8_INTERNAL static long chapter_num(const char* url)
 {
   const size_t len   = strlen(url);
   size_t       e     = 0U;
@@ -189,7 +190,7 @@ static long chapter_num(const char* url)
 }
 
 /** @brief Swap two rows of a URL list. */
-static void swap_rows(mdl_url_list_t* l, size_t a, size_t b)
+RA8_INTERNAL static void swap_rows(mdl_url_list_t* l, size_t a, size_t b)
 {
   if (a == b) {
     return;
@@ -200,7 +201,7 @@ static void swap_rows(mdl_url_list_t* l, size_t a, size_t b)
 }
 
 /** @brief Reverse a URL list in place. */
-static void reverse_list(mdl_url_list_t* l)
+RA8_INTERNAL static void reverse_list(mdl_url_list_t* l)
 {
   for (size_t i = 0U; i < (l->count / 2U); ++i) {
     swap_rows(l, i, l->count - 1U - i);
@@ -208,7 +209,7 @@ static void reverse_list(mdl_url_list_t* l)
 }
 
 /** @brief Selection-sort a URL list by parsed chapter number, ascending. */
-static void sort_by_chapter_num(mdl_url_list_t* l)
+RA8_INTERNAL static void sort_by_chapter_num(mdl_url_list_t* l)
 {
   for (size_t i = 0U; i + 1U < l->count; ++i) {
     size_t min = i;
@@ -222,7 +223,7 @@ static void sort_by_chapter_num(mdl_url_list_t* l)
 }
 
 /** @brief Apply the configured chapter ordering in place. */
-static void apply_order(mdl_url_list_t* l, mdl_chapter_order_t order)
+RA8_INTERNAL static void apply_order(mdl_url_list_t* l, mdl_chapter_order_t order)
 {
   if (order == k_mdl_order_reverse) {
     reverse_list(l);
@@ -232,7 +233,7 @@ static void apply_order(mdl_url_list_t* l, mdl_chapter_order_t order)
 }
 
 /** @brief Keep only list entries whose URL starts with `prefix`. */
-static void filter_prefix(mdl_url_list_t* l, const char* prefix)
+RA8_INTERNAL static void filter_prefix(mdl_url_list_t* l, const char* prefix)
 {
   const size_t plen = strlen(prefix);
   size_t       w    = 0U;
@@ -255,7 +256,7 @@ static void filter_prefix(mdl_url_list_t* l, const char* prefix)
  *                        chapters (`dest_dir` must already exist).
  * @return Count of images that failed to download.
  */
-static size_t download_chapter(mdl_net_iface_t*  net,
+RA8_INTERNAL static size_t download_chapter(mdl_net_iface_t*  net,
                                const mdl_site_t* site,
                                const char*       series_url,
                                const char*       chapter_url,
@@ -314,7 +315,7 @@ static size_t download_chapter(mdl_net_iface_t*  net,
 }
 
 /** @brief Fetch the series page and build the ordered, filtered chapter list. */
-static ra8_err_t prepare_chapters(mdl_net_iface_t*  net,
+RA8_INTERNAL static ra8_err_t prepare_chapters(mdl_net_iface_t*  net,
                                   const mdl_site_t* site,
                                   const char*       series_url,
                                   uint32_t          timeout)
@@ -341,7 +342,7 @@ static ra8_err_t prepare_chapters(mdl_net_iface_t*  net,
 }
 
 /** @brief Package one downloaded chapter into `format`; 0 ok, 1 on failure. */
-static size_t export_one(mdl_format_t format, const char* series_dir, const char* chapter_url)
+RA8_INTERNAL static size_t export_one(mdl_format_t format, const char* series_dir, const char* chapter_url)
 {
   char chap[k_chap_name_bytes];
   last_segment(chapter_url, chap, sizeof(chap));
@@ -371,7 +372,7 @@ static size_t export_one(mdl_format_t format, const char* series_dir, const char
  * @param[out] hi    Receives the highest chapter number in the slice.
  * @since 0.1.0
  */
-static void chapter_range(size_t start, size_t last, long* lo, long* hi)
+RA8_INTERNAL static void chapter_range(size_t start, size_t last, long* lo, long* hi)
 {
   *lo = chapter_num(s_chapters.urls[start]);
   *hi = *lo;
@@ -394,7 +395,7 @@ static void chapter_range(size_t start, size_t last, long* lo, long* hi)
  * @return 0 on success, 1 when the export failed.
  * @since 0.1.0
  */
-static size_t export_combined(mdl_format_t format,
+RA8_INTERNAL static size_t export_combined(mdl_format_t format,
                               const char*  series_dir,
                               const char*  dir,
                               const char*  slug,
@@ -423,7 +424,7 @@ static size_t export_combined(mdl_format_t format,
  * chapter-number range). `--separate` (combine == false), or a `loose` format
  * that has no archive, falls back to one folder (and one archive) per chapter.
  */
-static size_t download_chapters(mdl_net_iface_t*  net,
+RA8_INTERNAL static size_t download_chapters(mdl_net_iface_t*  net,
                                 const mdl_site_t* site,
                                 const char*       series_url,
                                 const char*       series_dir,
@@ -493,7 +494,7 @@ static size_t download_chapters(mdl_net_iface_t*  net,
 }
 
 /** @brief series mode: config + series URL -> download N chapters. */
-static int run_series(const char*  cfg_path,
+RA8_INTERNAL static int run_series(const char*  cfg_path,
                       const char*  series_url,
                       const char*  out_dir,
                       mdl_format_t format,
@@ -560,7 +561,7 @@ static int run_series(const char*  cfg_path,
 }
 
 /** @brief page mode: fetch one URL, download its <img> URLs (debug path). */
-static int run_page(const char* url,
+RA8_INTERNAL static int run_page(const char* url,
                     const char* out_dir,
                     const char* attr,
                     uint32_t    max_imgs,
@@ -608,7 +609,7 @@ static int run_page(const char* url,
 }
 
 /** @brief Print usage to stderr. */
-static void usage(const char* a0)
+RA8_INTERNAL static void usage(const char* a0)
 {
   (void)fprintf(stderr,
                 "usage:\n"
@@ -646,7 +647,7 @@ typedef struct {
 } mdl_args_t;
 
 /** @brief If argv[*i] == `flag`, store its value in *dst and advance `*i`. */
-static bool take_opt(char** argv, int argc, int* i, const char* flag, const char** dst)
+RA8_INTERNAL static bool take_opt(char** argv, int argc, int* i, const char* flag, const char** dst)
 {
   if ((argv[*i] == nullptr) || (strcmp(argv[*i], flag) != 0)) {
     return false;
@@ -659,7 +660,7 @@ static bool take_opt(char** argv, int argc, int* i, const char* flag, const char
 }
 
 /** @brief Parse argv into `a`; numeric fields stay as strings for main. */
-static void parse_args(int argc, char** argv, mdl_args_t* a)
+RA8_INTERNAL static void parse_args(int argc, char** argv, mdl_args_t* a)
 {
   const struct {
     const char*  flag;
@@ -698,13 +699,13 @@ static void parse_args(int argc, char** argv, mdl_args_t* a)
 }
 
 /** @brief Convert a decimal string, or `dflt` when NULL. */
-static unsigned long to_ul(const char* s, unsigned long dflt)
+RA8_INTERNAL static unsigned long to_ul(const char* s, unsigned long dflt)
 {
   return (s == nullptr) ? dflt : strtoul(s, nullptr, k_dec_base);
 }
 
 /** @brief pack mode: package an existing folder of images into `format`. */
-static int run_pack(const char* dir, mdl_format_t format)
+RA8_INTERNAL static int run_pack(const char* dir, mdl_format_t format)
 {
   if ((format == k_mdl_fmt_loose) || (format == k_mdl_fmt_invalid)) {
     (void)fprintf(stderr,

@@ -6,6 +6,7 @@
  * @file mdl_extract.c
  * @brief v1 `<img>`/`<a>` tag scanner + relative-URL resolver.
  */
+#include "ra8_attributes.h"
 #include "mdl_extract.h"
 
 #include <stdio.h>
@@ -17,26 +18,26 @@ typedef enum : uint16_t {
 } mdl_scan_limits_t;
 
 /** @brief ASCII lower-case (locale-independent). */
-static char lc(char c)
+RA8_INTERNAL static char lc(char c)
 {
   return ((c >= 'A') && (c <= 'Z')) ? (char)(c + ('a' - 'A')) : c;
 }
 
 /** @brief True if `c` ends an HTML attribute token on its left side. */
-static bool is_attr_boundary(char c)
+RA8_INTERNAL static bool is_attr_boundary(char c)
 {
   return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '"') || (c == '\'') ||
          (c == '<');
 }
 
 /** @brief True if `c` terminates a tag name (so "<a" != "<article"). */
-static bool is_name_end(char c)
+RA8_INTERNAL static bool is_name_end(char c)
 {
   return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '>') || (c == '/');
 }
 
 /** @brief Case-insensitive search for `needle` in [hay, hay+hay_len). */
-static const char* find_ci(const char* hay, size_t hay_len, const char* needle)
+RA8_INTERNAL static const char* find_ci(const char* hay, size_t hay_len, const char* needle)
 {
   const size_t nlen = strlen(needle);
   if ((nlen == 0U) || (hay_len < nlen)) {
@@ -55,7 +56,7 @@ static const char* find_ci(const char* hay, size_t hay_len, const char* needle)
 }
 
 /** @brief Advance past spaces/tabs in [k, tag_len). */
-static size_t skip_ws(const char* tag, size_t tag_len, size_t k)
+RA8_INTERNAL static size_t skip_ws(const char* tag, size_t tag_len, size_t k)
 {
   while ((k < tag_len) && ((tag[k] == ' ') || (tag[k] == '\t'))) {
     ++k;
@@ -67,7 +68,7 @@ static size_t skip_ws(const char* tag, size_t tag_len, size_t k)
  * @brief From position `k` just after an attr name, read `="value"`.
  * @return true and fills `out` (NUL-terminated) if a quoted value was parsed.
  */
-static bool read_eq_value(const char* tag, size_t tag_len, size_t k, char* out, size_t out_cap)
+RA8_INTERNAL static bool read_eq_value(const char* tag, size_t tag_len, size_t k, char* out, size_t out_cap)
 {
   k = skip_ws(tag, tag_len, k);
   if (!((k < tag_len) && (tag[k] == '='))) {
@@ -96,7 +97,7 @@ static bool read_eq_value(const char* tag, size_t tag_len, size_t k, char* out, 
  * @brief Read the value of `attr` inside one tag [tag, tag+tag_len).
  * @return true and fills `out` (NUL-terminated) if a quoted value was found.
  */
-static bool
+RA8_INTERNAL static bool
 find_attr_value(const char* tag, size_t tag_len, const char* attr, char* out, size_t out_cap)
 {
   const size_t alen = strlen(attr);
@@ -117,7 +118,7 @@ find_attr_value(const char* tag, size_t tag_len, const char* attr, char* out, si
 }
 
 /** @brief Copy `src` into `out` if it fits (incl. NUL). */
-static bool copy_fits(char* out, size_t out_cap, const char* src)
+RA8_INTERNAL static bool copy_fits(char* out, size_t out_cap, const char* src)
 {
   const size_t n = strlen(src);
   if (n + 1U > out_cap) {
@@ -128,7 +129,7 @@ static bool copy_fits(char* out, size_t out_cap, const char* src)
 }
 
 /** @brief Extract "scheme://host" from `base` into `auth` (NUL-terminated). */
-static bool authority_of(const char* base, char* auth, size_t cap)
+RA8_INTERNAL static bool authority_of(const char* base, char* auth, size_t cap)
 {
   const char* sep = strstr(base, "://");
   if (sep == nullptr) {
@@ -146,7 +147,7 @@ static bool authority_of(const char* base, char* auth, size_t cap)
 }
 
 /** @brief Resolve a scheme-relative ("//host/...") URL against `base`. */
-static bool resolve_scheme_rel(const char* base, const char* raw, char* out, size_t out_cap)
+RA8_INTERNAL static bool resolve_scheme_rel(const char* base, const char* raw, char* out, size_t out_cap)
 {
   const char*  colon = strstr(base, "://");
   const size_t slen  = (size_t)(colon - base);
@@ -160,7 +161,7 @@ static bool resolve_scheme_rel(const char* base, const char* raw, char* out, siz
 }
 
 /** @brief Resolve a root-relative ("/path") URL against authority `auth`. */
-static bool resolve_root_rel(const char* auth, const char* raw, char* out, size_t out_cap)
+RA8_INTERNAL static bool resolve_root_rel(const char* auth, const char* raw, char* out, size_t out_cap)
 {
   if ((strlen(auth) + strlen(raw) + 1U) > out_cap) {
     return false;
@@ -170,7 +171,7 @@ static bool resolve_root_rel(const char* auth, const char* raw, char* out, size_
 }
 
 /** @brief Resolve a path-relative URL against `base` (authority `auth`). */
-static bool
+RA8_INTERNAL static bool
 resolve_path_rel(const char* base, const char* auth, const char* raw, char* out, size_t out_cap)
 {
   const char*  q     = strpbrk(base, "?#");
@@ -197,7 +198,7 @@ resolve_path_rel(const char* base, const char* auth, const char* raw, char* out,
 }
 
 /** @brief Resolve `raw` (possibly relative) against `base` into `out`. */
-static bool resolve_url(const char* base, const char* raw, char* out, size_t out_cap)
+RA8_INTERNAL static bool resolve_url(const char* base, const char* raw, char* out, size_t out_cap)
 {
   while ((*raw == ' ') || (*raw == '\t') || (*raw == '\n') || (*raw == '\r')) {
     ++raw;
@@ -224,7 +225,7 @@ static bool resolve_url(const char* base, const char* raw, char* out, size_t out
 }
 
 /** @brief True if `url` is already present in `list`. */
-static bool already_have(const mdl_url_list_t* list, const char* url)
+RA8_INTERNAL static bool already_have(const mdl_url_list_t* list, const char* url)
 {
   for (size_t i = 0U; i < list->count; ++i) {
     if (strcmp(list->urls[i], url) == 0) {
@@ -235,7 +236,7 @@ static bool already_have(const mdl_url_list_t* list, const char* url)
 }
 
 /** @brief True if `needle` is empty/NULL or a substring of `url`. */
-static bool contains_ok(const char* url, const char* needle)
+RA8_INTERNAL static bool contains_ok(const char* url, const char* needle)
 {
   if ((needle == nullptr) || (needle[0] == '\0')) {
     return true;
@@ -248,7 +249,7 @@ static bool contains_ok(const char* url, const char* needle)
  * @retval k_ra8_ok      Appended, filtered out, or attr absent (all non-fatal).
  * @retval k_ra8_err_no_mem  List already at ::k_mdl_max_urls.
  */
-static ra8_err_t emit_tag_url(const char*     base_url,
+RA8_INTERNAL static ra8_err_t emit_tag_url(const char*     base_url,
                               const char*     attr1,
                               const char*     attr2,
                               const char*     keep,
@@ -280,7 +281,7 @@ static ra8_err_t emit_tag_url(const char*     base_url,
 /**
  * @brief Shared scanner for `<img>`/`<a>`: emit each tag's resolved URL.
  */
-static ra8_err_t scan_tags(const char*     html,
+RA8_INTERNAL static ra8_err_t scan_tags(const char*     html,
                            size_t          html_len,
                            const char*     base_url,
                            const char*     tagname,
