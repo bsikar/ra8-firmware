@@ -575,6 +575,56 @@ The `RA8_*` annotation macros in `libs/ra8_core/inc/ra8_attributes.h` record arc
 | `RA8_REVIEWED_BY(name)` | Safety-critical reviewer sign-off (rolled into SVR). |
 | `RA8_REGISTER_BANK(peripheral)` | Group MMIO accessors by parent peripheral. |
 
+### Which linkage annotation to use
+
+Pick by **linkage and reachability**, not by taste. Every non-public function
+in a first-party library gets exactly one of these:
+
+| The function is... | Use | Also required |
+|---|---|---|
+| `static`, used in one TU | `RA8_INTERNAL` | nothing |
+| non-`static`, shared across TUs **inside one library** | `RA8_PRIV` | declare it in that library's `*_internal.h` |
+| non-`static`, reachable only from `tests/` | `RA8_TEST_HELPER` | `@par MC/DC:` note on the declaration |
+| declared in the library's public `inc/` header | *(none)* | it is public API |
+
+This is a **tree-wide** expectation, not an opt-in. If a library has zero
+`RA8_INTERNAL` / `RA8_PRIV` in it, that is a bug in the library, not a style
+preference -- it means its helpers were never classified. `RA8_PRIV` in
+particular is the marker that a symbol is deliberately non-`static` for
+cross-TU use *within* one library; production code outside that library must
+never call it.
+
+### Mechanics that bite
+
+- **Include it.** A TU using any annotation must `#include "ra8_attributes.h"`.
+  It sorts alphabetically **first** in the project include group (before
+  `ra8_check.h`); clang-format enforces that ordering and the gate fails
+  otherwise.
+- **Position is strict.** These expand to C23 attributes, which must precede
+  the declaration specifiers -- put the annotation before the return type, not
+  after it.
+- **Never redefine an annotation macro in another header.** Two definitions of
+  the same macro are resolved by whichever header the TU reaches last, which
+  makes the winner depend on include order and produces **no diagnostic**.
+  `RA8_NSC_VENEER` is the cautionary case: it is defined in
+  `libs/ra8_nsc/inc/ra8_nsc_veneer.h` carrying **both** the annotation and
+  `cmse_nonsecure_entry`, and a second annotation-only definition once silently
+  clobbered the CMSE attribute -- a broken TrustZone secure gateway that
+  compiled clean. That header now includes `ra8_attributes.h` and `#undef`s
+  before redefining. If you need a specialized form of an annotation, follow
+  that pattern; do not add a competing `#define`.
+
+### Enforcement
+
+- `scripts/utils/check_annotations.py` -- checks annotations against the real
+  libclang call graph. It is only as good as its parse: if headers fail to
+  resolve, it silently sees a fraction of the call sites and the rules go
+  toothless. Treat a sharp drop in resolved call sites as a gate failure, not
+  as good news.
+- `scripts/utils/check_nsc_cmse.sh` -- compiles every `libs/ra8_nsc` TU under
+  `-mcmse` with `-Wall -Wextra -Werror`. The warning flags are load-bearing:
+  a bare `-fsyntax-only` run is what let the veneer clash above go unnoticed.
+
 ---
 
 ## External HUM Citations Policy
