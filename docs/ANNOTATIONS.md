@@ -249,6 +249,22 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
   Every caller of `ra8_dma_acquire_channel` must, on success, call
   `ra8_dma_release_channel` before any `return`.
 
+### 17b. `RA8_RELEASES_RESOURCE(kind)`
+
+- **Purpose:** the release half of the `RA8_OWNS_RESOURCE(kind)` pair.
+- **Enforcement:** the acquire-side rule looks for a call to a function
+  carrying this annotation with a byte-identical `kind`.
+- **Example:**
+
+  ```c
+  RA8_RELEASES_RESOURCE("dma_channel")
+  ra8_err_t ra8_dma_release_channel(ra8_dma_channel_t ch);
+  ```
+
+  This macro was documented by rule 17 but never defined, so the acquire
+  side had no counterpart to find and could only ever report that nothing
+  releases anything.
+
 ### 18. `RA8_REVIEWED_BY(name)`
 
 - **Purpose:** safety-critical reviewer sign-off.
@@ -291,16 +307,49 @@ The static enforcement framework lives at
 [`scripts/utils/check_annotations.py`](../scripts/utils/check_annotations.py).
 It walks the AST of every C/C++ TU under `libs/`, `src/`, `examples/`,
 `tests/`, and `port/` via the Python `libclang` bindings and applies
-the 19 rules documented above. Excluded subtrees: `build/`, `_deps/`,
-`third_party/`, and the various `build-*/` host-test directories.
+the rules documented above, plus the linkage rule below. Excluded
+subtrees: `build/`, `_deps/`, `third_party/`, and the various `build-*/`
+host-test directories.
+
+### The linkage rule (`ra8_linkage`)
+
+Every non-`static` function definition in first-party code has to say why
+it has external linkage. It passes when any of these holds:
+
+- it carries `RA8_PRIV`, `RA8_INTERNAL` or `RA8_TEST_HELPER`;
+- a header publishes it -- a library's public `inc/` header, an
+  application's local header, a mock's header, or the vendored SOUP
+  header whose interface it implements. An `*_internal.h` prototype does
+  **not** count: that header exists to say "library-private", which is
+  exactly what `RA8_PRIV` marks;
+- it is a hardware vector-table entry. The CPU reaches these through VTOR
+  with no C caller, so nothing can publish them. The category is derived
+  structurally -- a file-scope array of `const` function pointers, or a
+  `const` array the linker places in a `*vectors` section -- so a handler
+  that is unwired from its table stops being exempt the moment it is;
+- it is `main`, the ISO C entry point.
+
+### Two self-checks that run before any rule
+
+Both of these failure modes look exactly like success, so each one fails
+the gate on its own terms:
+
+- **Rule keys.** Every key the script dispatches on is cross-checked
+  against the annotation strings `ra8_attributes.h` actually emits. A
+  rule keyed on a spelling no macro produces matches nothing and reports
+  zero violations forever -- four rules were in that state at once.
+- **Parse integrity.** An unresolved include or a drop in the fraction of
+  resolved call sites below `MIN_CALL_RESOLUTION` is fatal. When the
+  parse comes apart the call-graph rules stop policing anything and the
+  gate reports *fewer* violations, which reads as an improvement.
 
 ### Running it
 
 ```sh
-# Warn-only (default; mirrors cite_check / world-tag pattern)
+# Report violations (exits non-zero, same as --check)
 python3 scripts/utils/check_annotations.py
 
-# CI gate -- exits non-zero on any non-warn-only violation
+# CI gate -- quiet, exits non-zero on any non-informational violation
 python3 scripts/utils/check_annotations.py --check
 
 # Or via the convenience target
@@ -321,42 +370,54 @@ python3 -m pip install --user --break-system-packages libclang
 
 The wheel is `libclang-18.x` on macOS arm64 / Linux x86_64.
 
-### mode
+### Mode
 
-The script header sets `WARN_ONLY_MODE = True`. While the flag is
-on, the pre-commit hook and the bare CLI never exit non-zero; only
-explicit `--check` invocations are fatal. Promotion to strict
-mirrors the `cite_check` / `check_world_tags` schedule documented
-in `CLAUDE.md`.
+There is no warn-only mode. Every rule is fatal, and the three
+informational entries (`ra8_latency_budget_ns`, `ra8_reviewed_by`,
+`ra8_register_bank`) record a value rather than assert a property, so
+they print but never fail. A gate that reports a known gap without
+failing is a gate that hides the gap.
 
 ### Pre-commit wiring
 
 The hook at [`scripts/git/pre-commit`](../scripts/git/pre-commit)
 invokes the script after the existing static gates (`cite_check`,
-`check_world_tags`, etc.) and before the stack-usage aggregator. The
-hook respects the warn-only flag, so flipping the flag is the single
-switch that turns the gate strict project-wide.
+`check_world_tags`, etc.) and before the stack-usage aggregator.
 
 ### Rule-by-rule notes
 
-| # | Rule                              | Implementation kind                    |
-|---|-----------------------------------|----------------------------------------|
-| 1 | `ra8_test_helper`                  | caller path must contain `/tests/`     |
-| 2 | `ra8_internal`                     | linkage check on definition            |
-| 3 | `ra8_priv`                         | `libs/<module>/` path comparison       |
-| 4 | `ra8_di_slot:<role>`               | address-of vs direct-call heuristic    |
-| 5 | `ra8_nsc_veneer`                   | path + body-call + section attr        |
-| 6 | `ra8_hw_mmio`                      | inline + return-type volatile check    |
-| 7 | `ra8_p10_rule3_exception`          | global malloc/free sweep               |
-| 8 | `ra8_mcdc_deactivated:<reason>`    | reason-string regex                    |
-| 9 | `ra8_stack_max:<bytes>`            | reads `examples/*/build*/*.su`         |
-| 10| `ra8_isr_safe`                     | call-graph reachability from handlers  |
-| 11| `ra8_expects_lock:<name>`          | preceding `RA8_TAKE_LOCK("<name>")`     |
-| 12| `ra8_host_friendly`                | rejects calls into MMIO accessors      |
-| 13| `ra8_latency_max_ns:<n>`           | warn-only TODO until WCET pass         |
-| 14| `ra8_no_recursion`                 | transitive call-closure walk           |
-| 15| `ra8_bounded_loop:<symbol>`        | textual condition-expression check     |
-| 16| `ra8_validates:<n>`                | counts `RA8_CHECK_*` calls in body      |
-| 17| `ra8_owns_resource:<kind>`         | matching `ra8_releases_resource:<kind>` |
-| 18| `ra8_reviewed_by:<name>`           | informational rollup only              |
-| 19| `ra8_register_bank:<periph>`       | informational only (doc-gen feed)      |
+| #  | Rule                            | Implementation kind                     |
+|----|---------------------------------|-----------------------------------------|
+| 1  | `ra8_test_helper`               | caller path must contain `/tests/`      |
+| 2  | `ra8_internal`                  | linkage check on definition             |
+| 3  | `ra8_priv`                      | `libs/<module>/` path comparison        |
+| 4  | `ra8_di_slot:<role>`            | address-of vs direct-call heuristic     |
+| 5  | `ra8_nsc_veneer`                | path + range-check scan + section attr  |
+| 6  | `ra8_hw_register_access`        | inline + return-type volatile check     |
+| 7  | `ra8_nasa_rule_3_ok`            | global malloc/free sweep                |
+| 8  | `ra8_mcdc_deactivated:<reason>` | reason-string regex                     |
+| 9  | `ra8_max_stack:<bytes>`         | reads `examples/*/build*/*.su`          |
+| 10 | `ra8_isr_safe`                  | marker; no static check yet (see below) |
+| 11 | `ra8_expects_lock:<name>`       | preceding `RA8_TAKE_LOCK("<name>")`     |
+| 12 | `ra8_host_friendly`             | rejects calls into MMIO accessors       |
+| 13 | `ra8_latency_budget_ns:<n>`     | informational until a WCET pass exists  |
+| 14 | `ra8_no_recursion`              | transitive call-closure walk            |
+| 15 | `ra8_bounded_loop:<symbol>`     | textual condition-expression check      |
+| 16 | `ra8_validates:<n>`             | counts `RA8_CHECK_*` calls in body      |
+| 17 | `ra8_owns_resource:<kind>`      | matching `ra8_releases_resource:<kind>` |
+| 18 | `ra8_reviewed_by:<name>`        | informational rollup only               |
+| 19 | `ra8_register_bank:<periph>`    | informational only (doc-gen feed)       |
+| 20 | `ra8_linkage`                   | non-static definition must be justified |
+
+Rules 6, 7, 9 and 13 above are spelled as the macros actually emit them.
+Each was once keyed on a different string (`ra8_hw_mmio`,
+`ra8_p10_rule3_exception`, `ra8_stack_max`, `ra8_latency_max_ns`), so
+each matched nothing while reporting success. `check_rule_keys()` now
+proves the table and the header agree on every run.
+
+Rule 10 is a marker only. The transitive ISR-chain walk it used to feed
+was keyed on `ra8_isr_handler`, an annotation no macro has ever emitted,
+so the walk never ran on a single handler. The dead walk is gone rather
+than left looking enforced; deriving the handler set from the vector
+tables and requiring `RA8_ISR_SAFE` across each closure is a campaign of
+its own, tracked separately.
