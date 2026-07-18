@@ -35,6 +35,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_mipi_dsi.h"
 #include "ra8_mipi_dsi_regs.h"
@@ -165,5 +166,6 @@ extern uint16_t s_mipi_dsi_pending_rx_len;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-ra8_err_t
-ra8_mipi_dsi_internal_wait_eq(volatile const uint32_t* reg, uint32_t mask, uint32_t expect);
+RA8_PRIV ra8_err_t ra8_mipi_dsi_internal_wait_eq(volatile const uint32_t* reg,
+                                                 uint32_t                 mask,
+                                                 uint32_t                 expect);

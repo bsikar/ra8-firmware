@@ -15,6 +15,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 
 /**
@@ -48,7 +49,7 @@ extern "C" {
  *
  * @since 0.1.0
  */
-bool ra8_rmac_phy_internal_speed_ok(ra8_err_t err, uint16_t reg_value, uint16_t mask);
+RA8_PRIV bool ra8_rmac_phy_internal_speed_ok(ra8_err_t err, uint16_t reg_value, uint16_t mask);
 
 #ifdef __cplusplus
 }

@@ -39,6 +39,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_rsip.h"
 
 /**
@@ -63,7 +64,7 @@ extern "C" {
  * @note Internal helper; not exposed in the public header.
  * @since 0.1.0
  */
-void internal_asym_push(ra8_rsip_off_t off, const uint8_t* buf, uint32_t len);
+RA8_PRIV void internal_asym_push(ra8_rsip_off_t off, const uint8_t* buf, uint32_t len);
 
 /**
  * @brief Pull a byte buffer back through an asymmetric output lane.
@@ -88,7 +89,7 @@ void internal_asym_push(ra8_rsip_off_t off, const uint8_t* buf, uint32_t len);
  * @note Internal helper; not exposed in the public header.
  * @since 0.1.0
  */
-void internal_asym_pull(ra8_rsip_off_t off, uint8_t* buf, uint32_t len);
+RA8_PRIV void internal_asym_pull(ra8_rsip_off_t off, uint8_t* buf, uint32_t len);
 
 /**
  * @brief Zero-fill the unused tail of a key-handle body buffer.
@@ -112,7 +113,7 @@ void internal_asym_pull(ra8_rsip_off_t off, uint8_t* buf, uint32_t len);
  * @note Internal helper; not exposed in the public header.
  * @since 0.1.0
  */
-void internal_zero_handle_tail(ra8_rsip_key_handle_t* handle, uint32_t words);
+RA8_PRIV void internal_zero_handle_tail(ra8_rsip_key_handle_t* handle, uint32_t words);
 
 #ifdef __cplusplus
 }
