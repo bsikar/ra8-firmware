@@ -587,10 +587,10 @@ for app in "${apps[@]}"; do
       dc_want="$(dualcore_assert "$app")"
       dout="$(BOARD_SIM_STOP_ON="$dc_stop" BOARD_SIM_WALL_S=120 \
         "$sim" "$elf" 2>&1 || true)"
-      if echo "$dout" | grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT"; then
+      if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$dout"; then
         echo "FAULT (during dual-core run)"
         fail=1
-      elif echo "$dout" | grep -qF "$dc_want"; then
+      elif grep -qF "$dc_want" <<<"$dout"; then
         echo "OK (dual-core ITM verdict: '$dc_want')"
       else
         echo "DUAL-CORE FAIL (no ITM verdict '$dc_want' -- M33 did not run?)"
@@ -614,10 +614,10 @@ for app in "${apps[@]}"; do
       fi
       iout="$(BOARD_SIM_STOP_ON="$want" BOARD_SIM_MAX_CHUNKS=4000000 BOARD_SIM_WALL_S=300 \
         "$sim" "$elf" --sd "$book_sd_image" 2>&1 || true)"
-      if echo "$iout" | grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT"; then
+      if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$iout"; then
         echo "FAULT (during EPUB import)"
         fail=1
-      elif echo "$iout" | grep -qF "$want"; then
+      elif grep -qF "$want" <<<"$iout"; then
         echo "OK (EPUB import: '$want')"
       else
         echo "IMPORT FAIL (did not reach the PASS banner)"
@@ -635,10 +635,10 @@ for app in "${apps[@]}"; do
   case " $i3c_target_apps " in
     *" $app "*)
       tout="$(BOARD_SIM_MAX_CHUNKS=20000 BOARD_SIM_WALL_S=60 "$sim" "$elf" 2>&1 || true)"
-      if echo "$tout" | grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT"; then
+      if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$tout"; then
         echo "FAULT (during I2C target run)"
         fail=1
-      elif echo "$tout" | grep -qF "peripheral write+read xfer(s) accepted, echo=Y"; then
+      elif grep -qF "peripheral write+read xfer(s) accepted, echo=Y" <<<"$tout"; then
         xfers="$(echo "$tout" | sed -n 's/.*target: addr=0x[0-9A-Fa-f]* \([0-9]*\) peripheral.*/\1/p' | head -1)"
         echo "OK (I2C target: $xfers write+read xfer(s), echo matched)"
       else
@@ -658,10 +658,10 @@ for app in "${apps[@]}"; do
     *" $app "*)
       uout="$(BOARD_SIM_MAX_CHUNKS=8000 BOARD_SIM_USB_STOP=300 BOARD_SIM_WALL_S=300 \
         "$sim" "$elf" 2>&1 || true)"
-      if echo "$uout" | grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT"; then
+      if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$uout"; then
         echo "FAULT (during USB bring-up)"
         fail=1
-      elif echo "$uout" | grep -q "device CONFIGURED"; then
+      elif grep -q "device CONFIGURED" <<<"$uout"; then
         klass="$(echo "$uout" | sed -n 's/.*device CONFIGURED (\(.*\)).*/\1/p' | head -1)"
         echo "OK (USB enumerated -> CONFIGURED, $klass)"
       else
@@ -719,11 +719,11 @@ for app in "${apps[@]}"; do
     *" $app "*)
       hout="$(BOARD_SIM_MAX_CHUNKS=20000 BOARD_SIM_STOP_ON='PASS' BOARD_SIM_WALL_S=300 \
         "$sim" "$elf" 2>&1 || true)"
-      if echo "$hout" | grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT"; then
+      if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$hout"; then
         echo "FAULT (during USB host bring-up)"
         fail=1
-      elif echo "$hout" | grep -qE "USB HOST (KEYBOARD|MSC BROWSE) PASS|ALL FILE OPS PASSED"; then
-        banner="$(echo "$hout" | grep -oE "USB HOST [A-Z ]*PASS|ALL FILE OPS PASSED" | head -1)"
+      elif grep -qE "USB HOST (KEYBOARD|MSC BROWSE) PASS|ALL FILE OPS PASSED" <<<"$hout"; then
+        banner="$(grep -oE "USB HOST [A-Z ]*PASS|ALL FILE OPS PASSED" <<<"$hout" | head -1)"
         echo "OK ($banner)"
       else
         echo "USB HOST FAIL (host did not reach its PASS banner)"
@@ -854,10 +854,10 @@ for app in "${apps[@]}"; do
     *" $app "*)
       want="$(uart_expect "$app")"
       spout="$(BOARD_SIM_STOP_ON="$want" BOARD_SIM_WALL_S=300 "$sim" "$elf" $extra 2>&1 || true)"
-      if echo "$spout" | grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT"; then
+      if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$spout"; then
         echo "FAULT (during deep-idle run)"
         fail=1
-      elif echo "$spout" | grep -qF "$want"; then
+      elif grep -qF "$want" <<<"$spout"; then
         echo "OK (deep-idle self-park, uart: '$want')"
       else
         echo "DEEP-IDLE FAIL (did not reach the '$want' banner)"
@@ -892,7 +892,7 @@ for app in "${apps[@]}"; do
     fi
     grep -qF "$tick_want" <<<"$out" && break
   done
-  if echo "$out" | grep -q "INVALID INSN\|UNMAPPED"; then
+  if grep -q "INVALID INSN\|UNMAPPED" <<<"$out"; then
     echo "FAULT (invalid opcode / unmapped access)"
     fail=1
     continue
@@ -901,12 +901,12 @@ for app in "${apps[@]}"; do
   # is a halt regardless of which symbol it sits in -- board_sim stops on it
   # and prints this line. Catch it directly so a bare assert outside the named
   # *panic_halt / *_halt_loop symbols pc_in_halt_loop() knows about still fails.
-  if echo "$out" | grep -q "executed a BKPT"; then
+  if grep -q "executed a BKPT" <<<"$out"; then
     echo "BKPT HALT ($(echo "$out" | sed -n 's/.*executed a BKPT @ *\(0x[0-9A-Fa-f]*\).*/\1/p' | head -1))"
     fail=1
     continue
   fi
-  if ! echo "$out" | grep -q "EXECUTED to the run budget"; then
+  if ! grep -q "EXECUTED to the run budget" <<<"$out"; then
     echo "DID NOT REACH THE RUN BUDGET"
     fail=1
     continue
@@ -922,7 +922,7 @@ for app in "${apps[@]}"; do
     *" $app "*)
       # The app ran with --button held (see sim_extra_args). gpio_input_demo
       # mirrors SW1 -> LED1, so the injected press must light LED1.
-      if echo "$out" | grep -qE "LED1[^]]*ON"; then
+      if grep -qE "LED1[^]]*ON" <<<"$out"; then
         echo "OK (pc=$pc, --button -> LED1 ON)"
       else
         echo "BUTTON NO-OP (pc=$pc; --button did not light LED1)"
@@ -964,7 +964,19 @@ for app in "${apps[@]}"; do
   # just that it reached the run budget (the #67 "exercise it meaningfully" bar).
   want="$(uart_expect "$app")"
   if [ -n "$want" ]; then
-    if echo "$out" | grep -qF "$want"; then
+    # Match with a here-string, not `echo "$out" | grep -qF`: `grep -q` closes
+    # the pipe on its first match, so under this script's `pipefail` the
+    # upstream `echo` dies with SIGPIPE and fails the whole compound command
+    # even though the banner WAS found -- reporting UART MISMATCH for an app
+    # that passed. The race needs $out to be large enough that echo is still
+    # writing when grep exits, so it fires only under load: dtc_transfer_demo
+    # took dev red this way while the identical binary passed on the runs
+    # either side of it, logging `echo: write error: Broken pipe` one
+    # millisecond before its own "mismatch". A here-string has no pipe to
+    # break. Same fix as the usb_msc_sd and FS-format assertions above; this
+    # generic peripheral path was the one site that still used the pipe, and
+    # it covers every uart_expect app.
+    if grep -qF "$want" <<<"$out"; then
       echo "OK (pc=$pc, uart: '$want')"
     else
       # Hard assertion for every app, including the periodic-tick demos: their
@@ -994,7 +1006,7 @@ case " ${apps[*]} " in
     printf '  %-24s ' "on-screen SW1 click"
     gelf="$(find examples -path '*/gpio_input_demo/build/gpio_input_demo.elf' 2>/dev/null | head -1)"
     bout="$("$sim" "$gelf" --click 1117 442 2>&1 || true)"
-    if echo "$bout" | grep -qE "LED1[^]]*ON" && echo "$bout" | grep -qE "touch clicks  : 0 "; then
+    if grep -qE "LED1[^]]*ON" <<<"$bout" && grep -qE "touch clicks  : 0 " <<<"$bout"; then
       echo "OK (sidebar SW1 -> P009 -> LED1 ON, 0 touches)"
     else
       echo "BUTTON CLICK NO-OP (on-screen SW1 did not light LED1 via GPIO)"
@@ -1011,7 +1023,7 @@ case " ${apps[*]} " in
     if make uart_irq_echo >/tmp/smoke_build_uart_irq_echo.log 2>&1; then
       kelf="$(find examples -path '*/uart_irq_echo/build/uart_irq_echo.elf' 2>/dev/null | head -1)"
       kout="$(BOARD_SIM_IDLE_STOP=6000 "$sim" "$kelf" --keys 'KBDSMOKE\r\n' 2>&1 || true)"
-      if echo "$kout" | grep -qE "\[uart\] SCI8: KBDSMOKE"; then
+      if grep -qE "\[uart\] SCI8: KBDSMOKE" <<<"$kout"; then
         echo "OK (--keys -> board_input -> SCI8 RX -> echo)"
       else
         echo "KEYS NO-OP (--keys did not reach the UART echo)"
@@ -1034,7 +1046,7 @@ case " ${apps[*]} " in
     printf '  %-24s ' "battery nag LOW"
     lout="$(BOARD_SIM_STOP_ON='NAG' BOARD_SIM_WALL_S=20 BOARD_SIM_MAX_CHUNKS=6000 \
       "$sim" "$belf" --battery 15 2>&1 || true)"
-    if echo "$lout" | grep -q "NAG LOW soc=15%"; then
+    if grep -q "NAG LOW soc=15%" <<<"$lout"; then
       echo "OK (--battery 15 -> NAG LOW)"
     else
       echo "NAG FAIL (15% did not raise LOW)"
@@ -1043,7 +1055,7 @@ case " ${apps[*]} " in
     printf '  %-24s ' "battery nag CRITICAL"
     cout="$(BOARD_SIM_STOP_ON='NAG' BOARD_SIM_WALL_S=20 BOARD_SIM_MAX_CHUNKS=6000 \
       "$sim" "$belf" --battery 8 2>&1 || true)"
-    if echo "$cout" | grep -q "NAG CRITICAL soc=8%"; then
+    if grep -q "NAG CRITICAL soc=8%" <<<"$cout"; then
       echo "OK (--battery 8 -> NAG CRITICAL)"
     else
       echo "NAG FAIL (8% did not raise CRITICAL)"
