@@ -28,6 +28,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_tileatlas_internal.h"
 #include "ra8_tileatlas_produce.h"
@@ -89,6 +90,7 @@ ra8_tileatlas_webp_work_bytes(uint16_t max_width, uint16_t max_height, uint32_t 
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_webp_pull_all(ra8_ta_prefix_pull_t* pfx, uint8_t* dst, size_t cap, size_t* out_len)
 {
@@ -131,6 +133,7 @@ priv_webp_pull_all(ra8_ta_prefix_pull_t* pfx, uint8_t* dst, size_t cap, size_t* 
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_webp_feed(ra8_ta_prod_state_t* st, const uint8_t* frame, uint16_t w, uint16_t h)
 {

@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io_compress.h"
@@ -77,6 +78,7 @@ typedef enum : uint16_t {
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t priv_rd_u16(const uint8_t* buf, uint8_t off)
 {
   return (uint16_t)((uint16_t)buf[off + k_ra8_ta_le_b0] |
@@ -97,6 +99,7 @@ static uint16_t priv_rd_u16(const uint8_t* buf, uint8_t off)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_rd_u32(const uint8_t* buf, uint8_t off)
 {
   return (uint32_t)buf[off + k_ra8_ta_le_b0] |
@@ -119,6 +122,7 @@ static uint32_t priv_rd_u32(const uint8_t* buf, uint8_t off)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_ceil_div(uint32_t n, uint32_t d)
 {
   return (n + d - 1U) / d;
@@ -143,6 +147,7 @@ static uint32_t priv_ceil_div(uint32_t n, uint32_t d)
  * @note Not thread-safe (delegates to the backing).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_pread_exact(ra8_tileatlas_pread_fn pread,
                                   void*                  pread_ctx,
                                   uint64_t               off,
@@ -219,6 +224,7 @@ ra8_tileatlas_memstore_pread(void* ctx, uint64_t offset, uint8_t* buf, size_t le
  * @note Thread-safe (pure over its inputs).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_parse_hdr_fields(const uint8_t* hdr, ra8_tileatlas_info_t* info)
 {
   info->width  = priv_rd_u16(hdr, (uint8_t)k_ra8_tileatlas_ofs_width);
@@ -270,6 +276,7 @@ static ra8_err_t priv_parse_hdr_fields(const uint8_t* hdr, ra8_tileatlas_info_t*
  * @note Thread-safe (pure).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_check_reserved(const uint8_t* hdr)
 {
   for (uint8_t i = (uint8_t)k_ra8_tileatlas_ofs_reserved;
@@ -306,6 +313,7 @@ static ra8_err_t priv_check_reserved(const uint8_t* hdr)
  * @note Thread-safe (pure over its inputs).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_check_cross(ra8_tileatlas_info_t* info,
                                   uint32_t              hdr_count,
                                   const uint8_t*        ftr,
@@ -365,6 +373,7 @@ static ra8_err_t priv_check_cross(ra8_tileatlas_info_t* info,
  * @note Thread-safe for distinct outputs.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_parse_header_region(ra8_tileatlas_pread_fn pread,
                                           void*                  pread_ctx,
                                           uint8_t*               hdr,
@@ -475,6 +484,7 @@ uint32_t ra8_tileatlas_stored_bound(uint32_t raw_bytes)
  * @note Not thread-safe (delegates to the backing).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_index_entry(ra8_tileatlas_pread_fn      pread,
                                   void*                       pread_ctx,
                                   const ra8_tileatlas_info_t* info,
@@ -528,6 +538,7 @@ static ra8_err_t priv_index_entry(ra8_tileatlas_pread_fn      pread,
  * @note Not thread-safe (delegates to the backing).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_decode_stream(ra8_tileatlas_pread_fn      pread,
                                     void*                       pread_ctx,
                                     const ra8_tileatlas_info_t* info,
@@ -584,6 +595,7 @@ static ra8_err_t priv_decode_stream(ra8_tileatlas_pread_fn      pread,
  * @note Not thread-safe (delegates to the backing).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_fetch_decode(ra8_tileatlas_pread_fn      pread,
                                    void*                       pread_ctx,
                                    const ra8_tileatlas_info_t* info,
@@ -628,6 +640,7 @@ static ra8_err_t priv_fetch_decode(ra8_tileatlas_pread_fn      pread,
  * @note Thread-safe (pure).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_read_args_ok(ra8_tileatlas_pread_fn      pread,
                                    const ra8_tileatlas_info_t* info,
                                    const uint8_t*              out_px,

@@ -21,6 +21,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_webp_arena.h"
@@ -87,6 +88,7 @@ ra8_err_t ra8_webp_get_info(const uint8_t* data, size_t size, uint32_t* out_w, u
  * @note Re-entrant; reads only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_webp_check_output(const uint8_t* data,
                                             size_t         size,
                                             size_t         out_stride,
@@ -139,6 +141,7 @@ static ra8_err_t internal_webp_check_output(const uint8_t* data,
  * @note Not re-entrant: binds the shared decode arena for the call's duration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_webp_decode_impl(const uint8_t*    data,
                                            size_t            size,
                                            ra8_webp_arena_t* arena,

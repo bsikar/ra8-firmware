@@ -25,6 +25,7 @@
 
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_unarch_tar_internal.h"
 
@@ -119,6 +120,7 @@ ra8_err_t ra8_unarch_tar_open(ra8_unarch_tar_t*          t,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_read_block(const ra8_unarch_tar_t* t, uint64_t off, uint8_t* block)
 {
   const uint64_t need = (uint64_t)k_ra8_unarch_tar_block;
@@ -150,6 +152,7 @@ static ra8_err_t s_read_block(const ra8_unarch_tar_t* t, uint64_t off, uint8_t* 
  * @note Thread-safe: pure computation.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_next_off(uint64_t off, uint64_t dsize, uint64_t* next)
 {
   const uint64_t blk = (uint64_t)k_ra8_unarch_tar_block;
@@ -204,6 +207,7 @@ static uint8_t s_tar_meta_scratch[k_ra8_unarch_tar_pax_max];
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_meta_consume(const ra8_unarch_tar_t* t,
                                 ra8_tar_type_t          type,
                                 uint64_t                doff,
@@ -259,6 +263,7 @@ static ra8_err_t s_meta_consume(const ra8_unarch_tar_t* t,
  * @note Thread-safe: writes only the caller's accumulator.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static void s_ustar_name(const uint8_t* block, tar_meta_t* meta)
 {
   const void*  nz    = memchr(&block[k_ra8_tar_off_name], 0, (size_t)k_ra8_tar_len_name);
@@ -307,6 +312,7 @@ static void s_ustar_name(const uint8_t* block, tar_meta_t* meta)
  * @note Thread-safe: pure computation over the block.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_decode_header(const uint8_t*  block,
                                  uint64_t        off,
                                  ra8_tar_type_t* type,
@@ -355,6 +361,7 @@ static ra8_err_t s_decode_header(const uint8_t*  block,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_finish_member(ra8_unarch_tar_t*       t,
                                  const uint8_t*          block,
                                  uint64_t                off,

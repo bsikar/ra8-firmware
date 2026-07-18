@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io_compress.h"
@@ -103,6 +104,7 @@ RA8_PRIV void* ra8_ta_priv_bump_take(ra8_ta_bump_t* bump, size_t len)
  * @note Pure over its output; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_wr_u16(uint8_t* buf, uint16_t v)
 {
   buf[0] = (uint8_t)(v & (uint16_t)k_ra8_ta_byte_mask);
@@ -121,6 +123,7 @@ static void priv_wr_u16(uint8_t* buf, uint16_t v)
  * @note Pure over its output; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_wr_u32(uint8_t* buf, uint32_t v)
 {
   buf[0] = (uint8_t)(v & (uint32_t)k_ra8_ta_byte_mask);
@@ -146,6 +149,7 @@ static void priv_wr_u32(uint8_t* buf, uint32_t v)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_sink(ra8_ta_prod_state_t* st, const uint8_t* buf, size_t len)
 {
   if ((uint64_t)len > ((uint64_t)UINT32_MAX - (uint64_t)st->written)) {
@@ -197,6 +201,7 @@ RA8_PRIV ra8_err_t ra8_ta_priv_prefix_pull(void* ctx, uint8_t* buf, size_t cap, 
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_emit_header(ra8_ta_prod_state_t* st)
 {
   uint8_t hdr[k_ra8_tileatlas_hdr_bytes] = {};
@@ -251,6 +256,7 @@ static ra8_err_t priv_emit_header(ra8_ta_prod_state_t* st)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_carve_pixel_path(ra8_ta_prod_state_t* st)
 {
   const uint16_t tw          = st->cfg->tile_w;
@@ -332,6 +338,7 @@ RA8_PRIV ra8_err_t ra8_ta_priv_on_geom(void* ctx, uint16_t width, uint16_t heigh
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_encode_tile(ra8_ta_prod_state_t* st, uint32_t payload)
 {
   const uint8_t* out_bytes = st->stage;
@@ -373,6 +380,7 @@ static ra8_err_t priv_encode_tile(ra8_ta_prod_state_t* st, uint32_t payload)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_flush_band(ra8_ta_prod_state_t* st, uint32_t th)
 {
   const uint32_t stride = (uint32_t)st->w * (uint32_t)st->bpp;
@@ -460,6 +468,7 @@ RA8_PRIV ra8_err_t ra8_ta_priv_on_rows(void*          ctx,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_jpeg_geom(void*     ctx,
                                 uint16_t  width,
                                 uint16_t  height,
@@ -504,6 +513,7 @@ static ra8_err_t priv_jpeg_geom(void*     ctx,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_finish(ra8_ta_prod_state_t* st, ra8_tileatlas_info_t* out_info)
 {
   if (st->tiles_done != st->tile_count) {
@@ -556,6 +566,7 @@ static ra8_err_t priv_finish(ra8_ta_prod_state_t* st, ra8_tileatlas_info_t* out_
  * @note Thread-safe (pure).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_check_cfg(const ra8_tileatlas_produce_cfg_t* cfg)
 {
   if ((cfg->tile_w == 0U) || (cfg->tile_h == 0U)) {
@@ -621,6 +632,7 @@ ra8_tileatlas_work_bytes(uint16_t max_width, uint16_t max_height, uint16_t tile_
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_init_state(ra8_ta_prod_state_t* st, const ra8_tileatlas_produce_cfg_t* cfg)
 {
   (void)memset(st, 0, sizeof(*st));
@@ -661,6 +673,7 @@ static ra8_err_t priv_init_state(ra8_ta_prod_state_t* st, const ra8_tileatlas_pr
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_sniff_head(const ra8_tileatlas_produce_cfg_t* cfg, uint8_t* head)
 {
   size_t head_len = 0U;
@@ -700,6 +713,7 @@ static ra8_err_t priv_sniff_head(const ra8_tileatlas_produce_cfg_t* cfg, uint8_t
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_dispatch(ra8_ta_prod_state_t* st, const uint8_t* head, ra8_ta_prefix_pull_t* pfx)
 {
@@ -751,6 +765,7 @@ priv_dispatch(ra8_ta_prod_state_t* st, const uint8_t* head, ra8_ta_prefix_pull_t
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_epilogue(ra8_ta_prod_state_t* st, ra8_tileatlas_info_t* out_info)
 {
   // mcdc-deactivated: post-decode contract guard; both in-tree decoders return success only after the geometry hook fired and every declared row was delivered (short/hostile streams abort inside the decoder), so neither condition can be flipped through the public producer entry.
@@ -782,6 +797,7 @@ static ra8_err_t priv_epilogue(ra8_ta_prod_state_t* st, ra8_tileatlas_info_t* ou
  * @note Thread-safe (pure).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_produce_args_ok(const ra8_tileatlas_produce_cfg_t* cfg,
                                       const ra8_tileatlas_info_t*        out_info)
 {

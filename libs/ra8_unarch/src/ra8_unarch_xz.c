@@ -28,6 +28,7 @@
  */
 #include "ra8_unarch_xz.h"
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_unarch_xz_pool.h"
 #include "xz_config.h"
@@ -143,6 +144,7 @@ ra8_unarch_xz_stream_begin(ra8_unarch_xz_stream_t* xs, void* scratch, uint32_t s
  * @note Thread-safe: pure mapping.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_xz_map_err(enum xz_ret ret)
 {
   if (ret == XZ_MEMLIMIT_ERROR) {
@@ -241,6 +243,7 @@ void ra8_unarch_xz_stream_end(ra8_unarch_xz_stream_t* xs)
  * @note Thread-safe: reads only its pointer arguments.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_unwrap_reject_null(ra8_unarch_read_fn read,
                                       const uint8_t*     out,
                                       const void*        scratch,
@@ -299,6 +302,7 @@ typedef struct {
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_unwrap_pass(xz_unwrap_state_t* st, bool* end)
 {
   const ra8_err_t ierr = ra8_decomp_budget_charge_iter(&st->budget);
