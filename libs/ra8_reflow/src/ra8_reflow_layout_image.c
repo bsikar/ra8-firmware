@@ -27,6 +27,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_reflow.h"
 #include "ra8_reflow_image.h"
@@ -50,6 +51,7 @@
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_apply_image_placeholder(ra8_reflow_t* engine, priv_cursor_t* cur)
 {
   const int32_t advance     = (int32_t)k_priv_image_placeholder_px;
@@ -82,6 +84,7 @@ static bool priv_apply_image_placeholder(ra8_reflow_t* engine, priv_cursor_t* cu
  * @note Pure read.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_page_has_content(const ra8_reflow_t* engine, const priv_cursor_t* cur)
 {
   return (engine->glyph_count > cur->page_first_glyph) ||
@@ -107,6 +110,7 @@ static bool priv_page_has_content(const ra8_reflow_t* engine, const priv_cursor_
  * @note Pure function.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_image_fit(int32_t  iw,
                            int32_t  ih,
                            int32_t  col_w,
@@ -143,6 +147,7 @@ static void priv_image_fit(int32_t  iw,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_image_resolve_size(ra8_reflow_t*             engine,
                                     const ra8_reflow_token_t* tok,
                                     int32_t*                  out_w,
@@ -187,6 +192,7 @@ static bool priv_image_resolve_size(ra8_reflow_t*             engine,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_image_record(ra8_reflow_t*             engine,
                               priv_cursor_t*            cur,
                               const ra8_reflow_token_t* tok,
@@ -228,6 +234,7 @@ static void priv_image_record(ra8_reflow_t*             engine,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool
 priv_place_image(ra8_reflow_t* engine, priv_cursor_t* cur, const ra8_reflow_token_t* tok)
 {

@@ -26,39 +26,12 @@
 
 #include "ra8_err.h"
 #include "ra8_reflow.h"
+#include "ra8_reflow_tokenize_internal.h"
 
 /* ---------------------------------------------------------------------------
- * Cross-TU tokenizer entry point. The implementation lives in
- * ra8_reflow_tokenize.c; this declaration keeps it visible to the driver
- * below.
- * ---------------------------------------------------------------------------
- */
-
-/**
- * @brief Tokenize the XHTML buffer and populate `engine->tokens[]`.
- *
- * @details
- * Defined in `ra8_reflow_tokenize.c`. Single forward pass, no heap, no DOM.
- *
- * @param[in,out] engine    Engine whose token / text pools to populate.
- * @param[in]     xhtml_buf XHTML source bytes.
- * @param[in]     xhtml_len Length of `xhtml_buf`, bytes.
- *
- * @return ra8_err_t -- see `ra8_reflow_parse_xhtml()`.
- *
- * @since 0.1.0
- *
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- */
-ra8_err_t priv_reflow_xml_walk(ra8_reflow_t* engine, const uint8_t* xhtml_buf, size_t xhtml_len);
-
-/* ---------------------------------------------------------------------------
- * Public helpers (declared in ra8_reflow.h)
+ * Public helpers (declared in ra8_reflow.h). The cross-TU tokenizer entry
+ * point `priv_reflow_xml_walk()` is declared in
+ * ra8_reflow_tokenize_internal.h and defined in ra8_reflow_tokenize.c.
  * ---------------------------------------------------------------------------
  */
 

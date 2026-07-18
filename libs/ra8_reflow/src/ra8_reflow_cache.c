@@ -30,6 +30,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_reflow.h"
 
@@ -102,6 +103,7 @@ typedef struct {
  * @note Internal byte cursor; no bounds check (caller pre-sizes).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_put_u32(uint8_t* buf, size_t* off, uint32_t word)
 {
   buf[(*off)++] = (uint8_t)(word & (uint32_t)k_priv_byte_mask);
@@ -127,6 +129,7 @@ static void priv_put_u32(uint8_t* buf, size_t* off, uint32_t word)
  * @note Internal byte cursor; no bounds check (caller pre-sizes).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_put_u16(uint8_t* buf, size_t* off, uint16_t half)
 {
   buf[(*off)++] = (uint8_t)(half & (uint16_t)k_priv_byte_mask);
@@ -152,6 +155,7 @@ static void priv_put_u16(uint8_t* buf, size_t* off, uint16_t half)
  * @note Internal byte cursor; no bounds check (caller pre-validates).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_get_u32(const uint8_t* buf, size_t* off)
 {
   uint32_t word = (uint32_t)buf[(*off)++];
@@ -180,6 +184,7 @@ static uint32_t priv_get_u32(const uint8_t* buf, size_t* off)
  * @note Internal byte cursor; no bounds check (caller pre-validates).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t priv_get_u16(const uint8_t* buf, size_t* off)
 {
   uint16_t half = (uint16_t)buf[(*off)++];
@@ -212,6 +217,7 @@ static uint16_t priv_get_u16(const uint8_t* buf, size_t* off)
  * @note Not a cryptographic hash; collision-resistance is not required.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_fnv1a(const uint8_t* data, size_t len)
 {
   uint32_t hash = (uint32_t)k_priv_fnv_offset;
@@ -241,6 +247,7 @@ static uint32_t priv_fnv1a(const uint8_t* data, size_t len)
  * @note Mirror of priv_get_glyph().
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_put_glyph(uint8_t* buf, size_t* off, const ra8_reflow_glyph_t* glyph)
 {
   priv_put_u32(buf, off, (uint32_t)glyph->x);
@@ -270,6 +277,7 @@ static void priv_put_glyph(uint8_t* buf, size_t* off, const ra8_reflow_glyph_t* 
  * @note Mirror of priv_put_glyph().
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_get_glyph(const uint8_t* buf, size_t* off, ra8_reflow_glyph_t* glyph)
 {
   glyph->x        = (int32_t)priv_get_u32(buf, off);
@@ -297,6 +305,7 @@ static void priv_get_glyph(const uint8_t* buf, size_t* off, ra8_reflow_glyph_t* 
  * @note Mirror of priv_get_page().
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_put_page(uint8_t* buf, size_t* off, const ra8_reflow_page_t* page)
 {
   priv_put_u32(buf, off, page->glyph_first);
@@ -319,6 +328,7 @@ static void priv_put_page(uint8_t* buf, size_t* off, const ra8_reflow_page_t* pa
  * @note Mirror of priv_put_page().
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_get_page(const uint8_t* buf, size_t* off, ra8_reflow_page_t* page)
 {
   page->glyph_first = priv_get_u32(buf, off);
@@ -349,6 +359,7 @@ static void priv_get_page(const uint8_t* buf, size_t* off, ra8_reflow_page_t* pa
  * @note Shared by serialise and key-compare so both see the same value.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_font_hash(const ra8_reflow_t* engine)
 {
   if (engine->font_data == nullptr) {
@@ -377,6 +388,7 @@ static uint32_t priv_font_hash(const ra8_reflow_t* engine)
  * @note Pairs with priv_get_header().
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 priv_put_header(uint8_t* buf, const ra8_reflow_t* engine, size_t content_len, uint32_t content_hash)
 {
@@ -415,6 +427,7 @@ priv_put_header(uint8_t* buf, const ra8_reflow_t* engine, size_t content_len, ui
  * @note Pairs with priv_put_header().
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_get_header(const uint8_t* buf, priv_cache_key_t* key)
 {
   size_t off   = 0U;
@@ -456,6 +469,7 @@ static void priv_get_header(const uint8_t* buf, priv_cache_key_t* key)
  * @note Pure function of its arguments.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static size_t priv_blob_size(uint32_t glyph_count, uint32_t page_count)
 {
   return (size_t)k_ra8_reflow_cache_header_bytes +
@@ -486,6 +500,7 @@ static size_t priv_blob_size(uint32_t glyph_count, uint32_t page_count)
  * @note Recomputes the font and content hashes on each call.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_key_matches(const ra8_reflow_t*     engine,
                              const priv_cache_key_t* key,
                              const uint8_t*          content,
@@ -556,6 +571,7 @@ static bool priv_key_matches(const ra8_reflow_t*     engine,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_parse_header(const uint8_t* buf, size_t len, priv_cache_key_t* key, size_t* need)
 {
@@ -628,6 +644,7 @@ priv_parse_header(const uint8_t* buf, size_t len, priv_cache_key_t* key, size_t*
  * @note Not thread-safe; relies on the caller's synchronisation context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_cache_precheck(const ra8_reflow_t* engine, const uint8_t* content, size_t content_len)
 {

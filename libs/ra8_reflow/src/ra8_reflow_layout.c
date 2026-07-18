@@ -32,6 +32,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_reflow.h"
 #include "ra8_reflow_internal.h"
@@ -190,6 +191,7 @@ uint16_t ra8_reflow_layout_line_height(uint16_t font_px)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t priv_block_font_px(uint16_t body_px, ra8_reflow_html_tag_t tag)
 {
   uint32_t pct = k_ra8_reflow_pct_full;
@@ -299,6 +301,7 @@ bool ra8_reflow_layout_finish_page(ra8_reflow_t* engine, priv_cursor_t* cur)
  * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_justify_glyphs(ra8_reflow_t* engine, uint32_t lo, uint32_t hi, int32_t slack)
 {
   uint32_t spaces = 0U;
@@ -351,6 +354,7 @@ static void priv_justify_glyphs(ra8_reflow_t* engine, uint32_t lo, uint32_t hi, 
  * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_finish_line(ra8_reflow_t* engine, priv_cursor_t* cur, bool allow_justify)
 {
   if (cur->align == (uint8_t)k_ra8_reflow_align_left) {
@@ -434,6 +438,7 @@ bool ra8_reflow_layout_newline(ra8_reflow_t* engine, priv_cursor_t* cur, bool al
  * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_emit_char(ra8_reflow_t*         engine,
                                 priv_cursor_t*        cur,
                                 const stbtt_fontinfo* font,
@@ -487,6 +492,7 @@ static ra8_err_t priv_emit_char(ra8_reflow_t*         engine,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_layout_text(ra8_reflow_t*             engine,
                                   priv_cursor_t*            cur,
                                   const stbtt_fontinfo*     font,
@@ -563,6 +569,7 @@ static ra8_err_t priv_layout_text(ra8_reflow_t*             engine,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_open_block(ra8_reflow_t* engine, priv_cursor_t* cur, const ra8_reflow_token_t* tok)
 {
   if (cur->line_has_content != 0U) {
@@ -613,6 +620,7 @@ static bool priv_open_block(ra8_reflow_t* engine, priv_cursor_t* cur, const ra8_
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool
 priv_close_block(ra8_reflow_t* engine, priv_cursor_t* cur, const ra8_reflow_token_t* tok)
 {
@@ -655,6 +663,7 @@ priv_close_block(ra8_reflow_t* engine, priv_cursor_t* cur, const ra8_reflow_toke
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_apply_rule(ra8_reflow_t* engine, priv_cursor_t* cur)
 {
   if (cur->line_has_content != 0U) {
@@ -695,6 +704,7 @@ static bool priv_apply_rule(ra8_reflow_t* engine, priv_cursor_t* cur)
  * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_emit_link_rect(ra8_reflow_t*         engine,
                                 const stbtt_fontinfo* font,
                                 uint32_t              lo,

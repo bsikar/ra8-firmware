@@ -20,6 +20,7 @@
 
 #include <math.h>
 
+#include "ra8_attributes.h"
 #include "ra8_reflow_svg_internal.h"
 
 /** @brief Pi, for arc degree->radian conversion and sweep wrap. */
@@ -57,6 +58,7 @@ static const float s_svg_deg_half = 180.0F;
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t priv_ux(const svg_xform_t* t, int32_t sx)
 {
   return (int32_t)(((float)sx * t->ua) + t->ue);
@@ -87,6 +89,7 @@ static int32_t priv_ux(const svg_xform_t* t, int32_t sx)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t priv_uy(const svg_xform_t* t, int32_t sy)
 {
   return (int32_t)(((float)sy * t->ud) + t->uf);
@@ -329,6 +332,7 @@ float ra8_svgp_numf(const uint8_t* s, size_t len, size_t* i)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static svg_utf_t priv_utf_identity(void)
 {
   svg_utf_t id = {.a = 1.0F, .b = 0.0F, .c = 0.0F, .d = 1.0F, .e = 0.0F, .f = 0.0F};
@@ -362,6 +366,7 @@ static svg_utf_t priv_utf_identity(void)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static svg_utf_t priv_utf_compose(svg_utf_t a, svg_utf_t b)
 {
   svg_utf_t r = {.a = (a.a * b.a) + (a.c * b.b),
@@ -401,6 +406,7 @@ static svg_utf_t priv_utf_compose(svg_utf_t a, svg_utf_t b)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_is_num_start(const uint8_t* s, size_t len, size_t at)
 {
   if (at >= len) {
@@ -461,6 +467,7 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static float priv_deg2rad(float deg)
 {
   return deg * (s_svg_pi / s_svg_deg_half);
@@ -495,6 +502,7 @@ static float priv_deg2rad(float deg)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t priv_xform_read(const uint8_t* v, size_t vlen, size_t* j, float* args)
 {
   int32_t na = 0;
@@ -538,6 +546,7 @@ static int32_t priv_xform_read(const uint8_t* v, size_t vlen, size_t* j, float* 
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static svg_utf_t priv_xform_rotate(const float* args, int32_t na)
 {
   const float co = cosf(priv_deg2rad(args[0]));
@@ -579,6 +588,7 @@ static svg_utf_t priv_xform_rotate(const float* args, int32_t na)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static svg_utf_t priv_xform_build(svg_xf_kind_t kind, const float* args, int32_t na)
 {
   switch (kind) {
@@ -658,6 +668,7 @@ static svg_utf_t priv_xform_build(svg_xf_kind_t kind, const float* args, int32_t
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static svg_xf_kind_t priv_xform_kind(const uint8_t* v, size_t vlen, size_t i)
 {
   if (ra8_svgp_starts_ci(v, vlen, i, "translate(")) {
@@ -709,6 +720,7 @@ static svg_xf_kind_t priv_xform_kind(const uint8_t* v, size_t vlen, size_t i)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static svg_utf_t priv_parse_xform(const uint8_t* v, size_t vlen)
 {
   svg_utf_t acc = priv_utf_identity();

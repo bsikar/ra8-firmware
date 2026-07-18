@@ -26,6 +26,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_reflow.h"
 #include "ra8_reflow_internal.h"
@@ -63,6 +64,7 @@
  *       mutated.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_match_block_end(const ra8_reflow_t* engine, uint32_t start, uint32_t limit)
 {
   const uint8_t tag   = engine->tokens[start].tag;
@@ -107,6 +109,7 @@ static uint32_t priv_match_block_end(const ra8_reflow_t* engine, uint32_t start,
  * @note Pure read; not thread-safe if the token stream is concurrently mutated.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_is_cell_start(const ra8_reflow_t* engine, uint32_t i)
 {
   const ra8_reflow_token_t* tok = &engine->tokens[i];
@@ -137,6 +140,7 @@ static bool priv_is_cell_start(const ra8_reflow_t* engine, uint32_t i)
  * @note Pure read; not thread-safe if the token stream is concurrently mutated.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_is_row_start(const ra8_reflow_t* engine, uint32_t i)
 {
   const ra8_reflow_token_t* tok = &engine->tokens[i];
@@ -169,6 +173,7 @@ static bool priv_is_row_start(const ra8_reflow_t* engine, uint32_t i)
  * @note Pure read on the token stream; not thread-safe if concurrently mutated.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_table_columns(const ra8_reflow_t* engine, uint32_t start, uint32_t end)
 {
   uint32_t cols = 0U;
@@ -229,6 +234,7 @@ static uint32_t priv_table_columns(const ra8_reflow_t* engine, uint32_t start, u
  * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_cell_text(ra8_reflow_t*             engine,
                            const stbtt_fontinfo*     font,
                            const ra8_reflow_token_t* tok,
@@ -307,6 +313,7 @@ static void priv_cell_text(ra8_reflow_t*             engine,
  * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_layout_cell(ra8_reflow_t*         engine,
                                  const stbtt_fontinfo* font,
                                  int32_t               cell_x,
@@ -359,6 +366,7 @@ static uint32_t priv_layout_cell(ra8_reflow_t*         engine,
  * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_row_cells(ra8_reflow_t*         engine,
                                const stbtt_fontinfo* font,
                                uint32_t              tr_start,
@@ -420,6 +428,7 @@ static uint32_t priv_row_cells(ra8_reflow_t*         engine,
  * @note Not thread-safe; caller must serialize access to @p engine and @p cur.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_layout_row(ra8_reflow_t*         engine,
                                 priv_cursor_t*        cur,
                                 const stbtt_fontinfo* font,

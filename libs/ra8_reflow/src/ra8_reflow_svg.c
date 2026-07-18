@@ -23,6 +23,7 @@
 
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_reflow_svg_internal.h"
 
 /* ===========================================================================
@@ -206,6 +207,7 @@ size_t ra8_svgp_find_ci(const uint8_t* s, size_t len, size_t from, const char* l
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t priv_hex(char c)
 {
   if ((c >= '0') && (c <= '9')) {
@@ -308,6 +310,7 @@ int32_t ra8_svgp_num(const uint8_t* s, size_t len, size_t* i)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_attr_at(const uint8_t* s, size_t len, size_t at, const char* name)
 {
   const size_t n = strlen(name);
@@ -455,6 +458,7 @@ int32_t ra8_svgp_attr_num(const uint8_t* s, size_t len, const char* name, int32_
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_ci_eq(const uint8_t* s, size_t len, const char* lit)
 {
   size_t k = 0U;
@@ -495,6 +499,7 @@ static bool priv_ci_eq(const uint8_t* s, size_t len, const char* lit)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_hex_color(const uint8_t* s, size_t len)
 {
   uint32_t rgb = 0U;
@@ -550,6 +555,7 @@ static uint32_t priv_hex_color(const uint8_t* s, size_t len)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_named_color(const uint8_t* s, size_t len)
 {
   static const struct {
