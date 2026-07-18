@@ -118,9 +118,15 @@ set_source_files_properties(${RA8_THIRD_PARTY_SRC} ${RA8_XZ_EMBEDDED_SRC}
 # ---------------------------------------------------------------------------
 # ra8_viewer: the viewer executable -- C core + Cocoa window backend.
 # ---------------------------------------------------------------------------
+# The reader core is one module split across four TUs (see
+# src/ra8_viewer_reader_internal.h): public API + dispatch, the comic engine, the
+# RTA1 long-strip engine, and the shared RGB565 / PPM writer.
 add_executable(ra8_viewer
     src/main.c
     src/ra8_viewer_reader.c
+    src/ra8_viewer_comic.c
+    src/ra8_viewer_rta1.c
+    src/ra8_viewer_ppm.c
     src/ra8_viewer_view.m
 )
 target_link_libraries(ra8_viewer PRIVATE ra8_reader)

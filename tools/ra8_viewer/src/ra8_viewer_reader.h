@@ -173,16 +173,68 @@ ra8_viewer_tile_size(const ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint
  * @brief Write the current framebuffer to a binary PPM (P6) file.
  * @details A display-free rendering proof: the RGB565 framebuffer is expanded to
  *          8-bit RGB and written as a P6 portable pixmap, so a page can be dumped
- *          on a headless host and converted to PNG offline.
+ *          on a headless host and converted to PNG offline. A thin wrapper over
+ *          ::ra8_viewer_write_ppm565 bound to the reader's fixed framebuffer.
  * @param[in] r    Reader whose framebuffer to dump (non-NULL).
  * @param[in] path Output PPM path (non-NULL).
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok            File written.
  * @retval k_ra8_err_null_ptr  @p r or @p path was NULL.
  * @retval k_ra8_err_not_found The output path could not be opened for writing.
+ * @see ra8_viewer_write_ppm565()  Dump an arbitrary RGB565 buffer (scroll tiles).
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_viewer_dump_ppm(const ra8_viewer_reader_t* r, const char* path);
+
+/**
+ * @brief Write an arbitrary RGB565 buffer to a binary PPM (P6) file.
+ *
+ * @details Expands each 16-bit pixel to 8-bit RGB by replicating the high bits
+ *          into the low bits, so a saturated field maps to 0xFF exactly rather
+ *          than 0xF8. Shared by the fixed-framebuffer dump and the scroll-tile
+ *          dump so the two cannot drift apart.
+ *
+ * @param[in] px   Packed RGB565 pixels, row-major, `w * h` entries (non-NULL).
+ * @param[in] w    Image width in pixels (>= 1).
+ * @param[in] h    Image height in pixels (>= 1).
+ * @param[in] path Output PPM path (non-NULL).
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok               File written and closed.
+ * @retval k_ra8_err_null_ptr     @p px or @p path was NULL.
+ * @retval k_ra8_err_invalid_size @p w or @p h was 0.
+ * @retval k_ra8_err_not_found    The path could not be opened, or close failed.
+ *
+ * @post On ::k_ra8_ok the file holds a complete `w * h` P6 pixmap.
+ * @note Not thread-safe with respect to the same output path.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_viewer_write_ppm565(const uint16_t* px, uint32_t w, uint32_t h, const char* path);
+
+/**
+ * @brief Pack 8-bit RGB channels into a little-endian RGB565 word.
+ * @param[in] rr Red channel (0-255).
+ * @param[in] gg Green channel (0-255).
+ * @param[in] bb Blue channel (0-255).
+ * @return The packed RGB565 value.
+ * @note Pure function; safe from any context.
+ * @see ra8_viewer_pack565_le_pair()  Reassemble an already-packed pixel.
+ * @since 0.1.0
+ */
+[[nodiscard]] uint16_t ra8_viewer_pack565(uint8_t rr, uint8_t gg, uint8_t bb);
+
+/**
+ * @brief Reassemble a little-endian RGB565 word from its two source bytes.
+ * @details Used when a long-strip band is already stored as RGB565 and only
+ *          needs re-forming from the byte stream, not re-quantising.
+ * @param[in] lo Low byte of the pixel.
+ * @param[in] hi High byte of the pixel.
+ * @return The packed RGB565 value.
+ * @note Pure function; safe from any context.
+ * @since 0.1.0
+ */
+[[nodiscard]] uint16_t ra8_viewer_pack565_le_pair(uint8_t lo, uint8_t hi);
 
 /**
  * @brief Release a reader and all of its owned buffers.

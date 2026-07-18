@@ -164,13 +164,6 @@ static int viewer_run_window(ra8_viewer_reader_t* reader)
 }
 
 /**
- * @brief Program entry point.
- * @param[in] argc Argument count.
- * @param[in] argv Argument vector.
- * @return 0 on success, non-zero on error.
- * @since 0.1.0
- */
-/**
  * @brief ra8_log byte sink -- routes firmware log bytes to stderr.
  * @details Registering any sink makes the logger's `internal_itm_ready()` skip
  *          the ITM debug-register read, which is an unmapped MMIO address on the
@@ -205,27 +198,25 @@ static bool viewer_dump_tile(ra8_viewer_reader_t* reader, uint32_t tile, const c
     (void)fprintf(stderr, "render tile %u failed: 0x%x\n", tile, (unsigned)rc);
     return false;
   }
-  FILE* fp = fopen(path, "wb");
-  if (fp == nullptr) {
-    free(buf);
+  const ra8_err_t wrc = ra8_viewer_write_ppm565(buf, w, h, path);
+  free(buf);
+  if (wrc != k_ra8_ok) {
+    (void)fprintf(stderr, "write tile ppm failed: 0x%x\n", (unsigned)wrc);
     return false;
   }
-  (void)fprintf(fp, "P6\n%u %u\n255\n", (unsigned)w, (unsigned)h);
-  for (size_t i = 0U; i < ((size_t)w * (size_t)h); ++i) {
-    const uint16_t p      = buf[i];
-    const uint32_t r5     = (uint32_t)((p >> 11) & 0x1FU);
-    const uint32_t g6     = (uint32_t)((p >> 5) & 0x3FU);
-    const uint32_t b5     = (uint32_t)(p & 0x1FU);
-    const uint8_t  rgb[3] = {(uint8_t)((r5 << 3) | (r5 >> 2)),
-                             (uint8_t)((g6 << 2) | (g6 >> 4)),
-                             (uint8_t)((b5 << 3) | (b5 >> 2))};
-    (void)fwrite(rgb, 1U, sizeof(rgb), fp);
-  }
-  (void)fclose(fp);
-  free(buf);
   (void)fprintf(stderr, "wrote tile %u (%ux%u) -> %s\n", tile, w, h, path);
   return true;
 }
+
+/**
+ * @brief Program entry point: parse the command line, open, then render.
+ * @details Routes to one of three modes -- a headless single-tile dump, a
+ *          headless framebuffer page dump, or the interactive scrolling window.
+ * @param[in] argc Argument count.
+ * @param[in] argv Argument vector.
+ * @return 0 on success, 1 on an open/render failure, 2 on a usage error.
+ * @since 0.1.0
+ */
 
 int main(int argc, char** argv)
 {
