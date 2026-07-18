@@ -33,6 +33,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_dmac.h"
 
 #include <stdint.h>
@@ -527,6 +528,7 @@ ra8_err_t ra8_dmac_attach_callback(uint8_t channel, ra8_dmac_callback_fn_t fn, v
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_dmac_dispatch(uint8_t channel)
 {
   if (channel >= k_ra8_dmac_channel_count) {
@@ -539,6 +541,7 @@ void ra8_dmac_dispatch(uint8_t channel)
   }
 }
 
+RA8_ISR_SAFE
 void ra8_dmac_dispatch_half(uint8_t channel)
 {
   if (channel >= k_ra8_dmac_channel_count) {

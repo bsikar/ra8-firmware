@@ -23,6 +23,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_i3c.h"
 
 #include <stdint.h>
@@ -416,6 +417,7 @@ ra8_err_t ra8_i3c_attach_handler(uint8_t channel, ra8_i3c_event_fn_t fn, void* c
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_i3c_dispatch(uint8_t channel)
 {
   if ((uint16_t)channel >= (uint16_t)k_ra8_i3c_i2c_channel_count) {

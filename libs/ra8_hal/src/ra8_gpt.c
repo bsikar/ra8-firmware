@@ -11,6 +11,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_gpt.h"
 
 #include <stdint.h>
@@ -906,21 +907,25 @@ static void internal_dispatch(uint8_t channel, uint32_t status_mask)
   }
 }
 
+RA8_ISR_SAFE
 void ra8_gpt_dispatch_ovf(uint8_t channel)
 {
   internal_dispatch(channel, k_ra8_gpt_status_overflow);
 }
 
+RA8_ISR_SAFE
 void ra8_gpt_dispatch_und(uint8_t channel)
 {
   internal_dispatch(channel, k_ra8_gpt_status_underflow);
 }
 
+RA8_ISR_SAFE
 void ra8_gpt_dispatch_ccra(uint8_t channel)
 {
   internal_dispatch(channel, k_ra8_gpt_status_ccra);
 }
 
+RA8_ISR_SAFE
 void ra8_gpt_dispatch_ccrb(uint8_t channel)
 {
   internal_dispatch(channel, k_ra8_gpt_status_ccrb);

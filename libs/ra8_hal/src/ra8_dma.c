@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_dma.h"
 
 #include <stdint.h>
@@ -452,6 +453,7 @@ ra8_err_t ra8_dma_channel_is_busy(uint8_t channel, bool* out_busy)
  * @note Thread safety: ISR context only; not re-entrant per channel.
  * @since 0.1.0
  */
+RA8_ISR_SAFE
 void ra8_dma_dispatch_complete(uint8_t channel)
 {
   if (channel >= k_ra8_dma_channel_count) {

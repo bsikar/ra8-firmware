@@ -22,6 +22,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_dac_b.h"
 
 #include <stdint.h>
@@ -347,6 +348,7 @@ ra8_err_t ra8_dac_b_exit_stop(void)
   return ra8_mstp_enable(k_ra8_mstp_dac12_1);
 }
 
+RA8_ISR_SAFE
 void ra8_dac_b_dispatch_update(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra8_dac_b_channel_count) {

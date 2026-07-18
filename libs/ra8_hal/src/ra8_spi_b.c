@@ -36,6 +36,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
@@ -842,6 +843,7 @@ ra8_err_t ra8_spi_exit_stop(uint8_t channel)
  * =============================================================================
  */
 
+RA8_ISR_SAFE
 void ra8_spi_dispatch_spti(uint8_t channel)
 {
   if (channel >= k_ra8_spi_b_channel_count) {
@@ -850,6 +852,7 @@ void ra8_spi_dispatch_spti(uint8_t channel)
   (void)s_spi_state[channel].cb;
 }
 
+RA8_ISR_SAFE
 void ra8_spi_dispatch_spri(uint8_t channel)
 {
   if (channel >= k_ra8_spi_b_channel_count) {
@@ -858,6 +861,7 @@ void ra8_spi_dispatch_spri(uint8_t channel)
   (void)s_spi_state[channel].cb;
 }
 
+RA8_ISR_SAFE
 void ra8_spi_dispatch_spei(uint8_t channel)
 {
   if (channel >= k_ra8_spi_b_channel_count) {
