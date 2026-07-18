@@ -20,6 +20,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include "ra8_attributes.h"
 
 /**
  * @brief Result of processing a single completed line.
@@ -67,6 +68,7 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_modem_line_kind_t ra8_modem_at_internal_classify(const char* line,
                                                      const char* cmd_echo,
                                                      const char* expected_response);
@@ -94,6 +96,7 @@ ra8_modem_line_kind_t ra8_modem_at_internal_classify(const char* line,
  *
  * @since 0.1.0
  */
+RA8_PRIV
 uint16_t ra8_modem_at_internal_str_len(const char* s);
 
 /**
@@ -117,6 +120,7 @@ uint16_t ra8_modem_at_internal_str_len(const char* s);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 uint8_t ra8_modem_at_internal_starts_with(const char* hay, const char* needle);
 
 /**
@@ -145,6 +149,7 @@ uint8_t ra8_modem_at_internal_starts_with(const char* hay, const char* needle);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 uint8_t ra8_modem_at_internal_str_eq(const char* a, const char* b);
 
 #include <stddef.h>
@@ -173,6 +178,7 @@ uint8_t ra8_modem_at_internal_str_eq(const char* a, const char* b);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 void ra8_modem_at_internal_capture_line(const char* line,
                                         char*       capture,
                                         size_t      capture_len,
@@ -211,6 +217,7 @@ void ra8_modem_at_internal_capture_line(const char* line,
  *
  * @since 0.1.0
  */
+RA8_PRIV
 uint8_t ra8_modem_at_internal_reset_line_should_clear(const void* line_buf, uint16_t line_buf_len);
 
 /**
@@ -246,6 +253,7 @@ uint8_t ra8_modem_at_internal_reset_line_should_clear(const void* line_buf, uint
  *
  * @since 0.1.0
  */
+RA8_PRIV
 uint8_t ra8_modem_at_internal_handle_line_payload_prefix_match(const char* line,
                                                                const char* expected_response);
 
@@ -281,6 +289,7 @@ uint8_t ra8_modem_at_internal_handle_line_payload_prefix_match(const char* line,
  *
  * @since 0.1.0
  */
+RA8_PRIV
 uint8_t ra8_modem_at_internal_wait_response_should_clear_capture(const void* capture,
                                                                  size_t      capture_len);
 
