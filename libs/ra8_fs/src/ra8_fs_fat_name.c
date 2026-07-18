@@ -16,6 +16,7 @@
 #include <stdint.h>
 
 #include "ra8_fs.h"
+#include "ra8_attributes.h"
 #include "ra8_fs_fat_internal.h"
 
 /* =============================================================================
@@ -61,6 +62,7 @@ char priv_to_upper(char c)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t priv_pack_base(const char** path_io, uint8_t* out11)
 {
   const char* path     = *path_io;
@@ -99,6 +101,7 @@ static uint8_t priv_pack_base(const char** path_io, uint8_t* out11)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t priv_pack_ext(const char* path, uint8_t* out11)
 {
   if (*path != '.') {
@@ -198,6 +201,7 @@ void priv_83_to_str(const uint8_t* in11, char* out12)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_dir_walk_init_root(const ra8_fs_mount_t* m, dir_walk_t* w)
 {
   if (m->type == k_ra8_fs_type_fat32) {

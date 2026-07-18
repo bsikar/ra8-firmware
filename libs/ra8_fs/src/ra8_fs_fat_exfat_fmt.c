@@ -16,6 +16,7 @@
 #include <stdint.h>
 
 #include "ra8_fs.h"
+#include "ra8_attributes.h"
 #include "ra8_fs_fat_internal.h"
 
 /* ===========================================================================
@@ -67,6 +68,7 @@ typedef struct {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_exfat_csum32(uint32_t cs, const uint8_t* buf, uint32_t len)
 {
   for (uint32_t i = 0U; i < len; i++) {
@@ -102,6 +104,7 @@ static uint32_t priv_exfat_csum32(uint32_t cs, const uint8_t* buf, uint32_t len)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t priv_exfat_spc_shift(uint32_t total_sectors)
 {
   if (total_sectors <= (uint32_t)k_exfat_fmt_thr_256m) {
@@ -142,6 +145,7 @@ static uint8_t priv_exfat_spc_shift(uint32_t total_sectors)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_exfat_geometry(uint32_t total_sectors, exfat_geom_t* g)
 {
   g->total_sectors = total_sectors;
@@ -209,6 +213,7 @@ static ra8_err_t priv_exfat_geometry(uint32_t total_sectors, exfat_geom_t* g)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_exfat_build_vbr(uint8_t* sec, const exfat_geom_t* g)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_fs_bytes_per_sector; i++) {
@@ -262,6 +267,7 @@ static void priv_exfat_build_vbr(uint8_t* sec, const exfat_geom_t* g)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_exfat_wr_dual(const ra8_fs_backend_t* b, uint32_t lba, const uint8_t* buf)
 {
   const ra8_err_t err = b->write_block(b->ctx, lba, 1U, buf);
@@ -293,6 +299,7 @@ static ra8_err_t priv_exfat_wr_dual(const ra8_fs_backend_t* b, uint32_t lba, con
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_exfat_put32(uint8_t* buf, uint32_t idx, uint32_t val)
 {
   priv_wr32(&buf[(size_t)idx * 4U], val);
@@ -327,6 +334,7 @@ static void priv_exfat_put32(uint8_t* buf, uint32_t idx, uint32_t val)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_exfat_write_boot_tail(const ra8_fs_backend_t* backend, uint32_t cs)
 {
   /* Sectors 1-8: extended boot (ext-boot signature only). */
@@ -392,6 +400,7 @@ static ra8_err_t priv_exfat_write_boot_tail(const ra8_fs_backend_t* backend, uin
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_exfat_write_boot(const ra8_fs_backend_t* backend, const exfat_geom_t* g)
 {
   priv_exfat_build_vbr(s_scratch, g);
@@ -439,6 +448,7 @@ static ra8_err_t priv_exfat_write_boot(const ra8_fs_backend_t* backend, const ex
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_exfat_write_fat(const ra8_fs_backend_t* backend, const exfat_geom_t* g)
 {
   ra8_err_t err = priv_fmt_clear_region(backend, g->fat_offset, g->fat_length);
@@ -485,6 +495,7 @@ static ra8_err_t priv_exfat_write_fat(const ra8_fs_backend_t* backend, const exf
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_exfat_write_bitmap(const ra8_fs_backend_t* backend, const exfat_geom_t* g)
 {
   const uint32_t bmp_lba     = g->heap_offset;
@@ -539,6 +550,7 @@ static ra8_err_t priv_exfat_write_bitmap(const ra8_fs_backend_t* backend, const 
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_exfat_write_upcase(const ra8_fs_backend_t* backend, const exfat_geom_t* g, uint32_t* out_csum)
 {
@@ -590,6 +602,7 @@ priv_exfat_write_upcase(const ra8_fs_backend_t* backend, const exfat_geom_t* g, 
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_exfat_label_utf16(uint8_t* dst, const char* label)
 {
   uint32_t n = 0U;
@@ -631,6 +644,7 @@ static uint32_t priv_exfat_label_utf16(uint8_t* dst, const char* label)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_exfat_write_root(const ra8_fs_backend_t* backend,
                                        const exfat_geom_t*     g,
                                        uint32_t                upcase_csum,
