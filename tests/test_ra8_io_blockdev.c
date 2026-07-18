@@ -102,7 +102,7 @@ static void test_ram_read_write_roundtrip(void)
 
   uint8_t out[(size_t)k_ra8_io_block_size_bytes];
   for (uint32_t i = 0; i < (uint32_t)k_ra8_io_block_size_bytes; ++i) {
-    out[i] = (uint8_t)(i & 0xFFu);
+    out[i] = (uint8_t)(i & 0xFFU);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 2, 1, out));
 
@@ -128,7 +128,7 @@ static void test_ram_bounds(void)
   uint8_t buf[(size_t)k_ra8_io_block_size_bytes] = {};
   /* count exceeds capacity */
   TEST_ASSERT_EQ(k_ra8_err_out_of_range,
-                 ra8_io_blockdev_read(&bd, 0, k_test_small_blocks + 1u, buf));
+                 ra8_io_blockdev_read(&bd, 0, k_test_small_blocks + 1U, buf));
   /* lba+count walks off the end */
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_io_blockdev_write(&bd, k_test_small_blocks, 1, buf));
   TEST_END("ram bounds");
@@ -155,7 +155,7 @@ static void test_ram_erase(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(&bd, 1, 1, in));
   uint32_t nonzero = 0;
   for (uint32_t i = 0; i < (uint32_t)k_ra8_io_block_size_bytes; ++i) {
-    if (in[i] != 0u) {
+    if (in[i] != 0U) {
       nonzero++;
     }
   }
@@ -329,7 +329,7 @@ static void test_fs_bridge_fat_roundtrip(void)
 
   uint8_t payload[(size_t)k_test_payload_len];
   for (uint32_t i = 0; i < (uint32_t)k_test_payload_len; ++i) {
-    payload[i] = (uint8_t)((i * 7u + 3u) & 0xFFu);
+    payload[i] = (uint8_t)(((i * 7U) + 3U) & 0xFFU);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(mnt, "HELLO.BIN", payload, k_test_payload_len));
 

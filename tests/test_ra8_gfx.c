@@ -77,7 +77,7 @@ static void test_clear_writes_every_pixel(void)
 {
   TEST_BEGIN("ra8_gfx_clear sets every pixel");
   rebind_565();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_clear(0xFFFFFFu)); /* white */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_clear(0xFFFFFFU)); /* white */
   /* 0xFFFFFF in RGB565 packs to 0xFFFF. */
   for (uint32_t i = 0; i < sizeof(s_fb565); i++) {
     TEST_ASSERT_EQ(0xFF, s_fb565[i]);
@@ -95,9 +95,9 @@ static void test_pixel_happy_and_oob(void)
 {
   TEST_BEGIN("ra8_gfx_pixel happy + OOB");
   rebind_8888();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_pixel(5, 7, 0xFF112233u));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_pixel(5, 7, 0xFF112233U));
   /* ARGB8888 layout in memory: B G R A. */
-  const uint32_t off = (7u * k_test_fb_w + 5u) * 4u;
+  const uint32_t off = ((7U * k_test_fb_w) + 5U) * 4U;
   TEST_ASSERT_EQ(0x33, s_fb8888[off + 0]);
   TEST_ASSERT_EQ(0x22, s_fb8888[off + 1]);
   TEST_ASSERT_EQ(0x11, s_fb8888[off + 2]);
@@ -118,9 +118,9 @@ static void test_line_horizontal(void)
 {
   TEST_BEGIN("ra8_gfx_line draws a horizontal line");
   rebind_8888();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(2, 4, 10, 4, 0xFF00FF00u));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(2, 4, 10, 4, 0xFF00FF00U));
   for (int32_t x = 2; x <= 10; x++) {
-    const uint32_t off = (4u * k_test_fb_w + (uint32_t)x) * 4u;
+    const uint32_t off = ((4U * k_test_fb_w) + (uint32_t)x) * 4U;
     TEST_ASSERT_EQ(0x00, s_fb8888[off + 0]); /* B */
     TEST_ASSERT_EQ(0xFF, s_fb8888[off + 1]); /* G */
     TEST_ASSERT_EQ(0x00, s_fb8888[off + 2]); /* R */
@@ -139,15 +139,15 @@ static void test_rect_outline_and_filled(void)
   TEST_BEGIN("ra8_gfx_rect outline + filled");
   rebind_8888();
   /* Outline: 4x4 starting at (1,1). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(1, 1, 4, 4, 0xFFFF0000u, false));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(1, 1, 4, 4, 0xFFFF0000U, false));
   /* Top-left corner pixel is on; centre pixel (2,2) is off. */
-  TEST_ASSERT_EQ(0xFF, s_fb8888[(1u * k_test_fb_w + 1u) * 4u + 2u]); /* R */
-  TEST_ASSERT_EQ(0x00, s_fb8888[(2u * k_test_fb_w + 2u) * 4u + 2u]);
+  TEST_ASSERT_EQ(0xFF, s_fb8888[(1U * k_test_fb_w + 1U) * 4U + 2U]); /* R */
+  TEST_ASSERT_EQ(0x00, s_fb8888[(2U * k_test_fb_w + 2U) * 4U + 2U]);
   /* Filled: 3x3 starting at (10,10). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(10, 10, 3, 3, 0xFF0000FFu, true));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(10, 10, 3, 3, 0xFF0000FFU, true));
   for (uint32_t y = 10; y < 13; y++) {
     for (uint32_t x = 10; x < 13; x++) {
-      TEST_ASSERT_EQ(0xFF, s_fb8888[(y * k_test_fb_w + x) * 4u + 0u]); /* B */
+      TEST_ASSERT_EQ(0xFF, s_fb8888[(y * k_test_fb_w + x) * 4U + 0U]); /* B */
     }
   }
   TEST_END("ra8_gfx_rect outline + filled");
@@ -165,13 +165,13 @@ static void test_circle_outline_and_filled(void)
   rebind_8888();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_gfx_circle(0, 0, -1, 0, false));
   /* Outline circle at (16,16) r=5 -- expect (21,16) pixel set. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_circle(16, 16, 5, 0xFFFFFFFFu, false));
-  TEST_ASSERT_EQ(0xFF, s_fb8888[(16u * k_test_fb_w + 21u) * 4u + 0u]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_circle(16, 16, 5, 0xFFFFFFFFU, false));
+  TEST_ASSERT_EQ(0xFF, s_fb8888[(16U * k_test_fb_w + 21U) * 4U + 0U]);
   /* Centre pixel of outline must be untouched. */
-  TEST_ASSERT_EQ(0x00, s_fb8888[(16u * k_test_fb_w + 16u) * 4u + 0u]);
+  TEST_ASSERT_EQ(0x00, s_fb8888[(16U * k_test_fb_w + 16U) * 4U + 0U]);
   /* Filled disc -- centre pixel now lit. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_circle(16, 16, 4, 0xFFFFFFFFu, true));
-  TEST_ASSERT_EQ(0xFF, s_fb8888[(16u * k_test_fb_w + 16u) * 4u + 0u]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_circle(16, 16, 4, 0xFFFFFFFFU, true));
+  TEST_ASSERT_EQ(0xFF, s_fb8888[(16U * k_test_fb_w + 16U) * 4U + 0U]);
   TEST_END("ra8_gfx_circle outline + filled");
 }
 
@@ -181,20 +181,20 @@ static void test_circle_outline_and_filled(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_text_out_renders_A(void)
+static void test_text_out_renders_glyph_a(void)
 {
   TEST_BEGIN("ra8_gfx_text_out renders 'A'");
   rebind_8888();
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_gfx_text_out(0, 0, "A", &ra8_gfx_font_8x16, 0xFFFFFFFFu, 0xFF000000u));
+                 ra8_gfx_text_out(0, 0, "A", &ra8_gfx_font_8x16, 0xFFFFFFFFU, 0xFF000000U));
   /* Row 2 of 'A' is 0x10 -- bit 4 set (column 3, MSB-left). Pixel (3,2)
    * must therefore be foreground white (B/G/R == 0xFF). */
-  const uint32_t off_on = (2u * k_test_fb_w + 3u) * 4u;
+  const uint32_t off_on = ((2U * k_test_fb_w) + 3U) * 4U;
   TEST_ASSERT_EQ(0xFF, s_fb8888[off_on + 0]);
   TEST_ASSERT_EQ(0xFF, s_fb8888[off_on + 1]);
   TEST_ASSERT_EQ(0xFF, s_fb8888[off_on + 2]);
   /* Pixel (0,2) is background black on row with only bit 4 set. */
-  const uint32_t off_off = (2u * k_test_fb_w + 0u) * 4u;
+  const uint32_t off_off = ((2U * k_test_fb_w) + 0U) * 4U;
   TEST_ASSERT_EQ(0x00, s_fb8888[off_off + 0]);
   TEST_ASSERT_EQ(0x00, s_fb8888[off_off + 1]);
   TEST_ASSERT_EQ(0x00, s_fb8888[off_off + 2]);
@@ -213,10 +213,10 @@ static void test_text_size(void)
   uint32_t w = 0;
   uint32_t h = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_text_size("Hello", &ra8_gfx_font_8x16, &w, &h));
-  TEST_ASSERT_EQ(40u, w); /* 5 chars * 8 px */
-  TEST_ASSERT_EQ(16u, h);
+  TEST_ASSERT_EQ(40U, w); /* 5 chars * 8 px */
+  TEST_ASSERT_EQ(16U, h);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_text_size("", &ra8_gfx_font_8x16, &w, &h));
-  TEST_ASSERT_EQ(0u, w);
+  TEST_ASSERT_EQ(0U, w);
   TEST_END("ra8_gfx_text_size measures correctly");
 }
 
@@ -240,12 +240,12 @@ static void test_blit(void)
   };
   // clang-format on
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_blit(src, 2, 2, k_ra8_gfx_format_argb8888, 5, 5));
-  const uint32_t off = (5u * k_test_fb_w + 5u) * 4u;
+  const uint32_t off = ((5U * k_test_fb_w) + 5U) * 4U;
   /* (5,5) was red (B=0,G=0,R=FF). */
   TEST_ASSERT_EQ(0x00, s_fb8888[off + 0]);
   TEST_ASSERT_EQ(0xFF, s_fb8888[off + 2]);
   /* (6,6) was white. */
-  const uint32_t off2 = (6u * k_test_fb_w + 6u) * 4u;
+  const uint32_t off2 = ((6U * k_test_fb_w) + 6U) * 4U;
   TEST_ASSERT_EQ(0xFF, s_fb8888[off2 + 0]);
   TEST_ASSERT_EQ(0xFF, s_fb8888[off2 + 1]);
   TEST_ASSERT_EQ(0xFF, s_fb8888[off2 + 2]);
@@ -285,14 +285,14 @@ static void test_null_args(void)
 static void test_rgb888_format(void)
 {
   TEST_BEGIN("RGB888 format round-trip via blit");
-  static uint8_t rgb888_fb[k_test_fb_w * k_test_fb_h * 3];
-  (void)memset(rgb888_fb, 0, sizeof(rgb888_fb));
+  static uint8_t s_rgb888_fb[k_test_fb_w * k_test_fb_h * 3];
+  (void)memset(s_rgb888_fb, 0, sizeof(s_rgb888_fb));
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_gfx_init(rgb888_fb, k_test_fb_w, k_test_fb_h, k_ra8_gfx_format_rgb888));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_pixel(0, 0, 0x00AABBCCu));
-  TEST_ASSERT_EQ(0xAA, rgb888_fb[0]); /* R */
-  TEST_ASSERT_EQ(0xBB, rgb888_fb[1]); /* G */
-  TEST_ASSERT_EQ(0xCC, rgb888_fb[2]); /* B */
+                 ra8_gfx_init(s_rgb888_fb, k_test_fb_w, k_test_fb_h, k_ra8_gfx_format_rgb888));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_pixel(0, 0, 0x00AABBCCU));
+  TEST_ASSERT_EQ(0xAA, s_rgb888_fb[0]); /* R */
+  TEST_ASSERT_EQ(0xBB, s_rgb888_fb[1]); /* G */
+  TEST_ASSERT_EQ(0xCC, s_rgb888_fb[2]); /* B */
   TEST_END("RGB888 format round-trip via blit");
 }
 
@@ -349,8 +349,8 @@ static void test_mcdc_internal_format_ok(void)
   /* V1 */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(s_fb565, 64, 32, k_ra8_gfx_format_rgb565));
   /* V2 */
-  static uint8_t fb888[64 * 32 * 3];
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(fb888, 64, 32, k_ra8_gfx_format_rgb888));
+  static uint8_t s_fb888[64 * 32 * 3];
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(s_fb888, 64, 32, k_ra8_gfx_format_rgb888));
   /* V3 */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(s_fb8888, 64, 32, k_ra8_gfx_format_argb8888));
   /* V4 */
@@ -378,16 +378,16 @@ static void test_mcdc_internal_plot_neg(void)
   TEST_BEGIN("gfx MC/DC internal_plot negative-coord guard");
   rebind_8888();
   /* V1: positive coords, pixel must land. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(5, 5, 5, 5, 0xFF112233u));
-  TEST_ASSERT_EQ(0x33, s_fb8888[(5u * k_test_fb_w + 5u) * 4u + 0u]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(5, 5, 5, 5, 0xFF112233U));
+  TEST_ASSERT_EQ(0x33, s_fb8888[(5U * k_test_fb_w + 5U) * 4U + 0U]);
   /* V2: x<0, plot skipped. We re-clear the buffer and probe a no-op. */
   rebind_8888();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(-1, 5, -1, 5, 0xFF112233u));
-  TEST_ASSERT_EQ(0x00, s_fb8888[(5u * k_test_fb_w + 0u) * 4u + 0u]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(-1, 5, -1, 5, 0xFF112233U));
+  TEST_ASSERT_EQ(0x00, s_fb8888[(5U * k_test_fb_w + 0U) * 4U + 0U]);
   /* V3: y<0, plot skipped. */
   rebind_8888();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(5, -1, 5, -1, 0xFF112233u));
-  TEST_ASSERT_EQ(0x00, s_fb8888[(0u * k_test_fb_w + 5u) * 4u + 0u]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(5, -1, 5, -1, 0xFF112233U));
+  TEST_ASSERT_EQ(0x00, s_fb8888[(0U * k_test_fb_w + 5U) * 4U + 0U]);
   TEST_END("gfx MC/DC internal_plot negative-coord guard");
 }
 
@@ -408,19 +408,19 @@ static void test_mcdc_internal_plot_oob(void)
   TEST_BEGIN("gfx MC/DC internal_plot OOB-coord guard");
   rebind_8888();
   /* V1: in-range. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(5, 5, 5, 5, 0xFF112233u));
-  TEST_ASSERT_EQ(0x33, s_fb8888[(5u * k_test_fb_w + 5u) * 4u + 0u]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(5, 5, 5, 5, 0xFF112233U));
+  TEST_ASSERT_EQ(0x33, s_fb8888[(5U * k_test_fb_w + 5U) * 4U + 0U]);
   /* V2: x == width. */
   rebind_8888();
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_gfx_line((int32_t)k_test_fb_w, 5, (int32_t)k_test_fb_w, 5, 0xFF112233u));
+                 ra8_gfx_line((int32_t)k_test_fb_w, 5, (int32_t)k_test_fb_w, 5, 0xFF112233U));
   /* No pixel could land at fb_w,5: probe (fb_w-1,5) is still 0. */
-  TEST_ASSERT_EQ(0x00, s_fb8888[(5u * k_test_fb_w + (k_test_fb_w - 1u)) * 4u + 0u]);
+  TEST_ASSERT_EQ(0x00, s_fb8888[(5U * k_test_fb_w + (k_test_fb_w - 1U)) * 4U + 0U]);
   /* V3: y == height. */
   rebind_8888();
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_gfx_line(5, (int32_t)k_test_fb_h, 5, (int32_t)k_test_fb_h, 0xFF112233u));
-  TEST_ASSERT_EQ(0x00, s_fb8888[((k_test_fb_h - 1u) * k_test_fb_w + 5u) * 4u + 0u]);
+                 ra8_gfx_line(5, (int32_t)k_test_fb_h, 5, (int32_t)k_test_fb_h, 0xFF112233U));
+  TEST_ASSERT_EQ(0x00, s_fb8888[((k_test_fb_h - 1U) * k_test_fb_w + 5U) * 4U + 0U]);
   TEST_END("gfx MC/DC internal_plot OOB-coord guard");
 }
 
@@ -513,11 +513,11 @@ static void test_mcdc_pixel_bounds(void)
 {
   TEST_BEGIN("gfx MC/DC ra8_gfx_pixel 4-condition bounds");
   rebind_8888();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_pixel(5, 5, 0xFF112233u));
-  TEST_ASSERT_EQ(k_ra8_err_range_check_failed, ra8_gfx_pixel(-1, 5, 0u));
-  TEST_ASSERT_EQ(k_ra8_err_range_check_failed, ra8_gfx_pixel(5, -1, 0u));
-  TEST_ASSERT_EQ(k_ra8_err_range_check_failed, ra8_gfx_pixel((int32_t)k_test_fb_w, 5, 0u));
-  TEST_ASSERT_EQ(k_ra8_err_range_check_failed, ra8_gfx_pixel(5, (int32_t)k_test_fb_h, 0u));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_pixel(5, 5, 0xFF112233U));
+  TEST_ASSERT_EQ(k_ra8_err_range_check_failed, ra8_gfx_pixel(-1, 5, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_range_check_failed, ra8_gfx_pixel(5, -1, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_range_check_failed, ra8_gfx_pixel((int32_t)k_test_fb_w, 5, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_range_check_failed, ra8_gfx_pixel(5, (int32_t)k_test_fb_h, 0U));
   TEST_END("gfx MC/DC ra8_gfx_pixel 4-condition bounds");
 }
 
@@ -539,17 +539,17 @@ static void test_mcdc_line_endpoint(void)
   TEST_BEGIN("gfx MC/DC ra8_gfx_line endpoint && check");
   rebind_8888();
   /* V1: degenerate line (1 pixel). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(3, 3, 3, 3, 0xFF010101u));
-  TEST_ASSERT_EQ(0x01, s_fb8888[(3u * k_test_fb_w + 3u) * 4u + 0u]);
-  TEST_ASSERT_EQ(0x00, s_fb8888[(3u * k_test_fb_w + 4u) * 4u + 0u]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(3, 3, 3, 3, 0xFF010101U));
+  TEST_ASSERT_EQ(0x01, s_fb8888[(3U * k_test_fb_w + 3U) * 4U + 0U]);
+  TEST_ASSERT_EQ(0x00, s_fb8888[(3U * k_test_fb_w + 4U) * 4U + 0U]);
   /* V2: horizontal line, multi-pixel proves loop did not break early. */
   rebind_8888();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(3, 3, 5, 3, 0xFF010101u));
-  TEST_ASSERT_EQ(0x01, s_fb8888[(3u * k_test_fb_w + 5u) * 4u + 0u]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(3, 3, 5, 3, 0xFF010101U));
+  TEST_ASSERT_EQ(0x01, s_fb8888[(3U * k_test_fb_w + 5U) * 4U + 0U]);
   /* V3: vertical line, ditto. */
   rebind_8888();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(3, 3, 3, 5, 0xFF010101u));
-  TEST_ASSERT_EQ(0x01, s_fb8888[(5u * k_test_fb_w + 3u) * 4u + 0u]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(3, 3, 3, 5, 0xFF010101U));
+  TEST_ASSERT_EQ(0x01, s_fb8888[(5U * k_test_fb_w + 3U) * 4U + 0U]);
   TEST_END("gfx MC/DC ra8_gfx_line endpoint && check");
 }
 
@@ -570,14 +570,14 @@ static void test_mcdc_rect_dim(void)
 {
   TEST_BEGIN("gfx MC/DC ra8_gfx_rect dimension guard");
   rebind_8888();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(2, 2, 4, 4, 0xFF030303u, true));
-  TEST_ASSERT_EQ(0x03, s_fb8888[(2u * k_test_fb_w + 2u) * 4u + 0u]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(2, 2, 4, 4, 0xFF030303U, true));
+  TEST_ASSERT_EQ(0x03, s_fb8888[(2U * k_test_fb_w + 2U) * 4U + 0U]);
   rebind_8888();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(2, 2, 0, 4, 0xFF030303u, true));
-  TEST_ASSERT_EQ(0x00, s_fb8888[(2u * k_test_fb_w + 2u) * 4u + 0u]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(2, 2, 0, 4, 0xFF030303U, true));
+  TEST_ASSERT_EQ(0x00, s_fb8888[(2U * k_test_fb_w + 2U) * 4U + 0U]);
   rebind_8888();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(2, 2, 4, 0, 0xFF030303u, true));
-  TEST_ASSERT_EQ(0x00, s_fb8888[(2u * k_test_fb_w + 2u) * 4u + 0u]);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(2, 2, 4, 0, 0xFF030303U, true));
+  TEST_ASSERT_EQ(0x00, s_fb8888[(2U * k_test_fb_w + 2U) * 4U + 0U]);
   TEST_END("gfx MC/DC ra8_gfx_rect dimension guard");
 }
 
@@ -602,22 +602,22 @@ static void test_mcdc_render_glyph_codepoint(void)
   TEST_BEGIN("gfx MC/DC internal_render_glyph codepoint guard");
   rebind_8888();
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_gfx_text_out(0, 0, "A", &ra8_gfx_font_8x16, 0xFFFFFFFFu, 0xFF000000u));
+                 ra8_gfx_text_out(0, 0, "A", &ra8_gfx_font_8x16, 0xFFFFFFFFU, 0xFF000000U));
   /* Row 2 of 'A' has bit 4 set => pixel (3,2) is foreground. */
-  TEST_ASSERT_EQ(0xFF, s_fb8888[(2u * k_test_fb_w + 3u) * 4u + 0u]);
+  TEST_ASSERT_EQ(0xFF, s_fb8888[(2U * k_test_fb_w + 3U) * 4U + 0U]);
   /* V2: codepoint below first_codepoint -> render space (likely all bg). */
   rebind_8888();
   const char low[2] = {(char)0x10, '\0'};
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_gfx_text_out(0, 0, low, &ra8_gfx_font_8x16, 0xFFFFFFFFu, 0xFF000000u));
+                 ra8_gfx_text_out(0, 0, low, &ra8_gfx_font_8x16, 0xFFFFFFFFU, 0xFF000000U));
   /* (3,2) must NOT be foreground white because we substituted a space-glyph. */
-  TEST_ASSERT_EQ(0x00, s_fb8888[(2u * k_test_fb_w + 3u) * 4u + 0u]);
+  TEST_ASSERT_EQ(0x00, s_fb8888[(2U * k_test_fb_w + 3U) * 4U + 0U]);
   /* V3: codepoint above last_codepoint. */
   rebind_8888();
   const char high[2] = {(char)0x80, '\0'};
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_gfx_text_out(0, 0, high, &ra8_gfx_font_8x16, 0xFFFFFFFFu, 0xFF000000u));
-  TEST_ASSERT_EQ(0x00, s_fb8888[(2u * k_test_fb_w + 3u) * 4u + 0u]);
+                 ra8_gfx_text_out(0, 0, high, &ra8_gfx_font_8x16, 0xFFFFFFFFU, 0xFF000000U));
+  TEST_ASSERT_EQ(0x00, s_fb8888[(2U * k_test_fb_w + 3U) * 4U + 0U]);
   TEST_END("gfx MC/DC internal_render_glyph codepoint guard");
 }
 
@@ -636,9 +636,9 @@ static void test_mcdc_text_out_null(void)
 {
   TEST_BEGIN("gfx MC/DC ra8_gfx_text_out null guard");
   rebind_8888();
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_text_out(0, 0, "x", &ra8_gfx_font_8x16, 0u, 0u));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_gfx_text_out(0, 0, nullptr, &ra8_gfx_font_8x16, 0u, 0u));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_gfx_text_out(0, 0, "x", nullptr, 0u, 0u));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_text_out(0, 0, "x", &ra8_gfx_font_8x16, 0U, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_gfx_text_out(0, 0, nullptr, &ra8_gfx_font_8x16, 0U, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_gfx_text_out(0, 0, "x", nullptr, 0U, 0U));
   TEST_END("gfx MC/DC ra8_gfx_text_out null guard");
 }
 
@@ -720,7 +720,7 @@ int main(void)
   test_line_horizontal();
   test_rect_outline_and_filled();
   test_circle_outline_and_filled();
-  test_text_out_renders_A();
+  test_text_out_renders_glyph_a();
   test_text_size();
   test_blit();
   test_null_args();

@@ -233,13 +233,13 @@ static ra8_err_t t_wt_blit(void*          ctx,
       if ((fx < 0) || (fx >= (int32_t)k_t_wt_view_w)) {
         continue;
       }
-      const uint8_t* sp = &px[((size_t)row * (size_t)sw + (size_t)col) * (size_t)bpp];
+      const uint8_t* sp = &px[(((size_t)row * (size_t)sw) + (size_t)col) * (size_t)bpp];
       uint8_t        expect[3];
       t_wt_pixel((uint32_t)col, canvas_y, expect);
       TEST_ASSERT_EQ(expect[0], sp[0]);
       TEST_ASSERT_EQ(expect[1], sp[1]);
       TEST_ASSERT_EQ(expect[2], sp[2]);
-      uint8_t* dp = &s_view_fb[((size_t)fy * (size_t)k_t_wt_view_w + (size_t)fx) * 3U];
+      uint8_t* dp = &s_view_fb[(((size_t)fy * (size_t)k_t_wt_view_w) + (size_t)fx) * 3U];
       dp[0]       = sp[0];
       dp[1]       = sp[1];
       dp[2]       = sp[2];

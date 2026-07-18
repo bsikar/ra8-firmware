@@ -136,7 +136,7 @@ uint16_t board_overlay_total_height(uint16_t panel_h)
 void px(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, uint16_t color)
 {
   if ((x >= 0) && (y >= 0) && (x < (int32_t)w) && (y < (int32_t)h)) {
-    out[(size_t)y * (size_t)w + (size_t)x] = color;
+    out[((size_t)y * (size_t)w) + (size_t)x] = color;
   }
 }
 
@@ -244,8 +244,8 @@ void blit_panel(uint16_t*       out,
     for (uint16_t x = 0U; x < panel_w; x++) {
       const bool     in_panel = (panel != nullptr) && (y < panel_h);
       const uint16_t c =
-        in_panel ? panel[(size_t)y * (size_t)panel_w + (size_t)x] : (uint16_t)k_ovl_panel_bg;
-      out[(size_t)y * (size_t)w + (size_t)x] = c;
+        in_panel ? panel[((size_t)y * (size_t)panel_w) + (size_t)x] : (uint16_t)k_ovl_panel_bg;
+      out[((size_t)y * (size_t)w) + (size_t)x] = c;
     }
   }
 }

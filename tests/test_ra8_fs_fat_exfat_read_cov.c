@@ -153,7 +153,9 @@ static ra8_err_t rc_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(buf, &d->bytes[lba * (uint32_t)k_rc_block_size], (size_t)count * (size_t)k_rc_block_size);
+  memcpy(buf,
+         &d->bytes[(size_t)lba * (uint32_t)k_rc_block_size],
+         (size_t)count * (size_t)k_rc_block_size);
   return k_ra8_ok;
 }
 
@@ -180,7 +182,9 @@ static ra8_err_t rc_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(&d->bytes[lba * (uint32_t)k_rc_block_size], buf, (size_t)count * (size_t)k_rc_block_size);
+  memcpy(&d->bytes[(size_t)lba * (uint32_t)k_rc_block_size],
+         buf,
+         (size_t)count * (size_t)k_rc_block_size);
   return k_ra8_ok;
 }
 
@@ -280,8 +284,8 @@ static void build_exfat_volume(void)
  */
 static uint32_t root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
 {
-  const uint32_t root_lba = h->first_data_lba + (h->root_cluster - 2U) * h->sectors_per_cluster;
-  return root_lba * (uint32_t)k_rc_block_size + idx * (uint32_t)k_rc_entry_bytes;
+  const uint32_t root_lba = h->first_data_lba + ((h->root_cluster - 2U) * h->sectors_per_cluster);
+  return (root_lba * (uint32_t)k_rc_block_size) + (idx * (uint32_t)k_rc_entry_bytes);
 }
 
 /**
@@ -299,7 +303,7 @@ static uint32_t root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
  */
 static uint32_t fat_entry_off(const ra8_fs_mount_t* h, uint32_t clus)
 {
-  return h->first_fat_lba * (uint32_t)k_rc_block_size + clus * 4U;
+  return (h->first_fat_lba * (uint32_t)k_rc_block_size) + (clus * 4U);
 }
 
 /**
@@ -611,7 +615,7 @@ static void test_name_chunk_eq_full_match(void)
   TEST_BEGIN("exfat read cov: name_chunk_eq full 15-char match (line 171)");
   uint8_t entry[(uint32_t)k_rc_entry_bytes] = {};
   for (uint32_t i = 0U; i < (uint32_t)k_rc_name_per_ent; i++) {
-    entry[(uint32_t)k_rc_name_off + i * 2U] = (uint8_t)'A'; /* low byte */
+    entry[(uint32_t)k_rc_name_off + (i * 2U)] = (uint8_t)'A'; /* low byte */
     /* high byte stays 0 from zero-init */
   }
   uint8_t result =

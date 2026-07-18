@@ -172,8 +172,8 @@ static uint8_t rtc_bin_to_bcd(uint8_t bin)
 /** @brief Packed BCD -> binary 0..99. */
 static uint8_t rtc_bcd_to_bin(uint8_t bcd)
 {
-  return (uint8_t)((uint8_t)((bcd >> (uint8_t)k_bcd_shift) & (uint8_t)k_nibble_mask) *
-                     (uint8_t)k_bcd_base +
+  return (uint8_t)(((uint8_t)((bcd >> (uint8_t)k_bcd_shift) & (uint8_t)k_nibble_mask) *
+                    (uint8_t)k_bcd_base) +
                    (uint8_t)(bcd & (uint8_t)k_nibble_mask));
 }
 

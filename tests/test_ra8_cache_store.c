@@ -499,12 +499,12 @@ static void test_limits_and_sync(void)
   for (uint32_t i = 0U; i < (uint32_t)k_t_index_cap; i++) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_evict(&st, 1000U + i));
   }
-  static uint8_t big[24000];
-  t_fill(big, sizeof(big), 4U);
+  static uint8_t s_big[24000];
+  t_fill(s_big, sizeof(s_big), 4U);
   ra8_err_t rc = k_ra8_ok;
   uint32_t  n  = 0U;
   for (uint32_t i = 0U; i < 20U; i++) {
-    rc = ra8_cache_store_put(&st, 2000U + i, big, sizeof(big));
+    rc = ra8_cache_store_put(&st, 2000U + i, s_big, sizeof(s_big));
     if (rc != k_ra8_ok) {
       break;
     }

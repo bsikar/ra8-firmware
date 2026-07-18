@@ -52,7 +52,7 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(buf, &d->bytes[lba * k_disk_block_size], count * k_disk_block_size);
+  memcpy(buf, &d->bytes[(size_t)lba * k_disk_block_size], (size_t)count * k_disk_block_size);
   return k_ra8_ok;
 }
 
@@ -62,7 +62,7 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(&d->bytes[lba * k_disk_block_size], buf, count * k_disk_block_size);
+  memcpy(&d->bytes[(size_t)lba * k_disk_block_size], buf, (size_t)count * k_disk_block_size);
   return k_ra8_ok;
 }
 
@@ -209,7 +209,7 @@ static void build_volume(ra8_fs_type_t target)
   if (target == k_ra8_fs_type_fat32) {
     for (uint32_t i = 0; i < g.fats; i++) {
       uint32_t fat_lba = g.rsvd + (i * g.fat_sz);
-      uint8_t* fat     = &s_disk.bytes[fat_lba * k_disk_block_size];
+      uint8_t* fat     = &s_disk.bytes[(size_t)fat_lba * k_disk_block_size];
       /* Cluster 0 + 1 are reserved; cluster 2 = root = EOC. */
       put32(fat, 0, 0x0FFFFFFFU);
       put32(fat, 4, 0x0FFFFFFFU);
@@ -520,8 +520,8 @@ static void test_no_free_space(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "FILL.BIN", k_ra8_fs_mode_write, &f));
   /* The FAT12 disk has count_of_clusters << 4085, so try to write more
      bytes than the data region holds and expect k_ra8_err_no_mem. */
-  static uint8_t pad[k_disk_blocks_fat12 * k_disk_block_size] = {};
-  ra8_err_t      err                                          = ra8_fs_write(f, pad, sizeof pad);
+  static uint8_t s_pad[k_disk_blocks_fat12 * k_disk_block_size] = {};
+  ra8_err_t      err = ra8_fs_write(f, s_pad, sizeof s_pad);
   TEST_ASSERT(err == k_ra8_err_no_mem || err == k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));

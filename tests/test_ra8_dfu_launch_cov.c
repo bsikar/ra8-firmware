@@ -146,6 +146,12 @@ void ra8_dfu_launch_cov(uintptr_t src, uint32_t img_len, uint32_t entry);
 /** @brief RA8 ENABLE ROOT OF TRUST. */
 #define RA8_ENABLE_ROOT_OF_TRUST
 /** @brief RA8 dfu launch. */
+/* Include-time interposition seam: each macro below must be spelled
+ * EXACTLY like the production symbol it replaces, so the project rule
+ * that macro names are UPPER_CASE cannot apply here -- renaming one
+ * silently un-hooks the mock and the test would exercise the real
+ * driver while still passing. */
+// NOLINTBEGIN(readability-identifier-naming)
 #define ra8_dfu_launch ra8_dfu_launch_cov
 /** @brief RA8 rot trailer after. */
 #define ra8_rot_trailer_after mock_rot_trailer_after
@@ -155,6 +161,7 @@ void ra8_dfu_launch_cov(uintptr_t src, uint32_t img_len, uint32_t entry);
 #define ra8_rot_antirollback_verify mock_rot_antirollback_verify
 /** @brief RA8 rot antirollback default store. */
 #define ra8_rot_antirollback_default_store mock_rot_antirollback_default_store
+// NOLINTEND(readability-identifier-naming)
 
 #include "ra8_dfu_launch.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
 

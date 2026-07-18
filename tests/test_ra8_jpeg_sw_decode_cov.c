@@ -510,36 +510,36 @@ static void test_decode_sof0_guards(void)
 static void test_decode_sos_guards(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_parse_sos header/len/ns guards");
-  static uint8_t buf[64];
+  static uint8_t s_buf[64];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
   /* SOS marker with no seglen bytes. */
   uint32_t n = 0U;
-  cov_append(buf, &n, k_soi, (uint32_t)sizeof k_soi);
-  cov_append(buf, &n, k_sof0_8x8_gray, (uint32_t)sizeof k_sof0_8x8_gray);
+  cov_append(s_buf, &n, k_soi, (uint32_t)sizeof k_soi);
+  cov_append(s_buf, &n, k_sof0_8x8_gray, (uint32_t)sizeof k_sof0_8x8_gray);
   static const uint8_t sos_marker[] = {0xFFU, 0xDAU};
-  cov_append(buf, &n, sos_marker, (uint32_t)sizeof sos_marker);
+  cov_append(s_buf, &n, sos_marker, (uint32_t)sizeof sos_marker);
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
 
   /* SOS with seglen=5 (< 6). */
   n = 0U;
-  cov_append(buf, &n, k_soi, (uint32_t)sizeof k_soi);
-  cov_append(buf, &n, k_sof0_8x8_gray, (uint32_t)sizeof k_sof0_8x8_gray);
+  cov_append(s_buf, &n, k_soi, (uint32_t)sizeof k_soi);
+  cov_append(s_buf, &n, k_sof0_8x8_gray, (uint32_t)sizeof k_sof0_8x8_gray);
   static const uint8_t sos_short[] = {0xFFU, 0xDAU, 0x00U, 0x05U};
-  cov_append(buf, &n, sos_short, (uint32_t)sizeof sos_short);
+  cov_append(s_buf, &n, sos_short, (uint32_t)sizeof sos_short);
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
 
   /* SOS with ns=2 against a 1-component frame. */
   n = 0U;
-  cov_append(buf, &n, k_soi, (uint32_t)sizeof k_soi);
-  cov_append(buf, &n, k_sof0_8x8_gray, (uint32_t)sizeof k_sof0_8x8_gray);
+  cov_append(s_buf, &n, k_soi, (uint32_t)sizeof k_soi);
+  cov_append(s_buf, &n, k_sof0_8x8_gray, (uint32_t)sizeof k_sof0_8x8_gray);
   static const uint8_t sos_ns2[] = {0xFFU, 0xDAU, 0x00U, 0x06U, 0x02U, 0x01U, 0x00U, 0x00U};
-  cov_append(buf, &n, sos_ns2, (uint32_t)sizeof sos_ns2);
+  cov_append(s_buf, &n, sos_ns2, (uint32_t)sizeof sos_ns2);
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_jpeg_sw_decode(buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
 
   TEST_END("jpeg_dec_cov: dec_parse_sos header/len/ns guards");
 }
@@ -567,21 +567,21 @@ static void test_decode_sos_guards(void)
 static void test_decode_scan_buffer_too_small(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_decode_scan output-size guard");
-  static uint8_t buf[64];
-  static uint8_t tiny[(uint32_t)k_cov_out_small];
+  static uint8_t s_buf[64];
+  static uint8_t s_tiny[(uint32_t)k_cov_out_small];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
   uint32_t n = 0U;
-  cov_append(buf, &n, k_soi, (uint32_t)sizeof k_soi);
-  cov_append(buf, &n, k_sof0_8x8_gray, (uint32_t)sizeof k_sof0_8x8_gray);
-  cov_append(buf, &n, k_sos_gray, (uint32_t)sizeof k_sos_gray);
+  cov_append(s_buf, &n, k_soi, (uint32_t)sizeof k_soi);
+  cov_append(s_buf, &n, k_sof0_8x8_gray, (uint32_t)sizeof k_sof0_8x8_gray);
+  cov_append(s_buf, &n, k_sos_gray, (uint32_t)sizeof k_sos_gray);
   static const uint8_t entropy[] = {0x00U, 0x00U};
-  cov_append(buf, &n, entropy, (uint32_t)sizeof entropy);
-  cov_append(buf, &n, k_eoi, (uint32_t)sizeof k_eoi);
+  cov_append(s_buf, &n, entropy, (uint32_t)sizeof entropy);
+  cov_append(s_buf, &n, k_eoi, (uint32_t)sizeof k_eoi);
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_jpeg_sw_decode(buf, n, tiny, (uint32_t)k_cov_out_small, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_tiny, (uint32_t)k_cov_out_small, &w, &h));
   TEST_END("jpeg_dec_cov: dec_decode_scan output-size guard");
 }
 
@@ -608,20 +608,20 @@ static void test_decode_scan_buffer_too_small(void)
 static void test_decode_dc_huffman_failure(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block DC failure -> y-block + scan propagation");
-  static uint8_t buf[64];
+  static uint8_t s_buf[64];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
   uint32_t n = 0U;
-  cov_append(buf, &n, k_soi, (uint32_t)sizeof k_soi);
-  cov_append(buf, &n, k_sof0_8x8_gray, (uint32_t)sizeof k_sof0_8x8_gray);
-  cov_append(buf, &n, k_sos_gray, (uint32_t)sizeof k_sos_gray);
+  cov_append(s_buf, &n, k_soi, (uint32_t)sizeof k_soi);
+  cov_append(s_buf, &n, k_sof0_8x8_gray, (uint32_t)sizeof k_sof0_8x8_gray);
+  cov_append(s_buf, &n, k_sos_gray, (uint32_t)sizeof k_sos_gray);
   static const uint8_t entropy[] = {0x00U, 0x00U};
-  cov_append(buf, &n, entropy, (uint32_t)sizeof entropy);
-  cov_append(buf, &n, k_eoi, (uint32_t)sizeof k_eoi);
+  cov_append(s_buf, &n, entropy, (uint32_t)sizeof entropy);
+  cov_append(s_buf, &n, k_eoi, (uint32_t)sizeof k_eoi);
 
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
   TEST_END("jpeg_dec_cov: dec_block DC failure -> y-block + scan propagation");
 }
 
@@ -648,21 +648,21 @@ static void test_decode_dc_huffman_failure(void)
 static void test_decode_dc_magnitude_underflow(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block DC magnitude underflow (r<0 && t!=0)");
-  static uint8_t buf[64];
+  static uint8_t s_buf[64];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
   uint32_t n = 0U;
-  cov_append(buf, &n, k_soi, (uint32_t)sizeof k_soi);
-  cov_append(buf, &n, k_sof0_8x8_gray, (uint32_t)sizeof k_sof0_8x8_gray);
-  cov_append(buf, &n, k_dht_dc_t8, (uint32_t)sizeof k_dht_dc_t8);
-  cov_append(buf, &n, k_sos_gray, (uint32_t)sizeof k_sos_gray);
+  cov_append(s_buf, &n, k_soi, (uint32_t)sizeof k_soi);
+  cov_append(s_buf, &n, k_sof0_8x8_gray, (uint32_t)sizeof k_sof0_8x8_gray);
+  cov_append(s_buf, &n, k_dht_dc_t8, (uint32_t)sizeof k_dht_dc_t8);
+  cov_append(s_buf, &n, k_sos_gray, (uint32_t)sizeof k_sos_gray);
   static const uint8_t entropy[] = {0x00U};
-  cov_append(buf, &n, entropy, (uint32_t)sizeof entropy);
-  cov_append(buf, &n, k_eoi, (uint32_t)sizeof k_eoi);
+  cov_append(s_buf, &n, entropy, (uint32_t)sizeof entropy);
+  cov_append(s_buf, &n, k_eoi, (uint32_t)sizeof k_eoi);
 
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
   TEST_END("jpeg_dec_cov: dec_block DC magnitude underflow (r<0 && t!=0)");
 }
 
@@ -685,21 +685,21 @@ static void test_decode_dc_magnitude_underflow(void)
 static void test_decode_ac_huffman_failure(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block AC Huffman failure (rs<0)");
-  static uint8_t buf[64];
+  static uint8_t s_buf[64];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
   uint32_t n = 0U;
-  cov_append(buf, &n, k_soi, (uint32_t)sizeof k_soi);
-  cov_append(buf, &n, k_sof0_8x8_gray, (uint32_t)sizeof k_sof0_8x8_gray);
-  cov_append(buf, &n, k_dht_dc, (uint32_t)sizeof k_dht_dc);
-  cov_append(buf, &n, k_sos_gray, (uint32_t)sizeof k_sos_gray);
+  cov_append(s_buf, &n, k_soi, (uint32_t)sizeof k_soi);
+  cov_append(s_buf, &n, k_sof0_8x8_gray, (uint32_t)sizeof k_sof0_8x8_gray);
+  cov_append(s_buf, &n, k_dht_dc, (uint32_t)sizeof k_dht_dc);
+  cov_append(s_buf, &n, k_sos_gray, (uint32_t)sizeof k_sos_gray);
   static const uint8_t entropy[] = {0x00U, 0x00U};
-  cov_append(buf, &n, entropy, (uint32_t)sizeof entropy);
-  cov_append(buf, &n, k_eoi, (uint32_t)sizeof k_eoi);
+  cov_append(s_buf, &n, entropy, (uint32_t)sizeof entropy);
+  cov_append(s_buf, &n, k_eoi, (uint32_t)sizeof k_eoi);
 
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
   TEST_END("jpeg_dec_cov: dec_block AC Huffman failure (rs<0)");
 }
 
@@ -723,22 +723,22 @@ static void test_decode_ac_huffman_failure(void)
 static void test_decode_ac_magnitude_underflow(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block AC magnitude underflow (v<0)");
-  static uint8_t buf[64];
+  static uint8_t s_buf[64];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
   uint32_t n = 0U;
-  cov_append(buf, &n, k_soi, (uint32_t)sizeof k_soi);
-  cov_append(buf, &n, k_sof0_8x8_gray, (uint32_t)sizeof k_sof0_8x8_gray);
-  cov_append(buf, &n, k_dht_dc, (uint32_t)sizeof k_dht_dc);
-  cov_append(buf, &n, k_dht_ac_f0, (uint32_t)sizeof k_dht_ac_f0);
-  cov_append(buf, &n, k_sos_gray, (uint32_t)sizeof k_sos_gray);
+  cov_append(s_buf, &n, k_soi, (uint32_t)sizeof k_soi);
+  cov_append(s_buf, &n, k_sof0_8x8_gray, (uint32_t)sizeof k_sof0_8x8_gray);
+  cov_append(s_buf, &n, k_dht_dc, (uint32_t)sizeof k_dht_dc);
+  cov_append(s_buf, &n, k_dht_ac_f0, (uint32_t)sizeof k_dht_ac_f0);
+  cov_append(s_buf, &n, k_sos_gray, (uint32_t)sizeof k_sos_gray);
   static const uint8_t entropy[] = {0x00U};
-  cov_append(buf, &n, entropy, (uint32_t)sizeof entropy);
-  cov_append(buf, &n, k_eoi, (uint32_t)sizeof k_eoi);
+  cov_append(s_buf, &n, entropy, (uint32_t)sizeof entropy);
+  cov_append(s_buf, &n, k_eoi, (uint32_t)sizeof k_eoi);
 
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
   TEST_END("jpeg_dec_cov: dec_block AC magnitude underflow (v<0)");
 }
 
@@ -765,22 +765,22 @@ static void test_decode_ac_magnitude_underflow(void)
 static void test_decode_ac_zrl_index_overrun(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block ZRL run + AC index overrun (k>=64)");
-  static uint8_t buf[80];
+  static uint8_t s_buf[80];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
   uint32_t n = 0U;
-  cov_append(buf, &n, k_soi, (uint32_t)sizeof k_soi);
-  cov_append(buf, &n, k_sof0_8x8_gray, (uint32_t)sizeof k_sof0_8x8_gray);
-  cov_append(buf, &n, k_dht_dc, (uint32_t)sizeof k_dht_dc);
-  cov_append(buf, &n, k_dht_ac_zrl, (uint32_t)sizeof k_dht_ac_zrl);
-  cov_append(buf, &n, k_sos_gray, (uint32_t)sizeof k_sos_gray);
+  cov_append(s_buf, &n, k_soi, (uint32_t)sizeof k_soi);
+  cov_append(s_buf, &n, k_sof0_8x8_gray, (uint32_t)sizeof k_sof0_8x8_gray);
+  cov_append(s_buf, &n, k_dht_dc, (uint32_t)sizeof k_dht_dc);
+  cov_append(s_buf, &n, k_dht_ac_zrl, (uint32_t)sizeof k_dht_ac_zrl);
+  cov_append(s_buf, &n, k_sos_gray, (uint32_t)sizeof k_sos_gray);
   static const uint8_t entropy[] = {0x08U};
-  cov_append(buf, &n, entropy, (uint32_t)sizeof entropy);
-  cov_append(buf, &n, k_eoi, (uint32_t)sizeof k_eoi);
+  cov_append(s_buf, &n, entropy, (uint32_t)sizeof entropy);
+  cov_append(s_buf, &n, k_eoi, (uint32_t)sizeof k_eoi);
 
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
   TEST_END("jpeg_dec_cov: dec_block ZRL run + AC index overrun (k>=64)");
 }
 
@@ -810,7 +810,7 @@ static void test_decode_ac_zrl_index_overrun(void)
 static void test_decode_chroma_block_failures(void)
 {
   TEST_BEGIN("jpeg_dec_cov: chroma Cb + Cr block failures + scan propagation");
-  static uint8_t buf[128];
+  static uint8_t s_buf[128];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
@@ -818,27 +818,27 @@ static void test_decode_chroma_block_failures(void)
 
   /* Cb fails: both chroma components select undefined table 1. */
   uint32_t n = 0U;
-  cov_append(buf, &n, k_soi, (uint32_t)sizeof k_soi);
-  cov_append(buf, &n, k_sof0_444, (uint32_t)sizeof k_sof0_444);
-  cov_append(buf, &n, k_dht_dc, (uint32_t)sizeof k_dht_dc);
-  cov_append(buf, &n, k_dht_ac, (uint32_t)sizeof k_dht_ac);
-  cov_append(buf, &n, k_sos_444_cb_fail, (uint32_t)sizeof k_sos_444_cb_fail);
-  cov_append(buf, &n, entropy, (uint32_t)sizeof entropy);
-  cov_append(buf, &n, k_eoi, (uint32_t)sizeof k_eoi);
+  cov_append(s_buf, &n, k_soi, (uint32_t)sizeof k_soi);
+  cov_append(s_buf, &n, k_sof0_444, (uint32_t)sizeof k_sof0_444);
+  cov_append(s_buf, &n, k_dht_dc, (uint32_t)sizeof k_dht_dc);
+  cov_append(s_buf, &n, k_dht_ac, (uint32_t)sizeof k_dht_ac);
+  cov_append(s_buf, &n, k_sos_444_cb_fail, (uint32_t)sizeof k_sos_444_cb_fail);
+  cov_append(s_buf, &n, entropy, (uint32_t)sizeof entropy);
+  cov_append(s_buf, &n, k_eoi, (uint32_t)sizeof k_eoi);
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
 
   /* Cr fails: Cb selects valid table 0, Cr selects undefined table 1. */
   n = 0U;
-  cov_append(buf, &n, k_soi, (uint32_t)sizeof k_soi);
-  cov_append(buf, &n, k_sof0_444, (uint32_t)sizeof k_sof0_444);
-  cov_append(buf, &n, k_dht_dc, (uint32_t)sizeof k_dht_dc);
-  cov_append(buf, &n, k_dht_ac, (uint32_t)sizeof k_dht_ac);
-  cov_append(buf, &n, k_sos_444_cr_fail, (uint32_t)sizeof k_sos_444_cr_fail);
-  cov_append(buf, &n, entropy, (uint32_t)sizeof entropy);
-  cov_append(buf, &n, k_eoi, (uint32_t)sizeof k_eoi);
+  cov_append(s_buf, &n, k_soi, (uint32_t)sizeof k_soi);
+  cov_append(s_buf, &n, k_sof0_444, (uint32_t)sizeof k_sof0_444);
+  cov_append(s_buf, &n, k_dht_dc, (uint32_t)sizeof k_dht_dc);
+  cov_append(s_buf, &n, k_dht_ac, (uint32_t)sizeof k_dht_ac);
+  cov_append(s_buf, &n, k_sos_444_cr_fail, (uint32_t)sizeof k_sos_444_cr_fail);
+  cov_append(s_buf, &n, entropy, (uint32_t)sizeof entropy);
+  cov_append(s_buf, &n, k_eoi, (uint32_t)sizeof k_eoi);
   TEST_ASSERT_EQ(k_ra8_err_protocol_error,
-                 ra8_jpeg_sw_decode(buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
+                 ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h));
 
   TEST_END("jpeg_dec_cov: chroma Cb + Cr block failures + scan propagation");
 }
@@ -866,21 +866,21 @@ static void test_decode_chroma_block_failures(void)
 static void test_decode_grayscale_edge_success(void)
 {
   TEST_BEGIN("jpeg_dec_cov: 5x5 grayscale decode -- edge crop + gray emit");
-  static uint8_t buf[80];
+  static uint8_t s_buf[80];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
   uint32_t n = 0U;
-  cov_append(buf, &n, k_soi, (uint32_t)sizeof k_soi);
-  cov_append(buf, &n, k_sof0_5x5_gray, (uint32_t)sizeof k_sof0_5x5_gray);
-  cov_append(buf, &n, k_dht_dc, (uint32_t)sizeof k_dht_dc);
-  cov_append(buf, &n, k_dht_ac, (uint32_t)sizeof k_dht_ac);
-  cov_append(buf, &n, k_sos_gray, (uint32_t)sizeof k_sos_gray);
+  cov_append(s_buf, &n, k_soi, (uint32_t)sizeof k_soi);
+  cov_append(s_buf, &n, k_sof0_5x5_gray, (uint32_t)sizeof k_sof0_5x5_gray);
+  cov_append(s_buf, &n, k_dht_dc, (uint32_t)sizeof k_dht_dc);
+  cov_append(s_buf, &n, k_dht_ac, (uint32_t)sizeof k_dht_ac);
+  cov_append(s_buf, &n, k_sos_gray, (uint32_t)sizeof k_sos_gray);
   static const uint8_t entropy[] = {0x00U, 0x00U};
-  cov_append(buf, &n, entropy, (uint32_t)sizeof entropy);
-  cov_append(buf, &n, k_eoi, (uint32_t)sizeof k_eoi);
+  cov_append(s_buf, &n, entropy, (uint32_t)sizeof entropy);
+  cov_append(s_buf, &n, k_eoi, (uint32_t)sizeof k_eoi);
 
-  ra8_err_t e = ra8_jpeg_sw_decode(buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h);
+  ra8_err_t e = ra8_jpeg_sw_decode(s_buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h);
   TEST_ASSERT_EQ(k_ra8_ok, e);
   TEST_ASSERT_EQ(5, w);
   TEST_ASSERT_EQ(5, h);

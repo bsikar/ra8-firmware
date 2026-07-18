@@ -215,7 +215,7 @@ static uint32_t adc_word(uint64_t off)
 static uint32_t adc_chcr(uint32_t ch)
 {
   return s_adc_reg[adc_word((uint64_t)k_adc_off_adchcr0 +
-                            (uint64_t)ch * (uint64_t)k_adc_chcr_stride)];
+                            ((uint64_t)ch * (uint64_t)k_adc_chcr_stride))];
 }
 
 /** @brief Store a freshly converted code into ADDR[ch] (DATA[15:0], ERR clear). */
@@ -224,7 +224,7 @@ static void adc_set_result(uint32_t ch, uint16_t code)
   if (ch >= (uint32_t)k_adc_result_regs) {
     return;
   }
-  const uint64_t off       = (uint64_t)k_adc_off_addr0 + (uint64_t)ch * (uint64_t)k_adc_addr_stride;
+  const uint64_t off = (uint64_t)k_adc_off_addr0 + ((uint64_t)ch * (uint64_t)k_adc_addr_stride);
   s_adc_reg[adc_word(off)] = (uint32_t)code & (uint32_t)k_adc_addr_data;
   s_adc_last_code          = code;
 }
@@ -235,7 +235,7 @@ static void adc_set_ext_result(uint32_t idx, uint16_t code)
   if (idx >= (uint32_t)k_adc_ext_regs) {
     return;
   }
-  const uint64_t off = (uint64_t)k_adc_off_adexdr0 + (uint64_t)idx * (uint64_t)k_adc_exdr_stride;
+  const uint64_t off = (uint64_t)k_adc_off_adexdr0 + ((uint64_t)idx * (uint64_t)k_adc_exdr_stride);
   s_adc_reg[adc_word(off)] = (uint32_t)code & (uint32_t)k_adc_addr_data;
   s_adc_last_code          = code;
 }
@@ -244,7 +244,7 @@ static void adc_set_ext_result(uint32_t idx, uint16_t code)
 static uint32_t adc_diagval(uint32_t group)
 {
   const uint64_t off =
-    (uint64_t)k_adc_off_adsgdcr0 + (uint64_t)group * (uint64_t)k_adc_sgdcr_stride;
+    (uint64_t)k_adc_off_adsgdcr0 + ((uint64_t)group * (uint64_t)k_adc_sgdcr_stride);
   return s_adc_reg[adc_word(off)] & (uint32_t)k_adc_sgdcr_diagval;
 }
 
@@ -276,7 +276,8 @@ static uint16_t adc_ext_value(uint32_t phys, uint32_t group)
 /** @brief Read ADDOPCRC[slot].ADPRC[1:0] data-format code from the store. */
 static uint32_t adc_adprc(uint32_t slot)
 {
-  const uint64_t off = (uint64_t)k_adc_off_addopcrc0 + (uint64_t)slot * (uint64_t)k_adc_chcr_stride;
+  const uint64_t off =
+    (uint64_t)k_adc_off_addopcrc0 + ((uint64_t)slot * (uint64_t)k_adc_chcr_stride);
   return (s_adc_reg[adc_word(off)] & (uint32_t)k_adc_opcrc_adprc_m) >>
          (uint32_t)k_adc_opcrc_adprc_s;
 }
@@ -376,7 +377,7 @@ static void adc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
     return;
   }
   const uint64_t str_lo = (uint64_t)k_adc_off_adstr0;
-  const uint64_t str_hi = str_lo + (uint64_t)k_adc_scan_groups * (uint64_t)k_adc_str_stride;
+  const uint64_t str_hi = str_lo + ((uint64_t)k_adc_scan_groups * (uint64_t)k_adc_str_stride);
   if ((off >= str_lo) && (off < str_hi) && ((value & (uint64_t)k_adc_adst_mask) != 0U)) {
     const uint32_t group     = (uint32_t)((off - str_lo) / (uint64_t)k_adc_str_stride);
     s_adc_reg[adc_word(off)] = (uint32_t)value;

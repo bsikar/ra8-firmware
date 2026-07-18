@@ -140,12 +140,12 @@ static void tc_build(void)
                                     MZ_DEFAULT_COMPRESSION) == MZ_TRUE);
 
   /* Large unreferenced filler (STORE) -- dominates size, never read on open. */
-  static uint8_t filler[k_tc_filler];
-  for (size_t i = 0U; i < sizeof(filler); ++i) {
-    filler[i] = (uint8_t)((i * 31U) + (i >> 3U));
+  static uint8_t s_filler[k_tc_filler];
+  for (size_t i = 0U; i < sizeof(s_filler); ++i) {
+    s_filler[i] = (uint8_t)((i * 31U) + (i >> 3U));
   }
   TEST_ASSERT(
-    mz_zip_writer_add_mem(&zip, "big_filler.bin", filler, sizeof(filler), MZ_NO_COMPRESSION) ==
+    mz_zip_writer_add_mem(&zip, "big_filler.bin", s_filler, sizeof(s_filler), MZ_NO_COMPRESSION) ==
     MZ_TRUE);
 
   void*  heap = nullptr;

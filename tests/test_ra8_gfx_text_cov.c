@@ -203,7 +203,7 @@ static void test_blit_get_pixel_565_888(void)
   /* RGB565 source: two non-zero bytes per pixel -> non-background read. */
   const size_t n565 = (size_t)k_cov_blit_w * (size_t)k_cov_blit_h * (size_t)k_cov_bpp_565;
   for (size_t i = 0; i < n565; i++) {
-    s_blit_src[i] = (uint8_t)(k_cov_gray_hi);
+    s_blit_src[i] = (uint8_t)k_cov_gray_hi;
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_clear(k_cov_col_bg));
   const size_t  off565  = cov_off(k_cov_pos, k_cov_pos, (size_t)k_cov_bpp_565);
@@ -220,7 +220,7 @@ static void test_blit_get_pixel_565_888(void)
   /* RGB888 source: three non-zero bytes per pixel -> non-background read. */
   const size_t n888 = (size_t)k_cov_blit_w * (size_t)k_cov_blit_h * (size_t)k_cov_bpp_888;
   for (size_t i = 0; i < n888; i++) {
-    s_blit_src[i] = (uint8_t)(k_cov_gray_hi);
+    s_blit_src[i] = (uint8_t)k_cov_gray_hi;
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_clear(k_cov_col_bg));
   const size_t  off888  = cov_off(k_cov_pos, k_cov_pos, (size_t)k_cov_bpp_565);

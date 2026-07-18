@@ -18,7 +18,7 @@
 #include <stdint.h>
 
 /** @brief Raw bytes of the 'addk_sim' .npub model container. */
-static const uint8_t ra8_npu_model_addk_sim_data[] = {
+static const uint8_t s_ra8_npu_model_addk_sim_data[] = {
   0x4E, 0x50, 0x55, 0x31, 0x01, 0x00, 0x00, 0x00, 0xE4, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00,
   0x50, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x47, 0x1D, 0x0E, 0x41,
   0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x64, 0x00, 0x00, 0x00,
@@ -39,11 +39,11 @@ static const uint8_t ra8_npu_model_addk_sim_data[] = {
 /** @brief Base pointer of the 'addk_sim' .npub blob. */
 static inline const uint8_t* ra8_npu_model_addk_sim_blob(void)
 {
-  return ra8_npu_model_addk_sim_data;
+  return s_ra8_npu_model_addk_sim_data;
 }
 
 /** @brief Byte length of the 'addk_sim' .npub blob. */
 static inline uint32_t ra8_npu_model_addk_sim_bytes(void)
 {
-  return (uint32_t)sizeof(ra8_npu_model_addk_sim_data);
+  return (uint32_t)sizeof(s_ra8_npu_model_addk_sim_data);
 }

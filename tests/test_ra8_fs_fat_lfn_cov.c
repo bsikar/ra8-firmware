@@ -51,14 +51,14 @@
  *          first_data_lba = 1 + 2*32 + 1 = 66; cluster 2 -> LBA 66.
  */
 typedef enum : uint32_t {
-  k_lcov_blk_sz    = 512U,               /**< Bytes per logical sector.   */
-  k_lcov_blocks    = 8U * 1024U,         /**< Total sectors (4 MiB).      */
-  k_lcov_fat1_lba  = 1U,                 /**< FAT1 starts at LBA 1.       */
-  k_lcov_fat_sz    = 32U,                /**< Sectors per FAT copy.       */
-  k_lcov_num_fats  = 2U,                 /**< Number of FAT copies.       */
-  k_lcov_root_lba  = 1U + 2U * 32U,      /**< Root dir at LBA 65.         */
-  k_lcov_data_lba  = 1U + 2U * 32U + 1U, /**< First data sector (LBA 66). */
-  k_lcov_reads_inf = 0xFFFFFFFFU,        /**< Sentinel: unlimited reads.  */
+  k_lcov_blk_sz    = 512U,                 /**< Bytes per logical sector.   */
+  k_lcov_blocks    = 8U * 1024U,           /**< Total sectors (4 MiB).      */
+  k_lcov_fat1_lba  = 1U,                   /**< FAT1 starts at LBA 1.       */
+  k_lcov_fat_sz    = 32U,                  /**< Sectors per FAT copy.       */
+  k_lcov_num_fats  = 2U,                   /**< Number of FAT copies.       */
+  k_lcov_root_lba  = 1U + (2U * 32U),      /**< Root dir at LBA 65.         */
+  k_lcov_data_lba  = 1U + (2U * 32U) + 1U, /**< First data sector (LBA 66). */
+  k_lcov_reads_inf = 0xFFFFFFFFU,          /**< Sentinel: unlimited reads.  */
 } lfn_cov_geo_t;
 
 /**
@@ -117,7 +117,9 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(buf, &d->bytes[lba * (uint32_t)k_lcov_blk_sz], count * (uint32_t)k_lcov_blk_sz);
+  memcpy(buf,
+         &d->bytes[(size_t)lba * (uint32_t)k_lcov_blk_sz],
+         (size_t)count * (uint32_t)k_lcov_blk_sz);
   return k_ra8_ok;
 }
 
@@ -127,7 +129,9 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(&d->bytes[lba * (uint32_t)k_lcov_blk_sz], buf, count * (uint32_t)k_lcov_blk_sz);
+  memcpy(&d->bytes[(size_t)lba * (uint32_t)k_lcov_blk_sz],
+         buf,
+         (size_t)count * (uint32_t)k_lcov_blk_sz);
   return k_ra8_ok;
 }
 
@@ -186,7 +190,9 @@ static ra8_err_t inj_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(buf, &d->bytes[lba * (uint32_t)k_lcov_blk_sz], count * (uint32_t)k_lcov_blk_sz);
+  memcpy(buf,
+         &d->bytes[(size_t)lba * (uint32_t)k_lcov_blk_sz],
+         (size_t)count * (uint32_t)k_lcov_blk_sz);
   return k_ra8_ok;
 }
 
@@ -199,7 +205,9 @@ static ra8_err_t inj_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(&d->bytes[lba * (uint32_t)k_lcov_blk_sz], buf, count * (uint32_t)k_lcov_blk_sz);
+  memcpy(&d->bytes[(size_t)lba * (uint32_t)k_lcov_blk_sz],
+         buf,
+         (size_t)count * (uint32_t)k_lcov_blk_sz);
   return k_ra8_ok;
 }
 
@@ -366,7 +374,7 @@ static void stamp_lfn_entry(uint8_t* slot, uint8_t csum)
 static void build_vol_lfn_good(void)
 {
   build_fat16_vol();
-  uint8_t* root = &s_disk.bytes[(uint32_t)k_lcov_root_lba * (uint32_t)k_lcov_blk_sz];
+  uint8_t* root = &s_disk.bytes[(size_t)(uint32_t)k_lcov_root_lba * (uint32_t)k_lcov_blk_sz];
   stamp_lfn_entry(&root[0], sfn_checksum(k_alias83));
   uint8_t* sfn = &root[32U];
   memcpy(sfn, k_alias83, 11U);
@@ -387,7 +395,7 @@ static void build_vol_lfn_good(void)
 static void build_vol_lfn_bad_csum(void)
 {
   build_fat16_vol();
-  uint8_t* root     = &s_disk.bytes[(uint32_t)k_lcov_root_lba * (uint32_t)k_lcov_blk_sz];
+  uint8_t* root     = &s_disk.bytes[(size_t)(uint32_t)k_lcov_root_lba * (uint32_t)k_lcov_blk_sz];
   uint8_t  bad_csum = (uint8_t)(sfn_checksum(k_alias83) ^ (uint8_t)k_csum_scramble);
   stamp_lfn_entry(&root[0], bad_csum);
   uint8_t* sfn = &root[32U];
@@ -410,9 +418,9 @@ static void build_vol_lfn_bad_csum(void)
 static void build_vol_all_deleted(void)
 {
   build_fat16_vol();
-  uint8_t* root = &s_disk.bytes[(uint32_t)k_lcov_root_lba * (uint32_t)k_lcov_blk_sz];
+  uint8_t* root = &s_disk.bytes[(size_t)(uint32_t)k_lcov_root_lba * (uint32_t)k_lcov_blk_sz];
   for (uint32_t i = 0U; i < (uint32_t)k_del_entries; i++) {
-    root[i * (uint32_t)k_del_stride] = (uint8_t)k_del_marker;
+    root[(size_t)i * (uint32_t)k_del_stride] = (uint8_t)k_del_marker;
   }
 }
 
@@ -539,8 +547,9 @@ static void test_lfn_cov_leading_slash(void)
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
-  dir_loc_t root_loc = {.is_root = 1U, .cluster = 0U};
-  uint32_t  lba = 0U, off = 0U;
+  dir_loc_t root_loc                      = {.is_root = 1U, .cluster = 0U};
+  uint32_t  lba                           = 0U;
+  uint32_t  off                           = 0U;
   uint8_t   ent[k_ra8_fs_dir_entry_bytes] = {};
   /* want="/mybook.epub": needle[0]=='/' -> needle++ (lines 275-276),
    * then the scan finds the LFN+8.3 entry -> k_ra8_ok. */
@@ -674,8 +683,9 @@ static void test_lfn_cov_read_fail_free(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   dir_loc_t        root_loc = {.is_root = 1U, .cluster = 0U};
-  uint32_t         lba = 0U, off = 0U;
-  ra8_fs_backend_t saved = h->backend;
+  uint32_t         lba      = 0U;
+  uint32_t         off      = 0U;
+  ra8_fs_backend_t saved    = h->backend;
   swap_to_inject(h, 0U, 0U); /* reads_left=0 */
   TEST_ASSERT_EQ(k_ra8_err_hw_error, priv_dir_find_free(h, &root_loc, &lba, &off));
   h->backend = saved;
@@ -712,8 +722,9 @@ static void test_lfn_cov_walk_fail_free(void)
 
   /* Subdir lives at cluster 2 (first allocated after mount on fresh volume). */
   dir_loc_t        subdir_loc = {.is_root = 0U, .cluster = 2U};
-  uint32_t         lba = 0U, off = 0U;
-  ra8_fs_backend_t saved = h->backend;
+  uint32_t         lba        = 0U;
+  uint32_t         off        = 0U;
+  ra8_fs_backend_t saved      = h->backend;
   /* Read 1 = subdir sector (16 non-free), Read 2 = FAT (fails). */
   swap_to_inject(h, 1U, 0U);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, priv_dir_find_free(h, &subdir_loc, &lba, &off));
@@ -748,7 +759,8 @@ static void test_lfn_cov_no_mem_free(void)
   create_files_in(h, "/", 16U);
 
   dir_loc_t root_loc = {.is_root = 1U, .cluster = 0U};
-  uint32_t  lba = 0U, off = 0U;
+  uint32_t  lba      = 0U;
+  uint32_t  off      = 0U;
   TEST_ASSERT_EQ(k_ra8_err_no_mem, priv_dir_find_free(h, &root_loc, &lba, &off));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));

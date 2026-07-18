@@ -39,7 +39,7 @@ static void fill_gradient(uint8_t* rgb, uint16_t w, uint16_t h)
 {
   for (uint16_t y = 0U; y < h; y++) {
     for (uint16_t x = 0U; x < w; x++) {
-      uint32_t i  = ((uint32_t)y * (uint32_t)w + (uint32_t)x) * 3U;
+      uint32_t i  = (((uint32_t)y * (uint32_t)w) + (uint32_t)x) * 3U;
       rgb[i + 0U] = (uint8_t)((x * 16U) & 0xFFU);
       rgb[i + 1U] = (uint8_t)((y * 16U) & 0xFFU);
       rgb[i + 2U] = (uint8_t)(((x + y) * 8U) & 0xFFU);
@@ -113,7 +113,8 @@ static void test_mcdc_decode_pad_byte_chain(void)
 static void test_mcdc_get_dimensions_seglen_independent(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC get_dimensions: seglen<2 vs seglen>buf");
-  uint16_t w = 0U, h = 0U;
+  uint16_t w = 0U;
+  uint16_t h = 0U;
 
   static const uint8_t short_seg[] = {
     0xFFU,
@@ -506,7 +507,8 @@ static void test_mcdc_decode_sos_dc_ac_id_independent(void)
 static void test_mcdc_get_dimensions_padding_truncated(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC get_dimensions: pad-run extends to EOF");
-  uint16_t w = 0U, h = 0U;
+  uint16_t w = 0U;
+  uint16_t h = 0U;
   /* SOI followed by an FF pad-byte run that ends exactly at EOF. */
   static const uint8_t pad_to_eof[] = {0xFFU, 0xD8U, 0xFFU, 0xFFU, 0xFFU};
   TEST_ASSERT(ra8_jpeg_sw_get_dimensions(pad_to_eof, (uint32_t)sizeof pad_to_eof, &w, &h) !=
@@ -531,7 +533,8 @@ static void test_mcdc_get_dimensions_padding_truncated(void)
 static void test_mcdc_get_dimensions_soi_mid_walk(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC get_dimensions: SOI mid-walk continue");
-  uint16_t w = 0U, h = 0U;
+  uint16_t w = 0U;
+  uint16_t h = 0U;
   /* SOI, second SOI (continue), SOF0 16x16. */
   static const uint8_t soi_mid[] = {
     0xFFU,
@@ -581,7 +584,8 @@ static void test_mcdc_get_dimensions_soi_mid_walk(void)
 static void test_mcdc_get_dimensions_skip_appn(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC get_dimensions: skip APP0 + JPG marker");
-  uint16_t w = 0U, h = 0U;
+  uint16_t w = 0U;
+  uint16_t h = 0U;
   /* APP0 (mk=0xFFE0, C1=F) then SOF0. */
   static const uint8_t app0_then_sof0[] = {
     0xFFU, 0xD8U,                                                  /* SOI                      */
@@ -624,21 +628,21 @@ static void test_mcdc_get_dimensions_skip_appn(void)
 static void test_mcdc_decode_skip_appn_marker(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC decode: skip APPn marker mid-stream");
-  static uint8_t rgb_in[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t rgb_out[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t jpeg[(uint32_t)k_jt_jpeg_cap];
-  fill_gradient(rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  static uint8_t s_rgb_in[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t s_rgb_out[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t s_jpeg[(uint32_t)k_jt_jpeg_cap];
+  fill_gradient(s_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
   uint32_t produced = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_jpeg_sw_encode(rgb_in,
+                 ra8_jpeg_sw_encode(s_rgb_in,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                    jpeg,
+                                    s_jpeg,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &produced));
   /* Splice an APP0 marker into the encoded stream right after SOI. */
-  static uint8_t       spliced[(uint32_t)k_jt_jpeg_cap + 16U];
+  static uint8_t       s_spliced[(uint32_t)k_jt_jpeg_cap + 16U];
   static const uint8_t app0_payload[] = {
     0xFFU,
     0xE0U,
@@ -649,20 +653,21 @@ static void test_mcdc_decode_skip_appn_marker(void)
     0x49U,
     0x46U,
   };
-  spliced[0] = 0xFFU;
-  spliced[1] = 0xD8U;
+  s_spliced[0] = 0xFFU;
+  s_spliced[1] = 0xD8U;
   for (uint32_t i = 0U; i < (uint32_t)sizeof app0_payload; ++i) {
-    spliced[2U + i] = app0_payload[i];
+    s_spliced[2U + i] = app0_payload[i];
   }
   for (uint32_t i = 2U; i < produced; ++i) {
-    spliced[(uint32_t)sizeof app0_payload + i] = jpeg[i];
+    s_spliced[(uint32_t)sizeof app0_payload + i] = s_jpeg[i];
   }
   uint32_t spliced_len = produced + (uint32_t)sizeof app0_payload;
 
-  uint16_t dw = 0U, dh = 0U;
+  uint16_t dw = 0U;
+  uint16_t dh = 0U;
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_jpeg_sw_decode(spliced, spliced_len, rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
+    ra8_jpeg_sw_decode(s_spliced, spliced_len, s_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
   TEST_ASSERT_EQ(k_jt_w, dw);
   TEST_END("jpeg_sw MC/DC decode: skip APPn marker mid-stream");
 }

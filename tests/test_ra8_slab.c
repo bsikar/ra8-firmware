@@ -53,7 +53,7 @@ static void test_init_alloc_exhaust(void)
     /* in range and on a cell boundary */
     const uintptr_t off = (uintptr_t)cells[i] - (uintptr_t)s_pool;
     TEST_ASSERT(off < sizeof(s_pool));
-    TEST_ASSERT_EQ(0u, (off % (uintptr_t)k_t_cell_bytes));
+    TEST_ASSERT_EQ(0U, (off % (uintptr_t)k_t_cell_bytes));
   }
   /* all cells distinct (no overlap) */
   for (uint32_t i = 0; i < (uint32_t)k_t_cells; ++i) {
@@ -65,7 +65,7 @@ static void test_init_alloc_exhaust(void)
   void* extra = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_slab_alloc(&slab, &extra));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_slab_stats(&slab, &freec, nullptr));
-  TEST_ASSERT_EQ(0u, freec);
+  TEST_ASSERT_EQ(0U, freec);
   TEST_END("slab init / alloc / exhaust");
 }
 
@@ -104,7 +104,7 @@ static void test_free_reuse(void)
   }
   uint32_t freec = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_slab_stats(&slab, &freec, nullptr));
-  TEST_ASSERT_EQ(0u, freec);
+  TEST_ASSERT_EQ(0U, freec);
   for (uint32_t i = 0; i < n; ++i) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_slab_free(&slab, rest[i]));
   }

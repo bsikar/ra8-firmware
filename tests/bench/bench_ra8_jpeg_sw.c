@@ -61,7 +61,7 @@ static void fill_gradient(void)
 {
   for (uint16_t y = 0U; y < (uint16_t)k_bench_jpeg_h; y++) {
     for (uint16_t x = 0U; x < (uint16_t)k_bench_jpeg_w; x++) {
-      uint32_t i       = ((uint32_t)y * (uint32_t)k_bench_jpeg_w + (uint32_t)x) * 3U;
+      uint32_t i       = (((uint32_t)y * (uint32_t)k_bench_jpeg_w) + (uint32_t)x) * 3U;
       s_rgb_in[i + 0U] = (uint8_t)((x * 4U) & 0xFFU);
       s_rgb_in[i + 1U] = (uint8_t)((y * 4U) & 0xFFU);
       s_rgb_in[i + 2U] = (uint8_t)(((x + y) * 2U) & 0xFFU);
@@ -98,7 +98,8 @@ int main(void)
                 (unsigned)produced);
 
   /* Time the decode. Bytes/iter = JPEG byte-stream length. */
-  uint16_t dw = 0U, dh = 0U;
+  uint16_t dw = 0U;
+  uint16_t dh = 0U;
   RA8_BENCH_TIME("jpeg_decode_64x64_q75", produced, {
     (void)
       ra8_jpeg_sw_decode(s_jpeg, produced, s_rgb_out, (uint32_t)k_bench_jpeg_rgb_bytes, &dw, &dh);

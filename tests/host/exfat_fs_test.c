@@ -208,13 +208,13 @@ static void check_write_path(ra8_fs_mount_t* mnt)
  * single-cluster W83.TXT case never reaches. */
 static void check_multicluster_path(ra8_fs_mount_t* mnt)
 {
-  static uint8_t big[k_mc_payload_bytes];
-  static uint8_t back[k_mc_payload_bytes];
+  static uint8_t s_big[k_mc_payload_bytes];
+  static uint8_t s_back[k_mc_payload_bytes];
   for (uint32_t i = 0U; i < k_mc_payload_bytes; i++) {
-    big[i] = (uint8_t)((i * 31U + 7U) & 0xFFU);
+    s_big[i] = (uint8_t)(((i * 31U) + 7U) & 0xFFU);
   }
 
-  check(ra8_fs_write_file(mnt, "/BIG.BIN", big, k_mc_payload_bytes) == k_ra8_ok,
+  check(ra8_fs_write_file(mnt, "/BIG.BIN", s_big, k_mc_payload_bytes) == k_ra8_ok,
         "write_file multi-cluster (> 3 clusters)");
   check(name_present(mnt, "BIG.BIN"), "multi-cluster file listed");
 
@@ -224,7 +224,7 @@ static void check_multicluster_path(ra8_fs_mount_t* mnt)
     ra8_err_t e     = k_ra8_ok;
     while (total < k_mc_payload_bytes) {
       uint32_t got = 0U;
-      e            = ra8_fs_read(fp, back + total, k_mc_payload_bytes - total, &got);
+      e            = ra8_fs_read(fp, s_back + total, k_mc_payload_bytes - total, &got);
       if ((e != k_ra8_ok) || (got == 0U)) {
         break;
       }
@@ -232,7 +232,7 @@ static void check_multicluster_path(ra8_fs_mount_t* mnt)
     }
     (void)ra8_fs_close(fp);
     check((e == k_ra8_ok) && (total == k_mc_payload_bytes) &&
-            (memcmp(back, big, k_mc_payload_bytes) == 0),
+            (memcmp(s_back, s_big, k_mc_payload_bytes) == 0),
           "multi-cluster file reads back byte-identical");
   } else {
     check(0, "reopen multi-cluster file");

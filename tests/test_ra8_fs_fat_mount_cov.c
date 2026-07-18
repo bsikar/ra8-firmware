@@ -707,7 +707,7 @@ static void test_gpt_entry_hi_first_lba(void)
   uint8_t* lba1 = &s_disk.bytes[(uint32_t)k_mc_blk];
   write_gpt_header(lba1, 2U, 0U, 4U, (uint32_t)k_gpt_entry_size);
   /* Entry 0 in LBA 2: non-zero GUID (bytes 0-15 = 1) + hi first_lba = 1. */
-  uint8_t* lba2   = &s_disk.bytes[2U * (uint32_t)k_mc_blk];
+  uint8_t* lba2   = &s_disk.bytes[(size_t)2U * (uint32_t)k_mc_blk];
   uint8_t* entry0 = lba2;
   /* Type GUID: all bytes 1 (non-zero -> priv_gpt_entry_first_lba skips null check). */
   for (uint32_t i = 0U; i < 16U; i++) {
@@ -763,7 +763,7 @@ static void test_gpt_non_basic_data_fallback(void)
   write_gpt_header(lba1, 2U, 0U, 4U, (uint32_t)k_gpt_entry_size);
   /* Entry 0: GUID[0]=0x02 (not 0xA2 = Basic Data[0]) -> line 305 triggered.
    * first_lba low=4 (within 10 sectors), high=0. */
-  uint8_t* lba2   = &s_disk.bytes[2U * (uint32_t)k_mc_blk];
+  uint8_t* lba2   = &s_disk.bytes[(size_t)2U * (uint32_t)k_mc_blk];
   uint8_t* entry0 = lba2;
   entry0[0]       = 0x02U; /* type GUID byte 0: non-zero, non-basic-data */
   put32(entry0, (uint32_t)k_gpt_ent_off_lba_lo, 4U); /* first_lba low = 4 */

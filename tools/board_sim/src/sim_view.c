@@ -317,7 +317,7 @@ static void rotate_panel(const uint16_t* src, uint16_t sw, uint16_t sh, uint16_t
 {
   for (uint16_t y = 0U; y < sh; y++) {
     for (uint16_t x = 0U; x < sw; x++) {
-      const uint16_t p  = src[(size_t)y * (size_t)sw + (size_t)x];
+      const uint16_t p  = src[((size_t)y * (size_t)sw) + (size_t)x];
       uint32_t       dx = x;
       uint32_t       dy = y;
       uint32_t       dw = sw;
@@ -333,7 +333,7 @@ static void rotate_panel(const uint16_t* src, uint16_t sw, uint16_t sh, uint16_t
         dy = (uint32_t)(sw - 1U - x);
         dw = sh;
       }
-      dst[(size_t)dy * (size_t)dw + (size_t)dx] = p;
+      dst[((size_t)dy * (size_t)dw) + (size_t)dx] = p;
     }
   }
 }

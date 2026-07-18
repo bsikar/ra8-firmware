@@ -33,10 +33,10 @@
 #include "ra8_epub.h"
 #include "ra8_epub_img_tiles.h"
 #include "ra8_err.h"
-#include "ra8_jof.h"
-#include "ra8_jof_produce.h"
 #include "ra8_reflow_types.h"
 #include "ra8_tile_cache.h"
+#include "ra8_jof.h"
+#include "ra8_jof_produce.h"
 #include "unity_minimal.h"
 
 /**
@@ -174,8 +174,8 @@ static void png_chunk(const char* type, const uint8_t* data, uint32_t len)
 static void png_build(uint32_t w, uint32_t h)
 {
   static const uint8_t sig[8] = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
-  static uint8_t       raw[((size_t)k_big_w + 1U) * (size_t)k_big_h];
-  static uint8_t       zbuf[k_png_cap];
+  static uint8_t       s_raw[((size_t)k_big_w + 1U) * (size_t)k_big_h];
+  static uint8_t       s_zbuf[k_png_cap];
   s_png_len = 0U;
   memcpy(s_png, sig, sizeof(sig));
   s_png_len        = sizeof(sig);
@@ -192,16 +192,16 @@ static void png_build(uint32_t w, uint32_t h)
   png_chunk("IHDR", ihdr, sizeof(ihdr));
   size_t o = 0U;
   for (uint32_t y = 0U; y < h; y++) {
-    raw[o] = 0U;
+    s_raw[o] = 0U;
     o++;
     for (uint32_t x = 0U; x < w; x++) {
-      raw[o] = pix(x, y);
+      s_raw[o] = pix(x, y);
       o++;
     }
   }
-  mz_ulong zlen = (mz_ulong)sizeof(zbuf);
-  TEST_ASSERT_EQ(MZ_OK, mz_compress(zbuf, &zlen, raw, (mz_ulong)o));
-  png_chunk("IDAT", zbuf, (uint32_t)zlen);
+  mz_ulong zlen = (mz_ulong)sizeof(s_zbuf);
+  TEST_ASSERT_EQ(MZ_OK, mz_compress(s_zbuf, &zlen, s_raw, (mz_ulong)o));
+  png_chunk("IDAT", s_zbuf, (uint32_t)zlen);
   png_chunk("IEND", NULL, 0U);
 }
 
@@ -241,11 +241,11 @@ static ra8_err_t png_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 static void bake_atlas(uint32_t w, uint32_t h, uint8_t codec, ra8_jof_memstore_t* store)
 {
   png_build(w, h);
-  static mem_pull_t pull;
-  pull                            = (mem_pull_t){.pos = 0U};
+  static mem_pull_t s_pull;
+  s_pull                                = (mem_pull_t){.pos = 0U};
   const ra8_jof_produce_cfg_t cfg = {
     .pull       = png_pull,
-    .pull_ctx   = &pull,
+    .pull_ctx   = &s_pull,
     .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = store,
     .tile_w     = (uint16_t)k_tile,
@@ -557,13 +557,13 @@ static void import_error_arms(ra8_epub_tile_binder_t*            binder,
                  ra8_epub_tile_binder_import(binder, book, "ch1.xhtml", 41U, base));
   ra8_epub_atlas_import_cfg_t small = *base;
   small.max_width                   = 16U;
-  ra8_jof_memstore_t fresh          = {.buf = s_imp_buf, .cap = sizeof(s_imp_buf), .len = 0U};
+  ra8_jof_memstore_t fresh    = {.buf = s_imp_buf, .cap = sizeof(s_imp_buf), .len = 0U};
   small.store.sink_ctx              = &fresh;
   small.store.pread_ctx             = &fresh;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_epub_tile_binder_import(binder, book, "page1.png", 42U, &small));
   ra8_epub_atlas_import_cfg_t tiny      = *base;
-  ra8_jof_memstore_t          tinystore = {.buf = s_imp_buf, .cap = 64U, .len = 0U};
+  ra8_jof_memstore_t    tinystore = {.buf = s_imp_buf, .cap = 64U, .len = 0U};
   tiny.store.sink_ctx                   = &tinystore;
   tiny.store.pread_ctx                  = &tinystore;
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
@@ -777,7 +777,7 @@ static void test_tile_binder_guards(void)
 
   /* info / get / put guards. */
   ra8_jof_info_t info = {};
-  ra8_tile_t     t    = {};
+  ra8_tile_t           t    = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_tile_binder_info(nullptr, k_id_big, &info));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_tile_binder_info(&binder, k_id_big, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_epub_tile_binder_info(&binder, 999U, &info));

@@ -118,28 +118,28 @@ static uint32_t lt_build(uint8_t* buf, const lt_region_t* regs, uint32_t nreg)
 
   /* SE55 add-constant command stream (contents valid but unused by these tests). */
   lt_put_word(buf,
-              coff + (uint32_t)k_ra8_npu_sim_word_op * (uint32_t)k_lt_word_bytes,
+              coff + ((uint32_t)k_ra8_npu_sim_word_op * (uint32_t)k_lt_word_bytes),
               (uint32_t)k_ra8_npu_sim_magic | (uint32_t)k_ra8_npu_sim_op_addk);
-  lt_put_word(buf, coff + (uint32_t)k_ra8_npu_sim_word_src * (uint32_t)k_lt_word_bytes, 0U);
-  lt_put_word(buf, coff + (uint32_t)k_ra8_npu_sim_word_dst * (uint32_t)k_lt_word_bytes, 0U);
-  lt_put_word(buf, coff + (uint32_t)k_ra8_npu_sim_word_count * (uint32_t)k_lt_word_bytes, 1U);
-  lt_put_word(buf, coff + (uint32_t)k_ra8_npu_sim_word_const * (uint32_t)k_lt_word_bytes, 0U);
+  lt_put_word(buf, coff + ((uint32_t)k_ra8_npu_sim_word_src * (uint32_t)k_lt_word_bytes), 0U);
+  lt_put_word(buf, coff + ((uint32_t)k_ra8_npu_sim_word_dst * (uint32_t)k_lt_word_bytes), 0U);
+  lt_put_word(buf, coff + ((uint32_t)k_ra8_npu_sim_word_count * (uint32_t)k_lt_word_bytes), 1U);
+  lt_put_word(buf, coff + ((uint32_t)k_ra8_npu_sim_word_const * (uint32_t)k_lt_word_bytes), 0U);
 
   for (uint32_t r = 0U; r < nreg; r++) {
     const uint32_t desc  = hdr + (r * rdb);
     const uint32_t flags = regs[r].baked ? (uint32_t)k_ra8_npu_blob_rflag_baked : 0U;
     const uint32_t doff  = regs[r].baked ? cursor : 0U;
     lt_put_word(buf,
-                desc + (uint32_t)k_ra8_npu_blob_rdesc_role * (uint32_t)k_lt_word_bytes,
+                desc + ((uint32_t)k_ra8_npu_blob_rdesc_role * (uint32_t)k_lt_word_bytes),
                 regs[r].role);
     lt_put_word(buf,
-                desc + (uint32_t)k_ra8_npu_blob_rdesc_flags * (uint32_t)k_lt_word_bytes,
+                desc + ((uint32_t)k_ra8_npu_blob_rdesc_flags * (uint32_t)k_lt_word_bytes),
                 flags);
     lt_put_word(buf,
-                desc + (uint32_t)k_ra8_npu_blob_rdesc_size * (uint32_t)k_lt_word_bytes,
+                desc + ((uint32_t)k_ra8_npu_blob_rdesc_size * (uint32_t)k_lt_word_bytes),
                 regs[r].size);
     lt_put_word(buf,
-                desc + (uint32_t)k_ra8_npu_blob_rdesc_data_offset * (uint32_t)k_lt_word_bytes,
+                desc + ((uint32_t)k_ra8_npu_blob_rdesc_data_offset * (uint32_t)k_lt_word_bytes),
                 doff);
     if (regs[r].baked) {
       for (uint32_t i = 0U; i < regs[r].size; i++) {
@@ -452,7 +452,7 @@ static void test_load_rejects_baked_oob(void)
    * loader reaches region placement rather than stopping at the checksum. */
   lt_put_word(s_scratch,
               (uint32_t)k_ra8_npu_blob_header_bytes +
-                (uint32_t)k_ra8_npu_blob_rdesc_data_offset * (uint32_t)k_lt_word_bytes,
+                ((uint32_t)k_ra8_npu_blob_rdesc_data_offset * (uint32_t)k_lt_word_bytes),
               total);
   lt_patch_checksum(s_scratch, total);
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_npu_load(s_scratch, total, &arena, &job));

@@ -37,7 +37,7 @@ static ra8_err_t fuzz_fat_read_block(void* ctx, uint32_t lba, uint32_t count, ui
   }
   for (uint32_t s = 0U; s < count; s++) {
     for (uint32_t i = 0U; i < (uint32_t)k_fuzz_fat_sector_bytes; i++) {
-      const size_t off = ((size_t)(lba + s) * (size_t)k_fuzz_fat_sector_bytes + (size_t)i) %
+      const size_t off = (((size_t)(lba + s) * (size_t)k_fuzz_fat_sector_bytes) + (size_t)i) %
                          (s_blob_len > 0U ? s_blob_len : 1U);
       buf[(s * (uint32_t)k_fuzz_fat_sector_bytes) + i] = (s_blob_len > 0U) ? s_blob[off] : 0U;
     }

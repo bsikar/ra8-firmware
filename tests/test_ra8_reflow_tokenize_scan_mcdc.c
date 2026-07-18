@@ -574,7 +574,7 @@ static void test_end_block_emit_pool_full_mcdc(void)
 }
 
 /**
- * @test test_decode_numeric_hex_below_A_mcdc
+ * @test test_decode_numeric_hex_below_upper_a_mcdc
  *
  * @par MC/DC:
  * Decision: `else if ((base == k_priv_base_hex) && (c >= 'A') && (c <= 'F'))` --
@@ -587,7 +587,7 @@ static void test_end_block_emit_pool_full_mcdc(void)
  *    the reference is rejected (return false). This completes the C2 independence
  *    pair against the in-range 'A'..'F' vector.
  */
-static void test_decode_numeric_hex_below_A_mcdc(void)
+static void test_decode_numeric_hex_below_upper_a_mcdc(void)
 {
   TEST_BEGIN("priv_decode_numeric MC/DC: hex byte below 'A' (c >= 'A' false)");
   uint32_t cp   = 0U;
@@ -626,7 +626,7 @@ int32_t main(void)
   test_raw_text_empty_style_body();
   test_cdata_emit_pool_full_mcdc();
   test_end_block_emit_pool_full_mcdc();
-  test_decode_numeric_hex_below_A_mcdc();
+  test_decode_numeric_hex_below_upper_a_mcdc();
   (void)fprintf(stderr, "[OK ] test_ra8_reflow_tokenize_scan_mcdc.c\n");
   return 0;
 }

@@ -76,7 +76,7 @@ static void test_sdram_backend(void)
 
   uint8_t out[(size_t)k_ra8_io_block_size_bytes];
   for (uint32_t i = 0; i < (uint32_t)k_ra8_io_block_size_bytes; ++i) {
-    out[i] = (uint8_t)((i * 5u + 1u) & 0xFFu);
+    out[i] = (uint8_t)(((i * 5U) + 1U) & 0xFFU);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 3, 1, out));
   uint8_t in[(size_t)k_ra8_io_block_size_bytes] = {};
@@ -87,7 +87,7 @@ static void test_sdram_backend(void)
   (void)memset(in, 0xAA, sizeof(in));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(&bd, 3, 1, in));
   TEST_ASSERT_EQ(0, in[0]);
-  TEST_ASSERT_EQ(0, in[(size_t)k_ra8_io_block_size_bytes - 1u]);
+  TEST_ASSERT_EQ(0, in[(size_t)k_ra8_io_block_size_bytes - 1U]);
   TEST_END("sdram backend");
 }
 
@@ -142,7 +142,7 @@ static void test_xspi_rmw_roundtrip(void)
 
   uint8_t a[(size_t)k_ra8_io_block_size_bytes];
   for (uint32_t i = 0; i < (uint32_t)k_ra8_io_block_size_bytes; ++i) {
-    a[i] = (uint8_t)((i ^ 0x5Au) & 0xFFu);
+    a[i] = (uint8_t)((i ^ 0x5AU) & 0xFFU);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 2, 1, a));
 
@@ -151,14 +151,14 @@ static void test_xspi_rmw_roundtrip(void)
   TEST_ASSERT(memcmp(got, a, sizeof(got)) == 0);
 
   /* Write blocks 5..6 (same 4 KiB sector); block 2 must survive the RMW. */
-  uint8_t b[(size_t)k_ra8_io_block_size_bytes * 2u];
+  uint8_t b[(size_t)k_ra8_io_block_size_bytes * 2U];
   (void)memset(b, 0x3C, sizeof(b));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 5, 2, b));
 
   (void)memset(got, 0, sizeof(got));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(&bd, 2, 1, got));
   TEST_ASSERT(memcmp(got, a, sizeof(got)) == 0);
-  uint8_t got2[(size_t)k_ra8_io_block_size_bytes * 2u] = {};
+  uint8_t got2[(size_t)k_ra8_io_block_size_bytes * 2U] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(&bd, 5, 2, got2));
   TEST_ASSERT(memcmp(got2, b, sizeof(got2)) == 0);
   TEST_END("xspi RMW round-trip");
@@ -187,7 +187,7 @@ static void test_mram_fence(void)
                  ra8_io_blockdev_mram_init(&bd, nullptr, base, k_t_mram_blocks, false));
   /* misaligned base (not 32-byte aligned) */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_io_blockdev_mram_init(&bd, &state, base + 1u, k_t_mram_blocks, false));
+                 ra8_io_blockdev_mram_init(&bd, &state, base + 1U, k_t_mram_blocks, false));
   /* base in the forbidden code-MRAM region */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_io_blockdev_mram_init(&bd,
@@ -209,12 +209,12 @@ static void test_mram_fence(void)
   /* memory-mapped read: poke known bytes into the window, read them back */
   volatile uint8_t* win = (volatile uint8_t*)base;
   for (uint32_t i = 0; i < (uint32_t)k_ra8_io_block_size_bytes; ++i) {
-    win[i] = (uint8_t)((i + 9u) & 0xFFu);
+    win[i] = (uint8_t)((i + 9U) & 0xFFU);
   }
   uint8_t got[(size_t)k_ra8_io_block_size_bytes] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(&bd, 0, 1, got));
   for (uint32_t i = 0; i < (uint32_t)k_ra8_io_block_size_bytes; ++i) {
-    TEST_ASSERT_EQ(((i + 9u) & 0xFFu), got[i]);
+    TEST_ASSERT_EQ(((i + 9U) & 0xFFU), got[i]);
   }
   TEST_END("mram fence");
 }
@@ -238,12 +238,12 @@ static void test_mram_oob_and_init_ext(void)
   const uintptr_t              base  = (uintptr_t)k_ra8_flash_extra_start;
 
   /* zero block_count -- ra8_io_blockdev_mram.c line 347-349 */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_io_blockdev_mram_init(&bd, &state, base, 0u, false));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_io_blockdev_mram_init(&bd, &state, base, 0U, false));
 
   /* base exactly at the upper bound of extra MRAM -- mram_window_ok line 136 */
   const uintptr_t extra_end = base + (uintptr_t)k_ra8_flash_extra_size;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_io_blockdev_mram_init(&bd, &state, extra_end, 1u, false));
+                 ra8_io_blockdev_mram_init(&bd, &state, extra_end, 1U, false));
 
   /* valid init -- needed for the bounds probes below */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_mram_init(&bd, &state, base, k_t_mram_blocks, false));
@@ -252,11 +252,11 @@ static void test_mram_oob_and_init_ext(void)
 
   /* count > block_count -- mram_bounds line 87, propagated at mram_read line 177 */
   TEST_ASSERT_EQ(k_ra8_err_out_of_range,
-                 ra8_io_blockdev_read(&bd, 0u, (uint32_t)k_t_mram_blocks + 1u, got));
+                 ra8_io_blockdev_read(&bd, 0U, (uint32_t)k_t_mram_blocks + 1U, got));
 
   /* lba + count overflows -- mram_bounds line 90, propagated at mram_read line 177 */
   TEST_ASSERT_EQ(k_ra8_err_out_of_range,
-                 ra8_io_blockdev_read(&bd, (uint32_t)k_t_mram_blocks - 1u, 2u, got));
+                 ra8_io_blockdev_read(&bd, (uint32_t)k_t_mram_blocks - 1U, 2U, got));
 
   TEST_END("mram oob and init extended");
 }
@@ -289,7 +289,7 @@ static void test_mram_write_and_erase(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_mram_init(&bd, &state, base, k_t_mram_blocks, false));
 
   /* Write chunk times out -- mram_write line 233 (condition true) and line 234 */
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_io_blockdev_write(&bd, 0u, 1u, src));
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_io_blockdev_write(&bd, 0U, 1U, src));
 
   /* Pre-arm MSTATR so subsequent MACI calls succeed in RA8_SIMULATOR_MODE. */
   *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mstatr) = (uint32_t)k_ra8_mstatr_mask_mrdy;
@@ -299,33 +299,33 @@ static void test_mram_write_and_erase(void)
   ra8_io_blockdev_mram_state_t state_ro = {};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_io_blockdev_mram_init(&bd_ro, &state_ro, base, k_t_mram_blocks, true));
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_io_blockdev_write(&bd_ro, 0u, 1u, src));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_io_blockdev_write(&bd_ro, 0U, 1U, src));
 
   /* OOB write rejected by bounds -- mram_write lines 222-225 */
   TEST_ASSERT_EQ(k_ra8_err_out_of_range,
-                 ra8_io_blockdev_write(&bd, 0u, (uint32_t)k_t_mram_blocks + 1u, src));
+                 ra8_io_blockdev_write(&bd, 0U, (uint32_t)k_t_mram_blocks + 1U, src));
 
   /* Happy-path write: covers the program loop -- mram_write lines 215-238 */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 0u, 1u, src));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 0U, 1U, src));
 
   /* Clear MRDY to probe the erase-chunk-fails path (covers mram_erase line 286). */
   *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mstatr) = 0U;
 
   /* Erase chunk times out -- mram_erase lines 283-286 */
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_io_blockdev_erase(&bd, 0u, 1u));
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_io_blockdev_erase(&bd, 0U, 1U));
 
   /* Re-arm MRDY for the remaining erase checks. */
   *ra8_mram_reg32((uint16_t)k_ra8_mram_off_mstatr) = (uint32_t)k_ra8_mstatr_mask_mrdy;
 
   /* Read-only device: erase rejected -- mram_erase lines 271-274 */
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_io_blockdev_erase(&bd_ro, 0u, 1u));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_io_blockdev_erase(&bd_ro, 0U, 1U));
 
   /* OOB erase rejected by bounds -- mram_erase lines 275-279 */
   TEST_ASSERT_EQ(k_ra8_err_out_of_range,
-                 ra8_io_blockdev_erase(&bd, 0u, (uint32_t)k_t_mram_blocks + 1u));
+                 ra8_io_blockdev_erase(&bd, 0U, (uint32_t)k_t_mram_blocks + 1U));
 
   /* Happy-path erase: covers the erase loop -- mram_erase lines 269-290 */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_erase(&bd, 0u, 1u));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_erase(&bd, 0U, 1U));
 
   TEST_END("mram write and erase");
 }

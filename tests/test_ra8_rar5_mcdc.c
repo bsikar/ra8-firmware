@@ -99,26 +99,26 @@ static void bind_bits(const uint8_t* bytes, size_t len)
 static void test_mcdc_copy_match(void)
 {
   TEST_BEGIN("rar5: ra8_rar5_copy_match MC/DC");
-  static uint8_t out[64];
-  for (uint32_t i = 0U; i < sizeof(out); ++i) {
-    out[i] = (uint8_t)(i + 1U);
+  static uint8_t s_out[64];
+  for (uint32_t i = 0U; i < sizeof(s_out); ++i) {
+    s_out[i] = (uint8_t)(i + 1U);
   }
   /* dist == 0 || dist > pos. */
   size_t pos = 5U;
-  TEST_ASSERT(ra8_rar5_copy_match(out, &pos, 100U, 3U, 2U)); /* (F,F) control */
+  TEST_ASSERT(ra8_rar5_copy_match(s_out, &pos, 100U, 3U, 2U)); /* (F,F) control */
   TEST_ASSERT_EQ(8U, pos);
   pos = 5U;
-  TEST_ASSERT(!ra8_rar5_copy_match(out, &pos, 100U, 3U, 0U)); /* dist==0 (T,-) */
+  TEST_ASSERT(!ra8_rar5_copy_match(s_out, &pos, 100U, 3U, 0U)); /* dist==0 (T,-) */
   TEST_ASSERT_EQ(5U, pos);
   pos = 5U;
-  TEST_ASSERT(!ra8_rar5_copy_match(out, &pos, 100U, 3U, 100U)); /* dist>pos (F,T) */
+  TEST_ASSERT(!ra8_rar5_copy_match(s_out, &pos, 100U, 3U, 100U)); /* dist>pos (F,T) */
   TEST_ASSERT_EQ(5U, pos);
   /* k < length && pos < unp. */
   pos = 5U;
-  TEST_ASSERT(ra8_rar5_copy_match(out, &pos, 100U, 3U, 2U)); /* exit on k==length */
+  TEST_ASSERT(ra8_rar5_copy_match(s_out, &pos, 100U, 3U, 2U)); /* exit on k==length */
   TEST_ASSERT_EQ(8U, pos);
   pos = 5U;
-  TEST_ASSERT(ra8_rar5_copy_match(out, &pos, 6U, 10U, 2U)); /* clamp on pos==unp */
+  TEST_ASSERT(ra8_rar5_copy_match(s_out, &pos, 6U, 10U, 2U)); /* clamp on pos==unp */
   TEST_ASSERT_EQ(6U, pos);
   TEST_END("rar5: ra8_rar5_copy_match MC/DC");
 }
@@ -140,29 +140,29 @@ static void test_mcdc_filter_delta(void)
 {
   TEST_BEGIN("rar5: ra8_rar5_filter_delta MC/DC");
   s_state = (ra8_rar5_state_t){};
-  static uint8_t d[700];
-  for (uint32_t i = 0U; i < sizeof(d); ++i) {
-    d[i] = (uint8_t)(i & 0xFFU);
+  static uint8_t s_d[700];
+  for (uint32_t i = 0U; i < sizeof(s_d); ++i) {
+    s_d[i] = (uint8_t)(i & 0xFFU);
   }
   /* (F,F) control: a supported range transforms (differs from the raw input). */
-  ra8_rar5_filter_delta(&s_state, d, 32U, 2U);
+  ra8_rar5_filter_delta(&s_state, s_d, 32U, 2U);
   bool changed = false;
   for (uint32_t i = 0U; i < 32U; ++i) {
-    if (d[i] != (uint8_t)(i & 0xFFU)) {
+    if (s_d[i] != (uint8_t)(i & 0xFFU)) {
       changed = true;
     }
   }
   TEST_ASSERT(changed);
   /* (T,-) over-long range: left unchanged. */
-  for (uint32_t i = 0U; i < sizeof(d); ++i) {
-    d[i] = (uint8_t)(i & 0xFFU);
+  for (uint32_t i = 0U; i < sizeof(s_d); ++i) {
+    s_d[i] = (uint8_t)(i & 0xFFU);
   }
-  ra8_rar5_filter_delta(&s_state, d, 600U, 2U);
-  TEST_ASSERT_EQ(0x57U, d[599]); /* 599 & 0xFF, unchanged */
-  TEST_ASSERT_EQ(0x2CU, d[300]); /* 300 & 0xFF, unchanged */
+  ra8_rar5_filter_delta(&s_state, s_d, 600U, 2U);
+  TEST_ASSERT_EQ(0x57U, s_d[599]); /* 599 & 0xFF, unchanged */
+  TEST_ASSERT_EQ(0x2CU, s_d[300]); /* 300 & 0xFF, unchanged */
   /* (F,T) zero channels: left unchanged. */
-  ra8_rar5_filter_delta(&s_state, d, 32U, 0U);
-  TEST_ASSERT_EQ(0x0AU, d[10]); /* 10 & 0xFF, unchanged */
+  ra8_rar5_filter_delta(&s_state, s_d, 32U, 0U);
+  TEST_ASSERT_EQ(0x0AU, s_d[10]); /* 10 & 0xFF, unchanged */
   TEST_END("rar5: ra8_rar5_filter_delta MC/DC");
 }
 
@@ -181,17 +181,17 @@ static void test_mcdc_filter_delta(void)
 static void test_mcdc_fill_zeros(void)
 {
   TEST_BEGIN("rar5: ra8_rar5_fill_zeros MC/DC");
-  static uint8_t buf[20];
-  memset(buf, 0xFFU, sizeof(buf));
+  static uint8_t s_buf[20];
+  memset(s_buf, 0xFFU, sizeof(s_buf));
   /* c < count exit. */
-  TEST_ASSERT_EQ(3U, ra8_rar5_fill_zeros(buf, 0U, 3U, 20U));
-  TEST_ASSERT_EQ(0U, buf[0]);
-  TEST_ASSERT_EQ(0U, buf[2]);
-  TEST_ASSERT_EQ(0xFFU, buf[3]);
+  TEST_ASSERT_EQ(3U, ra8_rar5_fill_zeros(s_buf, 0U, 3U, 20U));
+  TEST_ASSERT_EQ(0U, s_buf[0]);
+  TEST_ASSERT_EQ(0U, s_buf[2]);
+  TEST_ASSERT_EQ(0xFFU, s_buf[3]);
   /* i < max clamp exit. */
-  TEST_ASSERT_EQ(20U, ra8_rar5_fill_zeros(buf, 18U, 5U, 20U));
-  TEST_ASSERT_EQ(0U, buf[18]);
-  TEST_ASSERT_EQ(0U, buf[19]);
+  TEST_ASSERT_EQ(20U, ra8_rar5_fill_zeros(s_buf, 18U, 5U, 20U));
+  TEST_ASSERT_EQ(0U, s_buf[18]);
+  TEST_ASSERT_EQ(0U, s_buf[19]);
   TEST_END("rar5: ra8_rar5_fill_zeros MC/DC");
 }
 
@@ -214,46 +214,46 @@ static void test_mcdc_fill_zeros(void)
 static void test_mcdc_apply_run(void)
 {
   TEST_BEGIN("rar5: ra8_rar5_apply_run MC/DC");
-  static uint8_t tbl[k_ra8_rar5_huff_total];
-  static uint8_t idlebits[1] = {0x00U};
-  uint32_t       idx         = 0U;
+  static uint8_t s_tbl[k_ra8_rar5_huff_total];
+  static uint8_t s_idlebits[1] = {0x00U};
+  uint32_t       idx           = 0U;
 
-  memset(tbl, 0, sizeof(tbl));
+  memset(s_tbl, 0, sizeof(s_tbl));
   /* num=16, idx=0 -> !is_zero && *idx==0 (T,T) -> reject. */
-  bind_bits(idlebits, sizeof(idlebits));
+  bind_bits(s_idlebits, sizeof(s_idlebits));
   idx = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_rar5_apply_run(&s_state, tbl, &idx, 16U));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_rar5_apply_run(&s_state, s_tbl, &idx, 16U));
   /* num=16, idx=1 (prev set) -> !is_zero && *idx==0 (T,F) -> copy run appends. */
-  bind_bits(idlebits, sizeof(idlebits));
-  tbl[0] = 7U;
-  idx    = 1U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rar5_apply_run(&s_state, tbl, &idx, 16U));
+  bind_bits(s_idlebits, sizeof(s_idlebits));
+  s_tbl[0] = 7U;
+  idx      = 1U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rar5_apply_run(&s_state, s_tbl, &idx, 16U));
   TEST_ASSERT_EQ(4U, idx);
-  TEST_ASSERT_EQ(7U, tbl[3]);
+  TEST_ASSERT_EQ(7U, s_tbl[3]);
   /* num=18, idx=0 -> is_zero (T,-), c < count exit (F,T). */
-  bind_bits(idlebits, sizeof(idlebits));
+  bind_bits(s_idlebits, sizeof(s_idlebits));
   idx = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rar5_apply_run(&s_state, tbl, &idx, 18U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rar5_apply_run(&s_state, s_tbl, &idx, 18U));
   TEST_ASSERT_EQ(3U, idx);
-  TEST_ASSERT_EQ(0U, tbl[0]);
+  TEST_ASSERT_EQ(0U, s_tbl[0]);
   /* num=17 (copy long), idx=1 -> is_long (T,-). */
-  bind_bits(idlebits, sizeof(idlebits));
-  tbl[0] = 6U;
-  idx    = 1U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rar5_apply_run(&s_state, tbl, &idx, 17U));
+  bind_bits(s_idlebits, sizeof(s_idlebits));
+  s_tbl[0] = 6U;
+  idx      = 1U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rar5_apply_run(&s_state, s_tbl, &idx, 17U));
   TEST_ASSERT_EQ(12U, idx); /* 1 + (11 + 0) */
   /* num=19 (zero long), idx=0 -> is_long (F,T) / is_zero (F,T). */
-  bind_bits(idlebits, sizeof(idlebits));
+  bind_bits(s_idlebits, sizeof(s_idlebits));
   idx = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rar5_apply_run(&s_state, tbl, &idx, 19U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rar5_apply_run(&s_state, s_tbl, &idx, 19U));
   TEST_ASSERT_EQ(11U, idx);
   /* num=16, idx=428 -> i < huff_total clamp (T,F). */
-  bind_bits(idlebits, sizeof(idlebits));
-  tbl[427] = 5U;
-  idx      = (uint32_t)k_ra8_rar5_huff_total - 2U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rar5_apply_run(&s_state, tbl, &idx, 16U));
+  bind_bits(s_idlebits, sizeof(s_idlebits));
+  s_tbl[427] = 5U;
+  idx        = (uint32_t)k_ra8_rar5_huff_total - 2U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rar5_apply_run(&s_state, s_tbl, &idx, 16U));
   TEST_ASSERT_EQ(k_ra8_rar5_huff_total, idx);
-  TEST_ASSERT_EQ(5U, tbl[(uint32_t)k_ra8_rar5_huff_total - 1U]);
+  TEST_ASSERT_EQ(5U, s_tbl[(uint32_t)k_ra8_rar5_huff_total - 1U]);
   TEST_END("rar5: ra8_rar5_apply_run MC/DC");
 }
 
@@ -275,34 +275,34 @@ static void test_mcdc_decode_stream_blocks(void)
 {
   TEST_BEGIN("rar5: multi-block + truncated-last stream");
   /* Block 1: tables + literals "ABC", not the last block. */
-  static uint8_t b1buf[k_pk_cap];
-  memset(b1buf, 0, sizeof(b1buf));
-  bitw_t b1 = {.buf = b1buf, .cap = sizeof(b1buf)};
+  static uint8_t s_b1buf[k_pk_cap];
+  memset(s_b1buf, 0, sizeof(s_b1buf));
+  bitw_t b1 = {.buf = s_b1buf, .cap = sizeof(s_b1buf)};
   enc_tables(&b1);
   bw_put(&b1, 0x41U, 9U);
   bw_put(&b1, 0x42U, 9U);
   bw_put(&b1, 0x43U, 9U);
   /* Block 2: literals "DEF" reusing block 1's tables, the last block. */
-  static uint8_t b2buf[k_pk_cap];
-  memset(b2buf, 0, sizeof(b2buf));
-  bitw_t b2 = {.buf = b2buf, .cap = sizeof(b2buf)};
+  static uint8_t s_b2buf[k_pk_cap];
+  memset(s_b2buf, 0, sizeof(s_b2buf));
+  bitw_t b2 = {.buf = s_b2buf, .cap = sizeof(s_b2buf)};
   bw_put(&b2, 0x44U, 9U);
   bw_put(&b2, 0x45U, 9U);
   bw_put(&b2, 0x46U, 9U);
-  static uint8_t pk[k_pk_cap];
-  memset(pk, 0, sizeof(pk));
-  size_t p = enc_block(&b1, pk, true, false);
-  p += enc_block(&b2, &pk[p], false, true);
+  static uint8_t s_pk[k_pk_cap];
+  memset(s_pk, 0, sizeof(s_pk));
+  size_t p = enc_block(&b1, s_pk, true, false);
+  p += enc_block(&b2, &s_pk[p], false, true);
   static const uint8_t exp[6] = {0x41U, 0x42U, 0x43U, 0x44U, 0x45U, 0x46U};
-  decode_and_check(pk, p, exp, sizeof(exp));
+  decode_and_check(s_pk, p, exp, sizeof(exp));
   /* Truncated last block: a valid 4-literal stream decoded with a larger unpacked
    * size drains its (last) block before completing -> if (last) break -> reject. */
   static const uint8_t k_src[4] = {1U, 2U, 3U, 4U};
-  static uint8_t       spk[k_pk_cap];
-  memset(spk, 0, sizeof(spk));
-  const size_t spklen = enc_all_literal(k_src, sizeof(k_src), spk, sizeof(spk));
+  static uint8_t       s_spk[k_pk_cap];
+  memset(s_spk, 0, sizeof(s_spk));
+  const size_t spklen = enc_all_literal(k_src, sizeof(k_src), s_spk, sizeof(s_spk));
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 decode_status(spk, spklen, (uint64_t)sizeof(k_src) + 2U));
+                 decode_status(s_spk, spklen, (uint64_t)sizeof(k_src) + 2U));
   TEST_END("rar5: multi-block + truncated-last stream");
 }
 
@@ -319,44 +319,44 @@ static void test_rar5_guards(void)
 {
   TEST_BEGIN("rar5: entry-point guards");
   static const uint8_t k_src[4] = {9U, 8U, 7U, 6U};
-  static uint8_t       pk[k_pk_cap];
-  memset(pk, 0, sizeof(pk));
-  const size_t pklen = enc_all_literal(k_src, sizeof(k_src), pk, sizeof(pk));
+  static uint8_t       s_pk[k_pk_cap];
+  memset(s_pk, 0, sizeof(s_pk));
+  const size_t pklen = enc_all_literal(k_src, sizeof(k_src), s_pk, sizeof(s_pk));
 
-  buf_src_t      src = {.data = pk, .len = pklen};
+  buf_src_t      src = {.data = s_pk, .len = pklen};
   ra8_rar_t      rar = {.read    = buf_read,
                         .ctx     = &src,
                         .size    = (uint64_t)pklen,
                         .version = k_ra8_rar_ver_5};
-  static uint8_t out[k_out_cap];
+  static uint8_t s_out[k_out_cap];
   size_t         got = 0U;
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rar5_decompress(nullptr, 0U, pklen, out, sizeof(out), 4U, &s_state, &got));
+                 ra8_rar5_decompress(nullptr, 0U, pklen, s_out, sizeof(s_out), 4U, &s_state, &got));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rar5_decompress(&rar, 0U, pklen, nullptr, sizeof(out), 4U, &s_state, &got));
+                 ra8_rar5_decompress(&rar, 0U, pklen, nullptr, sizeof(s_out), 4U, &s_state, &got));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rar5_decompress(&rar, 0U, pklen, out, sizeof(out), 4U, nullptr, &got));
+                 ra8_rar5_decompress(&rar, 0U, pklen, s_out, sizeof(s_out), 4U, nullptr, &got));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rar5_decompress(&rar, 0U, pklen, out, sizeof(out), 4U, &s_state, nullptr));
+                 ra8_rar5_decompress(&rar, 0U, pklen, s_out, sizeof(s_out), 4U, &s_state, nullptr));
 
   /* Non-RAR5 archive. */
   ra8_rar_t r4 = rar;
   r4.version   = k_ra8_rar_ver_4;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state,
-                 ra8_rar5_decompress(&r4, 0U, pklen, out, sizeof(out), 4U, &s_state, &got));
+                 ra8_rar5_decompress(&r4, 0U, pklen, s_out, sizeof(s_out), 4U, &s_state, &got));
 
   /* Output buffer too small. */
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
-                 ra8_rar5_decompress(&rar, 0U, pklen, out, 2U, 4U, &s_state, &got));
+                 ra8_rar5_decompress(&rar, 0U, pklen, s_out, 2U, 4U, &s_state, &got));
 
   /* Zero packed size. */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 ra8_rar5_decompress(&rar, 0U, 0U, out, sizeof(out), 4U, &s_state, &got));
+                 ra8_rar5_decompress(&rar, 0U, 0U, s_out, sizeof(s_out), 4U, &s_state, &got));
 
   /* Empty member (unp_size 0) decodes to nothing. */
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_rar5_decompress(&rar, 0U, pklen, out, sizeof(out), 0U, &s_state, &got));
+                 ra8_rar5_decompress(&rar, 0U, pklen, s_out, sizeof(s_out), 0U, &s_state, &got));
   TEST_ASSERT_EQ(0U, got);
   TEST_END("rar5: entry-point guards");
 }

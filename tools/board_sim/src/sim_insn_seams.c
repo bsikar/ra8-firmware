@@ -413,8 +413,10 @@ static void report_unhandled_insn(uint32_t pc, const uint8_t code[4])
 
   csh cs;
   if (cs_open(CS_ARCH_ARM, (cs_mode)(CS_MODE_THUMB | CS_MODE_MCLASS), &cs) == CS_ERR_OK) {
-    cs_insn*     insn = nullptr;
-    const size_t n    = cs_disasm(cs, code, sizeof(code), pc, 1, &insn);
+    cs_insn* insn = nullptr;
+    /* `code` decays to a pointer here, so sizeof(code) would hand capstone the
+     * pointer width instead of the four instruction bytes that are valid. */
+    const size_t n = cs_disasm(cs, code, (size_t)k_cs_insn_len, pc, 1, &insn);
     if (n > 0U) {
       (void)fprintf(stderr, "  disasm: %s %s\n", insn[0].mnemonic, insn[0].op_str);
       cs_free(insn, n);
@@ -445,8 +447,8 @@ bool on_invalid_insn(uc_engine* uc, void* user)
 /** @brief Implementation of `sim_insn_seams_install()` -- arm the dispatcher. */
 void sim_insn_seams_install(uc_engine* uc)
 {
-  static uc_hook h_invalid;
-  (void)uc_hook_add(uc, &h_invalid, UC_HOOK_INSN_INVALID, (void*)on_invalid_insn, nullptr, 1, 0);
+  static uc_hook s_h_invalid;
+  (void)uc_hook_add(uc, &s_h_invalid, UC_HOOK_INSN_INVALID, (void*)on_invalid_insn, nullptr, 1, 0);
 }
 
 /** @brief Implementation of `sim_lob_emulated_count()` -- plain counter read. */

@@ -275,14 +275,14 @@ static void priv_make_manifest(void)
 
   char hex[(2U * k_ra8_ota_sha256_bytes) + 1U] = {};
   for (uint32_t i = 0U; i < k_ra8_ota_sha256_bytes; ++i) {
-    hex[2U * i]      = nibble[g_expected_hash[i] >> 4U];
-    hex[2U * i + 1U] = nibble[g_expected_hash[i] & 0x0FU];
+    hex[(size_t)2U * i] = nibble[g_expected_hash[i] >> 4U];
+    hex[(2U * i) + 1U]  = nibble[g_expected_hash[i] & 0x0FU];
   }
 
   char sig_hex[(2U * sizeof g_expected_sig) + 1U] = {};
   for (uint32_t i = 0U; i < sizeof g_expected_sig; ++i) {
-    sig_hex[2U * i]      = nibble[g_expected_sig[i] >> 4U];
-    sig_hex[2U * i + 1U] = nibble[g_expected_sig[i] & 0x0FU];
+    sig_hex[(size_t)2U * i] = nibble[g_expected_sig[i] >> 4U];
+    sig_hex[(2U * i) + 1U]  = nibble[g_expected_sig[i] & 0x0FU];
   }
   (void)snprintf(g_mock_manifest,
                  sizeof g_mock_manifest,

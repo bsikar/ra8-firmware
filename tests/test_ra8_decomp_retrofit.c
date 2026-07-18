@@ -242,9 +242,9 @@ static void test_retrofit_epub_open_paths(void)
 {
   TEST_BEGIN("retrofit: epub open rejects entry flood");
   td_build_zip((uint32_t)k_td_flood, "e%04u");
-  static ra8_epub_book_t book; /* large record: keep off the test stack */
+  static ra8_epub_book_t s_book; /* large record: keep off the test stack */
   ra8_epub_mem_media_t   mem = {.data = s_arc, .size = s_arc_len};
-  TEST_ASSERT_EQ(k_ra8_err_decomp_entries, ra8_epub_open(&mem, nullptr, &book));
+  TEST_ASSERT_EQ(k_ra8_err_decomp_entries, ra8_epub_open(&mem, nullptr, &s_book));
   TEST_END("retrofit: epub open rejects entry flood");
 }
 
