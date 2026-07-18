@@ -47,6 +47,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum ra8_iwdt_addr_t
  * @brief Base address of the RA8D2 IWDT instance.
@@ -246,6 +248,7 @@ typedef struct {
  *
  * @see HUM Ch 28.1 "Overview" p 1271.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_iwdt_regs_t* ra8_iwdt(void)
 {
   /* HUM Ch 28.1 "Overview" p 1271 */

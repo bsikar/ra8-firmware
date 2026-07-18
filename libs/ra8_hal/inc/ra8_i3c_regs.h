@@ -392,6 +392,8 @@ typedef enum : uint32_t {
 #include <assert.h>
 #include <stddef.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @typedef ra8_i3c_offset_t
  * @brief FSP-canonical byte offsets used by the layout asserts below.
@@ -442,6 +444,7 @@ static_assert(offsetof(r_i3c_regs_t, NTST) == (size_t)k_ra8_i3c_off_ntst, "NTST 
  * @brief Get pointer to I3C0.
  * @return Volatile pointer to instance 0 register window.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_i3c_regs_t* ra8_i3c(void)
 {
   return (volatile r_i3c_regs_t*)k_ra8_i3c0_base_addr;

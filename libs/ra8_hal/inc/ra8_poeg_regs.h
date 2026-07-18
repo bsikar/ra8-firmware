@@ -23,6 +23,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 typedef enum : uintptr_t {
   k_ra8_poeg0_base_addr = 0x40212000UL, /**< RA8 poeg0 base address. */
   k_ra8_poeg1_base_addr = 0x40212100UL, /**< RA8 poeg1 base address. */
@@ -40,6 +42,7 @@ typedef struct {
 } r_poeg_regs_t;
 
 /** @brief Get pointer to POEG group N (0..3). */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_poeg_regs_t* ra8_poeg(uint8_t group)
 {
   if ((uint16_t)group >= k_ra8_poeg_group_count) {

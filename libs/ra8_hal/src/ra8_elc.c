@@ -20,6 +20,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_elc_regs.h"
 #include "ra8_err.h"
@@ -41,7 +42,8 @@ static const char* s_tag = "ELC";
  *
  * @return Volatile pointer into the ELC register block.
  */
-static volatile uint8_t* internal_elcr(void)
+RA8_HW_REGISTER_ACCESS
+static inline volatile uint8_t* internal_elcr(void)
 {
   return (volatile uint8_t*)((uintptr_t)k_ra8_elc_base_addr + (uintptr_t)k_ra8_elc_off_elcr);
 }
@@ -56,7 +58,8 @@ static volatile uint8_t* internal_elcr(void)
  * @param[in] index ELSR slot 0..k_ra8_elc_elsr_count - 1.
  * @return Volatile pointer into the ELC register block.
  */
-static volatile uint16_t* internal_elsr(uint8_t index)
+RA8_HW_REGISTER_ACCESS
+static inline volatile uint16_t* internal_elsr(uint8_t index)
 {
   return (volatile uint16_t*)((uintptr_t)k_ra8_elc_base_addr + (uintptr_t)k_ra8_elc_off_elsr0 +
                               ((uintptr_t)index * (uintptr_t)k_ra8_elc_elsr_stride));
@@ -73,7 +76,8 @@ static volatile uint16_t* internal_elsr(uint8_t index)
  * @param[in] group Software event index 0..k_ra8_elc_segr_count - 1.
  * @return Volatile pointer into the ELC register block.
  */
-static volatile uint8_t* internal_elsegr(uint8_t group)
+RA8_HW_REGISTER_ACCESS
+static inline volatile uint8_t* internal_elsegr(uint8_t group)
 {
   return (volatile uint8_t*)((uintptr_t)k_ra8_elc_base_addr + (uintptr_t)k_ra8_elc_off_elsegr0 +
                              ((uintptr_t)group * (uintptr_t)k_ra8_elc_elsegr_stride));
