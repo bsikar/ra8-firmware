@@ -34,6 +34,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_dtc.h"
 
 #include <stdint.h>
@@ -173,6 +174,7 @@ ra8_err_t ra8_dtc_attach_handler(ra8_dtc_event_fn_t fn, void* ctx)
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_dtc_dispatch(void)
 {
   volatile r_dtc_regs_t* reg = ra8_dtc();

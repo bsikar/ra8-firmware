@@ -21,6 +21,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_ulpt.h"
 
 #include <stdint.h>
@@ -301,6 +302,7 @@ ra8_err_t ra8_ulpt_attach_handler(ra8_ulpt_event_fn_t fn, void* ctx)
  * @note Not thread-safe; pair with NVIC masking.
  * @since 0.1.0
  */
+RA8_ISR_SAFE
 void ra8_ulpt_dispatch(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra8_ulpt_channel_count) {

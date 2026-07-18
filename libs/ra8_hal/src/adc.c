@@ -41,6 +41,7 @@
 #include "adc_internal.h"
 #include "ra8_adc.h"
 #include "ra8_adc_b_regs.h"
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -494,6 +495,7 @@ ra8_err_t ra8_adc_exit_stop(void)
   return ra8_mstp_enable(k_ra8_mstp_adc16h);
 }
 
+RA8_ISR_SAFE
 void ra8_adc_dispatch_cnv_end(uint8_t channel)
 {
   volatile uint32_t* addr = ra8_adc_b_addr(channel);

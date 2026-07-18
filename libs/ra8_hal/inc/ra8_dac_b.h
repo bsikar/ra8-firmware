@@ -24,7 +24,6 @@ extern "C" {
 
 #include <stdint.h>
 
-#include "ra8_dac_b_regs.h"
 #include "ra8_err.h"
 
 /**

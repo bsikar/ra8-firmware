@@ -56,6 +56,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_i2c.h"
@@ -597,6 +598,7 @@ ra8_i2c_peripheral_attach_handler(uint8_t channel, ra8_i2c_peripheral_event_fn_t
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_i2c_peripheral_dispatch(uint8_t channel)
 {
   volatile const r_i2c_regs_t* reg = ra8_i2c_regs(channel);
