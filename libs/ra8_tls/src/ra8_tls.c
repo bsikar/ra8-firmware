@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -119,6 +120,7 @@ static bool s_initialized;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_handle_valid(const struct ra8_tls_session_handle* session)
 {
   if (session == nullptr) {
@@ -137,6 +139,7 @@ static bool internal_handle_valid(const struct ra8_tls_session_handle* session)
  *
  * @return Pointer to a free slot, or NULL when the pool is exhausted.
  */
+RA8_INTERNAL
 static struct ra8_tls_session_handle* internal_pool_acquire(void)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_tls_max_sessions; ++i) {
@@ -161,6 +164,7 @@ static struct ra8_tls_session_handle* internal_pool_acquire(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_pool_reset(void)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_tls_max_sessions; ++i) {
@@ -198,6 +202,7 @@ static void internal_pool_reset(void)
  * @note Pure helper; NASA P10 Rule 2 loop bounded by ``cap - 1``.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_copy_cstr(char* dst, const char* src, size_t cap)
 {
   const size_t last = cap - 1U;
@@ -278,6 +283,7 @@ ra8_err_t ra8_tls_global_deinit(void)
  * @note Pure validation helper; safe from any context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_session_validate_args(ra8_tls_session_t*           out_session,
                                                 const ra8_tls_session_cfg_t* cfg)
 {
@@ -322,6 +328,7 @@ static ra8_err_t internal_session_validate_args(ra8_tls_session_t*           out
  * @note Not thread-safe; pool serialisation is the caller's job.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_apply_verify_cfg(struct ra8_tls_session_handle* slot,
                                       const ra8_tls_session_cfg_t*   cfg)
 {
@@ -377,6 +384,7 @@ static void internal_apply_verify_cfg(struct ra8_tls_session_handle* slot,
  * @note Not thread-safe; pool serialisation is the caller's job.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_session_mbedtls_setup(struct ra8_tls_session_handle* slot,
                                                 const ra8_tls_session_cfg_t*   cfg)
 {
