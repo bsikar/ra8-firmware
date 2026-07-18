@@ -572,6 +572,7 @@ The `RA8_*` annotation macros in `libs/ra8_core/inc/ra8_attributes.h` record arc
 | `RA8_BOUNDED_LOOP(symbol)` | NASA P10 Rule 2: every loop bounded by `symbol`. |
 | `RA8_VALIDATES(n)` | NASA P10 Rule 5: at least `n` `RA8_CHECK_*` calls. |
 | `RA8_OWNS_RESOURCE(kind)` | RAII-style ownership; release on every return path. |
+| `RA8_RELEASES_RESOURCE(kind)` | Release half of the `RA8_OWNS_RESOURCE(kind)` pair. |
 | `RA8_REVIEWED_BY(name)` | Safety-critical reviewer sign-off (rolled into SVR). |
 | `RA8_REGISTER_BANK(peripheral)` | Group MMIO accessors by parent peripheral. |
 
@@ -617,10 +618,20 @@ never call it.
 ### Enforcement
 
 - `scripts/utils/check_annotations.py` -- checks annotations against the real
-  libclang call graph. It is only as good as its parse: if headers fail to
-  resolve, it silently sees a fraction of the call sites and the rules go
-  toothless. Treat a sharp drop in resolved call sites as a gate failure, not
-  as good news.
+  libclang call graph, and enforces the table above: every non-`static`
+  definition in first-party code must carry a linkage annotation, be declared
+  in a header that is not an `*_internal.h`, be a hardware vector-table entry,
+  or be `main`. There is no warn-only mode; a gate that reports a known gap
+  without failing is a gate that hides the gap.
+
+  It is only as good as its parse, so it fails on its own terms before any
+  rule runs. An unresolved include or a drop in resolved call sites below the
+  floor is fatal -- when the parse comes apart the rules stop policing
+  anything and the gate reports *fewer* violations, which reads as an
+  improvement. It also cross-checks every rule key against the strings
+  `ra8_attributes.h` actually emits: a rule keyed on a spelling no macro
+  produces matches nothing and reports success forever, and four rules were in
+  that state at once.
 - `scripts/utils/check_nsc_cmse.sh` -- compiles every `libs/ra8_nsc` TU under
   `-mcmse` with `-Wall -Wextra -Werror`. The warning flags are load-bearing:
   a bare `-fsyntax-only` run is what let the veneer clash above go unnoticed.

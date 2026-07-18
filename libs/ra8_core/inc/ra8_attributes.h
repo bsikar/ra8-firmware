@@ -593,6 +593,37 @@ extern "C" {
  */
 #define RA8_OWNS_RESOURCE(kind) RA8_INTERNAL_ANNOTATE("ra8_owns_resource:" kind)
 
+/**
+ * @brief Release side of the `RA8_OWNS_RESOURCE(kind)` pair.
+ *
+ * @details
+ * Marks the function that hands a resource of `kind` back. The checker
+ * looks for a call to a function carrying this annotation when deciding
+ * whether an `RA8_OWNS_RESOURCE(kind)` function has discharged its
+ * ownership, so `kind` must be spelled identically on both halves.
+ *
+ * Without this macro the acquire side has no counterpart to look for and
+ * the rule can only ever report that nothing releases anything, which is
+ * why it is defined here rather than left to each caller to invent.
+ *
+ * @param kind String literal naming the resource kind. Must match the
+ *             `RA8_OWNS_RESOURCE(kind)` it pairs with, character for
+ *             character.
+ *
+ * @par Enforcement:
+ * libclang control-flow walk, paired with `RA8_OWNS_RESOURCE`.
+ *
+ * @par Example:
+ * @code
+ * RA8_RELEASES_RESOURCE("dma_channel")
+ * ra8_err_t ra8_dma_release_channel(ra8_dma_channel_t ch);
+ * @endcode
+ *
+ * `ra8_dma_release_channel` discharges the ownership that
+ * `ra8_dma_acquire_channel` took.
+ */
+#define RA8_RELEASES_RESOURCE(kind) RA8_INTERNAL_ANNOTATE("ra8_releases_resource:" kind)
+
 /* =============================================================================
  * 18. RA8_REVIEWED_BY(name)
  * =============================================================================
