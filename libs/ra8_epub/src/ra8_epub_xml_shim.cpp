@@ -54,58 +54,8 @@
 #include <iterator>
 
 #include "ra8_epub.h"
+#include "ra8_epub_xml_shim_internal.h"
 #include "tinyxml2.h"
-
-extern "C" {
-
-/**
- * @brief Out-parameter struct returned by `ra8_epub_xml_parse_container()`.
- *
- * @details The OPF path is always non-empty on success; the caller
- *          uses `opf_path_buf` to feed the second pass
- *          (`ra8_epub_xml_parse_opf()`).
- */
-typedef struct {
-  char opf_path[k_ra8_epub_max_path_len];
-} ra8_epub_container_result_t;
-
-/**
- * @brief Parse `META-INF/container.xml` and copy the rootfile path into
- *        `out`.
- */
-ra8_err_t ra8_epub_xml_parse_container(const uint8_t*               xml_bytes,
-                                       size_t                       xml_len,
-                                       ra8_epub_container_result_t* out);
-
-/**
- * @brief Parse the OPF document and fill in metadata, cover, and spine.
- *
- * `book` is mutated in-place: `chapter_count`, `chapter_paths`,
- * `title`, `author`, `language`, `cover_path`, `toc_path`, `toc_kind`
- * are written.
- */
-ra8_err_t ra8_epub_xml_parse_opf(const uint8_t* xml_bytes, size_t xml_len, ra8_epub_book_t* book);
-
-/**
- * @brief Parse an EPUB 2 NCX document into `book->toc` / `book->toc_count`.
- *
- * Walks `<navMap>` depth-first; each `<navPoint>` contributes one entry
- * (`<navLabel><text>` -> title, `<content src>` -> href) and nested
- * `<navPoint>` elements increase the entry depth.
- */
-ra8_err_t ra8_epub_xml_parse_ncx(const uint8_t* xml_bytes, size_t xml_len, ra8_epub_book_t* book);
-
-/**
- * @brief Parse an EPUB 3 nav document into `book->toc` / `book->toc_count`.
- *
- * Locates the `<nav epub:type="toc">` element (falling back to the first
- * `<nav>`), then walks its `<ol>`/`<li>` tree; each `<li>` contributes
- * one entry (`<a>` text -> title, `<a href>` -> href) and nested `<ol>`
- * elements increase the entry depth.
- */
-ra8_err_t ra8_epub_xml_parse_nav(const uint8_t* xml_bytes, size_t xml_len, ra8_epub_book_t* book);
-
-} /* extern "C" */
 
 namespace {
 

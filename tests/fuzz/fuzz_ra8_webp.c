@@ -24,6 +24,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "fuzz_entry.h"
 #include "ra8_err.h"
 #include "ra8_webp.h"       /* ra8_webp_get_info, ra8_webp_decode_rgba */
 #include "ra8_webp_arena.h" /* ra8_webp_arena_t                        */

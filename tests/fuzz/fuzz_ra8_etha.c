@@ -17,6 +17,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "fuzz_entry.h"
 #include "eth_frame_fixture.h"
 #include "ra8_err.h"
 

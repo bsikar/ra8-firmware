@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "fuzz_entry.h"
 #include "ra8_err.h"
 #include "ra8_tls.h"
 

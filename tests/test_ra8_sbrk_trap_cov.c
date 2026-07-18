@@ -39,6 +39,7 @@
 #include <unistd.h>
 
 #include "ra8_error_handler.h"
+#include "ra8_sbrk_trap.h"
 #include "unity_minimal.h"
 
 /**
@@ -121,7 +122,6 @@ static void death_watchdog(int sig)
  * glibc's malloc does not grow the program break during this short test (it
  * mmaps its arena), so the strong `_sbrk` stays dormant except for the explicit
  * calls below, where the mocked sink returns control via longjmp/abort. */
-extern void* _sbrk(int32_t incr);
 
 /**
  * @test test_sbrk_trap_reaches_fatal_sink

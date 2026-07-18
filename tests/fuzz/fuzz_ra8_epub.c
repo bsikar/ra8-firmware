@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "fuzz_entry.h"
 #include "ra8_epub.h"
 #include "ra8_err.h"
 

@@ -45,6 +45,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_err.h"
@@ -286,8 +287,8 @@ static void mpu_simple_setup_or_halt(void)
 /* Non-static + used: the inline assembly in MemManage_Handler
  * references this symbol by name, so it must survive LTO and the
  * dead-code stripper. */
-void               mpu_simple_fault_recover(uint32_t* frame);
-[[gnu::used]] void mpu_simple_fault_recover(uint32_t* frame)
+RA8_INTERNAL [[gnu::used]] static void mpu_simple_fault_recover(uint32_t* frame);
+RA8_INTERNAL [[gnu::used]] static void mpu_simple_fault_recover(uint32_t* frame)
 {
   /* Advance the stacked PC past the faulting store. The compiler
    * emits ``strb r3, [r2]`` for the probe, which is 16 bits on
