@@ -410,6 +410,14 @@ def find_aggregate_bodies(code: str):
         p = m.end()
         depth = 0
         open_idx = None
+        # Between the keyword and a definition's `{` C allows only an
+        # optional tag and attributes. A `*` or a completed parameter list
+        # means the keyword is an elaborated type specifier on a
+        # declarator instead -- `struct os_mbuf* f(void) { ... }` is a
+        # function returning a pointer, not a struct definition, and
+        # reading its body as a member list demands doc comments on the
+        # statements inside it.
+        declarator = False
         while p < n:
             ch = code[p]
             if ch in "([":
@@ -418,11 +426,16 @@ def find_aggregate_bodies(code: str):
                 if depth == 0:
                     break
                 depth -= 1
+                if depth == 0:
+                    declarator = True
             elif depth == 0:
-                if ch == "{":
-                    open_idx = p
+                if ch == "*":
+                    declarator = True
+                elif ch == "{":
+                    if not declarator:
+                        open_idx = p
                     break
-                if ch in _AGG_TERMINATORS:
+                elif ch in _AGG_TERMINATORS:
                     break
             p += 1
         if open_idx is None:
