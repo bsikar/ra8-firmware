@@ -260,7 +260,7 @@ uint32_t ra8_tz_secure_boot_host_blxns_target(void)
  * @note Not thread-safe; runs only during secure boot.
  * @since 0.1.0
  */
-static void internal_write32(uintptr_t addr, uint32_t value)
+RA8_INTERNAL static void internal_write32(uintptr_t addr, uint32_t value)
 {
 #ifdef RA8_SIMULATOR_MODE
   if (addr == (uintptr_t)k_ra8_tz_ipcsar_addr) {
@@ -301,7 +301,7 @@ static void internal_write32(uintptr_t addr, uint32_t value)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static uint32_t internal_read32(uintptr_t addr)
+RA8_INTERNAL static uint32_t internal_read32(uintptr_t addr)
 {
 #ifdef RA8_SIMULATOR_MODE
   if (addr == (uintptr_t)k_ra8_tz_sau_type_addr) {
@@ -337,7 +337,7 @@ static uint32_t internal_read32(uintptr_t addr)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void internal_write16(uintptr_t addr, uint16_t value)
+RA8_INTERNAL static void internal_write16(uintptr_t addr, uint16_t value)
 {
 #ifdef RA8_SIMULATOR_MODE
   s_host.prcr_s_last = value;
@@ -366,7 +366,7 @@ static void internal_write16(uintptr_t addr, uint16_t value)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static inline void internal_dsb(void)
+RA8_INTERNAL static inline void internal_dsb(void)
 {
 #ifndef RA8_SIMULATOR_MODE
   __asm__ volatile("dsb 0xF" ::: "memory");
@@ -386,7 +386,7 @@ static inline void internal_dsb(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static inline void internal_isb(void)
+RA8_INTERNAL static inline void internal_isb(void)
 {
 #ifndef RA8_SIMULATOR_MODE
   __asm__ volatile("isb 0xF" ::: "memory");
@@ -418,7 +418,8 @@ static inline void internal_isb(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void internal_sau_set_region(uint8_t region, uint32_t base, uint32_t limit, bool is_nsc)
+RA8_INTERNAL static void
+internal_sau_set_region(uint8_t region, uint32_t base, uint32_t limit, bool is_nsc)
 {
   internal_write32(k_ra8_tz_sau_rnr_addr, (uint32_t)region);
   internal_write32(k_ra8_tz_sau_rbar_addr, base);
@@ -585,7 +586,7 @@ uint32_t ra8_tz_ns_signed_body_len(const uint32_t* ns_vector_table)
  * @note Not thread-safe; runs once at boot.
  * @since 0.1.0
  */
-static ra8_err_t internal_ns_verify_or_deny(const uint32_t* ns_vector_table)
+RA8_INTERNAL static ra8_err_t internal_ns_verify_or_deny(const uint32_t* ns_vector_table)
 {
   RA8_CHECK_NULL_PTR(ns_vector_table, s_tag, "ns_vector_table");
 #if !defined(RA8_SIMULATOR_MODE) && defined(RA8_ENABLE_ROOT_OF_TRUST)
