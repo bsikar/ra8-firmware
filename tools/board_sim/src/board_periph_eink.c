@@ -57,8 +57,35 @@ typedef enum : uint16_t {
   k_eink_cmd_ld_img_area  = 0x0021U, /**< Begin load (rectangle). */
   k_eink_cmd_ld_img_end   = 0x0022U, /**< End load.               */
   k_eink_cmd_dpy_area     = 0x0034U, /**< Refresh rectangle.      */
+  k_eink_cmd_vcom         = 0x0039U, /**< Get / set VCOM bias.    */
   k_eink_cmd_get_dev_info = 0x0302U, /**< 40-byte info block.     */
 } eink_cmd_t;
+
+/**
+ * @enum eink_vcom_arg_t
+ * @brief Direction word of the VCOM command (DS user command set).
+ */
+typedef enum : uint16_t {
+  k_eink_vcom_get = 0x0000U, /**< Controller answers with its VCOM.  */
+  k_eink_vcom_set = 0x0001U, /**< Controller consumes the next word. */
+} eink_vcom_arg_t;
+
+/**
+ * @enum eink_vcom_default_t
+ * @brief VCOM the modelled controller powers up holding.
+ *
+ * @details
+ * A vendor-provisioned IT8951 driver board boots with the VCOM its own
+ * configuration stores, and the firmware's calibration resolver reads it
+ * back as its first-choice source. The model reports a plausible in-range
+ * magnitude in millivolts so that path exercises end-to-end in sim exactly
+ * as it does on silicon (SIM == HIL). This is a *modelled* controller
+ * value, not a calibration default for any real panel -- real panels carry
+ * their own VCOM printed on the flex cable.
+ */
+typedef enum : uint16_t {
+  k_eink_vcom_power_on_mv = 1530U, /**< Reported VCOM magnitude (mV). */
+} eink_vcom_default_t;
 
 /**
  * @enum eink_reg_t
@@ -87,11 +114,31 @@ typedef enum : uint16_t {
  */
 typedef enum : uint16_t {
   k_eink_idx_reg_addr    = 0U, /**< REG_RD/REG_WR: register address word.  */
+  k_eink_idx_ld_arg0     = 0U, /**< LD_IMG_AREA: endian/pf/rotate word.    */
   k_eink_idx_ld_w        = 3U, /**< LD_IMG_AREA: width  (arg3 after arg0). */
   k_eink_idx_ld_h        = 4U, /**< LD_IMG_AREA: height (arg4 after arg0). */
   k_eink_idx_ld_px_start = 5U, /**< LD_IMG_AREA: first pixel word.         */
   k_eink_idx_dpy_wf      = 4U, /**< DPY_AREA: waveform word (arg4).        */
+  k_eink_idx_vcom_dir    = 0U, /**< VCOM: direction word (get / set).      */
+  k_eink_idx_vcom_val    = 1U, /**< VCOM: value word on a set.             */
 } eink_datawr_idx_t;
+
+/**
+ * @enum eink_wire_pf_t
+ * @brief LD_IMG_AREA ``arg0`` pixel-format codes.
+ *
+ * @details
+ * The controller numbers its formats 2 bpp = 0, 3 bpp = 1, 4 bpp = 2,
+ * 8 bpp = 3. The model decodes the field so its pixel accounting stays
+ * correct when the firmware switches depth -- at 4 bpp one 16-bit word
+ * carries four pixels, not two.
+ */
+typedef enum : uint16_t {
+  k_eink_wire_pf_2bpp = 0U, /**< 2 bits per pixel. */
+  k_eink_wire_pf_3bpp = 1U, /**< 3 bits per pixel. */
+  k_eink_wire_pf_4bpp = 2U, /**< 4 bits per pixel. */
+  k_eink_wire_pf_8bpp = 3U, /**< 8 bits per pixel. */
+} eink_wire_pf_t;
 
 /**
  * @enum eink_read_idx_t
@@ -113,7 +160,9 @@ typedef enum : uint32_t {
   k_eink_byte_mask   = 0xFFU, /**< Low-byte extraction mask.             */
   k_eink_read_bytes  = 4U,    /**< Bytes per read burst (dummy + value). */
   k_eink_dev_words   = 20U,   /**< GET_DEV_INFO block length (40 / 2).   */
-  k_eink_px_per_word = 2U,    /**< 8bpp pixels packed per 16-bit word.   */
+  k_eink_word_bits   = 16U,   /**< Bits carried by one 16-bit word.      */
+  k_eink_pf_shift    = 4U,    /**< LD_IMG_AREA arg0 pixel-format shift.  */
+  k_eink_pf_mask     = 0x3U,  /**< LD_IMG_AREA arg0 pixel-format mask.   */
   k_eink_idle_byte   = 0x00U, /**< Non-read response / idle byte.        */
 } eink_sizing_t;
 
@@ -152,6 +201,9 @@ typedef struct {
   uint16_t     datawr_idx;                /**< Data-word index within @c cur_cmd.      */
   uint16_t     reg_addr;                  /**< Register address for a REG_RD/REG_WR.   */
   uint16_t     dev_idx;                   /**< Next GET_DEV_INFO word index.           */
+  uint16_t     vcom_mv;                   /**< Modelled VCOM magnitude in millivolts.  */
+  uint16_t     vcom_dir;                  /**< Direction word of the VCOM in flight.   */
+  uint16_t     px_per_word;               /**< Pixels per data word at the loaded pf.  */
   bool         reading;                   /**< A read burst is serving response bytes. */
   uint8_t      rd_pos;                    /**< Cursor into @c rd_buf.                  */
   uint8_t      rd_len;                    /**< Valid bytes in @c rd_buf.               */
@@ -193,12 +245,30 @@ static uint16_t eink_dev_info_word(uint16_t idx)
   return 0U;
 }
 
+/** @brief Pixels a 16-bit data word carries at the given wire pixel format. */
+static uint16_t eink_px_per_word(uint16_t wire_pf)
+{
+  if (wire_pf == (uint16_t)k_eink_wire_pf_2bpp) {
+    return (uint16_t)((uint16_t)k_eink_word_bits / 2U);
+  }
+  if (wire_pf == (uint16_t)k_eink_wire_pf_3bpp) {
+    return (uint16_t)((uint16_t)k_eink_word_bits / 3U);
+  }
+  if (wire_pf == (uint16_t)k_eink_wire_pf_4bpp) {
+    return (uint16_t)((uint16_t)k_eink_word_bits / 4U);
+  }
+  return (uint16_t)((uint16_t)k_eink_word_bits / 8U); /* k_eink_wire_pf_8bpp */
+}
+
 /** @brief Load @c rd_buf with [dummy word, value word] and open the read burst. */
 static void eink_begin_read(void)
 {
   uint16_t value = 0U;
   if (s_eink.cur_cmd == (uint16_t)k_eink_cmd_reg_rd) {
     value = eink_reg_value(s_eink.reg_addr);
+  } else if (s_eink.cur_cmd == (uint16_t)k_eink_cmd_vcom) {
+    /* Only a "get" reads back; the driver never reads after a set. */
+    value = s_eink.vcom_mv;
   } else if (s_eink.cur_cmd == (uint16_t)k_eink_cmd_get_dev_info) {
     value          = eink_dev_info_word(s_eink.dev_idx);
     s_eink.dev_idx = (uint16_t)(s_eink.dev_idx + 1U);
@@ -221,9 +291,24 @@ static void eink_consume_data(uint16_t word)
     if (s_eink.datawr_idx == (uint16_t)k_eink_idx_reg_addr) {
       s_eink.reg_addr = word;
     }
+  } else if (s_eink.cur_cmd == (uint16_t)k_eink_cmd_vcom) {
+    if (s_eink.datawr_idx == (uint16_t)k_eink_idx_vcom_dir) {
+      s_eink.vcom_dir = word;
+    } else if ((s_eink.datawr_idx == (uint16_t)k_eink_idx_vcom_val) &&
+               (s_eink.vcom_dir == (uint16_t)k_eink_vcom_set)) {
+      s_eink.vcom_mv = word;
+    } else {
+      /* A get takes no value word; nothing further to consume. */
+    }
   } else if (s_eink.cur_cmd == (uint16_t)k_eink_cmd_ld_img_area) {
-    if (s_eink.datawr_idx >= (uint16_t)k_eink_idx_ld_px_start) {
-      s_eink.pixels += (uint64_t)k_eink_px_per_word; /* one word = two 8bpp pixels */
+    if (s_eink.datawr_idx == (uint16_t)k_eink_idx_ld_arg0) {
+      const uint16_t wire_pf =
+        (uint16_t)((word >> (uint16_t)k_eink_pf_shift) & (uint16_t)k_eink_pf_mask);
+      s_eink.px_per_word = eink_px_per_word(wire_pf);
+    } else if (s_eink.datawr_idx >= (uint16_t)k_eink_idx_ld_px_start) {
+      s_eink.pixels += (uint64_t)s_eink.px_per_word;
+    } else {
+      /* Geometry args: no pixel accounting. */
     }
   } else if (s_eink.cur_cmd == (uint16_t)k_eink_cmd_dpy_area) {
     if (s_eink.datawr_idx == (uint16_t)k_eink_idx_dpy_wf) {
@@ -304,11 +389,16 @@ void board_eink_reset(void)
   const bool     was_attached = s_eink.attached;
   const uint64_t pixels       = s_eink.pixels;
   const uint32_t refreshes    = s_eink.refreshes;
+  const uint16_t vcom_mv      = s_eink.vcom_mv;
   s_eink                      = (eink_model_t){};
   s_eink.attached             = was_attached;
   s_eink.pixels               = pixels;    /* keep run totals across a mid-run reset        */
   s_eink.refreshes            = refreshes; /* (the SPI block resets framing, not the panel) */
   s_eink.st                   = (eink_state_t)k_eink_st_preamble;
+  /* VCOM is controller configuration, not bus framing: a mid-run SPI reset
+   * must not clear it, but a cold attach starts from the power-on value. */
+  s_eink.vcom_mv = (vcom_mv != 0U) ? vcom_mv : (uint16_t)k_eink_vcom_power_on_mv;
+  s_eink.px_per_word = eink_px_per_word((uint16_t)k_eink_wire_pf_8bpp);
 }
 
 void board_eink_apply_gpio_defaults(void)
@@ -325,8 +415,10 @@ void board_eink_report(void)
     return;
   }
   (void)fprintf(stderr,
-                "  IT8951 e-ink  : %llu pixel(s) loaded, %u refresh(es), last wf=0x%X\n",
+                "  IT8951 e-ink  : %llu pixel(s) loaded, %u refresh(es), last wf=0x%X, "
+                "vcom=%umV\n",
                 (unsigned long long)s_eink.pixels,
                 s_eink.refreshes,
-                (unsigned)s_eink.last_wf);
+                (unsigned)s_eink.last_wf,
+                (unsigned)s_eink.vcom_mv);
 }
