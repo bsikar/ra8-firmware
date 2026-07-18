@@ -26,12 +26,12 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include "ra8_attributes.h"
 #include "mdl_config.h"
 #include "mdl_export.h"
 #include "mdl_extract.h"
 #include "mdl_net.h"
 #include "mdl_politeness.h"
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 
 /** @brief Fixed sizing for the CLI (large buffers live in .bss). */
@@ -257,13 +257,13 @@ RA8_INTERNAL static void filter_prefix(mdl_url_list_t* l, const char* prefix)
  * @return Count of images that failed to download.
  */
 RA8_INTERNAL static size_t download_chapter(mdl_net_iface_t*  net,
-                               const mdl_site_t* site,
-                               const char*       series_url,
-                               const char*       chapter_url,
-                               const char*       dest_dir,
-                               size_t*           page_no,
-                               mdl_politeness_t* pol,
-                               uint32_t          timeout)
+                                            const mdl_site_t* site,
+                                            const char*       series_url,
+                                            const char*       chapter_url,
+                                            const char*       dest_dir,
+                                            size_t*           page_no,
+                                            mdl_politeness_t* pol,
+                                            uint32_t          timeout)
 {
   const mdl_net_req_t page_req = {.user_agent = k_user_agent,
                                   .referer    = series_url,
@@ -316,9 +316,9 @@ RA8_INTERNAL static size_t download_chapter(mdl_net_iface_t*  net,
 
 /** @brief Fetch the series page and build the ordered, filtered chapter list. */
 RA8_INTERNAL static ra8_err_t prepare_chapters(mdl_net_iface_t*  net,
-                                  const mdl_site_t* site,
-                                  const char*       series_url,
-                                  uint32_t          timeout)
+                                               const mdl_site_t* site,
+                                               const char*       series_url,
+                                               uint32_t          timeout)
 {
   const mdl_net_req_t req = {.user_agent = k_user_agent, .referer = nullptr, .timeout_ms = timeout};
   size_t              len = 0U;
@@ -342,7 +342,8 @@ RA8_INTERNAL static ra8_err_t prepare_chapters(mdl_net_iface_t*  net,
 }
 
 /** @brief Package one downloaded chapter into `format`; 0 ok, 1 on failure. */
-RA8_INTERNAL static size_t export_one(mdl_format_t format, const char* series_dir, const char* chapter_url)
+RA8_INTERNAL static size_t
+export_one(mdl_format_t format, const char* series_dir, const char* chapter_url)
 {
   char chap[k_chap_name_bytes];
   last_segment(chapter_url, chap, sizeof(chap));
@@ -396,12 +397,12 @@ RA8_INTERNAL static void chapter_range(size_t start, size_t last, long* lo, long
  * @since 0.1.0
  */
 RA8_INTERNAL static size_t export_combined(mdl_format_t format,
-                              const char*  series_dir,
-                              const char*  dir,
-                              const char*  slug,
-                              long         lo,
-                              long         hi,
-                              size_t       got_ch)
+                                           const char*  series_dir,
+                                           const char*  dir,
+                                           const char*  slug,
+                                           long         lo,
+                                           long         hi,
+                                           size_t       got_ch)
 {
   const char* ext = mdl_format_ext(format);
   char        out[k_dir_path_bytes];
@@ -425,16 +426,16 @@ RA8_INTERNAL static size_t export_combined(mdl_format_t format,
  * that has no archive, falls back to one folder (and one archive) per chapter.
  */
 RA8_INTERNAL static size_t download_chapters(mdl_net_iface_t*  net,
-                                const mdl_site_t* site,
-                                const char*       series_url,
-                                const char*       series_dir,
-                                const char*       slug,
-                                mdl_format_t      format,
-                                bool              combine,
-                                size_t            chapters,
-                                size_t            start,
-                                uint64_t          seed,
-                                uint32_t          timeout)
+                                             const mdl_site_t* site,
+                                             const char*       series_url,
+                                             const char*       series_dir,
+                                             const char*       slug,
+                                             mdl_format_t      format,
+                                             bool              combine,
+                                             size_t            chapters,
+                                             size_t            start,
+                                             uint64_t          seed,
+                                             uint32_t          timeout)
 {
   mdl_politeness_t pol;
   mdl_politeness_init(&pol, seed);
@@ -495,14 +496,14 @@ RA8_INTERNAL static size_t download_chapters(mdl_net_iface_t*  net,
 
 /** @brief series mode: config + series URL -> download N chapters. */
 RA8_INTERNAL static int run_series(const char*  cfg_path,
-                      const char*  series_url,
-                      const char*  out_dir,
-                      mdl_format_t format,
-                      bool         combine,
-                      size_t       chapters,
-                      size_t       start,
-                      uint64_t     seed,
-                      uint32_t     timeout)
+                                   const char*  series_url,
+                                   const char*  out_dir,
+                                   mdl_format_t format,
+                                   bool         combine,
+                                   size_t       chapters,
+                                   size_t       start,
+                                   uint64_t     seed,
+                                   uint32_t     timeout)
 {
   mdl_site_t site;
   if (mdl_config_load(cfg_path, &site) != k_ra8_ok) {
@@ -562,11 +563,11 @@ RA8_INTERNAL static int run_series(const char*  cfg_path,
 
 /** @brief page mode: fetch one URL, download its <img> URLs (debug path). */
 RA8_INTERNAL static int run_page(const char* url,
-                    const char* out_dir,
-                    const char* attr,
-                    uint32_t    max_imgs,
-                    uint64_t    seed,
-                    uint32_t    timeout)
+                                 const char* out_dir,
+                                 const char* attr,
+                                 uint32_t    max_imgs,
+                                 uint64_t    seed,
+                                 uint32_t    timeout)
 {
   mdl_net_iface_t* net = mdl_net_curl_create();
   if (net == nullptr) {

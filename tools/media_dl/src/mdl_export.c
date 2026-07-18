@@ -17,7 +17,6 @@
  * decodes the layer, then re-probes the inner archive; xz is emitted with a
  * CRC32 check and a 1 MiB dictionary so the on-device xz scratch accepts it.
  */
-#include "ra8_attributes.h"
 #include "mdl_export.h"
 
 #include <crt_externs.h>
@@ -34,6 +33,7 @@
 #include <unistd.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_jpeg_sw.h"
 #include "ra8_log.h"
 #include "ra8_tileatlas.h"
@@ -252,10 +252,10 @@ RA8_INTERNAL static void tar_header(uint8_t* blk, const char* name, size_t size)
 
 /** @brief Build a tar of `names` from `dir` into a freshly-malloc'd buffer. */
 RA8_INTERNAL static ra8_err_t build_tar(const char* dir,
-                           char        names[][k_name_max],
-                           size_t      count,
-                           uint8_t**   out_buf,
-                           size_t*     out_len)
+                                        char        names[][k_name_max],
+                                        size_t      count,
+                                        uint8_t**   out_buf,
+                                        size_t*     out_len)
 {
   size_t total = 2U * (size_t)k_tar_block; /* two trailing zero blocks */
   for (size_t i = 0U; i < count; ++i) {
@@ -361,11 +361,12 @@ export_cbz(const char* dir, char names[][k_name_max], size_t count, const char* 
 }
 
 /** @brief Build a tar then hand it to `compress` (gzip/xz) written to `out`. */
-RA8_INTERNAL static ra8_err_t export_tar_wrapped(const char* dir,
-                                    char        names[][k_name_max],
-                                    size_t      count,
-                                    const char* out_path,
-                                    ra8_err_t (*compress)(const char*, const uint8_t*, size_t))
+RA8_INTERNAL static ra8_err_t
+export_tar_wrapped(const char* dir,
+                   char        names[][k_name_max],
+                   size_t      count,
+                   const char* out_path,
+                   ra8_err_t (*compress)(const char*, const uint8_t*, size_t))
 {
   uint8_t*  tarbuf = nullptr;
   size_t    tarlen = 0U;
@@ -511,13 +512,13 @@ RA8_INTERNAL static bool epub_add_str(mz_zip_archive* zip, const char* name, con
 
 /** @brief Add one page's xhtml + image, and append its opf/spine/nav fragments. */
 RA8_INTERNAL static ra8_err_t epub_add_page(mz_zip_archive* zip,
-                               const char*     dir,
-                               const char*     name,
-                               size_t          idx,
-                               char*           mani,
-                               char*           spine,
-                               char*           nav,
-                               size_t          cap)
+                                            const char*     dir,
+                                            const char*     name,
+                                            size_t          idx,
+                                            char*           mani,
+                                            char*           spine,
+                                            char*           nav,
+                                            size_t          cap)
 {
   const unsigned n = (unsigned)(idx + 1U);
   char           xhtml[k_epub_xhtml_max];
@@ -767,7 +768,8 @@ RA8_INTERNAL static ra8_err_t rta1_one(const char* in_path, const char* out_path
 }
 
 /** @brief Convert every page in `dir` to a sibling `.rta1` atlas (in place). */
-RA8_INTERNAL static ra8_err_t export_rta1(const char* dir, const char names[][k_name_max], size_t count)
+RA8_INTERNAL static ra8_err_t
+export_rta1(const char* dir, const char names[][k_name_max], size_t count)
 {
   ra8_log_set_byte_sink(rta1_log_sink, nullptr);
   ra8_err_t rc = k_ra8_ok;
