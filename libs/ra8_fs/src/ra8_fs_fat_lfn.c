@@ -16,6 +16,7 @@
 #include <stdint.h>
 
 #include "ra8_fs.h"
+#include "ra8_attributes.h"
 #include "ra8_fs_fat_internal.h"
 
 /* ===========================================================================
@@ -78,6 +79,7 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t priv_sfn_checksum(const uint8_t* name83)
 {
   uint8_t sum = 0U;
@@ -176,6 +178,7 @@ const char* priv_lfn_name_for(lfn_state_t* s, const uint8_t* name83)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t priv_name_ieq(const char* a, const char* b)
 {
   while ((*a != '\0') && (*b != '\0')) {
@@ -231,6 +234,7 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_fs_lfn_scan_t priv_dir_find_long_sector(const char*    needle,
                                                    const uint8_t* buf,
                                                    uint32_t       cur_lba,

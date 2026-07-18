@@ -16,6 +16,7 @@
 #include <stdint.h>
 
 #include "ra8_fs.h"
+#include "ra8_attributes.h"
 #include "ra8_fs_fat_internal.h"
 
 /* =============================================================================
@@ -55,6 +56,7 @@ uint32_t priv_fmt_reserved_for(ra8_fs_type_t type)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_fmt_clusters_for(const ra8_fs_fmt_geom_t* g, uint32_t spc, uint32_t* out_fatsz)
 {
   const uint32_t entry_cap = (g->type == k_ra8_fs_type_fat32) ? (uint32_t)k_fmt_fat32_entry_cap
@@ -98,6 +100,7 @@ static uint32_t priv_fmt_clusters_for(const ra8_fs_fmt_geom_t* g, uint32_t spc, 
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_fmt_count_in_band(ra8_fs_type_t type, uint32_t count)
 {
   if (type == k_ra8_fs_type_fat12) {
@@ -136,6 +139,7 @@ static bool priv_fmt_count_in_band(ra8_fs_type_t type, uint32_t count)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_fmt_fat32_default_spc(uint32_t total_sectors)
 {
   if (total_sectors <= (uint32_t)k_fmt_f32_thr_260m) {
@@ -197,6 +201,7 @@ ra8_err_t priv_fmt_choose_geometry(ra8_fs_fmt_geom_t* g, uint32_t spc_hint)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_fmt_boot_prologue(uint8_t* sec)
 {
   static const uint8_t k_oem[k_filename_base_len] = {'M', 'S', 'D', 'O', 'S', '5', '.', '0'};
@@ -225,6 +230,7 @@ static void priv_fmt_boot_prologue(uint8_t* sec)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_fmt_label_field(uint8_t* dst, const char* label)
 {
   bool past_end = (label == nullptr);
@@ -256,6 +262,7 @@ static void priv_fmt_label_field(uint8_t* dst, const char* label)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_fmt_write_totals(uint8_t* sec, const ra8_fs_fmt_geom_t* g)
 {
   if (g->type == k_ra8_fs_type_fat32) {
@@ -293,6 +300,7 @@ static void priv_fmt_write_totals(uint8_t* sec, const ra8_fs_fmt_geom_t* g)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_fmt_build_bpb_f16(uint8_t* sec, const ra8_fs_fmt_geom_t* g, const char* label)
 {
   static const uint8_t k_t12[k_filename_base_len] = {'F', 'A', 'T', '1', '2', ' ', ' ', ' '};
@@ -339,6 +347,7 @@ static void priv_fmt_build_bpb_f16(uint8_t* sec, const ra8_fs_fmt_geom_t* g, con
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_fmt_build_bpb_f32(uint8_t* sec, const ra8_fs_fmt_geom_t* g, const char* label)
 {
   static const uint8_t k_t32[k_filename_base_len] = {'F', 'A', 'T', '3', '2', ' ', ' ', ' '};
@@ -393,6 +402,7 @@ static const uint8_t
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_fmt_zero_run(const ra8_fs_backend_t* backend, uint32_t lba, uint32_t count)
 {
   uint32_t done = 0U;
@@ -446,6 +456,7 @@ ra8_err_t priv_fmt_clear_region(const ra8_fs_backend_t* backend, uint32_t lba, u
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_fmt_seed_fats(const ra8_fs_backend_t* backend, const ra8_fs_fmt_geom_t* g)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_fs_bytes_per_sector; i++) {
@@ -499,6 +510,7 @@ static ra8_err_t priv_fmt_seed_fats(const ra8_fs_backend_t* backend, const ra8_f
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_fmt_write_fsinfo(const ra8_fs_backend_t*  backend,
                                        const ra8_fs_fmt_geom_t* g,
                                        const uint8_t*           boot_sec)

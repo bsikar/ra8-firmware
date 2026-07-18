@@ -22,6 +22,7 @@
 #pragma once
 
 #include "ra8_fs_fat_types_internal.h"
+#include "ra8_attributes.h"
 
 /* ===========================================================================
  * Cross-TU helper prototypes. Each is defined `static`-free in exactly one
@@ -48,6 +49,7 @@
  *
  * @since 0.1.0
  */
+RA8_PRIV
 void priv_83_to_str(const uint8_t* in11, char* out12);
 
 /**
@@ -73,6 +75,7 @@ void priv_83_to_str(const uint8_t* in11, char* out12);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_alloc_cluster(const ra8_fs_mount_t* m, uint32_t* out_cluster);
 
 /**
@@ -98,6 +101,7 @@ ra8_err_t priv_alloc_cluster(const ra8_fs_mount_t* m, uint32_t* out_cluster);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_alloc_eoc_cluster(const ra8_fs_mount_t* m, uint32_t* out_c);
 
 /**
@@ -118,6 +122,7 @@ ra8_err_t priv_alloc_eoc_cluster(const ra8_fs_mount_t* m, uint32_t* out_c);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_fs_file_t* priv_alloc_file_slot(void);
 
 /**
@@ -135,6 +140,7 @@ ra8_fs_file_t* priv_alloc_file_slot(void);
  * @note Avoids compound conditions (MC/DC).
  * @since 0.1.0
  */
+RA8_PRIV
 char priv_ascii_upper(char c);
 
 /**
@@ -157,6 +163,7 @@ char priv_ascii_upper(char c);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 void priv_byte_copy(uint8_t* dst, const uint8_t* src, uint32_t n);
 
 /**
@@ -181,6 +188,7 @@ void priv_byte_copy(uint8_t* dst, const uint8_t* src, uint32_t n);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 uint8_t priv_byte_equal(const uint8_t* a, const uint8_t* b, uint32_t n);
 
 /**
@@ -203,6 +211,7 @@ uint8_t priv_byte_equal(const uint8_t* a, const uint8_t* b, uint32_t n);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 uint32_t priv_cluster_to_lba(const ra8_fs_mount_t* m, uint32_t cluster);
 
 /**
@@ -233,6 +242,7 @@ uint32_t priv_cluster_to_lba(const ra8_fs_mount_t* m, uint32_t cluster);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_dir_find(const ra8_fs_mount_t* m,
                         const dir_loc_t*      loc,
                         const uint8_t*        name83,
@@ -265,6 +275,7 @@ ra8_err_t priv_dir_find(const ra8_fs_mount_t* m,
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_dir_find_free(const ra8_fs_mount_t* m,
                              const dir_loc_t*      loc,
                              uint32_t*             out_lba,
@@ -304,6 +315,7 @@ ra8_err_t priv_dir_find_free(const ra8_fs_mount_t* m,
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_dir_find_long(const ra8_fs_mount_t* m,
                              const dir_loc_t*      loc,
                              const char*           want,
@@ -332,6 +344,7 @@ ra8_err_t priv_dir_find_long(const ra8_fs_mount_t* m,
  *
  * @since 0.1.0
  */
+RA8_PRIV
 void priv_dir_walk_init_loc(const ra8_fs_mount_t* m, const dir_loc_t* loc, dir_walk_t* w);
 
 /**
@@ -359,6 +372,7 @@ void priv_dir_walk_init_loc(const ra8_fs_mount_t* m, const dir_loc_t* loc, dir_w
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_dir_walk_next_sector(const ra8_fs_mount_t* m, dir_walk_t* w, uint8_t* out_eod);
 
 /**
@@ -381,6 +395,7 @@ ra8_err_t priv_dir_walk_next_sector(const ra8_fs_mount_t* m, dir_walk_t* w, uint
  *
  * @since 0.1.0
  */
+RA8_PRIV
 uint32_t priv_entry_first_cluster(const uint8_t* entry);
 
 /**
@@ -402,6 +417,7 @@ uint32_t priv_entry_first_cluster(const uint8_t* entry);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 void priv_entry_set_cluster_size(uint8_t* entry, uint32_t cluster, uint32_t size);
 
 /**
@@ -426,6 +442,7 @@ void priv_entry_set_cluster_size(uint8_t* entry, uint32_t cluster, uint32_t size
  *
  * @since 0.1.0
  */
+RA8_PRIV
 uint32_t priv_eoc_write(const ra8_fs_mount_t* m);
 
 /**
@@ -447,6 +464,7 @@ uint32_t priv_eoc_write(const ra8_fs_mount_t* m);
  * @note Keeps the caller's loop nesting shallow.
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t
 priv_exfat_bmp_switch(const ra8_fs_mount_t* m, uint32_t lba, uint32_t* loaded, uint8_t* sec);
 
@@ -473,6 +491,7 @@ priv_exfat_bmp_switch(const ra8_fs_mount_t* m, uint32_t lba, uint32_t* loaded, u
  * @note Contiguous allocation only (NoFatChain).
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_exfat_create(ra8_fs_mount_t* m, const char* path, const uint8_t* data, uint32_t len);
 
 /**
@@ -497,6 +516,7 @@ ra8_err_t priv_exfat_create(ra8_fs_mount_t* m, const char* path, const uint8_t* 
  * @note Only the root directory is searched (flat namespace).
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_exfat_find(const ra8_fs_mount_t* m,
                           const char*           path,
                           uint32_t*             out_first,
@@ -522,6 +542,7 @@ ra8_err_t priv_exfat_find(const ra8_fs_mount_t* m,
  * @note Reads only the directory chain.
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_exfat_find_bitmap(const ra8_fs_mount_t* m, uint32_t* out_clus, uint32_t* out_len);
 
 /**
@@ -552,6 +573,7 @@ ra8_err_t priv_exfat_find_bitmap(const ra8_fs_mount_t* m, uint32_t* out_clus, ui
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t
 priv_exfat_format(const ra8_fs_backend_t* backend, uint32_t total_sectors, const char* label);
 
@@ -576,6 +598,7 @@ priv_exfat_format(const ra8_fs_backend_t* backend, uint32_t total_sectors, const
  * @note Names longer than the buffer are truncated (still NUL-terminated).
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_exfat_listdir(const ra8_fs_mount_t* m, ra8_fs_listdir_cb_t cb, void* ctx);
 
 /**
@@ -598,6 +621,7 @@ ra8_err_t priv_exfat_listdir(const ra8_fs_mount_t* m, ra8_fs_listdir_cb_t cb, vo
  * @note Pure function.
  * @since 0.1.0
  */
+RA8_PRIV
 uint8_t
 priv_exfat_name_chunk_eq(const uint8_t* entry, const char* path, uint32_t pos, uint32_t nlen);
 
@@ -616,6 +640,7 @@ priv_exfat_name_chunk_eq(const uint8_t* entry, const char* path, uint32_t pos, u
  * @note ASCII up-casing matches the standard up-case table for a-z.
  * @since 0.1.0
  */
+RA8_PRIV
 uint16_t priv_exfat_name_hash(const char* path, uint32_t nlen);
 
 /**
@@ -638,6 +663,7 @@ uint16_t priv_exfat_name_hash(const char* path, uint32_t nlen);
  * @note Re-reads the sector per entry (simple; dir scans are short).
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_exfat_next_entry(const ra8_fs_mount_t* m, exfat_cursor_t* cur, uint8_t* out);
 
 /**
@@ -662,6 +688,7 @@ ra8_err_t priv_exfat_next_entry(const ra8_fs_mount_t* m, exfat_cursor_t* cur, ui
  * @note Not thread-safe; callers serialize.
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_exfat_open(ra8_fs_mount_t* handle,
                           const char*     path,
                           ra8_fs_mode_t   mode,
@@ -691,6 +718,7 @@ ra8_err_t priv_exfat_open(ra8_fs_mount_t* handle,
  * @note Root-directory namespace only.
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const char* new_path);
 
 /**
@@ -708,6 +736,7 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
  * @note Pure function.
  * @since 0.1.0
  */
+RA8_PRIV
 uint16_t priv_exfat_set_checksum(const uint8_t* set, uint32_t bytes);
 
 /**
@@ -730,4 +759,5 @@ uint16_t priv_exfat_set_checksum(const uint8_t* set, uint32_t bytes);
  * @note Root-directory namespace only.
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_exfat_unlink(const ra8_fs_mount_t* m, const char* path);

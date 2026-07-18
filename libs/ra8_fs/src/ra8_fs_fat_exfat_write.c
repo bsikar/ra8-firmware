@@ -16,6 +16,7 @@
 #include <stdint.h>
 
 #include "ra8_fs.h"
+#include "ra8_attributes.h"
 #include "ra8_fs_fat_internal.h"
 
 /* ---- exFAT one-shot file writer (provisioning) -------------------------- */
@@ -35,6 +36,7 @@
  * @note Pure function.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t priv_exfat_csum_add(uint16_t cs, uint8_t b)
 {
   uint16_t hi = ((cs & 1U) != 0U) ? (uint16_t)k_exfat_csum_hi_bit : (uint16_t)0U;
@@ -109,6 +111,7 @@ ra8_err_t priv_exfat_find_bitmap(const ra8_fs_mount_t* m, uint32_t* out_clus, ui
  * @note O(count_of_clusters); bounded by the volume size.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_exfat_bitmap_scan(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t need, uint32_t* out_clus)
 {
@@ -183,6 +186,7 @@ priv_exfat_bmp_switch(const ra8_fs_mount_t* m, uint32_t lba, uint32_t* loaded, u
  * @note Read-modify-write, one sector at a time.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_exfat_bitmap_mark(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus, uint32_t count)
 {
@@ -221,6 +225,7 @@ priv_exfat_bitmap_mark(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus,
  * @note Writes whole sectors.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_exfat_write_data(const ra8_fs_mount_t* m, uint32_t clus, const uint8_t* data, uint32_t len)
 {
@@ -263,6 +268,7 @@ priv_exfat_write_data(const ra8_fs_mount_t* m, uint32_t clus, const uint8_t* dat
  * @note Reads the containing sector.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_exfat_read_entry(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t idx, uint8_t* out)
 {
@@ -293,6 +299,7 @@ priv_exfat_read_entry(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t idx, u
  * @note exFAT marks an in-use entry with bit 7 set.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t priv_exfat_slot_free(uint8_t type_byte)
 {
   if (type_byte == (uint8_t)k_exfat_entry_eod) {
@@ -324,6 +331,7 @@ static uint8_t priv_exfat_slot_free(uint8_t type_byte)
  * @note The set is kept within a single cluster (no chain spanning).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_exfat_find_dir_space(const ra8_fs_mount_t* m,
                                            uint32_t              need,
                                            uint32_t*             out_clus,
@@ -387,6 +395,7 @@ static ra8_err_t priv_exfat_find_dir_space(const ra8_fs_mount_t* m,
  * @note NoFatChain (contiguous) is recorded in the stream flags.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_exfat_build_set(uint8_t*    set,
                                      const char* path,
                                      uint32_t    nlen,
@@ -473,6 +482,7 @@ ra8_err_t priv_exfat_write_dir_set(const ra8_fs_mount_t* m,
  * @note Contiguous (NoFatChain) allocation only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_exfat_alloc_write(ra8_fs_mount_t* m,
                                         const uint8_t*  data,
                                         uint32_t        len,
@@ -519,6 +529,7 @@ static ra8_err_t priv_exfat_alloc_write(ra8_fs_mount_t* m,
  * @note Keeps the entry set within one directory cluster.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_exfat_link(ra8_fs_mount_t* m, const char* path, uint32_t nlen, uint32_t start, uint32_t len)
 {

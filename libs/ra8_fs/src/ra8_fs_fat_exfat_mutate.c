@@ -16,6 +16,7 @@
 #include <stdint.h>
 
 #include "ra8_fs.h"
+#include "ra8_attributes.h"
 #include "ra8_fs_fat_internal.h"
 
 /* ---- exFAT mutation helpers (unlink / rename / listdir) ------------------ */
@@ -62,6 +63,7 @@ typedef struct {
  * @note Read-modify-write, one sector at a time.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_exfat_bitmap_clear(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus, uint32_t count)
 {
@@ -109,6 +111,7 @@ priv_exfat_bitmap_clear(const ra8_fs_mount_t* m, uint32_t bmp_lba, uint32_t clus
  * @note Helper of ::priv_exfat_find_set (complexity split).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_exfat_take_set(const ra8_fs_mount_t* m,
                                      exfat_cursor_t*       cur,
                                      const char*           path,
@@ -181,6 +184,7 @@ static ra8_err_t priv_exfat_take_set(const ra8_fs_mount_t* m,
  * @note Only the root directory is searched (flat namespace).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_exfat_find_set(const ra8_fs_mount_t* m,
                                      const char*           path,
                                      exfat_setpos_t*       pos,
@@ -246,6 +250,7 @@ static ra8_err_t priv_exfat_find_set(const ra8_fs_mount_t* m,
  * @note Read-modify-write of one sector.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_exfat_put_entry(const ra8_fs_mount_t* m, const exfat_setpos_t* where, const uint8_t* entry)
 {
@@ -276,6 +281,7 @@ priv_exfat_put_entry(const ra8_fs_mount_t* m, const exfat_setpos_t* where, const
  * @note Chain walk is bounded by the volume's cluster count.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_exfat_free_clusters(const ra8_fs_mount_t* m, const uint8_t* strm)
 {
   const uint32_t first = priv_rd32(&strm[k_exfat_strm_off_clus]);
@@ -372,6 +378,7 @@ ra8_err_t priv_exfat_unlink(const ra8_fs_mount_t* m, const char* path)
  * @note Helper of ::priv_exfat_rename (complexity split).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_exfat_apply_rename(const ra8_fs_mount_t* m,
                                          const exfat_setpos_t* pos,
                                          uint8_t*              set,
@@ -471,6 +478,7 @@ ra8_err_t priv_exfat_rename(const ra8_fs_mount_t* m, const char* old_path, const
  * @note Helper of ::priv_exfat_listdir (complexity split).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_exfat_gather_name(const ra8_fs_mount_t* m,
                                         exfat_cursor_t*       cur,
                                         uint32_t              sc,

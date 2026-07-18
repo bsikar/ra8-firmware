@@ -16,6 +16,7 @@
 #include <stdint.h>
 
 #include "ra8_fs.h"
+#include "ra8_attributes.h"
 #include "ra8_fs_fat_internal.h"
 
 /* =============================================================================
@@ -64,6 +65,7 @@ void priv_entry_set_cluster_size(uint8_t* entry, uint32_t cluster, uint32_t size
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_truncate_existing(ra8_fs_mount_t* handle, ra8_fs_file_t* f, uint32_t lba, uint32_t off)
 {
@@ -116,6 +118,7 @@ priv_truncate_existing(ra8_fs_mount_t* handle, ra8_fs_file_t* f, uint32_t lba, u
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_open_existing(ra8_fs_mount_t* handle,
                                     const uint8_t*  entry,
                                     uint32_t        lba,
@@ -200,6 +203,7 @@ ra8_err_t priv_write_new_dir_entry(ra8_fs_mount_t* handle,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_init_new_file(ra8_fs_file_t*  f,
                                ra8_fs_mount_t* handle,
                                ra8_fs_mode_t   mode,
@@ -254,6 +258,7 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_enter_subdir(const ra8_fs_mount_t* m,
                                    const dir_loc_t*      cur,
                                    const char*           comp,
@@ -388,6 +393,7 @@ ra8_err_t priv_resolve_dir(const ra8_fs_mount_t* m, const char* path, dir_loc_t*
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_create_new(ra8_fs_mount_t*  handle,
                                  const dir_loc_t* parent,
                                  const uint8_t*   name83,

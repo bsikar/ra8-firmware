@@ -16,6 +16,7 @@
 #include <stdint.h>
 
 #include "ra8_fs.h"
+#include "ra8_attributes.h"
 #include "ra8_fs_fat_internal.h"
 
 /* =============================================================================
@@ -48,6 +49,7 @@
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_skip_clusters(const ra8_fs_mount_t* m, uint32_t start, uint32_t n, uint32_t* out)
 {
@@ -92,6 +94,7 @@ priv_skip_clusters(const ra8_fs_mount_t* m, uint32_t start, uint32_t n, uint32_t
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_read_one_chunk(ra8_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint32_t* out_take)
 {
@@ -244,6 +247,7 @@ ra8_err_t priv_alloc_eoc_cluster(const ra8_fs_mount_t* m, uint32_t* out_c)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_walk_grow(const ra8_fs_mount_t* m, uint32_t start, uint32_t idx, uint32_t* out_cluster)
 {
@@ -298,6 +302,7 @@ priv_walk_grow(const ra8_fs_mount_t* m, uint32_t start, uint32_t idx, uint32_t* 
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_write_into_sector(const ra8_fs_mount_t* m,
                                         uint32_t              lba,
                                         uint32_t              off_in_sector,
@@ -337,6 +342,7 @@ static ra8_err_t priv_write_into_sector(const ra8_fs_mount_t* m,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_write_stream(ra8_fs_file_t* file, const uint8_t* buf, uint32_t len)
 {
   ra8_fs_mount_t* m             = file->mount;

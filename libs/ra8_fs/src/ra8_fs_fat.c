@@ -31,6 +31,7 @@
 #include <stdint.h>
 
 #include "ra8_fs.h"
+#include "ra8_attributes.h"
 #include "ra8_fs_fat_internal.h"
 
 /* =============================================================================
@@ -129,6 +130,7 @@ ra8_err_t priv_write_sector(const ra8_fs_mount_t* m, uint32_t lba, const uint8_t
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_fat_entry_byte_offset(const ra8_fs_mount_t* m, uint32_t cluster)
 {
   if (m->type == k_ra8_fs_type_fat12) {
@@ -208,6 +210,7 @@ ra8_err_t priv_fat_get(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t* out_
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_fat12_set_one(const ra8_fs_mount_t* m,
                                     uint32_t              sec_num,
                                     uint32_t              sec_off,
@@ -280,6 +283,7 @@ static ra8_err_t priv_fat12_set_one(const ra8_fs_mount_t* m,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_fat16_set_one(const ra8_fs_mount_t* m, uint32_t sec_num, uint32_t sec_off, uint32_t value)
 {
@@ -316,6 +320,7 @@ priv_fat16_set_one(const ra8_fs_mount_t* m, uint32_t sec_num, uint32_t sec_off, 
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_fat32_set_one(const ra8_fs_mount_t* m, uint32_t sec_num, uint32_t sec_off, uint32_t value)
 {

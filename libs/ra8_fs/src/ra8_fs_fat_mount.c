@@ -16,6 +16,7 @@
 #include <stdint.h>
 
 #include "ra8_fs.h"
+#include "ra8_attributes.h"
 #include "ra8_fs_fat_internal.h"
 
 /* =============================================================================
@@ -59,6 +60,7 @@ uint8_t s_scratch[k_ra8_fs_bytes_per_sector] = {};
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_fs_mount_t* priv_alloc_mount_slot(void)
 {
   for (uint32_t i = 0; i < k_ra8_fs_max_mounts; i++) {
@@ -132,6 +134,7 @@ ra8_err_t priv_parse_bpb_into_mount(ra8_fs_mount_t* m)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_compute_geometry(ra8_fs_mount_t* m)
 {
   m->first_fat_lba = m->reserved_sectors;
@@ -200,6 +203,7 @@ static ra8_err_t priv_compute_geometry(ra8_fs_mount_t* m)
  * @note Not thread-safe (reads caller-owned memory only).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_mbr_part0_lba(const uint8_t* buf)
 {
   if (buf[k_bpb_off_signature_lo] != (uint8_t)k_bpb_sig_lo) {
@@ -264,6 +268,7 @@ static const uint8_t k_gpt_guid_basic_data[k_gpt_guid_len] = {
  * @note Pure function.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_gpt_entry_first_lba(const uint8_t* entry)
 {
   uint32_t nonzero = 0U;
@@ -298,6 +303,7 @@ static uint32_t priv_gpt_entry_first_lba(const uint8_t* entry)
  * @note Pure function.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_gpt_entry_is_basic_data(const uint8_t* entry)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_gpt_guid_len; i++) {
@@ -326,6 +332,7 @@ static uint32_t priv_gpt_entry_is_basic_data(const uint8_t* entry)
  * @note Pure bookkeeping; no I/O.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_gpt_note_entry(const uint8_t* entry, uint32_t* basic_lba, uint32_t* any_lba)
 {
   const uint32_t first = priv_gpt_entry_first_lba(entry);
@@ -364,6 +371,7 @@ static void priv_gpt_note_entry(const uint8_t* entry, uint32_t* basic_lba, uint3
  * @note Not thread-safe -- uses module-level scratch.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_gpt_scan_entries(ra8_fs_mount_t* m, uint32_t entry_lba, uint32_t count, uint32_t* out_base)
 {
@@ -412,6 +420,7 @@ priv_gpt_scan_entries(ra8_fs_mount_t* m, uint32_t entry_lba, uint32_t count, uin
  * @note Not thread-safe -- uses module-level scratch.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_gpt_locate_volume(ra8_fs_mount_t* m, uint32_t* out_base)
 {
   ra8_err_t err = priv_read_sector(m, (uint32_t)k_gpt_header_lba, s_scratch);
@@ -504,6 +513,7 @@ ra8_err_t ra8_fs_format(const ra8_fs_backend_t* backend, const ra8_fs_format_opt
  * @note Not thread-safe; serialize mount operations.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_read_boot_sector(ra8_fs_mount_t* m)
 {
   ra8_err_t err = priv_read_sector(m, 0, s_scratch);

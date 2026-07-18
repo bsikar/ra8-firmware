@@ -16,6 +16,7 @@
 #include <stdint.h>
 
 #include "ra8_fs.h"
+#include "ra8_attributes.h"
 #include "ra8_fs_fat_internal.h"
 
 /* ===========================================================================
@@ -62,6 +63,7 @@ char priv_ascii_upper(char c)
  * @note Pure function.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t priv_exfat_is_volume(const uint8_t* buf)
 {
   static const char sig[k_exfat_fsname_len] = {'E', 'X', 'F', 'A', 'T', ' ', ' ', ' '};
@@ -92,6 +94,7 @@ static uint8_t priv_exfat_is_volume(const uint8_t* buf)
  * @note Not thread-safe; serialize mount operations.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_exfat_parse(ra8_fs_mount_t* m, const uint8_t* buf)
 {
   if (buf[k_exfat_off_bps_shift] != (uint8_t)k_exfat_bps_shift_512) {
@@ -196,6 +199,7 @@ priv_exfat_name_chunk_eq(const uint8_t* entry, const char* path, uint32_t pos, u
  * @note Leftover name entries self-heal in ::priv_exfat_find.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_exfat_match_set(const ra8_fs_mount_t* m,
                                       exfat_cursor_t*       cur,
                                       const char*           path,
