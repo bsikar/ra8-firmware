@@ -22,6 +22,7 @@
 #pragma once
 
 #include "ra8_fs_fat_types_internal.h"
+#include "ra8_attributes.h"
 
 /**
  * @brief Write a pre-built entry set into consecutive directory entries.
@@ -43,6 +44,7 @@
  * @note Writes one entry (sector RMW) at a time.
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_exfat_write_dir_set(const ra8_fs_mount_t* m,
                                    uint32_t              cluster,
                                    uint32_t              idx,
@@ -73,6 +75,7 @@ ra8_err_t priv_exfat_write_dir_set(const ra8_fs_mount_t* m,
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_fat_get(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t* out_value);
 
 /**
@@ -98,6 +101,7 @@ ra8_err_t priv_fat_get(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t* out_
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_fat_set(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t value);
 
 /**
@@ -134,6 +138,7 @@ ra8_err_t priv_fat_set(const ra8_fs_mount_t* m, uint32_t cluster, uint32_t value
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_fmt_choose_geometry(ra8_fs_fmt_geom_t* g, uint32_t spc_hint);
 
 /**
@@ -174,6 +179,7 @@ ra8_err_t priv_fmt_choose_geometry(ra8_fs_fmt_geom_t* g, uint32_t spc_hint);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_fmt_clear_region(const ra8_fs_backend_t* backend, uint32_t lba, uint32_t count);
 
 /**
@@ -203,6 +209,7 @@ ra8_err_t priv_fmt_clear_region(const ra8_fs_backend_t* backend, uint32_t lba, u
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_fmt_emit_volume(const ra8_fs_backend_t*  backend,
                                const ra8_fs_fmt_geom_t* g,
                                const char*              label);
@@ -228,6 +235,7 @@ ra8_err_t priv_fmt_emit_volume(const ra8_fs_backend_t*  backend,
  *
  * @since 0.1.0
  */
+RA8_PRIV
 uint32_t priv_fmt_reserved_for(ra8_fs_type_t type);
 
 /**
@@ -251,6 +259,7 @@ uint32_t priv_fmt_reserved_for(ra8_fs_type_t type);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 bool priv_fmt_spc_valid(uint8_t spc);
 
 /**
@@ -276,6 +285,7 @@ bool priv_fmt_spc_valid(uint8_t spc);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_free_chain(const ra8_fs_mount_t* m, uint32_t start);
 
 /**
@@ -299,6 +309,7 @@ ra8_err_t priv_free_chain(const ra8_fs_mount_t* m, uint32_t start);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 uint8_t priv_is_eoc(const ra8_fs_mount_t* m, uint32_t value);
 
 /**
@@ -327,6 +338,7 @@ uint8_t priv_is_eoc(const ra8_fs_mount_t* m, uint32_t value);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 void priv_lfn_add(lfn_state_t* s, const uint8_t* ent);
 
 /**
@@ -334,6 +346,7 @@ void priv_lfn_add(lfn_state_t* s, const uint8_t* ent);
  * @details Returns the reassembled name only when a chain was accumulated and its
  *          checksum matches @p name83 (so a stray chain never aliases an entry).
  */
+RA8_PRIV
 const char* priv_lfn_name_for(lfn_state_t* s, const uint8_t* name83);
 
 /**
@@ -357,6 +370,7 @@ const char* priv_lfn_name_for(lfn_state_t* s, const uint8_t* name83);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 void priv_lfn_reset(lfn_state_t* s);
 
 /**
@@ -380,6 +394,7 @@ void priv_lfn_reset(lfn_state_t* s);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_parse_bpb_into_mount(ra8_fs_mount_t* m);
 
 /**
@@ -399,6 +414,7 @@ ra8_err_t priv_parse_bpb_into_mount(ra8_fs_mount_t* m);
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_parse_volume(ra8_fs_mount_t* m);
 
 /**
@@ -424,6 +440,7 @@ ra8_err_t priv_parse_volume(ra8_fs_mount_t* m);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 uint8_t priv_path_to_83(const char* path, uint8_t* out11);
 
 /**
@@ -446,6 +463,7 @@ uint8_t priv_path_to_83(const char* path, uint8_t* out11);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 uint16_t priv_rd16(const uint8_t* p);
 
 /**
@@ -467,6 +485,7 @@ uint16_t priv_rd16(const uint8_t* p);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 uint32_t priv_rd32(const uint8_t* p);
 
 /**
@@ -491,6 +510,7 @@ uint32_t priv_rd32(const uint8_t* p);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_read_sector(const ra8_fs_mount_t* m, uint32_t lba, uint8_t* buf);
 
 /**
@@ -519,6 +539,7 @@ ra8_err_t priv_read_sector(const ra8_fs_mount_t* m, uint32_t lba, uint8_t* buf);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_resolve_dir(const ra8_fs_mount_t* m, const char* path, dir_loc_t* out);
 
 /**
@@ -550,6 +571,7 @@ ra8_err_t priv_resolve_dir(const ra8_fs_mount_t* m, const char* path, dir_loc_t*
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_resolve_parent(const ra8_fs_mount_t* m,
                               const char*           path,
                               dir_loc_t*            out_parent,
@@ -570,6 +592,7 @@ ra8_err_t priv_resolve_parent(const ra8_fs_mount_t* m,
  * @note Pure function.
  * @since 0.1.0
  */
+RA8_PRIV
 uint32_t priv_strlen(const char* s);
 
 /**
@@ -592,6 +615,7 @@ uint32_t priv_strlen(const char* s);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 char priv_to_upper(char c);
 
 /**
@@ -611,6 +635,7 @@ char priv_to_upper(char c);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 void priv_wr16(uint8_t* p, uint16_t v);
 
 /**
@@ -630,6 +655,7 @@ void priv_wr16(uint8_t* p, uint16_t v);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 void priv_wr32(uint8_t* p, uint32_t v);
 
 /**
@@ -661,6 +687,7 @@ void priv_wr32(uint8_t* p, uint32_t v);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_write_new_dir_entry(ra8_fs_mount_t* handle,
                                    const uint8_t*  name83,
                                    uint8_t         attr,
@@ -690,4 +717,5 @@ ra8_err_t priv_write_new_dir_entry(ra8_fs_mount_t* handle,
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t priv_write_sector(const ra8_fs_mount_t* m, uint32_t lba, const uint8_t* buf);

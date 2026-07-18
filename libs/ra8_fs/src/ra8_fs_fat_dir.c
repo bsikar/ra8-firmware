@@ -16,6 +16,7 @@
 #include <stdint.h>
 
 #include "ra8_fs.h"
+#include "ra8_attributes.h"
 #include "ra8_fs_fat_internal.h"
 
 /* =============================================================================
@@ -48,6 +49,7 @@
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t
 priv_listdir_visit_sector(const uint8_t* buf, lfn_state_t* lfn, ra8_fs_listdir_cb_t cb, void* ctx)
 {
@@ -183,6 +185,7 @@ ra8_fs_listdir(ra8_fs_mount_t* handle, const char* path, ra8_fs_listdir_cb_t cb,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_pack_dot_entry(uint8_t* ent, uint32_t dots, uint32_t cluster)
 {
   for (uint32_t i = 0; i < (uint32_t)k_ra8_fs_dir_entry_bytes; i++) {
@@ -222,6 +225,7 @@ static void priv_pack_dot_entry(uint8_t* ent, uint32_t dots, uint32_t cluster)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_dir_cluster_init(const ra8_fs_mount_t* m, uint32_t new_cluster, uint32_t parent_cluster)
 {
@@ -271,6 +275,7 @@ priv_dir_cluster_init(const ra8_fs_mount_t* m, uint32_t new_cluster, uint32_t pa
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_fat_mkdir(ra8_fs_mount_t* handle, const char* path)
 {
   dir_loc_t       parent = {};
@@ -461,6 +466,7 @@ ra8_err_t ra8_fs_unlink(ra8_fs_mount_t* handle, const char* path)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_rename_prepare(const ra8_fs_mount_t* handle,
                                      const char*           old_path,
                                      const char*           new_path,
@@ -529,6 +535,7 @@ static ra8_err_t priv_rename_prepare(const ra8_fs_mount_t* handle,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_fat_rename(const ra8_fs_mount_t* handle, const char* old_path, const char* new_path)
 {
