@@ -56,6 +56,7 @@ typedef enum : uint8_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_kbd_key(const ra8_widget_keyboard_t* kbd, const ra8_widget_key_info_t* info)
 {
   const ra8_widget_paint_t* p = kbd->paint;
@@ -94,6 +95,7 @@ static void internal_kbd_key(const ra8_widget_keyboard_t* kbd, const ra8_widget_
  * @note Not thread-safe; loop bounded by the seam's `count` (NASA Rule 2).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_kbd_render(ra8_widget_t* w)
 {
   ra8_widget_keyboard_t* kbd = (ra8_widget_keyboard_t*)w->ctx;
@@ -134,6 +136,7 @@ static void internal_kbd_render(ra8_widget_t* w)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_kbd_on_input(ra8_widget_t* w, const ra8_widget_event_t* ev)
 {
   ra8_widget_keyboard_t* kbd = (ra8_widget_keyboard_t*)w->ctx;

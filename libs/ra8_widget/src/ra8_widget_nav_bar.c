@@ -53,6 +53,7 @@ typedef enum : uint16_t {
  * @note Pure.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_ui_rect_t internal_nav_cell(const ra8_ui_rect_t* strip, uint16_t idx, uint16_t count)
 {
   const int32_t x0 = (strip->w * (int32_t)idx) / (int32_t)count;
@@ -82,6 +83,7 @@ static ra8_ui_rect_t internal_nav_cell(const ra8_ui_rect_t* strip, uint16_t idx,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_nav_item(const ra8_widget_paint_t* paint,
                               const ra8_ui_rect_t*      cell,
                               const char*               text,
@@ -112,6 +114,7 @@ static void internal_nav_item(const ra8_widget_paint_t* paint,
  * @note Not thread-safe; loop bounded by `count` (NASA Rule 2).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_nav_render(ra8_widget_t* w)
 {
   ra8_widget_nav_bar_t* nav = (ra8_widget_nav_bar_t*)w->ctx;
@@ -157,6 +160,7 @@ static void internal_nav_render(ra8_widget_t* w)
  * @note Pure.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_nav_hit(const ra8_ui_rect_t* strip, uint16_t count, int32_t px, uint16_t* out)
 {
   if (count == (uint16_t)k_ra8_widget_nav_empty) {
@@ -190,6 +194,7 @@ static bool internal_nav_hit(const ra8_ui_rect_t* strip, uint16_t count, int32_t
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_nav_on_input(ra8_widget_t* w, const ra8_widget_event_t* ev)
 {
   ra8_widget_nav_bar_t* nav = (ra8_widget_nav_bar_t*)w->ctx;

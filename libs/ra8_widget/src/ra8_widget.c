@@ -8,6 +8,7 @@
 
 #include "ra8_widget.h"
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 
 /** @brief Logging / check tag. */
@@ -28,6 +29,7 @@ static const char* s_tag = "ra8_widget";
  * @note Pure.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_rect_empty(const ra8_ui_rect_t* r)
 {
   return (r->w <= 0) && (r->h <= 0);
@@ -48,6 +50,7 @@ static bool internal_rect_empty(const ra8_ui_rect_t* r)
  * @note Pure.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t internal_min_i32(int32_t a, int32_t b)
 {
   return (a < b) ? a : b;
@@ -68,6 +71,7 @@ static int32_t internal_min_i32(int32_t a, int32_t b)
  * @note Pure.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t internal_max_i32(int32_t a, int32_t b)
 {
   return (a > b) ? a : b;
@@ -89,6 +93,7 @@ static int32_t internal_max_i32(int32_t a, int32_t b)
  * @note Pure.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_ui_rect_t internal_rect_union(ra8_ui_rect_t acc, ra8_ui_rect_t r)
 {
   if (internal_rect_empty(&acc)) {
@@ -120,6 +125,7 @@ static ra8_ui_rect_t internal_rect_union(ra8_ui_rect_t acc, ra8_ui_rect_t r)
  * @note Pure; loop bounded by @p count (NASA Rule 2).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t internal_visible_count(const ra8_widget_t* widgets, uint16_t count)
 {
   uint16_t vis = 0U;
@@ -158,6 +164,7 @@ static uint16_t internal_visible_count(const ra8_widget_t* widgets, uint16_t cou
  * @note Not thread-safe; loop bounded by @p count (NASA Rule 2).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_build_stack_tree(const ra8_widget_t* widgets,
                                            uint16_t            count,
                                            ra8_widget_axis_t   axis,

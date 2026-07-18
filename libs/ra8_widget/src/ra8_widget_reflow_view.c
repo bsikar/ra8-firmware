@@ -56,6 +56,7 @@ typedef enum : uint16_t {
  * @note Pure.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_ui_rect_t internal_rv_body(const ra8_ui_rect_t* rect, int16_t mx, int16_t my)
 {
   const int32_t x    = (int32_t)mx;
@@ -84,6 +85,7 @@ static ra8_ui_rect_t internal_rv_body(const ra8_ui_rect_t* rect, int16_t mx, int
  * @note Pure.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t internal_rv_clamp(uint16_t page, uint16_t count)
 {
   if (count == (uint16_t)k_ra8_widget_rv_first) {
@@ -114,6 +116,7 @@ static uint16_t internal_rv_clamp(uint16_t page, uint16_t count)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_rv_turn(ra8_widget_reflow_view_t* v, int32_t px, int32_t mid)
 {
   if (px < mid) {
@@ -145,6 +148,7 @@ static bool internal_rv_turn(ra8_widget_reflow_view_t* v, int32_t px, int32_t mi
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_rv_render(ra8_widget_t* w)
 {
   ra8_widget_reflow_view_t* v = (ra8_widget_reflow_view_t*)w->ctx;
@@ -180,6 +184,7 @@ static void internal_rv_render(ra8_widget_t* w)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool
 internal_rv_link(ra8_widget_t* w, ra8_widget_reflow_view_t* v, const ra8_widget_event_t* ev)
 {
@@ -213,6 +218,7 @@ internal_rv_link(ra8_widget_t* w, ra8_widget_reflow_view_t* v, const ra8_widget_
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_rv_on_input(ra8_widget_t* w, const ra8_widget_event_t* ev)
 {
   ra8_widget_reflow_view_t* v = (ra8_widget_reflow_view_t*)w->ctx;

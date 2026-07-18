@@ -55,6 +55,7 @@ typedef enum : int16_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_sb_label(const ra8_widget_paint_t* paint,
                               const ra8_ui_rect_t*      rect,
                               const char*               text,
@@ -90,6 +91,7 @@ static void internal_sb_label(const ra8_widget_paint_t* paint,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_sb_render(ra8_widget_t* w)
 {
   ra8_widget_status_bar_t* sb = (ra8_widget_status_bar_t*)w->ctx;

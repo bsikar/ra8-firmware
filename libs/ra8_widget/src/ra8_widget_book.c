@@ -57,6 +57,7 @@ typedef enum : uint16_t {
  * @note Pure.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_ui_rect_t internal_bg_content(const ra8_ui_rect_t* rect, int16_t pad)
 {
   const int32_t p = (int32_t)pad;
@@ -88,6 +89,7 @@ static ra8_ui_rect_t internal_bg_content(const ra8_ui_rect_t* rect, int16_t pad)
  * @note Pure.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_ui_rect_t internal_bg_cell(const ra8_ui_rect_t* content,
                                       uint16_t             idx,
                                       uint16_t             cols,
@@ -125,6 +127,7 @@ static ra8_ui_rect_t internal_bg_cell(const ra8_ui_rect_t* content,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_bg_label(const ra8_widget_paint_t* paint,
                               const ra8_ui_rect_t*      row,
                               const char*               text,
@@ -157,6 +160,7 @@ static void internal_bg_label(const ra8_widget_paint_t* paint,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_bg_card(const ra8_widget_book_grid_t* g,
                              const ra8_widget_book_t*      book,
                              const ra8_ui_rect_t*          cell)
@@ -202,6 +206,7 @@ static void internal_bg_card(const ra8_widget_book_grid_t* g,
  * @note Pure.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t internal_bg_rows(uint16_t count, uint16_t cols)
 {
   return (uint16_t)(((uint32_t)count + (uint32_t)cols - 1U) / (uint32_t)cols);
@@ -222,6 +227,7 @@ static uint16_t internal_bg_rows(uint16_t count, uint16_t cols)
  * @note Not thread-safe; loop bounded by `count` (NASA Rule 2).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_bg_render(ra8_widget_t* w)
 {
   ra8_widget_book_grid_t* g = (ra8_widget_book_grid_t*)w->ctx;
@@ -264,6 +270,7 @@ static void internal_bg_render(ra8_widget_t* w)
  * @note Not thread-safe; loop bounded by `count` (NASA Rule 2).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_bg_on_input(ra8_widget_t* w, const ra8_widget_event_t* ev)
 {
   ra8_widget_book_grid_t* g = (ra8_widget_book_grid_t*)w->ctx;
