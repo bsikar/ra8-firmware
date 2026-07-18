@@ -45,6 +45,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 
 /**
@@ -111,11 +112,11 @@ typedef enum : uint16_t {
  * @see NIST SP 800-38B Sec 6.2 "MAC Generation".
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_sec_cmac_compute(const uint8_t* key,
-                                             uint16_t       key_len,
-                                             const uint8_t* msg,
-                                             uint32_t       msg_len,
-                                             uint8_t*       out_mac);
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_sec_cmac_compute(const uint8_t* key,
+                                                      uint16_t       key_len,
+                                                      const uint8_t* msg,
+                                                      uint32_t       msg_len,
+                                                      uint8_t*       out_mac);
 
 /**
  * @brief Verify an AES-CMAC tag against a message under a symmetric key.
@@ -166,12 +167,12 @@ typedef enum : uint16_t {
  * @see NIST SP 800-38B Sec 6.3 "MAC Verification".
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_sec_cmac_verify(const uint8_t* key,
-                                            uint16_t       key_len,
-                                            const uint8_t* msg,
-                                            uint32_t       msg_len,
-                                            const uint8_t* mac,
-                                            uint16_t       mac_len);
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_sec_cmac_verify(const uint8_t* key,
+                                                     uint16_t       key_len,
+                                                     const uint8_t* msg,
+                                                     uint32_t       msg_len,
+                                                     const uint8_t* mac,
+                                                     uint16_t       mac_len);
 
 #ifdef __cplusplus
 }

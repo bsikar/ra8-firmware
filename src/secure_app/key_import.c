@@ -37,6 +37,7 @@
 
 #include "key_import_internal.h"
 #include "key_vault.h"
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_secure.h"
@@ -118,7 +119,7 @@ static uint32_t s_salt = (uint32_t)k_initial_salt;
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
-static uint32_t internal_rotate_left_32(uint32_t value, uint8_t amount)
+RA8_INTERNAL static uint32_t internal_rotate_left_32(uint32_t value, uint8_t amount)
 {
   const uint8_t bits = (uint8_t)(amount & (uint8_t)k_rotate_mask_5bit);
   if (bits == 0U) {
@@ -148,7 +149,7 @@ static uint32_t internal_rotate_left_32(uint32_t value, uint8_t amount)
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
-static uint32_t internal_handle_for_slot(uint16_t slot)
+RA8_INTERNAL static uint32_t internal_handle_for_slot(uint16_t slot)
 {
   const uint32_t mixed = internal_rotate_left_32(s_salt, k_handle_rotate_bits);
   /* Force a non-zero handle: OR in bit 31 so we never collide with
@@ -181,7 +182,7 @@ static uint32_t internal_handle_for_slot(uint16_t slot)
  * @note Not thread-safe; secure-side serial dispatch only.
  * @since 0.1.0
  */
-static ra8_err_t internal_verify_cmac(const uint8_t* blob)
+RA8_INTERNAL static ra8_err_t internal_verify_cmac(const uint8_t* blob)
 {
   uint8_t         mac_key[k_ra8_key_vault_mac_key_bytes];
   uint16_t        mac_key_len = 0U;

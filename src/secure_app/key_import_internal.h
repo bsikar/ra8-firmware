@@ -46,6 +46,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 
 /**
@@ -72,7 +73,7 @@ typedef enum : uint16_t {
  * @note Thread safety: secure-world only, single-threaded init.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_key_import_reset(void);
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_key_import_reset(void);
 
 /**
  * @brief Validate a sealed blob and import the key into a free slot.
@@ -108,7 +109,7 @@ typedef enum : uint16_t {
  *       static.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t
+RA8_PRIV [[nodiscard]] ra8_err_t
 ra8_key_import_seal(const uint8_t* blob, uint32_t blob_len, uint32_t* out_handle);
 
 /**
@@ -129,7 +130,7 @@ ra8_key_import_seal(const uint8_t* blob, uint32_t blob_len, uint32_t* out_handle
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_key_import_resolve(uint32_t handle, uint16_t* out_slot);
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_key_import_resolve(uint32_t handle, uint16_t* out_slot);
 
 /**
  * @brief Build a sealed blob from a raw key (provisioning + test helper).
@@ -157,7 +158,8 @@ ra8_key_import_seal(const uint8_t* blob, uint32_t blob_len, uint32_t* out_handle
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_key_import_build_blob(const uint8_t* material, uint8_t* out_blob);
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_key_import_build_blob(const uint8_t* material,
+                                                           uint8_t*       out_blob);
 
 #ifdef __cplusplus
 }

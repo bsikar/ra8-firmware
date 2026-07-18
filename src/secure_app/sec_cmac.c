@@ -30,6 +30,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_secure.h"
@@ -67,7 +68,7 @@ static const char* s_tag = "SECMAC";
  * @note Pure validation helper; safe from any context.
  * @since 0.1.0
  */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 internal_cmac_check_args(const uint8_t* key, uint16_t key_len, const uint8_t* msg, uint32_t msg_len)
 {
   RA8_CHECK_NULL_PTR(key, s_tag, "cmac: key");
@@ -117,7 +118,7 @@ internal_cmac_check_args(const uint8_t* key, uint16_t key_len, const uint8_t* ms
  * @note Not thread-safe; secure-side serial dispatch only.
  * @since 0.1.0
  */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 internal_psa_import_cmac_key(const uint8_t* key, uint16_t key_len, psa_key_id_t* out_id)
 {
   psa_key_attributes_t attr = psa_key_attributes_init();
@@ -273,7 +274,7 @@ static const uint8_t s_aes_sbox[256] = {
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
-static uint8_t internal_aes_xtime(uint8_t value)
+RA8_INTERNAL static uint8_t internal_aes_xtime(uint8_t value)
 {
   const uint8_t hi = (uint8_t)(value >> k_aes_msb_shift);
   return (uint8_t)(((uint8_t)(value << 1U)) ^ (uint8_t)(hi * (uint8_t)k_aes_field_poly));
@@ -298,7 +299,8 @@ static uint8_t internal_aes_xtime(uint8_t value)
  * @note Pure compute helper; safe from any context.
  * @since 0.1.0
  */
-static void internal_aes_key_expand(const uint8_t* key, uint8_t nk, uint8_t nr, uint8_t* rk)
+RA8_INTERNAL static void
+internal_aes_key_expand(const uint8_t* key, uint8_t nk, uint8_t nr, uint8_t* rk)
 {
   const uint16_t total_words = (uint16_t)((uint16_t)k_aes_state_cols * (uint16_t)(nr + 1U));
   for (uint16_t i = 0U; i < ((uint16_t)nk * (uint16_t)k_aes_word_bytes); ++i) {
@@ -348,7 +350,7 @@ static void internal_aes_key_expand(const uint8_t* key, uint8_t nk, uint8_t nr, 
  * @note Pure compute helper; safe from any context.
  * @since 0.1.0
  */
-static void internal_aes_sub_shift(uint8_t* s)
+RA8_INTERNAL static void internal_aes_sub_shift(uint8_t* s)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_aes_block_bytes; ++i) {
     s[i] = s_aes_sbox[s[i]];
@@ -382,7 +384,7 @@ static void internal_aes_sub_shift(uint8_t* s)
  * @note Pure compute helper; safe from any context.
  * @since 0.1.0
  */
-static void internal_aes_mix_columns(uint8_t* s)
+RA8_INTERNAL static void internal_aes_mix_columns(uint8_t* s)
 {
   for (uint8_t c = 0U; c < (uint8_t)k_aes_state_cols; ++c) {
     uint8_t*      col = &s[(uint8_t)(c * (uint8_t)k_aes_state_cols)];
@@ -419,7 +421,8 @@ static void internal_aes_mix_columns(uint8_t* s)
  * @note Pure compute helper; safe from any context.
  * @since 0.1.0
  */
-static void internal_aes_encrypt(const uint8_t* rk, uint8_t nr, const uint8_t* in, uint8_t* out)
+RA8_INTERNAL static void
+internal_aes_encrypt(const uint8_t* rk, uint8_t nr, const uint8_t* in, uint8_t* out)
 {
   uint8_t s[k_aes_block_bytes];
   for (uint8_t i = 0U; i < (uint8_t)k_aes_block_bytes; ++i) {
@@ -458,7 +461,7 @@ static void internal_aes_encrypt(const uint8_t* rk, uint8_t nr, const uint8_t* i
  * @note Pure compute helper; safe from any context.
  * @since 0.1.0
  */
-static void internal_cmac_double(const uint8_t* in, uint8_t* out)
+RA8_INTERNAL static void internal_cmac_double(const uint8_t* in, uint8_t* out)
 {
   const uint8_t msb = (uint8_t)(in[0] >> k_aes_msb_shift);
   for (uint8_t i = 0U; i < (uint8_t)k_aes_last_byte; ++i) {
@@ -490,7 +493,8 @@ static void internal_cmac_double(const uint8_t* in, uint8_t* out)
  * @note Pure compute helper; uses only stack.
  * @since 0.1.0
  */
-static void internal_cmac_subkeys(const uint8_t* rk, uint8_t nr, uint8_t* k1, uint8_t* k2)
+RA8_INTERNAL static void
+internal_cmac_subkeys(const uint8_t* rk, uint8_t nr, uint8_t* k1, uint8_t* k2)
 {
   const uint8_t zero[k_aes_block_bytes] = {};
   uint8_t       l_val[k_aes_block_bytes];
@@ -523,13 +527,13 @@ static void internal_cmac_subkeys(const uint8_t* rk, uint8_t nr, uint8_t* k1, ui
  * @note Pure compute helper; safe from any context.
  * @since 0.1.0
  */
-static void internal_cmac_build_last(const uint8_t* msg,
-                                     uint32_t       msg_len,
-                                     uint32_t       last_off,
-                                     bool           complete,
-                                     const uint8_t* k1,
-                                     const uint8_t* k2,
-                                     uint8_t*       last)
+RA8_INTERNAL static void internal_cmac_build_last(const uint8_t* msg,
+                                                  uint32_t       msg_len,
+                                                  uint32_t       last_off,
+                                                  bool           complete,
+                                                  const uint8_t* k1,
+                                                  const uint8_t* k2,
+                                                  uint8_t*       last)
 {
   if (complete) {
     for (uint8_t i = 0U; i < (uint8_t)k_aes_block_bytes; ++i) {
@@ -574,11 +578,11 @@ static void internal_cmac_build_last(const uint8_t* msg,
  * @note Pure compute helper; not thread-safe (uses only stack).
  * @since 0.1.0
  */
-static void internal_cmac_tag(const uint8_t* key,
-                              uint16_t       key_len,
-                              const uint8_t* msg,
-                              uint32_t       msg_len,
-                              uint8_t*       out_mac)
+RA8_INTERNAL static void internal_cmac_tag(const uint8_t* key,
+                                           uint16_t       key_len,
+                                           const uint8_t* msg,
+                                           uint32_t       msg_len,
+                                           uint8_t*       out_mac)
 {
   const uint8_t nk = (uint8_t)(key_len / (uint16_t)k_aes_word_bytes);
   const uint8_t nr =
