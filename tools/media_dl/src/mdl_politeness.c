@@ -62,7 +62,7 @@ uint32_t mdl_politeness_wait(mdl_politeness_t* p, uint32_t min_ms, uint32_t max_
 
   /** @brief Unit conversions for splitting a millisecond delay into timespec. */
   enum : uint32_t {
-    k_ms_per_s  = 1000U,    /**< Milliseconds per second.  */
+    k_ms_per_s  = 1000U,    /**< Milliseconds per second.     */
     k_ns_per_ms = 1000000U, /**< Nanoseconds per millisecond. */
   };
   struct timespec ts = {.tv_sec  = (time_t)(delayms / k_ms_per_s),
