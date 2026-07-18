@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 
@@ -45,6 +46,7 @@ typedef enum : uint8_t {
 } ra8_vmem_seg_t;
 
 /** @brief Pointer to frame @p idx's storage. */
+RA8_INTERNAL
 static uint8_t* priv_frame_ptr(const ra8_vmem_t* vm, uint32_t idx)
 {
   return &vm->cfg.frame_mem[(size_t)idx * (size_t)vm->cfg.frame_bytes];
@@ -71,6 +73,7 @@ static uint8_t* priv_frame_ptr(const ra8_vmem_t* vm, uint32_t idx)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_unlink(ra8_vmem_t* vm, int32_t f, int32_t* head, int32_t* tail)
 {
   ra8_vmem_frame_t* m = vm->cfg.meta;
@@ -107,6 +110,7 @@ static void priv_unlink(ra8_vmem_t* vm, int32_t f, int32_t* head, int32_t* tail)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_push_head(ra8_vmem_t* vm, int32_t f, int32_t* head, int32_t* tail)
 {
   ra8_vmem_frame_t* m = vm->cfg.meta;
@@ -142,6 +146,7 @@ static void priv_push_head(ra8_vmem_t* vm, int32_t f, int32_t* head, int32_t* ta
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_hash(const ra8_vmem_t* vm, uint32_t object_id, uint64_t aligned_off)
 {
   const uint32_t page = (uint32_t)(aligned_off / (uint64_t)vm->cfg.frame_bytes);
@@ -168,6 +173,7 @@ static uint32_t priv_hash(const ra8_vmem_t* vm, uint32_t object_id, uint64_t ali
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_hash_insert(ra8_vmem_t* vm, int32_t f)
 {
   const uint32_t b          = priv_hash(vm, vm->cfg.meta[f].object_id, vm->cfg.meta[f].offset);
@@ -194,6 +200,7 @@ static void priv_hash_insert(ra8_vmem_t* vm, int32_t f)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_hash_remove(ra8_vmem_t* vm, int32_t f)
 {
   const uint32_t b   = priv_hash(vm, vm->cfg.meta[f].object_id, vm->cfg.meta[f].offset);
@@ -236,6 +243,7 @@ static void priv_hash_remove(ra8_vmem_t* vm, int32_t f)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_frame_matches(const ra8_vmem_frame_t* m, uint32_t object_id, uint64_t aligned_off)
 {
   if (m->valid != 0U) {
@@ -269,6 +277,7 @@ static bool priv_frame_matches(const ra8_vmem_frame_t* m, uint32_t object_id, ui
  * @note Not thread-safe with respect to concurrent mutation.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t priv_hash_lookup(const ra8_vmem_t* vm, uint32_t object_id, uint64_t aligned_off)
 {
   const uint32_t b   = priv_hash(vm, object_id, aligned_off);
@@ -303,6 +312,7 @@ static int32_t priv_hash_lookup(const ra8_vmem_t* vm, uint32_t object_id, uint64
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_slru_access(ra8_vmem_t* vm, int32_t f)
 {
   if (vm->cfg.meta[f].seg == (uint8_t)k_vmem_seg_protected) {
@@ -347,6 +357,7 @@ static void priv_slru_access(ra8_vmem_t* vm, int32_t f)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t priv_first_unpinned(const ra8_vmem_t* vm, int32_t tail)
 {
   int32_t cur = tail;
@@ -380,6 +391,7 @@ static int32_t priv_first_unpinned(const ra8_vmem_t* vm, int32_t tail)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t priv_pick_victim(const ra8_vmem_t* vm)
 {
   const int32_t pb = priv_first_unpinned(vm, vm->pb_tail);
@@ -443,6 +455,7 @@ static ra8_err_t priv_vmem_check_ptrs(const ra8_vmem_cfg_t* cfg)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_vmem_validate_cfg(const ra8_vmem_cfg_t* cfg)
 {
   const ra8_err_t ptr_err = priv_vmem_check_ptrs(cfg);
@@ -512,6 +525,7 @@ static uint32_t priv_vmem_protected_cap(const ra8_vmem_cfg_t* cfg)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_vmem_link_frames(ra8_vmem_t* vm)
 {
   for (uint32_t b = 0U; b < vm->cfg.bucket_count; ++b) {
@@ -572,6 +586,7 @@ ra8_err_t ra8_vmem_init(ra8_vmem_t* vm, const ra8_vmem_cfg_t* cfg)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_vmem_miss(ra8_vmem_t* vm, uint32_t object_id, uint64_t aligned_off, void** out_page)
 {

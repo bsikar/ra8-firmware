@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 
@@ -60,6 +61,7 @@ typedef enum : uint32_t {
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t* priv_cell_ptr(const ra8_keycache_t* kc, uint32_t idx)
 {
   return &kc->cfg.cell_mem[(size_t)idx * (size_t)kc->cfg.cell_bytes];
@@ -84,6 +86,7 @@ static uint8_t* priv_cell_ptr(const ra8_keycache_t* kc, uint32_t idx)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t* priv_key_ptr(const ra8_keycache_t* kc, uint32_t idx)
 {
   return &kc->cfg.key_mem[(size_t)idx * (size_t)kc->cfg.key_bytes];
@@ -109,6 +112,7 @@ static uint8_t* priv_key_ptr(const ra8_keycache_t* kc, uint32_t idx)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void* priv_user_ptr(const ra8_keycache_t* kc, uint32_t idx)
 {
   if (kc->cfg.user_bytes == 0U) {
@@ -139,6 +143,7 @@ static void* priv_user_ptr(const ra8_keycache_t* kc, uint32_t idx)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_key_eq(const ra8_keycache_t* kc, const void* a, const void* b)
 {
   return memcmp(a, b, (size_t)kc->cfg.key_bytes) == 0;
@@ -164,6 +169,7 @@ static bool priv_key_eq(const ra8_keycache_t* kc, const void* a, const void* b)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_hash(const ra8_keycache_t* kc, const void* key)
 {
   const uint8_t* p = (const uint8_t*)key;
@@ -193,6 +199,7 @@ static uint32_t priv_hash(const ra8_keycache_t* kc, const void* key)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_unlink(ra8_keycache_t* kc, int32_t f)
 {
   ra8_keycache_cell_t* m = kc->cfg.meta;
@@ -231,6 +238,7 @@ static void priv_unlink(ra8_keycache_t* kc, int32_t f)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_push_head(ra8_keycache_t* kc, int32_t f)
 {
   ra8_keycache_cell_t* m = kc->cfg.meta;
@@ -263,6 +271,7 @@ static void priv_push_head(ra8_keycache_t* kc, int32_t f)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_hash_insert(ra8_keycache_t* kc, int32_t f)
 {
   const uint32_t b          = priv_hash(kc, priv_key_ptr(kc, (uint32_t)f));
@@ -290,6 +299,7 @@ static void priv_hash_insert(ra8_keycache_t* kc, int32_t f)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_hash_remove(ra8_keycache_t* kc, int32_t f)
 {
   const uint32_t b   = priv_hash(kc, priv_key_ptr(kc, (uint32_t)f));
@@ -332,6 +342,7 @@ static void priv_hash_remove(ra8_keycache_t* kc, int32_t f)
  * @note Not thread-safe with respect to concurrent mutation.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t priv_hash_lookup(const ra8_keycache_t* kc, const void* key)
 {
   const uint32_t b   = priv_hash(kc, key);
@@ -373,6 +384,7 @@ static int32_t priv_hash_lookup(const ra8_keycache_t* kc, const void* key)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t priv_pick_victim(const ra8_keycache_t* kc)
 {
   int32_t cur = kc->lru_tail;
@@ -410,6 +422,7 @@ static int32_t priv_pick_victim(const ra8_keycache_t* kc)
  * @note Not thread-safe with respect to concurrent config mutation.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_validate_cfg_ptrs(const ra8_keycache_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg->cell_mem, s_tag, "cell_mem must not be nullptr");
@@ -446,6 +459,7 @@ static ra8_err_t priv_validate_cfg_ptrs(const ra8_keycache_cfg_t* cfg)
  * @note Not thread-safe with respect to concurrent config mutation.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_validate_cfg_sizes(const ra8_keycache_cfg_t* cfg)
 {
   if (cfg->cell_count == 0U) {
@@ -485,6 +499,7 @@ static ra8_err_t priv_validate_cfg_sizes(const ra8_keycache_cfg_t* cfg)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_seed_cells(ra8_keycache_t* kc, const ra8_keycache_cfg_t* cfg)
 {
   (void)memset(kc, 0, sizeof(*kc));
@@ -543,6 +558,7 @@ ra8_err_t ra8_keycache_init(ra8_keycache_t* kc, const ra8_keycache_cfg_t* cfg)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_miss(ra8_keycache_t* kc, const void* key, ra8_keycache_view_t* out_view)
 {
   const int32_t v = priv_pick_victim(kc);
