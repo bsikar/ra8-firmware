@@ -23,6 +23,7 @@
 extern "C" {
 #endif
 
+#include "ra8_attributes.h"
 #include "ra8_ceu.h"
 
 /**
@@ -45,7 +46,7 @@ extern "C" {
  *
  * @since 0.1.0
  */
-void ra8_ceu_program_format(const ra8_ceu_config_t* cfg);
+RA8_PRIV void ra8_ceu_program_format(const ra8_ceu_config_t* cfg);
 
 /**
  * @brief Program the CMCYR/CAMOR/CAPWR geometry registers.
@@ -69,7 +70,7 @@ void ra8_ceu_program_format(const ra8_ceu_config_t* cfg);
  *
  * @since 0.1.0
  */
-void ra8_ceu_program_geometry(const ra8_ceu_config_t* cfg);
+RA8_PRIV void ra8_ceu_program_geometry(const ra8_ceu_config_t* cfg);
 
 /**
  * @brief Program destination / firewall / output / event registers.
@@ -91,7 +92,7 @@ void ra8_ceu_program_geometry(const ra8_ceu_config_t* cfg);
  *
  * @since 0.1.0
  */
-void ra8_ceu_program_destination(const ra8_ceu_config_t* cfg);
+RA8_PRIV void ra8_ceu_program_destination(const ra8_ceu_config_t* cfg);
 
 #ifdef __cplusplus
 }

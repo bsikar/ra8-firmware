@@ -34,6 +34,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_eth_gwca.h"
 
 /**
@@ -157,7 +158,8 @@ extern volatile uint32_t g_ra8_eth_gwca_bring_up_step;
  * @note Not thread-safe.
  * @since 0.1.0
  */
-void ra8_eth_gwca_set_linkfix_entry(ra8_gwca_basic_descriptor_t* entry, const void* chain_head);
+RA8_PRIV void ra8_eth_gwca_set_linkfix_entry(ra8_gwca_basic_descriptor_t* entry,
+                                             const void*                  chain_head);
 
 /**
  * @brief Decode a descriptor's 40-bit PTR back to a host pointer.
@@ -184,7 +186,7 @@ void ra8_eth_gwca_set_linkfix_entry(ra8_gwca_basic_descriptor_t* entry, const vo
  * @note Pure helper; no thread-safety concerns.
  * @since 0.1.0
  */
-uint8_t* ra8_eth_gwca_decode_ptr(const ra8_gwca_basic_descriptor_t* desc);
+RA8_PRIV uint8_t* ra8_eth_gwca_decode_ptr(const ra8_gwca_basic_descriptor_t* desc);
 
 #ifdef __cplusplus
 }

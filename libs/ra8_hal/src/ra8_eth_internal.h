@@ -29,6 +29,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_eth.h"
 #include "ra8_rmac.h"
 
@@ -137,7 +138,7 @@ extern bool s_eth_mac_speed_resynced;
  * @note Thread safety: pure function, safe from any context.
  * @since 0.1.0
  */
-ra8_rmac_port_t ra8_eth_channel_to_port(uint8_t channel);
+RA8_PRIV ra8_rmac_port_t ra8_eth_channel_to_port(uint8_t channel);
 
 #ifdef __cplusplus
 }

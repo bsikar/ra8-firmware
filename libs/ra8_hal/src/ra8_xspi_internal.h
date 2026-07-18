@@ -38,6 +38,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_ospi_regs.h"
 
@@ -142,7 +143,7 @@ typedef enum : uint8_t {
  * @note Not thread-safe; the caller must serialise concurrent access.
  * @since 0.1.0
  */
-ra8_err_t ra8_xspi_kick_command(volatile r_xspi_regs_t* reg);
+RA8_PRIV ra8_err_t ra8_xspi_kick_command(volatile r_xspi_regs_t* reg);
 
 /**
  * @brief Build CDBUF[0] for a 1-byte opcode with no address / no data.
@@ -169,7 +170,7 @@ ra8_err_t ra8_xspi_kick_command(volatile r_xspi_regs_t* reg);
  * @note Not thread-safe; the caller must serialise concurrent access.
  * @since 0.1.0
  */
-ra8_err_t ra8_xspi_issue_simple_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode);
+RA8_PRIV ra8_err_t ra8_xspi_issue_simple_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode);
 
 #ifdef __cplusplus
 }

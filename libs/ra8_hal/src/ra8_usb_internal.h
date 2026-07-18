@@ -45,6 +45,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_mstp.h"
 #include "ra8_usb.h"
@@ -114,7 +115,7 @@ typedef enum : uint16_t {
  * @note Pure / thread-safe.
  * @since 0.1.0
  */
-volatile r_usb_regs_t* internal_pick(ra8_usb_speed_t speed);
+RA8_PRIV volatile r_usb_regs_t* internal_pick(ra8_usb_speed_t speed);
 
 /**
  * @brief Resolve the per-speed MSTP id.
@@ -133,7 +134,7 @@ volatile r_usb_regs_t* internal_pick(ra8_usb_speed_t speed);
  * @note Pure / thread-safe.
  * @since 0.1.0
  */
-ra8_mstp_t internal_mstp(ra8_usb_speed_t speed);
+RA8_PRIV ra8_mstp_t internal_mstp(ra8_usb_speed_t speed);
 
 /**
  * @brief Apply a generic read-modify-write to a 16-bit register.
@@ -151,7 +152,7 @@ ra8_mstp_t internal_mstp(ra8_usb_speed_t speed);
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-void internal_rmw16(volatile uint16_t* reg, uint16_t set_mask, uint16_t clr_mask);
+RA8_PRIV void internal_rmw16(volatile uint16_t* reg, uint16_t set_mask, uint16_t clr_mask);
 
 /**
  * @brief Detect whether reg points at the USBHS (IP1) register block.
@@ -170,7 +171,7 @@ void internal_rmw16(volatile uint16_t* reg, uint16_t set_mask, uint16_t clr_mask
  * @note Pure function.
  * @since 0.1.0
  */
-bool internal_is_hs(volatile r_usb_regs_t* reg);
+RA8_PRIV bool internal_is_hs(volatile r_usb_regs_t* reg);
 
 /**
  * @brief Set CFIFOSEL.MBW + CURPIPE + ISEL for the given pipe / direction.
@@ -189,7 +190,7 @@ bool internal_is_hs(volatile r_usb_regs_t* reg);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-void internal_select_cfifo(volatile r_usb_regs_t* reg, uint16_t pipe_num, bool is_in_dir);
+RA8_PRIV void internal_select_cfifo(volatile r_usb_regs_t* reg, uint16_t pipe_num, bool is_in_dir);
 
 /**
  * @brief Spin until `CFIFOCTR.FRDY` asserts or a deadline elapses.
@@ -208,7 +209,7 @@ void internal_select_cfifo(volatile r_usb_regs_t* reg, uint16_t pipe_num, bool i
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-ra8_err_t internal_wait_frdy(volatile r_usb_regs_t* reg);
+RA8_PRIV ra8_err_t internal_wait_frdy(volatile r_usb_regs_t* reg);
 
 /**
  * @brief Set DCPCTR PID field while preserving the rest of the register.
@@ -225,7 +226,7 @@ ra8_err_t internal_wait_frdy(volatile r_usb_regs_t* reg);
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-void internal_dcp_pid(volatile r_usb_regs_t* reg, ra8_usb_pid_t pid);
+RA8_PRIV void internal_dcp_pid(volatile r_usb_regs_t* reg, ra8_usb_pid_t pid);
 
 /**
  * @brief Set PIPECTR[idx] PID field.
@@ -243,7 +244,7 @@ void internal_dcp_pid(volatile r_usb_regs_t* reg, ra8_usb_pid_t pid);
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-void internal_pipe_pid(volatile r_usb_regs_t* reg, uint8_t pipe_num, ra8_usb_pid_t pid);
+RA8_PRIV void internal_pipe_pid(volatile r_usb_regs_t* reg, uint8_t pipe_num, ra8_usb_pid_t pid);
 
 /**
  * @brief Push a byte buffer into the CFIFO data port.
@@ -261,7 +262,7 @@ void internal_pipe_pid(volatile r_usb_regs_t* reg, uint8_t pipe_num, ra8_usb_pid
  * @note Not thread-safe.
  * @since 0.1.0
  */
-void internal_fifo_write(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_t len);
+RA8_PRIV void internal_fifo_write(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_t len);
 
 /**
  * @brief Drain the CFIFO data port into a buffer.
@@ -279,7 +280,7 @@ void internal_fifo_write(volatile r_usb_regs_t* reg, const uint8_t* data, uint16
  * @note Not thread-safe.
  * @since 0.1.0
  */
-void internal_fifo_read(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len);
+RA8_PRIV void internal_fifo_read(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len);
 
 /**
  * @brief Push a single DCP IN chunk: wait FRDY, write FIFO, pulse BVAL.
@@ -300,7 +301,9 @@ void internal_fifo_read(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len)
  * @note Not thread-safe; the caller holds the DCP lock.
  * @since 0.1.0
  */
-ra8_err_t internal_dcp_push_chunk(volatile r_usb_regs_t* reg, const uint8_t* p, uint16_t n);
+RA8_PRIV ra8_err_t internal_dcp_push_chunk(volatile r_usb_regs_t* reg,
+                                           const uint8_t*         p,
+                                           uint16_t               n);
 
 /**
  * @brief Compute the PIPEBUF word for a bulk pipe (2*MPS region).
@@ -319,7 +322,7 @@ ra8_err_t internal_dcp_push_chunk(volatile r_usb_regs_t* reg, const uint8_t* p, 
  * @note Pure / thread-safe.
  * @since 0.1.0
  */
-uint16_t internal_pipebuf_word(uint8_t pipe_num, uint16_t max_packet);
+RA8_PRIV uint16_t internal_pipebuf_word(uint8_t pipe_num, uint16_t max_packet);
 
 /**
  * @brief Pack PIPECFG fields for a configured non-control pipe.
@@ -342,8 +345,10 @@ uint16_t internal_pipebuf_word(uint8_t pipe_num, uint16_t max_packet);
  * @note Pure / thread-safe.
  * @since 0.1.0
  */
-uint16_t
-internal_pipecfg_word(uint8_t ep_addr, ra8_usb_ep_dir_t dir, ra8_usb_ep_type_t type, bool dblb_in);
+RA8_PRIV uint16_t internal_pipecfg_word(uint8_t           ep_addr,
+                                        ra8_usb_ep_dir_t  dir,
+                                        ra8_usb_ep_type_t type,
+                                        bool              dblb_in);
 
 /**
  * @brief Quiesce the pipe so PIPECFG/PIPEMAXP/PIPEPERI become writable.
@@ -360,7 +365,7 @@ internal_pipecfg_word(uint8_t ep_addr, ra8_usb_ep_dir_t dir, ra8_usb_ep_type_t t
  * @note Not thread-safe.
  * @since 0.1.0
  */
-void internal_pipe_quiesce(volatile r_usb_regs_t* reg, uint8_t pipe_num);
+RA8_PRIV void internal_pipe_quiesce(volatile r_usb_regs_t* reg, uint8_t pipe_num);
 
 /**
  * @brief USBHS embedded-PHY bring-up (HUM Figure 37.2 p 2121).
@@ -381,7 +386,7 @@ void internal_pipe_quiesce(volatile r_usb_regs_t* reg, uint8_t pipe_num);
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
-ra8_err_t internal_usbhs_phy_bringup(volatile r_usb_regs_t* reg);
+RA8_PRIV ra8_err_t internal_usbhs_phy_bringup(volatile r_usb_regs_t* reg);
 
 /**
  * @brief Programme the post-SYSCFG common registers (FIFO, DCP, INTENB).
@@ -398,7 +403,7 @@ ra8_err_t internal_usbhs_phy_bringup(volatile r_usb_regs_t* reg);
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
-void internal_usb_init_common(volatile r_usb_regs_t* reg);
+RA8_PRIV void internal_usb_init_common(volatile r_usb_regs_t* reg);
 
 /**
  * @brief USBFS module bring-up (FSP `hw_usb_pmodule_init` IP0 branch).
@@ -416,7 +421,7 @@ void internal_usb_init_common(volatile r_usb_regs_t* reg);
  * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
-ra8_err_t internal_usbfs_module_bringup(volatile r_usb_regs_t* reg);
+RA8_PRIV ra8_err_t internal_usbfs_module_bringup(volatile r_usb_regs_t* reg);
 
 /**
  * @brief Program DEVADDn.USBSPD with the connected device's link speed.
@@ -436,7 +441,7 @@ ra8_err_t internal_usbfs_module_bringup(volatile r_usb_regs_t* reg);
  * @note Single-device bring-up: no hub fields (UPPHUB/HUBPORT) are set.
  * @since 0.1.0
  */
-void internal_host_program_devadd(volatile r_usb_regs_t* reg, uint8_t dev_addr);
+RA8_PRIV void internal_host_program_devadd(volatile r_usb_regs_t* reg, uint8_t dev_addr);
 
 #ifdef __cplusplus
 }
