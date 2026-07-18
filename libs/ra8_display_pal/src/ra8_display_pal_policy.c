@@ -19,6 +19,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 
@@ -54,6 +55,7 @@ static const char* const s_tag_policy = "disp_policy";
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t priv_clamp_clean_every(uint16_t n)
 {
   if (n < (uint16_t)k_display_policy_clean_every_min) {
@@ -95,6 +97,7 @@ static uint16_t priv_clamp_clean_every(uint16_t n)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_decide_fast_clean(display_policy_t*          p,
                                    display_turn_event_t       event,
                                    display_policy_decision_t* out)
