@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
@@ -43,6 +44,7 @@ static void*            s_ipc_nmi_context;
 /**
  * @brief Validate NMI unit id and return the NMI reg pointer.
  */
+RA8_INTERNAL
 static volatile r_ipc_nmi_regs_t* internal_ra8_ipc_get_nmi(uint8_t unit)
 {
   if ((uint16_t)unit >= (uint16_t)k_ra8_ipc_nmi_unit_count) {
@@ -79,6 +81,8 @@ static volatile r_ipc_nmi_regs_t* internal_ra8_ipc_get_nmi(uint8_t unit)
  * @note ISR-safe: the take is a single 32-bit read on silicon.
  * @since 0.1.0
  */
+RA8_INTERNAL
+RA8_ISR_SAFE
 static uint32_t internal_ra8_ipc_sem_read_take(volatile uint32_t* sem)
 {
 #if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
@@ -116,6 +120,8 @@ static uint32_t internal_ra8_ipc_sem_read_take(volatile uint32_t* sem)
  * @note ISR-safe: the release is a single 32-bit write on silicon.
  * @since 0.1.0
  */
+RA8_INTERNAL
+RA8_ISR_SAFE
 static void internal_ra8_ipc_sem_release_write(volatile uint32_t* sem)
 {
 #if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
@@ -310,6 +316,7 @@ void ra8_ipc_dispatch_nmi(uint8_t unit)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_ra8_ipc_ring_validate(const ra8_ipc_ring_t* ring)
 {
   if (ring->capacity == 0U) {

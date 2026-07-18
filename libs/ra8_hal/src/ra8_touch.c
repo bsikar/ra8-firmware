@@ -22,6 +22,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_i2c_bus_ops.h"
@@ -87,6 +88,7 @@ static ra8_touch_state_t s_state;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline void priv_pack_reg(uint16_t reg, uint8_t* out_buf)
 {
   out_buf[0] = (uint8_t)(((uint32_t)reg >> k_ra8_touch_byte_shift) & k_ra8_touch_byte_mask);
@@ -115,6 +117,7 @@ static inline void priv_pack_reg(uint16_t reg, uint8_t* out_buf)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_gt911_read(uint16_t reg, uint8_t* buf, uint32_t len)
 {
   uint8_t reg_bytes[k_ra8_touch_gt911_reg_ptr_bytes];
@@ -144,6 +147,7 @@ static ra8_err_t priv_gt911_read(uint16_t reg, uint8_t* buf, uint32_t len)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_gt911_write_byte(uint16_t reg, uint8_t value)
 {
   enum : uint8_t {
@@ -173,6 +177,7 @@ static ra8_err_t priv_gt911_write_byte(uint16_t reg, uint8_t value)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_decode_one(const uint8_t* raw, ra8_touch_point_t* out)
 {
   out->track_id = raw[k_ra8_touch_gt911_point_off_track];
@@ -203,6 +208,7 @@ static void priv_decode_one(const uint8_t* raw, ra8_touch_point_t* out)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_decode_block(const uint8_t*     raw,
                               uint8_t            n_points,
                               ra8_touch_point_t* out,
@@ -243,6 +249,7 @@ static void priv_decode_block(const uint8_t*     raw,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_validate_cfg(const ra8_touch_cfg_t* cfg)
 {
   if ((cfg->bus.write == nullptr) || (cfg->bus.transfer == nullptr)) {
@@ -271,6 +278,7 @@ static ra8_err_t priv_validate_cfg(const ra8_touch_cfg_t* cfg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_attach_irq_pin(uint8_t irq_pin)
 {
   if ((uint32_t)irq_pin >= k_ra8_touch_irq_pin_count) {
@@ -297,6 +305,7 @@ static ra8_err_t priv_attach_irq_pin(uint8_t irq_pin)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_stash_state(const ra8_touch_cfg_t* cfg)
 {
   s_state.bus        = cfg->bus;
@@ -330,6 +339,7 @@ static void priv_stash_state(const ra8_touch_cfg_t* cfg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_check_product_id(void)
 {
   uint8_t         product[k_ra8_touch_gt911_id_bytes] = {};
@@ -363,6 +373,7 @@ static ra8_err_t priv_check_product_id(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_open_finalise(const ra8_touch_cfg_t* cfg)
 {
   const ra8_err_t pid_err = priv_check_product_id();
@@ -449,6 +460,7 @@ void ra8_touch_dispatch_irq(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t priv_clamp_emit(uint8_t status_byte, uint8_t max_count)
 {
   uint8_t emit = status_byte & k_ra8_touch_gt911_status_count_mask;
@@ -472,6 +484,7 @@ static uint8_t priv_clamp_emit(uint8_t status_byte, uint8_t max_count)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_ack_frame(void)
 {
   (void)priv_gt911_write_byte(k_ra8_touch_gt911_reg_status, k_ra8_touch_gt911_cmd_clear_status);
@@ -493,6 +506,7 @@ static void priv_ack_frame(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_read_inner(ra8_touch_point_t* out_points, uint8_t max_count, uint8_t* got_count)
 {

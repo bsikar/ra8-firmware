@@ -27,6 +27,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_ipc_regs.h"
 #include "ra8_ipc_types.h"
@@ -66,6 +67,7 @@ extern "C" {
  *       single-threaded address space, so the barrier compiles to a no-op.
  * @since 0.1.0
  */
+RA8_ISR_SAFE
 static inline void ra8_ipc_barrier(void)
 {
 #ifndef RA8_SIMULATOR_MODE
