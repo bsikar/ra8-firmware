@@ -13,7 +13,7 @@
 #
 # Reader engine coverage: CBZ / CBR / CBT comic archives incl. gzip/xz-wrapped
 # (ra8_comic), and the firmware-native RTA1 webtoon vertical-scroll tile atlas
-# (ra8_webtoon). EPUB / RABOOK reflow (text + image loader over ra8_reflow) are
+# (ra8_longstrip). EPUB / RABOOK reflow (text + image loader over ra8_reflow) are
 # left as TODO seams (see src/ra8_viewer_reader.c). macOS only -- the window
 # backend is Cocoa; other hosts are not a target for this dev tool.
 #
@@ -50,13 +50,13 @@ file(GLOB RA8_GFX_SRC    CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_gfx/src/*.c)
 # and ra8_unarch_xz sits on the vendored xz-embedded decoder.
 file(GLOB RA8_UNARCH_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_unarch/src/*.c)
 
-# ra8_webtoon renders the firmware-native `.rta1` vertical-scroll tile atlas the
+# ra8_longstrip renders the firmware-native `.rta1` vertical-scroll tile atlas the
 # downloader writes: the strip parses through ra8_tileatlas (DEFLATE tiles inflate
 # via ra8_io_compress over the already-linked miniz), pages through the ra8_mem
-# tile cache (+ its keycache), and composites bands via ra8_webtoon. Only the
+# tile cache (+ its keycache), and composites bands via ra8_longstrip. Only the
 # READ path is needed (no producer / PNG / webp), so name the exact members.
 set(RA8_WEBTOON_SRC
-    ${FW_ROOT}/libs/ra8_webtoon/src/ra8_webtoon.c
+    ${FW_ROOT}/libs/ra8_longstrip/src/ra8_longstrip.c
     ${FW_ROOT}/libs/ra8_tileatlas/src/ra8_tileatlas.c
     ${FW_ROOT}/libs/ra8_io/src/ra8_io_compress.c
     ${FW_ROOT}/libs/ra8_mem/src/ra8_tile_cache.c
@@ -102,7 +102,7 @@ target_include_directories(ra8_reader PUBLIC
     ${FW_ROOT}/libs/ra8_reflow/inc
     ${FW_ROOT}/libs/ra8_epub/inc
     ${FW_ROOT}/libs/ra8_unarch/inc
-    ${FW_ROOT}/libs/ra8_webtoon/inc
+    ${FW_ROOT}/libs/ra8_longstrip/inc
     ${FW_ROOT}/libs/ra8_tileatlas/inc
     ${FW_ROOT}/libs/ra8_io/inc
     ${FW_ROOT}/libs/ra8_mem/inc
