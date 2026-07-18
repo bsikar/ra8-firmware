@@ -48,6 +48,10 @@ ARG ARM_GCC_RELEASE=13.3.rel1
 ARG ARM_GCC_SHA256_X86_64=95c011cee430e64dd6087c75c800f04b9c49832cc1000127a92a97f9c8d83af4
 ARG ARM_GCC_SHA256_AARCH64=c8824bffd057afce2259f7618254e840715f33523a3d4e4294f471208f976764
 
+# libunicorn-dev / libcapstone-dev are the Unicorn + Capstone headers that
+# tools/board_sim includes. `make ci` lints tools/ (issue #296), so the tidy
+# gate needs those headers present inside the container even though the
+# container never builds board_sim itself.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
       ca-certificates \
@@ -64,7 +68,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       git \
       graphviz \
       iwyu \
+      libcapstone-dev \
       libclang-rt-18-dev \
+      libunicorn-dev \
       llvm-18 \
       locales \
       ninja-build \

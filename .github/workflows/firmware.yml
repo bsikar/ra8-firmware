@@ -112,6 +112,17 @@ jobs:
       - uses: actions/checkout@v4
       - run: bash scripts/ci.sh --gate format
 
+  # ---------------------------------------------------------------------------
+  # clang-tidy over EVERY first-party root: libs/, src/, examples/*/*/main.c,
+  # tests/ and tools/ (#296). Only vendored SOUP (libs/third_party/) and the
+  # generated font data (libs/fonts/) are exempt. scripts/clang_tidy.sh owns
+  # the scope and hard-fails if any of those roots collects zero files, so a
+  # future narrowing cannot silently shrink what this job checks.
+  #
+  # The tools/ pass needs the Unicorn + Capstone headers that tools/board_sim
+  # includes (libunicorn-dev + libcapstone-dev on the runner, and in
+  # .devcontainer/Dockerfile for `make ci`).
+  # ---------------------------------------------------------------------------
   tidy:
     name: clang-tidy
     runs-on: [self-hosted, Linux, X64]
