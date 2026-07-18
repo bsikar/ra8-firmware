@@ -156,14 +156,14 @@ typedef enum : uint8_t {
  * @brief Byte-assembly + read-burst sizing constants (no magic numbers).
  */
 typedef enum : uint32_t {
-  k_eink_byte_shift  = 8U,    /**< Bits per byte.                        */
-  k_eink_byte_mask   = 0xFFU, /**< Low-byte extraction mask.             */
-  k_eink_read_bytes  = 4U,    /**< Bytes per read burst (dummy + value). */
-  k_eink_dev_words   = 20U,   /**< GET_DEV_INFO block length (40 / 2).   */
-  k_eink_word_bits   = 16U,   /**< Bits carried by one 16-bit word.      */
-  k_eink_pf_shift    = 4U,    /**< LD_IMG_AREA arg0 pixel-format shift.  */
-  k_eink_pf_mask     = 0x3U,  /**< LD_IMG_AREA arg0 pixel-format mask.   */
-  k_eink_idle_byte   = 0x00U, /**< Non-read response / idle byte.        */
+  k_eink_byte_shift = 8U,    /**< Bits per byte.                        */
+  k_eink_byte_mask  = 0xFFU, /**< Low-byte extraction mask.             */
+  k_eink_read_bytes = 4U,    /**< Bytes per read burst (dummy + value). */
+  k_eink_dev_words  = 20U,   /**< GET_DEV_INFO block length (40 / 2).   */
+  k_eink_word_bits  = 16U,   /**< Bits carried by one 16-bit word.      */
+  k_eink_pf_shift   = 4U,    /**< LD_IMG_AREA arg0 pixel-format shift.  */
+  k_eink_pf_mask    = 0x3U,  /**< LD_IMG_AREA arg0 pixel-format mask.   */
+  k_eink_idle_byte  = 0x00U, /**< Non-read response / idle byte.        */
 } eink_sizing_t;
 
 /**
@@ -397,7 +397,7 @@ void board_eink_reset(void)
   s_eink.st                   = (eink_state_t)k_eink_st_preamble;
   /* VCOM is controller configuration, not bus framing: a mid-run SPI reset
    * must not clear it, but a cold attach starts from the power-on value. */
-  s_eink.vcom_mv = (vcom_mv != 0U) ? vcom_mv : (uint16_t)k_eink_vcom_power_on_mv;
+  s_eink.vcom_mv     = (vcom_mv != 0U) ? vcom_mv : (uint16_t)k_eink_vcom_power_on_mv;
   s_eink.px_per_word = eink_px_per_word((uint16_t)k_eink_wire_pf_8bpp);
 }
 

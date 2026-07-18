@@ -141,9 +141,9 @@ extern "C" {
  * @brief Sizing and schema constants for the calibration record.
  */
 typedef enum : uint16_t {
-  k_ra8_epd_cal_blob_size      = 32U, /**< Serialised record size in bytes.   */
-  k_ra8_epd_cal_schema_version = 1U,  /**< Current on-flash schema version.   */
-  k_ra8_epd_cal_payload_len    = 2U,  /**< Schema-1 payload bytes (vcom_mv).  */
+  k_ra8_epd_cal_blob_size      = 32U, /**< Serialised record size in bytes.  */
+  k_ra8_epd_cal_schema_version = 1U,  /**< Current on-flash schema version.  */
+  k_ra8_epd_cal_payload_len    = 2U,  /**< Schema-1 payload bytes (vcom_mv). */
 } ra8_epd_cal_limits_t;
 
 /**
@@ -151,13 +151,13 @@ typedef enum : uint16_t {
  * @brief Byte offsets inside the serialised record.
  */
 typedef enum : uint8_t {
-  k_ra8_epd_cal_off_magic       = 0U,  /**< 'EVCM' magic.                */
-  k_ra8_epd_cal_off_version     = 4U,  /**< Schema version byte.         */
-  k_ra8_epd_cal_off_reserved0   = 5U,  /**< One reserved zero byte.      */
-  k_ra8_epd_cal_off_payload_len = 6U,  /**< Payload length, LE16.        */
-  k_ra8_epd_cal_off_vcom_mv     = 8U,  /**< VCOM magnitude, LE16.        */
-  k_ra8_epd_cal_off_reserved1   = 10U, /**< Reserved growth span.        */
-  k_ra8_epd_cal_off_crc32       = 28U, /**< CRC-32 trailer, LE32.        */
+  k_ra8_epd_cal_off_magic       = 0U,  /**< 'EVCM' magic.           */
+  k_ra8_epd_cal_off_version     = 4U,  /**< Schema version byte.    */
+  k_ra8_epd_cal_off_reserved0   = 5U,  /**< One reserved zero byte. */
+  k_ra8_epd_cal_off_payload_len = 6U,  /**< Payload length, LE16.   */
+  k_ra8_epd_cal_off_vcom_mv     = 8U,  /**< VCOM magnitude, LE16.   */
+  k_ra8_epd_cal_off_reserved1   = 10U, /**< Reserved growth span.   */
+  k_ra8_epd_cal_off_crc32       = 28U, /**< CRC-32 trailer, LE32.   */
 } ra8_epd_cal_layout_t;
 
 /**
@@ -233,7 +233,7 @@ typedef enum : uint8_t {
  * @see ra8_epd_cal_vcom_in_range
  */
 typedef struct {
-  uint16_t min_mv; /**< Lowest accepted VCOM magnitude, millivolts. */
+  uint16_t min_mv; /**< Lowest accepted VCOM magnitude, millivolts.  */
   uint16_t max_mv; /**< Highest accepted VCOM magnitude, millivolts. */
 } ra8_epd_cal_limits_mv_t;
 
@@ -495,8 +495,7 @@ typedef struct {
  *
  * @since 0.1.0
  */
-[[nodiscard]] bool ra8_epd_cal_vcom_in_range(uint16_t                       mv,
-                                             const ra8_epd_cal_limits_mv_t* limits);
+[[nodiscard]] bool ra8_epd_cal_vcom_in_range(uint16_t mv, const ra8_epd_cal_limits_mv_t* limits);
 
 /**
  * @brief Serialise a record into its 32-byte on-flash form.
@@ -529,9 +528,8 @@ typedef struct {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_epd_cal_serialize(const ra8_epd_cal_record_t* rec,
-                                              uint8_t*                    dst,
-                                              size_t                      dst_size);
+[[nodiscard]] ra8_err_t
+ra8_epd_cal_serialize(const ra8_epd_cal_record_t* rec, uint8_t* dst, size_t dst_size);
 
 /**
  * @brief Parse and integrity-check a serialised record.
@@ -573,9 +571,8 @@ typedef struct {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_epd_cal_deserialize(const uint8_t*        src,
-                                                size_t                src_size,
-                                                ra8_epd_cal_record_t* out_rec);
+[[nodiscard]] ra8_err_t
+ra8_epd_cal_deserialize(const uint8_t* src, size_t src_size, ra8_epd_cal_record_t* out_rec);
 
 /* ===========================================================================
  * Resolution + application

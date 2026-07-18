@@ -506,9 +506,8 @@ typedef struct {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_epaper_align_area(ra8_epaper_area_t*        area,
-                                              ra8_epaper_pixel_format_t pf,
-                                              uint16_t                  panel_width);
+[[nodiscard]] ra8_err_t
+ra8_epaper_align_area(ra8_epaper_area_t* area, ra8_epaper_pixel_format_t pf, uint16_t panel_width);
 
 /**
  * @brief Fill a waveform map from a controller-reported LUT version.
