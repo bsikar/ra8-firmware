@@ -110,8 +110,9 @@ def _brace_delta(line: str, in_block_comment: bool) -> tuple[int, int, bool]:
     closes = 0
     i = 0
     n = len(line)
-    in_string = False
-    in_char = False
+    # "" while outside a literal; otherwise the opening quote (`"` or `'`).
+    # Unifying string and character literals keeps the branch count down.
+    in_quote = ""
     while i < n:
         c = line[i]
         if in_block_comment:
@@ -121,20 +122,12 @@ def _brace_delta(line: str, in_block_comment: bool) -> tuple[int, int, bool]:
                 continue
             i += 1
             continue
-        if in_string:
+        if in_quote:
             if c == "\\":  # skip the escaped character (e.g. \" or \\)
                 i += 2
                 continue
-            if c == '"':
-                in_string = False
-            i += 1
-            continue
-        if in_char:
-            if c == "\\":
-                i += 2
-                continue
-            if c == "'":
-                in_char = False
+            if c == in_quote:
+                in_quote = ""
             i += 1
             continue
         # Outside any literal or comment: interpret the punctuation.
@@ -144,10 +137,8 @@ def _brace_delta(line: str, in_block_comment: bool) -> tuple[int, int, bool]:
             in_block_comment = True
             i += 2
             continue
-        if c == '"':
-            in_string = True
-        elif c == "'":
-            in_char = True
+        if c in ('"', "'"):
+            in_quote = c
         elif c == "{":
             opens += 1
         elif c == "}":
@@ -193,6 +184,49 @@ def _function_signature_start(lines: list[str], brace_idx: int) -> int:
     return i
 
 
+def _measure_body(lines: list[str], brace_idx: int, n: int) -> int:
+    """Return the line index one past the function body whose opening ``{`` is
+    on ``lines[brace_idx]``.
+
+    Tracks brace depth from the opening ``{``, ignoring braces that sit inside
+    string / character literals or comments (via `_brace_delta`).  A
+    preprocessor-conditional arm stack keeps a brace opened in a *later*
+    ``#elif``/``#else`` arm from double-counting a brace the first arm already
+    opened -- only one arm is ever compiled, so counting both would run the
+    depth off the true closing ``}`` (e.g. the poll-vs-direct
+    ``#if RA8_SIMULATOR_MODE { ... #else { ... #endif`` idiom).  Each stack
+    entry is False in the first arm and True once an ``#elif``/``#else`` is
+    seen; brace deltas are applied only while every entry is False.
+    """
+    depth = 1
+    j = brace_idx + 1
+    cpp_arms: list[bool] = []
+    # Block comments straddle lines, so their state persists across the body
+    # scan; string / character literals are always resolved within one line.
+    in_block_comment = False
+    while j < n and depth > 0:
+        if not in_block_comment:
+            stripped = lines[j].lstrip()
+            if stripped.startswith("#"):
+                directive = stripped[1:].lstrip()
+                if directive.startswith("endif"):
+                    if cpp_arms:
+                        cpp_arms.pop()
+                elif directive.startswith(("else", "elif")):
+                    if cpp_arms:
+                        cpp_arms[-1] = True
+                elif directive.startswith("if"):  # if / ifdef / ifndef
+                    cpp_arms.append(False)
+                j += 1
+                continue
+        opens, closes, in_block_comment = _brace_delta(lines[j], in_block_comment)
+        if not any(cpp_arms):
+            depth += opens
+            depth -= closes
+        j += 1
+    return j
+
+
 def _scan_file(path: Path) -> list[tuple[int, int, str]]:
     """Return a list of (function_start_line, length, signature) tuples
     for every function in `path` whose body exceeds the threshold."""
@@ -209,42 +243,7 @@ def _scan_file(path: Path) -> list[tuple[int, int, str]]:
         line = lines[i].lstrip()
         if line.startswith("{") and i > 0 and _looks_like_function_body_open(lines[i - 1]):
             sig_start = _function_signature_start(lines, i)
-            depth = 1
-            j = i + 1
-            # Preprocessor-conditional arm stack: each entry is False while
-            # we are in the first arm of an ``#if`` block and True once an
-            # ``#elif``/``#else`` of that block has been seen.  Only one arm
-            # is ever compiled, so a brace opened in a *later* arm double-
-            # counts a brace the first arm already opened -- that runs the
-            # depth counter off the true closing ``}`` (e.g. a poll-vs-direct
-            # ``#if RA8_SIMULATOR_MODE { ... #else { ... #endif`` idiom) and
-            # reports a 13-line function as hundreds of lines.  Skip brace
-            # counting while inside any non-first arm so the textual brace
-            # balance matches what actually compiles.
-            cpp_arms: list[bool] = []
-            # Block comments straddle lines, so their open/close state has to
-            # persist across the body scan; string/char literals do not.
-            in_block_comment = False
-            while j < n and depth > 0:
-                if not in_block_comment:
-                    stripped = lines[j].lstrip()
-                    if stripped.startswith("#"):
-                        directive = stripped[1:].lstrip()
-                        if directive.startswith("endif"):
-                            if cpp_arms:
-                                cpp_arms.pop()
-                        elif directive.startswith(("else", "elif")):
-                            if cpp_arms:
-                                cpp_arms[-1] = True
-                        elif directive.startswith("if"):  # if / ifdef / ifndef
-                            cpp_arms.append(False)
-                        j += 1
-                        continue
-                opens, closes, in_block_comment = _brace_delta(lines[j], in_block_comment)
-                if not any(cpp_arms):
-                    depth += opens
-                    depth -= closes
-                j += 1
+            j = _measure_body(lines, i, n)
             length = j - i
             if length > THRESHOLD_LINES:
                 signature = lines[sig_start].strip()
