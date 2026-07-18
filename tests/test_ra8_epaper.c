@@ -66,6 +66,7 @@ static ra8_epaper_cfg_t make_cfg(void)
 {
   const ra8_epaper_cfg_t cfg = {
     .bus          = s_bus_ops,
+    .waveform     = {.init = 0U, .du = 1U, .gc16 = 2U, .a2 = 4U},
     .reset_pin    = 0U,
     .busy_pin     = 0U,
     .panel_width  = (uint16_t)k_ra8_epaper_test_panel_w,
@@ -174,7 +175,7 @@ static void test_calls_before_init(void)
   const ra8_epaper_area_t area = {.x = 0U, .y = 0U, .width = 1U, .height = 1U};
   const uint8_t           buf  = 0x80U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state,
-                 ra8_epaper_load_image(&area, &buf, 1U, k_ra8_epaper_endian_little));
+                 ra8_epaper_load_image(&area, &buf, 1U, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_epaper_display_area(&area, k_ra8_epaper_wf_gc16));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_epaper_sleep());
   TEST_END("test_calls_before_init");
@@ -201,13 +202,13 @@ static void test_happy_path(void)
   uint8_t                 pixels[k_ra8_epaper_test_buf_pixels] = {};
   const ra8_epaper_area_t area = {.x = 0U, .y = 0U, .width = 8U, .height = 8U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_epaper_load_image(&area, pixels, 1U, k_ra8_epaper_endian_little));
+                 ra8_epaper_load_image(&area, pixels, 1U, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
 
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
-    ra8_epaper_load_image(nullptr, pixels, sizeof(pixels), k_ra8_epaper_endian_little));
+    ra8_epaper_load_image(nullptr, pixels, sizeof(pixels), k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epaper_load_image(&area, nullptr, sizeof(pixels), k_ra8_epaper_endian_little));
+                 ra8_epaper_load_image(&area, nullptr, sizeof(pixels), k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
 
   /* Happy load + display + sleep. The display_area LUT-idle poll reads LUTAFSR
    * over SPI; the sim SPI loopback returns the driver's own dummy byte (never
@@ -216,7 +217,7 @@ static void test_happy_path(void)
    * ctx cookie -- the bound bus handle &s_bus. Arm it to report "LUT idle" on
    * the 3rd poll so the real loop iterates twice then succeeds. */
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_epaper_load_image(&area, pixels, sizeof(pixels), k_ra8_epaper_endian_little));
+                 ra8_epaper_load_image(&area, pixels, sizeof(pixels), k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after((volatile const void*)&s_bus, 2U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_display_area(&area, k_ra8_epaper_wf_gc16));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_display_area(nullptr, k_ra8_epaper_wf_gc16));
@@ -383,13 +384,258 @@ static void test_mcdc_ra8_epaper(void)
   const ra8_epaper_area_t area_8x8 = {.x = 0U, .y = 0U, .width = 8U, .height = 8U};
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_epaper_load_image(&area_8x8, pixels, sizeof(pixels), k_ra8_epaper_endian_little));
+    ra8_epaper_load_image(&area_8x8, pixels, sizeof(pixels), k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_epaper_load_image(&area_8x8, pixels, 1U, k_ra8_epaper_endian_little));
+                 ra8_epaper_load_image(&area_8x8, pixels, 1U, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   const ra8_epaper_area_t area_0x0 = {.x = 0U, .y = 0U, .width = 0U, .height = 0U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_epaper_load_image(&area_0x0, pixels, 0U, k_ra8_epaper_endian_little));
+                 ra8_epaper_load_image(&area_0x0, pixels, 0U, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   TEST_END("epaper MC/DC: validate_cfg 5-cond + load_image 2-cond");
+}
+
+/**
+ * @test epaper_bits_per_pixel_and_image_bytes
+ *
+ * @details
+ * Pins the packing arithmetic the PAL and the driver must agree on. The
+ * 4 bpp row size is the one that matters commercially: it is exactly half
+ * the 8 bpp size, which is where the transfer-time win comes from.
+ */
+static void test_pixel_format_sizing(void)
+{
+  TEST_BEGIN("epaper: bits_per_pixel + image_bytes");
+  TEST_ASSERT_EQ(1U, ra8_epaper_bits_per_pixel(k_ra8_epaper_pf_1bpp));
+  TEST_ASSERT_EQ(2U, ra8_epaper_bits_per_pixel(k_ra8_epaper_pf_2bpp));
+  TEST_ASSERT_EQ(4U, ra8_epaper_bits_per_pixel(k_ra8_epaper_pf_4bpp));
+  TEST_ASSERT_EQ(8U, ra8_epaper_bits_per_pixel(k_ra8_epaper_pf_8bpp));
+
+  const ra8_epaper_area_t area = {.x = 0U, .y = 0U, .width = 64U, .height = 4U};
+  size_t                  n    = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_image_bytes(&area, k_ra8_epaper_pf_8bpp, &n));
+  TEST_ASSERT_EQ((size_t)256U, n);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_image_bytes(&area, k_ra8_epaper_pf_4bpp, &n));
+  TEST_ASSERT_EQ((size_t)128U, n); /* half of 8 bpp -- the throughput win */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_image_bytes(&area, k_ra8_epaper_pf_2bpp, &n));
+  TEST_ASSERT_EQ((size_t)64U, n);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_image_bytes(&area, k_ra8_epaper_pf_1bpp, &n));
+  TEST_ASSERT_EQ((size_t)32U, n);
+
+  /* Odd widths round each row up to a whole byte, per row. */
+  const ra8_epaper_area_t odd = {.x = 0U, .y = 0U, .width = 3U, .height = 2U};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_image_bytes(&odd, k_ra8_epaper_pf_4bpp, &n));
+  TEST_ASSERT_EQ((size_t)4U, n); /* ceil(3*4/8) = 2 bytes per row, 2 rows */
+
+  const ra8_epaper_area_t empty = {.x = 0U, .y = 0U, .width = 0U, .height = 4U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_epaper_image_bytes(&empty, k_ra8_epaper_pf_4bpp, &n));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_epaper_image_bytes(nullptr, k_ra8_epaper_pf_4bpp, &n));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_epaper_image_bytes(&area, k_ra8_epaper_pf_4bpp, nullptr));
+  TEST_END("epaper: bits_per_pixel + image_bytes");
+}
+
+/**
+ * @test epaper_area_alignment
+ *
+ * @par MC/DC:
+ * Decision: `return ((area->x % grid) == 0U) && ((area->width % grid) == 0U)`
+ * in ``ra8_epaper_area_is_aligned`` (2 conditions, 1 bpp only).
+ * - Vector 1: x=32, w=64  -> T&&T = true  (control: both conditions true)
+ * - Vector 2: x=17, w=64  -> F&&T = false (varies the x condition only)
+ * - Vector 3: x=32, w=3   -> T&&F = false (varies the width condition only)
+ * Vectors 1+2 prove ``x`` independently affects the outcome; vectors 1+3
+ * prove the same for ``width``. N+1 = 3 vectors for N=2 conditions.
+ *
+ * @details
+ * A misaligned 1 bpp update renders nothing at all on an M641 panel -- the
+ * controller accepts the command and the screen stays blank -- so this is
+ * a correctness gate, not a quality hint.
+ */
+static void test_area_alignment(void)
+{
+  TEST_BEGIN("epaper MC/DC: 1bpp 32px X/width alignment");
+  /* V1: both conditions true. */
+  const ra8_epaper_area_t ok = {.x = 32U, .y = 0U, .width = 64U, .height = 1U};
+  TEST_ASSERT(ra8_epaper_area_is_aligned(&ok, k_ra8_epaper_pf_1bpp));
+  /* V2: x misaligned. */
+  const ra8_epaper_area_t bad_x = {.x = 17U, .y = 0U, .width = 64U, .height = 1U};
+  TEST_ASSERT(!ra8_epaper_area_is_aligned(&bad_x, k_ra8_epaper_pf_1bpp));
+  /* V3: width misaligned. */
+  const ra8_epaper_area_t bad_w = {.x = 32U, .y = 0U, .width = 3U, .height = 1U};
+  TEST_ASSERT(!ra8_epaper_area_is_aligned(&bad_w, k_ra8_epaper_pf_1bpp));
+
+  /* Depths other than 1 bpp are unconstrained. */
+  TEST_ASSERT(ra8_epaper_area_is_aligned(&bad_x, k_ra8_epaper_pf_4bpp));
+  TEST_ASSERT(ra8_epaper_area_is_aligned(&bad_w, k_ra8_epaper_pf_8bpp));
+  /* A NULL area is a guard, not a trap. */
+  TEST_ASSERT(!ra8_epaper_area_is_aligned(nullptr, k_ra8_epaper_pf_1bpp));
+
+  /* align_area grows outward so the caller's rectangle stays covered. */
+  ra8_epaper_area_t grow = {.x = 17U, .y = 0U, .width = 3U, .height = 1U};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_epaper_align_area(&grow, k_ra8_epaper_pf_1bpp, 1448U));
+  TEST_ASSERT_EQ(0U, grow.x);
+  TEST_ASSERT_EQ(32U, grow.width);
+  TEST_ASSERT(ra8_epaper_area_is_aligned(&grow, k_ra8_epaper_pf_1bpp));
+
+  ra8_epaper_area_t spanning = {.x = 40U, .y = 0U, .width = 40U, .height = 1U};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_epaper_align_area(&spanning, k_ra8_epaper_pf_1bpp, 1448U));
+  TEST_ASSERT_EQ(32U, spanning.x);
+  TEST_ASSERT_EQ(64U, spanning.width); /* covers 40..80 */
+
+  /* Non-1bpp is a no-op. */
+  ra8_epaper_area_t noop = {.x = 17U, .y = 0U, .width = 3U, .height = 1U};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_align_area(&noop, k_ra8_epaper_pf_4bpp, 1448U));
+  TEST_ASSERT_EQ(17U, noop.x);
+
+  /* Refusals. */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_epaper_align_area(nullptr, k_ra8_epaper_pf_1bpp, 1448U));
+  ra8_epaper_area_t any = {.x = 0U, .y = 0U, .width = 32U, .height = 1U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_epaper_align_area(&any, k_ra8_epaper_pf_1bpp, 0U));
+  ra8_epaper_area_t outside = {.x = 1440U, .y = 0U, .width = 32U, .height = 1U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_epaper_align_area(&outside, k_ra8_epaper_pf_1bpp, 1448U));
+  TEST_END("epaper MC/DC: 1bpp 32px X/width alignment");
+}
+
+/**
+ * @test epaper_waveform_cfg_is_lut_derived
+ *
+ * @details
+ * The defect this pins: A2 was hardcoded to 4, which is right for the
+ * M641 LUT (6 inch / 6 inch HD) and wrong for the 7.8 / 9.7 / 10.3 inch
+ * panels, where the vendor default is 6.
+ */
+static void test_waveform_cfg_for_lut(void)
+{
+  TEST_BEGIN("epaper: waveform modes are LUT-derived, not hardcoded");
+  ra8_epaper_waveform_cfg_t wf = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_waveform_cfg_for_lut("M641", &wf));
+  TEST_ASSERT_EQ(0U, wf.init);
+  TEST_ASSERT_EQ(1U, wf.du);
+  TEST_ASSERT_EQ(2U, wf.gc16);
+  TEST_ASSERT_EQ(4U, wf.a2);
+
+  /* Build suffixes must still match -- the reported string carries one. */
+  wf = (ra8_epaper_waveform_cfg_t){};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_waveform_cfg_for_lut("M641_TFAB1234", &wf));
+  TEST_ASSERT_EQ(4U, wf.a2);
+
+  /* Any other LUT gets the vendor's generic numbering. */
+  wf = (ra8_epaper_waveform_cfg_t){};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_waveform_cfg_for_lut("M841", &wf));
+  TEST_ASSERT_EQ(6U, wf.a2);
+
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_waveform_cfg_for_lut(nullptr, &wf));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_waveform_cfg_for_lut("M641", nullptr));
+  TEST_END("epaper: waveform modes are LUT-derived, not hardcoded");
+}
+
+/**
+ * @test epaper_init_rejects_unset_waveform_map
+ *
+ * @details
+ * A zero-initialised waveform map would refresh every mode as INIT. Init
+ * refuses it so a board descriptor cannot inherit another panel's
+ * numbering by omission.
+ */
+static void test_init_requires_waveform_map(void)
+{
+  TEST_BEGIN("epaper: init rejects an unset waveform map");
+  prep();
+  ra8_epaper_cfg_t cfg = make_cfg();
+  cfg.waveform         = (ra8_epaper_waveform_cfg_t){};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_init(&cfg));
+
+  cfg          = make_cfg();
+  cfg.waveform.a2 = 0U; /* DU / GC16 set, A2 left unset */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_init(&cfg));
+
+  cfg             = make_cfg();
+  cfg.waveform.a2 = 200U; /* out of the documented LUT mode range */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_init(&cfg));
+  TEST_END("epaper: init rejects an unset waveform map");
+}
+
+/**
+ * @test epaper_vcom_and_1bpp_alignment_on_the_wire
+ *
+ * @details
+ * Drives the VCOM get / set commands and the load-time alignment refusal
+ * against the simulator-backed bus. The RAM-backed SPI window means the
+ * read-back value is whatever the fixture last wrote rather than a real
+ * panel's, so the assertion is on the call succeeding and on the state
+ * machine's guards, not on a specific millivolt figure.
+ */
+static void test_vcom_and_alignment_guard(void)
+{
+  TEST_BEGIN("epaper: VCOM commands + 1bpp alignment refusal");
+  prep();
+  uint16_t mv = 0U;
+  /* Before init both VCOM entry points must refuse. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_epaper_get_vcom(&mv));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_epaper_set_vcom(1530U));
+  ra8_epaper_dev_info_t info = {};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_epaper_dev_info(&info));
+
+  const ra8_epaper_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_init(&cfg));
+
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_get_vcom(nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_get_vcom(&mv));
+  /* A zero VCOM is never programmable -- it is the "controller not ready"
+   * signature, and driving a panel at it is the damage case. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_set_vcom(0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_set_vcom(1530U));
+
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_dev_info(nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_dev_info(&info));
+
+  /* A misaligned 1 bpp load is refused before any bus traffic. */
+  static uint8_t          bitmap[8]  = {};
+  const ra8_epaper_area_t misaligned = {.x = 8U, .y = 0U, .width = 64U, .height = 1U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_epaper_load_image(&misaligned,
+                                       bitmap,
+                                       sizeof(bitmap),
+                                       k_ra8_epaper_pf_1bpp,
+                                       k_ra8_epaper_endian_little));
+  /* The same buffer at an aligned origin is accepted. */
+  const ra8_epaper_area_t aligned = {.x = 0U, .y = 0U, .width = 64U, .height = 1U};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_epaper_load_image(&aligned,
+                                       bitmap,
+                                       sizeof(bitmap),
+                                       k_ra8_epaper_pf_1bpp,
+                                       k_ra8_epaper_endian_little));
+
+  /* 4 bpp: half the bytes of the 8 bpp path for the same rectangle. */
+  static uint8_t          packed4[32] = {};
+  const ra8_epaper_area_t area4       = {.x = 0U, .y = 0U, .width = 64U, .height = 1U};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_epaper_load_image(&area4,
+                                       packed4,
+                                       sizeof(packed4),
+                                       k_ra8_epaper_pf_4bpp,
+                                       k_ra8_epaper_endian_little));
+  /* An 8 bpp-sized buffer is rejected for a 4 bpp area. */
+  static uint8_t packed8[64] = {};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_epaper_load_image(&area4,
+                                       packed8,
+                                       sizeof(packed8),
+                                       k_ra8_epaper_pf_4bpp,
+                                       k_ra8_epaper_endian_little));
+
+  /* An unknown waveform selector is refused rather than defaulted. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_epaper_display_area(&aligned, (ra8_epaper_waveform_t)200U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_sleep());
+  TEST_END("epaper: VCOM commands + 1bpp alignment refusal");
 }
 
 int main(void)
@@ -402,5 +648,10 @@ int main(void)
   test_wait_ready_hrdy_timeout();
   test_pulse_reset_drives_line();
   test_mcdc_ra8_epaper();
+  test_pixel_format_sizing();
+  test_area_alignment();
+  test_waveform_cfg_for_lut();
+  test_init_requires_waveform_map();
+  test_vcom_and_alignment_guard();
   return 0;
 }

@@ -273,6 +273,7 @@ file(GLOB_RECURSE RA8_WEBP_THIRD_PARTY CONFIGURE_DEPENDS ${FW_ROOT}/libs/third_p
 file(GLOB_RECURSE RA8_WEBP_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_webp/src/*.c)
 file(GLOB_RECURSE RA8_SECURE_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/src/secure_app/*.c)
 file(GLOB_RECURSE RA8_TOUCH_CAL_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_touch_cal/src/*.c)
+file(GLOB_RECURSE RA8_EPD_CAL_SOURCES    CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_epd_cal/src/*.c)
 file(GLOB_RECURSE RA8_PSA_CRYPTO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_psa_crypto/src/*.c)
 file(GLOB_RECURSE RA8_WDT_SUPERVISOR_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_wdt_supervisor/src/*.c)
 file(GLOB_RECURSE RA8_MPU_SOURCES        CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_mpu/src/*.c)
@@ -323,6 +324,7 @@ add_library(ra8_core_hal OBJECT
     ${RA8_WEBP_SOURCES}
     ${RA8_SECURE_APP_SOURCES}
     ${RA8_TOUCH_CAL_SOURCES}
+    ${RA8_EPD_CAL_SOURCES}
     ${RA8_MPU_SOURCES}
     ${RA8_PSA_CRYPTO_SOURCES}
     ${RA8_WDT_SUPERVISOR_SOURCES}
@@ -393,6 +395,7 @@ target_include_directories(ra8_core_hal PUBLIC
     ${FW_ROOT}/libs/ra8_reflow/inc
     ${FW_ROOT}/libs/ra8_webp/inc
     ${FW_ROOT}/libs/ra8_touch_cal/inc
+    ${FW_ROOT}/libs/ra8_epd_cal/inc
     ${FW_ROOT}/libs/ra8_mpu/inc
     ${FW_ROOT}/libs/ra8_psa_crypto/inc
     ${FW_ROOT}/libs/ra8_wdt_supervisor/inc
@@ -434,6 +437,7 @@ target_include_directories(ra8_core_hal PUBLIC
     ${FW_ROOT}/libs/ra8_display_pal/src
     ${FW_ROOT}/libs/ra8_power_profile/src
     ${FW_ROOT}/libs/ra8_touch_cal/src
+    ${FW_ROOT}/libs/ra8_epd_cal/src
     ${FW_ROOT}/libs/ra8_mpu/src
     ${FW_ROOT}/libs/ra8_psa_crypto/src
     ${FW_ROOT}/libs/ra8_wdt_supervisor/src
@@ -643,6 +647,7 @@ function(ra8_add_test name)
     ${FW_ROOT}/libs/ra8_reflow/inc
     ${FW_ROOT}/libs/ra8_webp/inc
     ${FW_ROOT}/libs/ra8_touch_cal/inc
+    ${FW_ROOT}/libs/ra8_epd_cal/inc
     ${FW_ROOT}/libs/ra8_mpu/inc
     ${FW_ROOT}/libs/ra8_psa_crypto/inc
     ${FW_ROOT}/libs/ra8_wdt_supervisor/inc
@@ -675,6 +680,7 @@ function(ra8_add_test name)
     ${FW_ROOT}/libs/ra8_display_pal/src
     ${FW_ROOT}/libs/ra8_power_profile/src
     ${FW_ROOT}/libs/ra8_touch_cal/src
+    ${FW_ROOT}/libs/ra8_epd_cal/src
     ${FW_ROOT}/libs/ra8_mpu/src
     ${FW_ROOT}/libs/ra8_psa_crypto/src
     ${FW_ROOT}/libs/ra8_wdt_supervisor/src
@@ -1277,6 +1283,7 @@ target_include_directories(test_cache_store_demo PRIVATE
   ${FW_ROOT}/libs/ra8_reflow/inc
   ${FW_ROOT}/libs/ra8_webp/inc
   ${FW_ROOT}/libs/ra8_touch_cal/inc
+    ${FW_ROOT}/libs/ra8_epd_cal/inc
   ${FW_ROOT}/libs/ra8_mpu/inc
   ${FW_ROOT}/libs/ra8_psa_crypto/inc
   ${FW_ROOT}/libs/ra8_wdt_supervisor/inc

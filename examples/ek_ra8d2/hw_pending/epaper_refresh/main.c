@@ -474,6 +474,14 @@ static void ep_bringup_panel_bus(uint32_t pclka_hz)
   s_epaper_cfg.busy_pin     = (uint16_t)k_ep_hrdy_pin;
   s_epaper_cfg.panel_width  = (uint16_t)k_ep_panel_w;
   s_epaper_cfg.panel_height = (uint16_t)k_ep_panel_h;
+  /* Waveform mode numbers are panel data, not driver data: A2 is mode 4 on
+   * the M641 LUT (6 inch / 6 inch HD) and mode 6 elsewhere. The descriptor
+   * seeds the M641 map so init has a valid one; an app that reaches real
+   * hardware should re-derive it from ``ra8_epaper_dev_info().lut_version``
+   * once the controller has answered GET_DEV_INFO. */
+  if (ra8_epaper_waveform_cfg_for_lut("M641", &s_epaper_cfg.waveform) != k_ra8_ok) {
+    ep_panic_halt();
+  }
 }
 
 /**

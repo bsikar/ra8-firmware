@@ -68,7 +68,8 @@
  * 14). Failing at exactly one index lands the fault on one specific leg.
  */
 typedef enum : uint32_t {
-  k_cov_panel_w    = 8U,      /**< Test area width.                */
+  k_cov_panel_w     = 8U,     /**< Test area width.                */
+  k_cov_wf_gc16_mode = 2U,    /**< Resolved GC16 LUT mode number.  */
   k_cov_panel_h    = 8U,      /**< Test area height.               */
   k_cov_buf_len    = 64U,     /**< 8x8 = 64-byte pixel buffer.     */
   k_cov_even_len   = 4U,      /**< Two-word even buffer.           */
@@ -144,13 +145,28 @@ static ra8_err_t mock_bus_xfer8(void* ctx, uint8_t tx, uint8_t* rx)
  * no preprocessor redirection any more: the driver reaches SPI only through
  * the injected seam, which the fixture cfg points at ::mock_bus_xfer8. */
 ra8_err_t ra8_epaper_init_cov(const ra8_epaper_cfg_t* cfg);
-ra8_err_t ra8_epaper_load_image_cov(const ra8_epaper_area_t* area,
-                                    const uint8_t*           buf,
-                                    size_t                   buf_len,
-                                    ra8_epaper_endian_t      endian);
+ra8_err_t ra8_epaper_load_image_cov(const ra8_epaper_area_t*  area,
+                                    const uint8_t*            buf,
+                                    size_t                    buf_len,
+                                    ra8_epaper_pixel_format_t pf,
+                                    ra8_epaper_endian_t       endian);
 ra8_err_t ra8_epaper_display_area_cov(const ra8_epaper_area_t* area,
                                       ra8_epaper_waveform_t    waveform);
 ra8_err_t ra8_epaper_sleep_cov(void);
+ra8_err_t ra8_epaper_dev_info_cov(ra8_epaper_dev_info_t* out_info);
+uint8_t   ra8_epaper_bits_per_pixel_cov(ra8_epaper_pixel_format_t pf);
+ra8_err_t ra8_epaper_image_bytes_cov(const ra8_epaper_area_t*  area,
+                                     ra8_epaper_pixel_format_t pf,
+                                     size_t*                   out_bytes);
+bool      ra8_epaper_area_is_aligned_cov(const ra8_epaper_area_t*  area,
+                                         ra8_epaper_pixel_format_t pf);
+ra8_err_t ra8_epaper_align_area_cov(ra8_epaper_area_t*        area,
+                                    ra8_epaper_pixel_format_t pf,
+                                    uint16_t                  panel_width);
+ra8_err_t ra8_epaper_waveform_cfg_for_lut_cov(const char*                lut_version,
+                                              ra8_epaper_waveform_cfg_t* out_cfg);
+ra8_err_t ra8_epaper_get_vcom_cov(uint16_t* out_mv);
+ra8_err_t ra8_epaper_set_vcom_cov(uint16_t mv);
 
 /** @brief RA8 epaper init. */
 #define ra8_epaper_init ra8_epaper_init_cov
@@ -160,6 +176,22 @@ ra8_err_t ra8_epaper_sleep_cov(void);
 #define ra8_epaper_display_area ra8_epaper_display_area_cov
 /** @brief RA8 epaper sleep. */
 #define ra8_epaper_sleep ra8_epaper_sleep_cov
+/** @brief RA8 epaper dev info. */
+#define ra8_epaper_dev_info ra8_epaper_dev_info_cov
+/** @brief RA8 epaper bits per pixel. */
+#define ra8_epaper_bits_per_pixel ra8_epaper_bits_per_pixel_cov
+/** @brief RA8 epaper image bytes. */
+#define ra8_epaper_image_bytes ra8_epaper_image_bytes_cov
+/** @brief RA8 epaper area alignment predicate. */
+#define ra8_epaper_area_is_aligned ra8_epaper_area_is_aligned_cov
+/** @brief RA8 epaper area alignment. */
+#define ra8_epaper_align_area ra8_epaper_align_area_cov
+/** @brief RA8 epaper waveform map from LUT version. */
+#define ra8_epaper_waveform_cfg_for_lut ra8_epaper_waveform_cfg_for_lut_cov
+/** @brief RA8 epaper VCOM read. */
+#define ra8_epaper_get_vcom ra8_epaper_get_vcom_cov
+/** @brief RA8 epaper VCOM write. */
+#define ra8_epaper_set_vcom ra8_epaper_set_vcom_cov
 
 #include "ra8_epaper.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
 
@@ -183,6 +215,7 @@ static ra8_epaper_cfg_t cov_cfg(void)
 {
   const ra8_epaper_cfg_t cfg = {
     .bus          = {.xfer8 = mock_bus_xfer8, .ctx = (void*)&s_bus_probe},
+    .waveform     = {.init = 0U, .du = 1U, .gc16 = 2U, .a2 = 4U},
     .reset_pin    = 0U,
     .busy_pin     = 0U,
     .panel_width  = (uint16_t)k_cov_panel_w,
@@ -389,40 +422,40 @@ static void test_load_display_args_legs(void)
   /* send_load_args: fault arg0, x, y, width, height, then a clean block. */
   arm_fault((uint32_t)k_cov_fail_1);
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
-                 internal_ra8_epaper_send_load_args(&area, k_ra8_epaper_endian_little));
+                 internal_ra8_epaper_send_load_args(&area, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   arm_fault((uint32_t)k_cov_fail_5);
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
-                 internal_ra8_epaper_send_load_args(&area, k_ra8_epaper_endian_little));
+                 internal_ra8_epaper_send_load_args(&area, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   arm_fault((uint32_t)k_cov_fail_9);
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
-                 internal_ra8_epaper_send_load_args(&area, k_ra8_epaper_endian_little));
+                 internal_ra8_epaper_send_load_args(&area, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   arm_fault((uint32_t)k_cov_fail_13);
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
-                 internal_ra8_epaper_send_load_args(&area, k_ra8_epaper_endian_little));
+                 internal_ra8_epaper_send_load_args(&area, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   arm_fault((uint32_t)k_cov_fail_17);
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
-                 internal_ra8_epaper_send_load_args(&area, k_ra8_epaper_endian_little));
+                 internal_ra8_epaper_send_load_args(&area, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   arm_fault((uint32_t)k_cov_fail_never);
-  TEST_ASSERT_EQ(k_ra8_ok, internal_ra8_epaper_send_load_args(&area, k_ra8_epaper_endian_little));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_ra8_epaper_send_load_args(&area, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
 
   /* send_display_args: fault x, y, width, height, waveform, then a clean block. */
   arm_fault((uint32_t)k_cov_fail_1);
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
-                 internal_ra8_epaper_send_display_args(&area, k_ra8_epaper_wf_gc16));
+                 internal_ra8_epaper_send_display_args(&area, k_cov_wf_gc16_mode));
   arm_fault((uint32_t)k_cov_fail_5);
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
-                 internal_ra8_epaper_send_display_args(&area, k_ra8_epaper_wf_gc16));
+                 internal_ra8_epaper_send_display_args(&area, k_cov_wf_gc16_mode));
   arm_fault((uint32_t)k_cov_fail_9);
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
-                 internal_ra8_epaper_send_display_args(&area, k_ra8_epaper_wf_gc16));
+                 internal_ra8_epaper_send_display_args(&area, k_cov_wf_gc16_mode));
   arm_fault((uint32_t)k_cov_fail_13);
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
-                 internal_ra8_epaper_send_display_args(&area, k_ra8_epaper_wf_gc16));
+                 internal_ra8_epaper_send_display_args(&area, k_cov_wf_gc16_mode));
   arm_fault((uint32_t)k_cov_fail_17);
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
-                 internal_ra8_epaper_send_display_args(&area, k_ra8_epaper_wf_gc16));
+                 internal_ra8_epaper_send_display_args(&area, k_cov_wf_gc16_mode));
   arm_fault((uint32_t)k_cov_fail_never);
-  TEST_ASSERT_EQ(k_ra8_ok, internal_ra8_epaper_send_display_args(&area, k_ra8_epaper_wf_gc16));
+  TEST_ASSERT_EQ(k_ra8_ok, internal_ra8_epaper_send_display_args(&area, k_cov_wf_gc16_mode));
 
   TEST_END("send_load_args/send_display_args: fault every argument word");
 }
@@ -522,37 +555,37 @@ static void test_load_image_api_legs(void)
   arm_fault((uint32_t)k_cov_fail_1);
   TEST_ASSERT_EQ(
     k_ra8_err_hw_error,
-    ra8_epaper_load_image_cov(&area, buf, (size_t)k_cov_buf_len, k_ra8_epaper_endian_little));
+    ra8_epaper_load_image_cov(&area, buf, (size_t)k_cov_buf_len, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   /* LISAR-high reg_write fault (transfer 13, after LISAR-low's 12). */
   set_ready();
   arm_fault((uint32_t)k_cov_fail_13);
   TEST_ASSERT_EQ(
     k_ra8_err_hw_error,
-    ra8_epaper_load_image_cov(&area, buf, (size_t)k_cov_buf_len, k_ra8_epaper_endian_little));
+    ra8_epaper_load_image_cov(&area, buf, (size_t)k_cov_buf_len, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   /* LD_IMG_AREA command fault (transfer 25, after two reg writes = 24). */
   set_ready();
   arm_fault((uint32_t)k_cov_fail_25);
   TEST_ASSERT_EQ(
     k_ra8_err_hw_error,
-    ra8_epaper_load_image_cov(&area, buf, (size_t)k_cov_buf_len, k_ra8_epaper_endian_little));
+    ra8_epaper_load_image_cov(&area, buf, (size_t)k_cov_buf_len, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   /* send_load_args fault (transfer 29, after cmd's 4 = 28). */
   set_ready();
   arm_fault((uint32_t)k_cov_fail_29);
   TEST_ASSERT_EQ(
     k_ra8_err_hw_error,
-    ra8_epaper_load_image_cov(&area, buf, (size_t)k_cov_buf_len, k_ra8_epaper_endian_little));
+    ra8_epaper_load_image_cov(&area, buf, (size_t)k_cov_buf_len, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   /* stream_pixels fault (transfer 49, after args' 20 = 48). */
   set_ready();
   arm_fault((uint32_t)k_cov_fail_49);
   TEST_ASSERT_EQ(
     k_ra8_err_hw_error,
-    ra8_epaper_load_image_cov(&area, buf, (size_t)k_cov_buf_len, k_ra8_epaper_endian_little));
+    ra8_epaper_load_image_cov(&area, buf, (size_t)k_cov_buf_len, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   /* Clean load through LD_IMG_END. */
   set_ready();
   arm_fault((uint32_t)k_cov_fail_never);
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_epaper_load_image_cov(&area, buf, (size_t)k_cov_buf_len, k_ra8_epaper_endian_little));
+    ra8_epaper_load_image_cov(&area, buf, (size_t)k_cov_buf_len, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
 
   TEST_END("load_image: fault LISAR lo/hi, cmd, args, and pixel stream");
 }
@@ -701,26 +734,26 @@ static void epaper_check_size_and_guards(void)
   /* V1: exact size accepts. */
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_epaper_load_image_cov(&area, buf, (size_t)k_cov_buf_len, k_ra8_epaper_endian_little));
+    ra8_epaper_load_image_cov(&area, buf, (size_t)k_cov_buf_len, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   /* V2: wrong size rejects. */
   set_ready();
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_size,
-    ra8_epaper_load_image_cov(&area, buf, (size_t)k_cov_even_len, k_ra8_epaper_endian_little));
+    ra8_epaper_load_image_cov(&area, buf, (size_t)k_cov_even_len, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   /* V3: zero-area rejects. */
   set_ready();
   const ra8_epaper_area_t area0 = {.x = 0U, .y = 0U, .width = 0U, .height = 0U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_epaper_load_image_cov(&area0, buf, 0U, k_ra8_epaper_endian_little));
+                 ra8_epaper_load_image_cov(&area0, buf, 0U, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
 
   /* Null-argument guards on both entry points. */
   set_ready();
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
-    ra8_epaper_load_image_cov(nullptr, buf, (size_t)k_cov_buf_len, k_ra8_epaper_endian_little));
+    ra8_epaper_load_image_cov(nullptr, buf, (size_t)k_cov_buf_len, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
-    ra8_epaper_load_image_cov(&area, nullptr, (size_t)k_cov_buf_len, k_ra8_epaper_endian_little));
+    ra8_epaper_load_image_cov(&area, nullptr, (size_t)k_cov_buf_len, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_display_area_cov(nullptr, k_ra8_epaper_wf_gc16));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_init_cov(nullptr));
 

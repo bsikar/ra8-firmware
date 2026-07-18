@@ -78,6 +78,7 @@ static ra8_io_spi_bus_t s_eink_bus;
 /** @brief IT8951 descriptor; its seam is (re)bound in harness_reset_world. */
 static ra8_epaper_cfg_t s_eink_panel_cfg = {
   .bus          = {},
+  .waveform     = {.init = 0U, .du = 1U, .gc16 = 2U, .a2 = 4U},
   .reset_pin    = 0U,
   .busy_pin     = 0U,
   .panel_width  = (uint16_t)k_test_fb_width,
@@ -90,6 +91,7 @@ static ra8_epaper_cfg_t s_eink_panel_cfg = {
  * "ra8_epaper_init failed" error leg. */
 static ra8_epaper_cfg_t s_eink_panel_cfg_bad = {
   .bus          = {},
+  .waveform     = {.init = 0U, .du = 1U, .gc16 = 2U, .a2 = 4U},
   .reset_pin    = 0U,
   .busy_pin     = 0U,
   .panel_width  = 0U,
