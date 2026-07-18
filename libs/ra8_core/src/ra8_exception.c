@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_error_handler.h"
 #include "ra8_log.h"
 
@@ -95,7 +96,7 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
-static inline uint32_t internal_read32(uintptr_t addr)
+RA8_INTERNAL static inline uint32_t internal_read32(uintptr_t addr)
 {
   return *(volatile uint32_t*)addr;
 }
@@ -239,10 +240,10 @@ void ra8_exception_set_persist_hook(ra8_exception_persist_fn hook)
  *
  * @since 0.1.0
  */
-static void internal_log_fault_dump(const ra8_exception_frame_t*       frame,
-                                    uint32_t                           exc_number,
-                                    const ra8_exception_diagnostics_t* diag,
-                                    uint32_t                           nmisr)
+RA8_INTERNAL static void internal_log_fault_dump(const ra8_exception_frame_t*       frame,
+                                                 uint32_t                           exc_number,
+                                                 const ra8_exception_diagnostics_t* diag,
+                                                 uint32_t                           nmisr)
 {
   ra8_log_error_val("EXC", "exception", exc_number);
 

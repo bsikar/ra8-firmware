@@ -16,6 +16,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_bit_constants.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
@@ -49,7 +50,7 @@ static uint8_t s_claimed[((uint16_t)k_ra8_port_count * (uint16_t)k_ra8_pin_count
 static const char* s_owner[(uint16_t)k_ra8_port_count * (uint16_t)k_ra8_pin_count];
 
 /* Convert a packed `ra8_port_pin_t` to a flat bit index -- see implementation for details. */
-static ra8_err_t internal_flat_index(ra8_port_pin_t pin, uint16_t* out_index)
+RA8_INTERNAL static ra8_err_t internal_flat_index(ra8_port_pin_t pin, uint16_t* out_index)
 {
   const uint8_t port = (uint8_t)RA8_PIN_PORT(pin);
   const uint8_t idx  = (uint8_t)RA8_PIN_PIN(pin);

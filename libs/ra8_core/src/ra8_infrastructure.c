@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
 #include "ra8_pin_validator.h"
@@ -59,7 +60,7 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
-static void internal_write_stack_canary(void)
+RA8_INTERNAL static void internal_write_stack_canary(void)
 {
 #ifndef RA8_SIMULATOR_MODE
   for (uint32_t* w = g_ra8_ls_stack_canary_start; w < g_ra8_ls_stack_canary_end; w++) {

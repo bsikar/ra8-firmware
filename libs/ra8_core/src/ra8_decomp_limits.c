@@ -22,6 +22,7 @@
  */
 #include "ra8_decomp_limits.h"
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 
 /** @brief Log tag for decompression-policy diagnostics. */
@@ -55,7 +56,7 @@ ra8_decomp_limits_t ra8_decomp_limits_default(void)
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
-static bool s_limits_usable(const ra8_decomp_limits_t* lim)
+RA8_INTERNAL static bool s_limits_usable(const ra8_decomp_limits_t* lim)
 {
   if (lim->max_output_bytes == 0U) {
     return false;
@@ -95,7 +96,7 @@ static bool s_limits_usable(const ra8_decomp_limits_t* lim)
  * @note Thread-safe: pure computation.
  * @since Version 0.1.0
  */
-static uint64_t s_ratio_bound(const ra8_decomp_limits_t* lim, uint64_t in_total)
+RA8_INTERNAL static uint64_t s_ratio_bound(const ra8_decomp_limits_t* lim, uint64_t in_total)
 {
   const uint64_t ratio = (uint64_t)lim->max_ratio;
   if (in_total > (UINT64_MAX / ratio)) {
