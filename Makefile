@@ -136,7 +136,7 @@ help:
 	@echo ""
 	@echo "QUALITY / CI"
 	@echo "  make ci                run ALL CI gates in the Linux devcontainer (before every push)"
-	@echo "  make ci-fast           same, minus the slow clang-tidy + coverage gates"
+	@echo "  make ci-fast           same, minus the slow misra + clang-tidy + coverage gates"
 	@echo "  make format / check    run clang-format in place / --dry-run"
 	@echo "  make tidy / cppcheck   run clang-tidy / the cppcheck gate"
 	@echo "  make ascii / version   encoding check / @since-tag check"
