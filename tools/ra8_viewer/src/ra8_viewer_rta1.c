@@ -48,9 +48,9 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_viewer_px_r  = 0U, /**< Red (or gray, or RGB565 low byte). */
-  k_viewer_px_g  = 1U, /**< Green (or RGB565 high byte).       */
-  k_viewer_px_b  = 2U, /**< Blue.                              */
+  k_viewer_px_r = 0U, /**< Red (or gray, or RGB565 low byte). */
+  k_viewer_px_g = 1U, /**< Green (or RGB565 high byte).       */
+  k_viewer_px_b = 2U, /**< Blue.                              */
 } ra8_viewer_px_idx_t;
 
 /**
