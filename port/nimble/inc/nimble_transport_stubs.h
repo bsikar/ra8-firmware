@@ -327,6 +327,11 @@ void ble_transport_ll_init(void);
 /**
  * @brief Controller-side handler for an HCI command from the host.
  *
+ * @details Hands the command to the RA8 BLE transport. The upstream
+ * transport core reaches this through ble_transport_to_ll_cmd(); the
+ * weak stub of that wrapper forwards here too, so an app that skips the
+ * core still reaches the controller.
+ *
  * @param[in] buf HCI command buffer.
  *
  * @return Upstream transport status code.
@@ -347,6 +352,9 @@ int ble_transport_to_ll_cmd_impl(void* buf);
 
 /**
  * @brief Controller-side handler for an ACL packet from the host.
+ *
+ * @details Hands the packet to the RA8 BLE transport, reached the same
+ * two ways as ble_transport_to_ll_cmd_impl().
  *
  * @param[in] om ACL mbuf chain.
  *
