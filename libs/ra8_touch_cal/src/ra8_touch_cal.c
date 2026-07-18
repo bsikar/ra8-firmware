@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 
 /* ===========================================================================
@@ -113,6 +114,7 @@ static const float s_round_bias = 0.5F;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_pack_le32(uint8_t* dst, uint32_t word)
 {
   dst[0] = (uint8_t)(word & (uint32_t)k_internal_byte_mask);
@@ -136,6 +138,7 @@ static void internal_pack_le32(uint8_t* dst, uint32_t word)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_unpack_le32(const uint8_t* src)
 {
   uint32_t w = (uint32_t)src[0];
@@ -161,6 +164,7 @@ static uint32_t internal_unpack_le32(const uint8_t* src)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_float_to_u32(float f)
 {
   uint32_t out = 0U;
@@ -183,6 +187,7 @@ static uint32_t internal_float_to_u32(float f)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static float internal_u32_to_float(uint32_t w)
 {
   float out = 0.0F;
@@ -208,6 +213,7 @@ static float internal_u32_to_float(uint32_t w)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_crc32(const uint8_t* data, size_t len)
 {
   uint32_t crc = (uint32_t)k_internal_crc32_init;
@@ -241,6 +247,7 @@ static uint32_t internal_crc32(const uint8_t* data, size_t len)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_solve3(const float a[k_m3_len], const float b[3], float x[3], bool* ok)
 {
   const float det = (a[k_m3_00] * ((a[k_m3_11] * a[k_m3_22]) - (a[k_m3_12] * a[k_m3_21]))) -
@@ -287,6 +294,7 @@ static void internal_solve3(const float a[k_m3_len], const float b[3], float x[3
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t internal_clip32(int32_t v, int32_t lo, int32_t hi)
 {
   if (v < lo) {
@@ -348,6 +356,7 @@ typedef struct {
  * @note Pure compute helper; safe from any context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_accumulate_sums(const ra8_touch_cal_point_t* raw,
                                      const ra8_touch_cal_point_t* screen,
                                      uint8_t                      n,
