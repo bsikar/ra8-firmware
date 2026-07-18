@@ -7,7 +7,7 @@
  * (compiled host-side with RA8_SIMULATOR_MODE) and calls them directly -- there
  * is no ARM emulation. This module is the C core: it opens a file from disk
  * behind a seek+read callback and drives the comic (ra8_comic) and webtoon
- * (ra8_webtoon) engines. It exposes two render surfaces: a fixed RGB565
+ * (ra8_longstrip) engines. It exposes two render surfaces: a fixed RGB565
  * framebuffer (::ra8_viewer_render_page, for the headless dump) and a
  * continuous-scroll tile API (::ra8_viewer_render_tile565) the window scales to
  * width -- both built on ra8_reflow's `ra8_img_decode_blit` over ra8_gfx.
@@ -59,7 +59,7 @@ typedef struct ra8_viewer_reader ra8_viewer_reader_t;
  *
  * @details Detects the format by file extension and container magic. Comic
  *          archives (`.cbz` / `.cbr` / `.cbt`, and gzip/xz-wrapped variants) open
- *          through ra8_comic and RTA1 webtoons (`.rta1`) through ra8_webtoon;
+ *          through ra8_comic and RTA1 webtoons (`.rta1`) through ra8_longstrip;
  *          EPUB / RABOOK return ::k_ra8_err_not_supported for now (reflow render
  *          is a TODO seam -- see the .c file).
  *

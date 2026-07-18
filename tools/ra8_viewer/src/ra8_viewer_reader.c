@@ -15,7 +15,7 @@
  *
  *   - **Webtoon / RTA1** (`.rta1`, the firmware-native vertical-scroll tile
  *     atlas the downloader writes with `ra8_tileatlas_produce`) drives
- *     ra8_webtoon over an ra8_tile_cache. The tall strip is paginated into
+ *     ra8_longstrip over an ra8_tile_cache. The tall strip is paginated into
  *     framebuffer-height windows; each "page" scrolls the strip by one viewport
  *     and composites the visible bands (DEFLATE-decoded on miss) into the
  *     framebuffer through a viewer-owned blit that converts to RGB565.
@@ -52,7 +52,7 @@
 #include "ra8_reflow_image.h"
 #include "ra8_tile_cache.h"
 #include "ra8_tileatlas.h"
-#include "ra8_webtoon.h"
+#include "ra8_longstrip.h"
 
 /**
  * @enum ra8_viewer_budget_t
@@ -88,7 +88,7 @@ typedef enum : uint8_t {
   k_vfmt_comic       = 1, /**< Bare CBZ/CBR/CBT (ra8_comic).         */
   k_vfmt_comic_wrap  = 2, /**< gzip/xz-wrapped comic (open_wrapped). */
   k_vfmt_epub        = 3, /**< EPUB (ra8_epub + ra8_reflow).         */
-  k_vfmt_rta1        = 4, /**< RTA1 atlas (ra8_webtoon).             */
+  k_vfmt_rta1        = 4, /**< RTA1 atlas (ra8_longstrip).             */
   k_vfmt_rabook      = 5, /**< RABOOK (ra8_book + ra8_reflow).       */
 } viewer_fmt_t;
 
@@ -126,7 +126,7 @@ typedef struct {
 
 /**
  * @struct viewer_rta1_t
- * @brief All ra8_webtoon state + owned buffers for one open RTA1 strip.
+ * @brief All ra8_longstrip state + owned buffers for one open RTA1 strip.
  * @details The strip's atlas bytes are slurped into @ref atlas (the memstore
  *          pread reads from it); the tile cache decodes DEFLATE bands on miss
  *          into @ref cells. The strip is paginated: each viewer "page" is one
@@ -136,9 +136,9 @@ typedef struct {
 typedef struct {
   uint8_t*                 atlas;      /**< Whole `.rta1` file (owned).             */
   ra8_tileatlas_memstore_t store;      /**< Memstore pread over @ref atlas.         */
-  ra8_webtoon_decode_ctx_t dctx;       /**< Decode ctx: pread + parsed info + scr.  */
+  ra8_longstrip_decode_ctx_t dctx;       /**< Decode ctx: pread + parsed info + scr.  */
   ra8_tile_cache_t         cache;      /**< Band cache (uses the arrays below).     */
-  ra8_webtoon_t            wt;         /**< Opened webtoon strip.                   */
+  ra8_longstrip_t            wt;         /**< Opened webtoon strip.                   */
   uint8_t*                 cells;      /**< `cell_count * band_bytes` tile storage. */
   ra8_keycache_cell_t*     meta;       /**< `cell_count` cache link-metadata.       */
   ra8_tile_key_t*          keys;       /**< `cell_count` cache keys.                */
@@ -415,7 +415,7 @@ static inline uint16_t viewer_pack565(uint8_t rr, uint8_t gg, uint8_t bb)
 }
 
 /**
- * @brief ra8_webtoon composite sink: convert a band sub-window to RGB565 in fb.
+ * @brief ra8_longstrip composite sink: convert a band sub-window to RGB565 in fb.
  * @details Bands arrive in the strip's native `bpp` (1=gray, 2=RGB565, 3=RGB,
  *          4=RGBA). Coordinates are viewport-relative; the whole viewport is
  *          centred horizontally in the framebuffer via `rta1.x_off`. Pixels
@@ -543,7 +543,7 @@ static ra8_err_t viewer_rta1_wire(ra8_viewer_reader_t*        r,
                                      .dims         = w->dims,
                                      .buckets      = w->buckets,
                                      .bucket_count = (uint32_t)k_viewer_rta1_buckets,
-                                     .decode       = ra8_webtoon_tile_decode,
+                                     .decode       = ra8_longstrip_tile_decode,
                                      .decode_ctx   = &w->dctx};
   const ra8_err_t            rc   = ra8_tile_cache_init(&w->cache, &ccfg);
   if (rc != k_ra8_ok) {
@@ -557,7 +557,7 @@ static ra8_err_t viewer_rta1_wire(ra8_viewer_reader_t*        r,
   w->viewport_h             = (uint32_t)k_ra8_viewer_fb_height;
   w->x_off                  = 0;
 
-  const ra8_webtoon_cfg_t wcfg = {.pread      = ra8_tileatlas_memstore_pread,
+  const ra8_longstrip_cfg_t wcfg = {.pread      = ra8_tileatlas_memstore_pread,
                                   .pread_ctx  = &w->store,
                                   .atlas_size = r->file.size,
                                   .cache      = &w->cache,
@@ -566,7 +566,7 @@ static ra8_err_t viewer_rta1_wire(ra8_viewer_reader_t*        r,
                                   .viewport_h = (uint16_t)k_ra8_viewer_fb_height,
                                   .blit       = viewer_rta1_blit,
                                   .blit_ctx   = r};
-  return ra8_webtoon_open(&w->wt, &wcfg);
+  return ra8_longstrip_open(&w->wt, &wcfg);
 }
 
 /**
@@ -845,12 +845,12 @@ static ra8_err_t viewer_render_rta1(ra8_viewer_reader_t* r, uint32_t page)
 
   const int32_t target = (int32_t)page * (int32_t)w->viewport_h;
   const int32_t delta  = target - w->wt.scroll_y;
-  ra8_err_t     rc     = ra8_webtoon_scroll_by(&w->wt, delta);
+  ra8_err_t     rc     = ra8_longstrip_scroll_by(&w->wt, delta);
   if (rc != k_ra8_ok) {
     return rc;
   }
-  ra8_webtoon_render_stats_t st = {};
-  return ra8_webtoon_render(&w->wt, &st);
+  ra8_longstrip_render_stats_t st = {};
+  return ra8_longstrip_render(&w->wt, &st);
 }
 
 ra8_err_t ra8_viewer_render_page(ra8_viewer_reader_t* r, uint32_t page)
@@ -1039,10 +1039,10 @@ viewer_tile_rta1(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, u
   memset(buf, (int)k_viewer_white_byte, px * sizeof(uint16_t));
   const int32_t target = (int32_t)i * (int32_t)wt->viewport_h;
   const int32_t delta  = target - wt->wt.scroll_y;
-  ra8_err_t     rc     = ra8_webtoon_scroll_by(&wt->wt, delta);
+  ra8_err_t     rc     = ra8_longstrip_scroll_by(&wt->wt, delta);
   if (rc == k_ra8_ok) {
-    ra8_webtoon_render_stats_t st = {};
-    rc                            = ra8_webtoon_render(&wt->wt, &st);
+    ra8_longstrip_render_stats_t st = {};
+    rc                            = ra8_longstrip_render(&wt->wt, &st);
   }
   r->rt565 = r->fb; /* restore the headless default target */
   r->rt_w  = (uint32_t)k_ra8_viewer_fb_width;

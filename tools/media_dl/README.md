@@ -124,7 +124,7 @@ behind a Cloudflare JS challenge will not work (no challenge solver yet).
 | `cbt.xz` | tar, then the external `xz` CLI (CRC32 check, 1 MiB dict) | `xz` on PATH |
 | `cbr` | the external `rar` CLI | `rar` on PATH |
 | `epub` | a valid EPUB3 of the pages via vendored miniz (`ra8_epub` opens it) | nothing |
-| `rta1` | per-page native RTA1 tile atlas via the firmware `ra8_tileatlas` producer -- a full-width column (`tile_w == width`) the `ra8_webtoon` engine opens directly | nothing |
+| `rta1` | per-page native RTA1 tile atlas via the firmware `ra8_tileatlas` producer -- a full-width column (`tile_w == width`) the `ra8_longstrip` engine opens directly | nothing |
 | `rabook` | build a CBZ, then `tools/epub_compile/cbz_compile.py` -> the RBKC `.rabook` | `python3` + Pillow |
 
 `cbz`/`cbt`/`cbt.gz`/`epub`/`rta1` are fully self-contained (in-tree/vendored
@@ -149,7 +149,7 @@ which is deliberately capped at **8192 px per side** (`STBI_MAX_DIMENSIONS` in
 decode fits its memory budget). A strip taller than that is rejected -- by
 design, not a bug. RTA1 exists precisely for this: it tiles the strip via the
 firmware's streaming JPEG decoder (`ra8_jpeg_sw_stream`, no whole-image
-allocation) and the `ra8_webtoon` engine scrolls it a viewport at a time. So a
+allocation) and the `ra8_longstrip` engine scrolls it a viewport at a time. So a
 webtoon downloaded as `cbz` will open but some tall pages won't render; the same
 series as `rta1` renders every page. Standard fixed-page comics (each page a
 normal book-sized image) are fine as `cbz`.
