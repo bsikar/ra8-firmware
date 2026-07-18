@@ -144,6 +144,23 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends clang-format-22 \
     && rm -rf /var/lib/apt/lists/*
 
+# libclang Python bindings -- what scripts/utils/check_annotations.py walks the
+# AST with. Pinned to the same version firmware.yml installs for its
+# "Annotation-attribute gate (libclang)" step so `make ci` sees the same AST as
+# CI. The wheel bundles its own libclang.so, so this is independent of the
+# clang-18 packages above. Installed system-wide with --break-system-packages
+# because Ubuntu 24.04 marks the system interpreter PEP 668 externally-managed;
+# the container is disposable and single-purpose, so a venv would only add a
+# PATH indirection every gate would have to know about.
+#
+# Without this the annotation gate cannot run, and a checker that cannot run is
+# worse than one that is absent: it exits 0 and reports nothing. ci.sh therefore
+# probes the import and fails loudly rather than skipping.
+ARG LIBCLANG_VERSION=18.1.1
+RUN python3 -m pip install --no-cache-dir --break-system-packages \
+      libclang==${LIBCLANG_VERSION} \
+    && python3 -c "import clang.cindex"
+
 # Create a non-root user so post-create scripts run as a human.
 # Ubuntu 24.04 ships a pre-existing UID/GID 1000 (`ubuntu`); remove it
 # first so we can claim the same id and have file ownership match the

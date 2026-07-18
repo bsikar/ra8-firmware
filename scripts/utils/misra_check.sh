@@ -110,6 +110,29 @@ done <"$ROOT_DIR/.cppcheck-suppressions"
 # both raise syntaxError on the affected line. cppcheck recovers and
 # continues parsing the rest of the translation unit, so MISRA
 # coverage on the remaining ~95% of code is still useful.
+#
+# -U__clang__ is load-bearing. ra8_attributes.h guards the annotation
+# macros with `#if defined(__clang__) && !defined(__CPPCHECK__)` so the
+# `[[clang::annotate("...")]]` form -- which cppcheck's C parser cannot
+# represent, and which damages the parse of whatever declaration follows
+# -- stays hidden from this audit. That guard is not sufficient on its
+# own: cppcheck does not merely evaluate the condition, it ENUMERATES
+# configurations for every macro named in it, and emits a
+# `__GNUC__;__clang__` configuration in which __clang__ is defined and
+# __CPPCHECK__ is not. In that configuration the attribute survives, and
+# misra.py reports phantom findings against the annotated file -- 14.2,
+# 16.2 and 17.3 where the source has no loop, no switch and no implicit
+# declaration, plus inflated 15.5 exit-point counts and an extra 8.4 for
+# every definition whose declaration the damaged parse swallowed.
+# Mentioning __CPPCHECK__ in the guard is what makes cppcheck enumerate
+# it, so the header alone can never close this.
+#
+# -U removes __clang__ from configuration enumeration entirely, so no
+# such configuration is generated. This is also the configuration that
+# ships: the firmware is built by arm-none-eabi-gcc, where these macros
+# are already comments. Suppressing the four rules or absorbing the
+# findings into the baseline would blind the ratchet to real defects in
+# every annotated file.
 echo "[INFO] generating cppcheck dumps under libs/, src/, port/ ..." >&2
 set +e
 "${TIMEOUT_CMD[@]}" cppcheck \
@@ -125,6 +148,7 @@ set +e
   --suppress=*:libs/third_party/* \
   -ilibs/third_party \
   -ilibs/ra8_epub/src/ra8_epub_xml_shim.cpp \
+  -U__clang__ \
   --std=c11 \
   --platform=unix32 \
   --language=c \

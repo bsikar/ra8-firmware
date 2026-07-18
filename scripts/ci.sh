@@ -16,9 +16,16 @@
 #   Running the gates inside the Ubuntu 24.04 devcontainer reproduces the runner
 #   environment, so a red gate is caught here instead of in CI.
 #
+# Keep this suite a SUPERSET-or-equal of firmware.yml, never a subset. Two jobs
+# were missing here for exactly that reason and let a red push through: the
+# annotation gate (a separate step of the pre-commit-gate job, not part of its
+# check_*.py block) and the MISRA ratchet (its own job -- `make cppcheck` runs
+# a different rule set with no baseline and does not cover it). When adding a
+# job to firmware.yml, add the matching gate below in the same change.
+#
 # Usage (host):
 #   bash scripts/ci.sh            # full gate suite (mirrors firmware.yml)
-#   bash scripts/ci.sh --fast     # skip the slow clang-tidy/coverage/ubsan gates
+#   bash scripts/ci.sh --fast     # skip the slow misra/clang-tidy/coverage/ubsan gates
 #   bash scripts/ci.sh --rebuild  # force a devcontainer image rebuild first
 #
 # The script re-enters itself inside the container with RA8_CI_INNER=1, where it
@@ -173,6 +180,39 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
     python3 scripts/utils/check_hil_sil_parity.py
   )
 
+  # --- gate: annotation attributes (job: pre-commit-checks) ----------------
+  # firmware.yml runs check_annotations.py as its own step inside the
+  # pre-commit-gate job, NOT as part of the check_*.py block above. It was
+  # therefore absent from this suite entirely: a full local `make ci` passed
+  # while CI failed the "Annotation-attribute gate (libclang)" step. The
+  # import probe is load-bearing -- without it a container missing the
+  # binding makes the strict gate exit 0 and report nothing, which is worse
+  # than not running it at all.
+  gate_annotations() (
+    set -e
+    python3 -c "import clang.cindex" || {
+      echo "ERROR: the libclang Python binding is missing, so the annotation" >&2
+      echo "       gate cannot run. CI installs libclang==18.1.1; add it to" >&2
+      echo "       .devcontainer/Dockerfile so this gate is faithful." >&2
+      exit 1
+    }
+    # Regression test for the checker itself before trusting its verdict.
+    python3 scripts/utils/check_annotations.py --selftest
+    python3 scripts/utils/check_annotations.py --check
+  )
+
+  # --- gate: MISRA-C 2012 ratchet (firmware.yml job: misra) ----------------
+  # Audit + ratchet against .github/misra-baseline.txt. `make cppcheck` is
+  # NOT a substitute: it runs a different rule set (style/performance, no
+  # misra.py addon) and has no baseline comparison, so a new MISRA finding
+  # sails through it. Kept out of --fast: the audit dumps every TU under
+  # libs/ src/ port/ and takes minutes.
+  gate_misra() (
+    set -e
+    bash scripts/utils/misra_check.sh
+    python3 scripts/utils/misra_ratchet.py --check
+  )
+
   # --- gate: clang-tidy (firmware.yml job: tidy) ---------------------------
   gate_clang_tidy() {
     bash scripts/clang_tidy.sh --check
@@ -198,7 +238,9 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
   run_gate "clang-format" gate_clang_format
   run_gate "cppcheck" gate_cppcheck
   run_gate "pre-commit-checks" gate_precommit_checks
+  run_gate "annotations" gate_annotations
   if [[ "$fast" != "1" ]]; then
+    run_gate "misra" gate_misra
     run_gate "clang-tidy" gate_clang_tidy
   fi
   run_gate "host-tests" gate_host_tests
