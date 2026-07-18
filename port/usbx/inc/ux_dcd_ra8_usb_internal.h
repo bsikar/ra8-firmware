@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_isr.h"
 #include "ra8_usb.h"
 #include "ux_dcd_ra8_usb.h"
@@ -370,7 +371,7 @@ extern volatile uint32_t s_setup_token_observed;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-uint8_t internal_ep_to_pipe(uint8_t ep_addr);
+RA8_PRIV uint8_t internal_ep_to_pipe(uint8_t ep_addr);
 
 /**
  * @brief USBX ``UX_DCD_TRANSFER_REQUEST`` dispatcher entry point.
@@ -388,7 +389,7 @@ uint8_t internal_ep_to_pipe(uint8_t ep_addr);
  * @note Not ISR-safe; runs on the USBX device task context.
  * @since 0.1.0
  */
-unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* tr);
+RA8_PRIV unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* tr);
 
 /**
  * @brief Mask the USB IRQ at the NVIC to break an interrupt storm.
@@ -401,7 +402,7 @@ unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* tr);
  * @note ISR-safe.
  * @since 0.1.0
  */
-void internal_usbfs_irq_mask(void);
+RA8_PRIV void internal_usbfs_irq_mask(void);
 
 /**
  * @brief Append one packed event to the JLink-readable trace ring.
@@ -417,7 +418,7 @@ void internal_usbfs_irq_mask(void);
  * @note Diagnostic only; never read by production code.
  * @since 0.1.0
  */
-void internal_trace_event(uint8_t kind, uint8_t code, uint16_t length);
+RA8_PRIV void internal_trace_event(uint8_t kind, uint8_t code, uint16_t length);
 
 /**
  * @brief Pick the ELC event number for a controller.
@@ -433,7 +434,7 @@ void internal_trace_event(uint8_t kind, uint8_t code, uint16_t length);
  * @note Pure function.
  * @since 0.1.0
  */
-ra8_elc_event_t internal_pick_event(ra8_usb_speed_t speed);
+RA8_PRIV ra8_elc_event_t internal_pick_event(ra8_usb_speed_t speed);
 
 /**
  * @brief Pick the ISR trampoline for a controller.
@@ -449,7 +450,7 @@ ra8_elc_event_t internal_pick_event(ra8_usb_speed_t speed);
  * @note Pure function.
  * @since 0.1.0
  */
-ra8_isr_handler_t internal_pick_isr(ra8_usb_speed_t speed);
+RA8_PRIV ra8_isr_handler_t internal_pick_isr(ra8_usb_speed_t speed);
 
 /**
  * @brief ra8_usb_attach_handler trampoline into ::ux_dcd_ra8_usb_irq.
@@ -464,7 +465,7 @@ ra8_isr_handler_t internal_pick_isr(ra8_usb_speed_t speed);
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-void internal_event_cb(void* ctx, ra8_usb_speed_t speed, uint16_t status_mask);
+RA8_PRIV void internal_event_cb(void* ctx, ra8_usb_speed_t speed, uint16_t status_mask);
 
 /**
  * @brief Push a decoded SETUP packet into the USBX chapter-9 dispatcher.
@@ -480,7 +481,7 @@ void internal_event_cb(void* ctx, ra8_usb_speed_t speed, uint16_t status_mask);
  * @note Runs in IRQ-callback context; must not block.
  * @since 0.1.0
  */
-unsigned int internal_dispatch_setup(const ra8_usb_setup_t* setup);
+RA8_PRIV unsigned int internal_dispatch_setup(const ra8_usb_setup_t* setup);
 
 /**
  * @brief Handle the CTRT (control-transfer-stage) interrupt branch.
@@ -494,7 +495,7 @@ unsigned int internal_dispatch_setup(const ra8_usb_setup_t* setup);
  * @note ISR-callback context; must not block.
  * @since 0.1.0
  */
-void internal_handle_ctrt(ra8_usb_speed_t speed, uint16_t intsts0);
+RA8_PRIV void internal_handle_ctrt(ra8_usb_speed_t speed, uint16_t intsts0);
 
 /**
  * @brief Drain a deferred control-OUT data stage and run chapter-9.
@@ -507,7 +508,7 @@ void internal_handle_ctrt(ra8_usb_speed_t speed, uint16_t intsts0);
  * @note ISR-callback context; must not block past the bounded CFIFO wait.
  * @since 0.1.0
  */
-void internal_handle_ctrl_out_data(ra8_usb_speed_t speed);
+RA8_PRIV void internal_handle_ctrl_out_data(ra8_usb_speed_t speed);
 
 /**
  * @brief Process the DVSQ=Default branch of the DVST handler.
@@ -522,7 +523,7 @@ void internal_handle_ctrl_out_data(ra8_usb_speed_t speed);
  * @note ISR-callback context; must not block.
  * @since 0.1.0
  */
-void internal_dvst_default_state(ra8_usb_speed_t speed);
+RA8_PRIV void internal_dvst_default_state(ra8_usb_speed_t speed);
 
 /**
  * @brief Capture DVSTCTR0 / RHST history, mirror speed, dispatch DVST.
@@ -536,7 +537,7 @@ void internal_dvst_default_state(ra8_usb_speed_t speed);
  * @note ISR-only; must not block.
  * @since 0.1.0
  */
-void internal_irq_dvst_prelude(ra8_usb_speed_t speed, uint16_t intsts0);
+RA8_PRIV void internal_irq_dvst_prelude(ra8_usb_speed_t speed, uint16_t intsts0);
 
 #ifdef __cplusplus
 }

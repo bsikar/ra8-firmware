@@ -28,6 +28,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 
 /**
@@ -51,7 +52,7 @@ typedef enum : uint16_t {
  * @note Thread safety: secure-world only, single-threaded init.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_secure_trng_reset(void);
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_secure_trng_reset(void);
 
 /**
  * @brief Fill ``[out, out+len)`` with TRNG-quality entropy.
@@ -78,7 +79,7 @@ typedef enum : uint16_t {
  * @note Thread safety: not thread-safe; the seed is a single static.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_secure_trng_read(uint8_t* out, uint32_t len);
+RA8_PRIV [[nodiscard]] ra8_err_t ra8_secure_trng_read(uint8_t* out, uint32_t len);
 
 #ifdef __cplusplus
 }
