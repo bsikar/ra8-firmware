@@ -60,6 +60,21 @@
 #      than `bool`, so the check fires on idiomatic `return x != y;`
 #      bodies. Its auto-fixer wraps them in `(x != y) != 0`, which
 #      is identical noise. v22 doesn't flag the same code at all.
+#  -clang-analyzer-optin.core.EnumCastOutOfRange  (376 violations, none of
+#                                                  them reachable defects)
+#      Models the C++ rule that converting an out-of-enumerator value to a
+#      *scoped* enum is undefined. It is not undefined here: CLAUDE.md
+#      mandates that every enum in this tree declare an explicit underlying
+#      type (`typedef enum : uint8_t`), and C23 6.7.2.2 makes conversion of
+#      any value representable in that fixed underlying type well-defined.
+#      What the check actually flags is (a) the negative tests -- passing
+#      `(ra8_ipc_core_id_t)0xFFU` is the only way to prove a driver rejects a
+#      bogus enum argument, and it is precisely what the test exists to do --
+#      and (b) the flag-enum idiom
+#      `(ra8_psa_key_usage_t)(k_..._encrypt | k_..._decrypt)`, whose OR is a
+#      valid bit pattern rather than a named enumerator. Neither can be
+#      rewritten without deleting the test or inventing production
+#      enumerators that exist only to satisfy the analyzer.
 #  -clang-analyzer-valist.Unterminated         (non-deterministic;
 #                                               guards zero first-party code)
 #      No first-party TU uses <stdarg.h>: grep for va_list / va_start /
@@ -80,6 +95,7 @@ Checks: >
   performance-*,
   -bugprone-easily-swappable-parameters,
   -clang-analyzer-core.FixedAddressDereference,
+  -clang-analyzer-optin.core.EnumCastOutOfRange,
   -clang-analyzer-valist.Unterminated,
   -misc-include-cleaner,
   -misc-use-internal-linkage,
@@ -107,9 +123,12 @@ CheckOptions:
     value: lower_case
   # Allow UPPER_CASE for ARM Cortex-M interrupt handler names that are
   # fixed by the vector table (Reset_Handler, NMI_Handler, HardFault_Handler,
-  # SysTick_Handler, Default_Handler, and the IRQ<N>_Handler pattern).
+  # SysTick_Handler, Default_Handler, and the IRQ<N>_Handler pattern), and for
+  # the libFuzzer entry points (LLVMFuzzerTestOneInput / LLVMFuzzerInitialize),
+  # whose spelling is fixed by the libFuzzer runtime ABI exactly the same way:
+  # rename them and the harness links but is never called.
   - key: readability-identifier-naming.FunctionIgnoredRegexp
-    value: '^(SystemInit|Reset_Handler|Default_Handler|NMI_Handler|HardFault_Handler|MemManage_Handler|BusFault_Handler|UsageFault_Handler|SecureFault_Handler|SVC_Handler|DebugMon_Handler|PendSV_Handler|SysTick_Handler|IRQ[0-9]+_Handler|[A-Z][A-Za-z0-9]*_IRQHandler)$'
+    value: '^(SystemInit|Reset_Handler|Default_Handler|NMI_Handler|HardFault_Handler|MemManage_Handler|BusFault_Handler|UsageFault_Handler|SecureFault_Handler|SVC_Handler|DebugMon_Handler|PendSV_Handler|SysTick_Handler|IRQ[0-9]+_Handler|[A-Z][A-Za-z0-9]*_IRQHandler|LLVMFuzzer[A-Za-z0-9]+)$'
 
   # Variables: snake_case
   - key: readability-identifier-naming.VariableCase
