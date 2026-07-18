@@ -34,6 +34,7 @@
  * third_party path exclusion keeps stb's dense magic-number / huge-
  * function code out of the lint pass. We include only declarations
  * here. */
+#include "ra8_attributes.h"
 #include "ra8_epub.h"
 #include "ra8_epub_internal.h"
 #include "ra8_err.h"
@@ -160,6 +161,7 @@ void ra8_epub_internal_join_path(const char* dir, const char* name, char* dst, s
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_locate_extract(mz_zip_archive* zip,
                                      const char*     prefixed_path,
                                      const char*     bare_path,
@@ -213,6 +215,7 @@ static ra8_err_t priv_locate_extract(mz_zip_archive* zip,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_font_init(const ra8_epub_book_t* book, stbtt_fontinfo* out_font)
 {
   /* Guard against malformed font blobs: stbtt_GetFontOffsetForIndex
@@ -258,6 +261,7 @@ static ra8_err_t priv_font_init(const ra8_epub_book_t* book, stbtt_fontinfo* out
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_render_into(const stbtt_fontinfo* font,
                                   int32_t               codepoint,
                                   float                 font_size,

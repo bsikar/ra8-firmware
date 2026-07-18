@@ -38,6 +38,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_epub.h"
 #include "ra8_epub_internal.h"
@@ -106,6 +107,7 @@ typedef enum : uint8_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static mz_zip_archive* priv_zip(ra8_epub_book_t* book)
 {
   void* const storage = &book->zip_archive_storage[0];
@@ -129,6 +131,7 @@ static mz_zip_archive* priv_zip(ra8_epub_book_t* book)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_locate(mz_zip_archive* zip, ra8_epub_book_t* book, const char* path, int32_t* out_idx)
 {
@@ -163,6 +166,7 @@ priv_locate(mz_zip_archive* zip, ra8_epub_book_t* book, const char* path, int32_
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_backing_read(ra8_epub_book_t* book, uint64_t archive_ofs, uint8_t* buf, size_t n)
 {
   if (book->zip_bytes != nullptr) {
@@ -196,6 +200,7 @@ static bool priv_backing_read(ra8_epub_book_t* book, uint64_t archive_ofs, uint8
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_data_offset(const uint8_t* hdr, uint64_t local_header_ofs, uint64_t* out_data_ofs)
 {
   const uint8_t sig[4] = {(uint8_t)k_ra8_epub_ldh_sig_0,
@@ -235,6 +240,7 @@ static bool priv_data_offset(const uint8_t* hdr, uint64_t local_header_ofs, uint
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_open_iter(ra8_epub_book_t*                   book,
                                 const char*                        path,
                                 mz_zip_reader_extract_iter_state** out_iter,
@@ -283,6 +289,7 @@ static ra8_err_t priv_open_iter(ra8_epub_book_t*                   book,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_stored_data_offset(ra8_epub_book_t* book,
                                          const char*      path,
                                          uint64_t*        out_data_ofs,
@@ -424,6 +431,7 @@ ra8_err_t ra8_epub_entry_close(ra8_epub_entry_reader_t* reader)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_pread_null_ok(const ra8_epub_book_t* book,
                                     const char*            path,
                                     const uint8_t*         buf,

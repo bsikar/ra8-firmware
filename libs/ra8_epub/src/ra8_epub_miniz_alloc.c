@@ -21,6 +21,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @struct priv_blk_t
  * @brief Header prefixing every pool block.
@@ -80,6 +82,7 @@ static priv_pool_cell_t s_pool[k_priv_pool_cells];
  *
  * @return Pointer to byte 0 of the pool.
  */
+RA8_INTERNAL
 static uint8_t* priv_base(void)
 {
   return &s_pool[0].byte;
@@ -97,6 +100,7 @@ static uint8_t* priv_base(void)
  * @param[in] off Byte offset into the pool; must be a cell-size multiple.
  * @return Header pointer for the block at @p off.
  */
+RA8_INTERNAL
 static priv_blk_t* priv_cell_at(size_t off)
 {
   return (priv_blk_t*)&s_pool[off / sizeof(priv_pool_cell_t)];
@@ -166,6 +170,7 @@ typedef enum : size_t {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static size_t priv_align_up(size_t n)
 {
   const size_t mask = (size_t)k_priv_align - 1U;
@@ -173,18 +178,21 @@ static size_t priv_align_up(size_t n)
 }
 
 /** @brief One-past-the-end sentinel of the pool. */
+RA8_INTERNAL
 static uint8_t* priv_end(void)
 {
   return priv_base() + (size_t)k_ra8_epub_miniz_pool_bytes;
 }
 
 /** @brief Payload pointer for block @p b. */
+RA8_INTERNAL
 static uint8_t* priv_payload(priv_blk_t* b)
 {
   return (uint8_t*)b + (size_t)k_priv_hdr_bytes;
 }
 
 /** @brief Header for the block whose payload starts at @p p (or NULL). */
+RA8_INTERNAL
 static priv_blk_t* priv_header(void* p)
 {
   if (p == nullptr) {
@@ -195,6 +203,7 @@ static priv_blk_t* priv_header(void* p)
 }
 
 /** @brief Block immediately following @p b in the implicit list. */
+RA8_INTERNAL
 static priv_blk_t* priv_next(priv_blk_t* b)
 {
   /* uintptr_t byte-diff (both operands are uint8_t* into s_pool): identical
@@ -236,6 +245,7 @@ static priv_blk_t* priv_next(priv_blk_t* b)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_init(void)
 {
   if (s_init) {
@@ -277,6 +287,7 @@ static void priv_init(void)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_in_pool(const void* p)
 {
   const uint8_t* q = (const uint8_t*)p;
@@ -311,6 +322,7 @@ static bool priv_in_pool(const void* p)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_coalesce(void)
 {
   priv_blk_t* b = priv_cell_at(0U);
@@ -364,6 +376,7 @@ static void priv_coalesce(void)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_split(priv_blk_t* b, size_t need)
 {
   /* Only split when the remainder can hold a header plus a minimum payload. */

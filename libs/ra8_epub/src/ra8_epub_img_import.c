@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_epub.h"
 #include "ra8_epub_entry.h"
@@ -80,6 +81,7 @@ typedef struct {
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_entry_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   ra8_epub_entry_pull_t* pull = (ra8_epub_entry_pull_t*)ctx;
@@ -105,6 +107,7 @@ static ra8_err_t priv_entry_pull(void* ctx, uint8_t* buf, size_t cap, size_t* go
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_classify(ra8_epub_book_t* book, const char* href, bool* out_is_atlas)
 {
   *out_is_atlas                                      = false;
@@ -141,6 +144,7 @@ static ra8_err_t priv_classify(ra8_epub_book_t* book, const char* href, bool* ou
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_transcode(ra8_epub_book_t*                   book,
                                 const char*                        href,
                                 const ra8_epub_atlas_import_cfg_t* cfg,
@@ -189,6 +193,7 @@ static ra8_err_t priv_transcode(ra8_epub_book_t*                   book,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_import_args_ok(const ra8_epub_tile_binder_t*      binder,
                                      const ra8_epub_book_t*             book,
                                      const char*                        href,
