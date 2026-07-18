@@ -289,7 +289,8 @@ static ra8_err_t internal_validate_cfg(const ra8_pdg_config_t* cfg)
  * MUST have already validated the indices.
  */
 RA8_HW_REGISTER_ACCESS
-static inline volatile uint16_t* internal_dly_cell(uint8_t channel, ra8_pdg_pin_t pin, ra8_pdg_edge_t edge)
+static inline volatile uint16_t*
+internal_dly_cell(uint8_t channel, ra8_pdg_pin_t pin, ra8_pdg_edge_t edge)
 {
   /* HUM Ch 23.2.3 "GTDLYRnA: GTIOCnA Rising Output Delay Register" p 1156 */
   /* HUM Ch 23.2.6 "GTDLYFnB: GTIOCnB Falling Output Delay Register" p 1158 */

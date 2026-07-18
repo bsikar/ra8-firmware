@@ -245,8 +245,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_ra8_mipi_dsi_validate_cfg(const ra8_mipi_dsi_config_t* cfg)
+RA8_INTERNAL static ra8_err_t internal_ra8_mipi_dsi_validate_cfg(const ra8_mipi_dsi_config_t* cfg)
 {
   if ((cfg->lane_count != k_ra8_mipi_dsi_lanes_1) && (cfg->lane_count != k_ra8_mipi_dsi_lanes_2)) {
     return k_ra8_err_invalid_arg;
@@ -270,8 +269,7 @@ static ra8_err_t internal_ra8_mipi_dsi_validate_cfg(const ra8_mipi_dsi_config_t*
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_INTERNAL
-static void internal_ra8_mipi_dsi_clear_all_status(void)
+RA8_INTERNAL static void internal_ra8_mipi_dsi_clear_all_status(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
   /* HUM Ch 65.2 "SQCH0SCR : Sequence Channel 0 Status Clear", p 3934 */
@@ -303,8 +301,7 @@ static void internal_ra8_mipi_dsi_clear_all_status(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_INTERNAL
-static uint32_t internal_ra8_mipi_dsi_make_txsetr(const ra8_mipi_dsi_config_t* cfg)
+RA8_INTERNAL static uint32_t internal_ra8_mipi_dsi_make_txsetr(const ra8_mipi_dsi_config_t* cfg)
 {
   uint32_t v = k_ra8_mipi_dsi_txset_clen | k_ra8_mipi_dsi_txset_dlen;
   if (cfg->lane_count == k_ra8_mipi_dsi_lanes_2) {
@@ -328,8 +325,7 @@ static uint32_t internal_ra8_mipi_dsi_make_txsetr(const ra8_mipi_dsi_config_t* c
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_INTERNAL
-static uint32_t internal_ra8_mipi_dsi_make_dsisetr(const ra8_mipi_dsi_config_t* cfg)
+RA8_INTERNAL static uint32_t internal_ra8_mipi_dsi_make_dsisetr(const ra8_mipi_dsi_config_t* cfg)
 {
   uint32_t v = ((uint32_t)cfg->max_return_packet_size & k_ra8_mipi_dsi_dsisetr_mrpsz_mask);
   if (cfg->ecc_check_enable) {
@@ -364,8 +360,7 @@ static uint32_t internal_ra8_mipi_dsi_make_dsisetr(const ra8_mipi_dsi_config_t* 
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_INTERNAL
-static uint32_t internal_ra8_mipi_dsi_make_dsc_a(const ra8_mipi_dsi_command_t* cmd)
+RA8_INTERNAL static uint32_t internal_ra8_mipi_dsi_make_dsc_a(const ra8_mipi_dsi_command_t* cmd)
 {
   uint8_t data0 = 0U;
   uint8_t data1 = 0U;
@@ -417,8 +412,7 @@ static uint32_t internal_ra8_mipi_dsi_make_dsc_a(const ra8_mipi_dsi_command_t* c
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_INTERNAL
-static uint32_t internal_ra8_mipi_dsi_make_dsc_c(const ra8_mipi_dsi_command_t* cmd)
+RA8_INTERNAL static uint32_t internal_ra8_mipi_dsi_make_dsc_c(const ra8_mipi_dsi_command_t* cmd)
 {
   uint32_t v = k_ra8_mipi_dsi_dsc0c_finact;
   if (cmd->aux_operation) {
@@ -443,8 +437,7 @@ static uint32_t internal_ra8_mipi_dsi_make_dsc_c(const ra8_mipi_dsi_command_t* c
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_INTERNAL
-static void internal_ra8_mipi_dsi_stage_payload(const uint8_t* data, uint16_t len)
+RA8_INTERNAL static void internal_ra8_mipi_dsi_stage_payload(const uint8_t* data, uint16_t len)
 {
   volatile r_mipi_dsi_regs_t* reg      = ra8_mipi_dsi();
   uint32_t                    words[4] = {0U, 0U, 0U, 0U};
@@ -482,8 +475,7 @@ static void internal_ra8_mipi_dsi_stage_payload(const uint8_t* data, uint16_t le
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_INTERNAL
-static void internal_ra8_mipi_dsi_pulse_start(uint8_t channel)
+RA8_INTERNAL static void internal_ra8_mipi_dsi_pulse_start(uint8_t channel)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
   const uint32_t              ch0_word =
@@ -523,8 +515,7 @@ ra8_mipi_dsi_internal_wait_eq(volatile const uint32_t* reg, uint32_t mask, uint3
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_ra8_mipi_dsi_validate_cmd(const ra8_mipi_dsi_command_t* cmd)
+RA8_INTERNAL static ra8_err_t internal_ra8_mipi_dsi_validate_cmd(const ra8_mipi_dsi_command_t* cmd)
 {
   if ((uint32_t)cmd->virtual_channel > (uint32_t)k_ra8_mipi_dsi_vc3) {
     return k_ra8_err_invalid_arg;
@@ -566,8 +557,7 @@ static ra8_err_t internal_ra8_mipi_dsi_validate_cmd(const ra8_mipi_dsi_command_t
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
-RA8_INTERNAL
-static void internal_program_link(const ra8_mipi_dsi_config_t* cfg)
+RA8_INTERNAL static void internal_program_link(const ra8_mipi_dsi_config_t* cfg)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
 
@@ -611,8 +601,7 @@ static void internal_program_link(const ra8_mipi_dsi_config_t* cfg)
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
-RA8_INTERNAL
-static void internal_program_timeouts(const ra8_mipi_dsi_config_t* cfg)
+RA8_INTERNAL static void internal_program_timeouts(const ra8_mipi_dsi_config_t* cfg)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
   reg->PRESPTOBTASETR             = cfg->timeouts.bta_timeout;
@@ -777,8 +766,7 @@ static void internal_program_timeouts(const ra8_mipi_dsi_config_t* cfg)
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
-RA8_INTERNAL
-static ra8_err_t internal_check_link_state(const ra8_mipi_dsi_command_t* cmd)
+RA8_INTERNAL static ra8_err_t internal_check_link_state(const ra8_mipi_dsi_command_t* cmd)
 {
   volatile r_mipi_dsi_regs_t* reg  = ra8_mipi_dsi();
   const uint32_t              link = reg->LINKSR;
@@ -815,9 +803,8 @@ static ra8_err_t internal_check_link_state(const ra8_mipi_dsi_command_t* cmd)
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
-RA8_INTERNAL
-static void internal_program_descriptor(volatile r_mipi_dsi_descriptor_t* dsc,
-                                        const ra8_mipi_dsi_command_t*     cmd)
+RA8_INTERNAL static void internal_program_descriptor(volatile r_mipi_dsi_descriptor_t* dsc,
+                                                     const ra8_mipi_dsi_command_t*     cmd)
 {
   dsc->A                   = internal_ra8_mipi_dsi_make_dsc_a(cmd);
   dsc->B                   = k_ra8_mipi_dsi_dsc0b_dtsel_seqrm;
@@ -849,8 +836,7 @@ static void internal_program_descriptor(volatile r_mipi_dsi_descriptor_t* dsc,
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
-RA8_INTERNAL
-static void internal_send_stage_and_pulse(const ra8_mipi_dsi_command_t* cmd)
+RA8_INTERNAL static void internal_send_stage_and_pulse(const ra8_mipi_dsi_command_t* cmd)
 {
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
 

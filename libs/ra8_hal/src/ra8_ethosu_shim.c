@@ -21,7 +21,6 @@
  * @since 0.1.0
  */
 
-#include "ra8_attributes.h"
 #include "ra8_device.h"
 
 #ifdef RA8_HAS_NPU
