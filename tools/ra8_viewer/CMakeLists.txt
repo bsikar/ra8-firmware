@@ -12,7 +12,7 @@
 #   ./build/ra8_viewer book.cbz --headless --dump-ppm page0.ppm   # no display
 #
 # Reader engine coverage: CBZ / CBR / CBT comic archives incl. gzip/xz-wrapped
-# (ra8_comic), and the firmware-native RTA1 webtoon vertical-scroll tile atlas
+# (ra8_comic), and the firmware-native RTA1 long-strip vertical-scroll tile atlas
 # (ra8_longstrip). EPUB / RABOOK reflow (text + image loader over ra8_reflow) are
 # left as TODO seams (see src/ra8_viewer_reader.c). macOS only -- the window
 # backend is Cocoa; other hosts are not a target for this dev tool.
@@ -55,7 +55,7 @@ file(GLOB RA8_UNARCH_SRC CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_unarch/src/*.c)
 # via ra8_io_compress over the already-linked miniz), pages through the ra8_mem
 # tile cache (+ its keycache), and composites bands via ra8_longstrip. Only the
 # READ path is needed (no producer / PNG / webp), so name the exact members.
-set(RA8_WEBTOON_SRC
+set(RA8_LONGSTRIP_SRC
     ${FW_ROOT}/libs/ra8_longstrip/src/ra8_longstrip.c
     ${FW_ROOT}/libs/ra8_tileatlas/src/ra8_tileatlas.c
     ${FW_ROOT}/libs/ra8_io/src/ra8_io_compress.c
@@ -89,7 +89,7 @@ add_library(ra8_reader STATIC
     ${RA8_COMIC_SRC}
     ${RA8_GFX_SRC}
     ${RA8_UNARCH_SRC}
-    ${RA8_WEBTOON_SRC}
+    ${RA8_LONGSTRIP_SRC}
     ${RA8_REFLOW_SRC}
     ${RA8_CORE_SRC}
     ${RA8_THIRD_PARTY_SRC}
@@ -129,6 +129,7 @@ add_executable(ra8_viewer
     src/ra8_viewer_ppm.c
     src/ra8_viewer_view.m
 )
+target_include_directories(ra8_viewer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 target_link_libraries(ra8_viewer PRIVATE ra8_reader)
 target_compile_options(ra8_viewer PRIVATE -Wall -Wextra)
 
