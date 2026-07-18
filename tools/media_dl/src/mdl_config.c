@@ -6,6 +6,7 @@
  * @file mdl_config.c
  * @brief Flat key=value site-descriptor parser (host stdio).
  */
+#include "ra8_attributes.h"
 #include "mdl_config.h"
 
 #include <stdio.h>
@@ -31,7 +32,7 @@ typedef enum : uint16_t {
 } mdl_config_defaults_t;
 
 /** @brief Trim leading/trailing ASCII whitespace in place; return start. */
-static char* trim(char* s)
+RA8_INTERNAL static char* trim(char* s)
 {
   while ((*s == ' ') || (*s == '\t') || (*s == '\r') || (*s == '\n')) {
     ++s;
@@ -46,13 +47,13 @@ static char* trim(char* s)
 }
 
 /** @brief Copy `val` into a bounded field (truncation-safe). */
-static void set_str(char* dst, size_t cap, const char* val)
+RA8_INTERNAL static void set_str(char* dst, size_t cap, const char* val)
 {
   (void)snprintf(dst, cap, "%s", val);
 }
 
 /** @brief Apply one key=value pair to the descriptor. */
-static void apply_kv(mdl_site_t* s, const char* key, const char* val)
+RA8_INTERNAL static void apply_kv(mdl_site_t* s, const char* key, const char* val)
 {
   if (strcmp(key, "name") == 0) {
     set_str(s->name, sizeof(s->name), val);
@@ -88,7 +89,7 @@ static void apply_kv(mdl_site_t* s, const char* key, const char* val)
 }
 
 /** @brief Apply the polite default descriptor before the file overrides it. */
-static void config_set_defaults(mdl_site_t* out)
+RA8_INTERNAL static void config_set_defaults(mdl_site_t* out)
 {
   *out = (mdl_site_t){};
   set_str(out->name, sizeof(out->name), "site");
@@ -103,7 +104,7 @@ static void config_set_defaults(mdl_site_t* out)
 }
 
 /** @brief Apply every key=value line of an open config stream to `out`. */
-static void config_parse_stream(FILE* fp, mdl_site_t* out)
+RA8_INTERNAL static void config_parse_stream(FILE* fp, mdl_site_t* out)
 {
   char line[k_line_max];
   while (fgets(line, (int)sizeof(line), fp) != nullptr) {

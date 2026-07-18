@@ -6,6 +6,7 @@
  * @file mdl_politeness.c
  * @brief Seeded xorshift64 jitter + host sleep for v0 politeness.
  */
+#include "ra8_attributes.h"
 #include "mdl_politeness.h"
 
 #include <time.h>
@@ -31,7 +32,7 @@ void mdl_politeness_init(mdl_politeness_t* p, uint64_t seed)
 }
 
 /** @brief Advance the xorshift64 state and return the new value. */
-static uint64_t next_rand(mdl_politeness_t* p)
+RA8_INTERNAL static uint64_t next_rand(mdl_politeness_t* p)
 {
   uint64_t x = p->state;
   x ^= x << (uint64_t)k_xs_shift_a;

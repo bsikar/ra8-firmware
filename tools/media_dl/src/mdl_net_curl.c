@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "mdl_net.h"
 
 /** @brief Backend tunables. */
@@ -40,7 +41,7 @@ typedef struct {
 
 /** @brief libcurl write callback: append into a bounded buffer. */
 /* cppcheck-suppress constParameterCallback ; libcurl WRITEFUNCTION ABI is char* */
-static size_t on_buf_write(char* data, size_t size, size_t nmemb, void* user)
+RA8_INTERNAL static size_t on_buf_write(char* data, size_t size, size_t nmemb, void* user)
 {
   buf_sink_t*  sink  = (buf_sink_t*)user;
   const size_t bytes = size * nmemb;
@@ -58,7 +59,7 @@ static size_t on_buf_write(char* data, size_t size, size_t nmemb, void* user)
 
 /** @brief libcurl write callback: append to an open FILE*. */
 /* cppcheck-suppress constParameterCallback ; libcurl WRITEFUNCTION ABI is char* */
-static size_t on_file_write(char* data, size_t size, size_t nmemb, void* user)
+RA8_INTERNAL static size_t on_file_write(char* data, size_t size, size_t nmemb, void* user)
 {
   FILE* fp = (FILE*)user;
   if (fp == nullptr) {
@@ -108,7 +109,7 @@ void mdl_net_curl_destroy(mdl_net_iface_t* net)
 }
 
 /** @brief Apply the per-request options shared by both fetch paths. */
-static void apply_req(CURL* curl, const char* url, const mdl_net_req_t* req)
+RA8_INTERNAL static void apply_req(CURL* curl, const char* url, const mdl_net_req_t* req)
 {
   curl_easy_setopt(curl, CURLOPT_URL, url);
   curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, (long)req->timeout_ms);
@@ -120,7 +121,7 @@ static void apply_req(CURL* curl, const char* url, const mdl_net_req_t* req)
 }
 
 /** @brief Map a completed libcurl transfer to an ra8_err_t. */
-static ra8_err_t classify(CURL* curl, CURLcode code, bool overflow)
+RA8_INTERNAL static ra8_err_t classify(CURL* curl, CURLcode code, bool overflow)
 {
   if (overflow) {
     return k_ra8_err_no_mem;
