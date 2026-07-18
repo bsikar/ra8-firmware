@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io_spi_bus_internal.h"
@@ -58,6 +59,7 @@ static const char* const s_tag = "ra8_io_spi_bus";
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_validate(const ra8_io_spi_bus_t* bus)
 {
   if (bus == nullptr) {
@@ -138,6 +140,7 @@ ra8_err_t ra8_io_spi_bus_set_clock(const ra8_io_spi_bus_t* bus, uint32_t baud_hz
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_ops_xfer8(void* ctx, uint8_t tx, uint8_t* rx)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx (spi bus) must not be nullptr");

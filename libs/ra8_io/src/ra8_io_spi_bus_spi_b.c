@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io_spi_bus.h"
@@ -56,6 +57,7 @@ static const char* const s_tag = "ra8_io_spi_bus_spi_b";
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t spi_b_xfer8(void* ctx, uint8_t tx, uint8_t* rx)
 {
   return ra8_spi_xfer8((uint8_t)(uintptr_t)ctx, tx, rx);
@@ -90,6 +92,7 @@ static ra8_err_t spi_b_xfer8(void* ctx, uint8_t tx, uint8_t* rx)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 spi_b_write_read(void* ctx, const void* tx, void* rx, uint32_t len, ra8_spi_bit_width_t width)
 {
@@ -120,6 +123,7 @@ spi_b_write_read(void* ctx, const void* tx, void* rx, uint32_t len, ra8_spi_bit_
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t spi_b_set_clock(void* ctx, uint32_t baud_hz, uint32_t pclk_hz)
 {
   return ra8_spi_set_clock((uint8_t)(uintptr_t)ctx, baud_hz, pclk_hz);

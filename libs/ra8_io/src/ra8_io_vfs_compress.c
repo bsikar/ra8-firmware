@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
@@ -62,6 +63,7 @@ static const char* const s_tag = "ra8_io_vfs_compress";
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ra8_io_vfs_compress_write_validate(const char*     path,
                                                     const uint8_t*  src,
                                                     const void*     scratch,
@@ -103,6 +105,7 @@ static ra8_err_t ra8_io_vfs_compress_write_validate(const char*     path,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 ra8_io_vfs_compress_store_blob(const char* path, const uint8_t* blob, uint32_t blob_len)
 {
@@ -173,6 +176,7 @@ ra8_err_t ra8_io_vfs_write_compressed(const char*    path,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ra8_io_vfs_compress_read_validate(const char*     path,
                                                    const uint8_t*  blob_buf,
                                                    const uint8_t*  out,
@@ -217,6 +221,7 @@ static ra8_err_t ra8_io_vfs_compress_read_validate(const char*     path,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ra8_io_vfs_compress_load_blob(const char* path,
                                                uint8_t*    blob_buf,
                                                uint32_t    blob_cap,
