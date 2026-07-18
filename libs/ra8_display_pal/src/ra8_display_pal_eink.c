@@ -38,6 +38,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_display_pal.h"
 #include "ra8_display_pal_internal.h"
@@ -137,6 +138,7 @@ uint8_t ra8_display_pal_eink_luma_from_rgb565(uint16_t px)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_epaper_waveform_t internal_eink_waveform(display_refresh_hint_t hint)
 {
   if (hint == k_display_refresh_fast) {
@@ -173,6 +175,7 @@ static ra8_epaper_waveform_t internal_eink_waveform(display_refresh_hint_t hint)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_eink_validate_cfg(const display_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg->framebuffer, s_tag, "cfg->framebuffer");
@@ -215,6 +218,7 @@ static ra8_err_t internal_eink_validate_cfg(const display_cfg_t* cfg)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_eink_snapshot(const display_cfg_t* cfg)
 {
   const uint32_t stride                   = (uint32_t)cfg->width_px * (uint32_t)k_eink_rgb565_bpp;
@@ -255,6 +259,7 @@ static void internal_eink_snapshot(const display_cfg_t* cfg)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_eink_check_rect(const display_caps_t* caps, display_rect_t r)
 {
   if (r.x > caps->width_px) {
@@ -297,6 +302,7 @@ static ra8_err_t internal_eink_check_rect(const display_caps_t* caps, display_re
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_eink_load_rect(const eink_ctx_t* c, display_rect_t rect)
 {
   const uint16_t* fb    = (const uint16_t*)c->fb.pixels;
@@ -354,6 +360,7 @@ static ra8_err_t internal_eink_load_rect(const eink_ctx_t* c, display_rect_t rec
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t eink_init(const display_cfg_t* cfg, void** out_ctx)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg");
@@ -398,6 +405,7 @@ static ra8_err_t eink_init(const display_cfg_t* cfg, void** out_ctx)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t eink_get_caps(const void* ctx, display_caps_t* out)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
@@ -429,6 +437,7 @@ static ra8_err_t eink_get_caps(const void* ctx, display_caps_t* out)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t eink_get_framebuffer(void* ctx, display_fb_t* out)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
@@ -464,6 +473,7 @@ static ra8_err_t eink_get_framebuffer(void* ctx, display_fb_t* out)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t eink_flush(void* ctx, display_rect_t rect, display_refresh_hint_t hint)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
@@ -504,6 +514,7 @@ static ra8_err_t eink_flush(void* ctx, display_rect_t rect, display_refresh_hint
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t eink_clear(void* ctx, uint32_t color)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");
@@ -541,6 +552,7 @@ static ra8_err_t eink_clear(void* ctx, uint32_t color)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t eink_deinit(void* ctx)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx");

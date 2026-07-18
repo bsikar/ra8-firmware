@@ -21,6 +21,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_display_pal_internal.h"
 #include "ra8_err.h"
@@ -69,6 +70,7 @@ static bool s_initialized = false;
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_validate_handle(const display_handle_t* d)
 {
   if (d == nullptr) {
