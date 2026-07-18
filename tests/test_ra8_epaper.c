@@ -174,8 +174,9 @@ static void test_calls_before_init(void)
   prep();
   const ra8_epaper_area_t area = {.x = 0U, .y = 0U, .width = 1U, .height = 1U};
   const uint8_t           buf  = 0x80U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state,
-                 ra8_epaper_load_image(&area, &buf, 1U, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_state,
+    ra8_epaper_load_image(&area, &buf, 1U, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_epaper_display_area(&area, k_ra8_epaper_wf_gc16));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_epaper_sleep());
   TEST_END("test_calls_before_init");
@@ -201,14 +202,22 @@ static void test_happy_path(void)
   /* Load + size mismatch. */
   uint8_t                 pixels[k_ra8_epaper_test_buf_pixels] = {};
   const ra8_epaper_area_t area = {.x = 0U, .y = 0U, .width = 8U, .height = 8U};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_epaper_load_image(&area, pixels, 1U, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
-
   TEST_ASSERT_EQ(
-    k_ra8_err_null_ptr,
-    ra8_epaper_load_image(nullptr, pixels, sizeof(pixels), k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
+    k_ra8_err_invalid_size,
+    ra8_epaper_load_image(&area, pixels, 1U, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
+
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epaper_load_image(&area, nullptr, sizeof(pixels), k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
+                 ra8_epaper_load_image(nullptr,
+                                       pixels,
+                                       sizeof(pixels),
+                                       k_ra8_epaper_pf_8bpp,
+                                       k_ra8_epaper_endian_little));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_epaper_load_image(&area,
+                                       nullptr,
+                                       sizeof(pixels),
+                                       k_ra8_epaper_pf_8bpp,
+                                       k_ra8_epaper_endian_little));
 
   /* Happy load + display + sleep. The display_area LUT-idle poll reads LUTAFSR
    * over SPI; the sim SPI loopback returns the driver's own dummy byte (never
@@ -217,7 +226,11 @@ static void test_happy_path(void)
    * ctx cookie -- the bound bus handle &s_bus. Arm it to report "LUT idle" on
    * the 3rd poll so the real loop iterates twice then succeeds. */
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_epaper_load_image(&area, pixels, sizeof(pixels), k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
+                 ra8_epaper_load_image(&area,
+                                       pixels,
+                                       sizeof(pixels),
+                                       k_ra8_epaper_pf_8bpp,
+                                       k_ra8_epaper_endian_little));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after((volatile const void*)&s_bus, 2U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_display_area(&area, k_ra8_epaper_wf_gc16));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_display_area(nullptr, k_ra8_epaper_wf_gc16));
@@ -382,14 +395,19 @@ static void test_mcdc_ra8_epaper(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_init(&cfg));
   uint8_t                 pixels[k_ra8_epaper_test_buf_pixels] = {};
   const ra8_epaper_area_t area_8x8 = {.x = 0U, .y = 0U, .width = 8U, .height = 8U};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_epaper_load_image(&area_8x8,
+                                       pixels,
+                                       sizeof(pixels),
+                                       k_ra8_epaper_pf_8bpp,
+                                       k_ra8_epaper_endian_little));
   TEST_ASSERT_EQ(
-    k_ra8_ok,
-    ra8_epaper_load_image(&area_8x8, pixels, sizeof(pixels), k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_epaper_load_image(&area_8x8, pixels, 1U, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
+    k_ra8_err_invalid_size,
+    ra8_epaper_load_image(&area_8x8, pixels, 1U, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   const ra8_epaper_area_t area_0x0 = {.x = 0U, .y = 0U, .width = 0U, .height = 0U};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_epaper_load_image(&area_0x0, pixels, 0U, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_size,
+    ra8_epaper_load_image(&area_0x0, pixels, 0U, k_ra8_epaper_pf_8bpp, k_ra8_epaper_endian_little));
   TEST_END("epaper MC/DC: validate_cfg 5-cond + load_image 2-cond");
 }
 
@@ -426,12 +444,9 @@ static void test_pixel_format_sizing(void)
   TEST_ASSERT_EQ((size_t)4U, n); /* ceil(3*4/8) = 2 bytes per row, 2 rows */
 
   const ra8_epaper_area_t empty = {.x = 0U, .y = 0U, .width = 0U, .height = 4U};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_epaper_image_bytes(&empty, k_ra8_epaper_pf_4bpp, &n));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epaper_image_bytes(nullptr, k_ra8_epaper_pf_4bpp, &n));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epaper_image_bytes(&area, k_ra8_epaper_pf_4bpp, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_epaper_image_bytes(&empty, k_ra8_epaper_pf_4bpp, &n));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_image_bytes(nullptr, k_ra8_epaper_pf_4bpp, &n));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_image_bytes(&area, k_ra8_epaper_pf_4bpp, nullptr));
   TEST_END("epaper: bits_per_pixel + image_bytes");
 }
 
@@ -473,15 +488,13 @@ static void test_area_alignment(void)
 
   /* align_area grows outward so the caller's rectangle stays covered. */
   ra8_epaper_area_t grow = {.x = 17U, .y = 0U, .width = 3U, .height = 1U};
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_epaper_align_area(&grow, k_ra8_epaper_pf_1bpp, 1448U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_align_area(&grow, k_ra8_epaper_pf_1bpp, 1448U));
   TEST_ASSERT_EQ(0U, grow.x);
   TEST_ASSERT_EQ(32U, grow.width);
   TEST_ASSERT(ra8_epaper_area_is_aligned(&grow, k_ra8_epaper_pf_1bpp));
 
   ra8_epaper_area_t spanning = {.x = 40U, .y = 0U, .width = 40U, .height = 1U};
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_epaper_align_area(&spanning, k_ra8_epaper_pf_1bpp, 1448U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_align_area(&spanning, k_ra8_epaper_pf_1bpp, 1448U));
   TEST_ASSERT_EQ(32U, spanning.x);
   TEST_ASSERT_EQ(64U, spanning.width); /* covers 40..80 */
 
@@ -491,11 +504,9 @@ static void test_area_alignment(void)
   TEST_ASSERT_EQ(17U, noop.x);
 
   /* Refusals. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epaper_align_area(nullptr, k_ra8_epaper_pf_1bpp, 1448U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_align_area(nullptr, k_ra8_epaper_pf_1bpp, 1448U));
   ra8_epaper_area_t any = {.x = 0U, .y = 0U, .width = 32U, .height = 1U};
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_epaper_align_area(&any, k_ra8_epaper_pf_1bpp, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_align_area(&any, k_ra8_epaper_pf_1bpp, 0U));
   ra8_epaper_area_t outside = {.x = 1440U, .y = 0U, .width = 32U, .height = 1U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_epaper_align_area(&outside, k_ra8_epaper_pf_1bpp, 1448U));
@@ -551,7 +562,7 @@ static void test_init_requires_waveform_map(void)
   cfg.waveform         = (ra8_epaper_waveform_cfg_t){};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_init(&cfg));
 
-  cfg          = make_cfg();
+  cfg             = make_cfg();
   cfg.waveform.a2 = 0U; /* DU / GC16 set, A2 left unset */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_init(&cfg));
 

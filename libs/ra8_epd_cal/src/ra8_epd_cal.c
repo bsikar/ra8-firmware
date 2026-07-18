@@ -49,8 +49,8 @@ static const char* const s_tag = "EPD_CAL";
  * calibration records use the same polynomial.
  */
 typedef enum : uint32_t {
-  k_ra8_epd_cal_crc_init = 0xFFFFFFFFU, /**< CRC seed / final XOR.        */
-  k_ra8_epd_cal_crc_poly = 0xEDB88320U, /**< Reversed IEEE 802.3 poly.    */
+  k_ra8_epd_cal_crc_init = 0xFFFFFFFFU, /**< CRC seed / final XOR.     */
+  k_ra8_epd_cal_crc_poly = 0xEDB88320U, /**< Reversed IEEE 802.3 poly. */
 } ra8_epd_cal_crc_t;
 
 /**
@@ -58,13 +58,13 @@ typedef enum : uint32_t {
  * @brief Byte / word packing constants (no magic numbers).
  */
 typedef enum : uint8_t {
-  k_ra8_epd_cal_bits_per_byte = 8U,   /**< CRC inner-loop bound.       */
-  k_ra8_epd_cal_byte_shift    = 8U,   /**< Bits per byte.              */
-  k_ra8_epd_cal_byte_mask     = 0xFFU, /**< Low-byte extraction mask.  */
-  k_ra8_epd_cal_off_b0        = 0U,   /**< Little-endian byte 0.       */
-  k_ra8_epd_cal_off_b1        = 1U,   /**< Little-endian byte 1.       */
-  k_ra8_epd_cal_off_b2        = 2U,   /**< Little-endian byte 2.       */
-  k_ra8_epd_cal_off_b3        = 3U,   /**< Little-endian byte 3.       */
+  k_ra8_epd_cal_bits_per_byte = 8U,    /**< CRC inner-loop bound.     */
+  k_ra8_epd_cal_byte_shift    = 8U,    /**< Bits per byte.            */
+  k_ra8_epd_cal_byte_mask     = 0xFFU, /**< Low-byte extraction mask. */
+  k_ra8_epd_cal_off_b0        = 0U,    /**< Little-endian byte 0.     */
+  k_ra8_epd_cal_off_b1        = 1U,    /**< Little-endian byte 1.     */
+  k_ra8_epd_cal_off_b2        = 2U,    /**< Little-endian byte 2.     */
+  k_ra8_epd_cal_off_b3        = 3U,    /**< Little-endian byte 3.     */
 } ra8_epd_cal_bits_t;
 
 /* ===========================================================================
@@ -210,7 +210,7 @@ RA8_INTERNAL
  */
 RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epd_cal_read_record(const ra8_epd_cal_store_t* store,
-                                                                ra8_epd_cal_record_t* out_rec)
+                                                                ra8_epd_cal_record_t*      out_rec)
 {
   if (store->read == nullptr) {
     return k_ra8_err_not_supported;
@@ -221,8 +221,7 @@ RA8_INTERNAL
     ra8_log_warn(s_tag, "calibration record read failed");
     return rerr;
   }
-  const ra8_err_t derr =
-    ra8_epd_cal_deserialize(blob, (size_t)k_ra8_epd_cal_blob_size, out_rec);
+  const ra8_err_t derr = ra8_epd_cal_deserialize(blob, (size_t)k_ra8_epd_cal_blob_size, out_rec);
   if (derr == k_ra8_err_crc_mismatch) {
     /* Magic present but the body does not check out: the record was
      * written and then damaged. Worth shouting about -- it means durable
@@ -237,8 +236,7 @@ RA8_INTERNAL
  * ===========================================================================
  */
 
-[[nodiscard]] bool ra8_epd_cal_vcom_in_range(uint16_t                       mv,
-                                             const ra8_epd_cal_limits_mv_t* limits)
+[[nodiscard]] bool ra8_epd_cal_vcom_in_range(uint16_t mv, const ra8_epd_cal_limits_mv_t* limits)
 {
   if (limits == nullptr) {
     return false;
@@ -249,9 +247,8 @@ RA8_INTERNAL
   return true;
 }
 
-[[nodiscard]] ra8_err_t ra8_epd_cal_serialize(const ra8_epd_cal_record_t* rec,
-                                              uint8_t*                    dst,
-                                              size_t                      dst_size)
+[[nodiscard]] ra8_err_t
+ra8_epd_cal_serialize(const ra8_epd_cal_record_t* rec, uint8_t* dst, size_t dst_size)
 {
   RA8_CHECK_NULL_PTR(rec, s_tag, "serialize: rec null");
   RA8_CHECK_NULL_PTR(dst, s_tag, "serialize: dst null");
@@ -280,9 +277,8 @@ RA8_INTERNAL
   return k_ra8_ok;
 }
 
-[[nodiscard]] ra8_err_t ra8_epd_cal_deserialize(const uint8_t*        src,
-                                                size_t                src_size,
-                                                ra8_epd_cal_record_t* out_rec)
+[[nodiscard]] ra8_err_t
+ra8_epd_cal_deserialize(const uint8_t* src, size_t src_size, ra8_epd_cal_record_t* out_rec)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "deserialize: src null");
   RA8_CHECK_NULL_PTR(out_rec, s_tag, "deserialize: out null");

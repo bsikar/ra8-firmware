@@ -60,11 +60,11 @@ typedef enum : uint16_t {
  * hands back 0xFF bytes, exactly as an unprogrammed extra-MRAM block does.
  */
 typedef struct {
-  uint8_t  blob[k_ec_blob]; /**< Stored record bytes.                */
-  bool     present;         /**< Whether a record was ever written.  */
-  bool     read_fails;      /**< Force the read seam to fault.       */
-  bool     write_fails;     /**< Force the write seam to fault.      */
-  uint32_t writes;          /**< Count of successful writes.         */
+  uint8_t  blob[k_ec_blob]; /**< Stored record bytes.               */
+  bool     present;         /**< Whether a record was ever written. */
+  bool     read_fails;      /**< Force the read seam to fault.      */
+  bool     write_fails;     /**< Force the write seam to fault.     */
+  uint32_t writes;          /**< Count of successful writes.        */
 } ec_store_state_t;
 
 /**
@@ -72,11 +72,11 @@ typedef struct {
  * @brief Backing state for the mock controller VCOM seam.
  */
 typedef struct {
-  uint16_t get_mv;     /**< Value the controller reports.        */
-  bool     get_fails;  /**< Force the get seam to fault.         */
-  bool     set_fails;  /**< Force the set seam to fault.         */
-  uint16_t last_set;   /**< Last value handed to the set seam.   */
-  uint32_t set_calls;  /**< Count of set-seam invocations.       */
+  uint16_t get_mv;    /**< Value the controller reports.      */
+  bool     get_fails; /**< Force the get seam to fault.       */
+  bool     set_fails; /**< Force the set seam to fault.       */
+  uint16_t last_set;  /**< Last value handed to the set seam. */
+  uint32_t set_calls; /**< Count of set-seam invocations.     */
 } ec_panel_state_t;
 
 /** @brief Mock store backing state. */
@@ -227,8 +227,7 @@ static void test_record_arg_validation(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_epd_cal_serialize(&rec, blob, sizeof(blob) - 1U));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epd_cal_deserialize(nullptr, sizeof(blob), &out));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epd_cal_deserialize(blob, sizeof(blob), nullptr));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_epd_cal_deserialize(blob, sizeof(blob) - 1U, &out));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_epd_cal_deserialize(blob, sizeof(blob) - 1U, &out));
 
   /* A zero VCOM is never serialisable: it is the "controller not ready"
    * signature and must not become a durable record. */
@@ -242,7 +241,7 @@ static void test_record_integrity_and_versioning(void)
 {
   TEST_BEGIN("epd_cal: record integrity + schema versioning");
   ec_reset();
-  ra8_epd_cal_record_t out             = {};
+  ra8_epd_cal_record_t out              = {};
   uint8_t              blank[k_ec_blob] = {};
   (void)memset(blank, 0xFF, sizeof(blank));
   /* Blank (never provisioned) storage: magic absent -> "not found", which
@@ -275,8 +274,7 @@ static void test_record_integrity_and_versioning(void)
   uint8_t corrupt[k_ec_blob] = {};
   (void)memcpy(corrupt, good, sizeof(corrupt));
   corrupt[k_ra8_epd_cal_off_vcom_mv] ^= 0x01U;
-  TEST_ASSERT_EQ(k_ra8_err_crc_mismatch,
-                 ra8_epd_cal_deserialize(corrupt, sizeof(corrupt), &out));
+  TEST_ASSERT_EQ(k_ra8_err_crc_mismatch, ra8_epd_cal_deserialize(corrupt, sizeof(corrupt), &out));
 
   /* Corruption in the reserved growth span is caught too -- the CRC covers
    * the whole body, not just the payload. */
@@ -364,8 +362,8 @@ static void test_resolve_limits_mcdc(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_resolve(&cfg, &res));
 
   /* V2: min_mv == 0. */
-  cfg                = ec_cfg();
-  cfg.limits.min_mv  = 0U;
+  cfg               = ec_cfg();
+  cfg.limits.min_mv = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epd_cal_resolve(&cfg, &res));
 
   /* V3: min_mv > max_mv. */
@@ -391,7 +389,7 @@ static void test_resolve_prefers_panel(void)
    * than coincidence. */
   ec_seed_record((uint16_t)k_ec_other_mv);
 
-  ra8_epd_cal_cfg_t    cfg = ec_cfg();
+  ra8_epd_cal_cfg_t cfg    = ec_cfg();
   cfg.has_provisioned      = true;
   cfg.provisioned_mv       = (uint16_t)k_ec_third_mv;
   ra8_epd_cal_result_t res = {};
@@ -409,10 +407,10 @@ static void test_resolve_falls_back_to_record(void)
   ec_seed_record((uint16_t)k_ec_other_mv);
 
   /* Leg 1: the controller seam is not bound at all. */
-  ra8_epd_cal_cfg_t cfg = ec_cfg();
-  cfg.panel.get         = nullptr;
-  cfg.has_provisioned   = true;
-  cfg.provisioned_mv    = (uint16_t)k_ec_third_mv;
+  ra8_epd_cal_cfg_t cfg    = ec_cfg();
+  cfg.panel.get            = nullptr;
+  cfg.has_provisioned      = true;
+  cfg.provisioned_mv       = (uint16_t)k_ec_third_mv;
   ra8_epd_cal_result_t res = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_resolve(&cfg, &res));
   TEST_ASSERT_EQ((uint16_t)k_ec_other_mv, res.vcom_mv);
@@ -447,10 +445,10 @@ static void test_resolve_falls_back_to_provisioned(void)
   TEST_BEGIN("epd_cal: resolve falls back to the provisioned value");
   ec_reset();
   /* Blank storage, controller unbound: only the operator value remains. */
-  ra8_epd_cal_cfg_t cfg = ec_cfg();
-  cfg.panel.get         = nullptr;
-  cfg.has_provisioned   = true;
-  cfg.provisioned_mv    = (uint16_t)k_ec_third_mv;
+  ra8_epd_cal_cfg_t cfg    = ec_cfg();
+  cfg.panel.get            = nullptr;
+  cfg.has_provisioned      = true;
+  cfg.provisioned_mv       = (uint16_t)k_ec_third_mv;
   ra8_epd_cal_result_t res = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_resolve(&cfg, &res));
   TEST_ASSERT_EQ((uint16_t)k_ec_third_mv, res.vcom_mv);
@@ -490,7 +488,7 @@ static void test_resolve_fail_safe(void)
   ec_reset();
 
   /* Every source absent. */
-  ra8_epd_cal_cfg_t    cfg = ec_cfg();
+  ra8_epd_cal_cfg_t cfg    = ec_cfg();
   cfg.panel.get            = nullptr;
   ra8_epd_cal_result_t res = {};
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_epd_cal_resolve(&cfg, &res));
@@ -539,8 +537,7 @@ static void test_resolve_null_args(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epd_cal_resolve(&cfg, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epd_cal_apply(nullptr, &res));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epd_cal_apply(&cfg, nullptr));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epd_cal_provision(nullptr, (uint16_t)k_ec_good_mv));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epd_cal_provision(nullptr, (uint16_t)k_ec_good_mv));
   TEST_END("epd_cal: resolve / apply / provision null arguments");
 }
 
@@ -568,7 +565,7 @@ static void test_apply_paths(void)
 
   /* A result mutated out of range between resolve and apply is caught by
    * the re-check at the point of use. */
-  cfg                 = ec_cfg();
+  cfg                           = ec_cfg();
   ra8_epd_cal_result_t tampered = res;
   tampered.vcom_mv              = (uint16_t)k_ec_high_mv;
   TEST_ASSERT_EQ(k_ra8_err_range_check_failed, ra8_epd_cal_apply(&cfg, &tampered));
@@ -605,21 +602,18 @@ static void test_provision_refusals(void)
   ec_reset();
   ra8_epd_cal_cfg_t cfg = ec_cfg();
 
-  TEST_ASSERT_EQ(k_ra8_err_range_check_failed,
-                 ra8_epd_cal_provision(&cfg, (uint16_t)k_ec_low_mv));
-  TEST_ASSERT_EQ(k_ra8_err_range_check_failed,
-                 ra8_epd_cal_provision(&cfg, (uint16_t)k_ec_high_mv));
+  TEST_ASSERT_EQ(k_ra8_err_range_check_failed, ra8_epd_cal_provision(&cfg, (uint16_t)k_ec_low_mv));
+  TEST_ASSERT_EQ(k_ra8_err_range_check_failed, ra8_epd_cal_provision(&cfg, (uint16_t)k_ec_high_mv));
   TEST_ASSERT_EQ(k_ra8_err_range_check_failed, ra8_epd_cal_provision(&cfg, 0U));
   TEST_ASSERT_EQ(0U, s_store.writes);
 
   /* No write seam bound. */
   cfg             = ec_cfg();
   cfg.store.write = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_epd_cal_provision(&cfg, (uint16_t)k_ec_good_mv));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_epd_cal_provision(&cfg, (uint16_t)k_ec_good_mv));
 
   /* A store fault is forwarded so the caller knows the value is not durable. */
-  cfg                = ec_cfg();
+  cfg                 = ec_cfg();
   s_store.write_fails = true;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_epd_cal_provision(&cfg, (uint16_t)k_ec_good_mv));
   TEST_END("epd_cal: provision refusal legs");
@@ -633,10 +627,10 @@ static void test_store_read_fault(void)
   ec_seed_record((uint16_t)k_ec_other_mv);
   s_store.read_fails = true;
 
-  ra8_epd_cal_cfg_t cfg = ec_cfg();
-  cfg.panel.get         = nullptr;
-  cfg.has_provisioned   = true;
-  cfg.provisioned_mv    = (uint16_t)k_ec_third_mv;
+  ra8_epd_cal_cfg_t cfg    = ec_cfg();
+  cfg.panel.get            = nullptr;
+  cfg.has_provisioned      = true;
+  cfg.provisioned_mv       = (uint16_t)k_ec_third_mv;
   ra8_epd_cal_result_t res = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_resolve(&cfg, &res));
   TEST_ASSERT_EQ(k_ra8_epd_cal_src_provisioned, res.source);
