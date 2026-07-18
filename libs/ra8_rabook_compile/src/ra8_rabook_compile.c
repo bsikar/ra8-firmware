@@ -74,6 +74,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe in the sense of shared state, but has none; pure.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t rabook_crc32(const uint8_t* data, uint32_t len)
 {
   uint32_t crc = (uint32_t)k_rabook_crc_init;
@@ -104,6 +105,7 @@ static uint32_t rabook_crc32(const uint8_t* data, uint32_t len)
  * @note Not thread-safe in the sense of shared state, but holds none; pure.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_check_buffer_members(const ra8_rabook_buffers_t* buf)
 {
   RA8_CHECK_NULL_PTR(buf, s_tag_rabook, "buf");
@@ -212,6 +214,7 @@ uint32_t ra8_rabook_intern(ra8_rabook_ctx_t* ctx, const char* str)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t
 s_append_attrs(ra8_rabook_ctx_t* ctx, const ra8_book_attr_t* attrs, uint16_t attr_count)
 {
@@ -480,6 +483,7 @@ typedef struct {
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_compute_layout(const ra8_rabook_ctx_t* ctx, ra8_rabook_layout_t* lay)
 {
   const uint64_t chap_bytes = (uint64_t)ctx->chapter_count * (uint64_t)k_ra8_book_sizeof_chapter;
@@ -530,6 +534,7 @@ static ra8_err_t s_compute_layout(const ra8_rabook_ctx_t* ctx, ra8_rabook_layout
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void s_write_blob(uint8_t* out, const ra8_rabook_ctx_t* ctx, const ra8_rabook_layout_t* lay)
 {
   (void)memcpy(&out[lay->off_chap], ctx->buf.chapters, (size_t)(lay->off_node - lay->off_chap));
