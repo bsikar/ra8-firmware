@@ -29,6 +29,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
 #include "ra8_glyph_atlas.h"
@@ -133,6 +134,7 @@ static priv_glyph_render_ctx_t s_glyph_render_ctx;
  * @note Not thread-safe; uses @ref s_glyph_render_ctx.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_atlas_render_glyph(void*                  ctx,
                                          const ra8_glyph_key_t* key,
                                          uint8_t*               cell,
@@ -173,6 +175,7 @@ static ra8_err_t priv_atlas_render_glyph(void*                  ctx,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_init_font(const ra8_reflow_t* engine, stbtt_fontinfo* out_font)
 {
   const int32_t offset = stbtt_GetFontOffsetForIndex(engine->font_data, 0);
@@ -205,6 +208,7 @@ static ra8_err_t priv_init_font(const ra8_reflow_t* engine, stbtt_fontinfo* out_
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_blit_alpha_mask(const ra8_reflow_glyph_t* g,
                                  const unsigned char*      bitmap,
                                  int                       w,
@@ -243,6 +247,7 @@ static void priv_blit_alpha_mask(const ra8_reflow_glyph_t* g,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_draw_underline(const stbtt_fontinfo*     font,
                                 const ra8_reflow_glyph_t* g,
                                 float                     scale,
@@ -285,6 +290,7 @@ static void priv_draw_underline(const stbtt_fontinfo*     font,
  * @note Not thread-safe; uses @ref s_glyph_mask.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_glyph_render_direct(const stbtt_fontinfo*     font,
                                      float                     scale,
                                      const ra8_reflow_glyph_t* g,
@@ -341,6 +347,7 @@ static void priv_glyph_render_direct(const stbtt_fontinfo*     font,
  *       bounded to this programmer-error-only path.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_glyph_render_cached(ra8_glyph_atlas_t*        atlas,
                                      uint8_t                   face_id,
                                      const stbtt_fontinfo*     font,
@@ -398,6 +405,7 @@ static bool priv_glyph_render_cached(ra8_glyph_atlas_t*        atlas,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_blit_glyph(ra8_glyph_atlas_t*        atlas,
                             uint8_t                   face_id,
                             const stbtt_fontinfo*     font,
@@ -471,6 +479,7 @@ static void priv_blit_glyph(ra8_glyph_atlas_t*        atlas,
  * @note Not thread-safe; shares the engine's `img_arena` with callers.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_render_svg(const ra8_reflow_t* engine,
                             const uint8_t*      svg,
                             size_t              len,
@@ -527,6 +536,7 @@ static void priv_render_svg(const ra8_reflow_t* engine,
  * @note Not thread-safe; shares `engine->img_arena` with the caller.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_render_one_image(const ra8_reflow_t*           engine,
                                   const ra8_reflow_image_box_t* box,
                                   int32_t                       ox,
@@ -575,6 +585,7 @@ static void priv_render_one_image(const ra8_reflow_t*           engine,
  *       pool that must not be re-entered.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 priv_render_images(const ra8_reflow_t* engine, uint32_t page_idx, int32_t ox, int32_t oy)
 {
@@ -627,6 +638,7 @@ priv_render_images(const ra8_reflow_t* engine, uint32_t page_idx, int32_t ox, in
  *       calls.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_init_faces(const ra8_reflow_t* engine, stbtt_fontinfo* faces, uint8_t* out_n)
 {
   const ra8_err_t err = priv_init_font(engine, &faces[0]);
@@ -685,6 +697,7 @@ static ra8_err_t priv_init_faces(const ra8_reflow_t* engine, stbtt_fontinfo* fac
  *       `s_faces` that must not be accessed concurrently.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_render_page(const ra8_reflow_t* engine, uint32_t page_idx, int32_t ox, int32_t oy)
 {

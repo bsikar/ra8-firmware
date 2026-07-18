@@ -23,6 +23,7 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_reflow.h" /* k_ra8_reflow_tag_unknown, style/align enums */
 #include "ra8_reflow_css.h"
 #include "ra8_reflow_css_internal.h"
@@ -101,6 +102,7 @@ ra8_err_t ra8_css_sheet_reset(ra8_css_sheet_t* sheet)
  * @note Thread-safe; operates on caller-owned memory only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static size_t priv_skip_comment(const char* css, size_t len, size_t start)
 {
   const char open_a = '/';
@@ -138,6 +140,7 @@ static size_t priv_skip_comment(const char* css, size_t len, size_t start)
  * @note Thread-safe; operates on caller-owned memory only.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool
 priv_find_block(const char* css, size_t len, size_t i, size_t* out_open, size_t* out_close)
 {
@@ -225,6 +228,7 @@ ra8_err_t ra8_css_parse(ra8_css_sheet_t* sheet, const char* css, uint32_t len)
  * @note Thread-safe; pure function with no shared state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_class_list_has(const char* list, size_t list_len, const char* name, size_t nlen)
 {
   size_t i = 0U;
@@ -300,6 +304,7 @@ bool ra8_css_rule_matches(const ra8_css_rule_t*    rule,
  * @note Thread-safe; pure function with no shared mutable state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_anc_matches(const ra8_css_anc_t*     anc,
                              const ra8_css_element_t* el,
                              const ra8_css_sheet_t*   sheet)
@@ -355,6 +360,7 @@ static bool priv_anc_matches(const ra8_css_anc_t*     anc,
  * @note Thread-safe; pure function with no shared mutable state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_rule_matches_ctx(const ra8_css_rule_t*    rule,
                                   const ra8_css_element_t* el,
                                   const ra8_css_element_t* ancestors,
@@ -406,6 +412,7 @@ static bool priv_rule_matches_ctx(const ra8_css_rule_t*    rule,
  * @note Thread-safe; pure function with no shared state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t priv_rule_rank(const ra8_css_rule_t* rule)
 {
   uint16_t spec = 0U;
@@ -439,6 +446,7 @@ static uint16_t priv_rule_rank(const ra8_css_rule_t* rule)
  * @return Pointer to the winning style (inherited / a rule decl / inline), or
  *         NULL if no source declares @p setbit.
  */
+RA8_INTERNAL
 static const ra8_css_style_t* priv_resolve(uint8_t                setbit,
                                            const ra8_css_style_t* inherited,
                                            const ra8_css_sheet_t* sheet,
@@ -502,6 +510,7 @@ static const ra8_css_style_t* priv_resolve(uint8_t                setbit,
  * @note Thread-safe with respect to distinct @p out instances.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_cascade_emphasis(ra8_css_style_t*       out,
                                   const ra8_css_sheet_t* sheet,
                                   const bool*            matched,
@@ -554,6 +563,7 @@ static void priv_cascade_emphasis(ra8_css_style_t*       out,
  * @note Thread-safe with respect to distinct @p out instances.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_cascade_scalars(ra8_css_style_t*       out,
                                  const ra8_css_sheet_t* sheet,
                                  const bool*            matched,
@@ -617,6 +627,7 @@ static void priv_cascade_scalars(ra8_css_style_t*       out,
  * @note Thread-safe with respect to distinct @p out instances.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_cascade_family(ra8_css_style_t*       out,
                                 const ra8_css_sheet_t* sheet,
                                 const bool*            matched,
@@ -687,6 +698,7 @@ ra8_css_style_t ra8_css_cascade(const ra8_css_sheet_t*   sheet,
  * @note Thread-safe; pure function with no shared state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_ci_eq_span(const char* a, size_t alen, const char* b, size_t blen)
 {
   /* mcdc-deactivated: priv_ci_eq_span is reached only via priv_family_eq from ra8_css_match_face, which rejects a NULL sheet and a NULL family at its entry, so both name pointers are non-NULL here; (a == nullptr) and (b == nullptr) are unreachable, only (alen != blen) varies. */
@@ -726,6 +738,7 @@ static bool priv_ci_eq_span(const char* a, size_t alen, const char* b, size_t bl
  * @note Thread-safe; no shared mutable state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_family_eq(const ra8_css_sheet_t*    sheet,
                            const ra8_css_fontface_t* f,
                            const char*               family,

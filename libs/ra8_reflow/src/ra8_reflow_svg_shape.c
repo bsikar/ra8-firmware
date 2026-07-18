@@ -21,6 +21,7 @@
 
 #include <math.h>
 
+#include "ra8_attributes.h"
 #include "ra8_gfx.h"
 #include "ra8_reflow_svg_internal.h"
 
@@ -233,6 +234,7 @@ void ra8_svgp_draw_line(const uint8_t* s, size_t len, const svg_xform_t* t)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t
 priv_parse_points(const uint8_t* v, size_t vlen, const svg_xform_t* t, int32_t* xs, int32_t* ys)
 {
@@ -277,6 +279,7 @@ priv_parse_points(const uint8_t* v, size_t vlen, const svg_xform_t* t, int32_t* 
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_sort_i32(int32_t* a, int32_t m)
 {
   /* Bounded: m <= k_svg_poly_max. */
@@ -321,6 +324,7 @@ static void priv_sort_i32(int32_t* a, int32_t m)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t
 priv_scanline_x(const int32_t* xs, const int32_t* ys, int32_t n, int32_t y, int32_t* xint)
 {
@@ -415,6 +419,7 @@ void ra8_svgp_fill_poly(const int32_t* xs, const int32_t* ys, int32_t n, uint32_
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_col_lerp(uint32_t a, uint32_t b, float f)
 {
   const int32_t ra = (int32_t)((a >> (uint32_t)k_svg_sh_r) & (uint32_t)k_svg_chan_mask);
@@ -461,6 +466,7 @@ static uint32_t priv_col_lerp(uint32_t a, uint32_t b, float f)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_grad_eval(const svg_grad_t* g, float px, float py)
 {
   if (g->nstops == 0U) {
@@ -665,6 +671,7 @@ void ra8_svgp_draw_polyline(const uint8_t* s, size_t len, const svg_xform_t* t)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static float priv_absf(float v)
 {
   return (v < 0.0F) ? -v : v;
@@ -722,6 +729,7 @@ typedef struct {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_arc_solve(svg_arc_t* a,
                            float      x1p,
                            float      y1p,
@@ -791,6 +799,7 @@ static void priv_arc_solve(svg_arc_t* a,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static svg_arc_t priv_arc_center(svg_pt_t p0,
                                  svg_pt_t p_end,
                                  int32_t  rx_in,
@@ -849,6 +858,7 @@ static svg_arc_t priv_arc_center(svg_pt_t p0,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t priv_arc_segs(float dt)
 {
   int32_t segs = (int32_t)(priv_absf(dt) / s_svg_arc_step) + 1;

@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_gfx.h"
@@ -108,6 +109,7 @@ ra8_err_t ra8_img_probe_size(const uint8_t* bytes, size_t len, int32_t* out_w, i
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_fit_box(int32_t  src_w,
                              int32_t  src_h,
                              int32_t  box_w,
@@ -157,6 +159,7 @@ static void internal_fit_box(int32_t  src_w,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_decode_fail(void)
 {
   const char* const reason = stbi_failure_reason();
@@ -210,6 +213,7 @@ static ra8_err_t internal_decode_fail(void)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_blit_scaled(const uint8_t* pixels,
                                  int32_t        src_w,
                                  int32_t        src_h,
@@ -261,6 +265,7 @@ static void internal_blit_scaled(const uint8_t* pixels,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_arena_release(ra8_img_arena_t* arena)
 {
   ra8_img_arena_unbind();

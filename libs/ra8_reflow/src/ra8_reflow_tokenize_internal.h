@@ -21,6 +21,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_reflow.h"
 
@@ -78,7 +79,7 @@ typedef enum : uint32_t {
  * @note Pure function.
  * @since 0.1.0
  */
-bool ra8_reflow_tok_is_xml_whitespace(char c);
+RA8_PRIV bool ra8_reflow_tok_is_xml_whitespace(char c);
 
 /**
  * @brief Map a (possibly namespace-prefixed) tag name to its enum.
@@ -97,7 +98,7 @@ bool ra8_reflow_tok_is_xml_whitespace(char c);
  * @note Pure function; case-insensitive on ASCII.
  * @since 0.1.0
  */
-ra8_reflow_html_tag_t ra8_reflow_tok_classify(const char* name, size_t len);
+RA8_PRIV ra8_reflow_html_tag_t ra8_reflow_tok_classify(const char* name, size_t len);
 
 /**
  * @brief Decode one XML entity reference beginning at `&`.
@@ -119,10 +120,8 @@ ra8_reflow_html_tag_t ra8_reflow_tok_classify(const char* name, size_t len);
  * @note Pure function.
  * @since 0.1.0
  */
-bool ra8_reflow_tok_decode_entity(const char* src,
-                                  size_t      avail,
-                                  uint32_t*   out_cp,
-                                  size_t*     out_used);
+RA8_PRIV bool
+ra8_reflow_tok_decode_entity(const char* src, size_t avail, uint32_t* out_cp, size_t* out_used);
 
 /**
  * @brief UTF-8 encode a code point into `dst` (up to 4 bytes).
@@ -141,7 +140,7 @@ bool ra8_reflow_tok_decode_entity(const char* src,
  * @note Pure function.
  * @since 0.1.0
  */
-size_t ra8_reflow_tok_utf8_encode(uint32_t cp, uint8_t* dst);
+RA8_PRIV size_t ra8_reflow_tok_utf8_encode(uint32_t cp, uint8_t* dst);
 
 /* ===========================================================================
  * Cross-TU helpers shared between ra8_reflow_tokenize.c and its companions
@@ -168,7 +167,7 @@ size_t ra8_reflow_tok_utf8_encode(uint32_t cp, uint8_t* dst);
  * @note Pure function.
  * @since 0.1.0
  */
-bool ra8_reflow_tok_is_block(ra8_reflow_html_tag_t tag);
+RA8_PRIV bool ra8_reflow_tok_is_block(ra8_reflow_html_tag_t tag);
 
 /**
  * @brief Return the style bit an inline tag contributes to its subtree.
@@ -186,7 +185,7 @@ bool ra8_reflow_tok_is_block(ra8_reflow_html_tag_t tag);
  * @note Pure function.
  * @since 0.1.0
  */
-uint8_t ra8_reflow_tok_style_for(ra8_reflow_html_tag_t tag);
+RA8_PRIV uint8_t ra8_reflow_tok_style_for(ra8_reflow_html_tag_t tag);
 
 /**
  * @brief Append one token to the engine's token pool.
@@ -209,12 +208,12 @@ uint8_t ra8_reflow_tok_style_for(ra8_reflow_html_tag_t tag);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-bool ra8_reflow_tok_emit(ra8_reflow_t*           engine,
-                         ra8_reflow_token_kind_t kind,
-                         ra8_reflow_html_tag_t   tag,
-                         uint8_t                 style,
-                         uint32_t                off,
-                         uint32_t                len);
+RA8_PRIV bool ra8_reflow_tok_emit(ra8_reflow_t*           engine,
+                                  ra8_reflow_token_kind_t kind,
+                                  ra8_reflow_html_tag_t   tag,
+                                  uint8_t                 style,
+                                  uint32_t                off,
+                                  uint32_t                len);
 
 /**
  * @brief Write one byte through the whitespace-collapse state machine.
@@ -235,7 +234,7 @@ bool ra8_reflow_tok_emit(ra8_reflow_t*           engine,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-bool ra8_reflow_tok_feed(ra8_reflow_t* engine, char ch, bool* last_ws);
+RA8_PRIV bool ra8_reflow_tok_feed(ra8_reflow_t* engine, char ch, bool* last_ws);
 
 /**
  * @brief Entity-decode and whitespace-collapse a text run into the pool.
@@ -259,12 +258,12 @@ bool ra8_reflow_tok_feed(ra8_reflow_t* engine, char ch, bool* last_ws);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-bool ra8_reflow_tok_stash_run(ra8_reflow_t*  engine,
-                              const uint8_t* buf,
-                              size_t         start,
-                              size_t         end,
-                              uint32_t*      out_off,
-                              uint32_t*      out_len);
+RA8_PRIV bool ra8_reflow_tok_stash_run(ra8_reflow_t*  engine,
+                                       const uint8_t* buf,
+                                       size_t         start,
+                                       size_t         end,
+                                       uint32_t*      out_off,
+                                       uint32_t*      out_len);
 
 /**
  * @brief Test whether `buf` at `i` begins with the literal `lit`.
@@ -285,7 +284,7 @@ bool ra8_reflow_tok_stash_run(ra8_reflow_t*  engine,
  * @note Pure function.
  * @since 0.1.0
  */
-bool ra8_reflow_tok_starts_with(const uint8_t* buf, size_t i, size_t len, const char* lit);
+RA8_PRIV bool ra8_reflow_tok_starts_with(const uint8_t* buf, size_t i, size_t len, const char* lit);
 
 /**
  * @brief Return the index just past the first occurrence of `lit`.
@@ -306,7 +305,7 @@ bool ra8_reflow_tok_starts_with(const uint8_t* buf, size_t i, size_t len, const 
  * @note Pure function.
  * @since 0.1.0
  */
-size_t ra8_reflow_tok_skip_past(const uint8_t* buf, size_t i, size_t len, const char* lit);
+RA8_PRIV size_t ra8_reflow_tok_skip_past(const uint8_t* buf, size_t i, size_t len, const char* lit);
 
 /**
  * @brief Return the index of the first occurrence of `lit` (its start), or len.
@@ -327,7 +326,7 @@ size_t ra8_reflow_tok_skip_past(const uint8_t* buf, size_t i, size_t len, const 
  * @note Pure function.
  * @since 0.1.0
  */
-size_t ra8_reflow_tok_find_lit(const uint8_t* buf, size_t i, size_t len, const char* lit);
+RA8_PRIV size_t ra8_reflow_tok_find_lit(const uint8_t* buf, size_t i, size_t len, const char* lit);
 
 /**
  * @brief Locate a named attribute's quoted value span within a tag (no copy).
@@ -352,12 +351,12 @@ size_t ra8_reflow_tok_find_lit(const uint8_t* buf, size_t i, size_t len, const c
  * @note Pure read of @p tag.
  * @since 0.1.0
  */
-bool ra8_reflow_tok_find_attr(const uint8_t* tag,
-                              size_t         tag_len,
-                              const char*    name,
-                              size_t         name_len,
-                              size_t*        out_voff,
-                              size_t*        out_vlen);
+RA8_PRIV bool ra8_reflow_tok_find_attr(const uint8_t* tag,
+                                       size_t         tag_len,
+                                       const char*    name,
+                                       size_t         name_len,
+                                       size_t*        out_voff,
+                                       size_t*        out_vlen);
 
 /**
  * @brief Copy a named attribute's quoted value from a tag span into the pool.
@@ -382,13 +381,13 @@ bool ra8_reflow_tok_find_attr(const uint8_t* tag,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-void ra8_reflow_tok_capture_attr(ra8_reflow_t*  engine,
-                                 const uint8_t* tag,
-                                 size_t         tag_len,
-                                 const char*    name,
-                                 size_t         name_len,
-                                 uint32_t*      out_off,
-                                 uint32_t*      out_len);
+RA8_PRIV void ra8_reflow_tok_capture_attr(ra8_reflow_t*  engine,
+                                          const uint8_t* tag,
+                                          size_t         tag_len,
+                                          const char*    name,
+                                          size_t         name_len,
+                                          uint32_t*      out_off,
+                                          uint32_t*      out_len);
 
 /**
  * @brief Build a CSS element identity from a just-opened tag's attributes.
@@ -409,8 +408,9 @@ void ra8_reflow_tok_capture_attr(ra8_reflow_t*  engine,
  * @note Pure read of @p tag.
  * @since 0.1.0
  */
-ra8_css_element_t
-ra8_reflow_tok_css_element(ra8_reflow_html_tag_t kind, const uint8_t* tag, size_t span);
+RA8_PRIV ra8_css_element_t ra8_reflow_tok_css_element(ra8_reflow_html_tag_t kind,
+                                                      const uint8_t*        tag,
+                                                      size_t                span);
 
 /**
  * @brief Parse a just-opened tag's inline `style="..."` into a CSS declaration.
@@ -430,7 +430,7 @@ ra8_reflow_tok_css_element(ra8_reflow_html_tag_t kind, const uint8_t* tag, size_
  * @note Pure read of @p tag.
  * @since 0.1.0
  */
-ra8_css_style_t ra8_reflow_tok_css_inline(const uint8_t* tag, size_t span);
+RA8_PRIV ra8_css_style_t ra8_reflow_tok_css_inline(const uint8_t* tag, size_t span);
 
 /**
  * @brief Intern an `<a>` href slice into the link-target table.
@@ -451,7 +451,9 @@ ra8_css_style_t ra8_reflow_tok_css_inline(const uint8_t* tag, size_t span);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-uint8_t ra8_reflow_tok_intern_link(ra8_reflow_t* engine, uint32_t href_off, uint32_t href_len);
+RA8_PRIV uint8_t ra8_reflow_tok_intern_link(ra8_reflow_t* engine,
+                                            uint32_t      href_off,
+                                            uint32_t      href_len);
 
 /**
  * @brief True if a `rel` attribute value contains the `stylesheet` token.
@@ -471,7 +473,7 @@ uint8_t ra8_reflow_tok_intern_link(ra8_reflow_t* engine, uint32_t href_off, uint
  * @note Pure.
  * @since 0.1.0
  */
-bool ra8_reflow_tok_rel_is_stylesheet(const uint8_t* rel, size_t len);
+RA8_PRIV bool ra8_reflow_tok_rel_is_stylesheet(const uint8_t* rel, size_t len);
 
 /**
  * @brief Map a cascaded run's (font-family + emphasis) to an embedded face slot.
@@ -491,4 +493,34 @@ bool ra8_reflow_tok_rel_is_stylesheet(const uint8_t* rel, size_t len);
  * @note Pure; reads engine state only.
  * @since 0.1.0
  */
-uint8_t ra8_reflow_tok_resolve_face_slot(const ra8_reflow_t* engine, const ra8_css_style_t* comp);
+RA8_PRIV uint8_t ra8_reflow_tok_resolve_face_slot(const ra8_reflow_t*    engine,
+                                                  const ra8_css_style_t* comp);
+
+/**
+ * @brief Tokenize the XHTML buffer and populate `engine->tokens[]`.
+ *
+ * @details
+ * The tokenizer entry point. A single forward pass over the XHTML source with
+ * no heap and no DOM. Defined in `ra8_reflow_tokenize.c` and consumed by the
+ * layout driver in `ra8_reflow_parse.c`; the per-decision helpers above are
+ * the individually-MC/DC-able primitives it drives.
+ *
+ * @param[in,out] engine    Engine whose token / text pools are populated.
+ * @param[in]     xhtml_buf XHTML source bytes.
+ * @param[in]     xhtml_len Length of `xhtml_buf`, in bytes.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok         Tokenization succeeded.
+ * @retval k_ra8_err_null_ptr   @p engine or @p xhtml_buf is null.
+ * @retval k_ra8_err_invalid_size @p xhtml_len is zero.
+ *
+ * @pre @p engine and @p xhtml_buf are non-null.
+ * @pre @p xhtml_len is non-zero.
+ * @post On success `engine->tokens[]` is populated.
+ * @post On failure the engine token / text pools are left unmodified.
+ * @note Not thread-safe; single-threaded, non-recursive.
+ * @since 0.1.0
+ */
+RA8_PRIV ra8_err_t priv_reflow_xml_walk(ra8_reflow_t*  engine,
+                                        const uint8_t* xhtml_buf,
+                                        size_t         xhtml_len);

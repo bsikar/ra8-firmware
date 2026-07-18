@@ -25,6 +25,7 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_reflow.h" /* style/align enums, k_ra8_css_font_* units */
 #include "ra8_reflow_css_internal.h"
 
@@ -198,6 +199,7 @@ bool ra8_reflow_css_ci_eq(const char* s, size_t len, const char* lit)
  * @note Thread-safe; no shared mutable state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_ci_contains(const char* s, size_t len, const char* sub)
 {
   const size_t sl = strlen(sub);
@@ -265,6 +267,7 @@ const char* ra8_reflow_css_trim(const char* s, size_t* len)
  * @note Thread-safe; pure function with no shared state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t priv_hex_val(char c)
 {
   if ((c >= '0') && (c <= '9')) {
@@ -301,6 +304,7 @@ static uint8_t priv_hex_val(char c)
  * @note Thread-safe; pure function with no shared state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_parse_hex_color(const char* s, size_t len)
 {
   uint32_t rgb = 0U;
@@ -355,6 +359,7 @@ static uint32_t priv_parse_hex_color(const char* s, size_t len)
  * @note Thread-safe; pure function with no shared state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_parse_color(const char* s, size_t len)
 {
   /* mcdc-deactivated: the sole caller priv_apply_decl passes val (non-NULL, from ra8_reflow_css_trim) and vlen > 0 (gated by (plen > 0U) && (vlen > 0U) in ra8_reflow_css_parse_decls); (s == nullptr) and (len == 0U) are unreachable on any public path. */
@@ -421,6 +426,7 @@ static uint32_t priv_parse_color(const char* s, size_t len)
  * @note Thread-safe; operates only on caller-owned state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_scan_hundredths(const char* s, size_t len, size_t* i, bool* any)
 {
   uint32_t hund = 0U;
@@ -472,6 +478,7 @@ static uint32_t priv_scan_hundredths(const char* s, size_t len, size_t* i, bool*
  * @note Thread-safe; pure function with no shared state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t priv_fs_whole(uint32_t hund)
 {
   const uint32_t whole = hund / (uint32_t)k_priv_fs_pct1;
@@ -509,6 +516,7 @@ static uint16_t priv_fs_whole(uint32_t hund)
  * @note Thread-safe; operates only on caller-owned state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_parse_fontsize(const char* s, size_t len, uint16_t* out_val, uint8_t* out_unit)
 {
   size_t   i    = 0U;
@@ -562,6 +570,7 @@ static bool priv_parse_fontsize(const char* s, size_t len, uint16_t* out_val, ui
  *       concurrent writes to the same @p out.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_set_emphasis(ra8_css_style_t* out, uint8_t setbit, uint8_t stylebit, bool on)
 {
   out->set   = (uint8_t)(out->set | setbit);
@@ -598,6 +607,7 @@ static void priv_set_emphasis(ra8_css_style_t* out, uint8_t setbit, uint8_t styl
  * @note Thread-safe with respect to distinct @p out instances.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_apply_emphasis(const char*      prop,
                                 size_t           plen,
                                 const char*      val,
@@ -655,6 +665,7 @@ static bool priv_apply_emphasis(const char*      prop,
  * @note Thread-safe with respect to distinct @p out instances.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_apply_align(const char* val, size_t vlen, ra8_css_style_t* out)
 {
   out->set = (uint8_t)(out->set | (uint8_t)k_ra8_css_set_align);
@@ -699,6 +710,7 @@ static void priv_apply_align(const char* val, size_t vlen, ra8_css_style_t* out)
  * @note Thread-safe with respect to distinct @p out instances.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 priv_apply_decl(const char* prop, size_t plen, const char* val, size_t vlen, ra8_css_style_t* out)
 {

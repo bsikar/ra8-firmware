@@ -21,6 +21,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum sfnt_layout_t
  * @brief Byte offsets and sizes of the sfnt offset table and table records.
@@ -105,6 +107,7 @@ typedef enum : uint8_t {
  * @note Thread-safe: no shared state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t priv_rd_be_u16(const uint8_t* p)
 {
   return (uint16_t)(((uint32_t)p[0] << k_sfnt_shift_8) | (uint32_t)p[1]);
@@ -128,6 +131,7 @@ static uint16_t priv_rd_be_u16(const uint8_t* p)
  * @note Thread-safe: no shared state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_rd_be_u32(const uint8_t* p)
 {
   return ((uint32_t)p[0] << k_sfnt_shift_24) | ((uint32_t)p[1] << k_sfnt_shift_16) |
@@ -172,6 +176,7 @@ static uint32_t priv_rd_be_u32(const uint8_t* p)
  * @note Thread-safe and re-entrant: no shared or static state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool
 priv_table_internal_in_bounds(const uint8_t* data, uint64_t buf_len, uint32_t tag, uint64_t t_off)
 {

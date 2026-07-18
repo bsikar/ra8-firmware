@@ -18,6 +18,7 @@
  * @since 0.1.0
  */
 
+#include "ra8_attributes.h"
 #include "ra8_reflow_svg_internal.h"
 
 /** @brief Cubic Bernstein middle coefficient (3) for the Bezier flatten. */
@@ -60,6 +61,7 @@ static const float s_svg_bez2 = 2.0F;
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t priv_cmd_argc(char u)
 {
   switch (u) {
@@ -112,6 +114,7 @@ static int32_t priv_cmd_argc(char u)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 priv_path_step(char u, bool rel, const int32_t* args, int32_t na, int32_t* cx, int32_t* cy)
 {
@@ -158,6 +161,7 @@ priv_path_step(char u, bool rel, const int32_t* args, int32_t na, int32_t* cx, i
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static float priv_bezier1(float tt, float c0, float c1, float c2, float c3)
 {
   const float mt = 1.0F - tt;
@@ -194,6 +198,7 @@ static float priv_bezier1(float tt, float c0, float c1, float c2, float c3)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_flatten_cubic(const svg_xform_t* t,
                                svg_pt_t           p0,
                                svg_pt_t           p1,
@@ -243,6 +248,7 @@ static void priv_flatten_cubic(const svg_xform_t* t,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static svg_pt_t priv_arg_pt(bool rel, int32_t cx, int32_t cy, int32_t ax, int32_t ay)
 {
   const svg_pt_t p = {.x = rel ? (cx + ax) : ax, .y = rel ? (cy + ay) : ay};
@@ -290,6 +296,7 @@ typedef struct {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static float priv_bezier_q1(float tt, float c0, float c1, float c2)
 {
   const float mt = 1.0F - tt;
@@ -324,6 +331,7 @@ static float priv_bezier_q1(float tt, float c0, float c1, float c2)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_flatten_quad(const svg_xform_t* t,
                               svg_pt_t           p0,
                               svg_pt_t           p1,
@@ -367,6 +375,7 @@ static void priv_flatten_quad(const svg_xform_t* t,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static svg_pt_t priv_reflect(svg_pt_t cur, svg_pt_t ctrl)
 {
   const svg_pt_t r = {.x = (2 * cur.x) - ctrl.x, .y = (2 * cur.y) - ctrl.y};
@@ -401,6 +410,7 @@ static svg_pt_t priv_reflect(svg_pt_t cur, svg_pt_t ctrl)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static svg_pt_t priv_smooth_ctrl(svg_pt_t p0, const path_state_t* st, char want)
 {
   return (st->kind == want) ? priv_reflect(p0, st->ctrl) : p0;
@@ -438,6 +448,7 @@ static svg_pt_t priv_smooth_ctrl(svg_pt_t p0, const path_state_t* st, char want)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t priv_emit_cubic(const svg_xform_t* t,
                                svg_pt_t           p0,
                                svg_pt_t           p1,
@@ -488,6 +499,7 @@ static int32_t priv_emit_cubic(const svg_xform_t* t,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t priv_emit_quad(const svg_xform_t* t,
                               svg_pt_t           p0,
                               svg_pt_t           p1,
@@ -539,6 +551,7 @@ static int32_t priv_emit_quad(const svg_xform_t* t,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t priv_path_curve(const svg_xform_t* t,
                                char               u,
                                bool               rel,
@@ -607,6 +620,7 @@ static int32_t priv_path_curve(const svg_xform_t* t,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static char priv_next_cmd(const uint8_t* d, size_t dlen, size_t* i, char* last)
 {
   while ((*i < dlen) && (ra8_svgp_ws((char)d[*i]) || (d[*i] == ','))) {
@@ -655,6 +669,7 @@ static char priv_next_cmd(const uint8_t* d, size_t dlen, size_t* i, char* last)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t
 priv_parse_path(const uint8_t* d, size_t dlen, const svg_xform_t* t, int32_t* xs, int32_t* ys)
 {

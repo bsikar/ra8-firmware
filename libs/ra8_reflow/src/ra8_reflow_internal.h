@@ -22,6 +22,8 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @brief Return true iff @p tag is a tag that introduces / removes a
  *        block-level indent (currently `<li>` and `<blockquote>`).
@@ -53,7 +55,7 @@ extern "C" {
  *
  * @since 0.1.0
  */
-bool ra8_reflow_internal_is_indent_tag(uint8_t tag);
+RA8_PRIV bool ra8_reflow_internal_is_indent_tag(uint8_t tag);
 
 /**
  * @brief Decide whether a glyph emission would overflow the right
@@ -91,10 +93,10 @@ bool ra8_reflow_internal_is_indent_tag(uint8_t tag);
  *
  * @since 0.1.0
  */
-bool ra8_reflow_internal_right_overflow_break(int32_t cursor_x,
-                                              int32_t advance,
-                                              int32_t right_limit,
-                                              uint8_t line_has_content);
+RA8_PRIV bool ra8_reflow_internal_right_overflow_break(int32_t cursor_x,
+                                                       int32_t advance,
+                                                       int32_t right_limit,
+                                                       uint8_t line_has_content);
 
 /**
  * @brief Decide whether the cached XHTML buffer pointer/length pair
@@ -126,7 +128,7 @@ bool ra8_reflow_internal_right_overflow_break(int32_t cursor_x,
  *
  * @since 0.1.0
  */
-bool ra8_reflow_internal_xhtml_invalid(const void* xhtml_buf, size_t xhtml_len);
+RA8_PRIV bool ra8_reflow_internal_xhtml_invalid(const void* xhtml_buf, size_t xhtml_len);
 
 /**
  * @brief Decide whether the layout pass produced zero pages but the
@@ -158,7 +160,7 @@ bool ra8_reflow_internal_xhtml_invalid(const void* xhtml_buf, size_t xhtml_len);
  *
  * @since 0.1.0
  */
-bool ra8_reflow_internal_final_page_needed(uint32_t page_count, uint32_t token_count);
+RA8_PRIV bool ra8_reflow_internal_final_page_needed(uint32_t page_count, uint32_t token_count);
 
 #ifdef __cplusplus
 }

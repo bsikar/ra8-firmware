@@ -34,6 +34,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_reflow.h"
 #include "ra8_reflow_tokenize_internal.h"
@@ -95,6 +96,7 @@ typedef struct {
  * @note Pure function.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_suppressed(const tok_ctx_t* ctx)
 {
   return ctx->suppress_sp != 0U;
@@ -125,6 +127,7 @@ static bool priv_suppressed(const tok_ctx_t* ctx)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_handle_cdata(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, size_t len)
 {
   const size_t inner = *pi + strlen("<![CDATA[");
@@ -176,6 +179,7 @@ static ra8_err_t priv_handle_cdata(tok_ctx_t* ctx, const uint8_t* buf, size_t* p
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_handle_end(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, size_t len)
 {
   size_t i = *pi + 2U; /* past "</" */
@@ -225,6 +229,7 @@ static ra8_err_t priv_handle_end(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_reflow_html_tag_t
 priv_parse_start(const uint8_t* buf, size_t* pi, size_t len, bool* selfclose)
 {
@@ -275,6 +280,7 @@ priv_parse_start(const uint8_t* buf, size_t* pi, size_t len, bool* selfclose)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_open_attrs(tok_ctx_t*             ctx,
                                  const uint8_t*         tag,
                                  size_t                 span,
@@ -344,6 +350,7 @@ static ra8_err_t priv_open_attrs(tok_ctx_t*             ctx,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_handle_link(tok_ctx_t* ctx, const uint8_t* buf, size_t tag_lt, size_t end)
 {
   if (ctx->engine->css_loader == nullptr) {
@@ -397,6 +404,7 @@ static void priv_handle_link(tok_ctx_t* ctx, const uint8_t* buf, size_t tag_lt, 
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_handle_void(tok_ctx_t*            ctx,
                              const uint8_t*        buf,
                              size_t                tag_lt,
@@ -486,6 +494,7 @@ static bool priv_handle_void(tok_ctx_t*            ctx,
  * @note Pure aside from reading @p ctx.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t priv_css_font_px(const tok_ctx_t* ctx, const ra8_css_style_t* comp)
 {
   if ((comp->set & (uint8_t)k_ra8_css_set_fontsize) == 0U) {
@@ -558,6 +567,7 @@ static uint16_t priv_css_font_px(const tok_ctx_t* ctx, const ra8_css_style_t* co
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_open_styled(tok_ctx_t*            ctx,
                                   const uint8_t*        tagbuf,
                                   size_t                span,
@@ -634,6 +644,7 @@ static ra8_err_t priv_open_styled(tok_ctx_t*            ctx,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, size_t len)
 {
   const size_t                tag_lt    = *pi; /* index of '<' before parse */
@@ -703,6 +714,7 @@ static ra8_err_t priv_handle_start(tok_ctx_t* ctx, const uint8_t* buf, size_t* p
  * @note Pure function.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_tag_is(const uint8_t* buf, size_t i, size_t len, const char* name)
 {
   if (!ra8_reflow_tok_starts_with(buf, i, len, name)) {
@@ -738,6 +750,7 @@ static bool priv_tag_is(const uint8_t* buf, size_t i, size_t len, const char* na
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_handle_raw_text(tok_ctx_t*     ctx,
                                  const uint8_t* buf,
                                  size_t*        pi,
@@ -775,6 +788,7 @@ static void priv_handle_raw_text(tok_ctx_t*     ctx,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_handle_lt(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, size_t len)
 {
   if (ra8_reflow_tok_starts_with(buf, *pi, len, "<!--")) {
@@ -826,6 +840,7 @@ static ra8_err_t priv_handle_lt(tok_ctx_t* ctx, const uint8_t* buf, size_t* pi, 
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_emit_text_run(tok_ctx_t* ctx, const uint8_t* buf, size_t run, size_t end)
 {
   if ((ctx->sp == 0U) || priv_suppressed(ctx)) {
@@ -857,8 +872,6 @@ static bool priv_emit_text_run(tok_ctx_t* ctx, const uint8_t* buf, size_t run, s
  * Entry point (called by ra8_reflow_parse.c)
  * ===========================================================================
  */
-
-ra8_err_t priv_reflow_xml_walk(ra8_reflow_t* engine, const uint8_t* xhtml_buf, size_t xhtml_len);
 
 ra8_err_t priv_reflow_xml_walk(ra8_reflow_t* engine, const uint8_t* xhtml_buf, size_t xhtml_len)
 {
