@@ -69,6 +69,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum ra8_adc_b_addr_t
  * @brief Memory-mapped base address of the ADC_B register window.
@@ -554,6 +556,7 @@ typedef enum : uint8_t {
  * @brief Pointer to the 32-bit ADCLKENR register.
  * @return Volatile pointer to ADCLKENR (RW).
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_adclkenr(void)
 {
   return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
@@ -564,6 +567,7 @@ static inline volatile uint32_t* ra8_adc_b_adclkenr(void)
  * @brief Pointer to the 32-bit ADCLKSR register.
  * @return Volatile pointer to ADCLKSR (RO clock-running status).
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_adclksr(void)
 {
   return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
@@ -574,6 +578,7 @@ static inline volatile uint32_t* ra8_adc_b_adclksr(void)
  * @brief Pointer to the 32-bit ADCLKCR register.
  * @return Volatile pointer to ADCLKCR (RW).
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_adclkcr(void)
 {
   return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
@@ -584,6 +589,7 @@ static inline volatile uint32_t* ra8_adc_b_adclkcr(void)
  * @brief Pointer to the 32-bit ADMDR register.
  * @return Volatile pointer to ADMDR (RW per-unit mode).
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_admdr(void)
 {
   return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr + (uintptr_t)k_ra8_adc_b_off_admdr);
@@ -593,6 +599,7 @@ static inline volatile uint32_t* ra8_adc_b_admdr(void)
  * @brief Pointer to the 32-bit ADSGER register (scan-group enable).
  * @return Volatile pointer to ADSGER (RW).
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_adsger(void)
 {
   return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr + (uintptr_t)k_ra8_adc_b_off_adsger);
@@ -602,6 +609,7 @@ static inline volatile uint32_t* ra8_adc_b_adsger(void)
  * @brief Pointer to the 32-bit ADINTCR register (per-group scan-end IE).
  * @return Volatile pointer to ADINTCR (RW).
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_adintcr(void)
 {
   return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
@@ -612,6 +620,7 @@ static inline volatile uint32_t* ra8_adc_b_adintcr(void)
  * @brief Pointer to the 32-bit ADSYSTR register (synchronous SW start).
  * @return Volatile pointer to ADSYSTR (WO).
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_adsystr(void)
 {
   return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
@@ -622,6 +631,7 @@ static inline volatile uint32_t* ra8_adc_b_adsystr(void)
  * @brief Pointer to the 32-bit ADSTOPR register (force-stop).
  * @return Volatile pointer to ADSTOPR (WO).
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_adstopr(void)
 {
   return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
@@ -632,6 +642,7 @@ static inline volatile uint32_t* ra8_adc_b_adstopr(void)
  * @brief Pointer to the 32-bit ADSR register (status).
  * @return Volatile pointer to ADSR (RO).
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_adsr(void)
 {
   return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr + (uintptr_t)k_ra8_adc_b_off_adsr);
@@ -643,6 +654,7 @@ static inline volatile uint32_t* ra8_adc_b_adsr(void)
  * @param[in] ch Virtual channel index (0..23).
  * @return Volatile pointer, or ``nullptr`` if ``ch`` is out of range.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_adchcr(uint8_t ch)
 {
   if (ch >= k_ra8_adc_b_max_channels) {
@@ -660,6 +672,7 @@ static inline volatile uint32_t* ra8_adc_b_adchcr(uint8_t ch)
  * @return Volatile pointer to ADSTR[group], or ``nullptr`` if ``group``
  *         is out of range.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_adstr(uint8_t group)
 {
   if (group >= k_ra8_adc_b_scan_groups) {
@@ -673,6 +686,7 @@ static inline volatile uint32_t* ra8_adc_b_adstr(uint8_t group)
  * @brief Pointer to the 32-bit ADTRGENR register (per-group HW trigger enable).
  * @return Volatile pointer to ADTRGENR (RW).
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_adtrgenr(void)
 {
   return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
@@ -683,6 +697,7 @@ static inline volatile uint32_t* ra8_adc_b_adtrgenr(void)
  * @brief Pointer to the 32-bit ADCMPENR register (compare-table enable).
  * @return Volatile pointer to ADCMPENR (RW).
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_adcmpenr(void)
 {
   return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
@@ -693,6 +708,7 @@ static inline volatile uint32_t* ra8_adc_b_adcmpenr(void)
  * @brief Pointer to the 32-bit ADCMPINTCR register (compare-match IE).
  * @return Volatile pointer to ADCMPINTCR (RW).
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_adcmpintcr(void)
 {
   return (volatile uint32_t*)((uintptr_t)k_ra8_adc_b_base_addr +
@@ -705,6 +721,7 @@ static inline volatile uint32_t* ra8_adc_b_adcmpintcr(void)
  * @param[in] which 0 -> ADCMPMDR0 (CMPMD0..3), 1 -> ADCMPMDR1 (CMPMD4..7).
  * @return Volatile pointer, or ``nullptr`` if @p which is out of range.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_adcmpmdr(uint8_t which)
 {
   if (which == 0U) {
@@ -724,6 +741,7 @@ static inline volatile uint32_t* ra8_adc_b_adcmpmdr(uint8_t which)
  * @param[in] table Table index (0..7).
  * @return Volatile pointer or ``nullptr`` if @p table is out of range.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_adcmptbr(uint8_t table)
 {
   if (table >= k_ra8_adc_b_cmp_tables) {
@@ -745,6 +763,7 @@ static inline volatile uint32_t* ra8_adc_b_adcmptbr(uint8_t table)
  * @param[in] ch Virtual channel index (0..23).
  * @return Volatile pointer or ``nullptr`` if @p ch is out of range.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_addopcrb(uint8_t ch)
 {
   if (ch >= k_ra8_adc_b_max_channels) {
@@ -763,6 +782,7 @@ static inline volatile uint32_t* ra8_adc_b_addopcrb(uint8_t ch)
  *         if ``ch`` is out of range. ADDR[23] does not exist on this
  *         silicon -- the FSP struct only declares 23 result slots.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_addr(uint8_t ch)
 {
   if (ch >= k_ra8_adc_b_result_regs) {
@@ -779,6 +799,7 @@ static inline volatile uint32_t* ra8_adc_b_addr(uint8_t ch)
  * @return Volatile pointer to ADSGDCR[group], or ``nullptr`` if @p group
  *         is out of range (HUM Ch 53.2.4.1 p 3340).
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_adsgdcr(uint8_t group)
 {
   if (group >= k_ra8_adc_b_scan_groups) {
@@ -800,6 +821,7 @@ static inline volatile uint32_t* ra8_adc_b_adsgdcr(uint8_t group)
  * @param[in] ch Virtual channel index (0..23).
  * @return Volatile pointer, or ``nullptr`` if @p ch is out of range.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_addopcrc(uint8_t ch)
 {
   if (ch >= k_ra8_adc_b_max_channels) {
@@ -818,6 +840,7 @@ static inline volatile uint32_t* ra8_adc_b_addopcrc(uint8_t ch)
  *              (HUM Ch 53.2.13.2 p 3391); the others read 0.
  * @return Volatile pointer, or ``nullptr`` if @p n is out of range.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_adc_b_adexdr(uint8_t n)
 {
   if (n >= k_ra8_adc_b_ext_data_regs) {

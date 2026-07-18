@@ -64,6 +64,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
@@ -117,7 +118,8 @@ static const ra8_mstp_t s_mstp_table[k_ra8_sci_channel_count_val] = {
 /**
  * @brief Validate ``channel`` and return the register pointer.
  */
-static volatile r_sci_regs_t* internal_reg(uint8_t channel)
+RA8_HW_REGISTER_ACCESS
+static inline volatile r_sci_regs_t* internal_reg(uint8_t channel)
 {
   if (channel > k_ra8_sci_channel_max_index) {
     return nullptr;

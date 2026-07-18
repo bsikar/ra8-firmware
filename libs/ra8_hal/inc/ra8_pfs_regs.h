@@ -54,6 +54,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_bit_constants.h"
 #include "ra8_port_constants.h"
 
@@ -155,6 +156,7 @@ typedef enum : uint8_t {
  * @return Volatile pointer to the 32-bit `PmnPFS` register, or
  *         `nullptr` if either index is out of range.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_pfs_pmn(ra8_port_t port, ra8_pin_t pin)
 {
   if ((uint8_t)port > k_ra8_port_max) {
@@ -184,6 +186,7 @@ typedef enum : uint8_t {
 } ra8_pwpr_bit_t;
 
 /** @brief Get pointer to the PWPR register (non-secure write-protect). */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint8_t* ra8_pfs_pwpr(void)
 {
   return (volatile uint8_t*)((uintptr_t)k_ra8_pmisc_base_addr + (uintptr_t)k_ra8_pmisc_off_pwpr);
@@ -201,6 +204,7 @@ static inline volatile uint8_t* ra8_pfs_pwpr(void)
  *
  * @since 0.1.0
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint8_t* ra8_pfs_pwprs(void)
 {
   return (volatile uint8_t*)((uintptr_t)k_ra8_pmisc_base_addr + (uintptr_t)k_ra8_pmisc_off_pwprs);

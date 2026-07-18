@@ -50,6 +50,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 typedef enum : uintptr_t {
   k_ra8_dtc_base_addr = 0x4000AC00UL, /**< DTC0 register block base. */
 } ra8_dtc_addr_t;
@@ -165,6 +167,7 @@ typedef struct {
 } r_dtc_xfer_info_t;
 
 /** @brief Get pointer to the DTC controller register block. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_dtc_regs_t* ra8_dtc(void)
 {
   return (volatile r_dtc_regs_t*)k_ra8_dtc_base_addr;

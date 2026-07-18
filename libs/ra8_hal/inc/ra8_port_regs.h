@@ -53,6 +53,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_bit_constants.h"
 #include "ra8_port_constants.h"
 
@@ -152,6 +153,7 @@ static_assert(sizeof(r_port_regs_t) == (size_t)k_ra8_port_regs_bytes,
  *       stride, so the function is a single add + cast in release
  *       builds.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_port_regs_t* ra8_port(ra8_port_t port)
 {
   if ((uint8_t)port > k_ra8_port_max) {
@@ -162,76 +164,91 @@ static inline volatile r_port_regs_t* ra8_port(ra8_port_t port)
 }
 
 /** @brief Get PORT0 registers. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_port_regs_t* ra8_port0(void)
 {
   return (volatile r_port_regs_t*)k_ra8_port0_base_addr;
 }
 /** @brief Get PORT1 registers. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_port_regs_t* ra8_port1(void)
 {
   return (volatile r_port_regs_t*)k_ra8_port1_base_addr;
 }
 /** @brief Get PORT2 registers. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_port_regs_t* ra8_port2(void)
 {
   return (volatile r_port_regs_t*)k_ra8_port2_base_addr;
 }
 /** @brief Get PORT3 registers. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_port_regs_t* ra8_port3(void)
 {
   return (volatile r_port_regs_t*)k_ra8_port3_base_addr;
 }
 /** @brief Get PORT4 registers. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_port_regs_t* ra8_port4(void)
 {
   return (volatile r_port_regs_t*)k_ra8_port4_base_addr;
 }
 /** @brief Get PORT5 registers. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_port_regs_t* ra8_port5(void)
 {
   return (volatile r_port_regs_t*)k_ra8_port5_base_addr;
 }
 /** @brief Get PORT6 registers. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_port_regs_t* ra8_port6(void)
 {
   return (volatile r_port_regs_t*)k_ra8_port6_base_addr;
 }
 /** @brief Get PORT7 registers. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_port_regs_t* ra8_port7(void)
 {
   return (volatile r_port_regs_t*)k_ra8_port7_base_addr;
 }
 /** @brief Get PORT8 registers. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_port_regs_t* ra8_port8(void)
 {
   return (volatile r_port_regs_t*)k_ra8_port8_base_addr;
 }
 /** @brief Get PORT9 registers. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_port_regs_t* ra8_port9(void)
 {
   return (volatile r_port_regs_t*)k_ra8_port9_base_addr;
 }
 /** @brief Get PORT10 registers. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_port_regs_t* ra8_port10(void)
 {
   return (volatile r_port_regs_t*)k_ra8_port10_base_addr;
 }
 /** @brief Get PORT11 registers. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_port_regs_t* ra8_port11(void)
 {
   return (volatile r_port_regs_t*)k_ra8_port11_base_addr;
 }
 /** @brief Get PORT12 registers. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_port_regs_t* ra8_port12(void)
 {
   return (volatile r_port_regs_t*)k_ra8_port12_base_addr;
 }
 /** @brief Get PORT13 registers. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_port_regs_t* ra8_port13(void)
 {
   return (volatile r_port_regs_t*)k_ra8_port13_base_addr;
 }
 /** @brief Get PORT14 registers. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_port_regs_t* ra8_port14(void)
 {
   return (volatile r_port_regs_t*)k_ra8_port14_base_addr;
