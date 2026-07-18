@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -156,6 +157,7 @@ static ra8_usb_pal_state_inner_t s_state = {};
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_copy_bytes(uint8_t* dst, const uint8_t* src, uint16_t len)
 {
   for (uint16_t i = 0U; i < len; ++i) {
@@ -179,6 +181,7 @@ static void internal_copy_bytes(uint8_t* dst, const uint8_t* src, uint16_t len)
  * @note Not thread-safe; call only from init/deinit paths.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_reset_eps(void)
 {
   for (uint16_t i = 0U; i < k_ra8_usb_pal_ep_table_len; ++i) {
@@ -218,6 +221,7 @@ static void internal_reset_eps(void)
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t internal_translate(uint16_t usb_mask)
 {
   if (usb_mask != 0U) {
@@ -249,6 +253,7 @@ static uint16_t internal_translate(uint16_t usb_mask)
  *       from inside the callback.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_usb_event(void* ctx, ra8_usb_speed_t speed, uint16_t status_mask)
 {
   (void)ctx;
