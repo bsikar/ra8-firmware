@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_reflow.h"
 #include "ra8_reflow_tokenize_internal.h"
@@ -61,6 +62,7 @@
  * @note Pure function; @p name must already be lower-case.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_attr_name_at(const uint8_t* tag, size_t i, const char* name, size_t name_len)
 {
   for (size_t k = 0U; k < name_len; ++k) {
@@ -93,6 +95,7 @@ static bool priv_attr_name_at(const uint8_t* tag, size_t i, const char* name, si
  * @note Pure read of @p tag.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool
 priv_attr_quoted_value(const uint8_t* tag, size_t tag_len, size_t pos, size_t* vstart, size_t* vlen)
 {

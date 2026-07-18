@@ -26,6 +26,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_reflow.h"
 #include "ra8_reflow_internal.h"
@@ -49,6 +50,7 @@
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_layout_tokens(ra8_reflow_t* engine, const stbtt_fontinfo* font)
 {
   priv_cursor_t cur = {

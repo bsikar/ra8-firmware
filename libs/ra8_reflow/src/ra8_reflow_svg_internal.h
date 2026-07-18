@@ -31,6 +31,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum priv_svg_consts_t
  * @brief Parse + colour constants for the SVG subset.
@@ -201,7 +203,7 @@ struct svg_grads {
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-bool ra8_svgp_ws(char c);
+RA8_PRIV bool ra8_svgp_ws(char c);
 
 /**
  * @brief ASCII-fold a character to lower case.
@@ -223,7 +225,7 @@ bool ra8_svgp_ws(char c);
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-char ra8_svgp_lc(char c);
+RA8_PRIV char ra8_svgp_lc(char c);
 
 /**
  * @brief Case-insensitive prefix test of @p lit at @p at within @p s[0..len).
@@ -249,7 +251,7 @@ char ra8_svgp_lc(char c);
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-bool ra8_svgp_starts_ci(const uint8_t* s, size_t len, size_t at, const char* lit);
+RA8_PRIV bool ra8_svgp_starts_ci(const uint8_t* s, size_t len, size_t at, const char* lit);
 
 /**
  * @brief Find the first case-insensitive occurrence of @p lit in @p s[from..len).
@@ -274,7 +276,7 @@ bool ra8_svgp_starts_ci(const uint8_t* s, size_t len, size_t at, const char* lit
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-size_t ra8_svgp_find_ci(const uint8_t* s, size_t len, size_t from, const char* lit);
+RA8_PRIV size_t ra8_svgp_find_ci(const uint8_t* s, size_t len, size_t from, const char* lit);
 
 /**
  * @brief Parse the integer part of one SVG number at @p s[*i]; truncate fractions.
@@ -298,7 +300,7 @@ size_t ra8_svgp_find_ci(const uint8_t* s, size_t len, size_t from, const char* l
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-int32_t ra8_svgp_num(const uint8_t* s, size_t len, size_t* i);
+RA8_PRIV int32_t ra8_svgp_num(const uint8_t* s, size_t len, size_t* i);
 
 /**
  * @brief Find attribute @p name in tag span @p s[0..len); return its value slice.
@@ -324,7 +326,8 @@ int32_t ra8_svgp_num(const uint8_t* s, size_t len, size_t* i);
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-bool ra8_svgp_attr(const uint8_t* s, size_t len, const char* name, size_t* voff, size_t* vlen);
+RA8_PRIV bool
+ra8_svgp_attr(const uint8_t* s, size_t len, const char* name, size_t* voff, size_t* vlen);
 
 /**
  * @brief Read an SVG attribute as a signed integer, returning @p def when absent.
@@ -349,7 +352,7 @@ bool ra8_svgp_attr(const uint8_t* s, size_t len, const char* name, size_t* voff,
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-int32_t ra8_svgp_attr_num(const uint8_t* s, size_t len, const char* name, int32_t def);
+RA8_PRIV int32_t ra8_svgp_attr_num(const uint8_t* s, size_t len, const char* name, int32_t def);
 
 /**
  * @brief Parse an SVG paint value ('#rgb'/'#rrggbb'/name/'none') to 0x00RRGGBB.
@@ -372,7 +375,7 @@ int32_t ra8_svgp_attr_num(const uint8_t* s, size_t len, const char* name, int32_
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-uint32_t ra8_svgp_paint(const uint8_t* s, size_t len);
+RA8_PRIV uint32_t ra8_svgp_paint(const uint8_t* s, size_t len);
 
 /**
  * @brief Read an SVG attribute as a paint colour, returning @p def when absent.
@@ -398,7 +401,7 @@ uint32_t ra8_svgp_paint(const uint8_t* s, size_t len);
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-uint32_t ra8_svgp_attr_paint(const uint8_t* s, size_t len, const char* name, uint32_t def);
+RA8_PRIV uint32_t ra8_svgp_attr_paint(const uint8_t* s, size_t len, const char* name, uint32_t def);
 
 /**
  * @brief Resolve a shape's 'fill': a solid colour, or a gradient index via @p gi.
@@ -426,11 +429,11 @@ uint32_t ra8_svgp_attr_paint(const uint8_t* s, size_t len, const char* name, uin
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-uint32_t ra8_svgp_resolve_fill(const uint8_t*     s,
-                               size_t             len,
-                               const svg_xform_t* t,
-                               uint32_t           def,
-                               int32_t*           gi);
+RA8_PRIV uint32_t ra8_svgp_resolve_fill(const uint8_t*     s,
+                                        size_t             len,
+                                        const svg_xform_t* t,
+                                        uint32_t           def,
+                                        int32_t*           gi);
 
 /**
  * @brief Parse one SVG floating-point number at @p s[*i], skipping separators.
@@ -455,7 +458,7 @@ uint32_t ra8_svgp_resolve_fill(const uint8_t*     s,
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-float ra8_svgp_numf(const uint8_t* s, size_t len, size_t* i);
+RA8_PRIV float ra8_svgp_numf(const uint8_t* s, size_t len, size_t* i);
 
 /**
  * @brief Test whether the user transform contains rotation or shear.
@@ -477,7 +480,7 @@ float ra8_svgp_numf(const uint8_t* s, size_t len, size_t* i);
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-bool ra8_svgp_has_rot(const svg_xform_t* t);
+RA8_PRIV bool ra8_svgp_has_rot(const svg_xform_t* t);
 
 /**
  * @brief Map a user-space point through the FULL affine, then viewBox->box.
@@ -500,7 +503,8 @@ bool ra8_svgp_has_rot(const svg_xform_t* t);
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-void ra8_svgp_map_point(const svg_xform_t* t, int32_t ux, int32_t uy, int32_t* fx, int32_t* fy);
+RA8_PRIV void
+ra8_svgp_map_point(const svg_xform_t* t, int32_t ux, int32_t uy, int32_t* fx, int32_t* fy);
 
 /**
  * @brief Map a user-space x coordinate to a framebuffer x coordinate.
@@ -522,7 +526,7 @@ void ra8_svgp_map_point(const svg_xform_t* t, int32_t ux, int32_t uy, int32_t* f
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-int32_t ra8_svgp_mx(const svg_xform_t* t, int32_t sx);
+RA8_PRIV int32_t ra8_svgp_mx(const svg_xform_t* t, int32_t sx);
 
 /**
  * @brief Map a user-space y coordinate to a framebuffer y coordinate.
@@ -544,7 +548,7 @@ int32_t ra8_svgp_mx(const svg_xform_t* t, int32_t sx);
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-int32_t ra8_svgp_my(const svg_xform_t* t, int32_t sy);
+RA8_PRIV int32_t ra8_svgp_my(const svg_xform_t* t, int32_t sy);
 
 /**
  * @brief Scale a user-space length by the user x scale and the viewBox x ratio.
@@ -566,7 +570,7 @@ int32_t ra8_svgp_my(const svg_xform_t* t, int32_t sy);
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-int32_t ra8_svgp_sx(const svg_xform_t* t, int32_t sw);
+RA8_PRIV int32_t ra8_svgp_sx(const svg_xform_t* t, int32_t sw);
 
 /**
  * @brief Compose the 'transform=' attribute from @p tag onto @p t's user affine.
@@ -587,7 +591,7 @@ int32_t ra8_svgp_sx(const svg_xform_t* t, int32_t sw);
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-void ra8_svgp_apply_xform(svg_xform_t* t, const uint8_t* tag, size_t tlen);
+RA8_PRIV void ra8_svgp_apply_xform(svg_xform_t* t, const uint8_t* tag, size_t tlen);
 
 /**
  * @brief Even-odd scanline fill of polygon (xs,ys)[0..n) with a solid colour.
@@ -608,7 +612,7 @@ void ra8_svgp_apply_xform(svg_xform_t* t, const uint8_t* tag, size_t tlen);
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-void ra8_svgp_fill_poly(const int32_t* xs, const int32_t* ys, int32_t n, uint32_t color);
+RA8_PRIV void ra8_svgp_fill_poly(const int32_t* xs, const int32_t* ys, int32_t n, uint32_t color);
 
 /**
  * @brief Per-pixel gradient scanline fill of polygon (xs,ys)[0..n).
@@ -630,7 +634,8 @@ void ra8_svgp_fill_poly(const int32_t* xs, const int32_t* ys, int32_t n, uint32_
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-void ra8_svgp_fill_poly_grad(const int32_t* xs, const int32_t* ys, int32_t n, const svg_grad_t* g);
+RA8_PRIV void
+ra8_svgp_fill_poly_grad(const int32_t* xs, const int32_t* ys, int32_t n, const svg_grad_t* g);
 
 /**
  * @brief Match a 'url(#id)' paint value to a gradient index in the document set.
@@ -669,7 +674,7 @@ void ra8_svgp_fill_poly_grad(const int32_t* xs, const int32_t* ys, int32_t n, co
  *
  * @since 0.1.0
  */
-int32_t priv_match_grad(const svg_grads_t* grads, const uint8_t* val, size_t vlen);
+RA8_PRIV int32_t priv_match_grad(const svg_grads_t* grads, const uint8_t* val, size_t vlen);
 
 /**
  * @brief Flatten an SVG elliptical arc into the polygon vertex array.
@@ -694,13 +699,13 @@ int32_t priv_match_grad(const svg_grads_t* grads, const uint8_t* val, size_t vle
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-void ra8_svgp_flatten_arc(const svg_xform_t* t,
-                          svg_pt_t           p0,
-                          const int32_t*     args,
-                          svg_pt_t           p_end,
-                          int32_t*           xs,
-                          int32_t*           ys,
-                          int32_t*           n);
+RA8_PRIV void ra8_svgp_flatten_arc(const svg_xform_t* t,
+                                   svg_pt_t           p0,
+                                   const int32_t*     args,
+                                   svg_pt_t           p_end,
+                                   int32_t*           xs,
+                                   int32_t*           ys,
+                                   int32_t*           n);
 
 /**
  * @brief Draw one SVG 'rect' element using its fill colour or gradient.
@@ -720,7 +725,7 @@ void ra8_svgp_flatten_arc(const svg_xform_t* t,
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-void ra8_svgp_draw_rect(const uint8_t* s, size_t len, const svg_xform_t* t);
+RA8_PRIV void ra8_svgp_draw_rect(const uint8_t* s, size_t len, const svg_xform_t* t);
 
 /**
  * @brief Draw one SVG 'circle' element using its fill colour or gradient.
@@ -741,7 +746,7 @@ void ra8_svgp_draw_rect(const uint8_t* s, size_t len, const svg_xform_t* t);
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-void ra8_svgp_draw_circle(const uint8_t* s, size_t len, const svg_xform_t* t);
+RA8_PRIV void ra8_svgp_draw_circle(const uint8_t* s, size_t len, const svg_xform_t* t);
 
 /**
  * @brief Draw one SVG 'line' element using its stroke colour.
@@ -761,7 +766,7 @@ void ra8_svgp_draw_circle(const uint8_t* s, size_t len, const svg_xform_t* t);
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-void ra8_svgp_draw_line(const uint8_t* s, size_t len, const svg_xform_t* t);
+RA8_PRIV void ra8_svgp_draw_line(const uint8_t* s, size_t len, const svg_xform_t* t);
 
 /**
  * @brief Draw one SVG 'polygon' element as a filled polygon.
@@ -781,7 +786,7 @@ void ra8_svgp_draw_line(const uint8_t* s, size_t len, const svg_xform_t* t);
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-void ra8_svgp_draw_polygon(const uint8_t* s, size_t len, const svg_xform_t* t);
+RA8_PRIV void ra8_svgp_draw_polygon(const uint8_t* s, size_t len, const svg_xform_t* t);
 
 /**
  * @brief Draw one SVG 'polyline' element as connected stroke line segments.
@@ -801,7 +806,7 @@ void ra8_svgp_draw_polygon(const uint8_t* s, size_t len, const svg_xform_t* t);
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-void ra8_svgp_draw_polyline(const uint8_t* s, size_t len, const svg_xform_t* t);
+RA8_PRIV void ra8_svgp_draw_polyline(const uint8_t* s, size_t len, const svg_xform_t* t);
 
 /**
  * @brief Draw one SVG 'path' element as a filled polygon.
@@ -821,4 +826,4 @@ void ra8_svgp_draw_polyline(const uint8_t* s, size_t len, const svg_xform_t* t);
  * @note Not thread-safe in isolation; callers are single-threaded during render.
  * @since 0.1.0
  */
-void ra8_svgp_draw_path(const uint8_t* s, size_t len, const svg_xform_t* t);
+RA8_PRIV void ra8_svgp_draw_path(const uint8_t* s, size_t len, const svg_xform_t* t);

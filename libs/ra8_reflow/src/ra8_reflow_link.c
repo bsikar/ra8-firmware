@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_reflow.h"
@@ -105,6 +106,7 @@ ra8_err_t ra8_reflow_find_anchor(const ra8_reflow_t* engine,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_has_scheme(const char* href, uint32_t end)
 {
   for (uint32_t i = 0U; i < end; ++i) {
@@ -150,6 +152,7 @@ static bool priv_has_scheme(const char* href, uint32_t end)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_href_classify(const char*             href,
                                uint32_t                len,
                                ra8_reflow_href_kind_t* out_kind,

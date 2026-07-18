@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_reflow.h"
 #include "ra8_reflow_tokenize_internal.h"
@@ -91,6 +92,7 @@ size_t ra8_reflow_tok_utf8_encode(uint32_t cp, uint8_t* dst)
  * @note Pure aside from writing `dst`.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static size_t priv_local_lower(const char* name, size_t len, char* dst)
 {
   size_t start = 0U;
@@ -176,6 +178,7 @@ ra8_reflow_html_tag_t ra8_reflow_tok_classify(const char* name, size_t len)
  * @note Pure aside from writing the output params.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_decode_numeric(const char* src, size_t avail, uint32_t* out_cp, size_t* out_used)
 {
   size_t   i    = 2U; /* past "&#" */
@@ -446,6 +449,7 @@ bool ra8_reflow_tok_feed(ra8_reflow_t* engine, char ch, bool* last_ws)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_feed_utf8(ra8_reflow_t* engine, uint32_t cp, bool* last_ws)
 {
   uint8_t      enc[4];
@@ -480,6 +484,7 @@ static bool priv_feed_utf8(ra8_reflow_t* engine, uint32_t cp, bool* last_ws)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_stash_one(ra8_reflow_t*  engine,
                            const uint8_t* buf,
                            size_t         i,

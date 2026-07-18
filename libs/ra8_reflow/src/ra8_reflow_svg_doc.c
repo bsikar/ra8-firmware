@@ -20,6 +20,7 @@
 
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_reflow_svg.h"
 #include "ra8_reflow_svg_internal.h"
 
@@ -64,6 +65,7 @@ static const float s_svg_unit = 1.0F;
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_elem_at(const uint8_t* s, size_t len, size_t at, const char* name)
 {
   if (!ra8_svgp_starts_ci(s, len, at, name)) {
@@ -107,6 +109,7 @@ static bool priv_elem_at(const uint8_t* s, size_t len, size_t at, const char* na
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_tag_span(const uint8_t* s,
                           size_t         len,
                           size_t         from,
@@ -151,6 +154,7 @@ static bool priv_tag_span(const uint8_t* s,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_read_viewbox(const uint8_t* s, size_t len, svg_xform_t* t)
 {
   t->vx        = 0;
@@ -213,6 +217,7 @@ static void priv_read_viewbox(const uint8_t* s, size_t len, svg_xform_t* t)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 priv_dispatch_shape(const uint8_t* s, size_t len, size_t at, size_t close, const svg_xform_t* t)
 {
@@ -261,6 +266,7 @@ priv_dispatch_shape(const uint8_t* s, size_t len, size_t at, size_t close, const
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_xform_with_group(const svg_xform_t* t, svg_utf_t g, svg_xform_t* out)
 {
   *out    = *t;
@@ -304,6 +310,7 @@ static void priv_xform_with_group(const svg_xform_t* t, svg_utf_t g, svg_xform_t
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t priv_group_open(const uint8_t*     s,
                                size_t             i,
                                size_t             close,
@@ -357,6 +364,7 @@ static int32_t priv_group_open(const uint8_t*     s,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_draw_shapes(const uint8_t* s, size_t len, const svg_xform_t* t)
 {
   svg_utf_t gstk[k_svg_g_depth_max + 1U];
@@ -421,6 +429,7 @@ static void priv_draw_shapes(const uint8_t* s, size_t len, const svg_xform_t* t)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static float priv_attr_numf(const uint8_t* s, size_t len, const char* name, float def)
 {
   size_t off = 0U;
@@ -456,6 +465,7 @@ static float priv_attr_numf(const uint8_t* s, size_t len, const char* name, floa
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_copy_attr_id(const uint8_t* s, size_t len, char* dst)
 {
   dst[0]     = '\0';
@@ -497,6 +507,7 @@ static void priv_copy_attr_id(const uint8_t* s, size_t len, char* dst)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static float priv_clamp01(float v)
 {
   if (v < 0.0F) {
@@ -532,6 +543,7 @@ static float priv_clamp01(float v)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static float priv_stop_offset(const uint8_t* tag, size_t tlen)
 {
   size_t ooff = 0U;
@@ -575,6 +587,7 @@ static float priv_stop_offset(const uint8_t* tag, size_t tlen)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_stop_color(const uint8_t* tag, size_t tlen)
 {
   size_t coff = 0U;
@@ -611,6 +624,7 @@ static uint32_t priv_stop_color(const uint8_t* tag, size_t tlen)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_parse_stops(const uint8_t* s, size_t from, size_t end, svg_grad_t* g)
 {
   size_t at = from;
@@ -658,6 +672,7 @@ static void priv_parse_stops(const uint8_t* s, size_t from, size_t end, svg_grad
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_scan_grads(const uint8_t* s, size_t len, svg_grads_t* gs)
 {
   gs->n       = 0;

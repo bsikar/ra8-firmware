@@ -29,6 +29,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_reflow.h"
 #include "ra8_reflow_internal.h"
@@ -100,7 +101,7 @@ typedef struct {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-void ra8_reflow_layout_byte_zero(uint8_t* dst, size_t n);
+RA8_PRIV void ra8_reflow_layout_byte_zero(uint8_t* dst, size_t n);
 
 /**
  * @brief Initialise an `stbtt_fontinfo` from `engine->font_data`.
@@ -119,7 +120,8 @@ void ra8_reflow_layout_byte_zero(uint8_t* dst, size_t n);
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-ra8_err_t ra8_reflow_layout_init_font(const ra8_reflow_t* engine, stbtt_fontinfo* out_font);
+RA8_PRIV ra8_err_t ra8_reflow_layout_init_font(const ra8_reflow_t* engine,
+                                               stbtt_fontinfo*     out_font);
 
 /**
  * @brief Compute the line height in pixels for a given font size.
@@ -138,7 +140,7 @@ ra8_err_t ra8_reflow_layout_init_font(const ra8_reflow_t* engine, stbtt_fontinfo
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-uint16_t ra8_reflow_layout_line_height(uint16_t font_px);
+RA8_PRIV uint16_t ra8_reflow_layout_line_height(uint16_t font_px);
 
 /**
  * @brief Measure a single ASCII code point's advance width in pixels.
@@ -159,7 +161,9 @@ uint16_t ra8_reflow_layout_line_height(uint16_t font_px);
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-int32_t ra8_reflow_layout_glyph_advance(const stbtt_fontinfo* font, uint16_t font_px, int32_t cp);
+RA8_PRIV int32_t ra8_reflow_layout_glyph_advance(const stbtt_fontinfo* font,
+                                                 uint16_t              font_px,
+                                                 int32_t               cp);
 
 /**
  * @brief Push one positioned glyph into the engine glyph pool.
@@ -193,14 +197,14 @@ int32_t ra8_reflow_layout_glyph_advance(const stbtt_fontinfo* font, uint16_t fon
  * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
-bool ra8_reflow_layout_push_glyph(ra8_reflow_t* engine,
-                                  int32_t       x,
-                                  int32_t       y,
-                                  int32_t       cp,
-                                  uint16_t      font_px,
-                                  uint8_t       style,
-                                  uint32_t      color,
-                                  uint8_t       link_id);
+RA8_PRIV bool ra8_reflow_layout_push_glyph(ra8_reflow_t* engine,
+                                           int32_t       x,
+                                           int32_t       y,
+                                           int32_t       cp,
+                                           uint16_t      font_px,
+                                           uint8_t       style,
+                                           uint32_t      color,
+                                           uint8_t       link_id);
 
 /**
  * @brief Finalise the current page and start a new one.
@@ -218,7 +222,7 @@ bool ra8_reflow_layout_push_glyph(ra8_reflow_t* engine,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-bool ra8_reflow_layout_finish_page(ra8_reflow_t* engine, priv_cursor_t* cur);
+RA8_PRIV bool ra8_reflow_layout_finish_page(ra8_reflow_t* engine, priv_cursor_t* cur);
 
 /**
  * @brief Wrap to a new line, finishing a page if the bottom margin is hit.
@@ -247,7 +251,8 @@ bool ra8_reflow_layout_finish_page(ra8_reflow_t* engine, priv_cursor_t* cur);
  * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
-bool ra8_reflow_layout_newline(ra8_reflow_t* engine, priv_cursor_t* cur, bool allow_justify);
+RA8_PRIV bool
+ra8_reflow_layout_newline(ra8_reflow_t* engine, priv_cursor_t* cur, bool allow_justify);
 
 /**
  * @brief Dispatch one parsed token through the layout cursor.
@@ -270,10 +275,10 @@ bool ra8_reflow_layout_newline(ra8_reflow_t* engine, priv_cursor_t* cur, bool al
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-ra8_err_t ra8_reflow_layout_apply_token(ra8_reflow_t*             engine,
-                                        priv_cursor_t*            cur,
-                                        const stbtt_fontinfo*     font,
-                                        const ra8_reflow_token_t* tok);
+RA8_PRIV ra8_err_t ra8_reflow_layout_apply_token(ra8_reflow_t*             engine,
+                                                 priv_cursor_t*            cur,
+                                                 const stbtt_fontinfo*     font,
+                                                 const ra8_reflow_token_t* tok);
 
 /**
  * @brief Post-layout pass: group link-tagged glyphs into tappable rects.
@@ -301,7 +306,7 @@ ra8_err_t ra8_reflow_layout_apply_token(ra8_reflow_t*             engine,
  * @note Not thread-safe; caller must serialize access to @p engine.
  * @since 0.1.0
  */
-void ra8_reflow_layout_build_link_rects(ra8_reflow_t* engine, const stbtt_fontinfo* font);
+RA8_PRIV void ra8_reflow_layout_build_link_rects(ra8_reflow_t* engine, const stbtt_fontinfo* font);
 
 /**
  * @brief Apply an `<img>` token: real image when a loader is bound, else a
@@ -326,9 +331,9 @@ void ra8_reflow_layout_build_link_rects(ra8_reflow_t* engine, const stbtt_fontin
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-bool ra8_reflow_layout_apply_image(ra8_reflow_t*             engine,
-                                   priv_cursor_t*            cur,
-                                   const ra8_reflow_token_t* tok);
+RA8_PRIV bool ra8_reflow_layout_apply_image(ra8_reflow_t*             engine,
+                                            priv_cursor_t*            cur,
+                                            const ra8_reflow_token_t* tok);
 
 /**
  * @brief Lay out a `<table>` token range as an equal-column grid.
@@ -363,8 +368,8 @@ bool ra8_reflow_layout_apply_image(ra8_reflow_t*             engine,
  * @note Not thread-safe; caller must serialize access to @p engine and @p cur.
  * @since 0.1.0
  */
-ra8_err_t ra8_reflow_layout_table(ra8_reflow_t*         engine,
-                                  priv_cursor_t*        cur,
-                                  const stbtt_fontinfo* font,
-                                  uint32_t              start,
-                                  uint32_t*             out_next);
+RA8_PRIV ra8_err_t ra8_reflow_layout_table(ra8_reflow_t*         engine,
+                                           priv_cursor_t*        cur,
+                                           const stbtt_fontinfo* font,
+                                           uint32_t              start,
+                                           uint32_t*             out_next);

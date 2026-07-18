@@ -23,6 +23,7 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_reflow.h" /* ra8_reflow_html_tag_t */
 #include "ra8_reflow_css.h"
 #include "ra8_reflow_css_internal.h"
@@ -68,6 +69,7 @@ typedef enum : uint8_t {
  * @note Thread-safe; pure function with no shared state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_is_name_char(char c)
 {
   return ((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z')) || ((c >= '0') && (c <= '9')) ||
@@ -101,6 +103,7 @@ static bool priv_is_name_char(char c)
  * @note Thread-safe with respect to distinct @p sheet instances.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_intern_name(ra8_css_sheet_t* sheet, const char* s, size_t len, uint16_t* off)
 {
   /* mcdc-deactivated: every caller guards the length before interning -- (nlen == 0U) reject at the selector site, (n > 0U) at the @font-face/font-family sites, and priv_extract_url rejects an empty url() -- so (len == 0U) is unreachable; only (len > k_ra8_css_name_max) varies. */
@@ -144,6 +147,7 @@ static bool priv_intern_name(ra8_css_sheet_t* sheet, const char* s, size_t len, 
  * @note Thread-safe with respect to distinct @p rule instances.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_parse_sel_type(const char* s, size_t len, size_t* i, ra8_css_rule_t* rule)
 {
   if (s[*i] == '*') {
@@ -193,6 +197,7 @@ static bool priv_parse_sel_type(const char* s, size_t len, size_t* i, ra8_css_ru
  * @note Thread-safe with respect to distinct @p sheet and @p rule instances.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_parse_sel_part(ra8_css_sheet_t* sheet,
                                 const char*      s,
                                 size_t           len,
@@ -253,6 +258,7 @@ static bool priv_parse_sel_part(ra8_css_sheet_t* sheet,
  * @note Thread-safe with respect to distinct @p sheet and @p rule instances.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool
 priv_parse_selector(ra8_css_sheet_t* sheet, const char* s, size_t len, ra8_css_rule_t* rule)
 {
@@ -306,6 +312,7 @@ priv_parse_selector(ra8_css_sheet_t* sheet, const char* s, size_t len, ra8_css_r
  * @note Thread-safe; operates only on caller-owned arrays.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t priv_split_compounds(const char* s, size_t len, const char** part_p, size_t* part_n)
 {
   size_t nparts = 0U;
@@ -361,6 +368,7 @@ static int32_t priv_split_compounds(const char* s, size_t len, const char** part
  * @note Thread-safe with respect to distinct @p sheet and @p rule instances.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool
 priv_parse_complex_selector(ra8_css_sheet_t* sheet, const char* s, size_t len, ra8_css_rule_t* rule)
 {
@@ -414,6 +422,7 @@ priv_parse_complex_selector(ra8_css_sheet_t* sheet, const char* s, size_t len, r
  * @note Thread-safe with respect to distinct @p sheet instances.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_push_rule(ra8_css_sheet_t* sheet, const ra8_css_rule_t* rule)
 {
   if (sheet->rule_count >= (uint16_t)k_ra8_css_max_rules) {
@@ -451,6 +460,7 @@ static void priv_push_rule(ra8_css_sheet_t* sheet, const ra8_css_rule_t* rule)
  * @note Thread-safe with respect to distinct @p sheet instances.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_parse_selector_list(ra8_css_sheet_t* sheet,
                                      const char*      sel,
                                      size_t           sel_len,
@@ -479,6 +489,7 @@ static void priv_parse_selector_list(ra8_css_sheet_t* sheet,
  */
 
 /** @brief Strip one layer of matching `'`/`"` quotes from span @p s[0..*len). */
+RA8_INTERNAL
 static const char* priv_strip_quotes(const char* s, size_t* len)
 {
   if ((*len >= 2U) && ((s[0] == '"') || (s[0] == '\'')) && (s[*len - 1U] == s[0])) {
@@ -515,6 +526,7 @@ static const char* priv_strip_quotes(const char* s, size_t* len)
  * @note Thread-safe; operates only on caller-owned memory.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_extract_url(const char* val, size_t vlen, const char** url, size_t* ulen)
 {
   /* Bounded: at most (vlen - 3) windows; i advances by 1 each step. */
@@ -562,6 +574,7 @@ static bool priv_extract_url(const char* val, size_t vlen, const char** url, siz
  * @note Thread-safe; pure function with no shared state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_is_bold_kw(const char* val, size_t vlen)
 {
   return ra8_reflow_css_ci_eq(val, vlen, "bold") || ra8_reflow_css_ci_eq(val, vlen, "bolder") ||
@@ -591,6 +604,7 @@ static bool priv_is_bold_kw(const char* val, size_t vlen)
  * @note Thread-safe; pure function with no shared state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_is_italic_kw(const char* val, size_t vlen)
 {
   return ra8_reflow_css_ci_eq(val, vlen, "italic") || ra8_reflow_css_ci_eq(val, vlen, "oblique");
@@ -625,6 +639,7 @@ static bool priv_is_italic_kw(const char* val, size_t vlen)
  * @note Thread-safe with respect to distinct @p sheet and @p face instances.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_face_apply(ra8_css_sheet_t*    sheet,
                             const char*         prop,
                             size_t              plen,
@@ -685,6 +700,7 @@ typedef void (
  * @note Thread-safety depends on @p cb and @p ctx; the scanner itself is stateless.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_for_each_decl(const char* s, size_t len, priv_decl_fn cb, void* ctx)
 {
   size_t i = 0U;
@@ -741,6 +757,7 @@ typedef struct {
  * @note Thread-safety matches that of priv_face_apply().
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_face_cb(void* ctx, const char* prop, size_t plen, const char* val, size_t vlen)
 {
   priv_face_ctx_t* c = (priv_face_ctx_t*)ctx;
@@ -772,6 +789,7 @@ static void priv_face_cb(void* ctx, const char* prop, size_t plen, const char* v
  * @note Thread-safe with respect to distinct @p sheet instances.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_parse_fontface(ra8_css_sheet_t* sheet, const char* block, size_t len)
 {
   if (sheet->face_count >= (uint16_t)k_ra8_css_max_faces) {
@@ -819,6 +837,7 @@ typedef struct {
  * @note Thread-safety matches that of priv_intern_name().
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_family_cb(void* ctx, const char* prop, size_t plen, const char* val, size_t vlen)
 {
   priv_family_ctx_t* c = (priv_family_ctx_t*)ctx;
@@ -859,6 +878,7 @@ static void priv_family_cb(void* ctx, const char* prop, size_t plen, const char*
  * @note Thread-safe with respect to distinct @p sheet and @p decl instances.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 priv_extract_family(ra8_css_sheet_t* sheet, const char* block, size_t len, ra8_css_style_t* decl)
 {
@@ -890,6 +910,7 @@ priv_extract_family(ra8_css_sheet_t* sheet, const char* block, size_t len, ra8_c
  * @note Thread-safe with respect to distinct @p sheet instances.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_parse_at_rule(ra8_css_sheet_t* sheet,
                                const char*      sel,
                                size_t           sel_len,
