@@ -11,9 +11,16 @@
 
 #include <time.h>
 
-/** @brief Fallback seed so the PRNG state is never 0. */
+/**
+ * @enum mdl_seed_t
+ * @brief Fallback seed so the xorshift64 state is never 0.
+ * @details A zero state is the one fixed point of xorshift64 -- it would emit
+ *          zeros forever. The constant is the golden-ratio odd multiplier used
+ *          by SplitMix64, chosen for good avalanche from a small seed.
+ * @since 0.1.0
+ */
 typedef enum : uint64_t {
-  k_seed_fallback = 0x9E3779B97F4A7C15ULL,
+  k_seed_fallback = 0x9E3779B97F4A7C15ULL, /**< Substituted when the seed is 0. */
 } mdl_seed_t;
 
 /** @brief xorshift64 shift triple (Marsaglia's 13/7/17). */
@@ -53,9 +60,10 @@ uint32_t mdl_politeness_wait(mdl_politeness_t* p, uint32_t min_ms, uint32_t max_
   const uint32_t span    = (max_ms - min_ms) + 1U;
   const uint32_t delayms = min_ms + (uint32_t)(next_rand(p) % (uint64_t)span);
 
+  /** @brief Unit conversions for splitting a millisecond delay into timespec. */
   enum : uint32_t {
-    k_ms_per_s  = 1000U,
-    k_ns_per_ms = 1000000U,
+    k_ms_per_s  = 1000U,    /**< Milliseconds per second.  */
+    k_ns_per_ms = 1000000U, /**< Nanoseconds per millisecond. */
   };
   struct timespec ts = {.tv_sec  = (time_t)(delayms / k_ms_per_s),
                         .tv_nsec = (long)((delayms % k_ms_per_s) * k_ns_per_ms)};

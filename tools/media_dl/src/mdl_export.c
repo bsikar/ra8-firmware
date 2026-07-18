@@ -645,9 +645,16 @@ export_epub(const char* dir, char names[][k_name_max], size_t count, const char*
 
 /* --- RTA1 (native tile atlas: reuse the firmware ra8_tileatlas producer) -- */
 
-/** @brief RTA1 tile-band height; tile_w is set to the image width (webtoon). */
+/**
+ * @enum mdl_rta1_geom_t
+ * @brief RTA1 atlas tiling geometry for a long-strip page.
+ * @details `tile_w` is set to the full image width, so each tile is one
+ *          full-width horizontal band -- the shape the ra8_longstrip engine
+ *          scrolls a viewport at a time.
+ * @since 0.1.0
+ */
 typedef enum : uint16_t {
-  k_rta1_band_h = 256,
+  k_rta1_band_h = 256, /**< Tile-band height in pixels. */
 } mdl_rta1_geom_t;
 
 /** @brief Pull cursor over an in-RAM encoded image. */

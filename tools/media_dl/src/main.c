@@ -662,9 +662,10 @@ RA8_INTERNAL static bool take_opt(char** argv, int argc, int* i, const char* fla
 /** @brief Parse argv into `a`; numeric fields stay as strings for main. */
 RA8_INTERNAL static void parse_args(int argc, char** argv, mdl_args_t* a)
 {
+  /* Table-driven long options: each entry binds a flag to the field it fills. */
   const struct {
-    const char*  flag;
-    const char** dst;
+    const char*  flag; /**< Long-option spelling, including the leading "--". */
+    const char** dst;  /**< Field in @p a that receives the option's value.   */
   } opts[] = {
     {"--config", &a->cfg},
     {"--series", &a->series},
