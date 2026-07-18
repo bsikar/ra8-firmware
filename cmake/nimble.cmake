@@ -87,15 +87,16 @@ target_include_directories(nimble SYSTEM INTERFACE
     ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/mesh/include
     ${_RA8_NIMBLE_VENDOR_DIR}/nimble/transport/include
     ${_RA8_NIMBLE_VENDOR_DIR}/porting/nimble/include
-    # Upstream ``nimble/nimble_npl.h`` chains to ``nimble/nimble_npl_os.h``
-    # which is provided per-port. Our ThreadX NPL adapter
-    # (``port/nimble/inc/nimble_npl_threadx.h``) does not yet ship that shim,
-    # so the upstream "dummy" port's header is used to satisfy the chain
-    # for translation-units that only reference NimBLE host APIs by
-    # function name (e.g. libs/ra8_ble_host/src/ra8_ble_*.c). Code paths
-    # that actually exercise NPL primitives go through
-    # nimble_port_threadx, which carries its own ThreadX-typed NPL.
-    ${_RA8_NIMBLE_VENDOR_DIR}/porting/npl/dummy/include
+    # Upstream ``nimble/nimble_npl.h`` chains to ``nimble/nimble_npl_os.h``,
+    # which every port supplies. Ours is
+    # ``port/nimble/inc/nimble/nimble_npl_os.h``, so point the whole build
+    # at it. This used to fall back to the upstream "dummy" port's header
+    # for translation units that reference NimBLE host APIs without going
+    # through nimble_port_threadx (e.g. libs/ra8_ble_host/src/ra8_ble_*.c).
+    # That put two different definitions of ``struct ble_npl_mutex`` and
+    # friends into one image depending on which target a TU linked, which
+    # is an ABI mismatch no diagnostic reports.
+    ${_RA8_NIMBLE_REPO_ROOT}/port/nimble/inc
 )
 
 # Apps that link `nimble` get RA8_TARGET_BUILD so the ra8_ble_host

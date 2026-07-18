@@ -51,74 +51,15 @@ extern "C" {
 #include <stdint.h>
 
 /*
- * Pull in ThreadX so the struct definitions below have ``TX_MUTEX``
- * etc. The host unit-test build (``RA8_SIMULATOR_MODE``) does not
- * cross-link ThreadX -- this file is only compiled into the
- * cross-target build, so the include is unconditional.
+ * Upstream declares the entire NPL function surface and pulls the
+ * OS-specific structs in through ``nimble/nimble_npl_os.h``, which this
+ * port supplies (``port/nimble/inc/nimble/nimble_npl_os.h``). Including
+ * it here is what puts a prototype in front of every ``ble_npl_*``
+ * definition in ``nimble_npl_threadx.c``; the port used to restate the
+ * types by hand and restate none of the functions, so nothing checked
+ * those definitions against the contract they implement.
  */
-#include "tx_api.h"
-
-/* =============================================================================
- * Forward decls (NimBLE NPL)
- * =============================================================================
- *
- * These match libs/third_party/nimble/nimble/include/nimble/nimble_npl.h
- * verbatim. We re-declare here so this header can stand alone for
- * build systems that compile the .c without first walking the
- * upstream NPL header.
- */
-
-struct ble_npl_event;
-typedef void ble_npl_event_fn(struct ble_npl_event* ev);
-
-/** @brief Tick-count type used by the NPL. ThreadX ULONG matches. */
-typedef uint32_t ble_npl_time_t;
-
-/**
- * @struct ble_npl_event
- * @brief NimBLE event opaque -- pairs a callback with an argument.
- *
- * @details Posted into a ``ble_npl_eventq`` by callers and dispatched
- * by ``ble_npl_eventq_get``. Mirrors the FreeRTOS port's struct.
- */
-struct ble_npl_event {
-  uint8_t           queued; /**< 1 while sitting in an evq, 0 otherwise.    */
-  ble_npl_event_fn* fn;     /**< Callback invoked by ``ble_npl_event_run``. */
-  void*             arg;    /**< Opaque user argument passed to fn().       */
-};
-
-/**
- * @struct ble_npl_eventq
- * @brief Event queue mapped onto ``TX_QUEUE``.
- *
- * @details
- * The queue carries pointers (one ``struct ble_npl_event *`` per
- * slot). ThreadX wants the message size in 32-bit words: we pass
- * 1 word and the queue depth comes from ``k_ble_npl_eventq_depth``.
- */
-struct ble_npl_eventq {
-  TX_QUEUE q;           /**< Backing ThreadX queue.                  */
-  uint8_t  storage[64]; /**< Backing storage (16 entries * 4 bytes). */
-};
-
-/**
- * @struct ble_npl_callout
- * @brief One-shot timer that posts an event into a queue when it fires.
- *
- * @details Wraps a ``TX_TIMER`` and the ``ble_npl_event`` it should
- * post. ``priv_callout_trampoline`` reads the event pointer out of
- * the timer's user-data field and pushes it via ``ble_npl_eventq_put``.
- */
-struct ble_npl_callout {
-  TX_TIMER               handle; /**< Backing ThreadX one-shot timer. */
-  struct ble_npl_eventq* evq;    /**< Queue to post the event into.   */
-  struct ble_npl_event   ev;     /**< Event posted on each firing.    */
-};
-
-/** @brief Mutex mapped onto ``TX_MUTEX``. */
-struct ble_npl_mutex {
-  TX_MUTEX handle; /**< Backing ThreadX mutex. */
-};
+#include "nimble/nimble_npl.h"
 
 /* =============================================================================
  * NimBLE port API (matches porting/nimble/include/nimble/nimble_port.h)
@@ -173,11 +114,6 @@ void nimble_port_run(void);
  * @since 0.1.0
  */
 struct ble_npl_eventq* nimble_port_get_dflt_eventq(void);
-
-/** @brief Counting semaphore mapped onto ``TX_SEMAPHORE``. */
-struct ble_npl_sem {
-  TX_SEMAPHORE handle; /**< Backing ThreadX counting semaphore. */
-};
 
 /* =============================================================================
  * NPL constants
