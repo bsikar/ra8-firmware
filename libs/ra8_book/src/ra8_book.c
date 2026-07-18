@@ -133,6 +133,7 @@ static const uint32_t s_ra8_book_crc_table[k_ra8_book_crc_table_len] = {
  *
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 RA8_NO_RECURSION
 static uint32_t ra8_book_crc32(const uint8_t* data, size_t len)
 {
@@ -172,6 +173,7 @@ static uint32_t ra8_book_crc32(const uint8_t* data, size_t len)
  *
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool ra8_book_table_fits(uint32_t off, uint32_t count, uint32_t elem, uint32_t total)
 {
   uint64_t end = (uint64_t)off + ((uint64_t)count * (uint64_t)elem);
@@ -327,6 +329,7 @@ typedef struct {
  *
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_container_view(const uint8_t*             bytes,
                                   size_t                     file_len,
                                   size_t                     scratch_cap,
@@ -399,6 +402,7 @@ static ra8_err_t s_container_view(const uint8_t*             bytes,
  *
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_inflate_chunks(const ra8_book_container_view_t* view,
                                   ra8_book_inflate_fn              inflate,
                                   uint8_t*                         scratch)
@@ -461,6 +465,7 @@ static ra8_err_t s_inflate_chunks(const ra8_book_container_view_t* view,
  *
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_open_body(const uint8_t*      bytes,
                              size_t              file_len,
                              ra8_book_inflate_fn inflate,

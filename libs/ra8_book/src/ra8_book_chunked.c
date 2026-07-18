@@ -20,6 +20,7 @@
 
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_book_internal.h"
 #include "ra8_check.h"
 
@@ -53,6 +54,7 @@ static const char* const s_tag_chunked = "ra8_book_chunked";
  *
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 s_table_check(const ra8_book_chunked_t* rd, const uint64_t* table_buf, uint64_t payload_len)
 {
@@ -111,6 +113,7 @@ s_table_check(const ra8_book_chunked_t* rd, const uint64_t* table_buf, uint64_t 
  *
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_load_table(ra8_book_chunked_t* rd,
                               uint64_t            file_len,
                               uint64_t*           table_buf,
@@ -174,6 +177,7 @@ static ra8_err_t s_load_table(ra8_book_chunked_t* rd,
  *
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_chunked_open_body(ra8_book_chunked_t* rd,
                                      uint64_t            file_len,
                                      uint64_t*           table_buf,
@@ -249,6 +253,7 @@ ra8_err_t ra8_book_chunked_open(ra8_book_chunked_t* rd,
  *
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 s_stage_and_inflate(const ra8_book_chunked_t* rd, uint32_t idx, uint8_t* buf, uint32_t len)
 {

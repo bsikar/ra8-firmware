@@ -20,6 +20,7 @@
 
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_book.h"
 #include "ra8_book_internal.h"
 #include "ra8_check.h"
@@ -108,6 +109,7 @@ ra8_err_t ra8_book_src_paged(ra8_book_src_t* out,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_book_src_read_paged(const ra8_book_src_t* src, uint32_t off, void* dst, uint32_t len)
 {
@@ -201,6 +203,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ra8_book_paged_node(const ra8_book_src_t* src, uint32_t idx, ra8_book_node_t* out)
 {
   const uint32_t off = src->hdr.node_off + (idx * (uint32_t)sizeof(ra8_book_node_t));
@@ -234,6 +237,7 @@ static ra8_err_t ra8_book_paged_node(const ra8_book_src_t* src, uint32_t idx, ra
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 ra8_book_paged_str_short(const ra8_book_src_t* src, uint32_t abs_off, char* buf, uint32_t cap)
 {
@@ -286,6 +290,7 @@ ra8_book_paged_str_short(const ra8_book_src_t* src, uint32_t abs_off, char* buf,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool ra8_book_paged_emit_run(const ra8_book_src_t* src,
                                     uint32_t              abs_off,
                                     char*                 out,
@@ -358,6 +363,7 @@ static bool ra8_book_paged_emit_run(const ra8_book_src_t* src,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool priv_paged_visit_node(const ra8_book_src_t* src,
                                   uint32_t              n,
                                   char*                 out,
@@ -434,6 +440,7 @@ static bool priv_paged_visit_node(const ra8_book_src_t* src,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool ra8_book_walk_text_paged(const ra8_book_src_t* src,
                                      uint32_t              root,
                                      uint32_t              node_count,

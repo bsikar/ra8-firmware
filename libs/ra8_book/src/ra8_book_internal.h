@@ -25,6 +25,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 
 /**
@@ -73,10 +74,10 @@ typedef enum : uint8_t {
  * @note Thread-safe: reads only @p hdr, writes only the outputs.
  * @since Version 0.1.0
  */
-ra8_err_t ra8_book_container_header_fields(const uint8_t* hdr,
-                                           uint32_t*      out_chunk_bytes,
-                                           uint64_t*      out_total,
-                                           uint32_t*      out_count);
+RA8_PRIV ra8_err_t ra8_book_container_header_fields(const uint8_t* hdr,
+                                                    uint32_t*      out_chunk_bytes,
+                                                    uint64_t*      out_total,
+                                                    uint32_t*      out_count);
 
 /**
  * @brief Decode one uint64 LE chunk-table entry from unaligned container bytes.
@@ -100,7 +101,7 @@ ra8_err_t ra8_book_container_header_fields(const uint8_t* hdr,
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
-uint64_t ra8_book_container_table_entry(const uint8_t* table, uint32_t idx);
+RA8_PRIV uint64_t ra8_book_container_table_entry(const uint8_t* table, uint32_t idx);
 
 /**
  * @enum ra8_book_xhtml_bound_t
@@ -136,7 +137,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe; callers must provide external synchronisation.
  * @since Version 0.1.0
  */
-bool ra8_book_is_block(const char* name);
+RA8_PRIV bool ra8_book_is_block(const char* name);
 
 /**
  * @brief Append a whitespace-collapsed text run to the output buffer.
@@ -168,7 +169,8 @@ bool ra8_book_is_block(const char* name);
  * @note Not thread-safe; callers must provide external synchronisation.
  * @since Version 0.1.0
  */
-bool ra8_book_emit_text(char* out, size_t cap, size_t* pos, const char* str, bool* at_break);
+RA8_PRIV bool
+ra8_book_emit_text(char* out, size_t cap, size_t* pos, const char* str, bool* at_break);
 
 /**
  * @brief Append a paragraph break, collapsing consecutive block-level breaks.
@@ -196,4 +198,4 @@ bool ra8_book_emit_text(char* out, size_t cap, size_t* pos, const char* str, boo
  * @note Not thread-safe; callers must provide external synchronisation.
  * @since Version 0.1.0
  */
-bool ra8_book_emit_break(char* out, size_t cap, size_t* pos, bool* at_break);
+RA8_PRIV bool ra8_book_emit_break(char* out, size_t cap, size_t* pos, bool* at_break);
