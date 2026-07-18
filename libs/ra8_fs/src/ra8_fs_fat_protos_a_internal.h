@@ -21,8 +21,8 @@
 
 #pragma once
 
-#include "ra8_fs_fat_types_internal.h"
 #include "ra8_attributes.h"
+#include "ra8_fs_fat_types_internal.h"
 
 /* ===========================================================================
  * Cross-TU helper prototypes. Each is defined `static`-free in exactly one
