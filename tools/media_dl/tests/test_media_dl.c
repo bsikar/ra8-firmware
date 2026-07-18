@@ -282,6 +282,11 @@ static void test_export_rta1_roundtrip(void)
   TEST_END("export rta1 round-trip");
 }
 
+/**
+ * @brief Run every media_dl unit test in sequence.
+ * @return 0 when all tests passed, non-zero on the first failure.
+ * @since 0.1.0
+ */
 int32_t main(void)
 {
   test_format_mapping();

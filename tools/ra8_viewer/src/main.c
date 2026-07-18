@@ -10,8 +10,10 @@
  * platform-agnostic reader libraries and calls them directly on the host.
  *
  * Usage:
- *   ra8_viewer <file.cbz|.cbr|.cbt[.gz|.xz]|.rta1>            # scrolling window
- *   ra8_viewer <file> --headless --dump-ppm P [--page N | --dump-tile N]
+ * @code
+ * ra8_viewer <file.cbz|.cbr|.cbt[.gz|.xz]|.rta1>            # scrolling window
+ * ra8_viewer <file> --headless --dump-ppm P [--page N | --dump-tile N]
+ * @endcode
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

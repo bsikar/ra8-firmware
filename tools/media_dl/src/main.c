@@ -251,9 +251,17 @@ RA8_INTERNAL static void filter_prefix(mdl_url_list_t* l, const char* prefix)
 /**
  * @brief Download one chapter's page images into `dest_dir`.
  *
- * @param[in,out] page_no Running 1-based page counter, advanced per image so a
- *                        combined download numbers pages continuously across
- *                        chapters (`dest_dir` must already exist).
+ * @param[in]     net         Network interface used for every fetch.
+ * @param[in]     site        Site descriptor supplying the image selectors and
+ *                            the per-image politeness bounds.
+ * @param[in]     series_url  Series page URL, sent as the Referer.
+ * @param[in]     chapter_url Chapter page URL to scrape for `<img>` sources.
+ * @param[in]     dest_dir    Existing directory the images are written into.
+ * @param[in,out] page_no     Running 1-based page counter, advanced per image so
+ *                            a combined download numbers pages continuously
+ *                            across chapters.
+ * @param[in,out] pol         Jitter source spacing consecutive image fetches.
+ * @param[in]     timeout     Per-request time budget, milliseconds.
  * @return Count of images that failed to download.
  */
 RA8_INTERNAL static size_t download_chapter(mdl_net_iface_t*  net,
@@ -561,7 +569,7 @@ RA8_INTERNAL static int run_series(const char*  cfg_path,
   return (fails == 0U) ? 0 : 1;
 }
 
-/** @brief page mode: fetch one URL, download its <img> URLs (debug path). */
+/** @brief page mode: fetch one URL, download its `<img>` URLs (debug path). */
 RA8_INTERNAL static int run_page(const char* url,
                                  const char* out_dir,
                                  const char* attr,
