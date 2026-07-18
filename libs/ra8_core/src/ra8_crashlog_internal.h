@@ -27,6 +27,7 @@ extern "C" {
 
 #ifdef RA8_SIMULATOR_MODE
 
+#include "ra8_attributes.h"
 #include "ra8_crashlog.h"
 
 /**
@@ -54,7 +55,7 @@ extern "C" {
  * @note Not thread-safe; single-threaded test context only.
  * @since 0.1.0
  */
-volatile ra8_crashlog_record_t* ra8_crashlog_test_record(void);
+RA8_TEST_HELPER volatile ra8_crashlog_record_t* ra8_crashlog_test_record(void);
 
 /**
  * @brief Zero the record to model a blank / fresh-SRAM start (host tests).
@@ -75,7 +76,7 @@ volatile ra8_crashlog_record_t* ra8_crashlog_test_record(void);
  * @note Not thread-safe; single-threaded test context only.
  * @since 0.1.0
  */
-void ra8_crashlog_test_wipe(void);
+RA8_TEST_HELPER void ra8_crashlog_test_wipe(void);
 
 #endif /* RA8_SIMULATOR_MODE */
 
