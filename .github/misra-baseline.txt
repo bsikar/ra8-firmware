@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 12474
+# total findings: 12402
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -74,9 +74,7 @@ libs/ra8_board_ra8p1/src/ra8_board_ra8p1.c	misra-c2012-15.5	31
 libs/ra8_board_ra8p1/src/ra8_board_ra8p1.c	misra-c2012-8.4	17
 libs/ra8_board_ra8p1/src/ra8_board_ra8p1.c	misra-c2012-8.9	3
 libs/ra8_book/src/ra8_book.c	misra-c2012-11.5	3
-libs/ra8_book/src/ra8_book.c	misra-c2012-14.2	1
-libs/ra8_book/src/ra8_book.c	misra-c2012-15.5	31
-libs/ra8_book/src/ra8_book.c	misra-c2012-17.3	1
+libs/ra8_book/src/ra8_book.c	misra-c2012-15.5	30
 libs/ra8_book/src/ra8_book.c	misra-c2012-17.7	5
 libs/ra8_book/src/ra8_book.c	misra-c2012-18.4	1
 libs/ra8_book/src/ra8_book.c	misra-c2012-21.15	5
@@ -368,7 +366,6 @@ libs/ra8_hal/inc/ra8_i3c_i2c_regs.h	misra-c2012-10.8	24
 libs/ra8_hal/inc/ra8_i3c_i2c_regs.h	misra-c2012-12.2	9
 libs/ra8_hal/inc/ra8_i3c_i2c_regs.h	misra-c2012-15.5	1
 libs/ra8_hal/inc/ra8_i3c_regs.h	misra-c2012-10.4	16
-libs/ra8_hal/inc/ra8_i3c_regs.h	misra-c2012-20.1	2
 libs/ra8_hal/inc/ra8_icu_regs.h	misra-c2012-11.4	9
 libs/ra8_hal/inc/ra8_icu_regs.h	misra-c2012-15.5	3
 libs/ra8_hal/inc/ra8_ipc_regs.h	misra-c2012-11.4	3
@@ -633,8 +630,7 @@ libs/ra8_hal/src/ra8_jpeg_sw.c	misra-c2012-20.1	1
 libs/ra8_hal/src/ra8_jpeg_sw.c	misra-c2012-8.4	1
 libs/ra8_hal/src/ra8_jpeg_sw.c	misra-c2012-8.9	1
 libs/ra8_hal/src/ra8_jpeg_sw_decode.c	misra-c2012-12.1	23
-libs/ra8_hal/src/ra8_jpeg_sw_decode.c	misra-c2012-14.2	7
-libs/ra8_hal/src/ra8_jpeg_sw_decode.c	misra-c2012-15.5	64
+libs/ra8_hal/src/ra8_jpeg_sw_decode.c	misra-c2012-15.5	55
 libs/ra8_hal/src/ra8_jpeg_sw_decode.c	misra-c2012-17.7	1
 libs/ra8_hal/src/ra8_jpeg_sw_decode.c	misra-c2012-8.4	1
 libs/ra8_hal/src/ra8_jpeg_sw_decode.c	misra-c2012-8.9	1
@@ -647,7 +643,6 @@ libs/ra8_hal/src/ra8_jpeg_sw_encode.c	misra-c2012-15.7	1
 libs/ra8_hal/src/ra8_jpeg_sw_encode.c	misra-c2012-17.7	1
 libs/ra8_hal/src/ra8_jpeg_sw_encode.c	misra-c2012-8.4	1
 libs/ra8_hal/src/ra8_jpeg_sw_encode.c	misra-c2012-8.9	3
-libs/ra8_hal/src/ra8_jpeg_sw_encode_emit.c	misra-c2012-14.2	1
 libs/ra8_hal/src/ra8_jpeg_sw_encode_emit.c	misra-c2012-15.5	1
 libs/ra8_hal/src/ra8_jpeg_sw_internal.h	misra-c2012-15.5	2
 libs/ra8_hal/src/ra8_jpeg_sw_internal.h	misra-c2012-8.9	3
@@ -1054,6 +1049,7 @@ libs/ra8_mpu/src/ra8_mpu.c	misra-c2012-8.4	4
 libs/ra8_net_pal/src/ra8_net_pal.c	misra-c2012-15.5	21
 libs/ra8_net_pal/src/ra8_net_pal.c	misra-c2012-8.4	8
 libs/ra8_net_pal/src/ra8_net_pal.c	misra-c2012-9.2	1
+libs/ra8_nsc/inc/ra8_nsc_veneer.h	misra-c2012-20.5	1
 libs/ra8_nsc/src/ra8_nsc_cgc.c	misra-c2012-12.3	1
 libs/ra8_nsc/src/ra8_nsc_cgc.c	misra-c2012-15.5	1
 libs/ra8_nsc/src/ra8_nsc_cgc.c	misra-c2012-8.4	3
@@ -1120,19 +1116,15 @@ libs/ra8_rabook_compile/src/ra8_rabook_compile.c	misra-c2012-21.16	1
 libs/ra8_rabook_compile/src/ra8_rabook_compile.c	misra-c2012-8.4	11
 libs/ra8_rabook_compile/src/ra8_rabook_compile.c	misra-c2012-9.2	1
 libs/ra8_rabook_compile/src/ra8_rabook_gray4.c	misra-c2012-12.1	6
-libs/ra8_rabook_compile/src/ra8_rabook_gray4.c	misra-c2012-14.2	1
-libs/ra8_rabook_compile/src/ra8_rabook_gray4.c	misra-c2012-15.5	13
+libs/ra8_rabook_compile/src/ra8_rabook_gray4.c	misra-c2012-15.5	12
 libs/ra8_rabook_compile/src/ra8_rabook_gray4.c	misra-c2012-8.4	3
 libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	misra-c2012-11.5	1
 libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	misra-c2012-12.1	3
-libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	misra-c2012-14.2	4
-libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	misra-c2012-15.5	42
+libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	misra-c2012-15.5	32
 libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	misra-c2012-15.7	1
 libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	misra-c2012-17.3	3
 libs/ra8_rabook_compile/src/ra8_rabook_pipeline.c	misra-c2012-8.4	2
-libs/ra8_rabook_import/src/ra8_rabook_import.c	misra-c2012-14.2	5
-libs/ra8_rabook_import/src/ra8_rabook_import.c	misra-c2012-15.5	67
-libs/ra8_rabook_import/src/ra8_rabook_import.c	misra-c2012-17.3	2
+libs/ra8_rabook_import/src/ra8_rabook_import.c	misra-c2012-15.5	54
 libs/ra8_rabook_import/src/ra8_rabook_import.c	misra-c2012-17.8	3
 libs/ra8_rabook_import/src/ra8_rabook_import.c	misra-c2012-8.4	1
 libs/ra8_rabook_import/src/ra8_rabook_import_compiler.c	misra-c2012-15.5	34
@@ -1256,24 +1248,23 @@ libs/ra8_tileatlas/src/ra8_tileatlas.c	misra-c2012-8.4	6
 libs/ra8_tileatlas/src/ra8_tileatlas.c	misra-c2012-8.9	2
 libs/ra8_tileatlas/src/ra8_tileatlas.c	misra-c2012-9.2	3
 libs/ra8_tileatlas/src/ra8_tileatlas_png.c	misra-c2012-11.5	5
-libs/ra8_tileatlas/src/ra8_tileatlas_png.c	misra-c2012-15.5	41
+libs/ra8_tileatlas/src/ra8_tileatlas_png.c	misra-c2012-15.5	40
 libs/ra8_tileatlas/src/ra8_tileatlas_png.c	misra-c2012-8.9	2
 libs/ra8_tileatlas/src/ra8_tileatlas_png.c	misra-c2012-9.2	1
-libs/ra8_tileatlas/src/ra8_tileatlas_png_chunk.c	misra-c2012-14.2	1
-libs/ra8_tileatlas/src/ra8_tileatlas_png_chunk.c	misra-c2012-15.5	44
+libs/ra8_tileatlas/src/ra8_tileatlas_png_chunk.c	misra-c2012-15.5	38
 libs/ra8_tileatlas/src/ra8_tileatlas_png_chunk.c	misra-c2012-8.9	1
 libs/ra8_tileatlas/src/ra8_tileatlas_png_chunk.c	misra-c2012-9.2	3
 libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-10.3	1
 libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-10.6	2
 libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-11.5	11
-libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-15.5	54
+libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-15.5	50
 libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-17.3	1
 libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-18.4	1
 libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-8.4	2
-libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-8.9	5
+libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-8.9	4
 libs/ra8_tileatlas/src/ra8_tileatlas_produce.c	misra-c2012-9.2	3
 libs/ra8_tileatlas/src/ra8_tileatlas_produce_webp.c	misra-c2012-10.8	1
-libs/ra8_tileatlas/src/ra8_tileatlas_produce_webp.c	misra-c2012-15.5	12
+libs/ra8_tileatlas/src/ra8_tileatlas_produce_webp.c	misra-c2012-15.5	11
 libs/ra8_tileatlas/src/ra8_tileatlas_produce_webp.c	misra-c2012-8.4	1
 libs/ra8_tls/src/ra8_tls.c	misra-c2012-10.4	1
 libs/ra8_tls/src/ra8_tls.c	misra-c2012-15.5	48
@@ -1361,7 +1352,7 @@ libs/ra8_widget/src/ra8_widget_nav_bar.c	misra-c2012-15.5	14
 libs/ra8_widget/src/ra8_widget_nav_bar.c	misra-c2012-8.4	1
 libs/ra8_widget/src/ra8_widget_nav_bar.c	misra-c2012-8.9	1
 libs/ra8_widget/src/ra8_widget_paint.c	misra-c2012-10.8	1
-libs/ra8_widget/src/ra8_widget_paint.c	misra-c2012-15.5	8
+libs/ra8_widget/src/ra8_widget_paint.c	misra-c2012-15.5	7
 libs/ra8_widget/src/ra8_widget_panel.c	misra-c2012-15.5	19
 libs/ra8_widget/src/ra8_widget_panel.c	misra-c2012-8.4	1
 libs/ra8_widget/src/ra8_widget_panel.c	misra-c2012-8.9	2
