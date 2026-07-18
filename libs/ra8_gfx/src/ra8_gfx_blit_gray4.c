@@ -61,6 +61,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe only in that it reads the caller's buffer; no shared state.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_gray4_color(const uint8_t* src, int32_t src_w, int32_t x, int32_t y)
 {
   const size_t  flat = ((size_t)y * (size_t)src_w) + (size_t)x;
@@ -91,6 +92,7 @@ static uint32_t internal_gray4_color(const uint8_t* src, int32_t src_w, int32_t 
  * @note Not thread-safe; shares s_gfx_text_state with all rasteriser functions.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_gray4_block(int32_t bx, int32_t by, int32_t zoom, uint32_t color)
 {
   for (int32_t dy = 0; dy < zoom; ++dy) {

@@ -76,6 +76,7 @@ typedef enum : uint8_t {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_blit_glyph_565(int32_t        x,
                                     int32_t        y,
                                     int32_t        gw,
@@ -141,6 +142,7 @@ static void internal_blit_glyph_565(int32_t        x,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_render_glyph(int32_t               x,
                                   int32_t               y,
                                   const ra8_gfx_font_t* font,
