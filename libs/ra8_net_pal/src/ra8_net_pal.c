@@ -20,6 +20,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_eth.h"
@@ -46,6 +47,7 @@
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_copy_bytes(uint8_t* dst, const uint8_t* src, uint16_t len)
 {
   for (uint16_t i = 0U; i < len; ++i) {
@@ -71,6 +73,7 @@ static void internal_copy_bytes(uint8_t* dst, const uint8_t* src, uint16_t len)
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_zero_bytes(uint8_t* dst, uint16_t len)
 {
   for (uint16_t i = 0U; i < len; ++i) {
@@ -144,6 +147,7 @@ static ra8_net_pal_state_t s_state = {};
  * @note Not thread-safe; call only from init/deinit paths.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_ring_reset(void)
 {
   s_state.head  = 0U;
@@ -176,6 +180,7 @@ static void internal_ring_reset(void)
  * @note Pure helper; safe from any context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_translate_event(uint32_t eth_mask)
 {
   if (eth_mask != 0U) {
@@ -205,6 +210,7 @@ static uint32_t internal_translate_event(uint32_t eth_mask)
  *       which does not exist; treat as not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_eth_event(void* ctx, uint32_t status_mask)
 {
   (void)ctx;

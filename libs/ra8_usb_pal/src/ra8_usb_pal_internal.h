@@ -17,6 +17,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include "ra8_attributes.h"
 
 /**
  * @brief Pure predicate: callback non-NULL AND mask non-zero.
@@ -48,6 +49,7 @@ extern "C" {
  *
  * @since 0.1.0
  */
+RA8_PRIV
 bool ra8_usb_pal_internal_should_dispatch_event(const void* event_fn,
                                                 uint16_t    mask,
                                                 uint16_t    none_value);
@@ -81,6 +83,7 @@ bool ra8_usb_pal_internal_should_dispatch_event(const void* event_fn,
  *
  * @since 0.1.0
  */
+RA8_PRIV
 bool ra8_usb_pal_internal_ep_out_of_range(uint8_t ep_addr, uint8_t ep_max);
 
 #ifdef __cplusplus
