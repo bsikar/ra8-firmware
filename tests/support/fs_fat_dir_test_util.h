@@ -108,7 +108,9 @@ static inline ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(buf, &d->bytes[lba * (uint32_t)k_geo_blk_sz], count * (uint32_t)k_geo_blk_sz);
+  memcpy(buf,
+         &d->bytes[(size_t)lba * (uint32_t)k_geo_blk_sz],
+         (size_t)count * (uint32_t)k_geo_blk_sz);
   return k_ra8_ok;
 }
 
@@ -118,7 +120,9 @@ static inline ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(&d->bytes[lba * (uint32_t)k_geo_blk_sz], buf, count * (uint32_t)k_geo_blk_sz);
+  memcpy(&d->bytes[(size_t)lba * (uint32_t)k_geo_blk_sz],
+         buf,
+         (size_t)count * (uint32_t)k_geo_blk_sz);
   return k_ra8_ok;
 }
 
@@ -178,7 +182,9 @@ static inline ra8_err_t inj_read(void* ctx, uint32_t lba, uint32_t count, uint8_
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(buf, &d->bytes[lba * (uint32_t)k_geo_blk_sz], count * (uint32_t)k_geo_blk_sz);
+  memcpy(buf,
+         &d->bytes[(size_t)lba * (uint32_t)k_geo_blk_sz],
+         (size_t)count * (uint32_t)k_geo_blk_sz);
   return k_ra8_ok;
 }
 
@@ -191,7 +197,9 @@ static inline ra8_err_t inj_write(void* ctx, uint32_t lba, uint32_t count, const
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(&d->bytes[lba * (uint32_t)k_geo_blk_sz], buf, count * (uint32_t)k_geo_blk_sz);
+  memcpy(&d->bytes[(size_t)lba * (uint32_t)k_geo_blk_sz],
+         buf,
+         (size_t)count * (uint32_t)k_geo_blk_sz);
   return k_ra8_ok;
 }
 
@@ -237,7 +245,9 @@ static inline ra8_err_t wco_read(void* ctx, uint32_t lba, uint32_t count, uint8_
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(buf, &d->bytes[lba * (uint32_t)k_geo_blk_sz], count * (uint32_t)k_geo_blk_sz);
+  memcpy(buf,
+         &d->bytes[(size_t)lba * (uint32_t)k_geo_blk_sz],
+         (size_t)count * (uint32_t)k_geo_blk_sz);
   return k_ra8_ok;
 }
 
@@ -251,7 +261,9 @@ static inline ra8_err_t wco_write(void* ctx, uint32_t lba, uint32_t count, const
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(&d->bytes[lba * (uint32_t)k_geo_blk_sz], buf, count * (uint32_t)k_geo_blk_sz);
+  memcpy(&d->bytes[(size_t)lba * (uint32_t)k_geo_blk_sz],
+         buf,
+         (size_t)count * (uint32_t)k_geo_blk_sz);
   return k_ra8_ok;
 }
 

@@ -40,14 +40,14 @@
 static void test_rar5_all_literal_roundtrip(void)
 {
   TEST_BEGIN("rar5: all-literal round-trip");
-  static uint8_t src[600];
-  for (size_t i = 0U; i < sizeof(src); ++i) {
-    src[i] = (uint8_t)((i * 7U) + (i >> 2U) + 3U);
+  static uint8_t s_src[600];
+  for (size_t i = 0U; i < sizeof(s_src); ++i) {
+    s_src[i] = (uint8_t)((i * 7U) + (i >> 2U) + 3U);
   }
-  static uint8_t pk[k_pk_cap];
-  memset(pk, 0, sizeof(pk));
-  const size_t pklen = enc_all_literal(src, sizeof(src), pk, sizeof(pk));
-  decode_and_check(pk, pklen, src, sizeof(src));
+  static uint8_t s_pk[k_pk_cap];
+  memset(s_pk, 0, sizeof(s_pk));
+  const size_t pklen = enc_all_literal(s_src, sizeof(s_src), s_pk, sizeof(s_pk));
+  decode_and_check(s_pk, pklen, s_src, sizeof(s_src));
   TEST_END("rar5: all-literal round-trip");
 }
 
@@ -75,29 +75,29 @@ static void test_rar5_all_literal_roundtrip(void)
 static void test_rar5_match_legs(void)
 {
   TEST_BEGIN("rar5: LZ match / repeat legs");
-  static uint8_t bodybuf[k_pk_cap];
-  static uint8_t exp[k_out_cap];
-  memset(bodybuf, 0, sizeof(bodybuf));
-  memset(exp, 0, sizeof(exp));
-  bitw_t body = {.buf = bodybuf, .cap = sizeof(bodybuf)};
+  static uint8_t s_bodybuf[k_pk_cap];
+  static uint8_t s_exp[k_out_cap];
+  memset(s_bodybuf, 0, sizeof(s_bodybuf));
+  memset(s_exp, 0, sizeof(s_exp));
+  bitw_t body = {.buf = s_bodybuf, .cap = sizeof(s_bodybuf)};
   size_t elen = 0U;
   enc_tables(&body);
   /* 300-byte literal prefix so far/large distances have a window. */
   for (uint32_t i = 0U; i < 300U; ++i) {
-    enc_lit(&body, exp, &elen, (uint8_t)(i + 1U));
+    enc_lit(&body, s_exp, &elen, (uint8_t)(i + 1U));
   }
-  enc_match(&body, exp, &elen, 2U, 3U);           /* len 4, dist 4          */
-  enc_match_lenx(&body, exp, &elen, 1U, 1U);      /* len 11, dist 2         */
-  enc_match_distx(&body, exp, &elen, 0U, 1U);     /* len 2, dist 6          */
-  enc_match_lowdist(&body, exp, &elen, 0U, 5U);   /* len 2, dist 38         */
-  enc_match_hilow(&body, exp, &elen, 0U, 1U, 2U); /* len 2, dist 65+16+2=83 */
-  enc_match_big(&body, exp, &elen, 0U);           /* len 3, dist 257        */
-  enc_repdist(&body, exp, &elen, 1U, 257U);       /* len 3, reuse dist 257  */
-  enc_replast(&body, exp, &elen, 3U, 257U);       /* repeat last len/dist   */
-  static uint8_t pk[k_pk_cap];
-  memset(pk, 0, sizeof(pk));
-  const size_t pklen = enc_finish(&body, pk);
-  decode_and_check(pk, pklen, exp, elen);
+  enc_match(&body, s_exp, &elen, 2U, 3U);           /* len 4, dist 4          */
+  enc_match_lenx(&body, s_exp, &elen, 1U, 1U);      /* len 11, dist 2         */
+  enc_match_distx(&body, s_exp, &elen, 0U, 1U);     /* len 2, dist 6          */
+  enc_match_lowdist(&body, s_exp, &elen, 0U, 5U);   /* len 2, dist 38         */
+  enc_match_hilow(&body, s_exp, &elen, 0U, 1U, 2U); /* len 2, dist 65+16+2=83 */
+  enc_match_big(&body, s_exp, &elen, 0U);           /* len 3, dist 257        */
+  enc_repdist(&body, s_exp, &elen, 1U, 257U);       /* len 3, reuse dist 257  */
+  enc_replast(&body, s_exp, &elen, 3U, 257U);       /* repeat last len/dist   */
+  static uint8_t s_pk[k_pk_cap];
+  memset(s_pk, 0, sizeof(s_pk));
+  const size_t pklen = enc_finish(&body, s_pk);
+  decode_and_check(s_pk, pklen, s_exp, elen);
   TEST_END("rar5: LZ match / repeat legs");
 }
 
@@ -106,13 +106,13 @@ static void test_rar5_match_legs(void)
 /** @brief Independent delta-filter inverse over @p d (test oracle). */
 static void oracle_delta(uint8_t* d, uint32_t len, uint32_t chan)
 {
-  static uint8_t tmp[k_out_cap];
-  memcpy(tmp, d, len);
+  static uint8_t s_tmp[k_out_cap];
+  memcpy(s_tmp, d, len);
   uint32_t dpos = 0U;
   for (uint32_t ch = 0U; ch < chan; ++ch) {
     uint8_t prev = 0U;
     for (uint32_t i = ch; i < len; i += chan) {
-      prev = (uint8_t)(prev - tmp[dpos]);
+      prev = (uint8_t)(prev - s_tmp[dpos]);
       dpos++;
       d[i] = prev;
     }
@@ -166,32 +166,32 @@ static void oracle_arm(uint8_t* d, uint32_t len, uint32_t filepos)
 /** @brief Round-trip a filter over crafted literals; compare to the test oracle. */
 static void run_filter_case(uint32_t type, uint32_t chan, const uint8_t* raw, uint32_t len)
 {
-  static uint8_t bodybuf[k_pk_cap];
-  static uint8_t exp[k_out_cap];
-  memset(bodybuf, 0, sizeof(bodybuf));
-  bitw_t body = {.buf = bodybuf, .cap = sizeof(bodybuf)};
+  static uint8_t s_bodybuf[k_pk_cap];
+  static uint8_t s_exp[k_out_cap];
+  memset(s_bodybuf, 0, sizeof(s_bodybuf));
+  bitw_t body = {.buf = s_bodybuf, .cap = sizeof(s_bodybuf)};
   size_t elen = 0U;
   enc_tables(&body);
   /* The filter token precedes the range it covers: read at output position 0, it
    * transforms [0, len) once decoding completes (RAR emits the filter, then data). */
   enc_filter(&body, type, 0U, len, chan);
   for (uint32_t i = 0U; i < len; ++i) {
-    enc_lit(&body, exp, &elen, raw[i]);
+    enc_lit(&body, s_exp, &elen, raw[i]);
   }
   /* Expected = the same literals with the decoder's inverse applied. */
   if (type == 0U) {
-    oracle_delta(exp, len, chan);
+    oracle_delta(s_exp, len, chan);
   } else if (type == 1U) {
-    oracle_x86(exp, len, 0U, false);
+    oracle_x86(s_exp, len, 0U, false);
   } else if (type == 2U) {
-    oracle_x86(exp, len, 0U, true);
+    oracle_x86(s_exp, len, 0U, true);
   } else {
-    oracle_arm(exp, len, 0U);
+    oracle_arm(s_exp, len, 0U);
   }
-  static uint8_t pk[k_pk_cap];
-  memset(pk, 0, sizeof(pk));
-  const size_t pklen = enc_finish(&body, pk);
-  decode_and_check(pk, pklen, exp, elen);
+  static uint8_t s_pk[k_pk_cap];
+  memset(s_pk, 0, sizeof(s_pk));
+  const size_t pklen = enc_finish(&body, s_pk);
+  decode_and_check(s_pk, pklen, s_exp, elen);
 }
 
 /**
@@ -249,9 +249,9 @@ static void test_rar5_filters(void)
 static void test_rar5_table_runs(void)
 {
   TEST_BEGIN("rar5: length-table run codes");
-  static uint8_t bodybuf[k_pk_cap];
-  memset(bodybuf, 0, sizeof(bodybuf));
-  bitw_t body = {.buf = bodybuf, .cap = sizeof(bodybuf)};
+  static uint8_t s_bodybuf[k_pk_cap];
+  memset(s_bodybuf, 0, sizeof(s_bodybuf));
+  bitw_t body = {.buf = s_bodybuf, .cap = sizeof(s_bodybuf)};
   /* BD: 20 lengths of 5. */
   for (uint32_t i = 0U; i < 20U; ++i) {
     bw_put(&body, 5U, 4U);
@@ -282,10 +282,10 @@ static void test_rar5_table_runs(void)
   for (uint32_t i = 0U; i < sizeof(k_pay); ++i) {
     bw_put(&body, k_pay[i], 9U);
   }
-  static uint8_t pk[k_pk_cap];
-  memset(pk, 0, sizeof(pk));
-  const size_t pklen = enc_finish(&body, pk);
-  decode_and_check(pk, pklen, k_pay, sizeof(k_pay));
+  static uint8_t s_pk[k_pk_cap];
+  memset(s_pk, 0, sizeof(s_pk));
+  const size_t pklen = enc_finish(&body, s_pk);
+  decode_and_check(s_pk, pklen, k_pay, sizeof(k_pay));
   TEST_END("rar5: length-table run codes");
 }
 
@@ -305,18 +305,18 @@ static void test_rar5_table_runs(void)
 static void test_rar5_bd_zero_run(void)
 {
   TEST_BEGIN("rar5: BD length-list zero run");
-  static uint8_t bodybuf[k_pk_cap];
-  memset(bodybuf, 0, sizeof(bodybuf));
-  bitw_t body = {.buf = bodybuf, .cap = sizeof(bodybuf)};
+  static uint8_t s_bodybuf[k_pk_cap];
+  memset(s_bodybuf, 0, sizeof(s_bodybuf));
+  bitw_t body = {.buf = s_bodybuf, .cap = sizeof(s_bodybuf)};
   enc_tables_bdzero(&body);
   static const uint8_t k_pay[6] = {0x30U, 0x31U, 0x32U, 0x33U, 0x34U, 0x35U};
   for (uint32_t i = 0U; i < sizeof(k_pay); ++i) {
     bw_put(&body, k_pay[i], 9U);
   }
-  static uint8_t pk[k_pk_cap];
-  memset(pk, 0, sizeof(pk));
-  const size_t pklen = enc_finish(&body, pk);
-  decode_and_check(pk, pklen, k_pay, sizeof(k_pay));
+  static uint8_t s_pk[k_pk_cap];
+  memset(s_pk, 0, sizeof(s_pk));
+  const size_t pklen = enc_finish(&body, s_pk);
+  decode_and_check(s_pk, pklen, k_pay, sizeof(k_pay));
   TEST_END("rar5: BD length-list zero run");
 }
 
@@ -334,45 +334,45 @@ static void test_rar5_malformed(void)
   TEST_BEGIN("rar5: malformed / truncated rejects");
   /* A valid all-literal block, then corrupt it. */
   static const uint8_t k_src[8] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
-  static uint8_t       pk[k_pk_cap];
-  memset(pk, 0, sizeof(pk));
-  const size_t pklen = enc_all_literal(k_src, sizeof(k_src), pk, sizeof(pk));
+  static uint8_t       s_pk[k_pk_cap];
+  memset(s_pk, 0, sizeof(s_pk));
+  const size_t pklen = enc_all_literal(k_src, sizeof(k_src), s_pk, sizeof(s_pk));
 
   /* Bad header checksum. */
-  static uint8_t bad[k_pk_cap];
-  memcpy(bad, pk, pklen);
-  bad[2] ^= 0xFFU; /* wrong checksum byte (bytecount 1) */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(bad, pklen, sizeof(k_src)));
+  static uint8_t s_bad[k_pk_cap];
+  memcpy(s_bad, s_pk, pklen);
+  s_bad[2] ^= 0xFFU; /* wrong checksum byte (bytecount 1) */
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(s_bad, pklen, sizeof(k_src)));
 
   /* Truncated stream (header only) with a large expected size -> short output. */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(pk, 3U, sizeof(k_src)));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(s_pk, 3U, sizeof(k_src)));
 
   /* Every truncation length is either a clean parse or a rejection, never a crash. */
   for (size_t sz = 1U; sz <= pklen; ++sz) {
-    const ra8_err_t r = decode_status(pk, sz, sizeof(k_src));
+    const ra8_err_t r = decode_status(s_pk, sz, sizeof(k_src));
     TEST_ASSERT(r == k_ra8_ok || r == k_ra8_err_validation_failed);
   }
 
   /* A first block that declares no tables must be rejected. */
-  static uint8_t notab[16] = {};
-  notab[0]                 = 0x40U;                            /* last, no tables, bytecount 1 */
-  notab[1]                 = 0x02U;                            /* block size 2                 */
-  notab[2]                 = (uint8_t)(0x5AU ^ 0x40U ^ 0x02U); /* checksum                     */
-  notab[3]                 = 0x00U;
-  notab[4]                 = 0x00U;
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(notab, 5U, sizeof(k_src)));
+  static uint8_t s_notab[16] = {};
+  s_notab[0]                 = 0x40U;                            /* last, no tables, bytecount 1 */
+  s_notab[1]                 = 0x02U;                            /* block size 2                 */
+  s_notab[2]                 = (uint8_t)(0x5AU ^ 0x40U ^ 0x02U); /* checksum                     */
+  s_notab[3]                 = 0x00U;
+  s_notab[4]                 = 0x00U;
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(s_notab, 5U, sizeof(k_src)));
 
   /* A match whose distance reaches before the member start (solid reference). */
-  static uint8_t bodybuf[k_pk_cap];
-  memset(bodybuf, 0, sizeof(bodybuf));
-  bitw_t body = {.buf = bodybuf, .cap = sizeof(bodybuf)};
+  static uint8_t s_bodybuf[k_pk_cap];
+  memset(s_bodybuf, 0, sizeof(s_bodybuf));
+  bitw_t body = {.buf = s_bodybuf, .cap = sizeof(s_bodybuf)};
   enc_tables(&body);
   bw_put(&body, 262U, 9U); /* length slot 0 -> length 2                      */
   bw_put(&body, 3U, 6U);   /* distance slot 3 -> dist 4, but no prior output */
-  static uint8_t pk2[k_pk_cap];
-  memset(pk2, 0, sizeof(pk2));
-  const size_t pklen2 = enc_finish(&body, pk2);
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(pk2, pklen2, 2U));
+  static uint8_t s_pk2[k_pk_cap];
+  memset(s_pk2, 0, sizeof(s_pk2));
+  const size_t pklen2 = enc_finish(&body, s_pk2);
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(s_pk2, pklen2, 2U));
   TEST_END("rar5: malformed / truncated rejects");
 }
 

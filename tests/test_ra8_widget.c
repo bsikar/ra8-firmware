@@ -79,7 +79,9 @@ static ra8_widget_t make_widget(mock_ctx_t* ctx, int16_t fixed, uint16_t flex, u
 static void test_layout_stack(void)
 {
   TEST_BEGIN("ra8_widget: layout_stack fixed+flex+invisible");
-  mock_ctx_t   c0 = {}, c1 = {}, c2 = {};
+  mock_ctx_t   c0    = {};
+  mock_ctx_t   c1    = {};
+  mock_ctx_t   c2    = {};
   ra8_widget_t ws[3] = {
     make_widget(&c0, 64, 0, 1), /* fixed 64 high   */
     make_widget(&c1, 0, 1, 2),  /* flex fills rest */
@@ -123,7 +125,8 @@ static void test_layout_stack(void)
 static void test_dispatch_touch(void)
 {
   TEST_BEGIN("ra8_widget: dispatch touch routing MC/DC");
-  mock_ctx_t   c0 = {.consume = true}, c1 = {.consume = true};
+  mock_ctx_t   c0    = {.consume = true};
+  mock_ctx_t   c1    = {.consume = true};
   ra8_widget_t ws[2] = {make_widget(&c0, 0, 0, 1), make_widget(&c1, 0, 0, 2)};
   ws[0].rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 50, .h = 50};
   ws[1].rect         = (ra8_ui_rect_t){.x = 50, .y = 0, .w = 50, .h = 50};
@@ -170,7 +173,8 @@ static void test_dispatch_touch(void)
 static void test_dispatch_button(void)
 {
   TEST_BEGIN("ra8_widget: dispatch button first-consumer");
-  mock_ctx_t               c0 = {.consume = false}, c1 = {.consume = true};
+  mock_ctx_t               c0      = {.consume = false};
+  mock_ctx_t               c1      = {.consume = true};
   ra8_widget_t             ws[2]   = {make_widget(&c0, 0, 0, 1), make_widget(&c1, 0, 0, 2)};
   bool                     handled = false;
   const ra8_widget_event_t btn     = {.kind = k_ra8_widget_ev_button, .button_id = 7};
@@ -193,7 +197,8 @@ static void test_dispatch_button(void)
 static void test_invalidate_damage(void)
 {
   TEST_BEGIN("ra8_widget: invalidate + damage union/hint");
-  mock_ctx_t   c0 = {}, c1 = {};
+  mock_ctx_t   c0    = {};
+  mock_ctx_t   c1    = {};
   ra8_widget_t ws[2] = {make_widget(&c0, 0, 0, 1), make_widget(&c1, 0, 0, 2)};
   ws[0].rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 100, .h = 40};
   ws[1].rect         = (ra8_ui_rect_t){.x = 0, .y = 260, .w = 100, .h = 40};
@@ -235,7 +240,9 @@ static void test_invalidate_damage(void)
 static void test_render_dirty(void)
 {
   TEST_BEGIN("ra8_widget: render_dirty selection");
-  mock_ctx_t   c0 = {}, c1 = {}, c2 = {};
+  mock_ctx_t   c0    = {};
+  mock_ctx_t   c1    = {};
+  mock_ctx_t   c2    = {};
   ra8_widget_t ws[3] = {make_widget(&c0, 0, 0, 1),
                         make_widget(&c1, 0, 0, 2),
                         make_widget(&c2, 0, 0, 3)};
@@ -273,7 +280,8 @@ static void test_widget_edge_guards(void)
                                                   .on_input = mock_on_input};
 
   /* H-2: null-render widget + null-vt widget are skipped but cleared. */
-  mock_ctx_t   c0 = {}, c1 = {};
+  mock_ctx_t   c0    = {};
+  mock_ctx_t   c1    = {};
   ra8_widget_t ws[2] = {make_widget(&c0, 0, 0, 1), make_widget(&c1, 0, 0, 2)};
   ws[0].vt           = &k_no_render; /* render == null */
   ws[1].vt           = nullptr;      /* vt == null     */
@@ -285,7 +293,8 @@ static void test_widget_edge_guards(void)
   TEST_ASSERT_EQ(false, ws[1].dirty);
 
   /* H-1: a half-empty rect (w == 0, h > 0) folds as non-empty. */
-  mock_ctx_t   c2 = {}, c3 = {};
+  mock_ctx_t   c2    = {};
+  mock_ctx_t   c3    = {};
   ra8_widget_t wd[2] = {make_widget(&c2, 0, 0, 1), make_widget(&c3, 0, 0, 2)};
   wd[0].rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 100, .h = 40};
   wd[1].rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 0, .h = 40};
@@ -633,7 +642,8 @@ static void test_panel_compose_guards(void)
 static void test_widget_damage_empty_union(void)
 {
   TEST_BEGIN("ra8_widget: damage folds a fully-empty dirty rect");
-  mock_ctx_t   c0 = {}, c1 = {};
+  mock_ctx_t   c0    = {};
+  mock_ctx_t   c1    = {};
   ra8_widget_t ws[2] = {make_widget(&c0, 0, 0, 1), make_widget(&c1, 0, 0, 2)};
   ws[0].rect         = (ra8_ui_rect_t){.x = 10, .y = 20, .w = 100, .h = 40};
   ws[1].rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 0, .h = 0}; /* covers no pixels */
@@ -710,7 +720,8 @@ static void test_panel_render_route_guards(void)
 static void test_panel_layout_fail(void)
 {
   TEST_BEGIN("ra8_widget_panel: undersized scratch fails layout");
-  mock_ctx_t         c0 = {}, c1 = {};
+  mock_ctx_t         c0      = {};
+  mock_ctx_t         c1      = {};
   ra8_widget_t       kids[2] = {make_widget(&c0, 0, 1, 1), make_widget(&c1, 0, 1, 2)};
   ra8_box_t          scr[1]; /* too small: layout needs count(2) + 1 = 3 nodes */
   ra8_widget_panel_t small = {.children    = kids,

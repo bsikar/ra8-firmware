@@ -101,6 +101,12 @@ ra8_err_t ra8_cgc_usbhs_pll_enable_cov(void);
 ra8_err_t ra8_cgc_ensure_hoco_running_for_usb_ck_cov(void);
 
 /** @brief RA8 cgc pll2 enable. */
+/* Include-time interposition seam: each macro below must be spelled
+ * EXACTLY like the production symbol it replaces, so the project rule
+ * that macro names are UPPER_CASE cannot apply here -- renaming one
+ * silently un-hooks the mock and the test would exercise the real
+ * driver while still passing. */
+// NOLINTBEGIN(readability-identifier-naming)
 #define ra8_cgc_pll2_enable ra8_cgc_pll2_enable_cov
 /** @brief RA8 cgc usbfs clock enable. */
 #define ra8_cgc_usbfs_clock_enable ra8_cgc_usbfs_clock_enable_cov
@@ -112,6 +118,7 @@ ra8_err_t ra8_cgc_ensure_hoco_running_for_usb_ck_cov(void);
 #define ra8_cgc_wait_oscsf_set mock_wait_oscsf_set
 /** @brief RA8 cgc wait oscsf clear. */
 #define ra8_cgc_wait_oscsf_clear mock_wait_oscsf_clear
+// NOLINTEND(readability-identifier-naming)
 
 /* Undefine RA8_SIMULATOR_MODE for the driver body ONLY (all of its headers are
  * already free of the macro), so the static SRDY poll helpers read the register

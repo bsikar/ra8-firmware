@@ -113,7 +113,10 @@ static void prof_collect_symtab(const uint8_t* elf,
                                 uint16_t       shentsize,
                                 uint16_t       shnum)
 {
-  uint32_t sym_off = 0U, sym_size = 0U, sym_link = 0U, sym_entsize = 0U;
+  uint32_t sym_off     = 0U;
+  uint32_t sym_size    = 0U;
+  uint32_t sym_link    = 0U;
+  uint32_t sym_entsize = 0U;
   (void)memcpy(&sym_off, sh + 16, 4);
   (void)memcpy(&sym_size, sh + (uint32_t)k_elf_sh_size_off, 4);
   (void)memcpy(&sym_link, sh + (uint32_t)k_elf_sh_link_off, 4);
@@ -121,13 +124,15 @@ static void prof_collect_symtab(const uint8_t* elf,
   if ((sym_entsize < 16U) || (sym_link >= shnum)) {
     return;
   }
-  const uint8_t* strsh   = elf + shoff + ((uint32_t)sym_link * shentsize);
+  const uint8_t* strsh   = elf + shoff + ((size_t)(uint32_t)sym_link * shentsize);
   uint32_t       str_off = 0U;
   (void)memcpy(&str_off, strsh + 16, 4);
   const uint32_t nsym = sym_size / sym_entsize;
   for (uint32_t s = 0U; (s < nsym) && (s_prof_n < (uint32_t)k_prof_max_syms); s++) {
-    const uint8_t* sym     = elf + sym_off + (s * sym_entsize);
-    uint32_t       st_name = 0U, st_value = 0U, st_size = 0U;
+    const uint8_t* sym      = elf + sym_off + ((size_t)s * sym_entsize);
+    uint32_t       st_name  = 0U;
+    uint32_t       st_value = 0U;
+    uint32_t       st_size  = 0U;
     (void)memcpy(&st_name, sym + 0, 4);
     (void)memcpy(&st_value, sym + 4, 4);
     (void)memcpy(&st_size, sym + 8, 4);
@@ -166,7 +171,7 @@ void prof_load(const uint8_t* elf, long len)
     return;
   }
   for (uint16_t i = 0U; i < shnum; i++) {
-    const uint8_t* sh      = elf + shoff + ((uint32_t)i * shentsize);
+    const uint8_t* sh      = elf + shoff + ((size_t)(uint32_t)i * shentsize);
     uint32_t       sh_type = 0U;
     (void)memcpy(&sh_type, sh + 4, 4);
     if (sh_type != 2U) { /* SHT_SYMTAB */
@@ -648,8 +653,8 @@ void prof_report(void)
 void sim_prof_install(uc_engine* uc)
 {
   if (s_prof_mode == k_prof_insn) {
-    static uc_hook h_prof;
-    (void)uc_hook_add(uc, &h_prof, UC_HOOK_CODE, (void*)prof_insn_hook, nullptr, 1, 0);
+    static uc_hook s_h_prof;
+    (void)uc_hook_add(uc, &s_h_prof, UC_HOOK_CODE, (void*)prof_insn_hook, nullptr, 1, 0);
   }
 }
 

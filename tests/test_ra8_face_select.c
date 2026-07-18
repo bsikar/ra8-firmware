@@ -228,10 +228,10 @@ static void test_register_validation(void)
                                           (size_t)k_ra8_reflow_min_font_bytes - 1U));
 
   /* Garbage (no sfnt tag) is rejected; the registry stays empty. */
-  static uint8_t garbage[k_tfs_garbage];
-  memset(garbage, 0xA5, sizeof(garbage));
+  static uint8_t s_garbage[k_tfs_garbage];
+  memset(s_garbage, 0xA5, sizeof(s_garbage));
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_reflow_register_face(&s_engine, 0U, garbage, sizeof(garbage)));
+                 ra8_reflow_register_face(&s_engine, 0U, s_garbage, sizeof(s_garbage)));
   TEST_ASSERT_EQ(0, s_engine.face_count);
 
   /* Fill to the cap; the next register is rejected (no_mem). */

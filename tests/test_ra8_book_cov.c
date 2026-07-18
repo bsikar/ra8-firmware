@@ -633,9 +633,9 @@ static void test_ra8_book_open_multi_chunk(void)
   bc_book_t b;
   bc_build_blob(&b);
 
-  static uint8_t file[k_bc_multi_cap] = {};
+  static uint8_t s_file[k_bc_multi_cap] = {};
   const size_t   file_len =
-    bc_pack_multi(file, (const uint8_t*)&b, (uint32_t)sizeof(b), k_bc_split_bytes);
+    bc_pack_multi(s_file, (const uint8_t*)&b, (uint32_t)sizeof(b), k_bc_split_bytes);
 
   uint8_t     scratch[k_bc_scratch_cap] = {};
   const void* out_base                  = nullptr;
@@ -645,7 +645,7 @@ static void test_ra8_book_open_multi_chunk(void)
   s_inflate_force_produced = 0U;
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_book_open(file, file_len, bc_inflate, scratch, sizeof(scratch), &out_base, &out_size));
+    ra8_book_open(s_file, file_len, bc_inflate, scratch, sizeof(scratch), &out_base, &out_size));
   TEST_ASSERT_EQ(sizeof(b), out_size);
   TEST_ASSERT_EQ(0, memcmp(scratch, &b, sizeof(b)));
 

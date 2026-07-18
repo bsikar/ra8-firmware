@@ -91,16 +91,16 @@
  */
 static const char* main_apply_panel(const sim_args_t* args, uint16_t* view_w, uint16_t* view_h)
 {
-  static board_panel_t panel      = {};
+  static board_panel_t s_panel    = {};
   bool                 have_panel = false;
   if (args->panel_path != nullptr) {
-    have_panel = load_panel(args->panel_path, &panel);
+    have_panel = load_panel(args->panel_path, &s_panel);
     if (have_panel && !args->size_set) {
-      *view_w = panel.width;
-      *view_h = panel.height;
+      *view_w = s_panel.width;
+      *view_h = s_panel.height;
     }
   }
-  return (have_panel && (panel.name[0] != '\0')) ? panel.name : "board_sim";
+  return (have_panel && (s_panel.name[0] != '\0')) ? s_panel.name : "board_sim";
 }
 
 /**

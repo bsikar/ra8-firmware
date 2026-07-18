@@ -260,26 +260,26 @@ static void priv_resolve_fw_root(char* out, size_t cap)
  */
 static bool priv_load_ahem(void)
 {
-  static char root[k_cov_root_path_cap];
-  priv_resolve_fw_root(root, sizeof(root));
+  static char s_root[k_cov_root_path_cap];
+  priv_resolve_fw_root(s_root, sizeof(s_root));
 
   /* Build the absolute path by manual concatenation to avoid
    * -Wformat-truncation (the compiler cannot prove root fits). */
-  static char       path[k_cov_abs_path_cap];
+  static char       s_path[k_cov_abs_path_cap];
   const char* const k_rel = "/libs/third_party/litehtml/containers/test/fonts/ahem.ttf";
   size_t            rlen  = 0U;
-  while (rlen + 1U < sizeof(path) && root[rlen] != '\0') {
-    path[rlen] = root[rlen];
+  while (rlen + 1U < sizeof(s_path) && s_root[rlen] != '\0') {
+    s_path[rlen] = s_root[rlen];
     ++rlen;
   }
   size_t elen = 0U;
-  while (rlen + elen + 1U < sizeof(path) && k_rel[elen] != '\0') {
-    path[rlen + elen] = k_rel[elen];
+  while (rlen + elen + 1U < sizeof(s_path) && k_rel[elen] != '\0') {
+    s_path[rlen + elen] = k_rel[elen];
     ++elen;
   }
-  path[rlen + elen] = '\0';
+  s_path[rlen + elen] = '\0';
 
-  FILE* fp = fopen(path, "rb");
+  FILE* fp = fopen(s_path, "rb");
   if (fp == nullptr) {
     s_have_font = false;
     return false;

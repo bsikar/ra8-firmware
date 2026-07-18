@@ -187,24 +187,24 @@ static void test_install_linkfix(void)
 {
   TEST_BEGIN("gwca install_linkfix");
   prep();
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t table[8];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_table[8];
 
   /* Null table rejected (separate RA8_CHECK_NULL_PTR guard). */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_install_linkfix(nullptr, 8U));
 
   /* Vector 2: count = 0 -> invalid_arg. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_install_linkfix(table, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_install_linkfix(s_table, 0U));
 
   /* Vector 3: count = 33 -> invalid_arg. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_install_linkfix(table, 33U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_install_linkfix(s_table, 33U));
 
   /* Vector 1: count = 8 -> ok, every entry LEMPTY. */
   for (uint32_t i = 0U; i < 8U; ++i) {
-    table[i].dt = 0xFU;
+    s_table[i].dt = 0xFU;
   }
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_install_linkfix(table, 8U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_install_linkfix(s_table, 8U));
   for (uint32_t i = 0U; i < 8U; ++i) {
-    TEST_ASSERT_EQ(k_ra8_gwdcc_dt_lempty, table[i].dt);
+    TEST_ASSERT_EQ(k_ra8_gwdcc_dt_lempty, s_table[i].dt);
   }
 
   TEST_END("gwca install_linkfix");
@@ -220,7 +220,7 @@ static void test_bring_up(void)
 {
   TEST_BEGIN("gwca bring_up full sequence");
   prep();
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t table[4];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_table[4];
 
   /* bring_up walks several DISABLE -> CONFIG -> OPERATION transitions plus the
    * AXI-init handshake, all of which now run real bounded polls on host
@@ -238,15 +238,15 @@ static void test_bring_up(void)
 
   /* Invalid args propagate. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_bring_up(nullptr, 4U));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_bring_up(table, 33U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_bring_up(s_table, 33U));
 
   /* Happy path: state machine walks through DISABLE -> CONFIG ->
    * AXI init -> LINKFIX install -> DISABLE -> OPERATION. Each transition's
    * bounded poll is satisfied by the armed sim seam above. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_bring_up(table, 4U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_bring_up(s_table, 4U));
   /* Every LINKFIX entry should now be LEMPTY. */
   for (uint32_t i = 0U; i < 4U; ++i) {
-    TEST_ASSERT_EQ(k_ra8_gwdcc_dt_lempty, table[i].dt);
+    TEST_ASSERT_EQ(k_ra8_gwdcc_dt_lempty, s_table[i].dt);
   }
   TEST_END("gwca bring_up full sequence");
 }
@@ -275,7 +275,7 @@ static void test_bringup_fail_legs(void)
     (volatile uint32_t*)(k_ra8_gwca0_base_addr + (uintptr_t)k_ra8_gwca_off_gwms);
   volatile uint32_t* const gwarirm =
     (volatile uint32_t*)(k_ra8_gwca0_base_addr + (uintptr_t)k_ra8_gwca_off_gwarirm);
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t table[4];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_table[4];
 
   /* set_operation_mode: GWMS.OPS never converges -> hw_timeout. */
   prep();
@@ -290,32 +290,32 @@ static void test_bringup_fail_legs(void)
   /* bring_up fail_1: the first DISABLE (GWMS wait 0) times out. */
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait(gwms));
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_eth_gwca_bring_up(table, 4U));
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_eth_gwca_bring_up(s_table, 4U));
   TEST_ASSERT_EQ(k_ra8_eth_gwca_step_fail_1, g_ra8_eth_gwca_bring_up_step);
 
   /* bring_up fail_2: CONFIG (GWMS wait 1) times out; the DISABLE before it and
    * the cleanup DISABLE after it both succeed. */
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(gwms, 1U));
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_eth_gwca_bring_up(table, 4U));
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_eth_gwca_bring_up(s_table, 4U));
   TEST_ASSERT_EQ(k_ra8_eth_gwca_step_fail_2, g_ra8_eth_gwca_bring_up_step);
 
   /* bring_up fail_3: axi_init times out; both GWMS waits succeed (un-armed). */
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait(gwarirm));
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_eth_gwca_bring_up(table, 4U));
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_eth_gwca_bring_up(s_table, 4U));
   TEST_ASSERT_EQ(k_ra8_eth_gwca_step_fail_3, g_ra8_eth_gwca_bring_up_step);
 
   /* bring_up fail_5: the post-config DISABLE (GWMS wait 2) times out. */
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(gwms, 2U));
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_eth_gwca_bring_up(table, 4U));
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_eth_gwca_bring_up(s_table, 4U));
   TEST_ASSERT_EQ(k_ra8_eth_gwca_step_fail_5, g_ra8_eth_gwca_bring_up_step);
 
   /* bring_up fail_6: OPERATION (GWMS wait 3) times out. */
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_nth_wait(gwms, 3U));
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_eth_gwca_bring_up(table, 4U));
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_eth_gwca_bring_up(s_table, 4U));
   TEST_ASSERT_EQ(k_ra8_eth_gwca_step_fail_6, g_ra8_eth_gwca_bring_up_step);
 
   TEST_END("gwca timeout + bring_up failure legs");
@@ -334,35 +334,35 @@ static void test_configure_queue(void)
 {
   TEST_BEGIN("gwca configure_queue");
   prep();
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t table[4];
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t chain[2];
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_install_linkfix(table, 4U));
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_table[4];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_chain[2];
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_install_linkfix(s_table, 4U));
 
   ra8_eth_gwca_queue_cfg_t cfg = {
     .priority     = 4U,
     .is_tx        = true,
     .stop_on_last = false,
-    .chain_head   = chain,
+    .chain_head   = s_chain,
   };
 
   /* Null pointers / out-of-range guards. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_configure_queue(nullptr, 0U, &cfg));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_configure_queue(table, 0U, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_configure_queue(s_table, 0U, nullptr));
   ra8_eth_gwca_queue_cfg_t bad_head = cfg;
   bad_head.chain_head               = nullptr;
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_configure_queue(table, 0U, &bad_head));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_configure_queue(s_table, 0U, &bad_head));
 
   /* V_T: priority out of range. */
   ra8_eth_gwca_queue_cfg_t bad_prio = cfg;
   bad_prio.priority                 = 8U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_configure_queue(table, 0U, &bad_prio));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_configure_queue(s_table, 0U, &bad_prio));
 
   /* Queue index out of range. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_configure_queue(table, 99U, &cfg));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_configure_queue(s_table, 99U, &cfg));
 
   /* V_F: happy path. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_configure_queue(table, 0U, &cfg));
-  TEST_ASSERT_EQ(k_ra8_gwdcc_dt_linkfix, table[0].dt);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_configure_queue(s_table, 0U, &cfg));
+  TEST_ASSERT_EQ(k_ra8_gwdcc_dt_linkfix, s_table[0].dt);
   TEST_END("gwca configure_queue");
 }
 
@@ -401,21 +401,21 @@ static void test_init_ring(void)
 {
   TEST_BEGIN("gwca init_ring");
   prep();
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t chain[4];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_chain[4];
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_init_ring(nullptr, 4U, 1500U));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_init_ring(chain, 1U, 1500U));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_init_ring(chain, 4U, 4096U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_init_ring(s_chain, 1U, 1500U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_init_ring(s_chain, 4U, 4096U));
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(chain, 4U, 1500U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(s_chain, 4U, 1500U));
   /* First three entries are FEMPTY with ds = 1500. */
   for (uint32_t i = 0U; i < 3U; ++i) {
-    TEST_ASSERT_EQ(k_ra8_gwdcc_dt_fempty, chain[i].dt);
-    const uint32_t ds_actual = (uint32_t)chain[i].ds_l | ((uint32_t)chain[i].ds_h << 8U);
+    TEST_ASSERT_EQ(k_ra8_gwdcc_dt_fempty, s_chain[i].dt);
+    const uint32_t ds_actual = (uint32_t)s_chain[i].ds_l | ((uint32_t)s_chain[i].ds_h << 8U);
     TEST_ASSERT_EQ(1500U, ds_actual);
   }
   /* Last entry is LINK back to chain[0]. */
-  TEST_ASSERT_EQ(k_ra8_gwdcc_dt_link, chain[3].dt);
+  TEST_ASSERT_EQ(k_ra8_gwdcc_dt_link, s_chain[3].dt);
   TEST_END("gwca init_ring");
 }
 
@@ -451,20 +451,20 @@ static void test_attach_buffers(void)
 {
   TEST_BEGIN("gwca attach_buffers");
   prep();
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t chain[4];
-  static uint8_t                                          pool[3U * 64U];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_chain[4];
+  static uint8_t                                          s_pool[3U * 64U];
 
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_attach_buffers(nullptr, 4U, 64U, pool));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_attach_buffers(chain, 4U, 64U, nullptr));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_attach_buffers(chain, 1U, 64U, pool));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_attach_buffers(chain, 4U, 0U, pool));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_attach_buffers(nullptr, 4U, 64U, s_pool));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_attach_buffers(s_chain, 4U, 64U, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_attach_buffers(s_chain, 1U, 64U, s_pool));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_attach_buffers(s_chain, 4U, 0U, s_pool));
 
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(chain, 4U, 64U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_attach_buffers(chain, 4U, 64U, pool));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(s_chain, 4U, 64U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_attach_buffers(s_chain, 4U, 64U, s_pool));
   /* First three slots should now point at pool[0], pool[64], pool[128]. */
-  TEST_ASSERT_EQ((uintptr_t)&pool[0U] & 0xFFFFFFFFU, chain[0].ptr_l);
-  TEST_ASSERT_EQ((uintptr_t)&pool[64U] & 0xFFFFFFFFU, chain[1].ptr_l);
-  TEST_ASSERT_EQ((uintptr_t)&pool[128U] & 0xFFFFFFFFU, chain[2].ptr_l);
+  TEST_ASSERT_EQ((uintptr_t)&s_pool[0U] & 0xFFFFFFFFU, s_chain[0].ptr_l);
+  TEST_ASSERT_EQ((uintptr_t)&s_pool[64U] & 0xFFFFFFFFU, s_chain[1].ptr_l);
+  TEST_ASSERT_EQ((uintptr_t)&s_pool[128U] & 0xFFFFFFFFU, s_chain[2].ptr_l);
   TEST_END("gwca attach_buffers");
 }
 
@@ -562,16 +562,16 @@ static void test_tx_frame(void)
   TEST_BEGIN("gwca tx_frame");
   prep();
   [[gnu::aligned(16)]] ra8_gwca_basic_descriptor_t chain[4];
-  static uint8_t                                   pool[3U * 128U];
-  static uint8_t                                   frame[64];
+  static uint8_t                                   s_pool[3U * 128U];
+  static uint8_t                                   s_frame[64];
   uint32_t                                         tail = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(chain, 4U, 128U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_attach_buffers(chain, 4U, 128U, pool));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_attach_buffers(chain, 4U, 128U, s_pool));
 
   /* Argument guards. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_tx_frame(nullptr, 4U, &tail, frame, 64U, 128U));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_tx_frame(chain, 4U, &tail, frame, 0U, 128U));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_tx_frame(chain, 4U, &tail, frame, 99U, 64U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_tx_frame(nullptr, 4U, &tail, s_frame, 64U, 128U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_tx_frame(chain, 4U, &tail, s_frame, 0U, 128U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_tx_frame(chain, 4U, &tail, s_frame, 99U, 64U));
   TEST_END("gwca tx_frame");
 }
 
@@ -598,22 +598,22 @@ static void test_rx_frame(void)
   TEST_BEGIN("gwca rx_frame");
   prep();
   [[gnu::aligned(16)]] ra8_gwca_basic_descriptor_t chain[4];
-  static uint8_t                                   pool[3U * 128U];
-  static uint8_t                                   out[256];
+  static uint8_t                                   s_pool[3U * 128U];
+  static uint8_t                                   s_out[256];
   uint32_t                                         head    = 0U;
   uint32_t                                         got_len = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(chain, 4U, 128U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_attach_buffers(chain, 4U, 128U, pool));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_attach_buffers(chain, 4U, 128U, s_pool));
 
   /* No FSINGLE slot yet -> no_data. */
   TEST_ASSERT_EQ(k_ra8_err_no_data,
-                 ra8_eth_gwca_rx_frame(chain, 4U, &head, out, sizeof(out), 128U, &got_len));
+                 ra8_eth_gwca_rx_frame(chain, 4U, &head, s_out, sizeof(s_out), 128U, &got_len));
 
   /* Argument guards. */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_eth_gwca_rx_frame(nullptr, 4U, &head, out, sizeof(out), 128U, &got_len));
+                 ra8_eth_gwca_rx_frame(nullptr, 4U, &head, s_out, sizeof(s_out), 128U, &got_len));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_eth_gwca_rx_frame(chain, 4U, &head, out, 0U, 128U, &got_len));
+                 ra8_eth_gwca_rx_frame(chain, 4U, &head, s_out, 0U, 128U, &got_len));
   TEST_END("gwca rx_frame");
 }
 

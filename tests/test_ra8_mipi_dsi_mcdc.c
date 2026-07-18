@@ -103,31 +103,31 @@ static void test_mcdc_validate_cmd_short_paths(void)
                                                nullptr,
                                                (uint16_t)k_mcdc_dsi_long_len,
                                                false));
-  static uint8_t lp_buf[128] = {};
+  static uint8_t s_lp_buf[128] = {};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_mipi_dsi_send_long_packet(k_ra8_mipi_dsi_dt_dcs_long_write,
                                                k_ra8_mipi_dsi_vc0,
-                                               lp_buf,
+                                               s_lp_buf,
                                                128U,
                                                true));
-  static uint8_t hs_buf[1024] = {};
+  static uint8_t s_hs_buf[1024] = {};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_mipi_dsi_send_long_packet(k_ra8_mipi_dsi_dt_dcs_long_write,
                                                k_ra8_mipi_dsi_vc0,
-                                               hs_buf,
+                                               s_hs_buf,
                                                1024U,
                                                false));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_mipi_dsi_send_long_packet(k_ra8_mipi_dsi_dt_dcs_long_write,
                                                k_ra8_mipi_dsi_vc0,
-                                               hs_buf,
+                                               s_hs_buf,
                                                (uint16_t)k_mcdc_dsi_lp_over,
                                                true));
-  static uint8_t big_buf[1100] = {};
+  static uint8_t s_big_buf[1100] = {};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_mipi_dsi_send_long_packet(k_ra8_mipi_dsi_dt_dcs_long_write,
                                                k_ra8_mipi_dsi_vc0,
-                                               big_buf,
+                                               s_big_buf,
                                                (uint16_t)k_mcdc_dsi_hs_over,
                                                false));
   TEST_END("mipi_dsi MC/DC validate_cmd: null/LP/HS guards");
@@ -427,15 +427,15 @@ static void test_mcdc_dispatch_receive_pending(void)
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
   reg->RXSR                       = (uint32_t)k_ra8_mipi_dsi_rxsr_rxresp;
   ra8_mipi_dsi_dispatch_receive();
-  static uint8_t rx[4] = {};
-  reg->LINKSR          = 0U;
+  static uint8_t s_rx[4] = {};
+  reg->LINKSR            = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_mipi_dsi_read_packet(k_ra8_mipi_dsi_dt_dcs_read,
                                           k_ra8_mipi_dsi_vc0,
                                           0xAAU,
                                           0x55U,
-                                          rx,
-                                          (uint16_t)sizeof(rx)));
+                                          s_rx,
+                                          (uint16_t)sizeof(s_rx)));
   reg->RXSR = (uint32_t)k_ra8_mipi_dsi_rxsr_rxresp;
   ra8_mipi_dsi_dispatch_receive();
   TEST_END("mipi_dsi MC/DC dispatch_receive: pending buf && len>0");
@@ -471,29 +471,29 @@ static void test_mcdc_program_descriptor_buf_addr(void)
   (void)reg->SQCH0DSC[0].D;
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_dsi_init(&cfg));
-  reg                  = ra8_mipi_dsi();
-  static uint8_t rx[4] = {};
-  reg->LINKSR          = 0U;
+  reg                    = ra8_mipi_dsi();
+  static uint8_t s_rx[4] = {};
+  reg->LINKSR            = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_mipi_dsi_read_packet(k_ra8_mipi_dsi_dt_dcs_read,
                                           k_ra8_mipi_dsi_vc0,
                                           0xAAU,
                                           0x55U,
-                                          rx,
-                                          (uint16_t)sizeof(rx)));
+                                          s_rx,
+                                          (uint16_t)sizeof(s_rx)));
   /* SQCH0DSC[0].D is a 32-bit HW register; truncate the host pointer. */
-  const uint32_t exp_rx_addr = (uint32_t)(uintptr_t)rx;
+  const uint32_t exp_rx_addr = (uint32_t)(uintptr_t)s_rx;
   TEST_ASSERT_EQ(exp_rx_addr, reg->SQCH0DSC[0].D);
 
   /* V3: bta=none, rx!=NULL via send_command. The descriptor's D word
    * must come from the rx buffer (C2 alone forces the OR true). */
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_dsi_init(&cfg));
-  reg                                     = ra8_mipi_dsi();
-  reg->LINKSR                             = 0U;
-  static uint8_t               rx_only[4] = {0U};
-  static uint8_t               tx_buf[2]  = {0xAAU, 0xBBU};
-  const ra8_mipi_dsi_command_t cmd        = {
+  reg                                       = ra8_mipi_dsi();
+  reg->LINKSR                               = 0U;
+  static uint8_t               s_rx_only[4] = {0U};
+  static uint8_t               s_tx_buf[2]  = {0xAAU, 0xBBU};
+  const ra8_mipi_dsi_command_t cmd          = {
     .cmd_id          = k_ra8_mipi_dsi_dt_dcs_short_write_1,
     .virtual_channel = k_ra8_mipi_dsi_vc0,
     .bta             = k_ra8_mipi_dsi_bta_none,
@@ -501,12 +501,12 @@ static void test_mcdc_program_descriptor_buf_addr(void)
     .ack_request     = false,
     .aux_operation   = false,
     .action_code     = 0U,
-    .tx_len          = (uint16_t)sizeof(tx_buf),
-    .p_tx_buffer     = tx_buf,
-    .p_rx_buffer     = rx_only,
+    .tx_len          = (uint16_t)sizeof(s_tx_buf),
+    .p_tx_buffer     = s_tx_buf,
+    .p_rx_buffer     = s_rx_only,
   };
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_dsi_send_command(&cmd));
-  const uint32_t exp_rx_only_addr = (uint32_t)(uintptr_t)rx_only;
+  const uint32_t exp_rx_only_addr = (uint32_t)(uintptr_t)s_rx_only;
   TEST_ASSERT_EQ(exp_rx_only_addr, reg->SQCH0DSC[0].D);
   TEST_END("mipi_dsi MC/DC program_descriptor: bta==read || p_rx!=NULL");
 }

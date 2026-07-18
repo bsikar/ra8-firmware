@@ -121,26 +121,26 @@ static inline void priv_resolve_fw_root(char* out, size_t out_cap)
  */
 static inline bool priv_load_font(void)
 {
-  static char root[k_test_root_path_max];
-  priv_resolve_fw_root(root, sizeof(root));
+  static char s_root[k_test_root_path_max];
+  priv_resolve_fw_root(s_root, sizeof(s_root));
 
-  static char path[k_test_root_path_max + k_test_font_rel_max];
+  static char s_path[k_test_root_path_max + k_test_font_rel_max];
   /* GCC's -Wformat-truncation flags the maximally-conservative case
    * where `root` is the full 1 KiB; concatenate manually so the
    * checker can see the bound. */
   const char* const k_font_rel = "/libs/fonts/Literata-Regular.ttf";
   size_t            root_len   = 0U;
-  while (root_len + 1U < sizeof(path) && root[root_len] != '\0') {
-    path[root_len] = root[root_len];
+  while (root_len + 1U < sizeof(s_path) && s_root[root_len] != '\0') {
+    s_path[root_len] = s_root[root_len];
     ++root_len;
   }
   size_t rel_len = 0U;
-  while (root_len + rel_len + 1U < sizeof(path) && k_font_rel[rel_len] != '\0') {
-    path[root_len + rel_len] = k_font_rel[rel_len];
+  while (root_len + rel_len + 1U < sizeof(s_path) && k_font_rel[rel_len] != '\0') {
+    s_path[root_len + rel_len] = k_font_rel[rel_len];
     ++rel_len;
   }
-  path[root_len + rel_len] = '\0';
-  FILE* fp                 = fopen(path, "rb");
+  s_path[root_len + rel_len] = '\0';
+  FILE* fp                   = fopen(s_path, "rb");
   if (fp == nullptr) {
     return false;
   }
@@ -174,7 +174,7 @@ static inline uint32_t priv_count_lit_pixels(int32_t x0, int32_t y0, int32_t x1,
   uint32_t lit = 0U;
   for (int32_t y = y0; y < y1; ++y) {
     for (int32_t x = x0; x < x1; ++x) {
-      if (s_fb[(uint32_t)y * (uint32_t)k_test_viewport_w + (uint32_t)x] != 0U) {
+      if (s_fb[((uint32_t)y * (uint32_t)k_test_viewport_w) + (uint32_t)x] != 0U) {
         ++lit;
       }
     }

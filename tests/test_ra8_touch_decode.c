@@ -115,17 +115,17 @@ static void test_decode_three_points(void)
 {
   TEST_BEGIN("ra8_touch_test_decode: three points");
   uint8_t raw[(uint32_t)k_ra8_touch_gt911_point_bytes * 3U] = {};
-  build_point(&raw[0U * (uint32_t)k_ra8_touch_gt911_point_bytes],
+  build_point(&raw[(size_t)0U * (uint32_t)k_ra8_touch_gt911_point_bytes],
               (uint8_t)k_test_track_zero,
               (uint16_t)k_test_x_one,
               (uint16_t)k_test_y_one,
               (uint16_t)k_test_pressure_one);
-  build_point(&raw[1U * (uint32_t)k_ra8_touch_gt911_point_bytes],
+  build_point(&raw[(size_t)1U * (uint32_t)k_ra8_touch_gt911_point_bytes],
               (uint8_t)k_test_track_one,
               (uint16_t)k_test_x_two,
               (uint16_t)k_test_y_two,
               (uint16_t)k_test_pressure_two);
-  build_point(&raw[2U * (uint32_t)k_ra8_touch_gt911_point_bytes],
+  build_point(&raw[(size_t)2U * (uint32_t)k_ra8_touch_gt911_point_bytes],
               (uint8_t)k_test_track_two,
               (uint16_t)k_test_x_three,
               (uint16_t)k_test_y_three,
@@ -154,7 +154,7 @@ static void test_decode_five_points_max(void)
   TEST_BEGIN("ra8_touch_test_decode: five points (max)");
   uint8_t raw[(uint32_t)k_ra8_touch_gt911_point_bytes * 5U] = {};
   for (uint8_t i = 0U; i < 5U; i++) {
-    build_point(&raw[(uint32_t)i * (uint32_t)k_ra8_touch_gt911_point_bytes],
+    build_point(&raw[(size_t)(uint32_t)i * (uint32_t)k_ra8_touch_gt911_point_bytes],
                 i,
                 (uint16_t)((uint32_t)k_test_x_five_a + i),
                 (uint16_t)((uint32_t)k_test_y_five_a + i),
@@ -183,7 +183,7 @@ static void test_decode_clamp_to_max_count(void)
   TEST_BEGIN("ra8_touch_test_decode: input > max_count clamps");
   uint8_t raw[(uint32_t)k_ra8_touch_gt911_point_bytes * 3U] = {};
   for (uint8_t i = 0U; i < 3U; i++) {
-    build_point(&raw[(uint32_t)i * (uint32_t)k_ra8_touch_gt911_point_bytes],
+    build_point(&raw[(size_t)(uint32_t)i * (uint32_t)k_ra8_touch_gt911_point_bytes],
                 i,
                 (uint16_t)((uint32_t)k_test_x_five_a + i),
                 (uint16_t)((uint32_t)k_test_y_five_a + i),
@@ -209,7 +209,7 @@ static void test_decode_clamp_to_hw_max(void)
   TEST_BEGIN("ra8_touch_test_decode: input > hw max clamps to 5");
   uint8_t raw[(uint32_t)k_ra8_touch_gt911_point_bytes * (uint32_t)k_test_decode_hw_over] = {};
   for (uint8_t i = 0U; i < (uint8_t)k_test_decode_hw_over; i++) {
-    build_point(&raw[(uint32_t)i * (uint32_t)k_ra8_touch_gt911_point_bytes],
+    build_point(&raw[(size_t)(uint32_t)i * (uint32_t)k_ra8_touch_gt911_point_bytes],
                 i,
                 (uint16_t)((uint32_t)k_test_x_five_a + i),
                 (uint16_t)((uint32_t)k_test_y_five_a + i),

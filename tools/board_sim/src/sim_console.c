@@ -139,9 +139,9 @@ static void itm_seed_ready(uc_engine* uc)
 void sim_console_install(uc_engine* uc)
 {
   itm_seed_ready(uc);
-  static uc_hook h_itm;
+  static uc_hook s_h_itm;
   (void)uc_hook_add(uc,
-                    &h_itm,
+                    &s_h_itm,
                     UC_HOOK_MEM_WRITE,
                     (void*)on_itm_stim_write,
                     nullptr,

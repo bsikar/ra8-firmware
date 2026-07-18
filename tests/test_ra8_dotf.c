@@ -380,7 +380,7 @@ static void test_set_region_overlap_other_channel(void)
   /* Sanity: the overlap helper covers the (channel, channel) loop
    * skipping `same`, so a DOTF1 -> DOTF1 second slot is allowed. */
   ra8_dotf_region_t r1b = make_region((uint8_t)k_dotf_test_ch1, (uint8_t)k_dotf_test_slot1);
-  r1b.start_addr        = (uint32_t)k_dotf_test_d1_start + (uint32_t)k_ra8_dotf_addr_granule * 2U;
+  r1b.start_addr        = (uint32_t)k_dotf_test_d1_start + ((uint32_t)k_ra8_dotf_addr_granule * 2U);
   r1b.end_addr          = r1b.start_addr + (uint32_t)k_ra8_dotf_addr_granule;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dotf_set_region((uint8_t)k_dotf_test_ch1, &r1b));
   TEST_END("dotf set_region overlap other channel");
@@ -607,9 +607,9 @@ static void test_rotate_key_live(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dotf_set_region((uint8_t)k_dotf_test_ch0, &r));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_dotf_select_region((uint8_t)k_dotf_test_ch0, (uint8_t)k_dotf_test_slot0));
-  const ra8_dotf_key_handle_t hA =
+  const ra8_dotf_key_handle_t h_a =
     make_key_handle(k_ra8_dotf_key_size_128, (uint8_t)k_dotf_test_key_idx_a);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_dotf_install_key((uint8_t)k_dotf_test_ch0, &hA));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dotf_install_key((uint8_t)k_dotf_test_ch0, &h_a));
   const uint32_t iv[k_ra8_dotf_iv_word_count] = {(uint32_t)k_dotf_test_iv0,
                                                  (uint32_t)k_dotf_test_iv1,
                                                  (uint32_t)k_dotf_test_iv2,
@@ -621,13 +621,13 @@ static void test_rotate_key_live(void)
   TEST_ASSERT((reg->REG00 & (uint32_t)k_ra8_dotf_reg00_aes_enable) != 0U);
 
   /* Rotate to a 256-bit key with a fresh IV. */
-  const ra8_dotf_key_handle_t hB =
+  const ra8_dotf_key_handle_t h_b =
     make_key_handle(k_ra8_dotf_key_size_256, (uint8_t)k_dotf_test_key_idx_b);
   const uint32_t iv2[k_ra8_dotf_iv_word_count] = {0x11111111UL,
                                                   0x22222222UL,
                                                   0x33333333UL,
                                                   0x44444444UL};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_dotf_rotate_key((uint8_t)k_dotf_test_ch0, &hB, iv2));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dotf_rotate_key((uint8_t)k_dotf_test_ch0, &h_b, iv2));
 
   /* Channel should remain enabled and key-size bits should reflect 256. */
   TEST_ASSERT((reg->REG00 & (uint32_t)k_ra8_dotf_reg00_aes_enable) != 0U);
@@ -635,7 +635,7 @@ static void test_rotate_key_live(void)
                  (reg->REG00 & (uint32_t)k_ra8_dotf_reg00_key_size_mask));
 
   /* Rotate again with NULL iv to cover the IV-reuse branch. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_dotf_rotate_key((uint8_t)k_dotf_test_ch0, &hA, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dotf_rotate_key((uint8_t)k_dotf_test_ch0, &h_a, nullptr));
   TEST_END("dotf rotate_key live");
 }
 

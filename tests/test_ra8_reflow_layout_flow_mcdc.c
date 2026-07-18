@@ -357,7 +357,7 @@ static size_t build_anchor_html(char* buf, size_t buf_cap, uint32_t n)
   enum : uint8_t {
     k_entry_max_len = 21U, /**< Max chars for one `<p id="idNNN">x</p>`. */
   };
-  const size_t needed = sizeof s_hdr - 1U + (size_t)n * k_entry_max_len + sizeof s_ftr - 1U + 1U;
+  const size_t needed = sizeof s_hdr - 1U + ((size_t)n * k_entry_max_len) + sizeof s_ftr - 1U + 1U;
   if (needed > buf_cap) {
     return 0U;
   }
@@ -412,7 +412,7 @@ enum : uint32_t {
 };
 enum : uint32_t {
   /* 260 entries * 21 chars + 30 header/footer + 1 NUL */
-  k_anchor_buf_cap = 260U * 21U + 32U, /**< Capacity of s_anchor_html. */
+  k_anchor_buf_cap = (260U * 21U) + 32U, /**< Capacity of s_anchor_html. */
 };
 /** @brief Static scratch buffer for the anchor-pool-full test. */
 static char s_anchor_html[k_anchor_buf_cap];

@@ -658,8 +658,8 @@ static void test_rar5_block_vint_legs(void)
 static void test_rar4_truncation_sweep(void)
 {
   TEST_BEGIN("rar4: header truncation sweep");
-  static uint8_t k_data[4] = {1U, 2U, 3U, 4U};
-  const size_t   blen      = tr4_file(&s_arc[sizeof(k_tr_sig4)], "a.png", k_data, sizeof(k_data));
+  static uint8_t s_k_data[4] = {1U, 2U, 3U, 4U};
+  const size_t   blen = tr4_file(&s_arc[sizeof(k_tr_sig4)], "a.png", s_k_data, sizeof(s_k_data));
   memcpy(s_arc, k_tr_sig4, sizeof(k_tr_sig4));
   const size_t full              = sizeof(k_tr_sig4) + blen;
   char         nb[k_tr_name_buf] = {};
@@ -739,8 +739,8 @@ static void test_rar4_badhsize_and_large(void)
 static void test_rar_name_copy_guards(void)
 {
   TEST_BEGIN("rar: name buffer NULL / zero-capacity guards");
-  static uint8_t k_data[4] = {1U, 2U, 3U, 4U};
-  const size_t   blen      = tr4_file(&s_arc[sizeof(k_tr_sig4)], "a.png", k_data, sizeof(k_data));
+  static uint8_t s_k_data[4] = {1U, 2U, 3U, 4U};
+  const size_t   blen = tr4_file(&s_arc[sizeof(k_tr_sig4)], "a.png", s_k_data, sizeof(s_k_data));
   memcpy(s_arc, k_tr_sig4, sizeof(k_tr_sig4));
   s_arc_size          = sizeof(k_tr_sig4) + blen;
   ra8_rar_t       rar = tr_open_arc();

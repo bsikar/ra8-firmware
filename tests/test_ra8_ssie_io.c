@@ -204,17 +204,17 @@ static void test_attach_detach_dma(void)
   TEST_BEGIN("ssie attach_dma + detach_dma full duplex");
   prep();
 
-  static uint32_t tx_buf[16];
-  static uint32_t rx_buf[16];
+  static uint32_t s_tx_buf[16];
+  static uint32_t s_rx_buf[16];
   for (uint8_t i = 0U; i < 16U; i++) {
-    tx_buf[i] = i;
+    s_tx_buf[i] = i;
   }
 
   const ra8_ssie_dma_cfg_t dma = {
     .tx_dma_channel = (uint8_t)k_ra8_ssie_test_dma_tx,
     .rx_dma_channel = (uint8_t)k_ra8_ssie_test_dma_rx,
-    .tx_buffer      = tx_buf,
-    .rx_buffer      = rx_buf,
+    .tx_buffer      = s_tx_buf,
+    .rx_buffer      = s_rx_buf,
     .tx_samples     = 16U,
     .rx_samples     = 16U,
   };
@@ -233,11 +233,11 @@ static void test_attach_dma_tx_only(void)
 {
   TEST_BEGIN("ssie attach_dma TX-only path");
   prep();
-  static uint32_t          tx_buf[8];
+  static uint32_t          s_tx_buf[8];
   const ra8_ssie_dma_cfg_t dma = {
     .tx_dma_channel = (uint8_t)k_ra8_ssie_test_dma_tx,
     .rx_dma_channel = 0xFFU,
-    .tx_buffer      = tx_buf,
+    .tx_buffer      = s_tx_buf,
     .rx_buffer      = nullptr,
     .tx_samples     = 8U,
     .rx_samples     = 0U,
@@ -257,7 +257,7 @@ static void test_attach_dma_bad_args(void)
 {
   TEST_BEGIN("ssie attach_dma rejects bad descriptors");
   prep();
-  static uint32_t buf[2] = {1U, 2U};
+  static uint32_t s_buf[2] = {1U, 2U};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ssie_attach_dma((uint8_t)k_ra8_ssie_test_ch0, nullptr));
 
   ra8_ssie_dma_cfg_t dma = {
@@ -275,7 +275,7 @@ static void test_attach_dma_bad_args(void)
   dma.tx_dma_channel = (uint8_t)k_ra8_ssie_test_dma_tx;
   dma.tx_samples     = 4U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ssie_attach_dma((uint8_t)k_ra8_ssie_test_ch0, &dma));
-  dma.tx_buffer  = buf;
+  dma.tx_buffer  = s_buf;
   dma.tx_samples = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ssie_attach_dma((uint8_t)k_ra8_ssie_test_ch0, &dma));
 

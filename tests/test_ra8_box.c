@@ -105,7 +105,9 @@ static void test_box_stack_v(void)
   (void)ra8_box_tree_init(&t, store, k_box_cap);
   ra8_box_t           rootn = container(k_ra8_box_stack_v, 10, 10, 1U);
   const int16_t       r     = ra8_box_add(&t, (int16_t)k_ra8_box_none, &rootn);
-  ra8_box_t           an = leaf(30, 0U), bn = leaf(0, 1U), cn = leaf(20, 0U);
+  ra8_box_t           an    = leaf(30, 0U);
+  ra8_box_t           bn    = leaf(0, 1U);
+  ra8_box_t           cn    = leaf(20, 0U);
   const int16_t       a     = ra8_box_add(&t, r, &an);
   const int16_t       b     = ra8_box_add(&t, r, &bn);
   const int16_t       c     = ra8_box_add(&t, r, &cn);
@@ -136,7 +138,8 @@ static void test_box_stack_h(void)
   (void)ra8_box_tree_init(&t, store, k_box_cap);
   ra8_box_t           rootn = container(k_ra8_box_stack_h, 0, 20, 1U);
   const int16_t       r     = ra8_box_add(&t, (int16_t)k_ra8_box_none, &rootn);
-  ra8_box_t           an = leaf(0, 1U), bn = leaf(0, 1U);
+  ra8_box_t           an    = leaf(0, 1U);
+  ra8_box_t           bn    = leaf(0, 1U);
   const int16_t       a     = ra8_box_add(&t, r, &an);
   const int16_t       b     = ra8_box_add(&t, r, &bn);
   const ra8_ui_rect_t frame = {0, 0, 220, 50};
@@ -163,7 +166,9 @@ static void test_box_grid(void)
   (void)ra8_box_tree_init(&t, store, k_box_cap);
   ra8_box_t           rootn = container(k_ra8_box_grid, 0, 10, 2U);
   const int16_t       r     = ra8_box_add(&t, (int16_t)k_ra8_box_none, &rootn);
-  ra8_box_t           c0 = leaf(0, 0U), c1 = leaf(0, 0U), c2 = leaf(0, 0U);
+  ra8_box_t           c0    = leaf(0, 0U);
+  ra8_box_t           c1    = leaf(0, 0U);
+  ra8_box_t           c2    = leaf(0, 0U);
   const int16_t       i0    = ra8_box_add(&t, r, &c0);
   const int16_t       i1    = ra8_box_add(&t, r, &c1);
   const int16_t       i2    = ra8_box_add(&t, r, &c2);
@@ -209,7 +214,8 @@ static void test_mcdc_iter_live(void)
   (void)ra8_box_tree_init(&t, store, k_box_cap);
   ra8_box_t           rootn = container(k_ra8_box_stack_v, 0, 0, 1U);
   const int16_t       r     = ra8_box_add(&t, (int16_t)k_ra8_box_none, &rootn);
-  ra8_box_t           an = leaf(10, 0U), bn = leaf(10, 0U);
+  ra8_box_t           an    = leaf(10, 0U);
+  ra8_box_t           bn    = leaf(10, 0U);
   const int16_t       a     = ra8_box_add(&t, r, &an); /* walked: C1=T (V1)          */
   const int16_t       b     = ra8_box_add(&t, r, &bn); /* then chain ends: C1=F (V2) */
   const ra8_ui_rect_t frame = {0, 0, 40, 40};

@@ -102,7 +102,9 @@ static ra8_err_t ncov_mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t*
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(buf, &d->bytes[lba * (uint32_t)k_ncov_blk_sz], count * (uint32_t)k_ncov_blk_sz);
+  memcpy(buf,
+         &d->bytes[(size_t)lba * (uint32_t)k_ncov_blk_sz],
+         (size_t)count * (uint32_t)k_ncov_blk_sz);
   return k_ra8_ok;
 }
 
@@ -129,7 +131,9 @@ static ra8_err_t ncov_mem_write(void* ctx, uint32_t lba, uint32_t count, const u
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(&d->bytes[lba * (uint32_t)k_ncov_blk_sz], buf, count * (uint32_t)k_ncov_blk_sz);
+  memcpy(&d->bytes[(size_t)lba * (uint32_t)k_ncov_blk_sz],
+         buf,
+         (size_t)count * (uint32_t)k_ncov_blk_sz);
   return k_ra8_ok;
 }
 
@@ -220,7 +224,9 @@ static ra8_err_t ncov_inj_read(void* ctx, uint32_t lba, uint32_t count, uint8_t*
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(buf, &d->bytes[lba * (uint32_t)k_ncov_blk_sz], count * (uint32_t)k_ncov_blk_sz);
+  memcpy(buf,
+         &d->bytes[(size_t)lba * (uint32_t)k_ncov_blk_sz],
+         (size_t)count * (uint32_t)k_ncov_blk_sz);
   return k_ra8_ok;
 }
 
@@ -247,7 +253,9 @@ static ra8_err_t ncov_inj_write(void* ctx, uint32_t lba, uint32_t count, const u
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(&d->bytes[lba * (uint32_t)k_ncov_blk_sz], buf, count * (uint32_t)k_ncov_blk_sz);
+  memcpy(&d->bytes[(size_t)lba * (uint32_t)k_ncov_blk_sz],
+         buf,
+         (size_t)count * (uint32_t)k_ncov_blk_sz);
   return k_ra8_ok;
 }
 

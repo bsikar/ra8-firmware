@@ -179,7 +179,7 @@ static void persist_bind(ra8_io_blockdev_t* bd, persist_fake_t* st, uint32_t blo
 static void persist_pattern(uint8_t* blk, uint32_t lbn, uint32_t tag)
 {
   for (uint32_t i = 0; i < (uint32_t)k_persist_block; ++i) {
-    blk[i] = (uint8_t)((i * 17u) + (lbn * 5u) + tag);
+    blk[i] = (uint8_t)((i * 17U) + (lbn * 5U) + tag);
   }
 }
 

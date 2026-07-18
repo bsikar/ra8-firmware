@@ -346,7 +346,7 @@ static void test_decode_output_size_mcdc(void)
                                       sizeof k_webp_lossless,
                                       &a2,
                                       fb,
-                                      k_bpp * 4U,
+                                      (size_t)k_bpp * 4U,
                                       sizeof fb,
                                       nullptr,
                                       nullptr));
@@ -401,8 +401,8 @@ static void test_decode_stride_over_int_max(void)
 static void test_decode_arena_oom(void)
 {
   TEST_BEGIN("ra8_webp_decode_rgba: arena OOM -> clean failure");
-  static uint8_t   tiny[64U];
-  ra8_webp_arena_t arena          = {.base = tiny, .cap = sizeof tiny, .offset = 0U, .live = 0U};
+  static uint8_t   s_tiny[64U];
+  ra8_webp_arena_t arena = {.base = s_tiny, .cap = sizeof s_tiny, .offset = 0U, .live = 0U};
   uint8_t          fb[k_fb_bytes] = {};
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  ra8_webp_decode_rgba(k_webp_lossless,
@@ -440,8 +440,8 @@ static void test_arena_malloc_and_bind(void)
   ra8_webp_arena_bind(nullptr);
   TEST_ASSERT_NULL(ra8_webp_arena_malloc(16U));
 
-  static uint8_t   buf[32U];
-  ra8_webp_arena_t a = {.base = buf, .cap = sizeof buf, .offset = 0U, .live = 0U};
+  static uint8_t   s_buf[32U];
+  ra8_webp_arena_t a = {.base = s_buf, .cap = sizeof s_buf, .offset = 0U, .live = 0U};
   ra8_webp_arena_bind(&a);
 
   TEST_ASSERT_NULL(ra8_webp_arena_malloc(33U)); /* n > cap */
@@ -489,8 +489,8 @@ static void test_arena_malloc_and_bind(void)
 static void test_arena_calloc_overflow_mcdc(void)
 {
   TEST_BEGIN("ra8_webp_arena_calloc: overflow MC/DC");
-  static uint8_t   buf[64U];
-  ra8_webp_arena_t a = {.base = buf, .cap = sizeof buf, .offset = 0U, .live = 0U};
+  static uint8_t   s_buf[64U];
+  ra8_webp_arena_t a = {.base = s_buf, .cap = sizeof s_buf, .offset = 0U, .live = 0U};
   ra8_webp_arena_bind(&a);
 
   /* V1 (T,T): product overflows size_t. */
@@ -527,8 +527,8 @@ static void test_arena_calloc_overflow_mcdc(void)
 static void test_arena_free_mcdc(void)
 {
   TEST_BEGIN("ra8_webp_arena_free: null-guard MC/DC");
-  static uint8_t   buf[64U];
-  ra8_webp_arena_t a = {.base = buf, .cap = sizeof buf, .offset = 0U, .live = 0U};
+  static uint8_t   s_buf[64U];
+  ra8_webp_arena_t a = {.base = s_buf, .cap = sizeof s_buf, .offset = 0U, .live = 0U};
   ra8_webp_arena_bind(&a);
 
   void* const p = ra8_webp_arena_malloc(16U);

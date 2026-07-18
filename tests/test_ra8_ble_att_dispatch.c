@@ -38,8 +38,6 @@
 #include "unity_minimal.h"
 
 /* Test hooks declared in ra8_ble_host.h under #ifdef UNIT_TEST. */
-void ra8_ble_host_test_inject_acl(uint16_t conn_handle, const uint8_t* l2cap_frame, uint16_t len);
-void ra8_ble_host_test_inject_connect(uint16_t conn_handle);
 
 typedef enum : uint16_t {
   k_test_conn_handle   = 0x0040U, /**< Test conn handle.   */

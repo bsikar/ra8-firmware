@@ -349,7 +349,7 @@ void div0_seam_install(const uint8_t* elf, long len)
     return; /* truncated program-header table -- refuse to walk past the file. */
   }
   for (uint16_t i = 0U; i < phnum; i++) {
-    const uint8_t* ph       = elf + phoff + ((uint32_t)i * phentsize);
+    const uint8_t* ph       = elf + phoff + ((size_t)(uint32_t)i * phentsize);
     uint32_t       p_type   = 0U;
     uint32_t       p_offset = 0U;
     uint32_t       p_vaddr  = 0U;

@@ -91,17 +91,17 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
   if ((data == NULL) || (size == 0U) || (size > (size_t)k_fuzz_ta_max_input)) {
     return 0;
   }
-  static fuzz_pull_t pull;
-  pull = (fuzz_pull_t){.d = data, .n = size, .pos = 0U};
-  static ra8_jof_memstore_t store;
-  store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  static fuzz_pull_t s_pull;
+  s_pull = (fuzz_pull_t){.d = data, .n = size, .pos = 0U};
+  static ra8_jof_memstore_t s_store;
+  s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   /* First input byte picks the codec so both encode paths stay hot. */
-  const uint8_t               codec = (uint8_t)(data[0] & 0x01U);
+  const uint8_t                     codec = (uint8_t)(data[0] & 0x01U);
   const ra8_jof_produce_cfg_t cfg   = {
     .pull       = fuzz_pull,
-    .pull_ctx   = &pull,
+    .pull_ctx   = &s_pull,
     .sink       = ra8_jof_memstore_sink,
-    .sink_ctx   = &store,
+    .sink_ctx   = &s_store,
     .tile_w     = (uint16_t)k_fuzz_ta_tile,
     .tile_h     = (uint16_t)k_fuzz_ta_tile,
     .codec      = codec,

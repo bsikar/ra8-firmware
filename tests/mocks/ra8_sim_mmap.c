@@ -28,6 +28,10 @@
 #ifdef RA8_SIMULATOR_MODE
 
 /** @brief GNU SOURCE. */
+/* glibc fixes the spelling of its feature-test macros, so the reserved-identifier
+ * and UPPER_CASE-macro rules cannot apply: personality() is only declared when
+ * _GNU_SOURCE is defined before the first system header. */
+// NOLINTNEXTLINE(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming)
 #define _GNU_SOURCE
 #include "ra8_sim_mmap.h"
 

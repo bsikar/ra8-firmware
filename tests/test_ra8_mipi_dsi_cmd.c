@@ -352,11 +352,11 @@ static void test_send_long_packet_lp_too_big(void)
   const ra8_mipi_dsi_config_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_dsi_init(&cfg));
 
-  static uint8_t big[k_test_huge_len];
+  static uint8_t s_big[k_test_huge_len];
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_mipi_dsi_send_long_packet(k_ra8_mipi_dsi_dt_gen_long_write,
                                                k_ra8_mipi_dsi_vc0,
-                                               big,
+                                               s_big,
                                                (uint16_t)k_test_huge_len,
                                                true));
   TEST_END("mipi_dsi send long packet too big for LP");

@@ -32,9 +32,9 @@
 #include "miniz.h"
 #include "ra8_err.h"
 #include "ra8_img_arena.h"
+#include "ra8_jpeg_sw.h"
 #include "ra8_jof.h"
 #include "ra8_jof_produce.h"
-#include "ra8_jpeg_sw.h"
 #include "stb_image.h"
 #include "unity_minimal.h"
 
@@ -293,12 +293,12 @@ static void png_build(uint32_t w, uint32_t h, uint8_t color_type, bool with_trns
 static ra8_err_t
 produce(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t chunk, ra8_jof_info_t* info)
 {
-  static t_pull_t pull;
-  pull    = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = chunk};
+  static t_pull_t s_pull;
+  s_pull  = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = chunk};
   s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   const ra8_jof_produce_cfg_t cfg = {
     .pull       = t_pull,
-    .pull_ctx   = &pull,
+    .pull_ctx   = &s_pull,
     .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &s_store,
     .tile_w     = tile_w,
@@ -332,16 +332,16 @@ static void check_tiles(const ra8_jof_info_t* info, uint8_t ctx_ct)
       uint16_t h = 0U;
       TEST_ASSERT_EQ(k_ra8_ok,
                      ra8_jof_read_tile(ra8_jof_memstore_pread,
-                                       &s_store,
-                                       info,
-                                       tx,
-                                       ty,
-                                       s_scratch,
-                                       (uint32_t)sizeof(s_scratch),
-                                       s_cell,
-                                       (uint32_t)sizeof(s_cell),
-                                       &w,
-                                       &h));
+                                             &s_store,
+                                             info,
+                                             tx,
+                                             ty,
+                                             s_scratch,
+                                             (uint32_t)sizeof(s_scratch),
+                                             s_cell,
+                                             (uint32_t)sizeof(s_cell),
+                                             &w,
+                                             &h));
       const uint32_t x0 = (uint32_t)tx * info->tile_w;
       const uint32_t y0 = (uint32_t)ty * info->tile_h;
       for (uint32_t r = 0U; r < h; r++) {
@@ -424,17 +424,22 @@ static void test_produce_png_colortypes(void)
     ra8_img_arena_unbind();
 
     ra8_jof_info_t info = {};
-    TEST_ASSERT_EQ(
-      k_ra8_ok,
-      produce((uint16_t)k_t_tile, (uint16_t)k_t_tile, (uint8_t)k_ra8_jof_codec_deflate, 0U, &info));
+    TEST_ASSERT_EQ(k_ra8_ok,
+                   produce((uint16_t)k_t_tile,
+                           (uint16_t)k_t_tile,
+                           (uint8_t)k_ra8_jof_codec_deflate,
+                           0U,
+                           &info));
     TEST_ASSERT_EQ(cases[i].bpp, info.bpp);
     TEST_ASSERT_EQ(k_t_png_w, info.width);
     TEST_ASSERT_EQ(k_t_png_h, info.height);
     /* Reparse from the store: producer-reported info == parsed info. */
     ra8_jof_info_t reparsed = {};
-    TEST_ASSERT_EQ(
-      k_ra8_ok,
-      ra8_jof_parse(ra8_jof_memstore_pread, &s_store, (uint64_t)s_store.len, &reparsed));
+    TEST_ASSERT_EQ(k_ra8_ok,
+                   ra8_jof_parse(ra8_jof_memstore_pread,
+                                       &s_store,
+                                       (uint64_t)s_store.len,
+                                       &reparsed));
     TEST_ASSERT_EQ(0, memcmp(&info, &reparsed, sizeof(info)));
     check_tiles(&info, cases[i].ct);
   }
@@ -481,7 +486,8 @@ static void test_produce_jpeg_parity(void)
   TEST_ASSERT_EQ(k_t_jpg_w, rw);
   TEST_ASSERT_EQ(k_t_jpg_h, rh);
 
-  const uint8_t codecs[2] = {(uint8_t)k_ra8_jof_codec_raw, (uint8_t)k_ra8_jof_codec_deflate};
+  const uint8_t codecs[2] = {(uint8_t)k_ra8_jof_codec_raw,
+                             (uint8_t)k_ra8_jof_codec_deflate};
   const size_t  chunks[2] = {0U, 7U}; /* whole pulls, then a dribble stress */
   for (uint32_t i = 0U; i < 2U; i++) {
     ra8_jof_info_t info = {};
@@ -513,9 +519,9 @@ static uint32_t produce_bounded_budget(void)
   png_build(k_t_big_w, k_t_big_h, 0U, false, false);
   const uint64_t decoded = (uint64_t)k_t_big_w * (uint64_t)k_t_big_h;
   const uint32_t need    = ra8_jof_work_bytes((uint16_t)k_t_big_w,
-                                              (uint16_t)k_t_big_h,
-                                              (uint16_t)k_t_big_tile,
-                                              (uint16_t)k_t_big_tile);
+                                                    (uint16_t)k_t_big_h,
+                                                    (uint16_t)k_t_big_tile,
+                                                    (uint16_t)k_t_big_tile);
   TEST_ASSERT(need > 0U);
   TEST_ASSERT(need <= (uint32_t)sizeof(s_work));
   /* The regime under test: decoded image >= 5x the whole working set. */
@@ -549,16 +555,16 @@ static void produce_bounded_check_corners(const ra8_jof_info_t* info)
     uint16_t h = 0U;
     TEST_ASSERT_EQ(k_ra8_ok,
                    ra8_jof_read_tile(ra8_jof_memstore_pread,
-                                     &s_store,
-                                     info,
-                                     corners[i][0],
-                                     corners[i][1],
-                                     s_scratch,
-                                     (uint32_t)sizeof(s_scratch),
-                                     s_cell,
-                                     (uint32_t)sizeof(s_cell),
-                                     &w,
-                                     &h));
+                                           &s_store,
+                                           info,
+                                           corners[i][0],
+                                           corners[i][1],
+                                           s_scratch,
+                                           (uint32_t)sizeof(s_scratch),
+                                           s_cell,
+                                           (uint32_t)sizeof(s_cell),
+                                           &w,
+                                           &h));
     const uint32_t x0 = (uint32_t)corners[i][0] * info->tile_w;
     const uint32_t y0 = (uint32_t)corners[i][1] * info->tile_h;
     for (uint32_t r = 0U; r < h; r += 37U) {
@@ -589,12 +595,12 @@ static void test_produce_bounded_ram(void)
   TEST_BEGIN("produce: decoded size >> fixed working set (bounded RAM high-water)");
   const uint32_t need = produce_bounded_budget();
 
-  static t_pull_t pull;
-  pull    = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
+  static t_pull_t s_pull;
+  s_pull  = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
   s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   const ra8_jof_produce_cfg_t cfg = {
     .pull       = t_pull,
-    .pull_ctx   = &pull,
+    .pull_ctx   = &s_pull,
     .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &s_store,
     .tile_w     = (uint16_t)k_t_big_tile,
@@ -628,9 +634,12 @@ static void test_produce_bounded_ram(void)
 static void expect_produce_err(ra8_err_t want)
 {
   ra8_jof_info_t info = {};
-  TEST_ASSERT_EQ(
-    want,
-    produce((uint16_t)k_t_tile, (uint16_t)k_t_tile, (uint8_t)k_ra8_jof_codec_deflate, 0U, &info));
+  TEST_ASSERT_EQ(want,
+                 produce((uint16_t)k_t_tile,
+                         (uint16_t)k_t_tile,
+                         (uint8_t)k_ra8_jof_codec_deflate,
+                         0U,
+                         &info));
 }
 
 /**
@@ -680,7 +689,7 @@ static void produce_hostile_pull_and_cfg(void)
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_jof_produce(&cfg, &info));
   /* Config guards. */
   ra8_jof_produce_cfg_t bad = cfg;
-  bad.tile_w                = 0U;
+  bad.tile_w                      = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_jof_produce(&bad, &info));
   bad       = cfg;
   bad.codec = 9U;
@@ -760,33 +769,33 @@ static void produce_hostile_budget(void)
   /* Work arena too small (fail-closed budget). */
   {
     png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-    static t_pull_t pull;
-    pull    = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
+    static t_pull_t s_pull;
+    s_pull  = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
     s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
     ra8_jof_info_t              info = {};
     const ra8_jof_produce_cfg_t cfg  = {
       .pull     = t_pull,
-      .pull_ctx = &pull,
+      .pull_ctx = &s_pull,
       .sink     = ra8_jof_memstore_sink,
       .sink_ctx = &s_store,
       .tile_w   = (uint16_t)k_t_tile,
       .tile_h   = (uint16_t)k_t_tile,
       .codec    = (uint8_t)k_ra8_jof_codec_deflate,
       .work     = s_work,
-      .work_cap = 64U * 1024U,
+      .work_cap = (size_t)64U * 1024U,
     };
     TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_jof_produce(&cfg, &info));
   }
   /* Sink runs out of room (store cap tiny) -> no_mem propagates. */
   {
     png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-    static t_pull_t pull;
-    pull    = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
+    static t_pull_t s_pull;
+    s_pull  = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
     s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = 64U, .len = 0U};
     ra8_jof_info_t              info = {};
     const ra8_jof_produce_cfg_t cfg  = {
       .pull     = t_pull,
-      .pull_ctx = &pull,
+      .pull_ctx = &s_pull,
       .sink     = ra8_jof_memstore_sink,
       .sink_ctx = &s_store,
       .tile_w   = (uint16_t)k_t_tile,

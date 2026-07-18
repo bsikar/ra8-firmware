@@ -112,9 +112,14 @@ static ra8_app_t make_app(app_ctx_t* ctx, uint16_t id, const char* name)
 static void test_register(void)
 {
   TEST_BEGIN("ra8_app: register init/dup/cap/fail");
-  app_ctx_t          c0 = {}, c1 = {}, cdup = {}, cfail = {.init_fail = true};
-  ra8_app_t          a0 = make_app(&c0, 1, "lib"), a1 = make_app(&c1, 2, "rdr");
-  ra8_app_t          adup = make_app(&cdup, 1, "dup"), afail = make_app(&cfail, 9, "bad");
+  app_ctx_t          c0    = {};
+  app_ctx_t          c1    = {};
+  app_ctx_t          cdup  = {};
+  app_ctx_t          cfail = {.init_fail = true};
+  ra8_app_t          a0    = make_app(&c0, 1, "lib");
+  ra8_app_t          a1    = make_app(&c1, 2, "rdr");
+  ra8_app_t          adup  = make_app(&cdup, 1, "dup");
+  ra8_app_t          afail = make_app(&cfail, 9, "bad");
   ra8_app_t*         slots[2];
   ra8_app_registry_t reg = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_registry_init(&reg, slots, 2U));
@@ -157,8 +162,10 @@ static void test_register(void)
 static void test_launch_lifecycle(void)
 {
   TEST_BEGIN("ra8_app: launch focus lifecycle MC/DC");
-  app_ctx_t          c0 = {}, c1 = {};
-  ra8_app_t          a0 = make_app(&c0, 1, "lib"), a1 = make_app(&c1, 2, "rdr");
+  app_ctx_t          c0 = {};
+  app_ctx_t          c1 = {};
+  ra8_app_t          a0 = make_app(&c0, 1, "lib");
+  ra8_app_t          a1 = make_app(&c1, 2, "rdr");
   ra8_app_t*         slots[2];
   ra8_app_registry_t reg = {};
   (void)ra8_app_registry_init(&reg, slots, 2U);
@@ -261,7 +268,8 @@ static void test_buildtime_exclusion(void)
 static void test_tick_render(void)
 {
   TEST_BEGIN("ra8_app: tick/render routing MC/DC");
-  app_ctx_t          c0 = {}, cnull = {};
+  app_ctx_t          c0    = {};
+  app_ctx_t          cnull = {};
   ra8_app_t          a0    = make_app(&c0, 1, "full");
   ra8_app_t          anull = make_app_vt(&cnull, 2, "null", &k_app_vt_null);
   ra8_app_t*         slots[2];
@@ -302,7 +310,8 @@ static void test_tick_render(void)
 static void test_null_callbacks(void)
 {
   TEST_BEGIN("ra8_app: null lifecycle callbacks skipped");
-  app_ctx_t          c0 = {}, cnull = {};
+  app_ctx_t          c0    = {};
+  app_ctx_t          cnull = {};
   ra8_app_t          a0    = make_app(&c0, 1, "full");
   ra8_app_t          anull = make_app_vt(&cnull, 2, "null", &k_app_vt_null);
   ra8_app_t*         slots[2];
@@ -521,8 +530,10 @@ static void nav_check_null_slot(void)
  */
 static void nav_check_push_capacity(void)
 {
-  app_ctx_t          mc0 = {}, mc1 = {};
-  ra8_app_t          m0 = make_app(&mc0, 100, "m0"), m1 = make_app(&mc1, 200, "m1");
+  app_ctx_t          mc0 = {};
+  app_ctx_t          mc1 = {};
+  ra8_app_t          m0  = make_app(&mc0, 100, "m0");
+  ra8_app_t          m1  = make_app(&mc1, 200, "m1");
   ra8_app_t*         mslots[2];
   ra8_app_registry_t mreg = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_registry_init(&mreg, mslots, 2U));
@@ -585,7 +596,9 @@ static void nav_check_null_args(void)
 static void test_nav_go_index(void)
 {
   TEST_BEGIN("ra8_app: nav go-by-index + back-stack MC/DC");
-  app_ctx_t          c0 = {}, c1 = {}, c2 = {};
+  app_ctx_t          c0 = {};
+  app_ctx_t          c1 = {};
+  app_ctx_t          c2 = {};
   ra8_app_t          a0 = make_app(&c0, 10, "library");
   ra8_app_t          a1 = make_app(&c1, 20, "reader");
   ra8_app_t          a2 = make_app(&c2, 30, "settings");
@@ -718,8 +731,10 @@ static void test_zero_cap_and_nav_launch_errors(void)
 static void test_app_state(void)
 {
   TEST_BEGIN("ra8_app: derived lifecycle state");
-  app_ctx_t          c0 = {}, c1 = {};
-  ra8_app_t          a0 = make_app(&c0, 1, "lib"), a1 = make_app(&c1, 2, "rdr");
+  app_ctx_t          c0 = {};
+  app_ctx_t          c1 = {};
+  ra8_app_t          a0 = make_app(&c0, 1, "lib");
+  ra8_app_t          a1 = make_app(&c1, 2, "rdr");
   ra8_app_t*         slots[2];
   ra8_app_registry_t reg = {};
   (void)ra8_app_registry_init(&reg, slots, 2U);
@@ -899,7 +914,10 @@ static void uninstall_check_active_none(void)
 static void test_uninstall(void)
 {
   TEST_BEGIN("ra8_app: uninstall core-invariant + removable unmount MC/DC");
-  app_ctx_t c0 = {}, c1 = {}, c2 = {}, c3 = {};
+  app_ctx_t c0 = {};
+  app_ctx_t c1 = {};
+  app_ctx_t c2 = {};
+  app_ctx_t c3 = {};
   ra8_app_t a0 = make_app(&c0, 1, "library");  /* core: removable stays false */
   ra8_app_t a1 = make_app(&c1, 2, "settings"); /* removable below             */
   ra8_app_t a2 = make_app(&c2, 3, "notes");    /* removable below             */

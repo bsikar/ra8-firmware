@@ -139,21 +139,24 @@ static void test_gfx_blit_gray8_clip_mcdc(void)
 
   /* V1: on-screen block -> both conditions true -> the fast path draws. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_clear((uint32_t)k_gfx_bg));
-  const uint8_t base_v1 = s_gfx_fb[((size_t)k_gfx_on * (size_t)k_gfx_dim + (size_t)k_gfx_on) * 2U];
+  const uint8_t base_v1 =
+    s_gfx_fb[(((size_t)k_gfx_on * (size_t)k_gfx_dim) + (size_t)k_gfx_on) * 2U];
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gfx_blit_gray8(s_gfx_gray, k_gfx_src_dim, k_gfx_src_dim, k_gfx_on, k_gfx_on));
   TEST_ASSERT(s_gfx_fb[((size_t)k_gfx_on * (size_t)k_gfx_dim + (size_t)k_gfx_on) * 2U] != base_v1);
 
   /* V2: block fully to the right (x0 >= x1) but vertically on-screen (y0 < y1). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_clear((uint32_t)k_gfx_bg));
-  const uint8_t base_v2 = s_gfx_fb[((size_t)k_gfx_on * (size_t)k_gfx_dim + (size_t)k_gfx_on) * 2U];
+  const uint8_t base_v2 =
+    s_gfx_fb[(((size_t)k_gfx_on * (size_t)k_gfx_dim) + (size_t)k_gfx_on) * 2U];
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gfx_blit_gray8(s_gfx_gray, k_gfx_src_dim, k_gfx_src_dim, k_gfx_off, k_gfx_on));
   TEST_ASSERT_EQ(base_v2, s_gfx_fb[((size_t)k_gfx_on * (size_t)k_gfx_dim + (size_t)k_gfx_on) * 2U]);
 
   /* V3: block fully below (y0 >= y1) but horizontally on-screen (x0 < x1). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_clear((uint32_t)k_gfx_bg));
-  const uint8_t base_v3 = s_gfx_fb[((size_t)k_gfx_on * (size_t)k_gfx_dim + (size_t)k_gfx_on) * 2U];
+  const uint8_t base_v3 =
+    s_gfx_fb[(((size_t)k_gfx_on * (size_t)k_gfx_dim) + (size_t)k_gfx_on) * 2U];
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gfx_blit_gray8(s_gfx_gray, k_gfx_src_dim, k_gfx_src_dim, k_gfx_on, k_gfx_off));
   TEST_ASSERT_EQ(base_v3, s_gfx_fb[((size_t)k_gfx_on * (size_t)k_gfx_dim + (size_t)k_gfx_on) * 2U]);

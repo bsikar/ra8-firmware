@@ -86,9 +86,10 @@ static size_t tsc_read(void* ctx, uint64_t off, void* buf, size_t len)
 /** @brief FNV-1a-32 over the scratch framebuffer bytes. */
 static uint32_t tsc_fnv(void)
 {
-  const uint8_t* p = (const uint8_t*)s_fb;
-  uint32_t       h = (uint32_t)k_tsc_fnv_offset;
-  for (size_t i = 0U; i < sizeof s_fb; ++i) {
+  const uint8_t* p        = (const uint8_t*)s_fb;
+  const size_t   fb_bytes = sizeof s_fb;
+  uint32_t       h        = (uint32_t)k_tsc_fnv_offset;
+  for (size_t i = 0U; i < fb_bytes; ++i) {
     h = (h ^ (uint32_t)p[i]) * (uint32_t)k_tsc_fnv_prime;
   }
   return h;

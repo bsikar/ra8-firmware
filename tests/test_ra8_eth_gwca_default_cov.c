@@ -107,35 +107,35 @@ static void test_default_send_guards_and_rearm(void)
   TEST_BEGIN("default_send guards + rearm");
   prep();
   ra8_eth_gwca_default_state_t                          st = {};
-  [[gnu::aligned(16)]] static ra8_gwca_ext_descriptor_t tx_chain[2];
-  static uint8_t                                        tx_pool[128];
-  static uint8_t                                        frame[64];
+  [[gnu::aligned(16)]] static ra8_gwca_ext_descriptor_t s_tx_chain[2];
+  static uint8_t                                        s_tx_pool[128];
+  static uint8_t                                        s_frame[64];
 
-  tx_chain[0]       = (ra8_gwca_ext_descriptor_t){};
-  tx_chain[1]       = (ra8_gwca_ext_descriptor_t){};
-  st.tx_chain       = tx_chain;
+  s_tx_chain[0]     = (ra8_gwca_ext_descriptor_t){};
+  s_tx_chain[1]     = (ra8_gwca_ext_descriptor_t){};
+  st.tx_chain       = s_tx_chain;
   st.tx_depth       = 2U;
-  st.tx_pool        = tx_pool;
+  st.tx_pool        = s_tx_pool;
   st.tx_slot_bytes  = 64U;
   st.tx_queue_index = 0U;
   st.mac_port       = 0U;
 
   /* Null-pointer guards (RA8_CHECK_NULL_PTR). */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_default_send(nullptr, frame, 64U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_default_send(nullptr, s_frame, 64U));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_default_send(&st, nullptr, 64U));
 
   /* D1 V_T: len == 0. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_default_send(&st, frame, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_default_send(&st, s_frame, 0U));
   /* D2 V_T: len > tx_slot_bytes. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_default_send(&st, frame, 65U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_default_send(&st, s_frame, 65U));
 
   /* Re-arm leg: terminator idle-disabled to LEMPTY. default_send must
    * restore it to LINK, fill slot 0 (FSINGLE), and return ok under
    * RA8_SIMULATOR_MODE (the write-back spin is host-compiled-out). */
-  tx_chain[1].dt = (uint8_t)k_ra8_gwdcc_dt_lempty;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_default_send(&st, frame, 64U));
-  TEST_ASSERT_EQ(k_ra8_gwdcc_dt_link, tx_chain[1].dt);
-  TEST_ASSERT_EQ(k_ra8_gwdcc_dt_fsingle, tx_chain[0].dt);
+  s_tx_chain[1].dt = (uint8_t)k_ra8_gwdcc_dt_lempty;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_default_send(&st, s_frame, 64U));
+  TEST_ASSERT_EQ(k_ra8_gwdcc_dt_link, s_tx_chain[1].dt);
+  TEST_ASSERT_EQ(k_ra8_gwdcc_dt_fsingle, s_tx_chain[0].dt);
   TEST_END("default_send guards + rearm");
 }
 
@@ -157,21 +157,21 @@ static void test_default_send_reload_failure(void)
   TEST_BEGIN("default_send reload failure");
   prep();
   ra8_eth_gwca_default_state_t                          st = {};
-  [[gnu::aligned(16)]] static ra8_gwca_ext_descriptor_t tx_chain[2];
-  static uint8_t                                        tx_pool[128];
-  static uint8_t                                        frame[64];
+  [[gnu::aligned(16)]] static ra8_gwca_ext_descriptor_t s_tx_chain[2];
+  static uint8_t                                        s_tx_pool[128];
+  static uint8_t                                        s_frame[64];
 
-  tx_chain[0]       = (ra8_gwca_ext_descriptor_t){};
-  tx_chain[1]       = (ra8_gwca_ext_descriptor_t){};
-  tx_chain[1].dt    = (uint8_t)k_ra8_gwdcc_dt_link; /* not LEMPTY -> rearm no-op */
-  st.tx_chain       = tx_chain;
+  s_tx_chain[0]     = (ra8_gwca_ext_descriptor_t){};
+  s_tx_chain[1]     = (ra8_gwca_ext_descriptor_t){};
+  s_tx_chain[1].dt  = (uint8_t)k_ra8_gwdcc_dt_link; /* not LEMPTY -> rearm no-op */
+  st.tx_chain       = s_tx_chain;
   st.tx_depth       = 2U;
-  st.tx_pool        = tx_pool;
+  st.tx_pool        = s_tx_pool;
   st.tx_slot_bytes  = 64U;
   st.tx_queue_index = 40U; /* >= 32 -> reload rejects */
   st.mac_port       = 0U;
 
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_default_send(&st, frame, 64U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_default_send(&st, s_frame, 64U));
   TEST_END("default_send reload failure");
 }
 
@@ -193,24 +193,24 @@ static void test_default_recv_rearm_disabled(void)
   TEST_BEGIN("default_recv rearm disabled");
   prep();
   ra8_eth_gwca_default_state_t                            st = {};
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t rx_chain[4];
-  static uint8_t                                          rx_pool[3U * 128U];
-  static uint8_t                                          out[256];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_rx_chain[4];
+  static uint8_t                                          s_rx_pool[3U * 128U];
+  static uint8_t                                          s_out[256];
   uint32_t                                                got_len = 0U;
 
-  st.rx_chain       = rx_chain;
+  st.rx_chain       = s_rx_chain;
   st.rx_depth       = 4U;
-  st.rx_pool        = rx_pool;
+  st.rx_pool        = s_rx_pool;
   st.rx_slot_bytes  = 128U;
   st.rx_queue_index = 0U;
   st.rx_head        = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(rx_chain, 4U, 128U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(s_rx_chain, 4U, 128U));
 
   /* Force the terminator into the GWCA-disabled state. */
-  rx_chain[3].dt = (uint8_t)k_ra8_gwdcc_dt_lempty;
-  TEST_ASSERT_EQ(k_ra8_err_no_data, ra8_eth_gwca_default_recv(&st, out, sizeof(out), &got_len));
+  s_rx_chain[3].dt = (uint8_t)k_ra8_gwdcc_dt_lempty;
+  TEST_ASSERT_EQ(k_ra8_err_no_data, ra8_eth_gwca_default_recv(&st, s_out, sizeof(s_out), &got_len));
   /* Terminator re-armed to LINK, software cursor snapped to 0. */
-  TEST_ASSERT_EQ(k_ra8_gwdcc_dt_link, rx_chain[3].dt);
+  TEST_ASSERT_EQ(k_ra8_gwdcc_dt_link, s_rx_chain[3].dt);
   TEST_ASSERT_EQ(0U, st.rx_head);
   TEST_END("default_recv rearm disabled");
 }
@@ -237,38 +237,39 @@ static void test_rx_drain_reject(void)
   TEST_BEGIN("rx_frame drain reject");
   prep();
   ra8_eth_gwca_default_state_t                            st = {};
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t rx_chain[4];
-  static uint8_t                                          rx_pool[3U * 128U];
-  static uint8_t                                          out[256];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_rx_chain[4];
+  static uint8_t                                          s_rx_pool[3U * 128U];
+  static uint8_t                                          s_out[256];
   uint32_t                                                got_len = 0U;
 
-  st.rx_chain       = rx_chain;
+  st.rx_chain       = s_rx_chain;
   st.rx_depth       = 4U;
-  st.rx_pool        = rx_pool;
+  st.rx_pool        = s_rx_pool;
   st.rx_slot_bytes  = 128U;
   st.rx_queue_index = 0U;
 
   /* V_T_-: buf decodes to nullptr; ds within capacity so only the
    * null test drives the reject. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(rx_chain, 4U, 128U));
-  rx_chain[0].dt    = (uint8_t)k_ra8_gwdcc_dt_fsingle;
-  rx_chain[0].ptr_h = 0U;
-  rx_chain[0].ptr_l = 0U;
-  rx_chain[0].ds_l  = 128U;
-  rx_chain[0].ds_h  = 0U;
-  st.rx_head        = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_default_recv(&st, out, sizeof(out), &got_len));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(s_rx_chain, 4U, 128U));
+  s_rx_chain[0].dt    = (uint8_t)k_ra8_gwdcc_dt_fsingle;
+  s_rx_chain[0].ptr_h = 0U;
+  s_rx_chain[0].ptr_l = 0U;
+  s_rx_chain[0].ds_l  = 128U;
+  s_rx_chain[0].ds_h  = 0U;
+  st.rx_head          = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_eth_gwca_default_recv(&st, s_out, sizeof(s_out), &got_len));
 
   /* V_F_T: buf non-null; ds = 4095 exceeds out_capacity = 1 so the
    * size test drives the reject (buffer is never dereferenced). */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(rx_chain, 4U, 128U));
-  rx_chain[0].dt    = (uint8_t)k_ra8_gwdcc_dt_fsingle;
-  rx_chain[0].ptr_h = 0U;
-  rx_chain[0].ptr_l = 0x100U;
-  rx_chain[0].ds_l  = 0xFFU;
-  rx_chain[0].ds_h  = 0xFU;
-  st.rx_head        = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_default_recv(&st, out, 1U, &got_len));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(s_rx_chain, 4U, 128U));
+  s_rx_chain[0].dt    = (uint8_t)k_ra8_gwdcc_dt_fsingle;
+  s_rx_chain[0].ptr_h = 0U;
+  s_rx_chain[0].ptr_l = 0x100U;
+  s_rx_chain[0].ds_l  = 0xFFU;
+  s_rx_chain[0].ds_h  = 0xFU;
+  st.rx_head          = 0U;
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_default_recv(&st, s_out, 1U, &got_len));
   TEST_END("rx_frame drain reject");
 }
 
@@ -287,14 +288,14 @@ static void test_default_open_bad_tx_depth(void)
 {
   TEST_BEGIN("default_open bad tx_depth");
   prep();
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t linkfix[8];
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t rx_chain[4];
-  static uint8_t                                          rx_pool[3U * 128U];
-  [[gnu::aligned(16)]] static ra8_gwca_ext_descriptor_t   tx_chain[2];
-  static uint8_t                                          tx_pool[128];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_linkfix[8];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_rx_chain[4];
+  static uint8_t                                          s_rx_pool[3U * 128U];
+  [[gnu::aligned(16)]] static ra8_gwca_ext_descriptor_t   s_tx_chain[2];
+  static uint8_t                                          s_tx_pool[128];
   ra8_eth_gwca_default_state_t                            st = {};
 
-  make_valid_state(&st, linkfix, rx_chain, rx_pool, tx_chain, tx_pool);
+  make_valid_state(&st, s_linkfix, s_rx_chain, s_rx_pool, s_tx_chain, s_tx_pool);
   st.tx_depth = 1U; /* < 2 -> internal_tx_ext_init rejects */
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_default_open(&st));
@@ -318,14 +319,14 @@ static void test_default_open_bad_tx_slot_bytes(void)
 {
   TEST_BEGIN("default_open bad tx_slot_bytes");
   prep();
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t linkfix[8];
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t rx_chain[4];
-  static uint8_t                                          rx_pool[3U * 128U];
-  [[gnu::aligned(16)]] static ra8_gwca_ext_descriptor_t   tx_chain[4];
-  static uint8_t                                          tx_pool[3U * 128U];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_linkfix[8];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_rx_chain[4];
+  static uint8_t                                          s_rx_pool[3U * 128U];
+  [[gnu::aligned(16)]] static ra8_gwca_ext_descriptor_t   s_tx_chain[4];
+  static uint8_t                                          s_tx_pool[3U * 128U];
   ra8_eth_gwca_default_state_t                            st = {};
 
-  make_valid_state(&st, linkfix, rx_chain, rx_pool, tx_chain, tx_pool);
+  make_valid_state(&st, s_linkfix, s_rx_chain, s_rx_pool, s_tx_chain, s_tx_pool);
   st.tx_depth      = 2U;
   st.tx_slot_bytes = 4096U; /* > 2048 -> internal_tx_ext_init rejects */
 
@@ -350,14 +351,14 @@ static void test_default_open_bad_linkfix(void)
 {
   TEST_BEGIN("default_open bad linkfix_count");
   prep();
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t linkfix[8];
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t rx_chain[4];
-  static uint8_t                                          rx_pool[3U * 128U];
-  [[gnu::aligned(16)]] static ra8_gwca_ext_descriptor_t   tx_chain[4];
-  static uint8_t                                          tx_pool[3U * 128U];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_linkfix[8];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_rx_chain[4];
+  static uint8_t                                          s_rx_pool[3U * 128U];
+  [[gnu::aligned(16)]] static ra8_gwca_ext_descriptor_t   s_tx_chain[4];
+  static uint8_t                                          s_tx_pool[3U * 128U];
   ra8_eth_gwca_default_state_t                            st = {};
 
-  make_valid_state(&st, linkfix, rx_chain, rx_pool, tx_chain, tx_pool);
+  make_valid_state(&st, s_linkfix, s_rx_chain, s_rx_pool, s_tx_chain, s_tx_pool);
   st.linkfix_count = 33U; /* > 32 -> bring_up rejects */
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_default_open(&st));
@@ -382,14 +383,14 @@ static void test_default_open_bad_rx_queue(void)
 {
   TEST_BEGIN("default_open bad rx_queue_index");
   prep();
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t linkfix[8];
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t rx_chain[4];
-  static uint8_t                                          rx_pool[3U * 128U];
-  [[gnu::aligned(16)]] static ra8_gwca_ext_descriptor_t   tx_chain[4];
-  static uint8_t                                          tx_pool[3U * 128U];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_linkfix[8];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_rx_chain[4];
+  static uint8_t                                          s_rx_pool[3U * 128U];
+  [[gnu::aligned(16)]] static ra8_gwca_ext_descriptor_t   s_tx_chain[4];
+  static uint8_t                                          s_tx_pool[3U * 128U];
   ra8_eth_gwca_default_state_t                            st = {};
 
-  make_valid_state(&st, linkfix, rx_chain, rx_pool, tx_chain, tx_pool);
+  make_valid_state(&st, s_linkfix, s_rx_chain, s_rx_pool, s_tx_chain, s_tx_pool);
   st.rx_queue_index = 40U; /* >= 32 -> configure_queue rejects */
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_gwca_default_open(&st));
@@ -410,14 +411,14 @@ static void test_default_open_happy(void)
 {
   TEST_BEGIN("default_open happy path");
   prep();
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t linkfix[8];
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t rx_chain[4];
-  static uint8_t                                          rx_pool[3U * 128U];
-  [[gnu::aligned(16)]] static ra8_gwca_ext_descriptor_t   tx_chain[4];
-  static uint8_t                                          tx_pool[3U * 128U];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_linkfix[8];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_rx_chain[4];
+  static uint8_t                                          s_rx_pool[3U * 128U];
+  [[gnu::aligned(16)]] static ra8_gwca_ext_descriptor_t   s_tx_chain[4];
+  static uint8_t                                          s_tx_pool[3U * 128U];
   ra8_eth_gwca_default_state_t                            st = {};
 
-  make_valid_state(&st, linkfix, rx_chain, rx_pool, tx_chain, tx_pool);
+  make_valid_state(&st, s_linkfix, s_rx_chain, s_rx_pool, s_tx_chain, s_tx_pool);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_default_open(&st));
   TEST_ASSERT_EQ(k_ra8_eth_gwca_step_ok_3, g_ra8_eth_gwca_open_step);
@@ -450,14 +451,14 @@ static void test_default_open_init_saturation(void)
     TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init());
   }
 
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t linkfix[8];
-  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t rx_chain[4];
-  static uint8_t                                          rx_pool[3U * 128U];
-  [[gnu::aligned(16)]] static ra8_gwca_ext_descriptor_t   tx_chain[4];
-  static uint8_t                                          tx_pool[3U * 128U];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_linkfix[8];
+  [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_rx_chain[4];
+  static uint8_t                                          s_rx_pool[3U * 128U];
+  [[gnu::aligned(16)]] static ra8_gwca_ext_descriptor_t   s_tx_chain[4];
+  static uint8_t                                          s_tx_pool[3U * 128U];
   ra8_eth_gwca_default_state_t                            st = {};
 
-  make_valid_state(&st, linkfix, rx_chain, rx_pool, tx_chain, tx_pool);
+  make_valid_state(&st, s_linkfix, s_rx_chain, s_rx_pool, s_tx_chain, s_tx_pool);
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_eth_gwca_default_open(&st));
   TEST_ASSERT_EQ(k_ra8_eth_gwca_step_fail_1, g_ra8_eth_gwca_pre_step);

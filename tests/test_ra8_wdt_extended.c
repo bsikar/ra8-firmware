@@ -255,7 +255,7 @@ static void test_wdt_get_counter_ok(void)
   TEST_BEGIN("ra8_wdt_get_counter reads CNTVAL field");
   ra8_sim_mmap_reset();
   /* Write a canned value into the CNTVAL[13:0] field of WDTSR. */
-  ra8_wdt()->WDTSR = (uint16_t)(0x0100U);
+  ra8_wdt()->WDTSR = (uint16_t)0x0100U;
   uint16_t cnt     = 0xFFFFU;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_get_counter(&cnt));
   TEST_ASSERT_EQ((0x0100U & (uint16_t)k_ra8_wdt_sr_cnt_mask), cnt);

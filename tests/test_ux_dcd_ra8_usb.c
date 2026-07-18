@@ -46,7 +46,7 @@
  */
 static inline bool internal_mirror_xfer_null_guard(bool tr_is_null, const void* ep)
 {
-  return (tr_is_null) || (ep == nullptr);
+  return tr_is_null || (ep == nullptr);
 }
 
 /**

@@ -57,7 +57,7 @@ static ra8_fs_mount_t* setup_volume(void)
   (void)ra8_fs_mount(&s_be, &s_mnt);
   uint8_t data[(size_t)k_t_payload];
   for (uint32_t i = 0; i < (uint32_t)k_t_payload; ++i) {
-    data[i] = (uint8_t)((i + 1u) & 0xFFu);
+    data[i] = (uint8_t)((i + 1U) & 0xFFU);
   }
   (void)ra8_fs_write_file(s_mnt, "HELLO.BIN", data, k_t_payload);
   return s_mnt;
@@ -184,7 +184,7 @@ static void test_listdir_mkdir_unmount(void)
 
   uint32_t n = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_listdir("sd:/", count_cb, &n));
-  TEST_ASSERT(n >= 1u);
+  TEST_ASSERT(n >= 1U);
 
   /* mkdir now creates a real subdirectory (the #158 ra8_fs mkdir work); a fresh
    * empty subdir lists with zero visible entries ("." / ".." are hidden), and a
@@ -193,7 +193,7 @@ static void test_listdir_mkdir_unmount(void)
   TEST_ASSERT_EQ(k_ra8_err_exists, ra8_io_vfs_mkdir("sd:/SUB"));
   uint32_t m = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_listdir("sd:/SUB", count_cb, &m));
-  TEST_ASSERT_EQ(0u, m);
+  TEST_ASSERT_EQ(0U, m);
 
   /* unmount isolation: dropping "sd" leaves "ospi" working */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_vfs_unmount("sd"));

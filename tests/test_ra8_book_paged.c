@@ -317,17 +317,17 @@ static void test_ra8_book_paged_matches_resident(void)
 {
   TEST_BEGIN("ra8_book paged chapter text == resident");
 
-  static pbook_t book;
-  pbook_setup(&book);
-  s_pbook_bytes = (const uint8_t*)&book;
-  s_pbook_len   = (uint32_t)sizeof(book);
+  static pbook_t s_book;
+  pbook_setup(&s_book);
+  s_pbook_bytes = (const uint8_t*)&s_book;
+  s_pbook_len   = (uint32_t)sizeof(s_book);
 
   /* The fixture must be a well-formed blob the resident accessors accept. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_validate(&book, sizeof(book)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_validate(&s_book, sizeof(s_book)));
 
   /* Resident source. */
   ra8_book_src_t rsrc = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_src_resident(&rsrc, &book, (uint32_t)sizeof(book)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_src_resident(&rsrc, &s_book, (uint32_t)sizeof(s_book)));
 
   /* Paged source over an ra8_vmem cache fed by an ra8_vsource paged object. */
   ra8_vsource_obj_t objs[1];
@@ -339,8 +339,8 @@ static void test_ra8_book_paged_matches_resident(void)
   pbook_bind_guard_vectors(&vm, oid);
 
   /* For every chapter, the three text paths must agree byte-for-byte. */
-  for (uint32_t ch = 0U; ch < book.hdr.chapter_count; ++ch) {
-    pbook_compare_chapter(&book, &rsrc, &psrc, ch);
+  for (uint32_t ch = 0U; ch < s_book.hdr.chapter_count; ++ch) {
+    pbook_compare_chapter(&s_book, &rsrc, &psrc, ch);
   }
 
   /* The cache actually paged: misses occurred and the tiny budget forced evicts. */
@@ -374,20 +374,23 @@ static void test_ra8_book_paged_guards(void)
 {
   TEST_BEGIN("ra8_book paged source guards");
 
-  static pbook_t book;
-  pbook_setup(&book);
+  static pbook_t s_book;
+  pbook_setup(&s_book);
 
   ra8_book_src_t rsrc = {};
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_book_src_resident(nullptr, &book, (uint32_t)sizeof(book)));
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_book_src_resident(&rsrc, nullptr, (uint32_t)sizeof(book)));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_book_src_resident(&rsrc, &book, 0U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_src_resident(&rsrc, &book, (uint32_t)sizeof(book)));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_book_src_resident(nullptr, &s_book, (uint32_t)sizeof(s_book)));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_book_src_resident(&rsrc, nullptr, (uint32_t)sizeof(s_book)));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_book_src_resident(&rsrc, &s_book, 0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_src_resident(&rsrc, &s_book, (uint32_t)sizeof(s_book)));
 
   /* Read primitive: range + null guards. */
   uint8_t dst[16] = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_book_src_read(nullptr, 0U, dst, 1U));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_book_src_read(&rsrc, 0U, nullptr, 1U));
-  TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_book_src_read(&rsrc, (uint32_t)sizeof(book), dst, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_out_of_range,
+                 ra8_book_src_read(&rsrc, (uint32_t)sizeof(s_book), dst, 1U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_book_src_read(&rsrc, 0U, dst, 8U)); /* header magic */
   TEST_ASSERT_EQ(0, memcmp(dst, "RABOOK1", 7));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_book_src_read(&rsrc, 0U, dst, 0U)); /* len==0 short-circuit */
@@ -397,7 +400,7 @@ static void test_ra8_book_paged_guards(void)
   size_t len     = 0U;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_book_chapter_text_src(nullptr, 0U, out, sizeof out, &len));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_book_chapter_text_src(&rsrc, book.hdr.chapter_count, out, sizeof out, &len));
+                 ra8_book_chapter_text_src(&rsrc, s_book.hdr.chapter_count, out, sizeof out, &len));
 
   TEST_END("ra8_book paged source guards");
 }
@@ -494,15 +497,15 @@ static void test_ra8_book_paged_long_run(void)
 {
   TEST_BEGIN("ra8_book paged long text run == resident");
 
-  static plbook_t b;
-  plbook_setup(&b);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_validate(&b, sizeof(b)));
+  static plbook_t s_b;
+  plbook_setup(&s_b);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_validate(&s_b, sizeof(s_b)));
 
-  s_pbook_bytes = (const uint8_t*)&b;
-  s_pbook_len   = (uint32_t)sizeof(b);
+  s_pbook_bytes = (const uint8_t*)&s_b;
+  s_pbook_len   = (uint32_t)sizeof(s_b);
 
   ra8_book_src_t rsrc = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_src_resident(&rsrc, &b, (uint32_t)sizeof(b)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_src_resident(&rsrc, &s_b, (uint32_t)sizeof(s_b)));
 
   ra8_vsource_obj_t objs[1];
   ra8_vsource_t     vs   = {};
@@ -547,10 +550,10 @@ static void test_ra8_book_paged_read_faults(void)
 {
   TEST_BEGIN("ra8_book paged read faults propagate");
 
-  static pbook_t book;
-  pbook_setup(&book);
-  s_pbook_bytes = (const uint8_t*)&book;
-  s_pbook_len   = (uint32_t)sizeof(book);
+  static pbook_t s_book;
+  pbook_setup(&s_book);
+  s_pbook_bytes = (const uint8_t*)&s_book;
+  s_pbook_len   = (uint32_t)sizeof(s_book);
 
   /* (A) Unbound source: base AND vm both NULL, size > 0 -> invalid_state. */
   ra8_book_src_t orphan = {};
@@ -571,7 +574,7 @@ static void test_ra8_book_paged_read_faults(void)
   uint32_t oid = 0U;
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_vsource_add_paged(&vs, pbook_read_fault, nullptr, 0U, (uint64_t)sizeof(book), &oid));
+    ra8_vsource_add_paged(&vs, pbook_read_fault, nullptr, 0U, (uint64_t)sizeof(s_book), &oid));
 
   ra8_vmem_cfg_t cfg = {
     .frame_mem    = s_pb_frames,
@@ -589,7 +592,7 @@ static void test_ra8_book_paged_read_faults(void)
   ra8_book_src_t psrc = {};
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_book_src_paged(&psrc, &vm, oid, (uint32_t)k_pb_frame_bytes, (uint32_t)sizeof(book)));
+    ra8_book_src_paged(&psrc, &vm, oid, (uint32_t)k_pb_frame_bytes, (uint32_t)sizeof(s_book)));
 
   /* Header bound; now make all cold frames fault. */
   s_pbook_fault_armed = true;

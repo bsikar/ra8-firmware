@@ -53,7 +53,7 @@ static ra8_err_t t_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
 static void t_fill_backing(void)
 {
   for (uint32_t i = 0; i < (uint32_t)k_t_store_bytes; ++i) {
-    s_store[i] = (uint8_t)(i * 7U + 1U);
+    s_store[i] = (uint8_t)((i * 7U) + 1U);
   }
   for (uint32_t i = 0; i < (uint32_t)k_t_xip_bytes; ++i) {
     s_xip[i] = (uint8_t)(i ^ 0xA5U);
@@ -74,7 +74,7 @@ static void test_loader_paged(void)
   uint32_t oid = 0xFFFFFFFFU;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_vsource_add_paged(&vs, t_read, nullptr, 0U, 100U, &oid)); /* size 100 */
-  TEST_ASSERT_EQ(0u, oid);
+  TEST_ASSERT_EQ(0U, oid);
 
   /* A 64-byte frame fully inside the object */
   uint8_t frame[(size_t)k_t_frame_bytes] = {};
@@ -83,7 +83,7 @@ static void test_loader_paged(void)
 
   /* A frame at offset 64: object has 100 bytes, so 36 valid + 28 zero-pad */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_loader(&vs, oid, 64U, frame, k_t_frame_bytes));
-  TEST_ASSERT_EQ(0, memcmp(frame, &s_store[64], 36u));
+  TEST_ASSERT_EQ(0, memcmp(frame, &s_store[64], 36U));
   for (uint32_t i = 36U; i < (uint32_t)k_t_frame_bytes; ++i) {
     TEST_ASSERT_EQ(0, frame[i]); /* zero-padded past object end */
   }
@@ -112,7 +112,7 @@ static void test_xip(void)
   const uint8_t* p = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_xip_ptr(&vs, xip_id, 32U, 16U, &p));
   TEST_ASSERT(p == &s_xip[32]);
-  TEST_ASSERT_EQ(0, memcmp(p, &s_xip[32], 16u));
+  TEST_ASSERT_EQ(0, memcmp(p, &s_xip[32], 16U));
   /* out-of-range length, and the paged object refuses XIP */
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_vsource_xip_ptr(&vs, xip_id, 250U, 16U, &p));
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_vsource_xip_ptr(&vs, paged_id, 0U, 4U, &p));
@@ -128,9 +128,9 @@ static void test_vmem_integration(void)
 {
   TEST_BEGIN("vsource + vmem page-in integration");
   t_fill_backing();
-  static uint8_t          frames[(size_t)k_t_frames * (size_t)k_t_frame_bytes];
-  static ra8_vmem_frame_t meta[(size_t)k_t_frames];
-  static int32_t          buckets[(size_t)k_t_buckets];
+  static uint8_t          s_frames[(size_t)k_t_frames * (size_t)k_t_frame_bytes];
+  static ra8_vmem_frame_t s_meta[(size_t)k_t_frames];
+  static int32_t          s_buckets[(size_t)k_t_buckets];
 
   ra8_vsource_t vs = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_init(&vs, s_objs, k_t_objs));
@@ -138,11 +138,11 @@ static void test_vmem_integration(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_add_paged(&vs, t_read, nullptr, 0U, k_t_store_bytes, &oid));
 
   ra8_vmem_cfg_t cfg = {};
-  cfg.frame_mem      = frames;
+  cfg.frame_mem      = s_frames;
   cfg.frame_bytes    = k_t_frame_bytes;
   cfg.frame_count    = k_t_frames;
-  cfg.meta           = meta;
-  cfg.buckets        = buckets;
+  cfg.meta           = s_meta;
+  cfg.buckets        = s_buckets;
   cfg.bucket_count   = k_t_buckets;
   cfg.loader         = ra8_vsource_loader;
   cfg.loader_ctx     = &vs;

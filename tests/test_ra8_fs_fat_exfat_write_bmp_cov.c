@@ -184,7 +184,7 @@ static void test_bitmap_scan_full_volume(void)
   /* Bitmap cluster is always at cluster 2 = first_data_lba for a fresh volume. */
   const uint32_t bmp_lba = h->first_data_lba;
   for (uint32_t s = 0U; s < h->sectors_per_cluster; s++) {
-    memset(&s_disk.bytes[(bmp_lba + s) * (uint32_t)k_wc_block_size],
+    memset(&s_disk.bytes[(size_t)(bmp_lba + s) * (uint32_t)k_wc_block_size],
            (int)k_wc_mask_byte,
            (uint32_t)k_wc_block_size);
   }

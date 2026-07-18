@@ -71,9 +71,9 @@ int main(int argc, char** argv)
 
   /* Try to load the first chapter so we exercise miniz inflate + xhtml. */
   if (err == k_ra8_ok && book.chapter_count > 0) {
-    static uint8_t chbuf[256 * 1024];
+    static uint8_t s_chbuf[256 * 1024];
     size_t         chlen = 0;
-    ra8_err_t      cerr  = ra8_epub_load_chapter(&book, 0, chbuf, sizeof(chbuf), &chlen);
+    ra8_err_t      cerr  = ra8_epub_load_chapter(&book, 0, s_chbuf, sizeof(s_chbuf), &chlen);
     printf("  load_chapter(0) -> err=%d  bytes=%zu\n", (int)cerr, chlen);
   }
   free(buf);

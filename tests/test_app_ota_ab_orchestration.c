@@ -251,7 +251,7 @@ static void t_make_manifest(ra8_ota_manifest_t* m)
 static void t_prep_images(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_t_image_bytes; ++i) {
-    s_image_good[i] = (uint8_t)(i * (uint32_t)k_t_img_seed_mul + (uint32_t)k_t_img_seed_add);
+    s_image_good[i] = (uint8_t)((i * (uint32_t)k_t_img_seed_mul) + (uint32_t)k_t_img_seed_add);
     s_image_bad[i]  = s_image_good[i];
   }
   s_image_bad[0] = (uint8_t)(s_image_good[0] ^ (uint8_t)k_t_byte_all_ones);

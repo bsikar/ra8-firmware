@@ -195,7 +195,7 @@ static void test_mcdc_aead_encrypt_check_triple(void)
 {
   TEST_BEGIN("psa MC/DC: aead_encrypt_check (nonce||out||out_len) NULL triple");
   prep_init();
-  ra8_psa_key_t k = mcdc_import_aes_key((ra8_psa_key_usage_t)(k_ra8_psa_usage_encrypt));
+  ra8_psa_key_t k = mcdc_import_aes_key((ra8_psa_key_usage_t)k_ra8_psa_usage_encrypt);
   TEST_ASSERT_NOT_NULL(k);
   const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
   uint8_t       out[k_psa_mcdc_plain_len + k_ra8_psa_gcm_tag_len];
@@ -269,7 +269,7 @@ static void test_mcdc_aead_encrypt_check_plain_aad_quad(void)
 {
   TEST_BEGIN("psa MC/DC: encrypt_check (plain==NULL&&len) || (aad==NULL&&len)");
   prep_init();
-  ra8_psa_key_t k = mcdc_import_aes_key((ra8_psa_key_usage_t)(k_ra8_psa_usage_encrypt));
+  ra8_psa_key_t k = mcdc_import_aes_key((ra8_psa_key_usage_t)k_ra8_psa_usage_encrypt);
   TEST_ASSERT_NOT_NULL(k);
   const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
   const uint8_t aad[k_psa_mcdc_short_aad]   = {0U};

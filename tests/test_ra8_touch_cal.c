@@ -432,7 +432,7 @@ static void test_run_shim_error(void)
 
   /* Inset >= half panel rejected. */
   ra8_touch_cal_run_cfg_t bad = cfg;
-  bad.inset_px                = (uint16_t)(k_tc_screen_h);
+  bad.inset_px                = (uint16_t)k_tc_screen_h;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_touch_cal_run(&bad, &got));
 }
 

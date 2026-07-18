@@ -347,6 +347,12 @@ static void reset_state(void)
 ra8_err_t ra8_usb_hmsc_enumerate_cov(ra8_usb_hmsc_device_t* out_device);
 
 /** @brief RA8 USB hmsc enumerate. */
+/* Include-time interposition seam: each macro below must be spelled
+ * EXACTLY like the production symbol it replaces, so the project rule
+ * that macro names are UPPER_CASE cannot apply here -- renaming one
+ * silently un-hooks the mock and the test would exercise the real
+ * driver while still passing. */
+// NOLINTBEGIN(readability-identifier-naming)
 #define ra8_usb_hmsc_enumerate ra8_usb_hmsc_enumerate_cov
 /** @brief RA8 USB host control xfer. */
 #define ra8_usb_host_control_xfer mock_ctrl_xfer
@@ -364,6 +370,7 @@ ra8_err_t ra8_usb_hmsc_enumerate_cov(ra8_usb_hmsc_device_t* out_device);
 #define ra8_delay_ms mock_delay_ms
 /** @brief RA8 time ms. */
 #define ra8_time_ms mock_time_ms
+// NOLINTEND(readability-identifier-naming)
 
 #include "ra8_usb_hmsc_enum.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
 

@@ -179,7 +179,9 @@ static inline ra8_err_t wc_read(void* ctx, uint32_t lba, uint32_t count, uint8_t
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(buf, &d->bytes[lba * (uint32_t)k_wc_block_size], (size_t)count * (size_t)k_wc_block_size);
+  memcpy(buf,
+         &d->bytes[(size_t)lba * (uint32_t)k_wc_block_size],
+         (size_t)count * (size_t)k_wc_block_size);
   return k_ra8_ok;
 }
 
@@ -212,7 +214,9 @@ static inline ra8_err_t wc_write(void* ctx, uint32_t lba, uint32_t count, const 
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(&d->bytes[lba * (uint32_t)k_wc_block_size], buf, (size_t)count * (size_t)k_wc_block_size);
+  memcpy(&d->bytes[(size_t)lba * (uint32_t)k_wc_block_size],
+         buf,
+         (size_t)count * (size_t)k_wc_block_size);
   return k_ra8_ok;
 }
 
@@ -314,8 +318,8 @@ static inline void build_exfat_volume(void)
  */
 static inline uint32_t root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
 {
-  const uint32_t root_lba = h->first_data_lba + (h->root_cluster - 2U) * h->sectors_per_cluster;
-  return root_lba * (uint32_t)k_wc_block_size + idx * (uint32_t)k_wc_entry_bytes;
+  const uint32_t root_lba = h->first_data_lba + ((h->root_cluster - 2U) * h->sectors_per_cluster);
+  return (root_lba * (uint32_t)k_wc_block_size) + (idx * (uint32_t)k_wc_entry_bytes);
 }
 
 /**
@@ -333,7 +337,7 @@ static inline uint32_t root_entry_off(const ra8_fs_mount_t* h, uint32_t idx)
  */
 static inline uint32_t fat_entry_off(const ra8_fs_mount_t* h, uint32_t clus)
 {
-  return h->first_fat_lba * (uint32_t)k_wc_block_size + clus * 4U;
+  return (h->first_fat_lba * (uint32_t)k_wc_block_size) + (clus * 4U);
 }
 
 /**

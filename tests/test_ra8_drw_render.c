@@ -458,7 +458,7 @@ static void test_run_dlist(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_drw_run_dlist(nullptr));
   /* Unaligned address rejected. */
-  const uint32_t* unaligned = (const uint32_t*)(uintptr_t)((k_ra8_drw_test_dlist_addr) | 0x1UL);
+  const uint32_t* unaligned = (const uint32_t*)(uintptr_t)(k_ra8_drw_test_dlist_addr | 0x1UL);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_drw_run_dlist(unaligned));
 
   const uint32_t* dlist = (const uint32_t*)(uintptr_t)k_ra8_drw_test_dlist_addr;

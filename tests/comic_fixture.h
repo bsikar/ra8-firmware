@@ -80,7 +80,7 @@ static inline size_t cf_make_png(uint16_t w, uint16_t h, uint8_t seed, uint8_t* 
   for (uint16_t r = 0U; r < h; ++r) {
     raw[(size_t)r * (size_t)(w + 1U)] = 0U; /* PNG "none" row filter */
     for (uint16_t c = 0U; c < w; ++c) {
-      raw[(size_t)r * (size_t)(w + 1U) + 1U + c] = (uint8_t)(seed + (r * 3U) + (c * 5U));
+      raw[((size_t)r * (size_t)(w + 1U)) + 1U + c] = (uint8_t)(seed + (r * 3U) + (c * 5U));
     }
   }
   uint8_t  comp[k_cf_comp_max];

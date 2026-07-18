@@ -460,7 +460,7 @@ uint32_t exc_vector(uc_engine* uc, uint32_t vtor_base, uint32_t exc_num)
   if (vtor == 0U) {
     vtor = vtor_base;
   }
-  const uint32_t handler = rd32(uc, (uint64_t)vtor + (exc_num * 4U)) & ~1U;
+  const uint32_t handler = rd32(uc, (uint64_t)vtor + ((uint64_t)exc_num * 4U)) & ~1U;
   if ((handler == 0U) || (handler == (uint32_t)k_vector_erased)) {
     return 0U;
   }
@@ -883,18 +883,18 @@ on_icsr_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t 
 /** @brief Implementation of `sim_exc_install_core()` -- unmapped/INTR/ICSR hooks. */
 void sim_exc_install_core(uc_engine* uc)
 {
-  static uc_hook h_unmapped;
-  static uc_hook h_intr;
-  static uc_hook h_icsr;
-  (void)uc_hook_add(uc, &h_unmapped, UC_HOOK_MEM_UNMAPPED, (void*)on_unmapped, nullptr, 1, 0);
+  static uc_hook s_h_unmapped;
+  static uc_hook s_h_intr;
+  static uc_hook s_h_icsr;
+  (void)uc_hook_add(uc, &s_h_unmapped, UC_HOOK_MEM_UNMAPPED, (void*)on_unmapped, nullptr, 1, 0);
   /* SVCall / exception-return: Unicorn raises UC_HOOK_INTR on a Thumb `svc` and
    * on a branch to an EXC_RETURN magic; on_intr vectors / unstacks accordingly. */
-  (void)uc_hook_add(uc, &h_intr, UC_HOOK_INTR, (void*)on_intr, nullptr, 1, 0);
+  (void)uc_hook_add(uc, &s_h_intr, UC_HOOK_INTR, (void*)on_intr, nullptr, 1, 0);
   /* Watch the ICSR word so a PENDSVSET store ends the chunk at once, giving
    * PendSV next-instruction activation (see on_icsr_write). ICSR lives in PPB
    * RAM, so this memory-write hook is the only way to observe the request. */
   (void)uc_hook_add(uc,
-                    &h_icsr,
+                    &s_h_icsr,
                     UC_HOOK_MEM_WRITE,
                     (void*)on_icsr_write,
                     nullptr,

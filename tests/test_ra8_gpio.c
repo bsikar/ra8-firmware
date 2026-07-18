@@ -476,7 +476,6 @@ static void test_route_peripheral_happy(void)
   TEST_BEGIN("pfs route peripheral happy");
   reset_state();
 
-  extern ra8_err_t ra8_pfs_route_peripheral(ra8_port_pin_t pin, ra8_psel_t psel, const char* owner);
   const ra8_port_pin_t pin = (ra8_port_pin_t)k_ra8_gpio_test_pin_alt;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pfs_route_peripheral(pin, k_ra8_psel_sci_async, "TEST"));
 
@@ -498,7 +497,6 @@ static void test_route_peripheral_null_owner(void)
   TEST_BEGIN("pfs route peripheral null owner");
   reset_state();
 
-  extern ra8_err_t ra8_pfs_route_peripheral(ra8_port_pin_t pin, ra8_psel_t psel, const char* owner);
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_pfs_route_peripheral((ra8_port_pin_t)k_ra8_gpio_test_pin_alt,
                                           k_ra8_psel_sci_async,
@@ -517,7 +515,6 @@ static void test_route_peripheral_invalid_port(void)
   TEST_BEGIN("pfs route peripheral invalid port");
   reset_state();
 
-  extern ra8_err_t ra8_pfs_route_peripheral(ra8_port_pin_t pin, ra8_psel_t psel, const char* owner);
   TEST_ASSERT_EQ(k_ra8_err_gpio_invalid_port,
                  ra8_pfs_route_peripheral((ra8_port_pin_t)k_ra8_gpio_test_pin_bad_port,
                                           k_ra8_psel_sci_async,
@@ -536,7 +533,6 @@ static void test_route_peripheral_invalid_pin(void)
   TEST_BEGIN("pfs route peripheral invalid pin");
   reset_state();
 
-  extern ra8_err_t ra8_pfs_route_peripheral(ra8_port_pin_t pin, ra8_psel_t psel, const char* owner);
   TEST_ASSERT_EQ(k_ra8_err_gpio_invalid_pin,
                  ra8_pfs_route_peripheral((ra8_port_pin_t)k_ra8_gpio_test_pin_bad_pin,
                                           k_ra8_psel_sci_async,
@@ -555,7 +551,6 @@ static void test_route_peripheral_conflict(void)
   TEST_BEGIN("pfs route peripheral conflict");
   reset_state();
 
-  extern ra8_err_t ra8_pfs_route_peripheral(ra8_port_pin_t pin, ra8_psel_t psel, const char* owner);
   const ra8_port_pin_t pin = (ra8_port_pin_t)k_ra8_gpio_test_pin_alt;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pfs_route_peripheral(pin, k_ra8_psel_sci_async, "FIRST"));
   TEST_ASSERT_EQ(k_ra8_err_gpio_conflict,

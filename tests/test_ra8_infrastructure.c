@@ -15,7 +15,6 @@
 
 /* ra8_stack_canary_check() has no public header declaration; forward it
  * here so the test can invoke it without pulling in a new dependency. */
-ra8_err_t ra8_stack_canary_check(void);
 
 /**
  * @par MC/DC:

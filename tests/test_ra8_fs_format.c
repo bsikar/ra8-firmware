@@ -88,7 +88,9 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(buf, &d->bytes[lba * (uint32_t)k_fmt_block_size], count * (uint32_t)k_fmt_block_size);
+  memcpy(buf,
+         &d->bytes[(size_t)lba * (uint32_t)k_fmt_block_size],
+         (size_t)count * (uint32_t)k_fmt_block_size);
   return k_ra8_ok;
 }
 
@@ -98,7 +100,9 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(&d->bytes[lba * (uint32_t)k_fmt_block_size], buf, count * (uint32_t)k_fmt_block_size);
+  memcpy(&d->bytes[(size_t)lba * (uint32_t)k_fmt_block_size],
+         buf,
+         (size_t)count * (uint32_t)k_fmt_block_size);
   return k_ra8_ok;
 }
 
@@ -182,7 +186,9 @@ static ra8_err_t mem_erase(void* ctx, uint32_t lba, uint32_t count)
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memset(&d->bytes[lba * (uint32_t)k_fmt_block_size], 0, count * (uint32_t)k_fmt_block_size);
+  memset(&d->bytes[(size_t)lba * (uint32_t)k_fmt_block_size],
+         0,
+         (size_t)count * (uint32_t)k_fmt_block_size);
   return k_ra8_ok;
 }
 
@@ -243,22 +249,22 @@ static void verify_mount_file_cycle(const ra8_fs_backend_t* be, ra8_fs_type_t ty
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(be, &h));
   TEST_ASSERT_EQ(type, h->type);
 
-  static uint8_t wr[k_fmt_payload_bytes];
-  static uint8_t rd[k_fmt_payload_bytes];
+  static uint8_t s_wr[k_fmt_payload_bytes];
+  static uint8_t s_rd[k_fmt_payload_bytes];
   for (uint32_t i = 0U; i < (uint32_t)k_fmt_payload_bytes; i++) {
-    wr[i] = (uint8_t)((i * 31U) + 7U);
-    rd[i] = 0U;
+    s_wr[i] = (uint8_t)((i * 31U) + 7U);
+    s_rd[i] = 0U;
   }
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "HELLO.BIN", k_ra8_fs_mode_write, &f));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, wr, (uint32_t)k_fmt_payload_bytes));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_wr, (uint32_t)k_fmt_payload_bytes));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   uint32_t got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "HELLO.BIN", k_ra8_fs_mode_read, &f));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, rd, (uint32_t)k_fmt_payload_bytes, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_rd, (uint32_t)k_fmt_payload_bytes, &got));
   TEST_ASSERT_EQ(k_fmt_payload_bytes, got);
-  TEST_ASSERT_EQ(0, memcmp(wr, rd, (size_t)k_fmt_payload_bytes));
+  TEST_ASSERT_EQ(0, memcmp(s_wr, s_rd, (size_t)k_fmt_payload_bytes));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   list_ctx_t ctx = {};

@@ -129,7 +129,9 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(buf, &d->bytes[lba * (uint32_t)k_disk_block_size], count * (uint32_t)k_disk_block_size);
+  memcpy(buf,
+         &d->bytes[(size_t)lba * (uint32_t)k_disk_block_size],
+         (size_t)count * (uint32_t)k_disk_block_size);
   return k_ra8_ok;
 }
 
@@ -139,7 +141,9 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(&d->bytes[lba * (uint32_t)k_disk_block_size], buf, count * (uint32_t)k_disk_block_size);
+  memcpy(&d->bytes[(size_t)lba * (uint32_t)k_disk_block_size],
+         buf,
+         (size_t)count * (uint32_t)k_disk_block_size);
   return k_ra8_ok;
 }
 
@@ -315,7 +319,7 @@ static void test_mcdc_lfn_name_compare_lengths(void)
    * tied to an arbitrary 8.3 entry "AB123456EPU". */
   const char    short11[11] = {'A', 'B', '1', '2', '3', '4', '5', '6', 'E', 'P', 'U'};
   const uint8_t csum        = sfn_checksum((const uint8_t*)short11);
-  uint8_t*      root = &s_disk.bytes[(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
+  uint8_t* root = &s_disk.bytes[(size_t)(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
   plant_lfn_entry(&root[0U], 1U, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_term16);
   plant_short_entry(&root[(uint32_t)k_dir_entry_bytes], short11, 0U);
 
@@ -359,7 +363,7 @@ static void test_mcdc_lfn_terminator_vs_pad(void)
   build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  uint8_t* root1 = &s_disk.bytes[(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
+  uint8_t* root1 = &s_disk.bytes[(size_t)(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
   plant_lfn_entry(&root1[0U], 1U, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_term16);
   plant_short_entry(&root1[(uint32_t)k_dir_entry_bytes], short11, 0U);
   ra8_fs_file_t* f = nullptr;
@@ -372,7 +376,7 @@ static void test_mcdc_lfn_terminator_vs_pad(void)
   build_fat16_volume();
   h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  uint8_t* root2 = &s_disk.bytes[(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
+  uint8_t* root2 = &s_disk.bytes[(size_t)(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
   plant_lfn_entry(&root2[0U], 1U, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_pad16);
   plant_short_entry(&root2[(uint32_t)k_dir_entry_bytes], short11, 0U);
   f = nullptr;
@@ -410,7 +414,7 @@ static void test_mcdc_lfn_order_range_guard(void)
   build_fat16_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  uint8_t* rootc = &s_disk.bytes[(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
+  uint8_t* rootc = &s_disk.bytes[(size_t)(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
   plant_lfn_entry(&rootc[0U], 1U, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_term16);
   plant_short_entry(&rootc[e1], short11, 0U);
   ra8_fs_file_t* f = nullptr;
@@ -423,7 +427,7 @@ static void test_mcdc_lfn_order_range_guard(void)
   build_fat16_volume();
   h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  uint8_t* root0 = &s_disk.bytes[(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
+  uint8_t* root0 = &s_disk.bytes[(size_t)(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
   plant_lfn_entry(&root0[0U], 0U, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_term16);
   plant_short_entry(&root0[e1], short11, 0U);
   f = nullptr;
@@ -435,7 +439,7 @@ static void test_mcdc_lfn_order_range_guard(void)
   build_fat16_volume();
   h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  uint8_t* root20 = &s_disk.bytes[(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
+  uint8_t* root20 = &s_disk.bytes[(size_t)(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
   plant_lfn_entry(&root20[0U], 20U, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_term16);
   plant_short_entry(&root20[e1], short11, 0U);
   f = nullptr;
@@ -479,15 +483,15 @@ static void test_mcdc_read_walk_cache_resume(void)
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
-  static uint8_t wr[k_read_payload];
-  static uint8_t rd[k_read_payload];
+  static uint8_t s_wr[k_read_payload];
+  static uint8_t s_rd[k_read_payload];
   for (uint32_t i = 0U; i < (uint32_t)k_read_payload; i++) {
-    wr[i] = (uint8_t)((i * 17U) + 3U);
-    rd[i] = 0U;
+    s_wr[i] = (uint8_t)((i * 17U) + 3U);
+    s_rd[i] = 0U;
   }
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "BACK.BIN", k_ra8_fs_mode_write, &f));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, wr, (uint32_t)k_read_payload));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_wr, (uint32_t)k_read_payload));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "BACK.BIN", k_ra8_fs_mode_read, &f));
@@ -495,23 +499,23 @@ static void test_mcdc_read_walk_cache_resume(void)
   uint32_t total = 0U;
   while (total < (uint32_t)k_read_payload) {
     uint32_t got = 0U;
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, &rd[total], (uint32_t)k_read_chunk, &got));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, &s_rd[total], (uint32_t)k_read_chunk, &got));
     if (got == 0U) {
       break;
     }
     total += got;
   }
   TEST_ASSERT_EQ(k_read_payload, total);
-  TEST_ASSERT_EQ(0, memcmp(wr, rd, (size_t)k_read_payload));
+  TEST_ASSERT_EQ(0, memcmp(s_wr, s_rd, (size_t)k_read_payload));
 
   /* Backward seek to the chain head: cache set (C1=T) but target behind the
    * cached index (C2=F) -> walk from head. Re-read the first chunk. */
-  memset(rd, 0, (size_t)k_read_chunk);
+  memset(s_rd, 0, (size_t)k_read_chunk);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, 0U));
   uint32_t got2 = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, rd, (uint32_t)k_read_chunk, &got2));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, s_rd, (uint32_t)k_read_chunk, &got2));
   TEST_ASSERT_EQ(k_read_chunk, got2);
-  TEST_ASSERT_EQ(0, memcmp(wr, rd, (size_t)k_read_chunk));
+  TEST_ASSERT_EQ(0, memcmp(s_wr, s_rd, (size_t)k_read_chunk));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));

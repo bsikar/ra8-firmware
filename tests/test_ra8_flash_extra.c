@@ -213,7 +213,7 @@ static void test_extra_mram_write_emits_program_opcode(void)
   TEST_ASSERT_EQ(8U, g_ra8_flash_maci_cmd16_len);
   for (uint32_t i = 0U; i < 8U; ++i) {
     const uint16_t expect =
-      (uint16_t)((uint16_t)buf[i * 2U] | ((uint16_t)buf[(i * 2U) + 1U] << 8U));
+      (uint16_t)((uint16_t)buf[(size_t)i * 2U] | ((uint16_t)buf[(i * 2U) + 1U] << 8U));
     TEST_ASSERT_EQ(expect, g_ra8_flash_maci_cmd16_log[i]);
   }
 

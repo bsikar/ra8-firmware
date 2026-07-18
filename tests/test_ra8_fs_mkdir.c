@@ -50,7 +50,9 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(buf, &d->bytes[lba * (uint32_t)k_disk_block_size], count * (uint32_t)k_disk_block_size);
+  memcpy(buf,
+         &d->bytes[(size_t)lba * (uint32_t)k_disk_block_size],
+         (size_t)count * (uint32_t)k_disk_block_size);
   return k_ra8_ok;
 }
 
@@ -60,7 +62,9 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(&d->bytes[lba * (uint32_t)k_disk_block_size], buf, count * (uint32_t)k_disk_block_size);
+  memcpy(&d->bytes[(size_t)lba * (uint32_t)k_disk_block_size],
+         buf,
+         (size_t)count * (uint32_t)k_disk_block_size);
   return k_ra8_ok;
 }
 

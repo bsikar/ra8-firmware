@@ -125,7 +125,7 @@ static void test_vfs_compress_round_trip(void)
                                              s_blob,
                                              (uint32_t)sizeof(s_blob),
                                              &blob_len));
-  TEST_ASSERT(blob_len > 0u);
+  TEST_ASSERT(blob_len > 0U);
   TEST_ASSERT(blob_len < (uint32_t)k_t_payload); /* repetitive -> shrinks on disk */
 
   /* stat confirms the file holds the compressed blob, not the plain payload */
@@ -208,7 +208,7 @@ static void test_vfs_compress_write_validation(void)
                  vc_write("ram:/X.RBK",
                           s_payload,
                           s_scratch,
-                          (uint32_t)k_ra8_io_compress_scratch_bytes - 1u,
+                          (uint32_t)k_ra8_io_compress_scratch_bytes - 1U,
                           s_blob,
                           &blob_len));
   TEST_END("vfs compress write validation");
@@ -386,7 +386,7 @@ static void test_usbcdc_sink_write(void)
   ra8_io_stream_usbcdc_state_t cst = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_usbcdc_init(&s, &cst, 0x81)); /* 0x81 -> ep 1 */
 
-  const uint8_t msg[]   = {0xDEu, 0xADu, 0xBEu, 0xEFu, 0x10u};
+  const uint8_t msg[]   = {0xDEU, 0xADU, 0xBEU, 0xEFU, 0x10U};
   uint32_t      written = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_write(&s, msg, (uint32_t)sizeof(msg), &written));
   TEST_ASSERT_EQ(sizeof(msg), written);
@@ -415,7 +415,7 @@ static void test_usbcdc_sink_errors(void)
   ra8_io_stream_usbcdc_state_t cst = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_usbcdc_init(&s, &cst, 2U));
 
-  const uint8_t msg[]   = {1u, 2u, 3u};
+  const uint8_t msg[]   = {1U, 2U, 3U};
   uint32_t      written = 0;
   /* generic stream-layer guards: NULL handle / NULL source buffer */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_stream_write(nullptr, msg, 3U, &written));

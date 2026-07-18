@@ -197,7 +197,8 @@ uint32_t sd_format_fat16(uint8_t* img, uint32_t total_sectors, const char* label
   (void)memcpy(&img[k_bpb16_fstype], "FAT16   ", (size_t)k_bpb_fstype_len);
   /* FAT[0] media + FAT[1] EOC, in both FAT copies. */
   for (uint32_t f = 0U; f < (uint32_t)k_bpb_num_fats_val; f++) {
-    uint8_t* fat = &img[((uint32_t)k_fmt_resv_f16 + (f * fatsz)) * (uint32_t)k_fmt_sec_bytes];
+    uint8_t* fat =
+      &img[(size_t)((uint32_t)k_fmt_resv_f16 + (f * fatsz)) * (uint32_t)k_fmt_sec_bytes];
     sd_put16(&fat[k_le_byte0], (uint16_t)k_fat16_eoc_clus0);
     sd_put16(&fat[k_fat_ent1_off], (uint16_t)k_fat16_eoc_clus1);
   }
@@ -287,7 +288,7 @@ uint32_t sd_format_fat32(uint8_t* img, uint32_t total_sectors, const char* label
   sd_label_field(&img[k_bpb32_vol_label], label);
   (void)memcpy(&img[k_bpb32_fstype], "FAT32   ", (size_t)k_bpb_fstype_len);
   /* FSInfo sector (lead + struct + trail signatures). */
-  uint8_t* fsi = &img[(uint32_t)k_fat32_fsinfo_sec * (uint32_t)k_fmt_sec_bytes];
+  uint8_t* fsi = &img[(size_t)(uint32_t)k_fat32_fsinfo_sec * (uint32_t)k_fmt_sec_bytes];
   sd_put32(&fsi[k_fsi_off_lead], (uint32_t)k_fsi_lead_sig);
   sd_put32(&fsi[k_fsi_off_struc], (uint32_t)k_fsi_struc_sig);
   sd_put32(&fsi[k_fsi_off_free],
@@ -295,12 +296,13 @@ uint32_t sd_format_fat32(uint8_t* img, uint32_t total_sectors, const char* label
   sd_put32(&fsi[k_fsi_off_nxtfree], (uint32_t)k_fsi_nxt_free); /* next free cluster */
   sd_put32(&fsi[k_fsi_off_trail], (uint32_t)k_fsi_trail_sig);
   /* Backup boot copy at sector 6. */
-  (void)memcpy(&img[(uint32_t)k_fat32_bkboot_sec * (uint32_t)k_fmt_sec_bytes],
+  (void)memcpy(&img[(size_t)(uint32_t)k_fat32_bkboot_sec * (uint32_t)k_fmt_sec_bytes],
                img,
                (size_t)k_fmt_sec_bytes);
   /* FAT[0..2]: media + EOC + root-cluster EOC, in both FAT copies. */
   for (uint32_t f = 0U; f < (uint32_t)k_bpb_num_fats_val; f++) {
-    uint8_t* fat = &img[((uint32_t)k_fmt_resv_f32 + (f * fatsz)) * (uint32_t)k_fmt_sec_bytes];
+    uint8_t* fat =
+      &img[(size_t)((uint32_t)k_fmt_resv_f32 + (f * fatsz)) * (uint32_t)k_fmt_sec_bytes];
     sd_put32(&fat[k_le_byte0], (uint32_t)k_fat32_eoc_media);
     sd_put32(&fat[k_fat32_ent1_off], (uint32_t)k_fat32_eoc);
     sd_put32(&fat[k_fat32_ent2_off], (uint32_t)k_fat32_eoc);

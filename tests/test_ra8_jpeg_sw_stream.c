@@ -186,14 +186,14 @@ static void encode_pattern(uint32_t w, uint32_t h, uint8_t quality)
 /** @brief Run a full streamed decode of `s_src`, returning the code. */
 static ra8_err_t stream_decode(uint32_t w, uint32_t h, size_t chunk, t_sink_t* sink)
 {
-  static t_src_t src;
-  src          = (t_src_t){.pos = 0U, .chunk = chunk};
+  static t_src_t s_pull_src;
+  s_pull_src   = (t_src_t){.pos = 0U, .chunk = chunk};
   sink->w      = (uint16_t)w;
   sink->h      = (uint16_t)h;
   sink->ch     = 3U;
   sink->next_y = 0U;
   return ra8_jpeg_sw_decode_stripes(t_pull,
-                                    &src,
+                                    &s_pull_src,
                                     s_win,
                                     (uint32_t)sizeof(s_win),
                                     t_geom,
@@ -282,34 +282,36 @@ static void test_jpeg_stream_errors(void)
   t_sink_t sink = {};
 
   /* Null / sizing guards. */
-  static t_src_t src;
-  src = (t_src_t){.pos = 0U, .chunk = 0U};
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_jpeg_sw_decode_stripes(NULL, &src, s_win, k_t_win_cap, t_geom, t_rows, &sink));
+  static t_src_t s_pull_src;
+  s_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
   TEST_ASSERT_EQ(
     k_ra8_err_null_ptr,
-    ra8_jpeg_sw_decode_stripes(t_pull, &src, NULL, k_t_win_cap, t_geom, t_rows, &sink));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_jpeg_sw_decode_stripes(t_pull, &src, s_win, 1024U, t_geom, t_rows, &sink));
+    ra8_jpeg_sw_decode_stripes(NULL, &s_pull_src, s_win, k_t_win_cap, t_geom, t_rows, &sink));
+  TEST_ASSERT_EQ(
+    k_ra8_err_null_ptr,
+    ra8_jpeg_sw_decode_stripes(t_pull, &s_pull_src, NULL, k_t_win_cap, t_geom, t_rows, &sink));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_size,
+    ra8_jpeg_sw_decode_stripes(t_pull, &s_pull_src, s_win, 1024U, t_geom, t_rows, &sink));
 
   /* Not a JPEG. */
   const uint32_t keep = s_src_len;
   s_src[0]            = 0x00U;
   sink                = (t_sink_t){.w = k_t_w, .h = k_t_h, .ch = 3U};
-  src                 = (t_src_t){.pos = 0U, .chunk = 0U};
+  s_pull_src          = (t_src_t){.pos = 0U, .chunk = 0U};
   TEST_ASSERT_EQ(
     k_ra8_err_protocol_error,
-    ra8_jpeg_sw_decode_stripes(t_pull, &src, s_win, k_t_win_cap, t_geom, t_rows, &sink));
+    ra8_jpeg_sw_decode_stripes(t_pull, &s_pull_src, s_win, k_t_win_cap, t_geom, t_rows, &sink));
   s_src[0] = 0xFFU;
 
   /* SOI+EOI only: EOI before any scan. */
-  s_src_len = 4U;
-  s_src[2]  = 0xFFU;
-  s_src[3]  = 0xD9U;
-  src       = (t_src_t){.pos = 0U, .chunk = 0U};
+  s_src_len  = 4U;
+  s_src[2]   = 0xFFU;
+  s_src[3]   = 0xD9U;
+  s_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
   TEST_ASSERT_EQ(
     k_ra8_err_protocol_error,
-    ra8_jpeg_sw_decode_stripes(t_pull, &src, s_win, k_t_win_cap, t_geom, t_rows, &sink));
+    ra8_jpeg_sw_decode_stripes(t_pull, &s_pull_src, s_win, k_t_win_cap, t_geom, t_rows, &sink));
 
   /* Truncated entropy stream (cut at 60%). */
   encode_pattern(k_t_w, k_t_h, (uint8_t)k_ra8_jpeg_sw_quality_default);
@@ -319,16 +321,26 @@ static void test_jpeg_stream_errors(void)
 
   /* Geometry hook rejects (the fail-closed budget seam). */
   encode_pattern(k_t_w, k_t_h, (uint8_t)k_ra8_jpeg_sw_quality_default);
-  src = (t_src_t){.pos = 0U, .chunk = 0U};
-  TEST_ASSERT_EQ(
-    k_ra8_err_no_mem,
-    ra8_jpeg_sw_decode_stripes(t_pull, &src, s_win, k_t_win_cap, t_geom_abort, t_rows, &sink));
+  s_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
+  TEST_ASSERT_EQ(k_ra8_err_no_mem,
+                 ra8_jpeg_sw_decode_stripes(t_pull,
+                                            &s_pull_src,
+                                            s_win,
+                                            k_t_win_cap,
+                                            t_geom_abort,
+                                            t_rows,
+                                            &sink));
 
   /* Geometry hook hands back an undersized stripe. */
-  src = (t_src_t){.pos = 0U, .chunk = 0U};
-  TEST_ASSERT_EQ(
-    k_ra8_err_invalid_size,
-    ra8_jpeg_sw_decode_stripes(t_pull, &src, s_win, k_t_win_cap, t_geom_tiny, t_rows, &sink));
+  s_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_jpeg_sw_decode_stripes(t_pull,
+                                            &s_pull_src,
+                                            s_win,
+                                            k_t_win_cap,
+                                            t_geom_tiny,
+                                            t_rows,
+                                            &sink));
 
   /* Rows sink aborts mid-image; the error propagates verbatim. */
   sink                = (t_sink_t){.abort_at = k_ra8_err_busy, .abort_y = 32U};
@@ -463,12 +475,12 @@ static void test_jpeg_stream_grayscale(void)
   memcpy(&s_src[s_src_len], s_jpeg_gray_body, sizeof(s_jpeg_gray_body));
   s_src_len += (uint32_t)sizeof(s_jpeg_gray_body);
 
-  static t_src_t src;
-  src           = (t_src_t){.pos = 0U, .chunk = 0U};
+  static t_src_t s_pull_src;
+  s_pull_src    = (t_src_t){.pos = 0U, .chunk = 0U};
   t_sink_t sink = {.w = 8U, .h = 8U, .ch = 1U};
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_jpeg_sw_decode_stripes(t_pull, &src, s_win, k_t_win_cap, t_geom, t_rows, &sink));
+    ra8_jpeg_sw_decode_stripes(t_pull, &s_pull_src, s_win, k_t_win_cap, t_geom, t_rows, &sink));
   TEST_ASSERT_EQ(8U, sink.next_y);
   /* Whole-buffer twin agrees (its RGB output replicates Y into 3 bytes). */
   uint16_t rw = 0U;
@@ -476,7 +488,7 @@ static void test_jpeg_stream_grayscale(void)
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_jpeg_sw_decode(s_src, s_src_len, s_ref, (uint32_t)sizeof(s_ref), &rw, &rh));
   for (uint32_t i = 0U; i < 64U; i++) {
-    TEST_ASSERT_EQ(s_ref[i * 3U], s_got[i]);
+    TEST_ASSERT_EQ(s_ref[(size_t)i * 3U], s_got[i]);
   }
   TEST_END("jpeg stream: grayscale stripes (1 channel)");
 }

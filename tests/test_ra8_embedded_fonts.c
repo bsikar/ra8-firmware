@@ -235,18 +235,18 @@ static void test_bind_measure_and_mcdc(void)
   TEST_ASSERT(priv_first_advance() > 0);
 
   /* --- MC/DC for the validation decision + graceful fallback ---------- */
-  static uint8_t garbage[k_tef_garbage_len];
-  memset(garbage, 0xA5, sizeof(garbage)); /* no sfnt tag -> offset < 0 */
-  static uint8_t tagged_corrupt[k_tef_garbage_len];
-  memset(tagged_corrupt, 0x00, sizeof(tagged_corrupt));
-  tagged_corrupt[1] = 0x01; /* 0x00010000 sfnt version -> offset 0, InitFont fails */
+  static uint8_t s_garbage[k_tef_garbage_len];
+  memset(s_garbage, 0xA5, sizeof(s_garbage)); /* no sfnt tag -> offset < 0 */
+  static uint8_t s_tagged_corrupt[k_tef_garbage_len];
+  memset(s_tagged_corrupt, 0x00, sizeof(s_tagged_corrupt));
+  s_tagged_corrupt[1] = 0x01; /* 0x00010000 sfnt version -> offset 0, InitFont fails */
 
   /* Vector 2: cond1 true. Vector 3: cond2 true. Face must be preserved. */
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_reflow_bind_font(&s_engine, garbage, sizeof(garbage)));
+                 ra8_reflow_bind_font(&s_engine, s_garbage, sizeof(s_garbage)));
   TEST_ASSERT(s_engine.font_data == s_extracted_font); /* unchanged */
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_reflow_bind_font(&s_engine, tagged_corrupt, sizeof(tagged_corrupt)));
+                 ra8_reflow_bind_font(&s_engine, s_tagged_corrupt, sizeof(s_tagged_corrupt)));
   TEST_ASSERT(s_engine.font_data == s_extracted_font); /* unchanged */
 
   /* Single-condition guards. */

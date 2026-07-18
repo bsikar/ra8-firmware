@@ -207,14 +207,14 @@ static void test_ra8_book_chunked_open_happy(void)
 {
   TEST_BEGIN("ra8_book_chunked_open happy path");
   bcx_fill_blob();
-  static uint8_t container[k_bcx_file_cap];
-  const uint64_t file_len = bcx_pack(container, false);
+  static uint8_t s_container[k_bcx_file_cap];
+  const uint64_t file_len = bcx_pack(s_container, false);
 
   ra8_book_chunked_t rd                         = {};
   bcx_file_t         file                       = {};
   uint64_t           table_buf[k_bcx_table_cap] = {};
-  static uint8_t     staging[k_bcx_staging_cap];
-  TEST_ASSERT_EQ(k_ra8_ok, bcx_open(&rd, &file, container, file_len, table_buf, staging));
+  static uint8_t     s_staging[k_bcx_staging_cap];
+  TEST_ASSERT_EQ(k_ra8_ok, bcx_open(&rd, &file, s_container, file_len, table_buf, s_staging));
 
   TEST_ASSERT_EQ(k_bcx_chunk_bytes, rd.chunk_bytes);
   TEST_ASSERT_EQ(k_bcx_chunk_count, rd.chunk_count);
@@ -357,11 +357,11 @@ bcx_open_guards_capacity(ra8_book_chunked_t* rd, bcx_file_t* file, const bcx_gua
   TEST_ASSERT(rd->table == nullptr);
 
   /* Bad magic. */
-  static uint8_t bad_magic[k_bcx_file_cap];
-  memcpy(bad_magic, g->container, (size_t)g->file_len);
-  bad_magic[0] = (uint8_t)'X';
+  static uint8_t s_bad_magic[k_bcx_file_cap];
+  memcpy(s_bad_magic, g->container, (size_t)g->file_len);
+  s_bad_magic[0] = (uint8_t)'X';
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 bcx_open(rd, file, bad_magic, g->file_len, g->table, g->staging));
+                 bcx_open(rd, file, s_bad_magic, g->file_len, g->table, g->staging));
 
   /* Table needs more entries than the caller budgeted. */
   bcx_expect_open_err(k_ra8_err_invalid_size, rd, file, g, k_bcx_tiny_table, k_bcx_staging_cap);
@@ -419,19 +419,19 @@ static void test_ra8_book_chunked_open_guards(void)
 {
   TEST_BEGIN("ra8_book_chunked_open guards");
   bcx_fill_blob();
-  static uint8_t container[k_bcx_file_cap];
-  const uint64_t file_len = bcx_pack(container, false);
+  static uint8_t s_container[k_bcx_file_cap];
+  const uint64_t file_len = bcx_pack(s_container, false);
 
   ra8_book_chunked_t rd                         = {};
   bcx_file_t         file                       = {};
   uint64_t           table_buf[k_bcx_table_cap] = {};
-  static uint8_t     staging[k_bcx_staging_cap];
-  file = (bcx_file_t){.data = container, .len = file_len, .fail_at = 0U, .calls = 0U};
+  static uint8_t     s_staging[k_bcx_staging_cap];
+  file = (bcx_file_t){.data = s_container, .len = file_len, .fail_at = 0U, .calls = 0U};
 
-  const bcx_guard_ctx_t g = {.container = container,
+  const bcx_guard_ctx_t g = {.container = s_container,
                              .file_len  = file_len,
                              .table     = table_buf,
-                             .staging   = staging};
+                             .staging   = s_staging};
 
   bcx_open_guards_null(&rd, &file, &g);
   bcx_open_guards_capacity(&rd, &file, &g);
@@ -456,25 +456,25 @@ static void test_ra8_book_chunked_read_happy(void)
 {
   TEST_BEGIN("ra8_book_chunked_read sequential reassembly");
   bcx_fill_blob();
-  static uint8_t container[k_bcx_file_cap];
-  const uint64_t file_len = bcx_pack(container, false);
+  static uint8_t s_container[k_bcx_file_cap];
+  const uint64_t file_len = bcx_pack(s_container, false);
 
   ra8_book_chunked_t rd                         = {};
   bcx_file_t         file                       = {};
   uint64_t           table_buf[k_bcx_table_cap] = {};
-  static uint8_t     staging[k_bcx_staging_cap];
-  TEST_ASSERT_EQ(k_ra8_ok, bcx_open(&rd, &file, container, file_len, table_buf, staging));
+  static uint8_t     s_staging[k_bcx_staging_cap];
+  TEST_ASSERT_EQ(k_ra8_ok, bcx_open(&rd, &file, s_container, file_len, table_buf, s_staging));
 
-  static uint8_t out[k_bcx_blob_len];
-  memset(out, 0, sizeof(out));
+  static uint8_t s_out[k_bcx_blob_len];
+  memset(s_out, 0, sizeof(s_out));
   for (uint32_t at = 0U; at < k_bcx_blob_len; at += k_bcx_chunk_bytes) {
     uint32_t span = k_bcx_blob_len - at;
     if (span > k_bcx_chunk_bytes) {
       span = k_bcx_chunk_bytes;
     }
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_book_chunked_read(&rd, at, &out[at], span));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_book_chunked_read(&rd, at, &s_out[at], span));
   }
-  TEST_ASSERT_EQ(0, memcmp(out, s_blob, k_bcx_blob_len));
+  TEST_ASSERT_EQ(0, memcmp(s_out, s_blob, k_bcx_blob_len));
 
   TEST_END("ra8_book_chunked_read sequential reassembly");
 }
@@ -508,14 +508,15 @@ static void bcx_read_guards_unbound(ra8_book_chunked_t* rd, uint8_t* out)
  */
 static void bcx_read_guards_shortspan(uint8_t* out, uint8_t* staging)
 {
-  static uint8_t     short_container[k_bcx_file_cap];
-  const uint64_t     short_len               = bcx_pack(short_container, true);
+  static uint8_t     s_short_container[k_bcx_file_cap];
+  const uint64_t     short_len               = bcx_pack(s_short_container, true);
   ra8_book_chunked_t srd                     = {};
   bcx_file_t         sfile                   = {};
   uint64_t           stable[k_bcx_table_cap] = {};
-  TEST_ASSERT_EQ(k_ra8_ok, bcx_open(&srd, &sfile, short_container, short_len, stable, staging));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_book_chunked_read(&srd, 2U * k_bcx_chunk_bytes, out, k_bcx_last_span));
+  TEST_ASSERT_EQ(k_ra8_ok, bcx_open(&srd, &sfile, s_short_container, short_len, stable, staging));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_size,
+    ra8_book_chunked_read(&srd, (uint64_t)2U * k_bcx_chunk_bytes, out, k_bcx_last_span));
 }
 
 /**
@@ -536,52 +537,53 @@ static void test_ra8_book_chunked_read_guards(void)
 {
   TEST_BEGIN("ra8_book_chunked_read guards");
   bcx_fill_blob();
-  static uint8_t container[k_bcx_file_cap];
-  const uint64_t file_len = bcx_pack(container, false);
+  static uint8_t s_container[k_bcx_file_cap];
+  const uint64_t file_len = bcx_pack(s_container, false);
 
   ra8_book_chunked_t rd                         = {};
   bcx_file_t         file                       = {};
   uint64_t           table_buf[k_bcx_table_cap] = {};
-  static uint8_t     staging[k_bcx_staging_cap];
-  static uint8_t     out[k_bcx_chunk_bytes];
+  static uint8_t     s_staging[k_bcx_staging_cap];
+  static uint8_t     s_out[k_bcx_chunk_bytes];
 
   /* Null + unbound guards. */
-  bcx_read_guards_unbound(&rd, out);
+  bcx_read_guards_unbound(&rd, s_out);
 
-  TEST_ASSERT_EQ(k_ra8_ok, bcx_open(&rd, &file, container, file_len, table_buf, staging));
+  TEST_ASSERT_EQ(k_ra8_ok, bcx_open(&rd, &file, s_container, file_len, table_buf, s_staging));
 
   /* Past the inflated total. */
   TEST_ASSERT_EQ(k_ra8_err_out_of_range,
                  ra8_book_chunked_read(&rd,
                                        (uint64_t)k_bcx_chunk_count * k_bcx_chunk_bytes,
-                                       out,
+                                       s_out,
                                        k_bcx_chunk_bytes));
 
   /* Not chunk-aligned. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_book_chunked_read(&rd, k_bcx_chunk_bytes / 2U, out, k_bcx_chunk_bytes));
+                 ra8_book_chunked_read(&rd, k_bcx_chunk_bytes / 2U, s_out, k_bcx_chunk_bytes));
 
   /* Wrong span: a full chunk asked short, the short final chunk asked full. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_book_chunked_read(&rd, 0U, out, k_bcx_chunk_bytes - 1U));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_book_chunked_read(&rd, 2U * k_bcx_chunk_bytes, out, k_bcx_chunk_bytes));
+                 ra8_book_chunked_read(&rd, 0U, s_out, k_bcx_chunk_bytes - 1U));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    ra8_book_chunked_read(&rd, (uint64_t)2U * k_bcx_chunk_bytes, s_out, k_bcx_chunk_bytes));
 
   /* File-read failure while staging the stream propagates verbatim. */
   file.fail_at = file.calls + 1U;
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_book_chunked_read(&rd, 0U, out, k_bcx_chunk_bytes));
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_book_chunked_read(&rd, 0U, s_out, k_bcx_chunk_bytes));
   file.fail_at = 0U;
 
   /* A corrupt stream fails in the inflater and propagates. */
   const uint64_t c0_at        = rd.payload_off + rd.table[0] + 4U;
-  const uint8_t  saved        = container[c0_at];
-  container[c0_at]            = (uint8_t)~saved;
-  const ra8_err_t corrupt_err = ra8_book_chunked_read(&rd, 0U, out, k_bcx_chunk_bytes);
-  container[c0_at]            = saved;
+  const uint8_t  saved        = s_container[c0_at];
+  s_container[c0_at]          = (uint8_t)~saved;
+  const ra8_err_t corrupt_err = ra8_book_chunked_read(&rd, 0U, s_out, k_bcx_chunk_bytes);
+  s_container[c0_at]          = saved;
   TEST_ASSERT(corrupt_err != k_ra8_ok);
 
   /* A valid stream that inflates to the wrong span is rejected. */
-  bcx_read_guards_shortspan(out, staging);
+  bcx_read_guards_shortspan(s_out, s_staging);
 
   TEST_END("ra8_book_chunked_read guards");
 }

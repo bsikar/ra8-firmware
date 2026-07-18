@@ -173,7 +173,7 @@ static void lsm6dso_stop(void* ctx)
 /** @brief Write a big-endian 16-bit value at register @p reg of @p s. */
 static void fuelgauge_put16(max17048_state_t* s, uint8_t reg, uint16_t val)
 {
-  s->regs[reg]                 = (uint8_t)((val >> (uint16_t)k_battery_byte_shift));
+  s->regs[reg]                 = (uint8_t)(val >> (uint16_t)k_battery_byte_shift);
   s->regs[(uint8_t)(reg + 1U)] = (uint8_t)(val & (uint16_t)k_battery_byte_mask);
 }
 

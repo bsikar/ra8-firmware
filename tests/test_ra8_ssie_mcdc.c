@@ -309,14 +309,14 @@ static void test_mcdc_attach_dma_neither(void)
   prep();
   const ra8_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ssie_init((uint8_t)k_ra8_ssie_test_ch0, &cfg));
-  static uint32_t txbuf[4] = {0U};
-  static uint32_t rxbuf[4] = {0U};
+  static uint32_t s_txbuf[4] = {0U};
+  static uint32_t s_rxbuf[4] = {0U};
   /* V1 */
   ra8_ssie_dma_cfg_t dma1 = {
     .tx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
     .rx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
-    .tx_buffer      = txbuf,
-    .rx_buffer      = rxbuf,
+    .tx_buffer      = s_txbuf,
+    .rx_buffer      = s_rxbuf,
     .tx_samples     = 4U,
     .rx_samples     = 4U,
   };
@@ -329,7 +329,7 @@ static void test_mcdc_attach_dma_neither(void)
     .tx_dma_channel = (uint8_t)k_ssie_mcdc_dma_bad,
     .rx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
     .tx_buffer      = nullptr,
-    .rx_buffer      = rxbuf,
+    .rx_buffer      = s_rxbuf,
     .tx_samples     = 0U,
     .rx_samples     = 4U,
   };
@@ -372,14 +372,14 @@ static void test_mcdc_attach_dma_tx_buffer(void)
   prep();
   const ra8_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ssie_init((uint8_t)k_ra8_ssie_test_ch0, &cfg));
-  static uint32_t txbuf[4] = {0U};
-  static uint32_t rxbuf[4] = {0U};
+  static uint32_t s_txbuf[4] = {0U};
+  static uint32_t s_rxbuf[4] = {0U};
   /* V1 */
   ra8_ssie_dma_cfg_t v1cfg = {
     .tx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
     .rx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
-    .tx_buffer      = txbuf,
-    .rx_buffer      = rxbuf,
+    .tx_buffer      = s_txbuf,
+    .rx_buffer      = s_rxbuf,
     .tx_samples     = 4U,
     .rx_samples     = 4U,
   };
@@ -389,7 +389,7 @@ static void test_mcdc_attach_dma_tx_buffer(void)
     .tx_dma_channel = (uint8_t)k_ssie_mcdc_dma_bad,
     .rx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
     .tx_buffer      = nullptr,
-    .rx_buffer      = rxbuf,
+    .rx_buffer      = s_rxbuf,
     .tx_samples     = 0U,
     .rx_samples     = 4U,
   };
@@ -399,7 +399,7 @@ static void test_mcdc_attach_dma_tx_buffer(void)
     .tx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
     .rx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
     .tx_buffer      = nullptr,
-    .rx_buffer      = rxbuf,
+    .rx_buffer      = s_rxbuf,
     .tx_samples     = 4U,
     .rx_samples     = 4U,
   };
@@ -408,8 +408,8 @@ static void test_mcdc_attach_dma_tx_buffer(void)
   ra8_ssie_dma_cfg_t v4cfg = {
     .tx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
     .rx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
-    .tx_buffer      = txbuf,
-    .rx_buffer      = rxbuf,
+    .tx_buffer      = s_txbuf,
+    .rx_buffer      = s_rxbuf,
     .tx_samples     = 0U,
     .rx_samples     = 4U,
   };
@@ -437,13 +437,13 @@ static void test_mcdc_attach_dma_rx_buffer(void)
   prep();
   const ra8_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ssie_init((uint8_t)k_ra8_ssie_test_ch0, &cfg));
-  static uint32_t    txbuf[4] = {0U};
-  static uint32_t    rxbuf[4] = {0U};
-  ra8_ssie_dma_cfg_t v1cfg    = {
+  static uint32_t    s_txbuf[4] = {0U};
+  static uint32_t    s_rxbuf[4] = {0U};
+  ra8_ssie_dma_cfg_t v1cfg      = {
     .tx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
     .rx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
-    .tx_buffer      = txbuf,
-    .rx_buffer      = rxbuf,
+    .tx_buffer      = s_txbuf,
+    .rx_buffer      = s_rxbuf,
     .tx_samples     = 4U,
     .rx_samples     = 4U,
   };
@@ -451,7 +451,7 @@ static void test_mcdc_attach_dma_rx_buffer(void)
   ra8_ssie_dma_cfg_t v2cfg = {
     .tx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
     .rx_dma_channel = (uint8_t)k_ssie_mcdc_dma_bad,
-    .tx_buffer      = txbuf,
+    .tx_buffer      = s_txbuf,
     .rx_buffer      = nullptr,
     .tx_samples     = 4U,
     .rx_samples     = 0U,
@@ -460,7 +460,7 @@ static void test_mcdc_attach_dma_rx_buffer(void)
   ra8_ssie_dma_cfg_t v3cfg = {
     .tx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
     .rx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
-    .tx_buffer      = txbuf,
+    .tx_buffer      = s_txbuf,
     .rx_buffer      = nullptr,
     .tx_samples     = 4U,
     .rx_samples     = 4U,
@@ -469,8 +469,8 @@ static void test_mcdc_attach_dma_rx_buffer(void)
   ra8_ssie_dma_cfg_t v4cfg = {
     .tx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
     .rx_dma_channel = (uint8_t)k_ssie_mcdc_dma_valid,
-    .tx_buffer      = txbuf,
-    .rx_buffer      = rxbuf,
+    .tx_buffer      = s_txbuf,
+    .rx_buffer      = s_rxbuf,
     .tx_samples     = 4U,
     .rx_samples     = 0U,
   };

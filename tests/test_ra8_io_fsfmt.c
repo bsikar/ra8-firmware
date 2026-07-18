@@ -70,12 +70,12 @@ static const ra8_io_fsfmt_t k_test_stub = {
 /** @brief Format the big RAM disk with `type` and return its fs backend. */
 static ra8_err_t make_volume(ra8_fs_type_t type, ra8_fs_backend_t* out_be)
 {
-  static ra8_io_blockdev_ram_state_t state;
-  static ra8_io_blockdev_t           bd;
-  RA8_RETURN_ON_ERROR(ra8_io_blockdev_ram_init(&bd, &state, s_disk, k_t_fat_blocks, false),
+  static ra8_io_blockdev_ram_state_t s_state;
+  static ra8_io_blockdev_t           s_bd;
+  RA8_RETURN_ON_ERROR(ra8_io_blockdev_ram_init(&s_bd, &s_state, s_disk, k_t_fat_blocks, false),
                       "t",
                       "bd");
-  RA8_RETURN_ON_ERROR(ra8_io_blockdev_as_fs_backend(&bd, out_be), "t", "bridge");
+  RA8_RETURN_ON_ERROR(ra8_io_blockdev_as_fs_backend(&s_bd, out_be), "t", "bridge");
   ra8_fs_format_opts_t opts = {};
   opts.type                 = type;
   opts.label                = "FMT";

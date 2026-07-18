@@ -301,9 +301,9 @@ static inline size_t enc_finish(const bitw_t* body, uint8_t* pk)
 /** @brief Encode @p src as an all-literal RAR5 block; return packed length. */
 static inline size_t enc_all_literal(const uint8_t* src, size_t srclen, uint8_t* pk, size_t pkcap)
 {
-  static uint8_t bodybuf[k_pk_cap];
-  memset(bodybuf, 0, sizeof(bodybuf));
-  bitw_t  body  = {.buf = bodybuf, .cap = sizeof(bodybuf)};
+  static uint8_t s_bodybuf[k_pk_cap];
+  memset(s_bodybuf, 0, sizeof(s_bodybuf));
+  bitw_t  body  = {.buf = s_bodybuf, .cap = sizeof(s_bodybuf)};
   uint8_t dummy = 0U;
   size_t  dlen  = 0U;
   enc_tables(&body);
@@ -326,20 +326,20 @@ decode_and_check(const uint8_t* pk, size_t pklen, const uint8_t* exp, size_t exp
                         .size      = (uint64_t)pklen,
                         .first_off = 0U,
                         .version   = k_ra8_rar_ver_5};
-  static uint8_t out[k_out_cap];
-  memset(out, 0xAA, sizeof(out));
+  static uint8_t s_out[k_out_cap];
+  memset(s_out, 0xAA, sizeof(s_out));
   size_t          got = 0U;
   const ra8_err_t e   = ra8_rar5_decompress(&rar,
                                             0U,
                                             (uint64_t)pklen,
-                                            out,
-                                            sizeof(out),
+                                            s_out,
+                                            sizeof(s_out),
                                             (uint64_t)explen,
                                             &s_state,
                                             &got);
   TEST_ASSERT_EQ(k_ra8_ok, e);
   TEST_ASSERT_EQ(explen, got);
-  TEST_ASSERT_EQ(0, memcmp(out, exp, explen));
+  TEST_ASSERT_EQ(0, memcmp(s_out, exp, explen));
 }
 
 /**
@@ -358,7 +358,7 @@ static inline ra8_err_t decode_status(const uint8_t* pk, size_t pklen, uint64_t 
                         .size      = (uint64_t)pklen,
                         .first_off = 0U,
                         .version   = k_ra8_rar_ver_5};
-  static uint8_t out[k_out_cap];
+  static uint8_t s_out[k_out_cap];
   size_t         got = 0U;
-  return ra8_rar5_decompress(&rar, 0U, (uint64_t)pklen, out, sizeof(out), unp, &s_state, &got);
+  return ra8_rar5_decompress(&rar, 0U, (uint64_t)pklen, s_out, sizeof(s_out), unp, &s_state, &got);
 }

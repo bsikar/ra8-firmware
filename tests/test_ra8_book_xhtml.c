@@ -637,14 +637,15 @@ static void bx_build_deep(bx_deep_t* b)
 static void test_ra8_book_xhtml_deep_nest_bounds(void)
 {
   TEST_BEGIN("ra8_book_xhtml deep-nest walk bounds");
-  static bx_deep_t b;
-  bx_build_deep(&b);
+  static bx_deep_t s_b;
+  bx_build_deep(&s_b);
   char   out[k_bx_big_cap] = {};
   size_t len               = 99U;
 
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_book_chapter_to_xhtml(&b, 0U, out, sizeof(out), &len));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_book_chapter_to_xhtml(&s_b, 0U, out, sizeof(out), &len));
   len = 99U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_chapter_text(&b, 0U, out, sizeof(out), &len));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_book_chapter_text(&s_b, 0U, out, sizeof(out), &len));
   TEST_ASSERT_EQ(0, len); /* descent capped before reaching the leaf */
   TEST_END("ra8_book_xhtml deep-nest walk bounds");
 }
