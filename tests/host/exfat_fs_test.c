@@ -71,13 +71,13 @@ static int      g_fail;
 static ra8_err_t be_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
-  memcpy(buf, g_img + (size_t)lba * 512U, (size_t)count * 512U);
+  memcpy(buf, g_img + ((size_t)lba * 512U), (size_t)count * 512U);
   return k_ra8_ok;
 }
 static ra8_err_t be_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
-  memcpy(g_img + (size_t)lba * 512U, buf, (size_t)count * 512U);
+  memcpy(g_img + ((size_t)lba * 512U), buf, (size_t)count * 512U);
   return k_ra8_ok;
 }
 static ra8_err_t be_cap(void* ctx, uint32_t* bc, uint32_t* bs)
@@ -269,19 +269,36 @@ int main(int argc, char** argv)
     printf("FAIL: cannot open fixture %s\n", path);
     return 2;
   }
-  fseek(f, 0, SEEK_END);
-  long sz = ftell(f);
-  fseek(f, 0, SEEK_SET);
-  g_img     = malloc((size_t)sz);
-  size_t rd = fread(g_img, 1U, (size_t)sz, f);
-  fclose(f);
+  if (fseek(f, 0, SEEK_END) != 0) {
+    printf("FAIL: cannot seek fixture %s\n", path);
+    (void)fclose(f);
+    return 2;
+  }
+  const long sz = ftell(f);
+  if (sz < 0 || fseek(f, 0, SEEK_SET) != 0) {
+    printf("FAIL: cannot size fixture %s\n", path);
+    (void)fclose(f);
+    return 2;
+  }
+  g_img = malloc((size_t)sz);
+  if (g_img == nullptr) {
+    printf("FAIL: out of memory for fixture\n");
+    (void)fclose(f);
+    return 2;
+  }
+  const size_t rd = fread(g_img, 1U, (size_t)sz, f);
+  (void)fclose(f);
   if (rd != (size_t)sz) {
     printf("FAIL: short read of fixture\n");
     return 2;
   }
   g_blocks = (uint32_t)((size_t)sz / 512U);
 
-  ra8_fs_backend_t be  = {be_read, be_write, be_cap, nullptr, nullptr};
+  ra8_fs_backend_t be  = {.read_block   = be_read,
+                          .write_block  = be_write,
+                          .get_capacity = be_cap,
+                          .erase_blocks = nullptr,
+                          .ctx          = nullptr};
   ra8_fs_mount_t*  mnt = nullptr;
   ra8_err_t        e   = ra8_fs_mount(&be, &mnt);
   check(e == k_ra8_ok, "mount succeeds");

@@ -363,10 +363,7 @@ static bool cov_dispatch_cmd(volatile r_sdhi_regs_t* reg, uint32_t cmd)
       cov_set_csd(reg, s_cov_cfg.mode);
       break;
 
-    case 7U: /* CMD7 SELECT_CARD: R1, content not checked here. */
-      reg->SD_RSP10 = 0U;
-      break;
-
+    case 7U: /* CMD7 SELECT_CARD: R1, content not checked here.            */
     default: /* CMD17/CMD24 and any other command: just signal completion. */
       reg->SD_RSP10 = 0U;
       break;

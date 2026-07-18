@@ -73,12 +73,18 @@ static ra8_err_t t_decode(void*                 ctx,
 }
 
 /** @brief Stub decoder that always fails (decode-on-miss failure path). */
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTBEGIN(readability-non-const-parameter)
 static ra8_err_t t_decode_fail(void*                 ctx,
                                const ra8_tile_key_t* key,
                                uint8_t*              cell,
                                uint32_t              cell_bytes,
                                uint16_t*             out_w,
                                uint16_t*             out_h)
+// NOLINTEND(readability-non-const-parameter)
 {
   (void)ctx;
   (void)key;

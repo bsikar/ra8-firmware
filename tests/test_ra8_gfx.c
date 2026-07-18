@@ -141,13 +141,13 @@ static void test_rect_outline_and_filled(void)
   /* Outline: 4x4 starting at (1,1). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(1, 1, 4, 4, 0xFFFF0000U, false));
   /* Top-left corner pixel is on; centre pixel (2,2) is off. */
-  TEST_ASSERT_EQ(0xFF, s_fb8888[(1U * k_test_fb_w + 1U) * 4U + 2U]); /* R */
-  TEST_ASSERT_EQ(0x00, s_fb8888[(2U * k_test_fb_w + 2U) * 4U + 2U]);
+  TEST_ASSERT_EQ(0xFF, s_fb8888[(((1U * k_test_fb_w) + 1U) * 4U) + 2U]); /* R */
+  TEST_ASSERT_EQ(0x00, s_fb8888[(((2U * k_test_fb_w) + 2U) * 4U) + 2U]);
   /* Filled: 3x3 starting at (10,10). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(10, 10, 3, 3, 0xFF0000FFU, true));
   for (uint32_t y = 10; y < 13; y++) {
     for (uint32_t x = 10; x < 13; x++) {
-      TEST_ASSERT_EQ(0xFF, s_fb8888[(y * k_test_fb_w + x) * 4U + 0U]); /* B */
+      TEST_ASSERT_EQ(0xFF, s_fb8888[(((y * k_test_fb_w) + x) * 4U) + 0U]); /* B */
     }
   }
   TEST_END("ra8_gfx_rect outline + filled");
@@ -166,12 +166,12 @@ static void test_circle_outline_and_filled(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_gfx_circle(0, 0, -1, 0, false));
   /* Outline circle at (16,16) r=5 -- expect (21,16) pixel set. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_circle(16, 16, 5, 0xFFFFFFFFU, false));
-  TEST_ASSERT_EQ(0xFF, s_fb8888[(16U * k_test_fb_w + 21U) * 4U + 0U]);
+  TEST_ASSERT_EQ(0xFF, s_fb8888[(((16U * k_test_fb_w) + 21U) * 4U) + 0U]);
   /* Centre pixel of outline must be untouched. */
-  TEST_ASSERT_EQ(0x00, s_fb8888[(16U * k_test_fb_w + 16U) * 4U + 0U]);
+  TEST_ASSERT_EQ(0x00, s_fb8888[(((16U * k_test_fb_w) + 16U) * 4U) + 0U]);
   /* Filled disc -- centre pixel now lit. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_circle(16, 16, 4, 0xFFFFFFFFU, true));
-  TEST_ASSERT_EQ(0xFF, s_fb8888[(16U * k_test_fb_w + 16U) * 4U + 0U]);
+  TEST_ASSERT_EQ(0xFF, s_fb8888[(((16U * k_test_fb_w) + 16U) * 4U) + 0U]);
   TEST_END("ra8_gfx_circle outline + filled");
 }
 
@@ -379,15 +379,15 @@ static void test_mcdc_internal_plot_neg(void)
   rebind_8888();
   /* V1: positive coords, pixel must land. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(5, 5, 5, 5, 0xFF112233U));
-  TEST_ASSERT_EQ(0x33, s_fb8888[(5U * k_test_fb_w + 5U) * 4U + 0U]);
+  TEST_ASSERT_EQ(0x33, s_fb8888[(((5U * k_test_fb_w) + 5U) * 4U) + 0U]);
   /* V2: x<0, plot skipped. We re-clear the buffer and probe a no-op. */
   rebind_8888();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(-1, 5, -1, 5, 0xFF112233U));
-  TEST_ASSERT_EQ(0x00, s_fb8888[(5U * k_test_fb_w + 0U) * 4U + 0U]);
+  TEST_ASSERT_EQ(0x00, s_fb8888[(((5U * k_test_fb_w) + 0U) * 4U) + 0U]);
   /* V3: y<0, plot skipped. */
   rebind_8888();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(5, -1, 5, -1, 0xFF112233U));
-  TEST_ASSERT_EQ(0x00, s_fb8888[(0U * k_test_fb_w + 5U) * 4U + 0U]);
+  TEST_ASSERT_EQ(0x00, s_fb8888[(((0U * k_test_fb_w) + 5U) * 4U) + 0U]);
   TEST_END("gfx MC/DC internal_plot negative-coord guard");
 }
 
@@ -409,18 +409,18 @@ static void test_mcdc_internal_plot_oob(void)
   rebind_8888();
   /* V1: in-range. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(5, 5, 5, 5, 0xFF112233U));
-  TEST_ASSERT_EQ(0x33, s_fb8888[(5U * k_test_fb_w + 5U) * 4U + 0U]);
+  TEST_ASSERT_EQ(0x33, s_fb8888[(((5U * k_test_fb_w) + 5U) * 4U) + 0U]);
   /* V2: x == width. */
   rebind_8888();
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gfx_line((int32_t)k_test_fb_w, 5, (int32_t)k_test_fb_w, 5, 0xFF112233U));
   /* No pixel could land at fb_w,5: probe (fb_w-1,5) is still 0. */
-  TEST_ASSERT_EQ(0x00, s_fb8888[(5U * k_test_fb_w + (k_test_fb_w - 1U)) * 4U + 0U]);
+  TEST_ASSERT_EQ(0x00, s_fb8888[(((5U * k_test_fb_w) + (k_test_fb_w - 1U)) * 4U) + 0U]);
   /* V3: y == height. */
   rebind_8888();
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gfx_line(5, (int32_t)k_test_fb_h, 5, (int32_t)k_test_fb_h, 0xFF112233U));
-  TEST_ASSERT_EQ(0x00, s_fb8888[((k_test_fb_h - 1U) * k_test_fb_w + 5U) * 4U + 0U]);
+  TEST_ASSERT_EQ(0x00, s_fb8888[((((k_test_fb_h - 1U) * k_test_fb_w) + 5U) * 4U) + 0U]);
   TEST_END("gfx MC/DC internal_plot OOB-coord guard");
 }
 
@@ -540,16 +540,16 @@ static void test_mcdc_line_endpoint(void)
   rebind_8888();
   /* V1: degenerate line (1 pixel). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(3, 3, 3, 3, 0xFF010101U));
-  TEST_ASSERT_EQ(0x01, s_fb8888[(3U * k_test_fb_w + 3U) * 4U + 0U]);
-  TEST_ASSERT_EQ(0x00, s_fb8888[(3U * k_test_fb_w + 4U) * 4U + 0U]);
+  TEST_ASSERT_EQ(0x01, s_fb8888[(((3U * k_test_fb_w) + 3U) * 4U) + 0U]);
+  TEST_ASSERT_EQ(0x00, s_fb8888[(((3U * k_test_fb_w) + 4U) * 4U) + 0U]);
   /* V2: horizontal line, multi-pixel proves loop did not break early. */
   rebind_8888();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(3, 3, 5, 3, 0xFF010101U));
-  TEST_ASSERT_EQ(0x01, s_fb8888[(3U * k_test_fb_w + 5U) * 4U + 0U]);
+  TEST_ASSERT_EQ(0x01, s_fb8888[(((3U * k_test_fb_w) + 5U) * 4U) + 0U]);
   /* V3: vertical line, ditto. */
   rebind_8888();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(3, 3, 3, 5, 0xFF010101U));
-  TEST_ASSERT_EQ(0x01, s_fb8888[(5U * k_test_fb_w + 3U) * 4U + 0U]);
+  TEST_ASSERT_EQ(0x01, s_fb8888[(((5U * k_test_fb_w) + 3U) * 4U) + 0U]);
   TEST_END("gfx MC/DC ra8_gfx_line endpoint && check");
 }
 
@@ -571,13 +571,13 @@ static void test_mcdc_rect_dim(void)
   TEST_BEGIN("gfx MC/DC ra8_gfx_rect dimension guard");
   rebind_8888();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(2, 2, 4, 4, 0xFF030303U, true));
-  TEST_ASSERT_EQ(0x03, s_fb8888[(2U * k_test_fb_w + 2U) * 4U + 0U]);
+  TEST_ASSERT_EQ(0x03, s_fb8888[(((2U * k_test_fb_w) + 2U) * 4U) + 0U]);
   rebind_8888();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(2, 2, 0, 4, 0xFF030303U, true));
-  TEST_ASSERT_EQ(0x00, s_fb8888[(2U * k_test_fb_w + 2U) * 4U + 0U]);
+  TEST_ASSERT_EQ(0x00, s_fb8888[(((2U * k_test_fb_w) + 2U) * 4U) + 0U]);
   rebind_8888();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(2, 2, 4, 0, 0xFF030303U, true));
-  TEST_ASSERT_EQ(0x00, s_fb8888[(2U * k_test_fb_w + 2U) * 4U + 0U]);
+  TEST_ASSERT_EQ(0x00, s_fb8888[(((2U * k_test_fb_w) + 2U) * 4U) + 0U]);
   TEST_END("gfx MC/DC ra8_gfx_rect dimension guard");
 }
 
@@ -604,20 +604,20 @@ static void test_mcdc_render_glyph_codepoint(void)
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gfx_text_out(0, 0, "A", &ra8_gfx_font_8x16, 0xFFFFFFFFU, 0xFF000000U));
   /* Row 2 of 'A' has bit 4 set => pixel (3,2) is foreground. */
-  TEST_ASSERT_EQ(0xFF, s_fb8888[(2U * k_test_fb_w + 3U) * 4U + 0U]);
+  TEST_ASSERT_EQ(0xFF, s_fb8888[(((2U * k_test_fb_w) + 3U) * 4U) + 0U]);
   /* V2: codepoint below first_codepoint -> render space (likely all bg). */
   rebind_8888();
   const char low[2] = {(char)0x10, '\0'};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gfx_text_out(0, 0, low, &ra8_gfx_font_8x16, 0xFFFFFFFFU, 0xFF000000U));
   /* (3,2) must NOT be foreground white because we substituted a space-glyph. */
-  TEST_ASSERT_EQ(0x00, s_fb8888[(2U * k_test_fb_w + 3U) * 4U + 0U]);
+  TEST_ASSERT_EQ(0x00, s_fb8888[(((2U * k_test_fb_w) + 3U) * 4U) + 0U]);
   /* V3: codepoint above last_codepoint. */
   rebind_8888();
   const char high[2] = {(char)0x80, '\0'};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gfx_text_out(0, 0, high, &ra8_gfx_font_8x16, 0xFFFFFFFFU, 0xFF000000U));
-  TEST_ASSERT_EQ(0x00, s_fb8888[(2U * k_test_fb_w + 3U) * 4U + 0U]);
+  TEST_ASSERT_EQ(0x00, s_fb8888[(((2U * k_test_fb_w) + 3U) * 4U) + 0U]);
   TEST_END("gfx MC/DC internal_render_glyph codepoint guard");
 }
 

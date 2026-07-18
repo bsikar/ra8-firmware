@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "ra8_mstp.h"
@@ -48,8 +49,12 @@ static uint8_t s_data[k_hmac_data_50];
 static void hex_to_bytes(const char* hex, uint8_t* out, size_t n)
 {
   for (size_t i = 0U; i < n; ++i) {
-    unsigned int byte = 0U;
-    (void)sscanf(&hex[2U * i], "%2x", &byte);
+    /* strtoul rather than sscanf("%2x"): sscanf cannot report a
+     * conversion error, so a malformed vector would decode as 0x00. */
+    const char          pair[3] = {hex[2U * i], hex[(2U * i) + 1U], '\0'};
+    char*               end     = nullptr;
+    const unsigned long byte    = strtoul(pair, &end, 16);
+    TEST_ASSERT(end == &pair[2]);
     out[i] = (uint8_t)byte;
   }
 }

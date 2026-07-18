@@ -35,7 +35,7 @@ typedef enum : uint32_t {
   k_test_addr_extra_bad  = 0x03100000UL, /**< Past extra-MRAM end.          */
 } ra8_flash_test_addr_t;
 
-static ra8_flash_cfg_t make_cfg(void)
+static inline ra8_flash_cfg_t make_cfg(void)
 {
   const ra8_flash_cfg_t cfg = {
     .mrcfreq_mhz        = (uint16_t)k_test_mrcfreq_mhz,

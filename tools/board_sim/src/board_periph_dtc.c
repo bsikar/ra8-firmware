@@ -188,10 +188,16 @@ static void dtc_run_transfer(uc_engine* uc, uint32_t ti_addr)
   const uint32_t unit = dtc_unit_bytes(sz);
   /* CRA = 0 in block mode encodes a 256-unit block (HUM 18.2.7). Otherwise CRA
    * is the unit count; block mode multiplies by CRB blocks. */
-  const uint32_t per_block =
-    (md == (uint32_t)k_mra_md_block) ? ((cra == 0U) ? (uint32_t)k_dtc_block_cra_zero : cra) : cra;
-  const uint32_t blocks = (md == (uint32_t)k_mra_md_block) ? ((crb == 0U) ? 1U : crb) : 1U;
-  uint32_t       units  = per_block * blocks;
+  const bool block_mode = (md == (uint32_t)k_mra_md_block);
+  uint32_t   per_block  = cra;
+  uint32_t   blocks     = 1U;
+  if (block_mode) {
+    if (cra == 0U) {
+      per_block = (uint32_t)k_dtc_block_cra_zero;
+    }
+    blocks = (crb == 0U) ? 1U : crb;
+  }
+  uint32_t units = per_block * blocks;
   if ((units == 0U) || (units > (uint32_t)k_dtc_max_units)) {
     return;
   }

@@ -81,6 +81,11 @@ static const ra8_err_t s_test_error = k_ra8_err_hw_error;
 
 /* ---- Mock storage callbacks ---- */
 
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTNEXTLINE(readability-non-const-parameter)
 static ra8_err_t cb_read_ok(void* ctx, uint32_t lba, uint32_t block_count, uint8_t* buf)
 {
   (void)ctx;
@@ -90,6 +95,11 @@ static ra8_err_t cb_read_ok(void* ctx, uint32_t lba, uint32_t block_count, uint8
   return k_ra8_ok;
 }
 
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTNEXTLINE(readability-non-const-parameter)
 static ra8_err_t cb_read_err(void* ctx, uint32_t lba, uint32_t block_count, uint8_t* buf)
 {
   (void)ctx;
@@ -149,6 +159,11 @@ static ra8_err_t cb_cap_count_zero(void* ctx, uint32_t* block_count, uint32_t* b
   return k_ra8_ok;
 }
 
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTNEXTLINE(readability-non-const-parameter)
 static ra8_err_t cb_inq_ok(void* ctx, uint8_t* vendor8, uint8_t* product16, uint8_t* revision4)
 {
   (void)ctx;
@@ -158,6 +173,11 @@ static ra8_err_t cb_inq_ok(void* ctx, uint8_t* vendor8, uint8_t* product16, uint
   return k_ra8_ok;
 }
 
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTNEXTLINE(readability-non-const-parameter)
 static ra8_err_t cb_inq_err(void* ctx, uint8_t* vendor8, uint8_t* product16, uint8_t* revision4)
 {
   (void)ctx;

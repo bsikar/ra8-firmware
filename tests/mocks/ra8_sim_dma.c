@@ -40,7 +40,6 @@ static uint8_t internal_size_bytes(ra8_dmac_width_t width)
     case k_ra8_dmac_width_half:
       return (uint8_t)k_ra8_sim_dma_bpe_half;
     case k_ra8_dmac_width_word:
-      return (uint8_t)k_ra8_sim_dma_bpe_word;
     default:
       return (uint8_t)k_ra8_sim_dma_bpe_word;
   }

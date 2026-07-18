@@ -246,11 +246,11 @@ static void test_mcdc_start_dir(void)
   /* V1, V2, V3: validation passes; downstream may return ok/busy but
    * NOT invalid_arg-from-bad-dir. */
   ra8_err_t r1 = ra8_ssie_start((uint8_t)k_ra8_ssie_test_ch0, k_ra8_ssie_dir_rx);
-  TEST_ASSERT(r1 != k_ra8_err_invalid_arg || r1 == k_ra8_ok);
+  TEST_ASSERT(r1 != k_ra8_err_invalid_arg);
   ra8_err_t r2 = ra8_ssie_start((uint8_t)k_ra8_ssie_test_ch0, k_ra8_ssie_dir_tx);
-  TEST_ASSERT(r2 != k_ra8_err_invalid_arg || r2 == k_ra8_ok);
+  TEST_ASSERT(r2 != k_ra8_err_invalid_arg);
   ra8_err_t r3 = ra8_ssie_start((uint8_t)k_ra8_ssie_test_ch0, k_ra8_ssie_dir_tx_rx);
-  TEST_ASSERT(r3 != k_ra8_err_invalid_arg || r3 == k_ra8_ok);
+  TEST_ASSERT(r3 != k_ra8_err_invalid_arg);
   /* V4: bad dir -> invalid_arg. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_ssie_start((uint8_t)k_ra8_ssie_test_ch0, (ra8_ssie_dir_t)k_ssie_mcdc_dir_bad));

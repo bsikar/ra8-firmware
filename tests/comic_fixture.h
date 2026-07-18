@@ -56,9 +56,9 @@ cf_png_chunk(uint8_t* out, const char* type, const uint8_t* data, uint32_t dlen)
   if (dlen != 0U) {
     memcpy(&out[8], data, dlen);
   }
-  const mz_ulong crc = mz_crc32(MZ_CRC32_INIT, &out[4], (size_t)(4U + dlen));
+  const mz_ulong crc = mz_crc32(MZ_CRC32_INIT, &out[4], (size_t)4U + (size_t)dlen);
   cf_put_be32(&out[8 + dlen], (uint32_t)crc);
-  return (size_t)(12U + dlen);
+  return (size_t)12U + (size_t)dlen;
 }
 
 /**

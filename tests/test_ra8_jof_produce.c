@@ -109,6 +109,11 @@ static ra8_err_t t_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 }
 
 /** @brief Failing pull source (error propagation check). */
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTNEXTLINE(readability-non-const-parameter)
 static ra8_err_t t_pull_fail(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   (void)ctx;
@@ -203,12 +208,14 @@ static size_t png_fill_raw(uint32_t w, uint32_t h, uint32_t ch, bool palette, bo
         const uint32_t px_c = (k % ch);
         const uint8_t  cur  = row[k];
         const uint8_t  left = (k >= ch) ? row[k - ch] : 0U;
-        const uint8_t  up =
-          (y > 0U) ? (palette ? (uint8_t)((px_x + (y - 1U)) % 5U) : pix(px_x, y - 1U, px_c)) : 0U;
-        const uint8_t ul =
-          ((y > 0U) && (k >= ch))
-            ? (palette ? (uint8_t)(((px_x - 1U) + (y - 1U)) % 5U) : pix(px_x - 1U, y - 1U, px_c))
-            : 0U;
+        uint8_t        up   = 0U;
+        if (y > 0U) {
+          up = palette ? (uint8_t)((px_x + (y - 1U)) % 5U) : pix(px_x, y - 1U, px_c);
+        }
+        uint8_t ul = 0U;
+        if ((y > 0U) && (k >= ch)) {
+          ul = palette ? (uint8_t)(((px_x - 1U) + (y - 1U)) % 5U) : pix(px_x - 1U, y - 1U, px_c);
+        }
         uint8_t pred = 0U;
         if (f == 1U) {
           pred = left;
@@ -355,7 +362,10 @@ static void check_tiles(const ra8_jof_info_t* info, uint8_t ctx_ct)
               exp = s_ref[(((y * (uint32_t)k_t_jpg_w) + x) * 3U) + ch];
             } else if (ctx_ct == 0U) {
               exp = pix(x, y, 0U);
-            } else if (ctx_ct == 2U) {
+            } else if ((ctx_ct == 2U) || (ctx_ct == 6U) || (ctx_ct > 6U)) {
+              /* Greyscale+alpha, truecolour+alpha and every colour type above
+               * them keep the source channel value, so they share one
+               * expectation. */
               exp = pix(x, y, ch);
             } else if (ctx_ct == 3U) {
               const uint32_t idx     = (x + y) % 5U;
@@ -363,11 +373,15 @@ static void check_tiles(const ra8_jof_info_t* info, uint8_t ctx_ct)
                                         (uint8_t)(20U + (idx * 30U)),
                                         (uint8_t)(30U + (idx * 20U))};
               const uint8_t  trns[3] = {255U, 128U, 64U};
-              exp                    = (ch < 3U) ? rgb[ch] : ((idx < 3U) ? trns[idx] : 255U);
+              if (ch < 3U) {
+                exp = rgb[ch];
+              } else if (idx < 3U) {
+                exp = trns[idx];
+              } else {
+                exp = 255U;
+              }
             } else if (ctx_ct == 4U) {
               exp = (ch < 3U) ? pix(x, y, 0U) : pix(x, y, 1U);
-            } else { /* 6 */
-              exp = pix(x, y, ch);
             }
             TEST_ASSERT_EQ(exp, got);
           }
@@ -375,6 +389,32 @@ static void check_tiles(const ra8_jof_info_t* info, uint8_t ctx_ct)
       }
     }
   }
+}
+
+/**
+ * @brief Member-wise equality of two parsed atlas descriptors.
+ *
+ * @details
+ * ra8_tileatlas_info_t carries padding between its uint8_t and uint32_t
+ * members, so memcmp would compare bytes the standard never guarantees are
+ * initialised. Compare the members the producer actually fills.
+ *
+ * @param[in] lhs First descriptor.
+ * @param[in] rhs Second descriptor.
+ * @return true when every member compares equal.
+ *
+ * @pre @p lhs is non-null.
+ * @pre @p rhs is non-null.
+ * @post Neither operand is modified.
+ */
+static bool ta_info_equal(const ra8_tileatlas_info_t* lhs, const ra8_tileatlas_info_t* rhs)
+{
+  return (lhs->width == rhs->width) && (lhs->height == rhs->height) &&
+         (lhs->tile_w == rhs->tile_w) && (lhs->tile_h == rhs->tile_h) &&
+         (lhs->tile_cols == rhs->tile_cols) && (lhs->tile_rows == rhs->tile_rows) &&
+         (lhs->bpp == rhs->bpp) && (lhs->codec == rhs->codec) &&
+         (lhs->tile_count == rhs->tile_count) && (lhs->index_off == rhs->index_off) &&
+         (lhs->total_size == rhs->total_size);
 }
 
 /**
@@ -440,7 +480,7 @@ static void test_produce_png_colortypes(void)
                                        &s_store,
                                        (uint64_t)s_store.len,
                                        &reparsed));
-    TEST_ASSERT_EQ(0, memcmp(&info, &reparsed, sizeof(info)));
+    TEST_ASSERT(ta_info_equal(&info, &reparsed));
     check_tiles(&info, cases[i].ct);
   }
   TEST_END("produce: PNG colour types 0/2/3/3+tRNS/4/6, filtered rows, parity");

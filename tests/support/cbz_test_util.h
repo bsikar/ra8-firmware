@@ -86,7 +86,7 @@ static uint8_t s_p2[k_ccx_p2_raw];
 static ccx_page_t s_pages[k_ccx_page_count];
 
 /** @brief Fill the source rasters with distinct deterministic byte patterns. */
-static void ccx_fill_pages(void)
+static inline void ccx_fill_pages(void)
 {
   for (uint32_t i = 0U; i < k_ccx_p0_raw; ++i) {
     s_p0[i] = (uint8_t)((i * k_ccx_pat_mul0) + k_ccx_pat_add0);
@@ -114,7 +114,7 @@ typedef struct {
 } ccx_file_t;
 
 /** @brief ra8_vsource_read_fn over an in-memory container, with fault injection. */
-static ra8_err_t ccx_file_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
+static inline ra8_err_t ccx_file_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
 {
   ccx_file_t* f = (ccx_file_t*)ctx;
   f->calls++;
@@ -166,7 +166,7 @@ ccx_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* 
  * @param[in]  raw_delta Amount to inflate the last page's stored raw_size by.
  * @return Packed container length in bytes.
  */
-static uint64_t ccx_pack(uint8_t* out, uint32_t flags, uint32_t raw_delta)
+static inline uint64_t ccx_pack(uint8_t* out, uint32_t flags, uint32_t raw_delta)
 {
   const uint32_t count                       = k_ccx_page_count;
   uint64_t       offs[k_ccx_page_count + 1U] = {};
@@ -221,13 +221,19 @@ static uint64_t ccx_pack(uint8_t* out, uint32_t flags, uint32_t raw_delta)
 }
 
 /** @brief Open a freshly packed container into @p cbz; returns the open result. */
-static ra8_err_t ccx_open(ra8_cbz_t*  cbz,
-                          ccx_file_t* file,
-                          uint8_t*    container,
-                          uint64_t    file_len,
-                          uint64_t*   offsets_buf,
-                          uint8_t*    meta_buf,
-                          uint8_t*    staging)
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTBEGIN(readability-non-const-parameter)
+static inline ra8_err_t ccx_open(ra8_cbz_t*  cbz,
+                                 ccx_file_t* file,
+                                 uint8_t*    container,
+                                 uint64_t    file_len,
+                                 uint64_t*   offsets_buf,
+                                 uint8_t*    meta_buf,
+                                 uint8_t*    staging)
+// NOLINTEND(readability-non-const-parameter)
 {
   *file = (ccx_file_t){.data = container, .len = file_len, .fail_at = 0U, .calls = 0U};
   return ra8_cbz_open(cbz,

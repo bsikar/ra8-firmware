@@ -51,7 +51,7 @@ static uint8_t  s_ssie_cb_last_ch;
 static uint32_t s_ssie_cb_last_ssisr;
 static uint8_t  s_ssie_cb_last_events;
 
-static void stub_ssie_cb(void* ctx, uint8_t channel, uint8_t events, uint32_t ssisr)
+static inline void stub_ssie_cb(void* ctx, uint8_t channel, uint8_t events, uint32_t ssisr)
 {
   (void)ctx;
   ++s_ssie_cb_count;
@@ -60,7 +60,7 @@ static void stub_ssie_cb(void* ctx, uint8_t channel, uint8_t events, uint32_t ss
   s_ssie_cb_last_ssisr  = ssisr;
 }
 
-static void prep(void)
+static inline void prep(void)
 {
   ra8_sim_mmap_reset();
   (void)ra8_mstp_init();
@@ -70,7 +70,7 @@ static void prep(void)
   s_ssie_cb_last_events = 0U;
 }
 
-static ra8_ssie_cfg_t make_controller_i2s_cfg(void)
+static inline ra8_ssie_cfg_t make_controller_i2s_cfg(void)
 {
   const ra8_ssie_cfg_t cfg = {
     .role          = k_ra8_ssie_role_controller,

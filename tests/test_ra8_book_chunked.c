@@ -170,12 +170,18 @@ static uint64_t bcx_pack(uint8_t* out, bool short_last)
 }
 
 /** @brief Open a freshly packed container into @p rd; returns the open result. */
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTBEGIN(readability-non-const-parameter)
 static ra8_err_t bcx_open(ra8_book_chunked_t* rd,
                           bcx_file_t*         file,
                           uint8_t*            container,
                           uint64_t            file_len,
                           uint64_t*           table_buf,
                           uint8_t*            staging)
+// NOLINTEND(readability-non-const-parameter)
 {
   *file = (bcx_file_t){.data = container, .len = file_len, .fail_at = 0U, .calls = 0U};
   return ra8_book_chunked_open(rd,

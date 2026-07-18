@@ -59,12 +59,12 @@ typedef struct {
 
 static mock_spi_t s_mock = {};
 
-static void mock_reset(void)
+static inline void mock_reset(void)
 {
   memset(&s_mock, 0, sizeof(s_mock));
 }
 
-static void mock_queue_byte(uint8_t b)
+static inline void mock_queue_byte(uint8_t b)
 {
   if (s_mock.rx_len < (uint32_t)k_mock_buf_bytes) {
     s_mock.rx_queue[s_mock.rx_len] = b;
@@ -72,7 +72,7 @@ static void mock_queue_byte(uint8_t b)
   }
 }
 
-static void mock_queue_bytes(const uint8_t* data, uint32_t len)
+static inline void mock_queue_bytes(const uint8_t* data, uint32_t len)
 {
   for (uint32_t i = 0U; i < len; i++) {
     mock_queue_byte(data[i]);
@@ -82,21 +82,21 @@ static void mock_queue_bytes(const uint8_t* data, uint32_t len)
 /**
  * @brief Queue ``count`` copies of the idle byte 0xFF.
  */
-static void mock_queue_idle(uint32_t count)
+static inline void mock_queue_idle(uint32_t count)
 {
   for (uint32_t i = 0U; i < count; i++) {
     mock_queue_byte((uint8_t)k_mock_xfer_byte_idle);
   }
 }
 
-static ra8_err_t mock_set_clock(void* ctx, uint32_t hz)
+static inline ra8_err_t mock_set_clock(void* ctx, uint32_t hz)
 {
   (void)ctx;
   s_mock.clock_hz = hz;
   return k_ra8_ok;
 }
 
-static ra8_err_t mock_cs(void* ctx, bool asserted)
+static inline ra8_err_t mock_cs(void* ctx, bool asserted)
 {
   (void)ctx;
   s_mock.cs_asserted = asserted;
@@ -106,7 +106,7 @@ static ra8_err_t mock_cs(void* ctx, bool asserted)
   return k_ra8_ok;
 }
 
-static ra8_err_t mock_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
+static inline ra8_err_t mock_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
 {
   (void)ctx;
   s_mock.xfer_calls++;
@@ -160,7 +160,7 @@ typedef enum : uint32_t {
  * write), forcing the driver's per-byte write fallback. Small frames pass
  * straight through to ::mock_xfer so the init sequence is unaffected.
  */
-static ra8_err_t mock_xfer_no_bulk(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
+static inline ra8_err_t mock_xfer_no_bulk(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
 {
   if (len >= (uint32_t)k_mock_bulk_min_len) {
     return k_ra8_err_not_supported;
@@ -185,7 +185,7 @@ static uint32_t s_setclk_calls = 0U;
  * (call 2, finalize-init) fails -- the only place set_clock is invoked twice
  * across one ::ra8_sdmmc_spi_init, so this exercises the finalize-init error leg.
  */
-static ra8_err_t mock_set_clock_fail_second(void* ctx, uint32_t hz)
+static inline ra8_err_t mock_set_clock_fail_second(void* ctx, uint32_t hz)
 {
   (void)ctx;
   s_mock.clock_hz = hz;
@@ -207,7 +207,7 @@ static const ra8_sdmmc_spi_transport_t s_mock_transport_failclk = {
  * @brief Arm the xfer fault injector to fail starting at the @p nth call.
  * @param[in] nth 1-based xfer call index to begin failing at (0 disables).
  */
-static void mock_arm_xfer_fail(uint32_t nth)
+static inline void mock_arm_xfer_fail(uint32_t nth)
 {
   s_mock.xfer_calls   = 0U;
   s_mock.xfer_fail_at = nth;
@@ -251,7 +251,7 @@ typedef enum : uint32_t {
  * everything shifts by one (off-by-one tracing surfaced this when
  * `internal_send_cmd8` saw a misaligned R7 echo tail).
  */
-static void queue_command_response_r1(uint8_t r1)
+static inline void queue_command_response_r1(uint8_t r1)
 {
   /* cs_assert post-byte. */
   mock_queue_idle(1U);
@@ -267,7 +267,7 @@ static void queue_command_response_r1(uint8_t r1)
   mock_queue_idle(1U);
 }
 
-static void queue_command_response_r3_or_r7(uint8_t r1, uint32_t tail_word)
+static inline void queue_command_response_r3_or_r7(uint8_t r1, uint32_t tail_word)
 {
   /* Same as queue_command_response_r1 but inserts the 4-byte R3/R7
    * tail BEFORE the cs_release post-byte. */
@@ -291,7 +291,7 @@ static void queue_command_response_r3_or_r7(uint8_t r1, uint32_t tail_word)
  *   - bytes 7..9 = C_SIZE (22 bits; top 6 bits of byte 7 are reserved).
  * For a 32 GiB card, capacity = 0x10000 + 1 entries of 512 KiB.
  */
-static void build_csd_v2_32gib(uint8_t* out)
+static inline void build_csd_v2_32gib(uint8_t* out)
 {
   memset(out, 0, (size_t)k_ra8_sdmmc_spi_csd_response_len);
   out[0] = 0x40U; /* CSD_STRUCTURE = 1 */
@@ -300,7 +300,7 @@ static void build_csd_v2_32gib(uint8_t* out)
   out[9] = 0xFFU;
 }
 
-static void queue_csd_read(const uint8_t* csd)
+static inline void queue_csd_read(const uint8_t* csd)
 {
   /* Inline R1-phase: 1 cs_assert idle + 6 CMD9 frame idles + 1 R1.
    * NOT the cs_release-padded variant because CMD9 leaves CS asserted
@@ -329,7 +329,7 @@ static void queue_csd_read(const uint8_t* csd)
  * Helper used by the block-I/O tests that don't care about init coverage. SDHC
  * v2 card with 32 GiB capacity.
  */
-static void queue_full_init_sdhc_32gib(void)
+static inline void queue_full_init_sdhc_32gib(void)
 {
   /* Wake-up dummy clocks (10 idle bytes during the 80-clock kick). */
   mock_queue_idle(10U);
@@ -355,7 +355,7 @@ static void queue_full_init_sdhc_32gib(void)
  * ===========================================================================
  */
 
-static void per_test_setup(void)
+static inline void per_test_setup(void)
 {
   mock_reset();
   (void)ra8_sdmmc_spi_deinit();
@@ -374,7 +374,7 @@ static void per_test_setup(void)
  * driver discards RX). Filling them all with idle 0xFF matches the
  * real SD card behaviour (CIPO held high while the host shifts data).
  */
-static void queue_write_block_tail(uint8_t data_response, uint32_t busy_bytes)
+static inline void queue_write_block_tail(uint8_t data_response, uint32_t busy_bytes)
 {
   /* Note: the preceding `queue_command_response_r1` for the CMD24 R1
    * already leaves one trailing idle (its cs_release post-byte) that
@@ -396,7 +396,7 @@ static void queue_write_block_tail(uint8_t data_response, uint32_t busy_bytes)
  * @details Models the CMD17 read the erase path uses to verify the post-erase
  * value: R1 + data-start token + 512 payload + a correct CRC16 trailer.
  */
-static void queue_read_back(const uint8_t* block)
+static inline void queue_read_back(const uint8_t* block)
 {
   /* ra8_sdmmc_spi_read_block holds CS across CMD17 + the data phase (one
    * session: cs_assert -> read_data_phase -> cs_release), so we must NOT
@@ -420,7 +420,7 @@ static void queue_read_back(const uint8_t* block)
  * @details Shorthand used by the block-I/O error tests below: resets the mock,
  * queues the full CMD0..CMD16 identification sequence, and initialises.
  */
-static void init_sdhc_ok(void)
+static inline void init_sdhc_ok(void)
 {
   per_test_setup();
   queue_full_init_sdhc_32gib();

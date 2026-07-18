@@ -474,6 +474,11 @@ static ra8_err_t t_tx_silent(void* ctx, uint8_t byte)
 }
 
 /* cppcheck-suppress constParameterCallback ; must match the io.rx_byte typedef. */
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTNEXTLINE(readability-non-const-parameter)
 static ra8_err_t t_rx_empty(void* ctx, uint8_t* out)
 {
   (void)ctx;
