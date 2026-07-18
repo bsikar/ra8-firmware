@@ -851,6 +851,7 @@ ra8_err_t ra8_glcdc_attach_handler(ra8_glcdc_event_fn_t fn, void* ctx)
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_glcdc_dispatch(void)
 {
   volatile uint32_t*         reg  = ra8_glcdc_reg32(k_ra8_glcdc_off_sys_stat);

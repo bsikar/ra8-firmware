@@ -275,6 +275,7 @@ ra8_err_t ra8_acmphs_exit_stop(uint8_t channel)
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_acmphs_dispatch(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra8_acmphs_channel_count) {
