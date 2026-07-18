@@ -34,6 +34,7 @@
 #include <string.h>
 
 #include "ra8_check.h"
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_ota.h"
 #include "ra8_ota_internal.h"
@@ -127,6 +128,7 @@ bool ra8_ota_internal_download_state_invalid(uint32_t state_idle_val,
  * @note Static helper; pure validation function.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_validate_cfg_net(const ra8_ota_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg->net.open, s_tag, "net.open");
@@ -157,6 +159,7 @@ static ra8_err_t priv_validate_cfg_net(const ra8_ota_cfg_t* cfg)
  * @note Static helper; pure validation function.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_validate_cfg_crypto(const ra8_ota_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg->crypto.sha256_init, s_tag, "crypto.sha256_init");
@@ -189,6 +192,7 @@ static ra8_err_t priv_validate_cfg_crypto(const ra8_ota_cfg_t* cfg)
  * @note Static helper; pure validation function.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_validate_cfg_flash(const ra8_ota_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg->flash.erase, s_tag, "flash.erase");
@@ -257,6 +261,7 @@ ra8_err_t ra8_ota_internal_validate_cfg(const ra8_ota_cfg_t* cfg)
  * @note Static helper; pure function.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_json_str(const char* json, const char* key, char* dst, uint32_t cap)
 {
   const char* p = strstr(json, key);
@@ -358,6 +363,7 @@ ra8_err_t ra8_ota_internal_json_u32(const char* json, const char* key, uint32_t*
  * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
+RA8_INTERNAL
 static uint8_t priv_hex_nibble(char c)
 {
   if ((c >= '0') && (c <= '9')) {
@@ -395,6 +401,7 @@ static uint8_t priv_hex_nibble(char c)
  * @note Static helper; pure function.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_hex_decode(const char* in, uint8_t* out, uint32_t out_cap)
 {
   const uint32_t in_len = (uint32_t)strlen(in);
@@ -444,6 +451,7 @@ static uint32_t priv_hex_decode(const char* in, uint8_t* out, uint32_t out_cap)
  * @note Static helper; pure function.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_manifest_decode_crypto(const char* json, ra8_ota_manifest_t* out)
 {
   char      hex[k_ra8_ota_hex_buf_bytes];

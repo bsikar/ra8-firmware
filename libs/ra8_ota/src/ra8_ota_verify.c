@@ -33,6 +33,7 @@
 #include <stdint.h>
 
 #include "ra8_check.h"
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_ota.h"
 #include "ra8_ota_internal.h"
@@ -66,6 +67,7 @@ static const char* const s_tag = "ra8_ota";
  * @note Static helper; not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_rehash_bank(const ra8_ota_manifest_t* m, uint8_t out_digest[32])
 {
   ra8_err_t e = s_ra8_ota_cfg.crypto.sha256_init(s_ra8_ota_cfg.crypto.ctx);
@@ -144,6 +146,7 @@ typedef enum : uint8_t {
  * @note Static helper; not thread-safe (shares the single SHA context).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_bind_manifest_material(const ra8_ota_manifest_t* manifest,
                                              const uint8_t*            image_digest,
                                              uint8_t out_bound[k_ra8_ota_sha256_bytes])

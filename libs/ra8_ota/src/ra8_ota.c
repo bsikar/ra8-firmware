@@ -34,6 +34,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_ota_internal.h"
@@ -115,6 +116,7 @@ void ra8_ota_internal_set_state(ra8_ota_state_t new_state, ra8_err_t err)
  * @note Static helper; not thread-safe -- shares the OTA worker context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_drain(uint8_t* dst, uint32_t cap, uint32_t* out_n)
 {
   uint32_t total = 0U;
@@ -280,6 +282,7 @@ ra8_ota_state_t ra8_ota_get_state(void)
  * @note Static helper; not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_fetch_manifest_payload(uint32_t* out_got)
 {
   uint32_t  content_len = 0U;
@@ -386,6 +389,7 @@ ra8_err_t ra8_ota_check_for_update(ra8_ota_manifest_t* out_manifest)
  * @note Static helper; not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_download_chunk(uint32_t addr_base, uint32_t* in_out_done, uint32_t total)
 {
   const uint32_t remaining = total - *in_out_done;
@@ -437,6 +441,7 @@ static ra8_err_t priv_download_chunk(uint32_t addr_base, uint32_t* in_out_done, 
  * @note Static helper; not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_prepare_bank(const ra8_ota_manifest_t* manifest)
 {
   ra8_err_t e = s_ra8_ota_cfg.flash.erase(s_ra8_ota_cfg.flash.ctx,
@@ -472,6 +477,7 @@ static ra8_err_t priv_prepare_bank(const ra8_ota_manifest_t* manifest)
  * @note Static helper; not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_download_loop(const ra8_ota_manifest_t* manifest)
 {
   const uint32_t max_chunks = (k_ra8_ota_max_image_bytes / k_ra8_ota_chunk_bytes) + 1U;
@@ -638,6 +644,7 @@ ra8_err_t ra8_ota_commit_and_reboot(void)
  * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
+RA8_INTERNAL
 static ra8_err_t priv_step_dispatch(void)
 {
   switch (s_ra8_ota_state) {
