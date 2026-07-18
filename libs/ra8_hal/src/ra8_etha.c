@@ -360,6 +360,7 @@ ra8_err_t ra8_etha_attach_handler(ra8_etha_port_t port, ra8_etha_event_fn_t cb, 
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_etha_dispatch(ra8_etha_port_t port)
 {
   if (!internal_port_ok(port)) {

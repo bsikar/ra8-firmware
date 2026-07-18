@@ -121,6 +121,7 @@ ra8_err_t ra8_usb_attach_handler(ra8_usb_speed_t speed, ra8_usb_event_fn_t fn, v
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_ISR_SAFE
 void ra8_usb_dispatch(ra8_usb_speed_t speed)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);

@@ -421,6 +421,7 @@ ra8_err_t ra8_ceu_attach_handler(ra8_ceu_event_fn_t fn, void* ctx)
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_ceu_dispatch(void)
 {
   /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3664

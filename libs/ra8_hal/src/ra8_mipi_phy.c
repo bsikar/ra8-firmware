@@ -561,6 +561,7 @@ ra8_err_t ra8_mipi_phy_attach_handler(ra8_mipi_phy_event_fn_t fn, void* ctx)
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_mipi_phy_dispatch(void)
 {
   /* HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */

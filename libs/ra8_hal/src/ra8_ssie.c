@@ -924,6 +924,7 @@ ra8_err_t ra8_ssie_attach_handler(ra8_ssie_event_fn_t fn, void* ctx)
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_ssie_dispatch(uint8_t channel)
 {
   volatile r_ssie_regs_t* reg = ra8_ssie_internal_regs(channel);

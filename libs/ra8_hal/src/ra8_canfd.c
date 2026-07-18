@@ -588,6 +588,7 @@ ra8_err_t ra8_canfd_attach_handler(ra8_canfd_event_fn_t fn, void* ctx)
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_canfd_dispatch(uint8_t channel)
 {
   volatile r_canfd_t* reg = ra8_canfd(channel);

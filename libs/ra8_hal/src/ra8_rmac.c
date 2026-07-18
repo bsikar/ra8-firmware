@@ -924,6 +924,7 @@ ra8_err_t ra8_rmac_attach_handler(ra8_rmac_port_t port, ra8_rmac_event_fn_t cb, 
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_rmac_dispatch(ra8_rmac_port_t port)
 {
   if (!internal_port_ok(port)) {
