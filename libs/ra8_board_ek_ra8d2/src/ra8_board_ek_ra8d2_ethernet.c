@@ -29,6 +29,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_board_ek_ra8d2.h"
 #include "ra8_cgc.h"
 #include "ra8_elc_regs.h"
@@ -125,7 +126,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_eth_phy_hw_reset(void)
+RA8_INTERNAL static ra8_err_t internal_eth_phy_hw_reset(void)
 {
   /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   const ra8_port_pin_t rstn_pin = (ra8_port_pin_t)k_ra8_board_eth_pin_rstn;
@@ -186,7 +187,7 @@ static ra8_err_t internal_eth_phy_hw_reset(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_eth_route_alt_pins(void)
+RA8_INTERNAL static ra8_err_t internal_eth_route_alt_pins(void)
 {
   /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- RA8_PIN()-packed board pin is valid ra8_port_pin_t data outside the enumerator list. */
   const ra8_port_pin_t rstn_pin = (ra8_port_pin_t)k_ra8_board_eth_pin_rstn;
@@ -277,7 +278,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_eth_coma_reset(void)
+RA8_INTERNAL static ra8_err_t internal_eth_coma_reset(void)
 {
   /* Faithful port of FSP r_layer3_switch_reset_coma. */
 
@@ -352,7 +353,7 @@ static ra8_err_t internal_eth_coma_reset(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_eth_eswm_select_rgmii(void)
+RA8_INTERNAL static ra8_err_t internal_eth_eswm_select_rgmii(void)
 {
   /* HUM Ch 29 "ESWM" + FSP r_rmac_phy_set_mii_type_configuration:
    * write MIICR before enabling the per-port RGMII block so the pin
@@ -400,7 +401,7 @@ static ra8_err_t internal_eth_eswm_select_rgmii(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_eth_eswm_bring_up(uint32_t* out_eswclk_hz)
+RA8_INTERNAL static ra8_err_t internal_eth_eswm_bring_up(uint32_t* out_eswclk_hz)
 {
   ra8_err_t err = ra8_cgc_eswclk_init();
   if (err != k_ra8_ok) {
@@ -442,7 +443,7 @@ static ra8_err_t internal_eth_eswm_bring_up(uint32_t* out_eswclk_hz)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_eth_etha_to_config(void)
+RA8_INTERNAL static ra8_err_t internal_eth_etha_to_config(void)
 {
   const ra8_etha_config_t etha_cfg = {
     .initial_mode = k_ra8_etha_opc_reset,
@@ -492,7 +493,7 @@ static ra8_err_t internal_eth_etha_to_config(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_eth_etha_to_operation(void)
+RA8_INTERNAL static ra8_err_t internal_eth_etha_to_operation(void)
 {
   ra8_err_t err =
     ra8_etha_set_mode((ra8_etha_port_t)k_ra8_board_eth_etha_port, k_ra8_etha_opc_operation);
@@ -526,7 +527,7 @@ static ra8_err_t internal_eth_etha_to_operation(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_eth_rmac_program(uint32_t eswclk_hz)
+RA8_INTERNAL static ra8_err_t internal_eth_rmac_program(uint32_t eswclk_hz)
 {
   /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) -- OR-combined MRAFC flags and the board RMAC port are valid values outside the enumerator lists. */
   /* HUM Ch 33.4 "MRAFC : MAC Reception Address Filter Configuration
@@ -628,7 +629,7 @@ typedef enum : uint16_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_eth_phy_soft_reset(void)
+RA8_INTERNAL static ra8_err_t internal_eth_phy_soft_reset(void)
 {
   ra8_err_t err = ra8_rmac_mdio_c22_write((ra8_rmac_port_t)k_ra8_board_eth_rmac_port,
                                           (uint8_t)k_ra8_board_eth_phy_addr,
@@ -672,7 +673,7 @@ static ra8_err_t internal_eth_phy_soft_reset(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_eth_phy_set_rgmii_skew(void)
+RA8_INTERNAL static ra8_err_t internal_eth_phy_set_rgmii_skew(void)
 {
   uint16_t        miictrl  = 0U;
   const ra8_err_t read_err = ra8_rmac_mdio_c22_read((ra8_rmac_port_t)k_ra8_board_eth_rmac_port,
@@ -711,7 +712,7 @@ static ra8_err_t internal_eth_phy_set_rgmii_skew(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_eth_phy_start_autoneg(void)
+RA8_INTERNAL static ra8_err_t internal_eth_phy_start_autoneg(void)
 {
   ra8_err_t err = ra8_rmac_mdio_c22_write((ra8_rmac_port_t)k_ra8_board_eth_rmac_port,
                                           (uint8_t)k_ra8_board_eth_phy_addr,
@@ -752,7 +753,7 @@ static ra8_err_t internal_eth_phy_start_autoneg(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static ra8_err_t internal_eth_phy_chip_init(void)
+RA8_INTERNAL static ra8_err_t internal_eth_phy_chip_init(void)
 {
   ra8_err_t err = internal_eth_phy_soft_reset();
   if (err != k_ra8_ok) {
