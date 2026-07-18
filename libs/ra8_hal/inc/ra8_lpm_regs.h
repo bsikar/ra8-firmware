@@ -41,6 +41,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /* =============================================================================
  * Base addresses
  * =============================================================================
@@ -494,6 +496,7 @@ typedef enum : uint32_t {
  *       must serialize concurrent register writes.
  * @since 0.1.0
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_lpm_scb_scr(void)
 {
   return (volatile uint32_t*)k_ra8_lpm_scb_scr_addr;
@@ -515,6 +518,7 @@ static inline volatile uint32_t* ra8_lpm_scb_scr(void)
  *       must serialize concurrent register writes.
  * @since 0.1.0
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint8_t* ra8_lpm_sysc_reg8(ra8_lpm_off_t off)
 {
   return (volatile uint8_t*)(k_ra8_lpm_sysc_base_addr + (uintptr_t)off);
@@ -537,6 +541,7 @@ static inline volatile uint8_t* ra8_lpm_sysc_reg8(ra8_lpm_off_t off)
  *       must serialize concurrent register writes.
  * @since 0.1.0
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint16_t* ra8_lpm_sysc_reg16(ra8_lpm_off_t off)
 {
   return (volatile uint16_t*)(k_ra8_lpm_sysc_base_addr + (uintptr_t)off);
@@ -559,6 +564,7 @@ static inline volatile uint16_t* ra8_lpm_sysc_reg16(ra8_lpm_off_t off)
  *       must serialize concurrent register writes.
  * @since 0.1.0
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_lpm_icu_reg32(ra8_lpm_off_t off)
 {
   return (volatile uint32_t*)(k_ra8_lpm_icu_base_addr + (uintptr_t)off);

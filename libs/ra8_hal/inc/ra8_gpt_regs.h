@@ -25,6 +25,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 typedef enum : uintptr_t {
   k_ra8_gpt0_base_addr    = 0x40322000UL, /**< RA8 gpt0 base address.  */
   k_ra8_gpt_gtclk_addr    = 0x40323F10UL, /**< Shared GTCLK regs.      */
@@ -107,6 +109,7 @@ typedef struct {
 } r_gpt_channel_regs_t;
 
 /** @brief Get pointer to GPT channel N. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_gpt_channel_regs_t* ra8_gpt(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra8_gpt_channel_count) {

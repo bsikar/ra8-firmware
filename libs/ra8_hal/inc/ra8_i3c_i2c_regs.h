@@ -34,6 +34,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum ra8_i3c_i2c_addr_t
  * @brief Hardware base addresses for the I3C / IIC_B block.
@@ -378,6 +380,7 @@ typedef enum : uint32_t {
  *
  * @see HUM Ch 40.2 "I3C Bus Interface Register Descriptions", p 2452.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_i3c_i2c_regs_t* i3c_i2c_regs(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra8_i3c_i2c_channel_count) {

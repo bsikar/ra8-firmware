@@ -37,6 +37,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum ra8_dac_b_addr_t
  * @brief Memory-mapped base addresses for DAC_B0 / DAC_B1.
@@ -147,6 +149,7 @@ typedef struct {
  * @return Volatile pointer to the DAC_B register window, or
  *         ``nullptr`` if instance is out of range.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_dac_b_regs_t* ra8_dac_b(uint8_t instance)
 {
   if ((uint16_t)instance >= k_ra8_dac_b_channel_count) {

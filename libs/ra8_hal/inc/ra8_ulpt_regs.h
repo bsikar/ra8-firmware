@@ -38,6 +38,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum ra8_ulpt_addr_t
  * @brief Memory-mapped base addresses for ULPT.
@@ -99,6 +101,7 @@ typedef struct {
  * @param[in] channel Channel index (0..1).
  * @return Volatile pointer, or `nullptr` if `channel` is out of range.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_ulpt_regs_t* ra8_ulpt(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra8_ulpt_channel_count) {

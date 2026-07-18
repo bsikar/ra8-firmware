@@ -68,6 +68,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /* =============================================================================
  * Base addresses + layout
  * =============================================================================
@@ -174,6 +176,7 @@ typedef struct {
  * @pre Caller has verified the SCI module's MSTP gate is open.
  * @post No side effects; pointer arithmetic only.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_sci_regs_t* ra8_sci(uint8_t channel)
 {
   if (channel > k_ra8_sci_channel_max) {

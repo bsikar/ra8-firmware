@@ -55,6 +55,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum ra8_spi_addr_t
  * @brief SPI_B register-window base addresses (FSP R_SPI_B0_BASE / R_SPI_B1_BASE).
@@ -335,6 +337,7 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_spi_regs_t* ra8_spi(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra8_spi_primary_count) {

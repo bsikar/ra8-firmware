@@ -62,6 +62,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum ra8_pdg_addr_t
  * @brief Memory-mapped base addresses for the PDG block.
@@ -295,6 +297,7 @@ typedef struct {
  * @note Re-entrancy: returns the same pointer on every call.
  * @since 0.1.0
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_pdg_regs_t* ra8_pdg(void)
 {
   return (volatile r_pdg_regs_t*)k_ra8_pdg_base_addr;

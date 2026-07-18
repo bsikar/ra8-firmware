@@ -27,6 +27,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 typedef enum : uintptr_t {
   k_ra8_agt0_base_addr = 0x40221000UL, /**< RA8 agt0 base address. */
 } ra8_agt_addr_t;
@@ -151,6 +153,7 @@ typedef struct {
 } r_agt_regs_t;
 
 /** @brief Get pointer to AGT channel N. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_agt_regs_t* ra8_agt(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra8_agt_channel_count) {

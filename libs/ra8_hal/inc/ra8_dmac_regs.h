@@ -34,6 +34,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /* =============================================================================
  * Base addresses (DMAC0 + shared module-control bank)
  * =============================================================================
@@ -278,6 +280,7 @@ typedef enum : uint32_t {
  */
 
 /** @brief Pointer to DMAC channel `channel` (0..7), or NULL on error. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_dmac_channel_regs_t* ra8_dmac(uint8_t channel)
 {
   if (channel >= k_ra8_dmac_channel_count) {
@@ -289,6 +292,7 @@ static inline volatile r_dmac_channel_regs_t* ra8_dmac(uint8_t channel)
 }
 
 /** @brief Pointer to the shared DMA module-control bank. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_dma_shared_regs_t* ra8_dma_shared(void)
 {
   return (volatile r_dma_shared_regs_t*)k_ra8_dma_base_addr;
