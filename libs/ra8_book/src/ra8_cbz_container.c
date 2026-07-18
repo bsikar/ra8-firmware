@@ -23,6 +23,7 @@
 
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 
 /** @brief Log tag for comic-container diagnostics. */
@@ -42,6 +43,7 @@ static const char* const s_tag_cbz = "ra8_cbz";
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static uint32_t s_le32(const uint8_t* p)
 {
   uint32_t v = 0U;
@@ -63,6 +65,7 @@ static uint32_t s_le32(const uint8_t* p)
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static uint16_t s_le16(const uint8_t* p)
 {
   uint16_t v = 0U;
@@ -92,6 +95,7 @@ static uint16_t s_le16(const uint8_t* p)
  * @note Thread-safe: pure read of an immutable table.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static void s_read_meta(const uint8_t* meta,
                         uint32_t       page,
                         uint16_t*      out_width,
@@ -131,6 +135,7 @@ static void s_read_meta(const uint8_t* meta,
  * @note Thread-safe: reads only @p hdr, writes only the outputs.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_parse_header(const uint8_t* hdr, uint32_t* out_pages, uint32_t* out_flags)
 {
   if (memcmp(hdr, "RCBZ", (size_t)k_ra8_cbz_magic_len) != 0) {
@@ -177,6 +182,7 @@ static ra8_err_t s_parse_header(const uint8_t* hdr, uint32_t* out_pages, uint32_
  * @note Thread-safe: reads only its arguments.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 s_check_offsets(const ra8_cbz_t* cbz, const uint64_t* offsets, uint64_t payload_len)
 {
@@ -224,6 +230,7 @@ s_check_offsets(const ra8_cbz_t* cbz, const uint64_t* offsets, uint64_t payload_
  * @note Thread-safe: reads only its arguments.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_check_meta(const uint8_t* meta, uint32_t page_count)
 {
   for (uint32_t i = 0U; i < page_count; ++i) { /* bound: validated page_count */
@@ -267,6 +274,7 @@ static ra8_err_t s_check_meta(const uint8_t* meta, uint32_t page_count)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_load_tables(ra8_cbz_t* cbz,
                                uint64_t   file_len,
                                uint64_t*  offsets_buf,
@@ -346,6 +354,7 @@ static ra8_err_t s_load_tables(ra8_cbz_t* cbz,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_open_body(ra8_cbz_t* cbz,
                              uint64_t   file_len,
                              uint64_t*  offsets_buf,
@@ -394,6 +403,7 @@ static ra8_err_t s_open_body(ra8_cbz_t* cbz,
  * @note Thread-safe: reads only its pointer arguments.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_open_reject_null(const ra8_cbz_t*    cbz,
                                     ra8_vsource_read_fn file_read,
                                     ra8_book_inflate_fn inflate,
@@ -507,6 +517,7 @@ ra8_err_t ra8_cbz_page_bind(const ra8_cbz_t* cbz, uint32_t page, ra8_cbz_page_t*
  * @note Not thread-safe: the staging buffer is reused across calls.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 s_stage_and_inflate_page(const ra8_cbz_t* cbz, uint32_t page, uint32_t raw_size, uint8_t* buf)
 {
