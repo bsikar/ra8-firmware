@@ -11,6 +11,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_poeg.h"
 
 #include <stdint.h>
@@ -393,6 +394,7 @@ ra8_err_t ra8_poeg_exit_stop(uint8_t group)
  * @note Not thread-safe; pair with NVIC masking.
  * @since 0.1.0
  */
+RA8_ISR_SAFE
 void ra8_poeg_dispatch(uint8_t group)
 {
   if (group >= (uint8_t)k_ra8_poeg_group_count) {

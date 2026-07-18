@@ -41,8 +41,6 @@ extern "C" {
 
 #include <stdint.h>
 
-#include "ra8_attributes.h"
-
 /**
  * @enum ra8_wdt_addr_t
  * @brief Base addresses of the WDT instances on RA8D2.
@@ -296,7 +294,6 @@ typedef struct {
  *
  * @see HUM Ch 27.1 "Overview" p 1256.
  */
-RA8_HW_REGISTER_ACCESS
 static inline volatile r_wdt_regs_t* ra8_wdt(void)
 {
   /* HUM Ch 27.1 "Overview" p 1256 */
@@ -315,7 +312,6 @@ static inline volatile r_wdt_regs_t* ra8_wdt(void)
  *
  * @see HUM Ch 27.1 "Overview" p 1256.
  */
-RA8_HW_REGISTER_ACCESS
 static inline volatile r_wdt_regs_t* ra8_wdt_for(ra8_wdt_instance_t which)
 {
   /* HUM Ch 27.1 "Overview" p 1256 */

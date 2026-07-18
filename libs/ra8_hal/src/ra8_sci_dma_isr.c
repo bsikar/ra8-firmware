@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_dma.h"
 #include "ra8_dmac.h"
@@ -121,6 +122,7 @@ ra8_err_t ra8_sci_read_dma(
 
 /* ---- ISR dispatch ----------------------------------------------------- */
 
+RA8_ISR_SAFE
 void ra8_sci_dispatch_txi(uint8_t channel)
 {
   if (channel > k_ra8_sci_channel_max_index) {
@@ -176,6 +178,7 @@ void ra8_sci_dispatch_txi(uint8_t channel)
   }
 }
 
+RA8_ISR_SAFE
 void ra8_sci_dispatch_rxi(uint8_t channel)
 {
   if (channel > k_ra8_sci_channel_max_index) {
@@ -215,6 +218,7 @@ void ra8_sci_dispatch_rxi(uint8_t channel)
   }
 }
 
+RA8_ISR_SAFE
 void ra8_sci_dispatch_eri(uint8_t channel)
 {
   if (channel > k_ra8_sci_channel_max_index) {

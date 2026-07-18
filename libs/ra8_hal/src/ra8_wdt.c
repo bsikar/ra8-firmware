@@ -53,6 +53,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_attributes.h"
 #include "ra8_wdt.h"
 
 #include <stdint.h>
@@ -560,6 +561,7 @@ uint8_t ra8_wdt_subscriber_count(void)
   return count;
 }
 
+RA8_ISR_SAFE
 void ra8_wdt_dispatch(void)
 {
   volatile r_wdt_regs_t* reg = ra8_wdt();

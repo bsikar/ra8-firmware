@@ -690,6 +690,7 @@ ra8_err_t ra8_pdg_attach_handler(ra8_pdg_event_fn_t fn, void* ctx)
   return k_ra8_ok;
 }
 
+RA8_ISR_SAFE
 void ra8_pdg_dispatch(void)
 {
   const ra8_pdg_event_fn_t fn  = s_pdg_event_fn;

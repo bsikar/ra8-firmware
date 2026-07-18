@@ -22,6 +22,7 @@
 #include <stdint.h>
 
 #include "ra8_agt_regs.h"
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -346,6 +347,7 @@ ra8_err_t ra8_agt_attach_handler(ra8_agt_event_fn_t fn, void* ctx)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_ISR_SAFE
 void ra8_agt_dispatch(uint8_t channel)
 {
   if (ra8_agt(channel) == nullptr) {
