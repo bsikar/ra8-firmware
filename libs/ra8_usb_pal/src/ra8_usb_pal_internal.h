@@ -17,6 +17,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+
 #include "ra8_attributes.h"
 
 /**
