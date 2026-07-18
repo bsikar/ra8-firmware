@@ -6,12 +6,13 @@
  * @file mdl_config.c
  * @brief Flat key=value site-descriptor parser (host stdio).
  */
-#include "ra8_attributes.h"
 #include "mdl_config.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "ra8_attributes.h"
 
 /** @brief Local parser limits. */
 typedef enum : uint16_t {
