@@ -38,6 +38,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_mipi_phy.h"
 
 /**
@@ -59,7 +60,7 @@
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
-void internal_mipi_phy_write_timing(const ra8_mipi_phy_timing_t* t);
+RA8_PRIV void internal_mipi_phy_write_timing(const ra8_mipi_phy_timing_t* t);
 
 /**
  * @brief Compute the PLL output frequency for a ``(mosc, pll)`` tuple.
@@ -85,4 +86,4 @@ void internal_mipi_phy_write_timing(const ra8_mipi_phy_timing_t* t);
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
-uint32_t internal_mipi_phy_compute_freq(const ra8_mipi_phy_pll_t* pll, uint8_t mosc_mhz);
+RA8_PRIV uint32_t internal_mipi_phy_compute_freq(const ra8_mipi_phy_pll_t* pll, uint8_t mosc_mhz);

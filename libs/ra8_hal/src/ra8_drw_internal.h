@@ -15,6 +15,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_drw.h"
 
 /**
@@ -161,7 +162,7 @@ void internal_program_rect_limiters(const ra8_drw_rect_t* rect);
  *
  * @since 0.1.0
  */
-bool ra8_drw_internal_rect_below_min(uint16_t min_dim, uint16_t width, uint16_t height);
+RA8_PRIV bool ra8_drw_internal_rect_below_min(uint16_t min_dim, uint16_t width, uint16_t height);
 
 /**
  * @brief Pure predicate for the "rect exceeds max dim" rejection.
@@ -195,10 +196,8 @@ bool ra8_drw_internal_rect_below_min(uint16_t min_dim, uint16_t width, uint16_t 
  *
  * @since 0.1.0
  */
-bool ra8_drw_internal_rect_above_max(uint16_t max_w,
-                                     uint16_t max_h,
-                                     uint16_t width,
-                                     uint16_t height);
+RA8_PRIV bool
+ra8_drw_internal_rect_above_max(uint16_t max_w, uint16_t max_h, uint16_t width, uint16_t height);
 
 /**
  * @brief Read the cached ORIGIN (framebuffer base) render-trigger value.
@@ -222,7 +221,7 @@ bool ra8_drw_internal_rect_above_max(uint16_t max_w,
  *       re-init.
  * @since 0.1.0
  */
-uint32_t ra8_drw_internal_origin(void);
+RA8_PRIV uint32_t ra8_drw_internal_origin(void);
 
 /**
  * @brief Write COLOR1 through the software shadow (write-only register).
@@ -244,7 +243,7 @@ uint32_t ra8_drw_internal_origin(void);
  * @note Not thread-safe; writes MMIO.
  * @since 0.1.0
  */
-void ra8_drw_internal_color1_write(uint32_t argb8888);
+RA8_PRIV void ra8_drw_internal_color1_write(uint32_t argb8888);
 
 #ifdef __cplusplus
 }

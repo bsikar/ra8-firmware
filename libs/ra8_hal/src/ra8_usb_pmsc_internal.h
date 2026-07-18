@@ -28,6 +28,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_usb.h"
 #include "ra8_usb_pmsc.h"
@@ -144,7 +145,7 @@ extern ra8_usb_pmsc_state_data_t s_usb_pmsc_state;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-void internal_zero_bytes(uint8_t* dst, uint32_t len);
+RA8_PRIV void internal_zero_bytes(uint8_t* dst, uint32_t len);
 
 /**
  * @brief Build the 36-byte SCSI INQUIRY response.
@@ -167,7 +168,7 @@ void internal_zero_bytes(uint8_t* dst, uint32_t len);
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-ra8_err_t internal_handle_inquiry(uint8_t* data_buf, uint32_t capacity, uint32_t* out_len);
+RA8_PRIV ra8_err_t internal_handle_inquiry(uint8_t* data_buf, uint32_t capacity, uint32_t* out_len);
 
 /**
  * @brief Build the 8-byte READ_CAPACITY(10) response.
@@ -189,7 +190,9 @@ ra8_err_t internal_handle_inquiry(uint8_t* data_buf, uint32_t capacity, uint32_t
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-ra8_err_t internal_handle_read_capacity(uint8_t* data_buf, uint32_t capacity, uint32_t* out_len);
+RA8_PRIV ra8_err_t internal_handle_read_capacity(uint8_t*  data_buf,
+                                                 uint32_t  capacity,
+                                                 uint32_t* out_len);
 
 /**
  * @brief Build the 18-byte REQUEST SENSE response.
@@ -212,7 +215,9 @@ ra8_err_t internal_handle_read_capacity(uint8_t* data_buf, uint32_t capacity, ui
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-ra8_err_t internal_handle_request_sense(uint8_t* data_buf, uint32_t capacity, uint32_t* out_len);
+RA8_PRIV ra8_err_t internal_handle_request_sense(uint8_t*  data_buf,
+                                                 uint32_t  capacity,
+                                                 uint32_t* out_len);
 
 /**
  * @brief Build the minimal 4-byte MODE SENSE(6) header response.
@@ -235,7 +240,9 @@ ra8_err_t internal_handle_request_sense(uint8_t* data_buf, uint32_t capacity, ui
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-ra8_err_t internal_handle_mode_sense(uint8_t* data_buf, uint32_t capacity, uint32_t* out_len);
+RA8_PRIV ra8_err_t internal_handle_mode_sense(uint8_t*  data_buf,
+                                              uint32_t  capacity,
+                                              uint32_t* out_len);
 
 /**
  * @brief Run a SCSI READ(10).
@@ -256,7 +263,7 @@ ra8_err_t internal_handle_mode_sense(uint8_t* data_buf, uint32_t capacity, uint3
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-ra8_err_t internal_handle_read10(uint8_t* data_buf, uint32_t capacity, uint32_t* out_len);
+RA8_PRIV ra8_err_t internal_handle_read10(uint8_t* data_buf, uint32_t capacity, uint32_t* out_len);
 
 /**
  * @brief Run a SCSI WRITE(10) -- the data buffer holds the
@@ -276,7 +283,7 @@ ra8_err_t internal_handle_read10(uint8_t* data_buf, uint32_t capacity, uint32_t*
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-ra8_err_t internal_handle_write10(const uint8_t* data_buf, uint32_t* out_len);
+RA8_PRIV ra8_err_t internal_handle_write10(const uint8_t* data_buf, uint32_t* out_len);
 
 #ifdef __cplusplus
 }

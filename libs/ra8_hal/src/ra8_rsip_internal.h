@@ -50,6 +50,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_rsip.h"
 
@@ -106,7 +107,7 @@ typedef enum : uint32_t {
  * @retval k_ra8_ok Operation completed successfully.
  * @retval other Non-zero error code from the underlying operation.
  */
-ra8_err_t internal_wait_bit(ra8_rsip_off_t offset, uint32_t mask);
+RA8_PRIV ra8_err_t internal_wait_bit(ra8_rsip_off_t offset, uint32_t mask);
 
 /**
  * @brief Wait for the HASH engine to raise DONE after the trailing block.
@@ -131,7 +132,7 @@ ra8_err_t internal_wait_bit(ra8_rsip_off_t offset, uint32_t mask);
  * @retval k_ra8_ok Operation completed successfully.
  * @retval other Non-zero error code from the underlying operation.
  */
-ra8_err_t internal_hash_wait_done(void);
+RA8_PRIV ra8_err_t internal_hash_wait_done(void);
 
 /**
  * @brief Pack 4 little-endian bytes into a uint32_t.
@@ -151,7 +152,7 @@ ra8_err_t internal_hash_wait_done(void);
  * @note Internal helper.
  * @since 0.1.0
  */
-uint32_t internal_pack_le(const uint8_t* p);
+RA8_PRIV uint32_t internal_pack_le(const uint8_t* p);
 
 /**
  * @brief Unpack a uint32_t into 4 little-endian bytes.
@@ -171,7 +172,7 @@ uint32_t internal_pack_le(const uint8_t* p);
  * @note Internal helper.
  * @since 0.1.0
  */
-void internal_unpack_le(uint32_t word, uint8_t* p);
+RA8_PRIV void internal_unpack_le(uint32_t word, uint8_t* p);
 
 /**
  * @brief Stream a variable-length byte buffer into a single fixed MMIO port.
@@ -198,7 +199,7 @@ void internal_unpack_le(uint32_t word, uint8_t* p);
  * @note Internal helper.
  * @since 0.1.0
  */
-void internal_push_bytes_to_port(ra8_rsip_off_t off, const uint8_t* in, uint32_t len);
+RA8_PRIV void internal_push_bytes_to_port(ra8_rsip_off_t off, const uint8_t* in, uint32_t len);
 
 /**
  * @brief Drive a single mailbox completion (DONE poll + ack).
@@ -225,7 +226,7 @@ void internal_push_bytes_to_port(ra8_rsip_off_t off, const uint8_t* in, uint32_t
  * @note Internal helper.
  * @since 0.1.0
  */
-ra8_err_t internal_complete(uint32_t done_mask);
+RA8_PRIV ra8_err_t internal_complete(uint32_t done_mask);
 
 /**
  * @brief Map an OEM opcode to the wrapped-key body word count.
@@ -248,7 +249,7 @@ ra8_err_t internal_complete(uint32_t done_mask);
  * @note Internal helper.
  * @since 0.1.0
  */
-uint32_t internal_handle_words_for(ra8_rsip_oem_cmd_t cmd);
+RA8_PRIV uint32_t internal_handle_words_for(ra8_rsip_oem_cmd_t cmd);
 
 /**
  * @brief Pick the AES algorithm byte that matches the wrapped key.
@@ -271,7 +272,7 @@ uint32_t internal_handle_words_for(ra8_rsip_oem_cmd_t cmd);
  * @note Internal helper.
  * @since 0.1.0
  */
-uint8_t internal_aes_alg_byte(uint32_t alg);
+RA8_PRIV uint8_t internal_aes_alg_byte(uint32_t alg);
 
 /**
  * @brief Push a 16-byte IV / nonce into 4 consecutive 32-bit lanes.
@@ -295,7 +296,7 @@ uint8_t internal_aes_alg_byte(uint32_t alg);
  * @note Internal helper.
  * @since 0.1.0
  */
-void internal_push_iv_lanes(ra8_rsip_off_t base, const uint8_t* iv);
+RA8_PRIV void internal_push_iv_lanes(ra8_rsip_off_t base, const uint8_t* iv);
 
 /**
  * @brief Stream a wrapped key body into the staging port.
@@ -318,7 +319,7 @@ void internal_push_iv_lanes(ra8_rsip_off_t base, const uint8_t* iv);
  * @note Internal helper.
  * @since 0.1.0
  */
-void internal_push_handle_body(const ra8_rsip_key_handle_t* handle);
+RA8_PRIV void internal_push_handle_body(const ra8_rsip_key_handle_t* handle);
 
 /**
  * @brief Stream a wrapped-key body into the engine input FIFO.
@@ -340,7 +341,7 @@ void internal_push_handle_body(const ra8_rsip_key_handle_t* handle);
  * @note Internal helper.
  * @since 0.1.0
  */
-void internal_load_handle(const ra8_rsip_key_handle_t* handle);
+RA8_PRIV void internal_load_handle(const ra8_rsip_key_handle_t* handle);
 
 #ifdef __cplusplus
 }
