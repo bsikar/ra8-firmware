@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_ceu_internal.h"
 #include "ra8_ceu_regs.h"
 #include "ra8_check.h"
@@ -148,6 +149,7 @@ static uint32_t s_ceu_dma_len;
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_wait_idle(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_ceu_reset_spin; i++) {
@@ -188,6 +190,7 @@ static ra8_err_t internal_wait_idle(void)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_is_aligned(const void* ptr)
 {
   if (ptr == nullptr) {
@@ -213,6 +216,7 @@ static bool internal_is_aligned(const void* ptr)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_validate_buffers(const ra8_ceu_buffers_t* bufs)
 {
   if (!internal_is_aligned(bufs->y_top)) {
@@ -256,6 +260,7 @@ static ra8_err_t internal_validate_buffers(const ra8_ceu_buffers_t* bufs)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_program_addresses(const ra8_ceu_buffers_t* bufs)
 {
   /* HUM Ch 60.2.13 "CDAYR : Capture Data Y Address Register" p 3656 */
@@ -466,6 +471,7 @@ ra8_err_t ra8_ceu_exit_stop(void)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_arm_capture(const ra8_ceu_buffers_t* bufs)
 {
   /* HUM Ch 60.2.23 "CSTSR : Capture Status Register" p 3672 -- a
@@ -578,6 +584,7 @@ ra8_err_t ra8_ceu_capture_disarm(void)
  * @pre Module has been initialized.
  * @post Side effects bounded to documented state.
  */
+RA8_INTERNAL
 static void internal_plane_b_mirror_from_a(void)
 {
   static const ra8_ceu_off_t s_plane_offsets[] = {
@@ -624,6 +631,7 @@ static void internal_plane_b_mirror_from_a(void)
  *
  * @post Side effects bounded to documented state.
  */
+RA8_INTERNAL
 static void internal_plane_b_apply_overrides(const ra8_ceu_buffers_t* bufs)
 {
   if (bufs->y_top != nullptr) {

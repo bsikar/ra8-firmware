@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_drw.h"
 #include "ra8_drw_internal.h"
@@ -158,6 +159,7 @@ static const char* s_tag = "DRW";
  * @post Caller-visible state matches the documented contract.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_program_line_limiters(const ra8_drw_line_t* line)
 {
   const int32_t dx  = line->x1 - line->x0;

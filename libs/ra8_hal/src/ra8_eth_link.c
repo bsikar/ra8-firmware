@@ -33,6 +33,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_eth.h"
@@ -111,6 +112,7 @@ volatile uint32_t g_ra8_eth_resync_duplex;
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_pick_negotiated_speed(uint16_t           anlpar,
                                            uint16_t           gbsr,
                                            ra8_rmac_lsc_t*    out_speed,
@@ -219,6 +221,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_wait_for_autoneg(ra8_rmac_port_t port)
 {
   uint16_t bmsr = 0U;
@@ -267,6 +270,7 @@ static void internal_wait_for_autoneg(ra8_rmac_port_t port)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_query_negotiated_speed(ra8_rmac_port_t    port,
                                                  ra8_rmac_lsc_t*    out_speed,
                                                  ra8_rmac_duplex_t* out_duplex)
@@ -320,6 +324,7 @@ static ra8_err_t internal_query_negotiated_speed(ra8_rmac_port_t    port,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 internal_program_mpic(ra8_rmac_port_t port, ra8_rmac_lsc_t speed, ra8_rmac_duplex_t duplex)
 {
@@ -379,6 +384,7 @@ internal_program_mpic(ra8_rmac_port_t port, ra8_rmac_lsc_t speed, ra8_rmac_duple
  * @note Not thread-safe; firmware drives this from a single thread.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_resync_mac_speed(ra8_rmac_port_t port, uint16_t bmcr)
 {
   (void)bmcr;
@@ -427,6 +433,7 @@ static ra8_err_t internal_resync_mac_speed(ra8_rmac_port_t port, uint16_t bmcr)
  *       the ethernet bring-up.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 internal_phy_read_link(ra8_rmac_port_t port, ra8_eth_link_t* out_status, uint16_t* out_bmcr)
 {

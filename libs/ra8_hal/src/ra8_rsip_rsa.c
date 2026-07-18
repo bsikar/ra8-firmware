@@ -35,6 +35,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -147,6 +148,7 @@ ra8_err_t ra8_rsip_rsa_verify(const ra8_rsip_key_handle_t* key,
  * @note Internal helper.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_rsa_modulus_bytes(ra8_rsip_rsa_size_t size)
 {
   switch (size) {
@@ -182,6 +184,7 @@ static uint32_t internal_rsa_modulus_bytes(ra8_rsip_rsa_size_t size)
  * @note Internal helper.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_rsa_pad_ok(ra8_rsip_rsa_pad_t pad)
 {
   switch (pad) {
@@ -219,6 +222,7 @@ static bool internal_rsa_pad_ok(ra8_rsip_rsa_pad_t pad)
  * @note Internal helper.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_rsa_size_pad_check(ra8_rsip_rsa_size_t size,
                                              ra8_rsip_rsa_pad_t  pad,
                                              uint32_t*           modulus_bytes_out)
@@ -266,6 +270,7 @@ static ra8_err_t internal_rsa_size_pad_check(ra8_rsip_rsa_size_t size,
  * @note Internal helper.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_rsa_dispatch(const ra8_rsip_key_handle_t* key,
                                        ra8_rsip_rsa_size_t          size,
                                        ra8_rsip_rsa_pad_t           pad,

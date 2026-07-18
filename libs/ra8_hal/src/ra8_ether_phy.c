@@ -22,6 +22,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -78,6 +79,7 @@ static ra8_ether_phy_internal_t s_state = {};
  * @note Not thread-safe; called from open under single-threaded init.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_reset_and_wait(void)
 {
   ra8_err_t err = s_state.io.write(s_state.io.ctx,

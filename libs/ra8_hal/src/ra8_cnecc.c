@@ -47,6 +47,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_cnecc_regs.h"
 #include "ra8_elc_regs.h"
@@ -184,6 +185,7 @@ typedef enum : uint16_t {
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_apply_instance(uint8_t instance, const ra8_cnecc_instance_cfg_t* cfg)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 447 */
@@ -270,6 +272,7 @@ static ra8_err_t internal_apply_instance(uint8_t instance, const ra8_cnecc_insta
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, uint32_t mask)
 {
   /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register", p 2868 */
@@ -758,6 +761,7 @@ typedef enum : uint8_t {
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_crc32(const uint8_t* data, uint32_t bytes)
 {
   uint32_t crc = (uint32_t)k_ra8_cnecc_crc_seed;

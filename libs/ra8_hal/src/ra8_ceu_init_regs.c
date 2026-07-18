@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_ceu.h"
 #include "ra8_ceu_internal.h"
 #include "ra8_ceu_regs.h"
@@ -43,6 +44,7 @@
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_pack_camcr(const ra8_ceu_config_t* cfg)
 {
   uint32_t camcr = 0U;
@@ -76,6 +78,7 @@ static uint32_t internal_pack_camcr(const ra8_ceu_config_t* cfg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_pack_capcr(const ra8_ceu_config_t* cfg)
 {
   uint32_t capcr = 0U;
@@ -104,6 +107,7 @@ static uint32_t internal_pack_capcr(const ra8_ceu_config_t* cfg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_pack_caifr(const ra8_ceu_config_t* cfg)
 {
   uint32_t caifr = 0U;
@@ -134,6 +138,7 @@ static uint32_t internal_pack_caifr(const ra8_ceu_config_t* cfg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_pack_cflcr(const ra8_ceu_config_t* cfg)
 {
   uint32_t cflcr = 0U;
@@ -165,6 +170,7 @@ static uint32_t internal_pack_cflcr(const ra8_ceu_config_t* cfg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_pack_cfszr(const ra8_ceu_config_t* cfg)
 {
   uint32_t cfszr = 0U;
@@ -192,6 +198,7 @@ static uint32_t internal_pack_cfszr(const ra8_ceu_config_t* cfg)
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_pack_cdocr(const ra8_ceu_config_t* cfg)
 {
   uint32_t cdocr = 0U;

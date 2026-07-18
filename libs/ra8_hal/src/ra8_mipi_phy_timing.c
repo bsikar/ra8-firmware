@@ -32,6 +32,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_mipi_phy.h"
 #include "ra8_mipi_phy_internal.h"
@@ -862,6 +863,7 @@ static const mipi_phy_table_row_t s_csi_table[] = {
  *        ``rate_max`` is >= the requested rate within a matching
  *        PCLKA bucket.
  */
+RA8_INTERNAL
 static const ra8_mipi_phy_timing_t* internal_mipi_phy_lookup_timing(const mipi_phy_table_row_t* tbl,
                                                                     uint32_t                    n,
                                                                     uint8_t  pclka,

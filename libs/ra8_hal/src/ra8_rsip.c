@@ -48,6 +48,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hw_err.h"
@@ -190,6 +191,7 @@ ra8_err_t internal_wait_bit(ra8_rsip_off_t offset, uint32_t mask)
  * @retval k_ra8_ok Operation completed successfully.
  * @retval other Non-zero error code from the underlying operation.
  */
+RA8_INTERNAL
 static ra8_err_t internal_run_bist(void)
 {
   volatile uint32_t* ctrl = ra8_rsip_reg32(k_ra8_rsip_off_ctrl);
@@ -215,6 +217,7 @@ static ra8_err_t internal_run_bist(void)
 #ifdef RA8_RSIP_HASH_HARDWARE /* retained RSIP HASH register model -- never compiled (see backend note above) */
 
 /* Stream the SHA-256 message body into the HASH input port -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static void internal_sha256_push_msg(const uint8_t* msg, uint32_t msg_len)
 {
   /* HUM Ch 52.2.3 "Hash Generator" p 3306 */
@@ -238,6 +241,7 @@ ra8_err_t internal_hash_wait_done(void)
 #ifdef RA8_RSIP_HASH_HARDWARE
 
 /* Read 8 SHA-256 digest words and ack the DONE bit -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static void internal_sha256_pull_digest(uint8_t* digest)
 {
   /* HUM Ch 52.2.3 "Hash Generator" p 3306 */
@@ -497,6 +501,7 @@ typedef enum : uint32_t {
 } ra8_rsip_sw_sha256_t;
 
 /* 32-bit right-rotate -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static inline uint32_t internal_sw_rotr(uint32_t x, uint32_t n)
 {
   return (x >> n) | (x << (k_ra8_rsip_sw_word_bits - n));
@@ -541,6 +546,7 @@ static const uint32_t s_sw_sha256_h0[k_ra8_rsip_sw_sha256_state_w] = {
 // clang-format on
 
 /* Build the 64-word SHA-256 message schedule from a 64-byte block -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static void internal_sw_sha256_schedule(uint32_t      w[k_ra8_rsip_sw_sha256_round_cnt],
                                         const uint8_t block[k_ra8_rsip_sha256_block])
 {
@@ -596,6 +602,7 @@ typedef enum : uint8_t {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_sw_sha256_rounds(uint32_t       s[k_ra8_rsip_sw_sha256_state_w],
                                       const uint32_t w[k_ra8_rsip_sw_sha256_round_cnt])
 {
@@ -640,6 +647,7 @@ static void internal_sw_sha256_rounds(uint32_t       s[k_ra8_rsip_sw_sha256_stat
 }
 
 /* Run a single 64-byte SHA-256 compression block -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static void internal_sw_sha256_compress(uint32_t      state[k_ra8_rsip_sw_sha256_state_w],
                                         const uint8_t block[k_ra8_rsip_sha256_block])
 {
@@ -657,6 +665,7 @@ static void internal_sw_sha256_compress(uint32_t      state[k_ra8_rsip_sw_sha256
 }
 
 /* Build the SHA-256 padding tail (0x80 + zeros + 64-bit length) -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static void internal_sw_sha256_pad(uint32_t       state[k_ra8_rsip_sw_sha256_state_w],
                                    const uint8_t* msg,
                                    uint32_t       msg_len,
@@ -692,6 +701,7 @@ static void internal_sw_sha256_pad(uint32_t       state[k_ra8_rsip_sw_sha256_sta
 }
 
 /* Emit a big-endian 32-byte SHA-256 digest from working state -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static void internal_sw_sha256_emit(const uint32_t state[k_ra8_rsip_sw_sha256_state_w],
                                     uint8_t*       digest)
 {
@@ -705,6 +715,7 @@ static void internal_sw_sha256_emit(const uint32_t state[k_ra8_rsip_sw_sha256_st
 }
 
 /* One-shot software SHA-256 over a contiguous buffer -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static void internal_sw_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
 {
   uint32_t state[k_ra8_rsip_sw_sha256_state_w];
@@ -725,6 +736,7 @@ static void internal_sw_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* di
 #endif /* RA8_RSIP_SOFTWARE_BACKEND */
 
 /* Compute SHA-256 of a buffer routed by the active backend -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static ra8_err_t internal_sha256_dispatch(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
 {
 #ifdef RA8_RSIP_SOFTWARE_BACKEND
@@ -785,6 +797,7 @@ ra8_err_t ra8_rsip_sha256_final(ra8_rsip_sha256_ctx_t* ctx, uint8_t* digest_out)
  */
 
 /* Build the 64-byte HMAC key block per RFC 2104 Section 2 -- see surrounding code and HUM citations. */
+RA8_INTERNAL
 static ra8_err_t
 internal_hmac_prep_key(const uint8_t* key, uint32_t key_len, uint8_t block[k_ra8_rsip_sha256_block])
 {
@@ -872,6 +885,7 @@ ra8_rsip_hmac_sha256_update(ra8_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* data
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
+RA8_INTERNAL
 static ra8_err_t internal_hmac_outer(const uint8_t key_block[k_ra8_rsip_sha256_block],
                                      const uint8_t inner[k_ra8_rsip_sha256_digest_bytes],
                                      uint8_t*      mac_out)

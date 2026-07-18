@@ -19,6 +19,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -107,6 +108,7 @@ static ra8_rmac_phy_internal_t s_state = {};
  * @note Pure validation helper; safe from any context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_open_validate(const ra8_rmac_phy_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -143,6 +145,7 @@ static ra8_err_t internal_open_validate(const ra8_rmac_phy_cfg_t* cfg)
  * @note Not thread-safe; called from open under IRQ-masked init.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_reset_and_wait(uint16_t poll_max)
 {
   ra8_err_t err = s_state.io.write(s_state.io.ctx,
@@ -185,6 +188,7 @@ static ra8_err_t internal_reset_and_wait(uint16_t poll_max)
  * @note Not thread-safe; called only from open().
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_program_advertise(void)
 {
   ra8_err_t err = s_state.io.write(s_state.io.ctx,
@@ -434,6 +438,7 @@ ra8_err_t ra8_rmac_phy_auto_negotiate_start(void)
  * @note Not thread-safe; called only from link_status_get.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_resolve_speed(ra8_rmac_phy_link_t* out)
 {
   ra8_err_t err = k_ra8_ok;

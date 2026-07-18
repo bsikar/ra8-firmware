@@ -31,6 +31,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_hal_internal.h"
@@ -165,6 +166,7 @@ ra8_err_t ra8_rmac_clear_status(ra8_rmac_port_t port,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_snapshot_pause_pfc(volatile r_rmac_regs_t* reg, ra8_rmac_stats_t* out)
 {
   out->pause_tx_manual = reg->MMPFTCT;
@@ -196,6 +198,7 @@ static void internal_snapshot_pause_pfc(volatile r_rmac_regs_t* reg, ra8_rmac_st
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_snapshot_rx(volatile r_rmac_regs_t* reg, ra8_rmac_stats_t* out)
 {
   out->rx_overflow        = reg->MROVFC;
@@ -238,6 +241,7 @@ static void internal_snapshot_rx(volatile r_rmac_regs_t* reg, ra8_rmac_stats_t* 
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_snapshot_tx(volatile r_rmac_regs_t* reg, ra8_rmac_stats_t* out)
 {
   out->tx_good_e        = reg->MTGFCE;
@@ -283,6 +287,7 @@ ra8_err_t ra8_rmac_read_stats(ra8_rmac_port_t port, ra8_rmac_stats_t* out)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static inline bool internal_phy_args_ok(ra8_rmac_port_t port, uint8_t phy_addr)
 {
   return internal_port_ok(port) && (phy_addr <= (uint8_t)k_ra8_rmac_phy_addr_max);
@@ -306,6 +311,7 @@ static inline bool internal_phy_args_ok(ra8_rmac_port_t port, uint8_t phy_addr)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_rmac_phy_speed_t internal_decode_anlpar(uint16_t anlpar)
 {
   if ((anlpar & (uint16_t)k_ra8_rmac_phy_anlpar_100_fd) != 0U) {

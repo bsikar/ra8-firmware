@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_glcdc.h"
@@ -76,6 +77,7 @@ typedef enum : uint8_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_write_lut(volatile ra8_glcdc_gam_t* gam, const uint16_t* gain)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_glcdc_gam_reg_count; i++) {
@@ -107,6 +109,7 @@ static void internal_write_lut(volatile ra8_glcdc_gam_t* gam, const uint16_t* ga
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_write_area(volatile ra8_glcdc_gam_t* gam, const uint16_t* threshold)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_glcdc_gam_reg_count; i++) {

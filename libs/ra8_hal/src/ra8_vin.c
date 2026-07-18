@@ -35,6 +35,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -177,6 +178,7 @@ typedef enum : uint16_t {
  * @note Pure function; safe from any context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_compose_mc(const ra8_vin_config_t* cfg)
 {
   /* HUM Ch 67.2.1 "MC: Main Control Register" p 3975 */
@@ -214,6 +216,7 @@ static uint32_t internal_compose_mc(const ra8_vin_config_t* cfg)
  * @note Inline helper, single-CPU.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_pulse_st(uint32_t mc_now)
 {
   /* HUM Ch 67.2.1 "MC: Main Control Register" p 3975
@@ -245,6 +248,7 @@ static void internal_pulse_st(uint32_t mc_now)
  * @note Inline helper.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
 {
   /* HUM Ch 67.2.1 "MC: Main Control Register" p 3975 */
@@ -583,6 +587,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
  * @note Inline helper.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void
 internal_yc_offsets(uint8_t channel, ra8_vin_off_t* off1, ra8_vin_off_t* off2, ra8_vin_off_t* off3)
 {
@@ -910,6 +915,7 @@ typedef enum : uint8_t {
 } ra8_vin_format_bpp_t;
 
 /* Resolve bytes-per-pixel for a given input format -- see implementation for details. */
+RA8_INTERNAL
 static uint8_t internal_format_bpp(ra8_vin_input_fmt_t format)
 {
   uint8_t bpp = k_ra8_vin_bpp_ycbcr422;

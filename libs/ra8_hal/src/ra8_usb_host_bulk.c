@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_usb.h"
@@ -73,6 +74,7 @@ typedef enum : uint32_t {
  * @note Bounded by ::k_ra8_usb_bulk_poll_limit (covers media access latency).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 internal_host_wait_pipe(volatile r_usb_regs_t* reg, volatile const uint16_t* sts, uint8_t pipe_num)
 {
@@ -143,6 +145,7 @@ ra8_err_t ra8_usb_host_set_target(ra8_usb_speed_t speed, uint8_t dev_addr)
  * @note Helper split out for the clang-tidy size/complexity gate.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 internal_host_pipe_args_ok(uint8_t pipe_num, uint8_t dev_addr, uint8_t ep_num, uint16_t max_packet)
 {
@@ -299,6 +302,7 @@ ra8_usb_host_bulk_out(ra8_usb_speed_t speed, uint8_t pipe_num, const uint8_t* da
  * @note Helper split out for the clang-tidy size/complexity gate.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_host_bulk_rx_packet(volatile r_usb_regs_t* reg,
                                               uint8_t                pipe_num,
                                               uint8_t*               dst,
@@ -382,6 +386,7 @@ static ra8_err_t internal_host_bulk_rx_packet(volatile r_usb_regs_t* reg,
  * @note Helper split out for the clang-tidy size/complexity gate.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_host_bulk_rx_loop(volatile r_usb_regs_t* reg,
                                             uint8_t                pipe_num,
                                             uint8_t*               buf,

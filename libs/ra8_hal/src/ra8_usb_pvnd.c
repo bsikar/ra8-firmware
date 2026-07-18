@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -70,6 +71,7 @@ static ra8_usb_pvnd_state_t s_state = {};
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t internal_bulk_max_packet(ra8_usb_speed_t speed)
 {
   return (speed == k_ra8_usb_speed_hs) ? k_ra8_pvnd_bulk_max_packet_hs
@@ -90,6 +92,7 @@ static uint16_t internal_bulk_max_packet(ra8_usb_speed_t speed)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_configure_pipes(ra8_usb_speed_t speed)
 {
   const uint16_t mp = internal_bulk_max_packet(speed);
@@ -123,6 +126,7 @@ static ra8_err_t internal_configure_pipes(ra8_usb_speed_t speed)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_reset_shadow(ra8_usb_speed_t speed)
 {
   s_state.speed           = speed;
@@ -149,6 +153,7 @@ static void internal_reset_shadow(ra8_usb_speed_t speed)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_is_vendor_envelope(uint8_t bm)
 {
   return (bm == k_ra8_pvnd_bm_vendor_dev_in) || (bm == k_ra8_pvnd_bm_vendor_dev_out) ||
