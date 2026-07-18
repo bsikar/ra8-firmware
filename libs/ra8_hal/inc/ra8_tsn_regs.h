@@ -46,6 +46,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 typedef enum : uintptr_t {
   k_ra8_tsn_ctrl_base_addr = 0x40235000UL, /**< TSN control block.   */
   k_ra8_tsn_cal_base_addr  = 0x02C1EDA0UL, /**< Factory calibration. */
@@ -133,6 +135,7 @@ typedef struct {
 } r_tsn_cal_regs_t;
 
 /** @brief Get pointer to the TSN control block (HUM Ch 55.2.1 p 3498). */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_tsn_ctrl_regs_t* ra8_tsn(void)
 {
   return (volatile r_tsn_ctrl_regs_t*)k_ra8_tsn_ctrl_base_addr;
@@ -146,12 +149,14 @@ static inline volatile r_tsn_ctrl_regs_t* ra8_tsn(void)
  *          targets as ``const`` even though the struct fields are
  *          plain ``volatile uint32_t`` so unit tests can poke them.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile const r_tsn_cal_regs_t* ra8_tsn_cal(void)
 {
   return (volatile const r_tsn_cal_regs_t*)k_ra8_tsn_cal_base_addr;
 }
 
 /** @brief Get pointer to the factory-programmed calibration word (TSCDR). */
+RA8_HW_REGISTER_ACCESS
 static inline volatile const uint32_t* ra8_tsn_tscdr(void)
 {
   return (volatile const uint32_t*)k_ra8_tsn_cal_base_addr;

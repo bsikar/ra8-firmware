@@ -43,6 +43,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 typedef enum : uintptr_t {
   k_ra8_glcdc_base_addr    = 0x40342000UL, /**< RA8 GLCDC base address.    */
   k_ra8_mipi_dsi_base_addr = 0x40346000UL, /**< RA8 mipi dsi base address. */
@@ -178,6 +180,7 @@ typedef enum : uint8_t {
  * @param[in] offset One of the `k_ra8_glcdc_off_*` values.
  * @return Volatile pointer to the register.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_glcdc_reg32(ra8_glcdc_block_off_t offset)
 {
   return (volatile uint32_t*)(k_ra8_glcdc_base_addr + (uint16_t)offset);
@@ -266,6 +269,7 @@ typedef enum : uint32_t {
  * @param[in] channel_idx 0 = Red, 1 = Green, 2 = Blue.
  * @return Volatile pointer to the channel's `ra8_glcdc_gam_t` register block.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile ra8_glcdc_gam_t* ra8_glcdc_gam_regs(uint8_t channel_idx)
 {
   static const uint16_t s_gam_base[3] = {

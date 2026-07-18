@@ -42,6 +42,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum ra8_cnecc_addr_t
  * @brief Memory-mapped base addresses for the two CNECC instances.
@@ -199,6 +201,7 @@ typedef struct {
  * @post Returned pointer is either ``nullptr`` or a stable address
  *       within the CNECC peripheral window.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_cnecc_regs_t* ra8_cnecc(uint8_t instance)
 {
   if ((uint16_t)instance >= k_ra8_cnecc_instance_count) {

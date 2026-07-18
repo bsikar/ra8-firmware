@@ -28,6 +28,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 typedef enum : uintptr_t {
   k_ra8_sdhi0_base_addr = 0x40252000UL, /**< RA8 sdhi0 base address. */
   k_ra8_sdhi1_base_addr = 0x40252400UL, /**< RA8 sdhi1 base address. */
@@ -286,6 +288,7 @@ typedef struct {
 } r_sdhi_regs_t;
 
 /** @brief Get pointer to SDHI instance N (0 or 1). */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_sdhi_regs_t* ra8_sdhi(uint8_t instance)
 {
   if (instance >= k_ra8_sdhi_instance_count) {

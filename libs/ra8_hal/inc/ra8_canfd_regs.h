@@ -54,6 +54,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /* =============================================================================
  * Base addresses
  * =============================================================================
@@ -335,6 +337,7 @@ typedef struct {
 } r_canfd_t;
 
 /** @brief Get pointer to CANFD instance N (0..1). */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_canfd_t* ra8_canfd(uint8_t channel)
 {
   if (channel >= k_ra8_canfd_instance_count) {

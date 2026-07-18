@@ -41,6 +41,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum ra8_ssie_addr_t
  * @brief Memory-mapped base addresses for SSIE channels.
@@ -305,6 +307,7 @@ typedef struct {
  * @return Volatile pointer to the channel register block, or
  *         ``nullptr`` if ``channel`` is out of range.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_ssie_regs_t* ra8_ssie(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra8_ssie_channel_count) {

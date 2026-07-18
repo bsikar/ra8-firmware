@@ -35,6 +35,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum ra8_acmphs_addr_t
  * @brief Memory-mapped base addresses for ACMPHS.
@@ -117,6 +119,7 @@ typedef struct {
  * @return Volatile pointer to the channel register block, or `nullptr`
  *         if `channel` is out of range.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_acmphs_regs_t* ra8_acmphs(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra8_acmphs_channel_count) {

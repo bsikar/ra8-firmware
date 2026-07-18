@@ -80,6 +80,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum ra8_drw_addr_t
  * @brief Memory-mapped base addresses for the DRW block.
@@ -619,6 +621,7 @@ typedef enum : uint8_t {
  * @note Access width is always 32 bits; sub-word writes are not
  *       supported by the DRW block.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_drw_reg32(ra8_drw_off_t off)
 {
   return (volatile uint32_t*)(k_ra8_drw_base_addr + (uintptr_t)(uint16_t)off);

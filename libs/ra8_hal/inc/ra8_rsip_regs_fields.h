@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_rsip_regs_offsets.h"
 
 #ifdef __cplusplus
@@ -477,6 +478,7 @@ typedef enum : uint16_t {
  * @param[in] offset One of the ``k_ra8_rsip_off_*`` values.
  * @return Volatile pointer to the register cell.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_rsip_reg32(ra8_rsip_off_t offset)
 {
   return (volatile uint32_t*)(k_ra8_rsip_base_addr + (uintptr_t)offset);

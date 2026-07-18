@@ -20,6 +20,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 typedef enum : uintptr_t {
   k_ra8_etha0_base_addr = 0x403CA000UL, /**< RA8 etha0 base address. */
   k_ra8_etha1_base_addr = 0x403CC000UL, /**< RA8 etha1 base address. */
@@ -68,18 +70,21 @@ typedef enum : uint32_t {
 } ra8_coma_bit_t;
 
 /** @brief Get pointer to the 32-bit COMA.RRC (Reset Configuration). */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_coma_rrc(void)
 {
   return (volatile uint32_t*)(k_ra8_coma_base_addr + (uintptr_t)k_ra8_coma_off_rrc);
 }
 
 /** @brief Get pointer to the 32-bit COMA.RCEC (Clock Enable Configuration). */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_coma_rcec(void)
 {
   return (volatile uint32_t*)(k_ra8_coma_base_addr + (uintptr_t)k_ra8_coma_off_rcec);
 }
 
 /** @brief Get pointer to the 32-bit COMA.CABPIRM (Buf-pool Init/Reset/Monitor). */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_coma_cabpirm(void)
 {
   return (volatile uint32_t*)(k_ra8_coma_base_addr + (uintptr_t)k_ra8_coma_off_cabpirm);
@@ -102,6 +107,7 @@ typedef struct {
 } r_eswm_regs_t;
 
 /** @brief Get pointer to the ESWM register block. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_eswm_regs_t* ra8_eswm(void)
 {
   return (volatile r_eswm_regs_t*)k_ra8_eswm_base_addr;
@@ -164,18 +170,21 @@ typedef enum : uint32_t {
 } ra8_eswm_miicr_field_t;
 
 /** @brief Get pointer to ESWM.MIIRR (32-bit). */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_eswm_miirr(void)
 {
   return (volatile uint32_t*)(k_ra8_eswm_base_addr + (uintptr_t)k_ra8_eswm_off_miirr);
 }
 
 /** @brief Get pointer to ESWM.MIICR0 (32-bit, RMAC port 0). */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_eswm_miicr0(void)
 {
   return (volatile uint32_t*)(k_ra8_eswm_base_addr + (uintptr_t)k_ra8_eswm_off_miicr0);
 }
 
 /** @brief Get pointer to ESWM.MIICR1 (32-bit, RMAC port 1). */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_eswm_miicr1(void)
 {
   return (volatile uint32_t*)(k_ra8_eswm_base_addr + (uintptr_t)k_ra8_eswm_off_miicr1);
@@ -200,6 +209,7 @@ typedef struct {
 } r_mfwd_regs_t;
 
 /** @brief Get pointer to the MFWD register block. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_mfwd_regs_t* ra8_mfwd(void)
 {
   return (volatile r_mfwd_regs_t*)k_ra8_mfwd_base_addr;
@@ -222,6 +232,7 @@ typedef struct {
 } r_coma_regs_t;
 
 /** @brief Get pointer to the COMA register block. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_coma_regs_t* ra8_coma(void)
 {
   /* COMA shares the MFWD window in the documented layout; if a
@@ -263,6 +274,7 @@ typedef struct {
 } r_gwca_regs_t;
 
 /** @brief Get pointer to the GWCA register block. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_gwca_regs_t* ra8_gwca(void)
 {
   return (volatile r_gwca_regs_t*)k_ra8_gwca0_base_addr;
@@ -443,6 +455,7 @@ typedef enum : uint32_t {
  * @return Volatile pointer to GWDCC[queue_index], or nullptr when
  *         the index is out of range.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_gwca_gwdcc(uint32_t queue_index)
 {
   enum : uint32_t { k_ra8_gwca_max_queues = 32U /**< RA8 gwca maximum queues. */ };
@@ -472,6 +485,7 @@ typedef struct {
 } r_gptp_regs_t;
 
 /** @brief Get pointer to the GPTP register block. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_gptp_regs_t* ra8_gptp(void)
 {
   return (volatile r_gptp_regs_t*)k_ra8_gptp_base_addr;
