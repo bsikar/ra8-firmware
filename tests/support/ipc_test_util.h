@@ -66,7 +66,7 @@ static volatile uint32_t s_ring_tail;
 /**
  * @brief Stub callback used by attach + dispatch tests.
  */
-static void stub_ipc_cb(void* ctx, uint8_t channel, uint32_t event_mask, uint32_t message)
+static inline void stub_ipc_cb(void* ctx, uint8_t channel, uint32_t event_mask, uint32_t message)
 {
   ++s_ipc_cb_count;
   s_ipc_cb_last_channel    = channel;
@@ -75,7 +75,7 @@ static void stub_ipc_cb(void* ctx, uint8_t channel, uint32_t event_mask, uint32_
   s_ipc_cb_last_ctx        = ctx;
 }
 
-static void stub_ipc_irq_cb(void* ctx, uint8_t channel, ra8_ipc_irq_event_id_t event_id)
+static inline void stub_ipc_irq_cb(void* ctx, uint8_t channel, ra8_ipc_irq_event_id_t event_id)
 {
   ++s_ipc_irq_cb_count;
   s_ipc_irq_cb_last_channel = channel;
@@ -83,7 +83,7 @@ static void stub_ipc_irq_cb(void* ctx, uint8_t channel, ra8_ipc_irq_event_id_t e
   s_ipc_irq_cb_last_ctx     = ctx;
 }
 
-static void stub_ipc_nmi_cb(void* ctx, uint8_t unit)
+static inline void stub_ipc_nmi_cb(void* ctx, uint8_t unit)
 {
   ++s_ipc_nmi_cb_count;
   s_ipc_nmi_cb_last_unit = unit;
@@ -93,7 +93,7 @@ static void stub_ipc_nmi_cb(void* ctx, uint8_t unit)
 /**
  * @brief Reset the sim mmap, the MMIO seam, and the callback counters.
  */
-static void prep(void)
+static inline void prep(void)
 {
   ra8_sim_mmap_reset();
   ra8_sim_mmio_reset();
@@ -120,7 +120,7 @@ static void prep(void)
   (void)ra8_ipc_attach_nmi_handler(nullptr, nullptr);
 }
 
-static ra8_ipc_config_t make_cfg(uint8_t channel)
+static inline ra8_ipc_config_t make_cfg(uint8_t channel)
 {
   const ra8_ipc_config_t cfg = {
     .channel      = channel,

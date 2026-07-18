@@ -156,17 +156,17 @@ static void test_svgp_draw_line_points_mcdc(void)
 static void test_svgp_attr_at_start_mcdc(void)
 {
   TEST_BEGIN("ra8_svgp_attr: attribute-name-at-offset-0 guard");
-  size_t off = 0U;
-  size_t vl  = 0U;
+  size_t off     = 0U;
+  size_t val_len = 0U;
   /* V1: name at offset 0 -> at == 0 -> guard's C1 false -> accepted. */
   const char* v1 = "fill='#abc'";
-  TEST_ASSERT(ra8_svgp_attr((const uint8_t*)v1, strlen(v1), "fill", &off, &vl));
+  TEST_ASSERT(ra8_svgp_attr((const uint8_t*)v1, strlen(v1), "fill", &off, &val_len));
   /* V2: name preceded by whitespace -> at > 0, C2 false -> accepted. */
   const char* v2 = " fill='#abc'";
-  TEST_ASSERT(ra8_svgp_attr((const uint8_t*)v2, strlen(v2), "fill", &off, &vl));
+  TEST_ASSERT(ra8_svgp_attr((const uint8_t*)v2, strlen(v2), "fill", &off, &val_len));
   /* V3: name is a suffix of "xfill" -> at > 0, preceded by non-ws -> rejected. */
   const char* v3 = "xfill='#abc'";
-  TEST_ASSERT(!ra8_svgp_attr((const uint8_t*)v3, strlen(v3), "fill", &off, &vl));
+  TEST_ASSERT(!ra8_svgp_attr((const uint8_t*)v3, strlen(v3), "fill", &off, &val_len));
   TEST_END("ra8_svgp_attr: attribute-name-at-offset-0 guard");
 }
 

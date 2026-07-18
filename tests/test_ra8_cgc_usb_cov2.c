@@ -106,10 +106,10 @@ static void cov2_apply_srdy(volatile uint8_t* reg)
 {
   const uint8_t sreq = (uint8_t)(1U << k_ra8_usbckcr_bit_sreq);
   const uint8_t srdy = (uint8_t)(1U << k_ra8_usbckcr_bit_srdy);
-  if (s_srdy_mode == k_cov2_srdy_stuck_high) {
+  /* Either the stuck-high policy or an asserted SREQ makes the hardware
+   * present SRDY=1; both arms set the same bit, so they share one branch. */
+  if ((s_srdy_mode == k_cov2_srdy_stuck_high) || ((*reg & sreq) != 0U)) {
     *reg = (uint8_t)(*reg | srdy);
-  } else if ((*reg & sreq) != 0U) {
-    *reg = (uint8_t)(*reg | srdy); /* SREQ asserted -> hardware acks SRDY=1. */
   } else {
     *reg = (uint8_t)(*reg & (uint8_t)~srdy); /* SREQ cleared -> SRDY=0. */
   }

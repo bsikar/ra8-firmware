@@ -40,7 +40,7 @@ static void stub_msg_cb(void* ctx, ra8_ptp_msg_type_t type, uint64_t sec, uint32
 
 static ra8_ptp_cfg_t default_cfg(void)
 {
-  ra8_ptp_cfg_t cfg = {};
+  ra8_ptp_cfg_t cfg = {.clock_class = k_ra8_ptp_clock_class_default};
   cfg.domain        = (uint8_t)k_ra8_ptp_domain_default;
   cfg.sync_interval = k_ra8_ptp_sync_int_1;
   cfg.clock_class   = k_ra8_ptp_clock_class_default;

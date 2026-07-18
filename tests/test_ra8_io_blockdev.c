@@ -209,6 +209,11 @@ static void test_unbound_handle(void)
  */
 
 /** @brief Fake read: succeed without touching memory. */
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTNEXTLINE(readability-non-const-parameter)
 static ra8_err_t fk_read(void* c, uint32_t l, uint32_t n, uint8_t* b)
 {
   (void)c;

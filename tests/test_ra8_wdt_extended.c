@@ -806,6 +806,11 @@ static ra8_err_t stub_ofs_reader_ok(uintptr_t addr, uint32_t* out)
   return k_ra8_ok;
 }
 
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTNEXTLINE(readability-non-const-parameter)
 static ra8_err_t stub_ofs_reader_err(uintptr_t addr, uint32_t* out)
 {
   (void)addr;

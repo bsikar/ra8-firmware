@@ -93,7 +93,7 @@ static cov_mock_t s_mock = {};
  * @note Test-only helper.
  * @since 0.1.0
  */
-static void mock_reset(void)
+static inline void mock_reset(void)
 {
   memset(&s_mock, 0, sizeof(s_mock));
 }
@@ -107,7 +107,7 @@ static void mock_reset(void)
  * @note Test-only helper.
  * @since 0.1.0
  */
-static void mock_queue_byte(uint8_t b)
+static inline void mock_queue_byte(uint8_t b)
 {
   if (s_mock.rx_len < (uint32_t)k_cov_buf_bytes) {
     s_mock.rx_queue[s_mock.rx_len] = b;
@@ -124,7 +124,7 @@ static void mock_queue_byte(uint8_t b)
  * @note Test-only helper.
  * @since 0.1.0
  */
-static void mock_queue_idle(uint32_t count)
+static inline void mock_queue_idle(uint32_t count)
 {
   for (uint32_t i = 0U; i < count; i++) {
     mock_queue_byte((uint8_t)k_cov_idle_byte);
@@ -142,7 +142,7 @@ static void mock_queue_idle(uint32_t count)
  * @note Test-only helper.
  * @since 0.1.0
  */
-static ra8_err_t mock_set_clock(void* ctx, uint32_t hz)
+static inline ra8_err_t mock_set_clock(void* ctx, uint32_t hz)
 {
   (void)ctx;
   (void)hz;
@@ -161,7 +161,7 @@ static ra8_err_t mock_set_clock(void* ctx, uint32_t hz)
  * @note Test-only helper.
  * @since 0.1.0
  */
-static ra8_err_t mock_cs(void* ctx, bool asserted)
+static inline ra8_err_t mock_cs(void* ctx, bool asserted)
 {
   (void)ctx;
   (void)asserted;
@@ -188,7 +188,7 @@ static ra8_err_t mock_cs(void* ctx, bool asserted)
  * @note Test-only helper.
  * @since 0.1.0
  */
-static ra8_err_t mock_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
+static inline ra8_err_t mock_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
 {
   (void)ctx;
   (void)tx;
@@ -223,7 +223,7 @@ static ra8_err_t mock_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t l
  * @note Test-only helper.
  * @since 0.1.0
  */
-static ra8_err_t mock_xfer_no_nulltx(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
+static inline ra8_err_t mock_xfer_no_nulltx(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
 {
   if (tx == nullptr) {
     return k_ra8_err_not_supported;
@@ -251,7 +251,7 @@ static ra8_err_t mock_xfer_no_nulltx(void* ctx, const uint8_t* tx, uint8_t* rx, 
  * @note Test-only helper.
  * @since 0.1.0
  */
-static ra8_err_t smart_xfer_acmd41(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
+static inline ra8_err_t smart_xfer_acmd41(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
 {
   (void)ctx;
   if ((len == (uint32_t)k_cov_frame_bytes) && (tx != nullptr) &&
@@ -309,7 +309,7 @@ static const ra8_sdmmc_spi_transport_t s_tr_smart = {
  * @note Test-only helper.
  * @since 0.1.0
  */
-static void cov_bind(const ra8_sdmmc_spi_transport_t* tr)
+static inline void cov_bind(const ra8_sdmmc_spi_transport_t* tr)
 {
   (void)ra8_sdmmc_spi_deinit();
   mock_reset();
@@ -325,7 +325,7 @@ static void cov_bind(const ra8_sdmmc_spi_transport_t* tr)
  * @brief Queue one CS-bracketed command whose response is a single R1 byte.
  * @param[in] r1 R1 token the card returns.
  */
-static void q_cmd_r1(uint8_t r1)
+static inline void q_cmd_r1(uint8_t r1)
 {
   mock_queue_idle(1U);                          /* cs_assert post-byte.  */
   mock_queue_idle((uint32_t)k_cov_frame_bytes); /* frame shift.          */
@@ -338,7 +338,7 @@ static void q_cmd_r1(uint8_t r1)
  * @param[in] r1        R1 token the card returns.
  * @param[in] tail_word 32-bit R3/R7 tail (MSB first on the wire).
  */
-static void q_cmd_r3r7(uint8_t r1, uint32_t tail_word)
+static inline void q_cmd_r3r7(uint8_t r1, uint32_t tail_word)
 {
   mock_queue_idle(1U);
   mock_queue_idle((uint32_t)k_cov_frame_bytes);
@@ -354,7 +354,7 @@ static void q_cmd_r3r7(uint8_t r1, uint32_t tail_word)
  * @brief Populate a CSD v2 register reporting a 32 GiB SDHC card.
  * @param[out] out 16-byte CSD buffer.
  */
-static void build_csd_v2(uint8_t* out)
+static inline void build_csd_v2(uint8_t* out)
 {
   memset(out, 0, (size_t)k_ra8_sdmmc_spi_csd_response_len);
   out[0] = 0x40U; /* CSD_STRUCTURE = 1 (version bits 7:6 == 0b01). */
@@ -366,7 +366,7 @@ static void build_csd_v2(uint8_t* out)
  * @brief Queue the CMD9 CSD read (R1==0, data token, 16 CSD bytes, CRC16).
  * @param[in] csd 16-byte CSD payload to deliver.
  */
-static void q_csd(const uint8_t* csd)
+static inline void q_csd(const uint8_t* csd)
 {
   mock_queue_idle(1U);                          /* cs_assert post-byte. */
   mock_queue_idle((uint32_t)k_cov_frame_bytes); /* CMD9 frame.          */
@@ -389,7 +389,7 @@ static void q_csd(const uint8_t* csd)
  * R1 token sits immediately after its 6-byte frame so ``internal_read_r1``
  * resolves it in one xfer call, keeping downstream fault indices exact.
  */
-static void q_prefix_through_acmd41(void)
+static inline void q_prefix_through_acmd41(void)
 {
   mock_queue_idle((uint32_t)k_cov_wake_bytes);                   /* 80 wake clocks.           */
   q_cmd_r1((uint8_t)k_cov_r1_idle);                              /* CMD0 -> idle.             */
@@ -406,7 +406,7 @@ static void q_prefix_through_acmd41(void)
  * @brief Queue the prefix through the CMD58 OCR read.
  * @param[in] ocr OCR word the card returns (CCS bit selects SDHC vs SDSC).
  */
-static void q_prefix_through_ocr(uint32_t ocr)
+static inline void q_prefix_through_ocr(uint32_t ocr)
 {
   q_prefix_through_acmd41();
   q_cmd_r3r7((uint8_t)k_cov_r1_ready, ocr); /* CMD58 OCR. */

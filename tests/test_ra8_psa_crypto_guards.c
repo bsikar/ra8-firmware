@@ -135,9 +135,17 @@ static void test_mcdc_handle_valid_range_check(void)
   const uintptr_t in_pool = (uintptr_t)real;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_psa_key_destroy(real));
   /* V2: strictly below the pool base -> C1 (handle < base) true. */
+  /* ra8_psa_key_t is itself a pointer typedef, so `const` here qualifies the
+   * local handle -- which is exactly the intent: the handle never changes.
+   * There is no pointee to qualify; the key material is owned by the pool. */
+  // NOLINTNEXTLINE(misc-misplaced-const)
   const ra8_psa_key_t below = (ra8_psa_key_t)(in_pool - (uintptr_t)k_psa_pool_far_span);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_psa_key_destroy(below));
   /* V3: at/above the pool end -> C1 false, C2 (handle >= end) true. */
+  /* ra8_psa_key_t is itself a pointer typedef, so `const` here qualifies the
+   * local handle -- which is exactly the intent: the handle never changes.
+   * There is no pointee to qualify; the key material is owned by the pool. */
+  // NOLINTNEXTLINE(misc-misplaced-const)
   const ra8_psa_key_t above = (ra8_psa_key_t)(in_pool + (uintptr_t)k_psa_pool_far_span);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_psa_key_destroy(above));
   teardown();

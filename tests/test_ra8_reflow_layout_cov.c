@@ -121,8 +121,14 @@ png_loader(void* ctx, const char* href, uint32_t href_len, const uint8_t** out, 
  * @param[out] out_len  Unused (left untouched).
  * @return k_ra8_err_not_found always.
  */
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTBEGIN(readability-non-const-parameter)
 static ra8_err_t
 fail_loader(void* ctx, const char* href, uint32_t href_len, const uint8_t** out, size_t* out_len)
+// NOLINTEND(readability-non-const-parameter)
 {
   (void)ctx;
   (void)href;

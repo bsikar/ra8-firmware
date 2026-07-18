@@ -82,6 +82,7 @@ typedef enum : uint8_t {
   k_ra8_mipi_dsi_dt_v_sync_end          = 0x11U, /**< Sync event: VSYNC end.      */
   k_ra8_mipi_dsi_dt_h_sync_start        = 0x21U, /**< Sync event: HSYNC start.    */
   k_ra8_mipi_dsi_dt_h_sync_end          = 0x31U, /**< Sync event: HSYNC end.      */
+  k_ra8_mipi_dsi_dt_none                = 0x00U, /**< Reserved DT: "no packet".   */
   k_ra8_mipi_dsi_dt_color_mode_off      = 0x02U, /**< CM Off command.             */
   k_ra8_mipi_dsi_dt_color_mode_on       = 0x12U, /**< CM On command.              */
   k_ra8_mipi_dsi_dt_shutdown_peripheral = 0x22U, /**< Shut down peripheral.       */

@@ -465,6 +465,10 @@ static void plbook_setup(plbook_t* b)
   memcpy(&b->strings[cur], "END", 4U);
   cur += 4U;
 
+  /* The fixture pool must still have room; this also consumes the final
+   * cursor value so the running offset is not a dead store. */
+  TEST_ASSERT(cur <= (uint32_t)sizeof(b->strings));
+
   b->chapters[0].root_node = 0U;
   b->nodes[0]              = (ra8_book_node_t){.kind         = k_ra8_book_node_element,
                                                .name_off     = s_div,

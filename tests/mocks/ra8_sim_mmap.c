@@ -58,6 +58,9 @@
  * @note Read-only address anchor; never dereferenced as data.
  * @since 0.1.0
  */
+/* The linker defines this symbol; its spelling is fixed by the toolchain,
+ * so the reserved-identifier rule cannot apply. */
+// NOLINTNEXTLINE(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp)
 extern char __executable_start[];
 
 /**
@@ -80,10 +83,10 @@ extern char __executable_start[];
  *       firmware, which does not compile this file.
  * @since 0.1.0
  */
-#if defined(__SANITIZE_ADDRESS__)
+#ifdef __SANITIZE_ADDRESS__
 /** @brief RA8 SIM UNDER ASAN. */
 #define RA8_SIM_UNDER_ASAN (1)
-#elif defined(__has_feature)
+#elifdef __has_feature
 #if __has_feature(address_sanitizer)
 /** @brief RA8 SIM UNDER ASAN. */
 #define RA8_SIM_UNDER_ASAN (1)
@@ -187,7 +190,7 @@ static uint8_t s_ra8_sim_mapped = 0U;
  */
 static bool ra8_sim_region_mappable(bool asan_shadow_gap)
 {
-#if defined(RA8_SIM_UNDER_ASAN)
+#ifdef RA8_SIM_UNDER_ASAN
   return !asan_shadow_gap;
 #else
   (void)asan_shadow_gap;
@@ -225,7 +228,7 @@ static void ra8_sim_mmap_check_overlap(uintptr_t image_lo, uintptr_t image_hi)
                     "clear of the backing windows (tests/CMakeLists.txt "
                     "-Ttext-segment pin)\n",
                     (unsigned long long)region.base,
-                    (unsigned long long)(region.base + region.size),
+                    (unsigned long long)region.base + (unsigned long long)region.size,
                     (unsigned long long)image_lo,
                     (unsigned long long)image_hi);
       abort();
@@ -259,7 +262,7 @@ static void ra8_sim_mmap_map_regions(void)
       (void)fprintf(stderr,
                     "ra8_sim_mmap: failed to map 0x%llx..0x%llx\n",
                     (unsigned long long)region.base,
-                    (unsigned long long)(region.base + region.size));
+                    (unsigned long long)region.base + (unsigned long long)region.size);
       abort();
     }
     (void)memset(p, 0, region.size);

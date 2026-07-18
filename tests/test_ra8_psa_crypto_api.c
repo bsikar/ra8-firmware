@@ -272,7 +272,11 @@ static void test_destroy_invalid_handle(void)
   prep_init();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_psa_key_destroy(nullptr));
   /* Pointer that doesn't lie inside the pool. */
-  uint8_t             fake  = 0U;
+  uint8_t fake = 0U;
+  /* ra8_psa_key_t is itself a pointer typedef, so `const` here qualifies the
+   * local handle -- which is exactly the intent: the handle never changes.
+   * There is no pointee to qualify; the key material is owned by the pool. */
+  // NOLINTNEXTLINE(misc-misplaced-const)
   const ra8_psa_key_t bogus = (ra8_psa_key_t)&fake;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_psa_key_destroy(bogus));
   teardown();

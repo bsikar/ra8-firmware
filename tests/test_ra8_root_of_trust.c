@@ -523,7 +523,7 @@ static void test_rot_helpers(void)
 
   /* trailer_after: valid -> points at body end. */
   const ra8_rot_trailer_t* at = ra8_rot_trailer_after(image, (uint32_t)k_test_rot_body_len);
-  TEST_ASSERT(at == (const ra8_rot_trailer_t*)(const void*)(image + k_test_rot_body_len));
+  TEST_ASSERT(at == (const ra8_rot_trailer_t*)(image + k_test_rot_body_len));
 
   /* trailer_after: NULL base / out-of-range length -> nullptr. */
   TEST_ASSERT(ra8_rot_trailer_after(nullptr, (uint32_t)k_test_rot_body_len) == nullptr);
@@ -590,13 +590,13 @@ static void test_rot_body_len_from_header(void)
    * place the trailer at base + body_len so trailer_after finds it. */
   build_signed_trailer(img,
                        (uint32_t)k_test_ns_body_len,
-                       (ra8_rot_trailer_t*)(void*)&img[k_test_ns_body_len]);
+                       (ra8_rot_trailer_t*)&img[k_test_ns_body_len]);
 
   /* V1 genuine: read body_len from the header, locate the trailer, verify. */
   const uint32_t len = read_u32_le(img, (uint32_t)k_test_ns_hdr_off + 4U);
   TEST_ASSERT_EQ(k_test_ns_body_len, len);
   const ra8_rot_trailer_t* trailer = ra8_rot_trailer_after(img, len);
-  TEST_ASSERT(trailer == (const ra8_rot_trailer_t*)(const void*)&img[k_test_ns_body_len]);
+  TEST_ASSERT(trailer == (const ra8_rot_trailer_t*)&img[k_test_ns_body_len]);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rot_verify_image(img, len, trailer));
 
   /* V2 tampered body: flip a body byte past the header -> digest mismatch. */

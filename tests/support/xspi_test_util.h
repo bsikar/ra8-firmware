@@ -63,7 +63,7 @@ typedef enum : uint32_t {
  * @note Test-only helper; not thread-safe.
  * @since 0.1.0
  */
-static void prep_flash(void)
+static inline void prep_flash(void)
 {
   ra8_sim_mmap_reset();
   ra8_sim_mmio_reset();

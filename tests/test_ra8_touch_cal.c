@@ -437,6 +437,23 @@ static void test_run_shim_error(void)
 }
 
 /**
+ * @brief Exact-equality comparison of two calibration matrices.
+ *
+ * @param[in] lhs First matrix.
+ * @param[in] rhs Second matrix.
+ * @return true when all six coefficients compare equal.
+ *
+ * @pre @p lhs is non-null.
+ * @pre @p rhs is non-null.
+ * @post Neither operand is modified.
+ */
+static bool cal_matrix_equal(const ra8_touch_cal_matrix_t* lhs, const ra8_touch_cal_matrix_t* rhs)
+{
+  return (lhs->a == rhs->a) && (lhs->b == rhs->b) && (lhs->c == rhs->c) && (lhs->d == rhs->d) &&
+         (lhs->e == rhs->e) && (lhs->f == rhs->f);
+}
+
+/**
  * @brief Test 7 -- save/load round-trip is bit-identical and CRC-checked.
   *
   * @par MC/DC:
@@ -466,7 +483,15 @@ static void test_save_load_roundtrip(void)
 
   ra8_touch_cal_matrix_t out = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_cal_load(blob, sizeof(blob), &out));
-  TEST_ASSERT(memcmp(&in, &out, sizeof(in)) == 0);
+  /* Compare the six coefficients rather than the object representation: the
+   * struct is all float, so a memcmp would also compare any padding the ABI
+   * inserts and would treat -0.0 as different from 0.0. */
+  /* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+  // NOLINTBEGIN(readability-non-const-parameter)
+  TEST_ASSERT(cal_matrix_equal(&in, &out));
 
   /* Buffer too small. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_touch_cal_save(&in, blob, (size_t)k_tc_blob - 1U));
@@ -488,6 +513,7 @@ static void test_save_load_roundtrip(void)
   * code under test that this case touches)
  */
 static void test_load_corruption(void)
+// NOLINTEND(readability-non-const-parameter)
 {
   const ra8_touch_cal_matrix_t in = {
     .a = 1.0F,

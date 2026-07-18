@@ -103,7 +103,13 @@ static int prof_cmp(const void* a, const void* b)
 {
   const uint32_t la = ((const prof_sym_t*)a)->lo;
   const uint32_t lb = ((const prof_sym_t*)b)->lo;
-  return (la < lb) ? -1 : ((la > lb) ? 1 : 0);
+  if (la < lb) {
+    return -1;
+  }
+  if (la > lb) {
+    return 1;
+  }
+  return 0;
 }
 
 /** @brief Collect the STT_FUNC symbols of one SHT_SYMTAB section into s_prof. */

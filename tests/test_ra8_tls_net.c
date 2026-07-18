@@ -326,7 +326,7 @@ static void test_accessor_state_guards(void)
   /* Initialized + a pointer that is not inside the pool -> invalid_arg. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_global_init());
   uint8_t           bogus_storage[16] = {};
-  ra8_tls_session_t bogus             = (ra8_tls_session_t)(void*)bogus_storage;
+  ra8_tls_session_t bogus             = (ra8_tls_session_t)bogus_storage;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tls_get_cipher_suite(bogus, &id, name, sizeof(name)));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tls_get_verify_result(bogus, &flags));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_global_deinit());

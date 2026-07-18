@@ -291,12 +291,18 @@ static ra8_err_t mock_dispatch_corrupt(void*          ctx,
  * @post @p ctx / @p epub / @p out_buf are untouched.
  * @note Models the M33 stalling or faulting before completion.
  */
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTBEGIN(readability-non-const-parameter)
 static ra8_err_t mock_dispatch_error(void*          ctx,
                                      const uint8_t* epub,
                                      uint32_t       epub_len,
                                      uint8_t*       out_buf,
                                      uint32_t       out_cap,
                                      uint32_t*      out_len)
+// NOLINTEND(readability-non-const-parameter)
 {
   (void)ctx;
   (void)epub;
@@ -322,12 +328,18 @@ static ra8_err_t mock_dispatch_error(void*          ctx,
  * @post @p ctx / @p epub / @p out_buf are untouched.
  * @note Models the dispatched blob exceeding the cross-core transport buffer.
  */
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTBEGIN(readability-non-const-parameter)
 static ra8_err_t mock_dispatch_oom(void*          ctx,
                                    const uint8_t* epub,
                                    uint32_t       epub_len,
                                    uint8_t*       out_buf,
                                    uint32_t       out_cap,
                                    uint32_t*      out_len)
+// NOLINTEND(readability-non-const-parameter)
 {
   (void)ctx;
   (void)epub;
@@ -353,12 +365,18 @@ static ra8_err_t mock_dispatch_oom(void*          ctx,
  * @post @p ctx / @p epub / @p out_buf are untouched.
  * @note A code outside {hw_error, no_mem} the fallback classifier must reject.
  */
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTBEGIN(readability-non-const-parameter)
 static ra8_err_t mock_dispatch_other(void*          ctx,
                                      const uint8_t* epub,
                                      uint32_t       epub_len,
                                      uint8_t*       out_buf,
                                      uint32_t       out_cap,
                                      uint32_t*      out_len)
+// NOLINTEND(readability-non-const-parameter)
 {
   (void)ctx;
   (void)epub;

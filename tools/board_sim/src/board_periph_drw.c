@@ -86,14 +86,12 @@ static uint64_t drw_read(uc_engine* uc, uint64_t addr, unsigned size)
       /* HUM Ch 62.2.5 "STATUS: Status Control Register" p 3695. The engine is
        * modelled inert (issue #247): never busy, no latched IRQ or bus error, so
        * STATUS reads all-zero and ra8_drw_wait_idle succeeds on its first poll. */
-      return 0U;
     case (uint64_t)k_drw_off_hwrevision:
       /* HUM Ch 62.2.6 "HWREVISION: Hardware Revision Register" p 3696. On real
        * RA8D2 silicon the DRW HWREVISION reads 0 on both the Secure and
        * Non-Secure aliases (issue #247); the faithful model returns 0 too. The
        * driver only records this in a diagnostic global and never gates on a
        * non-zero stamp, so a zero revision preserves SIM == HIL. */
-      return 0U;
     default:
       /* Every other DRW register is write-only on silicon (HUM Ch 62.2) and the
        * driver never reads it back (CONTROL2 and COLOR1 are shadowed in

@@ -643,6 +643,10 @@ static void test_ra8_book_paged_block_break_overflow(void)
   memcpy(&s_b.strings[cur], "AB", 3U);
   cur += 3U;
 
+  /* The fixture pool must still have room; this also consumes the final
+   * cursor value so the running offset is not a dead store. */
+  TEST_ASSERT(cur <= (uint32_t)sizeof(s_b.strings));
+
   s_b.chapters[0].root_node = 0U;
   s_b.nodes[0]              = (ra8_book_node_t){.kind         = k_ra8_book_node_element,
                                                 .name_off     = s_span,
@@ -723,6 +727,10 @@ static void test_ra8_book_paged_long_tag_name(void)
   const uint32_t s_text = cur;
   memcpy(&s_b.strings[cur], "hi", 3U);
   cur += 3U;
+
+  /* The fixture pool must still have room; this also consumes the final
+   * cursor value so the running offset is not a dead store. */
+  TEST_ASSERT(cur <= (uint32_t)sizeof(s_b.strings));
 
   s_b.chapters[0].root_node = 0U;
   s_b.nodes[0]              = (ra8_book_node_t){.kind         = k_ra8_book_node_element,

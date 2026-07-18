@@ -162,6 +162,11 @@ static const ra8_fs_backend_t s_backend = {
  * ===========================================================================
  */
 
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTNEXTLINE(readability-non-const-parameter)
 static inline ra8_err_t always_fail_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
@@ -188,6 +193,11 @@ static inline ra8_err_t dummy_capacity_ok(void* ctx, uint32_t* block_count, uint
   return k_ra8_ok;
 }
 
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTNEXTLINE(readability-non-const-parameter)
 static inline ra8_err_t fail_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
   (void)ctx;

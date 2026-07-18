@@ -64,9 +64,10 @@ typedef void (*ra8_sdhi_event_fn_t)(void* ctx, uint8_t instance, uint32_t status
  * @see ra8_sdhi_set_bus_width_4bit()
  */
 typedef enum : uint8_t {
-  k_ra8_sdhi_bus_width_1bit = 1U, /**< Single data lane (power-on safe default). */
-  k_ra8_sdhi_bus_width_4bit = 4U, /**< Four data lanes (SD default-speed wide).  */
-  k_ra8_sdhi_bus_width_8bit = 8U, /**< Eight data lanes (eMMC only).             */
+  k_ra8_sdhi_bus_width_unset = 0U, /**< Unset: leave the bus at its power-on width. */
+  k_ra8_sdhi_bus_width_1bit  = 1U, /**< Single data lane (power-on safe default).   */
+  k_ra8_sdhi_bus_width_4bit  = 4U, /**< Four data lanes (SD default-speed wide).    */
+  k_ra8_sdhi_bus_width_8bit  = 8U, /**< Eight data lanes (eMMC only).               */
 } ra8_sdhi_bus_width_t;
 
 /**

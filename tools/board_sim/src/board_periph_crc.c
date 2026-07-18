@@ -194,7 +194,12 @@ static void crc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
     /* Fold each byte of the access LSB-first: a 32-bit word feed (CRC-32/32C)
      * delivers four bytes in the order ra8_crc's word packing produces, an
      * 8-bit feed (CRC-8/16/CCITT) delivers one. */
-    const unsigned n = (size > 4U) ? 4U : ((size == 0U) ? 1U : size);
+    unsigned n = size;
+    if (size > 4U) {
+      n = 4U;
+    } else if (size == 0U) {
+      n = 1U;
+    }
     for (unsigned i = 0U; i < n; i++) {
       crc_fold_byte((uint8_t)((value >> (8U * i)) & (uint32_t)k_byte_mask));
     }

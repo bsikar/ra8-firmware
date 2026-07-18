@@ -107,6 +107,11 @@ static ra8_err_t t_geom(void*     ctx,
 }
 
 /** @brief Geometry callback that rejects the image (budget hook). */
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTBEGIN(readability-non-const-parameter)
 static ra8_err_t t_geom_abort(void*     ctx,
                               uint16_t  width,
                               uint16_t  height,
@@ -114,6 +119,7 @@ static ra8_err_t t_geom_abort(void*     ctx,
                               uint16_t  stripe_rows,
                               uint8_t** out_stripe,
                               uint32_t* out_stripe_cap)
+// NOLINTEND(readability-non-const-parameter)
 {
   (void)ctx;
   (void)width;

@@ -46,6 +46,11 @@ static void cov_reset(void)
 }
 
 /** @brief Minimal valid 1-byte request descriptor for scaffolding tests. */
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTNEXTLINE(readability-non-const-parameter)
 static ra8_dma_request_t cov_make_req(uint8_t* src, uint8_t* dst)
 {
   ra8_dma_request_t r = {};

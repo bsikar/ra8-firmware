@@ -414,12 +414,12 @@ static void vmsc_fill_fat(uint32_t fat_sector, uint8_t* out)
     uint16_t       value = 0U;
     if (entry == 0U) {
       value = (uint16_t)k_vmsc_fat_entry0;
-    } else if (entry == 1U) {
+    } else if ((entry == 1U) || (entry == (uint32_t)k_vmsc_last_mram_clus)) {
+      /* Entry 1 is the reserved media/EOC marker and the last cluster ends the
+       * chain -- both hold the same EOC word. */
       value = (uint16_t)k_vmsc_fat_eoc;
     } else if (entry < (uint32_t)k_vmsc_last_mram_clus) {
       value = (uint16_t)(entry + 1U);
-    } else if (entry == (uint32_t)k_vmsc_last_mram_clus) {
-      value = (uint16_t)k_vmsc_fat_eoc;
     }
     vmsc_put16(&out[(size_t)j * 2U], value);
   }

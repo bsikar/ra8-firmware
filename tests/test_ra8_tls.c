@@ -249,7 +249,7 @@ static void test_session_close_invalid_handle(void)
 
   /* Pointer that is not inside the pool. */
   uint8_t           bogus_storage[16] = {};
-  ra8_tls_session_t bogus             = (ra8_tls_session_t)(void*)bogus_storage;
+  ra8_tls_session_t bogus             = (ra8_tls_session_t)bogus_storage;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tls_session_close(bogus));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_global_deinit());

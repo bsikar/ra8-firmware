@@ -601,6 +601,26 @@ void board_net_init(bool trace)
   (void)memset(s_fw_mac, 0, sizeof(s_fw_mac));
 }
 
+/**
+ * @brief One-word verdict for the TCP echo leg of the run report.
+ *
+ * @return "MATCH" when the echo came back byte-identical, "MISMATCH" when
+ *         bytes came back but differed, "pending" when none came back.
+ *
+ * @pre The TCP counters reflect the finished run.
+ * @post No state is modified.
+ */
+static const char* net_echo_state(void)
+{
+  if (s_tcp_match) {
+    return "MATCH";
+  }
+  if (s_tcp_echoed > 0U) {
+    return "MISMATCH";
+  }
+  return "pending";
+}
+
 void board_net_report(void)
 {
   if (s_state == (uint8_t)k_net_init) {
@@ -620,7 +640,7 @@ void board_net_report(void)
     (void)fprintf(stderr,
                   "  NET TCP       : port 7 %s; echo %s (%u byte(s))\n",
                   (s_state >= (uint8_t)k_net_estab) ? "established + data sent" : "SYN sent",
-                  s_tcp_match ? "MATCH" : ((s_tcp_echoed > 0U) ? "MISMATCH" : "pending"),
+                  net_echo_state(),
                   s_tcp_echoed);
   }
 }

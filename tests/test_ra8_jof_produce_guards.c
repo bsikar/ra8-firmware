@@ -246,15 +246,15 @@ static void test_guards_bump_take(void)
   ra8_jof_bump_t  bump = {.base = s_backing, .cap = sizeof(s_backing), .off = 0U};
 
   TEST_ASSERT(ra8_jof_priv_bump_take(&bump, 8U) != nullptr);
-  TEST_ASSERT_EQ((void*)nullptr, ra8_jof_priv_bump_take(nullptr, 8U));
-  TEST_ASSERT_EQ((void*)nullptr, ra8_jof_priv_bump_take(&bump, 0U));
+  TEST_ASSERT_NULL(ra8_jof_priv_bump_take(nullptr, 8U));
+  TEST_ASSERT_NULL(ra8_jof_priv_bump_take(&bump, 0U));
 
   /* Length overruns the remainder (aligned stays inside). */
-  TEST_ASSERT_EQ((void*)nullptr, ra8_jof_priv_bump_take(&bump, sizeof(s_backing)));
+  TEST_ASSERT_NULL(ra8_jof_priv_bump_take(&bump, sizeof(s_backing)));
 
   /* Alignment alone overruns a nearly-full arena. */
   ra8_jof_bump_t tight = {.base = s_backing, .cap = 7U, .off = 5U};
-  TEST_ASSERT_EQ((void*)nullptr, ra8_jof_priv_bump_take(&tight, 1U));
+  TEST_ASSERT_NULL(ra8_jof_priv_bump_take(&tight, 1U));
   TEST_END("produce guards: bump-carve argument + exhaustion arms");
 }
 

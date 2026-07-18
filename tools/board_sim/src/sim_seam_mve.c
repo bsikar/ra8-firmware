@@ -218,7 +218,7 @@ static void on_mve_vstrw(uc_engine* uc, uint64_t address, uint32_t size, void* u
   uint8_t buf[k_mve_q_bytes];
   (void)memcpy(buf, &lo, sizeof(lo));
   (void)memcpy(buf + sizeof(lo), &hi, sizeof(hi));
-  (void)uc_mem_write(uc, (uint64_t)(base + off), buf, (size_t)k_mve_q_bytes);
+  (void)uc_mem_write(uc, (uint64_t)base + (uint64_t)off, buf, (size_t)k_mve_q_bytes);
   const uint32_t next = (uint32_t)address + (uint32_t)k_mve_insn_len;
   (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
   s_mve_emulated++;
