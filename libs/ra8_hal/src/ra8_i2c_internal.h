@@ -16,6 +16,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_i2c.h"
 #include "ra8_i2c_regs.h"
 
@@ -49,6 +50,7 @@ extern "C" {
  *
  * @since 0.1.0
  */
+RA8_PRIV
 bool ra8_i2c_internal_clk_invalid(uint32_t bus_hz, uint32_t pclkb_hz);
 
 /**
@@ -155,6 +157,7 @@ extern ra8_i2c_state_t s_i2c_state[k_ra8_i2c_channel_count];
  *
  * @since 0.1.0
  */
+RA8_PRIV
 bool ra8_i2c_internal_peripheral_poll_done(uint8_t icsr1, uint8_t icsr2);
 
 /**
@@ -188,6 +191,7 @@ bool ra8_i2c_internal_peripheral_poll_done(uint8_t icsr1, uint8_t icsr2);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 bool ra8_i2c_internal_peripheral_rx_continue(uint8_t icsr2, uint32_t received, uint32_t capacity);
 
 /**
@@ -230,6 +234,7 @@ bool ra8_i2c_internal_peripheral_rx_continue(uint8_t icsr2, uint32_t received, u
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t ra8_i2c_internal_target_drain_rx(volatile r_i2c_regs_t* reg,
                                            uint8_t*               buf,
                                            uint32_t               capacity,
@@ -264,6 +269,7 @@ ra8_err_t ra8_i2c_internal_target_drain_rx(volatile r_i2c_regs_t* reg,
  *
  * @since 0.1.0
  */
+RA8_PRIV
 bool ra8_i2c_internal_peripheral_tx_done(uint8_t icsr2);
 
 /**
@@ -297,6 +303,7 @@ bool ra8_i2c_internal_peripheral_tx_done(uint8_t icsr2);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 bool ra8_i2c_internal_peripheral_tx_continue(uint8_t icsr2, uint32_t sent, uint32_t len);
 
 #ifdef __cplusplus

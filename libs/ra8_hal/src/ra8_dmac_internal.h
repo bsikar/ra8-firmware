@@ -21,6 +21,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @brief Pure predicate for the DMTMD-DTS "no repeat" decision.
  *
@@ -56,6 +58,7 @@ extern "C" {
  *
  * @since 0.1.0
  */
+RA8_PRIV
 bool ra8_dmac_internal_mode_disables_dts(uint32_t mode_normal_val,
                                          uint32_t mode_repeat_block_val,
                                          uint32_t mode);
@@ -91,6 +94,7 @@ bool ra8_dmac_internal_mode_disables_dts(uint32_t mode_normal_val,
  *
  * @since 0.1.0
  */
+RA8_PRIV
 bool ra8_dmac_internal_dmint_extra_irq(bool     irq_each,
                                        uint32_t mode_repeat_block_val,
                                        uint32_t mode);

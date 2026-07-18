@@ -15,6 +15,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_i3c_i2c.h"
 #include "ra8_i3c_i2c_regs.h"
@@ -80,6 +81,7 @@ extern ra8_i3c_i2c_state_t s_iic_b_state[k_ra8_i3c_i2c_channel_count];
  * @note Not thread-safe; serialise per channel.
  * @since 0.1.0
  */
+RA8_PRIV
 void internal_i3c_i2c_start(volatile r_i3c_i2c_regs_t* reg);
 
 /**
@@ -100,6 +102,7 @@ void internal_i3c_i2c_start(volatile r_i3c_i2c_regs_t* reg);
  * @note Not thread-safe; serialise per channel.
  * @since 0.1.0
  */
+RA8_PRIV
 void internal_i3c_i2c_stop(volatile r_i3c_i2c_regs_t* reg);
 
 /**
@@ -120,6 +123,7 @@ void internal_i3c_i2c_stop(volatile r_i3c_i2c_regs_t* reg);
  * @note Not thread-safe; serialise per channel.
  * @since 0.1.0
  */
+RA8_PRIV
 void internal_i3c_i2c_clear_bst(volatile r_i3c_i2c_regs_t* reg);
 
 /**
@@ -145,6 +149,7 @@ void internal_i3c_i2c_clear_bst(volatile r_i3c_i2c_regs_t* reg);
  * @note Not thread-safe; serialise per channel.
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t internal_i3c_i2c_send_address(volatile r_i3c_i2c_regs_t* reg, uint8_t address_byte);
 
 /**
@@ -177,6 +182,7 @@ ra8_err_t internal_i3c_i2c_send_address(volatile r_i3c_i2c_regs_t* reg, uint8_t 
  *
  * @since 0.1.0
  */
+RA8_PRIV
 bool internal_i3c_i2c_len_buf_invalid(uint32_t len, const void* buf);
 
 /**
@@ -212,6 +218,7 @@ bool internal_i3c_i2c_len_buf_invalid(uint32_t len, const void* buf);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 bool internal_i3c_i2c_should_dispatch(uint8_t mask, const void* cb);
 
 #ifdef __cplusplus

@@ -15,6 +15,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @brief Pure predicate: target_addr out of range OR max_len is zero.
  *
@@ -45,6 +47,7 @@ extern "C" {
  *
  * @since 0.1.0
  */
+RA8_PRIV
 bool ra8_i3c_internal_recv_ccc_invalid(uint8_t addr_mask, uint8_t target, uint8_t max_len);
 
 /**
@@ -79,6 +82,7 @@ bool ra8_i3c_internal_recv_ccc_invalid(uint8_t addr_mask, uint8_t target, uint8_
  *
  * @since 0.1.0
  */
+RA8_PRIV
 bool ra8_i3c_internal_hdr_mode_invalid(uint32_t sdr_val,
                                        uint32_t ddr_val,
                                        uint32_t ts_val,
