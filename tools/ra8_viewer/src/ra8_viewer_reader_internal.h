@@ -72,12 +72,12 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_vfmt_unsupported = 0, /**< Unrecognised extension.                 */
-  k_vfmt_comic       = 1, /**< Bare CBZ/CBR/CBT (ra8_comic).           */
-  k_vfmt_comic_wrap  = 2, /**< gzip/xz-wrapped comic (open_wrapped).   */
-  k_vfmt_epub        = 3, /**< EPUB (ra8_epub + ra8_reflow).           */
-  k_vfmt_rta1        = 4, /**< RTA1 atlas (ra8_longstrip).             */
-  k_vfmt_rabook      = 5, /**< RABOOK (ra8_book + ra8_reflow).         */
+  k_vfmt_unsupported = 0, /**< Unrecognised extension.               */
+  k_vfmt_comic       = 1, /**< Bare CBZ/CBR/CBT (ra8_comic).         */
+  k_vfmt_comic_wrap  = 2, /**< gzip/xz-wrapped comic (open_wrapped). */
+  k_vfmt_epub        = 3, /**< EPUB (ra8_epub + ra8_reflow).         */
+  k_vfmt_rta1        = 4, /**< RTA1 atlas (ra8_longstrip).           */
+  k_vfmt_rabook      = 5, /**< RABOOK (ra8_book + ra8_reflow).       */
 } viewer_fmt_t;
 
 /**

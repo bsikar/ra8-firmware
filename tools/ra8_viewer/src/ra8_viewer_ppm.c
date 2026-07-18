@@ -60,10 +60,10 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_ppm_channels = 3U, /**< Bytes per P6 pixel (R, G, B).      */
-  k_ppm_idx_r    = 0U, /**< Red byte index within a P6 pixel.  */
+  k_ppm_channels = 3U, /**< Bytes per P6 pixel (R, G, B).       */
+  k_ppm_idx_r    = 0U, /**< Red byte index within a P6 pixel.   */
   k_ppm_idx_g    = 1U, /**< Green byte index within a P6 pixel. */
-  k_ppm_idx_b    = 2U, /**< Blue byte index within a P6 pixel. */
+  k_ppm_idx_b    = 2U, /**< Blue byte index within a P6 pixel.  */
 } ra8_viewer_ppm_t;
 
 uint16_t ra8_viewer_pack565(uint8_t rr, uint8_t gg, uint8_t bb)
