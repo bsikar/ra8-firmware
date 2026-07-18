@@ -54,6 +54,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_i2c_bus_ops.h"
 
@@ -303,11 +304,11 @@ ra8_touch_read(ra8_touch_point_t* out_points, uint8_t max_count, uint8_t* got_co
  * @note Test-only; not compiled into firmware builds.
  * @since 0.1.0
  */
-[[nodiscard]] ra8_err_t ra8_touch_test_decode(const uint8_t*     raw,
-                                              uint8_t            n_points,
-                                              ra8_touch_point_t* out_points,
-                                              uint8_t            max_count,
-                                              uint8_t*           got_count);
+RA8_TEST_HELPER [[nodiscard]] ra8_err_t ra8_touch_test_decode(const uint8_t*     raw,
+                                                              uint8_t            n_points,
+                                                              ra8_touch_point_t* out_points,
+                                                              uint8_t            max_count,
+                                                              uint8_t*           got_count);
 #endif /* UNIT_TEST */
 
 #ifdef __cplusplus

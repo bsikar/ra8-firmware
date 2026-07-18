@@ -53,6 +53,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum ra8_ipc_addr_t
  * @brief Memory-mapped base addresses for the IPC block and the
@@ -388,6 +390,7 @@ typedef struct {
  * @return Volatile pointer to the channel block, or `nullptr` when
  *         `channel >= k_ra8_ipc_channel_count`.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_ipc_channel_regs_t* ra8_ipc_channel(uint8_t channel)
 {
   if ((uint16_t)channel >= (uint16_t)k_ra8_ipc_channel_count) {
@@ -409,6 +412,7 @@ static inline volatile r_ipc_channel_regs_t* ra8_ipc_channel(uint8_t channel)
  * @return Volatile pointer to the NMI block, or `nullptr` when
  *         `unit >= k_ra8_ipc_nmi_unit_count`.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_ipc_nmi_regs_t* ra8_ipc_nmi(uint8_t unit)
 {
   if ((uint16_t)unit >= (uint16_t)k_ra8_ipc_nmi_unit_count) {
@@ -425,6 +429,7 @@ static inline volatile r_ipc_nmi_regs_t* ra8_ipc_nmi(uint8_t unit)
  * @brief Get a pointer to the IPCSAR Security Attribution register.
  * @return Volatile pointer to the 32-bit IPCSAR.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_ipc_ipcsar(void)
 {
   /* HUM Ch 3.2.1 "IPCSAR" p 205 */
@@ -435,6 +440,7 @@ static inline volatile uint32_t* ra8_ipc_ipcsar(void)
  * @brief Get a pointer to the IPCPAR Privileged Attribution register.
  * @return Volatile pointer to the 32-bit IPCPAR.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_ipc_ipcpar(void)
 {
   /* HUM Ch 3.2.2 "IPCPAR" p 208 */
@@ -448,6 +454,7 @@ static inline volatile uint32_t* ra8_ipc_ipcpar(void)
  * @return Volatile pointer to the semaphore register, or `nullptr`
  *         when `sem_id >= k_ra8_ipc_sem_count`.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_ipc_sem(uint8_t sem_id)
 {
   if ((uint16_t)sem_id >= (uint16_t)k_ra8_ipc_sem_count) {
