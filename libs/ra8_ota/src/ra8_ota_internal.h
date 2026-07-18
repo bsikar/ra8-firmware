@@ -22,6 +22,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra8_err.h"
+#include "ra8_attributes.h"
 #include "ra8_ota.h"
 
 /**
@@ -54,6 +55,7 @@ extern "C" {
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t ra8_ota_internal_validate_cfg(const ra8_ota_cfg_t* cfg);
 
 /**
@@ -86,6 +88,7 @@ ra8_err_t ra8_ota_internal_validate_cfg(const ra8_ota_cfg_t* cfg);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t ra8_ota_internal_manifest_decode(const char* json, ra8_ota_manifest_t* out);
 
 /**
@@ -118,6 +121,7 @@ ra8_err_t ra8_ota_internal_manifest_decode(const char* json, ra8_ota_manifest_t*
  *
  * @since 0.1.0
  */
+RA8_PRIV
 ra8_err_t ra8_ota_internal_json_u32(const char* json, const char* key, uint32_t* out_v);
 
 /**
@@ -150,6 +154,7 @@ ra8_err_t ra8_ota_internal_json_u32(const char* json, const char* key, uint32_t*
  *
  * @since 0.1.0
  */
+RA8_PRIV
 bool ra8_ota_internal_char_in_range(char c, char lo, char hi);
 
 /**
@@ -181,6 +186,7 @@ bool ra8_ota_internal_char_in_range(char c, char lo, char hi);
  *
  * @since 0.1.0
  */
+RA8_PRIV
 bool ra8_ota_internal_download_state_invalid(uint32_t state_idle_val,
                                              uint32_t state_downloading_val,
                                              uint32_t state);
@@ -263,6 +269,7 @@ extern uint8_t s_ra8_ota_buf[k_ra8_ota_chunk_bytes];
  *       single owning context.
  * @since 0.1.0
  */
+RA8_PRIV
 void ra8_ota_internal_set_state(ra8_ota_state_t new_state, ra8_err_t err);
 
 #ifdef __cplusplus
