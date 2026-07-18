@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "fuzz_entry.h"
 #include "ra8_err.h"
 #include "ra8_rar.h"
 #include "ra8_rar5.h"

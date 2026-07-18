@@ -46,6 +46,7 @@
 
 extern const uint32_t g_ra8_vector_table_start[];
 
+#include "ra8_boot_entry.h"
 #include "ra8_boot_intrinsics.h"
 #include "ra8_cache.h"
 #include "trustzone_init.h"
@@ -467,7 +468,6 @@ enum : uint32_t {
  * runs on the stack and writes to CPU / SCB memory only.
  */
 
-void SystemInit(void);
 /* NOLINTNEXTLINE(readability-identifier-naming) -- CMSIS-mandated name. */
 void SystemInit(void)
 {
