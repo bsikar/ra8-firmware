@@ -35,43 +35,13 @@
  */
 
 #include "ble_hci_ra8_ble.h"
+#include "nimble_transport_stubs.h"
 
 #include <stdint.h>
 #include <string.h>
 
 #include "ra8_ble.h"
 #include "ra8_err.h"
-
-/* =============================================================================
- * Forward decls of NimBLE transport API
- * =============================================================================
- *
- * We avoid pulling in ``nimble/transport.h`` directly because that
- * header transitively requires the upstream syscfg / mbuf machinery
- * which the curated build does not enumerate. The contracts below
- * match upstream verbatim and are resolved at link time against the
- * `nimble` interface library.
- */
-
-struct os_mbuf;
-
-/* Inbound HCI event submission to the host side -- see implementation for details. */
-extern int ble_transport_to_hs_evt(void* buf);
-
-/* Inbound HCI ACL submission to the host side -- see implementation for details. */
-extern int ble_transport_to_hs_acl(struct os_mbuf* om);
-
-/** @brief Allocate a non-discardable HCI event buffer (host-side). */
-extern void* ble_transport_alloc_evt(int discardable);
-
-/** @brief Allocate a host-side ACL mbuf travelling LL -> HS. */
-extern struct os_mbuf* ble_transport_alloc_acl_from_ll(void);
-
-/* Append `len` bytes of `data` to the end of the mbuf chain -- see implementation for details. */
-extern int os_mbuf_append(struct os_mbuf* om, const void* data, uint16_t len);
-
-/* Free an mbuf chain -- see implementation for details. */
-extern int os_mbuf_free_chain(struct os_mbuf* om);
 
 /* =============================================================================
  * Adapter-private state
@@ -317,28 +287,6 @@ void ble_transport_ll_init(void)
   }
 }
 
-/**
- * @brief Forward a host-side HCI command to the controller.
- *
- * @details
- * Bluetooth Core 5.3 Vol 4 Part E 5.4.1 "HCI Command Packet":
- * ``[opcode_lo][opcode_hi][param_len][params...]``. NimBLE hands us
- * the buffer; we split out the opcode and forward the params to
- * ``ra8_ble_hci_send_command``. We always free the buffer on the way
- * out (success or fail) -- the buffer is owned by us once received.
- *
- * @param[in] buf NimBLE-allocated command buffer.
- *
- * @pre ``ble_hci_ra8_ble_init`` returned ``k_ra8_ok``.
- * @pre buf != NULL.
- * @post buf has been freed via ``ble_transport_free``.
- *
- * @since 0.1.0
- *
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
-extern void ble_transport_free(void* buf);
 
 /* Ble transport to ll cmd impl -- see implementation for details. */
 int ble_transport_to_ll_cmd_impl(void* buf)
@@ -357,33 +305,6 @@ int ble_transport_to_ll_cmd_impl(void* buf)
   return (err == k_ra8_ok) ? 0 : -1;
 }
 
-/**
- * @brief Forward a host-side HCI ACL frame to the controller.
- *
- * @details
- * Bluetooth Core 5.3 Vol 4 Part E 5.4.2 "HCI ACL Data Packet": NimBLE
- * holds the framed bytes inside an mbuf chain. We linearise the chain
- * into a stack buffer, peel off the 4-byte HCI header, and push the
- * payload through ``ra8_ble_hci_send_acl_data``. Mbuf is freed on the
- * way out regardless of success.
- *
- * @param[in] om NimBLE-allocated ACL mbuf chain.
- *
- * @return 0 on success, negative on failure.
- *
- * @pre ``ble_hci_ra8_ble_init`` returned ``k_ra8_ok``.
- * @pre om != NULL.
- * @post om has been freed via ``os_mbuf_free_chain``.
- *
- * @since 0.1.0
- *
- * @retval 0 Success or default value.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
-extern uint16_t os_mbuf_len(const struct os_mbuf* om);
-/* Os mbuf copydata -- see implementation for details. */
-extern int os_mbuf_copydata(const struct os_mbuf* om, int off, int len, void* dst);
 
 /* Ble transport to ll acl impl -- see implementation for details. */
 int ble_transport_to_ll_acl_impl(struct os_mbuf* om)

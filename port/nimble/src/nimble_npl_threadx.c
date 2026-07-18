@@ -33,6 +33,7 @@
  */
 
 #include "nimble_npl_threadx.h"
+#include "nimble_transport_stubs.h"
 
 #include <stdint.h>
 #include <string.h>
@@ -44,28 +45,6 @@
  * =============================================================================
  */
 
-/**
- * @enum ble_npl_error_t
- * @brief Mirrors ``enum ble_npl_error`` from upstream nimble_npl.h.
- *
- * @details We re-declare here so this TU compiles even when the
- * upstream header is unavailable (e.g. clang-tidy host walk).
- */
-typedef enum : uint32_t {
-  k_ble_npl_ok              = 0U, /**< BLE npl ok.                 */
-  k_ble_npl_enomem          = 1U, /**< BLE npl enomem.             */
-  k_ble_npl_einval          = 2U, /**< BLE npl einval.             */
-  k_ble_npl_invalid_param   = 3U, /**< BLE npl invalid param.      */
-  k_ble_npl_mem_not_aligned = 4U, /**< BLE npl memory not aligned. */
-  k_ble_npl_bad_mutex       = 5U, /**< BLE npl bad mutex.          */
-  k_ble_npl_timeout         = 6U, /**< BLE npl timeout.            */
-  k_ble_npl_err_in_isr      = 7U, /**< BLE npl error in ISR.       */
-  k_ble_npl_err_priv        = 8U, /**< BLE npl error priv.         */
-  k_ble_npl_os_not_started  = 9U, /**< BLE npl os not started.     */
-  k_ble_npl_enoent          = 10U, /**< BLE npl enoent. */
-  k_ble_npl_ebusy           = 11U, /**< BLE npl ebusy.  */
-  k_ble_npl_error           = 12U, /**< BLE npl error.  */
-} ble_npl_error_local_t;
 
 /* =============================================================================
  * Generic helpers
@@ -97,36 +76,36 @@ static ULONG priv_tmo_to_tx(ble_npl_time_t tmo)
  */
 
 /* Initialise an NPL mutex -- see implementation for details. */
-uint32_t ble_npl_mutex_init(struct ble_npl_mutex* mu)
+ble_npl_error_t ble_npl_mutex_init(struct ble_npl_mutex* mu)
 {
   if (mu == nullptr) {
-    return (uint32_t)k_ble_npl_invalid_param;
+    return BLE_NPL_INVALID_PARAM;
   }
   const UINT st = tx_mutex_create(&mu->handle, "npl_mu", TX_NO_INHERIT);
-  return (st == TX_SUCCESS) ? (uint32_t)k_ble_npl_ok : (uint32_t)k_ble_npl_error;
+  return (st == TX_SUCCESS) ? BLE_NPL_OK : BLE_NPL_ERROR;
 }
 
 /* Pend on an NPL mutex with timeout -- see implementation for details. */
-uint32_t ble_npl_mutex_pend(struct ble_npl_mutex* mu, ble_npl_time_t timeout)
+ble_npl_error_t ble_npl_mutex_pend(struct ble_npl_mutex* mu, ble_npl_time_t timeout)
 {
   if (mu == nullptr) {
-    return (uint32_t)k_ble_npl_invalid_param;
+    return BLE_NPL_INVALID_PARAM;
   }
   const UINT st = tx_mutex_get(&mu->handle, priv_tmo_to_tx(timeout));
   if (st == TX_SUCCESS) {
-    return (uint32_t)k_ble_npl_ok;
+    return BLE_NPL_OK;
   }
-  return (st == TX_NOT_AVAILABLE) ? (uint32_t)k_ble_npl_timeout : (uint32_t)k_ble_npl_error;
+  return (st == TX_NOT_AVAILABLE) ? BLE_NPL_TIMEOUT : BLE_NPL_ERROR;
 }
 
 /* Release an NPL mutex -- see implementation for details. */
-uint32_t ble_npl_mutex_release(struct ble_npl_mutex* mu)
+ble_npl_error_t ble_npl_mutex_release(struct ble_npl_mutex* mu)
 {
   if (mu == nullptr) {
-    return (uint32_t)k_ble_npl_invalid_param;
+    return BLE_NPL_INVALID_PARAM;
   }
   const UINT st = tx_mutex_put(&mu->handle);
-  return (st == TX_SUCCESS) ? (uint32_t)k_ble_npl_ok : (uint32_t)k_ble_npl_error;
+  return (st == TX_SUCCESS) ? BLE_NPL_OK : BLE_NPL_ERROR;
 }
 
 /* =============================================================================
@@ -135,36 +114,36 @@ uint32_t ble_npl_mutex_release(struct ble_npl_mutex* mu)
  */
 
 /* Initialise an NPL counting semaphore -- see implementation for details. */
-uint32_t ble_npl_sem_init(struct ble_npl_sem* sem, uint16_t tokens)
+ble_npl_error_t ble_npl_sem_init(struct ble_npl_sem* sem, uint16_t tokens)
 {
   if (sem == nullptr) {
-    return (uint32_t)k_ble_npl_invalid_param;
+    return BLE_NPL_INVALID_PARAM;
   }
   const UINT st = tx_semaphore_create(&sem->handle, "npl_sem", (ULONG)tokens);
-  return (st == TX_SUCCESS) ? (uint32_t)k_ble_npl_ok : (uint32_t)k_ble_npl_error;
+  return (st == TX_SUCCESS) ? BLE_NPL_OK : BLE_NPL_ERROR;
 }
 
 /* Pend on an NPL semaphore -- see implementation for details. */
-uint32_t ble_npl_sem_pend(struct ble_npl_sem* sem, ble_npl_time_t timeout)
+ble_npl_error_t ble_npl_sem_pend(struct ble_npl_sem* sem, ble_npl_time_t timeout)
 {
   if (sem == nullptr) {
-    return (uint32_t)k_ble_npl_invalid_param;
+    return BLE_NPL_INVALID_PARAM;
   }
   const UINT st = tx_semaphore_get(&sem->handle, priv_tmo_to_tx(timeout));
   if (st == TX_SUCCESS) {
-    return (uint32_t)k_ble_npl_ok;
+    return BLE_NPL_OK;
   }
-  return (st == TX_NO_INSTANCE) ? (uint32_t)k_ble_npl_timeout : (uint32_t)k_ble_npl_error;
+  return (st == TX_NO_INSTANCE) ? BLE_NPL_TIMEOUT : BLE_NPL_ERROR;
 }
 
 /* Release a token back into an NPL semaphore -- see implementation for details. */
-uint32_t ble_npl_sem_release(struct ble_npl_sem* sem)
+ble_npl_error_t ble_npl_sem_release(struct ble_npl_sem* sem)
 {
   if (sem == nullptr) {
-    return (uint32_t)k_ble_npl_invalid_param;
+    return BLE_NPL_INVALID_PARAM;
   }
   const UINT st = tx_semaphore_put(&sem->handle);
-  return (st == TX_SUCCESS) ? (uint32_t)k_ble_npl_ok : (uint32_t)k_ble_npl_error;
+  return (st == TX_SUCCESS) ? BLE_NPL_OK : BLE_NPL_ERROR;
 }
 
 /* Read the current token count of an NPL semaphore -- see implementation for details. */
@@ -267,9 +246,9 @@ void ble_npl_event_run(struct ble_npl_event* ev)
 }
 
 /* Test whether an event is currently queued -- see implementation for details. */
-uint8_t ble_npl_event_is_queued(struct ble_npl_event* ev)
+bool ble_npl_event_is_queued(struct ble_npl_event* ev)
 {
-  return (ev != nullptr && ev->queued != 0U) ? 1U : 0U;
+  return (ev != nullptr) && (ev->queued != 0U);
 }
 
 /**
@@ -297,17 +276,17 @@ void ble_npl_event_set_arg(struct ble_npl_event* ev, void* arg)
 }
 
 /* True when the event queue is empty -- see implementation for details. */
-uint8_t ble_npl_eventq_is_empty(struct ble_npl_eventq* evq)
+bool ble_npl_eventq_is_empty(struct ble_npl_eventq* evq)
 {
   if (evq == nullptr) {
-    return 1U;
+    return true;
   }
   ULONG enqueued = 0U;
   if (tx_queue_info_get(&evq->q, nullptr, &enqueued, nullptr, nullptr, nullptr, nullptr) !=
       TX_SUCCESS) {
-    return 1U;
+    return true;
   }
-  return (enqueued == 0U) ? 1U : 0U;
+  return enqueued == 0U;
 }
 
 /* =============================================================================
@@ -348,10 +327,10 @@ void ble_npl_callout_init(struct ble_npl_callout* co,
 }
 
 /* Arm the callout to fire ``ticks`` from now -- see implementation for details. */
-uint32_t ble_npl_callout_reset(struct ble_npl_callout* co, ble_npl_time_t ticks)
+ble_npl_error_t ble_npl_callout_reset(struct ble_npl_callout* co, ble_npl_time_t ticks)
 {
   if (co == nullptr) {
-    return (uint32_t)k_ble_npl_invalid_param;
+    return BLE_NPL_INVALID_PARAM;
   }
   if (ticks == 0U) {
     ticks = 1U;
@@ -359,7 +338,7 @@ uint32_t ble_npl_callout_reset(struct ble_npl_callout* co, ble_npl_time_t ticks)
   (void)tx_timer_deactivate(&co->handle);
   (void)tx_timer_change(&co->handle, (ULONG)ticks, 0U);
   const UINT st = tx_timer_activate(&co->handle);
-  return (st == TX_SUCCESS) ? (uint32_t)k_ble_npl_ok : (uint32_t)k_ble_npl_error;
+  return (st == TX_SUCCESS) ? BLE_NPL_OK : BLE_NPL_ERROR;
 }
 
 /* Stop the callout if it is armed -- see implementation for details. */
@@ -372,16 +351,16 @@ void ble_npl_callout_stop(struct ble_npl_callout* co)
 }
 
 /* Test whether the callout is armed -- see implementation for details. */
-uint8_t ble_npl_callout_is_active(struct ble_npl_callout* co)
+bool ble_npl_callout_is_active(struct ble_npl_callout* co)
 {
   if (co == nullptr) {
-    return 0U;
+    return false;
   }
   UINT active = 0U;
   if (tx_timer_info_get(&co->handle, nullptr, &active, nullptr, nullptr, nullptr) != TX_SUCCESS) {
-    return 0U;
+    return false;
   }
-  return (active != 0U) ? 1U : 0U;
+  return active != 0U;
 }
 
 /* Replace the callout's event arg pointer -- see implementation for details. */
@@ -404,24 +383,24 @@ ble_npl_time_t ble_npl_time_get(void)
 }
 
 /* Convert ms to NPL ticks (lossless when tick == 1 ms) -- see implementation for details. */
-uint32_t ble_npl_time_ms_to_ticks(uint32_t ms, ble_npl_time_t* out_ticks)
+ble_npl_error_t ble_npl_time_ms_to_ticks(uint32_t ms, ble_npl_time_t* out_ticks)
 {
   if (out_ticks == nullptr) {
-    return (uint32_t)k_ble_npl_invalid_param;
+    return BLE_NPL_INVALID_PARAM;
   }
   /* Project tick rate is 1000 Hz -> 1 tick == 1 ms. */
   *out_ticks = (ble_npl_time_t)ms;
-  return (uint32_t)k_ble_npl_ok;
+  return BLE_NPL_OK;
 }
 
 /* Convert NPL ticks to ms -- see implementation for details. */
-uint32_t ble_npl_time_ticks_to_ms(ble_npl_time_t ticks, uint32_t* out_ms)
+ble_npl_error_t ble_npl_time_ticks_to_ms(ble_npl_time_t ticks, uint32_t* out_ms)
 {
   if (out_ms == nullptr) {
-    return (uint32_t)k_ble_npl_invalid_param;
+    return BLE_NPL_INVALID_PARAM;
   }
   *out_ms = (uint32_t)ticks;
-  return (uint32_t)k_ble_npl_ok;
+  return BLE_NPL_OK;
 }
 
 /* Sleep for the given number of NPL ticks -- see implementation for details. */
@@ -465,9 +444,9 @@ void ble_npl_hw_exit_critical(uint32_t ctx)
  * @post State reflects operation result.
  * @note Not thread-safe unless documented otherwise.
  */
-uint8_t ble_npl_hw_is_in_critical(void)
+bool ble_npl_hw_is_in_critical(void)
 {
-  return 0U;
+  return false;
 }
 
 /* =============================================================================
@@ -556,55 +535,34 @@ void nimble_port_run(void)
  * symbols at link time (the linker prefers strong over weak).
  */
 
-/**
- * @brief Weak stub for the NimBLE event-buffer allocator.
- *
- * @param[in] discardable Unused (kept for ABI parity).
- *
- * @return Always NULL in the stub. Replaced by the real allocator
- * when the upstream transport TUs are linked in.
- *
- * @since 0.1.0
- */
 [[gnu::weak]] void* ble_transport_alloc_evt(int discardable)
 {
   (void)discardable;
   return nullptr;
 }
 
-/**
- * @brief Weak stub for the NimBLE LL->HS ACL allocator.
- *
- * @return Always NULL in the stub.
- *
- * @since 0.1.0
- */
 [[gnu::weak]] struct os_mbuf* ble_transport_alloc_acl_from_ll(void)
 {
-  return nullptr; /**< Nullptr. */
+  return nullptr;
 }
 
-/* Weak stub for the NimBLE event-buffer freer -- see implementation for details. */
 [[gnu::weak]] void ble_transport_free(void* buf)
 {
   (void)buf;
 }
 
-/* Weak stub for the NimBLE evt-uplink to host -- see implementation for details. */
 [[gnu::weak]] int ble_transport_to_hs_evt(void* buf)
 {
   (void)buf;
   return 0;
 }
 
-/* Weak stub for the NimBLE acl-uplink to host -- see implementation for details. */
 [[gnu::weak]] int ble_transport_to_hs_acl(struct os_mbuf* om)
 {
   (void)om;
   return 0;
 }
 
-/* Weak stub for ``os_mbuf_append`` -- see implementation for details. */
 [[gnu::weak]] int os_mbuf_append(struct os_mbuf* om, const void* data, uint16_t len)
 {
   (void)om;
@@ -613,21 +571,18 @@ void nimble_port_run(void)
   return 0;
 }
 
-/* Weak stub for ``os_mbuf_free_chain`` -- see implementation for details. */
 [[gnu::weak]] int os_mbuf_free_chain(struct os_mbuf* om)
 {
   (void)om;
   return 0;
 }
 
-/* Weak stub for ``os_mbuf_len`` -- see implementation for details. */
 [[gnu::weak]] uint16_t os_mbuf_len(const struct os_mbuf* om)
 {
   (void)om;
   return 0U;
 }
 
-/* Weak stub for ``os_mbuf_copydata`` -- see implementation for details. */
 [[gnu::weak]] int os_mbuf_copydata(const struct os_mbuf* om, int off, int len, void* dst)
 {
   (void)om;
@@ -637,36 +592,12 @@ void nimble_port_run(void)
   return 0;
 }
 
-/**
- * @brief Weak stub for the LL-side dispatcher entry points (host -> ll).
- *
- * @details
- * The upstream transport core wraps these in ``ble_transport_to_ll_*``
- * which call the ``*_impl`` symbols defined in ``ble_hci_ra8_ble.c``.
- * We provide weak ``to_ll_*`` aliases here so an app that bypasses
- * the upstream wrapper (e.g. a smoke test) can still link.
- *
- * @param[in,out] buf See function signature.
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- * @pre Module has been initialized.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
 [[gnu::weak]] int ble_transport_to_ll_cmd(void* buf)
 {
-  /* Ble transport to ll cmd impl -- see implementation for details. */
-  extern int ble_transport_to_ll_cmd_impl(void* buf);
   return ble_transport_to_ll_cmd_impl(buf);
 }
 
-/* Ble transport to ll acl -- see implementation for details. */
 [[gnu::weak]] int ble_transport_to_ll_acl(struct os_mbuf* om)
 {
-  /* Ble transport to ll acl impl -- see implementation for details. */
-  extern int ble_transport_to_ll_acl_impl(struct os_mbuf * om);
   return ble_transport_to_ll_acl_impl(om);
 }
