@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io_blockdev.h"
@@ -50,6 +51,7 @@ static const char* const s_tag = "ra8_io_blockdev_cache";
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t cache_find(const ra8_io_blockdev_cache_state_t* st, uint32_t lba)
 {
   for (uint32_t i = 0; i < st->n_slots; ++i) {
@@ -83,6 +85,7 @@ static uint32_t cache_find(const ra8_io_blockdev_cache_state_t* st, uint32_t lba
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t cache_pick_victim(const ra8_io_blockdev_cache_state_t* st)
 {
   uint32_t best = 0;
@@ -121,6 +124,7 @@ static uint32_t cache_pick_victim(const ra8_io_blockdev_cache_state_t* st)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t cache_read_block(ra8_io_blockdev_cache_state_t* st, uint32_t lba, uint8_t* dst)
 {
   st->clock++;
@@ -167,6 +171,7 @@ static ra8_err_t cache_read_block(ra8_io_blockdev_cache_state_t* st, uint32_t lb
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 cache_write_block(ra8_io_blockdev_cache_state_t* st, uint32_t lba, const uint8_t* src)
 {
@@ -208,6 +213,7 @@ cache_write_block(ra8_io_blockdev_cache_state_t* st, uint32_t lba, const uint8_t
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t cache_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -244,6 +250,7 @@ static ra8_err_t cache_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* bu
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t cache_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -282,6 +289,7 @@ static ra8_err_t cache_write(void* ctx, uint32_t lba, uint32_t count, const uint
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t cache_erase(void* ctx, uint32_t lba, uint32_t count)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -325,6 +333,7 @@ static ra8_err_t cache_erase(void* ctx, uint32_t lba, uint32_t count)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t cache_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -355,6 +364,7 @@ static ra8_err_t cache_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t cache_sync(void* ctx)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -395,6 +405,7 @@ static const ra8_io_blockdev_iface_t k_cache_iface = {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void cache_state_init(ra8_io_blockdev_cache_state_t* state,
                              const ra8_io_blockdev_t*       under,
                              uint8_t*                       data,
@@ -430,6 +441,7 @@ static void cache_state_init(ra8_io_blockdev_cache_state_t* state,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void cache_reset_slots(ra8_io_blockdev_cache_slot_t* slots, uint32_t n_slots)
 {
   for (uint32_t i = 0; i < n_slots; ++i) {

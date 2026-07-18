@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io_blockdev.h"
@@ -63,6 +64,7 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ram_bounds(const ra8_io_blockdev_ram_state_t* st, uint32_t lba, uint32_t count)
 {
   if (count > st->block_count) {
@@ -100,6 +102,7 @@ static ra8_err_t ram_bounds(const ra8_io_blockdev_ram_state_t* st, uint32_t lba,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ram_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -142,6 +145,7 @@ static ra8_err_t ram_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ram_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -186,6 +190,7 @@ static ra8_err_t ram_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ram_erase(void* ctx, uint32_t lba, uint32_t count)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -226,6 +231,7 @@ static ra8_err_t ram_erase(void* ctx, uint32_t lba, uint32_t count)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ram_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");

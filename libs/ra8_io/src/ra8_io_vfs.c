@@ -19,6 +19,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
@@ -62,6 +63,7 @@ static vfs_slot_t s_table[(uint32_t)k_ra8_io_vfs_max_mounts];
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_streq(const char* a, const char* b)
 {
   for (uint32_t i = 0; i < (uint32_t)k_ra8_io_vfs_name_max; ++i) {
@@ -96,6 +98,7 @@ static bool internal_streq(const char* a, const char* b)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_name_ok(const char* name)
 {
   uint32_t i = 0;
@@ -140,6 +143,7 @@ static bool internal_name_ok(const char* name)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_copy_name(char* dst, const char* src)
 {
   uint32_t i = 0;
@@ -168,6 +172,7 @@ static void internal_copy_name(char* dst, const char* src)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_fs_mount_t* internal_find(const char* name)
 {
   for (uint32_t i = 0; i < (uint32_t)k_ra8_io_vfs_max_mounts; ++i) {
@@ -204,6 +209,7 @@ static ra8_fs_mount_t* internal_find(const char* name)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_split(const char* path, char* out_name, const char** out_sub)
 {
   uint32_t i = 0;
@@ -249,6 +255,7 @@ static ra8_err_t internal_split(const char* path, char* out_name, const char** o
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 internal_resolve(const char* path, ra8_fs_mount_t** out_mount, const char** out_sub)
 {

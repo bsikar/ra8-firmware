@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io_stream_internal.h"
@@ -53,6 +54,7 @@ static const char* const s_tag = "ra8_io_stream_ram";
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ram_write(void* ctx, const uint8_t* buf, uint32_t len, uint32_t* out_written)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");

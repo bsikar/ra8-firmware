@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io_blockdev_ram.h"
@@ -59,6 +60,7 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t sdram_max_blocks(void)
 {
   return (uint32_t)k_ra8_sdram_size_bytes / (uint32_t)k_ra8_io_block_size_bytes;

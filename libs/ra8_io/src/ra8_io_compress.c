@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 
@@ -63,6 +64,7 @@ typedef struct {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static mz_bool compress_put(const void* buf, int len, void* user)
 {
   compress_ctx_t* c = (compress_ctx_t*)user;
@@ -104,6 +106,7 @@ static mz_bool compress_put(const void* buf, int len, void* user)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ra8_io_compress_validate(const uint8_t*  src,
                                           const uint8_t*  out,
                                           const void*     scratch,
@@ -147,6 +150,7 @@ static ra8_err_t ra8_io_compress_validate(const uint8_t*  src,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ra8_io_compress_drive(tdefl_compressor* d,
                                        compress_ctx_t*   ctx,
                                        const uint8_t*    src,
