@@ -17,6 +17,7 @@
  * decodes the layer, then re-probes the inner archive; xz is emitted with a
  * CRC32 check and a 1 MiB dictionary so the on-device xz scratch accepts it.
  */
+#include "ra8_attributes.h"
 #include "mdl_export.h"
 
 #include <crt_externs.h>
@@ -145,13 +146,13 @@ const char* mdl_format_ext(mdl_format_t fmt)
 }
 
 /** @brief qsort comparator over fixed-width name rows. */
-static int name_cmp(const void* a, const void* b)
+RA8_INTERNAL static int name_cmp(const void* a, const void* b)
 {
   return strcmp((const char*)a, (const char*)b);
 }
 
 /** @brief True if `name` ends (case-insensitively) with `suffix`. */
-static bool ends_with_ci(const char* name, const char* suffix)
+RA8_INTERNAL static bool ends_with_ci(const char* name, const char* suffix)
 {
   const size_t nl = strlen(name);
   const size_t sl = strlen(suffix);
@@ -176,7 +177,7 @@ static bool ends_with_ci(const char* name, const char* suffix)
  * non-image "page" (the 0x107 that bit re-runs). Filtering by extension keeps
  * packaging idempotent -- re-running any format on a folder is safe.
  */
-static bool is_page_image(const char* name)
+RA8_INTERNAL static bool is_page_image(const char* name)
 {
   static const char* const k_img_exts[] = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"};
   for (size_t i = 0U; i < (sizeof(k_img_exts) / sizeof(k_img_exts[0])); ++i) {
@@ -188,7 +189,7 @@ static bool is_page_image(const char* name)
 }
 
 /** @brief List a chapter's page-image files (only) into `names`, sorted. */
-static size_t list_pages(const char* dir, char names[][k_name_max], size_t cap)
+RA8_INTERNAL static size_t list_pages(const char* dir, char names[][k_name_max], size_t cap)
 {
   DIR* d = opendir(dir);
   if (d == nullptr) {
@@ -211,7 +212,7 @@ static size_t list_pages(const char* dir, char names[][k_name_max], size_t cap)
 }
 
 /** @brief Byte size of a file, or 0 on error. */
-static size_t file_size(const char* path)
+RA8_INTERNAL static size_t file_size(const char* path)
 {
   struct stat st = {};
   if (stat(path, &st) != 0) {
@@ -221,13 +222,13 @@ static size_t file_size(const char* path)
 }
 
 /** @brief Round `n` up to a whole tar block. */
-static size_t round_block(size_t n)
+RA8_INTERNAL static size_t round_block(size_t n)
 {
   return ((n + (size_t)k_tar_block - 1U) / (size_t)k_tar_block) * (size_t)k_tar_block;
 }
 
 /** @brief Write a ustar header for `name`/`size` into a zeroed 512-byte block. */
-static void tar_header(uint8_t* blk, const char* name, size_t size)
+RA8_INTERNAL static void tar_header(uint8_t* blk, const char* name, size_t size)
 {
   memset(blk, 0, k_tar_block);
   (void)snprintf((char*)blk + k_off_name, k_len_name, "%s", name);
@@ -250,7 +251,7 @@ static void tar_header(uint8_t* blk, const char* name, size_t size)
 }
 
 /** @brief Build a tar of `names` from `dir` into a freshly-malloc'd buffer. */
-static ra8_err_t build_tar(const char* dir,
+RA8_INTERNAL static ra8_err_t build_tar(const char* dir,
                            char        names[][k_name_max],
                            size_t      count,
                            uint8_t**   out_buf,
@@ -291,7 +292,7 @@ static ra8_err_t build_tar(const char* dir,
 }
 
 /** @brief Write `len` bytes of `buf` to `path`. */
-static ra8_err_t write_buf(const char* path, const uint8_t* buf, size_t len)
+RA8_INTERNAL static ra8_err_t write_buf(const char* path, const uint8_t* buf, size_t len)
 {
   FILE* f = fopen(path, "wb");
   if (f == nullptr) {
@@ -303,7 +304,7 @@ static ra8_err_t write_buf(const char* path, const uint8_t* buf, size_t len)
 }
 
 /** @brief Append a little-endian u32 to `f`. */
-static bool put_u32le(FILE* f, uint32_t v)
+RA8_INTERNAL static bool put_u32le(FILE* f, uint32_t v)
 {
   uint8_t b[k_u32_bytes] = {};
   for (size_t i = 0U; i < (size_t)k_u32_bytes; ++i) {
@@ -314,7 +315,7 @@ static bool put_u32le(FILE* f, uint32_t v)
 }
 
 /** @brief gzip `buf` to `path` using vendored miniz DEFLATE + RFC-1952 framing. */
-static ra8_err_t gzip_buf(const char* path, const uint8_t* buf, size_t len)
+RA8_INTERNAL static ra8_err_t gzip_buf(const char* path, const uint8_t* buf, size_t len)
 {
   size_t dfl_len = 0U;
   void*  dfl     = tdefl_compress_mem_to_heap(buf, len, &dfl_len, TDEFL_DEFAULT_MAX_PROBES);
@@ -338,7 +339,7 @@ static ra8_err_t gzip_buf(const char* path, const uint8_t* buf, size_t len)
 }
 
 /** @brief Write a CBZ (STORE ZIP) via the vendored miniz writer. */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 export_cbz(const char* dir, char names[][k_name_max], size_t count, const char* out_path)
 {
   mz_zip_archive zip;
@@ -360,7 +361,7 @@ export_cbz(const char* dir, char names[][k_name_max], size_t count, const char* 
 }
 
 /** @brief Build a tar then hand it to `compress` (gzip/xz) written to `out`. */
-static ra8_err_t export_tar_wrapped(const char* dir,
+RA8_INTERNAL static ra8_err_t export_tar_wrapped(const char* dir,
                                     char        names[][k_name_max],
                                     size_t      count,
                                     const char* out_path,
@@ -378,7 +379,7 @@ static ra8_err_t export_tar_wrapped(const char* dir,
 }
 
 /** @brief Spawn the proprietary `rar` tool for CBR (the sole external path). */
-static ra8_err_t export_cbr(const char* dir, const char* out_path)
+RA8_INTERNAL static ra8_err_t export_cbr(const char* dir, const char* out_path)
 {
   posix_spawn_file_actions_t actions;
   (void)posix_spawn_file_actions_init(&actions);
@@ -403,7 +404,7 @@ static ra8_err_t export_cbr(const char* dir, const char* out_path)
 }
 
 /** @brief Spawn `argv` with stdout redirected to `out_path`; wait for it. */
-static ra8_err_t run_to_file(const char* const argv[], const char* out_path)
+RA8_INTERNAL static ra8_err_t run_to_file(const char* const argv[], const char* out_path)
 {
   posix_spawn_file_actions_t actions;
   (void)posix_spawn_file_actions_init(&actions);
@@ -431,7 +432,7 @@ static ra8_err_t run_to_file(const char* const argv[], const char* out_path)
 }
 
 /** @brief Optional external xz: tar the folder, then `xz` it with reader-safe flags. */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 export_cbt_xz(const char* dir, char names[][k_name_max], size_t count, const char* out_path)
 {
   uint8_t*  tarbuf = nullptr;
@@ -473,7 +474,7 @@ static const char* const k_epub_container_xml =
   "media-type=\"application/oebps-package+xml\"/></rootfiles></container>";
 
 /** @brief Image media-type for a page filename extension. */
-static const char* epub_media_type(const char* name)
+RA8_INTERNAL static const char* epub_media_type(const char* name)
 {
   const char* dot = strrchr(name, '.');
   if (dot != nullptr) {
@@ -494,7 +495,7 @@ static const char* epub_media_type(const char* name)
 }
 
 /** @brief Append `text` to NUL-terminated `dst` if it fits (truncation-safe). */
-static void str_cat(char* dst, size_t cap, const char* text)
+RA8_INTERNAL static void str_cat(char* dst, size_t cap, const char* text)
 {
   const size_t cur = strlen(dst);
   if (cur + 1U < cap) {
@@ -503,13 +504,13 @@ static void str_cat(char* dst, size_t cap, const char* text)
 }
 
 /** @brief Add an in-memory string as a STORED zip entry. */
-static bool epub_add_str(mz_zip_archive* zip, const char* name, const char* body)
+RA8_INTERNAL static bool epub_add_str(mz_zip_archive* zip, const char* name, const char* body)
 {
   return mz_zip_writer_add_mem(zip, name, body, strlen(body), MZ_NO_COMPRESSION) != MZ_FALSE;
 }
 
 /** @brief Add one page's xhtml + image, and append its opf/spine/nav fragments. */
-static ra8_err_t epub_add_page(mz_zip_archive* zip,
+RA8_INTERNAL static ra8_err_t epub_add_page(mz_zip_archive* zip,
                                const char*     dir,
                                const char*     name,
                                size_t          idx,
@@ -560,7 +561,7 @@ static ra8_err_t epub_add_page(mz_zip_archive* zip,
 }
 
 /** @brief Build + add content.opf and nav.xhtml, then finalize the archive. */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 epub_add_meta(mz_zip_archive* zip, const char* mani, const char* spine, const char* nav)
 {
   const size_t opf_cap = strlen(mani) + strlen(spine) + (size_t)k_epub_base_bytes;
@@ -603,7 +604,7 @@ epub_add_meta(mz_zip_archive* zip, const char* mani, const char* spine, const ch
 }
 
 /** @brief Package `dir`'s pages into a valid EPUB3 at `out_path`. */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 export_epub(const char* dir, char names[][k_name_max], size_t count, const char* out_path)
 {
   const size_t cap   = (size_t)k_epub_base_bytes + (count * (size_t)k_epub_per_page_bytes);
@@ -657,14 +658,14 @@ typedef struct {
 } rta1_pull_ctx_t;
 
 /** @brief ra8_log byte sink -> stderr (host-safe; avoids the ITM MMIO read). */
-static void rta1_log_sink(void* ctx, uint8_t byte)
+RA8_INTERNAL static void rta1_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;
   (void)fputc((int)byte, stderr);
 }
 
 /** @brief Producer pull callback: hand over the next source bytes. */
-static ra8_err_t rta1_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+RA8_INTERNAL static ra8_err_t rta1_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
   rta1_pull_ctx_t* s = (rta1_pull_ctx_t*)ctx;
   size_t           n = s->len - s->pos;
@@ -678,13 +679,13 @@ static ra8_err_t rta1_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 }
 
 /** @brief Producer sink callback: append atlas bytes to an open file. */
-static ra8_err_t rta1_sink(void* ctx, const uint8_t* buf, size_t len)
+RA8_INTERNAL static ra8_err_t rta1_sink(void* ctx, const uint8_t* buf, size_t len)
 {
   return (fwrite(buf, 1U, len, (FILE*)ctx) == len) ? k_ra8_ok : k_ra8_fail;
 }
 
 /** @brief Read a whole file into a malloc'd buffer. */
-static ra8_err_t slurp(const char* path, uint8_t** out_buf, size_t* out_len)
+RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t** out_buf, size_t* out_len)
 {
   FILE* f = fopen(path, "rb");
   if (f == nullptr) {
@@ -710,7 +711,7 @@ static ra8_err_t slurp(const char* path, uint8_t** out_buf, size_t* out_len)
 }
 
 /** @brief Transcode one baseline-JPEG page to a `.rta1` full-width-column atlas. */
-static ra8_err_t rta1_one(const char* in_path, const char* out_path)
+RA8_INTERNAL static ra8_err_t rta1_one(const char* in_path, const char* out_path)
 {
   uint8_t*  src  = nullptr;
   size_t    slen = 0U;
@@ -759,7 +760,7 @@ static ra8_err_t rta1_one(const char* in_path, const char* out_path)
 }
 
 /** @brief Convert every page in `dir` to a sibling `.rta1` atlas (in place). */
-static ra8_err_t export_rta1(const char* dir, const char names[][k_name_max], size_t count)
+RA8_INTERNAL static ra8_err_t export_rta1(const char* dir, const char names[][k_name_max], size_t count)
 {
   ra8_log_set_byte_sink(rta1_log_sink, nullptr);
   ra8_err_t rc = k_ra8_ok;
@@ -782,7 +783,7 @@ static ra8_err_t export_rta1(const char* dir, const char names[][k_name_max], si
 /* --- RABOOK (optional external: the tools/epub_compile python emitter) ---- */
 
 /** @brief Run cbz_compile.py to turn `cbz` into an RBKC `.rabook` at `out_path`. */
-static ra8_err_t run_rabook_python(const char* cbz, const char* out_path)
+RA8_INTERNAL static ra8_err_t run_rabook_python(const char* cbz, const char* out_path)
 {
 #ifdef MDL_EPUB_COMPILE_DIR
   char script[PATH_MAX];
@@ -811,7 +812,7 @@ static ra8_err_t run_rabook_python(const char* cbz, const char* out_path)
 }
 
 /** @brief Build a temp CBZ of the pages, then compile it to `.rabook`. */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 export_rabook(const char* dir, char names[][k_name_max], size_t count, const char* out_path)
 {
   char tmp_cbz[PATH_MAX];
