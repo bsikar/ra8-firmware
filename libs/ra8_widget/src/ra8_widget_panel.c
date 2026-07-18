@@ -21,6 +21,7 @@
  * @since 0.1.0
  */
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_widget.h"
 
@@ -45,6 +46,7 @@ static const char* s_tag = "ra8_widget_panel";
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_panel_layout(const ra8_widget_panel_t* p, const ra8_ui_rect_t* rect)
 {
   return ra8_widget_layout_stack(p->children,
@@ -79,6 +81,7 @@ static ra8_err_t internal_panel_layout(const ra8_widget_panel_t* p, const ra8_ui
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_compose_check(ra8_widget_t*               panel_w,
                                         const ra8_ui_rect_t*        frame,
                                         const ra8_ui_rect_t*        out_damage,
@@ -116,6 +119,7 @@ static ra8_err_t internal_compose_check(ra8_widget_t*               panel_w,
  * @note Not thread-safe; loop bounded by `count` (NASA Rule 2).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_panel_render(ra8_widget_t* w)
 {
   ra8_widget_panel_t* p = (ra8_widget_panel_t*)w->ctx;
@@ -154,6 +158,7 @@ static void internal_panel_render(ra8_widget_t* w)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_panel_on_input(ra8_widget_t* w, const ra8_widget_event_t* ev)
 {
   ra8_widget_panel_t* p = (ra8_widget_panel_t*)w->ctx;

@@ -47,6 +47,7 @@ static const char* s_tag = "ra8_widget_toolbar";
  * @note Pure.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_ui_rect_t internal_tb_field_rect(const ra8_widget_toolbar_t* bar,
                                             const ra8_ui_rect_t*        band)
 {
@@ -76,6 +77,7 @@ static ra8_ui_rect_t internal_tb_field_rect(const ra8_widget_toolbar_t* bar,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_tb_render(ra8_widget_t* w)
 {
   ra8_widget_toolbar_t* bar = (ra8_widget_toolbar_t*)w->ctx;
@@ -125,6 +127,7 @@ static void internal_tb_render(ra8_widget_t* w)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_tb_on_input(ra8_widget_t* w, const ra8_widget_event_t* ev)
 {
   ra8_widget_toolbar_t* bar = (ra8_widget_toolbar_t*)w->ctx;
