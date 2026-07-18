@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_tile_cache.h"
@@ -96,6 +97,7 @@ ra8_err_t ra8_longstrip_tile_decode(void*                 ctx,
  * @note Not thread-safe (mutates @p wt).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_longstrip_bind(ra8_longstrip_t*            wt,
                                 const ra8_longstrip_cfg_t*  cfg,
                                 const ra8_tileatlas_info_t* info)
@@ -140,6 +142,7 @@ static void priv_longstrip_bind(ra8_longstrip_t*            wt,
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_longstrip_check_ptrs(const ra8_longstrip_t*     wt,
                                            const ra8_longstrip_cfg_t* cfg)
 {
@@ -242,6 +245,7 @@ ra8_err_t ra8_longstrip_visible_bands(const ra8_longstrip_t* wt,
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t wt_sat_add(int32_t a, int32_t b)
 {
   const int64_t sum = (int64_t)a + (int64_t)b;
@@ -287,6 +291,7 @@ ra8_err_t ra8_longstrip_fling(ra8_longstrip_t* wt, int32_t v0)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static int32_t wt_apply_friction(int32_t v)
 {
   return (int32_t)((v * (int32_t)k_wt_fling_num) / (int32_t)k_wt_fling_den);
@@ -307,6 +312,7 @@ static int32_t wt_apply_friction(int32_t v)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool wt_at_top(const ra8_longstrip_t* wt)
 {
   return wt->scroll_y <= 0;
@@ -327,6 +333,7 @@ static bool wt_at_top(const ra8_longstrip_t* wt)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool wt_at_bottom(const ra8_longstrip_t* wt)
 {
   return wt->scroll_y >= wt->max_scroll;
@@ -355,6 +362,7 @@ static bool wt_at_bottom(const ra8_longstrip_t* wt)
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool wt_fling_should_stop(const ra8_longstrip_t* wt)
 {
   return (wt->velocity < 0) ? wt_at_top(wt) : wt_at_bottom(wt);
@@ -393,6 +401,7 @@ bool ra8_longstrip_tick(ra8_longstrip_t* wt)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void wt_warm_band(ra8_longstrip_t* wt, uint16_t band)
 {
   ra8_tile_key_t key = {};
@@ -461,6 +470,7 @@ ra8_err_t ra8_longstrip_prefetch(ra8_longstrip_t* wt, uint16_t depth)
  * @note Not thread-safe (mutates @p stats).
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void wt_accumulate_coverage(const ra8_longstrip_t*        wt,
                                    int32_t                       dst_y,
                                    uint16_t                      band_h,
@@ -498,6 +508,7 @@ static void wt_accumulate_coverage(const ra8_longstrip_t*        wt,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 wt_draw_band(ra8_longstrip_t* wt, uint16_t band, int32_t dst_x, ra8_longstrip_render_stats_t* stats)
 {

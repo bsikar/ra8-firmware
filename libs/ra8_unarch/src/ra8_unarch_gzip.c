@@ -25,6 +25,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 
 /** @brief Log tag for gzip-decoder diagnostics. */
@@ -107,6 +108,7 @@ static tinfl_decompressor s_gz_inflator;
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_src_take(gz_src_t* s, uint8_t* dst, size_t n)
 {
   if ((uint64_t)n > (s->size - s->pos)) {
@@ -139,6 +141,7 @@ static ra8_err_t s_src_take(gz_src_t* s, uint8_t* dst, size_t n)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_skip_string(gz_src_t* s)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_unarch_gzip_str_max; ++i) { /* bound: string cap */
@@ -170,6 +173,7 @@ static ra8_err_t s_skip_string(gz_src_t* s)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_skip_fextra(gz_src_t* s)
 {
   uint8_t         xl[k_gz_xlen_bytes] = {};
@@ -210,6 +214,7 @@ static ra8_err_t s_skip_fextra(gz_src_t* s)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_parse_header(gz_src_t* s)
 {
   uint8_t         fixed[k_gz_hdr_fixed] = {};
@@ -307,6 +312,7 @@ typedef struct {
  * @note Not thread-safe (module-static tinfl state).
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_inflate_pass(gz_inflate_t* st)
 {
   const ra8_err_t ierr = ra8_decomp_budget_charge_iter(&st->budget);
@@ -383,6 +389,7 @@ static ra8_err_t s_inflate_pass(gz_inflate_t* st)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_verify_trailer(const gz_inflate_t* st)
 {
   const uint64_t leftover    = (uint64_t)(st->win_len - st->win_ofs);
