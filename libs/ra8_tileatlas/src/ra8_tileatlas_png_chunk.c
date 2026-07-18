@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_tileatlas_internal.h"
 #include "ra8_tileatlas_png_internal.h"
@@ -150,6 +151,7 @@ RA8_PRIV ra8_err_t ra8_ta_png_priv_chunk_hdr(ra8_png_state_t* st,
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t png_src_channels(uint8_t color_type)
 {
   switch (color_type) {
@@ -188,6 +190,7 @@ static uint8_t png_src_channels(uint8_t color_type)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 png_check_ihdr(ra8_png_state_t* st, const uint8_t* ihdr, uint16_t max_w, uint16_t max_h)
 {
@@ -244,6 +247,7 @@ png_check_ihdr(ra8_png_state_t* st, const uint8_t* ihdr, uint16_t max_w, uint16_
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t png_parse_ihdr(ra8_png_state_t* st, uint16_t max_w, uint16_t max_h)
 {
   uint32_t  len  = 0U;
@@ -284,6 +288,7 @@ static ra8_err_t png_parse_ihdr(ra8_png_state_t* st, uint16_t max_w, uint16_t ma
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t png_parse_plte(ra8_png_state_t* st, uint32_t len)
 {
   if ((len == 0U) || ((len % (uint32_t)k_ra8_png_ch_3) != 0U) ||
@@ -318,6 +323,7 @@ static ra8_err_t png_parse_plte(ra8_png_state_t* st, uint32_t len)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t png_parse_trns(ra8_png_state_t* st, uint32_t len)
 {
   if (st->color_type != (uint8_t)k_ra8_png_color_pal) {

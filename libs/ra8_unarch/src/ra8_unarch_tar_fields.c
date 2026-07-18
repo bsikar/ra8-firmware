@@ -21,6 +21,7 @@
  */
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_unarch_tar_internal.h"
 
@@ -68,6 +69,7 @@ typedef enum : uint32_t {
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_octal(const uint8_t* field, size_t len, uint64_t* out)
 {
   size_t i = 0U;
@@ -126,6 +128,7 @@ static ra8_err_t s_octal(const uint8_t* field, size_t len, uint64_t* out)
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_base256(const uint8_t* field, size_t len, uint64_t* out)
 {
   if ((field[0] & (uint8_t)k_tar_b256_negative) != 0U) {
@@ -243,6 +246,7 @@ ra8_tar_type_t ra8_unarch_tar_classify(uint8_t typeflag)
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_pax_reclen(const uint8_t* data, size_t len, size_t* reclen, size_t* body)
 {
   uint64_t v      = 0U;
@@ -295,6 +299,7 @@ static ra8_err_t s_pax_reclen(const uint8_t* data, size_t len, size_t* reclen, s
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_pax_size_value(const uint8_t* val, size_t len, uint64_t* out)
 {
   if (len == 0U) {
@@ -343,6 +348,7 @@ static ra8_err_t s_pax_size_value(const uint8_t* val, size_t len, uint64_t* out)
  * @note Thread-safe: writes only through its out-parameters.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_pax_apply(const uint8_t* key,
                              size_t         key_len,
                              const uint8_t* val,

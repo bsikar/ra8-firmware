@@ -29,6 +29,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -66,6 +67,7 @@ static ra8_png_state_t s_png;
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t png_paeth(uint8_t a, uint8_t b, uint8_t c)
 {
   const int32_t p  = (int32_t)a + (int32_t)b - (int32_t)c;
@@ -101,6 +103,7 @@ static uint8_t png_paeth(uint8_t a, uint8_t b, uint8_t c)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 png_unfilter(uint8_t filter, uint8_t* row, const uint8_t* prev, uint32_t nbytes, uint8_t bpp)
 {
@@ -153,6 +156,7 @@ png_unfilter(uint8_t filter, uint8_t* row, const uint8_t* prev, uint32_t nbytes,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t png_translate(ra8_png_state_t* st, const uint8_t* row)
 {
   const uint32_t w = (uint32_t)st->w;
@@ -211,6 +215,7 @@ static ra8_err_t png_translate(ra8_png_state_t* st, const uint8_t* row)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t png_consume_rows(ra8_png_state_t* st, const uint8_t* src, uint32_t avail)
 {
   uint32_t pos = 0U;
@@ -271,6 +276,7 @@ static ra8_err_t png_consume_rows(ra8_png_state_t* st, const uint8_t* src, uint3
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t png_bind_geometry(ra8_png_state_t* st, ra8_ta_bump_t* bump)
 {
   if (st->color_type == (uint8_t)k_ra8_png_color_pal) {
@@ -326,6 +332,7 @@ static ra8_err_t png_bind_geometry(ra8_png_state_t* st, ra8_ta_bump_t* bump)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t png_refill_input(ra8_png_state_t* st, uint32_t* out_avail)
 {
   *out_avail = 0U;
@@ -423,6 +430,7 @@ typedef struct {
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t png_inflate_step(ra8_png_state_t* st, ra8_png_iter_t* it)
 {
   // mcdc-deactivated: refill-first loop structure; entering with a drained window after the source ended requires the source-ending iteration to return >= TINFL_STATUS_DONE without finishing, i.e. tinfl parked output mid-flush at the exact call the source ended -- for every constructible stream that call either completes (DONE exits the loop) or fails closed at the status check, so the (drained, source-done) entry cannot be flipped independently.
@@ -489,6 +497,7 @@ static ra8_err_t png_inflate_step(ra8_png_state_t* st, ra8_png_iter_t* it)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t png_inflate_idat(ra8_png_state_t* st, uint32_t first_len)
 {
   st->idat_rem      = first_len;
@@ -531,6 +540,7 @@ static ra8_err_t png_inflate_idat(ra8_png_state_t* st, uint32_t first_len)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t png_run_idat(ra8_png_state_t* st, ra8_ta_bump_t* bump, uint32_t len)
 {
   ra8_err_t err = png_bind_geometry(st, bump);
@@ -563,6 +573,7 @@ static ra8_err_t png_run_idat(ra8_png_state_t* st, ra8_ta_bump_t* bump, uint32_t
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 png_walk_chunks(ra8_png_state_t* st, ra8_ta_bump_t* bump, uint16_t max_w, uint16_t max_h)
 {
