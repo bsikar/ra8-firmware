@@ -148,7 +148,15 @@ vela-compile:
 	$(VELA_GEN) compile $(TFLITE) -o $(or $(VELA_OUT),build/vela)
 
 # `make ci` -- reproduce the GitHub Actions gates inside the Ubuntu devcontainer
-# (run before every push). REBUILD=1 forces a fresh image.
+# (run before every push). Gates run: clang-format, cppcheck, the check_*.py
+# pre-commit suite, the annotation gate, the MISRA ratchet, clang-tidy, host
+# unit tests, and the coverage gate, with a PASS/FAIL line per gate at the end.
+# REBUILD=1 forces a fresh image.
+#
+# Keep this suite a superset-or-equal of firmware.yml. The annotation gate and
+# the MISRA ratchet were both absent from it once, so a full local run passed
+# while CI went red -- validating a subset of CI is the recurring shape of that
+# failure.
 ci:
 	bash scripts/ci.sh $(if $(filter-out 0,$(REBUILD)),--rebuild,)
 
