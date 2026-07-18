@@ -31,6 +31,8 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /* =============================================================================
  * Optional byte sink -- redirect log output off ITM at run time.
  * =============================================================================
@@ -89,7 +91,7 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
-static inline volatile uint32_t* internal_itm_stim0(void)
+RA8_HW_REGISTER_ACCESS static inline volatile uint32_t* internal_itm_stim0(void)
 {
   return (volatile uint32_t*)k_ra8_itm_stim_base;
 }
@@ -111,7 +113,7 @@ static inline volatile uint32_t* internal_itm_stim0(void)
  *
  * @since 0.1.0
  */
-static inline volatile uint32_t* internal_itm_tcr(void)
+RA8_HW_REGISTER_ACCESS static inline volatile uint32_t* internal_itm_tcr(void)
 {
   return (volatile uint32_t*)k_ra8_itm_tcr_addr;
 }
@@ -133,7 +135,7 @@ static inline volatile uint32_t* internal_itm_tcr(void)
  *
  * @since 0.1.0
  */
-static inline volatile uint32_t* internal_itm_tenr(void)
+RA8_HW_REGISTER_ACCESS static inline volatile uint32_t* internal_itm_tenr(void)
 {
   return (volatile uint32_t*)k_ra8_itm_tenr_addr;
 }
@@ -160,7 +162,7 @@ static inline volatile uint32_t* internal_itm_tenr(void)
  *
  * @since 0.1.0
  */
-static inline bool internal_itm_ready(void)
+RA8_INTERNAL static inline bool internal_itm_ready(void)
 {
   /* A redirected byte sink needs no ITM/debugger -- it is always ready. */
   if (s_byte_sink != nullptr) {
@@ -221,7 +223,7 @@ static inline bool internal_itm_ready(void)
  *
  * @since 0.1.0
  */
-static inline void internal_itm_putc(uint8_t byte)
+RA8_INTERNAL static inline void internal_itm_putc(uint8_t byte)
 {
   if (s_byte_sink != nullptr) {
     s_byte_sink(s_byte_sink_ctx, byte);
@@ -258,7 +260,7 @@ static inline void internal_itm_putc(uint8_t byte)
  *
  * @since 0.1.0
  */
-static inline void internal_itm_puts(const char* s)
+RA8_INTERNAL static inline void internal_itm_puts(const char* s)
 {
   while (*s != '\0') {
     internal_itm_putc((uint8_t)*s++);
@@ -291,7 +293,7 @@ typedef enum : uint8_t {
 } ra8_log_u32_t;
 
 /* Itm put u32 -- see implementation for details. */
-static inline void internal_itm_put_u32(uint32_t value)
+RA8_INTERNAL static inline void internal_itm_put_u32(uint32_t value)
 {
   char    buf[k_ra8_u32_max_digits + 1U] = {};
   uint8_t i                              = 0U;
@@ -329,7 +331,7 @@ static inline void internal_itm_put_u32(uint32_t value)
  *
  * @since 0.1.0
  */
-static inline void internal_itm_put_i32(int32_t value)
+RA8_INTERNAL static inline void internal_itm_put_i32(int32_t value)
 {
   if (value < 0) {
     internal_itm_putc((uint8_t)'-');
@@ -386,7 +388,7 @@ void ra8_log_init(void)
  *
  * @since 0.1.0
  */
-static void internal_emit_line(const char* level, const char* tag, const char* msg)
+RA8_INTERNAL static void internal_emit_line(const char* level, const char* tag, const char* msg)
 {
   if (!internal_itm_ready()) {
     return;
@@ -422,7 +424,7 @@ static void internal_emit_line(const char* level, const char* tag, const char* m
  *
  * @since 0.1.0
  */
-static void
+RA8_INTERNAL static void
 internal_emit_line_u(const char* level, const char* tag, const char* msg, uint32_t value)
 {
   if (!internal_itm_ready()) {
@@ -461,7 +463,8 @@ internal_emit_line_u(const char* level, const char* tag, const char* msg, uint32
  *
  * @since 0.1.0
  */
-static void internal_emit_line_i(const char* level, const char* tag, const char* msg, int32_t value)
+RA8_INTERNAL static void
+internal_emit_line_i(const char* level, const char* tag, const char* msg, int32_t value)
 {
   if (!internal_itm_ready()) {
     return;

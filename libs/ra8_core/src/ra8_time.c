@@ -19,6 +19,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
 #include "ra8_time_constants.h"
@@ -68,7 +69,7 @@ static volatile uint32_t s_cycles_per_ms = 0U;
  *
  * @since 0.1.0
  */
-static inline volatile uint32_t* internal_csr(void)
+RA8_HW_REGISTER_ACCESS static inline volatile uint32_t* internal_csr(void)
 {
   return (volatile uint32_t*)k_ra8_systick_csr_addr;
 }
@@ -90,7 +91,7 @@ static inline volatile uint32_t* internal_csr(void)
  *
  * @since 0.1.0
  */
-static inline volatile uint32_t* internal_rvr(void)
+RA8_HW_REGISTER_ACCESS static inline volatile uint32_t* internal_rvr(void)
 {
   return (volatile uint32_t*)k_ra8_systick_rvr_addr;
 }
@@ -112,7 +113,7 @@ static inline volatile uint32_t* internal_rvr(void)
  *
  * @since 0.1.0
  */
-static inline volatile uint32_t* internal_cvr(void)
+RA8_HW_REGISTER_ACCESS static inline volatile uint32_t* internal_cvr(void)
 {
   return (volatile uint32_t*)k_ra8_systick_cvr_addr;
 }

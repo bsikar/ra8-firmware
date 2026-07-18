@@ -25,6 +25,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_crashlog_internal.h"
 #include "ra8_exception.h"
 
@@ -120,7 +121,7 @@ static_assert(sizeof(ra8_crashlog_record_t) <= (size_t)k_ra8_crashlog_reserve_by
  * @note Not stateful; trivially thread-safe.
  * @since 0.1.0
  */
-static uint32_t ra8_crashlog_crc32(const volatile uint8_t* data, uint32_t len)
+RA8_INTERNAL static uint32_t ra8_crashlog_crc32(const volatile uint8_t* data, uint32_t len)
 {
   if (data == nullptr) {
     return 0U;
@@ -155,7 +156,7 @@ static uint32_t ra8_crashlog_crc32(const volatile uint8_t* data, uint32_t len)
  * @note Not thread-safe w.r.t. a concurrent record write.
  * @since 0.1.0
  */
-static uint32_t ra8_crashlog_payload_crc(void)
+RA8_INTERNAL static uint32_t ra8_crashlog_payload_crc(void)
 {
   const volatile uint8_t* base = (const volatile uint8_t*)&s_ra8_crashlog_record;
   const uint32_t          off  = (uint32_t)offsetof(ra8_crashlog_record_t, boot_loops);
@@ -185,7 +186,7 @@ static uint32_t ra8_crashlog_payload_crc(void)
  *       compound; the vectors live in tests/test_ra8_crashlog.c.
  * @since 0.1.0
  */
-static bool ra8_crashlog_is_valid(void)
+RA8_INTERNAL static bool ra8_crashlog_is_valid(void)
 {
   return (s_ra8_crashlog_record.magic == (uint32_t)k_ra8_crashlog_magic_valid) &&
          (ra8_crashlog_payload_crc() == s_ra8_crashlog_record.crc);

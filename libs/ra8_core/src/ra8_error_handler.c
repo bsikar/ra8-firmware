@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_log.h"
 
 /**
@@ -47,7 +48,7 @@
  *
  * @since 0.1.0
  */
-static inline void internal_disable_irq(void)
+RA8_INTERNAL static inline void internal_disable_irq(void)
 {
 #ifndef RA8_SIMULATOR_MODE
   __asm__ volatile("cpsid i" ::: "memory");
@@ -72,7 +73,7 @@ static inline void internal_disable_irq(void)
  *
  * @since 0.1.0
  */
-static inline void internal_bkpt(void)
+RA8_INTERNAL static inline void internal_bkpt(void)
 {
 #ifndef RA8_SIMULATOR_MODE
   __asm__ volatile("bkpt #0");
@@ -95,7 +96,7 @@ static inline void internal_bkpt(void)
  *
  * @since 0.1.0
  */
-static inline void internal_wfi(void)
+RA8_INTERNAL static inline void internal_wfi(void)
 {
 #ifndef RA8_SIMULATOR_MODE
   __asm__ volatile("wfi");
