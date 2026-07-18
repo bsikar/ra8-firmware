@@ -57,15 +57,52 @@ typedef enum : uint16_t {
   k_dec_base = 10,   /**< strtoul()/strtol() radix. */
 } mdl_misc_t;
 
-/* One User-Agent per session (rotating per request is an anti-pattern). */
+/**
+ * @var k_user_agent
+ * @brief Session User-Agent sent with every request.
+ * @details Held constant for the whole run. Rotating it per request (as the
+ *          Kotlin original did) looks more bot-like to a host, not less.
+ * @note Read-only; shared by both fetch paths.
+ * @since 0.1.0
+ */
 static const char* const k_user_agent =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
   "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 
-static char           s_page[k_page_buf_bytes];
+/**
+ * @var s_page
+ * @brief Whole-page HTML scratch buffer for the current fetch.
+ * @details Sized by ::k_page_buf_bytes and placed in `.bss` rather than on the
+ *          stack, keeping the CLI's zero-dynamic-allocation shape.
+ * @warning Single-threaded: each fetch overwrites the previous page.
+ * @since 0.1.0
+ */
+static char s_page[k_page_buf_bytes];
+
+/**
+ * @var s_chapters
+ * @brief Chapter URLs extracted from the current series page.
+ * @details Filled by mdl_extract_anchors(), then filtered and ordered in place.
+ * @warning Single-threaded; reused across series within one run.
+ * @since 0.1.0
+ */
 static mdl_url_list_t s_chapters;
+
+/**
+ * @var s_images
+ * @brief Page-image URLs extracted from the current chapter page.
+ * @warning Single-threaded; overwritten per chapter.
+ * @since 0.1.0
+ */
 static mdl_url_list_t s_images;
-static char           s_rowtmp[k_mdl_url_max];
+
+/**
+ * @var s_rowtmp
+ * @brief Scratch row used while reordering ::s_chapters in place.
+ * @warning Single-threaded; holds no meaningful value between sorts.
+ * @since 0.1.0
+ */
+static char s_rowtmp[k_mdl_url_max];
 
 /** @brief Pick a file extension from a URL, defaulting to "jpg". */
 static const char* ext_of(const char* url)
@@ -325,6 +362,59 @@ static size_t export_one(mdl_format_t format, const char* series_dir, const char
 }
 
 /**
+ * @brief Chapter-number range spanned by the slice `[start, last]`.
+ * @details Taken as the min/max rather than the endpoints so a reverse-ordered
+ *          chapter list still yields an ascending `<lo>-<hi>` archive name.
+ * @param[in]  start First index into ::s_chapters.
+ * @param[in]  last  Last index into ::s_chapters (inclusive, >= @p start).
+ * @param[out] lo    Receives the lowest chapter number in the slice.
+ * @param[out] hi    Receives the highest chapter number in the slice.
+ * @since 0.1.0
+ */
+static void chapter_range(size_t start, size_t last, long* lo, long* hi)
+{
+  *lo = chapter_num(s_chapters.urls[start]);
+  *hi = *lo;
+  for (size_t i = start; i <= last; ++i) {
+    const long num = chapter_num(s_chapters.urls[i]);
+    *lo            = (num < *lo) ? num : *lo;
+    *hi            = (num > *hi) ? num : *hi;
+  }
+}
+
+/**
+ * @brief Package the combined chapter folder into one archive; 0 ok, 1 on error.
+ * @param[in] format     Target container (never `loose` on this path).
+ * @param[in] series_dir Series output directory.
+ * @param[in] dir        The combined chapter folder to package.
+ * @param[in] slug       Series slug used in the archive name.
+ * @param[in] lo         Lowest chapter number in the slice.
+ * @param[in] hi         Highest chapter number in the slice.
+ * @param[in] got_ch     Chapters actually downloaded (for the summary line).
+ * @return 0 on success, 1 when the export failed.
+ * @since 0.1.0
+ */
+static size_t export_combined(mdl_format_t format,
+                              const char*  series_dir,
+                              const char*  dir,
+                              const char*  slug,
+                              long         lo,
+                              long         hi,
+                              size_t       got_ch)
+{
+  const char* ext = mdl_format_ext(format);
+  char        out[k_dir_path_bytes];
+  (void)snprintf(out, sizeof(out), "%s/%s-%ld-%ld.%s", series_dir, slug, lo, hi, ext);
+  const ra8_err_t rc = mdl_export_chapter(format, dir, out);
+  if (rc != k_ra8_ok) {
+    (void)fprintf(stderr, "  combine export FAILED (err 0x%X)\n", (unsigned)rc);
+    return 1U;
+  }
+  (void)printf("  combined %zu chapter(s) -> %s\n", got_ch, out);
+  return 0U;
+}
+
+/**
  * @brief Download `chapters` chapters from `start`; returns failure count.
  *
  * Default (`combine`) collects every downloaded chapter's pages -- numbered
@@ -355,19 +445,13 @@ static size_t download_chapters(mdl_net_iface_t*  net,
 
   const bool one_file = combine && (format != k_mdl_fmt_loose);
 
-  /* Chapter-number range of the slice actually being downloaded, taken as the
-   * min/max so a reverse-ordered list still yields <lo>-<hi> ascending. */
   size_t last = start + (chapters - 1U);
   if (last >= s_chapters.count) {
     last = s_chapters.count - 1U;
   }
-  long lo = chapter_num(s_chapters.urls[start]);
-  long hi = lo;
-  for (size_t i = start; i <= last; ++i) {
-    const long num = chapter_num(s_chapters.urls[i]);
-    lo             = (num < lo) ? num : lo;
-    hi             = (num > hi) ? num : hi;
-  }
+  long lo = 0;
+  long hi = 0;
+  chapter_range(start, last, &lo, &hi);
 
   char   combined_dir[k_dir_path_bytes];
   size_t page_no = 0U;
@@ -402,16 +486,7 @@ static size_t download_chapters(mdl_net_iface_t*  net,
   }
 
   if (one_file) {
-    const char* ext = mdl_format_ext(format);
-    char        out[k_dir_path_bytes];
-    (void)snprintf(out, sizeof(out), "%s/%s-%ld-%ld.%s", series_dir, slug, lo, hi, ext);
-    const ra8_err_t rc = mdl_export_chapter(format, combined_dir, out);
-    if (rc != k_ra8_ok) {
-      (void)fprintf(stderr, "  combine export FAILED (err 0x%X)\n", (unsigned)rc);
-      ++fails;
-    } else {
-      (void)printf("  combined %zu chapter(s) -> %s\n", got_ch, out);
-    }
+    fails += export_combined(format, series_dir, combined_dir, slug, lo, hi, got_ch);
   }
   (void)printf("done: %zu chapter(s) into %s/ (%zu failure(s))\n", got_ch, series_dir, fails);
   return fails;
@@ -654,6 +729,15 @@ static int run_pack(const char* dir, mdl_format_t format)
   return 0;
 }
 
+/**
+ * @brief Program entry point: parse the command line and select a run mode.
+ * @details Dispatches to pack mode (`--pack`), series mode (`--config` +
+ *          `--series`), or single-page mode (a bare URL), in that precedence.
+ * @param[in] argc Argument count.
+ * @param[in] argv Argument vector.
+ * @return 0 on success, 1 on a download/export failure, 2 on a usage error.
+ * @since 0.1.0
+ */
 int main(int argc, char** argv)
 {
   mdl_args_t a = {};
