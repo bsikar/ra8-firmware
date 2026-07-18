@@ -25,6 +25,8 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @brief ra8_epub stream read callback backed by an open `ra8_fs` file (#151).
  *
@@ -48,6 +50,7 @@
  * @note Not thread-safe; single-threaded reader context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static size_t priv_fs_stream_read(void* ctx, uint64_t offset, void* buf, size_t len)
 {
   ra8_epub_stream_fs_ctx_t* io = (ra8_epub_stream_fs_ctx_t*)ctx;

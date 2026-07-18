@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8_attributes.h"
 #include "ra8_epub.h"
 #include "ra8_epub_internal.h"
 #include "ra8_epub_miniz_alloc.h"
@@ -88,6 +89,7 @@ ra8_err_t ra8_epub_xml_parse_nav(const uint8_t* xml_bytes, size_t xml_len, ra8_e
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_byte_copy(uint8_t* dst, const uint8_t* src, size_t n)
 {
   for (size_t i = 0U; i < n; i++) {
@@ -108,6 +110,7 @@ static void priv_byte_copy(uint8_t* dst, const uint8_t* src, size_t n)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_byte_zero(uint8_t* dst, size_t n)
 {
   for (size_t i = 0U; i < n; i++) {
@@ -130,6 +133,7 @@ static void priv_byte_zero(uint8_t* dst, size_t n)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_dirname(const char* path, char* dst, size_t cap)
 {
   if (dst == nullptr || cap == 0U) {
@@ -174,6 +178,7 @@ static void priv_dirname(const char* path, char* dst, size_t cap)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_extract(mz_zip_archive* zip, const char* name, uint8_t* buf, size_t cap, size_t* got)
 {
@@ -227,6 +232,7 @@ static_assert(alignof(mz_zip_archive) <= alignof(max_align_t),
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_zip_destroy(mz_zip_archive* zip)
 {
   if (zip == nullptr) {
@@ -258,6 +264,7 @@ static void priv_zip_destroy(mz_zip_archive* zip)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_load_toc(mz_zip_archive* zip, ra8_epub_book_t* book, uint8_t* scratch, size_t cap)
 {
   if (book->toc_kind == (uint8_t)k_ra8_epub_toc_none) {
@@ -308,6 +315,7 @@ static void priv_load_toc(mz_zip_archive* zip, ra8_epub_book_t* book, uint8_t* s
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_parse_archive(mz_zip_archive*  zip,
                                     ra8_epub_book_t* out_book,
                                     uint8_t*         opf_scratch,
@@ -366,6 +374,7 @@ static ra8_err_t priv_parse_archive(mz_zip_archive*  zip,
  * @note Not thread-safe; single-threaded init context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_set_miniz_alloc(mz_zip_archive* zip)
 {
   if (zip == nullptr) {
@@ -404,6 +413,7 @@ static void priv_set_miniz_alloc(mz_zip_archive* zip)
  * @note Not thread-safe; single-threaded reader context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static size_t priv_stream_read(void* opaque, mz_uint64 file_ofs, void* buf, size_t n)
 {
   const ra8_epub_stream_media_t* sm = (const ra8_epub_stream_media_t*)opaque;
@@ -439,6 +449,7 @@ static size_t priv_stream_read(void* opaque, mz_uint64 file_ofs, void* buf, size
  * @note Not thread-safe; single-threaded init context.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t priv_finish_open(mz_zip_archive* zip, ra8_epub_book_t* out_book)
 {
   if (zip == nullptr || out_book == nullptr) {
