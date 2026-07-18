@@ -25,6 +25,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
@@ -200,6 +201,7 @@ uint8_t ra8_modem_at_internal_str_eq(const char* a, const char* b)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_append_ch(char* out, size_t out_len, size_t* used, char ch)
 {
   if ((*used + 1U) < out_len) {
@@ -323,6 +325,7 @@ uint8_t ra8_modem_at_internal_wait_response_should_clear_capture(const void* cap
  * @note Not thread-safe; caller serialises access.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_reset_line(void)
 {
   s_mod.line_len = 0U;
@@ -348,6 +351,7 @@ static void internal_reset_line(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t internal_classify_final(const char* line, uint8_t* is_error)
 {
   *is_error = 0U;
@@ -392,6 +396,7 @@ static uint8_t internal_classify_final(const char* line, uint8_t* is_error)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t internal_dispatch_urc(const char* line)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_modem_at_max_unsolicited; ++i) {
@@ -470,6 +475,7 @@ ra8_modem_line_kind_t ra8_modem_at_internal_classify(const char* line,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_accumulate(uint8_t byte, const char** line_out)
 {
   *line_out = nullptr;
@@ -507,6 +513,7 @@ static void internal_accumulate(uint8_t byte, const char** line_out)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_tx_command(const char* s)
 {
   uint16_t i = 0U;
@@ -534,6 +541,7 @@ static ra8_err_t internal_tx_command(const char* s)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint16_t internal_effective_timeout(uint16_t timeout_ms)
 {
   if (timeout_ms != 0U) {
@@ -608,6 +616,7 @@ void ra8_modem_at_internal_capture_line(const char* line,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_modem_line_action_t internal_handle_line(const char*           line,
                                                     ra8_modem_line_kind_t kind,
                                                     const char*           expected_response,
@@ -673,6 +682,7 @@ typedef struct {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_modem_line_action_t internal_pump_one(const ra8_modem_wait_ctx_t* wc)
 {
   uint8_t         byte   = 0U;
@@ -715,6 +725,7 @@ static ra8_modem_line_action_t internal_pump_one(const ra8_modem_wait_ctx_t* wc)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_wait_response(const char* cmd,
                                         const char* expected_response,
                                         uint16_t    timeout_ms,
@@ -774,6 +785,7 @@ static ra8_err_t internal_wait_response(const char* cmd,
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_clear_urc_table(void)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_modem_at_max_unsolicited; ++i) {
@@ -797,6 +809,7 @@ static void internal_clear_urc_table(void)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_validate_init_cfg(const ra8_modem_at_cfg_t* cfg)
 {
   RA8_CHECK_NULL_PTR(cfg, RA8_MODEM_AT_TAG, "cfg");
@@ -886,6 +899,7 @@ ra8_modem_at_send_cmd_capture(const char* cmd, char* out_buf, size_t buf_len, ui
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t internal_urc_replace(const char* prefix, ra8_modem_at_urc_fn_t fn, void* ctx)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_modem_at_max_unsolicited; ++i) {
@@ -918,6 +932,7 @@ static uint8_t internal_urc_replace(const char* prefix, ra8_modem_at_urc_fn_t fn
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint8_t
 internal_urc_insert(const char* prefix, uint16_t plen, ra8_modem_at_urc_fn_t fn, void* ctx)
 {
