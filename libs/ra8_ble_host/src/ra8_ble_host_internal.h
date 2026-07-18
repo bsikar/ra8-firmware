@@ -31,6 +31,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_ble_host.h"
 
 /**
@@ -168,7 +169,7 @@ extern ra8_ble_host_state_t s_ble_host_state;
  *
  * @since 0.1.0
  */
-void internal_pack_le16(uint8_t* dst, uint16_t v);
+RA8_PRIV void internal_pack_le16(uint8_t* dst, uint16_t v);
 
 #ifdef __cplusplus
 }
