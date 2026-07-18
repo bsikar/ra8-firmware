@@ -169,11 +169,11 @@ typedef enum : uint8_t {
  * mode 6 on the vendor's generic default for the larger panels.
  */
 typedef enum : uint8_t {
-  k_ra8_epaper_lut_init    = 0U, /**< INIT on every documented LUT.  */
-  k_ra8_epaper_lut_du      = 1U, /**< DU on every documented LUT.    */
-  k_ra8_epaper_lut_gc16    = 2U, /**< GC16 on every documented LUT.  */
-  k_ra8_epaper_lut_a2_m641 = 4U, /**< A2 on the ``M641`` LUT.        */
-  k_ra8_epaper_lut_a2_gen  = 6U, /**< A2 on the vendor generic LUT.  */
+  k_ra8_epaper_lut_init    = 0U, /**< INIT on every documented LUT. */
+  k_ra8_epaper_lut_du      = 1U, /**< DU on every documented LUT.   */
+  k_ra8_epaper_lut_gc16    = 2U, /**< GC16 on every documented LUT. */
+  k_ra8_epaper_lut_a2_m641 = 4U, /**< A2 on the ``M641`` LUT.       */
+  k_ra8_epaper_lut_a2_gen  = 6U, /**< A2 on the vendor generic LUT. */
 } ra8_epaper_lut_mode_t;
 
 /**
@@ -222,9 +222,9 @@ typedef enum : uint8_t {
  * copied from the caller-supplied descriptor at ``ra8_epaper_init``.
  */
 typedef struct {
-  ra8_epaper_cfg_t      cfg;   /**< Copy of init cfg.                    */
-  ra8_epaper_dev_info_t info;  /**< Decoded GET_DEV_INFO from init.      */
-  ra8_epaper_state_t    state; /**< Current lifecycle state.             */
+  ra8_epaper_cfg_t      cfg;   /**< Copy of init cfg.               */
+  ra8_epaper_dev_info_t info;  /**< Decoded GET_DEV_INFO from init. */
+  ra8_epaper_state_t    state; /**< Current lifecycle state.        */
 } ra8_epaper_panel_t;
 
 /**
@@ -552,11 +552,11 @@ static void internal_ra8_epaper_unpack_ver_word(uint16_t word, char* dst)
 {
   const uint8_t hi =
     (uint8_t)((word >> (uint16_t)k_ra8_epaper_byte_shift) & (uint16_t)k_ra8_epaper_byte_mask);
-  const uint8_t lo   = (uint8_t)(word & (uint16_t)k_ra8_epaper_byte_mask);
-  const bool    hi_p = (hi >= (uint8_t)k_ra8_epaper_ascii_min) &&
-                    (hi < (uint8_t)k_ra8_epaper_ascii_max);
-  const bool lo_p = (lo >= (uint8_t)k_ra8_epaper_ascii_min) &&
-                    (lo < (uint8_t)k_ra8_epaper_ascii_max);
+  const uint8_t lo = (uint8_t)(word & (uint16_t)k_ra8_epaper_byte_mask);
+  const bool    hi_p =
+    (hi >= (uint8_t)k_ra8_epaper_ascii_min) && (hi < (uint8_t)k_ra8_epaper_ascii_max);
+  const bool lo_p =
+    (lo >= (uint8_t)k_ra8_epaper_ascii_min) && (lo < (uint8_t)k_ra8_epaper_ascii_max);
   dst[0] = hi_p ? (char)hi : '\0';
   dst[1] = lo_p ? (char)lo : '\0';
 }
@@ -667,10 +667,10 @@ RA8_INTERNAL
    *   arg0 = (endian << 8) | (pf << 4) | rotate
    *   arg1..arg4 = x, y, width, height
    */
-  const uint16_t arg0 = (uint16_t)(((uint16_t)endian << (uint16_t)k_ra8_epaper_byte_shift) |
-                                   (internal_ra8_epaper_wire_pf(pf)
-                                    << (uint16_t)k_ra8_epaper_pf_shift));
-  ra8_err_t      err  = internal_ra8_epaper_write_data16(arg0);
+  const uint16_t arg0 =
+    (uint16_t)(((uint16_t)endian << (uint16_t)k_ra8_epaper_byte_shift) |
+               (internal_ra8_epaper_wire_pf(pf) << (uint16_t)k_ra8_epaper_pf_shift));
+  ra8_err_t err = internal_ra8_epaper_write_data16(arg0);
   if (err != k_ra8_ok) {
     return err;
   }
@@ -870,12 +870,11 @@ RA8_INTERNAL
   if ((area->width == 0U) || (area->height == 0U)) {
     return k_ra8_err_invalid_size;
   }
-  const size_t bpp = (size_t)ra8_epaper_bits_per_pixel(pf);
+  const size_t bpp           = (size_t)ra8_epaper_bits_per_pixel(pf);
   const size_t bits_per_byte = (size_t)k_ra8_epaper_bits_per_byte;
   /* Rows are packed independently and each starts on a byte boundary. */
-  const size_t row_bytes =
-    (((size_t)area->width * bpp) + (bits_per_byte - 1U)) / bits_per_byte;
-  *out_bytes = row_bytes * (size_t)area->height;
+  const size_t row_bytes = (((size_t)area->width * bpp) + (bits_per_byte - 1U)) / bits_per_byte;
+  *out_bytes             = row_bytes * (size_t)area->height;
   return k_ra8_ok;
 }
 
@@ -892,9 +891,8 @@ RA8_INTERNAL
   return ((area->x % grid) == 0U) && ((area->width % grid) == 0U);
 }
 
-[[nodiscard]] ra8_err_t ra8_epaper_align_area(ra8_epaper_area_t*        area,
-                                              ra8_epaper_pixel_format_t pf,
-                                              uint16_t                  panel_width)
+[[nodiscard]] ra8_err_t
+ra8_epaper_align_area(ra8_epaper_area_t* area, ra8_epaper_pixel_format_t pf, uint16_t panel_width)
 {
   RA8_CHECK_NULL_PTR(area, s_tag, "align_area: area null");
   if (panel_width == 0U) {
@@ -939,8 +937,7 @@ RA8_INTERNAL
   out_cfg->init = (uint8_t)k_ra8_epaper_lut_init;
   out_cfg->du   = (uint8_t)k_ra8_epaper_lut_du;
   out_cfg->gc16 = (uint8_t)k_ra8_epaper_lut_gc16;
-  out_cfg->a2 =
-    is_m641 ? (uint8_t)k_ra8_epaper_lut_a2_m641 : (uint8_t)k_ra8_epaper_lut_a2_gen;
+  out_cfg->a2   = is_m641 ? (uint8_t)k_ra8_epaper_lut_a2_m641 : (uint8_t)k_ra8_epaper_lut_a2_gen;
   return k_ra8_ok;
 }
 

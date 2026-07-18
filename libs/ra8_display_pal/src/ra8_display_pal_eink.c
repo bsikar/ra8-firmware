@@ -71,17 +71,17 @@ static eink_ctx_t s_eink_ctx;
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_eink_rgb565_bpp         = 2U,      /**< Bytes per RGB565 pixel.        */
-  k_eink_refresh_quality_us = 450000U, /**< Typical GC16 latency.          */
-  k_eink_line_max_px        = 4096U,   /**< Max row width (= panel max).   */
-  k_eink_luma_r             = 77U,     /**< Rec.601 R weight (0.299*256).  */
-  k_eink_luma_g             = 150U,    /**< Rec.601 G weight (0.587*256).  */
-  k_eink_luma_b             = 29U,     /**< Rec.601 B weight (0.114*256).  */
-  k_eink_luma_shift         = 8U,      /**< Luma weight denominator shift. */
+  k_eink_rgb565_bpp         = 2U,      /**< Bytes per RGB565 pixel.         */
+  k_eink_refresh_quality_us = 450000U, /**< Typical GC16 latency.           */
+  k_eink_line_max_px        = 4096U,   /**< Max row width (= panel max).    */
+  k_eink_luma_r             = 77U,     /**< Rec.601 R weight (0.299*256).   */
+  k_eink_luma_g             = 150U,    /**< Rec.601 G weight (0.587*256).   */
+  k_eink_luma_b             = 29U,     /**< Rec.601 B weight (0.114*256).   */
+  k_eink_luma_shift         = 8U,      /**< Luma weight denominator shift.  */
   k_eink_nibble_shift       = 4U,      /**< 8bpp luma -> 4bpp nibble shift. */
-  k_eink_px_per_byte_4bpp   = 2U,      /**< Pixels packed per 4bpp byte.   */
-  k_eink_nibble_mask        = 0x0FU,   /**< Low-nibble mask.               */
-  k_eink_white_nibble       = 0x0FU,   /**< 4bpp white, used to pad tails. */
+  k_eink_px_per_byte_4bpp   = 2U,      /**< Pixels packed per 4bpp byte.    */
+  k_eink_nibble_mask        = 0x0FU,   /**< Low-nibble mask.                */
+  k_eink_white_nibble       = 0x0FU,   /**< 4bpp white, used to pad tails.  */
 } ra8_display_pal_eink_const_t;
 
 /**
@@ -329,15 +329,14 @@ static void internal_eink_pack_row_4bpp(const uint16_t* src, uint16_t width)
     /* The controller keeps only the high nibble of an 8 bpp byte, so
      * dropping the low nibble here costs nothing optically and halves the
      * bytes on the wire. */
-    const uint8_t  hi_px = ra8_display_pal_eink_luma_from_rgb565(src[col]);
-    const uint32_t next  = col + 1U;
-    const uint8_t  lo_px = (next < (uint32_t)width)
-                             ? ra8_display_pal_eink_luma_from_rgb565(src[next])
-                             : (uint8_t)(k_eink_white_nibble << k_eink_nibble_shift);
-    const uint8_t  hi_n  = (uint8_t)((hi_px >> k_eink_nibble_shift) & k_eink_nibble_mask);
-    const uint8_t  lo_n  = (uint8_t)((lo_px >> k_eink_nibble_shift) & k_eink_nibble_mask);
-    s_eink_line[col / px_per_byte] =
-      (uint8_t)((uint8_t)(hi_n << k_eink_nibble_shift) | lo_n);
+    const uint8_t  hi_px           = ra8_display_pal_eink_luma_from_rgb565(src[col]);
+    const uint32_t next            = col + 1U;
+    const uint8_t  lo_px           = (next < (uint32_t)width)
+                                       ? ra8_display_pal_eink_luma_from_rgb565(src[next])
+                                       : (uint8_t)(k_eink_white_nibble << k_eink_nibble_shift);
+    const uint8_t  hi_n            = (uint8_t)((hi_px >> k_eink_nibble_shift) & k_eink_nibble_mask);
+    const uint8_t  lo_n            = (uint8_t)((lo_px >> k_eink_nibble_shift) & k_eink_nibble_mask);
+    s_eink_line[col / px_per_byte] = (uint8_t)((uint8_t)(hi_n << k_eink_nibble_shift) | lo_n);
   }
 }
 
@@ -383,8 +382,7 @@ static ra8_err_t internal_eink_load_rect(const eink_ctx_t* c, display_rect_t rec
                                     .width  = rect.w,
                                     .height = 1U};
     size_t                  need = 0U;
-    const ra8_err_t         serr =
-      ra8_epaper_image_bytes(&area, k_ra8_epaper_pf_4bpp, &need);
+    const ra8_err_t         serr = ra8_epaper_image_bytes(&area, k_ra8_epaper_pf_4bpp, &need);
     if (serr != k_ra8_ok) {
       return serr;
     }
