@@ -29,7 +29,6 @@
 #include "unity_minimal.h"
 
 /* Forward decl of the tokenizer entry point (defined in the production TU). */
-ra8_err_t priv_reflow_xml_walk(ra8_reflow_t* engine, const uint8_t* xhtml_buf, size_t xhtml_len);
 
 /** @brief Shared engine instance (large -- keep off the stack). */
 static ra8_reflow_t s_engine;

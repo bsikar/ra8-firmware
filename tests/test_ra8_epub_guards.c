@@ -531,7 +531,8 @@ static void test_mcdc_render_glyph_null_or4(void)
   const ra8_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open(&media, nullptr, &book));
   uint8_t  bm[k_mcdc_buf_small];
-  uint32_t w = 0U, h = 0U;
+  uint32_t w = 0U;
+  uint32_t h = 0U;
   /* V1 (no font installed -> not_initialized, but the NULL guard passes). */
   TEST_ASSERT_EQ(k_ra8_err_not_initialized,
                  ra8_epub_render_glyph(&book,
@@ -573,7 +574,8 @@ static void test_mcdc_render_glyph_state_or(void)
   ra8_epub_book_t            book  = {};
   const ra8_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
   uint8_t                    bm[k_mcdc_buf_small];
-  uint32_t                   w = 0U, h = 0U;
+  uint32_t                   w = 0U;
+  uint32_t                   h = 0U;
 
   /* V3 first: opened but no font set -> not_initialized via C2 path. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open(&media, nullptr, &book));

@@ -196,10 +196,11 @@ static bool window_ok(size_t got, size_t want, bool bytes_match)
 static void test_slab_reset(void)
 {
   TEST_BEGIN("mem_subsystem: slab alloc/free/reset");
-  [[gnu::aligned(8)]] static uint8_t pool[k_slab_pool_bytes];
+  [[gnu::aligned(8)]] static uint8_t s_pool[k_slab_pool_bytes];
   ra8_slab_t                         slab = {};
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_slab_init(&slab, pool, (uint32_t)sizeof(pool), (uint32_t)k_slab_cell_bytes));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_slab_init(&slab, s_pool, (uint32_t)sizeof(s_pool), (uint32_t)k_slab_cell_bytes));
 
   void* cells[k_slab_cells] = {};
   for (uint32_t i = 0U; i < (uint32_t)k_slab_cells; i++) {
@@ -218,8 +219,9 @@ static void test_slab_reset(void)
   TEST_ASSERT_EQ(k_slab_cells, total);
 
   /* Reset by re-init: every cell free again. */
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_slab_init(&slab, pool, (uint32_t)sizeof(pool), (uint32_t)k_slab_cell_bytes));
+  TEST_ASSERT_EQ(
+    k_ra8_ok,
+    ra8_slab_init(&slab, s_pool, (uint32_t)sizeof(s_pool), (uint32_t)k_slab_cell_bytes));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_slab_stats(&slab, &freev, &total));
   TEST_ASSERT_EQ(k_slab_cells, freev);
   TEST_END("mem_subsystem: slab alloc/free/reset");
@@ -233,9 +235,9 @@ static void test_slab_reset(void)
 static void test_arena_reset(void)
 {
   TEST_BEGIN("mem_subsystem: arena carve/oversub/reset");
-  [[gnu::aligned(8)]] static uint8_t pool[k_arena_pool_bytes];
+  [[gnu::aligned(8)]] static uint8_t s_pool[k_arena_pool_bytes];
   ra8_arena_t                        arena = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_arena_init(&arena, pool, (uint32_t)sizeof(pool)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_arena_init(&arena, s_pool, (uint32_t)sizeof(s_pool)));
 
   void* b0 = nullptr;
   void* b1 = nullptr;
@@ -252,7 +254,7 @@ static void test_arena_reset(void)
                  ra8_arena_carve(&arena, (uint32_t)k_arena_big, (uint32_t)k_arena_align0, &big));
 
   /* Reset by re-init: whole region available again. */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_arena_init(&arena, pool, (uint32_t)sizeof(pool)));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_arena_init(&arena, s_pool, (uint32_t)sizeof(s_pool)));
   uint32_t rem = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_arena_remaining(&arena, &rem));
   TEST_ASSERT_EQ(k_arena_pool_bytes, rem);
@@ -267,21 +269,21 @@ static void test_arena_reset(void)
 static void test_tile_eviction(void)
 {
   TEST_BEGIN("mem_subsystem: tile-cache overfill eviction");
-  [[gnu::aligned(8)]] static uint8_t cells[(size_t)k_tile_cells * (size_t)k_tile_cell_bytes];
-  static ra8_tile_key_t              keys[k_tile_cells];
-  static ra8_tile_dims_t             dims[k_tile_cells];
-  static ra8_keycache_cell_t         meta[k_tile_cells];
-  static int32_t                     buckets[k_tile_buckets];
+  [[gnu::aligned(8)]] static uint8_t s_cells[(size_t)k_tile_cells * (size_t)k_tile_cell_bytes];
+  static ra8_tile_key_t              s_keys[k_tile_cells];
+  static ra8_tile_dims_t             s_dims[k_tile_cells];
+  static ra8_keycache_cell_t         s_meta[k_tile_cells];
+  static int32_t                     s_buckets[k_tile_buckets];
 
   ra8_tile_cache_t     tc  = {};
   ra8_tile_cache_cfg_t cfg = {};
-  cfg.cell_mem             = cells;
+  cfg.cell_mem             = s_cells;
   cfg.cell_bytes           = (uint32_t)k_tile_cell_bytes;
   cfg.cell_count           = (uint32_t)k_tile_cells;
-  cfg.meta                 = meta;
-  cfg.keys                 = keys;
-  cfg.dims                 = dims;
-  cfg.buckets              = buckets;
+  cfg.meta                 = s_meta;
+  cfg.keys                 = s_keys;
+  cfg.dims                 = s_dims;
+  cfg.buckets              = s_buckets;
   cfg.bucket_count         = (uint32_t)k_tile_buckets;
   cfg.decode               = tile_decode;
   cfg.decode_ctx           = nullptr;
@@ -310,14 +312,14 @@ static void test_tile_eviction(void)
 static size_t
 stream_window(ra8_vmem_stream_t* st, uint64_t off, uint32_t len, uint32_t* crc, bool* bytes_ok)
 {
-  static uint8_t buf[k_win_buf_bytes];
-  const size_t   got = ra8_vmem_stream_read(st, off, buf, (size_t)len);
+  static uint8_t s_buf[k_win_buf_bytes];
+  const size_t   got = ra8_vmem_stream_read(st, off, s_buf, (size_t)len);
   bool           ok  = true;
   for (size_t i = 0U; i < got; i++) {
-    if (buf[i] != gen_byte(off + (uint64_t)i)) {
+    if (s_buf[i] != gen_byte(off + (uint64_t)i)) {
       ok = false;
     }
-    *crc = crc32_byte(*crc, buf[i]);
+    *crc = crc32_byte(*crc, s_buf[i]);
   }
   *bytes_ok = ok;
   return got;
@@ -332,13 +334,13 @@ stream_window(ra8_vmem_stream_t* st, uint64_t off, uint32_t len, uint32_t* crc, 
 static void test_vmem_stream_windows(void)
 {
   TEST_BEGIN("mem_subsystem: vmem_stream windows over 1 MiB backing");
-  [[gnu::aligned(8)]] static uint8_t frames[(size_t)k_vmem_frames * (size_t)k_vmem_frame_bytes];
-  static ra8_vmem_frame_t            fmeta[k_vmem_frames];
-  static int32_t                     fbuckets[k_vmem_buckets];
-  static ra8_vsource_obj_t           objs[k_vmem_objs];
+  [[gnu::aligned(8)]] static uint8_t s_frames[(size_t)k_vmem_frames * (size_t)k_vmem_frame_bytes];
+  static ra8_vmem_frame_t            s_fmeta[k_vmem_frames];
+  static int32_t                     s_fbuckets[k_vmem_buckets];
+  static ra8_vsource_obj_t           s_objs[k_vmem_objs];
 
   ra8_vsource_t vs = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_init(&vs, objs, (uint32_t)k_vmem_objs));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_init(&vs, s_objs, (uint32_t)k_vmem_objs));
   uint32_t obj_id = 0U;
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -346,11 +348,11 @@ static void test_vmem_stream_windows(void)
 
   ra8_vmem_t     vm   = {};
   ra8_vmem_cfg_t vcfg = {};
-  vcfg.frame_mem      = frames;
+  vcfg.frame_mem      = s_frames;
   vcfg.frame_bytes    = (uint32_t)k_vmem_frame_bytes;
   vcfg.frame_count    = (uint32_t)k_vmem_frames;
-  vcfg.meta           = fmeta;
-  vcfg.buckets        = fbuckets;
+  vcfg.meta           = s_fmeta;
+  vcfg.buckets        = s_fbuckets;
   vcfg.bucket_count   = (uint32_t)k_vmem_buckets;
   vcfg.loader         = ra8_vsource_loader;
   vcfg.loader_ctx     = &vs;

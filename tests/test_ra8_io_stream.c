@@ -127,10 +127,10 @@ static void test_formatting(void)
 static void test_blockdev_sink(void)
 {
   TEST_BEGIN("blockdev sink");
-  static uint8_t              disk[(size_t)k_t_bd_blocks * (size_t)k_ra8_io_block_size_bytes];
+  static uint8_t              s_disk[(size_t)k_t_bd_blocks * (size_t)k_ra8_io_block_size_bytes];
   ra8_io_blockdev_ram_state_t bstate = {};
   ra8_io_blockdev_t           bd     = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_ram_init(&bd, &bstate, disk, k_t_bd_blocks, false));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_ram_init(&bd, &bstate, s_disk, k_t_bd_blocks, false));
 
   ra8_io_stream_blockdev_state_t sstate = {};
   ra8_io_stream_t                s      = {};
@@ -138,7 +138,7 @@ static void test_blockdev_sink(void)
 
   uint8_t payload[(size_t)k_t_stream_bytes];
   for (uint32_t i = 0; i < (uint32_t)k_t_stream_bytes; ++i) {
-    payload[i] = (uint8_t)((i * 3u + 1u) & 0xFFu);
+    payload[i] = (uint8_t)(((i * 3U) + 1U) & 0xFFU);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_write(&s, payload, k_t_stream_bytes, nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_flush(&s));
@@ -170,10 +170,10 @@ static void test_same_call_two_targets(void)
   ra8_io_stream_t           a                         = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_ram_init(&a, &rst, rbuf, k_t_ram_cap));
 
-  static uint8_t              disk[(size_t)k_ra8_io_block_size_bytes];
+  static uint8_t              s_disk[(size_t)k_ra8_io_block_size_bytes];
   ra8_io_blockdev_ram_state_t bstate = {};
   ra8_io_blockdev_t           bd     = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_ram_init(&bd, &bstate, disk, 1, false));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_ram_init(&bd, &bstate, s_disk, 1, false));
   ra8_io_stream_blockdev_state_t sstate = {};
   ra8_io_stream_t                b      = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_blockdev_init(&b, &sstate, &bd, 0));
@@ -244,10 +244,10 @@ static void test_stream_validation(void)
 static void test_ra8_log_redirect(void)
 {
   TEST_BEGIN("ra8_log redirect");
-  static char               buf[(size_t)k_t_log_cap] = {};
-  ra8_io_stream_ram_state_t st                       = {};
-  ra8_io_stream_t           s                        = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_ram_init(&s, &st, (uint8_t*)buf, k_t_log_cap - 1u));
+  static char               s_buf[(size_t)k_t_log_cap] = {};
+  ra8_io_stream_ram_state_t st                         = {};
+  ra8_io_stream_t           s                          = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_ram_init(&s, &st, (uint8_t*)s_buf, k_t_log_cap - 1U));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_io_log_attach(nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_log_attach(&s));
   ra8_log_init();
@@ -255,10 +255,10 @@ static void test_ra8_log_redirect(void)
   ra8_io_log_detach();
   uint32_t used = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_ram_used(&st, &used));
-  TEST_ASSERT(used > 0u);
-  buf[used] = '\0';
-  TEST_ASSERT(strstr(buf, "TST") != nullptr);
-  TEST_ASSERT(strstr(buf, "boom") != nullptr);
+  TEST_ASSERT(used > 0U);
+  s_buf[used] = '\0';
+  TEST_ASSERT(strstr(s_buf, "TST") != nullptr);
+  TEST_ASSERT(strstr(s_buf, "boom") != nullptr);
   TEST_END("ra8_log redirect");
 }
 

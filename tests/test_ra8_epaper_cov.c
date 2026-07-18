@@ -164,6 +164,12 @@ ra8_err_t ra8_epaper_set_vcom_cov(uint16_t mv);
 bool      ra8_epaper_vcom_verified_cov(void);
 
 /** @brief RA8 epaper init. */
+/* Include-time interposition seam: each macro below must be spelled
+ * EXACTLY like the production symbol it replaces, so the project rule
+ * that macro names are UPPER_CASE cannot apply here -- renaming one
+ * silently un-hooks the mock and the test would exercise the real
+ * driver while still passing. */
+// NOLINTBEGIN(readability-identifier-naming)
 #define ra8_epaper_init ra8_epaper_init_cov
 /** @brief RA8 epaper load image. */
 #define ra8_epaper_load_image ra8_epaper_load_image_cov
@@ -179,6 +185,7 @@ bool      ra8_epaper_vcom_verified_cov(void);
 #define ra8_epaper_set_vcom ra8_epaper_set_vcom_cov
 /** @brief RA8 epaper INV-VCOM-1 permit query. */
 #define ra8_epaper_vcom_verified ra8_epaper_vcom_verified_cov
+// NOLINTEND(readability-identifier-naming)
 
 #include "ra8_epaper.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
 

@@ -417,11 +417,11 @@ static inline size_t make_bmp(uint8_t* out, uint16_t w, uint16_t h, uint8_t gray
   out[28] = 24U;              /* bits per pixel     */
   put_u32_le(out + 34, data); /* raw image size     */
   for (uint32_t y = 0U; y < (uint32_t)h; y++) {
-    uint8_t* px = out + hdr + (size_t)y * row;
+    uint8_t* px = out + hdr + ((size_t)y * row);
     for (uint32_t x = 0U; x < (uint32_t)w; x++) {
-      px[x * 3U + 0U] = gray;
-      px[x * 3U + 1U] = gray;
-      px[x * 3U + 2U] = gray;
+      px[(x * 3U) + 0U] = gray;
+      px[(x * 3U) + 1U] = gray;
+      px[(x * 3U) + 2U] = gray;
     }
   }
   return (size_t)total;
@@ -567,8 +567,8 @@ static inline void build_epub_chapter(const char* chapter)
  */
 static inline void build_epub_raster(void)
 {
-  static uint8_t small_bmp[128];
-  const size_t   small_len = make_bmp(small_bmp, 2U, 2U, 0x80U);
+  static uint8_t s_small_bmp[128];
+  const size_t   small_len = make_bmp(s_small_bmp, 2U, 2U, 0x80U);
   const size_t   big_len   = make_bmp(s_bmp, (uint16_t)k_pl_big_edge, 1U, 0x80U);
 
   const pipe_zip_entry_t entries[] = {
@@ -576,7 +576,7 @@ static inline void build_epub_raster(void)
     {"META-INF/container.xml", k_container, strlen(k_container), false},
     {"OEBPS/content.opf", k_opf_raster, strlen(k_opf_raster), false},
     {"OEBPS/c1.xhtml", k_chapter_xhtml, strlen(k_chapter_xhtml), false},
-    {"OEBPS/small.bmp", small_bmp, small_len, false},
+    {"OEBPS/small.bmp", s_small_bmp, small_len, false},
     {"OEBPS/big.bmp", s_bmp, big_len, false},
   };
   build_zip(entries, sizeof(entries) / sizeof(entries[0]));

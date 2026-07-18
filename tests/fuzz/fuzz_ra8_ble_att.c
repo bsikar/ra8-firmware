@@ -29,8 +29,6 @@
 #include "ra8_err.h"
 
 /* UNIT_TEST hooks declared in ra8_ble_host.h. */
-void ra8_ble_host_test_inject_acl(uint16_t conn_handle, const uint8_t* l2cap_frame, uint16_t len);
-void ra8_ble_host_test_inject_connect(uint16_t conn_handle);
 
 enum : uint16_t {
   k_fuzz_conn_handle   = 0x0040U,               /**< Fuzz conn handle.          */

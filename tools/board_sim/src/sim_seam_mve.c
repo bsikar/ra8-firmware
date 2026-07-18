@@ -240,7 +240,7 @@ void mve_seam_install(uc_engine* uc, const uint8_t* elf, long len)
   }
   uint32_t n_hooks = 0U;
   for (uint16_t i = 0U; i < phnum; i++) {
-    const uint8_t* ph       = elf + phoff + ((uint32_t)i * phentsize);
+    const uint8_t* ph       = elf + phoff + ((size_t)(uint32_t)i * phentsize);
     uint32_t       p_type   = 0U;
     uint32_t       p_offset = 0U;
     uint32_t       p_vaddr  = 0U;

@@ -40,9 +40,6 @@ const uint8_t* ra8_ble_test_tx_capture(uint16_t* out_len);
 void           ra8_ble_test_reset_capture(void);
 
 /* Test hooks from libs/ra8_ble_host/src/ra8_ble_l2cap.c. */
-void ra8_ble_host_test_inject_acl(uint16_t conn_handle, const uint8_t* l2cap_frame, uint16_t len);
-uint32_t ra8_ble_host_test_event_count(void);
-void     ra8_ble_host_test_inject_connect(uint16_t conn_handle);
 
 /* Internal L2CAP TX entry point declared in ra8_ble_host_internal.h; we
  * re-declare it here so the MC/DC tests do not have to drag in that

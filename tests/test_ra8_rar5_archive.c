@@ -134,19 +134,19 @@ static void test_cbr_compressed_parity(void)
 {
   TEST_BEGIN("comic cbr: RAR5-compressed page == STORE page (parity)");
   /* One PNG page; the STORE and compressed archives must decode to it identically. */
-  static uint8_t png[k_cf_png_max];
-  const size_t   plen = cf_make_png(7U, 5U, 9U, png, sizeof(png));
+  static uint8_t s_png[k_cf_png_max];
+  const size_t   plen = cf_make_png(7U, 5U, 9U, s_png, sizeof(s_png));
   TEST_ASSERT(plen > 0U);
-  static uint8_t packed[k_pk_cap];
-  memset(packed, 0, sizeof(packed));
-  const size_t pklen = enc_all_literal(png, plen, packed, sizeof(packed));
+  static uint8_t s_packed[k_pk_cap];
+  memset(s_packed, 0, sizeof(s_packed));
+  const size_t pklen = enc_all_literal(s_png, plen, s_packed, sizeof(s_packed));
 
   static const uint8_t k_sig[8] = {0x52U, 0x61U, 0x72U, 0x21U, 0x1AU, 0x07U, 0x01U, 0x00U};
   size_t               p        = 0U;
   memcpy(&s_farc[p], k_sig, sizeof(k_sig));
   p += sizeof(k_sig);
   p += av5_simple(&s_farc[p], 1U);
-  p += av5_file(&s_farc[p], "page.png", packed, pklen, (uint64_t)plen, 1U); /* compressed */
+  p += av5_file(&s_farc[p], "page.png", s_packed, pklen, (uint64_t)plen, 1U); /* compressed */
   p += av5_simple(&s_farc[p], 5U);
   s_farc_len = p;
 
@@ -169,13 +169,13 @@ static void test_cbr_compressed_parity(void)
   TEST_ASSERT_EQ(1U, ex); /* compressed RAR5 page is extractable */
   TEST_ASSERT_EQ(plen, raw);
 
-  static uint8_t obuf[k_cf_png_max];
-  memset(obuf, 0, sizeof(obuf));
+  static uint8_t s_obuf[k_cf_png_max];
+  memset(s_obuf, 0, sizeof(s_obuf));
   size_t got = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_page_read(&c, 0U, obuf, sizeof(obuf), &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_page_read(&c, 0U, s_obuf, sizeof(s_obuf), &got));
   TEST_ASSERT_EQ(plen, got);
-  TEST_ASSERT_EQ(0, memcmp(obuf, png, plen)); /* byte-parity with the STORE page */
-  TEST_ASSERT(cf_decode_ok(obuf, got, 7, 5)); /* and decodes to real pixels      */
+  TEST_ASSERT_EQ(0, memcmp(s_obuf, s_png, plen)); /* byte-parity with the STORE page */
+  TEST_ASSERT(cf_decode_ok(s_obuf, got, 7, 5));   /* and decodes to real pixels      */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_close(&c));
   TEST_END("comic cbr: RAR5-compressed page == STORE page (parity)");
 }
@@ -273,9 +273,10 @@ static void test_cbr_rar4_compressed_unsupported(void)
   uint8_t  ex  = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_page_info(&c, 0U, nullptr, 0U, &nl, &raw, &ex));
   TEST_ASSERT_EQ(0U, ex); /* RAR4-compressed: not extractable */
-  static uint8_t obuf[64];
+  static uint8_t s_obuf[64];
   size_t         got = 0U;
-  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_comic_page_read(&c, 0U, obuf, sizeof(obuf), &got));
+  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+                 ra8_comic_page_read(&c, 0U, s_obuf, sizeof(s_obuf), &got));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_close(&c));
   TEST_END("comic cbr: RAR4-compressed page unsupported");
 }
@@ -325,7 +326,7 @@ static void test_rar_extract_dispatch(void)
                         .size      = (uint64_t)sizeof(k_bytes),
                         .first_off = 0U,
                         .version   = k_ra8_rar_ver_5};
-  static uint8_t obuf[64];
+  static uint8_t s_obuf[64];
   size_t         got = 0U;
 
   /* STORE member -> copy (control: is_file true, is_dir false). */
@@ -335,35 +336,35 @@ static void test_rar_extract_dispatch(void)
                            .data_off  = 0U,
                            .pack_size = 8U,
                            .unp_size  = 8U};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_rar_extract(&rar, &store, obuf, sizeof(obuf), &s_state, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rar_extract(&rar, &store, s_obuf, sizeof(s_obuf), &s_state, &got));
   TEST_ASSERT_EQ(8U, got);
-  TEST_ASSERT_EQ(0, memcmp(obuf, k_bytes, 8U));
+  TEST_ASSERT_EQ(0, memcmp(s_obuf, k_bytes, 8U));
 
   /* Non-file entry -> unsupported (varies is_file). */
   ra8_rar_entry_t nonfile = store;
   nonfile.is_file         = 0U;
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_rar_extract(&rar, &nonfile, obuf, sizeof(obuf), &s_state, &got));
+                 ra8_rar_extract(&rar, &nonfile, s_obuf, sizeof(s_obuf), &s_state, &got));
 
   /* Directory entry -> unsupported (varies is_dir). */
   ra8_rar_entry_t dir = store;
   dir.is_dir          = 1U;
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_rar_extract(&rar, &dir, obuf, sizeof(obuf), &s_state, &got));
+                 ra8_rar_extract(&rar, &dir, s_obuf, sizeof(s_obuf), &s_state, &got));
 
   /* Compressed member with NULL scratch -> null_ptr. */
   ra8_rar_entry_t comp = store;
   comp.method          = (uint8_t)k_ra8_rar_method_compressed;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_rar_extract(&rar, &comp, obuf, sizeof(obuf), nullptr, &got));
+                 ra8_rar_extract(&rar, &comp, s_obuf, sizeof(s_obuf), nullptr, &got));
 
   /* RAR4-compressed member -> unsupported (legacy codec out of scope). */
   ra8_rar_t r4 = rar;
   r4.version   = k_ra8_rar_ver_4;
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
-                 ra8_rar_extract(&r4, &comp, obuf, sizeof(obuf), &s_state, &got));
+                 ra8_rar_extract(&r4, &comp, s_obuf, sizeof(s_obuf), &s_state, &got));
 
-  extract_dispatch_guards(&rar, &store, obuf, sizeof(obuf));
+  extract_dispatch_guards(&rar, &store, s_obuf, sizeof(s_obuf));
   TEST_END("rar: extract dispatch (store / compressed / guards)");
 }
 

@@ -46,11 +46,11 @@ void eth_seam_hook(uc_engine* uc, const uint8_t* elf, long len, const char* name
   if (addr == 0U) {
     return;
   }
-  static uc_hook  handles[24];
-  static uint32_t n;
-  if (n < (uint32_t)(sizeof(handles) / sizeof(handles[0]))) {
-    (void)uc_hook_add(uc, &handles[n], UC_HOOK_CODE, cb, nullptr, addr, addr);
-    n++;
+  static uc_hook  s_handles[24];
+  static uint32_t s_n;
+  if (s_n < (uint32_t)(sizeof(s_handles) / sizeof(s_handles[0]))) {
+    (void)uc_hook_add(uc, &s_handles[s_n], UC_HOOK_CODE, cb, nullptr, addr, addr);
+    s_n++;
   }
 }
 
@@ -109,14 +109,14 @@ void sym_trace_install(uc_engine*         uc,
                        const char* const* names,
                        uint32_t           count)
 {
-  static uc_hook th[k_trace_sym_max];
+  static uc_hook s_th[k_trace_sym_max];
   for (uint32_t i = 0U; (i < count) && (i < (uint32_t)k_trace_sym_max); i++) {
     const uint32_t addr = elf_sym_addr(elf, len, names[i], nullptr);
     if (addr == 0U) {
       (void)fprintf(stderr, "  [symtrace] %s: symbol not found -- skipped\n", names[i]);
       continue;
     }
-    (void)uc_hook_add(uc, &th[i], UC_HOOK_CODE, (void*)on_sym_trace, (void*)names[i], addr, addr);
+    (void)uc_hook_add(uc, &s_th[i], UC_HOOK_CODE, (void*)on_sym_trace, (void*)names[i], addr, addr);
     (void)fprintf(stderr, "  [symtrace] %s armed @ 0x%08X\n", names[i], (unsigned)addr);
   }
 }

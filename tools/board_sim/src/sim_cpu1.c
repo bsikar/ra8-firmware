@@ -95,7 +95,7 @@ static bool cpu1_image_present(const uint8_t* elf)
   const uint16_t phentsize = (uint16_t)(elf[42] | (elf[43] << 8));
   const uint16_t phnum     = (uint16_t)(elf[44] | (elf[45] << 8));
   for (uint16_t i = 0U; i < phnum; i++) {
-    const uint8_t* ph = elf + phoff + ((uint32_t)i * phentsize);
+    const uint8_t* ph = elf + phoff + ((size_t)(uint32_t)i * phentsize);
     uint32_t       p_type;
     uint32_t       p_paddr;
     (void)memcpy(&p_type, ph + 0, 4);

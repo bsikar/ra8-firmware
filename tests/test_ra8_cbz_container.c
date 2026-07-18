@@ -52,22 +52,22 @@ static void test_ra8_cbz_open_happy(void)
 {
   TEST_BEGIN("ra8_cbz_open happy path");
   ccx_fill_pages();
-  static uint8_t container[k_ccx_file_cap];
-  const uint64_t file_len = ccx_pack(container, 0U, 0U);
+  static uint8_t s_container[k_ccx_file_cap];
+  const uint64_t file_len = ccx_pack(s_container, 0U, 0U);
 
   ra8_cbz_t      cbz                            = {};
   ccx_file_t     file                           = {};
   uint64_t       offsets_buf[k_ccx_offsets_cap] = {};
-  static uint8_t meta_buf[k_ccx_meta_cap];
-  static uint8_t staging[k_ccx_staging_cap];
+  static uint8_t s_meta_buf[k_ccx_meta_cap];
+  static uint8_t s_staging[k_ccx_staging_cap];
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ccx_open(&cbz, &file, container, file_len, offsets_buf, meta_buf, staging));
+                 ccx_open(&cbz, &file, s_container, file_len, offsets_buf, s_meta_buf, s_staging));
 
   TEST_ASSERT_EQ(k_ccx_page_count, cbz.page_count);
   TEST_ASSERT_EQ(k_ccx_page_count, ra8_cbz_page_count(&cbz));
   TEST_ASSERT(!ra8_cbz_is_rtl(&cbz));
   TEST_ASSERT(cbz.offsets == offsets_buf);
-  TEST_ASSERT(cbz.meta == meta_buf);
+  TEST_ASSERT(cbz.meta == s_meta_buf);
   const uint64_t want_payload = (uint64_t)k_ra8_cbz_header_len +
                                 ((uint64_t)(k_ccx_page_count + 1U) * k_ra8_cbz_offset_len) +
                                 ((uint64_t)k_ccx_page_count * k_ra8_cbz_meta_len);
@@ -75,16 +75,16 @@ static void test_ra8_cbz_open_happy(void)
   TEST_ASSERT_EQ(0U, cbz.offsets[0]);
 
   /* RTL container: exactly the RTL flag bit is decoded. */
-  static uint8_t rtl_container[k_ccx_file_cap];
-  const uint64_t rtl_len  = ccx_pack(rtl_container, (uint32_t)k_ra8_book_flag_rtl, 0U);
+  static uint8_t s_rtl_container[k_ccx_file_cap];
+  const uint64_t rtl_len  = ccx_pack(s_rtl_container, (uint32_t)k_ra8_book_flag_rtl, 0U);
   ra8_cbz_t      rtl_cbz  = {};
   ccx_file_t     rtl_file = {};
   uint64_t       rtl_off[k_ccx_offsets_cap] = {};
-  static uint8_t rtl_meta[k_ccx_meta_cap];
-  static uint8_t rtl_stage[k_ccx_staging_cap];
+  static uint8_t s_rtl_meta[k_ccx_meta_cap];
+  static uint8_t s_rtl_stage[k_ccx_staging_cap];
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ccx_open(&rtl_cbz, &rtl_file, rtl_container, rtl_len, rtl_off, rtl_meta, rtl_stage));
+    ccx_open(&rtl_cbz, &rtl_file, s_rtl_container, rtl_len, rtl_off, s_rtl_meta, s_rtl_stage));
   TEST_ASSERT(ra8_cbz_is_rtl(&rtl_cbz));
 
   TEST_END("ra8_cbz_open happy path");
@@ -298,35 +298,35 @@ static void ccx_open_guards_header(ra8_cbz_t* cbz, ccx_file_t* file, const ccx_g
   TEST_ASSERT(cbz->offsets == nullptr);
 
   /* Bad magic. */
-  static uint8_t bad_magic[k_ccx_file_cap];
-  memcpy(bad_magic, g->container, (size_t)g->file_len);
-  bad_magic[0] = (uint8_t)'X';
+  static uint8_t s_bad_magic[k_ccx_file_cap];
+  memcpy(s_bad_magic, g->container, (size_t)g->file_len);
+  s_bad_magic[0] = (uint8_t)'X';
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ccx_open(cbz, file, bad_magic, g->file_len, g->offsets, g->meta, g->staging));
+                 ccx_open(cbz, file, s_bad_magic, g->file_len, g->offsets, g->meta, g->staging));
 
   /* Zero page count. */
-  static uint8_t zero_pages[k_ccx_file_cap];
-  memcpy(zero_pages, g->container, (size_t)g->file_len);
+  static uint8_t s_zero_pages[k_ccx_file_cap];
+  memcpy(s_zero_pages, g->container, (size_t)g->file_len);
   const uint32_t zero = 0U;
-  memcpy(&zero_pages[k_ra8_cbz_hdr_off_page_count], &zero, sizeof(zero));
+  memcpy(&s_zero_pages[k_ra8_cbz_hdr_off_page_count], &zero, sizeof(zero));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ccx_open(cbz, file, zero_pages, g->file_len, g->offsets, g->meta, g->staging));
+                 ccx_open(cbz, file, s_zero_pages, g->file_len, g->offsets, g->meta, g->staging));
 
   /* Non-zero reserved word. */
-  static uint8_t bad_rsv[k_ccx_file_cap];
-  memcpy(bad_rsv, g->container, (size_t)g->file_len);
+  static uint8_t s_bad_rsv[k_ccx_file_cap];
+  memcpy(s_bad_rsv, g->container, (size_t)g->file_len);
   const uint32_t one = 1U;
-  memcpy(&bad_rsv[k_ra8_cbz_hdr_off_reserved], &one, sizeof(one));
+  memcpy(&s_bad_rsv[k_ra8_cbz_hdr_off_reserved], &one, sizeof(one));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ccx_open(cbz, file, bad_rsv, g->file_len, g->offsets, g->meta, g->staging));
+                 ccx_open(cbz, file, s_bad_rsv, g->file_len, g->offsets, g->meta, g->staging));
 
   /* Unknown feature-flag bit. */
-  static uint8_t bad_flag[k_ccx_file_cap];
-  memcpy(bad_flag, g->container, (size_t)g->file_len);
+  static uint8_t s_bad_flag[k_ccx_file_cap];
+  memcpy(s_bad_flag, g->container, (size_t)g->file_len);
   const uint32_t unknown_flag = (uint32_t)k_ra8_book_flag_mask_known + 1U;
-  memcpy(&bad_flag[k_ra8_cbz_hdr_off_flags], &unknown_flag, sizeof(unknown_flag));
+  memcpy(&s_bad_flag[k_ra8_cbz_hdr_off_flags], &unknown_flag, sizeof(unknown_flag));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ccx_open(cbz, file, bad_flag, g->file_len, g->offsets, g->meta, g->staging));
+                 ccx_open(cbz, file, s_bad_flag, g->file_len, g->offsets, g->meta, g->staging));
 }
 
 /**
@@ -392,20 +392,20 @@ static void ccx_open_guards_table(ra8_cbz_t* cbz, ccx_file_t* file, const ccx_gu
   const uint32_t zero = 0U;
 
   /* Corrupt offset table: force a non-monotonic entry (offset[1] == offset[0]). */
-  static uint8_t bad_offs[k_ccx_file_cap];
-  memcpy(bad_offs, g->container, (size_t)g->file_len);
+  static uint8_t s_bad_offs[k_ccx_file_cap];
+  memcpy(s_bad_offs, g->container, (size_t)g->file_len);
   const uint64_t zero64 = 0U;
-  memcpy(&bad_offs[k_ra8_cbz_header_len + k_ra8_cbz_offset_len], &zero64, sizeof(zero64));
+  memcpy(&s_bad_offs[k_ra8_cbz_header_len + k_ra8_cbz_offset_len], &zero64, sizeof(zero64));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ccx_open(cbz, file, bad_offs, g->file_len, g->offsets, g->meta, g->staging));
+                 ccx_open(cbz, file, s_bad_offs, g->file_len, g->offsets, g->meta, g->staging));
 
   /* Offset table whose first entry is not zero. */
-  static uint8_t bad_off0[k_ccx_file_cap];
-  memcpy(bad_off0, g->container, (size_t)g->file_len);
+  static uint8_t s_bad_off0[k_ccx_file_cap];
+  memcpy(s_bad_off0, g->container, (size_t)g->file_len);
   const uint64_t one64 = 1U;
-  memcpy(&bad_off0[k_ra8_cbz_header_len], &one64, sizeof(one64));
+  memcpy(&s_bad_off0[k_ra8_cbz_header_len], &one64, sizeof(one64));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ccx_open(cbz, file, bad_off0, g->file_len, g->offsets, g->meta, g->staging));
+                 ccx_open(cbz, file, s_bad_off0, g->file_len, g->offsets, g->meta, g->staging));
 
   /* File one byte short: the offset table's end disagrees with the payload. */
   TEST_ASSERT_EQ(
@@ -413,13 +413,13 @@ static void ccx_open_guards_table(ra8_cbz_t* cbz, ccx_file_t* file, const ccx_gu
     ccx_open(cbz, file, g->container, g->file_len - 1U, g->offsets, g->meta, g->staging));
 
   /* Zero raster length in the metadata table (page 0). */
-  static uint8_t bad_raw[k_ccx_file_cap];
-  memcpy(bad_raw, g->container, (size_t)g->file_len);
+  static uint8_t s_bad_raw[k_ccx_file_cap];
+  memcpy(s_bad_raw, g->container, (size_t)g->file_len);
   const size_t meta0 =
     (size_t)k_ra8_cbz_header_len + ((size_t)(k_ccx_page_count + 1U) * k_ra8_cbz_offset_len);
-  memcpy(&bad_raw[meta0 + k_ra8_cbz_meta_off_raw], &zero, sizeof(zero));
+  memcpy(&s_bad_raw[meta0 + k_ra8_cbz_meta_off_raw], &zero, sizeof(zero));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ccx_open(cbz, file, bad_raw, g->file_len, g->offsets, g->meta, g->staging));
+                 ccx_open(cbz, file, s_bad_raw, g->file_len, g->offsets, g->meta, g->staging));
 }
 
 /**
@@ -493,21 +493,21 @@ static void test_ra8_cbz_open_guards(void)
 {
   TEST_BEGIN("ra8_cbz_open guards");
   ccx_fill_pages();
-  static uint8_t container[k_ccx_file_cap];
-  const uint64_t file_len = ccx_pack(container, 0U, 0U);
+  static uint8_t s_container[k_ccx_file_cap];
+  const uint64_t file_len = ccx_pack(s_container, 0U, 0U);
 
   ra8_cbz_t      cbz                            = {};
   ccx_file_t     file                           = {};
   uint64_t       offsets_buf[k_ccx_offsets_cap] = {};
-  static uint8_t meta_buf[k_ccx_meta_cap];
-  static uint8_t staging[k_ccx_staging_cap];
-  file = (ccx_file_t){.data = container, .len = file_len, .fail_at = 0U, .calls = 0U};
+  static uint8_t s_meta_buf[k_ccx_meta_cap];
+  static uint8_t s_staging[k_ccx_staging_cap];
+  file = (ccx_file_t){.data = s_container, .len = file_len, .fail_at = 0U, .calls = 0U};
 
-  const ccx_guard_ctx_t g = {.container = container,
+  const ccx_guard_ctx_t g = {.container = s_container,
                              .file_len  = file_len,
                              .offsets   = offsets_buf,
-                             .meta      = meta_buf,
-                             .staging   = staging};
+                             .meta      = s_meta_buf,
+                             .staging   = s_staging};
 
   ccx_open_guards_null(&cbz, &file, &g);
   ccx_open_guards_header(&cbz, &file, &g);
@@ -535,14 +535,14 @@ static void test_ra8_cbz_page_info(void)
 {
   TEST_BEGIN("ra8_cbz_page_info manifest");
   ccx_fill_pages();
-  static uint8_t container[k_ccx_file_cap];
-  const uint64_t file_len = ccx_pack(container, 0U, 0U);
+  static uint8_t s_container[k_ccx_file_cap];
+  const uint64_t file_len = ccx_pack(s_container, 0U, 0U);
 
   ra8_cbz_t      cbz                            = {};
   ccx_file_t     file                           = {};
   uint64_t       offsets_buf[k_ccx_offsets_cap] = {};
-  static uint8_t meta_buf[k_ccx_meta_cap];
-  static uint8_t staging[k_ccx_staging_cap];
+  static uint8_t s_meta_buf[k_ccx_meta_cap];
+  static uint8_t s_staging[k_ccx_staging_cap];
 
   /* Unbound / null accessors return their safe defaults. */
   TEST_ASSERT_EQ(0U, ra8_cbz_page_count(nullptr));
@@ -558,7 +558,7 @@ static void test_ra8_cbz_page_info(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_cbz_page_info(&cbz, 0U, &w, &h, &fmt, &raw));
 
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ccx_open(&cbz, &file, container, file_len, offsets_buf, meta_buf, staging));
+                 ccx_open(&cbz, &file, s_container, file_len, offsets_buf, s_meta_buf, s_staging));
 
   for (uint32_t p = 0U; p < k_ccx_page_count; ++p) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_cbz_page_info(&cbz, p, &w, &h, &fmt, &raw));
@@ -603,12 +603,12 @@ static ra8_err_t ccx_read_via_vsource(ra8_cbz_page_t* cur, uint8_t* out)
   if (err != k_ra8_ok) {
     return err;
   }
-  static uint8_t frame[k_ccx_frame_bytes];
-  err = ra8_vsource_loader(&vs, oid, 0U, frame, (uint32_t)k_ccx_frame_bytes);
+  static uint8_t s_frame[k_ccx_frame_bytes];
+  err = ra8_vsource_loader(&vs, oid, 0U, s_frame, (uint32_t)k_ccx_frame_bytes);
   if (err != k_ra8_ok) {
     return err;
   }
-  memcpy(out, frame, (size_t)cur->raw_size);
+  memcpy(out, s_frame, (size_t)cur->raw_size);
   return k_ra8_ok;
 }
 
@@ -630,34 +630,34 @@ static void test_ra8_cbz_page_read_equivalence(void)
 {
   TEST_BEGIN("ra8_cbz_page_read paged == whole-file");
   ccx_fill_pages();
-  static uint8_t container[k_ccx_file_cap];
-  const uint64_t file_len = ccx_pack(container, (uint32_t)k_ra8_book_flag_rtl, 0U);
+  static uint8_t s_container[k_ccx_file_cap];
+  const uint64_t file_len = ccx_pack(s_container, (uint32_t)k_ra8_book_flag_rtl, 0U);
 
   ra8_cbz_t      cbz                            = {};
   ccx_file_t     file                           = {};
   uint64_t       offsets_buf[k_ccx_offsets_cap] = {};
-  static uint8_t meta_buf[k_ccx_meta_cap];
-  static uint8_t staging[k_ccx_staging_cap];
+  static uint8_t s_meta_buf[k_ccx_meta_cap];
+  static uint8_t s_staging[k_ccx_staging_cap];
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ccx_open(&cbz, &file, container, file_len, offsets_buf, meta_buf, staging));
+                 ccx_open(&cbz, &file, s_container, file_len, offsets_buf, s_meta_buf, s_staging));
   TEST_ASSERT(ra8_cbz_is_rtl(&cbz));
 
-  static uint8_t direct[k_ccx_max_raw];
-  static uint8_t viasrc[k_ccx_max_raw];
+  static uint8_t s_direct[k_ccx_max_raw];
+  static uint8_t s_viasrc[k_ccx_max_raw];
   for (uint32_t p = 0U; p < k_ccx_page_count; ++p) {
     ra8_cbz_page_t cur = {};
     TEST_ASSERT_EQ(k_ra8_ok, ra8_cbz_page_bind(&cbz, p, &cur));
     TEST_ASSERT_EQ(s_pages[p].raw_size, cur.raw_size);
 
     /* (A) direct paged read. */
-    memset(direct, 0, sizeof(direct));
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_cbz_page_read(&cur, 0U, direct, cur.raw_size));
-    TEST_ASSERT_EQ(0, memcmp(direct, s_pages[p].raw, s_pages[p].raw_size));
+    memset(s_direct, 0, sizeof(s_direct));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_cbz_page_read(&cur, 0U, s_direct, cur.raw_size));
+    TEST_ASSERT_EQ(0, memcmp(s_direct, s_pages[p].raw, s_pages[p].raw_size));
 
     /* (B) through the ra8_vsource paged seam. */
-    memset(viasrc, 0, sizeof(viasrc));
-    TEST_ASSERT_EQ(k_ra8_ok, ccx_read_via_vsource(&cur, viasrc));
-    TEST_ASSERT_EQ(0, memcmp(viasrc, s_pages[p].raw, s_pages[p].raw_size));
+    memset(s_viasrc, 0, sizeof(s_viasrc));
+    TEST_ASSERT_EQ(k_ra8_ok, ccx_read_via_vsource(&cur, s_viasrc));
+    TEST_ASSERT_EQ(0, memcmp(s_viasrc, s_pages[p].raw, s_pages[p].raw_size));
   }
 
   TEST_END("ra8_cbz_page_read paged == whole-file");
@@ -713,20 +713,20 @@ static void ccx_page_read_guards_unbound(ra8_cbz_t* cbz, ra8_cbz_page_t* cur, ui
  */
 static void ccx_page_read_guards_badraw(void)
 {
-  static uint8_t badraw_container[k_ccx_file_cap];
-  const uint64_t badraw_len              = ccx_pack(badraw_container, 0U, 1U);
+  static uint8_t s_badraw_container[k_ccx_file_cap];
+  const uint64_t badraw_len              = ccx_pack(s_badraw_container, 0U, 1U);
   ra8_cbz_t      brd                     = {};
   ccx_file_t     bfile                   = {};
   uint64_t       boff[k_ccx_offsets_cap] = {};
-  static uint8_t bmeta[k_ccx_meta_cap];
-  static uint8_t bstage[k_ccx_staging_cap];
-  static uint8_t bout[k_ccx_max_raw + 1U];
+  static uint8_t s_bmeta[k_ccx_meta_cap];
+  static uint8_t s_bstage[k_ccx_staging_cap];
+  static uint8_t s_bout[k_ccx_max_raw + 1U];
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ccx_open(&brd, &bfile, badraw_container, badraw_len, boff, bmeta, bstage));
+                 ccx_open(&brd, &bfile, s_badraw_container, badraw_len, boff, s_bmeta, s_bstage));
   ra8_cbz_page_t bcur = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cbz_page_bind(&brd, k_ccx_page_count - 1U, &bcur));
   TEST_ASSERT_EQ(k_ccx_p2_raw + 1U, bcur.raw_size);
-  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_cbz_page_read(&bcur, 0U, bout, bcur.raw_size));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_cbz_page_read(&bcur, 0U, s_bout, bcur.raw_size));
 }
 
 /**
@@ -747,22 +747,22 @@ static void test_ra8_cbz_page_read_guards(void)
 {
   TEST_BEGIN("ra8_cbz_page_read guards");
   ccx_fill_pages();
-  static uint8_t container[k_ccx_file_cap];
-  const uint64_t file_len = ccx_pack(container, 0U, 0U);
+  static uint8_t s_container[k_ccx_file_cap];
+  const uint64_t file_len = ccx_pack(s_container, 0U, 0U);
 
   ra8_cbz_t      cbz                            = {};
   ccx_file_t     file                           = {};
   uint64_t       offsets_buf[k_ccx_offsets_cap] = {};
-  static uint8_t meta_buf[k_ccx_meta_cap];
-  static uint8_t staging[k_ccx_staging_cap];
-  static uint8_t out[k_ccx_max_raw];
+  static uint8_t s_meta_buf[k_ccx_meta_cap];
+  static uint8_t s_staging[k_ccx_staging_cap];
+  static uint8_t s_out[k_ccx_max_raw];
 
   /* Bind / read guards reachable before the container is opened. */
   ra8_cbz_page_t cur = {};
-  ccx_page_read_guards_unbound(&cbz, &cur, out);
+  ccx_page_read_guards_unbound(&cbz, &cur, s_out);
 
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ccx_open(&cbz, &file, container, file_len, offsets_buf, meta_buf, staging));
+                 ccx_open(&cbz, &file, s_container, file_len, offsets_buf, s_meta_buf, s_staging));
 
   /* Out-of-range bind. */
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_cbz_page_bind(&cbz, k_ccx_page_count, &cur));
@@ -770,20 +770,20 @@ static void test_ra8_cbz_page_read_guards(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cbz_page_bind(&cbz, 0U, &cur));
 
   /* Non-zero offset and wrong span are rejected. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_cbz_page_read(&cur, 1U, out, k_ccx_p0_raw));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_cbz_page_read(&cur, 0U, out, k_ccx_p0_raw - 1U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_cbz_page_read(&cur, 1U, s_out, k_ccx_p0_raw));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_cbz_page_read(&cur, 0U, s_out, k_ccx_p0_raw - 1U));
 
   /* File-read failure while staging the stream propagates verbatim. */
   file.fail_at = file.calls + 1U;
-  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cbz_page_read(&cur, 0U, out, k_ccx_p0_raw));
+  TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_cbz_page_read(&cur, 0U, s_out, k_ccx_p0_raw));
   file.fail_at = 0U;
 
   /* A corrupt stream fails in the inflater and propagates. */
   const uint64_t p0_at    = cbz.payload_off + cbz.offsets[0] + 4U;
-  const uint8_t  saved    = container[p0_at];
-  container[p0_at]        = (uint8_t)~saved;
-  const ra8_err_t corrupt = ra8_cbz_page_read(&cur, 0U, out, k_ccx_p0_raw);
-  container[p0_at]        = saved;
+  const uint8_t  saved    = s_container[p0_at];
+  s_container[p0_at]      = (uint8_t)~saved;
+  const ra8_err_t corrupt = ra8_cbz_page_read(&cur, 0U, s_out, k_ccx_p0_raw);
+  s_container[p0_at]      = saved;
   TEST_ASSERT(corrupt != k_ra8_ok);
 
   ccx_page_read_guards_badraw();

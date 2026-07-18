@@ -326,13 +326,13 @@ static void priv_make_manifest(void)
   static const char nibble[]                                    = "0123456789abcdef";
   char              hex_sha[(2U * k_ra8_ota_sha256_bytes) + 1U] = {};
   for (uint32_t i = 0U; i < k_ra8_ota_sha256_bytes; ++i) {
-    hex_sha[2U * i]      = nibble[g_cov_expected_hash[i] >> 4U];
-    hex_sha[2U * i + 1U] = nibble[g_cov_expected_hash[i] & 0x0FU];
+    hex_sha[(size_t)2U * i] = nibble[g_cov_expected_hash[i] >> 4U];
+    hex_sha[(2U * i) + 1U]  = nibble[g_cov_expected_hash[i] & 0x0FU];
   }
   char hex_sig[(2U * sizeof g_cov_sig) + 1U] = {};
   for (uint32_t i = 0U; i < sizeof g_cov_sig; ++i) {
-    hex_sig[2U * i]      = nibble[g_cov_sig[i] >> 4U];
-    hex_sig[2U * i + 1U] = nibble[g_cov_sig[i] & 0x0FU];
+    hex_sig[(size_t)2U * i] = nibble[g_cov_sig[i] >> 4U];
+    hex_sig[(2U * i) + 1U]  = nibble[g_cov_sig[i] & 0x0FU];
   }
   (void)snprintf(g_cov_manifest,
                  sizeof g_cov_manifest,

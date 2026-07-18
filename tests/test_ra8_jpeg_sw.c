@@ -80,7 +80,7 @@ static void fill_gradient(uint8_t* rgb, uint16_t w, uint16_t h)
 {
   for (uint16_t y = 0U; y < h; y++) {
     for (uint16_t x = 0U; x < w; x++) {
-      uint32_t i  = ((uint32_t)y * (uint32_t)w + (uint32_t)x) * 3U;
+      uint32_t i  = (((uint32_t)y * (uint32_t)w) + (uint32_t)x) * 3U;
       rgb[i + 0U] = (uint8_t)((x * 16U) & 0xFFU);
       rgb[i + 1U] = (uint8_t)((y * 16U) & 0xFFU);
       rgb[i + 2U] = (uint8_t)(((x + y) * 8U) & 0xFFU);
@@ -114,7 +114,8 @@ static uint32_t rgb_mse(const uint8_t* a, const uint8_t* b, uint32_t n)
 static void test_get_dimensions_parses_sof0(void)
 {
   TEST_BEGIN("jpeg_sw get_dimensions parses SOF0");
-  uint16_t  w = 0U, h = 0U;
+  uint16_t  w = 0U;
+  uint16_t  h = 0U;
   ra8_err_t e = ra8_jpeg_sw_get_dimensions(k_test_jpeg, (uint32_t)sizeof k_test_jpeg, &w, &h);
   TEST_ASSERT_EQ(k_ra8_ok, e);
   TEST_ASSERT_EQ(k_jt_w, w);
@@ -131,7 +132,8 @@ static void test_get_dimensions_parses_sof0(void)
 static void test_get_dimensions_null_args(void)
 {
   TEST_BEGIN("jpeg_sw get_dimensions NULL args");
-  uint16_t w = 0U, h = 0U;
+  uint16_t w = 0U;
+  uint16_t h = 0U;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jpeg_sw_get_dimensions(nullptr, 4U, &w, &h));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jpeg_sw_get_dimensions(k_test_jpeg, 4U, nullptr, &h));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_jpeg_sw_get_dimensions(k_test_jpeg, 4U, &w, nullptr));
@@ -148,7 +150,8 @@ static void test_get_dimensions_invalid(void)
 {
   TEST_BEGIN("jpeg_sw get_dimensions rejects garbage");
   static const uint8_t garbage[] = {0x00, 0x01, 0x02, 0x03, 0x04};
-  uint16_t             w = 0U, h = 0U;
+  uint16_t             w         = 0U;
+  uint16_t             h         = 0U;
   ra8_err_t            e = ra8_jpeg_sw_get_dimensions(garbage, (uint32_t)sizeof garbage, &w, &h);
   TEST_ASSERT(e != k_ra8_ok);
   TEST_END("jpeg_sw get_dimensions rejects garbage");
@@ -163,34 +166,35 @@ static void test_get_dimensions_invalid(void)
 static void test_encode_decode_roundtrip(void)
 {
   TEST_BEGIN("jpeg_sw encode + decode roundtrip");
-  static uint8_t rgb_in[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t rgb_out[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t jpeg[(uint32_t)k_jt_jpeg_cap];
-  fill_gradient(rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  static uint8_t s_rgb_in[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t s_rgb_out[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t s_jpeg[(uint32_t)k_jt_jpeg_cap];
+  fill_gradient(s_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
 
   uint32_t  produced = 0U;
-  ra8_err_t e        = ra8_jpeg_sw_encode(rgb_in,
+  ra8_err_t e        = ra8_jpeg_sw_encode(s_rgb_in,
                                           (uint16_t)k_jt_w,
                                           (uint16_t)k_jt_h,
                                           (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                          jpeg,
+                                          s_jpeg,
                                           (uint32_t)k_jt_jpeg_cap,
                                           &produced);
   TEST_ASSERT_EQ(k_ra8_ok, e);
   TEST_ASSERT(produced > 4U);
-  TEST_ASSERT_EQ(0xFFU, jpeg[0]);
-  TEST_ASSERT_EQ(0xD8U, jpeg[1]);
-  TEST_ASSERT_EQ(0xFFU, jpeg[produced - 2U]);
-  TEST_ASSERT_EQ(0xD9U, jpeg[produced - 1U]);
+  TEST_ASSERT_EQ(0xFFU, s_jpeg[0]);
+  TEST_ASSERT_EQ(0xD8U, s_jpeg[1]);
+  TEST_ASSERT_EQ(0xFFU, s_jpeg[produced - 2U]);
+  TEST_ASSERT_EQ(0xD9U, s_jpeg[produced - 1U]);
 
-  uint16_t dw = 0U, dh = 0U;
-  e = ra8_jpeg_sw_decode(jpeg, produced, rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh);
+  uint16_t dw = 0U;
+  uint16_t dh = 0U;
+  e           = ra8_jpeg_sw_decode(s_jpeg, produced, s_rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh);
   TEST_ASSERT_EQ(k_ra8_ok, e);
   TEST_ASSERT_EQ(k_jt_w, dw);
   TEST_ASSERT_EQ(k_jt_h, dh);
 
   /* PSNR > 30 dB <=> MSE < ~65 (255^2 / 10^3). */
-  uint32_t mse = rgb_mse(rgb_in, rgb_out, (uint32_t)k_jt_rgb_bytes);
+  uint32_t mse = rgb_mse(s_rgb_in, s_rgb_out, (uint32_t)k_jt_rgb_bytes);
   TEST_ASSERT(mse < (uint32_t)k_jt_mse_psnr30_max);
   TEST_END("jpeg_sw encode + decode roundtrip");
 }
@@ -206,7 +210,8 @@ static void test_decode_invalid_rejected(void)
   TEST_BEGIN("jpeg_sw decode rejects invalid stream");
   static const uint8_t bogus[] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x00};
   uint8_t              out[16U];
-  uint16_t             w = 0U, h = 0U;
+  uint16_t             w = 0U;
+  uint16_t             h = 0U;
   ra8_err_t            e =
     ra8_jpeg_sw_decode(bogus, (uint32_t)sizeof bogus, out, (uint32_t)sizeof out, &w, &h);
   TEST_ASSERT(e != k_ra8_ok);
@@ -242,11 +247,11 @@ static void test_encode_null_args(void)
 static void test_encode_out_of_buffer(void)
 {
   TEST_BEGIN("jpeg_sw encode rejects undersized out_buf");
-  static uint8_t rgb_in[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t s_rgb_in[(uint32_t)k_jt_rgb_bytes];
   uint8_t        tiny[8U];
   uint32_t       produced = 0xFFFFU;
-  fill_gradient(rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
-  ra8_err_t e = ra8_jpeg_sw_encode(rgb_in,
+  fill_gradient(s_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  ra8_err_t e = ra8_jpeg_sw_encode(s_rgb_in,
                                    (uint16_t)k_jt_w,
                                    (uint16_t)k_jt_h,
                                    (uint8_t)k_ra8_jpeg_sw_quality_high,
@@ -276,32 +281,32 @@ typedef enum : uint8_t {
 static void test_mcdc_encode_dim_zero(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC encode: w==0 || h==0");
-  static uint8_t rgb[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t out[(uint32_t)k_jt_jpeg_cap];
+  static uint8_t s_rgb[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t s_out[(uint32_t)k_jt_jpeg_cap];
   uint32_t       n = 0U;
-  fill_gradient(rgb, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  fill_gradient(s_rgb, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_jpeg_sw_encode(rgb,
+                 ra8_jpeg_sw_encode(s_rgb,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                    out,
+                                    s_out,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &n));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_jpeg_sw_encode(rgb,
+                 ra8_jpeg_sw_encode(s_rgb,
                                     0U,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                    out,
+                                    s_out,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &n));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_jpeg_sw_encode(rgb,
+                 ra8_jpeg_sw_encode(s_rgb,
                                     (uint16_t)k_jt_w,
                                     0U,
                                     (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                    out,
+                                    s_out,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &n));
   TEST_END("jpeg_sw MC/DC encode: w==0 || h==0");
@@ -317,32 +322,32 @@ static void test_mcdc_encode_dim_zero(void)
 static void test_mcdc_encode_quality_range(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC encode: quality<min || quality>max");
-  static uint8_t rgb[(uint32_t)k_jt_rgb_bytes];
-  static uint8_t out[(uint32_t)k_jt_jpeg_cap];
+  static uint8_t s_rgb[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t s_out[(uint32_t)k_jt_jpeg_cap];
   uint32_t       n = 0U;
-  fill_gradient(rgb, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  fill_gradient(s_rgb, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_jpeg_sw_encode(rgb,
+                 ra8_jpeg_sw_encode(s_rgb,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_ra8_jpeg_sw_quality_high,
-                                    out,
+                                    s_out,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &n));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_jpeg_sw_encode(rgb,
+                 ra8_jpeg_sw_encode(s_rgb,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_mcdc_jpeg_q_below,
-                                    out,
+                                    s_out,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &n));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_jpeg_sw_encode(rgb,
+                 ra8_jpeg_sw_encode(s_rgb,
                                     (uint16_t)k_jt_w,
                                     (uint16_t)k_jt_h,
                                     (uint8_t)k_mcdc_jpeg_q_above,
-                                    out,
+                                    s_out,
                                     (uint32_t)k_jt_jpeg_cap,
                                     &n));
   TEST_END("jpeg_sw MC/DC encode: quality<min || quality>max");

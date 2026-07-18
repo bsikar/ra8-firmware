@@ -28,7 +28,9 @@ static ra8_reflow_t s_eng;
 static ra8_reflow_href_kind_t split_kind(const char* href)
 {
   ra8_reflow_href_kind_t kind = k_ra8_reflow_href_empty;
-  uint32_t               pl = 0U, fo = 0U, fl = 0U;
+  uint32_t               pl   = 0U;
+  uint32_t               fo   = 0U;
+  uint32_t               fl   = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_reflow_href_split(href, (uint32_t)strlen(href), &kind, &pl, &fo, &fl));
   return kind;
@@ -76,8 +78,10 @@ static void test_href_split_spans(void)
 {
   TEST_BEGIN("ra8_reflow_href_split spans + null guard");
   ra8_reflow_href_kind_t kind = k_ra8_reflow_href_empty;
-  uint32_t               pl = 0U, fo = 0U, fl = 0U;
-  const char*            h = "chap.xhtml#sec3";
+  uint32_t               pl   = 0U;
+  uint32_t               fo   = 0U;
+  uint32_t               fl   = 0U;
+  const char*            h    = "chap.xhtml#sec3";
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_href_split(h, (uint32_t)strlen(h), &kind, &pl, &fo, &fl));
   TEST_ASSERT_EQ(k_ra8_reflow_href_chapter_fragment, kind);
   TEST_ASSERT_EQ(10, pl); /* "chap.xhtml"   */
@@ -111,7 +115,8 @@ static void test_hit_test_link(void)
   s_eng.link_rects[0].page_index = 1U;
   s_eng.link_rect_count          = 1U;
 
-  uint32_t off = 0U, len = 0U;
+  uint32_t off = 0U;
+  uint32_t len = 0U;
   /* Inside the rect on the right page. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_hit_test_link(&s_eng, 1U, 40, 110, &off, &len));
   TEST_ASSERT_EQ(0, off);
@@ -167,7 +172,8 @@ static void test_hit_test_rect_bounds_mcdc(void)
   s_eng.link_rects[0].page_index = 1U;
   s_eng.link_rect_count          = 1U;
 
-  uint32_t off = 0U, len = 0U;
+  uint32_t off = 0U;
+  uint32_t len = 0U;
   /* V1: control -- all four conditions true -> hit. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_reflow_hit_test_link(&s_eng, 1U, 40, 110, &off, &len));
   TEST_ASSERT_EQ(0, off);

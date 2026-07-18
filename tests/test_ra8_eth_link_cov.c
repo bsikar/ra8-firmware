@@ -214,6 +214,12 @@ static void mock_delay_ms(uint32_t ms)
  * ra8_eth_channel_to_port stay un-renamed and resolve to their single
  * ra8_eth.c definitions in ra8_core_hal. */
 /** @brief RA8 Ethernet link status. */
+/* Include-time interposition seam: each macro below must be spelled
+ * EXACTLY like the production symbol it replaces, so the project rule
+ * that macro names are UPPER_CASE cannot apply here -- renaming one
+ * silently un-hooks the mock and the test would exercise the real
+ * driver while still passing. */
+// NOLINTBEGIN(readability-identifier-naming)
 #define ra8_eth_link_status ra8_eth_link_status_cov
 /** @brief G RA8 Ethernet PHY bmsr after wait. */
 #define g_ra8_eth_phy_bmsr_after_wait g_ra8_eth_phy_bmsr_after_wait_cov
@@ -233,6 +239,7 @@ static void mock_delay_ms(uint32_t ms)
 #define ra8_etha_set_mode mock_etha_set_mode
 /** @brief RA8 delay ms. */
 #define ra8_delay_ms mock_delay_ms
+// NOLINTEND(readability-identifier-naming)
 
 #include "ra8_eth_link.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
 

@@ -58,7 +58,7 @@ static void t_setup_disk(void)
   s_state = (ra8_io_blockdev_ram_state_t){};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_ram_init(&s_bd, &s_state, s_disk, k_t_blocks, false));
   for (uint32_t i = 0; i < (uint32_t)k_t_total; ++i) {
-    s_golden[i] = (uint8_t)((i * 13U + 7U) & 0xFFu);
+    s_golden[i] = (uint8_t)(((i * 13U) + 7U) & 0xFFU);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&s_bd, 0U, k_t_blocks, s_golden));
 }
@@ -110,8 +110,8 @@ static void test_aligned_block(void)
   /* Read block index 2 (byte offset 1024) through the adapter. */
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_io_blockdev_vsource_read(&s_ctx, (uint64_t)k_t_block_len * 2u, got, k_t_block_len));
-  TEST_ASSERT_EQ(0, memcmp(got, &s_golden[(size_t)k_t_block_len * 2u], (size_t)k_t_block_len));
+    ra8_io_blockdev_vsource_read(&s_ctx, (uint64_t)k_t_block_len * 2U, got, k_t_block_len));
+  TEST_ASSERT_EQ(0, memcmp(got, &s_golden[(size_t)k_t_block_len * 2U], (size_t)k_t_block_len));
   TEST_END("bdvs aligned whole block");
 }
 
@@ -180,7 +180,7 @@ static void test_vsource_wiring(void)
 
   ra8_vsource_t vs = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_init(&vs, s_objs, k_t_objs));
-  uint32_t oid = 0xFFFFFFFFu;
+  uint32_t oid = 0xFFFFFFFFU;
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_vsource_add_paged(&vs, ra8_io_blockdev_vsource_read, &s_ctx, 0U, k_t_total, &oid));
@@ -188,8 +188,8 @@ static void test_vsource_wiring(void)
   /* Page a 512-byte frame in at an aligned object offset via the loader. */
   uint8_t frame[(size_t)k_t_block_len] = {};
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_vsource_loader(&vs, oid, (uint64_t)k_t_block_len * 3u, frame, k_t_block_len));
-  TEST_ASSERT_EQ(0, memcmp(frame, &s_golden[(size_t)k_t_block_len * 3u], (size_t)k_t_block_len));
+                 ra8_vsource_loader(&vs, oid, (uint64_t)k_t_block_len * 3U, frame, k_t_block_len));
+  TEST_ASSERT_EQ(0, memcmp(frame, &s_golden[(size_t)k_t_block_len * 3U], (size_t)k_t_block_len));
   TEST_END("bdvs wired into ra8_vsource_add_paged");
 }
 

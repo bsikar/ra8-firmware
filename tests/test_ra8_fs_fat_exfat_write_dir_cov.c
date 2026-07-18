@@ -318,13 +318,13 @@ static void test_dir_space_fat_get_fail(void)
  *
  * @details Patches:
  *   - Root entries 3-127 to 0x85 (all in-use).
- *   - FAT[root_cluster] = G (root_cluster + 100), so the FAT chain extends.
- *   - FAT[G] = EOC (0xFFFFFFFF) to terminate the chain at G.
- *   - All sectors of cluster G zeroed so entries appear as EOD (free).
+ *   - FAT[root_cluster] = cluster_g (root_cluster + 100), so the FAT chain extends.
+ *   - FAT[cluster_g] = EOC (0xFFFFFFFF) to terminate the chain at cluster_g.
+ *   - All sectors of cluster cluster_g zeroed so entries appear as EOD (free).
  *
  * `priv_exfat_find_dir_space` scans the root cluster (no free run), calls
- * `priv_fat_get` (succeeds, returns G, not EOC), sets `cluster=G` at line 364
- * and increments `guard` at line 365.  It then scans G and finds the first
+ * `priv_fat_get` (succeeds, returns cluster_g, not EOC), sets `cluster=cluster_g` at line 364
+ * and increments `guard` at line 365.  It then scans cluster_g and finds the first
  * 3 entries free, returning k_ra8_ok.  The file is created successfully.
  *
  * Lines targeted: 364, 365.
@@ -332,7 +332,7 @@ static void test_dir_space_fat_get_fail(void)
  * @par MC/DC:
  * Decision: `if (priv_is_eoc(m, next) != 0U)` -- 1 condition.
  * V1: next=EOC -> T -> no_mem (test_dir_space_full_root_eoc).
- * V2: next=G (not EOC) -> F -> cluster=G, guard++ (this test).
+ * V2: next=cluster_g (not EOC) -> F -> cluster=cluster_g, guard++ (this test).
  *
  * @pre Volume is formatted and accessible.
  * @post ra8_fs_write_file returns k_ra8_ok.
@@ -341,31 +341,33 @@ static void test_dir_space_fat_get_fail(void)
  */
 static void test_dir_space_chain(void)
 {
-  TEST_BEGIN("exfat write cov: FAT chain to cluster G -> lines 364,365");
+  TEST_BEGIN("exfat write cov: FAT chain to cluster cluster_g -> lines 364,365");
   build_exfat_volume();
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ctrl_backend, &h));
 
   patch_root_full(h, (uint32_t)k_wc_patch_start);
 
-  const uint32_t G     = h->root_cluster + (uint32_t)k_wc_chain_offset;
-  const uint32_t G_lba = h->first_data_lba + (G - 2U) * h->sectors_per_cluster;
+  const uint32_t cluster_g     = h->root_cluster + (uint32_t)k_wc_chain_offset;
+  const uint32_t cluster_g_lba = h->first_data_lba + ((cluster_g - 2U) * h->sectors_per_cluster);
 
-  /* Zero cluster G so all entries appear as EOD (free). */
+  /* Zero cluster cluster_g so all entries appear as EOD (free). */
   for (uint32_t s = 0U; s < h->sectors_per_cluster; s++) {
-    memset(&s_disk.bytes[(G_lba + s) * (uint32_t)k_wc_block_size], 0x00, (uint32_t)k_wc_block_size);
+    memset(&s_disk.bytes[(size_t)(cluster_g_lba + s) * (uint32_t)k_wc_block_size],
+           0x00,
+           (uint32_t)k_wc_block_size);
   }
 
-  /* Build FAT chain: root_cluster -> G -> EOC. */
-  disk_set_u32le(fat_entry_off(h, h->root_cluster), G);
-  disk_set_u32le(fat_entry_off(h, G), (uint32_t)k_wc_fat_eoc);
+  /* Build FAT chain: root_cluster -> cluster_g -> EOC. */
+  disk_set_u32le(fat_entry_off(h, h->root_cluster), cluster_g);
+  disk_set_u32le(fat_entry_off(h, cluster_g), (uint32_t)k_wc_fat_eoc);
 
   const uint8_t dummy = (uint8_t)'X';
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "X.TXT", &dummy, 1U));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unmount(h));
   free_volume();
-  TEST_END("exfat write cov: FAT chain to cluster G -> lines 364,365");
+  TEST_END("exfat write cov: FAT chain to cluster cluster_g -> lines 364,365");
 }
 
 /**

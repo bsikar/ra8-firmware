@@ -295,17 +295,17 @@ void sim_mpu_install(uc_engine* uc)
    * disarm read-only-region write traps on MPU_CTRL.ENABLE edges. Inert unless
    * the firmware programs and enables the MPU (mpu_partition_simple); a trapped
    * store synthesises MemManage in the run loop (see on_mpu_ro_write). */
-  static uc_hook h_mpu_rlar;
-  static uc_hook h_mpu_ctrl;
+  static uc_hook s_h_mpu_rlar;
+  static uc_hook s_h_mpu_ctrl;
   (void)uc_hook_add(uc,
-                    &h_mpu_rlar,
+                    &s_h_mpu_rlar,
                     UC_HOOK_MEM_WRITE,
                     (void*)on_mpu_rlar_write,
                     nullptr,
                     (uint64_t)k_mpu_rlar,
                     (uint64_t)k_mpu_rlar + 3U);
   (void)uc_hook_add(uc,
-                    &h_mpu_ctrl,
+                    &s_h_mpu_ctrl,
                     UC_HOOK_MEM_WRITE,
                     (void*)on_mpu_ctrl_write,
                     nullptr,

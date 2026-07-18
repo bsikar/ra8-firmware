@@ -164,10 +164,11 @@ static void test_msc_write_last_block_in_range(void)
   /* Splat one block of 0xAA into the last block, then read back. */
   uint8_t pat[k_test_msc_block_size];
   (void)memset(pat, 0xAA, sizeof(pat));
-  (void)memcpy(&s_test_msc_ramdisk[(k_test_msc_block_count - 1U) * k_test_msc_block_size],
+  (void)memcpy(&s_test_msc_ramdisk[(size_t)(k_test_msc_block_count - 1U) * k_test_msc_block_size],
                pat,
                sizeof(pat));
-  TEST_ASSERT_EQ(0xAA, s_test_msc_ramdisk[(k_test_msc_block_count - 1U) * k_test_msc_block_size]);
+  TEST_ASSERT_EQ(0xAA,
+                 s_test_msc_ramdisk[(size_t)(k_test_msc_block_count - 1U) * k_test_msc_block_size]);
   TEST_END("usb_msc_device: SCSI WRITE last block fits");
 }
 

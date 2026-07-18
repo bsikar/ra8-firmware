@@ -267,7 +267,7 @@ static void test_ftl_unwritten_reads_erase_value(void)
 static void pattern_fill(uint8_t* blk, uint32_t lbn, uint32_t tag)
 {
   for (uint32_t i = 0; i < (uint32_t)k_test_ftl_block; ++i) {
-    blk[i] = (uint8_t)((i * 31u) + (lbn * 7u) + tag);
+    blk[i] = (uint8_t)((i * 31U) + (lbn * 7U) + tag);
   }
 }
 
@@ -290,10 +290,10 @@ static void ftl_soak_loop(ra8_io_blockdev_t* bd, uint32_t* shadow_tag, uint32_t*
     rng                 = (rng * (uint32_t)k_test_rng_mul) + (uint32_t)k_test_rng_add;
     const uint32_t lbn  = rng % (uint32_t)k_test_ftl_logical;
     rng                 = (rng * (uint32_t)k_test_rng_mul) + (uint32_t)k_test_rng_add;
-    const bool do_write = ((rng >> 16) & 1u) != 0u;
+    const bool do_write = ((rng >> 16) & 1U) != 0U;
 
     if (do_write) {
-      const uint32_t tag = op + 1u;
+      const uint32_t tag = op + 1U;
       uint8_t        blk[(size_t)k_test_ftl_block];
       pattern_fill(blk, lbn, tag);
       TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(bd, lbn, 1U, blk));
@@ -304,7 +304,7 @@ static void ftl_soak_loop(ra8_io_blockdev_t* bd, uint32_t* shadow_tag, uint32_t*
 
     uint8_t got[(size_t)k_test_ftl_block];
     TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(bd, lbn, 1U, got));
-    if (shadow_tag[lbn] == 0u) {
+    if (shadow_tag[lbn] == 0U) {
       continue; /* never written -- value is erase byte, not pattern */
     }
     uint8_t want[(size_t)k_test_ftl_block];
@@ -326,7 +326,7 @@ static void ftl_soak_loop(ra8_io_blockdev_t* bd, uint32_t* shadow_tag, uint32_t*
 static void ftl_soak_verify(ra8_io_blockdev_t* bd, const uint32_t* shadow_tag)
 {
   for (uint32_t lbn = 0; lbn < (uint32_t)k_test_ftl_logical; ++lbn) {
-    if (shadow_tag[lbn] == 0u) {
+    if (shadow_tag[lbn] == 0U) {
       continue;
     }
     uint8_t got[(size_t)k_test_ftl_block];
@@ -365,8 +365,8 @@ static void test_ftl_soak_integrity_wear(void)
   ftl_soak_verify(&bd, shadow_tag);
 
   /* Overwrites must have driven real physical erases on the underlying device. */
-  TEST_ASSERT(writes > 0u);
-  TEST_ASSERT(s_fake.erases > 0u);
+  TEST_ASSERT(writes > 0U);
+  TEST_ASSERT(s_fake.erases > 0U);
 
   /* Wear spread: max erase count must stay close to the min (no hot block). */
   uint32_t hi = 0;
@@ -379,7 +379,7 @@ static void test_ftl_soak_integrity_wear(void)
    * measured spread is 4, so a bound of 6 proves "no single block erased far
    * more than others" with margin while staying honest.
    */
-  TEST_ASSERT((hi - lo) <= 6u);
+  TEST_ASSERT((hi - lo) <= 6U);
   TEST_END("ftl soak integrity + wear");
 }
 

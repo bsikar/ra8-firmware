@@ -85,7 +85,9 @@ static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(buf, &d->bytes[lba * (uint32_t)k_block_size], count * (uint32_t)k_block_size);
+  memcpy(buf,
+         &d->bytes[(size_t)lba * (uint32_t)k_block_size],
+         (size_t)count * (uint32_t)k_block_size);
   return k_ra8_ok;
 }
 
@@ -95,7 +97,9 @@ static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_
   if (lba + count > d->block_count) {
     return k_ra8_err_out_of_range;
   }
-  memcpy(&d->bytes[lba * (uint32_t)k_block_size], buf, count * (uint32_t)k_block_size);
+  memcpy(&d->bytes[(size_t)lba * (uint32_t)k_block_size],
+         buf,
+         (size_t)count * (uint32_t)k_block_size);
   return k_ra8_ok;
 }
 
@@ -314,16 +318,19 @@ static void test_fat32_root_walker_skips_and_follows_chain(void)
 
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
-  uint8_t* root0 = &s_disk.bytes[h->first_data_lba * (uint32_t)k_block_size];
+  uint8_t* root0 = &s_disk.bytes[(size_t)h->first_data_lba * (uint32_t)k_block_size];
   for (uint32_t e = 0; e < 16U; e++) {
     char raw[11] =
       {'E', 'N', 'T', (char)('0' + (char)(e % 10U)), ' ', ' ', ' ', ' ', 'B', 'I', 'N'};
-    fill_short_entry(&root0[e * (uint32_t)k_ra8_fs_dir_entry_bytes], raw, k_ra8_fs_attr_archive, e);
+    fill_short_entry(&root0[(size_t)e * (uint32_t)k_ra8_fs_dir_entry_bytes],
+                     raw,
+                     k_ra8_fs_attr_archive,
+                     e);
   }
   root0[0]         = 0xE5U;
   root0[32U + 11U] = k_ra8_fs_attr_lfn;
 
-  uint8_t* root1 = &s_disk.bytes[(h->first_data_lba + 2U) * (uint32_t)k_block_size];
+  uint8_t* root1 = &s_disk.bytes[(size_t)(h->first_data_lba + 2U) * (uint32_t)k_block_size];
   fill_short_entry(root1, "TAIL    TXT", k_ra8_fs_attr_archive, 99U);
 
   list_ctx_t ctx = {};

@@ -529,7 +529,7 @@ static void test_set_vlan_mode_and_tag(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_etha_set_vlan_tag(k_ra8_etha_port_0, &c, &s));
   /* CTV=100 in [11:0]; CTP=5 in [14:12]; CTD=1 in [15];
    * STV=200<<16; STP=3<<28; STD=0. */
-  const uint32_t expect = (100U) | (5U << 12) | (1U << 15) | (200U << 16) | (3U << 28);
+  const uint32_t expect = 100U | (5U << 12) | (1U << 15) | (200U << 16) | (3U << 28);
   TEST_ASSERT_EQ(expect, ra8_etha(k_ra8_etha_port_0)->EAVTC);
 
   /* Bad-arg: vid > 4095. */

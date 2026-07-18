@@ -203,9 +203,9 @@ void sim_exc_install_scb_nvic(uc_engine* uc)
    * SYSRESETREQ store triggers a warm reboot and a CCR.DIV_0_TRP store arms the
    * div-0 trap (which then patches divides -- no per-access cost). Both are PPB
    * RAM, so a write-hook is the only way to observe them. */
-  static uc_hook h_scb;
+  static uc_hook s_h_scb;
   (void)uc_hook_add(uc,
-                    &h_scb,
+                    &s_h_scb,
                     UC_HOOK_MEM_WRITE,
                     (void*)on_scb_ctrl_write,
                     nullptr,
@@ -215,17 +215,17 @@ void sim_exc_install_scb_nvic(uc_engine* uc)
    * board_periph's enable shadow so enabling several lines does not clobber the
    * earlier ones (see on_nvic_en_write). The PPB is RAM, so this hook is the
    * only place the W1S/W1C semantics can be applied. */
-  static uc_hook h_nvic_iser;
-  static uc_hook h_nvic_icer;
+  static uc_hook s_h_nvic_iser;
+  static uc_hook s_h_nvic_icer;
   (void)uc_hook_add(uc,
-                    &h_nvic_iser,
+                    &s_h_nvic_iser,
                     UC_HOOK_MEM_WRITE,
                     (void*)on_nvic_en_write,
                     nullptr,
                     (uint64_t)k_nvic_iser_base,
                     (uint64_t)k_nvic_iser_base + (uint64_t)k_nvic_en_span - 1U);
   (void)uc_hook_add(uc,
-                    &h_nvic_icer,
+                    &s_h_nvic_icer,
                     UC_HOOK_MEM_WRITE,
                     (void*)on_nvic_en_write,
                     nullptr,

@@ -45,7 +45,7 @@ static inline bool internal_mirror_h_ep_create_guard(uint8_t pipe)
 
 static inline bool internal_mirror_h_xfer_null_guard(bool tr_is_null, const void* ep)
 {
-  return (tr_is_null) || (ep == nullptr);
+  return tr_is_null || (ep == nullptr);
 }
 
 static inline bool internal_mirror_h_xfer_payload_guard(uint32_t req_len, const void* data)

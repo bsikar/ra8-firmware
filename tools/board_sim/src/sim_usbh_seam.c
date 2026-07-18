@@ -421,7 +421,7 @@ static void vmsc_fill_fat(uint32_t fat_sector, uint8_t* out)
     } else if (entry == (uint32_t)k_vmsc_last_mram_clus) {
       value = (uint16_t)k_vmsc_fat_eoc;
     }
-    vmsc_put16(&out[j * 2U], value);
+    vmsc_put16(&out[(size_t)j * 2U], value);
   }
 }
 

@@ -70,7 +70,7 @@ int load_elf(uc_engine* uc, const uint8_t* elf, long len)
   uint16_t phnum     = (uint16_t)(elf[44] | (elf[45] << 8));
   int      loaded    = 0;
   for (uint16_t i = 0U; i < phnum; i++) {
-    const uint8_t* ph = elf + phoff + ((uint32_t)i * phentsize);
+    const uint8_t* ph = elf + phoff + ((size_t)(uint32_t)i * phentsize);
     uint32_t       p_type;
     uint32_t       p_offset;
     uint32_t       p_paddr;
@@ -107,7 +107,7 @@ uint32_t elf_vector_base(const uint8_t* elf, long len)
   uint32_t min_vaddr = 0U;
   bool     found     = false;
   for (uint16_t i = 0U; i < phnum; i++) {
-    const uint8_t* ph       = elf + phoff + ((uint32_t)i * phentsize);
+    const uint8_t* ph       = elf + phoff + ((size_t)(uint32_t)i * phentsize);
     uint32_t       p_type   = 0U;
     uint32_t       p_vaddr  = 0U;
     uint32_t       p_filesz = 0U;
@@ -145,7 +145,7 @@ uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name, uint32_t* 
     return 0U;
   }
   for (uint16_t i = 0U; i < shnum; i++) {
-    const uint8_t* sh = elf + shoff + ((uint32_t)i * shentsize);
+    const uint8_t* sh = elf + shoff + ((size_t)(uint32_t)i * shentsize);
     if (((size_t)(sh - elf) + (size_t)k_elf_shentsize_min) > (size_t)len) {
       break;
     }
@@ -154,7 +154,10 @@ uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name, uint32_t* 
     if (sh_type != 2U /* SHT_SYMTAB */) {
       continue;
     }
-    uint32_t sym_off = 0U, sym_size = 0U, sym_link = 0U, sym_entsize = 0U;
+    uint32_t sym_off     = 0U;
+    uint32_t sym_size    = 0U;
+    uint32_t sym_link    = 0U;
+    uint32_t sym_entsize = 0U;
     (void)memcpy(&sym_off, sh + 16, 4);
     (void)memcpy(&sym_size, sh + (uint32_t)k_elf_sh_size_off, 4);
     (void)memcpy(&sym_link, sh + (uint32_t)k_elf_sh_link_off, 4);
@@ -162,16 +165,18 @@ uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name, uint32_t* 
     if ((sym_entsize < 16U) || (sym_link >= shnum)) {
       continue;
     }
-    const uint8_t* strsh   = elf + shoff + ((uint32_t)sym_link * shentsize);
+    const uint8_t* strsh   = elf + shoff + ((size_t)(uint32_t)sym_link * shentsize);
     uint32_t       str_off = 0U;
     (void)memcpy(&str_off, strsh + 16, 4);
     const uint32_t nsym = sym_size / sym_entsize;
     for (uint32_t s = 0U; s < nsym; s++) {
-      const uint8_t* sym = elf + sym_off + (s * sym_entsize);
+      const uint8_t* sym = elf + sym_off + ((size_t)s * sym_entsize);
       if (((size_t)(sym - elf) + 16U) > (size_t)len) {
         break;
       }
-      uint32_t st_name = 0U, st_value = 0U, st_size = 0U;
+      uint32_t st_name  = 0U;
+      uint32_t st_value = 0U;
+      uint32_t st_size  = 0U;
       (void)memcpy(&st_name, sym + 0, 4);
       (void)memcpy(&st_value, sym + 4, 4);
       (void)memcpy(&st_size, sym + 8, 4);
