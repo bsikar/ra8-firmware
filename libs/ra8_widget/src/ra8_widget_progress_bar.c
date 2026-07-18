@@ -51,6 +51,7 @@ typedef enum : int32_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_pb_render(ra8_widget_t* w)
 {
   ra8_widget_progress_bar_t* pb = (ra8_widget_progress_bar_t*)w->ctx;

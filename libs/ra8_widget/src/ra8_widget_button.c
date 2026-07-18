@@ -44,6 +44,7 @@ static const char* s_tag = "ra8_widget_button";
  * @note Pure.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t internal_button_face(const ra8_widget_button_t* b)
 {
   if (b->pressed) {
@@ -67,6 +68,7 @@ static uint32_t internal_button_face(const ra8_widget_button_t* b)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void internal_button_render(ra8_widget_t* w)
 {
   ra8_widget_button_t* b = (ra8_widget_button_t*)w->ctx;
@@ -109,6 +111,7 @@ static void internal_button_render(ra8_widget_t* w)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_button_on_input(ra8_widget_t* w, const ra8_widget_event_t* ev)
 {
   ra8_widget_button_t* b = (ra8_widget_button_t*)w->ctx;
