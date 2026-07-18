@@ -51,8 +51,7 @@ typedef struct {
  * @post `box->w` and `box->h` are clamped to at least 1 pixel.
  * @since 0.1.0
  */
-RA8_INTERNAL static void
-viewer_fit_centered(int32_t src_w, int32_t src_h, viewer_fit_box_t* box)
+RA8_INTERNAL static void viewer_fit_centered(int32_t src_w, int32_t src_h, viewer_fit_box_t* box)
 {
   const int64_t fb_w  = (int64_t)k_ra8_viewer_fb_width;
   const int64_t fb_h  = (int64_t)k_ra8_viewer_fb_height;
