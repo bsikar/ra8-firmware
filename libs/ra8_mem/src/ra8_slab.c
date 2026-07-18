@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 
@@ -47,6 +48,7 @@ static const char* const s_tag = "ra8_slab";
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t priv_slab_next(const ra8_slab_t* slab, uint32_t idx)
 {
   uint32_t next = 0U;
@@ -74,6 +76,7 @@ static uint32_t priv_slab_next(const ra8_slab_t* slab, uint32_t idx)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void priv_slab_set_next(ra8_slab_t* slab, uint32_t idx, uint32_t next)
 {
   (void)memcpy(&slab->base[(size_t)idx * (size_t)slab->cell_bytes], &next, sizeof(next));
