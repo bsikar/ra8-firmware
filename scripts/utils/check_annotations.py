@@ -31,8 +31,10 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import os
 import pathlib
 import re
+import subprocess
 import sys
 from dataclasses import dataclass, field
 
@@ -68,7 +70,11 @@ ANNOTATION_PREFIXES = (
     "ra8_priv",
     "ra8_di_slot",
     "ra8_nsc_veneer",
-    "ra8_hw_mmio",
+    # Must match exactly what RA8_HW_REGISTER_ACCESS emits in
+    # libs/ra8_core/inc/ra8_attributes.h. It previously read "ra8_hw_mmio",
+    # a string the macro never emitted, so rule 6 matched nothing and every
+    # MMIO accessor went unchecked.
+    "ra8_hw_register_access",
     "ra8_p10_rule3_exception",
     "ra8_mcdc_deactivated",
     "ra8_stack_max",
@@ -127,6 +133,15 @@ class AnnotatedSymbol:
     has_inline: bool = False
     section: str | None = None
     return_type: str = ""
+    #: Last source line of the definition's extent (0 when only declared).
+    end_line: int = 0
+    #: True when at least one parameter is a pointer, i.e. the function
+    #: takes an address across the boundary and must range-check it.
+    has_pointer_param: bool = False
+    #: Clang Unified Symbol Resolution string of the canonical declaration.
+    #: This is the only reliable identity for a C function: two `static`
+    #: helpers in different TUs may share a name but never a USR.
+    usr: str = ""
 
 
 @dataclass
@@ -137,6 +152,10 @@ class CallSite:
     caller_name: str
     caller_file: str
     caller_line: int
+    #: USR of the declaration this call actually resolved to. Compared
+    #: against AnnotatedSymbol.usr so an annotation on one function is
+    #: never attributed to a same-named `static` in another module.
+    callee_usr: str = ""
     in_address_of: bool = False
     parent_loop_label: str | None = None  # for RA8_PROTECTED_WRITE detection
     preceding_comment: str = ""
@@ -184,25 +203,145 @@ def collect_annotations(cursor: cindex.Cursor) -> list[str]:
     return out
 
 
-def parse_tu(path: pathlib.Path) -> cindex.TranslationUnit | None:
-    """Parse a single TU using the project's general-purpose flags.
+def _include_args() -> list[str]:
+    """Return -I flags covering every first-party header root.
 
-    We deliberately keep the include path light -- libclang will emit
-    diagnostics for unresolved headers but the AST it produces is
-    usually still good enough to spot ANNOTATE_ATTR markers and
-    CallExpr cursors. Strict validation of cross-TU include hygiene
-    is the job of clang-tidy, not this script.
+    The include path must be complete, and it must be derived only from
+    the repo layout. It used to list four hand-picked directories on the
+    theory that unresolved headers still yield a good-enough AST. They do
+    not: a call whose declaration was never seen does not resolve, so
+    ``cursor.referenced`` is None and the call site is dropped. That
+    silently starved the call-graph rules (``ra8_priv``,
+    ``ra8_test_helper``) of exactly the cross-module call sites they
+    exist to police -- the light path resolved 43k of 126k call sites,
+    and which ones resolved varied with ambient state, so the same tree
+    could pass standalone and fail under the pre-commit hook.
     """
+    roots: list[pathlib.Path] = []
+    for pattern in (
+        "libs/*/inc",
+        "libs/*/src",
+        "src/inc",
+        "src/secure_app",
+        "tests/include",
+        "tests",
+        "port/*/inc",
+    ):
+        roots.extend(sorted(REPO_ROOT.glob(pattern)))
+    # libs/<mod>/src holds the *_internal.h headers that declare RA8_PRIV
+    # symbols; without them those declarations never resolve.
+    return [f"-I{d}" for d in roots if d.is_dir() and "third_party" not in d.parts]
+
+
+def _builtin_include_args() -> list[str]:
+    """Return -isystem flags for clang's own builtin headers.
+
+    libclang loaded through the Python bindings does not know where its
+    resource directory lives, so ``stddef.h`` and friends may not resolve.
+    That is not cosmetic: a failed system include aborts the rest of the
+    include chain, later declarations are never seen, and the calls that
+    depend on them silently vanish from the call graph. Ask a real clang
+    binary where its resource dir is and put that on the path.
+    """
+    candidates = [os.environ.get("RA8_CLANG"), "clang", "clang-22", "clang-21", "clang-20"]
+    for exe in candidates:
+        if not exe:
+            continue
+        try:
+            res = subprocess.run(  # noqa: S603  # fixed argv, no shell
+                [exe, "-print-resource-dir"],
+                capture_output=True,
+                text=True,
+                timeout=20,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if res.returncode != 0:
+            continue
+        inc = pathlib.Path(res.stdout.strip()) / "include"
+        if not (inc / "stddef.h").is_file():
+            continue
+        # Only adopt this resource dir if it is actually compatible with the
+        # loaded libclang. A mismatched pair (e.g. clang 22 headers against
+        # older bindings) fails inside stdint.h with "__INT32_C is not
+        # defined", which is worse than not setting it at all.
+        if _probe_is_clean([f"-isystem{inc}"]):
+            return [f"-isystem{inc}"]
+    return []
+
+
+def _probe_is_clean(extra: list[str]) -> bool:
+    """True when ``#include <stddef.h>`` parses without a fatal error."""
+    probe = REPO_ROOT / "scripts" / "utils" / ".ra8_annotations_probe.c"
+    try:
+        probe.write_text("#include <stddef.h>\n#include <stdint.h>\nsize_t ra8_probe(void);\n")
+        tu = cindex.Index.create().parse(
+            str(probe), args=["-std=c23", "-x", "c", "-DRA8_HOST_BUILD=1", *extra]
+        )
+        return not [d for d in (tu.diagnostics if tu else []) if d.severity >= _DIAG_ERROR]
+    except cindex.TranslationUnitLoadError:
+        return False
+    finally:
+        with contextlib.suppress(OSError):
+            probe.unlink()
+
+
+def _warn_if_builtins_missing(args: list[str]) -> None:
+    """Report on stderr when clang's builtin headers do not resolve.
+
+    This is a completeness warning, not a verdict. When ``stddef.h`` is
+    unreachable the include chain aborts at the first system header, every
+    declaration after it goes unseen, and the call sites that depend on
+    those declarations disappear from the graph -- so the call-graph rules
+    (``ra8_priv``, ``ra8_test_helper``) quietly stop policing anything and
+    the gate still prints success. Surfacing it keeps that state visible
+    in CI logs instead of being mistaken for a clean tree.
+
+    It deliberately does not exit non-zero: the resolution rate depends on
+    the host's clang/SDK layout, and failing the build on an environment
+    quirk would block every push rather than fix the analysis.
+    """
+    probe = REPO_ROOT / "scripts" / "utils" / ".ra8_annotations_probe.c"
+    try:
+        probe.write_text("#include <stddef.h>\nsize_t ra8_probe(void);\n")
+        tu = cindex.Index.create().parse(str(probe), args=args)
+        bad = [
+            d
+            for d in (tu.diagnostics if tu else [])
+            if d.severity >= _DIAG_ERROR and "file not found" in d.spelling
+        ]
+    except cindex.TranslationUnitLoadError:
+        bad = []
+    finally:
+        with contextlib.suppress(OSError):
+            probe.unlink()
+    if bad:
+        print(
+            "check_annotations: WARNING -- clang builtin headers are not on "
+            f"the include path ({bad[0].spelling}). The call graph will be "
+            "incomplete, so the ra8_priv / ra8_test_helper caller rules may "
+            "not fire. Set RA8_CLANG=<path-to-clang> to fix.",
+            file=sys.stderr,
+        )
+
+
+#: Cached include flags -- the glob is stable for a whole run.
+_INCLUDE_ARGS: list[str] = []
+
+
+def parse_tu(path: pathlib.Path) -> cindex.TranslationUnit | None:
+    """Parse a single TU using the project's general-purpose flags."""
+    global _INCLUDE_ARGS  # noqa: PLW0603  # one-shot memo of a pure repo-layout scan
+    if not _INCLUDE_ARGS:
+        _INCLUDE_ARGS = _builtin_include_args() + _include_args()
+        _warn_if_builtins_missing(["-std=c23", "-x", "c", "-DRA8_HOST_BUILD=1", *_INCLUDE_ARGS])
     args = [
         "-std=c23",
         "-x",
         "c",
         "-DRA8_HOST_BUILD=1",
-        f"-I{REPO_ROOT}/libs/ra8_core/inc",
-        f"-I{REPO_ROOT}/libs/ra8_hal/inc",
-        f"-I{REPO_ROOT}/libs/ra8_nsc/inc",
-        f"-I{REPO_ROOT}/src/inc",
-        f"-I{REPO_ROOT}/tests/include",
+        *_INCLUDE_ARGS,
     ]
     index = cindex.Index.create()
     try:
@@ -245,6 +384,15 @@ def walk_tu(
                         sym.annotations.append(a)
                 sym.is_static = node.linkage == cindex.LinkageKind.INTERNAL or sym.is_static
                 sym.return_type = node.result_type.spelling
+                if any(arg.type.kind == cindex.TypeKind.POINTER for arg in node.get_arguments()):
+                    sym.has_pointer_param = True
+                if not sym.usr:
+                    with contextlib.suppress(Exception):
+                        sym.usr = node.canonical.get_usr()
+                if node.is_definition():
+                    sym.file = file_of(node)
+                    sym.line = node.location.line
+                    sym.end_line = node.extent.end.line
                 # libclang exposes inline-ness via the cursor's tokens
                 tokens = [t.spelling for t in node.get_tokens()]
                 if "inline" in tokens or "__inline__" in tokens:
@@ -263,11 +411,15 @@ def walk_tu(
         if node.kind == cindex.CursorKind.CALL_EXPR and current_func is not None:
             callee = node.referenced
             if callee is not None:
+                callee_usr = ""
+                with contextlib.suppress(Exception):
+                    callee_usr = callee.canonical.get_usr()
                 cs = CallSite(
                     callee_name=callee.spelling,
                     caller_name=current_func.spelling,
                     caller_file=file_of(node),
                     caller_line=node.location.line,
+                    callee_usr=callee_usr,
                 )
                 calls.append(cs)
 
@@ -300,12 +452,73 @@ def walk_tu(
 # --------------------------------------------------------------------------
 # Rule helpers
 # --------------------------------------------------------------------------
+#: libclang diagnostic severity for Error (3) and Fatal (4); anything at or
+#: above this level means the parse did not see the code it was given.
+_DIAG_ERROR = 3
+
+#: The two ways a veneer legitimately validates an NS address range.
+_NSC_RANGE_CHECK_RE = re.compile(r"RA8_NSC_CHECK_NS_RANGE_(?:R|RW)\b|cmse_check_address_range\b")
+
+#: Cache of source files read back for textual (macro-level) checks.
+_SOURCE_CACHE: dict[str, list[str]] = {}
+
+
+def _source_lines(path: str) -> list[str]:
+    """Return ``path``'s lines, cached. Empty list when unreadable."""
+    if path not in _SOURCE_CACHE:
+        try:
+            _SOURCE_CACHE[path] = pathlib.Path(path).read_text(errors="ignore").splitlines()
+        except OSError:
+            _SOURCE_CACHE[path] = []
+    return _SOURCE_CACHE[path]
+
+
+def _definition_text(sym: AnnotatedSymbol) -> str:
+    """Return the source text of ``sym``'s definition.
+
+    Used for checks that must see the code *before* preprocessing, because
+    the construct being looked for is a macro that this script's parse
+    configuration expands away (see the NSC range-check rule).
+    """
+    lines = _source_lines(sym.file)
+    if not lines or sym.line <= 0:
+        return ""
+    end = sym.end_line if sym.end_line >= sym.line else len(lines)
+    return "\n".join(lines[sym.line - 1 : end])
+
+
 def parse_annotation(ann: str) -> tuple[str, str]:
     """Split ``ra8_stack_max:512`` -> (``ra8_stack_max``, ``512``)."""
     if ":" in ann:
         rule, _, arg = ann.partition(":")
         return rule.strip(), arg.strip()
     return ann.strip(), ""
+
+
+def _same_symbol(cs: CallSite, sym: AnnotatedSymbol) -> bool:
+    """True when ``cs`` really calls ``sym`` and not a namesake.
+
+    C lets every translation unit have its own ``static`` helper with the
+    same name, and this repo does exactly that (three unrelated
+    ``internal_zero_bytes`` live in net_pal, usb_hmsc and usb_pmsc). The
+    symbol table is keyed by name, so without this check an annotation on
+    one of them is attributed to calls of all of them -- reporting a
+    cross-module violation against a module that only ever called its own
+    file-local copy. USRs encode the defining file for internal-linkage
+    symbols, so they separate the namesakes exactly.
+
+    Falls back to the name match when either USR is unavailable, so a
+    libclang build that cannot produce USRs degrades to the old behaviour
+    rather than silently skipping every rule.
+    """
+    if not cs.callee_usr or not sym.usr:
+        return True
+    return cs.callee_usr == sym.usr
+
+
+def _is_test_path(path: str) -> bool:
+    """True when ``path`` is a host unit-test translation unit."""
+    return "/tests/" in path.replace("\\", "/")
 
 
 def module_of(path: str) -> str | None:
@@ -372,7 +585,7 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                         "called from non-test context",
                     )
                     for cs in direct_calls_by_callee.get(sym.name, [])
-                    if "/tests/" not in cs.caller_file.replace("\\", "/")
+                    if _same_symbol(cs, sym) and not _is_test_path(cs.caller_file)
                 )
 
             # 2. ra8_internal -- definition must be static
@@ -393,7 +606,17 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                 if callee_mod is None:
                     continue
                 for cs in direct_calls_by_callee.get(sym.name, []):
+                    if not _same_symbol(cs, sym):
+                        continue
                     caller_mod = module_of(cs.caller_file)
+                    # Host unit tests are a sanctioned consumer of a module's
+                    # promoted internals: CLAUDE.md ("Test access to internal
+                    # symbols") allows a helper to drop `static` and be
+                    # declared in the module's _internal.h precisely so tests
+                    # can reach the validation paths for MC/DC. Production
+                    # callers in *other* modules remain violations.
+                    if _is_test_path(cs.caller_file):
+                        continue
                     if caller_mod != callee_mod:
                         out.append(
                             Violation(
@@ -435,16 +658,32 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                             f"libs/ra8_nsc/src/ (found {f})",
                         )
                     )
-                body_calls = direct_calls_by_caller.get(sym.name, [])
-                if not any(c.callee_name.startswith("ra8_nsc_check_") for c in body_calls):
-                    out.append(
-                        Violation(
-                            rule,
-                            sym.file,
-                            sym.line,
-                            f"NSC veneer '{sym.name}' missing ra8_nsc_check_* call in body",
+                # A veneer must range-check every address it accepts from the
+                # Non-Secure world. Veneers that take no pointer parameter
+                # cross no address and need no check.
+                #
+                # The check is a textual scan, not a call-graph lookup: the
+                # idiom is the RA8_NSC_CHECK_NS_RANGE_R/_RW macro, which
+                # expands to cmse_check_address_range() only under -mcmse.
+                # This script parses without -mcmse, so the macro expands to
+                # a ((void)(p),(void)(n)) no-op and leaves no CallExpr for
+                # libclang to find. The previous call-graph form looked for a
+                # callee named "ra8_nsc_check_*" -- a spelling no veneer has
+                # ever used -- so it could only ever produce false positives.
+                if sym.has_pointer_param:
+                    body = _definition_text(sym)
+                    if not _NSC_RANGE_CHECK_RE.search(body):
+                        out.append(
+                            Violation(
+                                rule,
+                                sym.file,
+                                sym.line,
+                                f"NSC veneer '{sym.name}' takes a pointer from NS but "
+                                f"never range-checks it (expected "
+                                f"RA8_NSC_CHECK_NS_RANGE_R/_RW or "
+                                f"cmse_check_address_range)",
+                            )
                         )
-                    )
                 if (
                     sym.section
                     and ".gnu.sgstubs" not in sym.section
@@ -460,8 +699,8 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                         )
                     )
 
-            # 6. ra8_hw_mmio
-            elif rule == "ra8_hw_mmio":
+            # 6. ra8_hw_register_access
+            elif rule == "ra8_hw_register_access":
                 if not sym.has_inline:
                     out.append(
                         Violation(
@@ -560,7 +799,7 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
                 for cs in direct_calls_by_caller.get(sym.name, []):
                     callee_sym = symbols.get(cs.callee_name)
                     if callee_sym and any(
-                        a.startswith(("ra8_hw_mmio", "RA8_HW_REGISTER_ACCESS"))
+                        a.startswith(("ra8_hw_register_access", "RA8_HW_REGISTER_ACCESS"))
                         for a in callee_sym.annotations
                     ):
                         out.append(

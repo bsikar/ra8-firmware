@@ -11,11 +11,11 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "ra8_attributes.h"
 #include "ra8_gpt.h"
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_dma.h"
 #include "ra8_dmac.h"

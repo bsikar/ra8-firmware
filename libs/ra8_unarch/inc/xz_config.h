@@ -189,10 +189,14 @@
  * @note Name fixed by the SOUP porting contract; do not rename.
  * @since Version 0.1.0
  */
+/* NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp) -- the
+ * xz_embedded SOUP sources spell this marker `__always_inline`; the name is
+ * fixed by the porting contract and renaming it would fork the vendored tree. */
 #ifndef __always_inline
 /** @brief Always inline. */
 #define __always_inline inline __attribute__((__always_inline__)) /* ATTR-OK: SOUP porting glue */
 #endif
+/* NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp) */
 
 /**
  * @enum ra8_xz_cfg_shift_t

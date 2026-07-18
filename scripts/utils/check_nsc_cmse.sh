@@ -42,8 +42,13 @@ fi
 
 # Match the real firmware ABI (cmake/toolchain-ra8d2.cmake) so the cmse
 # argument-register rules are evaluated exactly as the app build sees them.
+# -Wall -Wextra -Werror matches the firmware warning profile. It is what makes
+# this gate catch a redefinition of RA8_NSC_VENEER: a plain -fsyntax-only run
+# demotes that to a warning, and the losing definition can silently strip
+# cmse_nonsecure_entry (dropping the secure-gateway veneer) while this check
+# still reports OK.
 flags=(-mcpu=cortex-m85 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16
-  -mcmse "$cstd" -DRA8_TRUSTZONE_ENABLE -fsyntax-only)
+  -mcmse "$cstd" -DRA8_TRUSTZONE_ENABLE -Wall -Wextra -Werror -fsyntax-only)
 
 incs=()
 for d in libs/*/inc; do

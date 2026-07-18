@@ -200,15 +200,27 @@ extern "C" {
  * - libclang checker verifies every pointer parameter is fed
  *   to a `RA8_NSC_CHECK_NS_RANGE_*` call before being dereferenced.
  *
+ * @warning
+ * The definition below is the **annotation-only default**, used by
+ * translation units that never cross the NSC boundary. It is
+ * deliberately overridden by `libs/ra8_nsc/inc/ra8_nsc_veneer.h`,
+ * which `#undef`s it and re-defines it to carry
+ * the Arm CMSE non-secure-entry attribute **as well as** this
+ * annotation. `ra8_nsc_veneer.h` is the single authority; never add
+ * the CMSE attribute here, and never let this definition reach an NSC
+ * translation unit after that header (it would drop the
+ * secure-gateway veneer and silently break the S/NS boundary).
+ *
  * @par Example:
  * @code
  * RA8_NSC_VENEER
- * RA8_CMSE_NS_ENTRY  // expands to the CMSE non-secure entry attribute
  * ra8_err_t ra8_nsc_secure_storage_read(uint8_t* ns_buf, uint32_t len);
  * @endcode
  *
  * `ra8_nsc_secure_storage_read` must call
  * `RA8_NSC_CHECK_NS_RANGE_RW(ns_buf, len)` before touching `ns_buf`.
+ *
+ * @see ra8_nsc_veneer.h  Secure-world form (cmse attribute + annotation).
  */
 #define RA8_NSC_VENEER RA8_INTERNAL_ANNOTATE("ra8_nsc_veneer")
 
