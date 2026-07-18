@@ -40,6 +40,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_exception.h"
 #include "ra8_icu_regs.h"
 
@@ -71,8 +72,10 @@
  *
  * @since 0.1.0
  */
-[[noreturn]] void ra8_board_nmi_report(const ra8_exception_frame_t* frame);
-[[noreturn]] void ra8_board_nmi_report(const ra8_exception_frame_t* frame)
+RA8_INTERNAL [[noreturn, gnu::used]] static void ra8_board_nmi_report(
+  const ra8_exception_frame_t* frame);
+RA8_INTERNAL [[noreturn, gnu::used]] static void ra8_board_nmi_report(
+  const ra8_exception_frame_t* frame)
 {
   /* HUM Ch 14.2.13 "NMISR : Non-Maskable Interrupt Status Register" p 536-540 */
   const uint32_t nmisr = *ra8_icu_nmisr();

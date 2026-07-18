@@ -26,6 +26,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "fuzz_entry.h"
 #include "ra8_stbtt_guard.h" /* sfnt table-directory bounds guard (#217)       */
 #include "stb_truetype.h"    /* stbtt_fontinfo + glyph API (declarations only) */
 

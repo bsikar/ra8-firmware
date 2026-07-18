@@ -20,6 +20,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "fuzz_entry.h"
 #include "ra8_err.h"
 #include "ra8_unarch_io.h"
 #include "ra8_unarch_tar.h"

@@ -36,6 +36,7 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
 #include "ra8_lpm_safe_boot.h"
 
 /* =============================================================================
@@ -71,9 +72,7 @@ extern int32_t main(void);
 
 typedef void (*exc_handler_t)(void);
 
-void SystemInit(void); /* in the shared or app-local system_init.c */
 void Reset_Handler(void);
-void Default_Handler(void);
 void HardFault_Handler(void);
 void MemManage_Handler(void);
 void BusFault_Handler(void);

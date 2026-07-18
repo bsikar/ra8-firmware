@@ -26,6 +26,8 @@
 
 #include <stdint.h>
 
+#include "ra8_boot_entry.h"
+
 #ifndef __APPLE__
 /* On the firmware target every IRQ vector slot forwards to the
  * substrate dispatcher so drivers that called ra8_isr_register get
@@ -67,9 +69,7 @@ extern int32_t main(void);
 
 typedef void (*exc_handler_t)(void);
 
-void SystemInit(void); /* in uart_hello/system_init.c */
 void Reset_Handler(void);
-void Default_Handler(void);
 void HardFault_Handler(void);
 void MemManage_Handler(void);
 void BusFault_Handler(void);

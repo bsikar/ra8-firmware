@@ -42,6 +42,7 @@
 
 extern const uint32_t g_ra8_vector_table_start[];
 
+#include "ra8_boot_entry.h"
 #include "trustzone_init.h"
 
 /* =============================================================================
@@ -317,7 +318,6 @@ internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enab
  * runs on the stack and writes to CPU / SCB memory only.
  */
 
-void SystemInit(void);
 /* NOLINTNEXTLINE(readability-identifier-naming) -- CMSIS-mandated name. */
 void SystemInit(void)
 {

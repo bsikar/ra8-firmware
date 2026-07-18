@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "fuzz_entry.h"
 #include "ra8_decomp_limits.h"
 #include "ra8_err.h"
 

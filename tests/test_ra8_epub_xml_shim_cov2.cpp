@@ -48,33 +48,7 @@
 
 #include "ra8_epub.h"
 
-extern "C" {
-
-/**
- * @brief Local mirror of the shim's container out-parameter struct.
- *
- * @details Identical layout to the anonymous definition in the shim and in
- *          `ra8_epub_open.c`; used only to receive the parsed OPF path.
- */
-typedef struct {
-  char opf_path[k_ra8_epub_max_path_len]; /**< Parsed rootfile full-path. */
-} ra8_epub_container_result_t;
-
-/** @brief Production `META-INF/container.xml` parser (real, un-renamed). */
-ra8_err_t ra8_epub_xml_parse_container(const uint8_t*               xml_bytes,
-                                       size_t                       xml_len,
-                                       ra8_epub_container_result_t* out);
-
-/** @brief Production OPF parser (real, un-renamed). */
-ra8_err_t ra8_epub_xml_parse_opf(const uint8_t* xml_bytes, size_t xml_len, ra8_epub_book_t* book);
-
-/** @brief Production EPUB 2 NCX parser (real, un-renamed). */
-ra8_err_t ra8_epub_xml_parse_ncx(const uint8_t* xml_bytes, size_t xml_len, ra8_epub_book_t* book);
-
-/** @brief Production EPUB 3 nav parser (real, un-renamed). */
-ra8_err_t ra8_epub_xml_parse_nav(const uint8_t* xml_bytes, size_t xml_len, ra8_epub_book_t* book);
-
-} /* extern "C" */
+#include "ra8_epub_xml_shim_internal.h"
 
 namespace {
 

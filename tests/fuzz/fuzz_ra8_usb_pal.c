@@ -29,6 +29,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "fuzz_entry.h"
 #include "ra8_err.h"
 #include "ra8_mstp.h"
 #include "ra8_usb.h"

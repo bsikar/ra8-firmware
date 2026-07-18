@@ -67,9 +67,7 @@ extern int32_t main(void);
 
 typedef void (*exc_handler_t)(void);
 
-void SystemInit(void); /* in uart_hello/system_init.c */
 void Reset_Handler(void);
-void Default_Handler(void);
 void HardFault_Handler(void);
 void MemManage_Handler(void);
 void BusFault_Handler(void);
@@ -489,6 +487,7 @@ typedef enum : uint32_t {
 
 #ifndef RA8_SIMULATOR_MODE
 #ifdef RA8_ENABLE_ROOT_OF_TRUST
+#include "ra8_boot_entry.h"
 #include "ra8_dfu_antirollback.h"
 #endif
 

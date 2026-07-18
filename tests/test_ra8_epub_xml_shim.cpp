@@ -35,33 +35,7 @@ extern "C" {
 #include "ra8_err.h"
 }
 
-/* -----------------------------------------------------------------------
- * The XML-shim out-parameter struct and entry-point declarations are
- * defined inside the C++ TU itself (they are not in any public header
- * because no external consumer needs them outside ra8_epub). Mirror the
- * declarations here so the test can reach them via C linkage.
- * -----------------------------------------------------------------------
- */
-extern "C" {
-
-typedef struct {
-  char opf_path[k_ra8_epub_max_path_len];
-} ra8_epub_container_result_t;
-
-ra8_err_t ra8_epub_xml_parse_container(const uint8_t*               xml_bytes,
-                                       std::size_t                  xml_len,
-                                       ra8_epub_container_result_t* out);
-
-ra8_err_t
-ra8_epub_xml_parse_opf(const uint8_t* xml_bytes, std::size_t xml_len, ra8_epub_book_t* book);
-
-ra8_err_t
-ra8_epub_xml_parse_ncx(const uint8_t* xml_bytes, std::size_t xml_len, ra8_epub_book_t* book);
-
-ra8_err_t
-ra8_epub_xml_parse_nav(const uint8_t* xml_bytes, std::size_t xml_len, ra8_epub_book_t* book);
-
-} // extern "C"
+#include "ra8_epub_xml_shim_internal.h"
 
 namespace {
 
