@@ -32,6 +32,7 @@
 
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_rar5.h"
 
@@ -129,6 +130,7 @@ typedef enum : uint8_t {
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static uint16_t s_le16(const uint8_t* p)
 {
   uint16_t v = 0U;
@@ -150,6 +152,7 @@ static uint16_t s_le16(const uint8_t* p)
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static uint32_t s_le32(const uint8_t* p)
 {
   uint32_t v = 0U;
@@ -180,6 +183,7 @@ static uint32_t s_le32(const uint8_t* p)
  * @note Thread-safe: reads only its arguments.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool s_vint(const uint8_t* buf, size_t len, size_t* pos, uint64_t* val)
 {
   uint32_t       words[2] = {0U, 0U}; /* [0] = low 32 bits, [1] = high 32 bits */
@@ -232,6 +236,7 @@ static bool s_vint(const uint8_t* buf, size_t len, size_t* pos, uint64_t* val)
  * @note Not thread-safe (may call the archive reader).
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static uint16_t s_copy_name(const ra8_rar_t* rar,
                             uint64_t         name_abs,
                             const uint8_t*   scratch,
@@ -281,6 +286,7 @@ static uint16_t s_copy_name(const ra8_rar_t* rar,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool s_rar4_file(const ra8_rar_t* rar,
                         uint64_t         off,
                         const uint8_t*   scratch,
@@ -341,6 +347,7 @@ static bool s_rar4_file(const ra8_rar_t* rar,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 s_rar4_block(const ra8_rar_t* rar, uint64_t off, char* nbuf, uint16_t ncap, ra8_rar_entry_t* out)
 {
@@ -399,6 +406,7 @@ s_rar4_block(const ra8_rar_t* rar, uint64_t off, char* nbuf, uint16_t ncap, ra8_
  * @note Not thread-safe; reads only its arguments.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool s_rar5_file_vints(const uint8_t* scratch,
                               size_t         n,
                               size_t*        pos,
@@ -465,6 +473,7 @@ static bool s_rar5_file_vints(const uint8_t* scratch,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool s_rar5_file(const ra8_rar_t* rar,
                         uint64_t         off,
                         const uint8_t*   scratch,
@@ -517,6 +526,7 @@ static bool s_rar5_file(const ra8_rar_t* rar,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 s_rar5_block(const ra8_rar_t* rar, uint64_t off, char* nbuf, uint16_t ncap, ra8_rar_entry_t* out)
 {
@@ -581,6 +591,7 @@ s_rar5_block(const ra8_rar_t* rar, uint64_t off, char* nbuf, uint16_t ncap, ra8_
  * @note Not thread-safe; pure byte compare.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static void s_rar_match_signature(const uint8_t* hdr, size_t got, ra8_rar_t* rar)
 {
   static const char k_sig5[] = "Rar!\x1A\x07\x01"; /* + implicit NUL = 8-byte RAR5 sig    */
@@ -666,6 +677,7 @@ ra8_err_t ra8_rar_next(const ra8_rar_t* rar,
  * @note Not thread-safe; pure read of its arguments.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_rar_check_stored(const ra8_rar_t* rar, const ra8_rar_entry_t* ent, size_t cap)
 {
   if (rar->version == k_ra8_rar_ver_none) {
@@ -708,6 +720,7 @@ static ra8_err_t s_rar_check_stored(const ra8_rar_t* rar, const ra8_rar_entry_t*
  * @note Not thread-safe (drives the archive reader).
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool s_rar_read_exact(const ra8_rar_t* rar, uint64_t data_off, uint64_t need, uint8_t* buf)
 {
   size_t total = 0U;
@@ -764,6 +777,7 @@ ra8_err_t ra8_rar_extract_stored(const ra8_rar_t*       rar,
  * @note Thread-safe: reads only its pointer arguments.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_rar_extract_reject_null(const ra8_rar_t*       rar,
                                            const ra8_rar_entry_t* ent,
                                            const uint8_t*         buf,

@@ -26,6 +26,7 @@
 
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_comic_internal.h"
 
@@ -75,6 +76,7 @@ typedef enum : uint8_t {
  * @note Thread-safe: pure.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static uint8_t s_lower(uint8_t c)
 {
   const uint8_t up =
@@ -99,6 +101,7 @@ static uint8_t s_lower(uint8_t c)
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool s_ends_with_ci(const char* name, uint16_t len, const char* ext)
 {
   size_t elen = 0U;
@@ -136,6 +139,7 @@ static bool s_ends_with_ci(const char* name, uint16_t len, const char* ext)
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool s_is_image_ext(const char* name, uint16_t len)
 {
   static const char* const k_exts[] = {".jpg", ".jpeg", ".png", ".gif", ".bmp"};
@@ -226,6 +230,7 @@ ra8_err_t ra8_comic_page_add(ra8_comic_t* c,
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static int32_t s_name_cmp(const char* a, uint16_t alen, const char* b, uint16_t blen)
 {
   const uint16_t m = (alen < blen) ? alen : blen;
@@ -255,6 +260,7 @@ static int32_t s_name_cmp(const char* a, uint16_t alen, const char* b, uint16_t 
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static void s_sort(ra8_comic_t* c)
 {
   for (uint32_t i = 1U; i < c->page_count; ++i) { /* bound: page_count <= page_cap */
@@ -288,6 +294,7 @@ static void s_sort(ra8_comic_t* c)
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool s_is_zip(const uint8_t* s)
 {
   if (s[0] != (uint8_t)k_zip_b0) {
@@ -323,6 +330,7 @@ static bool s_is_zip(const uint8_t* s)
  * @note Thread-safe: reads only its pointer arguments.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_open_reject_null(const ra8_comic_t*      c,
                                     ra8_comic_read_fn       read,
                                     const ra8_comic_page_t* pages,
@@ -353,6 +361,7 @@ static ra8_err_t s_open_reject_null(const ra8_comic_t*      c,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_open_detect(ra8_comic_t* c)
 {
   uint8_t      sig[k_ra8_comic_magic_len] = {};

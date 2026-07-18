@@ -41,6 +41,7 @@
 
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_rar5_internal.h"
 
@@ -63,6 +64,7 @@ static const char* const s_tag_rar5 = "ra8_rar5";
  * @note Thread-safe: pure read.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static uint32_t s_rd_le32(const uint8_t* p)
 {
   uint32_t v = 0U;
@@ -83,6 +85,7 @@ static uint32_t s_rd_le32(const uint8_t* p)
  * @note Thread-safe: writes only through @p p.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static void s_wr_le32(uint8_t* p, uint32_t v)
 {
   (void)memcpy(p, &v, sizeof(v));
@@ -105,6 +108,7 @@ static void s_wr_le32(uint8_t* p, uint32_t v)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static uint32_t s_slot_to_length(ra8_rar5_state_t* st, uint32_t slot)
 {
   uint32_t length = 2U;
@@ -132,6 +136,7 @@ static uint32_t s_slot_to_length(ra8_rar5_state_t* st, uint32_t slot)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static uint64_t s_decode_distance(ra8_rar5_state_t* st)
 {
   const uint32_t slot = ra8_rar5_decode_num(st, &st->dd);
@@ -164,6 +169,7 @@ static uint64_t s_decode_distance(ra8_rar5_state_t* st)
  * @note Thread-safe: pure.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static uint32_t s_adjust_length(uint32_t length, uint64_t dist)
 {
   uint32_t adjusted = length;
@@ -193,6 +199,7 @@ static uint32_t s_adjust_length(uint32_t length, uint64_t dist)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static void s_push_dist(ra8_rar5_state_t* st, uint64_t dist)
 {
   for (uint32_t i = (uint32_t)k_ra8_rar5_old_dist - 1U; i > 0U; --i) { /* bound: ring size */
@@ -232,6 +239,7 @@ bool ra8_rar5_copy_match(uint8_t* out, size_t* out_pos, size_t unp, uint32_t len
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static uint32_t s_read_filter_data(ra8_rar5_state_t* st)
 {
   const uint32_t bc   = ra8_rar5_get(st, 2U) + 1U;
@@ -258,6 +266,7 @@ static uint32_t s_read_filter_data(ra8_rar5_state_t* st)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_read_filter(ra8_rar5_state_t* st, size_t out_pos)
 {
   if (st->filter_count >= (uint16_t)k_ra8_rar5_max_filters) {
@@ -315,6 +324,7 @@ void ra8_rar5_filter_delta(ra8_rar5_state_t* st, uint8_t* d, uint32_t len, uint3
  * @note Thread-safe: pure.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static bool s_x86_is_op(uint8_t op, bool e9)
 {
   if (op == (uint8_t)k_r5_x86_call) {
@@ -339,6 +349,7 @@ static bool s_x86_is_op(uint8_t op, bool e9)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static void s_filter_x86(uint8_t* d, uint32_t len, uint64_t filepos, bool e9)
 {
   if (len < (uint32_t)k_r5_x86_ilen) {
@@ -373,6 +384,7 @@ static void s_filter_x86(uint8_t* d, uint32_t len, uint64_t filepos, bool e9)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static void s_filter_arm(uint8_t* d, uint32_t len, uint64_t filepos)
 {
   if (len < 4U) {
@@ -411,6 +423,7 @@ static void s_filter_arm(uint8_t* d, uint32_t len, uint64_t filepos)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static void
 s_apply_one_filter(ra8_rar5_state_t* st, uint8_t* out, size_t unp, const ra8_rar5_filter_t* f)
 {
@@ -449,6 +462,7 @@ s_apply_one_filter(ra8_rar5_state_t* st, uint8_t* out, size_t unp, const ra8_rar
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static void s_apply_filters(ra8_rar5_state_t* st, uint8_t* out, size_t unp)
 {
   for (uint16_t f = 0U; f < st->filter_count; ++f) { /* bound: filter_count */
@@ -478,6 +492,7 @@ static void s_apply_filters(ra8_rar5_state_t* st, uint8_t* out, size_t unp)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 s_do_match(ra8_rar5_state_t* st, uint32_t slot, uint8_t* out, size_t* out_pos, size_t unp)
 {
@@ -511,6 +526,7 @@ s_do_match(ra8_rar5_state_t* st, uint32_t slot, uint8_t* out, size_t* out_pos, s
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 s_do_repdist(ra8_rar5_state_t* st, uint32_t slot, uint8_t* out, size_t* out_pos, size_t unp)
 {
@@ -547,6 +563,7 @@ s_do_repdist(ra8_rar5_state_t* st, uint32_t slot, uint8_t* out, size_t* out_pos,
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_do_replast(ra8_rar5_state_t* st, uint8_t* out, size_t* out_pos, size_t unp)
 {
   if (st->last_length == 0U) {
@@ -577,6 +594,7 @@ static ra8_err_t s_do_replast(ra8_rar5_state_t* st, uint8_t* out, size_t* out_po
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_decode_token(ra8_rar5_state_t* st, uint8_t* out, size_t* out_pos, size_t unp)
 {
   const uint32_t slot = ra8_rar5_decode_num(st, &st->ld);
@@ -615,6 +633,7 @@ static ra8_err_t s_decode_token(ra8_rar5_state_t* st, uint8_t* out, size_t* out_
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_open_block(ra8_rar5_state_t* st, uint64_t* end_bit, bool* last)
 {
   r5_block_t      blk = {};
@@ -661,6 +680,7 @@ static ra8_err_t s_open_block(ra8_rar5_state_t* st, uint64_t* end_bit, bool* las
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_decode_stream(ra8_rar5_state_t* st, uint8_t* out, size_t out_cap, size_t unp)
 {
   (void)out_cap;
@@ -719,6 +739,7 @@ static ra8_err_t s_decode_stream(ra8_rar5_state_t* st, uint8_t* out, size_t out_
  * @note Not thread-safe (reads @p rar fields).
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_decompress_check(const ra8_rar_t*        rar,
                                     const uint8_t*          out,
                                     const ra8_rar5_state_t* st,
