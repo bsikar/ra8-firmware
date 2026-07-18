@@ -28,6 +28,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_comic.h"
 #include "ra8_comic_internal.h"
@@ -70,6 +71,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 s_add_member(ra8_comic_t* c, const ra8_rar_entry_t* ent, const char* name, uint16_t nlen)
 {

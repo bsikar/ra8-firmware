@@ -35,6 +35,7 @@
 #include "ra8_decomp_limits.h"
 
 #ifndef RA8_SIMULATOR_MODE
+#include "ra8_attributes.h"
 #include "ra8_epub_miniz_alloc.h"
 #endif
 
@@ -68,6 +69,7 @@ typedef enum : uint16_t {
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static mz_zip_archive* s_zip(ra8_comic_t* c)
 {
   /* Reinterpret the aligned byte arena as the archive via a `void*` seam (as
@@ -96,6 +98,7 @@ static mz_zip_archive* s_zip(ra8_comic_t* c)
  * @note Not thread-safe; single-threaded reader context.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static size_t s_stream_read(void* opaque, mz_uint64 file_ofs, void* buf, size_t n)
 {
   const ra8_comic_stream_t* sm = (const ra8_comic_stream_t*)opaque;
@@ -126,6 +129,7 @@ static size_t s_stream_read(void* opaque, mz_uint64 file_ofs, void* buf, size_t 
  * @note Not thread-safe; single-threaded init context.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static void s_set_alloc(mz_zip_archive* zip)
 {
 #ifndef RA8_SIMULATOR_MODE
@@ -156,6 +160,7 @@ static void s_set_alloc(mz_zip_archive* zip)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_add_entry(ra8_comic_t* c, mz_zip_archive* zip, mz_uint i)
 {
   if (mz_zip_reader_is_file_a_directory(zip, i) != MZ_FALSE) {

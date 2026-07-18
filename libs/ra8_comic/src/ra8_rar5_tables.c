@@ -26,6 +26,7 @@
  */
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_rar5.h"
 #include "ra8_rar5_internal.h"
 
@@ -46,6 +47,7 @@
  * @note Not thread-safe; drives the archive reader.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static uint8_t s_fetch_byte(ra8_rar5_state_t* st)
 {
   if (st->refill_pos >= st->refill_len) {
@@ -85,6 +87,7 @@ static uint8_t s_fetch_byte(ra8_rar5_state_t* st)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static void s_ensure(ra8_rar5_state_t* st, uint32_t n)
 {
   while (st->nbits < n) { /* bound: n<=32, +8 bits per pass -> <=4 passes */
@@ -109,6 +112,7 @@ static void s_ensure(ra8_rar5_state_t* st, uint32_t n)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static uint32_t s_peek(ra8_rar5_state_t* st, uint32_t n)
 {
   s_ensure(st, n);
@@ -130,6 +134,7 @@ static uint32_t s_peek(ra8_rar5_state_t* st, uint32_t n)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static void s_drop(ra8_rar5_state_t* st, uint32_t n)
 {
   st->nbits -= n;
@@ -161,6 +166,7 @@ uint32_t ra8_rar5_get(ra8_rar5_state_t* st, uint32_t n)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static void s_align(ra8_rar5_state_t* st)
 {
   s_drop(st, st->nbits & (uint32_t)k_r5_low3_mask);
@@ -183,6 +189,7 @@ static void s_align(ra8_rar5_state_t* st)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static void s_tab_limits(ra8_rar5_dtab_t* d, const uint32_t* count)
 {
   d->len[0]      = 0U;
@@ -212,6 +219,7 @@ static void s_tab_limits(ra8_rar5_dtab_t* d, const uint32_t* count)
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static void s_make_tables(ra8_rar5_dtab_t* d, const uint8_t* lengths, uint16_t size)
 {
   uint32_t count[k_r5_maxbits + 1U] = {};
@@ -272,6 +280,7 @@ uint32_t ra8_rar5_decode_num(ra8_rar5_state_t* st, const ra8_rar5_dtab_t* d)
  * @note Thread-safe: pure.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static uint8_t s_checksum(uint32_t flags, uint64_t blocksize)
 {
   uint32_t x = (uint32_t)k_r5_hdr_chk_seed ^ flags;
@@ -329,6 +338,7 @@ uint32_t ra8_rar5_fill_zeros(uint8_t* out, uint32_t start, uint32_t count, uint3
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_read_bd_lengths(ra8_rar5_state_t* st, uint8_t* out)
 {
   uint32_t i = 0U;
@@ -391,6 +401,7 @@ ra8_err_t ra8_rar5_apply_run(ra8_rar5_state_t* st, uint8_t* tbl, uint32_t* idx, 
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t s_read_full_table(ra8_rar5_state_t* st, uint8_t* tbl)
 {
   uint32_t i = 0U;
