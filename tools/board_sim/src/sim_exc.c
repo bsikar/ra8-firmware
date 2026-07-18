@@ -614,6 +614,26 @@ bool exc_take_pending(uc_engine* uc, uint32_t vtor_base, bool allow_systick)
   return exc_take_periph_irq(uc, vtor_base, active);
 }
 
+/**
+ * @brief Name the access kind that hit an unmapped address.
+ *
+ * @param[in] type Unicorn memory-access type reported by the hook.
+ * @return "read", "write" or "fetch".
+ *
+ * @pre @p type is one of the UC_MEM_*_UNMAPPED values.
+ * @post No state is modified.
+ */
+static const char* unmapped_access_kind(uc_mem_type type)
+{
+  if (type == UC_MEM_READ_UNMAPPED) {
+    return "read";
+  }
+  if (type == UC_MEM_WRITE_UNMAPPED) {
+    return "write";
+  }
+  return "fetch";
+}
+
 /** @brief Hook fired on access to unmapped memory (peripheral surface gap). */
 static bool
 on_unmapped(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t value, void* user)
@@ -633,9 +653,7 @@ on_unmapped(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t va
   }
   (void)fprintf(stderr,
                 "  UNMAPPED %s @ 0x%08llX (extend the memory/peripheral map)\n",
-                (type == UC_MEM_READ_UNMAPPED)    ? "read"
-                : (type == UC_MEM_WRITE_UNMAPPED) ? "write"
-                                                  : "fetch",
+                unmapped_access_kind(type),
                 (unsigned long long)addr);
   return false; /* stop emulation and report */
 }

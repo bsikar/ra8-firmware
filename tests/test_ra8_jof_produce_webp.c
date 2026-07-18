@@ -320,6 +320,32 @@ static void check_golden_tiles(ra8_jof_memstore_t* store, const ra8_jof_info_t* 
 /* ------------------------------------------------------------------------- */
 
 /**
+ * @brief Member-wise equality of two parsed atlas descriptors.
+ *
+ * @details
+ * ra8_jof_info_t carries padding between its uint8_t and uint32_t
+ * members, so memcmp would compare bytes the standard never guarantees are
+ * initialised. Compare the members the producer actually fills.
+ *
+ * @param[in] lhs First descriptor.
+ * @param[in] rhs Second descriptor.
+ * @return true when every member compares equal.
+ *
+ * @pre @p lhs is non-null.
+ * @pre @p rhs is non-null.
+ * @post Neither operand is modified.
+ */
+static bool ta_info_equal(const ra8_jof_info_t* lhs, const ra8_jof_info_t* rhs)
+{
+  return (lhs->width == rhs->width) && (lhs->height == rhs->height) &&
+         (lhs->tile_w == rhs->tile_w) && (lhs->tile_h == rhs->tile_h) &&
+         (lhs->tile_cols == rhs->tile_cols) && (lhs->tile_rows == rhs->tile_rows) &&
+         (lhs->bpp == rhs->bpp) && (lhs->codec == rhs->codec) &&
+         (lhs->tile_count == rhs->tile_count) && (lhs->index_off == rhs->index_off) &&
+         (lhs->total_size == rhs->total_size);
+}
+
+/**
  * @test test_webp_lossless_golden
  * @brief A lossless WebP normalizes to JOF whose tiles page back byte-exact to
  *        the source pattern, with the `webp_work` arena sized by
@@ -357,7 +383,7 @@ static void test_webp_lossless_golden(void)
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_jof_parse(ra8_jof_memstore_pread, &store, (uint64_t)store.len, &reparsed));
-  TEST_ASSERT_EQ(0, memcmp(&info, &reparsed, sizeof(info)));
+  TEST_ASSERT(ta_info_equal(&info, &reparsed));
   check_golden_tiles(&store, &info);
   TEST_END("produce webp: lossless -> JOF golden pixels + sized arena");
 }
@@ -406,7 +432,7 @@ static void test_webp_png_byte_identical(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_jof_produce(&cfg, &ib));
 
   /* Same reported geometry AND the same atlas bytes, end to end. */
-  TEST_ASSERT_EQ(0, memcmp(&ia, &ib, sizeof(ia)));
+  TEST_ASSERT(ta_info_equal(&ia, &ib));
   TEST_ASSERT_EQ(sa.len, sb.len);
   TEST_ASSERT(sa.len > 0U);
   TEST_ASSERT_EQ(0, memcmp(sa.buf, sb.buf, sa.len));

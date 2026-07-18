@@ -65,6 +65,7 @@ static uint8_t key_of_layer(uint8_t aux)
 /** @brief Tap a key's centre and apply it. */
 static void tap(ra8_kbd_text_t* t, uint8_t idx)
 {
+  TEST_ASSERT(idx < (uint8_t)(sizeof(s_kb.keys) / sizeof(s_kb.keys[0])));
   const ra8_ui_rect_t* r  = &s_kb.keys[idx].rect;
   const int32_t        cx = r->x + (r->w / 2);
   const int32_t        cy = r->y + (r->h / 2);

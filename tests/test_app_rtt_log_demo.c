@@ -57,6 +57,11 @@ static ra8_err_t rtt_write_under_test(test_rtt_ring_t* up, const uint8_t* data, 
     if (next == up->rd_off) {
       break;
     }
+    /* The ring length must fit the storage it indexes -- the app guarantees
+     * this at init, and stating it here bounds the write below. */
+    if (up->wr_off >= (uint32_t)sizeof(up->buf)) {
+      return k_ra8_err_invalid_state;
+    }
     up->buf[up->wr_off] = data[i];
     up->wr_off          = next;
   }

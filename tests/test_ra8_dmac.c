@@ -401,7 +401,7 @@ static void test_attach_half_complete_handler(void)
                                                        &sentinel));
   ra8_dmac_dispatch_half((uint8_t)k_ra8_dmac_test_channel_valid);
   TEST_ASSERT_EQ(1, s_dmac_half_count);
-  TEST_ASSERT_EQ((void*)&sentinel, s_dmac_last_ctx);
+  TEST_ASSERT(s_dmac_last_ctx == &sentinel);
 
   /* Out-of-range channel must early-exit. */
   ra8_dmac_dispatch_half((uint8_t)k_ra8_dmac_test_channel_bad);
@@ -430,7 +430,7 @@ static void test_attach_per_channel_callback(void)
     ra8_dmac_attach_callback((uint8_t)k_ra8_dmac_test_channel_valid, stub_dmac_full_cb, &sentinel));
   ra8_dmac_dispatch((uint8_t)k_ra8_dmac_test_channel_valid);
   TEST_ASSERT_EQ(1, s_dmac_full_count);
-  TEST_ASSERT_EQ((void*)&sentinel, s_dmac_last_ctx);
+  TEST_ASSERT(s_dmac_last_ctx == &sentinel);
 
   ra8_dmac_dispatch((uint8_t)k_ra8_dmac_test_channel_bad);
   TEST_ASSERT_EQ(1, s_dmac_full_count);

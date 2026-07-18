@@ -160,6 +160,11 @@ enum : uint32_t {
 
 static int32_t s_async_tx_cb_count = 0;
 
+/* The pointer parameters below cannot be const: this mock implements a
+ * function-pointer interface (the DI seam under test), so its signature is
+ * fixed by the typedef it is assigned to -- adding const changes the
+ * function type and the assignment stops compiling. */
+// NOLINTNEXTLINE(readability-non-const-parameter)
 static bool stub_async_tx_visibility(void* ctx, uint8_t* byte)
 {
   (void)ctx;

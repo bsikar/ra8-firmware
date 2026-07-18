@@ -101,7 +101,7 @@ static uint32_t g_cov_progress_cnt;
  * Mock network interface
  * ============================================================================= */
 
-static ra8_err_t cov_net_open(void* ctx, const char* url, uint32_t* out_len)
+static inline ra8_err_t cov_net_open(void* ctx, const char* url, uint32_t* out_len)
 {
   (void)ctx;
   (void)url;
@@ -125,7 +125,7 @@ static ra8_err_t cov_net_open(void* ctx, const char* url, uint32_t* out_len)
   return k_ra8_ok;
 }
 
-static ra8_err_t cov_net_read(void* ctx, uint8_t* dst, uint32_t cap, uint32_t* out)
+static inline ra8_err_t cov_net_read(void* ctx, uint8_t* dst, uint32_t cap, uint32_t* out)
 {
   (void)ctx;
   ++g_cov_net_read_call_cnt;
@@ -146,7 +146,7 @@ static ra8_err_t cov_net_read(void* ctx, uint8_t* dst, uint32_t cap, uint32_t* o
   return k_ra8_ok;
 }
 
-static ra8_err_t cov_net_close(void* ctx)
+static inline ra8_err_t cov_net_close(void* ctx)
 {
   (void)ctx;
   return k_ra8_ok;
@@ -156,7 +156,7 @@ static ra8_err_t cov_net_close(void* ctx)
  * Mock crypto interface
  * ============================================================================= */
 
-static ra8_err_t cov_sha_init(void* ctx)
+static inline ra8_err_t cov_sha_init(void* ctx)
 {
   (void)ctx;
   ++g_cov_sha_init_call_cnt;
@@ -167,7 +167,7 @@ static ra8_err_t cov_sha_init(void* ctx)
   return k_ra8_ok;
 }
 
-static ra8_err_t cov_sha_update(void* ctx, const uint8_t* data, uint32_t len)
+static inline ra8_err_t cov_sha_update(void* ctx, const uint8_t* data, uint32_t len)
 {
   (void)ctx;
   ++g_cov_sha_upd_call_cnt;
@@ -180,18 +180,18 @@ static ra8_err_t cov_sha_update(void* ctx, const uint8_t* data, uint32_t len)
   return k_ra8_ok;
 }
 
-static ra8_err_t cov_sha_final(void* ctx, uint8_t out[k_ra8_ota_sha256_bytes])
+static inline ra8_err_t cov_sha_final(void* ctx, uint8_t out[k_ra8_ota_sha256_bytes])
 {
   (void)ctx;
   (void)memcpy(out, g_cov_hash, k_ra8_ota_sha256_bytes);
   return k_ra8_ok;
 }
 
-static ra8_err_t cov_ecdsa_verify(void*          ctx,
-                                  uint32_t       key,
-                                  const uint8_t  digest[32],
-                                  const uint8_t* sig,
-                                  uint32_t       sig_len)
+static inline ra8_err_t cov_ecdsa_verify(void*          ctx,
+                                         uint32_t       key,
+                                         const uint8_t  digest[32],
+                                         const uint8_t* sig,
+                                         uint32_t       sig_len)
 {
   (void)ctx;
   (void)digest;
@@ -206,7 +206,7 @@ static ra8_err_t cov_ecdsa_verify(void*          ctx,
  * Mock flash interface
  * ============================================================================= */
 
-static ra8_err_t cov_flash_erase(void* ctx, uint32_t addr, uint32_t len)
+static inline ra8_err_t cov_flash_erase(void* ctx, uint32_t addr, uint32_t len)
 {
   (void)ctx;
   (void)addr;
@@ -218,7 +218,8 @@ static ra8_err_t cov_flash_erase(void* ctx, uint32_t addr, uint32_t len)
   return k_ra8_ok;
 }
 
-static ra8_err_t cov_flash_program(void* ctx, uint32_t addr, const uint8_t* src, uint32_t len)
+static inline ra8_err_t
+cov_flash_program(void* ctx, uint32_t addr, const uint8_t* src, uint32_t len)
 {
   (void)ctx;
   (void)addr;
@@ -234,7 +235,7 @@ static ra8_err_t cov_flash_program(void* ctx, uint32_t addr, const uint8_t* src,
   return k_ra8_ok;
 }
 
-static ra8_err_t cov_flash_set_startup(void* ctx, uint8_t which, bool persistent)
+static inline ra8_err_t cov_flash_set_startup(void* ctx, uint8_t which, bool persistent)
 {
   (void)ctx;
   (void)which;
@@ -245,7 +246,7 @@ static ra8_err_t cov_flash_set_startup(void* ctx, uint8_t which, bool persistent
   return k_ra8_ok;
 }
 
-static ra8_err_t cov_flash_readback(void* ctx, uint32_t addr, uint8_t* dst, uint32_t len)
+static inline ra8_err_t cov_flash_readback(void* ctx, uint32_t addr, uint8_t* dst, uint32_t len)
 {
   (void)ctx;
   if (g_cov_flash_rb_fail) {
@@ -262,7 +263,7 @@ static ra8_err_t cov_flash_readback(void* ctx, uint32_t addr, uint8_t* dst, uint
  * Progress callback
  * ============================================================================= */
 
-static void cov_on_progress(const ra8_ota_progress_t* p)
+static inline void cov_on_progress(const ra8_ota_progress_t* p)
 {
   (void)p;
   ++g_cov_progress_cnt;
@@ -273,7 +274,7 @@ static void cov_on_progress(const ra8_ota_progress_t* p)
  * ============================================================================= */
 
 /** @brief Reset all fault-injection flags and counters to safe defaults. */
-static void priv_reset_flags(void)
+static inline void priv_reset_flags(void)
 {
   g_cov_net_open_fail_n     = 0;
   g_cov_net_open_call_cnt   = 0;
@@ -300,7 +301,7 @@ static void priv_reset_flags(void)
  * @param[in]  len  Byte count.
  * @param[out] out  32-byte destination.
  */
-static void priv_xor_hash(const uint8_t* data, uint32_t len, uint8_t out[32])
+static inline void priv_xor_hash(const uint8_t* data, uint32_t len, uint8_t out[32])
 {
   (void)memset(out, 0, k_ra8_ota_sha256_bytes);
   for (uint32_t i = 0U; i < len; ++i) {
@@ -309,7 +310,7 @@ static void priv_xor_hash(const uint8_t* data, uint32_t len, uint8_t out[32])
 }
 
 /** @brief Fill the image buffer with a deterministic pattern. */
-static void priv_make_image(void)
+static inline void priv_make_image(void)
 {
   for (uint32_t i = 0U; i < k_cov_image_size; ++i) {
     g_cov_image[i] = (uint8_t)(i ^ 0xA5U);
@@ -317,7 +318,7 @@ static void priv_make_image(void)
 }
 
 /** @brief Render a valid manifest JSON into g_cov_manifest. */
-static void priv_make_manifest(void)
+static inline void priv_make_manifest(void)
 {
   priv_xor_hash(g_cov_image, k_cov_image_size, g_cov_expected_hash);
   for (uint32_t i = 0U; i < sizeof g_cov_sig; ++i) {
@@ -349,7 +350,7 @@ static void priv_make_manifest(void)
  * @param[in] with_progress When true, wire cov_on_progress into the cfg.
  * @return A fully populated ra8_ota_cfg_t.
  */
-static ra8_ota_cfg_t priv_make_cfg(bool with_progress)
+static inline ra8_ota_cfg_t priv_make_cfg(bool with_progress)
 {
   ra8_ota_cfg_t cfg = {};
   (void)snprintf(cfg.manifest_url, k_ra8_ota_url_max_bytes, "https://test.example/manifest.json");
