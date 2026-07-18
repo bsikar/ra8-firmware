@@ -32,8 +32,8 @@
 
 #include <stdint.h>
 
-#include "ra8_check.h"
 #include "ra8_attributes.h"
+#include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_ota.h"
 #include "ra8_ota_internal.h"

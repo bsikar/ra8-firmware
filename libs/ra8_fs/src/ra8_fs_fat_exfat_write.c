@@ -15,8 +15,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra8_fs.h"
 #include "ra8_attributes.h"
+#include "ra8_fs.h"
 #include "ra8_fs_fat_internal.h"
 
 /* ---- exFAT one-shot file writer (provisioning) -------------------------- */

@@ -21,8 +21,8 @@
 
 #pragma once
 
-#include "ra8_fs_fat_types_internal.h"
 #include "ra8_attributes.h"
+#include "ra8_fs_fat_types_internal.h"
 
 /**
  * @brief Write a pre-built entry set into consecutive directory entries.
