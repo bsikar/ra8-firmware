@@ -17,6 +17,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 
@@ -43,6 +44,7 @@ static const char* const s_tag = "ra8_arena";
  * @note Pure; thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool priv_is_pow2(uint32_t v)
 {
   if (v == 0U) {

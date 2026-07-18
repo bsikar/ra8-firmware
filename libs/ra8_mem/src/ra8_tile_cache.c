@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_keycache.h"
@@ -57,6 +58,7 @@ static const char* const s_tag = "ra8_tile_cache";
  * @note Not thread-safe.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 priv_tile_decode(void* ctx, const void* key, uint8_t* cell, uint32_t cell_bytes, void* user)
 {
