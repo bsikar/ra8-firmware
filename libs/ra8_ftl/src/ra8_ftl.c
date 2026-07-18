@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io_blockdev.h"
@@ -75,6 +76,7 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ftl_reclaim_stale(ra8_ftl_t* ftl)
 {
   RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
@@ -119,6 +121,7 @@ static ra8_err_t ftl_reclaim_stale(ra8_ftl_t* ftl)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ftl_pick_free(const ra8_ftl_t* ftl, uint32_t* out)
 {
   RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
@@ -174,6 +177,7 @@ static ra8_err_t ftl_pick_free(const ra8_ftl_t* ftl, uint32_t* out)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ftl_alloc_blank(ra8_ftl_t* ftl, uint32_t* out)
 {
   RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
@@ -234,6 +238,7 @@ static ra8_err_t ftl_alloc_blank(ra8_ftl_t* ftl, uint32_t* out)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ftl_read_one(const ra8_ftl_t* ftl, uint32_t lbn, uint8_t* dst)
 {
   RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
@@ -275,6 +280,7 @@ static ra8_err_t ftl_read_one(const ra8_ftl_t* ftl, uint32_t lbn, uint8_t* dst)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ftl_write_one(ra8_ftl_t* ftl, uint32_t lbn, const uint8_t* src)
 {
   RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
@@ -326,6 +332,7 @@ static ra8_err_t ftl_write_one(ra8_ftl_t* ftl, uint32_t lbn, const uint8_t* src)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ftl_bounds(const ra8_ftl_t* ftl, uint32_t lba, uint32_t count)
 {
   if (count > ftl->logical_blocks) {
@@ -364,6 +371,7 @@ static ra8_err_t ftl_bounds(const ra8_ftl_t* ftl, uint32_t lba, uint32_t count)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ftl_dev_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -411,6 +419,7 @@ static ra8_err_t ftl_dev_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* 
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ftl_dev_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -457,6 +466,7 @@ static ra8_err_t ftl_dev_write(void* ctx, uint32_t lba, uint32_t count, const ui
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ftl_dev_erase(void* ctx, uint32_t lba, uint32_t count)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -499,6 +509,7 @@ static ra8_err_t ftl_dev_erase(void* ctx, uint32_t lba, uint32_t count)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ftl_dev_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -537,6 +548,7 @@ static ra8_err_t ftl_dev_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ftl_dev_sync(void* ctx)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -588,6 +600,7 @@ static const ra8_io_blockdev_iface_t k_ftl_iface = {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ftl_check_caps(const ra8_io_blockdev_caps_t* caps,
                                 uint32_t                      logical_blocks,
                                 uint32_t                      physical_blocks,
@@ -634,6 +647,7 @@ static ra8_err_t ftl_check_caps(const ra8_io_blockdev_caps_t* caps,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ftl_reset_tables(ra8_ftl_t* ftl)
 {
   RA8_CHECK_NULL_PTR(ftl, s_tag, "ftl must not be nullptr");
@@ -678,6 +692,7 @@ static ra8_err_t ftl_reset_tables(ra8_ftl_t* ftl)
  * @note Not thread-safe with respect to the same FTL.
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t ftl_validate_init_args(const ra8_ftl_t*         bd,
                                         const ra8_io_blockdev_t* raw,
                                         const uint16_t*          map,
