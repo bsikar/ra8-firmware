@@ -52,6 +52,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_glcdc_regs.h" /* k_ra8_mipi_phy_base_addr */
 
 /**
@@ -335,6 +336,7 @@ typedef enum : uint8_t {
  * @note Per HUM Ch 64.2 p 3822, all MIPI PHY registers must be
  *       accessed in 32-bit units. Do not use byte / halfword writes.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_mipi_phy_reg32(ra8_mipi_phy_block_off_t offset)
 {
   return (volatile uint32_t*)(k_ra8_mipi_phy_base_addr + (uintptr_t)offset);

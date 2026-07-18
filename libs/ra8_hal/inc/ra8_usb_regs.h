@@ -75,6 +75,8 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum ra8_usb_addr_t
  * @brief Per-instance base addresses for the two USB controllers.
@@ -309,12 +311,14 @@ static_assert(sizeof(((r_usb_regs_t*)0)->PIPECTR) ==
               "PIPECTR array spans PIPE1..PIPE9 (9 * 2 bytes)");
 
 /** @brief Get pointer to the USB FS controller register block. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_usb_regs_t* ra8_usb_fs(void)
 {
   return (volatile r_usb_regs_t*)k_ra8_usb_fs0_base_addr;
 }
 
 /** @brief Get pointer to the USB HS controller register block. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_usb_regs_t* ra8_usb_hs(void)
 {
   return (volatile r_usb_regs_t*)k_ra8_usb_hs0_base_addr;
@@ -347,18 +351,21 @@ typedef enum : uint16_t {
 } ra8_usbhs_offset_t;
 
 /** @brief Get pointer to USBHS PLLSTA register (read-only). */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint16_t* ra8_usbhs_pllsta(void)
 {
   return (volatile uint16_t*)(k_ra8_usb_hs0_base_addr + (uintptr_t)k_ra8_usbhs_off_pllsta);
 }
 
 /** @brief Get pointer to USBHS PHYSET register. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint16_t* ra8_usbhs_physet(void)
 {
   return (volatile uint16_t*)(k_ra8_usb_hs0_base_addr + (uintptr_t)k_ra8_usbhs_off_physet);
 }
 
 /** @brief Get pointer to USBHS LPSTS register. */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint16_t* ra8_usbhs_lpsts(void)
 {
   return (volatile uint16_t*)(k_ra8_usb_hs0_base_addr + (uintptr_t)k_ra8_usbhs_off_lpsts);

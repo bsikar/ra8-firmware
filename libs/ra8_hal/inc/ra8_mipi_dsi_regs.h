@@ -85,6 +85,8 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum ra8_mipi_dsi_addr_t
  * @brief Memory-mapped base addresses for the MIPI DSI host.
@@ -911,6 +913,7 @@ static_assert(offsetof(r_mipi_dsi_regs_t, AKEPLATIR) == (size_t)k_ra8_mipi_dsi_o
  * @see ra8_mipi_dsi_init
  * @since 0.1.0
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_mipi_dsi_regs_t* ra8_mipi_dsi(void)
 {
   return (volatile r_mipi_dsi_regs_t*)k_ra8_mipi_dsi_base_addr_s;

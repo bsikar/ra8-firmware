@@ -70,6 +70,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_glcdc_regs.h" /* for k_ra8_mipi_csi_base_addr */
 
 /**
@@ -643,6 +644,7 @@ typedef enum : uint32_t {
  * @param[in] off One of the ``k_ra8_mipi_csi_off_*`` enum values.
  * @return Volatile 32-bit pointer to the register.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_mipi_csi_reg32(ra8_mipi_csi_off_t off)
 {
   return (volatile uint32_t*)(k_ra8_mipi_csi_base_addr + (uint16_t)off);

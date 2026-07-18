@@ -49,6 +49,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_device.h"
 
 #ifndef RA8_HAS_NPU
@@ -264,6 +265,7 @@ typedef enum : uint16_t {
  * @see ra8_npu_layout_t
  * @since 0.1.0
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile uint32_t* ra8_npu_reg(uint32_t byte_off)
 {
   return (volatile uint32_t*)(k_ra8_npu_base_addr + (uintptr_t)byte_off);

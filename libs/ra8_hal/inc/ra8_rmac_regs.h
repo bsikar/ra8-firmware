@@ -52,6 +52,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_ether_regs.h"
 
 /**
@@ -774,6 +775,7 @@ static_assert(offsetof(r_rmac_regs_t, MTGFCP) == (size_t)k_ra8_rmac_off_mtgfcp, 
  * @note Not thread-safe; per-port serialisation is the caller's job.
  * @since 0.1.0
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile r_rmac_regs_t* ra8_rmac(ra8_rmac_port_t port)
 {
   uintptr_t base = k_ra8_rmac0_base_addr;

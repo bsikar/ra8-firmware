@@ -87,6 +87,8 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
+
 /**
  * @enum ra8_dotf_addr_t
  * @brief DOTF channel base addresses on the peripheral bus.
@@ -230,6 +232,7 @@ typedef struct {
  * @return Volatile pointer to the channel register block, or
  *         ``nullptr`` if ``channel`` is out of range.
  */
+RA8_HW_REGISTER_ACCESS
 static inline volatile ra8_dotf_regs_t* ra8_dotf_regs(uint8_t channel)
 {
   if ((uint16_t)channel >= (uint16_t)k_ra8_dotf_channel_count) {
