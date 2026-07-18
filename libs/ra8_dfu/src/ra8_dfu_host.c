@@ -21,6 +21,7 @@
 
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_time.h"
 #include "ra8_usb.h"
 
@@ -94,7 +95,7 @@ typedef enum : uint32_t {
  * @note Not thread-safe; called only from the single-threaded polled sequence.
  * @since 0.1.0
  */
-static ra8_err_t internal_get_dev_desc(ra8_usb_speed_t speed, uint8_t* desc)
+RA8_INTERNAL static ra8_err_t internal_get_dev_desc(ra8_usb_speed_t speed, uint8_t* desc)
 {
   const ra8_usb_setup_t setup = {
     .bm_request_type = (uint8_t)k_rdh_bm_std_dev_in,
@@ -143,7 +144,7 @@ static ra8_err_t internal_get_dev_desc(ra8_usb_speed_t speed, uint8_t* desc)
  * @note Not thread-safe; called only from the single-threaded polled sequence.
  * @since 0.1.0
  */
-static ra8_err_t internal_enum_hunt(ra8_usb_speed_t speed, uint8_t* desc)
+RA8_INTERNAL static ra8_err_t internal_enum_hunt(ra8_usb_speed_t speed, uint8_t* desc)
 {
   ra8_delay_ms((uint32_t)k_rdh_vbus_settle_ms);
   const uint32_t t0 = ra8_time_ms();
@@ -196,7 +197,7 @@ static ra8_err_t internal_enum_hunt(ra8_usb_speed_t speed, uint8_t* desc)
  * @note Not thread-safe; called only from the single-threaded polled sequence.
  * @since 0.1.0
  */
-static ra8_err_t internal_set_address(ra8_usb_speed_t speed)
+RA8_INTERNAL static ra8_err_t internal_set_address(ra8_usb_speed_t speed)
 {
   const ra8_usb_setup_t setup = {
     .bm_request_type = (uint8_t)k_rdh_bm_std_dev_out,
@@ -237,7 +238,7 @@ static ra8_err_t internal_set_address(ra8_usb_speed_t speed)
  * @note Not thread-safe; called only from the single-threaded polled sequence.
  * @since 0.1.0
  */
-static ra8_err_t internal_set_config(ra8_usb_speed_t speed)
+RA8_INTERNAL static ra8_err_t internal_set_config(ra8_usb_speed_t speed)
 {
   const ra8_usb_setup_t setup = {
     .bm_request_type = (uint8_t)k_rdh_bm_std_dev_out,
@@ -276,7 +277,7 @@ static ra8_err_t internal_set_config(ra8_usb_speed_t speed)
  * @note Not thread-safe; called only from the single-threaded polled sequence.
  * @since 0.1.0
  */
-static ra8_err_t internal_getstatus(ra8_usb_speed_t speed, uint8_t* out_state)
+RA8_INTERNAL static ra8_err_t internal_getstatus(ra8_usb_speed_t speed, uint8_t* out_state)
 {
   uint8_t               status[k_rdh_getstatus_len] = {};
   const ra8_usb_setup_t setup                       = {
@@ -329,7 +330,7 @@ static ra8_err_t internal_getstatus(ra8_usb_speed_t speed, uint8_t* out_state)
  * @note Not thread-safe; called only from the single-threaded polled sequence.
  * @since 0.1.0
  */
-static ra8_err_t internal_wait_state(ra8_usb_speed_t speed, uint8_t want_state)
+RA8_INTERNAL static ra8_err_t internal_wait_state(ra8_usb_speed_t speed, uint8_t want_state)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_rdh_status_tries; i++) {
     uint8_t         state = 0U;
@@ -374,7 +375,7 @@ static ra8_err_t internal_wait_state(ra8_usb_speed_t speed, uint8_t want_state)
  * @note Not thread-safe; called only from the single-threaded polled sequence.
  * @since 0.1.0
  */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 internal_dnload_block(ra8_usb_speed_t speed, uint16_t block, uint8_t* data, uint16_t len)
 {
   const ra8_usb_setup_t setup = {
@@ -421,7 +422,8 @@ internal_dnload_block(ra8_usb_speed_t speed, uint16_t block, uint8_t* data, uint
  * @note Not thread-safe; called only from the single-threaded polled sequence.
  * @since 0.1.0
  */
-static ra8_err_t internal_download_all(ra8_usb_speed_t speed, const uint8_t* img, uint32_t img_len)
+RA8_INTERNAL static ra8_err_t
+internal_download_all(ra8_usb_speed_t speed, const uint8_t* img, uint32_t img_len)
 {
   const uint16_t blocks = (uint16_t)(img_len / (uint32_t)k_rdh_xfer_size);
   for (uint16_t b = 0U; b < blocks; b++) {
@@ -480,7 +482,7 @@ static ra8_err_t internal_download_all(ra8_usb_speed_t speed, const uint8_t* img
  * @note Not thread-safe; called only from the single-threaded polled sequence.
  * @since 0.1.0
  */
-static ra8_err_t
+RA8_INTERNAL static ra8_err_t
 internal_download_manifest(ra8_usb_speed_t speed, const uint8_t* img, uint32_t img_len)
 {
   const uint16_t blocks = (uint16_t)(img_len / (uint32_t)k_rdh_xfer_size);
@@ -542,10 +544,10 @@ internal_download_manifest(ra8_usb_speed_t speed, const uint8_t* img, uint32_t i
  * @note Not thread-safe; called only from the single-threaded polled sequence.
  * @since 0.1.0
  */
-static ra8_err_t internal_upload_verify(ra8_usb_speed_t        speed,
-                                        const uint8_t*         img,
-                                        uint32_t               img_len,
-                                        ra8_dfu_host_result_t* out)
+RA8_INTERNAL static ra8_err_t internal_upload_verify(ra8_usb_speed_t        speed,
+                                                     const uint8_t*         img,
+                                                     uint32_t               img_len,
+                                                     ra8_dfu_host_result_t* out)
 {
   const uint16_t blocks = (uint16_t)(img_len / (uint32_t)k_rdh_xfer_size);
   out->blocks_ok        = 0U;
@@ -609,10 +611,10 @@ static ra8_err_t internal_upload_verify(ra8_usb_speed_t        speed,
  * @note Not thread-safe; called only from the single-threaded polled sequence.
  * @since 0.1.0
  */
-static ra8_err_t internal_run_seq(ra8_usb_speed_t        speed,
-                                  const uint8_t*         img,
-                                  uint32_t               img_len,
-                                  ra8_dfu_host_result_t* out)
+RA8_INTERNAL static ra8_err_t internal_run_seq(ra8_usb_speed_t        speed,
+                                               const uint8_t*         img,
+                                               uint32_t               img_len,
+                                               ra8_dfu_host_result_t* out)
 {
   uint8_t   desc[k_rdh_dev_desc_len] = {};
   ra8_err_t err                      = internal_enum_hunt(speed, desc);
@@ -699,10 +701,10 @@ ra8_err_t ra8_dfu_host_run(ra8_usb_speed_t        host_speed,
  * @note Not thread-safe; called only from the single-threaded polled sequence.
  * @since 0.1.0
  */
-static ra8_err_t internal_program_seq(ra8_usb_speed_t        speed,
-                                      const uint8_t*         img,
-                                      uint32_t               img_len,
-                                      ra8_dfu_host_result_t* out)
+RA8_INTERNAL static ra8_err_t internal_program_seq(ra8_usb_speed_t        speed,
+                                                   const uint8_t*         img,
+                                                   uint32_t               img_len,
+                                                   ra8_dfu_host_result_t* out)
 {
   uint8_t   desc[k_rdh_dev_desc_len] = {};
   ra8_err_t err                      = internal_enum_hunt(speed, desc);

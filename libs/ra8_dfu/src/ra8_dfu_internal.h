@@ -28,6 +28,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_err.h"
 
 /**
@@ -72,7 +73,7 @@ extern "C" {
  *
  * @since 0.1.0
  */
-ra8_err_t ra8_dfu_internal_write_secure(uintptr_t addr, const uint8_t* src, uint32_t len);
+RA8_PRIV ra8_err_t ra8_dfu_internal_write_secure(uintptr_t addr, const uint8_t* src, uint32_t len);
 
 #ifdef __cplusplus
 }

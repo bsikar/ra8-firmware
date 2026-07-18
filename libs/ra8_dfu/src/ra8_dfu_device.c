@@ -30,6 +30,7 @@
 
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_dfu.h"
 #include "ra8_usb.h"
 #include "ux_api.h"
@@ -354,7 +355,7 @@ static UINT internal_dfu_notify(VOID* dfu, ULONG notification)
  * @note Not thread-safe; call once during device init before attaching D+.
  * @since 0.1.0
  */
-static UINT internal_class_register(unsigned char* framework, uint32_t framework_len)
+RA8_INTERNAL static UINT internal_class_register(unsigned char* framework, uint32_t framework_len)
 {
   UX_SLAVE_CLASS_DFU_PARAMETER p = {
     .ux_slave_class_dfu_parameter_will_detach = 0UL,

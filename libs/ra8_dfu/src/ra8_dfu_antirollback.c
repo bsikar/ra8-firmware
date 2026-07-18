@@ -28,6 +28,7 @@
 
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_flash_core.h"
 #include "ra8_flash_regs.h"
@@ -161,7 +162,7 @@ bool ra8_rot_antirollback_on_probe_fault(uint32_t* exc_frame)
  * @note Not thread-safe; boot-path only.
  * @since 0.1.0
  */
-static uint32_t internal_probe_counter(bool* out_blank)
+RA8_INTERNAL static uint32_t internal_probe_counter(bool* out_blank)
 {
   g_ra8_rot_ar_faulted = false;
   g_ra8_rot_ar_probing = true;
@@ -201,7 +202,7 @@ static uint32_t internal_probe_counter(bool* out_blank)
  * @note Thread-safe: no (shares the extra-MRAM counter with the commit path).
  * @since 0.1.0
  */
-static ra8_err_t internal_default_store_read(uint32_t* out_min_version)
+RA8_INTERNAL static ra8_err_t internal_default_store_read(uint32_t* out_min_version)
 {
   RA8_CHECK_NULL_PTR(out_min_version, s_tag, "out_min_version");
 #ifdef RA8_SIMULATOR_MODE
@@ -241,7 +242,7 @@ static ra8_err_t internal_default_store_read(uint32_t* out_min_version)
  * @note Thread-safe: no (shares the extra-MRAM counter with the read path).
  * @since 0.1.0
  */
-static ra8_err_t internal_default_store_commit(uint32_t new_version)
+RA8_INTERNAL static ra8_err_t internal_default_store_commit(uint32_t new_version)
 {
 #ifdef RA8_SIMULATOR_MODE
   const uint32_t raw   = s_sim_ar_counter;
