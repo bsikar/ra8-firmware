@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_i2c_bus_ops.h"
@@ -57,6 +58,7 @@ static const char* const s_tag = "ra8_io_i2c_bus";
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_validate(const ra8_io_i2c_bus_t* bus)
 {
   if (bus == nullptr) {
@@ -145,6 +147,7 @@ ra8_err_t ra8_io_i2c_bus_transfer(const ra8_io_i2c_bus_t* bus,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 internal_ops_write(void* ctx, uint8_t addr, const uint8_t* data, uint32_t len, bool send_stop)
 {
@@ -178,6 +181,7 @@ internal_ops_write(void* ctx, uint8_t addr, const uint8_t* data, uint32_t len, b
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_ops_read(void* ctx, uint8_t addr, uint8_t* data, uint32_t len)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx (i2c bus) must not be nullptr");
@@ -212,6 +216,7 @@ static ra8_err_t internal_ops_read(void* ctx, uint8_t addr, uint8_t* data, uint3
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_ops_transfer(void*          ctx,
                                        uint8_t        addr,
                                        const uint8_t* wr,

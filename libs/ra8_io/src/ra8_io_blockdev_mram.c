@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_flash.h"
@@ -81,6 +82,7 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t mram_bounds(const ra8_io_blockdev_mram_state_t* st, uint32_t lba, uint32_t count)
 {
   if (count > st->block_count) {
@@ -118,6 +120,7 @@ static ra8_err_t mram_bounds(const ra8_io_blockdev_mram_state_t* st, uint32_t lb
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t mram_window_ok(uintptr_t base, uint32_t block_count)
 {
   const uintptr_t extra_start = (uintptr_t)k_ra8_flash_extra_start;
@@ -167,6 +170,7 @@ static ra8_err_t mram_window_ok(uintptr_t base, uint32_t block_count)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t mram_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -212,6 +216,7 @@ static ra8_err_t mram_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t mram_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -266,6 +271,7 @@ static ra8_err_t mram_write(void* ctx, uint32_t lba, uint32_t count, const uint8
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t mram_erase(void* ctx, uint32_t lba, uint32_t count)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -312,6 +318,7 @@ static ra8_err_t mram_erase(void* ctx, uint32_t lba, uint32_t count)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t mram_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");

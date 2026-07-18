@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
@@ -74,6 +75,7 @@ static uint32_t s_count = 0;
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_read_boot0(const ra8_fs_backend_t* be, uint8_t* blk)
 {
   /* Not reachable: ra8_io_fsfmt_probe validates backend non-null before dispatching. */
@@ -107,6 +109,7 @@ static bool internal_read_boot0(const ra8_fs_backend_t* be, uint8_t* blk)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool internal_is_exfat(const uint8_t* blk)
 {
   return memcmp(&blk[(uint32_t)k_off_exfat_name], "EXFAT   ", (size_t)k_len_exfat_name) == 0;
@@ -133,6 +136,7 @@ static bool internal_is_exfat(const uint8_t* blk)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool fat_probe(const ra8_fs_backend_t* be)
 {
   uint8_t blk[(size_t)k_ra8_io_block_size_bytes];
@@ -171,6 +175,7 @@ static bool fat_probe(const ra8_fs_backend_t* be)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static bool exfat_probe(const ra8_fs_backend_t* be)
 {
   uint8_t blk[(size_t)k_ra8_io_block_size_bytes];

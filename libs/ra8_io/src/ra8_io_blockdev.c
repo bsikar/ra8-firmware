@@ -20,6 +20,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_fs.h"
@@ -57,6 +58,7 @@ static const char* const s_tag = "ra8_io_blockdev";
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_validate(const ra8_io_blockdev_t* bd)
 {
   if (bd == nullptr) {
@@ -163,6 +165,7 @@ ra8_err_t ra8_io_blockdev_sync(const ra8_io_blockdev_t* bd)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_fs_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx (blockdev) must not be nullptr");
@@ -196,6 +199,7 @@ static ra8_err_t internal_fs_read(void* ctx, uint32_t lba, uint32_t count, uint8
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_fs_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx (blockdev) must not be nullptr");
@@ -228,6 +232,7 @@ static ra8_err_t internal_fs_write(void* ctx, uint32_t lba, uint32_t count, cons
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_fs_get_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx (blockdev) must not be nullptr");
@@ -270,6 +275,7 @@ static ra8_err_t internal_fs_get_capacity(void* ctx, uint32_t* block_count, uint
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_fs_erase(void* ctx, uint32_t lba, uint32_t count)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx (blockdev) must not be nullptr");

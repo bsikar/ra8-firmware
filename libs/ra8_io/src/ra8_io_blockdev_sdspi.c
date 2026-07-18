@@ -23,6 +23,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io_blockdev.h"
@@ -74,6 +75,7 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t sdspi_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
@@ -107,6 +109,7 @@ static ra8_err_t sdspi_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* bu
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t sdspi_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
@@ -141,6 +144,7 @@ static ra8_err_t sdspi_write(void* ctx, uint32_t lba, uint32_t count, const uint
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t sdspi_erase(void* ctx, uint32_t lba, uint32_t count)
 {
   (void)ctx;
@@ -171,6 +175,7 @@ static ra8_err_t sdspi_erase(void* ctx, uint32_t lba, uint32_t count)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t sdspi_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
 {
   (void)ctx;

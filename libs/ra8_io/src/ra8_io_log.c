@@ -18,6 +18,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io_stream.h"
@@ -47,6 +48,7 @@ static const char* const s_tag = "ra8_io_log";
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static void io_log_byte(void* ctx, uint8_t byte)
 {
   if (ctx == nullptr) {

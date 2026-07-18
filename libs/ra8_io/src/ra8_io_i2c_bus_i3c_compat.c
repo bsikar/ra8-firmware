@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_i3c.h"
@@ -66,6 +67,7 @@ static const char* const s_tag = "ra8_io_i2c_bus_i3c";
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 i3c_compat_write(void* ctx, uint8_t addr, const uint8_t* data, uint32_t len, bool send_stop)
 {
@@ -100,6 +102,7 @@ i3c_compat_write(void* ctx, uint8_t addr, const uint8_t* data, uint32_t len, boo
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t i3c_compat_read(void* ctx, uint8_t addr, uint8_t* data, uint32_t len)
 {
   return ra8_i3c_read((uint8_t)(uintptr_t)ctx, addr, data, len, false);
@@ -134,6 +137,7 @@ static ra8_err_t i3c_compat_read(void* ctx, uint8_t addr, uint8_t* data, uint32_
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t i3c_compat_transfer(void*          ctx,
                                      uint8_t        addr,
                                      const uint8_t* wr,

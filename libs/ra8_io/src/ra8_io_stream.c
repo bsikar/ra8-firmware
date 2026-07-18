@@ -20,6 +20,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io_stream_internal.h"
@@ -64,6 +65,7 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t internal_validate(const ra8_io_stream_t* s)
 {
   if (s == nullptr) {

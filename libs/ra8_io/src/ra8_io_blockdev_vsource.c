@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io_blockdev.h"
@@ -66,6 +67,7 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t bd_read_sector(ra8_io_blockdev_vsource_ctx_t* ctx, uint32_t lba)
 {
   return ra8_io_blockdev_read(ctx->bd, lba, (uint32_t)k_ra8_io_bd_vsource_one_block, ctx->scratch);
@@ -98,6 +100,7 @@ static ra8_err_t bd_read_sector(ra8_io_blockdev_vsource_ctx_t* ctx, uint32_t lba
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t bd_copy_slice(ra8_io_blockdev_vsource_ctx_t* ctx,
                                uint32_t                       lba,
                                uint32_t                       in_block,
@@ -161,6 +164,7 @@ typedef struct {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t bd_read_head(ra8_io_blockdev_vsource_ctx_t* ctx,
                               ra8_io_bd_vsource_cursor_t*    cur,
                               uint64_t                       block_bytes)
@@ -209,6 +213,7 @@ static ra8_err_t bd_read_head(ra8_io_blockdev_vsource_ctx_t* ctx,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t bd_read_middle(ra8_io_blockdev_vsource_ctx_t* ctx,
                                 ra8_io_bd_vsource_cursor_t*    cur,
                                 uint64_t                       block_bytes)
@@ -254,6 +259,7 @@ static ra8_err_t bd_read_middle(ra8_io_blockdev_vsource_ctx_t* ctx,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t bd_read_tail(ra8_io_blockdev_vsource_ctx_t* ctx,
                               ra8_io_bd_vsource_cursor_t*    cur,
                               uint64_t                       block_bytes)

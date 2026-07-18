@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io_blockdev.h"
@@ -64,6 +65,7 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t bdsink_commit_sector(ra8_io_stream_blockdev_state_t* st)
 {
   RA8_CHECK_NULL_PTR(st, s_tag, "st must not be nullptr");
@@ -106,6 +108,7 @@ static ra8_err_t bdsink_commit_sector(ra8_io_stream_blockdev_state_t* st)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static uint32_t bdsink_fill_chunk(ra8_io_stream_blockdev_state_t* st,
                                   const uint8_t*                  buf,
                                   uint32_t                        len,
@@ -144,6 +147,7 @@ static uint32_t bdsink_fill_chunk(ra8_io_stream_blockdev_state_t* st,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t bdsink_commit_if_full(ra8_io_stream_blockdev_state_t* st)
 {
   if (st->fill == (uint32_t)k_ra8_io_block_size_bytes) {
@@ -178,6 +182,7 @@ static ra8_err_t bdsink_commit_if_full(ra8_io_stream_blockdev_state_t* st)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t bdsink_write(void* ctx, const uint8_t* buf, uint32_t len, uint32_t* out_written)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -223,6 +228,7 @@ static ra8_err_t bdsink_write(void* ctx, const uint8_t* buf, uint32_t len, uint3
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t bdsink_flush(void* ctx)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");

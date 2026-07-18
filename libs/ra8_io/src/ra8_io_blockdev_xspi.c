@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_io_blockdev.h"
@@ -75,6 +76,7 @@ static uint8_t s_sector[k_xspi_sector_bytes];
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t xspi_bounds(const ra8_io_blockdev_xspi_state_t* st, uint32_t lba, uint32_t count)
 {
   if (count > st->block_count) {
@@ -113,6 +115,7 @@ static ra8_err_t xspi_bounds(const ra8_io_blockdev_xspi_state_t* st, uint32_t lb
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 xspi_read_chunked(uint8_t instance, uint32_t flash_addr, uint8_t* buf, uint32_t len)
 {
@@ -159,6 +162,7 @@ xspi_read_chunked(uint8_t instance, uint32_t flash_addr, uint8_t* buf, uint32_t 
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t
 xspi_program_chunked(uint8_t instance, uint32_t flash_addr, const uint8_t* data, uint32_t len)
 {
@@ -207,6 +211,7 @@ xspi_program_chunked(uint8_t instance, uint32_t flash_addr, const uint8_t* data,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t write_one_sector(const ra8_io_blockdev_xspi_state_t* st,
                                   uint32_t                            sector_lba,
                                   uint32_t                            first_blk,
@@ -258,6 +263,7 @@ static ra8_err_t write_one_sector(const ra8_io_blockdev_xspi_state_t* st,
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t xspi_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -302,6 +308,7 @@ static ra8_err_t xspi_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t xspi_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -361,6 +368,7 @@ static ra8_err_t xspi_write(void* ctx, uint32_t lba, uint32_t count, const uint8
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t xspi_erase(void* ctx, uint32_t lba, uint32_t count)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -413,6 +421,7 @@ static ra8_err_t xspi_erase(void* ctx, uint32_t lba, uint32_t count)
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t xspi_get_caps(const void* ctx, ra8_io_blockdev_caps_t* out)
 {
   RA8_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -461,6 +470,7 @@ static const ra8_io_blockdev_iface_t k_xspi_iface = {
  *
  * @since 0.1.0
  */
+RA8_INTERNAL
 static ra8_err_t xspi_check_geom(uint8_t instance, uint32_t base_off, uint32_t block_count)
 {
   if (instance >= (uint8_t)k_ra8_xspi_instance_count) {
