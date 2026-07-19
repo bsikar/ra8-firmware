@@ -352,40 +352,6 @@ ra8_err_t ra8_flash_set_window(uintptr_t low, uintptr_t high)
   return k_ra8_ok;
 }
 
-/**
- * @brief Pick the right TrustZone world for a destination address.
- *
- * @details
- * RA8D2 surfaces the secure code-MRAM alias at a higher offset; FSP's
- * ``mram_program_control`` (r_mram.c L962) tests the BSP_FEATURE_TZ_NS_OFFSET
- * bit. We mirror the same test by comparing against the secure base.
- * For destinations that the silicon classifies as non-secure (the
- * default 0x02000000 alias), we use MRCPC0; for the secure alias we use
- * MRCPC1.
- *
- * @param[in] addr Destination address.
- * @return World selector for ``ra8_flash_write_block``.
- *
- * @pre None.
- * @post No side effects.
- *
- * @note Internal helper, not thread-safe.
- *
- * @retval k_ra8_ok Success path.
- * @retval k_ra8_err_invalid_arg Caller violated a precondition.
- * @since 0.1.0
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- */
-static ra8_flash_world_t internal_world_for_addr(uintptr_t addr)
-{
-  /* HUM Ch 59.1 "Address Map" p 3543 -- the non-secure alias is the
-   * default 0x02000000 view. Anything inside the standard 1 MiB code
-   * window is treated as the NS world by this driver; callers that
-   * need the S alias call ra8_flash_write_block directly. */
-  (void)addr;
-  return k_ra8_flash_world_ns;
-}
 
 /**
  * @brief Validate a multi-block erase / multi-page write range.
@@ -438,7 +404,13 @@ ra8_err_t ra8_flash_erase(uintptr_t address, uint32_t num_blocks)
   const uint64_t  total_bytes = (uint64_t)num_blocks * (uint64_t)k_ra8_mram_block_size_bytes;
   const ra8_err_t v_err       = internal_validate_range(address, total_bytes);
   RA8_RETURN_ON_ERROR(v_err, s_flash_tag, "flash_erase: validate"); /* GCOVR_EXCL_BR_LINE */
-  const ra8_flash_world_t world = internal_world_for_addr(address);
+  /* internal_validate_range above rejects any address outside
+   * [k_ra8_flash_code_start, +k_ra8_flash_code_size), which is the default
+   * (non-secure) 0x02000000 code-MRAM view -- HUM Ch 59.1 "Address Map" p 3543.
+   * The secure alias therefore cannot reach here, so MRCPC0 is provably the
+   * right controller. A caller that needs the secure half calls
+   * ra8_flash_erase_block / ra8_flash_write_block directly with world_s. */
+  const ra8_flash_world_t world = k_ra8_flash_world_ns;
   /* FSP r_mram.c L917 mram_erase_blocks loops one programming-size block at
    * a time; we mirror that one-block-per-iteration cadence. NASA Rule 2:
    * loop bound is the caller-supplied num_blocks, validated above. */
@@ -462,7 +434,9 @@ ra8_err_t ra8_flash_write(uintptr_t address, const uint8_t* src, uint32_t len)
   }
   const ra8_err_t v_err = internal_validate_range(address, (uint64_t)len);
   RA8_RETURN_ON_ERROR(v_err, s_flash_tag, "flash_write: validate"); /* GCOVR_EXCL_BR_LINE */
-  const ra8_flash_world_t world = internal_world_for_addr(address);
+  /* Same reasoning as ra8_flash_erase: the validated range lies inside the
+   * default non-secure code-MRAM view, so MRCPC0 is provably correct. */
+  const ra8_flash_world_t world = k_ra8_flash_world_ns;
   /* FSP r_mram.c L861 mram_write_data chunks the request into 32-byte
    * page programs; our wrapper re-uses ra8_flash_write_block for each
    * page. NASA Rule 2: loop bound is len/page (validated above). */
