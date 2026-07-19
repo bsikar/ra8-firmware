@@ -620,8 +620,7 @@ def _has_vector_section(cursor: cindex.Cursor) -> bool:
     return bool(_VECTOR_SECTION_RE.search("\n".join(lines[first : cursor.extent.start.line])))
 
 
-
-def walk_tu(  # noqa: PLR0915  # one AST pass; splitting it duplicates the traversal
+def walk_tu(
     tu: cindex.TranslationUnit,
     _tu_path: pathlib.Path,
     symbols: dict[str, AnnotatedSymbol],
@@ -1469,9 +1468,7 @@ def enforce_linkage(
     for sym in symbols.values():
         if not sym.is_defined or sym.is_static or not is_first_party(sym.file):
             continue
-        verdicts.setdefault((sym.file, sym.line), []).append(
-            _linkage_verdict(sym, vector_entries)
-        )
+        verdicts.setdefault((sym.file, sym.line), []).append(_linkage_verdict(sym, vector_entries))
     out: list[Violation] = []
     for site in sorted(verdicts):
         found = [v for v in verdicts[site] if v is not None]

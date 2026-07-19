@@ -394,7 +394,7 @@ _AGG_KW_RE = re.compile(r"\b(enum|struct|union)\b")
 _AGG_TERMINATORS = frozenset(";=,}")
 
 
-def find_aggregate_bodies(code: str):
+def find_aggregate_bodies(code: str):  # noqa: PLR0912  # char scanner; a helper per branch hurts clarity
     """Locate enum/struct/union *definitions* (those with a ``{ ... }`` body).
 
     ``code`` must be the blanked code-only view so keywords/braces inside
