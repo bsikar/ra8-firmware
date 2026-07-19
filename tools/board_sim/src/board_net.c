@@ -242,7 +242,7 @@ static void net_send_arp_request(void)
   uint8_t* a = &f[k_eth_hdr];
   put16(&a[0], 1U);                   /* htype = Ethernet. */
   put16(&a[2], (uint16_t)k_eth_ipv4); /* ptype = IPv4.     */
-  a[4]           = (uint8_t)k_mac_len;
+  a[4]              = (uint8_t)k_mac_len;
   a[k_arp_plen_off] = (uint8_t)k_arp_plen;
   put16(&a[6], 1U); /* op = request. */
   (void)memcpy(&a[8], s_peer_mac, k_mac_len);
@@ -260,7 +260,7 @@ static void net_send_arp_reply(const uint8_t* to_mac, uint32_t to_ip)
   uint8_t* a = &f[k_eth_hdr];
   put16(&a[0], 1U);
   put16(&a[2], (uint16_t)k_eth_ipv4);
-  a[4]           = (uint8_t)k_mac_len;
+  a[4]              = (uint8_t)k_mac_len;
   a[k_arp_plen_off] = (uint8_t)k_arp_plen;
   put16(&a[6], 2U); /* op = reply. */
   (void)memcpy(&a[8], s_peer_mac, k_mac_len);
