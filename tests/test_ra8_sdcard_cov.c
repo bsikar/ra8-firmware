@@ -49,34 +49,24 @@
 #include "unity_minimal.h"
 
 /**
- * @enum sdcard_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_sd_cmd_t
+ * @brief SD command indices the mock card answers, per the SD Physical Spec.
  */
 typedef enum : uint8_t {
-  k_sdcard_cov_sentinel_55 = 55U,
-  k_sdcard_cov_val_41      = 41U,
-  k_sdcard_cov_val_7       = 7U,
-  k_sdcard_cov_val_9       = 9U,
-} sdcard_cov_uint8_const_t;
+  k_t_cmd7_select   = 7U,  /**< CMD7 SELECT_CARD: R1 response.               */
+  k_t_cmd9_send_csd = 9U,  /**< CMD9 SEND_CSD: 128-bit R2 response.          */
+  k_t_acmd41_op_cond = 41U, /**< ACMD41 SD_SEND_OP_COND: carries the busy bit. */
+  k_t_cmd55_app     = 55U, /**< CMD55 APP_CMD: prefixes every ACMD.          */
+} t_sd_cmd_t;
 
 /**
- * @enum sdcard_cov_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_sd_buf_t
+ * @brief Block size and the status bits the mock asserts on completion.
  */
 typedef enum : uint16_t {
-  k_sdcard_cov_sd_info2_300 = 0x300U,
-  k_sdcard_cov_val_512      = 512,
-} sdcard_cov_uint16_const_t;
+  k_t_block_len   = 512U,  /**< SD block size, bytes.                        */
+  k_t_info2_ready = 0x300U, /**< SD_INFO2 buffer-read and buffer-write enables. */
+} t_sd_buf_t;
 
 /* ---------------------------------------------------------------------------
  * Test constants
@@ -367,14 +357,14 @@ static bool cov_dispatch_cmd(volatile r_sdhi_regs_t* reg, uint32_t cmd)
       reg->SD_RSP76 = 0U;
       break;
 
-    case k_sdcard_cov_sentinel_55: /* CMD55 APP_CMD: fail modes do not assert RSPEND. */
+    case k_t_cmd55_app: /* CMD55 APP_CMD: fail modes do not assert RSPEND. */
       if (s_cov_cfg.mode == k_cov_mode_fail_cmd55) {
         return false; /* no RSPEND -> driver spin-loop times out naturally */
       }
       reg->SD_RSP10 = 0U;
       break;
 
-    case k_sdcard_cov_val_41: /* ACMD41 SD_SEND_OP_COND: fail / busy modes. */
+    case k_t_acmd41_op_cond: /* ACMD41 SD_SEND_OP_COND: fail / busy modes. */
       if (s_cov_cfg.mode == k_cov_mode_fail_acmd41) {
         return false; /* no RSPEND */
       }
@@ -389,11 +379,11 @@ static bool cov_dispatch_cmd(volatile r_sdhi_regs_t* reg, uint32_t cmd)
       reg->SD_RSP10 = (uint32_t)k_cov_rca_rsp10_shifted;
       break;
 
-    case k_sdcard_cov_val_9: /* CMD9 SEND_CSD: 128-bit response, mode-specific. */
+    case k_t_cmd9_send_csd: /* CMD9 SEND_CSD: 128-bit response, mode-specific. */
       cov_set_csd(reg, s_cov_cfg.mode);
       break;
 
-    case k_sdcard_cov_val_7: /* CMD7 SELECT_CARD: R1, content not checked here.            */
+    case k_t_cmd7_select: /* CMD7 SELECT_CARD: R1, content not checked here.            */
     default:                 /* CMD17/CMD24 and any other command: just signal completion. */
       reg->SD_RSP10 = 0U;
       break;
@@ -448,7 +438,7 @@ static void cov_sdcard_step(void)
 
   /* Assert RSPEND (bit 0) and BRE/BWE (bits 9:8) then write sentinel. */
   reg->SD_INFO1 = reg->SD_INFO1 | 1U;
-  reg->SD_INFO2 = reg->SD_INFO2 | k_sdcard_cov_sd_info2_300;
+  reg->SD_INFO2 = reg->SD_INFO2 | k_t_info2_ready;
   reg->SD_CMD   = (uint32_t)k_cov_sd_cmd_sentinel;
 }
 
@@ -693,7 +683,7 @@ static void test_cov_csd_v1_sdsc_card(void)
 
   /* Trigger line 467: internal_to_card_address(0) returns 0*512=0.
    * The hook is still armed so the single-block read succeeds (BRE set). */
-  uint8_t buf[k_sdcard_cov_val_512] = {};
+  uint8_t buf[k_t_block_len] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdcard_read_blocks(0U, buf, 1U));
 
   cov_hook_disarm();

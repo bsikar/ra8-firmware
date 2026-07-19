@@ -31,34 +31,31 @@
 #include "unity_minimal.h"
 
 /**
- * @enum mipi_dsi_mcdc_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_dsi_buf_t
+ * @brief Transmit-buffer capacities and the payload the short-packet arm sends.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_mipi_dsi_mcdc_sentinel_aa = 0xAAU,
-  k_mipi_dsi_mcdc_val_128     = 128,
-  k_mipi_dsi_mcdc_val_bb      = 0xBBU,
-} mipi_dsi_mcdc_uint8_const_t;
-
-/**
- * @enum mipi_dsi_mcdc_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The driver switches between low-power and high-speed paths on payload size,
+ * so the three capacities straddle that boundary: one under the LP limit, one
+ * at the HS limit, and one deliberately past it.
  */
 typedef enum : uint16_t {
-  k_mipi_dsi_mcdc_horizontal_sync_ffff = 0xFFFFU,
-  k_mipi_dsi_mcdc_val_1024             = 1024,
-  k_mipi_dsi_mcdc_val_1100             = 1100,
-} mipi_dsi_mcdc_uint16_const_t;
+  k_t_lp_buf_cap = 128U,  /**< Low-power transmit buffer, bytes.              */
+  k_t_hs_buf_cap = 1024U, /**< High-speed transmit buffer, bytes.             */
+  k_t_over_cap   = 1100U, /**< A buffer past the largest legal transfer.      */
+  k_t_payload_b0 = 0xAAU, /**< Short-packet payload byte 0; distinct from b1 so
+                               a swapped pair is visible.                       */
+  k_t_payload_b1 = 0xBBU, /**< Short-packet payload byte 1.                   */
+} t_dsi_buf_t;
+
+/**
+ * @enum t_dsi_timing_t
+ * @brief Out-of-range timing value the video-mode validator must reject.
+ */
+typedef enum : uint16_t {
+  k_t_timing_over = 0xFFFFU, /**< Applied to each timing field in turn: every
+                                  one must independently fail validation.       */
+} t_dsi_timing_t;
 
 /* MC/DC vector tests for ra8_mipi_dsi.c compound decisions
  * (DO-178C Level B / IEC 61508 SIL 3 / ISO 26262 ASIL C). */
@@ -133,14 +130,14 @@ static void test_mcdc_validate_cmd_short_paths(void)
                                                nullptr,
                                                (uint16_t)k_mcdc_dsi_long_len,
                                                false));
-  static uint8_t s_lp_buf[k_mipi_dsi_mcdc_val_128] = {};
+  static uint8_t s_lp_buf[k_t_lp_buf_cap] = {};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_mipi_dsi_send_long_packet(k_ra8_mipi_dsi_dt_dcs_long_write,
                                                k_ra8_mipi_dsi_vc0,
                                                s_lp_buf,
                                                128U,
                                                true));
-  static uint8_t s_hs_buf[k_mipi_dsi_mcdc_val_1024] = {};
+  static uint8_t s_hs_buf[k_t_hs_buf_cap] = {};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_mipi_dsi_send_long_packet(k_ra8_mipi_dsi_dt_dcs_long_write,
                                                k_ra8_mipi_dsi_vc0,
@@ -153,7 +150,7 @@ static void test_mcdc_validate_cmd_short_paths(void)
                                                s_hs_buf,
                                                (uint16_t)k_mcdc_dsi_lp_over,
                                                true));
-  static uint8_t s_big_buf[k_mipi_dsi_mcdc_val_1100] = {};
+  static uint8_t s_big_buf[k_t_over_cap] = {};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_mipi_dsi_send_long_packet(k_ra8_mipi_dsi_dt_dcs_long_write,
                                                k_ra8_mipi_dsi_vc0,
@@ -412,28 +409,28 @@ static void test_mcdc_set_video_timing_compound(void)
   ra8_mipi_dsi_video_timing_t t = make_timing();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_dsi_set_video_timing(&t));
   t                 = make_timing();
-  t.horizontal_sync = (uint16_t)k_mipi_dsi_mcdc_horizontal_sync_ffff;
+  t.horizontal_sync = (uint16_t)k_t_timing_over;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_dsi_set_video_timing(&t));
   t               = make_timing();
-  t.vertical_sync = (uint16_t)k_mipi_dsi_mcdc_horizontal_sync_ffff;
+  t.vertical_sync = (uint16_t)k_t_timing_over;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_dsi_set_video_timing(&t));
   t                       = make_timing();
-  t.horizontal_back_porch = (uint16_t)k_mipi_dsi_mcdc_horizontal_sync_ffff;
+  t.horizontal_back_porch = (uint16_t)k_t_timing_over;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_dsi_set_video_timing(&t));
   t                        = make_timing();
-  t.horizontal_front_porch = (uint16_t)k_mipi_dsi_mcdc_horizontal_sync_ffff;
+  t.horizontal_front_porch = (uint16_t)k_t_timing_over;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_dsi_set_video_timing(&t));
   t                     = make_timing();
-  t.vertical_back_porch = (uint16_t)k_mipi_dsi_mcdc_horizontal_sync_ffff;
+  t.vertical_back_porch = (uint16_t)k_t_timing_over;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_dsi_set_video_timing(&t));
   t                      = make_timing();
-  t.vertical_front_porch = (uint16_t)k_mipi_dsi_mcdc_horizontal_sync_ffff;
+  t.vertical_front_porch = (uint16_t)k_t_timing_over;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_dsi_set_video_timing(&t));
   t                   = make_timing();
-  t.horizontal_active = (uint16_t)k_mipi_dsi_mcdc_horizontal_sync_ffff;
+  t.horizontal_active = (uint16_t)k_t_timing_over;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_dsi_set_video_timing(&t));
   t                 = make_timing();
-  t.vertical_active = (uint16_t)k_mipi_dsi_mcdc_horizontal_sync_ffff;
+  t.vertical_active = (uint16_t)k_t_timing_over;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_dsi_set_video_timing(&t));
   TEST_END("mipi_dsi MC/DC set_video_timing: sync+porch+active overflow");
 }
@@ -522,7 +519,7 @@ static void test_mcdc_program_descriptor_buf_addr(void)
   reg                                       = ra8_mipi_dsi();
   reg->LINKSR                               = 0U;
   static uint8_t               s_rx_only[4] = {0U};
-  static uint8_t               s_tx_buf[2]  = {k_mipi_dsi_mcdc_sentinel_aa, k_mipi_dsi_mcdc_val_bb};
+  static uint8_t               s_tx_buf[2]  = {k_t_payload_b0, k_t_payload_b1};
   const ra8_mipi_dsi_command_t cmd          = {
     .cmd_id          = k_ra8_mipi_dsi_dt_dcs_short_write_1,
     .virtual_channel = k_ra8_mipi_dsi_vc0,

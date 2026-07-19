@@ -33,35 +33,33 @@
 #include "unity_minimal.h"
 
 /**
- * @enum rsip_sym_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_sym_len_t
+ * @brief Digest and ciphertext buffer lengths the symmetric arms use.
  */
 typedef enum : uint8_t {
-  k_rsip_sym_val_20 = 20,
-  k_rsip_sym_val_5  = 5,
-  k_rsip_sym_val_64 = 64,
-} rsip_sym_uint8_const_t;
+  k_t_sha512_len   = 64U, /**< SHA-512 digest, bytes; also the full-length
+                               output buffer of the extendable-output arm.     */
+  k_t_shake_short  = 20U, /**< A truncated SHAKE output, proving the caller
+                               chooses the length.                             */
+  k_t_ct_too_small = 5U,  /**< Ciphertext buffer below one AES block, which the
+                               driver must reject rather than overrun.          */
+} t_sym_len_t;
 
 /**
- * @enum rsip_sym_uint32_const_t
- * @brief Named uint32_t constants used by this file.
+ * @enum t_sym_reg_t
+ * @brief DATA_OUT register words staged into the RSIP mirror.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Four distinct patterns, one per output word, so a driver that reads the
+ * wrong register or assembles the block in the wrong order produces an
+ * obviously wrong 128-bit result rather than a plausible one.
  */
 typedef enum : uint32_t {
-  k_rsip_sym_sentinel_deadbeef = 0xDEADBEEFUL,
-  k_rsip_sym_val_11223344      = 0x11223344UL,
-  k_rsip_sym_val_55667788      = 0x55667788UL,
-  k_rsip_sym_val_99aabbcc      = 0x99AABBCCUL,
-} rsip_sym_uint32_const_t;
+  k_t_data_out0 = 0xDEADBEEFUL, /**< DATA_OUT0 pattern. */
+  k_t_data_out1 = 0x11223344UL, /**< DATA_OUT1 pattern. */
+  k_t_data_out2 = 0x55667788UL, /**< DATA_OUT2 pattern. */
+  k_t_data_out3 = 0x99AABBCCUL, /**< DATA_OUT3 pattern. */
+} t_sym_reg_t;
 
 /**
  * @brief Reset the world before each test.
@@ -263,10 +261,10 @@ static void test_aes_cipher_ecb(void)
 
   /* Pre-load DATA_OUT lanes with a known sentinel so we can assert it
  * comes back through internal_pull_data. */
-  *ra8_rsip_reg32(k_ra8_rsip_off_data_out0) = k_rsip_sym_sentinel_deadbeef;
-  *ra8_rsip_reg32(k_ra8_rsip_off_data_out1) = k_rsip_sym_val_11223344;
-  *ra8_rsip_reg32(k_ra8_rsip_off_data_out2) = k_rsip_sym_val_55667788;
-  *ra8_rsip_reg32(k_ra8_rsip_off_data_out3) = k_rsip_sym_val_99aabbcc;
+  *ra8_rsip_reg32(k_ra8_rsip_off_data_out0) = k_t_data_out0;
+  *ra8_rsip_reg32(k_ra8_rsip_off_data_out1) = k_t_data_out1;
+  *ra8_rsip_reg32(k_ra8_rsip_off_data_out2) = k_t_data_out2;
+  *ra8_rsip_reg32(k_ra8_rsip_off_data_out3) = k_t_data_out3;
 
   const uint8_t pt[16] = {};
   uint8_t       ct[16] = {};
@@ -322,7 +320,7 @@ static void test_aes_cipher_ctr(void)
 
   const uint8_t pt[5]                = {'h', 'e', 'l', 'l', 'o'};
   const uint8_t iv[16]               = {};
-  uint8_t       ct[k_rsip_sym_val_5] = {};
+  uint8_t       ct[k_t_ct_too_small] = {};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_rsip_aes_cipher(&handle,
                                      k_ra8_rsip_aes_mode_ctr,
@@ -520,9 +518,9 @@ static void test_hash_family(void)
   prep_running();
 
   const uint8_t msg[3]                     = {'a', 'b', 'c'};
-  uint8_t       d_512[k_rsip_sym_val_64]   = {};
+  uint8_t       d_512[k_t_sha512_len]   = {};
   uint8_t       d_3_256[32]                = {};
-  uint8_t       d_shake[k_rsip_sym_val_20] = {};
+  uint8_t       d_shake[k_t_shake_short] = {};
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_rsip_hash(k_ra8_rsip_hash_sha512, msg, sizeof(msg), d_512, sizeof(d_512)));
@@ -715,7 +713,7 @@ static void test_mcdc_hash_validate_shake_digest(void)
   TEST_BEGIN("rsip hash_validate MC/DC: shake bypass + short digest");
   prep_running();
   const uint8_t msg[8]                    = {0U};
-  uint8_t       d_full[k_rsip_sym_val_64] = {};
+  uint8_t       d_full[k_t_sha512_len] = {};
   /* V1: SHA-256 with digest_len = 32 (== n). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_hash(k_ra8_rsip_hash_sha256, msg, sizeof(msg), d_full, 32U));
   /* V2: SHAKE128 with shorter digest -- shake bypass means the size check is skipped. */
