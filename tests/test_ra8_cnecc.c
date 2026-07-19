@@ -26,32 +26,22 @@
 #include "unity_minimal.h"
 
 /**
- * @enum cnecc_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum cnecc_fixture_t
+ * @brief The payload generators and their seeds.
  */
 typedef enum : uint8_t {
   k_cnecc_counter_seed =
     9U, /**< Seed planted in every ECC counter, so a read that returned the wrong counter still matches and only a cleared counter fails. */
-} cnecc_uint8_const_t;
+} cnecc_fixture_t;
 
 /**
- * @enum cnecc_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum cnecc_addr_t
+ * @brief High address bits that push the fault address outside the monitored region.
  */
 typedef enum : uint32_t {
   k_cnecc_addr_high_bits =
     0xFFFFFC00UL, /**< High address bits ORed into the fault address, pushing it past the monitored region so the range check rejects it. */
-} cnecc_uint32_const_t;
+} cnecc_addr_t;
 
 /**
  * @enum ra8_cnecc_test_const_t

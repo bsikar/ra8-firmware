@@ -16,34 +16,24 @@
 #include "unity_minimal.h"
 
 /**
- * @enum iwdt_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum iwdt_fixture_t
+ * @brief Loop bounds and counts, sized so the case under test is actually reached.
  */
 typedef enum : uint8_t {
   k_iwdt_refresh_rounds =
     5U, /**< Refresh rounds driven back to back, proving the sequence is repeatable and not a one-shot. */
   k_iwdt_refresh_second =
     0x5AU, /**< Second half of the IWDT refresh sequence; the counter only reloads when 0x00 is followed by 0xFF, so a driver writing one byte is caught. */
-} iwdt_uint8_const_t;
+} iwdt_fixture_t;
 
 /**
- * @enum iwdt_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum iwdt_status_t
+ * @brief Counter bits planted beside the underflow flag, so the decode must mask rather than compare whole.
  */
 typedef enum : uint16_t {
   k_iwdt_status_counter =
     0x1234U, /**< Counter bits planted alongside the underflow flag, so the status decode must mask rather than compare whole. */
-} iwdt_uint16_const_t;
+} iwdt_status_t;
 
 /**
  * @par MC/DC:

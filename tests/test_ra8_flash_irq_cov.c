@@ -38,19 +38,14 @@
 #include "unity_minimal.h"
 
 /**
- * @enum flash_irq_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum flash_irq_cov_fixture_t
+ * @brief The physical quantities the configuration declares, plus the recognizable values moved through the code under test.
  */
 typedef enum : uint8_t {
   k_flash_core_clock_mhz   = 200U,  /**< Core clock the flash configuration declares, in MHz. */
   k_flash_periph_clock_mhz = 100U,  /**< Its peripheral clock, half the core clock.           */
   k_flash_erased_byte      = 0xFFU, /**< The erased state of MRAM: all ones.                  */
-} flash_irq_cov_uint8_const_t;
+} flash_irq_cov_fixture_t;
 
 /* ---------------------------------------------------------------------------
  * Address constants

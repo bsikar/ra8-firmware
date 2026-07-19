@@ -30,32 +30,22 @@
 #include "unity_minimal.h"
 
 /**
- * @enum i3c_i2c_edge_cases_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum i3c_i2c_edge_cases_fixture_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint8_t {
   k_i2c_probe_rounds =
     5U, /**< Back-to-back transfers driven over one bus, proving the edge case is repeatable and not a first-call artefact. */
-} i3c_i2c_edge_cases_uint8_const_t;
+} i3c_i2c_edge_cases_fixture_t;
 
 /**
- * @enum i3c_i2c_edge_cases_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum i3c_i2c_edge_cases_fixture2_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint32_t {
   k_i2c_oversize_bytes =
     1000000, /**< A transfer length far past any real buffer, so the length guard fires before any access. */
-} i3c_i2c_edge_cases_uint32_const_t;
+} i3c_i2c_edge_cases_fixture2_t;
 
 typedef enum : uint8_t {
   k_iic_b_edge_target = 0x42U, /**< Iic b edge target. */

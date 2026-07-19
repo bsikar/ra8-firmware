@@ -29,13 +29,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum epub_fs_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum epub_fs_fixture_t
+ * @brief Protocol and on-disk field offsets, plus the byte-level helpers.
  */
 typedef enum : uint8_t {
   k_bpb_sig_lo            = 0x55U, /**< That signature's low byte.                    */
@@ -47,23 +42,18 @@ typedef enum : uint8_t {
   k_bpb_off_fat_sz16      = 22U,   /**< BPB_FATSz16: sectors per FAT.                 */
   k_byte_mask             = 0xFFU, /**< Low-byte mask used by the put16 helper.       */
   k_bpb_off_sec_per_clus  = 13,    /**< BPB_SecPerClus: sectors per cluster.          */
-} epub_fs_uint8_const_t;
+} epub_fs_fixture_t;
 
 /**
- * @enum epub_fs_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum epub_fs_fixture2_t
+ * @brief Protocol and on-disk field offsets, plus buffer capacities and payload sizes.
  */
 typedef enum : uint16_t {
   k_epub_chapter_buf_bytes =
     2048, /**< Chapter read-back buffer; larger than any fixture chapter, so a truncation is visible. */
   k_bpb_off_sig_lo = 510, /**< Offset of the 0xAA55 boot signature's low byte. */
   k_bpb_off_sig_hi = 511, /**< Offset of its high byte.                        */
-} epub_fs_uint16_const_t;
+} epub_fs_fixture2_t;
 
 /* --- RAM block device + minimal FAT16 volume (mirrors test_ra8_fs_fat.c) --- */
 

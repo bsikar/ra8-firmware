@@ -26,33 +26,23 @@
 #include "unity_minimal.h"
 
 /**
- * @enum book_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum book_cov_fixture_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
   k_book_trailing_bytes =
     64U, /**< Bytes the header claims past the end of the blob, so the size check must reject it. */
-} book_cov_uint8_const_t;
+} book_cov_fixture_t;
 
 /**
- * @enum book_cov_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum book_cov_fixture2_t
+ * @brief The byte-level helpers.
  */
 typedef enum : uint32_t {
   k_crc32_init =
     0xFFFFFFFFU, /**< CRC-32 initial value, the final XOR-out, and the mask that flips a valid CRC to corrupt it. */
   k_crc32_poly_reflected = 0xEDB88320U, /**< The reflected CRC-32 polynomial. */
-} book_cov_uint32_const_t;
+} book_cov_fixture2_t;
 
 /**
  * @enum bc_dim_t

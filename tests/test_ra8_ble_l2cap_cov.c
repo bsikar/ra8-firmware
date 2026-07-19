@@ -40,13 +40,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum ble_l2cap_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ble_l2cap_cov_fixture_t
+ * @brief Buffer capacities and payload sizes, plus the byte-level helpers.
  */
 typedef enum : uint8_t {
   k_byte_mask = 0xFFU, /**< Truncates each shifted CRC and length byte for the gzip trailer. */
@@ -57,21 +52,16 @@ typedef enum : uint8_t {
     0x90U, /**< Low byte of a length of 400 (0x0190), longer than the reassembly buffer so the overflow guard fires. */
   k_l2cap_frag_cap =
     250, /**< Fragment staging capacity: under the 300-byte payload, so the payload must arrive in pieces. */
-} ble_l2cap_cov_uint8_const_t;
+} ble_l2cap_cov_fixture_t;
 
 /**
- * @enum ble_l2cap_cov_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ble_l2cap_cov_fixture2_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint16_t {
   k_l2cap_reassembly_cap =
     300, /**< Reassembly capacity, which the 400-byte payload deliberately exceeds. */
-} ble_l2cap_cov_uint16_const_t;
+} ble_l2cap_cov_fixture2_t;
 
 /* Internal L2CAP entry point (non-static global in ra8_ble_l2cap.c, used by
  * ra8_ble_att.c / ra8_ble_gatt.c). Forward-declared here to drive its

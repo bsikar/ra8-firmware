@@ -19,18 +19,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum keyboard_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum keyboard_fixture_t
+ * @brief Loop bounds and counts, sized so the case under test is actually reached.
  */
 typedef enum : uint8_t {
   k_keyboard_scan_rounds =
     200U, /**< Scan rounds driven back to back, more than the debounce window, so the state machine settles. */
-} keyboard_uint8_const_t;
+} keyboard_fixture_t;
 
 enum : int32_t {
   k_fx             = 0,    /**< Fx.                                          */

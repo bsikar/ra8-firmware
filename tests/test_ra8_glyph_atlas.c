@@ -19,13 +19,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum glyph_atlas_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum glyph_atlas_fixture_t
+ * @brief Out-of-range and malformed inputs the code under test must reject, plus buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
   k_ga_pixel_size =
@@ -33,7 +28,7 @@ typedef enum : uint8_t {
   k_ga_codepoint = 0x41U, /**< Code point of the first glyph key. */
   k_ga_codepoint_absent =
     99U, /**< A code point no glyph was cached under, so the lookup must miss. */
-} glyph_atlas_uint8_const_t;
+} glyph_atlas_fixture_t;
 
 /**
  * @enum t_glyph_const_t

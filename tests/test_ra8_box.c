@@ -22,20 +22,15 @@
 #include "unity_minimal.h"
 
 /**
- * @enum box_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum box_leaf_size_t
+ * @brief Main-axis sizes of the three leaf boxes; all different, so a layout that summed the wrong children shows in the total.
  */
 typedef enum : uint8_t {
   k_box_leaf_small  = 10, /**< Main-axis size of the small leaf box. */
   k_box_leaf_medium = 20, /**< Of the medium one.                    */
   k_box_leaf_large =
     30, /**< Of the large one; the three differ so a layout that summed the wrong children is visible in the total. */
-} box_uint8_const_t;
+} box_leaf_size_t;
 
 /** @brief Node-storage capacity for the test trees. */
 enum : uint16_t { k_box_cap = 32U /**< Box cap. */ };

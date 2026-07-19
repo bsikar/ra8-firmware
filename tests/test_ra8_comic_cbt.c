@@ -35,13 +35,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum comic_cbt_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum comic_cbt_fixture_t
+ * @brief Buffer capacities and payload sizes, plus the byte-level helpers.
  */
 typedef enum : uint8_t {
   k_gzip_magic_b0 = 0x1FU, /**< First byte of the gzip magic (0x1F8B). */
@@ -50,21 +45,16 @@ typedef enum : uint8_t {
     7U, /**< Length of the fixture payload, short enough that the tar entry stays inside one 512-byte record. */
   k_tcb_name_cap = 64,    /**< Capacity of the entry-name scratch buffer.                       */
   k_byte_mask    = 0xFFU, /**< Truncates each shifted CRC and length byte for the gzip trailer. */
-} comic_cbt_uint8_const_t;
+} comic_cbt_fixture_t;
 
 /**
- * @enum comic_cbt_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum comic_cbt_fixture2_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint16_t {
   k_tcb_non_archive_bytes =
     600U, /**< Bytes of filler presented as a non-archive, past any header the sniffer might read so the rejection is on content rather than length. */
-} comic_cbt_uint16_const_t;
+} comic_cbt_fixture2_t;
 
 /** @brief Named double constant used by this file. */
 /**

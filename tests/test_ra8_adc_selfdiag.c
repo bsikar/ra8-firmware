@@ -36,19 +36,14 @@
 #include "unity_minimal.h"
 
 /**
- * @enum adc_selfdiag_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum adc_selfdiag_code_t
+ * @brief Self-diagnosis codes: one with alternating bits, one at the field's full width so a truncation is visible.
  */
 typedef enum : uint16_t {
   k_adc_selfdiag_code_a = 0xAAAAU, /**< A self-diagnosis code with alternating bits. */
   k_adc_selfdiag_code_max =
     0xFFFFU, /**< The widest code the field can hold, so a truncation is visible. */
-} adc_selfdiag_uint16_const_t;
+} adc_selfdiag_code_t;
 
 /* ---------------------------------------------------------------------------
  * Sim helper: ADACT0 idle-state (deterministic, no wall-clock timer)

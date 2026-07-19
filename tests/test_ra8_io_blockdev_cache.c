@@ -26,19 +26,14 @@ typedef enum : uint8_t {
 } cache_fill_t;
 
 /**
- * @enum io_blockdev_cache_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum io_blockdev_cache_fixture_t
+ * @brief The payload generators and their seeds.
  */
 typedef enum : uint8_t {
   k_bdc_seed_block1 = 0x11, /**< Fill seed for logical block 1.                                  */
   k_bdc_seed_block2 = 0x12, /**< For block 2, adjacent to it so an off-by-one line is caught.    */
   k_bdc_seed_block4 = 0x44, /**< For block 4, far enough away to land in a different cache line. */
-} io_blockdev_cache_uint8_const_t;
+} io_blockdev_cache_fixture_t;
 
 /**
  * @enum t_cache_const_t

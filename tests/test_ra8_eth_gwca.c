@@ -16,13 +16,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum eth_gwca_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum eth_gwca_fixture_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
   k_gwca_desc_type_max = 0xFU, /**< The largest value a descriptor's 4-bit type field can hold. */
@@ -33,16 +28,11 @@ typedef enum : uint8_t {
   k_gwca_chain_len =
     5, /**< Descriptors in the test chain: enough for a head, a body and a tail with spares. */
   k_gwca_frame_bytes = 64, /**< Staging frame capacity. */
-} eth_gwca_uint8_const_t;
+} eth_gwca_fixture_t;
 
 /**
- * @enum eth_gwca_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum eth_gwca_fixture2_t
+ * @brief Values planted in registers to prove a read or write reaches them, plus buffer capacities and payload sizes.
  */
 typedef enum : uint16_t {
   k_gwca_probe_sts_a = 0x4321U, /**< Planted in GWCA_STS to prove the read reaches the register. */
@@ -50,21 +40,16 @@ typedef enum : uint16_t {
     0x8765U, /**< A second, different value, so the read cannot be a cached first result. */
   k_gwca_out_bytes =
     256, /**< Receive-side output buffer, over one slot so a short read is visible. */
-} eth_gwca_uint16_const_t;
+} eth_gwca_fixture2_t;
 
 /**
- * @enum eth_gwca_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum eth_gwca_fixture3_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint32_t {
   k_gwca_probe_sts_wide =
     0x9ABCDEF0U, /**< A full 32-bit value proving no field is truncated on the way out. */
-} eth_gwca_uint32_const_t;
+} eth_gwca_fixture3_t;
 
 static uint32_t s_gwca_cb_count;
 static uint32_t s_gwca_cb_last_mask;

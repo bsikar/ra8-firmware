@@ -26,31 +26,21 @@
 #include "ra8_err.h"
 
 /**
- * @enum decomp_limits_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum decomp_fuzz_field_t
+ * @brief Which fuzz-input field supplies each decoder limit.
  */
 typedef enum : uint8_t {
   k_fuzz_depth_field = 5U, /**< Which fuzz-input field supplies the recursion depth. */
-} decomp_limits_uint8_const_t;
+} decomp_fuzz_field_t;
 
 /**
- * @enum decomp_limits_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum decomp_limits_fixture_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint16_t {
   k_fuzz_input_cap =
     256U, /**< Largest input this harness accepts; longer cases are dropped so a run stays bounded. */
-} decomp_limits_uint16_const_t;
+} decomp_limits_fixture_t;
 
 /** @brief Read one little-endian uint64 from the input (zero-padded). */
 static uint64_t fz_u64(const uint8_t* data, size_t size, size_t idx)

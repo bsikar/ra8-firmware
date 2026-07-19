@@ -24,18 +24,13 @@
 #include "ra8_jpeg_sw.h"
 
 /**
- * @enum jpeg_sw_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum jpeg_fuzz_bound_t
+ * @brief Log2 of the largest input this harness accepts, so a run stays bounded.
  */
 typedef enum : uint8_t {
   k_fuzz_input_cap_log2 =
     20, /**< Log2 of the largest input this harness accepts; longer cases are dropped so a run stays bounded. */
-} jpeg_sw_uint8_const_t;
+} jpeg_fuzz_bound_t;
 
 /*
  * Output buffer is fixed-size and statically allocated. We probe a few

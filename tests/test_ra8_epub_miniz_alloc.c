@@ -26,13 +26,8 @@ typedef enum : uint8_t {
 } miniz_alloc_fill_t;
 
 /**
- * @enum epub_miniz_alloc_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum epub_miniz_alloc_fixture_t
+ * @brief The byte-level helpers.
  */
 typedef enum : uint8_t {
   k_arena_first_byte =
@@ -42,7 +37,7 @@ typedef enum : uint8_t {
     0xC3U, /**< The same for a second allocation; different, so the two blocks cannot alias unnoticed. */
   k_arena_alloc_items =
     5U, /**< Item count of a small allocation; with a zero item size it must still return usable storage. */
-} epub_miniz_alloc_uint8_const_t;
+} epub_miniz_alloc_fixture_t;
 
 enum : size_t {
   k_small  = 64,    /**< Small.                        */

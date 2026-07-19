@@ -25,13 +25,8 @@
 #include "stb_image.h"
 
 /**
- * @enum comic_fixture_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum comic_fixture_fixture_t
+ * @brief The payload generators and their seeds, plus protocol and on-disk field offsets, and buffer capacities and payload sizes, and the byte-level helpers.
  */
 typedef enum : uint8_t {
   k_cf_pixel_col_mul =
@@ -46,21 +41,16 @@ typedef enum : uint8_t {
   k_cf_scratch_kib          = 64U, /**< Scratch pool size in KiB.                       */
   k_png_off_type_b3         = 7,   /**< Its fourth byte.                                */
   k_png_ihdr_off_color_type = 9,   /**< IHDR's colour-type byte, 9 into the chunk data. */
-} comic_fixture_uint8_const_t;
+} comic_fixture_fixture_t;
 
 /**
- * @enum comic_fixture_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum comic_fixture_fixture2_t
+ * @brief Buffer capacities, payload sizes and fixture geometry, plus loop bounds and counts, sized so the case under test is actually reached.
  */
 typedef enum : uint16_t {
   k_cf_bytes_per_kib =
     1024U, /**< Bytes per KiB, so the pool size above reads as a size and not a bare product. */
-} comic_fixture_uint16_const_t;
+} comic_fixture_fixture2_t;
 
 /**
  * @enum cf_dim_t

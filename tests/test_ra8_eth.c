@@ -25,13 +25,8 @@ typedef enum : uint8_t {
 } eth_fill_t;
 
 /**
- * @enum eth_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum eth_fixture_t
+ * @brief The payload generators and their seeds, plus out-of-range and malformed inputs the code under test must reject.
  */
 typedef enum : uint8_t {
   k_eth_buffer_too_small =
@@ -44,16 +39,11 @@ typedef enum : uint8_t {
   k_eth_bytes_short_frame = 128, /**< A short frame, still over the minimum. */
   k_eth_bytes_min_frame   = 64,  /**< The 64-byte minimum Ethernet frame.    */
   k_eth_pattern_base = 0xC0U, /**< Base byte of the frame payload generator, `0xC0 + (i & 0x0F)`. */
-} eth_uint8_const_t;
+} eth_fixture_t;
 
 /**
- * @enum eth_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum eth_fixture2_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint16_t {
   k_eth_buffer_valid =
@@ -62,21 +52,16 @@ typedef enum : uint16_t {
     0xBABEU, /**< A second, different value, so the read cannot be a cached first result. */
   k_eswm_sts_probe_a = 0xCAFEU, /**< Planted in ESWM_STS to prove the read reaches the register. */
   k_eth_bytes_over_mtu = 2000,  /**< A frame past the configured MTU, which transmit must refuse. */
-} eth_uint16_const_t;
+} eth_fixture2_t;
 
 /**
- * @enum eth_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum eth_fixture3_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint32_t {
   k_eswm_sts_probe_wide =
     0xDEADBEEFU, /**< A full 32-bit value proving no field is truncated on the way out. */
-} eth_uint32_const_t;
+} eth_fixture3_t;
 
 /**
  * @enum ra8_eth_test_t

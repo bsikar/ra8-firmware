@@ -22,32 +22,22 @@
 #include "unity_minimal.h"
 
 /**
- * @enum jpeg_sw_seg_mcdc_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum jpeg_sw_seg_mcdc_fixture_t
+ * @brief The byte-level helpers.
  */
 typedef enum : uint8_t {
   k_jpeg_out_small =
     64, /**< Output buffer smaller than a decoded image, so a truncation is reported rather than overrun. */
   k_byte_mask = 0xFFU, /**< Truncates each generated RGB channel back into a byte. */
-} jpeg_sw_seg_mcdc_uint8_const_t;
+} jpeg_sw_seg_mcdc_fixture_t;
 
 /**
- * @enum jpeg_sw_seg_mcdc_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum jpeg_seg_out_t
+ * @brief Output buffer big enough for the fixture image.
  */
 typedef enum : uint16_t {
   k_jpeg_out_large = 256, /**< Output buffer big enough for the fixture image. */
-} jpeg_sw_seg_mcdc_uint16_const_t;
+} jpeg_seg_out_t;
 
 /**
  * @enum ra8_jpeg_test_const_t

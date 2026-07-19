@@ -26,33 +26,23 @@
 #include "unity_minimal.h"
 
 /**
- * @enum io_blockdev_vsource_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum io_blockdev_vsource_fixture_t
+ * @brief The payload generators and their seeds, plus the byte-level helpers.
  */
 typedef enum : uint8_t {
   k_vsrc_pattern_stride = 13U, /**< Stride of the golden generator, `i * 13 + 7`. */
   k_vsrc_pattern_bias   = 7U,  /**< Its bias, so index 0 is not byte 0.           */
   k_byte_mask = 0xFFU, /**< Low-byte mask used to split the connection handle little-endian. */
-} io_blockdev_vsource_uint8_const_t;
+} io_blockdev_vsource_fixture_t;
 
 /**
- * @enum io_blockdev_vsource_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum io_blockdev_vsource_fixture2_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint32_t {
   k_vsrc_oid_poison =
     0xFFFFFFFFU, /**< Poison object id written before a registration, so a call that fails without assigning one is detectable. */
-} io_blockdev_vsource_uint32_const_t;
+} io_blockdev_vsource_fixture2_t;
 
 /**
  * @enum t_bdvs_const_t

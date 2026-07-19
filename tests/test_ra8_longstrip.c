@@ -42,13 +42,8 @@ typedef enum : uint8_t {
 } t_footer_layout_t;
 
 /**
- * @enum longstrip_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum longstrip_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable, plus protocol and on-disk field offsets.
  */
 typedef enum : uint8_t {
   k_band_index_poison =
@@ -56,34 +51,24 @@ typedef enum : uint8_t {
   k_atlas_off_tile_h = 10, /**< Tile height in the atlas header; the band height for a strip. */
   k_atlas_off_bpp    = 12, /**< Bytes per pixel.                                              */
   k_atlas_off_codec  = 13, /**< Codec id for the tile payloads.                               */
-} longstrip_uint8_const_t;
+} longstrip_fixture_t;
 
 /**
- * @enum longstrip_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum longstrip_fixture2_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint16_t {
   k_band_index_poison_wide = 0xFFFFU, /**< The same for a 16-bit band index. */
-} longstrip_uint16_const_t;
+} longstrip_fixture2_t;
 
 /**
- * @enum longstrip_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum longstrip_fixture3_t
+ * @brief The recognizable values moved through the code under test.
  */
 typedef enum : uint32_t {
   k_scroll_beyond_ends =
     100000, /**< A scroll delta far past either end of the strip, applied in both directions so the clamp is proven on both sides. */
-} longstrip_uint32_const_t;
+} longstrip_fixture3_t;
 
 /**
  * @enum t_wt_geom_t

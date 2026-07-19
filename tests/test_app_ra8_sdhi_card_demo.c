@@ -21,20 +21,15 @@
 #include "unity_minimal.h"
 
 /**
- * @enum ra8_sdhi_card_demo_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_ra8_sdhi_card_demo_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable, plus protocol and on-disk field offsets, and out-of-range and malformed inputs the code under test must reject.
  */
 typedef enum : uint8_t {
   k_sdhi_flip_mask =
     0xFFU, /**< XORed into that byte to corrupt it, so the verify step must reject the block. */
   k_sdhi_corrupt_offset =
     100, /**< Byte of the read-back block that is flipped, well inside the block so the comparison must scan past its start. */
-} ra8_sdhi_card_demo_uint8_const_t;
+} app_ra8_sdhi_card_demo_fixture_t;
 
 /** @brief Constants mirroring `sdhi_card_config_t` in the app. */
 typedef enum : uint32_t {

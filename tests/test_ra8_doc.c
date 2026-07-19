@@ -20,33 +20,23 @@
 #include "unity_minimal.h"
 
 /**
- * @enum doc_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum doc_fixture_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint8_t {
   k_doc_probe_docr =
     0xFFU, /**< Every DOCR bit set, so a write that reached a neighbouring register leaves evidence. */
-} doc_uint8_const_t;
+} doc_fixture_t;
 
 /**
- * @enum doc_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum doc_fixture2_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint16_t {
   k_doc_probe_dodir = 0xAAAAU, /**< Alternating bits in DODIR. */
   k_doc_probe_dodsr0 =
     0x5555U, /**< Their complement in DODSR0, so a swap between the two registers is unmistakable. */
-} doc_uint16_const_t;
+} doc_fixture2_t;
 
 typedef enum : uint16_t {
   k_ra8_doc_test_a = 0x1234U, /**< Operand A -- seeded into DODSR0. */

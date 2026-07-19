@@ -48,19 +48,14 @@
 #include "unity_minimal.h"
 
 /**
- * @enum epub_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum epub_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable, plus buffer capacities and payload sizes.
  */
 typedef enum : uint16_t {
   k_epub_poison_chapter =
     0xFFFFU, /**< Poison chapter index written before a lookup, so a lookup that fails without setting it is detectable. */
   k_epub_poison_len = 999U, /**< Poison length written before a read, for the same reason. */
-} epub_uint16_const_t;
+} epub_fixture_t;
 
 /* --------------------------------------------------------------------- */
 

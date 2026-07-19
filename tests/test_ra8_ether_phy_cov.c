@@ -30,13 +30,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum ether_phy_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ether_phy_cov_fixture_t
+ * @brief The peripheral registers and field values this fixture drives, plus the physical quantities the configuration declares.
  */
 typedef enum : uint8_t {
   k_phy_ability_half_duplex = 0x0040U, /**< An ability word advertising the half-duplex mode. */
@@ -46,21 +41,16 @@ typedef enum : uint8_t {
     100U, /**< Reset settling time the configuration requests, in microseconds. */
   k_phy_reg_1000base_status =
     5, /**< MII register 5: the link-partner ability register this fixture drives. */
-} ether_phy_cov_uint8_const_t;
+} ether_phy_cov_fixture_t;
 
 /**
- * @enum ether_phy_cov_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ether_phy_cov_fixture2_t
+ * @brief The peripheral registers and field values this fixture drives.
  */
 typedef enum : uint16_t {
   k_phy_bmcr_reset =
     0x8000U, /**< BMCR bit 15, the PHY reset bit, which the driver must clear when reset completes. */
-} ether_phy_cov_uint16_const_t;
+} ether_phy_cov_fixture2_t;
 
 /* ---------------------------------------------------------------------------
  * Local mock bus state

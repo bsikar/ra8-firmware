@@ -14,32 +14,22 @@
 #include "unity_minimal.h"
 
 /**
- * @enum eth_coma_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum eth_coma_fixture_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint16_t {
   k_coma_probe_sts_a = 0x1234U, /**< Planted in COMA_STS to prove the read reaches the register. */
   k_coma_probe_sts_b =
     0x5678U, /**< A second, different value, so the read cannot be a cached first result. */
-} eth_coma_uint16_const_t;
+} eth_coma_fixture_t;
 
 /**
- * @enum eth_coma_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum eth_coma_fixture2_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint32_t {
   k_coma_probe_sts_wide = 0xC0FFEE00U, /**< A full 32-bit value proving no field is truncated. */
-} eth_coma_uint32_const_t;
+} eth_coma_fixture2_t;
 
 static uint32_t s_coma_cb_count;
 static uint32_t s_coma_cb_last_mask;

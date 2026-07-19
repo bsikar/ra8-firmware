@@ -40,13 +40,8 @@ typedef enum : uint8_t {
 } tc_eocd_t;
 
 /**
- * @enum comic_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum comic_fixture_t
+ * @brief The payload generators and their seeds, plus buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
   k_comic_filler_stride =
@@ -55,7 +50,7 @@ typedef enum : uint8_t {
     22U, /**< Archive truncated to fewer bytes than its own header claims, so the reader must fail rather than read past the end. */
   k_comic_page_side_px =
     5U, /**< Side of the square fixture page, in pixels; small enough that a whole page fits one tile. */
-} comic_uint8_const_t;
+} comic_fixture_t;
 
 /**
  * @enum tc_dim_t

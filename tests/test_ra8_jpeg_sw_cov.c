@@ -65,18 +65,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum jpeg_sw_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum jpeg_sw_cov_fixture_t
+ * @brief The protocol codes and identifiers exchanged.
  */
 typedef enum : uint8_t {
   k_jpeg_huff_symbol =
     0x42U, /**< A Huffman table symbol; non-zero, so a table left cleared is distinguishable from one that was loaded. */
-} jpeg_sw_cov_uint8_const_t;
+} jpeg_sw_cov_fixture_t;
 
 /* ------------------------------------------------------------------ */
 /* Bit-reader helpers: br_fill / ra8_jpeg_sw_br_get_bits */

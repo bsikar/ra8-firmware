@@ -14,20 +14,15 @@
 #include "unity_minimal.h"
 
 /**
- * @enum crc_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum crc_fixture_t
+ * @brief Values planted in registers to prove a read or write reaches them, plus poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint32_t {
   k_crc_probe_crcdor =
     0x12345678UL, /**< Planted in CRCDOR to prove the result read reaches the register. */
   k_crc_poison_out =
     0xDEADBEEFUL, /**< Poison written into the result out-parameter, so a call that fails without setting it is detectable. */
-} crc_uint32_const_t;
+} crc_fixture_t;
 
 /**
  * @enum ra8_crc_test_bit_t

@@ -22,13 +22,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum keycache_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum keycache_fixture_t
+ * @brief Out-of-range and malformed inputs the code under test must reject.
  */
 typedef enum : uint8_t {
   k_kc_image_a = 0x41U, /**< Image id of the first cache key. */
@@ -38,7 +33,7 @@ typedef enum : uint8_t {
   k_kc_image_absent = 99U, /**< An image id no entry was inserted under, so the lookup must miss. */
   k_kc_image_b      = 0xABU, /**< Image id of a second key, sharing no byte with the first. */
   k_kc_tile_b       = 0xCDU, /**< Its tile index.                                           */
-} keycache_uint8_const_t;
+} keycache_fixture_t;
 
 /**
  * @enum t_kc_const_t

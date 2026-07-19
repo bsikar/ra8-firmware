@@ -33,13 +33,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum dma_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum dma_cov_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint8_t {
   k_dma_ch_unset =
@@ -48,7 +43,7 @@ typedef enum : uint8_t {
     254U, /**< The same, one fewer, for the case that holds a channel back before exhausting the rest. */
   k_dma_alloc_attempts =
     255U, /**< Allocate attempts: more than the driver has channels, so the loop runs it out and exercises the exhausted arm. */
-} dma_cov_uint8_const_t;
+} dma_cov_fixture_t;
 
 /* -------------------------------------------------------------------------
  * Shared helpers

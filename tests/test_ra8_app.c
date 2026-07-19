@@ -19,13 +19,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum app_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint8_t {
   k_app_id_library = 10,  /**< Id of the library app in the three-app fixture. */
@@ -41,7 +36,7 @@ typedef enum : uint8_t {
     99U, /**< Poison written into a count or depth out-parameter, so a call that fails without setting it is detectable. */
   k_app_id_unregistered =
     77U, /**< An id no fixture app registers, so a back-trail entry naming it must be rejected. */
-} app_uint8_const_t;
+} app_fixture_t;
 
 typedef struct {
   uint32_t init_calls;   /**< Init calls.                                */

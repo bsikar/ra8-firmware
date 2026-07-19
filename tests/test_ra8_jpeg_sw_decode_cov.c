@@ -46,20 +46,15 @@
 #include "unity_minimal.h"
 
 /**
- * @enum jpeg_sw_decode_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum jpeg_buf_size_t
+ * @brief Three scratch sizes around one MCU row, one of them not a power of two so an allocator rounding up is visible.
  */
 typedef enum : uint8_t {
   k_jpeg_buf_large = 128, /**< The largest, over one MCU row.                      */
   k_jpeg_buf_small = 64,  /**< Smallest of three scratch sizes, under one MCU row. */
   k_jpeg_buf_mid =
     80, /**< A size that is not a power of two, so an allocator rounding up is visible. */
-} jpeg_sw_decode_cov_uint8_const_t;
+} jpeg_buf_size_t;
 
 /**
  * @enum ra8_jpeg_dec_cov_const_t

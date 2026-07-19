@@ -15,13 +15,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum book_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum book_fixture_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
   k_book_img0_bytes = 10, /**< Bytes of image 0 in the pool, which is also where image 1 begins. */
@@ -31,37 +26,27 @@ typedef enum : uint8_t {
     50, /**< Image 1's decoded size, larger than its stored size as a compressed image must be. */
   k_book_strings_cap    = 128, /**< String-pool capacity, also used as image 0's decoded size. */
   k_book_image_pool_cap = 64,  /**< Image-pool capacity, and the read-back buffer sized to match. */
-} book_uint8_const_t;
+} book_fixture_t;
 
 /**
- * @enum book_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum book_fixture2_t
+ * @brief Out-of-range and malformed inputs the code under test must reject.
  */
 typedef enum : uint16_t {
   k_book_version_unsupported =
     999, /**< A format version no reader supports, so open must reject the header. */
-} book_uint16_const_t;
+} book_fixture2_t;
 
 /**
- * @enum book_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum book_fixture3_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable, plus the byte-level helpers.
  */
 typedef enum : uint32_t {
   k_book_crc_flip_mask =
     0xFFFFFFFF, /**< XORed into a valid CRC to corrupt every bit of it, so the integrity check cannot pass by chance. */
   k_crc32_init           = 0xFFFFFFFFU, /**< CRC-32 initial value, and the final XOR-out. */
   k_crc32_poly_reflected = 0xEDB88320U, /**< The reflected CRC-32 polynomial.             */
-} book_uint32_const_t;
+} book_fixture3_t;
 
 static uint32_t compute_crc32(const uint8_t* data, size_t len)
 {
