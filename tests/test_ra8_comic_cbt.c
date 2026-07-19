@@ -97,6 +97,11 @@ typedef enum : uint32_t {
   k_tcb_out_cap  = 4096U,        /**< Page extraction buffer.     */
 } tcb_dim_t;
 
+/** @brief ustar magic field, 5 bytes at offset 257 (no string terminator). */
+static const uint8_t k_tcb_ustar_magic[] = {'u', 's', 't', 'a', 'r'};
+/** @brief ustar version field, the two ASCII digits "00" at offset 263. */
+static const uint8_t k_tcb_ustar_version[] = {'0', '0'};
+
 /** @brief The outer file under test (bare tar or wrapped member). */
 static uint8_t s_arc[k_tcb_arc_cap];
 /** @brief Length of the outer file. */
@@ -155,8 +160,8 @@ tcb_tar_add(uint8_t* dst, size_t off, const char* name, uint8_t type, const void
   tcb_octal(&b[k_comic_cbt_tcb_octal_124], k_comic_cbt_tcb_octal_12, (uint64_t)n);
   tcb_octal(&b[k_comic_cbt_tcb_octal_136], k_comic_cbt_tcb_octal_12, 0U);
   b[k_comic_cbt_val_156] = type;
-  memcpy(&b[257], "ustar", 5U);
-  memcpy(&b[263], "00", 2U);
+  memcpy(&b[257], k_tcb_ustar_magic, sizeof(k_tcb_ustar_magic));
+  memcpy(&b[263], k_tcb_ustar_version, sizeof(k_tcb_ustar_version));
   memset(&b[148], (int)' ', 8U);
   uint32_t sum = 0U;
   for (uint32_t i = 0U; i < k_comic_cbt_i_512; ++i) {

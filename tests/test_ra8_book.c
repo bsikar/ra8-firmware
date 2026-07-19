@@ -121,9 +121,14 @@ typedef struct {
  */
 static uint32_t mock_intern(mock_book_t* b, int* offset, const char* s)
 {
-  uint32_t at = (uint32_t)*offset;
-  strcpy(&b->strings[*offset], s);
-  *offset += (int)strlen(s) + 1;
+  uint32_t     at  = (uint32_t)*offset;
+  const size_t len = strlen(s);
+  /* The pool is a fixed-size fixture buffer sized for the strings this file
+   * interns. An unbounded strcpy here would run off the end of the enclosing
+   * struct if a fixture ever grew past it; fail the test loudly instead. */
+  TEST_ASSERT(((size_t)at + len + 1U) <= sizeof(b->strings));
+  memcpy(&b->strings[*offset], s, len + 1U);
+  *offset += (int)len + 1;
   return at;
 }
 

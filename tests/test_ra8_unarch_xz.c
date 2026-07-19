@@ -83,8 +83,13 @@ typedef enum : uint32_t {
   k_tx_overreport  = 7U,           /**< Extra bytes a hostile reader reports. */
 } tx_dim_t;
 
-/** @brief The small text line every "small" fixture compresses. */
-static const char* const k_tx_small_line = "hello xz stream, bounded and fail-closed\n";
+/**
+ * @brief The small text line every "small" fixture compresses.
+ * @details An array rather than a pointer so its length is a compile-time
+ *          `sizeof` instead of a runtime `strlen`; the payload is the line's
+ *          characters only, so the copies below exclude the trailing NUL.
+ */
+static const char k_tx_small_line[] = "hello xz stream, bounded and fail-closed\n";
 
 /** @brief Session scratch for every decode (8-aligned for the pool). */
 alignas(8) static uint8_t s_scratch[k_tx_scratch];
@@ -108,7 +113,7 @@ static void tx_lcg_fill(uint8_t* dst, size_t n)
 /** @brief Build the repeated-text payload; returns its length. */
 static size_t tx_small_fill(uint8_t* dst)
 {
-  const size_t line = strlen(k_tx_small_line);
+  const size_t line = sizeof(k_tx_small_line) - 1U; /* characters, without NUL */
   size_t       off  = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_tx_small_rep; ++i) {
     memcpy(&dst[off], k_tx_small_line, line);

@@ -75,9 +75,14 @@ typedef struct {
 /** @brief Append @p s to the pool at @p off (NUL included); return its offset. */
 static uint32_t bx_intern(bx_book_t* b, uint32_t* off, const char* s)
 {
-  const uint32_t at = *off;
-  strcpy(&b->strings[at], s);
-  *off += (uint32_t)strlen(s) + 1U;
+  const uint32_t at  = *off;
+  const size_t   len = strlen(s);
+  /* The pool is a fixed-size fixture buffer sized for the strings this file
+   * interns. An unbounded strcpy here would run off the end of the enclosing
+   * struct if a fixture ever grew past it; fail the test loudly instead. */
+  TEST_ASSERT(((size_t)at + len + 1U) <= sizeof(b->strings));
+  memcpy(&b->strings[at], s, len + 1U);
+  *off += (uint32_t)len + 1U;
   return at;
 }
 

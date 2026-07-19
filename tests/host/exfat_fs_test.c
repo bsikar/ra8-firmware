@@ -129,10 +129,12 @@ static void on_entry(const char* name, uint8_t attr, uint32_t size, void* ctx)
   if (strcmp(name, "HELLO.TXT") == 0) {
     g_found_hello = 1;
   }
-  if ((strlen(g_names) + strlen(name) + 2U) < sizeof(g_names)) {
-    strcat(g_names, name);
-    strcat(g_names, "|");
-  }
+  /* Append "<name>|" to the running roster. snprintf into the tail bounds the
+   * write by construction: the unbounded strcat pair it replaces was correct
+   * only because of the length test above, which is easy to break silently. */
+  const size_t used = strlen(g_names);
+  const size_t room = sizeof(g_names) - used;
+  (void)snprintf(&g_names[used], room, "%s|", name);
 }
 
 /* Re-list the root and report whether `name` is currently an entry. */

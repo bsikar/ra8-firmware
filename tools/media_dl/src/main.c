@@ -547,8 +547,8 @@ RA8_INTERNAL static int run_series(const char*  cfg_path,
 
   /* Archive export spawns the archiver with cwd set to the chapter dir, so the
    * output paths must be absolute -- resolve the series dir now that it exists. */
-  char abs_dir[PATH_MAX];
-  if (realpath(series_dir, abs_dir) == nullptr) {
+  char abs_series_dir[PATH_MAX];
+  if (realpath(series_dir, abs_series_dir) == nullptr) {
     (void)fprintf(stderr, "media_dl: cannot resolve %s\n", series_dir);
     mdl_net_curl_destroy(net);
     return 1;
@@ -557,7 +557,7 @@ RA8_INTERNAL static int run_series(const char*  cfg_path,
   const size_t fails = download_chapters(net,
                                          &site,
                                          series_url,
-                                         abs_dir,
+                                         abs_series_dir,
                                          series_slug,
                                          format,
                                          combine,

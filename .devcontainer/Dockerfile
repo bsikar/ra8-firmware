@@ -49,9 +49,14 @@ ARG ARM_GCC_SHA256_X86_64=95c011cee430e64dd6087c75c800f04b9c49832cc1000127a92a97
 ARG ARM_GCC_SHA256_AARCH64=c8824bffd057afce2259f7618254e840715f33523a3d4e4294f471208f976764
 
 # libunicorn-dev / libcapstone-dev are the Unicorn + Capstone headers that
-# tools/board_sim includes. `make ci` lints tools/ (issue #296), so the tidy
-# gate needs those headers present inside the container even though the
-# container never builds board_sim itself.
+# tools/board_sim includes, and libcurl4-openssl-dev is the libcurl header
+# tools/media_dl's network backend includes. `make ci` lints tools/ (issue
+# #296), so the tidy gate needs those headers present inside the container even
+# though the container builds neither tool itself. A missing header does not
+# fail loudly -- clang-tidy emits clang-diagnostic-error and never lints that
+# TU -- so keep this list in step with the runner install step in
+# .github/workflows/firmware.yml and the pkg-config probe in
+# scripts/clang_tidy.sh.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
       ca-certificates \
@@ -70,6 +75,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       iwyu \
       libcapstone-dev \
       libclang-rt-18-dev \
+      libcurl4-openssl-dev \
       libunicorn-dev \
       llvm-18 \
       locales \
