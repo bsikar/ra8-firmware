@@ -42,19 +42,6 @@
 #include "board_console.h"
 #include "board_periph_block.h"
 
-/**
- * @enum canfd_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_canfd_val_64 = 64,
-} canfd_uint8_const_t;
-
 /** @brief CANFD block geometry (ra8_canfd_regs.h, FSP R_CANFD_Type). */
 typedef enum : uint64_t {
   k_canfd0_base       = 0x40380000UL,   /**< CANFD0 channel-window base.           */
@@ -265,7 +252,10 @@ static bool canfd_frame_accepted(const canfd_inst_t* c, uint32_t tx_id)
  */
 static void canfd_console_frame(uint32_t inst, uint32_t tx_id, uint32_t dlc, const char* outcome)
 {
-  char ln[k_canfd_val_64];
+  enum : uint8_t {
+    k_canfd_console_line_cap = 64U, /**< Max chars in a "CANFD<n> TX id=.." line. */
+  };
+  char ln[k_canfd_console_line_cap];
   (void)snprintf(ln, sizeof(ln), "CANFD%u TX id=0x%X dlc=%u %s", inst, tx_id, dlc, outcome);
   board_console_push(k_board_console_ch_can, ln);
 }

@@ -185,10 +185,51 @@ typedef enum : uint32_t {
   k_cdb10_len           = 10U,   /**< 10-byte CDB length.                             */
   k_sector_bytes        = 512U,  /**< Logical block size.                             */
   k_usb_shift24         = 24U,   /**< Byte-3 position in a 32-bit word.               */
+  k_cbw_tag_off         = 4U,    /**< CBW dCBWTag offset (LE u32).                    */
+  k_cbw_dtl_off         = 8U,    /**< CBW dCBWDataTransferLength offset (LE u32).     */
+  k_cbw_flags_off       = 12U,   /**< CBW bmCBWFlags offset.                          */
   k_cbw_lun_off         = 13U,   /**< CBW bCBWLUN offset.                             */
   k_cbw_cdblen_off      = 14U,   /**< CBW bCBWCBLength offset.                        */
   k_cbw_cdb_off         = 15U,   /**< CBW CBWCB (command block) offset.               */
 } usb_lit_t;
+
+/**
+ * @enum usb_le_lane_t
+ * @brief Byte-lane offsets within a little-endian 32-bit protocol field.
+ *
+ * @details
+ * The USB Mass Storage CBW stores dCBWTag and dCBWDataTransferLength
+ * little-endian, so each is written as four byte lanes relative to the
+ * field's own offset. Naming the lanes keeps `k_cbw_tag_off + k_le_lane_b1`
+ * readable as "byte 1 of the tag" rather than as the bare index 5.
+ */
+typedef enum : uint8_t {
+  k_le_lane_b0 = 0U, /**< Least-significant byte (bits 7:0).   */
+  k_le_lane_b1 = 1U, /**< Bits 15:8.                           */
+  k_le_lane_b2 = 2U, /**< Bits 23:16.                          */
+  k_le_lane_b3 = 3U, /**< Most-significant byte (bits 31:24).  */
+} usb_le_lane_t;
+
+/**
+ * @enum scsi_cap10_off_t
+ * @brief Field offsets in a SCSI READ CAPACITY(10) parameter block.
+ *
+ * @details
+ * Both fields are big-endian u32 (SCSI byte order), so lane 0 is the
+ * most-significant byte -- the opposite of ::usb_le_lane_t.
+ */
+typedef enum : uint8_t {
+  k_cap10_last_lba_off = 0U, /**< Returned logical block address (BE u32). */
+  k_cap10_blocklen_off = 4U, /**< Block length in bytes (BE u32).          */
+} scsi_cap10_off_t;
+
+/** @brief Byte-lane offsets within a big-endian 32-bit SCSI field. */
+typedef enum : uint8_t {
+  k_be_lane_b3 = 0U, /**< Most-significant byte (bits 31:24). */
+  k_be_lane_b2 = 1U, /**< Bits 23:16.                         */
+  k_be_lane_b1 = 2U, /**< Bits 15:8.                          */
+  k_be_lane_b0 = 3U, /**< Least-significant byte (bits 7:0).  */
+} usb_be_lane_t;
 
 /** @brief USB device class the host detected from the interface descriptor. */
 typedef enum : uint8_t {

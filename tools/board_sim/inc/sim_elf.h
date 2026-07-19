@@ -51,7 +51,10 @@ extern "C" {
 typedef enum : uint32_t {
   k_elf_ehdr_size      = 52U,   /**< ELF32 file-header size.            */
   k_elf_em_arm         = 40U,   /**< e_machine == EM_ARM.               */
+  k_elf_e_machine_off  = 18U,   /**< e_machine in the file header.      */
   k_elf_e_phoff_off    = 28U,   /**< e_phoff in the file header.        */
+  k_elf_e_phentsize_off = 42U,  /**< e_phentsize in the file header.    */
+  k_elf_e_phnum_off    = 44U,   /**< e_phnum in the file header.        */
   k_elf_ph_offset_off  = 4U,    /**< p_offset in a program header.      */
   k_elf_ph_vaddr_off   = 8U,    /**< p_vaddr (VMA) in a program header. */
   k_elf_ph_paddr_off   = 12U,   /**< p_paddr in a program header.       */
