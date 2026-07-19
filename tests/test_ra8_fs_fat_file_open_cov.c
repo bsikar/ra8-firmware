@@ -380,6 +380,76 @@ static void test_enter_subdir_zero_cluster(void)
  */
 
 /**
+ * @brief Append @p seg to @p path at @p base_len, failing the test on overflow.
+ *
+ * @param[in,out] path     Path buffer to extend.
+ * @param[in]     cap      Capacity of @p path in bytes, including the NUL.
+ * @param[in]     base_len Current length of @p path.
+ * @param[in]     seg      NUL-terminated segment to append.
+ * @return New length of @p path, excluding the NUL.
+ *
+ * @pre @p path and @p seg are non-null.
+ * @pre @p base_len is the current length of @p path.
+ * @post @p path is NUL-terminated at the returned length.
+ * @post The test has failed outright if the append would overflow @p cap.
+ *
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static uint32_t path_append(char* path, uint32_t cap, uint32_t base_len, const char* seg)
+{
+  const uint32_t seg_len = (uint32_t)strlen(seg);
+  if ((base_len + seg_len) >= cap) {
+    TEST_FAIL_FMT("%s", "path buffer overflow");
+  }
+  for (uint32_t k = 0U; k < seg_len; k++) {
+    path[base_len + k] = seg[k];
+  }
+  const uint32_t len = base_len + seg_len;
+  path[len]          = '\0';
+  return len;
+}
+
+/**
+ * @brief Create 32 nested directories, building their path as it goes.
+ *
+ * @details
+ * Each component is spelled `/Dnn` -- the leading letter keeps the name a legal
+ * 8.3 short name, which a purely numeric component would not be. Every level is
+ * created for real, so the resulting path resolves component by component and
+ * only the depth bound can reject it.
+ *
+ * @param[in]  h    Mounted volume to create the directories on.
+ * @param[out] path Receives the 32-component directory path.
+ * @param[in]  cap  Capacity of @p path in bytes, including the NUL.
+ * @return Length of @p path, excluding the NUL.
+ *
+ * @pre @p h is a mounted volume and @p path is non-null.
+ * @pre @p cap is large enough for 32 four-character components.
+ * @post All 32 directories exist on the volume.
+ * @post @p path names the deepest of them.
+ *
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static uint32_t mkdir_nested_chain(ra8_fs_mount_t* h, char* path, uint32_t cap)
+{
+  uint32_t base_len = 0U;
+  for (uint32_t i = 0U; i < 32U; i++) {
+    /* Format component as /Dnn -- avoids leading digits in 8.3 names. */
+    char seg[8] = {};
+    seg[0]      = '/';
+    seg[1]      = 'D';
+    seg[2]      = (char)('0' + (i / (uint32_t)k_dec_base));
+    seg[3]      = (char)('0' + (i % (uint32_t)k_dec_base));
+    seg[4]      = '\0';
+    base_len    = path_append(path, cap, base_len, seg);
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, path));
+  }
+  return base_len;
+}
+
+/**
  * @test test_resolve_parent_too_deep
  * @brief A path with 32 real nested directories hits the depth guard.
  *
@@ -412,39 +482,10 @@ static void test_resolve_parent_too_deep(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
 
   /* Build 32 nested directories.  Each component is "Dnn" (3 chars). */
-  char     mkdir_path[k_deep_path_cap] = {};
-  uint32_t base_len                    = 0U;
-
-  for (uint32_t i = 0U; i < 32U; i++) {
-    char seg[8] = {};
-    /* Format component as /Dnn -- avoids leading digits in 8.3 names. */
-    seg[0]           = '/';
-    seg[1]           = 'D';
-    seg[2]           = (char)('0' + (i / (uint32_t)k_dec_base));
-    seg[3]           = (char)('0' + (i % (uint32_t)k_dec_base));
-    seg[4]           = '\0';
-    uint32_t seg_len = 4U;
-    if (base_len + seg_len >= (uint32_t)sizeof(mkdir_path)) {
-      TEST_FAIL_FMT("%s", "path buffer overflow");
-    }
-    for (uint32_t k = 0U; k < seg_len; k++) {
-      mkdir_path[base_len + k] = seg[k];
-    }
-    base_len += seg_len;
-    mkdir_path[base_len] = '\0';
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, mkdir_path));
-  }
-
+  char           mkdir_path[k_deep_path_cap] = {};
+  const uint32_t base_len = mkdir_nested_chain(h, mkdir_path, (uint32_t)sizeof(mkdir_path));
   /* Append leaf "/LEAF.TXT" to form a 33-component path. */
-  const char* leaf     = "/LEAF.TXT";
-  uint32_t    leaf_len = (uint32_t)strlen(leaf);
-  if (base_len + leaf_len >= (uint32_t)sizeof(mkdir_path)) {
-    TEST_FAIL_FMT("%s", "path buffer overflow for leaf");
-  }
-  for (uint32_t k = 0U; k < leaf_len; k++) {
-    mkdir_path[base_len + k] = leaf[k];
-  }
-  mkdir_path[base_len + leaf_len] = '\0';
+  (void)path_append(mkdir_path, (uint32_t)sizeof(mkdir_path), base_len, "/LEAF.TXT");
 
   /* 32 intermediate components all exist, so the depth loop runs out. */
   ra8_fs_file_t* f = nullptr;

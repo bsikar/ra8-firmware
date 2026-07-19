@@ -323,6 +323,85 @@ static void assert_chapters(ra8_epub_book_t* book)
  */
 
 /**
+ * @brief Assert the two parses agree on spine length and title.
+ * @param[in] book     The streamed parse.
+ * @param[in] resident The resident reference parse.
+ * @param[out] count   Receives the (agreed) chapter count.
+ * @return None.
+ * @pre Both books are open.
+ * @pre @p count is non-null.
+ * @post @p count holds the streamed parse's chapter count.
+ * @post Both parses reported the same count, and the title matched.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void stream_check_same_spine(ra8_epub_book_t* book,
+                                    ra8_epub_book_t* resident,
+                                    uint16_t*        count)
+{
+  uint16_t cs = 0U;
+  uint16_t cr = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_get_chapter_count(book, &cs));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_get_chapter_count(resident, &cr));
+  TEST_ASSERT_EQ(4U, cs);
+  TEST_ASSERT_EQ(cr, cs);
+
+  ra8_epub_metadata_t ms = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_get_metadata(book, &ms));
+  TEST_ASSERT_EQ(0, strcmp(ms.title, "Streaming Test Book"));
+  *count = cs;
+}
+
+/**
+ * @brief Assert every chapter decodes byte-identically in both parses.
+ * @param[in] book     The streamed parse.
+ * @param[in] resident The resident reference parse.
+ * @param[in] count    Chapter count to walk.
+ * @return None.
+ * @pre Both books are open and hold @p count chapters.
+ * @pre @p count is at most the spine length.
+ * @post Every chapter loaded with the same length from both parses.
+ * @post Every chapter's bytes compared equal.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void stream_check_chapters_identical(ra8_epub_book_t* book,
+                                            ra8_epub_book_t* resident,
+                                            uint16_t         count)
+{
+  for (uint16_t i = 0U; i < count; ++i) {
+    uint8_t a[k_chapter_max] = {};
+    uint8_t b[k_chapter_max] = {};
+    size_t  ga               = 0U;
+    size_t  gb               = 0U;
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_load_chapter(book, i, a, sizeof(a), &ga));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_load_chapter(resident, i, b, sizeof(b), &gb));
+    TEST_ASSERT_EQ(gb, ga);
+    TEST_ASSERT_EQ(0, memcmp(a, b, ga));
+  }
+}
+
+/**
+ * @brief Assert the direct-callback open never read the whole archive.
+ * @return None.
+ * @pre A streamed open has just run over the direct callback.
+ * @pre `g_direct_bytes` / `g_direct_peak` were zeroed before that open.
+ * @post The fetch total stayed under the filler entry's size.
+ * @post Every individual read window stayed a bounded miniz chunk.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void stream_check_direct_io_bounded(void)
+{
+  /* Bounded I/O: the whole archive was NEVER read -- the 0.5 MiB filler entry is
+   * untouched, so the streamed open fetched far fewer bytes than the file holds. */
+  TEST_ASSERT(g_direct_bytes < (uint64_t)k_filler_bytes);
+  /* Every single read window is a small, bounded miniz chunk, not the archive. */
+  TEST_ASSERT(g_direct_peak <= (size_t)(k_frame_bytes * 16U));
+  TEST_ASSERT((size_t)(k_frame_bytes * 16U) < s_arc_size);
+}
+
+/**
  * @test test_stream_direct_parse_equivalence
  * @brief `ra8_epub_open_streamed()` over a seek+read callback parses byte-identically
  *        to `ra8_epub_open()` on the same archive, while fetching far fewer bytes
@@ -353,37 +432,11 @@ static void test_stream_direct_parse_equivalence(void)
   TEST_ASSERT_EQ(1, book.in_use);
   TEST_ASSERT(book.zip_bytes == nullptr); /* streamed: no resident blob */
 
-  /* Same spine, same title. */
   uint16_t cs = 0U;
-  uint16_t cr = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_get_chapter_count(&book, &cs));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_get_chapter_count(&resident, &cr));
-  TEST_ASSERT_EQ(4U, cs);
-  TEST_ASSERT_EQ(cr, cs);
-
-  ra8_epub_metadata_t ms = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_get_metadata(&book, &ms));
-  TEST_ASSERT_EQ(0, strcmp(ms.title, "Streaming Test Book"));
-
-  /* Chapter bytes identical between the two parses. */
-  for (uint16_t i = 0U; i < cs; ++i) {
-    uint8_t a[k_chapter_max] = {};
-    uint8_t b[k_chapter_max] = {};
-    size_t  ga               = 0U;
-    size_t  gb               = 0U;
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_load_chapter(&book, i, a, sizeof(a), &ga));
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_load_chapter(&resident, i, b, sizeof(b), &gb));
-    TEST_ASSERT_EQ(gb, ga);
-    TEST_ASSERT_EQ(0, memcmp(a, b, ga));
-  }
+  stream_check_same_spine(&book, &resident, &cs);
+  stream_check_chapters_identical(&book, &resident, cs);
   assert_chapters(&book);
-
-  /* Bounded I/O: the whole archive was NEVER read -- the 0.5 MiB filler entry is
-   * untouched, so the streamed open fetched far fewer bytes than the file holds. */
-  TEST_ASSERT(g_direct_bytes < (uint64_t)k_filler_bytes);
-  /* Every single read window is a small, bounded miniz chunk, not the archive. */
-  TEST_ASSERT(g_direct_peak <= (size_t)(k_frame_bytes * 16U));
-  TEST_ASSERT((size_t)(k_frame_bytes * 16U) < s_arc_size);
+  stream_check_direct_io_bounded();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&resident));

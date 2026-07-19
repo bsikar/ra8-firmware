@@ -270,23 +270,45 @@ static void test_reflow_view_link(void)
  * `kind != touch` true (button declined); `v == NULL` true (declined). Plus init
  * NULL guards.
  */
-static void test_reflow_view_guards(void)
+/**
+ * @brief Build the guard fixture: a paint-less reflow view over @p ops.
+ * @param[out] w   Widget to initialise and give a 200x300 rect.
+ * @param[out] rv  View state to point @p w at.
+ * @param[in]  ops Ops table to install, or NULL for the ops == NULL arms.
+ * @return None.
+ * @pre @p w and @p rv are non-null.
+ * @pre @p ops outlives the fixture, when non-null.
+ * @post @p rv has `paint == NULL`, page 0 of 3, and carries @p ops.
+ * @post @p w is initialised, visible, and has a 200x300 rect at the origin.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void rv_init_guard_view(ra8_widget_t*            w,
+                               ra8_widget_reflow_view_t* rv,
+                               ra8_widget_reflow_ops_t*  ops)
 {
-  TEST_BEGIN("ra8_widget_reflow_view: render + input + init guards");
+  *rv = (ra8_widget_reflow_view_t){.paint = nullptr, .ops = ops, .page = 0, .page_count = 3};
+  *w  = (ra8_widget_t){};
+  (void)ra8_widget_reflow_view_init(w, rv);
+  w->rect = (ra8_ui_rect_t){.x = 0,
+                            .y = 0,
+                            .w = k_widget_reflow_view_w_200,
+                            .h = k_widget_reflow_view_h_300};
+}
+
+static void test_reflow_view_render_guards(void)
+{
+  TEST_BEGIN("ra8_widget_reflow_view: render guards");
   s_rv_fill_calls = 0U;
   mock_rv_t m     = {};
 
   /* paint == NULL -> no clear; ops with NULL render_page -> no page paint. */
-  ra8_widget_reflow_ops_t  no_render = {.user        = &m,
-                                        .render_page = nullptr,
-                                        .follow_link = mock_rv_follow};
-  ra8_widget_reflow_view_t rv = {.paint = nullptr, .ops = &no_render, .page = 0, .page_count = 3};
-  ra8_widget_t             w  = {};
-  (void)ra8_widget_reflow_view_init(&w, &rv);
-  w.rect = (ra8_ui_rect_t){.x = 0,
-                           .y = 0,
-                           .w = k_widget_reflow_view_w_200,
-                           .h = k_widget_reflow_view_h_300};
+  ra8_widget_reflow_ops_t no_render = {.user        = &m,
+                                       .render_page = nullptr,
+                                       .follow_link = mock_rv_follow};
+  ra8_widget_reflow_view_t rv       = {};
+  ra8_widget_t             w        = {};
+  rv_init_guard_view(&w, &rv, &no_render);
   w.vt->render(&w);
   TEST_ASSERT_EQ(0U, s_rv_fill_calls);
   TEST_ASSERT_EQ(0U, m.render_calls);
@@ -299,7 +321,16 @@ static void test_reflow_view_guards(void)
   /* ctx == NULL render arm. */
   w.ctx = nullptr;
   w.vt->render(&w);
-  w.ctx = &rv;
+  TEST_END("ra8_widget_reflow_view: render guards");
+}
+
+static void test_reflow_view_input_guards(void)
+{
+  TEST_BEGIN("ra8_widget_reflow_view: input guards");
+  mock_rv_t                m  = {};
+  ra8_widget_reflow_view_t rv = {};
+  ra8_widget_t             w  = {};
+  rv_init_guard_view(&w, &rv, nullptr);
 
   /* input: ops == NULL -> page turn only (left arm of the link OR-guard). */
   const ra8_widget_event_t right = {.kind = k_ra8_widget_ev_touch, .x = 150, .y = 50};
@@ -323,8 +354,12 @@ static void test_reflow_view_guards(void)
   /* ctx == NULL declines. */
   w.ctx = nullptr;
   TEST_ASSERT_EQ(false, w.vt->on_input(&w, &right));
+  TEST_END("ra8_widget_reflow_view: input guards");
+}
 
-  /* init guards. */
+static void test_reflow_view_init_guards(void)
+{
+  TEST_BEGIN("ra8_widget_reflow_view: init guards");
   ra8_widget_reflow_view_t any = {};
   ra8_widget_t             ww  = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_widget_reflow_view_init(nullptr, &any));
@@ -332,7 +367,7 @@ static void test_reflow_view_guards(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_reflow_view_init(&ww, &any));
   TEST_ASSERT_EQ(true, ww.vt == ra8_widget_reflow_view_vtable());
   TEST_ASSERT_EQ(true, ww.visible);
-  TEST_END("ra8_widget_reflow_view: render + input + init guards");
+  TEST_END("ra8_widget_reflow_view: init guards");
 }
 
 int main(void)
@@ -340,6 +375,8 @@ int main(void)
   test_reflow_view_render();
   test_reflow_view_page_turn();
   test_reflow_view_link();
-  test_reflow_view_guards();
+  test_reflow_view_render_guards();
+  test_reflow_view_input_guards();
+  test_reflow_view_init_guards();
   return 0;
 }
