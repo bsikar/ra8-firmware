@@ -78,7 +78,8 @@ RA8_PRIV bool ra8_ble_gatt_internal_should_copy(uint16_t len, const void* value)
  *
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_ble_gatt_internal_notify_invalid(uint8_t decl_present, uint8_t props, uint8_t notify_mask);
+RA8_PRIV bool
+ra8_ble_gatt_internal_notify_invalid(uint8_t decl_present, uint8_t props, uint8_t notify_mask);
 
 #ifdef __cplusplus
 }

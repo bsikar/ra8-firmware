@@ -17,8 +17,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "fuzz_entry.h"
 #include "eth_frame_fixture.h"
+#include "fuzz_entry.h"
 #include "ra8_err.h"
 
 enum : uint32_t {

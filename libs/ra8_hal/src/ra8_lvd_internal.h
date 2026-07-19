@@ -173,9 +173,8 @@ RA8_PRIV uint8_t ra8_lvd_internal_read_ri(const ra8_lvd_channel_map_t* map);
  * @note Internal helper; not thread-safe. Driver-internal.
  * @since 0.1.0
  */
-RA8_PRIV void ra8_lvd_internal_cr0_rmw(const ra8_lvd_channel_map_t* map,
-                              uint8_t                      clear_mask,
-                              uint8_t                      set_bits);
+RA8_PRIV void
+ra8_lvd_internal_cr0_rmw(const ra8_lvd_channel_map_t* map, uint8_t clear_mask, uint8_t set_bits);
 
 /**
  * @brief Pure predicate for "RN=1 prohibited when RHSEL=1" rejection.
@@ -210,9 +209,9 @@ RA8_PRIV void ra8_lvd_internal_cr0_rmw(const ra8_lvd_channel_map_t* map,
  * @since 0.1.0
  */
 RA8_PRIV bool ra8_lvd_internal_reject_hvd_after(uint32_t hvd_val,
-                                       uint32_t after_assert_val,
-                                       uint32_t hysteresis,
-                                       uint32_t negate);
+                                                uint32_t after_assert_val,
+                                                uint32_t hysteresis,
+                                                uint32_t negate);
 
 /**
  * @brief Pure predicate for the CR0 "set RI bit" decision.
@@ -245,7 +244,8 @@ RA8_PRIV bool ra8_lvd_internal_reject_hvd_after(uint32_t hvd_val,
  *
  * @since 0.1.0
  */
-RA8_PRIV bool ra8_lvd_internal_set_ri_bit(uint32_t reset_val, uint32_t reset_on_rise_val, uint32_t response);
+RA8_PRIV bool
+ra8_lvd_internal_set_ri_bit(uint32_t reset_val, uint32_t reset_on_rise_val, uint32_t response);
 
 #ifdef __cplusplus
 }

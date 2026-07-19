@@ -32,8 +32,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "ra8_mipi_dsi.h"
-
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -42,6 +40,7 @@
 #include "ra8_check.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
+#include "ra8_mipi_dsi.h"
 #include "ra8_mipi_dsi_internal.h"
 #include "ra8_mipi_dsi_regs.h"
 
@@ -460,4 +459,3 @@ RA8_INTERNAL static void internal_send_stage_and_pulse(const ra8_mipi_dsi_comman
   s_mipi_dsi_pending_rx_len    = rx_len;
   return ra8_mipi_dsi_send_command(&cmd);
 }
-
