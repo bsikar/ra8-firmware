@@ -33,8 +33,9 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_i3c_cov_dummy_aa             = 0xAAU,
-  k_i3c_cov_ra8_i3c_dispatch_255 = 255U,
+  k_i3c_payload_byte = 0xAAU, /**< A recognizable single-byte payload; neither 0x00 nor 0xFF. */
+  k_i3c_irq_out_of_range =
+    255U, /**< An interrupt number past the last real source; dispatch must ignore it. */
 } i3c_cov_uint8_const_t;
 
 /**
@@ -47,7 +48,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_i3c_cov_nibiqp_00008409 = 0x00008409U,
+  k_i3c_ibi_status_with_len =
+    0x00008409U, /**< An IBI queue word carrying a non-zero payload length, so the reader must drain the data buffer. */
 } i3c_cov_uint16_const_t;
 
 /**
@@ -60,9 +62,11 @@ typedef enum : uint16_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_i3c_cov_nibiqp_80000200  = 0x80000200U,
-  k_i3c_cov_nibiqp_80000400  = 0x80000400U,
-  k_i3c_cov_ntdtbp0_deadbeef = 0xDEADBEEFU,
+  k_i3c_ibi_status_error_a = 0x80000200U, /**< An IBI queue word with the error bit set. */
+  k_i3c_ibi_status_error_b =
+    0x80000400U, /**< A second error word with a different cause field, so the two are not conflated. */
+  k_i3c_probe_word =
+    0xDEADBEEFU, /**< Payload word in the data buffer, read out four bytes at a time. */
 } i3c_cov_uint32_const_t;
 
 /* ---------------------------------------------------------------------------
@@ -246,7 +250,7 @@ static void test_dispatch_oob_and_i2c_mode(void)
   TEST_BEGIN("i3c dispatch: out-of-range channel + i2c-mode path");
   /* Part 1: channel 255 hits the early return at line 422. */
   prep();
-  ra8_i3c_dispatch(k_i3c_cov_ra8_i3c_dispatch_255);
+  ra8_i3c_dispatch(k_i3c_irq_out_of_range);
   /* Part 2: channel 0 in i2c mode, callback attached -- covers 428-434.
    * MC/DC V2 (fn!=nullptr): fn is invoked. */
   prep_i2c();
@@ -299,7 +303,7 @@ static void test_recv_ccc_internal_invalid(void)
 static void test_write_error_paths(void)
 {
   TEST_BEGIN("i3c write: oob channel / uninit / len overflow errors");
-  uint8_t dummy = k_i3c_cov_dummy_aa;
+  uint8_t dummy = k_i3c_payload_byte;
 
   /* Line 615: channel out of range. */
   prep();
@@ -608,7 +612,7 @@ static void test_ibi_hot_join(void)
   /* Mark the IBI queue non-empty. */
   ra8_i3c()->NTST = (uint32_t)k_ra8_i3c_ntst_ibiqeff_mask;
   /* IBI_ST=1 (bit 31), ibi_id=0x02 (hot-join), len=0. */
-  ra8_i3c()->NIBIQP = k_i3c_cov_nibiqp_80000200;
+  ra8_i3c()->NIBIQP = k_i3c_ibi_status_error_a;
 
   ra8_i3c_ibi_t ibi = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_ibi_read(&ibi));
@@ -630,7 +634,7 @@ static void test_ibi_main_request(void)
   prep_native();
   ra8_i3c()->NTST = (uint32_t)k_ra8_i3c_ntst_ibiqeff_mask;
   /* IBI_ST=1 (bit 31), ibi_id=0x04 (mainship-request, not 0x02), len=0. */
-  ra8_i3c()->NIBIQP = k_i3c_cov_nibiqp_80000400;
+  ra8_i3c()->NIBIQP = k_i3c_ibi_status_error_b;
 
   ra8_i3c_ibi_t ibi = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_ibi_read(&ibi));
@@ -657,8 +661,8 @@ static void test_ibi_payload_clamping(void)
   ra8_i3c()->NTST = (uint32_t)k_ra8_i3c_ntst_ibiqeff_mask;
   /* IBI_ST=0 (interrupt type), ibi_id=0x84, len=9 (bits[7:0]=9).
    * 9 > sizeof(out_ibi->payload)=8 triggers the clamp on line 947. */
-  ra8_i3c()->NIBIQP  = k_i3c_cov_nibiqp_00008409;
-  ra8_i3c()->NTDTBP0 = k_i3c_cov_ntdtbp0_deadbeef; /* payload data (two reads of 4 bytes) */
+  ra8_i3c()->NIBIQP  = k_i3c_ibi_status_with_len;
+  ra8_i3c()->NTDTBP0 = k_i3c_probe_word; /* payload data (two reads of 4 bytes) */
 
   ra8_i3c_ibi_t ibi = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_ibi_read(&ibi));

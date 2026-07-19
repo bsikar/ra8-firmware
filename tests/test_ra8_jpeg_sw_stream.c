@@ -40,11 +40,14 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_jpeg_sw_stream_c_77         = 77U,
-  k_jpeg_sw_stream_s_src_d9     = 0xD9U,
-  k_jpeg_sw_stream_s_src_ff     = 0xFFU,
-  k_jpeg_sw_stream_s_src_len_64 = 64U,
-  k_jpeg_sw_stream_x_5          = 5U,
+  k_jpeg_pattern_c_mul =
+    77U, /**< Channel multiplier of that generator, large and odd so the three channels never collide. */
+  k_jpeg_marker_eoi    = 0xD9U, /**< 0xD9: the End Of Image marker code. */
+  k_jpeg_marker_prefix = 0xFFU, /**< 0xFF: the byte that introduces every JPEG marker. */
+  k_jpeg_chunk_bytes =
+    64U, /**< Bytes fed per streaming step, so the decoder must resume across chunk boundaries. */
+  k_jpeg_pattern_x_mul =
+    5U, /**< Column multiplier of the source generator; also the denominator that truncates the stream to three fifths of its length for the short-input case. */
 } jpeg_sw_stream_uint8_const_t;
 
 /** @brief Test geometry + buffer sizing. */
@@ -199,7 +202,7 @@ static void encode_pattern(uint32_t w, uint32_t h, uint8_t quality)
     for (uint32_t x = 0U; x < w; x++) {
       for (uint32_t c = 0U; c < 3U; c++) {
         s_rgb[(((y * w) + x) * 3U) + c] =
-          (uint8_t)((x * k_jpeg_sw_stream_x_5) ^ (y * 3U) ^ (c * k_jpeg_sw_stream_c_77));
+          (uint8_t)((x * k_jpeg_pattern_x_mul) ^ (y * 3U) ^ (c * k_jpeg_pattern_c_mul));
       }
     }
   }
@@ -354,12 +357,12 @@ static void test_jpeg_stream_rejects_malformed(void)
   TEST_ASSERT_EQ(
     k_ra8_err_protocol_error,
     ra8_jpeg_sw_decode_stripes(t_pull, &s_pull_src, s_win, k_t_win_cap, t_geom, t_rows, &sink));
-  s_src[0] = k_jpeg_sw_stream_s_src_ff;
+  s_src[0] = k_jpeg_marker_prefix;
 
   /* SOI+EOI only: EOI before any scan. */
   s_src_len  = 4U;
-  s_src[2]   = k_jpeg_sw_stream_s_src_ff;
-  s_src[3]   = k_jpeg_sw_stream_s_src_d9;
+  s_src[2]   = k_jpeg_marker_prefix;
+  s_src[3]   = k_jpeg_marker_eoi;
   s_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
   TEST_ASSERT_EQ(
     k_ra8_err_protocol_error,
@@ -367,7 +370,7 @@ static void test_jpeg_stream_rejects_malformed(void)
 
   /* Truncated entropy stream (cut at 60%). */
   encode_pattern(k_t_w, k_t_h, (uint8_t)k_ra8_jpeg_sw_quality_default);
-  s_src_len = (full_len * 3U) / k_jpeg_sw_stream_x_5;
+  s_src_len = (full_len * 3U) / k_jpeg_pattern_x_mul;
   sink      = (t_sink_t){};
   TEST_ASSERT_EQ(k_ra8_err_protocol_error, stream_decode(k_t_w, k_t_h, 0U, &sink));
   TEST_END("jpeg stream: malformed bitstreams fail closed");
@@ -556,7 +559,7 @@ static void test_jpeg_stream_grayscale(void)
   memset(&s_src[s_src_len],
          k_jpeg_quant_all_ones,
          (size_t)k_jpeg_quant_entries); /* all-ones quant table */
-  s_src_len += k_jpeg_sw_stream_s_src_len_64;
+  s_src_len += k_jpeg_chunk_bytes;
   memcpy(&s_src[s_src_len], s_jpeg_gray_body, sizeof(s_jpeg_gray_body));
   s_src_len += (uint32_t)sizeof(s_jpeg_gray_body);
 
@@ -572,7 +575,7 @@ static void test_jpeg_stream_grayscale(void)
   uint16_t rh = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_jpeg_sw_decode(s_src, s_src_len, s_ref, (uint32_t)sizeof(s_ref), &rw, &rh));
-  for (uint32_t i = 0U; i < k_jpeg_sw_stream_s_src_len_64; i++) {
+  for (uint32_t i = 0U; i < k_jpeg_chunk_bytes; i++) {
     TEST_ASSERT_EQ(s_ref[(size_t)i * 3U], s_got[i]);
   }
   TEST_END("jpeg stream: grayscale stripes (1 channel)");

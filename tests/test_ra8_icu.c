@@ -22,7 +22,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_icu_val_ff = 0xFFU,
+  k_icu_irqcr_all_bits =
+    0xFFU, /**< Every IRQCR bit set, so a write that reached the wrong channel leaves evidence. */
 } icu_uint8_const_t;
 
 /**
@@ -35,10 +36,14 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_icu_sentinel_cafebabe = 0xCAFEBABEUL,
-  k_icu_sentinel_deadbeef = 0xDEADBEEFUL,
-  k_icu_val_1f007a        = 0x1F007AUL,
-  k_icu_val_1fffff        = 0x1FFFFFUL,
+  k_icu_probe_wupen0 =
+    0xCAFEBABEUL, /**< Planted in WUPEN0 to prove the write reaches the register. */
+  k_icu_probe_wupen1 =
+    0xDEADBEEFUL, /**< Planted in WUPEN1; different from the WUPEN0 value so the two cannot be confused. */
+  k_icu_nmisr_mixed =
+    0x1F007AUL, /**< An NMISR value with a scattered mix of set and clear bits, so a mask applied to the wrong field changes the result. */
+  k_icu_nmier_all_sources =
+    0x1FFFFFUL, /**< Every implemented NMIER enable bit, the widest legal value for the register. */
 } icu_uint32_const_t;
 
 /**
@@ -54,11 +59,11 @@ static void test_init_clears_irqcr_and_nmi(void)
 
   /* Pre-pollute IRQCR0, IRQCR16 (IRQCRb[0]), NMIER, WUPEN0, WUPEN1 so
    * we can observe the clear. */
-  *ra8_icu_irqcr(0U)  = k_icu_val_ff;
-  *ra8_icu_irqcr(16U) = k_icu_val_ff;
-  *ra8_icu_nmier()    = k_icu_val_1fffff;
-  *ra8_icu_wupen0()   = k_icu_sentinel_cafebabe;
-  *ra8_icu_wupen1()   = k_icu_sentinel_deadbeef;
+  *ra8_icu_irqcr(0U)  = k_icu_irqcr_all_bits;
+  *ra8_icu_irqcr(16U) = k_icu_irqcr_all_bits;
+  *ra8_icu_nmier()    = k_icu_nmier_all_sources;
+  *ra8_icu_wupen0()   = k_icu_probe_wupen0;
+  *ra8_icu_wupen1()   = k_icu_probe_wupen1;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_icu_init());
   TEST_ASSERT_EQ(0, *ra8_icu_irqcr(0U));
@@ -188,7 +193,7 @@ static void test_nmi_enable_disable_clear(void)
   TEST_ASSERT_EQ(0x10111UL, *ra8_icu_nmier());
 
   /* Status register reads + clear. */
-  *ra8_icu_nmisr() = k_icu_val_1f007a;
+  *ra8_icu_nmisr() = k_icu_nmisr_mixed;
   uint32_t status  = 0UL;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_icu_nmi_status(&status));
   TEST_ASSERT_EQ(0x1F007AUL, status);

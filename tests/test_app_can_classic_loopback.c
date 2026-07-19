@@ -21,23 +21,6 @@
 #include "unity_minimal.h"
 
 /**
- * @enum can_classic_loopback_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_can_classic_loopback_sentinel_a5 = 0xA5U,
-  k_can_classic_loopback_val_30      = 0x30U,
-  k_can_classic_loopback_val_40      = 0x40U,
-  k_can_classic_loopback_val_5c      = 0x5CU,
-  k_can_classic_loopback_val_c1      = 0xC1U,
-} can_classic_loopback_uint8_const_t;
-
-/**
  * @enum can_classic_loopback_uint32_const_t
  * @brief Named uint32_t constants used by this file.
  *
@@ -47,7 +30,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_can_classic_loopback_sts_ffffffff = 0xFFFFFFFFUL,
+  k_can_sts_all_ones =
+    0xFFFFFFFFUL, /**< Every status bit set, so a handler that clears the wrong flag leaves evidence in the rest. */
 } can_classic_loopback_uint32_const_t;
 
 typedef enum : uint32_t {
@@ -110,7 +94,7 @@ static void test_can_classic_loopback_bits(void)
    * p 2711). */
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_test_can_classic_channel);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  reg->CFDC[0].STS = k_can_classic_loopback_sts_ffffffff;
+  reg->CFDC[0].STS = k_can_sts_all_ones;
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_canfd_set_test_mode((uint8_t)k_test_can_classic_channel, k_ra8_ctms_self_test_1));
@@ -147,14 +131,9 @@ static void test_can_classic_round_trip(void)
     .is_extended = 0U,
     .is_fd       = 0U,
     .is_brs      = 0U,
-    .data        = {0x01U,
-                    k_can_classic_loopback_val_c1,
-                    k_can_classic_loopback_sentinel_a5,
-                    k_can_classic_loopback_val_5c,
-                    0x10U,
-                    0x20U,
-                    k_can_classic_loopback_val_30,
-                    k_can_classic_loopback_val_40},
+    /* Eight distinct bytes: a frame that came back short, padded or
+     * byte-swapped cannot compare equal to this. */
+    .data = {0x01U, 0xC1U, 0xA5U, 0x5CU, 0x10U, 0x20U, 0x30U, 0x40U},
   };
   TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_transmit((uint8_t)k_test_can_classic_channel, &tx));
   ra8_canfd_frame_t rx = {};

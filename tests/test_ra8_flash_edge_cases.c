@@ -43,11 +43,13 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_flash_edge_cases_i_64            = 64U,
-  k_flash_edge_cases_mrcfreq_mhz_200 = 200U,
-  k_flash_edge_cases_mrefreq_mhz_100 = 100U,
-  k_flash_edge_cases_p_5a            = 0x5AU,
-  k_flash_edge_cases_p_ff            = 0xFFU,
+  k_flash_probe_end =
+    64U, /**< One past the last block probed; the loop starts at 32, so it spans the upper half of the region. */
+  k_flash_core_clock_mhz   = 200U, /**< Core clock the flash configuration declares, in MHz. */
+  k_flash_periph_clock_mhz = 100U, /**< Its peripheral clock, half the core clock. */
+  k_flash_written_byte =
+    0x5AU, /**< Byte written into the region, distinct from the erased state so a failed write is visible. */
+  k_flash_erased_byte = 0xFFU, /**< The erased state of MRAM: all ones. */
 } flash_edge_cases_uint8_const_t;
 
 typedef enum : uint32_t {
@@ -59,8 +61,8 @@ typedef enum : uint32_t {
 static ra8_flash_cfg_t make_cfg(void)
 {
   return (ra8_flash_cfg_t){
-    .mrcfreq_mhz        = k_flash_edge_cases_mrcfreq_mhz_200,
-    .mrefreq_mhz        = k_flash_edge_cases_mrefreq_mhz_100,
+    .mrcfreq_mhz        = k_flash_core_clock_mhz,
+    .mrefreq_mhz        = k_flash_periph_clock_mhz,
     .prefetch_en        = true,
     .ecc_encoder_enable = true,
     .ecc_decoder_enable = true,
@@ -85,7 +87,7 @@ static void test_blank_check_partial_page(void)
   /* Stage a 32-byte page where only the first 16 bytes are erased. */
   volatile uint8_t* p = (volatile uint8_t*)(uintptr_t)k_flash_edge_addr_extra_in;
   for (uint32_t i = 0U; i < 16U; ++i) {
-    p[i] = k_flash_edge_cases_p_ff;
+    p[i] = k_flash_erased_byte;
   }
   for (uint32_t i = 16U; i < 32U; ++i) {
     p[i] = (uint8_t)i;
@@ -123,10 +125,10 @@ static void test_blank_check_page_boundary(void)
    * the full span across the page boundary. */
   volatile uint8_t* p = (volatile uint8_t*)(uintptr_t)k_flash_edge_addr_extra_in;
   for (uint32_t i = 0U; i < 32U; ++i) {
-    p[i] = k_flash_edge_cases_p_5a;
+    p[i] = k_flash_written_byte;
   }
-  for (uint32_t i = 32U; i < k_flash_edge_cases_i_64; ++i) {
-    p[i] = k_flash_edge_cases_p_ff;
+  for (uint32_t i = 32U; i < k_flash_probe_end; ++i) {
+    p[i] = k_flash_erased_byte;
   }
   bool blank = true;
   TEST_ASSERT_EQ(k_ra8_ok,
