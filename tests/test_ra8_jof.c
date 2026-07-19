@@ -252,6 +252,49 @@ static ra8_err_t parse_store(ra8_jof_info_t* info)
  * (byte-parity oracle over the full tile grid; the reader's compound
  * decisions get their vectors in the hostile-atlas tests below.)
  */
+/**
+ * @brief Tile extent at @p origin, clamped to the image edge.
+ * @param[in] img_dim Image extent along the axis, in pixels.
+ * @param[in] origin  Tile origin along the same axis, in pixels.
+ * @return The tile's extent: a full tile, or the short remainder at the edge.
+ * @pre @p origin is inside the image.
+ * @pre @p img_dim is the full extent along that axis.
+ * @post The result never exceeds ::k_t_tile.
+ * @post The result never runs past @p img_dim.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+static uint16_t clamped_tile_dim(uint32_t img_dim, uint32_t origin)
+{
+  const uint32_t rest = img_dim - origin;
+  return (uint16_t)((rest < k_t_tile) ? rest : k_t_tile);
+}
+
+/**
+ * @brief Compare a decoded tile in ::s_cell against the ::pix oracle.
+ * @param[in] x0 Tile origin column on the canvas.
+ * @param[in] y0 Tile origin row on the canvas.
+ * @param[in] w  Decoded tile width, already edge-clamped.
+ * @param[in] h  Decoded tile height, already edge-clamped.
+ * @return None.
+ * @pre ::s_cell holds the decoded tile at (@p x0, @p y0).
+ * @pre `w * h * k_t_bpp` is within ::s_cell's capacity.
+ * @post Every channel of every decoded pixel compared equal to the oracle.
+ * @post No fixture state is mutated.
+ * @note Not thread-safe (reads the shared ::s_cell).
+ * @since 0.1.0
+ */
+static void assert_tile_pixels(uint32_t x0, uint32_t y0, uint16_t w, uint16_t h)
+{
+  for (uint32_t r = 0U; r < h; r++) {
+    for (uint32_t c = 0U; c < w; c++) {
+      for (uint32_t ch = 0U; ch < k_t_bpp; ch++) {
+        TEST_ASSERT_EQ(pix(x0 + c, y0 + r, ch), s_cell[(((r * w) + c) * k_t_bpp) + ch]);
+      }
+    }
+  }
+}
+
 static void test_jof_roundtrip(void)
 {
   TEST_BEGIN("jof: raw + deflate round-trip, byte parity");
@@ -285,15 +328,9 @@ static void test_jof_roundtrip(void)
                                                &h));
         const uint32_t x0 = (uint32_t)tx * k_t_tile;
         const uint32_t y0 = (uint32_t)ty * k_t_tile;
-        TEST_ASSERT_EQ(((k_t_img_w - x0) < k_t_tile) ? (k_t_img_w - x0) : k_t_tile, w);
-        TEST_ASSERT_EQ(((k_t_img_h - y0) < k_t_tile) ? (k_t_img_h - y0) : k_t_tile, h);
-        for (uint32_t r = 0U; r < h; r++) {
-          for (uint32_t c = 0U; c < w; c++) {
-            for (uint32_t ch = 0U; ch < k_t_bpp; ch++) {
-              TEST_ASSERT_EQ(pix(x0 + c, y0 + r, ch), s_cell[(((r * w) + c) * k_t_bpp) + ch]);
-            }
-          }
-        }
+        TEST_ASSERT_EQ(clamped_tile_dim(k_t_img_w, x0), w);
+        TEST_ASSERT_EQ(clamped_tile_dim(k_t_img_h, y0), h);
+        assert_tile_pixels(x0, y0, w, h);
       }
     }
   }

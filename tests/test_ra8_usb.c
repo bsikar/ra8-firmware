@@ -778,60 +778,63 @@ static void queue_out_fs_tails(void)
   TEST_ASSERT_EQ(0xDDU, out[1]);
 }
 
+/**
+ * @brief Seed one CFIFO word and assert queue_out extracts exactly the tail.
+ *
+ * @details
+ * USBHS tail read at MBW=32: internal_fifo_read_hs_tail reads CFIFO+0 as one
+ * uint32 and extracts the low `tail` bytes -- it does NOT read CFIFOH/CFIFOHH,
+ * because narrow reads on USBHS do not advance the FIFO pointer reliably
+ * (HUM Ch 37.2.7; see the comment in internal_fifo_read_hs_tail). So the whole
+ * tail is seeded through CFIFO+0 as a single word here, whatever its length.
+ *
+ * @param[in,out] hreg     USBHS register block.
+ * @param[in]     pipe_bit BRDYSTS bit of the pipe under test.
+ * @param[in]     word     CFIFO word to seed, little-endian in the tail bytes.
+ * @param[in]     tail     Tail length in bytes, 1..4.
+ * @param[in]     expect   Expected @p tail output bytes.
+ * @return None.
+ * @pre @p hreg is a mapped USBHS register block and @p expect is non-null.
+ * @pre @p tail is in 1..4 and @p expect holds that many bytes.
+ * @post `ra8_usb_queue_out` reported success and returned exactly @p tail bytes.
+ * @post Every returned byte matched @p expect.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void assert_hs_tail_read(volatile r_usb_regs_t* hreg,
+                                uint16_t               pipe_bit,
+                                uint32_t               word,
+                                uint16_t               tail,
+                                const uint8_t*         expect)
+{
+  uint8_t  out[4] = {};
+  uint16_t len    = tail;
+  hreg->BRDYSTS   = pipe_bit;
+  hreg->CFIFOCTR  = (uint16_t)(k_ra8_fifoctr_frdy | tail);
+  *test_usb_cfifo32(hreg) = word;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_out(k_ra8_usb_speed_hs, 1U, out, &len, true));
+  TEST_ASSERT_EQ(tail, len);
+  for (uint16_t i = 0U; i < tail; ++i) {
+    TEST_ASSERT_EQ(expect[i], out[i]);
+  }
+}
+
 /** @brief HS leg: 4/2/3-byte CFIFO tail reads at MBW=32 via queue_out. */
 static void queue_out_hs_tails(void)
 {
-  uint8_t               out[4]   = {};
-  uint16_t              len      = 0U;
   static const uint16_t pipe_bit = (uint16_t)(1U << 1U);
   prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_hs));
   volatile r_usb_regs_t* hreg = ra8_usb_hs();
 
-  out[0]                  = 0U;
-  out[1]                  = 0U;
-  out[2]                  = 0U;
-  out[3]                  = 0U;
-  len                     = 4U;
-  hreg->BRDYSTS           = pipe_bit;
-  hreg->CFIFOCTR          = (uint16_t)(k_ra8_fifoctr_frdy | 4U);
-  *test_usb_cfifo32(hreg) = k_usb_val_44332211;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_out(k_ra8_usb_speed_hs, 1U, out, &len, true));
-  TEST_ASSERT_EQ(4U, len);
-  TEST_ASSERT_EQ(0x11U, out[0]);
-  TEST_ASSERT_EQ(0x22U, out[1]);
-  TEST_ASSERT_EQ(0x33U, out[2]);
-  TEST_ASSERT_EQ(0x44U, out[3]);
+  static const uint8_t k_tail4[4] = {0x11U, 0x22U, 0x33U, 0x44U};
+  assert_hs_tail_read(hreg, pipe_bit, k_usb_val_44332211, 4U, k_tail4);
 
-  /* USBHS tail read at MBW=32: internal_fifo_read_hs_tail reads CFIFO+0
-   * as one uint32 and extracts the low `tail` bytes -- it does NOT read
-   * CFIFOH/CFIFOHH because narrow reads on USBHS do not advance the FIFO
-   * pointer reliably (HUM Ch 37.2.7; see comment in
-   * internal_fifo_read_hs_tail). Seed the tail bytes via CFIFO+0
-   * accordingly. */
-  out[0]                  = 0U;
-  out[1]                  = 0U;
-  len                     = 2U;
-  hreg->BRDYSTS           = pipe_bit;
-  hreg->CFIFOCTR          = (uint16_t)(k_ra8_fifoctr_frdy | 2U);
-  *test_usb_cfifo32(hreg) = k_usb_val_00006655;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_out(k_ra8_usb_speed_hs, 1U, out, &len, true));
-  TEST_ASSERT_EQ(2U, len);
-  TEST_ASSERT_EQ(0x55U, out[0]);
-  TEST_ASSERT_EQ(0x66U, out[1]);
+  static const uint8_t k_tail2[2] = {0x55U, 0x66U};
+  assert_hs_tail_read(hreg, pipe_bit, k_usb_val_00006655, 2U, k_tail2);
 
-  out[0]                  = 0U;
-  out[1]                  = 0U;
-  out[2]                  = 0U;
-  len                     = 3U;
-  hreg->BRDYSTS           = pipe_bit;
-  hreg->CFIFOCTR          = (uint16_t)(k_ra8_fifoctr_frdy | 3U);
-  *test_usb_cfifo32(hreg) = k_usb_val_00887766;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_out(k_ra8_usb_speed_hs, 1U, out, &len, true));
-  TEST_ASSERT_EQ(3U, len);
-  TEST_ASSERT_EQ(0x66U, out[0]);
-  TEST_ASSERT_EQ(0x77U, out[1]);
-  TEST_ASSERT_EQ(0x88U, out[2]);
+  static const uint8_t k_tail3[3] = {0x66U, 0x77U, 0x88U};
+  assert_hs_tail_read(hreg, pipe_bit, k_usb_val_00887766, 3U, k_tail3);
 }
 
 static void test_queue_out_fifo_tail_paths(void)
