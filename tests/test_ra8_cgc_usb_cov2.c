@@ -143,6 +143,16 @@ static void cov_reset(void)
 /* Rename the exported symbols so the instrumented copy does not clash with the
  * production driver in ra8_core_hal; redirect the OSCSF poll helpers and the two
  * USB clock-register accessors to the scriptable mocks above. */
+/* The two OSCSF poll mocks are only DECLARED here and defined below the
+ * driver include. `ra8_cgc_internal.h` carries RA8_PRIV on the real
+ * declarations, and the #define maps that annotated declaration onto the
+ * mock -- clang rejects an attribute on a declaration that follows the
+ * definition, so the definition has to come last. The declaration must also
+ * be `static` and come first, or the header's expansion introduces the
+ * symbol with external linkage and the definition then conflicts with it. */
+static ra8_err_t mock_wait_oscsf_clear(uint8_t bit);
+static ra8_err_t mock_wait_oscsf_set(uint8_t bit);
+
 ra8_err_t ra8_cgc_pll2_enable_cov2(uint8_t mul_int, uint8_t mul_quarters, ra8_plodiv_t p_div_code);
 ra8_err_t ra8_cgc_usbfs_clock_enable_cov2(void);
 ra8_err_t ra8_cgc_usbhs_pll_enable_cov2(void);

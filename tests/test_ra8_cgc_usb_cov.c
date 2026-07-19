@@ -89,7 +89,9 @@ static void cov_reset(void)
  * driver include. `ra8_cgc_internal.h` carries RA8_PRIV on the real
  * declarations, and the #define maps that annotated declaration onto the
  * mock -- clang rejects an attribute on a declaration that follows the
- * definition, so the definition has to come last. */
+ * definition, so the definition has to come last. The declaration must also
+ * be `static` and come first, or the header's expansion introduces the
+ * symbol with external linkage and the definition then conflicts with it. */
 static ra8_err_t mock_wait_oscsf_clear(uint8_t bit);
 static ra8_err_t mock_wait_oscsf_set(uint8_t bit);
 
