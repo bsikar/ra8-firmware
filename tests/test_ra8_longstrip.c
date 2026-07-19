@@ -696,6 +696,77 @@ static void t_bounded_memory(void)
 }
 
 /**
+ * @test t_set_viewport_validates
+ *
+ * @par MC/DC:
+ * Decision: `if ((viewport_w == 0U) || (viewport_h == 0U))` (2 conditions)
+ * - Vector 1: w=192, h=256 -> false (control: both conditions false)
+ * - Vector 2: w=0,   h=256 -> true  (varies viewport_w only)
+ * - Vector 3: w=192, h=0   -> true  (varies viewport_h only)
+ * Vectors 1+2 prove viewport_w independently affects the outcome; 1+3 prove
+ * the same for viewport_h. N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
+ */
+static void t_set_viewport_validates(void)
+{
+  TEST_BEGIN("set_viewport_validates");
+  ra8_longstrip_t wt = {};
+  t_wt_open(&wt);
+  /* Vector 1: both non-zero -> accepted, clamp re-derived from the new height. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_set_viewport(&wt, k_t_wt_view_w, (uint16_t)k_t_wt_view_h));
+  TEST_ASSERT_EQ((int32_t)k_t_wt_max_scroll, wt.max_scroll);
+  /* Vector 2: zero width only. Vector 3: zero height only. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_longstrip_set_viewport(&wt, 0U, k_t_wt_view_h));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_longstrip_set_viewport(&wt, k_t_wt_view_w, 0U));
+  /* A rejected call leaves the previous viewport and clamp untouched. */
+  TEST_ASSERT_EQ((int32_t)k_t_wt_max_scroll, wt.max_scroll);
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_longstrip_set_viewport(nullptr, 1U, 1U));
+  TEST_END("set_viewport_validates");
+}
+
+/**
+ * @test t_paginated_last_page_is_not_clamped
+ *
+ * @details
+ * Regression for the duplicated-content render defect: a paginated caller that
+ * seeks to `page * page_h` while the engine still holds the FULL page height as
+ * its viewport has its final seek clamped to `canvas_h - page_h`, so the last
+ * page silently re-composites a window the previous page already showed.
+ *
+ * The strip is 800 tall and the page height is 256, so `ceil(800/256) == 4`
+ * pages and the last page starts at 768 with only 32 rows of content -- a
+ * deliberately non-multiple geometry (800 = 3*256 + 32). Setting the viewport to
+ * each page's true content height before the seek makes every page land on its
+ * own canvas rows, which the recording blit verifies per pixel.
+ */
+static void t_paginated_last_page_is_not_clamped(void)
+{
+  TEST_BEGIN("paginated_last_page_is_not_clamped");
+  ra8_longstrip_t wt = {};
+  t_wt_open(&wt);
+  const uint32_t page_h = (uint32_t)k_t_wt_view_h;
+  const uint32_t pages  = ((uint32_t)k_t_wt_height + page_h - 1U) / page_h;
+  TEST_ASSERT_EQ(4U, pages); /* 800 / 256 -> 4 pages, the last one short */
+  for (uint32_t p = 0U; p < pages; p++) {
+    const uint32_t top     = p * page_h;
+    const uint32_t remain  = (uint32_t)k_t_wt_height - top;
+    const uint32_t content = (remain < page_h) ? remain : page_h;
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_set_viewport(&wt, k_t_wt_view_w, (uint16_t)content));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_scroll_by(&wt, (int32_t)top - wt.scroll_y));
+    /* The seek must land exactly on the requested page top -- never short. */
+    TEST_ASSERT_EQ((int32_t)top, wt.scroll_y);
+    s_blit.scroll_y                 = wt.scroll_y;
+    ra8_longstrip_render_stats_t st = {};
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_render(&wt, &st));
+    /* The recording blit asserts every pixel against its true canvas
+     * coordinate, so a duplicated window fails inside t_wt_blit first. */
+    TEST_ASSERT_EQ(content, st.covered_rows);
+  }
+  /* The final page is the short one: 800 - 3*256 == 32 rows. */
+  TEST_ASSERT_EQ((int32_t)(k_t_wt_height - k_t_wt_last_band_h), wt.scroll_y);
+  TEST_END("paginated_last_page_is_not_clamped");
+}
+
+/**
  * @brief Host test entry point.
  *
  * @return 0 on success; any assertion `exit(1)`s before returning.
@@ -710,6 +781,8 @@ int32_t main(void)
   t_fling();
   t_prefetch();
   t_bounded_memory();
+  t_set_viewport_validates();
+  t_paginated_last_page_is_not_clamped();
   (void)fprintf(stderr, "[PASS] test_ra8_longstrip: all cases passed\n");
   return 0;
 }
