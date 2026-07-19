@@ -573,6 +573,12 @@ static void test_eink_policy_sequence(void)
   const display_cfg_t cfg = make_eink_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, display_init(&cfg, &d));
 
+  /* INV-VCOM-1: the backend refuses every refresh until a VCOM has been
+   * programmed and read back. This test is about the policy cadence, so it
+   * takes the permit up front; the gate itself is asserted in
+   * ``test_eink_flush_clear_get_fb``. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_set_vcom((uint16_t)k_eink_vcom_loopback));
+
   display_policy_t p = {};
   TEST_ASSERT_EQ(k_ra8_ok, display_policy_init(&p, k_display_policy_fast_clean, 4U));
 

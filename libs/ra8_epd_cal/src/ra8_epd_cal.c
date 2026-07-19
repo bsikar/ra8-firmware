@@ -58,10 +58,12 @@ static const char* const s_tag = "EPD_CAL";
  * Every boot that uses it logs loudly, because a bench build that quietly
  * reached a customer's panel is exactly the outcome being guarded against.
  */
-#if defined(RA8_BENCH_VCOM_MV)
-#if defined(RA8_PRODUCTION_BUILD)
-#error "RA8_BENCH_VCOM_MV is a bench-only escape hatch and must not ship. \
-Provision the panel's real VCOM into the per-device record instead."
+#ifdef RA8_BENCH_VCOM_MV
+/* Single-line message on purpose: a backslash-continued string literal in a
+ * #error is what cppcheck's MISRA addon reports as a 4.1 escape-sequence
+ * violation, and a new finding is not worth a wrapped sentence. */
+#ifdef RA8_PRODUCTION_BUILD
+#error "RA8_BENCH_VCOM_MV must not ship -- provision the panel's real VCOM"
 #endif
 
 /**
@@ -460,7 +462,7 @@ RA8_INTERNAL
     return k_ra8_ok;
   }
 
-#if defined(RA8_BENCH_VCOM_MV)
+#ifdef RA8_BENCH_VCOM_MV
   /* Bench-only, last resort, still range-checked. See the flag's block
    * comment at the top of this file for why it is allowed to exist at all. */
   if (ra8_epd_cal_vcom_in_range((uint16_t)k_ra8_epd_cal_bench_vcom_mv, &cfg->limits)) {
