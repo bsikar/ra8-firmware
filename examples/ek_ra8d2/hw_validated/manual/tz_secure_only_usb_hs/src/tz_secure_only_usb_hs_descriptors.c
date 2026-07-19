@@ -370,17 +370,17 @@ static_assert(sizeof(s_tz_secure_only_usb_hs_string_framework) ==
                 k_tz_secure_only_usb_hs_string_framework_len,
               "String framework length must match the header declaration");
 
-/**
- * @var s_tz_secure_only_usb_hs_language_id_framework
- * @brief USBX language-id table -- US English.
- * @since 0.1.0
- */
 /* USBX LANGID descriptor 0x0409 (English-US), little-endian byte pair. */
 typedef enum : uint8_t {
   k_usb_langid_en_us_lo = 0x09U, /**< LANGID 0x0409 low byte.  */
   k_usb_langid_en_us_hi = 0x04U, /**< LANGID 0x0409 high byte. */
 } usb_langid_byte_t;
 
+/**
+ * @var s_tz_secure_only_usb_hs_language_id_framework
+ * @brief USBX language-id table -- US English.
+ * @since 0.1.0
+ */
 UCHAR s_tz_secure_only_usb_hs_language_id_framework[] = {k_usb_langid_en_us_lo,
                                                          k_usb_langid_en_us_hi};
 

@@ -154,11 +154,11 @@ typedef enum : uint8_t {
   k_ra8_adc_oversample_64x = 3U, /**< 64-sample average.           */
 } ra8_adc_oversample_t;
 
+typedef enum : uint8_t {
 /**
  * @def k_ra8_adc_scan_group_max_channels
  * @brief Maximum channels modelled per scan group.
  */
-typedef enum : uint8_t {
   k_ra8_adc_scan_group_max_channels = 8U, /**< Per-group channel slot count. */
 } ra8_adc_scan_group_caps_t;
 

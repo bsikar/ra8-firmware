@@ -554,13 +554,60 @@ def _display_name(cursor, anon_names: dict[tuple[int, int], str]) -> str:
     return anon_names.get((cursor.location.line, cursor.location.column), "")
 
 
-def check_symbol(
-    cursor,
-    cindex,
-    path: str,
-    anon_names: dict[tuple[int, int], str],
-    attached: dict[int, DocBlock],
-) -> list[Finding]:
+@dataclass
+class FileCtx:
+    """Everything the per-symbol checks need about the file being scanned."""
+
+    cindex: object
+    path: str
+    #: Anonymous record/enum location -> the typedef that names it.
+    anon_names: dict[tuple[int, int], str]
+    #: Source line of a declaration -> the doc block that precedes it.
+    attached: dict[int, DocBlock]
+    #: The file's source lines, for span-level lookups.
+    decl_text: list[str]
+
+
+def _check_names(cursor, ctx: FileCtx, tags: DocTags, name: str, line: int) -> list[Finding]:
+    """DOC005 -- the block names one symbol while sitting on another."""
+    findings: list[Finding] = []
+    for kind, ref in tags.explicit_refs:
+        if kind in {"ingroup", "name"} or ref == name:
+            continue
+        # The block names X; if X appears anywhere in the declaration the block
+        # sits on, it IS attached to the right thing and libclang simply named
+        # the cursor badly. `typedef UINT (*dfu_write_cb_t)(...)` is the case
+        # that matters: with the vendored USBX headers unresolved, clang
+        # recovers by reporting the cursor as `UINT`, which looked like a
+        # mismatch against a perfectly correct @typedef dfu_write_cb_t.
+        if _ref_in_declaration(cursor, ref, ctx.decl_text):
+            continue
+        findings.append(
+            Finding(
+                ctx.path,
+                line,
+                "DOC005",
+                name,
+                f"block says '@{kind} {ref}' but is attached to '{name}'",
+            )
+        )
+        break
+
+    # The sanctioned definition-site form naming a different function.
+    if tags.impl_of and tags.impl_of != name:
+        findings.append(
+            Finding(
+                ctx.path,
+                line,
+                "DOC005",
+                name,
+                f"block says 'Implementation of `{tags.impl_of}()`' but is attached to '{name}'",
+            )
+        )
+    return findings
+
+
+def check_symbol(cursor, ctx: FileCtx) -> list[Finding]:
     """Run every attachment check for one documented declaration.
 
     Attachment is resolved **positionally** (``attached``), never via
@@ -570,12 +617,13 @@ def check_symbol(
     would have made the eventual fix look incomplete.  The block a reader sees
     above a declaration is the one this gate judges.
     """
+    cindex, path = ctx.cindex, ctx.path
     findings: list[Finding] = []
-    block = _decl_block(cursor, attached)
+    block = _decl_block(cursor, ctx.attached)
     if block is None:
         return findings
     tags = parse_tags(block.text)
-    name = _display_name(cursor, anon_names)
+    name = _display_name(cursor, ctx.anon_names)
     line = cursor.location.line
     # An anonymous record with no naming typedef has no name a block could be
     # checked against; the tag checks below would compare against "".
@@ -587,33 +635,7 @@ def check_symbol(
     if tags.has_copy:
         return findings
 
-    # -- DOC005: an explicit @fn/@struct/@enum/... naming a different symbol.
-    for kind, ref in tags.explicit_refs:
-        if kind in {"ingroup", "name"}:
-            continue
-        if ref != name:
-            findings.append(
-                Finding(
-                    path,
-                    line,
-                    "DOC005",
-                    name,
-                    f"block says '@{kind} {ref}' but is attached to '{name}'",
-                )
-            )
-            break
-
-    # -- DOC005: the sanctioned definition-site form naming a different symbol.
-    if tags.impl_of and tags.impl_of != name:
-        findings.append(
-            Finding(
-                path,
-                line,
-                "DOC005",
-                name,
-                f"block says 'Implementation of `{tags.impl_of}()`' but is attached to '{name}'",
-            )
-        )
+    findings.extend(_check_names(cursor, ctx, tags, name, line))
 
     if cursor.kind != cindex.CursorKind.FUNCTION_DECL:
         return findings
@@ -701,6 +723,17 @@ def _decl_block(cursor, attached: dict[int, DocBlock]) -> DocBlock | None:
         if ln in attached:
             return attached[ln]
     return None
+
+
+def _ref_in_declaration(cursor, ref: str, decl_text: list[str]) -> bool:
+    """True when ``ref`` appears in the source lines ``cursor`` spans."""
+    try:
+        lo = cursor.extent.start.line
+        hi = cursor.extent.end.line
+    except (AttributeError, ValueError):
+        return False
+    pat = re.compile(r"\b" + re.escape(ref) + r"\b")
+    return any(pat.search(ln) for ln in decl_text[lo - 1 : hi])
 
 
 def _decls_between(all_decls: list, first, second) -> bool:
@@ -809,7 +842,7 @@ def check_file(path: Path, cindex, args: list[str]) -> list[Finding]:
         cindex.CursorKind.VAR_DECL,
     }
     anon_names = typedef_names_for_anonymous(tu, cindex, own)
-    attached = blocks_by_attach_line(text)
+    ctx = FileCtx(cindex, rel, anon_names, blocks_by_attach_line(text), text.splitlines())
     seen: set[tuple[int, str]] = set()
     for cursor in tu.cursor.walk_preorder():
         if cursor.kind not in interesting:
@@ -823,10 +856,18 @@ def check_file(path: Path, cindex, args: list[str]) -> list[Finding]:
         seen.add(key)
         if _is_macro_expanded(cursor):
             continue
-        findings.extend(check_symbol(cursor, cindex, rel, anon_names, attached))
+        findings.extend(check_symbol(cursor, ctx))
 
     findings.extend(check_forward_decl_blocks(tu, cindex, rel, own, text))
-    return findings
+    # One doc block above `typedef enum {...} foo_t;` is reached by both the
+    # ENUM_DECL and the TYPEDEF_DECL cursor, which reports the identical finding
+    # at two different lines (the `typedef enum {` line and the `} foo_t;`
+    # line). Collapse to the first occurrence so a fix count matches the defect
+    # count.
+    deduped: dict[tuple[str, str, str], Finding] = {}
+    for f in findings:
+        deduped.setdefault((f.code, f.symbol, f.detail), f)
+    return list(deduped.values())
 
 
 # ---------------------------------------------------------------------------
@@ -1369,7 +1410,7 @@ def selftest() -> int:
                 cindex.CursorKind.VAR_DECL,
             }
             anon_names = typedef_names_for_anonymous(tu, cindex, own)
-            attached = blocks_by_attach_line(text)
+            ctx = FileCtx(cindex, rel, anon_names, blocks_by_attach_line(text), text.splitlines())
             seen: set[tuple[int, str]] = set()
             for cursor in tu.cursor.walk_preorder():
                 if cursor.kind not in interesting:
@@ -1381,7 +1422,7 @@ def selftest() -> int:
                 if key in seen:
                     continue
                 seen.add(key)
-                got += check_symbol(cursor, cindex, rel, anon_names, attached)
+                got += check_symbol(cursor, ctx)
             got += check_forward_decl_blocks(tu, cindex, rel, own, text)
 
             codes = {f.code for f in got}
