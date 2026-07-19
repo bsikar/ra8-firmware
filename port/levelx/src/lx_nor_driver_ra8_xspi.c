@@ -373,13 +373,13 @@ static UINT priv_nor_block_erased_verify(ULONG block)
  */
 typedef struct {
   uint32_t magic;        /**< ``k_ra8_xspi_rdid_magic`` once written.        */
-  uint32_t call_count;   /**< Number of probe attempts since reset.         */
+  uint32_t call_count;   /**< Number of probe attempts since reset.          */
   uint32_t rid_err;      /**< Last ``ra8_err_t`` from ``read_id`` (uint).    */
-  uint32_t jedec_id;     /**< Last raw RDID triplet from the HAL.           */
+  uint32_t jedec_id;     /**< Last raw RDID triplet from the HAL.            */
   uint32_t reset_8d_err; /**< ``ra8_err_t`` from 8D-form software reset.     */
   uint32_t reset_1s_err; /**< ``ra8_err_t`` from 1S-form software reset.     */
   uint32_t stage;        /**< Last stage reached (see ``ra8_xspi_stage_t``). */
-  uint32_t reserved;     /**< Reserved for future diagnostics.              */
+  uint32_t reserved;     /**< Reserved for future diagnostics.               */
 } ra8_xspi_rdid_observation_t;
 
 /**
@@ -479,10 +479,10 @@ typedef enum : uint8_t {
  */
 typedef struct {
   uint8_t  port;          /**< Port index from ``ra8_port_t``. */
-  uint8_t  pin;           /**< Pin index within the port.     */
-  uint8_t  psel_observed; /**< PFS PSEL[28..24] >> 24.        */
-  uint8_t  pmr_observed;  /**< 1 if PFS.PMR == 1 after init.  */
-  uint32_t pfs_raw;       /**< Full 32-bit PmnPFS readback.   */
+  uint8_t  pin;           /**< Pin index within the port.      */
+  uint8_t  psel_observed; /**< PFS PSEL[28..24] >> 24.         */
+  uint8_t  pmr_observed;  /**< 1 if PFS.PMR == 1 after init.   */
+  uint32_t pfs_raw;       /**< Full 32-bit PmnPFS readback.    */
 } ra8_xspi_pin_observation_t;
 
 /**
@@ -545,17 +545,17 @@ typedef struct {
  * @since 0.1.0
  */
 static const ra8_xspi_pin_ref_t s_ra8_xspi_pin_refs[k_ra8_xspi_pin_count] = {
-  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_4}, /**< CS,  P104.         */
-  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_8}, /**< CK,  P808.         */
-  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_1}, /**< DQS, P801.         */
-  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_0}, /**< DQ0, P100.         */
-  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_3}, /**< DQ1, P803.         */
-  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_3}, /**< DQ2, P103.         */
-  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_1}, /**< DQ3, P101.         */
-  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_2}, /**< DQ4, P102.         */
-  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_0}, /**< DQ5, P800.         */
-  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_2}, /**< DQ6, P802.         */
-  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_4}, /**< DQ7, P804.         */
+  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_4}, /**< CS,  P104. */
+  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_8}, /**< CK,  P808. */
+  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_1}, /**< DQS, P801. */
+  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_0}, /**< DQ0, P100. */
+  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_3}, /**< DQ1, P803. */
+  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_3}, /**< DQ2, P103. */
+  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_1}, /**< DQ3, P101. */
+  {(uint8_t)k_ra8_port_1, (uint8_t)k_ra8_pin_2}, /**< DQ4, P102. */
+  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_0}, /**< DQ5, P800. */
+  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_2}, /**< DQ6, P802. */
+  {(uint8_t)k_ra8_port_8, (uint8_t)k_ra8_pin_4}, /**< DQ7, P804. */
   {0xFFU, 0xFFU},                              /**< Reserved sentinel. */
 };
 
