@@ -35,7 +35,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_decomp_limits_fz_u64_5 = 5U,
+  k_fuzz_depth_field = 5U, /**< Which fuzz-input field supplies the recursion depth. */
 } decomp_limits_uint8_const_t;
 
 /**
@@ -48,7 +48,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_decomp_limits_size_256 = 256U,
+  k_fuzz_input_cap =
+    256U, /**< Largest input this harness accepts; longer cases are dropped so a run stays bounded. */
 } decomp_limits_uint16_const_t;
 
 /** @brief Read one little-endian uint64 from the input (zero-padded). */
@@ -68,7 +69,7 @@ static uint64_t fz_u64(const uint8_t* data, size_t size, size_t idx)
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-  if (size == 0U || size > k_decomp_limits_size_256) {
+  if (size == 0U || size > k_fuzz_input_cap) {
     return 0;
   }
   ra8_decomp_limits_t lim = {};
@@ -77,7 +78,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
   lim.ratio_grace_bytes   = (uint32_t)fz_u64(data, size, 2U);
   lim.max_entries         = (uint32_t)fz_u64(data, size, 3U);
   lim.max_iterations      = (uint32_t)fz_u64(data, size, 4U);
-  lim.max_depth           = (uint8_t)fz_u64(data, size, k_decomp_limits_fz_u64_5);
+  lim.max_depth           = (uint8_t)fz_u64(data, size, k_fuzz_depth_field);
 
   const uint64_t comp = fz_u64(data, size, 6U);
   const uint64_t outb = fz_u64(data, size, 7U);

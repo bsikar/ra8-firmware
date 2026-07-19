@@ -57,8 +57,9 @@
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_epub_chapter_ffff = 0xFFFFU,
-  k_epub_junk_999     = 999U,
+  k_epub_poison_chapter =
+    0xFFFFU, /**< Poison chapter index written before a lookup, so a lookup that fails without setting it is detectable. */
+  k_epub_poison_len = 999U, /**< Poison length written before a read, for the same reason. */
 } epub_uint16_const_t;
 
 /* --------------------------------------------------------------------- */
@@ -331,7 +332,7 @@ static void test_load_chapter(void)
   TEST_ASSERT(strstr((const char*)buf, "Chapter Two") != nullptr);
 
   /* Out-of-range. */
-  size_t junk = k_epub_junk_999;
+  size_t junk = k_epub_poison_len;
   TEST_ASSERT_EQ(k_ra8_err_out_of_range,
                  ra8_epub_load_chapter(&book, 99U, buf, sizeof(buf), &junk));
   TEST_ASSERT_EQ(0, junk);
@@ -398,7 +399,7 @@ static void test_toc_to_chapter(void)
   const ra8_epub_mem_media_t media = {.data = s_epub_buf, .size = s_epub_size};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open(&media, nullptr, &book));
 
-  uint16_t chapter = k_epub_chapter_ffff;
+  uint16_t chapter = k_epub_poison_chapter;
   /* Entry 0 carries "ch1.xhtml#start" -- the fragment must be stripped. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_toc_entry_to_chapter(&book, 0U, &chapter));
   TEST_ASSERT_EQ(0, chapter);

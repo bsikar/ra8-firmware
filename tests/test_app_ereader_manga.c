@@ -47,7 +47,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ereader_manga_val_48 = 48,
+  k_manga_line_cap = 48, /**< Capacity of the status-line scratch buffer. */
 } ereader_manga_uint8_const_t;
 
 /** @brief The app's geometry + budget constants (kept in lockstep with main.c). */
@@ -407,7 +407,7 @@ static void test_manga_status_text(void)
 {
   TEST_BEGIN("ereader_manga: mg_reader_status formatting");
   setup_reader();
-  char line[k_ereader_manga_val_48] = {};
+  char line[k_manga_line_cap] = {};
   TEST_ASSERT_EQ(k_ra8_ok, mg_reader_status(&s_reader, line, (uint32_t)sizeof(line)));
   TEST_ASSERT_EQ(0, strcmp(line, "MANGA  1:1  x=0 y=0"));
   TEST_ASSERT(mg_reader_tap(&s_reader, 950, 300)); /* pan right one step */

@@ -40,7 +40,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_poeg_safe_shutoff_count_ffffffff = 0xFFFFFFFFU,
+  k_poeg_poison_out =
+    0xFFFFFFFFU, /**< Poison written into a count out-parameter, so a call that fails without setting it is detectable. */
 } poeg_safe_shutoff_uint32_const_t;
 
 /** @brief Mirror of the demo's app-local unit selection. */
@@ -219,7 +220,7 @@ static void test_poeg_gpt_arm(void)
 
   const ra8_gpt_cfg_t cfg = make_gpt_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_init((uint8_t)k_t_poeg_gpt_channel, &cfg));
-  uint32_t count = k_poeg_safe_shutoff_count_ffffffff;
+  uint32_t count = k_poeg_poison_out;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_read((uint8_t)k_t_poeg_gpt_channel, &count));
   TEST_ASSERT(ra8_gpt_init((uint8_t)k_t_poeg_gpt_channel, nullptr) != k_ra8_ok);
   TEST_END("poeg_safe_shutoff: GPT arm + reject");

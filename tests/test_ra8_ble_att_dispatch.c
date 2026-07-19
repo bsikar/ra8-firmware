@@ -47,7 +47,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ble_att_dispatch_att_len_ff = 0xFFU,
+  k_byte_mask = 0xFFU, /**< Truncates a generated or shifted value back into a byte. */
 } ble_att_dispatch_uint8_const_t;
 
 /* Test hooks declared in ra8_ble_host.h under #ifdef UNIT_TEST. */
@@ -147,10 +147,10 @@ static void inject_att(const uint8_t* att_pdu, uint16_t att_len)
   };
   uint8_t frame[k_max_frame_bytes];
   TEST_ASSERT(att_len <= (uint16_t)(k_max_frame_bytes - (uint16_t)k_l2cap_hdr_bytes));
-  frame[0] = (uint8_t)(att_len & k_ble_att_dispatch_att_len_ff);
-  frame[1] = (uint8_t)((att_len >> 8U) & k_ble_att_dispatch_att_len_ff);
-  frame[2] = (uint8_t)k_test_l2cap_cid_att & k_ble_att_dispatch_att_len_ff;
-  frame[3] = (uint8_t)(((uint16_t)k_test_l2cap_cid_att >> 8U) & k_ble_att_dispatch_att_len_ff);
+  frame[0] = (uint8_t)(att_len & k_byte_mask);
+  frame[1] = (uint8_t)((att_len >> 8U) & k_byte_mask);
+  frame[2] = (uint8_t)k_test_l2cap_cid_att & k_byte_mask;
+  frame[3] = (uint8_t)(((uint16_t)k_test_l2cap_cid_att >> 8U) & k_byte_mask);
   (void)memcpy(&frame[k_l2cap_hdr_bytes], att_pdu, att_len);
   ra8_ble_host_test_inject_acl((uint16_t)k_test_conn_handle,
                                frame,

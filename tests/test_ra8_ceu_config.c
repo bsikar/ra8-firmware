@@ -38,7 +38,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_ceu_config_val_200 = 0x200U,
+  k_ceu_probe_cdssr_small = 0x200U, /**< A CDSSR value with a single field set. */
 } ceu_config_uint16_const_t;
 
 /**
@@ -51,7 +51,8 @@ typedef enum : uint16_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_ceu_config_sentinel_cafe0000 = 0xCAFE0000UL,
+  k_ceu_probe_cdssr_wide =
+    0xCAFE0000UL, /**< A full-width CDSSR value proving no field is truncated. */
 } ceu_config_uint32_const_t;
 
 typedef enum : uint16_t {
@@ -190,7 +191,7 @@ static void test_status_snapshot(void)
   *ra8_ceu_reg32(k_ra8_ceu_off_cetcr) = (uint32_t)k_ra8_ceu_evt_cpe;
   *ra8_ceu_reg32(k_ra8_ceu_off_cstsr) =
     (uint32_t)k_ra8_ceu_cstsr_mask_cpton | (uint32_t)k_ra8_ceu_cstsr_mask_cpfld;
-  *ra8_ceu_reg32(k_ra8_ceu_off_cdssr) = k_ceu_config_val_200;
+  *ra8_ceu_reg32(k_ra8_ceu_off_cdssr) = k_ceu_probe_cdssr_small;
 
   ra8_ceu_status_t st = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_status_snapshot(&st));
@@ -212,7 +213,7 @@ static void test_data_size_get(void)
 {
   TEST_BEGIN("ceu data_size_get");
   prep();
-  *ra8_ceu_reg32(k_ra8_ceu_off_cdssr) = k_ceu_config_sentinel_cafe0000;
+  *ra8_ceu_reg32(k_ra8_ceu_off_cdssr) = k_ceu_probe_cdssr_wide;
   uint32_t bytes                      = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_data_size_get(&bytes));
   TEST_ASSERT_EQ(0xCAFE0000UL, bytes);

@@ -30,7 +30,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_gfx_blit_gray4_fill_sentinel_aa = 0xAA,
+  k_gfx_fill_sentinel =
+    0xAA, /**< Value the framebuffer is pre-filled with, so any pixel the blit failed to touch is still recognisable. */
 } gfx_blit_gray4_uint8_const_t;
 
 /**
@@ -167,7 +168,7 @@ static void test_blit_gray4_clips_at_edges(void)
   TEST_BEGIN("gray4 blit clamps to image + clips to framebuffer");
   /* (a) Sub-rect runs off the RIGHT image edge: sx=2,sw=4 -> only x=2,3 exist. */
   rebind_argb();
-  fill_sentinel(k_gfx_blit_gray4_fill_sentinel_aa);
+  fill_sentinel(k_gfx_fill_sentinel);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_blit_gray4_zoom(k_g4_ramp4x4, 4, 4, 2, 0, 4, 1, 1, 0, 0));
   TEST_ASSERT_EQ(0x22, px_gray(0, 0)); /* source (2,0) = flat 2     */
   TEST_ASSERT_EQ(0x33, px_gray(1, 0)); /* source (3,0) = flat 3     */
@@ -175,7 +176,7 @@ static void test_blit_gray4_clips_at_edges(void)
 
   /* (b) Destination runs off the RIGHT framebuffer edge: only x=14,15 land. */
   rebind_argb();
-  fill_sentinel(k_gfx_blit_gray4_fill_sentinel_aa);
+  fill_sentinel(k_gfx_fill_sentinel);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gfx_blit_gray4_zoom(k_g4_ramp4x4, 4, 4, 0, 0, 4, 1, 1, k_test_g4_fb_w - 2, 0));
   TEST_ASSERT_EQ(0x00, px_gray(14, 0)); /* source (0,0) = flat 0                       */

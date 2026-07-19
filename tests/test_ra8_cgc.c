@@ -25,7 +25,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_cgc_ctx_val_cafe = 0xCAFE,
+  k_cgc_ctx_token =
+    0xCAFE, /**< Token handed to the callback and checked on the way back, proving the context pointer survives. */
 } cgc_uint16_const_t;
 
 typedef enum : uint8_t {
@@ -349,7 +350,7 @@ static void test_stop_detection_arm_and_fire(void)
   s_ostd_count    = 0;
   s_ostd_last_val = 0;
 
-  int32_t ctx_val = k_cgc_ctx_val_cafe;
+  int32_t ctx_val = k_cgc_ctx_token;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cgc_enable_stop_detection(nullptr, &ctx_val));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cgc_enable_stop_detection(stub_ostd_handler, &ctx_val));
 

@@ -36,7 +36,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_board_ek_ra8d2_out_len_aa = 0xAAU,
+  k_board_poison_len =
+    0xAAU, /**< Poison written into a length out-parameter, so a call that fails without setting it is detectable. */
 } board_ek_ra8d2_uint8_const_t;
 
 static void reset_board_hal_state(void)
@@ -502,11 +503,11 @@ static void test_uart_console_read_validates(void)
 {
   TEST_BEGIN("uart_console_read validates args + state");
   uint8_t buf[4]  = {};
-  size_t  out_len = k_board_ek_ra8d2_out_len_aa;
+  size_t  out_len = k_board_poison_len;
   /* NULL out_len always rejected. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_uart_console_read(buf, sizeof(buf), nullptr));
   /* cap == 0 is a successful no-op (and zeroes *out_len). */
-  out_len = k_board_ek_ra8d2_out_len_aa;
+  out_len = k_board_poison_len;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_board_uart_console_read(nullptr, 0U, &out_len));
   TEST_ASSERT_EQ(0, out_len);
   /* NULL buffer with non-zero cap -> invalid_arg. */

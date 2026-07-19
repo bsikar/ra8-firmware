@@ -36,7 +36,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ble_security_cov_count_ff = 0xFFU,
+  k_ble_sec_poison_out =
+    0xFFU, /**< Poison written into a count out-parameter, so a call that fails without setting it is detectable. */
 } ble_security_cov_uint8_const_t;
 
 /** @brief Test hook -- forces the internal bond count without a store. */
@@ -190,12 +191,12 @@ static void test_clear_bonds_initialized(void)
   init_with(k_ra8_ble_io_cap_no_input_no_out);
   /* Seed a non-zero count so the reset-to-zero postcondition is observable. */
   ra8_ble_security_test_set_bond_count(3U);
-  uint8_t count = k_ble_security_cov_count_ff;
+  uint8_t count = k_ble_sec_poison_out;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_security_bond_count(&count));
   TEST_ASSERT_EQ(3U, count);
   /* Clear -> host leg zeroes the mirror. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_security_clear_bonds());
-  count = k_ble_security_cov_count_ff;
+  count = k_ble_sec_poison_out;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_security_bond_count(&count));
   TEST_ASSERT_EQ(0U, count);
   TEST_END("test_clear_bonds_initialized");

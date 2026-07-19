@@ -33,7 +33,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint64_t {
-  k_lpm_wake_matrix_demo_cause_deadbeefcafebabe = 0xDEADBEEFCAFEBABEULL,
+  k_lpm_poison_cause =
+    0xDEADBEEFCAFEBABEULL, /**< Poison written into the 64-bit wake-cause out-parameter; both halves are non-zero, so a call that set only one is detectable. */
 } lpm_wake_matrix_demo_uint64_const_t;
 
 /** @brief Bit-cast widths used for packing WUPEN1 into the high word. */
@@ -147,7 +148,7 @@ static void test_lpm_wake_disarm_all(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_clear_wupen1_bits(0xFFFFFFFFUL));
   TEST_ASSERT_EQ(0U, *ra8_lpm_icu_reg32(k_ra8_lpm_wupen0_off));
   TEST_ASSERT_EQ(0U, *ra8_lpm_icu_reg32(k_ra8_lpm_wupen1_off));
-  uint64_t cause = k_lpm_wake_matrix_demo_cause_deadbeefcafebabe;
+  uint64_t cause = k_lpm_poison_cause;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_get_exit_cause(&cause));
   TEST_ASSERT_EQ(0U, cause);
   TEST_END("lpm_wake_matrix_demo: disarm all");

@@ -23,7 +23,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_gfx_text_val_64 = 64U,
+  k_gfx_fb_side =
+    64U, /**< Side of the square framebuffer, in pixels; it holds side x side x 4 bytes. */
 } gfx_text_uint8_const_t;
 
 typedef enum : uint16_t {
@@ -58,7 +59,7 @@ typedef enum : int32_t {
   k_test_clip_in  = 12, /**< A pixel inside the clip rect. */
 } test_clip_t;
 
-static uint8_t s_fb[k_gfx_text_val_64 * k_gfx_text_val_64 * 4U];
+static uint8_t s_fb[k_gfx_fb_side * k_gfx_fb_side * 4U];
 
 /**
  * @brief Byte offset of RGB565 pixel (@p x, @p y) in s_fb.

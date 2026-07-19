@@ -57,7 +57,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_flash_config_cov_count_ffffffff = 0xFFFFFFFFUL,
+  k_flash_poison_out =
+    0xFFFFFFFFUL, /**< Poison written into a count out-parameter, so a call that fails without setting it is detectable. */
 } flash_config_cov_uint32_const_t;
 
 /**
@@ -204,7 +205,7 @@ static void test_arc_read_sec_counts_bits(void)
   arc_seed_sec_word(0U, (uint32_t)k_seed_sec_w0);
   arc_seed_sec_word(1U, (uint32_t)k_seed_sec_w1);
 
-  uint32_t count = k_flash_config_cov_count_ffffffff;
+  uint32_t count = k_flash_poison_out;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_arc_read(k_ra8_flash_arc_sec, &count));
   TEST_ASSERT_EQ(k_seed_sec_count, count);
   TEST_END("flash arc_read SEC counts bits");

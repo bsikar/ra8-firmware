@@ -32,14 +32,15 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_epub_u_20 = 20,
+  k_fuzz_input_cap_log2 =
+    20, /**< Log2 of the largest input this harness accepts; longer cases are dropped so a run stays bounded. */
 } epub_uint8_const_t;
 
 static ra8_epub_book_t s_book;
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-  if (size == 0U || size > (1U << k_epub_u_20)) {
+  if (size == 0U || size > (1U << k_fuzz_input_cap_log2)) {
     return 0;
   }
   ra8_epub_mem_media_t media = {.data = data, .size = size};

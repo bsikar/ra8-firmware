@@ -53,7 +53,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_display_pal_aligned_64 = 64,
+  k_fb_alignment_bytes =
+    64, /**< Framebuffer alignment the display controller requires, in bytes. */
 } display_pal_uint8_const_t;
 
 /**
@@ -66,7 +67,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_display_pal_width_px_4097 = 4097U,
+  k_pal_width_over_max =
+    4097U, /**< A panel width one past the largest the controller supports, so configuration must reject it. */
 } display_pal_uint16_const_t;
 
 /* =============================================================================
@@ -86,7 +88,7 @@ typedef enum : uint32_t {
 
 /* Static framebuffer the LCD and e-ink backends share -- one test
  * deinits before the next inits so the state machine resets. */
-[[gnu::aligned(k_display_pal_aligned_64)]] static uint16_t s_test_fb[k_test_fb_pixels];
+[[gnu::aligned(k_fb_alignment_bytes)]] static uint16_t s_test_fb[k_test_fb_pixels];
 
 /* IT8951 descriptor the board BSP would supply through panel_timing,
  * sized to the test framebuffer. In host tests this drives the
@@ -667,7 +669,7 @@ static void test_eink_validate_cfg_rejections(void)
 
   /* width beyond the bounded conversion line buffer -> invalid_arg. */
   display_cfg_t cfg_wide = make_eink_cfg();
-  cfg_wide.width_px      = k_display_pal_width_px_4097;
+  cfg_wide.width_px      = k_pal_width_over_max;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, k_display_backend_eink_it8951.init(&cfg_wide, &ctx));
 
   /* BSP omitted the IT8951 descriptor -> invalid_arg. */

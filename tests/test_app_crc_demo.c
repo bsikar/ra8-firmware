@@ -32,7 +32,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_crc_demo_got_deadbeef = 0xDEADBEEFUL,
+  k_crc_poison_out =
+    0xDEADBEEFUL, /**< Poison written into the result out-parameter, so a call that fails without setting it is detectable. */
 } crc_demo_uint32_const_t;
 
 typedef enum : uint32_t {
@@ -123,7 +124,7 @@ static void test_crc_app_compute_drives_dor(void)
   TEST_BEGIN("crc_demo: compute applies IEEE seed + xor-out");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_crc_init(k_ra8_crc_poly_32_ieee802_3));
   ra8_crc_reset();
-  uint32_t got = k_crc_demo_got_deadbeef;
+  uint32_t got = k_crc_poison_out;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_crc_compute(k_t_crc_payload, (uint32_t)k_t_crc_payload_n, &got));
   TEST_ASSERT_EQ(0U, got);
   TEST_END("crc_demo: compute applies IEEE seed + xor-out");

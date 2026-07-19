@@ -79,8 +79,10 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_board_ek_ra8d2_comms_cov_out_len_aa = 0xAAU,
-  k_board_ek_ra8d2_comms_cov_val_ff     = 0xFFU,
+  k_board_poison_len =
+    0xAAU, /**< Poison written into a length out-parameter, so a call that fails without setting it is detectable. */
+  k_sys_oscsf_all_ready =
+    0xFFU, /**< Every oscillator-stabilisation flag set, so clock bring-up sees all sources ready. */
 } board_ek_ra8d2_comms_cov_uint8_const_t;
 
 /* -------------------------------------------------------------------------
@@ -130,7 +132,7 @@ static void reset_state(void)
  */
 static void cgc_init_with_oscsf_preseed(void)
 {
-  *ra8_sys_oscsf() = (uint8_t)k_board_ek_ra8d2_comms_cov_val_ff;
+  *ra8_sys_oscsf() = (uint8_t)k_sys_oscsf_all_ready;
   (void)ra8_cgc_init();
 }
 
@@ -450,7 +452,7 @@ static void test_uart_console_read_no_byte_available(void)
       (const volatile void*)&ra8_sci((uint8_t)k_ra8_board_uart_console_sci_channel)->CSR));
 
   uint8_t         buf[4]  = {};
-  size_t          out_len = k_board_ek_ra8d2_comms_cov_out_len_aa;
+  size_t          out_len = k_board_poison_len;
   const ra8_err_t err     = ra8_board_uart_console_read(buf, 1U, &out_len);
   TEST_ASSERT_EQ(k_ra8_ok, err);
   TEST_ASSERT_EQ(0U, out_len);
@@ -501,7 +503,7 @@ static void test_uart_console_read_byte_available(void)
   volatile r_sci_regs_t* sci_reg = ra8_sci((uint8_t)k_ra8_board_uart_console_sci_channel);
   sci_reg->CSR                   = (uint32_t)(1U << (uint8_t)k_ra8_sci_csr_bit_rdrf);
 
-  uint8_t         buf[2]  = {k_board_ek_ra8d2_comms_cov_val_ff, k_board_ek_ra8d2_comms_cov_val_ff};
+  uint8_t         buf[2]  = {k_sys_oscsf_all_ready, k_sys_oscsf_all_ready};
   size_t          out_len = 0U;
   const ra8_err_t err     = ra8_board_uart_console_read(buf, 1U, &out_len);
   TEST_ASSERT_EQ(k_ra8_ok, err);

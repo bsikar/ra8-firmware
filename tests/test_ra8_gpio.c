@@ -30,7 +30,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_gpio_irqcr_ff = 0xFFU,
+  k_gpio_poison_irqcr =
+    0xFFU, /**< Poison written into the IRQCR out-parameter, so a read that fails without setting it is detectable. */
 } gpio_uint8_const_t;
 
 /**
@@ -789,7 +790,7 @@ static void test_gpio_detach_irq_happy(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gpio_detach_irq(pin, (uint8_t)k_ra8_gpio_test_irq_num));
   TEST_ASSERT(!ra8_pin_validator_is_claimed(pin));
 
-  uint8_t irqcr = k_gpio_irqcr_ff;
+  uint8_t irqcr = k_gpio_poison_irqcr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_icu_read_irqcr((uint8_t)k_ra8_gpio_test_irq_num, &irqcr));
   TEST_ASSERT_EQ(0, irqcr);
   TEST_END("gpio detach_irq happy");

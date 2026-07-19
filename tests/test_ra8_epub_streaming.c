@@ -54,8 +54,9 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_epub_streaming_i_31     = 31U,
-  k_epub_streaming_size_100 = 100U,
+  k_epub_filler_stride =
+    31U, /**< Stride of the filler generator; prime, so the filler does not repeat inside a deflate window. */
+  k_epub_entry_bytes = 100U, /**< Declared size of the streamed entry. */
 } epub_streaming_uint8_const_t;
 
 /* ---------------------------------------------------------------------------
@@ -167,7 +168,7 @@ static const char* const k_cover = "COVER-IMAGE-BYTES";
 static void build_big_epub(void)
 {
   for (size_t i = 0U; i < (size_t)k_filler_bytes; ++i) {
-    s_filler[i] = (uint8_t)((i * k_epub_streaming_i_31) +
+    s_filler[i] = (uint8_t)((i * k_epub_filler_stride) +
                             (i >> 3U)); /* varied, so it is not trivially compressible */
   }
   mz_zip_archive zip;
@@ -335,9 +336,8 @@ static void assert_chapters(ra8_epub_book_t* book)
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
  */
-static void stream_check_same_spine(ra8_epub_book_t* book,
-                                    ra8_epub_book_t* resident,
-                                    uint16_t*        count)
+static void
+stream_check_same_spine(ra8_epub_book_t* book, ra8_epub_book_t* resident, uint16_t* count)
 {
   uint16_t cs = 0U;
   uint16_t cr = 0U;
@@ -365,9 +365,8 @@ static void stream_check_same_spine(ra8_epub_book_t* book,
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
  */
-static void stream_check_chapters_identical(ra8_epub_book_t* book,
-                                            ra8_epub_book_t* resident,
-                                            uint16_t         count)
+static void
+stream_check_chapters_identical(ra8_epub_book_t* book, ra8_epub_book_t* resident, uint16_t count)
 {
   for (uint16_t i = 0U; i < count; ++i) {
     uint8_t a[k_chapter_max] = {};
@@ -675,14 +674,14 @@ static void test_vmem_stream_guards(void)
   ra8_vmem_stream_t bound = {.vm          = &vm,
                              .object_id   = 0U,
                              .frame_bytes = (uint32_t)k_frame_bytes,
-                             .size        = k_epub_streaming_size_100};
+                             .size        = k_epub_entry_bytes};
   TEST_ASSERT_EQ(0U, ra8_vmem_stream_read(&bound, 0U, nullptr, sizeof(buf))); /* NULL buf */
   TEST_ASSERT_EQ(0U, ra8_vmem_stream_read(&bound, 0U, buf, 0U));              /* len 0    */
   TEST_ASSERT_EQ(0U, ra8_vmem_stream_read(&bound, 100U, buf, sizeof(buf)));   /* at EOF   */
   ra8_vmem_stream_t unbound = {.vm          = &vm,
                                .object_id   = 0U,
                                .frame_bytes = 0U,
-                               .size        = k_epub_streaming_size_100};
+                               .size        = k_epub_entry_bytes};
   TEST_ASSERT_EQ(0U, ra8_vmem_stream_read(&unbound, 0U, buf, sizeof(buf))); /* frame_bytes 0 */
 
   TEST_END("ra8_vmem_stream: init + read guards");
