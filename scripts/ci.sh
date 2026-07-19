@@ -147,7 +147,7 @@ RA8_GATE_REGISTRY=(
 # degrade to "nothing to check" -- that reports PASS for work never done.
 require_cmd() {
   local tool="$1" hint="${2:-}"
-  if ! command -v "$tool" > /dev/null 2>&1; then
+  if ! command -v "$tool" >/dev/null 2>&1; then
     echo "ERROR: required tool '$tool' is not on PATH; this gate cannot run." >&2
     [[ -n "$hint" ]] && echo "       $hint" >&2
     return 1
@@ -156,7 +156,7 @@ require_cmd() {
 
 require_python_mod() {
   local mod="$1" hint="${2:-}"
-  if ! python3 -c "import $mod" > /dev/null 2>&1; then
+  if ! python3 -c "import $mod" >/dev/null 2>&1; then
     echo "ERROR: the Python module '$mod' is missing; this gate cannot run." >&2
     [[ -n "$hint" ]] && echo "       $hint" >&2
     return 1
@@ -167,7 +167,7 @@ require_python_mod() {
 # edge cases and produce diffs CI rejects. Absence is a hard failure, not a
 # fallback -- a run under clang-format-18 proves nothing about the gate.
 pick_clang_format() {
-  if command -v clang-format-22 > /dev/null 2>&1; then
+  if command -v clang-format-22 >/dev/null 2>&1; then
     printf 'clang-format-22\n'
     return 0
   fi
@@ -180,9 +180,9 @@ pick_clang_format() {
 }
 
 cpu_count() {
-  if command -v nproc > /dev/null 2>&1; then
+  if command -v nproc >/dev/null 2>&1; then
     nproc
-  elif command -v sysctl > /dev/null 2>&1; then
+  elif command -v sysctl >/dev/null 2>&1; then
     sysctl -n hw.ncpu
   else
     echo 4
@@ -195,9 +195,38 @@ cpu_count() {
 # (ereader_shelf -> ra8_epub + tinyxml2) fail with "fatal error: cstddef";
 # the official ARM toolchain under /opt bundles libstdc++.
 use_pinned_arm_toolchain() {
-  if [[ -x /opt/arm-gnu-toolchain-13.3/bin/arm-none-eabi-gcc ]]; then
-    PATH="/opt/arm-gnu-toolchain-13.3/bin:$PATH"
-    export PATH
+  local candidate
+  for candidate in \
+    "${RA8_ARM_TOOLCHAIN_BIN:-}" \
+    /opt/arm-gnu-toolchain-13.3/bin \
+    "$HOME/opt/arm-gnu-toolchain-13.3/bin"; do
+    if [[ -n "$candidate" && -x "$candidate/arm-none-eabi-gcc" ]]; then
+      PATH="$candidate:$PATH"
+      export PATH
+      return 0
+    fi
+  done
+}
+
+# Fail with the real reason when the arm-gcc on PATH predates Cortex-M85.
+#
+# -mcpu=cortex-m85 needs arm-gcc 12.3+. An older distro package does not say
+# "too old" -- it says `unrecognized -mcpu target: cortex-m85` followed by
+# `missing argument to '-march='`, which reads like a broken build script and
+# sent a previous run hunting the wrong bug. Name the actual problem instead.
+require_arm_gcc_m85() {
+  require_cmd arm-none-eabi-gcc
+  local version
+  version="$(arm-none-eabi-gcc -dumpfullversion 2>/dev/null || echo 0)"
+  if ! arm-none-eabi-gcc -mcpu=cortex-m85 -E - </dev/null >/dev/null 2>&1; then
+    echo "ERROR: the arm-none-eabi-gcc on PATH ($version) does not know" >&2
+    echo "       -mcpu=cortex-m85; this gate cannot run. It needs the pinned" >&2
+    echo "       13.3 toolchain (12.3+ minimum)." >&2
+    echo "       Looked in: \$RA8_ARM_TOOLCHAIN_BIN," >&2
+    echo "                  /opt/arm-gnu-toolchain-13.3/bin," >&2
+    echo "                  \$HOME/opt/arm-gnu-toolchain-13.3/bin" >&2
+    echo "       Point RA8_ARM_TOOLCHAIN_BIN at its bin/ if it lives elsewhere." >&2
+    return 1
   fi
 }
 
@@ -222,23 +251,23 @@ import json, os
 ev = json.load(open(os.environ["GITHUB_EVENT_PATH"]))
 pr = ev.get("pull_request") or {}
 print((pr.get("head") or {}).get("sha") or os.environ.get("GITHUB_SHA") or "")
-' 2> /dev/null || true)"
+' 2>/dev/null || true)"
     base="$(python3 -c '
 import json, os
 ev = json.load(open(os.environ["GITHUB_EVENT_PATH"]))
 pr = ev.get("pull_request") or {}
 print((pr.get("base") or {}).get("sha") or ev.get("before") or "")
-' 2> /dev/null || true)"
+' 2>/dev/null || true)"
   fi
   [[ -z "$head" ]] && head="${GITHUB_SHA:-HEAD}"
 
   # A base absent locally (force-push, shallow clone, the all-zero "new
   # branch" sentinel) is unusable -- fall back rather than error out.
-  if [[ -z "$base" ]] || ! git cat-file -e "${base}^{commit}" 2> /dev/null; then
-    base="$(git rev-parse --verify --quiet '@{upstream}' 2> /dev/null || true)"
+  if [[ -z "$base" ]] || ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
+    base="$(git rev-parse --verify --quiet '@{upstream}' 2>/dev/null || true)"
   fi
-  if [[ -z "$base" ]] || ! git cat-file -e "${base}^{commit}" 2> /dev/null; then
-    base="$(git rev-parse --verify --quiet "${head}~1" 2> /dev/null || true)"
+  if [[ -z "$base" ]] || ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
+    base="$(git rev-parse --verify --quiet "${head}~1" 2>/dev/null || true)"
   fi
 
   if [[ -n "$base" ]]; then
@@ -297,7 +326,7 @@ suite_errexit_selftest() {
   # sets would never reach us (and under `set -u` reading it would abort).
   local probe_log
   probe_log="$(mktemp "${TMPDIR:-/tmp}/ra8-errexit-probe.XXXXXXXX")"
-  run_gate_capture ra8-errexit-probe > "$probe_log" 2>&1
+  run_gate_capture ra8-errexit-probe >"$probe_log" 2>&1
   rc="$RA8_GATE_RC"
   out="$(cat "$probe_log")"
   rm -f "$probe_log"
@@ -374,7 +403,7 @@ gate_no_ai_attribution_commits() (
   echo "Scanning commit messages in: $range"
   for sha in $(git rev-list "$range"); do
     f="$(mktemp)"
-    git log -1 --format=%B "$sha" > "$f"
+    git log -1 --format=%B "$sha" >"$f"
     if ! hook_out="$(CHECK_ONLY=ai bash scripts/git/commit-msg "$f" 2>&1)"; then
       echo "$hook_out"
       echo "::error::Commit $sha carries a forbidden trailer in its message"
@@ -396,8 +425,8 @@ gate_inclusive_terminology_commits() (
   local range
   range="$(ci_commit_range)"
   echo "Scanning commit messages in: $range"
-  git log "$range" --format=%B \
-    | python3 scripts/utils/check_inclusive_terminology_commits.py
+  git log "$range" --format=%B |
+    python3 scripts/utils/check_inclusive_terminology_commits.py
 )
 
 # --- format ---------------------------------------------------------------
@@ -564,11 +593,8 @@ gate_sbom() {
 # only this gate would catch an over-4-arg cmse_nonsecure_entry regression.
 gate_nsc_cmse() (
   set -e
-  # -mcpu=cortex-m85 needs arm-gcc 12.3+; the distro package on some boxes is
-  # older and fails with "unrecognized -mcpu target". Prefer the pinned
-  # toolchain when the runner provides it.
   use_pinned_arm_toolchain
-  require_cmd arm-none-eabi-gcc
+  require_arm_gcc_m85
   bash scripts/utils/check_nsc_cmse.sh
 )
 
@@ -596,7 +622,7 @@ gate_cppcheck() (
     [[ -z "$line" ]] && continue
     case "$line" in \#*) continue ;; esac
     suppress_args+=("--suppress=$line")
-  done < .cppcheck-suppressions
+  done <.cppcheck-suppressions
   cppcheck --enable=warning,style,performance,portability \
     --error-exitcode=1 \
     "${suppress_args[@]}" \
@@ -691,7 +717,7 @@ gate_mcdc() (
     return 1
   fi
   local baseline total_line measured drop
-  baseline="$(tr -d '[:space:]' < "$baseline_file")"
+  baseline="$(tr -d '[:space:]' <"$baseline_file")"
   total_line="$(grep -E '^TOTAL' "$summary" | tail -1 || true)"
   if [[ -z "$total_line" ]]; then
     echo "FAIL: no TOTAL row in $summary" >&2
@@ -801,23 +827,23 @@ gate_docs() (
   #     @retval / @param present in both the public header (canonical) and the
   #     .c definition. Cosmetic, no output impact.
   local relevant_warnings
-  relevant_warnings="$(grep "warning:" "$log" \
-    | grep -v "for .ref command" \
-    | grep -v "multiple documentation sections" \
-    | grep -v "from the argument list of " \
-    | grep -v "multiple @param documentation sections" \
-    | grep -v "has multiple documentation sections" \
-    | grep -v "tag INCLUDE_PATH:" \
-    | grep -v "is not a readable file or directory" \
-    | grep -v "found more than one .mainpage comment block" \
-    | grep -v "ignoring .startuml command because PLANTUML_JAR_PATH is not set" \
-    | grep -v "End of list marker found without any preceding list items" \
-    | grep -v "Invalid list item found" \
-    | grep -v "Found unknown command" \
-    | grep -v "explicit link request to" \
-    | grep -v "argument '.*' of command @param is not found" \
-    | grep -v "found documented return type for .* that does not return anything" \
-    | grep -v "Problems running latex" || true)"
+  relevant_warnings="$(grep "warning:" "$log" |
+    grep -v "for .ref command" |
+    grep -v "multiple documentation sections" |
+    grep -v "from the argument list of " |
+    grep -v "multiple @param documentation sections" |
+    grep -v "has multiple documentation sections" |
+    grep -v "tag INCLUDE_PATH:" |
+    grep -v "is not a readable file or directory" |
+    grep -v "found more than one .mainpage comment block" |
+    grep -v "ignoring .startuml command because PLANTUML_JAR_PATH is not set" |
+    grep -v "End of list marker found without any preceding list items" |
+    grep -v "Invalid list item found" |
+    grep -v "Found unknown command" |
+    grep -v "explicit link request to" |
+    grep -v "argument '.*' of command @param is not found" |
+    grep -v "found documented return type for .* that does not return anything" |
+    grep -v "Problems running latex" || true)"
   if [[ -n "$relevant_warnings" ]]; then
     echo "Doxygen reported warnings:"
     echo "$relevant_warnings"
@@ -890,7 +916,7 @@ gate_mcdc_delta_base() (
   if [[ -f "$tree/build/mcdc-report/summary.txt" ]]; then
     cp "$tree/build/mcdc-report/summary.txt" base-summary.txt
   else
-    : > base-summary.txt
+    : >base-summary.txt
   fi
   git worktree remove --force "$tree" || rm -rf "$tree"
 )
@@ -941,10 +967,10 @@ gate_fuzz_sweep() (
   # is diagnosed in seconds instead of after hours.
   local probe found="" cand
   probe="$(mktemp -d)"
-  printf 'int LLVMFuzzerTestOneInput(const unsigned char* d, unsigned long n);\nint LLVMFuzzerTestOneInput(const unsigned char* d, unsigned long n) { (void)d; (void)n; return 0; }\n' > "$probe/p.c"
+  printf 'int LLVMFuzzerTestOneInput(const unsigned char* d, unsigned long n);\nint LLVMFuzzerTestOneInput(const unsigned char* d, unsigned long n) { (void)d; (void)n; return 0; }\n' >"$probe/p.c"
   for cand in clang clang-22 clang-21 clang-20 clang-19 clang-18 clang-17; do
-    if command -v "$cand" > /dev/null 2>&1 \
-      && "$cand" -fsanitize=fuzzer -o "$probe/p" "$probe/p.c" > /dev/null 2>&1; then
+    if command -v "$cand" >/dev/null 2>&1 &&
+      "$cand" -fsanitize=fuzzer -o "$probe/p" "$probe/p.c" >/dev/null 2>&1; then
       found="$cand"
       break
     fi
@@ -1015,7 +1041,7 @@ list_gates() {
     speed="${rest%%|*}"
     desc="${rest#*|}"
     fn="$(gate_fn_name "$name")"
-    if ! declare -F "$fn" > /dev/null 2>&1; then
+    if ! declare -F "$fn" >/dev/null 2>&1; then
       echo "ERROR: registry lists gate '$name' but no function $fn() exists." >&2
       rc=1
       continue
@@ -1035,7 +1061,7 @@ list_gates() {
 run_one_gate() {
   local name="$1" fn
   fn="$(gate_fn_name "$name")"
-  if ! declare -F "$fn" > /dev/null 2>&1; then
+  if ! declare -F "$fn" >/dev/null 2>&1; then
     echo "ci.sh: unknown gate '$name'. Registered gates:" >&2
     registry_names | sed 's/^/  /' >&2
     return 2
@@ -1131,7 +1157,7 @@ run_suite() {
 # cache, and a cache is exactly the bug.
 run_suite_on_snapshot() {
   local fast="$1" work rc=0
-  if [[ -n "$(git -C "$REPO_ROOT" status --porcelain 2> /dev/null)" ]]; then
+  if [[ -n "$(git -C "$REPO_ROOT" status --porcelain 2>/dev/null)" ]]; then
     echo "NOTE: working tree is dirty -- ci.sh gates committed HEAD only (like" >&2
     echo "      CI). Commit your changes to have them gated." >&2
   fi
@@ -1148,7 +1174,7 @@ run_suite_on_snapshot() {
   git -C "$work" init --quiet
   git -C "$work" add -A
   git -C "$work" -c user.email=ci@localhost -c user.name=ci \
-    commit --quiet --no-verify -m "ci.sh snapshot of HEAD" > /dev/null 2>&1 || true
+    commit --quiet --no-verify -m "ci.sh snapshot of HEAD" >/dev/null 2>&1 || true
   cd "$work"
   run_suite "$fast" || rc=$?
   cd "$REPO_ROOT"
@@ -1159,7 +1185,7 @@ run_suite_on_snapshot() {
 # ARGUMENT PARSING
 # ===========================================================================
 usage() {
-  cat << 'EOF'
+  cat <<'EOF'
 usage: bash scripts/ci.sh [--fast] [--native] [--rebuild]
        bash scripts/ci.sh --gate <name>
        bash scripts/ci.sh --list-gates
@@ -1227,7 +1253,7 @@ fi
 # --- in-container re-entry ------------------------------------------------
 if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
   export HOME=/tmp
-  git config --global --add safe.directory "$REPO_ROOT" > /dev/null 2>&1 || true
+  git config --global --add safe.directory "$REPO_ROOT" >/dev/null 2>&1 || true
   run_suite_on_snapshot "${RA8_CI_FAST:-$fast}"
   exit $?
 fi
@@ -1253,10 +1279,10 @@ fi
 # call is denied inside the nested user namespace. Running podman as root
 # inside that LXC sidesteps the nested namespace, and root there is still
 # unprivileged on the Proxmox host, so the security boundary is unchanged.
-read -r -a RUNTIME_CMD <<< "${RA8_CONTAINER_RUNTIME:-}"
+read -r -a RUNTIME_CMD <<<"${RA8_CONTAINER_RUNTIME:-}"
 if [[ "${#RUNTIME_CMD[@]}" -eq 0 ]]; then
   for candidate in podman docker nerdctl; do
-    if command -v "$candidate" > /dev/null 2>&1; then
+    if command -v "$candidate" >/dev/null 2>&1; then
       RUNTIME_CMD=("$candidate")
       break
     fi
@@ -1284,7 +1310,7 @@ if [[ "${#RUNTIME_CMD[@]}" -eq 0 ]]; then
 fi
 
 RUNTIME_NAME="$(basename "${RUNTIME_CMD[${#RUNTIME_CMD[@]} - 1]}")"
-if ! command -v "${RUNTIME_CMD[0]}" > /dev/null 2>&1; then
+if ! command -v "${RUNTIME_CMD[0]}" >/dev/null 2>&1; then
   echo "error: container runtime '${RUNTIME_CMD[0]}' is not on PATH." >&2
   exit 1
 fi
@@ -1292,17 +1318,17 @@ fi
 # On macOS the project uses colima (no Docker Desktop license). Auto-start it,
 # matching scripts/test-docker.sh. podman on macOS uses its own VM instead.
 if [[ "$(uname -s)" == "Darwin" && "$RUNTIME_NAME" == "docker" ]]; then
-  if ! command -v colima > /dev/null 2>&1; then
+  if ! command -v colima >/dev/null 2>&1; then
     echo "error: colima not on PATH. Install: brew install colima" >&2
     exit 1
   fi
-  if ! colima status > /dev/null 2>&1; then
+  if ! colima status >/dev/null 2>&1; then
     echo "==> starting colima VM (4 CPU, 6 GiB)"
     colima start --cpu 4 --memory 6
   fi
 fi
 
-if ! "${RUNTIME_CMD[@]}" info > /dev/null 2>&1; then
+if ! "${RUNTIME_CMD[@]}" info >/dev/null 2>&1; then
   echo "error: '${RUNTIME_CMD[*]}' is installed but not usable." >&2
   if [[ "$RUNTIME_NAME" == "docker" ]]; then
     echo "  docker daemon not reachable (try: colima start)" >&2
@@ -1315,7 +1341,7 @@ fi
 # Build the devcontainer image. The Dockerfile has no COPY/ADD, so the tiny
 # .devcontainer/ directory is a sufficient build context -- do NOT ship the
 # multi-GB repo (datasheets, build trees) to the daemon as context.
-if [[ "$rebuild" == "1" ]] || ! "${RUNTIME_CMD[@]}" image inspect "$IMAGE_TAG" > /dev/null 2>&1; then
+if [[ "$rebuild" == "1" ]] || ! "${RUNTIME_CMD[@]}" image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
   echo "==> building $IMAGE_TAG from .devcontainer/Dockerfile (runtime: ${RUNTIME_CMD[*]})"
   "${RUNTIME_CMD[@]}" build -t "$IMAGE_TAG" -f "$DOCKERFILE" "$REPO_ROOT/.devcontainer"
 else
