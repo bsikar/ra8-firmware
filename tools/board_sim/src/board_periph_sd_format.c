@@ -152,19 +152,38 @@ void sd_label_field(uint8_t* dst, const char* label)
 }
 
 /** @brief Format an empty FAT16 volume; returns the chosen sectors-per-cluster. */
-uint32_t sd_format_fat16(uint8_t* img, uint32_t total_sectors, const char* label)
+/**
+ * @brief Solve the FAT16 cluster size and FAT length for @p total_sectors.
+ *
+ * @details
+ * Doubles sectors-per-cluster until the cluster count fits under the FAT16
+ * ceiling, recomputing the FAT length each round because the two depend on
+ * each other. Stops at @ref k_fmt_spc_max, the largest cluster the format
+ * allows.
+ *
+ * @param[in]  total_sectors Card size in 512-byte sectors.
+ * @param[in]  root_sectors  Sectors the fixed root directory occupies.
+ * @param[out] fatsz         Receives the per-copy FAT length in sectors.
+ *
+ * @return Sectors per cluster.
+ *
+ * @pre @p fatsz is non-NULL.
+ * @pre @p total_sectors leaves room for the reserved and root regions.
+ * @post The returned cluster size is a power of two, at most k_fmt_spc_max.
+ * @post `*fatsz` covers every cluster the returned size yields.
+ *
+ * @note Thread-safe: pure arithmetic over its arguments.
+ */
+static uint32_t
+fat16_solve_geometry(uint32_t total_sectors, uint32_t root_sectors, uint32_t* fatsz)
 {
-  const uint32_t root_sectors = (((uint32_t)k_fmt_root_ents * (uint32_t)k_bpb_dir_ent_size) +
-                                 ((uint32_t)k_fmt_sec_bytes - 1U)) /
-                                (uint32_t)k_fmt_sec_bytes;
-  uint32_t       spc          = 1U;
-  uint32_t       fatsz        = 1U;
+  uint32_t spc = 1U;
   for (;;) {
     const uint32_t tmp1 = total_sectors - ((uint32_t)k_fmt_resv_f16 + root_sectors);
     const uint32_t tmp2 = ((uint32_t)k_bpb_fat16_div * spc) +
                           (uint32_t)k_bpb_num_fats_val; /* 256 = 512 / 2-byte ent. */
-    fatsz               = (tmp1 + tmp2 - 1U) / tmp2;
-    const uint32_t data = total_sectors - (uint32_t)k_fmt_resv_f16 - (2U * fatsz) - root_sectors;
+    *fatsz              = (tmp1 + tmp2 - 1U) / tmp2;
+    const uint32_t data = total_sectors - (uint32_t)k_fmt_resv_f16 - (2U * *fatsz) - root_sectors;
     const uint32_t clus = data / spc;
     if (clus <= (uint32_t)k_fmt_fat16_max) {
       break;
@@ -175,6 +194,31 @@ uint32_t sd_format_fat16(uint8_t* img, uint32_t total_sectors, const char* label
       break;
     }
   }
+  return spc;
+}
+
+/**
+ * @brief Write the FAT16 BIOS Parameter Block into sector 0 of @p img.
+ *
+ * @param[out] img           Card image.
+ * @param[in]  total_sectors Card size in sectors.
+ * @param[in]  spc           Sectors per cluster.
+ * @param[in]  fatsz         Per-copy FAT length in sectors.
+ * @param[in]  label         Volume label for the boot-sector field.
+ *
+ * @pre @p img covers at least one sector.
+ * @pre @p spc and @p fatsz came from fat16_solve_geometry().
+ * @post The sector count lands in the 16- or 32-bit field as its size requires.
+ * @post The label and "FAT16   " type string are space-padded to width.
+ *
+ * @note Not thread-safe with respect to @p img.
+ */
+static void fat16_write_bpb(uint8_t*    img,
+                            uint32_t    total_sectors,
+                            uint32_t    spc,
+                            uint32_t    fatsz,
+                            const char* label)
+{
   sd_boot_frame(img, "MSDOS5.0");
   sd_put16(&img[k_bpb_bytes_per_sec], (uint16_t)k_fmt_sec_bytes);
   img[k_bpb_sec_per_clus] = (uint8_t)spc;
@@ -195,6 +239,18 @@ uint32_t sd_format_fat16(uint8_t* img, uint32_t total_sectors, const char* label
   sd_put32(&img[k_bpb16_volid], (uint32_t)k_fmt_volid | total_sectors);
   sd_label_field(&img[k_bpb16_vol_label], label);
   (void)memcpy(&img[k_bpb16_fstype], "FAT16   ", (size_t)k_bpb_fstype_len);
+}
+
+uint32_t sd_format_fat16(uint8_t* img, uint32_t total_sectors, const char* label)
+{
+  const uint32_t root_sectors = (((uint32_t)k_fmt_root_ents * (uint32_t)k_bpb_dir_ent_size) +
+                                 ((uint32_t)k_fmt_sec_bytes - 1U)) /
+                                (uint32_t)k_fmt_sec_bytes;
+  uint32_t       fatsz        = 1U;
+  const uint32_t spc          = fat16_solve_geometry(total_sectors, root_sectors, &fatsz);
+
+  fat16_write_bpb(img, total_sectors, spc, fatsz, label);
+
   /* FAT[0] media + FAT[1] EOC, in both FAT copies. */
   for (uint32_t f = 0U; f < (uint32_t)k_bpb_num_fats_val; f++) {
     uint8_t* fat =
