@@ -243,7 +243,6 @@ static uint32_t lt_golden_rfield(uint32_t r, ra8_npu_blob_rdesc_t field)
 /**
  * @brief Byte-pin the extracted SE55 add-constant command stream.
  * @param[in] job The loaded NPU job whose cmd_stream is inspected.
- * @return None.
  * @pre @p job was produced by ra8_npu_load over the golden blob.
  * @post Every command-stream word matched its expected value.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -278,7 +277,6 @@ static void lt_check_cmd_stream(const ra8_npu_job_t* job)
  * @brief Assert the output arena holds input + K byte-for-byte.
  * @param[in] blob  The golden model blob.
  * @param[in] i_off Byte offset of the baked input region within @p blob.
- * @return None.
  * @pre The job has run and mirrored its output into s_arena.
  * @post Every output byte equals (input + K) & 0xFF.
  * @note Not thread-safe; single-threaded host-test helper.

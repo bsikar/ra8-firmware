@@ -27,15 +27,15 @@
  * device-to-device request.
  */
 typedef enum : uint16_t {
-  k_t_bmreq_class_out = 0x21U,   /**< Host-to-device, class, interface.       */
-  k_t_bmreq_class_in  = 0xA1U,   /**< Device-to-host, class, interface.       */
-  k_t_bmreq_std_in    = 0x80U,   /**< Device-to-host, standard, device.       */
-  k_t_breq_unknown    = 0xFFU,   /**< A bRequest outside the HID set, which the
+  k_t_bmreq_class_out  = 0x21U,   /**< Host-to-device, class, interface.       */
+  k_t_bmreq_class_in   = 0xA1U,   /**< Device-to-host, class, interface.       */
+  k_t_bmreq_std_in     = 0x80U,   /**< Device-to-host, standard, device.       */
+  k_t_breq_unknown     = 0xFFU,   /**< A bRequest outside the HID set, which the
                                       class must stall; also the poison value
                                       seeded into the idle-rate out-parameter.  */
-  k_t_idle_duration   = 0x0AU,   /**< SET_IDLE duration, in 4 ms units: 10.   */
-  k_t_wvalue_dev_desc = 0x0100U, /**< wValue 0x0100: descriptor type 1, index 0. */
-  k_t_wlength_dev_desc = 18U,    /**< Device-descriptor length, bytes.        */
+  k_t_idle_duration    = 0x0AU,   /**< SET_IDLE duration, in 4 ms units: 10.   */
+  k_t_wvalue_dev_desc  = 0x0100U, /**< wValue 0x0100: descriptor type 1, index 0. */
+  k_t_wlength_dev_desc = 18U,     /**< Device-descriptor length, bytes.        */
 } t_phid_setup_t;
 
 /**
@@ -432,7 +432,7 @@ static void test_handle_setup_rejects_standard(void)
 
   ra8_usb_setup_t setup = {
     .bm_request_type = (uint8_t)k_t_bmreq_std_in, /* standard | device | IN */
-    .b_request       = (uint8_t)0x06U,                         /* GET_DESCRIPTOR         */
+    .b_request       = (uint8_t)0x06U,            /* GET_DESCRIPTOR         */
     .w_value         = (uint16_t)k_t_wvalue_dev_desc,
     .w_index         = 0U,
     .w_length        = k_t_wlength_dev_desc,
@@ -531,7 +531,6 @@ static const uint8_t s_dummy_desc_b[8] = {};
 
 /**
  * @brief MC/DC decision A: init speed gate, then re-init at FS for the rest.
- * @return None.
  * @pre None.
  * @post FS/HS accept, the bad speed rejects, and the device is left at FS.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -552,7 +551,6 @@ static void phid_mcdc_init(void)
 
 /**
  * @brief MC/DC decisions C + D: the send_report null/length envelope.
- * @return None.
  * @pre The device is initialised.
  * @post Each C/D vector returned (or avoided) invalid_arg as documented.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -582,7 +580,6 @@ static void phid_mcdc_send_report(void)
 
 /**
  * @brief MC/DC decisions E + F: the handle_setup envelope and request-code chain.
- * @return None.
  * @pre The device is initialised.
  * @post Each envelope and request-code vector returned its documented code.
  * @note Not thread-safe; single-threaded host-test helper.

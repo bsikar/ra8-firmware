@@ -599,13 +599,10 @@ static void test_mcdc_internal_capture_line_guard(void)
 {
   TEST_BEGIN("modem_at MC/DC: internal_capture_line guard OR");
   char   buf[k_t_capture_cap] = {};
-  size_t used                        = 0U;
+  size_t used                 = 0U;
 
   /* V1: capture=NULL -> short-circuit (no crash, used unchanged). */
-  ra8_modem_at_internal_capture_line("hi",
-                                     nullptr,
-                                     k_t_capture_cap,
-                                     &used);
+  ra8_modem_at_internal_capture_line("hi", nullptr, k_t_capture_cap, &used);
   TEST_ASSERT_EQ(0, used);
 
   /* V2: capture valid but capture_len==0 -> early return. */

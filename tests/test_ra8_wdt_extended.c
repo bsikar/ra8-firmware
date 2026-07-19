@@ -19,9 +19,8 @@
  * @brief Out-parameter seeds and the status pattern staged in WDTSR.
  */
 typedef enum : uint16_t {
-  k_t_u8_unset      = 0xFFU,   /**< Pre-set 8-bit out-parameter: a supervisor
-                                    slot, and a timeout selector past the defined
-                                    set that the validator must reject.           */
+  k_t_u8_unset      = 0xFFU,   /**< Pre-set 8-bit out-parameter: a supervisor slot,
+                                    and a timeout selector past the defined set.  */
   k_t_count_unset   = 0xFFFFU, /**< Pre-set 16-bit counter read-back.           */
   k_t_wdtsr_refresh = 0x0100U, /**< WDTSR with the refresh-error bit set, which
                                     the status decoder must report.               */

@@ -120,7 +120,7 @@ static void test_memzero_clears_and_guards(void)
 {
   TEST_BEGIN("ra8_secure_memzero: clears buffer + NULL/zero-length guards");
 
-  uint8_t buf[k_ct_buf_len] = {1U, 2U, 3U, 4U, k_t_ref_b4, 6U, k_t_ref_b6, 8U};
+  uint8_t       buf[k_ct_buf_len]  = {1U, 2U, 3U, 4U, k_t_ref_b4, 6U, k_t_ref_b6, 8U};
   const uint8_t zero[k_ct_buf_len] = {};
   ra8_secure_memzero(buf, (size_t)k_ct_buf_len);
   TEST_ASSERT(ra8_ct_equal(buf, zero, (size_t)k_ct_buf_len));
@@ -135,9 +135,8 @@ static void test_memzero_clears_and_guards(void)
 
   /* NULL pointer and zero length are both no-ops (no crash, no change). */
   ra8_secure_memzero(nullptr, (size_t)k_ct_buf_len);
-  const uint8_t orig[k_ct_buf_len] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
-  uint8_t       unchanged[k_ct_buf_len] =
-    {1U, 2U, 3U, 4U, k_t_ref_b4, 6U, k_t_ref_b6, 8U};
+  const uint8_t orig[k_ct_buf_len]      = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
+  uint8_t       unchanged[k_ct_buf_len] = {1U, 2U, 3U, 4U, k_t_ref_b4, 6U, k_t_ref_b6, 8U};
   ra8_secure_memzero(unchanged, 0U);
   TEST_ASSERT(ra8_ct_equal(unchanged, orig, (size_t)k_ct_buf_len));
 

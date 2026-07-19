@@ -121,8 +121,8 @@ static void test_layout_stack(void)
   mock_ctx_t   c2    = {};
   ra8_widget_t ws[3] = {
     make_widget(&c0, k_t_track_tall, 0, 1), /* fixed 64 high   */
-    make_widget(&c1, 0, 1, 2),                       /* flex fills rest */
-    make_widget(&c2, k_t_track_mid, 0, 3), /* fixed 48 high   */
+    make_widget(&c1, 0, 1, 2),              /* flex fills rest */
+    make_widget(&c2, k_t_track_mid, 0, 3),  /* fixed 48 high   */
   };
   ra8_box_t           scratch[8];
   const ra8_ui_rect_t frame = {.x = 0, .y = 0, .w = 100, .h = 300};
@@ -166,7 +166,8 @@ static void test_dispatch_touch(void)
   mock_ctx_t   c1    = {.consume = true};
   ra8_widget_t ws[2] = {make_widget(&c0, 0, 0, 1), make_widget(&c1, 0, 0, 2)};
   ws[0].rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_square_side, .h = k_t_square_side};
-  ws[1].rect = (ra8_ui_rect_t){.x = k_t_square_side, .y = 0, .w = k_t_square_side, .h = k_t_square_side};
+  ws[1].rect =
+    (ra8_ui_rect_t){.x = k_t_square_side, .y = 0, .w = k_t_square_side, .h = k_t_square_side};
 
   bool                     handled = false;
   const ra8_widget_event_t touch1  = {.kind = k_ra8_widget_ev_touch, .x = 60, .y = 10};
@@ -238,8 +239,7 @@ static void test_invalidate_damage(void)
   mock_ctx_t   c1    = {};
   ra8_widget_t ws[2] = {make_widget(&c0, 0, 0, 1), make_widget(&c1, 0, 0, 2)};
   ws[0].rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_pane_w, .h = k_t_pane_h};
-  ws[1].rect =
-    (ra8_ui_rect_t){.x = 0, .y = k_t_second_pane_y, .w = k_t_pane_w, .h = k_t_pane_h};
+  ws[1].rect = (ra8_ui_rect_t){.x = 0, .y = k_t_second_pane_y, .w = k_t_pane_w, .h = k_t_pane_h};
 
   ra8_ui_rect_t        rect = {};
   ra8_widget_refresh_t hint = k_ra8_widget_refresh_quality;
@@ -403,8 +403,11 @@ static void test_widget_remaining_mcdc(void)
   ra8_widget_t wdi = make_widget(&cdi, 0, 0, 1);
   wdi.rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_short_w, .h = k_t_short_h};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_invalidate(&wdi, k_ra8_widget_refresh_quality));
-  wdi.visible       = false; /* dirty == true, visible == false */
-  ra8_ui_rect_t dmg = {.x = k_t_damage_inside, .y = k_t_damage_inside, .w = k_t_damage_inside, .h = k_t_damage_inside};
+  wdi.visible               = false; /* dirty == true, visible == false */
+  ra8_ui_rect_t        dmg  = {.x = k_t_damage_inside,
+                               .y = k_t_damage_inside,
+                               .w = k_t_damage_inside,
+                               .h = k_t_damage_inside};
   ra8_widget_refresh_t hint = k_ra8_widget_refresh_quality;
   uint16_t             n    = k_t_count_poison;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_damage(&wdi, 1U, &dmg, &hint, &n));
@@ -419,7 +422,10 @@ static void test_widget_remaining_mcdc(void)
   handled                     = true;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_dispatch(nullptr, 0U, &ev, &handled));
   TEST_ASSERT_EQ(false, handled);
-  dmg = (ra8_ui_rect_t){.x = k_t_damage_small, .y = k_t_damage_small, .w = k_t_damage_small, .h = k_t_damage_small};
+  dmg  = (ra8_ui_rect_t){.x = k_t_damage_small,
+                         .y = k_t_damage_small,
+                         .w = k_t_damage_small,
+                         .h = k_t_damage_small};
   hint = k_ra8_widget_refresh_quality;
   n    = k_t_count_poison;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_damage(nullptr, 0U, &dmg, &hint, &n));
@@ -683,11 +689,9 @@ static void test_widget_damage_empty_union(void)
   mock_ctx_t   c0    = {};
   mock_ctx_t   c1    = {};
   ra8_widget_t ws[2] = {make_widget(&c0, 0, 0, 1), make_widget(&c1, 0, 0, 2)};
-  ws[0].rect         = (ra8_ui_rect_t){.x = k_t_origin_x,
-                                       .y = k_t_origin_y,
-                                       .w = k_t_pane_w,
-                                       .h = k_t_pane_h};
-  ws[1].rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 0, .h = 0}; /* covers no pixels */
+  ws[0].rect =
+    (ra8_ui_rect_t){.x = k_t_origin_x, .y = k_t_origin_y, .w = k_t_pane_w, .h = k_t_pane_h};
+  ws[1].rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 0, .h = 0}; /* covers no pixels */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_invalidate(&ws[0], k_ra8_widget_refresh_fast));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_invalidate(&ws[1], k_ra8_widget_refresh_fast));
 
@@ -773,7 +777,7 @@ static void test_panel_layout_fail(void)
   ra8_widget_t       w     = {};
   w.vt                     = ra8_widget_panel_vtable(); /* hand-bound: init would reject box_cap */
   w.ctx                    = &small;
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_pane_w, .h = k_t_square_side};
+  w.rect                   = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_pane_w, .h = k_t_square_side};
 
   /* compose forwards the layout failure (damage / render never run). */
   ra8_ui_rect_t        dmg   = {};

@@ -108,12 +108,12 @@ static float numf(const char* s)
 static void test_svgp_numf_scanner_mcdc(void)
 {
   TEST_BEGIN("ra8_svgp_numf: separator-skip and digit-scan terminators");
-  TEST_ASSERT(numf("") == 0.0F);                             /* Dec A V1: C1 false          */
-  TEST_ASSERT(numf(" 5") == k_t_expect_five);   /* Dec A V2: whitespace skip   */
-  TEST_ASSERT(numf(",5") == k_t_expect_five);   /* Dec A V3: comma skip (C3)   */
-  TEST_ASSERT(numf("5") == k_t_expect_five);    /* Dec A V4 / Dec B C2,C3 true */
-  TEST_ASSERT(numf("5)") == k_t_expect_five);   /* Dec B C2 false (')' < '0')  */
-  TEST_ASSERT(numf("5a") == k_t_expect_five);   /* Dec B C3 false ('a' > '9')  */
+  TEST_ASSERT(numf("") == 0.0F);                  /* Dec A V1: C1 false          */
+  TEST_ASSERT(numf(" 5") == k_t_expect_five);     /* Dec A V2: whitespace skip   */
+  TEST_ASSERT(numf(",5") == k_t_expect_five);     /* Dec A V3: comma skip (C3)   */
+  TEST_ASSERT(numf("5") == k_t_expect_five);      /* Dec A V4 / Dec B C2,C3 true */
+  TEST_ASSERT(numf("5)") == k_t_expect_five);     /* Dec B C2 false (')' < '0')  */
+  TEST_ASSERT(numf("5a") == k_t_expect_five);     /* Dec B C3 false ('a' > '9')  */
   TEST_ASSERT(numf("-3.5") < -k_t_below_neg_3p4); /* sign + fraction arms        */
   TEST_END("ra8_svgp_numf: separator-skip and digit-scan terminators");
 }

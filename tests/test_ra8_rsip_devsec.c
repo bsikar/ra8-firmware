@@ -40,8 +40,8 @@
  * @brief Buffer capacities for the device-secret and signature arms, in bytes.
  */
 typedef enum : uint16_t {
-  k_t_blob_cap    = 64U,   /**< Wrapped-blob and round-trip scratch.          */
-  k_t_sig_cap     = 256U,  /**< Signature and ciphertext scratch.             */
+  k_t_blob_cap     = 64U,   /**< Wrapped-blob and round-trip scratch.          */
+  k_t_sig_cap      = 256U,  /**< Signature and ciphertext scratch.             */
   k_t_rsa_key_bits = 4096U, /**< RSA modulus size; the signature buffer is this
                                  divided by 8.                                  */
 } t_devsec_len_t;
@@ -169,15 +169,15 @@ static void test_rsa_engine_error_paths(void)
                  ra8_rsip_rsa_sign(&key, k_ra8_rsip_rsa_2048, digest, sizeof(digest), sig));
 
   const uint8_t pt[256]                    = {};
-  uint8_t       ct[k_t_sig_cap]  = {};
+  uint8_t       ct[k_t_sig_cap]            = {};
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_ret) = 1U;
   TEST_ASSERT_EQ(
     k_ra8_err_hw_error,
     ra8_rsip_rsa_encrypt(&key, k_ra8_rsip_rsa_2048, k_ra8_rsip_rsa_pad_oaep, pt, sizeof(pt), ct));
 
-  uint8_t  recovered[k_t_sig_cap] = {};
-  uint32_t recovered_len                    = 0U;
-  *ra8_rsip_reg32(k_ra8_rsip_off_mbox_ret)  = 1U;
+  uint8_t  recovered[k_t_sig_cap]          = {};
+  uint32_t recovered_len                   = 0U;
+  *ra8_rsip_reg32(k_ra8_rsip_off_mbox_ret) = 1U;
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
                  ra8_rsip_rsa_decrypt(&key,
                                       k_ra8_rsip_rsa_2048,
@@ -291,7 +291,7 @@ static void test_kv(void)
   /* Read decode: stage the word the engine would present on KV_DATA
    * and verify the driver's real 16-word drain + LE unpack. */
   *ra8_rsip_reg32(k_ra8_rsip_off_kv_data) = (uint32_t)k_ra8_rsip_test_kv_fill_w;
-  uint8_t back[k_t_blob_cap]      = {};
+  uint8_t back[k_t_blob_cap]              = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_kv_read(3U, back));
   TEST_ASSERT_EQ(k_ra8_rsip_kv_op_read, *ra8_rsip_reg32(k_ra8_rsip_off_kv_ctrl));
   for (uint32_t i = 0U; i < sizeof(back); ++i) {
@@ -330,7 +330,7 @@ static void test_kv_engine_error(void)
   prep_running();
 
   *ra8_rsip_reg32(k_ra8_rsip_off_mbox_ret) = 1U;
-  uint8_t back[k_t_blob_cap]       = {};
+  uint8_t back[k_t_blob_cap]               = {};
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_rsip_kv_read(3U, back));
   /* The failed command must not have drained the data port into the
    * caller's buffer. */
@@ -362,7 +362,7 @@ static void test_key_wrap_unwrap(void)
     src.body[i] = k_t_body_fill ^ i;
   }
 
-  const uint8_t iv[16]                     = {};
+  const uint8_t iv[16]             = {};
   uint8_t       blob[k_t_blob_cap] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_key_wrap(&kek, iv, &src, blob));
 
@@ -587,9 +587,9 @@ static void test_mcdc_rsa_sign_size_quad(void)
 {
   TEST_BEGIN("rsip rsa_sign MC/DC: 4-cond size selector");
   prep_running();
-  ra8_rsip_key_handle_t key                     = {};
-  key.alg                                       = (uint32_t)k_ra8_rsip_sym_alg_aes128;
-  const uint8_t digest[64]                      = {};
+  ra8_rsip_key_handle_t key               = {};
+  key.alg                                 = (uint32_t)k_ra8_rsip_sym_alg_aes128;
+  const uint8_t digest[64]                = {};
   uint8_t       sig[k_t_rsa_key_bits / 8] = {};
   /* V1..V4: each accepted size; downstream may fail with non-real key, only
    * the size-decision branch matters for MC/DC. */
@@ -614,9 +614,9 @@ static void test_mcdc_rsa_verify_size_quad(void)
 {
   TEST_BEGIN("rsip rsa_verify MC/DC: 4-cond size selector");
   prep_running();
-  ra8_rsip_key_handle_t key                     = {};
-  key.alg                                       = (uint32_t)k_ra8_rsip_sym_alg_aes128;
-  const uint8_t digest[64]                      = {};
+  ra8_rsip_key_handle_t key               = {};
+  key.alg                                 = (uint32_t)k_ra8_rsip_sym_alg_aes128;
+  const uint8_t digest[64]                = {};
   uint8_t       sig[k_t_rsa_key_bits / 8] = {};
   (void)ra8_rsip_rsa_verify(&key, k_ra8_rsip_rsa_1024, digest, sizeof(digest), sig);
   (void)ra8_rsip_rsa_verify(&key, k_ra8_rsip_rsa_2048, digest, sizeof(digest), sig);

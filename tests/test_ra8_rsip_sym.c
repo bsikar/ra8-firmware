@@ -517,9 +517,9 @@ static void test_hash_family(void)
   TEST_BEGIN("rsip hash family");
   prep_running();
 
-  const uint8_t msg[3]                     = {'a', 'b', 'c'};
-  uint8_t       d_512[k_t_sha512_len]   = {};
-  uint8_t       d_3_256[32]                = {};
+  const uint8_t msg[3]                   = {'a', 'b', 'c'};
+  uint8_t       d_512[k_t_sha512_len]    = {};
+  uint8_t       d_3_256[32]              = {};
   uint8_t       d_shake[k_t_shake_short] = {};
 
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -712,7 +712,7 @@ static void test_mcdc_hash_validate_shake_digest(void)
 {
   TEST_BEGIN("rsip hash_validate MC/DC: shake bypass + short digest");
   prep_running();
-  const uint8_t msg[8]                    = {0U};
+  const uint8_t msg[8]                 = {0U};
   uint8_t       d_full[k_t_sha512_len] = {};
   /* V1: SHA-256 with digest_len = 32 (== n). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_hash(k_ra8_rsip_hash_sha256, msg, sizeof(msg), d_full, 32U));

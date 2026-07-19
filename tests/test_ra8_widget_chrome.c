@@ -31,10 +31,9 @@
  * @brief Rectangles and track sizes the chrome widgets are laid out with.
  *
  * @details
- * Each arm gets a distinct rectangle so a recorded fill can be attributed to
- * exactly one widget, and none of the heights is a multiple of the 8x16 mock
- * glyph cell -- a text run that happens to align to an edge would mask an
- * off-by-one in the inset arithmetic.
+ * Each arm gets a distinct rectangle so a recorded fill maps to exactly one
+ * widget, and no height is a multiple of the 8x16 mock glyph cell -- a text run
+ * aligning to an edge would mask an off-by-one in the inset arithmetic.
  */
 typedef enum : int16_t {
   k_t_bar_w        = 100, /**< Width of the progress-bar and menu rects.     */
@@ -52,13 +51,9 @@ typedef enum : int16_t {
   k_t_bar_value    = 5,   /**< In-range bar value; also the bar rect origin x. */
 } t_chrome_geom_t;
 
-/**
- * @enum t_chrome_idx_t
- * @brief Callback out-parameter seed proving the widget always writes it.
- */
+/** @brief Callback index seed: a widget that fires without one leaves this. */
 typedef enum : uint16_t {
-  k_t_idx_unset = 0xFFFFU, /**< "No index reported yet"; a widget that fires
-                                its callback without an index leaves this. */
+  k_t_idx_unset = 0xFFFFU, /**< "Nothing reported yet." */
 } t_chrome_idx_t;
 
 /**
@@ -67,8 +62,8 @@ typedef enum : uint16_t {
  *
  * @details
  * Distinct per style slot, so a swapped `fg`/`fg_muted` or `track`/`fill`
- * surfaces as a wrong recorded colour rather than a right one. Several slots
- * deliberately share a value across widgets that render the same role.
+ * surfaces as a wrong recorded colour. Slots sharing a value do so because
+ * they render the same role in different widgets.
  */
 typedef enum : uint32_t {
   k_t_argb_bg        = 0x00FFFFFFU, /**< Background shared by header, menu, nav and card. */
@@ -247,9 +242,7 @@ static void test_progress_bar_guards(void)
   /* fill_rect == NULL. */
   ra8_widget_paint_t pnf        = make_paint(&mp, true);
   pnf.fill_rect                 = nullptr;
-  ra8_widget_progress_bar_t bnf = {.paint = &pnf,
-                                   .total = k_t_bar_total,
-                                   .value = k_t_bar_value};
+  ra8_widget_progress_bar_t bnf = {.paint = &pnf, .total = k_t_bar_total, .value = k_t_bar_value};
   ra8_widget_t              wf  = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_progress_bar_init(&wf, &bnf));
   wf.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_bar_total, .h = 4};
@@ -686,7 +679,6 @@ static void test_nav_bar_input(void)
  * @param[in,out] nav   Nav-bar widget under test.
  * @param[in,out] paint Paint sink (draw_text toggled).
  * @param[in,out] mp    Paint-call counters asserted per vector.
- * @return None.
  * @pre @p w is initialised over @p nav.
  * @post Each render arm produced the expected fill/text counts; valid items and
  *       draw_text are restored on exit.
@@ -902,8 +894,7 @@ static void test_book_grid_render_edges(void)
   gnf.cols                            = 1;
   ra8_widget_t wnf                    = {};
   (void)ra8_widget_book_grid_init(&wnf, &gnf);
-  wnf.rect =
-    (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_bar_w, .h = k_t_row_w};
+  wnf.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_bar_w, .h = k_t_row_w};
   wnf.vt->render(&wnf);
   TEST_ASSERT_EQ(0U, mp2.fill_calls); /* fill_rect NULL -> no fills recorded */
   TEST_END("ra8_widget_book_grid: short cell + zero progress");

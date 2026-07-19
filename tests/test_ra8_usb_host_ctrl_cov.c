@@ -78,14 +78,14 @@
  * two arms cannot be confused in a dump.
  */
 typedef enum : uint16_t {
-  k_t_out_b4      = 5U,      /**< Byte 4 of the ascending 10-byte payload.    */
-  k_t_out_b6      = 7U,      /**< Byte 6.                                     */
-  k_t_out_b8      = 9U,      /**< Byte 8.                                     */
-  k_t_out_b9      = 10U,     /**< Byte 9, the last.                           */
-  k_t_short_b0    = 0xA1U,   /**< Byte 0 of the 3-byte payload.               */
-  k_t_short_b1    = 0xB2U,   /**< Byte 1.                                     */
-  k_t_short_b2    = 0xC3U,   /**< Byte 2.                                     */
-  k_t_rx_poison   = 0xFFFFU, /**< Pre-set received-byte count; a transfer that
+  k_t_out_b4    = 5U,      /**< Byte 4 of the ascending 10-byte payload.    */
+  k_t_out_b6    = 7U,      /**< Byte 6.                                     */
+  k_t_out_b8    = 9U,      /**< Byte 8.                                     */
+  k_t_out_b9    = 10U,     /**< Byte 9, the last.                           */
+  k_t_short_b0  = 0xA1U,   /**< Byte 0 of the 3-byte payload.               */
+  k_t_short_b1  = 0xB2U,   /**< Byte 1.                                     */
+  k_t_short_b2  = 0xC3U,   /**< Byte 2.                                     */
+  k_t_rx_poison = 0xFFFFU, /**< Pre-set received-byte count; a transfer that
                                   returns without writing it leaves this.      */
 } t_hcc_payload_t;
 
@@ -269,7 +269,6 @@ static void test_setup_sureq_busy_fs_hs(void)
 /**
  * @brief MC/DC V1: control-WRITE with a multi-packet data stage.
  * @param[in] data Payload buffer for the DATA-OUT stage.
- * @return None.
  * @pre None (prepares its own controller state).
  * @post The transfer timed out at the IN status stage with rx == 0.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -297,7 +296,6 @@ static void thc_vector_write_data(uint8_t* data)
 
 /**
  * @brief MC/DC V3: control-READ entering the DATA-IN stage with a want clamp.
- * @return None.
  * @pre None (prepares its own controller state).
  * @post The transfer reached the DATA-IN stage and timed out.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -353,17 +351,9 @@ static void test_mcdc_data_phase_direction(void)
 {
   TEST_BEGIN("control_xfer DATA-phase direction MC/DC (write / no-data / read / null)");
 
-  uint8_t  data[k_thc_wlen_out] = {1U,
-                                   2U,
-                                   3U,
-                                   4U,
-                                   k_t_out_b4,
-                                   6U,
-                                   k_t_out_b6,
-                                   8U,
-                                   k_t_out_b8,
-                                   k_t_out_b9};
-  uint16_t rx                   = 0U;
+  uint8_t data[k_thc_wlen_out] =
+    {1U, 2U, 3U, 4U, k_t_out_b4, 6U, k_t_out_b6, 8U, k_t_out_b8, k_t_out_b9};
+  uint16_t rx = 0U;
 
   thc_vector_write_data(data);
 
@@ -421,9 +411,7 @@ static void test_control_write_mxps_zero(void)
     .b_request       = (uint8_t)k_thc_breq_out,
     .w_length        = (uint16_t)k_thc_wlen_step1,
   };
-  uint8_t  data[k_thc_wlen_step1] = {k_t_short_b0,
-                                     k_t_short_b1,
-                                     k_t_short_b2};
+  uint8_t  data[k_thc_wlen_step1] = {k_t_short_b0, k_t_short_b1, k_t_short_b2};
   uint16_t rx                     = 0U;
   TEST_ASSERT_EQ(
     k_ra8_err_hw_timeout,

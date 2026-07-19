@@ -63,7 +63,6 @@ typedef enum : uint8_t {
  * points operate against a realistic post-init state. The clock-block
  * handshake helper is idempotent, so re-running init across tests is safe.
  *
- * @return None.
  * @pre The host sim mmap window is available (linked ra8_sim_mmap mock).
  * @pre No other thread touches the xSPI registers (single-threaded test).
  * @post XSPI0 is initialised and its register window is writable.

@@ -192,10 +192,7 @@ static void test_deinit_guarded_teardown_clears_ccr0_and_state(void)
   /* Arm in-flight RX then TX so CCR0 carries TE|RE|RIE|TIE and the
    * per-channel descriptor holds live buffers/lengths. */
   uint8_t rx_buf[k_sci_race_len] = {};
-  uint8_t tx_buf[k_sci_race_len] = {k_t_tx_b0,
-                                    k_t_tx_b1,
-                                    k_t_tx_b2,
-                                    k_t_tx_b3};
+  uint8_t tx_buf[k_sci_race_len] = {k_t_tx_b0, k_t_tx_b1, k_t_tx_b2, k_t_tx_b3};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_sci_read((uint8_t)k_sci_race_ch_deinit, rx_buf, (uint32_t)k_sci_race_len));
   TEST_ASSERT_EQ(k_ra8_ok,

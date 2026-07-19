@@ -136,8 +136,7 @@ static void kat_aes_gcm(void)
                                     sizeof(ct),
                                     &ct_len);
   check("AES-128-GCM encrypt == GCM TC3 ciphertext+tag",
-        st == PSA_SUCCESS && ct_len == k_t_kat_ct_len &&
-          memcmp(ct, want_ct, k_t_kat_ct_len) == 0);
+        st == PSA_SUCCESS && ct_len == k_t_kat_ct_len && memcmp(ct, want_ct, k_t_kat_ct_len) == 0);
 
   uint8_t dec[k_t_kat_pt_len];
   size_t  dec_len = 0U;
@@ -153,8 +152,7 @@ static void kat_aes_gcm(void)
                                      sizeof(dec),
                                      &dec_len);
   check("AES-128-GCM decrypt round-trip == plaintext",
-        st == PSA_SUCCESS && dec_len == k_t_kat_pt_len &&
-          memcmp(dec, pt, k_t_kat_pt_len) == 0);
+        st == PSA_SUCCESS && dec_len == k_t_kat_pt_len && memcmp(dec, pt, k_t_kat_pt_len) == 0);
 
   (void)psa_destroy_key(kid);
 }

@@ -43,9 +43,9 @@ typedef enum : uint16_t {
  * @brief Protected-set percentages the config validator sees.
  */
 typedef enum : uint8_t {
-  k_t_pct_over    = 101U, /**< Past 100%: must be rejected.                   */
-  k_t_pct_narrow  = 25U,  /**< A small protected set.                         */
-  k_t_pct_wide    = 50U,  /**< Half the cache protected.                      */
+  k_t_pct_over   = 101U, /**< Past 100%: must be rejected.                   */
+  k_t_pct_narrow = 25U,  /**< A small protected set.                         */
+  k_t_pct_wide   = 50U,  /**< Half the cache protected.                      */
 } t_vmem_pct_t;
 
 /**

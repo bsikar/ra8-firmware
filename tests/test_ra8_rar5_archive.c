@@ -122,11 +122,11 @@ static size_t av5_file(uint8_t*       out,
                        uint32_t       method)
 {
   uint8_t        body[k_t_hdr_body_cap] = {};
-  size_t         b                            = 0U;
-  const bool     has_data                     = (dlen > 0U);
-  const uint64_t hflags                       = has_data ? 0x02U : 0x00U;
-  const uint64_t cinfo = (uint64_t)method << 7U; /* method occupies bits 7..9 */
-  b += av_vint(&body[b], 2U);                    /* header type = file        */
+  size_t         b                      = 0U;
+  const bool     has_data               = (dlen > 0U);
+  const uint64_t hflags                 = has_data ? 0x02U : 0x00U;
+  const uint64_t cinfo                  = (uint64_t)method << 7U; /* method occupies bits 7..9 */
+  b += av_vint(&body[b], 2U);                                     /* header type = file        */
   b += av_vint(&body[b], hflags);
   if (has_data) {
     b += av_vint(&body[b], (uint64_t)dlen);
@@ -274,7 +274,7 @@ a4_file(uint8_t* out, const char* name, const uint8_t* data, size_t dlen, uint8_
   const size_t nlen = strlen(name);
   const size_t head = 32U + nlen;
   a4_le16(&out[0], 0U);
-  out[2] = k_t_r4_type_file;                /* type: file  */
+  out[2] = k_t_r4_type_file;          /* type: file  */
   a4_le16(&out[3], k_t_r4_flag_long); /* flags: LONG */
   a4_le16(&out[k_t_r4_off_head_size], (uint16_t)head);
   a4_le32(&out[k_t_r4_off_pack_size], (uint32_t)dlen);
@@ -283,7 +283,7 @@ a4_file(uint8_t* out, const char* name, const uint8_t* data, size_t dlen, uint8_
   a4_le32(&out[16], 0U);
   a4_le32(&out[k_t_r4_off_ftime], 0U);
   out[k_t_r4_off_unp_ver] = k_t_r4_unp_ver_20;
-  out[k_t_r4_off_method] = method; /* 0x30 = store; anything else = compressed */
+  out[k_t_r4_off_method]  = method; /* 0x30 = store; anything else = compressed */
   a4_le16(&out[k_t_r4_off_name_size], (uint16_t)nlen);
   a4_le32(&out[k_t_r4_off_attr], 0U);
   memcpy(&out[32], name, nlen);

@@ -89,8 +89,7 @@ alignas(8) static uint8_t s_dfl[k_ra8_io_compress_scratch_bytes];
 /** @brief Deterministic source pixel channel at (x, y, c). */
 static uint8_t pix(uint32_t x, uint32_t y, uint32_t c)
 {
-  return (uint8_t)(((x * 3U) + (y * k_t_pix_y_stride) + (c * k_t_pix_c_stride)) &
-                   k_t_byte_mask);
+  return (uint8_t)(((x * 3U) + (y * k_t_pix_y_stride) + (c * k_t_pix_c_stride)) & k_t_byte_mask);
 }
 
 /** @brief Append little-endian u16 to the store (hand producer). */
@@ -122,7 +121,6 @@ static void put_bytes(const uint8_t* p, size_t n)
  * @param[in] codec Tile codec byte (raw or deflate) stored in the header.
  * @param[in] count Total tile count written to the header.
  *
- * @return None.
  * @pre `s_store` is initialised and empty.
  * @post 32 header bytes are appended to `s_store`.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -273,7 +271,6 @@ static uint16_t clamped_tile_dim(uint32_t img_dim, uint32_t origin)
  * @param[in] y0 Tile origin row on the canvas.
  * @param[in] w  Decoded tile width, already edge-clamped.
  * @param[in] h  Decoded tile height, already edge-clamped.
- * @return None.
  * @pre ::s_cell holds the decoded tile at (@p x0, @p y0).
  * @pre `w * h * k_t_bpp` is within ::s_cell's capacity.
  * @post Every channel of every decoded pixel compared equal to the oracle.
@@ -343,7 +340,6 @@ static void flip(size_t off)
 /**
  * @brief Reject undersize / oversize backing lengths and a corrupt header magic.
  * @param[in,out] info Scratch parse-info sink.
- * @return None.
  * @pre The shared store buffers are available.
  * @post Each malformed length/magic returned its rejection code.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -369,7 +365,6 @@ static void hostile_header_size_and_magic(ra8_jof_info_t* info)
 /**
  * @brief Reject zero and over-cap width / height / tile geometry fields.
  * @param[in,out] info Scratch parse-info sink.
- * @return None.
  * @pre The shared store buffers are available.
  * @post Every zero or over-cap dimension returned k_ra8_err_validation_failed.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -388,7 +383,7 @@ static void hostile_header_dims(ra8_jof_info_t* info)
 
   /* Over-cap dimensions (33000 > 32768). */
   build_atlas((uint8_t)k_ra8_jof_codec_raw);
-  s_store_buf[4]                 = (uint8_t)(k_t_dim_over_cap & k_t_byte_mask);
+  s_store_buf[4]                = (uint8_t)(k_t_dim_over_cap & k_t_byte_mask);
   s_store_buf[k_t_off_width_hi] = (uint8_t)(k_t_dim_over_cap >> 8U);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
   build_atlas((uint8_t)k_ra8_jof_codec_raw);
@@ -400,7 +395,6 @@ static void hostile_header_dims(ra8_jof_info_t* info)
 /**
  * @brief Reject bad bpp, unknown codec, non-zero reserved, and count mismatch.
  * @param[in,out] info Scratch parse-info sink.
- * @return None.
  * @pre The shared store buffers are available.
  * @post Every corrupt encoding/reserved/count field was rejected.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -438,7 +432,6 @@ static void hostile_header_encoding(ra8_jof_info_t* info)
 /**
  * @brief Reject footer magic/count/total/index corruption and a sub-header index.
  * @param[in,out] info Scratch parse-info sink.
- * @return None.
  * @pre The shared store buffers are available.
  * @post Every footer corruption and out-of-range index was rejected.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -472,7 +465,6 @@ static void hostile_header_footer(ra8_jof_info_t* info)
 /**
  * @brief Reject the two null-pointer parse arguments.
  * @param[in,out] info Scratch parse-info sink.
- * @return None.
  * @pre The shared store buffers are available.
  * @post Both null arguments returned k_ra8_err_null_ptr.
  * @note Not thread-safe; single-threaded host-test helper.

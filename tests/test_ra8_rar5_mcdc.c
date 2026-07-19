@@ -302,7 +302,7 @@ static void test_mcdc_apply_run(void)
   /* num=16, idx=428 -> i < huff_total clamp (T,F). */
   bind_bits(s_idlebits, sizeof(s_idlebits));
   s_tbl[k_t_tbl_slot_last] = k_t_tbl_len_short;
-  idx                        = (uint32_t)k_ra8_rar5_huff_total - 2U;
+  idx                      = (uint32_t)k_ra8_rar5_huff_total - 2U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rar5_apply_run(&s_state, s_tbl, &idx, 16U));
   TEST_ASSERT_EQ(k_ra8_rar5_huff_total, idx);
   TEST_ASSERT_EQ(5U, s_tbl[(uint32_t)k_ra8_rar5_huff_total - 1U]);

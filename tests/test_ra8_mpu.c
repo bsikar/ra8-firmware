@@ -20,7 +20,7 @@
  * @brief MPU region selector and limit-address pattern.
  */
 typedef enum : uint32_t {
-  k_t_region_index = 5U,          /**< Region the RNR selects before the write. */
+  k_t_region_index  = 5U,          /**< Region the RNR selects before the write. */
   k_t_rlar_all_ones = 0xFFFFFFFFU, /**< Every RLAR bit set, so the driver's
                                         masking of the reserved bits is visible. */
 } t_mpu_probe_t;

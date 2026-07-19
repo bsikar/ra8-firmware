@@ -323,46 +323,46 @@ static uint16_t build_msc_config(uint8_t* buf)
 {
   uint16_t o = 0U;
   /* CONFIGURATION header. */
-  buf[o + 0U]                      = (uint8_t)k_tc_cfg_hdr_len;
-  buf[o + 1U]                      = (uint8_t)k_tc_dtype_config;
-  buf[o + 2U]                      = 0U; /* wTotalLength LSB (patched below). */
-  buf[o + 3U]                      = 0U; /* wTotalLength MSB.                 */
-  buf[o + 4U]                      = 1U; /* bNumInterfaces.                   */
-  buf[o + k_t_iface_off_class] = (uint8_t)k_tc_cfg_value;
-  buf[o + 6U]                      = 0U;
+  buf[o + 0U]                     = (uint8_t)k_tc_cfg_hdr_len;
+  buf[o + 1U]                     = (uint8_t)k_tc_dtype_config;
+  buf[o + 2U]                     = 0U; /* wTotalLength LSB (patched below). */
+  buf[o + 3U]                     = 0U; /* wTotalLength MSB.                 */
+  buf[o + 4U]                     = 1U; /* bNumInterfaces.                   */
+  buf[o + k_t_iface_off_class]    = (uint8_t)k_tc_cfg_value;
+  buf[o + 6U]                     = 0U;
   buf[o + k_t_iface_off_protocol] = 0U;
-  buf[o + 8U]                      = 0U;
-  o                                = (uint16_t)(o + k_tc_cfg_hdr_len);
+  buf[o + 8U]                     = 0U;
+  o                               = (uint16_t)(o + k_tc_cfg_hdr_len);
   /* INTERFACE: MSC SCSI Bulk-Only. */
-  buf[o + 0U]                      = (uint8_t)k_tc_iface_desc_len;
-  buf[o + 1U]                      = (uint8_t)k_tc_dtype_iface;
-  buf[o + 2U]                      = (uint8_t)k_tc_iface_number;
-  buf[o + 3U]                      = 0U;
-  buf[o + 4U]                      = 2U; /* bNumEndpoints. */
-  buf[o + k_t_iface_off_class] = (uint8_t)k_tc_class_msc;
-  buf[o + 6U]                      = (uint8_t)k_tc_subclass_scsi;
+  buf[o + 0U]                     = (uint8_t)k_tc_iface_desc_len;
+  buf[o + 1U]                     = (uint8_t)k_tc_dtype_iface;
+  buf[o + 2U]                     = (uint8_t)k_tc_iface_number;
+  buf[o + 3U]                     = 0U;
+  buf[o + 4U]                     = 2U; /* bNumEndpoints. */
+  buf[o + k_t_iface_off_class]    = (uint8_t)k_tc_class_msc;
+  buf[o + 6U]                     = (uint8_t)k_tc_subclass_scsi;
   buf[o + k_t_iface_off_protocol] = (uint8_t)k_tc_protocol_bbb;
-  buf[o + 8U]                      = 0U;
-  o                                = (uint16_t)(o + k_tc_iface_desc_len);
+  buf[o + 8U]                     = 0U;
+  o                               = (uint16_t)(o + k_tc_iface_desc_len);
   /* ENDPOINT: bulk IN. */
-  buf[o + 0U]                      = (uint8_t)k_tc_ep_desc_len;
-  buf[o + 1U]                      = (uint8_t)k_tc_dtype_endpoint;
-  buf[o + 2U]                      = (uint8_t)k_tc_ep_in_addr;
-  buf[o + 3U]                      = (uint8_t)k_tc_attr_bulk;
-  buf[o + 4U]                      = (uint8_t)k_tc_mps_lo;
+  buf[o + 0U]                  = (uint8_t)k_tc_ep_desc_len;
+  buf[o + 1U]                  = (uint8_t)k_tc_dtype_endpoint;
+  buf[o + 2U]                  = (uint8_t)k_tc_ep_in_addr;
+  buf[o + 3U]                  = (uint8_t)k_tc_attr_bulk;
+  buf[o + 4U]                  = (uint8_t)k_tc_mps_lo;
   buf[o + k_t_iface_off_class] = 0U;
-  buf[o + 6U]                      = 0U;
-  o                                = (uint16_t)(o + k_tc_ep_desc_len);
+  buf[o + 6U]                  = 0U;
+  o                            = (uint16_t)(o + k_tc_ep_desc_len);
   /* ENDPOINT: bulk OUT. */
-  buf[o + 0U]                      = (uint8_t)k_tc_ep_desc_len;
-  buf[o + 1U]                      = (uint8_t)k_tc_dtype_endpoint;
-  buf[o + 2U]                      = (uint8_t)k_tc_ep_out_addr;
-  buf[o + 3U]                      = (uint8_t)k_tc_attr_bulk;
-  buf[o + 4U]                      = (uint8_t)k_tc_mps_lo;
+  buf[o + 0U]                  = (uint8_t)k_tc_ep_desc_len;
+  buf[o + 1U]                  = (uint8_t)k_tc_dtype_endpoint;
+  buf[o + 2U]                  = (uint8_t)k_tc_ep_out_addr;
+  buf[o + 3U]                  = (uint8_t)k_tc_attr_bulk;
+  buf[o + 4U]                  = (uint8_t)k_tc_mps_lo;
   buf[o + k_t_iface_off_class] = 0U;
-  buf[o + 6U]                      = 0U;
-  o                                = (uint16_t)(o + k_tc_ep_desc_len);
-  buf[k_tc_off_total]              = (uint8_t)(o & k_t_byte_mask);
+  buf[o + 6U]                  = 0U;
+  o                            = (uint16_t)(o + k_tc_ep_desc_len);
+  buf[k_tc_off_total]          = (uint8_t)(o & k_t_byte_mask);
   return o;
 }
 
@@ -377,14 +377,12 @@ static void reset_state(void)
   s_usb_hmsc_state.device      = (ra8_usb_hmsc_device_t){};
 
   (void)memset(s_dev_desc, 0, sizeof s_dev_desc);
-  s_dev_desc[0]            = (uint8_t)k_tc_dev_desc_len;
-  s_dev_desc[1]            = (uint8_t)k_tc_dtype_device;
-  s_dev_desc[k_tc_off_vid] = (uint8_t)((uint16_t)k_tc_vid & k_t_byte_mask);
-  s_dev_desc[k_tc_off_vid + 1U] =
-    (uint8_t)(((uint16_t)k_tc_vid >> k_tc_byte_bits) & k_t_byte_mask);
-  s_dev_desc[k_tc_off_pid] = (uint8_t)((uint16_t)k_tc_pid & k_t_byte_mask);
-  s_dev_desc[k_tc_off_pid + 1U] =
-    (uint8_t)(((uint16_t)k_tc_pid >> k_tc_byte_bits) & k_t_byte_mask);
+  s_dev_desc[0]                 = (uint8_t)k_tc_dev_desc_len;
+  s_dev_desc[1]                 = (uint8_t)k_tc_dtype_device;
+  s_dev_desc[k_tc_off_vid]      = (uint8_t)((uint16_t)k_tc_vid & k_t_byte_mask);
+  s_dev_desc[k_tc_off_vid + 1U] = (uint8_t)(((uint16_t)k_tc_vid >> k_tc_byte_bits) & k_t_byte_mask);
+  s_dev_desc[k_tc_off_pid]      = (uint8_t)((uint16_t)k_tc_pid & k_t_byte_mask);
+  s_dev_desc[k_tc_off_pid + 1U] = (uint8_t)(((uint16_t)k_tc_pid >> k_tc_byte_bits) & k_t_byte_mask);
 
   (void)memset(s_cfg_blob, 0, sizeof s_cfg_blob);
   s_cfg_len = build_msc_config(s_cfg_blob);
@@ -492,11 +490,10 @@ static void test_hunt_success_and_attach_timeout(void)
    * elapsed-milliseconds guard after two iterations; no device answers, so the
    * hunt exhausts every (reset, address) attempt and reports a timeout. */
   reset_state();
-  s_line_state = 0U; /* Never attaches.       */
-  s_time_val   = 0U; /* t0 = 0 on first read. */
-  s_time_step =
-    k_t_time_step_us; /* 0 -> 1500 (<=2000) -> 3000 (>2000, break). */
-  s_dev_err     = k_ra8_err_hw_timeout;   /* No descriptor ever answers.                */
+  s_line_state  = 0U;                   /* Never attaches.       */
+  s_time_val    = 0U;                   /* t0 = 0 on first read. */
+  s_time_step   = k_t_time_step_us;     /* 0 -> 1500 (<=2000) -> 3000 (>2000, break). */
+  s_dev_err     = k_ra8_err_hw_timeout; /* No descriptor ever answers.                */
   uint8_t addr2 = k_t_byte_mask;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, internal_enum_hunt(desc, &addr2));
 
@@ -624,10 +621,10 @@ static void test_iface_is_msc_all_fields(void)
   TEST_ASSERT(!internal_enum_iface_is_msc(iface));
 
   iface[k_t_iface_off_class] = (uint8_t)k_tc_class_msc;
-  iface[6]                         = (uint8_t)k_tc_sub_rbc; /* wrong subclass -> false. */
+  iface[6]                   = (uint8_t)k_tc_sub_rbc; /* wrong subclass -> false. */
   TEST_ASSERT(!internal_enum_iface_is_msc(iface));
 
-  iface[6]                         = (uint8_t)k_tc_subclass_scsi;
+  iface[6]                      = (uint8_t)k_tc_subclass_scsi;
   iface[k_t_iface_off_protocol] = (uint8_t)k_tc_proto_cbi; /* wrong protocol -> false. */
   TEST_ASSERT(!internal_enum_iface_is_msc(iface));
 
@@ -636,7 +633,6 @@ static void test_iface_is_msc_all_fields(void)
 
 /**
  * @brief Walk a rich config blob (non-MSC iface + stray EP + MSC bulk pair).
- * @return None.
  * @pre The enumeration state has been reset.
  * @post The MSC bulk IN/OUT endpoints were discovered.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -644,18 +640,18 @@ static void test_iface_is_msc_all_fields(void)
  */
 static void walk_cfg_rich_blob(void)
 {
-  s_usb_hmsc_state.device                   = (ra8_usb_hmsc_device_t){};
+  s_usb_hmsc_state.device         = (ra8_usb_hmsc_device_t){};
   uint8_t  blob[k_t_cfg_blob_cap] = {};
-  uint16_t o                                = 0U;
+  uint16_t o                      = 0U;
   /* CONFIGURATION header. */
   blob[o + 0U] = (uint8_t)k_tc_cfg_hdr_len;
   blob[o + 1U] = (uint8_t)k_tc_dtype_config;
   o            = (uint16_t)(o + k_tc_cfg_hdr_len);
   /* Non-MSC interface (HID). */
-  blob[o + 0U]                      = (uint8_t)k_tc_iface_desc_len;
-  blob[o + 1U]                      = (uint8_t)k_tc_dtype_iface;
+  blob[o + 0U]                  = (uint8_t)k_tc_iface_desc_len;
+  blob[o + 1U]                  = (uint8_t)k_tc_dtype_iface;
   blob[o + k_t_iface_off_class] = (uint8_t)k_tc_class_hid;
-  o                                 = (uint16_t)(o + k_tc_iface_desc_len);
+  o                             = (uint16_t)(o + k_tc_iface_desc_len);
   /* Endpoint while NOT in an MSC scope -> skipped. */
   blob[o + 0U] = (uint8_t)k_tc_ep_desc_len;
   blob[o + 1U] = (uint8_t)k_tc_dtype_endpoint;
@@ -663,24 +659,24 @@ static void walk_cfg_rich_blob(void)
   blob[o + 3U] = (uint8_t)k_tc_attr_bulk;
   o            = (uint16_t)(o + k_tc_ep_desc_len);
   /* MSC interface + bulk IN + bulk OUT. */
-  blob[o + 0U]                      = (uint8_t)k_tc_iface_desc_len;
-  blob[o + 1U]                      = (uint8_t)k_tc_dtype_iface;
-  blob[o + k_t_iface_off_class] = (uint8_t)k_tc_class_msc;
-  blob[o + 6U]                      = (uint8_t)k_tc_subclass_scsi;
+  blob[o + 0U]                     = (uint8_t)k_tc_iface_desc_len;
+  blob[o + 1U]                     = (uint8_t)k_tc_dtype_iface;
+  blob[o + k_t_iface_off_class]    = (uint8_t)k_tc_class_msc;
+  blob[o + 6U]                     = (uint8_t)k_tc_subclass_scsi;
   blob[o + k_t_iface_off_protocol] = (uint8_t)k_tc_protocol_bbb;
-  o                                 = (uint16_t)(o + k_tc_iface_desc_len);
-  blob[o + 0U]                      = (uint8_t)k_tc_ep_desc_len;
-  blob[o + 1U]                      = (uint8_t)k_tc_dtype_endpoint;
-  blob[o + 2U]                      = (uint8_t)k_tc_ep_in_addr;
-  blob[o + 3U]                      = (uint8_t)k_tc_attr_bulk;
-  blob[o + 4U]                      = (uint8_t)k_tc_mps_lo;
-  o                                 = (uint16_t)(o + k_tc_ep_desc_len);
-  blob[o + 0U]                      = (uint8_t)k_tc_ep_desc_len;
-  blob[o + 1U]                      = (uint8_t)k_tc_dtype_endpoint;
-  blob[o + 2U]                      = (uint8_t)k_tc_ep_out_addr;
-  blob[o + 3U]                      = (uint8_t)k_tc_attr_bulk;
-  blob[o + 4U]                      = (uint8_t)k_tc_mps_lo;
-  o                                 = (uint16_t)(o + k_tc_ep_desc_len);
+  o                                = (uint16_t)(o + k_tc_iface_desc_len);
+  blob[o + 0U]                     = (uint8_t)k_tc_ep_desc_len;
+  blob[o + 1U]                     = (uint8_t)k_tc_dtype_endpoint;
+  blob[o + 2U]                     = (uint8_t)k_tc_ep_in_addr;
+  blob[o + 3U]                     = (uint8_t)k_tc_attr_bulk;
+  blob[o + 4U]                     = (uint8_t)k_tc_mps_lo;
+  o                                = (uint16_t)(o + k_tc_ep_desc_len);
+  blob[o + 0U]                     = (uint8_t)k_tc_ep_desc_len;
+  blob[o + 1U]                     = (uint8_t)k_tc_dtype_endpoint;
+  blob[o + 2U]                     = (uint8_t)k_tc_ep_out_addr;
+  blob[o + 3U]                     = (uint8_t)k_tc_attr_bulk;
+  blob[o + 4U]                     = (uint8_t)k_tc_mps_lo;
+  o                                = (uint16_t)(o + k_tc_ep_desc_len);
   TEST_ASSERT_EQ(k_ra8_ok, internal_enum_walk_cfg(blob, o));
   TEST_ASSERT_EQ(1U, s_usb_hmsc_state.device.bulk_in_ep);
   TEST_ASSERT_EQ(2U, s_usb_hmsc_state.device.bulk_out_ep);
@@ -688,7 +684,6 @@ static void walk_cfg_rich_blob(void)
 
 /**
  * @brief Walk an MSC config with a bulk IN but no bulk OUT (hw_error).
- * @return None.
  * @pre None.
  * @post `internal_enum_walk_cfg` reported the missing bulk OUT.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -696,26 +691,25 @@ static void walk_cfg_rich_blob(void)
  */
 static void walk_cfg_in_only(void)
 {
-  s_usb_hmsc_state.device              = (ra8_usb_hmsc_device_t){};
-  uint8_t  in_only[32]                 = {};
-  uint16_t p                           = 0U;
-  in_only[p + 0U]                      = (uint8_t)k_tc_iface_desc_len;
-  in_only[p + 1U]                      = (uint8_t)k_tc_dtype_iface;
-  in_only[p + k_t_iface_off_class] = (uint8_t)k_tc_class_msc;
-  in_only[p + 6U]                      = (uint8_t)k_tc_subclass_scsi;
+  s_usb_hmsc_state.device             = (ra8_usb_hmsc_device_t){};
+  uint8_t  in_only[32]                = {};
+  uint16_t p                          = 0U;
+  in_only[p + 0U]                     = (uint8_t)k_tc_iface_desc_len;
+  in_only[p + 1U]                     = (uint8_t)k_tc_dtype_iface;
+  in_only[p + k_t_iface_off_class]    = (uint8_t)k_tc_class_msc;
+  in_only[p + 6U]                     = (uint8_t)k_tc_subclass_scsi;
   in_only[p + k_t_iface_off_protocol] = (uint8_t)k_tc_protocol_bbb;
-  p                                    = (uint16_t)(p + k_tc_iface_desc_len);
-  in_only[p + 0U]                      = (uint8_t)k_tc_ep_desc_len;
-  in_only[p + 1U]                      = (uint8_t)k_tc_dtype_endpoint;
-  in_only[p + 2U]                      = (uint8_t)k_tc_ep_in_addr;
-  in_only[p + 3U]                      = (uint8_t)k_tc_attr_bulk;
-  p                                    = (uint16_t)(p + k_tc_ep_desc_len);
+  p                                   = (uint16_t)(p + k_tc_iface_desc_len);
+  in_only[p + 0U]                     = (uint8_t)k_tc_ep_desc_len;
+  in_only[p + 1U]                     = (uint8_t)k_tc_dtype_endpoint;
+  in_only[p + 2U]                     = (uint8_t)k_tc_ep_in_addr;
+  in_only[p + 3U]                     = (uint8_t)k_tc_attr_bulk;
+  p                                   = (uint16_t)(p + k_tc_ep_desc_len);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, internal_enum_walk_cfg(in_only, p));
 }
 
 /**
  * @brief Walk an MSC config with a bulk OUT but no bulk IN (hw_error).
- * @return None.
  * @pre None.
  * @post `internal_enum_walk_cfg` reported the missing bulk IN.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -723,20 +717,20 @@ static void walk_cfg_in_only(void)
  */
 static void walk_cfg_out_only(void)
 {
-  s_usb_hmsc_state.device               = (ra8_usb_hmsc_device_t){};
-  uint8_t  out_only[32]                 = {};
-  uint16_t q                            = 0U;
-  out_only[q + 0U]                      = (uint8_t)k_tc_iface_desc_len;
-  out_only[q + 1U]                      = (uint8_t)k_tc_dtype_iface;
-  out_only[q + k_t_iface_off_class] = (uint8_t)k_tc_class_msc;
-  out_only[q + 6U]                      = (uint8_t)k_tc_subclass_scsi;
+  s_usb_hmsc_state.device              = (ra8_usb_hmsc_device_t){};
+  uint8_t  out_only[32]                = {};
+  uint16_t q                           = 0U;
+  out_only[q + 0U]                     = (uint8_t)k_tc_iface_desc_len;
+  out_only[q + 1U]                     = (uint8_t)k_tc_dtype_iface;
+  out_only[q + k_t_iface_off_class]    = (uint8_t)k_tc_class_msc;
+  out_only[q + 6U]                     = (uint8_t)k_tc_subclass_scsi;
   out_only[q + k_t_iface_off_protocol] = (uint8_t)k_tc_protocol_bbb;
-  q                                     = (uint16_t)(q + k_tc_iface_desc_len);
-  out_only[q + 0U]                      = (uint8_t)k_tc_ep_desc_len;
-  out_only[q + 1U]                      = (uint8_t)k_tc_dtype_endpoint;
-  out_only[q + 2U]                      = (uint8_t)k_tc_ep_out_addr;
-  out_only[q + 3U]                      = (uint8_t)k_tc_attr_bulk;
-  q                                     = (uint16_t)(q + k_tc_ep_desc_len);
+  q                                    = (uint16_t)(q + k_tc_iface_desc_len);
+  out_only[q + 0U]                     = (uint8_t)k_tc_ep_desc_len;
+  out_only[q + 1U]                     = (uint8_t)k_tc_dtype_endpoint;
+  out_only[q + 2U]                     = (uint8_t)k_tc_ep_out_addr;
+  out_only[q + 3U]                     = (uint8_t)k_tc_attr_bulk;
+  q                                    = (uint16_t)(q + k_tc_ep_desc_len);
   TEST_ASSERT_EQ(k_ra8_err_hw_error, internal_enum_walk_cfg(out_only, q));
 }
 

@@ -25,12 +25,12 @@
  * to an endpoint, and 0x80 a standard device-to-device request.
  */
 typedef enum : uint8_t {
-  k_t_bmreq_class_out = 0x21U, /**< Host-to-device, class, interface.          */
-  k_t_bmreq_class_in  = 0xA2U, /**< Device-to-host, class, endpoint.           */
-  k_t_bmreq_std_in    = 0x80U, /**< Device-to-host, standard, device.          */
-  k_t_breq_unknown    = 0x77U, /**< A bRequest outside the audio set; must stall. */
-  k_t_bytes_per_sample_bad = 5U, /**< Sample width outside the supported 1..4. */
-  k_t_volume_probe    = 0x55,  /**< Pre-set volume; a control that returns
+  k_t_bmreq_class_out      = 0x21U, /**< Host-to-device, class, interface.          */
+  k_t_bmreq_class_in       = 0xA2U, /**< Device-to-host, class, endpoint.           */
+  k_t_bmreq_std_in         = 0x80U, /**< Device-to-host, standard, device.          */
+  k_t_breq_unknown         = 0x77U, /**< A bRequest outside the audio set; must stall. */
+  k_t_bytes_per_sample_bad = 5U,    /**< Sample width outside the supported 1..4. */
+  k_t_volume_probe         = 0x55,  /**< Pre-set volume; a control that returns
                                     without writing it leaves this value.       */
 } t_paud_setup_t;
 
@@ -354,7 +354,6 @@ typedef enum : uint16_t {
 
 /**
  * @brief MC/DC decision A: the init speed gate (FS / HS accept, bad rejects).
- * @return None.
  * @pre None.
  * @post FS and HS init succeeded and the out-of-range speed was rejected.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -373,7 +372,6 @@ static void paud_mcdc_init_speed(void)
 /**
  * @brief MC/DC decisions B + C: the send_frame null/length envelope.
  * @param[in] buf A valid 4-byte frame for the both-false forwarding vector.
- * @return None.
  * @pre The device is initialised at FS (192-byte iso ceiling).
  * @post Each envelope vector returned its documented code.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -401,7 +399,6 @@ static void paud_mcdc_send_frame(uint8_t* buf)
 
 /**
  * @brief MC/DC decisions D + E: the set_format channel/bytes-per-sample ranges.
- * @return None.
  * @pre The device is initialised.
  * @post The in-range format accepted and each out-of-range field rejected.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -431,7 +428,6 @@ static void paud_mcdc_set_format(void)
 
 /**
  * @brief MC/DC decision G: the 4-condition setup-recipient envelope OR chain.
- * @return None.
  * @pre The device is initialised.
  * @post Each recipient lone-true vector accepted and the all-false rejected;
  *       the setup handler is left attached for the request-code test.
@@ -462,7 +458,6 @@ static void paud_mcdc_setup_envelope(void)
 
 /**
  * @brief MC/DC decision F: the 9-condition request-code OR chain.
- * @return None.
  * @pre The setup handler is attached (paud_mcdc_setup_envelope ran).
  * @post Each supported request code accepted and the unknown code rejected.
  * @note Not thread-safe; single-threaded host-test helper.

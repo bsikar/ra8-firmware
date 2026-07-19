@@ -25,13 +25,13 @@
  * @brief Viewport geometry and paging state of the reflow-view fixture.
  */
 typedef enum : int16_t {
-  k_t_view_w     = 200, /**< Viewport width; its mid-point at x=100 is where the
+  k_t_view_w        = 200, /**< Viewport width; its mid-point at x=100 is where the
                              tap arms aim.                                      */
-  k_t_view_h     = 300, /**< Viewport height.                                   */
-  k_t_margin_x   = 24,  /**< Horizontal text margin.                            */
-  k_t_page_count = 12,  /**< Pages the mock engine reports.                     */
-  k_t_link_dest  = 5,   /**< Page a followed link resolves to.                  */
-  k_t_link_dest_far = 99, /**< A destination past the page count, which the view
+  k_t_view_h        = 300, /**< Viewport height.                                   */
+  k_t_margin_x      = 24,  /**< Horizontal text margin.                            */
+  k_t_page_count    = 12,  /**< Pages the mock engine reports.                     */
+  k_t_link_dest     = 5,   /**< Page a followed link resolves to.                  */
+  k_t_link_dest_far = 99,  /**< A destination past the page count, which the view
                                must clamp rather than jump to.                  */
 } t_rv_geom_t;
 
@@ -116,10 +116,7 @@ static void test_reflow_view_render(void)
                                     .margin_y   = 8};
   ra8_widget_t             w     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_reflow_view_init(&w, &rv));
-  w.rect = (ra8_ui_rect_t){.x = 0,
-                           .y = 0,
-                           .w = k_t_view_w,
-                           .h = k_t_view_h};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_view_w, .h = k_t_view_h};
 
   w.vt->render(&w);
   TEST_ASSERT_EQ(1U, s_rv_fill_calls);
@@ -152,10 +149,7 @@ static void test_reflow_view_page_turn(void)
   ra8_widget_reflow_view_t rv  = {.ops = &ops, .page = 1, .page_count = 3};
   ra8_widget_t             w   = {};
   (void)ra8_widget_reflow_view_init(&w, &rv);
-  w.rect = (ra8_ui_rect_t){.x = 0,
-                           .y = 0,
-                           .w = k_t_view_w,
-                           .h = k_t_view_h}; /* mid x = 100 */
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_view_w, .h = k_t_view_h}; /* mid x = 100 */
 
   /* right tap (x=150) -> forward: page 1 -> 2. */
   const ra8_widget_event_t fwd = {.kind = k_ra8_widget_ev_touch, .x = 150, .y = 50};
@@ -197,19 +191,14 @@ static void test_reflow_view_page_turn(void)
 static void test_reflow_view_link(void)
 {
   TEST_BEGIN("ra8_widget_reflow_view: link follow + clamp");
-  mock_rv_t                m = {.link_return = true, .link_dest = k_t_link_dest};
+  mock_rv_t                m   = {.link_return = true, .link_dest = k_t_link_dest};
   ra8_widget_reflow_ops_t  ops = {.user        = &m,
                                   .render_page = mock_rv_render,
                                   .follow_link = mock_rv_follow};
-  ra8_widget_reflow_view_t rv  = {.ops        = &ops,
-                                  .page       = 0,
-                                  .page_count = k_t_page_count};
+  ra8_widget_reflow_view_t rv  = {.ops = &ops, .page = 0, .page_count = k_t_page_count};
   ra8_widget_t             w   = {};
   (void)ra8_widget_reflow_view_init(&w, &rv);
-  w.rect = (ra8_ui_rect_t){.x = 0,
-                           .y = 0,
-                           .w = k_t_view_w,
-                           .h = k_t_view_h};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_view_w, .h = k_t_view_h};
 
   /* link followed -> page adopts dest 5. */
   const ra8_widget_event_t tap = {.kind = k_ra8_widget_ev_touch, .x = 100, .y = 50};
@@ -255,7 +244,6 @@ static void test_reflow_view_link(void)
  * @param[out] w   Widget to initialise and give a 200x300 rect.
  * @param[out] rv  View state to point @p w at.
  * @param[in]  ops Ops table to install, or NULL for the ops == NULL arms.
- * @return None.
  * @pre @p w and @p rv are non-null.
  * @pre @p ops outlives the fixture, when non-null.
  * @post @p rv has `paint == NULL`, page 0 of 3, and carries @p ops.
@@ -263,17 +251,13 @@ static void test_reflow_view_link(void)
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
  */
-static void rv_init_guard_view(ra8_widget_t*            w,
-                               ra8_widget_reflow_view_t* rv,
-                               ra8_widget_reflow_ops_t*  ops)
+static void
+rv_init_guard_view(ra8_widget_t* w, ra8_widget_reflow_view_t* rv, ra8_widget_reflow_ops_t* ops)
 {
   *rv = (ra8_widget_reflow_view_t){.paint = nullptr, .ops = ops, .page = 0, .page_count = 3};
   *w  = (ra8_widget_t){};
   (void)ra8_widget_reflow_view_init(w, rv);
-  w->rect = (ra8_ui_rect_t){.x = 0,
-                            .y = 0,
-                            .w = k_t_view_w,
-                            .h = k_t_view_h};
+  w->rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_view_w, .h = k_t_view_h};
 }
 
 static void test_reflow_view_render_guards(void)
@@ -283,11 +267,11 @@ static void test_reflow_view_render_guards(void)
   mock_rv_t m     = {};
 
   /* paint == NULL -> no clear; ops with NULL render_page -> no page paint. */
-  ra8_widget_reflow_ops_t no_render = {.user        = &m,
-                                       .render_page = nullptr,
-                                       .follow_link = mock_rv_follow};
-  ra8_widget_reflow_view_t rv       = {};
-  ra8_widget_t             w        = {};
+  ra8_widget_reflow_ops_t  no_render = {.user        = &m,
+                                        .render_page = nullptr,
+                                        .follow_link = mock_rv_follow};
+  ra8_widget_reflow_view_t rv        = {};
+  ra8_widget_t             w         = {};
   rv_init_guard_view(&w, &rv, &no_render);
   w.vt->render(&w);
   TEST_ASSERT_EQ(0U, s_rv_fill_calls);

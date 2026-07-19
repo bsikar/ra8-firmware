@@ -386,7 +386,6 @@ static void test_render_register_face_both_arms(void)
 /**
  * @brief Clear `s_fb`, re-init gfx over it, render page @p page and assert output.
  * @param[in] page Page index to render into the shared framebuffer.
- * @return None.
  * @pre The engine has a laid-out chapter with at least @p page pages.
  * @post The page rendered and drew at least one pixel.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -404,7 +403,6 @@ static void reflow_render_drawn(uint32_t page)
 
 /**
  * @brief Clear `s_fb`, render page 0 and assert byte-identity with `s_fb_ref`.
- * @return None.
  * @pre A reference page render already populated `s_fb_ref`.
  * @post The page rendered identically to the reference (cache is pure opt).
  * @note Not thread-safe; single-threaded host-test helper.
@@ -423,7 +421,6 @@ static void atlas_render_and_check(void)
 /**
  * @brief Bind a glyph atlas over the shared caller-owned storage.
  * @param[in] cell_bytes Bytes-per-cell budget (tiny values force the direct path).
- * @return None.
  * @pre The engine is initialised.
  * @post The atlas is bound to `s_engine` with the given cell budget.
  * @note Not thread-safe; single-threaded host-test helper.

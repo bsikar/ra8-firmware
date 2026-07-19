@@ -26,13 +26,13 @@
  * @brief Backing-store fill patterns and the object-id seed.
  */
 typedef enum : uint32_t {
-  k_t_store_stride = 7U,          /**< Multiplier of the store byte pattern.   */
-  k_t_xip_mask     = 0xA5U,       /**< XOR mask of the XIP pattern; different
+  k_t_store_stride  = 7U,          /**< Multiplier of the store byte pattern.   */
+  k_t_xip_mask      = 0xA5U,       /**< XOR mask of the XIP pattern; different
                                        from the store pattern so a source mix-up
                                        is visible.                              */
-  k_t_frame_hdr_len = 36U,        /**< Header bytes before the frame payload,
+  k_t_frame_hdr_len = 36U,         /**< Header bytes before the frame payload,
                                        where the comparison starts.             */
-  k_t_oid_unset    = 0xFFFFFFFFU, /**< Pre-set object id; a lookup that fails
+  k_t_oid_unset     = 0xFFFFFFFFU, /**< Pre-set object id; a lookup that fails
                                        must leave it.                           */
 } t_vsrc_t;
 

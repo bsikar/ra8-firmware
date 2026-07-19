@@ -69,9 +69,9 @@ typedef enum : uint16_t {
  * @brief Entry counts of the RAR5 code-length tables.
  */
 typedef enum : uint8_t {
-  k_t_tbl_bd_entries  = 20U, /**< Bit-length table (BD) entries.        */
-  k_t_tbl_dd_entries  = 64U, /**< Distance table (DD) entries.          */
-  k_t_tbl_rd_entries  = 44U, /**< Low-distance + repeat table entries.  */
+  k_t_tbl_bd_entries = 20U, /**< Bit-length table (BD) entries.        */
+  k_t_tbl_dd_entries = 64U, /**< Distance table (DD) entries.          */
+  k_t_tbl_rd_entries = 44U, /**< Low-distance + repeat table entries.  */
 } t_r5_table_t;
 
 /**
@@ -84,13 +84,13 @@ typedef enum : uint8_t {
  * so these must match the architecture, not the decoder.
  */
 typedef enum : uint32_t {
-  k_t_x86_op_call  = 0xE8U,     /**< x86 CALL rel32 opcode.                       */
-  k_t_x86_op_jmp   = 0xE9U,     /**< x86 JMP rel32 opcode.                        */
-  k_t_x86_insn_len = 5U,        /**< Its total length: 1 opcode + 4 operand bytes. */
-  k_t_arm_op_bl    = 0xEBU,     /**< ARM BL opcode, the high byte of the word.    */
-  k_t_arm_off_mask = 0xFFFFFFU, /**< The 24-bit BL offset field.                  */
-  k_t_byte_mask    = 0xFFU,     /**< Low-byte mask while serialising.             */
-  k_t_le32_hi_shift = 24U,      /**< Shift for the top byte of a 32-bit LE field. */
+  k_t_x86_op_call   = 0xE8U,     /**< x86 CALL rel32 opcode.                       */
+  k_t_x86_op_jmp    = 0xE9U,     /**< x86 JMP rel32 opcode.                        */
+  k_t_x86_insn_len  = 5U,        /**< Its total length: 1 opcode + 4 operand bytes. */
+  k_t_arm_op_bl     = 0xEBU,     /**< ARM BL opcode, the high byte of the word.    */
+  k_t_arm_off_mask  = 0xFFFFFFU, /**< The 24-bit BL offset field.                  */
+  k_t_byte_mask     = 0xFFU,     /**< Low-byte mask while serialising.             */
+  k_t_le32_hi_shift = 24U,       /**< Shift for the top byte of a 32-bit LE field. */
 } t_r5_filter_t;
 
 /**
@@ -98,11 +98,11 @@ typedef enum : uint32_t {
  * @brief Sizes and stimulus values of the crafted streams.
  */
 typedef enum : uint16_t {
-  k_t_src_len       = 600U, /**< All-literal round-trip source length, bytes.     */
-  k_t_src_stride    = 7U,   /**< Multiplier of its byte pattern; co-prime with 4
+  k_t_src_len       = 600U,  /**< All-literal round-trip source length, bytes.     */
+  k_t_src_stride    = 7U,    /**< Multiplier of its byte pattern; co-prime with 4
                                  so the pattern does not repeat per word.          */
-  k_t_lit_prefix    = 300U, /**< Literal prefix giving far matches a window.       */
-  k_t_reuse_dist    = 257U, /**< Distance reused by the repeat-distance legs.      */
+  k_t_lit_prefix    = 300U,  /**< Literal prefix giving far matches a window.       */
+  k_t_reuse_dist    = 257U,  /**< Distance reused by the repeat-distance legs.      */
   k_t_notab_flags   = 0x40U, /**< Block header: last block, no tables, bytecount 1. */
   k_t_hdr_csum_seed = 0x5AU, /**< Seed the header checksum is XOR-folded against.  */
 } t_r5_fixture_t;
@@ -156,18 +156,14 @@ static void test_rar5_match_legs(void)
   for (uint32_t i = 0U; i < k_t_lit_prefix; ++i) {
     enc_lit(&body, s_exp, &elen, (uint8_t)(i + 1U));
   }
-  enc_match(&body, s_exp, &elen, 2U, 3U);       /* len 4, dist 4  */
-  enc_match_lenx(&body, s_exp, &elen, 1U, 1U);  /* len 11, dist 2 */
-  enc_match_distx(&body, s_exp, &elen, 0U, 1U); /* len 2, dist 6  */
-  enc_match_lowdist(&body,
-                    s_exp,
-                    &elen,
-                    0U,
-                    k_t_len_code_bits);                         /* len 2, dist 38         */
-  enc_match_hilow(&body, s_exp, &elen, 0U, 1U, 2U);             /* len 2, dist 65+16+2=83 */
-  enc_match_big(&body, s_exp, &elen, 0U);                       /* len 3, dist 257        */
-  enc_repdist(&body, s_exp, &elen, 1U, k_t_reuse_dist); /* len 3, reuse dist 257  */
-  enc_replast(&body, s_exp, &elen, 3U, k_t_reuse_dist); /* repeat last len/dist   */
+  enc_match(&body, s_exp, &elen, 2U, 3U);                        /* len 4, dist 4  */
+  enc_match_lenx(&body, s_exp, &elen, 1U, 1U);                   /* len 11, dist 2 */
+  enc_match_distx(&body, s_exp, &elen, 0U, 1U);                  /* len 2, dist 6  */
+  enc_match_lowdist(&body, s_exp, &elen, 0U, k_t_len_code_bits); /* len 2, dist 38         */
+  enc_match_hilow(&body, s_exp, &elen, 0U, 1U, 2U);              /* len 2, dist 65+16+2=83 */
+  enc_match_big(&body, s_exp, &elen, 0U);                        /* len 3, dist 257        */
+  enc_repdist(&body, s_exp, &elen, 1U, k_t_reuse_dist);          /* len 3, reuse dist 257  */
+  enc_replast(&body, s_exp, &elen, 3U, k_t_reuse_dist);          /* repeat last len/dist   */
   static uint8_t s_pk[k_pk_cap];
   memset(s_pk, 0, sizeof(s_pk));
   const size_t pklen = enc_finish(&body, s_pk);
@@ -204,8 +200,8 @@ static void oracle_x86(uint8_t* d, uint32_t len, uint32_t filepos, bool e9)
     const uint8_t op = d[i];
     if (op == k_t_x86_op_call || (e9 && op == k_t_x86_op_jmp)) {
       const uint32_t off = i + 1U;
-      uint32_t       v = (uint32_t)d[off] | ((uint32_t)d[off + 1U] << 8U) |
-                         ((uint32_t)d[off + 2U] << 16U) | ((uint32_t)d[off + 3U] << k_t_le32_hi_shift);
+      uint32_t v = (uint32_t)d[off] | ((uint32_t)d[off + 1U] << 8U) |
+                   ((uint32_t)d[off + 2U] << 16U) | ((uint32_t)d[off + 3U] << k_t_le32_hi_shift);
       v -= (filepos + off);
       d[off]      = (uint8_t)(v & k_t_byte_mask);
       d[off + 1U] = (uint8_t)((v >> 8U) & k_t_byte_mask);
@@ -320,8 +316,6 @@ static void test_rar5_filters(void)
  *
  * @param[in,out] w Bit writer positioned at the start of the table section.
  *
- * @return None.
- * @retval None Void.
  *
  * @pre @p w is non-NULL and has capacity for the whole table section.
  * @pre No table bits have been written to @p w yet.
@@ -340,11 +334,9 @@ static void enc_tables_runs(bitw_t* w)
     bw_put(w, k_t_len_code_bits, 4U);
   }
   /* LD 0..271 = 9 via a literal 9 then copy-previous runs (codes 16/17). */
-  bw_put(w, k_t_lit_code_bits, k_t_len_code_bits); /* tbl[0] = 9 */
-  bw_put(w,
-         k_t_code_copy_long,
-         k_t_len_code_bits);       /* copy prev, long run                 */
-  bw_put(w, k_t_run_138, k_t_long_run_bits); /* run = 11 + 127 = 138 -> tbl[1..138] */
+  bw_put(w, k_t_lit_code_bits, k_t_len_code_bits);  /* tbl[0] = 9 */
+  bw_put(w, k_t_code_copy_long, k_t_len_code_bits); /* copy prev, long run                 */
+  bw_put(w, k_t_run_138, k_t_long_run_bits);        /* run = 11 + 127 = 138 -> tbl[1..138] */
   bw_put(w, k_t_code_copy_long, k_t_len_code_bits);
   bw_put(w, k_t_run_133, k_t_long_run_bits); /* run = 133 -> tbl[139..271] */
   /* LD 272..305 = 0 via a zero run (code 18 short + 19 long). */
@@ -469,7 +461,7 @@ static void test_rar5_malformed(void)
   /* A first block that declares no tables must be rejected. */
   static uint8_t s_notab[16] = {};
   s_notab[0]                 = k_t_notab_flags; /* last, no tables, bytecount 1 */
-  s_notab[1]                 = 0x02U;             /* block size 2                 */
+  s_notab[1]                 = 0x02U;           /* block size 2                 */
   s_notab[2] = (uint8_t)(k_t_hdr_csum_seed ^ k_t_notab_flags ^ 0x02U); /* checksum */
   s_notab[3] = 0x00U;
   s_notab[4] = 0x00U;
@@ -483,7 +475,7 @@ static void test_rar5_malformed(void)
   bw_put(&body,
          k_t_sym_len_slot0,
          k_t_lit_code_bits); /* length slot 0 -> length 2                      */
-  bw_put(&body, 3U, 6U);   /* distance slot 3 -> dist 4, but no prior output */
+  bw_put(&body, 3U, 6U);     /* distance slot 3 -> dist 4, but no prior output */
   static uint8_t s_pk2[k_pk_cap];
   memset(s_pk2, 0, sizeof(s_pk2));
   const size_t pklen2 = enc_finish(&body, s_pk2);

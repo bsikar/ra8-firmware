@@ -290,7 +290,7 @@ static void test_io_before_init_rejected(void)
   TEST_BEGIN("sdcard read/write before init rejected");
   prep();
   uint8_t  buf[k_t_block_len] = {};
-  uint32_t blocks                = 0U;
+  uint32_t blocks             = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_sdcard_read_blocks(0U, buf, 1U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_sdcard_write_blocks(0U, buf, 1U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_sdcard_get_capacity(&blocks));
@@ -350,7 +350,7 @@ static void test_io_after_init(void)
    * holds; we don't care about content here, only that the call
    * returns ok. */
   uint8_t         buf[k_t_block_len] = {};
-  const ra8_err_t r                     = ra8_sdcard_read_blocks(0U, buf, 1U);
+  const ra8_err_t r                  = ra8_sdcard_read_blocks(0U, buf, 1U);
   TEST_ASSERT_EQ(k_ra8_ok, r);
 
   /* Single block write. */

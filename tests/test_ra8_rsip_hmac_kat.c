@@ -96,7 +96,6 @@ static void expect_hmac(const uint8_t* key,
 
 /**
  * @brief Reset the sim and bring the RSIP up for the KAT vectors.
- * @return None.
  * @pre None.
  * @post The RSIP is initialised (or already-existing), ready for HMAC calls.
  * @note Not thread-safe; single-threaded host-test helper.

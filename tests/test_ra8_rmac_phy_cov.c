@@ -133,8 +133,7 @@ static ra8_err_t bus_read(void* ctx, uint8_t phy, uint8_t reg, uint16_t* out)
     if (st->reset_reads_remaining > 0U) {
       st->reset_reads_remaining = (uint16_t)(st->reset_reads_remaining - 1U);
     } else {
-      st->regs[k_reg_control] =
-        (uint16_t)(st->regs[k_reg_control] & (uint16_t)~k_t_bmcr_reset);
+      st->regs[k_reg_control] = (uint16_t)(st->regs[k_reg_control] & (uint16_t)~k_t_bmcr_reset);
     }
   }
   *out = st->regs[reg];

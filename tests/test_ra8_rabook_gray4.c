@@ -91,17 +91,17 @@
  * two degenerate values drive the round-to-zero clamps.
  */
 typedef enum : uint16_t {
-  k_t_src_small_w   = 100U,   /**< Source width already inside the cap.        */
-  k_t_src_small_h   = 50U,    /**< Its height.                                 */
-  k_t_cap_generous  = 200U,   /**< Cap larger than the source, so no scaling.  */
-  k_t_cap_edge      = 1600U,  /**< The e-reader long-edge cap; also the scaled
+  k_t_src_small_w  = 100U,   /**< Source width already inside the cap.        */
+  k_t_src_small_h  = 50U,    /**< Its height.                                 */
+  k_t_cap_generous = 200U,   /**< Cap larger than the source, so no scaling.  */
+  k_t_cap_edge     = 1600U,  /**< The e-reader long-edge cap; also the scaled
                                    width every over-cap case must land on.     */
-  k_t_fit_h         = 900U,   /**< Height that pairs with the cap at 16:9.     */
-  k_t_land_w        = 3200U,  /**< Landscape source width, 2x the cap.         */
-  k_t_land_h        = 1800U,  /**< Its height, 2x k_t_fit_h.                   */
-  k_t_port_w        = 800U,   /**< Portrait source width.                      */
-  k_t_port_h        = 2400U,  /**< Its height, past the cap on the long edge.  */
-  k_t_extreme_edge  = 10000U, /**< Long edge extreme enough that the short edge
+  k_t_fit_h        = 900U,   /**< Height that pairs with the cap at 16:9.     */
+  k_t_land_w       = 3200U,  /**< Landscape source width, 2x the cap.         */
+  k_t_land_h       = 1800U,  /**< Its height, 2x k_t_fit_h.                   */
+  k_t_port_w       = 800U,   /**< Portrait source width.                      */
+  k_t_port_h       = 2400U,  /**< Its height, past the cap on the long edge.  */
+  k_t_extreme_edge = 10000U, /**< Long edge extreme enough that the short edge
                                    rounds to zero and must be clamped to 1.    */
 } t_g4_dims_t;
 
@@ -124,11 +124,11 @@ typedef enum : uint8_t {
  * so a failing assertion identifies the pixel, not just the byte.
  */
 typedef enum : uint8_t {
-  k_t_pack_0_1   = 0x05U, /**< Nibbles 0 and 5: greys 0 and 85.            */
-  k_t_pack_2_3   = 0x23U, /**< Nibbles 2 and 3: the exact-palette pair.    */
-  k_t_pack_8_pad = 0x80U, /**< Nibble 8 plus the zero pad of an odd count. */
+  k_t_pack_0_1    = 0x05U, /**< Nibbles 0 and 5: greys 0 and 85.            */
+  k_t_pack_2_3    = 0x23U, /**< Nibbles 2 and 3: the exact-palette pair.    */
+  k_t_pack_8_pad  = 0x80U, /**< Nibble 8 plus the zero pad of an odd count. */
   k_t_pack_15_pad = 0xF0U, /**< Nibble 15 plus the zero pad.               */
-  k_t_pack_15_15 = 0xFFU, /**< Both nibbles saturated; also the fill a
+  k_t_pack_15_15  = 0xFFU, /**< Both nibbles saturated; also the fill a
                                zero-sized downscale must overwrite.        */
 } t_g4_packed_t;
 
@@ -179,55 +179,32 @@ static void test_dims_no_scale(void)
 {
   uint16_t ow = 0U;
   uint16_t oh = 0U;
-  ra8_rabook_gray4_output_dims(k_t_src_small_w,
-                               k_t_src_small_h,
-                               k_t_cap_generous,
-                               &ow,
-                               &oh);
-  check(ow == k_t_src_small_w &&
-          oh == k_t_src_small_h,
-        "dims: no scale when within max_edge");
+  ra8_rabook_gray4_output_dims(k_t_src_small_w, k_t_src_small_h, k_t_cap_generous, &ow, &oh);
+  check(ow == k_t_src_small_w && oh == k_t_src_small_h, "dims: no scale when within max_edge");
 }
 
 static void test_dims_exact_edge(void)
 {
   uint16_t ow = 0U;
   uint16_t oh = 0U;
-  ra8_rabook_gray4_output_dims(k_t_cap_edge,
-                               k_t_fit_h,
-                               k_t_cap_edge,
-                               &ow,
-                               &oh);
-  check(ow == k_t_cap_edge &&
-          oh == k_t_fit_h,
-        "dims: exact max_edge passes unchanged");
+  ra8_rabook_gray4_output_dims(k_t_cap_edge, k_t_fit_h, k_t_cap_edge, &ow, &oh);
+  check(ow == k_t_cap_edge && oh == k_t_fit_h, "dims: exact max_edge passes unchanged");
 }
 
 static void test_dims_scale_landscape(void)
 {
   uint16_t ow = 0U;
   uint16_t oh = 0U;
-  ra8_rabook_gray4_output_dims(k_t_land_w,
-                               k_t_land_h,
-                               k_t_cap_edge,
-                               &ow,
-                               &oh);
-  check(ow == k_t_cap_edge &&
-          oh == k_t_fit_h,
-        "dims: 2x landscape scale down");
+  ra8_rabook_gray4_output_dims(k_t_land_w, k_t_land_h, k_t_cap_edge, &ow, &oh);
+  check(ow == k_t_cap_edge && oh == k_t_fit_h, "dims: 2x landscape scale down");
 }
 
 static void test_dims_scale_portrait(void)
 {
   uint16_t ow = 0U;
   uint16_t oh = 0U;
-  ra8_rabook_gray4_output_dims(k_t_port_w,
-                               k_t_port_h,
-                               k_t_cap_edge,
-                               &ow,
-                               &oh);
-  check(oh <= k_t_cap_edge,
-        "dims: portrait longer edge clamped");
+  ra8_rabook_gray4_output_dims(k_t_port_w, k_t_port_h, k_t_cap_edge, &ow, &oh);
+  check(oh <= k_t_cap_edge, "dims: portrait longer edge clamped");
   check(ow >= 1U, "dims: portrait width at least 1");
 }
 
@@ -235,29 +212,16 @@ static void test_dims_null_out(void)
 {
   uint16_t ow = k_t_dim_poison;
   uint16_t oh = k_t_dim_poison;
-  ra8_rabook_gray4_output_dims(k_t_src_small_w,
-                               k_t_src_small_w,
-                               k_t_cap_generous,
-                               nullptr,
-                               &oh);
-  ra8_rabook_gray4_output_dims(k_t_src_small_w,
-                               k_t_src_small_w,
-                               k_t_cap_generous,
-                               &ow,
-                               nullptr);
-  check(ow == k_t_dim_poison && oh == k_t_dim_poison,
-        "dims: null out ptr leaves values unchanged");
+  ra8_rabook_gray4_output_dims(k_t_src_small_w, k_t_src_small_w, k_t_cap_generous, nullptr, &oh);
+  ra8_rabook_gray4_output_dims(k_t_src_small_w, k_t_src_small_w, k_t_cap_generous, &ow, nullptr);
+  check(ow == k_t_dim_poison && oh == k_t_dim_poison, "dims: null out ptr leaves values unchanged");
 }
 
 static void test_dims_zero_src(void)
 {
   uint16_t ow = k_t_size_poison;
   uint16_t oh = k_t_size_poison;
-  ra8_rabook_gray4_output_dims(0U,
-                               k_t_src_small_w,
-                               k_t_cap_generous,
-                               &ow,
-                               &oh);
+  ra8_rabook_gray4_output_dims(0U, k_t_src_small_w, k_t_cap_generous, &ow, &oh);
   check(ow == 0U && oh == 0U, "dims: zero src_w yields (0,0)");
 }
 
@@ -270,11 +234,7 @@ static void test_dims_zero_src_h(void)
    */
   uint16_t ow = k_t_size_poison;
   uint16_t oh = k_t_size_poison;
-  ra8_rabook_gray4_output_dims(k_t_src_small_w,
-                               0U,
-                               k_t_cap_generous,
-                               &ow,
-                               &oh);
+  ra8_rabook_gray4_output_dims(k_t_src_small_w, 0U, k_t_cap_generous, &ow, &oh);
   check(ow == 0U && oh == 0U, "dims: zero src_h yields (0,0)");
 }
 
@@ -287,11 +247,7 @@ static void test_dims_zero_max_edge(void)
    */
   uint16_t ow = k_t_size_poison;
   uint16_t oh = k_t_size_poison;
-  ra8_rabook_gray4_output_dims(k_t_src_small_w,
-                               k_t_src_small_h,
-                               0U,
-                               &ow,
-                               &oh);
+  ra8_rabook_gray4_output_dims(k_t_src_small_w, k_t_src_small_h, 0U, &ow, &oh);
   check(ow == 0U && oh == 0U, "dims: zero max_edge yields (0,0)");
 }
 
@@ -445,8 +401,7 @@ static void test_downscale_identity(void)
 
   ra8_err_t err = ra8_rabook_gray4_downscale(src, 2U, 2U, dst, 2U, 2U);
   check(err == k_ra8_ok, "downscale: identity 2x2 -- ok");
-  check(dst[0] == k_t_px_tl && dst[1] == k_t_px_tr &&
-          dst[2] == k_t_px_bl && dst[3] == k_t_px_br,
+  check(dst[0] == k_t_px_tl && dst[1] == k_t_px_tr && dst[2] == k_t_px_bl && dst[3] == k_t_px_br,
         "downscale: identity 2x2 -- pixels unchanged");
 }
 
@@ -462,8 +417,7 @@ static void test_downscale_2to1_horizontal(void)
 
   ra8_err_t err = ra8_rabook_gray4_downscale(src, 4U, 1U, dst, 2U, 1U);
   check(err == k_ra8_ok, "downscale: 4x1->2x1 -- ok");
-  check(dst[0] == 0U && dst[1] == k_t_px_sample2,
-        "downscale: 4x1->2x1 -- sampled at x=0,2");
+  check(dst[0] == 0U && dst[1] == k_t_px_sample2, "downscale: 4x1->2x1 -- sampled at x=0,2");
 }
 
 static void test_downscale_null_ptr(void)
@@ -486,10 +440,7 @@ static void test_downscale_zero_dst(void)
 static void test_downscale_zero_src(void)
 {
   static const uint8_t src[]  = {1U};
-  uint8_t              dst[4] = {k_t_pack_15_15,
-                                 k_t_pack_15_15,
-                                 k_t_pack_15_15,
-                                 k_t_pack_15_15};
+  uint8_t              dst[4] = {k_t_pack_15_15, k_t_pack_15_15, k_t_pack_15_15, k_t_pack_15_15};
 
   ra8_err_t err = ra8_rabook_gray4_downscale(src, 0U, 2U, dst, 2U, 2U);
   check(err == k_ra8_ok, "downscale: zero src_w returns ok");
@@ -516,10 +467,7 @@ static void test_downscale_zero_src_h(void)
    * proving src_h independently selects the ok + zeroed-dst arm.
    */
   static const uint8_t src[]  = {1U};
-  uint8_t              dst[4] = {k_t_pack_15_15,
-                                 k_t_pack_15_15,
-                                 k_t_pack_15_15,
-                                 k_t_pack_15_15};
+  uint8_t              dst[4] = {k_t_pack_15_15, k_t_pack_15_15, k_t_pack_15_15, k_t_pack_15_15};
 
   ra8_err_t err = ra8_rabook_gray4_downscale(src, 2U, 0U, dst, 2U, 2U);
   check(err == k_ra8_ok, "downscale: zero src_h returns ok");

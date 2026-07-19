@@ -714,7 +714,6 @@ static void test_hmac_sha256_inc_rfc4231_1(void)
  * @param[in]  key      Key bytes, longer than one block.
  * @param[in]  key_len  Length of @p key in bytes.
  * @param[out] prepared 64-byte prepared key block.
- * @return None.
  * @pre @p key and @p prepared are non-null.
  * @pre @p prepared is zeroed by the caller, so the pad is already in place.
  * @post The first 32 bytes of @p prepared hold SHA-256(@p key).
@@ -746,7 +745,6 @@ static void hmac_ref_prepare_key(const uint8_t* key, uint32_t key_len, uint8_t* 
  * @param[in]  data     Message bytes to authenticate.
  * @param[in]  data_len Length of @p data in bytes.
  * @param[out] expect   32-byte reference MAC.
- * @return None.
  * @pre All pointer arguments are non-null.
  * @pre @p prepared holds a full 64-byte block.
  * @post @p expect holds the reference MAC.
@@ -754,10 +752,8 @@ static void hmac_ref_prepare_key(const uint8_t* key, uint32_t key_len, uint8_t* 
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
  */
-static void hmac_ref_compute(const uint8_t* prepared,
-                             const uint8_t* data,
-                             uint32_t       data_len,
-                             uint8_t*       expect)
+static void
+hmac_ref_compute(const uint8_t* prepared, const uint8_t* data, uint32_t data_len, uint8_t* expect)
 {
   uint8_t ipad[k_t_hmac_block_len];
   uint8_t opad[k_t_hmac_block_len];

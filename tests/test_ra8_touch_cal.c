@@ -204,14 +204,10 @@ static void test_compute_three_point(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_cal_compute(raw, scr, 3U, &got));
 
   /* Recovered coefficients should match within 1e-3. */
-  TEST_ASSERT(((got.a - truth.a) < k_t_tol_scale) &&
-              ((truth.a - got.a) < k_t_tol_scale));
-  TEST_ASSERT(((got.e - truth.e) < k_t_tol_scale) &&
-              ((truth.e - got.e) < k_t_tol_scale));
-  TEST_ASSERT(((got.c - truth.c) < k_t_tol_translate) &&
-              ((truth.c - got.c) < k_t_tol_translate));
-  TEST_ASSERT(((got.f - truth.f) < k_t_tol_translate) &&
-              ((truth.f - got.f) < k_t_tol_translate));
+  TEST_ASSERT(((got.a - truth.a) < k_t_tol_scale) && ((truth.a - got.a) < k_t_tol_scale));
+  TEST_ASSERT(((got.e - truth.e) < k_t_tol_scale) && ((truth.e - got.e) < k_t_tol_scale));
+  TEST_ASSERT(((got.c - truth.c) < k_t_tol_translate) && ((truth.c - got.c) < k_t_tol_translate));
+  TEST_ASSERT(((got.f - truth.f) < k_t_tol_translate) && ((truth.f - got.f) < k_t_tol_translate));
 }
 
 /**
@@ -278,7 +274,7 @@ static void test_compute_five_point(void)
 static void test_compute_bad_inputs(void)
 {
   ra8_touch_cal_point_t  pts[k_t_cal_points] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
-  ra8_touch_cal_matrix_t m                      = {};
+  ra8_touch_cal_matrix_t m                   = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_touch_cal_compute(nullptr, pts, 5U, &m));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_touch_cal_compute(pts, nullptr, 5U, &m));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_touch_cal_compute(pts, pts, 5U, nullptr));
@@ -336,7 +332,6 @@ static void test_apply_clip_and_null(void)
  * @param[in] raws    The five synthesised raw samples.
  * @param[in] targets The five on-screen calibration targets.
  * @param[in] got     The matrix recovered by ra8_touch_cal_run.
- * @return None.
  * @pre @p got is a valid calibration matrix for @p raws / @p targets.
  * @post Every sample round-tripped within a 5-pixel tolerance.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -363,7 +358,6 @@ static void tc_verify_roundtrip(const ra8_touch_cal_point_t   raws[k_t_cal_point
  * @param[in]  targets The five on-screen calibration targets.
  * @param[in]  truth   The ground-truth calibration matrix.
  * @param[out] raws    Receives the five inverted raw samples.
- * @return None.
  * @pre @p truth has non-zero a/e scale terms.
  * @post @p raws holds raw = screen / scale for each target.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -383,7 +377,6 @@ static void tc_synth_raws(const ra8_touch_cal_point_t   targets[k_t_cal_points],
  * @brief Assert the utility painted the targets in the expected visit order.
  * @param[in] targets The five expected targets in visit order.
  * @param[in] state   The stub state recording draw calls.
- * @return None.
  * @pre @p state recorded five draws.
  * @post Every drawn point matched the expected target.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -477,7 +470,7 @@ static void test_run_full_sequence(void)
 static void test_run_shim_error(void)
 {
   ra8_touch_cal_point_t dummy[k_t_cal_points] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
-  stub_state_t          state                    = {
+  stub_state_t          state                 = {
     .draws      = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
     .n_draws    = 0U,
     .reads      = dummy,

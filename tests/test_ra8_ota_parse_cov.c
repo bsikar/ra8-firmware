@@ -52,7 +52,7 @@
  * @brief Flash-bank geometry and the out-parameter seed.
  */
 typedef enum : uint32_t {
-  k_t_bank_size     = 4096U,      /**< Bank size, bytes.                      */
+  k_t_bank_size     = 4096U,        /**< Bank size, bytes.                      */
   k_t_bank_addr     = 0x02080000UL, /**< Base address of the inactive bank.   */
   k_t_out_word_seed = 0xDEADBEEFUL, /**< Pre-set output word; a parse that
                                          fails must leave it untouched.        */

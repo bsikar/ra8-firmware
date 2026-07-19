@@ -38,13 +38,13 @@
  * @brief Receive-path register patterns and the out-of-range timing value.
  */
 typedef enum : uint32_t {
-  k_t_rx_payload_b0 = 0x12U,       /**< Short-response payload byte 0.        */
-  k_t_rx_payload_b1 = 0x34U,       /**< Payload byte 1; distinct from b0 so a
+  k_t_rx_payload_b0 = 0x12U,        /**< Short-response payload byte 0.        */
+  k_t_rx_payload_b1 = 0x34U,        /**< Payload byte 1; distinct from b0 so a
                                         swapped pair is visible.               */
   k_t_ack_err_word  = 0x0001A55AUL, /**< AKEPACMSR: virtual channel 1 in bits
                                          19:16, an alternating error pattern in
                                          15:0 so no adjacent error bits agree.  */
-  k_t_timing_over   = 0xFFFFU,     /**< Applied to each timing field in turn:
+  k_t_timing_over   = 0xFFFFU,      /**< Applied to each timing field in turn:
                                         every one exceeds its 15-bit field and
                                         must independently fail validation.     */
 } t_dsi_rx_t;
@@ -243,7 +243,7 @@ static void test_ack_error(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_dsi_init(&cfg));
 
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
-  reg->AKEPACMSR = k_t_ack_err_word; /* VC=1 in bits 19:16, errors in 15:0 */
+  reg->AKEPACMSR                  = k_t_ack_err_word; /* VC=1 in bits 19:16, errors in 15:0 */
 
   ra8_mipi_dsi_ack_error_t e = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_dsi_ack_error_get(&e));
@@ -486,7 +486,7 @@ static void test_set_video_timing_null(void)
 
   /* Field overflow rejected. */
   ra8_mipi_dsi_video_timing_t bad = make_timing();
-  bad.horizontal_active = (uint16_t)k_t_timing_over; /* > 15 bits. */
+  bad.horizontal_active           = (uint16_t)k_t_timing_over; /* > 15 bits. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_dsi_set_video_timing(&bad));
   TEST_END("mipi_dsi set_video_timing rejects nullptr");
 }

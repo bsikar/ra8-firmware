@@ -23,15 +23,15 @@
  * set, leaving byte 0 zero to keep the address locally administered.
  */
 typedef enum : uint8_t {
-  k_t_mac_b1        = 0x11U, /**< MAC address byte 1.                        */
-  k_t_mac_b2        = 0x22U, /**< MAC address byte 2.                        */
-  k_t_mac_b3        = 0x33U, /**< MAC address byte 3.                        */
-  k_t_mac_b4        = 0x44U, /**< MAC address byte 4.                        */
-  k_t_mac_b5        = 0x55U, /**< MAC address byte 5, the last.              */
-  k_t_mac_last_idx  = 5U,    /**< Index of that last byte.                   */
-  k_t_domain_over   = 200U,  /**< Domain number past k_ra8_ptp_domain_user_max. */
-  k_t_msg_type      = 7U,    /**< Message type handed to the dispatcher.     */
-  k_t_msg_len       = 42U,   /**< Its declared length, bytes.                */
+  k_t_mac_b1       = 0x11U, /**< MAC address byte 1.                        */
+  k_t_mac_b2       = 0x22U, /**< MAC address byte 2.                        */
+  k_t_mac_b3       = 0x33U, /**< MAC address byte 3.                        */
+  k_t_mac_b4       = 0x44U, /**< MAC address byte 4.                        */
+  k_t_mac_b5       = 0x55U, /**< MAC address byte 5, the last.              */
+  k_t_mac_last_idx = 5U,    /**< Index of that last byte.                   */
+  k_t_domain_over  = 200U,  /**< Domain number past k_ra8_ptp_domain_user_max. */
+  k_t_msg_type     = 7U,    /**< Message type handed to the dispatcher.     */
+  k_t_msg_len      = 42U,   /**< Its declared length, bytes.                */
 } t_ptp_cfg_t;
 
 typedef enum : int64_t {
@@ -61,15 +61,15 @@ static void stub_msg_cb(void* ctx, ra8_ptp_msg_type_t type, uint64_t sec, uint32
 
 static ra8_ptp_cfg_t default_cfg(void)
 {
-  ra8_ptp_cfg_t cfg         = {.clock_class = k_ra8_ptp_clock_class_default};
-  cfg.domain                = (uint8_t)k_ra8_ptp_domain_default;
-  cfg.sync_interval         = k_ra8_ptp_sync_int_1;
-  cfg.clock_class           = k_ra8_ptp_clock_class_default;
-  cfg.mac_addr[0]           = 0x02U;
-  cfg.mac_addr[1]           = k_t_mac_b1;
-  cfg.mac_addr[2]           = k_t_mac_b2;
-  cfg.mac_addr[3]           = k_t_mac_b3;
-  cfg.mac_addr[4]           = k_t_mac_b4;
+  ra8_ptp_cfg_t cfg              = {.clock_class = k_ra8_ptp_clock_class_default};
+  cfg.domain                     = (uint8_t)k_ra8_ptp_domain_default;
+  cfg.sync_interval              = k_ra8_ptp_sync_int_1;
+  cfg.clock_class                = k_ra8_ptp_clock_class_default;
+  cfg.mac_addr[0]                = 0x02U;
+  cfg.mac_addr[1]                = k_t_mac_b1;
+  cfg.mac_addr[2]                = k_t_mac_b2;
+  cfg.mac_addr[3]                = k_t_mac_b3;
+  cfg.mac_addr[4]                = k_t_mac_b4;
   cfg.mac_addr[k_t_mac_last_idx] = k_t_mac_b5;
   return cfg;
 }
@@ -312,9 +312,7 @@ static void test_message_handler_dispatch(void)
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ptp_attach_message_handler(stub_msg_cb, (void*)(uintptr_t)k_test_ctx_marker));
-  ra8_ptp_dispatch_message(k_ra8_ptp_msg_follow_up,
-                           k_t_msg_type,
-                           k_t_msg_len);
+  ra8_ptp_dispatch_message(k_ra8_ptp_msg_follow_up, k_t_msg_type, k_t_msg_len);
   TEST_ASSERT_EQ(1, s_cb_count);
   TEST_ASSERT_EQ(k_ra8_ptp_msg_follow_up, s_cb_last_type);
   TEST_ASSERT_EQ(7, s_cb_last_sec);

@@ -497,7 +497,7 @@ static void test_block_read_pec_mismatch(void)
   prime_iic_b();
   /* Use cap=255 so the count from the bus (129 = 0x81) fits. */
   uint8_t buf[k_t_block_cap] = {0U};
-  uint8_t out_len                  = 0U;
+  uint8_t out_len            = 0U;
   TEST_ASSERT_EQ(
     k_ra8_err_crc_mismatch,
     ra8_smbus_block_read((uint8_t)k_cov_target, (uint8_t)k_cov_cmd, buf, 255U, &out_len));

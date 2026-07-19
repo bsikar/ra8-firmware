@@ -36,9 +36,9 @@
  * @brief PLL multipliers and the callback out-parameter seed.
  */
 typedef enum : uint16_t {
-  k_t_nmul_valid  = 100U,  /**< A multiplier inside the validator's range.    */
-  k_t_nmul_over   = 300U,  /**< One past its maximum.                        */
-  k_t_event_none  = 0xFFU, /**< "No event delivered yet"; a callback that fires
+  k_t_nmul_valid = 100U,  /**< A multiplier inside the validator's range.    */
+  k_t_nmul_over  = 300U,  /**< One past its maximum.                        */
+  k_t_event_none = 0xFFU, /**< "No event delivered yet"; a callback that fires
                                 without an event id leaves this value.         */
 } t_phy_init_t;
 

@@ -159,7 +159,6 @@ static void test_utf8_encode(void)
 
 /**
  * @brief Walk void + self-close + quoted-attr markup and assert the token kinds.
- * @return None.
  * @pre The tokenizer engine is initialised.
  * @post break / image / rule tokens were all emitted.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -185,7 +184,6 @@ static void walk_check_void_selfclose(void)
 
 /**
  * @brief Walk CDATA markup and assert the inner text is emitted verbatim.
- * @return None.
  * @pre The tokenizer engine is initialised.
  * @post A text token containing a literal '&' (no entity decode) was emitted.
  * @note Not thread-safe; single-threaded host-test helper.

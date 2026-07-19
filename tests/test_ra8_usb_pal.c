@@ -165,7 +165,7 @@ static void test_ep_send_recv_loopback(void)
     data[i] = (uint8_t)(k_t_payload_mask ^ i);
   }
   uint8_t  rx[k_t_rx_cap] = {0U};
-  uint16_t rx_len               = (uint16_t)sizeof(rx);
+  uint16_t rx_len         = (uint16_t)sizeof(rx);
 
   /* Empty ring -> recv reports no_data. */
   TEST_ASSERT_EQ(k_ra8_err_no_data, ra8_usb_pal_ep_recv(1U, rx, &rx_len));

@@ -45,58 +45,48 @@ typedef enum : uint16_t {
 } tap_probe_t;
 
 /**
- * @enum t_png_layout_t
- * @brief Byte offsets and field widths of the PNG stream this file builds.
+ * @enum t_png_off_t
+ * @brief PNG byte positions the builder writes and the hostile arms corrupt.
  *
  * @details
- * The builder hand-writes PNG rather than linking an encoder, so the hostile
- * tests can corrupt one field at a time. Offsets ending in `_b<N>` are the
- * `N`-th byte of a big-endian 32-bit field, most-significant first.
+ * `k_t_chunk_*` and `k_t_ihdr_*` are relative to a chunk or its payload;
+ * `k_t_src_*` are absolute offsets into `s_src`, where IHDR always starts at
+ * 16 (8 signature + 4 length + 4 type). Names ending `_b<N>` are the `N`-th
+ * byte of a big-endian 32-bit field, most-significant first.
  */
 typedef enum : uint8_t {
-  k_t_be32_hi_shift  = 24U,  /**< Shift selecting the top byte of a big-endian 32-bit PNG field. */
-  k_t_byte_mask      = 0xFFU, /**< Low-byte mask applied while serialising a big-endian field.   */
-  k_t_png_ihdr_len   = 13U,  /**< IHDR payload length in bytes, fixed by the PNG spec.           */
-  k_t_chunk_crc_b1   = 9U,   /**< Chunk CRC byte 1, relative to the chunk start plus payload.    */
-  k_t_chunk_crc_b2   = 10U,  /**< Chunk CRC byte 2.                                             */
-  k_t_chunk_crc_b3   = 11U,  /**< Chunk CRC byte 3 (least significant).                          */
-  k_t_chunk_overhead = 12U,  /**< Bytes a chunk costs beyond its payload: 4 length + 4 type + 4 CRC. */
-  k_t_ihdr_off_h_b1  = 5U,   /**< Height byte 1 within the IHDR payload.                         */
-  k_t_ihdr_off_h_b3  = 7U,   /**< Height byte 3 within the IHDR payload.                         */
-  k_t_ihdr_off_ct    = 9U,   /**< Colour-type byte within the IHDR payload.                      */
-} t_png_layout_t;
-
-/**
- * @enum t_src_ihdr_off_t
- * @brief Absolute `s_src` offsets of the IHDR fields the hostile tests corrupt.
- *
- * @details
- * IHDR is always the first chunk, so its payload starts at a fixed offset:
- * 8 signature bytes + 4 length + 4 type = 16. These names let a test poke one
- * IHDR field without re-deriving that arithmetic at every call site.
- */
-typedef enum : uint8_t {
-  k_t_src_off_w_b0      = 16U, /**< Width byte 0 (most significant).                    */
-  k_t_src_off_w_b1      = 17U, /**< Width byte 1.                                       */
-  k_t_src_off_w_b2      = 18U, /**< Width byte 2.                                       */
-  k_t_src_off_w_b3      = 19U, /**< Width byte 3 (least significant).                   */
-  k_t_src_off_h_b0      = 20U, /**< Height byte 0 (most significant).                   */
-  k_t_src_off_h_b1      = 21U, /**< Height byte 1.                                      */
-  k_t_src_off_h_b2      = 22U, /**< Height byte 2.                                      */
-  k_t_src_off_h_b3      = 23U, /**< Height byte 3 (least significant).                  */
-  k_t_src_off_depth     = 24U, /**< Bit-depth byte; 16 here must be rejected.           */
-  k_t_src_off_ct        = 25U, /**< Colour-type byte.                                   */
-  k_t_src_off_interlace = 28U, /**< Interlace byte; non-zero must be rejected.          */
-} t_src_ihdr_off_t;
+  k_t_be32_hi_shift     = 24U,  /**< Top-byte shift of a big-endian 32-bit field. */
+  k_t_byte_mask         = 0xFFU, /**< Low-byte mask while serialising one.     */
+  k_t_png_ihdr_len      = 13U,  /**< IHDR payload length, fixed by the spec.   */
+  k_t_chunk_crc_b1      = 9U,   /**< Chunk CRC byte 1, past the chunk payload. */
+  k_t_chunk_crc_b2      = 10U,  /**< Chunk CRC byte 2.                         */
+  k_t_chunk_crc_b3      = 11U,  /**< Chunk CRC byte 3 (least significant).     */
+  k_t_chunk_overhead    = 12U,  /**< Bytes a chunk costs beyond its payload:
+                                     4 length + 4 type + 4 CRC.                */
+  k_t_ihdr_off_h_b1     = 5U,   /**< Height byte 1 in the IHDR payload.        */
+  k_t_ihdr_off_h_b3     = 7U,   /**< Height byte 3 in the IHDR payload.        */
+  k_t_ihdr_off_ct       = 9U,   /**< Colour-type byte in the IHDR payload.     */
+  k_t_src_off_w_b0      = 16U,  /**< Width byte 0 (most significant) in s_src. */
+  k_t_src_off_w_b1      = 17U,  /**< Width byte 1.                             */
+  k_t_src_off_w_b2      = 18U,  /**< Width byte 2.                             */
+  k_t_src_off_w_b3      = 19U,  /**< Width byte 3 (least significant).         */
+  k_t_src_off_h_b0      = 20U,  /**< Height byte 0 (most significant).         */
+  k_t_src_off_h_b1      = 21U,  /**< Height byte 1.                            */
+  k_t_src_off_h_b2      = 22U,  /**< Height byte 2.                            */
+  k_t_src_off_h_b3      = 23U,  /**< Height byte 3 (least significant).        */
+  k_t_src_off_depth     = 24U,  /**< Bit-depth byte; 16 here must be rejected. */
+  k_t_src_off_ct        = 25U,  /**< Colour-type byte.                         */
+  k_t_src_off_interlace = 28U,  /**< Interlace byte; non-zero must be rejected. */
+} t_png_off_t;
 
 /**
  * @enum t_pattern_t
  * @brief Parameters of the deterministic pixel and palette patterns.
  *
  * @details
- * The builder and the expectation side both synthesize pixels from these, so a
- * decode mismatch is a real defect rather than two drifting generators. The
- * palette ramp is `base + (entry_index * step)` per channel.
+ * The builder and the expectation side share these, so a decode mismatch is a
+ * real defect rather than two drifting generators. The palette ramp is
+ * `base + (entry_index * step)` per channel.
  */
 typedef enum : uint8_t {
   k_t_pix_ch_stride = 29U,  /**< Per-channel offset keeping the R/G/B planes distinct. */
@@ -239,9 +229,9 @@ static void png_chunk(const char* type, const uint8_t* data, uint32_t len)
   if (len > 0U) {
     memcpy(&p[8], data, len);
   }
-  const uint32_t crc                  = (uint32_t)mz_crc32(MZ_CRC32_INIT, &p[4], (size_t)len + 4U);
-  p[8U + len]                         = (uint8_t)(crc >> k_t_be32_hi_shift);
-  p[k_t_chunk_crc_b1 + len]  = (uint8_t)((crc >> 16U) & k_t_byte_mask);
+  const uint32_t crc        = (uint32_t)mz_crc32(MZ_CRC32_INIT, &p[4], (size_t)len + 4U);
+  p[8U + len]               = (uint8_t)(crc >> k_t_be32_hi_shift);
+  p[k_t_chunk_crc_b1 + len] = (uint8_t)((crc >> 16U) & k_t_byte_mask);
   p[k_t_chunk_crc_b2 + len] = (uint8_t)((crc >> 8U) & k_t_byte_mask);
   p[k_t_chunk_crc_b3 + len] = (uint8_t)(crc & k_t_byte_mask);
   s_src_len += k_t_chunk_overhead + (size_t)len;
@@ -432,18 +422,18 @@ static void png_build(uint32_t w, uint32_t h, uint8_t color_type, bool with_trns
   const uint32_t       ch        = ch_map[color_type];
   s_src_len                      = 0U;
   memcpy(s_src, sig, sizeof(sig));
-  s_src_len                                = sizeof(sig);
+  s_src_len                      = sizeof(sig);
   uint8_t ihdr[k_t_png_ihdr_len] = {};
-  ihdr[0]                                  = (uint8_t)(w >> k_t_be32_hi_shift);
-  ihdr[1]                                  = (uint8_t)((w >> 16U) & k_t_byte_mask);
-  ihdr[2]                                  = (uint8_t)((w >> 8U) & k_t_byte_mask);
-  ihdr[3]                                  = (uint8_t)(w & k_t_byte_mask);
-  ihdr[4]                                  = (uint8_t)(h >> k_t_be32_hi_shift);
+  ihdr[0]                        = (uint8_t)(w >> k_t_be32_hi_shift);
+  ihdr[1]                        = (uint8_t)((w >> 16U) & k_t_byte_mask);
+  ihdr[2]                        = (uint8_t)((w >> 8U) & k_t_byte_mask);
+  ihdr[3]                        = (uint8_t)(w & k_t_byte_mask);
+  ihdr[4]                        = (uint8_t)(h >> k_t_be32_hi_shift);
   ihdr[k_t_ihdr_off_h_b1]        = (uint8_t)((h >> 16U) & k_t_byte_mask);
-  ihdr[6]                                  = (uint8_t)((h >> 8U) & k_t_byte_mask);
-  ihdr[k_t_ihdr_off_h_b3]          = (uint8_t)(h & k_t_byte_mask);
-  ihdr[8]                                  = 8U; /* bit depth */
-  ihdr[k_t_ihdr_off_ct]        = color_type;
+  ihdr[6]                        = (uint8_t)((h >> 8U) & k_t_byte_mask);
+  ihdr[k_t_ihdr_off_h_b3]        = (uint8_t)(h & k_t_byte_mask);
+  ihdr[8]                        = 8U; /* bit depth */
+  ihdr[k_t_ihdr_off_ct]          = color_type;
   png_chunk("IHDR", ihdr, sizeof(ihdr));
   if (color_type == 3U) {
     uint8_t plte[k_t_plte_bytes] = {};
@@ -809,7 +799,6 @@ static uint32_t produce_bounded_budget(void)
  *
  * @param[in] info Parsed atlas info from the bounded-RAM produce run.
  *
- * @return None.
  * @pre `s_store` holds the produced atlas.
  * @post Every sampled corner pixel matched the generator pattern.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -916,7 +905,6 @@ static void expect_produce_err(ra8_err_t want)
 
 /**
  * @brief Reject a non-PNG/JPEG source and a too-short-to-sniff source.
- * @return None.
  * @pre The shared source/store buffers are available.
  * @post Both malformed sniff inputs returned their rejection code.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -937,7 +925,6 @@ static void produce_hostile_sniff(void)
 
 /**
  * @brief Propagate a pull failure and reject the config-guard vectors.
- * @return None.
  * @pre The shared source/store buffers are available.
  * @post The pull error and each bad-config guard returned their codes.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -974,7 +961,6 @@ static void produce_hostile_pull_and_cfg(void)
 
 /**
  * @brief Reject the unsupported / out-of-range PNG IHDR malformations.
- * @return None.
  * @pre The shared source/store buffers are available.
  * @post Interlace, depth, colour-type, geometry and chunk faults were rejected.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -996,20 +982,20 @@ static void produce_hostile_png_ihdr(void)
   expect_produce_err(k_ra8_err_not_supported);
   /* Oversize width / height vs the caps (big-endian IHDR fields). */
   png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[k_t_src_off_w_b0]                         = 0x00U;
+  s_src[k_t_src_off_w_b0] = 0x00U;
   s_src[k_t_src_off_w_b1] = 0x01U;
   s_src[k_t_src_off_w_b2] = 0x00U;
   s_src[k_t_src_off_w_b3] = 0x00U; /* width = 65536 */
   expect_produce_err(k_ra8_err_invalid_size);
   png_build(k_t_png_w, k_t_png_h, 0U, false, false);
   s_src[k_t_src_off_h_b0] = 0x00U;
-  s_src[k_t_src_off_h_b1]   = 0x01U;
-  s_src[k_t_src_off_h_b2]   = 0x00U;
-  s_src[k_t_src_off_h_b3]   = 0x00U; /* height = 65536 */
+  s_src[k_t_src_off_h_b1] = 0x01U;
+  s_src[k_t_src_off_h_b2] = 0x00U;
+  s_src[k_t_src_off_h_b3] = 0x00U; /* height = 65536 */
   expect_produce_err(k_ra8_err_invalid_size);
   /* Zero width (PNG IHDR direct-geometry vector). */
   png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[k_t_src_off_w_b0]                         = 0U;
+  s_src[k_t_src_off_w_b0] = 0U;
   s_src[k_t_src_off_w_b1] = 0U;
   s_src[k_t_src_off_w_b2] = 0U;
   s_src[k_t_src_off_w_b3] = 0U;
@@ -1020,9 +1006,7 @@ static void produce_hostile_png_ihdr(void)
   expect_produce_err(k_ra8_err_protocol_error);
   /* Palette image with no PLTE: strip it by renaming the chunk type. */
   png_build(k_t_png_w, k_t_png_h, 3U, false, false);
-  memcpy(&s_src[8U + 8U + (size_t)k_t_png_ihdr_len + 4U + 4U],
-         "yLTE",
-         4U); /* PLTE -> ancillary */
+  memcpy(&s_src[8U + 8U + (size_t)k_t_png_ihdr_len + 4U + 4U], "yLTE", 4U); /* PLTE -> ancillary */
   expect_produce_err(k_ra8_err_validation_failed);
   /* tRNS on a non-palette image. */
   png_build(k_t_png_w, k_t_png_h, 3U, true, false);
@@ -1032,7 +1016,6 @@ static void produce_hostile_png_ihdr(void)
 
 /**
  * @brief Propagate the work-arena-too-small and sink-out-of-room budget faults.
- * @return None.
  * @pre The shared source/store buffers are available.
  * @post Under-budgeted work and sink both propagated their error codes.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -1111,8 +1094,7 @@ static void test_produce_hostile(void)
   produce_hostile_budget();
   /* PLTE MC/DC vectors: indivisible length, oversize, duplicate. */
   png_build(k_t_png_w, k_t_png_h, 3U, false, false);
-  s_src[8U + 8U + k_t_png_ihdr_len + 4U + 3U] =
-    k_t_plte_bad_len; /* PLTE length 15 -> 14 */
+  s_src[8U + 8U + k_t_png_ihdr_len + 4U + 3U] = k_t_plte_bad_len; /* PLTE length 15 -> 14 */
   expect_produce_err(k_ra8_err_validation_failed);
   TEST_END("produce: hostile / unsupported sources fail closed");
 }
