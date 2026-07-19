@@ -287,6 +287,37 @@ static void test_epub_fs_read_error_corrupt_fat(void)
 }
 
 /**
+ * @brief Prove the ra8_fs layer returns the .epub bytes exactly as written.
+ *
+ * @details
+ * Runs before the adapter parses anything, so a later parse failure can never
+ * be blamed on storage: size and content are both compared against the source
+ * blob the fixture wrote.
+ *
+ * @param[in,out] mount Mounted volume holding BOOK.EPB.
+ *
+ * @pre @p mount is a mounted volume and BOOK.EPB has been written to it.
+ * @pre `s_epub` / `s_epub_len` describe the bytes that were written.
+ * @post The file handle is closed again.
+ * @post Every assertion has run; a mismatch aborts the process.
+ *
+ * @note Not thread-safe; the fixtures are file-scope state.
+ */
+static void check_fs_byte_roundtrip(ra8_fs_mount_t* mount)
+{
+  ra8_fs_file_t* rf = nullptr;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(mount, "BOOK.EPB", k_ra8_fs_mode_read, &rf));
+  uint32_t sz = 0U;
+  uint32_t gt = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(rf, &sz));
+  TEST_ASSERT_EQ(s_epub_len, sz);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(rf, s_read, sz, &gt));
+  TEST_ASSERT_EQ(sz, gt);
+  TEST_ASSERT_EQ(0, memcmp(s_read, s_epub, (size_t)sz));
+  (void)ra8_fs_close(rf);
+}
+
+/**
  * @test test_epub_fs_streamed_roundtrip
  * @brief A .epub on ra8_fs opens end to end through ra8_epub_open_streamed_fs with
  *        no whole-file buffer (#151): the spine count and both chapter bodies come
@@ -307,20 +338,7 @@ static void test_epub_fs_streamed_roundtrip(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &mount));
   write_epub(mount, "BOOK.EPB");
 
-  /* The ra8_fs layer round-trips the exact bytes (size + content) before the
-   * adapter parses them -- so a later parse failure is never a storage bug. */
-  {
-    ra8_fs_file_t* rf = nullptr;
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(mount, "BOOK.EPB", k_ra8_fs_mode_read, &rf));
-    uint32_t sz = 0U;
-    uint32_t gt = 0U;
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(rf, &sz));
-    TEST_ASSERT_EQ(s_epub_len, sz);
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(rf, s_read, sz, &gt));
-    TEST_ASSERT_EQ(sz, gt);
-    TEST_ASSERT_EQ(0, memcmp(s_read, s_epub, (size_t)sz));
-    (void)ra8_fs_close(rf);
-  }
+  check_fs_byte_roundtrip(mount);
 
   ra8_epub_stream_fs_ctx_t io   = {};
   ra8_epub_book_t          book = {};
