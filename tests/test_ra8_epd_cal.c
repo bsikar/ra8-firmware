@@ -220,8 +220,8 @@ static void test_record_roundtrip(void)
 
   ra8_epd_cal_record_t out = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_deserialize(blob, sizeof(blob), &out));
-  TEST_ASSERT_EQ((uint16_t)k_ec_good_mv, out.vcom_mv);
-  TEST_ASSERT_EQ((uint8_t)k_ra8_epd_cal_schema_version, out.schema_version);
+  TEST_ASSERT_EQ(k_ec_good_mv, out.vcom_mv);
+  TEST_ASSERT_EQ(k_ra8_epd_cal_schema_version, out.schema_version);
   TEST_END("epd_cal: record serialize/deserialize round-trip");
 }
 
@@ -407,7 +407,7 @@ static void test_resolve_prefers_panel(void)
   cfg.provisioned_mv       = (uint16_t)k_ec_third_mv;
   ra8_epd_cal_result_t res = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_resolve(&cfg, &res));
-  TEST_ASSERT_EQ((uint16_t)k_ec_good_mv, res.vcom_mv);
+  TEST_ASSERT_EQ(k_ec_good_mv, res.vcom_mv);
   TEST_ASSERT_EQ(k_ra8_epd_cal_src_panel, res.source);
   TEST_END("epd_cal: resolve prefers the controller's own VCOM");
 }
@@ -426,7 +426,7 @@ static void test_resolve_falls_back_to_record(void)
   cfg.provisioned_mv       = (uint16_t)k_ec_third_mv;
   ra8_epd_cal_result_t res = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_resolve(&cfg, &res));
-  TEST_ASSERT_EQ((uint16_t)k_ec_other_mv, res.vcom_mv);
+  TEST_ASSERT_EQ(k_ec_other_mv, res.vcom_mv);
   TEST_ASSERT_EQ(k_ra8_epd_cal_src_record, res.source);
 
   /* Leg 2: the controller read faults. */
@@ -447,7 +447,7 @@ static void test_resolve_falls_back_to_record(void)
   cfg            = ec_cfg();
   res            = (ra8_epd_cal_result_t){};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_resolve(&cfg, &res));
-  TEST_ASSERT_EQ((uint16_t)k_ec_other_mv, res.vcom_mv);
+  TEST_ASSERT_EQ(k_ec_other_mv, res.vcom_mv);
   TEST_ASSERT_EQ(k_ra8_epd_cal_src_record, res.source);
   TEST_END("epd_cal: resolve falls back to the per-device record");
 }
@@ -464,7 +464,7 @@ static void test_resolve_falls_back_to_provisioned(void)
   cfg.provisioned_mv       = (uint16_t)k_ec_third_mv;
   ra8_epd_cal_result_t res = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_resolve(&cfg, &res));
-  TEST_ASSERT_EQ((uint16_t)k_ec_third_mv, res.vcom_mv);
+  TEST_ASSERT_EQ(k_ec_third_mv, res.vcom_mv);
   TEST_ASSERT_EQ(k_ra8_epd_cal_src_provisioned, res.source);
 
   /* A corrupted record must not shadow the operator value. */
@@ -477,7 +477,7 @@ static void test_resolve_falls_back_to_provisioned(void)
   cfg.provisioned_mv  = (uint16_t)k_ec_third_mv;
   res                 = (ra8_epd_cal_result_t){};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_resolve(&cfg, &res));
-  TEST_ASSERT_EQ((uint16_t)k_ec_third_mv, res.vcom_mv);
+  TEST_ASSERT_EQ(k_ec_third_mv, res.vcom_mv);
   TEST_ASSERT_EQ(k_ra8_epd_cal_src_provisioned, res.source);
 
   /* A stored value outside the panel's window is ignored the same way. */
@@ -569,7 +569,7 @@ static void test_apply_paths(void)
   ra8_epd_cal_result_t res = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_resolve(&cfg, &res));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_apply(&cfg, &res));
-  TEST_ASSERT_EQ((uint16_t)k_ec_good_mv, s_panel.last_set);
+  TEST_ASSERT_EQ(k_ec_good_mv, s_panel.last_set);
 
   /* No set seam: report it rather than pretending the panel was set. */
   cfg           = ec_cfg();
@@ -643,7 +643,7 @@ static void test_apply_readback_guard(void)
   ra8_epd_cal_result_t res = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_resolve(&cfg, &res));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_apply(&cfg, &res));
-  TEST_ASSERT_EQ((uint16_t)k_ec_good_mv, s_panel.get_mv);
+  TEST_ASSERT_EQ(k_ec_good_mv, s_panel.get_mv);
 
   /* Vector 2 -- condition true: the seam reports success but the
    * controller kept its old value. The set seam returned k_ra8_ok, so only
@@ -658,7 +658,7 @@ static void test_apply_readback_guard(void)
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_epd_cal_apply(&cfg, &res));
   /* The write really was attempted -- this is a verification failure, not
    * a refusal to try. */
-  TEST_ASSERT_EQ((uint16_t)k_ec_good_mv, s_panel.last_set);
+  TEST_ASSERT_EQ(k_ec_good_mv, s_panel.last_set);
 
   TEST_END("epd_cal: apply refuses when the readback disagrees");
 }
@@ -677,7 +677,7 @@ static void test_provision_roundtrip(void)
   cfg.panel.get            = nullptr;
   ra8_epd_cal_result_t res = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_resolve(&cfg, &res));
-  TEST_ASSERT_EQ((uint16_t)k_ec_third_mv, res.vcom_mv);
+  TEST_ASSERT_EQ(k_ec_third_mv, res.vcom_mv);
   TEST_ASSERT_EQ(k_ra8_epd_cal_src_record, res.source);
   TEST_END("epd_cal: provision -> resolve round-trip");
 }

@@ -484,18 +484,18 @@ static void test_pixel_format_sizing(void)
   const ra8_epaper_area_t area = {.x = 0U, .y = 0U, .width = 64U, .height = 4U};
   size_t                  n    = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_image_bytes(&area, k_ra8_epaper_pf_8bpp, &n));
-  TEST_ASSERT_EQ((size_t)256U, n);
+  TEST_ASSERT_EQ(256U, n);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_image_bytes(&area, k_ra8_epaper_pf_4bpp, &n));
-  TEST_ASSERT_EQ((size_t)128U, n); /* half of 8 bpp -- the throughput win */
+  TEST_ASSERT_EQ(128U, n); /* half of 8 bpp -- the throughput win */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_image_bytes(&area, k_ra8_epaper_pf_2bpp, &n));
-  TEST_ASSERT_EQ((size_t)64U, n);
+  TEST_ASSERT_EQ(64U, n);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_image_bytes(&area, k_ra8_epaper_pf_1bpp, &n));
-  TEST_ASSERT_EQ((size_t)32U, n);
+  TEST_ASSERT_EQ(32U, n);
 
   /* Odd widths round each row up to a whole byte, per row. */
   const ra8_epaper_area_t odd = {.x = 0U, .y = 0U, .width = 3U, .height = 2U};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_image_bytes(&odd, k_ra8_epaper_pf_4bpp, &n));
-  TEST_ASSERT_EQ((size_t)4U, n); /* ceil(3*4/8) = 2 bytes per row, 2 rows */
+  TEST_ASSERT_EQ(4U, n); /* ceil(3*4/8) = 2 bytes per row, 2 rows */
 
   const ra8_epaper_area_t empty = {.x = 0U, .y = 0U, .width = 0U, .height = 4U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_epaper_image_bytes(&empty, k_ra8_epaper_pf_4bpp, &n));
