@@ -807,6 +807,136 @@ static void test_decode_dev_info_layout(void)
   TEST_END("epaper: GET_DEV_INFO decode layout + guards");
 }
 
+/**
+ * @test epaper_geom_mcdc
+ *
+ * @par MC/DC:
+ * Decision A libs/ra8_hal/src/ra8_epaper_geom.c@internal_ra8_epaper_validate_waveform:
+ * ``if ((wf->du == 0) || (wf->gc16 == 0) || (wf->a2 == 0))``
+ * (3 conditions, ``||`` short-circuit chain) -- N+1 = 4 vectors:
+ * - Vector A1: du=1, gc16=2, a2=4 -> false (control: all three non-zero)
+ * - Vector A2: du=0, gc16=2, a2=4 -> true  (varies du only)
+ * - Vector A3: du=1, gc16=0, a2=4 -> true  (varies gc16 only)
+ * - Vector A4: du=1, gc16=2, a2=0 -> true  (varies a2 only)
+ *
+ * Decision B, same function:
+ * ``if ((init > MAX) || (du > MAX) || (gc16 > MAX) || (a2 > MAX))``
+ * (4 conditions) -- N+1 = 5 vectors. Every B vector keeps du/gc16/a2
+ * non-zero, because decision A short-circuits to a return otherwise and
+ * decision B is never evaluated:
+ * - Vector B1: all <= MAX               -> false (control)
+ * - Vector B2: init > MAX               -> true  (varies init only)
+ * - Vector B3: du   > MAX               -> true  (varies du only)
+ * - Vector B4: gc16 > MAX               -> true  (varies gc16 only)
+ * - Vector B5: a2   > MAX               -> true  (varies a2 only)
+ *
+ * Decision C libs/ra8_hal/src/ra8_epaper_geom.c@ra8_epaper_image_bytes:
+ * ``if ((area->width == 0) || (area->height == 0))`` -- N+1 = 3 vectors:
+ * - Vector C1: w=8, h=8 -> false (control)
+ * - Vector C2: w=0, h=8 -> true  (varies width only)
+ * - Vector C3: w=8, h=0 -> true  (varies height only)
+ *
+ * @details
+ * Decision A is the one that matters on a real panel. Mode 0 is INIT on
+ * every documented LUT, so a descriptor that left the map zeroed would
+ * not fail -- it would refresh every mode as a full INIT flash, which
+ * reads as "this panel is slow" rather than "this board descriptor is
+ * wrong". Each condition therefore has to be shown to reject on its own.
+ */
+static void test_geom_mcdc(void)
+{
+  TEST_BEGIN("epaper MC/DC: waveform validation 3-cond + 4-cond, image_bytes 2-cond");
+
+  ra8_epaper_cfg_t cfg = make_cfg();
+
+  /* Decision A. */
+  cfg.waveform = (ra8_epaper_waveform_cfg_t){.init = 0U, .du = 1U, .gc16 = 2U, .a2 = 4U};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_validate_cfg(&cfg));
+  cfg.waveform = (ra8_epaper_waveform_cfg_t){.init = 0U, .du = 0U, .gc16 = 2U, .a2 = 4U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_validate_cfg(&cfg));
+  cfg.waveform = (ra8_epaper_waveform_cfg_t){.init = 0U, .du = 1U, .gc16 = 0U, .a2 = 4U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_validate_cfg(&cfg));
+  cfg.waveform = (ra8_epaper_waveform_cfg_t){.init = 0U, .du = 1U, .gc16 = 2U, .a2 = 0U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_validate_cfg(&cfg));
+
+  /* Decision B -- all four kept non-zero so decision A falls through. */
+  const uint8_t over = (uint8_t)k_ra8_epaper_wf_mode_max + 1U;
+  cfg.waveform       = (ra8_epaper_waveform_cfg_t){.init = 0U, .du = 1U, .gc16 = 2U, .a2 = 4U};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_validate_cfg(&cfg));
+  cfg.waveform = (ra8_epaper_waveform_cfg_t){.init = over, .du = 1U, .gc16 = 2U, .a2 = 4U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_validate_cfg(&cfg));
+  cfg.waveform = (ra8_epaper_waveform_cfg_t){.init = 0U, .du = over, .gc16 = 2U, .a2 = 4U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_validate_cfg(&cfg));
+  cfg.waveform = (ra8_epaper_waveform_cfg_t){.init = 0U, .du = 1U, .gc16 = over, .a2 = 4U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_validate_cfg(&cfg));
+  cfg.waveform = (ra8_epaper_waveform_cfg_t){.init = 0U, .du = 1U, .gc16 = 2U, .a2 = over};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_validate_cfg(&cfg));
+
+  /* The null guard on the newly-public validator. */
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_validate_cfg(nullptr));
+
+  /* Decision C. */
+  size_t                  bytes = 0U;
+  const ra8_epaper_area_t ok    = {.x = 0U, .y = 0U, .width = 8U, .height = 8U};
+  const ra8_epaper_area_t no_w  = {.x = 0U, .y = 0U, .width = 0U, .height = 8U};
+  const ra8_epaper_area_t no_h  = {.x = 0U, .y = 0U, .width = 8U, .height = 0U};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_image_bytes(&ok, k_ra8_epaper_pf_8bpp, &bytes));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_epaper_image_bytes(&no_w, k_ra8_epaper_pf_8bpp, &bytes));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_epaper_image_bytes(&no_h, k_ra8_epaper_pf_8bpp, &bytes));
+
+  TEST_END("epaper MC/DC: waveform validation 3-cond + 4-cond, image_bytes 2-cond");
+}
+
+/**
+ * @test epaper_align_area_clamp_mcdc
+ *
+ * @par MC/DC:
+ * Decision libs/ra8_hal/src/ra8_epaper_geom.c@ra8_epaper_align_area:
+ * ``if ((x_hi <= x_lo) || (((x_hi - x_lo) % grid) != 0))``
+ * (2 conditions, ``||``) -- N+1 = 3 vectors:
+ * - Vector 1: panel 64, area x=0 w=32  -> x_lo=0,  x_hi=32 -> false, false
+ * - Vector 2: panel 32, area x=32 w=0  -> x_lo=32, x_hi=32 -> true  (varies
+ *   the first condition only; the second is not evaluated)
+ * - Vector 3: panel 40, area x=0 w=40  -> x_lo=0,  x_hi=40 -> first false,
+ *   second true (40 % 32 = 8), varying the second condition only
+ *
+ * @details
+ * This is the branch that reports "no aligned superset exists". It is
+ * reachable only through two degenerate shapes, which is exactly why it
+ * needs pinning rather than trusting: vector 2 is a zero-width window
+ * starting on the grid, and vector 3 is a panel whose own width is not a
+ * multiple of the 32-pixel 1 bpp grid, so growing outward would run off
+ * the panel. Both must be refused rather than clamped to a misaligned
+ * window -- a misaligned 1 bpp update renders nothing at all while the
+ * controller reports success.
+ */
+static void test_align_area_clamp_mcdc(void)
+{
+  TEST_BEGIN("epaper MC/DC: align_area clamp 2-condition");
+
+  /* Vector 1 -- both conditions false: the window aligns cleanly. */
+  ra8_epaper_area_t v1 = {.x = 0U, .y = 0U, .width = 32U, .height = 1U};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_epaper_align_area(&v1, k_ra8_epaper_pf_1bpp, k_ra8_epaper_test_panel_64));
+  TEST_ASSERT_EQ(0U, v1.x);
+  TEST_ASSERT_EQ(32U, v1.width);
+
+  /* Vector 2 -- x_hi == x_lo: a zero-width window that starts on the grid
+   * and is clamped to the panel edge. */
+  ra8_epaper_area_t v2 = {.x = 32U, .y = 0U, .width = 0U, .height = 1U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_epaper_align_area(&v2, k_ra8_epaper_pf_1bpp, k_ra8_epaper_test_panel_32));
+
+  /* Vector 3 -- x_hi > x_lo but the clamped span is off-grid. */
+  ra8_epaper_area_t v3 = {.x = 0U, .y = 0U, .width = 40U, .height = 1U};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_epaper_align_area(&v3, k_ra8_epaper_pf_1bpp, k_ra8_epaper_test_panel_40));
+
+  TEST_END("epaper MC/DC: align_area clamp 2-condition");
+}
+
 int main(void)
 {
   test_init_null_cfg();
@@ -825,5 +955,7 @@ int main(void)
   test_vcom_commands();
   test_load_image_depth_and_alignment();
   test_decode_dev_info_layout();
+  test_geom_mcdc();
+  test_align_area_clamp_mcdc();
   return 0;
 }
