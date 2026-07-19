@@ -516,6 +516,15 @@ RA8_INTERNAL
  *
  * @param[in]     word    Source word.
  * @param[out]    dst     Destination for two chars; non-NULL.
+ *
+ * @pre  ``dst`` has room for two chars.
+ * @pre  ``word`` is one version word of a GET_DEV_INFO response.
+ * @post ``dst[0]`` and ``dst[1]`` are printable ASCII or NUL.
+ * @post No driver state is mutated.
+ *
+ * @note Not thread-safe; called only from the GET_DEV_INFO decode path.
+ *
+ * @since 0.1.0
  */
 RA8_INTERNAL
 static void internal_ra8_epaper_unpack_ver_word(uint16_t word, char* dst)
@@ -534,9 +543,25 @@ static void internal_ra8_epaper_unpack_ver_word(uint16_t word, char* dst)
 /**
  * @brief Fold one GET_DEV_INFO word into the decoded info block.
  *
+ * @details
+ * The response is a fixed 20-word layout, so each word is placed by its
+ * index rather than by a parser state machine: geometry first, then the
+ * two halves of the image-buffer base address, then the firmware and LUT
+ * version strings two ASCII chars per word. Words are folded as they
+ * arrive so the whole response never needs buffering.
+ *
  * @param[in]     idx  Word index within the 20-word response.
  * @param[in]     word The word just read.
  * @param[in,out] out  Info block being assembled; non-NULL.
+ *
+ * @pre  ``out`` points at a block zeroed before the first word.
+ * @pre  ``idx`` is less than the 20-word response length.
+ * @post Exactly the one field selected by ``idx`` is updated.
+ * @post No bus transaction is issued.
+ *
+ * @note Not thread-safe; called only from the GET_DEV_INFO read loop.
+ *
+ * @since 0.1.0
  */
 RA8_INTERNAL
 static void

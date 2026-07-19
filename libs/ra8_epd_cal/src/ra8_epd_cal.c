@@ -146,11 +146,24 @@ RA8_INTERNAL
 /**
  * @brief Store a little-endian 16-bit value.
  *
+ * @details
+ * The record is serialised byte-at-a-time in an explicit byte order so a
+ * blob written on one machine deserialises identically on another. The
+ * host test suite is little-endian x86_64 and the target is little-endian
+ * Arm, but relying on that would make the on-storage format a property of
+ * the compiler rather than of the record.
+ *
  * @param[out] dst Destination for two bytes; non-NULL.
  * @param[in]  val Value to pack.
  *
  * @pre  ``dst`` has room for two bytes.
+ * @pre  ``dst`` points inside the serialisation blob.
  * @post ``dst`` holds ``val`` little-endian.
+ * @post Exactly two bytes are written.
+ *
+ * @note Not thread-safe; called only from the serialiser.
+ *
+ * @since 0.1.0
  */
 RA8_INTERNAL
 static void internal_ra8_epd_cal_pack_le16(uint8_t* dst, uint16_t val)
@@ -179,11 +192,22 @@ RA8_INTERNAL
 /**
  * @brief Store a little-endian 32-bit value.
  *
+ * @details
+ * The 32-bit counterpart of ``internal_ra8_epd_cal_pack_le16``, used for
+ * the magic word and the CRC. Same rationale: the byte order is a
+ * property of the record format, not of the compiler that wrote it.
+ *
  * @param[out] dst Destination for four bytes; non-NULL.
  * @param[in]  val Value to pack.
  *
  * @pre  ``dst`` has room for four bytes.
+ * @pre  ``dst`` points inside the serialisation blob.
  * @post ``dst`` holds ``val`` little-endian.
+ * @post Exactly four bytes are written.
+ *
+ * @note Not thread-safe; called only from the serialiser.
+ *
+ * @since 0.1.0
  */
 RA8_INTERNAL
 static void internal_ra8_epd_cal_pack_le32(uint8_t* dst, uint32_t val)
