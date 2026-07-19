@@ -83,6 +83,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -311,19 +312,37 @@ def real_definitions(files: list[Path]) -> dict[str, list[str]]:
 
 
 def first_party_sources(explicit: list[str]) -> list[Path]:
+    """Enumerate the tracked first-party .c files under ROOTS.
+
+    Tracked, not globbed. A bare rglob also sweeps in build output -- every
+    configured app leaves a CMake compiler-probe TU at
+    ``<app>/build/CMakeFiles/*/CompilerIdC/CMakeCCompilerId.c`` -- so the set
+    scanned depended on whether the caller had built, and generated code got
+    held to a first-party rule. CI never saw it (it runs against a clean
+    ``git archive HEAD`` snapshot) but the pre-commit hook runs in the working
+    tree, which is exactly where a spurious finding costs the most trust.
+    ``git ls-files`` is also what the copyright and @since gates enumerate with.
+    """
     if explicit:
         return [Path(p) for p in explicit]
-    out: list[Path] = []
-    for root in ROOTS:
-        base = Path(root)
-        if not base.is_dir():
-            continue
-        out.extend(
-            path
-            for path in sorted(base.rglob("*.c"))
-            if not any(str(path).startswith(x) for x in EXCLUDED)
+    try:
+        listed = subprocess.run(
+            ["git", "ls-files", "-z", "--", *[f"{root}/**/*.c" for root in ROOTS]],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError) as exc:
+        sys.exit(
+            f"check_no_silent_stubs.py: FATAL -- cannot list tracked sources: {exc}\n"
+            "  This gate enumerates via git and must not fall back to a glob:\n"
+            "  a glob silently scans build output and changes the verdict."
         )
-    return out
+    return [
+        Path(name)
+        for name in listed.split("\0")
+        if name and not any(name.startswith(x) for x in EXCLUDED)
+    ]
 
 
 def analyse(files: list[Path]) -> list[tuple[str, dict]]:
