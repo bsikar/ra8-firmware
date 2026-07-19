@@ -23,34 +23,29 @@
 #include "unity_minimal.h"
 
 /**
- * @enum widget_keyboard_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_kbd_geom_t
+ * @brief On-screen keyboard geometry.
  */
-typedef enum : uint8_t {
-  k_widget_keyboard_idx_20 = 20,
-  k_widget_keyboard_w_80   = 80,
-} widget_keyboard_uint8_const_t;
+typedef enum : int16_t {
+  k_t_key_side = 20, /**< Edge of one square key cell, and hence the per-index
+                          x step of the mock key-rect layout.                 */
+  k_t_kbd_w    = 80, /**< Keyboard widget width: four key cells.              */
+} t_kbd_geom_t;
 
 /**
- * @enum widget_keyboard_uint32_const_t
- * @brief Named uint32_t constants used by this file.
+ * @enum t_kbd_argb_t
+ * @brief The 0x00RRGGBB palette the keyboard paints with.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Four distinct greys, ordered darkest to lightest by role, so a swapped style
+ * field shows as a wrong recorded colour.
  */
 typedef enum : uint32_t {
-  k_widget_keyboard_bg_00202020         = 0x00202020U,
-  k_widget_keyboard_key_border_00101010 = 0x00101010U,
-  k_widget_keyboard_key_face_00404040   = 0x00404040U,
-  k_widget_keyboard_key_fg_00ffffff     = 0x00FFFFFFU,
-} widget_keyboard_uint32_const_t;
+  k_t_argb_border = 0x00101010U, /**< Key border.     */
+  k_t_argb_bg     = 0x00202020U, /**< Keyboard field. */
+  k_t_argb_face   = 0x00404040U, /**< Key face.       */
+  k_t_argb_fg     = 0x00FFFFFFU, /**< Key legend.     */
+} t_kbd_argb_t;
 
 /* --- Recording mock keyboard seam ------------------------------------------- */
 
@@ -80,10 +75,10 @@ static uint8_t mock_kb_count(void* user)
 static void mock_kb_info(void* user, uint8_t idx, ra8_widget_key_info_t* out)
 {
   (void)user;
-  out->rect = (ra8_ui_rect_t){.x = (int32_t)idx * k_widget_keyboard_idx_20,
+  out->rect = (ra8_ui_rect_t){.x = (int32_t)idx * k_t_key_side,
                               .y = 0,
-                              .w = k_widget_keyboard_idx_20,
-                              .h = k_widget_keyboard_idx_20};
+                              .w = k_t_key_side,
+                              .h = k_t_key_side};
   if (idx == 0U) {
     out->glyph = 'a';
     out->label = nullptr;
@@ -162,10 +157,10 @@ static ra8_widget_keyboard_t make_kbd(ra8_widget_keyboard_ops_t* ops, ra8_widget
   return (ra8_widget_keyboard_t){.paint      = paint,
                                  .ops        = ops,
                                  .on_commit  = test_kb_on_commit,
-                                 .bg         = k_widget_keyboard_bg_00202020,
-                                 .key_face   = k_widget_keyboard_key_face_00404040,
-                                 .key_border = k_widget_keyboard_key_border_00101010,
-                                 .key_fg     = k_widget_keyboard_key_fg_00ffffff,
+                                 .bg         = k_t_argb_bg,
+                                 .key_face   = k_t_argb_face,
+                                 .key_border = k_t_argb_border,
+                                 .key_fg     = k_t_argb_fg,
                                  .border_w   = 1};
 }
 
@@ -198,7 +193,7 @@ static void test_keyboard_render(void)
   ra8_widget_t              w     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_keyboard_init(&w, &kbd));
   w.rect =
-    (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_keyboard_w_80, .h = k_widget_keyboard_idx_20};
+    (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_kbd_w, .h = k_t_key_side};
 
   w.vt->render(&w);
   TEST_ASSERT_EQ(7U, mp.fill_calls); /* bg + 3 keys x (border + face) */
@@ -233,7 +228,7 @@ static void test_keyboard_input(void)
   ra8_widget_t              w     = {};
   (void)ra8_widget_keyboard_init(&w, &kbd);
   w.rect =
-    (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_keyboard_w_80, .h = k_widget_keyboard_idx_20};
+    (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_kbd_w, .h = k_t_key_side};
 
   /* a touch hits key 0, apply does NOT commit -> applied, dirty, no callback. */
   const ra8_widget_event_t tap = {.kind = k_ra8_widget_ev_touch, .x = 5, .y = 5};
@@ -411,7 +406,7 @@ static void test_keyboard_guards(void)
   ra8_widget_t              w     = {};
   (void)ra8_widget_keyboard_init(&w, &kbd);
   w.rect =
-    (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_keyboard_w_80, .h = k_widget_keyboard_idx_20};
+    (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_kbd_w, .h = k_t_key_side};
 
   kbd_render_guards(&w, &kbd, &paint, &ops, &mk, &mp);
   kbd_input_guards(&w, &kbd, &ops, &mk);

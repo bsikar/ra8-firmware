@@ -41,33 +41,18 @@ typedef enum : uint8_t {
 } ota_fill_t;
 
 /**
- * @enum ota_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_ota_dst_ff = 0xFFU,
-  k_ota_i_5a   = 0x5AU,
-  k_ota_val_0f = 0x0FU,
-  k_ota_val_a0 = 0xA0U,
-} ota_uint8_const_t;
-
-/**
- * @enum ota_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_ota_fixture_t
+ * @brief Byte patterns and capacities backing the mock image and manifest.
  */
 typedef enum : uint16_t {
-  k_ota_val_2048 = 2048,
-} ota_uint16_const_t;
+  k_t_image_mask   = 0x5AU, /**< XOR mask generating the mock image, so no two
+                                 adjacent bytes repeat and a shifted write is
+                                 detectable.                                    */
+  k_t_sig_base     = 0xA0U, /**< First byte of the ascending mock signature.   */
+  k_t_corrupt_mask = 0xFFU, /**< XOR that flips a byte to break verification.  */
+  k_t_nibble_mask  = 0x0FU, /**< Low nibble, when hex-encoding a hash byte.    */
+  k_t_manifest_cap = 2048U, /**< Manifest JSON scratch, bytes.                 */
+} t_ota_fixture_t;
 
 /* =============================================================================
  * Mock storage
@@ -83,7 +68,7 @@ typedef enum : uint32_t {
 } ra8_ota_test_const_t;
 
 /** @brief Raw bytes of the mock manifest server response. */
-static char g_mock_manifest[k_ota_val_2048];
+static char g_mock_manifest[k_t_manifest_cap];
 /** @brief Raw bytes of the mock firmware blob. */
 static uint8_t g_mock_image[k_test_image_size];
 /** @brief Inactive-bank sandbox the flash mock writes into. */
@@ -273,7 +258,7 @@ static ra8_err_t mock_flash_readback(void* ctx, uint32_t addr, uint8_t* dst, uin
   }
   (void)memcpy(dst, g_bank_storage + (addr - k_test_bank_addr), len);
   if (g_corrupt_readback && (len > 0U)) {
-    dst[0] ^= k_ota_dst_ff;
+    dst[0] ^= k_t_corrupt_mask;
   }
   return k_ra8_ok;
 }
@@ -294,7 +279,7 @@ void ra8_ota_system_reset_hook(void)
 static void priv_make_image(void)
 {
   for (uint32_t i = 0U; i < k_test_image_size; ++i) {
-    g_mock_image[i] = (uint8_t)(i ^ k_ota_i_5a);
+    g_mock_image[i] = (uint8_t)(i ^ k_t_image_mask);
   }
 }
 
@@ -303,20 +288,20 @@ static void priv_make_manifest(void)
   /* Build a manifest whose sha256 == priv_compute_xor_hash(g_mock_image). */
   priv_compute_xor_hash(g_mock_image, k_test_image_size, g_expected_hash);
   for (uint32_t i = 0U; i < sizeof g_expected_sig; ++i) {
-    g_expected_sig[i] = (uint8_t)(k_ota_val_a0 + i);
+    g_expected_sig[i] = (uint8_t)(k_t_sig_base + i);
   }
   static const char nibble[] = "0123456789abcdef";
 
   char hex[(2U * k_ra8_ota_sha256_bytes) + 1U] = {};
   for (uint32_t i = 0U; i < k_ra8_ota_sha256_bytes; ++i) {
     hex[(size_t)2U * i] = nibble[g_expected_hash[i] >> 4U];
-    hex[(2U * i) + 1U]  = nibble[g_expected_hash[i] & k_ota_val_0f];
+    hex[(2U * i) + 1U]  = nibble[g_expected_hash[i] & k_t_nibble_mask];
   }
 
   char sig_hex[(2U * sizeof g_expected_sig) + 1U] = {};
   for (uint32_t i = 0U; i < sizeof g_expected_sig; ++i) {
     sig_hex[(size_t)2U * i] = nibble[g_expected_sig[i] >> 4U];
-    sig_hex[(2U * i) + 1U]  = nibble[g_expected_sig[i] & k_ota_val_0f];
+    sig_hex[(2U * i) + 1U]  = nibble[g_expected_sig[i] & k_t_nibble_mask];
   }
   (void)snprintf(g_mock_manifest,
                  sizeof g_mock_manifest,
