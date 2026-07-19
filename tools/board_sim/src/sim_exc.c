@@ -390,6 +390,62 @@ static bool is_exc_return(uint64_t pc)
  *       count -- and every tick-based sleep/heartbeat deadline -- is preserved.
  * @since 0.1.0
  */
+/**
+ * @brief Does the halfword at @p at close a tight idle loop around @p aligned?
+ *
+ * @details
+ * Decodes an unconditional Thumb `b.n` and requires three things of it: the
+ * branch goes backwards, its target brackets @p aligned within
+ * @ref k_idle_loop_max bytes, and the bracketed body contains a wait signature
+ * (`cpsie i` or `wfi`). A tight backward loop with no wait is a busy loop, not
+ * an idle one, and must not be reported as idle.
+ *
+ * @param[in]  uc      Engine to read instruction memory from.
+ * @param[in]  at      Address of the candidate branch halfword.
+ * @param[in]  hw      The halfword already read at @p at.
+ * @param[in]  aligned The PC under test, halfword-aligned.
+ * @param[out] done    Set true when the answer is final either way.
+ *
+ * @return True when @p at closes an idle loop around @p aligned.
+ *
+ * @pre @p uc and @p done are non-NULL.
+ * @pre @p hw is the halfword actually stored at @p at.
+ * @post `*done` is true whenever the caller must stop scanning.
+ * @post No judgement is returned unless the branch is unconditional `b.n`.
+ *
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ */
+static bool idle_back_edge(uc_engine* uc, uint32_t at, uint16_t hw, uint32_t aligned, bool* done)
+{
+  *done = false;
+  if ((hw & (uint16_t)k_op_bn_mask) != (uint16_t)k_op_bn_base) {
+    return false; /* not an unconditional b.n -- still inside the loop body */
+  }
+  *done = true;
+  /* Unconditional b.n: target = at + 4 + sign_extend(imm11) * 2. */
+  const uint32_t imm11 = (uint32_t)(hw & (uint16_t)k_op_bn_imm);
+  const int32_t  off =
+    (int32_t)(imm11 << (uint32_t)k_bn_imm_sext_shl) >> (int32_t)k_bn_imm_sext_shr;
+  if (off >= 0) {
+    return false; /* forward branch -- not a spin-in-place back-edge */
+  }
+  const uint32_t target = at + (uint32_t)k_thumb2_insn_bytes + (uint32_t)off;
+  if ((target > aligned) || ((aligned - target) > (uint32_t)k_idle_loop_max)) {
+    return false; /* back-edge does not bracket pc in a tight loop */
+  }
+  /* pc is enclosed by [target, at]: require a wait (cpsie/wfi) in the body. */
+  for (uint32_t k = target; k <= at; k += (uint32_t)k_thumb_hw_bytes) {
+    uint16_t bhw = 0U;
+    if (uc_mem_read(uc, (uint64_t)k, &bhw, sizeof(bhw)) != UC_ERR_OK) {
+      return false;
+    }
+    if ((bhw == (uint16_t)k_op_cpsie_i) || (bhw == (uint16_t)k_op_wfi)) {
+      return true;
+    }
+  }
+  return false; /* tight loop but no wait signature -- a busy loop, not idle */
+}
+
 bool idle_spin_at(uc_engine* uc, uint32_t pc)
 {
   const uint32_t aligned = pc & ~1U;
@@ -409,31 +465,11 @@ bool idle_spin_at(uc_engine* uc, uint32_t pc)
     if (uc_mem_read(uc, (uint64_t)at, &hw, sizeof(hw)) != UC_ERR_OK) {
       return false;
     }
-    if ((hw & (uint16_t)k_op_bn_mask) != (uint16_t)k_op_bn_base) {
-      continue; /* not an unconditional b.n -- still inside the loop body */
+    bool       done   = false;
+    const bool verdict = idle_back_edge(uc, at, hw, aligned, &done);
+    if (done) {
+      return verdict;
     }
-    /* Unconditional b.n: target = at + 4 + sign_extend(imm11) * 2. */
-    const uint32_t imm11 = (uint32_t)(hw & (uint16_t)k_op_bn_imm);
-    const int32_t  off =
-      (int32_t)(imm11 << (uint32_t)k_bn_imm_sext_shl) >> (int32_t)k_bn_imm_sext_shr;
-    if (off >= 0) {
-      return false; /* forward branch -- not a spin-in-place back-edge */
-    }
-    const uint32_t target = at + (uint32_t)k_thumb2_insn_bytes + (uint32_t)off;
-    if ((target > aligned) || ((aligned - target) > (uint32_t)k_idle_loop_max)) {
-      return false; /* back-edge does not bracket pc in a tight loop */
-    }
-    /* pc is enclosed by [target, at]: require a wait (cpsie/wfi) in the body. */
-    for (uint32_t k = target; k <= at; k += (uint32_t)k_thumb_hw_bytes) {
-      uint16_t bhw = 0U;
-      if (uc_mem_read(uc, (uint64_t)k, &bhw, sizeof(bhw)) != UC_ERR_OK) {
-        return false;
-      }
-      if ((bhw == (uint16_t)k_op_cpsie_i) || (bhw == (uint16_t)k_op_wfi)) {
-        return true;
-      }
-    }
-    return false; /* tight loop but no wait signature -- a busy loop, not idle */
   }
   return false;
 }

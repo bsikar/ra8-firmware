@@ -290,6 +290,57 @@ static bool args_try_input(int argc, char** argv, int* i, sim_args_t* out)
 }
 
 /**
+ * @brief Parse a `--sd-new` size spec and attach a blank formatted card.
+ *
+ * @details
+ * The spec is `<N>[k|m|g|t][:fat16|fat32]`. A bare number is MiB; a k/m/g/t
+ * suffix sets the unit (so "30g" is 30 GiB). The FAT flavour defaults by size
+ * the way a real SD card is shipped (FAT32 at or above @ref k_fat32_min_mib),
+ * because FAT16 cannot address a multi-GB card; an explicit `:fat16` / `:fat32`
+ * overrides that.
+ *
+ * @param[in] spec Size specification text from the command line.
+ *
+ * @pre @p spec is a NUL-terminated argument.
+ * @pre The SD model has no card attached yet.
+ * @post A card is attached only when the size is non-zero and within the
+ *       32-bit sector count FAT can address.
+ * @post An over-large request is diagnosed on stderr and attaches nothing.
+ *
+ * @note Not thread-safe; argument parsing runs once at startup.
+ */
+static void args_attach_blank_sd(const char* spec)
+{
+  char*      endp = nullptr;
+  const long num  = strtol(spec, &endp, (int)k_strtol_base10);
+  uint64_t   mult =
+    (uint64_t)k_sectors_per_mib * (uint64_t)k_bytes_per_sector; /* default unit: MiB. */
+  const char unit = ((endp != nullptr) && (*endp != '\0')) ? (char)tolower((int)*endp) : 'm';
+  if (unit == 'k') {
+    mult = (uint64_t)k_size_kib;
+  } else if (unit == 'g') {
+    mult = (uint64_t)k_size_kib * (uint64_t)k_size_kib * (uint64_t)k_size_kib;
+  } else if (unit == 't') {
+    mult =
+      (uint64_t)k_size_kib * (uint64_t)k_size_kib * (uint64_t)k_size_kib * (uint64_t)k_size_kib;
+  }
+  const uint64_t bytes   = (num > 0L) ? ((uint64_t)num * mult) : 0ULL;
+  const uint64_t sectors = bytes / (uint64_t)k_bytes_per_sector;
+  const char*    colon   = (endp != nullptr) ? strchr(endp, ':') : nullptr;
+  const uint64_t fat32_min_bytes =
+    (uint64_t)k_fat32_min_mib * (uint64_t)k_size_kib * (uint64_t)k_size_kib;
+  uint8_t fat = (bytes >= fat32_min_bytes) ? (uint8_t)32U : (uint8_t)16U;
+  if (colon != nullptr) {
+    fat = (strstr(colon, "32") != nullptr) ? (uint8_t)32U : (uint8_t)16U;
+  }
+  if ((sectors > 0ULL) && (sectors <= (uint64_t)k_sd_u32_max)) {
+    (void)board_sd_attach_blank((uint32_t)sectors, fat, "BOARDSIM");
+  } else if (sectors > (uint64_t)k_sd_u32_max) {
+    (void)fprintf(stderr, "board_sim: --sd-new: size exceeds the 2 TiB FAT limit\n");
+  }
+}
+
+/**
  * @brief Parse the microSD options.
  *
  * @details Handles --sd (attach an image), --sd-new (create + attach a blank
@@ -320,33 +371,7 @@ static bool args_try_sd(int argc, char** argv, int* i, sim_args_t* out)
      * A bare number is MiB; a k/m/g/t suffix sets the unit (so "30g" = 30 GiB).
      * Format defaults by size (FAT32 >= 512 MiB) like a real SD card; FAT16
      * cannot exceed its cluster ceiling, so multi-GB cards are FAT32. */
-    char*      endp = nullptr;
-    const long num  = strtol(argv[idx + 1], &endp, (int)k_strtol_base10);
-    uint64_t   mult =
-      (uint64_t)k_sectors_per_mib * (uint64_t)k_bytes_per_sector; /* default unit: MiB. */
-    const char unit = ((endp != nullptr) && (*endp != '\0')) ? (char)tolower((int)*endp) : 'm';
-    if (unit == 'k') {
-      mult = (uint64_t)k_size_kib;
-    } else if (unit == 'g') {
-      mult = (uint64_t)k_size_kib * (uint64_t)k_size_kib * (uint64_t)k_size_kib;
-    } else if (unit == 't') {
-      mult =
-        (uint64_t)k_size_kib * (uint64_t)k_size_kib * (uint64_t)k_size_kib * (uint64_t)k_size_kib;
-    }
-    const uint64_t bytes   = (num > 0L) ? ((uint64_t)num * mult) : 0ULL;
-    const uint64_t sectors = bytes / (uint64_t)k_bytes_per_sector;
-    const char*    colon   = (endp != nullptr) ? strchr(endp, ':') : nullptr;
-    const uint64_t fat32_min_bytes =
-      (uint64_t)k_fat32_min_mib * (uint64_t)k_size_kib * (uint64_t)k_size_kib;
-    uint8_t fat = (bytes >= fat32_min_bytes) ? (uint8_t)32U : (uint8_t)16U;
-    if (colon != nullptr) {
-      fat = (strstr(colon, "32") != nullptr) ? (uint8_t)32U : (uint8_t)16U;
-    }
-    if ((sectors > 0ULL) && (sectors <= (uint64_t)k_sd_u32_max)) {
-      (void)board_sd_attach_blank((uint32_t)sectors, fat, "BOARDSIM");
-    } else if (sectors > (uint64_t)k_sd_u32_max) {
-      (void)fprintf(stderr, "board_sim: --sd-new: size exceeds the 2 TiB FAT limit\n");
-    }
+    args_attach_blank_sd(argv[idx + 1]);
     (*i)++;
   } else if ((strncmp(argv[idx], "--save-sd", sizeof("--save-sd")) == 0) && ((idx + 1) < argc)) {
     out->save_sd_path = argv[idx + 1];
