@@ -50,7 +50,9 @@ typedef enum : uint8_t {
   k_gattc_conn_b        = 0x41U, /**< Its second. */
   k_gattc_conn_c        = 0x42U, /**< Its third. */
   k_gattc_conn_d        = 0x43U, /**< Its fourth, which must be the one the full table rejects. */
-  k_gattc_payload_byte  = 0xA5U, /**< A recognizable notification payload byte. */
+  k_gattc_cov_payload_byte = 0xA5U, /**< Notification payload for the coverage
+                                       fixture; distinct from the one the main
+                                       suite uses so a cross-file mix-up shows. */
 } ble_gatt_client_cov_uint8_const_t;
 
 extern uint32_t ra8_ble_gatt_client_test_pending_count(void);
@@ -184,7 +186,7 @@ static void test_pending_count_none_then_all(void)
   /* Latch all three singletons via the public API. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_gatt_discover_services(0x40U, cov_disc_cb, nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_gatt_read(0x40U, 0x21U, cov_read_cb, nullptr));
-  uint8_t val = k_gattc_payload_byte;
+  uint8_t val = k_gattc_cov_payload_byte;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_gatt_write(0x40U, 0x30U, &val, 1U, 1U, cov_write_cb, nullptr));
 
   /* All three in flight: every in_use check is true, all increments run. */
