@@ -47,20 +47,18 @@
 #include "unity_minimal.h"
 
 /**
- * @enum root_of_trust_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_rot_t
+ * @brief Image fill pattern, tamper mask and little-endian serialisation.
  */
 typedef enum : uint8_t {
-  k_root_of_trust_i_7         = 7U,
-  k_root_of_trust_sentinel_a5 = 0xA5U,
-  k_root_of_trust_val_24      = 24U,
-  k_root_of_trust_val_ff      = 0xFFU,
-} root_of_trust_uint8_const_t;
+  k_t_body_stride   = 7U,    /**< Multiplier of the image byte pattern; co-prime
+                                  with the word size so it does not repeat.     */
+  k_t_tamper_mask   = 0xA5U, /**< XOR that flips a body byte to break the
+                                  signature, then restores it.                  */
+  k_t_byte_mask     = 0xFFU, /**< Low-byte mask while serialising a 32-bit
+                                  field; also the XOR that corrupts a signature. */
+  k_t_le32_hi_shift = 24U,   /**< Shift for the top byte of a 32-bit LE field. */
+} t_rot_t;
 
 /** @brief Fixed test-body sizing + corrupted-field sentinels. */
 typedef enum : uint32_t {
@@ -84,16 +82,16 @@ typedef enum : uint32_t {
 static uint32_t read_u32_le(const uint8_t* buf, uint32_t off)
 {
   return (uint32_t)buf[off] | ((uint32_t)buf[off + 1U] << 8U) | ((uint32_t)buf[off + 2U] << 16U) |
-         ((uint32_t)buf[off + 3U] << k_root_of_trust_val_24);
+         ((uint32_t)buf[off + 3U] << k_t_le32_hi_shift);
 }
 
 /** @brief Write a little-endian uint32 ``val`` into ``buf`` at byte ``off``. */
 static void write_u32_le(uint8_t* buf, uint32_t off, uint32_t val)
 {
-  buf[off]      = (uint8_t)(val & k_root_of_trust_val_ff);
-  buf[off + 1U] = (uint8_t)((val >> 8U) & k_root_of_trust_val_ff);
-  buf[off + 2U] = (uint8_t)((val >> 16U) & k_root_of_trust_val_ff);
-  buf[off + 3U] = (uint8_t)((val >> k_root_of_trust_val_24) & k_root_of_trust_val_ff);
+  buf[off]      = (uint8_t)(val & k_t_byte_mask);
+  buf[off + 1U] = (uint8_t)((val >> 8U) & k_t_byte_mask);
+  buf[off + 2U] = (uint8_t)((val >> 16U) & k_t_byte_mask);
+  buf[off + 3U] = (uint8_t)((val >> k_t_le32_hi_shift) & k_t_byte_mask);
 }
 
 /**
@@ -180,7 +178,7 @@ static void build_signed_trailer(const uint8_t* body, uint32_t body_len, ra8_rot
 static void fill_body(uint8_t* body, uint32_t len)
 {
   for (uint32_t i = 0U; i < len; ++i) {
-    body[i] = (uint8_t)((i * k_root_of_trust_i_7) + 3U);
+    body[i] = (uint8_t)((i * k_t_body_stride) + 3U);
   }
 }
 
@@ -241,7 +239,7 @@ static void test_rot_invalid_signature_denied(void)
 
   /* Corrupt the signature -- digest still matches, so the gate reaches the
    * ECDSA verify and rejects there. */
-  trailer.sig[0] = (uint8_t)(trailer.sig[0] ^ k_root_of_trust_val_ff);
+  trailer.sig[0] = (uint8_t)(trailer.sig[0] ^ k_t_byte_mask);
 
   TEST_ASSERT_EQ(k_ra8_err_crc_mismatch,
                  ra8_rot_verify_image(body, (uint32_t)k_test_rot_body_len, &trailer));
@@ -321,7 +319,7 @@ static void test_rot_tampered_body_denied(void)
   build_signed_trailer(body, (uint32_t)k_test_rot_body_len, &trailer);
 
   /* Tamper with the body AFTER signing: trailer.digest is now stale. */
-  body[0] = (uint8_t)(body[0] ^ k_root_of_trust_sentinel_a5);
+  body[0] = (uint8_t)(body[0] ^ k_t_tamper_mask);
 
   TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch,
                  ra8_rot_verify_image(body, (uint32_t)k_test_rot_body_len, &trailer));
@@ -616,9 +614,9 @@ static void test_rot_body_len_from_header(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rot_verify_image(img, len, trailer));
 
   /* V2 tampered body: flip a body byte past the header -> digest mismatch. */
-  img[k_test_ns_tamper_off] ^= k_root_of_trust_sentinel_a5;
+  img[k_test_ns_tamper_off] ^= k_t_tamper_mask;
   TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch, ra8_rot_verify_image(img, len, trailer));
-  img[k_test_ns_tamper_off] ^= k_root_of_trust_sentinel_a5; /* restore */
+  img[k_test_ns_tamper_off] ^= k_t_tamper_mask; /* restore */
 
   /* V3 lied header body_len: trailer_after points into the body (not the real
    * trailer), whose bytes are not a valid trailer -> default-deny. */
@@ -670,7 +668,7 @@ static void test_rot_ct_equal_mcdc(void)
   /* Non-compound branches: zero length is rejected, a single differing byte
    * makes the constant-time fold report inequality. */
   TEST_ASSERT(!internal_ct_equal(a, b, 0U));
-  b[0] = (uint8_t)(b[0] ^ k_root_of_trust_val_ff);
+  b[0] = (uint8_t)(b[0] ^ k_t_byte_mask);
   TEST_ASSERT(!internal_ct_equal(a, b, (uint32_t)k_ra8_rot_digest_bytes));
 
   TEST_END("ra8_rot: internal_ct_equal NULL guard (MC/DC)");
