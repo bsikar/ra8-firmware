@@ -31,12 +31,16 @@ two sides stay welded together in both directions:
 Neither half can be done alone: registering a gate without scheduling it fails
 here, and scheduling an unregistered gate fails here too.
 
-Why this exists: ``ci.sh`` drifted from ``firmware.yml`` three separate times
-(a missing annotation gate + a missing MISRA ratchet turned a green local run
-into a red push; agents hand-copied gate bodies into throwaway scripts that
-silently stopped mirroring CI; and an audit found 21 checks in the workflow and
-absent locally). Moving the bodies into ``ci.sh`` removes the duplication;
-this checker removes the ability to re-create it.
+Why this exists: ``ci.sh`` drifted from the workflows four separate times -- a
+missing annotation gate plus a missing MISRA ratchet turned a green local run
+into a red push and got dev reverted; agents hand-copied gate bodies into
+throwaway ``/tmp`` scripts that silently stopped mirroring CI the moment a gate
+was added; an audit found 21 checks in ``firmware.yml``'s pre-commit job alone
+that were absent locally; and a hand re-sync landed to close them, which is
+evidence for this gate rather than against it. Measured across *every*
+workflow just before this checker landed, 26 distinct check invocations ran in
+CI with no local equivalent. Moving the bodies into ``ci.sh`` removes the
+duplication; this checker removes the ability to re-create it.
 
 Run::
 
@@ -51,6 +55,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -63,9 +68,7 @@ CI_SH = REPO_ROOT / "scripts" / "ci.sh"
 
 # A step body that calls a gate. Tolerates the line continuations and leading
 # whitespace a block scalar carries.
-GATE_CALL_RE = re.compile(
-    r"^\s*bash\s+scripts/ci\.sh\s+--gate[= ]\s*([A-Za-z0-9._-]+)\s*$"
-)
+GATE_CALL_RE = re.compile(r"^\s*bash\s+scripts/ci\.sh\s+--gate[= ]\s*([A-Za-z0-9._-]+)\s*$")
 
 # The infra escape hatch. The trailing reason is mandatory: an unexplained
 # exemption is how an exemption list rots into a dumping ground.
@@ -89,6 +92,10 @@ FORBIDDEN_IN_INFRA = (
 # Minimum reason length -- "infra -- x" teaches a reader nothing.
 MIN_REASON_CHARS = 12
 
+# `--list-gates` emits "name<TAB>speed<TAB>description"; name and speed are the
+# two fields this checker needs.
+REGISTRY_MIN_FIELDS = 2
+
 
 def load_registry() -> dict[str, str]:
     """Return ``{gate_name: speed}`` by asking ci.sh itself.
@@ -98,8 +105,16 @@ def load_registry() -> dict[str, str]:
     will actually execute, including ci.sh's own self-check that every listed
     name has a function behind it.
     """
-    proc = subprocess.run(
-        ["bash", str(CI_SH), "--list-gates"],
+    bash = shutil.which("bash")
+    if bash is None:
+        sys.stderr.write(
+            "check_ci_parity.py: no `bash` on PATH -- the gate registry lives in "
+            "scripts/ci.sh and cannot be read without it.\n"
+        )
+        raise SystemExit(1)
+
+    proc = subprocess.run(  # noqa: S603  # fixed argv, no shell; bash resolved via shutil.which
+        [bash, str(CI_SH), "--list-gates"],
         capture_output=True,
         text=True,
         cwd=REPO_ROOT,
@@ -118,7 +133,7 @@ def load_registry() -> dict[str, str]:
         if not line.strip():
             continue
         parts = line.split("\t")
-        if len(parts) < 2:
+        if len(parts) < REGISTRY_MIN_FIELDS:
             sys.stderr.write(f"check_ci_parity.py: malformed registry row: {line!r}\n")
             raise SystemExit(1)
         registry[parts[0]] = parts[1]
@@ -194,9 +209,7 @@ def check_workflows(registry: dict[str, str]) -> tuple[list[str], set[str]]:
     errors: list[str] = []
     scheduled: set[str] = set()
 
-    workflows = sorted(
-        list(WORKFLOW_DIR.glob("*.yml")) + list(WORKFLOW_DIR.glob("*.yaml"))
-    )
+    workflows = sorted(list(WORKFLOW_DIR.glob("*.yml")) + list(WORKFLOW_DIR.glob("*.yaml")))
     if not workflows:
         errors.append(
             f"no workflow files found under {WORKFLOW_DIR.relative_to(REPO_ROOT)} -- "

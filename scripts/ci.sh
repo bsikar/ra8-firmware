@@ -16,13 +16,18 @@
 # driver. The YAML decides only SCHEDULING -- which gates run in which job, on
 # which runner, in parallel with what -- and never WHAT a gate does.
 #
-# That inversion is deliberate. This suite drifted from firmware.yml three
+# That inversion is deliberate. This suite drifted from the workflows FOUR
 # separate times: a missing annotation gate plus a missing MISRA ratchet turned
-# a green local run into a red push; agents hand-copied gate bodies into
-# throwaway scripts that stopped mirroring CI the moment a gate was added; and
-# a third audit found 21 checks present in the workflow and absent here. Every
-# one of those was the same failure -- the same check written down twice. A
-# check written down once cannot disagree with itself.
+# a green local run into a red push and got dev reverted; agents hand-copied
+# gate bodies into throwaway /tmp scripts that stopped mirroring CI the moment
+# a gate was added; an audit found 21 checks present in firmware.yml's
+# pre-commit job alone and absent here; and a hand re-sync then landed to close
+# them. Measured across EVERY workflow just before this rewrite, 26 distinct
+# check invocations ran in CI with no local equivalent at all.
+#
+# Every one of those was the same failure -- the same check written down twice.
+# A check written down once cannot disagree with itself. Re-syncing the lists a
+# fifth time would only reset the clock; removing the second copy ends it.
 #
 # The residual hole is someone adding a raw `run:` step straight to a workflow,
 # re-creating a second home for check logic. scripts/utils/check_ci_parity.py
@@ -621,6 +626,12 @@ gate_tidy() {
 # --- unit-tests -----------------------------------------------------------
 gate_unit_tests() (
   set -e
+  # build_tests.sh defaults to `${CMAKE:-cmake}` and run_tests.sh drives ctest.
+  # Without a guard an absent toolchain surfaces as a bare "command not found"
+  # deep in a build log; name the missing dependency at the gate boundary
+  # instead. A gate must never be able to report "nothing to run" as success.
+  require_cmd cmake "apt-get install -y cmake"
+  require_cmd ctest "ships with cmake; check the cmake install"
   bash tests/build_tests.sh
   bash tests/run_tests.sh
 )
