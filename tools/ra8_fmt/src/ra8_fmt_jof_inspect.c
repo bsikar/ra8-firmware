@@ -635,11 +635,9 @@ static bool priv_open_reassemble_ws(const ra8_fmt_blob_t*       atlas,
                                     const ra8_jof_info_t* info,
                                     fmt_reassemble_ws_t*        ws)
 {
-  ws->store  = (ra8_jof_memstore_t){.buf = atlas->bytes,
-                                          .cap = atlas->len,
-                                          .len = atlas->len};
-  ws->stride = (size_t)info->width * (size_t)info->bpp;
-  ws->raster = ws->stride * (size_t)info->height;
+  ws->store = (ra8_jof_memstore_t){.buf = atlas->bytes, .cap = atlas->len, .len = atlas->len};
+  ws->stride    = (size_t)info->width * (size_t)info->bpp;
+  ws->raster    = ws->stride * (size_t)info->height;
   ws->tile_max  = (uint32_t)info->tile_w * (uint32_t)info->tile_h * (uint32_t)info->bpp;
   ws->scratch_c = ra8_jof_stored_bound(ws->tile_max);
 
