@@ -573,30 +573,6 @@ static void test_mcdc_gatt_notify_decl_props(void)
   TEST_END("mcdc gatt_notify (decl==NULL || (props & notify)==0)");
 }
 
-/**
- * @test test_mcdc_gatt_notify_subscriber_walk
- *
- * @par MC/DC:
- * Decision: `(kind==cccd) && (value_handle_owner==char_handle) &&
- *           ((cccd_value & notify_bit) != 0U)`
- * (3 conditions, internal_has_notify_subscriber in ra8_ble_gatt.c)
- * - V1 (T,T,T) subscribed CCCD with notify enabled -> match. notify
- *   constructs HVN PDU and returns ok.
- * - V2 (F,*,*) walked over non-CCCD rows (svc/decl/char_value); these
- *   rows always C1=F. Implicitly covered by V1 (the loop iterates over
- *   every attr regardless).
- * - V3 (T,F,*) subscribed CCCD belongs to a *different* char -> C2=F.
- * - V4 (T,T,F) subscribed CCCD owner matches but cccd_value bit clear
- *   (indicate-only enabled) -> C3=F.
- * V1 vs V3 vary C2 (C1 held T, C3 effectively don't-care via short-
- *   circuit, achieved through fresh CCCD with notify bit set on the
- *   wrong owner).
- * V1 vs V4 vary C3 (C1,C2 held T).
- * V1 vs V2 vary C1 (loop iterations on non-CCCD rows).
- * N+1 = 4 vectors for N=3 conditions: minimal MC/DC.
- *
- * @par DO-178C 6.4.4.3 rationale: Full minimal MC/DC achieved.
- */
 /** @brief Write @p value_lo to a characteristic CCCD over the injected ACL path. */
 static void notify_walk_subscribe(uint16_t conn, uint16_t cccd_handle, uint8_t value_lo)
 {
@@ -703,6 +679,30 @@ static void notify_walk_v4(uint16_t conn)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_notify(chr));
 }
 
+/**
+ * @test test_mcdc_gatt_notify_subscriber_walk
+ *
+ * @par MC/DC:
+ * Decision: `(kind==cccd) && (value_handle_owner==char_handle) &&
+ *           ((cccd_value & notify_bit) != 0U)`
+ * (3 conditions, internal_has_notify_subscriber in ra8_ble_gatt.c)
+ * - V1 (T,T,T) subscribed CCCD with notify enabled -> match. notify
+ *   constructs HVN PDU and returns ok.
+ * - V2 (F,*,*) walked over non-CCCD rows (svc/decl/char_value); these
+ *   rows always C1=F. Implicitly covered by V1 (the loop iterates over
+ *   every attr regardless).
+ * - V3 (T,F,*) subscribed CCCD belongs to a *different* char -> C2=F.
+ * - V4 (T,T,F) subscribed CCCD owner matches but cccd_value bit clear
+ *   (indicate-only enabled) -> C3=F.
+ * V1 vs V3 vary C2 (C1 held T, C3 effectively don't-care via short-
+ *   circuit, achieved through fresh CCCD with notify bit set on the
+ *   wrong owner).
+ * V1 vs V4 vary C3 (C1,C2 held T).
+ * V1 vs V2 vary C1 (loop iterations on non-CCCD rows).
+ * N+1 = 4 vectors for N=3 conditions: minimal MC/DC.
+ *
+ * @par DO-178C 6.4.4.3 rationale: Full minimal MC/DC achieved.
+ */
 static void test_mcdc_gatt_notify_subscriber_walk(void)
 {
   TEST_BEGIN("mcdc gatt_notify subscriber CCCD compound (3-cond AND)");

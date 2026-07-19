@@ -90,7 +90,6 @@ typedef struct {
 
 static sd_card_t s_card;
 
-/** @brief Build the response for a completed 6-byte command frame. */
 /**
  * @brief CMD58 READ_OCR: fill an R3 response (R1 + OCR, CCS=1 => SDHC).
  * @param[in,out] c  Mock card whose response buffer is filled.
@@ -331,6 +330,7 @@ static void put16(uint8_t* p, uint32_t off, uint16_t v)
   p[off]     = (uint8_t)(v & 0xFFU);
   p[off + 1] = (uint8_t)((v >> 8) & 0xFFU);
 }
+/** @brief Build the response for a completed 6-byte command frame. */
 static void build_fat16(void)
 {
   s_disk.bytes       = (uint8_t*)calloc(1, (size_t)k_disk_blocks_fat16 * k_disk_block_size);

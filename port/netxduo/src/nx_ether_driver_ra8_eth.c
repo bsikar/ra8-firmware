@@ -621,25 +621,6 @@ static void priv_handle_uninit(NX_IP_DRIVER* req)
 }
 
 /**
- * @brief Handle ``NX_LINK_PACKET_SEND`` / ``..._BROADCAST`` / ``ARP_*``.
- *
- * @details
- * Linearises the NX_PACKET chain, calls ``ra8_eth_write``, then
- * unconditionally releases the packet via
- * ``nx_packet_transmit_release`` (NetX expects the driver to own
- * the buffer once it accepts the request).
- *
- * @param[in,out] req NetX driver request.
- *
- * @since 0.1.0
- *
- * @pre Module has been initialized.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
-/**
  * @brief Pick the ethernet ethertype for a NetX driver SEND command.
  *
  * @details NetX hands us the L3 payload (ARP body, IP packet) without

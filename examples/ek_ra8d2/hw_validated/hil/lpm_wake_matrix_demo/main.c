@@ -50,7 +50,6 @@
 #include "ra8_lpm_regs.h"
 #include "ra8_time.h"
 
-/** @brief Demo tunables. */
 /** @brief Wake-up enable register masks. */
 typedef enum : uint32_t {
   k_lpm_wupen_all_mask = 0xFFFFFFFFUL, /**< Clear all WUPEN bits. */

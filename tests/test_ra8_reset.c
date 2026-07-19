@@ -39,12 +39,6 @@ typedef enum : uint32_t {
 } ra8_reset_test_const_t;
 
 /**
- * @brief Test-only hook implemented in ``libs/ra8_hal/src/ra8_reset.c``
- *        when ``RA8_SIMULATOR_MODE`` is defined. Drops the cached
- *        snapshot so every case starts with the driver in its
- *        just-loaded state.
- */
-/**
  * @brief Reset every state the driver caches between cases.
  *
  * @details

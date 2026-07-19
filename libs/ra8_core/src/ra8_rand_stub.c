@@ -32,7 +32,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-/** Xorshift32 default seed: arbitrary non-zero constant per Marsaglia 2003. */
 /** @brief Marsaglia xorshift32 shift constants. */
 typedef enum : uint32_t {
   k_xorshift_a = 13U, /**< x ^= x << 13. */
@@ -40,6 +39,7 @@ typedef enum : uint32_t {
   k_xorshift_c = 5U,  /**< x ^= x << 5.  */
 } xorshift32_param_t;
 
+/** @brief Xorshift32 default seed: arbitrary non-zero constant per Marsaglia 2003. */
 typedef enum : uint32_t {
   k_ra8_rand_default_seed = 0x9E3779B9UL, /**< RA8 rand default seed. */
 } ra8_rand_const_t;

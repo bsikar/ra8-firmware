@@ -31,41 +31,6 @@
 #include "ra8_err.h"
 
 /**
- * @brief Start undirected connectable advertising.
- *
- * @details Issues HCI LE_Set_Advertising_Parameters
- *          (Bluetooth Core 5.3 Vol 4 Part E 7.8.5),
- *          LE_Set_Advertising_Data (7.8.7),
- *          LE_Set_Scan_Response_Data (7.8.8) and finally
- *          LE_Set_Advertising_Enable (7.8.9). Only Peripheral and
- *          Broadcaster GAP roles may advertise.
- *
- * @param[in] adv_data       AD structure bytes (may be NULL when
- *                           adv_data_len == 0).
- * @param[in] adv_data_len   Number of bytes in adv_data (<= 31).
- * @param[in] scan_resp      Scan-response AD bytes (may be NULL when
- *                           scan_resp_len == 0).
- * @param[in] scan_resp_len  Number of bytes in scan_resp (<= 31).
- * @param[in] interval_ms    Advertising interval in milliseconds
- *                           (20..10240).
- *
- * @return ra8_err_t Error code.
- * @retval k_ra8_ok                   Advertising enabled.
- * @retval k_ra8_err_not_initialized  Stack not yet initialized.
- * @retval k_ra8_err_invalid_arg      Bad role / length / interval.
- * @retval k_ra8_err_null_ptr         Length > 0 with NULL buffer.
- * @retval other                     Underlying HCI error.
- *
- * @pre ra8_ble_host_init has succeeded with role peripheral or broadcaster.
- * @pre Caller is single-threaded.
- * @post On success the controller is advertising.
- * @post On failure advertising state is unchanged.
- *
- * @note Not thread-safe; called from the application thread.
- *
- * @since 0.1.0
- */
-/**
  * @brief Validate ra8_ble_host_advertise_start inputs.
  *
  * @details Centralizes the role / nullness / length / interval checks.

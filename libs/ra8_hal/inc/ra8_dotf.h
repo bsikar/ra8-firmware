@@ -657,16 +657,6 @@ void ra8_dotf_dispatch(uint8_t channel);
  */
 
 /**
- * @brief Park the DOTF block prior to entering a low-power mode.
- *
- * @return ``ra8_err_t`` error code.
- *
- * @pre All XiP traffic from the matching xSPI is quiesced.
- * @post DOTF MSTP bits are set; AES core is gated.
- *
- * @since 0.1.0
- */
-/**
  * @struct ra8_dotf_open_cfg_t
  * @brief One-shot DOTF bring-up descriptor consumed by ``ra8_dotf_open``.
  *
@@ -771,6 +761,16 @@ typedef struct {
  */
 [[nodiscard]] ra8_err_t ra8_dotf_set_region_window(uint8_t channel, uint32_t start, uint32_t len);
 
+/**
+ * @brief Park the DOTF block prior to entering a low-power mode.
+ *
+ * @return ``ra8_err_t`` error code.
+ *
+ * @pre All XiP traffic from the matching xSPI is quiesced.
+ * @post DOTF MSTP bits are set; AES core is gated.
+ *
+ * @since 0.1.0
+ */
 [[nodiscard]] ra8_err_t ra8_dotf_enter_stop(void);
 
 /**

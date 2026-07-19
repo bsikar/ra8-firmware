@@ -258,17 +258,6 @@ static void test_dc_cov_release_misaligned_sp(void)
 }
 
 /**
- * @brief Entry point: run all coverage-lift tests in a deterministic order.
- *
- * @details
- * ORDERING IS CRITICAL: test_dc_cov_is_running_before_release MUST be the
- * first test so that s_sim.actcsr is still at its zero-initialized value.
- * Subsequent tests may call ra8_cpu1_release() which sets the ACT bit.
- *
- * @return int Zero on success; exit(1) fires inside a failing TEST_ASSERT.
- * @since 0.1.0
- */
-/**
  * @test test_dc_cov_release_act_timeout
  *
  * @brief ra8_cpu1_release() reports k_ra8_err_timeout when ACT never asserts.
@@ -305,6 +294,17 @@ static void test_dc_cov_release_act_timeout(void)
   TEST_END("ra8_dual_core_cov: release ACT-poll timeout");
 }
 
+/**
+ * @brief Entry point: run all coverage-lift tests in a deterministic order.
+ *
+ * @details
+ * ORDERING IS CRITICAL: test_dc_cov_is_running_before_release MUST be the
+ * first test so that s_sim.actcsr is still at its zero-initialized value.
+ * Subsequent tests may call ra8_cpu1_release() which sets the ACT bit.
+ *
+ * @return int Zero on success; exit(1) fires inside a failing TEST_ASSERT.
+ * @since 0.1.0
+ */
 int main(void)
 {
   /* This test MUST run before any ra8_cpu1_release() call (ACT=0 initial state). */

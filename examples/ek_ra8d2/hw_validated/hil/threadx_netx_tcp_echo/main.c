@@ -131,7 +131,6 @@ typedef enum : uint8_t {
   k_demo_decimal_base = 10U, /**< Base used by ``demo_append_byte``. */
 } demo_decimal_t;
 
-/** @brief Locally-administered unicast MAC for this board. */
 /** @brief Demo IPv4 address + netmask octets and helper masks. */
 typedef enum : uint16_t {
   k_demo_ipaddr_0   = 192U,  /**< 192.168.1.42                         */

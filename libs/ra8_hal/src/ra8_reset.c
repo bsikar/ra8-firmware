@@ -110,19 +110,6 @@ static void internal_read_raw(ra8_reset_raw_t* out)
 }
 
 /**
- * @brief Decode raw RSTSRn words into a single primary cause.
- *
- * @details
- * Priority order: RSTSR0 (POR, LVD, DPSRSTF) -> RSTSR3 (core voltage,
- * overcurrent, temp) -> RSTSR1 (IWDT, WDT, SW, lockup, LM, BUS, CM,
- * WDT1, CLU1, LM1, NW) -> RSTSR2 cold/warm. POR wins over LVD wins
- * over watchdog, matching HUM Ch 6.1 Table 6.1 p 244 reset-source
- * dominance (every higher-priority reset clears the lower-priority
- * flag, so by the time firmware runs only the dominant cause is set).
- *
- * @return Decoded cause.
- */
-/**
  * @brief Decode the RSTSR0 byte.
  *
  * @details
@@ -265,17 +252,17 @@ static ra8_reset_cause_t internal_decode_rstsr3(uint8_t rstsr3)
 }
 
 /**
- * @brief Internal helper.
- * @details See implementation.
- * @param[in] raw See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
+ * @brief Decode raw RSTSRn words into a single primary cause.
+ *
+ * @details
+ * Priority order: RSTSR0 (POR, LVD, DPSRSTF) -> RSTSR3 (core voltage,
+ * overcurrent, temp) -> RSTSR1 (IWDT, WDT, SW, lockup, LM, BUS, CM,
+ * WDT1, CLU1, LM1, NW) -> RSTSR2 cold/warm. POR wins over LVD wins
+ * over watchdog, matching HUM Ch 6.1 Table 6.1 p 244 reset-source
+ * dominance (every higher-priority reset clears the lower-priority
+ * flag, so by the time firmware runs only the dominant cause is set).
+ *
+ * @return Decoded cause.
  */
 static ra8_reset_cause_t internal_decode(const ra8_reset_raw_t* raw)
 {

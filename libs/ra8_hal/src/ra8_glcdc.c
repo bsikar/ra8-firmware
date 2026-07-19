@@ -388,12 +388,6 @@ typedef enum : uint32_t {
 } ra8_glcdc_pdtha_fmt_t;
 
 /**
- * @brief Programme the entire panel-side of the GLCDC: clock, TCON,
- *        background plane, graphics layer 1, output bus.  Mirrors the
- *        order in FSP's r_glcdc_clock_set / sync_signal_set /
- *        background_screen_set / graphics_layer_set / output_block_set.
- */
-/**
  * @brief Panel timing parameters shared by the per-stage helpers.
  *
  * @details Holds the horizontal and vertical timing derived from the

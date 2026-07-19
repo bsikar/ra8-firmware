@@ -304,24 +304,6 @@ static void fill_status(board_status_t* st, const char* app_name)
 }
 
 /**
- * @brief Build the panel framebuffer, then compose it with the status sidebar.
- *
- * @details
- * Renders the GLCDC panel into @p panel_fb (so a display app's region stays
- * pixel-correct), snapshots the live peripheral state, and writes the full
- * composite (panel region + status sidebar) into @p composite -- the single
- * buffer that backs both the live window and the @c --ppm snapshot.
- *
- * @param[in,out] uc        Unicorn engine (read for the GLCDC framebuffer).
- * @param[out]    panel_fb  Panel RGB565 buffer (@p panel_w by @p panel_h).
- * @param[out]    composite Composite RGB565 buffer (overlay total dimensions).
- * @param[in]     panel_w   Panel width in pixels.
- * @param[in]     panel_h   Panel height in pixels.
- * @param[in]     app_name  Window / app title for the sidebar caption.
- * @return Nothing.
- */
-
-/**
  * @brief Rotate a row-major RGB565 panel (@p sw x @p sh) into @p dst, @p deg CW.
  *
  * @param[in]  src Source RGB565 panel, row-major, @p sw by @p sh.

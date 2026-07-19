@@ -94,13 +94,6 @@ static ra8_cnecc_config_t make_default_cfg(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-
-/**
- * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
- */
 static void test_clear_status_writes_clear_mask(void)
 {
   TEST_BEGIN("cnecc clear_status writes clear mask");
