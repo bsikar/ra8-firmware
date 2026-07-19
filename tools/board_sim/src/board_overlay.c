@@ -308,7 +308,28 @@ static void draw_console_tabs(uint16_t*             out,
 }
 
 /** @brief Paint the tabbed console panel (newest line at the bottom). */
-static void draw_console(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const board_status_t* st)
+/**
+ * @brief Draw the console heading line and its rule.
+ *
+ * @details
+ * The heading doubles as the scroll indicator: paused shows how far back the
+ * held view sits and how to resume, live shows the byte counter.
+ *
+ * @param[out] out Framebuffer to draw into.
+ * @param[in]  w   Framebuffer width, pixels.
+ * @param[in]  h   Framebuffer height, pixels.
+ * @param[in]  x   Left edge of the sidebar panel.
+ * @param[in]  st  Board status carrying the console counters.
+ *
+ * @pre @p out covers @p w by @p h pixels and @p st is non-NULL.
+ * @pre The sidebar geometry constants fit inside @p w.
+ * @post The heading colour distinguishes paused (amber) from live.
+ * @post A rule is drawn directly under the heading.
+ *
+ * @note Not thread-safe; the overlay is drawn from one thread.
+ */
+static void draw_console_heading(uint16_t* out, uint16_t w, uint16_t h, int32_t x,
+                                 const board_status_t* st)
 {
   char     buf[k_overlay_val_80];
   uint16_t head_col;
@@ -333,6 +354,54 @@ static void draw_console(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const
             (int32_t)k_ovl_sidebar_w - (2 * (int32_t)k_pad_x),
             1,
             (uint16_t)k_ovl_rule);
+}
+
+/**
+ * @brief Draw the scrolling console body below the tab bar.
+ *
+ * @details
+ * Lines are drawn bottom-up so the console scrolls like a terminal:
+ * `console[0]` is the newest line and lands on the bottom row, highlighted.
+ *
+ * @param[out] out     Framebuffer to draw into.
+ * @param[in]  w       Framebuffer width, pixels.
+ * @param[in]  h       Framebuffer height, pixels.
+ * @param[in]  panel_x Left edge of the console panel.
+ * @param[in]  body_y  Top of the body area, below the tab bar.
+ * @param[in]  body_h  Height of the body area, pixels.
+ * @param[in]  st      Board status carrying the visible lines.
+ *
+ * @pre @p out covers @p w by @p h pixels and @p st is non-NULL.
+ * @pre @p body_h is at least one line high.
+ * @post At most as many lines are drawn as the body height allows.
+ * @post No line is drawn outside the body area.
+ *
+ * @note Not thread-safe; the overlay is drawn from one thread.
+ */
+static void draw_console_body(uint16_t*             out,
+                              uint16_t              w,
+                              uint16_t              h,
+                              int32_t               panel_x,
+                              int32_t               body_y,
+                              int32_t               body_h,
+                              const board_status_t* st)
+{
+  const int32_t max_rows = (body_h - (2 * (int32_t)k_con_pad)) / (int32_t)k_con_line_h;
+  int32_t       rows     = (int32_t)st->console_count;
+  if (rows > max_rows) {
+    rows = max_rows;
+  }
+  for (int32_t i = 0; i < rows; i++) {
+    /* Bottom row (i=0 from the bottom) is console[0], the newest line. */
+    const int32_t  ly  = body_y + body_h - (int32_t)k_con_pad - ((i + 1) * (int32_t)k_con_line_h);
+    const uint16_t col = (i == 0) ? (uint16_t)k_ovl_console_new : (uint16_t)k_ovl_console_txt;
+    draw_text(out, w, h, panel_x + (int32_t)k_con_pad, ly, st->console[i], col, 1);
+  }
+}
+
+static void draw_console(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const board_status_t* st)
+{
+  draw_console_heading(out, w, h, x, st);
   const int32_t panel_x = x;
   const int32_t panel_w = (int32_t)k_ovl_sidebar_w - (2 * (int32_t)k_pad_x);
   const int32_t panel_h = (int32_t)h - (int32_t)k_con_y - (int32_t)k_con_bottom;
@@ -356,17 +425,7 @@ static void draw_console(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const
   }
   /* Fit as many lines as the body height allows; show the newest at the bottom
    * so the console scrolls upward like a terminal. console[0] is the newest. */
-  const int32_t max_rows = (body_h - (2 * (int32_t)k_con_pad)) / (int32_t)k_con_line_h;
-  int32_t       rows     = (int32_t)st->console_count;
-  if (rows > max_rows) {
-    rows = max_rows;
-  }
-  for (int32_t i = 0; i < rows; i++) {
-    /* Bottom row (i=0 from the bottom) is console[0], the newest line. */
-    const int32_t  ly  = body_y + body_h - (int32_t)k_con_pad - ((i + 1) * (int32_t)k_con_line_h);
-    const uint16_t col = (i == 0) ? (uint16_t)k_ovl_console_new : (uint16_t)k_ovl_console_txt;
-    draw_text(out, w, h, panel_x + (int32_t)k_con_pad, ly, st->console[i], col, 1);
-  }
+  draw_console_body(out, w, h, panel_x, body_y, body_h, st);
 }
 
 /** @brief Draw one labelled push-button face at @p x (green when @p pressed). */
