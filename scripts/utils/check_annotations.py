@@ -1671,7 +1671,12 @@ _SELFTEST_LINKAGE_CLEAN = (
 )
 
 
-def _selftest_parse(root: pathlib.Path) -> tuple[dict[str, AnnotatedSymbol], list[CallSite], set[str]]:
+#: What _selftest_parse() returns: the symbol table, the call list and the
+#: set of USRs a vector table names.
+_SelftestParse = tuple[dict[str, AnnotatedSymbol], list[CallSite], set[str]]
+
+
+def _selftest_parse(root: pathlib.Path) -> _SelftestParse:
     """Write the synthetic tree under ``root`` and walk every TU in it."""
     tu_paths: list[pathlib.Path] = []
     for rel, body in _SELFTEST_SOURCES.items():
@@ -1681,6 +1686,13 @@ def _selftest_parse(root: pathlib.Path) -> tuple[dict[str, AnnotatedSymbol], lis
         if path.suffix in SOURCE_SUFFIXES:
             tu_paths.append(path)
 
+    args = [
+        "-std=c23",
+        "-x",
+        "c",
+        f"-I{root}/libs/mod_link/inc",
+        f"-I{root}/libs/mod_link/src",
+    ]
     symbols: dict[str, AnnotatedSymbol] = {}
     calls: list[CallSite] = []
     vector_entries: set[str] = set()
@@ -1688,14 +1700,14 @@ def _selftest_parse(root: pathlib.Path) -> tuple[dict[str, AnnotatedSymbol], lis
     for path in tu_paths:
         tu = index.parse(
             str(path),
-            args=["-std=c23", "-x", "c", f"-I{root}/libs/mod_link/inc", f"-I{root}/libs/mod_link/src"],
+            args=args,
             options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD,
         )
         walk_tu(tu, path, symbols, calls, ParseStats(), vector_entries)
     return symbols, calls, vector_entries
 
 
-def run_selftest() -> int:  # noqa: PLR0912  # one branch per guarded regression
+def run_selftest() -> int:
     """Regression-test the checker itself. Returns a process exit code.
 
     Two classes of defect are guarded here, both of which this gate has
@@ -1767,16 +1779,16 @@ def run_selftest() -> int:  # noqa: PLR0912  # one branch per guarded regression
         for v in violations
         if v.rule == "ra8_linkage" and re.search(r"'([^']+)'", v.message)
     }
-    for name in sorted(_SELFTEST_LINKAGE_EXPECTED - linkage):
-        failures.append(  # noqa: PERF401  # one message per missed symbol
-            f"ra8_linkage went toothless: '{name}' has external linkage that "
-            f"nothing justifies, and the rule did not report it"
-        )
-    for name in sorted(linkage - _SELFTEST_LINKAGE_EXPECTED):
-        failures.append(  # noqa: PERF401  # one message per false positive
-            f"ra8_linkage false positive: '{name}' is a justified definition "
-            f"but the rule reported it"
-        )
+    failures.extend(
+        f"ra8_linkage went toothless: '{name}' has external linkage that "
+        f"nothing justifies, and the rule did not report it"
+        for name in sorted(_SELFTEST_LINKAGE_EXPECTED - linkage)
+    )
+    failures.extend(
+        f"ra8_linkage false positive: '{name}' is a justified definition "
+        f"but the rule reported it"
+        for name in sorted(linkage - _SELFTEST_LINKAGE_EXPECTED)
+    )
     if "handler_untabled" not in linkage:
         failures.append(
             "vector-table exemption over-matches: 'handler_untabled' is byte-identical "
