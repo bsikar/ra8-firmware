@@ -23,18 +23,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum power_profiler_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_power_profiler_fixture_t
+ * @brief The physical quantities the configuration declares.
  */
 typedef enum : uint8_t {
   k_profiler_tick_us =
     100U, /**< Microseconds the mock clock advances per step, so elapsed time is a known multiple of the step count. */
-} power_profiler_uint8_const_t;
+} app_power_profiler_fixture_t;
 
 static uint64_t s_now_us = 0U;
 

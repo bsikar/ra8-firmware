@@ -20,18 +20,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum bkup_tamper_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum bkup_tamper_fixture_t
+ * @brief Out-of-range and malformed inputs the code under test must reject.
  */
 typedef enum : uint8_t {
   k_bkup_field_invalid =
     0xFFU, /**< A field value outside every enumeration it is assigned to, so each configuration guard must reject it. */
-} bkup_tamper_uint8_const_t;
+} bkup_tamper_fixture_t;
 
 /**
  * @enum ra8_bkup_test_const_t

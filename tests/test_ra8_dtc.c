@@ -14,27 +14,17 @@
 #include "unity_minimal.h"
 
 /**
- * @enum dtc_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum dtc_fixture_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
   k_dtc_regs_bytes =
     0x30U, /**< Size the DTC register block must have; the static assertion fails if the struct ever drifts from the hardware layout. */
-} dtc_uint8_const_t;
+} dtc_fixture_t;
 
 /**
- * @enum dtc_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum dtc_fixture2_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint16_t {
   k_dtc_probe_sts_c =
@@ -42,7 +32,7 @@ typedef enum : uint16_t {
   k_dtc_probe_sts_b =
     0xBEEFU, /**< A second, different value, so the read cannot be a cached first result. */
   k_dtc_probe_sts_a = 0xCAFEU, /**< Planted in DTCSTS to prove the read reaches the register. */
-} dtc_uint16_const_t;
+} dtc_fixture2_t;
 
 typedef enum : uintptr_t {
   k_ra8_dtc_test_vector_addr  = 0x22000400UL, /**< Arbitrary SRAM-region pointer. */

@@ -49,17 +49,12 @@
 #include "unity_minimal.h"
 
 /**
- * @enum dfu_launch_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum dfu_launch_cov_fixture_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
   k_dfu_image_bytes = 64, /**< Size of the fixture image. */
-} dfu_launch_cov_uint8_const_t;
+} dfu_launch_cov_fixture_t;
 
 /**
  * @enum test_dfu_launch_const_t

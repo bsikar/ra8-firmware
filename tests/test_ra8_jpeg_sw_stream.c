@@ -31,13 +31,8 @@ typedef enum : uint8_t {
 } jpeg_quant_t;
 
 /**
- * @enum jpeg_sw_stream_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum jpeg_sw_stream_fixture_t
+ * @brief The payload generators and their seeds, plus buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
   k_jpeg_pattern_c_mul =
@@ -48,7 +43,7 @@ typedef enum : uint8_t {
     64U, /**< Bytes fed per streaming step, so the decoder must resume across chunk boundaries. */
   k_jpeg_pattern_x_mul =
     5U, /**< Column multiplier of the source generator; also the denominator that truncates the stream to three fifths of its length for the short-input case. */
-} jpeg_sw_stream_uint8_const_t;
+} jpeg_sw_stream_fixture_t;
 
 /** @brief Test geometry + buffer sizing. */
 enum : uint32_t {

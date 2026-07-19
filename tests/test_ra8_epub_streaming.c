@@ -45,19 +45,14 @@
 #include "unity_minimal.h"
 
 /**
- * @enum epub_streaming_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum epub_streaming_fixture_t
+ * @brief The payload generators and their seeds, plus buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
   k_epub_filler_stride =
     31U, /**< Stride of the filler generator; prime, so the filler does not repeat inside a deflate window. */
   k_epub_entry_bytes = 100U, /**< Declared size of the streamed entry. */
-} epub_streaming_uint8_const_t;
+} epub_streaming_fixture_t;
 
 /* ---------------------------------------------------------------------------
  * Dimensions (tests are exempt from the magic-number gate; enums used anyway).

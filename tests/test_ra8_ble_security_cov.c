@@ -27,18 +27,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum ble_security_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ble_security_cov_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint8_t {
   k_ble_sec_poison_out =
     0xFFU, /**< Poison written into a count out-parameter, so a call that fails without setting it is detectable. */
-} ble_security_cov_uint8_const_t;
+} ble_security_cov_fixture_t;
 
 /** @brief Test hook -- forces the internal bond count without a store. */
 extern void ra8_ble_security_test_set_bond_count(uint8_t count);

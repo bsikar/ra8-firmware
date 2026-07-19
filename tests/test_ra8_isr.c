@@ -16,13 +16,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum isr_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum isr_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable, plus out-of-range and malformed inputs the code under test must reject.
  */
 typedef enum : uint16_t {
   k_isr_handler_marker =
@@ -31,7 +26,7 @@ typedef enum : uint16_t {
     500U, /**< A vector slot past the last real one; dispatch must ignore it rather than index off the table. */
   k_isr_slot_poison =
     0xFFFFU, /**< Poison slot written before a registration, so a register call that fails without assigning one is detectable. */
-} isr_uint16_const_t;
+} isr_fixture_t;
 
 static int32_t  s_call_count   = 0;
 static int32_t  s_last_ctx_val = 0;

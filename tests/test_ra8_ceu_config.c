@@ -29,31 +29,21 @@
 #include "unity_minimal.h"
 
 /**
- * @enum ceu_config_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ceu_config_fixture_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint16_t {
   k_ceu_probe_cdssr_small = 0x200U, /**< A CDSSR value with a single field set. */
-} ceu_config_uint16_const_t;
+} ceu_config_fixture_t;
 
 /**
- * @enum ceu_config_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ceu_config_fixture2_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint32_t {
   k_ceu_probe_cdssr_wide =
     0xCAFE0000UL, /**< A full-width CDSSR value proving no field is truncated. */
-} ceu_config_uint32_const_t;
+} ceu_config_fixture2_t;
 
 typedef enum : uint16_t {
   k_test_ceu_width  = 1280U, /**< Test CEU width.  */

@@ -44,32 +44,22 @@
 #include "unity_minimal.h"
 
 /**
- * @enum display_pal_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum display_pal_fixture_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
   k_fb_alignment_bytes =
     64, /**< Framebuffer alignment the display controller requires, in bytes. */
-} display_pal_uint8_const_t;
+} display_pal_fixture_t;
 
 /**
- * @enum display_pal_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum display_pal_fixture2_t
+ * @brief Out-of-range and malformed inputs the code under test must reject.
  */
 typedef enum : uint16_t {
   k_pal_width_over_max =
     4097U, /**< A panel width one past the largest the controller supports, so configuration must reject it. */
-} display_pal_uint16_const_t;
+} display_pal_fixture2_t;
 
 /* =============================================================================
  * Test fixture

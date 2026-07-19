@@ -23,17 +23,12 @@
 #include "unity_minimal.h"
 
 /**
- * @enum io_vfs_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum io_vfs_fixture_t
+ * @brief The byte-level helpers.
  */
 typedef enum : uint8_t {
   k_byte_mask = 0xFFU, /**< Truncates a generated or shifted value back into a byte. */
-} io_vfs_uint8_const_t;
+} io_vfs_fixture_t;
 
 /**
  * @enum t_vfs_const_t

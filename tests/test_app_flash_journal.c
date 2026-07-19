@@ -23,33 +23,23 @@
 #include "unity_minimal.h"
 
 /**
- * @enum flash_journal_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_flash_journal_fixture_t
+ * @brief The byte-level helpers.
  */
 typedef enum : uint8_t {
   k_journal_seq_small =
     42U, /**< A small journal sequence number, so the packer's short-value path is taken. */
   k_byte_mask = 0xFFU, /**< Truncates each generated RGB channel back into a byte. */
-} flash_journal_uint8_const_t;
+} app_flash_journal_fixture_t;
 
 /**
- * @enum flash_journal_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum journal_seq_t
+ * @brief Journal sequence numbers, narrow and full-width, so no field is truncated.
  */
 typedef enum : uint32_t {
   k_journal_seq_wide =
     0xDEADBEEFU, /**< A full-width sequence number, proving no field is truncated on the way in. */
-} flash_journal_uint32_const_t;
+} journal_seq_t;
 
 typedef enum : uint32_t {
   k_test_flash_record_bytes = 16U,  /**< Test flash record bytes.   */

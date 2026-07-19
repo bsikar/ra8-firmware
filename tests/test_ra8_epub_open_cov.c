@@ -62,18 +62,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum epub_open_cov_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum epub_open_pad_t
+ * @brief Padding that pushes the container XML past the parser's buffer.
  */
 typedef enum : uint16_t {
   k_epub_container_overflow_pad =
     512U, /**< Padding pushing the container XML past the parser's buffer, so the overflow guard fires. */
-} epub_open_cov_uint16_const_t;
+} epub_open_pad_t;
 
 /* ---------------------------------------------------------------------------
  * Sizing constants (tests are exempt from the magic-number gate per CLAUDE.md).

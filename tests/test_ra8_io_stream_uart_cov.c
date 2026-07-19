@@ -44,18 +44,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum io_stream_uart_cov_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum io_stream_uart_cov_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint32_t {
   k_io_poison_written =
     0xFFFFFFFFU, /**< Poison written into the bytes-written out-parameter, so a call that fails without setting it is detectable. */
-} io_stream_uart_cov_uint32_const_t;
+} io_stream_uart_cov_fixture_t;
 
 /* =========================================================================
  * Fixture constants

@@ -13,27 +13,17 @@
 #include "unity_minimal.h"
 
 /**
- * @enum icu_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum icu_fixture_t
+ * @brief All-bits-set register values, so a write that clears the wrong field leaves evidence.
  */
 typedef enum : uint8_t {
   k_icu_irqcr_all_bits =
     0xFFU, /**< Every IRQCR bit set, so a write that reached the wrong channel leaves evidence. */
-} icu_uint8_const_t;
+} icu_fixture_t;
 
 /**
- * @enum icu_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum icu_fixture2_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint32_t {
   k_icu_probe_wupen0 =
@@ -44,7 +34,7 @@ typedef enum : uint32_t {
     0x1F007AUL, /**< An NMISR value with a scattered mix of set and clear bits, so a mask applied to the wrong field changes the result. */
   k_icu_nmier_all_sources =
     0x1FFFFFUL, /**< Every implemented NMIER enable bit, the widest legal value for the register. */
-} icu_uint32_const_t;
+} icu_fixture2_t;
 
 /**
  * @par MC/DC:

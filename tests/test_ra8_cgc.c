@@ -16,18 +16,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum cgc_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum cgc_fixture_t
+ * @brief The recognizable values moved through the code under test.
  */
 typedef enum : uint16_t {
   k_cgc_ctx_token =
     0xCAFE, /**< Token handed to the callback and checked on the way back, proving the context pointer survives. */
-} cgc_uint16_const_t;
+} cgc_fixture_t;
 
 typedef enum : uint8_t {
   k_ra8_cgc_test_all_oscsf = 0xFFU, /**< All stabilisation bits set. */

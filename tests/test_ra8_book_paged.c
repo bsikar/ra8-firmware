@@ -39,13 +39,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum book_paged_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum book_paged_fixture_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
   k_pbook_long_run_chars =
@@ -56,37 +51,27 @@ typedef enum : uint8_t {
   k_pbook_node_count =
     10, /**< Nodes in the fixture book: the nodes[] extent and the header's node_count are the same fact. */
   k_pbook_name_cap = 64, /**< Capacity of the single-name scratch buffer. */
-} book_paged_uint8_const_t;
+} book_paged_fixture_t;
 
 /**
- * @enum book_paged_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum book_paged_fixture2_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint16_t {
   k_pbook_long_strings_cap =
     1024, /**< String-pool capacity of the long-run fixture, sized to hold one run longer than a paging chunk. */
   k_pbook_strings_cap = 320, /**< String-pool capacity of the fixture.              */
   k_pbook_render_cap  = 512, /**< Capacity of the rendered-text comparison buffers. */
-} book_paged_uint16_const_t;
+} book_paged_fixture2_t;
 
 /**
- * @enum book_paged_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum book_paged_fixture3_t
+ * @brief The byte-level helpers.
  */
 typedef enum : uint32_t {
   k_crc32_init           = 0xFFFFFFFFU, /**< CRC-32 initial value, and the final XOR-out. */
   k_crc32_poly_reflected = 0xEDB88320U, /**< The reflected CRC-32 polynomial.             */
-} book_paged_uint32_const_t;
+} book_paged_fixture3_t;
 
 /** @brief CRC-32/ISO-HDLC over the blob body (matches ra8_book_validate). */
 static uint32_t pbook_crc32(const uint8_t* data, size_t len)

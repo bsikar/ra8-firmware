@@ -24,20 +24,15 @@
 #include "unity_minimal.h"
 
 /**
- * @enum bkup_survival_demo_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_bkup_survival_demo_fixture_t
+ * @brief Values planted in registers to prove a read or write reaches them, plus poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint8_t {
   k_bkup_registers_checked = 7U, /**< Backup registers the survival decision inspects. */
   k_bkup_probe_index = 5U, /**< Backup register index whose contents must survive the reset. */
   k_bkup_poison_out =
     9U, /**< Poison written into the survival and boot-count out-parameters, so a decision that set neither is detectable. */
-} bkup_survival_demo_uint8_const_t;
+} app_bkup_survival_demo_fixture_t;
 
 /** @brief Mirror of the demo's app-local constants. */
 typedef enum : uint32_t {

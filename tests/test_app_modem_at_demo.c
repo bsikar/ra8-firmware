@@ -33,13 +33,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum modem_at_demo_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_modem_at_demo_fixture_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
   k_modem_val_multi_digit = 123U, /**< A multi-digit value, exercising the accumulate loop. */
@@ -48,7 +43,7 @@ typedef enum : uint8_t {
   k_modem_line_cap =
     128, /**< Capacity of the end-to-end response line buffer, over the longest fixture response. */
   k_modem_capture_cap = 64, /**< Capacity of the captured-command buffer. */
-} modem_at_demo_uint8_const_t;
+} app_modem_at_demo_fixture_t;
 
 /* ------------------------------------------------------------------------- */
 /* Mirrors of the demo's app-local constants + pure decision logic. */

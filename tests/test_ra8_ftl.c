@@ -33,13 +33,8 @@ typedef enum : uint8_t {
 } ftl_fill_t;
 
 /**
- * @enum ftl_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ftl_fixture_t
+ * @brief Values planted in registers to prove a read or write reaches them, plus the payload generators and their seeds.
  */
 typedef enum : uint8_t {
   k_ftl_pattern_stride =
@@ -49,7 +44,7 @@ typedef enum : uint8_t {
   k_ftl_probe_lbn = 5U, /**< Logical block the round-trip writes and reads back. */
   k_ftl_probe_tag =
     9U, /**< Its generation tag, so a stale mapping returning an older copy is detectable. */
-} ftl_uint8_const_t;
+} ftl_fixture_t;
 
 /**
  * @enum test_ftl_const_t

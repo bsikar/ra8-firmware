@@ -52,13 +52,8 @@ typedef enum : uint8_t {
 } sdspi_cov_fill_t;
 
 /**
- * @enum io_blockdev_sdspi_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum io_blockdev_sdspi_cov_fixture_t
+ * @brief The payload generators and their seeds, plus protocol and on-disk field offsets, and the byte-level helpers.
  */
 typedef enum : uint8_t {
   k_sdspi_pattern_stride =
@@ -71,7 +66,7 @@ typedef enum : uint8_t {
   k_sdspi_csd_off_c_size_hi = 7, /**< CSD byte holding the top of the version-2 C_SIZE field. */
   k_sdspi_csd_off_c_size_lo = 9, /**< The byte holding its low half.                          */
   k_byte_mask = 0xFFU, /**< Low-byte mask used when clocking a word out a byte at a time. */
-} io_blockdev_sdspi_cov_uint8_const_t;
+} io_blockdev_sdspi_cov_fixture_t;
 
 /* ===========================================================================
  * Mock SPI transport

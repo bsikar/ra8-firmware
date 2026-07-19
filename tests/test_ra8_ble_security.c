@@ -15,34 +15,24 @@
 #include "unity_minimal.h"
 
 /**
- * @enum ble_security_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ble_security_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable, plus out-of-range and malformed inputs the code under test must reject.
  */
 typedef enum : uint8_t {
   k_ble_sec_poison_out =
     0xFFU, /**< Poison written into an out-parameter before the call, so a failure that left it alone is detectable. */
   k_ble_sec_io_cap_invalid =
     200U, /**< An I/O-capability value outside the enumeration, which configuration must reject. */
-} ble_security_uint8_const_t;
+} ble_security_fixture_t;
 
 /**
- * @enum ble_security_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ble_passkey_t
+ * @brief A six-digit passkey, the full width the pairing protocol defines.
  */
 typedef enum : uint32_t {
   k_ble_sec_passkey =
     123456U, /**< A six-digit passkey, the full width the pairing protocol defines. */
-} ble_security_uint32_const_t;
+} ble_passkey_t;
 
 extern void ra8_ble_security_test_emit_event(const ra8_ble_security_event_t* evt);
 extern void ra8_ble_security_test_set_bond_count(uint8_t count);

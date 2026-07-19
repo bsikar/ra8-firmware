@@ -36,13 +36,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum epub_entry_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum epub_entry_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable, plus the payload generators and their seeds.
  */
 typedef enum : uint8_t {
   k_epub_reread_poison =
@@ -54,7 +49,7 @@ typedef enum : uint8_t {
   k_epub_pattern_shift =
     5U, /**< Shift XORed into that generator, adding a slowly-varying high component. */
   k_epub_pattern_bias = 11U, /**< Its bias, so index 0 is not byte 0. */
-} epub_entry_uint8_const_t;
+} epub_entry_fixture_t;
 
 /* ---------------------------------------------------------------------------
  * Dimensions (tests are exempt from the magic-number gate; enums used anyway).

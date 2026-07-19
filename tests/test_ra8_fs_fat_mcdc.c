@@ -44,13 +44,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum fs_fat_mcdc_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum fs_fat_mcdc_fixture_t
+ * @brief The payload generators and their seeds, plus protocol and on-disk field offsets, and buffer capacities and payload sizes, and the byte-level helpers.
  */
 typedef enum : uint8_t {
   k_bpb_sig_lo          = 0x55U, /**< The 0xAA55 boot signature's low byte.       */
@@ -63,21 +58,16 @@ typedef enum : uint8_t {
   k_sfn_name_len = 11,    /**< A packed 8.3 name: 8 base + 3 extension.                          */
   k_shift_byte3  = 24,    /**< Shift to the most significant byte, which goes on the wire first. */
   k_byte_mask    = 0xFFU, /**< Low-byte mask used when clocking a word out a byte at a time.     */
-} fs_fat_mcdc_uint8_const_t;
+} fs_fat_mcdc_fixture_t;
 
 /**
- * @enum fs_fat_mcdc_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum fs_fat_mcdc_fixture2_t
+ * @brief Out-of-range and malformed inputs the code under test must reject.
  */
 typedef enum : uint16_t {
   k_fs_block_size_unsupported =
     4096U, /**< A block size other than 512, which the formatter must reject. */
-} fs_fat_mcdc_uint16_const_t;
+} fs_fat_mcdc_fixture2_t;
 
 /**
  * @enum ra8_fs_mcdc_disk_t

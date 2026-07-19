@@ -20,13 +20,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum gfx_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum gfx_fixture_t
+ * @brief Buffer capacities, payload sizes and fixture geometry.
  */
 typedef enum : uint8_t {
   k_gfx_fb_width =
@@ -34,7 +29,7 @@ typedef enum : uint8_t {
   k_gfx_span_start = 10, /**< First coordinate of the drawn span. */
   k_gfx_span_end =
     13, /**< One past its last, so the span is three pixels and a fencepost error changes the count. */
-} gfx_uint8_const_t;
+} gfx_fixture_t;
 
 /**
  * @enum test_gfx_dim_t

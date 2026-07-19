@@ -21,18 +21,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum gpio_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum gpio_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint8_t {
   k_gpio_poison_irqcr =
     0xFFU, /**< Poison written into the IRQCR out-parameter, so a read that fails without setting it is detectable. */
-} gpio_uint8_const_t;
+} gpio_fixture_t;
 
 /**
  * @enum ra8_gpio_test_ids_t

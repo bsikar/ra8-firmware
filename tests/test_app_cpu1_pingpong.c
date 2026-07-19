@@ -26,18 +26,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum cpu1_pingpong_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_cpu1_pingpong_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint8_t {
   k_ipc_ch_unset =
     0xFFU, /**< Poison channel id the callback record starts from, so a callback that never ran is distinguishable from one that reported channel 0. */
-} cpu1_pingpong_uint8_const_t;
+} app_cpu1_pingpong_fixture_t;
 
 typedef enum : uint32_t {
   k_test_ppong_magic_ping  = 0x1234U,     /**< Test ppong magic ping.  */

@@ -16,19 +16,14 @@
 #include "unity_minimal.h"
 
 /**
- * @enum ble_gatt_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ble_gatt_uuid_t
+ * @brief UUID markers for the fixture's service and characteristic, on separate pages so the two cannot alias.
  */
 typedef enum : uint8_t {
   k_uuid_gatt_svc = 0x70U, /**< Service of this file's registration fixture. */
   k_uuid_gatt_chr =
     0x80U, /**< Its characteristic; a separate marker page so the two UUIDs cannot alias. */
-} ble_gatt_uint8_const_t;
+} ble_gatt_uuid_t;
 
 typedef enum : uint16_t {
   k_test_gatt_handle_unknown = 0xBEEFU, /**< Test GATT handle unknown. */

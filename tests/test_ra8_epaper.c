@@ -45,18 +45,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum epaper_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum epaper_fixture_t
+ * @brief Out-of-range and malformed inputs the code under test must reject.
  */
 typedef enum : uint16_t {
   k_epaper_dimension_over_max =
     0xFFFFU, /**< A panel dimension past the largest the driver supports, used for both width and height so each guard is reached. */
-} epaper_uint16_const_t;
+} epaper_fixture_t;
 
 /**
  * @enum ra8_epaper_test_const_t

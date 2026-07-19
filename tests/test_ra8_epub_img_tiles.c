@@ -40,13 +40,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum epub_img_tiles_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum epub_img_tiles_fixture_t
+ * @brief The payload generators and their seeds, plus protocol and on-disk field offsets, and buffer capacities and payload sizes, and the byte-level helpers.
  */
 typedef enum : uint8_t {
   k_tile_store_cap     = 64U, /**< Capacity of the tile memstore the import path writes into. */
@@ -67,7 +62,7 @@ typedef enum : uint8_t {
   k_byte_mask = 0xFFU, /**< Low-byte mask used by the put16 helper.                              */
   k_fig_pattern_y_mul =
     7U, /**< Row multiplier of the figure generator, `(x * 3 + y * 7) & 0xFF`; coprime with the column multiplier so no two pixels in a tile collide. */
-} epub_img_tiles_uint8_const_t;
+} epub_img_tiles_fixture_t;
 
 /**
  * @enum tile_dim_t

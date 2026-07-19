@@ -38,17 +38,12 @@
 #include "unity_minimal.h"
 
 /**
- * @enum ereader_manga_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_ereader_manga_fixture_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
   k_manga_line_cap = 48, /**< Capacity of the status-line scratch buffer. */
-} ereader_manga_uint8_const_t;
+} app_ereader_manga_fixture_t;
 
 /** @brief The app's geometry + budget constants (kept in lockstep with main.c). */
 enum : uint32_t {

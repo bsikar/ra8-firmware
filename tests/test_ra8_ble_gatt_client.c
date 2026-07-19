@@ -15,13 +15,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum ble_gatt_client_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ble_gatt_client_fixture_t
+ * @brief The handles and addresses the fixture transacts on, plus the recognizable values moved through the code under test.
  */
 typedef enum : uint8_t {
   k_gattc_write_byte_a = 0xAA, /**< Byte written through the client's write path. */
@@ -35,7 +30,7 @@ typedef enum : uint8_t {
   k_gattc_other_handle =
     0x14U, /**< A handle belonging to no subscription, so an unsolicited notification must be dropped. */
   k_gattc_conn_b = 0x41U, /**< Its second. */
-} ble_gatt_client_uint8_const_t;
+} ble_gatt_client_fixture_t;
 
 extern void     ra8_ble_gatt_client_test_inject_notify(uint16_t       conn_handle,
                                                        uint16_t       attr_handle,

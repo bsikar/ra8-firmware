@@ -24,18 +24,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum lpm_wake_matrix_demo_uint64_const_t
- * @brief Named uint64_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_lpm_wake_matrix_demo_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint64_t {
   k_lpm_poison_cause =
     0xDEADBEEFCAFEBABEULL, /**< Poison written into the 64-bit wake-cause out-parameter; both halves are non-zero, so a call that set only one is detectable. */
-} lpm_wake_matrix_demo_uint64_const_t;
+} app_lpm_wake_matrix_demo_fixture_t;
 
 /** @brief Bit-cast widths used for packing WUPEN1 into the high word. */
 typedef enum : uint8_t {

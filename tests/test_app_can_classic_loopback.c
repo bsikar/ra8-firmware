@@ -21,18 +21,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum can_classic_loopback_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_can_classic_loopback_fixture_t
+ * @brief All-bits-set register values, so a write that clears the wrong field leaves evidence.
  */
 typedef enum : uint32_t {
   k_can_sts_all_ones =
     0xFFFFFFFFUL, /**< Every status bit set, so a handler that clears the wrong flag leaves evidence in the rest. */
-} can_classic_loopback_uint32_const_t;
+} app_can_classic_loopback_fixture_t;
 
 typedef enum : uint32_t {
   k_test_can_classic_bitrate = 250000U, /**< Test CAN classic bitrate. */
@@ -125,7 +120,7 @@ static void test_can_classic_round_trip(void)
                  ra8_canfd_set_bitrate((uint8_t)k_test_can_classic_channel,
                                        (uint32_t)k_test_can_classic_bitrate,
                                        0U));
-  ra8_canfd_frame_t tx = {
+  const ra8_canfd_frame_t tx = {
     .id          = (uint32_t)k_test_can_classic_id,
     .dlc         = (uint8_t)k_test_can_classic_dlc,
     .is_extended = 0U,

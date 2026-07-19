@@ -42,18 +42,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum cgc_eswclk_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum cgc_eswclk_cov_fixture_t
+ * @brief Loop bounds and counts, sized so the case under test is actually reached.
  */
 typedef enum : uint8_t {
   k_cgc_divider_settings =
     255U, /**< Divider settings swept: every value the field can hold, so no encoding goes untried. */
-} cgc_eswclk_cov_uint8_const_t;
+} cgc_eswclk_cov_fixture_t;
 
 /**
  * @enum eswclk_wait_idx_t

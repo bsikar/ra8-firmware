@@ -23,18 +23,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum rtc_alarm_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum rtc_alarm_date_t
+ * @brief Alarm year, past the RTC epoch so a dropped field is visible.
  */
 typedef enum : uint16_t {
   k_rtc_alarm_year =
     2026U, /**< Alarm year; past the RTC epoch so the year field is non-zero and a dropped field is visible. */
-} rtc_alarm_uint16_const_t;
+} rtc_alarm_date_t;
 
 typedef enum : uint8_t {
   k_test_rtc_app_seed_year_lo = 26U,   /**< Test rtc app seed year lo. */

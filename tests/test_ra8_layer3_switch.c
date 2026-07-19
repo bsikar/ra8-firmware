@@ -14,17 +14,12 @@
 #include "unity_minimal.h"
 
 /**
- * @enum layer3_switch_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum layer3_switch_fixture_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint16_t {
   k_l3_mtu_bytes = 1500U, /**< The standard Ethernet MTU the switch is configured with. */
-} layer3_switch_uint16_const_t;
+} layer3_switch_fixture_t;
 
 typedef enum : uint32_t {
   k_test_l3_dst_ip = 0xC0A80100U, /**< 192.168.1.0 in net order. */

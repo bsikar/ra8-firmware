@@ -22,18 +22,13 @@
 #include "ra8_sim_mmio.h"
 
 /**
- * @enum ipc_test_util_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ipc_test_util_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint8_t {
   k_ipc_ch_unset =
     0xFFU, /**< Poison channel id the callback record starts from, so a callback that never ran is distinguishable from one that reported channel 0. */
-} ipc_test_util_uint8_const_t;
+} ipc_test_util_fixture_t;
 
 typedef enum : uint8_t {
   k_ra8_ipc_test_ch_first = 0U,   /**< RA8 ipc test channel first. */

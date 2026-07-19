@@ -30,13 +30,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum crashlog_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum crashlog_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint32_t {
   k_crashlog_cfsr_usage_fault =
@@ -45,7 +40,7 @@ typedef enum : uint32_t {
     0xFFFFFFFFUL, /**< XORed into a valid CRC to corrupt every bit of it, so the integrity check cannot pass by chance. */
   k_crashlog_magic_wrong =
     0xDEADBEEFUL, /**< A magic value the reader does not recognise, so a stale or foreign record is rejected. */
-} crashlog_uint32_const_t;
+} crashlog_fixture_t;
 
 static jmp_buf s_fatal_jmp;
 static uint8_t s_fatal_hit = 0U;

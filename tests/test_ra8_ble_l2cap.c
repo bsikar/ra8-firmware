@@ -21,20 +21,15 @@
 #include "unity_minimal.h"
 
 /**
- * @enum ble_l2cap_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ble_l2cap_fixture_t
+ * @brief Buffer capacities and payload sizes, plus the byte-level helpers.
  */
 typedef enum : uint8_t {
   k_byte_mask = 0xFFU, /**< Low-byte mask used to split the connection handle little-endian. */
   k_hci_disconn_params_len = 19U, /**< Parameter length of a Disconnection Complete event. */
   k_hci_params_cap =
     19, /**< Capacity of the event-parameter staging buffers, matching that length. */
-} ble_l2cap_uint8_const_t;
+} ble_l2cap_fixture_t;
 
 typedef enum : uint8_t {
   k_test_l2cap_role_bogus  = 99U,   /**< Test L2CAP role bogus.      */

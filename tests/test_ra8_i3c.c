@@ -23,13 +23,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum i3c_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum i3c_fixture_t
+ * @brief The handles and addresses the fixture transacts on, plus the protocol codes and identifiers exchanged, and the recognizable values moved through the code under test.
  */
 typedef enum : uint8_t {
   k_i3c_dynamic_addr = 0x11U, /**< Dynamic address assigned to the fixture target. */
@@ -37,16 +32,11 @@ typedef enum : uint8_t {
     0xA5U, /**< A recognizable single-byte payload; neither 0x00 nor 0xFF, so a bus left idle cannot fake it. */
   k_i3c_ibi_id =
     0x84U, /**< IBI identifier placed in the queue word's upper bits, with a zero length below it. */
-} i3c_uint8_const_t;
+} i3c_fixture_t;
 
 /**
- * @enum i3c_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum i3c_fixture2_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint16_t {
   k_i3c_probe_inst_b =
@@ -55,16 +45,11 @@ typedef enum : uint16_t {
     0xCAFEU, /**< Planted in INST to prove the status read reaches the register. */
   k_i3c_probe_half_word =
     0x0000BEEFU, /**< A value whose upper half is zero, catching a driver that sign-extends or reuses stale high bytes. */
-} i3c_uint16_const_t;
+} i3c_fixture2_t;
 
 /**
- * @enum i3c_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum i3c_fixture3_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint32_t {
   k_i3c_probe_word =
@@ -75,7 +60,7 @@ typedef enum : uint32_t {
     0x11223344U, /**< Ascending bytes: a byte-order slip in the data buffer shows up directly. */
   k_i3c_probe_descending =
     0x44332211U, /**< The same bytes reversed, which is what a byte-swapped write would produce. */
-} i3c_uint32_const_t;
+} i3c_fixture3_t;
 
 static uint32_t s_i3c_cb_count;
 static uint32_t s_i3c_cb_last_mask;

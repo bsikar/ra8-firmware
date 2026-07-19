@@ -34,18 +34,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum lcd_demo_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_lcd_demo_fixture_t
+ * @brief All-bits-set register values, so a write that clears the wrong field leaves evidence.
  */
 typedef enum : uint8_t {
   k_sys_oscsf_all_ready =
     0xFFU, /**< Every oscillator-stabilisation flag set, so clock bring-up sees all sources ready. */
-} lcd_demo_uint8_const_t;
+} app_lcd_demo_fixture_t;
 
 /** @brief Per-test enums. */
 typedef enum : uint32_t {

@@ -14,32 +14,22 @@
 #include "unity_minimal.h"
 
 /**
- * @enum eth_mfwd_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum eth_mfwd_fixture_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint16_t {
   k_mfwd_probe_sts_a = 0xABCDU, /**< Planted in MFWD_STS to prove the read reaches the register. */
   k_mfwd_probe_sts_b =
     0xDEADU, /**< A second, different value, so the read cannot be a cached first result. */
-} eth_mfwd_uint16_const_t;
+} eth_mfwd_fixture_t;
 
 /**
- * @enum eth_mfwd_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum eth_mfwd_fixture2_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint32_t {
   k_mfwd_probe_sts_wide = 0xFEEDFACEU, /**< A full 32-bit value proving no field is truncated. */
-} eth_mfwd_uint32_const_t;
+} eth_mfwd_fixture2_t;
 
 static uint32_t s_mfwd_cb_count;
 static uint32_t s_mfwd_cb_last_mask;

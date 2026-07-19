@@ -22,13 +22,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum drw_render_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum drw_render_fixture_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint32_t {
   k_drw_alpha_opaque = 0xFF000000UL, /**< Alpha byte of an ARGB8888 entry set to fully opaque. */
@@ -38,7 +33,7 @@ typedef enum : uint32_t {
     0x12345678UL, /**< Planted in PERFCOUNT1 to prove the read reaches the register. */
   k_drw_probe_perfcount2 =
     0xDEADBEEFUL, /**< Planted in PERFCOUNT2; different from PERFCOUNT1 so the two cannot be confused. */
-} drw_render_uint32_const_t;
+} drw_render_fixture_t;
 
 /**
  * @enum ra8_drw_test_const_t

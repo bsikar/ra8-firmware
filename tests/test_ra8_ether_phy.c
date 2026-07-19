@@ -15,34 +15,24 @@
 #include "unity_minimal.h"
 
 /**
- * @enum ether_phy_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ether_phy_fixture_t
+ * @brief The peripheral registers and field values this fixture drives, plus the physical quantities the configuration declares.
  */
 typedef enum : uint8_t {
   k_phy_reset_wait_us =
     100U, /**< Reset settling time the configuration requests, in microseconds. */
   k_phy_reg_link_partner = 5, /**< MII register 5: the link-partner ability register. */
-} ether_phy_uint8_const_t;
+} ether_phy_fixture_t;
 
 /**
- * @enum ether_phy_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ether_phy_fixture2_t
+ * @brief The peripheral registers and field values this fixture drives.
  */
 typedef enum : uint16_t {
   k_phy_ability_100_full = 0x0100U, /**< An ability word advertising 100BASE-TX full duplex. */
   k_phy_bmcr_reset =
     0x8000U, /**< BMCR bit 15, the PHY reset bit the driver must clear when reset completes. */
-} ether_phy_uint16_const_t;
+} ether_phy_fixture2_t;
 
 typedef enum : uint8_t {
   k_test_phy_addr      = 1U,  /**< Test PHY address.      */

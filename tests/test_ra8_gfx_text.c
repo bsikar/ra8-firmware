@@ -14,18 +14,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum gfx_text_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum gfx_text_fixture_t
+ * @brief Buffer capacities, payload sizes and fixture geometry.
  */
 typedef enum : uint8_t {
   k_gfx_fb_side =
     64U, /**< Side of the square framebuffer, in pixels; it holds side x side x 4 bytes. */
-} gfx_text_uint8_const_t;
+} gfx_text_fixture_t;
 
 typedef enum : uint16_t {
   k_test_gfx_dim_zero   = 0U,    /**< Test gfx dim zero.   */

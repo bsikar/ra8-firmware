@@ -36,13 +36,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum ble_host_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ble_host_fixture_t
+ * @brief Protocol and on-disk field offsets, plus buffer capacities and payload sizes, and the byte-level helpers.
  */
 typedef enum : uint8_t {
   k_ble_cap_tail_bytes    = 5U,    /**< Bytes of the LE_Set_Advertising_Enable command at
@@ -65,7 +60,7 @@ typedef enum : uint8_t {
   k_att_off_value_lo  = 7,  /**< First byte of the ATT value that follows it.        */
   k_uuid_fill_base =
     0x80U, /**< Base marker of the table-filling loop; `+ i` gives each registration its own UUID so the table fills with distinct entries. */
-} ble_host_uint8_const_t;
+} ble_host_fixture_t;
 
 /* Test hooks from libs/ra8_hal/src/ra8_ble.c. */
 const uint8_t* ra8_ble_test_tx_capture(uint16_t* out_len);

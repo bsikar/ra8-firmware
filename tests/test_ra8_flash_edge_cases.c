@@ -34,13 +34,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum flash_edge_cases_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum flash_edge_cases_fixture_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint8_t {
   k_flash_probe_end =
@@ -50,7 +45,7 @@ typedef enum : uint8_t {
   k_flash_written_byte =
     0x5AU, /**< Byte written into the region, distinct from the erased state so a failed write is visible. */
   k_flash_erased_byte = 0xFFU, /**< The erased state of MRAM: all ones. */
-} flash_edge_cases_uint8_const_t;
+} flash_edge_cases_fixture_t;
 
 typedef enum : uint32_t {
   k_flash_edge_addr_extra_in   = 0x02C9F040UL, /**< Flash edge address extra in.   */

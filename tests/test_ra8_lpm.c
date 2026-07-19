@@ -23,13 +23,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum lpm_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum lpm_fixture_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint8_t {
   k_lpm_probe_dpsifr3 =
@@ -43,7 +38,7 @@ typedef enum : uint8_t {
   k_lpm_probe_dpsbycr  = 0x54U, /**< Planted in DPSBYCR.                                       */
   k_lpm_probe_top_bit  = 0x80U, /**< A single high bit, planted where only one flag must move. */
   k_lpm_all_ones       = 0xFFU, /**< All flags set, so a clear that missed a bit leaves evidence. */
-} lpm_uint8_const_t;
+} lpm_fixture_t;
 
 /**
  * @enum ra8_lpm_test_const_t

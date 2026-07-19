@@ -22,18 +22,13 @@
 #include "../examples/ek_ra8d2/hw_validated/hil/ereader_ui/er_pageturn.h"
 
 /**
- * @enum ereader_pageturn_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ereader_pageturn_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint8_t {
   k_pageturn_poison_out =
     9U, /**< Poison written into the chapter and page out-parameters, so a call that set neither is detectable. */
-} ereader_pageturn_uint8_const_t;
+} ereader_pageturn_fixture_t;
 
 /**
  * @test er_tap_to_dir splits the screen into thirds (edge taps).

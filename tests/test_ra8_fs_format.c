@@ -39,13 +39,8 @@ typedef enum : uint8_t {
 } fmt_fill_t;
 
 /**
- * @enum fs_format_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum fs_format_fixture_t
+ * @brief The payload generators and their seeds.
  */
 typedef enum : uint8_t {
   k_fs_pattern_stride =
@@ -53,21 +48,16 @@ typedef enum : uint8_t {
   k_fs_spc_max =
     128U, /**< The largest sectors-per-cluster the format allows, so the geometry maths is exercised at its limit. */
   k_fs_pattern_bias = 7U, /**< Its bias, so index 0 is not byte 0. */
-} fs_format_uint8_const_t;
+} fs_format_fixture_t;
 
 /**
- * @enum fs_format_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum fs_format_fixture2_t
+ * @brief Out-of-range and malformed inputs the code under test must reject.
  */
 typedef enum : uint16_t {
   k_fs_block_size_unsupported =
     1024U, /**< A block size other than 512, which the formatter must reject. */
-} fs_format_uint16_const_t;
+} fs_format_fixture2_t;
 
 /**
  * @enum ra8_fs_fmt_test_t

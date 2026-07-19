@@ -32,32 +32,22 @@
 #include "unity_minimal.h"
 
 /**
- * @enum adc_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum adc_fixture_t
+ * @brief Out-of-range and malformed inputs the code under test must reject.
  */
 typedef enum : uint8_t {
   k_adc_resolution_invalid =
     9U, /**< A resolution outside the enumeration, which configuration must reject. */
-} adc_uint8_const_t;
+} adc_fixture_t;
 
 /**
- * @enum adc_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum adc_fixture2_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint16_t {
   k_adc_poison_out =
     0xBEEFU, /**< Poison written into the sample out-parameter, so a read that fails without setting it is detectable. */
-} adc_uint16_const_t;
+} adc_fixture2_t;
 
 /* ---------------------------------------------------------------------------
  * Sim helper: ADACT0 idle-state (deterministic, no wall-clock timer)

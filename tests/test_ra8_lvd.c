@@ -22,17 +22,12 @@
 #include "unity_minimal.h"
 
 /**
- * @enum lvd_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum lvd_fixture_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint8_t {
   k_lvd_probe_cr1 = 0xA5U, /**< Planted in PVD2 CR1 to prove the write reaches the register. */
-} lvd_uint8_const_t;
+} lvd_fixture_t;
 
 /**
  * @enum ra8_lvd_test_const_t

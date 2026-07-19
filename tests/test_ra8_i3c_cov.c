@@ -24,42 +24,27 @@
 #include "unity_minimal.h"
 
 /**
- * @enum i3c_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum i3c_cov_fixture_t
+ * @brief Out-of-range and malformed inputs the code under test must reject.
  */
 typedef enum : uint8_t {
   k_i3c_payload_byte = 0xAAU, /**< A recognizable single-byte payload; neither 0x00 nor 0xFF. */
   k_i3c_irq_out_of_range =
     255U, /**< An interrupt number past the last real source; dispatch must ignore it. */
-} i3c_cov_uint8_const_t;
+} i3c_cov_fixture_t;
 
 /**
- * @enum i3c_cov_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum i3c_cov_fixture2_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint16_t {
   k_i3c_ibi_status_with_len =
     0x00008409U, /**< An IBI queue word carrying a non-zero payload length, so the reader must drain the data buffer. */
-} i3c_cov_uint16_const_t;
+} i3c_cov_fixture2_t;
 
 /**
- * @enum i3c_cov_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum i3c_cov_fixture3_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint32_t {
   k_i3c_ibi_status_error_a = 0x80000200U, /**< An IBI queue word with the error bit set. */
@@ -67,7 +52,7 @@ typedef enum : uint32_t {
     0x80000400U, /**< A second error word with a different cause field, so the two are not conflated. */
   k_i3c_probe_word =
     0xDEADBEEFU, /**< Payload word in the data buffer, read out four bytes at a time. */
-} i3c_cov_uint32_const_t;
+} i3c_cov_fixture3_t;
 
 /* ---------------------------------------------------------------------------
  * Shared callbacks and config helpers

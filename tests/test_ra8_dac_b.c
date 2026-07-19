@@ -14,32 +14,22 @@
 #include "unity_minimal.h"
 
 /**
- * @enum dac_b_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum dac_b_fixture_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint16_t {
   k_dac_probe_ch0 = 0xAAAAU, /**< Data value planted in channel 0's DADR.                    */
   k_dac_probe_ch1 = 0xBBBBU, /**< In channel 1's, so a read of the wrong channel is visible. */
-} dac_b_uint16_const_t;
+} dac_b_fixture_t;
 
 /**
- * @enum dac_b_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum dac_b_fixture2_t
+ * @brief All-bits-set register values, so a write that clears the wrong field leaves evidence.
  */
 typedef enum : uint32_t {
   k_dac_dacr0_all_ones =
     0xFFFFFFFFUL, /**< Every DACR0 bit set, so a configure that clears the wrong field leaves evidence in the rest. */
-} dac_b_uint32_const_t;
+} dac_b_fixture2_t;
 
 typedef enum : uint8_t {
   k_ra8_dac_b_test_ch_0   = 0U,   /**< RA8 DAC b test channel 0.   */

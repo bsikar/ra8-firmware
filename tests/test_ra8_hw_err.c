@@ -14,13 +14,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum hw_err_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum hw_err_fixture_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint8_t {
   k_hw_probe_byte_top_bit =
@@ -29,22 +24,17 @@ typedef enum : uint8_t {
     0xAAU, /**< An 8-bit register value with alternating bits, so a truncation or sign-extension shows up. */
   k_hw_probe_all_but_lsb =
     0xFEU, /**< Every bit set except the least significant, distinguishing a real read from an all-ones default. */
-} hw_err_uint8_const_t;
+} hw_err_fixture_t;
 
 /**
- * @enum hw_err_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum hw_err_fixture2_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint32_t {
   k_hw_probe_word_top_bit = 0x80000000U, /**< A 32-bit value with only bit 31 set. */
   k_hw_probe_word_all_ones =
     0xFFFFFFFFU, /**< A full-width all-ones read, which is also what a dead bus returns; paired with the others so the two are distinguishable. */
-} hw_err_uint32_const_t;
+} hw_err_fixture2_t;
 
 /**
  * @par MC/DC:

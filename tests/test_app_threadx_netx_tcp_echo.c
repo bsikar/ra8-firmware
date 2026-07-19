@@ -37,46 +37,31 @@
 #include "unity_minimal.h"
 
 /**
- * @enum threadx_netx_tcp_echo_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_threadx_netx_tcp_echo_fixture_t
+ * @brief All-bits-set register values, so a write that clears the wrong field leaves evidence.
  */
 typedef enum : uint8_t {
   k_sys_oscsf_all_ready =
     0xFFU, /**< Every oscillator-stabilisation flag set, so clock bring-up sees all sources ready. */
-} threadx_netx_tcp_echo_uint8_const_t;
+} app_threadx_netx_tcp_echo_fixture_t;
 
 /**
- * @enum threadx_netx_tcp_echo_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_threadx_netx_tcp_echo_fixture2_t
+ * @brief The recognizable values moved through the code under test.
  */
 typedef enum : uint16_t {
   k_eth_handler_ctx_token =
     0xCAFEU, /**< Token handed to the Ethernet handler and checked on the way back, proving the context pointer survives. */
-} threadx_netx_tcp_echo_uint16_const_t;
+} app_threadx_netx_tcp_echo_fixture2_t;
 
 /**
- * @enum threadx_netx_tcp_echo_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_threadx_netx_tcp_echo_fixture3_t
+ * @brief All-bits-set register values, so a write that clears the wrong field leaves evidence.
  */
 typedef enum : uint32_t {
   k_event_mask_all =
     0xFFFFFFFFU, /**< Wait on every event bit, so the first event of any kind releases the wait. */
-} threadx_netx_tcp_echo_uint32_const_t;
+} app_threadx_netx_tcp_echo_fixture3_t;
 
 /** @brief Captured event mask from the attached handler. */
 static uint32_t s_last_eth_event_mask;
