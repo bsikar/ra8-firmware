@@ -61,28 +61,82 @@ These are **reference-only** -- do not copy code from them into this repo withou
 
 ---
 
-## Run `make ci` Before Every `git push`
+## Run the CI Gates Before Every `git push`
 
-**Run `make ci` before every `git push`. Not before commits -- before pushes.**
+**Run the gates before every `git push`. Not before commits -- before pushes.**
 
-CI (`.github/workflows/firmware.yml`) runs on self-hosted **Linux** runners and
-has repeatedly diverged from local **macOS** runs: clang-format is pinned to
-`clang-format-22` (Homebrew/Ubuntu ship other majors that disagree on edge
-cases), and the host unit tests cannot run on macOS at all -- they `mmap`
-peripheral RAM with `MAP_FIXED` below 4 GiB, which macOS arm64 refuses, so every
-test SIGKILLs before `main()`. `make ci` reproduces the gates **inside the
-Ubuntu 24.04 devcontainer** (`.devcontainer/Dockerfile`), so clang-format /
-clang-tidy / cppcheck / coverage / host-test failures are caught here instead of
-on the runner.
+### There is exactly ONE definition of a gate
 
-- `make ci` -- full gate suite: clang-format, cppcheck, the `check_*.py`
-  pre-commit suite, clang-tidy, host unit tests, and the coverage gate. Prints a
-  PASS/FAIL line per gate. The first run builds the `ra8-ci` image (slow,
-  cached after); `make ci REBUILD=1` forces a rebuild.
-- `make ci-fast` -- the same minus the slow clang-tidy + coverage builds, for a
-  quick pre-push smoke.
+`scripts/ci.sh` holds the body of every CI check as a shell function, listed in
+its `RA8_GATE_REGISTRY`. Every workflow step is a thin driver:
 
-The **pre-push hook** (`scripts/git/pre-push`) runs `make ci` automatically and
+```yaml
+- run: bash scripts/ci.sh --gate <name>
+```
+
+So the workflows decide only *scheduling* -- which gates run in which job, on
+which runner, in parallel with what -- and never what a gate *does*. Running
+the gates locally therefore executes the identical functions the runner
+executes. "Local green, CI red" from a missing check is structurally
+impossible.
+
+**Never hand-copy a gate body anywhere.** A `/tmp/verify_gates.sh` that pastes
+commands out of `ci.sh` is a copy of a copy: it stopped mirroring CI the moment
+a gate was added, and it has already cost real work. Use `--gate` / `--native`.
+
+| Command | What it does |
+|---|---|
+| `make ci` | every gate, in the Ubuntu devcontainer (the macOS path) |
+| `make ci-fast` | the same, minus the `slow` speed class |
+| `make ci-native` | every gate natively, no container runtime needed |
+| `make ci-native-fast` | native, minus the `slow` gates |
+| `make ci-list` | print the registry: name, speed class, description |
+| `make ci-gate GATE=<name>` | run exactly one gate (what CI invokes) |
+
+On **Linux** the native path *is* the CI environment, so `make ci-native` is
+the supported run and needs no docker/podman -- with no runtime installed,
+`make ci` falls back to it automatically. On **macOS** it does not: the format
+gate pins `clang-format-22` (Homebrew ships a different major) and the host
+tests `mmap` peripheral RAM with `MAP_FIXED` below 4 GiB, which macOS arm64
+refuses, so every test SIGKILLs before `main()`. The container exists to give
+the Mac an Ubuntu userland; a macOS-native "pass" would be a lie, so it refuses
+rather than reporting one.
+
+Both suite modes run against a clean `git archive HEAD` snapshot in a
+throwaway directory -- exactly what CI checks out. That is why a stale `.gcda`
+from another branch or in-source CMake junk cannot skew a gate here.
+
+### Adding a gate
+
+1. Add one row to `RA8_GATE_REGISTRY` in `scripts/ci.sh`.
+2. Write the matching `gate_<name>` function (dashes become underscores).
+3. Add `run: bash scripts/ci.sh --gate <name>` to a workflow job.
+
+`scripts/utils/check_ci_parity.py` (the `ci-parity` gate) fails if you do
+either half without the other: a registered-but-unscheduled gate would pass
+locally and never run in CI, and an unregistered gate name in a workflow is a
+typo or a missing function. It also rejects any raw `run:` check body in a
+workflow -- that is how a second, drifting home for check logic gets created.
+A step that genuinely only provisions the runner declares itself:
+
+```yaml
+run: |
+  # ci-parity: infra -- installs libunicorn; runs no project check
+  sudo apt-get install -y libunicorn-dev
+```
+
+and an infra step may not invoke anything under `scripts/`, a `tests/*.sh`
+driver, or a gate-ish `make` target. A check does not become infrastructure by
+being labelled one.
+
+### Gates fail loudly on a missing tool -- they never skip
+
+A gate whose dependency is absent must FAIL, not pass. `check_annotations.py`
+exits 0 when libclang is missing, so a strict gate silently reported nothing
+for months. Use `require_cmd` / `require_python_mod` in every gate body, and
+never let a gate degrade to a no-op.
+
+The **pre-push hook** (`scripts/git/pre-push`) runs the suite automatically and
 **blocks the push** if any gate fails. For emergencies, bypass it with
 `SKIP_CI_PUSH=1 git push` (skip just this gate) or `git push --no-verify` (skip
 every push hook).
