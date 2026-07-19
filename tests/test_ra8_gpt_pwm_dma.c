@@ -34,7 +34,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_gpt_pwm_dma_dch_ff = 0xFFU,
+  k_dma_ch_unset =
+    0xFFU, /**< Poison DMA channel id written before an allocate, so an allocate that failed without touching it is detectable. */
 } gpt_pwm_dma_uint8_const_t;
 
 /**
@@ -47,7 +48,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_gpt_pwm_dma_gtcnt_deadc0de = 0xDEADC0DEUL,
+  k_gpt_probe_gtcnt =
+    0xDEADC0DEUL, /**< Planted in GTCNT to prove the counter read reaches the register. */
 } gpt_pwm_dma_uint32_const_t;
 
 typedef enum : uint8_t {
@@ -106,7 +108,7 @@ static void test_gpt_write_dma_streams_periods_to_gtpr(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_init((uint8_t)k_ra8_gpt_test_channel_valid, &cfg));
 
   const uint32_t periods[] = {0x11111111UL, 0x22222222UL, 0x33333333UL};
-  uint8_t        dch       = k_gpt_pwm_dma_dch_ff;
+  uint8_t        dch       = k_dma_ch_unset;
   s_gpt_dma_done           = 0;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gpt_write_dma((uint8_t)k_ra8_gpt_test_channel_valid,
@@ -140,10 +142,10 @@ static void test_gpt_read_dma_captures_gtcnt(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_init((uint8_t)k_ra8_gpt_test_channel_valid, &cfg));
 
   volatile r_gpt_channel_regs_t* reg = ra8_gpt((uint8_t)k_ra8_gpt_test_channel_valid);
-  reg->GTCNT                         = k_gpt_pwm_dma_gtcnt_deadc0de;
+  reg->GTCNT                         = k_gpt_probe_gtcnt;
 
   uint32_t out[2] = {0U, 0U};
-  uint8_t  dch    = k_gpt_pwm_dma_dch_ff;
+  uint8_t  dch    = k_dma_ch_unset;
   s_gpt_dma_done  = 0;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gpt_read_dma((uint8_t)k_ra8_gpt_test_channel_valid,
@@ -577,7 +579,7 @@ static void test_mcdc_write_dma_arg_guard(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_init((uint8_t)k_ra8_gpt_test_channel_valid, &cfg));
 
   const uint32_t periods[] = {0xAAAAAAAAUL};
-  uint8_t        dch       = k_gpt_pwm_dma_dch_ff;
+  uint8_t        dch       = k_dma_ch_unset;
 
   /* Vector 1: in-range channel, non-zero count -> ok. */
   TEST_ASSERT_EQ(

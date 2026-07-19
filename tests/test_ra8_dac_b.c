@@ -23,8 +23,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_dac_b_dadr_aaaa = 0xAAAAU,
-  k_dac_b_dadr_bbbb = 0xBBBBU,
+  k_dac_probe_ch0 = 0xAAAAU, /**< Data value planted in channel 0's DADR. */
+  k_dac_probe_ch1 = 0xBBBBU, /**< In channel 1's, so a read of the wrong channel is visible. */
 } dac_b_uint16_const_t;
 
 /**
@@ -37,7 +37,8 @@ typedef enum : uint16_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_dac_b_dacr0_ffffffff = 0xFFFFFFFFUL,
+  k_dac_dacr0_all_ones =
+    0xFFFFFFFFUL, /**< Every DACR0 bit set, so a configure that clears the wrong field leaves evidence in the rest. */
 } dac_b_uint32_const_t;
 
 typedef enum : uint8_t {
@@ -66,10 +67,10 @@ static void test_init_clears_regs(void)
 
   volatile r_dac_b_regs_t* reg0 = ra8_dac_b((uint8_t)k_ra8_dac_b_test_ch_0);
   volatile r_dac_b_regs_t* reg1 = ra8_dac_b((uint8_t)k_ra8_dac_b_test_ch_1);
-  reg0->DACR0                   = k_dac_b_dacr0_ffffffff;
-  reg0->DADR                    = k_dac_b_dadr_aaaa;
-  reg1->DACR0                   = k_dac_b_dacr0_ffffffff;
-  reg1->DADR                    = k_dac_b_dadr_bbbb;
+  reg0->DACR0                   = k_dac_dacr0_all_ones;
+  reg0->DADR                    = k_dac_probe_ch0;
+  reg1->DACR0                   = k_dac_dacr0_all_ones;
+  reg1->DADR                    = k_dac_probe_ch1;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dac_b_init());
   TEST_ASSERT_EQ(0, reg0->DACR0);

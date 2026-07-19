@@ -32,8 +32,9 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_flash_journal_flash_journal_pack_42 = 42U,
-  k_flash_journal_val_ff                = 0xFFU,
+  k_journal_seq_small =
+    42U, /**< A small journal sequence number, so the packer's short-value path is taken. */
+  k_byte_mask = 0xFFU, /**< Truncates each generated RGB channel back into a byte. */
 } flash_journal_uint8_const_t;
 
 /**
@@ -46,7 +47,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_flash_journal_flash_journal_pack_deadbeef = 0xDEADBEEFU,
+  k_journal_seq_wide =
+    0xDEADBEEFU, /**< A full-width sequence number, proving no field is truncated on the way in. */
 } flash_journal_uint32_const_t;
 
 typedef enum : uint32_t {
@@ -66,7 +68,7 @@ static void reset_world(void)
 static void flash_journal_pack(uint32_t counter, uint8_t* rec)
 {
   for (uint8_t i = 0U; i < 4U; i++) {
-    rec[i] = (uint8_t)((counter >> (8U * i)) & k_flash_journal_val_ff);
+    rec[i] = (uint8_t)((counter >> (8U * i)) & k_byte_mask);
   }
   for (uint8_t i = 4U; i < (uint8_t)k_test_flash_record_bytes; i++) {
     rec[i] = (uint8_t)i;
@@ -93,7 +95,7 @@ static void test_flash_pack_unpack_roundtrip(void)
   reset_world();
   TEST_BEGIN("flash_journal: pack/unpack round-trip");
   uint8_t rec[k_test_flash_record_bytes];
-  flash_journal_pack(k_flash_journal_flash_journal_pack_deadbeef, rec);
+  flash_journal_pack(k_journal_seq_wide, rec);
   TEST_ASSERT_EQ(0xEF, rec[0]);
   TEST_ASSERT_EQ(0xDE, rec[3]);
   TEST_ASSERT_EQ((unsigned int)0xDEADBEEFU, (unsigned int)flash_journal_unpack(rec));
@@ -112,7 +114,7 @@ static void test_flash_xspi_round_trip_ok(void)
   reset_world();
   TEST_BEGIN("flash_journal: erase + program + read sequence ok");
   uint8_t rec[k_test_flash_record_bytes];
-  flash_journal_pack(k_flash_journal_flash_journal_pack_42, rec);
+  flash_journal_pack(k_journal_seq_small, rec);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_xspi_flash_erase_sector((uint8_t)k_test_flash_instance,
                                              (uint32_t)k_test_flash_record_addr));

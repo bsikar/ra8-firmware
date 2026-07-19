@@ -33,9 +33,11 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_dfu_program_i_7    = 7U,
-  k_dfu_program_val_64 = 64,
-  k_dfu_program_val_ff = 0xFFU,
+  k_dfu_pattern_stride =
+    7U, /**< Stride of the image generator, `i * 7 + 3`, so no two bytes of the image agree by position. */
+  k_dfu_image_bytes = 64, /**< Size of the fixture image. */
+  k_dfu_flip_mask =
+    0xFFU, /**< XORed into the first byte to corrupt the image, so the verify step must reject it. */
 } dfu_program_uint8_const_t;
 
 /** @brief Test image geometry. */
@@ -49,7 +51,7 @@ typedef enum : uint32_t {
 static void fill_pattern(uint8_t* buf, uint32_t len)
 {
   for (uint32_t i = 0U; i < len; i++) {
-    buf[i] = (uint8_t)((i * k_dfu_program_i_7) + 3U);
+    buf[i] = (uint8_t)((i * k_dfu_pattern_stride) + 3U);
   }
 }
 
@@ -131,7 +133,7 @@ static void test_program_roundtrip(void)
 
   /* Corrupt one body byte -> verify must report a CRC mismatch. */
   uint8_t* mut = (uint8_t*)body;
-  mut[0]       = (uint8_t)(mut[0] ^ k_dfu_program_val_ff);
+  mut[0]       = (uint8_t)(mut[0] ^ k_dfu_flip_mask);
   TEST_ASSERT_EQ(k_ra8_err_crc_mismatch, ra8_dfu_program_verify(k_ra8_dfu_slot_b));
   TEST_ASSERT(!ra8_dfu_slot_valid(k_ra8_dfu_slot_b));
 
@@ -161,7 +163,7 @@ static void test_program_guards_mcdc(void)
 {
   TEST_BEGIN("ra8_dfu: program guards (MC/DC)");
 
-  uint8_t buf[k_dfu_program_val_64];
+  uint8_t buf[k_dfu_image_bytes];
   fill_pattern(buf, (uint32_t)sizeof(buf));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_program_prepare(k_ra8_dfu_slot_a));
   sim_mark_program_ready();

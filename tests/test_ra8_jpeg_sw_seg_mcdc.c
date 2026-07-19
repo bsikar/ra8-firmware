@@ -31,8 +31,9 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_jpeg_sw_seg_mcdc_val_64 = 64,
-  k_jpeg_sw_seg_mcdc_val_ff = 0xFFU,
+  k_jpeg_out_small =
+    64, /**< Output buffer smaller than a decoded image, so a truncation is reported rather than overrun. */
+  k_byte_mask = 0xFFU, /**< Truncates each generated RGB channel back into a byte. */
 } jpeg_sw_seg_mcdc_uint8_const_t;
 
 /**
@@ -45,7 +46,7 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_jpeg_sw_seg_mcdc_val_256 = 256,
+  k_jpeg_out_large = 256, /**< Output buffer big enough for the fixture image. */
 } jpeg_sw_seg_mcdc_uint16_const_t;
 
 /**
@@ -67,9 +68,9 @@ static void fill_gradient(uint8_t* rgb, uint16_t w, uint16_t h)
   for (uint16_t y = 0U; y < h; y++) {
     for (uint16_t x = 0U; x < w; x++) {
       uint32_t i  = (((uint32_t)y * (uint32_t)w) + (uint32_t)x) * 3U;
-      rgb[i + 0U] = (uint8_t)((x * 16U) & k_jpeg_sw_seg_mcdc_val_ff);
-      rgb[i + 1U] = (uint8_t)((y * 16U) & k_jpeg_sw_seg_mcdc_val_ff);
-      rgb[i + 2U] = (uint8_t)(((x + y) * 8U) & k_jpeg_sw_seg_mcdc_val_ff);
+      rgb[i + 0U] = (uint8_t)((x * 16U) & k_byte_mask);
+      rgb[i + 1U] = (uint8_t)((y * 16U) & k_byte_mask);
+      rgb[i + 2U] = (uint8_t)(((x + y) * 8U) & k_byte_mask);
     }
   }
 }
@@ -283,9 +284,9 @@ static void test_mcdc_decode_pad_and_rst_marker(void)
     0xFFU,
     0xD9U,
   };
-  uint8_t  out_buf[k_jpeg_sw_seg_mcdc_val_64] = {};
-  uint16_t dw2                                = 0U;
-  uint16_t dh2                                = 0U;
+  uint8_t  out_buf[k_jpeg_out_small] = {};
+  uint16_t dw2                       = 0U;
+  uint16_t dh2                       = 0U;
   TEST_ASSERT(ra8_jpeg_sw_decode(prog_jpeg,
                                  (uint32_t)sizeof prog_jpeg,
                                  out_buf,
@@ -340,9 +341,9 @@ static const uint8_t s_dht_bad_th[] = {
 static void test_mcdc_decode_dqt_dht_validation(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC dec_parse_dqt + dec_parse_dht guards");
-  uint8_t  out[k_jpeg_sw_seg_mcdc_val_256] = {};
-  uint16_t dw                              = 0U;
-  uint16_t dh                              = 0U;
+  uint8_t  out[k_jpeg_out_large] = {};
+  uint16_t dw                    = 0U;
+  uint16_t dh                    = 0U;
   TEST_ASSERT(ra8_jpeg_sw_decode(s_dqt_short,
                                  (uint32_t)sizeof s_dqt_short,
                                  out,
@@ -428,7 +429,7 @@ static void test_mcdc_decode_sof0_chroma_subsampling(void)
     0xFFU, 0xD8U, 0xFFU, 0xC0U, 0x00U, 0x0EU, 0x08U, 0x00U, 0x10U, 0x00U,
     0x10U, 0x02U, 0x01U, 0x11U, 0x00U, 0x02U, 0x11U, 0x00U, 0xFFU, 0xD9U,
   };
-  uint8_t out_buf[k_jpeg_sw_seg_mcdc_val_64] = {};
+  uint8_t out_buf[k_jpeg_out_small] = {};
   TEST_ASSERT(ra8_jpeg_sw_decode(sof0_ncomp2,
                                  (uint32_t)sizeof sof0_ncomp2,
                                  out_buf,
@@ -529,9 +530,9 @@ static const uint8_t s_dac_then_short[] = {
 static void test_mcdc_decode_skip_unrecognized_segment(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC dec_skip_segment + decode SOF-range");
-  uint8_t  out[k_jpeg_sw_seg_mcdc_val_256] = {};
-  uint16_t dw                              = 0U;
-  uint16_t dh                              = 0U;
+  uint8_t  out[k_jpeg_out_large] = {};
+  uint16_t dw                    = 0U;
+  uint16_t dh                    = 0U;
 
   /* V_short: APP1 (0xFFE1) with seglen=1  -> dec_skip_segment len<2. */
   TEST_ASSERT(ra8_jpeg_sw_decode(s_app1_short,
@@ -629,9 +630,9 @@ static const uint8_t s_eoi_only[] = {
 static void test_mcdc_decode_rst_in_marker_chain(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC decode: RST in marker chain");
-  uint8_t  out[k_jpeg_sw_seg_mcdc_val_256] = {};
-  uint16_t dw                              = 0U;
-  uint16_t dh                              = 0U;
+  uint8_t  out[k_jpeg_out_large] = {};
+  uint16_t dw                    = 0U;
+  uint16_t dh                    = 0U;
 
   TEST_ASSERT(ra8_jpeg_sw_decode(s_rst0_jpeg,
                                  (uint32_t)sizeof s_rst0_jpeg,

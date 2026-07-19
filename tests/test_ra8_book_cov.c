@@ -35,7 +35,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_book_cov_val_64 = 64U,
+  k_book_trailing_bytes =
+    64U, /**< Bytes the header claims past the end of the blob, so the size check must reject it. */
 } book_cov_uint8_const_t;
 
 /**
@@ -48,8 +49,9 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_book_cov_crc_ffffffff = 0xFFFFFFFFU,
-  k_book_cov_val_edb88320 = 0xEDB88320U,
+  k_crc32_init =
+    0xFFFFFFFFU, /**< CRC-32 initial value, the final XOR-out, and the mask that flips a valid CRC to corrupt it. */
+  k_crc32_poly_reflected = 0xEDB88320U, /**< The reflected CRC-32 polynomial. */
 } book_cov_uint32_const_t;
 
 /**
@@ -125,15 +127,15 @@ static size_t s_inflate_force_produced = 0U;
 /** @brief Table-driven reflected CRC-32 matching the validator's trailer CRC. */
 static uint32_t bc_crc32(const uint8_t* data, size_t len)
 {
-  uint32_t crc = k_book_cov_crc_ffffffff;
+  uint32_t crc = k_crc32_init;
   for (size_t i = 0U; i < len; ++i) {
     crc ^= data[i];
     for (uint8_t bit = 0U; bit < 8U; ++bit) {
       uint32_t mask = (uint32_t)(-(int32_t)(crc & 1U));
-      crc           = (crc >> 1U) ^ (k_book_cov_val_edb88320 & mask);
+      crc           = (crc >> 1U) ^ (k_crc32_poly_reflected & mask);
     }
   }
-  return crc ^ k_book_cov_crc_ffffffff;
+  return crc ^ k_crc32_init;
 }
 
 /**
@@ -236,7 +238,7 @@ static void test_ra8_book_validate_total_size_range(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_book_validate(&b, sizeof(b)));
 
   bc_build_blob(&b);
-  b.hdr.total_size = (uint32_t)sizeof(b) + k_book_cov_val_64;
+  b.hdr.total_size = (uint32_t)sizeof(b) + k_book_trailing_bytes;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_book_validate(&b, sizeof(b)));
 
   TEST_END("ra8_book_validate total_size out-of-range guard");
@@ -556,7 +558,7 @@ static void test_ra8_book_open_inflate_stage(void)
   s_inflate_force_err      = k_ra8_ok;
   s_inflate_force_produced = 0U;
   bc_container_t corrupt   = c;
-  corrupt.blob.hdr.crc32 ^= k_book_cov_crc_ffffffff;
+  corrupt.blob.hdr.crc32 ^= k_crc32_init;
   TEST_ASSERT_EQ(k_ra8_err_range_check_failed,
                  ra8_book_open(&corrupt,
                                sizeof(corrupt),
