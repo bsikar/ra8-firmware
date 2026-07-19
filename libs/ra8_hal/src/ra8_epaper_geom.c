@@ -1,6 +1,6 @@
 /**
  * @file ra8_epaper_geom.c
- * @brief IT8951 geometry, pixel-format and waveform-map helpers
+ * @brief IT8951 geometry, pixel-format, waveform-map and config validation
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
@@ -29,6 +29,11 @@
  *    ``ra8_epaper_waveform_cfg_for_lut`` derives them from the reported
  *    LUT version string.
  *
+ * ``ra8_epaper_validate_cfg`` lives here for the same reason: it is a
+ * total function over a descriptor, checking exactly the geometry and
+ * waveform-map facts above, so it can reject a bad board descriptor
+ * before any bus exists to talk to.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -36,6 +41,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8_attributes.h"
 #include "ra8_check.h"
 #include "ra8_epaper.h"
 #include "ra8_err.h"
@@ -50,8 +56,9 @@ static const char* const s_tag = "EPAPER";
  * @enum ra8_epaper_geom_const_t
  * @brief Packing arithmetic constants (no magic numbers).
  */
-typedef enum : uint8_t {
-  k_ra8_epaper_geom_bits_per_byte = 8U, /**< Row-packing denominator. */
+typedef enum : uint16_t {
+  k_ra8_epaper_geom_bits_per_byte = 8U,    /**< Row-packing denominator.     */
+  k_ra8_epaper_geom_panel_max_dim = 4096U, /**< Sanity ceiling on cfg dims.  */
 } ra8_epaper_geom_const_t;
 
 /**
@@ -189,4 +196,53 @@ ra8_epaper_align_area(ra8_epaper_area_t* area, ra8_epaper_pixel_format_t pf, uin
   out_cfg->gc16 = (uint8_t)k_ra8_epaper_lut_gc16;
   out_cfg->a2   = is_m641 ? (uint8_t)k_ra8_epaper_lut_a2_m641 : (uint8_t)k_ra8_epaper_lut_a2_gen;
   return k_ra8_ok;
+}
+
+/**
+ * @brief Validate the caller's waveform map against the LUT mode range.
+ *
+ * @details
+ * A zero-initialised map would silently refresh every mode as INIT, so
+ * DU / GC16 / A2 are additionally required to be non-zero. That single
+ * rule is what stops a board descriptor inheriting another panel's
+ * numbering by omission.
+ *
+ * @param[in] wf Caller-supplied waveform map; non-NULL.
+ *
+ * @return ``k_ra8_ok`` when usable, ``k_ra8_err_invalid_arg`` otherwise.
+ *
+ * @pre  ``wf`` is non-NULL (the caller checked).
+ * @pre  ``wf`` is fully initialised by the caller.
+ * @post No state is mutated.
+ * @post On success every mode is non-zero except ``init``.
+ *
+ * @note Thread-safe: pure function over its argument.
+ *
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+[[nodiscard]] static ra8_err_t
+internal_ra8_epaper_validate_waveform(const ra8_epaper_waveform_cfg_t* wf)
+{
+  if ((wf->du == 0U) || (wf->gc16 == 0U) || (wf->a2 == 0U)) {
+    return k_ra8_err_invalid_arg;
+  }
+  if ((wf->init > (uint8_t)k_ra8_epaper_wf_mode_max) ||
+      (wf->du > (uint8_t)k_ra8_epaper_wf_mode_max) ||
+      (wf->gc16 > (uint8_t)k_ra8_epaper_wf_mode_max) ||
+      (wf->a2 > (uint8_t)k_ra8_epaper_wf_mode_max)) {
+    return k_ra8_err_invalid_arg;
+  }
+  return k_ra8_ok;
+}
+
+[[nodiscard]] ra8_err_t ra8_epaper_validate_cfg(const ra8_epaper_cfg_t* cfg)
+{
+  RA8_CHECK_NULL_PTR(cfg, s_tag, "validate_cfg: cfg null");
+  if ((cfg->bus.xfer8 == nullptr) || (cfg->panel_width == 0U) || (cfg->panel_height == 0U) ||
+      (cfg->panel_width > (uint16_t)k_ra8_epaper_geom_panel_max_dim) ||
+      (cfg->panel_height > (uint16_t)k_ra8_epaper_geom_panel_max_dim)) {
+    return k_ra8_err_invalid_arg;
+  }
+  return internal_ra8_epaper_validate_waveform(&cfg->waveform);
 }

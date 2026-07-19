@@ -115,7 +115,6 @@ typedef enum : uint32_t {
   k_ra8_epaper_busy_poll_max  = 200000U, /**< Outer HRDY poll budget.    */
   k_ra8_epaper_lut_poll_max   = 200000U, /**< LUT-busy poll budget.      */
   k_ra8_epaper_dev_info_words = 20U,     /**< 40-byte block / 2.         */
-  k_ra8_epaper_panel_max_dim  = 4096U,   /**< Sanity ceiling on cfg.     */
   k_ra8_epaper_reset_pulse_ms = 10U,     /**< Reset assert dwell.        */
   k_ra8_epaper_status_unset   = 0xFFFFU, /**< Pre-read sentinel value.   */
   k_ra8_epaper_byte_mask      = 0xFFU,   /**< Low-byte extraction mask.  */
@@ -123,10 +122,6 @@ typedef enum : uint32_t {
   k_ra8_epaper_white_pad      = 0x00FFU, /**< 0xFF pad for odd tail.     */
   k_ra8_epaper_byte_shift     = 8U,      /**< Bits per byte.             */
   k_ra8_epaper_pf_shift       = 4U,      /**< LD_IMG_AREA arg0 PF shift. */
-  k_ra8_epaper_word_shift     = 16U,     /**< Bits per 16-bit word.      */
-  k_ra8_epaper_ver_per_word   = 2U,      /**< Version chars per word.    */
-  k_ra8_epaper_ascii_min      = 0x20U,   /**< Lowest printable ASCII.    */
-  k_ra8_epaper_ascii_max      = 0x7FU,   /**< One past printable ASCII.  */
 } ra8_epaper_limits_t;
 
 /**
@@ -146,20 +141,6 @@ typedef enum : uint16_t {
   k_ra8_epaper_wire_pf_4bpp = 2U, /**< 4 bits per pixel. */
   k_ra8_epaper_wire_pf_8bpp = 3U, /**< 8 bits per pixel. */
 } ra8_epaper_wire_pf_t;
-
-/**
- * @enum ra8_epaper_dev_info_idx_t
- * @brief Word offsets inside the 20-word ``GET_DEV_INFO`` response.
- */
-typedef enum : uint8_t {
-  k_ra8_epaper_dev_idx_width   = 0U,  /**< Panel width.                  */
-  k_ra8_epaper_dev_idx_height  = 1U,  /**< Panel height.                 */
-  k_ra8_epaper_dev_idx_buf_lo  = 2U,  /**< Image-buffer base, low half.  */
-  k_ra8_epaper_dev_idx_buf_hi  = 3U,  /**< Image-buffer base, high half. */
-  k_ra8_epaper_dev_idx_fw      = 4U,  /**< First firmware-version word.  */
-  k_ra8_epaper_dev_idx_lut     = 12U, /**< First LUT-version word.       */
-  k_ra8_epaper_dev_idx_ver_end = 20U, /**< One past the last word.       */
-} ra8_epaper_dev_info_idx_t;
 
 /**
  * @enum ra8_epaper_state_t
@@ -461,132 +442,6 @@ static void internal_ra8_epaper_pulse_reset(void)
 }
 
 /**
- * @brief Validate the caller's waveform map against the LUT mode range.
- *
- * @details
- * A zero-initialised map would silently refresh every mode as INIT, so
- * DU / GC16 / A2 are additionally required to be non-zero. That single
- * rule is what stops a board descriptor inheriting another panel's
- * numbering by omission.
- *
- * @param[in] wf Caller-supplied waveform map.
- * @return ``k_ra8_ok`` when usable, ``k_ra8_err_invalid_arg`` otherwise.
- */
-RA8_INTERNAL
-[[nodiscard]] static ra8_err_t
-internal_ra8_epaper_validate_waveform(const ra8_epaper_waveform_cfg_t* wf)
-{
-  if ((wf->du == 0U) || (wf->gc16 == 0U) || (wf->a2 == 0U)) {
-    return k_ra8_err_invalid_arg;
-  }
-  if ((wf->init > (uint8_t)k_ra8_epaper_wf_mode_max) ||
-      (wf->du > (uint8_t)k_ra8_epaper_wf_mode_max) ||
-      (wf->gc16 > (uint8_t)k_ra8_epaper_wf_mode_max) ||
-      (wf->a2 > (uint8_t)k_ra8_epaper_wf_mode_max)) {
-    return k_ra8_err_invalid_arg;
-  }
-  return k_ra8_ok;
-}
-
-/**
- * @brief Validate every field of an ``ra8_epaper_cfg_t``.
- *
- * @param[in] cfg Caller-supplied (already-non-NULL) config.
- * @return ``k_ra8_ok`` if every field is in range, ``k_ra8_err_invalid_arg``
- *         otherwise.
- */
-RA8_INTERNAL
-[[nodiscard]] static ra8_err_t internal_ra8_epaper_validate_cfg(const ra8_epaper_cfg_t* cfg)
-{
-  if ((cfg->bus.xfer8 == nullptr) || (cfg->panel_width == 0U) || (cfg->panel_height == 0U) ||
-      (cfg->panel_width > (uint16_t)k_ra8_epaper_panel_max_dim) ||
-      (cfg->panel_height > (uint16_t)k_ra8_epaper_panel_max_dim)) {
-    return k_ra8_err_invalid_arg;
-  }
-  return internal_ra8_epaper_validate_waveform(&cfg->waveform);
-}
-
-/**
- * @brief Unpack one 16-bit version word into two ASCII chars.
- *
- * @details
- * Version strings arrive packed two characters per word, high byte first.
- * Any byte outside printable ASCII is dropped to NUL so a garbled read
- * cannot inject control characters into a string the app may log.
- *
- * @param[in]     word    Source word.
- * @param[out]    dst     Destination for two chars; non-NULL.
- *
- * @pre  ``dst`` has room for two chars.
- * @pre  ``word`` is one version word of a GET_DEV_INFO response.
- * @post ``dst[0]`` and ``dst[1]`` are printable ASCII or NUL.
- * @post No driver state is mutated.
- *
- * @note Not thread-safe; called only from the GET_DEV_INFO decode path.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-static void internal_ra8_epaper_unpack_ver_word(uint16_t word, char* dst)
-{
-  const uint8_t hi =
-    (uint8_t)((word >> (uint16_t)k_ra8_epaper_byte_shift) & (uint16_t)k_ra8_epaper_byte_mask);
-  const uint8_t lo = (uint8_t)(word & (uint16_t)k_ra8_epaper_byte_mask);
-  const bool    hi_p =
-    (hi >= (uint8_t)k_ra8_epaper_ascii_min) && (hi < (uint8_t)k_ra8_epaper_ascii_max);
-  const bool lo_p =
-    (lo >= (uint8_t)k_ra8_epaper_ascii_min) && (lo < (uint8_t)k_ra8_epaper_ascii_max);
-  dst[0] = hi_p ? (char)hi : '\0';
-  dst[1] = lo_p ? (char)lo : '\0';
-}
-
-/**
- * @brief Fold one GET_DEV_INFO word into the decoded info block.
- *
- * @details
- * The response is a fixed 20-word layout, so each word is placed by its
- * index rather than by a parser state machine: geometry first, then the
- * two halves of the image-buffer base address, then the firmware and LUT
- * version strings two ASCII chars per word. Words are folded as they
- * arrive so the whole response never needs buffering.
- *
- * @param[in]     idx  Word index within the 20-word response.
- * @param[in]     word The word just read.
- * @param[in,out] out  Info block being assembled; non-NULL.
- *
- * @pre  ``out`` points at a block zeroed before the first word.
- * @pre  ``idx`` is less than the 20-word response length.
- * @post Exactly the one field selected by ``idx`` is updated.
- * @post No bus transaction is issued.
- *
- * @note Not thread-safe; called only from the GET_DEV_INFO read loop.
- *
- * @since 0.1.0
- */
-RA8_INTERNAL
-static void
-internal_ra8_epaper_decode_dev_word(uint32_t idx, uint16_t word, ra8_epaper_dev_info_t* out)
-{
-  if (idx == (uint32_t)k_ra8_epaper_dev_idx_width) {
-    out->panel_width = word;
-  } else if (idx == (uint32_t)k_ra8_epaper_dev_idx_height) {
-    out->panel_height = word;
-  } else if (idx == (uint32_t)k_ra8_epaper_dev_idx_buf_lo) {
-    out->image_buf_base |= (uint32_t)word;
-  } else if (idx == (uint32_t)k_ra8_epaper_dev_idx_buf_hi) {
-    out->image_buf_base |= ((uint32_t)word << (uint32_t)k_ra8_epaper_word_shift);
-  } else if (idx < (uint32_t)k_ra8_epaper_dev_idx_lut) {
-    const uint32_t off =
-      (idx - (uint32_t)k_ra8_epaper_dev_idx_fw) * (uint32_t)k_ra8_epaper_ver_per_word;
-    internal_ra8_epaper_unpack_ver_word(word, &out->fw_version[off]);
-  } else {
-    const uint32_t off =
-      (idx - (uint32_t)k_ra8_epaper_dev_idx_lut) * (uint32_t)k_ra8_epaper_ver_per_word;
-    internal_ra8_epaper_unpack_ver_word(word, &out->lut_version[off]);
-  }
-}
-
-/**
  * @brief Read and decode the 40-byte GET_DEV_INFO response.
  *
  * @details
@@ -601,22 +456,20 @@ internal_ra8_epaper_decode_dev_word(uint32_t idx, uint16_t word, ra8_epaper_dev_
 RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epaper_read_dev_info(ra8_epaper_dev_info_t* out)
 {
-  *out          = (ra8_epaper_dev_info_t){};
+  uint16_t  words[k_ra8_epaper_dev_info_words] = {};
   ra8_err_t err = internal_ra8_epaper_write_cmd((uint16_t)k_ra8_epaper_cmd_get_dev_info);
   if (err != k_ra8_ok) {
     return err;
   }
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_epaper_dev_info_words; i++) {
-    uint16_t word = 0U;
-    err           = internal_ra8_epaper_read_data16(&word);
+    err = internal_ra8_epaper_read_data16(&words[i]);
     if (err != k_ra8_ok) {
       return err;
     }
-    internal_ra8_epaper_decode_dev_word(i, word, out);
   }
-  out->fw_version[k_ra8_epaper_ver_chars]  = '\0';
-  out->lut_version[k_ra8_epaper_ver_chars] = '\0';
-  return k_ra8_ok;
+  /* Buffer the whole block, then decode it in one pure pass -- the decode
+   * lives in ra8_epaper_devinfo.c so it is testable without a bus. */
+  return ra8_epaper_decode_dev_info(words, (size_t)k_ra8_epaper_dev_info_words, out);
 }
 
 /**
@@ -796,7 +649,7 @@ RA8_INTERNAL
     ra8_log_error(s_tag, "epaper_init: already initialized");
     return k_ra8_err_invalid_state;
   }
-  ra8_err_t err = internal_ra8_epaper_validate_cfg(cfg);
+  ra8_err_t err = ra8_epaper_validate_cfg(cfg);
   if (err != k_ra8_ok) {
     ra8_log_error(s_tag, "epaper_init: cfg field out of range");
     return err;
