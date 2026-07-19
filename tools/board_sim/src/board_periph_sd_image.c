@@ -50,6 +50,7 @@ static void board_sd_release_image(void)
   s_sd.mmapped = false;
   s_sd.map_fd  = -1;
 }
+
 bool board_sd_attach(const char* path)
 {
   if (path == nullptr) {
