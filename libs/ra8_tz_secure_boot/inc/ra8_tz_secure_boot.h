@@ -38,6 +38,9 @@
  *  - **Denies:** any return path from ``ra8_tz_secure_boot_run`` -- the
  *    function is ``[[noreturn]]`` once the BLXNS branches out.
  *
+ * @see @ref md_docs_2formats_2NSR1 -- the full NSR1 wire-format specification
+ *      (rationale, algorithms, worked example, failure modes).
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
