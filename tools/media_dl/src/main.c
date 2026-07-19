@@ -425,6 +425,58 @@ RA8_INTERNAL static size_t export_combined(mdl_format_t format,
 }
 
 /**
+ * @brief Download one chapter into its own folder, and package it.
+ *
+ * @details
+ * The `--separate` / `loose`-format path: each chapter gets a folder named after
+ * the last URL segment, page numbering restarts at zero inside it, and (unless
+ * the format is `loose`, which has no archive) the folder is exported to its own
+ * archive next to the others.
+ *
+ * @param[in]     net        Network interface used for the fetches.
+ * @param[in]     site       Site descriptor supplying selectors and delays.
+ * @param[in]     series_url Series page URL, used as the Referer.
+ * @param[in]     chapter_url URL of the chapter to download.
+ * @param[in]     series_dir Directory holding the per-chapter folders.
+ * @param[in]     format     Output format for the per-chapter archive.
+ * @param[in,out] pol        Politeness state carried across chapters.
+ * @param[in]     timeout    Per-request timeout in seconds.
+ * @return Number of failures (page fetch failures plus a failed export).
+ * @retval 0 Every page fetched and the archive (if any) was written.
+ *
+ * @pre All pointer arguments are non-NULL.
+ * @pre @p series_dir exists.
+ * @post The chapter folder exists under @p series_dir.
+ * @post Page numbering inside that folder starts at zero.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL static size_t download_chapter_separate(mdl_net_iface_t*  net,
+                                                     const mdl_site_t* site,
+                                                     const char*       series_url,
+                                                     const char*       chapter_url,
+                                                     const char*       series_dir,
+                                                     mdl_format_t      format,
+                                                     mdl_politeness_t* pol,
+                                                     uint32_t          timeout)
+{
+  char chap[k_chap_name_bytes];
+  last_segment(chapter_url, chap, sizeof(chap));
+  char chap_dir[k_dir_path_bytes];
+  (void)snprintf(chap_dir, sizeof(chap_dir), "%s/%s", series_dir, chap);
+  (void)mkdir(chap_dir, (mode_t)k_dir_mode);
+
+  size_t chap_page = 0U;
+  size_t fails =
+    download_chapter(net, site, series_url, chapter_url, chap_dir, &chap_page, pol, timeout);
+  if (format != k_mdl_fmt_loose) {
+    fails += export_one(format, series_dir, chapter_url);
+  }
+  return fails;
+}
+
+/**
  * @brief Download `chapters` chapters from `start`; returns failure count.
  *
  * Default (`combine`) collects every downloaded chapter's pages -- numbered
@@ -481,16 +533,8 @@ RA8_INTERNAL static size_t download_chapters(mdl_net_iface_t*  net,
       /* Continuous page numbering across chapters -> one contiguous archive. */
       fails += download_chapter(net, site, series_url, curl, combined_dir, &page_no, &pol, timeout);
     } else {
-      char chap[k_chap_name_bytes];
-      last_segment(curl, chap, sizeof(chap));
-      char chap_dir[k_dir_path_bytes];
-      (void)snprintf(chap_dir, sizeof(chap_dir), "%s/%s", series_dir, chap);
-      (void)mkdir(chap_dir, (mode_t)k_dir_mode);
-      size_t chap_page = 0U;
-      fails += download_chapter(net, site, series_url, curl, chap_dir, &chap_page, &pol, timeout);
-      if (format != k_mdl_fmt_loose) {
-        fails += export_one(format, series_dir, curl);
-      }
+      fails +=
+        download_chapter_separate(net, site, series_url, curl, series_dir, format, &pol, timeout);
     }
     ++got_ch;
   }

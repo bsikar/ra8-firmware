@@ -169,43 +169,114 @@ static uint32_t dtc_mem_read(uc_engine* uc, uint64_t addr, uint32_t bytes)
   return v;
 }
 
-/** @brief Perform the SAR->DAR copy described by one TI block. */
-static void dtc_run_transfer(uc_engine* uc, uint32_t ti_addr)
+/**
+ * @struct dtc_ti_t
+ * @brief One Transfer Information block, decoded from emulated memory.
+ *
+ * @details
+ * Mirrors `r_dtc_xfer_info_t` (HUM Figure 18.4) with the packed MR mode word
+ * already split into its MRA / MRB sub-fields, so the transfer engine works in
+ * named terms rather than re-deriving shifts at each use.
+ */
+typedef struct {
+  uint32_t sar; /**< SAR source address.                          */
+  uint32_t dar; /**< DAR destination address.                     */
+  uint32_t cra; /**< CRA transfer count (block size in block mode). */
+  uint32_t crb; /**< CRB block count.                             */
+  uint32_t md;  /**< MRA.MD transfer mode (normal / repeat / block). */
+  uint32_t sz;  /**< MRA.SZ unit-width code (see ::dtc_unit_bytes). */
+  uint32_t sm;  /**< MRA.SM source address mode.                  */
+  uint32_t dm;  /**< MRB.DM destination address mode.             */
+} dtc_ti_t;
+
+/**
+ * @brief Read and decode the TI block at @p ti_addr into @p out.
+ *
+ * @param[in]  uc      Unicorn engine holding the emulated memory.
+ * @param[in]  ti_addr 16-byte-aligned address of the TI block.
+ * @param[out] out     Receives the decoded descriptor.
+ * @return None.
+ * @retval None Void.
+ * @pre @p uc and @p out are non-null.
+ * @pre @p ti_addr is mapped in the emulated address space.
+ * @post Every field of @p out is written.
+ * @post Emulated memory is unchanged (reads only).
+ * @note Not thread-safe.
+ */
+static void dtc_decode_ti(uc_engine* uc, uint32_t ti_addr, dtc_ti_t* out)
 {
-  const uint32_t mr  = dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_mr, 4U);
-  const uint32_t sar = dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_sar, 4U);
-  const uint32_t dar = dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_dar, 4U);
-  const uint32_t crb = dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_crb, 2U);
-  const uint32_t cra = dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_cra, 2U);
+  const uint32_t mr = dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_mr, 4U);
+  out->sar          = dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_sar, 4U);
+  out->dar          = dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_dar, 4U);
+  out->crb          = dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_crb, 2U);
+  out->cra          = dtc_mem_read(uc, (uint64_t)ti_addr + (uint64_t)k_ti_off_cra, 2U);
 
   const uint32_t mra = (mr >> (uint32_t)k_mr_mra_shift) & (uint32_t)k_mr_byte_mask;
   const uint32_t mrb = (mr >> (uint32_t)k_mr_mrb_shift) & (uint32_t)k_mr_byte_mask;
-  const uint32_t md  = (mra >> (uint32_t)k_mra_md_pos) & (uint32_t)k_mr_2bit_mask;
-  const uint32_t sz  = (mra >> (uint32_t)k_mra_sz_pos) & (uint32_t)k_mr_2bit_mask;
-  const uint32_t sm  = (mra >> (uint32_t)k_mra_sm_pos) & (uint32_t)k_mr_2bit_mask;
-  const uint32_t dm  = (mrb >> (uint32_t)k_mrb_dm_pos) & (uint32_t)k_mr_2bit_mask;
+  out->md            = (mra >> (uint32_t)k_mra_md_pos) & (uint32_t)k_mr_2bit_mask;
+  out->sz            = (mra >> (uint32_t)k_mra_sz_pos) & (uint32_t)k_mr_2bit_mask;
+  out->sm            = (mra >> (uint32_t)k_mra_sm_pos) & (uint32_t)k_mr_2bit_mask;
+  out->dm            = (mrb >> (uint32_t)k_mrb_dm_pos) & (uint32_t)k_mr_2bit_mask;
+}
 
-  const uint32_t unit = dtc_unit_bytes(sz);
-  /* CRA = 0 in block mode encodes a 256-unit block (HUM 18.2.7). Otherwise CRA
-   * is the unit count; block mode multiplies by CRB blocks. */
-  const bool block_mode = (md == (uint32_t)k_mra_md_block);
-  uint32_t   per_block  = cra;
-  uint32_t   blocks     = 1U;
-  if (block_mode) {
-    if (cra == 0U) {
+/**
+ * @brief Total unit count a descriptor moves, or 0 if it is out of range.
+ *
+ * @details
+ * CRA = 0 in block mode encodes a 256-unit block (HUM 18.2.7); otherwise CRA is
+ * the unit count. Block mode multiplies that by the CRB block count (CRB = 0
+ * meaning one block). A zero or implausibly large result is reported as 0 so the
+ * caller declines the transfer rather than looping on a corrupt descriptor.
+ *
+ * @param[in] ti Decoded descriptor.
+ * @return Unit count in [1, ::k_dtc_max_units], or 0 when out of range.
+ * @retval 0 The descriptor asks for no units, or more than the model allows.
+ * @pre @p ti is non-null and fully decoded.
+ * @pre @p ti->md holds a two-bit MRA.MD code.
+ * @post The return value is 0 or a bounded loop count.
+ * @post @p ti is unmodified.
+ * @note Not thread-safe with respect to @p ti.
+ */
+static uint32_t dtc_unit_count(const dtc_ti_t* ti)
+{
+  uint32_t per_block = ti->cra;
+  uint32_t blocks    = 1U;
+  if (ti->md == (uint32_t)k_mra_md_block) {
+    if (ti->cra == 0U) {
       per_block = (uint32_t)k_dtc_block_cra_zero;
     }
-    blocks = (crb == 0U) ? 1U : crb;
+    blocks = (ti->crb == 0U) ? 1U : ti->crb;
   }
-  uint32_t units = per_block * blocks;
-  if ((units == 0U) || (units > (uint32_t)k_dtc_max_units)) {
-    return;
-  }
+  const uint32_t units = per_block * blocks;
+  return (units > (uint32_t)k_dtc_max_units) ? 0U : units;
+}
 
-  uint64_t       s_addr = (uint64_t)sar;
-  uint64_t       d_addr = (uint64_t)dar;
-  const uint64_t s_step = (sm == (uint32_t)k_mr_addr_inc) ? (uint64_t)unit : 0U;
-  const uint64_t d_step = (dm == (uint32_t)k_mr_addr_inc) ? (uint64_t)unit : 0U;
+/**
+ * @brief Copy @p units units of @p unit bytes from SAR to DAR.
+ *
+ * @details
+ * Each address advances by the unit size when its MRA.SM / MRB.DM mode is
+ * "increment", and stays put otherwise -- which is how a fixed-address
+ * peripheral register reads or writes the whole run.
+ *
+ * @param[in] uc    Unicorn engine holding the emulated memory.
+ * @param[in] ti    Decoded descriptor supplying the addresses and modes.
+ * @param[in] units Unit count to move (bounded by ::dtc_unit_count).
+ * @param[in] unit  Unit width in bytes (1, 2 or 4).
+ * @return None.
+ * @retval None Void.
+ * @pre @p uc and @p ti are non-null.
+ * @pre @p unit is 1, 2 or 4, so the scratch buffer cannot overrun.
+ * @post @p units units have been written at the destination.
+ * @post @p ti is unmodified.
+ * @note Not thread-safe.
+ */
+static void dtc_copy_units(uc_engine* uc, const dtc_ti_t* ti, uint32_t units, uint32_t unit)
+{
+  uint64_t       s_addr = (uint64_t)ti->sar;
+  uint64_t       d_addr = (uint64_t)ti->dar;
+  const uint64_t s_step = (ti->sm == (uint32_t)k_mr_addr_inc) ? (uint64_t)unit : 0U;
+  const uint64_t d_step = (ti->dm == (uint32_t)k_mr_addr_inc) ? (uint64_t)unit : 0U;
   for (uint32_t i = 0U; i < units; ++i) {
     uint8_t tmp[4] = {};
     (void)uc_mem_read(uc, s_addr, tmp, (size_t)unit);
@@ -213,6 +284,21 @@ static void dtc_run_transfer(uc_engine* uc, uint32_t ti_addr)
     s_addr += s_step;
     d_addr += d_step;
   }
+}
+
+/** @brief Perform the SAR->DAR copy described by one TI block. */
+static void dtc_run_transfer(uc_engine* uc, uint32_t ti_addr)
+{
+  dtc_ti_t ti = {};
+  dtc_decode_ti(uc, ti_addr, &ti);
+
+  const uint32_t units = dtc_unit_count(&ti);
+  if (units == 0U) {
+    return;
+  }
+  const uint32_t unit = dtc_unit_bytes(ti.sz);
+  dtc_copy_units(uc, &ti, units, unit);
+
   s_dtc.activations++;
   s_dtc.bytes = units * unit;
   /* Console DMA tab: one line per DTC activation (the DTC shares the DMA tab

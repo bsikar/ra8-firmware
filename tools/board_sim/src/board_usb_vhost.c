@@ -555,6 +555,13 @@ typedef enum : uint8_t {
   k_msc_done = 3U, /**< All scripted commands finished. */
 } msc_phase_t;
 
+/** @brief Index of each command in the scripted SCSI sequence. */
+typedef enum : uint8_t {
+  k_msc_cmd_inquiry       = 0U, /**< INQUIRY: standard data, 36-byte allocation. */
+  k_msc_cmd_read_capacity = 1U, /**< READ CAPACITY (10): last LBA + block size.  */
+  k_msc_cmd_read10        = 2U, /**< READ (10): LBA 0, one block.                */
+} msc_script_cmd_t;
+
 /** @brief BOT / SCSI sizing the host uses (USB Mass Storage BBB 1.0). */
 typedef enum : uint32_t {
   k_msc_cbw_len   = 31U,   /**< Command Block Wrapper length.  */
@@ -588,19 +595,19 @@ static void host_msc_build_cdb(uint8_t cmd, uint8_t* cdb, uint8_t* cdb_len, uint
   for (uint32_t i = 0U; i < 16U; i++) {
     cdb[i] = 0U;
   }
-  switch (cmd) {
-    case 0U: /* INQUIRY: standard data, 36-byte allocation. */
+  switch ((msc_script_cmd_t)cmd) {
+    case k_msc_cmd_inquiry: /* INQUIRY: standard data, 36-byte allocation. */
       cdb[0]    = (uint8_t)k_scsi_inquiry;
       cdb[4]    = (uint8_t)k_inquiry_len;
       *cdb_len  = 6U;
       *data_len = (uint32_t)k_inquiry_len;
       break;
-    case 1U: /* READ CAPACITY (10): 8-byte response (last LBA + block size). */
+    case k_msc_cmd_read_capacity: /* READ CAPACITY (10): last LBA + block size. */
       cdb[0]    = (uint8_t)k_scsi_read_capacity;
       *cdb_len  = (uint8_t)k_cdb10_len;
       *data_len = 8U;
       break;
-    case 2U: /* READ (10): LBA 0, one block (512 bytes). */
+    case k_msc_cmd_read10: /* READ (10): LBA 0, one block (512 bytes). */
     default:
       cdb[0]    = (uint8_t)k_scsi_read10;
       cdb[8]    = 1U; /* transfer length = 1 block (big-endian low byte). */
@@ -686,52 +693,99 @@ static void host_msc_parse_capacity(const uint8_t* d, uint16_t n)
   s_msc_blocks            = last_lba + 1U;
 }
 
+/** @brief Phase ::k_msc_send: push the next CBW, or finish the script. */
+static void host_msc_phase_send(uc_engine* uc)
+{
+  if (s_msc_cmd >= (uint8_t)k_msc_cmd_count) {
+    s_msc_phase = (uint8_t)k_msc_done;
+    return;
+  }
+  host_msc_send_cbw(uc);
+  s_msc_phase = (uint8_t)k_msc_data;
+  s_msc_wait  = 0U;
+}
+
+/**
+ * @brief Record one data-phase burst against the command that is in flight.
+ *
+ * @details
+ * Each scripted command captures its data phase differently: READ CAPACITY is
+ * parsed into the geometry globals, INQUIRY only needs to be seen at all, and
+ * READ (10) accumulates its byte count. Anything else is counted but not
+ * interpreted.
+ *
+ * @param[in] d Data-phase bytes just taken off the bulk-IN pipe.
+ * @param[in] n Number of valid bytes in @p d, always non-zero.
+ * @return None.
+ * @retval None Void.
+ * @pre @p d is non-null.
+ * @pre @p n is greater than zero (the caller checked).
+ * @post The globals for the in-flight command reflect this burst.
+ * @post @p d is unmodified.
+ * @note Not thread-safe; mutates file-scope MSC state.
+ */
+static void host_msc_record_data(const uint8_t* d, uint16_t n)
+{
+  switch ((msc_script_cmd_t)s_msc_cmd) {
+    case k_msc_cmd_read_capacity:
+      host_msc_parse_capacity(d, n);
+      break;
+    case k_msc_cmd_inquiry:
+      s_msc_inquiry_ok = true;
+      break;
+    case k_msc_cmd_read10:
+      s_msc_read_ok += n;
+      break;
+    default:
+      break;
+  }
+}
+
+/** @brief Phase ::k_msc_data: drain the data phase until it is done or stalls. */
+static void host_msc_phase_data(uc_engine* uc)
+{
+  uint8_t        buf[k_usb_in_cap];
+  const uint16_t n = host_msc_take_in(uc, buf, (uint16_t)sizeof(buf));
+  if (n == 0U) {
+    s_msc_wait++;
+  } else {
+    host_msc_record_data(buf, n);
+    s_msc_data_got += n;
+    s_msc_wait = 0U;
+  }
+  if ((s_msc_data_got >= s_msc_data_len) || (s_msc_wait > (uint32_t)k_usb_step_timeout)) {
+    s_msc_phase = (uint8_t)k_msc_csw;
+    s_msc_wait  = 0U;
+  }
+}
+
+/** @brief Phase ::k_msc_csw: take the CSW, then advance to the next command. */
+static void host_msc_phase_csw(uc_engine* uc)
+{
+  uint8_t        buf[k_usb_in_cap];
+  const uint16_t n = host_msc_take_in(uc, buf, (uint16_t)sizeof(buf));
+  if ((n >= (uint16_t)k_msc_csw_len) || (s_msc_wait > (uint32_t)k_usb_step_timeout)) {
+    s_msc_cmd++;
+    s_msc_phase = (uint8_t)k_msc_send;
+    s_msc_wait  = 0U;
+  } else {
+    s_msc_wait++;
+  }
+}
+
 /** @brief Drive the MSC BOT state machine one tick while CONFIGURED. */
 static void host_msc_drive(uc_engine* uc)
 {
-  uint8_t buf[k_usb_in_cap];
   switch ((msc_phase_t)s_msc_phase) {
     case k_msc_send:
-      if (s_msc_cmd >= (uint8_t)k_msc_cmd_count) {
-        s_msc_phase = (uint8_t)k_msc_done;
-        return;
-      }
-      host_msc_send_cbw(uc);
-      s_msc_phase = (uint8_t)k_msc_data;
-      s_msc_wait  = 0U;
+      host_msc_phase_send(uc);
       break;
-    case k_msc_data: {
-      const uint16_t n = host_msc_take_in(uc, buf, (uint16_t)sizeof(buf));
-      if (n > 0U) {
-        if (s_msc_cmd == 1U) {
-          host_msc_parse_capacity(buf, n);
-        } else if (s_msc_cmd == 0U) {
-          s_msc_inquiry_ok = true;
-        } else if (s_msc_cmd == 2U) {
-          s_msc_read_ok += n;
-        }
-        s_msc_data_got += n;
-        s_msc_wait = 0U;
-      } else {
-        s_msc_wait++;
-      }
-      if ((s_msc_data_got >= s_msc_data_len) || (s_msc_wait > (uint32_t)k_usb_step_timeout)) {
-        s_msc_phase = (uint8_t)k_msc_csw;
-        s_msc_wait  = 0U;
-      }
+    case k_msc_data:
+      host_msc_phase_data(uc);
       break;
-    }
-    case k_msc_csw: {
-      const uint16_t n = host_msc_take_in(uc, buf, (uint16_t)sizeof(buf));
-      if ((n >= (uint16_t)k_msc_csw_len) || (s_msc_wait > (uint32_t)k_usb_step_timeout)) {
-        s_msc_cmd++;
-        s_msc_phase = (uint8_t)k_msc_send;
-        s_msc_wait  = 0U;
-      } else {
-        s_msc_wait++;
-      }
+    case k_msc_csw:
+      host_msc_phase_csw(uc);
       break;
-    }
     case k_msc_done:
     default:
       break;

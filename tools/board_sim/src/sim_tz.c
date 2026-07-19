@@ -111,6 +111,39 @@ static void on_blxns(uc_engine* uc, uint64_t address, uint32_t size, void* user)
   (void)uc_emu_stop(uc);
 }
 
+/**
+ * @brief Scan a Thumb function image for its first BLXNS instruction.
+ *
+ * @details
+ * Walks @p size bytes from @p from a halfword at a time, reading each through
+ * Unicorn (the image is already loaded there by load_elf) and matching it
+ * against the BLXNS encoding. Only the first match matters: the secure boot's
+ * jump routine issues exactly one.
+ *
+ * @param[in] uc   Unicorn engine holding the loaded image.
+ * @param[in] from Function entry address.
+ * @param[in] size Function size in bytes, from the ELF symbol table.
+ * @return Address of the first BLXNS, or 0 when the image contains none.
+ * @retval 0 No BLXNS in the scanned range.
+ * @pre @p uc is non-null.
+ * @pre @p size is at least ::k_thumb_hw_bytes, so one halfword is readable.
+ * @post Emulated memory is unchanged (reads only).
+ * @post Any returned address lies within [@p from, @p from + @p size).
+ * @note Not thread-safe.
+ */
+static uint32_t sim_tz_find_blxns(uc_engine* uc, uint32_t from, uint32_t size)
+{
+  for (uint32_t a = from; (a + (uint32_t)k_thumb_hw_bytes) <= (from + size);
+       a += (uint32_t)k_thumb_hw_bytes) {
+    uint16_t hw = 0U;
+    (void)uc_mem_read(uc, (uint64_t)a, &hw, sizeof(hw));
+    if (((uint32_t)hw & (uint32_t)k_blxns_mask) == (uint32_t)k_blxns_match) {
+      return a;
+    }
+  }
+  return 0U;
+}
+
 /** @brief Implementation of `sim_tz_install()` -- SAU seed + BLXNS scan/hook. */
 void sim_tz_install(uc_engine* uc, const uint8_t* elf, long elf_len)
 {
@@ -121,44 +154,34 @@ void sim_tz_install(uc_engine* uc, const uint8_t* elf, long elf_len)
    * board_sim maps the PPB as plain RAM (SAU_TYPE reads 0), so seed the M85's
    * 8-region count to let the real SAU programming + NS-image copy + BLXNS
    * run. Firmware without the symbol keeps its current (all-Secure) path. */
-  {
-    uint32_t       jn_size = 0U;
-    const uint32_t jump_ns = elf_sym_addr(elf, elf_len, "ra8_tz_secure_boot_jump_ns", &jn_size);
-    if ((jump_ns != 0U) && (jn_size >= (uint32_t)k_thumb_hw_bytes)) {
-      const uint32_t sau_type = (uint32_t)k_sau_type_regs;
-      (void)uc_mem_write(uc, (uint64_t)k_sau_type_addr, &sau_type, sizeof(sau_type));
-
-      /* Hand-emulate the Secure->NS BLXNS in ra8_tz_secure_boot_jump_ns.
-       * Unicorn's all-Secure M33 cannot really switch worlds, so resolve the
-       * BLXNS site from the Secure symtab (scan the function for the BLXNS
-       * opcode) and hook it to enter NS manually (see on_blxns). Without this
-       * the BLXNS stalls and the NS world never runs. */
-      uint32_t blxns_at = 0U;
-      for (uint32_t a = jump_ns; (a + (uint32_t)k_thumb_hw_bytes) <= (jump_ns + jn_size);
-           a += (uint32_t)k_thumb_hw_bytes) {
-        uint16_t hw = 0U;
-        (void)uc_mem_read(uc, (uint64_t)a, &hw, sizeof(hw));
-        if (((uint32_t)hw & (uint32_t)k_blxns_mask) == (uint32_t)k_blxns_match) {
-          blxns_at = a;
-          break;
-        }
-      }
-      if (blxns_at != 0U) {
-        uc_hook h_blxns;
-        (void)uc_hook_add(uc,
-                          &h_blxns,
-                          UC_HOOK_CODE,
-                          (void*)on_blxns,
-                          nullptr,
-                          (uint64_t)blxns_at,
-                          (uint64_t)blxns_at);
-        (void)fprintf(stderr, "board_sim: TZ BLXNS seam armed @ 0x%08X\n", blxns_at);
-      } else {
-        (void)fprintf(stderr,
-                      "board_sim: TZ warning: no BLXNS found in ra8_tz_secure_boot_jump_ns\n");
-      }
-    }
+  uint32_t       jn_size = 0U;
+  const uint32_t jump_ns = elf_sym_addr(elf, elf_len, "ra8_tz_secure_boot_jump_ns", &jn_size);
+  if ((jump_ns == 0U) || (jn_size < (uint32_t)k_thumb_hw_bytes)) {
+    return; /* Not a TrustZone image: keep the all-Secure path. */
   }
+  const uint32_t sau_type = (uint32_t)k_sau_type_regs;
+  (void)uc_mem_write(uc, (uint64_t)k_sau_type_addr, &sau_type, sizeof(sau_type));
+
+  /* Hand-emulate the Secure->NS BLXNS in ra8_tz_secure_boot_jump_ns.
+   * Unicorn's all-Secure M33 cannot really switch worlds, so resolve the
+   * BLXNS site from the Secure symtab (scan the function for the BLXNS
+   * opcode) and hook it to enter NS manually (see on_blxns). Without this
+   * the BLXNS stalls and the NS world never runs. */
+  const uint32_t blxns_at = sim_tz_find_blxns(uc, jump_ns, jn_size);
+  if (blxns_at == 0U) {
+    (void)fprintf(stderr,
+                  "board_sim: TZ warning: no BLXNS found in ra8_tz_secure_boot_jump_ns\n");
+    return;
+  }
+  uc_hook h_blxns;
+  (void)uc_hook_add(uc,
+                    &h_blxns,
+                    UC_HOOK_CODE,
+                    (void*)on_blxns,
+                    nullptr,
+                    (uint64_t)blxns_at,
+                    (uint64_t)blxns_at);
+  (void)fprintf(stderr, "board_sim: TZ BLXNS seam armed @ 0x%08X\n", blxns_at);
 }
 
 /** @brief Implementation of `sim_tz_patch_cmse()` -- flat-domain range check. */

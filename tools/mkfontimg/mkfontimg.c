@@ -240,21 +240,99 @@ build_and_dump(const char* image_out, const uint8_t* font, size_t font_len, cons
   return rc;
 }
 
-int main(int argc, char** argv)
+/**
+ * @brief Read a source font into a freshly allocated buffer.
+ *
+ * @details
+ * Reads at most ::k_font_cap bytes and rejects anything shorter than
+ * ::k_font_min_bytes, which is the smallest input that could plausibly be a
+ * font rather than a truncated file. The caller owns the returned buffer.
+ *
+ * @param[in]  font_in  Path to the source font.
+ * @param[out] font_len Receives the byte count read, on success only.
+ * @return Malloc'd font bytes, or NULL when the font cannot be read.
+ * @retval NULL Allocation failed, the file is missing, or it is too short.
+ *
+ * @pre @p font_in and @p font_len are non-NULL.
+ * @pre The process may allocate ::k_font_cap bytes.
+ * @post On success the caller owns the buffer and must `free()` it.
+ * @post On failure nothing is allocated and the input stream is closed.
+ *
+ * @note Not thread-safe; the tool is single-threaded.
+ */
+static uint8_t* slurp_font(const char* font_in, size_t* font_len)
 {
-  /* Blank-card mode: format an empty FAT16 image with no font. */
-  if ((argc >= 2) && (strcmp(argv[1], "--blank") == 0)) {
-    if (argc != 3) {
-      (void)fprintf(stderr, "usage: %s --blank <image-out>\n", argv[0]);
-      return 2;
-    }
-    if (build_and_dump(argv[2], nullptr, 0U, nullptr) != 0) {
-      return 1;
-    }
-    (void)fprintf(stderr, "mkfontimg: wrote %s (blank FAT16, no font)\n", argv[2]);
-    return 0;
+  uint8_t* font = (uint8_t*)malloc((size_t)k_font_cap);
+  if (font == nullptr) {
+    (void)fprintf(stderr, "mkfontimg: out of memory\n");
+    return nullptr;
   }
+  FILE* fin = fopen(font_in, "rb");
+  if (fin == nullptr) {
+    (void)fprintf(stderr, "mkfontimg: cannot open %s\n", font_in);
+    free(font);
+    return nullptr;
+  }
+  const size_t len = fread(font, 1U, (size_t)k_font_cap, fin);
+  (void)fclose(fin);
+  if (len < (size_t)k_font_min_bytes) {
+    (void)fprintf(stderr, "mkfontimg: %s too small (%zu bytes)\n", font_in, len);
+    free(font);
+    return nullptr;
+  }
+  *font_len = len;
+  return font;
+}
 
+/**
+ * @brief Blank-card mode: format an empty FAT16 image with no font.
+ *
+ * @param[in] argc Argument count, as handed to `main()`.
+ * @param[in] argv Argument vector, with `argv[1]` already known to be --blank.
+ * @return Process exit status.
+ * @retval 0 The image was written.
+ * @retval 1 The image could not be built or written.
+ * @retval 2 Wrong argument count (usage was printed).
+ *
+ * @pre @p argv is non-NULL and `argv[1]` is "--blank".
+ * @pre @p argc is at least 2.
+ * @post On success the output path holds a blank FAT16 image.
+ * @post Nothing is allocated on return.
+ *
+ * @note Not thread-safe; the tool is single-threaded.
+ */
+static int run_blank(int argc, char** argv)
+{
+  if (argc != 3) {
+    (void)fprintf(stderr, "usage: %s --blank <image-out>\n", argv[0]);
+    return 2;
+  }
+  if (build_and_dump(argv[2], nullptr, 0U, nullptr) != 0) {
+    return 1;
+  }
+  (void)fprintf(stderr, "mkfontimg: wrote %s (blank FAT16, no font)\n", argv[2]);
+  return 0;
+}
+
+/**
+ * @brief Font mode: slurp a font and write it onto a fresh FAT16 image.
+ *
+ * @param[in] argc Argument count, as handed to `main()`.
+ * @param[in] argv Argument vector: font-in, image-out, optional dest-name.
+ * @return Process exit status.
+ * @retval 0 The image was written with the font on it.
+ * @retval 1 The font could not be read, or the image could not be built.
+ * @retval 2 Too few arguments (usage was printed).
+ *
+ * @pre @p argv is non-NULL.
+ * @pre @p argc reflects the length of @p argv.
+ * @post The font buffer is freed on every path.
+ * @post On success the output path holds a FAT16 image carrying the font.
+ *
+ * @note Not thread-safe; the tool is single-threaded.
+ */
+static int run_font(int argc, char** argv)
+{
   if (argc < 3) {
     (void)fprintf(stderr, "usage: %s <font-in> <image-out> [dest-name]\n", argv[0]);
     return 2;
@@ -263,26 +341,11 @@ int main(int argc, char** argv)
   const char* image_out = argv[2];
   const char* dest_name = (argc > 3) ? argv[3] : "FONT.OTF";
 
-  /* Slurp the source font. */
-  uint8_t* font = (uint8_t*)malloc((size_t)k_font_cap);
+  size_t   font_len = 0U;
+  uint8_t* font     = slurp_font(font_in, &font_len);
   if (font == nullptr) {
-    (void)fprintf(stderr, "mkfontimg: out of memory\n");
     return 1;
   }
-  FILE* fin = fopen(font_in, "rb");
-  if (fin == nullptr) {
-    (void)fprintf(stderr, "mkfontimg: cannot open %s\n", font_in);
-    free(font);
-    return 1;
-  }
-  size_t font_len = fread(font, 1U, (size_t)k_font_cap, fin);
-  (void)fclose(fin);
-  if (font_len < (size_t)k_font_min_bytes) {
-    (void)fprintf(stderr, "mkfontimg: %s too small (%zu bytes)\n", font_in, font_len);
-    free(font);
-    return 1;
-  }
-
   const int rc = build_and_dump(image_out, font, font_len, dest_name);
   free(font);
   if (rc != 0) {
@@ -290,4 +353,12 @@ int main(int argc, char** argv)
   }
   (void)fprintf(stderr, "mkfontimg: wrote %s (%s = %zu bytes)\n", image_out, dest_name, font_len);
   return 0;
+}
+
+int main(int argc, char** argv)
+{
+  if ((argc >= 2) && (strcmp(argv[1], "--blank") == 0)) {
+    return run_blank(argc, argv);
+  }
+  return run_font(argc, argv);
 }

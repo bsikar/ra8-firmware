@@ -636,6 +636,71 @@ static bool board_sd_dispatch_ident(board_sd_state_t* c, uint8_t idx, uint8_t r1
 }
 
 /**
+ * @brief Record one bound of the CMD32/CMD33 erase range and acknowledge it.
+ *
+ * @details
+ * CMD32 (ERASE_WR_BLK_START) and CMD33 (ERASE_WR_BLK_END) differ only in which
+ * bound they latch, so both land here with @p bound aimed at the field to set.
+ * Neither touches the backing image -- the erase itself happens on CMD38.
+ *
+ * @param[in,out] c     Card state whose response buffer is staged.
+ * @param[out]    bound `c->erase_start` or `c->erase_end`, the bound to latch.
+ * @param[in]     arg   Command argument: an SDHC block number.
+ * @param[in]     r1    R1 status byte to answer with.
+ * @return None.
+ * @retval None Void.
+ * @pre `c` and `bound` are non-null.
+ * @pre `bound` points into `c` (the caller picks the field).
+ * @post `*bound` holds @p arg.
+ * @post `c->resp` holds a one-byte R1 reply.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void board_sd_cmd_erase_bound(board_sd_state_t* c,
+                                     uint32_t*         bound,
+                                     uint32_t          arg,
+                                     uint8_t           r1)
+{
+  *bound      = arg;
+  c->resp[0]  = r1;
+  c->resp_len = 1U;
+}
+
+/**
+ * @brief Zero the latched [start, end] block range -- CMD38 (ERASE).
+ *
+ * @details
+ * Models a zero-erase card: the range latched by CMD32/CMD33 is cleared in the
+ * backing image. An inverted range (end < start) erases nothing, and the span is
+ * clamped to the image length so a range past the end of a short image is
+ * truncated rather than writing out of bounds.
+ *
+ * @param[in,out] c  Card state holding the latched erase bounds and the image.
+ * @param[in]     r1 R1 status byte to answer with.
+ * @return None.
+ * @retval None Void.
+ * @pre `c` is non-null with a backing image attached.
+ * @pre `c->erase_start` / `c->erase_end` were latched by CMD32 / CMD33.
+ * @post Blocks in the clamped range read back as zero.
+ * @post `c->resp` holds a one-byte R1 reply.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void board_sd_cmd_erase(board_sd_state_t* c, uint8_t r1)
+{
+  if (c->erase_end >= c->erase_start) {
+    const uint64_t lo  = (uint64_t)c->erase_start * (uint64_t)k_sd_block;
+    const uint64_t hi  = ((uint64_t)c->erase_end + 1U) * (uint64_t)k_sd_block;
+    const uint64_t end = (hi < c->image_len) ? hi : c->image_len;
+    if (lo < end) {
+      memset(&c->image[lo], 0, (size_t)(end - lo));
+    }
+  }
+  c->resp[0]  = r1;
+  c->resp_len = 1U;
+}
+
+/**
  * @brief Handle the data-transfer and erase commands (CMD9/17/18/12/24/25/32/33/38).
  *
  * @details
@@ -675,28 +740,14 @@ static void board_sd_dispatch_data(board_sd_state_t* c, uint8_t idx, uint32_t ar
       board_sd_begin_write(c, idx, arg, r1);
       break;
     case (uint8_t)k_sd_idx_cmd32: /* ERASE_WR_BLK_START (SDHC: arg = block). */
-      c->erase_start = arg;
-      c->resp[0]     = r1;
-      c->resp_len    = 1U;
+      board_sd_cmd_erase_bound(c, &c->erase_start, arg, r1);
       break;
     case (uint8_t)k_sd_idx_cmd33: /* ERASE_WR_BLK_END (SDHC: arg = block). */
-      c->erase_end = arg;
-      c->resp[0]   = r1;
-      c->resp_len  = 1U;
+      board_sd_cmd_erase_bound(c, &c->erase_end, arg, r1);
       break;
-    case (uint8_t)k_sd_idx_cmd38: { /* ERASE: zero [start, end] -- model a zero-erase card. */
-      if (c->erase_end >= c->erase_start) {
-        const uint64_t lo  = (uint64_t)c->erase_start * (uint64_t)k_sd_block;
-        const uint64_t hi  = ((uint64_t)c->erase_end + 1U) * (uint64_t)k_sd_block;
-        const uint64_t end = (hi < c->image_len) ? hi : c->image_len;
-        if (lo < end) {
-          memset(&c->image[lo], 0, (size_t)(end - lo));
-        }
-      }
-      c->resp[0]  = r1;
-      c->resp_len = 1U;
+    case (uint8_t)k_sd_idx_cmd38: /* ERASE: zero the latched [start, end] range. */
+      board_sd_cmd_erase(c, r1);
       break;
-    }
     default:
       c->resp[0]  = r1;
       c->resp_len = 1U;
