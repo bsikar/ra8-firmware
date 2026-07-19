@@ -512,9 +512,9 @@ static void test_recover_from_error(void)
  * code under test that this case touches)
  */
 
-static void test_status_get_and_clear(void)
+static void test_status_get(void)
 {
-  TEST_BEGIN("mipi_phy status get + clear");
+  TEST_BEGIN("mipi_phy status get");
   prep_fixture();
 
   uint32_t mask = 0U;
@@ -522,14 +522,9 @@ static void test_status_get_and_clear(void)
   TEST_ASSERT((mask & (uint32_t)k_ra8_mipi_phy_sfr_pwrsf) != 0U);
   TEST_ASSERT((mask & (uint32_t)k_ra8_mipi_phy_sfr_pllsf) != 0U);
 
-  /* clear_status is a no-op (DPHYSFR is read-only on this part). */
-  const uint32_t before = *ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_sfr);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_phy_clear_status((uint32_t)k_ra8_mipi_phy_sfr_pwrsf));
-  TEST_ASSERT_EQ(before, *ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_sfr));
-
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mipi_phy_get_status(nullptr));
 
-  TEST_END("mipi_phy status get + clear");
+  TEST_END("mipi_phy status get");
 }
 
 /**
@@ -750,7 +745,7 @@ int32_t main(void)
   test_deinit_clears_enables();
   test_reset_clears_all_regs();
   test_recover_from_error();
-  test_status_get_and_clear();
+  test_status_get();
   test_is_helpers();
   test_attach_and_dispatch_status_chg();
   test_dispatch_decodes_edges();

@@ -1,10 +1,3 @@
-/* GCOVR_EXCL_START -- dead on every host path: this helper's only
- * caller is internal_dispatch_class_setup, guarded by
- * `if (internal_pull_data_stage(...) == k_ra8_ok)`, and
- * internal_pull_data_stage is a stub that unconditionally returns
- * k_ra8_err_not_supported (no host input, register, or mock can change
- * its return), so this function is never entered from any public API.
- * Lifts when the live EP0 OUT data-stage ISR path is integrated. */
 /**
  * @file ra8_usb_cdc.c
  * @brief Native USB CDC ACM class layer implementation
@@ -56,6 +49,27 @@ typedef enum : uint8_t {
   k_ra8_cdc_default_parity_none  = 0U,    /**< No parity.               */
   k_ra8_cdc_line_coding_len      = 7U,    /**< 7-byte payload length.   */
 } ra8_usb_cdc_setup_field_t;
+
+/**
+ * @enum ra8_usb_cdc_data_stage_t
+ * @brief Bound on the polled control-OUT data-stage drain.
+ * @details This layer is polled throughout (::ra8_usb_cdc_recv drives the bulk
+ *          pipe the same way), so the SET_LINE_CODING data stage is drained by
+ *          a bounded poll rather than an ISR callback. The bound exists so the
+ *          SETUP path can never spin: the RA8 SIE ACKs the host's OUT packet
+ *          into the DCP bank as soon as ::ra8_usb_dcp_out_arm sets PID = BUF,
+ *          so the packet lands within a few bus microframes or the host has
+ *          abandoned the transfer. Exhausting the bound is not an error path
+ *          for the caller -- the request is still ACKed, exactly as it was
+ *          before the data stage was captured at all.
+ * @invariant The loop in ::internal_pull_data_stage runs at most
+ *            `k_ra8_cdc_data_stage_polls` times (NASA P10 Rule 2).
+ * @see internal_pull_data_stage()
+ * @since 0.1.0
+ */
+typedef enum : uint16_t {
+  k_ra8_cdc_data_stage_polls = 1000U, /**< Max ::ra8_usb_dcp_out_read attempts. */
+} ra8_usb_cdc_data_stage_t;
 
 /**
  * @enum ra8_usb_cdc_default_baud_t
@@ -212,7 +226,6 @@ static void internal_apply_line_coding(const uint8_t* data, uint16_t len)
   s_state.coding.parity_type = data[k_ra8_cdc_idx_parity_type];
   s_state.coding.data_bits   = data[k_ra8_cdc_idx_data_bits];
 }
-/* GCOVR_EXCL_STOP */
 
 /* =============================================================================
  * Lifecycle
@@ -303,35 +316,66 @@ ra8_err_t ra8_usb_cdc_recv(uint8_t* out_buf, uint16_t* inout_len)
  */
 
 /**
- * @brief Pull the SET_LINE_CODING data stage off EP0 once it lands.
+ * @brief Pull the SET_LINE_CODING data stage off EP0 (DCP) once it lands.
  *
- * @details The DCP handling for the data stage of a control-write
- * happens on a future BRDY interrupt for PIPE0; the present iteration
- * stores no payload because the CDC ISR path that wires it in lives
- * in the next live-USB iteration. The function intentionally returns
- * `k_ra8_err_not_supported` so the caller can fall through to a
- * minimal "store nothing, ACK status stage" path; tests cover this
- * branch.
+ * @details Drives the two-step control-OUT receive the device driver exposes:
+ * ::ra8_usb_dcp_out_arm sets `DCPCTR.PID = BUF` so the SIE ACKs the host's OUT
+ * token into the DCP bank, then ::ra8_usb_dcp_out_read drains that bank. The
+ * read reports ::k_ra8_err_no_data until the packet actually lands, so this
+ * polls it up to ::k_ra8_cdc_data_stage_polls times -- matching the polled
+ * style of the rest of this layer (::ra8_usb_cdc_recv drives the bulk-OUT pipe
+ * the same way) rather than requiring the caller to own a BRDY interrupt.
  *
- * @param[in] buf See implementation.
- * @param[in] cap See implementation.
- * @param[in] out_len See implementation.
+ * The bound is fail-soft by design: if the payload never arrives, the caller
+ * simply leaves the cached line coding untouched and still ACKs the status
+ * stage, which is exactly what the layer did before the data stage was
+ * captured. A host that does complete the transfer now has its baud rate,
+ * framing and parity recorded and visible through
+ * ::ra8_usb_cdc_get_line_coding.
+ *
+ * @param[out] buf     Destination for the payload; must hold @p cap bytes.
+ * @param[in]  cap     Capacity of @p buf in bytes.
+ * @param[out] out_len Receives the host's payload length in bytes.
+ *
  * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
+ * @retval k_ra8_ok               A packet was drained; `*out_len` is its length.
+ * @retval k_ra8_err_null_ptr     @p buf or @p out_len is NULL.
+ * @retval k_ra8_err_invalid_arg  @p cap is zero.
+ * @retval k_ra8_err_no_data      The payload did not land within the poll bound.
+ * @retval other                  Propagated from the arm / read pair.
+ *
+ * @pre A control-OUT SETUP with `wLength > 0` was just decoded.
+ * @pre `s_state.speed` names the controller that saw the SETUP.
+ * @post On k_ra8_ok `*out_len` bytes of payload are resident in @p buf.
+ * @post On any error the cached line coding is left untouched.
+ *
+ * @note Not thread-safe; bounded, so it cannot spin.
+ * @see ra8_usb_dcp_out_arm()
+ * @see ra8_usb_dcp_out_read()
  * @since 0.1.0
  */
 RA8_INTERNAL
-static ra8_err_t internal_pull_data_stage(const uint8_t* buf, uint16_t cap, const uint16_t* out_len)
+RA8_BOUNDED_LOOP(k_ra8_cdc_data_stage_polls)
+static ra8_err_t internal_pull_data_stage(uint8_t* buf, uint16_t cap, uint16_t* out_len)
 {
-  (void)buf;
-  (void)cap;
-  (void)out_len;
-  return k_ra8_err_not_supported;
+  RA8_CHECK_NULL_PTR(buf, s_tag, "pull_data_stage: buf");
+  RA8_CHECK_NULL_PTR(out_len, s_tag, "pull_data_stage: out_len");
+  if (cap == 0U) {
+    return k_ra8_err_invalid_arg;
+  }
+  *out_len              = 0U;
+  const ra8_err_t armed = ra8_usb_dcp_out_arm(s_state.speed);
+  if (armed != k_ra8_ok) {
+    return armed;
+  }
+  ra8_err_t rc = k_ra8_err_no_data;
+  for (uint16_t i = 0U; i < (uint16_t)k_ra8_cdc_data_stage_polls; ++i) {
+    rc = ra8_usb_dcp_out_read(s_state.speed, buf, cap, out_len);
+    if (rc != k_ra8_err_no_data) {
+      return rc;
+    }
+  }
+  return rc;
 }
 
 /**
@@ -356,15 +400,14 @@ static ra8_err_t internal_dispatch_class_setup(const ra8_usb_setup_t* setup)
   switch (setup->b_request) {
     case k_ra8_cdc_req_set_line_coding: {
       uint8_t         buf[k_ra8_cdc_line_coding_len + 1U] = {};
-      const uint16_t  plen                                = k_ra8_cdc_line_coding_len;
+      uint16_t        plen                                = 0U;
       const ra8_err_t pull = internal_pull_data_stage(buf, (uint16_t)sizeof(buf), &plen);
       if (pull == k_ra8_ok) {
-        /* GCOVR_EXCL_START -- internal_pull_data_stage is a stub that
-         * always returns k_ra8_err_not_supported, so pull is never
-         * k_ra8_ok on any host path and this apply call is dead. */
         internal_apply_line_coding(buf, plen);
-        /* GCOVR_EXCL_STOP */
       }
+      /* The status stage is ACKed either way: a host that abandoned the data
+       * stage still gets a well-formed control-write completion, and the cached
+       * coding simply keeps its previous value. */
       return ra8_usb_control_response(s_state.speed, true);
     }
     case k_ra8_cdc_req_get_line_coding: {
