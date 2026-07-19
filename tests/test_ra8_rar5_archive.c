@@ -36,50 +36,61 @@ typedef enum : uint8_t {
 } av_layout_t;
 
 /**
- * @enum rar5_archive_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_rar4_off_t
+ * @brief Byte offsets of the RAR4 block-header fields the builder writes.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The archive-level tests craft RAR4 blocks by hand so a single field can be
+ * made inconsistent. The layout is fixed: CRC, type, flags, size, then the
+ * per-type fields at the offsets below.
  */
 typedef enum : uint8_t {
-  k_rar5_archive_a4_file_33   = 0x33U,
-  k_rar5_archive_a4_le16_13   = 13U,
-  k_rar5_archive_a4_le16_26   = 26,
-  k_rar5_archive_a4_le16_5    = 5,
-  k_rar5_archive_a4_le32_11   = 11,
-  k_rar5_archive_a4_le32_20   = 20,
-  k_rar5_archive_a4_le32_28   = 28,
-  k_rar5_archive_a4_le32_7    = 7,
-  k_rar5_archive_av5_simple_5 = 5U,
-  k_rar5_archive_b_80         = 0x80U,
-  k_rar5_archive_out_20       = 20U,
-  k_rar5_archive_out_73       = 0x73U,
-  k_rar5_archive_out_74       = 0x74U,
-  k_rar5_archive_v_24         = 24,
-  k_rar5_archive_v_7f         = 0x7FU,
-  k_rar5_archive_val_15       = 15,
-  k_rar5_archive_val_25       = 25,
-  k_rar5_archive_val_64       = 64,
-  k_rar5_archive_val_7        = 7U,
-} rar5_archive_uint8_const_t;
+  k_t_r4_off_head_size = 5U,  /**< HEAD_SIZE, 16-bit.               */
+  k_t_r4_off_pack_size = 7U,  /**< PACK_SIZE, 32-bit.               */
+  k_t_r4_off_unp_size  = 11U, /**< UNP_SIZE, 32-bit.                */
+  k_t_r4_off_host_os   = 15U, /**< HOST_OS, 8-bit.                  */
+  k_t_r4_off_ftime     = 20U, /**< FTIME, 32-bit MS-DOS timestamp.  */
+  k_t_r4_off_unp_ver   = 24U, /**< UNP_VER, 8-bit.                  */
+  k_t_r4_off_method    = 25U, /**< METHOD, 8-bit.                   */
+  k_t_r4_off_name_size = 26U, /**< NAME_SIZE, 16-bit.               */
+  k_t_r4_off_attr      = 28U, /**< ATTR, 32-bit.                    */
+} t_rar4_off_t;
 
 /**
- * @enum rar5_archive_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_rar4_field_t
+ * @brief RAR4 block types and field values the fixtures declare.
  */
 typedef enum : uint16_t {
-  k_rar5_archive_a4_le16_8000 = 0x8000U,
-  k_rar5_archive_val_1024     = 1024,
-  k_rar5_archive_val_256      = 256,
-} rar5_archive_uint16_const_t;
+  k_t_r4_type_main    = 0x73U,   /**< Block type: main archive header.       */
+  k_t_r4_type_file    = 0x74U,   /**< Block type: file header.               */
+  k_t_r4_flag_long    = 0x8000U, /**< LONG_BLOCK: an ADD_SIZE field follows. */
+  k_t_r4_unp_ver_20   = 20U,     /**< UNP_VER 20: RAR 2.0 stream format.     */
+  k_t_r4_method_comp  = 0x33U,   /**< METHOD '3': compressed, which the
+                                      stored-only extractor must refuse.     */
+  k_t_r4_main_hdr_len = 13U,     /**< Total main-header length, bytes.       */
+} t_rar4_field_t;
+
+/**
+ * @enum t_vint_t
+ * @brief RAR5 header types and base-128 vint encoding parameters.
+ */
+typedef enum : uint8_t {
+  k_t_r5_type_end       = 5U,    /**< RAR5 header type 5: end of archive.    */
+  k_t_vint_payload_mask = 0x7FU, /**< Payload bits carried by one vint byte. */
+  k_t_vint_shift        = 7U,    /**< Bits consumed per vint byte.           */
+  k_t_vint_more_flag    = 0x80U, /**< Continuation bit: another byte follows. */
+  k_t_le32_hi_shift     = 24U,   /**< Shift for the top byte of a 32-bit LE field. */
+} t_vint_t;
+
+/**
+ * @enum t_fixture_t
+ * @brief Scratch capacities the archive fixtures allocate.
+ */
+typedef enum : uint16_t {
+  k_t_hdr_body_cap = 256U,  /**< RAR5 header-body scratch, bytes.      */
+  k_t_name_arena   = 1024U, /**< Entry-name arena, bytes.              */
+  k_t_extract_buf  = 64U,   /**< Extraction destination buffer, bytes. */
+} t_fixture_t;
 
 /* ---- CBR facade: compressed-page parity + RAR4 unsupported --------------- */
 
@@ -88,10 +99,10 @@ static size_t av_vint(uint8_t* out, uint64_t v)
 {
   size_t i = 0U;
   for (;;) {
-    uint8_t b = (uint8_t)(v & k_rar5_archive_v_7f);
-    v >>= k_rar5_archive_val_7;
+    uint8_t b = (uint8_t)(v & k_t_vint_payload_mask);
+    v >>= k_t_vint_shift;
     if (v != 0U) {
-      out[i] = (uint8_t)(b | k_rar5_archive_b_80);
+      out[i] = (uint8_t)(b | k_t_vint_more_flag);
       i++;
     } else {
       out[i] = b;
@@ -110,7 +121,7 @@ static size_t av5_file(uint8_t*       out,
                        uint64_t       unp,
                        uint32_t       method)
 {
-  uint8_t        body[k_rar5_archive_val_256] = {};
+  uint8_t        body[k_t_hdr_body_cap] = {};
   size_t         b                            = 0U;
   const bool     has_data                     = (dlen > 0U);
   const uint64_t hflags                       = has_data ? 0x02U : 0x00U;
@@ -165,7 +176,7 @@ static size_t av5_simple(uint8_t* out, uint64_t htype)
 static uint8_t          s_farc[k_arc_cap];
 static size_t           s_farc_len;
 static ra8_comic_page_t s_fpages[16];
-static char             s_fnames[k_rar5_archive_val_1024];
+static char             s_fnames[k_t_name_arena];
 
 /** @brief Read callback over ::s_farc. */
 static size_t farc_read(void* ctx, uint64_t off, void* dst, size_t len)
@@ -205,7 +216,7 @@ static void test_cbr_compressed_parity(void)
   p += sizeof(k_sig);
   p += av5_simple(&s_farc[p], 1U);
   p += av5_file(&s_farc[p], "page.png", s_packed, pklen, (uint64_t)plen, 1U); /* compressed */
-  p += av5_simple(&s_farc[p], k_rar5_archive_av5_simple_5);
+  p += av5_simple(&s_farc[p], k_t_r5_type_end);
   s_farc_len = p;
 
   ra8_comic_t c = {};
@@ -253,7 +264,7 @@ static void a4_le32(uint8_t* p, uint32_t v)
   p[0] = (uint8_t)v;
   p[1] = (uint8_t)(v >> 8);
   p[2] = (uint8_t)(v >> 16);
-  p[3] = (uint8_t)(v >> k_rar5_archive_v_24);
+  p[3] = (uint8_t)(v >> k_t_le32_hi_shift);
 }
 
 /** @brief Encode a RAR4 file block with an arbitrary METHOD byte. */
@@ -263,18 +274,18 @@ a4_file(uint8_t* out, const char* name, const uint8_t* data, size_t dlen, uint8_
   const size_t nlen = strlen(name);
   const size_t head = 32U + nlen;
   a4_le16(&out[0], 0U);
-  out[2] = k_rar5_archive_out_74;                /* type: file  */
-  a4_le16(&out[3], k_rar5_archive_a4_le16_8000); /* flags: LONG */
-  a4_le16(&out[k_rar5_archive_a4_le16_5], (uint16_t)head);
-  a4_le32(&out[k_rar5_archive_a4_le32_7], (uint32_t)dlen);
-  a4_le32(&out[k_rar5_archive_a4_le32_11], (uint32_t)dlen);
-  out[k_rar5_archive_val_15] = 0U;
+  out[2] = k_t_r4_type_file;                /* type: file  */
+  a4_le16(&out[3], k_t_r4_flag_long); /* flags: LONG */
+  a4_le16(&out[k_t_r4_off_head_size], (uint16_t)head);
+  a4_le32(&out[k_t_r4_off_pack_size], (uint32_t)dlen);
+  a4_le32(&out[k_t_r4_off_unp_size], (uint32_t)dlen);
+  out[k_t_r4_off_host_os] = 0U;
   a4_le32(&out[16], 0U);
-  a4_le32(&out[k_rar5_archive_a4_le32_20], 0U);
-  out[k_rar5_archive_v_24]   = k_rar5_archive_out_20;
-  out[k_rar5_archive_val_25] = method; /* 0x30 = store; anything else = compressed */
-  a4_le16(&out[k_rar5_archive_a4_le16_26], (uint16_t)nlen);
-  a4_le32(&out[k_rar5_archive_a4_le32_28], 0U);
+  a4_le32(&out[k_t_r4_off_ftime], 0U);
+  out[k_t_r4_off_unp_ver] = k_t_r4_unp_ver_20;
+  out[k_t_r4_off_method] = method; /* 0x30 = store; anything else = compressed */
+  a4_le16(&out[k_t_r4_off_name_size], (uint16_t)nlen);
+  a4_le32(&out[k_t_r4_off_attr], 0U);
   memcpy(&out[32], name, nlen);
   memcpy(&out[head], data, dlen);
   return head + dlen;
@@ -284,11 +295,11 @@ a4_file(uint8_t* out, const char* name, const uint8_t* data, size_t dlen, uint8_
 static size_t a4_main(uint8_t* out)
 {
   a4_le16(&out[0], 0U);
-  out[2] = k_rar5_archive_out_73;
+  out[2] = k_t_r4_type_main;
   a4_le16(&out[3], 0U);
-  a4_le16(&out[k_rar5_archive_a4_le16_5], k_rar5_archive_a4_le16_13);
+  a4_le16(&out[k_t_r4_off_head_size], k_t_r4_main_hdr_len);
   memset(&out[k_av_off_high_pos_av], 0, k_av_len_high_pos_av);
-  return k_rar5_archive_a4_le16_13;
+  return k_t_r4_main_hdr_len;
 }
 
 /**
@@ -314,7 +325,7 @@ static void test_cbr_rar4_compressed_unsupported(void)
                "page.png",
                k_data,
                sizeof(k_data),
-               k_rar5_archive_a4_file_33); /* method 0x33 = compressed */
+               k_t_r4_method_comp); /* method 0x33 = compressed */
   s_farc_len = p;
 
   ra8_comic_t c = {};
@@ -334,7 +345,7 @@ static void test_cbr_rar4_compressed_unsupported(void)
   uint8_t  ex  = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_page_info(&c, 0U, nullptr, 0U, &nl, &raw, &ex));
   TEST_ASSERT_EQ(0U, ex); /* RAR4-compressed: not extractable */
-  static uint8_t s_obuf[k_rar5_archive_val_64];
+  static uint8_t s_obuf[k_t_extract_buf];
   size_t         got = 0U;
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
                  ra8_comic_page_read(&c, 0U, s_obuf, sizeof(s_obuf), &got));
@@ -387,7 +398,7 @@ static void test_rar_extract_dispatch(void)
                         .size      = (uint64_t)sizeof(k_bytes),
                         .first_off = 0U,
                         .version   = k_ra8_rar_ver_5};
-  static uint8_t s_obuf[k_rar5_archive_val_64];
+  static uint8_t s_obuf[k_t_extract_buf];
   size_t         got = 0U;
 
   /* STORE member -> copy (control: is_file true, is_dir false). */

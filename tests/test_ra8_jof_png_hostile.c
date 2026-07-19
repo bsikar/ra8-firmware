@@ -37,58 +37,73 @@ typedef enum : uint16_t {
 } png_hostile_trailing_t;
 
 /**
- * @enum jof_png_hostile_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_png_layout_t
+ * @brief PNG serialisation offsets and field widths the crafters poke.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * `begin_png()` takes an IHDR byte index in its `extra_field` argument, so the
+ * `k_t_ihdr_off_*` names double as "which IHDR field is being corrupted".
+ * Offsets ending `_b<N>` are the `N`-th byte of a big-endian 32-bit field.
  */
 typedef enum : uint8_t {
-  k_jof_png_hostile_begin_png_10  = 10U,
-  k_jof_png_hostile_begin_png_11  = 11U,
-  k_jof_png_hostile_begin_png_15  = 15U,
-  k_jof_png_hostile_begin_png_255 = 255U,
-  k_jof_png_hostile_len_24        = 24U,
-  k_jof_png_hostile_make_zlib_9   = 9U,
-  k_jof_png_hostile_out_78        = 0x78U,
-  k_jof_png_hostile_put_chunk_13  = 13U,
-  k_jof_png_hostile_s_src_len_5   = 5U,
-  k_jof_png_hostile_s_src_len_7   = 7U,
-  k_jof_png_hostile_val_12        = 12,
-  k_jof_png_hostile_val_13        = 13,
-  k_jof_png_hostile_val_5         = 5,
-  k_jof_png_hostile_val_64        = 64U,
-  k_jof_png_hostile_val_64_2      = 64,
-  k_jof_png_hostile_val_7         = 7,
-  k_jof_png_hostile_val_9         = 9,
-  k_jof_png_hostile_val_ff        = 0xFFU,
-  k_jof_png_hostile_z_aa          = 0xAAU,
-  k_jof_png_hostile_z_bb          = 0xBBU,
-  k_jof_png_hostile_z_cc          = 0xCCU,
-} jof_png_hostile_uint8_const_t;
+  k_t_be32_hi_shift        = 24U,   /**< Shift selecting the top byte of a big-endian 32-bit field. */
+  k_t_byte_mask            = 0xFFU, /**< Low-byte mask used while serialising a big-endian field.   */
+  k_t_png_ihdr_len         = 13U,   /**< IHDR payload length, fixed by the PNG spec.                */
+  k_t_ihdr_short_len       = 12U,   /**< One byte short of a legal IHDR; must be refused.           */
+  k_t_ihdr_off_h_b1        = 5U,    /**< Height byte 1 within the IHDR payload.                     */
+  k_t_ihdr_off_h_b3        = 7U,    /**< Height byte 3 within the IHDR payload.                     */
+  k_t_ihdr_off_ct          = 9U,    /**< Colour-type byte within the IHDR payload.                  */
+  k_t_ihdr_off_compression = 10U,   /**< Compression-method byte; only 0 is legal.                  */
+  k_t_ihdr_off_filter      = 11U,   /**< Filter-method byte; only 0 is legal.                       */
+  k_t_zlib_cmf             = 0x78U, /**< zlib CMF: deflate with a 32 KiB window.                    */
+  k_t_filter_invalid       = 9U,    /**< Row filter outside the legal 0..4 range.                   */
+} t_png_layout_t;
 
 /**
- * @enum jof_png_hostile_uint16_const_t
- * @brief Named uint16_t constants used by this file.
+ * @enum t_trunc_t
+ * @brief Tail bytes removed to truncate a stream mid-payload.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Each value is chosen so the cut lands inside a specific chunk's payload
+ * rather than on a chunk boundary, which is what exercises the partial-read
+ * path instead of the clean end-of-stream path.
+ */
+typedef enum : uint8_t {
+  k_t_trunc_plte_bytes = 7U, /**< Cut that lands mid-PLTE payload. */
+  k_t_trunc_trns_bytes = 5U, /**< Cut that lands mid-tRNS payload. */
+} t_trunc_t;
+
+/**
+ * @enum t_junk_t
+ * @brief Filler bytes appended after a well-formed stream.
+ *
+ * @details
+ * Arbitrary by design -- their only requirement is that no two are equal, so a
+ * decoder that runs past the stream end reveals which byte it consumed.
+ */
+typedef enum : uint8_t {
+  k_t_trailer_junk_b0 = 0xAAU, /**< First byte past the zlib stream.  */
+  k_t_trailer_junk_b1 = 0xBBU, /**< Second byte past the zlib stream. */
+  k_t_trailer_junk_b2 = 0xCCU, /**< Third byte past the zlib stream.  */
+} t_junk_t;
+
+/**
+ * @enum t_corpus_t
+ * @brief Geometry and buffer sizing for the crafted corpora.
  */
 typedef enum : uint16_t {
-  k_jof_png_hostile_u_1024    = 1024U,
-  k_jof_png_hostile_u_301     = 301U,
-  k_jof_png_hostile_val_300   = 300,
-  k_jof_png_hostile_val_300_2 = 300U,
-  k_jof_png_hostile_val_4096  = 4096U,
-  k_jof_png_hostile_val_4200  = 4200,
-  k_jof_png_hostile_val_512   = 512,
-  k_jof_png_hostile_val_512_2 = 512U,
-  k_jof_png_hostile_val_771   = 771,
-} jof_png_hostile_uint16_const_t;
+  k_t_kib                = 1024U, /**< Bytes per KiB.                                          */
+  k_t_arena_kib          = 512U,  /**< Direct-seam bump-arena size, in KiB.                     */
+  k_t_raw_cap            = 4096U, /**< Unfiltered-scanline scratch capacity, bytes.             */
+  k_t_zbuf_cap           = 4200U, /**< Stored-deflate output capacity: just over one 4 KiB window. */
+  k_t_zbig_kib           = 64U,   /**< Oversized zlib staging buffer, in KiB.                   */
+  k_t_frame_dim          = 300U,  /**< Edge of the square frame used for the large-image arms.  */
+  k_t_frame_stride       = 301U,  /**< Its row stride: k_t_frame_dim pixels + 1 filter byte.    */
+  k_t_window_frame_w     = 15U,   /**< Width of the frame whose zlib output is exactly one window. */
+  k_t_window_frame_h     = 255U,  /**< Its height; 15x255 gray encodes to exactly 4096 bytes.   */
+  k_t_plte_oversize_len  = 771U,  /**< PLTE payload one entry past the 256-entry maximum.       */
+  k_t_trns_oversize_len  = 300U,  /**< tRNS payload past the 256-entry maximum.                 */
+} t_corpus_t;
 
 /** @brief Corpus geometry + buffer sizing. */
 enum : uint32_t {
@@ -111,7 +126,7 @@ static uint8_t s_work[k_t_work_cap];
 /** @brief Memstore backing. */
 static uint8_t s_store_buf[k_t_store_cap];
 /** @brief Raw (filtered) scanline staging. */
-static uint8_t s_raw[k_jof_png_hostile_val_4096];
+static uint8_t s_raw[k_t_raw_cap];
 
 /**
  * @struct t_pull_t
@@ -154,10 +169,10 @@ static void put(const uint8_t* d, size_t n)
 static void put_chunk(const char* type, const uint8_t* data, uint32_t len)
 {
   uint8_t hdr[8];
-  hdr[0] = (uint8_t)(len >> k_jof_png_hostile_len_24);
-  hdr[1] = (uint8_t)((len >> 16U) & k_jof_png_hostile_val_ff);
-  hdr[2] = (uint8_t)((len >> 8U) & k_jof_png_hostile_val_ff);
-  hdr[3] = (uint8_t)(len & k_jof_png_hostile_val_ff);
+  hdr[0] = (uint8_t)(len >> k_t_be32_hi_shift);
+  hdr[1] = (uint8_t)((len >> 16U) & k_t_byte_mask);
+  hdr[2] = (uint8_t)((len >> 8U) & k_t_byte_mask);
+  hdr[3] = (uint8_t)(len & k_t_byte_mask);
   memcpy(&hdr[4], type, 4U);
   put(hdr, sizeof(hdr));
   if (len > 0U) {
@@ -173,17 +188,17 @@ static void begin_png(uint32_t w, uint32_t h, uint8_t color, uint8_t extra_field
   static const uint8_t sig[8] = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
   s_src_len                   = 0U;
   put(sig, sizeof(sig));
-  uint8_t ihdr[k_jof_png_hostile_val_13] = {};
-  ihdr[0]                                      = (uint8_t)(w >> k_jof_png_hostile_len_24);
-  ihdr[1]                             = (uint8_t)((w >> 16U) & k_jof_png_hostile_val_ff);
-  ihdr[2]                             = (uint8_t)((w >> 8U) & k_jof_png_hostile_val_ff);
-  ihdr[3]                             = (uint8_t)(w & k_jof_png_hostile_val_ff);
-  ihdr[4]                             = (uint8_t)(h >> k_jof_png_hostile_len_24);
-  ihdr[k_jof_png_hostile_val_5] = (uint8_t)((h >> 16U) & k_jof_png_hostile_val_ff);
-  ihdr[6]                             = (uint8_t)((h >> 8U) & k_jof_png_hostile_val_ff);
-  ihdr[k_jof_png_hostile_val_7] = (uint8_t)(h & k_jof_png_hostile_val_ff);
+  uint8_t ihdr[k_t_png_ihdr_len] = {};
+  ihdr[0]                                      = (uint8_t)(w >> k_t_be32_hi_shift);
+  ihdr[1]                             = (uint8_t)((w >> 16U) & k_t_byte_mask);
+  ihdr[2]                             = (uint8_t)((w >> 8U) & k_t_byte_mask);
+  ihdr[3]                             = (uint8_t)(w & k_t_byte_mask);
+  ihdr[4]                             = (uint8_t)(h >> k_t_be32_hi_shift);
+  ihdr[k_t_ihdr_off_h_b1] = (uint8_t)((h >> 16U) & k_t_byte_mask);
+  ihdr[6]                             = (uint8_t)((h >> 8U) & k_t_byte_mask);
+  ihdr[k_t_ihdr_off_h_b3] = (uint8_t)(h & k_t_byte_mask);
   ihdr[8]                             = 8U;
-  ihdr[k_jof_png_hostile_val_9] = color;
+  ihdr[k_t_ihdr_off_ct] = color;
   if (extra_field != 0U) {
     ihdr[extra_field] = extra_val; /* corrupt one method/interlace byte */
   }
@@ -286,8 +301,8 @@ static void test_png_hostile_pixel_layer(void)
   TEST_BEGIN("png hostile: filters / palette / row-count lies");
   /* Unknown filter byte (9). */
   begin_png(k_t_w, k_t_h, 0U, 0U, 0U);
-  uint8_t  z[k_jof_png_hostile_val_512];
-  uint32_t zlen = make_zlib(k_t_w, k_t_h, k_jof_png_hostile_make_zlib_9, z);
+  uint8_t  z[k_t_zout_cap];
+  uint32_t zlen = make_zlib(k_t_w, k_t_h, k_t_filter_invalid, z);
   put_chunk("IDAT", z, zlen);
   put_chunk("IEND", nullptr, 0U);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, craft_produce(0U));
@@ -318,9 +333,9 @@ static void test_png_hostile_pixel_layer(void)
   /* Trailing garbage inside the IDAT after the zlib stream. */
   begin_png(k_t_w, k_t_h, 0U, 0U, 0U);
   zlen         = make_zlib(k_t_w, k_t_h, 0U, z);
-  z[zlen]      = k_jof_png_hostile_z_aa;
-  z[zlen + 1U] = k_jof_png_hostile_z_bb;
-  z[zlen + 2U] = k_jof_png_hostile_z_cc;
+  z[zlen]      = k_t_trailer_junk_b0;
+  z[zlen + 1U] = k_t_trailer_junk_b1;
+  z[zlen + 2U] = k_t_trailer_junk_b2;
   put_chunk("IDAT", z, zlen + 3U);
   put_chunk("IEND", nullptr, 0U);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, craft_produce(0U));
@@ -341,20 +356,20 @@ static void test_png_hostile_pixel_layer(void)
 static void test_png_hostile_chunk_layer(void)
 {
   TEST_BEGIN("png hostile: chunk-layer structure arms");
-  uint8_t z[k_jof_png_hostile_val_512];
+  uint8_t z[k_t_zout_cap];
 
   /* Non-zero compression method. */
-  begin_png(k_t_w, k_t_h, 0U, k_jof_png_hostile_begin_png_10, 1U);
+  begin_png(k_t_w, k_t_h, 0U, k_t_ihdr_off_compression, 1U);
   TEST_ASSERT_EQ(k_ra8_err_not_supported, craft_produce(0U));
   /* Non-zero filter method. */
-  begin_png(k_t_w, k_t_h, 0U, k_jof_png_hostile_begin_png_11, 1U);
+  begin_png(k_t_w, k_t_h, 0U, k_t_ihdr_off_filter, 1U);
   TEST_ASSERT_EQ(k_ra8_err_not_supported, craft_produce(0U));
 
   /* First chunk is not an IHDR. */
   static const uint8_t sig[8] = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
   s_src_len                   = 0U;
   put(sig, sizeof(sig));
-  put_chunk("JUNK", z, k_jof_png_hostile_put_chunk_13);
+  put_chunk("JUNK", z, k_t_png_ihdr_len);
   TEST_ASSERT_EQ(k_ra8_err_protocol_error, craft_produce(0U));
 
   /* Oversize chunk length field (> 2^31 - 1). */
@@ -367,7 +382,7 @@ static void test_png_hostile_chunk_layer(void)
   begin_png(k_t_w, k_t_h, 3U, 0U, 0U);
   const uint8_t plte[6] = {1U, 2U, 3U, 4U, 5U, 6U};
   put_chunk("PLTE", plte, sizeof(plte));
-  static uint8_t s_big_trns[k_jof_png_hostile_val_300];
+  static uint8_t s_big_trns[k_t_trns_oversize_len];
   put_chunk("tRNS", s_big_trns, sizeof(s_big_trns));
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, craft_produce(0U));
 
@@ -392,7 +407,7 @@ static void test_png_hostile_chunk_layer(void)
 static void test_png_hostile_idat_tail(void)
 {
   TEST_BEGIN("png hostile: IDAT tail arms");
-  uint8_t  z[k_jof_png_hostile_val_512];
+  uint8_t  z[k_t_zout_cap];
   uint32_t zlen = 0U;
 
   /* Ancillary chunk between the last IDAT and IEND (skipped cleanly). */
@@ -435,7 +450,7 @@ static void test_png_hostile_idat_tail(void)
 static void test_png_hostile_truncation(void)
 {
   TEST_BEGIN("png hostile: truncation / transport failures per phase");
-  uint8_t  z[k_jof_png_hostile_val_512];
+  uint8_t  z[k_t_zout_cap];
   uint32_t zlen = make_zlib(k_t_w, k_t_h, 0U, z);
 
   /* Full valid stream as the base for offset-based failure injection. */
@@ -474,7 +489,7 @@ static void test_png_hostile_truncation(void)
   begin_png(k_t_w, k_t_h, 3U, 0U, 0U);
   const uint8_t plte[6] = {1U, 2U, 3U, 4U, 5U, 6U};
   put_chunk("PLTE", plte, sizeof(plte));
-  s_src_len -= k_jof_png_hostile_s_src_len_7;
+  s_src_len -= k_t_trunc_plte_bytes;
   TEST_ASSERT_EQ(k_ra8_err_protocol_error, craft_produce(0U));
 
   /* Truncated mid-tRNS payload. */
@@ -482,7 +497,7 @@ static void test_png_hostile_truncation(void)
   put_chunk("PLTE", plte, sizeof(plte));
   const uint8_t trns[2] = {9U, 9U};
   put_chunk("tRNS", trns, sizeof(trns));
-  s_src_len -= k_jof_png_hostile_s_src_len_5;
+  s_src_len -= k_t_trunc_trns_bytes;
   TEST_ASSERT_EQ(k_ra8_err_protocol_error, craft_produce(0U));
   TEST_END("png hostile: truncation / transport failures per phase");
 }
@@ -499,7 +514,7 @@ static void test_png_hostile_truncation(void)
 static void test_png_hostile_budgets(void)
 {
   TEST_BEGIN("png hostile: chunk-budget floods");
-  uint8_t       z[k_jof_png_hostile_val_512];
+  uint8_t       z[k_t_zout_cap];
   const uint8_t text[1] = {'x'};
 
   /* Flood of ancillary chunks before any IDAT. */
@@ -542,20 +557,20 @@ static void test_png_hostile_geometry(void)
   TEST_BEGIN("png hostile: grid cap + pixel-path arena exhaustion");
 
   /* 300x300 at 1x1 tiles = 90000 tiles > the 65536 format cap. */
-  static uint8_t s_frame[(k_jof_png_hostile_val_300_2 * k_jof_png_hostile_u_301)];
+  static uint8_t s_frame[(k_t_frame_dim * k_t_frame_stride)];
   size_t         fo = 0U;
-  for (uint32_t y = 0U; y < k_jof_png_hostile_val_300_2; y++) {
+  for (uint32_t y = 0U; y < k_t_frame_dim; y++) {
     s_frame[fo] = 0U;
     fo++;
-    for (uint32_t x = 0U; x < k_jof_png_hostile_val_300_2; x++) {
+    for (uint32_t x = 0U; x < k_t_frame_dim; x++) {
       s_frame[fo] = (uint8_t)(x ^ y);
       fo++;
     }
   }
-  static uint8_t s_zbig[k_jof_png_hostile_val_64 * k_jof_png_hostile_u_1024];
+  static uint8_t s_zbig[k_t_zbig_kib * k_t_kib];
   mz_ulong       zl = (mz_ulong)sizeof(s_zbig);
   TEST_ASSERT_EQ(MZ_OK, mz_compress(s_zbig, &zl, s_frame, (mz_ulong)fo));
-  begin_png(k_jof_png_hostile_val_300_2, k_jof_png_hostile_val_300_2, 0U, 0U, 0U);
+  begin_png(k_t_frame_dim, k_t_frame_dim, 0U, 0U, 0U);
   put_chunk("IDAT", s_zbig, (uint32_t)zl);
   put_chunk("IEND", nullptr, 0U);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
@@ -563,7 +578,7 @@ static void test_png_hostile_geometry(void)
 
   /* Arena large enough for the deflate scratch but not the PNG carve set
    * (the pixel-path bind fails, not the codec scratch). */
-  uint8_t        zz[k_jof_png_hostile_val_512];
+  uint8_t        zz[k_t_zout_cap];
   const uint32_t zzl = make_zlib(k_t_w, k_t_h, 0U, zz);
   begin_png(k_t_w, k_t_h, 0U, 0U, 0U);
   put_chunk("IDAT", zz, zzl);
@@ -602,7 +617,7 @@ static void test_png_hostile_ihdr_arms(void)
   static const uint8_t sig[8] = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
   s_src_len                   = 0U;
   put(sig, sizeof(sig));
-  uint8_t short_ihdr[k_jof_png_hostile_val_12] = {};
+  uint8_t short_ihdr[k_t_ihdr_short_len] = {};
   put_chunk("IHDR", short_ihdr, sizeof(short_ihdr));
   TEST_ASSERT_EQ(k_ra8_err_protocol_error, craft_produce(0U));
   TEST_END("png hostile: IHDR height-zero + short-payload arms");
@@ -638,7 +653,7 @@ static void test_png_hostile_palette_arms(void)
 
   /* PLTE longer than 256 entries (771 stays a multiple of 3). */
   begin_png(k_t_w, k_t_h, 3U, 0U, 0U);
-  static uint8_t s_big_plte[k_jof_png_hostile_val_771];
+  static uint8_t s_big_plte[k_t_plte_oversize_len];
   put_chunk("PLTE", s_big_plte, sizeof(s_big_plte));
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, craft_produce(0U));
 
@@ -713,12 +728,12 @@ static size_t deflate_stored_header(uint8_t* out, uint16_t len, bool final)
   size_t o = 0U;
   out[o]   = final ? 1U : 0U; /* BFINAL + BTYPE 00 (stored) */
   o++;
-  out[o] = (uint8_t)(len & k_jof_png_hostile_val_ff);
+  out[o] = (uint8_t)(len & k_t_byte_mask);
   o++;
   out[o] = (uint8_t)(len >> 8U);
   o++;
   const uint16_t nlen = (uint16_t)~len;
-  out[o]              = (uint8_t)(nlen & k_jof_png_hostile_val_ff);
+  out[o]              = (uint8_t)(nlen & k_t_byte_mask);
   o++;
   out[o] = (uint8_t)(nlen >> 8U);
   o++;
@@ -744,13 +759,13 @@ static size_t zlib_adler_trailer(uint8_t* out, size_t raw)
 {
   const mz_ulong adler = mz_adler32(mz_adler32(0U, nullptr, 0U), s_raw, (mz_ulong)raw);
   size_t         o     = 0U;
-  out[o] = (uint8_t)((adler >> k_jof_png_hostile_len_24) & k_jof_png_hostile_val_ff);
+  out[o] = (uint8_t)((adler >> k_t_be32_hi_shift) & k_t_byte_mask);
   o++;
-  out[o] = (uint8_t)((adler >> 16U) & k_jof_png_hostile_val_ff);
+  out[o] = (uint8_t)((adler >> 16U) & k_t_byte_mask);
   o++;
-  out[o] = (uint8_t)((adler >> 8U) & k_jof_png_hostile_val_ff);
+  out[o] = (uint8_t)((adler >> 8U) & k_t_byte_mask);
   o++;
-  out[o] = (uint8_t)(adler & k_jof_png_hostile_val_ff);
+  out[o] = (uint8_t)(adler & k_t_byte_mask);
   o++;
   return o;
 }
@@ -760,7 +775,7 @@ static uint32_t make_zlib_stored(uint32_t w, uint32_t h, uint8_t* out)
   const size_t raw = png_raw_scanlines(w, h);
 
   size_t o = 0U;
-  out[o]   = k_jof_png_hostile_out_78; /* zlib CMF */
+  out[o]   = k_t_zlib_cmf; /* zlib CMF */
   o++;
   out[o] = 0x01U; /* zlib FLG (checksum-valid, no dict) */
   o++;
@@ -817,7 +832,7 @@ static void test_png_hostile_residue(void)
   o++;
   s_raw[o] = 2U;
   o++;
-  uint8_t  z[k_jof_png_hostile_val_512];
+  uint8_t  z[k_t_zout_cap];
   mz_ulong zlen = (mz_ulong)k_t_zout_cap;
   TEST_ASSERT_EQ(MZ_OK, mz_compress(z, &zlen, s_raw, (mz_ulong)o));
   put_chunk("IDAT", z, (uint32_t)zlen);
@@ -827,16 +842,12 @@ static void test_png_hostile_residue(void)
   /* A 15x255 gray frame built from stored deflate blocks is exactly 4096
    * zlib bytes -- one full input window. Garbage after it in the same IDAT
    * is never windowed, so termination sees it via idat_rem alone. */
-  static uint8_t s_zbuf[k_jof_png_hostile_val_4200 + k_jof_png_hostile_val_64_2];
+  static uint8_t s_zbuf[k_t_zbuf_cap + k_png_hostile_trailing_len];
   const uint32_t zl = make_zlib_stored(15U, 255U, s_zbuf);
   TEST_ASSERT_EQ(4096U, zl);
   memset(&s_zbuf[zl], k_png_hostile_fill_trailing, (size_t)k_png_hostile_trailing_len);
-  begin_png(k_jof_png_hostile_begin_png_15,
-            k_jof_png_hostile_begin_png_255,
-            0U,
-            0U,
-            0U);
-  put_chunk("IDAT", s_zbuf, zl + k_jof_png_hostile_val_64);
+  begin_png(k_t_window_frame_w, k_t_window_frame_h, 0U, 0U, 0U);
+  put_chunk("IDAT", s_zbuf, zl + k_png_hostile_trailing_len);
   put_chunk("IEND", nullptr, 0U);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, craft_produce(0U));
   TEST_END("png hostile: partial-row + past-window IDAT residue");
@@ -881,7 +892,7 @@ static ra8_err_t t_rows_ok(void*          ctx,
 static void test_png_hostile_direct_seam(void)
 {
   TEST_BEGIN("png hostile: direct seam (signature + null guards)");
-  static uint8_t  s_arena[k_jof_png_hostile_val_512_2 * k_jof_png_hostile_u_1024];
+  static uint8_t  s_arena[k_t_arena_kib * k_t_kib];
   ra8_jof_bump_t   bump = {.base = s_arena, .cap = sizeof(s_arena), .off = 0U};
   static t_pull_t s_pull;
 

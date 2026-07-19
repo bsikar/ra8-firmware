@@ -22,65 +22,66 @@
 #include "unity_minimal.h"
 
 /**
- * @enum usb_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_usb_payload_t
+ * @brief FIFO payload bytes used by the odd-length and tail-read arms.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The values are arbitrary but pairwise distinct: the point of these arms is
+ * that a byte lands at the right index, so any transposition or off-by-one in
+ * the FIFO drain shows up as a wrong byte rather than a right one.
  */
 typedef enum : uint8_t {
-  k_usb_sentinel_55  = 0x55U,
-  k_usb_usbleng_000a = 0x000AU,
-  k_usb_usbleng_0040 = 0x0040U,
-  k_usb_val_11       = 0x11U,
-  k_usb_val_22       = 0x22U,
-  k_usb_val_30       = 0x30U,
-  k_usb_val_33       = 0x33U,
-  k_usb_val_40       = 0x40U,
-  k_usb_val_66       = 0x66U,
-  k_usb_val_77       = 0x77U,
-  k_usb_val_88       = 0x88U,
-  k_usb_val_99       = 0x99U,
-} usb_uint8_const_t;
+  k_t_fs_odd_b0    = 0x11U, /**< Byte 0 of the 3-byte full-speed payload.   */
+  k_t_fs_odd_b1    = 0x22U, /**< Byte 1.                                    */
+  k_t_fs_odd_b2    = 0x33U, /**< Byte 2 -- the odd byte that forces an 8-bit
+                                 FIFO access after the 16-bit ones.         */
+  k_t_hs_head_b2   = 0x30U, /**< Byte 2 of the aligned high-speed head.     */
+  k_t_hs_head_b3   = 0x40U, /**< Byte 3.                                    */
+  k_t_hs_tail2_b0  = 0x55U, /**< Byte 0 of the 2-byte residual tail.        */
+  k_t_hs_tail2_b1  = 0x66U, /**< Byte 1.                                    */
+  k_t_hs_tail3_b0  = 0x77U, /**< Byte 0 of the 3-byte residual tail.        */
+  k_t_hs_tail3_b1  = 0x88U, /**< Byte 1.                                    */
+  k_t_hs_tail3_b2  = 0x99U, /**< Byte 2.                                    */
+} t_usb_payload_t;
 
 /**
- * @enum usb_uint16_const_t
- * @brief Named uint16_t constants used by this file.
+ * @enum t_usb_setup_t
+ * @brief Setup-stage register values staged into the USB peripheral.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * These mirror the USBREQ / USBVAL / USBINDX / USBLENG quartet the hardware
+ * latches for a control transfer, so the driver's setup decode is exercised
+ * against a realistic request rather than a zeroed one.
  */
 typedef enum : uint16_t {
-  k_usb_cfifo_bbaa   = 0xBBAAU,
-  k_usb_cfifo_ddcc   = 0xDDCCU,
-  k_usb_intsts0_abcd = 0xABCDU,
-  k_usb_intsts0_babe = 0xBABEU,
-  k_usb_intsts0_cafe = 0xCAFEU,
-  k_usb_usbindx_5678 = 0x5678U,
-  k_usb_usbreq_2106  = 0x2106U,
-  k_usb_usbreq_8006  = 0x8006U,
-  k_usb_usbval_0100  = 0x0100U,
-  k_usb_usbval_1234  = 0x1234U,
-  k_usb_val_00006655 = 0x00006655U,
-} usb_uint16_const_t;
+  k_t_req_class        = 0x2106U, /**< USBREQ: bRequest 0x21, bmRequestType 0x06 -- a class request. */
+  k_t_req_get_desc     = 0x8006U, /**< USBREQ: the standard GET_DESCRIPTOR request. */
+  k_t_val_arbitrary    = 0x1234U, /**< USBVAL for the class request; opaque to the driver. */
+  k_t_val_device_desc  = 0x0100U, /**< USBVAL 0x0100: descriptor type 1, index 0.   */
+  k_t_indx_arbitrary   = 0x5678U, /**< USBINDX for the class request; opaque.       */
+  k_t_leng_short       = 0x000AU, /**< USBLENG: a 10-byte control data stage.       */
+  k_t_leng_max_packet  = 0x0040U, /**< USBLENG: a 64-byte control data stage.       */
+  k_t_intsts_fs_a      = 0xABCDU, /**< INTSTS0 pattern proving the FS read path returns the register. */
+  k_t_intsts_fs_b      = 0xCAFEU, /**< A second, distinct FS pattern.               */
+  k_t_intsts_hs        = 0xBABEU, /**< The high-speed counterpart.                  */
+  k_t_cfifo_word_a     = 0xBBAAU, /**< CFIFO half-word staged for the first drain.  */
+  k_t_cfifo_word_b     = 0xDDCCU, /**< CFIFO half-word staged for the second drain. */
+} t_usb_setup_t;
 
 /**
- * @enum usb_uint32_const_t
- * @brief Named uint32_t constants used by this file.
+ * @enum t_usb_fifo_word_t
+ * @brief 32-bit FIFO words backing the high-speed residual-tail arms.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Each word is the little-endian image of the tail bytes the arm expects, so
+ * the assertion checks the driver's byte extraction against the exact word the
+ * hardware would have presented.
  */
 typedef enum : uint32_t {
-  k_usb_val_00887766 = 0x00887766U,
-  k_usb_val_44332211 = 0x44332211U,
-} usb_uint32_const_t;
+  k_t_fifo_word_tail4 = 0x44332211U, /**< Feeds the 4-byte tail read. */
+  k_t_fifo_word_tail2 = 0x00006655U, /**< Feeds the 2-byte tail read. */
+  k_t_fifo_word_tail3 = 0x00887766U, /**< Feeds the 3-byte tail read. */
+} t_usb_fifo_word_t;
 
 typedef enum : uint16_t {
   k_test_usb_dcp_max_packet = 64U, /**< Test USB dcp maximum packet. */
@@ -269,7 +270,7 @@ static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("usb status read + clear");
   prep_cb();
-  ra8_usb_fs()->INTSTS0 = (uint16_t)k_usb_intsts0_abcd;
+  ra8_usb_fs()->INTSTS0 = (uint16_t)k_t_intsts_fs_a;
   uint16_t mask         = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_get_status(k_ra8_usb_speed_fs, &mask));
   TEST_ASSERT_EQ(0xABCDU, mask);
@@ -292,7 +293,7 @@ static void test_attach_and_dispatch(void)
   prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_usb_attach_handler(k_ra8_usb_speed_fs, stub_usb_cb, (void*)(uintptr_t)0xAAU));
-  ra8_usb_fs()->INTSTS0 = (uint16_t)k_usb_intsts0_cafe;
+  ra8_usb_fs()->INTSTS0 = (uint16_t)k_t_intsts_fs_b;
   ra8_usb_dispatch(k_ra8_usb_speed_fs);
   TEST_ASSERT_EQ(1, s_usb_cb_count);
   TEST_ASSERT_EQ(0xCAFEU, s_usb_cb_last_mask);
@@ -552,10 +553,10 @@ static void test_read_setup(void)
 
   volatile r_usb_regs_t* reg = ra8_usb_fs();
   reg->INTSTS0               = (uint16_t)k_ra8_intsts0_mask_valid;
-  reg->USBREQ                = (uint16_t)k_usb_usbreq_2106; /* bRequest=0x21 bm=0x06 */
-  reg->USBVAL                = (uint16_t)k_usb_usbval_1234;
-  reg->USBINDX               = (uint16_t)k_usb_usbindx_5678;
-  reg->USBLENG               = (uint16_t)k_usb_usbleng_000a;
+  reg->USBREQ                = (uint16_t)k_t_req_class; /* bRequest=0x21 bm=0x06 */
+  reg->USBVAL                = (uint16_t)k_t_val_arbitrary;
+  reg->USBINDX               = (uint16_t)k_t_indx_arbitrary;
+  reg->USBLENG               = (uint16_t)k_t_leng_short;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_read_setup_if_valid(k_ra8_usb_speed_fs, &setup));
   TEST_ASSERT_EQ(0x06U, setup.bm_request_type);
@@ -586,10 +587,10 @@ static void test_read_setup_unconditional(void)
   /* Simulate the HS race: SETUP latch is populated but the SIE has
    * already auto-cleared INTSTS0.VALID before the polled worker runs. */
   reg->INTSTS0 = (uint16_t)(reg->INTSTS0 & (uint16_t)~k_ra8_intsts0_mask_valid);
-  reg->USBREQ  = (uint16_t)k_usb_usbreq_8006; /* bRequest=0x80 bm=0x06 (GET_DESCRIPTOR) */
-  reg->USBVAL  = (uint16_t)k_usb_usbval_0100;
+  reg->USBREQ  = (uint16_t)k_t_req_get_desc; /* bRequest=0x80 bm=0x06 (GET_DESCRIPTOR) */
+  reg->USBVAL  = (uint16_t)k_t_val_device_desc;
   reg->USBINDX = (uint16_t)0x0000U;
-  reg->USBLENG = (uint16_t)k_usb_usbleng_0040;
+  reg->USBLENG = (uint16_t)k_t_leng_max_packet;
 
   ra8_usb_setup_t setup = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_read_setup_unconditional(k_ra8_usb_speed_fs, &setup));
@@ -704,7 +705,7 @@ static void test_queue_in_fifo_tail_paths(void)
   prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
-  uint8_t                fs_odd[3] = {k_usb_val_11, k_usb_val_22, k_usb_val_33};
+  uint8_t                fs_odd[3] = {k_t_fs_odd_b0, k_t_fs_odd_b1, k_t_fs_odd_b2};
   volatile r_usb_regs_t* freg      = ra8_usb_fs();
   freg->CFIFOCTR                   = (uint16_t)k_ra8_fifoctr_frdy;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_in(k_ra8_usb_speed_fs, 1U, fs_odd, 3U));
@@ -722,19 +723,19 @@ static void test_queue_in_fifo_tail_paths(void)
   volatile r_usb_regs_t* hreg = ra8_usb_hs();
   const uint16_t         hsel = (uint16_t)(k_ra8_fifosel_mbw_32 | k_ra8_fifosel_isel | 1U);
 
-  uint8_t hs_head[4] = {0x10U, 0x20U, k_usb_val_30, k_usb_val_40};
+  uint8_t hs_head[4] = {0x10U, 0x20U, k_t_hs_head_b2, k_t_hs_head_b3};
   hreg->CFIFOCTR     = (uint16_t)k_ra8_fifoctr_frdy;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_in(k_ra8_usb_speed_hs, 1U, hs_head, 4U));
   TEST_ASSERT_EQ(0x40302010U, (*test_usb_cfifo32(hreg)));
   TEST_ASSERT_EQ(hsel, hreg->CFIFOSEL);
 
-  uint8_t hs_half_tail[2] = {k_usb_sentinel_55, k_usb_val_66};
+  uint8_t hs_half_tail[2] = {k_t_hs_tail2_b0, k_t_hs_tail2_b1};
   hreg->CFIFOCTR          = (uint16_t)k_ra8_fifoctr_frdy;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_in(k_ra8_usb_speed_hs, 1U, hs_half_tail, 2U));
   TEST_ASSERT_EQ(0x6655U, (*test_usb_cfifoh(hreg)));
   TEST_ASSERT_EQ(hsel, hreg->CFIFOSEL);
 
-  uint8_t hs_byte_tail[3] = {k_usb_val_77, k_usb_val_88, k_usb_val_99};
+  uint8_t hs_byte_tail[3] = {k_t_hs_tail3_b0, k_t_hs_tail3_b1, k_t_hs_tail3_b2};
   hreg->CFIFOCTR          = (uint16_t)k_ra8_fifoctr_frdy;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_in(k_ra8_usb_speed_hs, 1U, hs_byte_tail, 3U));
   TEST_ASSERT_EQ(0x99U, (*test_usb_cfifohh(hreg)));
@@ -761,7 +762,7 @@ static void queue_out_fs_tails(void)
   static const uint16_t  pipe_bit = (uint16_t)(1U << 1U);
   freg->BRDYSTS                   = pipe_bit;
   freg->CFIFOCTR                  = (uint16_t)(k_ra8_fifoctr_frdy | 1U);
-  freg->CFIFO                     = (uint16_t)k_usb_cfifo_bbaa;
+  freg->CFIFO                     = (uint16_t)k_t_cfifo_word_a;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_out(k_ra8_usb_speed_fs, 1U, out, &len, true));
   TEST_ASSERT_EQ(1U, len);
   TEST_ASSERT_EQ(0xAAU, out[0]);
@@ -771,7 +772,7 @@ static void queue_out_fs_tails(void)
   len            = 2U;
   freg->BRDYSTS  = pipe_bit;
   freg->CFIFOCTR = (uint16_t)(k_ra8_fifoctr_frdy | 2U);
-  freg->CFIFO    = (uint16_t)k_usb_cfifo_ddcc;
+  freg->CFIFO    = (uint16_t)k_t_cfifo_word_b;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_out(k_ra8_usb_speed_fs, 1U, out, &len, true));
   TEST_ASSERT_EQ(2U, len);
   TEST_ASSERT_EQ(0xCCU, out[0]);
@@ -828,13 +829,13 @@ static void queue_out_hs_tails(void)
   volatile r_usb_regs_t* hreg = ra8_usb_hs();
 
   static const uint8_t k_tail4[4] = {0x11U, 0x22U, 0x33U, 0x44U};
-  assert_hs_tail_read(hreg, pipe_bit, k_usb_val_44332211, 4U, k_tail4);
+  assert_hs_tail_read(hreg, pipe_bit, k_t_fifo_word_tail4, 4U, k_tail4);
 
   static const uint8_t k_tail2[2] = {0x55U, 0x66U};
-  assert_hs_tail_read(hreg, pipe_bit, k_usb_val_00006655, 2U, k_tail2);
+  assert_hs_tail_read(hreg, pipe_bit, k_t_fifo_word_tail2, 2U, k_tail2);
 
   static const uint8_t k_tail3[3] = {0x66U, 0x77U, 0x88U};
-  assert_hs_tail_read(hreg, pipe_bit, k_usb_val_00887766, 3U, k_tail3);
+  assert_hs_tail_read(hreg, pipe_bit, k_t_fifo_word_tail3, 3U, k_tail3);
 }
 
 static void test_queue_out_fifo_tail_paths(void)
@@ -864,7 +865,7 @@ static void test_hs_paths(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_clear_status(k_ra8_usb_speed_hs, (uint16_t)0x0002U));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_attach_handler(k_ra8_usb_speed_hs, stub_usb_cb, nullptr));
-  ra8_usb_hs()->INTSTS0 = (uint16_t)k_usb_intsts0_babe;
+  ra8_usb_hs()->INTSTS0 = (uint16_t)k_t_intsts_hs;
   ra8_usb_dispatch(k_ra8_usb_speed_hs);
   TEST_ASSERT_EQ(1, s_usb_cb_count);
 
