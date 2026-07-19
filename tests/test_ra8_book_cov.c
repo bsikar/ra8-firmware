@@ -343,7 +343,6 @@ static void test_ra8_book_open_null_guards(void)
  * @param[in]  scap    Scratch capacity in bytes.
  * @param[out] ob      Receives the mapped output base.
  * @param[out] os      Receives the mapped output size.
- * @return None.
  * @pre @p cont references a container image.
  * @post `ra8_book_open` returned @p want.
  * @note Not thread-safe; single-threaded host-test helper.

@@ -109,7 +109,6 @@ typedef struct {
 /**
  * @brief Fill the mock book's fixed header and table offsets.
  * @param[out] b Mock book to initialise (fully zeroed first).
- * @return None.
  * @pre @p b is non-null.
  * @post Header magic/version and every table offset/count are populated.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -136,7 +135,6 @@ static void bx_build_header(bx_book_t* b)
  * @brief Intern every element/attribute/text string into the mock book pool.
  * @param[in,out] b Mock book whose string pool is filled.
  * @param[out]    o Receives the interned string offsets.
- * @return None.
  * @pre bx_build_header(@p b) already ran.
  * @post @p o holds the offset of every interned string.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -164,7 +162,6 @@ static void bx_build_strings(bx_book_t* b, bx_offsets_t* o)
  * @brief Wire the mock book's DOM node tree and attribute table.
  * @param[in,out] b Mock book whose node/attr tables are populated.
  * @param[in]     o Interned string offsets from bx_build_strings.
- * @return None.
  * @pre bx_build_strings(@p b, @p o) already ran.
  * @post The node tree and both attributes are set.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -219,7 +216,6 @@ static void bx_build_nodes(bx_book_t* b, const bx_offsets_t* o)
 /**
  * @brief Build the complete XHTML-shaped mock book for the escaping tests.
  * @param[out] b Mock book to populate end to end.
- * @return None.
  * @pre @p b is non-null.
  * @post @p b is a self-consistent XHTML fixture book.
  * @note Not thread-safe; single-threaded host-test helper.

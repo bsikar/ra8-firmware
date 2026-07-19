@@ -15,46 +15,21 @@
 #include "ra8_sim_mmap.h"
 #include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
-
 /**
- * @enum glcdc_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum glcdc_probe_t
+ * @brief Values planted in GLCDC registers to prove a read or write reaches them.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_glcdc_probe_cfg = 0xAAU, /**< Planted in SYS_CFG to prove the write reaches the register. */
-} glcdc_uint8_const_t;
-
-/**
- * @enum glcdc_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint16_t {
-  k_glcdc_probe_stat_a = 0xCAFEU, /**< Planted in SYS_STAT. */
-} glcdc_uint16_const_t;
-
-/**
- * @enum glcdc_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * No two are equal, so a driver that read a neighbouring register -- or
+ * returned a cached first result -- fails a specific assertion rather than
+ * matching by coincidence.
  */
 typedef enum : uint32_t {
-  k_glcdc_probe_stat_wide =
-    0xDEADBEEFU, /**< A full 32-bit SYS_STAT value proving no field is truncated. */
-} glcdc_uint32_const_t;
+  k_glcdc_probe_cfg       = 0xAAU,       /**< Written to SYS_CFG.               */
+  k_glcdc_probe_stat_a    = 0xCAFEU,     /**< Written to SYS_STAT.              */
+  k_glcdc_probe_stat_wide = 0xDEADBEEFU, /**< A full-width SYS_STAT value, so a
+                                              truncated field is visible.       */
+} glcdc_probe_t;
 
 typedef enum : uint32_t {
   k_test_glcdc_fb_addr  = 0x68000000UL, /**< Framebuffer at SDRAM base. */

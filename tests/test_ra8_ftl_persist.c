@@ -370,7 +370,6 @@ static void test_persist_save_errors(void)
  * @param[out]    buf     Checkpoint scratch buffer.
  * @param[in]     buf_cap Capacity of @p buf in bytes.
  * @param[in]     need    The reference FTL's checkpoint size.
- * @return None.
  * @pre @p ftl is initialised at the reference geometry.
  * @post The geometry-mismatched load returned k_ra8_err_invalid_arg.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -405,7 +404,6 @@ persist_load_geometry_logical(ra8_ftl_t* ftl, uint8_t* buf, uint32_t buf_cap, ui
  * @param[out]    buf     Checkpoint scratch buffer.
  * @param[in]     buf_cap Capacity of @p buf in bytes.
  * @param[in]     need    The reference FTL's checkpoint size.
- * @return None.
  * @pre @p ftl is initialised at the reference geometry.
  * @post The geometry-mismatched load returned k_ra8_err_invalid_arg.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -437,7 +435,6 @@ persist_load_geometry_physical(ra8_ftl_t* ftl, uint8_t* buf, uint32_t buf_cap, u
 /**
  * @brief Write every logical block (with a wear-spreading overwrite of block 2).
  * @param[in,out] bd The FTL exposed as a block device.
- * @return None.
  * @pre @p bd is a valid FTL block device.
  * @post Every logical block holds its generator pattern.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -460,7 +457,6 @@ static void persist_write_all(ra8_io_blockdev_t* bd)
 /**
  * @brief After a naive re-open (no checkpoint), block 2 reads the erase value.
  * @param[in,out] bd The freshly re-inited FTL block device.
- * @return None.
  * @pre @p bd was re-inited over retained media with no checkpoint load.
  * @post Logical block 2 read all erase bytes (the lost-mapping proof).
  * @note Not thread-safe; single-threaded host-test helper.
@@ -544,7 +540,6 @@ static void test_persist_load_errors(void)
  * @param[out]    pb      Physical-block table.
  * @param[out]    scratch Scratch block buffer.
  * @param[out]    bd      Receives the FTL block-device facade.
- * @return None.
  * @pre All buffers are sized for the reference geometry.
  * @post @p ftl is initialised and @p bd is bound to it.
  * @note Not thread-safe; single-threaded host-test helper.

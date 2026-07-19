@@ -138,7 +138,6 @@ typedef enum : uint32_t {
  * @param[out] staging  Staging buffer (nullptr exercises the staging guard).
  * @param[in]  file_len Packed container length in bytes.
  *
- * @return None.
  * @pre Exactly one pointer argument is nullptr.
  * @post `ra8_cbz_open` returned k_ra8_err_null_ptr.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -182,7 +181,6 @@ static void ccx_expect_null_open(ra8_cbz_t*          cbz,
  * @param[in]     meta_cap  Metadata-table byte budget.
  * @param[in]     stage_cap Staging-buffer byte budget.
  *
- * @return None.
  * @pre @p g fields reference valid buffers.
  * @post `ra8_cbz_open` returned @p want.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -218,7 +216,6 @@ static void ccx_expect_open_err(ra8_err_t              want,
  * @param[in,out] file File context bound to the container image.
  * @param[in]     g    Shared buffers and container image.
  *
- * @return None.
  * @pre @p g fields reference valid buffers.
  * @post Each guarded argument returned k_ra8_err_null_ptr.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -283,7 +280,6 @@ static void ccx_open_guards_null(ra8_cbz_t* cbz, ccx_file_t* file, const ccx_gua
  * @param[in,out] file File context bound to the container image.
  * @param[in]     g    Shared buffers and container image.
  *
- * @return None.
  * @pre @p g fields reference valid buffers.
  * @post Every malformed header returned its rejection code.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -336,7 +332,6 @@ static void ccx_open_guards_header(ra8_cbz_t* cbz, ccx_file_t* file, const ccx_g
  * @param[in,out] file File context bound to the container image.
  * @param[in]     g    Shared buffers and container image.
  *
- * @return None.
  * @pre @p g fields reference valid buffers.
  * @post Every undersized budget returned k_ra8_err_invalid_size.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -381,7 +376,6 @@ static void ccx_open_guards_capacity(ra8_cbz_t* cbz, ccx_file_t* file, const ccx
  * @param[in,out] file File context bound to the container image.
  * @param[in]     g    Shared buffers and container image.
  *
- * @return None.
  * @pre @p g fields reference valid buffers.
  * @post Every corrupt table returned k_ra8_err_invalid_arg.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -430,7 +424,6 @@ static void ccx_open_guards_table(ra8_cbz_t* cbz, ccx_file_t* file, const ccx_gu
  * @param[in]     g       Shared buffers and container image.
  * @param[in]     fail_at 1-based call index to fail on.
  *
- * @return None.
  * @pre @p g fields reference valid buffers.
  * @post `ra8_cbz_open` returned k_ra8_err_hw_timeout.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -461,7 +454,6 @@ ccx_expect_readfail(ra8_cbz_t* cbz, ccx_file_t* file, const ccx_guard_ctx_t* g, 
  * @param[in,out] file File context bound to the container image.
  * @param[in]     g    Shared buffers and container image.
  *
- * @return None.
  * @pre @p g fields reference valid buffers.
  * @post Each of the header / offset / metadata reads propagated its error.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -675,7 +667,6 @@ static void test_ra8_cbz_page_read_equivalence(void)
  * @param[out] cur A zero-initialised page cursor used as the read subject.
  * @param[out] out Raster output buffer, at least k_ccx_p0_raw bytes.
  *
- * @return None.
  * @pre @p cbz is zero-initialised (unopened).
  * @post Every pre-open guard returned its documented error.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -705,7 +696,6 @@ static void ccx_page_read_guards_unbound(ra8_cbz_t* cbz, ra8_cbz_page_t* cur, ui
  *          raw_size, then reads and expects k_ra8_err_invalid_size because the
  *          produced length no longer matches the manifest.
  *
- * @return None.
  * @pre The page fixtures are already populated (ccx_fill_pages()).
  * @post `ra8_cbz_page_read` returned k_ra8_err_invalid_size.
  * @note Not thread-safe; single-threaded host-test helper.
