@@ -248,7 +248,7 @@ priv_dir_cluster_init(const ra8_fs_mount_t* m, uint32_t new_cluster, uint32_t pa
 }
 
 /**
- * @brief Implementation of `ra8_fs_mkdir()` -- create one FAT directory.
+ * @brief Implementation of `priv_fat_mkdir()` -- create one FAT directory.
  *
  * @details Resolves the parent, rejects an existing name, finds a free parent
  *          slot, allocates and initialises a directory cluster ("." / ".."),

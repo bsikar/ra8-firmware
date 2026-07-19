@@ -316,7 +316,6 @@ produce(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t chunk, ra8_tilea
  * @brief Page every tile of the produced atlas and compare with an expected-
  *        pixel oracle.
  * @param[in] info   Produced atlas geometry.
- * @param[in] expect Oracle: expected byte at (x, y, channel).
  * @param[in] ctx_ct PNG colour type driving the oracle (0xFF = JPEG ref).
  * @pre The memstore holds the produced atlas.
  * @pre @p info matches the store contents.
