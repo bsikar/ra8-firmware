@@ -48,8 +48,8 @@ typedef enum : uint8_t {
  * @brief ZIP central-directory offsets the archive scanner walks.
  */
 typedef enum : uint8_t {
-  k_zip_cdir_off_comp_size   = 20U, /**< Compressed size, 20 bytes in.        */
-  k_zip_cdir_off_uncomp_size = 24U, /**< Uncompressed size, 24 bytes in.      */
+  k_zip_cdir_off_comp_size   = 20U, /**< Compressed size, 20 bytes in.   */
+  k_zip_cdir_off_uncomp_size = 24U, /**< Uncompressed size, 24 bytes in. */
   k_zip_cdir_hdr_bytes       = 46U, /**< A central-directory file header is 46
                                          bytes; the name starts right after.  */
 } zip_cdir_field_t;
@@ -65,24 +65,24 @@ typedef enum : uint8_t {
  * entry the extractor must accept.
  */
 typedef enum : uint8_t {
-  k_rar_off_head_size  = 5U,    /**< head_size.                               */
-  k_rar_off_pack_size  = 7U,    /**< pack_size.                               */
-  k_rar_off_unp_size   = 11U,   /**< unp_size.                                */
-  k_rar_off_host_os    = 15U,   /**< host_os.                                 */
-  k_rar_off_ftime      = 20U,   /**< ftime.                                   */
-  k_rar_off_unp_ver    = 24U,   /**< unp_ver.                                 */
-  k_rar_off_method     = 25U,   /**< method.                                  */
-  k_rar_off_name_size  = 26U,   /**< name_size.                               */
-  k_rar_off_attr       = 28U,   /**< attr.                                    */
-  k_rar_head_type_main = 0x73U, /**< head_type 's': the archive main header.  */
-  k_rar_head_type_file = 0x74U, /**< head_type 't': a file header.            */
-  k_rar_method_store   = 0x30U, /**< method '0': stored, no compression.      */
-  k_rar_unp_ver_2_0    = 20U,   /**< unp_ver 20: RAR 2.0 format.              */
+  k_rar_off_head_size  = 5U,    /**< head_size.                              */
+  k_rar_off_pack_size  = 7U,    /**< pack_size.                              */
+  k_rar_off_unp_size   = 11U,   /**< unp_size.                               */
+  k_rar_off_host_os    = 15U,   /**< host_os.                                */
+  k_rar_off_ftime      = 20U,   /**< ftime.                                  */
+  k_rar_off_unp_ver    = 24U,   /**< unp_ver.                                */
+  k_rar_off_method     = 25U,   /**< method.                                 */
+  k_rar_off_name_size  = 26U,   /**< name_size.                              */
+  k_rar_off_attr       = 28U,   /**< attr.                                   */
+  k_rar_head_type_main = 0x73U, /**< head_type 's': the archive main header. */
+  k_rar_head_type_file = 0x74U, /**< head_type 't': a file header.           */
+  k_rar_method_store   = 0x30U, /**< method '0': stored, no compression.     */
+  k_rar_unp_ver_2_0    = 20U,   /**< unp_ver 20: RAR 2.0 format.             */
   k_rar_main_hdr_bytes = 13U,   /**< A main header is exactly 13 bytes, which
                                      is both its head_size and the step to the
                                      next block.                              */
-  k_byte_mask          = 0xFFU, /**< Truncates each shifted size back into a byte.   */
-  k_shift_byte3        = 24U,   /**< Shift to the top byte of a 32-bit LE field.     */
+  k_byte_mask          = 0xFFU, /**< Truncates each shifted size back into a byte. */
+  k_shift_byte3        = 24U,   /**< Shift to the top byte of a 32-bit LE field.   */
 } rar4_field_t;
 
 /**
@@ -93,7 +93,7 @@ typedef enum : uint16_t {
   k_rar_flag_long    = 0x8000U, /**< LONG: the 64-bit ADD_SIZE fields are present. */
   k_stat_comp_size   = 100U, /**< Compressed size in a planted stat record; under the uncompressed
                size, so the pair is self-consistent.                            */
-  k_stat_uncomp_size = 300U, /**< Its uncompressed size.                        */
+  k_stat_uncomp_size = 300U, /**< Its uncompressed size. */
 } rar4_wide_t;
 
 /**

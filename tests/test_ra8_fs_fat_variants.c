@@ -41,8 +41,8 @@ typedef enum : uint16_t {
                                        where BPB_FATSz16 is zero.                */
   k_bpb_off_root_clus     = 44U,  /**< BPB_RootClus: first cluster of the FAT32
                                        root directory.                           */
-  k_bpb_off_sig_lo        = 510U, /**< Low byte of the 0xAA55 boot signature.      */
-  k_bpb_off_sig_hi        = 511U, /**< Its high byte.                              */
+  k_bpb_off_sig_lo        = 510U, /**< Low byte of the 0xAA55 boot signature. */
+  k_bpb_off_sig_hi        = 511U, /**< Its high byte.                         */
 } fat_bpb_field_t;
 
 /**
@@ -54,10 +54,10 @@ typedef enum : uint8_t {
   k_dir_off_file_size = 28U,   /**< DIR_FileSize within that entry.              */
   k_dir_name_deleted  = 0xE5U, /**< 0xE5 in DIR_Name[0]: a deleted entry the
                                     scan must skip.                              */
-  k_bpb_sig_lo        = 0x55U, /**< Boot-signature low byte.                     */
-  k_bpb_sig_hi        = 0xAAU, /**< Boot-signature high byte.                    */
-  k_byte_mask         = 0xFFU, /**< Low-byte mask for the put16/put32 helpers.   */
-  k_shift_byte3       = 24U,   /**< Shift to the top byte of a 32-bit LE field.  */
+  k_bpb_sig_lo        = 0x55U, /**< Boot-signature low byte.                    */
+  k_bpb_sig_hi        = 0xAAU, /**< Boot-signature high byte.                   */
+  k_byte_mask         = 0xFFU, /**< Low-byte mask for the put16/put32 helpers.  */
+  k_shift_byte3       = 24U,   /**< Shift to the top byte of a 32-bit LE field. */
 } var_dir_entry_t;
 
 /**
@@ -70,8 +70,8 @@ typedef enum : uint8_t {
  * rather than merely wrong, which pins down where it went astray.
  */
 typedef enum : uint16_t {
-  k_var_payload_base        = 0xA0U, /**< Base byte of that generator.            */
-  k_var_payload_wrap        = 0x0FU, /**< Its 16-byte wrap mask.                  */
+  k_var_payload_base        = 0xA0U, /**< Base byte of that generator. */
+  k_var_payload_wrap        = 0x0FU, /**< Its 16-byte wrap mask.       */
   k_var_name_digit_mod      = 10U,   /**< Turns a file index into its last decimal
                                          digit for the generated 8.3 names.      */
   k_var_short_entry_size    = 99U,   /**< File size stamped in the hand-built
@@ -86,7 +86,7 @@ typedef enum : uint16_t {
  * @brief Raw FAT32 table entries planted to exercise the chain walker.
  */
 typedef enum : uint32_t {
-  k_fat32_eoc = 0x0FFFFFFFU, /**< End-of-chain marker; only an entry's low 28 bits count.    */
+  k_fat32_eoc = 0x0FFFFFFFU, /**< End-of-chain marker; only an entry's low 28 bits count. */
   k_fat32_reserved_bits_set =
     0xA0000000U, /**< An entry with its top four reserved bits set, which the
                       driver must mask off rather than read as a cluster number. */

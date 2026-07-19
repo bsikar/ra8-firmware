@@ -50,21 +50,21 @@
  */
 typedef enum : uint8_t {
   k_tile_store_cap     = 64U, /**< Capacity of the tile memstore the import path writes into. */
-  k_fig_pattern_stride = 13U, /**< Stride of the flat figure generator, `i * 13 + 7`. */
+  k_fig_pattern_stride = 13U, /**< Stride of the flat figure generator, `i * 13 + 7`.         */
   k_shift_byte3 =
     24U, /**< Shift to the most significant byte; PNG lengths and CRCs are big-endian, so this byte is written first. */
   k_png_chunk_overhead =
     12U, /**< Bytes a chunk costs beyond its payload: 4 length + 4 type + 4 CRC. */
-  k_png_off_crc_b2         = 10U, /**< Its third byte. */
-  k_png_off_crc_b3         = 11U, /**< Its last byte. */
-  k_png_ihdr_data_len      = 13,  /**< An IHDR chunk's data is exactly 13 bytes. */
+  k_png_off_crc_b2         = 10U, /**< Its third byte.                                */
+  k_png_off_crc_b3         = 11U, /**< Its last byte.                                 */
+  k_png_ihdr_data_len      = 13,  /**< An IHDR chunk's data is exactly 13 bytes.      */
   k_png_ihdr_off_height_b1 = 5,   /**< Second byte of IHDR's big-endian height field. */
   k_hostile_entry_bytes =
     64, /**< Size of the corrupt atlas entry: past the magic, but far too short to hold a real header. */
   k_png_ihdr_off_height_b3 = 7, /**< Its last byte. */
   k_png_off_crc_b1 =
     9U,                /**< Second byte of a chunk's trailing CRC, 9 + len from the chunk start. */
-  k_byte_mask = 0xFFU, /**< Low-byte mask used by the put16 helper. */
+  k_byte_mask = 0xFFU, /**< Low-byte mask used by the put16 helper.                              */
   k_fig_pattern_y_mul =
     7U, /**< Row multiplier of the figure generator, `(x * 3 + y * 7) & 0xFF`; coprime with the column multiplier so no two pixels in a tile collide. */
 } epub_img_tiles_uint8_const_t;

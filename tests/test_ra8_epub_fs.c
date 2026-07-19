@@ -38,15 +38,15 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_bpb_sig_lo            = 0x55U, /**< That signature's low byte. */
-  k_bpb_sig_hi            = 0xAAU, /**< Its high byte. */
-  k_bpb_off_bytes_per_sec = 11U,   /**< BPB_BytsPerSec: bytes per sector. */
+  k_bpb_sig_lo            = 0x55U, /**< That signature's low byte.                    */
+  k_bpb_sig_hi            = 0xAAU, /**< Its high byte.                                */
+  k_bpb_off_bytes_per_sec = 11U,   /**< BPB_BytsPerSec: bytes per sector.             */
   k_bpb_off_rsvd_sec_cnt  = 14U,   /**< BPB_RsvdSecCnt: sectors before the first FAT. */
-  k_bpb_off_root_ent_cnt  = 17U,   /**< BPB_RootEntCnt: root-directory entries. */
-  k_bpb_off_tot_sec16     = 19U,   /**< BPB_TotSec16: total sectors. */
-  k_bpb_off_fat_sz16      = 22U,   /**< BPB_FATSz16: sectors per FAT. */
-  k_byte_mask             = 0xFFU, /**< Low-byte mask used by the put16 helper. */
-  k_bpb_off_sec_per_clus  = 13,    /**< BPB_SecPerClus: sectors per cluster. */
+  k_bpb_off_root_ent_cnt  = 17U,   /**< BPB_RootEntCnt: root-directory entries.       */
+  k_bpb_off_tot_sec16     = 19U,   /**< BPB_TotSec16: total sectors.                  */
+  k_bpb_off_fat_sz16      = 22U,   /**< BPB_FATSz16: sectors per FAT.                 */
+  k_byte_mask             = 0xFFU, /**< Low-byte mask used by the put16 helper.       */
+  k_bpb_off_sec_per_clus  = 13,    /**< BPB_SecPerClus: sectors per cluster.          */
 } epub_fs_uint8_const_t;
 
 /**
@@ -62,7 +62,7 @@ typedef enum : uint16_t {
   k_epub_chapter_buf_bytes =
     2048, /**< Chapter read-back buffer; larger than any fixture chapter, so a truncation is visible. */
   k_bpb_off_sig_lo = 510, /**< Offset of the 0xAA55 boot signature's low byte. */
-  k_bpb_off_sig_hi = 511, /**< Offset of its high byte. */
+  k_bpb_off_sig_hi = 511, /**< Offset of its high byte.                        */
 } epub_fs_uint16_const_t;
 
 /* --- RAM block device + minimal FAT16 volume (mirrors test_ra8_fs_fat.c) --- */

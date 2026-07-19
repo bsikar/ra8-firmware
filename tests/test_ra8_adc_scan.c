@@ -51,7 +51,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_adc_code_ch0 = 0x0111U, /**< Conversion result planted for the first channel. */
-  k_adc_code_ch1 = 0x0222U, /**< For the second. */
+  k_adc_code_ch1 = 0x0222U, /**< For the second.                                  */
   k_adc_code_ch2 =
     0x0333U, /**< For the third; the three differ so a scan that read the wrong slot fails a specific assertion. */
 } adc_scan_uint16_const_t;

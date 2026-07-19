@@ -68,9 +68,9 @@ typedef enum : uint16_t {
  * @brief Byte values the file-I/O coverage fixture stimulates the driver with.
  */
 typedef enum : uint16_t {
-  k_bpb_sig_lo = 0x55U, /**< Boot-signature low byte.                              */
-  k_bpb_sig_hi = 0xAAU, /**< Boot-signature high byte.                             */
-  k_byte_mask  = 0xFFU, /**< Low-byte mask, shared by the put16 helper and the pattern generator.*/
+  k_bpb_sig_lo = 0x55U, /**< Boot-signature low byte.  */
+  k_bpb_sig_hi = 0xAAU, /**< Boot-signature high byte. */
+  k_byte_mask  = 0xFFU, /**< Low-byte mask, shared by the put16 helper and the pattern generator. */
   k_fio_fat16_eoc_byte =
     0xFFU,                /**< Either byte of a FAT16 end-of-chain entry (0xFFFF), planted to cut a
                 cluster chain short.                                                */

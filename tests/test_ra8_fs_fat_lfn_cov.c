@@ -49,7 +49,7 @@ typedef enum : uint8_t {
  * @brief Long-name entry field offsets and the fixture's directory sizing.
  */
 typedef enum : uint16_t {
-  k_lfn_off_type = 12U, /**< LDIR_Type: reserved, must be zero.           */
+  k_lfn_off_type = 12U, /**< LDIR_Type: reserved, must be zero. */
   k_lcov_files_per_sub =
     14U, /**< Files created in the subdirectory: enough that its entries spill past
               a single sector, which is the case these vectors exist to cover.     */

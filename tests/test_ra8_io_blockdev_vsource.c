@@ -36,7 +36,7 @@
  */
 typedef enum : uint8_t {
   k_vsrc_pattern_stride = 13U, /**< Stride of the golden generator, `i * 13 + 7`. */
-  k_vsrc_pattern_bias   = 7U,  /**< Its bias, so index 0 is not byte 0. */
+  k_vsrc_pattern_bias   = 7U,  /**< Its bias, so index 0 is not byte 0.           */
   k_byte_mask = 0xFFU, /**< Low-byte mask used to split the connection handle little-endian. */
 } io_blockdev_vsource_uint8_const_t;
 

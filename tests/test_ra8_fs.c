@@ -41,8 +41,8 @@ typedef enum : uint16_t {
                                        BPB_FATSz16.                              */
   k_bpb_off_root_clus     = 44U,  /**< BPB_RootClus: first cluster of the FAT32
                                        root directory.                           */
-  k_bpb_off_sig_lo        = 510U, /**< Low byte of the 0xAA55 boot signature.      */
-  k_bpb_off_sig_hi        = 511U, /**< Its high byte.                              */
+  k_bpb_off_sig_lo        = 510U, /**< Low byte of the 0xAA55 boot signature. */
+  k_bpb_off_sig_hi        = 511U, /**< Its high byte.                         */
 } fat_bpb_field_t;
 
 /**
@@ -55,21 +55,21 @@ typedef enum : uint16_t {
  * deliberately shorter than the file so a read must report a short count.
  */
 typedef enum : uint16_t {
-  k_bpb_sig_lo           = 0x55U, /**< Boot-signature low byte.                         */
-  k_bpb_sig_hi           = 0xAAU, /**< Boot-signature high byte.                        */
+  k_bpb_sig_lo           = 0x55U, /**< Boot-signature low byte.                          */
+  k_bpb_sig_hi           = 0xAAU, /**< Boot-signature high byte.                         */
   k_byte_mask            = 0xFFU, /**< Low-byte mask for the put helpers and generators. */
-  k_shift_byte3          = 24U,   /**< Shift to the top byte of a 32-bit LE field.      */
+  k_shift_byte3          = 24U,   /**< Shift to the top byte of a 32-bit LE field.       */
   k_fs_payload_stride    = 7U,   /**< Stride of the second payload generator, `buf[i] = i * stride`;
              coprime with 256 so the pattern does not repeat within a sector.  */
   k_fs_bytes_short_read  = 10U,  /**< Buffer shorter than the file, so the read must report a short
               count rather than overrun.                                       */
-  k_fs_bytes_sub_sector  = 64U,  /**< Read-back buffer under one sector.    */
-  k_fs_bytes_one_cluster = 200U, /**< Payload fitting inside one cluster.   */
-  k_fs_bytes_slice       = 300U, /**< Sub-range read of the large payload.  */
+  k_fs_bytes_sub_sector  = 64U,  /**< Read-back buffer under one sector.   */
+  k_fs_bytes_one_cluster = 200U, /**< Payload fitting inside one cluster.  */
+  k_fs_bytes_slice       = 300U, /**< Sub-range read of the large payload. */
   k_fs_fat32_sectors_per_fat =
     640U,                           /**< Sectors per FAT for the FAT32 fixture: at least 512, so the
                table holds an entry for every cluster on the volume.           */
-  k_fs_bytes_multi_cluster = 1500U, /**< Payload spanning several clusters.    */
+  k_fs_bytes_multi_cluster = 1500U, /**< Payload spanning several clusters. */
 } fs_fixture_t;
 
 /** @brief FAT32 end-of-chain marker; only an entry's low 28 bits are significant. */

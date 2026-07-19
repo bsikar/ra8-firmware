@@ -25,8 +25,8 @@
  * matching by coincidence.
  */
 typedef enum : uint32_t {
-  k_glcdc_probe_cfg       = 0xAAU,       /**< Written to SYS_CFG.               */
-  k_glcdc_probe_stat_a    = 0xCAFEU,     /**< Written to SYS_STAT.              */
+  k_glcdc_probe_cfg       = 0xAAU,       /**< Written to SYS_CFG.  */
+  k_glcdc_probe_stat_a    = 0xCAFEU,     /**< Written to SYS_STAT. */
   k_glcdc_probe_stat_wide = 0xDEADBEEFU, /**< A full-width SYS_STAT value, so a
                                               truncated field is visible.       */
 } glcdc_probe_t;

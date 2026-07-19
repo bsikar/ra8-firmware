@@ -52,16 +52,15 @@
  * that happened to be right.
  */
 typedef enum : uint16_t {
-  k_ncov_sfn_name_len = 11U, /**< A packed 8.3 name: 8 base + 3 extension.       */
-  k_ncov_sfn_str_cap  = 13U, /**< Its printable form, "NAME.EXT" plus the NUL.   */
+  k_ncov_sfn_name_len = 11U, /**< A packed 8.3 name: 8 base + 3 extension.     */
+  k_ncov_sfn_str_cap  = 13U, /**< Its printable form, "NAME.EXT" plus the NUL. */
   k_ncov_files_per_sub =
-    14U, /**< Files created in the subdirectory: enough for its entries to spill
+    14U,                     /**< Files created in the subdirectory: enough for its entries to spill
               past one sector.                                                     */
-  k_ncov_fat16_ent2_hi =
-    5U, /**< High byte of FAT16 entry 2, which sits at offset 4 within FAT1.       */
-  k_ncov_walk_entry_idx = 7U,   /**< Entry index the walker must reset to 0.        */
-  k_ncov_walk_lba_sub   = 50U,  /**< Parked LBA for the subdirectory walk.          */
-  k_ncov_walk_lba_root  = 100U, /**< Parked LBA for the fixed-root walk.            */
+  k_ncov_fat16_ent2_hi = 5U, /**< High byte of FAT16 entry 2, which sits at offset 4 within FAT1. */
+  k_ncov_walk_entry_idx = 7U,   /**< Entry index the walker must reset to 0. */
+  k_ncov_walk_lba_sub   = 50U,  /**< Parked LBA for the subdirectory walk.   */
+  k_ncov_walk_lba_root  = 100U, /**< Parked LBA for the fixed-root walk.     */
   k_ncov_fat1_byte_off =
     512U, /**< Byte offset of FAT1: it starts at LBA 1 of a 512-byte-sector volume. */
 } ncov_fixture_t;

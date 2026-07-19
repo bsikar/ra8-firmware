@@ -55,7 +55,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_jpeg_buf_large = 128, /**< The largest, over one MCU row. */
+  k_jpeg_buf_large = 128, /**< The largest, over one MCU row.                      */
   k_jpeg_buf_small = 64,  /**< Smallest of three scratch sizes, under one MCU row. */
   k_jpeg_buf_mid =
     80, /**< A size that is not a power of two, so an allocator rounding up is visible. */

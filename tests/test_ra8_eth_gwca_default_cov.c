@@ -58,7 +58,7 @@ typedef enum : uint8_t {
   k_gwca_slot_bytes_small =
     64U, /**< A smaller accepted slot size, proving the check is a bound and not an equality. */
   k_gwca_tx_pool_bytes = 128, /**< TX pool capacity: one slot's worth. */
-  k_gwca_frame_bytes   = 64,  /**< Staging frame capacity. */
+  k_gwca_frame_bytes   = 64,  /**< Staging frame capacity.             */
 } eth_gwca_default_cov_uint8_const_t;
 
 /**

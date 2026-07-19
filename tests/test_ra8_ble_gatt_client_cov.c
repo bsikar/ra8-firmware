@@ -45,10 +45,10 @@
 typedef enum : uint8_t {
   k_gattc_value_handle = 0x11U, /**< Characteristic value handle used across those subscriptions. */
   k_gattc_cccd_handle  = 0x12U, /**< Its CCCD handle. */
-  k_gattc_second_handle = 0x13U, /**< A second characteristic on the same connection. */
-  k_gattc_conn_a        = 0x40U, /**< First connection handle of the table-filling loop. */
-  k_gattc_conn_b        = 0x41U, /**< Its second. */
-  k_gattc_conn_c        = 0x42U, /**< Its third. */
+  k_gattc_second_handle = 0x13U, /**< A second characteristic on the same connection.           */
+  k_gattc_conn_a        = 0x40U, /**< First connection handle of the table-filling loop.        */
+  k_gattc_conn_b        = 0x41U, /**< Its second.                                               */
+  k_gattc_conn_c        = 0x42U, /**< Its third.                                                */
   k_gattc_conn_d        = 0x43U, /**< Its fourth, which must be the one the full table rejects. */
   k_gattc_cov_payload_byte = 0xA5U, /**< Notification payload for the coverage
                                        fixture; distinct from the one the main

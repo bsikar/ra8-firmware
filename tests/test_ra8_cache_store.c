@@ -62,12 +62,12 @@ typedef enum : uint8_t {
  * validation guards. Sectors are spaced two apart to keep the runs disjoint.
  */
 typedef enum : uint16_t {
-  k_cs_plant_sector_bad_start  = 20U,    /**< Header whose start_sector disagrees.  */
-  k_cs_plant_sector_zero_count = 22U,    /**< Header claiming a zero-sector run.    */
-  k_cs_plant_sector_overrun    = 24U,    /**< Header whose run overshoots the media.*/
-  k_cs_plant_sector_bad_crc    = 26U,    /**< Header sealed with a wrong CRC.       */
-  k_cs_plant_start_mismatch    = 999U,   /**< A start_sector no header can sit at.  */
-  k_cs_plant_count_past_media  = 60000U, /**< A run length past the end of media.   */
+  k_cs_plant_sector_bad_start  = 20U,    /**< Header whose start_sector disagrees.   */
+  k_cs_plant_sector_zero_count = 22U,    /**< Header claiming a zero-sector run.     */
+  k_cs_plant_sector_overrun    = 24U,    /**< Header whose run overshoots the media. */
+  k_cs_plant_sector_bad_crc    = 26U,    /**< Header sealed with a wrong CRC.        */
+  k_cs_plant_start_mismatch    = 999U,   /**< A start_sector no header can sit at.   */
+  k_cs_plant_count_past_media  = 60000U, /**< A run length past the end of media.    */
 } cs_plant_t;
 
 /**
@@ -81,17 +81,17 @@ typedef enum : uint16_t {
  * so a swapped index record cannot pass a size assertion.
  */
 typedef enum : uint16_t {
-  k_cs_bytes_index_filler   = 100,   /**< One sector: hits the index cap first.     */
-  k_cs_bytes_sub_sector     = 300,   /**< Under one sector; also a slice length.    */
-  k_cs_bytes_post_replay    = 400,   /**< Put after a replay: allocation still ok.  */
-  k_cs_bytes_survives_crash = 500,   /**< Entry outliving the evict-then-crash run. */
-  k_cs_bytes_two_sector     = 600,   /**< Smallest size that makes a two-sector run.*/
-  k_cs_bytes_entry_a        = 700,   /**< Key A: two sectors, so evicting frees a run.*/
-  k_cs_bytes_replay_b       = 900,   /**< Key B: a different run length from A.     */
-  k_cs_bytes_evict_reuse    = 1000,  /**< Re-put at this exact size after an evict. */
-  k_cs_bytes_checkpoint_b   = 1300,  /**< Longer than A across the checkpoint.      */
-  k_cs_bytes_three_sector   = 1500,  /**< Three sectors: cross-sector + partial tail.*/
-  k_cs_bytes_budget_hog     = 24000, /**< Big enough that a few puts exhaust budget.*/
+  k_cs_bytes_index_filler   = 100,   /**< One sector: hits the index cap first.        */
+  k_cs_bytes_sub_sector     = 300,   /**< Under one sector; also a slice length.       */
+  k_cs_bytes_post_replay    = 400,   /**< Put after a replay: allocation still ok.     */
+  k_cs_bytes_survives_crash = 500,   /**< Entry outliving the evict-then-crash run.    */
+  k_cs_bytes_two_sector     = 600,   /**< Smallest size that makes a two-sector run.   */
+  k_cs_bytes_entry_a        = 700,   /**< Key A: two sectors, so evicting frees a run. */
+  k_cs_bytes_replay_b       = 900,   /**< Key B: a different run length from A.        */
+  k_cs_bytes_evict_reuse    = 1000,  /**< Re-put at this exact size after an evict.    */
+  k_cs_bytes_checkpoint_b   = 1300,  /**< Longer than A across the checkpoint.         */
+  k_cs_bytes_three_sector   = 1500,  /**< Three sectors: cross-sector + partial tail.  */
+  k_cs_bytes_budget_hog     = 24000, /**< Big enough that a few puts exhaust budget.   */
 } cs_bytes_t;
 
 /**
@@ -119,10 +119,10 @@ typedef enum : uint16_t {
  * record) rather than accepting corrupt metadata.
  */
 typedef enum : uint32_t {
-  k_cs_plant_key_base      = 0xDEAD0000U, /**< Planted-header key base; + sector.  */
-  k_cs_super_crc_corrupt   = 0xDEADBEEFU, /**< Wrong superblock CRC.               */
-  k_cs_super_magic_corrupt = 0x0BADC0DEU, /**< Wrong superblock magic.             */
-  k_cs_hdr_crc_corrupt     = 0x1234ABCDU, /**< Wrong entry-header CRC.             */
+  k_cs_plant_key_base      = 0xDEAD0000U, /**< Planted-header key base; + sector. */
+  k_cs_super_crc_corrupt   = 0xDEADBEEFU, /**< Wrong superblock CRC.              */
+  k_cs_super_magic_corrupt = 0x0BADC0DEU, /**< Wrong superblock magic.            */
+  k_cs_hdr_crc_corrupt     = 0x1234ABCDU, /**< Wrong entry-header CRC.            */
 } cs_corrupt_t;
 
 /**

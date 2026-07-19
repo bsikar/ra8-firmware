@@ -42,7 +42,7 @@ typedef enum : uint8_t {
   k_eth_desc_count_over_max =
     99U, /**< A descriptor count above the driver's fixed ring size, for both the TX and RX guard. */
   k_eth_bytes_short_frame = 128, /**< A short frame, still over the minimum. */
-  k_eth_bytes_min_frame   = 64,  /**< The 64-byte minimum Ethernet frame. */
+  k_eth_bytes_min_frame   = 64,  /**< The 64-byte minimum Ethernet frame.    */
   k_eth_pattern_base = 0xC0U, /**< Base byte of the frame payload generator, `0xC0 + (i & 0x0F)`. */
 } eth_uint8_const_t;
 

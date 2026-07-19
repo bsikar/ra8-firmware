@@ -42,7 +42,7 @@ typedef enum : uint8_t {
 typedef enum : uint8_t {
   k_jpeg_pattern_c_mul =
     77U, /**< Channel multiplier of that generator, large and odd so the three channels never collide. */
-  k_jpeg_marker_eoi    = 0xD9U, /**< 0xD9: the End Of Image marker code. */
+  k_jpeg_marker_eoi    = 0xD9U, /**< 0xD9: the End Of Image marker code.               */
   k_jpeg_marker_prefix = 0xFFU, /**< 0xFF: the byte that introduces every JPEG marker. */
   k_jpeg_chunk_bytes =
     64U, /**< Bytes fed per streaming step, so the decoder must resume across chunk boundaries. */

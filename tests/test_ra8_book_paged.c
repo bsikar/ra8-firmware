@@ -50,8 +50,8 @@
 typedef enum : uint8_t {
   k_pbook_long_run_chars =
     253U, /**< Characters in that single text run: more than one paged chunk, so emit_run must take its multi-chunk path and stitch the pieces byte-identically. */
-  k_pbook_node_ch2_h1_text   = 7U, /**< Text node under that section's <h1>. */
-  k_pbook_node_ch2_para_text = 9U, /**< Text node under its <p>. */
+  k_pbook_node_ch2_h1_text   = 7U, /**< Text node under that section's <h1>.   */
+  k_pbook_node_ch2_para_text = 9U, /**< Text node under its <p>.               */
   k_pbook_node_ch2_section   = 5U, /**< The <section> that chapter 2 roots at. */
   k_pbook_node_count =
     10, /**< Nodes in the fixture book: the nodes[] extent and the header's node_count are the same fact. */
@@ -70,7 +70,7 @@ typedef enum : uint8_t {
 typedef enum : uint16_t {
   k_pbook_long_strings_cap =
     1024, /**< String-pool capacity of the long-run fixture, sized to hold one run longer than a paging chunk. */
-  k_pbook_strings_cap = 320, /**< String-pool capacity of the fixture. */
+  k_pbook_strings_cap = 320, /**< String-pool capacity of the fixture.              */
   k_pbook_render_cap  = 512, /**< Capacity of the rendered-text comparison buffers. */
 } book_paged_uint16_const_t;
 
@@ -85,7 +85,7 @@ typedef enum : uint16_t {
  */
 typedef enum : uint32_t {
   k_crc32_init           = 0xFFFFFFFFU, /**< CRC-32 initial value, and the final XOR-out. */
-  k_crc32_poly_reflected = 0xEDB88320U, /**< The reflected CRC-32 polynomial. */
+  k_crc32_poly_reflected = 0xEDB88320U, /**< The reflected CRC-32 polynomial.             */
 } book_paged_uint32_const_t;
 
 /** @brief CRC-32/ISO-HDLC over the blob body (matches ra8_book_validate). */

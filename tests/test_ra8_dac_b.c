@@ -23,7 +23,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_dac_probe_ch0 = 0xAAAAU, /**< Data value planted in channel 0's DADR. */
+  k_dac_probe_ch0 = 0xAAAAU, /**< Data value planted in channel 0's DADR.                    */
   k_dac_probe_ch1 = 0xBBBBU, /**< In channel 1's, so a read of the wrong channel is visible. */
 } dac_b_uint16_const_t;
 

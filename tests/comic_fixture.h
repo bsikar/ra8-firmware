@@ -43,8 +43,8 @@ typedef enum : uint8_t {
     12U, /**< Bytes a PNG chunk costs beyond its payload: 4 length + 4 type + 4 CRC. */
   k_png_off_type_b1 =
     5, /**< Second byte of a chunk's four-character type field, which starts at offset 4. */
-  k_cf_scratch_kib          = 64U, /**< Scratch pool size in KiB. */
-  k_png_off_type_b3         = 7,   /**< Its fourth byte. */
+  k_cf_scratch_kib          = 64U, /**< Scratch pool size in KiB.                       */
+  k_png_off_type_b3         = 7,   /**< Its fourth byte.                                */
   k_png_ihdr_off_color_type = 9,   /**< IHDR's colour-type byte, 9 into the chunk data. */
 } comic_fixture_uint8_const_t;
 

@@ -30,8 +30,8 @@ typedef enum : uint8_t {
   k_gattc_payload_byte = 0x55U, /**< A recognizable notification payload byte. */
   k_gattc_value_handle = 0x11U, /**< Characteristic value handle used across those subscriptions. */
   k_gattc_conn_a       = 0x40U, /**< First connection handle of the table-filling loop. */
-  k_gattc_conn_c       = 0x42U, /**< Its third. */
-  k_gattc_cccd_handle  = 0x12U, /**< Its CCCD handle. */
+  k_gattc_conn_c       = 0x42U, /**< Its third.                                         */
+  k_gattc_cccd_handle  = 0x12U, /**< Its CCCD handle.                                   */
   k_gattc_other_handle =
     0x14U, /**< A handle belonging to no subscription, so an unsolicited notification must be dropped. */
   k_gattc_conn_b = 0x41U, /**< Its second. */

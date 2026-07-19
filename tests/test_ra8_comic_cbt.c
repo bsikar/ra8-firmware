@@ -45,10 +45,10 @@
  */
 typedef enum : uint8_t {
   k_gzip_magic_b0 = 0x1FU, /**< First byte of the gzip magic (0x1F8B). */
-  k_gzip_magic_b1 = 0x8BU, /**< Its second byte. */
+  k_gzip_magic_b1 = 0x8BU, /**< Its second byte.                       */
   k_tcb_payload_len =
     7U, /**< Length of the fixture payload, short enough that the tar entry stays inside one 512-byte record. */
-  k_tcb_name_cap = 64,    /**< Capacity of the entry-name scratch buffer. */
+  k_tcb_name_cap = 64,    /**< Capacity of the entry-name scratch buffer.                       */
   k_byte_mask    = 0xFFU, /**< Truncates each shifted CRC and length byte for the gzip trailer. */
 } comic_cbt_uint8_const_t;
 
