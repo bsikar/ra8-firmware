@@ -180,6 +180,21 @@ ra8_err_t ra8_longstrip_open(ra8_longstrip_t* wt, const ra8_longstrip_cfg_t* cfg
   return k_ra8_ok;
 }
 
+ra8_err_t ra8_longstrip_set_viewport(ra8_longstrip_t* wt, uint16_t viewport_w, uint16_t viewport_h)
+{
+  RA8_CHECK_NULL_PTR(wt, s_tag, "wt must not be nullptr");
+  /* Decision: reject a zero-area viewport (2 conditions -- MC/DC in tests). */
+  if ((viewport_w == 0U) || (viewport_h == 0U)) {
+    return k_ra8_err_invalid_arg;
+  }
+  wt->viewport_w = viewport_w;
+  wt->viewport_h = viewport_h;
+  wt->max_scroll =
+    (wt->canvas_h > (uint32_t)viewport_h) ? (int32_t)(wt->canvas_h - (uint32_t)viewport_h) : 0;
+  wt->scroll_y = ra8_longstrip_clamp_scroll(wt, wt->scroll_y);
+  return k_ra8_ok;
+}
+
 int32_t ra8_longstrip_clamp_scroll(const ra8_longstrip_t* wt, int32_t y)
 {
   if (wt == nullptr) {

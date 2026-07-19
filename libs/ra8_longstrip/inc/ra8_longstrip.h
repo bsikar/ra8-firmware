@@ -288,6 +288,54 @@ typedef struct {
 [[nodiscard]] ra8_err_t ra8_longstrip_open(ra8_longstrip_t* wt, const ra8_longstrip_cfg_t* cfg);
 
 /**
+ * @brief Resize the viewport of an open strip and re-derive the scroll clamp.
+ *
+ * @details
+ * `max_scroll` is a function of the viewport height (`canvas_h - viewport_h`),
+ * so a viewport that changes after open -- a resized window, or a paginated
+ * caller rendering a short final page -- leaves the clamp stale. A stale clamp
+ * is not a cosmetic problem: it silently pins `scroll_y` short of the position
+ * the caller asked for, and the strip then composites a window it has already
+ * shown. This entry point recomputes the clamp and re-applies it to the current
+ * `scroll_y` so the invariant `0 <= scroll_y <= max_scroll` still holds.
+ *
+ * A paginated caller must set the viewport to the height of the page it is
+ * about to draw. For the final page of a strip whose height is not a whole
+ * multiple of the page height, that content height is exactly
+ * `canvas_h - page_index * page_height`, which makes the requested scroll
+ * position land exactly on the recomputed `max_scroll` instead of being
+ * clamped backwards into the previous page.
+ *
+ * @param[in,out] wt         Opened strip to resize (non-NULL).
+ * @param[in]     viewport_w New viewport width, pixels (non-zero).
+ * @param[in]     viewport_h New viewport height, pixels (non-zero).
+ *
+ * @return ra8_err_t
+ * @retval k_ra8_ok              Viewport applied; `max_scroll` re-derived.
+ * @retval k_ra8_err_null_ptr    @p wt is NULL.
+ * @retval k_ra8_err_invalid_arg @p viewport_w or @p viewport_h is zero.
+ *
+ * @pre @p wt was opened by ::ra8_longstrip_open.
+ * @pre The caller passes the viewport it is about to composite into.
+ * @post `wt->max_scroll == max(0, canvas_h - viewport_h)`.
+ * @post `0 <= wt->scroll_y <= wt->max_scroll`.
+ *
+ * @par Example:
+ * @code
+ * // Paginated draw: page `p` of `page_h`-tall pages over an H-tall strip.
+ * const uint16_t content_h = (uint16_t)((H - (p * page_h) < page_h)
+ *                                         ? (H - (p * page_h)) : page_h);
+ * (void)ra8_longstrip_set_viewport(&strip, strip_w, content_h);
+ * @endcode
+ *
+ * @note Not thread-safe (mutates @p wt).
+ * @see ra8_longstrip_clamp_scroll()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_longstrip_set_viewport(ra8_longstrip_t* wt, uint16_t viewport_w, uint16_t viewport_h);
+
+/**
  * @brief Clamp a candidate scroll position to the strip's legal range.
  *
  * @param[in] wt Opened strip.

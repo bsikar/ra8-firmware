@@ -224,16 +224,36 @@ RA8_INTERNAL static ra8_err_t viewer_rta1_wire(ra8_viewer_reader_t*        r,
 }
 
 /**
- * @brief Scroll the strip so that band @p page sits at the top of the viewport.
+ * @brief Scroll the strip so that page @p page sits at the top of the viewport.
+ * @details The strip's scroll clamp is derived from its viewport height, so a
+ *          paginated caller must first tell the engine how tall the page it is
+ *          about to draw actually is. The final page of a strip whose height is
+ *          not a whole multiple of the page height is SHORT; leaving the engine
+ *          at the full page height would clamp this seek backwards to
+ *          `canvas_h - page_height` and re-composite a window the previous page
+ *          already showed -- visible as duplicated content with a seam.
+ *          Setting the viewport to the page's real content height makes the
+ *          requested position land exactly on the recomputed clamp.
  * @param[in,out] w    RTA1 state of an open strip (non-NULL).
  * @param[in]     page Vertical page index.
- * @return ra8_err_t from `ra8_longstrip_scroll_by`.
+ * @return ra8_err_t from `ra8_longstrip_set_viewport` / `ra8_longstrip_scroll_by`.
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t viewer_rta1_seek(viewer_rta1_t* w, uint32_t page)
 {
-  const int32_t target = (int32_t)page * (int32_t)w->viewport_h;
-  const int32_t delta  = target - w->strip.scroll_y;
+  const uint32_t top     = page * w->viewport_h;
+  const uint32_t canvas  = w->dctx.info.height;
+  const uint32_t remain  = (canvas > top) ? (canvas - top) : 0U;
+  const uint32_t content = (remain < w->viewport_h) ? remain : w->viewport_h;
+  if (content == 0U) {
+    return k_ra8_err_out_of_range;
+  }
+  const ra8_err_t vrc =
+    ra8_longstrip_set_viewport(&w->strip, w->dctx.info.width, (uint16_t)content);
+  if (vrc != k_ra8_ok) {
+    return vrc;
+  }
+  const int32_t delta = (int32_t)top - w->strip.scroll_y;
   return ra8_longstrip_scroll_by(&w->strip, delta);
 }
 

@@ -1,0 +1,448 @@
+/**
+ * @file test_ra8_tileatlas_edges.c
+ * @brief Partial-edge-tile round-trip and tile-distinctness guards (#231, #289).
+ *
+ * @details
+ * A rendering defect that duplicates or tears image content has two candidate
+ * homes: the producer wrote a bad container, or the consumer read a good one
+ * wrongly. These tests pin down the producer half so the question can be
+ * settled by elimination.
+ *
+ * The source is 90x70 cut into 32x32 tiles, so NEITHER dimension is a whole
+ * multiple of the tile edge: the grid is 3 cols x 3 rows, the right column is
+ * 26 px wide (90 - 2*32) and the bottom row is 6 px tall (70 - 2*32). Four of
+ * the nine tiles are partial, and the corner tile is partial in both
+ * directions -- the geometry that exercises every edge-clamp arm at once.
+ *
+ * Three properties are asserted, because a defect can hide in any one of them
+ * independently:
+ *   1. Each tile reports and decodes its edge-clamped extent. An edge tile that
+ *      silently carried a full `tile_w`/`tile_h` payload would tear the image
+ *      at every band boundary downstream.
+ *   2. Every tile decodes to the source pixels at its true canvas position --
+ *      the image -> atlas -> decode round trip.
+ *   3. No two distinct tiles decode to identical payloads. The source pattern
+ *      is chosen so every tile really is unique (see ::t_pix), so a repeated
+ *      payload can only mean the producer emitted one band into two index
+ *      slots: duplication baked into the file.
+ *
+ * The PNG source is built in-test with an encoder independent of the decoder
+ * under test (filters off, IDAT via miniz `mz_compress`), matching the sibling
+ * producer tests.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ * @since 0.1.0
+ */
+
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
+
+#include "miniz.h"
+#include "ra8_err.h"
+#include "ra8_tileatlas.h"
+#include "ra8_tileatlas_produce.h"
+#include "unity_minimal.h"
+
+/**
+ * @enum t_edge_geom_t
+ * @brief Source geometry, tiling and buffer sizing for the edge tests.
+ *
+ * @details 90x70 over a 32x32 tile grid gives 3x3 tiles with a 26-px right
+ *          column and a 6-px bottom row, so the partial-edge path runs in both
+ *          axes and, at the corner, in both at once.
+ *
+ * @invariant `k_te_w % k_te_tile != 0` and `k_te_h % k_te_tile != 0` -- the
+ *            whole point of this fixture is that neither divides evenly.
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_te_w         = 90U,          /**< Source width, pixels (2*32 + 26).  */
+  k_te_h         = 70U,          /**< Source height, pixels (2*32 + 6).  */
+  k_te_tile      = 32U,          /**< Tile edge, pixels.                 */
+  k_te_cols      = 3U,           /**< Expected tile columns.             */
+  k_te_rows      = 3U,           /**< Expected tile rows.                */
+  k_te_tiles     = 9U,           /**< Expected tile count.               */
+  k_te_edge_col  = 2U,           /**< Grid column that is clamped.       */
+  k_te_edge_row  = 2U,           /**< Grid row that is clamped.          */
+  k_te_src_cap   = 256U * 1024U, /**< Synthesized PNG capacity.          */
+  k_te_store_cap = 512U * 1024U, /**< Atlas memstore capacity.           */
+  k_te_work_cap  = 900U * 1024U, /**< Producer work arena.               */
+  k_te_cell_cap  = 64U * 1024U,  /**< Tile page-back buffer.             */
+  k_te_scr_cap   = 96U * 1024U,  /**< Stored-tile staging.               */
+  k_te_mul_x     = 7U,           /**< Pattern x coefficient (see t_pix). */
+  k_te_mul_y     = 29U,          /**< Pattern y coefficient (see t_pix). */
+  k_te_png_hdr   = 13U,          /**< IHDR payload length.               */
+  k_te_bitdepth  = 8U,           /**< PNG bit depth.                     */
+  k_te_ct_gray   = 0U,           /**< PNG colour type 0 (grayscale).     */
+  k_te_chunk_ovh = 12U,          /**< PNG chunk length+type+crc bytes.   */
+  k_te_byte_mask = 0xFFU,        /**< Low-byte mask.                     */
+  k_te_sh8       = 8U,           /**< One-byte shift.                    */
+  k_te_sh16      = 16U,          /**< Two-byte shift.                    */
+  k_te_sh24      = 24U,          /**< Three-byte shift.                  */
+} t_edge_geom_t;
+
+/** @brief Synthesized PNG source bytes. */
+static uint8_t s_src[k_te_src_cap];
+/** @brief Length of the synthesized PNG in ::s_src. */
+static size_t s_src_len;
+/** @brief Unfiltered scanline scratch for the PNG builder. */
+static uint8_t s_raw[(size_t)k_te_h * ((size_t)k_te_w + 1U)];
+/** @brief zlib staging for the PNG builder. */
+static uint8_t s_zbuf[k_te_src_cap / 2U];
+/** @brief Producer work arena. */
+static uint8_t s_work[k_te_work_cap];
+/** @brief Atlas memstore backing. */
+static uint8_t s_store_buf[k_te_store_cap];
+/** @brief The atlas store under test. */
+static ra8_tileatlas_memstore_t s_store;
+/** @brief Tile page-back buffer. */
+static uint8_t s_cell[k_te_cell_cap];
+/** @brief Stored-tile staging for the deflate codec. */
+static uint8_t s_scratch[k_te_scr_cap];
+/** @brief Decoded payload of each tile, for the distinctness comparison. */
+static uint8_t s_tile_px[k_te_tiles][(size_t)k_te_tile * (size_t)k_te_tile];
+/** @brief Decoded payload length of each tile in ::s_tile_px. */
+static uint32_t s_tile_len[k_te_tiles];
+
+/**
+ * @brief Deterministic source pixel at (x, y): asymmetric by construction.
+ *
+ * @details `7x + 29y` is deliberately NOT symmetric in x and y. A symmetric
+ *          pattern (such as `x ^ y`) makes tiles either side of the grid
+ *          diagonal identical in the SOURCE, which would fail the distinctness
+ *          property for a reason that is not a producer defect. With these
+ *          coefficients the per-tile base offsets (`7*32*tx + 29*32*ty` mod 256)
+ *          are distinct for every same-size tile pair in this 3x3 grid, so no
+ *          two tiles can legitimately coincide.
+ *
+ * @param[in] x Column, `[0, k_te_w)`.
+ * @param[in] y Row, `[0, k_te_h)`.
+ *
+ * @return The 8-bit grayscale sample at that position.
+ * @retval 0 Only where `7x + 29y` is a multiple of 256.
+ *
+ * @pre @p x and @p y are inside the source extent.
+ * @pre The caller uses the same oracle for both build and check.
+ * @post No state is mutated.
+ * @post Equal coordinates always produce equal samples.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+static uint8_t t_pix(uint32_t x, uint32_t y)
+{
+  return (uint8_t)((x * (uint32_t)k_te_mul_x) + (y * (uint32_t)k_te_mul_y));
+}
+
+/**
+ * @brief Append one PNG chunk (length, type, data, CRC) to ::s_src.
+ * @param[in] type Four-character chunk type (non-NULL).
+ * @param[in] data Chunk payload (may be NULL when @p len is 0).
+ * @param[in] len  Payload length, bytes.
+ * @pre ::s_src has room for `len + 12` more bytes.
+ * @pre @p type points at 4 readable characters.
+ * @post ::s_src_len advanced by `len + 12`.
+ * @post The appended chunk carries a valid CRC-32.
+ * @note Not thread-safe (shared fixture).
+ * @since 0.1.0
+ */
+static void t_png_chunk(const char* type, const uint8_t* data, uint32_t len)
+{
+  uint8_t* p = &s_src[s_src_len];
+  p[0]       = (uint8_t)(len >> (uint32_t)k_te_sh24);
+  p[1]       = (uint8_t)((len >> (uint32_t)k_te_sh16) & (uint32_t)k_te_byte_mask);
+  p[2]       = (uint8_t)((len >> (uint32_t)k_te_sh8) & (uint32_t)k_te_byte_mask);
+  p[3]       = (uint8_t)(len & (uint32_t)k_te_byte_mask);
+  memcpy(&p[4], type, 4U);
+  if (len > 0U) {
+    memcpy(&p[8], data, len);
+  }
+  const uint32_t crc = (uint32_t)mz_crc32(MZ_CRC32_INIT, &p[4], (size_t)len + 4U);
+  p[8U + len]        = (uint8_t)(crc >> (uint32_t)k_te_sh24);
+  p[9U + len]        = (uint8_t)((crc >> (uint32_t)k_te_sh16) & (uint32_t)k_te_byte_mask);
+  p[10U + len]       = (uint8_t)((crc >> (uint32_t)k_te_sh8) & (uint32_t)k_te_byte_mask);
+  p[11U + len]       = (uint8_t)(crc & (uint32_t)k_te_byte_mask);
+  s_src_len += (size_t)k_te_chunk_ovh + (size_t)len;
+}
+
+/**
+ * @brief Build the 90x70 grayscale PNG source into ::s_src.
+ * @details Filter type 0 on every row (the filtering itself is covered by the
+ *          sibling producer tests); IDAT compressed with miniz, an encoder
+ *          independent of the inflater under test.
+ * @pre ::s_src and ::s_zbuf are large enough for this geometry.
+ * @pre ::s_raw covers `h * (1 + w)` bytes.
+ * @post ::s_src holds a complete, spec-valid PNG of ::t_pix.
+ * @post ::s_src_len is the PNG byte length.
+ * @note Not thread-safe (shared fixtures).
+ * @since 0.1.0
+ */
+static void t_build_png(void)
+{
+  size_t o = 0U;
+  for (uint32_t y = 0U; y < (uint32_t)k_te_h; y++) {
+    s_raw[o] = 0U; /* filter type 0 (None) */
+    o++;
+    for (uint32_t x = 0U; x < (uint32_t)k_te_w; x++) {
+      s_raw[o] = t_pix(x, y);
+      o++;
+    }
+  }
+  mz_ulong zlen = (mz_ulong)sizeof(s_zbuf);
+  TEST_ASSERT_EQ(MZ_OK, mz_compress(s_zbuf, &zlen, s_raw, (mz_ulong)o));
+
+  static const uint8_t sig[8] = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
+  s_src_len                   = sizeof(sig);
+  memcpy(s_src, sig, sizeof(sig));
+
+  uint8_t ihdr[k_te_png_hdr] = {};
+  ihdr[0]                    = (uint8_t)((uint32_t)k_te_w >> (uint32_t)k_te_sh24);
+  ihdr[1] = (uint8_t)(((uint32_t)k_te_w >> (uint32_t)k_te_sh16) & (uint32_t)k_te_byte_mask);
+  ihdr[2] = (uint8_t)(((uint32_t)k_te_w >> (uint32_t)k_te_sh8) & (uint32_t)k_te_byte_mask);
+  ihdr[3] = (uint8_t)((uint32_t)k_te_w & (uint32_t)k_te_byte_mask);
+  ihdr[4] = (uint8_t)((uint32_t)k_te_h >> (uint32_t)k_te_sh24);
+  ihdr[5] = (uint8_t)(((uint32_t)k_te_h >> (uint32_t)k_te_sh16) & (uint32_t)k_te_byte_mask);
+  ihdr[6] = (uint8_t)(((uint32_t)k_te_h >> (uint32_t)k_te_sh8) & (uint32_t)k_te_byte_mask);
+  ihdr[7] = (uint8_t)((uint32_t)k_te_h & (uint32_t)k_te_byte_mask);
+  ihdr[8] = (uint8_t)k_te_bitdepth;
+  ihdr[9] = (uint8_t)k_te_ct_gray;
+  t_png_chunk("IHDR", ihdr, (uint32_t)k_te_png_hdr);
+  t_png_chunk("IDAT", s_zbuf, (uint32_t)zlen);
+  t_png_chunk("IEND", nullptr, 0U);
+}
+
+/**
+ * @struct t_pull_ctx_t
+ * @brief Read cursor handing ::s_src to the producer pull seam.
+ * @invariant `pos <= n` at all times.
+ * @since 0.1.0
+ */
+typedef struct {
+  const uint8_t* d;   /**< Source bytes.  */
+  size_t         n;   /**< Source length. */
+  size_t         pos; /**< Read cursor.   */
+} t_pull_ctx_t;
+
+/** @brief ::ra8_tileatlas_pull_fn over a ::t_pull_ctx_t. */
+static ra8_err_t t_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+{
+  t_pull_ctx_t* p    = (t_pull_ctx_t*)ctx;
+  const size_t  left = p->n - p->pos;
+  const size_t  take = (cap < left) ? cap : left;
+  memcpy(buf, &p->d[p->pos], take);
+  p->pos += take;
+  *got = take;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Transcode ::s_src into ::s_store with the 32x32 tiling under test.
+ * @param[out] info Receives the produced atlas geometry (non-NULL).
+ * @return Result code from `ra8_tileatlas_produce()`.
+ * @retval k_ra8_ok The store holds a complete atlas.
+ * @pre ::s_src holds the built PNG.
+ * @pre @p info is writable.
+ * @post On success ::s_store holds the produced atlas.
+ * @post The work arena is not referenced after return.
+ * @note Not thread-safe (shared fixtures).
+ * @since 0.1.0
+ */
+static ra8_err_t t_produce(ra8_tileatlas_info_t* info)
+{
+  static t_pull_ctx_t pull;
+  pull    = (t_pull_ctx_t){.d = s_src, .n = s_src_len, .pos = 0U};
+  s_store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
+  const ra8_tileatlas_produce_cfg_t cfg = {
+    .pull       = t_pull,
+    .pull_ctx   = &pull,
+    .sink       = ra8_tileatlas_memstore_sink,
+    .sink_ctx   = &s_store,
+    .tile_w     = (uint16_t)k_te_tile,
+    .tile_h     = (uint16_t)k_te_tile,
+    .codec      = (uint8_t)k_ra8_tileatlas_codec_deflate,
+    .max_width  = (uint16_t)k_te_w,
+    .max_height = (uint16_t)k_te_h,
+    .work       = s_work,
+    .work_cap   = (size_t)k_te_work_cap,
+  };
+  return ra8_tileatlas_produce(&cfg, info);
+}
+
+/**
+ * @brief The edge-clamped width this grid column must report.
+ * @param[in] tx Grid column index.
+ * @return The clamped tile width, pixels.
+ * @retval k_te_tile @p tx is not the clamped column.
+ * @pre @p tx is below ::k_te_cols.
+ * @pre The fixture geometry is 90 wide over 32-px tiles.
+ * @post No state is mutated.
+ * @post The result is in `[1, k_te_tile]`.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+static uint16_t t_want_w(uint16_t tx)
+{
+  return (tx == (uint16_t)k_te_edge_col)
+           ? (uint16_t)((uint32_t)k_te_w - ((uint32_t)k_te_edge_col * (uint32_t)k_te_tile))
+           : (uint16_t)k_te_tile;
+}
+
+/**
+ * @brief The edge-clamped height this grid row must report.
+ * @param[in] ty Grid row index.
+ * @return The clamped tile height, pixels.
+ * @retval k_te_tile @p ty is not the clamped row.
+ * @pre @p ty is below ::k_te_rows.
+ * @pre The fixture geometry is 70 tall over 32-px tiles.
+ * @post No state is mutated.
+ * @post The result is in `[1, k_te_tile]`.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+static uint16_t t_want_h(uint16_t ty)
+{
+  return (ty == (uint16_t)k_te_edge_row)
+           ? (uint16_t)((uint32_t)k_te_h - ((uint32_t)k_te_edge_row * (uint32_t)k_te_tile))
+           : (uint16_t)k_te_tile;
+}
+
+/**
+ * @brief Page one tile back through the reader into ::s_cell.
+ * @param[in]  info  Produced atlas geometry (non-NULL).
+ * @param[in]  tx    Tile column.
+ * @param[in]  ty    Tile row.
+ * @param[out] out_w Receives the decoded tile width.
+ * @param[out] out_h Receives the decoded tile height.
+ * @pre ::s_store holds the produced atlas.
+ * @pre @p out_w and @p out_h are writable.
+ * @post ::s_cell holds `(*out_w) * (*out_h) * bpp` valid bytes.
+ * @post The store is unmodified.
+ * @note Not thread-safe (shared fixtures).
+ * @since 0.1.0
+ */
+static void
+t_read(const ra8_tileatlas_info_t* info, uint16_t tx, uint16_t ty, uint16_t* out_w, uint16_t* out_h)
+{
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_tileatlas_read_tile(ra8_tileatlas_memstore_pread,
+                                         &s_store,
+                                         info,
+                                         tx,
+                                         ty,
+                                         s_scratch,
+                                         (uint32_t)sizeof(s_scratch),
+                                         s_cell,
+                                         (uint32_t)sizeof(s_cell),
+                                         out_w,
+                                         out_h));
+}
+
+/**
+ * @test edge tiles report and decode their clamped extents
+ *
+ * @details Property 1: `ra8_tileatlas_tile_dims()` and the decoder must agree
+ *          on the clamped extent for every tile, including the corner tile that
+ *          is partial in both axes.
+ */
+static void t_edge_dims(void)
+{
+  TEST_BEGIN("tileatlas_edges: clamped extents in both axes");
+  t_build_png();
+  ra8_tileatlas_info_t info = {};
+  TEST_ASSERT_EQ(k_ra8_ok, t_produce(&info));
+  TEST_ASSERT_EQ((uint16_t)k_te_cols, info.tile_cols);
+  TEST_ASSERT_EQ((uint16_t)k_te_rows, info.tile_rows);
+  TEST_ASSERT_EQ((uint32_t)k_te_tiles, info.tile_count);
+  for (uint16_t ty = 0U; ty < info.tile_rows; ty++) {
+    for (uint16_t tx = 0U; tx < info.tile_cols; tx++) {
+      uint16_t tw = 0U;
+      uint16_t th = 0U;
+      TEST_ASSERT_EQ(k_ra8_ok, ra8_tileatlas_tile_dims(&info, tx, ty, &tw, &th));
+      TEST_ASSERT_EQ(t_want_w(tx), tw);
+      TEST_ASSERT_EQ(t_want_h(ty), th);
+      uint16_t gw = 0U;
+      uint16_t gh = 0U;
+      t_read(&info, tx, ty, &gw, &gh);
+      TEST_ASSERT_EQ(t_want_w(tx), gw);
+      TEST_ASSERT_EQ(t_want_h(ty), gh);
+    }
+  }
+  TEST_END("tileatlas_edges: clamped extents in both axes");
+}
+
+/**
+ * @test every tile round-trips to the source pixels at its canvas position
+ *
+ * @details Property 2: the image -> atlas -> decode round trip, compared
+ *          against the ::t_pix oracle at each tile's true canvas origin. An
+ *          off-by-one in the tile cut or a swapped band fails here.
+ */
+static void t_edge_roundtrip(void)
+{
+  TEST_BEGIN("tileatlas_edges: round-trip pixels at true canvas positions");
+  t_build_png();
+  ra8_tileatlas_info_t info = {};
+  TEST_ASSERT_EQ(k_ra8_ok, t_produce(&info));
+  for (uint16_t ty = 0U; ty < info.tile_rows; ty++) {
+    for (uint16_t tx = 0U; tx < info.tile_cols; tx++) {
+      uint16_t tw = 0U;
+      uint16_t th = 0U;
+      t_read(&info, tx, ty, &tw, &th);
+      for (uint16_t r = 0U; r < th; r++) {
+        for (uint16_t c = 0U; c < tw; c++) {
+          const uint32_t cx = ((uint32_t)tx * (uint32_t)k_te_tile) + (uint32_t)c;
+          const uint32_t cy = ((uint32_t)ty * (uint32_t)k_te_tile) + (uint32_t)r;
+          TEST_ASSERT_EQ(t_pix(cx, cy), s_cell[((size_t)r * (size_t)tw) + (size_t)c]);
+        }
+      }
+    }
+  }
+  TEST_END("tileatlas_edges: round-trip pixels at true canvas positions");
+}
+
+/**
+ * @test no two distinct tiles decode to identical payloads
+ *
+ * @details Property 3: with a source whose every tile is unique (::t_pix is
+ *          asymmetric and its per-tile base offsets are distinct for every
+ *          same-size pair), two tiles decoding to the same bytes can only mean
+ *          the producer emitted one band into two index slots -- duplication
+ *          baked into the file, which is the failure a duplicated render would
+ *          imply if the defect were on the producer side.
+ */
+static void t_edge_distinct(void)
+{
+  TEST_BEGIN("tileatlas_edges: distinct tiles hold distinct payloads");
+  t_build_png();
+  ra8_tileatlas_info_t info = {};
+  TEST_ASSERT_EQ(k_ra8_ok, t_produce(&info));
+  for (uint32_t n = 0U; n < info.tile_count; n++) {
+    uint16_t tw = 0U;
+    uint16_t th = 0U;
+    t_read(&info, (uint16_t)(n % info.tile_cols), (uint16_t)(n / info.tile_cols), &tw, &th);
+    s_tile_len[n] = (uint32_t)tw * (uint32_t)th * (uint32_t)info.bpp;
+    memcpy(s_tile_px[n], s_cell, (size_t)s_tile_len[n]);
+    for (uint32_t m = 0U; m < n; m++) {
+      const bool same_len = (s_tile_len[m] == s_tile_len[n]);
+      const bool same_px =
+        same_len && (memcmp(s_tile_px[m], s_tile_px[n], (size_t)s_tile_len[n]) == 0);
+      TEST_ASSERT(!same_px); /* duplicated payload -> duplication in the FILE */
+    }
+  }
+  TEST_END("tileatlas_edges: distinct tiles hold distinct payloads");
+}
+
+/**
+ * @brief Host test entry point.
+ *
+ * @return 0 on success; any assertion `exit(1)`s before returning.
+ */
+int32_t main(void)
+{
+  t_edge_dims();
+  t_edge_roundtrip();
+  t_edge_distinct();
+  (void)fprintf(stderr, "[OK  ] test_ra8_tileatlas_edges.c\n");
+  return 0;
+}
