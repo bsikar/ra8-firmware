@@ -21,33 +21,23 @@
 #include "unity_minimal.h"
 
 /**
- * @enum secure_app_key_import_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_kimp_t
+ * @brief Key-material fill patterns and the slot out-parameter seed.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_secure_app_key_import_test_kimp_fill_pattern_22 = 0x22U,
-  k_secure_app_key_import_test_kimp_fill_pattern_42 = 0x42U,
-  k_secure_app_key_import_test_kimp_fill_pattern_55 = 0x55U,
-  k_secure_app_key_import_val_a0                    = 0xA0U,
-} secure_app_key_import_uint8_const_t;
-
-/**
- * @enum secure_app_key_import_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Each import arm fills its plaintext key with a different constant byte, so a
+ * wrapped blob that decrypts to the wrong arm's material is obvious. The KAK
+ * itself ascends from a base instead, since a constant key-encryption key
+ * would hide a byte-order error in the wrap.
  */
 typedef enum : uint16_t {
-  k_secure_app_key_import_slot_ffff = 0xFFFFU,
-} secure_app_key_import_uint16_const_t;
+  k_t_fill_arm_a = 0x22U,   /**< Key fill for the first import arm.          */
+  k_t_fill_arm_b = 0x42U,   /**< Key fill for the second.                    */
+  k_t_fill_arm_c = 0x55U,   /**< Key fill for the third.                     */
+  k_t_kak_base   = 0xA0U,   /**< First byte of the ascending key-encryption key. */
+  k_t_slot_unset = 0xFFFFU, /**< Pre-set slot id; an import that fails must
+                                 leave it rather than report a real slot.      */
+} t_kimp_t;
 
 typedef enum : uint8_t {
   k_test_kimp_xor_flip_bit       = 0x01U, /**< Test kimp xor flip bit.        */
@@ -77,7 +67,7 @@ static void test_kimp_provision(void)
 {
   uint8_t kak[k_test_kimp_kak_bytes];
   for (uint16_t i = 0U; i < (uint16_t)k_test_kimp_kak_bytes; ++i) {
-    kak[i] = (uint8_t)(k_secure_app_key_import_val_a0 + i);
+    kak[i] = (uint8_t)(k_t_kak_base + i);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_key_vault_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_key_vault_set_mac_key(kak, (uint16_t)k_test_kimp_kak_bytes));
@@ -115,7 +105,7 @@ static void test_seal_and_resolve_happy(void)
                  ra8_key_import_seal(blob, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
   TEST_ASSERT(handle != (uint32_t)k_ra8_key_import_handle_zero);
 
-  uint16_t slot = k_secure_app_key_import_slot_ffff;
+  uint16_t slot = k_t_slot_unset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_resolve(handle, &slot));
   TEST_ASSERT(slot < (uint16_t)k_ra8_key_vault_slots);
   TEST_END("key_import: seal then resolve round-trips");
@@ -163,7 +153,7 @@ static void test_seal_rejects_tampered_blob(void)
   TEST_BEGIN("key_import: seal rejects a tampered blob (CMAC authenticates)");
   test_kimp_provision();
 
-  test_kimp_fill_pattern(k_secure_app_key_import_test_kimp_fill_pattern_55);
+  test_kimp_fill_pattern(k_t_fill_arm_c);
   uint8_t  blob[k_ra8_key_import_blob_bytes] = {};
   uint32_t handle                            = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_build_blob(s_key_pattern, blob));
@@ -205,7 +195,7 @@ static void test_missing_kak_fails_closed(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_key_vault_init());
   TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_reset());
 
-  test_kimp_fill_pattern(k_secure_app_key_import_test_kimp_fill_pattern_22);
+  test_kimp_fill_pattern(k_t_fill_arm_a);
   uint8_t  blob[k_ra8_key_import_blob_bytes] = {};
   uint32_t handle                            = 0U;
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_key_import_build_blob(s_key_pattern, blob));
@@ -265,7 +255,7 @@ static void test_mcdc_resolve_slot_match(void)
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_key_import_resolve(0x80000001U, &slot_v1));
 
   /* Allocate slot 0 via a real seal so we have a known good handle. */
-  test_kimp_fill_pattern(k_secure_app_key_import_test_kimp_fill_pattern_42);
+  test_kimp_fill_pattern(k_t_fill_arm_b);
   uint8_t  blob[k_ra8_key_import_blob_bytes] = {};
   uint32_t handle                            = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_build_blob(s_key_pattern, blob));
@@ -276,11 +266,11 @@ static void test_mcdc_resolve_slot_match(void)
    * cannot equal the vended one (C2=F). Flip a low bit so the high
    * bit (which the implementation forces) is preserved. */
   const uint32_t bad_handle = handle ^ (uint32_t)k_test_kimp_xor_flip_bit;
-  uint16_t       slot_v2    = k_secure_app_key_import_slot_ffff;
+  uint16_t       slot_v2    = k_t_slot_unset;
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_key_import_resolve(bad_handle, &slot_v2));
 
   /* Vector 3: real handle -> C1=T, C2=T, decision T -> ok. */
-  uint16_t slot_v3 = k_secure_app_key_import_slot_ffff;
+  uint16_t slot_v3 = k_t_slot_unset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_resolve(handle, &slot_v3));
   TEST_ASSERT(slot_v3 < (uint16_t)k_ra8_key_vault_slots);
   TEST_END("key_import MC/DC: slot-used && handle-match");
