@@ -18,69 +18,72 @@
 #include "unity_minimal.h"
 
 /**
- * @enum usb_pmsc_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_pmsc_cbw_t
+ * @brief Command Block Wrapper field values built and corrupted by this file.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The Bulk-Only Transport CBW opens with the ASCII signature "USBC"; the
+ * driver must reject any wrapper that does not. The `k_t_bad_sig_*` bytes
+ * spell 0xDEADBEEF instead, which is the negative vector for that check.
  */
 typedef enum : uint8_t {
-  k_usb_pmsc_bad_cbw_11        = 0x11U,
-  k_usb_pmsc_bad_cbw_22        = 0x22U,
-  k_usb_pmsc_bad_cbw_33        = 0x33U,
-  k_usb_pmsc_bad_cbw_44        = 0x44U,
-  k_usb_pmsc_bad_cbw_ad        = 0xADU,
-  k_usb_pmsc_bad_cbw_be        = 0xBEU,
-  k_usb_pmsc_bad_cbw_de        = 0xDEU,
-  k_usb_pmsc_bad_cbw_ef        = 0xEFU,
-  k_usb_pmsc_build_cbw_10      = 10U,
-  k_usb_pmsc_build_cbw_18      = 18U,
-  k_usb_pmsc_build_cbw_30      = 0x30U,
-  k_usb_pmsc_build_cbw_40      = 0x40U,
-  k_usb_pmsc_cbw_42            = 0x42U,
-  k_usb_pmsc_cbw_43            = 0x43U,
-  k_usb_pmsc_cbw_53            = 0x53U,
-  k_usb_pmsc_cbw_55            = 0x55U,
-  k_usb_pmsc_cdb_36            = 36U,
-  k_usb_pmsc_cdb_5             = 5U,
-  k_usb_pmsc_cdb_7             = 7U,
-  k_usb_pmsc_cdb_cc            = 0xCCU,
-  k_usb_pmsc_data_5a           = 0x5AU,
-  k_usb_pmsc_read_fill_byte_a5 = 0xA5U,
-  k_usb_pmsc_tag_24            = 24U,
-  k_usb_pmsc_tag_ff            = 0xFFU,
-  k_usb_pmsc_val_10            = 10,
-  k_usb_pmsc_val_5             = 5,
-  k_usb_pmsc_val_80            = 0x80U,
-} usb_pmsc_uint8_const_t;
+  k_t_cbw_sig_b0     = 0x55U, /**< CBW signature byte 0, ASCII 'U'.                */
+  k_t_cbw_sig_b1     = 0x53U, /**< CBW signature byte 1, ASCII 'S'.                */
+  k_t_cbw_sig_b2     = 0x42U, /**< CBW signature byte 2, ASCII 'B'.                */
+  k_t_cbw_sig_b3     = 0x43U, /**< CBW signature byte 3, ASCII 'C'.                */
+  k_t_bad_sig_b0     = 0xDEU, /**< Byte 0 of the deliberately wrong signature.     */
+  k_t_bad_sig_b1     = 0xADU, /**< Byte 1 of the deliberately wrong signature.     */
+  k_t_bad_sig_b2     = 0xBEU, /**< Byte 2 of the deliberately wrong signature.     */
+  k_t_bad_sig_b3     = 0xEFU, /**< Byte 3 of the deliberately wrong signature.     */
+  k_t_bad_tag_b0     = 0x11U, /**< Tag byte 0 of the malformed wrapper; arbitrary. */
+  k_t_bad_tag_b1     = 0x22U, /**< Tag byte 1 of the malformed wrapper.            */
+  k_t_bad_tag_b2     = 0x33U, /**< Tag byte 2 of the malformed wrapper.            */
+  k_t_bad_tag_b3     = 0x44U, /**< Tag byte 3 of the malformed wrapper.            */
+  k_t_cbw_flag_data_in = 0x80U, /**< CBW flags bit 7: transfer is device-to-host.  */
+  k_t_le32_hi_shift  = 24U,   /**< Shift selecting the top byte of a little-endian 32-bit field. */
+  k_t_byte_mask      = 0xFFU, /**< Low-byte mask used while serialising a 32-bit field. */
+} t_pmsc_cbw_t;
 
 /**
- * @enum usb_pmsc_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_pmsc_scsi_t
+ * @brief SCSI command-block shapes and payload lengths the arms exercise.
  */
-typedef enum : uint16_t {
-  k_usb_pmsc_build_cbw_512 = 512U,
-} usb_pmsc_uint16_const_t;
+typedef enum : uint8_t {
+  k_t_cdb_len_10       = 10U,   /**< CDB length of the 10-byte SCSI commands (READ(10) / WRITE(10)). */
+  k_t_cdb10_off_lba_b3 = 5U,    /**< Least-significant LBA byte within a 10-byte CDB.  */
+  k_t_inquiry_len      = 36U,   /**< Standard INQUIRY response length, bytes.          */
+  k_t_sense_len        = 18U,   /**< Fixed-format REQUEST SENSE response length, bytes. */
+  k_t_read_lba         = 5U,    /**< LBA the read arm asks for.                        */
+  k_t_write_lba        = 7U,    /**< LBA the write arm targets.                        */
+  k_t_opcode_unknown   = 0xCCU, /**< Opcode outside the supported set; must stall.     */
+} t_pmsc_scsi_t;
 
 /**
- * @enum usb_pmsc_uint32_const_t
- * @brief Named uint32_t constants used by this file.
+ * @enum t_pmsc_fill_t
+ * @brief Fill bytes distinguishing host-written data from device-returned data.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Arbitrary values whose only requirement is that they differ, so a payload
+ * that survives a round trip can be told apart from one the mock invented.
+ */
+typedef enum : uint8_t {
+  k_t_fill_written  = 0x5AU, /**< Byte pattern the write arm sends.            */
+  k_t_fill_returned = 0xA5U, /**< Byte pattern the mock storage reads back.    */
+} t_pmsc_fill_t;
+
+/**
+ * @enum t_pmsc_tag_t
+ * @brief CBW tags chosen to be recognisable in a failing dump.
+ *
+ * @details
+ * A tag is opaque to the protocol -- the device must echo it in the CSW and
+ * nothing more -- so these carry no meaning beyond being distinct per arm.
  */
 typedef enum : uint32_t {
-  k_usb_pmsc_build_cbw_cafebabe = 0xCAFEBABEU,
-} usb_pmsc_uint32_const_t;
+  k_t_tag_inquiry   = 0xCAFEBABEU, /**< Tag for the INQUIRY arm.               */
+  k_t_tag_phase_a   = 0x30U,       /**< Tag for the first phase-error arm.     */
+  k_t_tag_phase_b   = 0x40U,       /**< Tag for the second phase-error arm.    */
+} t_pmsc_tag_t;
 
 typedef enum : uint16_t {
   k_test_pmsc_buf_capacity = 1024U, /**< Generous test buffer size. */
@@ -210,7 +213,7 @@ static void prep(void)
   (void)ra8_mstp_init();
   (void)ra8_usb_pmsc_close();
   s_storage_state                = (test_storage_state_t){};
-  s_storage_state.read_fill_byte = k_usb_pmsc_read_fill_byte_a5;
+  s_storage_state.read_fill_byte = k_t_fill_returned;
 }
 
 /* ---- Helpers ---- */
@@ -227,22 +230,22 @@ static void build_cbw(uint8_t*       cbw,
     cbw[i] = 0U;
   }
   /* dCBWSignature = 'USBC' little-endian. */
-  cbw[k_test_pmsc_cbw_off_signature + 0U] = k_usb_pmsc_cbw_55;
-  cbw[k_test_pmsc_cbw_off_signature + 1U] = k_usb_pmsc_cbw_53;
-  cbw[k_test_pmsc_cbw_off_signature + 2U] = k_usb_pmsc_cbw_42;
-  cbw[k_test_pmsc_cbw_off_signature + 3U] = k_usb_pmsc_cbw_43;
+  cbw[k_test_pmsc_cbw_off_signature + 0U] = k_t_cbw_sig_b0;
+  cbw[k_test_pmsc_cbw_off_signature + 1U] = k_t_cbw_sig_b1;
+  cbw[k_test_pmsc_cbw_off_signature + 2U] = k_t_cbw_sig_b2;
+  cbw[k_test_pmsc_cbw_off_signature + 3U] = k_t_cbw_sig_b3;
   /* dCBWTag (little-endian). */
-  cbw[k_test_pmsc_cbw_off_tag + 0U] = (uint8_t)(tag & k_usb_pmsc_tag_ff);
-  cbw[k_test_pmsc_cbw_off_tag + 1U] = (uint8_t)((tag >> 8U) & k_usb_pmsc_tag_ff);
-  cbw[k_test_pmsc_cbw_off_tag + 2U] = (uint8_t)((tag >> 16U) & k_usb_pmsc_tag_ff);
-  cbw[k_test_pmsc_cbw_off_tag + 3U] = (uint8_t)((tag >> k_usb_pmsc_tag_24) & k_usb_pmsc_tag_ff);
+  cbw[k_test_pmsc_cbw_off_tag + 0U] = (uint8_t)(tag & k_t_byte_mask);
+  cbw[k_test_pmsc_cbw_off_tag + 1U] = (uint8_t)((tag >> 8U) & k_t_byte_mask);
+  cbw[k_test_pmsc_cbw_off_tag + 2U] = (uint8_t)((tag >> 16U) & k_t_byte_mask);
+  cbw[k_test_pmsc_cbw_off_tag + 3U] = (uint8_t)((tag >> k_t_le32_hi_shift) & k_t_byte_mask);
   /* dCBWDataTransferLength (little-endian). */
-  cbw[k_test_pmsc_cbw_off_data_length + 0U] = (uint8_t)(data_xfer_len & k_usb_pmsc_tag_ff);
-  cbw[k_test_pmsc_cbw_off_data_length + 1U] = (uint8_t)((data_xfer_len >> 8U) & k_usb_pmsc_tag_ff);
-  cbw[k_test_pmsc_cbw_off_data_length + 2U] = (uint8_t)((data_xfer_len >> 16U) & k_usb_pmsc_tag_ff);
+  cbw[k_test_pmsc_cbw_off_data_length + 0U] = (uint8_t)(data_xfer_len & k_t_byte_mask);
+  cbw[k_test_pmsc_cbw_off_data_length + 1U] = (uint8_t)((data_xfer_len >> 8U) & k_t_byte_mask);
+  cbw[k_test_pmsc_cbw_off_data_length + 2U] = (uint8_t)((data_xfer_len >> 16U) & k_t_byte_mask);
   cbw[k_test_pmsc_cbw_off_data_length + 3U] =
-    (uint8_t)((data_xfer_len >> k_usb_pmsc_tag_24) & k_usb_pmsc_tag_ff);
-  cbw[k_test_pmsc_cbw_off_flags]      = data_in ? k_usb_pmsc_val_80 : 0x00U;
+    (uint8_t)((data_xfer_len >> k_t_le32_hi_shift) & k_t_byte_mask);
+  cbw[k_test_pmsc_cbw_off_flags]      = data_in ? k_t_cbw_flag_data_in : 0x00U;
   cbw[k_test_pmsc_cbw_off_lun]        = lun;
   cbw[k_test_pmsc_cbw_off_cdb_length] = cdb_len;
   for (uint8_t i = 0U; i < cdb_len; ++i) {
@@ -427,15 +430,15 @@ static void test_feed_cbw_bad_signature_emits_phase_error(void)
 
   uint8_t bad_cbw[k_test_pmsc_cbw_len] = {};
   /* Set signature to garbage instead of 'USBC'. */
-  bad_cbw[0] = k_usb_pmsc_bad_cbw_de;
-  bad_cbw[1] = k_usb_pmsc_bad_cbw_ad;
-  bad_cbw[2] = k_usb_pmsc_bad_cbw_be;
-  bad_cbw[3] = k_usb_pmsc_bad_cbw_ef;
+  bad_cbw[0] = k_t_bad_sig_b0;
+  bad_cbw[1] = k_t_bad_sig_b1;
+  bad_cbw[2] = k_t_bad_sig_b2;
+  bad_cbw[3] = k_t_bad_sig_b3;
   /* Tag still meaningful so we can confirm it's echoed in the CSW. */
-  bad_cbw[k_test_pmsc_cbw_off_tag + 0U] = k_usb_pmsc_bad_cbw_11;
-  bad_cbw[k_test_pmsc_cbw_off_tag + 1U] = k_usb_pmsc_bad_cbw_22;
-  bad_cbw[k_test_pmsc_cbw_off_tag + 2U] = k_usb_pmsc_bad_cbw_33;
-  bad_cbw[k_test_pmsc_cbw_off_tag + 3U] = k_usb_pmsc_bad_cbw_44;
+  bad_cbw[k_test_pmsc_cbw_off_tag + 0U] = k_t_bad_tag_b0;
+  bad_cbw[k_test_pmsc_cbw_off_tag + 1U] = k_t_bad_tag_b1;
+  bad_cbw[k_test_pmsc_cbw_off_tag + 2U] = k_t_bad_tag_b2;
+  bad_cbw[k_test_pmsc_cbw_off_tag + 3U] = k_t_bad_tag_b3;
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pmsc_feed_cbw(bad_cbw));
 
@@ -474,9 +477,9 @@ static void test_inquiry_returns_backend_strings(void)
 
   uint8_t cdb[6]                   = {};
   cdb[0]                           = (uint8_t)k_test_pmsc_scsi_inquiry;
-  cdb[4]                           = k_usb_pmsc_cdb_36; /* allocation length */
+  cdb[4]                           = k_t_inquiry_len; /* allocation length */
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, k_usb_pmsc_build_cbw_cafebabe, k_usb_pmsc_cdb_36, true, 0U, cdb, 6U);
+  build_cbw(cbw, k_t_tag_inquiry, k_t_inquiry_len, true, 0U, cdb, 6U);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
 
@@ -526,10 +529,10 @@ static void test_read_capacity_returns_count_minus_one_be(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
 
-  uint8_t cdb[k_usb_pmsc_val_10]   = {};
+  uint8_t cdb[k_t_cdb_len_10]   = {};
   cdb[0]                           = (uint8_t)k_test_pmsc_scsi_read_capacity_10;
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, 1U, 8U, true, 0U, cdb, k_usb_pmsc_build_cbw_10);
+  build_cbw(cbw, 1U, 8U, true, 0U, cdb, k_t_cdb_len_10);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
 
@@ -571,12 +574,12 @@ static void test_read10_calls_backend_and_returns_512(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
 
   /* READ(10) at LBA 5, count 1. */
-  uint8_t cdb[k_usb_pmsc_val_10]   = {};
+  uint8_t cdb[k_t_cdb_len_10]   = {};
   cdb[0]                           = (uint8_t)k_test_pmsc_scsi_read_10;
-  cdb[k_usb_pmsc_val_5]            = k_usb_pmsc_cdb_5; /* LBA low byte.   */
+  cdb[k_t_cdb10_off_lba_b3]    = k_t_read_lba; /* LBA low byte.   */
   cdb[8]                           = 1U;               /* count low byte. */
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, 2U, k_usb_pmsc_build_cbw_512, true, 0U, cdb, k_usb_pmsc_build_cbw_10);
+  build_cbw(cbw, 2U, k_test_pmsc_block_size, true, 0U, cdb, k_t_cdb_len_10);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
 
   uint8_t                   data[k_test_pmsc_buf_capacity] = {};
@@ -611,19 +614,19 @@ static void test_write10_calls_backend(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
 
   /* WRITE(10) at LBA 7, count 1. */
-  uint8_t cdb[k_usb_pmsc_val_10]   = {};
+  uint8_t cdb[k_t_cdb_len_10]   = {};
   cdb[0]                           = (uint8_t)k_test_pmsc_scsi_write_10;
-  cdb[k_usb_pmsc_val_5]            = k_usb_pmsc_cdb_7;
+  cdb[k_t_cdb10_off_lba_b3]    = k_t_write_lba;
   cdb[8]                           = 1U;
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, 3U, k_usb_pmsc_build_cbw_512, false, 0U, cdb, k_usb_pmsc_build_cbw_10);
+  build_cbw(cbw, 3U, k_test_pmsc_block_size, false, 0U, cdb, k_t_cdb_len_10);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
 
   /* The data buffer holds the host-supplied payload; pre-fill it so
    * the test can confirm the backend received it. */
   uint8_t data[k_test_pmsc_buf_capacity] = {};
-  for (uint32_t i = 0U; i < k_usb_pmsc_build_cbw_512; ++i) {
-    data[i] = k_usb_pmsc_data_5a;
+  for (uint32_t i = 0U; i < k_test_pmsc_block_size; ++i) {
+    data[i] = k_t_fill_written;
   }
   uint32_t                  data_len = 0U;
   ra8_usb_pmsc_csw_status_t status   = k_ra8_pmsc_csw_status_failed;
@@ -660,7 +663,7 @@ static void test_test_unit_ready_no_data_phase(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
 
   uint8_t                   data[k_test_pmsc_buf_capacity] = {};
-  uint32_t                  data_len                       = k_usb_pmsc_tag_ff;
+  uint32_t                  data_len                       = k_t_byte_mask;
   ra8_usb_pmsc_csw_status_t status                         = k_ra8_pmsc_csw_status_failed;
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -684,10 +687,10 @@ static void test_unsupported_opcode_fails(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_init(k_ra8_usb_speed_fs));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_attach_storage(&s_test_storage));
 
-  uint8_t cdb[k_usb_pmsc_val_10]   = {};
-  cdb[0]                           = k_usb_pmsc_cdb_cc; /* not a SCSI opcode the driver knows */
+  uint8_t cdb[k_t_cdb_len_10]   = {};
+  cdb[0]                           = k_t_opcode_unknown; /* not a SCSI opcode the driver knows */
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, k_usb_pmsc_cdb_5, 0U, true, 0U, cdb, k_usb_pmsc_build_cbw_10);
+  build_cbw(cbw, k_t_read_lba, 0U, true, 0U, cdb, k_t_cdb_len_10);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
 
   uint8_t                   data[k_test_pmsc_buf_capacity] = {};
@@ -784,7 +787,7 @@ static void test_dispatch_request_sense_and_mode_sense(void)
   uint8_t cdb_sense[6]             = {};
   cdb_sense[0]                     = (uint8_t)k_test_pmsc_scsi_request_sense;
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, 0x10U, k_usb_pmsc_build_cbw_18, true, 0U, cdb_sense, 6U);
+  build_cbw(cbw, 0x10U, k_t_sense_len, true, 0U, cdb_sense, 6U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -797,7 +800,7 @@ static void test_dispatch_request_sense_and_mode_sense(void)
    * re-arms CDB_DECODE regardless of the prior data-phase state. */
   uint8_t cdb_mode[6] = {};
   cdb_mode[0]         = (uint8_t)k_test_pmsc_scsi_mode_sense_6;
-  build_cbw(cbw, k_usb_pmsc_bad_cbw_11, 4U, true, 0U, cdb_mode, 6U);
+  build_cbw(cbw, k_t_bad_tag_b0, 4U, true, 0U, cdb_mode, 6U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
   data_len = 0U;
   status   = k_ra8_pmsc_csw_status_failed;
@@ -849,7 +852,7 @@ static void test_dispatch_zero_capacity_rejected(void)
   uint8_t cdb[6]                   = {};
   cdb[0]                           = (uint8_t)k_test_pmsc_scsi_inquiry;
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, 0x20U, k_usb_pmsc_cdb_36, true, 0U, cdb, 6U);
+  build_cbw(cbw, 0x20U, k_t_inquiry_len, true, 0U, cdb, 6U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
 
   uint8_t                   data[16] = {};
@@ -877,14 +880,14 @@ static void test_dispatch_handler_error_marks_failed(void)
   uint8_t cdb[6]                   = {};
   cdb[0]                           = (uint8_t)k_test_pmsc_scsi_inquiry;
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, k_usb_pmsc_build_cbw_30, k_usb_pmsc_cdb_36, true, 0U, cdb, 6U);
+  build_cbw(cbw, k_t_tag_phase_a, k_t_inquiry_len, true, 0U, cdb, 6U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
 
   /* Capacity 4 clears the "== 0" guard but is below the 36-byte
    * INQUIRY response, so internal_handle_inquiry returns invalid_size
    * and dispatch flips the CSW to FAILED. */
   uint8_t                   data[k_test_pmsc_tiny_cap] = {};
-  uint32_t                  data_len                   = k_usb_pmsc_tag_ff;
+  uint32_t                  data_len                   = k_t_byte_mask;
   ra8_usb_pmsc_csw_status_t status                     = k_ra8_pmsc_csw_status_passed;
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -910,7 +913,7 @@ static void test_step_from_data_phase_advances_to_csw(void)
   uint8_t cdb[6]                   = {};
   cdb[0]                           = (uint8_t)k_test_pmsc_scsi_inquiry;
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
-  build_cbw(cbw, k_usb_pmsc_build_cbw_40, k_usb_pmsc_cdb_36, true, 0U, cdb, 6U);
+  build_cbw(cbw, k_t_tag_phase_b, k_t_inquiry_len, true, 0U, cdb, 6U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pmsc_feed_cbw(cbw));
 
   uint8_t                   data[k_test_pmsc_buf_capacity] = {};
@@ -942,10 +945,10 @@ static void test_step_from_csw_tx_rewinds_to_idle(void)
 
   /* Bad signature parks the BOT machine in CSW_TX (phase error). */
   uint8_t bad_cbw[k_test_pmsc_cbw_len] = {};
-  bad_cbw[0]                           = k_usb_pmsc_bad_cbw_de;
-  bad_cbw[1]                           = k_usb_pmsc_bad_cbw_ad;
-  bad_cbw[2]                           = k_usb_pmsc_bad_cbw_be;
-  bad_cbw[3]                           = k_usb_pmsc_bad_cbw_ef;
+  bad_cbw[0]                           = k_t_bad_sig_b0;
+  bad_cbw[1]                           = k_t_bad_sig_b1;
+  bad_cbw[2]                           = k_t_bad_sig_b2;
+  bad_cbw[3]                           = k_t_bad_sig_b3;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pmsc_feed_cbw(bad_cbw));
   TEST_ASSERT_EQ(k_ra8_pmsc_state_csw_tx, s_usb_pmsc_state.bot_state);
 

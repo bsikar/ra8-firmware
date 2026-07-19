@@ -38,71 +38,81 @@
 #include "unity_minimal.h"
 
 /**
- * @enum rar5_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_r5_code_t
+ * @brief Bit widths and symbols of the RAR5 length-table encoding.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_rar5_bw_put_122          = 122U,
-  k_rar5_bw_put_127          = 127U,
-  k_rar5_bw_put_13           = 13U,
-  k_rar5_bw_put_17           = 17U,
-  k_rar5_bw_put_18           = 18U,
-  k_rar5_bw_put_19           = 19U,
-  k_rar5_bw_put_9            = 9U,
-  k_rar5_enc_match_lowdist_5 = 5U,
-  k_rar5_i_20                = 20U,
-  k_rar5_i_44                = 44U,
-  k_rar5_i_64                = 64U,
-  k_rar5_i_7                 = 7U,
-  k_rar5_op_e8               = 0xE8U,
-  k_rar5_op_e9               = 0xE9U,
-  k_rar5_s_notab_40          = 0x40U,
-  k_rar5_sentinel_5a         = 0x5AU,
-  k_rar5_v_ff                = 0xFFU,
-  k_rar5_val_24              = 24U,
-  k_rar5_val_eb              = 0xEBU,
-} rar5_uint8_const_t;
-
-/**
- * @enum rar5_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * A RAR5 block opens with three Huffman tables whose code lengths are
+ * themselves coded: four bits per bit-length-table entry, then the main tables
+ * as literal lengths interleaved with the continuation codes below. The test
+ * hand-emits that bitstream, so these widths are the encoder's contract with
+ * the decoder under test.
  */
 typedef enum : uint16_t {
-  k_rar5_bw_put_262      = 262U,
-  k_rar5_enc_repdist_257 = 257U,
-  k_rar5_i_300           = 300U,
-  k_rar5_val_600         = 600,
-} rar5_uint16_const_t;
+  k_t_len_code_bits   = 5U,   /**< Bits per literal code-length entry.              */
+  k_t_long_run_bits   = 7U,   /**< Bits carrying a long run count.                  */
+  k_t_lit_code_bits   = 9U,   /**< Code length assigned to every literal, hence the
+                                   bit width of one emitted literal symbol.         */
+  k_t_code_copy_long  = 17U,  /**< Continuation code 17: copy the previous length,
+                                   long run.                                        */
+  k_t_code_zero_short = 18U,  /**< Continuation code 18: zero run, short form.      */
+  k_t_code_zero_long  = 19U,  /**< Continuation code 19: zero run, long form.       */
+  k_t_run_138         = 127U, /**< Long-run payload giving 11 + 127 = 138 entries.  */
+  k_t_run_133         = 122U, /**< Long-run payload giving 133 entries.             */
+  k_t_run_24          = 13U,  /**< Long zero-run payload giving 11 + 13 = 24 entries. */
+  k_t_run_10          = 7U,   /**< Short zero-run payload giving 3 + 7 = 10 entries. */
+  k_t_sym_len_slot0   = 262U, /**< Symbol selecting length slot 0, i.e. match length 2. */
+} t_r5_code_t;
 
 /**
- * @enum rar5_uint32_const_t
- * @brief Named uint32_t constants used by this file.
+ * @enum t_r5_table_t
+ * @brief Entry counts of the RAR5 code-length tables.
+ */
+typedef enum : uint8_t {
+  k_t_tbl_bd_entries  = 20U, /**< Bit-length table (BD) entries.        */
+  k_t_tbl_dd_entries  = 64U, /**< Distance table (DD) entries.          */
+  k_t_tbl_rd_entries  = 44U, /**< Low-distance + repeat table entries.  */
+} t_r5_table_t;
+
+/**
+ * @enum t_r5_filter_t
+ * @brief Opcodes and instruction widths the executable filters key on.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The x86 filter rewrites the rel32 operand of CALL / JMP; the ARM filter
+ * rewrites the 24-bit offset of BL. The oracle re-implements both inversely,
+ * so these must match the architecture, not the decoder.
  */
 typedef enum : uint32_t {
-  k_rar5_val_ffffff = 0xFFFFFFU,
-} rar5_uint32_const_t;
+  k_t_x86_op_call  = 0xE8U,     /**< x86 CALL rel32 opcode.                       */
+  k_t_x86_op_jmp   = 0xE9U,     /**< x86 JMP rel32 opcode.                        */
+  k_t_x86_insn_len = 5U,        /**< Its total length: 1 opcode + 4 operand bytes. */
+  k_t_arm_op_bl    = 0xEBU,     /**< ARM BL opcode, the high byte of the word.    */
+  k_t_arm_off_mask = 0xFFFFFFU, /**< The 24-bit BL offset field.                  */
+  k_t_byte_mask    = 0xFFU,     /**< Low-byte mask while serialising.             */
+  k_t_le32_hi_shift = 24U,      /**< Shift for the top byte of a 32-bit LE field. */
+} t_r5_filter_t;
+
+/**
+ * @enum t_r5_fixture_t
+ * @brief Sizes and stimulus values of the crafted streams.
+ */
+typedef enum : uint16_t {
+  k_t_src_len       = 600U, /**< All-literal round-trip source length, bytes.     */
+  k_t_src_stride    = 7U,   /**< Multiplier of its byte pattern; co-prime with 4
+                                 so the pattern does not repeat per word.          */
+  k_t_lit_prefix    = 300U, /**< Literal prefix giving far matches a window.       */
+  k_t_reuse_dist    = 257U, /**< Distance reused by the repeat-distance legs.      */
+  k_t_notab_flags   = 0x40U, /**< Block header: last block, no tables, bytecount 1. */
+  k_t_hdr_csum_seed = 0x5AU, /**< Seed the header checksum is XOR-folded against.  */
+} t_r5_fixture_t;
 
 static void test_rar5_all_literal_roundtrip(void)
 {
   TEST_BEGIN("rar5: all-literal round-trip");
-  static uint8_t s_src[k_rar5_val_600];
+  static uint8_t s_src[k_t_src_len];
   for (size_t i = 0U; i < sizeof(s_src); ++i) {
-    s_src[i] = (uint8_t)((i * k_rar5_i_7) + (i >> 2U) + 3U);
+    s_src[i] = (uint8_t)((i * k_t_src_stride) + (i >> 2U) + 3U);
   }
   static uint8_t s_pk[k_pk_cap];
   memset(s_pk, 0, sizeof(s_pk));
@@ -143,7 +153,7 @@ static void test_rar5_match_legs(void)
   size_t elen = 0U;
   enc_tables(&body);
   /* 300-byte literal prefix so far/large distances have a window. */
-  for (uint32_t i = 0U; i < k_rar5_i_300; ++i) {
+  for (uint32_t i = 0U; i < k_t_lit_prefix; ++i) {
     enc_lit(&body, s_exp, &elen, (uint8_t)(i + 1U));
   }
   enc_match(&body, s_exp, &elen, 2U, 3U);       /* len 4, dist 4  */
@@ -153,11 +163,11 @@ static void test_rar5_match_legs(void)
                     s_exp,
                     &elen,
                     0U,
-                    k_rar5_enc_match_lowdist_5);                /* len 2, dist 38         */
+                    k_t_len_code_bits);                         /* len 2, dist 38         */
   enc_match_hilow(&body, s_exp, &elen, 0U, 1U, 2U);             /* len 2, dist 65+16+2=83 */
   enc_match_big(&body, s_exp, &elen, 0U);                       /* len 3, dist 257        */
-  enc_repdist(&body, s_exp, &elen, 1U, k_rar5_enc_repdist_257); /* len 3, reuse dist 257  */
-  enc_replast(&body, s_exp, &elen, 3U, k_rar5_enc_repdist_257); /* repeat last len/dist   */
+  enc_repdist(&body, s_exp, &elen, 1U, k_t_reuse_dist); /* len 3, reuse dist 257  */
+  enc_replast(&body, s_exp, &elen, 3U, k_t_reuse_dist); /* repeat last len/dist   */
   static uint8_t s_pk[k_pk_cap];
   memset(s_pk, 0, sizeof(s_pk));
   const size_t pklen = enc_finish(&body, s_pk);
@@ -186,22 +196,22 @@ static void oracle_delta(uint8_t* d, uint32_t len, uint32_t chan)
 /** @brief Independent x86 CALL/JMP inverse over @p d (test oracle). */
 static void oracle_x86(uint8_t* d, uint32_t len, uint32_t filepos, bool e9)
 {
-  if (len < k_rar5_enc_match_lowdist_5) {
+  if (len < k_t_x86_insn_len) {
     return;
   }
   uint32_t i = 0U;
-  while (i <= len - k_rar5_enc_match_lowdist_5) {
+  while (i <= len - k_t_x86_insn_len) {
     const uint8_t op = d[i];
-    if (op == k_rar5_op_e8 || (e9 && op == k_rar5_op_e9)) {
+    if (op == k_t_x86_op_call || (e9 && op == k_t_x86_op_jmp)) {
       const uint32_t off = i + 1U;
       uint32_t       v = (uint32_t)d[off] | ((uint32_t)d[off + 1U] << 8U) |
-                         ((uint32_t)d[off + 2U] << 16U) | ((uint32_t)d[off + 3U] << k_rar5_val_24);
+                         ((uint32_t)d[off + 2U] << 16U) | ((uint32_t)d[off + 3U] << k_t_le32_hi_shift);
       v -= (filepos + off);
-      d[off]      = (uint8_t)(v & k_rar5_v_ff);
-      d[off + 1U] = (uint8_t)((v >> 8U) & k_rar5_v_ff);
-      d[off + 2U] = (uint8_t)((v >> 16U) & k_rar5_v_ff);
-      d[off + 3U] = (uint8_t)((v >> k_rar5_val_24) & k_rar5_v_ff);
-      i += k_rar5_enc_match_lowdist_5;
+      d[off]      = (uint8_t)(v & k_t_byte_mask);
+      d[off + 1U] = (uint8_t)((v >> 8U) & k_t_byte_mask);
+      d[off + 2U] = (uint8_t)((v >> 16U) & k_t_byte_mask);
+      d[off + 3U] = (uint8_t)((v >> k_t_le32_hi_shift) & k_t_byte_mask);
+      i += k_t_x86_insn_len;
     } else {
       i += 1U;
     }
@@ -216,12 +226,12 @@ static void oracle_arm(uint8_t* d, uint32_t len, uint32_t filepos)
   }
   uint32_t i = 0U;
   while (i <= len - 4U) {
-    if (d[i + 3U] == k_rar5_val_eb) {
+    if (d[i + 3U] == k_t_arm_op_bl) {
       uint32_t v = (uint32_t)d[i] | ((uint32_t)d[i + 1U] << 8U) | ((uint32_t)d[i + 2U] << 16U);
-      v          = (v - ((filepos + i) >> 2U)) & k_rar5_val_ffffff;
-      d[i]       = (uint8_t)(v & k_rar5_v_ff);
-      d[i + 1U]  = (uint8_t)((v >> 8U) & k_rar5_v_ff);
-      d[i + 2U]  = (uint8_t)((v >> 16U) & k_rar5_v_ff);
+      v          = (v - ((filepos + i) >> 2U)) & k_t_arm_off_mask;
+      d[i]       = (uint8_t)(v & k_t_byte_mask);
+      d[i + 1U]  = (uint8_t)((v >> 8U) & k_t_byte_mask);
+      d[i + 2U]  = (uint8_t)((v >> 16U) & k_t_byte_mask);
     }
     i += 4U;
   }
@@ -326,31 +336,31 @@ static void test_rar5_filters(void)
 static void enc_tables_runs(bitw_t* w)
 {
   /* BD: 20 lengths of 5. */
-  for (uint32_t i = 0U; i < k_rar5_i_20; ++i) {
-    bw_put(w, k_rar5_enc_match_lowdist_5, 4U);
+  for (uint32_t i = 0U; i < k_t_tbl_bd_entries; ++i) {
+    bw_put(w, k_t_len_code_bits, 4U);
   }
   /* LD 0..271 = 9 via a literal 9 then copy-previous runs (codes 16/17). */
-  bw_put(w, k_rar5_bw_put_9, k_rar5_enc_match_lowdist_5); /* tbl[0] = 9 */
+  bw_put(w, k_t_lit_code_bits, k_t_len_code_bits); /* tbl[0] = 9 */
   bw_put(w,
-         k_rar5_bw_put_17,
-         k_rar5_enc_match_lowdist_5);       /* copy prev, long run                 */
-  bw_put(w, k_rar5_bw_put_127, k_rar5_i_7); /* run = 11 + 127 = 138 -> tbl[1..138] */
-  bw_put(w, k_rar5_bw_put_17, k_rar5_enc_match_lowdist_5);
-  bw_put(w, k_rar5_bw_put_122, k_rar5_i_7); /* run = 133 -> tbl[139..271] */
+         k_t_code_copy_long,
+         k_t_len_code_bits);       /* copy prev, long run                 */
+  bw_put(w, k_t_run_138, k_t_long_run_bits); /* run = 11 + 127 = 138 -> tbl[1..138] */
+  bw_put(w, k_t_code_copy_long, k_t_len_code_bits);
+  bw_put(w, k_t_run_133, k_t_long_run_bits); /* run = 133 -> tbl[139..271] */
   /* LD 272..305 = 0 via a zero run (code 18 short + 19 long). */
-  bw_put(w, k_rar5_bw_put_18, k_rar5_enc_match_lowdist_5);
-  bw_put(w, k_rar5_i_7, 3U); /* run = 3 + 7 = 10 -> tbl[272..281] */
-  bw_put(w, k_rar5_bw_put_19, k_rar5_enc_match_lowdist_5);
-  bw_put(w, k_rar5_bw_put_13, k_rar5_i_7); /* run = 11 + 13 = 24 -> tbl[282..305] */
+  bw_put(w, k_t_code_zero_short, k_t_len_code_bits);
+  bw_put(w, k_t_run_10, 3U); /* run = 3 + 7 = 10 -> tbl[272..281] */
+  bw_put(w, k_t_code_zero_long, k_t_len_code_bits);
+  bw_put(w, k_t_run_24, k_t_long_run_bits); /* run = 11 + 13 = 24 -> tbl[282..305] */
   /* DD/LDD/RD via direct lengths. */
-  for (uint32_t i = 0U; i < k_rar5_i_64; ++i) {
-    bw_put(w, 6U, k_rar5_enc_match_lowdist_5);
+  for (uint32_t i = 0U; i < k_t_tbl_dd_entries; ++i) {
+    bw_put(w, 6U, k_t_len_code_bits);
   }
   for (uint32_t i = 0U; i < 16U; ++i) {
-    bw_put(w, 4U, k_rar5_enc_match_lowdist_5);
+    bw_put(w, 4U, k_t_len_code_bits);
   }
-  for (uint32_t i = 0U; i < k_rar5_i_44; ++i) {
-    bw_put(w, 6U, k_rar5_enc_match_lowdist_5);
+  for (uint32_t i = 0U; i < k_t_tbl_rd_entries; ++i) {
+    bw_put(w, 6U, k_t_len_code_bits);
   }
 }
 
@@ -383,7 +393,7 @@ static void test_rar5_table_runs(void)
   /* Payload: a handful of literals. */
   static const uint8_t k_pay[5] = {0x41U, 0x42U, 0x43U, 0x44U, 0x45U};
   for (uint32_t i = 0U; i < sizeof(k_pay); ++i) {
-    bw_put(&body, k_pay[i], k_rar5_bw_put_9);
+    bw_put(&body, k_pay[i], k_t_lit_code_bits);
   }
   static uint8_t s_pk[k_pk_cap];
   memset(s_pk, 0, sizeof(s_pk));
@@ -414,7 +424,7 @@ static void test_rar5_bd_zero_run(void)
   enc_tables_bdzero(&body);
   static const uint8_t k_pay[6] = {0x30U, 0x31U, 0x32U, 0x33U, 0x34U, 0x35U};
   for (uint32_t i = 0U; i < sizeof(k_pay); ++i) {
-    bw_put(&body, k_pay[i], k_rar5_bw_put_9);
+    bw_put(&body, k_pay[i], k_t_lit_code_bits);
   }
   static uint8_t s_pk[k_pk_cap];
   memset(s_pk, 0, sizeof(s_pk));
@@ -444,7 +454,7 @@ static void test_rar5_malformed(void)
   /* Bad header checksum. */
   static uint8_t s_bad[k_pk_cap];
   memcpy(s_bad, s_pk, pklen);
-  s_bad[2] ^= k_rar5_v_ff; /* wrong checksum byte (bytecount 1) */
+  s_bad[2] ^= k_t_byte_mask; /* wrong checksum byte (bytecount 1) */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(s_bad, pklen, sizeof(k_src)));
 
   /* Truncated stream (header only) with a large expected size -> short output. */
@@ -458,9 +468,9 @@ static void test_rar5_malformed(void)
 
   /* A first block that declares no tables must be rejected. */
   static uint8_t s_notab[16] = {};
-  s_notab[0]                 = k_rar5_s_notab_40; /* last, no tables, bytecount 1 */
+  s_notab[0]                 = k_t_notab_flags; /* last, no tables, bytecount 1 */
   s_notab[1]                 = 0x02U;             /* block size 2                 */
-  s_notab[2] = (uint8_t)(k_rar5_sentinel_5a ^ k_rar5_s_notab_40 ^ 0x02U); /* checksum */
+  s_notab[2] = (uint8_t)(k_t_hdr_csum_seed ^ k_t_notab_flags ^ 0x02U); /* checksum */
   s_notab[3] = 0x00U;
   s_notab[4] = 0x00U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(s_notab, 5U, sizeof(k_src)));
@@ -471,8 +481,8 @@ static void test_rar5_malformed(void)
   bitw_t body = {.buf = s_bodybuf, .cap = sizeof(s_bodybuf)};
   enc_tables(&body);
   bw_put(&body,
-         k_rar5_bw_put_262,
-         k_rar5_bw_put_9); /* length slot 0 -> length 2                      */
+         k_t_sym_len_slot0,
+         k_t_lit_code_bits); /* length slot 0 -> length 2                      */
   bw_put(&body, 3U, 6U);   /* distance slot 3 -> dist 4, but no prior output */
   static uint8_t s_pk2[k_pk_cap];
   memset(s_pk2, 0, sizeof(s_pk2));
