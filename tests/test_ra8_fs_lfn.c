@@ -28,54 +28,58 @@ typedef enum : uint8_t {
 } sfn_geom_t;
 
 /**
- * @enum fs_lfn_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum fat_bpb_field_t
+ * @brief Byte offsets of the BPB fields this fixture writes, per the FAT specification.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_fs_lfn_bpb_55   = 0x55U,
-  k_fs_lfn_bpb_aa   = 0xAAU,
-  k_fs_lfn_i_11     = 11U,
-  k_fs_lfn_i_13     = 13U,
-  k_fs_lfn_lfn_0f   = 0x0FU,
-  k_fs_lfn_lfn_41   = 0x41U,
-  k_fs_lfn_put16_14 = 14U,
-  k_fs_lfn_put16_17 = 17U,
-  k_fs_lfn_put16_19 = 19U,
-  k_fs_lfn_put16_20 = 20U,
-  k_fs_lfn_put16_22 = 22U,
-  k_fs_lfn_put16_26 = 26U,
-  k_fs_lfn_v_ff     = 0xFFU,
-  k_fs_lfn_val_11   = 11,
-  k_fs_lfn_val_12   = 12,
-  k_fs_lfn_val_13   = 13,
-  k_fs_lfn_val_28   = 28,
-  k_fs_lfn_val_29   = 29,
-  k_fs_lfn_val_30   = 30,
-  k_fs_lfn_val_31   = 31,
-  k_fs_lfn_val_64   = 64,
-  k_fs_lfn_val_80   = 0x80U,
-} fs_lfn_uint8_const_t;
-
-/**
- * @enum fs_lfn_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The fixture hand-builds a boot sector rather than calling a formatter, so
+ * every field is placed by its specified offset. Names follow the
+ * specification's own (BPB_BytsPerSec, BPB_FATSz16, ...) so a reader can check
+ * the layout against the document without decoding the numbers.
  */
 typedef enum : uint16_t {
-  k_fs_lfn_put16_ffff = 0xFFFFU,
-  k_fs_lfn_val_510    = 510,
-  k_fs_lfn_val_511    = 511,
-} fs_lfn_uint16_const_t;
+  k_bpb_off_bytes_per_sec = 11U,  /**< BPB_BytsPerSec: bytes per sector.            */
+  k_bpb_off_sec_per_clus  = 13U,  /**< BPB_SecPerClus: sectors per cluster.         */
+  k_bpb_off_rsvd_sec_cnt  = 14U,  /**< BPB_RsvdSecCnt: sectors before the 1st FAT.  */
+  k_bpb_off_root_ent_cnt  = 17U,  /**< BPB_RootEntCnt: root-directory entries.      */
+  k_bpb_off_tot_sec16     = 19U,  /**< BPB_TotSec16: total sectors.                 */
+  k_bpb_off_fat_sz16      = 22U,  /**< BPB_FATSz16: sectors per FAT.                */
+  k_bpb_off_sig_lo        = 510U, /**< Low byte of the 0xAA55 boot signature.       */
+  k_bpb_off_sig_hi        = 511U, /**< Its high byte.                               */
+} fat_bpb_field_t;
 
+/**
+ * @enum fat_dir_entry_field_t
+ * @brief Byte offsets and marker values inside a 32-byte FAT directory entry.
+ *
+ * @details
+ * A short (8.3) entry and a long-name entry share the same 32-byte frame, so
+ * the attribute byte and first-cluster fields sit at one offset for both; the
+ * `k_lfn_*` members are the fields only a long-name entry defines.
+ */
+typedef enum : uint8_t {
+  k_dir_off_attr        = 11U,   /**< DIR_Attr / LDIR_Attr: the attribute byte.    */
+  k_lfn_off_type        = 12U,   /**< LDIR_Type: reserved, must be zero.           */
+  k_lfn_off_chksum      = 13U,   /**< LDIR_Chksum: the 8.3 alias checksum.         */
+  k_dir_off_fst_clus_hi = 20U,   /**< DIR_FstClusHI: high half of first cluster.   */
+  k_dir_off_fst_clus_lo = 26U,   /**< DIR_FstClusLO: its low half; 0 in an LFN.    */
+  k_dir_off_file_size   = 28U,   /**< DIR_FileSize: first of its four bytes.       */
+  k_lfn_attr_long_name  = 0x0FU, /**< ATTR_LONG_NAME: marks an entry as a name.    */
+  k_lfn_ord_first_and_last =
+    0x41U,                        /**< LDIR_Ord: sequence 1 plus the 0x40 last-logical flag, so this
+                single entry carries the whole name. */
+  k_lfn_chars_per_entry  = 13U,   /**< UCS-2 chars one entry holds, split 5 + 6 + 2. */
+  k_sfn_name_len         = 11U,   /**< 8.3 name bytes (8 base + 3 ext) the checksum folds. */
+  k_sfn_chksum_carry_bit = 0x80U, /**< Bit rotated into the top each checksum round. */
+  k_bpb_sig_lo           = 0x55U, /**< Boot-signature low byte.                      */
+  k_bpb_sig_hi           = 0xAAU, /**< Boot-signature high byte.                     */
+  k_byte_mask            = 0xFFU, /**< Low-byte mask used by the put16/put32 helpers.*/
+  k_name_buf_bytes       = 64U,   /**< Split-name scratch capacity; over the longest
+                                       fixture name.                                */
+} fat_dir_entry_field_t;
+
+/** @brief Pads every UCS-2 slot after the long name's terminator. */
+static const uint16_t k_lfn_name_pad = 0xFFFFU;
 /* --- RAM block device + minimal FAT16 volume (mirrors test_ra8_fs_fat.c) --- */
 
 typedef enum : uint32_t {
@@ -137,16 +141,16 @@ static const ra8_fs_backend_t s_backend = {
 
 static void put16(uint8_t* p, uint32_t off, uint16_t v)
 {
-  p[off]     = (uint8_t)(v & k_fs_lfn_v_ff);
-  p[off + 1] = (uint8_t)((v >> 8) & k_fs_lfn_v_ff);
+  p[off]     = (uint8_t)(v & k_byte_mask);
+  p[off + 1] = (uint8_t)((v >> 8) & k_byte_mask);
 }
 
 /** @brief The 8.3 short-name checksum the LFN chain must carry. */
 static uint8_t sfn_checksum(const uint8_t* name83)
 {
   uint8_t sum = 0U;
-  for (uint32_t i = 0U; i < k_fs_lfn_i_11; i++) {
-    sum = (uint8_t)((((sum & 1U) != 0U) ? k_fs_lfn_val_80 : 0U) + (uint32_t)(sum >> 1U) +
+  for (uint32_t i = 0U; i < k_sfn_name_len; i++) {
+    sum = (uint8_t)((((sum & 1U) != 0U) ? k_sfn_chksum_carry_bit : 0U) + (uint32_t)(sum >> 1U) +
                     (uint32_t)name83[i]);
   }
   return sum;
@@ -168,15 +172,15 @@ static const uint8_t k_alias83[11] = {'M', 'Y', 'B', 'O', 'O', 'K', '~', '1', 'E
 static void lfn_write_bpb(void)
 {
   uint8_t* bpb = &s_disk.bytes[0];
-  put16(bpb, k_fs_lfn_i_11, (uint16_t)k_block_size);
-  bpb[k_fs_lfn_val_13] = 1U;                           /* sectors/cluster  */
-  put16(bpb, k_fs_lfn_put16_14, (uint16_t)k_reserved); /* reserved sectors */
+  put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_block_size);
+  bpb[k_bpb_off_sec_per_clus] = 1U;                         /* sectors/cluster  */
+  put16(bpb, k_bpb_off_rsvd_sec_cnt, (uint16_t)k_reserved); /* reserved sectors */
   bpb[16] = (uint8_t)k_num_fats;
-  put16(bpb, k_fs_lfn_put16_17, 16U);                /* root dir entries */
-  put16(bpb, k_fs_lfn_put16_19, (uint16_t)k_blocks); /* total sectors    */
-  put16(bpb, k_fs_lfn_put16_22, (uint16_t)k_sectors_fat);
-  bpb[k_fs_lfn_val_510] = k_fs_lfn_bpb_55;
-  bpb[k_fs_lfn_val_511] = k_fs_lfn_bpb_aa;
+  put16(bpb, k_bpb_off_root_ent_cnt, 16U);             /* root dir entries */
+  put16(bpb, k_bpb_off_tot_sec16, (uint16_t)k_blocks); /* total sectors    */
+  put16(bpb, k_bpb_off_fat_sz16, (uint16_t)k_sectors_fat);
+  bpb[k_bpb_off_sig_lo] = k_bpb_sig_lo;
+  bpb[k_bpb_off_sig_hi] = k_bpb_sig_hi;
 }
 
 /**
@@ -200,22 +204,22 @@ static void lfn_write_bpb(void)
 static void lfn_write_name_slot(uint8_t* root)
 {
   /* --- slot 0: single LFN entry (the name is 11 chars, fits one entry) --- */
-  uint8_t* lfn         = &root[0];
-  lfn[0]               = k_fs_lfn_lfn_41; /* order 1 | last-logical (0x40) */
-  lfn[k_fs_lfn_val_11] = k_fs_lfn_lfn_0f; /* LFN attribute                 */
-  lfn[k_fs_lfn_val_12] = 0x00U;
-  lfn[k_fs_lfn_val_13] = sfn_checksum(k_alias83);
-  put16(lfn, k_fs_lfn_put16_26, 0U);
+  uint8_t* lfn          = &root[0];
+  lfn[0]                = k_lfn_ord_first_and_last; /* order 1 | last-logical (0x40) */
+  lfn[k_dir_off_attr]   = k_lfn_attr_long_name;     /* LFN attribute                 */
+  lfn[k_lfn_off_type]   = 0x00U;
+  lfn[k_lfn_off_chksum] = sfn_checksum(k_alias83);
+  put16(lfn, k_dir_off_fst_clus_lo, 0U);
   const char* const lname = "mybook.epub"; /* 11 chars */
   /* UTF-16LE char slot byte-offsets within a 32-byte LFN entry. */
   static const uint8_t k_off[13] = {1U, 3U, 5U, 7U, 9U, 14U, 16U, 18U, 20U, 22U, 24U, 28U, 30U};
-  for (uint32_t i = 0U; i < k_fs_lfn_i_13; i++) {
+  for (uint32_t i = 0U; i < k_lfn_chars_per_entry; i++) {
     if (i < strlen(lname)) {
       put16(lfn, (uint32_t)k_off[i], (uint16_t)(uint8_t)lname[i]);
     } else if (i == strlen(lname)) {
       put16(lfn, (uint32_t)k_off[i], 0x0000U); /* name terminator */
     } else {
-      put16(lfn, (uint32_t)k_off[i], k_fs_lfn_put16_ffff); /* padding */
+      put16(lfn, (uint32_t)k_off[i], k_lfn_name_pad); /* padding */
     }
   }
 }
@@ -239,13 +243,10 @@ static void build_volume_with_lfn(void)
   /* --- slot 1: the 8.3 short entry (zero-length file is enough to open) --- */
   uint8_t* sfn = &root[(uint32_t)k_dir_entry_len];
   memcpy(sfn, k_alias83, (size_t)k_sfn_name_bytes);
-  sfn[k_fs_lfn_val_11] = 0x20U;      /* ARCHIVE                            */
-  put16(sfn, k_fs_lfn_put16_26, 0U); /* first cluster low = 0 (empty file) */
-  put16(sfn, k_fs_lfn_put16_20, 0U); /* first cluster high                 */
-  sfn[k_fs_lfn_val_28] = 0U;         /* file size = 0                      */
-  sfn[k_fs_lfn_val_29] = 0U;
-  sfn[k_fs_lfn_val_30] = 0U;
-  sfn[k_fs_lfn_val_31] = 0U;
+  sfn[k_dir_off_attr] = 0x20U;                    /* ARCHIVE                            */
+  put16(sfn, k_dir_off_fst_clus_lo, 0U);          /* first cluster low = 0 (empty file) */
+  put16(sfn, k_dir_off_fst_clus_hi, 0U);          /* first cluster high                 */
+  (void)memset(&sfn[k_dir_off_file_size], 0, 4U); /* DIR_FileSize = 0 (empty file) */
   /* slot 2 stays 0x00 -> end-of-directory. */
 }
 
@@ -258,8 +259,8 @@ static void free_volume(void)
 /* --- listdir capture --- */
 
 typedef struct {
-  char    last[k_fs_lfn_val_64]; /**< Last.  */
-  uint8_t count;                 /**< Count. */
+  char    last[k_name_buf_bytes]; /**< Last.  */
+  uint8_t count;                  /**< Count. */
 } listdir_capture_t;
 
 static void capture_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
