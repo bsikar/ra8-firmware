@@ -169,8 +169,7 @@ void sim_tz_install(uc_engine* uc, const uint8_t* elf, long elf_len)
    * the BLXNS stalls and the NS world never runs. */
   const uint32_t blxns_at = sim_tz_find_blxns(uc, jump_ns, jn_size);
   if (blxns_at == 0U) {
-    (void)fprintf(stderr,
-                  "board_sim: TZ warning: no BLXNS found in ra8_tz_secure_boot_jump_ns\n");
+    (void)fprintf(stderr, "board_sim: TZ warning: no BLXNS found in ra8_tz_secure_boot_jump_ns\n");
     return;
   }
   uc_hook h_blxns;
