@@ -46,38 +46,35 @@
 #include "unity_minimal.h"
 
 /**
- * @enum usb_hmsc_enum_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_enum_desc_t
+ * @brief Descriptor offsets and standard requests the enumeration mock answers.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Offsets are relative to the start of an interface descriptor: byte 5 is
+ * bInterfaceClass and byte 7 is bInterfaceProtocol. The mock recognises the
+ * three requests below and stalls everything else.
  */
 typedef enum : uint8_t {
-  k_usb_hmsc_enum_cov_o_5    = 5U,
-  k_usb_hmsc_enum_cov_o_7    = 7U,
-  k_usb_hmsc_enum_cov_o_ff   = 0xFFU,
-  k_usb_hmsc_enum_cov_req_05 = 0x05U,
-  k_usb_hmsc_enum_cov_req_09 = 0x09U,
-  k_usb_hmsc_enum_cov_req_fe = 0xFEU,
-  k_usb_hmsc_enum_cov_val_5  = 5,
-  k_usb_hmsc_enum_cov_val_64 = 64,
-  k_usb_hmsc_enum_cov_val_7  = 7,
-} usb_hmsc_enum_cov_uint8_const_t;
+  k_t_iface_off_class    = 5U,    /**< bInterfaceClass offset.                */
+  k_t_iface_off_protocol = 7U,    /**< bInterfaceProtocol offset.             */
+  k_t_req_set_address    = 0x05U, /**< Standard request SET_ADDRESS.          */
+  k_t_req_set_config     = 0x09U, /**< Standard request SET_CONFIGURATION.    */
+  k_t_req_get_max_lun    = 0xFEU, /**< Class request GET_MAX_LUN.             */
+  k_t_byte_mask          = 0xFFU, /**< Low-byte mask while splitting a 16-bit
+                                       descriptor field; also the unassigned
+                                       device address the hunt starts from.    */
+} t_enum_desc_t;
 
 /**
- * @enum usb_hmsc_enum_cov_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_enum_budget_t
+ * @brief Blob capacity and the mock clock step that bounds the attach wait.
  */
 typedef enum : uint16_t {
-  k_usb_hmsc_enum_cov_s_time_step_1500 = 1500U,
-} usb_hmsc_enum_cov_uint16_const_t;
+  k_t_cfg_blob_cap = 64U,   /**< Configuration-descriptor scratch, bytes.     */
+  k_t_time_step_us = 1500U, /**< Clock step per poll: 0 -> 1500 (still inside
+                                 the 2000 us budget) -> 3000 (past it, so the
+                                 wait breaks), giving both loop outcomes.       */
+} t_enum_budget_t;
 
 /**
  * @enum test_enum_cov_desc_t
@@ -132,7 +129,7 @@ typedef enum : uint16_t {
 /** @brief GET_DESCRIPTOR(DEVICE) payload the control mock returns. */
 static uint8_t s_dev_desc[k_tc_dev_desc_len];
 /** @brief GET_DESCRIPTOR(CONFIGURATION) payload the control mock returns. */
-static uint8_t s_cfg_blob[k_usb_hmsc_enum_cov_val_64];
+static uint8_t s_cfg_blob[k_t_cfg_blob_cap];
 /** @brief Valid byte count in ::s_cfg_blob. */
 static uint16_t s_cfg_len;
 /** @brief Bytes the control mock reports for a DEVICE descriptor read. */
@@ -232,13 +229,13 @@ static ra8_err_t mock_ctrl_xfer(ra8_usb_speed_t        speed,
   if (req == 0x06U) { /* GET_DESCRIPTOR */
     return mock_get_descriptor(setup, data, data_len, out_received);
   }
-  if (req == k_usb_hmsc_enum_cov_req_05) { /* SET_ADDRESS */
+  if (req == k_t_req_set_address) { /* SET_ADDRESS */
     return s_setaddr_err;
   }
-  if (req == k_usb_hmsc_enum_cov_req_09) { /* SET_CONFIGURATION */
+  if (req == k_t_req_set_config) { /* SET_CONFIGURATION */
     return s_setcfg_err;
   }
-  if (req == k_usb_hmsc_enum_cov_req_fe) { /* GET_MAX_LUN */
+  if (req == k_t_req_get_max_lun) { /* GET_MAX_LUN */
     if ((data != nullptr) && (data_len >= 1U)) {
       data[0] = s_lun_val;
     }
@@ -331,9 +328,9 @@ static uint16_t build_msc_config(uint8_t* buf)
   buf[o + 2U]                      = 0U; /* wTotalLength LSB (patched below). */
   buf[o + 3U]                      = 0U; /* wTotalLength MSB.                 */
   buf[o + 4U]                      = 1U; /* bNumInterfaces.                   */
-  buf[o + k_usb_hmsc_enum_cov_o_5] = (uint8_t)k_tc_cfg_value;
+  buf[o + k_t_iface_off_class] = (uint8_t)k_tc_cfg_value;
   buf[o + 6U]                      = 0U;
-  buf[o + k_usb_hmsc_enum_cov_o_7] = 0U;
+  buf[o + k_t_iface_off_protocol] = 0U;
   buf[o + 8U]                      = 0U;
   o                                = (uint16_t)(o + k_tc_cfg_hdr_len);
   /* INTERFACE: MSC SCSI Bulk-Only. */
@@ -342,9 +339,9 @@ static uint16_t build_msc_config(uint8_t* buf)
   buf[o + 2U]                      = (uint8_t)k_tc_iface_number;
   buf[o + 3U]                      = 0U;
   buf[o + 4U]                      = 2U; /* bNumEndpoints. */
-  buf[o + k_usb_hmsc_enum_cov_o_5] = (uint8_t)k_tc_class_msc;
+  buf[o + k_t_iface_off_class] = (uint8_t)k_tc_class_msc;
   buf[o + 6U]                      = (uint8_t)k_tc_subclass_scsi;
-  buf[o + k_usb_hmsc_enum_cov_o_7] = (uint8_t)k_tc_protocol_bbb;
+  buf[o + k_t_iface_off_protocol] = (uint8_t)k_tc_protocol_bbb;
   buf[o + 8U]                      = 0U;
   o                                = (uint16_t)(o + k_tc_iface_desc_len);
   /* ENDPOINT: bulk IN. */
@@ -353,7 +350,7 @@ static uint16_t build_msc_config(uint8_t* buf)
   buf[o + 2U]                      = (uint8_t)k_tc_ep_in_addr;
   buf[o + 3U]                      = (uint8_t)k_tc_attr_bulk;
   buf[o + 4U]                      = (uint8_t)k_tc_mps_lo;
-  buf[o + k_usb_hmsc_enum_cov_o_5] = 0U;
+  buf[o + k_t_iface_off_class] = 0U;
   buf[o + 6U]                      = 0U;
   o                                = (uint16_t)(o + k_tc_ep_desc_len);
   /* ENDPOINT: bulk OUT. */
@@ -362,10 +359,10 @@ static uint16_t build_msc_config(uint8_t* buf)
   buf[o + 2U]                      = (uint8_t)k_tc_ep_out_addr;
   buf[o + 3U]                      = (uint8_t)k_tc_attr_bulk;
   buf[o + 4U]                      = (uint8_t)k_tc_mps_lo;
-  buf[o + k_usb_hmsc_enum_cov_o_5] = 0U;
+  buf[o + k_t_iface_off_class] = 0U;
   buf[o + 6U]                      = 0U;
   o                                = (uint16_t)(o + k_tc_ep_desc_len);
-  buf[k_tc_off_total]              = (uint8_t)(o & k_usb_hmsc_enum_cov_o_ff);
+  buf[k_tc_off_total]              = (uint8_t)(o & k_t_byte_mask);
   return o;
 }
 
@@ -382,12 +379,12 @@ static void reset_state(void)
   (void)memset(s_dev_desc, 0, sizeof s_dev_desc);
   s_dev_desc[0]            = (uint8_t)k_tc_dev_desc_len;
   s_dev_desc[1]            = (uint8_t)k_tc_dtype_device;
-  s_dev_desc[k_tc_off_vid] = (uint8_t)((uint16_t)k_tc_vid & k_usb_hmsc_enum_cov_o_ff);
+  s_dev_desc[k_tc_off_vid] = (uint8_t)((uint16_t)k_tc_vid & k_t_byte_mask);
   s_dev_desc[k_tc_off_vid + 1U] =
-    (uint8_t)(((uint16_t)k_tc_vid >> k_tc_byte_bits) & k_usb_hmsc_enum_cov_o_ff);
-  s_dev_desc[k_tc_off_pid] = (uint8_t)((uint16_t)k_tc_pid & k_usb_hmsc_enum_cov_o_ff);
+    (uint8_t)(((uint16_t)k_tc_vid >> k_tc_byte_bits) & k_t_byte_mask);
+  s_dev_desc[k_tc_off_pid] = (uint8_t)((uint16_t)k_tc_pid & k_t_byte_mask);
   s_dev_desc[k_tc_off_pid + 1U] =
-    (uint8_t)(((uint16_t)k_tc_pid >> k_tc_byte_bits) & k_usb_hmsc_enum_cov_o_ff);
+    (uint8_t)(((uint16_t)k_tc_pid >> k_tc_byte_bits) & k_t_byte_mask);
 
   (void)memset(s_cfg_blob, 0, sizeof s_cfg_blob);
   s_cfg_len = build_msc_config(s_cfg_blob);
@@ -486,7 +483,7 @@ static void test_hunt_success_and_attach_timeout(void)
   /* Success leg: line state reports attach at once, addr-0 read answers. */
   reset_state();
   uint8_t desc[k_tc_dev_desc_len] = {};
-  uint8_t addr                    = k_usb_hmsc_enum_cov_o_ff;
+  uint8_t addr                    = k_t_byte_mask;
   s_line_state                    = 1U;
   TEST_ASSERT_EQ(k_ra8_ok, internal_enum_hunt(desc, &addr));
   TEST_ASSERT_EQ(0U, addr);
@@ -498,9 +495,9 @@ static void test_hunt_success_and_attach_timeout(void)
   s_line_state = 0U; /* Never attaches.       */
   s_time_val   = 0U; /* t0 = 0 on first read. */
   s_time_step =
-    k_usb_hmsc_enum_cov_s_time_step_1500; /* 0 -> 1500 (<=2000) -> 3000 (>2000, break). */
+    k_t_time_step_us; /* 0 -> 1500 (<=2000) -> 3000 (>2000, break). */
   s_dev_err     = k_ra8_err_hw_timeout;   /* No descriptor ever answers.                */
-  uint8_t addr2 = k_usb_hmsc_enum_cov_o_ff;
+  uint8_t addr2 = k_t_byte_mask;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, internal_enum_hunt(desc, &addr2));
 
   TEST_END("hunt: device answers at addr 0; separate attach-timeout leg");
@@ -623,15 +620,15 @@ static void test_iface_is_msc_all_fields(void)
                                         0U};
   TEST_ASSERT(internal_enum_iface_is_msc(iface));
 
-  iface[k_usb_hmsc_enum_cov_val_5] = (uint8_t)k_tc_class_hid; /* wrong class -> false. */
+  iface[k_t_iface_off_class] = (uint8_t)k_tc_class_hid; /* wrong class -> false. */
   TEST_ASSERT(!internal_enum_iface_is_msc(iface));
 
-  iface[k_usb_hmsc_enum_cov_val_5] = (uint8_t)k_tc_class_msc;
+  iface[k_t_iface_off_class] = (uint8_t)k_tc_class_msc;
   iface[6]                         = (uint8_t)k_tc_sub_rbc; /* wrong subclass -> false. */
   TEST_ASSERT(!internal_enum_iface_is_msc(iface));
 
   iface[6]                         = (uint8_t)k_tc_subclass_scsi;
-  iface[k_usb_hmsc_enum_cov_val_7] = (uint8_t)k_tc_proto_cbi; /* wrong protocol -> false. */
+  iface[k_t_iface_off_protocol] = (uint8_t)k_tc_proto_cbi; /* wrong protocol -> false. */
   TEST_ASSERT(!internal_enum_iface_is_msc(iface));
 
   TEST_END("iface_is_msc: true only for class 0x08 / sub 0x06 / proto 0x50");
@@ -648,7 +645,7 @@ static void test_iface_is_msc_all_fields(void)
 static void walk_cfg_rich_blob(void)
 {
   s_usb_hmsc_state.device                   = (ra8_usb_hmsc_device_t){};
-  uint8_t  blob[k_usb_hmsc_enum_cov_val_64] = {};
+  uint8_t  blob[k_t_cfg_blob_cap] = {};
   uint16_t o                                = 0U;
   /* CONFIGURATION header. */
   blob[o + 0U] = (uint8_t)k_tc_cfg_hdr_len;
@@ -657,7 +654,7 @@ static void walk_cfg_rich_blob(void)
   /* Non-MSC interface (HID). */
   blob[o + 0U]                      = (uint8_t)k_tc_iface_desc_len;
   blob[o + 1U]                      = (uint8_t)k_tc_dtype_iface;
-  blob[o + k_usb_hmsc_enum_cov_o_5] = (uint8_t)k_tc_class_hid;
+  blob[o + k_t_iface_off_class] = (uint8_t)k_tc_class_hid;
   o                                 = (uint16_t)(o + k_tc_iface_desc_len);
   /* Endpoint while NOT in an MSC scope -> skipped. */
   blob[o + 0U] = (uint8_t)k_tc_ep_desc_len;
@@ -668,9 +665,9 @@ static void walk_cfg_rich_blob(void)
   /* MSC interface + bulk IN + bulk OUT. */
   blob[o + 0U]                      = (uint8_t)k_tc_iface_desc_len;
   blob[o + 1U]                      = (uint8_t)k_tc_dtype_iface;
-  blob[o + k_usb_hmsc_enum_cov_o_5] = (uint8_t)k_tc_class_msc;
+  blob[o + k_t_iface_off_class] = (uint8_t)k_tc_class_msc;
   blob[o + 6U]                      = (uint8_t)k_tc_subclass_scsi;
-  blob[o + k_usb_hmsc_enum_cov_o_7] = (uint8_t)k_tc_protocol_bbb;
+  blob[o + k_t_iface_off_protocol] = (uint8_t)k_tc_protocol_bbb;
   o                                 = (uint16_t)(o + k_tc_iface_desc_len);
   blob[o + 0U]                      = (uint8_t)k_tc_ep_desc_len;
   blob[o + 1U]                      = (uint8_t)k_tc_dtype_endpoint;
@@ -704,9 +701,9 @@ static void walk_cfg_in_only(void)
   uint16_t p                           = 0U;
   in_only[p + 0U]                      = (uint8_t)k_tc_iface_desc_len;
   in_only[p + 1U]                      = (uint8_t)k_tc_dtype_iface;
-  in_only[p + k_usb_hmsc_enum_cov_o_5] = (uint8_t)k_tc_class_msc;
+  in_only[p + k_t_iface_off_class] = (uint8_t)k_tc_class_msc;
   in_only[p + 6U]                      = (uint8_t)k_tc_subclass_scsi;
-  in_only[p + k_usb_hmsc_enum_cov_o_7] = (uint8_t)k_tc_protocol_bbb;
+  in_only[p + k_t_iface_off_protocol] = (uint8_t)k_tc_protocol_bbb;
   p                                    = (uint16_t)(p + k_tc_iface_desc_len);
   in_only[p + 0U]                      = (uint8_t)k_tc_ep_desc_len;
   in_only[p + 1U]                      = (uint8_t)k_tc_dtype_endpoint;
@@ -731,9 +728,9 @@ static void walk_cfg_out_only(void)
   uint16_t q                            = 0U;
   out_only[q + 0U]                      = (uint8_t)k_tc_iface_desc_len;
   out_only[q + 1U]                      = (uint8_t)k_tc_dtype_iface;
-  out_only[q + k_usb_hmsc_enum_cov_o_5] = (uint8_t)k_tc_class_msc;
+  out_only[q + k_t_iface_off_class] = (uint8_t)k_tc_class_msc;
   out_only[q + 6U]                      = (uint8_t)k_tc_subclass_scsi;
-  out_only[q + k_usb_hmsc_enum_cov_o_7] = (uint8_t)k_tc_protocol_bbb;
+  out_only[q + k_t_iface_off_protocol] = (uint8_t)k_tc_protocol_bbb;
   q                                     = (uint16_t)(q + k_tc_iface_desc_len);
   out_only[q + 0U]                      = (uint8_t)k_tc_ep_desc_len;
   out_only[q + 1U]                      = (uint8_t)k_tc_dtype_endpoint;
