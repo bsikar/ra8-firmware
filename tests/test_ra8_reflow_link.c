@@ -27,22 +27,26 @@ typedef enum : uint8_t {
 } link_fixture_t;
 
 /**
- * @enum reflow_link_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_link_geom_t
+ * @brief Link hit-box geometry and anchor position of the fixture page.
+ */
+typedef enum : int16_t {
+  k_t_link_x   = 20,  /**< Link rectangle origin x.                          */
+  k_t_link_y   = 100, /**< Its origin y.                                     */
+  k_t_link_w   = 80,  /**< Its width.                                        */
+  k_t_link_h   = 24,  /**< Its height: one line box.                         */
+  k_t_anchor_y = 50,  /**< Y of the in-document anchor a link resolves to.   */
+} t_link_geom_t;
+
+/**
+ * @enum t_link_pool_t
+ * @brief Text-pool accounting for the single fixture href.
  */
 typedef enum : uint8_t {
-  k_reflow_link_h_24             = 24,
-  k_reflow_link_text_pool_used_9 = 9U,
-  k_reflow_link_w_80             = 80,
-  k_reflow_link_x_20             = 20,
-  k_reflow_link_y_100            = 100,
-  k_reflow_link_y_50             = 50,
-} reflow_link_uint8_const_t;
+  k_t_href_len = 9U, /**< Length of the fixture href, and hence the bytes of the
+                          text pool it occupies -- the two must agree or the
+                          lookup reads past the stored string.                  */
+} t_link_pool_t;
 
 /** @brief Shared engine handle (large -- keep off the stack). */
 static ra8_reflow_t s_eng;
@@ -126,14 +130,14 @@ static void test_hit_test_link(void)
   s_eng.in_use = 1U;
   /* text pool holds the href "ch2.xhtml" at offset 0 */
   memcpy(s_eng.text_pool, "ch2.xhtml", (size_t)k_link_href_bytes);
-  s_eng.text_pool_used           = k_reflow_link_text_pool_used_9;
+  s_eng.text_pool_used           = k_t_href_len;
   s_eng.link_targets[0].href_off = 0U;
-  s_eng.link_targets[0].href_len = k_reflow_link_text_pool_used_9;
+  s_eng.link_targets[0].href_len = k_t_href_len;
   s_eng.link_target_count        = 1U;
-  s_eng.link_rects[0].x          = k_reflow_link_x_20;
-  s_eng.link_rects[0].y          = k_reflow_link_y_100;
-  s_eng.link_rects[0].w          = k_reflow_link_w_80;
-  s_eng.link_rects[0].h          = k_reflow_link_h_24;
+  s_eng.link_rects[0].x          = k_t_link_x;
+  s_eng.link_rects[0].y          = k_t_link_y;
+  s_eng.link_rects[0].w          = k_t_link_w;
+  s_eng.link_rects[0].h          = k_t_link_h;
   s_eng.link_rects[0].target     = 0U;
   s_eng.link_rects[0].page_index = 1U;
   s_eng.link_rect_count          = 1U;
@@ -183,14 +187,14 @@ static void test_hit_test_rect_bounds_mcdc(void)
   memset(&s_eng, 0, sizeof s_eng);
   s_eng.in_use = 1U;
   memcpy(s_eng.text_pool, "ch2.xhtml", (size_t)k_link_href_bytes);
-  s_eng.text_pool_used           = k_reflow_link_text_pool_used_9;
+  s_eng.text_pool_used           = k_t_href_len;
   s_eng.link_targets[0].href_off = 0U;
-  s_eng.link_targets[0].href_len = k_reflow_link_text_pool_used_9;
+  s_eng.link_targets[0].href_len = k_t_href_len;
   s_eng.link_target_count        = 1U;
-  s_eng.link_rects[0].x          = k_reflow_link_x_20;
-  s_eng.link_rects[0].y          = k_reflow_link_y_100;
-  s_eng.link_rects[0].w          = k_reflow_link_w_80;
-  s_eng.link_rects[0].h          = k_reflow_link_h_24;
+  s_eng.link_rects[0].x          = k_t_link_x;
+  s_eng.link_rects[0].y          = k_t_link_y;
+  s_eng.link_rects[0].w          = k_t_link_w;
+  s_eng.link_rects[0].h          = k_t_link_h;
   s_eng.link_rects[0].target     = 0U;
   s_eng.link_rects[0].page_index = 1U;
   s_eng.link_rect_count          = 1U;
@@ -226,7 +230,7 @@ static void test_find_anchor(void)
   s_eng.anchors[0].id_off     = 0U;
   s_eng.anchors[0].id_len     = 4U;
   s_eng.anchors[0].page_index = 3U;
-  s_eng.anchors[0].y          = k_reflow_link_y_50;
+  s_eng.anchors[0].y          = k_t_anchor_y;
   s_eng.anchor_count          = 1U;
 
   uint32_t page = 0U;
