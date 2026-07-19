@@ -57,6 +57,14 @@ typedef enum : uint32_t {
   k_ra8_epaper_test_buf_pixels = 64U,        /**< 8x8 = 64 px.             */
   k_ra8_epaper_test_vcom_mv    = 1530U,      /**< Plausible VCOM (-1.53V). */
   k_ra8_epaper_test_bad_wf     = 200U,       /**< Unknown wf selector.     */
+  k_ra8_epaper_test_devinfo_words = 20U,     /**< GET_DEV_INFO word count. */
+  k_ra8_epaper_test_buf_lo     = 0x1234U,    /**< Image-buffer base, low.  */
+  k_ra8_epaper_test_buf_hi     = 0x0012U,    /**< Image-buffer base, high. */
+  k_ra8_epaper_test_buf_base   = 0x00121234U, /**< Reassembled base addr.  */
+  k_ra8_epaper_test_lut_w0     = 0x4D36U,    /**< "M6" packed high-first.  */
+  k_ra8_epaper_test_lut_w1     = 0x3431U,    /**< "41" packed high-first.  */
+  k_ra8_epaper_test_ctrl_word  = 0x0107U,    /**< Two non-printable bytes. */
+  k_ra8_epaper_test_a2_m641    = 4U,         /**< A2 mode on the M641 LUT. */
   /**
    * The only VCOM that round-trips on this fixture.
    *
@@ -386,7 +394,7 @@ static void test_pulse_reset_drives_line(void)
  * @test test_mcdc_ra8_epaper
  *
  * @par MC/DC:
- * Decision A libs/ra8_hal/src/ra8_epaper.c@internal_ra8_epaper_validate_cfg:
+ * Decision A libs/ra8_hal/src/ra8_epaper_geom.c@ra8_epaper_validate_cfg:
  * ``if ((bus.xfer8 == NULL) || (panel_w == 0) || (panel_h == 0) ||
  *      (panel_w > MAX) || (panel_h > MAX))``
  * (5 conditions, ``||`` short-circuit chain).
@@ -740,6 +748,65 @@ static void test_load_image_depth_and_alignment(void)
   TEST_END("epaper: load_image depth sizing + 1bpp alignment refusal");
 }
 
+/**
+ * @test epaper_decode_dev_info_layout
+ *
+ * @details
+ * Pins the 20-word ``GET_DEV_INFO`` layout as a pure decode, with no
+ * controller and no bus. This is the seam that decides which waveform
+ * mode number A2 refreshes use: ``lut_version`` feeds
+ * ``ra8_epaper_waveform_cfg_for_lut``, so a decode that slipped a word
+ * would silently select the wrong A2 mode on the real panel while every
+ * bus-level test still passed.
+ *
+ * Also covers the two argument guards and the short-response refusal, and
+ * asserts that a non-printable version byte is dropped to NUL rather than
+ * reaching a log as a control character.
+ */
+static void test_decode_dev_info_layout(void)
+{
+  TEST_BEGIN("epaper: GET_DEV_INFO decode layout + guards");
+
+  uint16_t words[k_ra8_epaper_test_devinfo_words] = {};
+  words[0]                                        = (uint16_t)k_ra8_epaper_test_panel_w;
+  words[1]                                        = (uint16_t)k_ra8_epaper_test_panel_h;
+  words[2]                                        = (uint16_t)k_ra8_epaper_test_buf_lo;
+  words[3]                                        = (uint16_t)k_ra8_epaper_test_buf_hi;
+  /* "M641" in the LUT slot (word 12), two chars per word, high byte first. */
+  words[12] = (uint16_t)k_ra8_epaper_test_lut_w0;
+  words[13] = (uint16_t)k_ra8_epaper_test_lut_w1;
+  /* A control byte in the firmware slot must not survive the decode. */
+  words[4] = (uint16_t)k_ra8_epaper_test_ctrl_word;
+
+  ra8_epaper_dev_info_t info = {};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_epaper_decode_dev_info(nullptr, k_ra8_epaper_test_devinfo_words, &info));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_epaper_decode_dev_info(words, k_ra8_epaper_test_devinfo_words, nullptr));
+  /* One word short of the fixed layout is refused rather than decoded from
+   * whatever follows the buffer. */
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_epaper_decode_dev_info(words, k_ra8_epaper_test_devinfo_words - 1U, &info));
+
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_epaper_decode_dev_info(words, k_ra8_epaper_test_devinfo_words, &info));
+  TEST_ASSERT_EQ(k_ra8_epaper_test_panel_w, info.panel_width);
+  TEST_ASSERT_EQ(k_ra8_epaper_test_panel_h, info.panel_height);
+  /* The base address is assembled from two halves, high word shifted up. */
+  TEST_ASSERT_EQ(k_ra8_epaper_test_buf_base, info.image_buf_base);
+  TEST_ASSERT_EQ(0, strcmp(info.lut_version, "M641"));
+  /* The control byte was dropped to NUL, terminating the string early. */
+  TEST_ASSERT_EQ(0, strcmp(info.fw_version, ""));
+
+  /* The decoded LUT string drives the waveform map, which is the whole
+   * reason this decode is worth pinning. */
+  ra8_epaper_waveform_cfg_t wf = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_waveform_cfg_for_lut(info.lut_version, &wf));
+  TEST_ASSERT_EQ(k_ra8_epaper_test_a2_m641, wf.a2);
+
+  TEST_END("epaper: GET_DEV_INFO decode layout + guards");
+}
+
 int main(void)
 {
   test_init_null_cfg();
@@ -757,5 +824,6 @@ int main(void)
   test_vcom_before_init();
   test_vcom_commands();
   test_load_image_depth_and_alignment();
+  test_decode_dev_info_layout();
   return 0;
 }
