@@ -294,24 +294,21 @@ static void test_jpeg_stream_window_slide(void)
 }
 
 /**
- * @test test_jpeg_stream_errors
- * @brief Hostile / truncated streams and consumer aborts fail closed with
- *        the contracted codes.
+ * @test test_jpeg_stream_argument_guards
+ * @brief The stripe decoder rejects null seams and an undersized window before
+ *        it touches the bitstream.
  *
- * @par MC/DC:
- * Decision (geometry latch): `got_sof && !geom_done` (2 conditions)
- * - Vector 1: SOF0 parsed, first time -> true (every successful run)
- * - Vector 2: pre-SOF markers        -> false via got_sof
- * - Vector 3: post-SOF markers (DHT after SOF0 in the encoder's layout)
- *   -> false via geom_done
+ * @details These are caller mistakes rather than bad data, so they are checked
+ *          apart from the malformed-bitstream cases: the source here is a
+ *          perfectly valid JPEG, which proves the guards fire on their own
+ *          terms and not as a side effect of decoding failing anyway.
  */
-static void test_jpeg_stream_errors(void)
+static void test_jpeg_stream_argument_guards(void)
 {
-  TEST_BEGIN("jpeg stream: truncation / hostile structure / consumer aborts");
+  TEST_BEGIN("jpeg stream: null and sizing guards");
   encode_pattern(k_t_w, k_t_h, (uint8_t)k_ra8_jpeg_sw_quality_default);
   t_sink_t sink = {};
 
-  /* Null / sizing guards. */
   static t_src_t s_pull_src;
   s_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
   TEST_ASSERT_EQ(
@@ -323,12 +320,37 @@ static void test_jpeg_stream_errors(void)
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_size,
     ra8_jpeg_sw_decode_stripes(t_pull, &s_pull_src, s_win, 1024U, t_geom, t_rows, &sink));
+  TEST_END("jpeg stream: null and sizing guards");
+}
+
+/**
+ * @test test_jpeg_stream_rejects_malformed
+ * @brief Three shapes of bad bitstream each fail closed with protocol_error.
+ *
+ * @details Covers the whole span from "never looked like a JPEG" through
+ *          "well-formed header, no scan" to "valid headers, entropy data cut
+ *          short", so a decoder that accepted any of them is caught at the
+ *          stage it went wrong.
+ *
+ * @par MC/DC:
+ * Decision (geometry latch): `got_sof && !geom_done` (2 conditions)
+ * - Vector 1: SOF0 parsed, first time -> true (the truncated-entropy case,
+ *   which parses every header before failing in the scan)
+ * - Vector 2: pre-SOF markers        -> false via got_sof
+ * - Vector 3: post-SOF markers (DHT after SOF0 in the encoder's layout)
+ *   -> false via geom_done
+ */
+static void test_jpeg_stream_rejects_malformed(void)
+{
+  TEST_BEGIN("jpeg stream: malformed bitstreams fail closed");
+  encode_pattern(k_t_w, k_t_h, (uint8_t)k_ra8_jpeg_sw_quality_default);
+  const uint32_t full_len = s_src_len;
+  t_sink_t       sink     = {.w = k_t_w, .h = k_t_h, .ch = 3U};
+  static t_src_t s_pull_src;
 
   /* Not a JPEG. */
-  const uint32_t keep = s_src_len;
-  s_src[0]            = 0x00U;
-  sink                = (t_sink_t){.w = k_t_w, .h = k_t_h, .ch = 3U};
-  s_pull_src          = (t_src_t){.pos = 0U, .chunk = 0U};
+  s_src[0]   = 0x00U;
+  s_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
   TEST_ASSERT_EQ(
     k_ra8_err_protocol_error,
     ra8_jpeg_sw_decode_stripes(t_pull, &s_pull_src, s_win, k_t_win_cap, t_geom, t_rows, &sink));
@@ -345,12 +367,30 @@ static void test_jpeg_stream_errors(void)
 
   /* Truncated entropy stream (cut at 60%). */
   encode_pattern(k_t_w, k_t_h, (uint8_t)k_ra8_jpeg_sw_quality_default);
-  s_src_len = (keep * 3U) / k_jpeg_sw_stream_x_5;
+  s_src_len = (full_len * 3U) / k_jpeg_sw_stream_x_5;
   sink      = (t_sink_t){};
   TEST_ASSERT_EQ(k_ra8_err_protocol_error, stream_decode(k_t_w, k_t_h, 0U, &sink));
+  TEST_END("jpeg stream: malformed bitstreams fail closed");
+}
+
+/**
+ * @test test_jpeg_stream_geometry_hook_failures
+ * @brief The geometry hook is a fail-closed seam: both ways it can refuse stop
+ *        the decode, and each refusal keeps its own error code.
+ *
+ * @details A hook that rejects outright must surface no_mem, and one that hands
+ *          back a stripe too small for the image must surface invalid_size.
+ *          Distinct codes matter because the caller's remedy differs: raise the
+ *          budget, versus fix the stripe arithmetic.
+ */
+static void test_jpeg_stream_geometry_hook_failures(void)
+{
+  TEST_BEGIN("jpeg stream: geometry hook refusals");
+  encode_pattern(k_t_w, k_t_h, (uint8_t)k_ra8_jpeg_sw_quality_default);
+  t_sink_t       sink = {};
+  static t_src_t s_pull_src;
 
   /* Geometry hook rejects (the fail-closed budget seam). */
-  encode_pattern(k_t_w, k_t_h, (uint8_t)k_ra8_jpeg_sw_quality_default);
   s_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
                  ra8_jpeg_sw_decode_stripes(t_pull,
@@ -371,12 +411,25 @@ static void test_jpeg_stream_errors(void)
                                             t_geom_tiny,
                                             t_rows,
                                             &sink));
+  TEST_END("jpeg stream: geometry hook refusals");
+}
 
-  /* Rows sink aborts mid-image; the error propagates verbatim. */
-  sink                = (t_sink_t){.abort_at = k_ra8_err_busy, .abort_y = 32U};
-  const ra8_err_t err = stream_decode(k_t_w, k_t_h, 0U, &sink);
+/**
+ * @test test_jpeg_stream_propagates_sink_abort
+ * @brief A consumer that aborts mid-image gets its own error code back, verbatim.
+ *
+ * @details The decoder must not translate, swallow, or overwrite a sink's
+ *          refusal -- the consumer's code is what the caller acts on, so it has
+ *          to survive the unwind unchanged.
+ */
+static void test_jpeg_stream_propagates_sink_abort(void)
+{
+  TEST_BEGIN("jpeg stream: sink abort propagates verbatim");
+  encode_pattern(k_t_w, k_t_h, (uint8_t)k_ra8_jpeg_sw_quality_default);
+  t_sink_t        sink = {.abort_at = k_ra8_err_busy, .abort_y = 32U};
+  const ra8_err_t err  = stream_decode(k_t_w, k_t_h, 0U, &sink);
   TEST_ASSERT_EQ(k_ra8_err_busy, err);
-  TEST_END("jpeg stream: truncation / hostile structure / consumer aborts");
+  TEST_END("jpeg stream: sink abort propagates verbatim");
 }
 
 /**
@@ -539,7 +592,10 @@ int32_t main(void)
 {
   test_jpeg_stream_parity();
   test_jpeg_stream_window_slide();
-  test_jpeg_stream_errors();
+  test_jpeg_stream_argument_guards();
+  test_jpeg_stream_rejects_malformed();
+  test_jpeg_stream_geometry_hook_failures();
+  test_jpeg_stream_propagates_sink_abort();
   test_jpeg_stream_grayscale();
   (void)fprintf(stderr, "[OK  ] test_ra8_jpeg_sw_stream.c\n");
   return 0;

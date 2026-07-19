@@ -326,27 +326,46 @@ stream_window(ra8_vmem_stream_t* st, uint64_t off, uint32_t len, uint32_t* crc, 
 }
 
 /**
- * @par MC/DC:
- * (no compound decision under test here -- windows crossing frame boundaries,
- * clamped at EOF, and past EOF are byte-verified; the CRC + paging are pinned.
- * The window_ok / mem_verdict compound decisions are covered below.)
+ * @brief Wire a paged vsource, a frame-backed vmem, and a stream over them.
+ *
+ * @details
+ * Builds the three-layer stack the window tests read through: a paged source
+ * that synthesises the 1 MiB backing on demand, a vmem whose frame pool is
+ * deliberately far smaller than that backing so reads must evict, and a stream
+ * positioned over the whole object. The pools are function-local `static`
+ * because they must outlive the call while staying invisible to everything
+ * else; @p vs and @p vm are the caller's, since the stream keeps pointing at
+ * them after this returns.
+ *
+ * @param[out] vs Receives the initialised paged source.
+ * @param[out] vm Receives the initialised vmem over @p vs.
+ * @param[out] st Receives the stream over the whole backing object.
+ *
+ * @return None.
+ * @retval None Void.
+ *
+ * @pre All three out-pointers are non-NULL and outlive @p st.
+ * @pre No other stack is live over the same static pools.
+ * @post @p st reads the full `k_vmem_obj_bytes` object.
+ * @post The frame pool is smaller than the object, so paging is forced.
+ *
+ * @note Not thread-safe; the pools are file-lifetime state.
+ *
+ * @see backing_read()  The synthetic backing this pages from.
  */
-static void test_vmem_stream_windows(void)
+static void vmem_stream_open_backing(ra8_vsource_t* vs, ra8_vmem_t* vm, ra8_vmem_stream_t* st)
 {
-  TEST_BEGIN("mem_subsystem: vmem_stream windows over 1 MiB backing");
   [[gnu::aligned(8)]] static uint8_t s_frames[(size_t)k_vmem_frames * (size_t)k_vmem_frame_bytes];
   static ra8_vmem_frame_t            s_fmeta[k_vmem_frames];
   static int32_t                     s_fbuckets[k_vmem_buckets];
   static ra8_vsource_obj_t           s_objs[k_vmem_objs];
 
-  ra8_vsource_t vs = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_init(&vs, s_objs, (uint32_t)k_vmem_objs));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_init(vs, s_objs, (uint32_t)k_vmem_objs));
   uint32_t obj_id = 0U;
   TEST_ASSERT_EQ(
     k_ra8_ok,
-    ra8_vsource_add_paged(&vs, backing_read, nullptr, 0U, (uint64_t)k_vmem_obj_bytes, &obj_id));
+    ra8_vsource_add_paged(vs, backing_read, nullptr, 0U, (uint64_t)k_vmem_obj_bytes, &obj_id));
 
-  ra8_vmem_t     vm   = {};
   ra8_vmem_cfg_t vcfg = {};
   vcfg.frame_mem      = s_frames;
   vcfg.frame_bytes    = (uint32_t)k_vmem_frame_bytes;
@@ -355,11 +374,25 @@ static void test_vmem_stream_windows(void)
   vcfg.buckets        = s_fbuckets;
   vcfg.bucket_count   = (uint32_t)k_vmem_buckets;
   vcfg.loader         = ra8_vsource_loader;
-  vcfg.loader_ctx     = &vs;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_init(&vm, &vcfg));
+  vcfg.loader_ctx     = vs;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_init(vm, &vcfg));
 
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stream_init(st, vm, obj_id, (uint64_t)k_vmem_obj_bytes));
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decision under test here -- windows crossing frame boundaries,
+ * clamped at EOF, and past EOF are byte-verified; the CRC + paging are pinned.
+ * The window_ok / mem_verdict compound decisions are covered below.)
+ */
+static void test_vmem_stream_windows(void)
+{
+  TEST_BEGIN("mem_subsystem: vmem_stream windows over 1 MiB backing");
+  ra8_vsource_t     vs = {};
+  ra8_vmem_t        vm = {};
   ra8_vmem_stream_t st = {};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_stream_init(&st, &vm, obj_id, (uint64_t)k_vmem_obj_bytes));
+  vmem_stream_open_backing(&vs, &vm, &st);
 
   uint32_t crc = (uint32_t)k_crc_init;
   bool     bok = false;

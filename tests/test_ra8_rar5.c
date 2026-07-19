@@ -292,6 +292,69 @@ static void test_rar5_filters(void)
 }
 
 /**
+ * @brief Emit tables that build the length list out of continuation run codes.
+ *
+ * @details
+ * Encodes the same logical table ::enc_tables writes literally, but expresses
+ * the repetition through the decoder's run codes instead of spelling out every
+ * length. LD entries 0..271 become one literal 9 followed by two copy-previous
+ * runs (code 17, long form), and entries 272..305 become a short zero run
+ * (code 18) followed by a long one (code 19). Because the reconstructed table
+ * is identical to the literal one, a byte-exact decode of the payload proves
+ * the run codes rebuilt it correctly -- the runs are the thing under test, not
+ * the payload.
+ *
+ * Run lengths follow the format's bias: the long forms encode `11 + extra` and
+ * the short zero form `3 + extra`, which is why 127 yields 138 entries and 13
+ * yields 24.
+ *
+ * @param[in,out] w Bit writer positioned at the start of the table section.
+ *
+ * @return None.
+ * @retval None Void.
+ *
+ * @pre @p w is non-NULL and has capacity for the whole table section.
+ * @pre No table bits have been written to @p w yet.
+ * @post @p w is positioned where the payload literals begin.
+ * @post The emitted table is equivalent to the one ::enc_tables writes.
+ *
+ * @note Not thread-safe; @p w carries all the state.
+ *
+ * @see enc_tables()         The literal spelling of the same table.
+ * @see enc_tables_bdzero()  The BD zero-run variant.
+ */
+static void enc_tables_runs(bitw_t* w)
+{
+  /* BD: 20 lengths of 5. */
+  for (uint32_t i = 0U; i < k_rar5_i_20; ++i) {
+    bw_put(w, k_rar5_enc_match_lowdist_5, 4U);
+  }
+  /* LD 0..271 = 9 via a literal 9 then copy-previous runs (codes 16/17). */
+  bw_put(w, k_rar5_bw_put_9, k_rar5_enc_match_lowdist_5); /* tbl[0] = 9 */
+  bw_put(w,
+         k_rar5_bw_put_17,
+         k_rar5_enc_match_lowdist_5);       /* copy prev, long run                 */
+  bw_put(w, k_rar5_bw_put_127, k_rar5_i_7); /* run = 11 + 127 = 138 -> tbl[1..138] */
+  bw_put(w, k_rar5_bw_put_17, k_rar5_enc_match_lowdist_5);
+  bw_put(w, k_rar5_bw_put_122, k_rar5_i_7); /* run = 133 -> tbl[139..271] */
+  /* LD 272..305 = 0 via a zero run (code 18 short + 19 long). */
+  bw_put(w, k_rar5_bw_put_18, k_rar5_enc_match_lowdist_5);
+  bw_put(w, k_rar5_i_7, 3U); /* run = 3 + 7 = 10 -> tbl[272..281] */
+  bw_put(w, k_rar5_bw_put_19, k_rar5_enc_match_lowdist_5);
+  bw_put(w, k_rar5_bw_put_13, k_rar5_i_7); /* run = 11 + 13 = 24 -> tbl[282..305] */
+  /* DD/LDD/RD via direct lengths. */
+  for (uint32_t i = 0U; i < k_rar5_i_64; ++i) {
+    bw_put(w, 6U, k_rar5_enc_match_lowdist_5);
+  }
+  for (uint32_t i = 0U; i < 16U; ++i) {
+    bw_put(w, 4U, k_rar5_enc_match_lowdist_5);
+  }
+  for (uint32_t i = 0U; i < k_rar5_i_44; ++i) {
+    bw_put(w, 6U, k_rar5_enc_match_lowdist_5);
+  }
+}
+
+/**
  * @test test_rar5_table_runs
  * @brief The length-table continuation codes (copy-previous and zero runs, short
  *        and long) reconstruct a table that then decodes an all-literal payload.
@@ -316,33 +379,7 @@ static void test_rar5_table_runs(void)
   static uint8_t s_bodybuf[k_pk_cap];
   memset(s_bodybuf, 0, sizeof(s_bodybuf));
   bitw_t body = {.buf = s_bodybuf, .cap = sizeof(s_bodybuf)};
-  /* BD: 20 lengths of 5. */
-  for (uint32_t i = 0U; i < k_rar5_i_20; ++i) {
-    bw_put(&body, k_rar5_enc_match_lowdist_5, 4U);
-  }
-  /* LD 0..271 = 9 via a literal 9 then copy-previous runs (codes 16/17). */
-  bw_put(&body, k_rar5_bw_put_9, k_rar5_enc_match_lowdist_5); /* tbl[0] = 9 */
-  bw_put(&body,
-         k_rar5_bw_put_17,
-         k_rar5_enc_match_lowdist_5);           /* copy prev, long run                 */
-  bw_put(&body, k_rar5_bw_put_127, k_rar5_i_7); /* run = 11 + 127 = 138 -> tbl[1..138] */
-  bw_put(&body, k_rar5_bw_put_17, k_rar5_enc_match_lowdist_5);
-  bw_put(&body, k_rar5_bw_put_122, k_rar5_i_7); /* run = 133 -> tbl[139..271] */
-  /* LD 272..305 = 0 via a zero run (code 18 short + 19 long). */
-  bw_put(&body, k_rar5_bw_put_18, k_rar5_enc_match_lowdist_5);
-  bw_put(&body, k_rar5_i_7, 3U); /* run = 3 + 7 = 10 -> tbl[272..281] */
-  bw_put(&body, k_rar5_bw_put_19, k_rar5_enc_match_lowdist_5);
-  bw_put(&body, k_rar5_bw_put_13, k_rar5_i_7); /* run = 11 + 13 = 24 -> tbl[282..305] */
-  /* DD/LDD/RD via direct lengths. */
-  for (uint32_t i = 0U; i < k_rar5_i_64; ++i) {
-    bw_put(&body, 6U, k_rar5_enc_match_lowdist_5);
-  }
-  for (uint32_t i = 0U; i < 16U; ++i) {
-    bw_put(&body, 4U, k_rar5_enc_match_lowdist_5);
-  }
-  for (uint32_t i = 0U; i < k_rar5_i_44; ++i) {
-    bw_put(&body, 6U, k_rar5_enc_match_lowdist_5);
-  }
+  enc_tables_runs(&body);
   /* Payload: a handful of literals. */
   static const uint8_t k_pay[5] = {0x41U, 0x42U, 0x43U, 0x44U, 0x45U};
   for (uint32_t i = 0U; i < sizeof(k_pay); ++i) {
