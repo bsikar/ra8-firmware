@@ -226,62 +226,71 @@ static void on_mve_vstrw(uc_engine* uc, uint64_t address, uint32_t size, void* u
 }
 
 /** @brief Scan the loaded image for VSTRW.32 sites and hook each one. */
+/**
+ * @struct mve_scan_ctx_t
+ * @brief Running state threaded through the per-segment MVE scan.
+ *
+ * @invariant `n_hooks` never exceeds @ref k_mve_sites_max.
+ * @see mve_scan_segment  Updates this.
+ */
+typedef struct {
+  uc_engine* uc;      /**< Engine the hooks are added to.  */
+  uint32_t   n_hooks; /**< Hooks installed so far.         */
+} mve_scan_ctx_t;
+
+/**
+ * @brief Hook every MVE VSTRW.32 site in one executable segment.
+ *
+ * @details
+ * Steps the segment a halfword at a time, since Thumb-2 instructions are
+ * halfword-aligned and a 32-bit encoding may start at any even offset.
+ *
+ * @param[in]     seg Segment to scan.
+ * @param[in,out] ctx ::mve_scan_ctx_t carrying the engine and the hook count.
+ *
+ * @return True to continue with the next segment, false once the site cap is
+ *         reached (there is no point scanning further).
+ *
+ * @pre @p seg and @p ctx are non-NULL.
+ * @pre `seg->bytes .. seg->bytes + seg->filesz` lies inside the image.
+ * @post Every decoded site below the cap has a Unicorn code hook installed.
+ * @post `ctx->n_hooks` is bounded by @ref k_mve_sites_max.
+ *
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ */
+static bool mve_scan_segment(const elf_exec_segment_t* seg, void* ctx)
+{
+  mve_scan_ctx_t* st = (mve_scan_ctx_t*)ctx;
+  for (uint32_t off = 0U; (off + (uint32_t)k_mve_insn_len) <= seg->filesz; off += 2U) {
+    const uint8_t* p   = seg->bytes + off;
+    const uint16_t hw1 = (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
+    const uint16_t hw2 = (uint16_t)(p[2] | ((uint16_t)p[3] << 8));
+    uint32_t       qd  = 0U;
+    uint32_t       rn  = 0U;
+    uint32_t       o   = 0U;
+    if (!mve_vstrw_decode(hw1, hw2, &qd, &rn, &o)) {
+      continue;
+    }
+    if (st->n_hooks >= (uint32_t)k_mve_sites_max) {
+      (void)fprintf(stderr, "  MVE seam: site cap %u reached\n", (unsigned)k_mve_sites_max);
+      return false;
+    }
+    const uint64_t va = (uint64_t)seg->vaddr + (uint64_t)off;
+    (void)uc_hook_add(
+      st->uc, &s_mve_hooks[st->n_hooks], UC_HOOK_CODE, (void*)on_mve_vstrw, nullptr, va, va);
+    st->n_hooks++;
+  }
+  return true;
+}
+
 void mve_seam_install(uc_engine* uc, const uint8_t* elf, long len)
 {
-  if ((elf == nullptr) || (len < (long)k_elf_ehdr_size)) {
-    return;
-  }
-  uint32_t phoff = 0U;
-  (void)memcpy(&phoff, elf + (uint32_t)k_elf_e_phoff_off, 4);
-  const uint16_t phentsize = (uint16_t)(elf[42] | (elf[43] << 8));
-  const uint16_t phnum     = (uint16_t)(elf[44] | (elf[45] << 8));
-  if (((uint64_t)phoff + ((uint64_t)phnum * (uint64_t)phentsize)) > (uint64_t)len) {
-    return;
-  }
-  uint32_t n_hooks = 0U;
-  for (uint16_t i = 0U; i < phnum; i++) {
-    const uint8_t* ph       = elf + phoff + ((size_t)(uint32_t)i * phentsize);
-    uint32_t       p_type   = 0U;
-    uint32_t       p_offset = 0U;
-    uint32_t       p_vaddr  = 0U;
-    uint32_t       p_filesz = 0U;
-    uint32_t       p_flags  = 0U;
-    (void)memcpy(&p_type, ph + 0, 4);
-    (void)memcpy(&p_offset, ph + (uint32_t)k_elf_ph_offset_off, 4);
-    (void)memcpy(&p_vaddr, ph + (uint32_t)k_elf_ph_vaddr_off, 4);
-    (void)memcpy(&p_filesz, ph + (uint32_t)k_elf_ph_filesz_off, 4);
-    (void)memcpy(&p_flags, ph + (uint32_t)k_elf_ph_flags_off, 4);
-    if ((p_type != (uint32_t)k_elf_pt_load) || (p_filesz < (uint32_t)k_mve_insn_len) ||
-        ((p_flags & (uint32_t)k_elf_pf_x) == 0U)) {
-      continue;
-    }
-    if (((uint64_t)p_offset + (uint64_t)p_filesz) > (uint64_t)len) {
-      continue;
-    }
-    for (uint32_t off = 0U; (off + (uint32_t)k_mve_insn_len) <= p_filesz; off += 2U) {
-      const uint8_t* p   = elf + p_offset + off;
-      const uint16_t hw1 = (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-      const uint16_t hw2 = (uint16_t)(p[2] | ((uint16_t)p[3] << 8));
-      uint32_t       qd  = 0U;
-      uint32_t       rn  = 0U;
-      uint32_t       o   = 0U;
-      if (!mve_vstrw_decode(hw1, hw2, &qd, &rn, &o)) {
-        continue;
-      }
-      if (n_hooks >= (uint32_t)k_mve_sites_max) {
-        (void)fprintf(stderr, "  MVE seam: site cap %u reached\n", (unsigned)k_mve_sites_max);
-        return;
-      }
-      const uint64_t va = (uint64_t)p_vaddr + (uint64_t)off;
-      (void)
-        uc_hook_add(uc, &s_mve_hooks[n_hooks], UC_HOOK_CODE, (void*)on_mve_vstrw, nullptr, va, va);
-      n_hooks++;
-    }
-  }
-  if (n_hooks > 0U) {
+  mve_scan_ctx_t st = {.uc = uc, .n_hooks = 0U};
+  (void)elf_foreach_exec_segment(elf, len, mve_scan_segment, &st);
+  if (st.n_hooks > 0U) {
     (void)fprintf(stderr,
                   "  MVE seam      : hooking %u VSTRW.32 site(s) (M85 Helium the M33 lacks)\n",
-                  (unsigned)n_hooks);
+                  (unsigned)st.n_hooks);
   }
 }
 

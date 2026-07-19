@@ -217,6 +217,74 @@ RA8_PRIV uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name, u
  */
 RA8_PRIV uint32_t warm_reboot(uc_engine* uc, const uint8_t* elf, long len, bool trace);
 
+/**
+ * @struct elf_exec_segment_t
+ * @brief One executable PT_LOAD segment, already bounds-checked against the image.
+ *
+ * @details
+ * Handed to an ::elf_exec_segment_fn by @ref elf_foreach_exec_segment so a
+ * scanner works from validated offsets instead of re-decoding program-header
+ * fields. `bytes` points into the caller's image buffer and stays valid only
+ * for the duration of the callback.
+ *
+ * @invariant `bytes .. bytes + filesz` lies inside the image.
+ * @invariant The segment is PT_LOAD with PF_X set and `filesz` is non-zero.
+ *
+ * @see elf_foreach_exec_segment  Produces these.
+ * @since 0.1.0
+ */
+typedef struct {
+  const uint8_t* bytes;  /**< Segment contents inside the image buffer. */
+  uint32_t       vaddr;  /**< Segment virtual address (p_vaddr).        */
+  uint32_t       filesz; /**< Segment length in the file (p_filesz).    */
+} elf_exec_segment_t;
+
+/**
+ * @brief Per-segment callback for @ref elf_foreach_exec_segment.
+ *
+ * @param[in] seg Segment to scan.
+ * @param[in] ctx Opaque pointer forwarded from the caller.
+ * @return True to keep walking, false to stop early (e.g. a site cap was hit).
+ * @since 0.1.0
+ */
+typedef bool (*elf_exec_segment_fn)(const elf_exec_segment_t* seg, void* ctx);
+
+/**
+ * @brief Walk every executable PT_LOAD segment of an ELF32 image.
+ *
+ * @details
+ * Decodes the program-header table once, skips any segment that is not a
+ * non-empty executable PT_LOAD or that would run past the end of the image,
+ * and invokes @p fn for each survivor. Factored out because the seam
+ * installers and the profiler each need exactly this walk; duplicating it left
+ * the same twenty statements of bounds-checking in several functions, where a
+ * fix to one copy would silently miss the others.
+ *
+ * @param[in]     elf Base of the mapped ELF image.
+ * @param[in]     len Image length in bytes; every read is bounded by it.
+ * @param[in]     fn  Callback invoked per executable segment.
+ * @param[in,out] ctx Opaque pointer forwarded to @p fn.
+ *
+ * @return The number of segments handed to @p fn.
+ * @retval 0 The image is too short, the header table is truncated, or the
+ *           image carries no executable PT_LOAD segment.
+ *
+ * @pre @p elf and @p fn are non-NULL.
+ * @pre @p len is the true length of the @p elf buffer.
+ * @post No read touches a byte at or beyond `elf + len`.
+ * @post The walk stops early once @p fn returns false.
+ *
+ * @note Not thread-safe with respect to the image it reads.
+ *
+ * @see div0_seam_install()  Scans for UDIV/SDIV sites.
+ * @see mve_seam_install()   Scans for MVE VSTRW sites.
+ * @since 0.1.0
+ */
+RA8_PRIV uint32_t elf_foreach_exec_segment(const uint8_t*      elf,
+                                           long                len,
+                                           elf_exec_segment_fn fn,
+                                           void*               ctx);
+
 #ifdef __cplusplus
 }
 #endif

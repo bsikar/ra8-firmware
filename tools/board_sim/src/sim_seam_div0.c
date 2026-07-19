@@ -334,59 +334,58 @@ void div0_patch_sites(uc_engine* uc)
  * @note Not thread-safe; call once during setup before the run loop.
  * @since 0.1.0
  */
+/**
+ * @brief Record every UDIV/SDIV site in one executable segment.
+ *
+ * @details
+ * Steps the segment a halfword at a time, since Thumb-2 instructions are
+ * halfword-aligned and a 32-bit encoding may start at any even offset. Sites
+ * are only recorded here; arming (the UDF overwrite) happens when the firmware
+ * sets CCR.DIV_0_TRP.
+ *
+ * @param[in] seg Segment to scan.
+ * @param[in] ctx Unused; the site table is file-scope state.
+ *
+ * @return True to continue with the next segment, false once the site cap is
+ *         reached (there is no point scanning further).
+ *
+ * @pre @p seg is non-NULL.
+ * @pre `seg->bytes .. seg->bytes + seg->filesz` lies inside the image.
+ * @post `s_div0_site_n` is bounded by @ref k_div0_sites_max.
+ * @post Each recorded site carries its virtual address and both halfwords.
+ *
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ */
+static bool div0_scan_segment(const elf_exec_segment_t* seg, void* ctx)
+{
+  (void)ctx;
+  for (uint32_t off = 0U; (off + (uint32_t)k_div0_insn_len) <= seg->filesz; off += 2U) {
+    const uint8_t* p    = seg->bytes + off;
+    const uint16_t hw1  = (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
+    const uint16_t hw2  = (uint16_t)(p[2] | ((uint16_t)p[3] << 8));
+    uint32_t       rn   = 0U;
+    uint32_t       rd   = 0U;
+    uint32_t       rm   = 0U;
+    bool           sign = false;
+    if (!udiv_sdiv_decode(hw1, hw2, &rn, &rd, &rm, &sign)) {
+      continue;
+    }
+    if (s_div0_site_n >= (uint32_t)k_div0_sites_max) {
+      (void)fprintf(stderr, "  div-0 seam: site cap %u reached\n", (unsigned)k_div0_sites_max);
+      return false;
+    }
+    s_div0_site[s_div0_site_n] =
+      (div0_site_t){.va = (uint32_t)seg->vaddr + off, .hw1 = hw1, .hw2 = hw2};
+    s_div0_site_n++;
+  }
+  return true;
+}
+
 void div0_seam_install(const uint8_t* elf, long len)
 {
   s_div0_site_n = 0U;
   s_div0_armed  = false;
-  if ((elf == nullptr) || (len < (long)k_elf_ehdr_size)) {
-    return;
-  }
-  uint32_t phoff = 0U;
-  (void)memcpy(&phoff, elf + (uint32_t)k_elf_e_phoff_off, 4);
-  const uint16_t phentsize = (uint16_t)(elf[42] | (elf[43] << 8));
-  const uint16_t phnum     = (uint16_t)(elf[44] | (elf[45] << 8));
-  if (((uint64_t)phoff + ((uint64_t)phnum * (uint64_t)phentsize)) > (uint64_t)len) {
-    return; /* truncated program-header table -- refuse to walk past the file. */
-  }
-  for (uint16_t i = 0U; i < phnum; i++) {
-    const uint8_t* ph       = elf + phoff + ((size_t)(uint32_t)i * phentsize);
-    uint32_t       p_type   = 0U;
-    uint32_t       p_offset = 0U;
-    uint32_t       p_vaddr  = 0U;
-    uint32_t       p_filesz = 0U;
-    uint32_t       p_flags  = 0U;
-    (void)memcpy(&p_type, ph + 0, 4);
-    (void)memcpy(&p_offset, ph + (uint32_t)k_elf_ph_offset_off, 4);
-    (void)memcpy(&p_vaddr, ph + (uint32_t)k_elf_ph_vaddr_off, 4);
-    (void)memcpy(&p_filesz, ph + (uint32_t)k_elf_ph_filesz_off, 4);
-    (void)memcpy(&p_flags, ph + (uint32_t)k_elf_ph_flags_off, 4);
-    if ((p_type != (uint32_t)k_elf_pt_load) || (p_filesz < (uint32_t)k_div0_insn_len) ||
-        ((p_flags & (uint32_t)k_elf_pf_x) == 0U)) {
-      continue;
-    }
-    if (((uint64_t)p_offset + (uint64_t)p_filesz) > (uint64_t)len) {
-      continue; /* truncated / out-of-file segment -- skip. */
-    }
-    for (uint32_t off = 0U; (off + (uint32_t)k_div0_insn_len) <= p_filesz; off += 2U) {
-      const uint8_t* p    = elf + p_offset + off;
-      const uint16_t hw1  = (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
-      const uint16_t hw2  = (uint16_t)(p[2] | ((uint16_t)p[3] << 8));
-      uint32_t       rn   = 0U;
-      uint32_t       rd   = 0U;
-      uint32_t       rm   = 0U;
-      bool           sign = false;
-      if (!udiv_sdiv_decode(hw1, hw2, &rn, &rd, &rm, &sign)) {
-        continue;
-      }
-      if (s_div0_site_n >= (uint32_t)k_div0_sites_max) {
-        (void)fprintf(stderr, "  div-0 seam: site cap %u reached\n", (unsigned)k_div0_sites_max);
-        break;
-      }
-      s_div0_site[s_div0_site_n] =
-        (div0_site_t){.va = (uint32_t)p_vaddr + off, .hw1 = hw1, .hw2 = hw2};
-      s_div0_site_n++;
-    }
-  }
+  (void)elf_foreach_exec_segment(elf, len, div0_scan_segment, nullptr);
   /* The CCR write that arms these sites is caught by on_scb_ctrl_write; arming
    * overwrites each with UDF so its execution traps through on_invalid_insn. */
   if (s_div0_site_n > 0U) {
