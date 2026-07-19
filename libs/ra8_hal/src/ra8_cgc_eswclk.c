@@ -42,16 +42,6 @@
 
 static const char* s_tag = "CGC";
 
-/**
- * @enum ra8_cgc_eswclk_const_t
- * @brief Constants used by the ESWCLK bring-up path.
- *
- * @details
- * ESWCKDIVCR.CKDIV is a 4-bit field. Code 0 = /1, code 1 = /2, ...
- * code 6 = /64 (the FSP encoding table). 125 MHz = PLL1P (1 GHz) / 8;
- * the matching code is ::k_ra8_eswckdivcr_div8 (= 3 in the standard
- * FSP "log2 ratio" map).
- */
 typedef enum : uint8_t {
   k_ra8_eswckdivcr_div1  = 0U, /**< /1                                          */
   k_ra8_eswckdivcr_div2  = 1U, /**< /2 -- PLL1P/2 = 500 MHz (ESWPHYCLK target). */
@@ -62,6 +52,16 @@ typedef enum : uint8_t {
   k_ra8_eswckdivcr_div64 = 6U, /**< /64                                         */
 } ra8_cgc_eswckdivcr_t;
 
+/**
+ * @enum ra8_cgc_eswclk_const_t
+ * @brief Constants used by the ESWCLK bring-up path.
+ *
+ * @details
+ * ESWCKDIVCR.CKDIV is a 4-bit field. Code 0 = /1, code 1 = /2, ...
+ * code 6 = /64 (the FSP encoding table). 125 MHz = PLL1P (1 GHz) / 8;
+ * the matching code is ::k_ra8_eswckdivcr_div8 (= 3 in the standard
+ * FSP "log2 ratio" map).
+ */
 typedef enum : uint32_t {
   k_ra8_cgc_eswclk_target_hz    = 250000000UL, /**< ESWCLK    = PLL1P / 4. */
   k_ra8_cgc_eswphyclk_target_hz = 500000000UL, /**< ESWPHYCLK = PLL1P / 2. */

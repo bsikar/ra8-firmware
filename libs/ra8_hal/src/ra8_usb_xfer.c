@@ -109,7 +109,7 @@ ra8_usb_queue_in(ra8_usb_speed_t speed, uint8_t pipe_num, const uint8_t* data, u
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok            Payload fully queued; PID set to BUF.
- * @retval k_ra8_err_timeout   FRDY never asserted for some chunk.
+ * @retval k_ra8_err_hw_timeout FRDY never asserted for some chunk.
  *
  * @pre ``reg`` is non-NULL and CFIFOSEL is already programmed for DCP IN.
  * @pre ``data`` is non-NULL and ``len > 0``.
@@ -155,7 +155,7 @@ internal_dcp_in_payload(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok           ZLP queued; PID set to BUF.
- * @retval k_ra8_err_timeout  FRDY never asserted.
+ * @retval k_ra8_err_hw_timeout FRDY never asserted.
  *
  * @pre ``reg`` is non-NULL and CFIFOSEL is already programmed for DCP IN.
  * @pre USB module clock and power are on.
@@ -177,32 +177,6 @@ static ra8_err_t internal_dcp_in_zlp(volatile r_usb_regs_t* reg)
   return k_ra8_ok;
 }
 
-/**
- * @brief Implementation of `ra8_usb_dcp_in_data()`.
- *
- * @details Selects DCP on CFIFO once, then dispatches to either
- * ``internal_dcp_in_zlp`` (zero-length) or ``internal_dcp_in_payload``
- * (one or more chunks). Status stage (CCPL) is intentionally NOT
- * pulsed here -- the bridge handles it on the CTSQ status-stage edge.
- *
- * @param[in] speed USB speed selector (FS / HS) -> picks the controller block.
- * @param[in] data  Source payload; may be NULL only when ``len == 0``.
- * @param[in] len   Payload length in bytes (0 sends a ZLP).
- *
- * @return ra8_err_t Error code.
- * @retval k_ra8_ok               Payload queued; PID set to BUF.
- * @retval k_ra8_err_invalid_arg  ``speed`` not recognised, or NULL data
- *                               with non-zero ``len``.
- * @retval k_ra8_err_timeout      FRDY never asserted for ZLP or any chunk.
- *
- * @pre USB module clock and power are on.
- * @pre Caller serialises DCP IN/OUT issue.
- * @post On success, CFIFO is empty and DCPCTR.PID == BUF.
- * @post On error, DCPCTR.PID is left unchanged from its prior value.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- */
 /* Diagnostic probes for the DCP IN data push (read via JLink). */
 volatile uint32_t s_dcp_push_count       = 0U;
 volatile uint16_t s_dcp_dcpctr_pre_push  = 0U;
@@ -218,7 +192,9 @@ volatile uint8_t  s_dcp_last_err         = 0U; /* 0=ok, 1=frdy timeout, 2=null a
  *          the DCP FIFO, set BVAL=1 and DCPCTR.PID=BUF so the chip
  *          transmits on the next IN token from the host. Captures
  *          pre/post register snapshots into ::s_dcp_push_count and
- *          friends for JLink-readable diagnostic.
+ *          friends for JLink-readable diagnostic. The status stage (CCPL) is
+ *          intentionally NOT pulsed here -- the bridge handles it on the CTSQ
+ *          status-stage edge.
  * @param[in] speed Which controller (FS or HS).
  * @param[in] data  Payload bytes (may be NULL when len==0).
  * @param[in] len   Byte count; may exceed DCPMAXP and will be chunked.

@@ -209,6 +209,12 @@ typedef struct {
  */
 [[nodiscard]] ra8_err_t ra8_agt_start_pulse_output(uint8_t channel, const ra8_agt_pulse_cfg_t* cfg);
 
+typedef enum : uint8_t {
+  k_ra8_agt_cascade_clk_pclkb      = 0U, /**< TCK = 000b. PCLKB direct. */
+  k_ra8_agt_cascade_clk_pclkb_div8 = 1U, /**< TCK = 001b. PCLKB / 8.    */
+  k_ra8_agt_cascade_clk_pclkb_div2 = 2U, /**< TCK = 011b. PCLKB / 2.    */
+} ra8_agt_cascade_clk_t;
+
 /**
  * @struct ra8_agt_cascade_cfg_t
  * @brief Configuration for `ra8_agt_start_cascade`.
@@ -226,12 +232,6 @@ typedef struct {
  * AGTMR1.TCK / AGTMR2.CKS pair for the low half; AGT1 is fixed at
  * "count from AGT0 underflow" (TCK = 101b).
  */
-typedef enum : uint8_t {
-  k_ra8_agt_cascade_clk_pclkb      = 0U, /**< TCK = 000b. PCLKB direct. */
-  k_ra8_agt_cascade_clk_pclkb_div8 = 1U, /**< TCK = 001b. PCLKB / 8.    */
-  k_ra8_agt_cascade_clk_pclkb_div2 = 2U, /**< TCK = 011b. PCLKB / 2.    */
-} ra8_agt_cascade_clk_t;
-
 typedef struct {
   uint32_t              reload32;     /**< 32-bit virtual reload value.       */
   ra8_agt_cascade_clk_t clock;        /**< Count source for the AGT0 half.    */
