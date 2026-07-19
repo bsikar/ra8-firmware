@@ -1,7 +1,7 @@
 /**
  * @file ra8_fmt.h
  * @brief One-file converter / inspector for the first-party content formats.
- * @ingroup grp_tools
+ * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 4 / Domain] {World: NS}
