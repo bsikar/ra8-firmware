@@ -26,6 +26,11 @@
 #include "tiny_jpeg_fixture.h"
 #include "unity_minimal.h"
 
+/** @brief Permission bits for the scratch directories these tests create. */
+typedef enum : uint16_t {
+  k_mdl_test_dir_mode = 0755U, /**< rwxr-xr-x. */
+} mdl_test_mode_t;
+
 /** @brief Expected fixture counts (named to avoid bare literals). */
 typedef enum : uint16_t {
   k_expect_imgs      = 2,   /**< /uploads/ images in the page fixture.       */
@@ -140,7 +145,7 @@ static void test_export_cbz_roundtrip(void)
   TEST_BEGIN("export cbz round-trip");
   const char* dir = "/tmp/mdl_test_chap";
   const char* out = "/tmp/mdl_test_chap.cbz";
-  (void)mkdir(dir, 0755);
+  (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
   write_fixture("/tmp/mdl_test_chap/page_001.jpg", 'a');
   write_fixture("/tmp/mdl_test_chap/page_002.jpg", 'b');
 
@@ -169,7 +174,7 @@ static void test_export_skips_non_images(void)
   TEST_BEGIN("export skips non-images");
   const char* dir = "/tmp/mdl_mixed_chap";
   const char* out = "/tmp/mdl_mixed_chap.cbz";
-  (void)mkdir(dir, 0755);
+  (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
   /* Two real pages... */
   write_fixture("/tmp/mdl_mixed_chap/page_001.jpg", 'a');
   write_fixture("/tmp/mdl_mixed_chap/page_002.PNG", 'b'); /* upper-case ext too */
@@ -226,7 +231,7 @@ static void test_export_epub_roundtrip(void)
   TEST_BEGIN("export epub round-trip");
   const char* dir = "/tmp/mdl_epub_chap";
   const char* out = "/tmp/mdl_epub_chap.epub";
-  (void)mkdir(dir, 0755);
+  (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
   write_fixture("/tmp/mdl_epub_chap/page_001.jpg", 'a');
   write_fixture("/tmp/mdl_epub_chap/page_002.jpg", 'b');
   TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_epub, dir, out) == k_ra8_ok);
@@ -254,7 +259,7 @@ static void test_export_jof_roundtrip(void)
   const char* dir = "/tmp/mdl_jof_chap";
   const char* jpg = "/tmp/mdl_jof_chap/page_001.jpg";
   const char* jof = "/tmp/mdl_jof_chap/page_001.jof";
-  (void)mkdir(dir, 0755);
+  (void)mkdir(dir, (mode_t)k_mdl_test_dir_mode);
   write_bytes(jpg, k_tiny_jpeg, (size_t)k_tiny_jpeg_len);
   TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_jof, dir, "unused") == k_ra8_ok);
 

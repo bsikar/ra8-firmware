@@ -33,6 +33,11 @@
 #include "ra8_fs.h"
 #include "unity_minimal.h"
 
+/** @brief Fill byte for the pre-format disk image. */
+typedef enum : uint8_t {
+  k_fmt_fill_unformatted = 0xA5U, /**< Format must overwrite every trace. */
+} fmt_fill_t;
+
 /**
  * @enum fs_format_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -251,7 +256,7 @@ static void alloc_garbage_card(uint32_t blocks)
   if (s_disk.bytes == nullptr) {
     TEST_FAIL_FMT("%s", "malloc failed");
   }
-  memset(s_disk.bytes, 0xA5, (size_t)blocks * (size_t)k_fmt_block_size);
+  memset(s_disk.bytes, k_fmt_fill_unformatted, (size_t)blocks * (size_t)k_fmt_block_size);
 }
 
 static void count_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)

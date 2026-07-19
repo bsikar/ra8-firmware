@@ -31,6 +31,11 @@
 #include "ra8_vsource.h"
 #include "unity_minimal.h"
 
+/** @brief RBKC container header layout used by the fixture builder. */
+typedef enum : uint8_t {
+  k_pbook_off_reserved = 20U, /**< Reserved u32 field offset in the header. */
+} pbook_layout_t;
+
 /**
  * @enum book_paged_edge_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -386,7 +391,7 @@ static uint64_t pbc_pack(uint8_t* out, const uint8_t* blob, uint32_t blob_len, u
   memcpy(&out[8], &total64, sizeof(total64));
   memcpy(&out[16], &count, sizeof(count));
   const uint32_t reserved = 0U;
-  memcpy(&out[20], &reserved, sizeof(reserved));
+  memcpy(&out[k_pbook_off_reserved], &reserved, sizeof(reserved));
 
   for (uint32_t i = 0U; i < count; ++i) {
     memcpy(&out[k_ra8_book_container_header_len + ((size_t)i * k_ra8_book_container_entry_len)],
@@ -685,7 +690,7 @@ static void test_ra8_book_paged_block_break_overflow(void)
   uint32_t cur          = 0U;
   s_b.strings[cur++]    = '\0';
   const uint32_t s_span = cur;
-  memcpy(&s_b.strings[cur], "span", 5U);
+  memcpy(&s_b.strings[cur], "span", sizeof("span"));
   cur += k_book_paged_edge_root_node_5;
   const uint32_t s_p = cur;
   memcpy(&s_b.strings[cur], "p", 2U);

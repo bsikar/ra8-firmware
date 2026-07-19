@@ -28,6 +28,11 @@
 #include "support/sdmmc_spi_test_util.h"
 #include "unity_minimal.h"
 
+/** @brief All-ones byte: the idle level an SD card holds on CIPO. */
+typedef enum : uint8_t {
+  k_sdspi_wr_idle_byte = 0xFFU, /**< Bus idle / no response. */
+} sdspi_wr_fill_t;
+
 /**
  * @enum sdmmc_spi_write_test_lit_t
  * @brief Named constants for the register stamp patterns and literal
@@ -157,7 +162,7 @@ static void test_erase_blocks_verifies_zero(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_init(&s_mock_transport));
   queue_erase_blocks_ok(); /* probe erase [0,1) */
   uint8_t ones[k_ra8_sdmmc_spi_block_size];
-  memset(ones, 0xFFU, sizeof(ones));
+  memset(ones, k_sdspi_wr_idle_byte, sizeof(ones));
   queue_read_back(ones); /* probe read-back: non-zero -> stop */
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_sdmmc_spi_erase_blocks(0U, 64U));
 

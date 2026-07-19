@@ -31,6 +31,11 @@
 #include "ra8_rar5.h"
 #include "unity_minimal.h"
 
+/** @brief Poison fill for the encoder output buffer. */
+typedef enum : uint8_t {
+  k_rar5_enc_fill_poison = 0xAAU, /**< Any byte left over is a short write. */
+} rar5_enc_fill_t;
+
 /**
  * @enum rar5_enc_fixture_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -374,7 +379,7 @@ decode_and_check(const uint8_t* pk, size_t pklen, const uint8_t* exp, size_t exp
                         .first_off = 0U,
                         .version   = k_ra8_rar_ver_5};
   static uint8_t s_out[k_out_cap];
-  memset(s_out, 0xAA, sizeof(s_out));
+  memset(s_out, k_rar5_enc_fill_poison, sizeof(s_out));
   size_t          got = 0U;
   const ra8_err_t e   = ra8_rar5_decompress(&rar,
                                             0U,

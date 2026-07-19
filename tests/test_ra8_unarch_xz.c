@@ -35,6 +35,11 @@
 #include "unarch_xz_fixture.h"
 #include "unity_minimal.h"
 
+/** @brief Fill byte for the trailing garbage appended after a stream. */
+typedef enum : uint8_t {
+  k_tx_fill_trailing = 0xA5U, /**< Must be refused, not decoded. */
+} tx_fill_t;
+
 /**
  * @enum unarch_xz_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -457,7 +462,7 @@ static void test_xz_unwrap_rejects_hostile_streams(void)
   /* Trailing garbage after the verified footer: reject (no concatenation). */
   got = 1U;
   memcpy(s_mut, k_fx_xz_crc64_4k, sizeof(k_fx_xz_crc64_4k));
-  memset(&s_mut[sizeof(k_fx_xz_crc64_4k)], 0xA5, (size_t)k_tx_trailing);
+  memset(&s_mut[sizeof(k_fx_xz_crc64_4k)], k_tx_fill_trailing, (size_t)k_tx_trailing);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  tx_unwrap(s_mut, sizeof(k_fx_xz_crc64_4k) + (size_t)k_tx_trailing, nullptr, &got));
   TEST_ASSERT_EQ(0U, got);

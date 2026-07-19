@@ -21,6 +21,11 @@
 #include "ra8_reflow.h"
 #include "unity_minimal.h"
 
+/** @brief The href fixture interned into the engine's text pool. */
+typedef enum : uint8_t {
+  k_link_href_bytes = 9U, /**< "ch2.xhtml" characters, without a terminator. */
+} link_fixture_t;
+
 /**
  * @enum reflow_link_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -120,7 +125,7 @@ static void test_hit_test_link(void)
   memset(&s_eng, 0, sizeof s_eng);
   s_eng.in_use = 1U;
   /* text pool holds the href "ch2.xhtml" at offset 0 */
-  memcpy(s_eng.text_pool, "ch2.xhtml", 9);
+  memcpy(s_eng.text_pool, "ch2.xhtml", (size_t)k_link_href_bytes);
   s_eng.text_pool_used           = k_reflow_link_text_pool_used_9;
   s_eng.link_targets[0].href_off = 0U;
   s_eng.link_targets[0].href_len = k_reflow_link_text_pool_used_9;
@@ -177,7 +182,7 @@ static void test_hit_test_rect_bounds_mcdc(void)
   TEST_BEGIN("ra8_reflow_hit_test_link rect-bounds MC/DC");
   memset(&s_eng, 0, sizeof s_eng);
   s_eng.in_use = 1U;
-  memcpy(s_eng.text_pool, "ch2.xhtml", 9);
+  memcpy(s_eng.text_pool, "ch2.xhtml", (size_t)k_link_href_bytes);
   s_eng.text_pool_used           = k_reflow_link_text_pool_used_9;
   s_eng.link_targets[0].href_off = 0U;
   s_eng.link_targets[0].href_len = k_reflow_link_text_pool_used_9;

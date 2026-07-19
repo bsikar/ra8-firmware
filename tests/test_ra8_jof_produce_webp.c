@@ -42,6 +42,11 @@
 #include "ra8_jof_produce.h"
 #include "unity_minimal.h"
 
+/** @brief PNG chunk framing overhead: 4-byte length + 4-byte type + 4-byte CRC. */
+typedef enum : uint8_t {
+  k_png_chunk_overhead = 12U, /**< Bytes a chunk costs beyond its payload. */
+} png_chunk_frame_t;
+
 /**
  * @enum tileatlas_produce_webp_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -279,7 +284,7 @@ static void build_rgba_png(void)
   chunk[8U + ihdr_len + 1U] = (uint8_t)((crc >> 16U) & k_tileatlas_produce_webp_val_ff);
   chunk[8U + ihdr_len + 2U] = (uint8_t)((crc >> 8U) & k_tileatlas_produce_webp_val_ff);
   chunk[8U + ihdr_len + 3U] = (uint8_t)(crc & k_tileatlas_produce_webp_val_ff);
-  memcpy(&s_png[s_png_len], chunk, 12U + (size_t)ihdr_len);
+  memcpy(&s_png[s_png_len], chunk, (size_t)k_png_chunk_overhead + (size_t)ihdr_len);
   s_png_len += k_tileatlas_produce_webp_s_png_len_12 + (size_t)ihdr_len;
   /* IDAT */
   mz_ulong zlen = (mz_ulong)sizeof(s_zbuf);

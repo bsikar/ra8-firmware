@@ -22,6 +22,12 @@
 #include "ra8_io_blockdev_ram.h"
 #include "unity_minimal.h"
 
+/** @brief Distinguishable block payloads for the RAM backend round-trip. */
+typedef enum : uint8_t {
+  k_bd_fill_ones    = 0xFFU, /**< All-ones block, the erased-flash pattern. */
+  k_bd_fill_payload = 0xAAU, /**< Payload written then read back.           */
+} bd_fill_t;
+
 /**
  * @enum io_blockdev_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -160,12 +166,12 @@ static void test_ram_erase(void)
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_io_blockdev_ram_init(&bd, &state, s_small, k_test_small_blocks, false));
   uint8_t ones[(size_t)k_ra8_io_block_size_bytes];
-  (void)memset(ones, 0xFF, sizeof(ones));
+  (void)memset(ones, k_bd_fill_ones, sizeof(ones));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 1, 1, ones));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_erase(&bd, 1, 1));
 
   uint8_t in[(size_t)k_ra8_io_block_size_bytes];
-  (void)memset(in, 0xAA, sizeof(in));
+  (void)memset(in, k_bd_fill_payload, sizeof(in));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(&bd, 1, 1, in));
   uint32_t nonzero = 0;
   for (uint32_t i = 0; i < (uint32_t)k_ra8_io_block_size_bytes; ++i) {

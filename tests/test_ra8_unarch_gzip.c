@@ -33,6 +33,13 @@
 #include "ra8_unarch_io.h"
 #include "unity_minimal.h"
 
+/** @brief gzip member layout used by the fixture builder. */
+typedef enum : uint8_t {
+  k_tg_off_extra    = 10U, /**< First byte after the 10-byte fixed header. */
+  k_tg_len_fname    = 9U,  /**< "name.tar" plus its NUL terminator.        */
+  k_tg_len_unterm   = 6U,  /**< Unterminated FNAME bytes written.          */
+} tg_layout_t;
+
 /**
  * @enum unarch_gzip_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -124,7 +131,7 @@ static size_t tg_build(const uint8_t* payload, size_t n, uint8_t flg)
     off += 4U;
   }
   if ((flg & 0x08U) != 0U) { /* FNAME */
-    memcpy(&s_member[off], "name.tar", 9U);
+    memcpy(&s_member[off], "name.tar", (size_t)k_tg_len_fname);
     off += k_unarch_gzip_off_9;
   }
   if ((flg & 0x10U) != 0U) { /* FCOMMENT */
@@ -281,7 +288,7 @@ static void test_gzip_hostile_headers(void)
 
   /* Unterminated FNAME: flag set, no NUL before EOF. */
   uint8_t tiny[16] = {k_unarch_gzip_s_member_1f, k_unarch_gzip_s_member_8b, 8U, 0x08U};
-  memset(&tiny[10], (int)'n', 6U);
+  memset(&tiny[k_tg_off_extra], (int)'n', (size_t)k_tg_len_unterm);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(tiny, sizeof(tiny), nullptr, &got));
 
   /* Over-long FNAME: longer than the fail-closed cap, NUL far away. */
@@ -291,7 +298,7 @@ static void test_gzip_hostile_headers(void)
   big[1] = k_unarch_gzip_s_member_8b;
   big[2] = 8U;
   big[3] = 0x08U;
-  memset(&big[10], (int)'n', (size_t)k_tg_longname);
+  memset(&big[k_tg_off_extra], (int)'n', (size_t)k_tg_longname);
   big[k_unarch_gzip_val_10_2 + (size_t)k_tg_longname] = 0U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  tg_unwrap(big, 10U + (size_t)k_tg_longname + 1U, nullptr, &got));

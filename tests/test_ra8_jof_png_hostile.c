@@ -30,6 +30,12 @@
 #include "ra8_jof_produce.h"
 #include "unity_minimal.h"
 
+/** @brief Trailing-garbage probe appended after a complete zlib stream. */
+typedef enum : uint16_t {
+  k_png_hostile_fill_trailing = 0xEEU, /**< Must be refused, not decoded. */
+  k_png_hostile_trailing_len  = 64U,   /**< Trailing garbage bytes.       */
+} png_hostile_trailing_t;
+
 /**
  * @enum jof_png_hostile_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -756,7 +762,7 @@ static void test_png_hostile_residue(void)
   static uint8_t s_zbuf[k_jof_png_hostile_val_4200 + k_jof_png_hostile_val_64_2];
   const uint32_t zl = make_zlib_stored(15U, 255U, s_zbuf);
   TEST_ASSERT_EQ(4096U, zl);
-  memset(&s_zbuf[zl], 0xEEU, 64U);
+  memset(&s_zbuf[zl], k_png_hostile_fill_trailing, (size_t)k_png_hostile_trailing_len);
   begin_png(k_jof_png_hostile_begin_png_15,
             k_jof_png_hostile_begin_png_255,
             0U,

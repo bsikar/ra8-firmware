@@ -32,6 +32,12 @@
 #include "ra8_img_arena.h"
 #include "unity_minimal.h"
 
+/** @brief Fill byte marking a block released back to the arena. */
+typedef enum : uint8_t {
+  k_arena_fill_stale  = 0xABU, /**< Must not survive a reallocation. */
+  k_arena_stale_bytes = 16U,   /**< Bytes of the released block that are poisoned. */
+} arena_fill_t;
+
 /**
  * @enum img_arena_cov_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -139,7 +145,7 @@ static void test_realloc_non_null_success_with_copy(void)
 
   uint8_t* const old_blk = (uint8_t*)ra8_img_arena_malloc(16U);
   TEST_ASSERT_NOT_NULL(old_blk);
-  memset(old_blk, 0xAB, 16U);
+  memset(old_blk, k_arena_fill_stale, (size_t)k_arena_stale_bytes);
 
   /* Grow to 32 bytes: oldsz(16) < newsz(32) -> copy = 16 -> memcpy runs. */
   uint8_t* const new_blk = (uint8_t*)ra8_img_arena_realloc_sized(old_blk, 16U, 32U);

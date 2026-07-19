@@ -32,6 +32,13 @@
 #include "ra8_rar.h"
 #include "unity_minimal.h"
 
+/** @brief RAR main-archive-header layout used by the fixture builder. */
+typedef enum : uint8_t {
+  k_tr_off_high_pos_av = 7U, /**< HighPosAV + PosAV field offset.        */
+  k_tr_len_high_pos_av = 6U, /**< HighPosAV + PosAV combined width.      */
+  k_tr_len_signature   = 5U, /**< RAR4 signature length, bytes.          */
+} tr_layout_t;
+
 /**
  * @enum rar_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -273,7 +280,7 @@ static size_t tr4_main(uint8_t* out)
   out[2] = k_rar_out_73; /* type: main */
   tr_le16(&out[3], 0U);
   tr_le16(&out[k_rar_tr_le16_5], k_rar_tr_le16_13); /* head_size         */
-  memset(&out[7], 0, 6U);                           /* HighPosAV + PosAV */
+  memset(&out[k_tr_off_high_pos_av], 0, k_tr_len_high_pos_av); /* HighPosAV + PosAV */
   return k_rar_tr_le16_13;
 }
 
@@ -829,7 +836,7 @@ static void test_rar_open_next_extract_edges(void)
   ra8_rar_entry_t out               = {};
 
   /* Backing read shorter than a signature though the declared size is not. */
-  memcpy(s_arc, k_tr_sig5, 5U);
+  memcpy(s_arc, k_tr_sig5, (size_t)k_tr_len_signature);
   s_arc_size    = k_rar_h_5;
   ra8_rar_t rar = {};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_rar_open(&rar, tr_read, nullptr, 100U));

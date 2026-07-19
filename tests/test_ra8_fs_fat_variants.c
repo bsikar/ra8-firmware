@@ -15,6 +15,11 @@
 #include "ra8_fs.h"
 #include "unity_minimal.h"
 
+/** @brief FAT 8.3 short-name field width, bytes (8 name + 3 extension). */
+typedef enum : uint8_t {
+  k_sfn_name_bytes = 11U, /**< 8.3 name field, unterminated and space-padded. */
+} sfn_geom_t;
+
 /**
  * @enum fs_fat_variants_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -363,7 +368,7 @@ static void fill_short_entry(uint8_t*   ent,
                              uint32_t   size)
 {
   memset(ent, 0, k_ra8_fs_dir_entry_bytes);
-  memcpy(ent, raw11, 11U);
+  memcpy(ent, raw11, (size_t)k_sfn_name_bytes);
   ent[k_fs_fat_variants_fill_short_entry_11] = attr;
   put32(ent, k_fs_fat_variants_put32_28, size);
 }

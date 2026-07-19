@@ -43,6 +43,11 @@
 #include "ra8_fs_fat_internal.h"
 #include "unity_minimal.h"
 
+/** @brief Fill byte for an unformatted disk image. */
+typedef enum : uint8_t {
+  k_exfat_cov_fill_unformatted = 0xA5U, /**< Matches no boot signature. */
+} exfat_cov_fill_t;
+
 /* ---- constants ------------------------------------------------------------- */
 
 /**
@@ -263,7 +268,7 @@ static void build_exfat_volume(void)
   if (s_disk.bytes == nullptr) {
     TEST_FAIL_FMT("%s", "malloc failed for exFAT volume");
   }
-  memset(s_disk.bytes, 0xA5, total);
+  memset(s_disk.bytes, k_exfat_cov_fill_unformatted, total);
   ra8_fs_format_opts_t opts = {};
   opts.type                 = k_ra8_fs_type_exfat;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_ctrl_backend, &opts));

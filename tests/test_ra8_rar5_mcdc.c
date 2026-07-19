@@ -27,6 +27,11 @@
 #include "support/rar5_enc_fixture.h"
 #include "unity_minimal.h"
 
+/** @brief Fill byte for the all-ones fixture buffer. */
+typedef enum : uint8_t {
+  k_rar5_mcdc_fill_ones = 0xFFU, /**< All-ones: decodes as an invalid vint. */
+} rar5_mcdc_fill_t;
+
 /**
  * @enum rar5_mcdc_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -222,7 +227,7 @@ static void test_mcdc_fill_zeros(void)
 {
   TEST_BEGIN("rar5: ra8_rar5_fill_zeros MC/DC");
   static uint8_t s_buf[k_rar5_mcdc_val_20];
-  memset(s_buf, 0xFFU, sizeof(s_buf));
+  memset(s_buf, k_rar5_mcdc_fill_ones, sizeof(s_buf));
   /* c < count exit. */
   TEST_ASSERT_EQ(3U, ra8_rar5_fill_zeros(s_buf, 0U, 3U, 20U));
   TEST_ASSERT_EQ(0U, s_buf[0]);

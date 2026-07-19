@@ -46,6 +46,11 @@
 #include "ra8_sdmmc_spi.h"
 #include "unity_minimal.h"
 
+/** @brief Payload fill for the SD-over-SPI transfer assertions. */
+typedef enum : uint8_t {
+  k_sdspi_cov_fill = 0xA5U, /**< Arbitrary non-trivial byte pattern. */
+} sdspi_cov_fill_t;
+
 /**
  * @enum io_blockdev_sdspi_cov_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -556,7 +561,7 @@ static void test_sdspi_read_bulk_and_error(void)
   queue_multi_read(blocks, 2U);
 
   uint8_t buf[(size_t)2U * (size_t)k_ra8_sdmmc_spi_block_size];
-  memset(buf, 0xA5U, sizeof(buf));
+  memset(buf, k_sdspi_cov_fill, sizeof(buf));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(&bd, 0U, 2U, buf));
   TEST_ASSERT_EQ(0, memcmp(&buf[0], block0, (size_t)k_ra8_sdmmc_spi_block_size));
   TEST_ASSERT_EQ(

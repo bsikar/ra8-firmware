@@ -37,6 +37,12 @@
 #include "ra8_err.h"
 #include "unity_minimal.h"
 
+/** @brief RAR main-archive-header layout used by the fixture builder. */
+typedef enum : uint8_t {
+  k_td_off_high_pos_av = 7U, /**< HighPosAV + PosAV field offset.   */
+  k_td_len_high_pos_av = 6U, /**< HighPosAV + PosAV combined width. */
+} td_layout_t;
+
 /**
  * @enum decomp_retrofit_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -233,7 +239,7 @@ static void td_build_rar4(uint32_t nfiles, const char* name, uint32_t unp_overri
   s_arc[p + 2U] = k_decomp_retrofit_s_arc_73;
   td_le16(&s_arc[p + 3U], 0U);
   td_le16(&s_arc[p + k_decomp_retrofit_td_le16_5_2], k_decomp_retrofit_td_le16_13);
-  memset(&s_arc[p + 7U], 0, 6U);
+  memset(&s_arc[p + k_td_off_high_pos_av], 0, k_td_len_high_pos_av);
   p += k_decomp_retrofit_td_le16_13;
   const uint8_t data[4] = {1U, 2U, 3U, 4U};
   for (uint32_t i = 0U; i < nfiles; ++i) {

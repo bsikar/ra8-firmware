@@ -31,6 +31,11 @@
 #include "ra8_psa_crypto.h"
 #include "unity_minimal.h"
 
+/** @brief Fill byte for the oversized plaintext buffer. */
+typedef enum : uint8_t {
+  k_psa_fill_plaintext = 0x5AU, /**< Arbitrary non-zero plaintext pattern. */
+} psa_fill_t;
+
 /**
  * @enum psa_crypto_api_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -200,7 +205,7 @@ static void test_import_invalid_args(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_psa_key_import(&k, &attr, k_test_aes_key, 0U));
   /* Oversized key. */
   uint8_t big[k_psa_test_oversize_len];
-  (void)memset(big, 0x5aU, sizeof(big));
+  (void)memset(big, k_psa_fill_plaintext, sizeof(big));
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_psa_key_import(&k, &attr, big, sizeof(big)));
   /* Empty usage rejected. */
   const ra8_psa_key_attr_t no_use = {.type  = k_ra8_psa_key_type_aes,

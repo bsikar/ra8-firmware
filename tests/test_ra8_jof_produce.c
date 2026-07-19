@@ -38,6 +38,13 @@
 #include "stb_image.h"
 #include "unity_minimal.h"
 
+/** @brief Truncated-JPEG probe fed to the producer. */
+typedef enum : uint16_t {
+  k_tap_fill_jpeg_body = 0xAAU, /**< Filler body after the SOI marker. */
+  k_tap_jpeg_body_len  = 32U,   /**< Filler bytes written.             */
+  k_tap_png_ihdr_len   = 13U,   /**< PNG IHDR payload length, bytes.   */
+} tap_probe_t;
+
 /**
  * @enum jof_produce_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -755,7 +762,7 @@ static void produce_hostile_sniff(void)
   /* Not a JPEG/PNG at all (0xFF then junk: sniff condition-2 vector). */
   s_src[0] = k_jof_produce_val_ff;
   s_src[1] = 0x00U;
-  memset(&s_src[2], 0xAAU, 32U);
+  memset(&s_src[2], k_tap_fill_jpeg_body, (size_t)k_tap_jpeg_body_len);
   s_src_len = k_jof_produce_s_src_len_34;
   expect_produce_err(k_ra8_err_not_supported);
   /* Too short to sniff. */
@@ -848,7 +855,9 @@ static void produce_hostile_png_ihdr(void)
   expect_produce_err(k_ra8_err_protocol_error);
   /* Palette image with no PLTE: strip it by renaming the chunk type. */
   png_build(k_t_png_w, k_t_png_h, 3U, false, false);
-  memcpy(&s_src[8U + 8U + 13U + 4U + 4U], "yLTE", 4U); /* PLTE -> ancillary */
+  memcpy(&s_src[8U + 8U + (size_t)k_tap_png_ihdr_len + 4U + 4U],
+         "yLTE",
+         4U); /* PLTE -> ancillary */
   expect_produce_err(k_ra8_err_validation_failed);
   /* tRNS on a non-palette image. */
   png_build(k_t_png_w, k_t_png_h, 3U, true, false);

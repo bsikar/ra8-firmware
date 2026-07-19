@@ -16,6 +16,11 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/** @brief Poison byte the call under test must overwrite. */
+typedef enum : uint8_t {
+  k_net_pal_fill_poison = 0xAAU, /**< Never a valid result byte. */
+} net_pal_fill_t;
+
 /**
  * @enum net_pal_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -80,7 +85,7 @@ static void test_init_null_mac_keeps_default(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_init(nullptr));
 
   ra8_net_pal_mac_t got;
-  (void)memset(got.bytes, 0xAAU, sizeof(got.bytes));
+  (void)memset(got.bytes, k_net_pal_fill_poison, sizeof(got.bytes));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_get_mac_addr(&got));
   /* Default is all-zeros (no MAC programmed). */
   for (uint16_t i = 0U; i < (uint16_t)k_ra8_net_pal_mac_addr_len; ++i) {

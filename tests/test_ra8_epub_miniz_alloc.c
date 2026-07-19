@@ -18,6 +18,13 @@
 #include "ra8_epub_miniz_alloc.h"
 #include "unity_minimal.h"
 
+/** @brief Distinct fills proving two allocations do not alias. */
+typedef enum : uint8_t {
+  k_miniz_fill_first  = 0xAAU, /**< Written through the first allocation.  */
+  k_miniz_fill_second = 0x55U, /**< Written through the second allocation. */
+  k_miniz_fill_reuse  = 0x5AU, /**< Written through a recycled allocation. */
+} miniz_alloc_fill_t;
+
 /**
  * @enum epub_miniz_alloc_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -54,8 +61,8 @@ static void test_alloc_align_and_distinct(void)
   TEST_ASSERT((((uintptr_t)a % alignof(max_align_t)) == 0U));
   TEST_ASSERT((((uintptr_t)b % alignof(max_align_t)) == 0U));
   /* Writing the full request must not corrupt the neighbour. */
-  (void)memset(a, 0xAA, k_small);
-  (void)memset(b, 0x55, k_small);
+  (void)memset(a, k_miniz_fill_first, k_small);
+  (void)memset(b, k_miniz_fill_second, k_small);
   TEST_ASSERT(((const uint8_t*)a)[0] == 0xAAU);
   TEST_ASSERT(((const uint8_t*)b)[k_small - 1U] == 0x55U);
   ra8_epub_miniz_free(nullptr, a);
@@ -305,7 +312,7 @@ static void test_free_in_pool_mcdc(void)
 
   /* The no-ops must not have corrupted the pool: p is still a live in-pool
    * block, so a write through it is safe and a real free still works (V1). */
-  (void)memset(p, 0x5AU, k_small);
+  (void)memset(p, k_miniz_fill_reuse, k_small);
   TEST_ASSERT(p[0] == 0x5AU);
   ra8_epub_miniz_free(nullptr, p); /* V1: in-pool, non-NULL -> actually freed */
 

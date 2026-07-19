@@ -27,6 +27,12 @@
 #include "support/sdmmc_spi_test_util.h"
 #include "unity_minimal.h"
 
+/** @brief Distinguishable payloads for the SD block round-trip. */
+typedef enum : uint8_t {
+  k_sdspi_rd_fill_poison   = 0xA5U, /**< Poison the read must overwrite. */
+  k_sdspi_rd_fill_expected = 0xC5U, /**< Bytes the card is made to return. */
+} sdspi_rd_fill_t;
+
 /**
  * @enum sdmmc_spi_read_test_lit_t
  * @brief Named constants for the register stamp patterns and literal
@@ -109,7 +115,7 @@ static void test_read_block_happy_path(void)
   mock_queue_byte((uint8_t)(crc16 & k_sdmmc_spi_read_lit_xff));
 
   uint8_t buf[k_ra8_sdmmc_spi_block_size];
-  memset(buf, 0xA5U, sizeof(buf));
+  memset(buf, k_sdspi_rd_fill_poison, sizeof(buf));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_read_block(0U, buf));
   TEST_ASSERT_EQ(0, memcmp(buf, expected, sizeof(buf)));
   TEST_END("read_block happy path with CRC16");
@@ -127,7 +133,7 @@ static void test_read_block_detects_crc_mismatch(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_init(&s_mock_transport));
 
   uint8_t expected[k_ra8_sdmmc_spi_block_size];
-  memset(expected, 0xC5U, sizeof(expected));
+  memset(expected, k_sdspi_rd_fill_expected, sizeof(expected));
 
   queue_command_response_r1((uint8_t)k_test_r1_ready);
   mock_queue_byte((uint8_t)k_test_data_token_start);
@@ -434,7 +440,7 @@ static void test_read_blocks_multi_happy(void)
   queue_multi_read_stop((uint8_t)k_test_r1_ready);
 
   uint8_t buf[k_ra8_sdmmc_spi_block_size * 2U];
-  memset(buf, 0xA5U, sizeof(buf));
+  memset(buf, k_sdspi_rd_fill_poison, sizeof(buf));
   const uint32_t tx_start = s_mock.tx_len; /* skip the recorded init TX. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdmmc_spi_read_blocks(3U, buf, 2U));
   TEST_ASSERT_EQ(0, memcmp(&buf[0], block0, (size_t)k_ra8_sdmmc_spi_block_size));
@@ -502,7 +508,7 @@ static void test_read_blocks_stream_error_still_stops(void)
   TEST_BEGIN("read_blocks stream abort still sends CMD12");
   uint8_t buf[k_ra8_sdmmc_spi_block_size * 2U] = {};
   uint8_t block[k_ra8_sdmmc_spi_block_size];
-  memset(block, 0xC5U, sizeof(block));
+  memset(block, k_sdspi_rd_fill_expected, sizeof(block));
 
   /* Block 1 streams clean; block 2 delivers a corrupt CRC16 trailer. The
    * driver must abort with crc_mismatch AND still issue CMD12. */

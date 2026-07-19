@@ -25,6 +25,12 @@
 
 #include "board_console.h"
 
+/** @brief Offsets into the frames this stub synthesises. */
+typedef enum : uint8_t {
+  k_arp_tha_off     = 18U, /**< ARP target-hardware-address offset.   */
+  k_tcp_off_payload = 20U, /**< TCP payload offset (no options here). */
+} board_net_frame_off_t;
+
 /**
  * @enum net_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -271,7 +277,7 @@ static void net_send_arp_reply(const uint8_t* to_mac, uint32_t to_ip)
   put16(&a[6], 2U); /* op = reply. */
   (void)memcpy(&a[8], s_peer_mac, k_mac_len);
   put32(&a[k_net_put32_14], (uint32_t)k_net_peer_ip);
-  (void)memcpy(&a[18], to_mac, k_mac_len);
+  (void)memcpy(&a[k_arp_tha_off], to_mac, k_mac_len);
   put32(&a[k_arp_tpa_off], to_ip);
   net_queue(f, sizeof(f));
 }
@@ -347,7 +353,7 @@ static void net_send_tcp(uint8_t flags, const uint8_t* payload, uint16_t payload
   t[k_tcp_off_flags]   = flags;
   put16(&t[k_tcp_off_window], (uint16_t)k_tcp_window); /* window. */
   if (payload_len > 0U) {
-    (void)memcpy(&t[20], payload, payload_len);
+    (void)memcpy(&t[k_tcp_off_payload], payload, payload_len);
   }
   /* TCP checksum covers the IPv4 pseudo-header + the segment. */
   const uint32_t pseudo =

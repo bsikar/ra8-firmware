@@ -27,6 +27,11 @@
 #include "ra8_io_blockdev_internal.h"
 #include "unity_minimal.h"
 
+/** @brief Payload fill for the FTL round-trip assertions. */
+typedef enum : uint8_t {
+  k_ftl_fill_payload = 0xABU, /**< Arbitrary non-trivial byte pattern. */
+} ftl_fill_t;
+
 /**
  * @enum ftl_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -197,7 +202,7 @@ static void test_fake_rejects_nonblank(void)
   ra8_io_blockdev_t fake = {};
   fake_bind(&fake);
   uint8_t blk[(size_t)k_test_ftl_block];
-  (void)memset(blk, 0xAB, sizeof(blk));
+  (void)memset(blk, k_ftl_fill_payload, sizeof(blk));
   /* First write to a blank sector succeeds. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&fake, 0U, 1U, blk));
   /* Second write to the now non-blank sector is rejected. */

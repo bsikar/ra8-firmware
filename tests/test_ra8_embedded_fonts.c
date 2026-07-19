@@ -37,6 +37,11 @@
 #include "ra8_reflow.h"
 #include "unity_minimal.h"
 
+/** @brief Fill byte for the deliberately invalid font blob. */
+typedef enum : uint8_t {
+  k_fonts_fill_garbage = 0xA5U, /**< Carries no sfnt tag, so lookup fails. */
+} fonts_fill_t;
+
 /** @brief Local sizing + measurement constants (no magic numbers). */
 typedef enum : uint32_t {
   k_tef_epub_cap     = 65536U,      /**< Synthetic .epub heap buffer.         */
@@ -236,7 +241,7 @@ static void test_bind_measure_and_mcdc(void)
 
   /* --- MC/DC for the validation decision + graceful fallback ---------- */
   static uint8_t s_garbage[k_tef_garbage_len];
-  memset(s_garbage, 0xA5, sizeof(s_garbage)); /* no sfnt tag -> offset < 0 */
+  memset(s_garbage, k_fonts_fill_garbage, sizeof(s_garbage)); /* no sfnt tag -> offset < 0 */
   static uint8_t s_tagged_corrupt[k_tef_garbage_len];
   memset(s_tagged_corrupt, 0x00, sizeof(s_tagged_corrupt));
   s_tagged_corrupt[1] = 0x01; /* 0x00010000 sfnt version -> offset 0, InitFont fails */

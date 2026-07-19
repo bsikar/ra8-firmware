@@ -49,21 +49,11 @@ typedef enum : uint8_t {
   k_unarch_tar_f_neg_c0     = 0xC0U,
   k_unarch_tar_f_pay_81     = 0x81U,
   k_unarch_tar_i_5          = 5U,
-  k_unarch_tar_len_100      = 100U,
-  k_unarch_tar_tb_octal_100 = 100,
-  k_unarch_tar_tb_octal_108 = 108,
-  k_unarch_tar_tb_octal_116 = 116,
-  k_unarch_tar_tb_octal_12  = 12U,
-  k_unarch_tar_tb_octal_124 = 124,
-  k_unarch_tar_tb_octal_136 = 136,
-  k_unarch_tar_tb_octal_148 = 148,
-  k_unarch_tar_tb_octal_7   = 7U,
+  k_tt_len_name      = 100U,
   k_unarch_tar_val_10       = 10,
   k_unarch_tar_val_11       = 11,
   k_unarch_tar_val_12       = 12,
   k_unarch_tar_val_135      = 135,
-  k_unarch_tar_val_155      = 155,
-  k_unarch_tar_val_156      = 156,
   k_unarch_tar_val_24       = 24,
 } unarch_tar_uint8_const_t;
 
@@ -77,12 +67,11 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_unarch_tar_i_512         = 512U,
-  k_unarch_tar_off_1024      = 1024U,
+  k_tt_tar_block         = 512U,
   k_unarch_tar_s_arc_len_700 = 700U,
-  k_unarch_tar_val_257       = 257,
-  k_unarch_tar_val_262       = 262,
-  k_unarch_tar_val_263       = 263,
+  k_tt_off_magic       = 257,
+  k_tt_off_magic_nul       = 262,
+  k_tt_off_version       = 263,
   k_unarch_tar_val_264       = 264,
   k_unarch_tar_val_300       = 300,
   k_unarch_tar_val_4096      = 4096,
@@ -111,6 +100,49 @@ typedef enum : uint32_t {
 typedef enum : uint16_t {
   k_unarch_tar_tb_octal_0644 = 0644U, /**< tar member mode: rw-r--r--. */
 } unarch_tar_tb_octal_0644_t;
+
+/**
+ * @enum tt_tar_layout_t
+ * @brief POSIX ustar header field offsets and widths, within one 512-byte block.
+ *
+ * @details
+ * Offsets and widths are fixed by the ustar format, so they are named by the
+ * FIELD they address rather than by their value. Two pairs share a value but
+ * not a role and must not be confused: 100 is both the name width and the mode
+ * offset, and 155 is both the prefix width and the offset of the checksum
+ * field's trailing space.
+ *
+ * @see tb_header  Builds a header block using these offsets.
+ * @see tb_finish  Computes the checksum over the completed block.
+ */
+typedef enum : uint16_t {
+  k_tt_tar_block        = 512U,  /**< Tar block size, bytes.                  */
+  k_tt_end_marker_bytes = 1024U, /**< End-of-archive marker: two zero blocks. */
+  k_tt_off_name         = 0U,    /**< name field offset.                      */
+  k_tt_len_name         = 100U,  /**< name field width.                       */
+  k_tt_off_mode         = 100U,  /**< mode field offset.                      */
+  k_tt_off_uid          = 108U,  /**< uid field offset.                       */
+  k_tt_off_gid          = 116U,  /**< gid field offset.                       */
+  k_tt_len_id           = 8U,    /**< mode/uid/gid field width.               */
+  k_tt_off_size         = 124U,  /**< size field offset.                      */
+  k_tt_len_size         = 12U,   /**< size field width.                       */
+  k_tt_off_mtime        = 136U,  /**< mtime field offset.                     */
+  k_tt_off_chksum       = 148U,  /**< checksum field offset.                  */
+  k_tt_len_chksum       = 8U,    /**< checksum field width.                   */
+  k_tt_chksum_digits    = 7U,    /**< Octal digits written into the checksum. */
+  k_tt_off_chksum_pad   = 155U,  /**< Trailing space of the checksum field.   */
+  k_tt_off_type         = 156U,  /**< typeflag field offset.                  */
+  k_tt_off_magic        = 257U,  /**< "ustar" magic offset.                   */
+  k_tt_off_magic_nul    = 262U,  /**< Magic terminator byte offset.           */
+  k_tt_off_version      = 263U,  /**< version field offset.                   */
+  k_tt_off_prefix       = 345U,  /**< prefix field offset.                    */
+  k_tt_len_prefix       = 155U,  /**< prefix field width.                     */
+} tt_tar_layout_t;
+
+/** @brief ustar magic field, 5 bytes at offset 257 (no string terminator). */
+static const uint8_t k_tt_ustar_magic[] = {'u', 's', 't', 'a', 'r'};
+/** @brief ustar version field, the two ASCII digits "00" at offset 263. */
+static const uint8_t k_tt_ustar_version[] = {'0', '0'};
 
 /**
  * @enum tt_dim_t
@@ -150,32 +182,32 @@ static void tb_octal(uint8_t* f, size_t len, uint64_t v)
 /** @brief Compute and store the header checksum ("%06o\0 " form). */
 static void tb_finish(uint8_t* block)
 {
-  memset(&block[148], (int)' ', 8U);
+  memset(&block[k_tt_off_chksum], (int)' ', k_tt_len_chksum);
   uint32_t sum = 0U;
-  for (uint32_t i = 0U; i < k_unarch_tar_i_512; ++i) {
+  for (uint32_t i = 0U; i < (uint32_t)k_tt_tar_block; ++i) {
     sum += block[i];
   }
-  tb_octal(&block[k_unarch_tar_tb_octal_148], k_unarch_tar_tb_octal_7, (uint64_t)sum);
-  block[k_unarch_tar_val_155] = (uint8_t)' ';
+  tb_octal(&block[k_tt_off_chksum], k_tt_chksum_digits, (uint64_t)sum);
+  block[k_tt_off_chksum_pad] = (uint8_t)' ';
 }
 
 /** @brief Build one header block (ustar magic, octal size, checksum). */
 static void
 tb_header(uint8_t* block, const char* name, const char* prefix, uint8_t type, uint64_t dsize)
 {
-  memset(block, 0, 512U);
-  strncpy((char*)&block[0], name, 100U);
-  tb_octal(&block[k_unarch_tar_tb_octal_100], 8U, k_unarch_tar_tb_octal_0644);  /* mode  */
-  tb_octal(&block[k_unarch_tar_tb_octal_108], 8U, 0U);                          /* uid   */
-  tb_octal(&block[k_unarch_tar_tb_octal_116], 8U, 0U);                          /* gid   */
-  tb_octal(&block[k_unarch_tar_tb_octal_124], k_unarch_tar_tb_octal_12, dsize); /* size  */
-  tb_octal(&block[k_unarch_tar_tb_octal_136], k_unarch_tar_tb_octal_12, 0U);    /* mtime */
-  block[k_unarch_tar_val_156] = type;
-  memcpy(&block[257], "ustar", 5U);
-  block[k_unarch_tar_val_262] = 0U;
-  memcpy(&block[263], "00", 2U);
+  memset(block, 0, (size_t)k_tt_tar_block);
+  strncpy((char*)&block[k_tt_off_name], name, (size_t)k_tt_len_name);
+  tb_octal(&block[k_tt_off_mode], k_tt_len_id, k_unarch_tar_tb_octal_0644);  /* mode  */
+  tb_octal(&block[k_tt_off_uid], k_tt_len_id, 0U);                          /* uid   */
+  tb_octal(&block[k_tt_off_gid], k_tt_len_id, 0U);                          /* gid   */
+  tb_octal(&block[k_tt_off_size], k_tt_len_size, dsize); /* size  */
+  tb_octal(&block[k_tt_off_mtime], k_tt_len_size, 0U);    /* mtime */
+  block[k_tt_off_type] = type;
+  memcpy(&block[k_tt_off_magic], k_tt_ustar_magic, sizeof(k_tt_ustar_magic));
+  block[k_tt_off_magic_nul] = 0U;
+  memcpy(&block[k_tt_off_version], k_tt_ustar_version, sizeof(k_tt_ustar_version));
   if (prefix != nullptr) {
-    strncpy((char*)&block[345], prefix, 155U);
+    strncpy((char*)&block[k_tt_off_prefix], prefix, (size_t)k_tt_len_prefix);
   }
   tb_finish(block);
 }
@@ -189,7 +221,7 @@ static size_t tb_add(size_t      off,
                      size_t      dsize)
 {
   tb_header(&s_arc[off], name, prefix, type, (uint64_t)dsize);
-  off += k_unarch_tar_i_512;
+  off += k_tt_tar_block;
   if (dsize > 0U) {
     memcpy(&s_arc[off], data, dsize);
     const size_t padded = ((dsize + 511U) / 512U) * 512U;
@@ -202,8 +234,8 @@ static size_t tb_add(size_t      off,
 /** @brief Append the end-of-archive marker (two zero blocks). */
 static size_t tb_end(size_t off)
 {
-  memset(&s_arc[off], 0, 1024U);
-  return off + k_unarch_tar_off_1024;
+  memset(&s_arc[off], 0, (size_t)k_tt_end_marker_bytes);
+  return off + (size_t)k_tt_end_marker_bytes;
 }
 
 /** @brief Open a walker over the built archive with optional limits. */
@@ -297,15 +329,15 @@ static void test_tar_block_primitives(void)
   block[0] ^= k_unarch_tar_block_ff; /* corrupt a name byte: sum shifts */
   TEST_ASSERT(!ra8_unarch_tar_checksum_ok(block));
   block[0] ^= k_unarch_tar_block_ff;
-  memset(&block[148], 0, 8U); /* undecodable chksum field */
+  memset(&block[k_tt_off_chksum], 0, k_tt_len_chksum); /* undecodable chksum field */
   TEST_ASSERT(!ra8_unarch_tar_checksum_ok(block));
 
   tb_header(block, "a.png", nullptr, (uint8_t)'0', 4U);
-  block[k_unarch_tar_val_262] = (uint8_t)' '; /* old-GNU magic terminator */
+  block[k_tt_off_magic_nul] = (uint8_t)' '; /* old-GNU magic terminator */
   TEST_ASSERT(ra8_unarch_tar_magic_ok(block));
-  block[k_unarch_tar_val_262] = (uint8_t)'X';
+  block[k_tt_off_magic_nul] = (uint8_t)'X';
   TEST_ASSERT(!ra8_unarch_tar_magic_ok(block));
-  block[k_unarch_tar_val_257] = (uint8_t)'v'; /* not ustar at all */
+  block[k_tt_off_magic] = (uint8_t)'v'; /* not ustar at all */
   TEST_ASSERT(!ra8_unarch_tar_magic_ok(block));
 
   TEST_ASSERT_EQ(k_ra8_tar_type_file, ra8_unarch_tar_classify((uint8_t)'0'));
@@ -545,7 +577,7 @@ static void test_tar_open_probe_guards(void)
   uint8_t good[k_unarch_tar_val_512] = {};
   tb_header(good, "x.png", nullptr, (uint8_t)'0', 0U);
   TEST_ASSERT(ra8_unarch_tar_probe(good, sizeof(good)));
-  good[k_unarch_tar_val_262] = (uint8_t)'X'; /* magic passes "ustar", term fails */
+  good[k_tt_off_magic_nul] = (uint8_t)'X'; /* magic passes "ustar", term fails */
   TEST_ASSERT(!ra8_unarch_tar_probe(good, sizeof(good)));
 
   ra8_unarch_tar_t t   = {};
@@ -563,7 +595,7 @@ static void test_tar_open_probe_guards(void)
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
                  ra8_unarch_tar_open(&t, ra8_unarch_mem_read, &mem, (uint64_t)s_arc_len, nullptr));
   /* A backing that cannot serve one whole block. */
-  mem.len = k_unarch_tar_len_100;
+  mem.len = k_tt_len_name;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_unarch_tar_open(&t, ra8_unarch_mem_read, &mem, 1024U, nullptr));
 
@@ -778,7 +810,7 @@ static void test_tar_read_guards(void)
 
   /* Forged entries: data area outside / overrunning the archive. */
   ra8_unarch_tar_entry_t forged = file;
-  forged.data_off               = (uint64_t)s_arc_len + k_unarch_tar_i_512;
+  forged.data_off               = (uint64_t)s_arc_len + k_tt_tar_block;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_unarch_tar_read(&t, &forged, s_out, sizeof(s_out), &got));
   forged      = file;
@@ -817,12 +849,12 @@ static void test_tar_base256_and_gnu_magic(void)
   const char data[] = "binary-size-member";
   size_t     off    = tb_add(0U, "b256.png", nullptr, (uint8_t)'0', data, sizeof(data) - 1U);
   /* Rewrite the size field as base-256 and re-checksum. */
-  memset(&s_arc[124], 0, 12U);
-  s_arc[k_unarch_tar_tb_octal_124] = k_unarch_tar_f_b256_80;
+  memset(&s_arc[k_tt_off_size], 0, k_tt_len_size);
+  s_arc[k_tt_off_size] = k_unarch_tar_f_b256_80;
   s_arc[k_unarch_tar_val_135]      = (uint8_t)(sizeof(data) - 1U);
   /* Old-GNU magic variant: "ustar" + ' ' + ' '. */
-  s_arc[k_unarch_tar_val_262] = (uint8_t)' ';
-  s_arc[k_unarch_tar_val_263] = (uint8_t)' ';
+  s_arc[k_tt_off_magic_nul] = (uint8_t)' ';
+  s_arc[k_tt_off_version] = (uint8_t)' ';
   s_arc[k_unarch_tar_val_264] = 0U;
   tb_finish(&s_arc[0]);
   s_arc_len = tb_end(off);

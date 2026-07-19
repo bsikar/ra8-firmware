@@ -32,6 +32,11 @@
 #include "ra8_reflow_cache.h"
 #include "unity_minimal.h"
 
+/** @brief Fill byte for the deliberately invalid face blob. */
+typedef enum : uint8_t {
+  k_face_fill_garbage = 0xA5U, /**< Matches no face signature. */
+} face_fill_t;
+
 /** @brief Local sizing constants (no magic numbers). */
 typedef enum : uint32_t {
   k_tfs_viewport_w = 600U,      /**< Layout viewport width, px.       */
@@ -229,7 +234,7 @@ static void test_register_validation(void)
 
   /* Garbage (no sfnt tag) is rejected; the registry stays empty. */
   static uint8_t s_garbage[k_tfs_garbage];
-  memset(s_garbage, 0xA5, sizeof(s_garbage));
+  memset(s_garbage, k_face_fill_garbage, sizeof(s_garbage));
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
                  ra8_reflow_register_face(&s_engine, 0U, s_garbage, sizeof(s_garbage)));
   TEST_ASSERT_EQ(0, s_engine.face_count);
