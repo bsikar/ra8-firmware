@@ -594,6 +594,27 @@ def audit_members_file(path: Path):
     return rows
 
 
+def definition_carries_block(raw: str, src_no_comments: str, name: str) -> bool:
+    """True when a *definition* of ``name`` in this same file carries a block.
+
+    Used to tell a file-local forward prototype apart from a genuinely
+    undocumented function.  See the call site for why that distinction has to
+    exist.
+    """
+    raw_lines = raw.splitlines(keepends=True)
+    for dm in FUNC_RE.finditer(src_no_comments):
+        if dm.group("name") != name or dm.group("term") != "{":
+            continue
+        line_no = src_no_comments.count("\n", 0, dm.start()) + 1
+        if line_no - 1 >= len(raw_lines):
+            continue
+        offset = sum(len(ln) for ln in raw_lines[: line_no - 1])
+        _, has_block = find_preceding_doxy(raw, offset)
+        if has_block:
+            return True
+    return False
+
+
 def audit_file(path: Path):  # noqa: PLR0912 PLR0915  # audit-dispatch, splitting hurts readability
     try:
         raw = path.read_text(encoding="utf-8", errors="replace")
@@ -656,6 +677,25 @@ def audit_file(path: Path):  # noqa: PLR0912 PLR0915  # audit-dispatch, splittin
         # static (TU-local) function has no header to carry the contract, so
         # it still requires a full definition-site block.
         if str(path).endswith(".c") and not re.search(r"\bstatic\b", ret):
+            rows.append((str(path.relative_to(REPO_ROOT)), line_no, name, [], "ok"))
+            continue
+
+        # A file-local forward prototype exists so a function can be *called*
+        # before it is defined (``static void f(void);`` near the top, body 600
+        # lines down). It is an ordering device, not a second contract. When
+        # the definition in this same file carries the block, demanding one
+        # here too would force the identical block to be written twice -- and a
+        # duplicated block is precisely the defect check_doc_attachment.py
+        # rejects as DOC004/DOC006. Without this, the two gates contradict each
+        # other and no source file can satisfy both at once (ra8_rsip.c's
+        # internal_sw_sha256 is the live example). A prototype whose definition
+        # is *also* bare is still reported, at the definition.
+        if (
+            m.group("term") == ";"
+            and not has_block
+            and re.search(r"\bstatic\b", ret)
+            and definition_carries_block(raw, src_no_comments, name)
+        ):
             rows.append((str(path.relative_to(REPO_ROOT)), line_no, name, [], "ok"))
             continue
 

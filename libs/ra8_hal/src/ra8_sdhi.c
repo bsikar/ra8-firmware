@@ -441,6 +441,19 @@ typedef enum : uint32_t {
  * @param[in] arg 32-bit command argument.
  *
  * @return ``k_ra8_ok`` on RSPEND, ``k_ra8_err_hw_timeout`` otherwise.
+ * @retval k_ra8_ok             RSPEND asserted; the flag has been cleared.
+ * @retval k_ra8_err_hw_timeout RSPEND never asserted within
+ *                              ::k_ra8_sdhi_cmd_spin polls.
+ *
+ * @pre ``reg`` points at a mapped SDHI register window.
+ * @pre The card is out of the busy state from any prior command.
+ *
+ * @post SD_ARG and SD_CMD hold ``arg`` and ``cmd``.
+ * @post On success SD_INFO1.RSPEND is cleared, so the next command
+ *       observes a fresh flag.
+ *
+ * @note Not thread-safe; the polled SDHI API assumes one caller.
+ * @since 0.1.0
  */
 RA8_INTERNAL
 static ra8_err_t internal_sdhi_send(volatile r_sdhi_regs_t* reg, uint32_t cmd, uint32_t arg)
@@ -476,6 +489,19 @@ static ra8_err_t internal_sdhi_send(volatile r_sdhi_regs_t* reg, uint32_t cmd, u
  * data phase after SD_SECCNT blocks; for single-block transfers
  * SD_STOP must be cleared. SD_SIZE is always 512 bytes for SD card
  * sector access.
+ *
+ * @param[in] reg         SDHI register window pointer.
+ * @param[in] block_count Number of 512-byte blocks in this transfer.
+ *
+ * @pre ``reg`` points at a mapped SDHI register window.
+ * @pre ``block_count`` is at least 1.
+ *
+ * @post SD_STOP.SEC reflects single- vs multi-block, and SD_SECCNT
+ *       holds ``block_count`` for the multi-block case.
+ * @post SD_SIZE is ::k_ra8_sdhi_block_bytes.
+ *
+ * @note Not thread-safe; the polled SDHI API assumes one caller.
+ * @since 0.1.0
  */
 RA8_INTERNAL
 static void internal_sdhi_setup_xfer(volatile r_sdhi_regs_t* reg, uint32_t block_count)
@@ -501,6 +527,25 @@ static void internal_sdhi_setup_xfer(volatile r_sdhi_regs_t* reg, uint32_t block
  * ``k_ra8_err_hw_timeout`` if the BRE flag never asserts inside the
  * ``k_ra8_sdhi_fifo_spin`` budget. The split into a helper keeps
  * ::ra8_sdhi_read_block under the NASA Rule 4 (60 statements) limit.
+ *
+ * @param[in]  reg   SDHI register window pointer.
+ * @param[out] buf   Destination byte buffer, at least ``words * 4`` bytes.
+ * @param[in]  words Number of 32-bit FIFO words to drain.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok             All ``words`` words were read into ``buf``.
+ * @retval k_ra8_err_hw_timeout SD_INFO2.BRE never asserted within
+ *                              ::k_ra8_sdhi_fifo_spin polls.
+ *
+ * @pre ``reg`` and ``buf`` are non-NULL.
+ * @pre A read data phase is already armed (see ::internal_sdhi_setup_xfer).
+ *
+ * @post On success ``buf[0 .. words * 4 - 1]`` holds the FIFO payload,
+ *       little-endian per word.
+ * @post On timeout ``buf`` holds only the words drained before the stall.
+ *
+ * @note Not thread-safe; the polled SDHI API assumes one caller.
+ * @since 0.1.0
  */
 RA8_INTERNAL
 static ra8_err_t internal_sdhi_drain(volatile r_sdhi_regs_t* reg, uint8_t* buf, uint32_t words)
@@ -542,6 +587,24 @@ static ra8_err_t internal_sdhi_drain(volatile r_sdhi_regs_t* reg, uint8_t* buf, 
  * ``k_ra8_sdhi_fifo_spin`` budget. Mirror image of
  * ::internal_sdhi_drain, also factored out to keep
  * ::ra8_sdhi_write_block under the NASA Rule 4 limit.
+ *
+ * @param[in] reg   SDHI register window pointer.
+ * @param[in] buf   Source byte buffer, at least ``words * 4`` bytes.
+ * @param[in] words Number of 32-bit FIFO words to push.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok             All ``words`` words were written to SD_BUF0.
+ * @retval k_ra8_err_hw_timeout SD_INFO2.BWE never asserted within
+ *                              ::k_ra8_sdhi_fifo_spin polls.
+ *
+ * @pre ``reg`` and ``buf`` are non-NULL.
+ * @pre A write data phase is already armed (see ::internal_sdhi_setup_xfer).
+ *
+ * @post On success the controller has accepted ``words * 4`` bytes.
+ * @post ``buf`` is not modified.
+ *
+ * @note Not thread-safe; the polled SDHI API assumes one caller.
+ * @since 0.1.0
  */
 RA8_INTERNAL
 static ra8_err_t internal_sdhi_fill(volatile r_sdhi_regs_t* reg, const uint8_t* buf, uint32_t words)
@@ -582,6 +645,22 @@ static ra8_err_t internal_sdhi_fill(volatile r_sdhi_regs_t* reg, const uint8_t* 
  * r_sdhi.c, then zeroes SD_INFO1 / SD_INFO2 so the next caller
  * sees a clean slate. Factored out so the public read/write helpers
  * stay under the NASA Rule 4 statement limit.
+ *
+ * @param[in] reg         SDHI register window pointer.
+ * @param[in] block_count Block count of the transfer being torn down.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok             Data phase closed and flags cleared.
+ * @retval k_ra8_err_hw_timeout CMD12 STOP_TRANSMISSION never saw RSPEND.
+ *
+ * @pre ``reg`` points at a mapped SDHI register window.
+ * @pre The data phase this call closes has already drained or filled.
+ *
+ * @post SD_INFO1 and SD_INFO2 are zeroed.
+ * @post CMD12 has been issued when ``block_count > 1``.
+ *
+ * @note Not thread-safe; the polled SDHI API assumes one caller.
+ * @since 0.1.0
  */
 RA8_INTERNAL
 static ra8_err_t internal_sdhi_finish_xfer(volatile r_sdhi_regs_t* reg, uint32_t block_count)
