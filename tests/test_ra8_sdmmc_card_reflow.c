@@ -181,6 +181,45 @@ static void sd_cmd_read_block(sd_card_t* c, uint32_t arg)
   c->resp_len                             = 2U + (uint32_t)k_sd_block + 2U;
 }
 
+/**
+ * @brief Stage a bare one-byte R1 reply.
+ * @param[in,out] c      Card state whose response buffer is staged.
+ * @param[in]     status R1 status byte to answer with.
+ * @return None.
+ * @pre @p c is non-null with a staging response buffer.
+ * @pre @p c->resp holds room for at least one byte.
+ * @post @p c->resp[0] is @p status and @p c->resp_len is 1.
+ * @post The backing image is untouched.
+ * @note Not thread-safe; single-threaded host-test model.
+ * @since 0.1.0
+ */
+static void sd_reply_r1(sd_card_t* c, uint8_t status)
+{
+  c->resp[0]  = status;
+  c->resp_len = 1U;
+}
+
+/**
+ * @brief Stage the CMD8 (SEND_IF_COND) R7 reply: R1 plus the 0x1AA echo.
+ * @param[in,out] c Card state whose response buffer is staged.
+ * @return None.
+ * @pre @p c is non-null with a staging response buffer.
+ * @pre @p c->resp holds room for ::k_sd_r7_len bytes.
+ * @post @p c->resp carries the idle R1 and the voltage/pattern echo.
+ * @post @p c->resp_len is ::k_sd_r7_len.
+ * @note Not thread-safe; single-threaded host-test model.
+ * @since 0.1.0
+ */
+static void sd_cmd_send_if_cond(sd_card_t* c)
+{
+  c->resp[0]  = (uint8_t)k_sd_r1_idle;
+  c->resp[1]  = 0U;
+  c->resp[2]  = 0U;
+  c->resp[3]  = 1U;
+  c->resp[4]  = (uint8_t)k_sd_cmd8_echo;
+  c->resp_len = (uint8_t)k_sd_r7_len;
+}
+
 static void sd_process_cmd(sd_card_t* c)
 {
   const uint8_t  idx     = (uint8_t)(c->cmd[0] & (uint8_t)k_sd_idx_mask);
@@ -197,47 +236,35 @@ static void sd_process_cmd(sd_card_t* c)
 #endif
 
   if ((idx == (uint8_t)k_sd_idx_acmd41) && was_app) { /* ACMD41 -- init done. */
-    c->ready    = true;
-    c->resp[0]  = (uint8_t)k_sd_r1_ready;
-    c->resp_len = 1U;
+    c->ready = true;
+    sd_reply_r1(c, (uint8_t)k_sd_r1_ready);
     return;
   }
   switch (idx) {
     case (uint8_t)k_sd_idx_cmd0: /* GO_IDLE */
-      c->resp[0]  = (uint8_t)k_sd_r1_idle;
-      c->resp_len = 1U;
+      sd_reply_r1(c, (uint8_t)k_sd_r1_idle);
       break;
     case (uint8_t)k_sd_idx_cmd8: /* SEND_IF_COND -> R7 (R1 + 0x000001AA echo) */
-      c->resp[0]  = (uint8_t)k_sd_r1_idle;
-      c->resp[1]  = 0U;
-      c->resp[2]  = 0U;
-      c->resp[3]  = 1U;
-      c->resp[4]  = (uint8_t)k_sd_cmd8_echo;
-      c->resp_len = (uint8_t)k_sd_r7_len;
+      sd_cmd_send_if_cond(c);
       break;
     case (uint8_t)k_sd_idx_cmd55: /* APP_CMD */
-      c->app_cmd  = true;
-      c->resp[0]  = (uint8_t)k_sd_r1_idle;
-      c->resp_len = 1U;
+      c->app_cmd = true;
+      sd_reply_r1(c, (uint8_t)k_sd_r1_idle);
       break;
     case (uint8_t)k_sd_idx_cmd58: /* READ_OCR -> R3 (R1 + OCR, CCS=1 => SDHC) */
       sd_cmd_read_ocr(c, r1);
       break;
     case (uint8_t)k_sd_idx_cmd16: /* SET_BLOCKLEN */
-      c->resp[0]  = (uint8_t)k_sd_r1_ready;
-      c->resp_len = 1U;
+      sd_reply_r1(c, (uint8_t)k_sd_r1_ready);
       break;
-    case (uint8_t)k_sd_idx_cmd9: { /* SEND_CSD -> R1 + token + 16-byte CSD + CRC */
+    case (uint8_t)k_sd_idx_cmd9: /* SEND_CSD -> R1 + token + 16-byte CSD + CRC */
       sd_cmd_send_csd(c);
       break;
-    }
-    case (uint8_t)k_sd_idx_cmd17: { /* READ_SINGLE_BLOCK (SDHC: arg = block) */
+    case (uint8_t)k_sd_idx_cmd17: /* READ_SINGLE_BLOCK (SDHC: arg = block) */
       sd_cmd_read_block(c, arg);
       break;
-    }
     default:
-      c->resp[0]  = r1;
-      c->resp_len = 1U;
+      sd_reply_r1(c, r1);
       break;
   }
 }

@@ -126,29 +126,68 @@ static void bcx_fill_blob(void)
  *          produced-length mismatch leg.
  * @return Packed container length in bytes.
  */
-static uint64_t bcx_pack(uint8_t* out, bool short_last)
+/**
+ * @brief Deflate every chunk of ::s_blob, recording lengths and offsets.
+ *
+ * @details
+ * @p short_last truncates the final chunk's source span, which is how the
+ * caller fabricates a container whose last chunk inflates to fewer bytes than
+ * the declared chunk size -- the short-tail case the reader must handle.
+ *
+ * @param[out] streams    Per-chunk deflate streams.
+ * @param[out] stream_len Per-chunk compressed length.
+ * @param[out] offs       Running offsets, `count + 1` entries starting at 0.
+ * @param[in]  short_last Whether to truncate the last chunk's source span.
+ * @return None.
+ *
+ * @pre Every out-parameter has room for ::k_bcx_chunk_count entries.
+ * @pre ::s_blob holds ::k_bcx_blob_len bytes.
+ * @post `offs[i+1] - offs[i]` is chunk i's compressed length.
+ * @post Every compression reported MZ_OK.
+ *
+ * @note Not thread-safe (reads the shared ::s_blob).
+ * @since 0.1.0
+ */
+static void bcx_compress_chunks(uint8_t streams[][k_bcx_staging_cap],
+                                mz_ulong* stream_len,
+                                uint64_t* offs,
+                                bool      short_last)
 {
-  const uint32_t count                        = k_bcx_chunk_count;
-  uint64_t       offs[k_bcx_chunk_count + 1U] = {};
-  uint8_t        streams[k_bcx_chunk_count][k_bcx_staging_cap];
-  mz_ulong       stream_len[k_bcx_chunk_count] = {};
-
-  for (uint32_t i = 0U; i < count; ++i) {
+  for (uint32_t i = 0U; i < (uint32_t)k_bcx_chunk_count; ++i) {
     const uint32_t at   = i * k_bcx_chunk_bytes;
     uint32_t       span = k_bcx_blob_len - at;
     if (span > k_bcx_chunk_bytes) {
       span = k_bcx_chunk_bytes;
     }
-    if (short_last && (i == (count - 1U))) {
+    if (short_last && (i == ((uint32_t)k_bcx_chunk_count - 1U))) {
       span = k_bcx_short_span;
     }
-    stream_len[i] = (mz_ulong)sizeof(streams[i]);
+    stream_len[i] = (mz_ulong)k_bcx_staging_cap;
     const int rc =
       mz_compress2(streams[i], &stream_len[i], &s_blob[at], (mz_ulong)span, MZ_BEST_COMPRESSION);
     TEST_ASSERT_EQ(MZ_OK, rc);
     offs[i + 1U] = offs[i] + (uint64_t)stream_len[i];
   }
+}
 
+/**
+ * @brief Write the RBKC container header; return the offset just past it.
+ *
+ * @param[out] out   Container buffer.
+ * @param[in]  count Chunk count to record.
+ * @return Byte offset of the first field after the header.
+ *
+ * @pre @p out has room for the fixed header.
+ * @pre @p count matches the number of chunk streams that follow.
+ * @post The magic, chunk size, inflated total, count and reserved word are
+ *       written in order.
+ * @post The reserved word is zero, as the reader expects.
+ *
+ * @note Not thread-safe with respect to @p out.
+ * @since 0.1.0
+ */
+static size_t bcx_write_header(uint8_t* out, uint32_t count)
+{
   size_t pos = 0U;
   memcpy(&out[pos], k_bcx_magic_rbkc, sizeof(k_bcx_magic_rbkc));
   pos += 4U;
@@ -163,6 +202,19 @@ static uint64_t bcx_pack(uint8_t* out, bool short_last)
   const uint32_t reserved = 0U;
   memcpy(&out[pos], &reserved, sizeof(reserved));
   pos += sizeof(reserved);
+  return pos;
+}
+
+static uint64_t bcx_pack(uint8_t* out, bool short_last)
+{
+  const uint32_t count                        = k_bcx_chunk_count;
+  uint64_t       offs[k_bcx_chunk_count + 1U] = {};
+  uint8_t        streams[k_bcx_chunk_count][k_bcx_staging_cap];
+  mz_ulong       stream_len[k_bcx_chunk_count] = {};
+
+  bcx_compress_chunks(streams, stream_len, offs, short_last);
+
+  size_t pos = bcx_write_header(out, count);
   memcpy(&out[pos], offs, sizeof(offs));
   pos += sizeof(offs);
   for (uint32_t i = 0U; i < count; ++i) {
