@@ -42,66 +42,94 @@
 typedef enum : uint16_t {
   k_tap_fill_jpeg_body = 0xAAU, /**< Filler body after the SOI marker. */
   k_tap_jpeg_body_len  = 32U,   /**< Filler bytes written.             */
-  k_tap_png_ihdr_len   = 13U,   /**< PNG IHDR payload length, bytes.   */
 } tap_probe_t;
 
 /**
- * @enum jof_produce_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_png_layout_t
+ * @brief Byte offsets and field widths of the PNG stream this file builds.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The builder hand-writes PNG rather than linking an encoder, so the hostile
+ * tests can corrupt one field at a time. Offsets ending in `_b<N>` are the
+ * `N`-th byte of a big-endian 32-bit field, most-significant first.
  */
 typedef enum : uint8_t {
-  k_jof_produce_c_29         = 29U,
-  k_jof_produce_c_41         = 41U,
-  k_jof_produce_cap_64       = 64U,
-  k_jof_produce_exp_255      = 255U,
-  k_jof_produce_i_30         = 30U,
-  k_jof_produce_i_40         = 40U,
-  k_jof_produce_len_24       = 24U,
-  k_jof_produce_r_37         = 37U,
-  k_jof_produce_s_src_14     = 14U,
-  k_jof_produce_s_src_len_12 = 12U,
-  k_jof_produce_s_src_len_34 = 34U,
-  k_jof_produce_u_13         = 13U,
-  k_jof_produce_val_10       = 10U,
-  k_jof_produce_val_11       = 11U,
-  k_jof_produce_val_13       = 13,
-  k_jof_produce_val_15       = 15,
-  k_jof_produce_val_17       = 17,
-  k_jof_produce_val_18       = 18,
-  k_jof_produce_val_19       = 19,
-  k_jof_produce_val_20       = 20U,
-  k_jof_produce_val_20_2     = 20,
-  k_jof_produce_val_21       = 21,
-  k_jof_produce_val_22       = 22,
-  k_jof_produce_val_23       = 23,
-  k_jof_produce_val_24       = 24,
-  k_jof_produce_val_25       = 25,
-  k_jof_produce_val_28       = 28,
-  k_jof_produce_val_5        = 5U,
-  k_jof_produce_val_5_2      = 5,
-  k_jof_produce_val_7        = 7,
-  k_jof_produce_val_9        = 9U,
-  k_jof_produce_val_9_2      = 9,
-  k_jof_produce_val_ff       = 0xFFU,
-} jof_produce_uint8_const_t;
+  k_t_be32_hi_shift  = 24U,  /**< Shift selecting the top byte of a big-endian 32-bit PNG field. */
+  k_t_byte_mask      = 0xFFU, /**< Low-byte mask applied while serialising a big-endian field.   */
+  k_t_png_ihdr_len   = 13U,  /**< IHDR payload length in bytes, fixed by the PNG spec.           */
+  k_t_chunk_crc_b1   = 9U,   /**< Chunk CRC byte 1, relative to the chunk start plus payload.    */
+  k_t_chunk_crc_b2   = 10U,  /**< Chunk CRC byte 2.                                             */
+  k_t_chunk_crc_b3   = 11U,  /**< Chunk CRC byte 3 (least significant).                          */
+  k_t_chunk_overhead = 12U,  /**< Bytes a chunk costs beyond its payload: 4 length + 4 type + 4 CRC. */
+  k_t_ihdr_off_h_b1  = 5U,   /**< Height byte 1 within the IHDR payload.                         */
+  k_t_ihdr_off_h_b3  = 7U,   /**< Height byte 3 within the IHDR payload.                         */
+  k_t_ihdr_off_ct    = 9U,   /**< Colour-type byte within the IHDR payload.                      */
+} t_png_layout_t;
 
 /**
- * @enum jof_produce_uint16_const_t
- * @brief Named uint16_t constants used by this file.
+ * @enum t_src_ihdr_off_t
+ * @brief Absolute `s_src` offsets of the IHDR fields the hostile tests corrupt.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * IHDR is always the first chunk, so its payload starts at a fixed offset:
+ * 8 signature bytes + 4 length + 4 type = 16. These names let a test poke one
+ * IHDR field without re-deriving that arithmetic at every call site.
+ */
+typedef enum : uint8_t {
+  k_t_src_off_w_b0      = 16U, /**< Width byte 0 (most significant).                    */
+  k_t_src_off_w_b1      = 17U, /**< Width byte 1.                                       */
+  k_t_src_off_w_b2      = 18U, /**< Width byte 2.                                       */
+  k_t_src_off_w_b3      = 19U, /**< Width byte 3 (least significant).                   */
+  k_t_src_off_h_b0      = 20U, /**< Height byte 0 (most significant).                   */
+  k_t_src_off_h_b1      = 21U, /**< Height byte 1.                                      */
+  k_t_src_off_h_b2      = 22U, /**< Height byte 2.                                      */
+  k_t_src_off_h_b3      = 23U, /**< Height byte 3 (least significant).                  */
+  k_t_src_off_depth     = 24U, /**< Bit-depth byte; 16 here must be rejected.           */
+  k_t_src_off_ct        = 25U, /**< Colour-type byte.                                   */
+  k_t_src_off_interlace = 28U, /**< Interlace byte; non-zero must be rejected.          */
+} t_src_ihdr_off_t;
+
+/**
+ * @enum t_pattern_t
+ * @brief Parameters of the deterministic pixel and palette patterns.
+ *
+ * @details
+ * The builder and the expectation side both synthesize pixels from these, so a
+ * decode mismatch is a real defect rather than two drifting generators. The
+ * palette ramp is `base + (entry_index * step)` per channel.
+ */
+typedef enum : uint8_t {
+  k_t_pix_ch_stride = 29U,  /**< Per-channel offset keeping the R/G/B planes distinct. */
+  k_t_plte_entries  = 5U,   /**< Palette entries the builder emits.                    */
+  k_t_plte_bytes    = 15U,  /**< PLTE payload: k_t_plte_entries x 3 RGB bytes.         */
+  k_t_plte_r_base   = 10U,  /**< Red of palette entry 0.                               */
+  k_t_plte_r_step   = 40U,  /**< Red increment per palette entry.                      */
+  k_t_plte_g_base   = 20U,  /**< Green of palette entry 0.                             */
+  k_t_plte_g_step   = 30U,  /**< Green increment per palette entry.                    */
+  k_t_plte_b_base   = 30U,  /**< Blue of palette entry 0.                              */
+  k_t_plte_b_step   = 20U,  /**< Blue increment per palette entry.                     */
+  k_t_alpha_opaque  = 255U, /**< Alpha the decoder must synthesize for palette entries past tRNS. */
+} t_pattern_t;
+
+/**
+ * @enum t_probe_t
+ * @brief Stimulus values that steer the hostile and budget-starved paths.
  */
 typedef enum : uint16_t {
-  k_jof_produce_u_1024 = 1024U,
-} jof_produce_uint16_const_t;
+  k_t_probe_row_step    = 37U,   /**< Row stride when spot-checking a decoded tile.        */
+  k_t_probe_col_step    = 41U,   /**< Column stride; co-prime with the row stride so the
+                                      probe walks the whole tile rather than one diagonal. */
+  k_t_starved_store_cap = 64U,   /**< Memstore cap too small to hold the atlas, forcing the
+                                      sink's no-memory path.                               */
+  k_t_codec_invalid     = 9U,    /**< Codec id outside the enum; the config guard must reject it. */
+  k_t_hostile_sniff_len = 34U,   /**< Length of the not-a-PNG/JPEG blob fed to the sniffer.  */
+  k_t_hostile_lead_byte = 0xFFU, /**< Its leading byte: starts like a JPEG marker, then junk. */
+  k_t_ct_jpeg_ref       = 0xFFU, /**< Pseudo colour-type selecting the stb JPEG reference
+                                      instead of the synthetic pattern in expected_sample(). */
+  k_t_plte_bad_len      = 14U,   /**< PLTE length forced non-divisible by 3 to trip the
+                                      indivisible-length guard.                             */
+  k_t_kib               = 1024U, /**< Bytes per KiB, for sizing the producer work arena.     */
+} t_probe_t;
 
 /** @brief Test geometry + buffer sizing. */
 enum : uint32_t {
@@ -129,7 +157,7 @@ static size_t s_src_len;
 /** @brief Raw pixel scratch used while synthesizing sources. */
 static uint8_t s_raw[((size_t)k_t_big_w * (size_t)k_t_big_h) + (size_t)k_t_big_h];
 /** @brief Producer work arena. */
-static uint8_t s_work[8U * k_jof_produce_u_1024 * k_jof_produce_u_1024];
+static uint8_t s_work[8U * k_t_kib * k_t_kib];
 /** @brief Memstore backing. */
 static uint8_t s_store_buf[k_t_store_cap];
 /** @brief The atlas store under test. */
@@ -191,7 +219,7 @@ static ra8_err_t t_pull_fail(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 /** @brief Deterministic pattern channel at (x, y, c). */
 static uint8_t pix(uint32_t x, uint32_t y, uint32_t c)
 {
-  return (uint8_t)((x ^ y) + (c * k_jof_produce_c_29) + ((x + y) >> 2U));
+  return (uint8_t)((x ^ y) + (c * k_t_pix_ch_stride) + ((x + y) >> 2U));
 }
 
 /* ---------------------------------------------------------------------------
@@ -203,20 +231,20 @@ static uint8_t pix(uint32_t x, uint32_t y, uint32_t c)
 static void png_chunk(const char* type, const uint8_t* data, uint32_t len)
 {
   uint8_t* p = &s_src[s_src_len];
-  p[0]       = (uint8_t)(len >> k_jof_produce_len_24);
-  p[1]       = (uint8_t)((len >> 16U) & k_jof_produce_val_ff);
-  p[2]       = (uint8_t)((len >> 8U) & k_jof_produce_val_ff);
-  p[3]       = (uint8_t)(len & k_jof_produce_val_ff);
+  p[0]       = (uint8_t)(len >> k_t_be32_hi_shift);
+  p[1]       = (uint8_t)((len >> 16U) & k_t_byte_mask);
+  p[2]       = (uint8_t)((len >> 8U) & k_t_byte_mask);
+  p[3]       = (uint8_t)(len & k_t_byte_mask);
   memcpy(&p[4], type, 4U);
   if (len > 0U) {
     memcpy(&p[8], data, len);
   }
   const uint32_t crc                  = (uint32_t)mz_crc32(MZ_CRC32_INIT, &p[4], (size_t)len + 4U);
-  p[8U + len]                         = (uint8_t)(crc >> k_jof_produce_len_24);
-  p[k_jof_produce_val_9 + len]  = (uint8_t)((crc >> 16U) & k_jof_produce_val_ff);
-  p[k_jof_produce_val_10 + len] = (uint8_t)((crc >> 8U) & k_jof_produce_val_ff);
-  p[k_jof_produce_val_11 + len] = (uint8_t)(crc & k_jof_produce_val_ff);
-  s_src_len += k_jof_produce_s_src_len_12 + (size_t)len;
+  p[8U + len]                         = (uint8_t)(crc >> k_t_be32_hi_shift);
+  p[k_t_chunk_crc_b1 + len]  = (uint8_t)((crc >> 16U) & k_t_byte_mask);
+  p[k_t_chunk_crc_b2 + len] = (uint8_t)((crc >> 8U) & k_t_byte_mask);
+  p[k_t_chunk_crc_b3 + len] = (uint8_t)(crc & k_t_byte_mask);
+  s_src_len += k_t_chunk_overhead + (size_t)len;
 }
 
 /** @brief PNG paeth predictor (builder-side twin). */
@@ -275,7 +303,7 @@ static uint8_t t_paeth(uint8_t a, uint8_t b, uint8_t c)
  */
 static uint8_t png_sample(uint32_t x, uint32_t y, uint32_t c, bool palette)
 {
-  return palette ? (uint8_t)((x + y) % k_jof_produce_val_5) : pix(x, y, c);
+  return palette ? (uint8_t)((x + y) % k_t_plte_entries) : pix(x, y, c);
 }
 
 /**
@@ -405,24 +433,24 @@ static void png_build(uint32_t w, uint32_t h, uint8_t color_type, bool with_trns
   s_src_len                      = 0U;
   memcpy(s_src, sig, sizeof(sig));
   s_src_len                                = sizeof(sig);
-  uint8_t ihdr[k_jof_produce_val_13] = {};
-  ihdr[0]                                  = (uint8_t)(w >> k_jof_produce_len_24);
-  ihdr[1]                                  = (uint8_t)((w >> 16U) & k_jof_produce_val_ff);
-  ihdr[2]                                  = (uint8_t)((w >> 8U) & k_jof_produce_val_ff);
-  ihdr[3]                                  = (uint8_t)(w & k_jof_produce_val_ff);
-  ihdr[4]                                  = (uint8_t)(h >> k_jof_produce_len_24);
-  ihdr[k_jof_produce_val_5_2]        = (uint8_t)((h >> 16U) & k_jof_produce_val_ff);
-  ihdr[6]                                  = (uint8_t)((h >> 8U) & k_jof_produce_val_ff);
-  ihdr[k_jof_produce_val_7]          = (uint8_t)(h & k_jof_produce_val_ff);
+  uint8_t ihdr[k_t_png_ihdr_len] = {};
+  ihdr[0]                                  = (uint8_t)(w >> k_t_be32_hi_shift);
+  ihdr[1]                                  = (uint8_t)((w >> 16U) & k_t_byte_mask);
+  ihdr[2]                                  = (uint8_t)((w >> 8U) & k_t_byte_mask);
+  ihdr[3]                                  = (uint8_t)(w & k_t_byte_mask);
+  ihdr[4]                                  = (uint8_t)(h >> k_t_be32_hi_shift);
+  ihdr[k_t_ihdr_off_h_b1]        = (uint8_t)((h >> 16U) & k_t_byte_mask);
+  ihdr[6]                                  = (uint8_t)((h >> 8U) & k_t_byte_mask);
+  ihdr[k_t_ihdr_off_h_b3]          = (uint8_t)(h & k_t_byte_mask);
   ihdr[8]                                  = 8U; /* bit depth */
-  ihdr[k_jof_produce_val_9_2]        = color_type;
+  ihdr[k_t_ihdr_off_ct]        = color_type;
   png_chunk("IHDR", ihdr, sizeof(ihdr));
   if (color_type == 3U) {
-    uint8_t plte[k_jof_produce_val_15] = {};
-    for (uint32_t i = 0U; i < k_jof_produce_val_5; i++) {
-      plte[(i * 3U) + 0U] = (uint8_t)(k_jof_produce_val_10 + (i * k_jof_produce_i_40));
-      plte[(i * 3U) + 1U] = (uint8_t)(k_jof_produce_val_20 + (i * k_jof_produce_i_30));
-      plte[(i * 3U) + 2U] = (uint8_t)(k_jof_produce_i_30 + (i * k_jof_produce_val_20));
+    uint8_t plte[k_t_plte_bytes] = {};
+    for (uint32_t i = 0U; i < k_t_plte_entries; i++) {
+      plte[(i * 3U) + 0U] = (uint8_t)(k_t_plte_r_base + (i * k_t_plte_r_step));
+      plte[(i * 3U) + 1U] = (uint8_t)(k_t_plte_g_base + (i * k_t_plte_g_step));
+      plte[(i * 3U) + 2U] = (uint8_t)(k_t_plte_b_base + (i * k_t_plte_b_step));
     }
     png_chunk("PLTE", plte, sizeof(plte));
     if (with_trns) {
@@ -504,7 +532,7 @@ produce(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t chunk, ra8_jof_i
  */
 static uint8_t expected_sample(uint8_t ctx_ct, uint32_t x, uint32_t y, uint32_t ch)
 {
-  if (ctx_ct == k_jof_produce_val_ff) {
+  if (ctx_ct == k_t_ct_jpeg_ref) {
     return s_ref[(((y * (uint32_t)k_t_jpg_w) + x) * 3U) + ch];
   }
   if (ctx_ct == 0U) {
@@ -516,15 +544,15 @@ static uint8_t expected_sample(uint8_t ctx_ct, uint32_t x, uint32_t y, uint32_t 
     return pix(x, y, ch);
   }
   if (ctx_ct == 3U) {
-    const uint32_t idx     = (x + y) % 5U;
-    const uint8_t  rgb[3]  = {(uint8_t)(10U + (idx * 40U)),
-                              (uint8_t)(20U + (idx * 30U)),
-                              (uint8_t)(30U + (idx * 20U))};
+    const uint32_t idx     = (x + y) % k_t_plte_entries;
+    const uint8_t  rgb[3]  = {(uint8_t)(k_t_plte_r_base + (idx * k_t_plte_r_step)),
+                              (uint8_t)(k_t_plte_g_base + (idx * k_t_plte_g_step)),
+                              (uint8_t)(k_t_plte_b_base + (idx * k_t_plte_b_step))};
     const uint8_t  trns[3] = {255U, 128U, 64U};
     if (ch < 3U) {
       return rgb[ch];
     }
-    return (idx < 3U) ? trns[idx] : (uint8_t)k_jof_produce_exp_255;
+    return (idx < 3U) ? trns[idx] : (uint8_t)k_t_alpha_opaque;
   }
   if (ctx_ct == 4U) {
     return (ch < 3U) ? pix(x, y, 0U) : pix(x, y, 1U);
@@ -740,7 +768,7 @@ static void test_produce_jpeg_parity(void)
     TEST_ASSERT_EQ(3U, info.bpp);
     TEST_ASSERT_EQ(k_t_jpg_w, info.width);
     TEST_ASSERT_EQ(k_t_jpg_h, info.height);
-    check_tiles(&info, k_jof_produce_val_ff);
+    check_tiles(&info, k_t_ct_jpeg_ref);
   }
   TEST_END("produce: JPEG stripes == whole decode, raw + deflate codecs");
 }
@@ -811,8 +839,8 @@ static void produce_bounded_check_corners(const ra8_jof_info_t* info)
                                            &h));
     const uint32_t x0 = (uint32_t)corners[i][0] * info->tile_w;
     const uint32_t y0 = (uint32_t)corners[i][1] * info->tile_h;
-    for (uint32_t r = 0U; r < h; r += k_jof_produce_r_37) {
-      for (uint32_t c = 0U; c < w; c += k_jof_produce_c_41) {
+    for (uint32_t r = 0U; r < h; r += k_t_probe_row_step) {
+      for (uint32_t c = 0U; c < w; c += k_t_probe_col_step) {
         TEST_ASSERT_EQ(pix(x0 + c, y0 + r, 0U), s_cell[(r * w) + c]);
       }
     }
@@ -897,10 +925,10 @@ static void expect_produce_err(ra8_err_t want)
 static void produce_hostile_sniff(void)
 {
   /* Not a JPEG/PNG at all (0xFF then junk: sniff condition-2 vector). */
-  s_src[0] = k_jof_produce_val_ff;
+  s_src[0] = k_t_hostile_lead_byte;
   s_src[1] = 0x00U;
   memset(&s_src[2], k_tap_fill_jpeg_body, (size_t)k_tap_jpeg_body_len);
-  s_src_len = k_jof_produce_s_src_len_34;
+  s_src_len = k_t_hostile_sniff_len;
   expect_produce_err(k_ra8_err_not_supported);
   /* Too short to sniff. */
   s_src_len = 4U;
@@ -936,7 +964,7 @@ static void produce_hostile_pull_and_cfg(void)
   bad.tile_w                      = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_jof_produce(&bad, &info));
   bad       = cfg;
-  bad.codec = k_jof_produce_val_9;
+  bad.codec = (uint8_t)k_t_codec_invalid;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_jof_produce(&bad, &info));
   bad      = cfg;
   bad.pull = NULL;
@@ -956,35 +984,35 @@ static void produce_hostile_png_ihdr(void)
 {
   /* Interlaced PNG (IHDR interlace byte at sig 8 + chunk hdr 8 + offset 12). */
   png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[k_jof_produce_val_28] = 1U;
+  s_src[k_t_src_off_interlace] = 1U;
   expect_produce_err(k_ra8_err_not_supported);
   /* 16-bit depth. */
   png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[k_jof_produce_val_24] = 16U;
+  s_src[k_t_src_off_depth] = 16U;
   expect_produce_err(k_ra8_err_not_supported);
   /* Unknown colour type. */
   png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[k_jof_produce_val_25] = k_jof_produce_val_5;
+  s_src[k_t_src_off_ct] = k_t_plte_entries;
   expect_produce_err(k_ra8_err_not_supported);
   /* Oversize width / height vs the caps (big-endian IHDR fields). */
   png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[16]                         = 0x00U;
-  s_src[k_jof_produce_val_17] = 0x01U;
-  s_src[k_jof_produce_val_18] = 0x00U;
-  s_src[k_jof_produce_val_19] = 0x00U; /* width = 65536 */
+  s_src[k_t_src_off_w_b0]                         = 0x00U;
+  s_src[k_t_src_off_w_b1] = 0x01U;
+  s_src[k_t_src_off_w_b2] = 0x00U;
+  s_src[k_t_src_off_w_b3] = 0x00U; /* width = 65536 */
   expect_produce_err(k_ra8_err_invalid_size);
   png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[k_jof_produce_val_20_2] = 0x00U;
-  s_src[k_jof_produce_val_21]   = 0x01U;
-  s_src[k_jof_produce_val_22]   = 0x00U;
-  s_src[k_jof_produce_val_23]   = 0x00U; /* height = 65536 */
+  s_src[k_t_src_off_h_b0] = 0x00U;
+  s_src[k_t_src_off_h_b1]   = 0x01U;
+  s_src[k_t_src_off_h_b2]   = 0x00U;
+  s_src[k_t_src_off_h_b3]   = 0x00U; /* height = 65536 */
   expect_produce_err(k_ra8_err_invalid_size);
   /* Zero width (PNG IHDR direct-geometry vector). */
   png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[16]                         = 0U;
-  s_src[k_jof_produce_val_17] = 0U;
-  s_src[k_jof_produce_val_18] = 0U;
-  s_src[k_jof_produce_val_19] = 0U;
+  s_src[k_t_src_off_w_b0]                         = 0U;
+  s_src[k_t_src_off_w_b1] = 0U;
+  s_src[k_t_src_off_w_b2] = 0U;
+  s_src[k_t_src_off_w_b3] = 0U;
   expect_produce_err(k_ra8_err_invalid_size);
   /* Truncated IDAT (cut the source in half). */
   png_build(k_t_png_w, k_t_png_h, 0U, false, false);
@@ -992,13 +1020,13 @@ static void produce_hostile_png_ihdr(void)
   expect_produce_err(k_ra8_err_protocol_error);
   /* Palette image with no PLTE: strip it by renaming the chunk type. */
   png_build(k_t_png_w, k_t_png_h, 3U, false, false);
-  memcpy(&s_src[8U + 8U + (size_t)k_tap_png_ihdr_len + 4U + 4U],
+  memcpy(&s_src[8U + 8U + (size_t)k_t_png_ihdr_len + 4U + 4U],
          "yLTE",
          4U); /* PLTE -> ancillary */
   expect_produce_err(k_ra8_err_validation_failed);
   /* tRNS on a non-palette image. */
   png_build(k_t_png_w, k_t_png_h, 3U, true, false);
-  s_src[k_jof_produce_val_25] = 2U; /* IHDR says RGB but tRNS+PLTE follow: tRNS now rejects */
+  s_src[k_t_src_off_ct] = 2U; /* IHDR says RGB but tRNS+PLTE follow: tRNS now rejects */
   expect_produce_err(k_ra8_err_not_supported);
 }
 
@@ -1038,7 +1066,7 @@ static void produce_hostile_budget(void)
     static t_pull_t s_pull;
     s_pull = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
     s_store =
-      (ra8_jof_memstore_t){.buf = s_store_buf, .cap = k_jof_produce_cap_64, .len = 0U};
+      (ra8_jof_memstore_t){.buf = s_store_buf, .cap = k_t_starved_store_cap, .len = 0U};
     ra8_jof_info_t              info = {};
     const ra8_jof_produce_cfg_t cfg  = {
       .pull     = t_pull,
@@ -1083,8 +1111,8 @@ static void test_produce_hostile(void)
   produce_hostile_budget();
   /* PLTE MC/DC vectors: indivisible length, oversize, duplicate. */
   png_build(k_t_png_w, k_t_png_h, 3U, false, false);
-  s_src[8U + 8U + k_jof_produce_u_13 + 4U + 3U] =
-    k_jof_produce_s_src_14; /* PLTE length 15 -> 14 */
+  s_src[8U + 8U + k_t_png_ihdr_len + 4U + 3U] =
+    k_t_plte_bad_len; /* PLTE length 15 -> 14 */
   expect_produce_err(k_ra8_err_validation_failed);
   TEST_END("produce: hostile / unsupported sources fail closed");
 }
