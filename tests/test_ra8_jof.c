@@ -25,39 +25,36 @@
 #include "unity_minimal.h"
 
 /**
- * @enum jof_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_atlas_hdr_t
+ * @brief Byte offsets of the tile-atlas header fields the hostile arms corrupt.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The header is a fixed little-endian record: magic, width, height, tile_w,
+ * tile_h, bpp, codec, reserved, tile counts. Naming the offsets lets each arm
+ * say which field it is invalidating.
  */
 typedef enum : uint8_t {
-  k_jof_c_11   = 11U,
-  k_jof_val_12 = 12,
-  k_jof_val_13 = 13,
-  k_jof_val_14 = 14,
-  k_jof_val_25 = 25,
-  k_jof_val_5  = 5,
-  k_jof_val_7  = 7,
-  k_jof_val_ff = 0xFFU,
-  k_jof_y_7    = 7U,
-} jof_uint8_const_t;
+  k_t_off_width_hi   = 5U,    /**< High byte of the image width.              */
+  k_t_off_height_hi  = 7U,    /**< High byte of the image height.             */
+  k_t_off_bpp        = 12U,   /**< Bits-per-pixel; only 1, 4 and 8 are legal. */
+  k_t_off_codec      = 13U,   /**< Codec id; only raw and deflate exist.      */
+  k_t_off_reserved_a = 14U,   /**< First reserved byte, which must stay zero. */
+  k_t_off_reserved_b = 25U,   /**< Second reserved run, likewise.             */
+  k_t_byte_mask      = 0xFFU, /**< Low-byte mask when splitting a 16-bit field. */
+} t_atlas_hdr_t;
 
 /**
- * @enum jof_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_atlas_probe_t
+ * @brief Stimulus values for the pattern generator and the hostile arms.
  */
-typedef enum : uint16_t {
-  k_jof_val_256   = 256U,
-  k_jof_val_33000 = 33000U,
-} jof_uint16_const_t;
+typedef enum : uint32_t {
+  k_t_pix_y_stride = 7U,     /**< Per-row offset of the synthetic pixel pattern;
+                                  also the wrong tile count the mismatch arm writes. */
+  k_t_pix_c_stride = 11U,    /**< Per-channel offset of the same pattern.    */
+  k_t_dim_over_cap = 33000U, /**< A dimension past the 32768 cap.            */
+  k_t_codec_slack  = 256U,   /**< Slack added to the compressed-buffer size so
+                                  an incompressible payload still fits.       */
+} t_atlas_probe_t;
 
 /** @brief Test atlas geometry + buffer sizing. */
 enum : uint32_t {
@@ -81,19 +78,19 @@ static ra8_jof_memstore_t s_store;
 /** @brief Tile output buffer. */
 static uint8_t s_cell[k_t_cell_cap];
 /** @brief Deflate staging scratch. */
-static uint8_t s_scratch[k_t_payload + (k_t_payload / 8U) + k_jof_val_256];
+static uint8_t s_scratch[k_t_payload + (k_t_payload / 8U) + k_t_codec_slack];
 /** @brief One packed source tile (staging for the hand producer). */
 static uint8_t s_tilebuf[k_t_payload];
 /** @brief One compressed tile (staging for the hand producer). */
-static uint8_t s_cmpbuf[k_t_payload + (k_t_payload / 8U) + k_jof_val_256];
+static uint8_t s_cmpbuf[k_t_payload + (k_t_payload / 8U) + k_t_codec_slack];
 /** @brief Deflate compressor scratch (miniz tdefl). */
 alignas(8) static uint8_t s_dfl[k_ra8_io_compress_scratch_bytes];
 
 /** @brief Deterministic source pixel channel at (x, y, c). */
 static uint8_t pix(uint32_t x, uint32_t y, uint32_t c)
 {
-  return (uint8_t)(((x * 3U) + (y * k_jof_y_7) + (c * k_jof_c_11)) &
-                   k_jof_val_ff);
+  return (uint8_t)(((x * 3U) + (y * k_t_pix_y_stride) + (c * k_t_pix_c_stride)) &
+                   k_t_byte_mask);
 }
 
 /** @brief Append little-endian u16 to the store (hand producer). */
@@ -340,7 +337,7 @@ static void test_jof_roundtrip(void)
 /** @brief Corrupt one byte of the stored atlas at @p off (XOR flip). */
 static void flip(size_t off)
 {
-  s_store_buf[off] ^= k_jof_val_ff;
+  s_store_buf[off] ^= k_t_byte_mask;
 }
 
 /**
@@ -391,12 +388,12 @@ static void hostile_header_dims(ra8_jof_info_t* info)
 
   /* Over-cap dimensions (33000 > 32768). */
   build_atlas((uint8_t)k_ra8_jof_codec_raw);
-  s_store_buf[4]                 = (uint8_t)(k_jof_val_33000 & k_jof_val_ff);
-  s_store_buf[k_jof_val_5] = (uint8_t)(k_jof_val_33000 >> 8U);
+  s_store_buf[4]                 = (uint8_t)(k_t_dim_over_cap & k_t_byte_mask);
+  s_store_buf[k_t_off_width_hi] = (uint8_t)(k_t_dim_over_cap >> 8U);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
   build_atlas((uint8_t)k_ra8_jof_codec_raw);
-  s_store_buf[6]                 = (uint8_t)(k_jof_val_33000 & k_jof_val_ff);
-  s_store_buf[k_jof_val_7] = (uint8_t)(k_jof_val_33000 >> 8U);
+  s_store_buf[6]                 = (uint8_t)(k_t_dim_over_cap & k_t_byte_mask);
+  s_store_buf[k_t_off_height_hi] = (uint8_t)(k_t_dim_over_cap >> 8U);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
 }
 
@@ -415,26 +412,26 @@ static void hostile_header_encoding(ra8_jof_info_t* info)
   const uint8_t bad_bpp[3] = {0U, 2U, 5U};
   for (uint32_t i = 0U; i < 3U; i++) {
     build_atlas((uint8_t)k_ra8_jof_codec_raw);
-    s_store_buf[k_jof_val_12] = bad_bpp[i];
+    s_store_buf[k_t_off_bpp] = bad_bpp[i];
     TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
   }
 
   /* Unknown codec. */
   build_atlas((uint8_t)k_ra8_jof_codec_raw);
-  s_store_buf[k_jof_val_13] = 2U;
+  s_store_buf[k_t_off_codec] = 2U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
 
   /* Non-zero reserved bytes (both runs). */
   build_atlas((uint8_t)k_ra8_jof_codec_raw);
-  s_store_buf[k_jof_val_14] = 1U;
+  s_store_buf[k_t_off_reserved_a] = 1U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
   build_atlas((uint8_t)k_ra8_jof_codec_raw);
-  s_store_buf[k_jof_val_25] = 1U;
+  s_store_buf[k_t_off_reserved_b] = 1U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
 
   /* Header tile-count mismatch. */
   build_atlas((uint8_t)k_ra8_jof_codec_raw);
-  s_store_buf[16] = k_jof_y_7;
+  s_store_buf[16] = k_t_pix_y_stride;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, parse_store(info));
 }
 
@@ -599,7 +596,7 @@ static void test_jof_hostile_tiles(void)
   /* Vector 3: entry length runs past the tile-stream region. */
   build_atlas((uint8_t)k_ra8_jof_codec_raw);
   TEST_ASSERT_EQ(k_ra8_ok, parse_store(&info));
-  s_store_buf[info.index_off + 6U] = k_jof_val_ff; /* entry 0 length high bytes */
+  s_store_buf[info.index_off + 6U] = k_t_byte_mask; /* entry 0 length high bytes */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  hostile_read_tile(&info, 0U, 0U, s_scratch, scap, s_cell, ccap, &w, &h));
 

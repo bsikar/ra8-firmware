@@ -41,40 +41,39 @@ typedef enum : uint8_t {
 } tg_layout_t;
 
 /**
- * @enum unarch_gzip_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_gz_hdr_t
+ * @brief gzip member-header bytes the builder writes and the arms corrupt.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * A gzip member opens with the two-byte magic 0x1F 0x8B, then the compression
+ * method and a flag byte. The fixed header is 10 bytes, so offset 10 is the
+ * first byte of whatever the flags selected -- the FHCRC, the FEXTRA length,
+ * or the DEFLATE stream itself.
  */
 typedef enum : uint8_t {
-  k_unarch_gzip_off_9       = 9U,
-  k_unarch_gzip_s_member_1f = 0x1FU,
-  k_unarch_gzip_s_member_50 = 0x50U,
-  k_unarch_gzip_s_member_8b = 0x8BU,
-  k_unarch_gzip_s_member_a5 = 0xA5U,
-  k_unarch_gzip_tg_build_64 = 64U,
-  k_unarch_gzip_val_10      = 10,
-  k_unarch_gzip_val_10_2    = 10U,
-  k_unarch_gzip_val_11      = 11,
-  k_unarch_gzip_val_ff      = 0xFFU,
-} unarch_gzip_uint8_const_t;
+  k_t_magic_b0     = 0x1FU, /**< gzip magic byte 0.                          */
+  k_t_magic_b1     = 0x8BU, /**< gzip magic byte 1.                          */
+  k_t_magic_wrong  = 0x50U, /**< A wrong first byte, ASCII 'P'; must be
+                                 refused as not-a-gzip.                       */
+  k_t_method_wrong = 9U,    /**< A compression method that is not DEFLATE;
+                                 also the FNAME field width including its NUL. */
+  k_t_hdr_fixed    = 10U,   /**< Fixed header length, hence the offset of the
+                                 first flag-selected byte.                     */
+  k_t_hdr_fixed_p1 = 11U,   /**< The byte after it: the FEXTRA length high byte. */
+  k_t_byte_mask    = 0xFFU, /**< Low-byte mask while serialising a field, and
+                                 the XOR that corrupts one.                    */
+  k_t_trailing_junk = 0xA5U, /**< Byte appended past the member end.          */
+} t_gz_hdr_t;
 
 /**
- * @enum unarch_gzip_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_gz_size_t
+ * @brief Payload sizes and decompression caps the arms exercise.
  */
 typedef enum : uint16_t {
-  k_unarch_gzip_max_output_bytes_1024 = 1024U,
-  k_unarch_gzip_tg_fill_256           = 256U,
-} unarch_gzip_uint16_const_t;
+  k_t_payload_small = 64U,   /**< Payload for the header arms, bytes.        */
+  k_t_payload_mid   = 256U,  /**< Payload for the body/trailer arms, bytes.  */
+  k_t_output_cap    = 1024U, /**< Absolute output cap the ratio arm sets.    */
+} t_gz_size_t;
 
 /**
  * @enum tg_dim_t
@@ -104,7 +103,7 @@ static void tg_fill(uint8_t* dst, size_t n)
   uint32_t s = (uint32_t)k_tg_lcg_seed;
   for (size_t i = 0U; i < n; ++i) {
     s      = ((uint32_t)k_tg_lcg_mul * s) + (uint32_t)k_tg_lcg_add;
-    dst[i] = (uint8_t)((s >> 16U) & k_unarch_gzip_val_ff);
+    dst[i] = (uint8_t)((s >> 16U) & k_t_byte_mask);
   }
 }
 
@@ -118,8 +117,8 @@ static void tg_fill(uint8_t* dst, size_t n)
 static size_t tg_build(const uint8_t* payload, size_t n, uint8_t flg)
 {
   size_t off      = 0U;
-  s_member[off++] = k_unarch_gzip_s_member_1f;
-  s_member[off++] = k_unarch_gzip_s_member_8b;
+  s_member[off++] = k_t_magic_b0;
+  s_member[off++] = k_t_magic_b1;
   s_member[off++] = 8U; /* CM: DEFLATE */
   s_member[off++] = flg;
   memset(&s_member[off], 0, 6U); /* MTIME, XFL, OS */
@@ -132,7 +131,7 @@ static size_t tg_build(const uint8_t* payload, size_t n, uint8_t flg)
   }
   if ((flg & 0x08U) != 0U) { /* FNAME */
     memcpy(&s_member[off], "name.tar", (size_t)k_tg_len_fname);
-    off += k_unarch_gzip_off_9;
+    off += k_t_method_wrong;
   }
   if ((flg & 0x10U) != 0U) { /* FCOMMENT */
     memcpy(&s_member[off], "comment", 8U);
@@ -140,8 +139,8 @@ static size_t tg_build(const uint8_t* payload, size_t n, uint8_t flg)
   }
   if ((flg & 0x02U) != 0U) { /* FHCRC */
     const uint32_t hc = (uint32_t)mz_crc32(MZ_CRC32_INIT, s_member, off) & 0xFFFFU;
-    s_member[off++]   = (uint8_t)(hc & k_unarch_gzip_val_ff);
-    s_member[off++]   = (uint8_t)((hc >> 8U) & k_unarch_gzip_val_ff);
+    s_member[off++]   = (uint8_t)(hc & k_t_byte_mask);
+    s_member[off++]   = (uint8_t)((hc >> 8U) & k_t_byte_mask);
   }
   const size_t comp = tdefl_compress_mem_to_mem(&s_member[off],
                                                 sizeof(s_member) - off - 8U,
@@ -152,8 +151,8 @@ static size_t tg_build(const uint8_t* payload, size_t n, uint8_t flg)
   off += comp;
   const uint32_t crc = (uint32_t)mz_crc32(MZ_CRC32_INIT, payload, n);
   for (uint32_t i = 0U; i < 4U; ++i) {
-    s_member[off + i]      = (uint8_t)((crc >> (8U * i)) & k_unarch_gzip_val_ff);
-    s_member[off + 4U + i] = (uint8_t)(((uint32_t)n >> (8U * i)) & k_unarch_gzip_val_ff);
+    s_member[off + i]      = (uint8_t)((crc >> (8U * i)) & k_t_byte_mask);
+    s_member[off + 4U + i] = (uint8_t)(((uint32_t)n >> (8U * i)) & k_t_byte_mask);
   }
   return off + 8U;
 }
@@ -236,7 +235,7 @@ static void test_gzip_honest_members(void)
   TEST_ASSERT_EQ(0, memcmp(s_arena, s_payload, got));
 
   /* Every optional field at once: FTEXT+FHCRC+FEXTRA+FNAME+FCOMMENT. */
-  len = tg_build(s_payload, (size_t)k_tg_payload, k_unarch_gzip_s_member_1f);
+  len = tg_build(s_payload, (size_t)k_tg_payload, k_t_magic_b0);
   TEST_ASSERT_EQ(k_ra8_ok, tg_unwrap(s_member, len, nullptr, &got));
   TEST_ASSERT_EQ(k_tg_payload, got);
   TEST_ASSERT_EQ(0, memcmp(s_arena, s_payload, got));
@@ -260,16 +259,16 @@ static void test_gzip_hostile_headers(void)
 {
   TEST_BEGIN("gzip: hostile headers rejected");
   size_t got = 1U;
-  size_t len = tg_build(s_payload, k_unarch_gzip_tg_build_64, 0x02U); /* with FHCRC */
+  size_t len = tg_build(s_payload, k_t_payload_small, 0x02U); /* with FHCRC */
 
   /* Wrong magic / method / reserved bits. */
   uint8_t save = s_member[0];
-  s_member[0]  = k_unarch_gzip_s_member_50;
+  s_member[0]  = k_t_magic_wrong;
   TEST_ASSERT_EQ(k_ra8_err_not_supported, tg_unwrap(s_member, len, nullptr, &got));
   TEST_ASSERT_EQ(0U, got);
   s_member[0] = save;
   save        = s_member[2];
-  s_member[2] = k_unarch_gzip_off_9; /* not DEFLATE */
+  s_member[2] = k_t_method_wrong; /* not DEFLATE */
   TEST_ASSERT_EQ(k_ra8_err_not_supported, tg_unwrap(s_member, len, nullptr, &got));
   s_member[2] = save;
   save        = s_member[3];
@@ -278,35 +277,35 @@ static void test_gzip_hostile_headers(void)
   s_member[3] = save;
 
   /* Corrupt FHCRC. */
-  s_member[k_unarch_gzip_val_10] ^=
-    k_unarch_gzip_val_ff; /* first FHCRC byte (no optional fields before it) */
+  s_member[k_t_hdr_fixed] ^=
+    k_t_byte_mask; /* first FHCRC byte (no optional fields before it) */
   TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch, tg_unwrap(s_member, len, nullptr, &got));
-  s_member[k_unarch_gzip_val_10] ^= k_unarch_gzip_val_ff;
+  s_member[k_t_hdr_fixed] ^= k_t_byte_mask;
 
   /* Header truncated inside the fixed fields. */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(s_member, 6U, nullptr, &got));
 
   /* Unterminated FNAME: flag set, no NUL before EOF. */
-  uint8_t tiny[16] = {k_unarch_gzip_s_member_1f, k_unarch_gzip_s_member_8b, 8U, 0x08U};
+  uint8_t tiny[16] = {k_t_magic_b0, k_t_magic_b1, 8U, 0x08U};
   memset(&tiny[k_tg_off_extra], (int)'n', (size_t)k_tg_len_unterm);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(tiny, sizeof(tiny), nullptr, &got));
 
   /* Over-long FNAME: longer than the fail-closed cap, NUL far away. */
   uint8_t* big = s_member;
   memset(big, 0, sizeof(s_member));
-  big[0] = k_unarch_gzip_s_member_1f;
-  big[1] = k_unarch_gzip_s_member_8b;
+  big[0] = k_t_magic_b0;
+  big[1] = k_t_magic_b1;
   big[2] = 8U;
   big[3] = 0x08U;
   memset(&big[k_tg_off_extra], (int)'n', (size_t)k_tg_longname);
-  big[k_unarch_gzip_val_10_2 + (size_t)k_tg_longname] = 0U;
+  big[k_t_hdr_fixed + (size_t)k_tg_longname] = 0U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  tg_unwrap(big, 10U + (size_t)k_tg_longname + 1U, nullptr, &got));
 
   /* FEXTRA whose declared length runs past the member. */
-  uint8_t fx[16]           = {k_unarch_gzip_s_member_1f, k_unarch_gzip_s_member_8b, 8U, 0x04U};
-  fx[k_unarch_gzip_val_10] = k_unarch_gzip_val_ff;
-  fx[k_unarch_gzip_val_11] = 0x00U; /* XLEN=255 with only 4 bytes left */
+  uint8_t fx[16]           = {k_t_magic_b0, k_t_magic_b1, 8U, 0x04U};
+  fx[k_t_hdr_fixed] = k_t_byte_mask;
+  fx[k_t_hdr_fixed_p1] = 0x00U; /* XLEN=255 with only 4 bytes left */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(fx, sizeof(fx), nullptr, &got));
   TEST_END("gzip: hostile headers rejected");
 }
@@ -322,16 +321,16 @@ static void test_gzip_hostile_headers(void)
 static void test_gzip_hostile_body_and_trailer(void)
 {
   TEST_BEGIN("gzip: hostile bodies + trailers rejected");
-  tg_fill(s_payload, k_unarch_gzip_tg_fill_256);
+  tg_fill(s_payload, k_t_payload_mid);
   size_t got = 1U;
-  size_t len = tg_build(s_payload, k_unarch_gzip_tg_fill_256, 0U);
+  size_t len = tg_build(s_payload, k_t_payload_mid, 0U);
 
   /* Corrupt DEFLATE: reserved block type at the stream start. */
   const uint8_t save             = s_member[10];
-  s_member[k_unarch_gzip_val_10] = 0x06U; /* BTYPE=11 (reserved) */
+  s_member[k_t_hdr_fixed] = 0x06U; /* BTYPE=11 (reserved) */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(s_member, len, nullptr, &got));
   TEST_ASSERT_EQ(0U, got);
-  s_member[k_unarch_gzip_val_10] = save;
+  s_member[k_t_hdr_fixed] = save;
 
   /* Truncated DEFLATE: cut mid-body (before the trailer). */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(s_member, len - 20U, nullptr, &got));
@@ -340,17 +339,17 @@ static void test_gzip_hostile_body_and_trailer(void)
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(s_member, len - 4U, nullptr, &got));
 
   /* Lying trailer CRC32. */
-  s_member[len - 8U] ^= k_unarch_gzip_val_ff;
+  s_member[len - 8U] ^= k_t_byte_mask;
   TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch, tg_unwrap(s_member, len, nullptr, &got));
-  s_member[len - 8U] ^= k_unarch_gzip_val_ff;
+  s_member[len - 8U] ^= k_t_byte_mask;
 
   /* Lying trailer ISIZE. */
-  s_member[len - 1U] ^= k_unarch_gzip_val_ff;
+  s_member[len - 1U] ^= k_t_byte_mask;
   TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch, tg_unwrap(s_member, len, nullptr, &got));
-  s_member[len - 1U] ^= k_unarch_gzip_val_ff;
+  s_member[len - 1U] ^= k_t_byte_mask;
 
   /* Trailing bytes after the member: no concatenation. */
-  s_member[len] = k_unarch_gzip_s_member_a5;
+  s_member[len] = k_t_trailing_junk;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(s_member, len + 1U, nullptr, &got));
 
   /* Unmodified member still decodes (the mutations were reverted). */
@@ -383,7 +382,7 @@ static void test_gzip_policy_bounds(void)
 
   /* Output cap: the same member against a small absolute cap. */
   lim                  = ra8_decomp_limits_default();
-  lim.max_output_bytes = k_unarch_gzip_max_output_bytes_1024;
+  lim.max_output_bytes = k_t_output_cap;
   TEST_ASSERT_EQ(k_ra8_err_decomp_output_cap, tg_unwrap(s_member, len, &lim, &got));
 
   /* Iteration budget: an incompressible body needs many input refills. */
