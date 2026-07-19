@@ -73,12 +73,19 @@ fi
 
 if [[ "${GATE_MODE}" -eq 1 ]]; then
   # The firmware.yml "Doxygen warnings" gate: same Doxyfile, same pinned
-  # doxygen, but a separate output tree, no graphs (speed), and private
-  # members extracted so their doc blocks are checked too.
+  # doxygen, but a separate output tree, no *automatic* graphs (speed), and
+  # private members extracted so their doc blocks are checked too.
   OVERRIDES+="OUTPUT_DIRECTORY=${OUTPUT_DIR}"$'\n'
   OVERRIDES+="WARN_LOGFILE=${WARN_LOG}"$'\n'
   OVERRIDES+=$'EXTRACT_PRIVATE=YES\nWARN_IF_UNDOCUMENTED=YES\n'
-  OVERRIDES+=$'HAVE_DOT=NO\nCALL_GRAPH=NO\nCALLER_GRAPH=NO\n'
+  # Only the AUTOMATIC per-function call/caller graphs are disabled here: those
+  # are the expensive ones (one dot run per documented function, thousands of
+  # them). HAVE_DOT itself stays ON so hand-written @dot blocks are actually
+  # parsed and rendered -- turning it off made doxygen emit "ignoring \dot
+  # command because HAVE_DOT is not set" for every such block, which this gate
+  # then reported as a failure. A warning gate that cannot see the diagrams it
+  # is meant to validate is not checking them.
+  OVERRIDES+=$'CALL_GRAPH=NO\nCALLER_GRAPH=NO\n'
 fi
 
 mkdir -p "${OUTPUT_DIR}"
