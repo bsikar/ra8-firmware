@@ -43,14 +43,14 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ble_gatt_client_cov_ra8_ble_gatt_subscribe_11 = 0x11U,
-  k_ble_gatt_client_cov_ra8_ble_gatt_subscribe_12 = 0x12U,
-  k_ble_gatt_client_cov_ra8_ble_gatt_subscribe_13 = 0x13U,
-  k_ble_gatt_client_cov_ra8_ble_gatt_subscribe_40 = 0x40U,
-  k_ble_gatt_client_cov_ra8_ble_gatt_subscribe_41 = 0x41U,
-  k_ble_gatt_client_cov_ra8_ble_gatt_subscribe_42 = 0x42U,
-  k_ble_gatt_client_cov_ra8_ble_gatt_subscribe_43 = 0x43U,
-  k_ble_gatt_client_cov_sentinel_a5               = 0xA5U,
+  k_gattc_value_handle = 0x11U, /**< Characteristic value handle used across those subscriptions. */
+  k_gattc_cccd_handle  = 0x12U, /**< Its CCCD handle. */
+  k_gattc_second_handle = 0x13U, /**< A second characteristic on the same connection. */
+  k_gattc_conn_a        = 0x40U, /**< First connection handle of the table-filling loop. */
+  k_gattc_conn_b        = 0x41U, /**< Its second. */
+  k_gattc_conn_c        = 0x42U, /**< Its third. */
+  k_gattc_conn_d        = 0x43U, /**< Its fourth, which must be the one the full table rejects. */
+  k_gattc_payload_byte  = 0xA5U, /**< A recognizable notification payload byte. */
 } ble_gatt_client_cov_uint8_const_t;
 
 extern uint32_t ra8_ble_gatt_client_test_pending_count(void);
@@ -139,33 +139,16 @@ static void test_subscribe_table_full(void)
    * call latches the pending-write singleton (Write_Request response);
    * calls 2..4 therefore see the inner write return busy, but the slot
    * is already claimed, so either terminal code is acceptable here. */
-  ra8_err_t e1 = ra8_ble_gatt_subscribe(k_ble_gatt_client_cov_ra8_ble_gatt_subscribe_40,
-                                        0x10U,
-                                        1U,
-                                        0U,
-                                        nullptr,
-                                        nullptr);
+  ra8_err_t e1 = ra8_ble_gatt_subscribe(k_gattc_conn_a, 0x10U, 1U, 0U, nullptr, nullptr);
   TEST_ASSERT(e1 == k_ra8_ok || e1 == k_ra8_err_busy);
-  ra8_err_t e2 = ra8_ble_gatt_subscribe(k_ble_gatt_client_cov_ra8_ble_gatt_subscribe_41,
-                                        k_ble_gatt_client_cov_ra8_ble_gatt_subscribe_11,
-                                        1U,
-                                        0U,
-                                        nullptr,
-                                        nullptr);
+  ra8_err_t e2 =
+    ra8_ble_gatt_subscribe(k_gattc_conn_b, k_gattc_value_handle, 1U, 0U, nullptr, nullptr);
   TEST_ASSERT(e2 == k_ra8_ok || e2 == k_ra8_err_busy);
-  ra8_err_t e3 = ra8_ble_gatt_subscribe(k_ble_gatt_client_cov_ra8_ble_gatt_subscribe_42,
-                                        k_ble_gatt_client_cov_ra8_ble_gatt_subscribe_12,
-                                        1U,
-                                        0U,
-                                        nullptr,
-                                        nullptr);
+  ra8_err_t e3 =
+    ra8_ble_gatt_subscribe(k_gattc_conn_c, k_gattc_cccd_handle, 1U, 0U, nullptr, nullptr);
   TEST_ASSERT(e3 == k_ra8_ok || e3 == k_ra8_err_busy);
-  ra8_err_t e4 = ra8_ble_gatt_subscribe(k_ble_gatt_client_cov_ra8_ble_gatt_subscribe_43,
-                                        k_ble_gatt_client_cov_ra8_ble_gatt_subscribe_13,
-                                        1U,
-                                        0U,
-                                        nullptr,
-                                        nullptr);
+  ra8_err_t e4 =
+    ra8_ble_gatt_subscribe(k_gattc_conn_d, k_gattc_second_handle, 1U, 0U, nullptr, nullptr);
   TEST_ASSERT(e4 == k_ra8_ok || e4 == k_ra8_err_busy);
   /* Table is full: a fifth distinct subscription cannot allocate. */
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_ble_gatt_subscribe(0x44U, 0x14U, 1U, 0U, nullptr, nullptr));
@@ -201,7 +184,7 @@ static void test_pending_count_none_then_all(void)
   /* Latch all three singletons via the public API. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_gatt_discover_services(0x40U, cov_disc_cb, nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_gatt_read(0x40U, 0x21U, cov_read_cb, nullptr));
-  uint8_t val = k_ble_gatt_client_cov_sentinel_a5;
+  uint8_t val = k_gattc_payload_byte;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_gatt_write(0x40U, 0x30U, &val, 1U, 1U, cov_write_cb, nullptr));
 
   /* All three in flight: every in_use check is true, all increments run. */

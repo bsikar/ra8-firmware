@@ -61,13 +61,16 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_io_blockdev_sdspi_cov_i_5                = 5U,
-  k_io_blockdev_sdspi_cov_mock_queue_idle_10 = 10U,
-  k_io_blockdev_sdspi_cov_out_40             = 0x40U,
-  k_io_blockdev_sdspi_cov_tail_word_24       = 24U,
-  k_io_blockdev_sdspi_cov_val_7              = 7,
-  k_io_blockdev_sdspi_cov_val_9              = 9,
-  k_io_blockdev_sdspi_cov_val_ff             = 0xFFU,
+  k_sdspi_pattern_stride =
+    5U, /**< Stride of the block generator, `i * 5 + 1`, so neighbouring blocks never share a byte pattern. */
+  k_sdspi_wakeup_clocks =
+    10U, /**< Idle bytes clocked out before the first command; the card needs at least 74 clocks, which these supply. */
+  k_sdspi_csd_v2_byte0 =
+    0x40U, /**< CSD byte 0 with CSD_STRUCTURE = 1, selecting the version-2 (SDHC) layout. */
+  k_shift_byte3 = 24U, /**< Shift to the most significant byte, which goes on the wire first. */
+  k_sdspi_csd_off_c_size_hi = 7, /**< CSD byte holding the top of the version-2 C_SIZE field. */
+  k_sdspi_csd_off_c_size_lo = 9, /**< The byte holding its low half. */
+  k_byte_mask = 0xFFU, /**< Low-byte mask used when clocking a word out a byte at a time. */
 } io_blockdev_sdspi_cov_uint8_const_t;
 
 /* ===========================================================================
@@ -319,11 +322,10 @@ static void queue_command_response_r3_or_r7(uint8_t r1, uint32_t tail_word)
   mock_queue_idle(1U);
   mock_queue_idle((uint32_t)k_cov_cmd_frame_len);
   mock_queue_byte(r1);
-  mock_queue_byte((uint8_t)((tail_word >> k_io_blockdev_sdspi_cov_tail_word_24) &
-                            k_io_blockdev_sdspi_cov_val_ff));
-  mock_queue_byte((uint8_t)((tail_word >> 16U) & k_io_blockdev_sdspi_cov_val_ff));
-  mock_queue_byte((uint8_t)((tail_word >> 8U) & k_io_blockdev_sdspi_cov_val_ff));
-  mock_queue_byte((uint8_t)(tail_word & k_io_blockdev_sdspi_cov_val_ff));
+  mock_queue_byte((uint8_t)((tail_word >> k_shift_byte3) & k_byte_mask));
+  mock_queue_byte((uint8_t)((tail_word >> 16U) & k_byte_mask));
+  mock_queue_byte((uint8_t)((tail_word >> 8U) & k_byte_mask));
+  mock_queue_byte((uint8_t)(tail_word & k_byte_mask));
   mock_queue_idle(1U);
 }
 
@@ -339,10 +341,10 @@ static void queue_command_response_r3_or_r7(uint8_t r1, uint32_t tail_word)
 static void build_csd_v2_32gib(uint8_t* out)
 {
   memset(out, 0, (size_t)k_ra8_sdmmc_spi_csd_response_len);
-  out[0]                             = k_io_blockdev_sdspi_cov_out_40; /* CSD_STRUCTURE = 1. */
-  out[k_io_blockdev_sdspi_cov_val_7] = 0x00U;
-  out[8] = k_io_blockdev_sdspi_cov_val_ff; /* low 16 bits of C_SIZE = 0xFFFF. */
-  out[k_io_blockdev_sdspi_cov_val_9] = k_io_blockdev_sdspi_cov_val_ff;
+  out[0]                         = k_sdspi_csd_v2_byte0; /* CSD_STRUCTURE = 1. */
+  out[k_sdspi_csd_off_c_size_hi] = 0x00U;
+  out[8]                         = k_byte_mask; /* low 16 bits of C_SIZE = 0xFFFF. */
+  out[k_sdspi_csd_off_c_size_lo] = k_byte_mask;
 }
 
 /**
@@ -380,7 +382,7 @@ static void queue_csd_read(const uint8_t* csd)
  */
 static void queue_full_init_sdhc_32gib(void)
 {
-  mock_queue_idle(k_io_blockdev_sdspi_cov_mock_queue_idle_10); /* Wake-up dummy clocks. */
+  mock_queue_idle(k_sdspi_wakeup_clocks); /* Wake-up dummy clocks. */
   queue_command_response_r1((uint8_t)k_cov_r1_idle);
   queue_command_response_r3_or_r7((uint8_t)k_cov_r1_idle, (uint32_t)k_cov_cmd8_echo);
   queue_command_response_r1((uint8_t)k_cov_r1_idle);  /* CMD55.  */
@@ -449,8 +451,8 @@ static void queue_read_back(const uint8_t* block)
   mock_queue_byte((uint8_t)k_cov_data_token_start);
   mock_queue_bytes(block, (uint32_t)k_ra8_sdmmc_spi_block_size);
   const uint16_t crc = ra8_sdmmc_spi_crc16(block, (uint32_t)k_ra8_sdmmc_spi_block_size);
-  mock_queue_byte((uint8_t)((crc >> 8U) & k_io_blockdev_sdspi_cov_val_ff));
-  mock_queue_byte((uint8_t)(crc & k_io_blockdev_sdspi_cov_val_ff));
+  mock_queue_byte((uint8_t)((crc >> 8U) & k_byte_mask));
+  mock_queue_byte((uint8_t)(crc & k_byte_mask));
   mock_queue_idle(1U);
 }
 
@@ -478,8 +480,8 @@ static void queue_multi_read(const uint8_t* const* blocks, uint32_t count)
     mock_queue_byte((uint8_t)k_cov_data_token_start);
     mock_queue_bytes(blocks[b], (uint32_t)k_ra8_sdmmc_spi_block_size);
     const uint16_t crc = ra8_sdmmc_spi_crc16(blocks[b], (uint32_t)k_ra8_sdmmc_spi_block_size);
-    mock_queue_byte((uint8_t)((crc >> 8U) & k_io_blockdev_sdspi_cov_val_ff));
-    mock_queue_byte((uint8_t)(crc & k_io_blockdev_sdspi_cov_val_ff));
+    mock_queue_byte((uint8_t)((crc >> 8U) & k_byte_mask));
+    mock_queue_byte((uint8_t)(crc & k_byte_mask));
   }
   mock_queue_idle((uint32_t)k_cov_cmd_frame_len); /* CMD12 frame TX slots.  */
   mock_queue_idle(1U);                            /* stuff byte, discarded. */
@@ -554,8 +556,8 @@ static void test_sdspi_read_bulk_and_error(void)
   uint8_t block0[k_ra8_sdmmc_spi_block_size];
   uint8_t block1[k_ra8_sdmmc_spi_block_size];
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_sdmmc_spi_block_size; i++) {
-    block0[i] = (uint8_t)((i * 3U) & k_io_blockdev_sdspi_cov_val_ff);
-    block1[i] = (uint8_t)((i * k_io_blockdev_sdspi_cov_i_5) + 1U);
+    block0[i] = (uint8_t)((i * 3U) & k_byte_mask);
+    block1[i] = (uint8_t)((i * k_sdspi_pattern_stride) + 1U);
   }
   const uint8_t* blocks[2] = {block0, block1};
   queue_multi_read(blocks, 2U);
@@ -601,7 +603,7 @@ static void test_sdspi_write_forwards(void)
 
   uint8_t buf[k_ra8_sdmmc_spi_block_size];
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_sdmmc_spi_block_size; i++) {
-    buf[i] = (uint8_t)(i & k_io_blockdev_sdspi_cov_val_ff);
+    buf[i] = (uint8_t)(i & k_byte_mask);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 1U, 1U, buf));
   TEST_END("sdspi_write forwards single block");

@@ -24,11 +24,13 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_book_data_size_10 = 10,
-  k_book_data_size_20 = 20,
-  k_book_raw_size_50  = 50,
-  k_book_val_128      = 128,
-  k_book_val_64       = 64,
+  k_book_img0_bytes = 10, /**< Bytes of image 0 in the pool, which is also where image 1 begins. */
+  k_book_img1_bytes =
+    20, /**< Bytes of image 1; a different length from image 0 so a swapped entry fails the size check. */
+  k_book_img1_raw_bytes =
+    50, /**< Image 1's decoded size, larger than its stored size as a compressed image must be. */
+  k_book_strings_cap    = 128, /**< String-pool capacity, also used as image 0's decoded size. */
+  k_book_image_pool_cap = 64,  /**< Image-pool capacity, and the read-back buffer sized to match. */
 } book_uint8_const_t;
 
 /**
@@ -41,7 +43,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_book_format_version_999 = 999,
+  k_book_version_unsupported =
+    999, /**< A format version no reader supports, so open must reject the header. */
 } book_uint16_const_t;
 
 /**
@@ -54,33 +57,34 @@ typedef enum : uint16_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_book_crc32_ffffffff = 0xFFFFFFFF,
-  k_book_crc_ffffffff   = 0xFFFFFFFFU,
-  k_book_val_edb88320   = 0xEDB88320U,
+  k_book_crc_flip_mask =
+    0xFFFFFFFF, /**< XORed into a valid CRC to corrupt every bit of it, so the integrity check cannot pass by chance. */
+  k_crc32_init           = 0xFFFFFFFFU, /**< CRC-32 initial value, and the final XOR-out. */
+  k_crc32_poly_reflected = 0xEDB88320U, /**< The reflected CRC-32 polynomial. */
 } book_uint32_const_t;
 
 static uint32_t compute_crc32(const uint8_t* data, size_t len)
 {
-  uint32_t crc = k_book_crc_ffffffff;
+  uint32_t crc = k_crc32_init;
   for (size_t i = 0U; i < len; ++i) {
     crc ^= data[i];
     for (uint8_t bit = 0U; bit < 8U; ++bit) {
       uint32_t mask = (uint32_t)(-(int32_t)(crc & 1U));
-      crc           = (crc >> 1U) ^ (k_book_val_edb88320 & mask);
+      crc           = (crc >> 1U) ^ (k_crc32_poly_reflected & mask);
     }
   }
-  return crc ^ k_book_crc_ffffffff;
+  return crc ^ k_crc32_init;
 }
 
 typedef struct {
-  ra8_book_header_t     hdr;                       /**< Hdr.         */
-  ra8_book_chapter_t    chapters[1];               /**< Chapters.    */
-  ra8_book_node_t       nodes[2];                  /**< Nodes.       */
-  ra8_book_attr_t       attrs[1];                  /**< Attrs.       */
-  ra8_book_stylesheet_t stylesheets[1];            /**< Stylesheets. */
-  ra8_book_image_t      images[2];                 /**< Images.      */
-  char                  strings[k_book_val_128];   /**< Strings.     */
-  uint8_t               image_pool[k_book_val_64]; /**< Image pool.  */
+  ra8_book_header_t     hdr;                               /**< Hdr.         */
+  ra8_book_chapter_t    chapters[1];                       /**< Chapters.    */
+  ra8_book_node_t       nodes[2];                          /**< Nodes.       */
+  ra8_book_attr_t       attrs[1];                          /**< Attrs.       */
+  ra8_book_stylesheet_t stylesheets[1];                    /**< Stylesheets. */
+  ra8_book_image_t      images[2];                         /**< Images.      */
+  char                  strings[k_book_strings_cap];       /**< Strings.     */
+  uint8_t               image_pool[k_book_image_pool_cap]; /**< Image pool.  */
 } mock_book_t;
 
 /**
@@ -317,8 +321,8 @@ static void setup_mock_images(mock_book_t* b, const mock_book_offsets_t* off)
   b->images[0].reserved  = 0;
   b->images[0].reserved2 = 0;
   b->images[0].data_off  = 0;
-  b->images[0].data_size = k_book_data_size_10;
-  b->images[0].raw_size  = k_book_val_128;
+  b->images[0].data_size = k_book_img0_bytes;
+  b->images[0].raw_size  = k_book_strings_cap;
 
   b->images[1].id_off    = off->svg_href;
   b->images[1].width     = 0;
@@ -326,9 +330,9 @@ static void setup_mock_images(mock_book_t* b, const mock_book_offsets_t* off)
   b->images[1].format    = k_ra8_book_image_svg;
   b->images[1].reserved  = 0;
   b->images[1].reserved2 = 0;
-  b->images[1].data_off  = k_book_data_size_10;
-  b->images[1].data_size = k_book_data_size_20;
-  b->images[1].raw_size  = k_book_raw_size_50;
+  b->images[1].data_off  = k_book_img0_bytes;
+  b->images[1].data_size = k_book_img1_bytes;
+  b->images[1].raw_size  = k_book_img1_raw_bytes;
 
   b->hdr.cover_image_index = 0;
 }
@@ -381,7 +385,7 @@ static void test_ra8_book_invalid(void)
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_book_validate(NULL, 100));
 
-  uint8_t buffer[k_book_val_64] = {0};
+  uint8_t buffer[k_book_image_pool_cap] = {0};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_book_validate(buffer, sizeof(buffer)));
 
   mock_book_t b;
@@ -393,17 +397,17 @@ static void test_ra8_book_invalid(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_book_validate(&b, sizeof(b)));
 
   setup_mock_book(&b);
-  b.hdr.format_version = k_book_format_version_999;
+  b.hdr.format_version = k_book_version_unsupported;
   body                 = (const uint8_t*)&b + sizeof(ra8_book_header_t);
   b.hdr.crc32          = compute_crc32(body, body_len);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_book_validate(&b, sizeof(b)));
 
   setup_mock_book(&b);
-  b.hdr.crc32 ^= k_book_crc32_ffffffff;
+  b.hdr.crc32 ^= k_book_crc_flip_mask;
   TEST_ASSERT_EQ(k_ra8_err_range_check_failed, ra8_book_validate(&b, sizeof(b)));
 
   setup_mock_book(&b);
-  b.hdr.chapter_off = sizeof(b) + k_book_data_size_10;
+  b.hdr.chapter_off = sizeof(b) + k_book_img0_bytes;
   body              = (const uint8_t*)&b + sizeof(ra8_book_header_t);
   b.hdr.crc32       = compute_crc32(body, body_len);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_book_validate(&b, sizeof(b)));
