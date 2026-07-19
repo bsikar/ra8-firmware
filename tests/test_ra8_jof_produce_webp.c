@@ -73,6 +73,11 @@ typedef enum : uint8_t {
 /* Committed WebP fixtures under tests/fixtures/webp/, embedded inline. */
 /* ------------------------------------------------------------------------- */
 
+/** @brief PNG IHDR chunk type tag (raw bytes; no string terminator). */
+static const uint8_t k_png_type_ihdr[] = {'I', 'H', 'D', 'R'};
+/** @brief PNG IDAT chunk type tag (raw bytes; no string terminator). */
+static const uint8_t k_png_type_idat[] = {'I', 'D', 'A', 'T'};
+
 /** 8x8 VP8L (lossless, -exact): decoded RGB is bit-exact to the pattern. */
 static const uint8_t k_webp_lossless[] = {
   0x52, 0x49, 0x46, 0x46, 0x2C, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56,
@@ -267,7 +272,7 @@ static void build_rgba_png(void)
   /* IHDR */
   const uint32_t ihdr_len = (uint32_t)sizeof(ihdr);
   chunk[3]                = (uint8_t)ihdr_len;
-  memcpy(&chunk[4], "IHDR", 4U);
+  memcpy(&chunk[4], k_png_type_ihdr, sizeof(k_png_type_ihdr));
   memcpy(&chunk[8], ihdr, ihdr_len);
   uint32_t crc              = (uint32_t)mz_crc32(MZ_CRC32_INIT, &chunk[4], 4U + (size_t)ihdr_len);
   chunk[8U + ihdr_len + 0U] = (uint8_t)(crc >> k_tileatlas_produce_webp_crc_24);
@@ -285,7 +290,7 @@ static void build_rgba_png(void)
   p[1]       = (uint8_t)((zlen >> 16U) & k_tileatlas_produce_webp_val_ff);
   p[2]       = (uint8_t)((zlen >> 8U) & k_tileatlas_produce_webp_val_ff);
   p[3]       = (uint8_t)(zlen & k_tileatlas_produce_webp_val_ff);
-  memcpy(&p[4], "IDAT", 4U);
+  memcpy(&p[4], k_png_type_idat, sizeof(k_png_type_idat));
   memcpy(&p[8], s_zbuf, (size_t)zlen);
   crc          = (uint32_t)mz_crc32(MZ_CRC32_INIT, &p[4], 4U + (size_t)zlen);
   p[8U + zlen] = (uint8_t)(crc >> k_tileatlas_produce_webp_crc_24);

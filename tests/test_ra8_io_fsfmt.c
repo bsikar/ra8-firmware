@@ -34,6 +34,9 @@ typedef enum : uint32_t {
   k_t_stub_name    = 16U,   /**< Stub max name length.        */
 } t_fsfmt_const_t;
 
+/** @brief exFAT boot-sector FileSystemName field, space-padded to 8 bytes. */
+static const uint8_t k_exfat_fsname[] = {'E', 'X', 'F', 'A', 'T', ' ', ' ', ' '};
+
 static uint8_t s_disk[(size_t)k_t_fat_blocks * (size_t)k_ra8_io_block_size_bytes];
 static uint8_t s_small[(size_t)k_t_small_blocks * (size_t)k_ra8_io_block_size_bytes];
 
@@ -108,7 +111,7 @@ static void test_probe_builtins(void)
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_io_blockdev_ram_init(&xbd, &xstate, s_small, k_t_small_blocks, false));
   uint8_t xblk[(size_t)k_ra8_io_block_size_bytes] = {};
-  (void)memcpy(&xblk[3], "EXFAT   ", 8);
+  (void)memcpy(&xblk[3], k_exfat_fsname, sizeof(k_exfat_fsname));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&xbd, 0, 1, xblk));
   ra8_fs_backend_t xbe = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_as_fs_backend(&xbd, &xbe));

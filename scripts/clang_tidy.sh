@@ -376,9 +376,21 @@ tools_pass_args() {
     [[ -d "$dir" ]] && printf -- '--extra-arg=-I%s\n' "${dir%/}"
   done
   local cflag
+  local pkg
   if command -v pkg-config &>/dev/null; then
-    for cflag in $(pkg-config --cflags unicorn capstone 2>/dev/null); do
-      printf -- '--extra-arg=%s\n' "$cflag"
+    # unicorn + capstone: tools/board_sim. libcurl: tools/media_dl's network
+    # backend. Without the include dir clang-tidy cannot find the header and
+    # reports clang-diagnostic-error instead of linting the file at all -- a
+    # silent hole exactly like the one #296 closed, so keep this in step with
+    # the runner + devcontainer package lists.
+    #
+    # Query one package per call on purpose: `pkg-config --cflags a b c` prints
+    # NOTHING when any single package is absent, which would silently drop the
+    # other two packages' include dirs and turn their TUs into parse errors.
+    for pkg in unicorn capstone libcurl; do
+      for cflag in $(pkg-config --cflags "$pkg" 2>/dev/null); do
+        printf -- '--extra-arg=%s\n' "$cflag"
+      done
     done
   fi
   # Homebrew installs unicorn/capstone outside the default search path and

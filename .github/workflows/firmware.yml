@@ -129,6 +129,26 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
+
+      # ci-parity: infra -- installs clang-tidy TU dependencies; runs no project check.
+      # The tools/ pass needs the headers tools/board_sim (Unicorn, Capstone) and
+      # tools/media_dl (libcurl) include. A MISSING header does not fail loudly --
+      # clang-tidy reports clang-diagnostic-error for that TU and never lints it,
+      # which is the same silent hole #296 closed. Install them here rather than
+      # assuming runner state. Idempotent: the probes skip apt once present.
+      - name: Install clang-tidy tool dependencies
+        run: |
+          # ci-parity: infra -- installs headers; runs no project check
+          missing=""
+          [ -f /usr/include/unicorn/unicorn.h ] || missing="$missing libunicorn-dev"
+          [ -f /usr/include/capstone/capstone.h ] || missing="$missing libcapstone-dev"
+          pkg-config --exists libcurl || missing="$missing libcurl4-openssl-dev"
+          if [ -n "$missing" ]; then
+            sudo apt-get update
+            # shellcheck disable=SC2086
+            sudo apt-get install -y --no-install-recommends $missing
+          fi
+
       - run: bash scripts/ci.sh --gate tidy
 
   # ---------------------------------------------------------------------------

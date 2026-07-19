@@ -128,6 +128,11 @@ typedef enum : uint32_t {
  * Static fixtures (host build: plain .bss, no MMIO).
  * ------------------------------------------------------------------------- */
 
+/** @brief JOF1 tile-atlas header magic (raw bytes; no string terminator). */
+static const uint8_t k_t_magic_jof1[] = {'J', 'O', 'F', '1'};
+/** @brief JOFE tile-atlas footer magic (raw bytes; no string terminator). */
+static const uint8_t k_t_magic_jofe[] = {'J', 'O', 'F', 'E'};
+
 /** @brief Backing store for the hand-built JOF atlas. */
 static uint8_t s_atlas[k_t_atlas_cap];
 
@@ -226,7 +231,7 @@ static uint32_t t_wt_build_strip(void)
   t_wt_put_u32(&s_atlas[off], index_off);
   t_wt_put_u32(&s_atlas[off + 4U], bands);
   t_wt_put_u32(&s_atlas[off + 8U], total);
-  (void)memcpy(&s_atlas[off + 12U], "JOFE", 4U);
+  (void)memcpy(&s_atlas[off + 12U], k_t_magic_jofe, sizeof(k_t_magic_jofe));
   return total;
 }
 
@@ -411,7 +416,7 @@ static void t_open_rejects_non_band(void)
   const uint16_t tw     = 32U; /* half width -> 2 columns */
   const uint16_t th     = 64U;
   (void)memset(s_atlas, 0, (size_t)k_t_hdr_bytes);
-  (void)memcpy(s_atlas, "JOF1", 4U);
+  (void)memcpy(s_atlas, k_t_magic_jof1, sizeof(k_t_magic_jof1));
   t_wt_put_u16(&s_atlas[4], width);
   t_wt_put_u16(&s_atlas[6], height);
   t_wt_put_u16(&s_atlas[8], tw);
@@ -441,7 +446,7 @@ static void t_open_rejects_non_band(void)
   t_wt_put_u32(&s_atlas[off], index_off);
   t_wt_put_u32(&s_atlas[off + 4U], tiles);
   t_wt_put_u32(&s_atlas[off + 8U], total);
-  (void)memcpy(&s_atlas[off + 12U], "JOFE", 4U);
+  (void)memcpy(&s_atlas[off + 12U], k_t_magic_jofe, sizeof(k_t_magic_jofe));
 
   s_store = (ra8_jof_memstore_t){.buf = s_atlas, .cap = k_t_atlas_cap, .len = total};
   const ra8_longstrip_cfg_t cfg = {.pread      = ra8_jof_memstore_pread,

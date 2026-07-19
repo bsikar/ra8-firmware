@@ -19,7 +19,6 @@
  */
 #include "mdl_export.h"
 
-#include <crt_externs.h>
 #include <ctype.h>
 #include <dirent.h>
 #include <fcntl.h>
@@ -31,6 +30,13 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#if defined(__APPLE__)
+/* macOS links every executable against a shared libc, so it exposes no
+ * `environ` symbol to link against; `_NSGetEnviron()` in <crt_externs.h> is the
+ * documented replacement. Every other POSIX host declares `environ` directly. */
+#include <crt_externs.h>
+#endif
 
 #include "miniz.h"
 #include "ra8_attributes.h"
@@ -86,6 +92,18 @@ typedef enum : uint16_t {
   k_u32_bytes    = 4,    /**< Bytes in a u32.           */
   k_gzip_hdr_len = 10,   /**< gzip fixed header length. */
 } mdl_serial_t;
+
+/**
+ * @brief ustar magic field: the 5 ASCII chars plus the NUL POSIX requires.
+ * @details Raw bytes, not a string literal -- the NUL here is payload (the
+ *          field is exactly 6 bytes wide), not a C string terminator.
+ */
+static const uint8_t k_ustar_magic[] = {'u', 's', 't', 'a', 'r', '\0'};
+/** @brief ustar version field: the two ASCII digits "00", unterminated. */
+static const uint8_t k_ustar_version[] = {'0', '0'};
+
+static_assert(sizeof(k_ustar_magic) == (size_t)k_len_magic,
+              "ustar magic constant must fill the 6-byte magic field exactly");
 
 mdl_format_t mdl_format_from_str(const char* s)
 {
@@ -143,6 +161,17 @@ const char* mdl_format_ext(mdl_format_t fmt)
     default:
       return "";
   }
+}
+
+/** @brief The process environment block, for the `posix_spawnp` calls below. */
+RA8_INTERNAL static char* const* spawn_environ(void)
+{
+#if defined(__APPLE__)
+  return *_NSGetEnviron();
+#else
+  extern char** environ;
+  return environ;
+#endif
 }
 
 /** @brief qsort comparator over fixed-width name rows. */
@@ -238,8 +267,8 @@ RA8_INTERNAL static void tar_header(uint8_t* blk, const char* name, size_t size)
   (void)snprintf((char*)blk + k_off_size, k_len_size, "%011zo", size);
   (void)snprintf((char*)blk + k_off_mtime, k_len_mtime, "%011o", 0U);
   blk[k_off_type] = '0';
-  memcpy(blk + k_off_magic, "ustar", k_len_magic);
-  memcpy(blk + k_off_version, "00", 2U);
+  memcpy(blk + k_off_magic, k_ustar_magic, sizeof(k_ustar_magic));
+  memcpy(blk + k_off_version, k_ustar_version, sizeof(k_ustar_version));
 
   memset(blk + k_off_chksum, ' ', k_len_chksum);
   unsigned sum = 0U;
@@ -388,7 +417,7 @@ RA8_INTERNAL static ra8_err_t export_cbr(const char* dir, const char* out_path)
   const char* const argv[] = {"rar", "a", "-ep1", "-idq", out_path, ".", nullptr};
   pid_t             pid    = 0;
   const int         rc =
-    posix_spawnp(&pid, argv[0], &actions, nullptr, (char* const*)argv, *_NSGetEnviron());
+    posix_spawnp(&pid, argv[0], &actions, nullptr, (char* const*)argv, spawn_environ());
   (void)posix_spawn_file_actions_destroy(&actions);
   if (rc != 0) {
     (void)fprintf(stderr,
@@ -416,7 +445,7 @@ RA8_INTERNAL static ra8_err_t run_to_file(const char* const argv[], const char* 
                                          (mode_t)k_file_mode);
   pid_t     pid = 0;
   const int rc =
-    posix_spawnp(&pid, argv[0], &actions, nullptr, (char* const*)argv, *_NSGetEnviron());
+    posix_spawnp(&pid, argv[0], &actions, nullptr, (char* const*)argv, spawn_environ());
   (void)posix_spawn_file_actions_destroy(&actions);
   if (rc != 0) {
     (void)fprintf(stderr,
@@ -915,7 +944,7 @@ RA8_INTERNAL static ra8_err_t run_rabook_python(const char* cbz, const char* out
   const char* const argv[] = {"python3", script, cbz, out_path, "--rtl", nullptr};
   pid_t             pid    = 0;
   const int         rc =
-    posix_spawnp(&pid, argv[0], nullptr, nullptr, (char* const*)argv, *_NSGetEnviron());
+    posix_spawnp(&pid, argv[0], nullptr, nullptr, (char* const*)argv, spawn_environ());
   if (rc != 0) {
     (void)fprintf(stderr, "media_dl: rabook needs python3 + Pillow: %s\n", strerror(rc));
     return k_ra8_err_not_supported;

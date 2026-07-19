@@ -121,6 +121,12 @@ static size_t av5_file(uint8_t*       out,
   b += av_vint(&body[b], 0U); /* host os */
   const size_t nlen = strlen(name);
   b += av_vint(&body[b], (uint64_t)nlen);
+  /* The RAR5 file-header name is a COUNTED field: the vint length written on
+   * the line above is what the parser reads, and the name bytes that follow
+   * carry no terminator. Copying strlen(name) + 1 here would push a stray NUL
+   * into the next header field and corrupt the fixture, so the unterminated
+   * copy is the format-correct one. */
+  // NOLINTNEXTLINE(bugprone-not-null-terminated-result)
   memcpy(&body[b], name, nlen);
   b += nlen;
   size_t p = 4U; /* header crc (unverified) */
