@@ -31,14 +31,14 @@
  * read the right one. Addresses are `uintptr_t` because they are addresses.
  */
 typedef enum : uintptr_t {
-  k_scb_cfsr_addr  = 0xE000ED28UL, /**< SCB->CFSR:  Configurable Fault Status.  */
-  k_scb_hfsr_addr  = 0xE000ED2CUL, /**< SCB->HFSR:  HardFault Status.           */
-  k_scb_dfsr_addr  = 0xE000ED30UL, /**< SCB->DFSR:  Debug Fault Status.         */
-  k_scb_mmfar_addr = 0xE000ED34UL, /**< SCB->MMFAR: MemManage Fault Address.    */
-  k_scb_bfar_addr  = 0xE000ED38UL, /**< SCB->BFAR:  BusFault Address.           */
-  k_scb_afsr_addr  = 0xE000ED3CUL, /**< SCB->AFSR:  Auxiliary Fault Status.     */
-  k_scb_sfsr_addr  = 0xE000EDE4UL, /**< SAU->SFSR:  SecureFault Status.         */
-  k_scb_sfar_addr  = 0xE000EDE8UL, /**< SAU->SFAR:  SecureFault Address.        */
+  k_scb_cfsr_addr  = 0xE000ED28UL, /**< SCB->CFSR:  Configurable Fault Status. */
+  k_scb_hfsr_addr  = 0xE000ED2CUL, /**< SCB->HFSR:  HardFault Status.          */
+  k_scb_dfsr_addr  = 0xE000ED30UL, /**< SCB->DFSR:  Debug Fault Status.        */
+  k_scb_mmfar_addr = 0xE000ED34UL, /**< SCB->MMFAR: MemManage Fault Address.   */
+  k_scb_bfar_addr  = 0xE000ED38UL, /**< SCB->BFAR:  BusFault Address.          */
+  k_scb_afsr_addr  = 0xE000ED3CUL, /**< SCB->AFSR:  Auxiliary Fault Status.    */
+  k_scb_sfsr_addr  = 0xE000EDE4UL, /**< SAU->SFSR:  SecureFault Status.        */
+  k_scb_sfar_addr  = 0xE000EDE8UL, /**< SAU->SFAR:  SecureFault Address.       */
 } exc_scb_reg_t;
 
 /**
@@ -61,10 +61,9 @@ typedef enum : uint32_t {
   k_poison_sfsr  = 0xC0FFEE18UL, /**< Planted in SFSR.  */
   k_poison_sfar  = 0xC0FFEE1CUL, /**< Planted in SFAR.  */
   k_sfsr_auviol_sfarvalid =
-    0x00000048UL, /**< A realistic SFSR cause: AUVIOL together with SFARVALID,
+    0x00000048UL,                       /**< A realistic SFSR cause: AUVIOL together with SFARVALID,
                        so the report must treat SFAR as meaningful.            */
-  k_sfar_violating_addr =
-    0x30001234UL, /**< The faulting address SFSR declares valid.               */
+  k_sfar_violating_addr = 0x30001234UL, /**< The faulting address SFSR declares valid. */
 } exc_planted_t;
 
 /** @brief Exception number 7: SecureFault. */

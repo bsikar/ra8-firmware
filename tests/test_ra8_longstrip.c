@@ -54,8 +54,8 @@ typedef enum : uint8_t {
   k_band_index_poison =
     0xFFU, /**< Poison band index written before a query, so a query that fails without setting it is detectable. */
   k_atlas_off_tile_h = 10, /**< Tile height in the atlas header; the band height for a strip. */
-  k_atlas_off_bpp    = 12, /**< Bytes per pixel. */
-  k_atlas_off_codec  = 13, /**< Codec id for the tile payloads. */
+  k_atlas_off_bpp    = 12, /**< Bytes per pixel.                                              */
+  k_atlas_off_codec  = 13, /**< Codec id for the tile payloads.                               */
 } longstrip_uint8_const_t;
 
 /**

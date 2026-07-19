@@ -53,16 +53,16 @@ typedef enum : uint8_t {
   k_byte_mask             = 0xFFU, /**< Low-byte mask used by the put16 helper. */
   k_att_write_value =
     0xABU, /**< A recognizable byte written through the ATT write path and read back from the characteristic. */
-  k_uuid_notify_svc = 0x30U, /**< Service of the notify fixture. */
-  k_uuid_notify_chr = 0x40U, /**< Its characteristic. */
-  k_uuid_write_svc  = 0x50U, /**< Service of the ATT-write fixture. */
-  k_uuid_write_chr  = 0x60U, /**< Its characteristic. */
+  k_uuid_notify_svc = 0x30U, /**< Service of the notify fixture.                       */
+  k_uuid_notify_chr = 0x40U, /**< Its characteristic.                                  */
+  k_uuid_write_svc  = 0x50U, /**< Service of the ATT-write fixture.                    */
+  k_uuid_write_chr  = 0x60U, /**< Its characteristic.                                  */
   k_uuid_single_svc = 0xF0U, /**< The lone service of the single-registration fixture. */
   k_sub_frame_len =
     9U, /**< Bytes actually injected: the 4-byte L2CAP header plus its 5-byte payload. */
-  k_sub_frame_cap     = 10, /**< Capacity of the frame staging buffer. */
+  k_sub_frame_cap     = 10, /**< Capacity of the frame staging buffer.               */
   k_att_off_handle_lo = 5,  /**< Low byte of the ATT handle within the staged frame. */
-  k_att_off_value_lo  = 7,  /**< First byte of the ATT value that follows it. */
+  k_att_off_value_lo  = 7,  /**< First byte of the ATT value that follows it.        */
   k_uuid_fill_base =
     0x80U, /**< Base marker of the table-filling loop; `+ i` gives each registration its own UUID so the table fills with distinct entries. */
 } ble_host_uint8_const_t;

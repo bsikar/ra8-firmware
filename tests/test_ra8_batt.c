@@ -31,11 +31,11 @@
  */
 typedef enum : uint8_t {
   k_batt_mv_below_critical = 10U, /**< Below the critical threshold: raises the critical alarm. */
-  k_batt_mv_above_critical = 12U, /**< Back above it, but still inside the hysteresis band. */
-  k_batt_mv_clear_critical = 14U, /**< Far enough above to clear the critical alarm outright. */
-  k_batt_mv_below_low      = 20U, /**< Below the low threshold: raises the low alarm. */
-  k_batt_mv_above_low      = 22U, /**< Back above it, inside the hysteresis band. */
-  k_batt_mv_clear_low      = 24U, /**< Far enough above to clear the low alarm. */
+  k_batt_mv_above_critical = 12U, /**< Back above it, but still inside the hysteresis band.     */
+  k_batt_mv_clear_critical = 14U, /**< Far enough above to clear the critical alarm outright.   */
+  k_batt_mv_below_low      = 20U, /**< Below the low threshold: raises the low alarm.           */
+  k_batt_mv_above_low      = 22U, /**< Back above it, inside the hysteresis band.               */
+  k_batt_mv_clear_low      = 24U, /**< Far enough above to clear the low alarm.                 */
 } batt_uint8_const_t;
 
 /** @brief Update the monitor and return just the nag (test convenience). */

@@ -53,16 +53,16 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_bpb_sig_lo          = 0x55U, /**< The 0xAA55 boot signature's low byte. */
-  k_bpb_sig_hi          = 0xAAU, /**< Its high byte. */
+  k_bpb_sig_lo          = 0x55U, /**< The 0xAA55 boot signature's low byte.       */
+  k_bpb_sig_hi          = 0xAAU, /**< Its high byte.                              */
   k_lfn_chars_per_entry = 13U,   /**< UCS-2 characters one long-name entry holds. */
   k_fs_pattern_stride =
     17U, /**< Stride of the payload generator, `i * 17 + 3`; coprime with 256 so the pattern does not repeat inside a sector. */
   k_lfn_seq_max =
     20U, /**< Highest long-name sequence number, so the chain under test is the longest one the format allows. */
-  k_sfn_name_len = 11,    /**< A packed 8.3 name: 8 base + 3 extension. */
+  k_sfn_name_len = 11,    /**< A packed 8.3 name: 8 base + 3 extension.                          */
   k_shift_byte3  = 24,    /**< Shift to the most significant byte, which goes on the wire first. */
-  k_byte_mask    = 0xFFU, /**< Low-byte mask used when clocking a word out a byte at a time. */
+  k_byte_mask    = 0xFFU, /**< Low-byte mask used when clocking a word out a byte at a time.     */
 } fs_fat_mcdc_uint8_const_t;
 
 /**

@@ -38,14 +38,14 @@ typedef enum : uint8_t {
  * the layout against the document without decoding the numbers.
  */
 typedef enum : uint16_t {
-  k_bpb_off_bytes_per_sec = 11U,  /**< BPB_BytsPerSec: bytes per sector.            */
-  k_bpb_off_sec_per_clus  = 13U,  /**< BPB_SecPerClus: sectors per cluster.         */
-  k_bpb_off_rsvd_sec_cnt  = 14U,  /**< BPB_RsvdSecCnt: sectors before the 1st FAT.  */
-  k_bpb_off_root_ent_cnt  = 17U,  /**< BPB_RootEntCnt: root-directory entries.      */
-  k_bpb_off_tot_sec16     = 19U,  /**< BPB_TotSec16: total sectors.                 */
-  k_bpb_off_fat_sz16      = 22U,  /**< BPB_FATSz16: sectors per FAT.                */
-  k_bpb_off_sig_lo        = 510U, /**< Low byte of the 0xAA55 boot signature.       */
-  k_bpb_off_sig_hi        = 511U, /**< Its high byte.                               */
+  k_bpb_off_bytes_per_sec = 11U,  /**< BPB_BytsPerSec: bytes per sector.           */
+  k_bpb_off_sec_per_clus  = 13U,  /**< BPB_SecPerClus: sectors per cluster.        */
+  k_bpb_off_rsvd_sec_cnt  = 14U,  /**< BPB_RsvdSecCnt: sectors before the 1st FAT. */
+  k_bpb_off_root_ent_cnt  = 17U,  /**< BPB_RootEntCnt: root-directory entries.     */
+  k_bpb_off_tot_sec16     = 19U,  /**< BPB_TotSec16: total sectors.                */
+  k_bpb_off_fat_sz16      = 22U,  /**< BPB_FATSz16: sectors per FAT.               */
+  k_bpb_off_sig_lo        = 510U, /**< Low byte of the 0xAA55 boot signature.      */
+  k_bpb_off_sig_hi        = 511U, /**< Its high byte.                              */
 } fat_bpb_field_t;
 
 /**
@@ -58,22 +58,22 @@ typedef enum : uint16_t {
  * `k_lfn_*` members are the fields only a long-name entry defines.
  */
 typedef enum : uint8_t {
-  k_dir_off_attr        = 11U,   /**< DIR_Attr / LDIR_Attr: the attribute byte.    */
-  k_lfn_off_type        = 12U,   /**< LDIR_Type: reserved, must be zero.           */
-  k_lfn_off_chksum      = 13U,   /**< LDIR_Chksum: the 8.3 alias checksum.         */
-  k_dir_off_fst_clus_hi = 20U,   /**< DIR_FstClusHI: high half of first cluster.   */
-  k_dir_off_fst_clus_lo = 26U,   /**< DIR_FstClusLO: its low half; 0 in an LFN.    */
-  k_dir_off_file_size   = 28U,   /**< DIR_FileSize: first of its four bytes.       */
-  k_lfn_attr_long_name  = 0x0FU, /**< ATTR_LONG_NAME: marks an entry as a name.    */
+  k_dir_off_attr        = 11U,   /**< DIR_Attr / LDIR_Attr: the attribute byte.  */
+  k_lfn_off_type        = 12U,   /**< LDIR_Type: reserved, must be zero.         */
+  k_lfn_off_chksum      = 13U,   /**< LDIR_Chksum: the 8.3 alias checksum.       */
+  k_dir_off_fst_clus_hi = 20U,   /**< DIR_FstClusHI: high half of first cluster. */
+  k_dir_off_fst_clus_lo = 26U,   /**< DIR_FstClusLO: its low half; 0 in an LFN.  */
+  k_dir_off_file_size   = 28U,   /**< DIR_FileSize: first of its four bytes.     */
+  k_lfn_attr_long_name  = 0x0FU, /**< ATTR_LONG_NAME: marks an entry as a name.  */
   k_lfn_ord_first_and_last =
     0x41U,                        /**< LDIR_Ord: sequence 1 plus the 0x40 last-logical flag, so this
                 single entry carries the whole name. */
-  k_lfn_chars_per_entry  = 13U,   /**< UCS-2 chars one entry holds, split 5 + 6 + 2. */
+  k_lfn_chars_per_entry  = 13U,   /**< UCS-2 chars one entry holds, split 5 + 6 + 2.       */
   k_sfn_name_len         = 11U,   /**< 8.3 name bytes (8 base + 3 ext) the checksum folds. */
-  k_sfn_chksum_carry_bit = 0x80U, /**< Bit rotated into the top each checksum round. */
-  k_bpb_sig_lo           = 0x55U, /**< Boot-signature low byte.                      */
-  k_bpb_sig_hi           = 0xAAU, /**< Boot-signature high byte.                     */
-  k_byte_mask            = 0xFFU, /**< Low-byte mask used by the put16/put32 helpers.*/
+  k_sfn_chksum_carry_bit = 0x80U, /**< Bit rotated into the top each checksum round.       */
+  k_bpb_sig_lo           = 0x55U, /**< Boot-signature low byte.                            */
+  k_bpb_sig_hi           = 0xAAU, /**< Boot-signature high byte.                           */
+  k_byte_mask            = 0xFFU, /**< Low-byte mask used by the put16/put32 helpers.      */
   k_name_buf_bytes       = 64U,   /**< Split-name scratch capacity; over the longest
                                        fixture name.                                */
 } fat_dir_entry_field_t;
@@ -246,7 +246,7 @@ static void build_volume_with_lfn(void)
   sfn[k_dir_off_attr] = 0x20U;                    /* ARCHIVE                            */
   put16(sfn, k_dir_off_fst_clus_lo, 0U);          /* first cluster low = 0 (empty file) */
   put16(sfn, k_dir_off_fst_clus_hi, 0U);          /* first cluster high                 */
-  (void)memset(&sfn[k_dir_off_file_size], 0, 4U); /* DIR_FileSize = 0 (empty file) */
+  (void)memset(&sfn[k_dir_off_file_size], 0, 4U); /* DIR_FileSize = 0 (empty file)      */
   /* slot 2 stays 0x00 -> end-of-directory. */
 }
 

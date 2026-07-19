@@ -60,7 +60,7 @@ typedef enum : uint32_t {
   k_book_crc_flip_mask =
     0xFFFFFFFF, /**< XORed into a valid CRC to corrupt every bit of it, so the integrity check cannot pass by chance. */
   k_crc32_init           = 0xFFFFFFFFU, /**< CRC-32 initial value, and the final XOR-out. */
-  k_crc32_poly_reflected = 0xEDB88320U, /**< The reflected CRC-32 polynomial. */
+  k_crc32_poly_reflected = 0xEDB88320U, /**< The reflected CRC-32 polynomial.             */
 } book_uint32_const_t;
 
 static uint32_t compute_crc32(const uint8_t* data, size_t len)

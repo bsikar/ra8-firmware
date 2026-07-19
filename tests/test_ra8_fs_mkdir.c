@@ -58,15 +58,15 @@ typedef enum : uint16_t {
  * returned another file's data fails the compare instead of passing.
  */
 typedef enum : uint16_t {
-  k_bpb_sig_lo        = 0x55U, /**< Boot-signature low byte.                       */
-  k_bpb_sig_hi        = 0xAAU, /**< Boot-signature high byte.                      */
-  k_byte_mask         = 0xFFU, /**< Low-byte mask used by the put16 helper.        */
-  k_mkdir_seed_small  = 0x11U, /**< Seed for the sub-sector payload.               */
-  k_mkdir_seed_medium = 0x55U, /**< Seed for the single-cluster payload.           */
-  k_mkdir_seed_large  = 0x7AU, /**< Seed for the multi-cluster payload.            */
-  k_mkdir_seed_stride = 5U,    /**< Stride of that generator.                      */
-  k_mkdir_bytes_tiny  = 64U,   /**< Payload well under one sector.                 */
-  k_mkdir_bytes_small = 200U,  /**< Payload that still fits inside one cluster.    */
+  k_bpb_sig_lo        = 0x55U, /**< Boot-signature low byte.                    */
+  k_bpb_sig_hi        = 0xAAU, /**< Boot-signature high byte.                   */
+  k_byte_mask         = 0xFFU, /**< Low-byte mask used by the put16 helper.     */
+  k_mkdir_seed_small  = 0x11U, /**< Seed for the sub-sector payload.            */
+  k_mkdir_seed_medium = 0x55U, /**< Seed for the single-cluster payload.        */
+  k_mkdir_seed_large  = 0x7AU, /**< Seed for the multi-cluster payload.         */
+  k_mkdir_seed_stride = 5U,    /**< Stride of that generator.                   */
+  k_mkdir_bytes_tiny  = 64U,   /**< Payload well under one sector.              */
+  k_mkdir_bytes_small = 200U,  /**< Payload that still fits inside one cluster. */
 } mkdir_payload_t;
 
 /**
