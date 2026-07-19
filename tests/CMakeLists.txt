@@ -131,6 +131,12 @@ elseif(RA8_COVERAGE)
   add_link_options(--coverage -fprofile-arcs -ftest-coverage)
 endif()
 
+# Compiler cache. Included AFTER the coverage / MC-DC options are resolved
+# above, because it opts out when either is on -- gcov and clang profile data
+# embed absolute paths that a cached object would carry into the wrong build
+# directory. See cmake/ccache.cmake for the full rationale.
+include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/ccache.cmake")
+
 # RA8_SANITIZE: when non-empty (e.g. "undefined"), instrument every host-test
 # target with -fsanitize=<list> -- the undefined-behaviour gate driven by
 # `make ubsan`. Independent of the coverage / MC-DC instrumentation above; pick

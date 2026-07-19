@@ -42,8 +42,9 @@ IMAGE_TAG="ra8-ci:latest"
 DOCKERFILE="$REPO_ROOT/.devcontainer/Dockerfile"
 
 # ===========================================================================
-# IN-CONTAINER MODE. Entered via `docker run ... -e RA8_CI_INNER=1`. Runs every
-# gate, records PASS/FAIL, prints a summary, and exits non-zero if any failed.
+# IN-CONTAINER MODE. Entered via `<runtime> run ... -e RA8_CI_INNER=1`. Runs
+# every gate, records PASS/FAIL, prints a summary, and exits non-zero if any
+# failed.
 # ===========================================================================
 if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
   fast="${RA8_CI_FAST:-0}"
@@ -59,13 +60,27 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
   # what `git push` ships -- so a dirty tree gets a heads-up below.
   export HOME=/tmp
   git config --global --add safe.directory "$REPO_ROOT" >/dev/null 2>&1 || true
+  # A worktree's objects live in the main repo's git dir, which is a separate
+  # mount and therefore needs its own ownership exemption; without it git
+  # refuses with "detected dubious ownership" before archive ever runs.
+  git config --global --add safe.directory '*' >/dev/null 2>&1 || true
   if [[ -n "$(git -C "$REPO_ROOT" status --porcelain 2>/dev/null)" ]]; then
     echo "NOTE: working tree is dirty -- make ci tests committed HEAD only" >&2
     echo "      (like CI). Commit your changes to have them gated." >&2
   fi
-  work="/citree"
-  rm -rf "$work"
-  mkdir -p "$work"
+  # The snapshot dir is created fresh per run and destroyed on exit, so no
+  # build output can outlive the run that produced it. That is what makes the
+  # stale-.gcda class impossible rather than merely remembered: a coverage run
+  # can never find a *different branch's* .gcda here, because "here" did not
+  # exist a moment ago. Do NOT replace this with a fixed path -- a fixed path
+  # is a cache, and a cache is exactly the bug.
+  #
+  # It must also be a path the invoking user can write. The former hardcoded
+  # /citree assumed a root-owned container filesystem and failed with
+  # "Permission denied" under rootless podman and under any direct
+  # RA8_CI_INNER=1 run, which is what drove people to hand-edit this script.
+  work="$(mktemp -d "${TMPDIR:-/tmp}/ra8-ci-snapshot.XXXXXXXX")"
+  trap 'rm -rf "$work"' EXIT INT TERM
   # git-lfs is installed in the image so `git archive` does not choke trying to
   # spawn the filter for the content/library/*.epub LFS pointers;
   # GIT_LFS_SKIP_SMUDGE=1 makes it emit those pointer files as-is (no gate reads
@@ -74,6 +89,23 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
   # copying the working tree file-by-file over the (virtiofs) bind mount.
   GIT_LFS_SKIP_SMUDGE=1 git -C "$REPO_ROOT" archive HEAD | tar -x -C "$work"
   cd "$work"
+
+  # Make the snapshot a real git repo with everything staged.
+  #
+  # Several checks in the pre-commit suite (check_obsolete_standards.py,
+  # check_mcdc_block.py) are written for hook use and enumerate their inputs
+  # with `git diff --cached --name-only`. An extracted archive is not a git
+  # repo, so that call failed with exit 129 and the scripts died on an uncaught
+  # CalledProcessError -- while the gate still reported PASS, because the
+  # `set -e` subshell masks it. The result was two checks silently NOT running
+  # under `make ci` that DO run in CI, where actions/checkout provides a real
+  # index. That is precisely the local-vs-CI divergence this script exists to
+  # prevent, so fix the snapshot rather than the checkers.
+  #
+  # Staging everything is the semantically correct answer here: in a full-tree
+  # gate run, the set of files "being committed" is the whole tree.
+  git init -q . 2>/dev/null || true
+  git add -A 2>/dev/null || true
 
   # Pin clang-format to the CI version; fall back with a loud warning so the
   # gate still RUNS (just possibly disagreeing with CI on edge cases).
@@ -329,14 +361,42 @@ for arg in "$@"; do
   esac
 done
 
-if ! command -v docker >/dev/null 2>&1; then
-  echo "error: docker not on PATH. Install: brew install colima docker" >&2
+# Container runtime. podman is preferred (daemonless, and rootless where the
+# kernel allows it, so a gate run cannot outlive the user's session); docker via
+# colima remains the macOS path.
+#
+# RA8_CONTAINER_RUNTIME may carry arguments, e.g. "sudo podman". That is not
+# hypothetical: on a verification box that is itself an unprivileged LXC
+# container, rootless podman runs containers fine but cannot BUILD the
+# devcontainer -- apt drops privileges to the _apt user and its setgroups(2)
+# call is denied inside the nested user namespace ("Failed to setgroups -
+# setgroups (22: Invalid argument)"). Running podman as root inside that LXC
+# sidesteps the nested namespace, and root there is still unprivileged on the
+# Proxmox host, so the security boundary is unchanged.
+read -r -a RUNTIME_CMD <<<"${RA8_CONTAINER_RUNTIME:-}"
+if [[ "${#RUNTIME_CMD[@]}" -eq 0 ]]; then
+  for candidate in podman docker nerdctl; do
+    if command -v "$candidate" >/dev/null 2>&1; then
+      RUNTIME_CMD=("$candidate")
+      break
+    fi
+  done
+fi
+if [[ "${#RUNTIME_CMD[@]}" -eq 0 ]]; then
+  echo "error: no container runtime on PATH (looked for podman, docker, nerdctl)." >&2
+  echo "  Debian/Ubuntu: sudo apt-get install -y podman uidmap" >&2
+  echo "  macOS:         brew install colima docker && colima start" >&2
+  exit 1
+fi
+RUNTIME_NAME="$(basename "${RUNTIME_CMD[${#RUNTIME_CMD[@]} - 1]}")"
+if ! command -v "${RUNTIME_CMD[0]}" >/dev/null 2>&1; then
+  echo "error: container runtime '${RUNTIME_CMD[0]}' is not on PATH." >&2
   exit 1
 fi
 
 # On macOS the project uses colima (no Docker Desktop license). Auto-start it,
-# matching scripts/test-docker.sh.
-if [[ "$(uname -s)" == "Darwin" ]]; then
+# matching scripts/test-docker.sh. podman on macOS uses its own VM instead.
+if [[ "$(uname -s)" == "Darwin" && "$RUNTIME_NAME" == "docker" ]]; then
   if ! command -v colima >/dev/null 2>&1; then
     echo "error: colima not on PATH. Install: brew install colima" >&2
     exit 1
@@ -347,33 +407,95 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
   fi
 fi
 
-if ! docker info >/dev/null 2>&1; then
-  echo "error: docker daemon not reachable (try: colima start)" >&2
+if ! "${RUNTIME_CMD[@]}" info >/dev/null 2>&1; then
+  echo "error: '${RUNTIME_CMD[*]}' is installed but not usable." >&2
+  if [[ "$RUNTIME_NAME" == "docker" ]]; then
+    echo "  docker daemon not reachable (try: colima start)" >&2
+  else
+    echo "  check '${RUNTIME_CMD[*]} info' output for the underlying failure." >&2
+  fi
   exit 1
 fi
 
 # Build the devcontainer image. The Dockerfile has no COPY/ADD, so the tiny
 # .devcontainer/ directory is a sufficient build context -- do NOT ship the
 # multi-GB repo (datasheets, build trees) to the daemon as context.
-if [[ "$rebuild" == "1" ]] || ! docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
-  echo "==> building $IMAGE_TAG from .devcontainer/Dockerfile"
-  docker build -t "$IMAGE_TAG" -f "$DOCKERFILE" "$REPO_ROOT/.devcontainer"
+if [[ "$rebuild" == "1" ]] || ! "${RUNTIME_CMD[@]}" image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
+  echo "==> building $IMAGE_TAG from .devcontainer/Dockerfile (runtime: ${RUNTIME_CMD[*]})"
+  "${RUNTIME_CMD[@]}" build -t "$IMAGE_TAG" -f "$DOCKERFILE" "$REPO_ROOT/.devcontainer"
 else
   echo "==> reusing cached image $IMAGE_TAG (--rebuild / REBUILD=1 to refresh)"
 fi
 
-echo "==> running CI gates in container (fast=$fast)"
+echo "==> running CI gates in container (runtime=${RUNTIME_CMD[*]} fast=$fast)"
 # The host repo is bind-mounted READ-ONLY: the in-container step extracts a
 # clean `git archive HEAD` into a throwaway dir and builds there, so the host
 # source tree and its macOS CMake caches are never touched. Run as root so that
 # throwaway tree (and its fresh build dirs) is writable.
-exec docker run --rm \
+# The compiler cache is the ONE thing deliberately allowed to outlive the
+# container. It is content-addressed, so unlike a build directory it cannot
+# carry stale state into a later run: a changed input is simply a different
+# key. Mounting it read-write is what lets a second `make ci` -- by any agent,
+# from any workspace -- hit objects the first one compiled.
+#
+# CCACHE_BASEDIR + CCACHE_NOHASHDIR are required for that to work at all here:
+# each run builds in a fresh mktemp snapshot, and without path normalisation
+# every compilation would hash differently and always miss.
+# Git worktree support. In a worktree, $REPO_ROOT/.git is a FILE holding
+# "gitdir: /path/to/main/.git/worktrees/<name>" -- an absolute path OUTSIDE the
+# workspace. Bind-mounting only the workspace therefore gives the container a
+# dangling gitdir pointer and `git archive HEAD` dies with
+# "fatal: not a git repository". Mounting the main repo's common git dir at the
+# SAME absolute path makes the pointer resolve.
+#
+# This matters because per-agent worktrees are the isolation model on the shared
+# verification box (scripts/agent_workspace.sh): without this, `make ci` would
+# work only from a full clone, which is precisely the duplication that filled
+# the box's disk.
+worktree_args=()
+if [[ -f "$REPO_ROOT/.git" ]]; then
+  git_common="$(git -C "$REPO_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+  if [[ -n "$git_common" && -d "$git_common" ]]; then
+    worktree_args=(-v "$git_common":"$git_common":ro)
+    echo "==> git worktree detected; also mounting $git_common"
+  else
+    echo "warning: $REPO_ROOT/.git is a file but its common git dir was not found;" >&2
+    echo "         the in-container git archive will probably fail." >&2
+  fi
+fi
+
+ccache_args=()
+CCACHE_HOST_DIR="${RA8_CCACHE_DIR:-/var/cache/ccache-ra8}"
+if [[ -d "$CCACHE_HOST_DIR" && -w "$CCACHE_HOST_DIR" ]]; then
+  ccache_args=(
+    -v "$CCACHE_HOST_DIR":/ccache
+    -e CCACHE_DIR=/ccache
+    -e CCACHE_BASEDIR=/
+    -e CCACHE_NOHASHDIR=1
+    -e "CCACHE_SLOPPINESS=include_file_mtime,include_file_ctime,locale,time_macros"
+    -e CCACHE_MAXSIZE="${RA8_CCACHE_MAXSIZE:-20G}"
+  )
+  echo "==> compiler cache: $CCACHE_HOST_DIR -> /ccache"
+else
+  echo "==> compiler cache: none ($CCACHE_HOST_DIR absent or not writable)"
+fi
+
+# --rm is load-bearing, not hygiene: the snapshot tree and every build dir the
+# gates create live INSIDE the container, so the container exiting is what
+# reclaims them. Nothing a gate writes can survive to poison the next run, which
+# is why no "rm -rf tests/build build/tidy first" step is needed here.
+#
+# CMAKE_BUILD_PARALLEL_LEVEL defaults to 4 (the CI runner's value, so `make ci`
+# reproduces its timing) but is overridable for a beefier verification box.
+exec "${RUNTIME_CMD[@]}" run --rm \
   -u 0:0 \
   -e RA8_CI_INNER=1 \
   -e RA8_CI_FAST="$fast" \
   -e HOME=/tmp \
-  -e CMAKE_BUILD_PARALLEL_LEVEL=4 \
-  -v "$REPO_ROOT":/workspace:ro \
-  -w /workspace \
+  -e CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-4}" \
+  "${ccache_args[@]}" \
+  "${worktree_args[@]}" \
+  -v "$REPO_ROOT":"$REPO_ROOT":ro \
+  -w "$REPO_ROOT" \
   "$IMAGE_TAG" \
   bash scripts/ci.sh

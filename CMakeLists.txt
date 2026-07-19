@@ -53,6 +53,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
     endif()
 endif()
 
+# Compiler cache for the cross-build. ccache caches arm-none-eabi objects as
+# happily as host ones; on the shared verification box this is what stops six
+# agents from each rebuilding the same firmware from scratch.
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ccache.cmake")
+
 # C Standard - C23 (GNU2x)
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)

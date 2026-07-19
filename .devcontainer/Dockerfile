@@ -161,6 +161,25 @@ RUN python3 -m pip install --no-cache-dir --break-system-packages \
       libclang==${LIBCLANG_VERSION} \
     && python3 -c "import clang.cindex"
 
+# ccache -- the compiler cache cmake/ccache.cmake wires in as
+# CMAKE_<LANG>_COMPILER_LAUNCHER. It must exist INSIDE the image because every
+# gate build runs in this container against a throwaway snapshot tree; without
+# it each `make ci` recompiles the whole tree from scratch, which on the shared
+# verification box means six agents doing that simultaneously on 12 cores.
+#
+# The cache itself is a bind-mounted host directory (scripts/ci.sh mounts it at
+# /ccache and sets CCACHE_DIR), so hits survive the container being --rm'd and
+# are shared across agents. CCACHE_BASEDIR + CCACHE_NOHASHDIR, also set by
+# ci.sh, are what let a snapshot at a fresh mktemp path still hit entries
+# produced under a different path.
+#
+# Deliberately a late layer: appending it here leaves the expensive apt and
+# arm-gnu-toolchain layers above cached on rebuild.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ccache \
+    && rm -rf /var/lib/apt/lists/* \
+    && ccache --version
+
 # Create a non-root user so post-create scripts run as a human.
 # Ubuntu 24.04 ships a pre-existing UID/GID 1000 (`ubuntu`); remove it
 # first so we can claim the same id and have file ownership match the
