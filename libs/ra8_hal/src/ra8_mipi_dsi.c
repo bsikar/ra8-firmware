@@ -211,7 +211,6 @@ uint16_t s_mipi_dsi_pending_rx_len;
  */
 static bool s_initialized;
 
-
 /* =============================================================================
  * Internal helpers
  * =============================================================================
@@ -334,10 +333,6 @@ RA8_INTERNAL static uint32_t internal_ra8_mipi_dsi_make_dsisetr(const ra8_mipi_d
   return v;
 }
 
-
-
-
-
 /** @brief Implementation of `ra8_mipi_dsi_internal_wait_eq()` -- bounded busy-poll. */
 ra8_err_t
 ra8_mipi_dsi_internal_wait_eq(volatile const uint32_t* reg, uint32_t mask, uint32_t expect)
@@ -349,7 +344,6 @@ ra8_mipi_dsi_internal_wait_eq(volatile const uint32_t* reg, uint32_t mask, uint3
   }
   return k_ra8_err_hw_timeout;
 }
-
 
 /* =============================================================================
  * Public API -- lifecycle
