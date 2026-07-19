@@ -1,3 +1,7 @@
+# SCHEDULING ONLY -- the gate bodies live in scripts/ci.sh. See
+# .github/workflows/firmware.yml for the design note. A fork contributor runs
+# the same gate functions the trusted path runs, just a cheaper subset of them.
+#
 # SECURITY (public-repo hardening): lightweight CI for FORK pull requests.
 #
 # Every self-hosted workflow (firmware.yml, coverage.yml, board-sim-smoke.yml,
@@ -43,28 +47,19 @@ jobs:
         with:
           python-version: "3.11"
 
-      # ASCII-only gate (pure Python, version-independent) -- mirrors the ascii
-      # job in firmware.yml.
-      - name: ASCII-only source files
-        run: |
-          set -e
-          for dir in src libs tests examples port scripts tools docs; do
-            python3 scripts/utils/fix-encoding.py --check "$dir"
-          done
+      - run: bash scripts/ci.sh --gate ascii
+      - run: bash scripts/ci.sh --gate no-ai-attribution
+      - run: bash scripts/ci.sh --gate inclusive-terminology
 
-      - name: No AI attribution
-        run: python3 scripts/utils/check_no_ai_attribution.py
-
-      - name: Inclusive terminology
-        run: python3 scripts/utils/check_inclusive_terminology.py
-
-      # clang-format is pinned to major 22 across the project; install the same
-      # major on the hosted runner so a fork PR gets results identical to the
-      # trusted self-hosted path (no misleading version-drift failures). An
-      # install failure here only affects fork-PR feedback, never the owner's
-      # self-hosted CI.
       - name: Install clang-format-22 (matches the trusted-path pin)
         run: |
+          # ci-parity: infra -- installs the pinned formatter on the hosted
+          # runner; runs no project check. clang-format is pinned to major 22
+          # project-wide, so installing the same major here gives a fork PR
+          # results identical to the trusted self-hosted path instead of
+          # misleading version-drift failures. An install failure affects only
+          # fork-PR feedback, never the owner's self-hosted CI -- and the format
+          # gate hard-fails when clang-format-22 is still absent afterwards.
           set -euo pipefail
           codename="$(lsb_release -cs)"
           wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
@@ -74,7 +69,4 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang-format-22
 
-      - name: clang-format check
-        env:
-          CLANG_FORMAT: clang-format-22
-        run: bash scripts/format_code.sh --check --verbose
+      - run: bash scripts/ci.sh --gate format

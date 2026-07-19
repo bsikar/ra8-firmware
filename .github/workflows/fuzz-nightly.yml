@@ -1,3 +1,6 @@
+# SCHEDULING ONLY -- the gate body lives in scripts/ci.sh (gate: fuzz-sweep).
+# See .github/workflows/firmware.yml for the design note.
+#
 # Nightly libFuzzer sweep (#239). The `make fuzz` smoke run gives each
 # harness ~30 seconds -- enough to catch a build break, not enough to find
 # parser bugs. This workflow deep-runs every registered harness (the
@@ -8,8 +11,8 @@
 # libFuzzer is clang-only. run_fuzz.sh auto-selects the first clang on PATH
 # able to link -fsanitize=fuzzer (the self-hosted runner ships versioned
 # clang majors plus the libclang-rt fuzzer runtime -- the same packages the
-# mcdc job's -fprofile link path needs); the preflight step proves that
-# before spending the budget, so a de-provisioned runner fails in seconds
+# mcdc gate's -fprofile link path needs); the gate's preflight probe proves
+# that before spending the budget, so a de-provisioned runner fails in seconds
 # with an actionable message instead of after hours.
 name: fuzz-nightly
 
@@ -40,60 +43,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Resolve per-target budget
-        id: budget
-        env:
-          # Empty on schedule events; the workflow_dispatch input otherwise.
-          REQUESTED: ${{ inputs.seconds_per_target }}
-        run: |
-          budget="${REQUESTED:-600}"
-          case "$budget" in
-            ''|*[!0-9]*)
-              echo "invalid seconds_per_target: '$budget'" >&2
-              exit 1
-              ;;
-          esac
-          if [ "$budget" -eq 0 ]; then
-            echo "seconds_per_target must be >= 1 (0 means 'no limit' to libFuzzer)" >&2
-            exit 1
-          fi
-          echo "seconds=$budget" >> "$GITHUB_OUTPUT"
-          echo "Per-target budget: ${budget}s"
-
-      - name: Preflight -- clang + libFuzzer runtime + harness registry
-        run: |
-          set -e
-          # --list parses RA8_FUZZ_TARGETS and cross-checks it against the
-          # tests/fuzz/fuzz_ra8_*.c sources, so registry drift fails here.
-          echo "Registered harnesses:"
-          bash scripts/utils/run_fuzz.sh --list
-          # Compiler probe: the same trivial -fsanitize=fuzzer link
-          # run_fuzz.sh performs during compiler auto-selection, done here
-          # explicitly so a de-provisioned runner is diagnosed in seconds.
-          probe="$(mktemp -d)"
-          printf 'int LLVMFuzzerTestOneInput(const unsigned char* d, unsigned long n);\nint LLVMFuzzerTestOneInput(const unsigned char* d, unsigned long n) { (void)d; (void)n; return 0; }\n' > "$probe/p.c"
-          found=""
-          for cand in clang clang-22 clang-21 clang-20 clang-19 clang-18 clang-17; do
-            if command -v "$cand" >/dev/null 2>&1 \
-               && "$cand" -fsanitize=fuzzer -o "$probe/p" "$probe/p.c" >/dev/null 2>&1; then
-              found="$cand"
-              break
-            fi
-          done
-          rm -rf "$probe"
-          if [ -z "$found" ]; then
-            echo "FAIL: no clang on this runner can link -fsanitize=fuzzer." >&2
-            echo "      Install clang-<N> + libclang-rt-<N>-dev (the same" >&2
-            echo "      packages the mcdc job's profile runtime comes from)." >&2
-            exit 1
-          fi
-          echo "libFuzzer-capable compiler: $found"
-
-      - name: Run every harness (per-target budget)
-        run: |
-          set -o pipefail
-          bash scripts/utils/run_fuzz.sh --all "${{ steps.budget.outputs.seconds }}" \
-            2>&1 | tee fuzz-nightly.log
+      # RA8_FUZZ_SECONDS is empty on schedule events; the gate defaults to 600
+      # and validates the value, so an unparseable input fails immediately
+      # rather than being handed to libFuzzer as "no limit".
+      - env:
+          RA8_FUZZ_SECONDS: ${{ inputs.seconds_per_target }}
+        run: bash scripts/ci.sh --gate fuzz-sweep
 
       - name: Upload crash artefacts
         if: always()

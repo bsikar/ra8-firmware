@@ -2,37 +2,71 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# scripts/ci.sh -- reproduce the GitHub Actions CI gates locally, inside the
-# project devcontainer, BEFORE pushing.
+# scripts/ci.sh -- THE single definition of every CI gate in this repository.
 #
-# Why this exists:
-#   CI (.github/workflows/firmware.yml) runs on self-hosted Linux runners and
-#   repeatedly diverges from a macOS developer run:
-#     * The format gate pins clang-format-22; Homebrew (macOS) and Ubuntu ship
-#       different majors that disagree on edge cases.
-#     * The host unit tests install RAM with mmap(MAP_FIXED, 0x40000000, ...)
-#       (tests/mocks/ra8_sim_mmap.c). macOS arm64 refuses MAP_FIXED below 4 GiB,
-#       so every test SIGKILLs before main() on the Mac.
-#   Running the gates inside the Ubuntu 24.04 devcontainer reproduces the runner
-#   environment, so a red gate is caught here instead of in CI.
+# ===========================================================================
+# ONE SOURCE OF TRUTH
+# ===========================================================================
+# Every check CI runs is a shell function in this file, listed in the
+# RA8_GATE_REGISTRY table below. The GitHub Actions workflows contain no check
+# bodies at all: each gate-bearing step is a thin
 #
-# Keep this suite a SUPERSET-or-equal of firmware.yml, never a subset. Two jobs
-# were missing here for exactly that reason and let a red push through: the
-# annotation gate (a separate step of the pre-commit-gate job, not part of its
-# check_*.py block) and the MISRA ratchet (its own job -- `make cppcheck` runs
-# a different rule set with no baseline and does not cover it). When adding a
-# job to firmware.yml, add the matching gate below in the same change.
+#     run: bash scripts/ci.sh --gate <name>
 #
-# Usage (host):
-#   bash scripts/ci.sh            # full gate suite (mirrors firmware.yml)
-#   bash scripts/ci.sh --fast     # skip the slow misra/clang-tidy/coverage/ubsan gates
-#   bash scripts/ci.sh --rebuild  # force a devcontainer image rebuild first
+# driver. The YAML decides only SCHEDULING -- which gates run in which job, on
+# which runner, in parallel with what -- and never WHAT a gate does.
 #
-# The script re-enters itself inside the container with RA8_CI_INNER=1, where it
-# extracts a clean `git archive HEAD` (exactly what CI checks out) into a
-# throwaway dir and runs the gates there. The host repo is bind-mounted
-# read-only, so the host source tree and its macOS CMake caches are never
-# touched and stray in-source build artifacts never pollute the gates.
+# That inversion is deliberate. This suite drifted from firmware.yml three
+# separate times: a missing annotation gate plus a missing MISRA ratchet turned
+# a green local run into a red push; agents hand-copied gate bodies into
+# throwaway scripts that stopped mirroring CI the moment a gate was added; and
+# a third audit found 21 checks present in the workflow and absent here. Every
+# one of those was the same failure -- the same check written down twice. A
+# check written down once cannot disagree with itself.
+#
+# The residual hole is someone adding a raw `run:` step straight to a workflow,
+# re-creating a second home for check logic. scripts/utils/check_ci_parity.py
+# closes it: it parses every workflow and fails when a step runs anything other
+# than a registered gate, unless the step is explicitly tagged
+# `# ci-parity: infra` -- and infra steps may not invoke checkers. It runs as
+# the `ci-parity` gate below, so the guard guards itself.
+#
+# ---------------------------------------------------------------------------
+# ADDING A NEW GATE (the whole procedure)
+# ---------------------------------------------------------------------------
+#   1. Add one row to RA8_GATE_REGISTRY.
+#   2. Write the matching `gate_<name>` function (dashes become underscores).
+#   3. Add a step `run: bash scripts/ci.sh --gate <name>` to a workflow.
+#
+# Steps 1+2 without 3 fail the ci-parity gate ("registered but never
+# scheduled"). Step 3 without 1+2 fails it too ("unknown gate"). There is no
+# order in which doing half the work passes.
+#
+# ---------------------------------------------------------------------------
+# RUNNING IT
+# ---------------------------------------------------------------------------
+#   bash scripts/ci.sh --gate <name>   # one gate, in place, natively (CI path)
+#   bash scripts/ci.sh --native        # every gate natively, on a HEAD snapshot
+#   bash scripts/ci.sh --fast          # skip the slow gates
+#   bash scripts/ci.sh --list-gates    # machine-readable registry dump
+#   bash scripts/ci.sh                 # containerised (the macOS path)
+#
+# On Linux the native path IS the CI environment, so `--native` is the
+# supported local run and needs no container runtime. The container exists to
+# give macOS developers an Ubuntu userland: the format gate pins
+# clang-format-22 (Homebrew ships a different major), and the host unit tests
+# mmap peripheral RAM with MAP_FIXED below 4 GiB, which macOS arm64 refuses --
+# every test SIGKILLs before main() on the Mac. With no container runtime on a
+# Linux box this script runs natively rather than refusing; on macOS it
+# refuses, because a macOS "pass" would be a lie.
+#
+# ---------------------------------------------------------------------------
+# GATES FAIL LOUDLY ON MISSING TOOLS -- THEY NEVER SKIP
+# ---------------------------------------------------------------------------
+# A gate whose tool is absent must FAIL, not pass. This repo has been bitten:
+# check_annotations.py exits 0 when libclang is missing, so a strict gate
+# silently reported nothing. Use require_cmd / require_python_mod below for
+# every external dependency, and never let a gate body degrade to a no-op.
 
 set -euo pipefail
 
@@ -42,337 +76,1176 @@ IMAGE_TAG="ra8-ci:latest"
 DOCKERFILE="$REPO_ROOT/.devcontainer/Dockerfile"
 
 # ===========================================================================
-# IN-CONTAINER MODE. Entered via `docker run ... -e RA8_CI_INNER=1`. Runs every
-# gate, records PASS/FAIL, prints a summary, and exits non-zero if any failed.
+# THE GATE REGISTRY -- the single source of truth.
+#
+# Format: name|speed|description
+#
+#   speed=fast    always runs in the local suite (seconds to about a minute)
+#   speed=slow    skipped by --fast (builds, coverage, whole-tree analysis)
+#   speed=manual  never runs in the local suite: needs hardware, a nightly
+#                 budget, or the network. Still registered so the ci-parity
+#                 guard can bind it to its workflow step.
+#
+# Order is execution order for the full local suite. A gate that consumes
+# another gate's build output (sg-offsets, stack-usage after build-cross)
+# must follow it here.
 # ===========================================================================
-if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
-  fast="${RA8_CI_FAST:-0}"
+RA8_GATE_REGISTRY=(
+  "ci-parity|fast|workflow <-> gate-registry parity guard"
+  "ascii|fast|ASCII-only source files"
+  "copyright|fast|SPDX + copyright headers"
+  "since|fast|Doxygen @since tags on public headers"
+  "hil-sil-parity|fast|every HIL app is also exercised in board_sim"
+  "no-ai-attribution|fast|attribution ban (tracked files)"
+  "no-ai-attribution-commits|fast|attribution ban (commit messages)"
+  "inclusive-terminology|fast|OSHWA inclusive terminology (tracked files)"
+  "inclusive-terminology-commits|fast|inclusive terminology (commit messages)"
+  "format|fast|clang-format dry run"
+  "pre-commit-checks|fast|the check_*.py gate suite"
+  "annotations|fast|RA8_* annotation attributes (libclang)"
+  "lint-py-shell|fast|ruff + shellcheck + shfmt"
+  "cite-check|fast|HUM citation validator (strict)"
+  "roadmap-stats|fast|ROADMAP summary stats"
+  "sbom|fast|CycloneDX SBOM freshness"
+  "nsc-cmse|fast|ra8_nsc veneers compile under -mcmse"
+  "cppcheck|slow|cppcheck static analysis"
+  "misra|slow|MISRA-C 2012 ratchet"
+  "tidy|slow|clang-tidy"
+  "unit-tests|slow|host unit tests (ctest)"
+  "ubsan|slow|host unit tests under UBSan"
+  "coverage|slow|gcovr line/branch gate (90/80)"
+  "coverage-report|slow|coverage_report.sh + check_coverage.py ratchet"
+  "mcdc|slow|MC/DC coverage against the committed baseline"
+  "cache-bench|slow|cache/glyph benchmark toolchain"
+  "build-cross|slow|cross-build every example app"
+  "sg-offsets|slow|NSC SG-veneer slot offsets in the linked secure ELF"
+  "stack-usage|slow|aggregate -fstack-usage frames"
+  "docs|slow|Doxygen warning gate"
+  "board-sim-smoke|slow|board_sim boot smoke over the example apps"
+  "board-sim-io-fabric|slow|ra8_io fabric demos in board_sim"
+  "sil-integration|slow|every HIL app booted in board_sim against its hil.conf"
+  "mcdc-delta-base|manual|base-branch MC/DC summary for the PR delta comment"
+  "osv-scan|manual|OSV CVE sweep of the vendored SOUP (network, scheduled)"
+  "fuzz-sweep|manual|libFuzzer sweep of every harness (nightly budget)"
+  "hil-all|manual|hardware-in-the-loop suite on the bench EK-RA8D2"
+  "docs-publish|manual|build + force-push the Doxygen site to gh-pages"
+)
 
-  # Run the gates against a CLEAN snapshot of committed HEAD -- exactly what CI
-  # checks out -- NOT the bind-mounted working tree. The host tree carries
-  # gitignored in-source build dirs (src/app/build-sim/, examples/*/*/build/,
-  # tools/*/build/, ...) whose CMake-generated junk (CMakeCCompilerId.c, ...)
-  # would otherwise make clang-format / cppcheck / check_magic_numbers report
-  # failures CI never sees. Extracting `git archive HEAD` into a throwaway dir
-  # gives the gates the same clean tree the runner gets, and the host repo stays
-  # read-only. Uncommitted changes are intentionally excluded -- they are not
-  # what `git push` ships -- so a dirty tree gets a heads-up below.
-  export HOME=/tmp
-  git config --global --add safe.directory "$REPO_ROOT" >/dev/null 2>&1 || true
-  if [[ -n "$(git -C "$REPO_ROOT" status --porcelain 2>/dev/null)" ]]; then
-    echo "NOTE: working tree is dirty -- make ci tests committed HEAD only" >&2
-    echo "      (like CI). Commit your changes to have them gated." >&2
-  fi
-  work="/citree"
-  rm -rf "$work"
-  mkdir -p "$work"
-  # git-lfs is installed in the image so `git archive` does not choke trying to
-  # spawn the filter for the content/library/*.epub LFS pointers;
-  # GIT_LFS_SKIP_SMUDGE=1 makes it emit those pointer files as-is (no gate reads
-  # them, and no LFS object or network fetch is needed). Streaming from the
-  # packed .git objects into the container-local /citree is far faster than
-  # copying the working tree file-by-file over the (virtiofs) bind mount.
-  GIT_LFS_SKIP_SMUDGE=1 git -C "$REPO_ROOT" archive HEAD | tar -x -C "$work"
-  cd "$work"
+# ===========================================================================
+# HELPERS
+# ===========================================================================
 
-  # Pin clang-format to the CI version; fall back with a loud warning so the
-  # gate still RUNS (just possibly disagreeing with CI on edge cases).
-  pick_clang_format() {
-    local candidate
-    for candidate in clang-format-22 clang-format-21 clang-format-20 \
-      clang-format-19 clang-format-18 clang-format; do
-      if command -v "$candidate" >/dev/null 2>&1; then
-        printf '%s\n' "$candidate"
-        return 0
-      fi
-    done
+# Fail loudly when a required tool is absent. A gate must never silently
+# degrade to "nothing to check" -- that reports PASS for work never done.
+require_cmd() {
+  local tool="$1" hint="${2:-}"
+  if ! command -v "$tool" > /dev/null 2>&1; then
+    echo "ERROR: required tool '$tool' is not on PATH; this gate cannot run." >&2
+    [[ -n "$hint" ]] && echo "       $hint" >&2
     return 1
-  }
-  cf="$(pick_clang_format || true)"
-  if [[ -z "$cf" ]]; then
-    echo "ERROR: no clang-format binary found in the container." >&2
-    exit 1
   fi
-  if [[ "$cf" != "clang-format-22" ]]; then
-    echo "WARNING: clang-format-22 (the CI pin) is absent; using '$cf'." >&2
-    echo "         Format results may differ from CI. Add clang-format-22 to" >&2
-    echo "         .devcontainer/Dockerfile to make this gate faithful." >&2
+}
+
+require_python_mod() {
+  local mod="$1" hint="${2:-}"
+  if ! python3 -c "import $mod" > /dev/null 2>&1; then
+    echo "ERROR: the Python module '$mod' is missing; this gate cannot run." >&2
+    [[ -n "$hint" ]] && echo "       $hint" >&2
+    return 1
+  fi
+}
+
+# clang-format is pinned to major 22 project-wide: other majors disagree on
+# edge cases and produce diffs CI rejects. Absence is a hard failure, not a
+# fallback -- a run under clang-format-18 proves nothing about the gate.
+pick_clang_format() {
+  if command -v clang-format-22 > /dev/null 2>&1; then
+    printf 'clang-format-22\n'
+    return 0
+  fi
+  echo "ERROR: clang-format-22 is not on PATH. It is the project pin; other" >&2
+  echo "       majors disagree on edge cases, so a run against them cannot" >&2
+  echo "       stand in for the CI gate." >&2
+  echo "       Ubuntu: apt-get install clang-format-22 (apt.llvm.org)" >&2
+  echo "       macOS:  use the containerised path (bash scripts/ci.sh)" >&2
+  return 1
+}
+
+cpu_count() {
+  if command -v nproc > /dev/null 2>&1; then
+    nproc
+  elif command -v sysctl > /dev/null 2>&1; then
+    sysctl -n hw.ncpu
+  else
+    echo 4
+  fi
+}
+
+# Prepend the pinned Arm GNU Toolchain when the runner provisions it under
+# /opt, replacing what the workflows used to do with GITHUB_PATH. The apt
+# gcc-arm-none-eabi package ships no C++ standard library, so C++ apps
+# (ereader_shelf -> ra8_epub + tinyxml2) fail with "fatal error: cstddef";
+# the official ARM toolchain under /opt bundles libstdc++.
+use_pinned_arm_toolchain() {
+  if [[ -x /opt/arm-gnu-toolchain-13.3/bin/arm-none-eabi-gcc ]]; then
+    PATH="/opt/arm-gnu-toolchain-13.3/bin:$PATH"
+    export PATH
+  fi
+}
+
+# The commit range a message-scanning gate should cover.
+#
+# Derived from the GitHub event payload when running on a runner, so the range
+# logic lives here instead of being duplicated as inline expression bash in two
+# workflows. Falls back to the local upstream..HEAD, then HEAD~1..HEAD. A
+# before..head range never rots the way a hardcoded floor SHA does: a history
+# rewrite orphans the floor and silently empties the range, turning the gate
+# into a no-op.
+ci_commit_range() {
+  if [[ -n "${RA8_CI_COMMIT_RANGE:-}" ]]; then
+    printf '%s\n' "$RA8_CI_COMMIT_RANGE"
+    return 0
   fi
 
-  gate_names=()
-  gate_results=()
+  local head="" base=""
+  if [[ -n "${GITHUB_EVENT_PATH:-}" && -f "${GITHUB_EVENT_PATH}" ]]; then
+    head="$(python3 -c '
+import json, os
+ev = json.load(open(os.environ["GITHUB_EVENT_PATH"]))
+pr = ev.get("pull_request") or {}
+print((pr.get("head") or {}).get("sha") or os.environ.get("GITHUB_SHA") or "")
+' 2> /dev/null || true)"
+    base="$(python3 -c '
+import json, os
+ev = json.load(open(os.environ["GITHUB_EVENT_PATH"]))
+pr = ev.get("pull_request") or {}
+print((pr.get("base") or {}).get("sha") or ev.get("before") or "")
+' 2> /dev/null || true)"
+  fi
+  [[ -z "$head" ]] && head="${GITHUB_SHA:-HEAD}"
 
-  run_gate() {
-    local name="$1"
-    shift
+  # A base absent locally (force-push, shallow clone, the all-zero "new
+  # branch" sentinel) is unusable -- fall back rather than error out.
+  if [[ -z "$base" ]] || ! git cat-file -e "${base}^{commit}" 2> /dev/null; then
+    base="$(git rev-parse --verify --quiet '@{upstream}' 2> /dev/null || true)"
+  fi
+  if [[ -z "$base" ]] || ! git cat-file -e "${base}^{commit}" 2> /dev/null; then
+    base="$(git rev-parse --verify --quiet "${head}~1" 2> /dev/null || true)"
+  fi
+
+  if [[ -n "$base" ]]; then
+    printf '%s..%s\n' "$base" "$head"
+  else
+    printf '%s\n' "$head"
+  fi
+}
+
+# ===========================================================================
+# GATE BODIES
+#
+# Each mirrors exactly one CI step. Nothing here is a copy of anything in the
+# YAML, because the YAML has no copy to make.
+# ===========================================================================
+
+# --- ci-parity ------------------------------------------------------------
+# The backstop for the whole scheme: workflow-as-driver still drifts if
+# someone pastes a raw `run:` check into the YAML. This gate refuses that.
+gate_ci_parity() {
+  require_python_mod yaml "pip install pyyaml (the CI runners ship it)"
+  python3 scripts/utils/check_ci_parity.py
+}
+
+# --- ascii ----------------------------------------------------------------
+# Every first-party root. fix-encoding.py skips third_party and any non-text
+# extension, so vendored assets (the doxygen-awesome theme under docs/,
+# datasheets, fonts, epubs) are exempt automatically.
+gate_ascii() (
+  set -e
+  for dir in src libs tests examples port scripts tools docs; do
+    python3 scripts/utils/fix-encoding.py --check "$dir"
+  done
+)
+
+# --- copyright ------------------------------------------------------------
+gate_copyright() (
+  set -e
+  local files=() line
+  while IFS= read -r line; do files+=("$line"); done < <(
+    git ls-files '*.c' '*.h' '*.cpp' '*.hpp' '*.cmake' '*.sh' '*.py' 'CMakeLists.txt'
+  )
+  python3 scripts/utils/check-copyright.py "${files[@]}"
+)
+
+# --- since ----------------------------------------------------------------
+gate_since() (
+  set -e
+  local files=() line
+  while IFS= read -r line; do files+=("$line"); done < <(
+    git ls-files 'libs/ra8_*/inc/*.h'
+  )
+  python3 scripts/utils/check-since-version.py "${files[@]}"
+)
+
+# --- hil-sil-parity -------------------------------------------------------
+# SIM==HIL: re-derives each harness's app discovery from hil_all.sh /
+# sil_all.sh and fails if a hil/ app has no hil.conf, sits outside
+# sil_all.sh's run set, or declares a HIL_MODE board_sim cannot check.
+# Hardware-free, so an added HIL app cannot escape SIM coverage.
+gate_hil_sil_parity() {
+  python3 scripts/utils/check_hil_sil_parity.py
+}
+
+# --- no-ai-attribution ----------------------------------------------------
+gate_no_ai_attribution() {
+  python3 scripts/utils/check_no_ai_attribution.py
+}
+
+# --- no-ai-attribution-commits --------------------------------------------
+# The file scanner cannot see commit messages -- trailers live in git
+# metadata, not tracked files. Run the real scripts/git/commit-msg gate (the
+# single source of truth for the brand list) over the push/PR range.
+# CHECK_ONLY=ai runs just the attribution half, so a stray legacy term is
+# attributed to -- and fails -- the inclusive-terminology gate instead.
+gate_no_ai_attribution_commits() (
+  set -uo pipefail
+  local range rc=0 sha f hook_out
+  range="$(ci_commit_range)"
+  echo "Scanning commit messages in: $range"
+  for sha in $(git rev-list "$range"); do
+    f="$(mktemp)"
+    git log -1 --format=%B "$sha" > "$f"
+    if ! hook_out="$(CHECK_ONLY=ai bash scripts/git/commit-msg "$f" 2>&1)"; then
+      echo "$hook_out"
+      echo "::error::Commit $sha carries a forbidden trailer in its message"
+      rc=1
+    fi
+    rm -f "$f"
+  done
+  return $rc
+)
+
+# --- inclusive-terminology ------------------------------------------------
+gate_inclusive_terminology() {
+  python3 scripts/utils/check_inclusive_terminology.py
+}
+
+# --- inclusive-terminology-commits ----------------------------------------
+gate_inclusive_terminology_commits() (
+  set -uo pipefail
+  local range
+  range="$(ci_commit_range)"
+  echo "Scanning commit messages in: $range"
+  git log "$range" --format=%B \
+    | python3 scripts/utils/check_inclusive_terminology_commits.py
+)
+
+# --- format ---------------------------------------------------------------
+gate_format() (
+  set -e
+  local cf
+  cf="$(pick_clang_format)"
+  CLANG_FORMAT="$cf" bash scripts/format_code.sh --check --verbose
+)
+
+# --- pre-commit-checks ----------------------------------------------------
+# The check_*.py gate suite. Each entry runs in its default mode -- the same
+# way scripts/git/pre-commit invokes it.
+gate_pre_commit_checks() (
+  set -e
+  python3 scripts/utils/check_obsolete_standards.py
+  python3 scripts/utils/check_world_tags.py --strict
+  python3 scripts/utils/check_mcdc_block.py
+  # --all asks it to enumerate src/ + libs/ rather than read staged files.
+  python3 scripts/utils/check_no_dynamic_alloc.py --all
+  python3 scripts/utils/check_no_ai_attribution.py
+  # C23 nullptr-only in first-party code. Vendor macros UX_NULL / TX_NULL /
+  # FX_NULL / NX_NULL are exempted.
+  python3 scripts/utils/check_no_null.py --all
+  # NASA P10 Rule 4 -- every function fits in <=60 lines. Independent of the
+  # clang-tidy compile-db, so it covers cross-compiled TUs the host tidy build
+  # never sees (ThreadX/USBX/NetX/HAL register code).
+  python3 scripts/utils/check_function_size.py
+  # Maintainability cap -- no single .c/.h over 1000 lines. Complements the
+  # per-function Rule 4 gate, which a god-file of short bodies can pass while
+  # still being unreviewable.
+  python3 scripts/utils/check_file_size.py
+  # A header under a src/ directory is module-private and must be named
+  # *_internal.h. A non-internal src/ header is a misfiled public interface
+  # (belongs in inc/) or an unmarked private one.
+  python3 scripts/utils/check_header_file_placement.py
+  # The EK-RA8D2 pinout is a board fact owned by libs/ra8_board_ek_ra8d2.
+  # Forbid the (port << 8 | pin) idiom in examples so the USB-pin duplication
+  # #251 fixed (identical pins copy-pasted across 29 apps) cannot come back.
+  python3 scripts/utils/check_example_board_pins.py
+  # ra8_core is the foundation lib: it must depend on nothing above itself.
+  python3 scripts/utils/check_core_layering.py
+  # Every first-party source file ends in a trailing newline. Complements
+  # .clang-format InsertNewlineAtEOF (C/C++ only) by covering scripts and
+  # config-as-code.
+  python3 scripts/utils/check_final_newline.py
+  # No magic numbers. clang-tidy's readability-magic-numbers only sees files
+  # in the host compile-db (no example main.c, no ARM-only #ifdef paths),
+  # which is how ra8_delay_ms(500U) slipped past CI.
+  python3 scripts/utils/check_magic_numbers.py
+  # C23 [[...]] attribute syntax tree-wide (GNU __attribute__((...)) is
+  # rejected except for interrupt / cmse_nonsecure_entry / cmse_nonsecure_call,
+  # which clang has no portable [[gnu::]] spelling for).
+  python3 scripts/utils/check_no_gnu_attribute.py
+  # No silent ra8_err_t discards at TrustZone boot boundaries. A C23
+  # (void)-cast silences [[nodiscard]] by ISO rule, so -Werror can never catch
+  # a discarded ra8_cgc_init() right before a BLXNS (#191).
+  python3 scripts/utils/check_tz_boundary_discard.py
+  # Ban the numbered session-bookkeeping tags from comments and docs.
+  python3 scripts/utils/check_no_wave_references.py
+  # Every RA8_NSC_VENEER declared in ra8_nsc.h must have a definition -- a
+  # decl with no def advertises an NS->S trust-boundary entry point that does
+  # not exist.
+  python3 scripts/utils/check_nsc_veneer_defs.py
+  # Every insecure placeholder-crypto body (deterministic TRNG, forgeable
+  # key-import MAC, plain-SRAM key vault, non-cryptographic RSIP key-wrap)
+  # must sit behind the RA8_INSECURE_STUB_CRYPTO / RA8_SIMULATOR_MODE guard
+  # with a fail-closed #else, so a release image that forgot to swap in real
+  # crypto fails closed instead of shipping the stub (#180).
+  python3 scripts/utils/check_stub_crypto_guarded.py
+  # A HAL peripheral driver must not guard bare CPU asm
+  # (wfi/dsb/isb/nop/cpsie/cpsid/reset-spin) on RA8_SIMULATOR_MODE -- those
+  # route through libs/ra8_hal/inc/ra8_hw_intrinsics.h +
+  # tests/mocks/ra8_host_asm_stub.c so the driver stays branch-free and
+  # coverage lands on the shipping path (#293).
+  python3 scripts/utils/check_no_driver_asm_guard.py
+  # The in-tree line-number citation ban: reference a symbol, never a file
+  # plus line number, since line numbers rot.
+  python3 scripts/utils/check_line_citations.py
+  # Per-app SystemInit boot init-order audit.
+  python3 scripts/utils/audit_init_order.py
+  # Every newly added compound boolean decision must arrive with MC/DC
+  # vectors. This is the local counterpart of the mcdc gate's baseline
+  # comparison: catching the gap at the decision keeps the baseline from
+  # sliding in the first place. It was in the hand-maintained local suite but
+  # never in the workflow, which is the same drift in the other direction --
+  # now that the workflow calls this gate, both sides run it.
+  python3 scripts/utils/check_new_compound_has_mcdc.py
+  # OSHWA inclusive-terminology gate over first-party sources.
+  python3 scripts/utils/check_inclusive_terminology.py
+  # MAXIMUM-documentation gate: every function -- including statics -- carries
+  # the full Doxygen tag set.
+  python3 scripts/utils/doxy_audit.py --check
+  # ... and for aggregate members: every enum value, struct/union member, and
+  # macro across the first-party tree carries a doc comment.
+  python3 scripts/utils/doxy_audit.py --members --check
+  # Every hw_validated/hil app must be instrumented (a probed counter +
+  # HIL_MODE=jlink_memprobe) or explicitly HIL_FAULT_EXPECTED -- a bare
+  # HIL_MODE=alive proves nothing.
+  python3 scripts/utils/check_hil_alive_policy.py
+  # Reject explicit integer casts inside TEST_ASSERT_EQ arguments. The macro
+  # widens both args to int64_t, so an outer (int)/(uint32_t) cast is
+  # redundant and latently buggy (a (int) cast on a uint32_t enum truncates
+  # before the widening).
+  python3 scripts/utils/check_assert_casts.py tests/*.c
+)
+
+# --- annotations ----------------------------------------------------------
+# check_annotations.py walks the AST via the libclang Python bindings and
+# enforces the ra8_* annotation rules (docs/ANNOTATIONS.md).
+#
+# The import probe is load-bearing: check_annotations.py EXITS 0 when libclang
+# is missing, so without the probe a strict gate reports nothing and passes.
+# That is strictly worse than not running it at all.
+gate_annotations() (
+  set -e
+  require_python_mod clang.cindex \
+    "CI installs libclang==18.1.1; add it to .devcontainer/Dockerfile too."
+  # Regression-test the checker itself before trusting its verdict.
+  python3 scripts/utils/check_annotations.py --selftest
+  python3 scripts/utils/check_annotations.py --check
+)
+
+# --- lint-py-shell --------------------------------------------------------
+# --require: fail (never skip) when a tool is missing. These gates fail on ANY
+# finding -- there is no grandfathering.
+gate_lint_py_shell() (
+  set -e
+  python3 scripts/utils/check_ruff.py --require
+  python3 scripts/utils/check_shell.py --require
+)
+
+# --- cite-check -----------------------------------------------------------
+# cite-VALIDATION pass: every existing HUM cite must parse and point at a real
+# chapter/page. The complementary cite-COVERAGE pass (--require-cites: does
+# every MMIO access HAVE a cite?) surfaces a large libs/ra8_hal backlog and is
+# not yet gate-clean, so it is deliberately not wired blocking.
+gate_cite_check() {
+  python3 scripts/utils/cite_check.py --strict
+}
+
+# --- roadmap-stats --------------------------------------------------------
+gate_roadmap_stats() {
+  if [[ -f docs/ROADMAP.md ]]; then
+    python3 scripts/utils/roadmap_stats.py --check
+  else
+    echo "no docs/ROADMAP.md -- skipping roadmap_stats"
+  fi
+}
+
+# --- sbom -----------------------------------------------------------------
+# Supply-chain provenance gate. Fails when the committed CycloneDX SBOM
+# (docs/sbom/ra8-firmware.cdx.json) is stale or the vendored libs/third_party/
+# tree drifted from the registry -- an uncatalogued SOUP directory, or a
+# version macro that disagrees with the recorded version.
+gate_sbom() {
+  python3 scripts/utils/gen_sbom.py --check
+}
+
+# --- nsc-cmse -------------------------------------------------------------
+# Compiles every libs/ra8_nsc TU under -mcmse with -Wall -Wextra -Werror. The
+# warning flags are load-bearing: a bare -fsyntax-only run is what let a
+# veneer attribute clash go unnoticed. No app links the comms/eth veneers, so
+# only this gate would catch an over-4-arg cmse_nonsecure_entry regression.
+gate_nsc_cmse() (
+  set -e
+  # -mcpu=cortex-m85 needs arm-gcc 12.3+; the distro package on some boxes is
+  # older and fails with "unrecognized -mcpu target". Prefer the pinned
+  # toolchain when the runner provides it.
+  use_pinned_arm_toolchain
+  require_cmd arm-none-eabi-gcc
+  bash scripts/utils/check_nsc_cmse.sh
+)
+
+# --- cppcheck -------------------------------------------------------------
+# cppcheck 2.13 (Ubuntu 24.04) is finicky about the --suppressions-list
+# parser; convert each non-comment, non-blank line into an explicit
+# --suppress= flag, the syntax every version accepts. examples/host/* are
+# macOS-only dev tools (C23 nullptr + AppKit), not cross-compiled firmware.
+gate_cppcheck() (
+  set -e
+  require_cmd cppcheck
+  local apps=() dir line
+  if [[ -d examples ]]; then
+    for dir in examples/*/*/ examples/*/*/*/ examples/*/*/*/*/; do
+      dir="${dir%/}"
+      case "$dir" in examples/host/*) continue ;; esac
+      [[ -f "$dir/main.c" ]] && apps+=("$dir")
+    done
+  fi
+  local suppress_args=()
+  while IFS= read -r line; do
+    line="${line%$'\r'}"
+    line="${line## }"
+    line="${line%% }"
+    [[ -z "$line" ]] && continue
+    case "$line" in \#*) continue ;; esac
+    suppress_args+=("--suppress=$line")
+  done < .cppcheck-suppressions
+  cppcheck --enable=warning,style,performance,portability \
+    --error-exitcode=1 \
+    "${suppress_args[@]}" \
+    --inline-suppr \
+    -i libs/third_party \
+    --std=c23 \
+    src libs "${apps[@]}"
+)
+
+# --- misra ----------------------------------------------------------------
+# misra_check.sh (cppcheck misra.py addon) over libs/ src/ port/, then
+# misra_ratchet.py compares per-file-per-rule finding counts against
+# .github/misra-baseline.txt. `make cppcheck` is NOT a substitute: different
+# rule set, no addon, no baseline, so a new MISRA finding sails through it.
+gate_misra() (
+  set -e
+  require_cmd cppcheck
+  bash scripts/utils/misra_check.sh
+  python3 scripts/utils/misra_ratchet.py --check
+)
+
+# --- tidy -----------------------------------------------------------------
+gate_tidy() {
+  bash scripts/clang_tidy.sh --check --verbose
+}
+
+# --- unit-tests -----------------------------------------------------------
+gate_unit_tests() (
+  set -e
+  bash tests/build_tests.sh
+  bash tests/run_tests.sh
+)
+
+# --- ubsan ----------------------------------------------------------------
+# The whole host suite rebuilt under -fsanitize=undefined in its own tree with
+# UBSAN_OPTIONS=halt_on_error=1, so any undefined behaviour is a hard test
+# failure. Pin the compiler like the coverage gate does: the ambient `gcc`
+# changes with the runner image, and -Wconversion findings are
+# compiler-version-specific.
+gate_ubsan() (
+  set -e
+  require_cmd gcc-13 "the UBSan gate pins gcc-13 to match CI"
+  CC=gcc-13 CXX=g++-13 make ubsan
+)
+
+# --- coverage -------------------------------------------------------------
+gate_coverage() (
+  set -e
+  require_cmd gcovr
+  bash scripts/coverage.sh --gate
+)
+
+# --- coverage-report ------------------------------------------------------
+# The plain statement + branch flow from docs/COVERAGE.md, ratcheted against
+# .github/coverage-baseline.txt. Independent of the MC/DC pipeline.
+# --in-container is a no-op marker that skips the script's macOS branch.
+gate_coverage_report() (
+  set -e
+  require_cmd gcovr
+  bash scripts/utils/coverage_report.sh --in-container
+  python3 scripts/utils/check_coverage.py
+)
+
+# --- mcdc -----------------------------------------------------------------
+# clang-18 source-based coverage with -fcoverage-mcdc, gated against
+# .github/mcdc-baseline.txt so coverage can never regress.
+#
+# RA8_MCDC_THRESHOLD=0 disables mcdc_report.sh's own per-file gate; the
+# project-wide baseline comparison below is the actual quality bar.
+gate_mcdc() (
+  set -e
+  set -o pipefail
+  require_cmd clang-18 "the MC/DC gate pins clang-18 to match CI"
+
+  CC=clang-18 CXX=clang++-18 RA8_MCDC_THRESHOLD=0 \
+    bash scripts/utils/mcdc_report.sh --in-container | tee mcdc-output.log
+
+  local summary="build/mcdc-report/summary.txt"
+  local baseline_file="${MCDC_BASELINE_FILE:-.github/mcdc-baseline.txt}"
+  if [[ ! -f "$summary" ]]; then
+    echo "FAIL: MC/DC summary not produced at $summary" >&2
+    return 1
+  fi
+  if [[ ! -f "$baseline_file" ]]; then
+    echo "FAIL: baseline file $baseline_file missing" >&2
+    return 1
+  fi
+  local baseline total_line measured drop
+  baseline="$(tr -d '[:space:]' < "$baseline_file")"
+  total_line="$(grep -E '^TOTAL' "$summary" | tail -1 || true)"
+  if [[ -z "$total_line" ]]; then
+    echo "FAIL: no TOTAL row in $summary" >&2
+    tail -40 "$summary" || true
+    return 1
+  fi
+  # Last percentage column on the TOTAL row is the MC/DC %.
+  measured="$(echo "$total_line" | grep -oE '[0-9]+\.[0-9]+%' | tail -1 | tr -d '%')"
+  if [[ -z "$measured" ]]; then
+    echo "FAIL: could not parse MC/DC % from TOTAL row: $total_line" >&2
+    return 1
+  fi
+  printf 'Measured MC/DC: %s%%   Baseline: %s%%\n' "$measured" "$baseline"
+  drop="$(awk -v m="$measured" -v b="$baseline" 'BEGIN{print (m+0 < b+0) ? 1 : 0}')"
+  if [[ "$drop" -eq 1 ]]; then
+    echo "FAIL: MC/DC coverage ${measured}% dropped below baseline ${baseline}%"
+    echo ""
+    echo "      Either add MC/DC test vectors for the new compound decisions"
+    echo "      OR reduce the decision count. Do NOT lower the baseline file"
+    echo "      to make this pass."
+    echo ""
+    echo "      scripts/utils/check_new_compound_has_mcdc.py is supposed to"
+    echo "      catch this locally; if a regression reached CI, either the hook"
+    echo "      was bypassed or a citation in an existing test drifted out of"
+    echo "      the +/- 25-line tolerance window. See docs/MCDC.md."
+    return 1
+  fi
+  echo "PASS: MC/DC coverage holds the baseline."
+)
+
+# --- cache-bench ----------------------------------------------------------
+# #147/#160: builds + runs cache_bench (the SLRU decision record), reader_vmem
+# (drives the real ra8_vmem with a reader workload and emits a
+# cache_bench-consumable trace) and glyph_bench (sweeps the real glyph atlas),
+# re-confirming SLRU on the captured reader trace on every push. clang-18
+# accepts the C23 typed-enum / nullptr syntax the bench tools and ra8_mem use.
+gate_cache_bench() (
+  set -e
+  require_cmd clang-18 "the cache-bench gate pins clang-18 to match CI"
+  CC=clang-18 make bench-cache
+)
+
+# --- build-cross ----------------------------------------------------------
+# #178: RA8_STRICT_TOOLCHAIN=1 promotes toolchain-ra8d2.cmake's version
+# mismatch warning to a hard error, so a runner with a skewed arm-gcc fails
+# loudly instead of silently shipping version-divergent miniz codegen.
+gate_build_cross() (
+  set -e
+  use_pinned_arm_toolchain
+  require_cmd arm-none-eabi-gcc
+  RA8_STRICT_TOOLCHAIN=1 bash scripts/build_all_examples.sh
+)
+
+# --- sg-offsets -----------------------------------------------------------
+# The only automated guard that the NSC Secure-Gateway veneer slot offsets in
+# the linked SECURE ELF still match the k_sg_off_* enum ns_main.c reaches them
+# by (ld emits the 8-byte stubs in ascending symbol order, so a rename or
+# reorder silently shifts the slots). Reads the build-cross output:
+# tz_nsc_cgc_usb is the app that binds all three ra8_nsc_cgc_* veneers. Its NS
+# image and every non-TZ app carry no veneers and the checker skips them.
+gate_sg_offsets() (
+  set -e
+  local elf
+  elf="$(find examples -type f -name 'tz_nsc_cgc_usb.elf' | head -n 1)"
+  if [[ -z "$elf" ]]; then
+    echo "check_sg_offsets: tz_nsc_cgc_usb secure ELF not found -- run the" >&2
+    echo "                  build-cross gate first (this gate reads its output)." >&2
+    return 1
+  fi
+  echo "check_sg_offsets: inspecting $elf"
+  python3 scripts/utils/check_sg_offsets.py "$elf"
+)
+
+# --- stack-usage ----------------------------------------------------------
+# Every app is compiled with -fstack-usage (cmake/ra8_warnings.cmake), so
+# build-cross left a per-object .su file next to each object. Aggregate them
+# project-wide and fail on any first-party frame over 2048 B, any `dynamic`
+# (VLA/alloca) frame -- NASA P10 Rule 3 -- or any critical-path module
+# (ra8_isr/ra8_check/ra8_err/ra8_mpu/ra8_cgc/ra8_pfs) over 256 B.
+gate_stack_usage() (
+  set -e
+  if [[ -z "$(find . -name '*.su' -print -quit)" ]]; then
+    echo "stack_usage_check: no .su files found -- run the build-cross gate" >&2
+    echo "                   first (this gate reads its output)." >&2
+    return 1
+  fi
+  python3 scripts/utils/stack_usage_check.py --strict
+)
+
+# --- docs -----------------------------------------------------------------
+# --gate builds the single top-level Doxyfile with the project-pinned doxygen
+# (downloaded + sha256-verified by provision_doxygen.sh on first use, cached
+# under build/tools/ after) and writes the warning log. Using the same pinned
+# version as docs-publish keeps this gate and the published site in lockstep.
+gate_docs() (
+  set -e
+  bash scripts/build_docs.sh --gate
+  local log="build/docs-gate/doxygen-warnings.log"
+  if [[ ! -f "$log" ]]; then
+    echo "FAIL: doxygen warning log not produced at $log" >&2
+    return 1
+  fi
+  # Filter known-benign Doxygen warnings:
+  #   - "for \ref command" -- Doxygen treats Markdown links in README.md as
+  #     \ref directives; targets outside INPUT "fail" to resolve but render.
+  #   - "multiple documentation sections" / "from the argument list of" --
+  #     @retval / @param present in both the public header (canonical) and the
+  #     .c definition. Cosmetic, no output impact.
+  local relevant_warnings
+  relevant_warnings="$(grep "warning:" "$log" \
+    | grep -v "for .ref command" \
+    | grep -v "multiple documentation sections" \
+    | grep -v "from the argument list of " \
+    | grep -v "multiple @param documentation sections" \
+    | grep -v "has multiple documentation sections" \
+    | grep -v "tag INCLUDE_PATH:" \
+    | grep -v "is not a readable file or directory" \
+    | grep -v "found more than one .mainpage comment block" \
+    | grep -v "ignoring .startuml command because PLANTUML_JAR_PATH is not set" \
+    | grep -v "End of list marker found without any preceding list items" \
+    | grep -v "Invalid list item found" \
+    | grep -v "Found unknown command" \
+    | grep -v "explicit link request to" \
+    | grep -v "argument '.*' of command @param is not found" \
+    | grep -v "found documented return type for .* that does not return anything" \
+    | grep -v "Problems running latex" || true)"
+  if [[ -n "$relevant_warnings" ]]; then
+    echo "Doxygen reported warnings:"
+    echo "$relevant_warnings"
+    return 1
+  fi
+)
+
+# --- board-sim-smoke ------------------------------------------------------
+# board_sim (tools/board_sim) boots the real cross-compiled .elf on an
+# emulated Cortex-M with the RA8D2 peripheral space modelled, asserting each
+# image reaches its main loop without faulting (no invalid opcode, no unmapped
+# access) and is not parked in a panic/fault halt.
+gate_board_sim_smoke() (
+  set -e
+  use_pinned_arm_toolchain
+  bash scripts/board_sim_smoke.sh
+)
+
+# --- board-sim-io-fabric --------------------------------------------------
+# ra8_io fabric (#155) end-to-end: every storage backend driven through the
+# same VFS API (block device -> ra8_fs FAT format/mount -> VFS mkdir + nested
+# file round-trip), plus the format registry, the LRU sector cache, and the
+# DEFLATE stream, asserted by each demo's PASS banner. Covers RAM/SRAM,
+# external SDRAM, SD-over-SPI, native SDHI, OSPI NOR (erase-before-write) and
+# on-chip MRAM (program/erase).
+gate_board_sim_io_fabric() (
+  set -e
+  use_pinned_arm_toolchain
+  bash scripts/board_sim_smoke.sh \
+    ra8_io_demo ra8_io_sdram_demo ra8_io_compress_demo \
+    ra8_io_sd_demo ra8_io_sdhi_demo ra8_io_xspi_demo ra8_io_mram_demo \
+    ra8_io_fsfmt_demo ra8_io_cache_demo
+)
+
+# --- sil-integration ------------------------------------------------------
+# The hardware-free mirror of the bench HIL suite: every app under
+# examples/ek_ra8d2/hw_validated/hil/ booted in board_sim headless and checked
+# against the SAME per-app hil.conf the real board is checked against.
+# ENFORCING -- a board_sim modelling gap or a firmware regression fails here
+# rather than being logged and ignored.
+gate_sil_integration() (
+  set -e
+  use_pinned_arm_toolchain
+  # ereader_shelf compiles against a COMMITTED generated MRAM library header.
+  # The bake is not reproducible across architectures (libjpeg SIMD decode
+  # rounding differs x86_64 vs Apple silicon at the same Pillow version), so
+  # the fixture is tracked; assert it is present so a future re-gitignore
+  # fails loudly here instead of as a confusing app FAIL.
+  test -s examples/ek_ra8d2/hw_validated/hil/ereader_shelf/library.h
+  bash scripts/sil_all.sh -j "$(cpu_count)"
+)
+
+# --- mcdc-delta-base (manual) ---------------------------------------------
+# Builds the BASE branch's MC/DC summary in a throwaway worktree so the PR
+# comment can show a per-file delta. Informational, never blocking: the
+# workflow marks the step continue-on-error and an empty summary just renders
+# the PR column alone.
+gate_mcdc_delta_base() (
+  set -e
+  local base_ref="${RA8_MCDC_BASE_REF:-main}"
+  local tree
+  tree="$(mktemp -d "${TMPDIR:-/tmp}/ra8-mcdc-base.XXXXXXXX")"
+  rm -rf "$tree"
+  git worktree add "$tree" "origin/${base_ref}"
+  (
+    cd "$tree"
+    CC=clang-18 CXX=clang++-18 RA8_MCDC_THRESHOLD=0 \
+      bash scripts/utils/mcdc_report.sh --in-container
+  ) || echo "base-branch MC/DC build failed -- the delta will be PR-only"
+  if [[ -f "$tree/build/mcdc-report/summary.txt" ]]; then
+    cp "$tree/build/mcdc-report/summary.txt" base-summary.txt
+  else
+    : > base-summary.txt
+  fi
+  git worktree remove --force "$tree" || rm -rf "$tree"
+)
+
+# --- osv-scan (manual) ----------------------------------------------------
+# Two legs (scripts/utils/osv_scan.sh): the SBOM purl leg, and the commit leg
+# that resolves GIT-range advisories for the git-vendored C/C++ SOUP. Exits 1
+# on any finding. Downloads a version-pinned, sha256-verified scanner, so it
+# needs the network and is scheduled weekly rather than run per push.
+gate_osv_scan() (
+  set -e
+  require_cmd curl
+  local version="${OSV_SCANNER_VERSION:?set OSV_SCANNER_VERSION}"
+  local sha256="${OSV_SCANNER_SHA256:?set OSV_SCANNER_SHA256}"
+  # The scan is only as good as the SBOM it reads; refuse to scan a stale one.
+  python3 scripts/utils/gen_sbom.py --check
+  curl -fsSL -o osv-scanner \
+    "https://github.com/google/osv-scanner/releases/download/v${version}/osv-scanner_linux_amd64"
+  echo "${sha256}  osv-scanner" | sha256sum -c -
+  chmod +x osv-scanner
+  bash scripts/utils/osv_scan.sh --scanner ./osv-scanner --output-dir osv-report
+)
+
+# --- fuzz-sweep (manual) --------------------------------------------------
+# Deep-runs every registered harness (the RA8_FUZZ_TARGETS registry in
+# tests/fuzz/CMakeLists.txt, consumed through run_fuzz.sh --all) with a real
+# per-target budget. --list parses the registry and cross-checks it against
+# the tests/fuzz/fuzz_ra8_*.c sources, so registry drift fails before the
+# budget is spent.
+gate_fuzz_sweep() (
+  set -e
+  set -o pipefail
+  local budget="${RA8_FUZZ_SECONDS:-600}"
+  case "$budget" in
+    '' | *[!0-9]*)
+      echo "invalid RA8_FUZZ_SECONDS: '$budget'" >&2
+      return 1
+      ;;
+  esac
+  if [[ "$budget" -eq 0 ]]; then
+    echo "RA8_FUZZ_SECONDS must be >= 1 (0 means 'no limit' to libFuzzer)" >&2
+    return 1
+  fi
+  echo "Registered harnesses:"
+  bash scripts/utils/run_fuzz.sh --list
+  # Compiler probe: the same trivial -fsanitize=fuzzer link run_fuzz.sh
+  # performs during auto-selection, done explicitly so a de-provisioned runner
+  # is diagnosed in seconds instead of after hours.
+  local probe found="" cand
+  probe="$(mktemp -d)"
+  printf 'int LLVMFuzzerTestOneInput(const unsigned char* d, unsigned long n);\nint LLVMFuzzerTestOneInput(const unsigned char* d, unsigned long n) { (void)d; (void)n; return 0; }\n' > "$probe/p.c"
+  for cand in clang clang-22 clang-21 clang-20 clang-19 clang-18 clang-17; do
+    if command -v "$cand" > /dev/null 2>&1 \
+      && "$cand" -fsanitize=fuzzer -o "$probe/p" "$probe/p.c" > /dev/null 2>&1; then
+      found="$cand"
+      break
+    fi
+  done
+  rm -rf "$probe"
+  if [[ -z "$found" ]]; then
+    echo "FAIL: no clang on this runner can link -fsanitize=fuzzer." >&2
+    echo "      Install clang-<N> + libclang-rt-<N>-dev (the same packages" >&2
+    echo "      the mcdc gate's profile runtime comes from)." >&2
+    return 1
+  fi
+  echo "libFuzzer-capable compiler: $found"
+  bash scripts/utils/run_fuzz.sh --all "$budget" 2>&1 | tee fuzz-nightly.log
+)
+
+# --- hil-all (manual) -----------------------------------------------------
+# Drives scripts/hil_all.sh, which auto-discovers every app under
+# examples/ek_ra8d2/hw_validated/hil/ and verifies each via its hil.conf
+# manifest. Needs the bench EK-RA8D2 attached to the Pi 5 runner.
+gate_hil_all() (
+  set -e
+  require_cmd arm-none-eabi-gcc
+  bash scripts/hil_all.sh --list
+  # hil_all.sh builds them itself, but doing it explicitly first gives clearer
+  # logs when a build (not a flash) fails.
+  local apps=() line
+  while IFS= read -r line; do apps+=("$line"); done < <(
+    find examples/ek_ra8d2/hw_validated/hil -mindepth 1 -maxdepth 1 -type d \
+      -exec basename {} \;
+  )
+  make -j"$(cpu_count)" "${apps[@]}"
+  bash scripts/hil_all.sh --skip-build
+)
+
+# --- docs-publish (manual) ------------------------------------------------
+# Builds the Doxygen HTML and force-pushes it to the orphan gh-pages branch.
+# Not a pass/fail quality gate -- registered so ci-parity can bind the publish
+# workflow's step and no unreviewed `run:` body hides inside it.
+gate_docs_publish() (
+  set -e
+  make docs
+  bash scripts/publish_docs.sh
+)
+
+# ===========================================================================
+# REGISTRY PLUMBING
+# ===========================================================================
+
+gate_fn_name() {
+  printf 'gate_%s\n' "${1//-/_}"
+}
+
+registry_names() {
+  local row
+  for row in "${RA8_GATE_REGISTRY[@]}"; do
+    printf '%s\n' "${row%%|*}"
+  done
+}
+
+# Machine-readable dump consumed by scripts/utils/check_ci_parity.py. Also
+# self-verifies that every registered name has a function behind it, so a
+# typo'd registry row is caught here rather than at gate-run time.
+list_gates() {
+  local row name speed desc rest fn rc=0
+  for row in "${RA8_GATE_REGISTRY[@]}"; do
+    name="${row%%|*}"
+    rest="${row#*|}"
+    speed="${rest%%|*}"
+    desc="${rest#*|}"
+    fn="$(gate_fn_name "$name")"
+    if ! declare -F "$fn" > /dev/null 2>&1; then
+      echo "ERROR: registry lists gate '$name' but no function $fn() exists." >&2
+      rc=1
+      continue
+    fi
+    case "$speed" in
+      fast | slow | manual) ;;
+      *)
+        echo "ERROR: gate '$name' has unknown speed class '$speed'." >&2
+        rc=1
+        ;;
+    esac
+    printf '%s\t%s\t%s\n' "$name" "$speed" "$desc"
+  done
+  return $rc
+}
+
+run_one_gate() {
+  local name="$1" fn
+  fn="$(gate_fn_name "$name")"
+  if ! declare -F "$fn" > /dev/null 2>&1; then
+    echo "ci.sh: unknown gate '$name'. Registered gates:" >&2
+    registry_names | sed 's/^/  /' >&2
+    return 2
+  fi
+  "$fn"
+}
+
+# ===========================================================================
+# FULL-SUITE RUNNER (native). Executes every registry gate in order and prints
+# a PASS/FAIL line per gate.
+# ===========================================================================
+run_suite() {
+  local fast="$1"
+  local gate_names=() gate_results=()
+  local name speed
+
+  while read -r name speed _; do
+    if [[ "$speed" == "manual" ]]; then
+      continue
+    fi
+    if [[ "$fast" == "1" && "$speed" == "slow" ]]; then
+      continue
+    fi
     echo ""
     echo "==================================================================="
     echo "== GATE: $name"
     echo "==================================================================="
-    if "$@"; then
-      gate_names+=("$name")
+    gate_names+=("$name")
+    if run_one_gate "$name"; then
       gate_results+=("PASS")
     else
-      gate_names+=("$name")
       gate_results+=("FAIL")
     fi
-  }
-
-  # --- gate: clang-format (firmware.yml job: format) -----------------------
-  gate_clang_format() {
-    CLANG_FORMAT="$cf" bash scripts/format_code.sh --check --verbose
-  }
-
-  # --- gate: cppcheck (firmware.yml job: cppcheck) -------------------------
-  # Mirrors the workflow step exactly: convert each .cppcheck-suppressions line
-  # into an explicit --suppress= flag (cppcheck 2.13 on Ubuntu 24.04 is finicky
-  # about --suppressions-list), skip examples/host/* (macOS-only dev tools), and
-  # run cppcheck over src libs <example app dirs> with --error-exitcode=1.
-  gate_cppcheck() (
-    set -e
-    local apps=() dir line
-    if [[ -d examples ]]; then
-      for dir in examples/*/*/ examples/*/*/*/ examples/*/*/*/*/; do
-        dir="${dir%/}"
-        case "$dir" in examples/host/*) continue ;; esac
-        [[ -f "$dir/main.c" ]] && apps+=("$dir")
-      done
-    fi
-    local suppress_args=()
-    while IFS= read -r line; do
-      line="${line%$'\r'}"
-      line="${line## }"
-      line="${line%% }"
-      [[ -z "$line" ]] && continue
-      case "$line" in \#*) continue ;; esac
-      suppress_args+=("--suppress=$line")
-    done <.cppcheck-suppressions
-    cppcheck --enable=warning,style,performance,portability \
-      --error-exitcode=1 \
-      "${suppress_args[@]}" \
-      --inline-suppr \
-      -i libs/third_party \
-      --std=c23 \
-      src libs "${apps[@]}"
-  )
-
-  # --- gate: pre-commit check_*.py suite (job: pre-commit-checks) -----------
-  # The exact "Run all check_*.py scripts" block from firmware.yml.
-  gate_precommit_checks() (
-    set -e
-    python3 scripts/utils/check_obsolete_standards.py
-    python3 scripts/utils/check_world_tags.py --strict
-    python3 scripts/utils/check_mcdc_block.py
-    python3 scripts/utils/check_no_dynamic_alloc.py --all
-    python3 scripts/utils/check_no_ai_attribution.py
-    python3 scripts/utils/check_no_null.py --all
-    python3 scripts/utils/check_function_size.py
-    python3 scripts/utils/check_file_size.py
-    python3 scripts/utils/check_final_newline.py
-    python3 scripts/utils/check_magic_numbers.py
-    python3 scripts/utils/check_no_gnu_attribute.py
-    python3 scripts/utils/check_tz_boundary_discard.py
-    # The block below was missing here while firmware.yml ran every one of
-    # them, so this suite was a SUBSET of CI -- the exact condition the file
-    # header forbids. Fifteen gates could go red on the runner after a local
-    # `make ci` reported PASS. check_ruff.py in particular lints these very
-    # scripts, so a change to the gates themselves was the least-covered
-    # thing in the tree.
-    python3 scripts/utils/check_assert_casts.py tests/*.c
-    python3 scripts/utils/check_core_layering.py
-    python3 scripts/utils/check_example_board_pins.py
-    python3 scripts/utils/check_header_file_placement.py
-    python3 scripts/utils/check_hil_alive_policy.py
-    python3 scripts/utils/check_inclusive_terminology.py
-    python3 scripts/utils/check_line_citations.py
-    python3 scripts/utils/check_new_compound_has_mcdc.py
-    python3 scripts/utils/check_no_driver_asm_guard.py
-    python3 scripts/utils/check_no_wave_references.py
-    python3 scripts/utils/check_nsc_veneer_defs.py
-    python3 scripts/utils/check_stub_crypto_guarded.py
-    # --require makes a missing linter fatal rather than a silent skip; the
-    # container ships both, and a skipped linter is indistinguishable from a
-    # clean one in the log.
-    python3 scripts/utils/check_ruff.py --require
-    python3 scripts/utils/check_shell.py --require
-    # check_hil_sil_parity.py: SIM==HIL -- every hw_validated/hil app must also
-    # be exercised in board_sim (sil_all.sh). Fails if a hil/ app has no
-    # hil.conf, is not in sil_all.sh's run set, or declares a HIL_MODE board_sim
-    # cannot check. Re-derives both harnesses' discovery dynamically so an added
-    # HIL app cannot silently escape SIM coverage.
-    python3 scripts/utils/check_hil_sil_parity.py
-  )
-
-  # --- gate: TrustZone NSC veneers under -mcmse (job: nsc-cmse) ------------
-  # firmware.yml compiles every libs/ra8_nsc TU with -mcmse -Wall -Wextra
-  # -Werror as its own step. The warning flags are load-bearing: a bare
-  # -fsyntax-only run is what let a redefined RA8_NSC_VENEER silently drop
-  # the cmse_nonsecure_entry attribute, producing a broken secure gateway
-  # that compiled clean.
-  gate_nsc_cmse() {
-    bash scripts/utils/check_nsc_cmse.sh
-  }
-
-  # --- gate: annotation attributes (job: pre-commit-checks) ----------------
-  # firmware.yml runs check_annotations.py as its own step inside the
-  # pre-commit-gate job, NOT as part of the check_*.py block above. It was
-  # therefore absent from this suite entirely: a full local `make ci` passed
-  # while CI failed the "Annotation-attribute gate (libclang)" step. The
-  # import probe is load-bearing -- without it a container missing the
-  # binding makes the strict gate exit 0 and report nothing, which is worse
-  # than not running it at all.
-  gate_annotations() (
-    set -e
-    python3 -c "import clang.cindex" || {
-      echo "ERROR: the libclang Python binding is missing, so the annotation" >&2
-      echo "       gate cannot run. CI installs libclang==18.1.1; add it to" >&2
-      echo "       .devcontainer/Dockerfile so this gate is faithful." >&2
-      exit 1
-    }
-    # Regression test for the checker itself before trusting its verdict.
-    python3 scripts/utils/check_annotations.py --selftest
-    python3 scripts/utils/check_annotations.py --check
-  )
-
-  # --- gate: MISRA-C 2012 ratchet (firmware.yml job: misra) ----------------
-  # Audit + ratchet against .github/misra-baseline.txt. `make cppcheck` is
-  # NOT a substitute: it runs a different rule set (style/performance, no
-  # misra.py addon) and has no baseline comparison, so a new MISRA finding
-  # sails through it. Kept out of --fast: the audit dumps every TU under
-  # libs/ src/ port/ and takes minutes.
-  gate_misra() (
-    set -e
-    bash scripts/utils/misra_check.sh
-    python3 scripts/utils/misra_ratchet.py --check
-  )
-
-  # --- gate: clang-tidy (firmware.yml job: tidy) ---------------------------
-  gate_clang_tidy() {
-    bash scripts/clang_tidy.sh --check
-  }
-
-  # --- gate: host unit tests (firmware.yml job: unit-tests) ----------------
-  gate_host_tests() (
-    set -e
-    bash tests/build_tests.sh
-    bash tests/run_tests.sh
-  )
-
-  # --- gate: coverage gate (firmware.yml job: coverage) --------------------
-  gate_coverage() {
-    bash scripts/coverage.sh --gate
-  }
-
-  # --- gate: UBSan host tests (firmware.yml job: ubsan) --------------------
-  gate_ubsan() {
-    make ubsan
-  }
-
-  run_gate "clang-format" gate_clang_format
-  run_gate "cppcheck" gate_cppcheck
-  run_gate "pre-commit-checks" gate_precommit_checks
-  run_gate "nsc-cmse" gate_nsc_cmse
-  run_gate "annotations" gate_annotations
-  if [[ "$fast" != "1" ]]; then
-    run_gate "misra" gate_misra
-    run_gate "clang-tidy" gate_clang_tidy
-  fi
-  run_gate "host-tests" gate_host_tests
-  if [[ "$fast" != "1" ]]; then
-    run_gate "coverage" gate_coverage
-    run_gate "ubsan" gate_ubsan
-  fi
+  done < <(list_gates)
 
   echo ""
   echo "==================================================================="
-  echo "== make ci summary$([[ "$fast" == "1" ]] && echo "  (--fast: clang-tidy + coverage + ubsan skipped)")"
+  echo "== ci.sh summary$([[ "$fast" == "1" ]] && echo "  (--fast: slow gates skipped)")"
   echo "==================================================================="
-  failed=0
-  idx=0
+  local failed=0 idx=0
   while [[ "$idx" -lt "${#gate_names[@]}" ]]; do
-    printf '  %-20s %s\n' "${gate_names[$idx]}" "${gate_results[$idx]}"
+    printf '  %-32s %s\n' "${gate_names[$idx]}" "${gate_results[$idx]}"
     [[ "${gate_results[$idx]}" == "FAIL" ]] && failed=1
     idx=$((idx + 1))
   done
   echo "-------------------------------------------------------------------"
   if [[ "$failed" -ne 0 ]]; then
     echo "  RESULT: FAIL"
-    exit 1
+    return 1
   fi
   echo "  RESULT: PASS"
-  exit 0
-fi
+  return 0
+}
+
+# Run the suite against a CLEAN snapshot of committed HEAD -- exactly what CI
+# checks out. A working tree carries gitignored in-source build dirs whose
+# CMake-generated junk makes clang-format / cppcheck / check_magic_numbers
+# report failures CI never sees, and stale .gcda from another branch makes
+# coverage report bogus "no_working_dir_found" results.
+#
+# The snapshot dir is created fresh per run and destroyed on exit, so no build
+# output can outlive the run that produced it. That is what makes the
+# stale-artefact class impossible rather than merely remembered: a coverage run
+# can never find a different branch's .gcda here, because "here" did not exist
+# a moment ago. Do NOT replace this with a fixed path -- a fixed path is a
+# cache, and a cache is exactly the bug.
+run_suite_on_snapshot() {
+  local fast="$1" work rc=0
+  if [[ -n "$(git -C "$REPO_ROOT" status --porcelain 2> /dev/null)" ]]; then
+    echo "NOTE: working tree is dirty -- ci.sh gates committed HEAD only (like" >&2
+    echo "      CI). Commit your changes to have them gated." >&2
+  fi
+  work="$(mktemp -d "${TMPDIR:-/tmp}/ra8-ci-snapshot.XXXXXXXX")"
+  # shellcheck disable=SC2064
+  # Expand $work now: the trap must not depend on the variable surviving.
+  trap "rm -rf '$work'" EXIT INT TERM
+  # GIT_LFS_SKIP_SMUDGE=1 emits the content/library epub LFS pointers as-is
+  # (no gate reads them, so no LFS object or network fetch is needed).
+  GIT_LFS_SKIP_SMUDGE=1 git -C "$REPO_ROOT" archive HEAD | tar -x -C "$work"
+  # Several gates shell out to git (ls-files, rev-list), so the snapshot needs
+  # to be a repository. One synthetic commit of the extracted tree is enough
+  # and keeps the snapshot independent of the host object store.
+  git -C "$work" init --quiet
+  git -C "$work" add -A
+  git -C "$work" -c user.email=ci@localhost -c user.name=ci \
+    commit --quiet --no-verify -m "ci.sh snapshot of HEAD" > /dev/null 2>&1 || true
+  cd "$work"
+  run_suite "$fast" || rc=$?
+  cd "$REPO_ROOT"
+  return $rc
+}
 
 # ===========================================================================
-# HOST MODE. Build the devcontainer image, then re-enter inside the container.
+# ARGUMENT PARSING
 # ===========================================================================
+usage() {
+  cat << 'EOF'
+usage: bash scripts/ci.sh [--fast] [--native] [--rebuild]
+       bash scripts/ci.sh --gate <name>
+       bash scripts/ci.sh --list-gates
+
+  --gate <name>  run exactly ONE registered gate, in place, natively.
+                 This is what every CI workflow step invokes.
+  --list-gates   dump the registry as "name<TAB>speed<TAB>description".
+  --native       run the whole suite natively on a clean HEAD snapshot
+                 (no container). The supported path on Linux.
+  --fast         skip gates whose speed class is slow.
+  --rebuild      force a devcontainer image rebuild first (container path).
+
+With no flags: containerised on macOS; native on Linux when no container
+runtime is installed. See the header of this file for the design.
+EOF
+}
+
 fast=0
 rebuild=0
-usage() {
-  echo "usage: bash scripts/ci.sh [--fast] [--rebuild]"
-  echo "  --fast     skip the slow clang-tidy + coverage + ubsan gates"
-  echo "  --rebuild  force a devcontainer image rebuild first"
-}
-for arg in "$@"; do
-  case "$arg" in
+native=0
+gate=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
     --fast) fast=1 ;;
+    --native) native=1 ;;
     --rebuild) rebuild=1 ;;
+    --list-gates)
+      list_gates
+      exit $?
+      ;;
+    --gate)
+      shift
+      if [[ $# -eq 0 ]]; then
+        echo "ci.sh: --gate requires a gate name" >&2
+        usage >&2
+        exit 2
+      fi
+      gate="$1"
+      ;;
+    --gate=*) gate="${1#--gate=}" ;;
     -h | --help)
       usage
       exit 0
       ;;
     *)
-      echo "ci.sh: unknown flag '$arg'" >&2
+      echo "ci.sh: unknown flag '$1'" >&2
       usage >&2
       exit 2
       ;;
   esac
+  shift
 done
 
-if ! command -v docker >/dev/null 2>&1; then
-  echo "error: docker not on PATH. Install: brew install colima docker" >&2
+# --- single-gate mode: the CI path ----------------------------------------
+# Runs in place (CI already provided a clean checkout) and natively (the
+# runner IS the target environment). No container, so this path has no
+# container-runtime dependency at all.
+if [[ -n "$gate" ]]; then
+  cd "$REPO_ROOT"
+  run_one_gate "$gate"
+  exit $?
+fi
+
+# --- in-container re-entry ------------------------------------------------
+if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
+  export HOME=/tmp
+  git config --global --add safe.directory "$REPO_ROOT" > /dev/null 2>&1 || true
+  run_suite_on_snapshot "${RA8_CI_FAST:-$fast}"
+  exit $?
+fi
+
+# --- native full-suite mode -----------------------------------------------
+if [[ "$native" == "1" ]]; then
+  run_suite_on_snapshot "$fast"
+  exit $?
+fi
+
+# ===========================================================================
+# HOST MODE. Build the devcontainer image, then re-enter inside the container.
+# ===========================================================================
+
+# podman is preferred (daemonless, and rootless where the kernel allows it, so
+# a gate run cannot outlive the user's session); docker via colima is the
+# macOS path.
+#
+# RA8_CONTAINER_RUNTIME may carry arguments, e.g. "sudo podman". That is not
+# hypothetical: on a verification box that is itself an unprivileged LXC
+# container, rootless podman runs containers fine but cannot BUILD the
+# devcontainer -- apt drops privileges to the _apt user and its setgroups(2)
+# call is denied inside the nested user namespace. Running podman as root
+# inside that LXC sidesteps the nested namespace, and root there is still
+# unprivileged on the Proxmox host, so the security boundary is unchanged.
+read -r -a RUNTIME_CMD <<< "${RA8_CONTAINER_RUNTIME:-}"
+if [[ "${#RUNTIME_CMD[@]}" -eq 0 ]]; then
+  for candidate in podman docker nerdctl; do
+    if command -v "$candidate" > /dev/null 2>&1; then
+      RUNTIME_CMD=("$candidate")
+      break
+    fi
+  done
+fi
+
+if [[ "${#RUNTIME_CMD[@]}" -eq 0 ]]; then
+  # On Linux the native path is faithful -- the runner is Linux too -- so fall
+  # back rather than refusing to run. On macOS it is not: the format gate
+  # needs clang-format-22 and the host tests cannot mmap MAP_FIXED below
+  # 4 GiB, so a macOS "pass" would be a lie. Refuse there.
+  if [[ "$(uname -s)" == "Linux" ]]; then
+    echo "==> no container runtime found; running gates NATIVELY on this Linux host."
+    echo "    (Linux native == the CI environment. Install podman for isolation:"
+    echo "     sudo apt-get install -y podman uidmap)"
+    run_suite_on_snapshot "$fast"
+    exit $?
+  fi
+  echo "error: no container runtime on PATH (looked for podman, docker, nerdctl)." >&2
+  echo "  macOS cannot run these gates natively: the format gate pins" >&2
+  echo "  clang-format-22, and the host tests need MAP_FIXED below 4 GiB," >&2
+  echo "  which macOS arm64 refuses. Install a runtime:" >&2
+  echo "    brew install colima docker && colima start" >&2
+  exit 1
+fi
+
+RUNTIME_NAME="$(basename "${RUNTIME_CMD[${#RUNTIME_CMD[@]} - 1]}")"
+if ! command -v "${RUNTIME_CMD[0]}" > /dev/null 2>&1; then
+  echo "error: container runtime '${RUNTIME_CMD[0]}' is not on PATH." >&2
   exit 1
 fi
 
 # On macOS the project uses colima (no Docker Desktop license). Auto-start it,
-# matching scripts/test-docker.sh.
-if [[ "$(uname -s)" == "Darwin" ]]; then
-  if ! command -v colima >/dev/null 2>&1; then
+# matching scripts/test-docker.sh. podman on macOS uses its own VM instead.
+if [[ "$(uname -s)" == "Darwin" && "$RUNTIME_NAME" == "docker" ]]; then
+  if ! command -v colima > /dev/null 2>&1; then
     echo "error: colima not on PATH. Install: brew install colima" >&2
     exit 1
   fi
-  if ! colima status >/dev/null 2>&1; then
+  if ! colima status > /dev/null 2>&1; then
     echo "==> starting colima VM (4 CPU, 6 GiB)"
     colima start --cpu 4 --memory 6
   fi
 fi
 
-if ! docker info >/dev/null 2>&1; then
-  echo "error: docker daemon not reachable (try: colima start)" >&2
+if ! "${RUNTIME_CMD[@]}" info > /dev/null 2>&1; then
+  echo "error: '${RUNTIME_CMD[*]}' is installed but not usable." >&2
+  if [[ "$RUNTIME_NAME" == "docker" ]]; then
+    echo "  docker daemon not reachable (try: colima start)" >&2
+  else
+    echo "  check '${RUNTIME_CMD[*]} info' output for the underlying failure." >&2
+  fi
   exit 1
 fi
 
 # Build the devcontainer image. The Dockerfile has no COPY/ADD, so the tiny
 # .devcontainer/ directory is a sufficient build context -- do NOT ship the
 # multi-GB repo (datasheets, build trees) to the daemon as context.
-if [[ "$rebuild" == "1" ]] || ! docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
-  echo "==> building $IMAGE_TAG from .devcontainer/Dockerfile"
-  docker build -t "$IMAGE_TAG" -f "$DOCKERFILE" "$REPO_ROOT/.devcontainer"
+if [[ "$rebuild" == "1" ]] || ! "${RUNTIME_CMD[@]}" image inspect "$IMAGE_TAG" > /dev/null 2>&1; then
+  echo "==> building $IMAGE_TAG from .devcontainer/Dockerfile (runtime: ${RUNTIME_CMD[*]})"
+  "${RUNTIME_CMD[@]}" build -t "$IMAGE_TAG" -f "$DOCKERFILE" "$REPO_ROOT/.devcontainer"
 else
   echo "==> reusing cached image $IMAGE_TAG (--rebuild / REBUILD=1 to refresh)"
 fi
 
-echo "==> running CI gates in container (fast=$fast)"
+echo "==> running CI gates in container (runtime=${RUNTIME_CMD[*]} fast=$fast)"
 # The host repo is bind-mounted READ-ONLY: the in-container step extracts a
 # clean `git archive HEAD` into a throwaway dir and builds there, so the host
-# source tree and its macOS CMake caches are never touched. Run as root so that
-# throwaway tree (and its fresh build dirs) is writable.
-exec docker run --rm \
+# source tree and its macOS CMake caches are never touched. Run as root so
+# that throwaway tree (and its fresh build dirs) is writable.
+#
+# --rm is load-bearing, not hygiene: the snapshot tree and every build dir the
+# gates create live INSIDE the container, so the container exiting is what
+# reclaims them. Nothing a gate writes can survive to poison the next run.
+#
+# CMAKE_BUILD_PARALLEL_LEVEL defaults to 4 (the CI runner's value, so this
+# reproduces its timing) but is overridable for a beefier verification box.
+exec "${RUNTIME_CMD[@]}" run --rm \
   -u 0:0 \
   -e RA8_CI_INNER=1 \
   -e RA8_CI_FAST="$fast" \
   -e HOME=/tmp \
-  -e CMAKE_BUILD_PARALLEL_LEVEL=4 \
+  -e CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-4}" \
   -v "$REPO_ROOT":/workspace:ro \
   -w /workspace \
   "$IMAGE_TAG" \

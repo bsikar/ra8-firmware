@@ -1,18 +1,25 @@
-name: board-sim-smoke
-
+# SCHEDULING ONLY -- the gate bodies live in scripts/ci.sh (gates:
+# board-sim-smoke, board-sim-io-fabric, sil-integration). See
+# .github/workflows/firmware.yml for the design note.
+#
 # board_sim (tools/board_sim) is the Unicorn-based RA8D2 board emulator: it boots
 # the real cross-compiled firmware .elf on an emulated Cortex-M with the RA8D2
-# peripheral space modelled. This gate builds it headless on the Linux runner and
-# boots known-good example images, asserting each reaches its main loop without
+# peripheral space modelled. These jobs build it headless on the Linux runner and
+# boot known-good example images, asserting each reaches its main loop without
 # faulting (no invalid opcode / unmapped access) and is not parked in a
 # panic/fault halt -- guarding the emulator, the GLCDC bring-up path, and the
 # modelled peripheral blocks (GPIO / SCI UART / GPT+ICU IRQ / USB CDC).
 #
 # board_sim needs Unicorn + Capstone. The self-hosted runner has passwordless
-# sudo + apt but no pkg-config, so this installs the system -dev packages (a
-# no-op once present) and the build finds them with CMake's find_library (off the
-# APPLE path -- no pkg-config required). The live --view window is macOS-only
-# (Cocoa); this gate is headless, which board_sim supports via board_view_stub.c.
+# sudo + apt but no pkg-config, so the infra step installs the system -dev
+# packages (a no-op once present) and the build finds them with CMake's
+# find_library (off the APPLE path -- no pkg-config required). The live --view
+# window is macOS-only (Cocoa); these jobs are headless, which board_sim
+# supports via board_view_stub.c.
+#
+# This workflow is separate from firmware.yml and has been missed by a "local
+# green" run before, which is why the ci-parity gate walks EVERY workflow file.
+name: board-sim-smoke
 
 on:
   push:
@@ -45,42 +52,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Idempotent: skip apt entirely once the libraries are present on this
-      # long-lived runner, so only the first run pays the install cost.
       - name: Install Unicorn + Capstone
         run: |
+          # ci-parity: infra -- runner package provisioning only; runs no
+          # project check. Idempotent: skip apt entirely once the libraries are
+          # present on this long-lived runner, so only the first run pays the
+          # install cost.
           if ! ldconfig -p | grep -q 'libunicorn'; then
             sudo apt-get update
             sudo apt-get install -y --no-install-recommends libunicorn-dev libcapstone-dev
           fi
 
-      # #178: build the emulated firmware with the SAME pinned Arm GNU Toolchain
-      # 13.3 the release cross-build uses (the runner provisions
-      # /opt/arm-gnu-toolchain-13.3), so board_sim exercises release-identical
-      # codegen. cmake/toolchain-ra8d2.cmake also HINTS this path and now asserts
-      # 13.3 fatally by default; putting it on PATH keeps board_sim consistent
-      # with the build-cross job.
-      - name: Pin arm-none-eabi-gcc 13.3 on PATH
-        run: |
-          if [ -x /opt/arm-gnu-toolchain-13.3/bin/arm-none-eabi-gcc ]; then
-            echo "/opt/arm-gnu-toolchain-13.3/bin" >> "$GITHUB_PATH"
-          fi
-
-      - name: board_sim boot smoke
-        run: bash scripts/board_sim_smoke.sh
-
-      # ra8_io fabric (#155) end-to-end gate: every storage backend driven through
-      # the same VFS API (block device -> ra8_fs FAT format/mount -> VFS mkdir +
-      # nested file round-trip), plus the format registry, the LRU sector cache,
-      # and the DEFLATE stream, asserted by each demo's PASS banner. Covers
-      # RAM/SRAM, external SDRAM, SD-over-SPI, native SDHI, OSPI NOR
-      # (erase-before-write), and on-chip MRAM (program/erase).
-      - name: ra8_io fabric board_sim gate (#155-#161)
-        run: |
-          bash scripts/board_sim_smoke.sh \
-            ra8_io_demo ra8_io_sdram_demo ra8_io_compress_demo \
-            ra8_io_sd_demo ra8_io_sdhi_demo ra8_io_xspi_demo ra8_io_mram_demo \
-            ra8_io_fsfmt_demo ra8_io_cache_demo
+      - run: bash scripts/ci.sh --gate board-sim-smoke
+      - run: bash scripts/ci.sh --gate board-sim-io-fabric
 
   # SIL (simulator-in-the-loop): the hardware-free mirror of the bench HIL suite
   # (scripts/hil_all.sh). Every app under examples/ek_ra8d2/hw_validated/hil/ is
@@ -122,34 +106,19 @@ jobs:
       # self-hosted runner, actions/checkout's `git lfs install --local` aborts
       # with exit 2 on a stale/conflicting LFS hook left in the reused
       # workspace -- and this job no longer needs the LFS epubs at all: the
-      # ereader_shelf library fixture is committed (see the assert below).
+      # ereader_shelf library fixture is committed (the sil-integration gate
+      # asserts it is present).
       - uses: actions/checkout@v4
         with:
           lfs: false
 
       - name: Install Unicorn + Capstone
         run: |
+          # ci-parity: infra -- runner package provisioning only; runs no
+          # project check. Idempotent on this long-lived runner.
           if ! ldconfig -p | grep -q 'libunicorn'; then
             sudo apt-get update
             sudo apt-get install -y --no-install-recommends libunicorn-dev libcapstone-dev
           fi
 
-      # ereader_shelf compiles against a COMMITTED @generated MRAM library
-      # header (examples/.../ereader_shelf/library.h). It used to be baked
-      # here from the Git-LFS epubs with Pillow, but the bake is not
-      # reproducible across architectures (libjpeg SIMD decode rounding
-      # differs x86_64 vs Apple-silicon at the same Pillow version), so no
-      # x86 runner could ever reproduce the committed fb-hash golden. The
-      # fixture is tracked instead; this step only asserts it is present so
-      # a future re-gitignore fails loudly here, not as a confusing app FAIL.
-      - name: Assert the committed ereader_shelf library fixture is present
-        run: test -s examples/ek_ra8d2/hw_validated/hil/ereader_shelf/library.h
-
-      - name: Pin arm-none-eabi-gcc 13.3 on PATH
-        run: |
-          if [ -x /opt/arm-gnu-toolchain-13.3/bin/arm-none-eabi-gcc ]; then
-            echo "/opt/arm-gnu-toolchain-13.3/bin" >> "$GITHUB_PATH"
-          fi
-
-      - name: SIL integration (board_sim, parallel over all hil apps)
-        run: bash scripts/sil_all.sh -j "$(nproc)"
+      - run: bash scripts/ci.sh --gate sil-integration

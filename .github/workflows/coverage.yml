@@ -1,3 +1,9 @@
+# SCHEDULING ONLY -- the gate body lives in scripts/ci.sh (gate:
+# coverage-report). See .github/workflows/firmware.yml for the design note.
+#
+# This workflow is separate from firmware.yml and has been missed by a "local
+# green" run before, which is exactly why the ci-parity gate walks EVERY
+# workflow file rather than firmware.yml alone.
 name: coverage
 
 on:
@@ -18,9 +24,8 @@ jobs:
   # ---------------------------------------------------------------------------
   # Statement + branch coverage gate (gcc + gcovr).
   #
-  # This is the plain coverage flow described in docs/COVERAGE.md.
-  # It runs in parallel with the existing MC/DC pipeline (which lives
-  # in firmware.yml -> mcdc job) and produces an independent
+  # The plain coverage flow described in docs/COVERAGE.md. Runs in parallel with
+  # the MC/DC pipeline (firmware.yml -> mcdc job) and produces an independent
   # ratchetable baseline against .github/coverage-baseline.txt.
   # ---------------------------------------------------------------------------
   coverage:
@@ -34,18 +39,14 @@ jobs:
 
       - name: Install build + coverage toolchain
         run: |
+          # ci-parity: infra -- runner package provisioning only; runs no
+          # project check. The coverage-report gate hard-fails when gcovr is
+          # still absent afterwards, so a failed install can never look green.
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential cmake gcc g++ gcovr python3
 
-      - name: Run coverage report (in-container path)
-        # The script's macOS shim only triggers on Darwin; on Linux
-        # it runs natively. We pass --in-container as a no-op safety
-        # marker to skip any future macOS branch.
-        run: bash scripts/utils/coverage_report.sh --in-container
-
-      - name: Run coverage gate
-        run: python3 scripts/utils/check_coverage.py
+      - run: bash scripts/ci.sh --gate coverage-report
 
       - name: Upload HTML report
         if: always()
