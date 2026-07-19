@@ -59,7 +59,7 @@ test-media_dl:
 	$(CMAKE) --build $(MEDIA_DL_DIR)/build -j
 	ctest --test-dir $(MEDIA_DL_DIR)/build --output-on-failure
 
-# `make test-integration [FMT='cbz rta1 ...']` -- the cross-tool end-to-end gate:
+# `make test-integration [FMT='cbz jof ...']` -- the cross-tool end-to-end gate:
 # build media_dl + the viewer, package synthetic (non-copyright) pages into EVERY
 # export format, then open each result in the viewer headless and assert a
 # non-blank render. This is what catches "packages fine but the reader can't open

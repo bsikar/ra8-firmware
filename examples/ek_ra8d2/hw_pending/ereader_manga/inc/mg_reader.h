@@ -7,7 +7,7 @@
  *
  * @details
  * The presentation model for the ereader_manga demo: a viewport onto a page
- * far larger than the 1024x600 panel, backed by an RTA1 tile atlas
+ * far larger than the 1024x600 panel, backed by a JOF tile atlas
  * (``ra8_tileatlas``) paged through a small fixed-budget tile cache
  * (``ra8_tile_cache``). The reader owns no hardware -- it draws into a
  * caller-supplied RGB565 framebuffer through ``ra8_gfx`` and reads decoded
@@ -92,7 +92,7 @@ typedef enum : uint8_t {
  * @brief Decode-on-miss context bound into the tile cache (DIP seam).
  *
  * @details Holds everything ::mg_tile_decode needs to page one tile out of the
- *          produced RTA1 atlas: the parsed geometry, the atlas positioned-read
+ *          produced JOF atlas: the parsed geometry, the atlas positioned-read
  *          seam, and a scratch staging buffer for the deflate tile codec. The
  *          pointed-at objects must out-live the cache.
  *

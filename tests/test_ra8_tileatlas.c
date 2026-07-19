@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_tileatlas.c
- * @brief Host tests for the RTA1 atlas reader: structural validation, tile
+ * @brief Host tests for the JOF atlas reader: structural validation, tile
  *        decode, memstore, and hostile-input rejection (#231).
  *
  * @details
@@ -34,8 +34,8 @@ enum : uint32_t {
   k_t_tile_px   = k_t_tile * k_t_tile,   /**< Full-tile pixel count.           */
   k_t_payload   = k_t_tile_px * k_t_bpp, /**< Full-tile payload bytes.         */
   k_t_cell_cap  = k_t_payload,           /**< Tile output buffer capacity.     */
-  k_t_hdr       = 32U,                   /**< RTA1 header bytes.               */
-  k_t_ftr       = 16U,                   /**< RTA1 footer bytes.               */
+  k_t_hdr       = 32U,                   /**< JOF header bytes.                */
+  k_t_ftr       = 16U,                   /**< JOF footer bytes.                */
   k_t_entry     = 8U,                    /**< Index entry bytes.               */
 };
 
@@ -84,7 +84,7 @@ static void put_bytes(const uint8_t* p, size_t n)
 }
 
 /**
- * @brief Append the 32-byte RTA1 atlas header to the shared memstore.
+ * @brief Append the 32-byte JOF atlas header to the shared memstore.
  *
  * @param[in] codec Tile codec byte (raw or deflate) stored in the header.
  * @param[in] count Total tile count written to the header.
@@ -97,7 +97,7 @@ static void put_bytes(const uint8_t* p, size_t n)
  */
 static void build_atlas_header(uint8_t codec, uint32_t count)
 {
-  const uint8_t magic[4] = {'R', 'T', 'A', '1'};
+  const uint8_t magic[4] = {'J', 'O', 'F', '1'};
   put_bytes(magic, sizeof(magic));
   put_u16((uint16_t)k_t_img_w);
   put_u16((uint16_t)k_t_img_h);
@@ -158,7 +158,7 @@ static uint32_t build_atlas_encode_tile(uint32_t x0, uint32_t y0, uint8_t codec)
 }
 
 /**
- * @brief Hand-build a full RTA1 atlas of the pattern into the memstore.
+ * @brief Hand-build a full JOF atlas of the pattern into the memstore.
  * @param[in] codec ::ra8_tileatlas_codec_t member to encode tiles with.
  * @pre The shared store buffers are available.
  * @pre @p codec is raw or deflate.
@@ -197,7 +197,7 @@ static void build_atlas(uint8_t codec)
   put_u32(index_off);
   put_u32(count);
   put_u32((uint32_t)s_store.len + 8U); /* total = current + remaining 8 footer bytes */
-  const uint8_t fmagic[4] = {'R', 'T', 'A', 'E'};
+  const uint8_t fmagic[4] = {'J', 'O', 'F', 'E'};
   put_bytes(fmagic, sizeof(fmagic));
 }
 

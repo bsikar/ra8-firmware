@@ -5,7 +5,7 @@
  *
  * @details
  * Drives the shared harness in `test_ra8_manga_stream.h` (the real
- * ra8_tile_cache + ra8_vmem stack over a synthetic volume-of-RTA1-atlases) under
+ * ra8_tile_cache + ra8_vmem stack over a synthetic volume-of-JOF-atlases) under
  * a manga access pattern -- a cover scroll flood, forward multi-page scroll,
  * cross-volume chapter jumps, a scroll-up back-flip, a far-boundary read, and
  * repeated cover revisits -- and asserts the two load-bearing #232 properties:
@@ -48,7 +48,7 @@ typedef enum : uint32_t {
  * @brief Cross-check a cached band against the raw page-cache bytes directly.
  *
  * @details The strongest oracle: read the band's raw stream straight from the
- *          volume stream (bypassing both the tile cache and the RTA1 decode),
+ *          volume stream (bypassing both the tile cache and the JOF decode),
  *          and require it to equal the independent reference on a pixel sample.
  *          For the raw codec the decoded payload IS the stored stream, so this
  *          proves the tile-cache path and the page-cache path agree.
@@ -243,7 +243,7 @@ static void t_mg_gate_size(uint32_t atlas_count, uint64_t target)
  *        a fixed RAM budget with byte-correct bands and bounded residency (#232).
  *
  * @par MC/DC:
- * (integration gate: the compound decisions inside the RTA1 reader, page cache,
+ * (integration gate: the compound decisions inside the JOF reader, page cache,
  * and tile cache carry their vectors in test_ra8_tileatlas*.c, test_ra8_vmem.c,
  * and test_ra8_keycache.c; here the oracles are bounded residency + a reference
  * byte compare, both single-condition.)

@@ -3,7 +3,7 @@
  * @brief Host unit tests for the continuous vertical-scroll longstrip engine (#289).
  *
  * @details
- * Drives ra8_longstrip over a hand-built raw RTA1 band-tile atlas (a synthetic
+ * Drives ra8_longstrip over a hand-built raw JOF band-tile atlas (a synthetic
  * tall strip) paged through a real ::ra8_tile_cache. The strip encodes each
  * pixel's absolute canvas coordinate (R=y low, G=y high, B=x low), so the
  * recording blit can assert -- per pixel -- that every band composites at its
@@ -69,7 +69,7 @@ typedef enum : uint32_t {
 
 /**
  * @enum t_wt_layout_t
- * @brief RTA1 on-disk field sizes used by the raw-atlas builder.
+ * @brief JOF on-disk field sizes used by the raw-atlas builder.
  */
 typedef enum : uint32_t {
   k_t_hdr_bytes = 32U,          /**< Header length.           */
@@ -86,7 +86,7 @@ typedef enum : uint32_t {
  * Static fixtures (host build: plain .bss, no MMIO).
  * ------------------------------------------------------------------------- */
 
-/** @brief Backing store for the hand-built RTA1 atlas. */
+/** @brief Backing store for the hand-built JOF atlas. */
 static uint8_t s_atlas[k_t_atlas_cap];
 
 /** @brief Cache cell storage (k_t_wt_cells x k_t_wt_band_bytes). */
@@ -104,7 +104,7 @@ static uint8_t s_view_fb[(size_t)k_t_wt_view_h * (size_t)k_t_wt_view_w * 3U];
 static bool s_canvas_covered[k_t_wt_height];
 
 /* -------------------------------------------------------------------------
- * Synthetic strip: pixel generator + raw RTA1 builder.
+ * Synthetic strip: pixel generator + raw JOF builder.
  * ------------------------------------------------------------------------- */
 
 /** @brief Deterministic RGB888 pixel: encodes the canvas coordinate. */
@@ -132,9 +132,9 @@ static void t_wt_put_u32(uint8_t* p, uint32_t v)
 }
 
 /**
- * @brief Build a raw (codec 0) RTA1 band-tile atlas for the synthetic strip.
+ * @brief Build a raw (codec 0) JOF band-tile atlas for the synthetic strip.
  *
- * @details Emits header + N raw band payloads + index + footer per the RTA1
+ * @details Emits header + N raw band payloads + index + footer per the JOF
  *          layout, with `tile_w == width` (one full-width band column). The
  *          result is validated by `ra8_tileatlas_parse()` in the tests, so a
  *          builder bug is caught by the reader's fail-closed checks.
@@ -149,7 +149,7 @@ static uint32_t t_wt_build_strip(void)
   const uint32_t bands  = (height + band_h - 1U) / band_h;
   uint8_t*       hdr    = s_atlas;
   (void)memset(hdr, 0, (size_t)k_t_hdr_bytes);
-  (void)memcpy(hdr, "RTA1", 4U);
+  (void)memcpy(hdr, "JOF1", 4U);
   t_wt_put_u16(&hdr[4], (uint16_t)width);
   t_wt_put_u16(&hdr[6], (uint16_t)height);
   t_wt_put_u16(&hdr[8], (uint16_t)width); /* tile_w == width */
@@ -184,7 +184,7 @@ static uint32_t t_wt_build_strip(void)
   t_wt_put_u32(&s_atlas[off], index_off);
   t_wt_put_u32(&s_atlas[off + 4U], bands);
   t_wt_put_u32(&s_atlas[off + 8U], total);
-  (void)memcpy(&s_atlas[off + 12U], "RTAE", 4U);
+  (void)memcpy(&s_atlas[off + 12U], "JOFE", 4U);
   return total;
 }
 
@@ -369,7 +369,7 @@ static void t_open_rejects_non_band(void)
   const uint16_t tw     = 32U; /* half width -> 2 columns */
   const uint16_t th     = 64U;
   (void)memset(s_atlas, 0, (size_t)k_t_hdr_bytes);
-  (void)memcpy(s_atlas, "RTA1", 4U);
+  (void)memcpy(s_atlas, "JOF1", 4U);
   t_wt_put_u16(&s_atlas[4], width);
   t_wt_put_u16(&s_atlas[6], height);
   t_wt_put_u16(&s_atlas[8], tw);
@@ -399,7 +399,7 @@ static void t_open_rejects_non_band(void)
   t_wt_put_u32(&s_atlas[off], index_off);
   t_wt_put_u32(&s_atlas[off + 4U], tiles);
   t_wt_put_u32(&s_atlas[off + 8U], total);
-  (void)memcpy(&s_atlas[off + 12U], "RTAE", 4U);
+  (void)memcpy(&s_atlas[off + 12U], "JOFE", 4U);
 
   s_store = (ra8_tileatlas_memstore_t){.buf = s_atlas, .cap = k_t_atlas_cap, .len = total};
   const ra8_longstrip_cfg_t cfg = {.pread      = ra8_tileatlas_memstore_pread,

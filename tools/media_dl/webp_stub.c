@@ -4,7 +4,7 @@
  */
 /**
  * @file webp_stub.c
- * @brief JPEG-only RTA1 export: stub the WebP transcode arm out of the firmware
+ * @brief JPEG-only JOF export: stub the WebP transcode arm out of the firmware
  *        tile-atlas producer so the CLI links without vendoring libwebp.
  *
  * @details

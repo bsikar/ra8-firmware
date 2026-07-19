@@ -96,7 +96,7 @@ Series mode (combined by default -- two chapters into one `nano-machine-1-2.cbz`
 Pack mode (re-package a folder, no network):
 
 ```sh
-./build/media_dl --pack downloads/nano-machine/nano-machine-1-2 --format rta1
+./build/media_dl --pack downloads/nano-machine/nano-machine-1-2 --format jof
 ```
 
 Page mode (debug):
@@ -124,39 +124,39 @@ behind a Cloudflare JS challenge will not work (no challenge solver yet).
 | `cbt.xz` | tar, then the external `xz` CLI (CRC32 check, 1 MiB dict) | `xz` on PATH |
 | `cbr` | the external `rar` CLI | `rar` on PATH |
 | `epub` | a valid EPUB3 of the pages via vendored miniz (`ra8_epub` opens it) | nothing |
-| `rta1` | per-page native RTA1 tile atlas via the firmware `ra8_tileatlas` producer -- a full-width column (`tile_w == width`) the `ra8_longstrip` engine opens directly | nothing |
+| `jof` | per-page native JOF tile atlas via the firmware `ra8_tileatlas` producer -- a full-width column (`tile_w == width`) the `ra8_longstrip` engine opens directly | nothing |
 | `rabook` | build a CBZ, then `tools/epub_compile/cbz_compile.py` -> the RBKC `.rabook` | `python3` + Pillow |
 
-`cbz`/`cbt`/`cbt.gz`/`epub`/`rta1` are fully self-contained (in-tree/vendored
+`cbz`/`cbt`/`cbt.gz`/`epub`/`jof` are fully self-contained (in-tree/vendored
 code, no system library or external process): `epub` is hand-built with miniz,
-and `rta1` reuses the firmware's own `ra8_tileatlas_produce` host-side, so a
-`.rta1` the CLI writes is byte-identical to one the RA8 produces (webtoon
+and `jof` reuses the firmware's own `ra8_tileatlas_produce` host-side, so a
+`.jof` the CLI writes is byte-identical to one the RA8 produces (webtoon
 column). `cbt.xz` / `cbr` / `rabook` are optional -- they shell out to `xz` /
 `rar` / `python3` only when producing that format and report clearly if the tool
 is absent (RAR and an xz *encoder* have no small in-tree option; the RBKC
 container has no C writer, so rabook uses the desktop python emitter). The
 `.gz`/`.xz` variants wrap a whole tar and are opened on-device by
-`ra8_comic_open_wrapped`. RTA1 writes one `page_NNN.rta1` per page into the
+`ra8_comic_open_wrapped`. JOF writes one `page_NNN.jof` per page into the
 chapter folder (the webtoon-native form), not a single archive file.
 
 ### Which format for a webtoon / manhwa?
 
-**Use `--format rta1` for vertical-scroll webtoons.** Their pages are single
+**Use `--format jof` for vertical-scroll webtoons.** Their pages are single
 tall strips -- real chapters run 5,000-12,000 px high. The comic formats
 (`cbz`/`cbt`/`cbr`/...) decode each page as one whole image through stb_image,
 which is deliberately capped at **8192 px per side** (`STBI_MAX_DIMENSIONS` in
 `libs/third_party/stb/stb_image_impl.c`, bounding `w*h*bpp` so the on-device
 decode fits its memory budget). A strip taller than that is rejected -- by
-design, not a bug. RTA1 exists precisely for this: it tiles the strip via the
+design, not a bug. JOF exists precisely for this: it tiles the strip via the
 firmware's streaming JPEG decoder (`ra8_jpeg_sw_stream`, no whole-image
 allocation) and the `ra8_longstrip` engine scrolls it a viewport at a time. So a
 webtoon downloaded as `cbz` will open but some tall pages won't render; the same
-series as `rta1` renders every page. Standard fixed-page comics (each page a
+series as `jof` renders every page. Standard fixed-page comics (each page a
 normal book-sized image) are fine as `cbz`.
 
 Packaging is **idempotent**: only real page images (`.jpg/.jpeg/.png/.webp/.gif/
 .bmp`) are ingested, so a folder that already holds this tool's own output (a
-sibling `.rta1`, a previous `.cbz`) or OS junk re-packages cleanly instead of
+sibling `.jof`, a previous `.cbz`) or OS junk re-packages cleanly instead of
 folding a non-image "page" into the archive.
 
 ### Verifying a build

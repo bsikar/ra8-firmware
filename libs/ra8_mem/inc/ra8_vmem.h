@@ -34,7 +34,7 @@
  *  - **Manga / longstrip streaming (a page-turn flood over a >SDRAM book).** The
  *    reader scrolls forward through thousands of never-revisited band pages (a
  *    huge one-shot scan) while a *small* hot set -- the archive central
- *    directory, the current chapter's tile index, the RTA1 atlas headers/footers
+ *    directory, the current chapter's tile index, the JOF atlas headers/footers
  *    re-read on every page open -- is touched repeatedly. Size `protected_pct`
  *    to comfortably cover that hot metadata set (so it is never demoted by the
  *    flood) while leaving the remaining frames as a large probationary buffer

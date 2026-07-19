@@ -4,7 +4,7 @@
  */
 /**
  * @file tiny_jpeg_fixture.h
- * @brief A tiny 16x9 baseline JPEG (generated, no network) for the RTA1
+ * @brief A tiny 16x9 baseline JPEG (generated, no network) for the JOF
  *        export round-trip test.
  */
 #pragma once

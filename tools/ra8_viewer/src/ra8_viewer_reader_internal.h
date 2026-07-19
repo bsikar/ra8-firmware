@@ -5,7 +5,7 @@
  * @details
  * The host reader core is one logical module split across four translation
  * units: the public API / open dispatch (ra8_viewer_reader.c), the comic engine
- * (ra8_viewer_comic.c), the RTA1 long-strip engine (ra8_viewer_rta1.c), and the
+ * (ra8_viewer_comic.c), the JOF long-strip engine (ra8_viewer_jof.c), and the
  * shared RGB565 pixel + PPM writer (ra8_viewer_ppm.c). The document handle, its
  * owned buffers, and the fixed sizing knobs are shared by all four, so they live
  * here; nothing in this header is part of the viewer-facing API in
@@ -54,16 +54,16 @@ typedef enum : uint32_t {
 } ra8_viewer_budget_t;
 
 /**
- * @enum ra8_viewer_rta1_budget_t
- * @brief Fixed sizing knobs for the RTA1 long-strip tile cache.
- * @invariant ::k_viewer_rta1_buckets is a power of two (hash-index mask).
+ * @enum ra8_viewer_jof_budget_t
+ * @brief Fixed sizing knobs for the JOF long-strip tile cache.
+ * @invariant ::k_viewer_jof_buckets is a power of two (hash-index mask).
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_viewer_rta1_max_cells   = 24U,   /**< Max resident bands (LRU decode-on-miss). */
-  k_viewer_rta1_buckets     = 64U,   /**< Tile-cache hash buckets.                 */
-  k_viewer_rta1_scratch_pad = 4096U, /**< Deflate-staging slack over one band.     */
-} ra8_viewer_rta1_budget_t;
+  k_viewer_jof_max_cells   = 24U,   /**< Max resident bands (LRU decode-on-miss). */
+  k_viewer_jof_buckets     = 64U,   /**< Tile-cache hash buckets.                 */
+  k_viewer_jof_scratch_pad = 4096U, /**< Deflate-staging slack over one band.     */
+} ra8_viewer_jof_budget_t;
 
 /**
  * @enum viewer_fmt_t
@@ -76,7 +76,7 @@ typedef enum : uint8_t {
   k_vfmt_comic       = 1, /**< Bare CBZ/CBR/CBT (ra8_comic).         */
   k_vfmt_comic_wrap  = 2, /**< gzip/xz-wrapped comic (open_wrapped). */
   k_vfmt_epub        = 3, /**< EPUB (ra8_epub + ra8_reflow).         */
-  k_vfmt_rta1        = 4, /**< RTA1 atlas (ra8_longstrip).           */
+  k_vfmt_jof         = 4, /**< JOF atlas (ra8_longstrip).            */
   k_vfmt_rabook      = 5, /**< RABOOK (ra8_book + ra8_reflow).       */
 } viewer_fmt_t;
 
@@ -102,17 +102,17 @@ typedef struct {
 } viewer_file_ctx_t;
 
 /**
- * @struct viewer_rta1_t
- * @brief All ra8_longstrip state + owned buffers for one open RTA1 strip.
+ * @struct viewer_jof_t
+ * @brief All ra8_longstrip state + owned buffers for one open JOF strip.
  * @details The strip's atlas bytes are slurped into @ref atlas (the memstore
  *          pread reads from it); the tile cache decodes DEFLATE bands on miss
  *          into @ref cells. The strip is paginated: each viewer "page" is one
  *          @ref viewport_h -tall window scrolled down the canvas.
- * @invariant All pointers are NULL unless the document is ::k_vfmt_rta1.
+ * @invariant All pointers are NULL unless the document is ::k_vfmt_jof.
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t*                   atlas;      /**< Whole `.rta1` file (owned).             */
+  uint8_t*                   atlas;      /**< Whole `.jof` file (owned).              */
   ra8_tileatlas_memstore_t   store;      /**< Memstore pread over @ref atlas.         */
   ra8_longstrip_decode_ctx_t dctx;       /**< Decode ctx: pread + parsed info + scr.  */
   ra8_tile_cache_t           cache;      /**< Band cache (uses the arrays below).     */
@@ -121,11 +121,11 @@ typedef struct {
   ra8_keycache_cell_t*       meta;       /**< `cell_count` cache link-metadata.       */
   ra8_tile_key_t*            keys;       /**< `cell_count` cache keys.                */
   ra8_tile_dims_t*           dims;       /**< `cell_count` cache dims.                */
-  int32_t*                   buckets;    /**< `k_viewer_rta1_buckets` bucket heads.   */
+  int32_t*                   buckets;    /**< `k_viewer_jof_buckets` bucket heads.    */
   uint8_t*                   scratch;    /**< DEFLATE staging (one band + pad).       */
   uint32_t                   viewport_h; /**< Page height on the canvas (== fb h).    */
   int32_t                    x_off;      /**< Horizontal centring offset in the fb.   */
-} viewer_rta1_t;
+} viewer_jof_t;
 
 /**
  * @struct ra8_viewer_reader
@@ -143,12 +143,12 @@ struct ra8_viewer_reader {
   uint32_t* tile_wpx; /**< Cached native width per tile (tile_n).  */
   uint32_t* tile_hpx; /**< Cached native height per tile (tile_n). */
   uint32_t  tile_n;   /**< Number of tiles (== page count).        */
-  /* RTA1 composite target: the long-strip blit writes RGB565 here. Points at
+  /* JOF composite target: the long-strip blit writes RGB565 here. Points at
    * @ref fb for the headless framebuffer path, or a native-width tile buffer for
    * the window's scroll tiles -- so the two never interfere. */
-  uint16_t* rt565; /**< Current RTA1 blit target (RGB565). */
-  uint32_t  rt_w;  /**< Target width, pixels.              */
-  uint32_t  rt_h;  /**< Target height, pixels.             */
+  uint16_t* rt565; /**< Current JOF blit target (RGB565). */
+  uint32_t  rt_w;  /**< Target width, pixels.             */
+  uint32_t  rt_h;  /**< Target height, pixels.            */
   /* --- comic engine (k_vfmt_comic / k_vfmt_comic_wrap) --- */
   ra8_comic_t       comic;      /**< Comic engine (CBZ / CBR / CBT).          */
   ra8_comic_page_t* pages;      /**< Page index (k_viewer_page_cap entries).  */
@@ -158,8 +158,8 @@ struct ra8_viewer_reader {
   uint8_t*          arena_mem;  /**< Backing store for the decode arena.      */
   uint8_t*          unwrap;     /**< gzip/xz unwrap arena (out-lives comic).  */
   uint8_t*          xz_scratch; /**< xz decoder scratch (dict + state).       */
-  /* --- long-strip / RTA1 engine (k_vfmt_rta1) --- */
-  viewer_rta1_t rta1; /**< RTA1 strip state (unused for comics). */
+  /* --- long-strip / JOF engine (k_vfmt_jof) --- */
+  viewer_jof_t jof; /**< JOF strip state (unused for comics). */
 };
 
 /**
@@ -241,29 +241,29 @@ viewer_tile_comic(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, 
 RA8_PRIV void viewer_probe_comic_tile(ra8_viewer_reader_t* r, uint32_t i, ra8_img_arena_t* arena);
 
 /**
- * @brief Open an RTA1 strip: slurp, parse, size the cache, then wire the engine.
+ * @brief Open a JOF strip: slurp, parse, size the cache, then wire the engine.
  * @param[in,out] r Reader with file backing populated (non-NULL).
  * @return ra8_err_t from the parse / cache-init / long-strip-open pipeline.
- * @pre The document classified as ::k_vfmt_rta1.
- * @post On ::k_ra8_ok `r->rta1.strip` is an open long-strip document.
+ * @pre The document classified as ::k_vfmt_jof.
+ * @post On ::k_ra8_ok `r->jof.strip` is an open long-strip document.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t viewer_open_rta1(ra8_viewer_reader_t* r);
+RA8_PRIV ra8_err_t viewer_open_jof(ra8_viewer_reader_t* r);
 
 /**
- * @brief Render one RTA1 "page": scroll the strip by one viewport and composite.
- * @param[in,out] r    Reader of an RTA1 document (non-NULL).
+ * @brief Render one JOF "page": scroll the strip by one viewport and composite.
+ * @param[in,out] r    Reader of a JOF document (non-NULL).
  * @param[in]     page Vertical page index (window number down the strip).
  * @return ra8_err_t from the scroll / long-strip-render pipeline.
- * @pre The document was opened as ::k_vfmt_rta1.
+ * @pre The document was opened as ::k_vfmt_jof.
  * @post On ::k_ra8_ok `r->fb` holds the band, centred, over a white margin.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t viewer_render_rta1(ra8_viewer_reader_t* r, uint32_t page);
+RA8_PRIV ra8_err_t viewer_render_jof(ra8_viewer_reader_t* r, uint32_t page);
 
 /**
- * @brief Render RTA1 band @p i at native strip width into a fresh RGB565 buffer.
- * @param[in,out] r   Reader of an RTA1 document (non-NULL).
+ * @brief Render JOF band @p i at native strip width into a fresh RGB565 buffer.
+ * @param[in,out] r   Reader of a JOF document (non-NULL).
  * @param[in]     i   Band (tile) index.
  * @param[out]    w   Receives the rendered width in pixels.
  * @param[out]    h   Receives the rendered height in pixels.
@@ -276,18 +276,18 @@ RA8_PRIV ra8_err_t viewer_render_rta1(ra8_viewer_reader_t* r, uint32_t page);
  * @since 0.1.0
  */
 RA8_PRIV ra8_err_t
-viewer_tile_rta1(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out);
+viewer_tile_jof(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out);
 
 /**
- * @brief Populate the per-band tile-size cache for an open RTA1 strip.
+ * @brief Populate the per-band tile-size cache for an open JOF strip.
  * @details Each tile is one viewport-height band; the last is clipped to the
  *          remaining rows so the document has no trailing white gap.
- * @param[in,out] r Reader of an RTA1 document (non-NULL).
+ * @param[in,out] r Reader of a JOF document (non-NULL).
  * @param[in]     n Tile count (`ra8_viewer_page_count(r)`).
  * @post `r->tile_wpx` / `r->tile_hpx` are filled for all @p n tiles.
  * @since 0.1.0
  */
-RA8_PRIV void viewer_size_rta1_tiles(ra8_viewer_reader_t* r, uint32_t n);
+RA8_PRIV void viewer_size_jof_tiles(ra8_viewer_reader_t* r, uint32_t n);
 
 #ifdef __cplusplus
 }

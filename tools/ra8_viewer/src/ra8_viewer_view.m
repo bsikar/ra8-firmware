@@ -296,7 +296,7 @@ static CGImageRef ra8_viewer_cgimage_from_565(const uint16_t* rgb565, uint32_t w
       }
     } else {
       /* Placeholder for an unrenderable page (e.g. a strip too tall for the
-       * whole-image decoder -- re-download that title as RTA1). */
+       * whole-image decoder -- re-download that title as JOF). */
       [[NSColor colorWithWhite:0.2 alpha:1.0] set];
       NSRectFill(r);
       [[NSColor colorWithWhite:0.4 alpha:1.0] set];

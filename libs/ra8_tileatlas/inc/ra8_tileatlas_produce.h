@@ -1,6 +1,6 @@
 /**
  * @file ra8_tileatlas_produce.h
- * @brief Import-time transcode producer: JPEG/PNG/WebP -> RTA1 band-tile atlas
+ * @brief Import-time transcode producer: JPEG/PNG/WebP -> JOF band-tile atlas
  *        in bounded RAM (#231, #290 normalize-on-import).
  * @ingroup grp_ereader
  *
@@ -9,7 +9,7 @@
  *
  * @details
  * `ra8_tileatlas_produce()` turns an arbitrary encoded source image into the
- * RTA1 atlas (`ra8_tileatlas.h`) -- the single on-device normalized format --
+ * JOF atlas (`ra8_tileatlas.h`) -- the single on-device normalized format --
  * so render time only ever touches one codec regardless of source. The tile
  * codec is lossless DEFLATE (never a second lossy re-encode of the decoded
  * pixels), so no source ever loses quality on import.
@@ -27,12 +27,12 @@
  * **WebP** (VP8 / VP8L, via the `ra8_webp` facade over libwebp) is inherently
  * a whole-frame codec: its lossless mode uses 2-D backward references, so it
  * cannot be decoded with a bounded output window the way JPEG/PNG stripe out.
- * A WebP source is therefore normalized through the same RTA1 tile path but at
+ * A WebP source is therefore normalized through the same JOF tile path but at
  * a whole-frame memory cost: the caller supplies a second `webp_work` arena
  * (sized by `ra8_tileatlas_webp_work_bytes()`) that holds the compressed
  * source, the decoded RGBA frame and libwebp's scratch. `webp_work == NULL`
  * fail-closed rejects any WebP source as `k_ra8_err_not_supported`, so a
- * streaming-only caller pays nothing. The RTA1 output is byte-identical to the
+ * streaming-only caller pays nothing. The JOF output is byte-identical to the
  * atlas produced from a lossless PNG of the same pixels: import genuinely
  * converges every source codec on one representation.
  *
@@ -223,7 +223,7 @@ ra8_tileatlas_work_bytes(uint16_t max_width, uint16_t max_height, uint16_t tile_
 ra8_tileatlas_webp_work_bytes(uint16_t max_width, uint16_t max_height, uint32_t max_src_bytes);
 
 /**
- * @brief Transcode one encoded JPEG/PNG/WebP source into an RTA1 atlas (#231,
+ * @brief Transcode one encoded JPEG/PNG/WebP source into a JOF atlas (#231,
  *        #290).
  *
  * @details
@@ -269,7 +269,7 @@ ra8_tileatlas_webp_work_bytes(uint16_t max_width, uint16_t max_height, uint32_t 
  * @pre @p cfg->work covers `work_cap` bytes sized per
  *      `ra8_tileatlas_work_bytes()`.
  * @pre @p cfg->pull delivers the encoded source strictly in order, once.
- * @post On success the sink holds one complete, parseable RTA1 atlas.
+ * @post On success the sink holds one complete, parseable JOF atlas.
  * @post On any error the sink holds a partial atlas that must be discarded
  *       (it will fail `ra8_tileatlas_parse()` -- no torn atlas is readable).
  * @note Not thread-safe (module-static decoder contexts).

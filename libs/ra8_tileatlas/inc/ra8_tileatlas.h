@@ -1,6 +1,6 @@
 /**
  * @file ra8_tileatlas.h
- * @brief RTA1 band-tile atlas: the display-native normalized image format
+ * @brief JOF band-tile atlas: the display-native normalized image format
  *        (#231, shared with the longstrip scroll #289 and codec policy #290).
  * @ingroup grp_ereader
  *
@@ -10,11 +10,14 @@
  * @details
  * A huge raster (a manga page or longstrip slice whose *decoded* size exceeds
  * the ~10 MB SDRAM working set) cannot be decoded whole on this device, and
- * JPEG/PNG offer no random access. RTA1 solves both at *import time*: the
+ * JPEG/PNG offer no random access. JOF -- the Jump-Offset Format, named for
+ * the access pattern below -- solves both at *import time*: the
  * source image is transcoded once (`ra8_tileatlas_produce()`) into a grid of
  * **independently decodable tiles** plus a **per-tile byte index**, so any
- * tile pages in later with one bounded read + one bounded inflate --
- * O(1) random access at full resolution, never a downscale.
+ * tile pages in later with one bounded read + one bounded inflate. A reader
+ * parses the fixed-size footer, jumps to the index, reads the wanted tile's
+ * byte offset, and jumps straight there -- hence *jump-offset*: O(1) random
+ * access at full resolution, never a downscale.
  *
  * One format serves three consumers:
  *   - **#231** full-resolution in-EPUB manga pages: 2-D tile grids paged
@@ -27,7 +30,7 @@
  *     (JPEG/PNG/...) converges on this one well-understood format at import,
  *     so render time touches a single decode path.
  *
- * ## On-disk layout (RTA1, all integers little-endian)
+ * ## On-disk layout (JOF, all integers little-endian)
  *
  * ```
  * [ header  | 32 bytes                      ]  at offset 0
@@ -42,7 +45,7 @@
  *
  * | Offset | Size | Field                                              |
  * |--------|------|----------------------------------------------------|
- * | 0      | 4    | magic `"RTA1"`                                     |
+ * | 0      | 4    | magic `"JOF1"`                                     |
  * | 4      | 2    | u16 image width, pixels (1..32768)                 |
  * | 6      | 2    | u16 image height, pixels (1..32768)                |
  * | 8      | 2    | u16 tile width, pixels (1..width cap)              |
@@ -81,7 +84,7 @@
  * | 0      | 4    | u32 index_offset (absolute)                       |
  * | 4      | 4    | u32 tile count, must equal the header field       |
  * | 8      | 4    | u32 total atlas size in bytes (self-check)        |
- * | 12     | 4    | magic `"RTAE"`                                    |
+ * | 12     | 4    | magic `"JOFE"`                                    |
  *
  * The index trails the tile streams so a producer can emit the whole atlas
  * through an append-only sink (SD file write, ZIP store) in one forward
@@ -126,7 +129,7 @@ extern "C" {
 
 /**
  * @enum ra8_tileatlas_layout_t
- * @brief Fixed byte sizes and offsets of the RTA1 on-disk structures.
+ * @brief Fixed byte sizes and offsets of the JOF on-disk structures.
  *
  * @details Byte offsets are relative to the region they index (header fields
  *          from atlas byte 0, footer fields from the footer start). See the
@@ -139,7 +142,7 @@ typedef enum : uint8_t {
   k_ra8_tileatlas_footer_bytes   = 16U, /**< Footer length.                   */
   k_ra8_tileatlas_index_entry    = 8U,  /**< Bytes per tile-index entry.      */
   k_ra8_tileatlas_magic_len      = 4U,  /**< Magic string length (both ends). */
-  k_ra8_tileatlas_ofs_magic      = 0U,  /**< Header: magic "RTA1".            */
+  k_ra8_tileatlas_ofs_magic      = 0U,  /**< Header: magic "JOF1".            */
   k_ra8_tileatlas_ofs_width      = 4U,  /**< Header: u16 image width.         */
   k_ra8_tileatlas_ofs_height     = 6U,  /**< Header: u16 image height.        */
   k_ra8_tileatlas_ofs_tile_w     = 8U,  /**< Header: u16 tile width.          */
@@ -152,14 +155,14 @@ typedef enum : uint8_t {
   k_ra8_tileatlas_ftr_index_off  = 0U,  /**< Footer: u32 index offset.        */
   k_ra8_tileatlas_ftr_tile_count = 4U,  /**< Footer: u32 tile count.          */
   k_ra8_tileatlas_ftr_total_size = 8U,  /**< Footer: u32 total atlas size.    */
-  k_ra8_tileatlas_ftr_magic      = 12U, /**< Footer: magic "RTAE".            */
+  k_ra8_tileatlas_ftr_magic      = 12U, /**< Footer: magic "JOFE".            */
   k_ra8_tileatlas_idx_ofs_offset = 0U,  /**< Index entry: u32 tile offset.    */
   k_ra8_tileatlas_idx_ofs_length = 4U,  /**< Index entry: u32 tile length.    */
 } ra8_tileatlas_layout_t;
 
 /**
  * @enum ra8_tileatlas_limits_t
- * @brief Hard caps every RTA1 atlas must satisfy (fail-closed validation).
+ * @brief Hard caps every JOF atlas must satisfy (fail-closed validation).
  *
  * @details The dimension cap bounds every producer/reader loop (NASA Rule 2);
  *          the tile-count cap bounds the index (512 KiB at 8 bytes/entry).
@@ -189,7 +192,7 @@ typedef enum : uint8_t {
 
 /**
  * @struct ra8_tileatlas_info_t
- * @brief Parsed + validated geometry of one RTA1 atlas.
+ * @brief Parsed + validated geometry of one JOF atlas.
  *
  * @details Filled by `ra8_tileatlas_parse()`; callers treat it as read-only
  *          after that. `tile_cols`/`tile_rows` are the ceil-division grid
@@ -307,7 +310,7 @@ typedef struct {
 ra8_tileatlas_memstore_pread(void* ctx, uint64_t offset, uint8_t* buf, size_t len, size_t* got);
 
 /**
- * @brief Parse + validate an RTA1 atlas's header, footer and index bounds.
+ * @brief Parse + validate a JOF atlas's header, footer and index bounds.
  *
  * @details
  * Reads the 32-byte header at offset 0 and the 16-byte footer at

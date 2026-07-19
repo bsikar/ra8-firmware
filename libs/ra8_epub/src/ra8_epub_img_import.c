@@ -1,14 +1,14 @@
 /**
  * @file ra8_epub_img_import.c
- * @brief Import-time transcode wiring: manifest href -> RTA1 atlas -> binder
+ * @brief Import-time transcode wiring: manifest href -> JOF atlas -> binder
  *        (#231's open-path integration).
  *
  * @details
  * Implements `ra8_epub_tile_binder_import()`: resolve a manifest image href,
- * register it in place when the entry already is a stored RTA1 atlas, or
+ * register it in place when the entry already is a stored JOF atlas, or
  * stream its encoded JPEG/PNG/WebP bytes through the bounded transcode producer
  * (`ra8_tileatlas_produce`) into the caller's atlas store and register the
- * result. Every source codec normalizes to the one RTA1 format on import
+ * result. Every source codec normalizes to the one JOF container on import
  * (#290). Either way the binder afterwards serves the image's full-resolution
  * tiles decode-on-demand -- the #231 goal for pages larger than SDRAM.
  *
@@ -48,8 +48,8 @@ typedef enum : uint8_t {
   k_ra8_epub_import_magic_len = 4U, /**< Atlas magic length sniffed. */
 } ra8_epub_import_const_t;
 
-/** @brief RTA1 header magic (mirrors the atlas reader unit). */
-static const uint8_t s_atlas_magic[k_ra8_epub_import_magic_len] = {'R', 'T', 'A', '1'};
+/** @brief JOF header magic (mirrors the atlas reader unit). */
+static const uint8_t s_atlas_magic[k_ra8_epub_import_magic_len] = {'J', 'O', 'F', '1'};
 
 /**
  * @struct ra8_epub_entry_pull_t
@@ -89,13 +89,13 @@ static ra8_err_t priv_entry_pull(void* ctx, uint8_t* buf, size_t cap, size_t* go
 }
 
 /**
- * @brief Classify an entry: stored RTA1 atlas (register in place) or not.
+ * @brief Classify an entry: stored JOF atlas (register in place) or not.
  * @details A 4-byte positioned read succeeds only for *stored* entries; a
  *          DEFLATE-compressed entry reports `k_ra8_err_not_supported`, which
  *          classifies as "not an in-place atlas" (the transcode path).
  * @param[in]  book     Open book.
  * @param[in]  href     Entry path.
- * @param[out] out_is_atlas Receives true when the entry starts with "RTA1".
+ * @param[out] out_is_atlas Receives true when the entry starts with "JOF1".
  * @return Result code.
  * @retval k_ra8_ok            Classified (see @p out_is_atlas).
  * @retval k_ra8_err_not_found No entry at @p href.

@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_epub_img_tiles.c
- * @brief #231 bounded-RAM tile paging of RTA1 atlases through ra8_tile_cache,
+ * @brief #231 bounded-RAM tile paging of JOF atlases through ra8_tile_cache,
  *        the import-time transcode wiring, and the real reflow `<img>` loader.
  *
  * @details
@@ -233,7 +233,7 @@ static ra8_err_t png_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
  * @param[out] store Destination memstore (backing already bound).
  * @pre @p store->buf covers its cap; the shared work arena is free.
  * @pre The geometry fits the ::k_png_cap synthesis buffers.
- * @post @p store holds a complete, parseable RTA1 atlas.
+ * @post @p store holds a complete, parseable JOF atlas.
  * @post The shared PNG/work scratch is clobbered.
  * @note Not thread-safe.
  * @since 0.1.0
@@ -273,7 +273,7 @@ static void bake_atlas(uint32_t w, uint32_t h, uint8_t codec, ra8_tileatlas_mems
 static void zip_add_hostile(mz_zip_archive* zip)
 {
   /* A stored entry with the atlas magic but corrupt structure. */
-  uint8_t bad[64] = {'R', 'T', 'A', '1'};
+  uint8_t bad[64] = {'J', 'O', 'F', '1'};
   TEST_ASSERT(mz_zip_writer_add_mem(zip, "OEBPS/bad.rta", bad, sizeof(bad), MZ_NO_COMPRESSION) ==
               MZ_TRUE);
   /* A stored entry shorter than the atlas magic (import classify: short). */
@@ -537,7 +537,7 @@ static void test_tile_edges(void)
  *        through the atlas".
  *
  * @par MC/DC:
- * Decision (import classify): `got == 4 && memcmp(magic, "RTA1") == 0`
+ * Decision (import classify): `got == 4 && memcmp(magic, "JOF1") == 0`
  * (2 conditions)
  * - Vector 1: stored atlas entry  -> true  (passthrough test below)
  * - Vector 2: stored 2-byte entry -> false via got ("tiny.bin")
@@ -679,7 +679,7 @@ static void test_import_classify_arms(void)
 
 /**
  * @test test_import_passthrough
- * @brief An entry that already is a stored RTA1 atlas registers in place:
+ * @brief An entry that already is a stored JOF atlas registers in place:
  *        zero transcode, zero store writes.
  *
  * @par MC/DC:

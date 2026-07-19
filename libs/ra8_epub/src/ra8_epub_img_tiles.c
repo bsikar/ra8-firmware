@@ -1,9 +1,9 @@
 /**
  * @file ra8_epub_img_tiles.c
- * @brief Tile-cache paging of RTA1 atlases + a real reflow img loader (#231).
+ * @brief Tile-cache paging of JOF atlases + a real reflow img loader (#231).
  *
  * @details
- * Implements ::ra8_epub_tile_binder (pages RTA1 tile atlases through
+ * Implements ::ra8_epub_tile_binder (pages JOF tile atlases through
  * ::ra8_tile_cache, decode-on-demand keyed by `image_id + tile`, bounded RAM)
  * and ::ra8_epub_reflow_img_load (resolves an `<img src>` href to encoded
  * bytes in a caller-owned bounded scratch). Atlas sources are either stored

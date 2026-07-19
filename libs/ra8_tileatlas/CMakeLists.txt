@@ -1,5 +1,5 @@
 #
-# libs/ra8_tileatlas -- RTA1 band-tile atlas: format reader + import-time
+# libs/ra8_tileatlas -- JOF band-tile atlas: format reader + import-time
 # transcode producer (#231; the normalized image format shared with the
 # longstrip scroll #289 and the codec policy #290).
 #

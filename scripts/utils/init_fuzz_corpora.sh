@@ -340,7 +340,7 @@ cp "${ROOT}/tests/fixtures/webp/fixture_tall.webp" "${WEBP_DIR}/seed_tall.webp"
 printf 'RIFF\x08\x00\x00\x00WEBP' >"${WEBP_DIR}/seed_truncated.bin"
 
 # -----------------------------------------------------------------------------
-# fuzz_ra8_tileatlas -- one hand-built valid RTA1 raw-codec atlas (16x16
+# fuzz_ra8_tileatlas -- one hand-built valid JOF raw-codec atlas (16x16
 # gray8, 8x8 tiles) so the reader starts past the header validation, plus a
 # truncated header the parser must reject cleanly.
 # -----------------------------------------------------------------------------
@@ -357,7 +357,7 @@ BPP = 1
 cols = rows = W // T
 count = cols * rows
 
-hdr = b"RTA1" + struct.pack("<HHHHBBHI", W, H, T, T, BPP, 0, 0, count) + b"\x00" * 12
+hdr = b"JOF1" + struct.pack("<HHHHBBHI", W, H, T, T, BPP, 0, 0, count) + b"\x00" * 12
 tiles = []
 offs = []
 pos = len(hdr)
@@ -370,7 +370,7 @@ for ty in range(rows):
 index = b"".join(struct.pack("<II", o, n) for (o, n) in offs)
 index_off = pos
 total = index_off + len(index) + 16
-footer = struct.pack("<III", index_off, count, total) + b"RTAE"
+footer = struct.pack("<III", index_off, count, total) + b"JOFE"
 atlas = hdr + b"".join(tiles) + index + footer
 assert len(atlas) == total
 with open(os.path.join(OUTDIR, "seed_raw_16x16.rta"), "wb") as fh:

@@ -15,7 +15,7 @@
  * Pipeline: boot clocks/MSTP/SysTick/console/LEDs, bring up external SDRAM + the
  * 1024x600 RGB565 GLCDC panel via `ra8_display_pal`
  * (`k_display_backend_lcd_ra8_glcdc`), bind `ra8_gfx` to the panel FB, then
- * build a tall colourful strip as an RTA1 band-tile atlas (`ra8_tileatlas`, one
+ * build a tall colourful strip as a JOF band-tile atlas (`ra8_tileatlas`, one
  * full-width band column). Only the atlas header + index + footer are
  * materialised (~176 bytes); each band's pixels are painted PROCEDURALLY on a
  * cache miss (a vivid palette hue + a top->bottom brightness gradient + a white
@@ -84,7 +84,7 @@
 typedef enum : uint16_t {
   k_ls_view_w    = k_panel_width_px,  /**< Viewport / strip width  (== panel).   */
   k_ls_view_h    = k_panel_height_px, /**< Viewport / strip-window height.       */
-  k_ls_band_h    = 280U,              /**< One band (RTA1 tile) height, pixels.  */
+  k_ls_band_h    = 280U,              /**< One band (JOF tile) height, pixels.   */
   k_ls_bands     = 16U,               /**< Bands in the strip (16 palette hues). */
   k_ls_status_h  = 40U,               /**< Status-bar overlay band height.       */
   k_ls_rail_w    = 12U,               /**< Scroll-rail overlay width, pixels.    */
@@ -117,7 +117,7 @@ typedef enum : uint32_t {
 
 /**
  * @enum ls_atlas_t
- * @brief RTA1 metadata-only atlas layout (procedural bands -> no pixel region).
+ * @brief JOF metadata-only atlas layout (procedural bands -> no pixel region).
  *
  * @details `ra8_tileatlas_parse` reads only the header + footer and validates
  *          `index_off + tiles*8 + 16 == total`, never the pixel bytes, so the
@@ -127,10 +127,10 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ls_hdr_bytes     = 32U, /**< RTA1 header length.                */
-  k_ls_ftr_bytes     = 16U, /**< RTA1 footer length.                */
+  k_ls_hdr_bytes     = 32U, /**< JOF header length.                 */
+  k_ls_ftr_bytes     = 16U, /**< JOF footer length.                 */
   k_ls_idx_entry     = 8U,  /**< Index-entry length (offset + len). */
-  k_ls_ftr_magic_off = 12U, /**< Footer "RTAE" magic offset.        */
+  k_ls_ftr_magic_off = 12U, /**< Footer "JOFE" magic offset.        */
   k_ls_atlas_total   = (uint32_t)k_ls_hdr_bytes + ((uint32_t)k_ls_bands * 8U) +
                        (uint32_t)k_ls_ftr_bytes, /**< 176-byte atlas length. */
   k_ls_byte_mask     = 0xFFU,                    /**< Low-byte mask.         */
@@ -272,7 +272,7 @@ static const uint32_t k_ls_palette[k_ls_palette_size] = {
 [[gnu::section(
   ".sdram_data")]] static uint8_t s_cells[(size_t)k_ls_cells * (size_t)k_ls_band_bytes];
 
-/** @brief Metadata-only RTA1 atlas backing (header + index + footer). */
+/** @brief Metadata-only JOF atlas backing (header + index + footer). */
 static uint8_t s_atlas[k_ls_atlas_total];
 
 static ra8_tile_key_t      s_keys[(size_t)k_ls_cells];      /**< Cache key storage.   */
@@ -502,7 +502,7 @@ static void app_bringup_touch(void)
 }
 
 /* ===========================================================================
- * Metadata-only RTA1 atlas builder
+ * Metadata-only JOF atlas builder
  * ===========================================================================
  */
 
@@ -523,7 +523,7 @@ static void ls_put_u32(uint8_t* p, uint32_t v)
 }
 
 /**
- * @brief Build the metadata-only RTA1 band-tile atlas; return its byte length.
+ * @brief Build the metadata-only JOF band-tile atlas; return its byte length.
  *
  * @details Emits only the header, the tile index (immediately after the header,
  *          so there is no pixel region) and the footer. `ra8_tileatlas_parse`
@@ -543,9 +543,9 @@ static uint32_t ls_build_atlas(void)
   for (uint32_t i = 0U; i < (uint32_t)k_ls_hdr_bytes; i++) {
     s_atlas[i] = 0U;
   }
-  s_atlas[0] = 'R';
-  s_atlas[1] = 'T';
-  s_atlas[2] = 'A';
+  s_atlas[0] = 'J';
+  s_atlas[1] = 'O';
+  s_atlas[2] = 'F';
   s_atlas[3] = '1';
   ls_put_u16(&s_atlas[4], (uint16_t)width);
   ls_put_u16(&s_atlas[6], (uint16_t)height);
@@ -568,9 +568,9 @@ static uint32_t ls_build_atlas(void)
   ls_put_u32(&s_atlas[ftr + 4U], bands);
   ls_put_u32(&s_atlas[ftr + 8U], (uint32_t)k_ls_atlas_total);
   const uint32_t mag = ftr + (uint32_t)k_ls_ftr_magic_off;
-  s_atlas[mag + 0U]  = 'R';
-  s_atlas[mag + 1U]  = 'T';
-  s_atlas[mag + 2U]  = 'A';
+  s_atlas[mag + 0U]  = 'J';
+  s_atlas[mag + 1U]  = 'O';
+  s_atlas[mag + 2U]  = 'F';
   s_atlas[mag + 3U]  = 'E';
   return (uint32_t)k_ls_atlas_total;
 }

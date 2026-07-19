@@ -54,7 +54,7 @@ def main():
     for i in range(count):
         page = make_page(i, count, w, h)
         # Baseline JPEG (what real scraped pages are) so the JPEG-decode paths
-        # (viewer probe, rta1 producer) are exercised, not just PNG.
+        # (viewer probe, jof producer) are exercised, not just PNG.
         page.save(f"{outdir}/page_{i + 1:04d}.jpg", "JPEG", quality=JPEG_QUALITY)
     print(f"gen_pages: wrote {count} page(s) ({w}x{h}) to {outdir}")
     return EXIT_OK

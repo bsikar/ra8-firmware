@@ -11,7 +11,7 @@
  *
  * Usage:
  * @code
- * ra8_viewer <file.cbz|.cbr|.cbt[.gz|.xz]|.rta1>            # scrolling window
+ * ra8_viewer <file.cbz|.cbr|.cbt[.gz|.xz]|.jof>            # scrolling window
  * ra8_viewer <file> --headless --dump-ppm P [--page N | --dump-tile N]
  * @endcode
  *
@@ -64,7 +64,7 @@ typedef struct {
 static void viewer_usage(const char* argv0)
 {
   (void)fprintf(stderr,
-                "usage: %s <file.cbz|.cbr|.cbt[.gz|.xz]|.rta1> [--headless]\n"
+                "usage: %s <file.cbz|.cbr|.cbt[.gz|.xz]|.jof> [--headless]\n"
                 "         [--dump-ppm PATH [--page N | --dump-tile N]]\n"
                 "  window: resizable, fit-to-width, continuous scroll "
                 "(wheel/trackpad/PageUp-Dn/Home/End)\n",

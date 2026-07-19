@@ -3,7 +3,7 @@
  * @brief Transcode producer: whole-frame WebP arm (#290 normalize-on-import).
  *
  * @details
- * The producer normalises WebP manifest images to the one on-device RTA1
+ * The producer normalises WebP manifest images to the one on-device JOF
  * band-tile format alongside JPEG and PNG, so the reader consumes a single
  * format regardless of source. WebP is not stripe-decodable (its lossless
  * VP8L mode back-references the whole frame), so -- unlike the streaming

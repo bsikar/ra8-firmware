@@ -14,7 +14,7 @@
  * off the streaming reader (`ra8_epub_open_streamed`) so the whole archive is
  * never resident:
  *
- *   1. **Tile binder** (`ra8_epub_tile_binder_*`): pages RTA1 tile atlases
+ *   1. **Tile binder** (`ra8_epub_tile_binder_*`): pages JOF tile atlases
  *      (`ra8_tileatlas.h` -- the display-native band-tile format shared with
  *      the longstrip scroll #289 and the #290 codec policy) through
  *      ::ra8_tile_cache, decode-on-demand keyed by `(image_id, tile_x,
@@ -30,8 +30,8 @@
  *      through `ra8_tileatlas_produce()` into a caller-supplied atlas store,
  *      and registers the result -- after which a page larger than SDRAM at
  *      native resolution renders full-res via decode-on-demand tiles. Every
- *      source codec converges on the one RTA1 format (#290). An entry that
- *      already IS a stored RTA1 atlas registers in place with no transcode.
+ *      source codec converges on the one JOF container (#290). An entry that
+ *      already IS a stored JOF atlas registers in place with no transcode.
  *   3. **Reflow `<img>` loader** (`ra8_epub_reflow_img_load`): the real
  *      `ra8_reflow_image_loader_fn` -- resolves an `<img src>` href to an
  *      EPUB manifest resource and returns its encoded bytes in a
@@ -43,7 +43,7 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  *
- * @see ra8_tileatlas.h          The RTA1 atlas format + reader.
+ * @see ra8_tileatlas.h          The JOF atlas format + reader.
  * @see ra8_tileatlas_produce.h  The import-time transcode producer.
  * @since 0.1.0
  */
@@ -100,7 +100,7 @@ typedef struct {
  * @brief Binds up to ::k_ra8_epub_tile_max_sources images to one tile cache.
  *
  * @details Owns a ::ra8_tile_cache whose decode-on-miss reads + decodes one
- *          RTA1 tile through `ra8_tileatlas_read_tile()`. Caller-owned;
+ *          JOF tile through `ra8_tileatlas_read_tile()`. Caller-owned;
  *          zero-initialise before `ra8_epub_tile_binder_init()`.
  *
  * @invariant Every valid `sources[i]` has a distinct `image_id`.
@@ -187,7 +187,7 @@ typedef struct {
  *
  * @details
  * Wires @p storage into an owned ::ra8_tile_cache whose decode-on-miss is this
- * module's RTA1 tile reader. The @p storage `decode` / `decode_ctx` fields are
+ * module's JOF tile reader. The @p storage `decode` / `decode_ctx` fields are
  * ignored (the binder sets them); all other fields (cell memory + geometry +
  * key/dim/meta arrays + hash buckets) are the caller's and must out-live the
  * binder. @p scratch stages one stored (compressed) tile during a deflate
@@ -218,7 +218,7 @@ typedef struct {
                                                   uint32_t                    scratch_cap);
 
 /**
- * @brief Register a stored in-archive RTA1 atlas entry under @p image_id (#231).
+ * @brief Register a stored in-archive JOF atlas entry under @p image_id (#231).
  *
  * @details
  * Resolves @p path (OPF-relative, then archive-rooted), measures the entry,
@@ -255,7 +255,7 @@ typedef struct {
                                                  uint32_t                image_id);
 
 /**
- * @brief Register an externally-backed RTA1 atlas under @p image_id (#231).
+ * @brief Register an externally-backed JOF atlas under @p image_id (#231).
  *
  * @details
  * The external seam serves atlases that live outside the archive: an SDRAM
@@ -299,7 +299,7 @@ typedef struct {
  *
  * @details
  * Resolves @p href against the book, then:
- *   1. If the entry is already a *stored* RTA1 atlas, registers it in place
+ *   1. If the entry is already a *stored* JOF atlas, registers it in place
  *      (`ra8_epub_tile_binder_add()`) -- the host-baked fast path, no
  *      transcode and no store writes.
  *   2. Otherwise streams the entry's encoded bytes through

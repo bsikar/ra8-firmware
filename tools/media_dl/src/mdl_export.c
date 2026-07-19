@@ -110,8 +110,8 @@ mdl_format_t mdl_format_from_str(const char* s)
   if (strcmp(s, "epub") == 0) {
     return k_mdl_fmt_epub;
   }
-  if (strcmp(s, "rta1") == 0) {
-    return k_mdl_fmt_rta1;
+  if (strcmp(s, "jof") == 0) {
+    return k_mdl_fmt_jof;
   }
   if (strcmp(s, "rabook") == 0) {
     return k_mdl_fmt_rabook;
@@ -134,8 +134,8 @@ const char* mdl_format_ext(mdl_format_t fmt)
       return "cbt.gz";
     case k_mdl_fmt_epub:
       return "epub";
-    case k_mdl_fmt_rta1:
-      return "rta1";
+    case k_mdl_fmt_jof:
+      return "jof";
     case k_mdl_fmt_rabook:
       return "rabook";
     case k_mdl_fmt_loose:
@@ -172,7 +172,7 @@ RA8_INTERNAL static bool ends_with_ci(const char* name, const char* suffix)
  * @brief True if `name` is a raster page image a reader engine can decode.
  *
  * Packaging must include ONLY page images. A chapter folder often also holds
- * this tool's own prior output (a sibling `.rta1`/`.cbz`, a `.tar.tmp`) or OS
+ * this tool's own prior output (a sibling `.jof`/`.cbz`, a `.tar.tmp`) or OS
  * junk; folding those into an archive makes the reader choke when it decodes a
  * non-image "page" (the 0x107 that bit re-runs). Filtering by extension keeps
  * packaging idempotent -- re-running any format on a folder is safe.
@@ -644,39 +644,39 @@ export_epub(const char* dir, char names[][k_name_max], size_t count, const char*
   return rc;
 }
 
-/* --- RTA1 (native tile atlas: reuse the firmware ra8_tileatlas producer) -- */
+/* --- JOF (native tile atlas: reuse the firmware ra8_tileatlas producer) -- */
 
 /**
- * @enum mdl_rta1_geom_t
- * @brief RTA1 atlas tiling geometry for a long-strip page.
+ * @enum mdl_jof_geom_t
+ * @brief JOF atlas tiling geometry for a long-strip page.
  * @details `tile_w` is set to the full image width, so each tile is one
  *          full-width horizontal band -- the shape the ra8_longstrip engine
  *          scrolls a viewport at a time.
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_rta1_band_h = 256, /**< Tile-band height in pixels. */
-} mdl_rta1_geom_t;
+  k_jof_band_h = 256, /**< Tile-band height in pixels. */
+} mdl_jof_geom_t;
 
 /** @brief Pull cursor over an in-RAM encoded image. */
 typedef struct {
   const uint8_t* data; /**< Encoded bytes. */
   size_t         len;  /**< Total length.  */
   size_t         pos;  /**< Read cursor.   */
-} rta1_pull_ctx_t;
+} jof_pull_ctx_t;
 
 /** @brief ra8_log byte sink -> stderr (host-safe; avoids the ITM MMIO read). */
-RA8_INTERNAL static void rta1_log_sink(void* ctx, uint8_t byte)
+RA8_INTERNAL static void jof_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;
   (void)fputc((int)byte, stderr);
 }
 
 /** @brief Producer pull callback: hand over the next source bytes. */
-RA8_INTERNAL static ra8_err_t rta1_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
+RA8_INTERNAL static ra8_err_t jof_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 {
-  rta1_pull_ctx_t* s = (rta1_pull_ctx_t*)ctx;
-  size_t           n = s->len - s->pos;
+  jof_pull_ctx_t* s = (jof_pull_ctx_t*)ctx;
+  size_t          n = s->len - s->pos;
   if (n > cap) {
     n = cap;
   }
@@ -687,7 +687,7 @@ RA8_INTERNAL static ra8_err_t rta1_pull(void* ctx, uint8_t* buf, size_t cap, siz
 }
 
 /** @brief Producer sink callback: append atlas bytes to an open file. */
-RA8_INTERNAL static ra8_err_t rta1_sink(void* ctx, const uint8_t* buf, size_t len)
+RA8_INTERNAL static ra8_err_t jof_sink(void* ctx, const uint8_t* buf, size_t len)
 {
   return (fwrite(buf, 1U, len, (FILE*)ctx) == len) ? k_ra8_ok : k_ra8_fail;
 }
@@ -718,8 +718,8 @@ RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t** out_buf, size_t*
   return k_ra8_ok;
 }
 
-/** @brief Transcode one baseline-JPEG page to a `.rta1` full-width-column atlas. */
-RA8_INTERNAL static ra8_err_t rta1_one(const char* in_path, const char* out_path)
+/** @brief Transcode one baseline-JPEG page to a `.jof` full-width-column atlas. */
+RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
 {
   uint8_t*  src  = nullptr;
   size_t    slen = 0U;
@@ -733,7 +733,7 @@ RA8_INTERNAL static ra8_err_t rta1_one(const char* in_path, const char* out_path
     free(src);
     return k_ra8_err_not_supported;
   }
-  const uint16_t tile_h   = (h < (uint16_t)k_rta1_band_h) ? h : (uint16_t)k_rta1_band_h;
+  const uint16_t tile_h   = (h < (uint16_t)k_jof_band_h) ? h : (uint16_t)k_jof_band_h;
   const uint32_t work_cap = ra8_tileatlas_work_bytes(w, h, w, tile_h);
   uint8_t*       work     = (work_cap > 0U) ? (uint8_t*)malloc(work_cap) : nullptr;
   FILE*          out      = (work != nullptr) ? fopen(out_path, "wb") : nullptr;
@@ -742,10 +742,10 @@ RA8_INTERNAL static ra8_err_t rta1_one(const char* in_path, const char* out_path
     free(src);
     return (work_cap == 0U) ? k_ra8_err_invalid_size : k_ra8_fail;
   }
-  rta1_pull_ctx_t             pull = {.data = src, .len = slen, .pos = 0U};
-  ra8_tileatlas_produce_cfg_t cfg  = {.pull          = rta1_pull,
+  jof_pull_ctx_t              pull = {.data = src, .len = slen, .pos = 0U};
+  ra8_tileatlas_produce_cfg_t cfg  = {.pull          = jof_pull,
                                       .pull_ctx      = &pull,
-                                      .sink          = rta1_sink,
+                                      .sink          = jof_sink,
                                       .sink_ctx      = out,
                                       .tile_w        = w,
                                       .tile_h        = tile_h,
@@ -767,11 +767,11 @@ RA8_INTERNAL static ra8_err_t rta1_one(const char* in_path, const char* out_path
   return rc;
 }
 
-/** @brief Convert every page in `dir` to a sibling `.rta1` atlas (in place). */
+/** @brief Convert every page in `dir` to a sibling `.jof` atlas (in place). */
 RA8_INTERNAL static ra8_err_t
-export_rta1(const char* dir, const char names[][k_name_max], size_t count)
+export_jof(const char* dir, const char names[][k_name_max], size_t count)
 {
-  ra8_log_set_byte_sink(rta1_log_sink, nullptr);
+  ra8_log_set_byte_sink(jof_log_sink, nullptr);
   ra8_err_t rc = k_ra8_ok;
   for (size_t i = 0U; (rc == k_ra8_ok) && (i < count); ++i) {
     char in_path[PATH_MAX];
@@ -783,8 +783,8 @@ export_rta1(const char* dir, const char names[][k_name_max], size_t count)
     if (dot != nullptr) {
       *dot = '\0';
     }
-    (void)snprintf(out_path, sizeof(out_path), "%s/%s.rta1", dir, stem);
-    rc = rta1_one(in_path, out_path);
+    (void)snprintf(out_path, sizeof(out_path), "%s/%s.jof", dir, stem);
+    rc = jof_one(in_path, out_path);
   }
   return rc;
 }
@@ -870,8 +870,8 @@ ra8_err_t mdl_export_chapter(mdl_format_t fmt, const char* chapter_dir, const ch
       return export_cbt_xz(chapter_dir, s_names, count, out_path);
     case k_mdl_fmt_epub:
       return export_epub(chapter_dir, s_names, count, out_path);
-    case k_mdl_fmt_rta1:
-      return export_rta1(chapter_dir, s_names, count);
+    case k_mdl_fmt_jof:
+      return export_jof(chapter_dir, s_names, count);
     case k_mdl_fmt_rabook:
       return export_rabook(chapter_dir, s_names, count, out_path);
     default:

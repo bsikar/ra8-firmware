@@ -1,6 +1,6 @@
 /**
  * @file ra8_longstrip.c
- * @brief Continuous vertical-scroll (longstrip) engine over an RTA1 atlas (#289).
+ * @brief Continuous vertical-scroll (longstrip) engine over a JOF atlas (#289).
  *
  * @details Implements ra8_longstrip.h: virtual-canvas geometry, the scroll +
  *          fling state machine, bounded directional prefetch and the visible
@@ -87,7 +87,7 @@ ra8_err_t ra8_longstrip_tile_decode(void*                 ctx,
  *
  * @param[out] wt   Engine state to populate (every field written).
  * @param[in]  cfg  Validated open configuration.
- * @param[in]  info Parsed, shape-checked RTA1 atlas geometry.
+ * @param[in]  info Parsed, shape-checked JOF atlas geometry.
  *
  * @pre @p wt, @p cfg and @p info are non-NULL (the caller validated them).
  * @pre @p info describes a single full-width band column.
@@ -504,7 +504,7 @@ static void wt_accumulate_coverage(const ra8_longstrip_t*        wt,
 
 /**
  * @brief Fetch, composite and release one visible band; update stats.
- * @details Gets the band from the tile cache (decode-on-miss reads the RTA1
+ * @details Gets the band from the tile cache (decode-on-miss reads the JOF
  *          tile), computes `dst_y = band_top - scroll_y`, blits it through the
  *          sink, accumulates coverage and releases the pin. A cache/decode miss
  *          is recorded as a skip and the frame continues (returns k_ra8_ok); a

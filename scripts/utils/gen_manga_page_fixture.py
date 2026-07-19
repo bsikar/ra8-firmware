@@ -6,7 +6,7 @@
 # deterministic tile grid -- each 256x256 tile is a distinct solid gray with a
 # black inner frame and a big blocky "CcRr" label -- so that panning the
 # viewport across the page visibly changes which labels are on screen. The page
-# is the source ra8_tileatlas_produce() transcodes into an RTA1 atlas at boot;
+# is the source ra8_tileatlas_produce() transcodes into a JOF atlas at boot;
 # it decodes to the same pixels on host, board_sim and silicon, so the render
 # hash in the app banner is identical everywhere.
 #
@@ -155,7 +155,7 @@ def emit_header(png):
         f" * as a {COLS}x{ROWS} grid of {TILE}px tiles. Each tile is a distinct solid gray with a",
         ' * black inner frame and a big blocky "C<col>R<row>" label, so panning the',
         " * viewport across the page visibly changes which labels are on screen. The",
-        " * page is the source ra8_tileatlas_produce() transcodes into an RTA1 atlas",
+        " * page is the source ra8_tileatlas_produce() transcodes into a JOF atlas",
         " * at boot; it decodes to identical pixels on host, board_sim and silicon.",
         " *",
         " * Regenerate: python3 scripts/utils/gen_manga_page_fixture.py",
