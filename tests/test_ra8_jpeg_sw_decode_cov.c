@@ -739,7 +739,7 @@ static void test_decode_ac_huffman_failure(void)
 static void test_decode_ac_magnitude_underflow(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block AC magnitude underflow (v<0)");
-  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_64];
+  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_128];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
