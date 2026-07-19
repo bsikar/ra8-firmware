@@ -675,8 +675,7 @@ RA8_INTERNAL
   if (err != k_ra8_ok) {
     return err;
   }
-  if ((s_panel.info.panel_width != cfg->panel_width) ||
-      (s_panel.info.panel_height != cfg->panel_height)) {
+  if (!ra8_epaper_geometry_agrees(&s_panel.info, cfg)) {
     /* Reported geometry disagrees with the descriptor. Logged, not fatal:
      * a controller that has not finished loading its waveform answers the
      * first GET_DEV_INFO with zeroes, and the app may legitimately drive a

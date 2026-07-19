@@ -940,6 +940,68 @@ static void test_align_area_clamp_mcdc(void)
   TEST_END("epaper MC/DC: align_area clamp 2-condition");
 }
 
+/**
+ * @test epaper_geometry_agrees_mcdc
+ *
+ * @par MC/DC:
+ * Decision libs/ra8_hal/src/ra8_epaper_geom.c@ra8_epaper_geometry_agrees:
+ * ``return (info->panel_width == cfg->panel_width) &&
+ *         (info->panel_height == cfg->panel_height)``
+ * (2 conditions, ``&&``) -- N+1 = 3 vectors:
+ * - Vector 1: w match, h match    -> true  (control: both conditions true)
+ * - Vector 2: w differs, h match  -> false (varies width only)
+ * - Vector 3: w match, h differs  -> false (varies height only; reachable
+ *   only because the width still matches, so the chain does not
+ *   short-circuit)
+ *
+ * @details
+ * This predicate is why ``ra8_epaper_init`` warns instead of failing when
+ * the controller's reported geometry disagrees with the descriptor: a
+ * controller that has not finished loading its waveform answers the first
+ * GET_DEV_INFO with zeroes, and an app may legitimately drive a
+ * sub-window of a larger panel.
+ *
+ * It is tested here rather than through ``init`` because inside ``init``
+ * the reported dimensions come off the bus, and the host fixture's
+ * loopback reports 0xFFFF -- far above the descriptor size ceiling, so
+ * the width comparison always short-circuits and the "agrees" case is
+ * unreachable. Extracting the comparison is what makes all three vectors
+ * expressible.
+ */
+static void test_geometry_agrees_mcdc(void)
+{
+  TEST_BEGIN("epaper MC/DC: init geometry cross-check 2-condition");
+
+  ra8_epaper_cfg_t cfg = make_cfg();
+  cfg.panel_width      = (uint16_t)k_ra8_epaper_test_panel_w;
+  cfg.panel_height     = (uint16_t)k_ra8_epaper_test_panel_h;
+
+  ra8_epaper_dev_info_t info = {};
+
+  /* Vector 1 -- both dimensions agree. */
+  info.panel_width  = (uint16_t)k_ra8_epaper_test_panel_w;
+  info.panel_height = (uint16_t)k_ra8_epaper_test_panel_h;
+  TEST_ASSERT_EQ(true, ra8_epaper_geometry_agrees(&info, &cfg));
+
+  /* Vector 2 -- width disagrees; the chain short-circuits. */
+  info.panel_width  = (uint16_t)k_ra8_epaper_test_panel_w + 1U;
+  info.panel_height = (uint16_t)k_ra8_epaper_test_panel_h;
+  TEST_ASSERT_EQ(false, ra8_epaper_geometry_agrees(&info, &cfg));
+
+  /* Vector 3 -- width agrees so the height comparison is evaluated. */
+  info.panel_width  = (uint16_t)k_ra8_epaper_test_panel_w;
+  info.panel_height = (uint16_t)k_ra8_epaper_test_panel_h + 1U;
+  TEST_ASSERT_EQ(false, ra8_epaper_geometry_agrees(&info, &cfg));
+
+  /* A NULL on either side reports disagreement rather than faulting, so a
+   * caller that never ran a successful GET_DEV_INFO cannot read the check
+   * as agreement. */
+  TEST_ASSERT_EQ(false, ra8_epaper_geometry_agrees(nullptr, &cfg));
+  TEST_ASSERT_EQ(false, ra8_epaper_geometry_agrees(&info, nullptr));
+
+  TEST_END("epaper MC/DC: init geometry cross-check 2-condition");
+}
+
 int main(void)
 {
   test_init_null_cfg();
@@ -960,5 +1022,6 @@ int main(void)
   test_decode_dev_info_layout();
   test_geom_mcdc();
   test_align_area_clamp_mcdc();
+  test_geometry_agrees_mcdc();
   return 0;
 }

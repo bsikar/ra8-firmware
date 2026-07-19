@@ -79,8 +79,6 @@ typedef enum : uint32_t {
   k_cov_rx_nz        = 0x5AU,   /**< Mock rx byte yielding non-zero. */
   k_cov_rx_busy      = 0xABU,   /**< Mock rx byte for a busy LUT.    */
   k_cov_word_nz      = 0x5A5AU, /**< Word rebuilt from k_cov_rx_nz.  */
-  k_cov_rx_dim       = 0x01U,   /**< Rx byte giving a legal geometry. */
-  k_cov_dev_dim      = 0x0101U, /**< Word rebuilt from k_cov_rx_dim. */
   k_cov_reg_addr     = 0x0208U, /**< Arbitrary register address.     */
   k_cov_reg_val      = 0x1234U, /**< Arbitrary register value.       */
   k_cov_fail_1       = 1U,      /**< First transfer of a helper.     */
@@ -924,70 +922,6 @@ static void test_validate_and_size_mcdc(void)
   TEST_END("validate_cfg 5-cond + load_image size 2-cond MC/DC");
 }
 
-/**
- * @test cov_init_geometry_crosscheck_mcdc
- *
- * @par MC/DC:
- * Decision libs/ra8_hal/src/ra8_epaper.c@ra8_epaper_init:
- * ``if ((s_panel.info.panel_width != cfg->panel_width) ||
- *      (s_panel.info.panel_height != cfg->panel_height))``
- * (2 conditions, ``||``) -- N+1 = 3 vectors:
- * - Vector 1: cfg 257x257, reported 257x257 -> false, false (control)
- * - Vector 2: cfg 258x257, reported 257x257 -> true (varies width only)
- * - Vector 3: cfg 257x258, reported 257x257 -> first false, second true
- *   (varies height only; reachable only because this vector keeps the
- *   width equal, so the chain does not short-circuit)
- *
- * @details
- * The mock stamps every received byte with the same value, so a rx byte
- * of 0x01 makes GET_DEV_INFO report 0x0101 = 257 for both dimensions --
- * small enough to also be a legal descriptor size, which is what lets the
- * "matches" vector exist at all. The default cov fixture cannot reach it:
- * its rx byte reports 23130, above the descriptor ceiling, so the width
- * comparison always short-circuits true and the height comparison is
- * never evaluated.
- *
- * The mismatch is deliberately warn-only, so all three vectors return
- * ``k_ra8_ok``. That is the behaviour under test: a controller that has
- * not finished loading its waveform answers the first GET_DEV_INFO with
- * zeroes, and an app may legitimately drive a sub-window of a larger
- * panel, so neither case may refuse to initialise.
- */
-static void test_init_geometry_crosscheck_mcdc(void)
-{
-  TEST_BEGIN("epaper cov MC/DC: init geometry cross-check 2-condition");
-
-  const uint16_t reported = (uint16_t)k_cov_dev_dim;
-
-  /* Vector 1 -- descriptor agrees with the reported geometry. */
-  set_uninit();
-  s_xfer_rx              = (uint8_t)k_cov_rx_dim;
-  ra8_epaper_cfg_t match = cov_cfg();
-  match.panel_width      = reported;
-  match.panel_height     = reported;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_init(&match));
-
-  /* Vector 2 -- width disagrees; the chain short-circuits on condition 1. */
-  set_uninit();
-  s_xfer_rx              = (uint8_t)k_cov_rx_dim;
-  ra8_epaper_cfg_t bad_w = cov_cfg();
-  bad_w.panel_width      = (uint16_t)(reported + 1U);
-  bad_w.panel_height     = reported;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_init(&bad_w));
-
-  /* Vector 3 -- width agrees so condition 2 is evaluated, and disagrees. */
-  set_uninit();
-  s_xfer_rx              = (uint8_t)k_cov_rx_dim;
-  ra8_epaper_cfg_t bad_h = cov_cfg();
-  bad_h.panel_width      = reported;
-  bad_h.panel_height     = (uint16_t)(reported + 1U);
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_init(&bad_h));
-
-  set_uninit();
-  s_xfer_rx = (uint8_t)k_cov_rx_nz;
-  TEST_END("epaper cov MC/DC: init geometry cross-check 2-condition");
-}
-
 int32_t main(void)
 {
   test_send16_recv16_legs();
@@ -995,7 +929,6 @@ int32_t main(void)
   test_write_cmd_data_read_legs();
   test_reg_write_read_legs();
   test_read_dev_info_legs();
-  test_init_geometry_crosscheck_mcdc();
   test_load_display_args_legs();
   test_stream_pixels_even_odd();
   test_init_ladder_legs();
