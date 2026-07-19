@@ -35,59 +35,50 @@
 #include "unity_minimal.h"
 
 /**
- * @enum unarch_tar_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_tar_num_t
+ * @brief Leading bytes that select a tar numeric field's encoding.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * A tar numeric field is normally space- or NUL-terminated octal. GNU extends
+ * it with a base-256 form flagged by bit 7 of byte 0: 0x80 for a positive
+ * value, 0xC0 for a negative one. The parser must accept the first and reject
+ * the rest.
  */
 typedef enum : uint8_t {
-  k_unarch_tar_block_ff  = 0xFFU,
-  k_unarch_tar_f_b256_80 = 0x80U,
-  k_unarch_tar_f_neg_c0  = 0xC0U,
-  k_unarch_tar_f_pay_81  = 0x81U,
-  k_unarch_tar_i_5       = 5U,
-  k_unarch_tar_val_10    = 10,
-  k_unarch_tar_val_11    = 11,
-  k_unarch_tar_val_12    = 12,
-  k_unarch_tar_val_135   = 135,
-  k_unarch_tar_val_24    = 24,
-} unarch_tar_uint8_const_t;
+  k_t_b256_positive = 0x80U, /**< GNU base-256 marker, positive value.        */
+  k_t_b256_negative = 0xC0U, /**< Base-256 marker with the sign bit set; a
+                                  negative size is not representable.          */
+  k_t_b256_payload  = 0x81U, /**< Marker with a payload bit already in byte 0,
+                                  making the value exceed 64 bits.             */
+  k_t_corrupt_mask  = 0xFFU, /**< XOR mask that flips a byte to break the
+                                  header checksum, then restores it.           */
+} t_tar_num_t;
 
 /**
- * @enum unarch_tar_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_tar_field_t
+ * @brief Offsets and widths the numeric-field arms index with.
  */
 typedef enum : uint16_t {
-  k_unarch_tar_s_arc_len_700 = 700U,
-  k_unarch_tar_val_264       = 264,
-  k_unarch_tar_val_300       = 300,
-  k_unarch_tar_val_4096      = 4096,
-  k_unarch_tar_val_512       = 512,
-  k_unarch_tar_val_600       = 600,
-} unarch_tar_uint16_const_t;
+  k_t_num_overlong = 24U,  /**< Numeric field twice the legal width.          */
+  k_t_b256_hi_byte = 10U,  /**< High payload byte of a 12-byte base-256 field. */
+  k_t_b256_lo_byte = 11U,  /**< Its low payload byte.                         */
+  k_t_nonzero_off  = 300U, /**< An offset inside a block, made non-zero to
+                                defeat the all-zero end-of-archive test.       */
+} t_tar_field_t;
 
 /**
- * @enum unarch_tar_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_tar_fixture_t
+ * @brief Sizes of the crafted archives and their members.
  */
 typedef enum : uint32_t {
-  k_unarch_tar_tb_header_100000 = 100000U,
-} unarch_tar_uint32_const_t;
+  k_t_pax_flood    = 5U,      /**< Pax blocks emitted past the per-member cap. */
+  k_t_pax_oversize = 4096U,   /**< Pax payload past k_ra8_unarch_tar_pax_max. */
+  k_t_member_len   = 600U,    /**< Data length of the truncation-arm member.  */
+  k_t_truncate_by  = 700U,    /**< Bytes cut off the archive: past the block
+                                   padding and into the 600-byte data area.    */
+  k_t_size_lie     = 100000U, /**< Declared member size far past the archive.  */
+} t_tar_fixture_t;
 
-/** @brief Named double constant used by this file. */
 /**
  * @enum unarch_tar_tb_octal_0644_t
  * @brief Named octal mode bits used by this file.
@@ -141,7 +132,7 @@ static const uint8_t k_tt_ustar_version[] = {'0', '0'};
 
 /**
  * @enum tt_dim_t
- * @brief Archive / buffer budgets (tests are magic-number exempt).
+ * @brief Archive / buffer budgets for the in-memory fixtures.
  */
 typedef enum : uint32_t {
   k_tt_arc_cap  = 64U * 1024U, /**< In-memory archive build buffer. */
@@ -271,25 +262,25 @@ static void test_tar_num_fields(void)
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_unarch_tar_num(f_bad8, sizeof(f_bad8), &v));
   const uint8_t f_alpha[12] = "0000000064a";
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_unarch_tar_num(f_alpha, sizeof(f_alpha), &v));
-  uint8_t f_over[k_unarch_tar_val_24];
+  uint8_t f_over[k_t_num_overlong];
   memset(f_over, (int)'7', sizeof(f_over));
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_unarch_tar_num(f_over, sizeof(f_over), &v));
 
   /* GNU base-256: 0x80 marker, big-endian payload in the last 8 bytes. */
-  uint8_t f_b256[k_unarch_tar_val_12] = {};
-  f_b256[0]                           = k_unarch_tar_f_b256_80;
-  f_b256[k_unarch_tar_val_10]         = 0x01U;
-  f_b256[k_unarch_tar_val_11]         = 0x02U;
+  uint8_t f_b256[k_tt_len_size] = {};
+  f_b256[0]                           = k_t_b256_positive;
+  f_b256[k_t_b256_hi_byte]         = 0x01U;
+  f_b256[k_t_b256_lo_byte]         = 0x02U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_unarch_tar_num(f_b256, sizeof(f_b256), &v));
   TEST_ASSERT(v == 0x0102U);
-  uint8_t f_neg[k_unarch_tar_val_12] = {};
-  f_neg[0]                           = k_unarch_tar_f_neg_c0; /* negative two's complement */
+  uint8_t f_neg[k_tt_len_size] = {};
+  f_neg[0]                           = k_t_b256_negative; /* negative two's complement */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_unarch_tar_num(f_neg, sizeof(f_neg), &v));
-  uint8_t f_pay[k_unarch_tar_val_12] = {};
-  f_pay[0] = k_unarch_tar_f_pay_81; /* payload bits in byte 0: astronomically large */
+  uint8_t f_pay[k_tt_len_size] = {};
+  f_pay[0] = k_t_b256_payload; /* payload bits in byte 0: astronomically large */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_unarch_tar_num(f_pay, sizeof(f_pay), &v));
-  uint8_t f_high[k_unarch_tar_val_12] = {};
-  f_high[0]                           = k_unarch_tar_f_b256_80;
+  uint8_t f_high[k_tt_len_size] = {};
+  f_high[0]                           = k_t_b256_positive;
   f_high[2]                           = 0x01U; /* over 64 bits via a high byte */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_unarch_tar_num(f_high, sizeof(f_high), &v));
   TEST_END("tar: numeric field parser");
@@ -313,17 +304,17 @@ static void test_tar_num_fields(void)
 static void test_tar_block_primitives(void)
 {
   TEST_BEGIN("tar: block primitives");
-  uint8_t block[k_unarch_tar_val_512] = {};
+  uint8_t block[k_tt_tar_block] = {};
   TEST_ASSERT(ra8_unarch_tar_block_zero(block));
-  block[k_unarch_tar_val_300] = 1U;
+  block[k_t_nonzero_off] = 1U;
   TEST_ASSERT(!ra8_unarch_tar_block_zero(block));
 
   tb_header(block, "a.png", nullptr, (uint8_t)'0', 4U);
   TEST_ASSERT(ra8_unarch_tar_checksum_ok(block));
   TEST_ASSERT(ra8_unarch_tar_magic_ok(block));
-  block[0] ^= k_unarch_tar_block_ff; /* corrupt a name byte: sum shifts */
+  block[0] ^= k_t_corrupt_mask; /* corrupt a name byte: sum shifts */
   TEST_ASSERT(!ra8_unarch_tar_checksum_ok(block));
-  block[0] ^= k_unarch_tar_block_ff;
+  block[0] ^= k_t_corrupt_mask;
   memset(&block[k_tt_off_chksum], 0, k_tt_len_chksum); /* undecodable chksum field */
   TEST_ASSERT(!ra8_unarch_tar_checksum_ok(block));
 
@@ -608,7 +599,7 @@ static void test_tar_open_probe_guards(void)
   TEST_ASSERT(!ra8_unarch_tar_probe(nullptr, 512U));
   TEST_ASSERT(!ra8_unarch_tar_probe(s_arc, 511U));
   TEST_ASSERT(!ra8_unarch_tar_probe(s_arc, 512U)); /* zero block: no magic */
-  uint8_t good[k_unarch_tar_val_512] = {};
+  uint8_t good[k_tt_tar_block] = {};
   tb_header(good, "x.png", nullptr, (uint8_t)'0', 0U);
   TEST_ASSERT(ra8_unarch_tar_probe(good, sizeof(good)));
   good[k_tt_off_magic_nul] = (uint8_t)'X'; /* magic passes "ustar", term fails */
@@ -667,7 +658,7 @@ static void tar_hostile_pax_floods(ra8_unarch_tar_t*       t,
   /* Meta flood: more pax blocks than the per-member cap. */
   const char paxr[] = "11 size=5\n";
   size_t     off    = 0U;
-  for (uint32_t i = 0U; i < k_unarch_tar_i_5; ++i) {
+  for (uint32_t i = 0U; i < k_t_pax_flood; ++i) {
     off = tb_add(off, "x", nullptr, (uint8_t)'x', paxr, sizeof(paxr) - 1U);
   }
   off       = tb_add(off, "a.png", nullptr, (uint8_t)'0', data, dlen);
@@ -677,7 +668,7 @@ static void tar_hostile_pax_floods(ra8_unarch_tar_t*       t,
                  ra8_unarch_tar_next(t, 0U, s_name, sizeof(s_name), e));
 
   /* Oversized pax data (over k_ra8_unarch_tar_pax_max). */
-  uint8_t big[k_unarch_tar_val_4096];
+  uint8_t big[k_t_pax_oversize];
   memset(big, (int)'a', sizeof(big));
   off       = tb_add(0U, "x", nullptr, (uint8_t)'x', big, sizeof(big));
   off       = tb_add(off, "a.png", nullptr, (uint8_t)'0', data, dlen);
@@ -724,7 +715,7 @@ static void test_tar_hostile_headers(void)
   const size_t second = off;
   off                 = tb_add(off, "b.png", nullptr, (uint8_t)'0', data, sizeof(data) - 1U);
   s_arc_len           = tb_end(off);
-  s_arc[second] ^= k_unarch_tar_block_ff;
+  s_arc[second] ^= k_t_corrupt_mask;
   TEST_ASSERT_EQ(k_ra8_ok, tt_open(&t, &mem, nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_unarch_tar_next(&t, 0U, s_name, sizeof(s_name), &e));
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
@@ -736,16 +727,16 @@ static void test_tar_hostile_headers(void)
             "a.png",
             nullptr,
             (uint8_t)'0',
-            k_unarch_tar_tb_header_100000); /* size lies */
+            k_t_size_lie); /* size lies */
   TEST_ASSERT_EQ(k_ra8_ok, tt_open(&t, &mem, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  ra8_unarch_tar_next(&t, 0U, s_name, sizeof(s_name), &e));
 
   /* Truncated data: the archive ends inside the member's data area. */
-  uint8_t big_member[k_unarch_tar_val_600];
+  uint8_t big_member[k_t_member_len];
   memset(big_member, (int)'m', sizeof(big_member));
   s_arc_len = tb_add(0U, "a.png", nullptr, (uint8_t)'0', big_member, sizeof(big_member));
-  s_arc_len -= k_unarch_tar_s_arc_len_700; /* cut into the 600-byte data area itself */
+  s_arc_len -= k_t_truncate_by; /* cut into the 600-byte data area itself */
   TEST_ASSERT_EQ(k_ra8_ok, tt_open(&t, &mem, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  ra8_unarch_tar_next(&t, 0U, s_name, sizeof(s_name), &e));
@@ -884,12 +875,12 @@ static void test_tar_base256_and_gnu_magic(void)
   size_t     off    = tb_add(0U, "b256.png", nullptr, (uint8_t)'0', data, sizeof(data) - 1U);
   /* Rewrite the size field as base-256 and re-checksum. */
   memset(&s_arc[k_tt_off_size], 0, k_tt_len_size);
-  s_arc[k_tt_off_size]        = k_unarch_tar_f_b256_80;
-  s_arc[k_unarch_tar_val_135] = (uint8_t)(sizeof(data) - 1U);
+  s_arc[k_tt_off_size]        = k_t_b256_positive;
+  s_arc[k_tt_off_size + k_tt_len_size - 1U] = (uint8_t)(sizeof(data) - 1U);
   /* Old-GNU magic variant: "ustar" + ' ' + ' '. */
   s_arc[k_tt_off_magic_nul]   = (uint8_t)' ';
   s_arc[k_tt_off_version]     = (uint8_t)' ';
-  s_arc[k_unarch_tar_val_264] = 0U;
+  s_arc[k_tt_off_version + 1U]              = 0U;
   tb_finish(&s_arc[0]);
   s_arc_len = tb_end(off);
 
