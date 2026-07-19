@@ -49,19 +49,24 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_epub_img_tiles_cap_64       = 64U,
-  k_epub_img_tiles_i_13         = 13U,
-  k_epub_img_tiles_len_24       = 24U,
-  k_epub_img_tiles_s_png_len_12 = 12U,
-  k_epub_img_tiles_val_10       = 10U,
-  k_epub_img_tiles_val_11       = 11U,
-  k_epub_img_tiles_val_13       = 13,
-  k_epub_img_tiles_val_5        = 5,
-  k_epub_img_tiles_val_64       = 64,
-  k_epub_img_tiles_val_7        = 7,
-  k_epub_img_tiles_val_9        = 9U,
-  k_epub_img_tiles_val_ff       = 0xFFU,
-  k_epub_img_tiles_y_7          = 7U,
+  k_tile_store_cap     = 64U, /**< Capacity of the tile memstore the import path writes into. */
+  k_fig_pattern_stride = 13U, /**< Stride of the flat figure generator, `i * 13 + 7`. */
+  k_shift_byte3 =
+    24U, /**< Shift to the most significant byte; PNG lengths and CRCs are big-endian, so this byte is written first. */
+  k_png_chunk_overhead =
+    12U, /**< Bytes a chunk costs beyond its payload: 4 length + 4 type + 4 CRC. */
+  k_png_off_crc_b2         = 10U, /**< Its third byte. */
+  k_png_off_crc_b3         = 11U, /**< Its last byte. */
+  k_png_ihdr_data_len      = 13,  /**< An IHDR chunk's data is exactly 13 bytes. */
+  k_png_ihdr_off_height_b1 = 5,   /**< Second byte of IHDR's big-endian height field. */
+  k_hostile_entry_bytes =
+    64, /**< Size of the corrupt atlas entry: past the magic, but far too short to hold a real header. */
+  k_png_ihdr_off_height_b3 = 7, /**< Its last byte. */
+  k_png_off_crc_b1 =
+    9U,                /**< Second byte of a chunk's trailing CRC, 9 + len from the chunk start. */
+  k_byte_mask = 0xFFU, /**< Low-byte mask used by the put16 helper. */
+  k_fig_pattern_y_mul =
+    7U, /**< Row multiplier of the figure generator, `(x * 3 + y * 7) & 0xFF`; coprime with the column multiplier so no two pixels in a tile collide. */
 } epub_img_tiles_uint8_const_t;
 
 /**
@@ -166,7 +171,7 @@ static const char* const k_ch1 =
 /** @brief Deterministic source pixel at (x, y). */
 static uint8_t pix(uint32_t x, uint32_t y)
 {
-  return (uint8_t)(((x * 3U) + (y * k_epub_img_tiles_y_7)) & k_epub_img_tiles_val_ff);
+  return (uint8_t)(((x * 3U) + (y * k_fig_pattern_y_mul)) & k_byte_mask);
 }
 
 /* ---------------------------------------------------------------------------
@@ -179,20 +184,20 @@ static uint8_t pix(uint32_t x, uint32_t y)
 static void png_chunk(const char* type, const uint8_t* data, uint32_t len)
 {
   uint8_t* p = &s_png[s_png_len];
-  p[0]       = (uint8_t)(len >> k_epub_img_tiles_len_24);
-  p[1]       = (uint8_t)((len >> 16U) & k_epub_img_tiles_val_ff);
-  p[2]       = (uint8_t)((len >> 8U) & k_epub_img_tiles_val_ff);
-  p[3]       = (uint8_t)(len & k_epub_img_tiles_val_ff);
+  p[0]       = (uint8_t)(len >> k_shift_byte3);
+  p[1]       = (uint8_t)((len >> 16U) & k_byte_mask);
+  p[2]       = (uint8_t)((len >> 8U) & k_byte_mask);
+  p[3]       = (uint8_t)(len & k_byte_mask);
   memcpy(&p[4], type, 4U);
   if (len > 0U) {
     memcpy(&p[8], data, len);
   }
-  const uint32_t crc               = (uint32_t)mz_crc32(MZ_CRC32_INIT, &p[4], (size_t)len + 4U);
-  p[8U + len]                      = (uint8_t)(crc >> k_epub_img_tiles_len_24);
-  p[k_epub_img_tiles_val_9 + len]  = (uint8_t)((crc >> 16U) & k_epub_img_tiles_val_ff);
-  p[k_epub_img_tiles_val_10 + len] = (uint8_t)((crc >> 8U) & k_epub_img_tiles_val_ff);
-  p[k_epub_img_tiles_val_11 + len] = (uint8_t)(crc & k_epub_img_tiles_val_ff);
-  s_png_len += k_epub_img_tiles_s_png_len_12 + (size_t)len;
+  const uint32_t crc        = (uint32_t)mz_crc32(MZ_CRC32_INIT, &p[4], (size_t)len + 4U);
+  p[8U + len]               = (uint8_t)(crc >> k_shift_byte3);
+  p[k_png_off_crc_b1 + len] = (uint8_t)((crc >> 16U) & k_byte_mask);
+  p[k_png_off_crc_b2 + len] = (uint8_t)((crc >> 8U) & k_byte_mask);
+  p[k_png_off_crc_b3 + len] = (uint8_t)(crc & k_byte_mask);
+  s_png_len += k_png_chunk_overhead + (size_t)len;
 }
 
 /** @brief Build a gray8 filter-0 PNG of ::pix at (w, h) into `s_png`. */
@@ -203,17 +208,17 @@ static void png_build(uint32_t w, uint32_t h)
   static uint8_t       s_zbuf[k_png_cap];
   s_png_len = 0U;
   memcpy(s_png, sig, sizeof(sig));
-  s_png_len                             = sizeof(sig);
-  uint8_t ihdr[k_epub_img_tiles_val_13] = {};
-  ihdr[0]                               = (uint8_t)(w >> k_epub_img_tiles_len_24);
-  ihdr[1]                               = (uint8_t)((w >> 16U) & k_epub_img_tiles_val_ff);
-  ihdr[2]                               = (uint8_t)((w >> 8U) & k_epub_img_tiles_val_ff);
-  ihdr[3]                               = (uint8_t)(w & k_epub_img_tiles_val_ff);
-  ihdr[4]                               = (uint8_t)(h >> k_epub_img_tiles_len_24);
-  ihdr[k_epub_img_tiles_val_5]          = (uint8_t)((h >> 16U) & k_epub_img_tiles_val_ff);
-  ihdr[6]                               = (uint8_t)((h >> 8U) & k_epub_img_tiles_val_ff);
-  ihdr[k_epub_img_tiles_val_7]          = (uint8_t)(h & k_epub_img_tiles_val_ff);
-  ihdr[8]                               = 8U;
+  s_png_len                         = sizeof(sig);
+  uint8_t ihdr[k_png_ihdr_data_len] = {};
+  ihdr[0]                           = (uint8_t)(w >> k_shift_byte3);
+  ihdr[1]                           = (uint8_t)((w >> 16U) & k_byte_mask);
+  ihdr[2]                           = (uint8_t)((w >> 8U) & k_byte_mask);
+  ihdr[3]                           = (uint8_t)(w & k_byte_mask);
+  ihdr[4]                           = (uint8_t)(h >> k_shift_byte3);
+  ihdr[k_png_ihdr_off_height_b1]    = (uint8_t)((h >> 16U) & k_byte_mask);
+  ihdr[6]                           = (uint8_t)((h >> 8U) & k_byte_mask);
+  ihdr[k_png_ihdr_off_height_b3]    = (uint8_t)(h & k_byte_mask);
+  ihdr[8]                           = 8U;
   png_chunk("IHDR", ihdr, sizeof(ihdr));
   size_t o = 0U;
   for (uint32_t y = 0U; y < h; y++) {
@@ -297,7 +302,7 @@ static void bake_atlas(uint32_t w, uint32_t h, uint8_t codec, ra8_jof_memstore_t
 static void zip_add_hostile(mz_zip_archive* zip)
 {
   /* A stored entry with the atlas magic but corrupt structure. */
-  uint8_t bad[k_epub_img_tiles_val_64] = {'J', 'O', 'F', '1'};
+  uint8_t bad[k_hostile_entry_bytes] = {'J', 'O', 'F', '1'};
   TEST_ASSERT(mz_zip_writer_add_mem(zip, "OEBPS/bad.rta", bad, sizeof(bad), MZ_NO_COMPRESSION) ==
               MZ_TRUE);
   /* A stored entry shorter than the atlas magic (import classify: short). */
@@ -316,7 +321,7 @@ static void build_archive(void)
   bake_atlas(k_big_w, k_big_h, (uint8_t)k_ra8_jof_codec_deflate, &big);
   bake_atlas(k_edge_w, k_edge_h, (uint8_t)k_ra8_jof_codec_raw, &edge);
   for (size_t i = 0U; i < (size_t)k_fig_bytes; ++i) {
-    s_fig[i] = (uint8_t)((i * k_epub_img_tiles_i_13) + k_epub_img_tiles_y_7);
+    s_fig[i] = (uint8_t)((i * k_fig_pattern_stride) + k_fig_pattern_y_mul);
   }
   png_build(k_imp_w, k_imp_h); /* the import-path source entry */
 
@@ -621,9 +626,7 @@ static void import_error_arms(ra8_epub_tile_binder_t*            binder,
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_epub_tile_binder_import(binder, book, "page1.png", 42U, &small));
   ra8_epub_atlas_import_cfg_t tiny      = *base;
-  ra8_jof_memstore_t    tinystore = {.buf = s_imp_buf,
-                                           .cap = k_epub_img_tiles_cap_64,
-                                           .len = 0U};
+  ra8_jof_memstore_t    tinystore = {.buf = s_imp_buf, .cap = k_tile_store_cap, .len = 0U};
   tiny.store.sink_ctx                   = &tinystore;
   tiny.store.pread_ctx                  = &tinystore;
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
