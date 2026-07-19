@@ -7,7 +7,8 @@
         test test-docker ubsan test-cov ctest coverage mcdc \
         misra misra-check misra-baseline scan-build scan-build-strict iwyu \
         fuzz bench stack-usage check-annotations nsc-cmse-check \
-        sbom sbom-check vela vela-check vela-regen vela-compile ci ci-fast
+        sbom sbom-check vela vela-check vela-regen vela-compile \
+        ci ci-fast ci-native ci-native-fast ci-list ci-gate
 
 format:
 	bash scripts/format_code.sh
@@ -147,18 +148,37 @@ vela-regen:
 vela-compile:
 	$(VELA_GEN) compile $(TFLITE) -o $(or $(VELA_OUT),build/vela)
 
-# `make ci` -- reproduce the GitHub Actions gates inside the Ubuntu devcontainer
-# (run before every push). Gates run: clang-format, cppcheck, the check_*.py
-# pre-commit suite, the annotation gate, the MISRA ratchet, clang-tidy, host
-# unit tests, and the coverage gate, with a PASS/FAIL line per gate at the end.
-# REBUILD=1 forces a fresh image.
+# `make ci` -- run every CI gate before pushing.
 #
-# Keep this suite a superset-or-equal of firmware.yml. The annotation gate and
-# the MISRA ratchet were both absent from it once, so a full local run passed
-# while CI went red -- validating a subset of CI is the recurring shape of that
-# failure.
+# The gate bodies live in scripts/ci.sh and the workflows call the SAME
+# functions (`bash scripts/ci.sh --gate <name>`), so this cannot validate a
+# different set of checks than the runner does. That was the recurring failure:
+# the annotation gate and the MISRA ratchet were each absent from a
+# hand-maintained local copy, so a full local run passed while CI went red.
+# `make ci-list` prints the registry; `make ci-gate GATE=<name>` runs one.
+#
+# `make ci` containerises (needed on macOS: the host tests mmap MAP_FIXED below
+# 4 GiB, which macOS arm64 refuses). On Linux with no container runtime it
+# falls back to running natively, because Linux native IS the CI environment.
+# `make ci-native` asks for that path explicitly -- use it on a box with no
+# docker/podman. Both run against a clean `git archive HEAD` snapshot, so
+# in-source build junk and stale .gcda cannot skew a gate.
+# REBUILD=1 forces a fresh image.
 ci:
 	bash scripts/ci.sh $(if $(filter-out 0,$(REBUILD)),--rebuild,)
 
 ci-fast:
 	bash scripts/ci.sh --fast $(if $(filter-out 0,$(REBUILD)),--rebuild,)
+
+ci-native:
+	bash scripts/ci.sh --native
+
+ci-native-fast:
+	bash scripts/ci.sh --native --fast
+
+ci-list:
+	@bash scripts/ci.sh --list-gates
+
+ci-gate:
+	@test -n "$(GATE)" || { echo "usage: make ci-gate GATE=<name>  (make ci-list to see them)" >&2; exit 2; }
+	bash scripts/ci.sh --gate $(GATE)
