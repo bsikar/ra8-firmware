@@ -663,8 +663,7 @@ static void test_vcom_permit_legs(void)
   /* Decision A vector 2 -- the controller echoes k_cov_word_nz, so asking
    * for anything else is a mismatch. The write is refused and, critically,
    * the panel is still not drivable. */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 ra8_epaper_set_vcom_cov((uint16_t)k_cov_reg_val));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_epaper_set_vcom_cov((uint16_t)k_cov_reg_val));
   TEST_ASSERT_EQ(false, ra8_epaper_vcom_verified_cov());
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  ra8_epaper_display_area_cov(&area, k_ra8_epaper_wf_gc16));
@@ -684,8 +683,7 @@ static void test_vcom_permit_legs(void)
   s_xfer_rx = (uint8_t)k_cov_rx_nz;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_set_vcom_cov((uint16_t)k_cov_word_nz));
   TEST_ASSERT_EQ(true, ra8_epaper_vcom_verified_cov());
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 ra8_epaper_set_vcom_cov((uint16_t)k_cov_reg_val));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_epaper_set_vcom_cov((uint16_t)k_cov_reg_val));
   TEST_ASSERT_EQ(false, ra8_epaper_vcom_verified_cov());
 
   /* Sleep leaves the controller in an undefined state, so the permit must

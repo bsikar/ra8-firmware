@@ -271,8 +271,7 @@ static void test_happy_path(void)
                                        k_ra8_epaper_endian_little));
   /* INV-VCOM-1: no refresh without a verified VCOM. Taken before the seam
    * is armed, because granting the permit costs bus traffic of its own. */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 ra8_epaper_display_area(&area, k_ra8_epaper_wf_gc16));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_epaper_display_area(&area, k_ra8_epaper_wf_gc16));
   grant_vcom_permit();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after((volatile const void*)&s_bus, 2U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_display_area(&area, k_ra8_epaper_wf_gc16));
@@ -668,8 +667,7 @@ static void test_vcom_commands(void)
    * permit. On this fixture the loopback always reports 0xFFFF, so any
    * other value lands here -- which is the readback compare doing its job,
    * not a fixture quirk to work around. */
-  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
-                 ra8_epaper_set_vcom(k_ra8_epaper_test_vcom_mv));
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_epaper_set_vcom(k_ra8_epaper_test_vcom_mv));
   TEST_ASSERT_EQ(false, ra8_epaper_vcom_verified());
 
   /* The value the loopback does echo back is accepted and grants the permit. */
@@ -703,28 +701,41 @@ static void test_load_image_depth_and_alignment(void)
   const ra8_epaper_area_t misaligned = {.x = 8U, .y = 0U, .width = 64U, .height = 1U};
   const ra8_epaper_area_t aligned    = {.x = 0U, .y = 0U, .width = 64U, .height = 1U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_epaper_load_image(&misaligned, bitmap, sizeof(bitmap),
-                                       k_ra8_epaper_pf_1bpp, k_ra8_epaper_endian_little));
+                 ra8_epaper_load_image(&misaligned,
+                                       bitmap,
+                                       sizeof(bitmap),
+                                       k_ra8_epaper_pf_1bpp,
+                                       k_ra8_epaper_endian_little));
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_epaper_load_image(&aligned, bitmap, sizeof(bitmap),
-                                       k_ra8_epaper_pf_1bpp, k_ra8_epaper_endian_little));
+                 ra8_epaper_load_image(&aligned,
+                                       bitmap,
+                                       sizeof(bitmap),
+                                       k_ra8_epaper_pf_1bpp,
+                                       k_ra8_epaper_endian_little));
 
   /* 4 bpp: half the bytes of the 8 bpp path for the same rectangle. */
   static uint8_t packed4[32] = {};
   static uint8_t packed8[64] = {};
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_epaper_load_image(&aligned, packed4, sizeof(packed4),
-                                       k_ra8_epaper_pf_4bpp, k_ra8_epaper_endian_little));
+                 ra8_epaper_load_image(&aligned,
+                                       packed4,
+                                       sizeof(packed4),
+                                       k_ra8_epaper_pf_4bpp,
+                                       k_ra8_epaper_endian_little));
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_epaper_load_image(&aligned, packed8, sizeof(packed8),
-                                       k_ra8_epaper_pf_4bpp, k_ra8_epaper_endian_little));
+                 ra8_epaper_load_image(&aligned,
+                                       packed8,
+                                       sizeof(packed8),
+                                       k_ra8_epaper_pf_4bpp,
+                                       k_ra8_epaper_endian_little));
 
   /* An unknown waveform selector is refused rather than defaulted. The
    * permit is taken first so this asserts the waveform refusal and not the
    * INV-VCOM-1 one, which is checked earlier and would otherwise mask it. */
   grant_vcom_permit();
-  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_epaper_display_area(&aligned, (ra8_epaper_waveform_t)k_ra8_epaper_test_bad_wf));
+  TEST_ASSERT_EQ(
+    k_ra8_err_invalid_arg,
+    ra8_epaper_display_area(&aligned, (ra8_epaper_waveform_t)k_ra8_epaper_test_bad_wf));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_sleep());
   TEST_END("epaper: load_image depth sizing + 1bpp alignment refusal");
 }
