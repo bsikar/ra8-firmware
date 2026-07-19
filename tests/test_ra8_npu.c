@@ -22,17 +22,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum npu_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_npu_probe_t
+ * @brief Job-id out-parameter seed.
  */
 typedef enum : uint32_t {
-  k_npu_id_ffffffff = 0xFFFFFFFFU,
-} npu_uint32_const_t;
+  k_t_id_unset = 0xFFFFFFFFU, /**< Pre-set job id; a submit that fails must
+                                   leave it rather than report a real job.      */
+} t_npu_probe_t;
 
 /**
  * @enum ra8_npu_test_const_t
@@ -132,7 +128,7 @@ static void test_init_ungates_and_reads_id(void)
   TEST_BEGIN("npu init ungates + id readable");
   npu_prep();
 
-  uint32_t id = k_npu_id_ffffffff;
+  uint32_t id = k_t_id_unset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_read_id(&id));
   /* After a host reset the ID register reads back the zeroed backing store. */
   TEST_ASSERT_EQ(0U, id);

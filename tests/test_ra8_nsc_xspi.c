@@ -32,17 +32,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum nsc_xspi_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_xspi_t
+ * @brief Destination buffer for the cross-gateway read.
  */
 typedef enum : uint16_t {
-  k_nsc_xspi_val_5000 = 5000,
-} nsc_xspi_uint16_const_t;
+  k_t_dst_cap = 5000U, /**< Read destination, bytes; larger than one flash page
+                            so the veneer must loop rather than single-shot.    */
+} t_xspi_t;
 
 typedef enum : uint32_t {
   k_test_xspi_len_ok   = 256U,  /**< Valid read length.            */
@@ -70,7 +66,7 @@ typedef enum : uint32_t {
 static void test_mcdc_ra8_nsc_xspi(void)
 {
   TEST_BEGIN("ra8_nsc_xspi_read MC/DC: length validator OR");
-  static uint8_t s_dst[k_nsc_xspi_val_5000] = {};
+  static uint8_t s_dst[k_t_dst_cap] = {};
 
   /* V1: valid length -> dec F.  XSPI driver not initialized in this
    * TU, so the tail call returns a non-invalid_arg error. */

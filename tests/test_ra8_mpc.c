@@ -15,18 +15,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum mpc_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_pfs_probe_t
+ * @brief PFS register patterns proving which bits the MPC driver preserves.
  */
 typedef enum : uint32_t {
-  k_mpc_pfs_deadbeef = 0xDEADBEEFU,
-  k_mpc_pfs_ffffffff = 0xFFFFFFFFU,
-} mpc_uint32_const_t;
+  k_t_pfs_all_ones = 0xFFFFFFFFU, /**< Every bit set, so a clear is visible.   */
+  k_t_pfs_pattern  = 0xDEADBEEFU, /**< A mixed pattern, so a set is visible too. */
+} t_pfs_probe_t;
 
 /**
  * @par MC/DC:
@@ -65,7 +60,7 @@ static void test_set_gpio_output_clears_pmr(void)
   /* Pollute the register first. */
   volatile uint32_t* pfs = ra8_pfs_pmn(k_ra8_port_3, k_ra8_pin_7);
   TEST_ASSERT_NOT_NULL((void*)pfs);
-  *pfs = k_mpc_pfs_ffffffff;
+  *pfs = k_t_pfs_all_ones;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpc_set_gpio(k_ra8_port_3, 7U, k_ra8_mpc_dir_output));
 
@@ -85,7 +80,7 @@ static void test_set_gpio_input(void)
   ra8_sim_mmap_reset();
   volatile uint32_t* pfs = ra8_pfs_pmn(k_ra8_port_2, 0U);
   TEST_ASSERT_NOT_NULL((void*)pfs);
-  *pfs = k_mpc_pfs_deadbeef;
+  *pfs = k_t_pfs_pattern;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpc_set_gpio(k_ra8_port_2, 0U, k_ra8_mpc_dir_input));
   TEST_ASSERT_EQ(0, *ra8_pfs_pmn(k_ra8_port_2, 0U));

@@ -63,30 +63,16 @@
 #include "unity_minimal.h"
 
 /**
- * @enum rsip_eddsa_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_rsip_eddsa_val_132 = 132,
-} rsip_eddsa_uint8_const_t;
-
-/**
- * @enum rsip_eddsa_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_eddsa_t
+ * @brief Signature buffer capacity and the fixture body fill.
  */
 typedef enum : uint32_t {
-  k_rsip_eddsa_body_b5b50000 = 0xB5B50000UL,
-} rsip_eddsa_uint32_const_t;
+  k_t_sig_cap   = 132U,        /**< Signature scratch, bytes: past the 64-byte
+                                    Ed25519 signature so the length guard, not
+                                    the buffer, is what limits the write.        */
+  k_t_body_fill = 0xB5B50000UL, /**< Alternating high half, ORed with the word
+                                     index so each word is unique.               */
+} t_eddsa_t;
 
 /**
  * @enum ra8_rsip_eddsa_test_const_t
@@ -127,7 +113,7 @@ static ra8_rsip_key_handle_t make_handle(ra8_rsip_oem_cmd_t alg, uint32_t words)
 {
   ra8_rsip_key_handle_t h = {.alg = (uint32_t)alg, .body_words = words};
   for (uint32_t i = 0U; i < words; ++i) {
-    h.body[i] = k_rsip_eddsa_body_b5b50000 | i;
+    h.body[i] = k_t_body_fill | i;
   }
   return h;
 }
@@ -262,7 +248,7 @@ static void test_ecdsa_rejects_ed25519(void)
   ra8_rsip_key_handle_t ecc = make_handle(k_ra8_rsip_oem_cmd_ecc_secp256r1_priv,
                                           (uint32_t)k_ra8_rsip_handle_words_ecc256_priv);
   const uint8_t         digest[k_eddsa_test_msg_bytes] = {};
-  uint8_t               sig[k_rsip_eddsa_val_132]      = {};
+  uint8_t               sig[k_t_sig_cap]      = {};
 
   /* Vector A: ed25519 -> reject before any opcode write. */
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_ctrl) = (uint32_t)k_eddsa_test_sentinel;

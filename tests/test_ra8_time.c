@@ -11,17 +11,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum time_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_time_t
+ * @brief Timer source frequency the clock is initialised with.
  */
 typedef enum : uint32_t {
-  k_time_ra8_time_init_1000000 = 1000000UL,
-} time_uint32_const_t;
+  k_t_source_hz = 1000000UL, /**< 1 MHz, so one tick is exactly one microsecond
+                                  and the conversions under test are exact.      */
+} t_time_t;
 
 /* On the host there is no real SysTick; we use the exposed
   *
@@ -60,7 +56,7 @@ static void test_init_accepts_reasonable_hz(void)
 static void test_tick_counter_advances(void)
 {
   TEST_BEGIN("tick counter advances on on_tick");
-  (void)ra8_time_init(k_time_ra8_time_init_1000000);
+  (void)ra8_time_init(k_t_source_hz);
   const uint32_t start = ra8_time_ms();
   ra8_time_on_tick();
   ra8_time_on_tick();
@@ -78,7 +74,7 @@ static void test_tick_counter_advances(void)
 static void test_now_and_sleep_aliases(void)
 {
   TEST_BEGIN("short aliases forward to systick");
-  (void)ra8_time_init(k_time_ra8_time_init_1000000);
+  (void)ra8_time_init(k_t_source_hz);
   const uint32_t via_long  = ra8_time_ms();
   const uint32_t via_short = ra8_now_ms();
   TEST_ASSERT_EQ(via_long, via_short);
@@ -137,7 +133,7 @@ static void test_systick_handler_increments_counter(void)
   TEST_BEGIN("SysTick_Handler increments tick counter");
   extern void SysTick_Handler(void);
 
-  (void)ra8_time_init(k_time_ra8_time_init_1000000);
+  (void)ra8_time_init(k_t_source_hz);
   const uint32_t before = ra8_time_ms();
   SysTick_Handler();
   SysTick_Handler();

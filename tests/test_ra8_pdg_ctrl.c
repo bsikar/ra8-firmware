@@ -22,17 +22,14 @@
 #include "unity_minimal.h"
 
 /**
- * @enum pdg_ctrl_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_pdg_t
+ * @brief Out-parameter seed and the out-of-range enum probe.
  */
 typedef enum : uint8_t {
-  k_pdg_ctrl_got_ff = 0xFFU,
-} pdg_ctrl_uint8_const_t;
+  k_t_out_unset = 0xFFU, /**< Pre-set byte out-parameter; also used as a
+                              frequency-range value past the defined set, which
+                              the validator must reject.                        */
+} t_pdg_t;
 
 /**
  * @enum ra8_pdg_test_const_t
@@ -185,14 +182,14 @@ static void test_pin_disable(void)
                                    (uint8_t)k_ra8_pdg_test_code_hi));
   /* Disable pin A -- both cells must drop to zero. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdg_pin_disable((uint8_t)k_ra8_pdg_test_ch_first, k_ra8_pdg_pin_a));
-  uint8_t got = k_pdg_ctrl_got_ff;
+  uint8_t got = k_t_out_unset;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_pdg_get_delay((uint8_t)k_ra8_pdg_test_ch_first,
                                    k_ra8_pdg_pin_a,
                                    k_ra8_pdg_edge_rising,
                                    &got));
   TEST_ASSERT_EQ(0, got);
-  got = k_pdg_ctrl_got_ff;
+  got = k_t_out_unset;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_pdg_get_delay((uint8_t)k_ra8_pdg_test_ch_first,
                                    k_ra8_pdg_pin_a,
@@ -277,7 +274,7 @@ static void test_pick_frange(void)
   TEST_BEGIN("pdg pick_frange");
   prep();
 
-  ra8_pdg_frange_t f = (ra8_pdg_frange_t)k_pdg_ctrl_got_ff;
+  ra8_pdg_frange_t f = (ra8_pdg_frange_t)k_t_out_unset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdg_pick_frange((uint32_t)k_ra8_pdg_test_clk_low_band, &f));
   TEST_ASSERT_EQ(k_ra8_pdg_frange_80_160_mhz, f);
 

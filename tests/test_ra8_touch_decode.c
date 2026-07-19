@@ -23,18 +23,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum touch_decode_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_decode_t
+ * @brief Byte mask and the point-array capacity.
  */
 typedef enum : uint8_t {
-  k_touch_decode_v_ff  = 0xFFU,
-  k_touch_decode_val_5 = 5U,
-} touch_decode_uint8_const_t;
+  k_t_byte_mask = 0xFFU, /**< Low-byte mask while packing a raw report field. */
+  k_t_point_cap = 5U,    /**< Points the caller's array can hold.             */
+} t_decode_t;
 
 /**
  * @enum ra8_touch_decode_test_const_t
@@ -71,7 +66,7 @@ typedef enum : uint8_t {
  */
 static void pack_le16(uint16_t v, uint8_t* out)
 {
-  out[0] = (uint8_t)(v & k_touch_decode_v_ff);
+  out[0] = (uint8_t)(v & k_t_byte_mask);
   out[1] = (uint8_t)((uint32_t)v >> (uint32_t)k_test_byte_shift);
 }
 
@@ -107,7 +102,7 @@ static void test_decode_one_point(void)
               (uint16_t)k_test_y_one,
               (uint16_t)k_test_pressure_one);
 
-  ra8_touch_point_t pts[k_touch_decode_val_5];
+  ra8_touch_point_t pts[k_t_point_cap];
   uint8_t           got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_touch_test_decode(raw, 1U, pts, (uint8_t)k_test_max_points_default, &got));
@@ -145,7 +140,7 @@ static void test_decode_three_points(void)
               (uint16_t)k_test_y_three,
               (uint16_t)k_test_pressure_one);
 
-  ra8_touch_point_t pts[k_touch_decode_val_5];
+  ra8_touch_point_t pts[k_t_point_cap];
   uint8_t           got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_touch_test_decode(raw, 3U, pts, (uint8_t)k_test_max_points_default, &got));
@@ -166,8 +161,8 @@ static void test_decode_three_points(void)
 static void test_decode_five_points_max(void)
 {
   TEST_BEGIN("ra8_touch_test_decode: five points (max)");
-  uint8_t raw[(uint32_t)k_ra8_touch_gt911_point_bytes * k_touch_decode_val_5] = {};
-  for (uint8_t i = 0U; i < k_touch_decode_val_5; i++) {
+  uint8_t raw[(uint32_t)k_ra8_touch_gt911_point_bytes * k_t_point_cap] = {};
+  for (uint8_t i = 0U; i < k_t_point_cap; i++) {
     build_point(&raw[(size_t)(uint32_t)i * (uint32_t)k_ra8_touch_gt911_point_bytes],
                 i,
                 (uint16_t)((uint32_t)k_test_x_five_a + i),
@@ -175,12 +170,12 @@ static void test_decode_five_points_max(void)
                 (uint16_t)k_test_pressure_one);
   }
 
-  ra8_touch_point_t pts[k_touch_decode_val_5];
+  ra8_touch_point_t pts[k_t_point_cap];
   uint8_t           got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_touch_test_decode(raw, 5U, pts, (uint8_t)k_test_max_points_default, &got));
   TEST_ASSERT_EQ(5, got);
-  for (uint8_t i = 0U; i < k_touch_decode_val_5; i++) {
+  for (uint8_t i = 0U; i < k_t_point_cap; i++) {
     TEST_ASSERT_EQ(i, pts[i].track_id);
   }
   TEST_END("ra8_touch_test_decode: five points (max)");

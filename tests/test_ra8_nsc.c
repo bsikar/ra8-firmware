@@ -21,30 +21,14 @@
 #include "unity_minimal.h"
 
 /**
- * @enum nsc_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_nsc_val_64 = 64,
-} nsc_uint8_const_t;
-
-/**
- * @enum nsc_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_nsc_t
+ * @brief Buffer capacity and the mask out-parameter seed.
  */
 typedef enum : uint16_t {
-  k_nsc_mask_dead = 0xDEADU,
-} nsc_uint16_const_t;
+  k_t_buf_cap     = 64U,     /**< Scratch and frame buffers, bytes.           */
+  k_t_mask_unset  = 0xDEADU, /**< Pre-set mask; a veneer that rejects its input
+                                  must leave it rather than report a real mask. */
+} t_nsc_t;
 
 static void prep(void)
 {
@@ -73,7 +57,7 @@ static void test_xspi_read_validates_args(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_init(0U, k_ra8_xspi_lio_1s1s1s));
 
-  uint8_t buf[k_nsc_val_64] = {0U};
+  uint8_t buf[k_t_buf_cap] = {0U};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_nsc_xspi_read(0U, nullptr, 64U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_nsc_xspi_read(0U, buf, 0U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
@@ -97,7 +81,7 @@ static void test_xspi_status_forwards_to_driver(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_xspi_init(0U, k_ra8_xspi_lio_1s1s1s));
 
-  uint32_t mask = k_nsc_mask_dead;
+  uint32_t mask = k_t_mask_unset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_xspi_status(0U, &mask));
   /* Stub: reading status from an inactive xspi returns 0; the
    * point of the test is that the veneer doesn't fail. */
@@ -127,7 +111,7 @@ static void test_eth_send_validates_args(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_init(&k_test_mac));
 
-  uint8_t frame[k_nsc_val_64] = {0U};
+  uint8_t frame[k_t_buf_cap] = {0U};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_nsc_eth_send(nullptr, 64U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_nsc_eth_send(frame, 0U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,

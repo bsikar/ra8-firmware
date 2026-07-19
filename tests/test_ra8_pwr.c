@@ -19,18 +19,17 @@
 #include "unity_minimal.h"
 
 /**
- * @enum pwr_uint32_const_t
- * @brief Named uint32_t constants used by this file.
+ * @enum t_wupen_t
+ * @brief Wake-up enable patterns staged into the two WUPEN registers.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Two different patterns, so a driver that reads or writes the wrong register
+ * produces the other one's value rather than a plausible result.
  */
 typedef enum : uint32_t {
-  k_pwr_sentinel_cafebabe = 0xCAFEBABEU,
-  k_pwr_sentinel_deadbeef = 0xDEADBEEFU,
-} pwr_uint32_const_t;
+  k_t_wupen0_pattern = 0xDEADBEEFU, /**< Pattern staged in WUPEN0. */
+  k_t_wupen1_pattern = 0xCAFEBABEU, /**< Pattern staged in WUPEN1. */
+} t_wupen_t;
 
 static volatile uint32_t* wupen0_ptr(void)
 {
@@ -54,8 +53,8 @@ static void test_init_clears_wupen_and_resets_mstp(void)
   ra8_sim_mmap_reset();
 
   /* Pollute WUPEN0/1 first to prove init clears them. */
-  *wupen0_ptr() = k_pwr_sentinel_deadbeef;
-  *wupen1_ptr() = k_pwr_sentinel_cafebabe;
+  *wupen0_ptr() = k_t_wupen0_pattern;
+  *wupen1_ptr() = k_t_wupen1_pattern;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pwr_init());
   TEST_ASSERT_EQ(0, *wupen0_ptr());

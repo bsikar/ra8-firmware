@@ -34,17 +34,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum usb_paud_cov_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_paud_cov_t
+ * @brief Transferred-byte out-parameter seed.
  */
 typedef enum : uint16_t {
-  k_usb_paud_cov_got_ffff = 0xFFFFU,
-} usb_paud_cov_uint16_const_t;
+  k_t_got_unset = 0xFFFFU, /**< Pre-set transferred count; a transfer that fails
+                                must leave it rather than report zero.           */
+} t_paud_cov_t;
 
 /**
  * @enum test_paud_cov_t
@@ -147,7 +143,7 @@ static void test_recv_frame_post_init(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_init(k_ra8_usb_speed_fs));
 
   uint8_t  buf[k_test_paud_recv_cap] = {};
-  uint16_t got                       = k_usb_paud_cov_got_ffff;
+  uint16_t got                       = k_t_got_unset;
 
   /* max_len == 0 -> invalid_arg, no pipe access. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_paud_recv_frame(buf, 0U, &got));
@@ -156,7 +152,7 @@ static void test_recv_frame_post_init(void)
 
   /* Empty pipe: BRDYSTS clear for PIPE2 -> queue_out no-data else leg. */
   reg->BRDYSTS = 0U;
-  got          = k_usb_paud_cov_got_ffff;
+  got          = k_t_got_unset;
   TEST_ASSERT_EQ(k_ra8_err_no_data,
                  ra8_usb_paud_recv_frame(buf, (uint16_t)k_test_paud_recv_cap, &got));
   TEST_ASSERT_EQ(0U, got);
@@ -166,7 +162,7 @@ static void test_recv_frame_post_init(void)
   reg->BRDYSTS  = (uint16_t)k_test_paud_iso_out_bit;
   reg->CFIFOCTR = (uint16_t)(k_ra8_fifoctr_frdy | (uint16_t)k_test_paud_drain_len);
   reg->CFIFO    = (uint16_t)k_test_paud_fifo_word;
-  got           = k_usb_paud_cov_got_ffff;
+  got           = k_t_got_unset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_recv_frame(buf, (uint16_t)k_test_paud_recv_cap, &got));
   TEST_ASSERT_EQ(k_test_paud_drain_len, got);
   TEST_ASSERT_EQ(k_test_paud_fifo_lsb, buf[0]);

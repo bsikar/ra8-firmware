@@ -16,30 +16,14 @@
 #include "unity_minimal.h"
 
 /**
- * @enum mpu_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_mpu_rnr_5 = 5U,
-} mpu_uint8_const_t;
-
-/**
- * @enum mpu_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_mpu_probe_t
+ * @brief MPU region selector and limit-address pattern.
  */
 typedef enum : uint32_t {
-  k_mpu_rlar_ffffffff = 0xFFFFFFFFU,
-} mpu_uint32_const_t;
+  k_t_region_index = 5U,          /**< Region the RNR selects before the write. */
+  k_t_rlar_all_ones = 0xFFFFFFFFU, /**< Every RLAR bit set, so the driver's
+                                        masking of the reserved bits is visible. */
+} t_mpu_probe_t;
 
 /**
  * @enum test_mpu_layout_t
@@ -269,8 +253,8 @@ static void test_configure_clears_unused_regions(void)
    * driver uses, then run configure with a 1-region table -- the
    * driver should walk regions 1..15 clearing RLAR. */
   volatile r_mpu_regs_t* mpu = ra8_mpu_regs();
-  mpu->RNR                   = k_mpu_rnr_5;
-  mpu->RLAR                  = k_mpu_rlar_ffffffff;
+  mpu->RNR                   = k_t_region_index;
+  mpu->RLAR                  = k_t_rlar_all_ones;
 
   const ra8_mpu_region_t r = {
     .base       = (uintptr_t)k_test_mpu_region_base,
@@ -285,7 +269,7 @@ static void test_configure_clears_unused_regions(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpu_configure(&cfg));
 
   /* Re-select region 5 and check its RLAR is back to zero. */
-  mpu->RNR = k_mpu_rnr_5;
+  mpu->RNR = k_t_region_index;
   TEST_ASSERT_EQ(0, mpu->RLAR);
   TEST_END("ra8_mpu_configure clears regions above region_count");
 }

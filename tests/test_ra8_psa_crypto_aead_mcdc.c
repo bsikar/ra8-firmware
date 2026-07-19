@@ -30,17 +30,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum psa_crypto_aead_mcdc_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_aead_len_t
+ * @brief Plaintext length for the multi-block AEAD vectors, in bytes.
  */
-typedef enum : uint8_t {
-  k_psa_crypto_aead_mcdc_val_240 = 240,
-} psa_crypto_aead_mcdc_uint8_const_t;
+typedef enum : uint16_t {
+  k_t_plain_len = 240U, /**< 15 AES blocks: past one block and not a power of
+                             two, so a block-count off-by-one is visible.       */
+} t_aead_len_t;
 
 static const uint8_t k_test_aes_key[16] = {
   0x00U,
@@ -699,8 +695,8 @@ static void test_mcdc_sim_aead_buf_loops_overflow(void)
   ra8_psa_key_t k =
     mcdc_import_aes_key((ra8_psa_key_usage_t)(k_ra8_psa_usage_encrypt | k_ra8_psa_usage_decrypt));
   /* 240-byte plaintext: 16(key) + 12(nonce) + 0(aad) + 240(cipher) = 268 > 256. */
-  uint8_t plain[k_psa_crypto_aead_mcdc_val_240] = {};
-  uint8_t ct[k_psa_crypto_aead_mcdc_val_240 + k_ra8_psa_gcm_tag_len];
+  uint8_t plain[k_t_plain_len] = {};
+  uint8_t ct[k_t_plain_len + k_ra8_psa_gcm_tag_len];
   size_t  ctl = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_psa_aead_encrypt(k,
@@ -715,7 +711,7 @@ static void test_mcdc_sim_aead_buf_loops_overflow(void)
                                       sizeof(ct),
                                       &ctl));
   /* Round-trip decrypt to keep the test meaningful. */
-  uint8_t out[k_psa_crypto_aead_mcdc_val_240];
+  uint8_t out[k_t_plain_len];
   size_t  ol = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_psa_aead_decrypt(k,

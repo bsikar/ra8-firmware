@@ -36,17 +36,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum usb_xfer_cov_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_xfer_cov_t
+ * @brief NRDYSTS pattern staged before the dispatcher runs.
  */
 typedef enum : uint16_t {
-  k_usb_xfer_cov_nrdysts_ffff = 0xFFFFU,
-} usb_xfer_cov_uint16_const_t;
+  k_t_nrdysts_all = 0xFFFFU, /**< Every pipe's not-ready bit set, so the
+                                  dispatcher must service each one.              */
+} t_xfer_cov_t;
 
 /*
  * JLink-readable diagnostic latch defined (external linkage) in
@@ -156,7 +152,7 @@ static void test_rearm_out_pipe_valid_and_speed(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
   volatile r_usb_regs_t* reg = ra8_usb_fs();
-  reg->NRDYSTS               = (uint16_t)k_usb_xfer_cov_nrdysts_ffff;
+  reg->NRDYSTS               = (uint16_t)k_t_nrdysts_all;
   reg->PIPECTR[0]            = (uint16_t)k_ra8_pid_nak;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_rearm_out_pipe(k_ra8_usb_speed_fs, (uint8_t)k_test_usb_pipe_ok));

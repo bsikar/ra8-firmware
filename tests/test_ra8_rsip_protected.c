@@ -38,18 +38,14 @@
 #include "unity_minimal.h"
 
 /**
- * @enum rsip_protected_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_protected_t
+ * @brief Tamper mask and the raw key length under test.
  */
-typedef enum : uint8_t {
-  k_rsip_protected_blob_ff = 0xFFU,
-  k_rsip_protected_val_24  = 24,
-} rsip_protected_uint8_const_t;
+typedef enum : uint16_t {
+  k_t_tamper_mask = 0xFFU, /**< XOR that flips the wrapped blob's last byte so
+                                its integrity check must fail.                   */
+  k_t_raw_key_len = 24U,   /**< AES-192 key, bytes.                             */
+} t_protected_t;
 
 /**
  * @enum ra8_rsip_p_test_const_t
@@ -188,7 +184,7 @@ static void test_protected_aes192_init(void)
   TEST_BEGIN("rsip protected aes-192 init");
   prep();
 
-  uint8_t raw_key[k_rsip_protected_val_24];
+  uint8_t raw_key[k_t_raw_key_len];
   (void)memset(raw_key, (int)k_test_pattern_key, sizeof(raw_key));
   uint8_t blob[k_ra8_rsip_wrapped_max_total];
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_key_inject_aes(blob, raw_key, k_ra8_rsip_aes_key_bits_192));
@@ -248,7 +244,7 @@ static void test_protected_aes_rejects_tamper(void)
   uint8_t blob[k_ra8_rsip_wrapped_max_total];
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_key_inject_aes(blob, raw_key, k_ra8_rsip_aes_key_bits_128));
   /* Flip the trailing MAC. */
-  blob[(uint32_t)k_ra8_rsip_wrapped_max_total - 1U] ^= k_rsip_protected_blob_ff;
+  blob[(uint32_t)k_ra8_rsip_wrapped_max_total - 1U] ^= k_t_tamper_mask;
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
                  ra8_rsip_protected_aes_init(blob,
                                              k_ra8_rsip_aes_key_bits_128,
@@ -655,7 +651,7 @@ static void test_protected_rsa_decrypt_arg_errors(void)
 
   /* Tampered MAC: the public-type validate fails on the MAC, then the
    * private-type validate fails on the type tag -> fallback error leg. */
-  blob[(uint32_t)k_ra8_rsip_wrapped_max_total - 1U] ^= k_rsip_protected_blob_ff;
+  blob[(uint32_t)k_ra8_rsip_wrapped_max_total - 1U] ^= k_t_tamper_mask;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_rsip_protected_rsa_decrypt(blob,
                                                 k_ra8_rsip_rsa_2048,
@@ -761,7 +757,7 @@ static void test_protected_ecdsa_sign_arg_errors(void)
                                                sig));
 
   /* Tampered MAC -> ra8_rsip_key_validate rejects before dispatch. */
-  blob[(uint32_t)k_ra8_rsip_wrapped_max_total - 1U] ^= k_rsip_protected_blob_ff;
+  blob[(uint32_t)k_ra8_rsip_wrapped_max_total - 1U] ^= k_t_tamper_mask;
   TEST_ASSERT_EQ(k_ra8_err_hw_error,
                  ra8_rsip_protected_ecdsa_sign(blob,
                                                k_ra8_rsip_curve_secp256r1,

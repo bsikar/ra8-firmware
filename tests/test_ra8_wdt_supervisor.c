@@ -14,18 +14,14 @@
 #include "unity_minimal.h"
 
 /**
- * @enum wdt_supervisor_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_sup_t
+ * @brief Supervisor task stack and the clock push past the deadline.
  */
 typedef enum : uint16_t {
-  k_wdt_supervisor_s_now_ms_1000 = 1000U,
-  k_wdt_supervisor_val_1024      = 1024,
-} wdt_supervisor_uint16_const_t;
+  k_t_stack_bytes = 1024U, /**< Supervisor task stack, bytes.                  */
+  k_t_past_deadline_ms = 1000U, /**< Monotonic clock value well past the refresh
+                                     deadline, so the missed-refresh path fires. */
+} t_sup_t;
 
 /* ---------------------------------------------------------------------------
  * Test scaffolding
@@ -34,7 +30,7 @@ typedef enum : uint16_t {
 
 static uint32_t s_now_ms;
 static uint32_t s_refresh_calls;
-static uint8_t  s_stack[k_wdt_supervisor_val_1024];
+static uint8_t  s_stack[k_t_stack_bytes];
 
 static uint32_t test_now_hook(void)
 {
@@ -118,7 +114,7 @@ static void test_mcdc_supervisor_tick_will_refresh(void)
   h = (uint8_t)k_ra8_wdt_sup_handle_invalid;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_register_thread("w2", 10U, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_checkin(h));
-  s_now_ms    = k_wdt_supervisor_s_now_ms_1000; /* push monotonic clock past the deadline */
+  s_now_ms    = k_t_past_deadline_ms; /* push monotonic clock past the deadline */
   did_refresh = true;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_supervisor_tick(&did_refresh));
   TEST_ASSERT_EQ(0, did_refresh);

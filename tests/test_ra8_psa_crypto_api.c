@@ -37,18 +37,14 @@ typedef enum : uint8_t {
 } psa_fill_t;
 
 /**
- * @enum psa_crypto_api_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_psa_api_t
+ * @brief Tamper mask and the hash output capacity.
  */
-typedef enum : uint8_t {
-  k_psa_crypto_api_sig_ff = 0xFFU,
-  k_psa_crypto_api_val_64 = 64,
-} psa_crypto_api_uint8_const_t;
+typedef enum : uint16_t {
+  k_t_tamper_mask = 0xFFU, /**< XOR that flips a signature or ciphertext byte so
+                                verification must fail.                          */
+  k_t_out_cap     = 64U,   /**< Digest / output buffer, bytes: a full SHA-512.  */
+} t_psa_api_t;
 
 /**
  * @enum ra8_psa_test_const_t
@@ -402,7 +398,7 @@ static void test_sign_verify_round_trip(void)
     ra8_psa_verify_hash(k, k_ra8_psa_alg_ecdsa_sha_256, digest, digest_len, sig, sig_len));
 
   /* Tamper a byte and ensure verification fails. */
-  sig[0] ^= k_psa_crypto_api_sig_ff;
+  sig[0] ^= k_t_tamper_mask;
   TEST_ASSERT_EQ(
     k_ra8_err_crc_mismatch,
     ra8_psa_verify_hash(k, k_ra8_psa_alg_ecdsa_sha_256, digest, digest_len, sig, sig_len));
@@ -535,7 +531,7 @@ static void test_aead_tamper_detected(void)
                                       &ct_len));
 
   /* Tamper the tag and ensure decrypt detects it. */
-  ct[ct_len - 1U] ^= k_psa_crypto_api_sig_ff;
+  ct[ct_len - 1U] ^= k_t_tamper_mask;
   uint8_t recovered[k_psa_test_plain_len];
   size_t  rec_len = 0U;
   TEST_ASSERT_EQ(k_ra8_err_crc_mismatch,
@@ -574,7 +570,7 @@ static void test_aead_invalid_args(void)
   ra8_psa_key_t k = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_psa_key_import(&k, &attr, k_test_aes_key, sizeof(k_test_aes_key)));
 
-  uint8_t out[k_psa_crypto_api_val_64];
+  uint8_t out[k_t_out_cap];
   size_t  ol = 0U;
   /* Wrong nonce length. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
