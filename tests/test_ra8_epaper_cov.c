@@ -154,16 +154,10 @@ ra8_err_t ra8_epaper_display_area_cov(const ra8_epaper_area_t* area,
                                       ra8_epaper_waveform_t    waveform);
 ra8_err_t ra8_epaper_sleep_cov(void);
 ra8_err_t ra8_epaper_dev_info_cov(ra8_epaper_dev_info_t* out_info);
-uint8_t   ra8_epaper_bits_per_pixel_cov(ra8_epaper_pixel_format_t pf);
-ra8_err_t ra8_epaper_image_bytes_cov(const ra8_epaper_area_t*  area,
-                                     ra8_epaper_pixel_format_t pf,
-                                     size_t*                   out_bytes);
-bool ra8_epaper_area_is_aligned_cov(const ra8_epaper_area_t* area, ra8_epaper_pixel_format_t pf);
-ra8_err_t ra8_epaper_align_area_cov(ra8_epaper_area_t*        area,
-                                    ra8_epaper_pixel_format_t pf,
-                                    uint16_t                  panel_width);
-ra8_err_t ra8_epaper_waveform_cfg_for_lut_cov(const char*                lut_version,
-                                              ra8_epaper_waveform_cfg_t* out_cfg);
+/* The pure geometry / pixel-format / waveform-map helpers live in
+ * ra8_epaper_geom.c, not in the white-box copy included below, so they are
+ * NOT renamed: they hold no driver state, so the cov TU calls the same
+ * production symbols the rest of the tree links. */
 ra8_err_t ra8_epaper_get_vcom_cov(uint16_t* out_mv);
 ra8_err_t ra8_epaper_set_vcom_cov(uint16_t mv);
 
@@ -177,16 +171,6 @@ ra8_err_t ra8_epaper_set_vcom_cov(uint16_t mv);
 #define ra8_epaper_sleep ra8_epaper_sleep_cov
 /** @brief RA8 epaper dev info. */
 #define ra8_epaper_dev_info ra8_epaper_dev_info_cov
-/** @brief RA8 epaper bits per pixel. */
-#define ra8_epaper_bits_per_pixel ra8_epaper_bits_per_pixel_cov
-/** @brief RA8 epaper image bytes. */
-#define ra8_epaper_image_bytes ra8_epaper_image_bytes_cov
-/** @brief RA8 epaper area alignment predicate. */
-#define ra8_epaper_area_is_aligned ra8_epaper_area_is_aligned_cov
-/** @brief RA8 epaper area alignment. */
-#define ra8_epaper_align_area ra8_epaper_align_area_cov
-/** @brief RA8 epaper waveform map from LUT version. */
-#define ra8_epaper_waveform_cfg_for_lut ra8_epaper_waveform_cfg_for_lut_cov
 /** @brief RA8 epaper VCOM read. */
 #define ra8_epaper_get_vcom ra8_epaper_get_vcom_cov
 /** @brief RA8 epaper VCOM write. */
