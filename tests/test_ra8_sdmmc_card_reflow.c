@@ -43,11 +43,11 @@
  * builder read as the boot sector it is writing.
  */
 typedef enum : uint8_t {
-  k_t_bpb_off_bytes_per_sector = 11U, /**< BPB_BytsPerSec, 16-bit.           */
-  k_t_bpb_off_sectors_per_clus = 13U, /**< BPB_SecPerClus, 8-bit.            */
-  k_t_bpb_off_reserved_sectors = 14U, /**< BPB_RsvdSecCnt, 16-bit.           */
-  k_t_bpb_off_root_entries     = 17U, /**< BPB_RootEntCnt, 16-bit.           */
-  k_t_bpb_off_total_sectors    = 19U, /**< BPB_TotSec16, 16-bit.             */
+  k_t_bpb_off_bytes_per_sector = 11U,   /**< BPB_BytsPerSec, 16-bit.           */
+  k_t_bpb_off_sectors_per_clus = 13U,   /**< BPB_SecPerClus, 8-bit.            */
+  k_t_bpb_off_reserved_sectors = 14U,   /**< BPB_RsvdSecCnt, 16-bit.           */
+  k_t_bpb_off_root_entries     = 17U,   /**< BPB_RootEntCnt, 16-bit.           */
+  k_t_bpb_off_total_sectors    = 19U,   /**< BPB_TotSec16, 16-bit.             */
   k_t_byte_mask                = 0xFFU, /**< Low-byte mask while writing a
                                              16-bit little-endian field.      */
 } t_bpb_off_t;
@@ -112,7 +112,6 @@ static sd_card_t s_card;
  * @brief CMD58 READ_OCR: fill an R3 response (R1 + OCR, CCS=1 => SDHC).
  * @param[in,out] c  Mock card whose response buffer is filled.
  * @param[in]     r1 The R1 status byte for the current ready state.
- * @return None.
  * @pre @p c is non-null.
  * @post @p c holds a 5-byte R3 response.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -131,7 +130,6 @@ static void sd_cmd_read_ocr(sd_card_t* c, uint8_t r1)
 /**
  * @brief CMD9 SEND_CSD: fill R1 + token + 16-byte CSD + CRC.
  * @param[in,out] c Mock card whose response buffer is filled.
- * @return None.
  * @pre @p c is non-null.
  * @post @p c holds the CSD response with a valid CRC16.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -158,7 +156,6 @@ static void sd_cmd_send_csd(sd_card_t* c)
  * @brief CMD17 READ_SINGLE_BLOCK: fill R1 + token + one 512-byte block + CRC.
  * @param[in,out] c   Mock card whose response buffer is filled.
  * @param[in]     arg The SDHC block index requested.
- * @return None.
  * @pre @p c is non-null.
  * @post @p c holds the block data (zero-filled past the image) with a valid CRC.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -185,7 +182,6 @@ static void sd_cmd_read_block(sd_card_t* c, uint32_t arg)
  * @brief Stage a bare one-byte R1 reply.
  * @param[in,out] c      Card state whose response buffer is staged.
  * @param[in]     status R1 status byte to answer with.
- * @return None.
  * @pre @p c is non-null with a staging response buffer.
  * @pre @p c->resp holds room for at least one byte.
  * @post @p c->resp[0] is @p status and @p c->resp_len is 1.
@@ -202,7 +198,6 @@ static void sd_reply_r1(sd_card_t* c, uint8_t status)
 /**
  * @brief Stage the CMD8 (SEND_IF_COND) R7 reply: R1 plus the 0x1AA echo.
  * @param[in,out] c Card state whose response buffer is staged.
- * @return None.
  * @pre @p c is non-null with a staging response buffer.
  * @pre @p c->resp holds room for ::k_sd_r7_len bytes.
  * @post @p c->resp carries the idle R1 and the voltage/pattern echo.
@@ -439,7 +434,6 @@ static bool load_src_font(void)
 
 /**
  * @brief Format a FAT16 image and write the source font through the mem backend.
- * @return None.
  * @pre The source font is loaded into s_src_font (length s_font_len).
  * @post FONT.OTF is present in the card image, ready for SD read-back.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -459,7 +453,6 @@ static void sd_reflow_populate_card(void)
 
 /**
  * @brief Bring up the real SD-SPI driver, mount the card FAT and read the font.
- * @return None.
  * @pre The card image holds FONT.OTF (sd_reflow_populate_card ran).
  * @post s_card_font holds the byte-identical font read back off the SD model.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -491,7 +484,6 @@ static void sd_reflow_read_font_back(void)
 
 /**
  * @brief Render a page with the SD-sourced font and assert non-blank output.
- * @return None.
  * @pre s_card_font holds a valid font of length s_font_len.
  * @post At least one non-background pixel was inked into s_fb.
  * @note Not thread-safe; single-threaded host-test helper.

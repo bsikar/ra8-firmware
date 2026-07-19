@@ -31,16 +31,16 @@
  * mock glyph cell, so a text run can never coincidentally align to an edge.
  */
 typedef enum : int16_t {
-  k_t_rect_x        = 10, /**< Origin x of the label-placement rect.             */
-  k_t_rect_y        = 20, /**< Origin y of the label-placement rect; also the
+  k_t_rect_x       = 10,  /**< Origin x of the label-placement rect.             */
+  k_t_rect_y       = 20,  /**< Origin y of the label-placement rect; also the
                                height shared by the null-guard arms.             */
-  k_t_label_w       = 100, /**< Width of the label-placement rect.               */
-  k_t_label_h       = 40,  /**< Its height; also the width of the guard arms.    */
-  k_t_narrow_w      = 50,  /**< Width of the no-text-size fallback rect.         */
-  k_t_button_w      = 60,  /**< Width of the button render rect.                 */
-  k_t_button_h      = 30,  /**< Its height.                                      */
-  k_t_pad_inset     = 5,   /**< Label padding for the centre-fallback arm.       */
-  k_t_footer_fixed  = 24,  /**< Fixed track height reserved for the footer row.  */
+  k_t_label_w      = 100, /**< Width of the label-placement rect.               */
+  k_t_label_h      = 40,  /**< Its height; also the width of the guard arms.    */
+  k_t_narrow_w     = 50,  /**< Width of the no-text-size fallback rect.         */
+  k_t_button_w     = 60,  /**< Width of the button render rect.                 */
+  k_t_button_h     = 30,  /**< Its height.                                      */
+  k_t_pad_inset    = 5,   /**< Label padding for the centre-fallback arm.       */
+  k_t_footer_fixed = 24,  /**< Fixed track height reserved for the footer row.  */
 } t_leaf_geom_t;
 
 /**
@@ -185,10 +185,7 @@ static void test_label_render_align(void)
                               .align = k_ra8_widget_align_center};
   ra8_widget_t       w     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_label_init(&w, &lab));
-  w.rect = (ra8_ui_rect_t){.x = k_t_rect_x,
-                           .y = k_t_rect_y,
-                           .w = k_t_label_w,
-                           .h = k_t_label_h};
+  w.rect = (ra8_ui_rect_t){.x = k_t_rect_x, .y = k_t_rect_y, .w = k_t_label_w, .h = k_t_label_h};
 
   /* Centre: one bg fill over the rect + centred text (tw = 2 * 8 = 16). */
   w.vt->render(&w);
@@ -599,7 +596,7 @@ static void test_button_render_guards(void)
   ra8_widget_t wn = {};
   wn.vt           = ra8_widget_button_vtable();
   wn.ctx          = nullptr;
-  wn.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_label_h, .h = k_t_rect_y};
+  wn.rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_label_h, .h = k_t_rect_y};
   wn.vt->render(&wn); /* no crash, nothing drawn */
   TEST_ASSERT_EQ(0U, mp.fill_calls);
 

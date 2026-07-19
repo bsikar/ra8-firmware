@@ -546,7 +546,7 @@ static void test_block_read_no_pec_happy(void)
    * succeeded; the framing logic itself is exercised by
    * test_block_read_arg_validation and test_block_write_*. */
   uint8_t buf[k_t_block_cap] = {0U};
-  uint8_t got                  = k_t_byte_unset;
+  uint8_t got                = k_t_byte_unset;
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_smbus_block_read((uint8_t)k_smbus_test_target, (uint8_t)k_smbus_test_cmd, buf, 255U, &got));

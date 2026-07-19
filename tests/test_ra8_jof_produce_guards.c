@@ -145,17 +145,16 @@ static void begin_png(uint32_t w, uint32_t h, uint8_t color)
   s_src_len                   = 0U;
   put(sig, sizeof(sig));
   uint8_t ihdr[k_t_png_ihdr_len] = {};
-  ihdr[0]                                         = (uint8_t)(w >> k_t_be32_hi_shift);
-  ihdr[1] = (uint8_t)((w >> 16U) & k_t_byte_mask);
-  ihdr[2] = (uint8_t)((w >> 8U) & k_t_byte_mask);
-  ihdr[3] = (uint8_t)(w & k_t_byte_mask);
-  ihdr[4] = (uint8_t)(h >> k_t_be32_hi_shift);
-  ihdr[k_t_ihdr_off_h_b1] =
-    (uint8_t)((h >> 16U) & k_t_byte_mask);
-  ihdr[6]                                = (uint8_t)((h >> 8U) & k_t_byte_mask);
-  ihdr[k_t_ihdr_off_h_b3] = (uint8_t)(h & k_t_byte_mask);
-  ihdr[8]                                = 8U;
-  ihdr[k_t_ihdr_off_ct] = color;
+  ihdr[0]                        = (uint8_t)(w >> k_t_be32_hi_shift);
+  ihdr[1]                        = (uint8_t)((w >> 16U) & k_t_byte_mask);
+  ihdr[2]                        = (uint8_t)((w >> 8U) & k_t_byte_mask);
+  ihdr[3]                        = (uint8_t)(w & k_t_byte_mask);
+  ihdr[4]                        = (uint8_t)(h >> k_t_be32_hi_shift);
+  ihdr[k_t_ihdr_off_h_b1]        = (uint8_t)((h >> 16U) & k_t_byte_mask);
+  ihdr[6]                        = (uint8_t)((h >> 8U) & k_t_byte_mask);
+  ihdr[k_t_ihdr_off_h_b3]        = (uint8_t)(h & k_t_byte_mask);
+  ihdr[8]                        = 8U;
+  ihdr[k_t_ihdr_off_ct]          = color;
   put_chunk("IHDR", ihdr, sizeof(ihdr));
 }
 
@@ -284,9 +283,7 @@ static void test_guards_bump_take(void)
   TEST_ASSERT_NULL(ra8_jof_priv_bump_take(&bump, sizeof(s_backing)));
 
   /* Alignment alone overruns a nearly-full arena. */
-  ra8_jof_bump_t tight = {.base = s_backing,
-                         .cap  = k_t_arena_cap_low,
-                         .off  = k_t_arena_off};
+  ra8_jof_bump_t tight = {.base = s_backing, .cap = k_t_arena_cap_low, .off = k_t_arena_off};
   TEST_ASSERT_NULL(ra8_jof_priv_bump_take(&tight, 1U));
   TEST_END("produce guards: bump-carve argument + exhaustion arms");
 }

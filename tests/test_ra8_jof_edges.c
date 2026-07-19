@@ -150,7 +150,6 @@ static uint8_t t_pix(uint32_t x, uint32_t y)
  *          rather than repeating four shift-and-mask stores per field.
  * @param[out] p Four writable bytes.
  * @param[in]  v Value to store.
- * @return None.
  * @pre @p p points at four writable bytes.
  * @pre @p p is not aliased by @p v's storage.
  * @post @p p holds @p v most-significant byte first.
@@ -224,7 +223,7 @@ static void t_build_png(void)
   uint8_t ihdr[k_te_png_hdr] = {};
   t_put_be32(&ihdr[k_te_ihdr_off_width], (uint32_t)k_te_w);
   t_put_be32(&ihdr[k_te_ihdr_off_height], (uint32_t)k_te_h);
-  ihdr[k_te_ihdr_off_bitdepth] = (uint8_t)k_te_bitdepth;
+  ihdr[k_te_ihdr_off_bitdepth]  = (uint8_t)k_te_bitdepth;
   ihdr[k_te_ihdr_off_colortype] = (uint8_t)k_te_ct_gray;
   t_png_chunk("IHDR", ihdr, (uint32_t)k_te_png_hdr);
   t_png_chunk("IDAT", s_zbuf, (uint32_t)zlen);
@@ -401,7 +400,6 @@ static void t_edge_dims(void)
  * @param[in] ty Tile row in the grid.
  * @param[in] tw Decoded tile width, already edge-clamped.
  * @param[in] th Decoded tile height, already edge-clamped.
- * @return None.
  * @pre ::s_cell holds the decoded payload of tile (@p tx, @p ty).
  * @pre `tw * th` is within ::s_cell's capacity.
  * @post Every decoded pixel compared equal to the oracle.

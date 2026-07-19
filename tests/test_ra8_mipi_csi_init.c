@@ -33,11 +33,11 @@
  * @brief Extended-packet spacer values spanning the 15-bit field boundary.
  */
 typedef enum : uint32_t {
-  k_t_spacer_long    = 0x100U,      /**< A valid long-packet spacer.          */
-  k_t_spacer_short   = 0x200U,      /**< A valid short-packet spacer.         */
-  k_t_spacer_over    = 0x8000U,     /**< 16-bit: one bit past the 15-bit field,
+  k_t_spacer_long  = 0x100U,       /**< A valid long-packet spacer.          */
+  k_t_spacer_short = 0x200U,       /**< A valid short-packet spacer.         */
+  k_t_spacer_over  = 0x8000U,      /**< 16-bit: one bit past the 15-bit field,
                                          so both spacer guards must reject it. */
-  k_t_all_ones       = 0xFFFFFFFFUL, /**< Written to every interrupt-enable
+  k_t_all_ones     = 0xFFFFFFFFUL, /**< Written to every interrupt-enable
                                           register, so a driver that clears the
                                           wrong one leaves a visible residue.   */
 } t_csi_spacer_t;

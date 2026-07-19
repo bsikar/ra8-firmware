@@ -75,10 +75,8 @@ static uint8_t mock_kb_count(void* user)
 static void mock_kb_info(void* user, uint8_t idx, ra8_widget_key_info_t* out)
 {
   (void)user;
-  out->rect = (ra8_ui_rect_t){.x = (int32_t)idx * k_t_key_side,
-                              .y = 0,
-                              .w = k_t_key_side,
-                              .h = k_t_key_side};
+  out->rect =
+    (ra8_ui_rect_t){.x = (int32_t)idx * k_t_key_side, .y = 0, .w = k_t_key_side, .h = k_t_key_side};
   if (idx == 0U) {
     out->glyph = 'a';
     out->label = nullptr;
@@ -192,8 +190,7 @@ static void test_keyboard_render(void)
   ra8_widget_keyboard_t     kbd   = make_kbd(&ops, &paint);
   ra8_widget_t              w     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_keyboard_init(&w, &kbd));
-  w.rect =
-    (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_kbd_w, .h = k_t_key_side};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_kbd_w, .h = k_t_key_side};
 
   w.vt->render(&w);
   TEST_ASSERT_EQ(7U, mp.fill_calls); /* bg + 3 keys x (border + face) */
@@ -227,8 +224,7 @@ static void test_keyboard_input(void)
   ra8_widget_keyboard_t     kbd   = make_kbd(&ops, &paint);
   ra8_widget_t              w     = {};
   (void)ra8_widget_keyboard_init(&w, &kbd);
-  w.rect =
-    (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_kbd_w, .h = k_t_key_side};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_kbd_w, .h = k_t_key_side};
 
   /* a touch hits key 0, apply does NOT commit -> applied, dirty, no callback. */
   const ra8_widget_event_t tap = {.kind = k_ra8_widget_ev_touch, .x = 5, .y = 5};
@@ -264,7 +260,6 @@ static void test_keyboard_input(void)
  * @param[in]     ops   The valid ops table to restore between vectors.
  * @param[in]     mk    Mock keyboard model backing the ops tables.
  * @param[in,out] mp    Paint-call counters asserted per vector.
- * @return None.
  * @pre @p w is initialised over @p kbd.
  * @post Every render guard vector produced the expected fill/text counts; the
  *       valid ops/paint/ctx are restored on exit.
@@ -319,7 +314,6 @@ static void kbd_render_guards(ra8_widget_t*              w,
  * @param[in,out] kbd Keyboard widget under test.
  * @param[in]     ops The valid ops table to restore for the commit vector.
  * @param[in]     mk  Mock keyboard model (apply counters).
- * @return None.
  * @pre @p w is initialised over @p kbd with valid paint/ctx.
  * @post Each input guard vector consumed the touch without applying, the commit
  *       vector applied once with no callback, and the null-ctx vector declined.
@@ -359,7 +353,6 @@ static void kbd_input_guards(ra8_widget_t*              w,
 
 /**
  * @brief Exercise the ra8_widget_keyboard_init null guards and success path.
- * @return None.
  * @pre None.
  * @post Both null arguments rejected and a valid init wired the vtable.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -405,8 +398,7 @@ static void test_keyboard_guards(void)
   ra8_widget_keyboard_t     kbd   = make_kbd(&ops, &paint);
   ra8_widget_t              w     = {};
   (void)ra8_widget_keyboard_init(&w, &kbd);
-  w.rect =
-    (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_kbd_w, .h = k_t_key_side};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_kbd_w, .h = k_t_key_side};
 
   kbd_render_guards(&w, &kbd, &paint, &ops, &mk, &mp);
   kbd_input_guards(&w, &kbd, &ops, &mk);

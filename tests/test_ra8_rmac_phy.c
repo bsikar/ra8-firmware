@@ -219,8 +219,8 @@ static void test_link_1000(void)
   const ra8_rmac_phy_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_open(&cfg));
 
-  s_io.regs[1]                 = (uint16_t)(0x0004U | 0x0020U); /* link + AN done */
-  s_io.regs[k_t_reg_gbit_status] = k_t_gbit_1000_full;          /* 1000F          */
+  s_io.regs[1]                   = (uint16_t)(0x0004U | 0x0020U); /* link + AN done */
+  s_io.regs[k_t_reg_gbit_status] = k_t_gbit_1000_full;            /* 1000F          */
 
   ra8_rmac_phy_link_t lk = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_rmac_phy_link_status_get(nullptr));
@@ -244,7 +244,7 @@ static void test_link_100half_fallback(void)
   cfg.gbit_advertise     = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_open(&cfg));
 
-  s_io.regs[1]                = (uint16_t)(0x0004U | 0x0020U);
+  s_io.regs[1]                  = (uint16_t)(0x0004U | 0x0020U);
   s_io.regs[k_t_reg_lp_ability] = k_t_lpa_100_half; /* 100H */
 
   ra8_rmac_phy_link_t lk = {};
@@ -326,7 +326,7 @@ static void test_mcdc_link_status_link_and_an(void)
   ra8_rmac_phy_link_t lk = {};
 
   /* Vector 1: BMSR=0 -> no link, no AN -> decision F. */
-  s_io.regs[1]                = 0x0000U;
+  s_io.regs[1]                  = 0x0000U;
   s_io.regs[k_t_reg_lp_ability] = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_link_status_get(&lk));
   TEST_ASSERT_EQ(k_ra8_rmac_phy_speed_no_link, lk.speed);
@@ -339,7 +339,7 @@ static void test_mcdc_link_status_link_and_an(void)
   TEST_ASSERT_EQ(k_ra8_rmac_phy_speed_no_link, lk.speed);
 
   /* Vector 3: BMSR.LINK + AN_COMPLETE -> decision T -> resolves via LPA. */
-  s_io.regs[1]                = (uint16_t)(0x0004U | 0x0020U);
+  s_io.regs[1]                  = (uint16_t)(0x0004U | 0x0020U);
   s_io.regs[k_t_reg_lp_ability] = k_t_lpa_100_half; /* 100H */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_link_status_get(&lk));
   TEST_ASSERT_EQ(k_ra8_rmac_phy_speed_100h, lk.speed);

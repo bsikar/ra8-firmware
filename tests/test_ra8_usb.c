@@ -31,17 +31,17 @@
  * the FIFO drain shows up as a wrong byte rather than a right one.
  */
 typedef enum : uint8_t {
-  k_t_fs_odd_b0    = 0x11U, /**< Byte 0 of the 3-byte full-speed payload.   */
-  k_t_fs_odd_b1    = 0x22U, /**< Byte 1.                                    */
-  k_t_fs_odd_b2    = 0x33U, /**< Byte 2 -- the odd byte that forces an 8-bit
+  k_t_fs_odd_b0   = 0x11U, /**< Byte 0 of the 3-byte full-speed payload.   */
+  k_t_fs_odd_b1   = 0x22U, /**< Byte 1.                                    */
+  k_t_fs_odd_b2   = 0x33U, /**< Byte 2 -- the odd byte that forces an 8-bit
                                  FIFO access after the 16-bit ones.         */
-  k_t_hs_head_b2   = 0x30U, /**< Byte 2 of the aligned high-speed head.     */
-  k_t_hs_head_b3   = 0x40U, /**< Byte 3.                                    */
-  k_t_hs_tail2_b0  = 0x55U, /**< Byte 0 of the 2-byte residual tail.        */
-  k_t_hs_tail2_b1  = 0x66U, /**< Byte 1.                                    */
-  k_t_hs_tail3_b0  = 0x77U, /**< Byte 0 of the 3-byte residual tail.        */
-  k_t_hs_tail3_b1  = 0x88U, /**< Byte 1.                                    */
-  k_t_hs_tail3_b2  = 0x99U, /**< Byte 2.                                    */
+  k_t_hs_head_b2  = 0x30U, /**< Byte 2 of the aligned high-speed head.     */
+  k_t_hs_head_b3  = 0x40U, /**< Byte 3.                                    */
+  k_t_hs_tail2_b0 = 0x55U, /**< Byte 0 of the 2-byte residual tail.        */
+  k_t_hs_tail2_b1 = 0x66U, /**< Byte 1.                                    */
+  k_t_hs_tail3_b0 = 0x77U, /**< Byte 0 of the 3-byte residual tail.        */
+  k_t_hs_tail3_b1 = 0x88U, /**< Byte 1.                                    */
+  k_t_hs_tail3_b2 = 0x99U, /**< Byte 2.                                    */
 } t_usb_payload_t;
 
 /**
@@ -54,18 +54,18 @@ typedef enum : uint8_t {
  * against a realistic request rather than a zeroed one.
  */
 typedef enum : uint16_t {
-  k_t_req_class        = 0x2106U, /**< USBREQ: bRequest 0x21, bmRequestType 0x06 -- a class request. */
-  k_t_req_get_desc     = 0x8006U, /**< USBREQ: the standard GET_DESCRIPTOR request. */
-  k_t_val_arbitrary    = 0x1234U, /**< USBVAL for the class request; opaque to the driver. */
-  k_t_val_device_desc  = 0x0100U, /**< USBVAL 0x0100: descriptor type 1, index 0.   */
-  k_t_indx_arbitrary   = 0x5678U, /**< USBINDX for the class request; opaque.       */
-  k_t_leng_short       = 0x000AU, /**< USBLENG: a 10-byte control data stage.       */
-  k_t_leng_max_packet  = 0x0040U, /**< USBLENG: a 64-byte control data stage.       */
-  k_t_intsts_fs_a      = 0xABCDU, /**< INTSTS0 pattern proving the FS read path returns the register. */
-  k_t_intsts_fs_b      = 0xCAFEU, /**< A second, distinct FS pattern.               */
-  k_t_intsts_hs        = 0xBABEU, /**< The high-speed counterpart.                  */
-  k_t_cfifo_word_a     = 0xBBAAU, /**< CFIFO half-word staged for the first drain.  */
-  k_t_cfifo_word_b     = 0xDDCCU, /**< CFIFO half-word staged for the second drain. */
+  k_t_req_class     = 0x2106U, /**< USBREQ: bRequest 0x21, bmRequestType 0x06 -- a class request. */
+  k_t_req_get_desc  = 0x8006U, /**< USBREQ: the standard GET_DESCRIPTOR request. */
+  k_t_val_arbitrary = 0x1234U, /**< USBVAL for the class request; opaque to the driver. */
+  k_t_val_device_desc = 0x0100U, /**< USBVAL 0x0100: descriptor type 1, index 0.   */
+  k_t_indx_arbitrary  = 0x5678U, /**< USBINDX for the class request; opaque.       */
+  k_t_leng_short      = 0x000AU, /**< USBLENG: a 10-byte control data stage.       */
+  k_t_leng_max_packet = 0x0040U, /**< USBLENG: a 64-byte control data stage.       */
+  k_t_intsts_fs_a  = 0xABCDU, /**< INTSTS0 pattern proving the FS read path returns the register. */
+  k_t_intsts_fs_b  = 0xCAFEU, /**< A second, distinct FS pattern.               */
+  k_t_intsts_hs    = 0xBABEU, /**< The high-speed counterpart.                  */
+  k_t_cfifo_word_a = 0xBBAAU, /**< CFIFO half-word staged for the first drain.  */
+  k_t_cfifo_word_b = 0xDDCCU, /**< CFIFO half-word staged for the second drain. */
 } t_usb_setup_t;
 
 /**
@@ -794,7 +794,6 @@ static void queue_out_fs_tails(void)
  * @param[in]     word     CFIFO word to seed, little-endian in the tail bytes.
  * @param[in]     tail     Tail length in bytes, 1..4.
  * @param[in]     expect   Expected @p tail output bytes.
- * @return None.
  * @pre @p hreg is a mapped USBHS register block and @p expect is non-null.
  * @pre @p tail is in 1..4 and @p expect holds that many bytes.
  * @post `ra8_usb_queue_out` reported success and returned exactly @p tail bytes.
@@ -808,10 +807,10 @@ static void assert_hs_tail_read(volatile r_usb_regs_t* hreg,
                                 uint16_t               tail,
                                 const uint8_t*         expect)
 {
-  uint8_t  out[4] = {};
-  uint16_t len    = tail;
-  hreg->BRDYSTS   = pipe_bit;
-  hreg->CFIFOCTR  = (uint16_t)(k_ra8_fifoctr_frdy | tail);
+  uint8_t  out[4]         = {};
+  uint16_t len            = tail;
+  hreg->BRDYSTS           = pipe_bit;
+  hreg->CFIFOCTR          = (uint16_t)(k_ra8_fifoctr_frdy | tail);
   *test_usb_cfifo32(hreg) = word;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_out(k_ra8_usb_speed_hs, 1U, out, &len, true));
   TEST_ASSERT_EQ(tail, len);

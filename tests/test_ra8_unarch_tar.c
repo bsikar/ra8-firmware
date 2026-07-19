@@ -268,20 +268,20 @@ static void test_tar_num_fields(void)
 
   /* GNU base-256: 0x80 marker, big-endian payload in the last 8 bytes. */
   uint8_t f_b256[k_tt_len_size] = {};
-  f_b256[0]                           = k_t_b256_positive;
-  f_b256[k_t_b256_hi_byte]         = 0x01U;
-  f_b256[k_t_b256_lo_byte]         = 0x02U;
+  f_b256[0]                     = k_t_b256_positive;
+  f_b256[k_t_b256_hi_byte]      = 0x01U;
+  f_b256[k_t_b256_lo_byte]      = 0x02U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_unarch_tar_num(f_b256, sizeof(f_b256), &v));
   TEST_ASSERT(v == 0x0102U);
   uint8_t f_neg[k_tt_len_size] = {};
-  f_neg[0]                           = k_t_b256_negative; /* negative two's complement */
+  f_neg[0]                     = k_t_b256_negative; /* negative two's complement */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_unarch_tar_num(f_neg, sizeof(f_neg), &v));
   uint8_t f_pay[k_tt_len_size] = {};
   f_pay[0] = k_t_b256_payload; /* payload bits in byte 0: astronomically large */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_unarch_tar_num(f_pay, sizeof(f_pay), &v));
   uint8_t f_high[k_tt_len_size] = {};
-  f_high[0]                           = k_t_b256_positive;
-  f_high[2]                           = 0x01U; /* over 64 bits via a high byte */
+  f_high[0]                     = k_t_b256_positive;
+  f_high[2]                     = 0x01U; /* over 64 bits via a high byte */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_unarch_tar_num(f_high, sizeof(f_high), &v));
   TEST_END("tar: numeric field parser");
 }
@@ -345,7 +345,6 @@ static void test_tar_block_primitives(void)
  *
  * @param[in] d Encoded pax extended-header data.
  * @param[in] n Byte length of @p d.
- * @return None.
  * @pre @p d is non-null.
  * @post `ra8_unarch_tar_pax_parse` returned k_ra8_err_validation_failed.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -364,7 +363,6 @@ static void tpx_expect_bad(const uint8_t* d, size_t n)
 
 /**
  * @brief Reject every malformed pax-record shape fail-closed.
- * @return None.
  * @pre None.
  * @post Each malformed record returned k_ra8_err_validation_failed.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -454,7 +452,6 @@ static void test_tar_pax_records(void)
  * @param[in,out] e  Entry cursor positioned at the longname member (updated).
  * @param[in]     d3 Expected pax-member payload for the byte-exact check.
  *
- * @return None.
  * @pre @p e references the entry just before the pax member.
  * @post The pax overrides, the symlink classification and the end marker all
  *       matched.
@@ -506,8 +503,6 @@ static const char k_honest_pax[] = "22 path=pax/page2.png\n10 size=9\n";
  * The 'L' payload is written including its terminating NUL, which is how GNU
  * writes it; the others are written without.
  *
- * @return None.
- * @retval None Void.
  *
  * @pre The fixture buffer is large enough for seven members plus the end blocks.
  * @pre No walk is in progress over the previous fixture contents.
@@ -641,7 +636,6 @@ static void test_tar_open_probe_guards(void)
  * @param[in,out] e    Entry cursor (reused per case).
  * @param[in]     data Small regular-file payload for the trailing member.
  *
- * @return None.
  * @pre The shared archive buffer is available.
  * @post Every hostile pax shape was rejected and the marker-less EOF returned
  *       not_found cleanly.
@@ -723,11 +717,7 @@ static void test_tar_hostile_headers(void)
 
   /* Lying size: data area overruns the archive. */
   s_arc_len = tb_add(0U, "a.png", nullptr, (uint8_t)'0', data, sizeof(data) - 1U);
-  tb_header(&s_arc[0],
-            "a.png",
-            nullptr,
-            (uint8_t)'0',
-            k_t_size_lie); /* size lies */
+  tb_header(&s_arc[0], "a.png", nullptr, (uint8_t)'0', k_t_size_lie); /* size lies */
   TEST_ASSERT_EQ(k_ra8_ok, tt_open(&t, &mem, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  ra8_unarch_tar_next(&t, 0U, s_name, sizeof(s_name), &e));
@@ -875,12 +865,12 @@ static void test_tar_base256_and_gnu_magic(void)
   size_t     off    = tb_add(0U, "b256.png", nullptr, (uint8_t)'0', data, sizeof(data) - 1U);
   /* Rewrite the size field as base-256 and re-checksum. */
   memset(&s_arc[k_tt_off_size], 0, k_tt_len_size);
-  s_arc[k_tt_off_size]        = k_t_b256_positive;
+  s_arc[k_tt_off_size]                      = k_t_b256_positive;
   s_arc[k_tt_off_size + k_tt_len_size - 1U] = (uint8_t)(sizeof(data) - 1U);
   /* Old-GNU magic variant: "ustar" + ' ' + ' '. */
-  s_arc[k_tt_off_magic_nul]   = (uint8_t)' ';
-  s_arc[k_tt_off_version]     = (uint8_t)' ';
-  s_arc[k_tt_off_version + 1U]              = 0U;
+  s_arc[k_tt_off_magic_nul]    = (uint8_t)' ';
+  s_arc[k_tt_off_version]      = (uint8_t)' ';
+  s_arc[k_tt_off_version + 1U] = 0U;
   tb_finish(&s_arc[0]);
   s_arc_len = tb_end(off);
 

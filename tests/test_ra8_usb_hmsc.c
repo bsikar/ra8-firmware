@@ -291,8 +291,8 @@ static void test_build_cbw_signature_layout(void)
   TEST_BEGIN("ra8_usb_hmsc_build_cbw lays out CBW per BBB rev 1.0 sec 5.1");
 
   uint8_t cdb[k_t_cdb_len_10] = {};
-  cdb[0]                         = k_t_scsi_read10; /* SCSI READ(10) opcode. */
-  uint8_t cbw[k_test_cbw_len]    = {};
+  cdb[0]                      = k_t_scsi_read10; /* SCSI READ(10) opcode. */
+  uint8_t cbw[k_test_cbw_len] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_hmsc_build_cbw(0U, 512U, true, cdb, 10U, cbw));
 
   /* dCBWSignature = 'USBC' little-endian = 0x55, 0x53, 0x42, 0x43. */
@@ -334,7 +334,7 @@ static void test_build_cbw_arg_rejection(void)
 {
   TEST_BEGIN("ra8_usb_hmsc_build_cbw rejects NULL / out-of-range");
   uint8_t cdb[k_t_cdb_len_10] = {};
-  uint8_t cbw[k_test_cbw_len]    = {};
+  uint8_t cbw[k_test_cbw_len] = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_hmsc_build_cbw(0U, 0U, true, nullptr, 10U, cbw));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_hmsc_build_cbw(0U, 0U, true, cdb, 10U, nullptr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_hmsc_build_cbw(99U, 0U, true, cdb, 10U, cbw));
@@ -503,9 +503,9 @@ static void test_mcdc_hmsc_decode_csw_status_and_chain(void)
   csw[2]                              = k_t_csw_sig_b2;
   csw[3]                              = k_t_csw_sig_b1;
   csw[4]                              = k_t_tag_b0;
-  csw[k_t_csw_off_tag_b1]               = k_t_tag_b1;
+  csw[k_t_csw_off_tag_b1]             = k_t_tag_b1;
   csw[6]                              = k_t_tag_b2;
-  csw[k_t_csw_off_tag_b3]               = k_t_tag_b3;
+  csw[k_t_csw_off_tag_b3]             = k_t_tag_b3;
 
   ra8_usb_hmsc_csw_status_t out = k_ra8_hmsc_csw_status_passed;
 

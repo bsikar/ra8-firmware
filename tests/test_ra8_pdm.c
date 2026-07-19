@@ -33,19 +33,19 @@
  * land in the wrong register and be visible.
  */
 typedef enum : uint16_t {
-  k_t_sinc_dec     = 0x7CU,   /**< SINC decimation factor.                    */
-  k_t_sinc_range   = 0x05U,   /**< SINC output range select.                  */
-  k_t_hpf_s0       = 0x3F61U, /**< High-pass shift coefficient s0.            */
-  k_t_hpf_k1       = 0x3EC1U, /**< High-pass feedback coefficient k1.         */
-  k_t_hpf_h0       = 0x4000U, /**< High-pass FIR tap 0: +1.0 in Q1.14.        */
-  k_t_hpf_h1       = 0xC000U, /**< High-pass FIR tap 1: -1.0 in Q1.14.        */
-  k_t_comp_tap     = 0x1FE8U, /**< Compensation-filter tap; written to the
+  k_t_sinc_dec   = 0x7CU,   /**< SINC decimation factor.                    */
+  k_t_sinc_range = 0x05U,   /**< SINC output range select.                  */
+  k_t_hpf_s0     = 0x3F61U, /**< High-pass shift coefficient s0.            */
+  k_t_hpf_k1     = 0x3EC1U, /**< High-pass feedback coefficient k1.         */
+  k_t_hpf_h0     = 0x4000U, /**< High-pass FIR tap 0: +1.0 in Q1.14.        */
+  k_t_hpf_h1     = 0xC000U, /**< High-pass FIR tap 1: -1.0 in Q1.14.        */
+  k_t_comp_tap   = 0x1FE8U, /**< Compensation-filter tap; written to the
                                    first and last slot to prove the whole
                                    array is marshalled.                       */
-  k_t_lpf_h0       = 0x0400U, /**< Low-pass leading tap.                      */
-  k_t_lpf_tap      = 0x1FF8U, /**< Low-pass tap, first and last slot.         */
-  k_t_comp_last    = 10U,     /**< Last compensation-filter tap index.        */
-  k_t_lpf_last     = 19U,     /**< Last low-pass tap index.                   */
+  k_t_lpf_h0     = 0x0400U, /**< Low-pass leading tap.                      */
+  k_t_lpf_tap    = 0x1FF8U, /**< Low-pass tap, first and last slot.         */
+  k_t_comp_last  = 10U,     /**< Last compensation-filter tap index.        */
+  k_t_lpf_last   = 19U,     /**< Last low-pass tap index.                   */
 } t_pdm_filter_t;
 
 /**
@@ -83,23 +83,23 @@ static void prep(void)
  */
 static void make_cfg(ra8_pdm_channel_cfg_t* cfg)
 {
-  *cfg                      = (ra8_pdm_channel_cfg_t){};
-  cfg->sinc_order           = 4U;
-  cfg->clock_div            = 0U;
-  cfg->sinc_dec             = k_t_sinc_dec;
-  cfg->sinc_range           = k_t_sinc_range;
-  cfg->data_shift           = 0U;
-  cfg->edge                 = 0U;
-  cfg->rx_threshold         = 4U;
-  cfg->hpf_s0               = k_t_hpf_s0;
-  cfg->hpf_k1               = k_t_hpf_k1;
-  cfg->hpf_h[0]             = k_t_hpf_h0;
-  cfg->hpf_h[1]             = k_t_hpf_h1;
-  cfg->comp_h[0]            = k_t_comp_tap;
+  *cfg                       = (ra8_pdm_channel_cfg_t){};
+  cfg->sinc_order            = 4U;
+  cfg->clock_div             = 0U;
+  cfg->sinc_dec              = k_t_sinc_dec;
+  cfg->sinc_range            = k_t_sinc_range;
+  cfg->data_shift            = 0U;
+  cfg->edge                  = 0U;
+  cfg->rx_threshold          = 4U;
+  cfg->hpf_s0                = k_t_hpf_s0;
+  cfg->hpf_k1                = k_t_hpf_k1;
+  cfg->hpf_h[0]              = k_t_hpf_h0;
+  cfg->hpf_h[1]              = k_t_hpf_h1;
+  cfg->comp_h[0]             = k_t_comp_tap;
   cfg->comp_h[k_t_comp_last] = k_t_comp_tap;
-  cfg->lpf_h0               = k_t_lpf_h0;
-  cfg->lpf_h1[0]            = k_t_lpf_tap;
-  cfg->lpf_h1[k_t_lpf_last] = k_t_lpf_tap;
+  cfg->lpf_h0                = k_t_lpf_h0;
+  cfg->lpf_h1[0]             = k_t_lpf_tap;
+  cfg->lpf_h1[k_t_lpf_last]  = k_t_lpf_tap;
 }
 
 /**

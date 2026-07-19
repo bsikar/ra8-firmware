@@ -281,8 +281,7 @@ static ra8_err_t mock_dispatch_corrupt(void*          ctx,
   if (err != k_ra8_ok) {
     return err;
   }
-  out_buf[*out_len - 1U] ^=
-    k_t_tamper_mask; /* flip the last body byte -> CRC mismatch */
+  out_buf[*out_len - 1U] ^= k_t_tamper_mask; /* flip the last body byte -> CRC mismatch */
   return k_ra8_ok;
 }
 

@@ -122,7 +122,6 @@ typedef struct {
 /**
  * @brief Initialise the compiler context over the shared scratch buffers.
  * @param[out] ctx Compiler context to initialise.
- * @return None.
  * @pre The shared scratch buffers are available.
  * @post `ra8_rabook_compile_init` succeeded on @p ctx.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -155,7 +154,6 @@ static void rabook_rt_init(ra8_rabook_ctx_t* ctx)
  * @brief Build the fixture book (metadata, cover, stylesheet, DOM, chapter).
  * @param[in,out] ctx Initialised compiler context.
  * @param[out]    rt  Receives the node / image indices and the "body" offset.
- * @return None.
  * @pre rabook_rt_init(@p ctx) already ran.
  * @post @p rt index fields are set; the book is ready to finalise.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -215,7 +213,6 @@ static void rabook_rt_populate(ra8_rabook_ctx_t* ctx, rabook_rt_t* rt)
 /**
  * @brief Assert the finalised blob reads back through the on-device reader.
  * @param[in] rt Round-trip handles from the build phase.
- * @return None.
  * @pre @p rt->blob passed ra8_book_validate().
  * @post Header, chapter, DOM, attribute, image and stylesheet all matched.
  * @note Not thread-safe; single-threaded host-test helper.

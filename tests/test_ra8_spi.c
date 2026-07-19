@@ -23,16 +23,12 @@
 #include "ra8_spi_regs.h"
 #include "unity_minimal.h"
 
-/**
- * @enum t_spi_t
- * @brief Channel id, receive-byte seed and the byte staged in SPDR.
- */
+/** @brief Channel id, receive-byte seed and the byte staged in SPDR. */
 typedef enum : uint8_t {
-  k_t_channel_bad = 9U,    /**< A channel past the last SPI instance; every
-                                dispatcher must ignore it rather than index
-                                out of bounds.                                 */
-  k_t_rx_unset    = 0xFFU, /**< Pre-set received byte / DMA channel; a call
-                                that fails must leave it.                       */
+  k_t_channel_bad = 9U,    /**< Past the last SPI instance; dispatchers must
+                                ignore it, not index out of bounds.            */
+  k_t_rx_unset    = 0xFFU, /**< Pre-set received byte / DMA channel; a failing
+                                call must leave it.                            */
   k_t_spdr_byte   = 0x66U, /**< Byte staged in SPDR for the read-back arm.    */
 } t_spi_t;
 
@@ -822,7 +818,6 @@ static void test_spi_multi_bad_channel(void)
 
 /**
  * @brief MC/DC decision E: `ra8_spi_dispatch_spei` mask/callback short-circuit.
- * @return None.
  * @pre The SPI simulation mmap/mmio windows are resettable.
  * @post No callback fires until both the error mask and the handler are set.
  * @note Not thread-safe; single-threaded host-test helper.
