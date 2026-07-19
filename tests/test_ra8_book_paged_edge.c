@@ -79,6 +79,9 @@ typedef enum : uint32_t {
   k_book_paged_edge_val_edb88320 = 0xEDB88320U,
 } book_paged_edge_uint32_const_t;
 
+/** @brief RBKC chunked-container magic (raw bytes; no string terminator). */
+static const uint8_t k_pbook_magic_rbkc[] = {'R', 'B', 'K', 'C'};
+
 /** @brief CRC-32/ISO-HDLC over the blob body (matches ra8_book_validate). */
 static uint32_t pbook_crc32(const uint8_t* data, size_t len)
 {
@@ -377,7 +380,7 @@ static uint64_t pbc_pack(uint8_t* out, const uint8_t* blob, uint32_t blob_len, u
     k_ra8_book_container_header_len + ((size_t)(count + 1U) * k_ra8_book_container_entry_len);
   uint64_t off = 0U;
 
-  memcpy(&out[0], "RBKC", 4U);
+  memcpy(&out[0], k_pbook_magic_rbkc, sizeof(k_pbook_magic_rbkc));
   memcpy(&out[4], &chunk_bytes, sizeof(chunk_bytes));
   const uint64_t total64 = blob_len;
   memcpy(&out[8], &total64, sizeof(total64));

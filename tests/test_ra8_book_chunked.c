@@ -62,6 +62,9 @@ typedef struct {
   uint32_t       calls;   /**< Calls served so far.                       */
 } bcx_file_t;
 
+/** @brief RBKC chunked-container magic (raw bytes; no string terminator). */
+static const uint8_t k_bcx_magic_rbkc[] = {'R', 'B', 'K', 'C'};
+
 /** @brief ra8_vsource_read_fn over an in-memory container, with fault injection. */
 static ra8_err_t bcx_file_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
 {
@@ -147,7 +150,7 @@ static uint64_t bcx_pack(uint8_t* out, bool short_last)
   }
 
   size_t pos = 0U;
-  memcpy(&out[pos], "RBKC", 4U);
+  memcpy(&out[pos], k_bcx_magic_rbkc, sizeof(k_bcx_magic_rbkc));
   pos += 4U;
   const uint32_t chunk_bytes = k_bcx_chunk_bytes;
   memcpy(&out[pos], &chunk_bytes, sizeof(chunk_bytes));
