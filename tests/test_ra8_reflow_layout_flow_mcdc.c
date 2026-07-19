@@ -332,6 +332,60 @@ static void test_finish_line_center_slack_zero_mcdc(void)
 }
 
 /**
+ * @brief Emit one `<p id="idNNN">x</p>` anchor paragraph at @p pos.
+ *
+ * @details
+ * The id is written with leading zeros to a fixed three digits so every anchor
+ * is unique and the same width, which is what lets the caller size the buffer
+ * from a per-entry maximum. The digits are built by hand rather than with
+ * snprintf to keep the fixture free of format-string machinery.
+ *
+ * @param[out] buf Output buffer.
+ * @param[in]  pos Offset to write at.
+ * @param[in]  k   Anchor index, 0..999.
+ *
+ * @return The offset just past the paragraph written.
+ *
+ * @pre @p buf has room for a full entry at @p pos.
+ * @pre @p k is at most 999, so it fits the three-digit id.
+ * @post Exactly one well-formed paragraph is appended.
+ * @post The id is zero-padded to three digits.
+ *
+ * @note Thread-safe: writes only through @p buf.
+ */
+static size_t emit_anchor_paragraph(char* buf, size_t pos, uint32_t k)
+{
+  /* Manually build the decimal digits (no sprintf to keep it C23-clean). */
+  uint32_t v    = k;
+  char     d[4] = {};
+  enum : uint8_t {
+    k_base10       = 10U, /**< Decimal radix.                   */
+    k_digit_zero   = '0', /**< ASCII zero.                      */
+    k_digit_buf_sz = 3U,  /**< Max 3 decimal digits for n<=999. */
+  };
+  uint8_t ndig = 0U;
+  do {
+    d[k_digit_buf_sz - 1U - ndig] = (char)(k_digit_zero + (v % k_base10));
+    v /= k_base10;
+    ndig++;
+  } while ((v > 0U) && (ndig < k_digit_buf_sz));
+  /* Emit: <p id="idXXX">x</p> */
+  static const char s_open[] = "<p id=\"id";
+  static const char s_mid[]  = "\">x</p>";
+  for (size_t j = 0U; s_open[j] != '\0'; ++j) {
+    buf[pos++] = s_open[j];
+  }
+  /* Leading zeros so all ids are unique and 3 digits wide. */
+  for (uint8_t j = k_digit_buf_sz - ndig; j < k_digit_buf_sz; ++j) {
+    buf[pos++] = d[j];
+  }
+  for (size_t j = 0U; s_mid[j] != '\0'; ++j) {
+    buf[pos++] = s_mid[j];
+  }
+  return pos;
+}
+
+/**
  * @brief Build a large HTML document containing @p n anchored paragraphs.
  *
  * @details Fills @p buf (caller-supplied, @p buf_cap bytes) with
@@ -368,33 +422,7 @@ static size_t build_anchor_html(char* buf, size_t buf_cap, uint32_t n)
   }
   /* Repeated anchor paragraphs */
   for (uint32_t k = 0U; k < n; ++k) {
-    /* Manually build the decimal digits (no sprintf to keep it C23-clean). */
-    uint32_t v    = k;
-    char     d[4] = {};
-    enum : uint8_t {
-      k_base10       = 10U, /**< Decimal radix.                   */
-      k_digit_zero   = '0', /**< ASCII zero.                      */
-      k_digit_buf_sz = 3U,  /**< Max 3 decimal digits for n<=999. */
-    };
-    uint8_t ndig = 0U;
-    do {
-      d[k_digit_buf_sz - 1U - ndig] = (char)(k_digit_zero + (v % k_base10));
-      v /= k_base10;
-      ndig++;
-    } while ((v > 0U) && (ndig < k_digit_buf_sz));
-    /* Emit: <p id="idXXX">x</p> */
-    static const char s_open[] = "<p id=\"id";
-    static const char s_mid[]  = "\">x</p>";
-    for (size_t j = 0U; s_open[j] != '\0'; ++j) {
-      buf[pos++] = s_open[j];
-    }
-    /* Leading zeros so all ids are unique and 3 digits wide. */
-    for (uint8_t j = k_digit_buf_sz - ndig; j < k_digit_buf_sz; ++j) {
-      buf[pos++] = d[j];
-    }
-    for (size_t j = 0U; s_mid[j] != '\0'; ++j) {
-      buf[pos++] = s_mid[j];
-    }
+    pos = emit_anchor_paragraph(buf, pos, k);
   }
   /* Footer */
   for (size_t j = 0U; s_ftr[j] != '\0'; ++j) {
