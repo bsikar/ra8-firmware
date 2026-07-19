@@ -565,6 +565,35 @@ static void test_init_ladder_legs(void)
  * a single-condition ``err`` check; the size decision is covered by
  * ::test_validate_and_size_mcdc.)
  */
+/**
+ * @brief Run one 8 bpp ``load_image`` with the transfer counter armed.
+ *
+ * @details
+ * Collapses the repeated set_ready / arm_fault / call triple so each leg
+ * of ::test_load_image_api_legs is one readable line naming the transfer
+ * index it faults.
+ *
+ * @param[in] fault 1-based ``bus.xfer8`` index to fail; 0 disables.
+ * @param[in] area  Rectangle to load.
+ * @param[in] buf   Source pixels, ::k_cov_buf_len bytes.
+ * @return The driver's return code for that leg.
+ * @pre  The fixture cfg is installed in the file-static panel.
+ * @pre  ``buf`` holds ::k_cov_buf_len readable bytes.
+ * @post The panel is left in the ready state.
+ * @post ::s_xfer_calls reflects this call only.
+ */
+static ra8_err_t
+cov_load_at_fault(uint32_t fault, const ra8_epaper_area_t* area, const uint8_t* buf)
+{
+  set_ready();
+  arm_fault(fault);
+  return ra8_epaper_load_image_cov(area,
+                                   buf,
+                                   (size_t)k_cov_buf_len,
+                                   k_ra8_epaper_pf_8bpp,
+                                   k_ra8_epaper_endian_little);
+}
+
 static void test_load_image_api_legs(void)
 {
   TEST_BEGIN("load_image: fault LISAR lo/hi, cmd, args, and pixel stream");
@@ -576,59 +605,17 @@ static void test_load_image_api_legs(void)
   s_xfer_rx                                  = (uint8_t)k_cov_rx_zero;
 
   /* LISAR-low reg_write fault (transfer 1). */
-  set_ready();
-  arm_fault((uint32_t)k_cov_fail_1);
-  TEST_ASSERT_EQ(k_ra8_err_hw_error,
-                 ra8_epaper_load_image_cov(&area,
-                                           buf,
-                                           (size_t)k_cov_buf_len,
-                                           k_ra8_epaper_pf_8bpp,
-                                           k_ra8_epaper_endian_little));
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, cov_load_at_fault((uint32_t)k_cov_fail_1, &area, buf));
   /* LISAR-high reg_write fault (transfer 13, after LISAR-low's 12). */
-  set_ready();
-  arm_fault((uint32_t)k_cov_fail_13);
-  TEST_ASSERT_EQ(k_ra8_err_hw_error,
-                 ra8_epaper_load_image_cov(&area,
-                                           buf,
-                                           (size_t)k_cov_buf_len,
-                                           k_ra8_epaper_pf_8bpp,
-                                           k_ra8_epaper_endian_little));
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, cov_load_at_fault((uint32_t)k_cov_fail_13, &area, buf));
   /* LD_IMG_AREA command fault (transfer 25, after two reg writes = 24). */
-  set_ready();
-  arm_fault((uint32_t)k_cov_fail_25);
-  TEST_ASSERT_EQ(k_ra8_err_hw_error,
-                 ra8_epaper_load_image_cov(&area,
-                                           buf,
-                                           (size_t)k_cov_buf_len,
-                                           k_ra8_epaper_pf_8bpp,
-                                           k_ra8_epaper_endian_little));
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, cov_load_at_fault((uint32_t)k_cov_fail_25, &area, buf));
   /* send_load_args fault (transfer 29, after cmd's 4 = 28). */
-  set_ready();
-  arm_fault((uint32_t)k_cov_fail_29);
-  TEST_ASSERT_EQ(k_ra8_err_hw_error,
-                 ra8_epaper_load_image_cov(&area,
-                                           buf,
-                                           (size_t)k_cov_buf_len,
-                                           k_ra8_epaper_pf_8bpp,
-                                           k_ra8_epaper_endian_little));
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, cov_load_at_fault((uint32_t)k_cov_fail_29, &area, buf));
   /* stream_pixels fault (transfer 49, after args' 20 = 48). */
-  set_ready();
-  arm_fault((uint32_t)k_cov_fail_49);
-  TEST_ASSERT_EQ(k_ra8_err_hw_error,
-                 ra8_epaper_load_image_cov(&area,
-                                           buf,
-                                           (size_t)k_cov_buf_len,
-                                           k_ra8_epaper_pf_8bpp,
-                                           k_ra8_epaper_endian_little));
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, cov_load_at_fault((uint32_t)k_cov_fail_49, &area, buf));
   /* Clean load through LD_IMG_END. */
-  set_ready();
-  arm_fault((uint32_t)k_cov_fail_never);
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_epaper_load_image_cov(&area,
-                                           buf,
-                                           (size_t)k_cov_buf_len,
-                                           k_ra8_epaper_pf_8bpp,
-                                           k_ra8_epaper_endian_little));
+  TEST_ASSERT_EQ(k_ra8_ok, cov_load_at_fault((uint32_t)k_cov_fail_never, &area, buf));
 
   TEST_END("load_image: fault LISAR lo/hi, cmd, args, and pixel stream");
 }

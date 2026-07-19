@@ -123,7 +123,6 @@ typedef enum : uint32_t {
   k_ra8_epaper_white_pad      = 0x00FFU, /**< 0xFF pad for odd tail.     */
   k_ra8_epaper_byte_shift     = 8U,      /**< Bits per byte.             */
   k_ra8_epaper_pf_shift       = 4U,      /**< LD_IMG_AREA arg0 PF shift. */
-  k_ra8_epaper_bits_per_byte  = 8U,      /**< Row-packing denominator.   */
   k_ra8_epaper_word_shift     = 16U,     /**< Bits per 16-bit word.      */
   k_ra8_epaper_ver_per_word   = 2U,      /**< Version chars per word.    */
   k_ra8_epaper_ascii_min      = 0x20U,   /**< Lowest printable ASCII.    */
@@ -149,34 +148,6 @@ typedef enum : uint16_t {
 } ra8_epaper_wire_pf_t;
 
 /**
- * @enum ra8_epaper_bpp_t
- * @brief Bit depth of each ::ra8_epaper_pixel_format_t.
- */
-typedef enum : uint8_t {
-  k_ra8_epaper_bpp_1 = 1U, /**< ::k_ra8_epaper_pf_1bpp. */
-  k_ra8_epaper_bpp_2 = 2U, /**< ::k_ra8_epaper_pf_2bpp. */
-  k_ra8_epaper_bpp_4 = 4U, /**< ::k_ra8_epaper_pf_4bpp. */
-  k_ra8_epaper_bpp_8 = 8U, /**< ::k_ra8_epaper_pf_8bpp. */
-} ra8_epaper_bpp_t;
-
-/**
- * @enum ra8_epaper_lut_mode_t
- * @brief Waveform LUT mode numbers the vendor documents.
- *
- * @details
- * INIT / DU / GC16 are stable across every Waveshare IT8951 panel. A2 is
- * the one that moves: mode 4 on the ``M641`` LUT (6 inch, 6 inch HD) and
- * mode 6 on the vendor's generic default for the larger panels.
- */
-typedef enum : uint8_t {
-  k_ra8_epaper_lut_init    = 0U, /**< INIT on every documented LUT. */
-  k_ra8_epaper_lut_du      = 1U, /**< DU on every documented LUT.   */
-  k_ra8_epaper_lut_gc16    = 2U, /**< GC16 on every documented LUT. */
-  k_ra8_epaper_lut_a2_m641 = 4U, /**< A2 on the ``M641`` LUT.       */
-  k_ra8_epaper_lut_a2_gen  = 6U, /**< A2 on the vendor generic LUT. */
-} ra8_epaper_lut_mode_t;
-
-/**
  * @enum ra8_epaper_dev_info_idx_t
  * @brief Word offsets inside the 20-word ``GET_DEV_INFO`` response.
  */
@@ -189,20 +160,6 @@ typedef enum : uint8_t {
   k_ra8_epaper_dev_idx_lut     = 12U, /**< First LUT-version word.       */
   k_ra8_epaper_dev_idx_ver_end = 20U, /**< One past the last word.       */
 } ra8_epaper_dev_info_idx_t;
-
-/**
- * @var s_lut_m641
- * @brief LUT-version token identifying the 6 inch / 6 inch HD waveform set.
- *
- * @details
- * Matched as a prefix because the controller appends a build suffix that
- * varies between firmware revisions.
- *
- * @note Read-only; compared against the reported LUT version at init.
- * @warning Changing this silently repoints A2 at a different LUT mode.
- * @since 0.1.0
- */
-static const char* const s_lut_m641 = "M641";
 
 /**
  * @enum ra8_epaper_state_t
@@ -843,101 +800,6 @@ RA8_INTERNAL
     return k_ra8_err_invalid_state;
   }
   *out_info = s_panel.info;
-  return k_ra8_ok;
-}
-
-[[nodiscard]] uint8_t ra8_epaper_bits_per_pixel(ra8_epaper_pixel_format_t pf)
-{
-  switch (pf) {
-    case k_ra8_epaper_pf_1bpp:
-      return (uint8_t)k_ra8_epaper_bpp_1;
-    case k_ra8_epaper_pf_2bpp:
-      return (uint8_t)k_ra8_epaper_bpp_2;
-    case k_ra8_epaper_pf_4bpp:
-      return (uint8_t)k_ra8_epaper_bpp_4;
-    case k_ra8_epaper_pf_8bpp:
-    default:
-      return (uint8_t)k_ra8_epaper_bpp_8;
-  }
-}
-
-[[nodiscard]] ra8_err_t ra8_epaper_image_bytes(const ra8_epaper_area_t*  area,
-                                               ra8_epaper_pixel_format_t pf,
-                                               size_t*                   out_bytes)
-{
-  RA8_CHECK_NULL_PTR(area, s_tag, "image_bytes: area null");
-  RA8_CHECK_NULL_PTR(out_bytes, s_tag, "image_bytes: out null");
-  if ((area->width == 0U) || (area->height == 0U)) {
-    return k_ra8_err_invalid_size;
-  }
-  const size_t bpp           = (size_t)ra8_epaper_bits_per_pixel(pf);
-  const size_t bits_per_byte = (size_t)k_ra8_epaper_bits_per_byte;
-  /* Rows are packed independently and each starts on a byte boundary. */
-  const size_t row_bytes = (((size_t)area->width * bpp) + (bits_per_byte - 1U)) / bits_per_byte;
-  *out_bytes             = row_bytes * (size_t)area->height;
-  return k_ra8_ok;
-}
-
-[[nodiscard]] bool ra8_epaper_area_is_aligned(const ra8_epaper_area_t*  area,
-                                              ra8_epaper_pixel_format_t pf)
-{
-  if (area == nullptr) {
-    return false;
-  }
-  if (pf != k_ra8_epaper_pf_1bpp) {
-    return true;
-  }
-  const uint16_t grid = (uint16_t)k_ra8_epaper_align_1bpp_px;
-  return ((area->x % grid) == 0U) && ((area->width % grid) == 0U);
-}
-
-[[nodiscard]] ra8_err_t
-ra8_epaper_align_area(ra8_epaper_area_t* area, ra8_epaper_pixel_format_t pf, uint16_t panel_width)
-{
-  RA8_CHECK_NULL_PTR(area, s_tag, "align_area: area null");
-  if (panel_width == 0U) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (((uint32_t)area->x + (uint32_t)area->width) > (uint32_t)panel_width) {
-    return k_ra8_err_invalid_arg;
-  }
-  if (pf != k_ra8_epaper_pf_1bpp) {
-    return k_ra8_ok;
-  }
-  const uint32_t grid  = (uint32_t)k_ra8_epaper_align_1bpp_px;
-  const uint32_t right = (uint32_t)area->x + (uint32_t)area->width;
-  const uint32_t x_lo  = ((uint32_t)area->x / grid) * grid;
-  /* Grow outward so the caller's rectangle stays wholly covered. */
-  uint32_t x_hi = ((right + grid - 1U) / grid) * grid;
-  if (x_hi > (uint32_t)panel_width) {
-    x_hi = (uint32_t)panel_width;
-  }
-  if ((x_hi <= x_lo) || (((x_hi - x_lo) % grid) != 0U)) {
-    /* The clamp cut the window off the grid: the panel width is itself not
-     * a multiple of the 1 bpp grid, so no aligned superset exists here. */
-    return k_ra8_err_invalid_arg;
-  }
-  area->x     = (uint16_t)x_lo;
-  area->width = (uint16_t)(x_hi - x_lo);
-  return k_ra8_ok;
-}
-
-[[nodiscard]] ra8_err_t ra8_epaper_waveform_cfg_for_lut(const char*                lut_version,
-                                                        ra8_epaper_waveform_cfg_t* out_cfg)
-{
-  RA8_CHECK_NULL_PTR(lut_version, s_tag, "waveform_cfg: lut null");
-  RA8_CHECK_NULL_PTR(out_cfg, s_tag, "waveform_cfg: out null");
-  bool is_m641 = true;
-  for (uint32_t i = 0U; s_lut_m641[i] != '\0'; i++) {
-    if (lut_version[i] != s_lut_m641[i]) {
-      is_m641 = false;
-      break;
-    }
-  }
-  out_cfg->init = (uint8_t)k_ra8_epaper_lut_init;
-  out_cfg->du   = (uint8_t)k_ra8_epaper_lut_du;
-  out_cfg->gc16 = (uint8_t)k_ra8_epaper_lut_gc16;
-  out_cfg->a2   = is_m641 ? (uint8_t)k_ra8_epaper_lut_a2_m641 : (uint8_t)k_ra8_epaper_lut_a2_gen;
   return k_ra8_ok;
 }
 

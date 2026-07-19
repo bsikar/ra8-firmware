@@ -55,6 +55,8 @@ typedef enum : uint32_t {
   k_ra8_epaper_test_panel_w    = 800U,       /**< RA8 epaper test panel w. */
   k_ra8_epaper_test_panel_h    = 600U,       /**< RA8 epaper test panel h. */
   k_ra8_epaper_test_buf_pixels = 64U,        /**< 8x8 = 64 px.             */
+  k_ra8_epaper_test_vcom_mv    = 1530U,      /**< Plausible VCOM (-1.53V). */
+  k_ra8_epaper_test_bad_wf     = 200U,       /**< Unknown wf selector.     */
 } ra8_epaper_test_const_t;
 
 /** @brief Bound SPI_B bus handle -- the seam's ctx and the mmio-seam key. */
@@ -567,86 +569,105 @@ static void test_init_requires_waveform_map(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_init(&cfg));
 
   cfg             = make_cfg();
-  cfg.waveform.a2 = 200U; /* out of the documented LUT mode range */
+  cfg.waveform.a2 = (uint8_t)k_ra8_epaper_test_bad_wf; /* beyond the LUT mode range */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_init(&cfg));
   TEST_END("epaper: init rejects an unset waveform map");
 }
 
 /**
- * @test epaper_vcom_and_1bpp_alignment_on_the_wire
+ * @test epaper_vcom_before_init
  *
  * @details
- * Drives the VCOM get / set commands and the load-time alignment refusal
- * against the simulator-backed bus. The RAM-backed SPI window means the
- * read-back value is whatever the fixture last wrote rather than a real
- * panel's, so the assertion is on the call succeeding and on the state
- * machine's guards, not on a specific millivolt figure.
+ * Every VCOM entry point must refuse before the panel has been brought up.
+ * The lifecycle guard matters more here than elsewhere: a VCOM write to an
+ * unconfigured controller is exactly the unattended-damage case this
+ * driver exists to prevent.
  */
-static void test_vcom_and_alignment_guard(void)
+static void test_vcom_before_init(void)
 {
-  TEST_BEGIN("epaper: VCOM commands + 1bpp alignment refusal");
+  TEST_BEGIN("epaper: VCOM + dev_info refuse before init");
   prep();
-  uint16_t mv = 0U;
-  /* Before init both VCOM entry points must refuse. */
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_epaper_get_vcom(&mv));
-  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_epaper_set_vcom(1530U));
+  uint16_t              mv   = 0U;
   ra8_epaper_dev_info_t info = {};
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_epaper_get_vcom(&mv));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_epaper_set_vcom(k_ra8_epaper_test_vcom_mv));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_epaper_dev_info(&info));
+  TEST_END("epaper: VCOM + dev_info refuse before init");
+}
 
+/**
+ * @test epaper_vcom_commands
+ *
+ * @details
+ * Drives the VCOM get / set commands against the simulator-backed bus.
+ * The RAM-backed SPI window returns whatever the fixture last wrote rather
+ * than a real panel's value, so the assertions are on the state-machine
+ * guards and on the commands completing, not on a millivolt figure.
+ */
+static void test_vcom_commands(void)
+{
+  TEST_BEGIN("epaper: VCOM get / set command legs");
+  prep();
   const ra8_epaper_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_init(&cfg));
 
+  uint16_t mv = 0U;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_get_vcom(nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_get_vcom(&mv));
   /* A zero VCOM is never programmable -- it is the "controller not ready"
    * signature, and driving a panel at it is the damage case. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_set_vcom(0U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_set_vcom(1530U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_set_vcom(k_ra8_epaper_test_vcom_mv));
 
+  ra8_epaper_dev_info_t info = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_dev_info(nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_dev_info(&info));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_sleep());
+  TEST_END("epaper: VCOM get / set command legs");
+}
 
-  /* A misaligned 1 bpp load is refused before any bus traffic. */
+/**
+ * @test epaper_load_image_depth_and_alignment
+ *
+ * @details
+ * The two load-path defects together: a 1 bpp update off the 32-pixel grid
+ * renders nothing on an M641 panel, so it must be refused before any bus
+ * traffic; and a 4 bpp area wants exactly half the bytes of the 8 bpp
+ * path, so a mis-sized buffer must be refused rather than silently
+ * truncating the row.
+ */
+static void test_load_image_depth_and_alignment(void)
+{
+  TEST_BEGIN("epaper: load_image depth sizing + 1bpp alignment refusal");
+  prep();
+  const ra8_epaper_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_init(&cfg));
+
   static uint8_t          bitmap[8]  = {};
   const ra8_epaper_area_t misaligned = {.x = 8U, .y = 0U, .width = 64U, .height = 1U};
+  const ra8_epaper_area_t aligned    = {.x = 0U, .y = 0U, .width = 64U, .height = 1U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_epaper_load_image(&misaligned,
-                                       bitmap,
-                                       sizeof(bitmap),
-                                       k_ra8_epaper_pf_1bpp,
-                                       k_ra8_epaper_endian_little));
-  /* The same buffer at an aligned origin is accepted. */
-  const ra8_epaper_area_t aligned = {.x = 0U, .y = 0U, .width = 64U, .height = 1U};
+                 ra8_epaper_load_image(&misaligned, bitmap, sizeof(bitmap),
+                                       k_ra8_epaper_pf_1bpp, k_ra8_epaper_endian_little));
   TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_epaper_load_image(&aligned,
-                                       bitmap,
-                                       sizeof(bitmap),
-                                       k_ra8_epaper_pf_1bpp,
-                                       k_ra8_epaper_endian_little));
+                 ra8_epaper_load_image(&aligned, bitmap, sizeof(bitmap),
+                                       k_ra8_epaper_pf_1bpp, k_ra8_epaper_endian_little));
 
   /* 4 bpp: half the bytes of the 8 bpp path for the same rectangle. */
-  static uint8_t          packed4[32] = {};
-  const ra8_epaper_area_t area4       = {.x = 0U, .y = 0U, .width = 64U, .height = 1U};
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_epaper_load_image(&area4,
-                                       packed4,
-                                       sizeof(packed4),
-                                       k_ra8_epaper_pf_4bpp,
-                                       k_ra8_epaper_endian_little));
-  /* An 8 bpp-sized buffer is rejected for a 4 bpp area. */
+  static uint8_t packed4[32] = {};
   static uint8_t packed8[64] = {};
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_epaper_load_image(&aligned, packed4, sizeof(packed4),
+                                       k_ra8_epaper_pf_4bpp, k_ra8_epaper_endian_little));
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
-                 ra8_epaper_load_image(&area4,
-                                       packed8,
-                                       sizeof(packed8),
-                                       k_ra8_epaper_pf_4bpp,
-                                       k_ra8_epaper_endian_little));
+                 ra8_epaper_load_image(&aligned, packed8, sizeof(packed8),
+                                       k_ra8_epaper_pf_4bpp, k_ra8_epaper_endian_little));
 
   /* An unknown waveform selector is refused rather than defaulted. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_epaper_display_area(&aligned, (ra8_epaper_waveform_t)200U));
+                 ra8_epaper_display_area(&aligned, (ra8_epaper_waveform_t)k_ra8_epaper_test_bad_wf));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_sleep());
-  TEST_END("epaper: VCOM commands + 1bpp alignment refusal");
+  TEST_END("epaper: load_image depth sizing + 1bpp alignment refusal");
 }
 
 int main(void)
@@ -663,6 +684,8 @@ int main(void)
   test_area_alignment();
   test_waveform_cfg_for_lut();
   test_init_requires_waveform_map();
-  test_vcom_and_alignment_guard();
+  test_vcom_before_init();
+  test_vcom_commands();
+  test_load_image_depth_and_alignment();
   return 0;
 }
