@@ -50,21 +50,21 @@
  * @brief Test fixtures.
  */
 typedef enum : uint32_t {
-  k_ra8_epaper_test_pclka_hz   = 100000000U, /**< 100 MHz PCLKA.           */
-  k_ra8_epaper_test_baud_hz    = 12000000U,  /**< 12 MHz SPI clock.        */
-  k_ra8_epaper_test_panel_w    = 800U,       /**< RA8 epaper test panel w. */
-  k_ra8_epaper_test_panel_h    = 600U,       /**< RA8 epaper test panel h. */
-  k_ra8_epaper_test_buf_pixels = 64U,        /**< 8x8 = 64 px.             */
-  k_ra8_epaper_test_vcom_mv    = 1530U,      /**< Plausible VCOM (-1.53V). */
-  k_ra8_epaper_test_bad_wf     = 200U,       /**< Unknown wf selector.     */
-  k_ra8_epaper_test_devinfo_words = 20U,     /**< GET_DEV_INFO word count. */
-  k_ra8_epaper_test_buf_lo     = 0x1234U,    /**< Image-buffer base, low.  */
-  k_ra8_epaper_test_buf_hi     = 0x0012U,    /**< Image-buffer base, high. */
-  k_ra8_epaper_test_buf_base   = 0x00121234U, /**< Reassembled base addr.  */
-  k_ra8_epaper_test_lut_w0     = 0x4D36U,    /**< "M6" packed high-first.  */
-  k_ra8_epaper_test_lut_w1     = 0x3431U,    /**< "41" packed high-first.  */
-  k_ra8_epaper_test_ctrl_word  = 0x0107U,    /**< Two non-printable bytes. */
-  k_ra8_epaper_test_a2_m641    = 4U,         /**< A2 mode on the M641 LUT. */
+  k_ra8_epaper_test_pclka_hz      = 100000000U,  /**< 100 MHz PCLKA.           */
+  k_ra8_epaper_test_baud_hz       = 12000000U,   /**< 12 MHz SPI clock.        */
+  k_ra8_epaper_test_panel_w       = 800U,        /**< RA8 epaper test panel w. */
+  k_ra8_epaper_test_panel_h       = 600U,        /**< RA8 epaper test panel h. */
+  k_ra8_epaper_test_buf_pixels    = 64U,         /**< 8x8 = 64 px.             */
+  k_ra8_epaper_test_vcom_mv       = 1530U,       /**< Plausible VCOM (-1.53V). */
+  k_ra8_epaper_test_bad_wf        = 200U,        /**< Unknown wf selector.     */
+  k_ra8_epaper_test_devinfo_words = 20U,         /**< GET_DEV_INFO word count. */
+  k_ra8_epaper_test_buf_lo        = 0x1234U,     /**< Image-buffer base, low.  */
+  k_ra8_epaper_test_buf_hi        = 0x0012U,     /**< Image-buffer base, high. */
+  k_ra8_epaper_test_buf_base      = 0x00121234U, /**< Reassembled base addr.   */
+  k_ra8_epaper_test_lut_w0        = 0x4D36U,     /**< "M6" packed high-first.  */
+  k_ra8_epaper_test_lut_w1        = 0x3431U,     /**< "41" packed high-first.  */
+  k_ra8_epaper_test_ctrl_word     = 0x0107U,     /**< Two non-printable bytes. */
+  k_ra8_epaper_test_a2_m641       = 4U,          /**< A2 mode on the M641 LUT. */
   /**
    * The only VCOM that round-trips on this fixture.
    *
