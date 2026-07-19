@@ -380,7 +380,7 @@ Compare against decoding the whole 800 x 12260 longstrip:
 |----------|----------------|----------------------|
 | Whole-image decode, RGB888 | 29 424 000 (~28 MB) | No -- 18x over |
 | JOF, one 256x256 RGB tile | 418 048 (~408 KiB) | Yes |
-| JOF, one 800x64 RGB band | 245 760 payload + 287 kB scratch (~520 KiB) | Yes |
+| JOF, one 800x64 RGB band | 153 600 payload + 173 056 scratch = 326 656 (~319 KiB) | Yes |
 
 And the property that matters most: **the second column does not change when
 the image gets taller.** A 100000-pixel-tall strip costs the same per tile.

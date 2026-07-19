@@ -335,7 +335,7 @@ The resident cost of an open chunked book is:
 | one cache frame | `chunk_bytes` | `ra8_vmem` |
 | `ra8_book_chunked_t` | ~64 bytes | caller |
 
-For a 4 MB book at 64 KiB chunks: table = 512 B, staging ~64 KiB, frame 64 KiB
+For a 4 MB book at 64 KiB chunks: 64 chunks, table = 520 B, staging ~64 KiB, frame 64 KiB
 -- about **130 KB resident to read a 4 MB book**, and the only term that grows
 with book size is the table, at 8 bytes per 64 KiB (0.012%).
 
