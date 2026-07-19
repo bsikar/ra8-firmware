@@ -253,6 +253,71 @@ cmd_list() {
   git -C "$RA8_WS_UPSTREAM" worktree list 2>/dev/null | sed 's/^/  /'
 }
 
+# Is any live process working inside this directory tree?
+#
+# The cheap, dependency-free test: every process exposes its working directory
+# as /proc/<pid>/cwd. A build running in a tree always has at least one process
+# cwd'd inside it, so this catches an in-flight gate run that a timestamp check
+# would miss (a long link step can leave mtimes hours old while the build is
+# very much alive). Deleting a build directory out from under a running build
+# is precisely the "clobbered mid-run" failure this infrastructure exists to
+# stop, so this check gates every deletion below.
+tree_is_busy() {
+  local tree="$1" p c
+  for p in /proc/[0-9]*; do
+    c="$(readlink "$p/cwd" 2>/dev/null)" || continue
+    case "$c" in "$tree" | "$tree"/*) return 0 ;; esac
+  done
+  return 1
+}
+
+# Sweep regenerable build output out of checkouts that are NOT managed
+# workspaces.
+#
+# The managed lifecycle covers $RA8_WS_ROOT, but agents improvised their own
+# checkouts long before it existed (~/ra8-296, ~/citree-vcom, ~/wt-*), and that
+# is where the disk actually went: 42.9 GiB of build output against ~0.5 GiB of
+# source per tree. Those trees cannot simply be deleted -- some hold work, and
+# some have an agent inside them right now -- but their build directories are
+# regenerable BY DEFINITION, which makes them safe to reclaim on a timer.
+#
+# This is what makes the cleanup automatic for legacy layouts too, rather than
+# only for trees created the new way. Three independent safety rules:
+#   1. Only directory NAMES known to be build output are ever considered.
+#   2. The parent must look like a checkout of this project (CMakeLists.txt),
+#      so a stray path can never be interpreted as a build directory.
+#   3. A tree with a live process inside it is skipped entirely.
+sweep_build_output() {
+  local ttl_hours="$1" quiet="$2"
+  local roots="${RA8_WS_SWEEP_ROOTS:-$HOME}"
+  local reclaimed=0 root tree bd sz
+
+  for root in $roots; do
+    [[ -d "$root" ]] || continue
+    for tree in "$root"/*; do
+      [[ -d "$tree" ]] || continue
+      # Rule 2: only inside something that looks like a checkout of this repo.
+      [[ -f "$tree/CMakeLists.txt" ]] || continue
+      # Rule 3: never touch a tree someone is working in.
+      if tree_is_busy "$tree"; then
+        [[ "$quiet" == "1" ]] || echo "skip   $(basename "$tree") (busy: live process inside)"
+        continue
+      fi
+      for bd in "$tree/build" "$tree/tests/build" "$tree/tests/build-cov" \
+        "$tree/tests/build-ubsan"; do
+        [[ -d "$bd" ]] || continue
+        # Age check on the directory itself: -mmin takes minutes.
+        if [[ -n "$(find "$bd" -maxdepth 0 -mmin "+$((ttl_hours * 60))" 2>/dev/null)" ]]; then
+          sz="$(du -sm "$bd" 2>/dev/null | cut -f1)"
+          rm -rf "$bd" && reclaimed=$((reclaimed + ${sz:-0}))
+          [[ "$quiet" == "1" ]] || echo "swept  ${bd#"$HOME"/} (${sz:-?} MB)"
+        fi
+      done
+    done
+  done
+  [[ "$quiet" == "1" ]] || echo "build-output sweep reclaimed ${reclaimed} MB"
+}
+
 cmd_reap() {
   local quiet=0 force=0 arg
   for arg in "$@"; do
@@ -280,6 +345,12 @@ cmd_reap() {
     fi
   done
   git -C "$RA8_WS_UPSTREAM" worktree prune 2>/dev/null || true
+
+  # Reclaim build output from unmanaged checkouts as part of the same sweep.
+  # Deliberately a LONGER ttl than the workspace ttl: a checkout an agent is
+  # iterating in should keep its object files across a short pause, and the
+  # only cost of waiting is disk that the threshold rule already reacts to.
+  sweep_build_output "${RA8_WS_BUILD_TTL_HOURS:-6}" "$quiet"
 
   # Container garbage is part of the same lifecycle. Folding it in here is what
   # stops `podman system prune` from becoming another thing someone has to
