@@ -44,11 +44,12 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_comic_cbt_s_arc_1f    = 0x1FU,
-  k_comic_cbt_s_arc_8b    = 0x8BU,
-  k_comic_cbt_tcb_octal_7 = 7U,
-  k_comic_cbt_val_64      = 64,
-  k_comic_cbt_val_ff      = 0xFFU,
+  k_gzip_magic_b0 = 0x1FU, /**< First byte of the gzip magic (0x1F8B). */
+  k_gzip_magic_b1 = 0x8BU, /**< Its second byte. */
+  k_tcb_payload_len =
+    7U, /**< Length of the fixture payload, short enough that the tar entry stays inside one 512-byte record. */
+  k_tcb_name_cap = 64,    /**< Capacity of the entry-name scratch buffer. */
+  k_byte_mask    = 0xFFU, /**< Truncates each shifted CRC and length byte for the gzip trailer. */
 } comic_cbt_uint8_const_t;
 
 /**
@@ -61,7 +62,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_comic_cbt_s_arc_len_600 = 600U,
+  k_tcb_non_archive_bytes =
+    600U, /**< Bytes of filler presented as a non-archive, past any header the sniffer might read so the rejection is on content rather than length. */
 } comic_cbt_uint16_const_t;
 
 /** @brief Named double constant used by this file. */
@@ -82,7 +84,6 @@ typedef enum : uint32_t {
   k_tcb_arena    = 64U * 1024U,  /**< Wrapped-open unwrap arena.  */
   k_tcb_scratch  = 192U * 1024U, /**< XZ session scratch.         */
   k_tcb_page_cap = 8U,           /**< Page-index capacity.        */
-  k_tcb_name_cap = 512U,         /**< Name-arena capacity.        */
   k_tcb_out_cap  = 4096U,        /**< Page extraction buffer.     */
 } tcb_dim_t;
 
@@ -212,8 +213,8 @@ static size_t tcb_build_tar(uint8_t* dst)
   size_t     off  = 0U;
   off             = tcb_tar_add(dst, off, "dir/", (uint8_t)'5', nullptr, 0U);
   off             = tcb_tar_add(dst, off, "page2.png", (uint8_t)'0', p2, sizeof(p2) - 1U);
-  off = tcb_tar_add(dst, off, "notes.txt", (uint8_t)'0', "skip me", k_comic_cbt_tcb_octal_7);
-  off = tcb_tar_add(dst, off, "page1.png", (uint8_t)'0', p1, sizeof(p1) - 1U);
+  off             = tcb_tar_add(dst, off, "notes.txt", (uint8_t)'0', "skip me", k_tcb_payload_len);
+  off             = tcb_tar_add(dst, off, "page1.png", (uint8_t)'0', p1, sizeof(p1) - 1U);
   memset(&dst[off], 0, (size_t)k_tcb_end_marker_bytes);
   return off + (size_t)k_tcb_end_marker_bytes;
 }
@@ -222,8 +223,8 @@ static size_t tcb_build_tar(uint8_t* dst)
 static void tcb_gzip_wrap(const uint8_t* payload, size_t n)
 {
   size_t off   = 0U;
-  s_arc[off++] = k_comic_cbt_s_arc_1f;
-  s_arc[off++] = k_comic_cbt_s_arc_8b;
+  s_arc[off++] = k_gzip_magic_b0;
+  s_arc[off++] = k_gzip_magic_b1;
   s_arc[off++] = 8U;
   s_arc[off++] = 0U;
   memset(&s_arc[off], 0, 6U);
@@ -237,8 +238,8 @@ static void tcb_gzip_wrap(const uint8_t* payload, size_t n)
   off += comp;
   const uint32_t crc = (uint32_t)mz_crc32(MZ_CRC32_INIT, payload, n);
   for (uint32_t i = 0U; i < 4U; ++i) {
-    s_arc[off + i]      = (uint8_t)((crc >> (8U * i)) & k_comic_cbt_val_ff);
-    s_arc[off + 4U + i] = (uint8_t)(((uint32_t)n >> (8U * i)) & k_comic_cbt_val_ff);
+    s_arc[off + i]      = (uint8_t)((crc >> (8U * i)) & k_byte_mask);
+    s_arc[off + 4U + i] = (uint8_t)(((uint32_t)n >> (8U * i)) & k_byte_mask);
   }
   s_arc_len = off + 8U;
 }
@@ -265,8 +266,8 @@ static void tcb_assert_two_pages(ra8_comic_t* c, ra8_comic_kind_t kind)
 {
   TEST_ASSERT_EQ(kind, ra8_comic_kind(c));
   TEST_ASSERT_EQ(2U, ra8_comic_page_count(c));
-  char     nb[k_comic_cbt_val_64] = {};
-  uint16_t nl                     = 0U;
+  char     nb[k_tcb_name_cap] = {};
+  uint16_t nl                 = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_page_info(c, 0U, nb, sizeof(nb), &nl, nullptr, nullptr));
   TEST_ASSERT_EQ(0, memcmp(nb, "page1.png", 9U)); /* sorted: page1 first */
   size_t got = 0U;
@@ -304,8 +305,8 @@ static void test_cbt_bare_tar_open(void)
   tcb_assert_two_pages(&c, k_ra8_comic_kind_cbt);
 
   /* Non-archive bytes are still cleanly refused by every backend. */
-  memset(s_arc, k_tcb_fill_non_archive, (size_t)k_comic_cbt_s_arc_len_600);
-  s_arc_len = k_comic_cbt_s_arc_len_600;
+  memset(s_arc, k_tcb_fill_non_archive, (size_t)k_tcb_non_archive_bytes);
+  s_arc_len = k_tcb_non_archive_bytes;
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
                  ra8_comic_open(&c,
                                 tcb_read,
@@ -427,7 +428,7 @@ static ra8_err_t tcb_open_full(ra8_comic_t*      c,
 static void tcb_bombs(ra8_comic_t* c)
 {
   /* gzip-of-gzip: the classic nesting bomb shape. */
-  tcb_gzip_wrap((const uint8_t*)"payload", k_comic_cbt_tcb_octal_7);
+  tcb_gzip_wrap((const uint8_t*)"payload", k_tcb_payload_len);
   memcpy(s_inner, s_arc, s_arc_len);
   tcb_gzip_wrap(s_inner, s_arc_len);
   TEST_ASSERT_EQ(k_ra8_err_decomp_depth, tcb_open_wrapped(c));

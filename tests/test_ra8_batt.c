@@ -30,12 +30,12 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_batt_upd_10 = 10U,
-  k_batt_upd_12 = 12U,
-  k_batt_upd_14 = 14U,
-  k_batt_upd_20 = 20U,
-  k_batt_upd_22 = 22U,
-  k_batt_upd_24 = 24U,
+  k_batt_mv_below_critical = 10U, /**< Below the critical threshold: raises the critical alarm. */
+  k_batt_mv_above_critical = 12U, /**< Back above it, but still inside the hysteresis band. */
+  k_batt_mv_clear_critical = 14U, /**< Far enough above to clear the critical alarm outright. */
+  k_batt_mv_below_low      = 20U, /**< Below the low threshold: raises the low alarm. */
+  k_batt_mv_above_low      = 22U, /**< Back above it, inside the hysteresis band. */
+  k_batt_mv_clear_low      = 24U, /**< Far enough above to clear the low alarm. */
 } batt_uint8_const_t;
 
 /** @brief Update the monitor and return just the nag (test convenience). */
@@ -150,7 +150,7 @@ static void test_mcdc_raise_low(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_batt_monitor_init(&m));
   TEST_ASSERT_EQ(k_ra8_batt_nag_none, upd(&m, 21U, false)); /* V2 F,T */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_batt_monitor_init(&m));
-  (void)upd(&m, k_batt_upd_20, false);                      /* raise -> low_raised=true */
+  (void)upd(&m, k_batt_mv_below_low, false);                /* raise -> low_raised=true */
   TEST_ASSERT_EQ(k_ra8_batt_nag_none, upd(&m, 20U, false)); /* V3 T,F                   */
   TEST_END("ra8_batt raise-low MC/DC");
 }
@@ -174,7 +174,7 @@ static void test_mcdc_raise_critical(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_batt_monitor_init(&m));
   TEST_ASSERT_EQ(k_ra8_batt_nag_low, upd(&m, 11U, false)); /* V2 F,T */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_batt_monitor_init(&m));
-  (void)upd(&m, k_batt_upd_10, false);                      /* raise -> critical_raised=true */
+  (void)upd(&m, k_batt_mv_below_critical, false);           /* raise -> critical_raised=true */
   TEST_ASSERT_EQ(k_ra8_batt_nag_none, upd(&m, 10U, false)); /* V3 T,F                        */
   TEST_END("ra8_batt raise-critical MC/DC");
 }
@@ -197,16 +197,16 @@ static void test_mcdc_rearm_low(void)
   TEST_BEGIN("ra8_batt re-arm-low MC/DC");
   ra8_batt_monitor_t m;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_batt_monitor_init(&m));
-  (void)upd(&m, k_batt_upd_20, false);                     /* seed low               */
-  (void)upd(&m, k_batt_upd_22, true);                      /* V1 C1=T,C2=F -> re-arm */
+  (void)upd(&m, k_batt_mv_below_low, false);               /* seed low               */
+  (void)upd(&m, k_batt_mv_above_low, true);                /* V1 C1=T,C2=F -> re-arm */
   TEST_ASSERT_EQ(k_ra8_batt_nag_low, upd(&m, 20U, false)); /* probe warns            */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_batt_monitor_init(&m));
-  (void)upd(&m, k_batt_upd_20, false);                     /* seed low               */
-  (void)upd(&m, k_batt_upd_24, false);                     /* V2 C1=F,C2=T -> re-arm */
+  (void)upd(&m, k_batt_mv_below_low, false);               /* seed low               */
+  (void)upd(&m, k_batt_mv_clear_low, false);               /* V2 C1=F,C2=T -> re-arm */
   TEST_ASSERT_EQ(k_ra8_batt_nag_low, upd(&m, 20U, false)); /* probe warns            */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_batt_monitor_init(&m));
-  (void)upd(&m, k_batt_upd_20, false);                      /* seed low                  */
-  (void)upd(&m, k_batt_upd_22, false);                      /* V3 C1=F,C2=F -> no re-arm */
+  (void)upd(&m, k_batt_mv_below_low, false);                /* seed low                  */
+  (void)upd(&m, k_batt_mv_above_low, false);                /* V3 C1=F,C2=F -> no re-arm */
   TEST_ASSERT_EQ(k_ra8_batt_nag_none, upd(&m, 20U, false)); /* probe quiet               */
   TEST_END("ra8_batt re-arm-low MC/DC");
 }
@@ -226,16 +226,16 @@ static void test_mcdc_rearm_critical(void)
   TEST_BEGIN("ra8_batt re-arm-critical MC/DC");
   ra8_batt_monitor_t m;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_batt_monitor_init(&m));
-  (void)upd(&m, k_batt_upd_10, false);                          /* seed critical          */
-  (void)upd(&m, k_batt_upd_12, true);                           /* V1 C1=T,C2=F -> re-arm */
+  (void)upd(&m, k_batt_mv_below_critical, false);               /* seed critical          */
+  (void)upd(&m, k_batt_mv_above_critical, true);                /* V1 C1=T,C2=F -> re-arm */
   TEST_ASSERT_EQ(k_ra8_batt_nag_critical, upd(&m, 10U, false)); /* probe warns            */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_batt_monitor_init(&m));
-  (void)upd(&m, k_batt_upd_10, false);                          /* seed critical          */
-  (void)upd(&m, k_batt_upd_14, false);                          /* V2 C1=F,C2=T -> re-arm */
+  (void)upd(&m, k_batt_mv_below_critical, false);               /* seed critical          */
+  (void)upd(&m, k_batt_mv_clear_critical, false);               /* V2 C1=F,C2=T -> re-arm */
   TEST_ASSERT_EQ(k_ra8_batt_nag_critical, upd(&m, 10U, false)); /* probe warns            */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_batt_monitor_init(&m));
-  (void)upd(&m, k_batt_upd_10, false);                      /* seed critical             */
-  (void)upd(&m, k_batt_upd_12, false);                      /* V3 C1=F,C2=F -> no re-arm */
+  (void)upd(&m, k_batt_mv_below_critical, false);           /* seed critical             */
+  (void)upd(&m, k_batt_mv_above_critical, false);           /* V3 C1=F,C2=F -> no re-arm */
   TEST_ASSERT_EQ(k_ra8_batt_nag_none, upd(&m, 10U, false)); /* probe quiet               */
   TEST_END("ra8_batt re-arm-critical MC/DC");
 }

@@ -38,12 +38,12 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_fs_font_reflow_put16_11 = 11U,
-  k_fs_font_reflow_put16_14 = 14U,
-  k_fs_font_reflow_put16_17 = 17U,
-  k_fs_font_reflow_put16_19 = 19U,
-  k_fs_font_reflow_v_ff     = 0xFFU,
-  k_fs_font_reflow_val_13   = 13,
+  k_bpb_off_bytes_per_sec = 11U, /**< BPB_BytsPerSec: bytes per sector. */
+  k_bpb_off_rsvd_sec_cnt  = 14U, /**< BPB_RsvdSecCnt: sectors before the first FAT. */
+  k_bpb_off_root_ent_cnt  = 17U, /**< BPB_RootEntCnt: root-directory entries. */
+  k_bpb_off_tot_sec16     = 19U, /**< BPB_TotSec16: total sectors. */
+  k_byte_mask = 0xFFU, /**< Truncates each shifted CRC and length byte for the gzip trailer. */
+  k_bpb_off_sec_per_clus = 13, /**< BPB_SecPerClus: sectors per cluster. */
 } fs_font_reflow_uint8_const_t;
 
 /* ---------------------------------------------------------------------------
@@ -110,8 +110,8 @@ static const ra8_fs_backend_t s_backend = {
 
 static void put16(uint8_t* p, uint32_t off, uint16_t v)
 {
-  p[off]     = (uint8_t)(v & k_fs_font_reflow_v_ff);
-  p[off + 1] = (uint8_t)((v >> 8) & k_fs_font_reflow_v_ff);
+  p[off]     = (uint8_t)(v & k_byte_mask);
+  p[off + 1] = (uint8_t)((v >> 8) & k_byte_mask);
 }
 
 /** @brief Format the in-memory block device as an empty FAT16 volume. */
@@ -125,13 +125,13 @@ static void build_fat16_volume(void)
     TEST_FAIL_FMT("%s", "calloc failed");
   }
   uint8_t* bpb = &s_disk.bytes[0];
-  put16(bpb, k_fs_font_reflow_put16_11, (uint16_t)k_disk_block_size);   /* bytes/sector     */
-  bpb[k_fs_font_reflow_val_13] = 1U;                                    /* sectors/cluster  */
-  put16(bpb, k_fs_font_reflow_put16_14, 1U);                            /* reserved sectors */
-  bpb[16] = 2U;                                                         /* number of FATs   */
-  put16(bpb, k_fs_font_reflow_put16_17, 16U);                           /* root entries     */
-  put16(bpb, k_fs_font_reflow_put16_19, (uint16_t)k_disk_blocks_fat16); /* total sectors    */
-  put16(bpb, (uint32_t)k_bpb_off_secperfat, 32U);                       /* sectors/FAT      */
+  put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_disk_block_size); /* bytes/sector     */
+  bpb[k_bpb_off_sec_per_clus] = 1U;                                 /* sectors/cluster  */
+  put16(bpb, k_bpb_off_rsvd_sec_cnt, 1U);                           /* reserved sectors */
+  bpb[16] = 2U;                                                     /* number of FATs   */
+  put16(bpb, k_bpb_off_root_ent_cnt, 16U);                          /* root entries     */
+  put16(bpb, k_bpb_off_tot_sec16, (uint16_t)k_disk_blocks_fat16);   /* total sectors    */
+  put16(bpb, (uint32_t)k_bpb_off_secperfat, 32U);                   /* sectors/FAT      */
   bpb[k_bpb_sig_off_a] = (uint8_t)k_bpb_sig_a;
   bpb[k_bpb_sig_off_b] = (uint8_t)k_bpb_sig_b;
 }

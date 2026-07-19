@@ -39,10 +39,13 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ether_phy_cov_regs_0040         = 0x0040U,
-  k_ether_phy_cov_regs_0080         = 0x0080U,
-  k_ether_phy_cov_reset_wait_us_100 = 100U,
-  k_ether_phy_cov_val_5             = 5,
+  k_phy_ability_half_duplex = 0x0040U, /**< An ability word advertising the half-duplex mode. */
+  k_phy_ability_full_duplex =
+    0x0080U, /**< One advertising full duplex, so the two negotiate to different results. */
+  k_phy_reset_wait_us =
+    100U, /**< Reset settling time the configuration requests, in microseconds. */
+  k_phy_reg_1000base_status =
+    5, /**< MII register 5: the link-partner ability register this fixture drives. */
 } ether_phy_cov_uint8_const_t;
 
 /**
@@ -55,7 +58,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_ether_phy_cov_val_8000 = 0x8000U,
+  k_phy_bmcr_reset =
+    0x8000U, /**< BMCR bit 15, the PHY reset bit, which the driver must clear when reset completes. */
 } ether_phy_cov_uint16_const_t;
 
 /* ---------------------------------------------------------------------------
@@ -147,7 +151,7 @@ static ra8_err_t cov_bus_read(void* ctx, uint8_t phy, uint8_t reg, uint16_t* out
     if (st->reset_reads_remaining > 0U) {
       st->reset_reads_remaining = (uint16_t)(st->reset_reads_remaining - 1U);
     } else {
-      st->regs[0] = (uint16_t)(st->regs[0] & (uint16_t)~k_ether_phy_cov_val_8000);
+      st->regs[0] = (uint16_t)(st->regs[0] & (uint16_t)~k_phy_bmcr_reset);
     }
   }
   *out = st->regs[reg];
@@ -232,7 +236,7 @@ static ra8_ether_phy_cfg_t cov_make_cfg(void)
   cfg.io.ctx              = &s_cov_io;
   cfg.phy_address         = (uint8_t)k_cov_phy_addr;
   cfg.mii_type            = k_ra8_ether_phy_rmii;
-  cfg.reset_wait_us       = k_ether_phy_cov_reset_wait_us_100;
+  cfg.reset_wait_us       = k_phy_reset_wait_us;
   return cfg;
 }
 
@@ -402,8 +406,8 @@ static void test_link_status_speed_100half(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ether_phy_open(&cfg));
 
   /* BMSR: link_up (bit 2) | AN complete (bit 5). LPA: 100half (bit 7). */
-  s_cov_io.regs[1]                     = (uint16_t)(0x0004U | 0x0020U);
-  s_cov_io.regs[k_ether_phy_cov_val_5] = k_ether_phy_cov_regs_0080;
+  s_cov_io.regs[1]                         = (uint16_t)(0x0004U | 0x0020U);
+  s_cov_io.regs[k_phy_reg_1000base_status] = k_phy_ability_full_duplex;
 
   ra8_ether_phy_link_t link = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ether_phy_link_status_get(&link));
@@ -439,8 +443,8 @@ static void test_link_status_speed_10full(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ether_phy_open(&cfg));
 
   /* BMSR: link_up | AN complete. LPA: 10full only (bit 6). */
-  s_cov_io.regs[1]                     = (uint16_t)(0x0004U | 0x0020U);
-  s_cov_io.regs[k_ether_phy_cov_val_5] = k_ether_phy_cov_regs_0040;
+  s_cov_io.regs[1]                         = (uint16_t)(0x0004U | 0x0020U);
+  s_cov_io.regs[k_phy_reg_1000base_status] = k_phy_ability_half_duplex;
 
   ra8_ether_phy_link_t link = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ether_phy_link_status_get(&link));
@@ -478,8 +482,8 @@ static void test_link_status_speed_10half(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ether_phy_open(&cfg));
 
   /* BMSR: link_up | AN complete. LPA: 10half only (bit 5). */
-  s_cov_io.regs[1]                     = (uint16_t)(0x0004U | 0x0020U);
-  s_cov_io.regs[k_ether_phy_cov_val_5] = 0x0020U;
+  s_cov_io.regs[1]                         = (uint16_t)(0x0004U | 0x0020U);
+  s_cov_io.regs[k_phy_reg_1000base_status] = 0x0020U;
 
   ra8_ether_phy_link_t link = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ether_phy_link_status_get(&link));
