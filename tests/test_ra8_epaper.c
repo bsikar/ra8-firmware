@@ -65,6 +65,9 @@ typedef enum : uint32_t {
   k_ra8_epaper_test_lut_w1        = 0x3431U,     /**< "41" packed high-first.  */
   k_ra8_epaper_test_ctrl_word     = 0x0107U,     /**< Two non-printable bytes. */
   k_ra8_epaper_test_a2_m641       = 4U,          /**< A2 mode on the M641 LUT. */
+  k_ra8_epaper_test_panel_64      = 64U,         /**< Grid-aligned panel width.*/
+  k_ra8_epaper_test_panel_40      = 40U,         /**< Off-grid panel width.    */
+  k_ra8_epaper_test_panel_32      = 32U,         /**< One-grid-cell panel.     */
   /**
    * The only VCOM that round-trips on this fixture.
    *
