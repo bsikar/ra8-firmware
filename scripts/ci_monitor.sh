@@ -42,6 +42,9 @@
 #   bash scripts/ci_monitor.sh wait  --sha X [--timeout 1800]
 #   bash scripts/ci_monitor.sh quota             # remaining REST quota
 #   bash scripts/ci_monitor.sh install-service   # run the daemon under systemd
+#   bash scripts/ci_monitor.sh runner-status     # read outcomes off the runner
+#                                                # box; zero quota, works when
+#                                                # the budget is exhausted
 
 set -uo pipefail
 
@@ -258,6 +261,22 @@ cmd_install_service() {
   local unitdir="$HOME/.config/systemd/user"
   local self
   self="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+
+  # Run the daemon from a STABLE copy for the same reason the reaper does (see
+  # agent_workspace.sh cmd_install_timer): install-service is naturally invoked
+  # from whichever tree the agent had open, often a workspace that the reaper
+  # is entitled to delete. Pointing ExecStart into a reapable directory means
+  # the monitor dies the moment its workspace ages out -- and a dead monitor
+  # writes no status file, which every reader correctly reports as UNKNOWN.
+  # The fleet would then silently lose CI visibility with no obvious cause.
+  local stable_dir="$HOME/.local/bin"
+  local stable="$stable_dir/ra8-ci-monitor"
+  mkdir -p "$stable_dir"
+  if [[ "$self" != "$stable" ]]; then
+    install -m 0755 "$self" "$stable"
+  fi
+  self="$stable"
+
   mkdir -p "$unitdir"
   cat >"$unitdir/ra8-ci-monitor.service" <<EOF
 [Unit]
@@ -285,10 +304,105 @@ EOF
   systemctl --user status ra8-ci-monitor.service --no-pager 2>/dev/null | head -8
 }
 
+# Zero-quota fallback: read job outcomes off the runner box itself.
+#
+# When the REST quota is exhausted the daemon correctly reports UNKNOWN, but
+# UNKNOWN is not actionable. The runner writes every job's outcome to its own
+# _diag/Worker_*.log, which costs no quota to read -- so a fleet that has burned
+# its budget can still SEE its results over ssh.
+#
+# The log format is version-specific and was established empirically against
+# runner 2.335.1 (an earlier attempt failed because the widely-cited
+# "Job <name> completed with result: X" pattern is NOT what this version emits).
+# The fields actually present, all in Worker_<UTC>.log:
+#
+#   result   [JobRunner] Job result after all job steps finish: Succeeded
+#   job name "jobDisplayName": "board_sim boot smoke"
+#   commit   "k": "sha",          followed by   "v": "<40 hex>"
+#   branch   "k": "ref_name",     followed by   "v": "dev"
+#   workflow "k": "workflow_ref",  followed by   "v": "owner/repo/.github/workflows/<f>.yml@refs/heads/<branch>"
+#
+# The k/v pairs are on SEPARATE lines inside the job message JSON, hence the
+# grep -A1 pairing rather than a single regex.
+#
+# This reports what the runner box observed. A job that never reached a runner
+# (queued, or dispatched to a stopped runner) is invisible here BY DESIGN --
+# absence of a log is reported as UNKNOWN, never as a pass.
+cmd_runner_status() {
+  local host="${RA8_CI_RUNNER_HOST:-k3s-pve}"
+  local glob="${RA8_CI_RUNNER_GLOB:-/home/ubuntu/actions-runner*/_diag/Worker_*.log}"
+  local want_sha="" limit=10
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --sha)
+        want_sha="${2:-}"
+        shift 2
+        ;;
+      --limit)
+        limit="${2:-10}"
+        shift 2
+        ;;
+      --host)
+        host="${2:-}"
+        shift 2
+        ;;
+      *) shift ;;
+    esac
+  done
+
+  local out
+  # shellcheck disable=SC2029  # deliberate: expand $glob/$limit locally.
+  out="$(ssh -o ConnectTimeout=10 -o BatchMode=yes "$host" "
+    for f in \$(ls -t $glob 2>/dev/null | head -$limit); do
+      res=\$(grep -oE 'Job result after all job steps finish: [A-Za-z]+' \"\$f\" 2>/dev/null | tail -1 | awk '{print \$NF}')
+      name=\$(grep -oE '\"jobDisplayName\": \"[^\"]+\"' \"\$f\" 2>/dev/null | head -1 | cut -d'\"' -f4)
+      sha=\$(grep -A1 '\"k\": \"sha\"' \"\$f\" 2>/dev/null | grep -oE '[0-9a-f]{40}' | head -1)
+      wf=\$(grep -A1 '\"k\": \"workflow_ref\"' \"\$f\" 2>/dev/null | grep -oE '\.github/workflows/[^@\"]+' | head -1 | sed 's|.*/||')
+      printf '%s|%s|%s|%s\n' \"\${res:-RUNNING}\" \"\${wf:-?}\" \"\${name:-?}\" \"\${sha:-?}\"
+    done" 2>/dev/null)"
+
+  if [[ -z "$out" ]]; then
+    echo "overall: UNKNOWN"
+    echo "  reason: no runner logs readable on '$host' (ssh failed, or no jobs have run)"
+    return 0
+  fi
+
+  local shown=0 failed=0 running=0
+  echo "source: runner logs on $host (zero GitHub API quota)"
+  while IFS='|' read -r res wf name sha; do
+    [[ -z "$res" ]] && continue
+    if [[ -n "$want_sha" && "$sha" != "$want_sha"* ]]; then continue; fi
+    printf '  %-10s %-28s %-34s %s\n' "$res" "$wf" "$name" "${sha:0:9}"
+    shown=$((shown + 1))
+    case "$res" in
+      Succeeded) ;;
+      RUNNING) running=$((running + 1)) ;;
+      *) failed=$((failed + 1)) ;;
+    esac
+  done <<<"$out"
+
+  # No matching record is UNKNOWN, not a pass: the job may simply not have
+  # reached this box yet.
+  if [[ "$shown" -eq 0 ]]; then
+    echo "overall: UNKNOWN (no runner log matches${want_sha:+ sha $want_sha})"
+  elif [[ "$failed" -gt 0 ]]; then
+    echo "overall: FAIL ($failed failed of $shown observed)"
+  elif [[ "$running" -gt 0 ]]; then
+    echo "overall: UNKNOWN ($running still running of $shown observed)"
+  else
+    echo "overall: PASS ($shown observed, all Succeeded)"
+  fi
+  echo "note: reports only what REACHED a runner; a queued job is invisible here."
+}
+
 case "${1:-}" in
   daemon)
     shift
     cmd_daemon "$@"
+    ;;
+  runner-status)
+    shift
+    cmd_runner_status "$@"
     ;;
   status)
     shift

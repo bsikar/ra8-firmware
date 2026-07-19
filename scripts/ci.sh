@@ -16,12 +16,25 @@
 #   Running the gates inside the Ubuntu 24.04 devcontainer reproduces the runner
 #   environment, so a red gate is caught here instead of in CI.
 #
-# Keep this suite a SUPERSET-or-equal of firmware.yml, never a subset. Two jobs
-# were missing here for exactly that reason and let a red push through: the
-# annotation gate (a separate step of the pre-commit-gate job, not part of its
-# check_*.py block) and the MISRA ratchet (its own job -- `make cppcheck` runs
-# a different rule set with no baseline and does not cover it). When adding a
-# job to firmware.yml, add the matching gate below in the same change.
+# Keep this suite a SUPERSET-or-equal of firmware.yml, never a subset. Jobs
+# have gone missing here repeatedly and each omission let a red push through:
+# the annotation gate (a separate step of the pre-commit-gate job, not part of
+# its check_*.py block); the MISRA ratchet (its own job -- `make cppcheck` runs
+# a different rule set with no baseline and does not cover it); and later the
+# ascii / copyright / since / build-cross jobs, of which build-cross meant NO
+# arm-none-eabi compilation happened locally at all. When adding a job to
+# firmware.yml, add the matching gate below in the same change.
+#
+# To re-audit parity, compare the job names in firmware.yml against the
+# run_gate calls below:
+#   grep -E '^\s+name:' .github/workflows/firmware.yml
+#   grep -E '^\s+run_gate ' scripts/ci.sh
+# Jobs deliberately NOT mirrored, with the reason:
+#   mcdc        -- `make mcdc`; clang source-based MC/DC needs a clang/llvm-cov
+#                  pair the devcontainer does not currently pin. Tracked.
+#   docs        -- Doxygen warning gate; needs doxygen in the image. Tracked.
+#   cache-bench -- `make bench-cache`; a timing benchmark, meaningless under the
+#                  concurrent load a shared verification box runs. Tracked.
 #
 # Usage (host):
 #   bash scripts/ci.sh            # full gate suite (mirrors firmware.yml)
@@ -314,6 +327,56 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
     make ubsan
   }
 
+  # --- gate: ASCII-only sources (firmware.yml job: ascii) ------------------
+  # Mirrors the workflow loop exactly, including the directory list. These
+  # three small gates below were absent while firmware.yml ran them, so a
+  # non-ASCII byte, a missing copyright header or a missing @since tag passed
+  # `make ci` and went red on the runner -- the precise failure mode the header
+  # of this file forbids.
+  gate_ascii() (
+    set -e
+    local dir
+    for dir in src libs tests examples port scripts tools docs; do
+      python3 scripts/utils/fix-encoding.py --check "$dir"
+    done
+  )
+
+  # --- gate: copyright headers (firmware.yml job: copyright) ---------------
+  gate_copyright() (
+    set -e
+    local files
+    mapfile -t files < <(git ls-files '*.c' '*.h' '*.cpp' '*.hpp' '*.cmake' '*.sh' '*.py' 'CMakeLists.txt')
+    python3 scripts/utils/check-copyright.py "${files[@]}"
+  )
+
+  # --- gate: Doxygen @since tags (firmware.yml job: since) -----------------
+  gate_since() (
+    set -e
+    local files
+    mapfile -t files < <(git ls-files 'libs/ra8_*/inc/*.h')
+    python3 scripts/utils/check-since-version.py "${files[@]}"
+  )
+
+  # --- gate: cross-build every app (firmware.yml job: build-cross) ---------
+  # The single largest coverage gap this suite had: CI cross-builds every app
+  # under examples/ for the target and then enforces the stack-usage budget,
+  # while `make ci` built nothing for ARM at all. A change that compiles on the
+  # host but breaks the arm-none-eabi build -- a linker-script edit, a missing
+  # weak symbol, a stack frame over budget -- passed locally and failed on the
+  # runner, which is exactly the divergence this file exists to eliminate.
+  #
+  # This is also the gate that benefits most from the compiler cache: it is
+  # compile-bound across ~200 apps sharing one library set, and unlike the
+  # coverage builds it is not instrumented, so ccache applies.
+  gate_build_cross() (
+    set -e
+    bash scripts/build_all_examples.sh
+    python3 scripts/utils/stack_usage_check.py --strict
+  )
+
+  run_gate "ascii" gate_ascii
+  run_gate "copyright" gate_copyright
+  run_gate "since" gate_since
   run_gate "clang-format" gate_clang_format
   run_gate "cppcheck" gate_cppcheck
   run_gate "pre-commit-checks" gate_precommit_checks
@@ -325,6 +388,7 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
   fi
   run_gate "host-tests" gate_host_tests
   if [[ "$fast" != "1" ]]; then
+    run_gate "build-cross" gate_build_cross
     run_gate "coverage" gate_coverage
     run_gate "ubsan" gate_ubsan
   fi

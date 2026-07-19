@@ -177,6 +177,19 @@ cmd_create() {
   # must not block getting a workspace.
   cmd_reap --quiet || true
 
+  # Refresh the stable copy the systemd timer executes, so it tracks whatever
+  # version of this script agents are actually running. Without this the
+  # installed copy is a one-time snapshot that silently drifts from the tree,
+  # and a reaper fix landed in git would never reach the timer that matters.
+  # Cheap, idempotent, and on the creation path so it self-heals.
+  local stable="$HOME/.local/bin/ra8-agent-workspace"
+  local self_now
+  self_now="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+  if [[ "$self_now" != "$stable" ]] && ! cmp -s "$self_now" "$stable" 2>/dev/null; then
+    mkdir -p "$HOME/.local/bin"
+    install -m 0755 "$self_now" "$stable" 2>/dev/null || true
+  fi
+
   git -C "$RA8_WS_UPSTREAM" fetch --quiet origin 2>/dev/null || log "note: fetch failed, using cached refs"
   # Prune first: a previously deleted directory can leave a stale registration
   # that makes `worktree add` refuse the path.
@@ -321,6 +334,22 @@ cmd_install_timer() {
   local unitdir="$HOME/.config/systemd/user"
   local self
   self="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+
+  # Run the timer from a STABLE copy, never from the checkout it was invoked
+  # from. install-timer is naturally run out of whichever tree the agent had
+  # open -- frequently a workspace under $RA8_WS_ROOT -- and pointing ExecStart
+  # there makes the reaper delete its own executable the moment that workspace
+  # goes stale. The failure is silent (a systemd oneshot that cannot exec just
+  # logs and exits non-zero) and it disables exactly the mechanism that is
+  # supposed to keep the disk clear, so the box would fill up again with no
+  # visible cause. A copy outside $RA8_WS_ROOT cannot be reaped by definition.
+  local stable_dir="$HOME/.local/bin"
+  local stable="$stable_dir/ra8-agent-workspace"
+  mkdir -p "$stable_dir"
+  if [[ "$self" != "$stable" ]]; then
+    install -m 0755 "$self" "$stable"
+  fi
+
   mkdir -p "$unitdir"
   cat >"$unitdir/ra8-workspace-reap.service" <<EOF
 [Unit]
@@ -333,7 +362,7 @@ Environment=RA8_WS_UPSTREAM=$RA8_WS_UPSTREAM
 Environment=RA8_WS_TTL_HOURS=$RA8_WS_TTL_HOURS
 Environment=RA8_WS_DISK_PCT=$RA8_WS_DISK_PCT
 Environment=RA8_WS_TTL_HOURS_FULL=$RA8_WS_TTL_HOURS_FULL
-ExecStart=/usr/bin/env bash $self reap
+ExecStart=/usr/bin/env bash $stable reap
 EOF
   cat >"$unitdir/ra8-workspace-reap.timer" <<'EOF'
 [Unit]

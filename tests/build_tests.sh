@@ -51,7 +51,20 @@ elif [[ "$MODE" == "ubsan" ]]; then
   LABEL="ubsan (RA8_SANITIZE=undefined)"
 else
   BUILD_DIR="$SCRIPT_DIR/build"
-  CMAKE_ARGS=()
+  # RA8_COVERAGE must be turned OFF explicitly here. The CMake option defaults
+  # to ON, so the "fast" mode -- the one every host-test gate and every local
+  # iteration uses -- was silently gcov-instrumented. It paid the
+  # instrumentation cost for coverage data nothing in this mode reads, and,
+  # because coverage builds deliberately bypass the compiler cache (gcov bakes
+  # absolute paths into the .gcno; see cmake/ccache.cmake), it also made the
+  # single largest gate unable to use ccache at all.
+  #
+  # Nothing loses coverage by this: the coverage gate has its own build tree
+  # (scripts/coverage.sh -> build/coverage) and passes -DRA8_COVERAGE=ON
+  # explicitly, and the MC/DC mode above is likewise explicit. The two
+  # instrumented modes are unaffected; only the mode that never wanted
+  # instrumentation stops paying for it.
+  CMAKE_ARGS=(-DRA8_COVERAGE=OFF)
   LABEL="fast"
 fi
 
