@@ -45,44 +45,15 @@ typedef enum : uint8_t {
 } sfn_geom_t;
 
 /**
- * @enum fs_fat_lfn_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_fs_fat_lfn_cov_bpb_55   = 0x55U,
-  k_fs_fat_lfn_cov_bpb_aa   = 0xAAU,
-  k_fs_fat_lfn_cov_i_13     = 13U,
-  k_fs_fat_lfn_cov_put16_11 = 11U,
-  k_fs_fat_lfn_cov_put16_14 = 14U,
-  k_fs_fat_lfn_cov_put16_17 = 17U,
-  k_fs_fat_lfn_cov_put16_19 = 19U,
-  k_fs_fat_lfn_cov_put16_20 = 20U,
-  k_fs_fat_lfn_cov_put16_22 = 22U,
-  k_fs_fat_lfn_cov_put16_26 = 26U,
-  k_fs_fat_lfn_cov_v_ff     = 0xFFU,
-  k_fs_fat_lfn_cov_val_11   = 11,
-  k_fs_fat_lfn_cov_val_12   = 12,
-  k_fs_fat_lfn_cov_val_13   = 13,
-} fs_fat_lfn_cov_uint8_const_t;
-
-/**
- * @enum fs_fat_lfn_cov_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum lcov_fixture_t
+ * @brief Long-name entry field offsets and the fixture's directory sizing.
  */
 typedef enum : uint16_t {
-  k_fs_fat_lfn_cov_val_510 = 510,
-  k_fs_fat_lfn_cov_val_511 = 511,
-} fs_fat_lfn_cov_uint16_const_t;
+  k_lfn_off_type = 12U, /**< LDIR_Type: reserved, must be zero.           */
+  k_lcov_files_per_sub =
+    14U, /**< Files created in the subdirectory: enough that its entries spill past
+              a single sector, which is the case these vectors exist to cover.     */
+} lcov_fixture_t;
 
 /* ===========================================================================
  * Geometry constants
@@ -271,8 +242,8 @@ static ra8_err_t inj_capacity(void* ctx, uint32_t* block_count, uint32_t* block_
 
 static void put16(uint8_t* p, uint32_t off, uint16_t v)
 {
-  p[off]      = (uint8_t)(v & k_fs_fat_lfn_cov_v_ff);
-  p[off + 1U] = (uint8_t)((v >> 8U) & k_fs_fat_lfn_cov_v_ff);
+  p[off]      = (uint8_t)(v & k_byte_mask);
+  p[off + 1U] = (uint8_t)((v >> 8U) & k_byte_mask);
 }
 
 /**
@@ -367,15 +338,15 @@ static void build_fat16_vol(void)
   s_disk.block_count = (uint32_t)k_lcov_blocks;
   TEST_ASSERT(s_disk.bytes != nullptr);
   uint8_t* bpb = s_disk.bytes;
-  put16(bpb, k_fs_fat_lfn_cov_put16_11, (uint16_t)k_lcov_blk_sz);
-  bpb[k_fs_fat_lfn_cov_val_13] = 1U;
-  put16(bpb, k_fs_fat_lfn_cov_put16_14, (uint16_t)k_lcov_fat1_lba);
+  put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_lcov_blk_sz);
+  bpb[k_bpb_off_sec_per_clus] = 1U;
+  put16(bpb, k_bpb_off_rsvd_sec_cnt, (uint16_t)k_lcov_fat1_lba);
   bpb[16] = (uint8_t)k_lcov_num_fats;
-  put16(bpb, k_fs_fat_lfn_cov_put16_17, 16U);
-  put16(bpb, k_fs_fat_lfn_cov_put16_19, (uint16_t)k_lcov_blocks);
-  put16(bpb, k_fs_fat_lfn_cov_put16_22, (uint16_t)k_lcov_fat_sz);
-  bpb[k_fs_fat_lfn_cov_val_510] = k_fs_fat_lfn_cov_bpb_55;
-  bpb[k_fs_fat_lfn_cov_val_511] = k_fs_fat_lfn_cov_bpb_aa;
+  put16(bpb, k_bpb_off_root_ent_cnt, 16U);
+  put16(bpb, k_bpb_off_tot_sec_16, (uint16_t)k_lcov_blocks);
+  put16(bpb, k_bpb_off_fat_sz_16, (uint16_t)k_lcov_fat_sz);
+  bpb[k_bpb_off_signature_lo] = k_bpb_sig_lo;
+  bpb[k_bpb_off_signature_hi] = k_bpb_sig_hi;
 }
 
 /**
@@ -389,14 +360,14 @@ static void build_fat16_vol(void)
  */
 static void stamp_lfn_entry(uint8_t* slot, uint8_t csum)
 {
-  slot[0]                       = (uint8_t)k_lfn_ord_last;
-  slot[k_fs_fat_lfn_cov_val_11] = (uint8_t)k_lfn_attr_magic;
-  slot[k_fs_fat_lfn_cov_val_12] = 0x00U;
-  slot[k_fs_fat_lfn_cov_val_13] = csum;
-  put16(slot, k_fs_fat_lfn_cov_put16_26, 0U);
+  slot[0]                  = (uint8_t)k_lfn_ord_last;
+  slot[k_dir_off_attr]     = (uint8_t)k_lfn_attr_magic;
+  slot[k_lfn_off_type]     = 0x00U;
+  slot[k_lfn_off_checksum] = csum;
+  put16(slot, k_dir_off_fst_clus_lo, 0U);
 
   static const char k_lname[] = "mybook.epub"; /* 11 chars */
-  for (uint32_t i = 0U; i < k_fs_fat_lfn_cov_i_13; i++) {
+  for (uint32_t i = 0U; i < k_lfn_chars_per_ent; i++) {
     if (i < (uint32_t)(sizeof(k_lname) - 1U)) {
       put16(slot, (uint32_t)k_lfn_char_off[i], (uint16_t)(uint8_t)k_lname[i]);
     } else if (i == (uint32_t)(sizeof(k_lname) - 1U)) {
@@ -423,9 +394,9 @@ static void build_vol_lfn_good(void)
   stamp_lfn_entry(&root[0], sfn_checksum(k_alias83));
   uint8_t* sfn = &root[32U];
   memcpy(sfn, k_alias83, (size_t)k_sfn_name_bytes);
-  sfn[k_fs_fat_lfn_cov_val_11] = (uint8_t)k_attr_archive;
-  put16(sfn, k_fs_fat_lfn_cov_put16_26, 0U);
-  put16(sfn, k_fs_fat_lfn_cov_put16_20, 0U);
+  sfn[k_dir_off_attr] = (uint8_t)k_attr_archive;
+  put16(sfn, k_dir_off_fst_clus_lo, 0U);
+  put16(sfn, k_dir_off_fst_clus_hi, 0U);
 }
 
 /**
@@ -445,9 +416,9 @@ static void build_vol_lfn_bad_csum(void)
   stamp_lfn_entry(&root[0], bad_csum);
   uint8_t* sfn = &root[32U];
   memcpy(sfn, k_alias83, (size_t)k_sfn_name_bytes);
-  sfn[k_fs_fat_lfn_cov_val_11] = (uint8_t)k_attr_archive;
-  put16(sfn, k_fs_fat_lfn_cov_put16_26, 0U);
-  put16(sfn, k_fs_fat_lfn_cov_put16_20, 0U);
+  sfn[k_dir_off_attr] = (uint8_t)k_attr_archive;
+  put16(sfn, k_dir_off_fst_clus_lo, 0U);
+  put16(sfn, k_dir_off_fst_clus_hi, 0U);
 }
 
 /**
@@ -694,7 +665,7 @@ static void test_lfn_cov_walk_fail_long(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
   /* 14 files + dot + dotdot = 16 entries; fills the first (only) cluster. */
-  create_files_in(h, "/SUB", k_fs_fat_lfn_cov_put16_14);
+  create_files_in(h, "/SUB", k_lcov_files_per_sub);
 
   ra8_fs_backend_t saved = h->backend;
   /* Read 1 = root sector (find SUB), Read 2 = subdir sector, Read 3 = FAT. */
@@ -763,7 +734,7 @@ static void test_lfn_cov_walk_fail_free(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
   /* dot + dotdot + 14 files = 16 entries; fills cluster 2 entirely. */
-  create_files_in(h, "/SUB", k_fs_fat_lfn_cov_put16_14);
+  create_files_in(h, "/SUB", k_lcov_files_per_sub);
 
   /* Subdir lives at cluster 2 (first allocated after mount on fresh volume). */
   dir_loc_t        subdir_loc = {.is_root = 0U, .cluster = 2U};

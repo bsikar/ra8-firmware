@@ -20,64 +20,62 @@
 
 #include "ra8_fs.h"
 #include "unity_minimal.h"
-
 /**
- * @enum fs_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum fat_bpb_field_t
+ * @brief Byte offsets of the BPB fields this fixture writes, per the FAT specification.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_fs_bpb_55   = 0x55,
-  k_fs_bpb_aa   = 0xAA,
-  k_fs_i_7      = 7U,
-  k_fs_put16_11 = 11,
-  k_fs_put16_14 = 14,
-  k_fs_put16_17 = 17,
-  k_fs_put16_19 = 19,
-  k_fs_put16_22 = 22,
-  k_fs_put32_36 = 36,
-  k_fs_put32_44 = 44,
-  k_fs_v_24     = 24,
-  k_fs_v_ff     = 0xFFU,
-  k_fs_val_10   = 10,
-  k_fs_val_13   = 13,
-  k_fs_val_200  = 200,
-  k_fs_val_64   = 64,
-} fs_uint8_const_t;
-
-/**
- * @enum fs_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The fixture hand-builds a boot sector instead of calling a formatter, so
+ * every field is placed at its specified offset. The names are the
+ * specification's own, so the layout can be checked against the document
+ * without decoding the numbers.
  */
 typedef enum : uint16_t {
-  k_fs_fat_sz_640 = 640,
-  k_fs_val_1500   = 1500,
-  k_fs_val_300    = 300,
-  k_fs_val_510    = 510,
-  k_fs_val_511    = 511,
-} fs_uint16_const_t;
+  k_bpb_off_bytes_per_sec = 11U,  /**< BPB_BytsPerSec: bytes per sector.           */
+  k_bpb_off_sec_per_clus  = 13U,  /**< BPB_SecPerClus: sectors per cluster.        */
+  k_bpb_off_rsvd_sec_cnt  = 14U,  /**< BPB_RsvdSecCnt: sectors before the 1st FAT. */
+  k_bpb_off_root_ent_cnt  = 17U,  /**< BPB_RootEntCnt: root-directory entries.     */
+  k_bpb_off_tot_sec16     = 19U,  /**< BPB_TotSec16: total sectors.                */
+  k_bpb_off_fat_sz16      = 22U,  /**< BPB_FATSz16: sectors per FAT.               */
+  k_bpb_off_fat_sz32      = 36U,  /**< BPB_FATSz32: the FAT32 replacement for
+                                       BPB_FATSz16.                              */
+  k_bpb_off_root_clus     = 44U,  /**< BPB_RootClus: first cluster of the FAT32
+                                       root directory.                           */
+  k_bpb_off_sig_lo        = 510U, /**< Low byte of the 0xAA55 boot signature.      */
+  k_bpb_off_sig_hi        = 511U, /**< Its high byte.                              */
+} fat_bpb_field_t;
 
 /**
- * @enum fs_uint32_const_t
- * @brief Named uint32_t constants used by this file.
+ * @enum fs_fixture_t
+ * @brief Boot-signature bytes, payload sizes and the generators that fill them.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Payload sizes are chosen against the fixture's cluster size: one fits inside
+ * a cluster, one spans several so the chain walk is exercised, and one is
+ * deliberately shorter than the file so a read must report a short count.
  */
+typedef enum : uint16_t {
+  k_bpb_sig_lo           = 0x55U, /**< Boot-signature low byte.                         */
+  k_bpb_sig_hi           = 0xAAU, /**< Boot-signature high byte.                        */
+  k_byte_mask            = 0xFFU, /**< Low-byte mask for the put helpers and generators. */
+  k_shift_byte3          = 24U,   /**< Shift to the top byte of a 32-bit LE field.      */
+  k_fs_payload_stride    = 7U,   /**< Stride of the second payload generator, `buf[i] = i * stride`;
+             coprime with 256 so the pattern does not repeat within a sector.  */
+  k_fs_bytes_short_read  = 10U,  /**< Buffer shorter than the file, so the read must report a short
+              count rather than overrun.                                       */
+  k_fs_bytes_sub_sector  = 64U,  /**< Read-back buffer under one sector.    */
+  k_fs_bytes_one_cluster = 200U, /**< Payload fitting inside one cluster.   */
+  k_fs_bytes_slice       = 300U, /**< Sub-range read of the large payload.  */
+  k_fs_fat32_sectors_per_fat =
+    640U,                           /**< Sectors per FAT for the FAT32 fixture: at least 512, so the
+               table holds an entry for every cluster on the volume.           */
+  k_fs_bytes_multi_cluster = 1500U, /**< Payload spanning several clusters.    */
+} fs_fixture_t;
+
+/** @brief FAT32 end-of-chain marker; only an entry's low 28 bits are significant. */
 typedef enum : uint32_t {
-  k_fs_put32_0fffffff = 0x0FFFFFFFU,
-} fs_uint32_const_t;
+  k_fat32_eoc = 0x0FFFFFFFU, /**< Written into every terminating FAT32 entry. */
+} fs_fat32_entry_t;
 
 /* =============================================================================
  * In-memory block device backend
@@ -149,8 +147,8 @@ static const ra8_fs_backend_t s_backend = {
  */
 static void put16(uint8_t* p, uint32_t off, uint16_t v)
 {
-  p[off]     = (uint8_t)(v & k_fs_v_ff);
-  p[off + 1] = (uint8_t)((v >> 8) & k_fs_v_ff);
+  p[off]     = (uint8_t)(v & k_byte_mask);
+  p[off + 1] = (uint8_t)((v >> 8) & k_byte_mask);
 }
 
 /**
@@ -158,10 +156,10 @@ static void put16(uint8_t* p, uint32_t off, uint16_t v)
  */
 static void put32(uint8_t* p, uint32_t off, uint32_t v)
 {
-  p[off]     = (uint8_t)(v & k_fs_v_ff);
-  p[off + 1] = (uint8_t)((v >> 8) & k_fs_v_ff);
-  p[off + 2] = (uint8_t)((v >> 16) & k_fs_v_ff);
-  p[off + 3] = (uint8_t)((v >> k_fs_v_24) & k_fs_v_ff);
+  p[off]     = (uint8_t)(v & k_byte_mask);
+  p[off + 1] = (uint8_t)((v >> 8) & k_byte_mask);
+  p[off + 2] = (uint8_t)((v >> 16) & k_byte_mask);
+  p[off + 3] = (uint8_t)((v >> k_shift_byte3) & k_byte_mask);
 }
 
 /**
@@ -211,7 +209,7 @@ static fat_geom_t build_volume_geometry(ra8_fs_type_t target)
     g.spc       = 1;
     g.rsvd      = 32;
     g.root_ents = 0;
-    g.fat_sz    = k_fs_fat_sz_640; /* >=512 so FAT32 entries cover all clusters. */
+    g.fat_sz    = k_fs_fat32_sectors_per_fat; /* >=512 so FAT32 entries cover all clusters. */
     g.root_clus = 2;
   }
   return g;
@@ -265,23 +263,23 @@ static void alloc_disk_for(ra8_fs_type_t target)
 static void write_bpb(const fat_geom_t* g, ra8_fs_type_t target)
 {
   uint8_t* bpb = &s_disk.bytes[0];
-  put16(bpb, k_fs_put16_11, (uint16_t)k_disk_block_size);
-  bpb[k_fs_val_13] = (uint8_t)g->spc;
-  put16(bpb, k_fs_put16_14, (uint16_t)g->rsvd);
+  put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_disk_block_size);
+  bpb[k_bpb_off_sec_per_clus] = (uint8_t)g->spc;
+  put16(bpb, k_bpb_off_rsvd_sec_cnt, (uint16_t)g->rsvd);
   bpb[16] = (uint8_t)g->fats;
-  put16(bpb, k_fs_put16_17, (uint16_t)g->root_ents);
+  put16(bpb, k_bpb_off_root_ent_cnt, (uint16_t)g->root_ents);
   if (target == k_ra8_fs_type_fat32) {
-    put16(bpb, k_fs_put16_19, 0);
+    put16(bpb, k_bpb_off_tot_sec16, 0);
     put32(bpb, 32, g->total);
-    put16(bpb, k_fs_put16_22, 0);
-    put32(bpb, k_fs_put32_36, g->fat_sz);
-    put32(bpb, k_fs_put32_44, g->root_clus);
+    put16(bpb, k_bpb_off_fat_sz16, 0);
+    put32(bpb, k_bpb_off_fat_sz32, g->fat_sz);
+    put32(bpb, k_bpb_off_root_clus, g->root_clus);
   } else {
-    put16(bpb, k_fs_put16_19, (uint16_t)g->total);
-    put16(bpb, k_fs_put16_22, (uint16_t)g->fat_sz);
+    put16(bpb, k_bpb_off_tot_sec16, (uint16_t)g->total);
+    put16(bpb, k_bpb_off_fat_sz16, (uint16_t)g->fat_sz);
   }
-  bpb[k_fs_val_510] = k_fs_bpb_55;
-  bpb[k_fs_val_511] = k_fs_bpb_aa;
+  bpb[k_bpb_off_sig_lo] = k_bpb_sig_lo;
+  bpb[k_bpb_off_sig_hi] = k_bpb_sig_hi;
 }
 
 /**
@@ -310,9 +308,9 @@ static void write_fat32_root_eoc(const fat_geom_t* g, ra8_fs_type_t target)
     uint32_t fat_lba = g->rsvd + (i * g->fat_sz);
     uint8_t* fat     = &s_disk.bytes[(size_t)fat_lba * k_disk_block_size];
     /* Cluster 0 + 1 are reserved; cluster 2 = root = EOC. */
-    put32(fat, 0, k_fs_put32_0fffffff);
-    put32(fat, 4, k_fs_put32_0fffffff);
-    put32(fat, 8, k_fs_put32_0fffffff);
+    put32(fat, 0, k_fat32_eoc);
+    put32(fat, 4, k_fat32_eoc);
+    put32(fat, 8, k_fat32_eoc);
   }
 }
 
@@ -442,9 +440,9 @@ static void test_write_then_read(void)
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "DATA.BIN", k_ra8_fs_mode_write, &f));
-  uint8_t payload[k_fs_val_200] = {};
+  uint8_t payload[k_fs_bytes_one_cluster] = {};
   for (uint32_t i = 0; i < sizeof payload; i++) {
-    payload[i] = (uint8_t)(i & k_fs_v_ff);
+    payload[i] = (uint8_t)(i & k_byte_mask);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, payload, sizeof payload));
   uint32_t sz = 0;
@@ -453,8 +451,8 @@ static void test_write_then_read(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "DATA.BIN", k_ra8_fs_mode_read, &f));
-  uint8_t  out[k_fs_val_300] = {};
-  uint32_t got               = 0;
+  uint8_t  out[k_fs_bytes_slice] = {};
+  uint32_t got                   = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, out, sizeof out, &got));
   TEST_ASSERT_EQ(sizeof payload, got);
   for (uint32_t i = 0; i < sizeof payload; i++) {
@@ -481,16 +479,16 @@ static void test_read_cross_cluster(void)
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "BIG.BIN", k_ra8_fs_mode_write, &f));
   /* Write more than one cluster (cluster = 1 sector = 512 B in our BPB). */
-  uint8_t payload[k_fs_val_1500] = {};
+  uint8_t payload[k_fs_bytes_multi_cluster] = {};
   for (uint32_t i = 0; i < sizeof payload; i++) {
-    payload[i] = (uint8_t)((i * k_fs_i_7) & k_fs_v_ff);
+    payload[i] = (uint8_t)((i * k_fs_payload_stride) & k_byte_mask);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, payload, sizeof payload));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "BIG.BIN", k_ra8_fs_mode_read, &f));
-  uint8_t  out[k_fs_val_1500] = {};
-  uint32_t got                = 0;
+  uint8_t  out[k_fs_bytes_multi_cluster] = {};
+  uint32_t got                           = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, out, sizeof out, &got));
   TEST_ASSERT_EQ(sizeof payload, got);
   for (uint32_t i = 0; i < sizeof payload; i++) {
@@ -515,7 +513,7 @@ static void test_seek_tell(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "S.BIN", k_ra8_fs_mode_write, &f));
-  uint8_t buf[k_fs_val_64] = {};
+  uint8_t buf[k_fs_bytes_sub_sector] = {};
   for (uint32_t i = 0; i < sizeof buf; i++) {
     buf[i] = (uint8_t)i;
   }
@@ -571,7 +569,7 @@ static void test_unlink(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "GONE.DAT", k_ra8_fs_mode_write, &f));
-  uint8_t b[k_fs_val_10] = {};
+  uint8_t b[k_fs_bytes_short_read] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, b, sizeof b));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_unlink(h, "GONE.DAT"));
