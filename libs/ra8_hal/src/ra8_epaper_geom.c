@@ -57,8 +57,8 @@ static const char* const s_tag = "EPAPER";
  * @brief Packing arithmetic constants (no magic numbers).
  */
 typedef enum : uint16_t {
-  k_ra8_epaper_geom_bits_per_byte = 8U,    /**< Row-packing denominator.     */
-  k_ra8_epaper_geom_panel_max_dim = 4096U, /**< Sanity ceiling on cfg dims.  */
+  k_ra8_epaper_geom_bits_per_byte = 8U,    /**< Row-packing denominator.    */
+  k_ra8_epaper_geom_panel_max_dim = 4096U, /**< Sanity ceiling on cfg dims. */
 } ra8_epaper_geom_const_t;
 
 /**

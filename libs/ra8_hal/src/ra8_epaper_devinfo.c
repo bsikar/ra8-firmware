@@ -49,12 +49,12 @@ static const char* const s_tag = "EPAPER";
  * @brief Word-unpacking constants (no magic numbers).
  */
 typedef enum : uint8_t {
-  k_ra8_epaper_di_byte_mask    = 0xFFU, /**< Low-byte extraction mask.    */
-  k_ra8_epaper_di_byte_shift   = 8U,    /**< Bits per byte.               */
-  k_ra8_epaper_di_word_shift   = 16U,   /**< Bits per 16-bit word.        */
-  k_ra8_epaper_di_ver_per_word = 2U,    /**< Version chars per word.      */
-  k_ra8_epaper_di_ascii_min    = 0x20U, /**< Lowest printable ASCII.      */
-  k_ra8_epaper_di_ascii_max    = 0x7FU, /**< One past printable ASCII.    */
+  k_ra8_epaper_di_byte_mask    = 0xFFU, /**< Low-byte extraction mask. */
+  k_ra8_epaper_di_byte_shift   = 8U,    /**< Bits per byte.            */
+  k_ra8_epaper_di_word_shift   = 16U,   /**< Bits per 16-bit word.     */
+  k_ra8_epaper_di_ver_per_word = 2U,    /**< Version chars per word.   */
+  k_ra8_epaper_di_ascii_min    = 0x20U, /**< Lowest printable ASCII.   */
+  k_ra8_epaper_di_ascii_max    = 0x7FU, /**< One past printable ASCII. */
 } ra8_epaper_devinfo_const_t;
 
 /**
@@ -66,13 +66,13 @@ typedef enum : uint8_t {
  * by index rather than by a parser state machine.
  */
 typedef enum : uint8_t {
-  k_ra8_epaper_di_idx_width  = 0U,  /**< Panel width.                     */
-  k_ra8_epaper_di_idx_height = 1U,  /**< Panel height.                    */
-  k_ra8_epaper_di_idx_buf_lo = 2U,  /**< Image-buffer base, low half.     */
-  k_ra8_epaper_di_idx_buf_hi = 3U,  /**< Image-buffer base, high half.    */
-  k_ra8_epaper_di_idx_fw     = 4U,  /**< First firmware-version word.     */
-  k_ra8_epaper_di_idx_lut    = 12U, /**< First LUT-version word.          */
-  k_ra8_epaper_di_idx_end    = 20U, /**< One past the last decoded word.  */
+  k_ra8_epaper_di_idx_width  = 0U,  /**< Panel width.                    */
+  k_ra8_epaper_di_idx_height = 1U,  /**< Panel height.                   */
+  k_ra8_epaper_di_idx_buf_lo = 2U,  /**< Image-buffer base, low half.    */
+  k_ra8_epaper_di_idx_buf_hi = 3U,  /**< Image-buffer base, high half.   */
+  k_ra8_epaper_di_idx_fw     = 4U,  /**< First firmware-version word.    */
+  k_ra8_epaper_di_idx_lut    = 12U, /**< First LUT-version word.         */
+  k_ra8_epaper_di_idx_end    = 20U, /**< One past the last decoded word. */
 } ra8_epaper_devinfo_idx_t;
 
 /**
@@ -100,7 +100,7 @@ static void internal_ra8_epaper_unpack_ver_word(uint16_t word, char* dst)
 {
   const uint8_t hi =
     (uint8_t)((word >> (uint16_t)k_ra8_epaper_di_byte_shift) & (uint16_t)k_ra8_epaper_di_byte_mask);
-  const uint8_t lo   = (uint8_t)(word & (uint16_t)k_ra8_epaper_di_byte_mask);
+  const uint8_t lo = (uint8_t)(word & (uint16_t)k_ra8_epaper_di_byte_mask);
   const bool    hi_p =
     (hi >= (uint8_t)k_ra8_epaper_di_ascii_min) && (hi < (uint8_t)k_ra8_epaper_di_ascii_max);
   const bool lo_p =
