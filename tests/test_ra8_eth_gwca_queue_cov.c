@@ -45,9 +45,10 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_eth_gwca_queue_cov_i_64        = 64U,
-  k_eth_gwca_queue_cov_sentinel_a5 = 0xA5U,
-  k_eth_gwca_queue_cov_val_64      = 64,
+  k_gwca_frame_fill_len = 64U, /**< Bytes of that buffer the generator fills, which is all of it. */
+  k_gwca_frame_seed =
+    0xA5U, /**< Seed of the frame generator, `seed ^ i`, giving a payload with no repeated byte. */
+  k_gwca_frame_bytes = 64, /**< Frame buffer capacity. */
 } eth_gwca_queue_cov_uint8_const_t;
 
 /**
@@ -157,11 +158,11 @@ static void test_tx_frame_happy(void)
   prep();
   [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_chain[4];
   uint8_t* const                                          pool = (uint8_t*)k_sram_tx_pool_addr;
-  static uint8_t                                          s_frame[k_eth_gwca_queue_cov_val_64];
+  static uint8_t                                          s_frame[k_gwca_frame_bytes];
   uint32_t                                                tail = 0U;
 
-  for (uint32_t i = 0U; i < k_eth_gwca_queue_cov_i_64; ++i) {
-    s_frame[i] = (uint8_t)(k_eth_gwca_queue_cov_sentinel_a5 ^ i);
+  for (uint32_t i = 0U; i < k_gwca_frame_fill_len; ++i) {
+    s_frame[i] = (uint8_t)(k_gwca_frame_seed ^ i);
   }
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(s_chain, 4U, 128U));
@@ -171,7 +172,7 @@ static void test_tx_frame_happy(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_tx_frame(s_chain, 4U, &tail, s_frame, 64U, 128U));
 
   /* Frame bytes copied into the slot buffer. */
-  for (uint32_t i = 0U; i < k_eth_gwca_queue_cov_i_64; ++i) {
+  for (uint32_t i = 0U; i < k_gwca_frame_fill_len; ++i) {
     TEST_ASSERT_EQ(s_frame[i], pool[i]);
   }
   /* DS stamped to frame_len, DT flipped to FSINGLE, tail advanced. */
@@ -199,7 +200,7 @@ static void test_tx_frame_queue_full(void)
   prep();
   [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_chain[4];
   uint8_t* const                                          pool = (uint8_t*)k_sram_tx_pool_addr;
-  static uint8_t                                          s_frame[k_eth_gwca_queue_cov_val_64];
+  static uint8_t                                          s_frame[k_gwca_frame_bytes];
   uint32_t                                                tail = 0U;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(s_chain, 4U, 128U));
@@ -231,7 +232,7 @@ static void test_tx_frame_unbacked_slot(void)
   TEST_BEGIN("tx_frame unbacked slot");
   prep();
   [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_chain[4];
-  static uint8_t                                          s_frame[k_eth_gwca_queue_cov_val_64];
+  static uint8_t                                          s_frame[k_gwca_frame_bytes];
   uint32_t                                                tail = 0U;
 
   /* init_ring leaves ptr_h/ptr_l at zero (buffers not yet attached). */

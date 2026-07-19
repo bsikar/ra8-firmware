@@ -48,8 +48,9 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_img_arena_cov_val_128 = 128U,
-  k_img_arena_cov_val_64  = 64U,
+  k_arena_bytes_large =
+    128U, /**< Arena big enough that it succeeds, so the failure above is attributable to size. */
+  k_arena_bytes_small = 64U, /**< Arena small enough that the second allocation must fail. */
 } img_arena_cov_uint8_const_t;
 
 /**
@@ -139,7 +140,7 @@ static void test_malloc_partial_capacity_oom(void)
 static void test_realloc_non_null_success_with_copy(void)
 {
   TEST_BEGIN("ra8_img_arena_realloc_sized: non-nullptr p, success + copy > 0");
-  static uint8_t  s_buf[k_img_arena_cov_val_128];
+  static uint8_t  s_buf[k_arena_bytes_large];
   ra8_img_arena_t arena = {.base = s_buf, .cap = sizeof s_buf, .offset = 0U, .live = 0U};
   ra8_img_arena_bind(&arena);
 
@@ -239,7 +240,7 @@ static void test_realloc_non_null_fail(void)
 static void test_realloc_zero_oldsz(void)
 {
   TEST_BEGIN("ra8_img_arena_realloc_sized: oldsz=0 skips memcpy (line 98 false)");
-  static uint8_t  s_buf[k_img_arena_cov_val_64];
+  static uint8_t  s_buf[k_arena_bytes_small];
   ra8_img_arena_t arena = {.base = s_buf, .cap = sizeof s_buf, .offset = 0U, .live = 0U};
   ra8_img_arena_bind(&arena);
 
@@ -286,7 +287,7 @@ static void test_realloc_zero_oldsz(void)
 static void test_realloc_shrink(void)
 {
   TEST_BEGIN("ra8_img_arena_realloc_sized: shrink (oldsz > newsz -> copy = newsz)");
-  static uint8_t  s_buf[k_img_arena_cov_val_128];
+  static uint8_t  s_buf[k_arena_bytes_large];
   ra8_img_arena_t arena = {.base = s_buf, .cap = sizeof s_buf, .offset = 0U, .live = 0U};
   ra8_img_arena_bind(&arena);
 
