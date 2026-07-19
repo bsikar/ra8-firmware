@@ -288,12 +288,18 @@ print((pr.get("base") or {}).get("sha") or ev.get("before") or "")
 # --- ci-parity ------------------------------------------------------------
 # The backstop for the whole scheme: workflow-as-driver still drifts if
 # someone pastes a raw `run:` check into the YAML. This gate refuses that.
-gate_ci_parity() {
+# A `( set -e )` subshell, not a `{ }` body: run_gate_capture disables errexit
+# around the CALL, so a `{ }` gate with several commands reports only its LAST
+# command's status and swallows everything before it. Every other multi-command
+# gate here is already a subshell; this one was the exception, which is exactly
+# why suite_errexit_selftest's `return 1` below could not fail the gate.
+gate_ci_parity() (
+  set -e
   require_python_mod yaml "pip install pyyaml (the CI runners ship it)"
   suite_errexit_selftest
   python3 scripts/utils/check_ci_parity.py --selftest
   python3 scripts/utils/check_ci_parity.py
-}
+)
 
 # Assert that run_suite() still reports FAIL for a gate that fails PART-WAY
 # through its body -- not merely one whose last command fails.
@@ -1195,7 +1201,20 @@ run_suite_on_snapshot() {
   git -C "$work" -c user.email=ci@localhost -c user.name=ci \
     commit --quiet --no-verify -m "ci.sh snapshot of HEAD" >/dev/null 2>&1 || true
   cd "$work"
-  run_suite "$fast" || rc=$?
+  # Disable errexit around the CALL only -- never `run_suite ... || rc=$?`.
+  # A `||` chain (like an `if` condition, or `!`) puts the callee into bash's
+  # inherited "ignoring errors" state, and that state propagates into every
+  # nested subshell where a plain `set -e` CANNOT clear it: $- shows `e` set
+  # while a failing command still does not abort. The whole suite then reduces
+  # to "did each gate's LAST command succeed", so a gate failing part-way --
+  # including require_cmd / require_python_mod reporting an absent tool --
+  # reports PASS. Measured: lint-py-shell reported PASS on a box with no ruff.
+  # This is the same discipline run_gate_capture documents, and
+  # suite_errexit_selftest is the regression test for it.
+  set +e
+  run_suite "$fast"
+  rc=$?
+  set -e
   cd "$REPO_ROOT"
   return $rc
 }
