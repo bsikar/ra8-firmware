@@ -41,45 +41,22 @@
 #include "unity_minimal.h"
 
 /**
- * @enum npu_loader_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_blob_bad_t
+ * @brief Header words written into an otherwise-valid NPU blob to invalidate it.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_npu_loader_lt_arena_50    = 50U,
-  k_npu_loader_lt_put_word_99 = 99U,
-  k_npu_loader_val_9          = 9U,
-} npu_loader_uint8_const_t;
-
-/**
- * @enum npu_loader_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint16_t {
-  k_npu_loader_total_1000 = 1000U,
-} npu_loader_uint16_const_t;
-
-/**
- * @enum npu_loader_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Each value targets one header field so the loader's guards can be driven
+ * independently: a wrong magic, an unsupported version, a declared size past
+ * the buffer, and a region count above the fixed maximum.
  */
 typedef enum : uint32_t {
-  k_npu_loader_sentinel_deadbeef = 0xDEADBEEFU,
-} npu_loader_uint32_const_t;
+  k_t_bad_magic        = 0xDEADBEEFU, /**< A magic the loader must not accept. */
+  k_t_bad_version      = 99U,         /**< A blob version it does not implement. */
+  k_t_bad_region_count = 9U,          /**< Regions above k_ra8_npu_region_count. */
+  k_t_size_overshoot   = 1000U,       /**< Added to the real total so the declared
+                                           size runs past the supplied buffer.  */
+  k_t_arena_too_small  = 50U,         /**< Arena bytes below what the blob needs. */
+} t_blob_bad_t;
 
 /**
  * @enum ra8_loader_test_const_t
@@ -411,28 +388,28 @@ static void test_load_rejects_bad_container(void)
   /* Bad magic. */
   lt_put_word(s_scratch,
               (uint32_t)k_ra8_npu_blob_word_magic * (uint32_t)k_lt_word_bytes,
-              k_npu_loader_sentinel_deadbeef);
+              k_t_bad_magic);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_npu_load(s_scratch, total, &arena, &job));
 
   /* Unsupported version. */
   (void)lt_build(s_scratch, regs, 1U);
   lt_put_word(s_scratch,
               (uint32_t)k_ra8_npu_blob_word_version * (uint32_t)k_lt_word_bytes,
-              k_npu_loader_lt_put_word_99);
+              k_t_bad_version);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_npu_load(s_scratch, total, &arena, &job));
 
   /* Declared total larger than the buffer. */
   (void)lt_build(s_scratch, regs, 1U);
   lt_put_word(s_scratch,
               (uint32_t)k_ra8_npu_blob_word_total_bytes * (uint32_t)k_lt_word_bytes,
-              total + k_npu_loader_total_1000);
+              total + k_t_size_overshoot);
   TEST_ASSERT_EQ(k_ra8_err_out_of_range, ra8_npu_load(s_scratch, total, &arena, &job));
 
   /* Region count above k_ra8_npu_region_count. */
   (void)lt_build(s_scratch, regs, 1U);
   lt_put_word(s_scratch,
               (uint32_t)k_ra8_npu_blob_word_region_count * (uint32_t)k_lt_word_bytes,
-              k_npu_loader_val_9);
+              k_t_bad_region_count);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_npu_load(s_scratch, total, &arena, &job));
 
   /* Empty command stream. */
@@ -528,7 +505,7 @@ static void test_load_runtime_arena_limits(void)
     {.role = (uint32_t)k_ra8_npu_blob_role_output, .baked = false, .size = 50U},
   };
   const uint32_t  t2    = lt_build(s_scratch, two, 2U);
-  ra8_npu_arena_t small = lt_arena(k_npu_loader_lt_arena_50);
+  ra8_npu_arena_t small = lt_arena(k_t_arena_too_small);
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_npu_load(s_scratch, t2, &small, &job));
   TEST_END("loader rejects when runtime regions do not fit");
 }
