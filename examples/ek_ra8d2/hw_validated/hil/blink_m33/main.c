@@ -141,7 +141,7 @@ static void blink_m33_hil_emit_pass(void)
  * The core spins with the failure already logged.
  *
  * @return This function never returns.
- * @retval (none) The core spins in place.
+ * @note The core spins in place.
  *
  * @pre A fatal error (CPU1 release failure) has occurred.
  * @pre The failure has already been logged.
@@ -166,7 +166,7 @@ static void blink_m33_hil_emit_pass(void)
  * low-power co-processor posture this template exists to demonstrate.
  *
  * @return This function never returns.
- * @retval (none) The core stays asleep between interrupts.
+ * @note The core stays asleep between interrupts.
  *
  * @pre The M33 has been released successfully.
  * @pre No further M85-side work is pending.

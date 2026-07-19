@@ -59,7 +59,7 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
  * rather than the M85 reading back its own write. See the file header.
  *
  * @return This function never returns.
- * @retval (none) Control never leaves the service loop.
+ * @note Control never leaves the service loop.
  *
  * @pre `cpu1_reset_handler` has initialised `.data`/`.bss`.
  * @pre The shared mailbox at ::k_dualcore_mailbox_addr is reachable.
@@ -113,7 +113,7 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
  * `g_ra8_ls_cpu1_*` symbols.
  *
  * @return This function never returns.
- * @retval (none) Control passes to `cpu1_main`, which loops forever.
+ * @note Control passes to `cpu1_main`, which loops forever.
  *
  * @pre Hardware loaded the initial SP from `.cpu1_vectors[0]`.
  * @pre The M85 released this core via the CPU1ACTCSR handshake.
@@ -149,7 +149,7 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
  * forward progress; on hardware a watchdog (if enabled) eventually resets.
  *
  * @return This function never returns.
- * @retval (none) The core spins in place.
+ * @note The core spins in place.
  *
  * @pre A hardware fault or unhandled exception occurred.
  * @pre Entered via the M33 exception entry path.

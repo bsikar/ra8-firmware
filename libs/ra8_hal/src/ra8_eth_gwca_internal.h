@@ -148,7 +148,7 @@ extern volatile uint32_t g_ra8_eth_gwca_bring_up_step;
  *                           (basic or extended descriptor array head).
  *
  * @return void This helper never fails.
- * @retval void Always returns normally.
+ * @note Always returns normally.
  *
  * @pre entry is non-null and previously initialised by install_linkfix.
  * @pre chain_head is the head of the queue's descriptor array.

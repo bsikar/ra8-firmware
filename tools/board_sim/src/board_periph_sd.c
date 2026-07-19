@@ -236,7 +236,6 @@ static uint16_t board_sd_crc16(const uint8_t* data, uint32_t len)
  * @param[in]  off Byte offset of the block inside the image.
  * @param[out] blk Destination for exactly 512 bytes.
  * @return None.
- * @retval None Void.
  * @pre `c` and `blk` are non-null.
  * @pre A backing image is attached (or every byte reads back zero).
  * @post `blk` holds the image bytes at `off`, zero-filled past the image end.
@@ -259,7 +258,6 @@ static void board_sd_fill_block(const board_sd_state_t* c, uint64_t off, uint8_t
  * @param[in]      payload Source bytes.
  * @param[in]      len     Payload length (16 for CSD, 512 for a data block).
  * @return None.
- * @retval None Void.
  * @pre `c` and `payload` are non-null and `len + 4 <= k_sd_resp_cap`.
  * @pre None.
  * @post `c->resp` holds R1, token, payload, and the two CRC bytes.
@@ -303,7 +301,6 @@ static void board_sd_stage_block(board_sd_state_t* c, const uint8_t* payload, ui
  * @param[in]     idx Command index (CMD17 single or CMD18 multi).
  * @param[in]     arg Block address argument.
  * @return None.
- * @retval None Void.
  * @pre `c` is non-null and a card image is attached.
  * @pre `idx` is ::k_sd_idx_cmd17 or ::k_sd_idx_cmd18.
  * @post `c->resp` holds the first block reply; `c->rd_off` points past it.
@@ -331,7 +328,6 @@ static void board_sd_begin_read(board_sd_state_t* c, uint8_t idx, uint32_t arg)
  *
  * @param[in,out] c Card state with an open CMD18 stream.
  * @return None.
- * @retval None Void.
  * @pre `c->rd_multi` is true (a CMD18 stream is open).
  * @pre A card image is attached (reads past its end yield zeros).
  * @post `c->resp` holds token + payload + CRC with `c->resp_pos` at the token.
@@ -359,7 +355,6 @@ static void board_sd_read_stream_next(board_sd_state_t* c)
  * @param[in,out] c  Card state.
  * @param[in]     r1 R1 status byte to return (ready/idle).
  * @return None.
- * @retval None Void.
  * @pre `c` is non-null.
  * @pre `c->resp_pos` / `c->resp_len` were reset by the caller.
  * @post `c->rd_multi` is false (any open stream is closed).
@@ -390,7 +385,6 @@ static void board_sd_stop_read(board_sd_state_t* c, uint8_t r1)
  * @param[in]     arg Block address argument.
  * @param[in]     r1  R1 status byte to return (ready/idle).
  * @return None.
- * @retval None Void.
  * @pre `c` is non-null and a writable image is attached.
  * @pre `idx` is ::k_sd_idx_cmd24 or ::k_sd_idx_cmd25.
  * @post `c->resp` holds R1; the write sub-state is armed.
@@ -496,7 +490,6 @@ static uint8_t board_sd_write_byte(board_sd_state_t* c, uint8_t tx)
  *
  * @param[in,out] c Card state whose response buffer receives the CSD block.
  * @return None.
- * @retval None Void.
  * @pre `c` is non-null with a staging response buffer.
  * @pre `c->image_len` reflects the attached card size.
  * @post `c->resp` / `c->resp_len` hold the staged 16-byte CSD block.
@@ -596,7 +589,6 @@ static bool board_sd_dispatch_ident(board_sd_state_t* c, uint8_t idx, uint8_t r1
  * @param[in]     arg 32-bit big-endian argument decoded from the frame.
  * @param[in]     r1  Pre-computed R1 status byte (idle vs ready).
  * @return None.
- * @retval None Void.
  * @pre `c` is non-null with a staging response buffer.
  * @pre `board_sd_dispatch_ident()` already declined `idx`.
  * @post `c->resp` / `c->resp_len` (and any read/write stream state) describe the reply.
@@ -656,7 +648,6 @@ static void board_sd_dispatch_data(board_sd_state_t* c, uint8_t idx, uint32_t ar
  *
  * @param[in,out] c Card state holding the collected command.
  * @return None.
- * @retval None Void.
  * @pre `c` is non-null and `c->cmd` holds a full frame.
  * @pre A card image is attached.
  * @post `c->resp` / `c->resp_len` describe the reply; `c->resp_pos` reset.
@@ -795,7 +786,6 @@ static uint8_t* board_sd_map_blank_image(uint64_t bytes, int* out_fd)
  * @param[in] fat_bits FAT width just applied (16 or 32).
  * @param[in] spc      Sectors-per-cluster chosen by the formatter.
  * @return None.
- * @retval None Void.
  * @pre `bytes` is the size of an already-attached card.
  * @pre `spc` is the formatter's returned sectors-per-cluster.
  * @post Exactly one diagnostic line is written to stderr.

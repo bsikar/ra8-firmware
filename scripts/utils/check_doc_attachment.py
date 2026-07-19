@@ -142,13 +142,18 @@ STANDALONE_TAG_RE = re.compile(
 #: real blocks all the time.
 GROUP_MARKER_RE = re.compile(r"[@\\][{}]")
 
-#: An explicit statement that a void function returns nothing.  Doxygen prefers
-#: these be omitted, but they are a deliberate, self-consistent house style
-#: here (hundreds of them) and they state the truth about the signature, so
-#: they are not a contradiction.  ``@retval`` on a void function is different:
-#: it enumerates return *values* that cannot exist.
+#: An explicit statement that a function yields no value -- either because it
+#: returns void ("Nothing.", "None.") or because it never returns at all
+#: ("This function never returns.", on the ``[[noreturn]] void`` handlers and
+#: park loops).  Doxygen prefers these be omitted, but they are a deliberate,
+#: self-consistent house style here and they state the truth about the
+#: signature, so they are not a contradiction.  ``@retval`` on a void function
+#: is different: it enumerates return *values* that cannot exist.
 RETURN_NOTHING_RE = re.compile(
-    _T + r"returns?\s+(?:nothing|none|void|n/?a|no value|nothing\.)\b[.\s]*",
+    _T + r"returns?\s+"
+    r"(?:nothing|none|void|n/?a|no value"
+    r"|(?:this function |the function )?(?:never returns|does not return|no return))"
+    r"\b[.\s]*",
     re.IGNORECASE,
 )
 
@@ -1216,6 +1221,29 @@ typedef enum : unsigned {
 volatile unsigned g_release_err = 0U;
 """,
         {"DOC004"},
+    ),
+    (
+        "'@return This function never returns.' on a [[noreturn]] void handler",
+        """
+/**
+ * @brief Park the core forever.
+ * @return This function never returns.
+ */
+[[noreturn]] void park_forever(void) { for (;;) { } }
+""",
+        set(),
+    ),
+    (
+        "@retval on a [[noreturn]] void handler is still a contradiction",
+        """
+/**
+ * @brief Park the core forever.
+ * @return This function never returns.
+ * @retval (none) The core spins in place.
+ */
+[[noreturn]] void park_forever(void) { for (;;) { } }
+""",
+        {"DOC003"},
     ),
     (
         "house-style '@return Nothing.' on a void function is not a contradiction",

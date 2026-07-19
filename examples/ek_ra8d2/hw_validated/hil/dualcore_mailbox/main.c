@@ -298,7 +298,7 @@ static void zero_mailbox(volatile dualcore_mailbox_t* mb)
  * @param[in]     seq0 Last sequence number used by the demo phase.
  *
  * @return This function never returns.
- * @retval (none) The heartbeat loops until power-off.
+ * @note The heartbeat loops until power-off.
  *
  * @pre @p mb is the fixed-address mailbox pointer (never NULL).
  * @pre The demo rounds have completed.
@@ -328,7 +328,7 @@ static void zero_mailbox(volatile dualcore_mailbox_t* mb)
  * @brief Park the M85 forever after an unrecoverable startup failure.
  *
  * @return This function never returns.
- * @retval (none) The core spins in place.
+ * @note The core spins in place.
  *
  * @pre A fatal error (e.g. CPU1 release failure) has occurred.
  * @pre The failure has already been logged.

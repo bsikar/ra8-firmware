@@ -127,7 +127,7 @@ uint8_t s_dcd_auto_echo_in_pipe = 0U;
  * @param[in] in_pipe  Pipe index to re-queue on (bulk IN).
  *
  * @return No value; the call cannot fail.
- * @retval (void) Auto-echo is enabled on the requested pipe pair.
+ * @note Auto-echo is enabled on the requested pipe pair.
  *
  * @pre Both pipes are configured via ::ra8_usb_configure_endpoint.
  * @pre Called from task / startup context (not from inside an ISR).
@@ -247,7 +247,7 @@ void internal_usbfs_irq_mask(void)
  * has thread mode -- and the ThreadX timer subsystem -- starved.
  *
  * @return No value; the helper is unconditional.
- * @retval (void) ``s_isr_spurious_run == 0`` and the USB IRQ line is enabled.
+ * @note ``s_isr_spurious_run == 0`` and the USB IRQ line is enabled.
  *
  * @pre ::s_usb_irq_slot resolved (``ux_dcd_ra8_usb_initialize`` has run).
  * @pre Called from the per-app 1 ms SysTick handler (exception context).

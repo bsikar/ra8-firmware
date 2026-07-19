@@ -94,7 +94,7 @@ static void render_page0(volatile lowpower_mailbox_t* mb)
  * @param[in] mb Pointer to the shared mailbox.
  *
  * @return This function never returns.
- * @retval (none) The M85 sleeps until power-off (or, in a future revision, an
+ * @note The M85 sleeps until power-off (or, in a future revision, an
  *         M33 wake interrupt for a heavy re-render).
  *
  * @pre @p mb is the fixed-address mailbox pointer (never NULL).
@@ -124,7 +124,7 @@ static void render_page0(volatile lowpower_mailbox_t* mb)
  * @brief Park the M85 forever after an unrecoverable startup failure.
  *
  * @return This function never returns.
- * @retval (none) The core spins in place.
+ * @note The core spins in place.
  *
  * @pre A fatal error (e.g. CPU1 release failure) has occurred.
  * @pre The failure has already been logged.

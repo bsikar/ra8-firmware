@@ -81,7 +81,7 @@ typedef enum : uint32_t {
  * running. See the file header.
  *
  * @return This function never returns.
- * @retval (none) Control never leaves the blink loop.
+ * @note Control never leaves the blink loop.
  *
  * @pre `cpu1_reset_handler` has initialised `.data`/`.bss`.
  * @pre The PORT6 block is reachable at ::k_port6_pcntr1_addr.
@@ -119,7 +119,7 @@ typedef enum : uint32_t {
  * The linker exports the region bounds as `g_ra8_ls_cpu1_*` symbols.
  *
  * @return This function never returns.
- * @retval (none) Control passes to `cpu1_main`, which loops forever.
+ * @note Control passes to `cpu1_main`, which loops forever.
  *
  * @pre Hardware loaded the initial SP from `.cpu1_vectors[0]`.
  * @pre The M85 released this core via the CPU1ACTCSR handshake.
@@ -155,7 +155,7 @@ typedef enum : uint32_t {
  * progress; on hardware a watchdog (if enabled) eventually resets.
  *
  * @return This function never returns.
- * @retval (none) The core spins in place.
+ * @note The core spins in place.
  *
  * @pre A hardware fault or unhandled exception occurred.
  * @pre Entered via the M33 exception entry path.

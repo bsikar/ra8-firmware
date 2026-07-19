@@ -748,7 +748,7 @@ static void run_page_turns(volatile erm33_mailbox_t* mb, const void* base)
  * @brief Park the M33 forever once the held page has been published.
  *
  * @return This function never returns.
- * @retval (none) The core spins in place.
+ * @note The core spins in place.
  *
  * @pre The mailbox already carries the final `status` / `done`.
  * @pre Entered only after the render completes (or fails validation).
@@ -772,7 +772,7 @@ static void run_page_turns(volatile erm33_mailbox_t* mb, const void* base)
  * @param[in]  status Failure status code (::erm33_const_t).
  *
  * @return This function never returns.
- * @retval (none) Control ends in ::cpu1_park.
+ * @note Control ends in ::cpu1_park.
  *
  * @pre @p mb is the fixed-address mailbox pointer.
  * @pre A validation or render step failed.
@@ -805,7 +805,7 @@ static void run_page_turns(volatile erm33_mailbox_t* mb, const void* base)
  * publishes the matching failure status and parks.
  *
  * @return This function never returns.
- * @retval (none) Control ends in ::cpu1_park.
+ * @note Control ends in ::cpu1_park.
  *
  * @pre `cpu1_reset_handler` has initialised `.data` / `.bss`.
  * @pre The M85 published ::k_erm33_magic and released this core.
@@ -855,7 +855,7 @@ static void run_page_turns(volatile erm33_mailbox_t* mb, const void* base)
  * deliberately left out of this init.
  *
  * @return This function never returns.
- * @retval (none) Control passes to ::cpu1_run_reader, which holds forever.
+ * @note Control passes to ::cpu1_run_reader, which holds forever.
  *
  * @pre Hardware loaded the initial SP from `.cpu1_vectors[0]`.
  * @pre The M85 released this core via the CPU1ACTCSR handshake.
@@ -891,7 +891,7 @@ static void run_page_turns(volatile erm33_mailbox_t* mb, const void* base)
  * progress; on hardware a watchdog (if enabled) eventually resets.
  *
  * @return This function never returns.
- * @retval (none) The core spins in place.
+ * @note The core spins in place.
  *
  * @pre A hardware fault or unhandled exception occurred.
  * @pre Entered via the M33 exception entry path.

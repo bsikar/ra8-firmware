@@ -386,7 +386,7 @@ static bool verify_blob(volatile com33_mailbox_t* mb)
  * @brief Park the M85 forever after the verdict (or an unrecoverable failure).
  *
  * @return This function never returns.
- * @retval (none) The core spins in place.
+ * @note The core spins in place.
  *
  * @pre The verdict (or a fatal error) has already been logged.
  * @post The M85 makes no further forward progress.

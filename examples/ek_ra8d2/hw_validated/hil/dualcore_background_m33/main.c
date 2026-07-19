@@ -229,7 +229,7 @@ static bool wait_for_done(volatile dualcore_bg_t* bg)
  * @brief Park the M85 forever after an unrecoverable startup failure.
  *
  * @return This function never returns.
- * @retval (none) The core spins in place.
+ * @note The core spins in place.
  *
  * @pre A fatal error has occurred and has already been logged.
  * @post The M85 makes no further forward progress.

@@ -300,7 +300,7 @@ static uint16_t s_dtc_slot;
  * run cleanly and models the low-power posture on silicon.
  *
  * @return This function never returns.
- * @retval (none) The core stays asleep between (unconfigured) wake events.
+ * @note The core stays asleep between (unconfigured) wake events.
  *
  * @pre The self-test verdict has been emitted, or a fatal error occurred.
  * @pre No further forward progress is required of the M85.

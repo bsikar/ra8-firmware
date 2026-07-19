@@ -198,7 +198,7 @@ static const uint8_t k_cache_mpu_fail_mmio[] = "cache_mpu_hil: device-MMIO FAIL\
  * low-power posture on silicon.
  *
  * @return This function never returns.
- * @retval (none) The core stays asleep between (unconfigured) wake events.
+ * @note The core stays asleep between (unconfigured) wake events.
  *
  * @pre The self-test verdict has been emitted over the console.
  * @pre No further forward progress is required of the M85.
