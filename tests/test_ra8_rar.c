@@ -40,53 +40,82 @@ typedef enum : uint8_t {
 } tr_layout_t;
 
 /**
- * @enum rar_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_rar4_off_t
+ * @brief Byte offsets of the RAR4 block-header fields the builder writes.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * A RAR4 block header is a fixed layout: CRC, type, flags, size, then the
+ * per-type fields. Naming the offsets keeps `tr4_file()` readable as the
+ * on-disk record it is, rather than a column of indices.
  */
 typedef enum : uint8_t {
-  k_rar_b_80           = 0x80U,
-  k_rar_data_off_50    = 50U,
-  k_rar_h_5            = 5U,
-  k_rar_i_31           = 31U,
-  k_rar_out_20         = 20U,
-  k_rar_out_30         = 0x30U,
-  k_rar_out_73         = 0x73U,
-  k_rar_out_74         = 0x74U,
-  k_rar_out_7b         = 0x7BU,
-  k_rar_s_arc_size_100 = 100U,
-  k_rar_tr_le16_13     = 13U,
-  k_rar_tr_le16_26     = 26,
-  k_rar_tr_le16_5      = 5,
-  k_rar_tr_le32_11     = 11,
-  k_rar_tr_le32_20     = 20,
-  k_rar_tr_le32_28     = 28,
-  k_rar_tr_le32_7      = 7,
-  k_rar_v_24           = 24,
-  k_rar_v_7f           = 0x7FU,
-  k_rar_val_15         = 15,
-  k_rar_val_25         = 25,
-  k_rar_val_7          = 7U,
-} rar_uint8_const_t;
+  k_t_r4_off_head_size = 5U,  /**< HEAD_SIZE, 16-bit.                */
+  k_t_r4_off_pack_size = 7U,  /**< PACK_SIZE, 32-bit.                */
+  k_t_r4_off_unp_size  = 11U, /**< UNP_SIZE, 32-bit.                 */
+  k_t_r4_off_host_os   = 15U, /**< HOST_OS, 8-bit.                   */
+  k_t_r4_off_ftime     = 20U, /**< FTIME, 32-bit MS-DOS timestamp.   */
+  k_t_r4_off_unp_ver   = 24U, /**< UNP_VER, 8-bit.                   */
+  k_t_r4_off_method    = 25U, /**< METHOD, 8-bit.                    */
+  k_t_r4_off_name_size = 26U, /**< NAME_SIZE, 16-bit.                */
+  k_t_r4_off_attr      = 28U, /**< ATTR, 32-bit.                     */
+} t_rar4_off_t;
 
 /**
- * @enum rar_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_rar4_field_t
+ * @brief RAR4 block types and field values the fixtures declare.
  */
 typedef enum : uint16_t {
-  k_rar_data_off_990 = 990U,
-  k_rar_tr_le16_8000 = 0x8000U,
-  k_rar_val_256      = 256,
-} rar_uint16_const_t;
+  k_t_r4_type_main     = 0x73U,   /**< Block type: main archive header.        */
+  k_t_r4_type_file     = 0x74U,   /**< Block type: file header.                */
+  k_t_r4_type_end      = 0x7BU,   /**< Block type: end-of-archive marker.      */
+  k_t_r4_flag_long     = 0x8000U, /**< LONG_BLOCK: an ADD_SIZE field follows.  */
+  k_t_r4_unp_ver_20    = 20U,     /**< UNP_VER 20: RAR 2.0 stream format.      */
+  k_t_r4_method_store  = 0x30U,   /**< METHOD '0': stored, not compressed.     */
+  k_t_r4_main_hdr_len  = 13U,     /**< Total main-header length, bytes.        */
+  k_t_r4_end_hdr_len   = 7U,      /**< Total end-header length, bytes.         */
+} t_rar4_field_t;
+
+/**
+ * @enum t_vint_t
+ * @brief Base-128 variable-length integer encoding parameters.
+ *
+ * @details
+ * RAR5 stores most header fields as a little-endian base-128 vint: seven
+ * payload bits per byte, with bit 7 set on every byte except the last.
+ */
+typedef enum : uint8_t {
+  k_t_vint_payload_mask = 0x7FU, /**< Payload bits carried by one vint byte.  */
+  k_t_vint_shift        = 7U,    /**< Bits consumed per vint byte.            */
+  k_t_vint_more_flag    = 0x80U, /**< Continuation bit: another byte follows. */
+  k_t_le32_hi_shift     = 24U,   /**< Shift for the top byte of a 32-bit LE field. */
+} t_vint_t;
+
+/**
+ * @enum t_rar5_t
+ * @brief RAR5 header types and the offsets the hostile arms poke.
+ */
+typedef enum : uint8_t {
+  k_t_r5_type_end      = 5U, /**< RAR5 header type 5: end of archive.          */
+  k_t_r5_off_hdr_flags = 5U, /**< Header-flags offset inside the crafted wrapper. */
+} t_rar5_t;
+
+/**
+ * @enum t_rar_fixture_t
+ * @brief Geometry and sizes of the synthetic archives and their members.
+ */
+typedef enum : uint16_t {
+  k_t_img2_h        = 5U,   /**< Height of fixture image img02.png.            */
+  k_t_img4_w        = 5U,   /**< Width of fixture image sub/img04.png.         */
+  k_t_img3_h        = 7U,   /**< Height of fixture image img03.png.            */
+  k_t_filler_stride = 31U,  /**< Multiplier of the filler byte pattern; co-prime
+                                 with the block size so no period aliases it.  */
+  k_t_short_arc_len = 5U,   /**< Backing bytes offered for the short-signature arm. */
+  k_t_backing_len   = 100U, /**< Backing bytes behind a reader that declares more. */
+  k_t_member_len    = 20U,  /**< Declared pack/unpacked size of the overrun member. */
+  k_t_off_overrun   = 990U, /**< Data offset that runs past the declared archive size. */
+  k_t_off_shortread = 50U,  /**< Data offset inside the archive but past the backing. */
+  k_t_extract_buf   = 256U, /**< Extraction destination buffer, bytes.          */
+} t_rar_fixture_t;
 
 /**
  * @enum tr_dim_t
@@ -158,10 +187,10 @@ static size_t tr_vint(uint8_t* out, uint64_t v)
 {
   size_t i = 0U;
   for (;;) {
-    uint8_t b = (uint8_t)(v & k_rar_v_7f);
-    v >>= k_rar_val_7;
+    uint8_t b = (uint8_t)(v & k_t_vint_payload_mask);
+    v >>= k_t_vint_shift;
     if (v != 0U) {
-      out[i] = (uint8_t)(b | k_rar_b_80);
+      out[i] = (uint8_t)(b | k_t_vint_more_flag);
       i++;
     } else {
       out[i] = b;
@@ -247,7 +276,7 @@ static void tr_le32(uint8_t* p, uint32_t v)
   p[0] = (uint8_t)v;
   p[1] = (uint8_t)(v >> 8);
   p[2] = (uint8_t)(v >> 16);
-  p[3] = (uint8_t)(v >> k_rar_v_24);
+  p[3] = (uint8_t)(v >> k_t_le32_hi_shift);
 }
 
 /** @brief Encode a RAR4 STORE file block. */
@@ -256,18 +285,18 @@ static size_t tr4_file(uint8_t* out, const char* name, const uint8_t* data, size
   const size_t nlen = strlen(name);
   const size_t head = 32U + nlen;       /* fixed fields + name (no LARGE/salt/exttime) */
   tr_le16(&out[0], 0U);                 /* head_crc (unverified)                       */
-  out[2] = k_rar_out_74;                /* type: file                                  */
-  tr_le16(&out[3], k_rar_tr_le16_8000); /* flags: LONG (ADD_SIZE present)              */
-  tr_le16(&out[k_rar_tr_le16_5], (uint16_t)head);
-  tr_le32(&out[k_rar_tr_le32_7], (uint32_t)dlen);  /* pack_size == add_size */
-  tr_le32(&out[k_rar_tr_le32_11], (uint32_t)dlen); /* unp_size              */
-  out[k_rar_val_15] = 0U;                          /* host_os               */
+  out[2] = k_t_r4_type_file;                /* type: file                                  */
+  tr_le16(&out[3], k_t_r4_flag_long); /* flags: LONG (ADD_SIZE present)              */
+  tr_le16(&out[k_t_r4_off_head_size], (uint16_t)head);
+  tr_le32(&out[k_t_r4_off_pack_size], (uint32_t)dlen);  /* pack_size == add_size */
+  tr_le32(&out[k_t_r4_off_unp_size], (uint32_t)dlen); /* unp_size              */
+  out[k_t_r4_off_host_os] = 0U;                          /* host_os               */
   tr_le32(&out[16], 0U);                           /* file_crc              */
-  tr_le32(&out[k_rar_tr_le32_20], 0U);             /* ftime                 */
-  out[k_rar_v_24]   = k_rar_out_20;                /* unp_ver               */
-  out[k_rar_val_25] = k_rar_out_30;                /* method: store         */
-  tr_le16(&out[k_rar_tr_le16_26], (uint16_t)nlen);
-  tr_le32(&out[k_rar_tr_le32_28], 0U); /* attr */
+  tr_le32(&out[k_t_r4_off_ftime], 0U);             /* ftime                 */
+  out[k_t_r4_off_unp_ver] = k_t_r4_unp_ver_20;                /* unp_ver               */
+  out[k_t_r4_off_method]  = k_t_r4_method_store;                /* method: store         */
+  tr_le16(&out[k_t_r4_off_name_size], (uint16_t)nlen);
+  tr_le32(&out[k_t_r4_off_attr], 0U); /* attr */
   memcpy(&out[32], name, nlen);
   memcpy(&out[head], data, dlen);
   return head + dlen;
@@ -277,30 +306,30 @@ static size_t tr4_file(uint8_t* out, const char* name, const uint8_t* data, size
 static size_t tr4_main(uint8_t* out)
 {
   tr_le16(&out[0], 0U);
-  out[2] = k_rar_out_73; /* type: main */
+  out[2] = k_t_r4_type_main; /* type: main */
   tr_le16(&out[3], 0U);
-  tr_le16(&out[k_rar_tr_le16_5], k_rar_tr_le16_13);            /* head_size         */
+  tr_le16(&out[k_t_r4_off_head_size], k_t_r4_main_hdr_len);            /* head_size         */
   memset(&out[k_tr_off_high_pos_av], 0, k_tr_len_high_pos_av); /* HighPosAV + PosAV */
-  return k_rar_tr_le16_13;
+  return k_t_r4_main_hdr_len;
 }
 
 /** @brief Encode the RAR4 end-of-archive block. */
 static size_t tr4_end(uint8_t* out)
 {
   tr_le16(&out[0], 0U);
-  out[2] = k_rar_out_7b; /* type: end */
+  out[2] = k_t_r4_type_end; /* type: end */
   tr_le16(&out[3], 0U);
-  tr_le16(&out[k_rar_tr_le16_5], k_rar_val_7);
-  return k_rar_val_7;
+  tr_le16(&out[k_t_r4_off_head_size], k_t_r4_end_hdr_len);
+  return k_t_r4_end_hdr_len;
 }
 
 /** @brief Build the four source PNGs (shared by both archive builders). */
 static void tr_build_imgs(void)
 {
   s_imgs[0] = (tr_img_t){.name = "img01.png", .w = 6U, .h = 4U, .seed = 1U};
-  s_imgs[1] = (tr_img_t){.name = "img02.png", .w = 8U, .h = k_rar_h_5, .seed = 2U};
-  s_imgs[2] = (tr_img_t){.name = "img03.png", .w = 4U, .h = k_rar_val_7, .seed = 3U};
-  s_imgs[3] = (tr_img_t){.name = "sub/img04.png", .w = k_rar_h_5, .h = 6U, .seed = 4U};
+  s_imgs[1] = (tr_img_t){.name = "img02.png", .w = 8U, .h = k_t_img2_h, .seed = 2U};
+  s_imgs[2] = (tr_img_t){.name = "img03.png", .w = 4U, .h = k_t_img3_h, .seed = 3U};
+  s_imgs[3] = (tr_img_t){.name = "sub/img04.png", .w = k_t_img4_w, .h = 6U, .seed = 4U};
   for (uint32_t i = 0U; i < k_tr_img_count; ++i) {
     s_imgs[i].plen =
       cf_make_png(s_imgs[i].w, s_imgs[i].h, s_imgs[i].seed, s_imgs[i].png, sizeof(s_imgs[i].png));
@@ -317,7 +346,7 @@ static void tr_build_rar5(void)
 {
   tr_build_imgs();
   for (size_t i = 0U; i < sizeof(s_filler); ++i) {
-    s_filler[i] = (uint8_t)((i * k_rar_i_31) + (i >> 3U));
+    s_filler[i] = (uint8_t)((i * k_t_filler_stride) + (i >> 3U));
   }
   static const uint8_t k_sig[8] = {0x52U, 0x61U, 0x72U, 0x21U, 0x1AU, 0x07U, 0x01U, 0x00U};
   size_t               p        = 0U;
@@ -338,7 +367,7 @@ static void tr_build_rar5(void)
                 s_imgs[3].plen,
                 0U,
                 false);                  /* sub/img04 store */
-  p += tr5_simple(&s_arc[p], k_rar_h_5); /* end             */
+  p += tr5_simple(&s_arc[p], k_t_r5_type_end); /* end             */
   s_arc_size = p;
 }
 
@@ -697,7 +726,7 @@ static void test_rar5_block_vint_legs(void)
   const size_t vlen       = tr_vint(&k_wrap[4], 0xFFFFFFFFFFFFFFF2ULL);
   TEST_ASSERT_EQ(10U, vlen);
   k_wrap[4U + vlen]        = 0x01U; /* header type = non-file */
-  k_wrap[k_rar_h_5 + vlen] = 0x00U; /* header flags           */
+  k_wrap[k_t_r5_off_hdr_flags + vlen] = 0x00U; /* header flags           */
   tr_put5(k_wrap, 6U + vlen);
   {
     ra8_rar_t       rar = tr_open_arc();
@@ -837,7 +866,7 @@ static void test_rar_open_next_extract_edges(void)
 
   /* Backing read shorter than a signature though the declared size is not. */
   memcpy(s_arc, k_tr_sig5, (size_t)k_tr_len_signature);
-  s_arc_size    = k_rar_h_5;
+  s_arc_size    = k_t_short_arc_len;
   ra8_rar_t rar = {};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_rar_open(&rar, tr_read, nullptr, 100U));
 
@@ -854,10 +883,10 @@ static void test_rar_open_next_extract_edges(void)
 
   /* Reader whose declared size (1000) exceeds the backing bytes (100). */
   memcpy(s_arc, k_tr_sig5, sizeof(k_tr_sig5));
-  s_arc_size    = k_rar_s_arc_size_100;
+  s_arc_size    = k_t_backing_len;
   ra8_rar_t big = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rar_open(&big, tr_read, nullptr, 1000U));
-  uint8_t buf[k_rar_val_256] = {};
+  uint8_t buf[k_t_extract_buf] = {};
   size_t  got                = 0U;
 
   /* A non-file entry is unsupported. */
@@ -869,9 +898,9 @@ static void test_rar_open_next_extract_edges(void)
   ra8_rar_entry_t overrun = {.is_file   = 1U,
                              .is_dir    = 0U,
                              .method    = (uint8_t)k_ra8_rar_method_store,
-                             .data_off  = k_rar_data_off_990,
-                             .pack_size = k_rar_out_20,
-                             .unp_size  = k_rar_out_20};
+                             .data_off  = k_t_off_overrun,
+                             .pack_size = k_t_member_len,
+                             .unp_size  = k_t_member_len};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_rar_extract_stored(&big, &overrun, buf, sizeof(buf), &got));
 
@@ -879,9 +908,9 @@ static void test_rar_open_next_extract_edges(void)
   ra8_rar_entry_t shortread = {.is_file   = 1U,
                                .is_dir    = 0U,
                                .method    = (uint8_t)k_ra8_rar_method_store,
-                               .data_off  = k_rar_data_off_50,
-                               .pack_size = k_rar_s_arc_size_100,
-                               .unp_size  = k_rar_s_arc_size_100};
+                               .data_off  = k_t_off_shortread,
+                               .pack_size = k_t_backing_len,
+                               .unp_size  = k_t_backing_len};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_rar_extract_stored(&big, &shortread, buf, sizeof(buf), &got));
   TEST_ASSERT_EQ(0U, got);
@@ -937,7 +966,7 @@ static void test_comic_cbr_sort_and_empty(void)
   p += tr5_file(&s_arc[p], "a.png", k_one, sizeof(k_one), 0U, false);
   p += tr5_file(&s_arc[p], "a.png.png.png", k_one, sizeof(k_one), 0U, false);
   p += tr5_file(&s_arc[p], "a.png.png", k_one, sizeof(k_one), 0U, false);
-  p += tr5_simple(&s_arc[p], k_rar_h_5);
+  p += tr5_simple(&s_arc[p], k_t_r5_type_end);
   s_arc_size = p;
 
   ra8_comic_t      c                    = {};
@@ -959,7 +988,7 @@ static void test_comic_cbr_sort_and_empty(void)
   p += sizeof(k_tr_sig5);
   p += tr5_simple(&s_arc[p], 1U);
   p += tr5_file(&s_arc[p], "notes.txt", k_one, sizeof(k_one), 0U, false);
-  p += tr5_simple(&s_arc[p], k_rar_h_5);
+  p += tr5_simple(&s_arc[p], k_t_r5_type_end);
   s_arc_size = p;
 
   ra8_comic_t      c2                    = {};
