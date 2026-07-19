@@ -324,9 +324,23 @@ static void test_status_bar_render(void)
  * - `paint == NULL` / `sb == NULL` render guards -> nothing drawn.
  * - init NULL guards.
  */
-static void test_status_bar_guards(void)
+/**
+ * @brief Render / input guard arms for `status_bar` (the bulk of the case).
+ *
+ * @details
+ * Split out of the test body so the case stays under the review size cap:
+ * these arms drive the widget with a mock painter, the init-argument guards
+ * below are a separate concern.
+ *
+ * @pre The mock paint vtable is available to this translation unit.
+ * @pre No previous case left mock counters set.
+ * @post Every guarded path has been driven at least once.
+ * @post All assertions have run; a failure aborts the process.
+ *
+ * @note Not thread-safe; the mocks are file-scope state.
+ */
+static void status_bar_guard_arms(void)
 {
-  TEST_BEGIN("ra8_widget_status_bar: guard + init arms");
   mock_paint_t       mp    = {.glyph_w = 8, .glyph_h = 16};
   ra8_widget_paint_t paint = make_paint(&mp, true);
 
@@ -370,6 +384,12 @@ static void test_status_bar_guards(void)
   TEST_ASSERT_EQ(0U, mp.fill_calls);
   w.ctx = nullptr;
   w.vt->render(&w);
+}
+
+static void test_status_bar_guards(void)
+{
+  TEST_BEGIN("ra8_widget_status_bar: guard + init arms");
+  status_bar_guard_arms();
 
   /* init guards. */
   ra8_widget_status_bar_t any = {};
@@ -941,9 +961,23 @@ static void test_book_grid_input(void)
  * true (declined); `on_open == NULL` false-callback (still records selected);
  * `g == NULL` true (declined). Plus init NULL guards.
  */
-static void test_book_grid_guards(void)
+/**
+ * @brief Render / input guard arms for `book_grid` (the bulk of the case).
+ *
+ * @details
+ * Split out of the test body so the case stays under the review size cap:
+ * these arms drive the widget with a mock painter, the init-argument guards
+ * below are a separate concern.
+ *
+ * @pre The mock paint vtable is available to this translation unit.
+ * @pre No previous case left mock counters set.
+ * @post Every guarded path has been driven at least once.
+ * @post All assertions have run; a failure aborts the process.
+ *
+ * @note Not thread-safe; the mocks are file-scope state.
+ */
+static void book_grid_guard_arms(void)
 {
-  TEST_BEGIN("ra8_widget_book_grid: render + input + init guards");
   s_bg_open_calls              = 0U;
   mock_paint_t           mp    = {.glyph_w = 8, .glyph_h = 16};
   ra8_widget_paint_t     paint = make_paint(&mp, true);
@@ -989,6 +1023,12 @@ static void test_book_grid_guards(void)
   w.ctx = nullptr;
   w.vt->render(&w);
   TEST_ASSERT_EQ(false, w.vt->on_input(&w, &t));
+}
+
+static void test_book_grid_guards(void)
+{
+  TEST_BEGIN("ra8_widget_book_grid: render + input + init guards");
+  book_grid_guard_arms();
 
   /* init guards. */
   ra8_widget_book_grid_t any = {};

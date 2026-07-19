@@ -177,12 +177,26 @@ static bool swap_capture_ok(ra8_err_t rep_e, uint32_t captured)
  * @note Not thread-safe; single-caller test context.
  * @since 0.1.0
  */
-static ra8_err_t run_backend(ra8_io_blockdev_t* bd,
-                             const char*        name,
-                             const char*        label,
-                             const char*        file,
-                             uint32_t           len,
-                             ra8_io_stream_t*   log)
+/**
+ * @brief Format, mount and VFS-publish one block device.
+ *
+ * @param[in,out] bd    Block device to bring up.
+ * @param[in]     name  VFS mount name to publish under.
+ * @param[in]     label FAT volume label to format with.
+ * @param[out]    mnt   Receives the mounted volume on success.
+ *
+ * @return k_ra8_ok on success, else the first failing step's error.
+ * @retval k_ra8_ok The device is formatted, mounted and published.
+ *
+ * @pre @p bd is initialised and @p mnt is non-NULL.
+ * @pre @p name is not already mounted in the VFS.
+ * @post On success `*mnt` is a mounted volume reachable through @p name.
+ * @post On failure nothing is left mounted under @p name.
+ *
+ * @note Not thread-safe; the demo is single-threaded.
+ */
+static ra8_err_t
+swap_prepare_volume(ra8_io_blockdev_t* bd, const char* name, const char* label, ra8_fs_mount_t** mnt)
 {
   ra8_fs_backend_t be = {};
   RA8_RETURN_ON_ERROR(ra8_io_blockdev_as_fs_backend(bd, &be), s_swap_test_tag, "bridge");
@@ -190,13 +204,29 @@ static ra8_err_t run_backend(ra8_io_blockdev_t* bd,
   opts.type                 = k_ra8_fs_type_fat12;
   opts.label                = label;
   RA8_RETURN_ON_ERROR(ra8_fs_format(&be, &opts), s_swap_test_tag, "format");
-  ra8_fs_mount_t* mnt = nullptr;
-  RA8_RETURN_ON_ERROR(ra8_fs_mount(&be, &mnt), s_swap_test_tag, "mount");
-  RA8_RETURN_ON_ERROR(ra8_io_vfs_mount(name, mnt), s_swap_test_tag, "vfs mount");
-  (void)ra8_io_stream_puts(log, "swap[");
-  (void)ra8_io_stream_puts(log, name);
-  (void)ra8_io_stream_puts(log, "] ");
+  RA8_RETURN_ON_ERROR(ra8_fs_mount(&be, mnt), s_swap_test_tag, "mount");
+  RA8_RETURN_ON_ERROR(ra8_io_vfs_mount(name, *mnt), s_swap_test_tag, "vfs mount");
+  return k_ra8_ok;
+}
 
+/**
+ * @brief Fill the payload buffer with the test pattern and write it to @p file.
+ *
+ * @param[in] file VFS path to create.
+ * @param[in] len  Payload length in bytes.
+ *
+ * @return k_ra8_ok on success, else the open/write/close error.
+ * @retval k_ra8_ok @p file holds @p len pattern bytes.
+ *
+ * @pre A volume is mounted that covers @p file.
+ * @pre @p len does not exceed the payload buffer.
+ * @post The file handle is closed on every path, including write failure.
+ * @post `s_pay` holds the pattern the read-back is compared against.
+ *
+ * @note Not thread-safe; the payload buffers are file-scope state.
+ */
+static ra8_err_t swap_write_payload(const char* file, uint32_t len)
+{
   for (uint32_t i = 0U; i < len; ++i) {
     s_pay[i] = swap_pattern(i);
   }
@@ -205,14 +235,54 @@ static ra8_err_t run_backend(ra8_io_blockdev_t* bd,
   const ra8_err_t we = ra8_fs_write(wf, s_pay, len);
   RA8_RETURN_ON_ERROR(ra8_fs_close(wf), s_swap_test_tag, "close w");
   RA8_RETURN_ON_ERROR(we, s_swap_test_tag, "write");
+  return k_ra8_ok;
+}
 
+/**
+ * @brief Read @p file back into the compare buffer.
+ *
+ * @param[in]  file VFS path to read.
+ * @param[in]  len  Bytes to request.
+ * @param[out] got  Receives the byte count actually read.
+ *
+ * @return k_ra8_ok on success, else the open/read/close error.
+ * @retval k_ra8_ok `s_rb` holds the file's first `*got` bytes.
+ *
+ * @pre A volume is mounted that covers @p file and @p got is non-NULL.
+ * @pre @p len does not exceed the compare buffer.
+ * @post The compare buffer is zeroed first, so a short read cannot pass on
+ *       stale bytes from an earlier backend.
+ * @post The file handle is closed on every path, including read failure.
+ *
+ * @note Not thread-safe; the payload buffers are file-scope state.
+ */
+static ra8_err_t swap_read_payload(const char* file, uint32_t len, uint32_t* got)
+{
   (void)memset(s_rb, 0, sizeof(s_rb));
   ra8_fs_file_t* rf = nullptr;
   RA8_RETURN_ON_ERROR(ra8_io_vfs_open(file, k_ra8_fs_mode_read, &rf), s_swap_test_tag, "open r");
-  uint32_t        got = 0U;
-  const ra8_err_t re  = ra8_fs_read(rf, s_rb, len, &got);
+  const ra8_err_t re = ra8_fs_read(rf, s_rb, len, got);
   RA8_RETURN_ON_ERROR(ra8_fs_close(rf), s_swap_test_tag, "close r");
   RA8_RETURN_ON_ERROR(re, s_swap_test_tag, "read");
+  return k_ra8_ok;
+}
+
+static ra8_err_t run_backend(ra8_io_blockdev_t* bd,
+                             const char*        name,
+                             const char*        label,
+                             const char*        file,
+                             uint32_t           len,
+                             ra8_io_stream_t*   log)
+{
+  ra8_fs_mount_t* mnt = nullptr;
+  RA8_RETURN_ON_ERROR(swap_prepare_volume(bd, name, label, &mnt), s_swap_test_tag, "prepare");
+  (void)ra8_io_stream_puts(log, "swap[");
+  (void)ra8_io_stream_puts(log, name);
+  (void)ra8_io_stream_puts(log, "] ");
+
+  RA8_RETURN_ON_ERROR(swap_write_payload(file, len), s_swap_test_tag, "write phase");
+  uint32_t got = 0U;
+  RA8_RETURN_ON_ERROR(swap_read_payload(file, len, &got), s_swap_test_tag, "read phase");
 
   const bool equal = (memcmp(s_pay, s_rb, (size_t)len) == 0);
   if (swap_verdict(got, len, equal)) {

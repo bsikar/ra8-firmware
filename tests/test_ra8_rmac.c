@@ -543,7 +543,23 @@ static void test_ptp_filter(void)
 /** @brief Stamp every RMAC statistics counter with a unique pattern so
  *  ::test_read_stats can verify each ra8_rmac_stats_t field is wired to
  *  the right register. */
-static void stamp_stats_counters(volatile r_rmac_regs_t* reg)
+/**
+ * @brief Stamp the RMAC receive-side statistics counters with known values.
+ *
+ * @details
+ * Split from the transmit half purely so each stamp stays reviewable; the two
+ * register groups are independent and the reader checks them separately.
+ *
+ * @param[out] reg RMAC register block to write.
+ *
+ * @pre @p reg points at the mapped RMAC register block.
+ * @pre The block is quiescent (no live traffic overwriting counters).
+ * @post Every RX counter holds its distinct fixture value.
+ * @post No transmit-side register is touched.
+ *
+ * @note Not thread-safe; the mapped block is process-global.
+ */
+static void stamp_rx_counters(volatile r_rmac_regs_t* reg)
 {
   reg->MMPFTCT     = 0x10U;
   reg->MAPFTCT     = k_rmac_stamp_mapftct;
@@ -580,6 +596,22 @@ static void stamp_stats_counters(volatile r_rmac_regs_t* reg)
   reg->MRXBCEL  = k_rmac_stamp_mrxbcel;
   reg->MRXBCPU  = k_rmac_stamp_mrxbcpu;
   reg->MRXBCPL  = k_rmac_stamp_mrxbcpl;
+}
+
+/**
+ * @brief Stamp the RMAC transmit-side statistics counters with known values.
+ *
+ * @param[out] reg RMAC register block to write.
+ *
+ * @pre @p reg points at the mapped RMAC register block.
+ * @pre The block is quiescent (no live traffic overwriting counters).
+ * @post Every TX counter holds its distinct fixture value.
+ * @post No receive-side register is touched.
+ *
+ * @note Not thread-safe; the mapped block is process-global.
+ */
+static void stamp_tx_counters(volatile r_rmac_regs_t* reg)
+{
   reg->MTGFCE   = k_rmac_stamp_mtgfce;
   reg->MTGFCP   = k_rmac_stamp_mtgfcp;
   reg->MTBFC    = k_rmac_stamp_mtbfc;
@@ -590,6 +622,12 @@ static void stamp_stats_counters(volatile r_rmac_regs_t* reg)
   reg->MTXBCEL  = k_rmac_stamp_mtxbcel;
   reg->MTXBCPU  = k_rmac_stamp_mtxbcpu;
   reg->MTXBCPL  = k_rmac_stamp_mtxbcpl;
+}
+
+static void stamp_stats_counters(volatile r_rmac_regs_t* reg)
+{
+  stamp_rx_counters(reg);
+  stamp_tx_counters(reg);
 }
 
 /**
