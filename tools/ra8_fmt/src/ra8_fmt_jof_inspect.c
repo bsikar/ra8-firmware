@@ -636,34 +636,8 @@ ra8_err_t ra8_fmt_jof_reassemble(const ra8_fmt_blob_t*       atlas,
   if (!priv_alloc_reassemble_bufs(raster, tile_max, scratch_c, &px, &cell, &scratch)) {
     return k_ra8_err_no_mem;
   }
-  ra8_err_t rc = k_ra8_ok;
-  for (uint32_t ty = 0U; (rc == k_ra8_ok) && (ty < info->tile_rows); ++ty) {
-    for (uint32_t tx = 0U; (rc == k_ra8_ok) && (tx < info->tile_cols); ++tx) {
-      uint16_t tw = 0U;
-      uint16_t th = 0U;
-      rc          = ra8_jof_read_tile(ra8_jof_memstore_pread,
-                                            &store,
-                                            info,
-                                            (uint16_t)tx,
-                                            (uint16_t)ty,
-                                            scratch,
-                                            scratch_c,
-                                            cell,
-                                            tile_max,
-                                            &tw,
-                                            &th);
-      if (rc != k_ra8_ok) {
-        break;
-      }
-      const size_t x0 = (size_t)tx * (size_t)info->tile_w * (size_t)info->bpp;
-      const size_t y0 = (size_t)ty * (size_t)info->tile_h;
-      for (uint32_t r = 0U; r < th; ++r) { /* bounded by tile_h */
-        (void)memcpy(&px[((y0 + (size_t)r) * stride) + x0],
-                     &cell[(size_t)r * (size_t)tw * (size_t)info->bpp],
-                     (size_t)tw * (size_t)info->bpp);
-      }
-    }
-  }
+  const ra8_err_t rc =
+    priv_reassemble_tiles(&store, info, px, stride, cell, tile_max, scratch, scratch_c);
   free(cell);
   free(scratch);
   if (rc != k_ra8_ok) {
