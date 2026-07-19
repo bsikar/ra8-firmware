@@ -44,16 +44,16 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_unarch_tar_block_ff     = 0xFFU,
-  k_unarch_tar_f_b256_80    = 0x80U,
-  k_unarch_tar_f_neg_c0     = 0xC0U,
-  k_unarch_tar_f_pay_81     = 0x81U,
-  k_unarch_tar_i_5          = 5U,
-  k_unarch_tar_val_10       = 10,
-  k_unarch_tar_val_11       = 11,
-  k_unarch_tar_val_12       = 12,
-  k_unarch_tar_val_135      = 135,
-  k_unarch_tar_val_24       = 24,
+  k_unarch_tar_block_ff  = 0xFFU,
+  k_unarch_tar_f_b256_80 = 0x80U,
+  k_unarch_tar_f_neg_c0  = 0xC0U,
+  k_unarch_tar_f_pay_81  = 0x81U,
+  k_unarch_tar_i_5       = 5U,
+  k_unarch_tar_val_10    = 10,
+  k_unarch_tar_val_11    = 11,
+  k_unarch_tar_val_12    = 12,
+  k_unarch_tar_val_135   = 135,
+  k_unarch_tar_val_24    = 24,
 } unarch_tar_uint8_const_t;
 
 /**
@@ -192,11 +192,11 @@ tb_header(uint8_t* block, const char* name, const char* prefix, uint8_t type, ui
 {
   memset(block, 0, (size_t)k_tt_tar_block);
   strncpy((char*)&block[k_tt_off_name], name, (size_t)k_tt_len_name);
-  tb_octal(&block[k_tt_off_mode], k_tt_len_id, k_unarch_tar_tb_octal_0644);  /* mode  */
+  tb_octal(&block[k_tt_off_mode], k_tt_len_id, k_unarch_tar_tb_octal_0644); /* mode  */
   tb_octal(&block[k_tt_off_uid], k_tt_len_id, 0U);                          /* uid   */
   tb_octal(&block[k_tt_off_gid], k_tt_len_id, 0U);                          /* gid   */
-  tb_octal(&block[k_tt_off_size], k_tt_len_size, dsize); /* size  */
-  tb_octal(&block[k_tt_off_mtime], k_tt_len_size, 0U);    /* mtime */
+  tb_octal(&block[k_tt_off_size], k_tt_len_size, dsize);                    /* size  */
+  tb_octal(&block[k_tt_off_mtime], k_tt_len_size, 0U);                      /* mtime */
   block[k_tt_off_type] = type;
   memcpy(&block[k_tt_off_magic], k_tt_ustar_magic, sizeof(k_tt_ustar_magic));
   block[k_tt_off_magic_nul] = 0U;
@@ -845,11 +845,11 @@ static void test_tar_base256_and_gnu_magic(void)
   size_t     off    = tb_add(0U, "b256.png", nullptr, (uint8_t)'0', data, sizeof(data) - 1U);
   /* Rewrite the size field as base-256 and re-checksum. */
   memset(&s_arc[k_tt_off_size], 0, k_tt_len_size);
-  s_arc[k_tt_off_size] = k_unarch_tar_f_b256_80;
-  s_arc[k_unarch_tar_val_135]      = (uint8_t)(sizeof(data) - 1U);
+  s_arc[k_tt_off_size]        = k_unarch_tar_f_b256_80;
+  s_arc[k_unarch_tar_val_135] = (uint8_t)(sizeof(data) - 1U);
   /* Old-GNU magic variant: "ustar" + ' ' + ' '. */
-  s_arc[k_tt_off_magic_nul] = (uint8_t)' ';
-  s_arc[k_tt_off_version] = (uint8_t)' ';
+  s_arc[k_tt_off_magic_nul]   = (uint8_t)' ';
+  s_arc[k_tt_off_version]     = (uint8_t)' ';
   s_arc[k_unarch_tar_val_264] = 0U;
   tb_finish(&s_arc[0]);
   s_arc_len = tb_end(off);

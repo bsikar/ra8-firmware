@@ -59,12 +59,12 @@
  * stay distinct from each other and from the 0xFF erased-flash state.
  */
 typedef enum : uint8_t {
-  k_ftl_fill_mapped_write  = 0x55U, /**< Write that establishes a live mapping. */
-  k_ftl_fill_program_fail  = 0xAAU, /**< Payload for the program-step failure.  */
-  k_ftl_fill_erase_fail    = 0xBBU, /**< Payload for the erase-step failure.    */
-  k_ftl_fill_all_logical   = 0xCCU, /**< Payload written to every logical block.*/
-  k_ftl_fill_reclaim_fail  = 0xDDU, /**< Payload for the reclaim failure.       */
-  k_ftl_fill_no_free_block = 0xEEU, /**< Payload for the exhausted free list.   */
+  k_ftl_fill_mapped_write  = 0x55U, /**< Write that establishes a live mapping.  */
+  k_ftl_fill_program_fail  = 0xAAU, /**< Payload for the program-step failure.   */
+  k_ftl_fill_erase_fail    = 0xBBU, /**< Payload for the erase-step failure.     */
+  k_ftl_fill_all_logical   = 0xCCU, /**< Payload written to every logical block. */
+  k_ftl_fill_reclaim_fail  = 0xDDU, /**< Payload for the reclaim failure.        */
+  k_ftl_fill_no_free_block = 0xEEU, /**< Payload for the exhausted free list.    */
 } ftl_cov_fill_t;
 
 /* =============================================================================

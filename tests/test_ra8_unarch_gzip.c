@@ -35,9 +35,9 @@
 
 /** @brief gzip member layout used by the fixture builder. */
 typedef enum : uint8_t {
-  k_tg_off_extra    = 10U, /**< First byte after the 10-byte fixed header. */
-  k_tg_len_fname    = 9U,  /**< "name.tar" plus its NUL terminator.        */
-  k_tg_len_unterm   = 6U,  /**< Unterminated FNAME bytes written.          */
+  k_tg_off_extra  = 10U, /**< First byte after the 10-byte fixed header. */
+  k_tg_len_fname  = 9U,  /**< "name.tar" plus its NUL terminator.        */
+  k_tg_len_unterm = 6U,  /**< Unterminated FNAME bytes written.          */
 } tg_layout_t;
 
 /**

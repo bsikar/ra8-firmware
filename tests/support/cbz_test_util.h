@@ -206,10 +206,8 @@ static inline size_t ccx_write_header(uint8_t* out, uint32_t count, uint32_t fla
  *
  * @note Not thread-safe; reads the file-scope `s_pages`.
  */
-static inline size_t ccx_write_page_meta(uint8_t* out,
-                                         size_t   pos,
-                                         uint32_t count,
-                                         uint32_t raw_delta)
+static inline size_t
+ccx_write_page_meta(uint8_t* out, size_t pos, uint32_t count, uint32_t raw_delta)
 {
   for (uint32_t i = 0U; i < count; ++i) {
     uint32_t raw_size = s_pages[i].raw_size;

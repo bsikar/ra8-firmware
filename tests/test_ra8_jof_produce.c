@@ -585,7 +585,12 @@ static void check_tiles(const ra8_jof_info_t* info, uint8_t ctx_ct)
                                              (uint32_t)sizeof(s_cell),
                                              &w,
                                              &h));
-      check_tile_pixels(info, ctx_ct, (uint32_t)tx * info->tile_w, (uint32_t)ty * info->tile_h, w, h);
+      check_tile_pixels(info,
+                        ctx_ct,
+                        (uint32_t)tx * info->tile_w,
+                        (uint32_t)ty * info->tile_h,
+                        w,
+                        h);
     }
   }
 }

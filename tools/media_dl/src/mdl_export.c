@@ -951,8 +951,7 @@ RA8_INTERNAL static ra8_err_t run_rabook_python(const char* cbz, const char* out
   (void)setenv("PYTHONPATH", MDL_EPUB_COMPILE_DIR, 1);
   const char* const argv[] = {"python3", script, cbz, out_path, "--rtl", nullptr};
   pid_t             pid    = 0;
-  const int         rc =
-    posix_spawnp(&pid, argv[0], nullptr, nullptr, (char* const*)argv, spawn_environ());
+  const int rc = posix_spawnp(&pid, argv[0], nullptr, nullptr, (char* const*)argv, spawn_environ());
   if (rc != 0) {
     (void)fprintf(stderr, "media_dl: rabook needs python3 + Pillow: %s\n", strerror(rc));
     return k_ra8_err_not_supported;

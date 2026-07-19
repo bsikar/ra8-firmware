@@ -29,7 +29,7 @@
 
 /** @brief Distinguishable payloads for the SD block round-trip. */
 typedef enum : uint8_t {
-  k_sdspi_rd_fill_poison   = 0xA5U, /**< Poison the read must overwrite. */
+  k_sdspi_rd_fill_poison   = 0xA5U, /**< Poison the read must overwrite.   */
   k_sdspi_rd_fill_expected = 0xC5U, /**< Bytes the card is made to return. */
 } sdspi_rd_fill_t;
 

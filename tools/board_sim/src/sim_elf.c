@@ -144,10 +144,7 @@ uint32_t elf_vector_base(const uint8_t* elf, long len)
   return found ? min_vaddr : 0U;
 }
 
-uint32_t elf_foreach_exec_segment(const uint8_t*      elf,
-                                  long                len,
-                                  elf_exec_segment_fn fn,
-                                  void*               ctx)
+uint32_t elf_foreach_exec_segment(const uint8_t* elf, long len, elf_exec_segment_fn fn, void* ctx)
 {
   if ((elf == nullptr) || (fn == nullptr) || (len < (long)k_elf_ehdr_size)) {
     return 0U;
@@ -180,8 +177,7 @@ uint32_t elf_foreach_exec_segment(const uint8_t*      elf,
     if (((uint64_t)p_offset + (uint64_t)p_filesz) > (uint64_t)len) {
       continue; /* truncated / out-of-file segment -- skip. */
     }
-    const elf_exec_segment_t seg = {
-      .bytes = elf + p_offset, .vaddr = p_vaddr, .filesz = p_filesz};
+    const elf_exec_segment_t seg = {.bytes = elf + p_offset, .vaddr = p_vaddr, .filesz = p_filesz};
     visited++;
     if (!fn(&seg, ctx)) {
       break;
