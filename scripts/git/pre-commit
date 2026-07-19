@@ -587,14 +587,20 @@ if [[ -f scripts/utils/stack_usage_check.py ]]; then
     fi
 fi
 
-# ---- Clang Static Analyzer (scan-build) -- warn-only -------------
+# ---- Clang Static Analyzer (scan-build) -- LOCAL ONLY, NOT GATED --
 # scan-build is a multi-minute analyzer pass and is NOT invoked from
 # the per-commit hook. Run it locally with `make scan-build` (or
-# `make scan-build-strict` to mirror the CI gate), or rely on CI;
-# see docs/STATIC_ANALYSIS.md for the documented baseline. The
-# baseline is currently 0 actionable first-party findings after the
-# HAL MMIO suppressions are applied -- regressions will be caught by
-# CI's `bash scripts/utils/scan_build.sh --strict` invocation.
+# `make scan-build-strict`); see docs/STATIC_ANALYSIS.md for the
+# documented baseline -- currently 0 actionable first-party findings
+# once the HAL MMIO suppressions are applied.
+#
+# This comment used to promise that "regressions will be caught by
+# CI's scan_build.sh --strict invocation". No workflow runs it, and
+# RA8_GATE_REGISTRY in scripts/ci.sh has no scan-build gate, so that
+# was a false assurance -- exactly as misleading as a gate that
+# passes without checking anything. To make it true, add a gate to
+# the registry and schedule it in a workflow; the ci-parity gate
+# will hold the two halves together.
 
 # ---- include-what-you-use (IWYU) -- warn-only --------------------
 # Same as scan-build: too slow for the per-commit hook. Run locally
