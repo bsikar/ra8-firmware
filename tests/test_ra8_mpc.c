@@ -15,17 +15,6 @@
 #include "unity_minimal.h"
 
 /**
- * @enum mpc_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {} mpc_uint8_const_t;
-
-/**
  * @enum mpc_uint32_const_t
  * @brief Named uint32_t constants used by this file.
  *
