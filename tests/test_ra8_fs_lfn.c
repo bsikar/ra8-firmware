@@ -155,15 +155,18 @@ static uint8_t sfn_checksum(const uint8_t* name83)
 /* The packed 8.3 alias for "mybook.epub": base "MYBOOK~1", ext "EPU". */
 static const uint8_t k_alias83[11] = {'M', 'Y', 'B', 'O', 'O', 'K', '~', '1', 'E', 'P', 'U'};
 
-/** @brief Build a FAT16 volume with the LFN chain + 8.3 entry for mybook.epub. */
-static void build_volume_with_lfn(void)
+/**
+ * @brief Write the FAT16 BIOS Parameter Block for the LFN fixture volume.
+ *
+ * @pre `s_disk.bytes` holds at least one block.
+ * @pre The disk geometry constants match the fixture image size.
+ * @post Block 0 describes a mountable FAT16 volume.
+ * @post The 0x55 0xAA boot signature terminates the block.
+ *
+ * @note Not thread-safe; the fixture disk is file-scope state.
+ */
+static void lfn_write_bpb(void)
 {
-  free(s_disk.bytes);
-  s_disk.byte_count  = (uint32_t)k_blocks * (uint32_t)k_block_size;
-  s_disk.bytes       = (uint8_t*)calloc(1U, s_disk.byte_count);
-  s_disk.block_count = (uint32_t)k_blocks;
-  TEST_ASSERT(s_disk.bytes != nullptr);
-
   uint8_t* bpb = &s_disk.bytes[0];
   put16(bpb, k_fs_lfn_i_11, (uint16_t)k_block_size);
   bpb[k_fs_lfn_val_13] = 1U;                           /* sectors/cluster  */
@@ -174,10 +177,28 @@ static void build_volume_with_lfn(void)
   put16(bpb, k_fs_lfn_put16_22, (uint16_t)k_sectors_fat);
   bpb[k_fs_lfn_val_510] = k_fs_lfn_bpb_55;
   bpb[k_fs_lfn_val_511] = k_fs_lfn_bpb_aa;
+}
 
-  /* Root directory at LBA 65: slot 0 = LFN("mybook.epub"), slot 1 = 8.3 entry. */
-  uint8_t* root = &s_disk.bytes[(size_t)(uint32_t)k_root_lba * (uint32_t)k_block_size];
-
+/**
+ * @brief Write the single long-file-name directory slot.
+ *
+ * @details
+ * "mybook.epub" is 11 characters, so one LFN entry holds the whole name: the
+ * order byte carries the last-logical flag, the checksum ties the slot to the
+ * 8.3 alias that follows, and the unused character slots are padded 0xFFFF
+ * after a single 0x0000 terminator.
+ *
+ * @param[out] root Root-directory region to write into.
+ *
+ * @pre @p root points at the root directory and has room for one entry.
+ * @pre `k_alias83` is the 8.3 alias this slot checksums.
+ * @post The slot is a valid single-entry LFN for the fixture name.
+ * @post Character slots past the terminator read as padding.
+ *
+ * @note Not thread-safe; the fixture disk is file-scope state.
+ */
+static void lfn_write_name_slot(uint8_t* root)
+{
   /* --- slot 0: single LFN entry (the name is 11 chars, fits one entry) --- */
   uint8_t* lfn         = &root[0];
   lfn[0]               = k_fs_lfn_lfn_41; /* order 1 | last-logical (0x40) */
@@ -197,6 +218,23 @@ static void build_volume_with_lfn(void)
       put16(lfn, (uint32_t)k_off[i], k_fs_lfn_put16_ffff); /* padding */
     }
   }
+}
+
+/** @brief Build a FAT16 volume with the LFN chain + 8.3 entry for mybook.epub. */
+static void build_volume_with_lfn(void)
+{
+  free(s_disk.bytes);
+  s_disk.byte_count  = (uint32_t)k_blocks * (uint32_t)k_block_size;
+  s_disk.bytes       = (uint8_t*)calloc(1U, s_disk.byte_count);
+  s_disk.block_count = (uint32_t)k_blocks;
+  TEST_ASSERT(s_disk.bytes != nullptr);
+
+  lfn_write_bpb();
+
+  /* Root directory at LBA 65: slot 0 = LFN("mybook.epub"), slot 1 = 8.3 entry. */
+  uint8_t* root = &s_disk.bytes[(size_t)(uint32_t)k_root_lba * (uint32_t)k_block_size];
+
+  lfn_write_name_slot(root);
 
   /* --- slot 1: the 8.3 short entry (zero-length file is enough to open) --- */
   uint8_t* sfn = &root[(uint32_t)k_dir_entry_len];
