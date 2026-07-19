@@ -152,6 +152,32 @@ if [[ -n "$c_files" ]]; then
         fi
     fi
 
+    # ---- Doxygen attachment gate (strict: zero findings required) ---------
+    # doxy_audit above checks only that a block EXISTS. This one checks that
+    # the block describes the symbol it sits on -- pasted @param names, a
+    # @retval on a void function, two blocks in a row, a block naming another
+    # symbol, a block stranded on a forward declaration. A misattached block
+    # SATISFIES the presence gate, so nothing else catches these.
+    # Needs libclang; skipped with a warning locally when it is absent (CI
+    # installs a pinned wheel and fails hard if the import breaks).
+    if [[ -f scripts/utils/check_doc_attachment.py ]]; then
+        if ! python3 -c "import clang.cindex" 2>/dev/null; then
+            echo "WARNING: libclang missing -- doc-attachment gate SKIPPED."
+            echo "   Install: python3 -m pip install --user libclang"
+        else
+            if ! python3 scripts/utils/check_doc_attachment.py --selftest; then
+                echo "[FAIL] check_doc_attachment.py selftest failed -- the"
+                echo "       checker itself is broken; fix it before trusting"
+                echo "       any verdict it gives."
+                error_found=1
+            elif ! python3 scripts/utils/check_doc_attachment.py --check; then
+                echo "[FAIL] check_doc_attachment.py found doc blocks that do"
+                echo "       not describe what they are attached to."
+                error_found=1
+            fi
+        fi
+    fi
+
     # ---- Per-app init-order audit (strict: zero violations) ---------------
     # Walks every examples/<tier>/<app>/main.c and verifies the canonical
     # CGC -> MSTP -> IOPORT -> TIME -> ICU -> peripheral sequence is held
