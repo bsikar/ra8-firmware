@@ -167,6 +167,60 @@ static void* s_attach_ctx_seen;
 /** @brief Arbitrary context token handed to the attach callback. */
 static const uintptr_t k_tc_ctx_token = 0xC0FFEE01U;
 
+/**
+ * @brief Serve a mocked GET_DESCRIPTOR request.
+ *
+ * @details
+ * Device and configuration descriptors are served from separate fixture blobs
+ * with independently injectable error codes and short-read counts, which is how
+ * the enumeration coverage cases drive each failure branch in isolation. Any
+ * other descriptor type succeeds with no data.
+ *
+ * @param[in]  setup        The SETUP packet under service.
+ * @param[out] data         Buffer for the descriptor, or NULL.
+ * @param[in]  data_len     Capacity of @p data in bytes.
+ * @param[out] out_received Receives the byte count reported, or NULL.
+ *
+ * @return The injected result for the requested descriptor type.
+ * @retval k_ra8_ok An unmodelled descriptor type was requested.
+ *
+ * @pre @p setup is non-NULL.
+ * @pre The fixture blobs for the requested type are populated.
+ * @post The copy is clamped to @p data_len, never overrunning @p data.
+ * @post NULL @p data and @p out_received are both tolerated.
+ *
+ * @note Not thread-safe; the injection knobs are file-scope state.
+ */
+static ra8_err_t mock_get_descriptor(const ra8_usb_setup_t* setup,
+                                     uint8_t*               data,
+                                     uint16_t               data_len,
+                                     uint16_t*              out_received)
+{
+  const uint8_t dtype = (uint8_t)((setup->w_value >> k_tc_byte_bits) & 0xFFU);
+  if (dtype == (uint8_t)k_tc_dtype_device) {
+    const uint16_t n =
+      (data_len < (uint16_t)k_tc_dev_desc_len) ? data_len : (uint16_t)k_tc_dev_desc_len;
+    if (data != nullptr) {
+      (void)memcpy(data, s_dev_desc, (size_t)n);
+    }
+    if (out_received != nullptr) {
+      *out_received = s_dev_rx;
+    }
+    return s_dev_err;
+  }
+  if (dtype == (uint8_t)k_tc_dtype_config) {
+    const uint16_t n = (data_len < s_cfg_len) ? data_len : s_cfg_len;
+    if (data != nullptr) {
+      (void)memcpy(data, s_cfg_blob, (size_t)n);
+    }
+    if (out_received != nullptr) {
+      *out_received = n;
+    }
+    return s_cfg_err;
+  }
+  return k_ra8_ok;
+}
+
 static ra8_err_t mock_ctrl_xfer(ra8_usb_speed_t        speed,
                                 const ra8_usb_setup_t* setup,
                                 uint8_t*               data,
@@ -176,29 +230,7 @@ static ra8_err_t mock_ctrl_xfer(ra8_usb_speed_t        speed,
   (void)speed;
   const uint8_t req = setup->b_request;
   if (req == 0x06U) { /* GET_DESCRIPTOR */
-    const uint8_t dtype = (uint8_t)((setup->w_value >> k_tc_byte_bits) & 0xFFU);
-    if (dtype == (uint8_t)k_tc_dtype_device) {
-      const uint16_t n =
-        (data_len < (uint16_t)k_tc_dev_desc_len) ? data_len : (uint16_t)k_tc_dev_desc_len;
-      if (data != nullptr) {
-        (void)memcpy(data, s_dev_desc, (size_t)n);
-      }
-      if (out_received != nullptr) {
-        *out_received = s_dev_rx;
-      }
-      return s_dev_err;
-    }
-    if (dtype == (uint8_t)k_tc_dtype_config) {
-      const uint16_t n = (data_len < s_cfg_len) ? data_len : s_cfg_len;
-      if (data != nullptr) {
-        (void)memcpy(data, s_cfg_blob, (size_t)n);
-      }
-      if (out_received != nullptr) {
-        *out_received = n;
-      }
-      return s_cfg_err;
-    }
-    return k_ra8_ok;
+    return mock_get_descriptor(setup, data, data_len, out_received);
   }
   if (req == k_usb_hmsc_enum_cov_req_05) { /* SET_ADDRESS */
     return s_setaddr_err;
