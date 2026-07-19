@@ -817,14 +817,27 @@ static UINT priv_probe_rdid(void)
 /**
  * @brief Bring the OCTA bus up (pins + controller) on first call.
  *
+ * @details
+ * Idempotent: the first call routes the OCTA pins, ungates the xSPI
+ * module-stop bit, walks the IS25LX512M reset sequence and confirms the
+ * device with an RDID probe, then latches ``s_xspi_bus_ready``. Every
+ * later call returns ``LX_SUCCESS`` immediately, so each LevelX entry
+ * point can open with this guard without tracking bring-up itself.
+ *
  * @return ``LX_SUCCESS`` if the bus is ready, ``LX_ERROR`` otherwise.
+ * @retval LX_SUCCESS Bus ready -- either just brought up, or already up.
+ * @retval LX_ERROR   Pin routing, reset or the RDID probe failed; the
+ *                    ready latch stays clear so a later call retries.
  *
  * @pre ``ra8_infrastructure_init`` has run (pin validator alive).
+ * @pre Called from a single bring-up context (no concurrent LevelX entry).
  * @post On success the IS25LX512M is out of reset, OCTA pins are
  *       routed to PSEL=0x1C, the xSPI controller MSTP gate is open,
  *       ``LIOCFGCS[0]`` is in 1S-1S-1S mode, and the chip has
  *       reported the expected RDID triplet ``0x9D 0x5A 0x1A``.
+ * @post On success ``s_xspi_bus_ready`` is set, so later calls short-circuit.
  *
+ * @note Not thread-safe; LevelX drives this from a single context.
  * @since 0.1.0
  */
 static UINT priv_bus_init_once(void)
