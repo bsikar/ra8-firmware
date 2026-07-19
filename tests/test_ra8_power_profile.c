@@ -20,38 +20,29 @@
 #include "unity_minimal.h"
 
 /**
- * @enum power_profile_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_pp_clock_t
+ * @brief RTC timestamps, in microseconds, driving the mock clock.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_power_profile_now_us_100 = 100U,
-  k_power_profile_now_us_200 = 200U,
-} power_profile_uint8_const_t;
-
-/**
- * @enum power_profile_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The profiler accumulates `exit - enter` per region, so each name states
+ * which edge it marks and the arms read as a timeline. The nesting arm
+ * interleaves two regions: sleep spans 100..500 (400 us) while standby spans
+ * 200..350 (150 us) inside it, proving the two accumulate independently.
  */
 typedef enum : uint16_t {
-  k_power_profile_now_us_1000 = 1000U,
-  k_power_profile_now_us_1100 = 1100U,
-  k_power_profile_now_us_1500 = 1500U,
-  k_power_profile_now_us_350  = 350U,
-  k_power_profile_now_us_500  = 500U,
-  k_power_profile_now_us_5000 = 5000U,
-  k_power_profile_now_us_5250 = 5250U,
-  k_power_profile_now_us_999  = 999U,
-} power_profile_uint16_const_t;
+  k_t_us_nest_sleep_in    = 100U,  /**< Nesting arm: outer sleep region entered. */
+  k_t_us_nest_standby_in  = 200U,  /**< Inner standby region entered.            */
+  k_t_us_nest_standby_out = 350U,  /**< Inner region exited: 150 us accumulated. */
+  k_t_us_nest_sleep_out   = 500U,  /**< Outer region exited: 400 us accumulated. */
+  k_t_us_reset_out        = 999U,  /**< Exit edge of the span that reset_stats
+                                        must discard.                            */
+  k_t_us_span_a_in        = 1000U, /**< First timed span entered; also the
+                                        enter edge of the GPIO-pulse arm.        */
+  k_t_us_span_a_out       = 1100U, /**< First span exited: 100 us.               */
+  k_t_us_pulse_out        = 1500U, /**< Exit edge of the GPIO-pulse arm.         */
+  k_t_us_span_b_in        = 5000U, /**< Second timed span entered.               */
+  k_t_us_span_b_out       = 5250U, /**< Second span exited: 250 us.              */
+} t_pp_clock_t;
 
 /* ---------------------------------------------------------------------------
  * Mock GPIO + RTC state
@@ -165,9 +156,9 @@ static void test_enter_exit_pulses_gpio(void)
   TEST_BEGIN("enter/exit pulses gpio");
   TEST_ASSERT_EQ(k_ra8_ok, init_with_mocks());
 
-  s_rtc.now_us = k_power_profile_now_us_1000;
+  s_rtc.now_us = k_t_us_span_a_in;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_power_profile_mark_enter(k_ra8_power_profile_region_active));
-  s_rtc.now_us = k_power_profile_now_us_1500;
+  s_rtc.now_us = k_t_us_pulse_out;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_power_profile_mark_exit(k_ra8_power_profile_region_active));
 
   TEST_ASSERT_EQ(2, s_gpio.count);
@@ -190,15 +181,15 @@ static void test_time_accumulation(void)
   TEST_ASSERT_EQ(k_ra8_ok, init_with_mocks());
 
   /* First pair: 100us. */
-  s_rtc.now_us = k_power_profile_now_us_1000;
+  s_rtc.now_us = k_t_us_span_a_in;
   (void)ra8_power_profile_mark_enter(k_ra8_power_profile_region_sleep);
-  s_rtc.now_us = k_power_profile_now_us_1100;
+  s_rtc.now_us = k_t_us_span_a_out;
   (void)ra8_power_profile_mark_exit(k_ra8_power_profile_region_sleep);
 
   /* Second pair: 250us. */
-  s_rtc.now_us = k_power_profile_now_us_5000;
+  s_rtc.now_us = k_t_us_span_b_in;
   (void)ra8_power_profile_mark_enter(k_ra8_power_profile_region_sleep);
-  s_rtc.now_us = k_power_profile_now_us_5250;
+  s_rtc.now_us = k_t_us_span_b_out;
   (void)ra8_power_profile_mark_exit(k_ra8_power_profile_region_sleep);
 
   ra8_power_profile_stats_t stats = {};
@@ -281,7 +272,7 @@ static void test_reset_stats_clears_accumulators(void)
 
   s_rtc.now_us = 0U;
   (void)ra8_power_profile_mark_enter(k_ra8_power_profile_region_active);
-  s_rtc.now_us = k_power_profile_now_us_999;
+  s_rtc.now_us = k_t_us_reset_out;
   (void)ra8_power_profile_mark_exit(k_ra8_power_profile_region_active);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_power_profile_reset_stats());
@@ -329,13 +320,13 @@ static void test_multiple_regions_independent(void)
   TEST_BEGIN("multiple regions independent");
   TEST_ASSERT_EQ(k_ra8_ok, init_with_mocks());
 
-  s_rtc.now_us = k_power_profile_now_us_100;
+  s_rtc.now_us = k_t_us_nest_sleep_in;
   (void)ra8_power_profile_mark_enter(k_ra8_power_profile_region_sleep);
-  s_rtc.now_us = k_power_profile_now_us_200;
+  s_rtc.now_us = k_t_us_nest_standby_in;
   (void)ra8_power_profile_mark_enter(k_ra8_power_profile_region_software_standby);
-  s_rtc.now_us = k_power_profile_now_us_350;
+  s_rtc.now_us = k_t_us_nest_standby_out;
   (void)ra8_power_profile_mark_exit(k_ra8_power_profile_region_software_standby);
-  s_rtc.now_us = k_power_profile_now_us_500;
+  s_rtc.now_us = k_t_us_nest_sleep_out;
   (void)ra8_power_profile_mark_exit(k_ra8_power_profile_region_sleep);
 
   ra8_power_profile_stats_t stats = {};
