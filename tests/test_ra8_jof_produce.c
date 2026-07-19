@@ -49,10 +49,10 @@ typedef enum : uint16_t {
  * @brief PNG byte positions the builder writes and the hostile arms corrupt.
  *
  * @details
- * `k_t_chunk_*` and `k_t_ihdr_*` are relative to a chunk or its payload;
- * `k_t_src_*` are absolute offsets into `s_src`, where IHDR always starts at
- * 16 (8 signature + 4 length + 4 type). Names ending `_b<N>` are the `N`-th
- * byte of a big-endian 32-bit field, most-significant first.
+ * `k_t_chunk_*` / `k_t_ihdr_*` are relative to a chunk or its payload;
+ * `k_t_src_*` are absolute offsets into `s_src`, where IHDR starts at 16
+ * (8 sig + 4 len + 4 type). `_b<N>` is the `N`-th byte of a big-endian
+ * 32-bit field, most-significant first.
  */
 typedef enum : uint8_t {
   k_t_be32_hi_shift     = 24U,   /**< Top-byte shift of a big-endian 32-bit field. */
@@ -61,8 +61,7 @@ typedef enum : uint8_t {
   k_t_chunk_crc_b1      = 9U,    /**< Chunk CRC byte 1, past the chunk payload.    */
   k_t_chunk_crc_b2      = 10U,   /**< Chunk CRC byte 2.                            */
   k_t_chunk_crc_b3      = 11U,   /**< Chunk CRC byte 3 (least significant).        */
-  k_t_chunk_overhead    = 12U,   /**< Bytes a chunk costs beyond its payload:
-                                     4 length + 4 type + 4 CRC.                */
+  k_t_chunk_overhead    = 12U,   /**< Chunk cost past payload: 4 len + 4 type + 4 CRC. */
   k_t_ihdr_off_h_b1     = 5U,    /**< Height byte 1 in the IHDR payload.         */
   k_t_ihdr_off_h_b3     = 7U,    /**< Height byte 3 in the IHDR payload.         */
   k_t_ihdr_off_ct       = 9U,    /**< Colour-type byte in the IHDR payload.      */
@@ -85,7 +84,7 @@ typedef enum : uint8_t {
  *
  * @details
  * The builder and the expectation side share these, so a decode mismatch is a
- * real defect rather than two drifting generators. The palette ramp is
+ * real defect rather than two drifting generators. The ramp is
  * `base + (entry_index * step)` per channel.
  */
 typedef enum : uint8_t {
@@ -98,26 +97,23 @@ typedef enum : uint8_t {
   k_t_plte_g_step   = 30U,  /**< Green increment per palette entry.                    */
   k_t_plte_b_base   = 30U,  /**< Blue of palette entry 0.                              */
   k_t_plte_b_step   = 20U,  /**< Blue increment per palette entry.                     */
-  k_t_alpha_opaque  = 255U, /**< Alpha the decoder must synthesize for palette entries past tRNS. */
+  k_t_alpha_opaque  = 255U, /**< Alpha synthesized for entries past tRNS.  */
 } t_pattern_t;
 
-/**
- * @enum t_probe_t
- * @brief Stimulus values that steer the hostile and budget-starved paths.
- */
+/** @brief Stimulus values that steer the hostile and budget-starved paths. */
 typedef enum : uint16_t {
   k_t_probe_row_step    = 37U,   /**< Row stride when spot-checking a decoded tile. */
-  k_t_probe_col_step    = 41U,   /**< Column stride; co-prime with the row stride so the
-                                      probe walks the whole tile rather than one diagonal. */
-  k_t_starved_store_cap = 64U,   /**< Memstore cap too small to hold the atlas, forcing the
-                                      sink's no-memory path.                               */
+  k_t_probe_col_step    = 41U,   /**< Column stride; co-prime with the row stride
+                                      so the probe walks the whole tile.        */
+  k_t_starved_store_cap = 64U,   /**< Memstore cap too small for the atlas, forcing
+                                      the sink's no-memory path.                */
   k_t_codec_invalid     = 9U,    /**< Codec id outside the enum; the config guard must reject it. */
   k_t_hostile_sniff_len = 34U,   /**< Length of the not-a-PNG/JPEG blob fed to the sniffer.   */
   k_t_hostile_lead_byte = 0xFFU, /**< Its leading byte: starts like a JPEG marker, then junk. */
-  k_t_ct_jpeg_ref       = 0xFFU, /**< Pseudo colour-type selecting the stb JPEG reference
-                                      instead of the synthetic pattern in expected_sample(). */
-  k_t_plte_bad_len      = 14U,   /**< PLTE length forced non-divisible by 3 to trip the
-                                      indivisible-length guard.                             */
+  k_t_ct_jpeg_ref       = 0xFFU, /**< Pseudo colour-type selecting the stb JPEG
+                                      reference over the synthetic pattern.     */
+  k_t_plte_bad_len      = 14U,   /**< PLTE length not divisible by 3, tripping the
+                                      indivisible-length guard.                 */
   k_t_kib               = 1024U, /**< Bytes per KiB, for sizing the producer work arena. */
 } t_probe_t;
 
