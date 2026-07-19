@@ -46,15 +46,6 @@
 #include "ra8_ptp.h"
 #include "ra8_time.h"
 
-/**
- * @enum ptp_time_transmitter_config_t
- * @brief Numeric configuration constants for the demo.
- *
- * @details
- * Every literal used by the bring-up path lives here so the magic-
- * number lint never sees a bare integer. The console is the on-board
- * J-Link OB CDC bridge (SCI8 / PD_02 / PD_03), owned by the BSP.
- */
 /** @brief MAC-address byte indices. */
 typedef enum : uint8_t {
   k_mac_byte_0 = 0U, /**< MAC byte 0. */
@@ -65,6 +56,15 @@ typedef enum : uint8_t {
   k_mac_byte_5 = 5U, /**< MAC byte 5. */
 } mac_byte_idx_t;
 
+/**
+ * @enum ptp_time_transmitter_config_t
+ * @brief Numeric configuration constants for the demo.
+ *
+ * @details
+ * Every literal used by the bring-up path lives here so the magic-
+ * number lint never sees a bare integer. The console is the on-board
+ * J-Link OB CDC bridge (SCI8 / PD_02 / PD_03), owned by the BSP.
+ */
 typedef enum : uint32_t {
   k_ptp_time_transmitter_baud         = 115200U, /**< J-Link OB CDC baud.           */
   k_ptp_time_transmitter_link_poll_ms = 100U,    /**< PHY BMSR poll period.         */

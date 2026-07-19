@@ -37,15 +37,15 @@
 
 static const char* s_tag = "CRC";
 
-/**
- * @enum ra8_crccr0_bit_t
- * @brief Bit positions inside CRCCR0 (HUM Ch 48.2.1 p 3181).
- */
 /** @brief Byte-3 shift for little-endian word assembly. */
 typedef enum : uint8_t {
   k_crc_shift_byte3 = 24U, /**< CRC shift byte3. */
 } crc_shift_t;
 
+/**
+ * @enum ra8_crccr0_bit_t
+ * @brief Bit positions inside CRCCR0 (HUM Ch 48.2.1 p 3181).
+ */
 typedef enum : uint8_t {
   k_ra8_crccr0_lms_shift    = 6U,       /**< CRCCR0.LMS bit position.         */
   k_ra8_crccr0_dorclr_shift = 7U,       /**< CRCCR0.DORCLR bit position.      */

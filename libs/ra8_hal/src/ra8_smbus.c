@@ -33,16 +33,16 @@
 /** @brief Log tag for this driver. */
 static const char* s_tag = "SMBUS";
 
-/**
- * @enum ra8_smbus_internal_t
- * @brief Implementation constants.
- */
 /** @brief SMBus scratch buffer sizes (max 255-byte payload + overhead). */
 typedef enum : uint16_t {
   k_smbus_frame_bytes = 258U, /**< Smbus frame bytes. */
   k_smbus_rx_bytes    = 257U, /**< Smbus RX bytes.    */
 } smbus_buf_size_t;
 
+/**
+ * @enum ra8_smbus_internal_t
+ * @brief Implementation constants.
+ */
 typedef enum : uint16_t {
   k_ra8_smbus_pec_poly     = 0x07U, /**< CRC-8 polynomial (SMBus 3.2 5.4). */
   k_ra8_smbus_pec_init     = 0x00U, /**< CRC-8 initial value.              */

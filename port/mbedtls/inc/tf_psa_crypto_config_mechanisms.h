@@ -28,13 +28,14 @@
 #pragma once
 
 /**
+ * @brief TF PSA CRYPTO CONFIG VERSION.
+ *
  * This is an optional version symbol that enables compatibility handling of
  * config files.
  *
  * It is equal to the #TF_PSA_CRYPTO_VERSION_NUMBER of the TF-PSA-Crypto
  * version introduced the config format we want to be compatible with.
  */
-/** @brief TF PSA CRYPTO CONFIG VERSION. */
 #define TF_PSA_CRYPTO_CONFIG_VERSION (0x01000000)
 
 /**
@@ -235,6 +236,8 @@
  */
 
 /**
+ * @brief MBEDTLS LMS c.
+ *
  * \def MBEDTLS_LMS_C
  *
  * Enable the LMS stateful-hash asymmetric signature algorithm.
@@ -246,7 +249,6 @@
  *
  * Uncomment to enable the LMS verification algorithm and public key operations.
  */
-/** @brief MBEDTLS LMS c. */
 #define MBEDTLS_LMS_C
 
 /**
@@ -262,6 +264,8 @@
 //#define MBEDTLS_LMS_PRIVATE
 
 /**
+ * @brief MBEDTLS MD c.
+ *
  * \def MBEDTLS_MD_C
  *
  * Enable the generic layer for message digest (hashing).
@@ -280,10 +284,11 @@
  *
  * Uncomment to enable generic message digest wrappers.
  */
-/** @brief MBEDTLS MD c. */
 #define MBEDTLS_MD_C
 
 /**
+ * @brief MBEDTLS NIST KW c.
+ *
  * \def MBEDTLS_NIST_KW_C
  *
  * Enable the 128-bit key wrapping modes from NIST SP 800-38F:
@@ -294,10 +299,11 @@
  *
  * Auto enables: PSA_WANT_ALG_ECB_NO_PADDING
  */
-/** @brief MBEDTLS NIST KW c. */
 #define MBEDTLS_NIST_KW_C
 
 /**
+ * @brief MBEDTLS PK c.
+ *
  * \def MBEDTLS_PK_C
  *
  * Enable the generic public (asymmetric) key layer.
@@ -311,10 +317,11 @@
  *
  * Uncomment to enable generic public key wrappers.
  */
-/** @brief MBEDTLS PK c. */
 #define MBEDTLS_PK_C
 
 /**
+ * @brief MBEDTLS PKCS5 c.
+ *
  * \def MBEDTLS_PKCS5_C
  *
  * Enable PKCS#5 functions.
@@ -325,10 +332,11 @@
  *
  * This module adds support for the PKCS#5 functions.
  */
-/** @brief MBEDTLS PKCS5 c. */
 #define MBEDTLS_PKCS5_C
 
 /**
+ * @brief MBEDTLS PK PARSE c.
+ *
  * \def MBEDTLS_PK_PARSE_C
  *
  * Enable the generic public (asymmetric) key parser.
@@ -339,10 +347,11 @@
  *
  * Uncomment to enable generic public key parse functions.
  */
-/** @brief MBEDTLS PK PARSE c. */
 #define MBEDTLS_PK_PARSE_C
 
 /**
+ * @brief MBEDTLS PK PARSE EC EXTENDED.
+ *
  * \def MBEDTLS_PK_PARSE_EC_EXTENDED
  *
  * Enhance support for reading EC keys using variants of SEC1 not allowed by
@@ -354,20 +363,22 @@
  *
  * Disable if you only need to support RFC 5915 + 5480 key formats.
  */
-/** @brief MBEDTLS PK PARSE EC EXTENDED. */
 #define MBEDTLS_PK_PARSE_EC_EXTENDED
 
 /**
+ * @brief MBEDTLS PK PARSE EC COMPRESSED.
+ *
  * \def MBEDTLS_PK_PARSE_EC_COMPRESSED
  *
  * Enable the support for parsing public keys of type Short Weierstrass
  * (PSA_ECC_FAMILY_SECP_XXX and PSA_ECC_FAMILY_BRAINPOOL_XXX) which are using the
  * compressed point format.
  */
-/** @brief MBEDTLS PK PARSE EC COMPRESSED. */
 #define MBEDTLS_PK_PARSE_EC_COMPRESSED
 
 /**
+ * @brief MBEDTLS PK WRITE c.
+ *
  * \def MBEDTLS_PK_WRITE_C
  *
  * Enable the generic public (asymmetric) key writer.
@@ -378,7 +389,6 @@
  *
  * Uncomment to enable generic public key write functions.
  */
-/** @brief MBEDTLS PK WRITE c. */
 #define MBEDTLS_PK_WRITE_C
 
 /** \} name SECTION: Cryptographic mechanism selection (extended API) */
@@ -391,6 +401,8 @@
  */
 
 /**
+ * @brief MBEDTLS ASN1 PARSE c.
+ *
  * \def MBEDTLS_ASN1_PARSE_C
  *
  * Enable the generic ASN1 parser.
@@ -399,10 +411,11 @@
  * Caller:  extras/pkparse.c
  *          utilities/pkcs5.c
  */
-/** @brief MBEDTLS ASN1 PARSE c. */
 #define MBEDTLS_ASN1_PARSE_C
 
 /**
+ * @brief MBEDTLS ASN1 WRITE c.
+ *
  * \def MBEDTLS_ASN1_WRITE_C
  *
  * Enable the generic ASN1 writer.
@@ -411,10 +424,11 @@
  * Caller:  drivers/builtin/src/ecdsa.c
  *          extras/pkwrite.c
  */
-/** @brief MBEDTLS ASN1 WRITE c. */
 #define MBEDTLS_ASN1_WRITE_C
 
 /**
+ * @brief MBEDTLS BASE64 c.
+ *
  * \def MBEDTLS_BASE64_C
  *
  * Enable the Base64 module.
@@ -424,10 +438,11 @@
  *
  * This module is required for PEM support (required by X.509).
  */
-/** @brief MBEDTLS BASE64 c. */
 #define MBEDTLS_BASE64_C
 
 /**
+ * @brief MBEDTLS PEM PARSE c.
+ *
  * \def MBEDTLS_PEM_PARSE_C
  *
  * Enable PEM decoding / parsing.
@@ -440,10 +455,11 @@
  *
  * This modules adds support for decoding / parsing PEM files.
  */
-/** @brief MBEDTLS PEM PARSE c. */
 #define MBEDTLS_PEM_PARSE_C
 
 /**
+ * @brief MBEDTLS PEM WRITE c.
+ *
  * \def MBEDTLS_PEM_WRITE_C
  *
  * Enable PEM encoding / writing.
@@ -455,7 +471,6 @@
  *
  * This modules adds support for encoding / writing PEM files.
  */
-/** @brief MBEDTLS PEM WRITE c. */
 #define MBEDTLS_PEM_WRITE_C
 
 /** \} name SECTION: Data format support */
@@ -468,6 +483,8 @@
  */
 
 /**
+ * @brief MBEDTLS CTR DRBG c.
+ *
  * \def MBEDTLS_CTR_DRBG_C
  *
  * Enable the CTR_DRBG AES-based random generator.
@@ -484,7 +501,6 @@
  *
  * This module provides the CTR_DRBG AES random number generator.
  */
-/** @brief MBEDTLS CTR DRBG c. */
 #define MBEDTLS_CTR_DRBG_C
 
 /**
@@ -535,6 +551,8 @@
 //#define MBEDTLS_ENTROPY_NV_SEED
 
 /**
+ * @brief MBEDTLS HMAC DRBG c.
+ *
  * \def MBEDTLS_HMAC_DRBG_C
  *
  * Enable the HMAC_DRBG random generator.
@@ -546,10 +564,11 @@
  *
  * Uncomment to enable the HMAC_DRBG random number generator.
  */
-/** @brief MBEDTLS HMAC DRBG c. */
 #define MBEDTLS_HMAC_DRBG_C
 
 /**
+ * @brief MBEDTLS PSA CRYPTO c.
+ *
  * \def MBEDTLS_PSA_CRYPTO_C
  *
  * Enable the Platform Security Architecture cryptography API.
@@ -574,7 +593,6 @@
  *
  *       A future version may reevaluate the prioritization of DRBG mechanisms.
  */
-/** @brief MBEDTLS PSA CRYPTO c. */
 #define MBEDTLS_PSA_CRYPTO_C
 
 /**
@@ -797,6 +815,8 @@
 //#define MBEDTLS_PSA_ITS_FILE_C
 
 /**
+ * @brief MBEDTLS PSA KEY STORE DYNAMIC.
+ *
  * \def MBEDTLS_PSA_KEY_STORE_DYNAMIC
  *
  * Dynamically resize the PSA key store to accommodate any number of
@@ -811,7 +831,6 @@
  * Module:  core/psa_crypto.c
  * Requires: MBEDTLS_PSA_CRYPTO_C
  */
-/** @brief MBEDTLS PSA KEY STORE DYNAMIC. */
 #define MBEDTLS_PSA_KEY_STORE_DYNAMIC
 
 /**

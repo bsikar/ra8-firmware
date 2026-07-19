@@ -269,7 +269,6 @@ static void bake_atlas(uint32_t w, uint32_t h, uint8_t codec, ra8_tileatlas_mems
  * @note Not thread-safe.
  * @since 0.1.0
  */
-/** @brief Add the hostile stored entries (corrupt atlas, sub-magic stub). */
 static void zip_add_hostile(mz_zip_archive* zip)
 {
   /* A stored entry with the atlas magic but corrupt structure. */
@@ -548,7 +547,6 @@ static void test_tile_edges(void)
  * - Vector 2: empty href  -> true via hlen == 0
  * - Vector 3: oversize href -> true via the length cap
  */
-/** @brief Drive the fail-closed import error arms (missing / deflated / caps / store / null). */
 static void import_error_arms(ra8_epub_tile_binder_t*            binder,
                               ra8_epub_book_t*                   book,
                               const ra8_epub_atlas_import_cfg_t* base)
@@ -728,7 +726,6 @@ static void test_import_passthrough(void)
  * (no compound decisions authored under test; each guard is an independent
  * single-condition check.)
  */
-/** @brief Drive the binder-add pointer / path-shape argument guards. */
 static void add_arg_guards(ra8_epub_tile_binder_t* binder, ra8_epub_book_t* book)
 {
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_tile_binder_add(nullptr, book, "big.rta", 1U));

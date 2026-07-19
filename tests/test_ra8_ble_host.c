@@ -291,12 +291,13 @@ static void test_register_service_and_char(void)
 }
 
 /**
+ * @brief Register a notify-capable service + characteristic; return the value handle.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-/** @brief Register a notify-capable service + characteristic; return the value handle. */
 static uint16_t setup_notify_char(uint8_t* buf)
 {
   prep_init(k_ra8_ble_host_role_peripheral);

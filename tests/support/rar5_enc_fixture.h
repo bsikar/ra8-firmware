@@ -350,8 +350,6 @@ decode_and_check(const uint8_t* pk, size_t pklen, const uint8_t* exp, size_t exp
  * (no compound decisions under test -- a byte-exact round-trip oracle over the
  * literal decode path, independent of the match/distance formulas.)
  */
-
-/** @brief Decode a packed buffer and return the status (no assertions). */
 static inline ra8_err_t decode_status(const uint8_t* pk, size_t pklen, uint64_t unp)
 {
   buf_src_t      src = {.data = pk, .len = pklen};

@@ -43,16 +43,6 @@
 /** @brief Module log tag. */
 static const char* s_tag = "SDCARD";
 
-/**
- * @enum ra8_sdcard_cmd_t
- * @brief SD Physical Layer command indices used by ::ra8_sdcard_init.
- *
- * @details
- * Matches the SD Physical Layer Specification v6.00, Table 4-24
- * "Card commands". Values are bare command indices; SDHI infers the
- * response type and data direction from the index for the standard
- * commands used here.
- */
 /** @brief SD CSD register field masks, shifts and block size. */
 typedef enum : uint32_t {
   k_sd_block_size_bytes  = 512U,         /**< SD logical block size.          */
@@ -70,6 +60,16 @@ typedef enum : uint32_t {
   k_sd_csize_mult_mask   = 0x7U,         /**< C_SIZE_MULT (3-bit).            */
 } sd_csd_field_t;
 
+/**
+ * @enum ra8_sdcard_cmd_t
+ * @brief SD Physical Layer command indices used by ::ra8_sdcard_init.
+ *
+ * @details
+ * Matches the SD Physical Layer Specification v6.00, Table 4-24
+ * "Card commands". Values are bare command indices; SDHI infers the
+ * response type and data direction from the index for the standard
+ * commands used here.
+ */
 typedef enum : uint8_t {
   k_ra8_sdcard_cmd0_go_idle        = 0U,  /**< CMD0  GO_IDLE_STATE      */
   k_ra8_sdcard_cmd2_all_send_cid   = 2U,  /**< CMD2  ALL_SEND_CID       */

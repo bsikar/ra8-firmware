@@ -61,16 +61,16 @@
  */
 static const char* s_tag = "RMAC";
 
-/**
- * @enum ra8_rmac_internal_t
- * @brief Driver-private constants (poll budgets, sentinel values).
- */
 /** @brief RMAC field constants. */
 typedef enum : uint32_t {
   k_rmac_pipp_pos   = 9U,    /**< PIPP (in-pause) bit position.  */
   k_rmac_pfrlv_mask = 0x1FU, /**< 5-bit pause-frame retry level. */
 } rmac_field_t;
 
+/**
+ * @enum ra8_rmac_internal_t
+ * @brief Driver-private constants (poll budgets, sentinel values).
+ */
 typedef enum : uint32_t {
   k_ra8_rmac_mdio_poll_budget = 100000UL, /**< Bounded MDIO poll loop. */
 } ra8_rmac_internal_t;

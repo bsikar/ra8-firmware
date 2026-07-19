@@ -35,6 +35,8 @@
  */
 
 /**
+ * @brief MBEDTLS AESNI c.
+ *
  * \def MBEDTLS_AESNI_C
  *
  * Enable AES-NI support on x86-64 or x86-32.
@@ -64,10 +66,11 @@
  *
  * This modules adds support for the AES-NI instructions on x86.
  */
-/** @brief MBEDTLS AESNI c. */
 #define MBEDTLS_AESNI_C
 
 /**
+ * @brief MBEDTLS AESCE c.
+ *
  * \def MBEDTLS_AESCE_C
  *
  * Enable AES cryptographic extension support on Armv8.
@@ -91,7 +94,6 @@
  *
  * This module adds support for the AES Armv8-A Cryptographic Extensions on Armv8 systems.
  */
-/** @brief MBEDTLS AESCE c. */
 #define MBEDTLS_AESCE_C
 
 /**
@@ -202,6 +204,8 @@
 //#define MBEDTLS_ECDH_VARIANT_EVEREST_ENABLED
 
 /**
+ * @brief MBEDTLS ECP NIST OPTIM.
+ *
  * \def MBEDTLS_ECP_NIST_OPTIM
  *
  * Enable specific 'modulo p' routines for each NIST prime.
@@ -210,7 +214,6 @@
  *
  * Comment this macro to disable NIST curves optimisation.
  */
-/** @brief MBEDTLS ECP NIST OPTIM. */
 #define MBEDTLS_ECP_NIST_OPTIM
 
 /**
