@@ -396,9 +396,14 @@ tools_pass_args() {
   # Homebrew installs unicorn/capstone outside the default search path and
   # ships no .pc on some formulae versions; add its include root when present.
   [[ -d /opt/homebrew/include ]] && printf -- '--extra-arg=-I/opt/homebrew/include\n'
+  # _GNU_SOURCE mirrors tools/media_dl/CMakeLists.txt: mdl_export.c uses
+  # posix_spawn_file_actions_addchdir_np() and `environ`, which glibc gates
+  # behind it. Without it here the TU degrades to clang-diagnostic-error and
+  # is never actually linted.
+  #
   # CMAKE_C_EXTENSIONS is ON for every tool (board_sim) or -std=gnu23 is set
   # explicitly (the Makefile tools), so lint them as GNU C23 too.
-  printf '%s\n' '--' 'cc' '-std=gnu2x'
+  printf '%s\n' '--' 'cc' '-std=gnu2x' '-D_GNU_SOURCE'
 }
 
 # ---------------------------------------------------------------------------

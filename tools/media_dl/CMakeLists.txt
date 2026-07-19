@@ -75,7 +75,11 @@ target_include_directories(media_dl PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
   ${MDL_JOF_INC})
 
+# _GNU_SOURCE: mdl_export.c uses posix_spawn_file_actions_addchdir_np() and
+# `environ`, both of which glibc gates behind it. It must be set on the compile
+# line, not in the source, so it precedes every system header.
 target_compile_definitions(media_dl PRIVATE
+  _GNU_SOURCE
   RA8_SIMULATOR_MODE
   MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}")
 target_compile_options(media_dl PRIVATE -Wall -Wextra)
@@ -100,6 +104,7 @@ target_include_directories(test_media_dl PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
   ${MDL_JOF_INC})
 target_compile_definitions(test_media_dl PRIVATE
+  _GNU_SOURCE
   RA8_SIMULATOR_MODE
   MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}")
 target_compile_options(test_media_dl PRIVATE -Wall -Wextra)
