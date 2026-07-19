@@ -298,7 +298,7 @@ lays out like this. Header words, in order:
 |-------|-----|-------|---------|
 | 0-3 | `4E 50 55 31` | `magic` | `0x3155504E` -- ASCII column reads **`NPU1`**, forwards |
 | 4-7 | `01 00 00 00` | `version` | **1** |
-| 8-11 | `00 40 12 00` | `total_bytes` | `0x124000` = **1 195 936** bytes |
+| 8-11 | `00 40 12 00` | `total_bytes` | `0x124000` = **1 196 032** bytes |
 | 12-15 | `02 00 00 00` | `region_count` | **2** |
 | 16-19 | `60 00 00 00` | `cmd_offset` | `0x60` = **96** |
 | 20-23 | `20 03 00 00` | `cmd_bytes` | `0x320` = **800** |
