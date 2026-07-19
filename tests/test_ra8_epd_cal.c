@@ -48,6 +48,8 @@ typedef enum : uint16_t {
   k_ec_high_mv    = 4001U,   /**< One above the window.                   */
   k_ec_blank_mv   = 0xFFFFU, /**< Blank-flash / failed-read signature.    */
   k_ec_blob       = 32U,     /**< Mirrors ::k_ra8_epd_cal_blob_size.      */
+  k_ec_magic_bytes = 4U,     /**< Magic length, for the MC/DC sweep.      */
+  k_ec_magic_flip  = 0xFFU,  /**< XOR mask that guarantees a mismatch.    */
   k_ec_bad_schema = 99U,     /**< Schema version from a future writer.    */
 } epd_cal_test_const_t;
 
@@ -735,6 +737,60 @@ static void test_store_read_fault(void)
   TEST_END("epd_cal: store read fault falls through");
 }
 
+/**
+ * @test epd_cal_magic_mcdc
+ *
+ * @par MC/DC:
+ * Decision libs/ra8_epd_cal/src/ra8_epd_cal.c@internal_ra8_epd_cal_magic_ok:
+ * ``return (m[0] == 'E') && (m[1] == 'V') && (m[2] == 'C') && (m[3] == 'M')``
+ * (4 conditions, ``&&`` short-circuit chain).
+ *
+ * Per DO-178C 6.4.4.3 a 4-condition decision requires N+1 = 5 vectors:
+ * - Vector 1: 'E','V','C','M' -> true  (control: every condition true)
+ * - Vector 2: 'X','V','C','M' -> false (varies byte 0 only)
+ * - Vector 3: 'E','X','C','M' -> false (varies byte 1 only)
+ * - Vector 4: 'E','V','X','M' -> false (varies byte 2 only)
+ * - Vector 5: 'E','V','C','X' -> false (varies byte 3 only)
+ * Pairing vector 1 with each of 2..5 proves that byte independently
+ * affects the outcome. A short-circuit chain makes this the only shape
+ * that reaches the later conditions at all: byte k is evaluated only when
+ * bytes 0..k-1 matched, so the control vector is load-bearing.
+ *
+ * @details
+ * Why a whole-magic check earns vectors rather than a single "bad magic"
+ * case: the magic is what separates never-provisioned storage
+ * (``k_ra8_err_not_found``, resolve falls through) from a corrupted
+ * record. A chain that stopped comparing after byte 0 would accept
+ * 'E' + garbage as a record, and the resolver would then trust a
+ * CRC-checked field out of a blob no writer of ours produced.
+ */
+static void test_magic_mcdc(void)
+{
+  TEST_BEGIN("epd_cal MC/DC: record magic 4-condition chain");
+  ec_reset();
+  const ra8_epd_cal_record_t rec = {.vcom_mv        = (uint16_t)k_ec_good_mv,
+                                    .schema_version = (uint8_t)k_ra8_epd_cal_schema_version};
+  uint8_t                    good[k_ec_blob] = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_serialize(&rec, good, sizeof(good)));
+
+  ra8_epd_cal_record_t out = {};
+  /* Vector 1 -- every magic byte matches, so the record parses. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_deserialize(good, sizeof(good), &out));
+  TEST_ASSERT_EQ(k_ec_good_mv, out.vcom_mv);
+
+  /* Vectors 2..5 -- corrupt exactly one magic byte at a time. Each is
+   * reported as "not found" rather than as corruption: a blob that is not
+   * ours is indistinguishable from unwritten storage, and treating it as
+   * an error would make every unprovisioned boot log a fault. */
+  for (size_t i = 0U; i < (size_t)k_ec_magic_bytes; i++) {
+    uint8_t bad[k_ec_blob] = {};
+    (void)memcpy(bad, good, sizeof(bad));
+    bad[(size_t)k_ra8_epd_cal_off_magic + i] ^= (uint8_t)k_ec_magic_flip;
+    TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_epd_cal_deserialize(bad, sizeof(bad), &out));
+  }
+  TEST_END("epd_cal MC/DC: record magic 4-condition chain");
+}
+
 int main(void)
 {
   test_record_roundtrip();
@@ -752,5 +808,6 @@ int main(void)
   test_provision_roundtrip();
   test_provision_refusals();
   test_store_read_fault();
+  test_magic_mcdc();
   return 0;
 }

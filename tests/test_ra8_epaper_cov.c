@@ -79,6 +79,8 @@ typedef enum : uint32_t {
   k_cov_rx_nz        = 0x5AU,   /**< Mock rx byte yielding non-zero. */
   k_cov_rx_busy      = 0xABU,   /**< Mock rx byte for a busy LUT.    */
   k_cov_word_nz      = 0x5A5AU, /**< Word rebuilt from k_cov_rx_nz.  */
+  k_cov_rx_dim       = 0x01U,   /**< Rx byte giving a legal geometry. */
+  k_cov_dev_dim      = 0x0101U, /**< Word rebuilt from k_cov_rx_dim. */
   k_cov_reg_addr     = 0x0208U, /**< Arbitrary register address.     */
   k_cov_reg_val      = 0x1234U, /**< Arbitrary register value.       */
   k_cov_fail_1       = 1U,      /**< First transfer of a helper.     */
@@ -929,6 +931,7 @@ int32_t main(void)
   test_write_cmd_data_read_legs();
   test_reg_write_read_legs();
   test_read_dev_info_legs();
+  test_init_geometry_crosscheck_mcdc();
   test_load_display_args_legs();
   test_stream_pixels_even_odd();
   test_init_ladder_legs();
