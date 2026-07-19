@@ -785,9 +785,6 @@ static void test_mcdc_run_cfg_out_null_or(void)
 }
 
 /**
- * @brief Test driver.
- */
-/**
  * @test test_mcdc_apply_run_screen_dim_pair
  *
  * @par MC/DC:
@@ -838,6 +835,9 @@ static void test_mcdc_apply_run_screen_dim_pair(void)
   TEST_END("touch_cal MC/DC: apply+run screen_height==0 (C2 of OR)");
 }
 
+/**
+ * @brief Test driver.
+ */
 int main(void)
 {
   test_compute_three_point();

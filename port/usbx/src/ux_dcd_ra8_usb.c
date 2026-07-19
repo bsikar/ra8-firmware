@@ -303,25 +303,6 @@ typedef enum : uint8_t {
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief Ux dcd ra usb initialize.
- *
- * @details See implementation for details.
- *
- * @param[in,out] speed See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialized.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
-/**
  * @brief Resolve the USB controller's NVIC slot for the storm guard.
  *
  * @details Looks up the NVIC slot the controller's ELC event was routed to

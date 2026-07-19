@@ -397,28 +397,6 @@ const uint32_t g_ra8_board_glcdc_rgb565_pin_count =
   sizeof(g_ra8_board_glcdc_rgb565_pins) / sizeof(g_ra8_board_glcdc_rgb565_pins[0]);
 
 /**
- * @brief Test whether a J1 signal name corresponds to a GLCDC output.
- *
- * @details J1 connector pin table contains GLCDC outputs (TCONx, CLK,
- * R/G/B data lines) mixed with GPIO/I2C/clock-input control signals
- * (BLEN, RST, INT, SDA1, SCL1, EXTCLK).  Only the GLCDC outputs
- * should be routed via PSEL=glcdc and switched to output direction.
- *
- * @param[in] signal Human-readable signal name from the pin table.
- *
- * @return ``true`` for TCONx / CLK / R[0-9]* / G[0-9]* / B[0-9]*.
- * @retval true  Signal is a GLCDC peripheral output.
- * @retval false Signal is GPIO/I2C/clock-input.
- *
- * @pre ``signal`` is non-null and NUL-terminated.
- * @pre Signal names follow the EK-RA8D2 UM Table 33 conventions.
- * @post No side effects; pure inspection.
- * @post Return value is one of {true, false}.
- *
- * @note Single-threaded init-time helper.
- * @since 0.1.0
- */
-/**
  * @brief Check whether a NUL-terminated string starts with `prefix`.
  *
  * @details Bounded to the longest prefix this BSP needs ("TCON",

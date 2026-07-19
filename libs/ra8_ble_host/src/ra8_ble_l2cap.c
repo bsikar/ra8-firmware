@@ -244,42 +244,6 @@ ra8_err_t ra8_ble_host_l2cap_send(uint16_t       conn_handle,
  */
 
 /**
- * @brief Bottom-half of the HCI ACL data path: reassemble L2CAP
- *        frames and dispatch them to the right channel handler.
- *
- * @details
- * Called from the per-host HCI ACL callback. The 4-byte ACL header
- * has already been stripped by the controller driver, so what we
- * see in ``payload`` is the L2CAP B-frame -- but possibly only the
- * first fragment.
- *
- * Reassembly state machine:
- *   - First-fragment frames (PB == 0b00 or 0b10, signalled by
- *     payload starting with a fresh L2CAP header where length matches
- *     payload_len-4) are dispatched immediately if complete, else
- *     buffered.
- *   - Continuation frames (caller passes is_continuation = 1)
- *     append to the reassembly buffer.
- *
- * For simplicity, ra8_ble_host_acl_in() in this file conflates
- * first-fragment and continuation by inspecting whether we already
- * have a partial frame buffered. That is safe for the LE-U-only
- * scope.
- *
- * @param[in] conn_handle Connection handle (12 bits).
- * @param[in] payload     ACL data payload bytes.
- * @param[in] len         Byte count.
- *
- * @pre payload != NULL or len == 0.
- * @pre Stack is initialized (otherwise the function early-returns).
- * @post Inbound complete L2CAP frames have been dispatched to ATT.
- * @post Reassembly state may have advanced or reset.
- *
- * @note Not thread-safe; called from the HCI ACL trampoline only.
- *
- * @since 0.1.0
- */
-/**
  * @brief Append a continuation fragment to the reassembly buffer.
  *
  * @details Implements the continuation leg of the Vol 3 Part A 7.2.1

@@ -583,10 +583,6 @@ static void test_row_break_c2_false_mcdc(void)
 }
 
 /**
- * @brief Test entry point.
- * @return 0 on success; unity macros exit(1) on the first failure.
- */
-/**
  * @test test_is_row_start_nonrow_tokens_mcdc
  *
  * @par MC/DC:

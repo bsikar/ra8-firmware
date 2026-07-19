@@ -323,27 +323,6 @@ static unsigned int internal_transfer_request(struct UX_TRANSFER_STRUCT* tr)
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief  ux hcd ra usb function.
- *
- * @details See implementation for details.
- *
- * @param[in,out] hcd See function signature for type and usage.
- * @param[in,out] function See function signature for type and usage.
- * @param[in,out] parameter See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialized.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
-/**
  * @brief Pulse the root-hub port reset (assert then deassert).
  *
  * @details USBX leaves the spec-required 10 ms hold between the assert

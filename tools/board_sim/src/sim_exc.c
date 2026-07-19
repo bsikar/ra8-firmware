@@ -641,35 +641,6 @@ on_unmapped(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t va
 }
 
 /**
- * @brief UC_HOOK_INTR handler: take the SVCall exception on an `svc` opcode.
- *
- * @details
- * Unicorn raises UC_HOOK_INTR when the firmware executes the Thumb `svc`
- * instruction but, lacking an exception unit, does not vector it. This models
- * SVCall (#11): the basic frame is stacked and the core vectors to SVC_Handler
- * via ::exc_enter, then emulation is stopped so the chunked run loop relaunches
- * cleanly from the handler entry (editing PC mid-block and continuing corrupts
- * Unicorn's block/Thumb state -- the same stop-then-relaunch contract the touch
- * and conditional-select stubs use). ThreadX in single-mode never issues an
- * SVC, but bare-metal / future RTOS paths that start the first thread via `svc`
- * are handled correctly here. PRIMASK does not mask SVCall (it is synchronous),
- * matching hardware.
- *
- * @param[in,out] uc        Unicorn engine.
- * @param[in]     int_no    Interrupt/exception number reported by Unicorn.
- * @param[in]     user_data Hook user pointer (unused; signature fixed by Unicorn).
- * @return Nothing.
- *
- * @pre @p uc has just executed an `svc` instruction or branched to EXC_RETURN.
- * @pre The vector table (at VTOR or the MRAM fallback) holds SVC_Handler.
- * @post Either an exception was taken/returned (PC updated) or, on a missing
- *       SVC handler, the core is left untouched.
- * @post Emulation is stopped so the run loop resumes from the new PC.
- * @note Only the SVC interrupt class is acted on; other int_no values are
- *       ignored so unrelated traps fall through.
- * @since 0.1.0
- */
-/**
  * @brief Model the Armv8-M Security-Extension opcodes Unicorn's M33 lacks.
  *
  * @details
@@ -745,6 +716,35 @@ static bool on_intr_bkpt(uc_engine* uc, uint32_t pc, uint32_t insn)
   return false;
 }
 
+/**
+ * @brief UC_HOOK_INTR handler: take the SVCall exception on an `svc` opcode.
+ *
+ * @details
+ * Unicorn raises UC_HOOK_INTR when the firmware executes the Thumb `svc`
+ * instruction but, lacking an exception unit, does not vector it. This models
+ * SVCall (#11): the basic frame is stacked and the core vectors to SVC_Handler
+ * via ::exc_enter, then emulation is stopped so the chunked run loop relaunches
+ * cleanly from the handler entry (editing PC mid-block and continuing corrupts
+ * Unicorn's block/Thumb state -- the same stop-then-relaunch contract the touch
+ * and conditional-select stubs use). ThreadX in single-mode never issues an
+ * SVC, but bare-metal / future RTOS paths that start the first thread via `svc`
+ * are handled correctly here. PRIMASK does not mask SVCall (it is synchronous),
+ * matching hardware.
+ *
+ * @param[in,out] uc        Unicorn engine.
+ * @param[in]     int_no    Interrupt/exception number reported by Unicorn.
+ * @param[in]     user_data Hook user pointer (unused; signature fixed by Unicorn).
+ * @return Nothing.
+ *
+ * @pre @p uc has just executed an `svc` instruction or branched to EXC_RETURN.
+ * @pre The vector table (at VTOR or the MRAM fallback) holds SVC_Handler.
+ * @post Either an exception was taken/returned (PC updated) or, on a missing
+ *       SVC handler, the core is left untouched.
+ * @post Emulation is stopped so the run loop resumes from the new PC.
+ * @note Only the SVC interrupt class is acted on; other int_no values are
+ *       ignored so unrelated traps fall through.
+ * @since 0.1.0
+ */
 static void on_intr(uc_engine* uc, uint32_t int_no, void* user_data)
 {
   (void)int_no;

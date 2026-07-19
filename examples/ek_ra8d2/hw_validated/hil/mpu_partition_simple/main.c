@@ -53,7 +53,6 @@
 #include "ra8_mpu.h"
 #include "ra8_time.h"
 
-/** @brief Region geometry. */
 /** @brief Thumb-2 first-halfword decode constants. */
 typedef enum : uint16_t {
   k_thumb_hi5_shift     = 11U,   /**< Shift to the top 5 bits of the halfword.      */

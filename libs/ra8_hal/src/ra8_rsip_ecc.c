@@ -78,6 +78,19 @@ static const char* s_tag = "RSIP";
 #if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
 
 /**
+ * @enum ra8_rsip_curve_bytes_t
+ * @brief Per-curve scalar / coordinate byte lengths (FIPS 186-4 / RFC 7748).
+ */
+typedef enum : uint32_t {
+  k_ra8_rsip_curve_bytes_192 = 24U, /**< 192-bit curves: secp192r1.             */
+  k_ra8_rsip_curve_bytes_224 = 28U, /**< 224-bit curves: secp224r1.             */
+  k_ra8_rsip_curve_bytes_256 = 32U, /**< 256-bit curves: secp256*, ed25519.     */
+  k_ra8_rsip_curve_bytes_384 = 48U, /**< 384-bit curves: secp384r1, brain384r1. */
+  k_ra8_rsip_curve_bytes_512 = 64U, /**< 512-bit curves: brain512r1.            */
+  k_ra8_rsip_curve_bytes_521 = 66U, /**< 521-bit curves: secp521r1.             */
+} ra8_rsip_curve_bytes_t;
+
+/**
  * @brief Map a curve to its scalar / coordinate byte length.
  *
  * @param[in] curve Curve selector.
@@ -93,20 +106,6 @@ static const char* s_tag = "RSIP";
  * @note Internal helper.
  * @since 0.1.0
  */
-/**
- * @enum ra8_rsip_curve_bytes_t
- * @brief Per-curve scalar / coordinate byte lengths (FIPS 186-4 / RFC 7748).
- */
-typedef enum : uint32_t {
-  k_ra8_rsip_curve_bytes_192 = 24U, /**< 192-bit curves: secp192r1.             */
-  k_ra8_rsip_curve_bytes_224 = 28U, /**< 224-bit curves: secp224r1.             */
-  k_ra8_rsip_curve_bytes_256 = 32U, /**< 256-bit curves: secp256*, ed25519.     */
-  k_ra8_rsip_curve_bytes_384 = 48U, /**< 384-bit curves: secp384r1, brain384r1. */
-  k_ra8_rsip_curve_bytes_512 = 64U, /**< 512-bit curves: brain512r1.            */
-  k_ra8_rsip_curve_bytes_521 = 66U, /**< 521-bit curves: secp521r1.             */
-} ra8_rsip_curve_bytes_t;
-
-/* internal curve bytes -- see surrounding code and HUM citations. */
 RA8_INTERNAL
 static uint32_t internal_curve_bytes(ra8_rsip_curve_t curve)
 {

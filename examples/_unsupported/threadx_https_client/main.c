@@ -148,7 +148,6 @@ typedef enum : uint8_t {
   k_demo_mac_lsw_shift_b5 = 0U,  /**< Demo MAC lsw shift b5. */
 } demo_mac_word_shift_t;
 
-/** @brief Locally-administered unicast MAC for this board. */
 /** @brief Demo IPv4 addresses (board, gateway, host) as octet enums. */
 typedef enum : uint16_t {
   k_demo_ipaddr_0  = 192U, /**< 192.168.1.42 board.                 */

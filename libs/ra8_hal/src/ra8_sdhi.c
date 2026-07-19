@@ -442,21 +442,6 @@ typedef enum : uint32_t {
  *
  * @return ``k_ra8_ok`` on RSPEND, ``k_ra8_err_hw_timeout`` otherwise.
  */
-/**
- * @brief Internal helper.
- * @details See implementation.
- * @param[in] reg See implementation.
- * @param[in] cmd See implementation.
- * @param[in] arg See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
 RA8_INTERNAL
 static ra8_err_t internal_sdhi_send(volatile r_sdhi_regs_t* reg, uint32_t cmd, uint32_t arg)
 {
@@ -492,18 +477,6 @@ static ra8_err_t internal_sdhi_send(volatile r_sdhi_regs_t* reg, uint32_t cmd, u
  * SD_STOP must be cleared. SD_SIZE is always 512 bytes for SD card
  * sector access.
  */
-/**
- * @brief Internal helper.
- * @details See implementation.
- * @param[in] reg See implementation.
- * @param[in] block_count See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
 RA8_INTERNAL
 static void internal_sdhi_setup_xfer(volatile r_sdhi_regs_t* reg, uint32_t block_count)
 {
@@ -528,21 +501,6 @@ static void internal_sdhi_setup_xfer(volatile r_sdhi_regs_t* reg, uint32_t block
  * ``k_ra8_err_hw_timeout`` if the BRE flag never asserts inside the
  * ``k_ra8_sdhi_fifo_spin`` budget. The split into a helper keeps
  * ::ra8_sdhi_read_block under the NASA Rule 4 (60 statements) limit.
- */
-/**
- * @brief Internal helper.
- * @details See implementation.
- * @param[in] reg See implementation.
- * @param[in] buf See implementation.
- * @param[in] words See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
  */
 RA8_INTERNAL
 static ra8_err_t internal_sdhi_drain(volatile r_sdhi_regs_t* reg, uint8_t* buf, uint32_t words)
@@ -585,21 +543,6 @@ static ra8_err_t internal_sdhi_drain(volatile r_sdhi_regs_t* reg, uint8_t* buf, 
  * ::internal_sdhi_drain, also factored out to keep
  * ::ra8_sdhi_write_block under the NASA Rule 4 limit.
  */
-/**
- * @brief Internal helper.
- * @details See implementation.
- * @param[in] reg See implementation.
- * @param[in] buf See implementation.
- * @param[in] words See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
 RA8_INTERNAL
 static ra8_err_t internal_sdhi_fill(volatile r_sdhi_regs_t* reg, const uint8_t* buf, uint32_t words)
 {
@@ -639,20 +582,6 @@ static ra8_err_t internal_sdhi_fill(volatile r_sdhi_regs_t* reg, const uint8_t* 
  * r_sdhi.c, then zeroes SD_INFO1 / SD_INFO2 so the next caller
  * sees a clean slate. Factored out so the public read/write helpers
  * stay under the NASA Rule 4 statement limit.
- */
-/**
- * @brief Internal helper.
- * @details See implementation.
- * @param[in] reg See implementation.
- * @param[in] block_count See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
  */
 RA8_INTERNAL
 static ra8_err_t internal_sdhi_finish_xfer(volatile r_sdhi_regs_t* reg, uint32_t block_count)

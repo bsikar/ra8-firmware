@@ -184,23 +184,6 @@ static unsigned int internal_endpoint_stall(struct UX_SLAVE_ENDPOINT_STRUCT* ep)
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief USBX DCD function dispatcher. Stamps into
- *        ``UX_SLAVE_DCD::ux_slave_dcd_function`` during init.
- *
- * @details See implementation for details.
- * @param[in,out] dcd See function signature.
- * @param[in,out] function See function signature.
- * @param[in,out] parameter See function signature.
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- * @pre Module has been initialized.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-/**
  * @brief Drop the bridge's per-pipe transfer stash for a destroyed endpoint.
  *
  * @details USBX calls ``UX_DCD_DESTROY_ENDPOINT`` when a class driver
@@ -237,6 +220,35 @@ static unsigned int internal_endpoint_destroy(struct UX_SLAVE_ENDPOINT_STRUCT* e
 }
 
 /**
+ * @brief Count UX_DCD_CHANGE_STATE notifications by target state.
+ *
+ * @details Diagnostic brackets around the chapter-9 configuration
+ * walk: the stack notifies ATTACHED during teardown and CONFIGURED at
+ * the end, so the counter pair shows how far configuration processing
+ * ran (read via JLink alongside ::s_diag).
+ *
+ * @param[in] state The UX device state being announced.
+ *
+ * @pre Called from the DCD function dispatcher only.
+ * @pre ::s_diag is single-writer per counter.
+ * @post The matching counter is incremented (others untouched).
+ * @post No other state changes.
+ *
+ * @note Diagnostic only; never read by production code.
+ * @since 0.1.0
+ */
+static void internal_count_change_state(unsigned long state)
+{
+  if (state == (unsigned long)UX_DEVICE_ATTACHED) {
+    s_diag.chg_state_attached++;
+  }
+  if (state == (unsigned long)UX_DEVICE_CONFIGURED) {
+    s_diag.chg_state_configured++;
+  }
+}
+
+unsigned int
+/**
  * @brief USBX device-side DCD function dispatcher.
  *
  * @details Stamped into ``UX_SLAVE_DCD::ux_slave_dcd_function`` during
@@ -268,35 +280,6 @@ static unsigned int internal_endpoint_destroy(struct UX_SLAVE_ENDPOINT_STRUCT* e
  * @note Runs on the USBX device task context; not ISR-safe.
  * @since 0.1.0
  */
-/**
- * @brief Count UX_DCD_CHANGE_STATE notifications by target state.
- *
- * @details Diagnostic brackets around the chapter-9 configuration
- * walk: the stack notifies ATTACHED during teardown and CONFIGURED at
- * the end, so the counter pair shows how far configuration processing
- * ran (read via JLink alongside ::s_diag).
- *
- * @param[in] state The UX device state being announced.
- *
- * @pre Called from the DCD function dispatcher only.
- * @pre ::s_diag is single-writer per counter.
- * @post The matching counter is incremented (others untouched).
- * @post No other state changes.
- *
- * @note Diagnostic only; never read by production code.
- * @since 0.1.0
- */
-static void internal_count_change_state(unsigned long state)
-{
-  if (state == (unsigned long)UX_DEVICE_ATTACHED) {
-    s_diag.chg_state_attached++;
-  }
-  if (state == (unsigned long)UX_DEVICE_CONFIGURED) {
-    s_diag.chg_state_configured++;
-  }
-}
-
-unsigned int
 _ux_dcd_ra8_usb_function(struct UX_SLAVE_DCD_STRUCT* dcd, unsigned int function, void* parameter)
 {
   (void)dcd;

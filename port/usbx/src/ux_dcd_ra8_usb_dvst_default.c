@@ -327,42 +327,6 @@ typedef enum : uint16_t {
 } ra8_usb_dcpctr_bits_t;
 
 /**
- * @brief Decode INTSTS0.DVSQ and propagate the device-state change
- *        into USBX's device-state machine.
- *
- * @details
- * Called from ``ux_dcd_ra8_usb_irq`` when ``INTSTS0.DVST`` (bit 12,
- * HUM Ch 36.2.14, p.1620) is asserted. The DVSQ[3:0] field
- * (mask ``k_ra8_intsts0_mask_dvsq``, HUM Ch 36.2.14, p.1621) encodes
- * the controller's current bus state. We translate to USBX's
- * ``UX_DEVICE_*`` state constants and update both
- * ``_ux_system_slave->ux_system_slave_device.ux_slave_device_state``
- * and the application-installed ``ux_system_slave_change_function``
- * callback so class drivers (CDC, HID, MSC) observe bus reset, address
- * assignment and suspend/resume.
- *
- * On every Default-state transition this handler also invokes
- * ::ra8_usb_device_busreset_rearm to re-default DCPCFG / DCPMAXP /
- * DCPCTR / PIPECTR / INTENB0 so the IP can latch the host's next
- * SETUP token (FSP `usb_pstd_busreset` parity).
- *
- * @param[in] speed   Which controller block fired the DVST event.
- * @param[in] intsts0 Snapshot of INTSTS0 captured by ``ra8_usb_dispatch``.
- *
- * @pre Bridge is past ``ux_dcd_ra8_usb_initialize``.
- * @pre Caller has already W0C-acked the DVST bit in INTSTS0.
- *
- * @post ``ux_slave_device_state`` reflects the new bus state when
- *       ``_ux_system_slave`` is bound.
- * @post ::s_dvst_state_history records the decoded DVSQ slot.
- * @post On Default-state entry, DCP is re-armed and
- *       ::s_busreset_rearm_count incremented.
- *
- * @note Runs in IRQ-callback context.
- *
- * @since 0.1.0
- */
-/**
  * @brief Capture the persistent SETUP mirror into the JLink-readable probe.
  *
  * @details The HS SIE auto-clears INTSTS0.VALID (HUM Ch 37.2.18 p 2081)

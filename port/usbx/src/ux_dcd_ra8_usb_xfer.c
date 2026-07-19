@@ -76,22 +76,6 @@ uint8_t internal_ep_to_pipe(uint8_t ep_addr)
 }
 
 /**
- * @brief Dispatch an OUT or IN bulk/interrupt transfer to ra8_usb.
- *
- * @param[in,out] tr USBX transfer request.
- *
- * @return UX_SUCCESS on enqueue, UX_TRANSFER_ERROR on rejection.
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialized.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-/**
  * @brief Drive an EP0 / DCP control transfer (data or status stage).
  *
  * @details Split the IN-data and zero-length status paths apart so the

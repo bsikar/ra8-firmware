@@ -178,29 +178,6 @@ enum : uint32_t {
 static uc_hook s_lsh_hooks[k_lsh_sites_max];
 
 /**
- * @brief Scan the loaded image and install a hook at every immediate long-shift.
- *
- * @details
- * Walks the ELF32 PT_LOAD program headers, and for each executable segment scans
- * its bytes on 2-byte boundaries for the long-shift encoding (::long_shift_decode).
- * A targeted UC_HOOK_CODE is installed at each site's VMA so ::on_long_shift can
- * emulate it. Matches use the segment's VMA (p_vaddr), so a `.sram_text` ramfunc
- * region is hooked at its execution address even though it is not yet copied at
- * install time. A scan false-positive (a halfword pair inside data or mid-
- * instruction that happens to match) is harmless: the core never starts execution
- * there, so the hook never fires. Zero hooks -- hence zero steady-state cost --
- * for firmware that contains no long shifts.
- *
- * @param[in,out] uc  Unicorn engine to install the hooks on.
- * @param[in]     elf In-memory ELF image (still alive at call time).
- * @param[in]     len Length of @p elf in bytes.
- * @return Nothing.
- * @pre @p elf is a 32-bit ARM ELF (already validated by load_elf).
- * @post One UC_HOOK_CODE per long-shift site (up to ::k_lsh_sites_max) is armed.
- * @note Not thread-safe; call once during setup before the run loop.
- * @since 0.1.0
- */
-/**
  * @brief Scan one executable segment for long-shift sites, arming a hook each.
  *
  * @param[in]     uc       Engine to arm hooks on.
@@ -242,6 +219,29 @@ static bool install_seg_hooks(uc_engine*     uc,
   return true;
 }
 
+/**
+ * @brief Scan the loaded image and install a hook at every immediate long-shift.
+ *
+ * @details
+ * Walks the ELF32 PT_LOAD program headers, and for each executable segment scans
+ * its bytes on 2-byte boundaries for the long-shift encoding (::long_shift_decode).
+ * A targeted UC_HOOK_CODE is installed at each site's VMA so ::on_long_shift can
+ * emulate it. Matches use the segment's VMA (p_vaddr), so a `.sram_text` ramfunc
+ * region is hooked at its execution address even though it is not yet copied at
+ * install time. A scan false-positive (a halfword pair inside data or mid-
+ * instruction that happens to match) is harmless: the core never starts execution
+ * there, so the hook never fires. Zero hooks -- hence zero steady-state cost --
+ * for firmware that contains no long shifts.
+ *
+ * @param[in,out] uc  Unicorn engine to install the hooks on.
+ * @param[in]     elf In-memory ELF image (still alive at call time).
+ * @param[in]     len Length of @p elf in bytes.
+ * @return Nothing.
+ * @pre @p elf is a 32-bit ARM ELF (already validated by load_elf).
+ * @post One UC_HOOK_CODE per long-shift site (up to ::k_lsh_sites_max) is armed.
+ * @note Not thread-safe; call once during setup before the run loop.
+ * @since 0.1.0
+ */
 void long_shift_seam_install(uc_engine* uc, const uint8_t* elf, long len)
 {
   if ((elf == nullptr) || (len < (long)k_elf_ehdr_size)) {

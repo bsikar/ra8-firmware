@@ -413,29 +413,6 @@ static void internal_handle_find_info(uint16_t conn_handle, const uint8_t* pdu, 
 }
 
 /**
- * @brief Handle ATT Read_By_Type_Request (Vol 3 Part F 3.4.4.1).
- *
- * @details
- * Used by clients during service discovery to read characteristic
- * declarations. We support the 16-bit-UUID short form (request length
- * 7 bytes including opcode) only -- iOS / Android Bluetooth stacks
- * always issue this form for the 0x2803 ("Characteristic") UUID.
- *
- * @param[in] conn_handle ACL handle.
- * @param[in] pdu         Inbound PDU bytes (already past the opcode).
- * @param[in] len         Bytes after the opcode.
- *
- * @pre pdu is non-NULL when len > 0.
- * @pre Stack is initialized.
- * @post Either a Read_By_Type_Response or an Error_Response has been
- *       queued.
- * @post Host attribute table is unchanged.
- *
- * @note Not thread-safe; called from the host serial dispatch loop.
- *
- * @since 0.1.0
- */
-/**
  * @brief Append one char-decl pair (handle + decl value) to a
  *        Read_By_Type response buffer.
  *

@@ -374,29 +374,6 @@ static ra8_err_t png_refill_input(ra8_png_state_t* st, uint32_t* out_avail)
 }
 
 /**
- * @brief Inflate the whole IDAT stream, emitting every scanline.
- * @details The tinfl ring is the LZ dictionary; each call produces into the
- *          contiguous run `[ring_wr, ring_end)` which is drained into the
- *          scanline assembler before the write offset wraps. A call that
- *          neither consumes input nor produces output twice in a row is a
- *          hostile-stream abort (progress guard). Strictness: the deflate
- *          stream must end exactly when the last scanline completes, with
- *          no trailing compressed bytes.
- * @param[in,out] st        Decoder state.
- * @param[in]     first_len Payload length of the first IDAT chunk.
- * @return Result code.
- * @retval k_ra8_ok                    All rows emitted; stream ended clean.
- * @retval k_ra8_err_protocol_error    Corrupt / truncated deflate stream.
- * @retval k_ra8_err_validation_failed Row-count / trailing-byte mismatch.
- * @retval other                       Propagated from pull / the hooks.
- * @pre `png_bind_geometry()` succeeded.
- * @pre The source sits at the first IDAT's payload.
- * @post On success `rows_done == h` and the pending chunk is parked.
- * @post On error the decode aborts.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-/**
  * @struct ra8_png_iter_t
  * @brief Inflate-loop cursor: compressed-input window + progress guard.
  *

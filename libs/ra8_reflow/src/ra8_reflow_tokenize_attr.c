@@ -124,30 +124,6 @@ priv_attr_quoted_value(const uint8_t* tag, size_t tag_len, size_t pos, size_t* v
 }
 
 /**
- * @brief Extract a named attribute's quoted value from a tag span into the pool.
- *
- * @details Scans the raw `<...>` span for attribute @p name (case-insensitive,
- * not preceded by another name character) and copies its quoted value verbatim
- * into the engine text pool. Used for `<img src>` / `<a href>` / element `id`.
- * On no match, a malformed attribute, or a full pool the outputs are zeroed,
- * which callers treat as "attribute absent".
- *
- * @param[in,out] engine   Engine whose text pool receives the value bytes.
- * @param[in]     tag      Raw tag span starting at '<'.
- * @param[in]     tag_len  Length of @p tag, bytes.
- * @param[in]     name     Lower-case attribute name to find.
- * @param[in]     name_len Length of @p name, bytes.
- * @param[out]    out_off  Receives the text-pool offset of the value (0 if none).
- * @param[out]    out_len  Receives the value byte length (0 if none).
- * @return None.
- * @pre `engine`, `tag`, `name`, `out_off`, `out_len` are non-null.
- * @pre `engine->text_pool_used <= k_ra8_reflow_text_pool_bytes`.
- * @post `*out_len > 0` iff a quoted @p name value was stored in the pool.
- * @post The pool grows by `*out_len` bytes when a value is stored.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-/**
  * @brief Locate a named attribute's quoted value span within a tag (no copy).
  *
  * @details The non-copying core of ra8_reflow_tok_capture_attr(): returns the value's

@@ -661,10 +661,6 @@ static void test_size_null_and_fallback_arms_mcdc(void)
 }
 
 /**
- * @brief Test entry point.
- * @return 0 on success; unity macros exit(1) on the first failure.
- */
-/**
  * @brief Test executable entry point -- runs the paint/document MC/DC vectors.
  *
  * @return 0 on success (all tests passed).

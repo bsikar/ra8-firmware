@@ -179,25 +179,6 @@ typedef enum : uintptr_t {
 }
 
 /**
- * @brief NS-world reset handler -- entered via BLXNS from the S side.
- *
- * @details
- * Zeros ``.ns_bss``, then exercises the three NSC CGC veneers from NS memory
- * (stamping ::g_tz_nsc_cgc_usb_init_step before each so a fault/error is
- * localised). On full success it advances ::g_tz_nsc_cgc_usb_match (and the
- * legacy ::g_tz_nsc_cgc_usb_ns_alive) forever; any veneer error parks the core.
- *
- * @return Never returns.
- *
- * @pre BLXNS from S side landed here with ``MSP_NS`` = ``g_ra8_ls_ns_stack_top``.
- * @pre The SAU exposes the NSC veneer alias + NS MRAM/SRAM to this code.
- * @post ``.ns_bss`` is zeroed.
- * @post On success ::g_tz_nsc_cgc_usb_match advances continually.
- *
- * @note Single-threaded; IRQs stay masked (no ThreadX/USBX yet).
- * @since 0.1.0
- */
-/**
  * @brief Exercise the three NSC CGC veneers from genuine NS memory.
  *
  * @details Stamps ::g_tz_nsc_cgc_usb_init_step before each veneer (so a J-Link
@@ -257,6 +238,25 @@ typedef enum : uintptr_t {
   return true;
 }
 
+/**
+ * @brief NS-world reset handler -- entered via BLXNS from the S side.
+ *
+ * @details
+ * Zeros ``.ns_bss``, then exercises the three NSC CGC veneers from NS memory
+ * (stamping ::g_tz_nsc_cgc_usb_init_step before each so a fault/error is
+ * localised). On full success it advances ::g_tz_nsc_cgc_usb_match (and the
+ * legacy ::g_tz_nsc_cgc_usb_ns_alive) forever; any veneer error parks the core.
+ *
+ * @return Never returns.
+ *
+ * @pre BLXNS from S side landed here with ``MSP_NS`` = ``g_ra8_ls_ns_stack_top``.
+ * @pre The SAU exposes the NSC veneer alias + NS MRAM/SRAM to this code.
+ * @post ``.ns_bss`` is zeroed.
+ * @post On success ::g_tz_nsc_cgc_usb_match advances continually.
+ *
+ * @note Single-threaded; IRQs stay masked (no ThreadX/USBX yet).
+ * @since 0.1.0
+ */
 [[gnu::section(".ns_text"), noreturn]] static void ns_reset_handler(void)
 {
   /* Zero the NS BSS via uintptr_t arithmetic (cppcheck flags pointer

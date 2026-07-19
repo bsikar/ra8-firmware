@@ -220,28 +220,6 @@ static ra8_err_t priv_emit_header(ra8_ta_prod_state_t* st)
 }
 
 /**
- * @brief Bind the source geometry: validate caps, carve buffers, emit header.
- * @details Fires once per transcode (from either decoder). Rejects, fail
- *          closed: dimensions above the caps, a tile grid above the format
- *          cap, and any carve the arena cannot fit. On success the 32-byte
- *          JOF header has been sunk.
- * @param[in] ctx      The producer state.
- * @param[in] width    Source width, pixels.
- * @param[in] height   Source height, pixels.
- * @param[in] channels Output bytes per pixel (1, 3 or 4).
- * @return Result code.
- * @retval k_ra8_ok               Geometry bound; header written.
- * @retval k_ra8_err_invalid_size Over the caps / grid cap / arena exhausted.
- * @retval k_ra8_err_invalid_state The geometry hook fired twice.
- * @retval other                  Propagated from the sink.
- * @pre The decoder validated @p width/@p height non-zero.
- * @pre `st->cfg` and `st->bump` are bound.
- * @post On success `band`/`stage`/`cmp`/`idx` are carved and header sunk.
- * @post On error the transcode aborts.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-/**
  * @brief Carve the band, stage, index and compressed-tile buffers.
  * @details Sizes are computed in 64-bit and checked against the u32 format
  *          cap before any carve; arena exhaustion fails closed.
@@ -286,6 +264,28 @@ static ra8_err_t priv_carve_pixel_path(ra8_ta_prod_state_t* st)
   return k_ra8_ok;
 }
 
+/**
+ * @brief Bind the source geometry: validate caps, carve buffers, emit header.
+ * @details Fires once per transcode (from either decoder). Rejects, fail
+ *          closed: dimensions above the caps, a tile grid above the format
+ *          cap, and any carve the arena cannot fit. On success the 32-byte
+ *          RTA1 header has been sunk.
+ * @param[in] ctx      The producer state.
+ * @param[in] width    Source width, pixels.
+ * @param[in] height   Source height, pixels.
+ * @param[in] channels Output bytes per pixel (1, 3 or 4).
+ * @return Result code.
+ * @retval k_ra8_ok               Geometry bound; header written.
+ * @retval k_ra8_err_invalid_size Over the caps / grid cap / arena exhausted.
+ * @retval k_ra8_err_invalid_state The geometry hook fired twice.
+ * @retval other                  Propagated from the sink.
+ * @pre The decoder validated @p width/@p height non-zero.
+ * @pre `st->cfg` and `st->bump` are bound.
+ * @post On success `band`/`stage`/`cmp`/`idx` are carved and header sunk.
+ * @post On error the transcode aborts.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 RA8_PRIV ra8_err_t ra8_ta_priv_on_geom(void* ctx, uint16_t width, uint16_t height, uint8_t channels)
 {
   ra8_ta_prod_state_t* st = (ra8_ta_prod_state_t*)ctx;

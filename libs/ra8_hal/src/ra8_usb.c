@@ -160,24 +160,6 @@ void internal_rmw16(volatile uint16_t* reg, uint16_t set_mask, uint16_t clr_mask
 }
 
 /**
- * @brief Configure the CFIFO port to talk to a given pipe + width.
- *
- * @details Mirrors the per-instance `CFIFOSEL` programming from
- * `hw_usb_pmodule_init` (FSP `r_usb_preg_access.c`). MBW is
- * always 16-bit on this driver path -- hardware FIFOs are
- * little-endian; the host build relies on identical behaviour.
- *
- * @param[in] reg See implementation.
- * @param[in] pipe_num See implementation.
- * @param[in] is_in_dir See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-/**
  * @brief Detect whether reg points at the USBHS (IP1) register block.
  * @details FSP gates `USB1_CFIFO_MBW = USB_MBW_32` on the same predicate
  *          (`p_utr->ip == USB_CFG_IP1`), and the FIFO write helpers below
@@ -336,22 +318,6 @@ void internal_pipe_pid(volatile r_usb_regs_t* reg, uint8_t pipe_num, ra8_usb_pid
  */
 
 /**
- * @brief Build the PIPECFG word for a non-control endpoint.
- *
- * @details See implementation.
- * @param[in] ep_addr See implementation.
- * @param[in] dir See implementation.
- * @param[in] type See implementation.
- * @return Result code.
- * @retval k_ra8_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-/**
  * @brief Compute the PIPEBUF word for a bulk pipe (2*MPS region).
  *
  * @details
@@ -492,24 +458,6 @@ void internal_pipe_quiesce(volatile r_usb_regs_t* reg, uint8_t pipe_num)
  * =============================================================================
  */
 
-/**
- * @brief Push `len` bytes through the CFIFO data port (16-bit packed).
- *
- * @details Mirrors `usb_pstd_write_fifo` (FSP `r_usb_preg_abs.c`)
- * for the 16-bit MBW path. The trailing byte is written via the
- * 8-bit halfword-low aperture of CFIFO using a halfword-aligned
- * left-padded write.
- *
- * @param[in] reg See implementation.
- * @param[in] data See implementation.
- * @param[in] len See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
 /**
  * @enum ra8_usb_fifo_shift_t
  * @brief Byte-shift constants for packing CFIFO writes.

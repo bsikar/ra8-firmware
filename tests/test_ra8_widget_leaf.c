@@ -380,7 +380,6 @@ typedef struct {
   ra8_widget_paint_t  paint;      /**< Paint vtable bound to mp.    */
 } kit_fixture_t;
 
-/** @brief Build the kit UI in @p f; return false on a bind error. */
 /** @brief Fill the kit fixture's paint mock and widget config literals. */
 static void kit_fixture_configs(kit_fixture_t* f)
 {
@@ -417,6 +416,7 @@ static void kit_fixture_configs(kit_fixture_t* f)
                                     .align        = k_ra8_widget_align_center};
 }
 
+/** @brief Build the kit UI in @p f; return false on a bind error. */
 static bool build_kit_fixture(kit_fixture_t* f)
 {
   kit_fixture_configs(f);
@@ -513,23 +513,6 @@ static void test_kit_compose(void)
   TEST_ASSERT_EQ(2U, f.mp.text_calls);
   TEST_END("ra8_widget kit: concrete widgets composite through the panel");
 }
-
-/**
- * @test ra8_widget_damage folds a fully-empty dirty rect as the union identity.
- *
- * @par MC/DC:
- * `internal_rect_union`'s second single-condition guard `if
- * (internal_rect_empty(&r))` (reached through ::ra8_widget_damage), true arm:
- * with a non-empty accumulator already built from the first dirty widget,
- * folding a second dirty widget whose rect covers no pixels (`w <= 0 && h <= 0`,
- * so both conditions of `internal_rect_empty` are true) returns the accumulator
- * unchanged. The false arm (a non-empty second rect taking the bounding-union
- * path) is covered by ::test_invalidate_damage and ::test_widget_edge_guards;
- * the first guard's `internal_rect_empty(&acc)` true arm (an empty accumulator
- * returns the first rect) by every single-dirty-widget vector. The empty rect is
- * still visible + dirty, so it is counted even though it grows the union by
- * nothing.
- */
 
 /**
  * @test internal_button_render early-out guards each take their no-op arm.

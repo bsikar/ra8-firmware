@@ -148,47 +148,6 @@ static void internal_pick_negotiated_speed(uint16_t           anlpar,
 }
 
 /**
- * @brief Re-program MPIC.LSC / MPIC.PIPP to match the PHY's auto-neg result.
- *
- * @details
- * The board layer programs MPIC for 1Gbps at boot because that is
- * the maximum the EK-RA8D2's PEF7071/GPY111 PHY supports. When the
- * link partner only offers 10/100 (typical USB-Ethernet adapter),
- * the PHY auto-negotiates down -- but MPIC stays at 1Gbps and the
- * on-chip RMAC ignores every RGMII edge as out-of-spec framing.
- * Symptom (bench-confirmed on EK-RA8D2): PHY reports link-up, ARP
- * arrives on the wire, but MRGFCE stays at 0 and no frame ever
- * lands in the GWCA RX chain.
- *
- * This helper reads the auto-neg result registers (ANLPAR reg 5 +
- * GBSR reg 10) -- NOT BMCR, whose speed bits are the host command --
- * picks the highest mutually-supported speed/duplex via
- * ::internal_pick_negotiated_speed, then brackets the MPIC write
- * with the ETHA DISABLE -> CONFIG -> {MPIC} -> DISABLE -> OPERATION
- * transitions required by HUM Ch 33.4.1.2.
- *
- * Mirrors FSP r_rmac_phy.c::R_RMAC_PHY_LinkPartnerAbilityGet.
- *
- * @param[in] port RMAC port whose MPIC needs updating.
- * @param[in] bmcr Unused -- kept for API stability with the old caller.
- *
- * @return ::ra8_err_t error code.
- * @retval k_ra8_ok              MPIC re-programmed (or no-op).
- * @retval k_ra8_err_invalid_arg ::ra8_rmac_set_link rejected an arg.
- * @retval k_ra8_err_hw_timeout  An ETHA mode transition or MDIO timed out.
- *
- * @pre ::ra8_eth_open has succeeded (::s_eth_state.opened == 1).
- * @pre ::s_eth_mac_speed_resynced is false on first call after open.
- * @post On k_ra8_ok the on-chip RMAC's MPIC.LSC matches the PHY's
- *       negotiated speed and MPIC.PIPP matches its duplex.
- * @post ::s_eth_mac_speed_resynced is true on success.
- *
- * @note Not thread-safe; firmware drives this from a single bring-up
- *       thread.
- *
- * @since 0.1.0
- */
-/**
  * @enum ra8_eth_an_poll_t
  * @brief Bound on the AUTONEG_COMPLETE poll loop.
  *

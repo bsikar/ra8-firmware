@@ -341,16 +341,6 @@ static ra8_err_t internal_arc_cmd(uint8_t mcntselr, uint8_t cmd)
 }
 
 /**
- * @brief Read an ARC counter through whatever path the HUM mandates.
- *
- * @param[in]  id        Logical counter id.
- * @return ``ra8_err_t``.
- *
- * @pre Caller is in P/E mode for the OEMBL path; read-mode is fine
- *      for SEC/NSEC.
- * @post ``*out_count`` populated on success.
- */
-/**
  * @brief Sum the population count of one of the four ARC_NSEC slots.
  *
  * @details

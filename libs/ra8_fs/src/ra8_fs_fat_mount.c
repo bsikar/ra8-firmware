@@ -159,32 +159,6 @@ static ra8_err_t priv_compute_geometry(ra8_fs_mount_t* m)
 }
 
 /**
- * @brief Mount a FAT volume on the supplied block backend.
- *
- * @details Allocates a mount slot, reads the boot sector, parses the
- *          BPB, and computes the geometry.
- *
- * @param[in]  backend    Block-device backend to drive.
- * @param[out] out_handle On success, opaque mount handle.
- *
- * @return Error code.
- * @retval k_ra8_ok                     Volume mounted.
- * @retval k_ra8_err_null_ptr           NULL `backend` or `out_handle`.
- * @retval k_ra8_err_invalid_arg        Backend missing required callbacks.
- * @retval k_ra8_err_no_mem             Mount table is full.
- * @retval k_ra8_err_validation_failed  Not a recognisable FAT volume.
- * @retval k_ra8_err_*                  Backend read failure.
- *
- * @pre `backend` and `out_handle` are non-NULL.
- * @pre Backend's read/write/get_capacity callbacks are non-NULL.
- * @post On success, `*out_handle` is a valid mount.
- * @post On failure, no mount slot is marked in-use.
- *
- * @note Not thread-safe; callers serialise.
- *
- * @since 0.1.0
- */
-/**
  * @brief Return partition 0's first LBA from an MBR in @p buf, or 0.
  *
  * @details Used only after the LBA-0 BPB parse fails: a standard SD card is
@@ -542,6 +516,32 @@ static ra8_err_t priv_read_boot_sector(ra8_fs_mount_t* m)
   return priv_parse_volume(m);
 }
 
+/**
+ * @brief Mount a FAT volume on the supplied block backend.
+ *
+ * @details Allocates a mount slot, reads the boot sector, parses the
+ *          BPB, and computes the geometry.
+ *
+ * @param[in]  backend    Block-device backend to drive.
+ * @param[out] out_handle On success, opaque mount handle.
+ *
+ * @return Error code.
+ * @retval k_ra8_ok                     Volume mounted.
+ * @retval k_ra8_err_null_ptr           NULL `backend` or `out_handle`.
+ * @retval k_ra8_err_invalid_arg        Backend missing required callbacks.
+ * @retval k_ra8_err_no_mem             Mount table is full.
+ * @retval k_ra8_err_validation_failed  Not a recognisable FAT volume.
+ * @retval k_ra8_err_*                  Backend read failure.
+ *
+ * @pre `backend` and `out_handle` are non-NULL.
+ * @pre Backend's read/write/get_capacity callbacks are non-NULL.
+ * @post On success, `*out_handle` is a valid mount.
+ * @post On failure, no mount slot is marked in-use.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
 ra8_err_t ra8_fs_mount(const ra8_fs_backend_t* backend, ra8_fs_mount_t** out_handle)
 {
   if (backend == nullptr || out_handle == nullptr) {

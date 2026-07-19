@@ -293,33 +293,6 @@ static void cov_set_csd(volatile r_sdhi_regs_t* reg, cov_hook_mode_t mode)
 }
 
 /**
- * @brief Servicer step -- injects SDHI command responses per mode.
- *
- * @details
- * Runs inline on every ra8_sim_mmio_poll, on the driver's own poll
- * thread.  Reads SD_CMD from the register
- * window.  If the value exceeds the maximum valid SD command index (63), it is
- * the sentinel written by a prior step and the function returns immediately.
- *
- * For commands that should succeed in the current mode, it populates
- * SD_RSP10..76, asserts SD_INFO1.RSPEND (bit 0), sets SD_INFO2.{BRE,BWE}
- * (bits 9:8, required for block-transfer tests), then overwrites SD_CMD with
- * the sentinel so subsequent steps before the next driver write do nothing.
- *
- * For commands that should time out (fail modes), it returns without touching
- * SD_INFO1, causing the driver's bounded spin loop to exhaust and return
- * k_ra8_err_hw_timeout.
- *
- * @pre The coverage poll-hook is installed via cov_hook_arm().
- * @pre s_cov_cfg.inst is a valid SDHI instance index.
- * @post For success cases: SD_INFO1.RSPEND = 1, SD_INFO2.BRE/BWE = 1.
- * @post For fail cases: SD_INFO1 unchanged.
- * @note Volatile register accesses only; the served command is written by the
- *       driver, so the response tracks driver progress, not elapsed time.
- *
- * @since 0.1.0
- */
-/**
  * @brief Zero all four SD response-register lanes (R2-style content).
  * @param[in,out] reg SDHI register block.
  * @return None.
@@ -401,6 +374,33 @@ static bool cov_dispatch_cmd(volatile r_sdhi_regs_t* reg, uint32_t cmd)
   return true;
 }
 
+/**
+ * @brief Servicer step -- injects SDHI command responses per mode.
+ *
+ * @details
+ * Runs inline on every ra8_sim_mmio_poll, on the driver's own poll
+ * thread.  Reads SD_CMD from the register
+ * window.  If the value exceeds the maximum valid SD command index (63), it is
+ * the sentinel written by a prior step and the function returns immediately.
+ *
+ * For commands that should succeed in the current mode, it populates
+ * SD_RSP10..76, asserts SD_INFO1.RSPEND (bit 0), sets SD_INFO2.{BRE,BWE}
+ * (bits 9:8, required for block-transfer tests), then overwrites SD_CMD with
+ * the sentinel so subsequent steps before the next driver write do nothing.
+ *
+ * For commands that should time out (fail modes), it returns without touching
+ * SD_INFO1, causing the driver's bounded spin loop to exhaust and return
+ * k_ra8_err_hw_timeout.
+ *
+ * @pre The coverage poll-hook is installed via cov_hook_arm().
+ * @pre s_cov_cfg.inst is a valid SDHI instance index.
+ * @post For success cases: SD_INFO1.RSPEND = 1, SD_INFO2.BRE/BWE = 1.
+ * @post For fail cases: SD_INFO1 unchanged.
+ * @note Volatile register accesses only; the served command is written by the
+ *       driver, so the response tracks driver progress, not elapsed time.
+ *
+ * @since 0.1.0
+ */
 static void cov_sdcard_step(void)
 {
   volatile r_sdhi_regs_t* reg = ra8_sdhi(s_cov_cfg.inst);

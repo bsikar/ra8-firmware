@@ -329,42 +329,6 @@ ra8_err_t ra8_ble_host_gatt_register_service(const uint8_t* uuid_128, uint16_t* 
 }
 
 /**
- * @brief Register a Characteristic + value (+ optional CCCD) under a
- *        previously registered service.
- *
- * @details Appends the attribute rows that Bluetooth Core 5.3 Vol 3
- *          Part G 3.3 demands for a characteristic: the Characteristic
- *          Declaration (UUID 0x2803), the Characteristic Value, and
- *          (when notify or indicate is set in props) the Client
- *          Characteristic Configuration Descriptor
- *          (UUID 0x2902, Vol 3 Part G 3.3.3.3). The new value handle
- *          is returned to the caller.
- *
- * @param[in]  svc_handle  Handle of the parent service.
- * @param[in]  uuid_128    Characteristic UUID, 16 bytes, LE on wire.
- * @param[in]  props       Property bitmask (k_ra8_ble_host_char_prop_*).
- * @param[in]  value_buf   Backing storage for the value (may be NULL
- *                         when value_max == 0).
- * @param[in]  value_max   Capacity of value_buf in bytes (<= 512).
- * @param[out] out_handle  Filled with the value handle on success.
- *
- * @return ra8_err_t Error code.
- * @retval k_ra8_ok                   Characteristic registered.
- * @retval k_ra8_err_null_ptr         Required pointer was NULL.
- * @retval k_ra8_err_not_initialized  Stack not yet opened.
- * @retval k_ra8_err_invalid_arg      Bad svc_handle, zero props, or oversized value.
- * @retval k_ra8_err_no_mem           Char count or attribute table at capacity.
- *
- * @pre ra8_ble_host_init has succeeded.
- * @pre uuid_128 and out_handle are non-NULL.
- * @post On success 2 or 3 attribute rows have been appended.
- * @post On failure no state is mutated past the rejected appends.
- *
- * @note Not thread-safe; called from single-threaded application init.
- *
- * @since 0.1.0
- */
-/**
  * @brief Validate register_char inputs and svc_handle ownership.
  *
  * @details Centralizes the up-front argument checks (null pointers,

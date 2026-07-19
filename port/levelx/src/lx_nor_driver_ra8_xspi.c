@@ -624,19 +624,6 @@ static void priv_capture_xspi_pin_state(void)
 static bool s_xspi_bus_ready = false;
 
 /**
- * @brief Bring the OCTA bus up (pins + controller) on first call.
- *
- * @return ``LX_SUCCESS`` if the bus is ready, ``LX_ERROR`` otherwise.
- *
- * @pre ``ra8_infrastructure_init`` has run (pin validator alive).
- * @post On success the IS25LX512M is out of reset, OCTA pins are
- *       routed to PSEL=0x1C, the xSPI controller MSTP gate is open,
- *       ``LIOCFGCS[0]`` is in 1S-1S-1S mode, and the chip has
- *       reported the expected RDID triplet ``0x9D 0x5A 0x1A``.
- *
- * @since 0.1.0
- */
-/**
  * @enum ra8_xspi_reset_timing_t
  * @brief Post-software-reset settle time required by the IS25LX512M.
  *
@@ -827,7 +814,19 @@ static UINT priv_probe_rdid(void)
   return (UINT)LX_SUCCESS;
 }
 
-/* Bus init once -- see implementation for details. */
+/**
+ * @brief Bring the OCTA bus up (pins + controller) on first call.
+ *
+ * @return ``LX_SUCCESS`` if the bus is ready, ``LX_ERROR`` otherwise.
+ *
+ * @pre ``ra8_infrastructure_init`` has run (pin validator alive).
+ * @post On success the IS25LX512M is out of reset, OCTA pins are
+ *       routed to PSEL=0x1C, the xSPI controller MSTP gate is open,
+ *       ``LIOCFGCS[0]`` is in 1S-1S-1S mode, and the chip has
+ *       reported the expected RDID triplet ``0x9D 0x5A 0x1A``.
+ *
+ * @since 0.1.0
+ */
 static UINT priv_bus_init_once(void)
 {
   if (s_xspi_bus_ready) {

@@ -412,27 +412,6 @@ bool ra8_reflow_tok_feed(ra8_reflow_t* engine, char ch, bool* last_ws)
 }
 
 /**
- * @brief Entity-decode and whitespace-collapse a text run into the pool.
- *
- * @details Recognised entities are decoded to UTF-8 then collapsed with the
- * surrounding text; unrecognised '&' sequences pass through literally.
- *
- * @param[in,out] engine  Engine whose text pool is appended to.
- * @param[in]     buf     Source buffer.
- * @param[in]     start   Start offset of the run (inclusive).
- * @param[in]     end     End offset of the run (exclusive).
- * @param[out]    out_off Text-pool offset of the stored run.
- * @param[out]    out_len Number of bytes stored.
- * @return true on success, false on text-pool overflow.
- * @retval false The text pool is full.
- * @pre `engine`, `buf`, `out_off`, `out_len` are non-null.
- * @pre `start <= end`.
- * @post On success *out_off / *out_len describe the stored slice.
- * @post On failure the pool may be partially written and is abandoned.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-/**
  * @brief Feed a code point's UTF-8 bytes through the whitespace-collapse.
  *
  * @details Encodes `cp` to 1-4 bytes and feeds each via ra8_reflow_tok_feed().

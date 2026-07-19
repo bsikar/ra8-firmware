@@ -142,6 +142,11 @@ STANDALONE_TAG_RE = re.compile(
 #: real blocks all the time.
 GROUP_MARKER_RE = re.compile(r"[@\\][{}]")
 
+#: A commented-out preprocessor directive: the config-header idiom for a
+#: documented-but-disabled build option (``//#define MBEDTLS_FOO``).  It is a
+#: real subject for the block above it even though it is lexically a comment.
+COMMENTED_DEFINE_RE = re.compile(r"\s*(?://+|/\*)\s*#\s*(?:define|undef)\b")
+
 #: An explicit statement that a function yields no value -- either because it
 #: returns void ("Nothing.", "None.") or because it never returns at all
 #: ("This function never returns.", on the ``[[noreturn]] void`` handlers and
@@ -432,6 +437,19 @@ def check_consecutive_blocks(path: str, text: str) -> list[Finding]:
             ) or next((ln for ln in raw_lines[prev.end_line :] if ln.strip()), "")
             if any(re.search(r"\b" + re.escape(r) + r"\b", following) for r in refs):
                 continue
+        # A *commented-out* preprocessor directive is the config-header idiom
+        # for "here is an option, documented and deliberately off":
+        #     /** Enable the Everest ECDH backend ... */
+        #     //#define MBEDTLS_ECDH_VARIANT_EVEREST_ENABLED
+        # The block documents that option, so it is attached -- but the
+        # directive is lexically a comment, so `_blank_comments_and_literals`
+        # erases it and a purely positional test sees an empty gap and calls
+        # the block a duplicate.  Consult the raw text for this one shape.
+        # Deliberately narrow: only a commented-out #define / #undef counts,
+        # so two genuinely adjacent blocks are still reported.
+        raw_between = raw_lines[prev.end_line : cur.start_line - 1]
+        if any(COMMENTED_DEFINE_RE.match(seg) for seg in raw_between):
+            continue
         # Anything but whitespace between the two blocks means the first one is
         # attached to something -- not a duplicate.
         between = lines[prev.end_line : cur.start_line - 1]
@@ -1170,7 +1188,71 @@ int ra8_foo(void) { return 0; }
 """,
         {"DOC007"},
     ),
+    (
+        "two adjacent blocks are still caught when the gap is only whitespace",
+        """
+/**
+ * Enable a build option that nothing below actually declares.
+ */
+
+/**
+ * @brief Widget identifier width.
+ */
+#define WIDGET_ID_BITS 8
+""",
+        {"DOC004"},
+    ),
+    (
+        "a real comment between two blocks does not license a duplicate",
+        """
+/**
+ * Enable a build option that nothing below actually declares.
+ */
+/* an ordinary comment, not a commented-out directive */
+
+/**
+ * @brief Widget identifier width.
+ */
+#define WIDGET_ID_BITS 8
+""",
+        {"DOC004"},
+    ),
     # ---------------- must NOT fire ----------------
+    (
+        "untagged block documenting a commented-out config option",
+        """
+/**
+ * Enable the verified implementations of ECDH primitives from Project Everest.
+ *
+ * The Everest code is Apache-2.0 only, so enabling this is incompatible with
+ * taking the library under GPL-2.0-or-later.
+ */
+//#define MBEDTLS_ECDH_VARIANT_EVEREST_ENABLED
+
+/**
+ * \\def MBEDTLS_GCM_LARGE_TABLE
+ *
+ * Use a larger GCM table to speed up AES-GCM.
+ */
+//#define MBEDTLS_GCM_LARGE_TABLE
+""",
+        set(),
+    ),
+    (
+        "commented-out #undef also counts as the documented subject",
+        """
+/**
+ * Disable the built-in entropy sources.
+ */
+// #undef MBEDTLS_ENTROPY_C
+
+/**
+ * @brief Widget identifier width.
+ */
+#define WIDGET_ID_BITS 8
+""",
+        set(),
+    ),
     (
         "correct function block",
         """

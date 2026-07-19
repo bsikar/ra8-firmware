@@ -23,8 +23,6 @@
 
 #include "board_overlay_internal.h"
 
-/** @brief Status-sidebar layout offsets (pixels). */
-
 /** @brief Draw one LED indicator dot (filled when on) plus its caption. */
 static void
 draw_led(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, const board_led_status_t* led)

@@ -44,7 +44,6 @@
 #include "ra8_reset.h"
 #include "ra8_time.h"
 
-/** @brief Demo tunables. */
 /** @brief Time-unit conversion. */
 typedef enum : uint32_t {
   k_ms_per_sec = 1000U, /**< Milliseconds per second. */

@@ -566,10 +566,6 @@ static void test_face_src_guard_arms(void)
 }
 
 /**
- * @brief Test entry point.
- * @return 0 on success; unity macros exit(1) on the first failure.
- */
-/**
  * @test test_fontface_style_normal_mcdc
  *
  * @par MC/DC:
