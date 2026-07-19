@@ -77,6 +77,13 @@ typedef struct {
   bool     set_fails; /**< Force the set seam to fault.       */
   uint16_t last_set;  /**< Last value handed to the set seam. */
   uint32_t set_calls; /**< Count of set-seam invocations.     */
+  /**
+   * Model a controller that accepts the write and changes nothing -- a
+   * dead COPI line, or a controller that ignores the command. The seam
+   * still returns success, so this is precisely the failure mode that is
+   * indistinguishable from a good write without a readback compare.
+   */
+  bool set_is_silent;
 } ec_panel_state_t;
 
 /** @brief Mock store backing state. */
@@ -158,6 +165,12 @@ static ra8_err_t mock_panel_set(void* ctx, uint16_t mv)
     return k_ra8_err_hw_error;
   }
   s_panel.last_set = mv;
+  /* A working controller reports back what it was given; a silent one
+   * keeps whatever it held. Which of the two this mock is deciding the
+   * outcome of ``apply``'s readback compare is the whole point. */
+  if (!s_panel.set_is_silent) {
+    s_panel.get_mv = mv;
+  }
   return k_ra8_ok;
 }
 
@@ -563,6 +576,12 @@ static void test_apply_paths(void)
   cfg.panel.set = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_epd_cal_apply(&cfg, &res));
 
+  /* No get seam either: a bias that cannot be confirmed is refused rather
+   * than written and hoped about. */
+  cfg           = ec_cfg();
+  cfg.panel.get = nullptr;
+  TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_epd_cal_apply(&cfg, &res));
+
   /* A result mutated out of range between resolve and apply is caught by
    * the re-check at the point of use. */
   cfg                           = ec_cfg();
@@ -573,7 +592,75 @@ static void test_apply_paths(void)
   /* A bus fault on the set seam is forwarded, not swallowed. */
   s_panel.set_fails = true;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_epd_cal_apply(&cfg, &res));
+
+  /* A bus fault on the readback is a refusal, not a shrug: the value in
+   * effect is unknown, which is exactly the state to refuse. */
+  ec_reset();
+  s_panel.get_mv = (uint16_t)k_ec_good_mv;
+  cfg            = ec_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_resolve(&cfg, &res));
+  s_panel.get_fails = true;
+  TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_epd_cal_apply(&cfg, &res));
   TEST_END("epd_cal: apply programs the panel and refuses bad input");
+}
+
+/**
+ * @test epd_cal_apply_readback_guard
+ *
+ * @details
+ * The INV-VCOM-1 write-then-readback condition. A link that accepts the
+ * write and changes nothing returns success from the set seam, so without
+ * this compare it is indistinguishable from a good write -- and the film
+ * would sit biased at the controller's own unknown value. Both outcomes of
+ * the compare are driven here, including the silent-set case that is the
+ * entire reason the compare exists.
+ *
+ * The readback is compared but deliberately not re-range-checked: the
+ * value written was range-checked before the write, so an equal readback
+ * is in range by construction and a second test would be unreachable.
+ * Range-validating a *reported* value matters where one is adopted rather
+ * than confirmed, which is the resolve-from-controller path, covered by
+ * ``test_resolve_prefers_panel``.
+ *
+ * @par MC/DC:
+ * Decision: `if (readback != result->vcom_mv)` (1 condition, in
+ * ``ra8_epd_cal_apply``) -- not a compound decision, so MC/DC degenerates
+ * to branch coverage and 2 vectors are both necessary and sufficient:
+ * - Vector 1: readback == requested -> false (a healthy controller echoes
+ *                                             the value back; apply succeeds)
+ * - Vector 2: readback != requested -> true  (a silent set seam leaves the
+ *                                             controller on its old value;
+ *                                             apply refuses)
+ */
+static void test_apply_readback_guard(void)
+{
+  TEST_BEGIN("epd_cal: apply refuses when the readback disagrees");
+
+  /* Vector 1 -- condition false: a healthy controller echoes the value. */
+  ec_reset();
+  s_panel.get_mv           = (uint16_t)k_ec_good_mv;
+  ra8_epd_cal_cfg_t    cfg = ec_cfg();
+  ra8_epd_cal_result_t res = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_resolve(&cfg, &res));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_apply(&cfg, &res));
+  TEST_ASSERT_EQ((uint16_t)k_ec_good_mv, s_panel.get_mv);
+
+  /* Vector 2 -- condition true: the seam reports success but the
+   * controller kept its old value. The set seam returned k_ra8_ok, so only
+   * the readback distinguishes this from Vector 1 -- which is precisely
+   * the silently-dead-link failure mode. */
+  ec_reset();
+  s_panel.get_mv = (uint16_t)k_ec_good_mv;
+  cfg            = ec_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epd_cal_resolve(&cfg, &res));
+  s_panel.set_is_silent = true;
+  s_panel.get_mv        = (uint16_t)k_ec_other_mv;
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_epd_cal_apply(&cfg, &res));
+  /* The write really was attempted -- this is a verification failure, not
+   * a refusal to try. */
+  TEST_ASSERT_EQ((uint16_t)k_ec_good_mv, s_panel.last_set);
+
+  TEST_END("epd_cal: apply refuses when the readback disagrees");
 }
 
 /** @test Provisioning writes a record that a later resolve accepts. */
@@ -661,6 +748,7 @@ int main(void)
   test_resolve_fail_safe();
   test_resolve_null_args();
   test_apply_paths();
+  test_apply_readback_guard();
   test_provision_roundtrip();
   test_provision_refusals();
   test_store_read_fault();

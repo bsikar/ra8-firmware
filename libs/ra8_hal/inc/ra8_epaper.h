@@ -615,12 +615,27 @@ ra8_epaper_align_area(ra8_epaper_area_t* area, ra8_epaper_pixel_format_t pf, uin
 [[nodiscard]] ra8_err_t ra8_epaper_get_vcom(uint16_t* out_mv);
 
 /**
- * @brief Programme the controller's VCOM, in millivolts.
+ * @brief Programme the controller's VCOM, verify it, and grant the
+ *        INV-VCOM-1 permit.
  *
  * @details
  * Issues the VCOM command (``0x0039``) with argument word ``0x0001``
- * ("set") followed by ``mv``. Confirmed against the Waveshare IT8951
+ * ("set") followed by ``mv``, then immediately re-reads it with argument
+ * ``0x0000`` and compares. Confirmed against the Waveshare IT8951
  * reference driver's ``EPD_IT8951_SetVCOM``.
+ *
+ * **The readback is not a diagnostic nicety, it is the invariant.** A
+ * dead COPI line, a controller that quietly ignores the command, or a bus
+ * returning zeroes all *accept* the write and change nothing -- a failure
+ * mode that is indistinguishable from success without the compare, and
+ * that would leave the film biased at whatever unknown value the
+ * controller powered up with. Only a matching readback sets the permit
+ * that ::ra8_epaper_display_area requires; any other outcome revokes it
+ * and the panel stays dark.
+ *
+ * The permit is revoked on entry, so a failed call can never leave a
+ * previous call's permit standing, and it does not survive
+ * ::ra8_epaper_sleep.
  *
  * @param[in] mv VCOM **magnitude** in millivolts (the panel's label
  *               without its minus sign, e.g. ``1530`` for ``-1.53V``).
@@ -631,21 +646,29 @@ ra8_epaper_align_area(ra8_epaper_area_t* area, ra8_epaper_pixel_format_t pf, uin
  *               this call.
  *
  * @return ``ra8_err_t`` error code.
- * @retval k_ra8_ok                VCOM command accepted by the controller.
- * @retval k_ra8_err_invalid_arg   ``mv`` is zero.
- * @retval k_ra8_err_invalid_state Panel never initialized.
- * @retval k_ra8_err_hw_timeout    HRDY stuck low.
+ * @retval k_ra8_ok                    VCOM programmed and read back equal;
+ *                                     display commands are now permitted.
+ * @retval k_ra8_err_invalid_arg       ``mv`` is zero.
+ * @retval k_ra8_err_invalid_state     Panel never initialized.
+ * @retval k_ra8_err_validation_failed The controller echoed a different
+ *                                     value. The link or the controller is
+ *                                     not to be trusted with the bias;
+ *                                     the panel stays un-drivable.
+ * @retval k_ra8_err_hw_timeout        HRDY stuck low.
  *
  * @pre  ``ra8_epaper_init`` succeeded.
  * @pre  ``mv`` was validated against the panel's documented VCOM window.
- * @post On success the controller drives the panel at the new VCOM.
- * @post On failure the previous VCOM remains in effect.
+ * @post On success the controller reports the new VCOM and
+ *       ``ra8_epaper_vcom_verified()`` is true.
+ * @post On any failure ``ra8_epaper_vcom_verified()`` is false and every
+ *       subsequent ::ra8_epaper_display_area is refused.
  *
  * @note Not thread-safe.
  * @warning **Driving a panel at the wrong VCOM damages it.** The error is
  *          cumulative and not recoverable: a net DC bias across the
- *          electrophoretic film degrades contrast permanently. VCOM is
- *          per-unit calibration data printed on the panel's own flex
+ *          electrophoretic film degrades contrast permanently, as a
+ *          function of *time under bias* rather than refresh count. VCOM
+ *          is per-unit calibration data printed on the panel's own flex
  *          cable; it must never be hardcoded in firmware. Resolve it
  *          through ``ra8_epd_cal_resolve`` and refuse to drive the panel
  *          when no trusted value exists.
@@ -656,10 +679,37 @@ ra8_epaper_align_area(ra8_epaper_area_t* area, ra8_epaper_pixel_format_t pf, uin
  *          init and do not rely on it sticking.
  *
  * @see ra8_epaper_get_vcom
+ * @see ra8_epaper_vcom_verified
+ * @see ra8_epaper_display_area
  *
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_epaper_set_vcom(uint16_t mv);
+
+/**
+ * @brief Report whether the INV-VCOM-1 permit is currently held.
+ *
+ * @details
+ * True only while the driver is initialized **and** the most recent
+ * ::ra8_epaper_set_vcom read its value back unchanged. This is the exact
+ * predicate ::ra8_epaper_display_area enforces, exposed so an application
+ * can decide what to show (or, correctly, not show) without having to
+ * provoke a refused refresh to find out.
+ *
+ * @return ``true`` when display commands are permitted, ``false`` otherwise.
+ *
+ * @pre  None; safe to call before ``ra8_epaper_init``.
+ * @post No bus traffic and no driver state mutated.
+ *
+ * @note Not thread-safe against ``ra8_epaper_set_vcom`` / ``_init`` /
+ *       ``_sleep``; safe against other readers.
+ *
+ * @see ra8_epaper_set_vcom
+ * @see ra8_epaper_display_area
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] bool ra8_epaper_vcom_verified(void);
 
 /**
  * @brief Push a packed greyscale buffer into the controller's frame RAM.
@@ -723,23 +773,38 @@ ra8_epaper_align_area(ra8_epaper_area_t* area, ra8_epaper_pixel_format_t pf, uin
  * number, then polls REG_LUTAFSR (0x1224) until it reads zero (no LUTs
  * busy). IT8951 datasheet rev 0.2 chapter 4.2.4.
  *
+ * **This call enforces INV-VCOM-1.** DPY_AREA is the command that puts a
+ * bias across the electrophoretic film, so it is refused outright unless
+ * ::ra8_epaper_set_vcom has programmed a VCOM *and read it back
+ * unchanged*. There is no override and no "just this once" path: a wrong
+ * or unknown bias damages the panel cumulatively with time under bias,
+ * and a blank screen is recoverable where a degraded panel is not. Stage
+ * pixels with ::ra8_epaper_load_image as much as you like beforehand --
+ * loading frame RAM applies no bias and is deliberately ungated.
+ *
  * @param[in] area     Rectangle to refresh (panel coords); non-NULL.
  * @param[in] waveform Symbolic waveform selector -- **not** a wire value.
  *
  * @return ``ra8_err_t`` error code.
- * @retval k_ra8_ok                  Panel idle and updated.
- * @retval k_ra8_err_null_ptr        ``area`` is NULL.
- * @retval k_ra8_err_invalid_state   Panel never initialized.
- * @retval k_ra8_err_invalid_arg     ``waveform`` is not a known selector.
- * @retval k_ra8_err_hw_timeout      LUT busy never cleared.
+ * @retval k_ra8_ok                    Panel idle and updated.
+ * @retval k_ra8_err_null_ptr          ``area`` is NULL.
+ * @retval k_ra8_err_invalid_state     Panel never initialized.
+ * @retval k_ra8_err_validation_failed No verified VCOM -- INV-VCOM-1
+ *                                     refusal. Resolve one through
+ *                                     ``ra8_epd_cal_resolve`` and apply it;
+ *                                     do not retry blind.
+ * @retval k_ra8_err_invalid_arg       ``waveform`` is not a known selector.
+ * @retval k_ra8_err_hw_timeout        LUT busy never cleared.
  *
  * @pre  ``ra8_epaper_load_image`` populated the area.
- * @pre  The cfg's waveform map matches the panel's LUT.
+ * @pre  ``ra8_epaper_vcom_verified()`` is true.
  * @post The pixels of ``area`` match the most recent load.
  * @post The controller reports every LUT idle again.
  *
  * @note Not thread-safe.
  *
+ * @see ra8_epaper_set_vcom
+ * @see ra8_epaper_vcom_verified
  * @see ra8_epaper_waveform_cfg_for_lut
  * @since 0.1.0
  */
