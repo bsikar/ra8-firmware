@@ -42,17 +42,17 @@
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_display_pal_lcd";
 
+/** @brief RGB565 pixel mask. */
+typedef enum : uint32_t {
+  k_rgb565_mask = 0xFFFFU, /**< Rgb565 mask. */
+} disp_lcd_mask_t;
+
 /**
  * @enum ra8_display_pal_lcd_const_t
  * @brief Numeric constants used by the LCD backend bring-up.
  *
  * @since 0.1.0
  */
-/** @brief RGB565 pixel mask. */
-typedef enum : uint32_t {
-  k_rgb565_mask = 0xFFFFU, /**< Rgb565 mask. */
-} disp_lcd_mask_t;
-
 typedef enum : uint32_t {
   k_lcd_bringup_settle_ms = 200U, /**< Pin/clock settle after board_glcdc_init. */
   k_lcd_bg_color_black    = 0U,   /**< 24-bit ARGB for BG plane.                */

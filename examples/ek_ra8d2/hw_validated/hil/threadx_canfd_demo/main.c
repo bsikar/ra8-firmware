@@ -53,7 +53,6 @@
 /**
  * @brief Stack size, in bytes, for each CANFD demo thread.
  */
-/** @brief Fixed marker bytes following the sequence counter in the test frame. */
 typedef enum : uint8_t {
   k_canfd_marker_0 = 0xA5U, /**< CANFD marker 0. */
   k_canfd_marker_1 = 0x5AU, /**< CANFD marker 1. */

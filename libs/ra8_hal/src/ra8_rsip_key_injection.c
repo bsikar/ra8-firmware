@@ -51,17 +51,6 @@ static const char* s_tag = "RSIP_KI";
  */
 #if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
 
-/**
- * @enum ra8_rsip_ki_internal_t
- * @brief Internal sizing constants reused inside the wrapper.
- *
- * @details
- * The mixer state is seeded with the same golden-ratio constant used
- * elsewhere in the secure HALs. ``k_..._byte_mask`` is the standard
- * 8-bit mask, named so the no-magic-numbers rule is satisfied.
- *
- * @since 0.1.0
- */
 /** @brief AES / RSA / ECC key element byte counts. */
 typedef enum : uint16_t {
   k_aes_192_key_bytes  = 24U,  /**< AES 192 key bytes.  */
@@ -76,6 +65,17 @@ typedef enum : uint16_t {
   k_ecc_521_pub_bytes  = 132U, /**< ECC 521 pub bytes.  */
 } rsip_ki_size_t;
 
+/**
+ * @enum ra8_rsip_ki_internal_t
+ * @brief Internal sizing constants reused inside the wrapper.
+ *
+ * @details
+ * The mixer state is seeded with the same golden-ratio constant used
+ * elsewhere in the secure HALs. ``k_..._byte_mask`` is the standard
+ * 8-bit mask, named so the no-magic-numbers rule is satisfied.
+ *
+ * @since 0.1.0
+ */
 typedef enum : uint64_t {
   k_ra8_rsip_ki_seed      = 0x9E3779B97F4A7C15ULL, /**< Mixer seed.      */
   k_ra8_rsip_ki_mul       = 0x2545F4914F6CDD1DULL, /**< xorshift64*.     */

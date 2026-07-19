@@ -313,12 +313,13 @@ static void test_get_device_state(void)
 }
 
 /**
+ * @brief Rejection legs: bogus speed, pipe range, endpoint range.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-/** @brief Rejection legs: bogus speed, pipe range, endpoint range. */
 static void configure_endpoint_rejects_ids(void)
 {
   /* Bogus speed. */
@@ -682,11 +683,12 @@ static void test_queue_in_fifo_tail_paths(void)
 }
 
 /**
+ * @brief FS leg: 1-byte and 2-byte CFIFO tail reads via queue_out.
+ *
  * @par MC/DC:
  * (no compound decisions in this test -- exercises FIFO width/tail
  * branch coverage through the public queue_out API)
  */
-/** @brief FS leg: 1-byte and 2-byte CFIFO tail reads via queue_out. */
 static void queue_out_fs_tails(void)
 {
   prep_cb();

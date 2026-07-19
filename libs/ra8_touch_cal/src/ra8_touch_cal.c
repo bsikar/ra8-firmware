@@ -39,10 +39,6 @@
  * ===========================================================================
  */
 
-/**
- * @enum internal_const_t
- * @brief Module-private numeric constants (no magic numbers).
- */
 /** @brief Row-major flat indices of a 3x3 matrix (a[r*3+c]). */
 typedef enum : uint8_t {
   k_m3_00  = 0U, /**< M3 00.     */
@@ -67,6 +63,10 @@ typedef enum : uint8_t {
   k_coeff_f = 5U, /**< Coeff f. */
 } affine_coeff_idx_t;
 
+/**
+ * @enum internal_const_t
+ * @brief Module-private numeric constants (no magic numbers).
+ */
 typedef enum : uint32_t {
   k_internal_centre_div    = 2U,          /**< Halve to get panel centre.      */
   k_internal_byte_mask     = 0xFFU,       /**< 8-bit mask for byte extracts.   */

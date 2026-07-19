@@ -26,10 +26,6 @@
 #include "ra8_gfx.h"
 #include "ra8_gfx_internal.h"
 
-/**
- * @enum ra8_gfx_color_shifts_t
- * @brief Bit positions for unpacking 0xAARRGGBB colour values.
- */
 /** @brief RGB565 channel masks. */
 typedef enum : uint32_t {
   k_565_r_mask = 0x1FU, /**< 5-bit red.   */
@@ -37,6 +33,10 @@ typedef enum : uint32_t {
   k_565_b_mask = 0x1FU, /**< 5-bit blue.  */
 } gfx_565_mask_t;
 
+/**
+ * @enum ra8_gfx_color_shifts_t
+ * @brief Bit positions for unpacking 0xAARRGGBB colour values.
+ */
 typedef enum : uint8_t {
   k_shift_blue  = 0,  /**< Shift blue.  */
   k_shift_green = 8,  /**< Shift green. */

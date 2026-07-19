@@ -339,7 +339,6 @@ static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en
  * @note Called from the USBX storage class thread.
  * @since 0.1.0
  */
-/** @brief JLink-readable read-path probes (diagnostic only). */
 static volatile uint32_t s_dbg_read_calls;    /**< media_read invocations.   */
 static volatile uint32_t s_dbg_read_last_lba; /**< Most recent starting LBA. */
 static volatile uint32_t s_dbg_read_last_n;   /**< Most recent block count.  */
