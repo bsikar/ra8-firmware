@@ -557,32 +557,44 @@ static void test_get_update_status(void)
   TEST_END("flash get_update_status");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_config_set_write_validation,
+  test_config_set_write_ofs_window,
+  test_mcdc_config_set_write_extra_window,
+  test_extra_mram_write_validation,
+  test_extra_mram_write_success_pads_payload,
+  test_extra_mram_write_emits_program_opcode,
+  test_config_set_write_ofs_emits_config_set_opcode,
+  test_extra_mram_erase_validation,
+  test_arc_argument_validation,
+  test_arc_oembl_read_increment_paths,
+  test_zeroize_huk_paths,
+  test_zeroize_huk_timeout,
+  test_set_security_attribution,
+  test_msuinitr_kick,
+  test_set_ecc_encoder_decoder_enable,
+  test_get_ecc_error_addr,
+  test_get_program_error_addr,
+  test_update_clock_freq,
+  test_set_update_transfer,
+  test_get_update_status,
+};
+
 int32_t main(void)
 {
-  test_config_set_write_validation();
-  test_config_set_write_ofs_window();
-  test_mcdc_config_set_write_extra_window();
-  test_extra_mram_write_validation();
-  test_extra_mram_write_success_pads_payload();
-  test_extra_mram_write_emits_program_opcode();
-  test_config_set_write_ofs_emits_config_set_opcode();
-  test_extra_mram_erase_validation();
-
-  test_arc_argument_validation();
-  test_arc_oembl_read_increment_paths();
-
-  test_zeroize_huk_paths();
-  test_zeroize_huk_timeout();
-  test_set_security_attribution();
-  test_msuinitr_kick();
-  test_set_ecc_encoder_decoder_enable();
-  test_get_ecc_error_addr();
-  test_get_program_error_addr();
-  test_update_clock_freq();
-
-  test_set_update_transfer();
-  test_get_update_status();
-
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_flash_extra.c\n");
   return 0;
 }

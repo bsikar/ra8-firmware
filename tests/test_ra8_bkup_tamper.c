@@ -777,29 +777,45 @@ static void test_mcdc_ra8_bkup(void)
   TEST_END("bkup MC/DC: validate_chan edge + capture_src decisions");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_word_read_write_roundtrip,
+  test_word_bad_args,
+  test_word_access_requires_vbae_arm,
+  test_byte_read_write_roundtrip,
+  test_byte_bad_args,
+  test_zero_all,
+  test_tamper_init_happy,
+  test_tamper_init_bad_args,
+  test_tamper_disable,
+  test_read_input,
+  test_set_input_enable,
+  test_voltage_monitor,
+  test_security_apply_get,
+  test_security_bad_args,
+  test_attach_and_dispatch,
+  test_isr_handle_armed_and_fired,
+  test_isr_handle_no_fire,
+  test_isr_handle_not_initialized,
+  test_all_vdet_levels,
+  test_all_nc_widths,
+  test_mcdc_ra8_bkup,
+};
+
 int32_t main(void)
 {
-  test_word_read_write_roundtrip();
-  test_word_bad_args();
-  test_word_access_requires_vbae_arm();
-  test_byte_read_write_roundtrip();
-  test_byte_bad_args();
-  test_zero_all();
-  test_tamper_init_happy();
-  test_tamper_init_bad_args();
-  test_tamper_disable();
-  test_read_input();
-  test_set_input_enable();
-  test_voltage_monitor();
-  test_security_apply_get();
-  test_security_bad_args();
-  test_attach_and_dispatch();
-  test_isr_handle_armed_and_fired();
-  test_isr_handle_no_fire();
-  test_isr_handle_not_initialized();
-  test_all_vdet_levels();
-  test_all_nc_widths();
-  test_mcdc_ra8_bkup();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_bkup_tamper.c\n");
   return 0;
 }

@@ -608,33 +608,49 @@ static void test_start_cascade_no_callback(void)
   TEST_END("agt start_cascade no callback leaves slot alone");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_start_free_run_happy,
+  test_start_free_run_middle_channel,
+  test_start_free_run_last_channel,
+  test_start_free_run_bad_channel,
+  test_start_free_run_huge_channel,
+  test_stop_happy,
+  test_stop_bad_channel,
+  test_deinit,
+  test_set_reload_and_status,
+  test_attach_and_dispatch,
+  test_power_transition,
+  test_no_mstp_channel_power,
+  test_start_pulse_output_compare_a,
+  test_start_pulse_output_compare_b_inverted,
+  test_start_pulse_output_compare_none,
+  test_start_pulse_output_null_cfg,
+  test_start_pulse_output_bad_channel,
+  test_start_pulse_output_bad_compare,
+  test_start_pulse_output_bad_polarity,
+  test_start_cascade_happy,
+  test_start_cascade_div8,
+  test_start_cascade_div2,
+  test_start_cascade_null,
+  test_start_cascade_bad_clock,
+  test_start_cascade_no_callback,
+};
+
 int32_t main(void)
 {
-  test_start_free_run_happy();
-  test_start_free_run_middle_channel();
-  test_start_free_run_last_channel();
-  test_start_free_run_bad_channel();
-  test_start_free_run_huge_channel();
-  test_stop_happy();
-  test_stop_bad_channel();
-  test_deinit();
-  test_set_reload_and_status();
-  test_attach_and_dispatch();
-  test_power_transition();
-  test_no_mstp_channel_power();
-  test_start_pulse_output_compare_a();
-  test_start_pulse_output_compare_b_inverted();
-  test_start_pulse_output_compare_none();
-  test_start_pulse_output_null_cfg();
-  test_start_pulse_output_bad_channel();
-  test_start_pulse_output_bad_compare();
-  test_start_pulse_output_bad_polarity();
-  test_start_cascade_happy();
-  test_start_cascade_div8();
-  test_start_cascade_div2();
-  test_start_cascade_null();
-  test_start_cascade_bad_clock();
-  test_start_cascade_no_callback();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_agt.c\n");
   return 0;
 }

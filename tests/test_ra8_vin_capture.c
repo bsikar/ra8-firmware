@@ -548,30 +548,46 @@ static void test_deinit(void)
   TEST_END("vin deinit");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_happy,
+  test_init_null_cfg,
+  test_init_zero_stride,
+  test_init_bad_im,
+  test_init_bad_clp,
+  test_reset,
+  test_capture_arm_single,
+  test_capture_arm_continuous,
+  test_capture_arm_field_skip,
+  test_capture_arm_invalid_mode,
+  test_capture_arm_already_running,
+  test_capture_stop,
+  test_capture_disarm_idle,
+  test_capture_start_buf_happy,
+  test_capture_start_buf_null,
+  test_capture_start_buf_bad_geom,
+  test_capture_start_buf_misaligned,
+  test_capture_stop_wrapper,
+  test_set_window_happy,
+  test_set_window_invalid,
+  test_attach_frame_handler,
+  test_deinit,
+};
+
 int32_t main(void)
 {
-  test_init_happy();
-  test_init_null_cfg();
-  test_init_zero_stride();
-  test_init_bad_im();
-  test_init_bad_clp();
-  test_reset();
-  test_capture_arm_single();
-  test_capture_arm_continuous();
-  test_capture_arm_field_skip();
-  test_capture_arm_invalid_mode();
-  test_capture_arm_already_running();
-  test_capture_stop();
-  test_capture_disarm_idle();
-  test_capture_start_buf_happy();
-  test_capture_start_buf_null();
-  test_capture_start_buf_bad_geom();
-  test_capture_start_buf_misaligned();
-  test_capture_stop_wrapper();
-  test_set_window_happy();
-  test_set_window_invalid();
-  test_attach_frame_handler();
-  test_deinit();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_vin_capture.c\n");
   return 0;
 }

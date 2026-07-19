@@ -441,30 +441,46 @@ static void test_flash_read_id_bad_instance(void)
   TEST_END("ra8_xspi_flash_read_id rejects bad instance");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_inst0_happy,
+  test_init_inst1_happy,
+  test_init_bad_instance,
+  test_direct_command_null_buf,
+  test_direct_command_too_long,
+  test_direct_command_bad_instance,
+  test_direct_command_packs_aligned,
+  test_direct_command_packs_unaligned,
+  test_direct_command_len_zero,
+  test_direct_command_full_16,
+  test_flash_read_null_buf,
+  test_flash_read_len_zero,
+  test_flash_read_too_large,
+  test_flash_read_bad_instance,
+  test_flash_read_address_overflow,
+  test_flash_read_past_end,
+  test_flash_read_status_happy,
+  test_flash_read_status_null,
+  test_flash_read_status_bad_instance,
+  test_flash_read_id_happy,
+  test_flash_read_id_null,
+  test_flash_read_id_bad_instance,
+};
+
 int32_t main(void)
 {
-  test_init_inst0_happy();
-  test_init_inst1_happy();
-  test_init_bad_instance();
-  test_direct_command_null_buf();
-  test_direct_command_too_long();
-  test_direct_command_bad_instance();
-  test_direct_command_packs_aligned();
-  test_direct_command_packs_unaligned();
-  test_direct_command_len_zero();
-  test_direct_command_full_16();
-  test_flash_read_null_buf();
-  test_flash_read_len_zero();
-  test_flash_read_too_large();
-  test_flash_read_bad_instance();
-  test_flash_read_address_overflow();
-  test_flash_read_past_end();
-  test_flash_read_status_happy();
-  test_flash_read_status_null();
-  test_flash_read_status_bad_instance();
-  test_flash_read_id_happy();
-  test_flash_read_id_null();
-  test_flash_read_id_bad_instance();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_xspi.c\n");
   return 0;
 }

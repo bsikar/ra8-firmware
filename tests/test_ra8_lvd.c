@@ -567,28 +567,44 @@ static void test_enable_disable_cmpe(void)
   TEST_END("lvd enable_cmpe / disable_cmpe");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_happy_ch1,
+  test_init_n_channel_no_cr1,
+  test_init_n_channel_rejects_irq_response,
+  test_init_null_cfg,
+  test_init_bad_channel,
+  test_init_bad_threshold,
+  test_init_bad_edge,
+  test_init_bad_filter_div,
+  test_init_rn_rhsel_conflict,
+  test_init_response_none_no_rie,
+  test_init_filter_off_sets_dfdis,
+  test_init_reset_response_sets_ri,
+  test_deinit_clears_regs,
+  test_set_threshold_preserves_pvde,
+  test_set_irq_edge,
+  test_set_irq_kind,
+  test_enable_disable_irq,
+  test_enable_disable_reset_m,
+  test_enable_disable_reset_n,
+  test_enable_disable_cmpe,
+};
+
 int32_t main(void)
 {
-  test_init_happy_ch1();
-  test_init_n_channel_no_cr1();
-  test_init_n_channel_rejects_irq_response();
-  test_init_null_cfg();
-  test_init_bad_channel();
-  test_init_bad_threshold();
-  test_init_bad_edge();
-  test_init_bad_filter_div();
-  test_init_rn_rhsel_conflict();
-  test_init_response_none_no_rie();
-  test_init_filter_off_sets_dfdis();
-  test_init_reset_response_sets_ri();
-  test_deinit_clears_regs();
-  test_set_threshold_preserves_pvde();
-  test_set_irq_edge();
-  test_set_irq_kind();
-  test_enable_disable_irq();
-  test_enable_disable_reset_m();
-  test_enable_disable_reset_n();
-  test_enable_disable_cmpe();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_lvd.c\n");
   return 0;
 }

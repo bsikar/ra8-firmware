@@ -973,40 +973,56 @@ static void test_mcdc_iic_b_internal_should_dispatch(void)
   TEST_END("iic_b MC/DC: should_dispatch AND");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_configured,
+  test_init_bad_inputs,
+  test_deinit_releases,
+  test_set_clock_updates,
+  test_write_happy,
+  test_write_zero_length,
+  test_write_null_data,
+  test_write_bad_channel,
+  test_write_timeout_on_start,
+  test_write_busy_rejection,
+  test_write_nack_returns_nack_and_stops,
+  test_write_restart_holds_bus,
+  test_read_happy,
+  test_read_zero_length_rejected,
+  test_read_null_out,
+  test_read_bad_channel,
+  test_read_timeout_on_start,
+  test_read_busy_rejection,
+  test_transfer_happy,
+  test_transfer_null_args_rejected,
+  test_transfer_busy_rejection,
+  test_abort_resets_channel,
+  test_write_long_break,
+  test_read_long_break,
+  test_scan_no_response,
+  test_scan_bad_args,
+  test_errors_mask_and_clear,
+  test_attach_handler_toggles_iers,
+  test_dispatch_eri_fires_callback,
+  test_mcdc_iic_b,
+  test_mcdc_iic_b_internal_len_buf_invalid,
+  test_mcdc_iic_b_internal_should_dispatch,
+};
+
 int32_t main(void)
 {
-  test_init_configured();
-  test_init_bad_inputs();
-  test_deinit_releases();
-  test_set_clock_updates();
-  test_write_happy();
-  test_write_zero_length();
-  test_write_null_data();
-  test_write_bad_channel();
-  test_write_timeout_on_start();
-  test_write_busy_rejection();
-  test_write_nack_returns_nack_and_stops();
-  test_write_restart_holds_bus();
-  test_read_happy();
-  test_read_zero_length_rejected();
-  test_read_null_out();
-  test_read_bad_channel();
-  test_read_timeout_on_start();
-  test_read_busy_rejection();
-  test_transfer_happy();
-  test_transfer_null_args_rejected();
-  test_transfer_busy_rejection();
-  test_abort_resets_channel();
-  test_write_long_break();
-  test_read_long_break();
-  test_scan_no_response();
-  test_scan_bad_args();
-  test_errors_mask_and_clear();
-  test_attach_handler_toggles_iers();
-  test_dispatch_eri_fires_callback();
-  test_mcdc_iic_b();
-  test_mcdc_iic_b_internal_len_buf_invalid();
-  test_mcdc_iic_b_internal_should_dispatch();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_i3c_i2c.c\n");
   return 0;
 }

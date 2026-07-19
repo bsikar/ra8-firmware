@@ -864,33 +864,49 @@ static void test_mcdc_validate_pll_band_mosc_and_freq(void)
   TEST_END("mipi_phy MC/DC validate_pll_band: mosc range + freq band");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_set_lane_speed_happy,
+  test_set_lane_speed_rejects,
+  test_switch_mode,
+  test_lane_count_get_set,
+  test_lane_enable_disable,
+  test_clock_mode,
+  test_eotp,
+  test_set_pclka_freq,
+  test_set_escape_divisor,
+  test_pll_start_stop,
+  test_select_timing_dsi_125_250,
+  test_select_timing_csi_100_300,
+  test_select_timing_rejects,
+  test_mcdc_validate_pll_nmul,
+  test_mcdc_validate_init_cfg_null,
+  test_mcdc_validate_init_cfg_pclka,
+  test_mcdc_validate_init_cfg_lane_count,
+  test_mcdc_dispatch_pwr_pll_edges,
+  test_mcdc_switch_mode,
+  test_mcdc_set_lane_count,
+  test_mcdc_set_lane_enable,
+  test_mcdc_set_clock_mode_eotp,
+  test_mcdc_set_pclka_freq,
+  test_mcdc_select_timing,
+  test_mcdc_validate_pll_band_mosc_and_freq,
+};
+
 int32_t main(void)
 {
-  test_set_lane_speed_happy();
-  test_set_lane_speed_rejects();
-  test_switch_mode();
-  test_lane_count_get_set();
-  test_lane_enable_disable();
-  test_clock_mode();
-  test_eotp();
-  test_set_pclka_freq();
-  test_set_escape_divisor();
-  test_pll_start_stop();
-  test_select_timing_dsi_125_250();
-  test_select_timing_csi_100_300();
-  test_select_timing_rejects();
-  test_mcdc_validate_pll_nmul();
-  test_mcdc_validate_init_cfg_null();
-  test_mcdc_validate_init_cfg_pclka();
-  test_mcdc_validate_init_cfg_lane_count();
-  test_mcdc_dispatch_pwr_pll_edges();
-  test_mcdc_switch_mode();
-  test_mcdc_set_lane_count();
-  test_mcdc_set_lane_enable();
-  test_mcdc_set_clock_mode_eotp();
-  test_mcdc_set_pclka_freq();
-  test_mcdc_select_timing();
-  test_mcdc_validate_pll_band_mosc_and_freq();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_mipi_phy_lanes.c\n");
   return 0;
 }

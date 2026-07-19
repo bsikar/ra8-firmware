@@ -773,31 +773,47 @@ static void test_epub_render_glyph_guards(void)
   TEST_END("epub_render_glyph MC/DC null quad + not-ready + reject");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_mcdc_epub_get_chapter_count_null_pair,
+  test_mcdc_epub_get_metadata_null_pair,
+  test_mcdc_epub_set_font_null_pair,
+  test_mcdc_epub_get_resource_null_quad,
+  test_mcdc_epub_get_embedded_font_count_null_pair,
+  test_mcdc_epub_get_embedded_font_null_triple,
+  test_mcdc_epub_internal_join_path_guard,
+  test_mcdc_epub_internal_join_path_dir_loop,
+  test_mcdc_epub_internal_join_path_name_loop,
+  test_mcdc_epub_internal_glyph_dim_invalid,
+  test_mcdc_epub_internal_book_not_ready,
+  test_epub_get_chapter_count_success,
+  test_epub_get_metadata_success,
+  test_epub_get_embedded_font_count_success,
+  test_epub_get_toc_kind,
+  test_epub_get_toc_count,
+  test_epub_get_toc_entry,
+  test_epub_toc_entry_to_chapter,
+  test_epub_load_chapter_guards,
+  test_epub_get_cover_image_guards,
+  test_epub_get_resource_ready_guards,
+  test_epub_get_embedded_font_guards,
+  test_epub_render_glyph_guards,
+};
+
 int32_t main(void)
 {
-  test_mcdc_epub_get_chapter_count_null_pair();
-  test_mcdc_epub_get_metadata_null_pair();
-  test_mcdc_epub_set_font_null_pair();
-  test_mcdc_epub_get_resource_null_quad();
-  test_mcdc_epub_get_embedded_font_count_null_pair();
-  test_mcdc_epub_get_embedded_font_null_triple();
-  test_mcdc_epub_internal_join_path_guard();
-  test_mcdc_epub_internal_join_path_dir_loop();
-  test_mcdc_epub_internal_join_path_name_loop();
-  test_mcdc_epub_internal_glyph_dim_invalid();
-  test_mcdc_epub_internal_book_not_ready();
-  test_epub_get_chapter_count_success();
-  test_epub_get_metadata_success();
-  test_epub_get_embedded_font_count_success();
-  test_epub_get_toc_kind();
-  test_epub_get_toc_count();
-  test_epub_get_toc_entry();
-  test_epub_toc_entry_to_chapter();
-  test_epub_load_chapter_guards();
-  test_epub_get_cover_image_guards();
-  test_epub_get_resource_ready_guards();
-  test_epub_get_embedded_font_guards();
-  test_epub_render_glyph_guards();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_epub_chapter.c\n");
   return 0;
 }

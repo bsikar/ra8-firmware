@@ -969,36 +969,52 @@ static void test_mcdc_set_clut_double_buffered_entries(void)
   TEST_END("glcdc MC/DC set_clut_double_buffered entries range");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_happy_path,
+  test_init_power_on_wait_legs,
+  test_init_null_cfg_rejected,
+  test_start_enable,
+  test_start_disable,
+  test_deinit,
+  test_status_read_and_clear,
+  test_attach_and_dispatch,
+  test_power_transition,
+  test_set_layer2_happy,
+  test_set_layer2_null_cfg,
+  test_layer2_show_happy,
+  test_layer2_chroma_key_enable_fresh_ab1,
+  test_layer2_chroma_key_enable_preserves_ab1,
+  test_set_blend_alpha,
+  test_set_blend_normal,
+  test_set_blend_overwrite,
+  test_set_blend_invalid_mode,
+  test_set_background_color,
+  test_clut_swap_now_false,
+  test_clut_swap_now_true,
+  test_clut_layer2,
+  test_clut_null_rejected,
+  test_clut_invalid_args,
+  test_set_dithering_modes,
+  test_set_brightness,
+  test_set_contrast,
+  test_mcdc_set_clut_double_buffered_entries,
+};
+
 int32_t main(void)
 {
-  test_init_happy_path();
-  test_init_power_on_wait_legs();
-  test_init_null_cfg_rejected();
-  test_start_enable();
-  test_start_disable();
-  test_deinit();
-  test_status_read_and_clear();
-  test_attach_and_dispatch();
-  test_power_transition();
-  test_set_layer2_happy();
-  test_set_layer2_null_cfg();
-  test_layer2_show_happy();
-  test_layer2_chroma_key_enable_fresh_ab1();
-  test_layer2_chroma_key_enable_preserves_ab1();
-  test_set_blend_alpha();
-  test_set_blend_normal();
-  test_set_blend_overwrite();
-  test_set_blend_invalid_mode();
-  test_set_background_color();
-  test_clut_swap_now_false();
-  test_clut_swap_now_true();
-  test_clut_layer2();
-  test_clut_null_rejected();
-  test_clut_invalid_args();
-  test_set_dithering_modes();
-  test_set_brightness();
-  test_set_contrast();
-  test_mcdc_set_clut_double_buffered_entries();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_glcdc.c\n");
   return 0;
 }

@@ -727,32 +727,48 @@ static void test_deinit_resets_registers(void)
   TEST_END("lpm deinit resets registers");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_happy,
+  test_init_null_cfg,
+  test_init_no_keep_no_bus,
+  test_set_wakeup_sources,
+  test_arm_clear_wupen0,
+  test_arm_clear_wupen1,
+  test_arm_dpsier,
+  test_clear_dpsifr,
+  test_set_dpsiegr,
+  test_snooze_request_sources,
+  test_snooze_end_sources,
+  test_ram_retention,
+  test_ldo_standby,
+  test_clock_stop_each,
+  test_opccr_read_and_wait,
+  test_prcr_unlock_relock,
+  test_enter_sleep_modes,
+  test_enter_sleep_scr_sleepdeep_rmw,
+  test_enter_deep_standby_helper,
+  test_enter_sleep_bad_mode,
+  test_get_status_packs_four_regs,
+  test_get_exit_cause_packs_wupen,
+  test_get_dpsi_state,
+  test_deinit_resets_registers,
+};
+
 int32_t main(void)
 {
-  test_init_happy();
-  test_init_null_cfg();
-  test_init_no_keep_no_bus();
-  test_set_wakeup_sources();
-  test_arm_clear_wupen0();
-  test_arm_clear_wupen1();
-  test_arm_dpsier();
-  test_clear_dpsifr();
-  test_set_dpsiegr();
-  test_snooze_request_sources();
-  test_snooze_end_sources();
-  test_ram_retention();
-  test_ldo_standby();
-  test_clock_stop_each();
-  test_opccr_read_and_wait();
-  test_prcr_unlock_relock();
-  test_enter_sleep_modes();
-  test_enter_sleep_scr_sleepdeep_rmw();
-  test_enter_deep_standby_helper();
-  test_enter_sleep_bad_mode();
-  test_get_status_packs_four_regs();
-  test_get_exit_cause_packs_wupen();
-  test_get_dpsi_state();
-  test_deinit_resets_registers();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_lpm.c\n");
   return 0;
 }

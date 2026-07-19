@@ -939,34 +939,50 @@ static void test_set_security(void)
                  ra8_etha_set_security((ra8_etha_port_t)(uint8_t)k_ra8_etha_port_count, 0U));
   TEST_END("etha set security gate");
 }
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_happy,
+  test_init_null,
+  test_init_bad_port,
+  test_status_read_and_clear,
+  test_clear_status_blocks,
+  test_enable_disable_irq,
+  test_attach_and_dispatch,
+  test_power_transition,
+  test_lifecycle_bad_args,
+  test_queue_arb_and_depth,
+  test_get_queue_level,
+  test_set_preemption,
+  test_set_max_frame_size,
+  test_set_ipv_remap,
+  test_set_vlan_mode_and_tag,
+  test_rx_tag_filter,
+  test_cut_through_queue,
+  test_cbs_configure_and_state,
+  test_tas_schedule_and_enable,
+  test_read_clear_stats,
+  test_descriptor_ring_init,
+  test_get_stats_and_account,
+  test_get_stats_after_deinit,
+  test_etha_open_bad_args,
+  test_etha_open_eamc_transition,
+  test_set_security,
+};
+
 int32_t main(void)
 {
-  test_init_happy();
-  test_init_null();
-  test_init_bad_port();
-  test_status_read_and_clear();
-  test_clear_status_blocks();
-  test_enable_disable_irq();
-  test_attach_and_dispatch();
-  test_power_transition();
-  test_lifecycle_bad_args();
-  test_queue_arb_and_depth();
-  test_get_queue_level();
-  test_set_preemption();
-  test_set_max_frame_size();
-  test_set_ipv_remap();
-  test_set_vlan_mode_and_tag();
-  test_rx_tag_filter();
-  test_cut_through_queue();
-  test_cbs_configure_and_state();
-  test_tas_schedule_and_enable();
-  test_read_clear_stats();
-  test_descriptor_ring_init();
-  test_get_stats_and_account();
-  test_get_stats_after_deinit();
-  test_etha_open_bad_args();
-  test_etha_open_eamc_transition();
-  test_set_security();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_etha.c\n");
   return 0;
 }

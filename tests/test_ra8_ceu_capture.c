@@ -872,39 +872,55 @@ static void test_mcdc_arm_capture_firewall_guard(void)
   TEST_END("ceu arm MC/DC: image_area!=0 && y_top!=NULL");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_happy,
+  test_init_null_cfg,
+  test_init_continuous_non_image_rejected,
+  test_init_data_enable_format,
+  test_init_continuous_capture,
+  test_init_interlace_one_field,
+  test_init_byte_swap_full,
+  test_init_scale_down,
+  test_init_low_pass_and_burst,
+  test_capture_arm_happy,
+  test_capture_arm_null,
+  test_capture_arm_unaligned,
+  test_capture_arm_busy,
+  test_capture_start_ex_full_bundle,
+  test_capture_start_ex_misaligned,
+  test_capture_start_ex_null,
+  test_capture_disarm,
+  test_data_enable_arms_firewall,
+  test_dma_pump,
+  test_dma_pump_bad_args,
+  test_set_dma_buffer_happy,
+  test_set_dma_buffer_null,
+  test_set_dma_buffer_zero_len,
+  test_set_dma_buffer_misaligned,
+  test_capture_start_n_single,
+  test_capture_start_n_continuous,
+  test_capture_start_no_buffer,
+  test_capture_stop_wrapper,
+  test_deinit,
+  test_mcdc_init_continuous_format_guard,
+  test_mcdc_arm_capture_firewall_guard,
+};
+
 int32_t main(void)
 {
-  test_init_happy();
-  test_init_null_cfg();
-  test_init_continuous_non_image_rejected();
-  test_init_data_enable_format();
-  test_init_continuous_capture();
-  test_init_interlace_one_field();
-  test_init_byte_swap_full();
-  test_init_scale_down();
-  test_init_low_pass_and_burst();
-  test_capture_arm_happy();
-  test_capture_arm_null();
-  test_capture_arm_unaligned();
-  test_capture_arm_busy();
-  test_capture_start_ex_full_bundle();
-  test_capture_start_ex_misaligned();
-  test_capture_start_ex_null();
-  test_capture_disarm();
-  test_data_enable_arms_firewall();
-  test_dma_pump();
-  test_dma_pump_bad_args();
-  test_set_dma_buffer_happy();
-  test_set_dma_buffer_null();
-  test_set_dma_buffer_zero_len();
-  test_set_dma_buffer_misaligned();
-  test_capture_start_n_single();
-  test_capture_start_n_continuous();
-  test_capture_start_no_buffer();
-  test_capture_stop_wrapper();
-  test_deinit();
-  test_mcdc_init_continuous_format_guard();
-  test_mcdc_arm_capture_firewall_guard();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_ceu_capture.c\n");
   return 0;
 }
