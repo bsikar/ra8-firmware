@@ -49,30 +49,14 @@
 #include "unity_minimal.h"
 
 /**
- * @enum smbus_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_smbus_cov_out_ff = 0xFFU,
-} smbus_cov_uint8_const_t;
-
-/**
- * @enum smbus_cov_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_smbus_cov_t
+ * @brief Out-parameter seed and the block-read buffer capacity.
  */
 typedef enum : uint16_t {
-  k_smbus_cov_val_256 = 256,
-} smbus_cov_uint16_const_t;
+  k_t_byte_unset = 0xFFU, /**< Pre-set byte out-parameter; a transfer that fails
+                               must leave it rather than report data.            */
+  k_t_block_cap  = 256U,  /**< Block-read destination buffer, bytes.            */
+} t_smbus_cov_t;
 
 /* =============================================================================
  * Shared test constants
@@ -475,7 +459,7 @@ static void test_read_byte_data_pec_mismatch(void)
   TEST_BEGIN("ra8_smbus_read_byte_data: PEC mismatch path (lines 273-281)");
   prep_pec(true);
   prime_iic_b();
-  uint8_t out = k_smbus_cov_out_ff;
+  uint8_t out = k_t_byte_unset;
   TEST_ASSERT_EQ(k_ra8_err_crc_mismatch,
                  ra8_smbus_read_byte_data((uint8_t)k_cov_target, (uint8_t)k_cov_cmd, &out));
   /* out_data must NOT be written on PEC error. */
@@ -512,7 +496,7 @@ static void test_block_read_pec_mismatch(void)
   prep_pec(true);
   prime_iic_b();
   /* Use cap=255 so the count from the bus (129 = 0x81) fits. */
-  uint8_t buf[k_smbus_cov_val_256] = {0U};
+  uint8_t buf[k_t_block_cap] = {0U};
   uint8_t out_len                  = 0U;
   TEST_ASSERT_EQ(
     k_ra8_err_crc_mismatch,

@@ -30,30 +30,14 @@
 #include "unity_minimal.h"
 
 /**
- * @enum rsip_key_injection_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_rsip_key_injection_blob_ff = 0xFFU,
-} rsip_key_injection_uint8_const_t;
-
-/**
- * @enum rsip_key_injection_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_inject_t
+ * @brief Tamper mask and the RSA modulus buffer capacity.
  */
 typedef enum : uint16_t {
-  k_rsip_key_injection_val_256 = 256,
-} rsip_key_injection_uint16_const_t;
+  k_t_tamper_mask = 0xFFU, /**< XOR that flips the wrapped blob's last byte so
+                                its integrity check must fail.                   */
+  k_t_modulus_cap = 256U,  /**< RSA-2048 modulus, bytes.                        */
+} t_inject_t;
 
 /**
  * @enum ra8_rsip_ki_test_const_t
@@ -145,7 +129,7 @@ static void test_inject_rsa2048(void)
   TEST_BEGIN("rsip ki rsa2048 round-trip");
   prep();
 
-  uint8_t modulus[k_rsip_key_injection_val_256] = {};
+  uint8_t modulus[k_t_modulus_cap] = {};
   uint8_t exponent[4]                           = {0x00U, 0x01U, 0x00U, 0x01U};
   (void)memset(modulus, (int)k_test_pattern_h, sizeof(modulus));
   uint8_t blob[k_ra8_rsip_wrapped_max_total];
@@ -207,7 +191,7 @@ static void test_validate_detects_tamper(void)
   uint8_t blob[k_ra8_rsip_wrapped_max_total];
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_key_inject_aes(blob, raw_key, k_ra8_rsip_aes_key_bits_128));
   /* Flip a byte inside the trailing MAC region. */
-  blob[(uint32_t)k_ra8_rsip_wrapped_max_total - 1U] ^= k_rsip_key_injection_blob_ff;
+  blob[(uint32_t)k_ra8_rsip_wrapped_max_total - 1U] ^= k_t_tamper_mask;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_rsip_key_validate(blob, k_ra8_rsip_wrapped_type_aes));
 
   /* And the type-tag mismatch path. */
@@ -241,7 +225,7 @@ static void test_null_args(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_rsip_key_inject_aes(blob, nullptr, k_ra8_rsip_aes_key_bits_128));
 
-  uint8_t mod[k_rsip_key_injection_val_256] = {};
+  uint8_t mod[k_t_modulus_cap] = {};
   uint8_t exp[4]                            = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_rsip_key_inject_rsa(nullptr, mod, exp, k_ra8_rsip_rsa_2048));

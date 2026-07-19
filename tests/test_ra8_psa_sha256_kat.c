@@ -31,33 +31,21 @@
 #include "unity_minimal.h"
 
 /**
- * @enum psa_sha256_kat_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_sha_kat_t
+ * @brief Message lengths of the FIPS 180-4 SHA-256 known-answer vectors.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_psa_sha256_kat_val_56 = 56U,
-} psa_sha256_kat_uint8_const_t;
-
-/**
- * @enum psa_sha256_kat_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Both are part of the published vectors. The 56-byte case is the two-block
+ * example; the one-million-'a' case is the long-message example, whose length
+ * is what makes it exercise the update loop rather than a single block.
  */
 typedef enum : uint32_t {
-  k_psa_sha256_kat_val_1000000 = 1000000,
-} psa_sha256_kat_uint32_const_t;
+  k_t_two_block_len = 56U,      /**< The 448-bit two-block message.            */
+  k_t_million_a_len = 1000000U, /**< The one-million-character message.        */
+} t_sha_kat_t;
 
 /** @brief One-million-byte 'a' message buffer (NIST long-message vector). */
-static uint8_t s_million_a[k_psa_sha256_kat_val_1000000];
+static uint8_t s_million_a[k_t_million_a_len];
 
 /**
  * @brief Decode a hex string of ``n`` bytes into ``out`` (no compound logic).
@@ -127,7 +115,7 @@ static void test_sha256_nist_short_vectors(void)
                 3U,
                 "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
   expect_sha256((const uint8_t*)"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq",
-                k_psa_sha256_kat_val_56,
+                k_t_two_block_len,
                 "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1");
 
   TEST_END("PSA SHA-256 KAT: empty / abc / 448-bit NIST vectors");

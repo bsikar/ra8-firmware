@@ -17,18 +17,15 @@
 #include "unity_minimal.h"
 
 /**
- * @enum mstp_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_mstp_t
+ * @brief Module-stop sweep bound and the reference-count seed.
  */
-typedef enum : uint8_t {
-  k_mstp_i_255  = 255U,
-  k_mstp_ref_ff = 0xFFU,
-} mstp_uint8_const_t;
+typedef enum : uint16_t {
+  k_t_module_sweep = 255U,  /**< Module ids swept: past every defined module, so
+                                 the undefined ones must be rejected.           */
+  k_t_ref_unset    = 0xFFU, /**< Pre-set reference count; a query that fails
+                                 must leave it rather than report zero.          */
+} t_mstp_t;
 
 /* Helper -- read the raw bit value for an id from the simulator
  * MMIO so the test can independently confirm what ra8_mstp wrote. */
@@ -61,7 +58,7 @@ static void test_init_zeroes_refcounts_and_sets_all_stopped(void)
   TEST_ASSERT_EQ(0xFFFFFFFFU, ra8_mstp()->MSTPCRE);
 
   /* Spot-check a few refcounts. */
-  uint8_t ref = k_mstp_ref_ff;
+  uint8_t ref = k_t_ref_unset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_get_refcount(k_ra8_mstp_sci0, &ref));
   TEST_ASSERT_EQ(0, ref);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_get_refcount(k_ra8_mstp_dmac0_dtc0, &ref));
@@ -142,7 +139,7 @@ static void test_disable_keeps_bit_clear_until_last_release(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_disable(k_ra8_mstp_dmac0_dtc0));
   TEST_ASSERT(peek_bit(k_ra8_mstp_dmac0_dtc0));
 
-  uint8_t ref = k_mstp_ref_ff;
+  uint8_t ref = k_t_ref_unset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_get_refcount(k_ra8_mstp_dmac0_dtc0, &ref));
   TEST_ASSERT_EQ(0, ref);
 
@@ -298,7 +295,7 @@ static void test_refcount_saturation(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
 
   /* Push the refcount up to UINT8_MAX (255). */
-  for (uint16_t i = 0U; i < k_mstp_i_255; ++i) {
+  for (uint16_t i = 0U; i < k_t_module_sweep; ++i) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_enable(k_ra8_mstp_dmac0_dtc0));
   }
   uint8_t ref = 0U;
@@ -354,7 +351,7 @@ static void test_enable_readback_timeout_rolls_back(void)
    * back so a caller retry starts fresh. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait(&ra8_mstp()->MSTPCRB));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_mstp_enable(k_ra8_mstp_sci0));
-  uint8_t ref = k_mstp_ref_ff;
+  uint8_t ref = k_t_ref_unset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_get_refcount(k_ra8_mstp_sci0, &ref));
   TEST_ASSERT_EQ(0U, ref);
 

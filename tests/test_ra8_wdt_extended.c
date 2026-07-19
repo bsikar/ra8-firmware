@@ -15,31 +15,17 @@
 #include "unity_minimal.h"
 
 /**
- * @enum wdt_extended_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_wdt_extended_timeout_ff = 0xFFU,
-} wdt_extended_uint8_const_t;
-
-/**
- * @enum wdt_extended_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_wdt_ext_t
+ * @brief Out-parameter seeds and the status pattern staged in WDTSR.
  */
 typedef enum : uint16_t {
-  k_wdt_extended_cnt_ffff   = 0xFFFFU,
-  k_wdt_extended_wdtsr_0100 = 0x0100U,
-} wdt_extended_uint16_const_t;
+  k_t_u8_unset      = 0xFFU,   /**< Pre-set 8-bit out-parameter: a supervisor
+                                    slot, and a timeout selector past the defined
+                                    set that the validator must reject.           */
+  k_t_count_unset   = 0xFFFFU, /**< Pre-set 16-bit counter read-back.           */
+  k_t_wdtsr_refresh = 0x0100U, /**< WDTSR with the refresh-error bit set, which
+                                    the status decoder must report.               */
+} t_wdt_ext_t;
 
 /* ---------------------------------------------------------------------------
  * Helpers shared by multiple tests
@@ -120,7 +106,7 @@ static void test_wdt_init_bad_timeout(void)
   TEST_BEGIN("ra8_wdt_init bad timeout rejected");
   ra8_sim_mmap_reset();
   ra8_wdt_cfg_t cfg = k_valid_cfg;
-  cfg.timeout       = (ra8_wdt_timeout_sel_t)k_wdt_extended_timeout_ff;
+  cfg.timeout       = (ra8_wdt_timeout_sel_t)k_t_u8_unset;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_wdt_init(&cfg));
   TEST_END("ra8_wdt_init bad timeout rejected");
 }
@@ -282,8 +268,8 @@ static void test_wdt_get_counter_ok(void)
   TEST_BEGIN("ra8_wdt_get_counter reads CNTVAL field");
   ra8_sim_mmap_reset();
   /* Write a canned value into the CNTVAL[13:0] field of WDTSR. */
-  ra8_wdt()->WDTSR = (uint16_t)k_wdt_extended_wdtsr_0100;
-  uint16_t cnt     = k_wdt_extended_cnt_ffff;
+  ra8_wdt()->WDTSR = (uint16_t)k_t_wdtsr_refresh;
+  uint16_t cnt     = k_t_count_unset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_get_counter(&cnt));
   TEST_ASSERT_EQ((0x0100U & (uint16_t)k_ra8_wdt_sr_cnt_mask), cnt);
   TEST_END("ra8_wdt_get_counter reads CNTVAL field");
@@ -629,7 +615,7 @@ static void test_wdt_subscribe_null_fn(void)
   TEST_BEGIN("ra8_wdt_subscribe null fn rejected");
   ra8_sim_mmap_reset();
   (void)ra8_wdt_deinit();
-  uint8_t slot = k_wdt_extended_timeout_ff;
+  uint8_t slot = k_t_u8_unset;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_wdt_subscribe(nullptr, nullptr, &slot));
   TEST_END("ra8_wdt_subscribe null fn rejected");
 }
@@ -654,8 +640,8 @@ static void test_wdt_subscribe_and_count(void)
   (void)ra8_wdt_deinit();
   s_sub_count = 0U;
 
-  uint8_t slot1 = k_wdt_extended_timeout_ff;
-  uint8_t slot2 = k_wdt_extended_timeout_ff;
+  uint8_t slot1 = k_t_u8_unset;
+  uint8_t slot2 = k_t_u8_unset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_subscribe(stub_sub, nullptr, &slot1));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_subscribe(stub_sub, nullptr, &slot2));
 
@@ -727,7 +713,7 @@ static void test_wdt_subscribe_unsubscribe_roundtrip(void)
   ra8_sim_mmap_reset();
   (void)ra8_wdt_deinit();
 
-  uint8_t slot = k_wdt_extended_timeout_ff;
+  uint8_t slot = k_t_u8_unset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_wdt_subscribe(stub_sub, nullptr, &slot));
   TEST_ASSERT(slot < k_ra8_wdt_max_subs);
 
@@ -757,12 +743,12 @@ static void test_wdt_subscribe_table_full(void)
   /* Fill every non-legacy slot (slots 1..k_ra8_wdt_max_subs-1). */
   const uint8_t k_non_legacy = (uint8_t)(k_ra8_wdt_max_subs - 1U);
   for (uint8_t i = 0U; i < k_non_legacy; ++i) {
-    uint8_t         slot = k_wdt_extended_timeout_ff;
+    uint8_t         slot = k_t_u8_unset;
     const ra8_err_t e    = ra8_wdt_subscribe(stub_sub, nullptr, &slot);
     TEST_ASSERT_EQ(k_ra8_ok, e);
   }
 
-  uint8_t overflow = k_wdt_extended_timeout_ff;
+  uint8_t overflow = k_t_u8_unset;
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_wdt_subscribe(stub_sub, nullptr, &overflow));
   TEST_END("ra8_wdt_subscribe table full returns no_mem");
 }

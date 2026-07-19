@@ -33,17 +33,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum sci_lin_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_lin_t
+ * @brief LIN identifier out-parameter seed.
  */
 typedef enum : uint8_t {
-  k_sci_lin_id_ff = 0xFFU,
-} sci_lin_uint8_const_t;
+  k_t_id_unset = 0xFFU, /**< Pre-set LIN id; a header read that fails must leave
+                             it rather than report a real identifier.            */
+} t_lin_t;
 
 /**
  * @enum ra8_lin_test_channel_t
@@ -553,7 +549,7 @@ static void test_mcdc_check_header(void)
   TEST_BEGIN("ra8_sci_lin_check_header: SYNC + PID MC/DC");
   prep();
 
-  uint8_t id    = k_sci_lin_id_ff;
+  uint8_t id    = k_t_id_unset;
   bool    valid = false;
 
   /* V1: good SYNC + good PID -> accepted, id extracted. */

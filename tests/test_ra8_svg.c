@@ -19,17 +19,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum svg_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_svg_t
+ * @brief Framebuffer pixel mask.
  */
 typedef enum : uint32_t {
-  k_svg_val_ffffff = 0xFFFFFFU,
-} svg_uint32_const_t;
+  k_t_rgb_mask = 0xFFFFFFU, /**< The 24 RGB bits, dropping the unused alpha byte
+                                 so a comparison is not sensitive to it.         */
+} t_svg_t;
 
 enum : int32_t {
   k_w = 200, /**< W. */
@@ -42,7 +38,7 @@ static uint32_t s_fb[k_w * k_h];
 /** @brief RGB (low 24 bits) of the framebuffer pixel at (x, y). */
 static uint32_t px(int32_t x, int32_t y)
 {
-  return s_fb[(y * k_w) + x] & k_svg_val_ffffff;
+  return s_fb[(y * k_w) + x] & k_t_rgb_mask;
 }
 
 /** @brief Bind + clear the framebuffer to white. */

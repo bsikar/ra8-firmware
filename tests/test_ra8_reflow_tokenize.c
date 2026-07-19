@@ -24,17 +24,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum reflow_tokenize_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_tok_t
+ * @brief Sentinel returned by the mock to prove the caller propagates it.
  */
 typedef enum : uint32_t {
-  k_reflow_tokenize_sentinel_deadbeef = 0xDEADBEEFU,
-} reflow_tokenize_uint32_const_t;
+  k_t_mock_result = 0xDEADBEEFU, /**< A value the tokenizer could not compute,
+                                      so seeing it proves the mock was called.   */
+} t_tok_t;
 
 /* Forward decl of the tokenizer entry point (defined in the production TU). */
 
@@ -347,7 +343,7 @@ static uint32_t first_text_color(void)
       return s_engine.tokens[i].color;
     }
   }
-  return k_reflow_tokenize_sentinel_deadbeef;
+  return k_t_mock_result;
 }
 
 /**

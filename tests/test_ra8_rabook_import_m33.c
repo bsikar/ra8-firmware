@@ -75,17 +75,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum rabook_import_m33_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_import_t
+ * @brief Tamper mask applied to the imported body.
  */
 typedef enum : uint8_t {
-  k_rabook_import_m33_out_buf_ff = 0xFFU,
-} rabook_import_m33_uint8_const_t;
+  k_t_tamper_mask = 0xFFU, /**< XOR that flips the last body byte so the CRC
+                                check must fail.                                */
+} t_import_t;
 
 /* -------------------------------------------------------------------------- */
 /* Sizing + storage */
@@ -286,7 +282,7 @@ static ra8_err_t mock_dispatch_corrupt(void*          ctx,
     return err;
   }
   out_buf[*out_len - 1U] ^=
-    k_rabook_import_m33_out_buf_ff; /* flip the last body byte -> CRC mismatch */
+    k_t_tamper_mask; /* flip the last body byte -> CRC mismatch */
   return k_ra8_ok;
 }
 
