@@ -35,6 +35,11 @@
 #include "ra8_ota_internal.h"
 #include "unity_minimal.h"
 
+/** @brief Erased-flash byte the OTA bank mock reports for unwritten spans. */
+typedef enum : uint8_t {
+  k_ota_erased_byte = 0xFFU, /**< Matches real NOR/MRAM erase state. */
+} ota_fill_t;
+
 /**
  * @enum ota_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -238,7 +243,7 @@ static ra8_err_t mock_flash_erase(void* ctx, uint32_t addr, uint32_t len)
   if ((addr < k_test_bank_addr) || ((addr + len) > (k_test_bank_addr + k_test_bank_size))) {
     return k_ra8_err_invalid_arg;
   }
-  (void)memset(g_bank_storage + (addr - k_test_bank_addr), 0xFF, len);
+  (void)memset(g_bank_storage + (addr - k_test_bank_addr), k_ota_erased_byte, len);
   return k_ra8_ok;
 }
 

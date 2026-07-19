@@ -24,6 +24,11 @@
 #include "ra8_ota.h"
 #include "ra8_ota_internal.h"
 
+/** @brief Erased-flash byte the mocked OTA bank reports after an erase. */
+typedef enum : uint8_t {
+  k_ota_cov_erased_byte = 0xFFU, /**< Matches real NOR/MRAM erase state. */
+} ota_cov_fill_t;
+
 /**
  * @enum ota_cov_mocks_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -242,7 +247,7 @@ static inline ra8_err_t cov_flash_erase(void* ctx, uint32_t addr, uint32_t len)
   if (g_cov_flash_erase_fail) {
     return k_ra8_err_hw_error;
   }
-  (void)memset(g_cov_bank, 0xFF, sizeof g_cov_bank);
+  (void)memset(g_cov_bank, k_ota_cov_erased_byte, sizeof g_cov_bank);
   return k_ra8_ok;
 }
 

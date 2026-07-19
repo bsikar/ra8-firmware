@@ -39,6 +39,11 @@
 #include "ra8_usb_pal.h"
 #include "unity_minimal.h"
 
+/** @brief Payload fill for the MSC bulk-transfer assertions. */
+typedef enum : uint8_t {
+  k_msc_fill_payload = 0xAAU, /**< Arbitrary non-trivial byte pattern. */
+} msc_fill_t;
+
 /** @brief Per-test enums. */
 typedef enum : uint16_t {
   k_test_msc_ep_bulk_out = 0x02U, /**< EP2 OUT bulk -- BBB CBW/data. */
@@ -163,7 +168,7 @@ static void test_msc_write_last_block_in_range(void)
   TEST_ASSERT(test_msc_lba_in_range((uint32_t)k_test_msc_block_count - 1U, 1U));
   /* Splat one block of 0xAA into the last block, then read back. */
   uint8_t pat[k_test_msc_block_size];
-  (void)memset(pat, 0xAA, sizeof(pat));
+  (void)memset(pat, k_msc_fill_payload, sizeof(pat));
   (void)memcpy(&s_test_msc_ramdisk[(size_t)(k_test_msc_block_count - 1U) * k_test_msc_block_size],
                pat,
                sizeof(pat));

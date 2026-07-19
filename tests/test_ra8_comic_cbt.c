@@ -46,16 +46,7 @@
 typedef enum : uint8_t {
   k_comic_cbt_s_arc_1f      = 0x1FU,
   k_comic_cbt_s_arc_8b      = 0x8BU,
-  k_comic_cbt_tcb_octal_100 = 100,
-  k_comic_cbt_tcb_octal_108 = 108,
-  k_comic_cbt_tcb_octal_116 = 116,
-  k_comic_cbt_tcb_octal_12  = 12U,
-  k_comic_cbt_tcb_octal_124 = 124,
-  k_comic_cbt_tcb_octal_136 = 136,
-  k_comic_cbt_tcb_octal_148 = 148,
   k_comic_cbt_tcb_octal_7   = 7U,
-  k_comic_cbt_val_155       = 155,
-  k_comic_cbt_val_156       = 156,
   k_comic_cbt_val_64        = 64,
   k_comic_cbt_val_ff        = 0xFFU,
 } comic_cbt_uint8_const_t;
@@ -70,8 +61,7 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_comic_cbt_i_512         = 512U,
-  k_comic_cbt_off_1024      = 1024U,
+  k_tcb_tar_block         = 512U,
   k_comic_cbt_s_arc_len_600 = 600U,
 } comic_cbt_uint16_const_t;
 
@@ -96,6 +86,42 @@ typedef enum : uint32_t {
   k_tcb_name_cap = 512U,         /**< Name-arena capacity.        */
   k_tcb_out_cap  = 4096U,        /**< Page extraction buffer.     */
 } tcb_dim_t;
+
+/** @brief Fill byte for the "not an archive at all" rejection fixture. */
+typedef enum : uint8_t {
+  k_tcb_fill_non_archive = 0xA5U, /**< Matches no archive magic. */
+} tcb_fill_t;
+
+/**
+ * @enum tcb_tar_layout_t
+ * @brief POSIX ustar header field offsets and widths, within one 512-byte block.
+ *
+ * @details
+ * Offsets and widths are fixed by the ustar format, so they are named by the
+ * FIELD they address rather than by their value. Two pairs share a value but
+ * not a role: 100 is both the name width and the mode offset, and 155 is both
+ * the prefix width and the offset of the checksum field's trailing space.
+ */
+typedef enum : uint16_t {
+  k_tcb_tar_block        = 512U,  /**< Tar block size, bytes.                  */
+  k_tcb_end_marker_bytes = 1024U, /**< End-of-archive marker: two zero blocks. */
+  k_tcb_off_name         = 0U,    /**< name field offset.                      */
+  k_tcb_len_name         = 100U,  /**< name field width.                       */
+  k_tcb_off_mode         = 100U,  /**< mode field offset.                      */
+  k_tcb_off_uid          = 108U,  /**< uid field offset.                       */
+  k_tcb_off_gid          = 116U,  /**< gid field offset.                       */
+  k_tcb_len_id           = 8U,    /**< mode/uid/gid field width.               */
+  k_tcb_off_size         = 124U,  /**< size field offset.                      */
+  k_tcb_len_size         = 12U,   /**< size field width.                       */
+  k_tcb_off_mtime        = 136U,  /**< mtime field offset.                     */
+  k_tcb_off_chksum       = 148U,  /**< checksum field offset.                  */
+  k_tcb_len_chksum       = 8U,    /**< checksum field width.                   */
+  k_tcb_chksum_digits    = 7U,    /**< Octal digits written into the checksum. */
+  k_tcb_off_chksum_pad   = 155U,  /**< Trailing space of the checksum field.   */
+  k_tcb_off_type         = 156U,  /**< typeflag field offset.                  */
+  k_tcb_off_magic        = 257U,  /**< "ustar" magic offset.                   */
+  k_tcb_off_version      = 263U,  /**< version field offset.                   */
+} tcb_tar_layout_t;
 
 /** @brief ustar magic field, 5 bytes at offset 257 (no string terminator). */
 static const uint8_t k_tcb_ustar_magic[] = {'u', 's', 't', 'a', 'r'};
@@ -152,24 +178,24 @@ static size_t
 tcb_tar_add(uint8_t* dst, size_t off, const char* name, uint8_t type, const void* data, size_t n)
 {
   uint8_t* b = &dst[off];
-  memset(b, 0, 512U);
-  strncpy((char*)&b[0], name, 100U);
-  tcb_octal(&b[k_comic_cbt_tcb_octal_100], 8U, k_comic_cbt_tcb_octal_0644);
-  tcb_octal(&b[k_comic_cbt_tcb_octal_108], 8U, 0U);
-  tcb_octal(&b[k_comic_cbt_tcb_octal_116], 8U, 0U);
-  tcb_octal(&b[k_comic_cbt_tcb_octal_124], k_comic_cbt_tcb_octal_12, (uint64_t)n);
-  tcb_octal(&b[k_comic_cbt_tcb_octal_136], k_comic_cbt_tcb_octal_12, 0U);
-  b[k_comic_cbt_val_156] = type;
-  memcpy(&b[257], k_tcb_ustar_magic, sizeof(k_tcb_ustar_magic));
-  memcpy(&b[263], k_tcb_ustar_version, sizeof(k_tcb_ustar_version));
-  memset(&b[148], (int)' ', 8U);
+  memset(b, 0, (size_t)k_tcb_tar_block);
+  strncpy((char*)&b[k_tcb_off_name], name, (size_t)k_tcb_len_name);
+  tcb_octal(&b[k_tcb_off_mode], k_tcb_len_id, k_comic_cbt_tcb_octal_0644);
+  tcb_octal(&b[k_tcb_off_uid], k_tcb_len_id, 0U);
+  tcb_octal(&b[k_tcb_off_gid], k_tcb_len_id, 0U);
+  tcb_octal(&b[k_tcb_off_size], k_tcb_len_size, (uint64_t)n);
+  tcb_octal(&b[k_tcb_off_mtime], k_tcb_len_size, 0U);
+  b[k_tcb_off_type] = type;
+  memcpy(&b[k_tcb_off_magic], k_tcb_ustar_magic, sizeof(k_tcb_ustar_magic));
+  memcpy(&b[k_tcb_off_version], k_tcb_ustar_version, sizeof(k_tcb_ustar_version));
+  memset(&b[k_tcb_off_chksum], (int)' ', k_tcb_len_chksum);
   uint32_t sum = 0U;
-  for (uint32_t i = 0U; i < k_comic_cbt_i_512; ++i) {
+  for (uint32_t i = 0U; i < k_tcb_tar_block; ++i) {
     sum += b[i];
   }
-  tcb_octal(&b[k_comic_cbt_tcb_octal_148], k_comic_cbt_tcb_octal_7, (uint64_t)sum);
-  b[k_comic_cbt_val_155] = (uint8_t)' ';
-  off += k_comic_cbt_i_512;
+  tcb_octal(&b[k_tcb_off_chksum], k_tcb_chksum_digits, (uint64_t)sum);
+  b[k_tcb_off_chksum_pad] = (uint8_t)' ';
+  off += k_tcb_tar_block;
   if (n > 0U) {
     memcpy(&dst[off], data, n);
     const size_t padded = ((n + 511U) / 512U) * 512U;
@@ -189,8 +215,8 @@ static size_t tcb_build_tar(uint8_t* dst)
   off             = tcb_tar_add(dst, off, "page2.png", (uint8_t)'0', p2, sizeof(p2) - 1U);
   off = tcb_tar_add(dst, off, "notes.txt", (uint8_t)'0', "skip me", k_comic_cbt_tcb_octal_7);
   off = tcb_tar_add(dst, off, "page1.png", (uint8_t)'0', p1, sizeof(p1) - 1U);
-  memset(&dst[off], 0, 1024U);
-  return off + k_comic_cbt_off_1024;
+  memset(&dst[off], 0, (size_t)k_tcb_end_marker_bytes);
+  return off + (size_t)k_tcb_end_marker_bytes;
 }
 
 /** @brief Wrap @p payload as a gzip member into ::s_arc. */
@@ -279,7 +305,7 @@ static void test_cbt_bare_tar_open(void)
   tcb_assert_two_pages(&c, k_ra8_comic_kind_cbt);
 
   /* Non-archive bytes are still cleanly refused by every backend. */
-  memset(s_arc, 0xA5, 600U);
+  memset(s_arc, k_tcb_fill_non_archive, (size_t)k_comic_cbt_s_arc_len_600);
   s_arc_len = k_comic_cbt_s_arc_len_600;
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
                  ra8_comic_open(&c,

@@ -17,6 +17,12 @@
  * decodes the layer, then re-probes the inner archive; xz is emitted with a
  * CRC32 check and a 1 MiB dictionary so the on-device xz scratch accepts it.
  */
+/* glibc gates posix_spawn_file_actions_addchdir_np() behind _GNU_SOURCE, and a
+ * feature-test macro only takes effect if it precedes every system header. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include "mdl_export.h"
 
 #include <ctype.h>
@@ -31,7 +37,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#if defined(__APPLE__)
+#ifdef __APPLE__
 /* macOS links every executable against a shared libc, so it exposes no
  * `environ` symbol to link against; `_NSGetEnviron()` in <crt_externs.h> is the
  * documented replacement. Every other POSIX host declares `environ` directly. */
@@ -166,7 +172,7 @@ const char* mdl_format_ext(mdl_format_t fmt)
 /** @brief The process environment block, for the `posix_spawnp` calls below. */
 RA8_INTERNAL static char* const* spawn_environ(void)
 {
-#if defined(__APPLE__)
+#ifdef __APPLE__
   return *_NSGetEnviron();
 #else
   extern char** environ;
@@ -413,7 +419,10 @@ RA8_INTERNAL static ra8_err_t export_cbr(const char* dir, const char* out_path)
 {
   posix_spawn_file_actions_t actions;
   (void)posix_spawn_file_actions_init(&actions);
-  (void)posix_spawn_file_actions_addchdir(&actions, dir);
+  /* The _np spelling is the portable one in practice: glibc ships only this
+   * form (behind _GNU_SOURCE) and macOS ships both, whereas the unsuffixed
+   * POSIX.1-2024 name does not exist on glibc at all. */
+  (void)posix_spawn_file_actions_addchdir_np(&actions, dir);
   const char* const argv[] = {"rar", "a", "-ep1", "-idq", out_path, ".", nullptr};
   pid_t             pid    = 0;
   const int         rc =

@@ -29,6 +29,12 @@
 #include "support/rar5_enc_fixture.h"
 #include "unity_minimal.h"
 
+/** @brief RAR main-archive-header layout used by the fixture builder. */
+typedef enum : uint8_t {
+  k_av_off_high_pos_av = 7U, /**< HighPosAV + PosAV field offset.   */
+  k_av_len_high_pos_av = 6U, /**< HighPosAV + PosAV combined width. */
+} av_layout_t;
+
 /**
  * @enum rar5_archive_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -281,7 +287,7 @@ static size_t a4_main(uint8_t* out)
   out[2] = k_rar5_archive_out_73;
   a4_le16(&out[3], 0U);
   a4_le16(&out[k_rar5_archive_a4_le16_5], k_rar5_archive_a4_le16_13);
-  memset(&out[7], 0, 6U);
+  memset(&out[k_av_off_high_pos_av], 0, k_av_len_high_pos_av);
   return k_rar5_archive_a4_le16_13;
 }
 

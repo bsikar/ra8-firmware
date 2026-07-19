@@ -20,6 +20,11 @@
 #include "ra8_io_blockdev_ram.h"
 #include "unity_minimal.h"
 
+/** @brief Poison byte a cache hit must overwrite. */
+typedef enum : uint8_t {
+  k_cache_fill_poison = 0x3CU, /**< Never a valid cached byte. */
+} cache_fill_t;
+
 /**
  * @enum io_blockdev_cache_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -124,7 +129,7 @@ static void test_write_through(void)
     ra8_io_blockdev_cache_init(&cbd, &cst, &under, s_cache_data, s_cache_slots, k_t_cache_slots));
 
   uint8_t out[(size_t)k_ra8_io_block_size_bytes];
-  (void)memset(out, 0x3C, sizeof(out));
+  (void)memset(out, k_cache_fill_poison, sizeof(out));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&cbd, 3, 1, out)); /* write-through */
 
   /* backend committed (read the underlying device directly) */

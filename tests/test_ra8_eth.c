@@ -17,6 +17,13 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/** @brief Distinguishable frame payloads across the transmit cases. */
+typedef enum : uint8_t {
+  k_eth_fill_undersize = 0xA5U, /**< Frame rejected for being too short. */
+  k_eth_fill_oversize  = 0x5AU, /**< Frame rejected for being too long.  */
+  k_eth_fill_accepted  = 0x77U, /**< Frame the driver accepts.           */
+} eth_fill_t;
+
 /**
  * @enum eth_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -312,7 +319,7 @@ static void test_write_bad_length(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&s_test_cfg));
   uint8_t pkt[k_eth_val_64];
-  (void)memset(pkt, 0xA5, sizeof(pkt));
+  (void)memset(pkt, k_eth_fill_undersize, sizeof(pkt));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_write(pkt, (uint32_t)k_ra8_eth_test_short_size));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_write(pkt, 9999U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_close());
@@ -360,7 +367,7 @@ static void test_write_slot0_reuse(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&s_test_cfg));
 
   uint8_t pkt[k_eth_val_64];
-  (void)memset(pkt, 0x5A, sizeof(pkt));
+  (void)memset(pkt, k_eth_fill_oversize, sizeof(pkt));
 
   /* The GWCA TX path is synchronous and always reuses extended
    * descriptor slot 0, so back-to-back writes never saturate a ring
@@ -496,7 +503,7 @@ static void test_get_stats_after_io(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&s_test_cfg));
 
   uint8_t pkt[k_eth_val_64];
-  (void)memset(pkt, 0x77, sizeof(pkt));
+  (void)memset(pkt, k_eth_fill_accepted, sizeof(pkt));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_write(pkt, (uint32_t)sizeof(pkt)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_write(pkt, (uint32_t)sizeof(pkt)));
 
@@ -613,7 +620,7 @@ static void test_mcdc_eth_write_len_bounds(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&s_test_cfg));
 
   uint8_t pkt[k_eth_val_2000];
-  (void)memset(pkt, 0xA5, sizeof(pkt));
+  (void)memset(pkt, k_eth_fill_undersize, sizeof(pkt));
 
   /* Vector 1: in-range length succeeds. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_write(pkt, 64U));

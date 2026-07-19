@@ -24,6 +24,12 @@
 #include "ra8_jpeg_sw.h"
 #include "unity_minimal.h"
 
+/** @brief JPEG quantisation-table geometry. */
+typedef enum : uint8_t {
+  k_jpeg_quant_entries = 64U, /**< Coefficients in one 8x8 quant table. */
+  k_jpeg_quant_all_ones = 1U, /**< Fill value of the all-ones table.    */
+} jpeg_quant_t;
+
 /**
  * @enum jpeg_sw_stream_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -494,7 +500,7 @@ static void test_jpeg_stream_grayscale(void)
   s_src_len = 0U;
   memcpy(s_src, s_jpeg_gray_hdr, sizeof(s_jpeg_gray_hdr));
   s_src_len = sizeof(s_jpeg_gray_hdr);
-  memset(&s_src[s_src_len], 1, 64U); /* the all-ones quant table */
+  memset(&s_src[s_src_len], k_jpeg_quant_all_ones, (size_t)k_jpeg_quant_entries); /* all-ones quant table */
   s_src_len += k_jpeg_sw_stream_s_src_len_64;
   memcpy(&s_src[s_src_len], s_jpeg_gray_body, sizeof(s_jpeg_gray_body));
   s_src_len += (uint32_t)sizeof(s_jpeg_gray_body);
