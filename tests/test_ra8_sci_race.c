@@ -29,21 +29,21 @@
 #include "unity_minimal.h"
 
 /**
- * @enum sci_race_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_race_byte_t
+ * @brief Transmit payload and the byte staged in RDR.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The transmit bytes ascend by 0x11 so a byte delivered at the wrong index is
+ * immediately identifiable; the receive byte is disjoint from that run so a
+ * loopback that echoes the transmit buffer cannot pass by accident.
  */
 typedef enum : uint8_t {
-  k_sci_race_rdr_a5 = 0xA5U,
-  k_sci_race_val_11 = 0x11U,
-  k_sci_race_val_22 = 0x22U,
-  k_sci_race_val_33 = 0x33U,
-  k_sci_race_val_44 = 0x44U,
-} sci_race_uint8_const_t;
+  k_t_tx_b0   = 0x11U, /**< Transmit payload byte 0.                    */
+  k_t_tx_b1   = 0x22U, /**< Transmit payload byte 1.                    */
+  k_t_tx_b2   = 0x33U, /**< Transmit payload byte 2.                    */
+  k_t_tx_b3   = 0x44U, /**< Transmit payload byte 3.                    */
+  k_t_rx_byte = 0xA5U, /**< Byte staged in RDR for the receive arm.     */
+} t_race_byte_t;
 
 /**
  * @enum ra8_sci_race_channel_t
@@ -192,10 +192,10 @@ static void test_deinit_guarded_teardown_clears_ccr0_and_state(void)
   /* Arm in-flight RX then TX so CCR0 carries TE|RE|RIE|TIE and the
    * per-channel descriptor holds live buffers/lengths. */
   uint8_t rx_buf[k_sci_race_len] = {};
-  uint8_t tx_buf[k_sci_race_len] = {k_sci_race_val_11,
-                                    k_sci_race_val_22,
-                                    k_sci_race_val_33,
-                                    k_sci_race_val_44};
+  uint8_t tx_buf[k_sci_race_len] = {k_t_tx_b0,
+                                    k_t_tx_b1,
+                                    k_t_tx_b2,
+                                    k_t_tx_b3};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_sci_read((uint8_t)k_sci_race_ch_deinit, rx_buf, (uint32_t)k_sci_race_len));
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -216,7 +216,7 @@ static void test_deinit_guarded_teardown_clears_ccr0_and_state(void)
 
   /* The descriptor is fully torn down: a late ISR dispatch must be a
    * harmless no-op rather than a write through a half-nulled buffer. */
-  reg->RDR = k_sci_race_rdr_a5;
+  reg->RDR = k_t_rx_byte;
   ra8_sci_dispatch_rxi((uint8_t)k_sci_race_ch_deinit);
   ra8_sci_dispatch_txi((uint8_t)k_sci_race_ch_deinit);
   TEST_ASSERT_EQ(0U, reg->CCR0);

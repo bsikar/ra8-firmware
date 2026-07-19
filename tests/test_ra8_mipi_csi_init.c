@@ -29,32 +29,18 @@
 #include "unity_minimal.h"
 
 /**
- * @enum mipi_csi_init_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint16_t {
-  k_mipi_csi_init_epd_long_spacer_100  = 0x100U,
-  k_mipi_csi_init_epd_long_spacer_8000 = 0x8000U,
-  k_mipi_csi_init_epd_short_spacer_200 = 0x200U,
-} mipi_csi_init_uint16_const_t;
-
-/**
- * @enum mipi_csi_init_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_csi_spacer_t
+ * @brief Extended-packet spacer values spanning the 15-bit field boundary.
  */
 typedef enum : uint32_t {
-  k_mipi_csi_init_sentinel_ffffffff = 0xFFFFFFFFUL,
-} mipi_csi_init_uint32_const_t;
+  k_t_spacer_long    = 0x100U,      /**< A valid long-packet spacer.          */
+  k_t_spacer_short   = 0x200U,      /**< A valid short-packet spacer.         */
+  k_t_spacer_over    = 0x8000U,     /**< 16-bit: one bit past the 15-bit field,
+                                         so both spacer guards must reject it. */
+  k_t_all_ones       = 0xFFFFFFFFUL, /**< Written to every interrupt-enable
+                                          register, so a driver that clears the
+                                          wrong one leaves a visible residue.   */
+} t_csi_spacer_t;
 
 /**
  * @enum ra8_mipi_csi_test_const_t
@@ -219,8 +205,8 @@ static void test_init_epct_emct(void)
   ra8_mipi_csi_config_t cfg = make_cfg();
   cfg.epd_enable            = true;
   cfg.epd_option_2          = true;
-  cfg.epd_long_spacer       = k_mipi_csi_init_epd_long_spacer_100;
-  cfg.epd_short_spacer      = k_mipi_csi_init_epd_short_spacer_200;
+  cfg.epd_long_spacer       = k_t_spacer_long;
+  cfg.epd_short_spacer      = k_t_spacer_short;
   cfg.vlsien                = k_ra8_mipi_csi_vlsien_x2;
   cfg.eotp_enable           = true;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_csi_init(&cfg));
@@ -322,11 +308,11 @@ static void test_init_bad_args(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_csi_init(&cfg));
 
   cfg                 = make_cfg();
-  cfg.epd_long_spacer = k_mipi_csi_init_epd_long_spacer_8000; /* 16-bit, overflows 15-bit field. */
+  cfg.epd_long_spacer = k_t_spacer_over; /* 16-bit, overflows 15-bit field. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_csi_init(&cfg));
 
   cfg                  = make_cfg();
-  cfg.epd_short_spacer = k_mipi_csi_init_epd_long_spacer_8000;
+  cfg.epd_short_spacer = k_t_spacer_over;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_csi_init(&cfg));
 
   cfg                 = make_cfg();
@@ -632,13 +618,13 @@ static void test_deinit(void)
   const ra8_mipi_csi_config_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_csi_init(&cfg));
   /* Pre-set IRQ enables so we can verify they get cleared. */
-  *ra8_mipi_csi_reg32(k_ra8_mipi_csi_off_rxie)  = k_mipi_csi_init_sentinel_ffffffff;
-  *ra8_mipi_csi_reg32(k_ra8_mipi_csi_off_dlie0) = k_mipi_csi_init_sentinel_ffffffff;
-  *ra8_mipi_csi_reg32(k_ra8_mipi_csi_off_pmie)  = k_mipi_csi_init_sentinel_ffffffff;
-  *ra8_mipi_csi_reg32(k_ra8_mipi_csi_off_gsie)  = k_mipi_csi_init_sentinel_ffffffff;
+  *ra8_mipi_csi_reg32(k_ra8_mipi_csi_off_rxie)  = k_t_all_ones;
+  *ra8_mipi_csi_reg32(k_ra8_mipi_csi_off_dlie0) = k_t_all_ones;
+  *ra8_mipi_csi_reg32(k_ra8_mipi_csi_off_pmie)  = k_t_all_ones;
+  *ra8_mipi_csi_reg32(k_ra8_mipi_csi_off_gsie)  = k_t_all_ones;
   for (uint8_t vc = 0U; vc < 16U; ++vc) {
     const ra8_mipi_csi_off_t off = ra8_mipi_csi_vc_off(k_ra8_mipi_csi_off_vcie0, vc);
-    *ra8_mipi_csi_reg32(off)     = k_mipi_csi_init_sentinel_ffffffff;
+    *ra8_mipi_csi_reg32(off)     = k_t_all_ones;
   }
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_csi_deinit());
