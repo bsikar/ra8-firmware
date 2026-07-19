@@ -37,49 +37,25 @@ typedef enum : uint8_t {
 } pbook_layout_t;
 
 /**
- * @enum book_paged_edge_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum pbook_fixture_t
+ * @brief The fixture book's node indices, pool capacities and CRC constants.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_pbook_node_ch2_h1_text   = 7U, /**< Text node under that section's <h1>. */
-  k_pbook_node_ch2_para_text = 9U, /**< Text node under its <p>. */
-  k_pbook_node_ch2_section   = 5U, /**< The <section> that chapter 2 roots at. */
-  k_pbook_node_count =
-    10, /**< Nodes in the fixture book: the nodes[] extent and the header's node_count are the same fact. */
-} book_paged_edge_uint8_const_t;
-
-/**
- * @enum book_paged_edge_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint16_t {
-  k_pbook_strings_cap = 320, /**< String-pool capacity of the fixture. */
-  k_pbook_render_cap  = 512, /**< Capacity of the rendered-text comparison buffers. */
-} book_paged_edge_uint16_const_t;
-
-/**
- * @enum book_paged_edge_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Each node index names the node it addresses; the same index serves as both
+ * the array slot and the parent's first_child link, so the two cannot drift.
  */
 typedef enum : uint32_t {
-  k_crc32_init           = 0xFFFFFFFFU, /**< CRC-32 initial value, and the final XOR-out. */
-  k_crc32_poly_reflected = 0xEDB88320U, /**< The reflected CRC-32 polynomial. */
-} book_paged_edge_uint32_const_t;
+  k_pbook_node_ch2_section   = 5U,          /**< <section> that chapter 2 roots at. */
+  k_pbook_node_ch2_h1_text   = 7U,          /**< Text under that section's <h1>.    */
+  k_pbook_node_ch2_para_text = 9U,          /**< Text under its <p>.                */
+  k_pbook_node_count         = 10U,         /**< Nodes in the book: the nodes[]
+                                         extent and the header's node_count
+                                         are the same fact.                 */
+  k_pbook_strings_cap        = 320U,        /**< String-pool capacity.             */
+  k_pbook_render_cap         = 512U,        /**< Rendered-text compare buffers.    */
+  k_crc32_init               = 0xFFFFFFFFU, /**< CRC-32 init, and the XOR-out.  */
+  k_crc32_poly_reflected     = 0xEDB88320U, /**< Reflected CRC-32 polynomial.   */
+} pbook_fixture_t;
 
 /** @brief RBKC chunked-container magic (raw bytes; no string terminator). */
 static const uint8_t k_pbook_magic_rbkc[] = {'R', 'B', 'K', 'C'};

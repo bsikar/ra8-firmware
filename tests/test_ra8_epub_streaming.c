@@ -328,7 +328,6 @@ static void assert_chapters(ra8_epub_book_t* book)
  * @param[in] book     The streamed parse.
  * @param[in] resident The resident reference parse.
  * @param[out] count   Receives the (agreed) chapter count.
- * @return None.
  * @pre Both books are open.
  * @pre @p count is non-null.
  * @post @p count holds the streamed parse's chapter count.
@@ -357,7 +356,6 @@ stream_check_same_spine(ra8_epub_book_t* book, ra8_epub_book_t* resident, uint16
  * @param[in] book     The streamed parse.
  * @param[in] resident The resident reference parse.
  * @param[in] count    Chapter count to walk.
- * @return None.
  * @pre Both books are open and hold @p count chapters.
  * @pre @p count is at most the spine length.
  * @post Every chapter loaded with the same length from both parses.
@@ -382,7 +380,6 @@ stream_check_chapters_identical(ra8_epub_book_t* book, ra8_epub_book_t* resident
 
 /**
  * @brief Assert the direct-callback open never read the whole archive.
- * @return None.
  * @pre A streamed open has just run over the direct callback.
  * @pre `g_direct_bytes` / `g_direct_peak` were zeroed before that open.
  * @post The fetch total stayed under the filler entry's size.
@@ -450,7 +447,6 @@ static void test_stream_direct_parse_equivalence(void)
 /**
  * @brief Assert the bounded-RAM invariants after the streamed open+parse.
  * @param[in] vm The page-cache under test.
- * @return None.
  * @pre The book was opened and parsed through @p vm.
  * @post Resident set, budget ratio, partial-read and hit/miss checks all held.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -477,7 +473,6 @@ static void stream_check_bounded_invariant(ra8_vmem_t* vm)
  * @brief Scattered-churn phase: prove eviction and byte-correct cold re-fetch.
  * @param[in] vm The page-cache under test.
  * @param[in] st The stream over @p vm.
- * @return None.
  * @pre @p vm and @p st are initialised over the archive.
  * @post The churn drove eviction while every byte stayed correct.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -504,7 +499,6 @@ static void stream_check_churn(ra8_vmem_t* vm, ra8_vmem_stream_t* st)
 /**
  * @brief Assert a read spanning a frame boundary reassembles correctly.
  * @param[in] st The stream over the page cache.
- * @return None.
  * @pre @p st is initialised over the archive.
  * @post The boundary-spanning read matched the backing bytes.
  * @note Not thread-safe; single-threaded host-test helper.

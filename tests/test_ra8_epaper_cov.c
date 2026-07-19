@@ -808,7 +808,6 @@ static void test_sleep_legs(void)
 
 /**
  * @brief Decision A: validate_cfg 5-condition MC/DC (baseline + lone-true flips).
- * @return None.
  * @pre The transfer/fault stubs are armed for success.
  * @post The baseline accepted and each single bad field was rejected.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -846,7 +845,6 @@ static void epaper_check_validate_cfg(void)
 
 /**
  * @brief Decision B: load_image size MC/DC, null-argument guards and double-init.
- * @return None.
  * @pre validate_cfg vectors already ran.
  * @post Each size vector, null guard and the double-init rejection held.
  * @note Not thread-safe; single-threaded host-test helper.

@@ -419,7 +419,6 @@ static ra8_err_t tcb_open_full(ra8_comic_t*      c,
 /**
  * @brief Exercise the nesting-bomb rejections of the wrapped-open path.
  * @param[out] c Comic handle under test.
- * @return None.
  * @pre The shared fixture buffers are available.
  * @post Every nesting bomb returned its documented rejection code.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -446,7 +445,6 @@ static void tcb_bombs(ra8_comic_t* c)
 /**
  * @brief Exercise the null / size / alignment argument guards of wrapped-open.
  * @param[out] c Comic handle under test.
- * @return None.
  * @pre The shared fixture buffers are available.
  * @post Every malformed argument returned its documented rejection code.
  * @note Not thread-safe; single-threaded host-test helper.

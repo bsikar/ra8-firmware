@@ -141,7 +141,6 @@ static uint32_t mock_intern(mock_book_t* b, int* offset, const char* s)
  *
  * @param[out] b Mock book to initialise; fully zeroed first.
  *
- * @return None.
  * @pre @p b is non-null and writable.
  * @post Header magic, version and every table offset/count are populated.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -184,7 +183,6 @@ static void setup_mock_book_header(mock_book_t* b)
  * @param[in,out] b   Mock book whose string pool and header offsets are filled.
  * @param[out]    off Receives the offsets consumed by setup_mock_book_structs.
  *
- * @return None.
  * @pre setup_mock_book_header(@p b) already ran (string_off/size set).
  * @post Header title/author/language/identifier offsets and @p off are set.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -218,7 +216,6 @@ static void setup_mock_book_strings(mock_book_t* b, mock_book_offsets_t* off)
  * @param[in,out] b   Mock book whose structural tables are populated.
  * @param[in]     off Interned string offsets from setup_mock_book_strings.
  *
- * @return None.
  * @pre setup_mock_book_strings(@p b, @p off) already ran.
  * @post All structural tables and the cover-image index are set.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -228,7 +225,6 @@ static void setup_mock_book_strings(mock_book_t* b, mock_book_offsets_t* off)
  * @brief Populate the mock book's single chapter record.
  * @param[out] b   Mock book to populate.
  * @param[in]  off String-table offsets the record points at.
- * @return None.
  * @pre @p b and @p off are non-null.
  * @pre @p off holds already-interned string offsets.
  * @post Chapter 0 names its title and href and roots at node 0.
@@ -247,7 +243,6 @@ static void setup_mock_chapter(mock_book_t* b, const mock_book_offsets_t* off)
  * @brief Populate the mock book's two-node tree: a div wrapping one text node.
  * @param[out] b   Mock book to populate.
  * @param[in]  off String-table offsets the nodes point at.
- * @return None.
  * @pre @p b and @p off are non-null.
  * @pre @p off holds already-interned string offsets.
  * @post Node 0 is an element with one attribute whose only child is node 1.
@@ -280,7 +275,6 @@ static void setup_mock_nodes(mock_book_t* b, const mock_book_offsets_t* off)
  * @brief Populate the mock book's one attribute and one stylesheet.
  * @param[out] b   Mock book to populate.
  * @param[in]  off String-table offsets the records point at.
- * @return None.
  * @pre @p b and @p off are non-null.
  * @pre @p off holds already-interned string offsets.
  * @post Attribute 0 is the `class="main"` pair node 0 refers to.
@@ -304,7 +298,6 @@ static void setup_mock_attrs_and_css(mock_book_t* b, const mock_book_offsets_t* 
  *          payloads sit back to back in the data region.
  * @param[out] b   Mock book to populate.
  * @param[in]  off String-table offsets the records point at.
- * @return None.
  * @pre @p b and @p off are non-null.
  * @pre @p off holds already-interned string offsets.
  * @post Image 0 is a 16x16 gray4 raster and image 1 is an SVG with no extent.
@@ -350,7 +343,6 @@ static void setup_mock_book_structs(mock_book_t* b, const mock_book_offsets_t* o
  *
  * @param[out] b Mock book to populate end to end.
  *
- * @return None.
  * @pre @p b is non-null and writable.
  * @post @p b is a self-consistent book whose header CRC covers the body.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -421,7 +413,6 @@ static void test_ra8_book_invalid(void)
  * @param[in] b   Validated mock book.
  * @param[in] hdr Parsed header (for node_count).
  *
- * @return None.
  * @pre @p b passed ra8_book_validate().
  * @post The element node, its attribute, and the text child all match.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -460,7 +451,6 @@ static void book_walk_check_nodes(const mock_book_t* b, const ra8_book_header_t*
  * @param[in] b   Validated mock book.
  * @param[in] hdr Parsed header (for image_count).
  *
- * @return None.
  * @pre @p b passed ra8_book_validate().
  * @post Both image records match their fixture geometry and data pointers.
  * @note Not thread-safe; single-threaded host-test helper.

@@ -472,7 +472,6 @@ static void test_null_slots(void)
  * @param[in]     reg Registry holding the library/reader/settings apps.
  * @param[in]     c0  Context of app 0 (library) for enter/leave counters.
  * @param[in]     c1  Context of app 1 (reader) for enter/leave counters.
- * @return None.
  * @pre @p nav and @p reg are initialised with three registered apps.
  * @post Every go_index / nav_back decision vector held.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -529,7 +528,6 @@ nav_check_back_stack(ra8_app_nav_t* nav, ra8_app_registry_t* reg, app_ctx_t* c0,
 
 /**
  * @brief go_index NULL-slot guard: a valid index whose slot is NULL rejects.
- * @return None.
  * @pre None.
  * @post `ra8_app_nav_go_index` returned k_ra8_err_null_ptr.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -547,7 +545,6 @@ static void nav_check_null_slot(void)
 
 /**
  * @brief nav_go Decision C true: a full push stack rejects the next switch.
- * @return None.
  * @pre None.
  * @post The over-capacity push returned k_ra8_err_no_mem with focus unchanged.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -577,7 +574,6 @@ static void nav_check_push_capacity(void)
 
 /**
  * @brief go_index null-argument guards: NULL nav, then NULL nav->reg.
- * @return None.
  * @pre None.
  * @post Both null arguments returned k_ra8_err_null_ptr.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -803,7 +799,6 @@ static void test_app_state(void)
  * @param[in]     c0  Library context (core, deinit counter).
  * @param[in]     c1  Settings context (removable, deinit counter).
  * @param[in]     c3  Weather context (removable, deinit counter).
- * @return None.
  * @pre @p reg holds the four registered apps.
  * @post Every not_found / core / busy / compaction / tail-remove vector held.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -864,7 +859,6 @@ uninstall_check_core_arms(ra8_app_registry_t* reg, app_ctx_t* c0, app_ctx_t* c1,
 /**
  * @brief deinit-NULL arm: a removable app with no deinit unmounts cleanly.
  * @param[in,out] reg Registry (post core-arms: library + notes remain).
- * @return None.
  * @pre @p reg has room for one more app.
  * @post The no-deinit app uninstalled with no crash and count unchanged.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -884,7 +878,6 @@ static void uninstall_check_deinit_null(ra8_app_registry_t* reg)
 
 /**
  * @brief active == none arm: uninstalling an unfocused removable app.
- * @return None.
  * @pre None.
  * @post The active-fix-up comparison took its false (active == none) arm.
  * @note Not thread-safe; single-threaded host-test helper.

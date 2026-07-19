@@ -107,7 +107,6 @@ static void test_blit_gray4_1to1(void)
  * @param[in] sx Source column, in source pixels.
  * @param[in] sy Source row, in source pixels.
  * @param[in] g  Gray level the whole block must carry.
- * @return None.
  * @pre A 2x zoom blit has just written the framebuffer.
  * @pre The block at (2*@p sx, 2*@p sy) lies inside the framebuffer.
  * @post All four destination pixels of the block compared equal to @p g.

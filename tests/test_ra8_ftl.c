@@ -300,7 +300,6 @@ static void pattern_fill(uint8_t* blk, uint32_t lbn, uint32_t tag)
  * @param[in,out] bd         The FTL block device under test.
  * @param[in,out] shadow_tag Per-logical generation tags (0 == never written).
  * @param[out]    writes     Receives the number of write operations performed.
- * @return None.
  * @pre @p bd is a valid FTL block device; @p shadow_tag is zeroed.
  * @post Every read of a written block matched its shadow pattern.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -341,7 +340,6 @@ static void ftl_soak_loop(ra8_io_blockdev_t* bd, uint32_t* shadow_tag, uint32_t*
  * @brief Full read-back of every written logical block against the shadow.
  * @param[in,out] bd         The FTL block device under test.
  * @param[in]     shadow_tag Per-logical generation tags from the soak loop.
- * @return None.
  * @pre @p bd is a valid FTL block device.
  * @post Every written block read back byte-identical to its shadow pattern.
  * @note Not thread-safe; single-threaded host-test helper.
