@@ -25,12 +25,25 @@
 #include "ra8_unarch_gzip.h"
 #include "ra8_unarch_io.h"
 
+/**
+ * @enum unarch_gzip_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_unarch_gzip_u_20 = 20,
+} unarch_gzip_uint8_const_t;
+
 /** @brief Decode destination arena (bounds every honest member too). */
-static uint8_t s_arena[1U << 20];
+static uint8_t s_arena[1U << k_unarch_gzip_u_20];
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-  if (size == 0U || size > (1U << 20)) {
+  if (size == 0U || size > (1U << k_unarch_gzip_u_20)) {
     return 0;
   }
   ra8_unarch_mem_t mem = {.base = data, .len = size};

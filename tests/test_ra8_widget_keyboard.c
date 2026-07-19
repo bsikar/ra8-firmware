@@ -22,6 +22,36 @@
 #include "ra8_widget_keyboard.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum widget_keyboard_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_widget_keyboard_idx_20 = 20,
+  k_widget_keyboard_w_80   = 80,
+} widget_keyboard_uint8_const_t;
+
+/**
+ * @enum widget_keyboard_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_widget_keyboard_bg_00202020         = 0x00202020U,
+  k_widget_keyboard_key_border_00101010 = 0x00101010U,
+  k_widget_keyboard_key_face_00404040   = 0x00404040U,
+  k_widget_keyboard_key_fg_00ffffff     = 0x00FFFFFFU,
+} widget_keyboard_uint32_const_t;
+
 /* --- Recording mock keyboard seam ------------------------------------------- */
 
 /**
@@ -50,7 +80,10 @@ static uint8_t mock_kb_count(void* user)
 static void mock_kb_info(void* user, uint8_t idx, ra8_widget_key_info_t* out)
 {
   (void)user;
-  out->rect = (ra8_ui_rect_t){.x = (int32_t)idx * 20, .y = 0, .w = 20, .h = 20};
+  out->rect = (ra8_ui_rect_t){.x = (int32_t)idx * k_widget_keyboard_idx_20,
+                              .y = 0,
+                              .w = k_widget_keyboard_idx_20,
+                              .h = k_widget_keyboard_idx_20};
   if (idx == 0U) {
     out->glyph = 'a';
     out->label = nullptr;
@@ -129,10 +162,10 @@ static ra8_widget_keyboard_t make_kbd(ra8_widget_keyboard_ops_t* ops, ra8_widget
   return (ra8_widget_keyboard_t){.paint      = paint,
                                  .ops        = ops,
                                  .on_commit  = test_kb_on_commit,
-                                 .bg         = 0x00202020U,
-                                 .key_face   = 0x00404040U,
-                                 .key_border = 0x00101010U,
-                                 .key_fg     = 0x00FFFFFFU,
+                                 .bg         = k_widget_keyboard_bg_00202020,
+                                 .key_face   = k_widget_keyboard_key_face_00404040,
+                                 .key_border = k_widget_keyboard_key_border_00101010,
+                                 .key_fg     = k_widget_keyboard_key_fg_00ffffff,
                                  .border_w   = 1};
 }
 
@@ -164,7 +197,8 @@ static void test_keyboard_render(void)
   ra8_widget_keyboard_t     kbd   = make_kbd(&ops, &paint);
   ra8_widget_t              w     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_keyboard_init(&w, &kbd));
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 80, .h = 20};
+  w.rect =
+    (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_keyboard_w_80, .h = k_widget_keyboard_idx_20};
 
   w.vt->render(&w);
   TEST_ASSERT_EQ(7U, mp.fill_calls); /* bg + 3 keys x (border + face) */
@@ -198,7 +232,8 @@ static void test_keyboard_input(void)
   ra8_widget_keyboard_t     kbd   = make_kbd(&ops, &paint);
   ra8_widget_t              w     = {};
   (void)ra8_widget_keyboard_init(&w, &kbd);
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 80, .h = 20};
+  w.rect =
+    (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_keyboard_w_80, .h = k_widget_keyboard_idx_20};
 
   /* a touch hits key 0, apply does NOT commit -> applied, dirty, no callback. */
   const ra8_widget_event_t tap = {.kind = k_ra8_widget_ev_touch, .x = 5, .y = 5};
@@ -375,7 +410,8 @@ static void test_keyboard_guards(void)
   ra8_widget_keyboard_t     kbd   = make_kbd(&ops, &paint);
   ra8_widget_t              w     = {};
   (void)ra8_widget_keyboard_init(&w, &kbd);
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 80, .h = 20};
+  w.rect =
+    (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_keyboard_w_80, .h = k_widget_keyboard_idx_20};
 
   kbd_render_guards(&w, &kbd, &paint, &ops, &mk, &mp);
   kbd_input_guards(&w, &kbd, &ops, &mk);

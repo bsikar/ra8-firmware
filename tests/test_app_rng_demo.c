@@ -20,6 +20,19 @@
 #include "ra8_psa_crypto.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum rng_demo_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_rng_demo_n_10 = 10U,
+} rng_demo_uint8_const_t;
+
 typedef enum : uint8_t {
   k_t_rng_bytes_per_line = 32U,   /**< T rng bytes per line. */
   k_t_rng_nibble_mask    = 0x0FU, /**< T rng nibble mask.    */
@@ -30,10 +43,10 @@ typedef enum : uint8_t {
 static uint8_t banner_nibble(uint8_t nibble)
 {
   uint8_t n = (uint8_t)(nibble & (uint8_t)k_t_rng_nibble_mask);
-  if (n < 10U) {
+  if (n < k_rng_demo_n_10) {
     return (uint8_t)('0' + n);
   }
-  return (uint8_t)('a' + (n - 10U));
+  return (uint8_t)('a' + (n - k_rng_demo_n_10));
 }
 
 static void reset_world(void)

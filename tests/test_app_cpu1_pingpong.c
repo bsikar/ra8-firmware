@@ -25,6 +25,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum cpu1_pingpong_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_cpu1_pingpong_ch_ff = 0xFFU,
+} cpu1_pingpong_uint8_const_t;
+
 typedef enum : uint32_t {
   k_test_ppong_magic_ping  = 0x1234U,     /**< Test ppong magic ping.  */
   k_test_ppong_magic_pong  = 0x4321U,     /**< Test ppong magic pong.  */
@@ -157,7 +170,7 @@ static void test_ppong_channel_pair_resolution(void)
 {
   reset_world();
   TEST_BEGIN("cpu1_pingpong: channel-pair resolution MC/DC");
-  uint8_t ch = 0xFFU;
+  uint8_t ch = k_cpu1_pingpong_ch_ff;
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_ipc_channel_for_send(k_ra8_ipc_core_cpu0, (uint8_t)k_test_ppong_pair_zero, &ch));
@@ -199,8 +212,8 @@ static void test_ppong_send_recv_round_trip(void)
   reset_world();
   TEST_BEGIN("cpu1_pingpong: send/recv ping-pong round trip");
 
-  uint8_t ch_send_cpu0 = 0xFFU;
-  uint8_t ch_recv_cpu0 = 0xFFU;
+  uint8_t ch_send_cpu0 = k_cpu1_pingpong_ch_ff;
+  uint8_t ch_recv_cpu0 = k_cpu1_pingpong_ch_ff;
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_ipc_channel_for_send(k_ra8_ipc_core_cpu0, (uint8_t)k_test_ppong_pair_zero, &ch_send_cpu0));

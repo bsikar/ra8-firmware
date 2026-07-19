@@ -23,6 +23,35 @@
 #include "ra8_modem_at_internal.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum modem_at_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_modem_at_auto_advance_ms_50     = 50U,
+  k_modem_at_default_timeout_ms_100 = 100U,
+  k_modem_at_val_64                 = 64,
+} modem_at_uint8_const_t;
+
+/**
+ * @enum modem_at_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_modem_at_default_timeout_ms_1000 = 1000U,
+  k_modem_at_val_256                 = 256,
+} modem_at_uint16_const_t;
+
 /* ------------------------------------------------------------------------- */
 /* Mock byte transport: two FIFOs + a fake monotonic clock. */
 /* ------------------------------------------------------------------------- */
@@ -110,7 +139,7 @@ static void reset_world(void)
   s_io.auto_advance_ms = 0U;
 }
 
-static uint8_t s_line_buf[256];
+static uint8_t s_line_buf[k_modem_at_val_256];
 
 static ra8_err_t bring_up(void)
 {
@@ -119,7 +148,7 @@ static ra8_err_t bring_up(void)
     .io           = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
     .line_buf     = s_line_buf,
     .line_buf_len = (uint16_t)sizeof s_line_buf,
-    .default_timeout_ms = 1000U,
+    .default_timeout_ms = k_modem_at_default_timeout_ms_1000,
   };
   return ra8_modem_at_init(&cfg);
 }
@@ -176,7 +205,7 @@ static void test_init_short_buffer_rejected(void)
     .io           = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
     .line_buf     = tiny,
     .line_buf_len = (uint16_t)sizeof tiny,
-    .default_timeout_ms = 100U,
+    .default_timeout_ms = k_modem_at_default_timeout_ms_100,
   };
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_modem_at_init(&cfg));
   TEST_END("modem_at init short buffer rejected");
@@ -258,7 +287,7 @@ static void test_timeout(void)
   TEST_BEGIN("modem_at timeout when no response");
   TEST_ASSERT_EQ(k_ra8_ok, bring_up());
   /* Auto-advance the fake clock by 50 ms per poll so timeout trips fast. */
-  s_io.auto_advance_ms = 50U;
+  s_io.auto_advance_ms = k_modem_at_auto_advance_ms_50;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_modem_at_send_cmd("AT", nullptr, 100U));
   TEST_END("modem_at timeout when no response");
 }
@@ -274,7 +303,7 @@ static void test_send_cmd_capture(void)
   TEST_BEGIN("modem_at capture +CSQ payload");
   TEST_ASSERT_EQ(k_ra8_ok, bring_up());
   fifo_push_str(&s_io.modem_to_mcu, "AT+CSQ\r\n\r\n+CSQ: 22,99\r\n\r\nOK\r\n");
-  char out[64];
+  char out[k_modem_at_val_64];
   TEST_ASSERT_EQ(k_ra8_ok, ra8_modem_at_send_cmd_capture("AT+CSQ", out, sizeof out, 1000U));
   /* Captured payload should contain the +CSQ line. */
   TEST_ASSERT(out[0] == '+');
@@ -300,7 +329,7 @@ static void test_capture_buf_len_zero(void)
 }
 
 static int32_t s_urc_hits;
-static char    s_last_urc[64];
+static char    s_last_urc[k_modem_at_val_64];
 
 static void urc_handler(const char* line, void* ctx)
 {

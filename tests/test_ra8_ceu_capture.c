@@ -28,6 +28,49 @@
 #include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum ceu_capture_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ceu_capture_v_output_clip_240 = 240U,
+} ceu_capture_uint8_const_t;
+
+/**
+ * @enum ceu_capture_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_ceu_capture_h_fraction_800       = 0x800U,
+  k_ceu_capture_h_output_clip_320    = 320U,
+  k_ceu_capture_image_area_size_4096 = 4096U,
+  k_ceu_capture_v_fraction_400       = 0x400U,
+} ceu_capture_uint16_const_t;
+
+/**
+ * @enum ceu_capture_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_ceu_capture_sentinel_cafebabe = 0xCAFEBABEU,
+  k_ceu_capture_sentinel_deadbeef = 0xDEADBEEFU,
+} ceu_capture_uint32_const_t;
+
 typedef enum : uint16_t {
   k_test_ceu_width  = 1280U, /**< Test CEU width.  */
   k_test_ceu_height = 720U,  /**< Test CEU height. */
@@ -180,7 +223,7 @@ static void test_init_data_enable_format(void)
   prep();
   ra8_ceu_config_t cfg = make_cfg();
   cfg.capture_format   = k_ra8_ceu_fmt_data_enable;
-  cfg.image_area_size  = 4096U;
+  cfg.image_area_size  = k_ceu_capture_image_area_size_4096;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_init(&cfg));
 
   /* CAMCR.JPG should reflect the data-enable encoding. */
@@ -264,11 +307,11 @@ static void test_init_scale_down(void)
   prep();
   ra8_ceu_config_t cfg    = make_cfg();
   cfg.scale.h_mantissa    = 2U;
-  cfg.scale.h_fraction    = 0x800U;
+  cfg.scale.h_fraction    = k_ceu_capture_h_fraction_800;
   cfg.scale.v_mantissa    = 1U;
-  cfg.scale.v_fraction    = 0x400U;
-  cfg.scale.h_output_clip = 320U;
-  cfg.scale.v_output_clip = 240U;
+  cfg.scale.v_fraction    = k_ceu_capture_v_fraction_400;
+  cfg.scale.h_output_clip = k_ceu_capture_h_output_clip_320;
+  cfg.scale.v_output_clip = k_ceu_capture_v_output_clip_240;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_init(&cfg));
   const uint32_t cflcr = *ra8_ceu_reg32(k_ra8_ceu_off_cflcr);
   TEST_ASSERT((cflcr & (uint32_t)k_ra8_ceu_cflcr_mask_hmant) != 0U);
@@ -485,7 +528,7 @@ static void test_data_enable_arms_firewall(void)
   prep();
   ra8_ceu_config_t cfg = make_cfg();
   cfg.capture_format   = k_ra8_ceu_fmt_data_enable;
-  cfg.image_area_size  = 4096U;
+  cfg.image_area_size  = k_ceu_capture_image_area_size_4096;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_init(&cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_capture_arm((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr));
   const uint32_t cfwcr = *ra8_ceu_reg32(k_ra8_ceu_off_cfwcr);
@@ -792,7 +835,7 @@ static void test_mcdc_arm_capture_firewall_guard(void)
   cfg.capture_format   = k_ra8_ceu_fmt_data_enable;
   cfg.image_area_size  = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_init(&cfg));
-  *ra8_ceu_reg32(k_ra8_ceu_off_cfwcr) = 0xDEADBEEFU;
+  *ra8_ceu_reg32(k_ra8_ceu_off_cfwcr) = k_ceu_capture_sentinel_deadbeef;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_capture_arm((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr));
   /* C1=F (image_area==0): the inner write is skipped and the outer
    * else (which clears CFWCR) only fires for non data-enable formats.
@@ -803,10 +846,10 @@ static void test_mcdc_arm_capture_firewall_guard(void)
   prep();
   cfg                 = make_cfg();
   cfg.capture_format  = k_ra8_ceu_fmt_data_enable;
-  cfg.image_area_size = 4096U;
+  cfg.image_area_size = k_ceu_capture_image_area_size_4096;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_init(&cfg));
   const ra8_ceu_buffers_t bufs_v2     = {.y_top = nullptr};
-  *ra8_ceu_reg32(k_ra8_ceu_off_cfwcr) = 0xCAFEBABEU;
+  *ra8_ceu_reg32(k_ra8_ceu_off_cfwcr) = k_ceu_capture_sentinel_cafebabe;
   /* capture_start_ex enforces y_top != NULL up front, so the firewall
    * decision is never reached. The MC/DC obligation for C2 is still
    * exercised because the source-level decision flips when this caller
@@ -819,7 +862,7 @@ static void test_mcdc_arm_capture_firewall_guard(void)
   prep();
   cfg                 = make_cfg();
   cfg.capture_format  = k_ra8_ceu_fmt_data_enable;
-  cfg.image_area_size = 4096U;
+  cfg.image_area_size = k_ceu_capture_image_area_size_4096;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_init(&cfg));
   *ra8_ceu_reg32(k_ra8_ceu_off_cfwcr) = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_capture_arm((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr));

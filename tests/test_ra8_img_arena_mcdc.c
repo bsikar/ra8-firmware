@@ -22,6 +22,19 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum img_arena_mcdc_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_img_arena_mcdc_val_64 = 64U,
+} img_arena_mcdc_uint8_const_t;
+
+/**
  * @test test_arena_free_null_guard_mcdc
  * @brief Independent-influence vectors for the ra8_img_arena_free early-return
  *        guard.
@@ -45,7 +58,7 @@
 static void test_arena_free_null_guard_mcdc(void)
 {
   TEST_BEGIN("ra8_img_arena_free MC/DC: (p==null) || (arena==null)");
-  static uint8_t  s_buf[64U];
+  static uint8_t  s_buf[k_img_arena_mcdc_val_64];
   ra8_img_arena_t arena = {.base = s_buf, .cap = sizeof s_buf, .offset = 0U, .live = 0U};
 
   /* V1: both conditions false -- a real block freed while the arena is bound. */

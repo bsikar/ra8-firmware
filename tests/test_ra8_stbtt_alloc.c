@@ -24,6 +24,19 @@
 #include "ra8_stbtt_alloc.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum stbtt_alloc_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_stbtt_alloc_ra8_stbtt_malloc_64 = 64U,
+} stbtt_alloc_uint8_const_t;
+
 enum {
   k_align       = 16,        /**< Mirror of k_ra8_stbtt_align.       */
   k_arena_bytes = 96 * 1024, /**< Mirror of k_ra8_stbtt_arena_bytes. */
@@ -76,13 +89,13 @@ static void test_alignment_and_high_water(void)
 static void test_full_drain_auto_reset(void)
 {
   TEST_BEGIN("ra8_stbtt_alloc: full-drain auto-reset");
-  uintptr_t base = (uintptr_t)ra8_stbtt_malloc(64U);
-  uint8_t*  p2   = (uint8_t*)ra8_stbtt_malloc(64U);
+  uintptr_t base = (uintptr_t)ra8_stbtt_malloc(k_stbtt_alloc_ra8_stbtt_malloc_64);
+  uint8_t*  p2   = (uint8_t*)ra8_stbtt_malloc(k_stbtt_alloc_ra8_stbtt_malloc_64);
   TEST_ASSERT_NOT_NULL((void*)base);
   TEST_ASSERT_NOT_NULL(p2);
   ra8_stbtt_free((void*)base);
   ra8_stbtt_free(p2);
-  uintptr_t again = (uintptr_t)ra8_stbtt_malloc(64U);
+  uintptr_t again = (uintptr_t)ra8_stbtt_malloc(k_stbtt_alloc_ra8_stbtt_malloc_64);
   TEST_ASSERT_EQ(base, again);
   ra8_stbtt_free((void*)again);
   TEST_END("ra8_stbtt_alloc: full-drain auto-reset");
@@ -103,12 +116,12 @@ static void test_full_drain_auto_reset(void)
 static void test_partial_free_no_rewind(void)
 {
   TEST_BEGIN("ra8_stbtt_alloc: partial free does not rewind");
-  uint8_t* a = (uint8_t*)ra8_stbtt_malloc(64U);
-  uint8_t* b = (uint8_t*)ra8_stbtt_malloc(64U);
+  uint8_t* a = (uint8_t*)ra8_stbtt_malloc(k_stbtt_alloc_ra8_stbtt_malloc_64);
+  uint8_t* b = (uint8_t*)ra8_stbtt_malloc(k_stbtt_alloc_ra8_stbtt_malloc_64);
   TEST_ASSERT_NOT_NULL(a);
   TEST_ASSERT_NOT_NULL(b);
   ra8_stbtt_free(a); /* b still live */
-  uint8_t* c = (uint8_t*)ra8_stbtt_malloc(64U);
+  uint8_t* c = (uint8_t*)ra8_stbtt_malloc(k_stbtt_alloc_ra8_stbtt_malloc_64);
   TEST_ASSERT_NOT_NULL(c);
   TEST_ASSERT((uintptr_t)c != (uintptr_t)a);
   TEST_ASSERT((uintptr_t)c != (uintptr_t)b);

@@ -22,6 +22,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum crc_demo_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_crc_demo_got_deadbeef = 0xDEADBEEFUL,
+} crc_demo_uint32_const_t;
+
 typedef enum : uint32_t {
   k_t_crc_sw_poly_rev = 0xEDB88320UL, /**< T CRC sw poly rev. */
   k_t_crc_sw_init     = 0xFFFFFFFFUL, /**< T CRC sw init.     */
@@ -110,7 +123,7 @@ static void test_crc_app_compute_drives_dor(void)
   TEST_BEGIN("crc_demo: compute applies IEEE seed + xor-out");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_crc_init(k_ra8_crc_poly_32_ieee802_3));
   ra8_crc_reset();
-  uint32_t got = 0xDEADBEEFUL;
+  uint32_t got = k_crc_demo_got_deadbeef;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_crc_compute(k_t_crc_payload, (uint32_t)k_t_crc_payload_n, &got));
   TEST_ASSERT_EQ(0U, got);
   TEST_END("crc_demo: compute applies IEEE seed + xor-out");

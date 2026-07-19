@@ -61,6 +61,19 @@
 #include "ra8_err.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum epub_open_cov_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_epub_open_cov_k_cov_pad_len_512 = 512U,
+} epub_open_cov_uint16_const_t;
+
 /* ---------------------------------------------------------------------------
  * Sizing constants (tests are exempt from the magic-number gate per CLAUDE.md).
  * ---------------------------------------------------------------------------
@@ -458,7 +471,7 @@ static void test_open_container_too_large(void)
   /* Build a container.xml that is > 4096 bytes uncompressed.
    * Prefix a large XML comment so the document remains parseable in
    * isolation, but the extracted size exceeds the static scratch. */
-  static char s_big_container[k_cov_pad_len + 512U];
+  static char s_big_container[k_cov_pad_len + k_epub_open_cov_k_cov_pad_len_512];
   size_t      pos = 0U;
 
   /* Opening comment with lots of padding. */

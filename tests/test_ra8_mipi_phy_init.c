@@ -31,6 +31,33 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum mipi_phy_init_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_mipi_phy_init_nmul_int_100           = 100U,
+  k_mipi_phy_init_s_phy_cb_last_event_ff = 0xFFU,
+} mipi_phy_init_uint8_const_t;
+
+/**
+ * @enum mipi_phy_init_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_mipi_phy_init_nmul_int_300 = 300U,
+} mipi_phy_init_uint16_const_t;
+
 typedef enum : uint8_t {
   k_test_mipi_phy_pclka_mhz  = 100U, /**< PCLKA = 100 MHz (within 40..125).  */
   k_test_mipi_phy_escdiv     = 4U,   /**< Arbitrary in-range escape divisor. */
@@ -70,7 +97,7 @@ static void prep_fixture(void)
   s_phy_cb_count      = 0U;
   s_phy_cb_last_sfr   = 0U;
   s_phy_cb_last_ctx   = nullptr;
-  s_phy_cb_last_event = 0xFFU;
+  s_phy_cb_last_event = k_mipi_phy_init_s_phy_cb_last_event_ff;
   /* Pre-seed DPHYSFR so the LDO + PLL polls return immediately. */
   *ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_sfr) =
     (uint32_t)k_ra8_mipi_phy_sfr_pwrsf | (uint32_t)k_ra8_mipi_phy_sfr_pllsf;
@@ -674,18 +701,18 @@ static void test_validate_pll_band(void)
     .idiv     = k_ra8_mipi_phy_idiv_2,
     .pmul     = k_ra8_mipi_phy_pmul_1,
     .nfmul    = k_ra8_mipi_phy_nfmul_0_50,
-    .nmul_int = 100U,
+    .nmul_int = k_mipi_phy_init_nmul_int_100,
   };
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_phy_validate_pll_band(&pll, 24U));
 
   /* Force out-of-band: PMUL=1/8 with high N -> exceeds 375 MHz ceiling. */
   pll.pmul     = k_ra8_mipi_phy_pmul_8;
-  pll.nmul_int = 300U;
+  pll.nmul_int = k_mipi_phy_init_nmul_int_300;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_phy_validate_pll_band(&pll, 24U));
 
   /* Bad MOSC. */
   pll.pmul     = k_ra8_mipi_phy_pmul_1;
-  pll.nmul_int = 100U;
+  pll.nmul_int = k_mipi_phy_init_nmul_int_100;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_phy_validate_pll_band(&pll, 7U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_phy_validate_pll_band(&pll, 49U));
 

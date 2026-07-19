@@ -14,6 +14,35 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum hw_err_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_hw_err_r_80 = 0x80U,
+  k_hw_err_r_aa = 0xAAU,
+  k_hw_err_r_fe = 0xFEU,
+} hw_err_uint8_const_t;
+
+/**
+ * @enum hw_err_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_hw_err_r_80000000 = 0x80000000U,
+  k_hw_err_r_ffffffff = 0xFFFFFFFFU,
+} hw_err_uint32_const_t;
+
+/**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
@@ -23,7 +52,7 @@ static void test_set8_already_set_returns_immediately(void)
 {
   TEST_BEGIN("ra8_hw_wait_flag_set8: pre-set returns ok");
   ra8_sim_mmio_reset();
-  uint8_t r = 0x80U;
+  uint8_t r = k_hw_err_r_80;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_hw_wait_flag_set8(&r, 0x80U, (uint32_t)k_ra8_hw_budget_short));
   TEST_END("ra8_hw_wait_flag_set8: pre-set returns ok");
 }
@@ -72,7 +101,7 @@ static void test_clear8_set_times_out(void)
 {
   TEST_BEGIN("ra8_hw_wait_flag_clear8: stuck-set bit times out");
   ra8_sim_mmio_reset();
-  uint8_t r = 0xAAU;
+  uint8_t r = k_hw_err_r_aa;
   /* Arm the seam so the stuck-set bit never clears -- force the timeout leg. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&r));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
@@ -90,7 +119,7 @@ static void test_set32_already_set_returns_immediately(void)
 {
   TEST_BEGIN("ra8_hw_wait_flag_set32: pre-set returns ok");
   ra8_sim_mmio_reset();
-  uint32_t r = 0x80000000U;
+  uint32_t r = k_hw_err_r_80000000;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_hw_wait_flag_set32(&r, 0x80000000U, (uint32_t)k_ra8_hw_budget_short));
   TEST_END("ra8_hw_wait_flag_set32: pre-set returns ok");
@@ -124,7 +153,7 @@ static void test_clear32_pre_clear_returns_immediately(void)
 {
   TEST_BEGIN("ra8_hw_wait_flag_clear32: pre-clear returns ok");
   ra8_sim_mmio_reset();
-  uint32_t r = 0xFEU;
+  uint32_t r = k_hw_err_r_fe;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_hw_wait_flag_clear32(&r, 0x01U, (uint32_t)k_ra8_hw_budget_short));
   TEST_END("ra8_hw_wait_flag_clear32: pre-clear returns ok");
 }
@@ -139,7 +168,7 @@ static void test_clear32_times_out(void)
 {
   TEST_BEGIN("ra8_hw_wait_flag_clear32: stuck-set bit times out");
   ra8_sim_mmio_reset();
-  uint32_t r = 0xFFFFFFFFU;
+  uint32_t r = k_hw_err_r_ffffffff;
   /* Arm the seam so the stuck-set bits never clear -- force the timeout leg. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&r));
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
@@ -178,7 +207,7 @@ static void test_zero_budget_immediate_timeout(void)
 {
   TEST_BEGIN("ra8_hw_wait_flag_*: zero budget times out without polling");
   ra8_sim_mmio_reset();
-  uint8_t r = 0x80U;
+  uint8_t r = k_hw_err_r_80;
   /* Even though the bit is already set, a budget of 0 means the
    * loop body never runs and the helper returns timeout. */
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_hw_wait_flag_set8(&r, 0x80U, 0U));

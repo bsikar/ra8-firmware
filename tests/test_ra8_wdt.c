@@ -15,6 +15,19 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum wdt_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_wdt_wdtrr_42 = 0x42U,
+} wdt_uint8_const_t;
+
+/**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
@@ -48,7 +61,7 @@ static void test_wdt_refresh_writes_sequence(void)
   ra8_sim_mmap_reset();
 
   volatile r_wdt_regs_t* reg = ra8_wdt();
-  reg->WDTRR                 = 0x42U;
+  reg->WDTRR                 = k_wdt_wdtrr_42;
 
   ra8_wdt_refresh_deferred();
   /* Last byte of the unlock sequence should be 0xFF. */

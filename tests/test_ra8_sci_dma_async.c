@@ -25,6 +25,36 @@
 #include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum sci_dma_async_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_sci_dma_async_dma_ch_ff     = 0xFFU,
+  k_sci_dma_async_err_x_100_100 = 100U,
+  k_sci_dma_async_rdr_42        = 0x42U,
+  k_sci_dma_async_val_40        = 0x40U,
+  k_sci_dma_async_val_80        = 0x80U,
+} sci_dma_async_uint8_const_t;
+
+/**
+ * @enum sci_dma_async_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_sci_dma_async_effective_115200 = 115200U,
+} sci_dma_async_uint32_const_t;
+
 static void prep(void)
 {
   ra8_sim_mmap_reset();
@@ -62,7 +92,7 @@ static void test_write_dma_streams_buffer_to_tdr(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sci_init(0U, &k_cfg));
 
   const uint8_t src[]  = {0xAAU, 0xBBU, 0xCCU, 0xDDU};
-  uint8_t       dma_ch = 0xFFU;
+  uint8_t       dma_ch = k_sci_dma_async_dma_ch_ff;
   s_dma_complete_count = 0;
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -95,10 +125,10 @@ static void test_read_dma_streams_rdr_to_buffer(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sci_init(0U, &k_cfg));
 
   volatile r_sci_regs_t* reg = ra8_sci(0U);
-  reg->RDR                   = 0x42U;
+  reg->RDR                   = k_sci_dma_async_rdr_42;
 
   uint8_t out[3]       = {0U, 0U, 0U};
-  uint8_t dma_ch       = 0xFFU;
+  uint8_t dma_ch       = k_sci_dma_async_dma_ch_ff;
   s_dma_complete_count = 0;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_sci_read_dma(0U, out, (uint16_t)sizeof(out), stub_dma_done, nullptr, &dma_ch));
@@ -190,7 +220,7 @@ static void test_async_write_drains_buffer(void)
 
   uint8_t payload[k_test_async_len];
   for (uint32_t i = 0U; i < k_test_async_len; ++i) {
-    payload[i] = (uint8_t)(0x40U + i);
+    payload[i] = (uint8_t)(k_sci_dma_async_val_40 + i);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sci_write(0U, payload, k_test_async_len));
 
@@ -233,7 +263,7 @@ static void test_async_read_fills_buffer(void)
 
   /* Simulate 16 RX-not-empty interrupts, each pre-loading RDR. */
   for (uint32_t i = 0U; i < k_test_async_len; ++i) {
-    reg->RDR = (uint32_t)(0x80U + i);
+    reg->RDR = (uint32_t)(k_sci_dma_async_val_80 + i);
     ra8_sci_dispatch_rxi(1U);
   }
   /* All bytes captured -- RIE auto-cleared. */
@@ -331,8 +361,10 @@ static void test_baud_calculate_115200_at_60mhz(void)
   /* Verify the baud-rate error is < 2 percent. */
   const uint32_t divisor   = 32U * (1U << (2U * (uint32_t)clk_div));
   const uint32_t effective = 60000000U / (divisor * ((uint32_t)brr + 1U));
-  uint32_t       err_x_100 = (effective > 115200U) ? (effective - 115200U) : (115200U - effective);
-  err_x_100                = (err_x_100 * 100U) / 115200U;
+  uint32_t       err_x_100 = (effective > k_sci_dma_async_effective_115200)
+                               ? (effective - k_sci_dma_async_effective_115200)
+                               : (k_sci_dma_async_effective_115200 - effective);
+  err_x_100 = (err_x_100 * k_sci_dma_async_err_x_100_100) / k_sci_dma_async_effective_115200;
   TEST_ASSERT(err_x_100 < 2U);
 
   /* Slow baud forces a higher CKS divider. 1200 baud at 60 MHz needs
@@ -676,7 +708,7 @@ static void test_mcdc_write_dma_reg_len(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
 
   const uint8_t src[1] = {0x77U};
-  uint8_t       dma_ch = 0xFFU;
+  uint8_t       dma_ch = k_sci_dma_async_dma_ch_ff;
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_sci_write_dma((uint8_t)k_mcdc_sci_ch_ok,
@@ -721,7 +753,7 @@ static void test_mcdc_read_dma_reg_len(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
 
   uint8_t dst[1] = {0U};
-  uint8_t dma_ch = 0xFFU;
+  uint8_t dma_ch = k_sci_dma_async_dma_ch_ff;
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_sci_read_dma((uint8_t)k_mcdc_sci_ch_ok,

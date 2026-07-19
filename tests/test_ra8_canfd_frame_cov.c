@@ -35,6 +35,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum canfd_frame_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_canfd_frame_cov_val_ff = 0xFFU,
+} canfd_frame_cov_uint8_const_t;
+
 /* -------------------------------------------------------------------------
  * Local constants (tests are exempt from the magic-number gate but named
  * values document intent and keep clang-tidy -readability-magic-numbers
@@ -86,7 +99,7 @@ typedef enum : uint32_t {
 static void fill_pattern(uint8_t* buf, uint32_t len)
 {
   for (uint32_t i = 0U; i < len; i++) {
-    buf[i] = (uint8_t)(((uint32_t)k_rx_byte_seed + i) & 0xFFU);
+    buf[i] = (uint8_t)(((uint32_t)k_rx_byte_seed + i) & k_canfd_frame_cov_val_ff);
   }
 }
 

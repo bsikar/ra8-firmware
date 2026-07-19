@@ -18,6 +18,22 @@
 #include "ra8_epub_miniz_alloc.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum epub_miniz_alloc_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_epub_miniz_alloc_a_5a                   = 0x5AU,
+  k_epub_miniz_alloc_i_ff                   = 0xFFU,
+  k_epub_miniz_alloc_p_c3                   = 0xC3U,
+  k_epub_miniz_alloc_ra8_epub_miniz_alloc_5 = 5U,
+} epub_miniz_alloc_uint8_const_t;
+
 enum : size_t {
   k_small  = 64,    /**< Small.                        */
   k_medium = 4096,  /**< Medium.                       */
@@ -80,7 +96,7 @@ static void test_realloc_grow_preserves(void)
   uint8_t* a = (uint8_t*)ra8_epub_miniz_alloc(nullptr, 1U, k_small);
   TEST_ASSERT(a != nullptr);
   for (uint32_t i = 0U; i < (uint32_t)k_small; i++) {
-    a[i] = (uint8_t)(i & 0xFFU);
+    a[i] = (uint8_t)(i & k_epub_miniz_alloc_i_ff);
   }
   /* Pin a neighbour so the grow cannot happen in place -> forces a move. */
   void* pin = ra8_epub_miniz_alloc(nullptr, 1U, k_small);
@@ -229,7 +245,7 @@ static void test_alloc_real_overflow_and_firstfit_mcdc(void)
 {
   TEST_BEGIN("alloc real MC/DC: overflow size==0 + first-fit skip arms");
   /* Decision A, left-operand-false: size==0 short-circuits before the divide. */
-  void* z = ra8_epub_miniz_alloc(nullptr, 5U, 0U);
+  void* z = ra8_epub_miniz_alloc(nullptr, k_epub_miniz_alloc_ra8_epub_miniz_alloc_5, 0U);
   TEST_ASSERT(z != nullptr);
   ra8_epub_miniz_free(nullptr, z);
 
@@ -321,7 +337,7 @@ static void test_realloc_real_overflow_mcdc(void)
   /* V1: overflow on a live block -> NULL, original preserved. */
   uint8_t* p = (uint8_t*)ra8_epub_miniz_alloc(nullptr, 1U, k_small);
   TEST_ASSERT(p != nullptr);
-  p[0]        = 0xC3U;
+  p[0]        = k_epub_miniz_alloc_p_c3;
   void* nomem = ra8_epub_miniz_realloc(nullptr, p, (SIZE_MAX / 2U) + 2U, 2U);
   TEST_ASSERT(nomem == nullptr);
   TEST_ASSERT(p[0] == 0xC3U); /* old block still valid after a rejected grow */
@@ -365,7 +381,7 @@ static void test_alloc_oversize_rejected_mcdc(void)
   /* V3: realloc growing past the pool is rejected; the old block is untouched. */
   uint8_t* a = (uint8_t*)ra8_epub_miniz_alloc(nullptr, 1U, k_small);
   TEST_ASSERT(a != nullptr);
-  a[0] = 0x5AU;
+  a[0] = k_epub_miniz_alloc_a_5a;
   TEST_ASSERT(ra8_epub_miniz_realloc(nullptr, a, 1U, SIZE_MAX - 10U) == nullptr);
   TEST_ASSERT(a[0] == 0x5AU); /* old block still valid + intact */
   ra8_epub_miniz_free(nullptr, a);

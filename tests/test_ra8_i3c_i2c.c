@@ -28,6 +28,32 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum i3c_i2c_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_i3c_i2c_sentinel_a5 = 0xA5U,
+} i3c_i2c_uint8_const_t;
+
+/**
+ * @enum i3c_i2c_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_i3c_i2c_val_1000000 = 1000000,
+} i3c_i2c_uint32_const_t;
+
+/**
  * @enum ra8_i3c_i2c_test_addr_t
  * @brief Test addresses and payload constants.
  */
@@ -71,7 +97,7 @@ static const uint8_t s_payload[2] = {
   (uint8_t)k_ra8_i3c_i2c_test_byte_b,
 };
 
-static uint8_t s_long_buffer[1000000];
+static uint8_t s_long_buffer[k_i3c_i2c_val_1000000];
 
 static const ra8_i3c_i2c_cfg_t k_iic_b_cfg = {
   .bus_hz   = (uint32_t)k_ra8_i3c_i2c_speed_fast,
@@ -877,7 +903,7 @@ static void test_mcdc_iic_b(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
 
-  uint8_t tx_buf[1] = {0xA5U};
+  uint8_t tx_buf[1] = {k_i3c_i2c_sentinel_a5};
   uint8_t rx_buf[1] = {0U};
 
   /* Decision A V1: both lens zero -> invalid_arg. */

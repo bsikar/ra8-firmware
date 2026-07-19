@@ -21,6 +21,21 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum io_blockdev_cache_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_io_blockdev_cache_seed_block_11 = 0x11,
+  k_io_blockdev_cache_seed_block_12 = 0x12,
+  k_io_blockdev_cache_seed_block_44 = 0x44,
+} io_blockdev_cache_uint8_const_t;
+
+/**
  * @enum t_cache_const_t
  * @brief Fixture sizes.
  */
@@ -64,8 +79,8 @@ static void test_hit_miss_lru(void)
   ra8_io_blockdev_t           under = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_ram_init(&under, &ust, s_disk, k_t_under_blocks, false));
   seed_block(&under, 0, 0x10);
-  seed_block(&under, 1, 0x11);
-  seed_block(&under, 2, 0x12);
+  seed_block(&under, 1, k_io_blockdev_cache_seed_block_11);
+  seed_block(&under, 2, k_io_blockdev_cache_seed_block_12);
 
   ra8_io_blockdev_cache_state_t cst = {};
   ra8_io_blockdev_t             cbd = {};
@@ -138,7 +153,7 @@ static void test_erase_invalidate(void)
   ra8_io_blockdev_ram_state_t ust   = {};
   ra8_io_blockdev_t           under = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_ram_init(&under, &ust, s_disk, k_t_under_blocks, false));
-  seed_block(&under, 4, 0x44);
+  seed_block(&under, 4, k_io_blockdev_cache_seed_block_44);
   ra8_io_blockdev_cache_state_t cst = {};
   ra8_io_blockdev_t             cbd = {};
   TEST_ASSERT_EQ(

@@ -34,6 +34,21 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum mipi_dsi_cmd_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_mipi_dsi_cmd_lane_count_5 = 5U,
+  k_mipi_dsi_cmd_sqch0scr_ff  = 0xFFU,
+  k_mipi_dsi_cmd_val_a0       = 0xA0U,
+} mipi_dsi_cmd_uint8_const_t;
+
+/**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
@@ -99,7 +114,7 @@ static void test_init_bad_lane_count(void)
   cfg.lane_count            = (ra8_mipi_dsi_lane_count_t)0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_dsi_init(&cfg));
 
-  cfg.lane_count = (ra8_mipi_dsi_lane_count_t)5U;
+  cfg.lane_count = (ra8_mipi_dsi_lane_count_t)k_mipi_dsi_cmd_lane_count_5;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_dsi_init(&cfg));
   TEST_END("mipi_dsi init bad lane count");
 }
@@ -120,8 +135,8 @@ static void test_status_get_clear(void)
 
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
   reg->ISR                        = (uint32_t)k_test_isr_seed;
-  reg->SQCH0SCR                   = 0xFFU;
-  reg->VMSCR                      = 0xFFU;
+  reg->SQCH0SCR                   = k_mipi_dsi_cmd_sqch0scr_ff;
+  reg->VMSCR                      = k_mipi_dsi_cmd_sqch0scr_ff;
 
   uint32_t mask = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_dsi_get_status(&mask));
@@ -318,7 +333,7 @@ static void test_send_long_packet(void)
 
   uint8_t payload[k_test_long_len];
   for (uint32_t i = 0U; i < k_test_long_len; ++i) {
-    payload[i] = (uint8_t)(0xA0U + i);
+    payload[i] = (uint8_t)(k_mipi_dsi_cmd_val_a0 + i);
   }
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_mipi_dsi_send_long_packet(k_ra8_mipi_dsi_dt_dcs_long_write,

@@ -31,6 +31,50 @@
 #include "ra8_rar5.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum rar5_enc_fixture_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_rar5_enc_fixture_bw_put_12   = 12U,
+  k_rar5_enc_fixture_bw_put_15   = 15U,
+  k_rar5_enc_fixture_bw_put_5    = 5U,
+  k_rar5_enc_fixture_bw_put_9    = 9U,
+  k_rar5_enc_fixture_bw_put_ff   = 0xFFU,
+  k_rar5_enc_fixture_exp_copy_33 = 33U,
+  k_rar5_enc_fixture_exp_copy_65 = 65U,
+  k_rar5_enc_fixture_i_10        = 10U,
+  k_rar5_enc_fixture_i_20        = 20U,
+  k_rar5_enc_fixture_i_34        = 34U,
+  k_rar5_enc_fixture_i_44        = 44U,
+  k_rar5_enc_fixture_i_64        = 64U,
+  k_rar5_enc_fixture_sentinel_5a = 0x5AU,
+  k_rar5_enc_fixture_val_7       = 7U,
+} rar5_enc_fixture_uint8_const_t;
+
+/**
+ * @enum rar5_enc_fixture_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_rar5_enc_fixture_bw_put_256   = 256U,
+  k_rar5_enc_fixture_bw_put_258   = 258U,
+  k_rar5_enc_fixture_bw_put_262   = 262U,
+  k_rar5_enc_fixture_bw_put_270   = 270U,
+  k_rar5_enc_fixture_exp_copy_257 = 257U,
+  k_rar5_enc_fixture_i_272        = 272U,
+} rar5_enc_fixture_uint16_const_t;
+
 /** @brief Working buffers sized for the small crafted streams. */
 enum : uint32_t {
   k_pk_cap  = 8192U,  /**< Packed-stream build buffer. */
@@ -79,7 +123,7 @@ static inline void bw_put(bitw_t* w, uint32_t v, uint32_t n)
     const uint32_t bit = (v >> (i - 1U)) & 1U;
     if (w->byte < w->cap) {
       if (bit != 0U) {
-        w->buf[w->byte] |= (uint8_t)(1U << (7U - w->bitpos));
+        w->buf[w->byte] |= (uint8_t)(1U << (k_rar5_enc_fixture_val_7 - w->bitpos));
       }
     }
     w->bitpos++;
@@ -114,28 +158,29 @@ static inline uint32_t bw_lastbits(const bitw_t* w)
 static inline void enc_table_body(bitw_t* w)
 {
   /* LD: 272 nines then 34 zeros. */
-  for (uint32_t i = 0U; i < 272U; ++i) {
-    bw_put(w, 9U, 5U);
+  for (uint32_t i = 0U; i < k_rar5_enc_fixture_i_272; ++i) {
+    bw_put(w, k_rar5_enc_fixture_bw_put_9, k_rar5_enc_fixture_bw_put_5);
   }
-  for (uint32_t i = 0U; i < 34U; ++i) {
-    bw_put(w, 0U, 5U);
+  for (uint32_t i = 0U; i < k_rar5_enc_fixture_i_34; ++i) {
+    bw_put(w, 0U, k_rar5_enc_fixture_bw_put_5);
   }
-  for (uint32_t i = 0U; i < 64U; ++i) { /* DD: 64 sixes */
-    bw_put(w, 6U, 5U);
+  for (uint32_t i = 0U; i < k_rar5_enc_fixture_i_64; ++i) { /* DD: 64 sixes */
+    bw_put(w, 6U, k_rar5_enc_fixture_bw_put_5);
   }
   for (uint32_t i = 0U; i < 16U; ++i) { /* LDD: 16 fours */
-    bw_put(w, 4U, 5U);
+    bw_put(w, 4U, k_rar5_enc_fixture_bw_put_5);
   }
-  for (uint32_t i = 0U; i < 44U; ++i) { /* RD: 44 sixes */
-    bw_put(w, 6U, 5U);
+  for (uint32_t i = 0U; i < k_rar5_enc_fixture_i_44; ++i) { /* RD: 44 sixes */
+    bw_put(w, 6U, k_rar5_enc_fixture_bw_put_5);
   }
 }
 
 /** @brief Emit the BD pre-table lengths (all 5) then the 430 combined lengths. */
 static inline void enc_tables(bitw_t* w)
 {
-  for (uint32_t i = 0U; i < 20U; ++i) { /* BD: 20 lengths of 5 bits, all value 5 */
-    bw_put(w, 5U, 4U);
+  for (uint32_t i = 0U; i < k_rar5_enc_fixture_i_20;
+       ++i) { /* BD: 20 lengths of 5 bits, all value 5 */
+    bw_put(w, k_rar5_enc_fixture_bw_put_5, 4U);
   }
   enc_table_body(w);
 }
@@ -148,13 +193,14 @@ static inline void enc_tables(bitw_t* w)
  */
 static inline void enc_tables_bdzero(bitw_t* w)
 {
-  for (uint32_t i = 0U; i < 10U; ++i) { /* BD symbols 0..9 length 5 */
-    bw_put(w, 5U, 4U);
+  for (uint32_t i = 0U; i < k_rar5_enc_fixture_i_10; ++i) { /* BD symbols 0..9 length 5 */
+    bw_put(w, k_rar5_enc_fixture_bw_put_5, 4U);
   }
-  bw_put(w, 15U, 4U);                  /* escape                                 */
-  bw_put(w, 3U, 4U);                   /* zero count 3 -> 3+2 = 5 zeros (10..14) */
-  for (uint32_t i = 0U; i < 5U; ++i) { /* BD symbols 15..19 length 5             */
-    bw_put(w, 5U, 4U);
+  bw_put(w, k_rar5_enc_fixture_bw_put_15, 4U); /* escape                                 */
+  bw_put(w, 3U, 4U);                           /* zero count 3 -> 3+2 = 5 zeros (10..14) */
+  for (uint32_t i = 0U; i < k_rar5_enc_fixture_bw_put_5;
+       ++i) { /* BD symbols 15..19 length 5 */
+    bw_put(w, k_rar5_enc_fixture_bw_put_5, 4U);
   }
   enc_table_body(w);
 }
@@ -162,7 +208,7 @@ static inline void enc_tables_bdzero(bitw_t* w)
 /** @brief Emit one literal byte + record it in the expected output. */
 static inline void enc_lit(bitw_t* w, uint8_t* exp, size_t* elen, uint8_t b)
 {
-  bw_put(w, b, 9U);
+  bw_put(w, b, k_rar5_enc_fixture_bw_put_9);
   exp[*elen] = b;
   *elen += 1U;
 }
@@ -180,7 +226,7 @@ static inline void exp_copy(uint8_t* exp, size_t* elen, uint32_t len, uint32_t d
 static inline void
 enc_match(bitw_t* w, uint8_t* exp, size_t* elen, uint32_t lenslot, uint32_t distslot)
 {
-  bw_put(w, 262U + lenslot, 9U);
+  bw_put(w, k_rar5_enc_fixture_bw_put_262 + lenslot, k_rar5_enc_fixture_bw_put_9);
   bw_put(w, distslot, 6U);
   exp_copy(exp, elen, 2U + lenslot, 1U + distslot);
 }
@@ -189,30 +235,30 @@ enc_match(bitw_t* w, uint8_t* exp, size_t* elen, uint32_t lenslot, uint32_t dist
 static inline void
 enc_match_lenx(bitw_t* w, uint8_t* exp, size_t* elen, uint32_t len_extra, uint32_t distslot)
 {
-  bw_put(w, 270U, 9U); /* length slot 8 */
+  bw_put(w, k_rar5_enc_fixture_bw_put_270, k_rar5_enc_fixture_bw_put_9); /* length slot 8 */
   bw_put(w, len_extra, 1U);
   bw_put(w, distslot, 6U);
-  exp_copy(exp, elen, 10U + len_extra, 1U + distslot);
+  exp_copy(exp, elen, k_rar5_enc_fixture_i_10 + len_extra, 1U + distslot);
 }
 
 /** @brief Emit distslot 4 (1 distance-extra bit), lenslot<8. */
 static inline void
 enc_match_distx(bitw_t* w, uint8_t* exp, size_t* elen, uint32_t lenslot, uint32_t dist_extra)
 {
-  bw_put(w, 262U + lenslot, 9U);
+  bw_put(w, k_rar5_enc_fixture_bw_put_262 + lenslot, k_rar5_enc_fixture_bw_put_9);
   bw_put(w, 4U, 6U); /* distance slot 4 -> dbits 1 */
   bw_put(w, dist_extra, 1U);
-  exp_copy(exp, elen, 2U + lenslot, 5U + dist_extra);
+  exp_copy(exp, elen, 2U + lenslot, k_rar5_enc_fixture_bw_put_5 + dist_extra);
 }
 
 /** @brief Emit distslot 10 (dbits==4, low-distance symbol), lenslot<4. */
 static inline void
 enc_match_lowdist(bitw_t* w, uint8_t* exp, size_t* elen, uint32_t lenslot, uint32_t lowdist)
 {
-  bw_put(w, 262U + lenslot, 9U);
-  bw_put(w, 10U, 6U);     /* distance slot 10 -> dbits 4 */
-  bw_put(w, lowdist, 4U); /* low-distance table symbol   */
-  exp_copy(exp, elen, 2U + lenslot, 33U + lowdist);
+  bw_put(w, k_rar5_enc_fixture_bw_put_262 + lenslot, k_rar5_enc_fixture_bw_put_9);
+  bw_put(w, k_rar5_enc_fixture_i_10, 6U); /* distance slot 10 -> dbits 4 */
+  bw_put(w, lowdist, 4U);                 /* low-distance table symbol   */
+  exp_copy(exp, elen, 2U + lenslot, k_rar5_enc_fixture_exp_copy_33 + lowdist);
 }
 
 /** @brief Emit distslot 12 (dbits>4: hi extra + low-distance symbol). */
@@ -223,51 +269,51 @@ static inline void enc_match_hilow(bitw_t*  w,
                                    uint32_t hi,
                                    uint32_t lowdist)
 {
-  bw_put(w, 262U + lenslot, 9U);
-  bw_put(w, 12U, 6U); /* distance slot 12 -> dbits 5 */
-  bw_put(w, hi, 1U);  /* dbits-4 == 1 extra bit      */
+  bw_put(w, k_rar5_enc_fixture_bw_put_262 + lenslot, k_rar5_enc_fixture_bw_put_9);
+  bw_put(w, k_rar5_enc_fixture_bw_put_12, 6U); /* distance slot 12 -> dbits 5 */
+  bw_put(w, hi, 1U);                           /* dbits-4 == 1 extra bit      */
   bw_put(w, lowdist, 4U);
-  exp_copy(exp, elen, 2U + lenslot, 65U + (hi << 4U) + lowdist);
+  exp_copy(exp, elen, 2U + lenslot, k_rar5_enc_fixture_exp_copy_65 + (hi << 4U) + lowdist);
 }
 
 /** @brief Emit distslot 16 (large distance > 0x100, exercises length bias). */
 static inline void enc_match_big(bitw_t* w, uint8_t* exp, size_t* elen, uint32_t lenslot)
 {
-  bw_put(w, 262U + lenslot, 9U);
+  bw_put(w, k_rar5_enc_fixture_bw_put_262 + lenslot, k_rar5_enc_fixture_bw_put_9);
   bw_put(w, 16U, 6U); /* distance slot 16 -> dbits 7 */
   bw_put(w, 0U, 3U);  /* dbits-4 == 3 extra bits = 0 */
   bw_put(w, 0U, 4U);  /* low-distance symbol 0       */
   /* dist = 1 + (2<<7) = 257 (> 0x100) -> length += 1 */
-  exp_copy(exp, elen, 2U + lenslot + 1U, 257U);
+  exp_copy(exp, elen, 2U + lenslot + 1U, k_rar5_enc_fixture_exp_copy_257);
 }
 
 /** @brief Emit a remembered-distance match (idx 0) reusing @p dist. */
 static inline void
 enc_repdist(bitw_t* w, uint8_t* exp, size_t* elen, uint32_t rd_lenslot, uint32_t dist)
 {
-  bw_put(w, 258U, 9U);       /* rep distance index 0 */
-  bw_put(w, rd_lenslot, 6U); /* repeat-length slot   */
+  bw_put(w, k_rar5_enc_fixture_bw_put_258, k_rar5_enc_fixture_bw_put_9); /* rep distance index 0 */
+  bw_put(w, rd_lenslot, 6U);                                             /* repeat-length slot   */
   exp_copy(exp, elen, 2U + rd_lenslot, dist);
 }
 
 /** @brief Emit a last-match repeat of @p len at @p dist. */
 static inline void enc_replast(bitw_t* w, uint8_t* exp, size_t* elen, uint32_t len, uint32_t dist)
 {
-  bw_put(w, 257U, 9U);
+  bw_put(w, k_rar5_enc_fixture_exp_copy_257, k_rar5_enc_fixture_bw_put_9);
   exp_copy(exp, elen, len, dist);
 }
 
 /** @brief Emit a filter descriptor (does not itself produce output). */
 static inline void enc_filter(bitw_t* w, uint32_t type, uint32_t rel, uint32_t len, uint32_t chan)
 {
-  bw_put(w, 256U, 9U);
+  bw_put(w, k_rar5_enc_fixture_bw_put_256, k_rar5_enc_fixture_bw_put_9);
   bw_put(w, 0U, 2U); /* filter-data byte count 1 */
-  bw_put(w, rel & 0xFFU, 8U);
+  bw_put(w, rel & k_rar5_enc_fixture_bw_put_ff, 8U);
   bw_put(w, 0U, 2U);
-  bw_put(w, len & 0xFFU, 8U);
+  bw_put(w, len & k_rar5_enc_fixture_bw_put_ff, 8U);
   bw_put(w, type, 3U);
   if (type == 0U) {
-    bw_put(w, chan - 1U, 5U);
+    bw_put(w, chan - 1U, k_rar5_enc_fixture_bw_put_5);
   }
 }
 
@@ -282,15 +328,16 @@ static inline size_t enc_finish(const bitw_t* body, uint8_t* pk)
   size_t p = 0U;
   pk[p]    = flags;
   p += 1U;
-  pk[p] = (uint8_t)(bsz & 0xFFU);
+  pk[p] = (uint8_t)(bsz & k_rar5_enc_fixture_bw_put_ff);
   p += 1U;
   if (bcnt == 2U) {
-    pk[p] = (uint8_t)((bsz >> 8U) & 0xFFU);
+    pk[p] = (uint8_t)((bsz >> 8U) & k_rar5_enc_fixture_bw_put_ff);
     p += 1U;
   }
-  uint8_t chk = (uint8_t)(0x5AU ^ flags ^ (uint8_t)(bsz & 0xFFU));
+  uint8_t chk = (uint8_t)(k_rar5_enc_fixture_sentinel_5a ^ flags ^
+                          (uint8_t)(bsz & k_rar5_enc_fixture_bw_put_ff));
   if (bcnt == 2U) {
-    chk ^= (uint8_t)((bsz >> 8U) & 0xFFU);
+    chk ^= (uint8_t)((bsz >> 8U) & k_rar5_enc_fixture_bw_put_ff);
   }
   pk[p] = chk;
   p += 1U;
@@ -308,7 +355,7 @@ static inline size_t enc_all_literal(const uint8_t* src, size_t srclen, uint8_t*
   size_t  dlen  = 0U;
   enc_tables(&body);
   for (size_t i = 0U; i < srclen; ++i) {
-    bw_put(&body, src[i], 9U);
+    bw_put(&body, src[i], k_rar5_enc_fixture_bw_put_9);
     (void)dummy;
     (void)dlen;
   }

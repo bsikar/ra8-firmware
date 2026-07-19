@@ -29,6 +29,21 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum crashlog_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_crashlog_cfsr_02000000  = 0x02000000UL,
+  k_crashlog_crc_ffffffff   = 0xFFFFFFFFUL,
+  k_crashlog_magic_deadbeef = 0xDEADBEEFUL,
+} crashlog_uint32_const_t;
+
 static jmp_buf s_fatal_jmp;
 static uint8_t s_fatal_hit = 0U;
 
@@ -53,7 +68,7 @@ static ra8_exception_last_t make_synth(uint32_t exc, uint32_t pc)
   s.exc_number           = exc;
   s.frame.pc             = pc;
   s.frame.lr             = pc - 4U;
-  s.diag.cfsr            = 0x02000000UL;
+  s.diag.cfsr            = k_crashlog_cfsr_02000000;
   s.nmisr                = 0U;
   return s;
 }
@@ -243,13 +258,13 @@ static void test_mcdc_crashlog_is_valid(void)
   /* Vector 2: magic wrong, crc still matches payload (magic is not
    * CRC-covered) -> reject. Isolates the magic condition. */
   const uint32_t good_magic = raw->magic;
-  raw->magic                = 0xDEADBEEFUL;
+  raw->magic                = k_crashlog_magic_deadbeef;
   TEST_ASSERT_EQ(0, ra8_crashlog_peek(&rec) ? 1 : 0);
 
   /* Vector 3: restore magic, corrupt the stored crc -> reject. Isolates
    * the crc condition. */
   raw->magic = good_magic;
-  raw->crc   = raw->crc ^ 0xFFFFFFFFUL;
+  raw->crc   = raw->crc ^ k_crashlog_crc_ffffffff;
   TEST_ASSERT_EQ(0, ra8_crashlog_peek(&rec) ? 1 : 0);
 
   TEST_END("ra8_crashlog_is_valid MC/DC (magic && crc)");

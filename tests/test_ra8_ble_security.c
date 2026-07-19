@@ -14,6 +14,33 @@
 #include "ra8_err.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum ble_security_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ble_security_c_ff       = 0xFFU,
+  k_ble_security_io_cap_200 = 200U,
+} ble_security_uint8_const_t;
+
+/**
+ * @enum ble_security_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_ble_security_passkey_123456 = 123456U,
+} ble_security_uint32_const_t;
+
 extern void ra8_ble_security_test_emit_event(const ra8_ble_security_event_t* evt);
 extern void ra8_ble_security_test_set_bond_count(uint8_t count);
 
@@ -59,7 +86,7 @@ static void test_init_invalid_iocap(void)
   TEST_BEGIN("test_init_invalid_iocap");
   reset_state();
   ra8_ble_security_config_t cfg = {};
-  cfg.io_cap                    = (ra8_ble_security_io_cap_t)200U;
+  cfg.io_cap                    = (ra8_ble_security_io_cap_t)k_ble_security_io_cap_200;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ble_security_init(&cfg));
   TEST_END("test_init_invalid_iocap");
 }
@@ -113,7 +140,7 @@ static void test_bond_count(void)
 {
   TEST_BEGIN("test_bond_count");
   reset_state();
-  uint8_t                         c   = 0xFFU;
+  uint8_t                         c   = k_ble_security_c_ff;
   const ra8_ble_security_config_t cfg = {.io_cap = k_ra8_ble_io_cap_no_input_no_out};
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_ble_security_bond_count(&c));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_security_init(&cfg));
@@ -137,7 +164,8 @@ static void test_event_callback(void)
   const ra8_ble_security_config_t cfg = {.io_cap = k_ra8_ble_io_cap_display_only};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_security_init(&cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_security_attach_event_handler(capture_evt, nullptr));
-  ra8_ble_security_event_t evt = {.kind = k_ra8_ble_sec_evt_passkey_display, .passkey = 123456U};
+  ra8_ble_security_event_t evt = {.kind    = k_ra8_ble_sec_evt_passkey_display,
+                                  .passkey = k_ble_security_passkey_123456};
   ra8_ble_security_test_emit_event(&evt);
   TEST_ASSERT_EQ(1U, s_evt_count);
   TEST_ASSERT_EQ(123456U, s_last.passkey);

@@ -24,6 +24,34 @@
 #include "ra8_ota.h"
 #include "ra8_ota_internal.h"
 
+/**
+ * @enum ota_cov_mocks_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ota_cov_mocks_i_a5   = 0xA5U,
+  k_ota_cov_mocks_val_0f = 0x0FU,
+  k_ota_cov_mocks_val_c0 = 0xC0U,
+} ota_cov_mocks_uint8_const_t;
+
+/**
+ * @enum ota_cov_mocks_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_ota_cov_mocks_val_2048 = 2048,
+} ota_cov_mocks_uint16_const_t;
+
 /* =============================================================================
  * Mock constants
  * ============================================================================= */
@@ -42,7 +70,7 @@ typedef enum : uint32_t {
  * ============================================================================= */
 
 /** @brief Manifest JSON rendered for a valid fixture. */
-static char g_cov_manifest[2048];
+static char g_cov_manifest[k_ota_cov_mocks_val_2048];
 /** @brief Raw bytes of the mock firmware image. */
 static uint8_t g_cov_image[k_cov_image_size];
 /** @brief Inactive-bank sandbox. */
@@ -313,7 +341,7 @@ static inline void priv_xor_hash(const uint8_t* data, uint32_t len, uint8_t out[
 static inline void priv_make_image(void)
 {
   for (uint32_t i = 0U; i < k_cov_image_size; ++i) {
-    g_cov_image[i] = (uint8_t)(i ^ 0xA5U);
+    g_cov_image[i] = (uint8_t)(i ^ k_ota_cov_mocks_i_a5);
   }
 }
 
@@ -322,18 +350,18 @@ static inline void priv_make_manifest(void)
 {
   priv_xor_hash(g_cov_image, k_cov_image_size, g_cov_expected_hash);
   for (uint32_t i = 0U; i < sizeof g_cov_sig; ++i) {
-    g_cov_sig[i] = (uint8_t)(0xC0U + i);
+    g_cov_sig[i] = (uint8_t)(k_ota_cov_mocks_val_c0 + i);
   }
   static const char nibble[]                                    = "0123456789abcdef";
   char              hex_sha[(2U * k_ra8_ota_sha256_bytes) + 1U] = {};
   for (uint32_t i = 0U; i < k_ra8_ota_sha256_bytes; ++i) {
     hex_sha[(size_t)2U * i] = nibble[g_cov_expected_hash[i] >> 4U];
-    hex_sha[(2U * i) + 1U]  = nibble[g_cov_expected_hash[i] & 0x0FU];
+    hex_sha[(2U * i) + 1U]  = nibble[g_cov_expected_hash[i] & k_ota_cov_mocks_val_0f];
   }
   char hex_sig[(2U * sizeof g_cov_sig) + 1U] = {};
   for (uint32_t i = 0U; i < sizeof g_cov_sig; ++i) {
     hex_sig[(size_t)2U * i] = nibble[g_cov_sig[i] >> 4U];
-    hex_sig[(2U * i) + 1U]  = nibble[g_cov_sig[i] & 0x0FU];
+    hex_sig[(2U * i) + 1U]  = nibble[g_cov_sig[i] & k_ota_cov_mocks_val_0f];
   }
   (void)snprintf(g_cov_manifest,
                  sizeof g_cov_manifest,

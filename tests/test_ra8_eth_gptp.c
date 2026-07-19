@@ -13,6 +13,33 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum eth_gptp_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_eth_gptp_gptp_sts_beef = 0xBEEFU,
+  k_eth_gptp_gptp_sts_face = 0xFACEU,
+} eth_gptp_uint16_const_t;
+
+/**
+ * @enum eth_gptp_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_eth_gptp_gptp_sts_1eee1588 = 0x1EEE1588U,
+} eth_gptp_uint32_const_t;
+
 static uint32_t s_gptp_cb_count;
 static uint32_t s_gptp_cb_last_mask;
 
@@ -70,7 +97,7 @@ static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("gptp status read + clear");
   prep();
-  ra8_gptp()->GPTP_STS = 0x1EEE1588U;
+  ra8_gptp()->GPTP_STS = k_eth_gptp_gptp_sts_1eee1588;
   uint32_t mask        = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gptp_get_status(&mask));
   TEST_ASSERT_EQ(0x1EEE1588U, mask);
@@ -90,13 +117,13 @@ static void test_attach_and_dispatch(void)
   TEST_BEGIN("gptp attach + dispatch");
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gptp_attach_handler(stub_gptp_cb, (void*)(uintptr_t)0xF0U));
-  ra8_gptp()->GPTP_STS = 0xBEEFU;
+  ra8_gptp()->GPTP_STS = k_eth_gptp_gptp_sts_beef;
   ra8_eth_gptp_dispatch();
   TEST_ASSERT_EQ(1, s_gptp_cb_count);
   TEST_ASSERT_EQ(0xBEEFU, s_gptp_cb_last_mask);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gptp_attach_handler(nullptr, nullptr));
-  ra8_gptp()->GPTP_STS = 0xFACEU;
+  ra8_gptp()->GPTP_STS = k_eth_gptp_gptp_sts_face;
   ra8_eth_gptp_dispatch();
   TEST_ASSERT_EQ(1, s_gptp_cb_count);
   TEST_END("gptp attach + dispatch");

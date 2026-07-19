@@ -45,6 +45,19 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum epaper_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_epaper_panel_width_ffff = 0xFFFFU,
+} epaper_uint16_const_t;
+
+/**
  * @enum ra8_epaper_test_const_t
  * @brief Test fixtures.
  */
@@ -428,10 +441,10 @@ static void test_mcdc_ra8_epaper(void)
   cfg.panel_height = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_init(&cfg));
   cfg             = make_cfg();
-  cfg.panel_width = (uint16_t)0xFFFFU;
+  cfg.panel_width = (uint16_t)k_epaper_panel_width_ffff;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_init(&cfg));
   cfg              = make_cfg();
-  cfg.panel_height = (uint16_t)0xFFFFU;
+  cfg.panel_height = (uint16_t)k_epaper_panel_width_ffff;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_init(&cfg));
 
   prep();

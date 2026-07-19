@@ -13,6 +13,34 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum dtc_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_dtc_val_30 = 0x30U,
+} dtc_uint8_const_t;
+
+/**
+ * @enum dtc_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_dtc_dtcsts_bead = 0xBEADU,
+  k_dtc_dtcsts_beef = 0xBEEFU,
+  k_dtc_dtcsts_cafe = 0xCAFEU,
+} dtc_uint16_const_t;
+
 typedef enum : uintptr_t {
   k_ra8_dtc_test_vector_addr  = 0x22000400UL, /**< Arbitrary SRAM-region pointer. */
   k_ra8_dtc_test_vector_addr2 = 0x22000800UL, /**< Secondary reconfig target.     */
@@ -20,7 +48,8 @@ typedef enum : uintptr_t {
 
 /* Compile-time check: the regs block matches FSP R_DTC_Type
  * (size = 0x30 / 48 bytes per RA8D2 CMSIS R_DTC_Type). */
-static_assert(sizeof(r_dtc_regs_t) == 0x30U, "r_dtc_regs_t must be 48 bytes (FSP R_DTC_Type)");
+static_assert(sizeof(r_dtc_regs_t) == k_dtc_val_30,
+              "r_dtc_regs_t must be 48 bytes (FSP R_DTC_Type)");
 static_assert(sizeof(r_dtc_xfer_info_t) == 16U, "r_dtc_xfer_info_t must be 16 bytes (HUM 18.2)");
 
 static uint32_t s_dtc_cb_count;
@@ -147,7 +176,7 @@ static void test_status_read_and_clear(void)
   TEST_BEGIN("dtc status read + clear");
   prep();
 
-  ra8_dtc()->DTCSTS = 0xBEADU;
+  ra8_dtc()->DTCSTS = k_dtc_dtcsts_bead;
   uint16_t mask     = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dtc_get_status(&mask));
   TEST_ASSERT_EQ(0xBEADU, mask);
@@ -171,13 +200,13 @@ static void test_attach_and_dispatch(void)
   prep();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dtc_attach_handler(stub_dtc_cb, (void*)(uintptr_t)0xD0U));
-  ra8_dtc()->DTCSTS = 0xCAFEU;
+  ra8_dtc()->DTCSTS = k_dtc_dtcsts_cafe;
   ra8_dtc_dispatch();
   TEST_ASSERT_EQ(1, s_dtc_cb_count);
   TEST_ASSERT_EQ(0xCAFEU, s_dtc_cb_last_mask);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dtc_attach_handler(nullptr, nullptr));
-  ra8_dtc()->DTCSTS = 0xBEEFU;
+  ra8_dtc()->DTCSTS = k_dtc_dtcsts_beef;
   ra8_dtc_dispatch();
   TEST_ASSERT_EQ(1, s_dtc_cb_count);
   TEST_END("dtc attach + dispatch");

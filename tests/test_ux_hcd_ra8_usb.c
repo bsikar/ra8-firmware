@@ -34,13 +34,26 @@
 
 #include "unity_minimal.h"
 
+/**
+ * @enum ux_hcd_ra8_usb_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ux_hcd_ra8_usb_pipe_10 = 10U,
+} ux_hcd_ra8_usb_uint8_const_t;
+
 /* ------------------------------------------------------------------ */
 /* Operand-identical mirrors of the four compound decisions. */
 /* ------------------------------------------------------------------ */
 
 static inline bool internal_mirror_h_ep_create_guard(uint8_t pipe)
 {
-  return (pipe == 0U) || (pipe >= 10U);
+  return (pipe == 0U) || (pipe >= k_ux_hcd_ra8_usb_pipe_10);
 }
 
 static inline bool internal_mirror_h_xfer_null_guard(bool tr_is_null, const void* ep)

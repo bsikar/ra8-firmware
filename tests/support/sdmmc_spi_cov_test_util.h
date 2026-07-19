@@ -26,6 +26,22 @@
 #include "ra8_sdmmc_spi_internal.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum sdmmc_spi_cov_test_util_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_sdmmc_spi_cov_test_util_out_40       = 0x40U,
+  k_sdmmc_spi_cov_test_util_tail_word_24 = 24U,
+  k_sdmmc_spi_cov_test_util_val_9        = 9,
+  k_sdmmc_spi_cov_test_util_val_ff       = 0xFFU,
+} sdmmc_spi_cov_test_util_uint8_const_t;
+
 /* ===========================================================================
  * Mock SPI transport
  * ===========================================================================
@@ -343,10 +359,11 @@ static inline void q_cmd_r3r7(uint8_t r1, uint32_t tail_word)
   mock_queue_idle(1U);
   mock_queue_idle((uint32_t)k_cov_frame_bytes);
   mock_queue_byte(r1);
-  mock_queue_byte((uint8_t)((tail_word >> 24U) & 0xFFU));
-  mock_queue_byte((uint8_t)((tail_word >> 16U) & 0xFFU));
-  mock_queue_byte((uint8_t)((tail_word >> 8U) & 0xFFU));
-  mock_queue_byte((uint8_t)(tail_word & 0xFFU));
+  mock_queue_byte((uint8_t)((tail_word >> k_sdmmc_spi_cov_test_util_tail_word_24) &
+                            k_sdmmc_spi_cov_test_util_val_ff));
+  mock_queue_byte((uint8_t)((tail_word >> 16U) & k_sdmmc_spi_cov_test_util_val_ff));
+  mock_queue_byte((uint8_t)((tail_word >> 8U) & k_sdmmc_spi_cov_test_util_val_ff));
+  mock_queue_byte((uint8_t)(tail_word & k_sdmmc_spi_cov_test_util_val_ff));
   mock_queue_idle(1U);
 }
 
@@ -357,9 +374,9 @@ static inline void q_cmd_r3r7(uint8_t r1, uint32_t tail_word)
 static inline void build_csd_v2(uint8_t* out)
 {
   memset(out, 0, (size_t)k_ra8_sdmmc_spi_csd_response_len);
-  out[0] = 0x40U; /* CSD_STRUCTURE = 1 (version bits 7:6 == 0b01). */
-  out[8] = 0xFFU;
-  out[9] = 0xFFU;
+  out[0] = k_sdmmc_spi_cov_test_util_out_40; /* CSD_STRUCTURE = 1 (version bits 7:6 == 0b01). */
+  out[8] = k_sdmmc_spi_cov_test_util_val_ff;
+  out[k_sdmmc_spi_cov_test_util_val_9] = k_sdmmc_spi_cov_test_util_val_ff;
 }
 
 /**

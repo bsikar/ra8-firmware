@@ -32,6 +32,21 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum ftl_persist_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ftl_persist_i_17                = 17U,
+  k_ftl_persist_lbn_5               = 5U,
+  k_ftl_persist_persist_pattern_100 = 100U,
+} ftl_persist_uint8_const_t;
+
+/**
  * @enum persist_const_t
  * @brief Fixture sizes for the persistence tests.
  *
@@ -179,7 +194,7 @@ static void persist_bind(ra8_io_blockdev_t* bd, persist_fake_t* st, uint32_t blo
 static void persist_pattern(uint8_t* blk, uint32_t lbn, uint32_t tag)
 {
   for (uint32_t i = 0; i < (uint32_t)k_persist_block; ++i) {
-    blk[i] = (uint8_t)((i * 17U) + (lbn * 5U) + tag);
+    blk[i] = (uint8_t)((i * k_ftl_persist_i_17) + (lbn * k_ftl_persist_lbn_5) + tag);
   }
 }
 
@@ -434,7 +449,7 @@ static void persist_write_all(ra8_io_blockdev_t* bd)
   }
   for (uint32_t rep = 0; rep < 4U; ++rep) {
     uint8_t blk[(size_t)k_persist_block];
-    persist_pattern(blk, 2U, 100U + rep);
+    persist_pattern(blk, 2U, k_ftl_persist_persist_pattern_100 + rep);
     TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(bd, 2U, 1U, blk));
   }
 }

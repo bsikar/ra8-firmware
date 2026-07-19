@@ -13,6 +13,35 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum icu_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_icu_val_ff = 0xFFU,
+} icu_uint8_const_t;
+
+/**
+ * @enum icu_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_icu_sentinel_cafebabe = 0xCAFEBABEUL,
+  k_icu_sentinel_deadbeef = 0xDEADBEEFUL,
+  k_icu_val_1f007a        = 0x1F007AUL,
+  k_icu_val_1fffff        = 0x1FFFFFUL,
+} icu_uint32_const_t;
+
+/**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
@@ -25,11 +54,11 @@ static void test_init_clears_irqcr_and_nmi(void)
 
   /* Pre-pollute IRQCR0, IRQCR16 (IRQCRb[0]), NMIER, WUPEN0, WUPEN1 so
    * we can observe the clear. */
-  *ra8_icu_irqcr(0U)  = 0xFFU;
-  *ra8_icu_irqcr(16U) = 0xFFU;
-  *ra8_icu_nmier()    = 0x1FFFFFUL;
-  *ra8_icu_wupen0()   = 0xCAFEBABEUL;
-  *ra8_icu_wupen1()   = 0xDEADBEEFUL;
+  *ra8_icu_irqcr(0U)  = k_icu_val_ff;
+  *ra8_icu_irqcr(16U) = k_icu_val_ff;
+  *ra8_icu_nmier()    = k_icu_val_1fffff;
+  *ra8_icu_wupen0()   = k_icu_sentinel_cafebabe;
+  *ra8_icu_wupen1()   = k_icu_sentinel_deadbeef;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_icu_init());
   TEST_ASSERT_EQ(0, *ra8_icu_irqcr(0U));
@@ -159,7 +188,7 @@ static void test_nmi_enable_disable_clear(void)
   TEST_ASSERT_EQ(0x10111UL, *ra8_icu_nmier());
 
   /* Status register reads + clear. */
-  *ra8_icu_nmisr() = 0x1F007AUL;
+  *ra8_icu_nmisr() = k_icu_val_1f007a;
   uint32_t status  = 0UL;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_icu_nmi_status(&status));
   TEST_ASSERT_EQ(0x1F007AUL, status);

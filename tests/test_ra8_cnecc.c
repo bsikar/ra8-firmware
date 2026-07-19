@@ -26,6 +26,32 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum cnecc_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_cnecc_one_bit_count_9 = 9U,
+} cnecc_uint8_const_t;
+
+/**
+ * @enum cnecc_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_cnecc_k_ra8_cnecc_test_addr_over_fffffc00 = 0xFFFFFC00UL,
+} cnecc_uint32_const_t;
+
+/**
  * @enum ra8_cnecc_test_const_t
  * @brief Magic-number-free constants used by the test bodies.
  */
@@ -403,8 +429,9 @@ static void test_get_status_masks_ead(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cnecc_init(&cfg));
 
   volatile r_cnecc_regs_t* reg = ra8_cnecc((uint8_t)k_ra8_cnecc_test_inst_first);
-  reg->EC710EAD0               = (uint32_t)k_ra8_cnecc_test_addr_over | (uint32_t)0xFFFFFC00UL;
-  ra8_cnecc_status_t s         = {};
+  reg->EC710EAD0 =
+    (uint32_t)k_ra8_cnecc_test_addr_over | (uint32_t)k_cnecc_k_ra8_cnecc_test_addr_over_fffffc00;
+  ra8_cnecc_status_t s = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cnecc_get_status((uint8_t)k_ra8_cnecc_test_inst_first, &s));
   TEST_ASSERT_EQ(((uint32_t)k_ra8_cnecc_test_addr_over & (uint32_t)k_ra8_cnecc_mask_ecead),
                  s.last_addr);
@@ -491,7 +518,9 @@ static void test_bbr_mirror(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cnecc_init(&cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cnecc_attach_handler(stub_cnecc_cb, nullptr));
 
-  ra8_cnecc_counters_t bbr0 = {.one_bit_count = 9U, .two_bit_count = 9U, .overflow_count = 9U};
+  ra8_cnecc_counters_t bbr0 = {.one_bit_count  = k_cnecc_one_bit_count_9,
+                               .two_bit_count  = k_cnecc_one_bit_count_9,
+                               .overflow_count = k_cnecc_one_bit_count_9};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_cnecc_set_counter_mirror((uint8_t)k_ra8_cnecc_test_inst_huge, &bbr0));
   TEST_ASSERT_EQ(k_ra8_ok,

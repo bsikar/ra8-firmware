@@ -37,6 +37,19 @@
 #include "ra8_jof_produce.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum ereader_manga_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ereader_manga_val_48 = 48,
+} ereader_manga_uint8_const_t;
+
 /** @brief The app's geometry + budget constants (kept in lockstep with main.c). */
 enum : uint32_t {
   k_t_fb_w       = 1024U,              /**< Panel framebuffer width, pixels.  */
@@ -394,7 +407,7 @@ static void test_manga_status_text(void)
 {
   TEST_BEGIN("ereader_manga: mg_reader_status formatting");
   setup_reader();
-  char line[48] = {};
+  char line[k_ereader_manga_val_48] = {};
   TEST_ASSERT_EQ(k_ra8_ok, mg_reader_status(&s_reader, line, (uint32_t)sizeof(line)));
   TEST_ASSERT_EQ(0, strcmp(line, "MANGA  1:1  x=0 y=0"));
   TEST_ASSERT(mg_reader_tap(&s_reader, 950, 300)); /* pan right one step */

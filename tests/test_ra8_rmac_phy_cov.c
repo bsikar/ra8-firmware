@@ -39,6 +39,21 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum rmac_phy_cov_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_rmac_phy_cov_gbit_advertise_0300  = 0x0300U,
+  k_rmac_phy_cov_local_advertise_01e1 = 0x01E1U,
+  k_rmac_phy_cov_val_8000             = 0x8000U,
+} rmac_phy_cov_uint16_const_t;
+
 typedef enum : uint8_t {
   k_test_phy_addr  = 1U,  /**< Test PHY address.    */
   k_test_reg_count = 32U, /**< Test register count. */
@@ -122,7 +137,8 @@ static ra8_err_t bus_read(void* ctx, uint8_t phy, uint8_t reg, uint16_t* out)
     if (st->reset_reads_remaining > 0U) {
       st->reset_reads_remaining = (uint16_t)(st->reset_reads_remaining - 1U);
     } else {
-      st->regs[k_reg_control] = (uint16_t)(st->regs[k_reg_control] & (uint16_t)~0x8000U);
+      st->regs[k_reg_control] =
+        (uint16_t)(st->regs[k_reg_control] & (uint16_t)~k_rmac_phy_cov_val_8000);
     }
   }
   *out = st->regs[reg];
@@ -206,8 +222,8 @@ static ra8_rmac_phy_cfg_t make_cfg(void)
   cfg.lsi_type           = k_ra8_rmac_phy_lsi_ksz8091rnb;
   cfg.phy_address        = (uint8_t)k_test_phy_addr;
   cfg.reset_poll_max     = 4U;
-  cfg.local_advertise    = 0x01E1U;
-  cfg.gbit_advertise     = 0x0300U;
+  cfg.local_advertise    = k_rmac_phy_cov_local_advertise_01e1;
+  cfg.gbit_advertise     = k_rmac_phy_cov_gbit_advertise_0300;
   return cfg;
 }
 

@@ -26,6 +26,19 @@
 #include "ra8_err.h"
 #include "ra8_modem_at.h"
 
+/**
+ * @enum modem_at_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_modem_at_default_timeout_ms_50 = 50U,
+} modem_at_uint8_const_t;
+
 enum : uint16_t {
   k_fuzz_line_buf_len = 256U,  /**< Fuzz line buffer length. */
   k_fuzz_max_input    = 4096U, /**< Fuzz maximum input.      */
@@ -78,13 +91,13 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     .io           = {.tx_byte = fuzz_tx, .rx_byte = fuzz_rx, .now_ms = fuzz_now, .ctx = nullptr},
     .line_buf     = s_line_buf,
     .line_buf_len = (uint16_t)sizeof s_line_buf,
-    .default_timeout_ms = 50U,
+    .default_timeout_ms = k_modem_at_default_timeout_ms_50,
   };
   if (ra8_modem_at_init(&cfg) != k_ra8_ok) {
     return 0;
   }
   /* Drive the response parser by issuing a benign AT command and
    * letting the driver walk the entire seeded RX FIFO. */
-  (void)ra8_modem_at_send_cmd("AT", "OK", 50U);
+  (void)ra8_modem_at_send_cmd("AT", "OK", k_modem_at_default_timeout_ms_50);
   return 0;
 }

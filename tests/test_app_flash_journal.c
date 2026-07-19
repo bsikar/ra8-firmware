@@ -22,6 +22,33 @@
 #include "ra8_xspi.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum flash_journal_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_flash_journal_flash_journal_pack_42 = 42U,
+  k_flash_journal_val_ff                = 0xFFU,
+} flash_journal_uint8_const_t;
+
+/**
+ * @enum flash_journal_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_flash_journal_flash_journal_pack_deadbeef = 0xDEADBEEFU,
+} flash_journal_uint32_const_t;
+
 typedef enum : uint32_t {
   k_test_flash_record_bytes = 16U,  /**< Test flash record bytes.   */
   k_test_flash_record_addr  = 0x0U, /**< Test flash record address. */
@@ -39,7 +66,7 @@ static void reset_world(void)
 static void flash_journal_pack(uint32_t counter, uint8_t* rec)
 {
   for (uint8_t i = 0U; i < 4U; i++) {
-    rec[i] = (uint8_t)((counter >> (8U * i)) & 0xFFU);
+    rec[i] = (uint8_t)((counter >> (8U * i)) & k_flash_journal_val_ff);
   }
   for (uint8_t i = 4U; i < (uint8_t)k_test_flash_record_bytes; i++) {
     rec[i] = (uint8_t)i;
@@ -66,7 +93,7 @@ static void test_flash_pack_unpack_roundtrip(void)
   reset_world();
   TEST_BEGIN("flash_journal: pack/unpack round-trip");
   uint8_t rec[k_test_flash_record_bytes];
-  flash_journal_pack(0xDEADBEEFU, rec);
+  flash_journal_pack(k_flash_journal_flash_journal_pack_deadbeef, rec);
   TEST_ASSERT_EQ(0xEF, rec[0]);
   TEST_ASSERT_EQ(0xDE, rec[3]);
   TEST_ASSERT_EQ((unsigned int)0xDEADBEEFU, (unsigned int)flash_journal_unpack(rec));
@@ -85,7 +112,7 @@ static void test_flash_xspi_round_trip_ok(void)
   reset_world();
   TEST_BEGIN("flash_journal: erase + program + read sequence ok");
   uint8_t rec[k_test_flash_record_bytes];
-  flash_journal_pack(42U, rec);
+  flash_journal_pack(k_flash_journal_flash_journal_pack_42, rec);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_xspi_flash_erase_sector((uint8_t)k_test_flash_instance,
                                              (uint32_t)k_test_flash_record_addr));

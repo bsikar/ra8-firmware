@@ -28,6 +28,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum jpeg_sw_parity_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_jpeg_sw_parity_val_ff = 0xFFU,
+} jpeg_sw_parity_uint8_const_t;
+
 /** @brief Buffer capacities and hash constants. */
 enum : uint32_t {
   k_pt_max_w      = 160U,             /**< Largest golden width.   */
@@ -128,10 +141,11 @@ static void pt_fill_gradient(uint16_t w, uint16_t h)
 {
   for (uint16_t y = 0U; y < h; y++) {
     for (uint16_t x = 0U; x < w; x++) {
-      uint32_t i       = (((uint32_t)y * w) + x) * 3U;
-      s_pt_rgb[i]      = (uint8_t)((((uint32_t)x * k_pt_gr_rx) + y) & 0xFFU);
-      s_pt_rgb[i + 1U] = (uint8_t)((((uint32_t)y * k_pt_gr_gy) + (2U * (uint32_t)x)) & 0xFFU);
-      s_pt_rgb[i + 2U] = (uint8_t)((((uint32_t)x ^ y) * k_pt_gr_b) & 0xFFU);
+      uint32_t i  = (((uint32_t)y * w) + x) * 3U;
+      s_pt_rgb[i] = (uint8_t)((((uint32_t)x * k_pt_gr_rx) + y) & k_jpeg_sw_parity_val_ff);
+      s_pt_rgb[i + 1U] =
+        (uint8_t)((((uint32_t)y * k_pt_gr_gy) + (2U * (uint32_t)x)) & k_jpeg_sw_parity_val_ff);
+      s_pt_rgb[i + 2U] = (uint8_t)((((uint32_t)x ^ y) * k_pt_gr_b) & k_jpeg_sw_parity_val_ff);
     }
   }
 }

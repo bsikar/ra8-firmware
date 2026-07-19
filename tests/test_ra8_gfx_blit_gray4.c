@@ -21,6 +21,19 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum gfx_blit_gray4_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_gfx_blit_gray4_fill_sentinel_aa = 0xAA,
+} gfx_blit_gray4_uint8_const_t;
+
+/**
  * @enum test_g4_dim_t
  * @brief Framebuffer + fixture dimensions used across the gray4 blit tests.
  */
@@ -137,7 +150,7 @@ static void test_blit_gray4_clips_at_edges(void)
   TEST_BEGIN("gray4 blit clamps to image + clips to framebuffer");
   /* (a) Sub-rect runs off the RIGHT image edge: sx=2,sw=4 -> only x=2,3 exist. */
   rebind_argb();
-  fill_sentinel(0xAA);
+  fill_sentinel(k_gfx_blit_gray4_fill_sentinel_aa);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_blit_gray4_zoom(k_g4_ramp4x4, 4, 4, 2, 0, 4, 1, 1, 0, 0));
   TEST_ASSERT_EQ(0x22, px_gray(0, 0)); /* source (2,0) = flat 2     */
   TEST_ASSERT_EQ(0x33, px_gray(1, 0)); /* source (3,0) = flat 3     */
@@ -145,7 +158,7 @@ static void test_blit_gray4_clips_at_edges(void)
 
   /* (b) Destination runs off the RIGHT framebuffer edge: only x=14,15 land. */
   rebind_argb();
-  fill_sentinel(0xAA);
+  fill_sentinel(k_gfx_blit_gray4_fill_sentinel_aa);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gfx_blit_gray4_zoom(k_g4_ramp4x4, 4, 4, 0, 0, 4, 1, 1, k_test_g4_fb_w - 2, 0));
   TEST_ASSERT_EQ(0x00, px_gray(14, 0)); /* source (0,0) = flat 0                       */

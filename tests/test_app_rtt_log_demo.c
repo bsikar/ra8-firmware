@@ -20,6 +20,19 @@
 #include "ra8_err.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum rtt_log_demo_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_rtt_log_demo_rd_off_5 = 5U,
+} rtt_log_demo_uint8_const_t;
+
 typedef enum : uint32_t {
   k_test_rtt_buf_bytes = 16U, /**< Test rtt buffer bytes. */
 } test_rtt_const_t;
@@ -114,7 +127,7 @@ static void test_rtt_write_wraps(void)
    * the reader is at size-1, so the call should drop the byte. We
    * advance the reader first to leave room for one byte across the
    * wrap. */
-  s_ring.rd_off                 = 5U;
+  s_ring.rd_off                 = k_rtt_log_demo_rd_off_5;
   static const uint8_t k_data[] = {0xAAU, 0xBBU};
   TEST_ASSERT_EQ(k_ra8_ok, rtt_write_under_test(&s_ring, k_data, sizeof k_data));
   /* First byte goes into slot 15, second wraps to slot 0. */

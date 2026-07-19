@@ -33,6 +33,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum display_pal_animation_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_display_pal_animation_aligned_64 = 64,
+} display_pal_animation_uint8_const_t;
+
 typedef enum : uint16_t {
   k_test_app_fb_w = 64U, /**< Same shape as the production app, smaller. */
   k_test_app_fb_h = 32U, /**< Test app fb h.                             */
@@ -44,7 +57,8 @@ typedef enum : uint32_t {
   k_test_app_fb_bytes = k_test_app_fb_pixels * 2U,         /**< Test app fb bytes.  */
 } test_app_size_t;
 
-[[gnu::aligned(64)]] static uint16_t s_test_fb[k_test_app_fb_pixels];
+[[gnu::aligned(
+  k_display_pal_animation_aligned_64)]] static uint16_t s_test_fb[k_test_app_fb_pixels];
 
 static void reset_world(void)
 {

@@ -26,6 +26,63 @@
 #include "ra8_widget_toolbar.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum widget_chrome_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_widget_chrome_count_w_72 = 72,
+  k_widget_chrome_h_24       = 24,
+  k_widget_chrome_h_30       = 30,
+  k_widget_chrome_h_40       = 40,
+  k_widget_chrome_h_52       = 52,
+  k_widget_chrome_total_10   = 10,
+  k_widget_chrome_value_15   = 15,
+  k_widget_chrome_w_100      = 100,
+  k_widget_chrome_w_120      = 120,
+  k_widget_chrome_w_200      = 200,
+  k_widget_chrome_x_5        = 5,
+} widget_chrome_uint8_const_t;
+
+/**
+ * @enum widget_chrome_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_widget_chrome_s_nav_select_idx_ffff = 0xFFFFU,
+} widget_chrome_uint16_const_t;
+
+/**
+ * @enum widget_chrome_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_widget_chrome_bg_00ffffff       = 0x00FFFFFFU,
+  k_widget_chrome_fg_00101010       = 0x00101010U,
+  k_widget_chrome_fg_muted_00a0a0a0 = 0x00A0A0A0U,
+  k_widget_chrome_fg_right_00808080 = 0x00808080U,
+  k_widget_chrome_field_00f0f0f0    = 0x00F0F0F0U,
+  k_widget_chrome_fill_00e0a020     = 0x00E0A020U,
+  k_widget_chrome_hint_fg_00909090  = 0x00909090U,
+  k_widget_chrome_rule_00c0c0c0     = 0x00C0C0C0U,
+  k_widget_chrome_track_00303030    = 0x00303030U,
+} widget_chrome_uint32_const_t;
+
 /* --- Recording mock paint backend ------------------------------------------- */
 
 /**
@@ -115,13 +172,13 @@ static void test_progress_bar_render(void)
   mock_paint_t              mp    = {.glyph_w = 8, .glyph_h = 16};
   ra8_widget_paint_t        paint = make_paint(&mp, true);
   ra8_widget_progress_bar_t bar   = {.paint = &paint,
-                                     .track = 0x00303030U,
-                                     .fill  = 0x00E0A020U,
+                                     .track = k_widget_chrome_track_00303030,
+                                     .fill  = k_widget_chrome_fill_00e0a020,
                                      .value = 3,
-                                     .total = 10};
+                                     .total = k_widget_chrome_total_10};
   ra8_widget_t              w     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_progress_bar_init(&w, &bar));
-  w.rect = (ra8_ui_rect_t){.x = 5, .y = 6, .w = 100, .h = 8};
+  w.rect = (ra8_ui_rect_t){.x = k_widget_chrome_x_5, .y = 6, .w = k_widget_chrome_w_100, .h = 8};
 
   /* Partial: track fill + 30px fill (100 * 3 / 10). */
   w.vt->render(&w);
@@ -132,7 +189,7 @@ static void test_progress_bar_render(void)
 
   /* Saturate: value > total clamps to a full-width fill. */
   mp        = (mock_paint_t){};
-  bar.value = 15;
+  bar.value = k_widget_chrome_value_15;
   w.vt->render(&w);
   TEST_ASSERT_EQ(2U, mp.fill_calls);
   TEST_ASSERT_EQ(100, mp.last_fill_w);
@@ -145,14 +202,14 @@ static void test_progress_bar_render(void)
 
   /* total == 0 -> only the track fills. */
   mp        = (mock_paint_t){};
-  bar.value = 5;
+  bar.value = k_widget_chrome_x_5;
   bar.total = 0;
   w.vt->render(&w);
   TEST_ASSERT_EQ(1U, mp.fill_calls);
 
   /* Zero-width rect -> fill_frac's width guard, track fill only. */
   mp        = (mock_paint_t){};
-  bar.total = 10;
+  bar.total = k_widget_chrome_total_10;
   w.rect.w  = 0;
   w.vt->render(&w);
   TEST_ASSERT_EQ(1U, mp.fill_calls);
@@ -175,12 +232,14 @@ static void test_progress_bar_guards(void)
 
   /* pb == NULL: bound vtable over a NULL ctx. */
   ra8_widget_t wn = {.vt = ra8_widget_progress_bar_vtable(), .ctx = nullptr};
-  wn.rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 10, .h = 4};
+  wn.rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_chrome_total_10, .h = 4};
   wn.vt->render(&wn);
   TEST_ASSERT_EQ(0U, mp.fill_calls);
 
   /* paint == NULL. */
-  ra8_widget_progress_bar_t bnp = {.paint = nullptr, .total = 10, .value = 5};
+  ra8_widget_progress_bar_t bnp = {.paint = nullptr,
+                                   .total = k_widget_chrome_total_10,
+                                   .value = k_widget_chrome_x_5};
   ra8_widget_t              wp  = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_progress_bar_init(&wp, &bnp));
   wp.vt->render(&wp);
@@ -189,10 +248,12 @@ static void test_progress_bar_guards(void)
   /* fill_rect == NULL. */
   ra8_widget_paint_t pnf        = make_paint(&mp, true);
   pnf.fill_rect                 = nullptr;
-  ra8_widget_progress_bar_t bnf = {.paint = &pnf, .total = 10, .value = 5};
+  ra8_widget_progress_bar_t bnf = {.paint = &pnf,
+                                   .total = k_widget_chrome_total_10,
+                                   .value = k_widget_chrome_x_5};
   ra8_widget_t              wf  = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_progress_bar_init(&wf, &bnf));
-  wf.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 10, .h = 4};
+  wf.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_chrome_total_10, .h = 4};
   wf.vt->render(&wf);
   TEST_ASSERT_EQ(0U, mp.fill_calls);
 
@@ -227,15 +288,15 @@ static void test_status_bar_render(void)
   ra8_widget_status_bar_t sb    = {.paint    = &paint,
                                    .left     = "Library",
                                    .right    = "12:00",
-                                   .bg       = 0x00FFFFFFU,
-                                   .fg       = 0x00101010U,
-                                   .fg_right = 0x00808080U,
-                                   .rule     = 0x00C0C0C0U,
+                                   .bg       = k_widget_chrome_bg_00ffffff,
+                                   .fg       = k_widget_chrome_fg_00101010,
+                                   .fg_right = k_widget_chrome_fg_right_00808080,
+                                   .rule     = k_widget_chrome_rule_00c0c0c0,
                                    .pad      = 8,
                                    .rule_h   = 1};
   ra8_widget_t            w     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_status_bar_init(&w, &sb));
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 200, .h = 40};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_chrome_w_200, .h = k_widget_chrome_h_40};
 
   w.vt->render(&w);
   /* bg fill (1) + rule fill (1) = 2 fills; left + right = 2 texts. */
@@ -273,7 +334,7 @@ static void test_status_bar_guards(void)
   ra8_widget_status_bar_t sb = {.paint = &paint, .left = "L", .right = "R", .rule_h = 0, .pad = 4};
   ra8_widget_t            w  = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_status_bar_init(&w, &sb));
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 100, .h = 30};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_chrome_w_100, .h = k_widget_chrome_h_30};
   w.vt->render(&w);
   TEST_ASSERT_EQ(1U, mp.fill_calls); /* bg only */
   TEST_ASSERT_EQ(2U, mp.text_calls);
@@ -339,14 +400,14 @@ static ra8_widget_toolbar_t make_toolbar(ra8_widget_paint_t* paint)
                                 .hint      = "Search",
                                 .count     = "12 books",
                                 .on_search = test_tb_on_search,
-                                .bg        = 0x00FFFFFFU,
-                                .field     = 0x00F0F0F0U,
-                                .border    = 0x00C0C0C0U,
-                                .hint_fg   = 0x00909090U,
-                                .count_fg  = 0x00909090U,
+                                .bg        = k_widget_chrome_bg_00ffffff,
+                                .field     = k_widget_chrome_field_00f0f0f0,
+                                .border    = k_widget_chrome_rule_00c0c0c0,
+                                .hint_fg   = k_widget_chrome_hint_fg_00909090,
+                                .count_fg  = k_widget_chrome_hint_fg_00909090,
                                 .pad       = 8,
                                 .border_w  = 1,
-                                .count_w   = 72};
+                                .count_w   = k_widget_chrome_count_w_72};
 }
 
 /**
@@ -366,7 +427,7 @@ static void test_toolbar_render(void)
   ra8_widget_toolbar_t tb    = make_toolbar(&paint);
   ra8_widget_t         w     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_toolbar_init(&w, &tb));
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 200, .h = 40};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_chrome_w_200, .h = k_widget_chrome_h_40};
 
   w.vt->render(&w);
   TEST_ASSERT_EQ(3U, mp.fill_calls);
@@ -395,7 +456,7 @@ static void test_toolbar_input(void)
   ra8_widget_toolbar_t tb    = make_toolbar(&paint);
   ra8_widget_t         w     = {};
   (void)ra8_widget_toolbar_init(&w, &tb);
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 200, .h = 40};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_chrome_w_200, .h = k_widget_chrome_h_40};
 
   /* field = {8, 8, 200-16-72-8=104, 24}; a tap at (50, 20) is inside it. */
   const ra8_widget_event_t hit = {.kind = k_ra8_widget_ev_touch, .x = 50, .y = 20};
@@ -419,7 +480,7 @@ static void test_toolbar_input(void)
   plain.on_search            = nullptr;
   ra8_widget_t wp            = {};
   (void)ra8_widget_toolbar_init(&wp, &plain);
-  wp.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 200, .h = 40};
+  wp.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_chrome_w_200, .h = k_widget_chrome_h_40};
   TEST_ASSERT_EQ(true, wp.vt->on_input(&wp, &hit));
   TEST_ASSERT_EQ(1U, plain.searches);
   TEST_ASSERT_EQ(1U, s_tb_search_calls); /* unchanged: plain has no callback */
@@ -447,7 +508,7 @@ static void test_toolbar_guards(void)
   ra8_widget_toolbar_t tb    = make_toolbar(&paint);
   ra8_widget_t         w     = {};
   (void)ra8_widget_toolbar_init(&w, &tb);
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 200, .h = 40};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_chrome_w_200, .h = k_widget_chrome_h_40};
 
   /* draw_text == NULL -> bg + field (3 fills), no text. */
   paint.draw_text = nullptr;
@@ -488,7 +549,7 @@ static void test_toolbar_guards(void)
 
 /** @brief Records nav-strip select-callback invocations + last index. */
 static uint32_t s_nav_select_calls = 0U;
-static uint16_t s_nav_select_idx   = 0xFFFFU;
+static uint16_t s_nav_select_idx   = k_widget_chrome_s_nav_select_idx_ffff;
 
 /** @brief A ::ra8_widget_nav_bar_t on_select callback that records its args. */
 static void test_nav_on_select(ra8_widget_t* w, uint16_t index)
@@ -519,12 +580,12 @@ static void test_nav_bar_render(void)
                                 .items     = k_nav_items,
                                 .count     = 3,
                                 .active    = 1,
-                                .bg        = 0x00FFFFFFU,
-                                .fg_active = 0x00101010U,
-                                .fg_muted  = 0x00A0A0A0U};
+                                .bg        = k_widget_chrome_bg_00ffffff,
+                                .fg_active = k_widget_chrome_fg_00101010,
+                                .fg_muted  = k_widget_chrome_fg_muted_00a0a0a0};
   ra8_widget_t         w     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_nav_bar_init(&w, &nav));
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 120, .h = 24};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_chrome_w_120, .h = k_widget_chrome_h_24};
 
   w.vt->render(&w);
   TEST_ASSERT_EQ(1U, mp.fill_calls); /* bg */
@@ -551,7 +612,7 @@ static void test_nav_bar_input(void)
 {
   TEST_BEGIN("ra8_widget_nav_bar: cell touch routing");
   s_nav_select_calls         = 0U;
-  s_nav_select_idx           = 0xFFFFU;
+  s_nav_select_idx           = k_widget_chrome_s_nav_select_idx_ffff;
   mock_paint_t         mp    = {.glyph_w = 8, .glyph_h = 16};
   ra8_widget_paint_t   paint = make_paint(&mp, true);
   ra8_widget_nav_bar_t nav   = {.paint     = &paint,
@@ -561,7 +622,7 @@ static void test_nav_bar_input(void)
                                 .on_select = test_nav_on_select};
   ra8_widget_t         w     = {};
   (void)ra8_widget_nav_bar_init(&w, &nav);
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 120, .h = 24};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_chrome_w_120, .h = k_widget_chrome_h_24};
 
   /* cells: [0,40) [40,80) [80,120). A tap at x=50 -> cell 1. */
   const ra8_widget_event_t t1 = {.kind = k_ra8_widget_ev_touch, .x = 50, .y = 10};
@@ -665,7 +726,7 @@ static void test_nav_bar_guards(void)
   ra8_widget_nav_bar_t nav   = {.paint = &paint, .items = k_nav_items, .count = 0};
   ra8_widget_t         w     = {};
   (void)ra8_widget_nav_bar_init(&w, &nav);
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 120, .h = 24};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_chrome_w_120, .h = k_widget_chrome_h_24};
 
   nav_render_guards(&w, &nav, &paint, &mp);
 
@@ -680,7 +741,7 @@ static void test_nav_bar_guards(void)
 
   /* paint == NULL render arm. */
   mp        = (mock_paint_t){.glyph_w = 8, .glyph_h = 16};
-  w.rect.w  = 120;
+  w.rect.w  = k_widget_chrome_w_120;
   nav.paint = nullptr;
   w.vt->render(&w);
   TEST_ASSERT_EQ(0U, mp.fill_calls);
@@ -704,7 +765,7 @@ static void test_nav_bar_guards(void)
 
 /** @brief Records book-grid open-callback invocations + last index. */
 static uint32_t s_bg_open_calls = 0U;
-static uint16_t s_bg_open_idx   = 0xFFFFU;
+static uint16_t s_bg_open_idx   = k_widget_chrome_s_nav_select_idx_ffff;
 
 /** @brief A ::ra8_widget_book_grid_t on_open callback that records its args. */
 static void test_bg_on_open(ra8_widget_t* w, uint16_t index)
@@ -727,11 +788,11 @@ static ra8_widget_book_grid_t make_grid(ra8_widget_paint_t* paint)
                                   .books     = k_books,
                                   .count     = 2,
                                   .cols      = 2,
-                                  .bg        = 0x00FFFFFFU,
-                                  .title_fg  = 0x00101010U,
-                                  .author_fg = 0x00808080U,
-                                  .bar_track = 0x00303030U,
-                                  .bar_fill  = 0x00E0A020U,
+                                  .bg        = k_widget_chrome_bg_00ffffff,
+                                  .title_fg  = k_widget_chrome_fg_00101010,
+                                  .author_fg = k_widget_chrome_fg_right_00808080,
+                                  .bar_track = k_widget_chrome_track_00303030,
+                                  .bar_fill  = k_widget_chrome_fill_00e0a020,
                                   .pad       = 8,
                                   .gap       = 8,
                                   .label_h   = 16,
@@ -757,7 +818,7 @@ static void test_book_grid_render(void)
   ra8_widget_book_grid_t g     = make_grid(&paint);
   ra8_widget_t           w     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_book_grid_init(&w, &g));
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 200, .h = 120};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_chrome_w_200, .h = k_widget_chrome_w_120};
 
   w.vt->render(&w);
   TEST_ASSERT_EQ(7U, mp.fill_calls);
@@ -799,7 +860,7 @@ static void test_book_grid_render_edges(void)
   (void)ra8_widget_book_grid_init(&w, &g);
   /* content height = 52 - 2*pad(8) = 36 = 2*label_h(16) + bar_h(4) exactly, so
    * the cover band has zero height (cover.h == 0 -> skipped). */
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 100, .h = 52};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_chrome_w_100, .h = k_widget_chrome_h_52};
 
   w.vt->render(&w);
   /* bg(1) + track(1); no cover (h==0), no bar fill (percent 0). */
@@ -822,7 +883,8 @@ static void test_book_grid_render_edges(void)
   gnf.cols                            = 1;
   ra8_widget_t wnf                    = {};
   (void)ra8_widget_book_grid_init(&wnf, &gnf);
-  wnf.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 100, .h = 120};
+  wnf.rect =
+    (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_chrome_w_100, .h = k_widget_chrome_w_120};
   wnf.vt->render(&wnf);
   TEST_ASSERT_EQ(0U, mp2.fill_calls); /* fill_rect NULL -> no fills recorded */
   TEST_END("ra8_widget_book_grid: short cell + zero progress");
@@ -841,14 +903,14 @@ static void test_book_grid_input(void)
 {
   TEST_BEGIN("ra8_widget_book_grid: card touch routing");
   s_bg_open_calls              = 0U;
-  s_bg_open_idx                = 0xFFFFU;
+  s_bg_open_idx                = k_widget_chrome_s_nav_select_idx_ffff;
   mock_paint_t           mp    = {.glyph_w = 8, .glyph_h = 16};
   ra8_widget_paint_t     paint = make_paint(&mp, true);
   ra8_widget_book_grid_t g     = make_grid(&paint);
   g.on_open                    = test_bg_on_open;
   ra8_widget_t w               = {};
   (void)ra8_widget_book_grid_init(&w, &g);
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 200, .h = 120};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_chrome_w_200, .h = k_widget_chrome_w_120};
 
   /* content = {8,8,184,104}; cell_w = (184-8)/2 = 88; cell0 = {8,8,88,104},
    * cell1 = {104,8,88,104}. A tap at (150, 60) is in card 1. */
@@ -888,7 +950,7 @@ static void test_book_grid_guards(void)
   ra8_widget_book_grid_t g     = make_grid(&paint);
   ra8_widget_t           w     = {};
   (void)ra8_widget_book_grid_init(&w, &g);
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 200, .h = 120};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_chrome_w_200, .h = k_widget_chrome_w_120};
 
   /* count == 0 -> bg only. */
   g.count = 0;

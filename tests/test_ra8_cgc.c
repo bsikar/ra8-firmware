@@ -15,6 +15,19 @@
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum cgc_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_cgc_ctx_val_cafe = 0xCAFE,
+} cgc_uint16_const_t;
+
 typedef enum : uint8_t {
   k_ra8_cgc_test_all_oscsf = 0xFFU, /**< All stabilisation bits set. */
 } ra8_cgc_test_bits_t;
@@ -336,7 +349,7 @@ static void test_stop_detection_arm_and_fire(void)
   s_ostd_count    = 0;
   s_ostd_last_val = 0;
 
-  int32_t ctx_val = 0xCAFE;
+  int32_t ctx_val = k_cgc_ctx_val_cafe;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cgc_enable_stop_detection(nullptr, &ctx_val));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cgc_enable_stop_detection(stub_ostd_handler, &ctx_val));
 

@@ -26,6 +26,80 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum cache_store_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_cache_store_i_20                 = 20U,
+  k_cache_store_overprovision_pct_99 = 99U,
+  k_cache_store_t_fill_11            = 11U,
+  k_cache_store_t_fill_12            = 12U,
+  k_cache_store_t_fill_21            = 21U,
+  k_cache_store_t_fill_22            = 22U,
+  k_cache_store_t_fill_33            = 33U,
+  k_cache_store_t_fill_34            = 34U,
+  k_cache_store_t_fill_44            = 44U,
+  k_cache_store_t_fill_5             = 5U,
+  k_cache_store_t_fill_55            = 55U,
+  k_cache_store_t_fill_5a            = 0x5AU,
+  k_cache_store_t_fill_66            = 66U,
+  k_cache_store_t_fill_7             = 7U,
+  k_cache_store_t_fill_9             = 9U,
+  k_cache_store_t_plant_hdr_24       = 24U,
+  k_cache_store_t_plant_hdr_26       = 26U,
+  k_cache_store_val_100              = 100,
+  k_cache_store_val_70               = 70U,
+} cache_store_uint8_const_t;
+
+/**
+ * @enum cache_store_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_cache_store_i_476                    = 476U,
+  k_cache_store_ra8_cache_store_put_2000 = 2000U,
+  k_cache_store_t_plant_hdr_60000        = 60000U,
+  k_cache_store_t_plant_hdr_999          = 999U,
+  k_cache_store_val_1000                 = 1000,
+  k_cache_store_val_1300                 = 1300,
+  k_cache_store_val_1500                 = 1500,
+  k_cache_store_val_24000                = 24000,
+  k_cache_store_val_300                  = 300,
+  k_cache_store_val_400                  = 400,
+  k_cache_store_val_500                  = 500,
+  k_cache_store_val_512                  = 512,
+  k_cache_store_val_600                  = 600,
+  k_cache_store_val_700                  = 700,
+  k_cache_store_val_900                  = 900,
+} cache_store_uint16_const_t;
+
+/**
+ * @enum cache_store_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_cache_store_key_dead0000           = 0xDEAD0000U,
+  k_cache_store_sentinel_deadbeef      = 0xDEADBEEFU,
+  k_cache_store_t_plant_super_0badc0de = 0x0BADC0DEU,
+  k_cache_store_val_1234abcd           = 0x1234ABCDU,
+} cache_store_uint32_const_t;
+
+/**
  * @enum t_cs_const_t
  * @brief Fixture geometry for the tests.
  * @since 0.1.0
@@ -142,19 +216,19 @@ static void test_put_get_roundtrip(void)
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
-  uint8_t data[1500];
-  t_fill(data, sizeof(data), 7U);
+  uint8_t data[k_cache_store_val_1500];
+  t_fill(data, sizeof(data), k_cache_store_t_fill_7);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, data, sizeof(data)));
 
   ra8_cache_store_reader_t rd = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_get(&st, k_t_key_a, &rd));
   TEST_ASSERT_EQ(1500, rd.byte_len);
 
-  uint8_t out[1500];
+  uint8_t out[k_cache_store_val_1500];
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_read(&rd, 0, out, sizeof(out)));
   TEST_ASSERT(memcmp(out, data, sizeof(data)) == 0);
 
-  uint8_t slice[300];
+  uint8_t slice[k_cache_store_val_300];
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_read(&rd, 400, slice, sizeof(slice)));
   TEST_ASSERT(memcmp(slice, &data[400], sizeof(slice)) == 0);
 
@@ -178,8 +252,8 @@ static void test_vsource_integration(void)
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
-  uint8_t data[1500];
-  t_fill(data, sizeof(data), 33U);
+  uint8_t data[k_cache_store_val_1500];
+  t_fill(data, sizeof(data), k_cache_store_t_fill_33);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, data, sizeof(data)));
   ra8_cache_store_reader_t rd = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_get(&st, k_t_key_a, &rd));
@@ -191,14 +265,14 @@ static void test_vsource_integration(void)
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_vsource_add_paged(&vs, ra8_cache_store_read, &rd, 0U, rd.byte_len, &id));
 
-  uint8_t frame[512];
+  uint8_t frame[k_cache_store_val_512];
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_loader(&vs, id, 0U, frame, sizeof(frame)));
   TEST_ASSERT(memcmp(frame, data, sizeof(frame)) == 0);
 
   /* Bytes 1024..1499 = 476 real bytes then zero padding. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_loader(&vs, id, 1024U, frame, sizeof(frame)));
   TEST_ASSERT(memcmp(frame, &data[1024], 476U) == 0);
-  for (uint32_t i = 476U; i < sizeof(frame); i++) {
+  for (uint32_t i = k_cache_store_i_476; i < sizeof(frame); i++) {
     TEST_ASSERT_EQ(0, frame[i]);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_close(&st));
@@ -222,7 +296,7 @@ static void test_put_edge_cases(void)
   ra8_cache_store_reader_t rd = {};
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_cache_store_get(&st, k_t_key_a, &rd));
 
-  uint8_t data[600];
+  uint8_t data[k_cache_store_val_600];
   t_fill(data, sizeof(data), 1U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, data, sizeof(data)));
   TEST_ASSERT_EQ(k_ra8_err_exists, ra8_cache_store_put(&st, k_t_key_a, data, sizeof(data)));
@@ -248,8 +322,8 @@ static void test_evict_reuse(void)
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
-  uint8_t data[1000];
-  t_fill(data, sizeof(data), 9U);
+  uint8_t data[k_cache_store_val_1000];
+  t_fill(data, sizeof(data), k_cache_store_t_fill_9);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, data, sizeof(data)));
   uint32_t live_after_put = st.live_sectors;
   TEST_ASSERT(live_after_put > 0U);
@@ -281,8 +355,8 @@ static void test_pin_blocks_evict(void)
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
-  uint8_t data[300];
-  t_fill(data, sizeof(data), 5U);
+  uint8_t data[k_cache_store_val_300];
+  t_fill(data, sizeof(data), k_cache_store_t_fill_5);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, data, sizeof(data)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_pin(&st, k_t_key_a, true));
   TEST_ASSERT_EQ(k_ra8_err_busy, ra8_cache_store_evict(&st, k_t_key_a));
@@ -307,10 +381,10 @@ static void test_recovery_clean(void)
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
-  uint8_t a[700];
-  uint8_t b[1300];
-  t_fill(a, sizeof(a), 11U);
-  t_fill(b, sizeof(b), 22U);
+  uint8_t a[k_cache_store_val_700];
+  uint8_t b[k_cache_store_val_1300];
+  t_fill(a, sizeof(a), k_cache_store_t_fill_11);
+  t_fill(b, sizeof(b), k_cache_store_t_fill_22);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, a, sizeof(a)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_b, b, sizeof(b)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_pin(&st, k_t_key_a, true));
@@ -323,7 +397,7 @@ static void test_recovery_clean(void)
 
   ra8_cache_store_reader_t rd = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_get(&st2, k_t_key_a, &rd));
-  uint8_t out[700];
+  uint8_t out[k_cache_store_val_700];
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_read(&rd, 0, out, sizeof(out)));
   TEST_ASSERT(memcmp(out, a, sizeof(a)) == 0);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_get(&st2, k_t_key_b, &rd));
@@ -351,10 +425,10 @@ static void test_recovery_crash_replay(void)
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
-  uint8_t a[700];
-  uint8_t b[900];
-  t_fill(a, sizeof(a), 44U);
-  t_fill(b, sizeof(b), 55U);
+  uint8_t a[k_cache_store_val_700];
+  uint8_t b[k_cache_store_val_900];
+  t_fill(a, sizeof(a), k_cache_store_t_fill_44);
+  t_fill(b, sizeof(b), k_cache_store_t_fill_55);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, a, sizeof(a)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_b, b, sizeof(b)));
   uint32_t live_committed = st.live_sectors;
@@ -364,8 +438,8 @@ static void test_recovery_crash_replay(void)
   int32_t sb = ra8_cs_index_find(&st, k_t_key_b);
   TEST_ASSERT(sb >= 0);
   uint32_t torn_header = st.index[sb].start_sector + st.index[sb].sector_count;
-  uint8_t  garbage[512];
-  t_fill(garbage, sizeof(garbage), 0x5AU);
+  uint8_t  garbage[k_cache_store_val_512];
+  t_fill(garbage, sizeof(garbage), k_cache_store_t_fill_5a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cs_sector_write(&st, torn_header + 1U, garbage));
 
   /* Crash: no close. Reopen a fresh control block over the same backing. */
@@ -380,8 +454,8 @@ static void test_recovery_crash_replay(void)
   TEST_ASSERT_EQ(live_committed, st2.live_sectors);
 
   /* The store is fully usable after replay. */
-  uint8_t c[400];
-  t_fill(c, sizeof(c), 66U);
+  uint8_t c[k_cache_store_val_400];
+  t_fill(c, sizeof(c), k_cache_store_t_fill_66);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st2, k_t_key_c, c, sizeof(c)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_get(&st2, k_t_key_c, &rd));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_close(&st2));
@@ -399,7 +473,7 @@ static void test_recovery_crash_replay(void)
 static void test_helper_guards(void)
 {
   TEST_BEGIN("helper guards");
-  uint8_t buf[8] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
+  uint8_t buf[8] = {1U, 2U, 3U, 4U, k_cache_store_t_fill_5, 6U, k_cache_store_t_fill_7, 8U};
   TEST_ASSERT_EQ(0, ra8_cs_crc32(NULL, 8U));
   TEST_ASSERT_EQ(0, ra8_cs_crc32(buf, 0U));
   TEST_ASSERT(ra8_cs_crc32(buf, 8U) != 0U);
@@ -410,7 +484,7 @@ static void test_helper_guards(void)
   TEST_ASSERT_EQ(-1, ra8_cs_index_add(NULL, 0U, 0U, 1U, 0U, false));
   TEST_ASSERT_EQ(-1, ra8_cs_index_add(&empty, 0U, 0U, 1U, 0U, false)); /* index == NULL */
 
-  uint8_t sect[512];
+  uint8_t sect[k_cache_store_val_512];
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cs_sector_read(NULL, 0U, sect));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cs_sector_read(&empty, 0U, NULL));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_cs_sector_write(NULL, 0U, sect));
@@ -453,7 +527,7 @@ static void test_init_validation(void)
   c.staging_bytes = 8U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_cache_store_init(&st, &c));
   c                   = base;
-  c.overprovision_pct = 99U;
+  c.overprovision_pct = k_cache_store_overprovision_pct_99;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_cache_store_init(&st, &c));
   c                 = base;
   c.logical_sectors = 3U; /* < log_start + min */
@@ -486,7 +560,7 @@ static void test_limits_and_sync(void)
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
-  uint8_t tiny[100];
+  uint8_t tiny[k_cache_store_val_100];
   t_fill(tiny, sizeof(tiny), 3U);
   for (uint32_t i = 0U; i < (uint32_t)k_t_index_cap; i++) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, 1000U + i, tiny, sizeof(tiny)));
@@ -499,12 +573,12 @@ static void test_limits_and_sync(void)
   for (uint32_t i = 0U; i < (uint32_t)k_t_index_cap; i++) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_evict(&st, 1000U + i));
   }
-  static uint8_t s_big[24000];
+  static uint8_t s_big[k_cache_store_val_24000];
   t_fill(s_big, sizeof(s_big), 4U);
   ra8_err_t rc = k_ra8_ok;
   uint32_t  n  = 0U;
-  for (uint32_t i = 0U; i < 20U; i++) {
-    rc = ra8_cache_store_put(&st, 2000U + i, s_big, sizeof(s_big));
+  for (uint32_t i = 0U; i < k_cache_store_i_20; i++) {
+    rc = ra8_cache_store_put(&st, k_cache_store_ra8_cache_store_put_2000 + i, s_big, sizeof(s_big));
     if (rc != k_ra8_ok) {
       break;
     }
@@ -531,10 +605,10 @@ static void test_evict_then_crash(void)
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
-  uint8_t a[700];
-  uint8_t b[500];
-  t_fill(a, sizeof(a), 12U);
-  t_fill(b, sizeof(b), 34U);
+  uint8_t a[k_cache_store_val_700];
+  uint8_t b[k_cache_store_val_500];
+  t_fill(a, sizeof(a), k_cache_store_t_fill_12);
+  t_fill(b, sizeof(b), k_cache_store_t_fill_34);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, a, sizeof(a)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_b, b, sizeof(b)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_evict(&st, k_t_key_a));
@@ -576,8 +650,8 @@ static void t_plant_super(ra8_cache_store_t* st, uint32_t magic, bool good_crc)
                        .logical_sectors = st->logical_sectors,
                        .crc             = 0U};
   sb.crc = good_crc ? ra8_cs_crc32((const uint8_t*)&sb, (uint32_t)(sizeof(sb) - sizeof(sb.crc)))
-                    : 0xDEADBEEFU;
-  uint8_t buf[512];
+                    : k_cache_store_sentinel_deadbeef;
+  uint8_t buf[k_cache_store_val_512];
   (void)memset(buf, 0, sizeof(buf));
   (void)memcpy(buf, &sb, sizeof(sb));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cs_sector_write(st, 0U, buf));
@@ -598,14 +672,14 @@ static void test_corrupt_super_replays(void)
     ra8_cache_store_t     st  = {};
     ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
     TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
-    uint8_t a[600];
-    t_fill(a, sizeof(a), (uint8_t)(70U + variant));
+    uint8_t a[k_cache_store_val_600];
+    t_fill(a, sizeof(a), (uint8_t)(k_cache_store_val_70 + variant));
     TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, a, sizeof(a)));
 
     if (variant == 0U) {
       t_plant_super(&st, (uint32_t)k_ra8_cs_super_magic, false); /* good magic, bad CRC */
     } else {
-      t_plant_super(&st, 0x0BADC0DEU, true); /* bad magic */
+      t_plant_super(&st, k_cache_store_t_plant_super_0badc0de, true); /* bad magic */
     }
 
     ra8_cache_store_t     st2  = {};
@@ -640,15 +714,15 @@ static void t_plant_hdr(ra8_cache_store_t* st,
 {
   ra8_cs_entry_hdr_t h = {.magic        = (uint32_t)k_ra8_cs_entry_magic,
                           .seq          = 1U,
-                          .key          = 0xDEAD0000U + at_sector,
+                          .key          = k_cache_store_key_dead0000 + at_sector,
                           .byte_len     = 16U,
                           .start_sector = self_field,
                           .sector_count = count,
                           .flags        = 0U,
                           .hdr_crc      = 0U};
   h.hdr_crc = good_crc ? ra8_cs_crc32((const uint8_t*)&h, (uint32_t)(sizeof(h) - sizeof(h.hdr_crc)))
-                       : 0x1234ABCDU;
-  uint8_t buf[512];
+                       : k_cache_store_val_1234abcd;
+  uint8_t buf[k_cache_store_val_512];
   (void)memset(buf, 0, sizeof(buf));
   (void)memcpy(buf, &h, sizeof(h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cs_sector_write(st, at_sector, buf));
@@ -668,14 +742,30 @@ static void test_scan_rejects_bad_headers(void)
   ra8_cache_store_t     st  = {};
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
-  uint8_t a[600];
-  t_fill(a, sizeof(a), 21U);
+  uint8_t a[k_cache_store_val_600];
+  t_fill(a, sizeof(a), k_cache_store_t_fill_21);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, a, sizeof(a)));
 
-  t_plant_hdr(&st, 20U, 999U, 2U, true);    /* start_sector mismatch   */
-  t_plant_hdr(&st, 22U, 22U, 0U, true);     /* sector_count == 0       */
-  t_plant_hdr(&st, 24U, 24U, 60000U, true); /* run runs past the media */
-  t_plant_hdr(&st, 26U, 26U, 2U, false);    /* bad CRC                 */
+  t_plant_hdr(&st,
+              k_cache_store_i_20,
+              k_cache_store_t_plant_hdr_999,
+              2U,
+              true); /* start_sector mismatch */
+  t_plant_hdr(&st,
+              k_cache_store_t_fill_22,
+              k_cache_store_t_fill_22,
+              0U,
+              true); /* sector_count == 0 */
+  t_plant_hdr(&st,
+              k_cache_store_t_plant_hdr_24,
+              k_cache_store_t_plant_hdr_24,
+              k_cache_store_t_plant_hdr_60000,
+              true); /* run runs past the media */
+  t_plant_hdr(&st,
+              k_cache_store_t_plant_hdr_26,
+              k_cache_store_t_plant_hdr_26,
+              2U,
+              false); /* bad CRC */
 
   /* Crash: leave st open (unclosed) and reopen a fresh block over the media. */
   ra8_cache_store_t     st2  = {};
@@ -704,7 +794,7 @@ static void test_write_fault_propagates(void)
   ra8_cache_store_cfg_t cfg = t_cfg(t_next_flash(), true);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_init(&st, &cfg));
 
-  uint8_t a[300];
+  uint8_t a[k_cache_store_val_300];
   t_fill(a, sizeof(a), 8U);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_cache_store_put(&st, k_t_key_a, a, sizeof(a)));
 

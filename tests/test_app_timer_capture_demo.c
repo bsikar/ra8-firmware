@@ -21,6 +21,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum timer_capture_demo_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_timer_capture_demo_out_aaaaaaaa = 0xAAAAAAAAUL,
+} timer_capture_demo_uint32_const_t;
+
 typedef enum : uint32_t {
   k_t_timer_period   = 0xFFFFFFFFUL, /**< T timer period.       */
   k_t_timer_wrap_max = 0xFFFFFFFFUL, /**< T timer wrap maximum. */
@@ -75,7 +88,7 @@ static void test_timer_app_read_ok(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gpt_start_free_run((uint8_t)k_t_timer_channel, (uint32_t)k_t_timer_period));
-  uint32_t out = 0xAAAAAAAAUL;
+  uint32_t out = k_timer_capture_demo_out_aaaaaaaa;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_read((uint8_t)k_t_timer_channel, &out));
   TEST_END("timer_capture_demo: read counter ok");
 }

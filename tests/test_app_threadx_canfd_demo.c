@@ -38,6 +38,19 @@
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum threadx_canfd_demo_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_threadx_canfd_demo_val_ff = 0xFFU,
+} threadx_canfd_demo_uint8_const_t;
+
 /** @brief Per-test enums. */
 typedef enum : uint32_t {
   k_test_canfd_channel       = 0U,       /**< CANFD0 -- the demo's channel. */
@@ -58,7 +71,7 @@ static void reset_world(void)
   (void)ra8_canfd_deinit((uint8_t)k_test_canfd_channel);
   /* Pre-seed OSCSF stabilisation bits so ra8_cgc_init() spin loops
    * complete on the first iteration in RA8_SIMULATOR_MODE. */
-  *ra8_sys_oscsf() = (uint8_t)0xFFU;
+  *ra8_sys_oscsf() = (uint8_t)k_threadx_canfd_demo_val_ff;
   /* Populate the CGC published-clock table so ra8_canfd_set_bitrate
    * can read a non-zero PCLKA from ra8_cgc_get_clock_hz(). */
   (void)ra8_cgc_init();

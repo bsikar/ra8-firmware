@@ -19,6 +19,33 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum doc_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_doc_docr_ff = 0xFFU,
+} doc_uint8_const_t;
+
+/**
+ * @enum doc_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_doc_dodir_aaaa  = 0xAAAAU,
+  k_doc_dodsr0_5555 = 0x5555U,
+} doc_uint16_const_t;
+
 typedef enum : uint16_t {
   k_ra8_doc_test_a = 0x1234U, /**< Operand A -- seeded into DODSR0. */
   k_ra8_doc_test_b = 0x00FFU, /**< Operand B -- written to DODIR.   */
@@ -36,9 +63,9 @@ static void test_init_clears_regs(void)
   ra8_sim_mmap_reset();
 
   volatile r_doc_regs_t* reg = ra8_doc();
-  reg->DOCR                  = 0xFFU;
-  reg->DODIR                 = 0xAAAAU;
-  reg->DODSR0                = 0x5555U;
+  reg->DOCR                  = k_doc_docr_ff;
+  reg->DODIR                 = k_doc_dodir_aaaa;
+  reg->DODSR0                = k_doc_dodsr0_5555;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_doc_init());
   TEST_ASSERT_EQ(0, reg->DOCR);

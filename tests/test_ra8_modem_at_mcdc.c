@@ -21,6 +21,34 @@
 #include "ra8_modem_at_internal.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum modem_at_mcdc_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_modem_at_mcdc_ra8_modem_at_internal_capture_line_64 = 64U,
+  k_modem_at_mcdc_val_64                                = 64,
+} modem_at_mcdc_uint8_const_t;
+
+/**
+ * @enum modem_at_mcdc_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_modem_at_mcdc_default_timeout_ms_1000 = 1000U,
+  k_modem_at_mcdc_val_256                 = 256,
+} modem_at_mcdc_uint16_const_t;
+
 /* ------------------------------------------------------------------------- */
 /* Mock byte transport: two FIFOs + a fake monotonic clock. */
 /* ------------------------------------------------------------------------- */
@@ -108,7 +136,7 @@ static void reset_world(void)
   s_io.auto_advance_ms = 0U;
 }
 
-static uint8_t s_line_buf[256];
+static uint8_t s_line_buf[k_modem_at_mcdc_val_256];
 
 static ra8_err_t bring_up(void)
 {
@@ -117,7 +145,7 @@ static ra8_err_t bring_up(void)
     .io           = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
     .line_buf     = s_line_buf,
     .line_buf_len = (uint16_t)sizeof s_line_buf,
-    .default_timeout_ms = 1000U,
+    .default_timeout_ms = k_modem_at_mcdc_default_timeout_ms_1000,
   };
   return ra8_modem_at_init(&cfg);
 }
@@ -406,7 +434,7 @@ static void test_mcdc_reset_line_buf_pair(void)
     .io           = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
     .line_buf     = nullptr,
     .line_buf_len = (uint16_t)sizeof s_line_buf,
-    .default_timeout_ms = 1000U,
+    .default_timeout_ms = k_modem_at_mcdc_default_timeout_ms_1000,
   };
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_modem_at_init(&cfg2));
   /* V3: line_buf_len=0 is rejected by init for the same reason. */
@@ -414,7 +442,7 @@ static void test_mcdc_reset_line_buf_pair(void)
     .io           = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = nullptr},
     .line_buf     = s_line_buf,
     .line_buf_len = 0U,
-    .default_timeout_ms = 1000U,
+    .default_timeout_ms = k_modem_at_mcdc_default_timeout_ms_1000,
   };
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_modem_at_init(&cfg3));
   /* V1: full happy init -- internal_reset_line is invoked and exercises
@@ -585,11 +613,14 @@ static void test_mcdc_internal_starts_with(void)
 static void test_mcdc_internal_capture_line_guard(void)
 {
   TEST_BEGIN("modem_at MC/DC: internal_capture_line guard OR");
-  char   buf[64] = {};
-  size_t used    = 0U;
+  char   buf[k_modem_at_mcdc_val_64] = {};
+  size_t used                        = 0U;
 
   /* V1: capture=NULL -> short-circuit (no crash, used unchanged). */
-  ra8_modem_at_internal_capture_line("hi", nullptr, 64U, &used);
+  ra8_modem_at_internal_capture_line("hi",
+                                     nullptr,
+                                     k_modem_at_mcdc_ra8_modem_at_internal_capture_line_64,
+                                     &used);
   TEST_ASSERT_EQ(0, used);
 
   /* V2: capture valid but capture_len==0 -> early return. */

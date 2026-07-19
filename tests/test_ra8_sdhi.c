@@ -14,6 +14,52 @@
 #include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum sdhi_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_sdhi_buf_ff = 0xFFU,
+} sdhi_uint8_const_t;
+
+/**
+ * @enum sdhi_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_sdhi_sd_info2_300 = 0x300UL,
+  k_sdhi_val_512      = 512,
+  k_sdhi_val_512_2    = 512U,
+} sdhi_uint16_const_t;
+
+/**
+ * @enum sdhi_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_sdhi_sd_info1_cafebabe = 0xCAFEBABEUL,
+  k_sdhi_sd_info1_deadbeef = 0xDEADBEEFUL,
+  k_sdhi_sd_rsp10_11111111 = 0x11111111UL,
+  k_sdhi_sd_rsp32_22222222 = 0x22222222UL,
+  k_sdhi_sd_rsp54_33333333 = 0x33333333UL,
+  k_sdhi_sd_rsp76_44444444 = 0x44444444UL,
+} sdhi_uint32_const_t;
+
 /* Deterministic SDHI response servicing via the ra8_sim_mmio poll-hook -- it runs
  * inline on the driver's OWN poll (no wall-clock timer, no concurrent thread).
  * The polled driver clears SD_INFO1.RSPEND after each command and its FIFO drains
@@ -146,7 +192,7 @@ static void test_status_read_and_clear(void)
   TEST_BEGIN("sdhi status read + clear");
   prep();
 
-  ra8_sdhi((uint8_t)k_ra8_sdhi_test_inst_0)->SD_INFO1 = 0xCAFEBABEUL;
+  ra8_sdhi((uint8_t)k_ra8_sdhi_test_inst_0)->SD_INFO1 = k_sdhi_sd_info1_cafebabe;
   uint32_t mask                                       = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_get_status((uint8_t)k_ra8_sdhi_test_inst_0, &mask));
   TEST_ASSERT_EQ(0xCAFEBABEU, mask);
@@ -169,7 +215,7 @@ static void test_attach_and_dispatch(void)
   prep();
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_attach_handler(stub_sdhi_cb, (void*)(uintptr_t)0x5DU));
-  ra8_sdhi((uint8_t)k_ra8_sdhi_test_inst_1)->SD_INFO1 = 0xDEADBEEFUL;
+  ra8_sdhi((uint8_t)k_ra8_sdhi_test_inst_1)->SD_INFO1 = k_sdhi_sd_info1_deadbeef;
   ra8_sdhi_dispatch((uint8_t)k_ra8_sdhi_test_inst_1);
   TEST_ASSERT_EQ(1, s_sdhi_cb_count);
   TEST_ASSERT_EQ(0xDEADBEEFU, s_sdhi_cb_last_mask);
@@ -211,10 +257,10 @@ static void test_send_command_rspend_via_poll_hook(void)
 
   /* Pre-seed response regs. */
   volatile r_sdhi_regs_t* reg = ra8_sdhi((uint8_t)k_ra8_sdhi_test_inst_0);
-  reg->SD_RSP10               = 0x11111111UL;
-  reg->SD_RSP32               = 0x22222222UL;
-  reg->SD_RSP54               = 0x33333333UL;
-  reg->SD_RSP76               = 0x44444444UL;
+  reg->SD_RSP10               = k_sdhi_sd_rsp10_11111111;
+  reg->SD_RSP32               = k_sdhi_sd_rsp32_22222222;
+  reg->SD_RSP54               = k_sdhi_sd_rsp54_33333333;
+  reg->SD_RSP76               = k_sdhi_sd_rsp76_44444444;
 
   sdhi_flags_hook_arm((uint8_t)k_ra8_sdhi_test_inst_0);
   uint32_t        rsp[4] = {0U, 0U, 0U, 0U};
@@ -316,7 +362,7 @@ static void prime_block_xfer_flags(uint8_t inst, uint32_t buf_word)
    * clears RSPEND inline (read-modify-write) and zeroes SD_INFO2
    * after the loop -- both are no-ops for the drain itself. */
   reg->SD_INFO1 = 1UL;
-  reg->SD_INFO2 = 0x300UL;
+  reg->SD_INFO2 = k_sdhi_sd_info2_300;
   reg->SD_BUF0  = buf_word;
 }
 
@@ -334,9 +380,9 @@ static void test_read_block_single(void)
 
   prime_block_xfer_flags((uint8_t)k_ra8_sdhi_test_inst_0, k_ra8_sdhi_test_pattern);
 
-  uint8_t buf[512];
+  uint8_t buf[k_sdhi_val_512];
   for (size_t i = 0U; i < sizeof(buf); ++i) {
-    buf[i] = 0xFFU;
+    buf[i] = k_sdhi_buf_ff;
   }
   const ra8_err_t err =
     ra8_sdhi_read_block((uint8_t)k_ra8_sdhi_test_inst_0, k_ra8_sdhi_test_lba, buf, 1U);
@@ -376,7 +422,7 @@ static void test_read_block_multi(void)
   prime_block_xfer_flags((uint8_t)k_ra8_sdhi_test_inst_0, k_ra8_sdhi_test_pattern);
   sdhi_flags_hook_arm((uint8_t)k_ra8_sdhi_test_inst_0);
 
-  uint8_t         buf[512U * 4U];
+  uint8_t         buf[k_sdhi_val_512_2 * 4U];
   const ra8_err_t err =
     ra8_sdhi_read_block((uint8_t)k_ra8_sdhi_test_inst_0, k_ra8_sdhi_test_multi_lba, buf, 4U);
   sdhi_flags_hook_disarm();
@@ -405,9 +451,9 @@ static void test_write_block_single(void)
 
   prime_block_xfer_flags((uint8_t)k_ra8_sdhi_test_inst_1, 0U);
 
-  uint8_t buf[512];
+  uint8_t buf[k_sdhi_val_512];
   for (size_t i = 0U; i < sizeof(buf); ++i) {
-    buf[i] = (uint8_t)(i & 0xFFU);
+    buf[i] = (uint8_t)(i & k_sdhi_buf_ff);
   }
   const ra8_err_t err =
     ra8_sdhi_write_block((uint8_t)k_ra8_sdhi_test_inst_1, k_ra8_sdhi_test_lba, buf, 1U);
@@ -442,7 +488,7 @@ static void test_write_block_multi_ends_in_cmd12(void)
   prime_block_xfer_flags((uint8_t)k_ra8_sdhi_test_inst_0, 0U);
   sdhi_flags_hook_arm((uint8_t)k_ra8_sdhi_test_inst_0);
 
-  uint8_t         buf[512U * 2U] = {};
+  uint8_t         buf[k_sdhi_val_512_2 * 2U] = {};
   const ra8_err_t err =
     ra8_sdhi_write_block((uint8_t)k_ra8_sdhi_test_inst_0, k_ra8_sdhi_test_multi_lba, buf, 2U);
   sdhi_flags_hook_disarm();

@@ -21,6 +21,57 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum pdm_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_pdm_pddsr_10      = 10U,
+  k_pdm_sinc_dec_7c   = 0x7CU,
+  k_pdm_sinc_range_05 = 0x05U,
+  k_pdm_val_10        = 10,
+  k_pdm_val_19        = 19,
+} pdm_uint8_const_t;
+
+/**
+ * @enum pdm_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_pdm_comp_h_1fe8 = 0x1FE8U,
+  k_pdm_hpf_h_4000  = 0x4000U,
+  k_pdm_hpf_h_c000  = 0xC000U,
+  k_pdm_hpf_k1_3ec1 = 0x3EC1U,
+  k_pdm_hpf_s0_3f61 = 0x3F61U,
+  k_pdm_lpf_h0_0400 = 0x0400U,
+  k_pdm_lpf_h1_1ff8 = 0x1FF8U,
+} pdm_uint16_const_t;
+
+/**
+ * @enum pdm_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_pdm_pddrr_12345 = 0x12345U,
+  k_pdm_pddrr_80000 = 0x80000U,
+  k_pdm_pddrr_fffff = 0xFFFFFU,
+} pdm_uint32_const_t;
+
 /** @brief Channel under test (EK-RA8D2 MEMS mic wiring). */
 enum : uint8_t {
   k_test_ch = 2U, /**< Test channel. */
@@ -39,23 +90,23 @@ static void prep(void)
  */
 static void make_cfg(ra8_pdm_channel_cfg_t* cfg)
 {
-  *cfg              = (ra8_pdm_channel_cfg_t){};
-  cfg->sinc_order   = 4U;
-  cfg->clock_div    = 0U;
-  cfg->sinc_dec     = 0x7CU;
-  cfg->sinc_range   = 0x05U;
-  cfg->data_shift   = 0U;
-  cfg->edge         = 0U;
-  cfg->rx_threshold = 4U;
-  cfg->hpf_s0       = 0x3F61U;
-  cfg->hpf_k1       = 0x3EC1U;
-  cfg->hpf_h[0]     = 0x4000U;
-  cfg->hpf_h[1]     = 0xC000U;
-  cfg->comp_h[0]    = 0x1FE8U;
-  cfg->comp_h[10]   = 0x1FE8U;
-  cfg->lpf_h0       = 0x0400U;
-  cfg->lpf_h1[0]    = 0x1FF8U;
-  cfg->lpf_h1[19]   = 0x1FF8U;
+  *cfg                      = (ra8_pdm_channel_cfg_t){};
+  cfg->sinc_order           = 4U;
+  cfg->clock_div            = 0U;
+  cfg->sinc_dec             = k_pdm_sinc_dec_7c;
+  cfg->sinc_range           = k_pdm_sinc_range_05;
+  cfg->data_shift           = 0U;
+  cfg->edge                 = 0U;
+  cfg->rx_threshold         = 4U;
+  cfg->hpf_s0               = k_pdm_hpf_s0_3f61;
+  cfg->hpf_k1               = k_pdm_hpf_k1_3ec1;
+  cfg->hpf_h[0]             = k_pdm_hpf_h_4000;
+  cfg->hpf_h[1]             = k_pdm_hpf_h_c000;
+  cfg->comp_h[0]            = k_pdm_comp_h_1fe8;
+  cfg->comp_h[k_pdm_val_10] = k_pdm_comp_h_1fe8;
+  cfg->lpf_h0               = k_pdm_lpf_h0_0400;
+  cfg->lpf_h1[0]            = k_pdm_lpf_h1_1ff8;
+  cfg->lpf_h1[k_pdm_val_19] = k_pdm_lpf_h1_1ff8;
 }
 
 /**
@@ -138,21 +189,21 @@ static void test_read_samples(void)
 
   /* Positive sample, FIFO fill (3) below buffer capacity (8). */
   reg->PDDSR = 3U;
-  reg->PDDRR = 0x12345U;
+  reg->PDDRR = k_pdm_pddrr_12345;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_read(k_test_ch, buf, 8U, &got));
   TEST_ASSERT_EQ(3U, got);
   TEST_ASSERT_EQ(0x12345, buf[0]);
 
   /* Negative sample (bit19 set) -> sign extended to -1. */
   reg->PDDSR = 1U;
-  reg->PDDRR = 0xFFFFFU;
+  reg->PDDRR = k_pdm_pddrr_fffff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_read(k_test_ch, buf, 8U, &got));
   TEST_ASSERT_EQ(1U, got);
   TEST_ASSERT_EQ(-1, buf[0]);
 
   /* FIFO count (10) above capacity (4) -> capped. */
-  reg->PDDSR = 10U;
-  reg->PDDRR = 0x80000U; /* -524288 */
+  reg->PDDSR = k_pdm_pddsr_10;
+  reg->PDDRR = k_pdm_pddrr_80000; /* -524288 */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_read(k_test_ch, buf, 4U, &got));
   TEST_ASSERT_EQ(4U, got);
   TEST_ASSERT_EQ(-524288, buf[3]);

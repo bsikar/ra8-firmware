@@ -44,6 +44,39 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum fs_fat_mcdc_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_fs_fat_mcdc_bpb_55               = 0x55U,
+  k_fs_fat_mcdc_bpb_aa               = 0xAAU,
+  k_fs_fat_mcdc_i_13                 = 13U,
+  k_fs_fat_mcdc_i_17                 = 17U,
+  k_fs_fat_mcdc_plant_lfn_entry_20   = 20U,
+  k_fs_fat_mcdc_plant_short_entry_11 = 11,
+  k_fs_fat_mcdc_v_24                 = 24,
+  k_fs_fat_mcdc_v_ff                 = 0xFFU,
+} fs_fat_mcdc_uint8_const_t;
+
+/**
+ * @enum fs_fat_mcdc_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_fs_fat_mcdc_block_size_4096 = 4096U,
+} fs_fat_mcdc_uint16_const_t;
+
+/**
  * @enum ra8_fs_mcdc_disk_t
  * @brief Static-allocation sizes for the synthetic block devices.
  *
@@ -164,16 +197,16 @@ static const ra8_fs_backend_t s_backend = {
 
 static void put16(uint8_t* p, uint32_t off, uint16_t v)
 {
-  p[off]     = (uint8_t)(v & 0xFFU);
-  p[off + 1] = (uint8_t)((v >> 8) & 0xFFU);
+  p[off]     = (uint8_t)(v & k_fs_fat_mcdc_v_ff);
+  p[off + 1] = (uint8_t)((v >> 8) & k_fs_fat_mcdc_v_ff);
 }
 
 static void put32(uint8_t* p, uint32_t off, uint32_t v)
 {
-  p[off]     = (uint8_t)(v & 0xFFU);
-  p[off + 1] = (uint8_t)((v >> 8) & 0xFFU);
-  p[off + 2] = (uint8_t)((v >> 16) & 0xFFU);
-  p[off + 3] = (uint8_t)((v >> 24) & 0xFFU);
+  p[off]     = (uint8_t)(v & k_fs_fat_mcdc_v_ff);
+  p[off + 1] = (uint8_t)((v >> 8) & k_fs_fat_mcdc_v_ff);
+  p[off + 2] = (uint8_t)((v >> 16) & k_fs_fat_mcdc_v_ff);
+  p[off + 3] = (uint8_t)((v >> k_fs_fat_mcdc_v_24) & k_fs_fat_mcdc_v_ff);
 }
 
 static void free_volume(void)
@@ -207,8 +240,8 @@ static void build_fat16_volume(void)
   put16(bpb, (uint32_t)k_bpb_off_root_ents, (uint16_t)k_fat16_root_ents);
   put16(bpb, (uint32_t)k_bpb_off_tot_sec16, (uint16_t)k_disk_blocks_fat16);
   put16(bpb, (uint32_t)k_bpb_off_fatsz16, (uint16_t)k_fat16_fatsz);
-  bpb[(uint32_t)k_bpb_off_sig_lo] = 0x55U;
-  bpb[(uint32_t)k_bpb_off_sig_hi] = 0xAAU;
+  bpb[(uint32_t)k_bpb_off_sig_lo] = k_fs_fat_mcdc_bpb_55;
+  bpb[(uint32_t)k_bpb_off_sig_hi] = k_fs_fat_mcdc_bpb_aa;
 }
 
 /**
@@ -233,7 +266,9 @@ static uint8_t sfn_checksum(const uint8_t* name11)
 }
 
 /** @brief Write a packed 8.3 directory entry at @p ent (size in bytes, attr archive). */
-static void plant_short_entry(uint8_t* ent, const char name11[11], uint32_t size)
+static void plant_short_entry(uint8_t*   ent,
+                              const char name11[k_fs_fat_mcdc_plant_short_entry_11],
+                              uint32_t   size)
 {
   memset(ent, 0, (size_t)k_dir_entry_bytes);
   memcpy(ent, name11, (size_t)k_name_field_len);
@@ -272,7 +307,7 @@ static void plant_lfn_entry(uint8_t*    ent,
   ent[(uint32_t)k_lfn_off_csum] = csum;
   const uint32_t len            = (uint32_t)strlen(text);
   uint8_t        placed_pad     = 0U;
-  for (uint32_t i = 0U; i < 13U; i++) {
+  for (uint32_t i = 0U; i < k_fs_fat_mcdc_i_13; i++) {
     const uint32_t off = (uint32_t)s_lfn_char_off[i];
     if (i < len) {
       put16(ent, off, (uint16_t)(uint8_t)text[i]);
@@ -440,7 +475,12 @@ static void test_mcdc_lfn_order_range_guard(void)
   h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   uint8_t* root20 = &s_disk.bytes[(size_t)(uint32_t)k_fat16_root_lba * (uint32_t)k_disk_block_size];
-  plant_lfn_entry(&root20[0U], 20U, 1U, csum, "AB.EPUB", (uint16_t)k_lfn_term16);
+  plant_lfn_entry(&root20[0U],
+                  k_fs_fat_mcdc_plant_lfn_entry_20,
+                  1U,
+                  csum,
+                  "AB.EPUB",
+                  (uint16_t)k_lfn_term16);
   plant_short_entry(&root20[e1], short11, 0U);
   f = nullptr;
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_open(h, "AB.EPUB", k_ra8_fs_mode_read, &f));
@@ -486,7 +526,7 @@ static void test_mcdc_read_walk_cache_resume(void)
   static uint8_t s_wr[k_read_payload];
   static uint8_t s_rd[k_read_payload];
   for (uint32_t i = 0U; i < (uint32_t)k_read_payload; i++) {
-    s_wr[i] = (uint8_t)((i * 17U) + 3U);
+    s_wr[i] = (uint8_t)((i * k_fs_fat_mcdc_i_17) + 3U);
     s_rd[i] = 0U;
   }
   ra8_fs_file_t* f = nullptr;
@@ -627,7 +667,7 @@ static ra8_err_t cap_bad_block_size(void* ctx, uint32_t* block_count, uint32_t* 
 {
   (void)ctx;
   *block_count = (uint32_t)k_disk_blocks_fat16;
-  *block_size  = 4096U; /* not 512 -> formatter must reject */
+  *block_size  = k_fs_fat_mcdc_block_size_4096; /* not 512 -> formatter must reject */
   return k_ra8_ok;
 }
 

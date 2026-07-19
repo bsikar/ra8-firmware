@@ -69,6 +69,20 @@
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum board_ek_ra8d2_comms_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_board_ek_ra8d2_comms_cov_out_len_aa = 0xAAU,
+  k_board_ek_ra8d2_comms_cov_val_ff     = 0xFFU,
+} board_ek_ra8d2_comms_cov_uint8_const_t;
+
 /* -------------------------------------------------------------------------
  * Helpers
  * -------------------------------------------------------------------------
@@ -116,7 +130,7 @@ static void reset_state(void)
  */
 static void cgc_init_with_oscsf_preseed(void)
 {
-  *ra8_sys_oscsf() = (uint8_t)0xFFU;
+  *ra8_sys_oscsf() = (uint8_t)k_board_ek_ra8d2_comms_cov_val_ff;
   (void)ra8_cgc_init();
 }
 
@@ -436,7 +450,7 @@ static void test_uart_console_read_no_byte_available(void)
       (const volatile void*)&ra8_sci((uint8_t)k_ra8_board_uart_console_sci_channel)->CSR));
 
   uint8_t         buf[4]  = {};
-  size_t          out_len = 0xAAU;
+  size_t          out_len = k_board_ek_ra8d2_comms_cov_out_len_aa;
   const ra8_err_t err     = ra8_board_uart_console_read(buf, 1U, &out_len);
   TEST_ASSERT_EQ(k_ra8_ok, err);
   TEST_ASSERT_EQ(0U, out_len);
@@ -487,7 +501,7 @@ static void test_uart_console_read_byte_available(void)
   volatile r_sci_regs_t* sci_reg = ra8_sci((uint8_t)k_ra8_board_uart_console_sci_channel);
   sci_reg->CSR                   = (uint32_t)(1U << (uint8_t)k_ra8_sci_csr_bit_rdrf);
 
-  uint8_t         buf[2]  = {0xFFU, 0xFFU};
+  uint8_t         buf[2]  = {k_board_ek_ra8d2_comms_cov_val_ff, k_board_ek_ra8d2_comms_cov_val_ff};
   size_t          out_len = 0U;
   const ra8_err_t err     = ra8_board_uart_console_read(buf, 1U, &out_len);
   TEST_ASSERT_EQ(k_ra8_ok, err);

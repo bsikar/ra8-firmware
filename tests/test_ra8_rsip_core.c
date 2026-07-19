@@ -39,6 +39,27 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum rsip_core_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_rsip_core_i_20    = 20U,
+  k_rsip_core_i_64    = 64U,
+  k_rsip_core_key_0b  = 0x0BU,
+  k_rsip_core_key_aa  = 0xAAU,
+  k_rsip_core_val_131 = 131,
+  k_rsip_core_val_20  = 20,
+  k_rsip_core_val_36  = 0x36U,
+  k_rsip_core_val_5c  = 0x5CU,
+  k_rsip_core_val_64  = 64,
+} rsip_core_uint8_const_t;
+
+/**
  * @enum ra8_rsip_test_const_t
  * @brief Magic numbers used by the tests, named to keep the
  * no-magic-numbers rule satisfied.
@@ -578,8 +599,8 @@ static void test_sha256_inc_block_boundary(void)
   TEST_BEGIN("rsip sha256 incremental block boundary");
   prep_running();
 
-  uint8_t input[64];
-  for (uint32_t i = 0U; i < 64U; ++i) {
+  uint8_t input[k_rsip_core_val_64];
+  for (uint32_t i = 0U; i < k_rsip_core_i_64; ++i) {
     input[i] = (uint8_t)i;
   }
 
@@ -651,9 +672,9 @@ static void test_hmac_sha256_inc_rfc4231_1(void)
   TEST_BEGIN("rsip hmac sha256 incremental rfc4231 case 1");
   prep_running();
 
-  uint8_t key[20];
-  for (uint32_t i = 0U; i < 20U; ++i) {
-    key[i] = 0x0BU;
+  uint8_t key[k_rsip_core_val_20];
+  for (uint32_t i = 0U; i < k_rsip_core_i_20; ++i) {
+    key[i] = k_rsip_core_key_0b;
   }
   const uint8_t data[] = {'H', 'i', ' ', 'T', 'h', 'e', 'r', 'e'};
 
@@ -686,14 +707,14 @@ static void test_hmac_sha256_inc_oversized_key(void)
   TEST_BEGIN("rsip hmac sha256 incremental oversized key");
   prep_running();
 
-  uint8_t key[131];
+  uint8_t key[k_rsip_core_val_131];
   for (uint32_t i = 0U; i < sizeof(key); ++i) {
-    key[i] = 0xAAU;
+    key[i] = k_rsip_core_key_aa;
   }
   const uint8_t data[] = {'T', 'e', 's', 't'};
 
   /* Reference: build expected MAC by hand using the same primitive. */
-  uint8_t prepared[64] = {0U};
+  uint8_t prepared[k_rsip_core_val_64] = {0U};
   {
     ra8_rsip_sha256_ctx_t prep_ctx   = {};
     uint8_t               prep_h[32] = {};
@@ -704,11 +725,11 @@ static void test_hmac_sha256_inc_oversized_key(void)
       prepared[i] = prep_h[i];
     }
   }
-  uint8_t ipad[64];
-  uint8_t opad[64];
-  for (uint32_t i = 0U; i < 64U; ++i) {
-    ipad[i] = prepared[i] ^ 0x36U;
-    opad[i] = prepared[i] ^ 0x5CU;
+  uint8_t ipad[k_rsip_core_val_64];
+  uint8_t opad[k_rsip_core_val_64];
+  for (uint32_t i = 0U; i < k_rsip_core_i_64; ++i) {
+    ipad[i] = prepared[i] ^ k_rsip_core_val_36;
+    opad[i] = prepared[i] ^ k_rsip_core_val_5c;
   }
   uint8_t inner[32] = {};
   {

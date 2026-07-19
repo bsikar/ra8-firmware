@@ -15,6 +15,23 @@
 #include "ra8_usb_pvnd.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum usb_pvnd_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_usb_pvnd_b_request_42       = 0x42U,
+  k_usb_pvnd_b_request_55       = 0x55U,
+  k_usb_pvnd_bm_request_type_21 = 0x21U,
+  k_usb_pvnd_bm_request_type_80 = 0x80U,
+  k_usb_pvnd_val_128            = 128,
+} usb_pvnd_uint8_const_t;
+
 /* Sample minimal config descriptor blob. */
 static const uint8_t s_sample_desc[] = {
   0x09,
@@ -145,7 +162,7 @@ static void test_send_recv_validation(void)
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_pvnd_send(nullptr, 4U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pvnd_send(buf, 0U));
-  uint8_t big[128] = {};
+  uint8_t big[k_usb_pvnd_val_128] = {};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pvnd_send(big, (uint16_t)sizeof(big)));
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_pvnd_recv(nullptr, 8U, &got));
@@ -170,7 +187,7 @@ static void test_handle_setup_dispatch(void)
   /* Vendor | Device | In. */
   ra8_usb_setup_t setup = {
     .bm_request_type = (uint8_t)k_ra8_pvnd_bm_vendor_dev_in,
-    .b_request       = (uint8_t)0x42U,
+    .b_request       = (uint8_t)k_usb_pvnd_b_request_42,
     .w_value         = 0U,
     .w_index         = 0U,
     .w_length        = 4U,
@@ -181,7 +198,7 @@ static void test_handle_setup_dispatch(void)
 
   /* Vendor | Interface | Out. */
   setup.bm_request_type = (uint8_t)k_ra8_pvnd_bm_vendor_iface_out;
-  setup.b_request       = (uint8_t)0x55U;
+  setup.b_request       = (uint8_t)k_usb_pvnd_b_request_55;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_handle_setup(&setup));
   TEST_ASSERT_EQ(2, s_setup_cb_calls);
 
@@ -206,7 +223,7 @@ static void test_handle_setup_rejects(void)
 
   /* Standard envelope (type=0). */
   ra8_usb_setup_t setup = {
-    .bm_request_type = (uint8_t)0x80U,
+    .bm_request_type = (uint8_t)k_usb_pvnd_bm_request_type_80,
     .b_request       = (uint8_t)0x06U,
     .w_value         = 0U,
     .w_index         = 0U,
@@ -215,7 +232,7 @@ static void test_handle_setup_rejects(void)
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_pvnd_handle_setup(&setup));
 
   /* Class envelope (type=1). */
-  setup.bm_request_type = (uint8_t)0x21U;
+  setup.bm_request_type = (uint8_t)k_usb_pvnd_bm_request_type_21;
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_pvnd_handle_setup(&setup));
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_pvnd_handle_setup(nullptr));
@@ -321,7 +338,7 @@ static void test_mcdc_pvnd(void)
     TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_handle_setup(&setup));
   }
   /* All-false vector: standard envelope. */
-  setup.bm_request_type = 0x80U;
+  setup.bm_request_type = k_usb_pvnd_bm_request_type_80;
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_pvnd_handle_setup(&setup));
   TEST_END("pvnd MC/DC: init / send envelope / vendor OR chain");
 }

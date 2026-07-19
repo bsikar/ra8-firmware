@@ -43,6 +43,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum io_stream_uart_cov_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_io_stream_uart_cov_written_ffffffff = 0xFFFFFFFFU,
+} io_stream_uart_cov_uint32_const_t;
+
 /* =========================================================================
  * Fixture constants
  * =========================================================================
@@ -133,7 +146,7 @@ static void test_write_success_with_out_written(void)
 
   /* A non-null buf is required even for len=0 (uart_write checks it). */
   const uint8_t buf[1]  = {(uint8_t)k_uart_cov_test_byte};
-  uint32_t      written = 0xFFFFFFFFU;
+  uint32_t      written = k_io_stream_uart_cov_written_ffffffff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_write(&s, buf, 0U, &written));
   /* On success *out_written is set to len (== 0). */
   TEST_ASSERT_EQ(0U, written);

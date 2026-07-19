@@ -41,6 +41,47 @@
 #include "ra8_fs_fat_internal.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum fs_fat_name_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_fs_fat_name_cov_bpb_55        = 0x55U,
+  k_fs_fat_name_cov_bpb_aa        = 0xAAU,
+  k_fs_fat_name_cov_cur_lba_100   = 100,
+  k_fs_fat_name_cov_cur_lba_50    = 50,
+  k_fs_fat_name_cov_entry_idx_7   = 7,
+  k_fs_fat_name_cov_ncov_put16_11 = 11U,
+  k_fs_fat_name_cov_ncov_put16_14 = 14U,
+  k_fs_fat_name_cov_ncov_put16_17 = 17U,
+  k_fs_fat_name_cov_ncov_put16_19 = 19U,
+  k_fs_fat_name_cov_ncov_put16_22 = 22U,
+  k_fs_fat_name_cov_u_5           = 5U,
+  k_fs_fat_name_cov_v_ff          = 0xFFU,
+  k_fs_fat_name_cov_val_11        = 11,
+  k_fs_fat_name_cov_val_13        = 13,
+} fs_fat_name_cov_uint8_const_t;
+
+/**
+ * @enum fs_fat_name_cov_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_fs_fat_name_cov_val_510 = 510,
+  k_fs_fat_name_cov_val_511 = 511,
+  k_fs_fat_name_cov_val_512 = 512U,
+} fs_fat_name_cov_uint16_const_t;
+
 /* ===========================================================================
  * Geometry constants
  * ===========================================================================
@@ -300,8 +341,8 @@ static ra8_err_t ncov_inj_capacity(void* ctx, uint32_t* block_count, uint32_t* b
  */
 static void ncov_put16(uint8_t* p, uint32_t off, uint16_t v)
 {
-  p[off]     = (uint8_t)(v & 0xFFU);
-  p[off + 1] = (uint8_t)((v >> 8U) & 0xFFU);
+  p[off]     = (uint8_t)(v & k_fs_fat_name_cov_v_ff);
+  p[off + 1] = (uint8_t)((v >> 8U) & k_fs_fat_name_cov_v_ff);
 }
 
 /**
@@ -330,15 +371,15 @@ static void ncov_build_fat16_vol(void)
     TEST_FAIL_FMT("%s", "calloc failed");
   }
   uint8_t* bpb = s_ncov_disk.bytes;
-  ncov_put16(bpb, 11U, (uint16_t)k_ncov_blk_sz);
-  bpb[13] = 1U;
-  ncov_put16(bpb, 14U, 1U);
+  ncov_put16(bpb, k_fs_fat_name_cov_ncov_put16_11, (uint16_t)k_ncov_blk_sz);
+  bpb[k_fs_fat_name_cov_val_13] = 1U;
+  ncov_put16(bpb, k_fs_fat_name_cov_ncov_put16_14, 1U);
   bpb[16] = 2U;
-  ncov_put16(bpb, 17U, 16U);
-  ncov_put16(bpb, 19U, (uint16_t)k_ncov_fat16_spc1);
-  ncov_put16(bpb, 22U, 32U);
-  bpb[510] = 0x55U;
-  bpb[511] = 0xAAU;
+  ncov_put16(bpb, k_fs_fat_name_cov_ncov_put16_17, 16U);
+  ncov_put16(bpb, k_fs_fat_name_cov_ncov_put16_19, (uint16_t)k_ncov_fat16_spc1);
+  ncov_put16(bpb, k_fs_fat_name_cov_ncov_put16_22, 32U);
+  bpb[k_fs_fat_name_cov_val_510] = k_fs_fat_name_cov_bpb_55;
+  bpb[k_fs_fat_name_cov_val_511] = k_fs_fat_name_cov_bpb_aa;
 }
 
 /**
@@ -439,7 +480,7 @@ static void ncov_create_files_in_sub(ra8_fs_mount_t* h, uint32_t count)
 static void test_ncov_path_to_83_null_guards(void)
 {
   TEST_BEGIN("priv_path_to_83: null-pointer guards (line 123)");
-  uint8_t buf[11] = {};
+  uint8_t buf[k_fs_fat_name_cov_val_11] = {};
   TEST_ASSERT_EQ(0, priv_path_to_83(nullptr, buf));
   TEST_ASSERT_EQ(0, priv_path_to_83("FILE.TXT", nullptr));
   TEST_END("priv_path_to_83: null-pointer guards (line 123)");
@@ -468,11 +509,11 @@ static void test_ncov_path_to_83_null_guards(void)
 static void test_ncov_path_to_83_leading_slash(void)
 {
   TEST_BEGIN("priv_path_to_83: leading-slash strip (line 126)");
-  uint8_t ref11[11] = {};
-  uint8_t out11[11] = {};
+  uint8_t ref11[k_fs_fat_name_cov_val_11] = {};
+  uint8_t out11[k_fs_fat_name_cov_val_11] = {};
   TEST_ASSERT_EQ(1, priv_path_to_83("FILE.TXT", ref11));
   TEST_ASSERT_EQ(1, priv_path_to_83("/FILE.TXT", out11));
-  for (uint32_t i = 0; i < 11U; i++) {
+  for (uint32_t i = 0; i < k_fs_fat_name_cov_ncov_put16_11; i++) {
     TEST_ASSERT_EQ(ref11[i], out11[i]);
   }
   TEST_END("priv_path_to_83: leading-slash strip (line 126)");
@@ -500,7 +541,7 @@ static void test_ncov_path_to_83_leading_slash(void)
 static void test_ncov_path_to_83_kanji_escape(void)
 {
   TEST_BEGIN("priv_path_to_83: kanji-escape replacement (lines 138-139)");
-  uint8_t out11[11] = {};
+  uint8_t out11[k_fs_fat_name_cov_val_11] = {};
   /* '\xe5' is byte 0xE5 -- the k_dir_marker_free_used value. */
   TEST_ASSERT_EQ(1, priv_path_to_83("\xe5NAME.TXT", out11));
   TEST_ASSERT_EQ(k_dir_marker_kanji_e5, out11[0]);
@@ -536,12 +577,12 @@ static void test_ncov_path_to_83_kanji_escape(void)
 static void test_ncov_83_to_str_kanji_restore(void)
 {
   TEST_BEGIN("priv_83_to_str: kanji-escape restore (lines 157-158)");
-  uint8_t in11[11] = {};
-  in11[0]          = k_dir_marker_kanji_e5;
-  for (uint32_t i = 1U; i < 11U; i++) {
+  uint8_t in11[k_fs_fat_name_cov_val_11] = {};
+  in11[0]                                = k_dir_marker_kanji_e5;
+  for (uint32_t i = 1U; i < k_fs_fat_name_cov_ncov_put16_11; i++) {
     in11[i] = ' ';
   }
-  char out12[13] = {};
+  char out12[k_fs_fat_name_cov_val_13] = {};
   priv_83_to_str(in11, out12);
   /* out12[0] is a signed char; read the restored 0xE5 marker in the
    * unsigned byte domain so it compares as 229, not -27. */
@@ -574,8 +615,8 @@ static void test_ncov_83_to_str_ext_trailing_space(void)
 {
   TEST_BEGIN("priv_83_to_str: extension trailing-space break (line 170)");
   /* "AA      TX " packed: base='A','A',' '...' '; ext='T','X',' ' */
-  const uint8_t in11[11]  = {'A', 'A', ' ', ' ', ' ', ' ', ' ', ' ', 'T', 'X', ' '};
-  char          out12[13] = {};
+  const uint8_t in11[11] = {'A', 'A', ' ', ' ', ' ', ' ', ' ', ' ', 'T', 'X', ' '};
+  char          out12[k_fs_fat_name_cov_val_13] = {};
   priv_83_to_str(in11, out12);
   TEST_ASSERT_EQ(0, strcmp(out12, "AA.TX"));
   TEST_END("priv_83_to_str: extension trailing-space break (line 170)");
@@ -615,7 +656,7 @@ static void test_ncov_walk_fixed_root_eod(void)
   uint8_t        eod;
   w.is_root_fixed   = 1;
   w.fixed_remaining = 1;
-  w.cur_lba         = 100;
+  w.cur_lba         = k_fs_fat_name_cov_cur_lba_100;
   eod               = 0;
   TEST_ASSERT_EQ(k_ra8_ok, priv_dir_walk_next_sector(&m, &w, &eod));
   TEST_ASSERT_EQ(1, eod);
@@ -649,8 +690,8 @@ static void test_ncov_walk_fixed_root_advance(void)
   uint8_t        eod;
   w.is_root_fixed   = 1;
   w.fixed_remaining = 3;
-  w.cur_lba         = 100;
-  w.entry_idx       = 7;
+  w.cur_lba         = k_fs_fat_name_cov_cur_lba_100;
+  w.entry_idx       = k_fs_fat_name_cov_entry_idx_7;
   eod               = 0;
   TEST_ASSERT_EQ(k_ra8_ok, priv_dir_walk_next_sector(&m, &w, &eod));
   TEST_ASSERT_EQ(0, eod);
@@ -693,8 +734,8 @@ static void test_ncov_walk_within_cluster(void)
   uint8_t    eod;
   w.is_root_fixed     = 0;
   w.sector_in_cluster = 0;
-  w.cur_lba           = 50;
-  w.entry_idx         = 7;
+  w.cur_lba           = k_fs_fat_name_cov_cur_lba_50;
+  w.entry_idx         = k_fs_fat_name_cov_entry_idx_7;
   eod                 = 0;
   TEST_ASSERT_EQ(k_ra8_ok, priv_dir_walk_next_sector(&m, &w, &eod));
   TEST_ASSERT_EQ(0, eod);
@@ -746,7 +787,7 @@ static void test_ncov_walk_cluster_chain_eoc(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ncov_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
   /* 14 files + . + .. = 16 entries, filling the single-sector cluster */
-  ncov_create_files_in_sub(h, 14U);
+  ncov_create_files_in_sub(h, k_fs_fat_name_cov_ncov_put16_14);
   ra8_fs_file_t* f = nullptr;
   /* 8.3 and LFN searches both exhaust SUB, hitting lines 262-263 then 321 */
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_fs_open(h, "/SUB/NOTHERE.TXT", k_ra8_fs_mode_read, &f));
@@ -790,7 +831,7 @@ static void test_ncov_walk_fat_read_fail(void)
   ra8_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ncov_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/SUB"));
-  ncov_create_files_in_sub(h, 14U);
+  ncov_create_files_in_sub(h, k_fs_fat_name_cov_ncov_put16_14);
   /* reads_left=2: root-dir read and SUB-dir read succeed;
      the FAT read for the cluster chain (read 3) fails. */
   ra8_fs_backend_t saved = h->backend;
@@ -835,9 +876,9 @@ static void test_ncov_walk_cycle_guard(void)
   ncov_build_fat16_vol();
   /* FAT1 is at LBA 1 = byte offset 512 in s_ncov_disk.bytes.
      FAT16 entry 2 is at byte offset 4 within FAT1 (cluster * 2 = 4). */
-  s_ncov_disk.bytes[512U + 4U] = 0x03U;
-  s_ncov_disk.bytes[512U + 5U] = 0x00U;
-  ra8_fs_mount_t* h            = nullptr;
+  s_ncov_disk.bytes[k_fs_fat_name_cov_val_512 + 4U]                    = 0x03U;
+  s_ncov_disk.bytes[k_fs_fat_name_cov_val_512 + k_fs_fat_name_cov_u_5] = 0x00U;
+  ra8_fs_mount_t* h                                                    = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_ncov_backend, &h));
   uint32_t saved_coc   = h->count_of_clusters;
   h->count_of_clusters = 0U;

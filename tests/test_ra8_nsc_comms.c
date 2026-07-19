@@ -20,6 +20,33 @@
 #include "ra8_usb.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum nsc_comms_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_nsc_comms_ra8_nsc_iic_write_50 = 0x50U,
+} nsc_comms_uint8_const_t;
+
+/**
+ * @enum nsc_comms_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_nsc_comms_baud_hz_1000000   = 1000000U,
+  k_nsc_comms_pclka_hz_60000000 = 60000000U,
+} nsc_comms_uint32_const_t;
+
 static void prep(void)
 {
   ra8_sim_mmap_reset();
@@ -128,7 +155,7 @@ static void test_iic_write_read_null(void)
   uint8_t buf[1] = {0U};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_nsc_iic_read(0U, 0x50U, nullptr, 1U));
   /* Forward path: zero-length write is a legal stub call. */
-  (void)ra8_nsc_iic_write(0U, 0x50U, buf, 0U);
+  (void)ra8_nsc_iic_write(0U, k_nsc_comms_ra8_nsc_iic_write_50, buf, 0U);
   TEST_END("ra8_nsc_iic_{write,read}: NULL rejected");
 }
 
@@ -168,8 +195,8 @@ static void test_spi_init_and_xfer(void)
   prep();
   ra8_spi_cfg_t cfg = {};
   cfg.mode          = k_ra8_spi_mode_0;
-  cfg.baud_hz       = 1000000U;
-  cfg.pclka_hz      = 60000000U;
+  cfg.baud_hz       = k_nsc_comms_baud_hz_1000000;
+  cfg.pclka_hz      = k_nsc_comms_pclka_hz_60000000;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_spi_init(0U, &cfg));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_nsc_spi_init(0U, nullptr));
 
@@ -197,8 +224,8 @@ static void test_spi_bulk_xfers(void)
   prep();
   ra8_spi_cfg_t cfg = {};
   cfg.mode          = k_ra8_spi_mode_0;
-  cfg.baud_hz       = 1000000U;
-  cfg.pclka_hz      = 60000000U;
+  cfg.baud_hz       = k_nsc_comms_baud_hz_1000000;
+  cfg.pclka_hz      = k_nsc_comms_pclka_hz_60000000;
   (void)ra8_nsc_spi_init(0U, &cfg);
 
   uint8_t tx[4] = {1, 2, 3, 4};
@@ -244,8 +271,8 @@ static void test_spi_width16_32(void)
   prep();
   ra8_spi_cfg_t cfg = {};
   cfg.mode          = k_ra8_spi_mode_0;
-  cfg.baud_hz       = 1000000U;
-  cfg.pclka_hz      = 60000000U;
+  cfg.baud_hz       = k_nsc_comms_baud_hz_1000000;
+  cfg.pclka_hz      = k_nsc_comms_pclka_hz_60000000;
   (void)ra8_nsc_spi_init(0U, &cfg);
 
   uint8_t tx[4] = {1, 2, 3, 4};
@@ -275,8 +302,8 @@ static void test_spi_invalid_width(void)
   prep();
   ra8_spi_cfg_t cfg = {};
   cfg.mode          = k_ra8_spi_mode_0;
-  cfg.baud_hz       = 1000000U;
-  cfg.pclka_hz      = 60000000U;
+  cfg.baud_hz       = k_nsc_comms_baud_hz_1000000;
+  cfg.pclka_hz      = k_nsc_comms_pclka_hz_60000000;
   (void)ra8_nsc_spi_init(0U, &cfg);
 
   uint8_t tx[4] = {1, 2, 3, 4};
@@ -303,8 +330,8 @@ static void test_spi_span_overflow_rejected(void)
   prep();
   ra8_spi_cfg_t cfg = {};
   cfg.mode          = k_ra8_spi_mode_0;
-  cfg.baud_hz       = 1000000U;
-  cfg.pclka_hz      = 60000000U;
+  cfg.baud_hz       = k_nsc_comms_baud_hz_1000000;
+  cfg.pclka_hz      = k_nsc_comms_pclka_hz_60000000;
   (void)ra8_nsc_spi_init(0U, &cfg);
 
   uint8_t tx[4] = {1, 2, 3, 4};

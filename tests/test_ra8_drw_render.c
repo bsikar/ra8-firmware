@@ -22,6 +22,22 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum drw_render_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_drw_render_entries_ff000000  = 0xFF000000UL,
+  k_drw_render_i_010101          = 0x010101UL,
+  k_drw_render_sentinel_12345678 = 0x12345678UL,
+  k_drw_render_sentinel_deadbeef = 0xDEADBEEFUL,
+} drw_render_uint32_const_t;
+
+/**
  * @enum ra8_drw_test_const_t
  * @brief Test-side bound constants used by the cases below.
  */
@@ -210,7 +226,7 @@ static void test_load_clut_happy_and_bounds(void)
   prep();
   uint32_t entries[k_ra8_drw_test_clut_count];
   for (uint32_t i = 0UL; i < (uint32_t)k_ra8_drw_test_clut_count; ++i) {
-    entries[i] = 0xFF000000UL | (i * 0x010101UL);
+    entries[i] = k_drw_render_entries_ff000000 | (i * k_drw_render_i_010101);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_load_clut(0U, entries, (uint32_t)k_ra8_drw_test_clut_count));
   TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_texcladdr));
@@ -491,13 +507,13 @@ static void test_perf_arm_read_reset(void)
   TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_perfcount2));
 
   /* Inject a non-zero count, read it back. */
-  *ra8_drw_reg32(k_ra8_drw_off_perfcount1) = 0x12345678UL;
+  *ra8_drw_reg32(k_ra8_drw_off_perfcount1) = k_drw_render_sentinel_12345678;
   uint32_t count                           = 0UL;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_perf_read(k_ra8_drw_perfctr_1, &count));
   TEST_ASSERT_EQ(0x12345678UL, count);
 
   /* Reset clears one counter and leaves the other alone. */
-  *ra8_drw_reg32(k_ra8_drw_off_perfcount2) = 0xDEADBEEFUL;
+  *ra8_drw_reg32(k_ra8_drw_off_perfcount2) = k_drw_render_sentinel_deadbeef;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_perf_reset(k_ra8_drw_perfctr_1));
   TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_perfcount1));
   TEST_ASSERT_EQ(0xDEADBEEFUL, *ra8_drw_reg32(k_ra8_drw_off_perfcount2));

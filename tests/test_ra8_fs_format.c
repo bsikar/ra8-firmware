@@ -34,6 +34,34 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum fs_format_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_fs_format_i_31                    = 31U,
+  k_fs_format_sectors_per_cluster_128 = 128U,
+  k_fs_format_val_7                   = 7U,
+} fs_format_uint8_const_t;
+
+/**
+ * @enum fs_format_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_fs_format_block_size_1024 = 1024U,
+} fs_format_uint16_const_t;
+
+/**
  * @enum ra8_fs_fmt_test_t
  * @brief Synthetic block-device sizes (in 512-byte sectors) per FAT band.
  *
@@ -252,7 +280,7 @@ static void verify_mount_file_cycle(const ra8_fs_backend_t* be, ra8_fs_type_t ty
   static uint8_t s_wr[k_fmt_payload_bytes];
   static uint8_t s_rd[k_fmt_payload_bytes];
   for (uint32_t i = 0U; i < (uint32_t)k_fmt_payload_bytes; i++) {
-    s_wr[i] = (uint8_t)((i * 31U) + 7U);
+    s_wr[i] = (uint8_t)((i * k_fs_format_i_31) + k_fs_format_val_7);
     s_rd[i] = 0U;
   }
   ra8_fs_file_t* f = nullptr;
@@ -464,7 +492,7 @@ static void test_mcdc_format_spc_valid_pair(void)
   alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   opts.sectors_per_cluster = 1U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
-  opts.sectors_per_cluster = 128U;
+  opts.sectors_per_cluster = k_fs_format_sectors_per_cluster_128;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_format(&s_backend, &opts));
   opts.sectors_per_cluster = 3U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_format(&s_backend, &opts));
@@ -490,7 +518,7 @@ static ra8_err_t bad_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   *block_count = (uint32_t)k_fmt_blocks_fat16;
-  *block_size  = 1024U; /* not 512 -> formatter must reject */
+  *block_size  = k_fs_format_block_size_1024; /* not 512 -> formatter must reject */
   return k_ra8_ok;
 }
 

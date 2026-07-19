@@ -17,6 +17,33 @@
 #include "ra8_usb_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum usb_pal_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_usb_pal_sentinel_aa = 0xAAU,
+  k_usb_pal_val_64      = 64,
+} usb_pal_uint8_const_t;
+
+/**
+ * @enum usb_pal_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_usb_pal_intsts0_beef = 0xBEEFU,
+} usb_pal_uint16_const_t;
+
 static void prep(void)
 {
   ra8_sim_mmap_reset();
@@ -150,10 +177,10 @@ static void test_ep_send_recv_loopback(void)
 
   uint8_t data[16] = {0U};
   for (uint16_t i = 0U; i < (uint16_t)sizeof(data); ++i) {
-    data[i] = (uint8_t)(0xAAU ^ i);
+    data[i] = (uint8_t)(k_usb_pal_sentinel_aa ^ i);
   }
-  uint8_t  rx[64] = {0U};
-  uint16_t rx_len = (uint16_t)sizeof(rx);
+  uint8_t  rx[k_usb_pal_val_64] = {0U};
+  uint16_t rx_len               = (uint16_t)sizeof(rx);
 
   /* Empty ring -> recv reports no_data. */
   TEST_ASSERT_EQ(k_ra8_err_no_data, ra8_usb_pal_ep_recv(1U, rx, &rx_len));
@@ -253,7 +280,7 @@ static void test_dispatch_relays_intsts0(void)
 
   /* Pre-set INTSTS0 to a non-zero value so dispatch sees a real event. */
   volatile r_usb_regs_t* reg = ra8_usb_fs();
-  reg->INTSTS0               = 0xBEEFU;
+  reg->INTSTS0               = k_usb_pal_intsts0_beef;
 
   ra8_usb_dispatch(k_ra8_usb_speed_fs);
   TEST_ASSERT_EQ(1, s_usb_event_count);
@@ -264,7 +291,7 @@ static void test_dispatch_relays_intsts0(void)
   TEST_ASSERT_EQ(1, s_usb_event_count);
 
   /* HS speed mismatch is filtered out of the FS-bound PAL. */
-  reg->INTSTS0 = 0xBEEFU;
+  reg->INTSTS0 = k_usb_pal_intsts0_beef;
   ra8_usb_dispatch(k_ra8_usb_speed_hs);
   /* Whether HS dispatch fires depends on ra8_usb's internal state;
    * the PAL's per-speed filter should drop it regardless. */

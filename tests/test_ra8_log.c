@@ -29,6 +29,53 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum log_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_log_internal_ra8_log_debug_val_42 = 42,
+  k_log_internal_ra8_log_warn_val_7   = 7U,
+} log_uint8_const_t;
+
+/**
+ * @enum log_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_log_internal_ra8_log_debug_val_12345 = 12345,
+  k_log_internal_ra8_log_error_val_1234  = 0x1234U,
+  k_log_internal_ra8_log_warn_val_5678   = 0x5678U,
+  k_log_ra8_err_to_str_ffff              = 0xFFFFU,
+} log_uint16_const_t;
+
+/**
+ * @enum log_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_log_internal_ra8_log_error_val_1234567 = 1234567U,
+  k_log_internal_ra8_log_info_val_deadbeef = 0xDEADBEEFU,
+  k_log_internal_ra8_log_info_val_ffffffff = 0xFFFFFFFFU,
+  k_log_k_test_itm_stim0_ffffffff          = 0xFFFFFFFFUL,
+  k_log_val_2147483647                     = 2147483647,
+} log_uint32_const_t;
+
 /*
  * ITM stimulus register addresses (must match ra8_log.c's
  * `k_ra8_itm_stim_base`, `k_ra8_itm_tcr_addr`, `k_ra8_itm_tenr_addr`).
@@ -56,7 +103,7 @@ static void test_itm_arm(void)
   *(volatile uint32_t*)k_test_itm_tenr = 0x00000001UL;
   /* Non-zero STIM0 makes the "FIFO has space" poll return on the
    * first iteration. */
-  *(volatile uint32_t*)k_test_itm_stim0 = 0xFFFFFFFFUL;
+  *(volatile uint32_t*)k_test_itm_stim0 = k_log_k_test_itm_stim0_ffffffff;
 }
 
 /**
@@ -105,10 +152,10 @@ static void test_log_levels_val(void)
   ra8_sim_mmap_reset();
   ra8_log_init();
 
-  internal_ra8_log_error_val("TAG", "value", 0x1234U);
-  internal_ra8_log_warn_val("TAG", "value", 0x5678U);
-  internal_ra8_log_info_val("TAG", "value", 0xDEADBEEFU);
-  internal_ra8_log_debug_val("TAG", "value", (int32_t)-42);
+  internal_ra8_log_error_val("TAG", "value", k_log_internal_ra8_log_error_val_1234);
+  internal_ra8_log_warn_val("TAG", "value", k_log_internal_ra8_log_warn_val_5678);
+  internal_ra8_log_info_val("TAG", "value", k_log_internal_ra8_log_info_val_deadbeef);
+  internal_ra8_log_debug_val("TAG", "value", (int32_t)-k_log_internal_ra8_log_debug_val_42);
 
   TEST_END("ra8_log with companion value at every level");
 }
@@ -126,10 +173,10 @@ static void test_log_val_edge_cases(void)
   ra8_log_init();
 
   internal_ra8_log_info_val("ZERO", "v", 0U);
-  internal_ra8_log_info_val("MAX", "v", 0xFFFFFFFFU);
+  internal_ra8_log_info_val("MAX", "v", k_log_internal_ra8_log_info_val_ffffffff);
   internal_ra8_log_debug_val("NEG", "v", (int32_t)-1);
-  internal_ra8_log_debug_val("MIN", "v", (int32_t)(-2147483647 - 1));
-  internal_ra8_log_debug_val("POS", "v", (int32_t)12345);
+  internal_ra8_log_debug_val("MIN", "v", (int32_t)(-k_log_val_2147483647 - 1));
+  internal_ra8_log_debug_val("POS", "v", (int32_t)k_log_internal_ra8_log_debug_val_12345);
 
   TEST_END("ra8_log value edge cases");
 }
@@ -207,9 +254,9 @@ static void test_log_ready_val_unsigned(void)
   /* Zero triggers the fast-path inside internal_itm_put_u32. */
   internal_ra8_log_info_val("RDY", "zero", 0U);
   /* Non-zero walks the digit loop. */
-  internal_ra8_log_info_val("RDY", "big", 0xFFFFFFFFUL);
-  internal_ra8_log_error_val("RDY", "mid", 1234567U);
-  internal_ra8_log_warn_val("RDY", "small", 7U);
+  internal_ra8_log_info_val("RDY", "big", k_log_k_test_itm_stim0_ffffffff);
+  internal_ra8_log_error_val("RDY", "mid", k_log_internal_ra8_log_error_val_1234567);
+  internal_ra8_log_warn_val("RDY", "small", k_log_internal_ra8_log_warn_val_7);
   TEST_END("ra8_log unsigned-value writes walk the ITM path when armed");
 }
 
@@ -224,10 +271,10 @@ static void test_log_ready_val_signed(void)
   TEST_BEGIN("ra8_log signed-value writes walk the ITM path when armed");
   ra8_sim_mmap_reset();
   test_itm_arm();
-  internal_ra8_log_debug_val("RDY", "neg", (int32_t)-42);
-  internal_ra8_log_debug_val("RDY", "pos", (int32_t)42);
-  internal_ra8_log_debug_val("RDY", "min", (int32_t)(-2147483647 - 1));
-  internal_ra8_log_debug_val("RDY", "max", (int32_t)2147483647);
+  internal_ra8_log_debug_val("RDY", "neg", (int32_t)-k_log_internal_ra8_log_debug_val_42);
+  internal_ra8_log_debug_val("RDY", "pos", (int32_t)k_log_internal_ra8_log_debug_val_42);
+  internal_ra8_log_debug_val("RDY", "min", (int32_t)(-k_log_val_2147483647 - 1));
+  internal_ra8_log_debug_val("RDY", "max", (int32_t)k_log_val_2147483647);
   internal_ra8_log_debug_val("RDY", "zero", (int32_t)0);
   TEST_END("ra8_log signed-value writes walk the ITM path when armed");
 }
@@ -245,7 +292,7 @@ static void test_log_ready_tcr_disabled(void)
   /* TCR=0 makes internal_itm_ready return false on the first check. */
   *(volatile uint32_t*)k_test_itm_tcr   = 0x00000000UL;
   *(volatile uint32_t*)k_test_itm_tenr  = 0x00000001UL;
-  *(volatile uint32_t*)k_test_itm_stim0 = 0xFFFFFFFFUL;
+  *(volatile uint32_t*)k_test_itm_stim0 = k_log_k_test_itm_stim0_ffffffff;
   internal_ra8_log_info("OFF", "should drop");
   TEST_END("ra8_log bails out when TCR.ITMENA is clear");
 }
@@ -262,7 +309,7 @@ static void test_log_ready_tenr_disabled(void)
   ra8_sim_mmap_reset();
   *(volatile uint32_t*)k_test_itm_tcr   = 0x00000001UL;
   *(volatile uint32_t*)k_test_itm_tenr  = 0x00000000UL;
-  *(volatile uint32_t*)k_test_itm_stim0 = 0xFFFFFFFFUL;
+  *(volatile uint32_t*)k_test_itm_stim0 = k_log_k_test_itm_stim0_ffffffff;
   internal_ra8_log_info("OFF", "should drop");
   TEST_END("ra8_log bails out when TENR port 0 is clear");
 }
@@ -381,7 +428,7 @@ static void test_err_to_str_unknown_default(void)
 {
   TEST_BEGIN("ra8_err_to_str returns 'unknown' for out-of-enum value");
   ra8_sim_mmap_reset();
-  const char* s = ra8_err_to_str((ra8_err_t)0xFFFFU);
+  const char* s = ra8_err_to_str((ra8_err_t)k_log_ra8_err_to_str_ffff);
   TEST_ASSERT_NOT_NULL(s);
   TEST_ASSERT(strcmp(s, "unknown") == 0);
   TEST_END("ra8_err_to_str returns 'unknown' for out-of-enum value");
@@ -435,7 +482,7 @@ static void test_mcdc_itm_put_u32_loop(void)
   /* Vector 3: value == UINT32_MAX -> 10 iterations exhausting the
    * digit budget so C2 transitions T->F at iteration 10 with C1 still
    * T -- proves C2 independently controls loop exit. */
-  internal_ra8_log_info_val("V3", "max", 0xFFFFFFFFU);
+  internal_ra8_log_info_val("V3", "max", k_log_internal_ra8_log_info_val_ffffffff);
 
   TEST_END("ra8_log put_u32 MC/DC: value!=0 && i<max_digits");
 }

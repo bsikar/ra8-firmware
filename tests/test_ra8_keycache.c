@@ -22,6 +22,24 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum keycache_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_keycache_t_key_41   = 0x41U,
+  k_keycache_t_key_7    = 7U,
+  k_keycache_t_key_99   = 0x99U,
+  k_keycache_t_key_99_2 = 99U,
+  k_keycache_t_key_ab   = 0xABU,
+  k_keycache_t_key_cd   = 0xCDU,
+} keycache_uint8_const_t;
+
+/**
  * @enum t_kc_const_t
  * @brief Fixture sizes.
  */
@@ -143,7 +161,7 @@ static void test_render_hit(void)
   ra8_keycache_cfg_t cfg = t_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_keycache_init(&kc, &cfg));
 
-  t_key_t             k = t_key(0x41U, 0x99U);
+  t_key_t             k = t_key(k_keycache_t_key_41, k_keycache_t_key_99);
   ra8_keycache_view_t v = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_keycache_get(&kc, &k, &v)); /* miss -> render */
   TEST_ASSERT_EQ(0x41, v.data[0]);                         /* key.a stamp    */
@@ -202,7 +220,7 @@ static void test_eviction(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_keycache_put(&kc, v0.data));
 
   uint32_t            before2 = s_render_calls;
-  t_key_t             k7      = t_key(7U, 0U);
+  t_key_t             k7      = t_key(k_keycache_t_key_7, 0U);
   ra8_keycache_view_t v7      = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_keycache_get(&kc, &k7, &v7)); /* recent -> hit */
   TEST_ASSERT_EQ(before2, s_render_calls);
@@ -224,12 +242,12 @@ static void test_pin_protection(void)
 
   const uint8_t* pins[(size_t)k_t_cells] = {};
   for (uint32_t i = 0; i < (uint32_t)k_t_cells; ++i) {
-    t_key_t             k = t_key(i, 7U);
+    t_key_t             k = t_key(i, k_keycache_t_key_7);
     ra8_keycache_view_t v = {};
     TEST_ASSERT_EQ(k_ra8_ok, ra8_keycache_get(&kc, &k, &v)); /* pinned (no put) */
     pins[i] = v.data;
   }
-  t_key_t             kn = t_key(99U, 7U);
+  t_key_t             kn = t_key(k_keycache_t_key_99_2, k_keycache_t_key_7);
   ra8_keycache_view_t vn = {};
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_keycache_get(&kc, &kn, &vn)); /* all pinned */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_keycache_put(&kc, pins[0]));
@@ -288,7 +306,7 @@ static void test_no_user_descriptor(void)
   cfg.user_bytes         = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_keycache_init(&kc, &cfg));
 
-  t_key_t             k = t_key(0xABU, 0xCDU);
+  t_key_t             k = t_key(k_keycache_t_key_ab, k_keycache_t_key_cd);
   ra8_keycache_view_t v = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_keycache_get(&kc, &k, &v));
   TEST_ASSERT(v.user == nullptr);

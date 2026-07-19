@@ -23,6 +23,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum lpm_wake_matrix_demo_uint64_const_t
+ * @brief Named uint64_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint64_t {
+  k_lpm_wake_matrix_demo_cause_deadbeefcafebabe = 0xDEADBEEFCAFEBABEULL,
+} lpm_wake_matrix_demo_uint64_const_t;
+
 /** @brief Bit-cast widths used for packing WUPEN1 into the high word. */
 typedef enum : uint8_t {
   k_wake_matrix_test_wupen1_shift = 32U, /**< Wake matrix test wupen1 shift. */
@@ -134,7 +147,7 @@ static void test_lpm_wake_disarm_all(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_clear_wupen1_bits(0xFFFFFFFFUL));
   TEST_ASSERT_EQ(0U, *ra8_lpm_icu_reg32(k_ra8_lpm_wupen0_off));
   TEST_ASSERT_EQ(0U, *ra8_lpm_icu_reg32(k_ra8_lpm_wupen1_off));
-  uint64_t cause = 0xDEADBEEFCAFEBABEULL;
+  uint64_t cause = k_lpm_wake_matrix_demo_cause_deadbeefcafebabe;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_get_exit_cause(&cause));
   TEST_ASSERT_EQ(0U, cause);
   TEST_END("lpm_wake_matrix_demo: disarm all");

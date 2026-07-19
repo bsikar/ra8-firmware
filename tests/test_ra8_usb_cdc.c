@@ -16,6 +16,36 @@
 #include "ra8_usb_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum usb_cdc_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_usb_cdc_bm_request_type_21 = 0x21U,
+  k_usb_cdc_bm_request_type_80 = 0x80U,
+  k_usb_cdc_bm_request_type_a1 = 0xA1U,
+  k_usb_cdc_w_length_18        = 18U,
+  k_usb_cdc_w_length_7         = 7U,
+} usb_cdc_uint8_const_t;
+
+/**
+ * @enum usb_cdc_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_usb_cdc_w_value_0100 = 0x0100U,
+} usb_cdc_uint16_const_t;
+
 static void prep(void)
 {
   ra8_sim_mmap_reset();
@@ -142,7 +172,7 @@ static void test_handle_setup_set_control_line_state(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_cdc_init(k_ra8_usb_speed_fs));
 
   ra8_usb_setup_t setup = {
-    .bm_request_type = (uint8_t)0x21U,
+    .bm_request_type = (uint8_t)k_usb_cdc_bm_request_type_21,
     .b_request       = (uint8_t)k_ra8_cdc_req_set_control_line_state,
     .w_value         = (uint16_t)(k_ra8_cdc_line_state_dtr | k_ra8_cdc_line_state_rts),
     .w_index         = 0U,
@@ -177,11 +207,11 @@ static void test_handle_setup_get_line_coding_acks(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_cdc_init(k_ra8_usb_speed_fs));
 
   ra8_usb_setup_t setup = {
-    .bm_request_type = (uint8_t)0xA1U,
+    .bm_request_type = (uint8_t)k_usb_cdc_bm_request_type_a1,
     .b_request       = (uint8_t)k_ra8_cdc_req_get_line_coding,
     .w_value         = 0U,
     .w_index         = 0U,
-    .w_length        = 7U,
+    .w_length        = k_usb_cdc_w_length_7,
   };
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_cdc_handle_setup(&setup));
   /* DCPCTR.PID should be BUF, CCPL set. */
@@ -204,11 +234,11 @@ static void test_handle_setup_rejects_standard(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_cdc_init(k_ra8_usb_speed_fs));
 
   ra8_usb_setup_t setup = {
-    .bm_request_type = (uint8_t)0x80U, /* standard, device, IN */
-    .b_request       = (uint8_t)0x06U, /* GET_DESCRIPTOR       */
-    .w_value         = 0x0100U,
+    .bm_request_type = (uint8_t)k_usb_cdc_bm_request_type_80, /* standard, device, IN */
+    .b_request       = (uint8_t)0x06U,                        /* GET_DESCRIPTOR       */
+    .w_value         = k_usb_cdc_w_value_0100,
     .w_index         = 0U,
-    .w_length        = 18U,
+    .w_length        = k_usb_cdc_w_length_18,
   };
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_cdc_handle_setup(&setup));
 

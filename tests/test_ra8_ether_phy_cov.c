@@ -29,6 +29,35 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum ether_phy_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ether_phy_cov_regs_0040         = 0x0040U,
+  k_ether_phy_cov_regs_0080         = 0x0080U,
+  k_ether_phy_cov_reset_wait_us_100 = 100U,
+  k_ether_phy_cov_val_5             = 5,
+} ether_phy_cov_uint8_const_t;
+
+/**
+ * @enum ether_phy_cov_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_ether_phy_cov_val_8000 = 0x8000U,
+} ether_phy_cov_uint16_const_t;
+
 /* ---------------------------------------------------------------------------
  * Local mock bus state
  * ------------------------------------------------------------------------ */
@@ -118,7 +147,7 @@ static ra8_err_t cov_bus_read(void* ctx, uint8_t phy, uint8_t reg, uint16_t* out
     if (st->reset_reads_remaining > 0U) {
       st->reset_reads_remaining = (uint16_t)(st->reset_reads_remaining - 1U);
     } else {
-      st->regs[0] = (uint16_t)(st->regs[0] & (uint16_t)~0x8000U);
+      st->regs[0] = (uint16_t)(st->regs[0] & (uint16_t)~k_ether_phy_cov_val_8000);
     }
   }
   *out = st->regs[reg];
@@ -203,7 +232,7 @@ static ra8_ether_phy_cfg_t cov_make_cfg(void)
   cfg.io.ctx              = &s_cov_io;
   cfg.phy_address         = (uint8_t)k_cov_phy_addr;
   cfg.mii_type            = k_ra8_ether_phy_rmii;
-  cfg.reset_wait_us       = 100U;
+  cfg.reset_wait_us       = k_ether_phy_cov_reset_wait_us_100;
   return cfg;
 }
 
@@ -373,8 +402,8 @@ static void test_link_status_speed_100half(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ether_phy_open(&cfg));
 
   /* BMSR: link_up (bit 2) | AN complete (bit 5). LPA: 100half (bit 7). */
-  s_cov_io.regs[1] = (uint16_t)(0x0004U | 0x0020U);
-  s_cov_io.regs[5] = 0x0080U;
+  s_cov_io.regs[1]                     = (uint16_t)(0x0004U | 0x0020U);
+  s_cov_io.regs[k_ether_phy_cov_val_5] = k_ether_phy_cov_regs_0080;
 
   ra8_ether_phy_link_t link = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ether_phy_link_status_get(&link));
@@ -410,8 +439,8 @@ static void test_link_status_speed_10full(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ether_phy_open(&cfg));
 
   /* BMSR: link_up | AN complete. LPA: 10full only (bit 6). */
-  s_cov_io.regs[1] = (uint16_t)(0x0004U | 0x0020U);
-  s_cov_io.regs[5] = 0x0040U;
+  s_cov_io.regs[1]                     = (uint16_t)(0x0004U | 0x0020U);
+  s_cov_io.regs[k_ether_phy_cov_val_5] = k_ether_phy_cov_regs_0040;
 
   ra8_ether_phy_link_t link = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ether_phy_link_status_get(&link));
@@ -449,8 +478,8 @@ static void test_link_status_speed_10half(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ether_phy_open(&cfg));
 
   /* BMSR: link_up | AN complete. LPA: 10half only (bit 5). */
-  s_cov_io.regs[1] = (uint16_t)(0x0004U | 0x0020U);
-  s_cov_io.regs[5] = 0x0020U;
+  s_cov_io.regs[1]                     = (uint16_t)(0x0004U | 0x0020U);
+  s_cov_io.regs[k_ether_phy_cov_val_5] = 0x0020U;
 
   ra8_ether_phy_link_t link = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ether_phy_link_status_get(&link));

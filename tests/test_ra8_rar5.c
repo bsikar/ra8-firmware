@@ -37,12 +37,72 @@
 #include "support/rar5_enc_fixture.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum rar5_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_rar5_bw_put_122          = 122U,
+  k_rar5_bw_put_127          = 127U,
+  k_rar5_bw_put_13           = 13U,
+  k_rar5_bw_put_17           = 17U,
+  k_rar5_bw_put_18           = 18U,
+  k_rar5_bw_put_19           = 19U,
+  k_rar5_bw_put_9            = 9U,
+  k_rar5_enc_match_lowdist_5 = 5U,
+  k_rar5_i_20                = 20U,
+  k_rar5_i_44                = 44U,
+  k_rar5_i_64                = 64U,
+  k_rar5_i_7                 = 7U,
+  k_rar5_op_e8               = 0xE8U,
+  k_rar5_op_e9               = 0xE9U,
+  k_rar5_s_notab_40          = 0x40U,
+  k_rar5_sentinel_5a         = 0x5AU,
+  k_rar5_v_ff                = 0xFFU,
+  k_rar5_val_24              = 24U,
+  k_rar5_val_eb              = 0xEBU,
+} rar5_uint8_const_t;
+
+/**
+ * @enum rar5_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_rar5_bw_put_262      = 262U,
+  k_rar5_enc_repdist_257 = 257U,
+  k_rar5_i_300           = 300U,
+  k_rar5_val_600         = 600,
+} rar5_uint16_const_t;
+
+/**
+ * @enum rar5_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_rar5_val_ffffff = 0xFFFFFFU,
+} rar5_uint32_const_t;
+
 static void test_rar5_all_literal_roundtrip(void)
 {
   TEST_BEGIN("rar5: all-literal round-trip");
-  static uint8_t s_src[600];
+  static uint8_t s_src[k_rar5_val_600];
   for (size_t i = 0U; i < sizeof(s_src); ++i) {
-    s_src[i] = (uint8_t)((i * 7U) + (i >> 2U) + 3U);
+    s_src[i] = (uint8_t)((i * k_rar5_i_7) + (i >> 2U) + 3U);
   }
   static uint8_t s_pk[k_pk_cap];
   memset(s_pk, 0, sizeof(s_pk));
@@ -83,17 +143,21 @@ static void test_rar5_match_legs(void)
   size_t elen = 0U;
   enc_tables(&body);
   /* 300-byte literal prefix so far/large distances have a window. */
-  for (uint32_t i = 0U; i < 300U; ++i) {
+  for (uint32_t i = 0U; i < k_rar5_i_300; ++i) {
     enc_lit(&body, s_exp, &elen, (uint8_t)(i + 1U));
   }
-  enc_match(&body, s_exp, &elen, 2U, 3U);           /* len 4, dist 4          */
-  enc_match_lenx(&body, s_exp, &elen, 1U, 1U);      /* len 11, dist 2         */
-  enc_match_distx(&body, s_exp, &elen, 0U, 1U);     /* len 2, dist 6          */
-  enc_match_lowdist(&body, s_exp, &elen, 0U, 5U);   /* len 2, dist 38         */
-  enc_match_hilow(&body, s_exp, &elen, 0U, 1U, 2U); /* len 2, dist 65+16+2=83 */
-  enc_match_big(&body, s_exp, &elen, 0U);           /* len 3, dist 257        */
-  enc_repdist(&body, s_exp, &elen, 1U, 257U);       /* len 3, reuse dist 257  */
-  enc_replast(&body, s_exp, &elen, 3U, 257U);       /* repeat last len/dist   */
+  enc_match(&body, s_exp, &elen, 2U, 3U);       /* len 4, dist 4  */
+  enc_match_lenx(&body, s_exp, &elen, 1U, 1U);  /* len 11, dist 2 */
+  enc_match_distx(&body, s_exp, &elen, 0U, 1U); /* len 2, dist 6  */
+  enc_match_lowdist(&body,
+                    s_exp,
+                    &elen,
+                    0U,
+                    k_rar5_enc_match_lowdist_5);                /* len 2, dist 38         */
+  enc_match_hilow(&body, s_exp, &elen, 0U, 1U, 2U);             /* len 2, dist 65+16+2=83 */
+  enc_match_big(&body, s_exp, &elen, 0U);                       /* len 3, dist 257        */
+  enc_repdist(&body, s_exp, &elen, 1U, k_rar5_enc_repdist_257); /* len 3, reuse dist 257  */
+  enc_replast(&body, s_exp, &elen, 3U, k_rar5_enc_repdist_257); /* repeat last len/dist   */
   static uint8_t s_pk[k_pk_cap];
   memset(s_pk, 0, sizeof(s_pk));
   const size_t pklen = enc_finish(&body, s_pk);
@@ -122,22 +186,22 @@ static void oracle_delta(uint8_t* d, uint32_t len, uint32_t chan)
 /** @brief Independent x86 CALL/JMP inverse over @p d (test oracle). */
 static void oracle_x86(uint8_t* d, uint32_t len, uint32_t filepos, bool e9)
 {
-  if (len < 5U) {
+  if (len < k_rar5_enc_match_lowdist_5) {
     return;
   }
   uint32_t i = 0U;
-  while (i <= len - 5U) {
+  while (i <= len - k_rar5_enc_match_lowdist_5) {
     const uint8_t op = d[i];
-    if (op == 0xE8U || (e9 && op == 0xE9U)) {
+    if (op == k_rar5_op_e8 || (e9 && op == k_rar5_op_e9)) {
       const uint32_t off = i + 1U;
-      uint32_t       v   = (uint32_t)d[off] | ((uint32_t)d[off + 1U] << 8U) |
-                           ((uint32_t)d[off + 2U] << 16U) | ((uint32_t)d[off + 3U] << 24U);
+      uint32_t       v = (uint32_t)d[off] | ((uint32_t)d[off + 1U] << 8U) |
+                         ((uint32_t)d[off + 2U] << 16U) | ((uint32_t)d[off + 3U] << k_rar5_val_24);
       v -= (filepos + off);
-      d[off]      = (uint8_t)(v & 0xFFU);
-      d[off + 1U] = (uint8_t)((v >> 8U) & 0xFFU);
-      d[off + 2U] = (uint8_t)((v >> 16U) & 0xFFU);
-      d[off + 3U] = (uint8_t)((v >> 24U) & 0xFFU);
-      i += 5U;
+      d[off]      = (uint8_t)(v & k_rar5_v_ff);
+      d[off + 1U] = (uint8_t)((v >> 8U) & k_rar5_v_ff);
+      d[off + 2U] = (uint8_t)((v >> 16U) & k_rar5_v_ff);
+      d[off + 3U] = (uint8_t)((v >> k_rar5_val_24) & k_rar5_v_ff);
+      i += k_rar5_enc_match_lowdist_5;
     } else {
       i += 1U;
     }
@@ -152,12 +216,12 @@ static void oracle_arm(uint8_t* d, uint32_t len, uint32_t filepos)
   }
   uint32_t i = 0U;
   while (i <= len - 4U) {
-    if (d[i + 3U] == 0xEBU) {
+    if (d[i + 3U] == k_rar5_val_eb) {
       uint32_t v = (uint32_t)d[i] | ((uint32_t)d[i + 1U] << 8U) | ((uint32_t)d[i + 2U] << 16U);
-      v          = (v - ((filepos + i) >> 2U)) & 0xFFFFFFU;
-      d[i]       = (uint8_t)(v & 0xFFU);
-      d[i + 1U]  = (uint8_t)((v >> 8U) & 0xFFU);
-      d[i + 2U]  = (uint8_t)((v >> 16U) & 0xFFU);
+      v          = (v - ((filepos + i) >> 2U)) & k_rar5_val_ffffff;
+      d[i]       = (uint8_t)(v & k_rar5_v_ff);
+      d[i + 1U]  = (uint8_t)((v >> 8U) & k_rar5_v_ff);
+      d[i + 2U]  = (uint8_t)((v >> 16U) & k_rar5_v_ff);
     }
     i += 4U;
   }
@@ -253,34 +317,38 @@ static void test_rar5_table_runs(void)
   memset(s_bodybuf, 0, sizeof(s_bodybuf));
   bitw_t body = {.buf = s_bodybuf, .cap = sizeof(s_bodybuf)};
   /* BD: 20 lengths of 5. */
-  for (uint32_t i = 0U; i < 20U; ++i) {
-    bw_put(&body, 5U, 4U);
+  for (uint32_t i = 0U; i < k_rar5_i_20; ++i) {
+    bw_put(&body, k_rar5_enc_match_lowdist_5, 4U);
   }
   /* LD 0..271 = 9 via a literal 9 then copy-previous runs (codes 16/17). */
-  bw_put(&body, 9U, 5U);   /* tbl[0] = 9                          */
-  bw_put(&body, 17U, 5U);  /* copy prev, long run                 */
-  bw_put(&body, 127U, 7U); /* run = 11 + 127 = 138 -> tbl[1..138] */
-  bw_put(&body, 17U, 5U);
-  bw_put(&body, 122U, 7U); /* run = 133 -> tbl[139..271] */
+  bw_put(&body,
+         k_rar5_bw_put_9,
+         k_rar5_enc_match_lowdist_5); /* tbl[0] = 9 */
+  bw_put(&body,
+         k_rar5_bw_put_17,
+         k_rar5_enc_match_lowdist_5);           /* copy prev, long run                 */
+  bw_put(&body, k_rar5_bw_put_127, k_rar5_i_7); /* run = 11 + 127 = 138 -> tbl[1..138] */
+  bw_put(&body, k_rar5_bw_put_17, k_rar5_enc_match_lowdist_5);
+  bw_put(&body, k_rar5_bw_put_122, k_rar5_i_7); /* run = 133 -> tbl[139..271] */
   /* LD 272..305 = 0 via a zero run (code 18 short + 19 long). */
-  bw_put(&body, 18U, 5U);
-  bw_put(&body, 7U, 3U); /* run = 3 + 7 = 10 -> tbl[272..281] */
-  bw_put(&body, 19U, 5U);
-  bw_put(&body, 13U, 7U); /* run = 11 + 13 = 24 -> tbl[282..305] */
+  bw_put(&body, k_rar5_bw_put_18, k_rar5_enc_match_lowdist_5);
+  bw_put(&body, k_rar5_i_7, 3U); /* run = 3 + 7 = 10 -> tbl[272..281] */
+  bw_put(&body, k_rar5_bw_put_19, k_rar5_enc_match_lowdist_5);
+  bw_put(&body, k_rar5_bw_put_13, k_rar5_i_7); /* run = 11 + 13 = 24 -> tbl[282..305] */
   /* DD/LDD/RD via direct lengths. */
-  for (uint32_t i = 0U; i < 64U; ++i) {
-    bw_put(&body, 6U, 5U);
+  for (uint32_t i = 0U; i < k_rar5_i_64; ++i) {
+    bw_put(&body, 6U, k_rar5_enc_match_lowdist_5);
   }
   for (uint32_t i = 0U; i < 16U; ++i) {
-    bw_put(&body, 4U, 5U);
+    bw_put(&body, 4U, k_rar5_enc_match_lowdist_5);
   }
-  for (uint32_t i = 0U; i < 44U; ++i) {
-    bw_put(&body, 6U, 5U);
+  for (uint32_t i = 0U; i < k_rar5_i_44; ++i) {
+    bw_put(&body, 6U, k_rar5_enc_match_lowdist_5);
   }
   /* Payload: a handful of literals. */
   static const uint8_t k_pay[5] = {0x41U, 0x42U, 0x43U, 0x44U, 0x45U};
   for (uint32_t i = 0U; i < sizeof(k_pay); ++i) {
-    bw_put(&body, k_pay[i], 9U);
+    bw_put(&body, k_pay[i], k_rar5_bw_put_9);
   }
   static uint8_t s_pk[k_pk_cap];
   memset(s_pk, 0, sizeof(s_pk));
@@ -311,7 +379,7 @@ static void test_rar5_bd_zero_run(void)
   enc_tables_bdzero(&body);
   static const uint8_t k_pay[6] = {0x30U, 0x31U, 0x32U, 0x33U, 0x34U, 0x35U};
   for (uint32_t i = 0U; i < sizeof(k_pay); ++i) {
-    bw_put(&body, k_pay[i], 9U);
+    bw_put(&body, k_pay[i], k_rar5_bw_put_9);
   }
   static uint8_t s_pk[k_pk_cap];
   memset(s_pk, 0, sizeof(s_pk));
@@ -341,7 +409,7 @@ static void test_rar5_malformed(void)
   /* Bad header checksum. */
   static uint8_t s_bad[k_pk_cap];
   memcpy(s_bad, s_pk, pklen);
-  s_bad[2] ^= 0xFFU; /* wrong checksum byte (bytecount 1) */
+  s_bad[2] ^= k_rar5_v_ff; /* wrong checksum byte (bytecount 1) */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(s_bad, pklen, sizeof(k_src)));
 
   /* Truncated stream (header only) with a large expected size -> short output. */
@@ -355,11 +423,12 @@ static void test_rar5_malformed(void)
 
   /* A first block that declares no tables must be rejected. */
   static uint8_t s_notab[16] = {};
-  s_notab[0]                 = 0x40U;                            /* last, no tables, bytecount 1 */
-  s_notab[1]                 = 0x02U;                            /* block size 2                 */
-  s_notab[2]                 = (uint8_t)(0x5AU ^ 0x40U ^ 0x02U); /* checksum                     */
-  s_notab[3]                 = 0x00U;
-  s_notab[4]                 = 0x00U;
+  s_notab[0]                 = k_rar5_s_notab_40; /* last, no tables, bytecount 1 */
+  s_notab[1]                 = 0x02U;             /* block size 2                 */
+  s_notab[2] =
+    (uint8_t)(k_rar5_sentinel_5a ^ k_rar5_s_notab_40 ^ 0x02U); /* checksum */
+  s_notab[3] = 0x00U;
+  s_notab[4] = 0x00U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(s_notab, 5U, sizeof(k_src)));
 
   /* A match whose distance reaches before the member start (solid reference). */
@@ -367,7 +436,9 @@ static void test_rar5_malformed(void)
   memset(s_bodybuf, 0, sizeof(s_bodybuf));
   bitw_t body = {.buf = s_bodybuf, .cap = sizeof(s_bodybuf)};
   enc_tables(&body);
-  bw_put(&body, 262U, 9U); /* length slot 0 -> length 2                      */
+  bw_put(&body,
+         k_rar5_bw_put_262,
+         k_rar5_bw_put_9); /* length slot 0 -> length 2                      */
   bw_put(&body, 3U, 6U);   /* distance slot 3 -> dist 4, but no prior output */
   static uint8_t s_pk2[k_pk_cap];
   memset(s_pk2, 0, sizeof(s_pk2));

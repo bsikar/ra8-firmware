@@ -42,6 +42,19 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum cgc_eswclk_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_cgc_eswclk_cov_i_255 = 255U,
+} cgc_eswclk_cov_uint8_const_t;
+
+/**
  * @enum eswclk_wait_idx_t
  * @brief fail-nth wait-loop indices used to isolate one timeout leg.
  *
@@ -295,7 +308,7 @@ static void test_eswclk_init_mstp_saturated(void)
   /* Saturate the ethphyclk refcount by enabling 255 times. The first
    * call ungates the peripheral (register write + readback); the
    * remaining 254 calls only increment the refcount (fast path). */
-  for (uint16_t i = 0U; i < 255U; ++i) {
+  for (uint16_t i = 0U; i < k_cgc_eswclk_cov_i_255; ++i) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_enable(k_ra8_mstp_ethphyclk));
   }
 

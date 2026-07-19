@@ -35,6 +35,50 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum comic_cbt_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_comic_cbt_s_arc_1f      = 0x1FU,
+  k_comic_cbt_s_arc_8b      = 0x8BU,
+  k_comic_cbt_tcb_octal_100 = 100,
+  k_comic_cbt_tcb_octal_108 = 108,
+  k_comic_cbt_tcb_octal_116 = 116,
+  k_comic_cbt_tcb_octal_12  = 12U,
+  k_comic_cbt_tcb_octal_124 = 124,
+  k_comic_cbt_tcb_octal_136 = 136,
+  k_comic_cbt_tcb_octal_148 = 148,
+  k_comic_cbt_tcb_octal_7   = 7U,
+  k_comic_cbt_val_155       = 155,
+  k_comic_cbt_val_156       = 156,
+  k_comic_cbt_val_64        = 64,
+  k_comic_cbt_val_ff        = 0xFFU,
+} comic_cbt_uint8_const_t;
+
+/**
+ * @enum comic_cbt_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_comic_cbt_i_512         = 512U,
+  k_comic_cbt_off_1024      = 1024U,
+  k_comic_cbt_s_arc_len_600 = 600U,
+} comic_cbt_uint16_const_t;
+
+/** @brief Named double constant used by this file. */
+static const double k_comic_cbt_tcb_octal_0644 = 0644U;
+
+/**
  * @enum tcb_dim_t
  * @brief Archive / buffer budgets (tests are magic-number exempt).
  */
@@ -99,22 +143,22 @@ tcb_tar_add(uint8_t* dst, size_t off, const char* name, uint8_t type, const void
   uint8_t* b = &dst[off];
   memset(b, 0, 512U);
   strncpy((char*)&b[0], name, 100U);
-  tcb_octal(&b[100], 8U, 0644U);
-  tcb_octal(&b[108], 8U, 0U);
-  tcb_octal(&b[116], 8U, 0U);
-  tcb_octal(&b[124], 12U, (uint64_t)n);
-  tcb_octal(&b[136], 12U, 0U);
-  b[156] = type;
+  tcb_octal(&b[k_comic_cbt_tcb_octal_100], 8U, k_comic_cbt_tcb_octal_0644);
+  tcb_octal(&b[k_comic_cbt_tcb_octal_108], 8U, 0U);
+  tcb_octal(&b[k_comic_cbt_tcb_octal_116], 8U, 0U);
+  tcb_octal(&b[k_comic_cbt_tcb_octal_124], k_comic_cbt_tcb_octal_12, (uint64_t)n);
+  tcb_octal(&b[k_comic_cbt_tcb_octal_136], k_comic_cbt_tcb_octal_12, 0U);
+  b[k_comic_cbt_val_156] = type;
   memcpy(&b[257], "ustar", 5U);
   memcpy(&b[263], "00", 2U);
   memset(&b[148], (int)' ', 8U);
   uint32_t sum = 0U;
-  for (uint32_t i = 0U; i < 512U; ++i) {
+  for (uint32_t i = 0U; i < k_comic_cbt_i_512; ++i) {
     sum += b[i];
   }
-  tcb_octal(&b[148], 7U, (uint64_t)sum);
-  b[155] = (uint8_t)' ';
-  off += 512U;
+  tcb_octal(&b[k_comic_cbt_tcb_octal_148], k_comic_cbt_tcb_octal_7, (uint64_t)sum);
+  b[k_comic_cbt_val_155] = (uint8_t)' ';
+  off += k_comic_cbt_i_512;
   if (n > 0U) {
     memcpy(&dst[off], data, n);
     const size_t padded = ((n + 511U) / 512U) * 512U;
@@ -132,18 +176,18 @@ static size_t tcb_build_tar(uint8_t* dst)
   size_t     off  = 0U;
   off             = tcb_tar_add(dst, off, "dir/", (uint8_t)'5', nullptr, 0U);
   off             = tcb_tar_add(dst, off, "page2.png", (uint8_t)'0', p2, sizeof(p2) - 1U);
-  off             = tcb_tar_add(dst, off, "notes.txt", (uint8_t)'0', "skip me", 7U);
-  off             = tcb_tar_add(dst, off, "page1.png", (uint8_t)'0', p1, sizeof(p1) - 1U);
+  off = tcb_tar_add(dst, off, "notes.txt", (uint8_t)'0', "skip me", k_comic_cbt_tcb_octal_7);
+  off = tcb_tar_add(dst, off, "page1.png", (uint8_t)'0', p1, sizeof(p1) - 1U);
   memset(&dst[off], 0, 1024U);
-  return off + 1024U;
+  return off + k_comic_cbt_off_1024;
 }
 
 /** @brief Wrap @p payload as a gzip member into ::s_arc. */
 static void tcb_gzip_wrap(const uint8_t* payload, size_t n)
 {
   size_t off   = 0U;
-  s_arc[off++] = 0x1FU;
-  s_arc[off++] = 0x8BU;
+  s_arc[off++] = k_comic_cbt_s_arc_1f;
+  s_arc[off++] = k_comic_cbt_s_arc_8b;
   s_arc[off++] = 8U;
   s_arc[off++] = 0U;
   memset(&s_arc[off], 0, 6U);
@@ -157,8 +201,8 @@ static void tcb_gzip_wrap(const uint8_t* payload, size_t n)
   off += comp;
   const uint32_t crc = (uint32_t)mz_crc32(MZ_CRC32_INIT, payload, n);
   for (uint32_t i = 0U; i < 4U; ++i) {
-    s_arc[off + i]      = (uint8_t)((crc >> (8U * i)) & 0xFFU);
-    s_arc[off + 4U + i] = (uint8_t)(((uint32_t)n >> (8U * i)) & 0xFFU);
+    s_arc[off + i]      = (uint8_t)((crc >> (8U * i)) & k_comic_cbt_val_ff);
+    s_arc[off + 4U + i] = (uint8_t)(((uint32_t)n >> (8U * i)) & k_comic_cbt_val_ff);
   }
   s_arc_len = off + 8U;
 }
@@ -185,8 +229,8 @@ static void tcb_assert_two_pages(ra8_comic_t* c, ra8_comic_kind_t kind)
 {
   TEST_ASSERT_EQ(kind, ra8_comic_kind(c));
   TEST_ASSERT_EQ(2U, ra8_comic_page_count(c));
-  char     nb[64] = {};
-  uint16_t nl     = 0U;
+  char     nb[k_comic_cbt_val_64] = {};
+  uint16_t nl                     = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_comic_page_info(c, 0U, nb, sizeof(nb), &nl, nullptr, nullptr));
   TEST_ASSERT_EQ(0, memcmp(nb, "page1.png", 9U)); /* sorted: page1 first */
   size_t got = 0U;
@@ -225,7 +269,7 @@ static void test_cbt_bare_tar_open(void)
 
   /* Non-archive bytes are still cleanly refused by every backend. */
   memset(s_arc, 0xA5, 600U);
-  s_arc_len = 600U;
+  s_arc_len = k_comic_cbt_s_arc_len_600;
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
                  ra8_comic_open(&c,
                                 tcb_read,
@@ -347,7 +391,7 @@ static ra8_err_t tcb_open_full(ra8_comic_t*      c,
 static void tcb_bombs(ra8_comic_t* c)
 {
   /* gzip-of-gzip: the classic nesting bomb shape. */
-  tcb_gzip_wrap((const uint8_t*)"payload", 7U);
+  tcb_gzip_wrap((const uint8_t*)"payload", k_comic_cbt_tcb_octal_7);
   memcpy(s_inner, s_arc, s_arc_len);
   tcb_gzip_wrap(s_inner, s_arc_len);
   TEST_ASSERT_EQ(k_ra8_err_decomp_depth, tcb_open_wrapped(c));

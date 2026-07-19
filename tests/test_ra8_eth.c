@@ -18,6 +18,54 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum eth_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_eth_buffer_size_10        = 10U,
+  k_eth_channel_7             = 7U,
+  k_eth_i_0f                  = 0x0FU,
+  k_eth_num_tx_descriptors_99 = 99U,
+  k_eth_val_128               = 128,
+  k_eth_val_64                = 64,
+  k_eth_val_c0                = 0xC0U,
+} eth_uint8_const_t;
+
+/**
+ * @enum eth_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_eth_buffer_size_2000 = 2000U,
+  k_eth_eswm_sts_babe    = 0xBABEU,
+  k_eth_eswm_sts_cafe    = 0xCAFEU,
+  k_eth_val_2000         = 2000,
+} eth_uint16_const_t;
+
+/**
+ * @enum eth_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_eth_eswm_sts_deadbeef = 0xDEADBEEFU,
+} eth_uint32_const_t;
+
+/**
  * @enum ra8_eth_test_t
  * @brief Driver-private constants used by the tests.
  */
@@ -85,7 +133,7 @@ static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("eth status read + clear");
   prep();
-  ra8_eswm()->ESWM_STS = 0xDEADBEEFU;
+  ra8_eswm()->ESWM_STS = k_eth_eswm_sts_deadbeef;
   uint32_t mask        = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_get_status(&mask));
   TEST_ASSERT_EQ(0xDEADBEEFU, mask);
@@ -105,13 +153,13 @@ static void test_attach_and_dispatch(void)
   TEST_BEGIN("eth attach + dispatch");
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_attach_handler(stub_eth_cb, (void*)(uintptr_t)0xE0U));
-  ra8_eswm()->ESWM_STS = 0xCAFEU;
+  ra8_eswm()->ESWM_STS = k_eth_eswm_sts_cafe;
   ra8_eth_dispatch();
   TEST_ASSERT_EQ(1, s_eth_cb_count);
   TEST_ASSERT_EQ(0xCAFEU, s_eth_cb_last_mask);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_attach_handler(nullptr, nullptr));
-  ra8_eswm()->ESWM_STS = 0xBABEU;
+  ra8_eswm()->ESWM_STS = k_eth_eswm_sts_babe;
   ra8_eth_dispatch();
   TEST_ASSERT_EQ(1, s_eth_cb_count);
   TEST_END("eth attach + dispatch");
@@ -168,7 +216,7 @@ static void test_open_bad_channel(void)
   TEST_BEGIN("eth open bad channel");
   prep();
   ra8_eth_cfg_t bad = s_test_cfg;
-  bad.channel       = 7U;
+  bad.channel       = k_eth_channel_7;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_open(&bad));
   TEST_END("eth open bad channel");
 }
@@ -193,11 +241,11 @@ static void test_mcdc_open_ring_size_oversize(void)
   TEST_BEGIN("eth open ring-size MC/DC: tx>max & rx>max");
   prep();
   ra8_eth_cfg_t bad_tx      = s_test_cfg;
-  bad_tx.num_tx_descriptors = 99U; /* > k_ra8_eth_num_tx_desc (=8) */
+  bad_tx.num_tx_descriptors = k_eth_num_tx_descriptors_99; /* > k_ra8_eth_num_tx_desc (=8) */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_open(&bad_tx));
   prep();
   ra8_eth_cfg_t bad_rx      = s_test_cfg;
-  bad_rx.num_rx_descriptors = 99U;
+  bad_rx.num_rx_descriptors = k_eth_num_tx_descriptors_99;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_open(&bad_rx));
   TEST_END("eth open ring-size MC/DC: tx>max & rx>max");
 }
@@ -263,7 +311,7 @@ static void test_write_bad_length(void)
   TEST_BEGIN("eth write bad length");
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&s_test_cfg));
-  uint8_t pkt[64];
+  uint8_t pkt[k_eth_val_64];
   (void)memset(pkt, 0xA5, sizeof(pkt));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_write(pkt, (uint32_t)k_ra8_eth_test_short_size));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_write(pkt, 9999U));
@@ -283,7 +331,7 @@ static void test_write_enqueues_and_advances(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&s_test_cfg));
 
-  uint8_t pkt[64];
+  uint8_t pkt[k_eth_val_64];
   for (uint16_t i = 0U; i < (uint16_t)sizeof(pkt); ++i) {
     pkt[i] = (uint8_t)i;
   }
@@ -311,7 +359,7 @@ static void test_write_slot0_reuse(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&s_test_cfg));
 
-  uint8_t pkt[64];
+  uint8_t pkt[k_eth_val_64];
   (void)memset(pkt, 0x5A, sizeof(pkt));
 
   /* The GWCA TX path is synchronous and always reuses extended
@@ -341,7 +389,7 @@ static void test_read_no_data(void)
   TEST_BEGIN("eth read no data");
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&s_test_cfg));
-  uint8_t  buf[128];
+  uint8_t  buf[k_eth_val_128];
   uint32_t got = 0U;
   TEST_ASSERT_EQ(k_ra8_err_no_data, ra8_eth_read(buf, (uint32_t)sizeof(buf), &got));
   TEST_ASSERT_EQ(0, got);
@@ -381,16 +429,16 @@ static void test_read_returns_frame(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&s_test_cfg));
 
-  uint8_t expected[64];
+  uint8_t expected[k_eth_val_64];
   for (uint16_t i = 0U; i < (uint16_t)sizeof(expected); ++i) {
-    expected[i] = (uint8_t)(0xC0U + (i & 0x0FU));
+    expected[i] = (uint8_t)(k_eth_val_c0 + (i & k_eth_i_0f));
   }
   /* Test-only hook: pretend the EDMAC engine released a frame on the
    * head RX descriptor. The hook drops the bytes into the buffer and
    * clears RACT so the next ra8_eth_read pops it. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_test_inject_rx(expected, (uint32_t)sizeof(expected)));
 
-  uint8_t  buf[128];
+  uint8_t  buf[k_eth_val_128];
   uint32_t got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_read(buf, (uint32_t)sizeof(buf), &got));
   TEST_ASSERT_EQ(sizeof(expected), got);
@@ -447,12 +495,12 @@ static void test_get_stats_after_io(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&s_test_cfg));
 
-  uint8_t pkt[64];
+  uint8_t pkt[k_eth_val_64];
   (void)memset(pkt, 0x77, sizeof(pkt));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_write(pkt, (uint32_t)sizeof(pkt)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_write(pkt, (uint32_t)sizeof(pkt)));
 
-  uint8_t  buf[128];
+  uint8_t  buf[k_eth_val_128];
   uint32_t got = 0U;
   TEST_ASSERT_EQ(k_ra8_err_no_data, ra8_eth_read(buf, (uint32_t)sizeof(buf), &got));
 
@@ -478,7 +526,7 @@ static void test_apis_require_open(void)
 {
   TEST_BEGIN("eth apis require open");
   prep();
-  uint8_t         buf[64];
+  uint8_t         buf[k_eth_val_64];
   uint32_t        got   = 0U;
   ra8_eth_link_t  link  = {};
   ra8_eth_stats_t stats = {};
@@ -533,13 +581,13 @@ static void test_mcdc_resolve_sizes_buf_size(void)
   /* Vector 2: bs<min -> C1=T short-circuit. */
   prep();
   ra8_eth_cfg_t v2 = s_test_cfg;
-  v2.buffer_size   = 10U;
+  v2.buffer_size   = k_eth_buffer_size_10;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_open(&v2));
 
   /* Vector 3: bs>max -> C1=F, C2=T. */
   prep();
   ra8_eth_cfg_t v3 = s_test_cfg;
-  v3.buffer_size   = 2000U;
+  v3.buffer_size   = k_eth_buffer_size_2000;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_eth_open(&v3));
 
   TEST_END("eth open MC/DC: bs<min || bs>max");
@@ -564,7 +612,7 @@ static void test_mcdc_eth_write_len_bounds(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&s_test_cfg));
 
-  uint8_t pkt[2000];
+  uint8_t pkt[k_eth_val_2000];
   (void)memset(pkt, 0xA5, sizeof(pkt));
 
   /* Vector 1: in-range length succeeds. */

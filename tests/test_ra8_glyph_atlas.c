@@ -19,6 +19,21 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum glyph_atlas_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_glyph_atlas_t_key_12 = 12U,
+  k_glyph_atlas_t_key_41 = 0x41U,
+  k_glyph_atlas_t_key_99 = 99U,
+} glyph_atlas_uint8_const_t;
+
+/**
  * @enum t_glyph_const_t
  * @brief Fixture sizes.
  */
@@ -95,7 +110,7 @@ static void test_render_hit(void)
   ra8_glyph_atlas_cfg_t cfg = t_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glyph_atlas_init(&a, &cfg));
 
-  ra8_glyph_key_t k = t_key(0x41U, 1U, 16U, 0U);
+  ra8_glyph_key_t k = t_key(k_glyph_atlas_t_key_41, 1U, 16U, 0U);
   ra8_glyph_t     g = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glyph_atlas_get(&a, &k, &g)); /* miss -> render */
   TEST_ASSERT_EQ(4, g.width);
@@ -166,12 +181,12 @@ static void test_pin_protection(void)
 
   const uint8_t* pins[(size_t)k_t_cells] = {};
   for (uint32_t i = 0; i < (uint32_t)k_t_cells; ++i) {
-    ra8_glyph_key_t k = t_key(i, 2U, 12U, 0U);
+    ra8_glyph_key_t k = t_key(i, 2U, k_glyph_atlas_t_key_12, 0U);
     ra8_glyph_t     g = {};
     TEST_ASSERT_EQ(k_ra8_ok, ra8_glyph_atlas_get(&a, &k, &g)); /* pinned (no put) */
     pins[i] = g.bitmap;
   }
-  ra8_glyph_key_t kn = t_key(99U, 2U, 12U, 0U);
+  ra8_glyph_key_t kn = t_key(k_glyph_atlas_t_key_99, 2U, k_glyph_atlas_t_key_12, 0U);
   ra8_glyph_t     gn = {};
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_glyph_atlas_get(&a, &kn, &gn)); /* all pinned */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glyph_atlas_put(&a, pins[0]));

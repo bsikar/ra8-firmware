@@ -24,6 +24,23 @@
 #include "ra8_jpeg_sw.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum jpeg_sw_stream_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_jpeg_sw_stream_c_77         = 77U,
+  k_jpeg_sw_stream_s_src_d9     = 0xD9U,
+  k_jpeg_sw_stream_s_src_ff     = 0xFFU,
+  k_jpeg_sw_stream_s_src_len_64 = 64U,
+  k_jpeg_sw_stream_x_5          = 5U,
+} jpeg_sw_stream_uint8_const_t;
+
 /** @brief Test geometry + buffer sizing. */
 enum : uint32_t {
   k_t_w         = 200U,               /**< Odd-MCU image width.         */
@@ -175,7 +192,8 @@ static void encode_pattern(uint32_t w, uint32_t h, uint8_t quality)
   for (uint32_t y = 0U; y < h; y++) {
     for (uint32_t x = 0U; x < w; x++) {
       for (uint32_t c = 0U; c < 3U; c++) {
-        s_rgb[(((y * w) + x) * 3U) + c] = (uint8_t)((x * 5U) ^ (y * 3U) ^ (c * 77U));
+        s_rgb[(((y * w) + x) * 3U) + c] =
+          (uint8_t)((x * k_jpeg_sw_stream_x_5) ^ (y * 3U) ^ (c * k_jpeg_sw_stream_c_77));
       }
     }
   }
@@ -308,12 +326,12 @@ static void test_jpeg_stream_errors(void)
   TEST_ASSERT_EQ(
     k_ra8_err_protocol_error,
     ra8_jpeg_sw_decode_stripes(t_pull, &s_pull_src, s_win, k_t_win_cap, t_geom, t_rows, &sink));
-  s_src[0] = 0xFFU;
+  s_src[0] = k_jpeg_sw_stream_s_src_ff;
 
   /* SOI+EOI only: EOI before any scan. */
   s_src_len  = 4U;
-  s_src[2]   = 0xFFU;
-  s_src[3]   = 0xD9U;
+  s_src[2]   = k_jpeg_sw_stream_s_src_ff;
+  s_src[3]   = k_jpeg_sw_stream_s_src_d9;
   s_pull_src = (t_src_t){.pos = 0U, .chunk = 0U};
   TEST_ASSERT_EQ(
     k_ra8_err_protocol_error,
@@ -321,7 +339,7 @@ static void test_jpeg_stream_errors(void)
 
   /* Truncated entropy stream (cut at 60%). */
   encode_pattern(k_t_w, k_t_h, (uint8_t)k_ra8_jpeg_sw_quality_default);
-  s_src_len = (keep * 3U) / 5U;
+  s_src_len = (keep * 3U) / k_jpeg_sw_stream_x_5;
   sink      = (t_sink_t){};
   TEST_ASSERT_EQ(k_ra8_err_protocol_error, stream_decode(k_t_w, k_t_h, 0U, &sink));
 
@@ -477,7 +495,7 @@ static void test_jpeg_stream_grayscale(void)
   memcpy(s_src, s_jpeg_gray_hdr, sizeof(s_jpeg_gray_hdr));
   s_src_len = sizeof(s_jpeg_gray_hdr);
   memset(&s_src[s_src_len], 1, 64U); /* the all-ones quant table */
-  s_src_len += 64U;
+  s_src_len += k_jpeg_sw_stream_s_src_len_64;
   memcpy(&s_src[s_src_len], s_jpeg_gray_body, sizeof(s_jpeg_gray_body));
   s_src_len += (uint32_t)sizeof(s_jpeg_gray_body);
 
@@ -493,7 +511,7 @@ static void test_jpeg_stream_grayscale(void)
   uint16_t rh = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_jpeg_sw_decode(s_src, s_src_len, s_ref, (uint32_t)sizeof(s_ref), &rw, &rh));
-  for (uint32_t i = 0U; i < 64U; i++) {
+  for (uint32_t i = 0U; i < k_jpeg_sw_stream_s_src_len_64; i++) {
     TEST_ASSERT_EQ(s_ref[(size_t)i * 3U], s_got[i]);
   }
   TEST_END("jpeg stream: grayscale stripes (1 channel)");

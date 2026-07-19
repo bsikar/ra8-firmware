@@ -16,6 +16,33 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum iwdt_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_iwdt_i_5       = 5U,
+  k_iwdt_iwdtrr_5a = 0x5AU,
+} iwdt_uint8_const_t;
+
+/**
+ * @enum iwdt_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_iwdt_iwdtsr_1234 = 0x1234U,
+} iwdt_uint16_const_t;
+
+/**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
@@ -66,7 +93,7 @@ static void test_refresh_writes_sequence(void)
   ra8_sim_mmap_reset();
 
   volatile r_iwdt_regs_t* reg = ra8_iwdt();
-  reg->IWDTRR                 = 0x5AU;
+  reg->IWDTRR                 = k_iwdt_iwdtrr_5a;
 
   /* The deferred refresh writes the second byte last. After it returns
    * IWDTRR should hold 0xFF. Per HUM Ch 28.2.1 a single write does NOT
@@ -87,7 +114,7 @@ static void test_repeated_refresh_is_safe(void)
 {
   TEST_BEGIN("ra8_iwdt_refresh_deferred multiple calls");
   ra8_sim_mmap_reset();
-  for (uint8_t i = 0U; i < 5U; ++i) {
+  for (uint8_t i = 0U; i < k_iwdt_i_5; ++i) {
     ra8_iwdt_refresh_deferred();
   }
   TEST_ASSERT_EQ(k_ra8_iwdt_refresh_b, ra8_iwdt()->IWDTRR);
@@ -139,7 +166,7 @@ static void test_get_status_masks_cntval(void)
   /* IWDTSR has CNTVAL in bits 13:0 and the flag bits 15:14. Verify
    * ra8_iwdt_get_status returns ONLY the flag bits even when CNTVAL is
    * non-zero. Mirrors FSP IWDT_PRV_STATUS_START_BIT semantics. */
-  ra8_iwdt()->IWDTSR = (uint16_t)0x1234U | (uint16_t)k_ra8_iwdt_status_underflow;
+  ra8_iwdt()->IWDTSR = (uint16_t)k_iwdt_iwdtsr_1234 | (uint16_t)k_ra8_iwdt_status_underflow;
 
   uint16_t mask = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_iwdt_get_status(&mask));
@@ -159,7 +186,7 @@ static void test_get_counter(void)
   ra8_sim_mmap_reset();
   /* CNTVAL = 0x1234, plus a stray UNDFF flag at bit 14. Counter
    * readout must return 0x1234 (bits 13:0) only. */
-  ra8_iwdt()->IWDTSR = (uint16_t)0x1234U | (uint16_t)k_ra8_iwdt_status_underflow;
+  ra8_iwdt()->IWDTSR = (uint16_t)k_iwdt_iwdtsr_1234 | (uint16_t)k_ra8_iwdt_status_underflow;
 
   uint16_t cnt = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_iwdt_get_counter(&cnt));
