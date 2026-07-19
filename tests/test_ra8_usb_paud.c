@@ -25,11 +25,11 @@
  * to an endpoint, and 0x80 a standard device-to-device request.
  */
 typedef enum : uint8_t {
-  k_t_bmreq_class_out      = 0x21U, /**< Host-to-device, class, interface.          */
-  k_t_bmreq_class_in       = 0xA2U, /**< Device-to-host, class, endpoint.           */
-  k_t_bmreq_std_in         = 0x80U, /**< Device-to-host, standard, device.          */
+  k_t_bmreq_class_out      = 0x21U, /**< Host-to-device, class, interface.             */
+  k_t_bmreq_class_in       = 0xA2U, /**< Device-to-host, class, endpoint.              */
+  k_t_bmreq_std_in         = 0x80U, /**< Device-to-host, standard, device.             */
   k_t_breq_unknown         = 0x77U, /**< A bRequest outside the audio set; must stall. */
-  k_t_bytes_per_sample_bad = 5U,    /**< Sample width outside the supported 1..4. */
+  k_t_bytes_per_sample_bad = 5U,    /**< Sample width outside the supported 1..4.      */
   k_t_volume_probe         = 0x55,  /**< Pre-set volume; a control that returns
                                     without writing it leaves this value.       */
 } t_paud_setup_t;
@@ -39,9 +39,9 @@ typedef enum : uint8_t {
  * @brief Sample rates the format validator accepts and rejects.
  */
 typedef enum : uint32_t {
-  k_t_rate_unsupported = 44100U, /**< A rate the device does not implement.    */
-  k_t_rate_supported   = 48000U, /**< The nominal rate the happy path uses.    */
-  k_t_rate_high        = 96000U, /**< The high rate, also accepted.            */
+  k_t_rate_unsupported = 44100U, /**< A rate the device does not implement. */
+  k_t_rate_supported   = 48000U, /**< The nominal rate the happy path uses. */
+  k_t_rate_high        = 96000U, /**< The high rate, also accepted.         */
 } t_paud_rate_t;
 
 /* Sample minimal UAC1 descriptor blob (just header + interface stubs). */

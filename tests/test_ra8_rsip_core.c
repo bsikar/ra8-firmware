@@ -56,8 +56,8 @@ typedef enum : uint16_t {
                                    zero-extended rather than hashed.           */
   k_t_key_long_len   = 131U,  /**< A key longer than the block, which must be
                                    hashed down to 32 bytes first.              */
-  k_t_key_short_byte = 0x0BU, /**< Fill byte of the short key.                 */
-  k_t_key_long_byte  = 0xAAU, /**< Fill byte of the long key.                  */
+  k_t_key_short_byte = 0x0BU, /**< Fill byte of the short key. */
+  k_t_key_long_byte  = 0xAAU, /**< Fill byte of the long key.  */
 } t_hmac_t;
 
 /**

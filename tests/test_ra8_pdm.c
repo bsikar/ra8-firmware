@@ -33,19 +33,19 @@
  * land in the wrong register and be visible.
  */
 typedef enum : uint16_t {
-  k_t_sinc_dec   = 0x7CU,   /**< SINC decimation factor.                    */
-  k_t_sinc_range = 0x05U,   /**< SINC output range select.                  */
-  k_t_hpf_s0     = 0x3F61U, /**< High-pass shift coefficient s0.            */
-  k_t_hpf_k1     = 0x3EC1U, /**< High-pass feedback coefficient k1.         */
-  k_t_hpf_h0     = 0x4000U, /**< High-pass FIR tap 0: +1.0 in Q1.14.        */
-  k_t_hpf_h1     = 0xC000U, /**< High-pass FIR tap 1: -1.0 in Q1.14.        */
+  k_t_sinc_dec   = 0x7CU,   /**< SINC decimation factor.             */
+  k_t_sinc_range = 0x05U,   /**< SINC output range select.           */
+  k_t_hpf_s0     = 0x3F61U, /**< High-pass shift coefficient s0.     */
+  k_t_hpf_k1     = 0x3EC1U, /**< High-pass feedback coefficient k1.  */
+  k_t_hpf_h0     = 0x4000U, /**< High-pass FIR tap 0: +1.0 in Q1.14. */
+  k_t_hpf_h1     = 0xC000U, /**< High-pass FIR tap 1: -1.0 in Q1.14. */
   k_t_comp_tap   = 0x1FE8U, /**< Compensation-filter tap; written to the
                                    first and last slot to prove the whole
                                    array is marshalled.                       */
-  k_t_lpf_h0     = 0x0400U, /**< Low-pass leading tap.                      */
-  k_t_lpf_tap    = 0x1FF8U, /**< Low-pass tap, first and last slot.         */
-  k_t_comp_last  = 10U,     /**< Last compensation-filter tap index.        */
-  k_t_lpf_last   = 19U,     /**< Last low-pass tap index.                   */
+  k_t_lpf_h0     = 0x0400U, /**< Low-pass leading tap.               */
+  k_t_lpf_tap    = 0x1FF8U, /**< Low-pass tap, first and last slot.  */
+  k_t_comp_last  = 10U,     /**< Last compensation-filter tap index. */
+  k_t_lpf_last   = 19U,     /**< Last low-pass tap index.            */
 } t_pdm_filter_t;
 
 /**
@@ -60,9 +60,9 @@ typedef enum : uint16_t {
 typedef enum : uint32_t {
   k_t_fifo_over_cap = 10U,      /**< PDDSR count above the caller's buffer,
                                      which the read must cap.                 */
-  k_t_sample_pos    = 0x12345U, /**< A positive 20-bit sample.                */
-  k_t_sample_neg1   = 0xFFFFFU, /**< All ones: sign-extends to -1.            */
-  k_t_sample_min    = 0x80000U, /**< Sign bit only: sign-extends to -524288.  */
+  k_t_sample_pos    = 0x12345U, /**< A positive 20-bit sample.               */
+  k_t_sample_neg1   = 0xFFFFFU, /**< All ones: sign-extends to -1.           */
+  k_t_sample_min    = 0x80000U, /**< Sign bit only: sign-extends to -524288. */
 } t_pdm_sample_t;
 
 /** @brief Channel under test (EK-RA8D2 MEMS mic wiring). */

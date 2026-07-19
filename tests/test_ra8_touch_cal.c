@@ -35,14 +35,14 @@
  * The collinear triples exist to make the least-squares system singular.
  */
 typedef enum : int16_t {
-  k_t_cal_points   = 5,    /**< Calibration points the solver requires.       */
-  k_t_collinear_r1 = 100,  /**< Second raw point of the collinear triple.     */
-  k_t_collinear_r2 = 200,  /**< Third raw point; 0/100/200 lie on one line.   */
-  k_t_collinear_s1 = 10,   /**< Second screen point of the collinear triple.  */
-  k_t_collinear_s2 = 20,   /**< Third screen point.                           */
+  k_t_cal_points   = 5,    /**< Calibration points the solver requires.      */
+  k_t_collinear_r1 = 100,  /**< Second raw point of the collinear triple.    */
+  k_t_collinear_r2 = 200,  /**< Third raw point; 0/100/200 lie on one line.  */
+  k_t_collinear_s1 = 10,   /**< Second screen point of the collinear triple. */
+  k_t_collinear_s2 = 20,   /**< Third screen point.                          */
   k_t_below_range  = 50,   /**< Magnitude of the negative input the identity
                                 transform must clip to 0.                      */
-  k_t_above_range  = 9999, /**< Input past the screen edge, clipped to w-1.   */
+  k_t_above_range  = 9999, /**< Input past the screen edge, clipped to w-1. */
 } t_tc_sample_t;
 
 /**
@@ -56,10 +56,10 @@ typedef enum : int16_t {
  */
 typedef enum : uint16_t {
   k_t_screen_small = 100U, /**< Screen edge small enough that a wide inset fails. */
-  k_t_screen_mid   = 200U, /**< A larger screen edge.                            */
-  k_t_screen_wide  = 320U, /**< The QVGA width used by the happy-path run.       */
-  k_t_inset_ok     = 10U,  /**< An inset that leaves room on every screen above. */
-  k_t_inset_wide   = 60U,  /**< An inset that collapses the 100 px screen.       */
+  k_t_screen_mid   = 200U, /**< A larger screen edge.                             */
+  k_t_screen_wide  = 320U, /**< The QVGA width used by the happy-path run.        */
+  k_t_inset_ok     = 10U,  /**< An inset that leaves room on every screen above.  */
+  k_t_inset_wide   = 60U,  /**< An inset that collapses the 100 px screen.        */
 } t_tc_screen_t;
 
 /**

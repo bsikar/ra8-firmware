@@ -46,11 +46,11 @@
  * vector it belongs to.
  */
 typedef enum : uint8_t {
-  k_t_kat_nonce_len = 12U, /**< GCM nonce: the 96-bit form.                   */
+  k_t_kat_nonce_len = 12U, /**< GCM nonce: the 96-bit form. */
   k_t_kat_pt_len    = 64U, /**< Test Case 3 plaintext; also the expected
                                 decrypted length and the ECDSA r||s signature. */
   k_t_kat_ct_len    = 80U, /**< Its ciphertext: 64 payload bytes + a 16-byte tag. */
-  k_t_kat_pub_len   = 65U, /**< Uncompressed P-256 public key: 0x04 || X || Y. */
+  k_t_kat_pub_len   = 65U, /**< Uncompressed P-256 public key: 0x04 || X || Y.    */
   k_t_kat_pub_off_y = 33U, /**< Offset of Y within it: past the 0x04 prefix and
                                 the 32-byte X coordinate.                      */
 } t_kat_len_t;

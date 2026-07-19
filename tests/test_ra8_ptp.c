@@ -23,15 +23,15 @@
  * set, leaving byte 0 zero to keep the address locally administered.
  */
 typedef enum : uint8_t {
-  k_t_mac_b1       = 0x11U, /**< MAC address byte 1.                        */
-  k_t_mac_b2       = 0x22U, /**< MAC address byte 2.                        */
-  k_t_mac_b3       = 0x33U, /**< MAC address byte 3.                        */
-  k_t_mac_b4       = 0x44U, /**< MAC address byte 4.                        */
-  k_t_mac_b5       = 0x55U, /**< MAC address byte 5, the last.              */
-  k_t_mac_last_idx = 5U,    /**< Index of that last byte.                   */
+  k_t_mac_b1       = 0x11U, /**< MAC address byte 1.                           */
+  k_t_mac_b2       = 0x22U, /**< MAC address byte 2.                           */
+  k_t_mac_b3       = 0x33U, /**< MAC address byte 3.                           */
+  k_t_mac_b4       = 0x44U, /**< MAC address byte 4.                           */
+  k_t_mac_b5       = 0x55U, /**< MAC address byte 5, the last.                 */
+  k_t_mac_last_idx = 5U,    /**< Index of that last byte.                      */
   k_t_domain_over  = 200U,  /**< Domain number past k_ra8_ptp_domain_user_max. */
-  k_t_msg_type     = 7U,    /**< Message type handed to the dispatcher.     */
-  k_t_msg_len      = 42U,   /**< Its declared length, bytes.                */
+  k_t_msg_type     = 7U,    /**< Message type handed to the dispatcher.        */
+  k_t_msg_len      = 42U,   /**< Its declared length, bytes.                   */
 } t_ptp_cfg_t;
 
 typedef enum : int64_t {

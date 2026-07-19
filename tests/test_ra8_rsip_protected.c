@@ -44,7 +44,7 @@
 typedef enum : uint16_t {
   k_t_tamper_mask = 0xFFU, /**< XOR that flips the wrapped blob's last byte so
                                 its integrity check must fail.                   */
-  k_t_raw_key_len = 24U,   /**< AES-192 key, bytes.                             */
+  k_t_raw_key_len = 24U,   /**< AES-192 key, bytes. */
 } t_protected_t;
 
 /**

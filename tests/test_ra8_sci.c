@@ -28,11 +28,11 @@
  * @brief SCI channel ids and the bytes staged in RDR.
  */
 typedef enum : uint8_t {
-  k_t_channel     = 5U,    /**< A valid SCI channel the dispatch arms drive.   */
+  k_t_channel     = 5U,    /**< A valid SCI channel the dispatch arms drive. */
   k_t_channel_bad = 99U,   /**< A channel past the last instance; every
                                 dispatcher must ignore it rather than index
                                 out of bounds.                                  */
-  k_t_rdr_byte_a  = 0xA5U, /**< Byte staged in RDR for the first read arm.     */
+  k_t_rdr_byte_a  = 0xA5U, /**< Byte staged in RDR for the first read arm. */
   k_t_rdr_byte_b  = 0x77U, /**< A different byte for the second, so a stale
                                 register value cannot pass as a fresh read.     */
 } t_sci_t;

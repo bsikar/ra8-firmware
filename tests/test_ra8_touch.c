@@ -47,12 +47,12 @@
  * mistaken for a fresh write.
  */
 typedef enum : uint8_t {
-  k_t_point_cap    = 5U,    /**< Points the caller's array can hold.         */
-  k_t_got_seed_a   = 7U,    /**< Count seed for the first pair of arms.      */
-  k_t_got_seed_b   = 9U,    /**< Count seed for the second pair.             */
+  k_t_point_cap    = 5U,    /**< Points the caller's array can hold.    */
+  k_t_got_seed_a   = 7U,    /**< Count seed for the first pair of arms. */
+  k_t_got_seed_b   = 9U,    /**< Count seed for the second pair.        */
   k_t_got_seed_max = 99U,   /**< Seed for the guard arms; also a max_points
                                  setting past what the driver supports.       */
-  k_t_i2c_addr_7b  = 0x42U, /**< 7-bit I2C address of the touch controller.  */
+  k_t_i2c_addr_7b  = 0x42U, /**< 7-bit I2C address of the touch controller. */
 } t_touch_t;
 
 /**

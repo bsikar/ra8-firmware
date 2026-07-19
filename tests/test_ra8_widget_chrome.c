@@ -36,18 +36,18 @@
  * aligning to an edge would mask an off-by-one in the inset arithmetic.
  */
 typedef enum : int16_t {
-  k_t_bar_w        = 100, /**< Width of the progress-bar and menu rects.     */
+  k_t_bar_w        = 100, /**< Width of the progress-bar and menu rects. */
   k_t_row_w        = 120, /**< Width of the nav-row and list-row rects; also
                                the height of the tall scrolling arms.        */
-  k_t_wide_w       = 200, /**< Width of the header and shelf rects.          */
-  k_t_row_h        = 24,  /**< Height of one nav or list row.                */
-  k_t_menu_h       = 30,  /**< Height of the menu rect.                      */
-  k_t_header_h     = 40,  /**< Height of the header rect.                    */
-  k_t_card_h       = 52,  /**< Height of the book-card rect.                 */
+  k_t_wide_w       = 200, /**< Width of the header and shelf rects.            */
+  k_t_row_h        = 24,  /**< Height of one nav or list row.                  */
+  k_t_menu_h       = 30,  /**< Height of the menu rect.                        */
+  k_t_header_h     = 40,  /**< Height of the header rect.                      */
+  k_t_card_h       = 52,  /**< Height of the book-card rect.                   */
   k_t_count_col_w  = 72,  /**< Width reserved for the right-hand count column. */
   k_t_bar_total    = 10,  /**< Progress-bar denominator; also the degenerate
                                1-pixel-per-unit width used by the guard arms. */
-  k_t_bar_value_hi = 15,  /**< Bar value past `total`, which must clamp.     */
+  k_t_bar_value_hi = 15,  /**< Bar value past `total`, which must clamp.       */
   k_t_bar_value    = 5,   /**< In-range bar value; also the bar rect origin x. */
 } t_chrome_geom_t;
 

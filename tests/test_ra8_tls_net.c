@@ -45,10 +45,10 @@
  * assertion then catches instead of accepting a plausible zero.
  */
 typedef enum : uint32_t {
-  k_t_conn_id_a   = 7U,      /**< Connection id for the first arm.            */
+  k_t_conn_id_a   = 7U,      /**< Connection id for the first arm. */
   k_t_conn_id_b   = 9U,      /**< A different id for the second, also used as
                                   its flags word.                              */
-  k_t_flags_unset = 0xDEADU, /**< Pre-set socket flags.                       */
+  k_t_flags_unset = 0xDEADU, /**< Pre-set socket flags. */
   k_t_u16_unset   = 0xFFFFU, /**< Pre-set 16-bit out-parameter: the MSS, and
                                   the connection id where one is expected.      */
 } t_tls_probe_t;

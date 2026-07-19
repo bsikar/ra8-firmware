@@ -45,15 +45,15 @@ typedef enum : uint8_t {
  * per-type fields at the offsets below.
  */
 typedef enum : uint8_t {
-  k_t_r4_off_head_size = 5U,  /**< HEAD_SIZE, 16-bit.               */
-  k_t_r4_off_pack_size = 7U,  /**< PACK_SIZE, 32-bit.               */
-  k_t_r4_off_unp_size  = 11U, /**< UNP_SIZE, 32-bit.                */
-  k_t_r4_off_host_os   = 15U, /**< HOST_OS, 8-bit.                  */
-  k_t_r4_off_ftime     = 20U, /**< FTIME, 32-bit MS-DOS timestamp.  */
-  k_t_r4_off_unp_ver   = 24U, /**< UNP_VER, 8-bit.                  */
-  k_t_r4_off_method    = 25U, /**< METHOD, 8-bit.                   */
-  k_t_r4_off_name_size = 26U, /**< NAME_SIZE, 16-bit.               */
-  k_t_r4_off_attr      = 28U, /**< ATTR, 32-bit.                    */
+  k_t_r4_off_head_size = 5U,  /**< HEAD_SIZE, 16-bit.              */
+  k_t_r4_off_pack_size = 7U,  /**< PACK_SIZE, 32-bit.              */
+  k_t_r4_off_unp_size  = 11U, /**< UNP_SIZE, 32-bit.               */
+  k_t_r4_off_host_os   = 15U, /**< HOST_OS, 8-bit.                 */
+  k_t_r4_off_ftime     = 20U, /**< FTIME, 32-bit MS-DOS timestamp. */
+  k_t_r4_off_unp_ver   = 24U, /**< UNP_VER, 8-bit.                 */
+  k_t_r4_off_method    = 25U, /**< METHOD, 8-bit.                  */
+  k_t_r4_off_name_size = 26U, /**< NAME_SIZE, 16-bit.              */
+  k_t_r4_off_attr      = 28U, /**< ATTR, 32-bit.                   */
 } t_rar4_off_t;
 
 /**
@@ -67,7 +67,7 @@ typedef enum : uint16_t {
   k_t_r4_unp_ver_20   = 20U,     /**< UNP_VER 20: RAR 2.0 stream format.     */
   k_t_r4_method_comp  = 0x33U,   /**< METHOD '3': compressed, which the
                                       stored-only extractor must refuse.     */
-  k_t_r4_main_hdr_len = 13U,     /**< Total main-header length, bytes.       */
+  k_t_r4_main_hdr_len = 13U,     /**< Total main-header length, bytes. */
 } t_rar4_field_t;
 
 /**
@@ -75,10 +75,10 @@ typedef enum : uint16_t {
  * @brief RAR5 header types and base-128 vint encoding parameters.
  */
 typedef enum : uint8_t {
-  k_t_r5_type_end       = 5U,    /**< RAR5 header type 5: end of archive.    */
-  k_t_vint_payload_mask = 0x7FU, /**< Payload bits carried by one vint byte. */
-  k_t_vint_shift        = 7U,    /**< Bits consumed per vint byte.           */
-  k_t_vint_more_flag    = 0x80U, /**< Continuation bit: another byte follows. */
+  k_t_r5_type_end       = 5U,    /**< RAR5 header type 5: end of archive.          */
+  k_t_vint_payload_mask = 0x7FU, /**< Payload bits carried by one vint byte.       */
+  k_t_vint_shift        = 7U,    /**< Bits consumed per vint byte.                 */
+  k_t_vint_more_flag    = 0x80U, /**< Continuation bit: another byte follows.      */
   k_t_le32_hi_shift     = 24U,   /**< Shift for the top byte of a 32-bit LE field. */
 } t_vint_t;
 

@@ -45,7 +45,7 @@
  * the rest.
  */
 typedef enum : uint8_t {
-  k_t_b256_positive = 0x80U, /**< GNU base-256 marker, positive value.        */
+  k_t_b256_positive = 0x80U, /**< GNU base-256 marker, positive value. */
   k_t_b256_negative = 0xC0U, /**< Base-256 marker with the sign bit set; a
                                   negative size is not representable.          */
   k_t_b256_payload  = 0x81U, /**< Marker with a payload bit already in byte 0,
@@ -59,9 +59,9 @@ typedef enum : uint8_t {
  * @brief Offsets and widths the numeric-field arms index with.
  */
 typedef enum : uint16_t {
-  k_t_num_overlong = 24U,  /**< Numeric field twice the legal width.          */
+  k_t_num_overlong = 24U,  /**< Numeric field twice the legal width.           */
   k_t_b256_hi_byte = 10U,  /**< High payload byte of a 12-byte base-256 field. */
-  k_t_b256_lo_byte = 11U,  /**< Its low payload byte.                         */
+  k_t_b256_lo_byte = 11U,  /**< Its low payload byte.                          */
   k_t_nonzero_off  = 300U, /**< An offset inside a block, made non-zero to
                                 defeat the all-zero end-of-archive test.       */
 } t_tar_field_t;
@@ -72,11 +72,11 @@ typedef enum : uint16_t {
  */
 typedef enum : uint32_t {
   k_t_pax_flood    = 5U,      /**< Pax blocks emitted past the per-member cap. */
-  k_t_pax_oversize = 4096U,   /**< Pax payload past k_ra8_unarch_tar_pax_max. */
-  k_t_member_len   = 600U,    /**< Data length of the truncation-arm member.  */
+  k_t_pax_oversize = 4096U,   /**< Pax payload past k_ra8_unarch_tar_pax_max.  */
+  k_t_member_len   = 600U,    /**< Data length of the truncation-arm member.   */
   k_t_truncate_by  = 700U,    /**< Bytes cut off the archive: past the block
                                    padding and into the 600-byte data area.    */
-  k_t_size_lie     = 100000U, /**< Declared member size far past the archive.  */
+  k_t_size_lie     = 100000U, /**< Declared member size far past the archive. */
 } t_tar_fixture_t;
 
 /**

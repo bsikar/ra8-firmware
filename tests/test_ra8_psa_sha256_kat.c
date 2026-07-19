@@ -40,8 +40,8 @@
  * is what makes it exercise the update loop rather than a single block.
  */
 typedef enum : uint32_t {
-  k_t_two_block_len = 56U,      /**< The 448-bit two-block message.            */
-  k_t_million_a_len = 1000000U, /**< The one-million-character message.        */
+  k_t_two_block_len = 56U,      /**< The 448-bit two-block message.     */
+  k_t_million_a_len = 1000000U, /**< The one-million-character message. */
 } t_sha_kat_t;
 
 /** @brief One-million-byte 'a' message buffer (NIST long-message vector). */

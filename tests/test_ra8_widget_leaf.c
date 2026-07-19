@@ -31,16 +31,16 @@
  * mock glyph cell, so a text run can never coincidentally align to an edge.
  */
 typedef enum : int16_t {
-  k_t_rect_x       = 10,  /**< Origin x of the label-placement rect.             */
+  k_t_rect_x       = 10,  /**< Origin x of the label-placement rect. */
   k_t_rect_y       = 20,  /**< Origin y of the label-placement rect; also the
                                height shared by the null-guard arms.             */
-  k_t_label_w      = 100, /**< Width of the label-placement rect.               */
-  k_t_label_h      = 40,  /**< Its height; also the width of the guard arms.    */
-  k_t_narrow_w     = 50,  /**< Width of the no-text-size fallback rect.         */
-  k_t_button_w     = 60,  /**< Width of the button render rect.                 */
-  k_t_button_h     = 30,  /**< Its height.                                      */
-  k_t_pad_inset    = 5,   /**< Label padding for the centre-fallback arm.       */
-  k_t_footer_fixed = 24,  /**< Fixed track height reserved for the footer row.  */
+  k_t_label_w      = 100, /**< Width of the label-placement rect.              */
+  k_t_label_h      = 40,  /**< Its height; also the width of the guard arms.   */
+  k_t_narrow_w     = 50,  /**< Width of the no-text-size fallback rect.        */
+  k_t_button_w     = 60,  /**< Width of the button render rect.                */
+  k_t_button_h     = 30,  /**< Its height.                                     */
+  k_t_pad_inset    = 5,   /**< Label padding for the centre-fallback arm.      */
+  k_t_footer_fixed = 24,  /**< Fixed track height reserved for the footer row. */
 } t_leaf_geom_t;
 
 /**
@@ -67,19 +67,19 @@ typedef enum : uint8_t {
  * wrong call count.
  */
 typedef enum : uint32_t {
-  k_t_argb_label_fg     = 0x00AABBCCU, /**< Foreground of the placement-arm label.     */
+  k_t_argb_label_fg     = 0x00AABBCCU, /**< Foreground of the placement-arm label.        */
   k_t_argb_label_bg     = 0x00112233U, /**< Its background; reused as a bare button face. */
-  k_t_argb_title_fg     = 0x00FFFFFFU, /**< Foreground shared by the title and buttons. */
-  k_t_argb_title_bg     = 0x00101018U, /**< Title-row background.                      */
-  k_t_argb_footer_fg    = 0x00C0C0C0U, /**< Footer foreground, dimmer than the title.  */
-  k_t_argb_footer_bg    = 0x00080808U, /**< Footer background, darker than the title.  */
-  k_t_argb_btn_face     = 0x00204060U, /**< Face of the standalone button arm.         */
-  k_t_argb_btn_pressed  = 0x004080C0U, /**< Its pressed face.                          */
-  k_t_argb_btn_a_face   = 0x00203060U, /**< Face of body button "A".                   */
-  k_t_argb_btn_a_press  = 0x004060C0U, /**< Its pressed face.                          */
-  k_t_argb_btn_b_face   = 0x00603020U, /**< Face of body button "B".                   */
-  k_t_argb_btn_b_press  = 0x00C06040U, /**< Its pressed face.                          */
-  k_t_argb_no_text_face = 0x00445566U, /**< Face of the draw_text-declined arm.        */
+  k_t_argb_title_fg     = 0x00FFFFFFU, /**< Foreground shared by the title and buttons.   */
+  k_t_argb_title_bg     = 0x00101018U, /**< Title-row background.                         */
+  k_t_argb_footer_fg    = 0x00C0C0C0U, /**< Footer foreground, dimmer than the title.     */
+  k_t_argb_footer_bg    = 0x00080808U, /**< Footer background, darker than the title.     */
+  k_t_argb_btn_face     = 0x00204060U, /**< Face of the standalone button arm.            */
+  k_t_argb_btn_pressed  = 0x004080C0U, /**< Its pressed face.                             */
+  k_t_argb_btn_a_face   = 0x00203060U, /**< Face of body button "A".                      */
+  k_t_argb_btn_a_press  = 0x004060C0U, /**< Its pressed face.                             */
+  k_t_argb_btn_b_face   = 0x00603020U, /**< Face of body button "B".                      */
+  k_t_argb_btn_b_press  = 0x00C06040U, /**< Its pressed face.                             */
+  k_t_argb_no_text_face = 0x00445566U, /**< Face of the draw_text-declined arm.           */
 } t_leaf_argb_t;
 
 /* --- Concrete leaf widgets (label + button) fixture ------------------------- */

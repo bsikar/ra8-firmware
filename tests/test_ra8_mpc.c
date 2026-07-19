@@ -19,7 +19,7 @@
  * @brief PFS register patterns proving which bits the MPC driver preserves.
  */
 typedef enum : uint32_t {
-  k_t_pfs_all_ones = 0xFFFFFFFFU, /**< Every bit set, so a clear is visible.   */
+  k_t_pfs_all_ones = 0xFFFFFFFFU, /**< Every bit set, so a clear is visible.     */
   k_t_pfs_pattern  = 0xDEADBEEFU, /**< A mixed pattern, so a set is visible too. */
 } t_pfs_probe_t;
 

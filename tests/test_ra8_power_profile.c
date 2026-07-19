@@ -38,10 +38,10 @@ typedef enum : uint16_t {
                                         must discard.                            */
   k_t_us_span_a_in        = 1000U, /**< First timed span entered; also the
                                         enter edge of the GPIO-pulse arm.        */
-  k_t_us_span_a_out       = 1100U, /**< First span exited: 100 us.               */
-  k_t_us_pulse_out        = 1500U, /**< Exit edge of the GPIO-pulse arm.         */
-  k_t_us_span_b_in        = 5000U, /**< Second timed span entered.               */
-  k_t_us_span_b_out       = 5250U, /**< Second span exited: 250 us.              */
+  k_t_us_span_a_out       = 1100U, /**< First span exited: 100 us.       */
+  k_t_us_pulse_out        = 1500U, /**< Exit edge of the GPIO-pulse arm. */
+  k_t_us_span_b_in        = 5000U, /**< Second timed span entered.       */
+  k_t_us_span_b_out       = 5250U, /**< Second span exited: 250 us.      */
 } t_pp_clock_t;
 
 /* ---------------------------------------------------------------------------

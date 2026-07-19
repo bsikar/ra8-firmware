@@ -24,11 +24,11 @@
  * name states the combination rather than the hex value.
  */
 typedef enum : uint16_t {
-  k_t_bmreq_class_out = 0x21U, /**< Host-to-device, class, interface.        */
-  k_t_bmreq_class_in  = 0xA1U, /**< Device-to-host, class, interface.        */
-  k_t_bmreq_std_in    = 0x80U, /**< Device-to-host, standard, device.        */
+  k_t_bmreq_class_out = 0x21U, /**< Host-to-device, class, interface.               */
+  k_t_bmreq_class_in  = 0xA1U, /**< Device-to-host, class, interface.               */
+  k_t_bmreq_std_in    = 0x80U, /**< Device-to-host, standard, device.               */
   k_t_breq_unknown    = 0x77U, /**< A bRequest outside the printer set; must stall. */
-  k_t_wlen_device_id  = 64U,   /**< GET_DEVICE_ID buffer length, bytes.      */
+  k_t_wlen_device_id  = 64U,   /**< GET_DEVICE_ID buffer length, bytes.             */
   k_t_oversize_buf    = 128U,  /**< A buffer past the class's maximum, to prove
                                     the length guard rather than the copy.    */
 } t_setup_t;

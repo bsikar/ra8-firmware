@@ -32,8 +32,8 @@
  * comparator cannot pass by short-circuiting at any one end.
  */
 typedef enum : uint8_t {
-  k_t_ref_b4       = 5U,    /**< Byte 4 of the ascending reference buffer.    */
-  k_t_ref_b6       = 7U,    /**< Byte 6.                                      */
+  k_t_ref_b4       = 5U,    /**< Byte 4 of the ascending reference buffer. */
+  k_t_ref_b6       = 7U,    /**< Byte 6.                                   */
   k_t_mismatch_val = 0xFFU, /**< Value written to create the single-byte
                                  difference under test.                        */
 } t_cmp_t;

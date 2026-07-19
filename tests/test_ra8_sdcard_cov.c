@@ -53,10 +53,10 @@
  * @brief SD command indices the mock card answers, per the SD Physical Spec.
  */
 typedef enum : uint8_t {
-  k_t_cmd7_select    = 7U,  /**< CMD7 SELECT_CARD: R1 response.               */
-  k_t_cmd9_send_csd  = 9U,  /**< CMD9 SEND_CSD: 128-bit R2 response.          */
+  k_t_cmd7_select    = 7U,  /**< CMD7 SELECT_CARD: R1 response.                */
+  k_t_cmd9_send_csd  = 9U,  /**< CMD9 SEND_CSD: 128-bit R2 response.           */
   k_t_acmd41_op_cond = 41U, /**< ACMD41 SD_SEND_OP_COND: carries the busy bit. */
-  k_t_cmd55_app      = 55U, /**< CMD55 APP_CMD: prefixes every ACMD.          */
+  k_t_cmd55_app      = 55U, /**< CMD55 APP_CMD: prefixes every ACMD.           */
 } t_sd_cmd_t;
 
 /**
@@ -64,7 +64,7 @@ typedef enum : uint8_t {
  * @brief Block size and the status bits the mock asserts on completion.
  */
 typedef enum : uint16_t {
-  k_t_block_len   = 512U,   /**< SD block size, bytes.                        */
+  k_t_block_len   = 512U,   /**< SD block size, bytes.                          */
   k_t_info2_ready = 0x300U, /**< SD_INFO2 buffer-read and buffer-write enables. */
 } t_sd_buf_t;
 

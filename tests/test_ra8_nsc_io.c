@@ -28,10 +28,10 @@
  * period/duty pair, hence the deliberate 1:2 ratio.
  */
 typedef enum : uint16_t {
-  k_t_pwm_period = 1000U, /**< Timer period, in timer ticks.                  */
-  k_t_pwm_duty   = 500U,  /**< Duty-cycle compare value: half the period.     */
-  k_t_screen_w   = 800U,  /**< Display width, pixels.                         */
-  k_t_screen_h   = 480U,  /**< Display height, pixels.                        */
+  k_t_pwm_period = 1000U, /**< Timer period, in timer ticks.              */
+  k_t_pwm_duty   = 500U,  /**< Duty-cycle compare value: half the period. */
+  k_t_screen_w   = 800U,  /**< Display width, pixels.                     */
+  k_t_screen_h   = 480U,  /**< Display height, pixels.                    */
 } t_nsc_cfg_t;
 
 static void prep(void)

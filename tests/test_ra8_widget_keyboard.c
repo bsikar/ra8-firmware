@@ -29,7 +29,7 @@
 typedef enum : int16_t {
   k_t_key_side = 20, /**< Edge of one square key cell, and hence the per-index
                           x step of the mock key-rect layout.                 */
-  k_t_kbd_w    = 80, /**< Keyboard widget width: four key cells.              */
+  k_t_kbd_w    = 80, /**< Keyboard widget width: four key cells. */
 } t_kbd_geom_t;
 
 /**

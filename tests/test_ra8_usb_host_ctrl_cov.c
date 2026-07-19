@@ -78,13 +78,13 @@
  * two arms cannot be confused in a dump.
  */
 typedef enum : uint16_t {
-  k_t_out_b4    = 5U,      /**< Byte 4 of the ascending 10-byte payload.    */
-  k_t_out_b6    = 7U,      /**< Byte 6.                                     */
-  k_t_out_b8    = 9U,      /**< Byte 8.                                     */
-  k_t_out_b9    = 10U,     /**< Byte 9, the last.                           */
-  k_t_short_b0  = 0xA1U,   /**< Byte 0 of the 3-byte payload.               */
-  k_t_short_b1  = 0xB2U,   /**< Byte 1.                                     */
-  k_t_short_b2  = 0xC3U,   /**< Byte 2.                                     */
+  k_t_out_b4    = 5U,      /**< Byte 4 of the ascending 10-byte payload. */
+  k_t_out_b6    = 7U,      /**< Byte 6.                                  */
+  k_t_out_b8    = 9U,      /**< Byte 8.                                  */
+  k_t_out_b9    = 10U,     /**< Byte 9, the last.                        */
+  k_t_short_b0  = 0xA1U,   /**< Byte 0 of the 3-byte payload.            */
+  k_t_short_b1  = 0xB2U,   /**< Byte 1.                                  */
+  k_t_short_b2  = 0xC3U,   /**< Byte 2.                                  */
   k_t_rx_poison = 0xFFFFU, /**< Pre-set received-byte count; a transfer that
                                   returns without writing it leaves this.      */
 } t_hcc_payload_t;

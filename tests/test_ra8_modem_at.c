@@ -33,9 +33,9 @@
  * fire deterministically rather than by wall-clock luck.
  */
 typedef enum : uint16_t {
-  k_t_step_ms          = 50U,   /**< Mock clock advance per transport poll.   */
-  k_t_timeout_short_ms = 100U,  /**< Timeout the expiry arm uses.             */
-  k_t_timeout_long_ms  = 1000U, /**< Timeout the happy-path arms use.        */
+  k_t_step_ms          = 50U,   /**< Mock clock advance per transport poll. */
+  k_t_timeout_short_ms = 100U,  /**< Timeout the expiry arm uses.           */
+  k_t_timeout_long_ms  = 1000U, /**< Timeout the happy-path arms use.       */
 } t_at_time_t;
 
 /**
@@ -43,8 +43,8 @@ typedef enum : uint16_t {
  * @brief Buffer capacities of the parser fixture.
  */
 typedef enum : uint16_t {
-  k_t_response_cap = 64U,  /**< Response and URC capture buffers, bytes.     */
-  k_t_line_cap     = 256U, /**< Line-assembly buffer, bytes.                 */
+  k_t_response_cap = 64U,  /**< Response and URC capture buffers, bytes. */
+  k_t_line_cap     = 256U, /**< Line-assembly buffer, bytes.             */
 } t_at_buf_t;
 
 /* ------------------------------------------------------------------------- */

@@ -31,9 +31,9 @@
  * would hide a byte-order error in the wrap.
  */
 typedef enum : uint16_t {
-  k_t_fill_arm_a = 0x22U,   /**< Key fill for the first import arm.          */
-  k_t_fill_arm_b = 0x42U,   /**< Key fill for the second.                    */
-  k_t_fill_arm_c = 0x55U,   /**< Key fill for the third.                     */
+  k_t_fill_arm_a = 0x22U,   /**< Key fill for the first import arm.              */
+  k_t_fill_arm_b = 0x42U,   /**< Key fill for the second.                        */
+  k_t_fill_arm_c = 0x55U,   /**< Key fill for the third.                         */
   k_t_kak_base   = 0xA0U,   /**< First byte of the ascending key-encryption key. */
   k_t_slot_unset = 0xFFFFU, /**< Pre-set slot id; an import that fails must
                                  leave it rather than report a real slot.      */
