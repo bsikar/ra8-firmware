@@ -49,9 +49,12 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_comic_i_31          = 31U,
-  k_comic_s_arc_size_22 = 22U,
-  k_comic_w_5           = 5U,
+  k_comic_filler_stride =
+    31U, /**< Stride of the filler generator, `i * 31 + (i >> 3)`; prime, so the filler stays incompressible enough to be recognisable. */
+  k_comic_truncated_arc_bytes =
+    22U, /**< Archive truncated to fewer bytes than its own header claims, so the reader must fail rather than read past the end. */
+  k_comic_page_side_px =
+    5U, /**< Side of the square fixture page, in pixels; small enough that a whole page fits one tile. */
 } comic_uint8_const_t;
 
 /**
@@ -131,7 +134,10 @@ static void tc_build(void)
   s_imgs[0] = (tc_img_t){.name = "nested/page003.png", .w = 8U, .h = 6U, .seed = 3U};
   s_imgs[1] = (tc_img_t){.name = "page000.png", .w = 4U, .h = 4U, .seed = 0U};
   s_imgs[2] = (tc_img_t){.name = "page001.png", .w = 6U, .h = 8U, .seed = 1U};
-  s_imgs[3] = (tc_img_t){.name = "page002.png", .w = k_comic_w_5, .h = k_comic_w_5, .seed = 2U};
+  s_imgs[3] = (tc_img_t){.name = "page002.png",
+                         .w    = k_comic_page_side_px,
+                         .h    = k_comic_page_side_px,
+                         .seed = 2U};
   for (uint32_t i = 0U; i < k_tc_img_count; ++i) {
     s_imgs[i].plen =
       cf_make_png(s_imgs[i].w, s_imgs[i].h, s_imgs[i].seed, s_imgs[i].png, sizeof(s_imgs[i].png));
@@ -162,7 +168,7 @@ static void tc_build(void)
   /* Large unreferenced filler (STORE) -- dominates size, never read on open. */
   static uint8_t s_filler[k_tc_filler];
   for (size_t i = 0U; i < sizeof(s_filler); ++i) {
-    s_filler[i] = (uint8_t)((i * k_comic_i_31) + (i >> 3U));
+    s_filler[i] = (uint8_t)((i * k_comic_filler_stride) + (i >> 3U));
   }
   TEST_ASSERT(
     mz_zip_writer_add_mem(&zip, "big_filler.bin", s_filler, sizeof(s_filler), MZ_NO_COMPRESSION) ==
@@ -492,7 +498,7 @@ static void test_comic_facade_edges(void)
    * archive with no image entries opens to no pages (or a miniz open error). */
   memset(s_arc, 0, (size_t)k_tc_eocd_bytes);
   memcpy(s_arc, k_tc_sig_eocd, sizeof(k_tc_sig_eocd));
-  s_arc_size           = k_comic_s_arc_size_22;
+  s_arc_size           = k_comic_truncated_arc_bytes;
   const ra8_err_t eocd = tc_open_std(&c, pages, names, 22U);
   TEST_ASSERT(eocd != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_comic_kind_none, ra8_comic_kind(&c));

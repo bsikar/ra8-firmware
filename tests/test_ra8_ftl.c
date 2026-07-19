@@ -42,10 +42,13 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ftl_i_31           = 31U,
-  k_ftl_lbn_7          = 7U,
-  k_ftl_pattern_fill_5 = 5U,
-  k_ftl_pattern_fill_9 = 9U,
+  k_ftl_pattern_stride =
+    31U, /**< Byte stride of the block generator, `i * 31 + lbn * 7 + tag`; prime, so the pattern never repeats inside a block. */
+  k_ftl_pattern_lbn_mul =
+    7U, /**< Logical-block-number multiplier, so two blocks of one file still differ. */
+  k_ftl_probe_lbn = 5U, /**< Logical block the round-trip writes and reads back. */
+  k_ftl_probe_tag =
+    9U, /**< Its generation tag, so a stale mapping returning an older copy is detectable. */
 } ftl_uint8_const_t;
 
 /**
@@ -288,7 +291,7 @@ static void test_ftl_unwritten_reads_erase_value(void)
 static void pattern_fill(uint8_t* blk, uint32_t lbn, uint32_t tag)
 {
   for (uint32_t i = 0; i < (uint32_t)k_test_ftl_block; ++i) {
-    blk[i] = (uint8_t)((i * k_ftl_i_31) + (lbn * k_ftl_lbn_7) + tag);
+    blk[i] = (uint8_t)((i * k_ftl_pattern_stride) + (lbn * k_ftl_pattern_lbn_mul) + tag);
   }
 }
 
@@ -424,7 +427,7 @@ static void test_ftl_presented_erase_unmaps(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_as_blockdev(&ftl, &bd));
 
   uint8_t blk[(size_t)k_test_ftl_block];
-  pattern_fill(blk, k_ftl_pattern_fill_5, k_ftl_pattern_fill_9);
+  pattern_fill(blk, k_ftl_probe_lbn, k_ftl_probe_tag);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 5U, 1U, blk));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_erase(&bd, 5U, 1U));
 

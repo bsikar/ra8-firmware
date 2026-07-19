@@ -30,9 +30,10 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ble_l2cap_conn_local_ff                     = 0xFFU,
-  k_ble_l2cap_ra8_ble_host_test_inject_event_19 = 19U,
-  k_ble_l2cap_val_19                            = 19,
+  k_byte_mask = 0xFFU, /**< Low-byte mask used to split the connection handle little-endian. */
+  k_hci_disconn_params_len = 19U, /**< Parameter length of a Disconnection Complete event. */
+  k_hci_params_cap =
+    19, /**< Capacity of the event-parameter staging buffers, matching that length. */
 } ble_l2cap_uint8_const_t;
 
 typedef enum : uint8_t {
@@ -161,18 +162,18 @@ static void test_mcdc_l2cap_evt_trampoline_lemeta_3cond(void)
   TEST_BEGIN("ra8_ble_l2cap MC/DC: LE_Meta 3-cond AND (580)");
   /* Build a 19-byte LE_Connection_Complete parameter array.
    * params[0]=subev, [1]=status, [2..3]=handle_le, [4..18]=role/peer/etc. */
-  static uint8_t s_params_full[k_ble_l2cap_val_19] = {0U};
-  s_params_full[0]                                 = (uint8_t)k_test_subev_conn_compl;
-  s_params_full[1]                                 = (uint8_t)k_test_status_success;
-  s_params_full[2]                                 = (uint8_t)k_test_handle_lo;
-  s_params_full[3]                                 = (uint8_t)k_test_handle_hi;
+  static uint8_t s_params_full[k_hci_params_cap] = {0U};
+  s_params_full[0]                               = (uint8_t)k_test_subev_conn_compl;
+  s_params_full[1]                               = (uint8_t)k_test_status_success;
+  s_params_full[2]                               = (uint8_t)k_test_handle_lo;
+  s_params_full[3]                               = (uint8_t)k_test_handle_hi;
 
   /* V1: wrong evt_code, but params still well-formed. */
   TEST_ASSERT_EQ(k_ra8_ok, bring_up());
   uint32_t before = ra8_ble_host_test_event_count();
   ra8_ble_host_test_inject_event((uint8_t)k_test_evt_unrecognised,
                                  s_params_full,
-                                 k_ble_l2cap_ra8_ble_host_test_inject_event_19);
+                                 k_hci_disconn_params_len);
   TEST_ASSERT_EQ(before, ra8_ble_host_test_event_count());
 
   /* V2: right evt_code, short params (still non-NULL so guard passes). */
@@ -182,19 +183,19 @@ static void test_mcdc_l2cap_evt_trampoline_lemeta_3cond(void)
   TEST_ASSERT_EQ(before, ra8_ble_host_test_event_count());
 
   /* V3: right evt_code + len, but wrong subev. */
-  static uint8_t s_other_sub[k_ble_l2cap_val_19] = {0U};
-  s_other_sub[0]                                 = (uint8_t)k_test_subev_other;
-  before                                         = ra8_ble_host_test_event_count();
+  static uint8_t s_other_sub[k_hci_params_cap] = {0U};
+  s_other_sub[0]                               = (uint8_t)k_test_subev_other;
+  before                                       = ra8_ble_host_test_event_count();
   ra8_ble_host_test_inject_event((uint8_t)k_test_evt_le_meta,
                                  s_other_sub,
-                                 k_ble_l2cap_ra8_ble_host_test_inject_event_19);
+                                 k_hci_disconn_params_len);
   TEST_ASSERT_EQ(before, ra8_ble_host_test_event_count());
 
   /* V4: all three conditions true -> a connected event is dispatched. */
   before = ra8_ble_host_test_event_count();
   ra8_ble_host_test_inject_event((uint8_t)k_test_evt_le_meta,
                                  s_params_full,
-                                 k_ble_l2cap_ra8_ble_host_test_inject_event_19);
+                                 k_hci_disconn_params_len);
   TEST_ASSERT(ra8_ble_host_test_event_count() == before + 1U);
 
   TEST_END("ra8_ble_l2cap MC/DC: LE_Meta 3-cond AND (580)");
@@ -244,8 +245,8 @@ static void test_mcdc_l2cap_evt_trampoline_disconn_2cond(void)
 
   /* V3: matching disconnect for the active connection handle -> event. */
   static uint8_t s_disconn_params[4] = {0U};
-  s_disconn_params[1]                = (uint8_t)(conn_local & k_ble_l2cap_conn_local_ff);
-  s_disconn_params[2]                = (uint8_t)((conn_local >> 8U) & k_ble_l2cap_conn_local_ff);
+  s_disconn_params[1]                = (uint8_t)(conn_local & k_byte_mask);
+  s_disconn_params[2]                = (uint8_t)((conn_local >> 8U) & k_byte_mask);
   before                             = ra8_ble_host_test_event_count();
   ra8_ble_host_test_inject_event((uint8_t)k_test_evt_disconn, s_disconn_params, 4U);
   TEST_ASSERT(ra8_ble_host_test_event_count() == before + 1U);

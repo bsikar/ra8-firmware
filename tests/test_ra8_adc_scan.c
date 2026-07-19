@@ -36,7 +36,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_adc_scan_channels_5 = 5U,
+  k_adc_second_channel =
+    5U, /**< Channel driven in the middle scan slot, not adjacent to the first, so a slot mix-up cannot land on it. */
 } adc_scan_uint8_const_t;
 
 /**
@@ -49,9 +50,10 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_adc_scan_val_0111 = 0x0111U,
-  k_adc_scan_val_0222 = 0x0222U,
-  k_adc_scan_val_0333 = 0x0333U,
+  k_adc_code_ch0 = 0x0111U, /**< Conversion result planted for the first channel. */
+  k_adc_code_ch1 = 0x0222U, /**< For the second. */
+  k_adc_code_ch2 =
+    0x0333U, /**< For the third; the three differ so a scan that read the wrong slot fails a specific assertion. */
 } adc_scan_uint16_const_t;
 
 typedef enum : uint8_t {
@@ -124,7 +126,7 @@ static ra8_adc_scan_group_cfg_t make_scan_cfg(void)
   ra8_adc_scan_group_cfg_t cfg = {};
   cfg.num_channels             = 3U;
   cfg.channels[0]              = 4U;
-  cfg.channels[1]              = k_adc_scan_channels_5;
+  cfg.channels[1]              = k_adc_second_channel;
   cfg.channels[2]              = 6U;
   cfg.trigger                  = k_ra8_adc_trig_src_software;
   cfg.priority                 = k_ra8_adc_priority_high;
@@ -263,9 +265,9 @@ static void test_read_group_results_happy(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_configure_scan_group(k_ra8_adc_test_group_one, &cfg));
 
   /* Pre-load distinct ADDR slots so we can verify ordering. */
-  *ra8_adc_b_addr(cfg.channels[0]) = k_adc_scan_val_0111;
-  *ra8_adc_b_addr(cfg.channels[1]) = k_adc_scan_val_0222;
-  *ra8_adc_b_addr(cfg.channels[2]) = k_adc_scan_val_0333;
+  *ra8_adc_b_addr(cfg.channels[0]) = k_adc_code_ch0;
+  *ra8_adc_b_addr(cfg.channels[1]) = k_adc_code_ch1;
+  *ra8_adc_b_addr(cfg.channels[2]) = k_adc_code_ch2;
 
   uint16_t buf[8] = {};
   uint8_t  count  = 0U;

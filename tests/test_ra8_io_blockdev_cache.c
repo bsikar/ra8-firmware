@@ -35,9 +35,9 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_io_blockdev_cache_seed_block_11 = 0x11,
-  k_io_blockdev_cache_seed_block_12 = 0x12,
-  k_io_blockdev_cache_seed_block_44 = 0x44,
+  k_bdc_seed_block1 = 0x11, /**< Fill seed for logical block 1. */
+  k_bdc_seed_block2 = 0x12, /**< For block 2, adjacent to it so an off-by-one line is caught. */
+  k_bdc_seed_block4 = 0x44, /**< For block 4, far enough away to land in a different cache line. */
 } io_blockdev_cache_uint8_const_t;
 
 /**
@@ -84,8 +84,8 @@ static void test_hit_miss_lru(void)
   ra8_io_blockdev_t           under = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_ram_init(&under, &ust, s_disk, k_t_under_blocks, false));
   seed_block(&under, 0, 0x10);
-  seed_block(&under, 1, k_io_blockdev_cache_seed_block_11);
-  seed_block(&under, 2, k_io_blockdev_cache_seed_block_12);
+  seed_block(&under, 1, k_bdc_seed_block1);
+  seed_block(&under, 2, k_bdc_seed_block2);
 
   ra8_io_blockdev_cache_state_t cst = {};
   ra8_io_blockdev_t             cbd = {};
@@ -158,7 +158,7 @@ static void test_erase_invalidate(void)
   ra8_io_blockdev_ram_state_t ust   = {};
   ra8_io_blockdev_t           under = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_ram_init(&under, &ust, s_disk, k_t_under_blocks, false));
-  seed_block(&under, 4, k_io_blockdev_cache_seed_block_44);
+  seed_block(&under, 4, k_bdc_seed_block4);
   ra8_io_blockdev_cache_state_t cst = {};
   ra8_io_blockdev_t             cbd = {};
   TEST_ASSERT_EQ(

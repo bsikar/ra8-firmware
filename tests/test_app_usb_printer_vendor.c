@@ -41,9 +41,11 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_usb_printer_vendor_t_setup_09 = 0x09U,
-  k_usb_printer_vendor_t_setup_0b = 0x0BU,
-  k_usb_printer_vendor_t_setup_7  = 7U,
+  k_usb_printer_get_port_status = 0x09U, /**< Printer-class request 0x09, GET_PORT_STATUS. */
+  k_usb_req_set_interface =
+    0x0BU, /**< Standard request 0x0B, SET_INTERFACE, sent to an interface rather than the device. */
+  k_usb_assigned_address =
+    7U, /**< Address assigned by SET_ADDRESS; non-zero, so a device that ignored it stays visible at address 0. */
 } usb_printer_vendor_uint8_const_t;
 
 /* =============================================================================
@@ -155,14 +157,14 @@ static void test_route_standard(void)
               k_t_wlen_big);
   TEST_ASSERT_EQ(k_pv_action_stall, pv_route_setup(&s));
 
-  s = t_setup(0x00U, k_pv_std_set_address, k_usb_printer_vendor_t_setup_7, 0U);
+  s = t_setup(0x00U, k_pv_std_set_address, k_usb_assigned_address, 0U);
   TEST_ASSERT_EQ(k_pv_action_set_address, pv_route_setup(&s));
 
   s = t_setup(0x00U, k_pv_std_set_configuration, 1U, 0U);
   TEST_ASSERT_EQ(k_pv_action_set_configuration, pv_route_setup(&s));
 
   /* Unknown standard bRequest (e.g. SET_INTERFACE 0x0B) -> stall. */
-  s = t_setup(0x01U, k_usb_printer_vendor_t_setup_0b, 0U, 0U);
+  s = t_setup(0x01U, k_usb_req_set_interface, 0U, 0U);
   TEST_ASSERT_EQ(k_pv_action_stall, pv_route_setup(&s));
 
   TEST_END("pv_route_setup standard requests");
@@ -234,7 +236,7 @@ static void test_printer_predicate(void)
   TEST_ASSERT_EQ(false, pv_is_printer_class_request(&s));
 
   /* D1-V3: interface recipient + unknown request (0x09) -> false. */
-  s = t_setup(k_t_bm_class_in, k_usb_printer_vendor_t_setup_09, 0U, 0U);
+  s = t_setup(k_t_bm_class_in, k_usb_printer_get_port_status, 0U, 0U);
   TEST_ASSERT_EQ(false, pv_is_printer_class_request(&s));
 
   /* D2 OR-chain: each Printer request independently makes is_known true. */

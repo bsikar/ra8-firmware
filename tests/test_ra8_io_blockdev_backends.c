@@ -52,10 +52,12 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_io_blockdev_backends_i_5    = 5U,
-  k_io_blockdev_backends_i_5a   = 0x5AU,
-  k_io_blockdev_backends_i_9    = 9U,
-  k_io_blockdev_backends_val_ff = 0xFFU,
+  k_bd_pattern_stride = 5U, /**< Stride of the first backend's generator, `i * 5 + 1`. */
+  k_bd_pattern_xor =
+    0x5AU, /**< XOR mask of the second backend's generator, so two backends holding the same index differ. */
+  k_bd_pattern_offset =
+    9U, /**< Offset of the windowed backend's generator, proving the window maps to a shifted range. */
+  k_byte_mask = 0xFFU, /**< Low-byte mask used to split the connection handle little-endian. */
 } io_blockdev_backends_uint8_const_t;
 
 /**
@@ -98,7 +100,7 @@ static void test_sdram_backend(void)
 
   uint8_t out[(size_t)k_ra8_io_block_size_bytes];
   for (uint32_t i = 0; i < (uint32_t)k_ra8_io_block_size_bytes; ++i) {
-    out[i] = (uint8_t)(((i * k_io_blockdev_backends_i_5) + 1U) & k_io_blockdev_backends_val_ff);
+    out[i] = (uint8_t)(((i * k_bd_pattern_stride) + 1U) & k_byte_mask);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 3, 1, out));
   uint8_t in[(size_t)k_ra8_io_block_size_bytes] = {};
@@ -164,7 +166,7 @@ static void test_xspi_rmw_roundtrip(void)
 
   uint8_t a[(size_t)k_ra8_io_block_size_bytes];
   for (uint32_t i = 0; i < (uint32_t)k_ra8_io_block_size_bytes; ++i) {
-    a[i] = (uint8_t)((i ^ k_io_blockdev_backends_i_5a) & k_io_blockdev_backends_val_ff);
+    a[i] = (uint8_t)((i ^ k_bd_pattern_xor) & k_byte_mask);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 2, 1, a));
 
@@ -231,7 +233,7 @@ static void test_mram_fence(void)
   /* memory-mapped read: poke known bytes into the window, read them back */
   volatile uint8_t* win = (volatile uint8_t*)base;
   for (uint32_t i = 0; i < (uint32_t)k_ra8_io_block_size_bytes; ++i) {
-    win[i] = (uint8_t)((i + k_io_blockdev_backends_i_9) & k_io_blockdev_backends_val_ff);
+    win[i] = (uint8_t)((i + k_bd_pattern_offset) & k_byte_mask);
   }
   uint8_t got[(size_t)k_ra8_io_block_size_bytes] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(&bd, 0, 1, got));

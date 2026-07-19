@@ -28,9 +28,11 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_glyph_atlas_t_key_12 = 12U,
-  k_glyph_atlas_t_key_41 = 0x41U,
-  k_glyph_atlas_t_key_99 = 99U,
+  k_ga_pixel_size =
+    12U, /**< Pixel size shared by the keys, so lookups must discriminate on the code point. */
+  k_ga_codepoint = 0x41U, /**< Code point of the first glyph key. */
+  k_ga_codepoint_absent =
+    99U, /**< A code point no glyph was cached under, so the lookup must miss. */
 } glyph_atlas_uint8_const_t;
 
 /**
@@ -110,7 +112,7 @@ static void test_render_hit(void)
   ra8_glyph_atlas_cfg_t cfg = t_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glyph_atlas_init(&a, &cfg));
 
-  ra8_glyph_key_t k = t_key(k_glyph_atlas_t_key_41, 1U, 16U, 0U);
+  ra8_glyph_key_t k = t_key(k_ga_codepoint, 1U, 16U, 0U);
   ra8_glyph_t     g = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glyph_atlas_get(&a, &k, &g)); /* miss -> render */
   TEST_ASSERT_EQ(4, g.width);
@@ -181,12 +183,12 @@ static void test_pin_protection(void)
 
   const uint8_t* pins[(size_t)k_t_cells] = {};
   for (uint32_t i = 0; i < (uint32_t)k_t_cells; ++i) {
-    ra8_glyph_key_t k = t_key(i, 2U, k_glyph_atlas_t_key_12, 0U);
+    ra8_glyph_key_t k = t_key(i, 2U, k_ga_pixel_size, 0U);
     ra8_glyph_t     g = {};
     TEST_ASSERT_EQ(k_ra8_ok, ra8_glyph_atlas_get(&a, &k, &g)); /* pinned (no put) */
     pins[i] = g.bitmap;
   }
-  ra8_glyph_key_t kn = t_key(k_glyph_atlas_t_key_99, 2U, k_glyph_atlas_t_key_12, 0U);
+  ra8_glyph_key_t kn = t_key(k_ga_codepoint_absent, 2U, k_ga_pixel_size, 0U);
   ra8_glyph_t     gn = {};
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_glyph_atlas_get(&a, &kn, &gn)); /* all pinned */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glyph_atlas_put(&a, pins[0]));
