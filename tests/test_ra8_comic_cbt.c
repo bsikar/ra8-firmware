@@ -61,7 +61,6 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_tcb_tar_block         = 512U,
   k_comic_cbt_s_arc_len_600 = 600U,
 } comic_cbt_uint16_const_t;
 
