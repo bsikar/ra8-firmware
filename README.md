@@ -21,7 +21,7 @@ make sim-<app>     # run it on the emulator, no board
 ```
 
 - Per app: `make flash-<app>`, `make debug-<app>`, `make ozone-<app>`
-- Suites: `make hil`, `make ci`, `make test`, `make coverage`, `make mcdc`
+- Suites: `make hil`, `make ci` (or `make ci-native`), `make test`, `make coverage`, `make mcdc`
 
 ## Examples
 
@@ -33,7 +33,10 @@ are in [`examples/_unsupported/`](examples/_unsupported/README.md).
 ## Development
 
 VS Code Dev Container (`.devcontainer/`) with the pinned toolchain; `make ci`
-runs the gates in it. Git hooks install on the first `make`.
+runs the gates in it, `make ci-native` runs them without a container on Linux.
+Every gate body lives once, in `scripts/ci.sh`, and each CI workflow step is a
+thin `bash scripts/ci.sh --gate <name>` driver -- so local and CI cannot execute
+different checks. Git hooks install on the first `make`.
 
 ## Hardware and flashing
 
