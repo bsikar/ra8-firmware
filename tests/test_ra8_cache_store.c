@@ -96,7 +96,7 @@ typedef enum : uint16_t {
 
 /**
  * @enum cs_offset_t
- * @brief Read-path offsets and the key bases the fill loops count up from.
+ * @brief Read-path offsets, and the keys and loop bound of the budget probe.
  */
 typedef enum : uint16_t {
   k_cs_tail_frame_payload_bytes = 476U,  /**< Real bytes in the last 512-byte frame
@@ -104,6 +104,9 @@ typedef enum : uint16_t {
                                               zero padding.                        */
   k_cs_key_budget_base          = 2000U, /**< First key of the budget-exhaustion
                                               run, clear of the index-cap keys.    */
+  k_cs_budget_put_attempts      = 20U,   /**< Cap on that run: a safety bound, not
+                                              an expected count -- the budget is
+                                              meant to run out first.              */
 } cs_offset_t;
 
 /**
