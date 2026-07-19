@@ -128,9 +128,9 @@ static ra8_smbus_cfg_t make_cfg(bool pec_enabled)
  *
  * @details Mirrors the prep() helper in test_ra8_smbus.c exactly.
  *
- * @param[in] cfg Configuration to apply.
+ * @param[in] pec_enabled Whether the built configuration enables PEC.
  *
- * @pre cfg is non-NULL.
+ * @pre The SMBus mock MMIO window is mapped.
  * @post SMBus is initialized and ready for transfers.
  * @note Not thread-safe.
  * @since 0.1.0
