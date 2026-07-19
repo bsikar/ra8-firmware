@@ -1,3 +1,6 @@
+# SCHEDULING ONLY -- the gate bodies live in scripts/ci.sh (gates:
+# inclusive-terminology, inclusive-terminology-commits). See
+# .github/workflows/firmware.yml for the design note.
 name: inclusive-terminology
 
 on:
@@ -21,36 +24,13 @@ jobs:
     # on PRs ONLY from this same repo (never a fork). See SECURITY.md.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
+      # fetch-depth: 0 so the commit-message gate can walk the full push/PR
+      # range; ci.sh derives that range from the event payload itself.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Run inclusive-terminology gate (source files)
-        run: python3 scripts/utils/check_inclusive_terminology.py
-
-      - name: Check commit messages for non-inclusive terminology
-        run: |
-          # Scan exactly the commits this push/PR introduces -- the same range
-          # no-ai-attribution.yml uses. Robust to history rewrites: the previous
-          # hardcoded FLOOR_SHA grandfather is orphaned + garbage-collected by any
-          # filter-branch/rebase, which silently empties `git log FLOOR..HEAD` and
-          # turns this gate into a no-op (exactly what a history-rewriting reword did).
-          # A before..head range never rots, and commits already on the branch are
-          # never re-scanned, so pre-gate history is grandfathered automatically.
-          set -uo pipefail
-          head="${{ github.sha }}"
-          if [ -n "${{ github.event.pull_request.head.sha }}" ]; then
-            head="${{ github.event.pull_request.head.sha }}"
-          fi
-          base="${{ github.event.pull_request.base.sha }}"
-          if [ -z "$base" ]; then base="${{ github.event.before }}"; fi
-          if [ -z "$base" ] || ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
-            base="$(git rev-parse "${head}~1" 2>/dev/null || true)"
-          fi
-          range="$head"
-          [ -n "$base" ] && range="${base}..${head}"
-          echo "Scanning commit messages in: $range"
-          git log "$range" --format=%B | \
-            python3 scripts/utils/check_inclusive_terminology_commits.py
+      - run: bash scripts/ci.sh --gate inclusive-terminology
+      - run: bash scripts/ci.sh --gate inclusive-terminology-commits
