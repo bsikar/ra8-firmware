@@ -480,6 +480,93 @@ produce(uint16_t tile_w, uint16_t tile_h, uint8_t codec, size_t chunk, ra8_jof_i
  * @note Not thread-safe.
  * @since 0.1.0
  */
+/**
+ * @brief Expected sample at (@p x, @p y, @p ch) for PNG colour type @p ctx_ct.
+ *
+ * @details
+ * One place that knows what each colour model should decode to, so the tile
+ * comparison below is a loop over positions rather than a decision tree nested
+ * inside four loops. `0xFF` is the JPEG reference case, not a PNG colour type.
+ *
+ * @param[in] ctx_ct PNG colour type, or 0xFF for the JPEG reference image.
+ * @param[in] x      Pixel column in the full image.
+ * @param[in] y      Pixel row in the full image.
+ * @param[in] ch     Channel within the pixel.
+ *
+ * @return The sample the decoder is required to produce.
+ *
+ * @pre The fixture for @p ctx_ct has been built.
+ * @pre @p x and @p y lie inside the image.
+ * @post The result depends only on the arguments and the built fixture.
+ * @post Unhandled colour types yield 0, which no fixture produces.
+ *
+ * @note Not thread-safe; reads the file-scope reference image.
+ */
+static uint8_t expected_sample(uint8_t ctx_ct, uint32_t x, uint32_t y, uint32_t ch)
+{
+  if (ctx_ct == k_jof_produce_val_ff) {
+    return s_ref[(((y * (uint32_t)k_t_jpg_w) + x) * 3U) + ch];
+  }
+  if (ctx_ct == 0U) {
+    return pix(x, y, 0U);
+  }
+  if ((ctx_ct == 2U) || (ctx_ct == 6U) || (ctx_ct > 6U)) {
+    /* Greyscale+alpha, truecolour+alpha and every colour type above them keep
+     * the source channel value, so they share one expectation. */
+    return pix(x, y, ch);
+  }
+  if (ctx_ct == 3U) {
+    const uint32_t idx     = (x + y) % 5U;
+    const uint8_t  rgb[3]  = {(uint8_t)(10U + (idx * 40U)),
+                              (uint8_t)(20U + (idx * 30U)),
+                              (uint8_t)(30U + (idx * 20U))};
+    const uint8_t  trns[3] = {255U, 128U, 64U};
+    if (ch < 3U) {
+      return rgb[ch];
+    }
+    return (idx < 3U) ? trns[idx] : (uint8_t)k_jof_produce_exp_255;
+  }
+  if (ctx_ct == 4U) {
+    return (ch < 3U) ? pix(x, y, 0U) : pix(x, y, 1U);
+  }
+  return 0U;
+}
+
+/**
+ * @brief Compare one decoded tile against the expected samples.
+ *
+ * @param[in] info   Atlas geometry.
+ * @param[in] ctx_ct PNG colour type, or 0xFF for the JPEG reference image.
+ * @param[in] x0     Column of the tile's top-left pixel in the full image.
+ * @param[in] y0     Row of the tile's top-left pixel in the full image.
+ * @param[in] w      Decoded tile width, pixels.
+ * @param[in] h      Decoded tile height, pixels.
+ *
+ * @pre `s_cell` holds the decoded tile.
+ * @pre @p w and @p h are the dimensions the decoder reported.
+ * @post Every sample of the tile has been compared.
+ * @post A mismatch aborts the process.
+ *
+ * @note Not thread-safe; reads the file-scope decode buffers.
+ */
+static void check_tile_pixels(const ra8_jof_info_t* info,
+                              uint8_t                     ctx_ct,
+                              uint32_t                    x0,
+                              uint32_t                    y0,
+                              uint32_t                    w,
+                              uint32_t                    h)
+{
+  for (uint32_t r = 0U; r < h; r++) {
+    for (uint32_t c = 0U; c < w; c++) {
+      for (uint32_t ch = 0U; ch < info->bpp; ch++) {
+        const uint8_t got = s_cell[(((r * w) + c) * info->bpp) + ch];
+        const uint8_t exp = expected_sample(ctx_ct, x0 + c, y0 + r, ch);
+        TEST_ASSERT_EQ(exp, got);
+      }
+    }
+  }
+}
+
 static void check_tiles(const ra8_jof_info_t* info, uint8_t ctx_ct)
 {
   for (uint16_t ty = 0U; ty < info->tile_rows; ty++) {
@@ -498,44 +585,7 @@ static void check_tiles(const ra8_jof_info_t* info, uint8_t ctx_ct)
                                              (uint32_t)sizeof(s_cell),
                                              &w,
                                              &h));
-      const uint32_t x0 = (uint32_t)tx * info->tile_w;
-      const uint32_t y0 = (uint32_t)ty * info->tile_h;
-      for (uint32_t r = 0U; r < h; r++) {
-        for (uint32_t c = 0U; c < w; c++) {
-          for (uint32_t ch = 0U; ch < info->bpp; ch++) {
-            const uint8_t  got = s_cell[(((r * w) + c) * info->bpp) + ch];
-            uint8_t        exp = 0U;
-            const uint32_t x   = x0 + c;
-            const uint32_t y   = y0 + r;
-            if (ctx_ct == k_jof_produce_val_ff) {
-              exp = s_ref[(((y * (uint32_t)k_t_jpg_w) + x) * 3U) + ch];
-            } else if (ctx_ct == 0U) {
-              exp = pix(x, y, 0U);
-            } else if ((ctx_ct == 2U) || (ctx_ct == 6U) || (ctx_ct > 6U)) {
-              /* Greyscale+alpha, truecolour+alpha and every colour type above
-               * them keep the source channel value, so they share one
-               * expectation. */
-              exp = pix(x, y, ch);
-            } else if (ctx_ct == 3U) {
-              const uint32_t idx     = (x + y) % 5U;
-              const uint8_t  rgb[3]  = {(uint8_t)(10U + (idx * 40U)),
-                                        (uint8_t)(20U + (idx * 30U)),
-                                        (uint8_t)(30U + (idx * 20U))};
-              const uint8_t  trns[3] = {255U, 128U, 64U};
-              if (ch < 3U) {
-                exp = rgb[ch];
-              } else if (idx < 3U) {
-                exp = trns[idx];
-              } else {
-                exp = k_jof_produce_exp_255;
-              }
-            } else if (ctx_ct == 4U) {
-              exp = (ch < 3U) ? pix(x, y, 0U) : pix(x, y, 1U);
-            }
-            TEST_ASSERT_EQ(exp, got);
-          }
-        }
-      }
+      check_tile_pixels(info, ctx_ct, (uint32_t)tx * info->tile_w, (uint32_t)ty * info->tile_h, w, h);
     }
   }
 }
