@@ -25,18 +25,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum error_handler_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum error_handler_fixture_t
+ * @brief The protocol codes and identifiers exchanged.
  */
 typedef enum : uint32_t {
   k_fatal_error_code =
     0xDEADBEEFUL, /**< Error code handed to the fatal handler and read back from the record, proving it is stored rather than discarded. */
-} error_handler_uint32_const_t;
+} error_handler_fixture_t;
 
 static sigjmp_buf s_trap_jmp;
 static int32_t    s_trap_hit = 0;

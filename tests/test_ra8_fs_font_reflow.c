@@ -29,13 +29,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum fs_font_reflow_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum fs_font_reflow_fixture_t
+ * @brief Protocol and on-disk field offsets, plus the byte-level helpers.
  */
 typedef enum : uint8_t {
   k_bpb_off_bytes_per_sec = 11U, /**< BPB_BytsPerSec: bytes per sector.             */
@@ -44,7 +39,7 @@ typedef enum : uint8_t {
   k_bpb_off_tot_sec16     = 19U, /**< BPB_TotSec16: total sectors.                  */
   k_byte_mask = 0xFFU, /**< Truncates each shifted CRC and length byte for the gzip trailer. */
   k_bpb_off_sec_per_clus = 13, /**< BPB_SecPerClus: sectors per cluster. */
-} fs_font_reflow_uint8_const_t;
+} fs_font_reflow_fixture_t;
 
 /* ---------------------------------------------------------------------------
  * In-memory FAT16 block device (mirrors tests/test_ra8_fs_fat.c).

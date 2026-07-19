@@ -30,29 +30,19 @@
 #include "unity_minimal.h"
 
 /**
- * @enum log_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum log_small_value_t
+ * @brief The narrow end of the formatter's range: a single digit, and a small magnitude logged both signs.
  */
 typedef enum : uint8_t {
   k_log_val_small_signed =
     42, /**< A small magnitude logged as both negative and positive, covering the sign branch. */
   k_log_val_single_digit =
     7U, /**< A single-digit value: the shortest decimal the formatter can emit. */
-} log_uint8_const_t;
+} log_small_value_t;
 
 /**
- * @enum log_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum log_mid_value_t
+ * @brief Mid-width decimal and hex vectors, plus an error code no enumerator uses.
  */
 typedef enum : uint16_t {
   k_log_val_positive_decimal = 12345, /**< A positive decimal exercising the multi-digit path. */
@@ -62,16 +52,11 @@ typedef enum : uint16_t {
     0x5678U, /**< A second hex value, distinct from the first, so the two sinks cannot be confused. */
   k_log_err_code_unknown =
     0xFFFFU, /**< An error code no ra8_err_t enumerator uses, so ra8_err_to_str must fall back to its unknown-code string. */
-} log_uint16_const_t;
+} log_mid_value_t;
 
 /**
- * @enum log_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum log_fixture_t
+ * @brief All-bits-set register values, so a write that clears the wrong field leaves evidence.
  */
 typedef enum : uint32_t {
   k_log_val_mid_decimal =
@@ -83,7 +68,7 @@ typedef enum : uint32_t {
     0xFFFFFFFFUL, /**< All-ones, used both as an ITM stimulus-port ready state and as the widest unsigned log value. */
   k_log_val_i32_max =
     2147483647, /**< INT32_MAX; `-k_log_val_i32_max - 1` gives INT32_MIN without an unrepresentable literal, covering both signed extremes. */
-} log_uint32_const_t;
+} log_fixture_t;
 
 /*
  * ITM stimulus register addresses (must match ra8_log.c's

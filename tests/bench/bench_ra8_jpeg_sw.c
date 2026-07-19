@@ -30,17 +30,12 @@
 #include "ra8_jpeg_sw.h"
 
 /**
- * @enum jpeg_sw_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum jpeg_sw_fixture_t
+ * @brief The byte-level helpers.
  */
 typedef enum : uint8_t {
   k_byte_mask = 0xFFU, /**< Truncates a generated or shifted value back into a byte. */
-} jpeg_sw_uint8_const_t;
+} jpeg_sw_fixture_t;
 
 /**
  * @enum bench_jpeg_sizes_t

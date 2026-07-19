@@ -31,18 +31,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum poeg_safe_shutoff_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_poeg_safe_shutoff_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint32_t {
   k_poeg_poison_out =
     0xFFFFFFFFU, /**< Poison written into a count out-parameter, so a call that fails without setting it is detectable. */
-} poeg_safe_shutoff_uint32_const_t;
+} app_poeg_safe_shutoff_fixture_t;
 
 /** @brief Mirror of the demo's app-local unit selection. */
 typedef enum : uint8_t {

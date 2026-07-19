@@ -29,18 +29,13 @@ typedef enum : uint8_t {
 } bd_fill_t;
 
 /**
- * @enum io_blockdev_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum io_blockdev_fixture_t
+ * @brief The payload generators and their seeds, plus the byte-level helpers.
  */
 typedef enum : uint8_t {
   k_bd_pattern_stride = 7U,    /**< Stride of the payload generator, `i * 7 + 3`.            */
   k_byte_mask         = 0xFFU, /**< Truncates a generated or shifted value back into a byte. */
-} io_blockdev_uint8_const_t;
+} io_blockdev_fixture_t;
 
 /**
  * @enum test_const_t

@@ -34,18 +34,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum display_pal_animation_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_display_pal_animation_fixture_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
   k_fb_alignment_bytes =
     64, /**< Framebuffer alignment the display controller requires, in bytes. */
-} display_pal_animation_uint8_const_t;
+} app_display_pal_animation_fixture_t;
 
 typedef enum : uint16_t {
   k_test_app_fb_w = 64U, /**< Same shape as the production app, smaller. */

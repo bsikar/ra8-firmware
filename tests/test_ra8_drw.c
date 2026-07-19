@@ -22,32 +22,22 @@
 #include "unity_minimal.h"
 
 /**
- * @enum drw_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum drw_fixture_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint16_t {
   k_drw_probe_irqctl = 0xABCDUL, /**< Planted in IRQCTL to prove the read reaches the register. */
-} drw_uint16_const_t;
+} drw_fixture_t;
 
 /**
- * @enum drw_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum drw_fixture2_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint32_t {
   k_drw_probe_perfcount2 =
     0xCAFEBABEUL, /**< Planted in PERFCOUNT2; different from PERFCOUNT1 so the two cannot be confused. */
   k_drw_probe_perfcount1 = 0xDEADBEEFUL, /**< Planted in PERFCOUNT1. */
-} drw_uint32_const_t;
+} drw_fixture2_t;
 
 /**
  * @enum ra8_drw_test_const_t

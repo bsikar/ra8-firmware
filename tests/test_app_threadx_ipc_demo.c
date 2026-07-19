@@ -31,18 +31,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum threadx_ipc_demo_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_threadx_ipc_demo_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint8_t {
   k_ipc_ch_unset =
     0xFFU, /**< Poison channel id the callback record starts from, so a callback that never ran is distinguishable from one that reported channel 0. */
-} threadx_ipc_demo_uint8_const_t;
+} app_threadx_ipc_demo_fixture_t;
 
 /** @brief Per-test enums. */
 typedef enum : uint32_t {

@@ -14,17 +14,12 @@
 #include "unity_minimal.h"
 
 /**
- * @enum elc_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum elc_fixture_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint16_t {
   k_elc_probe_elsr = 0x123U, /**< Planted in an ELSR slot to prove the read reaches the register. */
-} elc_uint16_const_t;
+} elc_fixture_t;
 
 static void prep(void)
 {

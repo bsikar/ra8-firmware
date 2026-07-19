@@ -43,13 +43,8 @@ typedef enum : uint8_t {
 } bdb_fill_t;
 
 /**
- * @enum io_blockdev_backends_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum io_blockdev_backends_fixture_t
+ * @brief The payload generators and their seeds, plus protocol and on-disk field offsets, and the byte-level helpers.
  */
 typedef enum : uint8_t {
   k_bd_pattern_stride = 5U, /**< Stride of the first backend's generator, `i * 5 + 1`. */
@@ -58,7 +53,7 @@ typedef enum : uint8_t {
   k_bd_pattern_offset =
     9U, /**< Offset of the windowed backend's generator, proving the window maps to a shifted range. */
   k_byte_mask = 0xFFU, /**< Low-byte mask used to split the connection handle little-endian. */
-} io_blockdev_backends_uint8_const_t;
+} io_blockdev_backends_fixture_t;
 
 /**
  * @enum t_backend_const_t

@@ -34,13 +34,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum ble_gatt_client_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ble_gatt_client_cov_fixture_t
+ * @brief The handles and addresses the fixture transacts on, plus the recognizable values moved through the code under test.
  */
 typedef enum : uint8_t {
   k_gattc_value_handle = 0x11U, /**< Characteristic value handle used across those subscriptions. */
@@ -53,7 +48,7 @@ typedef enum : uint8_t {
   k_gattc_cov_payload_byte = 0xA5U, /**< Notification payload for the coverage
                                        fixture; distinct from the one the main
                                        suite uses so a cross-file mix-up shows. */
-} ble_gatt_client_cov_uint8_const_t;
+} ble_gatt_client_cov_fixture_t;
 
 extern uint32_t ra8_ble_gatt_client_test_pending_count(void);
 extern void     ra8_ble_gatt_client_test_reset(void);

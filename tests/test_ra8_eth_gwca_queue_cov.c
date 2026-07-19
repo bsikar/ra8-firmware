@@ -36,20 +36,15 @@
 #include "unity_minimal.h"
 
 /**
- * @enum eth_gwca_queue_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum eth_gwca_queue_cov_fixture_t
+ * @brief The payload generators and their seeds, plus buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
   k_gwca_frame_fill_len = 64U, /**< Bytes of that buffer the generator fills, which is all of it. */
   k_gwca_frame_seed =
     0xA5U, /**< Seed of the frame generator, `seed ^ i`, giving a payload with no repeated byte. */
   k_gwca_frame_bytes = 64, /**< Frame buffer capacity. */
-} eth_gwca_queue_cov_uint8_const_t;
+} eth_gwca_queue_cov_fixture_t;
 
 /**
  * @brief SRAM-window base for host-round-trippable TX buffers.

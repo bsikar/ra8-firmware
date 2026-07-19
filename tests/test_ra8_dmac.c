@@ -14,32 +14,22 @@
 #include "unity_minimal.h"
 
 /**
- * @enum dmac_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum dmac_token_narrow_t
+ * @brief A narrow callback token, checked on the way back.
  */
 typedef enum : uint8_t {
   k_dmac_ctx_token_small =
     7, /**< Small token handed to the callback and checked on the way back. */
-} dmac_uint8_const_t;
+} dmac_token_narrow_t;
 
 /**
- * @enum dmac_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum dmac_token_wide_t
+ * @brief A wider one, proving the context is not truncated to a byte.
  */
 typedef enum : uint16_t {
   k_dmac_ctx_token_wide =
     0xABCD, /**< A wider token, proving the context is not truncated to a byte. */
-} dmac_uint16_const_t;
+} dmac_token_wide_t;
 
 typedef enum : uint32_t {
   k_ra8_dmac_test_src    = 0x22000100UL, /**< RA8 DMAC test src.    */

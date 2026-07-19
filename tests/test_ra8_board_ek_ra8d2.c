@@ -27,18 +27,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum board_ek_ra8d2_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum board_ek_ra8d2_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable, plus buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
   k_board_poison_len =
     0xAAU, /**< Poison written into a length out-parameter, so a call that fails without setting it is detectable. */
-} board_ek_ra8d2_uint8_const_t;
+} board_ek_ra8d2_fixture_t;
 
 static void reset_board_hal_state(void)
 {

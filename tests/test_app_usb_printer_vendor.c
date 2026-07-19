@@ -32,13 +32,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum usb_printer_vendor_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_usb_printer_vendor_fixture_t
+ * @brief The handles and addresses the fixture transacts on, plus the protocol codes and identifiers exchanged.
  */
 typedef enum : uint8_t {
   k_usb_printer_get_port_status = 0x09U, /**< Printer-class request 0x09, GET_PORT_STATUS. */
@@ -46,7 +41,7 @@ typedef enum : uint8_t {
     0x0BU, /**< Standard request 0x0B, SET_INTERFACE, sent to an interface rather than the device. */
   k_usb_assigned_address =
     7U, /**< Address assigned by SET_ADDRESS; non-zero, so a device that ignored it stays visible at address 0. */
-} usb_printer_vendor_uint8_const_t;
+} app_usb_printer_vendor_fixture_t;
 
 /* =============================================================================
  * Local wire constants (mirror the SETUP envelopes the host issues)

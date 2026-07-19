@@ -27,34 +27,24 @@
 #include "unity_minimal.h"
 
 /**
- * @enum adc_scan_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum adc_scan_channel_t
+ * @brief Which channels the scan is configured to sample.
  */
 typedef enum : uint8_t {
   k_adc_second_channel =
     5U, /**< Channel driven in the middle scan slot, not adjacent to the first, so a slot mix-up cannot land on it. */
-} adc_scan_uint8_const_t;
+} adc_scan_channel_t;
 
 /**
- * @enum adc_scan_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum adc_scan_code_t
+ * @brief One distinct conversion result per channel, so a scan that read the wrong slot fails a specific assertion.
  */
 typedef enum : uint16_t {
   k_adc_code_ch0 = 0x0111U, /**< Conversion result planted for the first channel. */
   k_adc_code_ch1 = 0x0222U, /**< For the second.                                  */
   k_adc_code_ch2 =
     0x0333U, /**< For the third; the three differ so a scan that read the wrong slot fails a specific assertion. */
-} adc_scan_uint16_const_t;
+} adc_scan_code_t;
 
 typedef enum : uint8_t {
   k_ra8_adc_test_ch_zero  = 0U,   /**< RA8 ADC test channel zero.        */

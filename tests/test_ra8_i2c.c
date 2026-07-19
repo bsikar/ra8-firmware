@@ -26,19 +26,14 @@
 #include "unity_minimal.h"
 
 /**
- * @enum i2c_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum i2c_fixture_t
+ * @brief The recognizable values moved through the code under test.
  */
 typedef enum : uint8_t {
   k_i2c_payload_byte = 0xA5U, /**< A recognizable single-byte payload; neither 0x00 nor 0xFF. */
   k_i2c_payload_byte_alt =
     0x12U, /**< A second payload byte, so two writes on one bus cannot be confused. */
-} i2c_uint8_const_t;
+} i2c_fixture_t;
 
 /**
  * @enum ra8_i2c_test_const_t

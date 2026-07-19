@@ -22,18 +22,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum timer_capture_demo_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_timer_capture_demo_fixture_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint32_t {
   k_timer_poison_out =
     0xAAAAAAAAUL, /**< Poison written into the capture out-parameter, so a read that fails without setting it is detectable. */
-} timer_capture_demo_uint32_const_t;
+} app_timer_capture_demo_fixture_t;
 
 typedef enum : uint32_t {
   k_t_timer_period   = 0xFFFFFFFFUL, /**< T timer period.       */

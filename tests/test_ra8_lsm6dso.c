@@ -40,13 +40,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum lsm6dso_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum lsm6dso_fixture_t
+ * @brief Values planted in registers to prove a read or write reaches them, plus protocol and on-disk field offsets.
  */
 typedef enum : uint8_t {
   k_lsm6dso_off_z_high     = 5, /**< High byte of Z within the 6-byte little-endian XYZ block. */
@@ -64,21 +59,16 @@ typedef enum : uint8_t {
   k_lsm6dso_fifo_byte_last = 0xBBU, /**< Its last byte, distinct so a byte-order slip is visible. */
   k_lsm6dso_all_ones =
     0xFFU, /**< 0xFF: makes Y read back as 0xFFFF = -1, and stands in for a wrong WHO_AM_I. */
-} lsm6dso_uint8_const_t;
+} lsm6dso_fixture_t;
 
 /**
- * @enum lsm6dso_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum lsm6dso_fixture2_t
+ * @brief Poison values written into out-parameters before a call, so one that fails without assigning is detectable.
  */
 typedef enum : uint16_t {
   k_lsm6dso_words_poison =
     0xFFFFU, /**< Poison written into the word-count out-parameter, so a call that fails without setting it is detectable. */
-} lsm6dso_uint16_const_t;
+} lsm6dso_fixture2_t;
 
 /* =============================================================================
  * Mock transport

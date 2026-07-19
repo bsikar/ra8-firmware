@@ -15,18 +15,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum acmphs_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum acmphs_fixture_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint8_t {
   k_acmphs_probe_cmpctl =
     0xFFU, /**< Every CMPCTL bit set, so a configure that clears the wrong field leaves evidence in the rest. */
-} acmphs_uint8_const_t;
+} acmphs_fixture_t;
 
 typedef enum : uint8_t {
   k_ra8_acmphs_test_ch_first = 0U,   /**< RA8 acmphs test channel first. */

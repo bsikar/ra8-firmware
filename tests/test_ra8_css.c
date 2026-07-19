@@ -22,31 +22,21 @@
 #include "unity_minimal.h"
 
 /**
- * @enum css_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum css_fixture_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
   k_css_decl_cap = 80, /**< Capacity of the serialized-declaration buffer. */
-} css_uint8_const_t;
+} css_fixture_t;
 
 /**
- * @enum css_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum css_inherit_t
+ * @brief A parent colour with three distinct channel bytes, so partial inheritance is visible.
  */
 typedef enum : uint32_t {
   k_css_parent_color =
     0x123456U, /**< A parent colour with three distinct channel bytes, so a child that inherited only part of it is visible. */
-} css_uint32_const_t;
+} css_inherit_t;
 
 /** @brief Shared parsed stylesheet for the matching / cascade tests. */
 static ra8_css_sheet_t s_sheet;

@@ -21,13 +21,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum batt_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum batt_fixture_t
+ * @brief The physical quantities the configuration declares.
  */
 typedef enum : uint8_t {
   k_batt_mv_below_critical = 10U, /**< Below the critical threshold: raises the critical alarm. */
@@ -36,7 +31,7 @@ typedef enum : uint8_t {
   k_batt_mv_below_low      = 20U, /**< Below the low threshold: raises the low alarm.           */
   k_batt_mv_above_low      = 22U, /**< Back above it, inside the hysteresis band.               */
   k_batt_mv_clear_low      = 24U, /**< Far enough above to clear the low alarm.                 */
-} batt_uint8_const_t;
+} batt_fixture_t;
 
 /** @brief Update the monitor and return just the nag (test convenience). */
 static ra8_batt_nag_t upd(ra8_batt_monitor_t* mon, uint8_t soc, bool charging)

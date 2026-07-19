@@ -21,18 +21,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum sdram_benchmark_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_sdram_benchmark_fixture_t
+ * @brief Loop bounds and counts, sized so the case under test is actually reached.
  */
 typedef enum : uint16_t {
   k_ms_per_second =
     1000U, /**< Milliseconds per second, converting a byte count and a duration into a rate. */
-} sdram_benchmark_uint16_const_t;
+} app_sdram_benchmark_fixture_t;
 
 typedef enum : uint32_t {
   k_test_sdram_app_block_bytes = 65536U, /**< Test SDRAM app block bytes. */

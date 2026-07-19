@@ -21,18 +21,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum rtt_log_demo_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_rtt_log_demo_fixture_t
+ * @brief Protocol and on-disk field offsets.
  */
 typedef enum : uint8_t {
   k_rtt_read_offset =
     5U, /**< A non-zero read cursor, so the wrap arithmetic is exercised rather than the empty-ring shortcut. */
-} rtt_log_demo_uint8_const_t;
+} app_rtt_log_demo_fixture_t;
 
 typedef enum : uint32_t {
   k_test_rtt_buf_bytes = 16U, /**< Test rtt buffer bytes. */

@@ -25,17 +25,12 @@
 #include "unity_minimal.h"
 
 /**
- * @enum ble_host_adv_mcdc_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ble_host_adv_mcdc_fixture_t
+ * @brief Out-of-range and malformed inputs the code under test must reject.
  */
 typedef enum : uint8_t {
   k_ble_role_invalid = 0xFFU, /**< A role value outside the enumeration, which init must reject. */
-} ble_host_adv_mcdc_uint8_const_t;
+} ble_host_adv_mcdc_fixture_t;
 
 /* Test hooks from libs/ra8_hal/src/ra8_ble.c. */
 const uint8_t* ra8_ble_test_tx_capture(uint16_t* out_len);

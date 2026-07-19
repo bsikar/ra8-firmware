@@ -29,26 +29,16 @@
 #include "unity_minimal.h"
 
 /**
- * @enum ceu_capture_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ceu_capture_fixture_t
+ * @brief Buffer capacities, payload sizes and fixture geometry.
  */
 typedef enum : uint8_t {
   k_ceu_out_height = 240U, /**< Its height. */
-} ceu_capture_uint8_const_t;
+} ceu_capture_fixture_t;
 
 /**
- * @enum ceu_capture_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ceu_capture_fixture2_t
+ * @brief Buffer capacities and payload sizes.
  */
 typedef enum : uint16_t {
   k_ceu_h_scale_unity =
@@ -57,23 +47,18 @@ typedef enum : uint16_t {
   k_ceu_image_area_bytes = 4096U, /**< Capture buffer size the configuration declares. */
   k_ceu_v_scale_half =
     0x400U, /**< Vertical scale fraction for 1:2, half the horizontal unity value. */
-} ceu_capture_uint16_const_t;
+} ceu_capture_fixture2_t;
 
 /**
- * @enum ceu_capture_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ceu_capture_fixture3_t
+ * @brief Values planted in registers to prove a read or write reaches them.
  */
 typedef enum : uint32_t {
   k_ceu_probe_cfwcr_b =
     0xCAFEBABEU, /**< A second, different value, so the read-back cannot be a stale first result. */
   k_ceu_probe_cfwcr_a =
     0xDEADBEEFU, /**< Planted in CFWCR to prove the write reaches the register. */
-} ceu_capture_uint32_const_t;
+} ceu_capture_fixture3_t;
 
 typedef enum : uint16_t {
   k_test_ceu_width  = 1280U, /**< Test CEU width.  */

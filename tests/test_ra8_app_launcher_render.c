@@ -41,18 +41,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum app_launcher_render_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum app_launcher_render_fixture_t
+ * @brief The byte-level helpers.
  */
 typedef enum : uint32_t {
   k_crc32_init           = 0xFFFFFFFFU, /**< CRC-32 initial value, and the final XOR-out. */
   k_crc32_poly_reflected = 0xEDB88320U, /**< The reflected CRC-32 polynomial.             */
-} app_launcher_render_uint32_const_t;
+} app_launcher_render_fixture_t;
 
 /**
  * @enum lr_geom_t

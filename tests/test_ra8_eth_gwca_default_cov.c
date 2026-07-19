@@ -35,13 +35,8 @@
 #include "unity_minimal.h"
 
 /**
- * @enum eth_gwca_default_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum eth_gwca_default_cov_fixture_t
+ * @brief Out-of-range and malformed inputs the code under test must reject, plus buffer capacities and payload sizes.
  */
 typedef enum : uint8_t {
   k_gwca_desc_size_hi = 0xFU, /**< High nibble of a descriptor's 12-bit data size. */
@@ -59,16 +54,11 @@ typedef enum : uint8_t {
     64U, /**< A smaller accepted slot size, proving the check is a bound and not an equality. */
   k_gwca_tx_pool_bytes = 128, /**< TX pool capacity: one slot's worth. */
   k_gwca_frame_bytes   = 64,  /**< Staging frame capacity.             */
-} eth_gwca_default_cov_uint8_const_t;
+} eth_gwca_default_cov_fixture_t;
 
 /**
- * @enum eth_gwca_default_cov_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum eth_gwca_default_cov_fixture2_t
+ * @brief Out-of-range and malformed inputs the code under test must reject, plus buffer capacities and payload sizes.
  */
 typedef enum : uint16_t {
   k_gwca_desc_ptr_lo =
@@ -77,7 +67,7 @@ typedef enum : uint16_t {
     4096U, /**< A slot size above the 2048-byte maximum, which the extended TX init must reject. */
   k_gwca_out_bytes =
     256, /**< Receive-side output buffer, over one slot so a short read is visible. */
-} eth_gwca_default_cov_uint16_const_t;
+} eth_gwca_default_cov_fixture2_t;
 
 /**
  * @brief Reset the mmap'd peripheral window + MSTP ref counts.

@@ -42,19 +42,14 @@
 #include "unity_minimal.h"
 
 /**
- * @enum ble_att_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum ble_att_cov_fixture_t
+ * @brief Protocol and on-disk field offsets, plus the byte-level helpers.
  */
 typedef enum : uint8_t {
   k_byte_mask = 0xFFU, /**< Truncates a generated or shifted value back into a byte. */
   k_att_value_base =
     0x40U, /**< Base byte of the attribute-value generator, `base + i`, so every byte of the value differs. */
-} ble_att_cov_uint8_const_t;
+} ble_att_cov_fixture_t;
 
 /* Test hooks declared in ra8_ble_host.h under #ifdef UNIT_TEST. */
 
