@@ -76,35 +76,6 @@
 #define RA8_RSIP_SOFTWARE_BACKEND (1)
 #endif
 
-/**
- * @brief One-shot software SHA-256 over a contiguous message buffer.
- *
- * @details
- * Pure-software FIPS PUB 180-4 SHA-256 and the only working RSIP HASH backend:
- * seeds the eight-word hash state from the standard initial constants
- * (``s_sw_sha256_h0``), folds in each full 64-byte block through
- * ``internal_sw_sha256_compress``, length-pads and compresses the trailing
- * partial block via ``internal_sw_sha256_pad``, then serialises the state as a
- * big-endian 32-byte digest with ``internal_sw_sha256_emit``. Forward-declared
- * here because it is defined later in the file (under
- * ``RA8_RSIP_SOFTWARE_BACKEND``) while the earlier ``ra8_rsip_sha256`` already
- * dispatches to it so the RoT image digest works on silicon.
- *
- * @param[in]  msg     Message bytes to hash; read-only, ``msg_len`` bytes long.
- * @param[in]  msg_len Message length in bytes.
- * @param[out] digest  Output buffer receiving the 32-byte big-endian digest.
- *
- * @pre ``msg`` points to at least ``msg_len`` readable bytes.
- * @pre ``digest`` points to at least 32 writable bytes.
- *
- * @post ``digest`` holds the SHA-256 of ``msg[0 .. msg_len)``.
- * @post The input buffer ``msg`` is left unmodified.
- *
- * @note Re-entrant: all working state lives on the caller's stack and the only
- *       global read (``s_sw_sha256_h0``) is const, so concurrent calls on
- *       disjoint buffers do not interfere.
- * @since 0.1.0
- */
 static void internal_sw_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest);
 
 /**
@@ -716,6 +687,35 @@ static void internal_sw_sha256_emit(const uint32_t state[k_ra8_rsip_sw_sha256_st
 }
 
 /* One-shot software SHA-256 over a contiguous buffer -- see surrounding code and HUM citations. */
+/**
+ * @brief One-shot software SHA-256 over a contiguous message buffer.
+ *
+ * @details
+ * Pure-software FIPS PUB 180-4 SHA-256 and the only working RSIP HASH backend:
+ * seeds the eight-word hash state from the standard initial constants
+ * (``s_sw_sha256_h0``), folds in each full 64-byte block through
+ * ``internal_sw_sha256_compress``, length-pads and compresses the trailing
+ * partial block via ``internal_sw_sha256_pad``, then serialises the state as a
+ * big-endian 32-byte digest with ``internal_sw_sha256_emit``. Compiled under
+ * ``RA8_RSIP_SOFTWARE_BACKEND``; a forward declaration near the top of the file
+ * lets the earlier ``ra8_rsip_sha256`` dispatch to it so the RoT image digest
+ * works on silicon.
+ *
+ * @param[in]  msg     Message bytes to hash; read-only, ``msg_len`` bytes long.
+ * @param[in]  msg_len Message length in bytes.
+ * @param[out] digest  Output buffer receiving the 32-byte big-endian digest.
+ *
+ * @pre ``msg`` points to at least ``msg_len`` readable bytes.
+ * @pre ``digest`` points to at least 32 writable bytes.
+ *
+ * @post ``digest`` holds the SHA-256 of ``msg[0 .. msg_len)``.
+ * @post The input buffer ``msg`` is left unmodified.
+ *
+ * @note Re-entrant: all working state lives on the caller's stack and the only
+ *       global read (``s_sw_sha256_h0``) is const, so concurrent calls on
+ *       disjoint buffers do not interfere.
+ * @since 0.1.0
+ */
 RA8_INTERNAL
 static void internal_sw_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
 {
