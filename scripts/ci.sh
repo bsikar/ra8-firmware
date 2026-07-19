@@ -172,6 +172,29 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
     python3 scripts/utils/check_magic_numbers.py
     python3 scripts/utils/check_no_gnu_attribute.py
     python3 scripts/utils/check_tz_boundary_discard.py
+    # The block below was missing here while firmware.yml ran every one of
+    # them, so this suite was a SUBSET of CI -- the exact condition the file
+    # header forbids. Fifteen gates could go red on the runner after a local
+    # `make ci` reported PASS. check_ruff.py in particular lints these very
+    # scripts, so a change to the gates themselves was the least-covered
+    # thing in the tree.
+    python3 scripts/utils/check_assert_casts.py tests/*.c
+    python3 scripts/utils/check_core_layering.py
+    python3 scripts/utils/check_example_board_pins.py
+    python3 scripts/utils/check_header_file_placement.py
+    python3 scripts/utils/check_hil_alive_policy.py
+    python3 scripts/utils/check_inclusive_terminology.py
+    python3 scripts/utils/check_line_citations.py
+    python3 scripts/utils/check_new_compound_has_mcdc.py
+    python3 scripts/utils/check_no_driver_asm_guard.py
+    python3 scripts/utils/check_no_wave_references.py
+    python3 scripts/utils/check_nsc_veneer_defs.py
+    python3 scripts/utils/check_stub_crypto_guarded.py
+    # --require makes a missing linter fatal rather than a silent skip; the
+    # container ships both, and a skipped linter is indistinguishable from a
+    # clean one in the log.
+    python3 scripts/utils/check_ruff.py --require
+    python3 scripts/utils/check_shell.py --require
     # check_hil_sil_parity.py: SIM==HIL -- every hw_validated/hil app must also
     # be exercised in board_sim (sil_all.sh). Fails if a hil/ app has no
     # hil.conf, is not in sil_all.sh's run set, or declares a HIL_MODE board_sim
@@ -179,6 +202,16 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
     # HIL app cannot silently escape SIM coverage.
     python3 scripts/utils/check_hil_sil_parity.py
   )
+
+  # --- gate: TrustZone NSC veneers under -mcmse (job: nsc-cmse) ------------
+  # firmware.yml compiles every libs/ra8_nsc TU with -mcmse -Wall -Wextra
+  # -Werror as its own step. The warning flags are load-bearing: a bare
+  # -fsyntax-only run is what let a redefined RA8_NSC_VENEER silently drop
+  # the cmse_nonsecure_entry attribute, producing a broken secure gateway
+  # that compiled clean.
+  gate_nsc_cmse() {
+    bash scripts/utils/check_nsc_cmse.sh
+  }
 
   # --- gate: annotation attributes (job: pre-commit-checks) ----------------
   # firmware.yml runs check_annotations.py as its own step inside the
@@ -238,6 +271,7 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
   run_gate "clang-format" gate_clang_format
   run_gate "cppcheck" gate_cppcheck
   run_gate "pre-commit-checks" gate_precommit_checks
+  run_gate "nsc-cmse" gate_nsc_cmse
   run_gate "annotations" gate_annotations
   if [[ "$fast" != "1" ]]; then
     run_gate "misra" gate_misra
