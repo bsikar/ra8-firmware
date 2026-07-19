@@ -980,6 +980,56 @@ RA8_INTERNAL
   return internal_ra8_epaper_write_cmd((uint16_t)k_ra8_epaper_cmd_ld_img_end);
 }
 
+/**
+ * @brief Poll REG_LUTAFSR until the controller reports every LUT idle.
+ *
+ * @details
+ * The per-poll "LUT idle" comparison is routed through the ra8_sim_mmio
+ * fault seam under the host unit-test build (issue #177 / T1-01) so this
+ * real poll/timeout loop executes on host instead of a compiled-out
+ * short-circuit; un-armed the seam is transparent and honours the
+ * comparison. The LUTAFSR value is clocked in over the injected bus, so
+ * the seam is keyed on the seam's context cookie -- a stable,
+ * test-addressable object the test itself bound into cfg (a stack local
+ * cannot be armed). Firmware and board_sim take the plain comparison path.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok             Controller reports no busy LUTs.
+ * @retval k_ra8_err_hw_timeout Poll budget exhausted with LUTs still busy.
+ * @retval other                Forwarded from the LUTAFSR register read.
+ *
+ * @pre  A DPY_AREA command has been issued.
+ * @pre  ``s_panel.cfg.bus`` is bound.
+ * @post No driver state is mutated.
+ * @post The loop runs at most ::k_ra8_epaper_lut_poll_max iterations.
+ */
+RA8_INTERNAL
+RA8_BOUNDED_LOOP(k_ra8_epaper_lut_poll_max)
+[[nodiscard]] static ra8_err_t internal_ra8_epaper_wait_lut_idle(void)
+{
+#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+  /* Not a register access: the address is only used as a fault-table key. */
+  volatile const void* lut_probe = (volatile const void*)s_panel.cfg.bus.ctx;
+#endif
+  for (uint32_t i = 0U; i < (uint32_t)k_ra8_epaper_lut_poll_max; i++) {
+    uint16_t        status = (uint16_t)k_ra8_epaper_status_unset;
+    const ra8_err_t err = internal_ra8_epaper_reg_read((uint16_t)k_ra8_epaper_reg_lutafsr, &status);
+    if (err != k_ra8_ok) {
+      return err;
+    }
+#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
+    if (ra8_sim_mmio_wait_eval(lut_probe, i, (status == 0U))) {
+      return k_ra8_ok;
+    }
+#else
+    if (status == 0U) {
+      return k_ra8_ok;
+    }
+#endif
+  }
+  return k_ra8_err_hw_timeout;
+}
+
 [[nodiscard]] ra8_err_t ra8_epaper_display_area(const ra8_epaper_area_t* area,
                                                 ra8_epaper_waveform_t    waveform)
 {
@@ -1011,37 +1061,7 @@ RA8_INTERNAL
   if (err != k_ra8_ok) {
     return err;
   }
-
-  /* Poll LUTAFSR until the controller reports zero busy LUTs. The per-poll
-   * "LUT idle" comparison is routed through the ra8_sim_mmio fault seam under the
-   * host unit-test build (issue #177 / T1-01) so this real poll/timeout loop
-   * executes on host instead of a compiled-out short-circuit; un-armed the seam
-   * is transparent and honours the comparison. The LUTAFSR value is clocked in
-   * over the injected bus, so the seam is keyed on the seam's context cookie --
-   * a stable, test-addressable object the test itself bound into cfg (a stack
-   * local cannot be armed). Firmware and board_sim take the plain comparison
-   * path. */
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-  /* Not a register access: the address is only used as a fault-table key. */
-  volatile const void* lut_probe = (volatile const void*)s_panel.cfg.bus.ctx;
-#endif
-  for (uint32_t i = 0U; i < (uint32_t)k_ra8_epaper_lut_poll_max; i++) {
-    uint16_t status = (uint16_t)k_ra8_epaper_status_unset;
-    err             = internal_ra8_epaper_reg_read((uint16_t)k_ra8_epaper_reg_lutafsr, &status);
-    if (err != k_ra8_ok) {
-      return err;
-    }
-#if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
-    if (ra8_sim_mmio_wait_eval(lut_probe, i, (status == 0U))) {
-      return k_ra8_ok;
-    }
-#else
-    if (status == 0U) {
-      return k_ra8_ok;
-    }
-#endif
-  }
-  return k_ra8_err_hw_timeout;
+  return internal_ra8_epaper_wait_lut_idle();
 }
 
 [[nodiscard]] ra8_err_t ra8_epaper_sleep(void)
