@@ -1022,6 +1022,10 @@ target_include_directories(test_ra8_epub_xml_shim PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${FW_ROOT}/libs/ra8_core/inc
   ${FW_ROOT}/libs/ra8_epub/inc
+  # ra8_epub_xml_shim_internal.h declares the shim's four extern "C" entry
+  # points and their result struct; this test consumes that contract instead
+  # of restating it, so the library's src/ has to be reachable.
+  ${FW_ROOT}/libs/ra8_epub/src
   ${FW_ROOT}/libs/third_party/tinyxml2
   ${FW_ROOT}/libs/third_party/stb
   ${CMAKE_CURRENT_SOURCE_DIR}/mocks
@@ -1092,6 +1096,9 @@ target_include_directories(test_ra8_epub_xml_shim_cov2 PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${FW_ROOT}/libs/ra8_core/inc
   ${FW_ROOT}/libs/ra8_epub/inc
+  # See test_ra8_epub_xml_shim: the shim's contract lives in
+  # ra8_epub_xml_shim_internal.h under the library's src/.
+  ${FW_ROOT}/libs/ra8_epub/src
   ${CMAKE_CURRENT_SOURCE_DIR}/mocks
 )
 if(RA8_REFLOW_USE_LITEHTML)
