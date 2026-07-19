@@ -338,19 +338,22 @@ macro(ra8_add_app)
     endif()
 
     # ra8_webp decodes WebP (VP8 / VP8L) through the vendored libwebp decoder
-    # (libs/third_party/libwebp). Only the decoder subset is vendored, so a
-    # recursive *.c glob is exactly that subset. Its utils.c routes
-    # WebPSafe{Malloc,Calloc,Free} through the heap-free ra8_webp bump arena via
-    # -DRA8_WEBP_USE_ARENA (the RA8 LOCAL PATCH; applied to the SOUP TUs below),
-    # so the firmware reaches no libc malloc. ra8_webp's own .c facade/arena are
-    # globbed by the LIBS loop above (or by the ra8_tileatlas block); only the
-    # vendored TUs + include root are wired here. Wired whenever ra8_webp is
-    # requested directly OR pulled in transitively by ra8_tileatlas (#290), and
-    # only once so the two paths never double-add the libwebp sources.
+    # (libs/third_party/libwebp). The four-part recipe -- which TUs, which
+    # include root, -DRA8_WEBP_USE_ARENA, the SOUP warning flags -- lives in
+    # cmake/ra8_webp_vendor.cmake and is NOT restated here: open-coding it is
+    # what left the recipe unreachable from a standalone host tool, which is why
+    # tools/ra8_fmt and tools/media_dl each faked ra8_ta_priv_webp_transcode()
+    # rather than compile the decoder that was already in the tree.
+    #
+    # ra8_webp's own .c facade/arena are globbed by the LIBS loop above (or by
+    # the ra8_tileatlas block); only the vendored TUs + include root are wired
+    # here. Wired whenever ra8_webp is requested directly OR pulled in
+    # transitively by ra8_tileatlas (#290), and only once so the two paths never
+    # double-add the libwebp sources.
     set(_ra8_webp_vendor "")
     if(("ra8_webp" IN_LIST _RA8_APP_LIBS) OR ("ra8_tileatlas" IN_LIST _RA8_APP_LIBS))
-        file(GLOB_RECURSE _ra8_webp_vendor CONFIGURE_DEPENDS
-            ${RA8_REPO_ROOT}/libs/third_party/libwebp/src/*.c)
+        include(${RA8_REPO_ROOT}/cmake/ra8_webp_vendor.cmake)
+        ra8_webp_vendor_sources(_ra8_webp_vendor ${RA8_REPO_ROOT})
         list(APPEND _ra8_lib_extra ${_ra8_webp_vendor})
         list(APPEND _ra8_lib_inc ${RA8_REPO_ROOT}/libs/third_party/libwebp)
     endif()
@@ -644,8 +647,7 @@ macro(ra8_add_app)
     # -DRA8_WEBP_USE_ARENA activates the utils.c RA8 LOCAL PATCH that routes the
     # allocator through the heap-free ra8_webp bump arena (see docs/SOUP/libwebp.md).
     if(_ra8_webp_vendor)
-        set_source_files_properties(${_ra8_webp_vendor} PROPERTIES COMPILE_OPTIONS
-            "-w;-fno-strict-aliasing;-DRA8_WEBP_USE_ARENA")
+        ra8_webp_apply_soup_flags(${_ra8_webp_vendor})
     endif()
 
     # The vendored xz-embedded decoder (SOUP): blanket -w + -fno-strict-aliasing
