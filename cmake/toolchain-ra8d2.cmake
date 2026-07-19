@@ -44,6 +44,33 @@ set(CMAKE_C_COMPILER_WORKS 1)
 set(CMAKE_CXX_COMPILER_WORKS 1)
 
 # -----------------------------------------------------------------------------
+# Compiler cache for EVERY cross build
+# -----------------------------------------------------------------------------
+# This belongs in the toolchain file, not only in the top-level CMakeLists.
+# Apps are built standalone -- `make <app>` configures examples/<app>/ with this
+# toolchain file and never processes the root listfile -- which is exactly how
+# build_all_examples.sh and the CI build-cross job build all ~200 of them. So
+# including cmake/ccache.cmake from the root alone left the largest and most
+# repetitive compile workload in the project with no cache at all: a `make ci`
+# run was observed compiling every app with the ccache counters frozen.
+#
+# The toolchain file is the one place every cross build passes through,
+# regardless of entry point.
+#
+# Skipped when instrumenting: a cached object carries the absolute .gcno/profile
+# paths of the build that produced it, so replaying it into a different build
+# directory makes gcovr resolve nothing. Same rule as cmake/ccache.cmake, which
+# owns the full rationale.
+if(NOT RA8_COVERAGE AND NOT RA8_MCDC)
+    find_program(RA8_CCACHE_PROGRAM ccache)
+    if(RA8_CCACHE_PROGRAM)
+        foreach(_lang C CXX ASM)
+            set(CMAKE_${_lang}_COMPILER_LAUNCHER "${RA8_CCACHE_PROGRAM}")
+        endforeach()
+    endif()
+endif()
+
+# -----------------------------------------------------------------------------
 # Pin the cross-compiler major version (#178)
 # -----------------------------------------------------------------------------
 # Codegen correctness on the attacker-facing miniz ZIP inflater is
