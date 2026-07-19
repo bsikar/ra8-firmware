@@ -93,7 +93,7 @@ RA8_NSC_VENEER ra8_err_t ra8_nsc_wdt_start(void)
  * the WDT only when every registered NS thread has checked in on time.
  *
  * @return Nothing.
- * @retval None This function does not return a value.
+ * @note This function does not return a value.
  *
  * @pre ::ra8_nsc_wdt_start has armed the WDT.
  * @pre Called from the NS supervisor thread on its refresh cadence.

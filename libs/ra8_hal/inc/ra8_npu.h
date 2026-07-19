@@ -405,7 +405,7 @@ typedef struct {
  * @param[in] ctx Unused registration cookie (kept for `ra8_isr_handler_t` ABI).
  *
  * @return None (void).
- * @retval None This function returns no value.
+ * @note This function returns no value.
  *
  * @pre `ra8_npu_init()` previously succeeded.
  * @pre Invoked from the NPU interrupt vector (or an equivalent test driver).

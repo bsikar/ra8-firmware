@@ -187,7 +187,7 @@ static void cache_coherency_emit_pass(void)
  * @details Reached only if ``ra8_cpu1_release`` fails, so the M33 never started.
  *
  * @return This function never returns.
- * @retval (none) The core spins in place.
+ * @note The core spins in place.
  *
  * @pre A fatal error (CPU1 release failure) has occurred.
  * @pre The failure has already been logged.

@@ -154,8 +154,7 @@ typedef void (*ra8_log_byte_sink_fn_t)(void* ctx, uint8_t byte);
  * @param[in] fn  Byte sink callback, or NULL to restore the ITM default.
  * @param[in] ctx Opaque cookie passed back to `fn` (may be NULL).
  *
- * @return ra8_err_t Error code.
- * @retval k_ra8_ok Sink installed (or cleared).
+ * @return Nothing.
  *
  * @pre None.
  * @pre `fn`, when non-NULL, out-lives the redirect.

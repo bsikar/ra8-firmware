@@ -64,7 +64,7 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
  * the key teaching point of this example.
  *
  * @return This function never returns.
- * @retval (none) Control stays in the final spin loop.
+ * @note Control stays in the final spin loop.
  *
  * @pre `cpu1_reset_handler` has initialised `.data` and `.bss`.
  * @pre The shared block at ::k_bg_sram_base has been zeroed by the M85.
@@ -110,7 +110,7 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
  * `.bss`. The linker exports the region bounds as `g_ra8_ls_cpu1_*` symbols.
  *
  * @return This function never returns.
- * @retval (none) Control passes to `cpu1_main`, which loops forever.
+ * @note Control passes to `cpu1_main`, which loops forever.
  *
  * @pre Hardware loaded the initial SP from `.cpu1_vectors[0]`.
  * @pre The M85 released this core via the CPU1ACTCSR handshake.
@@ -148,7 +148,7 @@ extern uint32_t g_ra8_ls_cpu1_bss_end;
  * progress; on hardware a watchdog (if enabled) eventually resets.
  *
  * @return This function never returns.
- * @retval (none) The core spins in place.
+ * @note The core spins in place.
  *
  * @pre A hardware fault or unhandled exception occurred.
  * @pre Entered via the M33 exception entry path.

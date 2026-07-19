@@ -299,7 +299,7 @@ static void publish_result(volatile com33_mailbox_t* mb, const void* blob, uint3
  * @brief Park the M33 forever once the emitter has reported its result.
  *
  * @return This function never returns.
- * @retval (none) The core spins in place.
+ * @note The core spins in place.
  *
  * @pre The mailbox already carries the final `status` / `done`.
  * @pre Entered only after the emitter run completes (or fails to build).
@@ -361,7 +361,7 @@ static void notify_m85(void)
  * publishes the result for the parked M85. Any failure publishes `build_fail`.
  *
  * @return This function never returns.
- * @retval (none) Control ends in ::cpu1_park.
+ * @note Control ends in ::cpu1_park.
  *
  * @pre `cpu1_reset_handler` has initialised `.data` / `.bss`.
  * @pre The M85 published ::k_com33_magic and released this core.
@@ -407,7 +407,7 @@ static void notify_m85(void)
  * The linker exports the region bounds as `g_ra8_ls_cpu1_*` symbols.
  *
  * @return This function never returns.
- * @retval (none) Control passes to ::cpu1_run_compile, which loops forever.
+ * @note Control passes to ::cpu1_run_compile, which loops forever.
  *
  * @pre Hardware loaded the initial SP from `.cpu1_vectors[0]`.
  * @pre The M85 released this core via the CPU1ACTCSR handshake.
@@ -451,7 +451,7 @@ static void notify_m85(void)
  * core then spins; on hardware a watchdog (if enabled) eventually resets it.
  *
  * @return This function never returns.
- * @retval (none) The core spins in place after publishing the fault.
+ * @note The core spins in place after publishing the fault.
  *
  * @pre A hardware fault or unhandled exception occurred.
  * @pre Entered via the M33 exception entry path.

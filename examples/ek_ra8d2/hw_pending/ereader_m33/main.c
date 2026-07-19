@@ -840,7 +840,7 @@ static void run_mode_switch(volatile erm33_mailbox_t* mb)
  * @brief Park the M85 in low-power WFI after the M33 owns the page.
  *
  * @return This function never returns.
- * @retval (none) The M85 sleeps until power-off (or a future M33 wake IRQ).
+ * @note The M85 sleeps until power-off (or a future M33 wake IRQ).
  *
  * @pre The handoff cycle has completed and the verdict was logged.
  * @pre The verdict banner has already been emitted.
@@ -864,7 +864,7 @@ static void run_mode_switch(volatile erm33_mailbox_t* mb)
  * @brief Park the M85 forever after an unrecoverable startup failure.
  *
  * @return This function never returns.
- * @retval (none) The core spins in place.
+ * @note The core spins in place.
  *
  * @pre A fatal error (e.g. CPU1 release failure) has occurred and been logged.
  * @post The M85 makes no further forward progress.

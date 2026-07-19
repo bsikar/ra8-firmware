@@ -200,7 +200,7 @@ static void ns_systick_handler(void)
  *          deterministically (low power) instead of executing undefined state.
  *          Recovery requires an external reset.
  * @return Does not return (@c noreturn).
- * @retval None The function never returns to its caller.
+ * @note The function never returns to its caller.
  * @pre Called only on an unrecoverable NS startup error.
  * @pre Interrupts that could resume normal flow are not relied upon.
  * @post The core remains parked in a low-power wait loop until reset.
@@ -294,7 +294,7 @@ static void sys_thread_entry(ULONG thread_input)
  *          workers with their deadlines; then start the supervisor thread. Any
  *          failure is unrecoverable this early, so it parks in ::ns_panic_halt.
  * @return Nothing.
- * @retval None Returns only on full success; otherwise never returns (halts).
+ * @note Returns only on full success; otherwise never returns (halts).
  * @pre ::ra8_nsc_periph_init has completed (Secure clocks + substrate up).
  * @pre Called in single-threaded boot context before any worker is created.
  * @post The WDT is armed and the supervisor thread is running.
@@ -452,7 +452,7 @@ typedef void (*ns_exc_handler_t)(void);
  *          exception vectors. There is no recovery path, so it spins in a @c wfi
  *          loop and leaves the faulting context intact for a debugger.
  * @return Nothing (noreturn; control never leaves the halt loop).
- * @retval None This function does not return.
+ * @note This function does not return.
  * @pre Reached only via a Non-Secure exception vector.
  * @pre Recovery, if any, is the debugger's or watchdog's responsibility.
  * @post The CPU is parked in a wfi loop and runs no further NS code.

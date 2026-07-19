@@ -416,7 +416,7 @@ static void internal_handle_dvst(ra8_usb_speed_t speed, uint16_t intsts0)
  * @param[in] rhst Masked DVSTCTR0.RHST[2:0] from the DVST snapshot.
  *
  * @return Nothing.
- * @retval (void) Speed + current framework reflect a settled FS/HS link.
+ * @note Speed + current framework reflect a settled FS/HS link.
  *
  * @pre ``_ux_system_slave`` is bound (init has run).
  * @pre @p rhst is the 3-bit RHST field (already masked).
