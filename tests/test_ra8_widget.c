@@ -22,44 +22,41 @@
 #include "unity_minimal.h"
 
 /**
- * @enum widget_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_widget_geom_t
+ * @brief Rectangles and track sizes the layout arms are laid out with.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Sizes are picked so every computed edge is unique: a stacked layout that
+ * mis-attributes a track, or a hit test that lands one child off, produces a
+ * coordinate that matches no other widget in the fixture.
  */
-typedef enum : uint8_t {
-  k_widget_h_30           = 30,
-  k_widget_h_40           = 40,
-  k_widget_make_widget_28 = 28,
-  k_widget_make_widget_44 = 44,
-  k_widget_make_widget_48 = 48,
-  k_widget_make_widget_64 = 64,
-  k_widget_n_99           = 99U,
-  k_widget_w_100          = 100,
-  k_widget_w_50           = 50,
-  k_widget_w_80           = 80,
-  k_widget_x_10           = 10,
-  k_widget_x_5            = 5,
-  k_widget_x_7            = 7,
-  k_widget_y_20           = 20,
-} widget_uint8_const_t;
+typedef enum : int16_t {
+  k_t_pane_w        = 100, /**< Width of a full-width stacked child.            */
+  k_t_pane_h        = 40,  /**< Its height.                                     */
+  k_t_square_side   = 50,  /**< Edge of the two side-by-side square children.    */
+  k_t_short_w       = 80,  /**< Width of the damage-intersect arm's widget.      */
+  k_t_short_h       = 30,  /**< Its height.                                      */
+  k_t_origin_x      = 10,  /**< Non-zero origin x proving offsets are honoured;
+                                also the edge of the two adjacency arms.         */
+  k_t_origin_y      = 20,  /**< Non-zero origin y.                               */
+  k_t_second_pane_y = 260, /**< Origin y of the second pane, past the first.     */
+  k_t_track_tall    = 64,  /**< Fixed track height of the tall stack child.      */
+  k_t_track_mid     = 48,  /**< Fixed track height of the middle child.          */
+  k_t_track_header  = 44,  /**< Fixed track height reserved for the header.      */
+  k_t_track_footer  = 28,  /**< Fixed track height reserved for the footer.      */
+  k_t_damage_inside = 7,   /**< Edge of a damage rect wholly inside the widget.  */
+  k_t_damage_small  = 5,   /**< Edge of the smaller damage rect.                 */
+  k_t_untouched_h   = 999, /**< Sentinel height a skipped layout must not rewrite. */
+} t_widget_geom_t;
 
 /**
- * @enum widget_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_widget_count_t
+ * @brief Out-parameter seed proving the callee always writes it.
  */
 typedef enum : uint16_t {
-  k_widget_h_999 = 999,
-  k_widget_y_260 = 260,
-} widget_uint16_const_t;
+  k_t_count_poison = 99U, /**< Pre-set count; a callee that returns without
+                               writing leaves this value behind. */
+} t_widget_count_t;
 
 /* --- Recording mock widget -------------------------------------------------- */
 
@@ -123,9 +120,9 @@ static void test_layout_stack(void)
   mock_ctx_t   c1    = {};
   mock_ctx_t   c2    = {};
   ra8_widget_t ws[3] = {
-    make_widget(&c0, k_widget_make_widget_64, 0, 1), /* fixed 64 high   */
+    make_widget(&c0, k_t_track_tall, 0, 1), /* fixed 64 high   */
     make_widget(&c1, 0, 1, 2),                       /* flex fills rest */
-    make_widget(&c2, k_widget_make_widget_48, 0, 3), /* fixed 48 high   */
+    make_widget(&c2, k_t_track_mid, 0, 3), /* fixed 48 high   */
   };
   ra8_box_t           scratch[8];
   const ra8_ui_rect_t frame = {.x = 0, .y = 0, .w = 100, .h = 300};
@@ -141,7 +138,7 @@ static void test_layout_stack(void)
 
   /* Hide the middle widget: the two fixed ones now bracket the frame. */
   ws[1].visible = false;
-  ws[1].rect.h  = k_widget_h_999; /* sentinel: must be left untouched */
+  ws[1].rect.h  = k_t_untouched_h; /* sentinel: must be left untouched */
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_widget_layout_stack(ws, 3U, &frame, k_ra8_widget_axis_col, 0, 0, scratch, 8U));
   TEST_ASSERT_EQ(64, ws[0].rect.h);
@@ -168,8 +165,8 @@ static void test_dispatch_touch(void)
   mock_ctx_t   c0    = {.consume = true};
   mock_ctx_t   c1    = {.consume = true};
   ra8_widget_t ws[2] = {make_widget(&c0, 0, 0, 1), make_widget(&c1, 0, 0, 2)};
-  ws[0].rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_w_50, .h = k_widget_w_50};
-  ws[1].rect = (ra8_ui_rect_t){.x = k_widget_w_50, .y = 0, .w = k_widget_w_50, .h = k_widget_w_50};
+  ws[0].rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_square_side, .h = k_t_square_side};
+  ws[1].rect = (ra8_ui_rect_t){.x = k_t_square_side, .y = 0, .w = k_t_square_side, .h = k_t_square_side};
 
   bool                     handled = false;
   const ra8_widget_event_t touch1  = {.kind = k_ra8_widget_ev_touch, .x = 60, .y = 10};
@@ -240,13 +237,13 @@ static void test_invalidate_damage(void)
   mock_ctx_t   c0    = {};
   mock_ctx_t   c1    = {};
   ra8_widget_t ws[2] = {make_widget(&c0, 0, 0, 1), make_widget(&c1, 0, 0, 2)};
-  ws[0].rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_w_100, .h = k_widget_h_40};
+  ws[0].rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_pane_w, .h = k_t_pane_h};
   ws[1].rect =
-    (ra8_ui_rect_t){.x = 0, .y = k_widget_y_260, .w = k_widget_w_100, .h = k_widget_h_40};
+    (ra8_ui_rect_t){.x = 0, .y = k_t_second_pane_y, .w = k_t_pane_w, .h = k_t_pane_h};
 
   ra8_ui_rect_t        rect = {};
   ra8_widget_refresh_t hint = k_ra8_widget_refresh_quality;
-  uint16_t             n    = k_widget_n_99;
+  uint16_t             n    = k_t_count_poison;
   /* Clean -> nothing dirty. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_damage(ws, 2U, &rect, &hint, &n));
   TEST_ASSERT_EQ(0U, n);
@@ -337,8 +334,8 @@ static void test_widget_edge_guards(void)
   mock_ctx_t   c2    = {};
   mock_ctx_t   c3    = {};
   ra8_widget_t wd[2] = {make_widget(&c2, 0, 0, 1), make_widget(&c3, 0, 0, 2)};
-  wd[0].rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_w_100, .h = k_widget_h_40};
-  wd[1].rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 0, .h = k_widget_h_40};
+  wd[0].rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_pane_w, .h = k_t_pane_h};
+  wd[1].rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 0, .h = k_t_pane_h};
   (void)ra8_widget_invalidate(&wd[0], k_ra8_widget_refresh_fast);
   (void)ra8_widget_invalidate(&wd[1], k_ra8_widget_refresh_fast);
   ra8_ui_rect_t        dmg  = {};
@@ -392,7 +389,7 @@ static void test_widget_remaining_mcdc(void)
    * skipped during dispatch (the `vt == NULL` condition is true). */
   mock_ctx_t   cnv = {.consume = true};
   ra8_widget_t wnv = make_widget(&cnv, 0, 0, 1);
-  wnv.rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_w_50, .h = k_widget_w_50};
+  wnv.rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_square_side, .h = k_t_square_side};
   wnv.vt           = nullptr; /* vt == NULL: middle condition true */
   bool                     handled = true;
   const ra8_widget_event_t touch   = {.kind = k_ra8_widget_ev_touch, .x = 10, .y = 10};
@@ -404,12 +401,12 @@ static void test_widget_remaining_mcdc(void)
    * never folds into the damage union or the dirty count. */
   mock_ctx_t   cdi = {};
   ra8_widget_t wdi = make_widget(&cdi, 0, 0, 1);
-  wdi.rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_w_80, .h = k_widget_h_30};
+  wdi.rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_short_w, .h = k_t_short_h};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_invalidate(&wdi, k_ra8_widget_refresh_quality));
   wdi.visible       = false; /* dirty == true, visible == false */
-  ra8_ui_rect_t dmg = {.x = k_widget_x_7, .y = k_widget_x_7, .w = k_widget_x_7, .h = k_widget_x_7};
+  ra8_ui_rect_t dmg = {.x = k_t_damage_inside, .y = k_t_damage_inside, .w = k_t_damage_inside, .h = k_t_damage_inside};
   ra8_widget_refresh_t hint = k_ra8_widget_refresh_quality;
-  uint16_t             n    = k_widget_n_99;
+  uint16_t             n    = k_t_count_poison;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_damage(&wdi, 1U, &dmg, &hint, &n));
   TEST_ASSERT_EQ(0U, n);    /* invisible -> not counted   */
   TEST_ASSERT_EQ(0, dmg.w); /* empty accumulator returned */
@@ -422,9 +419,9 @@ static void test_widget_remaining_mcdc(void)
   handled                     = true;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_dispatch(nullptr, 0U, &ev, &handled));
   TEST_ASSERT_EQ(false, handled);
-  dmg = (ra8_ui_rect_t){.x = k_widget_x_5, .y = k_widget_x_5, .w = k_widget_x_5, .h = k_widget_x_5};
+  dmg = (ra8_ui_rect_t){.x = k_t_damage_small, .y = k_t_damage_small, .w = k_t_damage_small, .h = k_t_damage_small};
   hint = k_ra8_widget_refresh_quality;
-  n    = k_widget_n_99;
+  n    = k_t_count_poison;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_damage(nullptr, 0U, &dmg, &hint, &n));
   TEST_ASSERT_EQ(0U, n);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_render_dirty(nullptr, 0U));
@@ -464,8 +461,8 @@ typedef struct {
 static bool build_compose_fixture(compose_fixture_t* f)
 {
   *f         = (compose_fixture_t){};
-  f->root[0] = make_widget(&f->cs, k_widget_make_widget_44, 0, 0);
-  f->root[2] = make_widget(&f->cf, k_widget_make_widget_28, 0, 0);
+  f->root[0] = make_widget(&f->cs, k_t_track_header, 0, 0);
+  f->root[2] = make_widget(&f->cf, k_t_track_footer, 0, 0);
   f->body[0] = make_widget(&f->cl, 0, 1, 0);
   f->body[1] = make_widget(&f->cr, 0, 1, 0);
 
@@ -686,10 +683,10 @@ static void test_widget_damage_empty_union(void)
   mock_ctx_t   c0    = {};
   mock_ctx_t   c1    = {};
   ra8_widget_t ws[2] = {make_widget(&c0, 0, 0, 1), make_widget(&c1, 0, 0, 2)};
-  ws[0].rect         = (ra8_ui_rect_t){.x = k_widget_x_10,
-                                       .y = k_widget_y_20,
-                                       .w = k_widget_w_100,
-                                       .h = k_widget_h_40};
+  ws[0].rect         = (ra8_ui_rect_t){.x = k_t_origin_x,
+                                       .y = k_t_origin_y,
+                                       .w = k_t_pane_w,
+                                       .h = k_t_pane_h};
   ws[1].rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 0, .h = 0}; /* covers no pixels */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_invalidate(&ws[0], k_ra8_widget_refresh_fast));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_invalidate(&ws[1], k_ra8_widget_refresh_fast));
@@ -730,7 +727,7 @@ static void test_panel_render_route_guards(void)
   ra8_widget_t wa = {};
   wa.vt           = ra8_widget_panel_vtable();
   wa.ctx          = nullptr;
-  wa.rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_x_10, .h = k_widget_x_10};
+  wa.rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_origin_x, .h = k_t_origin_x};
   wa.vt->render(&wa); /* no crash */
   TEST_ASSERT_EQ(false, wa.vt->on_input(&wa, &ev));
 
@@ -739,7 +736,7 @@ static void test_panel_render_route_guards(void)
   ra8_widget_t       wb      = {};
   wb.vt                      = ra8_widget_panel_vtable();
   wb.ctx                     = &no_kids;
-  wb.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_x_10, .h = k_widget_x_10};
+  wb.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_origin_x, .h = k_t_origin_x};
   wb.vt->render(&wb); /* no crash */
   TEST_ASSERT_EQ(false, wb.vt->on_input(&wb, &ev));
   TEST_END("ra8_widget_panel: render + route non-panel guards");
@@ -776,7 +773,7 @@ static void test_panel_layout_fail(void)
   ra8_widget_t       w     = {};
   w.vt                     = ra8_widget_panel_vtable(); /* hand-bound: init would reject box_cap */
   w.ctx                    = &small;
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_w_100, .h = k_widget_w_50};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_t_pane_w, .h = k_t_square_side};
 
   /* compose forwards the layout failure (damage / render never run). */
   ra8_ui_rect_t        dmg   = {};
