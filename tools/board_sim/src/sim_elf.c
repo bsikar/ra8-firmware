@@ -69,8 +69,8 @@ int load_elf(uc_engine* uc, const uint8_t* elf, long len)
   (void)memcpy(&phoff, elf + (uint32_t)k_elf_e_phoff_off, 4);
   uint16_t phentsize =
     (uint16_t)(elf[k_elf_e_phentsize_off] | (elf[k_elf_e_phentsize_off + 1U] << 8));
-  uint16_t phnum = (uint16_t)(elf[k_elf_e_phnum_off] | (elf[k_elf_e_phnum_off + 1U] << 8));
-  int      loaded    = 0;
+  uint16_t phnum  = (uint16_t)(elf[k_elf_e_phnum_off] | (elf[k_elf_e_phnum_off + 1U] << 8));
+  int      loaded = 0;
   for (uint16_t i = 0U; i < phnum; i++) {
     const uint8_t* ph = elf + phoff + ((size_t)(uint32_t)i * phentsize);
     uint32_t       p_type;

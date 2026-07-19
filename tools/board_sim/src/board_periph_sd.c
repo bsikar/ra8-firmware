@@ -59,7 +59,6 @@ typedef enum : uint32_t {
  */
 static uint32_t s_sd_spi_block_reads;
 
-
 /**
  * @enum board_sd_cmd_idx_t
  * @brief SD SPI command indices answered by the model (low 6 bits of byte 0).
@@ -82,10 +81,8 @@ typedef enum : uint8_t {
   k_sd_idx_cmd58  = 58U, /**< READ_OCR.           */
 } board_sd_cmd_idx_t;
 
-
 /** @brief The single modelled SD card (declared in board_periph_sd_internal.h). */
 board_sd_state_t s_sd;
-
 
 /**
  * @brief CRC16-CCITT (poly 0x1021, init 0) over a buffer.
@@ -549,10 +546,7 @@ static bool board_sd_dispatch_ident(board_sd_state_t* c, uint8_t idx, uint8_t r1
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void board_sd_cmd_erase_bound(board_sd_state_t* c,
-                                     uint32_t*         bound,
-                                     uint32_t          arg,
-                                     uint8_t           r1)
+static void board_sd_cmd_erase_bound(board_sd_state_t* c, uint32_t* bound, uint32_t arg, uint8_t r1)
 {
   *bound      = arg;
   c->resp[0]  = r1;
@@ -681,7 +675,6 @@ static void board_sd_process_cmd(board_sd_state_t* c)
   }
   board_sd_dispatch_data(c, idx, arg, r1);
 }
-
 
 uint8_t board_sd_exchange(uint8_t tx)
 {

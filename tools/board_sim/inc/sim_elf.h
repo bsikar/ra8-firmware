@@ -49,25 +49,25 @@ extern "C" {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_elf_ehdr_size      = 52U,   /**< ELF32 file-header size.            */
-  k_elf_em_arm         = 40U,   /**< e_machine == EM_ARM.               */
-  k_elf_e_machine_off  = 18U,   /**< e_machine in the file header.      */
-  k_elf_e_phoff_off    = 28U,   /**< e_phoff in the file header.        */
-  k_elf_e_phentsize_off = 42U,  /**< e_phentsize in the file header.    */
-  k_elf_e_phnum_off    = 44U,   /**< e_phnum in the file header.        */
-  k_elf_ph_offset_off  = 4U,    /**< p_offset in a program header.      */
-  k_elf_ph_vaddr_off   = 8U,    /**< p_vaddr (VMA) in a program header. */
-  k_elf_ph_paddr_off   = 12U,   /**< p_paddr in a program header.       */
-  k_elf_ph_filesz_off  = 16U,   /**< p_filesz in a program header.      */
-  k_elf_ph_flags_off   = 24U,   /**< p_flags in a program header.       */
-  k_elf_pf_x           = 1U,    /**< PF_X: segment is executable.       */
-  k_elf_pt_load        = 1U,    /**< p_type == PT_LOAD.                 */
-  k_elf_shentsize_min  = 40U,   /**< ELF32 section-header entry size.   */
-  k_elf_sh_size_off    = 20U,   /**< sh_size in a section header.       */
-  k_elf_sh_link_off    = 24U,   /**< sh_link in a section header.       */
-  k_elf_sh_entsize_off = 36U,   /**< sh_entsize in a section header.    */
-  k_elf_sym_info_off   = 12U,   /**< st_info in a symbol-table entry.   */
-  k_elf_st_type_mask   = 0x0FU, /**< Low nibble of st_info is the type. */
+  k_elf_ehdr_size       = 52U,   /**< ELF32 file-header size.            */
+  k_elf_em_arm          = 40U,   /**< e_machine == EM_ARM.               */
+  k_elf_e_machine_off   = 18U,   /**< e_machine in the file header.      */
+  k_elf_e_phoff_off     = 28U,   /**< e_phoff in the file header.        */
+  k_elf_e_phentsize_off = 42U,   /**< e_phentsize in the file header.    */
+  k_elf_e_phnum_off     = 44U,   /**< e_phnum in the file header.        */
+  k_elf_ph_offset_off   = 4U,    /**< p_offset in a program header.      */
+  k_elf_ph_vaddr_off    = 8U,    /**< p_vaddr (VMA) in a program header. */
+  k_elf_ph_paddr_off    = 12U,   /**< p_paddr in a program header.       */
+  k_elf_ph_filesz_off   = 16U,   /**< p_filesz in a program header.      */
+  k_elf_ph_flags_off    = 24U,   /**< p_flags in a program header.       */
+  k_elf_pf_x            = 1U,    /**< PF_X: segment is executable.       */
+  k_elf_pt_load         = 1U,    /**< p_type == PT_LOAD.                 */
+  k_elf_shentsize_min   = 40U,   /**< ELF32 section-header entry size.   */
+  k_elf_sh_size_off     = 20U,   /**< sh_size in a section header.       */
+  k_elf_sh_link_off     = 24U,   /**< sh_link in a section header.       */
+  k_elf_sh_entsize_off  = 36U,   /**< sh_entsize in a section header.    */
+  k_elf_sym_info_off    = 12U,   /**< st_info in a symbol-table entry.   */
+  k_elf_st_type_mask    = 0x0FU, /**< Low nibble of st_info is the type. */
 } sim_elf_layout_t;
 
 /**

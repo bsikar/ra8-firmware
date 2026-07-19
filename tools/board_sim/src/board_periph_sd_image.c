@@ -21,8 +21,6 @@
  * @since 0.1.0
  */
 
-#include "board_periph_sd.h"
-
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -32,6 +30,7 @@
 #include <unistd.h>
 
 #include "board_console.h"
+#include "board_periph_sd.h"
 #include "board_periph_sd_internal.h"
 
 /** @brief Release the current backing image (munmap a sparse card, else free). */
