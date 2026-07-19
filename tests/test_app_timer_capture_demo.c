@@ -31,7 +31,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_timer_capture_demo_out_aaaaaaaa = 0xAAAAAAAAUL,
+  k_timer_poison_out =
+    0xAAAAAAAAUL, /**< Poison written into the capture out-parameter, so a read that fails without setting it is detectable. */
 } timer_capture_demo_uint32_const_t;
 
 typedef enum : uint32_t {
@@ -88,7 +89,7 @@ static void test_timer_app_read_ok(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gpt_start_free_run((uint8_t)k_t_timer_channel, (uint32_t)k_t_timer_period));
-  uint32_t out = k_timer_capture_demo_out_aaaaaaaa;
+  uint32_t out = k_timer_poison_out;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_read((uint8_t)k_t_timer_channel, &out));
   TEST_END("timer_capture_demo: read counter ok");
 }

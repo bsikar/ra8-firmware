@@ -39,7 +39,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_i3c_i2c_edge_cases_i_5 = 5U,
+  k_i2c_probe_rounds =
+    5U, /**< Back-to-back transfers driven over one bus, proving the edge case is repeatable and not a first-call artefact. */
 } i3c_i2c_edge_cases_uint8_const_t;
 
 /**
@@ -52,7 +53,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_i3c_i2c_edge_cases_val_1000000 = 1000000,
+  k_i2c_oversize_bytes =
+    1000000, /**< A transfer length far past any real buffer, so the length guard fires before any access. */
 } i3c_i2c_edge_cases_uint32_const_t;
 
 typedef enum : uint8_t {
@@ -77,7 +79,7 @@ static const uint8_t s_iic_b_edge_payload[3] = {
   (uint8_t)k_iic_b_edge_byte_c,
 };
 
-static uint8_t s_iic_b_edge_long[k_i3c_i2c_edge_cases_val_1000000];
+static uint8_t s_iic_b_edge_long[k_i2c_oversize_bytes];
 
 static void prep(void)
 {
@@ -153,7 +155,7 @@ static void test_bus_busy_during_start_repeated(void)
    * busy without touching CNDCTL.STCND. */
   i3c_i2c_regs(0U)->BCST   = 0U;
   i3c_i2c_regs(0U)->CNDCTL = 0U;
-  for (uint8_t i = 0U; i < k_i3c_i2c_edge_cases_i_5; ++i) {
+  for (uint8_t i = 0U; i < k_i2c_probe_rounds; ++i) {
     TEST_ASSERT_EQ(
       k_ra8_err_busy,
       internal_i3c_i2c_write(0U, (uint8_t)k_iic_b_edge_target, s_iic_b_edge_payload, 1U, false));

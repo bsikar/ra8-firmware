@@ -35,7 +35,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_cpu1_pingpong_ch_ff = 0xFFU,
+  k_ipc_ch_unset =
+    0xFFU, /**< Poison channel id the callback record starts from, so a callback that never ran is distinguishable from one that reported channel 0. */
 } cpu1_pingpong_uint8_const_t;
 
 typedef enum : uint32_t {
@@ -170,7 +171,7 @@ static void test_ppong_channel_pair_resolution(void)
 {
   reset_world();
   TEST_BEGIN("cpu1_pingpong: channel-pair resolution MC/DC");
-  uint8_t ch = k_cpu1_pingpong_ch_ff;
+  uint8_t ch = k_ipc_ch_unset;
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_ipc_channel_for_send(k_ra8_ipc_core_cpu0, (uint8_t)k_test_ppong_pair_zero, &ch));
@@ -212,8 +213,8 @@ static void test_ppong_send_recv_round_trip(void)
   reset_world();
   TEST_BEGIN("cpu1_pingpong: send/recv ping-pong round trip");
 
-  uint8_t ch_send_cpu0 = k_cpu1_pingpong_ch_ff;
-  uint8_t ch_recv_cpu0 = k_cpu1_pingpong_ch_ff;
+  uint8_t ch_send_cpu0 = k_ipc_ch_unset;
+  uint8_t ch_recv_cpu0 = k_ipc_ch_unset;
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_ipc_channel_for_send(k_ra8_ipc_core_cpu0, (uint8_t)k_test_ppong_pair_zero, &ch_send_cpu0));

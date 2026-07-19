@@ -45,8 +45,9 @@
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_adc_selfdiag_code_aaaa = 0xAAAAU,
-  k_adc_selfdiag_code_ffff = 0xFFFFU,
+  k_adc_selfdiag_code_a = 0xAAAAU, /**< A self-diagnosis code with alternating bits. */
+  k_adc_selfdiag_code_max =
+    0xFFFFU, /**< The widest code the field can hold, so a truncation is visible. */
 } adc_selfdiag_uint16_const_t;
 
 /* ---------------------------------------------------------------------------
@@ -147,7 +148,7 @@ static void test_self_diagnose_mode1_pass(void)
   /* Inject the ideal mode-1 result (0x0000, ERR clear) into ADEXDR0. */
   *ra8_adc_b_adexdr(k_test_adexdr_selfdiag0) = k_test_exd_mode1_ideal;
 
-  uint16_t        code = k_adc_selfdiag_code_ffff;
+  uint16_t        code = k_adc_selfdiag_code_max;
   bool            pass = false;
   const ra8_err_t err  = ra8_adc_self_diagnose(k_ra8_adc_selfdiag_mode_1, &code, &pass);
 
@@ -232,7 +233,7 @@ static void test_self_diagnose_timeout(void)
 
   /* Force ADACT0 stuck high (never cleared) so the busy poll never exits. */
   *ra8_adc_b_adsr() = k_ra8_adsr_mask_adact0;
-  uint16_t code     = k_adc_selfdiag_code_aaaa;
+  uint16_t code     = k_adc_selfdiag_code_a;
   bool     pass     = true;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_adc_self_diagnose(k_ra8_adc_selfdiag_mode_1, &code, &pass));

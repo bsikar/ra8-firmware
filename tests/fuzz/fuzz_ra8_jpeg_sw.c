@@ -33,7 +33,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_jpeg_sw_u_20 = 20,
+  k_fuzz_input_cap_log2 =
+    20, /**< Log2 of the largest input this harness accepts; longer cases are dropped so a run stays bounded. */
 } jpeg_sw_uint8_const_t;
 
 /*
@@ -50,7 +51,7 @@ static uint8_t s_out_buf[k_fuzz_jpeg_out_bytes];
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-  if (size == 0U || size > (1U << k_jpeg_sw_u_20)) {
+  if (size == 0U || size > (1U << k_fuzz_input_cap_log2)) {
     return 0;
   }
   uint16_t  w     = 0U;

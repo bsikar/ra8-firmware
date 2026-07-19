@@ -51,8 +51,9 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ble_att_cov_att_len_ff = 0xFFU,
-  k_ble_att_cov_val_40     = 0x40U,
+  k_byte_mask = 0xFFU, /**< Truncates a generated or shifted value back into a byte. */
+  k_att_value_base =
+    0x40U, /**< Base byte of the attribute-value generator, `base + i`, so every byte of the value differs. */
 } ble_att_cov_uint8_const_t;
 
 /* Test hooks declared in ra8_ble_host.h under #ifdef UNIT_TEST. */
@@ -169,10 +170,10 @@ static void inject_att(const uint8_t* att_pdu, uint16_t att_len)
   };
   uint8_t frame[k_max_frame_bytes];
   TEST_ASSERT(att_len <= (uint16_t)(k_max_frame_bytes - (uint16_t)k_l2cap_hdr_bytes));
-  frame[0] = (uint8_t)(att_len & k_ble_att_cov_att_len_ff);
-  frame[1] = (uint8_t)((att_len >> 8U) & k_ble_att_cov_att_len_ff);
-  frame[2] = (uint8_t)((uint16_t)k_test_l2cap_cid_att & k_ble_att_cov_att_len_ff);
-  frame[3] = (uint8_t)(((uint16_t)k_test_l2cap_cid_att >> 8U) & k_ble_att_cov_att_len_ff);
+  frame[0] = (uint8_t)(att_len & k_byte_mask);
+  frame[1] = (uint8_t)((att_len >> 8U) & k_byte_mask);
+  frame[2] = (uint8_t)((uint16_t)k_test_l2cap_cid_att & k_byte_mask);
+  frame[3] = (uint8_t)(((uint16_t)k_test_l2cap_cid_att >> 8U) & k_byte_mask);
   (void)memcpy(&frame[k_l2cap_hdr_bytes], att_pdu, att_len);
   ra8_ble_host_test_inject_acl((uint16_t)k_test_conn_handle,
                                frame,
@@ -374,7 +375,7 @@ static void test_read_value_clamp(void)
 
   uint8_t val[k_val_len];
   for (uint16_t i = 0U; i < (uint16_t)k_val_len; i++) {
-    val[i] = (uint8_t)(k_ble_att_cov_val_40 + i);
+    val[i] = (uint8_t)(k_att_value_base + i);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_set_value(chr, val, (uint16_t)k_val_len));
 
@@ -492,8 +493,8 @@ static void test_write_value_too_long(void)
 
   uint8_t pdu[3U + k_payload];
   pdu[0] = (uint8_t)k_att_op_write_req;
-  pdu[1] = (uint8_t)(chr & k_ble_att_cov_att_len_ff);
-  pdu[2] = (uint8_t)((chr >> 8U) & k_ble_att_cov_att_len_ff);
+  pdu[1] = (uint8_t)(chr & k_byte_mask);
+  pdu[2] = (uint8_t)((chr >> 8U) & k_byte_mask);
   for (uint16_t i = 0U; i < (uint16_t)k_payload; i++) {
     pdu[3U + i] = (uint8_t)(0x10U + i);
   }

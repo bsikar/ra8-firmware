@@ -32,7 +32,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_rtc_alarm_year_2026 = 2026U,
+  k_rtc_alarm_year =
+    2026U, /**< Alarm year; past the RTC epoch so the year field is non-zero and a dropped field is visible. */
 } rtc_alarm_uint16_const_t;
 
 typedef enum : uint8_t {
@@ -124,7 +125,7 @@ static void test_rtc_app_alarm_bad_range(void)
   TEST_BEGIN("rtc_alarm: out-of-range fields rejected");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_init());
   ra8_rtc_datetime_t a = {
-    .year    = k_rtc_alarm_year_2026,
+    .year    = k_rtc_alarm_year,
     .month   = 1U,
     .day     = 1U,
     .weekday = 0U,

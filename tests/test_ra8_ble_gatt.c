@@ -25,8 +25,9 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ble_gatt_make_uuid_g_70 = 0x70U,
-  k_ble_gatt_make_uuid_g_80 = 0x80U,
+  k_uuid_gatt_svc = 0x70U, /**< Service of this file's registration fixture. */
+  k_uuid_gatt_chr =
+    0x80U, /**< Its characteristic; a separate marker page so the two UUIDs cannot alias. */
 } ble_gatt_uint8_const_t;
 
 typedef enum : uint16_t {
@@ -106,8 +107,8 @@ static void test_mcdc_gatt_set_value_zero_len(void)
 
   uint8_t svc_uuid[16];
   uint8_t chr_uuid[16];
-  make_uuid_g(svc_uuid, k_ble_gatt_make_uuid_g_70);
-  make_uuid_g(chr_uuid, k_ble_gatt_make_uuid_g_80);
+  make_uuid_g(svc_uuid, k_uuid_gatt_svc);
+  make_uuid_g(chr_uuid, k_uuid_gatt_chr);
   uint16_t svc = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(svc_uuid, &svc));
   uint8_t  buf[k_test_value_buf_size];

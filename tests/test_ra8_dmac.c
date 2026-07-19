@@ -23,7 +23,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_dmac_sentinel_7 = 7,
+  k_dmac_ctx_token_small =
+    7, /**< Small token handed to the callback and checked on the way back. */
 } dmac_uint8_const_t;
 
 /**
@@ -36,7 +37,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_dmac_sentinel_abcd = 0xABCD,
+  k_dmac_ctx_token_wide =
+    0xABCD, /**< A wider token, proving the context is not truncated to a byte. */
 } dmac_uint16_const_t;
 
 typedef enum : uint32_t {
@@ -420,7 +422,7 @@ static void test_attach_half_complete_handler(void)
 {
   TEST_BEGIN("dmac half-complete handler dispatches");
   prep_dmac_ext();
-  int sentinel = k_dmac_sentinel_7;
+  int sentinel = k_dmac_ctx_token_small;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_dmac_attach_half_complete_handler((uint8_t)k_ra8_dmac_test_channel_valid,
                                                        stub_dmac_half_cb,
@@ -450,7 +452,7 @@ static void test_attach_per_channel_callback(void)
 {
   TEST_BEGIN("dmac per-channel callback dispatches");
   prep_dmac_ext();
-  int sentinel = k_dmac_sentinel_abcd;
+  int sentinel = k_dmac_ctx_token_wide;
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_dmac_attach_callback((uint8_t)k_ra8_dmac_test_channel_valid, stub_dmac_full_cb, &sentinel));

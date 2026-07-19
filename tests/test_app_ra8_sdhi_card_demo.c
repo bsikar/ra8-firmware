@@ -30,8 +30,10 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ra8_sdhi_card_demo_readback_ff = 0xFFU,
-  k_ra8_sdhi_card_demo_val_100     = 100,
+  k_sdhi_flip_mask =
+    0xFFU, /**< XORed into that byte to corrupt it, so the verify step must reject the block. */
+  k_sdhi_corrupt_offset =
+    100, /**< Byte of the read-back block that is flipped, well inside the block so the comparison must scan past its start. */
 } ra8_sdhi_card_demo_uint8_const_t;
 
 /** @brief Constants mirroring `sdhi_card_config_t` in the app. */
@@ -134,7 +136,7 @@ static void test_ra8_sdhi_card_roundtrip_verdict(void)
   TEST_ASSERT_EQ(1U, t_compare(payload, readback, (uint32_t)k_t_sdhi_block_bytes));
 
   /* Vector 2: one corrupted byte. */
-  readback[k_ra8_sdhi_card_demo_val_100] ^= k_ra8_sdhi_card_demo_readback_ff;
+  readback[k_sdhi_corrupt_offset] ^= k_sdhi_flip_mask;
   TEST_ASSERT_EQ(0U, t_compare(payload, readback, (uint32_t)k_t_sdhi_block_bytes));
 
   TEST_END("ra8_sdhi_card_demo: round-trip verdict MC/DC");

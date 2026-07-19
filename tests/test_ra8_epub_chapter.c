@@ -25,7 +25,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_epub_chapter_val_64 = 64,
+  k_epub_scratch_bytes = 64, /**< Capacity of the font and glyph scratch buffers. */
 } epub_chapter_uint8_const_t;
 
 typedef enum : size_t {
@@ -48,10 +48,10 @@ typedef enum : uint16_t {
   k_test_epub_codepoint    = 65U, /**< 'A': code point handed to render_glyph.    */
 } test_epub_count_t;
 
-static uint8_t s_font_buf[k_epub_chapter_val_64];
+static uint8_t s_font_buf[k_epub_scratch_bytes];
 
 /** @brief Scratch alpha-8 glyph buffer for the render-guard tests. */
-static uint8_t s_glyph_buf[k_epub_chapter_val_64];
+static uint8_t s_glyph_buf[k_epub_scratch_bytes];
 
 /** @brief A non-TTF blob (>= 16 bytes): forces priv_font_init to reject it. */
 static uint8_t s_bogus_font[k_test_epub_font_min_bytes];

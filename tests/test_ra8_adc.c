@@ -41,7 +41,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_adc_resolution_9 = 9U,
+  k_adc_resolution_invalid =
+    9U, /**< A resolution outside the enumeration, which configuration must reject. */
 } adc_uint8_const_t;
 
 /**
@@ -54,7 +55,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_adc_raw_beef = 0xBEEFU,
+  k_adc_poison_out =
+    0xBEEFU, /**< Poison written into the sample out-parameter, so a read that fails without setting it is detectable. */
 } adc_uint16_const_t;
 
 /* ---------------------------------------------------------------------------
@@ -253,7 +255,7 @@ static void test_read_channel_timeout(void)
   /* Force ADACT0 stuck high so the busy poll never exits. */
   *ra8_adc_b_adsr() = k_ra8_adsr_mask_adact0;
 
-  uint16_t        raw = k_adc_raw_beef;
+  uint16_t        raw = k_adc_poison_out;
   const ra8_err_t err = ra8_adc_read_channel(k_ra8_adc_test_ch_valid, &raw);
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, err);
   TEST_ASSERT_EQ(0, raw);
@@ -438,7 +440,7 @@ static void test_init_configured_bad_resolution(void)
   ra8_sim_mmap_reset();
 
   ra8_adc_cfg_t cfg = make_cfg();
-  cfg.resolution    = (ra8_adc_resolution_t)k_adc_resolution_9;
+  cfg.resolution    = (ra8_adc_resolution_t)k_adc_resolution_invalid;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_adc_init_configured(&cfg));
   TEST_END("adc init configured: bad resolution rejected");
 }

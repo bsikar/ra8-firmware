@@ -40,7 +40,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_threadx_ipc_demo_send_ch_ff = 0xFFU,
+  k_ipc_ch_unset =
+    0xFFU, /**< Poison channel id the callback record starts from, so a callback that never ran is distinguishable from one that reported channel 0. */
 } threadx_ipc_demo_uint8_const_t;
 
 /** @brief Per-test enums. */
@@ -72,8 +73,8 @@ static void test_ipc_demo_resolve_send_recv_channels(void)
 {
   reset_world();
   TEST_BEGIN("ipc_demo: resolve M85 send + recv channel ids");
-  uint8_t send_ch = k_threadx_ipc_demo_send_ch_ff;
-  uint8_t recv_ch = k_threadx_ipc_demo_send_ch_ff;
+  uint8_t send_ch = k_ipc_ch_unset;
+  uint8_t recv_ch = k_ipc_ch_unset;
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_ipc_channel_for_send(k_ra8_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &send_ch));

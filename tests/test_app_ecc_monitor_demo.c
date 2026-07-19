@@ -29,7 +29,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ecc_monitor_demo_val_7 = 7,
+  k_ecc_corrupt_word =
+    7, /**< Word of the buffer whose bit is flipped, inside the region so the monitor must detect rather than ignore it. */
 } ecc_monitor_demo_uint8_const_t;
 
 typedef enum : uint32_t {
@@ -71,7 +72,7 @@ static void test_ecc_app_rw_model(void)
   }
   TEST_ASSERT_EQ(1U, rw);
 
-  s_buf[k_ecc_monitor_demo_val_7] ^= 0x1U; /* corrupt one word */
+  s_buf[k_ecc_corrupt_word] ^= 0x1U; /* corrupt one word */
   rw = 1U;
   for (uint32_t i = 0U; i < (uint32_t)k_t_ecc_words; ++i) {
     if (s_buf[i] != pattern(i)) {

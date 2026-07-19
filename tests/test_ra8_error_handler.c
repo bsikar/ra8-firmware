@@ -34,7 +34,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_error_handler_internal_ra8_fatal_error_deadbeef = 0xDEADBEEFUL,
+  k_fatal_error_code =
+    0xDEADBEEFUL, /**< Error code handed to the fatal handler and read back from the record, proving it is stored rather than discarded. */
 } error_handler_uint32_const_t;
 
 static sigjmp_buf s_trap_jmp;
@@ -115,9 +116,7 @@ static void test_fatal_error_large_code(void)
   install_sigill_handler();
 
   if (sigsetjmp(s_trap_jmp, 1) == 0) {
-    internal_ra8_fatal_error("FAULT",
-                             "huge err",
-                             k_error_handler_internal_ra8_fatal_error_deadbeef);
+    internal_ra8_fatal_error("FAULT", "huge err", k_fatal_error_code);
     TEST_FAIL_FMT("%s", "internal_ra8_fatal_error returned");
   }
   TEST_ASSERT_EQ(1, s_trap_hit);

@@ -32,7 +32,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_io_vfs_val_ff = 0xFFU,
+  k_byte_mask = 0xFFU, /**< Truncates a generated or shifted value back into a byte. */
 } io_vfs_uint8_const_t;
 
 /**
@@ -70,7 +70,7 @@ static ra8_fs_mount_t* setup_volume(void)
   (void)ra8_fs_mount(&s_be, &s_mnt);
   uint8_t data[(size_t)k_t_payload];
   for (uint32_t i = 0; i < (uint32_t)k_t_payload; ++i) {
-    data[i] = (uint8_t)((i + 1U) & k_io_vfs_val_ff);
+    data[i] = (uint8_t)((i + 1U) & k_byte_mask);
   }
   (void)ra8_fs_write_file(s_mnt, "HELLO.BIN", data, k_t_payload);
   return s_mnt;

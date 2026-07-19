@@ -50,7 +50,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_iic_b_facade_demo_mask_ff = 0xFFU,
+  k_i2c_mask_all = 0xFFU, /**< Every mask bit set, so no interrupt source is filtered out. */
 } iic_b_facade_demo_uint8_const_t;
 
 /** @brief Mirror of the demo's channel + on-bus addresses + register map. */
@@ -241,7 +241,7 @@ static void test_peripheral_open_guards(void)
   /* A good open answers 0x42; status then reads without a NULL mask. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_peripheral_open((uint8_t)k_t_channel, &cfg));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_i3c_peripheral_status((uint8_t)k_t_channel, nullptr));
-  uint8_t mask = k_iic_b_facade_demo_mask_ff;
+  uint8_t mask = k_i2c_mask_all;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_peripheral_status((uint8_t)k_t_channel, &mask));
   TEST_END("iic_b_facade_demo: peripheral open / status guards");
 }

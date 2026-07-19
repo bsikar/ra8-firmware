@@ -28,7 +28,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_keyboard_i_200 = 200U,
+  k_keyboard_scan_rounds =
+    200U, /**< Scan rounds driven back to back, more than the debounce window, so the state machine settles. */
 } keyboard_uint8_const_t;
 
 enum : int32_t {
@@ -235,7 +236,7 @@ static void test_glyph_and_edges(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_kbd_apply(&t, &s_kb, (uint8_t)k_ra8_kbd_no_hit));
   TEST_ASSERT_EQ(0, t.len);
   const uint8_t a = key_of('a');
-  for (uint32_t i = 0U; i < k_keyboard_i_200; i++) {
+  for (uint32_t i = 0U; i < k_keyboard_scan_rounds; i++) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_kbd_apply(&t, &s_kb, a));
   }
   TEST_ASSERT_EQ(k_ra8_kbd_text_max - 1, t.len);

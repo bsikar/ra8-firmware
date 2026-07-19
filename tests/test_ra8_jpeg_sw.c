@@ -36,7 +36,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_jpeg_sw_val_ff = 0xFFU,
+  k_byte_mask = 0xFFU, /**< Truncates a generated or shifted value back into a byte. */
 } jpeg_sw_uint8_const_t;
 
 /**
@@ -49,7 +49,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_jpeg_sw_produced_ffff = 0xFFFFU,
+  k_jpeg_poison_out =
+    0xFFFFU, /**< Poison written into the produced-bytes out-parameter, so an encode that fails without setting it is detectable. */
 } jpeg_sw_uint16_const_t;
 
 /**
@@ -107,9 +108,9 @@ static void fill_gradient(uint8_t* rgb, uint16_t w, uint16_t h)
   for (uint16_t y = 0U; y < h; y++) {
     for (uint16_t x = 0U; x < w; x++) {
       uint32_t i  = (((uint32_t)y * (uint32_t)w) + (uint32_t)x) * 3U;
-      rgb[i + 0U] = (uint8_t)((x * 16U) & k_jpeg_sw_val_ff);
-      rgb[i + 1U] = (uint8_t)((y * 16U) & k_jpeg_sw_val_ff);
-      rgb[i + 2U] = (uint8_t)(((x + y) * 8U) & k_jpeg_sw_val_ff);
+      rgb[i + 0U] = (uint8_t)((x * 16U) & k_byte_mask);
+      rgb[i + 1U] = (uint8_t)((y * 16U) & k_byte_mask);
+      rgb[i + 2U] = (uint8_t)(((x + y) * 8U) & k_byte_mask);
     }
   }
 }
@@ -275,7 +276,7 @@ static void test_encode_out_of_buffer(void)
   TEST_BEGIN("jpeg_sw encode rejects undersized out_buf");
   static uint8_t s_rgb_in[(uint32_t)k_jt_rgb_bytes];
   uint8_t        tiny[8U];
-  uint32_t       produced = k_jpeg_sw_produced_ffff;
+  uint32_t       produced = k_jpeg_poison_out;
   fill_gradient(s_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
   ra8_err_t e = ra8_jpeg_sw_encode(s_rgb_in,
                                    (uint16_t)k_jt_w,

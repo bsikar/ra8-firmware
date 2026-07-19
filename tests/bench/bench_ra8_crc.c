@@ -36,7 +36,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_crc_i_ff = 0xFFU,
+  k_byte_mask = 0xFFU, /**< Truncates a generated or shifted value back into a byte. */
 } crc_uint8_const_t;
 
 /**
@@ -49,7 +49,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_crc_crc_deadbeef = 0xDEADBEEFU,
+  k_crc_impossible_result =
+    0xDEADBEEFU, /**< A CRC the benchmark input cannot produce; the comparison exists only to keep the optimiser from discarding the loop. */
 } crc_uint32_const_t;
 
 /**
@@ -71,7 +72,7 @@ static uint8_t s_buf[(uint32_t)k_bench_crc_1m];
 static void fill_buf(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_bench_crc_1m; i++) {
-    s_buf[i] = (uint8_t)(i & k_crc_i_ff);
+    s_buf[i] = (uint8_t)(i & k_byte_mask);
   }
 }
 
@@ -99,7 +100,7 @@ static void run_one(const char* name, uint32_t len)
     (void)ra8_crc_compute(s_buf, len, &crc);
   });
   /* Touch crc so the optimizer cannot elide the call. */
-  if (crc == k_crc_crc_deadbeef) {
+  if (crc == k_crc_impossible_result) {
     (void)fprintf(stderr, "unreachable\n");
   }
 }

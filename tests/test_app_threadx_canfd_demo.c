@@ -48,7 +48,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_threadx_canfd_demo_val_ff = 0xFFU,
+  k_sys_oscsf_all_ready =
+    0xFFU, /**< Every oscillator-stabilisation flag set, so clock bring-up sees all sources ready. */
 } threadx_canfd_demo_uint8_const_t;
 
 /** @brief Per-test enums. */
@@ -71,7 +72,7 @@ static void reset_world(void)
   (void)ra8_canfd_deinit((uint8_t)k_test_canfd_channel);
   /* Pre-seed OSCSF stabilisation bits so ra8_cgc_init() spin loops
    * complete on the first iteration in RA8_SIMULATOR_MODE. */
-  *ra8_sys_oscsf() = (uint8_t)k_threadx_canfd_demo_val_ff;
+  *ra8_sys_oscsf() = (uint8_t)k_sys_oscsf_all_ready;
   /* Populate the CGC published-clock table so ra8_canfd_set_bitrate
    * can read a non-zero PCLKA from ra8_cgc_get_clock_hz(). */
   (void)ra8_cgc_init();

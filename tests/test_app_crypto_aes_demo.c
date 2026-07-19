@@ -32,7 +32,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_crypto_aes_demo_ct_ff = 0xFFU,
+  k_aes_flip_mask =
+    0xFFU, /**< XORed into the last ciphertext byte, so the authentication tag check must reject it. */
 } crypto_aes_demo_uint8_const_t;
 
 typedef enum : uint8_t {
@@ -197,7 +198,7 @@ static void test_aes_app_tag_tamper_rejected(void)
                                       ct,
                                       sizeof(ct),
                                       &ct_len));
-  ct[ct_len - 1U] ^= k_crypto_aes_demo_ct_ff;
+  ct[ct_len - 1U] ^= k_aes_flip_mask;
   uint8_t         recovered[k_test_aes_app_plain_bytes] = {};
   size_t          rec_len                               = 0U;
   const ra8_err_t err = ra8_psa_aead_decrypt(key,

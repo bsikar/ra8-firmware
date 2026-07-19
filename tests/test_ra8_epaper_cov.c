@@ -66,7 +66,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_epaper_cov_panel_width_ffff = 0xFFFFU,
+  k_epaper_dimension_over_max =
+    0xFFFFU, /**< A panel dimension past the largest the driver supports, used for both width and height so each guard is reached. */
 } epaper_cov_uint16_const_t;
 
 /**
@@ -835,11 +836,11 @@ static void epaper_check_validate_cfg(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_init_cov(&cfg));
   set_uninit();
   cfg             = cov_cfg();
-  cfg.panel_width = (uint16_t)k_epaper_cov_panel_width_ffff;
+  cfg.panel_width = (uint16_t)k_epaper_dimension_over_max;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_init_cov(&cfg));
   set_uninit();
   cfg              = cov_cfg();
-  cfg.panel_height = (uint16_t)k_epaper_cov_panel_width_ffff;
+  cfg.panel_height = (uint16_t)k_epaper_dimension_over_max;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_init_cov(&cfg));
 }
 

@@ -32,7 +32,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_power_profiler_s_now_us_100 = 100U,
+  k_profiler_tick_us =
+    100U, /**< Microseconds the mock clock advances per step, so elapsed time is a known multiple of the step count. */
 } power_profiler_uint8_const_t;
 
 static uint64_t s_now_us = 0U;
@@ -47,7 +48,7 @@ static void reset_world(void)
 static uint64_t test_pp_now_us(void* ctx)
 {
   (void)ctx;
-  s_now_us += k_power_profiler_s_now_us_100;
+  s_now_us += k_profiler_tick_us;
   return s_now_us;
 }
 

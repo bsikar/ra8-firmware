@@ -31,7 +31,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ipc_test_util_s_ipc_cb_last_channel_ff = 0xFFU,
+  k_ipc_ch_unset =
+    0xFFU, /**< Poison channel id the callback record starts from, so a callback that never ran is distinguishable from one that reported channel 0. */
 } ipc_test_util_uint8_const_t;
 
 typedef enum : uint8_t {
@@ -112,16 +113,16 @@ static inline void prep(void)
   ra8_sim_mmio_reset();
   (void)ra8_isr_init();
   s_ipc_cb_count            = 0U;
-  s_ipc_cb_last_channel     = k_ipc_test_util_s_ipc_cb_last_channel_ff;
+  s_ipc_cb_last_channel     = k_ipc_ch_unset;
   s_ipc_cb_last_event_mask  = 0U;
   s_ipc_cb_last_message     = 0U;
   s_ipc_cb_last_ctx         = nullptr;
   s_ipc_irq_cb_count        = 0U;
-  s_ipc_irq_cb_last_channel = k_ipc_test_util_s_ipc_cb_last_channel_ff;
-  s_ipc_irq_cb_last_event   = k_ipc_test_util_s_ipc_cb_last_channel_ff;
+  s_ipc_irq_cb_last_channel = k_ipc_ch_unset;
+  s_ipc_irq_cb_last_event   = k_ipc_ch_unset;
   s_ipc_irq_cb_last_ctx     = nullptr;
   s_ipc_nmi_cb_count        = 0U;
-  s_ipc_nmi_cb_last_unit    = k_ipc_test_util_s_ipc_cb_last_channel_ff;
+  s_ipc_nmi_cb_last_unit    = k_ipc_ch_unset;
   s_ipc_nmi_cb_last_ctx     = nullptr;
   s_ring_head               = 0U;
   s_ring_tail               = 0U;

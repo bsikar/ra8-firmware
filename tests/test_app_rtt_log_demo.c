@@ -30,7 +30,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_rtt_log_demo_rd_off_5 = 5U,
+  k_rtt_read_offset =
+    5U, /**< A non-zero read cursor, so the wrap arithmetic is exercised rather than the empty-ring shortcut. */
 } rtt_log_demo_uint8_const_t;
 
 typedef enum : uint32_t {
@@ -127,7 +128,7 @@ static void test_rtt_write_wraps(void)
    * the reader is at size-1, so the call should drop the byte. We
    * advance the reader first to leave room for one byte across the
    * wrap. */
-  s_ring.rd_off                 = k_rtt_log_demo_rd_off_5;
+  s_ring.rd_off                 = k_rtt_read_offset;
   static const uint8_t k_data[] = {0xAAU, 0xBBU};
   TEST_ASSERT_EQ(k_ra8_ok, rtt_write_under_test(&s_ring, k_data, sizeof k_data));
   /* First byte goes into slot 15, second wraps to slot 0. */

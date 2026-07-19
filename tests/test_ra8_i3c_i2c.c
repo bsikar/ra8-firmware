@@ -37,7 +37,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_i3c_i2c_sentinel_a5 = 0xA5U,
+  k_i2c_payload_byte = 0xA5U, /**< A recognizable single-byte payload; neither 0x00 nor 0xFF. */
 } i3c_i2c_uint8_const_t;
 
 /**
@@ -50,7 +50,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_i3c_i2c_val_1000000 = 1000000,
+  k_i2c_oversize_bytes =
+    1000000, /**< A transfer length far past any real buffer, so the length guard fires before any access. */
 } i3c_i2c_uint32_const_t;
 
 /**
@@ -97,7 +98,7 @@ static const uint8_t s_payload[2] = {
   (uint8_t)k_ra8_i3c_i2c_test_byte_b,
 };
 
-static uint8_t s_long_buffer[k_i3c_i2c_val_1000000];
+static uint8_t s_long_buffer[k_i2c_oversize_bytes];
 
 static const ra8_i3c_i2c_cfg_t k_iic_b_cfg = {
   .bus_hz   = (uint32_t)k_ra8_i3c_i2c_speed_fast,
@@ -903,7 +904,7 @@ static void test_mcdc_iic_b(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
 
-  uint8_t tx_buf[1] = {k_i3c_i2c_sentinel_a5};
+  uint8_t tx_buf[1] = {k_i2c_payload_byte};
   uint8_t rx_buf[1] = {0U};
 
   /* Decision A V1: both lens zero -> invalid_arg. */

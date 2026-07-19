@@ -23,7 +23,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_elc_val_123 = 0x123U,
+  k_elc_probe_elsr = 0x123U, /**< Planted in an ELSR slot to prove the read reaches the register. */
 } elc_uint16_const_t;
 
 static void prep(void)
@@ -153,7 +153,7 @@ static void test_init_enables_controller(void)
   prep();
 
   /* Pollute ELSR0 so we can verify init clears it. */
-  *test_elsr(0U) = k_elc_val_123;
+  *test_elsr(0U) = k_elc_probe_elsr;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_elc_init());
   TEST_ASSERT_EQ((1U << k_ra8_elcr_bit_elcon), *test_elcr());

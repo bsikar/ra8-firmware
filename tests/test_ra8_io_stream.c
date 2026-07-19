@@ -37,7 +37,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_io_stream_val_ff = 0xFFU,
+  k_byte_mask = 0xFFU, /**< Truncates a generated or shifted value back into a byte. */
 } io_stream_uint8_const_t;
 
 /**
@@ -151,7 +151,7 @@ static void test_blockdev_sink(void)
 
   uint8_t payload[(size_t)k_t_stream_bytes];
   for (uint32_t i = 0; i < (uint32_t)k_t_stream_bytes; ++i) {
-    payload[i] = (uint8_t)(((i * 3U) + 1U) & k_io_stream_val_ff);
+    payload[i] = (uint8_t)(((i * 3U) + 1U) & k_byte_mask);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_write(&s, payload, k_t_stream_bytes, nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_flush(&s));

@@ -45,7 +45,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_canfd_frame_cov_val_ff = 0xFFU,
+  k_byte_mask = 0xFFU, /**< Truncates a generated or shifted value back into a byte. */
 } canfd_frame_cov_uint8_const_t;
 
 /* -------------------------------------------------------------------------
@@ -99,7 +99,7 @@ typedef enum : uint32_t {
 static void fill_pattern(uint8_t* buf, uint32_t len)
 {
   for (uint32_t i = 0U; i < len; i++) {
-    buf[i] = (uint8_t)(((uint32_t)k_rx_byte_seed + i) & k_canfd_frame_cov_val_ff);
+    buf[i] = (uint8_t)(((uint32_t)k_rx_byte_seed + i) & k_byte_mask);
   }
 }
 

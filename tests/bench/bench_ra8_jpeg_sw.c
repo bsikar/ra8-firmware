@@ -39,7 +39,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_jpeg_sw_val_ff = 0xFFU,
+  k_byte_mask = 0xFFU, /**< Truncates a generated or shifted value back into a byte. */
 } jpeg_sw_uint8_const_t;
 
 /**
@@ -75,9 +75,9 @@ static void fill_gradient(void)
   for (uint16_t y = 0U; y < (uint16_t)k_bench_jpeg_h; y++) {
     for (uint16_t x = 0U; x < (uint16_t)k_bench_jpeg_w; x++) {
       uint32_t i       = (((uint32_t)y * (uint32_t)k_bench_jpeg_w) + (uint32_t)x) * 3U;
-      s_rgb_in[i + 0U] = (uint8_t)((x * 4U) & k_jpeg_sw_val_ff);
-      s_rgb_in[i + 1U] = (uint8_t)((y * 4U) & k_jpeg_sw_val_ff);
-      s_rgb_in[i + 2U] = (uint8_t)(((x + y) * 2U) & k_jpeg_sw_val_ff);
+      s_rgb_in[i + 0U] = (uint8_t)((x * 4U) & k_byte_mask);
+      s_rgb_in[i + 1U] = (uint8_t)((y * 4U) & k_byte_mask);
+      s_rgb_in[i + 2U] = (uint8_t)(((x + y) * 2U) & k_byte_mask);
     }
   }
 }

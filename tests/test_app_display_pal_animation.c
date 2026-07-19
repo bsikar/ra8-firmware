@@ -43,7 +43,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_display_pal_animation_aligned_64 = 64,
+  k_fb_alignment_bytes =
+    64, /**< Framebuffer alignment the display controller requires, in bytes. */
 } display_pal_animation_uint8_const_t;
 
 typedef enum : uint16_t {
@@ -57,8 +58,7 @@ typedef enum : uint32_t {
   k_test_app_fb_bytes = k_test_app_fb_pixels * 2U,         /**< Test app fb bytes.  */
 } test_app_size_t;
 
-[[gnu::aligned(
-  k_display_pal_animation_aligned_64)]] static uint16_t s_test_fb[k_test_app_fb_pixels];
+[[gnu::aligned(k_fb_alignment_bytes)]] static uint16_t s_test_fb[k_test_app_fb_pixels];
 
 static void reset_world(void)
 {

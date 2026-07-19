@@ -30,7 +30,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_rng_demo_n_10 = 10U,
+  k_hex_digit_span =
+    10U, /**< Digits 0-9 occupy the first ten values; above that the nibble renders as a letter. */
 } rng_demo_uint8_const_t;
 
 typedef enum : uint8_t {
@@ -43,10 +44,10 @@ typedef enum : uint8_t {
 static uint8_t banner_nibble(uint8_t nibble)
 {
   uint8_t n = (uint8_t)(nibble & (uint8_t)k_t_rng_nibble_mask);
-  if (n < k_rng_demo_n_10) {
+  if (n < k_hex_digit_span) {
     return (uint8_t)('0' + n);
   }
-  return (uint8_t)('a' + (n - k_rng_demo_n_10));
+  return (uint8_t)('a' + (n - k_hex_digit_span));
 }
 
 static void reset_world(void)
