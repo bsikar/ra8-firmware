@@ -31,19 +31,19 @@
 #include "unity_minimal.h"
 
 /**
- * @enum vreg_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_vreg_bad_t
+ * @brief Out-of-range enum values the voltage-regulator validator rejects.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Each is far outside its field's defined range, so a guard that merely masks
+ * the value instead of range-checking it would still admit the setting.
  */
 typedef enum : uint8_t {
-  k_vreg_mode_aa   = 0xAAU,
-  k_vreg_ocp_55    = 0x55U,
-  k_vreg_vccsel_07 = 0x07U,
-} vreg_uint8_const_t;
+  k_t_vccsel_over  = 0x07U, /**< Past the 0..2 range of the VCC selector.     */
+  k_t_ocp_over     = 0x55U, /**< Past the over-current-protection range; also
+                                 reused for the low-voltage profile field.      */
+  k_t_mode_over    = 0xAAU, /**< Past the regulator-mode range.               */
+} t_vreg_bad_t;
 
 /* ---------------------------------------------------------------------------
  * Helpers
@@ -218,7 +218,7 @@ static void test_init_bad_vccsel(void)
   prep();
 
   ra8_vreg_cfg_t cfg = make_cfg_dcdc();
-  cfg.vccsel         = (ra8_vreg_vccsel_t)k_vreg_vccsel_07; /* Out of 0..2 range. */
+  cfg.vccsel         = (ra8_vreg_vccsel_t)k_t_vccsel_over; /* Out of 0..2 range. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vreg_init(&cfg));
   TEST_END("vreg init bad vccsel");
 }
@@ -235,7 +235,7 @@ static void test_init_bad_mode(void)
   prep();
 
   ra8_vreg_cfg_t cfg = make_cfg_dcdc();
-  cfg.mode           = (ra8_vreg_mode_t)k_vreg_mode_aa;
+  cfg.mode           = (ra8_vreg_mode_t)k_t_mode_over;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vreg_init(&cfg));
   TEST_END("vreg init bad mode");
 }
@@ -252,7 +252,7 @@ static void test_init_bad_ocp(void)
   prep();
 
   ra8_vreg_cfg_t cfg = make_cfg_dcdc();
-  cfg.ocp            = (ra8_vreg_ocp_t)k_vreg_ocp_55;
+  cfg.ocp            = (ra8_vreg_ocp_t)k_t_ocp_over;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vreg_init(&cfg));
   TEST_END("vreg init bad ocp");
 }
@@ -269,7 +269,7 @@ static void test_init_bad_lv_profile(void)
   prep();
 
   ra8_vreg_cfg_t cfg = make_cfg_ldo();
-  cfg.lv_profile     = (ra8_vreg_lv_profile_t)k_vreg_ocp_55;
+  cfg.lv_profile     = (ra8_vreg_lv_profile_t)k_t_ocp_over;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vreg_init(&cfg));
   TEST_END("vreg init bad lv profile");
 }

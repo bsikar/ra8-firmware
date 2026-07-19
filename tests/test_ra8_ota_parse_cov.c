@@ -48,31 +48,15 @@
 #include "unity_minimal.h"
 
 /**
- * @enum ota_parse_cov_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint16_t {
-  k_ota_parse_cov_bank_size_bytes_4096 = 4096U,
-} ota_parse_cov_uint16_const_t;
-
-/**
- * @enum ota_parse_cov_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_bank_t
+ * @brief Flash-bank geometry and the out-parameter seed.
  */
 typedef enum : uint32_t {
-  k_ota_parse_cov_inactive_bank_addr_02080000 = 0x02080000UL,
-  k_ota_parse_cov_v_deadbeef                  = 0xDEADBEEFUL,
-} ota_parse_cov_uint32_const_t;
+  k_t_bank_size     = 4096U,      /**< Bank size, bytes.                      */
+  k_t_bank_addr     = 0x02080000UL, /**< Base address of the inactive bank.   */
+  k_t_out_word_seed = 0xDEADBEEFUL, /**< Pre-set output word; a parse that
+                                         fails must leave it untouched.        */
+} t_bank_t;
 
 /* =============================================================================
  * Dummy function pointers -- never invoked; exist only to satisfy non-NULL
@@ -227,8 +211,8 @@ static ra8_ota_cfg_t priv_make_cfg(void)
   c.flash.program             = dummy_flash_program;
   c.flash.set_startup         = dummy_flash_set_startup;
   c.flash.readback            = dummy_flash_readback;
-  c.flash.inactive_bank_addr  = k_ota_parse_cov_inactive_bank_addr_02080000;
-  c.flash.bank_size_bytes     = k_ota_parse_cov_bank_size_bytes_4096;
+  c.flash.inactive_bank_addr  = k_t_bank_addr;
+  c.flash.bank_size_bytes     = k_t_bank_size;
   c.flash.inactive_bank_index = 1U;
   return c;
 }
@@ -412,7 +396,7 @@ static void test_json_str_value_too_long(void)
 static void test_json_u32_key_not_found(void)
 {
   TEST_BEGIN("parse_cov: ra8_ota_internal_json_u32 key not found -> line 313");
-  uint32_t v = k_ota_parse_cov_v_deadbeef;
+  uint32_t v = k_t_out_word_seed;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ota_internal_json_u32("{\"foo\":42}", "\"size\"", &v));
   /* out_v must be unchanged on failure. */
   TEST_ASSERT_EQ(0xDEADBEEFUL, v);

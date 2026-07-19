@@ -19,37 +19,43 @@
 #include "unity_minimal.h"
 
 /**
- * @enum npu_quant_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_quant_t
+ * @brief Quantised sample values and the out-parameter seed.
  */
-typedef enum : uint8_t {
-  k_npu_quant_o8_42  = 42,
-  k_npu_quant_ou8_42 = 42U,
-  k_npu_quant_val_10 = 10,
-} npu_quant_uint8_const_t;
+/** @brief Negative scale factor; a quantiser must reject a non-positive scale. */
+static const float k_t_scale_negative = 0.5F;
 
-/** @brief Named float constant used by this file. */
-static const float k_npu_quant_f_7p0 = 7.0F;
+/**
+ * @brief Input whose quotient by the scale lands exactly on a half.
+ *
+ * With the fixture scale of 0.5 this gives +/-0.5, the tie case that proves the
+ * quantiser rounds half away from zero rather than to even.
+ */
+static const float k_t_input_half_tie = 0.25F;
 
-/** @brief Named float constant used by this file. */
-static const float k_npu_quant_ra8_npu_quantize_u8_0p5 = 0.5F;
+/** @brief Magnitude past the int8/uint8 range, exercising plain saturation. */
+static const float k_t_input_saturate = 1000.0F;
 
-/** @brief Named float constant used by this file. */
-static const float k_npu_quant_val_0p25 = 0.25F;
+/** @brief Magnitude below zero but inside the range, for the uint8 floor. */
+static const float k_t_input_below_zero = 10.0F;
 
-/** @brief Named float constant used by this file. */
-static const float k_npu_quant_val_1000p0 = 1000.0F;
+/**
+ * @brief Magnitude large enough that the quotient exceeds the 1e6 clamp.
+ *
+ * A separate arm from k_t_input_saturate: this one reaches the pre-saturation
+ * magnitude cap rather than the type's own range check.
+ */
+static const float k_t_input_over_cap = 5.0e6F;
 
-/** @brief Named float constant used by this file. */
-static const float k_npu_quant_val_10p0 = 10.0F;
+/** @brief Pre-set dequantised output; a zero-count call must leave it. */
+static const float k_t_float_seed = 7.0F;
 
-/** @brief Named float constant used by this file. */
-static const float k_npu_quant_val_5p0e6 = 5.0e6F;
+typedef enum : int16_t {
+  k_t_input_positive = 10, /**< A positive int8 input; paired with -4 so the
+                                arm covers both signs in one vector.           */
+  k_t_out_seed       = 42, /**< Pre-set output; a quantiser asked for zero
+                                elements must leave this value behind.          */
+} t_quant_t;
 
 /**
  * @enum ra8_npu_quant_test_const_t
@@ -102,7 +108,7 @@ static void test_quantize_rejects_bad_args(void)
                  ra8_npu_quantize_u8(in, nullptr, (size_t)k_test_q_count, s_q_scale, 0));
   TEST_ASSERT_EQ(
     k_ra8_err_invalid_arg,
-    ra8_npu_quantize_u8(in, ou8, (size_t)k_test_q_count, -k_npu_quant_ra8_npu_quantize_u8_0p5, 0));
+    ra8_npu_quantize_u8(in, ou8, (size_t)k_test_q_count, -k_t_scale_negative, 0));
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_npu_dequantize_i8(nullptr, in, (size_t)k_test_q_count, s_q_scale, 0));
@@ -135,7 +141,7 @@ static void test_quantize_i8_affine(void)
     TEST_ASSERT_EQ((i + k_test_q_zp_i8), out[i]);
   }
   /* Half-away-from-zero rounding: 0.25/0.5 = 0.5 -> 1; -0.25/0.5 = -0.5 -> -1. */
-  float  hin[2]  = {k_npu_quant_val_0p25, -k_npu_quant_val_0p25};
+  float  hin[2]  = {k_t_input_half_tie, -k_t_input_half_tie};
   int8_t hout[2] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_quantize_i8(hin, hout, (size_t)2, s_q_scale, 0));
   TEST_ASSERT_EQ(1, hout[0]);
@@ -156,10 +162,10 @@ static void test_quantize_saturates(void)
 
   /* INT8: below -128 and above +127 saturate; the cap arms are hit by |in| that
    * makes round(in/scale) exceed 1e6. */
-  float i8in[4] = {-k_npu_quant_val_1000p0,
-                   k_npu_quant_val_1000p0,
-                   -k_npu_quant_val_5p0e6,
-                   k_npu_quant_val_5p0e6};
+  float i8in[4] = {-k_t_input_saturate,
+                   k_t_input_saturate,
+                   -k_t_input_over_cap,
+                   k_t_input_over_cap};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_quantize_i8(i8in, o8, (size_t)4, s_q_scale, 0));
   TEST_ASSERT_EQ(k_ra8_npu_quant_i8_min, o8[0]);
   TEST_ASSERT_EQ(k_ra8_npu_quant_i8_max, o8[1]);
@@ -167,10 +173,10 @@ static void test_quantize_saturates(void)
   TEST_ASSERT_EQ(k_ra8_npu_quant_i8_max, o8[3]);
 
   /* UINT8: below 0 and above 255 saturate. */
-  float u8in[4] = {-k_npu_quant_val_10p0,
-                   k_npu_quant_val_1000p0,
-                   -k_npu_quant_val_5p0e6,
-                   k_npu_quant_val_5p0e6};
+  float u8in[4] = {-k_t_input_below_zero,
+                   k_t_input_saturate,
+                   -k_t_input_over_cap,
+                   k_t_input_over_cap};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_quantize_u8(u8in, ou8, (size_t)4, s_q_scale, 0));
   TEST_ASSERT_EQ(k_ra8_npu_quant_u8_min, ou8[0]);
   TEST_ASSERT_EQ(k_ra8_npu_quant_u8_max, ou8[1]);
@@ -202,7 +208,7 @@ static void test_dequantize_round_trip(void)
   }
 
   /* INT8 dequantize spot-check: scale*(v - zp). */
-  int8_t iv[2] = {k_npu_quant_val_10, -4};
+  int8_t iv[2] = {k_t_input_positive, -4};
   float  fv[2] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_dequantize_i8(iv, fv, (size_t)2, s_q_scale, k_test_q_zp_i8));
   TEST_ASSERT(q_close(s_q_scale * (float)(10 - k_test_q_zp_i8), fv[0]));
@@ -219,13 +225,13 @@ static void test_zero_count_is_noop(void)
 {
   TEST_BEGIN("npu quant zero count is a no-op");
   float   in  = 1.0F;
-  int8_t  o8  = k_npu_quant_o8_42;
-  uint8_t ou8 = k_npu_quant_ou8_42;
+  int8_t  o8  = k_t_out_seed;
+  uint8_t ou8 = k_t_out_seed;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_quantize_i8(&in, &o8, (size_t)0, s_q_scale, 0));
   TEST_ASSERT_EQ(42, o8); /* untouched */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_quantize_u8(&in, &ou8, (size_t)0, s_q_scale, 0));
   TEST_ASSERT_EQ(42, ou8);
-  float f = k_npu_quant_f_7p0;
+  float f = k_t_float_seed;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_dequantize_i8(&o8, &f, (size_t)0, s_q_scale, 0));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_npu_dequantize_u8(&ou8, &f, (size_t)0, s_q_scale, 0));
   TEST_END("npu quant zero count is a no-op");

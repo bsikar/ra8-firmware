@@ -28,31 +28,17 @@
 #include "unity_minimal.h"
 
 /**
- * @enum vin_mcdc_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_vin_mcdc_aligned_128  = 128,
-  k_vin_mcdc_conv_mode_99 = 99U,
-} vin_mcdc_uint8_const_t;
-
-/**
- * @enum vin_mcdc_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_vin_mcdc_t
+ * @brief Capture-buffer geometry and the out-of-range field value.
  */
 typedef enum : uint16_t {
-  k_vin_mcdc_val_1024 = 1024,
-} vin_mcdc_uint16_const_t;
+  k_t_capture_cap = 1024U, /**< Capture buffer, bytes.                        */
+  k_t_capture_align = 128U, /**< Its required alignment: the VIN write burst
+                                 width, which the buffer must satisfy.          */
+  k_t_field_bad   = 99U,   /**< A value past the last defined enum member,
+                                applied to each field in turn so every guard is
+                                driven independently.                           */
+} t_vin_mcdc_t;
 
 /**
  * @brief Reset the host harness before each test.
@@ -372,7 +358,7 @@ static void test_mcdc_capture_start_geom_quad(void)
   const ra8_vin_config_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vin_init(&cfg));
   /* 128-byte aligned buffer. */
-  [[gnu::aligned(k_vin_mcdc_aligned_128)]] static uint8_t s_buf[k_vin_mcdc_val_1024];
+  [[gnu::aligned(k_t_capture_align)]] static uint8_t s_buf[k_t_capture_cap];
   /* V1 */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vin_capture_start(s_buf, 640U, 480U, k_ra8_vin_input_ycbcr422_8));
   /* V2 */
@@ -441,12 +427,12 @@ static void test_mcdc_set_data_mode_pair(void)
   /* V1 */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vin_set_data_mode(&m));
   /* V2 */
-  m.conv_mode = k_vin_mcdc_conv_mode_99;
+  m.conv_mode = k_t_field_bad;
   m.y_mode    = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vin_set_data_mode(&m));
   /* V3 */
   m.conv_mode = 0U;
-  m.y_mode    = k_vin_mcdc_conv_mode_99;
+  m.y_mode    = k_t_field_bad;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vin_set_data_mode(&m));
   TEST_END("vin set_data_mode MC/DC: conv||y > max");
 }
@@ -473,12 +459,12 @@ static void test_mcdc_set_csi_input_pair(void)
   /* V1 */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vin_set_csi_input(&in));
   /* V2 */
-  in.virtual_channel = k_vin_mcdc_conv_mode_99;
+  in.virtual_channel = k_t_field_bad;
   in.data_type       = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vin_set_csi_input(&in));
   /* V3 */
   in.virtual_channel = 0U;
-  in.data_type       = k_vin_mcdc_conv_mode_99;
+  in.data_type       = k_t_field_bad;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vin_set_csi_input(&in));
   TEST_END("vin set_csi_input MC/DC: vc||dt > max");
 }
