@@ -22,55 +22,48 @@
 #include "unity_minimal.h"
 
 /**
- * @enum pdm_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_pdm_filter_t
+ * @brief Filter coefficients written into the channel configuration.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_pdm_pddsr_10      = 10U,
-  k_pdm_sinc_dec_7c   = 0x7CU,
-  k_pdm_sinc_range_05 = 0x05U,
-  k_pdm_val_10        = 10,
-  k_pdm_val_19        = 19,
-} pdm_uint8_const_t;
-
-/**
- * @enum pdm_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Representative Q1.14 coefficients for the SPH0690 microphone chain: a DC-
+ * blocking high-pass, a droop-compensation FIR and a decimating low-pass. The
+ * driver only marshals them into registers, so the values need to be plausible
+ * and distinct rather than acoustically tuned -- a swapped coefficient must
+ * land in the wrong register and be visible.
  */
 typedef enum : uint16_t {
-  k_pdm_comp_h_1fe8 = 0x1FE8U,
-  k_pdm_hpf_h_4000  = 0x4000U,
-  k_pdm_hpf_h_c000  = 0xC000U,
-  k_pdm_hpf_k1_3ec1 = 0x3EC1U,
-  k_pdm_hpf_s0_3f61 = 0x3F61U,
-  k_pdm_lpf_h0_0400 = 0x0400U,
-  k_pdm_lpf_h1_1ff8 = 0x1FF8U,
-} pdm_uint16_const_t;
+  k_t_sinc_dec     = 0x7CU,   /**< SINC decimation factor.                    */
+  k_t_sinc_range   = 0x05U,   /**< SINC output range select.                  */
+  k_t_hpf_s0       = 0x3F61U, /**< High-pass shift coefficient s0.            */
+  k_t_hpf_k1       = 0x3EC1U, /**< High-pass feedback coefficient k1.         */
+  k_t_hpf_h0       = 0x4000U, /**< High-pass FIR tap 0: +1.0 in Q1.14.        */
+  k_t_hpf_h1       = 0xC000U, /**< High-pass FIR tap 1: -1.0 in Q1.14.        */
+  k_t_comp_tap     = 0x1FE8U, /**< Compensation-filter tap; written to the
+                                   first and last slot to prove the whole
+                                   array is marshalled.                       */
+  k_t_lpf_h0       = 0x0400U, /**< Low-pass leading tap.                      */
+  k_t_lpf_tap      = 0x1FF8U, /**< Low-pass tap, first and last slot.         */
+  k_t_comp_last    = 10U,     /**< Last compensation-filter tap index.        */
+  k_t_lpf_last     = 19U,     /**< Last low-pass tap index.                   */
+} t_pdm_filter_t;
 
 /**
- * @enum pdm_uint32_const_t
- * @brief Named uint32_t constants used by this file.
+ * @enum t_pdm_sample_t
+ * @brief FIFO status and sample words staged into the PDM registers.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * PDDRR carries a 20-bit two's-complement sample, so bit 19 is the sign. The
+ * three values below drive the positive, all-ones (-1) and most-negative
+ * cases of the driver's sign extension.
  */
 typedef enum : uint32_t {
-  k_pdm_pddrr_12345 = 0x12345U,
-  k_pdm_pddrr_80000 = 0x80000U,
-  k_pdm_pddrr_fffff = 0xFFFFFU,
-} pdm_uint32_const_t;
+  k_t_fifo_over_cap = 10U,      /**< PDDSR count above the caller's buffer,
+                                     which the read must cap.                 */
+  k_t_sample_pos    = 0x12345U, /**< A positive 20-bit sample.                */
+  k_t_sample_neg1   = 0xFFFFFU, /**< All ones: sign-extends to -1.            */
+  k_t_sample_min    = 0x80000U, /**< Sign bit only: sign-extends to -524288.  */
+} t_pdm_sample_t;
 
 /** @brief Channel under test (EK-RA8D2 MEMS mic wiring). */
 enum : uint8_t {
@@ -93,20 +86,20 @@ static void make_cfg(ra8_pdm_channel_cfg_t* cfg)
   *cfg                      = (ra8_pdm_channel_cfg_t){};
   cfg->sinc_order           = 4U;
   cfg->clock_div            = 0U;
-  cfg->sinc_dec             = k_pdm_sinc_dec_7c;
-  cfg->sinc_range           = k_pdm_sinc_range_05;
+  cfg->sinc_dec             = k_t_sinc_dec;
+  cfg->sinc_range           = k_t_sinc_range;
   cfg->data_shift           = 0U;
   cfg->edge                 = 0U;
   cfg->rx_threshold         = 4U;
-  cfg->hpf_s0               = k_pdm_hpf_s0_3f61;
-  cfg->hpf_k1               = k_pdm_hpf_k1_3ec1;
-  cfg->hpf_h[0]             = k_pdm_hpf_h_4000;
-  cfg->hpf_h[1]             = k_pdm_hpf_h_c000;
-  cfg->comp_h[0]            = k_pdm_comp_h_1fe8;
-  cfg->comp_h[k_pdm_val_10] = k_pdm_comp_h_1fe8;
-  cfg->lpf_h0               = k_pdm_lpf_h0_0400;
-  cfg->lpf_h1[0]            = k_pdm_lpf_h1_1ff8;
-  cfg->lpf_h1[k_pdm_val_19] = k_pdm_lpf_h1_1ff8;
+  cfg->hpf_s0               = k_t_hpf_s0;
+  cfg->hpf_k1               = k_t_hpf_k1;
+  cfg->hpf_h[0]             = k_t_hpf_h0;
+  cfg->hpf_h[1]             = k_t_hpf_h1;
+  cfg->comp_h[0]            = k_t_comp_tap;
+  cfg->comp_h[k_t_comp_last] = k_t_comp_tap;
+  cfg->lpf_h0               = k_t_lpf_h0;
+  cfg->lpf_h1[0]            = k_t_lpf_tap;
+  cfg->lpf_h1[k_t_lpf_last] = k_t_lpf_tap;
 }
 
 /**
@@ -189,21 +182,21 @@ static void test_read_samples(void)
 
   /* Positive sample, FIFO fill (3) below buffer capacity (8). */
   reg->PDDSR = 3U;
-  reg->PDDRR = k_pdm_pddrr_12345;
+  reg->PDDRR = k_t_sample_pos;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_read(k_test_ch, buf, 8U, &got));
   TEST_ASSERT_EQ(3U, got);
   TEST_ASSERT_EQ(0x12345, buf[0]);
 
   /* Negative sample (bit19 set) -> sign extended to -1. */
   reg->PDDSR = 1U;
-  reg->PDDRR = k_pdm_pddrr_fffff;
+  reg->PDDRR = k_t_sample_neg1;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_read(k_test_ch, buf, 8U, &got));
   TEST_ASSERT_EQ(1U, got);
   TEST_ASSERT_EQ(-1, buf[0]);
 
   /* FIFO count (10) above capacity (4) -> capped. */
-  reg->PDDSR = k_pdm_pddsr_10;
-  reg->PDDRR = k_pdm_pddrr_80000; /* -524288 */
+  reg->PDDSR = k_t_fifo_over_cap;
+  reg->PDDRR = k_t_sample_min; /* -524288 */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdm_read(k_test_ch, buf, 4U, &got));
   TEST_ASSERT_EQ(4U, got);
   TEST_ASSERT_EQ(-524288, buf[3]);
