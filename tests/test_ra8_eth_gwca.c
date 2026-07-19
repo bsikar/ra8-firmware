@@ -25,11 +25,14 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_eth_gwca_dt_f   = 0xFU,
-  k_eth_gwca_u_128  = 128U,
-  k_eth_gwca_u_64   = 64U,
-  k_eth_gwca_val_5  = 5,
-  k_eth_gwca_val_64 = 64,
+  k_gwca_desc_type_max = 0xFU, /**< The largest value a descriptor's 4-bit type field can hold. */
+  k_gwca_slot_bytes_valid =
+    128U, /**< Slot size the driver accepts; the pool holds three of them. */
+  k_gwca_slot_bytes_small =
+    64U, /**< A smaller accepted slot size, proving the check is a bound and not an equality. */
+  k_gwca_chain_len =
+    5, /**< Descriptors in the test chain: enough for a head, a body and a tail with spares. */
+  k_gwca_frame_bytes = 64, /**< Staging frame capacity. */
 } eth_gwca_uint8_const_t;
 
 /**
@@ -42,9 +45,11 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_eth_gwca_gwca_sts_4321 = 0x4321U,
-  k_eth_gwca_gwca_sts_8765 = 0x8765U,
-  k_eth_gwca_val_256       = 256,
+  k_gwca_probe_sts_a = 0x4321U, /**< Planted in GWCA_STS to prove the read reaches the register. */
+  k_gwca_probe_sts_b =
+    0x8765U, /**< A second, different value, so the read cannot be a cached first result. */
+  k_gwca_out_bytes =
+    256, /**< Receive-side output buffer, over one slot so a short read is visible. */
 } eth_gwca_uint16_const_t;
 
 /**
@@ -57,7 +62,8 @@ typedef enum : uint16_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_eth_gwca_gwca_sts_9abcdef0 = 0x9ABCDEF0U,
+  k_gwca_probe_sts_wide =
+    0x9ABCDEF0U, /**< A full 32-bit value proving no field is truncated on the way out. */
 } eth_gwca_uint32_const_t;
 
 static uint32_t s_gwca_cb_count;
@@ -118,7 +124,7 @@ static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("gwca status read + clear");
   prep();
-  ra8_gwca()->GWCA_STS = k_eth_gwca_gwca_sts_9abcdef0;
+  ra8_gwca()->GWCA_STS = k_gwca_probe_sts_wide;
   uint32_t mask        = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_get_status(&mask));
   TEST_ASSERT_EQ(0x9ABCDEF0U, mask);
@@ -138,13 +144,13 @@ static void test_attach_and_dispatch(void)
   TEST_BEGIN("gwca attach + dispatch");
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_attach_handler(stub_gwca_cb, (void*)(uintptr_t)0xB0U));
-  ra8_gwca()->GWCA_STS = k_eth_gwca_gwca_sts_4321;
+  ra8_gwca()->GWCA_STS = k_gwca_probe_sts_a;
   ra8_eth_gwca_dispatch();
   TEST_ASSERT_EQ(1, s_gwca_cb_count);
   TEST_ASSERT_EQ(0x4321U, s_gwca_cb_last_mask);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_attach_handler(nullptr, nullptr));
-  ra8_gwca()->GWCA_STS = k_eth_gwca_gwca_sts_8765;
+  ra8_gwca()->GWCA_STS = k_gwca_probe_sts_b;
   ra8_eth_gwca_dispatch();
   TEST_ASSERT_EQ(1, s_gwca_cb_count);
   TEST_END("gwca attach + dispatch");
@@ -245,7 +251,7 @@ static void test_install_linkfix(void)
 
   /* Vector 1: count = 8 -> ok, every entry LEMPTY. */
   for (uint32_t i = 0U; i < 8U; ++i) {
-    s_table[i].dt = k_eth_gwca_dt_f;
+    s_table[i].dt = k_gwca_desc_type_max;
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_install_linkfix(s_table, 8U));
   for (uint32_t i = 0U; i < 8U; ++i) {
@@ -497,7 +503,7 @@ static void test_attach_buffers(void)
   TEST_BEGIN("gwca attach_buffers");
   prep();
   [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_chain[4];
-  static uint8_t                                          s_pool[3U * k_eth_gwca_u_64];
+  static uint8_t                                          s_pool[3U * k_gwca_slot_bytes_small];
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_attach_buffers(nullptr, 4U, 64U, s_pool));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_eth_gwca_attach_buffers(s_chain, 4U, 64U, nullptr));
@@ -552,7 +558,7 @@ static void test_find_slot(void)
 {
   TEST_BEGIN("gwca find_slot");
   prep();
-  [[gnu::aligned(16)]] ra8_gwca_basic_descriptor_t chain[k_eth_gwca_val_5];
+  [[gnu::aligned(16)]] ra8_gwca_basic_descriptor_t chain[k_gwca_chain_len];
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(chain, 5U, 64U));
 
   /* Null guards. */
@@ -607,8 +613,8 @@ static void test_tx_frame(void)
   TEST_BEGIN("gwca tx_frame");
   prep();
   [[gnu::aligned(16)]] ra8_gwca_basic_descriptor_t chain[4];
-  static uint8_t                                   s_pool[3U * k_eth_gwca_u_128];
-  static uint8_t                                   s_frame[k_eth_gwca_val_64];
+  static uint8_t                                   s_pool[3U * k_gwca_slot_bytes_valid];
+  static uint8_t                                   s_frame[k_gwca_frame_bytes];
   uint32_t                                         tail = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(chain, 4U, 128U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_attach_buffers(chain, 4U, 128U, s_pool));
@@ -643,8 +649,8 @@ static void test_rx_frame(void)
   TEST_BEGIN("gwca rx_frame");
   prep();
   [[gnu::aligned(16)]] ra8_gwca_basic_descriptor_t chain[4];
-  static uint8_t                                   s_pool[3U * k_eth_gwca_u_128];
-  static uint8_t                                   s_out[k_eth_gwca_val_256];
+  static uint8_t                                   s_pool[3U * k_gwca_slot_bytes_valid];
+  static uint8_t                                   s_out[k_gwca_out_bytes];
   uint32_t                                         head    = 0U;
   uint32_t                                         got_len = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(chain, 4U, 128U));
