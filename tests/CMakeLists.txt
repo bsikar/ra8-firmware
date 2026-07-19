@@ -269,8 +269,9 @@ set(RA8_EPUB_THIRD_PARTY
 # so the standalone WebP decode host test (test_ra8_webp.c) and the fuzz harness
 # (fuzz_ra8_webp) link against it. utils.c routes its allocator through the
 # ra8_webp bump arena via -DRA8_WEBP_USE_ARENA (set below).
-file(GLOB_RECURSE RA8_WEBP_THIRD_PARTY CONFIGURE_DEPENDS ${FW_ROOT}/libs/third_party/libwebp/src/*.c)
-file(GLOB_RECURSE RA8_WEBP_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_webp/src/*.c)
+include(${FW_ROOT}/cmake/ra8_webp_vendor.cmake)
+ra8_webp_vendor_sources(RA8_WEBP_THIRD_PARTY ${FW_ROOT})
+ra8_webp_facade_sources(RA8_WEBP_SOURCES ${FW_ROOT})
 file(GLOB_RECURSE RA8_SECURE_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/src/secure_app/*.c)
 file(GLOB_RECURSE RA8_TOUCH_CAL_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_touch_cal/src/*.c)
 file(GLOB_RECURSE RA8_EPD_CAL_SOURCES    CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra8_epd_cal/src/*.c)
@@ -484,16 +485,14 @@ set_source_files_properties(
     PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing"
 )
 
-# Vendored libwebp decoder (SOUP): silence its warnings and disable strict
-# aliasing (it type-puns through byte buffers), and define RA8_WEBP_USE_ARENA so
-# utils.c routes WebPSafe{Malloc,Calloc,Free} through the heap-free ra8_webp
-# bump arena (the RA8 LOCAL PATCH) instead of libc malloc. The first-party
-# ra8_webp facade/arena sources are held to the full project warning bar and are
-# NOT listed here.
-set_source_files_properties(
-    ${RA8_WEBP_THIRD_PARTY}
-    PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing;-DRA8_WEBP_USE_ARENA"
-)
+# Vendored libwebp decoder (SOUP): warning silence, -fno-strict-aliasing (it
+# type-puns through byte buffers) and -DRA8_WEBP_USE_ARENA, which is what routes
+# WebPSafe{Malloc,Calloc,Free} through the heap-free ra8_webp bump arena. The
+# flag set is defined once in cmake/ra8_webp_vendor.cmake so this build, the
+# firmware apps and the host tools cannot disagree about it -- the first-party
+# ra8_webp facade/arena sources stay on the full project warning bar and are not
+# passed here.
+ra8_webp_apply_soup_flags(${RA8_WEBP_THIRD_PARTY})
 
 # Route stb_truetype's per-glyph scratch (vertices, rasteriser edge/point
 # lists) through the no-heap arena in libs/ra8_reflow/src/ra8_stbtt_alloc.c
