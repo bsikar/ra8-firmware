@@ -36,23 +36,24 @@
 #include "psa/crypto.h"
 
 /**
- * @enum psa_real_kat_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_kat_len_t
+ * @brief Buffer lengths of the published known-answer test vectors, in bytes.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Every length is fixed by the standard the vector comes from -- GCM spec Test
+ * Case 3 for the AEAD arm, RFC 6979 A.2.5 for the ECDSA arm -- so these size
+ * the fixtures rather than parameterise them. Changing one invalidates the
+ * vector it belongs to.
  */
 typedef enum : uint8_t {
-  k_psa_real_kat_ct_len_80  = 80U,
-  k_psa_real_kat_dec_len_64 = 64U,
-  k_psa_real_kat_unhex_33   = 33,
-  k_psa_real_kat_val_12     = 12,
-  k_psa_real_kat_val_64     = 64,
-  k_psa_real_kat_val_65     = 65,
-  k_psa_real_kat_val_80     = 80,
-} psa_real_kat_uint8_const_t;
+  k_t_kat_nonce_len = 12U, /**< GCM nonce: the 96-bit form.                   */
+  k_t_kat_pt_len    = 64U, /**< Test Case 3 plaintext; also the expected
+                                decrypted length and the ECDSA r||s signature. */
+  k_t_kat_ct_len    = 80U, /**< Its ciphertext: 64 payload bytes + a 16-byte tag. */
+  k_t_kat_pub_len   = 65U, /**< Uncompressed P-256 public key: 0x04 || X || Y. */
+  k_t_kat_pub_off_y = 33U, /**< Offset of Y within it: past the 0x04 prefix and
+                                the 32-byte X coordinate.                      */
+} t_kat_len_t;
 
 /** @brief Running failure count; a non-zero exit fails the ctest. */
 static int s_failures = 0;
@@ -100,18 +101,18 @@ static void kat_aes_gcm(void)
 {
   uint8_t key[16];
   unhex("feffe9928665731c6d6a8f9467308308", key, 16);
-  uint8_t nonce[k_psa_real_kat_val_12];
-  unhex("cafebabefacedbaddecaf888", nonce, k_psa_real_kat_val_12);
-  uint8_t pt[k_psa_real_kat_val_64];
+  uint8_t nonce[k_t_kat_nonce_len];
+  unhex("cafebabefacedbaddecaf888", nonce, k_t_kat_nonce_len);
+  uint8_t pt[k_t_kat_pt_len];
   unhex("d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e24"
         "49a6b525b16aedf5aa0de657ba637b391aafd255",
         pt,
-        k_psa_real_kat_val_64);
-  uint8_t want_ct[k_psa_real_kat_val_80]; /* 64 ciphertext + 16 tag */
+        k_t_kat_pt_len);
+  uint8_t want_ct[k_t_kat_ct_len]; /* 64 ciphertext + 16 tag */
   unhex("42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5a"
         "ac84aa051ba30b396a0aac973d58e091473f59854d5c2af327cd64a62cf35abd2ba6fab4",
         want_ct,
-        k_psa_real_kat_val_80);
+        k_t_kat_ct_len);
 
   psa_key_attributes_t attr = PSA_KEY_ATTRIBUTES_INIT;
   psa_set_key_usage_flags(&attr, PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT);
@@ -121,7 +122,7 @@ static void kat_aes_gcm(void)
   psa_status_t st  = psa_import_key(&attr, key, sizeof(key), &kid);
   check("AES-128-GCM import key", st == PSA_SUCCESS);
 
-  uint8_t ct[k_psa_real_kat_val_80];
+  uint8_t ct[k_t_kat_ct_len];
   size_t  ct_len = 0U;
   st             = psa_aead_encrypt(kid,
                                     PSA_ALG_GCM,
@@ -135,10 +136,10 @@ static void kat_aes_gcm(void)
                                     sizeof(ct),
                                     &ct_len);
   check("AES-128-GCM encrypt == GCM TC3 ciphertext+tag",
-        st == PSA_SUCCESS && ct_len == k_psa_real_kat_ct_len_80 &&
-          memcmp(ct, want_ct, k_psa_real_kat_val_80) == 0);
+        st == PSA_SUCCESS && ct_len == k_t_kat_ct_len &&
+          memcmp(ct, want_ct, k_t_kat_ct_len) == 0);
 
-  uint8_t dec[k_psa_real_kat_val_64];
+  uint8_t dec[k_t_kat_pt_len];
   size_t  dec_len = 0U;
   st              = psa_aead_decrypt(kid,
                                      PSA_ALG_GCM,
@@ -152,8 +153,8 @@ static void kat_aes_gcm(void)
                                      sizeof(dec),
                                      &dec_len);
   check("AES-128-GCM decrypt round-trip == plaintext",
-        st == PSA_SUCCESS && dec_len == k_psa_real_kat_dec_len_64 &&
-          memcmp(dec, pt, k_psa_real_kat_val_64) == 0);
+        st == PSA_SUCCESS && dec_len == k_t_kat_pt_len &&
+          memcmp(dec, pt, k_t_kat_pt_len) == 0);
 
   (void)psa_destroy_key(kid);
 }
@@ -162,14 +163,14 @@ static void kat_aes_gcm(void)
 static void kat_ecdsa_p256(void)
 {
   /* Uncompressed public key 0x04 || Ux || Uy. */
-  uint8_t pub[k_psa_real_kat_val_65];
+  uint8_t pub[k_t_kat_pub_len];
   pub[0] = 0x04U;
   unhex("60FED4BA255A9D31C961EB74C6356D68C049B8923B61FA6CE669622E60F29FB6", &pub[1], 32);
   unhex("7903FE1008B8BC99A41AE9E95628BC64F2F1B20C2D7E9F5177A3C294D4462299",
-        &pub[k_psa_real_kat_unhex_33],
+        &pub[k_t_kat_pub_off_y],
         32);
   /* Signature r || s. */
-  uint8_t sig[k_psa_real_kat_val_64];
+  uint8_t sig[k_t_kat_pt_len];
   unhex("EFD48B2AACB6A8FD1140DD9CD45E81D69D2C877B56AAF991C34D0EA84EAF3716", &sig[0], 32);
   unhex("F7CB1C942D657C41D436C7A1B6E29F65F3E900DBB9AFF4064DC4AB2F843ACDA8", &sig[32], 32);
 

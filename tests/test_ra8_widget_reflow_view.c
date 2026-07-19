@@ -21,47 +21,27 @@
 #include "unity_minimal.h"
 
 /**
- * @enum widget_reflow_view_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_rv_geom_t
+ * @brief Viewport geometry and paging state of the reflow-view fixture.
  */
-typedef enum : uint8_t {
-  k_widget_reflow_view_link_dest_5   = 5,
-  k_widget_reflow_view_link_dest_99  = 99,
-  k_widget_reflow_view_margin_x_24   = 24,
-  k_widget_reflow_view_page_count_12 = 12,
-  k_widget_reflow_view_w_200         = 200,
-} widget_reflow_view_uint8_const_t;
+typedef enum : int16_t {
+  k_t_view_w     = 200, /**< Viewport width; its mid-point at x=100 is where the
+                             tap arms aim.                                      */
+  k_t_view_h     = 300, /**< Viewport height.                                   */
+  k_t_margin_x   = 24,  /**< Horizontal text margin.                            */
+  k_t_page_count = 12,  /**< Pages the mock engine reports.                     */
+  k_t_link_dest  = 5,   /**< Page a followed link resolves to.                  */
+  k_t_link_dest_far = 99, /**< A destination past the page count, which the view
+                               must clamp rather than jump to.                  */
+} t_rv_geom_t;
 
 /**
- * @enum widget_reflow_view_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint16_t {
-  k_widget_reflow_view_h_300 = 300,
-} widget_reflow_view_uint16_const_t;
-
-/**
- * @enum widget_reflow_view_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_rv_argb_t
+ * @brief Colours the reflow view paints with.
  */
 typedef enum : uint32_t {
-  k_widget_reflow_view_bg_00ffffff = 0x00FFFFFFU,
-} widget_reflow_view_uint32_const_t;
+  k_t_argb_bg = 0x00FFFFFFU, /**< Page background. */
+} t_rv_argb_t;
 
 /* --- Recording mock reflow seam --------------------------------------------- */
 
@@ -129,17 +109,17 @@ static void test_reflow_view_render(void)
                                     .follow_link = mock_rv_follow};
   ra8_widget_reflow_view_t rv    = {.paint      = &paint,
                                     .ops        = &ops,
-                                    .bg         = k_widget_reflow_view_bg_00ffffff,
+                                    .bg         = k_t_argb_bg,
                                     .page       = 2,
-                                    .page_count = k_widget_reflow_view_page_count_12,
-                                    .margin_x   = k_widget_reflow_view_margin_x_24,
+                                    .page_count = k_t_page_count,
+                                    .margin_x   = k_t_margin_x,
                                     .margin_y   = 8};
   ra8_widget_t             w     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_reflow_view_init(&w, &rv));
   w.rect = (ra8_ui_rect_t){.x = 0,
                            .y = 0,
-                           .w = k_widget_reflow_view_w_200,
-                           .h = k_widget_reflow_view_h_300};
+                           .w = k_t_view_w,
+                           .h = k_t_view_h};
 
   w.vt->render(&w);
   TEST_ASSERT_EQ(1U, s_rv_fill_calls);
@@ -174,8 +154,8 @@ static void test_reflow_view_page_turn(void)
   (void)ra8_widget_reflow_view_init(&w, &rv);
   w.rect = (ra8_ui_rect_t){.x = 0,
                            .y = 0,
-                           .w = k_widget_reflow_view_w_200,
-                           .h = k_widget_reflow_view_h_300}; /* mid x = 100 */
+                           .w = k_t_view_w,
+                           .h = k_t_view_h}; /* mid x = 100 */
 
   /* right tap (x=150) -> forward: page 1 -> 2. */
   const ra8_widget_event_t fwd = {.kind = k_ra8_widget_ev_touch, .x = 150, .y = 50};
@@ -217,19 +197,19 @@ static void test_reflow_view_page_turn(void)
 static void test_reflow_view_link(void)
 {
   TEST_BEGIN("ra8_widget_reflow_view: link follow + clamp");
-  mock_rv_t                m = {.link_return = true, .link_dest = k_widget_reflow_view_link_dest_5};
+  mock_rv_t                m = {.link_return = true, .link_dest = k_t_link_dest};
   ra8_widget_reflow_ops_t  ops = {.user        = &m,
                                   .render_page = mock_rv_render,
                                   .follow_link = mock_rv_follow};
   ra8_widget_reflow_view_t rv  = {.ops        = &ops,
                                   .page       = 0,
-                                  .page_count = k_widget_reflow_view_page_count_12};
+                                  .page_count = k_t_page_count};
   ra8_widget_t             w   = {};
   (void)ra8_widget_reflow_view_init(&w, &rv);
   w.rect = (ra8_ui_rect_t){.x = 0,
                            .y = 0,
-                           .w = k_widget_reflow_view_w_200,
-                           .h = k_widget_reflow_view_h_300};
+                           .w = k_t_view_w,
+                           .h = k_t_view_h};
 
   /* link followed -> page adopts dest 5. */
   const ra8_widget_event_t tap = {.kind = k_ra8_widget_ev_touch, .x = 100, .y = 50};
@@ -238,7 +218,7 @@ static void test_reflow_view_link(void)
   TEST_ASSERT_EQ(1U, m.link_calls);
 
   /* out-of-range destination clamps to the last page (11 of 12). */
-  m.link_dest = k_widget_reflow_view_link_dest_99;
+  m.link_dest = k_t_link_dest_far;
   TEST_ASSERT_EQ(true, w.vt->on_input(&w, &tap));
   TEST_ASSERT_EQ(11U, rv.page);
 
@@ -292,8 +272,8 @@ static void rv_init_guard_view(ra8_widget_t*            w,
   (void)ra8_widget_reflow_view_init(w, rv);
   w->rect = (ra8_ui_rect_t){.x = 0,
                             .y = 0,
-                            .w = k_widget_reflow_view_w_200,
-                            .h = k_widget_reflow_view_h_300};
+                            .w = k_t_view_w,
+                            .h = k_t_view_h};
 }
 
 static void test_reflow_view_render_guards(void)
