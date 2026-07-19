@@ -667,10 +667,10 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_jof_webp_riff_ofs   = 0U,  /**< Offset of the "RIFF" fourCC.         */
-  k_jof_webp_fourcc_ofs = 8U,  /**< Offset of the "WEBP" fourCC.         */
-  k_jof_webp_head_len   = 12U, /**< Bytes needed to sniff both fourCCs.  */
-  k_jof_webp_tag_len    = 4U,  /**< Length of one fourCC tag.            */
+  k_jof_webp_riff_ofs   = 0U,  /**< Offset of the "RIFF" fourCC.        */
+  k_jof_webp_fourcc_ofs = 8U,  /**< Offset of the "WEBP" fourCC.        */
+  k_jof_webp_head_len   = 12U, /**< Bytes needed to sniff both fourCCs. */
+  k_jof_webp_tag_len    = 4U,  /**< Length of one fourCC tag.           */
 } mdl_jof_webp_t;
 
 /** @brief WebP RIFF container tag (page head bytes 0..3). */

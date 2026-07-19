@@ -184,6 +184,78 @@ Note: External APIs and Renesas reference documents may still use legacy termino
 
 ---
 
+## No-Stubs Policy
+
+**IMPORTANT:** This project does not ship stubs. If a capability can be built,
+build it. A function that exists only so the build links -- discarding its
+arguments and handing back a canned answer -- is worse than a missing feature:
+the program links clean, advertises the capability, and fails at runtime or,
+worse, silently succeeds having done nothing.
+
+The motivating case: `tools/ra8_fmt/webp_stub.c` and
+`tools/media_dl/webp_stub.c` each defined the real symbol
+`ra8_ta_priv_webp_transcode()`, threw away both arguments and returned
+`k_ra8_err_not_supported` -- while a complete WebP decoder sat vendored,
+wrapped, tested and fuzzed in this same repository. Both tools offered WebP
+conversion that could never work. The stubs existed because the libwebp build
+recipe was not reachable from a standalone host tool; the fix was to make it
+reachable (`cmake/ra8_webp_vendor.cmake`), not to fake the symbol.
+
+### The only exception: hardware that does not physically exist yet
+
+A capability may go unimplemented **only** when the hardware to exercise it has
+not arrived -- e.g. the ESP32-C6 radio, or an e-paper panel that is on order.
+That is a fact about the bench, not a scheduling decision, and "I have not got
+to it yet" is never a qualifying reason.
+
+Such a function must be **unmistakable**, never silently pretend to work, and
+must carry a marker naming the missing part:
+
+```c
+/* TODO(ESP32-C6 radio module ordered, not yet on the bench) */
+ra8_err_t ra8_wifi_connect(const char* ssid)
+{
+  (void)ssid;
+  return k_ra8_err_not_supported;
+}
+```
+
+A bare `TODO` or an empty `TODO()` is **not** a waiver -- the marker must name
+the missing dependency. No waiver is available when a real implementation
+already exists in the tree: if it is implemented somewhere, the hardware
+plainly exists.
+
+### What to do with an existing stub
+
+- **Implementable now** -> implement it. Check first whether the pieces already
+  exist; in practice they usually do and are simply not wired up.
+- **Blocked on absent hardware** -> keep it, but mark it as above.
+- **Genuinely dead** -> delete it and update every call site in the same
+  change. Per the Backward Compatibility Policy below, deleting is the house
+  style, not a breaking change to be avoided.
+
+### Enforcement
+
+`scripts/utils/check_no_silent_stubs.py` runs in the `pre-commit-checks` gate
+(so it is covered by `make ci` / `make ci-native` and the matching workflow job)
+and in the `scripts/git/pre-commit` hook. It fails on two narrowly-calibrated
+patterns:
+
+- **SHADOW** -- a do-nothing second definition of a symbol that is really
+  implemented elsewhere in first-party code.
+- **CANNED** -- an "unsupported / unimplemented" error return that discards
+  every parameter, with no implementation behind it.
+
+Legitimate no-ops are outside both rules by construction: platform
+alternatives (the headless `board_view_stub.c` standing in for the Cocoa
+window layer), vtable / ISR callbacks with genuinely nothing to do, the
+fail-closed `#else` half of the placeholder-crypto guard, and MMIO handlers
+returning module state. Run `check_no_silent_stubs.py --selftest` to see both
+directions asserted; CI runs the selftest before the scan, so a detector that
+quietly stopped matching cannot pass as clean.
+
+---
+
 ## Backward Compatibility Policy
 
 **IMPORTANT:** This is a personal project with **ZERO backward compatibility requirements**. There will never be public releases or versioned APIs.
