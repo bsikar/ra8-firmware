@@ -34,6 +34,11 @@ extern "C" {
 #include "ra8_attributes.h"
 #include "ra8_ble_host.h"
 
+/** @brief GATT attribute pool capacity (worst case ~104, rounded). */
+typedef enum : uint16_t {
+  k_ble_l2cap_attr_cap = 96U, /**< BLE L2CAP attr cap. */
+} ble_l2cap_cap_t;
+
 /**
  * @enum ra8_ble_host_constants_t
  * @brief Implementation-internal numeric constants for the host stack.
@@ -44,11 +49,6 @@ extern "C" {
  * ACL header at 4 bytes; Vol 3 Part F 3.4.2 caps default ATT_MTU at
  * 23. All other values are sized to keep the host self-contained.
  */
-/** @brief GATT attribute pool capacity (worst case ~104, rounded). */
-typedef enum : uint16_t {
-  k_ble_l2cap_attr_cap = 96U, /**< BLE L2CAP attr cap. */
-} ble_l2cap_cap_t;
-
 typedef enum : uint16_t {
   k_l2cap_cid_att          = 0x0004U, /**< Vol 3 Part A 2.1 Table 2.3.   */
   k_l2cap_cid_le_signaling = 0x0005U, /**< Vol 3 Part A 2.1 Table 2.3.   */

@@ -85,6 +85,12 @@ static const char* s_tag = "ETHA";
  */
 volatile uint32_t g_ra8_etha_diag_last_eams[2] = {0U, 0U};
 
+/** @brief EAVCC/gate-list field constants. */
+typedef enum : uint32_t {
+  k_etha_vem_mask        = 0x7U, /**< 3-bit VLAN egress mode field.    */
+  k_etha_cut_through_pos = 28U,  /**< Cut-through enable bit position. */
+} etha_field_t;
+
 /**
  * @enum ra8_etha_local_mask_t
  * @brief Local mask helpers used inside this driver.
@@ -94,12 +100,6 @@ volatile uint32_t g_ra8_etha_diag_last_eams[2] = {0U, 0U};
  * used by the ETHA driver. Keeps the source file free of bare magic
  * numbers so clang-tidy is happy.
  */
-/** @brief EAVCC/gate-list field constants. */
-typedef enum : uint32_t {
-  k_etha_vem_mask        = 0x7U, /**< 3-bit VLAN egress mode field.    */
-  k_etha_cut_through_pos = 28U,  /**< Cut-through enable bit position. */
-} etha_field_t;
-
 typedef enum : uint32_t {
   k_ra8_etha_local_all_bits_set = 0xFFFFFFFFUL, /**< W1C-all helper.   */
   k_ra8_etha_local_byte_mask    = 0xFFU,        /**< 8-bit field mask. */

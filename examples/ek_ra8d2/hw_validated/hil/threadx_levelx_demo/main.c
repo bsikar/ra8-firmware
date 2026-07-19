@@ -68,7 +68,6 @@
 /**
  * @brief Compile-time settings for the LevelX wear-levelling demo.
  */
-/** @brief Heartbeat log cadence. */
 typedef enum : uint32_t {
   k_lx_log_every_n = 100U, /**< Log once every N loop iterations. */
 } lx_log_pace_t;

@@ -399,19 +399,6 @@ typedef enum : uint8_t {
  */
 
 /**
- * @struct ra8_reflow_face_t
- * @brief One registered embedded `@font-face` typeface (#109).
- *
- * @details Maps a parsed `@font-face` table entry (`css_face_idx`, the value
- * ::ra8_css_match_face returns) to its caller-owned TTF/OTF bytes. The blob
- * outlives the engine (it points into the resident EPUB buffer -- zero-copy).
- * The engine holds up to ::k_ra8_reflow_max_faces of these; the render pass
- * builds one `stbtt_fontinfo` per registered face plus the default at index 0.
- *
- * @see ra8_reflow_register_face()
- */
-
-/**
  * @enum ra8_reflow_face_pad_t
  * @brief Padding geometry for ::ra8_reflow_face_t.
  *
@@ -425,6 +412,18 @@ typedef enum : uint8_t {
   k_ra8_reflow_face_pad8 = 7, /**< Pad bytes to reach an 8-byte struct stride. */
 } ra8_reflow_face_pad_t;
 
+/**
+ * @struct ra8_reflow_face_t
+ * @brief One registered embedded `@font-face` typeface (#109).
+ *
+ * @details Maps a parsed `@font-face` table entry (`css_face_idx`, the value
+ * ::ra8_css_match_face returns) to its caller-owned TTF/OTF bytes. The blob
+ * outlives the engine (it points into the resident EPUB buffer -- zero-copy).
+ * The engine holds up to ::k_ra8_reflow_max_faces of these; the render pass
+ * builds one `stbtt_fontinfo` per registered face plus the default at index 0.
+ *
+ * @see ra8_reflow_register_face()
+ */
 typedef struct {
   const uint8_t* blob;         /**< TTF/OTF bytes; caller-owned, outlive the engine. */
   size_t         len;          /**< Length of `blob`, bytes.                         */

@@ -509,7 +509,6 @@ static void er_collect_targets(const ra8_box_tree_t* tree)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-/** @brief Status-bar band widget: heading node + the under-bar hairline + clock. */
 static void er_lib_sb_render(ra8_widget_t* w)
 {
   (void)w;

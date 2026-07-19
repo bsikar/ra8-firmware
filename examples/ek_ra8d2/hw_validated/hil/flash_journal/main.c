@@ -79,21 +79,6 @@ volatile uint32_t g_fj_match = 0U;
 volatile uint32_t g_fj_mismatch = 0U;
 
 /**
- * @var g_fj_last_step
- * @brief Last round-trip step value (J-Link memprobe diagnostic).
- *
- * @details
- * Encodes which step of the erase / program / read / compare chain
- * the firmware completed last. 0 = pre-loop init, 1 = erase ok,
- * 2 = program ok, 3 = read ok, 4 = match, 5 = erase err, 6 = program
- * err, 7 = read err, 8 = compare mismatch (echoed != counter). Lets
- * a memprobe pinpoint which OSPI op fails without UART.
- *
- * @note File-scope volatile so the optimiser cannot elide updates;
- *       read only by J-Link.
- * @since 0.1.0
- */
-/**
  * @brief Step codes for ::g_fj_last_step (erase/program/read/compare chain).
  * @details Low codes are success milestones, high codes are the matching
  *          failure points; read via J-Link memprobe.
@@ -110,6 +95,21 @@ typedef enum : uint32_t {
   k_fj_step_compare_mismatch = 8U, /**< Read-back differed (data error). */
 } fj_step_t;
 
+/**
+ * @var g_fj_last_step
+ * @brief Last round-trip step value (J-Link memprobe diagnostic).
+ *
+ * @details
+ * Encodes which step of the erase / program / read / compare chain
+ * the firmware completed last. 0 = pre-loop init, 1 = erase ok,
+ * 2 = program ok, 3 = read ok, 4 = match, 5 = erase err, 6 = program
+ * err, 7 = read err, 8 = compare mismatch (echoed != counter). Lets
+ * a memprobe pinpoint which OSPI op fails without UART.
+ *
+ * @note File-scope volatile so the optimiser cannot elide updates;
+ *       read only by J-Link.
+ * @since 0.1.0
+ */
 volatile uint32_t g_fj_last_step = k_fj_step_init;
 
 /**

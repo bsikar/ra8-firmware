@@ -42,6 +42,26 @@ extern "C" {
  */
 
 /**
+ * @enum ra8_epub_entry_reader_layout_t
+ * @brief Fixed-layout constants for @ref ra8_epub_entry_reader_t.
+ *
+ * @details
+ * Names the trailing padding that rounds the reader's single-byte `done`
+ * flag up to the struct's 8-byte alignment, so the layout carries no bare
+ * numeric literal.
+ *
+ * @invariant `k_ra8_epub_entry_reader_reserved_bytes` keeps `done` plus the
+ *            padding at 8 bytes, matching the alignment of the leading 64-bit
+ *            members.
+ * @see ra8_epub_entry_reader_t
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra8_epub_entry_reader_reserved_bytes =
+    7, /**< Padding bytes after `done`; rounds the tail to 8-byte alignment. */
+} ra8_epub_entry_reader_layout_t;
+
+/**
  * @struct ra8_epub_entry_reader_t
  * @brief Forward streaming cursor over one ZIP entry -- inflate in bounded RAM (#231).
  *
@@ -70,27 +90,6 @@ extern "C" {
  * @see ra8_epub_entry_close()
  * @since 0.1.0
  */
-
-/**
- * @enum ra8_epub_entry_reader_layout_t
- * @brief Fixed-layout constants for @ref ra8_epub_entry_reader_t.
- *
- * @details
- * Names the trailing padding that rounds the reader's single-byte `done`
- * flag up to the struct's 8-byte alignment, so the layout carries no bare
- * numeric literal.
- *
- * @invariant `k_ra8_epub_entry_reader_reserved_bytes` keeps `done` plus the
- *            padding at 8 bytes, matching the alignment of the leading 64-bit
- *            members.
- * @see ra8_epub_entry_reader_t
- * @since 0.1.0
- */
-typedef enum : uint8_t {
-  k_ra8_epub_entry_reader_reserved_bytes =
-    7, /**< Padding bytes after `done`; rounds the tail to 8-byte alignment. */
-} ra8_epub_entry_reader_layout_t;
-
 typedef struct {
   void*            iter;     /**< Opaque `mz_zip_reader_extract_iter_state*`; NULL when closed. */
   ra8_epub_book_t* book;     /**< Owning book (archive + allocator); borrowed.                  */

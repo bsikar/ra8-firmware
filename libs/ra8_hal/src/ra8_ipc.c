@@ -39,15 +39,15 @@
 
 static const char* s_tag = "IPC";
 
-/**
- * @enum ra8_ipc_internal_const_t
- * @brief Magic constants used inside the driver only.
- */
 /** @brief Secure->Non-secure address alias offset. */
 typedef enum : uintptr_t {
   k_ipc_ns_alias_offset = 0x10000000UL, /**< Ipc ns alias offset. */
 } ipc_alias_t;
 
+/**
+ * @enum ra8_ipc_internal_const_t
+ * @brief Magic constants used inside the driver only.
+ */
 typedef enum : uint32_t {
   k_ra8_ipc_internal_event_full_mask =
     k_ra8_ipc_event_irq0 | k_ra8_ipc_event_irq1 | k_ra8_ipc_event_irq2 | k_ra8_ipc_event_irq3 |

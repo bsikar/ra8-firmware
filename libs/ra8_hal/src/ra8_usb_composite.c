@@ -60,6 +60,11 @@ static const char* s_tag = "USBCOMP";
  * =============================================================================
  */
 
+/** @brief Low-byte mask for the setup-packet wIndex. */
+typedef enum : uint16_t {
+  k_usbc_byte_mask = 0xFFU, /**< Usbc byte mask. */
+} usbc_mask_t;
+
 /**
  * @enum ra8_usb_composite_state_t
  * @brief Composite dispatch state-machine phases.
@@ -68,11 +73,6 @@ static const char* s_tag = "USBCOMP";
  * (STD_DISPATCH | CLASS_DISPATCH) -> DONE -> IDLE. The starter pumps
  * the machine one phase per `ra8_usb_composite_step` call.
  */
-/** @brief Low-byte mask for the setup-packet wIndex. */
-typedef enum : uint16_t {
-  k_usbc_byte_mask = 0xFFU, /**< Usbc byte mask. */
-} usbc_mask_t;
-
 typedef enum : uint8_t {
   k_ra8_usb_composite_state_idle           = 0U, /**< No SETUP in flight.       */
   k_ra8_usb_composite_state_setup_rx       = 1U, /**< SETUP arrived.            */

@@ -55,15 +55,15 @@
  */
 static const char* s_tag = "LPM";
 
-/**
- * @enum ra8_lpm_status_shift_t
- * @brief Bit shifts used to pack SBYCR / DPSBYCR / LPSCR / SSCR1.
- */
 /** @brief Low-byte mask for the PRCR protect register. */
 typedef enum : uint16_t {
   k_lpm_byte_mask = 0xFFU, /**< Lpm byte mask. */
 } lpm_byte_mask_t;
 
+/**
+ * @enum ra8_lpm_status_shift_t
+ * @brief Bit shifts used to pack SBYCR / DPSBYCR / LPSCR / SSCR1.
+ */
 typedef enum : uint8_t {
   k_ra8_lpm_status_shift_sbycr   = 0U,  /**< SBYCR occupies byte 0.   */
   k_ra8_lpm_status_shift_dpsbycr = 8U,  /**< DPSBYCR occupies byte 1. */

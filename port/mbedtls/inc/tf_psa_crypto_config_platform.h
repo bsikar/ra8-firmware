@@ -129,6 +129,8 @@
 //#define MBEDTLS_MEMORY_BACKTRACE
 
 /**
+ * @brief MBEDTLS PLATFORM c.
+ *
  * \def MBEDTLS_PLATFORM_C
  *
  * Enable the platform abstraction layer that allows you to re-assign
@@ -146,7 +148,6 @@
  *
  * This module enables abstraction of common (libc) functions.
  */
-/** @brief MBEDTLS PLATFORM c. */
 #define MBEDTLS_PLATFORM_C
 
 /**
@@ -205,6 +206,8 @@
 //#define MBEDTLS_PLATFORM_GMTIME_R_ALT
 
 /**
+ * @brief MBEDTLS PLATFORM MEMORY.
+ *
  * \def MBEDTLS_PLATFORM_MEMORY
  *
  * Enable the memory allocation layer.
@@ -262,7 +265,6 @@
  * ThreadX byte pool via mbedtls_platform_set_calloc_free() so the
  * "no malloc after init" rule is preserved.
  */
-/** @brief MBEDTLS PLATFORM MEMORY. */
 #define MBEDTLS_PLATFORM_MEMORY
 
 /**
@@ -574,11 +576,12 @@
 //#define TF_PSA_CRYPTO_USER_CONFIG_FILE "/dev/null"
 
 /**
+ * @brief MBEDTLS SELF TEST.
+ *
  * \def MBEDTLS_SELF_TEST
  *
  * Enable the checkup functions (*_self_test).
  */
-/** @brief MBEDTLS SELF TEST. */
 #define MBEDTLS_SELF_TEST
 
 /**
@@ -638,6 +641,8 @@
 //#define MBEDTLS_TEST_HOOKS
 
 /**
+ * @brief TF PSA CRYPTO VERSION.
+ *
  * \def TF_PSA_CRYPTO_VERSION
  *
  * Enable run-time version information.
@@ -645,7 +650,6 @@
  * This option enables functions for getting the version of TF-PSA-Crypto
  * at runtime defined in include/tf-psa-crypto/version.h.
  */
-/** @brief TF PSA CRYPTO VERSION. */
 #define TF_PSA_CRYPTO_VERSION
 
 /** \} name SECTION: General and test configuration options */

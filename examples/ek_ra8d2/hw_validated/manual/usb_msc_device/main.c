@@ -104,11 +104,6 @@ static const ra8_port_pin_t k_demo_pin_dm     = (ra8_port_pin_t)k_ra8_board_usbf
 /* Tunables */
 /* -------------------------------------------------------------------------- */
 
-/**
- * @enum demo_config_t
- * @brief Compile-time settings for the worker thread + USBX pool +
- *        RAM-disk geometry.
- */
 /** @brief SCSI sense triple for an unsupported / out-of-range request. */
 typedef enum : uint8_t {
   k_scsi_sense_illegal_request = 0x05U, /**< Sense key: ILLEGAL REQUEST. */
@@ -116,6 +111,11 @@ typedef enum : uint8_t {
   k_scsi_ascq_none             = 0x00U, /**< ASCQ: none.                 */
 } scsi_sense_code_t;
 
+/**
+ * @enum demo_config_t
+ * @brief Compile-time settings for the worker thread + USBX pool +
+ *        RAM-disk geometry.
+ */
 typedef enum : uint32_t {
   k_demo_thread_stack    = 4096U,  /**< Worker thread stack (bytes).     */
   k_demo_usbx_pool_bytes = 32768U, /**< USBX memory pool (bytes).        */

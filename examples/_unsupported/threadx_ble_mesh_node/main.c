@@ -45,15 +45,15 @@
 #include "tx_api.h"
 #endif
 
-/**
- * @enum demo_mesh_cfg_t
- * @brief Numeric configuration constants.
- */
 /** @brief Bluetooth SIG company identifier. */
 typedef enum : uint16_t {
   k_mesh_company_id_lf = 0x05F1U, /**< Linux Foundation CID. */
 } mesh_company_id_t;
 
+/**
+ * @enum demo_mesh_cfg_t
+ * @brief Numeric configuration constants.
+ */
 typedef enum : uint32_t {
   k_demo_baud         = 115200U, /**< Demo baud.         */
   k_demo_thread_stack = 8192U,   /**< Demo thread stack. */

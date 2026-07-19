@@ -40,17 +40,6 @@
  */
 static const char* s_tag = "RSIP_P";
 
-/**
- * @enum ra8_rsip_p_layout_t
- * @brief Local copy of the wrapped-key blob layout.
- *
- * @details
- * Mirrors ``ra8_rsip_ki_layout_t`` from ``ra8_rsip_key_injection.c``;
- * duplicated here so this TU does not depend on private internals
- * of the injection driver.
- *
- * @since 0.1.0
- */
 /** @brief RSA modulus / ECC private-scalar byte counts. */
 typedef enum : uint16_t {
   k_rsa_1024_mod_bytes       = 128U, /**< RSA 1024 mod bytes.       */
@@ -69,6 +58,17 @@ typedef enum : uint16_t {
   k_ecc_priv_stack_bytes     = 1104U, /**< ECC priv stack bytes.     */
 } rsip_prot_stack_t;
 
+/**
+ * @enum ra8_rsip_p_layout_t
+ * @brief Local copy of the wrapped-key blob layout.
+ *
+ * @details
+ * Mirrors ``ra8_rsip_ki_layout_t`` from ``ra8_rsip_key_injection.c``;
+ * duplicated here so this TU does not depend on private internals
+ * of the injection driver.
+ *
+ * @since 0.1.0
+ */
 typedef enum : uint32_t {
   k_ra8_rsip_p_off_payload = 20U, /**< Payload offset inside a wrapped blob. */
 } ra8_rsip_p_layout_t;

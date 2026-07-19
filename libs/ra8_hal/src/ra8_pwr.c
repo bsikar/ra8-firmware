@@ -44,15 +44,15 @@
 
 static const char* s_tag = "PWR";
 
-/**
- * @enum ra8_pwr_dim_t
- * @brief WUPEN address-decode bounds.
- */
 /** @brief Low-byte mask for register/bit decomposition. */
 typedef enum : uint16_t {
   k_pwr_byte_mask = 0xFFU, /**< Pwr byte mask. */
 } pwr_mask_t;
 
+/**
+ * @enum ra8_pwr_dim_t
+ * @brief WUPEN address-decode bounds.
+ */
 typedef enum : uint8_t {
   k_ra8_pwr_wupen_count = 2U,  /**< WUPEN0 + WUPEN1.      */
   k_ra8_pwr_wupen_bits  = 32U, /**< 32 bits per register. */
