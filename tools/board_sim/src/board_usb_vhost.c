@@ -610,12 +610,12 @@ static void host_msc_send_cbw(uc_engine* uc)
   s_msc_data_got = 0U;
   s_msc_tag++;
 
-  usb_out_buf_t* b     = &s_usb.pipe_out[k_usb_bulk_out_pipe];
-  uint8_t*       d     = b->data;
-  d[0]                 = (uint8_t)'U'; /* dCBWSignature 'USBC' (LE 0x43425355). */
-  d[1]                 = (uint8_t)'S';
-  d[2]                 = (uint8_t)'B';
-  d[3]                 = (uint8_t)'C';
+  usb_out_buf_t* b = &s_usb.pipe_out[k_usb_bulk_out_pipe];
+  uint8_t*       d = b->data;
+  d[0]             = (uint8_t)'U'; /* dCBWSignature 'USBC' (LE 0x43425355). */
+  d[1]             = (uint8_t)'S';
+  d[2]             = (uint8_t)'B';
+  d[3]             = (uint8_t)'C';
   /* dCBWTag / dCBWDataTransferLength are little-endian u32 (USB MSC BOT 5.1). */
   d[k_cbw_tag_off + k_le_lane_b0] = (uint8_t)(s_msc_tag & (uint32_t)k_usb_byte_mask);
   d[k_cbw_tag_off + k_le_lane_b1] = (uint8_t)((s_msc_tag >> 8) & (uint32_t)k_usb_byte_mask);
@@ -674,12 +674,11 @@ static void host_msc_parse_capacity(const uint8_t* d, uint16_t n)
     ((uint32_t)d[k_cap10_last_lba_off + k_be_lane_b2] << 16) |
     ((uint32_t)d[k_cap10_last_lba_off + k_be_lane_b1] << 8) |
     (uint32_t)d[k_cap10_last_lba_off + k_be_lane_b0];
-  s_msc_block_len =
-    ((uint32_t)d[k_cap10_blocklen_off + k_be_lane_b3] << (uint32_t)k_usb_shift24) |
-    ((uint32_t)d[k_cap10_blocklen_off + k_be_lane_b2] << 16) |
-    ((uint32_t)d[k_cap10_blocklen_off + k_be_lane_b1] << 8) |
-    (uint32_t)d[k_cap10_blocklen_off + k_be_lane_b0];
-  s_msc_blocks = last_lba + 1U;
+  s_msc_block_len = ((uint32_t)d[k_cap10_blocklen_off + k_be_lane_b3] << (uint32_t)k_usb_shift24) |
+                    ((uint32_t)d[k_cap10_blocklen_off + k_be_lane_b2] << 16) |
+                    ((uint32_t)d[k_cap10_blocklen_off + k_be_lane_b1] << 8) |
+                    (uint32_t)d[k_cap10_blocklen_off + k_be_lane_b0];
+  s_msc_blocks    = last_lba + 1U;
 }
 
 /** @brief Phase ::k_msc_send: push the next CBW, or finish the script. */
