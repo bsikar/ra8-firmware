@@ -21,24 +21,32 @@
 #include "unity_minimal.h"
 
 /**
- * @enum vmem_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_vmem_page_t
+ * @brief Page and object ids addressed by the cache arms.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Ids are opaque to the cache -- it only maps (object, page) to a slot -- so
+ * these are chosen distinct and non-adjacent, which makes an off-by-one in the
+ * slot hash land on an id no arm uses.
+ */
+typedef enum : uint16_t {
+  k_t_page_lo    = 100U, /**< First page of the eviction sweep.               */
+  k_t_page_hi    = 130U, /**< One past its last page: 30 pages, more than the
+                              cache holds, so eviction must run.               */
+  k_t_page_reuse = 5U,   /**< Page fetched twice: miss then hit.              */
+  k_t_obj_probe  = 7U,   /**< Object id for the single-fetch arm.             */
+  k_t_obj_free   = 9U,   /**< Object and page for the free-path arm.          */
+} t_vmem_page_t;
+
+/**
+ * @enum t_vmem_pct_t
+ * @brief Protected-set percentages the config validator sees.
  */
 typedef enum : uint8_t {
-  k_vmem_pg_100            = 100U,
-  k_vmem_pg_130            = 130U,
-  k_vmem_protected_pct_101 = 101U,
-  k_vmem_protected_pct_25  = 25U,
-  k_vmem_protected_pct_50  = 50U,
-  k_vmem_t_get_5           = 5U,
-  k_vmem_t_get_7           = 7U,
-  k_vmem_t_get_9           = 9U,
-} vmem_uint8_const_t;
+  k_t_pct_over    = 101U, /**< Past 100%: must be rejected.                   */
+  k_t_pct_narrow  = 25U,  /**< A small protected set.                         */
+  k_t_pct_wide    = 50U,  /**< Half the cache protected.                      */
+} t_vmem_pct_t;
 
 /**
  * @enum t_vmem_const_t
@@ -102,12 +110,12 @@ static void test_miss_hit_content(void)
   ra8_vmem_cfg_t cfg = t_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_init(&vm, &cfg));
 
-  uint8_t* p = (uint8_t*)t_get(&vm, 3U, k_vmem_t_get_5); /* miss -> load      */
+  uint8_t* p = (uint8_t*)t_get(&vm, 3U, k_t_page_reuse); /* miss -> load      */
   TEST_ASSERT_EQ(3, p[0]);                               /* object id stamp   */
   TEST_ASSERT_EQ(5, p[1]);                               /* page number stamp */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_put(&vm, p));
 
-  uint8_t* q = (uint8_t*)t_get(&vm, 3U, k_vmem_t_get_5); /* hit        */
+  uint8_t* q = (uint8_t*)t_get(&vm, 3U, k_t_page_reuse); /* hit        */
   TEST_ASSERT(q == p);                                   /* same frame */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_put(&vm, q));
 
@@ -137,7 +145,7 @@ static void test_scan_resistance(void)
     TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_put(&vm, t_get(&vm, 1U, 1U)));
   }
   /* Linear page-turn flood: 30 distinct probationary pages through 8 frames. */
-  for (uint32_t pg = k_vmem_pg_100; pg < k_vmem_pg_130; ++pg) {
+  for (uint32_t pg = k_t_page_lo; pg < k_t_page_hi; ++pg) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_put(&vm, t_get(&vm, 1U, pg)));
   }
   /* The hot set must have SURVIVED the flood (protected segment). */
@@ -210,7 +218,7 @@ static void test_validation(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_vmem_put(&vm, nullptr));
   /* put of a non-frame pointer and of an unpinned frame */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vmem_put(&vm, &s_frames[1])); /* mid-frame */
-  void* fr = t_get(&vm, k_vmem_t_get_9, k_vmem_t_get_9);
+  void* fr = t_get(&vm, k_t_obj_free, k_t_obj_free);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_put(&vm, fr));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vmem_put(&vm, fr)); /* already unpinned */
   TEST_END("vmem validation");
@@ -239,7 +247,7 @@ static void test_prefetch_warms(void)
   TEST_ASSERT_EQ(1, miss);
 
   /* The next real get of the warmed key is now a hit (already resident). */
-  void* p = t_get(&vm, k_vmem_t_get_7, 2U);
+  void* p = t_get(&vm, k_t_obj_probe, 2U);
   TEST_ASSERT_EQ(7, ((const uint8_t*)p)[0]); /* object id stamp   */
   TEST_ASSERT_EQ(2, ((const uint8_t*)p)[1]); /* page number stamp */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_put(&vm, p));
@@ -341,13 +349,13 @@ static void test_protected_split_knob(void)
 
   /* Reject an out-of-range split (guard: protected_pct > 100). */
   ra8_vmem_cfg_t bad = t_cfg();
-  bad.protected_pct  = k_vmem_protected_pct_101;
+  bad.protected_pct  = k_t_pct_over;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vmem_init(&vm, &bad));
 
   /* A 50% split over 8 frames sizes a 4-frame protected segment: it holds the
    * whole 4-page hot set, so every hot page survives the flood. */
   ra8_vmem_cfg_t wide = t_cfg();
-  wide.protected_pct  = k_vmem_protected_pct_50;
+  wide.protected_pct  = k_t_pct_wide;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_init(&vm, &wide));
   TEST_ASSERT_EQ(4U, vm.protected_cap);
   const uint32_t wide_reread = t_split_hot_set_survival(&vm);
@@ -356,7 +364,7 @@ static void test_protected_split_knob(void)
   /* A 25% split sizes only a 2-frame protected segment: two hot pages are
    * demoted to probation during warmup and then thrashed out by the flood. */
   ra8_vmem_cfg_t narrow = t_cfg();
-  narrow.protected_pct  = k_vmem_protected_pct_25;
+  narrow.protected_pct  = k_t_pct_narrow;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vmem_init(&vm, &narrow));
   TEST_ASSERT_EQ(2U, vm.protected_cap);
   const uint32_t narrow_reread = t_split_hot_set_survival(&vm);

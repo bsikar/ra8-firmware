@@ -16,49 +16,33 @@
 #include "unity_minimal.h"
 
 /**
- * @enum usb_paud_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_paud_setup_t
+ * @brief SETUP-packet fields the audio class arms submit.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * `bmRequestType` encodes direction, type and recipient: 0x21 is
+ * host-to-device class-to-interface, 0xA2 the device-to-host reply addressed
+ * to an endpoint, and 0x80 a standard device-to-device request.
  */
 typedef enum : uint8_t {
-  k_usb_paud_b_request_77       = 0x77U,
-  k_usb_paud_bm_request_type_21 = 0x21U,
-  k_usb_paud_bm_request_type_80 = 0x80U,
-  k_usb_paud_bm_request_type_a2 = 0xA2U,
-  k_usb_paud_bytes_per_sample_5 = 5U,
-  k_usb_paud_vol_55             = 0x55,
-} usb_paud_uint8_const_t;
+  k_t_bmreq_class_out = 0x21U, /**< Host-to-device, class, interface.          */
+  k_t_bmreq_class_in  = 0xA2U, /**< Device-to-host, class, endpoint.           */
+  k_t_bmreq_std_in    = 0x80U, /**< Device-to-host, standard, device.          */
+  k_t_breq_unknown    = 0x77U, /**< A bRequest outside the audio set; must stall. */
+  k_t_bytes_per_sample_bad = 5U, /**< Sample width outside the supported 1..4. */
+  k_t_volume_probe    = 0x55,  /**< Pre-set volume; a control that returns
+                                    without writing it leaves this value.       */
+} t_paud_setup_t;
 
 /**
- * @enum usb_paud_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint16_t {
-  k_usb_paud_sample_rate_hz_44100 = 44100U,
-  k_usb_paud_sample_rate_hz_48000 = 48000U,
-} usb_paud_uint16_const_t;
-
-/**
- * @enum usb_paud_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_paud_rate_t
+ * @brief Sample rates the format validator accepts and rejects.
  */
 typedef enum : uint32_t {
-  k_usb_paud_sample_rate_hz_96000 = 96000U,
-} usb_paud_uint32_const_t;
+  k_t_rate_unsupported = 44100U, /**< A rate the device does not implement.    */
+  k_t_rate_supported   = 48000U, /**< The nominal rate the happy path uses.    */
+  k_t_rate_high        = 96000U, /**< The high rate, also accepted.            */
+} t_paud_rate_t;
 
 /* Sample minimal UAC1 descriptor blob (just header + interface stubs). */
 static const uint8_t s_sample_desc[] = {
@@ -122,7 +106,7 @@ static void test_init_default_format(void)
   TEST_ASSERT_EQ(2U, fmt.channels);
   TEST_ASSERT_EQ(2U, fmt.bytes_per_sample);
 
-  int16_t vol = k_usb_paud_vol_55;
+  int16_t vol = k_t_volume_probe;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_get_volume(&vol));
   TEST_ASSERT_EQ(0, vol);
   TEST_END("ra8_usb_paud_init seeds 48 kHz / stereo / 16-bit");
@@ -206,7 +190,7 @@ static void test_set_format_validation(void)
   ra8_usb_paud_format_t bad = {.sample_rate_hz = 0U, .channels = 2U, .bytes_per_sample = 2U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_paud_set_format(bad));
 
-  bad.sample_rate_hz = k_usb_paud_sample_rate_hz_44100;
+  bad.sample_rate_hz = k_t_rate_unsupported;
   bad.channels       = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_paud_set_format(bad));
 
@@ -214,10 +198,10 @@ static void test_set_format_validation(void)
   bad.bytes_per_sample = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_paud_set_format(bad));
 
-  bad.bytes_per_sample = k_usb_paud_bytes_per_sample_5;
+  bad.bytes_per_sample = k_t_bytes_per_sample_bad;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_paud_set_format(bad));
 
-  ra8_usb_paud_format_t good = {.sample_rate_hz   = k_usb_paud_sample_rate_hz_96000,
+  ra8_usb_paud_format_t good = {.sample_rate_hz   = k_t_rate_high,
                                 .channels         = 1U,
                                 .bytes_per_sample = 3U};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_set_format(good));
@@ -265,7 +249,7 @@ static void test_handle_setup_dispatch(void)
 
   /* SET_CUR(volume) on the feature unit. */
   ra8_usb_setup_t setup = {
-    .bm_request_type = (uint8_t)k_usb_paud_bm_request_type_21,
+    .bm_request_type = (uint8_t)k_t_bmreq_class_out,
     .b_request       = (uint8_t)k_ra8_paud_req_set_cur,
     .w_value         = (uint16_t)((uint16_t)k_ra8_paud_ctl_volume << 8U),
     .w_index         = 0U,
@@ -276,7 +260,7 @@ static void test_handle_setup_dispatch(void)
   TEST_ASSERT_EQ(k_ra8_paud_req_set_cur, s_setup_cb_last_breq);
 
   /* GET_CUR(sampling-rate) on iso EP. */
-  setup.bm_request_type = (uint8_t)k_usb_paud_bm_request_type_a2;
+  setup.bm_request_type = (uint8_t)k_t_bmreq_class_in;
   setup.b_request       = (uint8_t)k_ra8_paud_req_get_cur;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_paud_handle_setup(&setup));
   TEST_ASSERT_EQ(2, s_setup_cb_calls);
@@ -297,7 +281,7 @@ static void test_handle_setup_rejects(void)
 
   /* Standard envelope -> not_supported. */
   ra8_usb_setup_t setup = {
-    .bm_request_type = (uint8_t)k_usb_paud_bm_request_type_80,
+    .bm_request_type = (uint8_t)k_t_bmreq_std_in,
     .b_request       = (uint8_t)0x06U,
     .w_value         = 0U,
     .w_index         = 0U,
@@ -306,8 +290,8 @@ static void test_handle_setup_rejects(void)
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_paud_handle_setup(&setup));
 
   /* Class envelope but unknown bRequest -> not_supported. */
-  setup.bm_request_type = (uint8_t)k_usb_paud_bm_request_type_21;
-  setup.b_request       = (uint8_t)k_usb_paud_b_request_77;
+  setup.bm_request_type = (uint8_t)k_t_bmreq_class_out;
+  setup.b_request       = (uint8_t)k_t_breq_unknown;
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_paud_handle_setup(&setup));
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_paud_handle_setup(nullptr));
@@ -425,7 +409,7 @@ static void paud_mcdc_send_frame(uint8_t* buf)
  */
 static void paud_mcdc_set_format(void)
 {
-  ra8_usb_paud_format_t fmt = {.sample_rate_hz   = k_usb_paud_sample_rate_hz_48000,
+  ra8_usb_paud_format_t fmt = {.sample_rate_hz   = k_t_rate_supported,
                                .channels         = 2U,
                                .bytes_per_sample = 2U};
   /* D-V2 + E-V2: in-range. */
