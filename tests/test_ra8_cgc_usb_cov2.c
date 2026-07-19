@@ -61,22 +61,6 @@ static ra8_err_t s_clear_result = k_ra8_ok;
  */
 static int s_set_fail_bit = -1;
 
-/** @brief Mock for `ra8_cgc_wait_oscsf_clear()` -- returns the scripted result. */
-static ra8_err_t mock_wait_oscsf_clear(uint8_t bit)
-{
-  (void)bit;
-  return s_clear_result;
-}
-
-/** @brief Mock for `ra8_cgc_wait_oscsf_set()` -- fails only for ::s_set_fail_bit. */
-static ra8_err_t mock_wait_oscsf_set(uint8_t bit)
-{
-  if ((int)bit == s_set_fail_bit) {
-    return k_ra8_err_hw_timeout;
-  }
-  return k_ra8_ok;
-}
-
 /* =============================================================================
  * Stateful USBCKCR / USB60CKCR register model.
  *
@@ -185,6 +169,22 @@ ra8_err_t ra8_cgc_ensure_hoco_running_for_usb_ck_cov2(void);
  * helpers read the (mocked) register model instead of faking the handshake. */
 #undef RA8_SIMULATOR_MODE
 #include "ra8_cgc_usb.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
+
+/** @brief Mock for `ra8_cgc_wait_oscsf_clear()` -- returns the scripted result. */
+static ra8_err_t mock_wait_oscsf_clear(uint8_t bit)
+{
+  (void)bit;
+  return s_clear_result;
+}
+
+/** @brief Mock for `ra8_cgc_wait_oscsf_set()` -- fails only for ::s_set_fail_bit. */
+static ra8_err_t mock_wait_oscsf_set(uint8_t bit)
+{
+  if ((int)bit == s_set_fail_bit) {
+    return k_ra8_err_hw_timeout;
+  }
+  return k_ra8_ok;
+}
 
 /* =============================================================================
  * White-box tests.

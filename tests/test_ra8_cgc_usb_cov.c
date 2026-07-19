@@ -68,22 +68,6 @@ static ra8_err_t s_clear_result = k_ra8_ok;
  */
 static int s_set_fail_bit = -1;
 
-/** @brief Mock for `ra8_cgc_wait_oscsf_clear()` -- returns the scripted result. */
-static ra8_err_t mock_wait_oscsf_clear(uint8_t bit)
-{
-  (void)bit;
-  return s_clear_result;
-}
-
-/** @brief Mock for `ra8_cgc_wait_oscsf_set()` -- fails only for ::s_set_fail_bit. */
-static ra8_err_t mock_wait_oscsf_set(uint8_t bit)
-{
-  if ((int)bit == s_set_fail_bit) {
-    return k_ra8_err_hw_timeout;
-  }
-  return k_ra8_ok;
-}
-
 /** @brief HOCOCR value with HCSTP set, used to drive the "restart HOCO" branch. */
 static const uint8_t k_cov_hococr_hcstp = (uint8_t)(1U << k_ra8_hococr_hcstp);
 
@@ -101,6 +85,14 @@ static void cov_reset(void)
 /* Rename the exported symbols so the instrumented copy does not clash with the
  * production driver in ra8_core_hal, and redirect the OSCSF poll helpers to the
  * scriptable mocks above. */
+/* The two OSCSF poll mocks are only DECLARED here and defined below the
+ * driver include. `ra8_cgc_internal.h` carries RA8_PRIV on the real
+ * declarations, and the #define maps that annotated declaration onto the
+ * mock -- clang rejects an attribute on a declaration that follows the
+ * definition, so the definition has to come last. */
+static ra8_err_t mock_wait_oscsf_clear(uint8_t bit);
+static ra8_err_t mock_wait_oscsf_set(uint8_t bit);
+
 ra8_err_t ra8_cgc_pll2_enable_cov(uint8_t mul_int, uint8_t mul_quarters, ra8_plodiv_t p_div_code);
 ra8_err_t ra8_cgc_usbfs_clock_enable_cov(void);
 ra8_err_t ra8_cgc_usbhs_pll_enable_cov(void);
@@ -124,6 +116,22 @@ ra8_err_t ra8_cgc_ensure_hoco_running_for_usb_ck_cov(void);
  * mirror directly instead of faking the handshake ack. */
 #undef RA8_SIMULATOR_MODE
 #include "ra8_cgc_usb.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
+
+/** @brief Mock for `ra8_cgc_wait_oscsf_clear()` -- returns the scripted result. */
+static ra8_err_t mock_wait_oscsf_clear(uint8_t bit)
+{
+  (void)bit;
+  return s_clear_result;
+}
+
+/** @brief Mock for `ra8_cgc_wait_oscsf_set()` -- fails only for ::s_set_fail_bit. */
+static ra8_err_t mock_wait_oscsf_set(uint8_t bit)
+{
+  if ((int)bit == s_set_fail_bit) {
+    return k_ra8_err_hw_timeout;
+  }
+  return k_ra8_ok;
+}
 
 /* =============================================================================
  * White-box tests.
