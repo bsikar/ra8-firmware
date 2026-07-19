@@ -39,25 +39,26 @@
 #include "unity_minimal.h"
 
 /**
- * @enum rsip_core_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_hmac_t
+ * @brief HMAC-SHA-256 parameters, fixed by RFC 2104 and FIPS 180-4.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The reference implementation the tests compare against is spelled out here
+ * rather than pulled from the driver, so a driver that changes its padding
+ * constants fails instead of agreeing with itself.
  */
-typedef enum : uint8_t {
-  k_rsip_core_i_20    = 20U,
-  k_rsip_core_i_64    = 64U,
-  k_rsip_core_key_0b  = 0x0BU,
-  k_rsip_core_key_aa  = 0xAAU,
-  k_rsip_core_val_131 = 131,
-  k_rsip_core_val_20  = 20,
-  k_rsip_core_val_36  = 0x36U,
-  k_rsip_core_val_5c  = 0x5CU,
-  k_rsip_core_val_64  = 64,
-} rsip_core_uint8_const_t;
+typedef enum : uint16_t {
+  k_t_hmac_block_len = 64U,   /**< SHA-256 block size, bytes: the width of the
+                                   ipad/opad buffers and of a prepared key.    */
+  k_t_hmac_ipad_byte = 0x36U, /**< Inner-pad byte XORed over the prepared key. */
+  k_t_hmac_opad_byte = 0x5CU, /**< Outer-pad byte, likewise.                   */
+  k_t_key_short_len  = 20U,   /**< A key shorter than the block, which must be
+                                   zero-extended rather than hashed.           */
+  k_t_key_long_len   = 131U,  /**< A key longer than the block, which must be
+                                   hashed down to 32 bytes first.              */
+  k_t_key_short_byte = 0x0BU, /**< Fill byte of the short key.                 */
+  k_t_key_long_byte  = 0xAAU, /**< Fill byte of the long key.                  */
+} t_hmac_t;
 
 /**
  * @enum ra8_rsip_test_const_t
@@ -599,8 +600,8 @@ static void test_sha256_inc_block_boundary(void)
   TEST_BEGIN("rsip sha256 incremental block boundary");
   prep_running();
 
-  uint8_t input[k_rsip_core_val_64];
-  for (uint32_t i = 0U; i < k_rsip_core_i_64; ++i) {
+  uint8_t input[k_t_hmac_block_len];
+  for (uint32_t i = 0U; i < k_t_hmac_block_len; ++i) {
     input[i] = (uint8_t)i;
   }
 
@@ -672,9 +673,9 @@ static void test_hmac_sha256_inc_rfc4231_1(void)
   TEST_BEGIN("rsip hmac sha256 incremental rfc4231 case 1");
   prep_running();
 
-  uint8_t key[k_rsip_core_val_20];
-  for (uint32_t i = 0U; i < k_rsip_core_i_20; ++i) {
-    key[i] = k_rsip_core_key_0b;
+  uint8_t key[k_t_key_short_len];
+  for (uint32_t i = 0U; i < k_t_key_short_len; ++i) {
+    key[i] = k_t_key_short_byte;
   }
   const uint8_t data[] = {'H', 'i', ' ', 'T', 'h', 'e', 'r', 'e'};
 
@@ -758,11 +759,11 @@ static void hmac_ref_compute(const uint8_t* prepared,
                              uint32_t       data_len,
                              uint8_t*       expect)
 {
-  uint8_t ipad[k_rsip_core_val_64];
-  uint8_t opad[k_rsip_core_val_64];
-  for (uint32_t i = 0U; i < k_rsip_core_i_64; ++i) {
-    ipad[i] = prepared[i] ^ k_rsip_core_val_36;
-    opad[i] = prepared[i] ^ k_rsip_core_val_5c;
+  uint8_t ipad[k_t_hmac_block_len];
+  uint8_t opad[k_t_hmac_block_len];
+  for (uint32_t i = 0U; i < k_t_hmac_block_len; ++i) {
+    ipad[i] = prepared[i] ^ k_t_hmac_ipad_byte;
+    opad[i] = prepared[i] ^ k_t_hmac_opad_byte;
   }
   uint8_t               inner[32] = {};
   ra8_rsip_sha256_ctx_t inner_ctx = {};
@@ -783,14 +784,14 @@ static void test_hmac_sha256_inc_oversized_key(void)
   TEST_BEGIN("rsip hmac sha256 incremental oversized key");
   prep_running();
 
-  uint8_t key[k_rsip_core_val_131];
+  uint8_t key[k_t_key_long_len];
   for (uint32_t i = 0U; i < sizeof(key); ++i) {
-    key[i] = k_rsip_core_key_aa;
+    key[i] = k_t_key_long_byte;
   }
   const uint8_t data[] = {'T', 'e', 's', 't'};
 
   /* Reference: build expected MAC by hand using the same primitive. */
-  uint8_t prepared[k_rsip_core_val_64] = {0U};
+  uint8_t prepared[k_t_hmac_block_len] = {0U};
   hmac_ref_prepare_key(key, (uint32_t)sizeof(key), prepared);
   uint8_t expect[32] = {};
   hmac_ref_compute(prepared, data, (uint32_t)sizeof(data), expect);
