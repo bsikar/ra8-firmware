@@ -619,7 +619,7 @@ def check_symbol(cursor, ctx: FileCtx) -> list[Finding]:
     """
     cindex, path = ctx.cindex, ctx.path
     findings: list[Finding] = []
-    block = _decl_block(cursor, ctx.attached)
+    block = _decl_block(cursor, ctx.attached, ctx.decl_text)
     if block is None:
         return findings
     tags = parse_tags(block.text)
@@ -707,19 +707,44 @@ def blocks_by_attach_line(text: str) -> dict[int, DocBlock]:
     return out
 
 
-def _decl_block(cursor, attached: dict[int, DocBlock]) -> DocBlock | None:
+#: Lines that belong to a declaration but sit *above* the extent libclang
+#: reports: the RA8_* annotation macros (which expand to attributes and are
+#: mandated tree-wide by CLAUDE.md), C23 attributes, and bare storage-class or
+#: qualifier keywords left on their own line by clang-format.
+DECL_PREFIX_RE = re.compile(
+    r"^\s*(?:"
+    r"[A-Z][A-Z0-9_]*(?:\s*\([^)]*\))?"  # RA8_INTERNAL / RA8_BOUNDED_LOOP(x)
+    r"|\[\[[^\]]*\]\]"  # [[noreturn]]
+    r"|static|inline|extern|const|volatile|register|_Noreturn"
+    r")\s*$"
+)
+
+
+def _decl_block(cursor, attached: dict[int, DocBlock], lines: list[str]) -> DocBlock | None:
     """The doc block lexically preceding ``cursor``, or None.
 
-    A declaration can start above ``cursor.location.line`` -- annotation
-    macros, a return type on its own line, ``static`` on the previous line --
-    so every line from the extent start through the name line is a candidate
-    landing spot.
+    A declaration can start well above ``cursor.location.line``.  libclang's
+    extent does **not** cover an annotation macro on its own line, so for
+
+        /** ... */
+        RA8_INTERNAL
+        static void internal_foo(void) { }
+
+    the block attaches to the ``RA8_INTERNAL`` line while the cursor extent
+    starts on the ``static void`` line below it -- and a naive extent-based
+    lookup finds no block at all.  Since CLAUDE.md mandates an RA8_* annotation
+    on every non-public function, that silently exempted a large share of the
+    tree from every symbol check here.  Walk up past any declaration-prefix
+    lines before looking.
     """
     try:
         first = cursor.extent.start.line
     except (AttributeError, ValueError):
         first = cursor.location.line
-    for ln in range(min(first, cursor.location.line), cursor.location.line + 1):
+    first = min(first, cursor.location.line)
+    while first > 1 and DECL_PREFIX_RE.match(lines[first - 2] if first - 2 < len(lines) else ""):
+        first -= 1
+    for ln in range(first, cursor.location.line + 1):
         if ln in attached:
             return attached[ln]
     return None
@@ -751,6 +776,7 @@ def check_forward_decl_blocks(tu, cindex, path: str, own_file: str, text: str) -
     definition below it undocumented.
     """
     attached = blocks_by_attach_line(text)
+    decl_text = text.splitlines()
     decls: dict[str, list] = {}
     for cursor in tu.cursor.walk_preorder():
         if cursor.kind != cindex.CursorKind.FUNCTION_DECL:
@@ -771,10 +797,14 @@ def check_forward_decl_blocks(tu, cindex, path: str, own_file: str, text: str) -
         if definition is None:
             continue
         # Positional, not cursor.raw_comment -- see blocks_by_attach_line().
-        if _decl_block(definition, attached) is not None:
+        if _decl_block(definition, attached, decl_text) is not None:
             continue
         documented_decl = next(
-            (c for c in cursors if not c.is_definition() and _decl_block(c, attached) is not None),
+            (
+                c
+                for c in cursors
+                if not c.is_definition() and _decl_block(c, attached, decl_text) is not None
+            ),
             None,
         )
         if documented_decl is None:
@@ -942,6 +972,36 @@ SELFTEST_CASES: list[tuple[str, str, set[str]]] = [
 int add_values(int lhs, int rhs) { return lhs + rhs; }
 """,
         {"DOC001", "DOC002"},
+    ),
+    (
+        "defect behind an RA8_* annotation macro is still seen",
+        """
+#define RA8_INTERNAL
+/**
+ * @brief Emit one char-decl pair.
+ * @param[in] conn_handle Connection handle.
+ * @param[in] pdu         Raw PDU.
+ * @return Nothing.
+ */
+RA8_INTERNAL
+static void internal_emit_pair(unsigned char* resp, int pos) { (void)resp; (void)pos; }
+""",
+        {"DOC001", "DOC002"},
+    ),
+    (
+        "correct block behind an RA8_* annotation macro does not fire",
+        """
+#define RA8_INTERNAL
+/**
+ * @brief Emit one char-decl pair.
+ * @param[out] resp Response buffer.
+ * @param[in]  pos  Cursor into resp.
+ * @return Nothing.
+ */
+RA8_INTERNAL
+static void internal_emit_pair(unsigned char* resp, int pos) { (void)resp; (void)pos; }
+""",
+        set(),
     ),
     (
         "param documented that does not exist",
