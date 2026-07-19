@@ -840,6 +840,51 @@ RA8_INTERNAL
   return internal_ra8_epaper_write_data16(mv);
 }
 
+/**
+ * @brief Validate a load request's lifecycle, buffer size and geometry.
+ *
+ * @details
+ * Three refusals, in the order that gives the caller the most specific
+ * diagnosis. The alignment check is the load-bearing one: a 1 bpp update
+ * off the 32-pixel grid does not render at all -- the controller accepts
+ * the command and shows nothing -- so catching it here turns a blank
+ * screen into a return code.
+ *
+ * @param[in] area    Rectangle to load; non-NULL.
+ * @param[in] buf_len Caller-supplied buffer length in bytes.
+ * @param[in] pf      Source pixel depth.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok                Request accepted.
+ * @retval k_ra8_err_invalid_state Panel never initialized.
+ * @retval k_ra8_err_invalid_size  Empty area or ``buf_len`` mismatch.
+ * @retval k_ra8_err_invalid_arg   1 bpp geometry off the 32-pixel grid.
+ *
+ * @pre  ``area`` is non-NULL and readable.
+ * @pre  ``pf`` is a valid ::ra8_epaper_pixel_format_t.
+ * @post No bus traffic is generated.
+ * @post No driver state is mutated.
+ */
+RA8_INTERNAL
+[[nodiscard]] static ra8_err_t internal_ra8_epaper_validate_load(const ra8_epaper_area_t*  area,
+                                                                 size_t                    buf_len,
+                                                                 ra8_epaper_pixel_format_t pf)
+{
+  if (s_panel.state != k_ra8_epaper_state_ready) {
+    return k_ra8_err_invalid_state;
+  }
+  size_t          expect = 0U;
+  const ra8_err_t serr   = ra8_epaper_image_bytes(area, pf, &expect);
+  if ((serr != k_ra8_ok) || (buf_len != expect)) {
+    return k_ra8_err_invalid_size;
+  }
+  if (!ra8_epaper_area_is_aligned(area, pf)) {
+    ra8_log_error(s_tag, "load_image: 1bpp area violates 32px X/width alignment");
+    return k_ra8_err_invalid_arg;
+  }
+  return k_ra8_ok;
+}
+
 [[nodiscard]] ra8_err_t ra8_epaper_load_image(const ra8_epaper_area_t*  area,
                                               const uint8_t*            buf,
                                               size_t                    buf_len,
@@ -849,23 +894,9 @@ RA8_INTERNAL
   RA8_CHECK_NULL_PTR(area, s_tag, "load_image: area null");
   RA8_CHECK_NULL_PTR(buf, s_tag, "load_image: buf null");
 
-  if (s_panel.state != k_ra8_epaper_state_ready) {
-    return k_ra8_err_invalid_state;
-  }
-  size_t          expect = 0U;
-  const ra8_err_t serr   = ra8_epaper_image_bytes(area, pf, &expect);
-  if (serr != k_ra8_ok) {
-    return k_ra8_err_invalid_size;
-  }
-  if (buf_len != expect) {
-    return k_ra8_err_invalid_size;
-  }
-  if (!ra8_epaper_area_is_aligned(area, pf)) {
-    /* A 1 bpp update off the 32-pixel grid does not render at all -- the
-     * controller accepts the command and shows nothing. Refuse it here so
-     * the failure is a return code rather than a blank screen. */
-    ra8_log_error(s_tag, "load_image: 1bpp area violates 32px X/width alignment");
-    return k_ra8_err_invalid_arg;
+  const ra8_err_t verr = internal_ra8_epaper_validate_load(area, buf_len, pf);
+  if (verr != k_ra8_ok) {
+    return verr;
   }
 
   /* DS 4.4 -- LISAR holds the 32-bit target frame address; on a
