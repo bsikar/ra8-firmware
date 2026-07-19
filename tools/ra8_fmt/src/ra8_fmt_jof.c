@@ -272,6 +272,45 @@ static ra8_err_t fmt_jof_run_produce(const ra8_fmt_blob_t*     src,
   return ra8_jof_produce(&cfg, out_info);
 }
 
+/**
+ * @brief Acquire the producer's work arena and atlas sink, all or nothing.
+ *
+ * @details
+ * Both buffers are needed for a produce run, so a partial allocation frees
+ * whatever succeeded rather than leaving the caller to unwind a half-acquired
+ * pair on a path that cannot use it.
+ *
+ * @param[in]  work_cap Work-arena size in bytes.
+ * @param[in]  sink_cap Atlas-sink size in bytes.
+ * @param[out] work     Receives the work arena, or NULL on failure.
+ * @param[out] sink     Receives the sink buffer, or NULL on failure.
+ * @return Whether both allocations succeeded.
+ * @retval true  Both buffers are owned by the caller.
+ * @retval false Nothing is allocated; both out-pointers are NULL.
+ *
+ * @pre @p work and @p sink are non-null.
+ * @pre @p work_cap is non-zero (the caller rejected a zero-size job).
+ * @post On success the caller owns both buffers and must free them.
+ * @post On failure no allocation outlives the call.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static bool fmt_jof_alloc_bufs(uint32_t work_cap, size_t sink_cap, uint8_t** work, uint8_t** sink)
+{
+  *work = (uint8_t*)malloc(work_cap);
+  *sink = (uint8_t*)malloc(sink_cap);
+  if ((*work != nullptr) && (*sink != nullptr)) {
+    return true;
+  }
+  free(*work);
+  free(*sink);
+  *work = nullptr;
+  *sink = nullptr;
+  return false;
+}
+
 ra8_err_t ra8_fmt_jof_produce(const ra8_fmt_blob_t* src,
                                 uint16_t              max_w,
                                 uint16_t              max_h,
@@ -292,11 +331,9 @@ ra8_err_t ra8_fmt_jof_produce(const ra8_fmt_blob_t* src,
   /* The atlas can expand slightly over the source for incompressible input;
    * size the sink from the decoded worst case plus the index and trailer. */
   const size_t sink_cap = ra8_fmt_jof_sink_cap(src->len);
-  uint8_t*     work     = (uint8_t*)malloc(work_cap);
-  uint8_t*     sink     = (uint8_t*)malloc(sink_cap);
-  if ((work == nullptr) || (sink == nullptr)) {
-    free(work);
-    free(sink);
+  uint8_t*     work     = nullptr;
+  uint8_t*     sink     = nullptr;
+  if (!fmt_jof_alloc_bufs(work_cap, sink_cap, &work, &sink)) {
     return k_ra8_err_no_mem;
   }
   uint8_t*        webp_work     = nullptr;
