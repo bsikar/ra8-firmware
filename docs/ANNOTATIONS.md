@@ -343,6 +343,27 @@ the gate on its own terms:
   parse comes apart the call-graph rules stop policing anything and the
   gate reports *fewer* violations, which reads as an improvement.
 
+### The checker's own regression test
+
+`--selftest` runs the rules over a synthetic `libs/mod_*` tree held in the
+script, and CI runs it before it trusts the gate's verdict on the real
+tree. It guards the two defects this gate has actually shipped:
+
+- **Namesake merging.** A name-keyed symbol table merged distinct
+  same-named `static` helpers into one entry, and a module calling its own
+  file-local copy was reported for calling another module's `RA8_PRIV`
+  symbol. The fixture checks both directions, so the rule cannot be
+  "fixed" by defanging it.
+- **A rule that cannot fire.** The fixture holds one definition of every
+  shape the linkage rule accepts and one of every shape it rejects, so
+  deleting the rule fails the test rather than reading as a clean tree.
+
+The vector-table exemption gets both halves deliberately: two identical
+handlers, one named by the table and one not. Keyed on table membership
+the first passes and the second is reported. Keyed on anything about the
+function itself -- a name prefix, a signature -- both would pass, and the
+test fails on exactly that mutation.
+
 ### Running it
 
 ```sh
@@ -357,6 +378,9 @@ make check-annotations
 
 # Dump every annotated symbol in the project (no enforcement)
 python3 scripts/utils/check_annotations.py --list
+
+# Regression-test the checker itself against synthetic TUs
+python3 scripts/utils/check_annotations.py --selftest
 ```
 
 ### Dependency

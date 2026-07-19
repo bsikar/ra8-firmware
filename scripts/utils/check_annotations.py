@@ -33,6 +33,7 @@ Usage::
     python3 scripts/utils/check_annotations.py            # report
     python3 scripts/utils/check_annotations.py --check    # CI gate
     python3 scripts/utils/check_annotations.py --list     # dump symbols
+    python3 scripts/utils/check_annotations.py --selftest # regression test
 """
 
 from __future__ import annotations
@@ -1525,6 +1526,284 @@ def _relative(path: str) -> str:
 
 
 # --------------------------------------------------------------------------
+# Self-test
+# --------------------------------------------------------------------------
+#: Synthetic TUs for run_selftest(). Laid out like libs/<module>/ so
+#: module_of() and is_first_party() resolve, with the annotations spelled
+#: the way ra8_attributes.h lowers them so no project header is needed.
+#:
+#: Insertion order is load-bearing for the namesake case: it reproduces the
+#: walk order that once took dev red. The namesake `static` is walked first,
+#: so under a name-keyed table its USR was the one latched into the single
+#: merged entry while that entry's `file` was overwritten by the RA8_PRIV
+#: module's definition -- and a module's call to its own file-local helper
+#: was reported as a cross-module RA8_PRIV call.
+_SELFTEST_SOURCES: dict[str, str] = {
+    # --- ra8_priv namesake resolution -----------------------------------
+    # A namesake `static`, walked FIRST. Its call binds to its own
+    # file-local copy and must never be attributed to mod_priv's RA8_PRIV
+    # symbol. Three `internal_zero_bytes` and two `priv_byte_copy` have
+    # this exact shape in-tree.
+    "libs/mod_other/src/other.c": """
+[[clang::annotate("ra8_internal")]] static void shared_helper(unsigned char* p, unsigned short n)
+{
+  for (unsigned short i = 0U; i < n; ++i) {
+    p[i] = 0U;
+  }
+}
+
+[[clang::annotate("ra8_priv")]] void other_caller(unsigned char* p);
+
+void other_caller(unsigned char* p)
+{
+  shared_helper(p, 4U);
+}
+""",
+    # The RA8_PRIV owner: external linkage, tagged the way a *_internal.h
+    # does it. Clang propagates the attribute onto the definition in the
+    # same TU, which is how the merged entry used to pick up this path.
+    "libs/mod_priv/src/priv.c": """
+[[clang::annotate("ra8_priv")]] void shared_helper(unsigned char* p, unsigned int n);
+[[clang::annotate("ra8_priv")]] void priv_owner_caller(unsigned char* p);
+
+void shared_helper(unsigned char* p, unsigned int n)
+{
+  for (unsigned int i = 0U; i < n; ++i) {
+    p[i] = 0U;
+  }
+}
+
+void priv_owner_caller(unsigned char* p)
+{
+  shared_helper(p, 4U);
+}
+""",
+    # A genuine cross-module call to the external RA8_PRIV symbol. This one
+    # MUST still be reported, otherwise the namesake fix would have
+    # silenced the rule rather than made it accurate.
+    "libs/mod_stranger/src/stranger.c": """
+[[clang::annotate("ra8_priv")]] void stranger_caller(unsigned char* p);
+
+void shared_helper(unsigned char* p, unsigned int n);
+
+void stranger_caller(unsigned char* p)
+{
+  shared_helper(p, 4U);
+}
+""",
+    # --- linkage rule: the four ways a definition passes ------------------
+    "libs/mod_link/inc/mod_link.h": """
+#pragma once
+void link_public_api(void);
+""",
+    "libs/mod_link/src/mod_link_internal.h": """
+#pragma once
+void link_internal_declared(void);
+[[clang::annotate("ra8_priv")]] void link_internal_annotated(void);
+""",
+    "libs/mod_link/src/pass.c": """
+#include "mod_link.h"
+#include "mod_link_internal.h"
+
+/* Published by the library's public inc/ header: public API, no annotation. */
+void link_public_api(void) {}
+
+/* Declared in the *_internal.h AND tagged: the sanctioned cross-TU shape. */
+void link_internal_annotated(void) {}
+
+/* Tagged in place, declared nowhere: still fine, the tag is the statement. */
+[[clang::annotate("ra8_test_helper")]] void link_test_hook(void) {}
+
+/* static + RA8_INTERNAL: out of scope for the rule entirely. */
+[[clang::annotate("ra8_internal")]] static void link_file_local(void) {}
+
+int main(void)
+{
+  link_file_local();
+  return 0;
+}
+""",
+    # --- linkage rule: the two ways a definition fails --------------------
+    "libs/mod_link/src/fail.c": """
+#include "mod_link_internal.h"
+
+/* Declared library-private but never classified -> wants RA8_PRIV. */
+void link_internal_declared(void) {}
+
+/* Nothing declares it and no table names it -> wants static or a header. */
+void link_undeclared(void) {}
+""",
+    # --- linkage rule: the vector-table exemption -------------------------
+    # Two byte-identical handlers. One is named by the table, one is not.
+    # If the exemption were keyed on a name pattern instead of on table
+    # membership, both would pass and the rule would be blind to any
+    # handler-shaped symbol anyone chose to leave unwired.
+    "libs/mod_link/src/vectors.c": """
+void handler_tabled(void);
+void handler_untabled(void);
+
+void handler_tabled(void) {}
+void handler_untabled(void) {}
+
+void (*const g_vector_table[])(void) = {
+    handler_tabled,
+};
+""",
+}
+
+#: What run_selftest() expects the linkage rule to report, by symbol name.
+#: ``handler_untabled`` is here because it is byte-identical to a handler
+#: the table does name: table membership is the only thing separating them.
+_SELFTEST_LINKAGE_EXPECTED = frozenset(
+    {"link_internal_declared", "link_undeclared", "handler_untabled"}
+)
+
+#: Definitions the linkage rule must leave alone -- one per passing shape,
+#: plus the un-tabled handler's twin that proves the exemption is keyed on
+#: table membership rather than on what the function looks like.
+_SELFTEST_LINKAGE_CLEAN = (
+    "link_public_api",
+    "link_internal_annotated",
+    "link_test_hook",
+    "link_file_local",
+    "main",
+    "handler_tabled",
+)
+
+
+def _selftest_parse(root: pathlib.Path) -> tuple[dict[str, AnnotatedSymbol], list[CallSite], set[str]]:
+    """Write the synthetic tree under ``root`` and walk every TU in it."""
+    tu_paths: list[pathlib.Path] = []
+    for rel, body in _SELFTEST_SOURCES.items():
+        path = root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(body)
+        if path.suffix in SOURCE_SUFFIXES:
+            tu_paths.append(path)
+
+    symbols: dict[str, AnnotatedSymbol] = {}
+    calls: list[CallSite] = []
+    vector_entries: set[str] = set()
+    index = cindex.Index.create()
+    for path in tu_paths:
+        tu = index.parse(
+            str(path),
+            args=["-std=c23", "-x", "c", f"-I{root}/libs/mod_link/inc", f"-I{root}/libs/mod_link/src"],
+            options=cindex.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD,
+        )
+        walk_tu(tu, path, symbols, calls, ParseStats(), vector_entries)
+    return symbols, calls, vector_entries
+
+
+def run_selftest() -> int:  # noqa: PLR0912  # one branch per guarded regression
+    """Regression-test the checker itself. Returns a process exit code.
+
+    Two classes of defect are guarded here, both of which this gate has
+    actually shipped:
+
+    * **Namesake merging.** Keying the symbol table by bare name merged
+      distinct same-named functions into one entry, so a module calling
+      its own file-local ``static`` was reported for calling another
+      module's RA8_PRIV symbol. Checked in both directions -- the
+      namesake call is clean *and* the genuine cross-module call is still
+      caught -- so the rule cannot be "fixed" by defanging it.
+    * **A rule that cannot fire.** The linkage rule is the one that turns
+      "nothing declares this" into a failure, and a rule which reports
+      nothing looks exactly like a clean tree. The synthetic module below
+      contains one definition of every passing shape and one of every
+      failing shape, so the test fails if the rule stops catching either
+      or starts catching the wrong one.
+
+    The vector-table exemption gets both halves on purpose: two identical
+    handlers, one named by the table and one not. Keyed on table
+    membership the first passes and the second is reported; keyed on
+    anything about the function itself -- a name prefix, a signature --
+    both would pass and the exemption would swallow unrelated symbols.
+    """
+    import tempfile  # noqa: PLC0415  # self-test only; keep the gate path import-light
+
+    global REPO_ROOT  # noqa: PLW0603  # is_first_party() is defined relative to it
+    failures: list[str] = []
+    real_root = REPO_ROOT
+    with tempfile.TemporaryDirectory() as td:
+        root = pathlib.Path(td).resolve()
+        REPO_ROOT = root
+        try:
+            symbols, calls, vector_entries = _selftest_parse(root)
+            violations = enforce_rules(symbols, calls, vector_entries)
+        finally:
+            REPO_ROOT = real_root
+
+    priv_offenders = {
+        pathlib.Path(v.file).name for v in violations if v.rule == "ra8_priv"
+    }
+    if "other.c" in priv_offenders:
+        failures.append(
+            "namesake regression: a module's call to its own file-local static "
+            "'shared_helper' was reported as a cross-module RA8_PRIV call"
+        )
+    if "priv.c" in priv_offenders:
+        failures.append(
+            "same-module regression: mod_priv calling its own RA8_PRIV symbol was reported"
+        )
+    if "stranger.c" not in priv_offenders:
+        failures.append(
+            "ra8_priv went toothless: the genuine cross-module call to RA8_PRIV "
+            "'shared_helper' from mod_stranger was NOT reported"
+        )
+
+    # The merged symbol table is the underlying defect, so assert its shape
+    # directly too: the namesakes must stay distinct entries.
+    namesakes = [s for s in symbols.values() if s.name == "shared_helper"]
+    expected_namesakes = 2  # one external (mod_priv) + one static (mod_other)
+    if len(namesakes) != expected_namesakes:
+        failures.append(
+            f"symbol table merged namesakes: expected {expected_namesakes} distinct "
+            f"'shared_helper' entries, found {len(namesakes)}"
+        )
+
+    linkage = {
+        re.search(r"'([^']+)'", v.message).group(1)
+        for v in violations
+        if v.rule == "ra8_linkage" and re.search(r"'([^']+)'", v.message)
+    }
+    for name in sorted(_SELFTEST_LINKAGE_EXPECTED - linkage):
+        failures.append(  # noqa: PERF401  # one message per missed symbol
+            f"ra8_linkage went toothless: '{name}' has external linkage that "
+            f"nothing justifies, and the rule did not report it"
+        )
+    for name in sorted(linkage - _SELFTEST_LINKAGE_EXPECTED):
+        failures.append(  # noqa: PERF401  # one message per false positive
+            f"ra8_linkage false positive: '{name}' is a justified definition "
+            f"but the rule reported it"
+        )
+    if "handler_untabled" not in linkage:
+        failures.append(
+            "vector-table exemption over-matches: 'handler_untabled' is byte-identical "
+            "to a tabled handler but appears in no table, so it must still be reported"
+        )
+
+    seen = {s.name for s in symbols.values()}
+    for name in _SELFTEST_LINKAGE_CLEAN:
+        if name not in seen:
+            failures.append(
+                f"selftest fixture did not parse: '{name}' is missing from the "
+                f"symbol table, so its linkage shape was never exercised"
+            )
+
+    if failures:
+        for f in failures:
+            sys.stderr.write(f"[FAIL] check_annotations selftest: {f}\n")
+        sys.stderr.write(f"check_annotations selftest: {len(failures)} failure(s)\n")
+        return 1
+    print(
+        "check_annotations selftest: OK (namesakes resolved by USR; linkage rule "
+        "catches both gap shapes and exempts only tabled handlers)"
+    )
+    return 0
+
+
+# --------------------------------------------------------------------------
 # Entry point
 # --------------------------------------------------------------------------
 def main(argv: list[str]) -> int:  # noqa: PLR0912  # gate/parser dispatch, splitting hurts readability
@@ -1534,8 +1813,16 @@ def main(argv: list[str]) -> int:  # noqa: PLR0912  # gate/parser dispatch, spli
     )
     ap.add_argument("--list", action="store_true", help="dump every annotated symbol and exit")
     ap.add_argument("--quiet", action="store_true", help="suppress per-TU progress output")
+    ap.add_argument(
+        "--selftest",
+        action="store_true",
+        help="run the checker's own regression tests on synthetic TUs and exit",
+    )
     ap.add_argument("paths", nargs="*", help="optional explicit file list (else scan everything)")
     args = ap.parse_args(argv)
+
+    if args.selftest:
+        return run_selftest()
 
     partial = bool(args.paths)
     if partial:
