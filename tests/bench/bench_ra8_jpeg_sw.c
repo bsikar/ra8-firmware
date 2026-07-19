@@ -85,6 +85,19 @@ static void fill_gradient(void)
 /**
  * @brief Bench entry.
  */
+/* The nesting this reports is entirely inside RA8_BENCH_TIME's expansion --
+ * the harness wraps every measured body in do{ while{ for{ ... } } } to pick an
+ * iteration count that reaches a minimum wall time. The body below is flat
+ * straight-line code and contributes no nesting of its own.
+ *
+ * It is not reducible: an adaptive iteration count needs a calibration loop
+ * around the measured loop, and the body must stay lexically inline -- routing
+ * it through a callback would add an indirect call per iteration and inflate
+ * exactly the number the benchmark exists to report. clang-tidy offers no
+ * per-aspect suppression, so this also masks the statement count for this
+ * function; keep it short.
+ */
+// NOLINTNEXTLINE(readability-function-size)
 int main(void)
 {
   ra8_bench_print_header("bench_ra8_jpeg_sw");

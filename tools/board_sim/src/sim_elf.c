@@ -144,6 +144,176 @@ uint32_t elf_vector_base(const uint8_t* elf, long len)
   return found ? min_vaddr : 0U;
 }
 
+uint32_t elf_foreach_exec_segment(const uint8_t*      elf,
+                                  long                len,
+                                  elf_exec_segment_fn fn,
+                                  void*               ctx)
+{
+  if ((elf == nullptr) || (fn == nullptr) || (len < (long)k_elf_ehdr_size)) {
+    return 0U;
+  }
+  uint32_t phoff = 0U;
+  (void)memcpy(&phoff, elf + (uint32_t)k_elf_e_phoff_off, 4);
+  const uint16_t phentsize = (uint16_t)(elf[42] | (elf[43] << 8));
+  const uint16_t phnum     = (uint16_t)(elf[44] | (elf[45] << 8));
+  if (((uint64_t)phoff + ((uint64_t)phnum * (uint64_t)phentsize)) > (uint64_t)len) {
+    return 0U; /* truncated program-header table -- refuse to walk past the file. */
+  }
+
+  uint32_t visited = 0U;
+  for (uint16_t i = 0U; i < phnum; i++) {
+    const uint8_t* ph       = elf + phoff + ((size_t)(uint32_t)i * phentsize);
+    uint32_t       p_type   = 0U;
+    uint32_t       p_offset = 0U;
+    uint32_t       p_vaddr  = 0U;
+    uint32_t       p_filesz = 0U;
+    uint32_t       p_flags  = 0U;
+    (void)memcpy(&p_type, ph + 0, 4);
+    (void)memcpy(&p_offset, ph + (uint32_t)k_elf_ph_offset_off, 4);
+    (void)memcpy(&p_vaddr, ph + (uint32_t)k_elf_ph_vaddr_off, 4);
+    (void)memcpy(&p_filesz, ph + (uint32_t)k_elf_ph_filesz_off, 4);
+    (void)memcpy(&p_flags, ph + (uint32_t)k_elf_ph_flags_off, 4);
+    const bool executable = ((p_flags & (uint32_t)k_elf_pf_x) != 0U);
+    if ((p_type != (uint32_t)k_elf_pt_load) || (p_filesz == 0U) || !executable) {
+      continue;
+    }
+    if (((uint64_t)p_offset + (uint64_t)p_filesz) > (uint64_t)len) {
+      continue; /* truncated / out-of-file segment -- skip. */
+    }
+    const elf_exec_segment_t seg = {
+      .bytes = elf + p_offset, .vaddr = p_vaddr, .filesz = p_filesz};
+    visited++;
+    if (!fn(&seg, ctx)) {
+      break;
+    }
+  }
+  return visited;
+}
+
+/**
+ * @struct elf_symtab_t
+ * @brief Where one SHT_SYMTAB section and its string table live in the image.
+ *
+ * @details
+ * Decoded once from a section header so the symbol scan below works from plain
+ * offsets instead of re-reading header fields inside its loop.
+ *
+ * @invariant `entsize` is non-zero, so `count` is always well defined.
+ * @see elf_symtab_decode  Fills this in from a section header.
+ * @see elf_symtab_find    Consumes it.
+ */
+typedef struct {
+  uint32_t sym_off; /**< File offset of the symbol array.        */
+  uint32_t entsize; /**< Bytes per symbol entry (>= 16).         */
+  uint32_t count;   /**< Symbol entries in the table.            */
+  uint32_t str_off; /**< File offset of the linked string table. */
+} elf_symtab_t;
+
+/**
+ * @brief Decode a section header into ::elf_symtab_t if it is a usable SYMTAB.
+ *
+ * @param[in]  elf       Base of the mapped ELF image.
+ * @param[in]  sh        Section header to decode.
+ * @param[in]  shoff     File offset of the section-header table.
+ * @param[in]  shentsize Bytes per section header.
+ * @param[in]  shnum     Section-header count, bounding the `sh_link` index.
+ * @param[out] out       Receives the decoded table on success.
+ *
+ * @return True when `sh` is an SHT_SYMTAB whose entry size and string-table
+ *         link are both usable; false otherwise (the caller skips the section).
+ *
+ * @pre `elf` and `out` are non-NULL.
+ * @pre `sh` points inside the image (the caller bounds-checks it).
+ * @post On true, `out->entsize` is non-zero.
+ * @post On false, `*out` is untouched.
+ *
+ * @note Not thread-safe with respect to the image it reads.
+ */
+static bool elf_symtab_decode(const uint8_t* elf,
+                              const uint8_t* sh,
+                              uint32_t       shoff,
+                              uint16_t       shentsize,
+                              uint16_t       shnum,
+                              elf_symtab_t*  out)
+{
+  uint32_t sh_type = 0U;
+  (void)memcpy(&sh_type, sh + 4, 4);
+  if (sh_type != 2U /* SHT_SYMTAB */) {
+    return false;
+  }
+  uint32_t sym_off     = 0U;
+  uint32_t sym_size    = 0U;
+  uint32_t sym_link    = 0U;
+  uint32_t sym_entsize = 0U;
+  (void)memcpy(&sym_off, sh + 16, 4);
+  (void)memcpy(&sym_size, sh + (uint32_t)k_elf_sh_size_off, 4);
+  (void)memcpy(&sym_link, sh + (uint32_t)k_elf_sh_link_off, 4);
+  (void)memcpy(&sym_entsize, sh + (uint32_t)k_elf_sh_entsize_off, 4);
+  if ((sym_entsize < 16U) || (sym_link >= shnum)) {
+    return false;
+  }
+  const uint8_t* strsh   = elf + shoff + ((size_t)(uint32_t)sym_link * shentsize);
+  uint32_t       str_off = 0U;
+  (void)memcpy(&str_off, strsh + 16, 4);
+
+  out->sym_off = sym_off;
+  out->entsize = sym_entsize;
+  out->count   = sym_size / sym_entsize;
+  out->str_off = str_off;
+  return true;
+}
+
+/**
+ * @brief Find `name` in one decoded symbol table.
+ *
+ * @param[in]  elf      Base of the mapped ELF image.
+ * @param[in]  len      Image length in bytes, bounding every read.
+ * @param[in]  name     Symbol name to match.
+ * @param[in]  nlen     `strlen(name) + 1`, so the NUL is compared too.
+ * @param[in]  st       Table to search.
+ * @param[out] size_out Receives `st_size` on a hit; may be NULL.
+ *
+ * @return The symbol's value with the Thumb bit cleared, or 0 when absent.
+ *
+ * @pre `elf`, `name` and `st` are non-NULL.
+ * @pre `st->entsize` is non-zero.
+ * @post `*size_out` is written only on a hit.
+ * @post Every read stays inside the first `len` bytes of the image.
+ *
+ * @note Not thread-safe with respect to the image it reads.
+ */
+static uint32_t elf_symtab_find(const uint8_t*      elf,
+                                long                len,
+                                const char*         name,
+                                size_t              nlen,
+                                const elf_symtab_t* st,
+                                uint32_t*           size_out)
+{
+  for (uint32_t s = 0U; s < st->count; s++) {
+    const uint8_t* sym = elf + st->sym_off + ((size_t)s * st->entsize);
+    if (((size_t)(sym - elf) + 16U) > (size_t)len) {
+      break;
+    }
+    uint32_t st_name  = 0U;
+    uint32_t st_value = 0U;
+    uint32_t st_size  = 0U;
+    (void)memcpy(&st_name, sym + 0, 4);
+    (void)memcpy(&st_value, sym + 4, 4);
+    (void)memcpy(&st_size, sym + 8, 4);
+    const size_t pos = (size_t)st->str_off + (size_t)st_name;
+    if ((st_name == 0U) || ((pos + nlen) > (size_t)len)) {
+      continue;
+    }
+    if (memcmp(elf + pos, name, nlen) == 0) {
+      if (size_out != nullptr) {
+        *size_out = st_size;
+      }
+      return st_value & ~1U; /* clear the Thumb bit for the hook address. */
+    }
+  }
+  return 0U;
+}
+
 uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name, uint32_t* size_out)
 {
   if (size_out != nullptr) {
@@ -165,47 +335,13 @@ uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name, uint32_t* 
     if (((size_t)(sh - elf) + (size_t)k_elf_shentsize_min) > (size_t)len) {
       break;
     }
-    uint32_t sh_type = 0U;
-    (void)memcpy(&sh_type, sh + 4, 4);
-    if (sh_type != 2U /* SHT_SYMTAB */) {
+    elf_symtab_t st = {};
+    if (!elf_symtab_decode(elf, sh, shoff, shentsize, shnum, &st)) {
       continue;
     }
-    uint32_t sym_off     = 0U;
-    uint32_t sym_size    = 0U;
-    uint32_t sym_link    = 0U;
-    uint32_t sym_entsize = 0U;
-    (void)memcpy(&sym_off, sh + 16, 4);
-    (void)memcpy(&sym_size, sh + (uint32_t)k_elf_sh_size_off, 4);
-    (void)memcpy(&sym_link, sh + (uint32_t)k_elf_sh_link_off, 4);
-    (void)memcpy(&sym_entsize, sh + (uint32_t)k_elf_sh_entsize_off, 4);
-    if ((sym_entsize < 16U) || (sym_link >= shnum)) {
-      continue;
-    }
-    const uint8_t* strsh   = elf + shoff + ((size_t)(uint32_t)sym_link * shentsize);
-    uint32_t       str_off = 0U;
-    (void)memcpy(&str_off, strsh + 16, 4);
-    const uint32_t nsym = sym_size / sym_entsize;
-    for (uint32_t s = 0U; s < nsym; s++) {
-      const uint8_t* sym = elf + sym_off + ((size_t)s * sym_entsize);
-      if (((size_t)(sym - elf) + 16U) > (size_t)len) {
-        break;
-      }
-      uint32_t st_name  = 0U;
-      uint32_t st_value = 0U;
-      uint32_t st_size  = 0U;
-      (void)memcpy(&st_name, sym + 0, 4);
-      (void)memcpy(&st_value, sym + 4, 4);
-      (void)memcpy(&st_size, sym + 8, 4);
-      const size_t pos = (size_t)str_off + (size_t)st_name;
-      if ((st_name == 0U) || ((pos + nlen) > (size_t)len)) {
-        continue;
-      }
-      if (memcmp(elf + pos, name, nlen) == 0) {
-        if (size_out != nullptr) {
-          *size_out = st_size;
-        }
-        return st_value & ~1U; /* clear the Thumb bit for the hook address. */
-      }
+    const uint32_t hit = elf_symtab_find(elf, len, name, nlen, &st, size_out);
+    if (hit != 0U) {
+      return hit;
     }
   }
   return 0U;
