@@ -73,6 +73,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 IMAGE_TAG="ra8-ci:latest"
+# Exit status of the most recent run_gate_capture call. Pre-declared so `set -u`
+# cannot abort a reader before the first gate has run.
+RA8_GATE_RC=0
 DOCKERFILE="$REPO_ROOT/.devcontainer/Dockerfile"
 
 # ===========================================================================
@@ -252,7 +255,60 @@ print((pr.get("base") or {}).get("sha") or ev.get("before") or "")
 # someone pastes a raw `run:` check into the YAML. This gate refuses that.
 gate_ci_parity() {
   require_python_mod yaml "pip install pyyaml (the CI runners ship it)"
+  suite_errexit_selftest
+  python3 scripts/utils/check_ci_parity.py --selftest
   python3 scripts/utils/check_ci_parity.py
+}
+
+# Assert that run_suite() still reports FAIL for a gate that fails PART-WAY
+# through its body -- not merely one whose last command fails.
+#
+# This is not hypothetical. run_suite once invoked gates as
+# `if run_one_gate "$name"; then`, and calling a function from an `if`
+# condition suppresses ERREXIT *into the callee*: the `set -e` inside every
+# `gate_*()` subshell went inert, so only each gate's final command decided
+# PASS/FAIL. gate_pre_commit_checks runs a dozen checkers in sequence and only
+# the last one counted; two of the others were dying on an uncaught exception
+# while the gate reported PASS.
+#
+# A suite runner that cannot fail is worse than no suite runner, because it
+# manufactures the exact "local green, CI red" this whole file exists to
+# prevent. So the property is asserted on every run rather than remembered.
+suite_errexit_selftest() {
+  local out rc=0
+  # A stand-in gate shaped like a real one: `set -e` subshell, failing command
+  # in the MIDDLE, more commands after it.
+  gate_ra8_errexit_probe() (
+    set -e
+    false
+    echo "probe body continued past the failure"
+  )
+  # Drive the gate through run_gate_capture -- the SAME dispatch run_suite
+  # uses. Reimplementing the call here would test a copy of the runner rather
+  # than the runner, which is the very mistake this file is about.
+  #
+  # Redirect to a temp file rather than `out="$(run_gate_capture ...)"`:
+  # command substitution runs the callee in a SUBSHELL, so the RA8_GATE_RC it
+  # sets would never reach us (and under `set -u` reading it would abort).
+  local probe_log
+  probe_log="$(mktemp "${TMPDIR:-/tmp}/ra8-errexit-probe.XXXXXXXX")"
+  run_gate_capture ra8-errexit-probe > "$probe_log" 2>&1
+  rc="$RA8_GATE_RC"
+  out="$(cat "$probe_log")"
+  rm -f "$probe_log"
+  unset -f gate_ra8_errexit_probe
+
+  if [[ "$rc" -eq 0 ]]; then
+    echo "ERROR: ci.sh suite runner self-test FAILED." >&2
+    echo "       A gate that fails mid-body was reported as success (rc=0)." >&2
+    echo "       ERREXIT is being suppressed into gate bodies -- almost" >&2
+    echo "       certainly because a caller invokes the gate from an \`if\`" >&2
+    echo "       condition, a && chain, or a \`!\` negation. Call it as a plain" >&2
+    echo "       command with \`set +e\` around the CALL only." >&2
+    echo "       Probe output was: $out" >&2
+    return 1
+  fi
+  echo "ci.sh: suite-runner errexit self-test OK (mid-body failure propagates)."
 }
 
 # --- ascii ----------------------------------------------------------------
@@ -976,6 +1032,29 @@ run_one_gate() {
   "$fn"
 }
 
+# THE gate dispatch. Runs one gate and leaves its status in RA8_GATE_RC.
+#
+# Every caller that needs a gate's status goes through here -- run_suite and
+# suite_errexit_selftest alike -- so the self-test exercises the real runner
+# instead of a lookalike of it.
+#
+# Do NOT collapse this into `if run_one_gate ...`. Calling a function from an
+# `if` condition (or a `&&` chain, or under `!`) suppresses ERREXIT and that
+# suppression extends INTO the callee, silently neutering the `set -e` inside
+# every `gate_*()` subshell so only the gate's LAST command decides PASS/FAIL.
+# Disable errexit around the CALL only; the callee's own `set -e` then works.
+#
+#     gate() ( set -e; false; echo reached; )
+#     if gate; then echo PASS; else echo FAIL; fi   # prints: reached / PASS
+run_gate_capture() {
+  local name="$1"
+  set +e
+  run_one_gate "$name"
+  RA8_GATE_RC=$?
+  set -e
+  return 0
+}
+
 # ===========================================================================
 # FULL-SUITE RUNNER (native). Executes every registry gate in order and prints
 # a PASS/FAIL line per gate.
@@ -983,7 +1062,7 @@ run_one_gate() {
 run_suite() {
   local fast="$1"
   local gate_names=() gate_results=()
-  local name speed
+  local name speed gate_rc
 
   while read -r name speed _; do
     if [[ "$speed" == "manual" ]]; then
@@ -997,7 +1076,11 @@ run_suite() {
     echo "== GATE: $name"
     echo "==================================================================="
     gate_names+=("$name")
-    if run_one_gate "$name"; then
+    # Dispatch via run_gate_capture -- see the ERREXIT warning on it. Never
+    # inline this as `if run_one_gate "$name"; then`.
+    run_gate_capture "$name"
+    gate_rc="$RA8_GATE_RC"
+    if [[ "$gate_rc" -eq 0 ]]; then
       gate_results+=("PASS")
     else
       gate_results+=("FAIL")

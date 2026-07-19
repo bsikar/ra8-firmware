@@ -19,16 +19,20 @@ versa) -- the cause is almost always a version skew documented below.
 | Environment | Role | Can do | Cannot do |
 |-------------|------|--------|-----------|
 | **Mac** (Apple Silicon, this repo's authoring box) | ARM cross-builds + code authoring + `.py`/`.sh` lint | `arm-none-eabi-gcc` (Cortex-M85), clang-format/clang-tidy, ruff, shfmt, shellcheck, git | Run host unit tests / coverage (macOS arm64 SIGKILLs the `mmap MAP_FIXED <4 GiB` peripheral mock before `main`); `make ci` (Docker + resources) is unreliable |
-| **dev box** (`ssh dev`, x86-64 Debian 12, 6 cores) | Host unit tests, coverage, cppcheck, clang-format/tidy, the `check_*.py` suite, ARM cross-build (pinned 13.3 at `~/opt/arm-gnu-toolchain-13.3`) | Everything host-side + cross-build, FAST | no Docker |
+| **dev box** (`ssh dev`, x86-64 Debian 12, 6 cores) | Host unit tests, coverage, cppcheck, clang-format/tidy, the `check_*.py` suite, ARM cross-build (pinned 13.3 at `~/opt/arm-gnu-toolchain-13.3`) | Everything host-side + cross-build, FAST -- `make ci-native` runs every gate with no container at all | no Docker (which is fine: `make ci` falls back to native on Linux) |
 | **CI** (self-hosted Linux runners; `.github/workflows/`) | The authority -- every gate runs here on push/PR | All gates in the Ubuntu 24.04 devcontainer + a self-hosted `/opt` cross toolchain | -- |
 | **HIL rig** (`ssh star@star.local`, Pi + on-board J-Link) | Silicon validation (flash + read the real EK-RA8D2) | The only oracle for cache/power/TZ/timing | -- |
 
 **Golden rule:** ARM builds on the **Mac**; host tests + coverage + lint gates on
 the **dev box**; silicon validation on the **HIL rig**; **CI is the arbiter**.
 
-`make ci` reproduces the gate suite inside the Ubuntu 24.04 devcontainer
-(`.devcontainer/Dockerfile`, image `ra8-ci`). It is Docker-only and heavy; the
-dev-box recipe (section 4) is the fast pre-push path.
+Every gate body lives in `scripts/ci.sh` (registry: `RA8_GATE_REGISTRY`) and each
+CI step is a thin `bash scripts/ci.sh --gate <name>` driver, so a local run and
+the runner execute the *same functions*. `make ci-native` runs them natively --
+the supported path on Linux, no container required. `make ci` wraps the same
+suite in the Ubuntu 24.04 devcontainer (`.devcontainer/Dockerfile`, image
+`ra8-ci`), which is what macOS needs and what the Mac cannot do without. See
+section 4 for the fast pre-push recipe.
 
 ---
 
@@ -126,20 +130,31 @@ curl -fsSL -o shfmt https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_
 
 ## 4. Fast pre-push validation (dev box)
 
-`make ci` (Docker) is the faithful reproduction; the dev box is the fast path.
 The Mac cannot run host tests. Sync your change onto a clean `origin/dev` and run
-the gates there:
+the gates on the dev box, where **Linux native IS the CI environment**:
 
 ```bash
 # 1. clean sync (dev's origin ref lags -- always fetch first)
 ssh dev 'cd ~/ra8-firmware && git fetch origin -q && git reset --hard origin/dev -q && git clean -fdq'
 COPYFILE_DISABLE=1 tar czf - <changed files> | ssh dev 'cd ~/ra8-firmware && tar xzf - && find . -name "._*" -delete'
-# 2. gates (gcc-14 host compiler is auto-selected by scripts/utils/select_host_compiler.sh)
-ssh dev 'cd ~/ra8-firmware && export PATH=/usr/local/bin:$HOME/.local/bin:$PATH && bash scripts/coverage.sh --gate'   # aggregate 90/80 + per-file floor
-ssh dev '... clang-format-22 --dry-run --Werror <files>; the check_*.py suite; clang-tidy-22 ...'
-# 3. push (the pre-push hook runs `make ci` which the Mac cannot; bypass -- dev already validated)
+# 2. gates -- the SAME functions the runner executes, no container needed
+ssh dev 'cd ~/ra8-firmware && make ci-native'        # every gate
+ssh dev 'cd ~/ra8-firmware && make ci-native-fast'   # quick pre-push smoke
+ssh dev 'cd ~/ra8-firmware && make ci-gate GATE=coverage-report'   # just one
+# 3. push (the pre-push hook runs the suite, which the Mac cannot; dev validated it)
 SKIP_CI_PUSH=1 git push origin dev
 ```
+
+> **Do not hand-assemble gate commands.** Every check body lives in exactly one
+> place -- `scripts/ci.sh`, listed in its `RA8_GATE_REGISTRY` -- and each CI
+> step is a thin `bash scripts/ci.sh --gate <name>` driver. A `/tmp/verify_gates.sh`
+> that pastes `clang-format-22 ...; the check_*.py suite; clang-tidy-22 ...` out
+> of the workflow is a copy of a copy: it silently stops mirroring CI the moment
+> a gate is added, and it has already cost real work here. `make ci-list` prints
+> the registry; `make ci-gate GATE=<name>` runs any single gate.
+>
+> Gates fail loudly when a tool is missing -- they never skip. If a gate reports
+> "nothing to check", that is a bug to fix, not a pass.
 
 Gotchas (each has bitten a push):
 - **`ssh dev 'cmd | tail'` masks the exit code** (a pipeline returns `tail`'s
@@ -177,5 +192,6 @@ Gotchas (each has bitten a push):
   (section 3.4); re-provisioning the self-hosted runner's `/opt` toolchain on a
   future pin bump (manual runner step, section 3.1).
 
-See also: `CLAUDE.md` (run `make ci` before every push), the
-`dev-gcc14-coverage-parity` and `dev-box-ci-workflow` memories.
+See also: `CLAUDE.md` (run the gates before every push; one gate definition, in
+`scripts/ci.sh`), the `dev-gcc14-coverage-parity` and `dev-box-ci-workflow`
+memories.
