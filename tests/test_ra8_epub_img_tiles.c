@@ -447,22 +447,8 @@ static void verify_tile(ra8_epub_tile_binder_t* b,
 
 /**
  * @brief Assert the big deflate atlas declares the geometry the fixture built.
- *
- * @details
- * Checked before any tile is fetched, so a malformed header is reported as a
- * header problem rather than surfacing later as mismatched pixels.
- *
- * @param[in] info Parsed atlas geometry from the binder.
- *
- * @return None.
- * @retval None Void.
- *
- * @pre @p info came from a successful ::ra8_epub_tile_binder_info call.
- * @pre The fixture archive was built by ::build_archive.
- * @post Every geometry field matched the fixture's constants.
- * @post No tile has been fetched yet, so the cache is still cold.
- *
- * @note Not thread-safe; asserts through the harness.
+ * @details Checked before any tile is fetched, so a malformed header is
+ *          reported as a header problem rather than as mismatched pixels later.
  */
 static void assert_big_atlas_geometry(const ra8_jof_info_t* info)
 {
@@ -475,27 +461,8 @@ static void assert_big_atlas_geometry(const ra8_jof_info_t* info)
 
 /**
  * @brief Fetch and byte-check every tile of the atlas, in row-major order.
- *
- * @details
- * Walking the whole grid is what forces the cache to page: the tile count
- * exceeds the cell count, so later tiles evict earlier ones and every fetch
- * after the first pass is a genuine miss-and-decode. Each tile's pixels are
- * compared against the reference as it arrives.
- *
- * @param[in,out] binder Binder holding the atlas and its cache.
- * @param[in]     info   Parsed atlas geometry supplying the grid bounds.
- *
- * @return None.
- * @retval None Void.
- *
- * @pre @p binder has the big atlas bound under ::k_id_big.
- * @pre @p info describes that same atlas.
- * @post Every tile in the grid was fetched and matched the reference.
- * @post The cache holds the most recently fetched tiles only.
- *
- * @note Not thread-safe; asserts through the harness.
- *
- * @see verify_tile()  The per-tile comparison this repeats.
+ * @details Walking the whole grid is what forces the cache to page: there are
+ *          more tiles than cells, so later tiles evict earlier ones.
  */
 static void verify_all_tiles(ra8_epub_tile_binder_t* binder, const ra8_jof_info_t* info)
 {
@@ -508,28 +475,10 @@ static void verify_all_tiles(ra8_epub_tile_binder_t* binder, const ra8_jof_info_
 
 /**
  * @brief Assert the cache genuinely paged, and that a warm tile re-hits.
- *
- * @details
- * Two separate claims about the same run. First, paging happened at all: with
- * more tiles than cells the walk must have missed at least once per tile and
- * evicted at least once -- if either counter says otherwise the cache silently
- * held the whole atlas and the bound proved nothing. Second, the cache is
- * actually useful: fetching one tile twice in a row costs a miss then a hit,
- * so the hit counter must rise. The first of that pair is expected to miss
- * because the walk evicted tile (0,0) long ago.
- *
- * @param[in,out] binder Binder whose cache statistics are read.
- * @param[in]     info   Parsed atlas geometry supplying the expected tile count.
- *
- * @return None.
- * @retval None Void.
- *
- * @pre ::verify_all_tiles has already walked the whole grid.
- * @pre @p binder still has the big atlas bound under ::k_id_big.
- * @post The miss and eviction counters proved the walk paged.
- * @post The hit counter rose across the back-to-back re-fetch.
- *
- * @note Not thread-safe; asserts through the harness and perturbs the cache.
+ * @details Two claims about the same run: the miss and eviction counters prove
+ *          the walk actually paged (if it had not, the bound proved nothing),
+ *          and a back-to-back re-fetch raises the hit counter. The first of
+ *          that pair is expected to miss -- the walk evicted (0,0) long ago.
  */
 static void assert_cache_paged_and_rehit(ra8_epub_tile_binder_t*     binder,
                                          const ra8_jof_info_t* info)
