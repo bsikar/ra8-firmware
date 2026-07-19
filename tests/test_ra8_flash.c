@@ -597,36 +597,47 @@ static void test_get_startup_area(void)
   TEST_END("flash get_startup_area");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_happy,
+  test_init_null_cfg,
+  test_init_bad_mrcfreq,
+  test_init_bad_mrefreq,
+  test_init_all_optional_features_disabled,
+  test_deinit_locks_everything,
+  test_get_status_paths,
+  test_get_extended_status,
+  test_clear_status_paths,
+  test_set_rww_disable,
+  test_write_block_validation,
+  test_erase_block_alignment,
+  test_write_block_simulator_reachable_paths,
+  test_block_protect_set,
+  test_pe_mode_round_trip,
+  test_force_stop_happy,
+  test_force_stop_cmdlk,
+  test_force_stop_timeout,
+  test_reset_happy,
+  test_reset_not_initialized_and_stop_error,
+  test_set_startup_area_temporary,
+  test_set_startup_area_default_and_permanent,
+  test_get_startup_area,
+};
+
 int32_t main(void)
 {
-  test_init_happy();
-  test_init_null_cfg();
-  test_init_bad_mrcfreq();
-  test_init_bad_mrefreq();
-  test_init_all_optional_features_disabled();
-  test_deinit_locks_everything();
-
-  test_get_status_paths();
-  test_get_extended_status();
-  test_clear_status_paths();
-  test_set_rww_disable();
-
-  test_write_block_validation();
-  test_erase_block_alignment();
-  test_write_block_simulator_reachable_paths();
-
-  test_block_protect_set();
-  test_pe_mode_round_trip();
-  test_force_stop_happy();
-  test_force_stop_cmdlk();
-  test_force_stop_timeout();
-  test_reset_happy();
-  test_reset_not_initialized_and_stop_error();
-
-  test_set_startup_area_temporary();
-  test_set_startup_area_default_and_permanent();
-  test_get_startup_area();
-
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_flash.c\n");
   return 0;
 }

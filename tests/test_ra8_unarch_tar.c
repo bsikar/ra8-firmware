@@ -104,7 +104,13 @@ typedef enum : uint32_t {
 } unarch_tar_uint32_const_t;
 
 /** @brief Named double constant used by this file. */
-static const double k_unarch_tar_tb_octal_0644 = 0644U;
+/**
+ * @enum unarch_tar_tb_octal_0644_t
+ * @brief Named octal mode bits used by this file.
+ */
+typedef enum : uint16_t {
+  k_unarch_tar_tb_octal_0644 = 0644U, /**< tar member mode: rw-r--r--. */
+} unarch_tar_tb_octal_0644_t;
 
 /**
  * @enum tt_dim_t

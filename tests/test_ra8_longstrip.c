@@ -727,7 +727,7 @@ static void t_bounded_memory(void)
   /* Return to the top: band 0 was long evicted -> a fresh miss decodes it. */
   uint32_t miss_before = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_stats(&s_cache, nullptr, &miss_before, nullptr));
-  (void)ra8_longstrip_scroll_by(&wt, -k_longstrip_ra8_longstrip_scroll_by_100000);
+  (void)ra8_longstrip_scroll_by(&wt, -(int32_t)k_longstrip_ra8_longstrip_scroll_by_100000);
   s_blit.scroll_y                 = wt.scroll_y;
   ra8_longstrip_render_stats_t st = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_render(&wt, &st));

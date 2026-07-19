@@ -741,39 +741,55 @@ static void test_get_error_state_bad_channel(void)
   TEST_END("canfd get_error_state rejects bad channel");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_channel0_happy,
+  test_init_channel0_timeout,
+  test_init_channel1,
+  test_init_channel_bad,
+  test_deinit_happy,
+  test_deinit_bad_channel,
+  test_set_bitrate_500k_happy,
+  test_set_bitrate_250k_with_fd,
+  test_set_bitrate_zero_rejected,
+  test_set_bitrate_invalid_resolve,
+  test_set_bitrate_prescaler_too_big,
+  test_set_bitrate_bad_data_rate,
+  test_set_bitrate_bad_channel,
+  test_transmit_standard_frame_happy,
+  test_transmit_tmtrf_spin_legs,
+  test_transmit_extended_fd_frame,
+  test_transmit_null_frame,
+  test_transmit_bad_channel,
+  test_transmit_bad_dlc,
+  test_transmit_oversized_std_id,
+  test_transmit_oversized_ext_id,
+  test_transmit_brs_without_fd,
+  test_receive_empty_fifo,
+  test_receive_standard_frame,
+  test_receive_extended_fd_frame,
+  test_receive_null_out,
+  test_receive_bad_channel,
+  test_get_error_state_happy,
+  test_get_error_state_null_tx,
+  test_get_error_state_null_rx,
+  test_get_error_state_bad_channel,
+};
+
 int32_t main(void)
 {
-  test_init_channel0_happy();
-  test_init_channel0_timeout();
-  test_init_channel1();
-  test_init_channel_bad();
-  test_deinit_happy();
-  test_deinit_bad_channel();
-  test_set_bitrate_500k_happy();
-  test_set_bitrate_250k_with_fd();
-  test_set_bitrate_zero_rejected();
-  test_set_bitrate_invalid_resolve();
-  test_set_bitrate_prescaler_too_big();
-  test_set_bitrate_bad_data_rate();
-  test_set_bitrate_bad_channel();
-  test_transmit_standard_frame_happy();
-  test_transmit_tmtrf_spin_legs();
-  test_transmit_extended_fd_frame();
-  test_transmit_null_frame();
-  test_transmit_bad_channel();
-  test_transmit_bad_dlc();
-  test_transmit_oversized_std_id();
-  test_transmit_oversized_ext_id();
-  test_transmit_brs_without_fd();
-  test_receive_empty_fifo();
-  test_receive_standard_frame();
-  test_receive_extended_fd_frame();
-  test_receive_null_out();
-  test_receive_bad_channel();
-  test_get_error_state_happy();
-  test_get_error_state_null_tx();
-  test_get_error_state_null_rx();
-  test_get_error_state_bad_channel();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_canfd.c\n");
   return 0;
 }

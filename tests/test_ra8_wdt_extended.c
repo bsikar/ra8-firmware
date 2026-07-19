@@ -956,44 +956,60 @@ static void test_wdt_ofs_get_auto_start(void)
   TEST_END("ra8_wdt_ofs_get decodes auto-start correctly");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_wdt_init_null_cfg,
+  test_wdt_init_bad_clock_div,
+  test_wdt_init_bad_timeout,
+  test_wdt_init_nmi_expiry,
+  test_wdt_init_stop_in_sleep,
+  test_wdt_deinit_ok,
+  test_wdt_refresh_for_valid,
+  test_wdt_refresh_for_oob,
+  test_wdt_get_counter_null,
+  test_wdt_get_counter_ok,
+  test_wdt_clear_status_blocking_bad_mask,
+  test_wdt_clear_status_blocking_none,
+  test_wdt_clear_status_blocking_already_clear,
+  test_wdt_timeout_cycles_get_all,
+  test_wdt_timeout_cycles_get_null,
+  test_wdt_timeout_cycles_get_invalid,
+  test_wdt_pclkb_divisor_all,
+  test_wdt_pclkb_divisor_null,
+  test_wdt_pclkb_divisor_invalid,
+  test_wdt_total_pclkb_cycles_null,
+  test_wdt_total_pclkb_cycles_ok,
+  test_wdt_total_pclkb_cycles_bad_sel,
+  test_wdt_total_pclkb_cycles_bad_div,
+  test_wdt_subscribe_null_fn,
+  test_wdt_subscribe_and_count,
+  test_wdt_unsubscribe_free_slot,
+  test_wdt_unsubscribe_oob,
+  test_wdt_subscribe_unsubscribe_roundtrip,
+  test_wdt_subscribe_table_full,
+  test_wdt_enter_exit_stop,
+  test_wdt_install_uninstall_nmi,
+  test_wdt_ofs_get_null,
+  test_wdt_ofs_get_oob,
+  test_wdt_ofs_reader_set_ok,
+  test_wdt_ofs_reader_set_err,
+  test_wdt_ofs_get_auto_start,
+};
+
 int32_t main(void)
 {
-  test_wdt_init_null_cfg();
-  test_wdt_init_bad_clock_div();
-  test_wdt_init_bad_timeout();
-  test_wdt_init_nmi_expiry();
-  test_wdt_init_stop_in_sleep();
-  test_wdt_deinit_ok();
-  test_wdt_refresh_for_valid();
-  test_wdt_refresh_for_oob();
-  test_wdt_get_counter_null();
-  test_wdt_get_counter_ok();
-  test_wdt_clear_status_blocking_bad_mask();
-  test_wdt_clear_status_blocking_none();
-  test_wdt_clear_status_blocking_already_clear();
-  test_wdt_timeout_cycles_get_all();
-  test_wdt_timeout_cycles_get_null();
-  test_wdt_timeout_cycles_get_invalid();
-  test_wdt_pclkb_divisor_all();
-  test_wdt_pclkb_divisor_null();
-  test_wdt_pclkb_divisor_invalid();
-  test_wdt_total_pclkb_cycles_null();
-  test_wdt_total_pclkb_cycles_ok();
-  test_wdt_total_pclkb_cycles_bad_sel();
-  test_wdt_total_pclkb_cycles_bad_div();
-  test_wdt_subscribe_null_fn();
-  test_wdt_subscribe_and_count();
-  test_wdt_unsubscribe_free_slot();
-  test_wdt_unsubscribe_oob();
-  test_wdt_subscribe_unsubscribe_roundtrip();
-  test_wdt_subscribe_table_full();
-  test_wdt_enter_exit_stop();
-  test_wdt_install_uninstall_nmi();
-  test_wdt_ofs_get_null();
-  test_wdt_ofs_get_oob();
-  test_wdt_ofs_reader_set_ok();
-  test_wdt_ofs_reader_set_err();
-  test_wdt_ofs_get_auto_start();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_wdt_extended.c\n");
   return 0;
 }

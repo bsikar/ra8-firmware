@@ -783,33 +783,49 @@ static void test_status_round_trip(void)
   TEST_END("dotf status read/clear round-trip");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_happy,
+  test_deinit_clears_regs,
+  test_set_region_happy,
+  test_set_region_null,
+  test_set_region_bad_channel,
+  test_set_region_bad_slot,
+  test_set_region_misaligned_start,
+  test_set_region_misaligned_end,
+  test_set_region_inverted,
+  test_set_region_outside_window,
+  test_set_region_overlap_other_channel,
+  test_select_region_writes_hardware,
+  test_select_region_unstaged,
+  test_get_active_region,
+  test_multi_region_staging,
+  test_install_key_happy,
+  test_install_key_invalid,
+  test_set_iv,
+  test_rotate_key_live,
+  test_rotate_key_invalid,
+  test_rotate_key_disabled_stays_disabled,
+  test_enable_writes_default_pattern,
+  test_enable_bad_channel,
+  test_disable_clears_reg00,
+  test_status_round_trip,
+};
+
 int32_t main(void)
 {
-  test_init_happy();
-  test_deinit_clears_regs();
-  test_set_region_happy();
-  test_set_region_null();
-  test_set_region_bad_channel();
-  test_set_region_bad_slot();
-  test_set_region_misaligned_start();
-  test_set_region_misaligned_end();
-  test_set_region_inverted();
-  test_set_region_outside_window();
-  test_set_region_overlap_other_channel();
-  test_select_region_writes_hardware();
-  test_select_region_unstaged();
-  test_get_active_region();
-  test_multi_region_staging();
-  test_install_key_happy();
-  test_install_key_invalid();
-  test_set_iv();
-  test_rotate_key_live();
-  test_rotate_key_invalid();
-  test_rotate_key_disabled_stays_disabled();
-  test_enable_writes_default_pattern();
-  test_enable_bad_channel();
-  test_disable_clears_reg00();
-  test_status_round_trip();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_dotf.c\n");
   return 0;
 }

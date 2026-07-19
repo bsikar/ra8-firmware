@@ -673,29 +673,45 @@ static void test_ibi_payload_clamping(void)
  * ---------------------------------------------------------------------------
  */
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_send_ccc_large_payload_and_fifo_partial,
+  test_init_i2c_mode_error,
+  test_deinit_oob,
+  test_attach_handler_oob,
+  test_dispatch_oob_and_i2c_mode,
+  test_recv_ccc_internal_invalid,
+  test_write_error_paths,
+  test_read_error_paths,
+  test_transfer_error_paths,
+  test_set_clock_coverage,
+  test_scan_error_paths,
+  test_get_errors_coverage,
+  test_clear_errors_coverage,
+  test_abort_coverage,
+  test_peripheral_close_coverage,
+  test_peripheral_send_coverage,
+  test_peripheral_receive_coverage,
+  test_peripheral_status_error_paths,
+  test_ibi_hot_join,
+  test_ibi_main_request,
+  test_ibi_payload_clamping,
+};
+
 int32_t main(void)
 {
-  test_send_ccc_large_payload_and_fifo_partial();
-  test_init_i2c_mode_error();
-  test_deinit_oob();
-  test_attach_handler_oob();
-  test_dispatch_oob_and_i2c_mode();
-  test_recv_ccc_internal_invalid();
-  test_write_error_paths();
-  test_read_error_paths();
-  test_transfer_error_paths();
-  test_set_clock_coverage();
-  test_scan_error_paths();
-  test_get_errors_coverage();
-  test_clear_errors_coverage();
-  test_abort_coverage();
-  test_peripheral_close_coverage();
-  test_peripheral_send_coverage();
-  test_peripheral_receive_coverage();
-  test_peripheral_status_error_paths();
-  test_ibi_hot_join();
-  test_ibi_main_request();
-  test_ibi_payload_clamping();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_i3c_cov.c\n");
   return 0;
 }

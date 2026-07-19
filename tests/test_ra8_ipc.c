@@ -740,36 +740,52 @@ static void test_can_access(void)
   TEST_END("ipc can_access predicate");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_happy,
+  test_init_null_cfg,
+  test_init_bad_channel,
+  test_deinit_clears_state,
+  test_reset_fifo,
+  test_set_event_mask,
+  test_channel_pair_convention,
+  test_send_event_writes_iset,
+  test_send_event_bad_args,
+  test_clear_event_writes_clr,
+  test_send_message_happy,
+  test_send_message_full_returns_busy,
+  test_send_message_retry_eventually_succeeds,
+  test_send_message_retry_times_out,
+  test_send_burst_partial_on_full,
+  test_recv_message_no_data,
+  test_recv_message_happy,
+  test_recv_message_retry_succeeds,
+  test_recv_message_retry_times_out,
+  test_recv_burst,
+  test_get_status_passthrough,
+  test_clear_status_translates_bits,
+  test_clear_errors,
+  test_can_send_and_has_data,
+  test_get_attribution_decodes_ipcsar,
+  test_get_nmi_attribution,
+  test_get_sem_attribution,
+  test_can_access,
+};
+
 int32_t main(void)
 {
-  test_init_happy();
-  test_init_null_cfg();
-  test_init_bad_channel();
-  test_deinit_clears_state();
-  test_reset_fifo();
-  test_set_event_mask();
-  test_channel_pair_convention();
-  test_send_event_writes_iset();
-  test_send_event_bad_args();
-  test_clear_event_writes_clr();
-  test_send_message_happy();
-  test_send_message_full_returns_busy();
-  test_send_message_retry_eventually_succeeds();
-  test_send_message_retry_times_out();
-  test_send_burst_partial_on_full();
-  test_recv_message_no_data();
-  test_recv_message_happy();
-  test_recv_message_retry_succeeds();
-  test_recv_message_retry_times_out();
-  test_recv_burst();
-  test_get_status_passthrough();
-  test_clear_status_translates_bits();
-  test_clear_errors();
-  test_can_send_and_has_data();
-  test_get_attribution_decodes_ipcsar();
-  test_get_nmi_attribution();
-  test_get_sem_attribution();
-  test_can_access();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_ipc.c\n");
   return 0;
 }

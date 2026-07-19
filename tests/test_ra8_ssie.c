@@ -585,29 +585,44 @@ static void test_set_thresholds(void)
   TEST_END("ssie set_thresholds writes SSISCR");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_happy,
+  test_init_peripheral_tdm,
+  test_init_all_formats,
+  test_init_all_dividers,
+  test_init_all_word_lengths,
+  test_init_polarity_and_flags,
+  test_init_lrcont_blocks_bckastp,
+  test_init_bckastp_alone,
+  test_init_null_cfg,
+  test_init_bad_channel,
+  test_init_bad_threshold,
+  test_deinit,
+  test_start_stop_tx,
+  test_start_busy_when_not_idle,
+  test_start_already_armed,
+  test_start_bad_args,
+  test_stop_bad_channel,
+  test_recovery_clears_errors,
+  test_mute_toggles_muen,
+  test_set_thresholds,
+};
+
 int32_t main(void)
 {
-  test_init_happy();
-  test_init_peripheral_tdm();
-  test_init_all_formats();
-  test_init_all_dividers();
-  test_init_all_word_lengths();
-  test_init_polarity_and_flags();
-  test_init_lrcont_blocks_bckastp();
-  test_init_bckastp_alone();
-  test_init_null_cfg();
-  test_init_bad_channel();
-  test_init_bad_threshold();
-  test_deinit();
-
-  test_start_stop_tx();
-  test_start_busy_when_not_idle();
-  test_start_already_armed();
-  test_start_bad_args();
-  test_stop_bad_channel();
-  test_recovery_clears_errors();
-  test_mute_toggles_muen();
-  test_set_thresholds();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_ssie.c\n");
   return 0;
 }

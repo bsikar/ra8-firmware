@@ -1005,34 +1005,50 @@ static void test_mcdc_pmsc(void)
   TEST_END("pmsc MC/DC: init speed gate");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_fs_returns_ok,
+  test_init_hs_returns_ok,
+  test_init_bad_speed,
+  test_close_without_init,
+  test_pre_init_guards,
+  test_pre_attach_guards,
+  test_attach_storage_null_validation,
+  test_feed_cbw_null_guard,
+  test_feed_cbw_bad_signature_emits_phase_error,
+  test_inquiry_returns_backend_strings,
+  test_read_capacity_returns_count_minus_one_be,
+  test_read10_calls_backend_and_returns_512,
+  test_write10_calls_backend,
+  test_test_unit_ready_no_data_phase,
+  test_unsupported_opcode_fails,
+  test_step_state_machine_loops,
+  test_dispatch_null_arg_rejection,
+  test_build_csw_null_guard,
+  test_dispatch_request_sense_and_mode_sense,
+  test_dispatch_wrong_bot_state_rejected,
+  test_dispatch_zero_capacity_rejected,
+  test_dispatch_handler_error_marks_failed,
+  test_step_from_data_phase_advances_to_csw,
+  test_step_from_csw_tx_rewinds_to_idle,
+  test_init_hw_init_failed_on_mstp_saturation,
+  test_mcdc_pmsc,
+};
+
 int32_t main(void)
 {
-  test_init_fs_returns_ok();
-  test_init_hs_returns_ok();
-  test_init_bad_speed();
-  test_close_without_init();
-  test_pre_init_guards();
-  test_pre_attach_guards();
-  test_attach_storage_null_validation();
-  test_feed_cbw_null_guard();
-  test_feed_cbw_bad_signature_emits_phase_error();
-  test_inquiry_returns_backend_strings();
-  test_read_capacity_returns_count_minus_one_be();
-  test_read10_calls_backend_and_returns_512();
-  test_write10_calls_backend();
-  test_test_unit_ready_no_data_phase();
-  test_unsupported_opcode_fails();
-  test_step_state_machine_loops();
-  test_dispatch_null_arg_rejection();
-  test_build_csw_null_guard();
-  test_dispatch_request_sense_and_mode_sense();
-  test_dispatch_wrong_bot_state_rejected();
-  test_dispatch_zero_capacity_rejected();
-  test_dispatch_handler_error_marks_failed();
-  test_step_from_data_phase_advances_to_csw();
-  test_step_from_csw_tx_rewinds_to_idle();
-  test_init_hw_init_failed_on_mstp_saturation();
-  test_mcdc_pmsc();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_usb_pmsc.c\n");
   return 0;
 }

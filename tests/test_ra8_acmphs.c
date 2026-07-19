@@ -458,28 +458,44 @@ static void test_power_transition(void)
   TEST_END("acmphs power transition");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_happy,
+  test_enable_first_channel,
+  test_enable_mid_channel,
+  test_enable_last_channel,
+  test_enable_bad_channel,
+  test_read_output_high,
+  test_read_output_low,
+  test_read_output_null_out,
+  test_read_output_bad_channel,
+  test_channel_init_configured,
+  test_channel_init_null_cfg,
+  test_channel_init_bad_channel,
+  test_channel_init_no_filter_with_invert,
+  test_channel_init_last_channel_no_mstp,
+  test_channel_deinit,
+  test_clear_status_bad_channel,
+  test_set_inputs,
+  test_status_read_and_clear,
+  test_attach_and_dispatch,
+  test_power_transition,
+};
+
 int32_t main(void)
 {
-  test_init_happy();
-  test_enable_first_channel();
-  test_enable_mid_channel();
-  test_enable_last_channel();
-  test_enable_bad_channel();
-  test_read_output_high();
-  test_read_output_low();
-  test_read_output_null_out();
-  test_read_output_bad_channel();
-  test_channel_init_configured();
-  test_channel_init_null_cfg();
-  test_channel_init_bad_channel();
-  test_channel_init_no_filter_with_invert();
-  test_channel_init_last_channel_no_mstp();
-  test_channel_deinit();
-  test_clear_status_bad_channel();
-  test_set_inputs();
-  test_status_read_and_clear();
-  test_attach_and_dispatch();
-  test_power_transition();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_acmphs.c\n");
   return 0;
 }

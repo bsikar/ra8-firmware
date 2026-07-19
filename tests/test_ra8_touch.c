@@ -767,28 +767,44 @@ static void test_read_ready_zero_contacts(void)
   TEST_END("ra8_touch_read: ready frame with zero contacts -> ok, got=0");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_open_close_happy,
+  test_open_null_cfg,
+  test_open_invalid_address,
+  test_mcdc_open_bus_seam,
+  test_open_already_open,
+  test_close_without_open,
+  test_read_null_args,
+  test_read_returns_ok,
+  test_read_before_open,
+  test_attach_dispatch,
+  test_calibrate_noop,
+  test_mcdc_ra8_touch,
+  test_open_with_irq_pin,
+  test_read_no_frame_ready,
+  test_read_clamp_to_max_points,
+  test_read_status_transfer_error,
+  test_open_product_id_transfer_error,
+  test_mcdc_open_product_id_value,
+  test_read_block_transfer_error,
+  test_read_ready_zero_contacts,
+};
+
 int32_t main(void)
 {
-  test_open_close_happy();
-  test_open_null_cfg();
-  test_open_invalid_address();
-  test_mcdc_open_bus_seam();
-  test_open_already_open();
-  test_close_without_open();
-  test_read_null_args();
-  test_read_returns_ok();
-  test_read_before_open();
-  test_attach_dispatch();
-  test_calibrate_noop();
-  test_mcdc_ra8_touch();
-  test_open_with_irq_pin();
-  test_read_no_frame_ready();
-  test_read_clamp_to_max_points();
-  test_read_status_transfer_error();
-  test_open_product_id_transfer_error();
-  test_mcdc_open_product_id_value();
-  test_read_block_transfer_error();
-  test_read_ready_zero_contacts();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_touch.c\n");
   return 0;
 }

@@ -870,28 +870,44 @@ static void test_attach_error_handler_null_safe(void)
   TEST_END("mipi_csi attach_error_handler accepts NULL detach");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_dl_status_paths,
+  test_vc_status_paths,
+  test_pm_status_paths,
+  test_short_packet_configure,
+  test_short_packet_status,
+  test_read_short_packet,
+  test_short_packet_clear_fifo,
+  test_short_packet_re_enable,
+  test_attach_and_dispatch,
+  test_dispatch_dl,
+  test_dispatch_vc,
+  test_dispatch_pm,
+  test_dispatch_short_packet,
+  test_set_virtual_channels,
+  test_set_virtual_channels_empty_mask,
+  test_set_data_format_per_vc,
+  test_set_data_format_bad_args,
+  test_attach_error_handler,
+  test_error_handler_no_errors_silent,
+  test_attach_error_handler_null_safe,
+};
+
 int32_t main(void)
 {
-  test_dl_status_paths();
-  test_vc_status_paths();
-  test_pm_status_paths();
-  test_short_packet_configure();
-  test_short_packet_status();
-  test_read_short_packet();
-  test_short_packet_clear_fifo();
-  test_short_packet_re_enable();
-  test_attach_and_dispatch();
-  test_dispatch_dl();
-  test_dispatch_vc();
-  test_dispatch_pm();
-  test_dispatch_short_packet();
-  test_set_virtual_channels();
-  test_set_virtual_channels_empty_mask();
-  test_set_data_format_per_vc();
-  test_set_data_format_bad_args();
-  test_attach_error_handler();
-  test_error_handler_no_errors_silent();
-  test_attach_error_handler_null_safe();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_mipi_csi_events.c\n");
   return 0;
 }

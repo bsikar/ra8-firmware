@@ -892,34 +892,50 @@ static void test_mcdc_hmac_init_key_len(void)
   TEST_END("rsip hmac_sha256_init MC/DC: key==null && key_len!=0");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_happy,
+  test_init_bist_timeout,
+  test_init_bist_late_pass,
+  test_init_skip_bist,
+  test_init_null_cfg,
+  test_deinit,
+  test_trng_read,
+  test_trng_arg_check,
+  test_sha256_happy,
+  test_sha256_partial_tail,
+  test_sha256_null,
+  test_sha256_command_sequence,
+  test_status_clear,
+  test_attach_dispatch,
+  test_power_transition,
+  test_exit_stop_bist_timeout,
+  /* Sweep 15 / Phase 1.1: incremental hash + HMAC for TLS handshakes. */
+  test_sha256_inc_empty,
+  test_sha256_inc_abc_split,
+  test_sha256_inc_block_boundary,
+  test_sha256_inc_arg_check,
+  test_hmac_sha256_inc_rfc4231_1,
+  test_hmac_sha256_inc_oversized_key,
+  test_hmac_sha256_inc_arg_check,
+  test_sha256_update_mcdc_data_len,
+  test_mcdc_hmac_init_key_len,
+};
+
 int32_t main(void)
 {
-  test_init_happy();
-  test_init_bist_timeout();
-  test_init_bist_late_pass();
-  test_init_skip_bist();
-  test_init_null_cfg();
-  test_deinit();
-  test_trng_read();
-  test_trng_arg_check();
-  test_sha256_happy();
-  test_sha256_partial_tail();
-  test_sha256_null();
-  test_sha256_command_sequence();
-  test_status_clear();
-  test_attach_dispatch();
-  test_power_transition();
-  test_exit_stop_bist_timeout();
-  /* Sweep 15 / Phase 1.1: incremental hash + HMAC for TLS handshakes. */
-  test_sha256_inc_empty();
-  test_sha256_inc_abc_split();
-  test_sha256_inc_block_boundary();
-  test_sha256_inc_arg_check();
-  test_hmac_sha256_inc_rfc4231_1();
-  test_hmac_sha256_inc_oversized_key();
-  test_hmac_sha256_inc_arg_check();
-  test_sha256_update_mcdc_data_len();
-  test_mcdc_hmac_init_key_len();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_rsip_core.c\n");
   return 0;
 }

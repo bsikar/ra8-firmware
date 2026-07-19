@@ -953,37 +953,53 @@ static void test_mcdc_ra8_spi_b(void)
   TEST_END("spi_b MC/DC: write/read/dma/dispatch_spei vectors");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_controller_init_happy_ch0,
+  test_controller_init_happy_ch1,
+  test_controller_init_bad_channel,
+  test_controller_init_huge_channel,
+  test_xfer8_happy_with_rx,
+  test_xfer8_happy_null_rx,
+  test_xfer8_timeout_sptef,
+  test_xfer8_timeout_sprf,
+  test_xfer8_bad_channel,
+  test_spi_init_configured,
+  test_spi_init_mode_variants,
+  test_spi_init_bad,
+  test_spi_deinit,
+  test_spi_set_clock,
+  test_spi_errors,
+  test_spi_attach,
+  test_spi_power,
+  test_spi_write_dma_streams_to_spdr,
+  test_spi_read_dma_streams_from_spdr,
+  test_spi_dma_arg_validation,
+  test_spi_write_8bit_runs_loop,
+  test_spi_read_8bit_runs_loop,
+  test_spi_write_read_16bit,
+  test_spi_write_read_32bit,
+  test_spi_multi_null_args,
+  test_spi_multi_zero_len,
+  test_spi_multi_bad_width,
+  test_spi_multi_bad_channel,
+  test_mcdc_ra8_spi_b,
+};
+
 int32_t main(void)
 {
-  test_controller_init_happy_ch0();
-  test_controller_init_happy_ch1();
-  test_controller_init_bad_channel();
-  test_controller_init_huge_channel();
-  test_xfer8_happy_with_rx();
-  test_xfer8_happy_null_rx();
-  test_xfer8_timeout_sptef();
-  test_xfer8_timeout_sprf();
-  test_xfer8_bad_channel();
-  test_spi_init_configured();
-  test_spi_init_mode_variants();
-  test_spi_init_bad();
-  test_spi_deinit();
-  test_spi_set_clock();
-  test_spi_errors();
-  test_spi_attach();
-  test_spi_power();
-  test_spi_write_dma_streams_to_spdr();
-  test_spi_read_dma_streams_from_spdr();
-  test_spi_dma_arg_validation();
-  test_spi_write_8bit_runs_loop();
-  test_spi_read_8bit_runs_loop();
-  test_spi_write_read_16bit();
-  test_spi_write_read_32bit();
-  test_spi_multi_null_args();
-  test_spi_multi_zero_len();
-  test_spi_multi_bad_width();
-  test_spi_multi_bad_channel();
-  test_mcdc_ra8_spi_b();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_spi.c\n");
   return 0;
 }

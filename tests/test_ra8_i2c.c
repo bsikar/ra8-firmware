@@ -682,28 +682,30 @@ static void test_mcdc_scan_addr_err(void)
  * @note Thread safety: single-threaded test harness.
  * @since 0.1.0
  */
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_configured,  test_init_bad_inputs, test_fast_plus_sets_fmpe,
+  test_set_clock,        test_deinit_range,    test_write_happy,
+  test_write_bad_inputs, test_write_bus_busy,  test_read_happy,
+  test_read_single_byte, test_read_bad_inputs, test_scan_ack,
+  test_scan_nack,        test_scan_bad_inputs, test_errors_get_clear,
+  test_mcdc_clk_invalid, test_mcdc_transfer,   test_mcdc_transfer_combined,
+  test_write_timeout,    test_read_timeout,    test_mcdc_scan_addr_err,
+};
+
 int main(void)
 {
-  test_init_configured();
-  test_init_bad_inputs();
-  test_fast_plus_sets_fmpe();
-  test_set_clock();
-  test_deinit_range();
-  test_write_happy();
-  test_write_bad_inputs();
-  test_write_bus_busy();
-  test_read_happy();
-  test_read_single_byte();
-  test_read_bad_inputs();
-  test_scan_ack();
-  test_scan_nack();
-  test_scan_bad_inputs();
-  test_errors_get_clear();
-  test_mcdc_clk_invalid();
-  test_mcdc_transfer();
-  test_mcdc_transfer_combined();
-  test_write_timeout();
-  test_read_timeout();
-  test_mcdc_scan_addr_err();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   return 0;
 }

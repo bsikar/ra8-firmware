@@ -76,7 +76,13 @@ typedef enum : uint16_t {
 } comic_cbt_uint16_const_t;
 
 /** @brief Named double constant used by this file. */
-static const double k_comic_cbt_tcb_octal_0644 = 0644U;
+/**
+ * @enum comic_cbt_tcb_octal_0644_t
+ * @brief Named octal mode bits used by this file.
+ */
+typedef enum : uint16_t {
+  k_comic_cbt_tcb_octal_0644 = 0644U, /**< tar member mode: rw-r--r--. */
+} comic_cbt_tcb_octal_0644_t;
 
 /**
  * @enum tcb_dim_t

@@ -23,10 +23,7 @@
  * value's role is visible at the point of use (CLAUDE.md
  * "No Magic Numbers").
  */
-typedef enum : uint8_t {
-  k_mpc_ra8_pfs_pmn_5 = 5U,
-  k_mpc_ra8_pfs_pmn_7 = 7U,
-} mpc_uint8_const_t;
+typedef enum : uint8_t {} mpc_uint8_const_t;
 
 /**
  * @enum mpc_uint32_const_t
@@ -55,7 +52,7 @@ static void test_route_peripheral_sets_pmr_and_psel(void)
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpc_route_peripheral(k_ra8_port_1, 5U, k_ra8_mpc_psel_sci0));
 
-  volatile const uint32_t* pfs = ra8_pfs_pmn(k_ra8_port_1, k_mpc_ra8_pfs_pmn_5);
+  volatile const uint32_t* pfs = ra8_pfs_pmn(k_ra8_port_1, k_ra8_pin_5);
   TEST_ASSERT_NOT_NULL((void*)pfs);
   TEST_ASSERT((*pfs & (uint32_t)k_ra8_pfs_mask_pmr) != 0U);
   const uint32_t expected_psel =
@@ -77,7 +74,7 @@ static void test_set_gpio_output_clears_pmr(void)
   ra8_sim_mmap_reset();
 
   /* Pollute the register first. */
-  volatile uint32_t* pfs = ra8_pfs_pmn(k_ra8_port_3, k_mpc_ra8_pfs_pmn_7);
+  volatile uint32_t* pfs = ra8_pfs_pmn(k_ra8_port_3, k_ra8_pin_7);
   TEST_ASSERT_NOT_NULL((void*)pfs);
   *pfs = k_mpc_pfs_ffffffff;
 

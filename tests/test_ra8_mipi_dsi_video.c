@@ -772,32 +772,48 @@ static void test_ulps_lp00_drive_sequence(void)
   TEST_END("mipi_dsi ULPS enter -> exit drives ULPSCR LP-00 pulses");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_video_configure,
+  test_video_pixel_formats,
+  test_video_start_stop,
+  test_hs_clock_start_stop,
+  test_link_status_get,
+  test_ack_error,
+  test_rx_result_get,
+  test_rx_payload_read,
+  test_te_event,
+  test_irq_enable,
+  test_soft_reset,
+  test_power_transition,
+  test_set_video_timing,
+  test_set_video_timing_null,
+  test_send_command_short,
+  test_send_command_long,
+  test_enter_exit_ulps,
+  test_enter_ulps_continuous_rejected,
+  test_get_link_status,
+  test_set_video_timing_overflow_each_field,
+  test_send_command_payload_short,
+  test_send_command_payload_long,
+  test_send_command_payload_validation,
+  test_ulps_lp00_drive_sequence,
+};
+
 int32_t main(void)
 {
-  test_video_configure();
-  test_video_pixel_formats();
-  test_video_start_stop();
-  test_hs_clock_start_stop();
-  test_link_status_get();
-  test_ack_error();
-  test_rx_result_get();
-  test_rx_payload_read();
-  test_te_event();
-  test_irq_enable();
-  test_soft_reset();
-  test_power_transition();
-  test_set_video_timing();
-  test_set_video_timing_null();
-  test_send_command_short();
-  test_send_command_long();
-  test_enter_exit_ulps();
-  test_enter_ulps_continuous_rejected();
-  test_get_link_status();
-  test_set_video_timing_overflow_each_field();
-  test_send_command_payload_short();
-  test_send_command_payload_long();
-  test_send_command_payload_validation();
-  test_ulps_lp00_drive_sequence();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_mipi_dsi_video.c\n");
   return 0;
 }

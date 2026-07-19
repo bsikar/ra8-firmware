@@ -603,30 +603,46 @@ static void test_sup_set_refresh_hook_null_restores(void)
   TEST_END("wdt_supervisor_set_refresh_hook null restores default");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_sup_init_null_cfg,
+  test_sup_init_null_stack,
+  test_sup_init_stack_too_small,
+  test_sup_init_zero_period,
+  test_sup_init_bad_priority,
+  test_sup_double_init_busy,
+  test_sup_register_null_out_handle,
+  test_sup_register_null_name,
+  test_sup_register_zero_deadline,
+  test_sup_register_not_initialized,
+  test_sup_register_table_full,
+  test_sup_checkin_not_initialized,
+  test_sup_checkin_oob_handle,
+  test_sup_checkin_free_slot,
+  test_sup_start_not_initialized,
+  test_sup_start_double_busy,
+  test_sup_tick_not_initialized,
+  test_sup_tick_null_out,
+  test_sup_thread_count_empty,
+  test_sup_thread_count_increments,
+  test_sup_set_now_hook_null_restores,
+  test_sup_set_refresh_hook_null_restores,
+};
+
 int32_t main(void)
 {
-  test_sup_init_null_cfg();
-  test_sup_init_null_stack();
-  test_sup_init_stack_too_small();
-  test_sup_init_zero_period();
-  test_sup_init_bad_priority();
-  test_sup_double_init_busy();
-  test_sup_register_null_out_handle();
-  test_sup_register_null_name();
-  test_sup_register_zero_deadline();
-  test_sup_register_not_initialized();
-  test_sup_register_table_full();
-  test_sup_checkin_not_initialized();
-  test_sup_checkin_oob_handle();
-  test_sup_checkin_free_slot();
-  test_sup_start_not_initialized();
-  test_sup_start_double_busy();
-  test_sup_tick_not_initialized();
-  test_sup_tick_null_out();
-  test_sup_thread_count_empty();
-  test_sup_thread_count_increments();
-  test_sup_set_now_hook_null_restores();
-  test_sup_set_refresh_hook_null_restores();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_wdt_supervisor_extended.c\n");
   return 0;
 }

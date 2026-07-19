@@ -773,40 +773,50 @@ static void test_dispatch_none_and_guards(void)
   TEST_END("dispatch none + guards");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_pred_poll_done,
+  test_pred_rx_continue,
+  test_pred_tx_done,
+  test_pred_tx_continue,
+  test_init_slot0,
+  test_init_slot1_slot2,
+  test_init_gca_and_stretch,
+  test_init_rejects,
+  test_deinit,
+  test_poll_write_event,
+  test_poll_read_event,
+  test_poll_none_on_stop,
+  test_poll_rejects,
+  test_receive_fills_to_capacity,
+  test_receive_stops_on_stop,
+  test_receive_rejects_and_timeout,
+  test_transmit_sends_all,
+  test_transmit_nack_early,
+  test_transmit_completion_timeout,
+  test_transmit_rejects,
+  test_init_irq_enable_arms_icier,
+  test_attach_handler,
+  test_dispatch_write_event,
+  test_dispatch_read_event,
+  test_dispatch_stop_event,
+  test_dispatch_none_and_guards,
+};
+
 int32_t main(void)
 {
-  test_pred_poll_done();
-  test_pred_rx_continue();
-  test_pred_tx_done();
-  test_pred_tx_continue();
-
-  test_init_slot0();
-  test_init_slot1_slot2();
-  test_init_gca_and_stretch();
-  test_init_rejects();
-  test_deinit();
-
-  test_poll_write_event();
-  test_poll_read_event();
-  test_poll_none_on_stop();
-  test_poll_rejects();
-
-  test_receive_fills_to_capacity();
-  test_receive_stops_on_stop();
-  test_receive_rejects_and_timeout();
-
-  test_transmit_sends_all();
-  test_transmit_nack_early();
-  test_transmit_completion_timeout();
-  test_transmit_rejects();
-
-  test_init_irq_enable_arms_icier();
-  test_attach_handler();
-  test_dispatch_write_event();
-  test_dispatch_read_event();
-  test_dispatch_stop_event();
-  test_dispatch_none_and_guards();
-
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_riic_peripheral.c\n");
   return 0;
 }

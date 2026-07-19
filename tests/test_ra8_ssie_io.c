@@ -610,33 +610,46 @@ static void test_recv_iso_bad_args(void)
   TEST_END("ssie recv_iso rejects null + bad channel");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_write_sample,
+  test_read_sample,
+  test_write_buffer,
+  test_write_buffer_stops_when_full,
+  test_read_buffer,
+  test_read_buffer_empty_fifo,
+  test_attach_detach_dma,
+  test_attach_dma_tx_only,
+  test_attach_dma_bad_args,
+  test_get_status_decodes_fifo_levels,
+  test_clear_status_masks_to_writeable,
+  test_set_irq_enable,
+  test_attach_and_dispatch,
+  test_power_transition,
+  test_set_fifo_threshold_happy,
+  test_set_fifo_threshold_bad_args,
+  test_attach_dma_pair_happy,
+  test_attach_dma_pair_bad_args,
+  test_send_iso_happy,
+  test_send_iso_bad_args,
+  test_recv_iso_drains_fifo,
+  test_recv_iso_bad_args,
+};
+
 int32_t main(void)
 {
-  test_write_sample();
-  test_read_sample();
-  test_write_buffer();
-  test_write_buffer_stops_when_full();
-  test_read_buffer();
-  test_read_buffer_empty_fifo();
-
-  test_attach_detach_dma();
-  test_attach_dma_tx_only();
-  test_attach_dma_bad_args();
-
-  test_get_status_decodes_fifo_levels();
-  test_clear_status_masks_to_writeable();
-  test_set_irq_enable();
-  test_attach_and_dispatch();
-  test_power_transition();
-
-  test_set_fifo_threshold_happy();
-  test_set_fifo_threshold_bad_args();
-  test_attach_dma_pair_happy();
-  test_attach_dma_pair_bad_args();
-  test_send_iso_happy();
-  test_send_iso_bad_args();
-  test_recv_iso_drains_fifo();
-  test_recv_iso_bad_args();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_ssie_io.c\n");
   return 0;
 }

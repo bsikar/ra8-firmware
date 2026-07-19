@@ -706,33 +706,49 @@ static void test_mcdc_ra8_smbus(void)
   TEST_END("smbus MC/DC: ra8_smbus_pec 2-cond null+len decision");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_pec_empty_and_null,
+  test_pec_known_vectors,
+  test_init_null_cfg,
+  test_init_incomplete_bus,
+  test_deinit_without_init,
+  test_init_deinit_cycle,
+  test_send_byte_no_pec,
+  test_send_byte_with_pec,
+  test_send_byte_not_initialized,
+  test_receive_byte_no_pec_happy,
+  test_receive_byte_null_arg,
+  test_receive_byte_pec_mismatch,
+  test_write_byte_data_no_pec,
+  test_write_byte_data_with_pec,
+  test_read_byte_data_no_pec,
+  test_read_byte_data_null_out,
+  test_block_write_no_pec,
+  test_block_write_arg_validation,
+  test_block_write_with_pec,
+  test_block_read_no_pec_happy,
+  test_block_read_arg_validation,
+  test_alert_register_and_dispatch,
+  test_alert_dispatch_without_callback,
+  test_alert_not_initialized,
+  test_mcdc_ra8_smbus,
+};
+
 int32_t main(void)
 {
-  test_pec_empty_and_null();
-  test_pec_known_vectors();
-  test_init_null_cfg();
-  test_init_incomplete_bus();
-  test_deinit_without_init();
-  test_init_deinit_cycle();
-  test_send_byte_no_pec();
-  test_send_byte_with_pec();
-  test_send_byte_not_initialized();
-  test_receive_byte_no_pec_happy();
-  test_receive_byte_null_arg();
-  test_receive_byte_pec_mismatch();
-  test_write_byte_data_no_pec();
-  test_write_byte_data_with_pec();
-  test_read_byte_data_no_pec();
-  test_read_byte_data_null_out();
-  test_block_write_no_pec();
-  test_block_write_arg_validation();
-  test_block_write_with_pec();
-  test_block_read_no_pec_happy();
-  test_block_read_arg_validation();
-  test_alert_register_and_dispatch();
-  test_alert_dispatch_without_callback();
-  test_alert_not_initialized();
-  test_mcdc_ra8_smbus();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_smbus.c\n");
   return 0;
 }

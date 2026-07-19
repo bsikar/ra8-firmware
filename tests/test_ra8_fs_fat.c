@@ -708,28 +708,44 @@ static void test_mcdc_83_to_str_kanji_triple(void)
   TEST_END("ra8_fs MC/DC: 83_to_str kanji-escape triple");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_mcdc_mount_args_pair,
+  test_mcdc_mount_backend_fn_triple,
+  test_mcdc_bpb_signature_pair,
+  test_mcdc_bpb_geometry_triple,
+  test_mcdc_open_args_triple,
+  test_mcdc_read_args_triple,
+  test_mcdc_read_eof_or_zero_pair,
+  test_mcdc_write_args_pair,
+  test_mcdc_write_state_pair,
+  test_mcdc_tell_args_pair,
+  test_mcdc_size_args_pair,
+  test_mcdc_listdir_args_triple,
+  test_mcdc_listdir_path_check,
+  test_mcdc_unlink_args_pair,
+  test_mcdc_priv_to_upper_range,
+  test_mcdc_pack_base_terminator,
+  test_mcdc_priv_path_to_83_args_pair,
+  test_mcdc_dir_find_free_marker_pair,
+  test_mcdc_free_chain_range_pair,
+  test_mcdc_83_to_str_kanji_triple,
+};
+
 int32_t main(void)
 {
-  test_mcdc_mount_args_pair();
-  test_mcdc_mount_backend_fn_triple();
-  test_mcdc_bpb_signature_pair();
-  test_mcdc_bpb_geometry_triple();
-  test_mcdc_open_args_triple();
-  test_mcdc_read_args_triple();
-  test_mcdc_read_eof_or_zero_pair();
-  test_mcdc_write_args_pair();
-  test_mcdc_write_state_pair();
-  test_mcdc_tell_args_pair();
-  test_mcdc_size_args_pair();
-  test_mcdc_listdir_args_triple();
-  test_mcdc_listdir_path_check();
-  test_mcdc_unlink_args_pair();
-  test_mcdc_priv_to_upper_range();
-  test_mcdc_pack_base_terminator();
-  test_mcdc_priv_path_to_83_args_pair();
-  test_mcdc_dir_find_free_marker_pair();
-  test_mcdc_free_chain_range_pair();
-  test_mcdc_83_to_str_kanji_triple();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_fs_fat.c\n");
   return 0;
 }

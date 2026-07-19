@@ -592,29 +592,45 @@ static void test_verify_mismatch(void)
   TEST_END("cnecc verify rejects mismatching ecc");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_clear_status_writes_clear_mask,
+  test_clear_status_bad_instance,
+  test_attach_handler_null,
+  test_dispatch_drops_bad_instance,
+  test_dispatch_invokes_callback_and_counts,
+  test_inject_fault_writes_sequence,
+  test_test_mode_disable_and_query,
+  test_attach_isr_bad_priority,
+  test_attach_isr_routes_both_vectors,
+  test_isr_handler_dispatches_and_clears,
+  test_enter_exit_standby,
+  test_exit_standby_without_init,
+  test_deinit_clears_judgment,
+  test_open_brings_up_with_defaults,
+  test_compute_happy,
+  test_compute_null_out,
+  test_compute_misaligned_addr,
+  test_compute_short_len,
+  test_compute_zero_addr,
+  test_verify_match,
+  test_verify_mismatch,
+};
+
 int32_t main(void)
 {
-  test_clear_status_writes_clear_mask();
-  test_clear_status_bad_instance();
-  test_attach_handler_null();
-  test_dispatch_drops_bad_instance();
-  test_dispatch_invokes_callback_and_counts();
-  test_inject_fault_writes_sequence();
-  test_test_mode_disable_and_query();
-  test_attach_isr_bad_priority();
-  test_attach_isr_routes_both_vectors();
-  test_isr_handler_dispatches_and_clears();
-  test_enter_exit_standby();
-  test_exit_standby_without_init();
-  test_deinit_clears_judgment();
-  test_open_brings_up_with_defaults();
-  test_compute_happy();
-  test_compute_null_out();
-  test_compute_misaligned_addr();
-  test_compute_short_len();
-  test_compute_zero_addr();
-  test_verify_match();
-  test_verify_mismatch();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_cnecc_isr.c\n");
   return 0;
 }

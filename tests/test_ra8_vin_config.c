@@ -856,33 +856,33 @@ static void test_power_transition(void)
   TEST_END("vin power transition");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_set_preclip,           test_set_uds_scale,        test_set_uds_passband,
+  test_set_uds_clip,          test_set_uds_ctrl,         test_enable_scaling,
+  test_lut_program,           test_set_yc_to_rgb,        test_set_rgb_to_yc,
+  test_set_rgb_to_yc_rejects, test_set_dithering,        test_set_yuv444_mode,
+  test_set_interlace_mode,    test_set_data_mode,        test_set_csi_input,
+  test_set_field_detect,      test_set_framebuffers,     test_set_uv_offset,
+  test_status_get_clear,      test_module_status,        test_line_count,
+  test_set_interrupt_enable,  test_set_scanline_compare, test_attach_and_dispatch,
+  test_power_transition,
+};
+
 int32_t main(void)
 {
-  test_set_preclip();
-  test_set_uds_scale();
-  test_set_uds_passband();
-  test_set_uds_clip();
-  test_set_uds_ctrl();
-  test_enable_scaling();
-  test_lut_program();
-  test_set_yc_to_rgb();
-  test_set_rgb_to_yc();
-  test_set_rgb_to_yc_rejects();
-  test_set_dithering();
-  test_set_yuv444_mode();
-  test_set_interlace_mode();
-  test_set_data_mode();
-  test_set_csi_input();
-  test_set_field_detect();
-  test_set_framebuffers();
-  test_set_uv_offset();
-  test_status_get_clear();
-  test_module_status();
-  test_line_count();
-  test_set_interrupt_enable();
-  test_set_scanline_compare();
-  test_attach_and_dispatch();
-  test_power_transition();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_vin_config.c\n");
   return 0;
 }

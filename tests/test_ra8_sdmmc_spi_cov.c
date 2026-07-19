@@ -665,40 +665,56 @@ static void test_init_set_block_len_bad_r1(void)
  * ===========================================================================
  */
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_cs_assert_cs_failure,
+  test_cs_release_cs_failure,
+  test_send_command_r1_read_fault,
+  test_build_frame_cmd8_nonpattern_arg,
+  test_send_acmd_cmd55_fault,
+  test_wait_data_token_fault,
+  test_wait_not_busy_bounded_legs,
+  test_init_wake_cs_failure,
+  test_init_cmd0_cs_assert_failure,
+  test_init_cmd0_bad_r1,
+  test_init_recover_phase2_cs_failure,
+  test_init_cmd8_cs_assert_failure,
+  test_init_cmd8_send_command_fault,
+  test_init_cmd8_echo_mismatch,
+  test_init_tail_fallback_success,
+  test_init_cmd8_tail_fallback_fault,
+  test_init_acmd41_cs_assert_failure,
+  test_init_acmd41_send_acmd_fault,
+  test_init_acmd41_exhausts_attempts,
+  test_init_read_ocr_cs_assert_failure,
+  test_init_read_ocr_send_command_fault,
+  test_init_read_ocr_tail_fault,
+  test_init_ocr_no_ccs_classifies_sdv2,
+  test_init_read_csd_cs_assert_failure,
+  test_init_read_csd_send_command_fault,
+  test_init_read_csd_bad_r1,
+  test_init_read_csd_data_token_fault,
+  test_init_read_csd_body_fault,
+  test_init_csd_bad_version,
+  test_init_set_block_len_cs_assert_failure,
+  test_init_set_block_len_send_command_fault,
+  test_init_set_block_len_bad_r1,
+};
+
 int main(void)
 {
-  test_cs_assert_cs_failure();
-  test_cs_release_cs_failure();
-  test_send_command_r1_read_fault();
-  test_build_frame_cmd8_nonpattern_arg();
-  test_send_acmd_cmd55_fault();
-  test_wait_data_token_fault();
-  test_wait_not_busy_bounded_legs();
-  test_init_wake_cs_failure();
-  test_init_cmd0_cs_assert_failure();
-  test_init_cmd0_bad_r1();
-  test_init_recover_phase2_cs_failure();
-  test_init_cmd8_cs_assert_failure();
-  test_init_cmd8_send_command_fault();
-  test_init_cmd8_echo_mismatch();
-  test_init_tail_fallback_success();
-  test_init_cmd8_tail_fallback_fault();
-  test_init_acmd41_cs_assert_failure();
-  test_init_acmd41_send_acmd_fault();
-  test_init_acmd41_exhausts_attempts();
-  test_init_read_ocr_cs_assert_failure();
-  test_init_read_ocr_send_command_fault();
-  test_init_read_ocr_tail_fault();
-  test_init_ocr_no_ccs_classifies_sdv2();
-  test_init_read_csd_cs_assert_failure();
-  test_init_read_csd_send_command_fault();
-  test_init_read_csd_bad_r1();
-  test_init_read_csd_data_token_fault();
-  test_init_read_csd_body_fault();
-  test_init_csd_bad_version();
-  test_init_set_block_len_cs_assert_failure();
-  test_init_set_block_len_send_command_fault();
-  test_init_set_block_len_bad_r1();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] all ra8_sdmmc_spi_cov tests passed\n");
   return 0;
 }
