@@ -57,22 +57,25 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_tileatlas_produce_webp_crc_24       = 24U,
-  k_tileatlas_produce_webp_s_png_len_12 = 12U,
-  k_tileatlas_produce_webp_val_10       = 10U,
-  k_tileatlas_produce_webp_val_11       = 11U,
-  k_tileatlas_produce_webp_val_12       = 12,
-  k_tileatlas_produce_webp_val_13       = 13,
-  k_tileatlas_produce_webp_val_42       = 0x42U,
-  k_tileatlas_produce_webp_val_60       = 0x60U,
-  k_tileatlas_produce_webp_val_64       = 64,
-  k_tileatlas_produce_webp_val_7        = 7,
-  k_tileatlas_produce_webp_val_82       = 0x82U,
-  k_tileatlas_produce_webp_val_9        = 9,
-  k_tileatlas_produce_webp_val_9_2      = 9U,
-  k_tileatlas_produce_webp_val_ae       = 0xAEU,
-  k_tileatlas_produce_webp_val_ff       = 0xFFU,
+  k_png_shift24    = 24U,  /**< Shift selecting a 32-bit field's top byte. */
+  k_png_byte_mask  = 0xFFU, /**< Low-byte mask.                            */
+  k_png_ihdr_len   = 13U,  /**< IHDR payload length.                       */
 } tileatlas_produce_webp_uint8_const_t;
+
+/**
+ * @enum tileatlas_produce_webp_ihdr_off_t
+ * @brief Byte offsets of the fields this fixture sets inside a PNG IHDR.
+ *
+ * @details Width and height are big-endian 32-bit fields; this fixture's
+ *          dimensions fit in one byte, so only their low byte is written and
+ *          the three high bytes stay zero from the initialiser.
+ */
+typedef enum : uint8_t {
+  k_png_ihdr_off_width_lo  = 3U, /**< Low byte of the 32-bit width.  */
+  k_png_ihdr_off_height_lo = 7U, /**< Low byte of the 32-bit height. */
+  k_png_ihdr_off_bitdepth  = 8U, /**< Bits per sample.               */
+  k_png_ihdr_off_colortype = 9U, /**< PNG colour-type code.          */
+} tileatlas_produce_webp_ihdr_off_t;
 
 /* ------------------------------------------------------------------------- */
 /* Committed WebP fixtures under tests/fixtures/webp/, embedded inline. */
@@ -179,13 +182,13 @@ static ra8_err_t t_mem_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 static uint8_t t_pix(uint32_t x, uint32_t y, uint32_t c)
 {
   if (c == 0U) {
-    return (uint8_t)((x * 32U) & k_tileatlas_produce_webp_val_ff);
+    return (uint8_t)((x * 32U) & k_png_byte_mask);
   }
   if (c == 1U) {
-    return (uint8_t)((y * 32U) & k_tileatlas_produce_webp_val_ff);
+    return (uint8_t)((y * 32U) & k_png_byte_mask);
   }
   if (c == 2U) {
-    return (uint8_t)(((x + y) * 16U) & k_tileatlas_produce_webp_val_ff);
+    return (uint8_t)(((x + y) * 16U) & k_png_byte_mask);
   }
   return (uint8_t)k_t_alpha;
 }
@@ -250,11 +253,67 @@ static ra8_err_t produce_webp(const uint8_t*            src,
  * @note Not thread-safe (shared scratch).
  * @since 0.1.0
  */
-static void build_rgba_png(void)
+/**
+ * @brief Store @p v as a PNG big-endian 32-bit field at @p p.
+ * @param[out] p Four writable bytes.
+ * @param[in]  v Value to store.
+ * @return None.
+ * @pre @p p points at four writable bytes.
+ * @pre @p p is not aliased by @p v's storage.
+ * @post @p p holds @p v most-significant byte first.
+ * @post No other memory is touched.
+ * @note Not thread-safe with respect to @p p.
+ * @since 0.1.0
+ */
+static void png_put_be32(uint8_t* p, uint32_t v)
 {
-  static const uint8_t sig[8] = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
-  const uint32_t       rowb   = (uint32_t)k_t_dim * (uint32_t)k_t_bpp;
-  size_t               o      = 0U;
+  p[0] = (uint8_t)((v >> k_png_shift24) & k_png_byte_mask);
+  p[1] = (uint8_t)((v >> 16U) & k_png_byte_mask);
+  p[2] = (uint8_t)((v >> 8U) & k_png_byte_mask);
+  p[3] = (uint8_t)(v & k_png_byte_mask);
+}
+
+/**
+ * @brief Append one framed PNG chunk (length, type, payload, CRC) to ::s_png.
+ * @details The CRC covers the type and the payload but not the length, per the
+ *          PNG spec -- which is why the type is written before the CRC is taken.
+ * @param[in] type Four-character chunk type.
+ * @param[in] data Chunk payload, or NULL when @p len is zero.
+ * @param[in] len  Payload length in bytes.
+ * @return None.
+ * @pre ::s_png has room for `len + k_png_chunk_overhead` more bytes.
+ * @pre @p type points at four readable characters.
+ * @post ::s_png_len advanced by `len + k_png_chunk_overhead`.
+ * @post The appended chunk carries a valid CRC-32.
+ * @note Not thread-safe (shared fixture).
+ * @since 0.1.0
+ */
+static void png_append_chunk(const uint8_t* type, const uint8_t* data, uint32_t len)
+{
+  uint8_t* p = &s_png[s_png_len];
+  png_put_be32(p, len);
+  memcpy(&p[4], type, 4U);
+  if (len > 0U) {
+    memcpy(&p[8], data, (size_t)len);
+  }
+  const uint32_t crc = (uint32_t)mz_crc32(MZ_CRC32_INIT, &p[4], 4U + (size_t)len);
+  png_put_be32(&p[8U + len], crc);
+  s_png_len += (size_t)k_png_chunk_overhead + (size_t)len;
+}
+
+/**
+ * @brief Fill ::s_raw with the golden pattern, one filter byte per scanline.
+ * @return Total bytes written to ::s_raw.
+ * @pre ::s_raw covers `k_t_dim * (1 + k_t_dim * k_t_bpp)` bytes.
+ * @pre ::t_pix is the same oracle the checks use.
+ * @post Every scanline is prefixed with filter type 0 (none).
+ * @post The return value is the exact length to hand to the compressor.
+ * @note Not thread-safe (shared fixture).
+ * @since 0.1.0
+ */
+static size_t build_raw_scanlines(void)
+{
+  size_t o = 0U;
   for (uint32_t y = 0U; y < (uint32_t)k_t_dim; y++) {
     s_raw[o] = 0U; /* filter type 0 (none) */
     o++;
@@ -265,61 +324,60 @@ static void build_rgba_png(void)
       }
     }
   }
-  uint8_t ihdr[k_tileatlas_produce_webp_val_13] = {};
-  ihdr[3]                              = (uint8_t)k_t_dim; /* width  (big-endian, high bytes 0) */
-  ihdr[k_tileatlas_produce_webp_val_7] = (uint8_t)k_t_dim; /* height                            */
-  ihdr[8]                              = 8U;               /* bit depth                         */
-  ihdr[k_tileatlas_produce_webp_val_9] = 6U;               /* colour type: RGBA                 */
-  s_png_len                            = 0U;
+  return o;
+}
+
+static void build_rgba_png(void)
+{
+  static const uint8_t sig[8]           = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
+  static const uint8_t k_type_iend[]    = {'I', 'E', 'N', 'D'};
+  const size_t         raw_len          = build_raw_scanlines();
+
+  uint8_t ihdr[k_png_ihdr_len]   = {};
+  ihdr[k_png_ihdr_off_width_lo]  = (uint8_t)k_t_dim;
+  ihdr[k_png_ihdr_off_height_lo] = (uint8_t)k_t_dim;
+  ihdr[k_png_ihdr_off_bitdepth]  = 8U;
+  ihdr[k_png_ihdr_off_colortype] = 6U; /* colour type 6: RGBA */
+
   memcpy(s_png, sig, sizeof(sig));
-  s_png_len                                      = sizeof(sig);
-  uint8_t chunk[k_tileatlas_produce_webp_val_64] = {};
-  /* IHDR */
-  const uint32_t ihdr_len = (uint32_t)sizeof(ihdr);
-  chunk[3]                = (uint8_t)ihdr_len;
-  memcpy(&chunk[4], k_png_type_ihdr, sizeof(k_png_type_ihdr));
-  memcpy(&chunk[8], ihdr, ihdr_len);
-  uint32_t crc              = (uint32_t)mz_crc32(MZ_CRC32_INIT, &chunk[4], 4U + (size_t)ihdr_len);
-  chunk[8U + ihdr_len + 0U] = (uint8_t)(crc >> k_tileatlas_produce_webp_crc_24);
-  chunk[8U + ihdr_len + 1U] = (uint8_t)((crc >> 16U) & k_tileatlas_produce_webp_val_ff);
-  chunk[8U + ihdr_len + 2U] = (uint8_t)((crc >> 8U) & k_tileatlas_produce_webp_val_ff);
-  chunk[8U + ihdr_len + 3U] = (uint8_t)(crc & k_tileatlas_produce_webp_val_ff);
-  memcpy(&s_png[s_png_len], chunk, (size_t)k_png_chunk_overhead + (size_t)ihdr_len);
-  s_png_len += k_tileatlas_produce_webp_s_png_len_12 + (size_t)ihdr_len;
-  /* IDAT */
+  s_png_len = sizeof(sig);
+  png_append_chunk(k_png_type_ihdr, ihdr, (uint32_t)sizeof(ihdr));
+
   mz_ulong zlen = (mz_ulong)sizeof(s_zbuf);
-  TEST_ASSERT_EQ(MZ_OK,
-                 mz_compress(s_zbuf, &zlen, s_raw, (mz_ulong)((rowb + 1U) * (uint32_t)k_t_dim)));
-  uint8_t* p = &s_png[s_png_len];
-  p[0]       = (uint8_t)(zlen >> k_tileatlas_produce_webp_crc_24);
-  p[1]       = (uint8_t)((zlen >> 16U) & k_tileatlas_produce_webp_val_ff);
-  p[2]       = (uint8_t)((zlen >> 8U) & k_tileatlas_produce_webp_val_ff);
-  p[3]       = (uint8_t)(zlen & k_tileatlas_produce_webp_val_ff);
-  memcpy(&p[4], k_png_type_idat, sizeof(k_png_type_idat));
-  memcpy(&p[8], s_zbuf, (size_t)zlen);
-  crc          = (uint32_t)mz_crc32(MZ_CRC32_INIT, &p[4], 4U + (size_t)zlen);
-  p[8U + zlen] = (uint8_t)(crc >> k_tileatlas_produce_webp_crc_24);
-  p[k_tileatlas_produce_webp_val_9_2 + zlen] =
-    (uint8_t)((crc >> 16U) & k_tileatlas_produce_webp_val_ff);
-  p[k_tileatlas_produce_webp_val_10 + zlen] =
-    (uint8_t)((crc >> 8U) & k_tileatlas_produce_webp_val_ff);
-  p[k_tileatlas_produce_webp_val_11 + zlen] = (uint8_t)(crc & k_tileatlas_produce_webp_val_ff);
-  s_png_len += k_tileatlas_produce_webp_s_png_len_12 + (size_t)zlen;
-  /* IEND */
-  uint8_t iend[k_tileatlas_produce_webp_val_12] = {0U,
-                                                   0U,
-                                                   0U,
-                                                   0U,
-                                                   'I',
-                                                   'E',
-                                                   'N',
-                                                   'D',
-                                                   k_tileatlas_produce_webp_val_ae,
-                                                   k_tileatlas_produce_webp_val_42,
-                                                   k_tileatlas_produce_webp_val_60,
-                                                   k_tileatlas_produce_webp_val_82};
-  memcpy(&s_png[s_png_len], iend, sizeof(iend));
-  s_png_len += sizeof(iend);
+  TEST_ASSERT_EQ(MZ_OK, mz_compress(s_zbuf, &zlen, s_raw, (mz_ulong)raw_len));
+  png_append_chunk(k_png_type_idat, s_zbuf, (uint32_t)zlen);
+  png_append_chunk(k_type_iend, nullptr, 0U);
+}
+
+/**
+ * @brief Compare one decoded tile in ::s_cell against the ::t_pix oracle.
+ * @param[in] info Atlas geometry, for the bytes-per-pixel stride.
+ * @param[in] x0   Tile origin column on the canvas.
+ * @param[in] y0   Tile origin row on the canvas.
+ * @param[in] w    Decoded tile width, already edge-clamped.
+ * @param[in] h    Decoded tile height, already edge-clamped.
+ * @return None.
+ * @pre ::s_cell holds the decoded tile at (@p x0, @p y0).
+ * @pre `w * h * info->bpp` is within ::s_cell's capacity.
+ * @post Every channel of every decoded pixel compared equal to the oracle.
+ * @post No fixture state is mutated.
+ * @note Not thread-safe (reads the shared ::s_cell).
+ * @since 0.1.0
+ */
+static void assert_golden_tile(const ra8_tileatlas_info_t* info,
+                               uint32_t                    x0,
+                               uint32_t                    y0,
+                               uint16_t                    w,
+                               uint16_t                    h)
+{
+  for (uint32_t r = 0U; r < h; r++) {
+    for (uint32_t c = 0U; c < w; c++) {
+      for (uint32_t ch = 0U; ch < info->bpp; ch++) {
+        const uint8_t got = s_cell[(((r * w) + c) * info->bpp) + ch];
+        TEST_ASSERT_EQ(t_pix(x0 + c, y0 + r, ch), got);
+      }
+    }
+  }
 }
 
 /**
@@ -353,14 +411,7 @@ static void check_golden_tiles(ra8_jof_memstore_t* store, const ra8_jof_info_t* 
                                              &h));
       const uint32_t x0 = (uint32_t)tx * info->tile_w;
       const uint32_t y0 = (uint32_t)ty * info->tile_h;
-      for (uint32_t r = 0U; r < h; r++) {
-        for (uint32_t c = 0U; c < w; c++) {
-          for (uint32_t ch = 0U; ch < info->bpp; ch++) {
-            const uint8_t got = s_cell[(((r * w) + c) * info->bpp) + ch];
-            TEST_ASSERT_EQ(t_pix(x0 + c, y0 + r, ch), got);
-          }
-        }
-      }
+      assert_golden_tile(info, x0, y0, w, h);
     }
   }
 }
