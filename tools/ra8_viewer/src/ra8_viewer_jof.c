@@ -1,9 +1,9 @@
 /**
- * @file ra8_viewer_rta1.c
- * @brief RTA1 long-strip reader engine: vertical-scroll tile atlas rendering.
+ * @file ra8_viewer_jof.c
+ * @brief JOF long-strip reader engine: vertical-scroll tile atlas rendering.
  *
  * @details
- * Drives ra8_longstrip over an ra8_tile_cache for the firmware-native `.rta1`
+ * Drives ra8_longstrip over an ra8_tile_cache for the firmware-native `.jof`
  * tile atlas the downloader writes with `ra8_tileatlas_produce`. The whole atlas
  * is slurped into memory and read back through a memstore pread, so the engine
  * sees exactly the demand-paged interface it uses on the board; DEFLATE bands
@@ -75,7 +75,7 @@ RA8_INTERNAL static uint16_t viewer_band_pixel(const uint8_t* sp, uint8_t bpp)
 /**
  * @brief ra8_longstrip composite sink: convert a band sub-window to RGB565.
  * @details Coordinates are viewport-relative; the whole viewport is centred
- *          horizontally in the target via `rta1.x_off`. Pixels outside the target
+ *          horizontally in the target via `jof.x_off`. Pixels outside the target
  *          are clipped, so a partial last page keeps its background margin.
  * @param[in] ctx   The ::ra8_viewer_reader_t (for the blit target and x_off).
  * @param[in] px    Band pixels, row-major, @p bpp bytes per pixel.
@@ -87,16 +87,16 @@ RA8_INTERNAL static uint16_t viewer_band_pixel(const uint8_t* sp, uint8_t bpp)
  * @return Always ::k_ra8_ok -- out-of-bounds pixels are dropped, not an error.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t viewer_rta1_blit(void*          ctx,
-                                               const uint8_t* px,
-                                               uint16_t       sw,
-                                               uint16_t       sh,
-                                               uint8_t        bpp,
-                                               int32_t        dst_x,
-                                               int32_t        dst_y)
+RA8_INTERNAL static ra8_err_t viewer_jof_blit(void*          ctx,
+                                              const uint8_t* px,
+                                              uint16_t       sw,
+                                              uint16_t       sh,
+                                              uint8_t        bpp,
+                                              int32_t        dst_x,
+                                              int32_t        dst_y)
 {
   ra8_viewer_reader_t* r     = (ra8_viewer_reader_t*)ctx;
-  const int32_t        x_off = r->rta1.x_off;
+  const int32_t        x_off = r->jof.x_off;
   const int32_t        tw    = (int32_t)r->rt_w;
   const int32_t        th    = (int32_t)r->rt_h;
   for (int32_t row = 0; row < (int32_t)sh; ++row) {
@@ -117,7 +117,7 @@ RA8_INTERNAL static ra8_err_t viewer_rta1_blit(void*          ctx,
 }
 
 /**
- * @brief Slurp the open RTA1 file into @p r->rta1.atlas and set up the memstore.
+ * @brief Slurp the open JOF file into @p r->jof.atlas and set up the memstore.
  * @param[in,out] r Reader whose file is already open (non-NULL).
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok            The atlas is resident and the memstore is wired.
@@ -126,7 +126,7 @@ RA8_INTERNAL static ra8_err_t viewer_rta1_blit(void*          ctx,
  * @post On any error the partial buffer is freed.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t viewer_rta1_slurp(ra8_viewer_reader_t* r)
+RA8_INTERNAL static ra8_err_t viewer_jof_slurp(ra8_viewer_reader_t* r)
 {
   const size_t sz  = (size_t)r->file.size;
   uint8_t*     buf = (uint8_t*)malloc(sz);
@@ -141,14 +141,14 @@ RA8_INTERNAL static ra8_err_t viewer_rta1_slurp(ra8_viewer_reader_t* r)
     free(buf);
     return k_ra8_err_not_found;
   }
-  r->rta1.atlas = buf;
-  r->rta1.store = (ra8_tileatlas_memstore_t){.buf = buf, .cap = sz, .len = sz};
+  r->jof.atlas = buf;
+  r->jof.store = (ra8_tileatlas_memstore_t){.buf = buf, .cap = sz, .len = sz};
   return k_ra8_ok;
 }
 
 /**
- * @brief Allocate the RTA1 tile-cache backing arrays for @p cell_count bands.
- * @param[in,out] w          RTA1 state to populate (non-NULL).
+ * @brief Allocate the JOF tile-cache backing arrays for @p cell_count bands.
+ * @param[in,out] w          JOF state to populate (non-NULL).
  * @param[in]     cell_count Resident-band count (>= 1).
  * @param[in]     band_bytes Bytes per decoded band (> 0).
  * @return ra8_err_t; ::k_ra8_err_no_mem on any allocation failure.
@@ -156,14 +156,14 @@ RA8_INTERNAL static ra8_err_t viewer_rta1_slurp(ra8_viewer_reader_t* r)
  * @since 0.1.0
  */
 RA8_INTERNAL static ra8_err_t
-viewer_rta1_alloc_cache(viewer_rta1_t* w, uint32_t cell_count, size_t band_bytes)
+viewer_jof_alloc_cache(viewer_jof_t* w, uint32_t cell_count, size_t band_bytes)
 {
-  w->scratch = (uint8_t*)malloc(band_bytes + (size_t)k_viewer_rta1_scratch_pad);
+  w->scratch = (uint8_t*)malloc(band_bytes + (size_t)k_viewer_jof_scratch_pad);
   w->cells   = (uint8_t*)malloc((size_t)cell_count * band_bytes);
   w->meta    = (ra8_keycache_cell_t*)calloc(cell_count, sizeof(*w->meta));
   w->keys    = (ra8_tile_key_t*)calloc(cell_count, sizeof(*w->keys));
   w->dims    = (ra8_tile_dims_t*)calloc(cell_count, sizeof(*w->dims));
-  w->buckets = (int32_t*)calloc((size_t)k_viewer_rta1_buckets, sizeof(*w->buckets));
+  w->buckets = (int32_t*)calloc((size_t)k_viewer_jof_buckets, sizeof(*w->buckets));
   if ((w->scratch == nullptr) || (w->cells == nullptr) || (w->meta == nullptr) ||
       (w->keys == nullptr) || (w->dims == nullptr) || (w->buckets == nullptr)) {
     return k_ra8_err_no_mem;
@@ -176,22 +176,22 @@ viewer_rta1_alloc_cache(viewer_rta1_t* w, uint32_t cell_count, size_t band_bytes
  * @details Composition happens at the strip's native width; the desktop view
  *          scales each tile to the window width, and the headless framebuffer
  *          path recentres/clips into its fixed width via `x_off` set per render.
- * @param[in,out] r          Reader whose RTA1 buffers are allocated (non-NULL).
+ * @param[in,out] r          Reader whose JOF buffers are allocated (non-NULL).
  * @param[in]     info       Parsed atlas geometry (non-NULL).
  * @param[in]     band_bytes Bytes per decoded band.
  * @param[in]     cell_count Resident-band count for the LRU cache.
  * @return ra8_err_t from the tile-cache init / long-strip-open steps.
- * @post On ::k_ra8_ok `r->rta1.strip` is ready to scroll and render.
+ * @post On ::k_ra8_ok `r->jof.strip` is ready to scroll and render.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t viewer_rta1_wire(ra8_viewer_reader_t*        r,
-                                               const ra8_tileatlas_info_t* info,
-                                               size_t                      band_bytes,
-                                               uint32_t                    cell_count)
+RA8_INTERNAL static ra8_err_t viewer_jof_wire(ra8_viewer_reader_t*        r,
+                                              const ra8_tileatlas_info_t* info,
+                                              size_t                      band_bytes,
+                                              uint32_t                    cell_count)
 {
-  viewer_rta1_t* w    = &r->rta1;
+  viewer_jof_t* w     = &r->jof;
   w->dctx.scratch     = w->scratch;
-  w->dctx.scratch_cap = (uint32_t)(band_bytes + (size_t)k_viewer_rta1_scratch_pad);
+  w->dctx.scratch_cap = (uint32_t)(band_bytes + (size_t)k_viewer_jof_scratch_pad);
 
   const ra8_tile_cache_cfg_t ccfg = {.cell_mem     = w->cells,
                                      .cell_bytes   = (uint32_t)band_bytes,
@@ -200,7 +200,7 @@ RA8_INTERNAL static ra8_err_t viewer_rta1_wire(ra8_viewer_reader_t*        r,
                                      .keys         = w->keys,
                                      .dims         = w->dims,
                                      .buckets      = w->buckets,
-                                     .bucket_count = (uint32_t)k_viewer_rta1_buckets,
+                                     .bucket_count = (uint32_t)k_viewer_jof_buckets,
                                      .decode       = ra8_longstrip_tile_decode,
                                      .decode_ctx   = &w->dctx};
   const ra8_err_t            rc   = ra8_tile_cache_init(&w->cache, &ccfg);
@@ -218,7 +218,7 @@ RA8_INTERNAL static ra8_err_t viewer_rta1_wire(ra8_viewer_reader_t*        r,
                                     .image_id   = 1U,
                                     .viewport_w = info->width,
                                     .viewport_h = (uint16_t)k_ra8_viewer_fb_height,
-                                    .blit       = viewer_rta1_blit,
+                                    .blit       = viewer_jof_blit,
                                     .blit_ctx   = r};
   return ra8_longstrip_open(&w->strip, &wcfg);
 }
@@ -234,12 +234,12 @@ RA8_INTERNAL static ra8_err_t viewer_rta1_wire(ra8_viewer_reader_t*        r,
  *          already showed -- visible as duplicated content with a seam.
  *          Setting the viewport to the page's real content height makes the
  *          requested position land exactly on the recomputed clamp.
- * @param[in,out] w    RTA1 state of an open strip (non-NULL).
+ * @param[in,out] w    JOF state of an open strip (non-NULL).
  * @param[in]     page Vertical page index.
  * @return ra8_err_t from `ra8_longstrip_set_viewport` / `ra8_longstrip_scroll_by`.
  * @since 0.1.0
  */
-RA8_INTERNAL static ra8_err_t viewer_rta1_seek(viewer_rta1_t* w, uint32_t page)
+RA8_INTERNAL static ra8_err_t viewer_jof_seek(viewer_jof_t* w, uint32_t page)
 {
   const uint32_t top     = page * w->viewport_h;
   const uint32_t canvas  = w->dctx.info.height;
@@ -257,10 +257,10 @@ RA8_INTERNAL static ra8_err_t viewer_rta1_seek(viewer_rta1_t* w, uint32_t page)
   return ra8_longstrip_scroll_by(&w->strip, delta);
 }
 
-ra8_err_t viewer_open_rta1(ra8_viewer_reader_t* r)
+ra8_err_t viewer_open_jof(ra8_viewer_reader_t* r)
 {
-  viewer_rta1_t* w  = &r->rta1;
-  ra8_err_t      rc = viewer_rta1_slurp(r);
+  viewer_jof_t* w  = &r->jof;
+  ra8_err_t     rc = viewer_jof_slurp(r);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -277,22 +277,22 @@ ra8_err_t viewer_open_rta1(ra8_viewer_reader_t* r)
     return k_ra8_err_invalid_size;
   }
   uint32_t cell_count = info.tile_rows;
-  if (cell_count > (uint32_t)k_viewer_rta1_max_cells) {
-    cell_count = (uint32_t)k_viewer_rta1_max_cells;
+  if (cell_count > (uint32_t)k_viewer_jof_max_cells) {
+    cell_count = (uint32_t)k_viewer_jof_max_cells;
   }
   if (cell_count == 0U) {
     cell_count = 1U;
   }
-  rc = viewer_rta1_alloc_cache(w, cell_count, band_bytes);
+  rc = viewer_jof_alloc_cache(w, cell_count, band_bytes);
   if (rc != k_ra8_ok) {
     return rc;
   }
-  return viewer_rta1_wire(r, &info, band_bytes, cell_count);
+  return viewer_jof_wire(r, &info, band_bytes, cell_count);
 }
 
-ra8_err_t viewer_render_rta1(ra8_viewer_reader_t* r, uint32_t page)
+ra8_err_t viewer_render_jof(ra8_viewer_reader_t* r, uint32_t page)
 {
-  viewer_rta1_t* w = &r->rta1;
+  viewer_jof_t* w = &r->jof;
   /* Headless path: compose into the fixed framebuffer, recentring the
    * native-width strip and clipping any overhang. */
   r->rt565         = r->fb;
@@ -305,7 +305,7 @@ ra8_err_t viewer_render_rta1(ra8_viewer_reader_t* r, uint32_t page)
   const size_t fb_pixels = (size_t)r->rt_w * (size_t)r->rt_h;
   memset(r->fb, (int)k_viewer_white_byte, fb_pixels * sizeof(*r->fb));
 
-  const ra8_err_t rc = viewer_rta1_seek(w, page);
+  const ra8_err_t rc = viewer_jof_seek(w, page);
   if (rc != k_ra8_ok) {
     return rc;
   }
@@ -314,9 +314,9 @@ ra8_err_t viewer_render_rta1(ra8_viewer_reader_t* r, uint32_t page)
 }
 
 ra8_err_t
-viewer_tile_rta1(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out)
+viewer_tile_jof(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, uint16_t** out)
 {
-  viewer_rta1_t* wt = &r->rta1;
+  viewer_jof_t*  wt = &r->jof;
   const uint32_t nw = r->tile_wpx[i];
   const uint32_t nh = r->tile_hpx[i];
   if ((nw == 0U) || (nh == 0U)) {
@@ -334,7 +334,7 @@ viewer_tile_rta1(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, u
   wt->x_off = 0;
   memset(buf, (int)k_viewer_white_byte, px * sizeof(uint16_t));
 
-  ra8_err_t rc = viewer_rta1_seek(wt, i);
+  ra8_err_t rc = viewer_jof_seek(wt, i);
   if (rc == k_ra8_ok) {
     ra8_longstrip_render_stats_t st = {};
     rc                              = ra8_longstrip_render(&wt->strip, &st);
@@ -352,11 +352,11 @@ viewer_tile_rta1(ra8_viewer_reader_t* r, uint32_t i, uint32_t* w, uint32_t* h, u
   return k_ra8_ok;
 }
 
-void viewer_size_rta1_tiles(ra8_viewer_reader_t* r, uint32_t n)
+void viewer_size_jof_tiles(ra8_viewer_reader_t* r, uint32_t n)
 {
-  const uint32_t vw = r->rta1.dctx.info.width;
-  const uint32_t vh = r->rta1.viewport_h;
-  const uint32_t hh = r->rta1.dctx.info.height;
+  const uint32_t vw = r->jof.dctx.info.width;
+  const uint32_t vh = r->jof.viewport_h;
+  const uint32_t hh = r->jof.dctx.info.height;
   for (uint32_t i = 0U; i < n; ++i) {
     const uint32_t y0 = i * vh;
     uint32_t       bh = (hh > y0) ? (hh - y0) : 0U;

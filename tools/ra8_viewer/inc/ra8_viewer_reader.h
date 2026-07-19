@@ -59,7 +59,7 @@ typedef struct ra8_viewer_reader ra8_viewer_reader_t;
  *
  * @details Detects the format by file extension and container magic. Comic
  *          archives (`.cbz` / `.cbr` / `.cbt`, and gzip/xz-wrapped variants) open
- *          through ra8_comic and RTA1 webtoons (`.rta1`) through ra8_longstrip;
+ *          through ra8_comic and JOF webtoons (`.jof`) through ra8_longstrip;
  *          EPUB / RABOOK return ::k_ra8_err_not_supported for now (reflow render
  *          is a TODO seam -- see the .c file).
  *
@@ -116,7 +116,7 @@ typedef struct ra8_viewer_reader ra8_viewer_reader_t;
  *
  * @details The desktop window reads the document as a continuous vertical strip
  *          of tiles, each rendered at native resolution and scaled to the window
- *          width by the view. For comics one tile == one page; for an RTA1
+ *          width by the view. For comics one tile == one page; for a JOF
  *          webtoon the tall strip is split into framebuffer-height bands. This is
  *          the same count as ::ra8_viewer_page_count, named for the scroll model.
  * @param[in] r Reader (may be NULL).

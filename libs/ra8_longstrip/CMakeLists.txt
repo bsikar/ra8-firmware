@@ -1,7 +1,7 @@
 #
 # libs/ra8_longstrip -- continuous vertical-scroll (longstrip / manhwa) reading
-# mode (#289). A thin scroll/geometry engine over the RTA1 band-tile atlas
-# (#231, libs/ra8_tileatlas): a longstrip band is one full-width RTA1 tile
+# mode (#289). A thin scroll/geometry engine over the JOF band-tile atlas
+# (#231, libs/ra8_tileatlas): a longstrip band is one full-width JOF tile
 # column, so the tile index IS the band index -- O(1) seek to any scroll-y.
 #
 # Layout:

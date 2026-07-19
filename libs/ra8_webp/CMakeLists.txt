@@ -24,7 +24,7 @@
 # the vendored libwebp decoder + define RA8_WEBP_USE_ARENA on its utils.c
 # (mirroring the ra8_epub/miniz special-case).
 #
-# INTEGRATION(#290): the RTA1 tile producer (libs/ra8_tileatlas) consumes this
+# INTEGRATION(#290): the JOF tile producer (libs/ra8_tileatlas) consumes this
 # facade to normalise WebP manifest images to the band-tile format on import, so
 # an app that lists ra8_tileatlas in LIBS also compiles this facade + the
 # vendored libwebp (see the ra8_tileatlas block in cmake/ra8_add_app.cmake).

@@ -308,7 +308,7 @@ macro(ra8_add_app)
             ${RA8_REPO_ROOT}/libs/ra8_epub/src)
     endif()
 
-    # ra8_tileatlas transcodes JPEG/PNG sources into RTA1 tile atlases (#231).
+    # ra8_tileatlas transcodes JPEG/PNG sources into JOF tile atlases (#231).
     # Its PNG decoder inflates through the vendored miniz and its tile codec
     # reuses ra8_io_compress, so wire the miniz + ra8_io includes when an app
     # pulls in ra8_tileatlas. The miniz *implementation* TU comes from the
@@ -324,7 +324,7 @@ macro(ra8_add_app)
             list(APPEND _ra8_lib_extra ${RA8_REPO_ROOT}/libs/ra8_io/src/ra8_io_compress.c)
         endif()
         # #290 normalize-on-import: the producer normalises WebP manifest images
-        # to RTA1 too, so it calls the ra8_webp facade (the WebP arm lives in
+        # to JOF too, so it calls the ra8_webp facade (the WebP arm lives in
         # ra8_tileatlas_produce_webp.c: ra8_ta_priv_webp_transcode). Compile the
         # facade sources here when the app did
         # not already list ra8_webp explicitly (the LIBS loop globs them then).

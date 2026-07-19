@@ -36,7 +36,7 @@ for arg in "$@"; do
     *) FORMATS="$FORMATS $arg" ;;
   esac
 done
-[ -n "$FORMATS" ] || FORMATS="cbz cbt cbt.gz cbt.xz cbr epub rta1 rabook"
+[ -n "$FORMATS" ] || FORMATS="cbz cbt cbt.gz cbt.xz cbr epub jof rabook"
 
 say() { printf '%s\n' "$*"; }
 rule() { printf '%s\n' "------------------------------------------------------------"; }
@@ -79,12 +79,12 @@ python3 "$HERE/gen_pages.py" "$PAGES" 6 800 1200 || {
   exit 99
 }
 
-# `--pack` writes the archive as <abs(dir)>.<ext>; rta1 instead writes one
-# page_NNNN.rta1 sibling per page INTO the dir. Report the artifact the viewer
+# `--pack` writes the archive as <abs(dir)>.<ext>; jof instead writes one
+# page_NNNN.jof sibling per page INTO the dir. Report the artifact the viewer
 # should open for a given format+dir.
 artifact_for() {
   case "$1" in
-    rta1) printf '%s/page_0001.rta1' "$2" ;;
+    jof) printf '%s/page_0001.jof' "$2" ;;
     *) printf '%s.%s' "$2" "$1" ;;
   esac
 }
@@ -114,7 +114,7 @@ for fmt in $FORMATS; do
     } ;;
   esac
 
-  # Each format gets a private copy so rta1's .rta1 siblings never leak into
+  # Each format gets a private copy so jof's .jof siblings never leak into
   # another format's archive (list_pages() globs every non-hidden file).
   fdir="$WORK/in_${fmt//./_}"
   rm -rf "$fdir"

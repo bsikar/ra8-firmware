@@ -49,10 +49,10 @@ static void test_format_mapping(void)
   TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_cbz), "cbz") == 0);
   TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_cbt_gz), "cbt.gz") == 0);
   TEST_ASSERT(mdl_format_from_str("epub") == k_mdl_fmt_epub);
-  TEST_ASSERT(mdl_format_from_str("rta1") == k_mdl_fmt_rta1);
+  TEST_ASSERT(mdl_format_from_str("jof") == k_mdl_fmt_jof);
   TEST_ASSERT(mdl_format_from_str("rabook") == k_mdl_fmt_rabook);
   TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_epub), "epub") == 0);
-  TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_rta1), "rta1") == 0);
+  TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_jof), "jof") == 0);
   TEST_ASSERT(strcmp(mdl_format_ext(k_mdl_fmt_rabook), "rabook") == 0);
   TEST_END("format mapping");
 }
@@ -176,7 +176,7 @@ static void test_export_skips_non_images(void)
   /* ...amid this tool's own prior output + OS junk, which must be ignored so a
    * re-packaged folder does not fold a non-image "page" into the archive (the
    * 0x107 the reader hits when it tries to decode one). */
-  write_fixture("/tmp/mdl_mixed_chap/page_001.rta1", 'r');
+  write_fixture("/tmp/mdl_mixed_chap/page_001.jof", 'r');
   write_fixture("/tmp/mdl_mixed_chap/mdl_mixed_chap.cbz", 'z');
   write_fixture("/tmp/mdl_mixed_chap/notes.txt", 't');
   write_fixture("/tmp/mdl_mixed_chap/.DS_Store", 'd');
@@ -195,7 +195,7 @@ static void test_export_skips_non_images(void)
 
   (void)unlink("/tmp/mdl_mixed_chap/page_001.jpg");
   (void)unlink("/tmp/mdl_mixed_chap/page_002.PNG");
-  (void)unlink("/tmp/mdl_mixed_chap/page_001.rta1");
+  (void)unlink("/tmp/mdl_mixed_chap/page_001.jof");
   (void)unlink("/tmp/mdl_mixed_chap/mdl_mixed_chap.cbz");
   (void)unlink("/tmp/mdl_mixed_chap/notes.txt");
   (void)unlink("/tmp/mdl_mixed_chap/.DS_Store");
@@ -247,18 +247,18 @@ static void test_export_epub_roundtrip(void)
   TEST_END("export epub round-trip");
 }
 
-/** @test Transcode a real JPEG to RTA1; assert magics + webtoon column geometry. */
-static void test_export_rta1_roundtrip(void)
+/** @test Transcode a real JPEG to JOF; assert magics + webtoon column geometry. */
+static void test_export_jof_roundtrip(void)
 {
-  TEST_BEGIN("export rta1 round-trip");
-  const char* dir = "/tmp/mdl_rta1_chap";
-  const char* jpg = "/tmp/mdl_rta1_chap/page_001.jpg";
-  const char* rta = "/tmp/mdl_rta1_chap/page_001.rta1";
+  TEST_BEGIN("export jof round-trip");
+  const char* dir = "/tmp/mdl_jof_chap";
+  const char* jpg = "/tmp/mdl_jof_chap/page_001.jpg";
+  const char* jof = "/tmp/mdl_jof_chap/page_001.jof";
   (void)mkdir(dir, 0755);
   write_bytes(jpg, k_tiny_jpeg, (size_t)k_tiny_jpeg_len);
-  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_rta1, dir, "unused") == k_ra8_ok);
+  TEST_ASSERT(mdl_export_chapter(k_mdl_fmt_jof, dir, "unused") == k_ra8_ok);
 
-  FILE* f = fopen(rta, "rb");
+  FILE* f = fopen(jof, "rb");
   TEST_ASSERT_NOT_NULL(f);
   (void)fseek(f, 0, SEEK_END);
   const long sz = ftell(f);
@@ -270,16 +270,16 @@ static void test_export_rta1_roundtrip(void)
   (void)fclose(f);
 
   const size_t mlen = (size_t)k_ra8_tileatlas_magic_len;
-  TEST_ASSERT(memcmp(buf + k_ra8_tileatlas_ofs_magic, "RTA1", mlen) == 0);
-  TEST_ASSERT(memcmp(buf + ((size_t)sz - mlen), "RTAE", mlen) == 0);
+  TEST_ASSERT(memcmp(buf + k_ra8_tileatlas_ofs_magic, "JOF1", mlen) == 0);
+  TEST_ASSERT(memcmp(buf + ((size_t)sz - mlen), "JOFE", mlen) == 0);
   /* webtoon-native: a single full-width tile column (tile_w == width). */
   TEST_ASSERT_EQ(rd_u16(buf + k_ra8_tileatlas_ofs_width), rd_u16(buf + k_ra8_tileatlas_ofs_tile_w));
   free(buf);
 
   (void)unlink(jpg);
-  (void)unlink(rta);
+  (void)unlink(jof);
   (void)rmdir(dir);
-  TEST_END("export rta1 round-trip");
+  TEST_END("export jof round-trip");
 }
 
 /**
@@ -296,7 +296,7 @@ int32_t main(void)
   test_export_cbz_roundtrip();
   test_export_skips_non_images();
   test_export_epub_roundtrip();
-  test_export_rta1_roundtrip();
+  test_export_jof_roundtrip();
   (void)fprintf(stderr, "[OK  ] test_media_dl.c\n");
   return 0;
 }

@@ -6,9 +6,9 @@
  * @details
  * Drives the shared harness in `test_ra8_manga_stream.h` to prove the two
  * eviction-policy properties #232 asks for, both over the synthetic
- * volume-of-RTA1-atlases streamed through the real tile-cache + page-cache stack:
+ * volume-of-JOF-atlases streamed through the real tile-cache + page-cache stack:
  *
- *   1. **Scan resistance.** A bookmarked chapter's RTA1 metadata, promoted into
+ *   1. **Scan resistance.** A bookmarked chapter's JOF metadata, promoted into
  *      the page cache's SLRU protected segment, survives a one-shot flood that
  *      skims a band from every OTHER chapter -- a plain LRU page cache would have
  *      thrashed it out.
@@ -33,7 +33,7 @@
  * @enum t_mg_scan_t
  * @brief Cross-chapter scan-resistance scenario sizing.
  *
- * @details A few "bookmarked" chapters' RTA1 metadata is promoted into the SLRU
+ * @details A few "bookmarked" chapters' JOF metadata is promoted into the SLRU
  *          protected segment, then a large one-shot flood skims one band from
  *          each of many OTHER chapters (distinct atlases -> no re-referenced
  *          frame -> pure probationary). The warm metadata must survive.
@@ -99,7 +99,7 @@ t_mg_reparse_warm_delta(const ra8_vmem_t* vm, ra8_vmem_stream_t* st, ra8_tileatl
 
 /**
  * @test manga_stream_metadata_scan_resistance
- * @brief A bookmarked chapter's RTA1 metadata, promoted into the page cache's
+ * @brief A bookmarked chapter's JOF metadata, promoted into the page cache's
  *        SLRU protected segment, survives a one-shot flood that skims a band from
  *        every OTHER chapter (#147 scan resistance, faithful to a manga skim).
  *
@@ -162,7 +162,7 @@ static void test_manga_stream_metadata_scan_resistance(void)
  * @brief Run a revisit workload and return the page-cache miss count.
  *
  * @details A working set of ::k_mg_tune_ws atlases is opened + skimmed for
- *          ::k_mg_tune_rounds rounds. Rounds 2+ re-reference each atlas's RTA1
+ *          ::k_mg_tune_rounds rounds. Rounds 2+ re-reference each atlas's JOF
  *          metadata (header/footer/index frames), so whether those stay resident
  *          -- and thus how many misses the run costs -- depends entirely on the
  *          SLRU protected/probationary split.

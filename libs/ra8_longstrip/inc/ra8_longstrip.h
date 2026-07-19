@@ -1,7 +1,7 @@
 /**
  * @file ra8_longstrip.h
  * @brief Continuous vertical-scroll (longstrip / manhwa) reading mode over an
- *        RTA1 band-tile atlas (#289).
+ *        JOF band-tile atlas (#289).
  * @ingroup grp_ereader
  *
  * @par Tag
@@ -13,20 +13,20 @@
  * strip** -- a sequence of tall image slices stacked seamlessly and read by
  * scrolling, with no page boundaries. On RA8D2/RA8P1 there is no hardware
  * JPEG decoder and a single slice can decode to tens of megabytes, so the
- * strip is normalised at import into the shared **RTA1 band-tile atlas**
- * (`ra8_tileatlas.h`): a longstrip band is simply an RTA1 tile the full image
- * width (`tile_w == width`, one tile column), so the RTA1 tile index **is**
+ * strip is normalised at import into the shared **JOF band-tile atlas**
+ * (`ra8_tileatlas.h`): a longstrip band is simply a JOF tile the full image
+ * width (`tile_w == width`, one tile column), so the JOF tile index **is**
  * the band index -- byte offset + exact height per band -- giving O(1) random
  * access to any scroll position with a single bounded read + decode. No
  * parallel format is invented; this module is a thin scroll/geometry engine
- * over RTA1, paged through `ra8_tile_cache`.
+ * over JOF, paged through `ra8_tile_cache`.
  *
  * ## What this module owns
  *   - **Virtual-canvas geometry.** Width `W == info.width`, height
  *     `H == info.height`, uniform band height `band_h == info.tile_h`. The
  *     scroll position is a single scalar `scroll_y`. `y -> band` is one
  *     division (`y / band_h`) -- O(1), no cumulative-height scan, because
- *     RTA1 bands are fixed-height by construction.
+ *     JOF bands are fixed-height by construction.
  *   - **Scroll state machine + fling.** `scroll_by` for direct drags,
  *     `fling` + `tick` for momentum scrolling with integer deceleration, all
  *     clamped to `[0, H - viewport_h]`. No page snapping.
@@ -121,11 +121,11 @@ typedef ra8_err_t (*ra8_longstrip_blit_fn)(void*          ctx,
 
 /**
  * @struct ra8_longstrip_decode_ctx_t
- * @brief Context binding an RTA1 atlas to a ::ra8_tile_cache decode-on-miss.
+ * @brief Context binding a JOF atlas to a ::ra8_tile_cache decode-on-miss.
  *
  * @details Bind ::ra8_longstrip_tile_decode as the tile cache's `decode` and a
  *          pointer to this struct as its `decode_ctx`. The cache then pages any
- *          band in with one bounded RTA1 tile read. `scratch` is the deflate
+ *          band in with one bounded JOF tile read. `scratch` is the deflate
  *          staging buffer required only for `k_ra8_tileatlas_codec_deflate`
  *          atlases (size it with `ra8_tileatlas_stored_bound()` over the band
  *          payload); a raw-codec atlas may leave it NULL / zero.
@@ -161,7 +161,7 @@ typedef struct {
   ra8_tileatlas_pread_fn pread;      /**< Atlas backing read seam.            */
   void*                  pread_ctx;  /**< Context for `pread`.                */
   uint64_t               atlas_size; /**< Atlas byte length (for parse).      */
-  ra8_tile_cache_t*      cache;      /**< Band cache (decode-on-miss = RTA1). */
+  ra8_tile_cache_t*      cache;      /**< Band cache (decode-on-miss = JOF).  */
   uint32_t               image_id;   /**< Tile-cache key namespace for strip. */
   uint16_t               viewport_w; /**< On-screen viewport width, pixels.   */
   uint16_t               viewport_h; /**< On-screen viewport height, pixels.  */
@@ -219,7 +219,7 @@ typedef struct {
 } ra8_longstrip_render_stats_t;
 
 /**
- * @brief RTA1-backed ::ra8_tile_decode_fn: page one band in on a cache miss.
+ * @brief JOF-backed ::ra8_tile_decode_fn: page one band in on a cache miss.
  *
  * @details Adapts ::ra8_tile_cache's decode-on-miss to `ra8_tileatlas_read_tile`:
  *          the tile key's `(tile_x, tile_y)` select the band (`tile_x` is
@@ -256,7 +256,7 @@ typedef struct {
                                                   uint16_t*             out_h);
 
 /**
- * @brief Open a longstrip strip over a parsed + validated RTA1 atlas.
+ * @brief Open a longstrip strip over a parsed + validated JOF atlas.
  *
  * @details
  * Parses the atlas through `ra8_tileatlas_parse()` and then fail-closed
@@ -507,7 +507,7 @@ bool ra8_longstrip_tick(ra8_longstrip_t* wt);
  * @brief Composite every visible band at the current scroll position.
  *
  * @details For each band in the visible range, fetches it from the cache
- *          (decode-on-miss reads the RTA1 tile), computes its destination
+ *          (decode-on-miss reads the JOF tile), computes its destination
  *          `(dst_x, dst_y)` -- `dst_x` centres the column in the viewport,
  *          `dst_y = band_top - scroll_y` (negative for the partly-scrolled top
  *          band) -- blits it through the sink, then releases the pin. Because

@@ -166,9 +166,9 @@ static ra8_err_t internal_webp_decode_impl(const uint8_t*    data,
 
   /*
    * This facade decodes a whole WebP into a caller RGBA8888 buffer. The #290
-   * normalize-on-import path consumes it in the RTA1 tile producer
+   * normalize-on-import path consumes it in the JOF tile producer
    * (libs/ra8_tileatlas/src/ra8_tileatlas_produce.c: priv_webp_transcode), which
-   * bands the decoded canvas into RTA1 tiles so render time touches one codec
+   * bands the decoded canvas into JOF tiles so render time touches one codec
    * regardless of source. TODO(#289): the ra8_reflow / ra8_img inline raster
    * dispatch (libs/ra8_reflow/src/ra8_reflow_image.c) does not yet have a WebP
    * arm for the small-image (non-tiled) path -- that lands with the longstrip

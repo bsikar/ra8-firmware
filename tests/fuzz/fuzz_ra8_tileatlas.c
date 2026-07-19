@@ -1,6 +1,6 @@
 /**
  * @file fuzz_ra8_tileatlas.c
- * @brief libFuzzer harness for the RTA1 atlas reader (#231).
+ * @brief libFuzzer harness for the JOF atlas reader (#231).
  *
  * @details
  * A tile atlas can arrive pre-baked inside a downloaded EPUB (the

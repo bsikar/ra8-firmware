@@ -49,7 +49,7 @@
 [[nodiscard]] size_t ra8_fmt_atlas_sink_cap(size_t src_len);
 
 /**
- * @brief Transcode one source image into an in-RAM RTA1 atlas.
+ * @brief Transcode one source image into an in-RAM JOF atlas.
  *
  * @details The shared encode step behind the atlas `convert` and `verify`
  *          verbs: drives the firmware `ra8_tileatlas_produce()` from a slurped
@@ -149,7 +149,7 @@ ra8_fmt_atlas_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h)
                                                  size_t*                     out_len);
 
 /**
- * @brief RTA1 `convert` verb: one source image to one `.rta1` atlas.
+ * @brief JOF `convert` verb: one source image to one `.jof` atlas.
  * @param[in] src  Slurped source image (non-NULL).
  * @param[in] opts Options carrying `out_path` and the report sink.
  * @return k_ra8_ok when the atlas was written to `opts->out_path`.
@@ -159,7 +159,7 @@ ra8_fmt_atlas_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h)
                                               const ra8_fmt_opts_t* opts);
 
 /**
- * @brief RTA1 `inspect` verb: dump header, tile table, footer and verdict.
+ * @brief JOF `inspect` verb: dump header, tile table, footer and verdict.
  * @param[in] src  Atlas container bytes (non-NULL).
  * @param[in] opts Options carrying the report sink and verbosity.
  * @return k_ra8_ok when the container validated clean.
@@ -169,7 +169,7 @@ ra8_fmt_atlas_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h)
                                               const ra8_fmt_opts_t* opts);
 
 /**
- * @brief RTA1 `verify` verb: banded encode versus untiled reference raster.
+ * @brief JOF `verify` verb: banded encode versus untiled reference raster.
  * @param[in] src  Source image to round-trip (non-NULL).
  * @param[in] opts Options carrying the report sink and optional PPM dump path.
  * @return k_ra8_ok when the banded raster matched the reference exactly.
@@ -178,9 +178,9 @@ ra8_fmt_atlas_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t* out_h)
 [[nodiscard]] ra8_err_t ra8_fmt_atlas_verify(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts);
 
 /**
- * @brief Report whether a blob carries the RTA1 header magic.
+ * @brief Report whether a blob carries the JOF header magic.
  * @param[in] src Candidate container bytes.
- * @return `true` when the first four bytes are "RTA1".
+ * @return `true` when the first four bytes are "JOF1".
  * @since 0.1.0
  */
 [[nodiscard]] bool ra8_fmt_atlas_sniff(const ra8_fmt_blob_t* src);

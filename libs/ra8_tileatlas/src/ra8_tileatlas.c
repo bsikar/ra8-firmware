@@ -1,6 +1,6 @@
 /**
  * @file ra8_tileatlas.c
- * @brief RTA1 atlas reader: parse/validate + bounded per-tile decode (#231).
+ * @brief JOF atlas reader: parse/validate + bounded per-tile decode (#231).
  *
  * @details
  * Implements the fail-closed structural validation (`ra8_tileatlas_parse`)
@@ -30,11 +30,11 @@
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_tileatlas";
 
-/** @brief Header magic bytes ("RTA1"). */
-static const uint8_t s_magic_hdr[k_ra8_tileatlas_magic_len] = {'R', 'T', 'A', '1'};
+/** @brief Header magic bytes ("JOF1"). */
+static const uint8_t s_magic_hdr[k_ra8_tileatlas_magic_len] = {'J', 'O', 'F', '1'};
 
-/** @brief Footer magic bytes ("RTAE"). */
-static const uint8_t s_magic_ftr[k_ra8_tileatlas_magic_len] = {'R', 'T', 'A', 'E'};
+/** @brief Footer magic bytes ("JOFE"). */
+static const uint8_t s_magic_ftr[k_ra8_tileatlas_magic_len] = {'J', 'O', 'F', 'E'};
 
 /**
  * @enum ra8_tileatlas_le_t
