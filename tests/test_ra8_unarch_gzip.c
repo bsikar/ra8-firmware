@@ -51,16 +51,16 @@ typedef enum : uint8_t {
  * or the DEFLATE stream itself.
  */
 typedef enum : uint8_t {
-  k_t_magic_b0     = 0x1FU, /**< gzip magic byte 0.                          */
-  k_t_magic_b1     = 0x8BU, /**< gzip magic byte 1.                          */
-  k_t_magic_wrong  = 0x50U, /**< A wrong first byte, ASCII 'P'; must be
+  k_t_magic_b0      = 0x1FU, /**< gzip magic byte 0.                          */
+  k_t_magic_b1      = 0x8BU, /**< gzip magic byte 1.                          */
+  k_t_magic_wrong   = 0x50U, /**< A wrong first byte, ASCII 'P'; must be
                                  refused as not-a-gzip.                       */
-  k_t_method_wrong = 9U,    /**< A compression method that is not DEFLATE;
+  k_t_method_wrong  = 9U,    /**< A compression method that is not DEFLATE;
                                  also the FNAME field width including its NUL. */
-  k_t_hdr_fixed    = 10U,   /**< Fixed header length, hence the offset of the
+  k_t_hdr_fixed     = 10U,   /**< Fixed header length, hence the offset of the
                                  first flag-selected byte.                     */
-  k_t_hdr_fixed_p1 = 11U,   /**< The byte after it: the FEXTRA length high byte. */
-  k_t_byte_mask    = 0xFFU, /**< Low-byte mask while serialising a field, and
+  k_t_hdr_fixed_p1  = 11U,   /**< The byte after it: the FEXTRA length high byte. */
+  k_t_byte_mask     = 0xFFU, /**< Low-byte mask while serialising a field, and
                                  the XOR that corrupts one.                    */
   k_t_trailing_junk = 0xA5U, /**< Byte appended past the member end.          */
 } t_gz_hdr_t;
@@ -277,8 +277,7 @@ static void test_gzip_hostile_headers(void)
   s_member[3] = save;
 
   /* Corrupt FHCRC. */
-  s_member[k_t_hdr_fixed] ^=
-    k_t_byte_mask; /* first FHCRC byte (no optional fields before it) */
+  s_member[k_t_hdr_fixed] ^= k_t_byte_mask; /* first FHCRC byte (no optional fields before it) */
   TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch, tg_unwrap(s_member, len, nullptr, &got));
   s_member[k_t_hdr_fixed] ^= k_t_byte_mask;
 
@@ -303,8 +302,8 @@ static void test_gzip_hostile_headers(void)
                  tg_unwrap(big, 10U + (size_t)k_tg_longname + 1U, nullptr, &got));
 
   /* FEXTRA whose declared length runs past the member. */
-  uint8_t fx[16]           = {k_t_magic_b0, k_t_magic_b1, 8U, 0x04U};
-  fx[k_t_hdr_fixed] = k_t_byte_mask;
+  uint8_t fx[16]       = {k_t_magic_b0, k_t_magic_b1, 8U, 0x04U};
+  fx[k_t_hdr_fixed]    = k_t_byte_mask;
   fx[k_t_hdr_fixed_p1] = 0x00U; /* XLEN=255 with only 4 bytes left */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(fx, sizeof(fx), nullptr, &got));
   TEST_END("gzip: hostile headers rejected");
@@ -326,7 +325,7 @@ static void test_gzip_hostile_body_and_trailer(void)
   size_t len = tg_build(s_payload, k_t_payload_mid, 0U);
 
   /* Corrupt DEFLATE: reserved block type at the stream start. */
-  const uint8_t save             = s_member[10];
+  const uint8_t save      = s_member[10];
   s_member[k_t_hdr_fixed] = 0x06U; /* BTYPE=11 (reserved) */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(s_member, len, nullptr, &got));
   TEST_ASSERT_EQ(0U, got);

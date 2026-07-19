@@ -298,10 +298,7 @@ static void test_bulk_out_wait_timeout(void)
   TEST_BEGIN("ra8_usb_host_bulk_out arms BEMP then times out with no BEMP event");
   prep();
 
-  uint8_t data[k_thb_len_ok] = {0x10U,
-                                0x20U,
-                                k_t_payload_b2,
-                                k_t_payload_b3};
+  uint8_t data[k_thb_len_ok] = {0x10U, 0x20U, k_t_payload_b2, k_t_payload_b3};
 
   /* The sim cannot re-assert BEMPSTS after the engine clears it, so the
    * bounded spin runs to the poll limit and reports a hardware timeout. */

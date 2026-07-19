@@ -106,9 +106,8 @@ static void test_quantize_rejects_bad_args(void)
                  ra8_npu_quantize_u8(nullptr, ou8, (size_t)k_test_q_count, s_q_scale, 0));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_npu_quantize_u8(in, nullptr, (size_t)k_test_q_count, s_q_scale, 0));
-  TEST_ASSERT_EQ(
-    k_ra8_err_invalid_arg,
-    ra8_npu_quantize_u8(in, ou8, (size_t)k_test_q_count, -k_t_scale_negative, 0));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_npu_quantize_u8(in, ou8, (size_t)k_test_q_count, -k_t_scale_negative, 0));
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_npu_dequantize_i8(nullptr, in, (size_t)k_test_q_count, s_q_scale, 0));

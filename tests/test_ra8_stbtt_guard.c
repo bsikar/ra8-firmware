@@ -172,7 +172,6 @@ static const uint8_t s_zero_tables[12] = {
  * @brief Initialise a reflow engine bound to the valid Ahem face.
  *
  * @param[out] engine Engine to initialise; set up with the Ahem default face.
- * @return None.
  * @pre @p engine is non-null.
  * @pre The bundled Ahem face is a well-formed sfnt.
  * @post @p engine is in use with Ahem as its bound face.

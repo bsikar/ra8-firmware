@@ -67,7 +67,7 @@
  * @brief Signature buffer capacity and the fixture body fill.
  */
 typedef enum : uint32_t {
-  k_t_sig_cap   = 132U,        /**< Signature scratch, bytes: past the 64-byte
+  k_t_sig_cap   = 132U,         /**< Signature scratch, bytes: past the 64-byte
                                     Ed25519 signature so the length guard, not
                                     the buffer, is what limits the write.        */
   k_t_body_fill = 0xB5B50000UL, /**< Alternating high half, ORed with the word
@@ -248,7 +248,7 @@ static void test_ecdsa_rejects_ed25519(void)
   ra8_rsip_key_handle_t ecc = make_handle(k_ra8_rsip_oem_cmd_ecc_secp256r1_priv,
                                           (uint32_t)k_ra8_rsip_handle_words_ecc256_priv);
   const uint8_t         digest[k_eddsa_test_msg_bytes] = {};
-  uint8_t               sig[k_t_sig_cap]      = {};
+  uint8_t               sig[k_t_sig_cap]               = {};
 
   /* Vector A: ed25519 -> reject before any opcode write. */
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_ctrl) = (uint32_t)k_eddsa_test_sentinel;

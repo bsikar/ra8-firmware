@@ -25,8 +25,8 @@
  * @brief Buffer capacity and the mask out-parameter seed.
  */
 typedef enum : uint16_t {
-  k_t_buf_cap     = 64U,     /**< Scratch and frame buffers, bytes.           */
-  k_t_mask_unset  = 0xDEADU, /**< Pre-set mask; a veneer that rejects its input
+  k_t_buf_cap    = 64U,     /**< Scratch and frame buffers, bytes.           */
+  k_t_mask_unset = 0xDEADU, /**< Pre-set mask; a veneer that rejects its input
                                   must leave it rather than report a real mask. */
 } t_nsc_t;
 

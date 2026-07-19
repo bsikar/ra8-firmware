@@ -245,14 +245,11 @@ static void seed_rw_cdb(uint32_t lba, uint16_t block_count)
   }
   s_usb_pmsc_state.cbw_cdb[k_test_cdb_lba_msb] =
     (uint8_t)((lba >> k_t_be32_hi_shift) & k_t_byte_mask);
-  s_usb_pmsc_state.cbw_cdb[k_test_cdb_lba_b1] =
-    (uint8_t)((lba >> 16U) & k_t_byte_mask);
-  s_usb_pmsc_state.cbw_cdb[k_test_cdb_lba_b2] = (uint8_t)((lba >> 8U) & k_t_byte_mask);
+  s_usb_pmsc_state.cbw_cdb[k_test_cdb_lba_b1]  = (uint8_t)((lba >> 16U) & k_t_byte_mask);
+  s_usb_pmsc_state.cbw_cdb[k_test_cdb_lba_b2]  = (uint8_t)((lba >> 8U) & k_t_byte_mask);
   s_usb_pmsc_state.cbw_cdb[k_test_cdb_lba_lsb] = (uint8_t)(lba & k_t_byte_mask);
-  s_usb_pmsc_state.cbw_cdb[k_test_cdb_cnt_msb] =
-    (uint8_t)((block_count >> 8U) & k_t_byte_mask);
-  s_usb_pmsc_state.cbw_cdb[k_test_cdb_cnt_lsb] =
-    (uint8_t)(block_count & k_t_byte_mask);
+  s_usb_pmsc_state.cbw_cdb[k_test_cdb_cnt_msb] = (uint8_t)((block_count >> 8U) & k_t_byte_mask);
+  s_usb_pmsc_state.cbw_cdb[k_test_cdb_cnt_lsb] = (uint8_t)(block_count & k_t_byte_mask);
 }
 
 /* =============================================================================

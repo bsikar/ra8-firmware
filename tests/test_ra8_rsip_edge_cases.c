@@ -169,7 +169,7 @@ static void test_aes_non_block_multiple_rejected(void)
   ra8_rsip_key_handle_t h       = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_aes128_install_plain(key, &h));
 
-  const uint8_t pt[15]                       = {};
+  const uint8_t pt[15]                 = {};
   uint8_t       ct[k_t_ct_under_block] = {};
   /* ECB with len = 15 (non-multiple of 16). */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
@@ -397,7 +397,6 @@ static void test_oem_install_variants_and_hw_error(void)
  * @param[in]  iv     16-byte IV.
  * @param[in]  in     Input buffer.
  * @param[out] out    Output buffer.
- * @return None.
  * @pre The RSIP mock is in the running state.
  * @post Every cipher error and happy leg returned its documented code.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -461,7 +460,6 @@ static void aes_err_cipher(ra8_rsip_key_handle_t* aes192,
  * @param[in]  in     Input buffer.
  * @param[out] out    Output buffer.
  * @param[out] tag    16-byte tag buffer.
- * @return None.
  * @pre The RSIP mock is in the running state.
  * @post Every GCM error and happy leg returned its documented code.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -496,7 +494,6 @@ static void aes_err_gcm(ra8_rsip_key_handle_t* aes192,
  * @param[in]  in     Input buffer.
  * @param[out] out    Output buffer.
  * @param[out] tag    16-byte tag buffer.
- * @return None.
  * @pre The RSIP mock is in the running state.
  * @post Every CCM error and happy leg returned its documented code.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -537,7 +534,6 @@ static void aes_err_ccm(ra8_rsip_key_handle_t* aes192,
  * @param[in]  iv     16-byte IV.
  * @param[in]  in     Input buffer.
  * @param[out] out    Output buffer.
- * @return None.
  * @pre The RSIP mock is in the running state.
  * @post The injected mailbox fault propagated and was cleared.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -571,10 +567,10 @@ static void test_aes_public_error_paths(void)
     make_handle(k_ra8_rsip_oem_cmd_aes256, (uint32_t)k_ra8_rsip_handle_words_aes256);
   ra8_rsip_key_handle_t bad =
     make_handle(k_ra8_rsip_oem_cmd_chacha20, (uint32_t)k_ra8_rsip_handle_words_chacha20);
-  const uint8_t iv[16]                        = {};
-  const uint8_t in[17]                        = {};
+  const uint8_t iv[16]                  = {};
+  const uint8_t in[17]                  = {};
   uint8_t       out[k_t_out_over_block] = {};
-  uint8_t       tag[16]                       = {};
+  uint8_t       tag[16]                 = {};
 
   aes_err_cipher(&aes192, &aes256, &bad, iv, in, out);
   aes_err_gcm(&aes192, &bad, iv, in, out, tag);
@@ -619,7 +615,6 @@ static ra8_err_t rc_ccp(ra8_rsip_key_handle_t* h,
  * @param[in]  nonce  12-byte nonce.
  * @param[in]  msg    Input message.
  * @param[out] out    Output buffer.
- * @return None.
  * @pre The RSIP mock is in the running state.
  * @post Each null argument returned k_ra8_err_null_ptr.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -652,7 +647,6 @@ static void chacha_err_stream(ra8_rsip_key_handle_t* chacha,
  * @param[in]  msg    Input message.
  * @param[out] out    Output buffer.
  * @param[out] tag    16-byte tag buffer.
- * @return None.
  * @pre The RSIP mock is in the running state.
  * @post Every AEAD error and happy leg returned its documented code.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -687,7 +681,6 @@ static void chacha_err_aead(ra8_rsip_key_handle_t* chacha,
  * @param[in]  msg Input message.
  * @param[out] out Output digest buffer.
  * @param[out] tag 16-byte tag buffer.
- * @return None.
  * @pre The RSIP mock is in the running state.
  * @post Poly1305 guards and every supported hash produced their codes.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -728,11 +721,11 @@ static void test_chacha_poly_hash_hmac_error_paths(void)
     make_handle(k_ra8_rsip_oem_cmd_chacha20, (uint32_t)k_ra8_rsip_handle_words_chacha20);
   ra8_rsip_key_handle_t aes =
     make_handle(k_ra8_rsip_oem_cmd_aes128, (uint32_t)k_ra8_rsip_handle_words_aes128);
-  const uint8_t nonce[12]                     = {};
-  const uint8_t msg[5]                        = {'h', 'e', 'l', 'l', 'o'};
+  const uint8_t nonce[12]              = {};
+  const uint8_t msg[5]                 = {'h', 'e', 'l', 'l', 'o'};
   uint8_t       out[k_t_out_block_cap] = {};
-  uint8_t       tag[16]                       = {};
-  const uint8_t otk[32]                       = {};
+  uint8_t       tag[16]                = {};
+  const uint8_t otk[32]                = {};
 
   chacha_err_stream(&chacha, nonce, msg, out);
   chacha_err_aead(&chacha, &aes, nonce, msg, out, tag);
@@ -752,7 +745,7 @@ static void test_hmac_public_variants(void)
   TEST_BEGIN("rsip HMAC public variants");
   prep_running();
 
-  const uint8_t         msg[4]                        = {'t', 'e', 's', 't'};
+  const uint8_t         msg[4]                 = {'t', 'e', 's', 't'};
   uint8_t               mac[k_t_out_block_cap] = {};
   ra8_rsip_key_handle_t h224 =
     make_handle(k_ra8_rsip_oem_cmd_hmac_sha224, (uint32_t)k_ra8_rsip_handle_words_hmac_sha224);
@@ -782,7 +775,6 @@ static void test_hmac_public_variants(void)
  * @param[in]  rsa    RSA-2048 private key handle.
  * @param[in]  digest Message digest buffer.
  * @param[out] sig    Signature buffer.
- * @return None.
  * @pre The RSIP mock is in the running state.
  * @post Every RSA null guard and the happy sign returned their codes.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -810,7 +802,6 @@ static void asym_err_rsa(ra8_rsip_key_handle_t* rsa, const uint8_t* digest, uint
  * @param[in]  ecc    ECC secp256r1 private key handle.
  * @param[in]  digest Message digest buffer.
  * @param[out] sig    Signature buffer.
- * @return None.
  * @pre The RSIP mock is in the running state.
  * @post Every ECDSA guard and supported curve returned its documented code.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -847,7 +838,6 @@ static void asym_err_ecdsa(ra8_rsip_key_handle_t* ecc, const uint8_t* digest, ui
  * @param[in]  ecc   ECC secp256r1 private key handle.
  * @param[in]  point Peer point buffer.
  * @param[out] out   Derived shared-secret key handle.
- * @return None.
  * @pre The RSIP mock is in the running state.
  * @post Every ECDH guard and the happy compute returned their codes.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -877,7 +867,6 @@ asym_err_ecdh(ra8_rsip_key_handle_t* ecc, const uint8_t* point, ra8_rsip_key_han
  * @param[in]  iv   16-byte IV.
  * @param[out] blob Wrapped-blob buffer.
  * @param[out] out  Unwrapped key handle sink.
- * @return None.
  * @pre The RSIP mock is in the running state.
  * @post Every wrap/unwrap null argument returned k_ra8_err_null_ptr.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -903,7 +892,6 @@ static void asym_err_keywrap(ra8_rsip_key_handle_t* ikm,
  * @brief Exercise the null guards and the happy path of `ra8_rsip_kdf`.
  * @param[in]  ikm Input-keying-material key handle.
  * @param[out] out Derived key handle sink.
- * @return None.
  * @pre The RSIP mock is in the running state.
  * @post Every KDF null argument and the happy derive returned their codes.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -955,12 +943,12 @@ static void test_asym_and_kdf_error_paths(void)
                                           (uint32_t)k_ra8_rsip_handle_words_ecc256_priv);
   ra8_rsip_key_handle_t ikm =
     make_handle(k_ra8_rsip_oem_cmd_hmac_sha256, (uint32_t)k_ra8_rsip_handle_words_hmac_sha256);
-  const uint8_t         digest[33]                     = {};
-  uint8_t               sig[k_t_sig_over_cap] = {};
-  const uint8_t         point[66]                      = {};
-  uint8_t               blob[k_rsip_edge_blob_bytes]   = {};
-  const uint8_t         iv[16]                         = {};
-  ra8_rsip_key_handle_t out                            = {};
+  const uint8_t         digest[33]                   = {};
+  uint8_t               sig[k_t_sig_over_cap]        = {};
+  const uint8_t         point[66]                    = {};
+  uint8_t               blob[k_rsip_edge_blob_bytes] = {};
+  const uint8_t         iv[16]                       = {};
+  ra8_rsip_key_handle_t out                          = {};
 
   asym_err_rsa(&rsa, digest, sig);
   asym_err_ecdsa(&ecc, digest, sig);

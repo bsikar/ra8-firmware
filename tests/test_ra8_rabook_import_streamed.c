@@ -290,8 +290,8 @@ static const char* const k_ch4 =
 static void build_big_epub(void)
 {
   for (size_t i = 0U; i < (size_t)k_st_filler_bytes; ++i) {
-    s_filler[i] = (uint8_t)((i * k_t_filler_stride) +
-                            (i >> 3U)); /* varied, not trivially compressible */
+    s_filler[i] =
+      (uint8_t)((i * k_t_filler_stride) + (i >> 3U)); /* varied, not trivially compressible */
   }
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
@@ -559,7 +559,6 @@ static void test_streamed_compile_bounded_high_water(void)
  * @brief Exercise the argument-null and cookie-null guards of the adapter.
  * @param[in] ctx   A fully-populated compiler context.
  * @param[in] mount The mounted source/destination volume.
- * @return None.
  * @pre "SRC.EPB" is present on @p mount.
  * @post Every null argument and null cookie returned k_ra8_err_null_ptr.
  * @note Not thread-safe; single-threaded host-test helper.

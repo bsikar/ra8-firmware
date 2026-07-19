@@ -355,10 +355,9 @@ static void test_baud_calculate_115200_at_60mhz(void)
   /* Verify the baud-rate error is < 2 percent. */
   const uint32_t divisor   = 32U * (1U << (2U * (uint32_t)clk_div));
   const uint32_t effective = 60000000U / (divisor * ((uint32_t)brr + 1U));
-  uint32_t       err_x_100 = (effective > k_t_baud_nominal)
-                               ? (effective - k_t_baud_nominal)
-                               : (k_t_baud_nominal - effective);
-  err_x_100 = (err_x_100 * k_t_pct_scale) / k_t_baud_nominal;
+  uint32_t       err_x_100 = (effective > k_t_baud_nominal) ? (effective - k_t_baud_nominal)
+                                                            : (k_t_baud_nominal - effective);
+  err_x_100                = (err_x_100 * k_t_pct_scale) / k_t_baud_nominal;
   TEST_ASSERT(err_x_100 < 2U);
 
   /* Slow baud forces a higher CKS divider. 1200 baud at 60 MHz needs

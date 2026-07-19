@@ -322,8 +322,7 @@ static void test_tz_ns_signed_body_len_header(void)
   TEST_ASSERT_EQ(0U, ra8_tz_ns_signed_body_len(nullptr));
 
   /* V3: wrong magic -> 0 (no RoT header present). */
-  img[k_hdr_word_magic] =
-    (uint32_t)k_ra8_tz_ns_rot_header_magic ^ k_t_magic_invert;
+  img[k_hdr_word_magic] = (uint32_t)k_ra8_tz_ns_rot_header_magic ^ k_t_magic_invert;
   TEST_ASSERT_EQ(0U, ra8_tz_ns_signed_body_len(img));
 
   TEST_END("tz_secure_boot: ra8_tz_ns_signed_body_len reads fixed-offset header");

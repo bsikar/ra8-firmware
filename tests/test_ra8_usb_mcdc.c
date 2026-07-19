@@ -516,7 +516,7 @@ static void test_mcdc_dcp_in_data_len_data(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
   uint8_t big_buf[k_t_oversize_buf] = {};
-  ra8_usb_fs()->CFIFOCTR              = (uint16_t)k_ra8_fifoctr_frdy;
+  ra8_usb_fs()->CFIFOCTR            = (uint16_t)k_ra8_fifoctr_frdy;
 
   /* V1: small valid call -> ok (single chunk). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_dcp_in_data(k_ra8_usb_speed_fs, big_buf, 4U));

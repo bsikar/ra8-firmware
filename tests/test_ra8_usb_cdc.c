@@ -222,7 +222,7 @@ static void test_handle_setup_rejects_standard(void)
 
   ra8_usb_setup_t setup = {
     .bm_request_type = (uint8_t)k_t_bmreq_std_in, /* standard, device, IN */
-    .b_request       = (uint8_t)0x06U,                        /* GET_DESCRIPTOR       */
+    .b_request       = (uint8_t)0x06U,            /* GET_DESCRIPTOR       */
     .w_value         = k_t_wvalue_dev_desc,
     .w_index         = 0U,
     .w_length        = k_t_wlen_dev_desc,

@@ -57,9 +57,9 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_png_shift24    = 24U,  /**< Shift selecting a 32-bit field's top byte. */
-  k_png_byte_mask  = 0xFFU, /**< Low-byte mask.                            */
-  k_png_ihdr_len   = 13U,  /**< IHDR payload length.                       */
+  k_png_shift24   = 24U,   /**< Shift selecting a 32-bit field's top byte. */
+  k_png_byte_mask = 0xFFU, /**< Low-byte mask.                            */
+  k_png_ihdr_len  = 13U,   /**< IHDR payload length.                       */
 } tileatlas_produce_webp_uint8_const_t;
 
 /**
@@ -257,7 +257,6 @@ static ra8_err_t produce_webp(const uint8_t*            src,
  * @brief Store @p v as a PNG big-endian 32-bit field at @p p.
  * @param[out] p Four writable bytes.
  * @param[in]  v Value to store.
- * @return None.
  * @pre @p p points at four writable bytes.
  * @pre @p p is not aliased by @p v's storage.
  * @post @p p holds @p v most-significant byte first.
@@ -280,7 +279,6 @@ static void png_put_be32(uint8_t* p, uint32_t v)
  * @param[in] type Four-character chunk type.
  * @param[in] data Chunk payload, or NULL when @p len is zero.
  * @param[in] len  Payload length in bytes.
- * @return None.
  * @pre ::s_png has room for `len + k_png_chunk_overhead` more bytes.
  * @pre @p type points at four readable characters.
  * @post ::s_png_len advanced by `len + k_png_chunk_overhead`.
@@ -329,9 +327,9 @@ static size_t build_raw_scanlines(void)
 
 static void build_rgba_png(void)
 {
-  static const uint8_t sig[8]           = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
-  static const uint8_t k_type_iend[]    = {'I', 'E', 'N', 'D'};
-  const size_t         raw_len          = build_raw_scanlines();
+  static const uint8_t sig[8]        = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
+  static const uint8_t k_type_iend[] = {'I', 'E', 'N', 'D'};
+  const size_t         raw_len       = build_raw_scanlines();
 
   uint8_t ihdr[k_png_ihdr_len]   = {};
   ihdr[k_png_ihdr_off_width_lo]  = (uint8_t)k_t_dim;
@@ -356,7 +354,6 @@ static void build_rgba_png(void)
  * @param[in] y0   Tile origin row on the canvas.
  * @param[in] w    Decoded tile width, already edge-clamped.
  * @param[in] h    Decoded tile height, already edge-clamped.
- * @return None.
  * @pre ::s_cell holds the decoded tile at (@p x0, @p y0).
  * @pre `w * h * info->bpp` is within ::s_cell's capacity.
  * @post Every channel of every decoded pixel compared equal to the oracle.

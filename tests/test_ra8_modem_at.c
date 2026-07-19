@@ -33,8 +33,8 @@
  * fire deterministically rather than by wall-clock luck.
  */
 typedef enum : uint16_t {
-  k_t_step_ms         = 50U,   /**< Mock clock advance per transport poll.   */
-  k_t_timeout_short_ms = 100U, /**< Timeout the expiry arm uses.             */
+  k_t_step_ms          = 50U,   /**< Mock clock advance per transport poll.   */
+  k_t_timeout_short_ms = 100U,  /**< Timeout the expiry arm uses.             */
   k_t_timeout_long_ms  = 1000U, /**< Timeout the happy-path arms use.        */
 } t_at_time_t;
 

@@ -130,7 +130,7 @@ static void test_inject_rsa2048(void)
   prep();
 
   uint8_t modulus[k_t_modulus_cap] = {};
-  uint8_t exponent[4]                           = {0x00U, 0x01U, 0x00U, 0x01U};
+  uint8_t exponent[4]              = {0x00U, 0x01U, 0x00U, 0x01U};
   (void)memset(modulus, (int)k_test_pattern_h, sizeof(modulus));
   uint8_t blob[k_ra8_rsip_wrapped_max_total];
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_key_inject_rsa(blob, modulus, exponent, k_ra8_rsip_rsa_2048));
@@ -226,7 +226,7 @@ static void test_null_args(void)
                  ra8_rsip_key_inject_aes(blob, nullptr, k_ra8_rsip_aes_key_bits_128));
 
   uint8_t mod[k_t_modulus_cap] = {};
-  uint8_t exp[4]                            = {};
+  uint8_t exp[4]               = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_rsip_key_inject_rsa(nullptr, mod, exp, k_ra8_rsip_rsa_2048));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,

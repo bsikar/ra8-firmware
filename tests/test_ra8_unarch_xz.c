@@ -157,8 +157,7 @@ static void test_xz_pool_edges(void)
   TEST_ASSERT_NOT_NULL(a);
   TEST_ASSERT_EQ(0U, ((uintptr_t)a % 8U));
   TEST_ASSERT_EQ(8U, ra8_unarch_xz_pool_used());
-  void* b = ra8_unarch_xz_pool_alloc(
-    k_t_alloc_exact); /* exactly exhausts the arena */
+  void* b = ra8_unarch_xz_pool_alloc(k_t_alloc_exact); /* exactly exhausts the arena */
   TEST_ASSERT_NOT_NULL(b);
   TEST_ASSERT_EQ(64U, ra8_unarch_xz_pool_used());
   TEST_ASSERT_NULL(ra8_unarch_xz_pool_alloc(1U));         /* exhausted           */
