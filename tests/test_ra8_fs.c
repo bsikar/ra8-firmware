@@ -218,16 +218,19 @@ static fat_geom_t build_volume_geometry(ra8_fs_type_t target)
 }
 
 /**
- * @brief Synthesise a FAT volume of the requested type.
+ * @brief Allocate the RAM disk image sized for @p target.
  *
- * @param[in] target Which FAT type the BPB cluster-count rule should produce.
+ * @param[in] target FAT flavour the image must be able to hold.
+ *
+ * @pre `s_disk.bytes` is NULL (the caller freed any previous image).
+ * @pre @p target is one of the three supported FAT types.
+ * @post `s_disk.bytes` is a zeroed buffer of `s_disk.byte_count` bytes.
+ * @post The test aborts rather than continuing with a NULL image.
+ *
+ * @note Not thread-safe; the fixture is file-scope state.
  */
-static void build_volume(ra8_fs_type_t target)
+static void alloc_disk_for(ra8_fs_type_t target)
 {
-  if (s_disk.bytes != nullptr) {
-    free(s_disk.bytes);
-    s_disk.bytes = nullptr;
-  }
   uint32_t need_blocks = k_disk_blocks_fat16;
   if (target == k_ra8_fs_type_fat12) {
     need_blocks = k_disk_blocks_fat12;
@@ -240,40 +243,97 @@ static void build_volume(ra8_fs_type_t target)
   if (s_disk.bytes == nullptr) {
     TEST_FAIL_FMT("%s", "calloc failed");
   }
+}
+
+/**
+ * @brief Write the BIOS Parameter Block for @p g into block 0.
+ *
+ * @details
+ * FAT32 moves the sector and FAT-size counts into their 32-bit fields and adds
+ * the root cluster number, so the two layouts are written separately.
+ *
+ * @param[in] g      Geometry to describe.
+ * @param[in] target FAT flavour, selecting the 16- or 32-bit field layout.
+ *
+ * @pre `s_disk.bytes` holds at least one block.
+ * @pre @p g is non-NULL and fully populated.
+ * @post Block 0 carries a BPB the mounter accepts.
+ * @post The 0x55 0xAA boot signature terminates the block.
+ *
+ * @note Not thread-safe; the fixture is file-scope state.
+ */
+static void write_bpb(const fat_geom_t* g, ra8_fs_type_t target)
+{
+  uint8_t* bpb = &s_disk.bytes[0];
+  put16(bpb, k_fs_put16_11, (uint16_t)k_disk_block_size);
+  bpb[k_fs_val_13] = (uint8_t)g->spc;
+  put16(bpb, k_fs_put16_14, (uint16_t)g->rsvd);
+  bpb[16] = (uint8_t)g->fats;
+  put16(bpb, k_fs_put16_17, (uint16_t)g->root_ents);
+  if (target == k_ra8_fs_type_fat32) {
+    put16(bpb, k_fs_put16_19, 0);
+    put32(bpb, 32, g->total);
+    put16(bpb, k_fs_put16_22, 0);
+    put32(bpb, k_fs_put32_36, g->fat_sz);
+    put32(bpb, k_fs_put32_44, g->root_clus);
+  } else {
+    put16(bpb, k_fs_put16_19, (uint16_t)g->total);
+    put16(bpb, k_fs_put16_22, (uint16_t)g->fat_sz);
+  }
+  bpb[k_fs_val_510] = k_fs_bpb_55;
+  bpb[k_fs_val_511] = k_fs_bpb_aa;
+}
+
+/**
+ * @brief Mark the FAT32 root cluster end-of-chain in every FAT copy.
+ *
+ * @details
+ * A no-op for FAT12/16, whose root directory is a fixed region rather than a
+ * cluster chain.
+ *
+ * @param[in] g      Geometry giving the FAT count, size and start.
+ * @param[in] target FAT flavour; only FAT32 is acted on.
+ *
+ * @pre `s_disk.bytes` covers every FAT copy @p g describes.
+ * @pre @p g is non-NULL and fully populated.
+ * @post Clusters 0, 1 and 2 read as end-of-chain in each FAT copy.
+ * @post Non-FAT32 images are left untouched.
+ *
+ * @note Not thread-safe; the fixture is file-scope state.
+ */
+static void write_fat32_root_eoc(const fat_geom_t* g, ra8_fs_type_t target)
+{
+  if (target != k_ra8_fs_type_fat32) {
+    return;
+  }
+  for (uint32_t i = 0; i < g->fats; i++) {
+    uint32_t fat_lba = g->rsvd + (i * g->fat_sz);
+    uint8_t* fat     = &s_disk.bytes[(size_t)fat_lba * k_disk_block_size];
+    /* Cluster 0 + 1 are reserved; cluster 2 = root = EOC. */
+    put32(fat, 0, k_fs_put32_0fffffff);
+    put32(fat, 4, k_fs_put32_0fffffff);
+    put32(fat, 8, k_fs_put32_0fffffff);
+  }
+}
+
+/**
+ * @brief Synthesise a FAT volume of the requested type.
+ *
+ * @param[in] target Which FAT type the BPB cluster-count rule should produce.
+ */
+static void build_volume(ra8_fs_type_t target)
+{
+  if (s_disk.bytes != nullptr) {
+    free(s_disk.bytes);
+    s_disk.bytes = nullptr;
+  }
+  alloc_disk_for(target);
 
   const fat_geom_t g = build_volume_geometry(target);
   s_disk.block_count = g.total;
 
-  uint8_t* bpb = &s_disk.bytes[0];
-  put16(bpb, k_fs_put16_11, (uint16_t)k_disk_block_size);
-  bpb[k_fs_val_13] = (uint8_t)g.spc;
-  put16(bpb, k_fs_put16_14, (uint16_t)g.rsvd);
-  bpb[16] = (uint8_t)g.fats;
-  put16(bpb, k_fs_put16_17, (uint16_t)g.root_ents);
-  if (target == k_ra8_fs_type_fat32) {
-    put16(bpb, k_fs_put16_19, 0);
-    put32(bpb, 32, g.total);
-    put16(bpb, k_fs_put16_22, 0);
-    put32(bpb, k_fs_put32_36, g.fat_sz);
-    put32(bpb, k_fs_put32_44, g.root_clus);
-  } else {
-    put16(bpb, k_fs_put16_19, (uint16_t)g.total);
-    put16(bpb, k_fs_put16_22, (uint16_t)g.fat_sz);
-  }
-  bpb[k_fs_val_510] = k_fs_bpb_55;
-  bpb[k_fs_val_511] = k_fs_bpb_aa;
-
-  /* For FAT32, mark the root cluster as end-of-chain in every FAT copy. */
-  if (target == k_ra8_fs_type_fat32) {
-    for (uint32_t i = 0; i < g.fats; i++) {
-      uint32_t fat_lba = g.rsvd + (i * g.fat_sz);
-      uint8_t* fat     = &s_disk.bytes[(size_t)fat_lba * k_disk_block_size];
-      /* Cluster 0 + 1 are reserved; cluster 2 = root = EOC. */
-      put32(fat, 0, k_fs_put32_0fffffff);
-      put32(fat, 4, k_fs_put32_0fffffff);
-      put32(fat, 8, k_fs_put32_0fffffff);
-    }
-  }
+  write_bpb(&g, target);
+  write_fat32_root_eoc(&g, target);
   /* For FAT12/16 reserved entries 0/1 normally hold media descriptors but
      the dispatcher does not require those. */
 }

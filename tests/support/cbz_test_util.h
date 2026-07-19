@@ -154,6 +154,81 @@ ccx_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* 
 }
 
 /**
+ * @brief Write the RCBZ container header; return the offset just past it.
+ *
+ * @param[out] out   Container buffer.
+ * @param[in]  count Page count to record.
+ * @param[in]  flags Container flags word to record.
+ *
+ * @return Byte offset of the first field after the header.
+ *
+ * @pre @p out has room for the fixed header.
+ * @pre @p count matches the number of pages that follow.
+ * @post The magic, count, flags and reserved words are written in order.
+ * @post The reserved word is zero, as the reader expects.
+ *
+ * @note Not thread-safe with respect to @p out.
+ */
+static inline size_t ccx_write_header(uint8_t* out, uint32_t count, uint32_t flags)
+{
+  size_t pos = 0U;
+  memcpy(&out[pos], "RCBZ", (size_t)k_ra8_cbz_magic_len);
+  pos += (size_t)k_ra8_cbz_magic_len;
+  memcpy(&out[pos], &count, sizeof(count));
+  pos += sizeof(count);
+  memcpy(&out[pos], &flags, sizeof(flags));
+  pos += sizeof(flags);
+  const uint32_t reserved = 0U;
+  memcpy(&out[pos], &reserved, sizeof(reserved));
+  pos += sizeof(reserved);
+  return pos;
+}
+
+/**
+ * @brief Write the per-page metadata table; return the offset just past it.
+ *
+ * @details
+ * @p raw_delta is added to the LAST page's recorded raw size only, which is how
+ * the caller fabricates a container whose declared size disagrees with its
+ * actual stream -- the corruption these tests exercise.
+ *
+ * @param[out] out       Container buffer.
+ * @param[in]  pos       Offset to start writing at.
+ * @param[in]  count     Page count.
+ * @param[in]  raw_delta Skew applied to the last page's raw size.
+ *
+ * @return Byte offset just past the metadata table.
+ *
+ * @pre @p out has room for `count * k_ra8_cbz_meta_len` bytes at @p pos.
+ * @pre `s_pages` holds @p count populated entries.
+ * @post Exactly @p count fixed-size records are written.
+ * @post The format field's three pad bytes are zeroed.
+ *
+ * @note Not thread-safe; reads the file-scope `s_pages`.
+ */
+static inline size_t ccx_write_page_meta(uint8_t* out,
+                                         size_t   pos,
+                                         uint32_t count,
+                                         uint32_t raw_delta)
+{
+  for (uint32_t i = 0U; i < count; ++i) {
+    uint32_t raw_size = s_pages[i].raw_size;
+    if (i == (count - 1U)) {
+      raw_size += raw_delta;
+    }
+    memcpy(&out[pos + k_ra8_cbz_meta_off_raw], &raw_size, sizeof(raw_size));
+    memcpy(&out[pos + k_ra8_cbz_meta_off_width], &s_pages[i].width, sizeof(s_pages[i].width));
+    memcpy(&out[pos + k_ra8_cbz_meta_off_height], &s_pages[i].height, sizeof(s_pages[i].height));
+    out[pos + k_ra8_cbz_meta_off_format]      = s_pages[i].format;
+    out[pos + k_ra8_cbz_meta_off_format + 1U] = 0U;
+    out[pos + k_ra8_cbz_meta_off_format + 2U] = 0U;
+    out[pos + k_ra8_cbz_meta_off_format + 3U] = 0U;
+    pos += (size_t)k_ra8_cbz_meta_len;
+  }
+  return pos;
+}
+
+/**
  * @brief Pack an RCBZ container over ::s_pages with real zlib page streams.
  * @details Compresses each page raster with `mz_compress2`, then assembles the
  *          header + offset table + metadata table + streams into @p out.
@@ -184,34 +259,10 @@ static inline uint64_t ccx_pack(uint8_t* out, uint32_t flags, uint32_t raw_delta
     offs[i + 1U] = offs[i] + (uint64_t)slen[i];
   }
 
-  size_t pos = 0U;
-  memcpy(&out[pos], "RCBZ", (size_t)k_ra8_cbz_magic_len);
-  pos += (size_t)k_ra8_cbz_magic_len;
-  memcpy(&out[pos], &count, sizeof(count));
-  pos += sizeof(count);
-  memcpy(&out[pos], &flags, sizeof(flags));
-  pos += sizeof(flags);
-  const uint32_t reserved = 0U;
-  memcpy(&out[pos], &reserved, sizeof(reserved));
-  pos += sizeof(reserved);
-
+  size_t pos = ccx_write_header(out, count, flags);
   memcpy(&out[pos], offs, sizeof(offs));
   pos += sizeof(offs);
-
-  for (uint32_t i = 0U; i < count; ++i) {
-    uint32_t raw_size = s_pages[i].raw_size;
-    if (i == (count - 1U)) {
-      raw_size += raw_delta;
-    }
-    memcpy(&out[pos + k_ra8_cbz_meta_off_raw], &raw_size, sizeof(raw_size));
-    memcpy(&out[pos + k_ra8_cbz_meta_off_width], &s_pages[i].width, sizeof(s_pages[i].width));
-    memcpy(&out[pos + k_ra8_cbz_meta_off_height], &s_pages[i].height, sizeof(s_pages[i].height));
-    out[pos + k_ra8_cbz_meta_off_format]      = s_pages[i].format;
-    out[pos + k_ra8_cbz_meta_off_format + 1U] = 0U;
-    out[pos + k_ra8_cbz_meta_off_format + 2U] = 0U;
-    out[pos + k_ra8_cbz_meta_off_format + 3U] = 0U;
-    pos += (size_t)k_ra8_cbz_meta_len;
-  }
+  pos = ccx_write_page_meta(out, pos, count, raw_delta);
 
   for (uint32_t i = 0U; i < count; ++i) {
     memcpy(&out[pos], streams[i], (size_t)slen[i]);
