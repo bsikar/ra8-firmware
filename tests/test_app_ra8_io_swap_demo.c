@@ -269,6 +269,106 @@ static ra8_err_t swap_read_payload(const char* file, uint32_t len, uint32_t* got
   return k_ra8_ok;
 }
 
+/**
+ * @brief Write the pattern to @p file, read it back, and report whether it survived.
+ *
+ * @details
+ * The write and the read-back are only meaningful as a pair, so they travel
+ * together here. The comparison runs through ::swap_verdict, the same predicate
+ * the app uses, so a backend that returns short or corrupt data is judged by
+ * exactly the criteria the demo applies -- the round-trip result is reported
+ * through @p match rather than as an error code, because a content mismatch is
+ * a test verdict and not an I/O failure.
+ *
+ * @param[in]  file  VFS path to write and then read.
+ * @param[in]  len   Payload length in bytes; must not exceed the file-scope buffers.
+ * @param[out] match Receives true when the read-back matched the written pattern.
+ *
+ * @return k_ra8_ok when both transfers completed, else the first I/O error.
+ * @retval k_ra8_ok Both transfers completed and @p match holds the verdict.
+ *
+ * @pre A volume is mounted that covers @p file and @p match is non-NULL.
+ * @pre @p len does not exceed the payload or compare buffer.
+ * @post On success @p match reflects the byte-for-byte comparison.
+ * @post On failure @p match is untouched and the error is the transfer's own.
+ *
+ * @note Not thread-safe; the payload buffers are file-scope state.
+ *
+ * @see swap_verdict()  The comparison predicate this reports through.
+ */
+static ra8_err_t swap_roundtrip_file(const char* file, uint32_t len, bool* match)
+{
+  RA8_RETURN_ON_ERROR(swap_write_payload(file, len), s_swap_test_tag, "write phase");
+  uint32_t got = 0U;
+  RA8_RETURN_ON_ERROR(swap_read_payload(file, len, &got), s_swap_test_tag, "read phase");
+  const bool equal = (memcmp(s_pay, s_rb, (size_t)len) == 0);
+  *match           = !swap_verdict(got, len, equal);
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Release a volume from both layers that hold it, VFS first.
+ *
+ * @details
+ * A volume is registered twice -- once with the VFS under @p name and once with
+ * the filesystem as @p mnt -- so releasing it means undoing both, and the VFS
+ * mapping must go first because it refers to the filesystem mount. Unwinding in
+ * the other order would leave the VFS pointing at a released mount.
+ *
+ * @param[in] name VFS mount name the volume was registered under.
+ * @param[in] mnt  Filesystem mount handle returned by ::swap_prepare_volume.
+ *
+ * @return k_ra8_ok when both layers released, else the first unmount error.
+ * @retval k_ra8_ok The volume is no longer reachable from either layer.
+ *
+ * @pre @p name names a currently-mounted VFS entry.
+ * @pre @p mnt is the live filesystem mount behind that entry.
+ * @post On success neither layer still refers to the volume.
+ * @post On failure the VFS release may already have happened.
+ *
+ * @note Not thread-safe; mutates process-wide mount tables.
+ *
+ * @see swap_prepare_volume()  The acquisition this reverses.
+ */
+static ra8_err_t swap_release_volume(const char* name, ra8_fs_mount_t* mnt)
+{
+  RA8_RETURN_ON_ERROR(ra8_io_vfs_unmount(name), s_swap_test_tag, "vfs unmount");
+  RA8_RETURN_ON_ERROR(ra8_fs_unmount(mnt), s_swap_test_tag, "unmount");
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Drive one block-device backend through the whole swap exercise.
+ *
+ * @details
+ * Backend-agnostic by construction: every backend reaches this through the same
+ * ::ra8_io_blockdev_t vtable, so the demo proves substitutability by running
+ * the identical mount / round-trip / release sequence against each one. A
+ * content mismatch is reported as ::k_ra8_err_checksum_mismatch and skips the
+ * release, leaving the volume mounted for inspection.
+ *
+ * @param[in]     bd    Block device to mount; must be initialised.
+ * @param[in]     name  Short VFS mount name, e.g. "ram".
+ * @param[in]     label Volume label to format with.
+ * @param[in]     file  VFS path to exercise, under @p name.
+ * @param[in]     len   Payload length in bytes.
+ * @param[in,out] log   Stream that receives the per-backend progress line.
+ *
+ * @return k_ra8_ok when the backend completed the exercise.
+ * @retval k_ra8_ok                     Round-trip matched and the volume released.
+ * @retval k_ra8_err_checksum_mismatch  Read-back differed from what was written.
+ * @retval other                        Propagated from mount, transfer, or release.
+ *
+ * @pre @p bd, @p name, @p label, @p file, and @p log are non-NULL.
+ * @pre @p len does not exceed the file-scope payload buffers.
+ * @post On success the volume is released from both the VFS and the filesystem.
+ * @post @p log carries one line naming the backend and its outcome.
+ *
+ * @note Not thread-safe; the payload buffers are file-scope state.
+ *
+ * @see swap_roundtrip_file()  The write/read/compare phase.
+ * @see swap_release_volume()  The teardown phase.
+ */
 static ra8_err_t run_backend(ra8_io_blockdev_t* bd,
                              const char*        name,
                              const char*        label,
@@ -282,16 +382,12 @@ static ra8_err_t run_backend(ra8_io_blockdev_t* bd,
   (void)ra8_io_stream_puts(log, name);
   (void)ra8_io_stream_puts(log, "] ");
 
-  RA8_RETURN_ON_ERROR(swap_write_payload(file, len), s_swap_test_tag, "write phase");
-  uint32_t got = 0U;
-  RA8_RETURN_ON_ERROR(swap_read_payload(file, len, &got), s_swap_test_tag, "read phase");
-
-  const bool equal = (memcmp(s_pay, s_rb, (size_t)len) == 0);
-  if (swap_verdict(got, len, equal)) {
+  bool match = false;
+  RA8_RETURN_ON_ERROR(swap_roundtrip_file(file, len, &match), s_swap_test_tag, "roundtrip");
+  if (!match) {
     return k_ra8_err_checksum_mismatch;
   }
-  RA8_RETURN_ON_ERROR(ra8_io_vfs_unmount(name), s_swap_test_tag, "vfs unmount");
-  RA8_RETURN_ON_ERROR(ra8_fs_unmount(mnt), s_swap_test_tag, "unmount");
+  RA8_RETURN_ON_ERROR(swap_release_volume(name, mnt), s_swap_test_tag, "release");
   (void)ra8_io_stream_puts(log, "ok\r\n");
   return k_ra8_ok;
 }

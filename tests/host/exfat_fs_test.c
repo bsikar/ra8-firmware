@@ -89,6 +89,31 @@ typedef enum : uint16_t {
   k_exfat_fs_test_val_512  = 512,
 } exfat_fs_test_uint16_const_t;
 
+/**
+ * @enum exfat_fs_test_exit_t
+ * @brief Process exit codes this harness reports to the runner.
+ *
+ * @details
+ * The runner distinguishes "the fixture could not be loaded" from "the
+ * filesystem under test misbehaved", because the first is an environment
+ * problem and the second is a genuine test failure. Keeping them on separate
+ * codes means a missing image never reads as an exFAT defect.
+ *
+ * @invariant ::k_exfat_fs_test_exit_pass is zero so the shell reads it as success.
+ *
+ * @par Example:
+ * @code
+ * return k_exfat_fs_test_exit_fixture;  // could not read the disk image
+ * @endcode
+ *
+ * @see main()
+ */
+typedef enum : uint8_t {
+  k_exfat_fs_test_exit_pass    = 0, /**< Every check passed. */
+  k_exfat_fs_test_exit_failed  = 1, /**< At least one check failed. */
+  k_exfat_fs_test_exit_fixture = 2, /**< Fixture image could not be loaded. */
+} exfat_fs_test_exit_t;
+
 #ifndef RA8_EXFAT_FIXTURE
 /** @brief RA8 EXFAT FIXTURE. */
 #define RA8_EXFAT_FIXTURE "exfat_small.img"
@@ -305,38 +330,72 @@ static void check_lookup_mismatch_branches(ra8_fs_mount_t* mnt)
         "wrong-length name -> not_found (length-prefilter branch)");
 }
 
-int main(int argc, char** argv)
+/**
+ * @brief Slurp the exFAT fixture image at @p path into the RAM-backed disk.
+ *
+ * @details
+ * Sizes the file by seeking to its end, allocates the whole image, and reads it
+ * in one go, then derives the block count the backend reports. Every failure
+ * path names what went wrong on stdout and closes the handle, so the caller
+ * only has to distinguish loaded from not-loaded. The image is deliberately
+ * read whole rather than paged: the tests seek all over it, and a fixture small
+ * enough to commit is small enough to hold.
+ *
+ * @param[in] path Filesystem path to the fixture image; must be non-NULL.
+ *
+ * @return Whether the image is now resident and addressable.
+ * @retval true  `g_img` holds the image and `g_blocks` its 512-byte block count.
+ * @retval false The image could not be read; the reason was printed.
+ *
+ * @pre @p path names a readable regular file.
+ * @pre `g_img` is unset -- this runs once, before any mount.
+ * @post On success `g_img` and `g_blocks` describe the whole image.
+ * @post On failure no file handle leaks, whichever step failed.
+ *
+ * @note Not thread-safe; publishes to file-scope state.
+ *
+ * @see be_read()  The backend that serves blocks out of `g_img`.
+ */
+static bool load_fixture_image(const char* path)
 {
-  const char* path = (argc > 1) ? argv[1] : RA8_EXFAT_FIXTURE;
-  FILE*       f    = fopen(path, "rb");
+  FILE* f = fopen(path, "rb");
   if (f == nullptr) {
     printf("FAIL: cannot open fixture %s\n", path);
-    return 2;
+    return false;
   }
   if (fseek(f, 0, SEEK_END) != 0) {
     printf("FAIL: cannot seek fixture %s\n", path);
     (void)fclose(f);
-    return 2;
+    return false;
   }
   const long sz = ftell(f);
   if (sz < 0 || fseek(f, 0, SEEK_SET) != 0) {
     printf("FAIL: cannot size fixture %s\n", path);
     (void)fclose(f);
-    return 2;
+    return false;
   }
   g_img = malloc((size_t)sz);
   if (g_img == nullptr) {
     printf("FAIL: out of memory for fixture\n");
     (void)fclose(f);
-    return 2;
+    return false;
   }
   const size_t rd = fread(g_img, 1U, (size_t)sz, f);
   (void)fclose(f);
   if (rd != (size_t)sz) {
     printf("FAIL: short read of fixture\n");
-    return 2;
+    return false;
   }
   g_blocks = (uint32_t)((size_t)sz / k_exfat_fs_test_bs_512);
+  return true;
+}
+
+int main(int argc, char** argv)
+{
+  const char* path = (argc > 1) ? argv[1] : RA8_EXFAT_FIXTURE;
+  if (!load_fixture_image(path)) {
+    return (int)k_exfat_fs_test_exit_fixture;
+  }
 
   ra8_fs_backend_t be  = {.read_block   = be_read,
                           .write_block  = be_write,
@@ -348,7 +407,7 @@ int main(int argc, char** argv)
   check(e == k_ra8_ok, "mount succeeds");
   check((mnt != nullptr) && (mnt->type == k_ra8_fs_type_exfat), "volume detected as exFAT");
   if ((e != k_ra8_ok) || (mnt == nullptr)) {
-    return 1;
+    return (int)k_exfat_fs_test_exit_failed;
   }
 
   check(ra8_fs_listdir(mnt, "/", on_entry, nullptr) == k_ra8_ok, "listdir root succeeds");
