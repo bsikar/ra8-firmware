@@ -237,6 +237,60 @@ ra8_tileatlas_work_bytes(uint16_t max_width, uint16_t max_height, uint16_t tile_
 ra8_tileatlas_webp_work_bytes(uint16_t max_width, uint16_t max_height, uint32_t max_src_bytes);
 
 /**
+ * @brief Read a source image's pixel dimensions without decoding its body.
+ *
+ * @details
+ * Sniffs the same three magics `ra8_tileatlas_produce()` dispatches on (JPEG
+ * SOI, PNG signature, WebP RIFF+WEBP) and returns the declared geometry from
+ * the matching header: the JPEG SOF, the PNG IHDR, or the WebP VP8/VP8L header
+ * via ::ra8_webp_get_info. Callers need this *before* producing, because the
+ * work-arena sizes and the tile width are all functions of the geometry --
+ * ::ra8_tileatlas_work_bytes and ::ra8_tileatlas_webp_work_bytes both take it
+ * as input.
+ *
+ * The probe shares the producer's magic constants and accepts exactly the set
+ * the producer accepts, so "probe succeeded" and "produce will dispatch" cannot
+ * drift apart. A non-WebP RIFF (WAVE, AVI) is rejected rather than handed to
+ * the WebP reader.
+ *
+ * @param[in]  data  Encoded source bytes (non-NULL).
+ * @param[in]  len   Readable byte count at @p data.
+ * @param[out] out_w Receives the source width in pixels.
+ * @param[out] out_h Receives the source height in pixels.
+ *
+ * @return Result code.
+ * @retval k_ra8_ok                Dimensions read; both outputs written.
+ * @retval k_ra8_err_null_ptr      @p data, @p out_w or @p out_h is NULL.
+ * @retval k_ra8_err_not_supported Too short to sniff, header truncated, or the
+ *                                 magic is not JPEG / PNG / WebP.
+ * @retval k_ra8_err_invalid_size  A dimension is zero or exceeds
+ *                                 ::k_ra8_tileatlas_max_dim.
+ * @retval other                   Propagated from the per-format reader.
+ *
+ * @pre @p data holds @p len readable bytes.
+ * @pre @p out_w and @p out_h point at writable storage.
+ * @post On k_ra8_ok both `*out_w` and `*out_h` are in `[1, k_ra8_tileatlas_max_dim]`.
+ * @post On any error neither output is relied upon and no state is mutated.
+ *
+ * @note Thread-safe (pure; reads only the caller's buffer).
+ *
+ * @par Example:
+ * @code
+ * uint16_t w = 0U, h = 0U;
+ * if (ra8_tileatlas_probe_dims(src, src_len, &w, &h) == k_ra8_ok) {
+ *   const uint32_t work = ra8_tileatlas_work_bytes(w, h, w, tile_h);
+ * }
+ * @endcode
+ *
+ * @see ra8_tileatlas_produce()
+ * @see ra8_tileatlas_work_bytes()
+ * @see ra8_tileatlas_webp_work_bytes()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_tileatlas_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, uint16_t* out_h);
+
+/**
  * @brief Transcode one encoded JPEG/PNG/WebP source into a JOF atlas (#231,
  *        #290).
  *

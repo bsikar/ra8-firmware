@@ -658,6 +658,56 @@ typedef enum : uint16_t {
   k_jof_band_h = 256, /**< Tile-band height in pixels. */
 } mdl_jof_geom_t;
 
+/**
+ * @enum mdl_jof_webp_t
+ * @brief WebP container-head offsets for the whole-frame-arena decision.
+ * @details The exporter must know whether a page is WebP *before* producing, to
+ *          decide whether to carve the whole-frame arena the WebP arm needs.
+ * @see jof_is_webp()
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_jof_webp_riff_ofs   = 0U,  /**< Offset of the "RIFF" fourCC.         */
+  k_jof_webp_fourcc_ofs = 8U,  /**< Offset of the "WEBP" fourCC.         */
+  k_jof_webp_head_len   = 12U, /**< Bytes needed to sniff both fourCCs.  */
+  k_jof_webp_tag_len    = 4U,  /**< Length of one fourCC tag.            */
+} mdl_jof_webp_t;
+
+/** @brief WebP RIFF container tag (page head bytes 0..3). */
+static const uint8_t s_jof_webp_riff[k_jof_webp_tag_len] =
+  {'R', 'I', 'F', 'F'}; /* MAGIC-OK: the RIFF container fourCC */
+
+/** @brief WebP form-type fourCC (page head bytes 8..11). */
+static const uint8_t s_jof_webp_webp[k_jof_webp_tag_len] =
+  {'W', 'E', 'B', 'P'}; /* MAGIC-OK: the WEBP form-type fourCC */
+
+/**
+ * @brief Test whether a page's bytes carry the WebP RIFF container head.
+ * @details Mirrors the producer's own dispatch sniff: both fourCCs must match,
+ *          so a non-WebP RIFF (WAVE, AVI) is not mistaken for a WebP page and
+ *          charged the whole-frame arena.
+ * @param[in] data Page bytes (non-NULL).
+ * @param[in] len  Readable byte count at @p data.
+ * @return Whether @p data begins with a WebP container head.
+ * @retval true  Both the "RIFF" and "WEBP" fourCCs are present.
+ * @retval false Too short, or either fourCC differs.
+ * @pre @p data holds @p len readable bytes.
+ * @pre The page has been slurped whole (the sniff reads the head only).
+ * @post No state is mutated.
+ * @post A false result means the streaming JPEG / PNG arms handle the page.
+ * @note Pure; thread-safe.
+ * @see jof_one()
+ * @since 0.1.0
+ */
+RA8_INTERNAL static bool jof_is_webp(const uint8_t* data, size_t len)
+{
+  if ((data == nullptr) || (len < (size_t)k_jof_webp_head_len)) {
+    return false;
+  }
+  return (memcmp(&data[k_jof_webp_riff_ofs], s_jof_webp_riff, sizeof(s_jof_webp_riff)) == 0) &&
+         (memcmp(&data[k_jof_webp_fourcc_ofs], s_jof_webp_webp, sizeof(s_jof_webp_webp)) == 0);
+}
+
 /** @brief Pull cursor over an in-RAM encoded image. */
 typedef struct {
   const uint8_t* data; /**< Encoded bytes. */
@@ -718,7 +768,7 @@ RA8_INTERNAL static ra8_err_t slurp(const char* path, uint8_t** out_buf, size_t*
   return k_ra8_ok;
 }
 
-/** @brief Transcode one baseline-JPEG page to a `.jof` full-width-column atlas. */
+/** @brief Transcode one JPEG / PNG / WebP page to a `.jof` full-width-column atlas. */
 RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
 {
   uint8_t*  src  = nullptr;
@@ -729,7 +779,9 @@ RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
   }
   uint16_t w = 0U;
   uint16_t h = 0U;
-  if (ra8_jpeg_sw_get_dimensions(src, (uint32_t)slen, &w, &h) != k_ra8_ok) {
+  /* Probe through the producer's own dispatch, so every format the producer can
+   * decode (JPEG, PNG, WebP) is a format this exporter can size and write. */
+  if (ra8_tileatlas_probe_dims(src, slen, &w, &h) != k_ra8_ok) {
     free(src);
     return k_ra8_err_not_supported;
   }
@@ -741,6 +793,23 @@ RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
     free(work);
     free(src);
     return (work_cap == 0U) ? k_ra8_err_invalid_size : k_ra8_fail;
+  }
+  /* WebP cannot stream, so its arm needs a whole-frame arena (source + RGBA
+   * frame + libwebp scratch). Carve it only when the page really is WebP:
+   * JPEG and PNG stream and would pay the whole-frame cost for nothing. */
+  uint8_t* webp_work     = nullptr;
+  size_t   webp_work_cap = 0U;
+  if (jof_is_webp(src, slen)) {
+    const uint32_t need = ra8_tileatlas_webp_work_bytes(w, h, (uint32_t)slen);
+    webp_work           = (need > 0U) ? (uint8_t*)malloc((size_t)need) : nullptr;
+    if (webp_work == nullptr) {
+      (void)fclose(out);
+      (void)remove(out_path);
+      free(work);
+      free(src);
+      return (need == 0U) ? k_ra8_err_invalid_size : k_ra8_err_no_mem;
+    }
+    webp_work_cap = (size_t)need;
   }
   jof_pull_ctx_t              pull = {.data = src, .len = slen, .pos = 0U};
   ra8_tileatlas_produce_cfg_t cfg  = {.pull          = jof_pull,
@@ -754,12 +823,13 @@ RA8_INTERNAL static ra8_err_t jof_one(const char* in_path, const char* out_path)
                                       .max_height    = h,
                                       .work          = work,
                                       .work_cap      = work_cap,
-                                      .webp_work     = nullptr,
-                                      .webp_work_cap = 0U};
+                                      .webp_work     = webp_work,
+                                      .webp_work_cap = webp_work_cap};
   ra8_tileatlas_info_t        info = {};
   rc                               = ra8_tileatlas_produce(&cfg, &info);
   (void)fclose(out);
   free(work);
+  free(webp_work);
   free(src);
   if (rc != k_ra8_ok) {
     (void)remove(out_path);
