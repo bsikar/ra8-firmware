@@ -40,8 +40,8 @@
  * @brief Buffer capacities for the device-secret and signature arms, in bytes.
  */
 typedef enum : uint16_t {
-  k_t_blob_cap     = 64U,   /**< Wrapped-blob and round-trip scratch.          */
-  k_t_sig_cap      = 256U,  /**< Signature and ciphertext scratch.             */
+  k_t_blob_cap     = 64U,   /**< Wrapped-blob and round-trip scratch. */
+  k_t_sig_cap      = 256U,  /**< Signature and ciphertext scratch.    */
   k_t_rsa_key_bits = 4096U, /**< RSA modulus size; the signature buffer is this
                                  divided by 8.                                  */
 } t_devsec_len_t;

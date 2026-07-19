@@ -41,12 +41,12 @@
  * most-significant first.
  */
 typedef enum : uint8_t {
-  k_t_png_ihdr_len  = 13U,   /**< IHDR payload length, fixed by the PNG spec.  */
-  k_t_ihdr_off_h_b1 = 5U,    /**< Height byte 1 within the IHDR payload.       */
-  k_t_ihdr_off_h_b3 = 7U,    /**< Height byte 3 within the IHDR payload.       */
-  k_t_ihdr_off_ct   = 9U,    /**< Colour-type byte within the IHDR payload.    */
+  k_t_png_ihdr_len  = 13U,   /**< IHDR payload length, fixed by the PNG spec.     */
+  k_t_ihdr_off_h_b1 = 5U,    /**< Height byte 1 within the IHDR payload.          */
+  k_t_ihdr_off_h_b3 = 7U,    /**< Height byte 3 within the IHDR payload.          */
+  k_t_ihdr_off_ct   = 9U,    /**< Colour-type byte within the IHDR payload.       */
   k_t_be32_hi_shift = 24U,   /**< Shift selecting the top byte of a 32-bit field. */
-  k_t_byte_mask     = 0xFFU, /**< Low-byte mask while serialising it.          */
+  k_t_byte_mask     = 0xFFU, /**< Low-byte mask while serialising it.             */
 } t_png_layout_t;
 
 /**
@@ -54,10 +54,10 @@ typedef enum : uint8_t {
  * @brief Arena sizes and JPEG geometries that trip the producer's guards.
  */
 typedef enum : uint8_t {
-  k_t_arena_cap     = 64U, /**< Bump-arena backing store, bytes.              */
+  k_t_arena_cap     = 64U, /**< Bump-arena backing store, bytes. */
   k_t_arena_cap_low = 7U,  /**< A capacity below the offset below, so the next
                                 allocation must fail rather than wrap.         */
-  k_t_arena_off     = 5U,  /**< Pre-set arena offset for that arm.            */
+  k_t_arena_off     = 5U,  /**< Pre-set arena offset for that arm. */
   k_t_jpeg_big_edge = 64U, /**< The over-cap JPEG edge, applied to width in one
                                 arm and height in the other.                   */
 } t_guard_t;

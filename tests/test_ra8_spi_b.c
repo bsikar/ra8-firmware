@@ -43,7 +43,7 @@
  * @brief Transmit bytes and the DMA-channel out-parameter seed.
  */
 typedef enum : uint8_t {
-  k_t_tx_byte_a    = 0xA5U, /**< Byte the first transmit arm sends.           */
+  k_t_tx_byte_a    = 0xA5U, /**< Byte the first transmit arm sends. */
   k_t_tx_byte_b    = 0xC3U, /**< A different byte for the second, so a stale
                                  shift register cannot pass as a fresh write.   */
   k_t_dma_ch_unset = 0xFFU, /**< Pre-set DMA channel; a call that allocates

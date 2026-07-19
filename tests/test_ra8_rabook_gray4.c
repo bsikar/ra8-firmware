@@ -91,16 +91,16 @@
  * two degenerate values drive the round-to-zero clamps.
  */
 typedef enum : uint16_t {
-  k_t_src_small_w  = 100U,   /**< Source width already inside the cap.        */
-  k_t_src_small_h  = 50U,    /**< Its height.                                 */
-  k_t_cap_generous = 200U,   /**< Cap larger than the source, so no scaling.  */
+  k_t_src_small_w  = 100U,   /**< Source width already inside the cap.       */
+  k_t_src_small_h  = 50U,    /**< Its height.                                */
+  k_t_cap_generous = 200U,   /**< Cap larger than the source, so no scaling. */
   k_t_cap_edge     = 1600U,  /**< The e-reader long-edge cap; also the scaled
                                    width every over-cap case must land on.     */
-  k_t_fit_h        = 900U,   /**< Height that pairs with the cap at 16:9.     */
-  k_t_land_w       = 3200U,  /**< Landscape source width, 2x the cap.         */
-  k_t_land_h       = 1800U,  /**< Its height, 2x k_t_fit_h.                   */
-  k_t_port_w       = 800U,   /**< Portrait source width.                      */
-  k_t_port_h       = 2400U,  /**< Its height, past the cap on the long edge.  */
+  k_t_fit_h        = 900U,   /**< Height that pairs with the cap at 16:9.    */
+  k_t_land_w       = 3200U,  /**< Landscape source width, 2x the cap.        */
+  k_t_land_h       = 1800U,  /**< Its height, 2x k_t_fit_h.                  */
+  k_t_port_w       = 800U,   /**< Portrait source width.                     */
+  k_t_port_h       = 2400U,  /**< Its height, past the cap on the long edge. */
   k_t_extreme_edge = 10000U, /**< Long edge extreme enough that the short edge
                                    rounds to zero and must be clamped to 1.    */
 } t_g4_dims_t;
@@ -127,7 +127,7 @@ typedef enum : uint8_t {
   k_t_pack_0_1    = 0x05U, /**< Nibbles 0 and 5: greys 0 and 85.            */
   k_t_pack_2_3    = 0x23U, /**< Nibbles 2 and 3: the exact-palette pair.    */
   k_t_pack_8_pad  = 0x80U, /**< Nibble 8 plus the zero pad of an odd count. */
-  k_t_pack_15_pad = 0xF0U, /**< Nibble 15 plus the zero pad.               */
+  k_t_pack_15_pad = 0xF0U, /**< Nibble 15 plus the zero pad.                */
   k_t_pack_15_15  = 0xFFU, /**< Both nibbles saturated; also the fill a
                                zero-sized downscale must overwrite.        */
 } t_g4_packed_t;
@@ -141,10 +141,10 @@ typedef enum : uint8_t {
  * verbatim, so any interpolation the resampler wrongly applies shows up.
  */
 typedef enum : uint8_t {
-  k_t_px_tl      = 10U,  /**< Top-left source pixel.                   */
-  k_t_px_tr      = 20U,  /**< Top-right source pixel.                  */
-  k_t_px_bl      = 30U,  /**< Bottom-left source pixel.                */
-  k_t_px_br      = 40U,  /**< Bottom-right source pixel.               */
+  k_t_px_tl      = 10U,  /**< Top-left source pixel.                      */
+  k_t_px_tr      = 20U,  /**< Top-right source pixel.                     */
+  k_t_px_bl      = 30U,  /**< Bottom-left source pixel.                   */
+  k_t_px_br      = 40U,  /**< Bottom-right source pixel.                  */
   k_t_px_sample2 = 128U, /**< The 4x1 -> 2x1 arm's second sample, src[2]. */
 } t_g4_pixel_t;
 

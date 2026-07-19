@@ -32,7 +32,7 @@
 typedef enum : uint8_t {
   k_t_dma_ch_unset = 0xFFU, /**< Pre-set DMA channel; a call that returns
                                  without allocating one leaves this value.      */
-  k_t_rdr_byte     = 0x42U, /**< Byte staged in RDR for the single-read arm.  */
+  k_t_rdr_byte     = 0x42U, /**< Byte staged in RDR for the single-read arm.   */
   k_t_tx_base      = 0x40U, /**< First byte of the ascending transmit payload. */
   k_t_rx_base      = 0x80U, /**< First byte of the ascending receive payload;
                                  disjoint from the transmit range so a loopback
@@ -44,7 +44,7 @@ typedef enum : uint8_t {
  * @brief Baud-rate error budget for the divisor-selection arm.
  */
 typedef enum : uint32_t {
-  k_t_baud_nominal = 115200U, /**< Requested baud rate.                       */
+  k_t_baud_nominal = 115200U, /**< Requested baud rate. */
   k_t_pct_scale    = 100U,    /**< Scales the deviation to hundredths of a
                                    percent before the integer comparison.       */
 } t_baud_t;

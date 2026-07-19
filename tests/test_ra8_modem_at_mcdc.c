@@ -29,7 +29,7 @@ typedef enum : uint16_t {
   k_t_capture_cap = 64U,   /**< Line-capture buffer, and the capacity handed to
                                 the capture helper -- the two must agree or the
                                 bounds vector tests the wrong limit.            */
-  k_t_line_cap    = 256U,  /**< Line-assembly buffer, bytes.                  */
+  k_t_line_cap    = 256U,  /**< Line-assembly buffer, bytes. */
   k_t_timeout_ms  = 1000U, /**< Command timeout, long enough that no vector
                                 expires by accident.                            */
 } t_at_buf_t;

@@ -32,7 +32,7 @@
  * @brief Capture-buffer geometry and the out-of-range field value.
  */
 typedef enum : uint16_t {
-  k_t_capture_cap   = 1024U, /**< Capture buffer, bytes.                        */
+  k_t_capture_cap   = 1024U, /**< Capture buffer, bytes. */
   k_t_capture_align = 128U,  /**< Its required alignment: the VIN write burst
                                  width, which the buffer must satisfy.          */
   k_t_field_bad     = 99U,   /**< A value past the last defined enum member,

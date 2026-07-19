@@ -40,12 +40,12 @@
  * at the HS limit, and one deliberately past it.
  */
 typedef enum : uint16_t {
-  k_t_lp_buf_cap = 128U,  /**< Low-power transmit buffer, bytes.              */
-  k_t_hs_buf_cap = 1024U, /**< High-speed transmit buffer, bytes.             */
-  k_t_over_cap   = 1100U, /**< A buffer past the largest legal transfer.      */
+  k_t_lp_buf_cap = 128U,  /**< Low-power transmit buffer, bytes.         */
+  k_t_hs_buf_cap = 1024U, /**< High-speed transmit buffer, bytes.        */
+  k_t_over_cap   = 1100U, /**< A buffer past the largest legal transfer. */
   k_t_payload_b0 = 0xAAU, /**< Short-packet payload byte 0; distinct from b1 so
                                a swapped pair is visible.                       */
-  k_t_payload_b1 = 0xBBU, /**< Short-packet payload byte 1.                   */
+  k_t_payload_b1 = 0xBBU, /**< Short-packet payload byte 1. */
 } t_dsi_buf_t;
 
 /**

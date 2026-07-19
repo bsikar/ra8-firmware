@@ -19,7 +19,7 @@
  * @brief Block sizes and fill bytes for the PIO transfer arms.
  */
 typedef enum : uint16_t {
-  k_t_block_len = 512U,  /**< SD block size, bytes.                          */
+  k_t_block_len = 512U,  /**< SD block size, bytes. */
   k_t_fill_ones = 0xFFU, /**< All-ones fill; also the modulus of the ramp
                               pattern the read-back arm writes.               */
 } t_sdhi_buf_t;
@@ -35,13 +35,13 @@ typedef enum : uint16_t {
  * make a mis-ordered 128-bit R2 response self-evident.
  */
 typedef enum : uint32_t {
-  k_t_info1_inst0 = 0xCAFEBABEUL, /**< SD_INFO1 pattern for instance 0.       */
+  k_t_info1_inst0 = 0xCAFEBABEUL, /**< SD_INFO1 pattern for instance 0. */
   k_t_info1_inst1 = 0xDEADBEEFUL, /**< A different pattern for instance 1, so
                                        the two mirrors cannot be confused.     */
-  k_t_rsp10       = 0x11111111UL, /**< R2 response word 0.                    */
-  k_t_rsp32       = 0x22222222UL, /**< R2 response word 1.                    */
-  k_t_rsp54       = 0x33333333UL, /**< R2 response word 2.                    */
-  k_t_rsp76       = 0x44444444UL, /**< R2 response word 3.                    */
+  k_t_rsp10       = 0x11111111UL, /**< R2 response word 0. */
+  k_t_rsp32       = 0x22222222UL, /**< R2 response word 1. */
+  k_t_rsp54       = 0x33333333UL, /**< R2 response word 2. */
+  k_t_rsp76       = 0x44444444UL, /**< R2 response word 3. */
 } t_sdhi_reg_t;
 
 /* Deterministic SDHI response servicing via the ra8_sim_mmio poll-hook -- it runs

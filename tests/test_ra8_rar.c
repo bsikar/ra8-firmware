@@ -45,27 +45,27 @@ typedef enum : uint8_t {
  *        format, so `tr4_file()` reads as the on-disk record it writes.
  */
 typedef enum : uint8_t {
-  k_t_r4_off_head_size = 5U,  /**< HEAD_SIZE, 16-bit.                */
-  k_t_r4_off_pack_size = 7U,  /**< PACK_SIZE, 32-bit.                */
-  k_t_r4_off_unp_size  = 11U, /**< UNP_SIZE, 32-bit.                 */
-  k_t_r4_off_host_os   = 15U, /**< HOST_OS, 8-bit.                   */
-  k_t_r4_off_ftime     = 20U, /**< FTIME, 32-bit MS-DOS timestamp.   */
-  k_t_r4_off_unp_ver   = 24U, /**< UNP_VER, 8-bit.                   */
-  k_t_r4_off_method    = 25U, /**< METHOD, 8-bit.                    */
-  k_t_r4_off_name_size = 26U, /**< NAME_SIZE, 16-bit.                */
-  k_t_r4_off_attr      = 28U, /**< ATTR, 32-bit.                     */
+  k_t_r4_off_head_size = 5U,  /**< HEAD_SIZE, 16-bit.              */
+  k_t_r4_off_pack_size = 7U,  /**< PACK_SIZE, 32-bit.              */
+  k_t_r4_off_unp_size  = 11U, /**< UNP_SIZE, 32-bit.               */
+  k_t_r4_off_host_os   = 15U, /**< HOST_OS, 8-bit.                 */
+  k_t_r4_off_ftime     = 20U, /**< FTIME, 32-bit MS-DOS timestamp. */
+  k_t_r4_off_unp_ver   = 24U, /**< UNP_VER, 8-bit.                 */
+  k_t_r4_off_method    = 25U, /**< METHOD, 8-bit.                  */
+  k_t_r4_off_name_size = 26U, /**< NAME_SIZE, 16-bit.              */
+  k_t_r4_off_attr      = 28U, /**< ATTR, 32-bit.                   */
 } t_rar4_off_t;
 
 /** @brief RAR4 block types and field values the fixtures declare. */
 typedef enum : uint16_t {
-  k_t_r4_type_main    = 0x73U,   /**< Block type: main archive header.        */
-  k_t_r4_type_file    = 0x74U,   /**< Block type: file header.                */
-  k_t_r4_type_end     = 0x7BU,   /**< Block type: end-of-archive marker.      */
-  k_t_r4_flag_long    = 0x8000U, /**< LONG_BLOCK: an ADD_SIZE field follows.  */
-  k_t_r4_unp_ver_20   = 20U,     /**< UNP_VER 20: RAR 2.0 stream format.      */
-  k_t_r4_method_store = 0x30U,   /**< METHOD '0': stored, not compressed.     */
-  k_t_r4_main_hdr_len = 13U,     /**< Total main-header length, bytes.        */
-  k_t_r4_end_hdr_len  = 7U,      /**< Total end-header length, bytes.         */
+  k_t_r4_type_main    = 0x73U,   /**< Block type: main archive header.       */
+  k_t_r4_type_file    = 0x74U,   /**< Block type: file header.               */
+  k_t_r4_type_end     = 0x7BU,   /**< Block type: end-of-archive marker.     */
+  k_t_r4_flag_long    = 0x8000U, /**< LONG_BLOCK: an ADD_SIZE field follows. */
+  k_t_r4_unp_ver_20   = 20U,     /**< UNP_VER 20: RAR 2.0 stream format.     */
+  k_t_r4_method_store = 0x30U,   /**< METHOD '0': stored, not compressed.    */
+  k_t_r4_main_hdr_len = 13U,     /**< Total main-header length, bytes.       */
+  k_t_r4_end_hdr_len  = 7U,      /**< Total end-header length, bytes.        */
 } t_rar4_field_t;
 
 /** @brief Base-128 vint: 7 payload bits per byte, bit 7 set on all but the last. */
@@ -78,22 +78,22 @@ typedef enum : uint8_t {
 
 /** @brief RAR5 header types and the offsets the hostile arms poke. */
 typedef enum : uint8_t {
-  k_t_r5_type_end      = 5U, /**< RAR5 header type 5: end of archive.          */
+  k_t_r5_type_end      = 5U, /**< RAR5 header type 5: end of archive.             */
   k_t_r5_off_hdr_flags = 5U, /**< Header-flags offset inside the crafted wrapper. */
 } t_rar5_t;
 
 /** @brief Geometry and sizes of the synthetic archives and their members. */
 typedef enum : uint16_t {
-  k_t_img2_h        = 5U,   /**< Height of img02.png.                        */
-  k_t_img4_w        = 5U,   /**< Width of sub/img04.png.                     */
-  k_t_img3_h        = 7U,   /**< Height of img03.png.                        */
+  k_t_img2_h        = 5U,   /**< Height of img02.png.                             */
+  k_t_img4_w        = 5U,   /**< Width of sub/img04.png.                          */
+  k_t_img3_h        = 7U,   /**< Height of img03.png.                             */
   k_t_filler_stride = 31U,  /**< Filler multiplier; co-prime with the block size. */
-  k_t_short_arc_len = 5U,   /**< Backing bytes for the short-signature arm.  */
-  k_t_backing_len   = 100U, /**< Backing behind a reader that declares more.  */
-  k_t_member_len    = 20U,  /**< Declared size of the overrun member.         */
-  k_t_off_overrun   = 990U, /**< Data offset past the declared archive size.   */
-  k_t_off_shortread = 50U,  /**< Offset inside the archive but past the backing. */
-  k_t_extract_buf   = 256U, /**< Extraction destination buffer, bytes.          */
+  k_t_short_arc_len = 5U,   /**< Backing bytes for the short-signature arm.       */
+  k_t_backing_len   = 100U, /**< Backing behind a reader that declares more.      */
+  k_t_member_len    = 20U,  /**< Declared size of the overrun member.             */
+  k_t_off_overrun   = 990U, /**< Data offset past the declared archive size.      */
+  k_t_off_shortread = 50U,  /**< Offset inside the archive but past the backing.  */
+  k_t_extract_buf   = 256U, /**< Extraction destination buffer, bytes.            */
 } t_rar_fixture_t;
 
 /**

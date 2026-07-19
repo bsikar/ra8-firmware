@@ -594,14 +594,14 @@ static ra8_err_t priv_reassemble_tiles(ra8_jof_memstore_t*   store,
  * @see priv_reassemble_tiles()    Consumes one.
  */
 typedef struct {
-  ra8_jof_memstore_t store;     /**< Reader over the atlas bytes.            */
-  size_t                   stride;    /**< Raster stride in bytes.                 */
-  size_t                   raster;    /**< Full-page raster size in bytes.         */
-  uint32_t                 tile_max;  /**< Decoded-tile buffer size in bytes.      */
-  uint32_t                 scratch_c; /**< Stored-tile scratch size in bytes.      */
-  uint8_t*                 px;        /**< Zeroed full-page raster; caller keeps.  */
-  uint8_t*                 cell;      /**< One decoded tile; freed with the pass.  */
-  uint8_t*                 scratch;   /**< One stored tile; freed with the pass.   */
+  ra8_jof_memstore_t store;     /**< Reader over the atlas bytes.           */
+  size_t                   stride;    /**< Raster stride in bytes.                */
+  size_t                   raster;    /**< Full-page raster size in bytes.        */
+  uint32_t                 tile_max;  /**< Decoded-tile buffer size in bytes.     */
+  uint32_t                 scratch_c; /**< Stored-tile scratch size in bytes.     */
+  uint8_t*                 px;        /**< Zeroed full-page raster; caller keeps. */
+  uint8_t*                 cell;      /**< One decoded tile; freed with the pass. */
+  uint8_t*                 scratch;   /**< One stored tile; freed with the pass.  */
 } fmt_reassemble_ws_t;
 
 /**

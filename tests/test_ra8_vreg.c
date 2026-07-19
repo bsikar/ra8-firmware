@@ -39,10 +39,10 @@
  * the value instead of range-checking it would still admit the setting.
  */
 typedef enum : uint8_t {
-  k_t_vccsel_over = 0x07U, /**< Past the 0..2 range of the VCC selector.     */
+  k_t_vccsel_over = 0x07U, /**< Past the 0..2 range of the VCC selector. */
   k_t_ocp_over    = 0x55U, /**< Past the over-current-protection range; also
                                  reused for the low-voltage profile field.      */
-  k_t_mode_over   = 0xAAU, /**< Past the regulator-mode range.               */
+  k_t_mode_over   = 0xAAU, /**< Past the regulator-mode range. */
 } t_vreg_bad_t;
 
 /* ---------------------------------------------------------------------------

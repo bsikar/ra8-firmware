@@ -30,8 +30,8 @@
  * id no arm uses.
  */
 typedef enum : uint8_t {
-  k_t_image_id = 0x42U, /**< Image id shared by the hit and edge arms.        */
-  k_t_tile_id  = 99U,   /**< A tile id no other arm uses.                     */
+  k_t_image_id = 0x42U, /**< Image id shared by the hit and edge arms. */
+  k_t_tile_id  = 99U,   /**< A tile id no other arm uses.              */
 } t_key_t;
 
 /**

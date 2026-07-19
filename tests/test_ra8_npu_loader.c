@@ -50,7 +50,7 @@
  * the buffer, and a region count above the fixed maximum.
  */
 typedef enum : uint32_t {
-  k_t_bad_magic        = 0xDEADBEEFU, /**< A magic the loader must not accept. */
+  k_t_bad_magic        = 0xDEADBEEFU, /**< A magic the loader must not accept.   */
   k_t_bad_version      = 99U,         /**< A blob version it does not implement. */
   k_t_bad_region_count = 9U,          /**< Regions above k_ra8_npu_region_count. */
   k_t_size_overshoot   = 1000U,       /**< Added to the real total so the declared

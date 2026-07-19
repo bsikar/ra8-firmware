@@ -25,11 +25,11 @@
  * register 5, and the 1000BASE-T status in register 10.
  */
 typedef enum : uint16_t {
-  k_t_reg_lp_ability   = 5U,      /**< Register 5: link-partner ability.        */
-  k_t_reg_gbit_status  = 10U,     /**< Register 10: 1000BASE-T status.          */
-  k_t_bmcr_reset       = 0x8000U, /**< BMCR bit 15: software reset, self-clearing. */
+  k_t_reg_lp_ability   = 5U,      /**< Register 5: link-partner ability.                    */
+  k_t_reg_gbit_status  = 10U,     /**< Register 10: 1000BASE-T status.                      */
+  k_t_bmcr_reset       = 0x8000U, /**< BMCR bit 15: software reset, self-clearing.          */
   k_t_lpa_100_half     = 0x0080U, /**< Link-partner ability bit for 100BASE-TX half duplex. */
-  k_t_gbit_1000_full   = 0x0800U, /**< 1000BASE-T status bit for full duplex.   */
+  k_t_gbit_1000_full   = 0x0800U, /**< 1000BASE-T status bit for full duplex.               */
   k_t_advertise_local  = 0x01E1U, /**< Advertised ability: 10/100, both duplexes,
                                        with the 802.3 selector field.            */
   k_t_advertise_gbit   = 0x0300U, /**< Advertised 1000BASE-T ability, both duplexes. */

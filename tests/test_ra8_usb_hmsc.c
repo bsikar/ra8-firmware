@@ -38,13 +38,13 @@
  * obviously wrong if the driver echoes the wrong wrapper.
  */
 typedef enum : uint8_t {
-  k_t_csw_sig_b0     = 0x55U, /**< CSW signature byte 0, ASCII 'U'.          */
-  k_t_csw_sig_b1     = 0x53U, /**< Signature bytes 1 and 3, ASCII 'S'.       */
-  k_t_csw_sig_b2     = 0x42U, /**< Signature byte 2, ASCII 'B'.              */
-  k_t_tag_b0         = 0xBEU, /**< Echoed tag byte 0.                        */
-  k_t_tag_b1         = 0xBAU, /**< Echoed tag byte 1.                        */
-  k_t_tag_b2         = 0xFEU, /**< Echoed tag byte 2.                        */
-  k_t_tag_b3         = 0xCAU, /**< Echoed tag byte 3.                        */
+  k_t_csw_sig_b0     = 0x55U, /**< CSW signature byte 0, ASCII 'U'.    */
+  k_t_csw_sig_b1     = 0x53U, /**< Signature bytes 1 and 3, ASCII 'S'. */
+  k_t_csw_sig_b2     = 0x42U, /**< Signature byte 2, ASCII 'B'.        */
+  k_t_tag_b0         = 0xBEU, /**< Echoed tag byte 0.                  */
+  k_t_tag_b1         = 0xBAU, /**< Echoed tag byte 1.                  */
+  k_t_tag_b2         = 0xFEU, /**< Echoed tag byte 2.                  */
+  k_t_tag_b3         = 0xCAU, /**< Echoed tag byte 3.                  */
   k_t_status_bad     = 0x99U, /**< A status outside the 0..2 range the spec
                                    defines, which the driver must reject.     */
   k_t_scsi_read10    = 0x28U, /**< SCSI READ(10) opcode.                     */

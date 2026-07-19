@@ -40,9 +40,9 @@
  * expected MAC beside it, so they are named per test case rather than shared.
  */
 typedef enum : uint8_t {
-  k_t_tc2_data_len = 28U,  /**< TC2: "what do ya want for nothing?".          */
-  k_t_tc6_data_len = 54U,  /**< TC6: the hash-key-first message.              */
-  k_t_tc7_data_len = 152U, /**< TC7: the larger-than-block-size message.      */
+  k_t_tc2_data_len = 28U,  /**< TC2: "what do ya want for nothing?".     */
+  k_t_tc6_data_len = 54U,  /**< TC6: the hash-key-first message.         */
+  k_t_tc7_data_len = 152U, /**< TC7: the larger-than-block-size message. */
 } t_kat_data_len_t;
 
 /** @brief Test constants for the RFC 4231 vectors. */

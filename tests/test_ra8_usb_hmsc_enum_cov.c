@@ -55,11 +55,11 @@
  * three requests below and stalls everything else.
  */
 typedef enum : uint8_t {
-  k_t_iface_off_class    = 5U,    /**< bInterfaceClass offset.                */
-  k_t_iface_off_protocol = 7U,    /**< bInterfaceProtocol offset.             */
-  k_t_req_set_address    = 0x05U, /**< Standard request SET_ADDRESS.          */
-  k_t_req_set_config     = 0x09U, /**< Standard request SET_CONFIGURATION.    */
-  k_t_req_get_max_lun    = 0xFEU, /**< Class request GET_MAX_LUN.             */
+  k_t_iface_off_class    = 5U,    /**< bInterfaceClass offset.             */
+  k_t_iface_off_protocol = 7U,    /**< bInterfaceProtocol offset.          */
+  k_t_req_set_address    = 0x05U, /**< Standard request SET_ADDRESS.       */
+  k_t_req_set_config     = 0x09U, /**< Standard request SET_CONFIGURATION. */
+  k_t_req_get_max_lun    = 0xFEU, /**< Class request GET_MAX_LUN.          */
   k_t_byte_mask          = 0xFFU, /**< Low-byte mask while splitting a 16-bit
                                        descriptor field; also the unassigned
                                        device address the hunt starts from.    */
@@ -70,7 +70,7 @@ typedef enum : uint8_t {
  * @brief Blob capacity and the mock clock step that bounds the attach wait.
  */
 typedef enum : uint16_t {
-  k_t_cfg_blob_cap = 64U,   /**< Configuration-descriptor scratch, bytes.     */
+  k_t_cfg_blob_cap = 64U,   /**< Configuration-descriptor scratch, bytes. */
   k_t_time_step_us = 1500U, /**< Clock step per poll: 0 -> 1500 (still inside
                                  the 2000 us budget) -> 3000 (past it, so the
                                  wait breaks), giving both loop outcomes.       */
@@ -490,8 +490,8 @@ static void test_hunt_success_and_attach_timeout(void)
    * elapsed-milliseconds guard after two iterations; no device answers, so the
    * hunt exhausts every (reset, address) attempt and reports a timeout. */
   reset_state();
-  s_line_state  = 0U;                   /* Never attaches.       */
-  s_time_val    = 0U;                   /* t0 = 0 on first read. */
+  s_line_state  = 0U;                   /* Never attaches.                            */
+  s_time_val    = 0U;                   /* t0 = 0 on first read.                      */
   s_time_step   = k_t_time_step_us;     /* 0 -> 1500 (<=2000) -> 3000 (>2000, break). */
   s_dev_err     = k_ra8_err_hw_timeout; /* No descriptor ever answers.                */
   uint8_t addr2 = k_t_byte_mask;

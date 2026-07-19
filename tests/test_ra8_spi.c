@@ -29,7 +29,7 @@ typedef enum : uint8_t {
                                 ignore it, not index out of bounds.            */
   k_t_rx_unset    = 0xFFU, /**< Pre-set received byte / DMA channel; a failing
                                 call must leave it.                            */
-  k_t_spdr_byte   = 0x66U, /**< Byte staged in SPDR for the read-back arm.    */
+  k_t_spdr_byte   = 0x66U, /**< Byte staged in SPDR for the read-back arm. */
 } t_spi_t;
 
 /**

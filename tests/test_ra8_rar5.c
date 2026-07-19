@@ -49,18 +49,18 @@
  * the decoder under test.
  */
 typedef enum : uint16_t {
-  k_t_len_code_bits   = 5U,   /**< Bits per literal code-length entry.              */
-  k_t_long_run_bits   = 7U,   /**< Bits carrying a long run count.                  */
+  k_t_len_code_bits   = 5U,   /**< Bits per literal code-length entry. */
+  k_t_long_run_bits   = 7U,   /**< Bits carrying a long run count.     */
   k_t_lit_code_bits   = 9U,   /**< Code length assigned to every literal, hence the
                                    bit width of one emitted literal symbol.         */
   k_t_code_copy_long  = 17U,  /**< Continuation code 17: copy the previous length,
                                    long run.                                        */
-  k_t_code_zero_short = 18U,  /**< Continuation code 18: zero run, short form.      */
-  k_t_code_zero_long  = 19U,  /**< Continuation code 19: zero run, long form.       */
-  k_t_run_138         = 127U, /**< Long-run payload giving 11 + 127 = 138 entries.  */
-  k_t_run_133         = 122U, /**< Long-run payload giving 133 entries.             */
-  k_t_run_24          = 13U,  /**< Long zero-run payload giving 11 + 13 = 24 entries. */
-  k_t_run_10          = 7U,   /**< Short zero-run payload giving 3 + 7 = 10 entries. */
+  k_t_code_zero_short = 18U,  /**< Continuation code 18: zero run, short form.          */
+  k_t_code_zero_long  = 19U,  /**< Continuation code 19: zero run, long form.           */
+  k_t_run_138         = 127U, /**< Long-run payload giving 11 + 127 = 138 entries.      */
+  k_t_run_133         = 122U, /**< Long-run payload giving 133 entries.                 */
+  k_t_run_24          = 13U,  /**< Long zero-run payload giving 11 + 13 = 24 entries.   */
+  k_t_run_10          = 7U,   /**< Short zero-run payload giving 3 + 7 = 10 entries.    */
   k_t_sym_len_slot0   = 262U, /**< Symbol selecting length slot 0, i.e. match length 2. */
 } t_r5_code_t;
 
@@ -69,9 +69,9 @@ typedef enum : uint16_t {
  * @brief Entry counts of the RAR5 code-length tables.
  */
 typedef enum : uint8_t {
-  k_t_tbl_bd_entries = 20U, /**< Bit-length table (BD) entries.        */
-  k_t_tbl_dd_entries = 64U, /**< Distance table (DD) entries.          */
-  k_t_tbl_rd_entries = 44U, /**< Low-distance + repeat table entries.  */
+  k_t_tbl_bd_entries = 20U, /**< Bit-length table (BD) entries.       */
+  k_t_tbl_dd_entries = 64U, /**< Distance table (DD) entries.         */
+  k_t_tbl_rd_entries = 44U, /**< Low-distance + repeat table entries. */
 } t_r5_table_t;
 
 /**
@@ -84,13 +84,13 @@ typedef enum : uint8_t {
  * so these must match the architecture, not the decoder.
  */
 typedef enum : uint32_t {
-  k_t_x86_op_call   = 0xE8U,     /**< x86 CALL rel32 opcode.                       */
-  k_t_x86_op_jmp    = 0xE9U,     /**< x86 JMP rel32 opcode.                        */
+  k_t_x86_op_call   = 0xE8U,     /**< x86 CALL rel32 opcode.                        */
+  k_t_x86_op_jmp    = 0xE9U,     /**< x86 JMP rel32 opcode.                         */
   k_t_x86_insn_len  = 5U,        /**< Its total length: 1 opcode + 4 operand bytes. */
-  k_t_arm_op_bl     = 0xEBU,     /**< ARM BL opcode, the high byte of the word.    */
-  k_t_arm_off_mask  = 0xFFFFFFU, /**< The 24-bit BL offset field.                  */
-  k_t_byte_mask     = 0xFFU,     /**< Low-byte mask while serialising.             */
-  k_t_le32_hi_shift = 24U,       /**< Shift for the top byte of a 32-bit LE field. */
+  k_t_arm_op_bl     = 0xEBU,     /**< ARM BL opcode, the high byte of the word.     */
+  k_t_arm_off_mask  = 0xFFFFFFU, /**< The 24-bit BL offset field.                   */
+  k_t_byte_mask     = 0xFFU,     /**< Low-byte mask while serialising.              */
+  k_t_le32_hi_shift = 24U,       /**< Shift for the top byte of a 32-bit LE field.  */
 } t_r5_filter_t;
 
 /**
@@ -98,13 +98,13 @@ typedef enum : uint32_t {
  * @brief Sizes and stimulus values of the crafted streams.
  */
 typedef enum : uint16_t {
-  k_t_src_len       = 600U,  /**< All-literal round-trip source length, bytes.     */
+  k_t_src_len       = 600U,  /**< All-literal round-trip source length, bytes. */
   k_t_src_stride    = 7U,    /**< Multiplier of its byte pattern; co-prime with 4
                                  so the pattern does not repeat per word.          */
   k_t_lit_prefix    = 300U,  /**< Literal prefix giving far matches a window.       */
   k_t_reuse_dist    = 257U,  /**< Distance reused by the repeat-distance legs.      */
   k_t_notab_flags   = 0x40U, /**< Block header: last block, no tables, bytecount 1. */
-  k_t_hdr_csum_seed = 0x5AU, /**< Seed the header checksum is XOR-folded against.  */
+  k_t_hdr_csum_seed = 0x5AU, /**< Seed the header checksum is XOR-folded against.   */
 } t_r5_fixture_t;
 
 static void test_rar5_all_literal_roundtrip(void)
@@ -156,9 +156,9 @@ static void test_rar5_match_legs(void)
   for (uint32_t i = 0U; i < k_t_lit_prefix; ++i) {
     enc_lit(&body, s_exp, &elen, (uint8_t)(i + 1U));
   }
-  enc_match(&body, s_exp, &elen, 2U, 3U);                        /* len 4, dist 4  */
-  enc_match_lenx(&body, s_exp, &elen, 1U, 1U);                   /* len 11, dist 2 */
-  enc_match_distx(&body, s_exp, &elen, 0U, 1U);                  /* len 2, dist 6  */
+  enc_match(&body, s_exp, &elen, 2U, 3U);                        /* len 4, dist 4          */
+  enc_match_lenx(&body, s_exp, &elen, 1U, 1U);                   /* len 11, dist 2         */
+  enc_match_distx(&body, s_exp, &elen, 0U, 1U);                  /* len 2, dist 6          */
   enc_match_lowdist(&body, s_exp, &elen, 0U, k_t_len_code_bits); /* len 2, dist 38         */
   enc_match_hilow(&body, s_exp, &elen, 0U, 1U, 2U);              /* len 2, dist 65+16+2=83 */
   enc_match_big(&body, s_exp, &elen, 0U);                        /* len 3, dist 257        */
@@ -334,7 +334,7 @@ static void enc_tables_runs(bitw_t* w)
     bw_put(w, k_t_len_code_bits, 4U);
   }
   /* LD 0..271 = 9 via a literal 9 then copy-previous runs (codes 16/17). */
-  bw_put(w, k_t_lit_code_bits, k_t_len_code_bits);  /* tbl[0] = 9 */
+  bw_put(w, k_t_lit_code_bits, k_t_len_code_bits);  /* tbl[0] = 9                          */
   bw_put(w, k_t_code_copy_long, k_t_len_code_bits); /* copy prev, long run                 */
   bw_put(w, k_t_run_138, k_t_long_run_bits);        /* run = 11 + 127 = 138 -> tbl[1..138] */
   bw_put(w, k_t_code_copy_long, k_t_len_code_bits);

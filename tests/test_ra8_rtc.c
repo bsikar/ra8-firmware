@@ -24,8 +24,8 @@
  * tested at its boundary rather than with an obviously absurd number.
  */
 typedef enum : uint16_t {
-  k_t_hour_over    = 24U,   /**< One past the last valid hour (0..23).        */
-  k_t_min_sec_over = 60U,   /**< One past the last valid minute and second.   */
+  k_t_hour_over    = 24U,   /**< One past the last valid hour (0..23).      */
+  k_t_min_sec_over = 60U,   /**< One past the last valid minute and second. */
   k_t_year_valid   = 2026U, /**< A valid year, so only the field under test is
                                  out of range.                                 */
 } t_rtc_t;

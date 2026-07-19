@@ -34,12 +34,12 @@
  * say which field it is invalidating.
  */
 typedef enum : uint8_t {
-  k_t_off_width_hi   = 5U,    /**< High byte of the image width.              */
-  k_t_off_height_hi  = 7U,    /**< High byte of the image height.             */
-  k_t_off_bpp        = 12U,   /**< Bits-per-pixel; only 1, 4 and 8 are legal. */
-  k_t_off_codec      = 13U,   /**< Codec id; only raw and deflate exist.      */
-  k_t_off_reserved_a = 14U,   /**< First reserved byte, which must stay zero. */
-  k_t_off_reserved_b = 25U,   /**< Second reserved run, likewise.             */
+  k_t_off_width_hi   = 5U,    /**< High byte of the image width.                */
+  k_t_off_height_hi  = 7U,    /**< High byte of the image height.               */
+  k_t_off_bpp        = 12U,   /**< Bits-per-pixel; only 1, 4 and 8 are legal.   */
+  k_t_off_codec      = 13U,   /**< Codec id; only raw and deflate exist.        */
+  k_t_off_reserved_a = 14U,   /**< First reserved byte, which must stay zero.   */
+  k_t_off_reserved_b = 25U,   /**< Second reserved run, likewise.               */
   k_t_byte_mask      = 0xFFU, /**< Low-byte mask when splitting a 16-bit field. */
 } t_atlas_hdr_t;
 
@@ -50,8 +50,8 @@ typedef enum : uint8_t {
 typedef enum : uint32_t {
   k_t_pix_y_stride = 7U,     /**< Per-row offset of the synthetic pixel pattern;
                                   also the wrong tile count the mismatch arm writes. */
-  k_t_pix_c_stride = 11U,    /**< Per-channel offset of the same pattern.    */
-  k_t_dim_over_cap = 33000U, /**< A dimension past the 32768 cap.            */
+  k_t_pix_c_stride = 11U,    /**< Per-channel offset of the same pattern. */
+  k_t_dim_over_cap = 33000U, /**< A dimension past the 32768 cap.         */
   k_t_codec_slack  = 256U,   /**< Slack added to the compressed-buffer size so
                                   an incompressible payload still fits.       */
 } t_atlas_probe_t;

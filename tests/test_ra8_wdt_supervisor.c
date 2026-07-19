@@ -18,7 +18,7 @@
  * @brief Supervisor task stack and the clock push past the deadline.
  */
 typedef enum : uint16_t {
-  k_t_stack_bytes      = 1024U, /**< Supervisor task stack, bytes.                  */
+  k_t_stack_bytes      = 1024U, /**< Supervisor task stack, bytes. */
   k_t_past_deadline_ms = 1000U, /**< Monotonic clock value well past the refresh
                                      deadline, so the missed-refresh path fires. */
 } t_sup_t;

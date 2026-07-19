@@ -31,11 +31,11 @@ typedef enum : uint8_t {
  * @brief Link hit-box geometry and anchor position of the fixture page.
  */
 typedef enum : int16_t {
-  k_t_link_x   = 20,  /**< Link rectangle origin x.                          */
-  k_t_link_y   = 100, /**< Its origin y.                                     */
-  k_t_link_w   = 80,  /**< Its width.                                        */
-  k_t_link_h   = 24,  /**< Its height: one line box.                         */
-  k_t_anchor_y = 50,  /**< Y of the in-document anchor a link resolves to.   */
+  k_t_link_x   = 20,  /**< Link rectangle origin x.                        */
+  k_t_link_y   = 100, /**< Its origin y.                                   */
+  k_t_link_w   = 80,  /**< Its width.                                      */
+  k_t_link_h   = 24,  /**< Its height: one line box.                       */
+  k_t_anchor_y = 50,  /**< Y of the in-document anchor a link resolves to. */
 } t_link_geom_t;
 
 /**

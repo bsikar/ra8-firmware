@@ -58,7 +58,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_png_shift24   = 24U,   /**< Shift selecting a 32-bit field's top byte. */
-  k_png_byte_mask = 0xFFU, /**< Low-byte mask.                            */
+  k_png_byte_mask = 0xFFU, /**< Low-byte mask.                             */
   k_png_ihdr_len  = 13U,   /**< IHDR payload length.                       */
 } tileatlas_produce_webp_uint8_const_t;
 

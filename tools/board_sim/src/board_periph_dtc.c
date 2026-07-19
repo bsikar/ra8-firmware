@@ -179,14 +179,14 @@ static uint32_t dtc_mem_read(uc_engine* uc, uint64_t addr, uint32_t bytes)
  * named terms rather than re-deriving shifts at each use.
  */
 typedef struct {
-  uint32_t sar; /**< SAR source address.                          */
-  uint32_t dar; /**< DAR destination address.                     */
-  uint32_t cra; /**< CRA transfer count (block size in block mode). */
-  uint32_t crb; /**< CRB block count.                             */
+  uint32_t sar; /**< SAR source address.                             */
+  uint32_t dar; /**< DAR destination address.                        */
+  uint32_t cra; /**< CRA transfer count (block size in block mode).  */
+  uint32_t crb; /**< CRB block count.                                */
   uint32_t md;  /**< MRA.MD transfer mode (normal / repeat / block). */
-  uint32_t sz;  /**< MRA.SZ unit-width code (see ::dtc_unit_bytes). */
-  uint32_t sm;  /**< MRA.SM source address mode.                  */
-  uint32_t dm;  /**< MRB.DM destination address mode.             */
+  uint32_t sz;  /**< MRA.SZ unit-width code (see ::dtc_unit_bytes).  */
+  uint32_t sm;  /**< MRA.SM source address mode.                     */
+  uint32_t dm;  /**< MRB.DM destination address mode.                */
 } dtc_ti_t;
 
 /**

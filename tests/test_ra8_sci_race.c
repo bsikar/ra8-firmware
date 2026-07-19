@@ -38,11 +38,11 @@
  * loopback that echoes the transmit buffer cannot pass by accident.
  */
 typedef enum : uint8_t {
-  k_t_tx_b0   = 0x11U, /**< Transmit payload byte 0.                    */
-  k_t_tx_b1   = 0x22U, /**< Transmit payload byte 1.                    */
-  k_t_tx_b2   = 0x33U, /**< Transmit payload byte 2.                    */
-  k_t_tx_b3   = 0x44U, /**< Transmit payload byte 3.                    */
-  k_t_rx_byte = 0xA5U, /**< Byte staged in RDR for the receive arm.     */
+  k_t_tx_b0   = 0x11U, /**< Transmit payload byte 0.                */
+  k_t_tx_b1   = 0x22U, /**< Transmit payload byte 1.                */
+  k_t_tx_b2   = 0x33U, /**< Transmit payload byte 2.                */
+  k_t_tx_b3   = 0x44U, /**< Transmit payload byte 3.                */
+  k_t_rx_byte = 0xA5U, /**< Byte staged in RDR for the receive arm. */
 } t_race_byte_t;
 
 /**

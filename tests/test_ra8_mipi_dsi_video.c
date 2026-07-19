@@ -38,7 +38,7 @@
  * @brief Receive-path register patterns and the out-of-range timing value.
  */
 typedef enum : uint32_t {
-  k_t_rx_payload_b0 = 0x12U,        /**< Short-response payload byte 0.        */
+  k_t_rx_payload_b0 = 0x12U,        /**< Short-response payload byte 0. */
   k_t_rx_payload_b1 = 0x34U,        /**< Payload byte 1; distinct from b0 so a
                                         swapped pair is visible.               */
   k_t_ack_err_word  = 0x0001A55AUL, /**< AKEPACMSR: virtual channel 1 in bits

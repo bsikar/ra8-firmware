@@ -25,10 +25,10 @@
  * registered with a handler, the other is not and must stall.
  */
 typedef enum : uint16_t {
-  k_t_bmreq_class_out = 0x21U, /**< Host-to-device, class, interface.        */
-  k_t_bmreq_std_in    = 0x80U, /**< Device-to-host, standard, device.        */
+  k_t_bmreq_class_out = 0x21U, /**< Host-to-device, class, interface.         */
+  k_t_bmreq_std_in    = 0x80U, /**< Device-to-host, standard, device.         */
   k_t_breq_handled    = 0x42U, /**< Vendor request with a registered handler. */
-  k_t_breq_unhandled  = 0x55U, /**< Vendor request with none; must stall.    */
+  k_t_breq_unhandled  = 0x55U, /**< Vendor request with none; must stall.     */
   k_t_oversize_buf    = 128U,  /**< A buffer past the class maximum, to prove
                                     the length guard rather than the copy.    */
 } t_pvnd_setup_t;

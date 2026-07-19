@@ -26,7 +26,7 @@
  * @brief Backing-store fill patterns and the object-id seed.
  */
 typedef enum : uint32_t {
-  k_t_store_stride  = 7U,          /**< Multiplier of the store byte pattern.   */
+  k_t_store_stride  = 7U,          /**< Multiplier of the store byte pattern. */
   k_t_xip_mask      = 0xA5U,       /**< XOR mask of the XIP pattern; different
                                        from the store pattern so a source mix-up
                                        is visible.                              */

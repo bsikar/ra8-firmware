@@ -30,12 +30,12 @@
  * slot hash land on an id no arm uses.
  */
 typedef enum : uint16_t {
-  k_t_page_lo    = 100U, /**< First page of the eviction sweep.               */
+  k_t_page_lo    = 100U, /**< First page of the eviction sweep. */
   k_t_page_hi    = 130U, /**< One past its last page: 30 pages, more than the
                               cache holds, so eviction must run.               */
-  k_t_page_reuse = 5U,   /**< Page fetched twice: miss then hit.              */
-  k_t_obj_probe  = 7U,   /**< Object id for the single-fetch arm.             */
-  k_t_obj_free   = 9U,   /**< Object and page for the free-path arm.          */
+  k_t_page_reuse = 5U,   /**< Page fetched twice: miss then hit.     */
+  k_t_obj_probe  = 7U,   /**< Object id for the single-fetch arm.    */
+  k_t_obj_free   = 9U,   /**< Object and page for the free-path arm. */
 } t_vmem_page_t;
 
 /**
@@ -43,9 +43,9 @@ typedef enum : uint16_t {
  * @brief Protected-set percentages the config validator sees.
  */
 typedef enum : uint8_t {
-  k_t_pct_over   = 101U, /**< Past 100%: must be rejected.                   */
-  k_t_pct_narrow = 25U,  /**< A small protected set.                         */
-  k_t_pct_wide   = 50U,  /**< Half the cache protected.                      */
+  k_t_pct_over   = 101U, /**< Past 100%: must be rejected. */
+  k_t_pct_narrow = 25U,  /**< A small protected set.       */
+  k_t_pct_wide   = 50U,  /**< Half the cache protected.    */
 } t_vmem_pct_t;
 
 /**

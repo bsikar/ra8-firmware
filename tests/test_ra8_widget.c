@@ -31,21 +31,21 @@
  * coordinate that matches no other widget in the fixture.
  */
 typedef enum : int16_t {
-  k_t_pane_w        = 100, /**< Width of a full-width stacked child.            */
-  k_t_pane_h        = 40,  /**< Its height.                                     */
-  k_t_square_side   = 50,  /**< Edge of the two side-by-side square children.    */
-  k_t_short_w       = 80,  /**< Width of the damage-intersect arm's widget.      */
-  k_t_short_h       = 30,  /**< Its height.                                      */
+  k_t_pane_w        = 100, /**< Width of a full-width stacked child.          */
+  k_t_pane_h        = 40,  /**< Its height.                                   */
+  k_t_square_side   = 50,  /**< Edge of the two side-by-side square children. */
+  k_t_short_w       = 80,  /**< Width of the damage-intersect arm's widget.   */
+  k_t_short_h       = 30,  /**< Its height.                                   */
   k_t_origin_x      = 10,  /**< Non-zero origin x proving offsets are honoured;
                                 also the edge of the two adjacency arms.         */
-  k_t_origin_y      = 20,  /**< Non-zero origin y.                               */
-  k_t_second_pane_y = 260, /**< Origin y of the second pane, past the first.     */
-  k_t_track_tall    = 64,  /**< Fixed track height of the tall stack child.      */
-  k_t_track_mid     = 48,  /**< Fixed track height of the middle child.          */
-  k_t_track_header  = 44,  /**< Fixed track height reserved for the header.      */
-  k_t_track_footer  = 28,  /**< Fixed track height reserved for the footer.      */
-  k_t_damage_inside = 7,   /**< Edge of a damage rect wholly inside the widget.  */
-  k_t_damage_small  = 5,   /**< Edge of the smaller damage rect.                 */
+  k_t_origin_y      = 20,  /**< Non-zero origin y.                                 */
+  k_t_second_pane_y = 260, /**< Origin y of the second pane, past the first.       */
+  k_t_track_tall    = 64,  /**< Fixed track height of the tall stack child.        */
+  k_t_track_mid     = 48,  /**< Fixed track height of the middle child.            */
+  k_t_track_header  = 44,  /**< Fixed track height reserved for the header.        */
+  k_t_track_footer  = 28,  /**< Fixed track height reserved for the footer.        */
+  k_t_damage_inside = 7,   /**< Edge of a damage rect wholly inside the widget.    */
+  k_t_damage_small  = 5,   /**< Edge of the smaller damage rect.                   */
   k_t_untouched_h   = 999, /**< Sentinel height a skipped layout must not rewrite. */
 } t_widget_geom_t;
 

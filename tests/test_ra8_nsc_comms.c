@@ -26,8 +26,8 @@
  */
 typedef enum : uint32_t {
   k_t_iic_addr_7b = 0x50U,     /**< 7-bit I2C address of an EEPROM-class device. */
-  k_t_baud_hz     = 1000000U,  /**< Serial baud rate: 1 Mbaud.               */
-  k_t_pclka_hz    = 60000000U, /**< PCLKA feeding the divisor calculation.   */
+  k_t_baud_hz     = 1000000U,  /**< Serial baud rate: 1 Mbaud.                   */
+  k_t_pclka_hz    = 60000000U, /**< PCLKA feeding the divisor calculation.       */
 } t_comms_cfg_t;
 
 static void prep(void)

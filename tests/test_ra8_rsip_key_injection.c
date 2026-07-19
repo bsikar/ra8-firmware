@@ -36,7 +36,7 @@
 typedef enum : uint16_t {
   k_t_tamper_mask = 0xFFU, /**< XOR that flips the wrapped blob's last byte so
                                 its integrity check must fail.                   */
-  k_t_modulus_cap = 256U,  /**< RSA-2048 modulus, bytes.                        */
+  k_t_modulus_cap = 256U,  /**< RSA-2048 modulus, bytes. */
 } t_inject_t;
 
 /**

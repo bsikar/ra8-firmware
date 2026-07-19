@@ -31,8 +31,8 @@
  * @brief Decode arena and the deliberately-too-small destination.
  */
 typedef enum : uint16_t {
-  k_t_kib          = 1024U, /**< Bytes per KiB.                              */
-  k_t_scratch_kib  = 64U,   /**< Decode arena size, in KiB.                  */
+  k_t_kib          = 1024U, /**< Bytes per KiB.             */
+  k_t_scratch_kib  = 64U,   /**< Decode arena size, in KiB. */
   k_t_tiny_dst_cap = 48U,   /**< A destination far below one decoded row, so
                                  the out-of-room path is the one taken.        */
 } t_img_buf_t;

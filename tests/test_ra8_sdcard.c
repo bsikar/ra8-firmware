@@ -37,10 +37,10 @@
  * @brief SD command indices and the block size, per the SD Physical Spec.
  */
 typedef enum : uint16_t {
-  k_t_cmd9_send_csd  = 9U,   /**< CMD9 SEND_CSD: 128-bit R2 response.         */
-  k_t_acmd41_op_cond = 41U,  /**< ACMD41 SD_SEND_OP_COND: R3 carrying OCR.    */
-  k_t_cmd55_app      = 55U,  /**< CMD55 APP_CMD: prefixes every ACMD.         */
-  k_t_block_len      = 512U, /**< SD block size, bytes.                       */
+  k_t_cmd9_send_csd  = 9U,   /**< CMD9 SEND_CSD: 128-bit R2 response.      */
+  k_t_acmd41_op_cond = 41U,  /**< ACMD41 SD_SEND_OP_COND: R3 carrying OCR. */
+  k_t_cmd55_app      = 55U,  /**< CMD55 APP_CMD: prefixes every ACMD.      */
+  k_t_block_len      = 512U, /**< SD block size, bytes.                    */
 } t_sd_t;
 
 typedef enum : uint8_t {

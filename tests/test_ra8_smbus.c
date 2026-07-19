@@ -40,8 +40,8 @@
 typedef enum : uint16_t {
   k_t_byte_unset  = 0xFFU, /**< Pre-set byte out-parameter; a transfer that
                                 fails must leave it rather than report data.   */
-  k_t_marker_seed = 42,    /**< Pre-set signed marker, same purpose.          */
-  k_t_block_cap   = 256U,  /**< Block-read destination buffer, bytes.         */
+  k_t_marker_seed = 42,    /**< Pre-set signed marker, same purpose.  */
+  k_t_block_cap   = 256U,  /**< Block-read destination buffer, bytes. */
 } t_smbus_t;
 
 /**

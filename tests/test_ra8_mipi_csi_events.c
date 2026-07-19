@@ -37,7 +37,7 @@
  * exactly one counter and none is silently dropped.
  */
 typedef enum : uint8_t {
-  k_t_vc_slots     = 17U,   /**< Counter slots: 16 channels plus broadcast.  */
+  k_t_vc_slots     = 17U,   /**< Counter slots: 16 channels plus broadcast.   */
   k_t_vc_broadcast = 0xFFU, /**< The broadcast channel id, mapped to slot 16. */
   k_t_mist_pattern = 0x21U, /**< Status pattern staged in MIST, chosen so two
                                  non-adjacent status bits are set at once.     */

@@ -49,9 +49,9 @@
  * rather than interpret it.
  */
 typedef enum : uint32_t {
-  k_t_mon0_irq_all    = 0x00001FFFU, /**< Monitor 0: all 13 defined sources.  */
-  k_t_mon1_irq_all    = 0x0000000FU, /**< Monitor 1: all 4 defined sources.   */
-  k_t_mon2_irq_all    = 0x00000007U, /**< Monitor 2: all 3 defined sources.   */
+  k_t_mon0_irq_all    = 0x00001FFFU, /**< Monitor 0: all 13 defined sources.   */
+  k_t_mon1_irq_all    = 0x0000000FU, /**< Monitor 1: all 4 defined sources.    */
+  k_t_mon2_irq_all    = 0x00000007U, /**< Monitor 2: all 3 defined sources.    */
   k_t_err_irq_pattern = 0xCAFEBABEU, /**< Error mask passed through unchanged. */
 } t_mgmt_irq_t;
 
