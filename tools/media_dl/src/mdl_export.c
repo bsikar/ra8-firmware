@@ -17,12 +17,11 @@
  * decodes the layer, then re-probes the inner archive; xz is emitted with a
  * CRC32 check and a 1 MiB dictionary so the on-device xz scratch accepts it.
  */
-/* glibc gates posix_spawn_file_actions_addchdir_np() behind _GNU_SOURCE, and a
- * feature-test macro only takes effect if it precedes every system header. */
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-
+/* glibc gates posix_spawn_file_actions_addchdir_np() and `environ` behind
+ * _GNU_SOURCE. It is defined by the build (tools/media_dl/CMakeLists.txt and
+ * the tools pass of scripts/clang_tidy.sh) rather than here, because a
+ * feature-test macro only works if it precedes EVERY system header -- including
+ * ones pulled in ahead of this file -- which only the compile line can guarantee. */
 #include "mdl_export.h"
 
 #include <ctype.h>
@@ -175,7 +174,7 @@ RA8_INTERNAL static char* const* spawn_environ(void)
 #ifdef __APPLE__
   return *_NSGetEnviron();
 #else
-  extern char** environ;
+  /* Declared by <unistd.h> under _GNU_SOURCE, which the build defines. */
   return environ;
 #endif
 }

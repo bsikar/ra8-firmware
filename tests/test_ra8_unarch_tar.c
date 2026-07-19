@@ -49,7 +49,6 @@ typedef enum : uint8_t {
   k_unarch_tar_f_neg_c0     = 0xC0U,
   k_unarch_tar_f_pay_81     = 0x81U,
   k_unarch_tar_i_5          = 5U,
-  k_tt_len_name      = 100U,
   k_unarch_tar_val_10       = 10,
   k_unarch_tar_val_11       = 11,
   k_unarch_tar_val_12       = 12,
@@ -67,11 +66,7 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_tt_tar_block         = 512U,
   k_unarch_tar_s_arc_len_700 = 700U,
-  k_tt_off_magic       = 257,
-  k_tt_off_magic_nul       = 262,
-  k_tt_off_version       = 263,
   k_unarch_tar_val_264       = 264,
   k_unarch_tar_val_300       = 300,
   k_unarch_tar_val_4096      = 4096,
