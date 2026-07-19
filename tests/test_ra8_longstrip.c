@@ -713,12 +713,12 @@ static void t_set_viewport_validates(void)
   t_wt_open(&wt);
   /* Vector 1: both non-zero -> accepted, clamp re-derived from the new height. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_set_viewport(&wt, k_t_wt_view_w, (uint16_t)k_t_wt_view_h));
-  TEST_ASSERT_EQ((int32_t)k_t_wt_max_scroll, wt.max_scroll);
+  TEST_ASSERT_EQ(k_t_wt_max_scroll, wt.max_scroll);
   /* Vector 2: zero width only. Vector 3: zero height only. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_longstrip_set_viewport(&wt, 0U, k_t_wt_view_h));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_longstrip_set_viewport(&wt, k_t_wt_view_w, 0U));
   /* A rejected call leaves the previous viewport and clamp untouched. */
-  TEST_ASSERT_EQ((int32_t)k_t_wt_max_scroll, wt.max_scroll);
+  TEST_ASSERT_EQ(k_t_wt_max_scroll, wt.max_scroll);
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_longstrip_set_viewport(nullptr, 1U, 1U));
   TEST_END("set_viewport_validates");
 }
@@ -753,7 +753,7 @@ static void t_paginated_last_page_is_not_clamped(void)
     TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_set_viewport(&wt, k_t_wt_view_w, (uint16_t)content));
     TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_scroll_by(&wt, (int32_t)top - wt.scroll_y));
     /* The seek must land exactly on the requested page top -- never short. */
-    TEST_ASSERT_EQ((int32_t)top, wt.scroll_y);
+    TEST_ASSERT_EQ(top, wt.scroll_y);
     s_blit.scroll_y                 = wt.scroll_y;
     ra8_longstrip_render_stats_t st = {};
     TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_render(&wt, &st));
@@ -762,7 +762,7 @@ static void t_paginated_last_page_is_not_clamped(void)
     TEST_ASSERT_EQ(content, st.covered_rows);
   }
   /* The final page is the short one: 800 - 3*256 == 32 rows. */
-  TEST_ASSERT_EQ((int32_t)(k_t_wt_height - k_t_wt_last_band_h), wt.scroll_y);
+  TEST_ASSERT_EQ((k_t_wt_height - k_t_wt_last_band_h), wt.scroll_y);
   TEST_END("paginated_last_page_is_not_clamped");
 }
 
