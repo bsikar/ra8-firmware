@@ -48,9 +48,11 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_fs_format_i_31                    = 31U,
-  k_fs_format_sectors_per_cluster_128 = 128U,
-  k_fs_format_val_7                   = 7U,
+  k_fs_pattern_stride =
+    31U, /**< Stride of the payload generator, `i * 31 + 7`; prime, so the pattern does not repeat inside a sector. */
+  k_fs_spc_max =
+    128U, /**< The largest sectors-per-cluster the format allows, so the geometry maths is exercised at its limit. */
+  k_fs_pattern_bias = 7U, /**< Its bias, so index 0 is not byte 0. */
 } fs_format_uint8_const_t;
 
 /**
@@ -63,7 +65,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_fs_format_block_size_1024 = 1024U,
+  k_fs_block_size_unsupported =
+    1024U, /**< A block size other than 512, which the formatter must reject. */
 } fs_format_uint16_const_t;
 
 /**
@@ -285,7 +288,7 @@ static void verify_mount_file_cycle(const ra8_fs_backend_t* be, ra8_fs_type_t ty
   static uint8_t s_wr[k_fmt_payload_bytes];
   static uint8_t s_rd[k_fmt_payload_bytes];
   for (uint32_t i = 0U; i < (uint32_t)k_fmt_payload_bytes; i++) {
-    s_wr[i] = (uint8_t)((i * k_fs_format_i_31) + k_fs_format_val_7);
+    s_wr[i] = (uint8_t)((i * k_fs_pattern_stride) + k_fs_pattern_bias);
     s_rd[i] = 0U;
   }
   ra8_fs_file_t* f = nullptr;
@@ -497,7 +500,7 @@ static void test_mcdc_format_spc_valid_pair(void)
   alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   opts.sectors_per_cluster = 1U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_format(&s_backend, &opts));
-  opts.sectors_per_cluster = k_fs_format_sectors_per_cluster_128;
+  opts.sectors_per_cluster = k_fs_spc_max;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_format(&s_backend, &opts));
   opts.sectors_per_cluster = 3U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_fs_format(&s_backend, &opts));
@@ -523,7 +526,7 @@ static ra8_err_t bad_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
   *block_count = (uint32_t)k_fmt_blocks_fat16;
-  *block_size  = k_fs_format_block_size_1024; /* not 512 -> formatter must reject */
+  *block_size  = k_fs_block_size_unsupported; /* not 512 -> formatter must reject */
   return k_ra8_ok;
 }
 

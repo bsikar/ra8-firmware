@@ -29,7 +29,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_doc_docr_ff = 0xFFU,
+  k_doc_probe_docr =
+    0xFFU, /**< Every DOCR bit set, so a write that reached a neighbouring register leaves evidence. */
 } doc_uint8_const_t;
 
 /**
@@ -42,8 +43,9 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_doc_dodir_aaaa  = 0xAAAAU,
-  k_doc_dodsr0_5555 = 0x5555U,
+  k_doc_probe_dodir = 0xAAAAU, /**< Alternating bits in DODIR. */
+  k_doc_probe_dodsr0 =
+    0x5555U, /**< Their complement in DODSR0, so a swap between the two registers is unmistakable. */
 } doc_uint16_const_t;
 
 typedef enum : uint16_t {
@@ -63,9 +65,9 @@ static void test_init_clears_regs(void)
   ra8_sim_mmap_reset();
 
   volatile r_doc_regs_t* reg = ra8_doc();
-  reg->DOCR                  = k_doc_docr_ff;
-  reg->DODIR                 = k_doc_dodir_aaaa;
-  reg->DODSR0                = k_doc_dodsr0_5555;
+  reg->DOCR                  = k_doc_probe_docr;
+  reg->DODIR                 = k_doc_probe_dodir;
+  reg->DODSR0                = k_doc_probe_dodsr0;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_doc_init());
   TEST_ASSERT_EQ(0, reg->DOCR);

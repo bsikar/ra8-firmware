@@ -35,9 +35,9 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_io_blockdev_vsource_i_13   = 13U,
-  k_io_blockdev_vsource_val_7  = 7U,
-  k_io_blockdev_vsource_val_ff = 0xFFU,
+  k_vsrc_pattern_stride = 13U, /**< Stride of the golden generator, `i * 13 + 7`. */
+  k_vsrc_pattern_bias   = 7U,  /**< Its bias, so index 0 is not byte 0. */
+  k_byte_mask = 0xFFU, /**< Low-byte mask used to split the connection handle little-endian. */
 } io_blockdev_vsource_uint8_const_t;
 
 /**
@@ -50,7 +50,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_io_blockdev_vsource_oid_ffffffff = 0xFFFFFFFFU,
+  k_vsrc_oid_poison =
+    0xFFFFFFFFU, /**< Poison object id written before a registration, so a call that fails without assigning one is detectable. */
 } io_blockdev_vsource_uint32_const_t;
 
 /**
@@ -86,8 +87,7 @@ static void t_setup_disk(void)
   s_state = (ra8_io_blockdev_ram_state_t){};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_ram_init(&s_bd, &s_state, s_disk, k_t_blocks, false));
   for (uint32_t i = 0; i < (uint32_t)k_t_total; ++i) {
-    s_golden[i] = (uint8_t)(((i * k_io_blockdev_vsource_i_13) + k_io_blockdev_vsource_val_7) &
-                            k_io_blockdev_vsource_val_ff);
+    s_golden[i] = (uint8_t)(((i * k_vsrc_pattern_stride) + k_vsrc_pattern_bias) & k_byte_mask);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&s_bd, 0U, k_t_blocks, s_golden));
 }
@@ -209,7 +209,7 @@ static void test_vsource_wiring(void)
 
   ra8_vsource_t vs = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_init(&vs, s_objs, k_t_objs));
-  uint32_t oid = k_io_blockdev_vsource_oid_ffffffff;
+  uint32_t oid = k_vsrc_oid_poison;
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_vsource_add_paged(&vs, ra8_io_blockdev_vsource_read, &s_ctx, 0U, k_t_total, &oid));

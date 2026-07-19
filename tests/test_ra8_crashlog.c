@@ -39,9 +39,12 @@
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_crashlog_cfsr_02000000  = 0x02000000UL,
-  k_crashlog_crc_ffffffff   = 0xFFFFFFFFUL,
-  k_crashlog_magic_deadbeef = 0xDEADBEEFUL,
+  k_crashlog_cfsr_usage_fault =
+    0x02000000UL, /**< A CFSR value with a usage-fault bit set, so the decoded record names a specific cause rather than an empty one. */
+  k_crashlog_crc_flip_mask =
+    0xFFFFFFFFUL, /**< XORed into a valid CRC to corrupt every bit of it, so the integrity check cannot pass by chance. */
+  k_crashlog_magic_wrong =
+    0xDEADBEEFUL, /**< A magic value the reader does not recognise, so a stale or foreign record is rejected. */
 } crashlog_uint32_const_t;
 
 static jmp_buf s_fatal_jmp;
@@ -68,7 +71,7 @@ static ra8_exception_last_t make_synth(uint32_t exc, uint32_t pc)
   s.exc_number           = exc;
   s.frame.pc             = pc;
   s.frame.lr             = pc - 4U;
-  s.diag.cfsr            = k_crashlog_cfsr_02000000;
+  s.diag.cfsr            = k_crashlog_cfsr_usage_fault;
   s.nmisr                = 0U;
   return s;
 }
@@ -258,13 +261,13 @@ static void test_mcdc_crashlog_is_valid(void)
   /* Vector 2: magic wrong, crc still matches payload (magic is not
    * CRC-covered) -> reject. Isolates the magic condition. */
   const uint32_t good_magic = raw->magic;
-  raw->magic                = k_crashlog_magic_deadbeef;
+  raw->magic                = k_crashlog_magic_wrong;
   TEST_ASSERT_EQ(0, ra8_crashlog_peek(&rec) ? 1 : 0);
 
   /* Vector 3: restore magic, corrupt the stored crc -> reject. Isolates
    * the crc condition. */
   raw->magic = good_magic;
-  raw->crc   = raw->crc ^ k_crashlog_crc_ffffffff;
+  raw->crc   = raw->crc ^ k_crashlog_crc_flip_mask;
   TEST_ASSERT_EQ(0, ra8_crashlog_peek(&rec) ? 1 : 0);
 
   TEST_END("ra8_crashlog_is_valid MC/DC (magic && crc)");
