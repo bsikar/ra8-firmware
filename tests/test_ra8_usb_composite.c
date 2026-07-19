@@ -18,20 +18,18 @@
 #include "unity_minimal.h"
 
 /**
- * @enum usb_composite_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_comp_t
+ * @brief SETUP fields and interface sweep bound for the composite device.
  */
 typedef enum : uint8_t {
-  k_usb_composite_b_request_22 = 0x22U,
-  k_usb_composite_i_12         = 12U,
-  k_usb_composite_w_index_9    = 9U,
-  k_usb_composite_w_value_7    = 7U,
-} usb_composite_uint8_const_t;
+  k_t_breq_set_idle    = 0x22U, /**< A class bRequest routed by interface.    */
+  k_t_iface_sweep_max  = 12U,   /**< Interface numbers swept: past the highest
+                                     the composite device claims, so the
+                                     unclaimed ones must be rejected.          */
+  k_t_windex_unclaimed = 9U,    /**< An interface number no function owns.    */
+  k_t_wvalue_probe     = 7U,    /**< wValue the routed request carries; opaque
+                                     to the composite layer, which passes it on. */
+} t_comp_t;
 
 typedef enum : uint8_t {
   k_test_comp_cdc_first = 0U, /**< CDC starts at IF0.   */
@@ -476,7 +474,7 @@ static void test_dispatch_routes_class_request_to_owner(void)
   /* Class request with wIndex = 0 -> CDC (owns IF0..IF1). */
   ra8_usb_setup_t setup = {
     .bm_request_type = (uint8_t)k_test_comp_bm_class_to_if,
-    .b_request       = k_usb_composite_b_request_22,
+    .b_request       = k_t_breq_set_idle,
     .w_value         = 0U,
     .w_index         = 0U,
     .w_length        = 0U,
@@ -507,7 +505,7 @@ static void test_dispatch_routes_class_request_to_owner(void)
   TEST_ASSERT_EQ(1U, s_msc_state.setup_calls);
 
   /* wIndex outside any class range -> not_found, no class fired. */
-  setup.w_index = k_usb_composite_w_index_9;
+  setup.w_index = k_t_windex_unclaimed;
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_usb_composite_dispatch_setup(&setup, &handler));
   TEST_ASSERT_EQ(2U, s_cdc_state.setup_calls);
   TEST_ASSERT_EQ(1U, s_hid_state.setup_calls);
@@ -532,7 +530,7 @@ static void test_dispatch_handles_standard_request_internally(void)
   ra8_usb_setup_t setup = {
     .bm_request_type = (uint8_t)k_test_comp_bm_std_to_dev,
     .b_request       = (uint8_t)k_test_comp_std_set_address,
-    .w_value         = k_usb_composite_w_value_7,
+    .w_value         = k_t_wvalue_probe,
     .w_index         = 0U,
     .w_length        = 0U,
   };
@@ -598,7 +596,7 @@ static void test_step_loops_without_error(void)
   TEST_BEGIN("step pumps state machine without tripping a state guard");
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_composite_init(k_ra8_usb_speed_fs));
-  for (uint8_t i = 0U; i < k_usb_composite_i_12; ++i) {
+  for (uint8_t i = 0U; i < k_t_iface_sweep_max; ++i) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_composite_step());
   }
   TEST_END("step pumps state machine without tripping a state guard");

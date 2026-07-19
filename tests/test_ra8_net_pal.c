@@ -22,19 +22,15 @@ typedef enum : uint8_t {
 } net_pal_fill_t;
 
 /**
- * @enum net_pal_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_net_frame_t
+ * @brief Frame buffer capacity and the payload pattern it carries.
  */
-typedef enum : uint8_t {
-  k_net_pal_small_len_64 = 64U,
-  k_net_pal_val_64       = 64,
-  k_net_pal_val_a0       = 0xA0U,
-} net_pal_uint8_const_t;
+typedef enum : uint16_t {
+  k_t_frame_cap    = 64U,   /**< Frame and receive buffers, bytes; also the
+                                 undersized length the short-frame guard sees.  */
+  k_t_payload_base = 0xA0U, /**< First byte of the ascending frame payload, so
+                                 a byte at the wrong offset is identifiable.     */
+} t_net_frame_t;
 
 static void prep(void)
 {
@@ -135,9 +131,9 @@ static void test_send_recv_loopback(void)
   TEST_ASSERT_EQ(k_ra8_err_no_data, ra8_net_pal_recv_frame(rx_buf, &rx_len));
 
   /* Push a frame, pop it back out, verify payload + length. */
-  uint8_t frame[k_net_pal_val_64] = {0U};
+  uint8_t frame[k_t_frame_cap] = {0U};
   for (uint16_t i = 0U; i < (uint16_t)sizeof(frame); ++i) {
-    frame[i] = (uint8_t)(k_net_pal_val_a0 + i);
+    frame[i] = (uint8_t)(k_t_payload_base + i);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_send_frame(frame, (uint16_t)sizeof(frame)));
 
@@ -164,7 +160,7 @@ static void test_send_fills_ring(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_init(&k_test_mac));
 
-  uint8_t frame[k_net_pal_val_64] = {0U};
+  uint8_t frame[k_t_frame_cap] = {0U};
   /* Ring depth is 4 (k_ra8_net_pal_ring_slots); drive it past full. */
   for (int32_t i = 0; i < 4; ++i) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_send_frame(frame, (uint16_t)sizeof(frame)));
@@ -196,7 +192,7 @@ static void test_send_recv_arg_validation(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_net_pal_recv_frame(nullptr, &len));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_net_pal_recv_frame(buf, nullptr));
 
-  uint16_t small_len = k_net_pal_small_len_64;
+  uint16_t small_len = k_t_frame_cap;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_net_pal_recv_frame(buf, &small_len));
   TEST_END("ra8_net_pal_{send,recv}_frame: arg validation");
 }
@@ -329,7 +325,7 @@ static void test_mcdc_eth_event_dispatch(void)
   TEST_BEGIN("mcdc: eth_event dispatch (event_fn && pal_mask)");
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_init(nullptr));
-  uint8_t buf[k_net_pal_val_64] = {0U};
+  uint8_t buf[k_t_frame_cap] = {0U};
 
   /* V1: handler attached -> send fans out a tx_done event. */
   s_mcdc_event_count = 0;

@@ -34,19 +34,18 @@
 #include "unity_minimal.h"
 
 /**
- * @enum mipi_dsi_cmd_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_cmd_t
+ * @brief Lane count, status seeds and payload base for the command-mode arms.
  */
 typedef enum : uint8_t {
-  k_mipi_dsi_cmd_lane_count_5 = 5U,
-  k_mipi_dsi_cmd_sqch0scr_ff  = 0xFFU,
-  k_mipi_dsi_cmd_val_a0       = 0xA0U,
-} mipi_dsi_cmd_uint8_const_t;
+  k_t_lane_count_over = 5U,    /**< Lanes past the four the D-PHY supports.   */
+  k_t_status_all_ones = 0xFFU, /**< Written to the sequence and video status
+                                    registers so a driver that clears the wrong
+                                    one leaves a visible residue.              */
+  k_t_payload_base    = 0xA0U, /**< First byte of the ascending DCS payload;
+                                    high enough not to collide with the DCS
+                                    command bytes the arms also send.           */
+} t_cmd_t;
 
 /**
  * @par MC/DC:
@@ -114,7 +113,7 @@ static void test_init_bad_lane_count(void)
   cfg.lane_count            = (ra8_mipi_dsi_lane_count_t)0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_dsi_init(&cfg));
 
-  cfg.lane_count = (ra8_mipi_dsi_lane_count_t)k_mipi_dsi_cmd_lane_count_5;
+  cfg.lane_count = (ra8_mipi_dsi_lane_count_t)k_t_lane_count_over;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_dsi_init(&cfg));
   TEST_END("mipi_dsi init bad lane count");
 }
@@ -135,8 +134,8 @@ static void test_status_get_clear(void)
 
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
   reg->ISR                        = (uint32_t)k_test_isr_seed;
-  reg->SQCH0SCR                   = k_mipi_dsi_cmd_sqch0scr_ff;
-  reg->VMSCR                      = k_mipi_dsi_cmd_sqch0scr_ff;
+  reg->SQCH0SCR                   = k_t_status_all_ones;
+  reg->VMSCR                      = k_t_status_all_ones;
 
   uint32_t mask = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_dsi_get_status(&mask));
@@ -333,7 +332,7 @@ static void test_send_long_packet(void)
 
   uint8_t payload[k_test_long_len];
   for (uint32_t i = 0U; i < k_test_long_len; ++i) {
-    payload[i] = (uint8_t)(k_mipi_dsi_cmd_val_a0 + i);
+    payload[i] = (uint8_t)(k_t_payload_base + i);
   }
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_mipi_dsi_send_long_packet(k_ra8_mipi_dsi_dt_dcs_long_write,
