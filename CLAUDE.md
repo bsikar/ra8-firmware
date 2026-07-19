@@ -244,7 +244,9 @@ patterns:
 - **SHADOW** -- a do-nothing second definition of a symbol that is really
   implemented elsewhere in first-party code.
 - **CANNED** -- an "unsupported / unimplemented" error return that discards
-  every parameter, with no implementation behind it.
+  every parameter, with no implementation behind it. A function taking no
+  parameters at all counts: `ra8_thing(void) { return k_ra8_err_not_supported; }`
+  is the same stub in its shortest form.
 
 Legitimate no-ops are outside both rules by construction: platform
 alternatives (the headless `board_view_stub.c` standing in for the Cocoa
