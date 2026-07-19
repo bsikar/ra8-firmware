@@ -8,6 +8,14 @@ locates every function definition/prototype, and checks the immediately
 preceding Doxygen block for the required tags listed in CLAUDE.md
 ("Doxygen Documentation Requirements").
 
+KNOWN SCOPE GAP -- this function gate does NOT cover examples/, tools/ or
+tests/, which CLAUDE.md ("these standards apply to EVERY first-party file")
+says it should. ``--members`` already covers them (MEMBER_SCAN_DIRS); the
+function mode does not. Adding them to SCAN_DIRS reports 9470 gaps, so
+closing this is its own tracked piece of work: it must be closed by writing
+real documentation, never by generating tag-shaped filler, which is what the
+required-tag list rewards if applied mechanically.
+
 Modes
 -----
   (no args)         Function audit report -> docs/DOXYGEN_GAPS.csv + .md

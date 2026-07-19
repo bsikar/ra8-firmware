@@ -69,7 +69,7 @@ SOURCE_SUFFIXES = (
 # format_code.sh formats libs/ src/ tests/ examples/ tools/ (not port/), so the
 # no-argument scan here matches; format_code.sh also drives this tool with an
 # explicit file list, which is the authoritative gate path.
-SCAN_ROOTS = ("libs", "src", "examples", "tools", "tests")
+SCAN_ROOTS = ("libs", "src", "port", "examples", "tools", "tests")
 EXCLUDE_FRAGMENTS = (
     "libs/third_party/",
     "libs/fonts/",
