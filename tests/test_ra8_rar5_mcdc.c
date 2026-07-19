@@ -53,13 +53,13 @@ typedef enum : uint8_t {
  * failing dump is readable.
  */
 typedef enum : uint16_t {
-  k_t_lit_code_bits = 9U,    /**< Bits per emitted literal symbol.        */
-  k_t_blk1_b0       = 0x41U, /**< Block 1 payload byte 0, ASCII 'A'.      */
-  k_t_blk1_b1       = 0x42U, /**< Block 1 payload byte 1, ASCII 'B'.      */
-  k_t_blk1_b2       = 0x43U, /**< Block 1 payload byte 2, ASCII 'C'.      */
-  k_t_blk2_b0       = 0x44U, /**< Block 2 payload byte 0, ASCII 'D'.      */
-  k_t_blk2_b1       = 0x45U, /**< Block 2 payload byte 1, ASCII 'E'.      */
-  k_t_blk2_b2       = 0x46U, /**< Block 2 payload byte 2, ASCII 'F'.      */
+  k_t_lit_code_bits = 9U,    /**< Bits per emitted literal symbol.   */
+  k_t_blk1_b0       = 0x41U, /**< Block 1 payload byte 0, ASCII 'A'. */
+  k_t_blk1_b1       = 0x42U, /**< Block 1 payload byte 1, ASCII 'B'. */
+  k_t_blk1_b2       = 0x43U, /**< Block 1 payload byte 2, ASCII 'C'. */
+  k_t_blk2_b0       = 0x44U, /**< Block 2 payload byte 0, ASCII 'D'. */
+  k_t_blk2_b1       = 0x45U, /**< Block 2 payload byte 1, ASCII 'E'. */
+  k_t_blk2_b2       = 0x46U, /**< Block 2 payload byte 2, ASCII 'F'. */
   k_t_tbl_len_short = 5U,    /**< A short code length written into the table;
                                   also the parse position the guards restart from. */
   k_t_tbl_len_long  = 7U,    /**< The longer code length at table slot 0. */
@@ -72,11 +72,11 @@ typedef enum : uint16_t {
  * @brief Fixture buffer capacities and filter run lengths.
  */
 typedef enum : uint16_t {
-  k_t_out_cap   = 64U,  /**< Decoder output scratch, bytes.                  */
+  k_t_out_cap   = 64U,  /**< Decoder output scratch, bytes. */
   k_t_small_cap = 20U,  /**< Deliberately small output buffer for the
                              out-of-room arm, bytes.                         */
-  k_t_delta_cap = 700U, /**< Delta-filter working buffer, bytes.             */
-  k_t_delta_len = 600U, /**< Bytes the delta filter is asked to process.     */
+  k_t_delta_cap = 700U, /**< Delta-filter working buffer, bytes.         */
+  k_t_delta_len = 600U, /**< Bytes the delta filter is asked to process. */
 } t_r5_buf_t;
 
 /* ---- direct MC/DC drivers for the promoted decode helpers --------------- */

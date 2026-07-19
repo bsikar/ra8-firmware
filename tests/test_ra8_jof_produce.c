@@ -55,28 +55,28 @@ typedef enum : uint16_t {
  * byte of a big-endian 32-bit field, most-significant first.
  */
 typedef enum : uint8_t {
-  k_t_be32_hi_shift     = 24U,  /**< Top-byte shift of a big-endian 32-bit field. */
-  k_t_byte_mask         = 0xFFU, /**< Low-byte mask while serialising one.     */
-  k_t_png_ihdr_len      = 13U,  /**< IHDR payload length, fixed by the spec.   */
-  k_t_chunk_crc_b1      = 9U,   /**< Chunk CRC byte 1, past the chunk payload. */
-  k_t_chunk_crc_b2      = 10U,  /**< Chunk CRC byte 2.                         */
-  k_t_chunk_crc_b3      = 11U,  /**< Chunk CRC byte 3 (least significant).     */
-  k_t_chunk_overhead    = 12U,  /**< Bytes a chunk costs beyond its payload:
+  k_t_be32_hi_shift     = 24U,   /**< Top-byte shift of a big-endian 32-bit field. */
+  k_t_byte_mask         = 0xFFU, /**< Low-byte mask while serialising one.         */
+  k_t_png_ihdr_len      = 13U,   /**< IHDR payload length, fixed by the spec.      */
+  k_t_chunk_crc_b1      = 9U,    /**< Chunk CRC byte 1, past the chunk payload.    */
+  k_t_chunk_crc_b2      = 10U,   /**< Chunk CRC byte 2.                            */
+  k_t_chunk_crc_b3      = 11U,   /**< Chunk CRC byte 3 (least significant).        */
+  k_t_chunk_overhead    = 12U,   /**< Bytes a chunk costs beyond its payload:
                                      4 length + 4 type + 4 CRC.                */
-  k_t_ihdr_off_h_b1     = 5U,   /**< Height byte 1 in the IHDR payload.        */
-  k_t_ihdr_off_h_b3     = 7U,   /**< Height byte 3 in the IHDR payload.        */
-  k_t_ihdr_off_ct       = 9U,   /**< Colour-type byte in the IHDR payload.     */
-  k_t_src_off_w_b0      = 16U,  /**< Width byte 0 (most significant) in s_src. */
-  k_t_src_off_w_b1      = 17U,  /**< Width byte 1.                             */
-  k_t_src_off_w_b2      = 18U,  /**< Width byte 2.                             */
-  k_t_src_off_w_b3      = 19U,  /**< Width byte 3 (least significant).         */
-  k_t_src_off_h_b0      = 20U,  /**< Height byte 0 (most significant).         */
-  k_t_src_off_h_b1      = 21U,  /**< Height byte 1.                            */
-  k_t_src_off_h_b2      = 22U,  /**< Height byte 2.                            */
-  k_t_src_off_h_b3      = 23U,  /**< Height byte 3 (least significant).        */
-  k_t_src_off_depth     = 24U,  /**< Bit-depth byte; 16 here must be rejected. */
-  k_t_src_off_ct        = 25U,  /**< Colour-type byte.                         */
-  k_t_src_off_interlace = 28U,  /**< Interlace byte; non-zero must be rejected. */
+  k_t_ihdr_off_h_b1     = 5U,    /**< Height byte 1 in the IHDR payload.         */
+  k_t_ihdr_off_h_b3     = 7U,    /**< Height byte 3 in the IHDR payload.         */
+  k_t_ihdr_off_ct       = 9U,    /**< Colour-type byte in the IHDR payload.      */
+  k_t_src_off_w_b0      = 16U,   /**< Width byte 0 (most significant) in s_src.  */
+  k_t_src_off_w_b1      = 17U,   /**< Width byte 1.                              */
+  k_t_src_off_w_b2      = 18U,   /**< Width byte 2.                              */
+  k_t_src_off_w_b3      = 19U,   /**< Width byte 3 (least significant).          */
+  k_t_src_off_h_b0      = 20U,   /**< Height byte 0 (most significant).          */
+  k_t_src_off_h_b1      = 21U,   /**< Height byte 1.                             */
+  k_t_src_off_h_b2      = 22U,   /**< Height byte 2.                             */
+  k_t_src_off_h_b3      = 23U,   /**< Height byte 3 (least significant).         */
+  k_t_src_off_depth     = 24U,   /**< Bit-depth byte; 16 here must be rejected.  */
+  k_t_src_off_ct        = 25U,   /**< Colour-type byte.                          */
+  k_t_src_off_interlace = 28U,   /**< Interlace byte; non-zero must be rejected. */
 } t_png_off_t;
 
 /**
@@ -106,19 +106,19 @@ typedef enum : uint8_t {
  * @brief Stimulus values that steer the hostile and budget-starved paths.
  */
 typedef enum : uint16_t {
-  k_t_probe_row_step    = 37U,   /**< Row stride when spot-checking a decoded tile.        */
+  k_t_probe_row_step    = 37U,   /**< Row stride when spot-checking a decoded tile. */
   k_t_probe_col_step    = 41U,   /**< Column stride; co-prime with the row stride so the
                                       probe walks the whole tile rather than one diagonal. */
   k_t_starved_store_cap = 64U,   /**< Memstore cap too small to hold the atlas, forcing the
                                       sink's no-memory path.                               */
   k_t_codec_invalid     = 9U,    /**< Codec id outside the enum; the config guard must reject it. */
-  k_t_hostile_sniff_len = 34U,   /**< Length of the not-a-PNG/JPEG blob fed to the sniffer.  */
+  k_t_hostile_sniff_len = 34U,   /**< Length of the not-a-PNG/JPEG blob fed to the sniffer.   */
   k_t_hostile_lead_byte = 0xFFU, /**< Its leading byte: starts like a JPEG marker, then junk. */
   k_t_ct_jpeg_ref       = 0xFFU, /**< Pseudo colour-type selecting the stb JPEG reference
                                       instead of the synthetic pattern in expected_sample(). */
   k_t_plte_bad_len      = 14U,   /**< PLTE length forced non-divisible by 3 to trip the
                                       indivisible-length guard.                             */
-  k_t_kib               = 1024U, /**< Bytes per KiB, for sizing the producer work arena.     */
+  k_t_kib               = 1024U, /**< Bytes per KiB, for sizing the producer work arena. */
 } t_probe_t;
 
 /** @brief Test geometry + buffer sizing. */

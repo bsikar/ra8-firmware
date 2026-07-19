@@ -38,7 +38,7 @@
  * @brief Decode arena sizing and the too-small destination.
  */
 typedef enum : uint16_t {
-  k_t_scratch_log2 = 20U, /**< Decode arena as a power of two: 1 MiB.         */
+  k_t_scratch_log2 = 20U, /**< Decode arena as a power of two: 1 MiB. */
   k_t_tiny_cap     = 64U, /**< A destination far below one decoded row, so the
                                out-of-room path is the one taken.              */
 } t_webp_t;

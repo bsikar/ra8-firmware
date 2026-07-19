@@ -42,9 +42,9 @@
  * colour conversion is then visible rather than symmetric.
  */
 typedef enum : uint16_t {
-  k_t_plane_len = 256U,  /**< Samples per test plane.                          */
-  k_t_cb_mask   = 0x55U, /**< XOR mask generating the Cb plane.                */
-  k_t_cr_mask   = 0xAAU, /**< XOR mask generating the Cr plane.                */
+  k_t_plane_len = 256U,  /**< Samples per test plane.           */
+  k_t_cb_mask   = 0x55U, /**< XOR mask generating the Cb plane. */
+  k_t_cr_mask   = 0xAAU, /**< XOR mask generating the Cr plane. */
 } t_vin_plane_t;
 
 /**

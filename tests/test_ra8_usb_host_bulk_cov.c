@@ -44,7 +44,7 @@
  * @brief Payload tail bytes and the received-count seed.
  */
 typedef enum : uint16_t {
-  k_t_payload_b2 = 0x30U,   /**< Byte 2 of the bulk-OUT payload.             */
+  k_t_payload_b2 = 0x30U,   /**< Byte 2 of the bulk-OUT payload. */
   k_t_payload_b3 = 0x40U,   /**< Byte 3; distinct from b2 so a transposition
                                  in the FIFO write is visible.                 */
   k_t_got_unset  = 0xFFFFU, /**< Pre-set transferred-byte count; a transfer

@@ -38,7 +38,7 @@
  * @brief Lane count, status seeds and payload base for the command-mode arms.
  */
 typedef enum : uint8_t {
-  k_t_lane_count_over = 5U,    /**< Lanes past the four the D-PHY supports.   */
+  k_t_lane_count_over = 5U,    /**< Lanes past the four the D-PHY supports. */
   k_t_status_all_ones = 0xFFU, /**< Written to the sequence and video status
                                     registers so a driver that clears the wrong
                                     one leaves a visible residue.              */

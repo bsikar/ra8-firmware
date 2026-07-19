@@ -43,11 +43,11 @@
  * builder read as the boot sector it is writing.
  */
 typedef enum : uint8_t {
-  k_t_bpb_off_bytes_per_sector = 11U,   /**< BPB_BytsPerSec, 16-bit.           */
-  k_t_bpb_off_sectors_per_clus = 13U,   /**< BPB_SecPerClus, 8-bit.            */
-  k_t_bpb_off_reserved_sectors = 14U,   /**< BPB_RsvdSecCnt, 16-bit.           */
-  k_t_bpb_off_root_entries     = 17U,   /**< BPB_RootEntCnt, 16-bit.           */
-  k_t_bpb_off_total_sectors    = 19U,   /**< BPB_TotSec16, 16-bit.             */
+  k_t_bpb_off_bytes_per_sector = 11U,   /**< BPB_BytsPerSec, 16-bit. */
+  k_t_bpb_off_sectors_per_clus = 13U,   /**< BPB_SecPerClus, 8-bit.  */
+  k_t_bpb_off_reserved_sectors = 14U,   /**< BPB_RsvdSecCnt, 16-bit. */
+  k_t_bpb_off_root_entries     = 17U,   /**< BPB_RootEntCnt, 16-bit. */
+  k_t_bpb_off_total_sectors    = 19U,   /**< BPB_TotSec16, 16-bit.   */
   k_t_byte_mask                = 0xFFU, /**< Low-byte mask while writing a
                                              16-bit little-endian field.      */
 } t_bpb_off_t;

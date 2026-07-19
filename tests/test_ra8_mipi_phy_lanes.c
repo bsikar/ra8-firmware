@@ -40,10 +40,10 @@
  * the nominal working point, and above the maximum.
  */
 typedef enum : uint16_t {
-  k_t_nmul_below_min = 40U,  /**< Under the validator's minimum.             */
-  k_t_nmul_low       = 100U, /**< Inside the range, at the low end.          */
+  k_t_nmul_below_min = 40U,  /**< Under the validator's minimum.              */
+  k_t_nmul_low       = 100U, /**< Inside the range, at the low end.           */
   k_t_nmul_nominal   = 200U, /**< The working multiplier the happy path uses. */
-  k_t_nmul_above_max = 375U, /**< Over the validator's maximum.              */
+  k_t_nmul_above_max = 375U, /**< Over the validator's maximum.               */
 } t_phy_pll_t;
 
 /**

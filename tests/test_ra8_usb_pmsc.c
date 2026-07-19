@@ -29,30 +29,30 @@
  * invented.
  */
 typedef enum : uint8_t {
-  k_t_cbw_sig_b0       = 0x55U, /**< CBW signature byte 0, ASCII 'U'.         */
-  k_t_cbw_sig_b1       = 0x53U, /**< CBW signature byte 1, ASCII 'S'.         */
-  k_t_cbw_sig_b2       = 0x42U, /**< CBW signature byte 2, ASCII 'B'.         */
-  k_t_cbw_sig_b3       = 0x43U, /**< CBW signature byte 3, ASCII 'C'.         */
+  k_t_cbw_sig_b0       = 0x55U, /**< CBW signature byte 0, ASCII 'U'.            */
+  k_t_cbw_sig_b1       = 0x53U, /**< CBW signature byte 1, ASCII 'S'.            */
+  k_t_cbw_sig_b2       = 0x42U, /**< CBW signature byte 2, ASCII 'B'.            */
+  k_t_cbw_sig_b3       = 0x43U, /**< CBW signature byte 3, ASCII 'C'.            */
   k_t_bad_sig_b0       = 0xDEU, /**< Byte 0 of the deliberately wrong signature. */
-  k_t_bad_sig_b1       = 0xADU, /**< Byte 1 of it.                            */
-  k_t_bad_sig_b2       = 0xBEU, /**< Byte 2 of it.                            */
-  k_t_bad_sig_b3       = 0xEFU, /**< Byte 3 of it.                            */
-  k_t_bad_tag_b0       = 0x11U, /**< Tag byte 0 of the malformed wrapper.     */
-  k_t_bad_tag_b1       = 0x22U, /**< Tag byte 1.                              */
-  k_t_bad_tag_b2       = 0x33U, /**< Tag byte 2.                              */
-  k_t_bad_tag_b3       = 0x44U, /**< Tag byte 3.                              */
-  k_t_cbw_flag_data_in = 0x80U, /**< CBW flags bit 7: device-to-host transfer. */
-  k_t_le32_hi_shift    = 24U,   /**< Top-byte shift of a 32-bit LE field.     */
-  k_t_byte_mask        = 0xFFU, /**< Low-byte mask while serialising it.      */
-  k_t_cdb_len_10       = 10U,   /**< CDB length of the 10-byte SCSI commands. */
-  k_t_cdb10_off_lba_b3 = 5U,    /**< Least-significant LBA byte in that CDB.  */
-  k_t_inquiry_len      = 36U,   /**< Standard INQUIRY response length, bytes. */
-  k_t_sense_len        = 18U,   /**< Fixed-format REQUEST SENSE length, bytes. */
-  k_t_read_lba         = 5U,    /**< LBA the read arm asks for.               */
-  k_t_write_lba        = 7U,    /**< LBA the write arm targets.               */
-  k_t_opcode_unknown   = 0xCCU, /**< Opcode outside the supported set; stalls. */
-  k_t_fill_written     = 0x5AU, /**< Byte pattern the write arm sends.        */
-  k_t_fill_returned    = 0xA5U, /**< Byte pattern the mock storage reads back. */
+  k_t_bad_sig_b1       = 0xADU, /**< Byte 1 of it.                               */
+  k_t_bad_sig_b2       = 0xBEU, /**< Byte 2 of it.                               */
+  k_t_bad_sig_b3       = 0xEFU, /**< Byte 3 of it.                               */
+  k_t_bad_tag_b0       = 0x11U, /**< Tag byte 0 of the malformed wrapper.        */
+  k_t_bad_tag_b1       = 0x22U, /**< Tag byte 1.                                 */
+  k_t_bad_tag_b2       = 0x33U, /**< Tag byte 2.                                 */
+  k_t_bad_tag_b3       = 0x44U, /**< Tag byte 3.                                 */
+  k_t_cbw_flag_data_in = 0x80U, /**< CBW flags bit 7: device-to-host transfer.   */
+  k_t_le32_hi_shift    = 24U,   /**< Top-byte shift of a 32-bit LE field.        */
+  k_t_byte_mask        = 0xFFU, /**< Low-byte mask while serialising it.         */
+  k_t_cdb_len_10       = 10U,   /**< CDB length of the 10-byte SCSI commands.    */
+  k_t_cdb10_off_lba_b3 = 5U,    /**< Least-significant LBA byte in that CDB.     */
+  k_t_inquiry_len      = 36U,   /**< Standard INQUIRY response length, bytes.    */
+  k_t_sense_len        = 18U,   /**< Fixed-format REQUEST SENSE length, bytes.   */
+  k_t_read_lba         = 5U,    /**< LBA the read arm asks for.                  */
+  k_t_write_lba        = 7U,    /**< LBA the write arm targets.                  */
+  k_t_opcode_unknown   = 0xCCU, /**< Opcode outside the supported set; stalls.   */
+  k_t_fill_written     = 0x5AU, /**< Byte pattern the write arm sends.           */
+  k_t_fill_returned    = 0xA5U, /**< Byte pattern the mock storage reads back.   */
 } t_pmsc_bot_t;
 
 /**
@@ -61,9 +61,9 @@ typedef enum : uint8_t {
  *        CSW and nothing more -- so they need only be distinct per arm.
  */
 typedef enum : uint32_t {
-  k_t_tag_inquiry = 0xCAFEBABEU, /**< Tag for the INQUIRY arm.               */
-  k_t_tag_phase_a = 0x30U,       /**< Tag for the first phase-error arm.     */
-  k_t_tag_phase_b = 0x40U,       /**< Tag for the second phase-error arm.    */
+  k_t_tag_inquiry = 0xCAFEBABEU, /**< Tag for the INQUIRY arm.            */
+  k_t_tag_phase_a = 0x30U,       /**< Tag for the first phase-error arm.  */
+  k_t_tag_phase_b = 0x40U,       /**< Tag for the second phase-error arm. */
 } t_pmsc_tag_t;
 
 typedef enum : uint16_t {

@@ -51,8 +51,8 @@ typedef enum : uint8_t {
  * or the DEFLATE stream itself.
  */
 typedef enum : uint8_t {
-  k_t_magic_b0      = 0x1FU, /**< gzip magic byte 0.                          */
-  k_t_magic_b1      = 0x8BU, /**< gzip magic byte 1.                          */
+  k_t_magic_b0      = 0x1FU, /**< gzip magic byte 0. */
+  k_t_magic_b1      = 0x8BU, /**< gzip magic byte 1. */
   k_t_magic_wrong   = 0x50U, /**< A wrong first byte, ASCII 'P'; must be
                                  refused as not-a-gzip.                       */
   k_t_method_wrong  = 9U,    /**< A compression method that is not DEFLATE;
@@ -62,7 +62,7 @@ typedef enum : uint8_t {
   k_t_hdr_fixed_p1  = 11U,   /**< The byte after it: the FEXTRA length high byte. */
   k_t_byte_mask     = 0xFFU, /**< Low-byte mask while serialising a field, and
                                  the XOR that corrupts one.                    */
-  k_t_trailing_junk = 0xA5U, /**< Byte appended past the member end.          */
+  k_t_trailing_junk = 0xA5U, /**< Byte appended past the member end. */
 } t_gz_hdr_t;
 
 /**
@@ -70,9 +70,9 @@ typedef enum : uint8_t {
  * @brief Payload sizes and decompression caps the arms exercise.
  */
 typedef enum : uint16_t {
-  k_t_payload_small = 64U,   /**< Payload for the header arms, bytes.        */
-  k_t_payload_mid   = 256U,  /**< Payload for the body/trailer arms, bytes.  */
-  k_t_output_cap    = 1024U, /**< Absolute output cap the ratio arm sets.    */
+  k_t_payload_small = 64U,   /**< Payload for the header arms, bytes.       */
+  k_t_payload_mid   = 256U,  /**< Payload for the body/trailer arms, bytes. */
+  k_t_output_cap    = 1024U, /**< Absolute output cap the ratio arm sets.   */
 } t_gz_size_t;
 
 /**

@@ -44,9 +44,9 @@
  * one above, 132 one past a 4096-bit RSA signature.
  */
 typedef enum : uint16_t {
-  k_t_ct_under_block = 15U,  /**< One byte short of an AES block.             */
-  k_t_out_over_block = 17U,  /**< One byte past an AES block.                 */
-  k_t_out_block_cap  = 64U,  /**< A full SHA-512 digest / four AES blocks.    */
+  k_t_ct_under_block = 15U,  /**< One byte short of an AES block.              */
+  k_t_out_over_block = 17U,  /**< One byte past an AES block.                  */
+  k_t_out_block_cap  = 64U,  /**< A full SHA-512 digest / four AES blocks.     */
   k_t_sig_over_cap   = 132U, /**< Past the largest signature the driver emits. */
 } t_edge_len_t;
 

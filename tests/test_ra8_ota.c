@@ -48,10 +48,10 @@ typedef enum : uint16_t {
   k_t_image_mask   = 0x5AU, /**< XOR mask generating the mock image, so no two
                                  adjacent bytes repeat and a shifted write is
                                  detectable.                                    */
-  k_t_sig_base     = 0xA0U, /**< First byte of the ascending mock signature.   */
-  k_t_corrupt_mask = 0xFFU, /**< XOR that flips a byte to break verification.  */
-  k_t_nibble_mask  = 0x0FU, /**< Low nibble, when hex-encoding a hash byte.    */
-  k_t_manifest_cap = 2048U, /**< Manifest JSON scratch, bytes.                 */
+  k_t_sig_base     = 0xA0U, /**< First byte of the ascending mock signature.  */
+  k_t_corrupt_mask = 0xFFU, /**< XOR that flips a byte to break verification. */
+  k_t_nibble_mask  = 0x0FU, /**< Low nibble, when hex-encoding a hash byte.   */
+  k_t_manifest_cap = 2048U, /**< Manifest JSON scratch, bytes.                */
 } t_ota_fixture_t;
 
 /* =============================================================================

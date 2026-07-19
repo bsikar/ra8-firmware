@@ -25,11 +25,11 @@
  * name states the combination rather than the hex value.
  */
 typedef enum : uint16_t {
-  k_t_bmreq_class_out  = 0x21U,   /**< Host-to-device, class, interface.     */
-  k_t_bmreq_class_in   = 0xA1U,   /**< Device-to-host, class, interface.     */
-  k_t_bmreq_std_in     = 0x80U,   /**< Device-to-host, standard, device.     */
-  k_t_wlen_line_coding = 7U,      /**< CDC line-coding structure, bytes.     */
-  k_t_wlen_dev_desc    = 18U,     /**< Device-descriptor length, bytes.      */
+  k_t_bmreq_class_out  = 0x21U,   /**< Host-to-device, class, interface.          */
+  k_t_bmreq_class_in   = 0xA1U,   /**< Device-to-host, class, interface.          */
+  k_t_bmreq_std_in     = 0x80U,   /**< Device-to-host, standard, device.          */
+  k_t_wlen_line_coding = 7U,      /**< CDC line-coding structure, bytes.          */
+  k_t_wlen_dev_desc    = 18U,     /**< Device-descriptor length, bytes.           */
   k_t_wvalue_dev_desc  = 0x0100U, /**< wValue 0x0100: descriptor type 1, index 0. */
 } t_setup_t;
 

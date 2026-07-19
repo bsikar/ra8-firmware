@@ -22,11 +22,11 @@
  * @brief SETUP fields and interface sweep bound for the composite device.
  */
 typedef enum : uint8_t {
-  k_t_breq_set_idle    = 0x22U, /**< A class bRequest routed by interface.    */
+  k_t_breq_set_idle    = 0x22U, /**< A class bRequest routed by interface. */
   k_t_iface_sweep_max  = 12U,   /**< Interface numbers swept: past the highest
                                      the composite device claims, so the
                                      unclaimed ones must be rejected.          */
-  k_t_windex_unclaimed = 9U,    /**< An interface number no function owns.    */
+  k_t_windex_unclaimed = 9U,    /**< An interface number no function owns. */
   k_t_wvalue_probe     = 7U,    /**< wValue the routed request carries; opaque
                                      to the composite layer, which passes it on. */
 } t_comp_t;

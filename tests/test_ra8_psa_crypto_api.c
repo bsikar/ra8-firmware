@@ -43,7 +43,7 @@ typedef enum : uint8_t {
 typedef enum : uint16_t {
   k_t_tamper_mask = 0xFFU, /**< XOR that flips a signature or ciphertext byte so
                                 verification must fail.                          */
-  k_t_out_cap     = 64U,   /**< Digest / output buffer, bytes: a full SHA-512.  */
+  k_t_out_cap     = 64U,   /**< Digest / output buffer, bytes: a full SHA-512. */
 } t_psa_api_t;
 
 /**

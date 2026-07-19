@@ -27,10 +27,10 @@
 typedef enum : int16_t {
   k_t_view_w        = 200, /**< Viewport width; its mid-point at x=100 is where the
                              tap arms aim.                                      */
-  k_t_view_h        = 300, /**< Viewport height.                                   */
-  k_t_margin_x      = 24,  /**< Horizontal text margin.                            */
-  k_t_page_count    = 12,  /**< Pages the mock engine reports.                     */
-  k_t_link_dest     = 5,   /**< Page a followed link resolves to.                  */
+  k_t_view_h        = 300, /**< Viewport height.                  */
+  k_t_margin_x      = 24,  /**< Horizontal text margin.           */
+  k_t_page_count    = 12,  /**< Pages the mock engine reports.    */
+  k_t_link_dest     = 5,   /**< Page a followed link resolves to. */
   k_t_link_dest_far = 99,  /**< A destination past the page count, which the view
                                must clamp rather than jump to.                  */
 } t_rv_geom_t;

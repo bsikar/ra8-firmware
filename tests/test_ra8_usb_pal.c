@@ -24,7 +24,7 @@
 typedef enum : uint16_t {
   k_t_payload_mask = 0xAAU,   /**< XORed with the byte index to generate the
                                    payload, so no two bytes repeat.            */
-  k_t_rx_cap       = 64U,     /**< Receive buffer, bytes.                     */
+  k_t_rx_cap       = 64U,     /**< Receive buffer, bytes. */
   k_t_intsts_probe = 0xBEEFU, /**< INTSTS0 pattern proving the read path
                                    returns the register verbatim.              */
 } t_pal_t;
