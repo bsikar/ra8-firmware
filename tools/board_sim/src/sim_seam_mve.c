@@ -234,8 +234,8 @@ static void on_mve_vstrw(uc_engine* uc, uint64_t address, uint32_t size, void* u
  * @see mve_scan_segment  Updates this.
  */
 typedef struct {
-  uc_engine* uc;      /**< Engine the hooks are added to.  */
-  uint32_t   n_hooks; /**< Hooks installed so far.         */
+  uc_engine* uc;      /**< Engine the hooks are added to. */
+  uint32_t   n_hooks; /**< Hooks installed so far.        */
 } mve_scan_ctx_t;
 
 /**
@@ -276,8 +276,13 @@ static bool mve_scan_segment(const elf_exec_segment_t* seg, void* ctx)
       return false;
     }
     const uint64_t va = (uint64_t)seg->vaddr + (uint64_t)off;
-    (void)uc_hook_add(
-      st->uc, &s_mve_hooks[st->n_hooks], UC_HOOK_CODE, (void*)on_mve_vstrw, nullptr, va, va);
+    (void)uc_hook_add(st->uc,
+                      &s_mve_hooks[st->n_hooks],
+                      UC_HOOK_CODE,
+                      (void*)on_mve_vstrw,
+                      nullptr,
+                      va,
+                      va);
     st->n_hooks++;
   }
   return true;

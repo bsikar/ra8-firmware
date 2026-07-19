@@ -44,11 +44,11 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_comic_cbt_s_arc_1f      = 0x1FU,
-  k_comic_cbt_s_arc_8b      = 0x8BU,
-  k_comic_cbt_tcb_octal_7   = 7U,
-  k_comic_cbt_val_64        = 64,
-  k_comic_cbt_val_ff        = 0xFFU,
+  k_comic_cbt_s_arc_1f    = 0x1FU,
+  k_comic_cbt_s_arc_8b    = 0x8BU,
+  k_comic_cbt_tcb_octal_7 = 7U,
+  k_comic_cbt_val_64      = 64,
+  k_comic_cbt_val_ff      = 0xFFU,
 } comic_cbt_uint8_const_t;
 
 /**

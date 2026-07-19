@@ -203,8 +203,7 @@ static inline void enc_tables_bdzero(bitw_t* w)
   }
   bw_put(w, k_rar5_enc_fixture_bw_put_15, 4U); /* escape                                 */
   bw_put(w, 3U, 4U);                           /* zero count 3 -> 3+2 = 5 zeros (10..14) */
-  for (uint32_t i = 0U; i < k_rar5_enc_fixture_bw_put_5;
-       ++i) { /* BD symbols 15..19 length 5 */
+  for (uint32_t i = 0U; i < k_rar5_enc_fixture_bw_put_5; ++i) { /* BD symbols 15..19 length 5 */
     bw_put(w, k_rar5_enc_fixture_bw_put_5, 4U);
   }
   enc_table_body(w);

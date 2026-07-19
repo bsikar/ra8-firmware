@@ -612,16 +612,16 @@ static void stamp_rx_counters(volatile r_rmac_regs_t* reg)
  */
 static void stamp_tx_counters(volatile r_rmac_regs_t* reg)
 {
-  reg->MTGFCE   = k_rmac_stamp_mtgfce;
-  reg->MTGFCP   = k_rmac_stamp_mtgfcp;
-  reg->MTBFC    = k_rmac_stamp_mtbfc;
-  reg->MTMFC    = k_rmac_stamp_mtmfc;
-  reg->MTUFC    = k_rmac_stamp_mtufc;
-  reg->MTEFC    = k_rmac_stamp_mtefc;
-  reg->MTXBCEU  = k_rmac_stamp_mtxbceu;
-  reg->MTXBCEL  = k_rmac_stamp_mtxbcel;
-  reg->MTXBCPU  = k_rmac_stamp_mtxbcpu;
-  reg->MTXBCPL  = k_rmac_stamp_mtxbcpl;
+  reg->MTGFCE  = k_rmac_stamp_mtgfce;
+  reg->MTGFCP  = k_rmac_stamp_mtgfcp;
+  reg->MTBFC   = k_rmac_stamp_mtbfc;
+  reg->MTMFC   = k_rmac_stamp_mtmfc;
+  reg->MTUFC   = k_rmac_stamp_mtufc;
+  reg->MTEFC   = k_rmac_stamp_mtefc;
+  reg->MTXBCEU = k_rmac_stamp_mtxbceu;
+  reg->MTXBCEL = k_rmac_stamp_mtxbcel;
+  reg->MTXBCPU = k_rmac_stamp_mtxbcpu;
+  reg->MTXBCPL = k_rmac_stamp_mtxbcpl;
 }
 
 static void stamp_stats_counters(volatile r_rmac_regs_t* reg)

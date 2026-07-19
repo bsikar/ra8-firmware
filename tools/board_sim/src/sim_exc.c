@@ -424,8 +424,7 @@ static bool idle_back_edge(uc_engine* uc, uint32_t at, uint16_t hw, uint32_t ali
   *done = true;
   /* Unconditional b.n: target = at + 4 + sign_extend(imm11) * 2. */
   const uint32_t imm11 = (uint32_t)(hw & (uint16_t)k_op_bn_imm);
-  const int32_t  off =
-    (int32_t)(imm11 << (uint32_t)k_bn_imm_sext_shl) >> (int32_t)k_bn_imm_sext_shr;
+  const int32_t off = (int32_t)(imm11 << (uint32_t)k_bn_imm_sext_shl) >> (int32_t)k_bn_imm_sext_shr;
   if (off >= 0) {
     return false; /* forward branch -- not a spin-in-place back-edge */
   }
@@ -465,7 +464,7 @@ bool idle_spin_at(uc_engine* uc, uint32_t pc)
     if (uc_mem_read(uc, (uint64_t)at, &hw, sizeof(hw)) != UC_ERR_OK) {
       return false;
     }
-    bool       done   = false;
+    bool       done    = false;
     const bool verdict = idle_back_edge(uc, at, hw, aligned, &done);
     if (done) {
       return verdict;

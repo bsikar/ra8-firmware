@@ -195,8 +195,10 @@ static bool swap_capture_ok(ra8_err_t rep_e, uint32_t captured)
  *
  * @note Not thread-safe; the demo is single-threaded.
  */
-static ra8_err_t
-swap_prepare_volume(ra8_io_blockdev_t* bd, const char* name, const char* label, ra8_fs_mount_t** mnt)
+static ra8_err_t swap_prepare_volume(ra8_io_blockdev_t* bd,
+                                     const char*        name,
+                                     const char*        label,
+                                     ra8_fs_mount_t**   mnt)
 {
   ra8_fs_backend_t be = {};
   RA8_RETURN_ON_ERROR(ra8_io_blockdev_as_fs_backend(bd, &be), s_swap_test_tag, "bridge");
