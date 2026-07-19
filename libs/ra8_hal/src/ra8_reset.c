@@ -262,7 +262,19 @@ static ra8_reset_cause_t internal_decode_rstsr3(uint8_t rstsr3)
  * dominance (every higher-priority reset clears the lower-priority
  * flag, so by the time firmware runs only the dominant cause is set).
  *
+ * @param[in] raw Snapshot of RSTSR0 / RSTSR1 / RSTSR2 / RSTSR3.
+ *
  * @return Decoded cause.
+ * @retval k_ra8_reset_cause_unknown No flag was set in any RSTSRn word.
+ *
+ * @pre ``raw`` is non-NULL.
+ * @pre ``raw`` was filled by ::ra8_reset_raw_read before any flag was cleared.
+ *
+ * @post No hardware register is read or written.
+ * @post The returned cause is the highest-priority flag present in ``raw``.
+ *
+ * @note Not thread-safe with respect to concurrent RSTSRn flag clears.
+ * @since 0.1.0
  */
 static ra8_reset_cause_t internal_decode(const ra8_reset_raw_t* raw)
 {

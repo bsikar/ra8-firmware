@@ -93,9 +93,16 @@ typedef enum : uint32_t {
 /**
  * @brief Map a curve to its scalar / coordinate byte length.
  *
+ * @details
+ * Pure lookup over ``ra8_rsip_curve_t``. The value is the FIPS 186-4 /
+ * RFC 5639 parameter length in bytes, which is what every caller uses to
+ * size the scalar, the affine coordinates and the r/s signature halves.
+ * secp521r1 rounds 521 bits up to 66 bytes.
+ *
  * @param[in] curve Curve selector.
  *
  * @return Byte length, or 0 for unknown.
+ * @retval 0 ``curve`` is not a supported ``ra8_rsip_curve_t`` value.
  *
  * @pre ``curve`` is one of ``ra8_rsip_curve_t``.
  * @pre Caller treats 0 as "unsupported".
