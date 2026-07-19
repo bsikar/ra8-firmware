@@ -42,7 +42,6 @@
 #include "ra8_err.h"
 #include "ra8_fmt.h"
 #include "ra8_fmt_internal.h"
-#include "ra8_jpeg_sw.h"
 #include "ra8_tileatlas.h"
 #include "ra8_tileatlas_produce.h"
 
@@ -62,37 +61,45 @@ typedef enum : uint32_t {
   k_fmt_atlas_band_h = 256U,        /**< Band height, matching media_dl.   */
   k_fmt_fnv_offset   = 2166136261U, /**< FNV-1a 32-bit offset basis.       */
   k_fmt_fnv_prime    = 16777619U,   /**< FNV-1a 32-bit prime.              */
-  k_fmt_png_ihdr_w   = 16U,         /**< PNG IHDR width field offset.      */
-  k_fmt_png_ihdr_h   = 20U,         /**< PNG IHDR height field offset.     */
-  k_fmt_png_ihdr_end = 24U,         /**< Bytes needed to read both fields. */
-  k_fmt_be_sh8       = 8U,          /**< Big-endian shift, byte 2.         */
-  k_fmt_be_sh16      = 16U,         /**< Big-endian shift, byte 1.         */
-  k_fmt_be_sh24      = 24U,         /**< Big-endian shift, byte 0.         */
+  k_fmt_webp_riff_ofs   = 0U,       /**< Offset of the "RIFF" fourCC.        */
+  k_fmt_webp_fourcc_ofs = 8U,       /**< Offset of the "WEBP" fourCC.        */
+  k_fmt_webp_head_len   = 12U,      /**< Bytes needed to sniff both fourCCs. */
 } ra8_fmt_atlas_const_t;
 
-/** @brief PNG 8-byte signature, for distinguishing PNG sources from JPEG. */
-static const uint8_t s_fmt_png_sig[8] =
-  {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU}; /* MAGIC-OK: the PNG spec signature */
+/** @brief WebP RIFF container tag (source head bytes 0..3). */
+static const uint8_t s_fmt_webp_riff[4] = {'R', 'I', 'F', 'F'}; /* MAGIC-OK: RIFF fourCC */
+
+/** @brief WebP form tag (source head bytes 8..11), gating RIFF to WebP alone. */
+static const uint8_t s_fmt_webp_webp[4] = {'W', 'E', 'B', 'P'}; /* MAGIC-OK: WEBP fourCC */
 
 /**
- * @brief Read a big-endian uint32 (PNG stores its header fields big-endian).
- * @details The JOF container is little-endian throughout, but the PNG IHDR the
- *          probe reads is not, so the probe needs its own reader.
- * @param[in] buf Source bytes (at least 4 readable).
- * @return The decoded value.
- * @retval 0 All four source bytes were zero.
- * @pre @p buf holds 4 readable bytes.
- * @pre The field is big-endian per the PNG specification.
+ * @brief Test whether a source blob carries the WebP RIFF container head.
+ * @details Mirrors the producer's own dispatch sniff in
+ *          `ra8_tileatlas_produce.c` -- both fourCCs must match, so a non-WebP
+ *          RIFF (WAVE, AVI) is rejected rather than handed to the WebP arm.
+ *          The tool uses this for two decisions that must agree: which probe
+ *          reads the dimensions, and whether to carve the whole-frame arena.
+ * @param[in] src Source blob to sniff.
+ * @return Whether @p src begins with a WebP container head.
+ * @retval true  Both the "RIFF" and "WEBP" fourCCs are present.
+ * @retval false Too short, or either fourCC differs.
+ * @pre @p src is non-NULL and describes `len` readable bytes at `bytes`.
+ * @pre @p src has been slurped whole (the sniff reads the head only).
  * @post No state is mutated.
- * @post The result equals the four bytes assembled big-endian.
+ * @post A false result leaves the JPEG / PNG probes free to claim the source.
  * @note Pure; thread-safe.
+ * @see ra8_fmt_atlas_probe()
  * @since 0.1.0
  */
 RA8_INTERNAL
-static uint32_t ra8_fmt_rd_be32(const uint8_t* buf)
+static bool ra8_fmt_atlas_is_webp(const ra8_fmt_blob_t* src)
 {
-  return ((uint32_t)buf[0] << k_fmt_be_sh24) | ((uint32_t)buf[1] << k_fmt_be_sh16) |
-         ((uint32_t)buf[2] << k_fmt_be_sh8) | (uint32_t)buf[3];
+  if ((src == nullptr) || (src->bytes == nullptr) ||
+      (src->len < (size_t)k_fmt_webp_head_len)) {
+    return false;
+  }
+  return (memcmp(&src->bytes[k_fmt_webp_riff_ofs], s_fmt_webp_riff, sizeof(s_fmt_webp_riff)) == 0) &&
+         (memcmp(&src->bytes[k_fmt_webp_fourcc_ofs], s_fmt_webp_webp, sizeof(s_fmt_webp_webp)) == 0);
 }
 
 /**
@@ -146,22 +153,10 @@ ra8_err_t ra8_fmt_atlas_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(out_w, s_tag, "out_w must not be nullptr");
   RA8_CHECK_NULL_PTR(out_h, s_tag, "out_h must not be nullptr");
-  if (src->len > (size_t)k_fmt_png_ihdr_end) {
-    const bool is_png = memcmp(src->bytes, s_fmt_png_sig, sizeof(s_fmt_png_sig)) == 0;
-    if (is_png) {
-      /* PNG IHDR: width/height are big-endian uint32 at byte 16 and 20. */
-      const uint32_t w = ra8_fmt_rd_be32(&src->bytes[k_fmt_png_ihdr_w]);
-      const uint32_t h = ra8_fmt_rd_be32(&src->bytes[k_fmt_png_ihdr_h]);
-      if ((w == 0U) || (h == 0U) || (w > (uint32_t)k_ra8_tileatlas_max_dim) ||
-          (h > (uint32_t)k_ra8_tileatlas_max_dim)) {
-        return k_ra8_err_invalid_size;
-      }
-      *out_w = (uint16_t)w;
-      *out_h = (uint16_t)h;
-      return k_ra8_ok;
-    }
-  }
-  return ra8_jpeg_sw_get_dimensions(src->bytes, (uint32_t)src->len, out_w, out_h);
+  /* The producer owns the format dispatch, so it owns the geometry probe too:
+   * delegating keeps "the tool can size it" and "the producer will decode it"
+   * from drifting apart. */
+  return ra8_tileatlas_probe_dims(src->bytes, src->len, out_w, out_h);
 }
 
 ra8_err_t ra8_fmt_atlas_produce(const ra8_fmt_blob_t* src,
@@ -191,6 +186,28 @@ ra8_err_t ra8_fmt_atlas_produce(const ra8_fmt_blob_t* src,
     free(sink);
     return k_ra8_err_no_mem;
   }
+  /* WebP is not stripe-decodable, so its arm needs a second whole-frame arena
+   * holding the compressed source, the decoded RGBA frame and libwebp's
+   * scratch at once. Carve it only for WebP sources: JPEG and PNG stream and
+   * would pay the whole-frame cost for nothing. A NULL arena is the producer's
+   * fail-closed "reject WebP" signal, which is correct for the other codecs. */
+  uint8_t* webp_work     = nullptr;
+  size_t   webp_work_cap = 0U;
+  if (ra8_fmt_atlas_is_webp(src)) {
+    const uint32_t need = ra8_tileatlas_webp_work_bytes(max_w, max_h, (uint32_t)src->len);
+    if (need == 0U) {
+      free(work);
+      free(sink);
+      return k_ra8_err_invalid_size;
+    }
+    webp_work = (uint8_t*)malloc((size_t)need);
+    if (webp_work == nullptr) {
+      free(work);
+      free(sink);
+      return k_ra8_err_no_mem;
+    }
+    webp_work_cap = (size_t)need;
+  }
   ra8_tileatlas_memstore_t          store = {.buf = sink, .cap = sink_cap, .len = 0U};
   fmt_pull_ctx_t                    pull  = {.data = src->bytes, .len = src->len, .pos = 0U};
   const ra8_tileatlas_produce_cfg_t cfg   = {.pull          = fmt_atlas_pull,
@@ -204,10 +221,11 @@ ra8_err_t ra8_fmt_atlas_produce(const ra8_fmt_blob_t* src,
                                              .max_height    = 0U,
                                              .work          = work,
                                              .work_cap      = work_cap,
-                                             .webp_work     = nullptr,
-                                             .webp_work_cap = 0U};
+                                             .webp_work     = webp_work,
+                                             .webp_work_cap = webp_work_cap};
   const ra8_err_t                   rc    = ra8_tileatlas_produce(&cfg, out_info);
   free(work);
+  free(webp_work);
   if (rc != k_ra8_ok) {
     free(sink);
     return rc;

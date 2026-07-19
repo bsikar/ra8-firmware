@@ -40,6 +40,7 @@ get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 set(RA8_FMT_FW_SRC
     ${FW_ROOT}/libs/ra8_tileatlas/src/ra8_tileatlas.c
     ${FW_ROOT}/libs/ra8_tileatlas/src/ra8_tileatlas_produce.c
+    ${FW_ROOT}/libs/ra8_tileatlas/src/ra8_tileatlas_produce_webp.c
     ${FW_ROOT}/libs/ra8_tileatlas/src/ra8_tileatlas_png.c
     ${FW_ROOT}/libs/ra8_tileatlas/src/ra8_tileatlas_png_chunk.c
     ${FW_ROOT}/libs/ra8_io/src/ra8_io_compress.c
@@ -63,11 +64,17 @@ add_executable(ra8_fmt
     src/ra8_fmt_atlas_inspect.c
     src/ra8_fmt_atlas_verify.c
     src/ra8_fmt_book.c
-    webp_stub.c
     ${RA8_FMT_FW_SRC}
     ${RA8_FMT_JPEG_SRC}
     ${RA8_FMT_THIRD_PARTY_SRC}
 )
+
+# WebP decode (vendored libwebp + the ra8_webp facade), so the producer's WebP
+# arm above is the real transcode rather than a link-satisfying stub. One call:
+# the recipe lives in cmake/ra8_webp_vendor.cmake, shared with the firmware app
+# recipe and the host test build.
+include(${FW_ROOT}/cmake/ra8_webp_vendor.cmake)
+ra8_webp_attach(ra8_fmt ${FW_ROOT})
 target_compile_definitions(ra8_fmt PRIVATE RA8_SIMULATOR_MODE)
 target_include_directories(ra8_fmt PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/inc

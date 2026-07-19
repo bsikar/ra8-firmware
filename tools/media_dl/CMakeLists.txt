@@ -30,6 +30,7 @@ set(FW ${CMAKE_CURRENT_SOURCE_DIR}/../../libs)
 set(MDL_JOF_SRC
   ${FW}/ra8_tileatlas/src/ra8_tileatlas.c
   ${FW}/ra8_tileatlas/src/ra8_tileatlas_produce.c
+  ${FW}/ra8_tileatlas/src/ra8_tileatlas_produce_webp.c
   ${FW}/ra8_tileatlas/src/ra8_tileatlas_png.c
   ${FW}/ra8_tileatlas/src/ra8_tileatlas_png_chunk.c
   ${FW}/ra8_hal/src/ra8_jpeg_sw.c
@@ -38,14 +39,19 @@ set(MDL_JOF_SRC
   ${FW}/ra8_io/src/ra8_io_compress.c
   ${FW}/ra8_core/src/ra8_log.c
   ${FW}/ra8_core/src/ra8_error_handler.c
-  ${FW}/ra8_core/src/ra8_decomp_limits.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/webp_stub.c)
+  ${FW}/ra8_core/src/ra8_decomp_limits.c)
 set_source_files_properties(${MDL_JOF_SRC} PROPERTIES
   COMPILE_OPTIONS "-w;-fno-strict-aliasing")
 set(MDL_JOF_INC
   ${FW}/ra8_tileatlas/inc ${FW}/ra8_tileatlas/src
   ${FW}/ra8_hal/inc ${FW}/ra8_hal/src
   ${FW}/ra8_io/inc)
+
+# WebP decode for the JOF exporter: the sites this CLI scrapes serve .webp pages
+# (mdl_export's page-extension table has always accepted them), so the producer's
+# WebP arm must be the real transcode. One call; the recipe is shared with the
+# firmware app build and the host test build.
+include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/ra8_webp_vendor.cmake)
 # rabook shells out to this python emitter (the RBKC container the C path can't
 # write); pass its directory so the CLI can find cbz_compile.py at runtime.
 set(MDL_EPUB_COMPILE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../epub_compile)
@@ -74,6 +80,7 @@ target_compile_definitions(media_dl PRIVATE
   MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}")
 target_compile_options(media_dl PRIVATE -Wall -Wextra)
 target_link_libraries(media_dl PRIVATE CURL::libcurl)
+ra8_webp_attach(media_dl ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 
 # Host unit tests (unity_minimal harness, like the repo's tests/). The pure
 # logic under test (extract/config/export) needs no libcurl, so the test binary
@@ -96,4 +103,5 @@ target_compile_definitions(test_media_dl PRIVATE
   RA8_SIMULATOR_MODE
   MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}")
 target_compile_options(test_media_dl PRIVATE -Wall -Wextra)
+ra8_webp_attach(test_media_dl ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 add_test(NAME test_media_dl COMMAND test_media_dl)

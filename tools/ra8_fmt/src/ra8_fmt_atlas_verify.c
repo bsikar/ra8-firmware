@@ -47,6 +47,7 @@ typedef enum : uint32_t {
   k_fmt_ver_max_diffs = 8U,   /**< Differing pixels reported before eliding.  */
   k_fmt_ver_gray      = 1U,   /**< bpp for 8-bit grayscale rasters.           */
   k_fmt_ver_rgb       = 3U,   /**< bpp for 24-bit RGB rasters.                */
+  k_fmt_ver_rgba      = 4U,   /**< bpp for 32-bit RGBA rasters (WebP / PNG).  */
   k_fmt_ppm_max       = 255U, /**< PPM maximum channel value.                 */
 } ra8_fmt_ver_const_t;
 
@@ -72,15 +73,20 @@ typedef struct {
 /**
  * @brief Write a reassembled raster out as a binary PPM for visual inspection.
  * @details Grayscale rasters are emitted as P5, RGB as P6; any other depth is
- *          skipped rather than mis-labelled.
+ *          skipped rather than mis-labelled. RGBA rasters (what the WebP arm
+ *          and alpha PNGs decode to) are emitted as P6 with the alpha channel
+ *          dropped per pixel: PPM has no alpha, and dumping the raw 4-byte
+ *          pixels under a P6 header would mislabel the file. The dump is a
+ *          visual-inspection aid only -- the pass/fail verdict is the raster
+ *          comparison, which runs on the full RGBA bytes.
  * @param[in] path Destination path (non-NULL).
  * @param[in] px   Raster bytes (non-NULL).
  * @param[in] w    Image width, pixels.
  * @param[in] h    Image height, pixels.
- * @param[in] bpp  Bytes per pixel (1 or 3).
+ * @param[in] bpp  Bytes per pixel (1, 3 or 4).
  * @return Result code.
  * @retval k_ra8_ok                The PPM was written.
- * @retval k_ra8_err_not_supported @p bpp is neither 1 nor 3.
+ * @retval k_ra8_err_not_supported @p bpp is not 1, 3 or 4.
  * @retval k_ra8_fail              The file could not be written.
  * @pre @p px holds `w * h * bpp` readable bytes.
  * @pre @p path names a writable location.
@@ -93,7 +99,8 @@ RA8_INTERNAL
 static ra8_err_t
 priv_write_ppm(const char* path, const uint8_t* px, uint16_t w, uint16_t h, uint8_t bpp)
 {
-  if ((bpp != (uint8_t)k_fmt_ver_gray) && (bpp != (uint8_t)k_fmt_ver_rgb)) {
+  if ((bpp != (uint8_t)k_fmt_ver_gray) && (bpp != (uint8_t)k_fmt_ver_rgb) &&
+      (bpp != (uint8_t)k_fmt_ver_rgba)) {
     return k_ra8_err_not_supported;
   }
   FILE* f = fopen(path, "wb");
@@ -106,9 +113,19 @@ priv_write_ppm(const char* path, const uint8_t* px, uint16_t w, uint16_t h, uint
                 (unsigned)w,
                 (unsigned)h,
                 (unsigned)k_fmt_ppm_max);
-  const size_t n  = (size_t)w * (size_t)h * (size_t)bpp;
-  const bool   ok = (fwrite(px, 1U, n, f) == n);
-  const bool   cl = (fclose(f) == 0);
+  const size_t npx = (size_t)w * (size_t)h;
+  bool         ok  = true;
+  if (bpp == (uint8_t)k_fmt_ver_rgba) {
+    /* Drop alpha one pixel at a time: PPM carries colour channels only. */
+    for (size_t i = 0U; (i < npx) && ok; ++i) {
+      ok = (fwrite(&px[i * (size_t)k_fmt_ver_rgba], 1U, (size_t)k_fmt_ver_rgb, f) ==
+            (size_t)k_fmt_ver_rgb);
+    }
+  } else {
+    const size_t n = npx * (size_t)bpp;
+    ok             = (fwrite(px, 1U, n, f) == n);
+  }
+  const bool cl = (fclose(f) == 0);
   if (!ok || !cl) {
     (void)remove(path);
     return k_ra8_fail;
