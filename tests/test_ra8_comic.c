@@ -34,6 +34,11 @@
 #include "ra8_err.h"
 #include "unity_minimal.h"
 
+/** @brief Size of a ZIP end-of-central-directory record with no comment. */
+typedef enum : uint8_t {
+  k_tc_eocd_bytes = 22U, /**< Minimal EOCD record length. */
+} tc_eocd_t;
+
 /**
  * @enum comic_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -485,7 +490,7 @@ static void test_comic_facade_edges(void)
 
   /* Empty-archive EOCD "PK\x05\x06": the ZIP magic's EOCD leg is taken; an
    * archive with no image entries opens to no pages (or a miniz open error). */
-  memset(s_arc, 0, 22U);
+  memset(s_arc, 0, (size_t)k_tc_eocd_bytes);
   memcpy(s_arc, k_tc_sig_eocd, sizeof(k_tc_sig_eocd));
   s_arc_size           = k_comic_s_arc_size_22;
   const ra8_err_t eocd = tc_open_std(&c, pages, names, 22U);

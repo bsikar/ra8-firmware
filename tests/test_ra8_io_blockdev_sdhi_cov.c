@@ -70,6 +70,12 @@
 #include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
+/** @brief Distinguishable payload fills for the read-back assertions. */
+typedef enum : uint8_t {
+  k_sdhi_cov_fill_write   = 0xA5U, /**< Payload handed to the write path. */
+  k_sdhi_cov_fill_readback = 0x5AU, /**< Poison the read path must overwrite. */
+} sdhi_cov_fill_t;
+
 /* ===========================================================================
  * Test constants
  * ===========================================================================
@@ -270,7 +276,7 @@ static void test_sdhi_read_forwards(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_sdhi_init(&bd));
 
   uint8_t buf[(size_t)k_ra8_io_block_size_bytes];
-  memset(buf, 0xA5, sizeof(buf));
+  memset(buf, k_sdhi_cov_fill_write, sizeof(buf));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_io_blockdev_read(&bd, 0U, 1U, buf));
   TEST_END("sdhi_read forwards to card driver");
 }
@@ -300,7 +306,7 @@ static void test_sdhi_write_forwards(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_sdhi_init(&bd));
 
   uint8_t buf[(size_t)k_ra8_io_block_size_bytes];
-  memset(buf, 0x5A, sizeof(buf));
+  memset(buf, k_sdhi_cov_fill_readback, sizeof(buf));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_io_blockdev_write(&bd, 0U, 1U, buf));
   TEST_END("sdhi_write forwards to card driver");
 }

@@ -36,6 +36,12 @@
 #include "ra8_xspi.h"
 #include "unity_minimal.h"
 
+/** @brief Distinguishable payloads across the interchangeable backends. */
+typedef enum : uint8_t {
+  k_bdb_fill_payload = 0xAAU, /**< Written then read back through a backend. */
+  k_bdb_fill_second  = 0x3CU, /**< Second pattern, proving no stale cache.   */
+} bdb_fill_t;
+
 /**
  * @enum io_blockdev_backends_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -100,7 +106,7 @@ static void test_sdram_backend(void)
   TEST_ASSERT(memcmp(in, out, sizeof(in)) == 0);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_erase(&bd, 3, 1));
-  (void)memset(in, 0xAA, sizeof(in));
+  (void)memset(in, k_bdb_fill_payload, sizeof(in));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(&bd, 3, 1, in));
   TEST_ASSERT_EQ(0, in[0]);
   TEST_ASSERT_EQ(0, in[(size_t)k_ra8_io_block_size_bytes - 1U]);
@@ -168,7 +174,7 @@ static void test_xspi_rmw_roundtrip(void)
 
   /* Write blocks 5..6 (same 4 KiB sector); block 2 must survive the RMW. */
   uint8_t b[(size_t)k_ra8_io_block_size_bytes * 2U];
-  (void)memset(b, 0x3C, sizeof(b));
+  (void)memset(b, k_bdb_fill_second, sizeof(b));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 5, 2, b));
 
   (void)memset(got, 0, sizeof(got));

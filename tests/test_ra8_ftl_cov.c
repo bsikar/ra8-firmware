@@ -49,6 +49,24 @@
 #include "ra8_io_blockdev_internal.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum ftl_cov_fill_t
+ * @brief Per-case payload fill bytes.
+ *
+ * @details
+ * Each case writes a distinct byte so a block that leaks between cases is
+ * attributable to the case that wrote it. The values are arbitrary but must
+ * stay distinct from each other and from the 0xFF erased-flash state.
+ */
+typedef enum : uint8_t {
+  k_ftl_fill_mapped_write  = 0x55U, /**< Write that establishes a live mapping. */
+  k_ftl_fill_program_fail  = 0xAAU, /**< Payload for the program-step failure.  */
+  k_ftl_fill_erase_fail    = 0xBBU, /**< Payload for the erase-step failure.    */
+  k_ftl_fill_all_logical   = 0xCCU, /**< Payload written to every logical block.*/
+  k_ftl_fill_reclaim_fail  = 0xDDU, /**< Payload for the reclaim failure.       */
+  k_ftl_fill_no_free_block = 0xEEU, /**< Payload for the exhausted free list.   */
+} ftl_cov_fill_t;
+
 /* =============================================================================
  * Sizing constants
  * =============================================================================
@@ -381,7 +399,7 @@ static void test_cov_read_error(void)
 
   /* Write logical block 0 so it has a live physical mapping. */
   uint8_t wbuf[(size_t)k_cov_block];
-  (void)memset(wbuf, 0x55, sizeof(wbuf));
+  (void)memset(wbuf, k_ftl_fill_mapped_write, sizeof(wbuf));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 0U, 1U, wbuf));
 
   /* Inject read failure; ftl_read_one forwards the error -> line 379. */
@@ -418,7 +436,7 @@ static void test_cov_write_prog_fail(void)
    * The error propagates through ftl_dev_write's loop at line 426. */
   s_cov.fail_write = true;
   uint8_t buf[(size_t)k_cov_block];
-  (void)memset(buf, 0xAA, sizeof(buf));
+  (void)memset(buf, k_ftl_fill_program_fail, sizeof(buf));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_io_blockdev_write(&bd, 0U, 1U, buf));
   s_cov.fail_write = false;
 
@@ -451,7 +469,7 @@ static void test_cov_alloc_erase_fail(void)
    * through ftl_write_one (line 284) and ftl_dev_write (line 426). */
   s_cov.fail_erase = true;
   uint8_t buf[(size_t)k_cov_block];
-  (void)memset(buf, 0xBB, sizeof(buf));
+  (void)memset(buf, k_ftl_fill_erase_fail, sizeof(buf));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_io_blockdev_write(&bd, 0U, 1U, buf));
   s_cov.fail_erase = false;
 
@@ -481,7 +499,7 @@ static void test_cov_reclaim_erase_fail(void)
 
   /* Write all four logical blocks: physical blocks 0-3 become LIVE, 4-5 FREE. */
   uint8_t buf[(size_t)k_cov_block];
-  (void)memset(buf, 0xCC, sizeof(buf));
+  (void)memset(buf, k_ftl_fill_all_logical, sizeof(buf));
   for (uint32_t i = 0U; i < (uint32_t)k_cov_logical; ++i) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, i, 1U, buf));
   }
@@ -499,7 +517,7 @@ static void test_cov_reclaim_erase_fail(void)
    * ftl_alloc_blank (line 186), ftl_write_one (line 284), and the loop in
    * ftl_dev_write (line 426). */
   s_cov.fail_erase = true;
-  (void)memset(buf, 0xDD, sizeof(buf));
+  (void)memset(buf, k_ftl_fill_reclaim_fail, sizeof(buf));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_io_blockdev_write(&bd, 1U, 1U, buf));
   s_cov.fail_erase = false;
 
@@ -534,7 +552,7 @@ static void test_cov_no_mem(void)
     pb[i].state = (uint8_t)k_ra8_ftl_pstate_live;
   }
   uint8_t buf[(size_t)k_cov_block];
-  (void)memset(buf, 0xEE, sizeof(buf));
+  (void)memset(buf, k_ftl_fill_no_free_block, sizeof(buf));
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_io_blockdev_write(&bd, 0U, 1U, buf));
 
   TEST_END("ftl no memory after reclaim");

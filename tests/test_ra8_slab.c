@@ -19,6 +19,12 @@
 #include "ra8_slab.h"
 #include "unity_minimal.h"
 
+/** @brief Distinct fills proving two slab cells do not alias. */
+typedef enum : uint8_t {
+  k_slab_fill_cell_a = 0xAAU, /**< Written through the first cell.  */
+  k_slab_fill_cell_b = 0x55U, /**< Written through the second cell. */
+} slab_fill_t;
+
 /**
  * @enum t_slab_const_t
  * @brief Fixture sizes.
@@ -85,8 +91,8 @@ static void test_free_reuse(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_slab_alloc(&slab, &a));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_slab_alloc(&slab, &b));
   /* write through the cells to confirm they are usable, distinct storage */
-  (void)memset(a, 0xAA, (size_t)k_t_cell_bytes);
-  (void)memset(b, 0x55, (size_t)k_t_cell_bytes);
+  (void)memset(a, k_slab_fill_cell_a, (size_t)k_t_cell_bytes);
+  (void)memset(b, k_slab_fill_cell_b, (size_t)k_t_cell_bytes);
   TEST_ASSERT_EQ(0xAA, ((uint8_t*)a)[0]);
   TEST_ASSERT_EQ(0x55, ((uint8_t*)b)[0]);
 

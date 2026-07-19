@@ -52,6 +52,11 @@
 
 #include "ra8_fs.h"
 
+/** @brief Logical block size of the backing disk image. */
+typedef enum : uint16_t {
+  k_exfat_test_block_bytes = 512U, /**< Bytes per LBA in the RAM image. */
+} exfat_test_geom_t;
+
 /**
  * @enum exfat_fs_test_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -103,13 +108,17 @@ static int      g_fail;
 static ra8_err_t be_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
-  memcpy(buf, g_img + ((size_t)lba * 512U), (size_t)count * 512U);
+  memcpy(buf,
+         g_img + ((size_t)lba * (size_t)k_exfat_test_block_bytes),
+         (size_t)count * (size_t)k_exfat_test_block_bytes);
   return k_ra8_ok;
 }
 static ra8_err_t be_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
-  memcpy(g_img + ((size_t)lba * 512U), buf, (size_t)count * 512U);
+  memcpy(g_img + ((size_t)lba * (size_t)k_exfat_test_block_bytes),
+         buf,
+         (size_t)count * (size_t)k_exfat_test_block_bytes);
   return k_ra8_ok;
 }
 static ra8_err_t be_cap(void* ctx, uint32_t* bc, uint32_t* bs)

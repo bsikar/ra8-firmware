@@ -39,6 +39,11 @@
 #include "ra8_fs_fat_internal.h"
 #include "unity_minimal.h"
 
+/** @brief FAT 8.3 short-name field width, bytes (8 name + 3 extension). */
+typedef enum : uint8_t {
+  k_sfn_name_bytes = 11U, /**< 8.3 name field, unterminated and space-padded. */
+} sfn_geom_t;
+
 /**
  * @enum fs_fat_lfn_cov_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -417,7 +422,7 @@ static void build_vol_lfn_good(void)
   uint8_t* root = &s_disk.bytes[(size_t)(uint32_t)k_lcov_root_lba * (uint32_t)k_lcov_blk_sz];
   stamp_lfn_entry(&root[0], sfn_checksum(k_alias83));
   uint8_t* sfn = &root[32U];
-  memcpy(sfn, k_alias83, 11U);
+  memcpy(sfn, k_alias83, (size_t)k_sfn_name_bytes);
   sfn[k_fs_fat_lfn_cov_val_11] = (uint8_t)k_attr_archive;
   put16(sfn, k_fs_fat_lfn_cov_put16_26, 0U);
   put16(sfn, k_fs_fat_lfn_cov_put16_20, 0U);
@@ -439,7 +444,7 @@ static void build_vol_lfn_bad_csum(void)
   uint8_t  bad_csum = (uint8_t)(sfn_checksum(k_alias83) ^ (uint8_t)k_csum_scramble);
   stamp_lfn_entry(&root[0], bad_csum);
   uint8_t* sfn = &root[32U];
-  memcpy(sfn, k_alias83, 11U);
+  memcpy(sfn, k_alias83, (size_t)k_sfn_name_bytes);
   sfn[k_fs_fat_lfn_cov_val_11] = (uint8_t)k_attr_archive;
   put16(sfn, k_fs_fat_lfn_cov_put16_26, 0U);
   put16(sfn, k_fs_fat_lfn_cov_put16_20, 0U);

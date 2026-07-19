@@ -22,6 +22,11 @@
 #include "ra8_fs.h"
 #include "unity_minimal.h"
 
+/** @brief FAT 8.3 short-name field width, bytes (8 name + 3 extension). */
+typedef enum : uint8_t {
+  k_sfn_name_bytes = 11U, /**< 8.3 name field, unterminated and space-padded. */
+} sfn_geom_t;
+
 /**
  * @enum fs_lfn_uint8_const_t
  * @brief Named uint8_t constants used by this file.
@@ -195,7 +200,7 @@ static void build_volume_with_lfn(void)
 
   /* --- slot 1: the 8.3 short entry (zero-length file is enough to open) --- */
   uint8_t* sfn = &root[(uint32_t)k_dir_entry_len];
-  memcpy(sfn, k_alias83, 11U);
+  memcpy(sfn, k_alias83, (size_t)k_sfn_name_bytes);
   sfn[k_fs_lfn_val_11] = 0x20U;      /* ARCHIVE                            */
   put16(sfn, k_fs_lfn_put16_26, 0U); /* first cluster low = 0 (empty file) */
   put16(sfn, k_fs_lfn_put16_20, 0U); /* first cluster high                 */
