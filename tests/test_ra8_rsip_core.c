@@ -702,6 +702,82 @@ static void test_hmac_sha256_inc_rfc4231_1(void)
   * happy path / error-rejection contract; no `&&` or `||` in the
   * code under test that this case touches)
  */
+/**
+ * @brief RFC 2104 key preparation: hash a key longer than the block size.
+ *
+ * @details
+ * A key longer than the 64-byte SHA-256 block is replaced by its own digest,
+ * zero-padded back out to a full block. That is the step this test exists to
+ * exercise, so the reference computes it independently of the HMAC API.
+ *
+ * @param[in]  key      Key bytes, longer than one block.
+ * @param[in]  key_len  Length of @p key in bytes.
+ * @param[out] prepared 64-byte prepared key block.
+ * @return None.
+ * @pre @p key and @p prepared are non-null.
+ * @pre @p prepared is zeroed by the caller, so the pad is already in place.
+ * @post The first 32 bytes of @p prepared hold SHA-256(@p key).
+ * @post The remaining bytes of @p prepared are left as the caller's zero pad.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void hmac_ref_prepare_key(const uint8_t* key, uint32_t key_len, uint8_t* prepared)
+{
+  ra8_rsip_sha256_ctx_t prep_ctx   = {};
+  uint8_t               prep_h[32] = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_init(&prep_ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&prep_ctx, key, key_len));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_final(&prep_ctx, prep_h));
+  for (uint32_t i = 0U; i < 32U; ++i) {
+    prepared[i] = prep_h[i];
+  }
+}
+
+/**
+ * @brief RFC 2104 two-pass HMAC over a prepared key, using the SHA primitive.
+ *
+ * @details
+ * Computes `H((K ^ opad) || H((K ^ ipad) || data))` directly, so the expected
+ * MAC comes from the same hash the driver uses but along a path that shares no
+ * code with `ra8_rsip_hmac_sha256_*`.
+ *
+ * @param[in]  prepared 64-byte prepared key block.
+ * @param[in]  data     Message bytes to authenticate.
+ * @param[in]  data_len Length of @p data in bytes.
+ * @param[out] expect   32-byte reference MAC.
+ * @return None.
+ * @pre All pointer arguments are non-null.
+ * @pre @p prepared holds a full 64-byte block.
+ * @post @p expect holds the reference MAC.
+ * @post @p prepared and @p data are unmodified.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void hmac_ref_compute(const uint8_t* prepared,
+                             const uint8_t* data,
+                             uint32_t       data_len,
+                             uint8_t*       expect)
+{
+  uint8_t ipad[k_rsip_core_val_64];
+  uint8_t opad[k_rsip_core_val_64];
+  for (uint32_t i = 0U; i < k_rsip_core_i_64; ++i) {
+    ipad[i] = prepared[i] ^ k_rsip_core_val_36;
+    opad[i] = prepared[i] ^ k_rsip_core_val_5c;
+  }
+  uint8_t               inner[32] = {};
+  ra8_rsip_sha256_ctx_t inner_ctx = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_init(&inner_ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&inner_ctx, ipad, 64U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&inner_ctx, data, data_len));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_final(&inner_ctx, inner));
+
+  ra8_rsip_sha256_ctx_t outer_ctx = {};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_init(&outer_ctx));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&outer_ctx, opad, 64U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&outer_ctx, inner, 32U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_final(&outer_ctx, expect));
+}
+
 static void test_hmac_sha256_inc_oversized_key(void)
 {
   TEST_BEGIN("rsip hmac sha256 incremental oversized key");
@@ -715,38 +791,9 @@ static void test_hmac_sha256_inc_oversized_key(void)
 
   /* Reference: build expected MAC by hand using the same primitive. */
   uint8_t prepared[k_rsip_core_val_64] = {0U};
-  {
-    ra8_rsip_sha256_ctx_t prep_ctx   = {};
-    uint8_t               prep_h[32] = {};
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_init(&prep_ctx));
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&prep_ctx, key, (uint32_t)sizeof(key)));
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_final(&prep_ctx, prep_h));
-    for (uint32_t i = 0U; i < 32U; ++i) {
-      prepared[i] = prep_h[i];
-    }
-  }
-  uint8_t ipad[k_rsip_core_val_64];
-  uint8_t opad[k_rsip_core_val_64];
-  for (uint32_t i = 0U; i < k_rsip_core_i_64; ++i) {
-    ipad[i] = prepared[i] ^ k_rsip_core_val_36;
-    opad[i] = prepared[i] ^ k_rsip_core_val_5c;
-  }
-  uint8_t inner[32] = {};
-  {
-    ra8_rsip_sha256_ctx_t inner_ctx = {};
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_init(&inner_ctx));
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&inner_ctx, ipad, 64U));
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&inner_ctx, data, (uint32_t)sizeof(data)));
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_final(&inner_ctx, inner));
-  }
+  hmac_ref_prepare_key(key, (uint32_t)sizeof(key), prepared);
   uint8_t expect[32] = {};
-  {
-    ra8_rsip_sha256_ctx_t outer_ctx = {};
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_init(&outer_ctx));
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&outer_ctx, opad, 64U));
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_update(&outer_ctx, inner, 32U));
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_sha256_final(&outer_ctx, expect));
-  }
+  hmac_ref_compute(prepared, data, (uint32_t)sizeof(data), expect);
 
   /* Run through the public HMAC API and compare. */
   ra8_rsip_hmac_sha256_ctx_t ctx     = {};
