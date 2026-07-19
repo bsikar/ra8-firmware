@@ -168,6 +168,87 @@ bool ra8_fmt_rabook_sniff(const ra8_fmt_blob_t* src)
   return ra8_fmt_magic_is(src, "RBKC"); /* MAGIC-OK: the RBKC container fourCC */
 }
 
+/**
+ * @brief Check the two header words every container shares.
+ *
+ * @details
+ * Both container headers carry a reserved word that must read zero and a count
+ * that must be non-zero. A non-zero reserved word is an anomaly the caller still
+ * reports around -- the rest of the container is readable -- whereas a zero
+ * count makes every derived table offset meaningless, so the walk cannot
+ * continue.
+ *
+ * @param[in]     out        Report stream.
+ * @param[in]     reserved   Reserved header word, expected zero.
+ * @param[in]     count      Chunk or page count, expected non-zero.
+ * @param[in]     count_name Field name to use in the anomaly line.
+ * @param[in,out] verdict    Downgraded to a validation failure on any anomaly.
+ * @return Whether the container is coherent enough to keep inspecting.
+ * @retval true  @p count is non-zero; the table walk can proceed.
+ * @retval false @p count is zero; @p verdict is already a failure.
+ *
+ * @pre @p out, @p count_name and @p verdict are non-null.
+ * @pre @p verdict holds the verdict so far.
+ * @post Any anomaly has been reported to @p out.
+ * @post @p verdict is never upgraded, only downgraded.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static bool priv_hdr_sanity(FILE*       out,
+                            uint32_t    reserved,
+                            uint32_t    count,
+                            const char* count_name,
+                            ra8_err_t*  verdict)
+{
+  if (reserved != 0U) {
+    (void)fprintf(out, "  ANOMALY reserved word is not zero\n");
+    *verdict = k_ra8_err_validation_failed;
+  }
+  if (count == 0U) {
+    (void)fprintf(out, "  ANOMALY %s is zero\n", count_name);
+    *verdict = k_ra8_err_validation_failed;
+    return false;
+  }
+  return true;
+}
+
+/**
+ * @brief Print the RBKC header block.
+ *
+ * @param[in] out         Report stream.
+ * @param[in] len         Container length in bytes.
+ * @param[in] chunk_bytes Declared per-chunk inflated size.
+ * @param[in] inflated    Declared total inflated size.
+ * @param[in] chunks      Declared chunk count.
+ * @param[in] reserved    Reserved header word.
+ * @return None.
+ * @retval None Void.
+ *
+ * @pre @p out is non-null.
+ * @pre The values were read from a header of at least the minimum length.
+ * @post The header block has been written to @p out.
+ * @post No argument is modified.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static void priv_print_rabook_hdr(FILE*    out,
+                                  size_t   len,
+                                  uint32_t chunk_bytes,
+                                  uint64_t inflated,
+                                  uint32_t chunks,
+                                  uint32_t reserved)
+{
+  (void)fprintf(out, "RBKC rabook container: %zu bytes\n", len);
+  (void)fprintf(out, "  chunk_bytes    : %u\n", (unsigned)chunk_bytes);
+  (void)fprintf(out, "  inflated_total : %llu\n", (unsigned long long)inflated);
+  (void)fprintf(out, "  chunk_count    : %u\n", (unsigned)chunks);
+  (void)fprintf(out, "  reserved       : %u\n", (unsigned)reserved);
+}
+
 ra8_err_t ra8_fmt_rabook_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
@@ -180,19 +261,11 @@ ra8_err_t ra8_fmt_rabook_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t
   const uint64_t inflated    = priv_rd_u64(&src->bytes[k_fmt_bk_off_inflated]);
   const uint32_t chunks      = ra8_fmt_rd_u32(&src->bytes[k_fmt_bk_off_chunk_count]);
   const uint32_t reserved    = ra8_fmt_rd_u32(&src->bytes[k_fmt_bk_off_reserved]);
-  (void)fprintf(opts->report, "RBKC rabook container: %zu bytes\n", src->len);
-  (void)fprintf(opts->report, "  chunk_bytes    : %u\n", (unsigned)chunk_bytes);
-  (void)fprintf(opts->report, "  inflated_total : %llu\n", (unsigned long long)inflated);
-  (void)fprintf(opts->report, "  chunk_count    : %u\n", (unsigned)chunks);
-  (void)fprintf(opts->report, "  reserved       : %u\n", (unsigned)reserved);
+  priv_print_rabook_hdr(opts->report, src->len, chunk_bytes, inflated, chunks, reserved);
+
   ra8_err_t verdict = k_ra8_ok;
-  if (reserved != 0U) {
-    (void)fprintf(opts->report, "  ANOMALY reserved word is not zero\n");
-    verdict = k_ra8_err_validation_failed;
-  }
-  if (chunk_bytes == 0U) {
-    (void)fprintf(opts->report, "  ANOMALY chunk_bytes is zero\n");
-    return k_ra8_err_validation_failed;
+  if (!priv_hdr_sanity(opts->report, reserved, chunk_bytes, "chunk_bytes", &verdict)) {
+    return verdict;
   }
   const uint64_t expect = (inflated + (uint64_t)chunk_bytes - 1U) / (uint64_t)chunk_bytes;
   if ((uint64_t)chunks != expect) {
@@ -280,14 +353,10 @@ ra8_err_t ra8_fmt_cbz_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* o
   (void)fprintf(opts->report, "  page_count : %u\n", (unsigned)pages);
   (void)fprintf(opts->report, "  flags      : 0x%08X\n", (unsigned)flags);
   (void)fprintf(opts->report, "  reserved   : %u\n", (unsigned)reserved);
+
   ra8_err_t verdict = k_ra8_ok;
-  if (reserved != 0U) {
-    (void)fprintf(opts->report, "  ANOMALY reserved word is not zero\n");
-    verdict = k_ra8_err_validation_failed;
-  }
-  if (pages == 0U) {
-    (void)fprintf(opts->report, "  ANOMALY page_count is zero\n");
-    return k_ra8_err_validation_failed;
+  if (!priv_hdr_sanity(opts->report, reserved, pages, "page_count", &verdict)) {
+    return verdict;
   }
   const size_t    table   = (size_t)k_ra8_cbz_header_len;
   const size_t    meta    = table + (((size_t)pages + 1U) * sizeof(uint64_t));

@@ -58,7 +58,7 @@ static const char* const s_tag = "ra8_fmt_jof";
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_fmt_jof_band_h      = 256U,        /**< Band height, matching media_dl.     */
+  k_fmt_jof_band_h    = 256U,        /**< Band height, matching media_dl.     */
   k_fmt_fnv_offset      = 2166136261U, /**< FNV-1a 32-bit offset basis.         */
   k_fmt_fnv_prime       = 16777619U,   /**< FNV-1a 32-bit prime.                */
   k_fmt_webp_riff_ofs   = 0U,          /**< Offset of the "RIFF" fourCC.        */
@@ -177,10 +177,10 @@ static ra8_err_t fmt_jof_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
  */
 RA8_INTERNAL
 static ra8_err_t fmt_jof_carve_webp(const ra8_fmt_blob_t* src,
-                                    uint16_t              max_w,
-                                    uint16_t              max_h,
-                                    uint8_t**             out_work,
-                                    size_t*               out_cap)
+                                      uint16_t              max_w,
+                                      uint16_t              max_h,
+                                      uint8_t**             out_work,
+                                      size_t*               out_cap)
 {
   *out_work = nullptr;
   *out_cap  = 0U;
@@ -211,14 +211,75 @@ ra8_err_t ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t
   return ra8_jof_probe_dims(src->bytes, src->len, out_w, out_h);
 }
 
+/**
+ * @brief Describe and run one tile-atlas produce job over caller-owned buffers.
+ *
+ * @details
+ * Assembles the ::ra8_jof_produce_cfg_t -- the pull seam over @p src, the
+ * memstore sink, the tiling parameters and both work arenas -- and runs the
+ * producer. Owns no memory: every buffer is supplied and released by the caller,
+ * which is what keeps the allocation/cleanup paths in one place.
+ *
+ * @param[in]     src           Source image bytes to tile.
+ * @param[in]     tile_w        Tile width in pixels.
+ * @param[in]     tile_h        Tile height in pixels.
+ * @param[in]     codec         Per-tile codec selector.
+ * @param[out]    work          Producer work arena.
+ * @param[in]     work_cap      Capacity of @p work in bytes.
+ * @param[out]    webp_work     Whole-frame WebP arena, or nullptr for a
+ *                              stripe-decodable source.
+ * @param[in]     webp_work_cap Capacity of @p webp_work in bytes, or 0.
+ * @param[in,out] store         Memstore the produced atlas is written into.
+ * @param[out]    out_info      Receives the produced atlas geometry.
+ * @return Producer result.
+ * @retval k_ra8_ok The atlas was produced into @p store.
+ *
+ * @pre Every pointer argument except @p webp_work is non-null.
+ * @pre @p work_cap is the value ::ra8_jof_work_bytes returned.
+ * @post On success @p store->len is the produced atlas length.
+ * @post No memory is allocated or freed here.
+ *
+ * @note Not thread-safe.
+ * @see fmt_jof_carve_webp()
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t fmt_jof_run_produce(const ra8_fmt_blob_t*     src,
+                                       uint16_t                  tile_w,
+                                       uint16_t                  tile_h,
+                                       uint8_t                   codec,
+                                       uint8_t*                  work,
+                                       uint32_t                  work_cap,
+                                       uint8_t*                  webp_work,
+                                       size_t                    webp_work_cap,
+                                       ra8_jof_memstore_t* store,
+                                       ra8_jof_info_t*     out_info)
+{
+  fmt_pull_ctx_t                    pull = {.data = src->bytes, .len = src->len, .pos = 0U};
+  const ra8_jof_produce_cfg_t cfg  = {.pull          = fmt_jof_pull,
+                                            .pull_ctx      = &pull,
+                                            .sink          = ra8_jof_memstore_sink,
+                                            .sink_ctx      = store,
+                                            .tile_w        = tile_w,
+                                            .tile_h        = tile_h,
+                                            .codec         = codec,
+                                            .max_width     = 0U,
+                                            .max_height    = 0U,
+                                            .work          = work,
+                                            .work_cap      = work_cap,
+                                            .webp_work     = webp_work,
+                                            .webp_work_cap = webp_work_cap};
+  return ra8_jof_produce(&cfg, out_info);
+}
+
 ra8_err_t ra8_fmt_jof_produce(const ra8_fmt_blob_t* src,
-                              uint16_t              max_w,
-                              uint16_t              max_h,
-                              uint16_t              tile_w,
-                              uint16_t              tile_h,
-                              uint8_t               codec,
-                              ra8_fmt_blob_t*       out_atlas,
-                              ra8_jof_info_t*       out_info)
+                                uint16_t              max_w,
+                                uint16_t              max_h,
+                                uint16_t              tile_w,
+                                uint16_t              tile_h,
+                                uint8_t               codec,
+                                ra8_fmt_blob_t*       out_atlas,
+                                ra8_jof_info_t* out_info)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(out_atlas, s_tag, "out_atlas must not be nullptr");
@@ -240,28 +301,23 @@ ra8_err_t ra8_fmt_jof_produce(const ra8_fmt_blob_t* src,
   }
   uint8_t*        webp_work     = nullptr;
   size_t          webp_work_cap = 0U;
-  const ra8_err_t carve_rc      = fmt_jof_carve_webp(src, max_w, max_h, &webp_work, &webp_work_cap);
+  const ra8_err_t carve_rc = fmt_jof_carve_webp(src, max_w, max_h, &webp_work, &webp_work_cap);
   if (carve_rc != k_ra8_ok) {
     free(work);
     free(sink);
     return carve_rc;
   }
-  ra8_jof_memstore_t          store = {.buf = sink, .cap = sink_cap, .len = 0U};
-  fmt_pull_ctx_t              pull  = {.data = src->bytes, .len = src->len, .pos = 0U};
-  const ra8_jof_produce_cfg_t cfg   = {.pull          = fmt_jof_pull,
-                                       .pull_ctx      = &pull,
-                                       .sink          = ra8_jof_memstore_sink,
-                                       .sink_ctx      = &store,
-                                       .tile_w        = tile_w,
-                                       .tile_h        = tile_h,
-                                       .codec         = codec,
-                                       .max_width     = 0U,
-                                       .max_height    = 0U,
-                                       .work          = work,
-                                       .work_cap      = work_cap,
-                                       .webp_work     = webp_work,
-                                       .webp_work_cap = webp_work_cap};
-  const ra8_err_t             rc    = ra8_jof_produce(&cfg, out_info);
+  ra8_jof_memstore_t store = {.buf = sink, .cap = sink_cap, .len = 0U};
+  const ra8_err_t          rc    = fmt_jof_run_produce(src,
+                                              tile_w,
+                                              tile_h,
+                                              codec,
+                                              work,
+                                              work_cap,
+                                              webp_work,
+                                              webp_work_cap,
+                                              &store,
+                                              out_info);
   free(work);
   free(webp_work);
   if (rc != k_ra8_ok) {
@@ -288,10 +344,17 @@ ra8_err_t ra8_fmt_jof_convert(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* o
     (void)fprintf(opts->report, "ra8_fmt: cannot decode source image (rc=%d)\n", (int)rc);
     return rc;
   }
-  const uint16_t band  = (h < (uint16_t)k_fmt_jof_band_h) ? h : (uint16_t)k_fmt_jof_band_h;
-  ra8_fmt_blob_t atlas = {};
+  const uint16_t       band = (h < (uint16_t)k_fmt_jof_band_h) ? h : (uint16_t)k_fmt_jof_band_h;
+  ra8_fmt_blob_t       atlas = {};
   ra8_jof_info_t info  = {};
-  rc = ra8_fmt_jof_produce(src, w, h, w, band, (uint8_t)k_ra8_jof_codec_deflate, &atlas, &info);
+  rc                         = ra8_fmt_jof_produce(src,
+                                                     w,
+                                                     h,
+                                                     w,
+                                                     band,
+                                                     (uint8_t)k_ra8_jof_codec_deflate,
+                                                     &atlas,
+                                                     &info);
   if (rc != k_ra8_ok) {
     (void)fprintf(opts->report, "ra8_fmt: transcode failed (rc=%d)\n", (int)rc);
     return rc;
