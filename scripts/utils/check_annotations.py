@@ -980,6 +980,8 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
     symbols: dict[str, AnnotatedSymbol],
     calls: list[CallSite],
     vector_entries: set[str],
+    *,
+    whole_tree: bool = True,
 ) -> list[Violation]:
     out: list[Violation] = []
 
@@ -996,7 +998,12 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
 
     address_taken: set[str] = {cs.callee_usr for cs in calls if cs.in_address_of}
 
-    out.extend(enforce_linkage(symbols, vector_entries))
+    # The linkage rule is defined over the whole tree: a handler tabled in
+    # one TU, or an API declared in a header no parsed TU includes, cannot
+    # be judged from a subset. Running it over an explicit file list would
+    # invent violations rather than find them.
+    if whole_tree:
+        out.extend(enforce_linkage(symbols, vector_entries))
 
     for sym in symbols.values():
         for ann in sym.annotations:
@@ -1569,10 +1576,14 @@ def main(argv: list[str]) -> int:  # noqa: PLR0912  # gate/parser dispatch, spli
 
     violations = check_rule_keys()
     # An explicit file list parses a fraction of the tree on purpose, so
-    # the whole-tree evidence checks and the rules that need the whole call
-    # graph would report nonsense. Only the self-check above is meaningful.
+    # the whole-tree evidence checks cannot say anything about it.
     if partial:
-        violations.extend(enforce_rules(symbols, calls, vector_entries))
+        sys.stderr.write(
+            "check_annotations: explicit file list -- parse-integrity and the "
+            "linkage rule need the whole tree and are skipped. Run without "
+            "arguments for the gate.\n"
+        )
+        violations.extend(enforce_rules(symbols, calls, vector_entries, whole_tree=False))
     else:
         violations.extend(check_parse_integrity(stats, len(tus)))
         violations.extend(enforce_rules(symbols, calls, vector_entries))
