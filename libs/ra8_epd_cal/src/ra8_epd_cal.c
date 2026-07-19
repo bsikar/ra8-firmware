@@ -38,6 +38,47 @@
  */
 static const char* const s_tag = "EPD_CAL";
 
+/*
+ * Bench escape hatch -- ``-DRA8_BENCH_VCOM_MV=<millivolts>``.
+ *
+ * This is the single place in the tree where a VCOM may come from a build
+ * flag, and it exists only so first light on a bench panel is not blocked
+ * behind provisioned storage. Three properties keep it from becoming the
+ * shipping failure mode a compiled-in VCOM otherwise is:
+ *
+ *   1. It is OFF unless someone types the number on the compiler command
+ *      line. There is no default and no fallback value anywhere.
+ *   2. It is the LOWEST-authority source, consulted only after the
+ *      controller, the per-device record and an operator value have all
+ *      declined, so it can never override a real calibration.
+ *   3. It is rejected at compile time in a production build, and it is
+ *      still range-checked like every other source -- a typo'd bench value
+ *      is refused, not programmed.
+ *
+ * Every boot that uses it logs loudly, because a bench build that quietly
+ * reached a customer's panel is exactly the outcome being guarded against.
+ */
+#if defined(RA8_BENCH_VCOM_MV)
+#if defined(RA8_PRODUCTION_BUILD)
+#error "RA8_BENCH_VCOM_MV is a bench-only escape hatch and must not ship. \
+Provision the panel's real VCOM into the per-device record instead."
+#endif
+
+/**
+ * @enum ra8_epd_cal_bench_t
+ * @brief Build-flag VCOM magnitude, promoted out of the preprocessor.
+ *
+ * @details
+ * The flag arrives as a macro because that is the only way a build
+ * configuration can reach a translation unit; it is converted to a typed
+ * enum immediately so the rest of the file obeys the no-macro-constants
+ * rule and the value gets a type.
+ */
+typedef enum : uint16_t {
+  k_ra8_epd_cal_bench_vcom_mv = (uint16_t)(RA8_BENCH_VCOM_MV), /**< Bench VCOM, mV. */
+} ra8_epd_cal_bench_t;
+#endif
+
 /**
  * @enum ra8_epd_cal_crc_t
  * @brief IEEE 802.3 CRC-32 parameters.
@@ -419,6 +460,18 @@ RA8_INTERNAL
     return k_ra8_ok;
   }
 
+#if defined(RA8_BENCH_VCOM_MV)
+  /* Bench-only, last resort, still range-checked. See the flag's block
+   * comment at the top of this file for why it is allowed to exist at all. */
+  if (ra8_epd_cal_vcom_in_range((uint16_t)k_ra8_epd_cal_bench_vcom_mv, &cfg->limits)) {
+    ra8_log_warn(s_tag, "USING BENCH VCOM FROM RA8_BENCH_VCOM_MV -- NOT FOR SHIPPING");
+    out_result->vcom_mv = (uint16_t)k_ra8_epd_cal_bench_vcom_mv;
+    out_result->source  = k_ra8_epd_cal_src_bench;
+    return k_ra8_ok;
+  }
+  ra8_log_error(s_tag, "RA8_BENCH_VCOM_MV is outside the panel's window -- ignored");
+#endif
+
   /* Nothing trusted. Fail safe: the caller must leave the panel dark
    * rather than drive it at an invented bias. */
   ra8_log_error(s_tag, "no trusted VCOM -- refusing to drive the panel");
@@ -440,7 +493,36 @@ RA8_INTERNAL
     ra8_log_error(s_tag, "apply: VCOM out of range at the point of use");
     return k_ra8_err_range_check_failed;
   }
-  return cfg->panel.set(cfg->panel.ctx, result->vcom_mv);
+  const ra8_err_t serr = cfg->panel.set(cfg->panel.ctx, result->vcom_mv);
+  if (serr != k_ra8_ok) {
+    return serr;
+  }
+
+  /* Confirm through the read seam that the value is actually in effect.
+   * The production ``set`` binding verifies its own write, but this module
+   * must not assume that of an arbitrary injected seam -- and this is the
+   * layer where the check is host-testable, so it is the layer that owns
+   * the vectors. Without a seam that can read back there is nothing to
+   * confirm, and an unconfirmable bias is not one to leave on a panel. */
+  if (cfg->panel.get == nullptr) {
+    ra8_log_error(s_tag, "apply: no read seam -- VCOM cannot be confirmed");
+    return k_ra8_err_not_supported;
+  }
+  uint16_t readback = 0U;
+  if (cfg->panel.get(cfg->panel.ctx, &readback) != k_ra8_ok) {
+    return k_ra8_err_hw_error;
+  }
+  /* Equality alone, deliberately: ``result->vcom_mv`` was range-checked
+   * above, so an equal readback is in range by construction and a second
+   * range test here would be unreachable code dressed up as a safety
+   * check. Range-validating a value the panel *reports* matters where such
+   * a value is adopted rather than merely confirmed, which is
+   * ``internal_ra8_epd_cal_try_panel``, and it is checked there. */
+  if (readback != result->vcom_mv) {
+    ra8_log_error(s_tag, "apply: VCOM readback disagrees -- panel stays dark");
+    return k_ra8_err_validation_failed;
+  }
+  return k_ra8_ok;
 }
 
 [[nodiscard]] ra8_err_t ra8_epd_cal_provision(const ra8_epd_cal_cfg_t* cfg, uint16_t vcom_mv)
