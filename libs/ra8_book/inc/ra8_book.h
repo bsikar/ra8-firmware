@@ -55,6 +55,8 @@
  *       blob with ra8_book_validate() (or open it with ra8_book_open()) before
  *       walking it. The blob is immutable; nothing here writes to it.
  *
+ * @see @ref md_docs_2formats_2RBKC -- the full RBKC wire-format specification
+ *      (rationale, algorithms, worked example, failure modes).
  * @see tools/epub_compile  Host compiler that emits `.rabook` blobs.
  * @see ra8_reflow.h         Renderer that consumes the walked DOM.
  *
