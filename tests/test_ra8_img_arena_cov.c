@@ -33,6 +33,20 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum img_arena_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_img_arena_cov_val_128 = 128U,
+  k_img_arena_cov_val_64  = 64U,
+} img_arena_cov_uint8_const_t;
+
+/**
  * @test test_malloc_partial_capacity_oom
  * @brief ra8_img_arena_malloc returns nullptr when the aligned request exceeds
  *        the remaining capacity even though n <= cap.
@@ -119,7 +133,7 @@ static void test_malloc_partial_capacity_oom(void)
 static void test_realloc_non_null_success_with_copy(void)
 {
   TEST_BEGIN("ra8_img_arena_realloc_sized: non-nullptr p, success + copy > 0");
-  static uint8_t  s_buf[128U];
+  static uint8_t  s_buf[k_img_arena_cov_val_128];
   ra8_img_arena_t arena = {.base = s_buf, .cap = sizeof s_buf, .offset = 0U, .live = 0U};
   ra8_img_arena_bind(&arena);
 
@@ -219,7 +233,7 @@ static void test_realloc_non_null_fail(void)
 static void test_realloc_zero_oldsz(void)
 {
   TEST_BEGIN("ra8_img_arena_realloc_sized: oldsz=0 skips memcpy (line 98 false)");
-  static uint8_t  s_buf[64U];
+  static uint8_t  s_buf[k_img_arena_cov_val_64];
   ra8_img_arena_t arena = {.base = s_buf, .cap = sizeof s_buf, .offset = 0U, .live = 0U};
   ra8_img_arena_bind(&arena);
 
@@ -266,7 +280,7 @@ static void test_realloc_zero_oldsz(void)
 static void test_realloc_shrink(void)
 {
   TEST_BEGIN("ra8_img_arena_realloc_sized: shrink (oldsz > newsz -> copy = newsz)");
-  static uint8_t  s_buf[128U];
+  static uint8_t  s_buf[k_img_arena_cov_val_128];
   ra8_img_arena_t arena = {.base = s_buf, .cap = sizeof s_buf, .offset = 0U, .live = 0U};
   ra8_img_arena_bind(&arena);
 

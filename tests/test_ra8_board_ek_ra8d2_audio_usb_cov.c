@@ -83,6 +83,19 @@
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum board_ek_ra8d2_audio_usb_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_board_ek_ra8d2_audio_usb_cov_val_ff = 0xFFU,
+} board_ek_ra8d2_audio_usb_cov_uint8_const_t;
+
 /* -------------------------------------------------------------------------
  * Externally-linked bisect probes owned by the module under test.  They are
  * file-scope volatiles (non-static) so a JLink session can read them on the
@@ -600,7 +613,7 @@ static void test_usbhs_device_init_full_bringup(void)
 {
   TEST_BEGIN("usbhs_device_init reaches ra8_usb_device_init after clocking");
   reset_state();
-  *ra8_sys_oscsf()    = (uint8_t)0xFFU;
+  *ra8_sys_oscsf()    = (uint8_t)k_board_ek_ra8d2_audio_usb_cov_val_ff;
   const ra8_err_t err = ra8_board_usbhs_device_init();
   (void)err;
   TEST_ASSERT_EQ(k_test_usbhs_probe_post_dev_init, s_usbhs_probe);
@@ -635,7 +648,7 @@ static void test_usbhs_host_init_full_bringup(void)
 {
   TEST_BEGIN("usbhs_host_init reaches ra8_usb_host_init after clocking");
   reset_state();
-  *ra8_sys_oscsf()    = (uint8_t)0xFFU;
+  *ra8_sys_oscsf()    = (uint8_t)k_board_ek_ra8d2_audio_usb_cov_val_ff;
   const ra8_err_t err = ra8_board_usbhs_host_init();
   TEST_ASSERT_EQ(k_ra8_ok, err);
   TEST_END("usbhs_host_init reaches ra8_usb_host_init after clocking");

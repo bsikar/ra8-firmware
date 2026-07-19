@@ -28,6 +28,22 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum mipi_csi_events_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_mipi_csi_events_idx_17 = 17U,
+  k_mipi_csi_events_val_17 = 17,
+  k_mipi_csi_events_val_21 = 0x21U,
+  k_mipi_csi_events_vc_ff  = 0xFFU,
+} mipi_csi_events_uint8_const_t;
+
+/**
  * @enum ra8_mipi_csi_test_const_t
  * @brief Constants used across multiple test cases.
  */
@@ -82,13 +98,13 @@ static uint32_t s_dl_last_mask[2];
  * @var s_vc_calls
  * @brief Per-VC call count for the VC callback (index 16 = generic).
  */
-static uint32_t s_vc_calls[17];
+static uint32_t s_vc_calls[k_mipi_csi_events_val_17];
 
 /**
  * @var s_vc_last_mask
  * @brief Last VCST value per VC.
  */
-static uint32_t s_vc_last_mask[17];
+static uint32_t s_vc_last_mask[k_mipi_csi_events_val_17];
 
 /**
  * @var s_pm_calls
@@ -142,8 +158,8 @@ static void stub_dl_cb(void* ctx, uint8_t lane, uint32_t mask)
 static void stub_vc_cb(void* ctx, uint8_t vc, uint32_t mask)
 {
   (void)ctx;
-  uint8_t idx = (vc == 0xFFU) ? 16U : vc;
-  if (idx < 17U) {
+  uint8_t idx = (vc == k_mipi_csi_events_vc_ff) ? 16U : vc;
+  if (idx < k_mipi_csi_events_idx_17) {
     ++s_vc_calls[idx];
     s_vc_last_mask[idx] = mask;
   }
@@ -183,7 +199,7 @@ static void prep(void)
     s_dl_calls[i]     = 0U;
     s_dl_last_mask[i] = 0U;
   }
-  for (uint8_t i = 0U; i < 17U; ++i) {
+  for (uint8_t i = 0U; i < k_mipi_csi_events_idx_17; ++i) {
     s_vc_calls[i]     = 0U;
     s_vc_last_mask[i] = 0U;
   }
@@ -548,7 +564,7 @@ static void test_dispatch_vc(void)
     ra8_mipi_csi_attach_vc_handler(stub_vc_cb, (void*)(uintptr_t)k_ra8_mipi_csi_test_vc_marker));
 
   /* Flag VC0 + VC5 in MIST. */
-  *ra8_mipi_csi_reg32(k_ra8_mipi_csi_off_mist) = ((uint32_t)0x21U)
+  *ra8_mipi_csi_reg32(k_ra8_mipi_csi_off_mist) = ((uint32_t)k_mipi_csi_events_val_21)
                                                  << (uint32_t)k_ra8_mipi_csi_mist_vc_shift;
 
   /* VC0 carries a CRC error (per-VC). */

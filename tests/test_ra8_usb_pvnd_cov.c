@@ -50,6 +50,19 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum usb_pvnd_cov_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_usb_pvnd_cov_got_beef = 0xBEEFU,
+} usb_pvnd_cov_uint16_const_t;
+
+/**
  * @enum test_pvnd_cov_const_t
  * @brief Named literals for the coverage-driving register seeds.
  */
@@ -161,7 +174,7 @@ static void test_recv_empty_pipe(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pvnd_init(k_ra8_usb_speed_fs));
 
   uint8_t  buf[k_test_recv_capacity] = {};
-  uint16_t got                       = 0xBEEFU;
+  uint16_t got                       = k_usb_pvnd_cov_got_beef;
   TEST_ASSERT_EQ(k_ra8_err_no_data, ra8_usb_pvnd_recv(buf, (uint16_t)k_test_recv_capacity, &got));
   /* Error leg must clear the out-count (line 253). */
   TEST_ASSERT_EQ(0U, got);

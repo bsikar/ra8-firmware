@@ -23,6 +23,28 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum lpm_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_lpm_sentinel_55 = 0x55U,
+  k_lpm_sentinel_aa = 0xAAU,
+  k_lpm_val_05      = 0x05U,
+  k_lpm_val_11      = 0x11U,
+  k_lpm_val_22      = 0x22U,
+  k_lpm_val_33      = 0x33U,
+  k_lpm_val_40      = 0x40U,
+  k_lpm_val_54      = 0x54U,
+  k_lpm_val_80      = 0x80U,
+  k_lpm_val_ff      = 0xFFU,
+} lpm_uint8_const_t;
+
+/**
  * @enum ra8_lpm_test_const_t
  * @brief Magic values used by the LPM unit tests.
  */
@@ -236,8 +258,8 @@ static void test_clear_dpsifr(void)
   ra8_sim_mmap_reset();
 
   /* Stamp some 'pending' flags then clear them. */
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr0_off) = 0xFFU;
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr3_off) = 0x80U;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr0_off) = k_lpm_val_ff;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr3_off) = k_lpm_val_80;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_clear_dpsifr(k_ra8_lpm_dpsier_idx_0));
   TEST_ASSERT_EQ(0, *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr0_off));
@@ -304,7 +326,7 @@ static void test_snooze_end_sources(void)
   ra8_sim_mmap_reset();
 
   /* Pre-stamp DPSIFR3 to verify the dummy-read-then-clear sequence. */
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr3_off) = 0xFFU;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr3_off) = k_lpm_val_ff;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_snooze_set_end_sources(true, false, true, false));
 
@@ -431,7 +453,7 @@ static void test_opccr_read_and_wait(void)
 
   /* Hand-set OPCCR to "transition complete" (OPCMTSF=0). */
   *ra8_lpm_sysc_reg8(k_ra8_lpm_opccr_off) = 0x00U;
-  uint8_t v                               = 0xFFU;
+  uint8_t v                               = k_lpm_val_ff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_get_opccr(&v));
   TEST_ASSERT_EQ(0x00, v);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_wait_for_opccr((uint32_t)k_ra8_lpm_test_poll_budget));
@@ -595,10 +617,10 @@ static void test_get_status_packs_four_regs(void)
   ra8_sim_mmap_reset();
 
   /* Hand-set the four single-byte LPM control regs. */
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_sbycr_off)   = 0x40U;
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsbycr_off) = 0x54U;
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_lpscr_off)   = 0x05U;
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_sscr1_off)   = 0x05U;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_sbycr_off)   = k_lpm_val_40;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsbycr_off) = k_lpm_val_54;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_lpscr_off)   = k_lpm_val_05;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_sscr1_off)   = k_lpm_val_05;
 
   uint32_t status = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_get_status(&status));
@@ -644,13 +666,13 @@ static void test_get_dpsi_state(void)
   TEST_BEGIN("lpm get_dpsi_state snapshots all banks");
   ra8_sim_mmap_reset();
 
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsier0_off)  = 0x11U;
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsier1_off)  = 0x22U;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsier0_off)  = k_lpm_val_11;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsier1_off)  = k_lpm_val_22;
   *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsier2_off)  = 0x03U;
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsier3_off)  = 0x80U;
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr0_off)  = 0xAAU;
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr3_off)  = 0x55U;
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsiegr0_off) = 0x33U;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsier3_off)  = k_lpm_val_80;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr0_off)  = k_lpm_sentinel_aa;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr3_off)  = k_lpm_sentinel_55;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsiegr0_off) = k_lpm_val_33;
   *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsiegr2_off) = 0x10U;
 
   uint8_t enables[4] = {0U};

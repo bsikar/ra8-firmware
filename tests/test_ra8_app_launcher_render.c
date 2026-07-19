@@ -41,6 +41,20 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum app_launcher_render_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_app_launcher_render_crc_ffffffff = 0xFFFFFFFFU,
+  k_app_launcher_render_val_edb88320 = 0xEDB88320U,
+} app_launcher_render_uint32_const_t;
+
+/**
  * @enum lr_geom_t
  * @brief Launcher framebuffer + tile geometry (pixels).
  */
@@ -111,12 +125,12 @@ static ra8_box_t s_lr_box[k_lr_box_cap];
 /** @brief CRC-32 (reflected, poly 0xEDB88320) over a byte span. */
 static uint32_t lr_crc32(const uint8_t* data, size_t len)
 {
-  uint32_t crc = 0xFFFFFFFFU;
+  uint32_t crc = k_app_launcher_render_crc_ffffffff;
   for (size_t i = 0U; i < len; ++i) {
     crc ^= (uint32_t)data[i];
     for (uint32_t b = 0U; b < 8U; ++b) {
       if ((crc & 1U) != 0U) {
-        crc = (crc >> 1U) ^ 0xEDB88320U;
+        crc = (crc >> 1U) ^ k_app_launcher_render_val_edb88320;
       } else {
         crc = crc >> 1U;
       }

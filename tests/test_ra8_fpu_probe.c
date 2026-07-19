@@ -25,6 +25,39 @@
 #include "ra8_fpu_probe.h"
 #include "unity_minimal.h"
 
+/** @brief Named double constant used by this file. */
+static const double k_fpu_probe_ra8_fpu_dp_madd_0p25 = 0.25;
+
+/** @brief Named double constant used by this file. */
+static const double k_fpu_probe_ra8_fpu_dp_madd_0p5 = 0.5;
+
+/** @brief Named double constant used by this file. */
+static const double k_fpu_probe_ra8_fpu_dp_madd_1p5 = 1.5;
+
+/** @brief Named double constant used by this file. */
+static const double k_fpu_probe_ra8_fpu_dp_madd_2p0 = 2.0;
+
+/** @brief Named double constant used by this file. */
+static const double k_fpu_probe_ra8_fpu_dp_madd_3p0 = 3.0;
+
+/** @brief Named double constant used by this file. */
+static const double k_fpu_probe_ra8_fpu_dp_madd_4p0 = 4.0;
+
+/** @brief Named double constant used by this file. */
+static const double k_fpu_probe_ra8_fpu_dp_madd_6p0 = 6.0;
+
+/** @brief Named double constant used by this file. */
+static const double k_fpu_probe_test_assert_2199023255553p0 = 2199023255553.0;
+
+/** @brief Named double constant used by this file. */
+static const double k_fpu_probe_test_assert_42p0 = 42.0;
+
+/** @brief Named double constant used by this file. */
+static const double k_fpu_probe_test_assert_5p5 = 5.5;
+
+/** @brief Named double constant used by this file. */
+static const double k_fpu_probe_test_assert_7p0 = 7.0;
+
 /**
  * @test test_ra8_fpu_dp_madd_values
  *
@@ -38,16 +71,23 @@ static void test_ra8_fpu_dp_madd_values(void)
   TEST_BEGIN("ra8_fpu_dp_madd computes a*b+c in double precision");
 
   /* 2*3 + 1 == 7 (all operands and result exactly representable). */
-  TEST_ASSERT(ra8_fpu_dp_madd(2.0, 3.0, 1.0) == 7.0);
+  TEST_ASSERT(ra8_fpu_dp_madd(k_fpu_probe_ra8_fpu_dp_madd_2p0,
+                              k_fpu_probe_ra8_fpu_dp_madd_3p0,
+                              1.0) == k_fpu_probe_test_assert_7p0);
 
   /* Negative multiplicand: -1.5*4 + 0.5 == -5.5. */
-  TEST_ASSERT(ra8_fpu_dp_madd(-1.5, 4.0, 0.5) == -5.5);
+  TEST_ASSERT(ra8_fpu_dp_madd(-k_fpu_probe_ra8_fpu_dp_madd_1p5,
+                              k_fpu_probe_ra8_fpu_dp_madd_4p0,
+                              k_fpu_probe_ra8_fpu_dp_madd_0p5) == -k_fpu_probe_test_assert_5p5);
 
   /* Sub-integer, exactly representable: 0.5*0.5 + 0.25 == 0.5. */
-  TEST_ASSERT(ra8_fpu_dp_madd(0.5, 0.5, 0.25) == 0.5);
+  TEST_ASSERT(ra8_fpu_dp_madd(k_fpu_probe_ra8_fpu_dp_madd_0p5,
+                              k_fpu_probe_ra8_fpu_dp_madd_0p5,
+                              k_fpu_probe_ra8_fpu_dp_madd_0p25) == k_fpu_probe_ra8_fpu_dp_madd_0p5);
 
   /* Additive identity: a*b + 0 == a*b. */
-  TEST_ASSERT(ra8_fpu_dp_madd(6.0, 7.0, 0.0) == 42.0);
+  TEST_ASSERT(ra8_fpu_dp_madd(k_fpu_probe_ra8_fpu_dp_madd_6p0, k_fpu_probe_test_assert_7p0, 0.0) ==
+              k_fpu_probe_test_assert_42p0);
 
   TEST_END("ra8_fpu_dp_madd computes a*b+c in double precision");
 }
@@ -68,7 +108,8 @@ static void test_ra8_fpu_dp_madd_wide_magnitude(void)
 
   /* 2^40 * 2 + 1 == 2199023255553, exact in binary64, NOT in binary32. */
   const double two_pow_40 = 1099511627776.0;
-  TEST_ASSERT(ra8_fpu_dp_madd(two_pow_40, 2.0, 1.0) == 2199023255553.0);
+  TEST_ASSERT(ra8_fpu_dp_madd(two_pow_40, k_fpu_probe_ra8_fpu_dp_madd_2p0, 1.0) ==
+              k_fpu_probe_test_assert_2199023255553p0);
 
   TEST_END("ra8_fpu_dp_madd preserves binary64 magnitude");
 }

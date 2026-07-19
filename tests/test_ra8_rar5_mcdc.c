@@ -27,6 +27,46 @@
 #include "support/rar5_enc_fixture.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum rar5_mcdc_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_rar5_mcdc_bsz_ff      = 0xFFU,
+  k_rar5_mcdc_bw_put_41   = 0x41U,
+  k_rar5_mcdc_bw_put_42   = 0x42U,
+  k_rar5_mcdc_bw_put_43   = 0x43U,
+  k_rar5_mcdc_bw_put_44   = 0x44U,
+  k_rar5_mcdc_bw_put_45   = 0x45U,
+  k_rar5_mcdc_bw_put_46   = 0x46U,
+  k_rar5_mcdc_bw_put_9    = 9U,
+  k_rar5_mcdc_pos_5       = 5U,
+  k_rar5_mcdc_s_tbl_7     = 7U,
+  k_rar5_mcdc_sentinel_5a = 0x5AU,
+  k_rar5_mcdc_val_20      = 20,
+  k_rar5_mcdc_val_64      = 64,
+} rar5_mcdc_uint8_const_t;
+
+/**
+ * @enum rar5_mcdc_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_rar5_mcdc_ra8_rar5_filter_delta_600 = 600U,
+  k_rar5_mcdc_val_427                   = 427,
+  k_rar5_mcdc_val_700                   = 700,
+} rar5_mcdc_uint16_const_t;
+
 /* ---- direct MC/DC drivers for the promoted decode helpers --------------- */
 
 /** @brief Emit one block header + body to @p pk; return bytes written. */
@@ -40,15 +80,15 @@ static size_t enc_block(const bitw_t* body, uint8_t* pk, bool has_tables, bool i
   size_t         p     = 0U;
   pk[p]                = flags;
   p += 1U;
-  pk[p] = (uint8_t)(bsz & 0xFFU);
+  pk[p] = (uint8_t)(bsz & k_rar5_mcdc_bsz_ff);
   p += 1U;
   if (bcnt == 2U) {
-    pk[p] = (uint8_t)((bsz >> 8U) & 0xFFU);
+    pk[p] = (uint8_t)((bsz >> 8U) & k_rar5_mcdc_bsz_ff);
     p += 1U;
   }
-  uint8_t chk = (uint8_t)(0x5AU ^ flags ^ (uint8_t)(bsz & 0xFFU));
+  uint8_t chk = (uint8_t)(k_rar5_mcdc_sentinel_5a ^ flags ^ (uint8_t)(bsz & k_rar5_mcdc_bsz_ff));
   if (bcnt == 2U) {
-    chk ^= (uint8_t)((bsz >> 8U) & 0xFFU);
+    chk ^= (uint8_t)((bsz >> 8U) & k_rar5_mcdc_bsz_ff);
   }
   pk[p] = chk;
   p += 1U;
@@ -99,25 +139,25 @@ static void bind_bits(const uint8_t* bytes, size_t len)
 static void test_mcdc_copy_match(void)
 {
   TEST_BEGIN("rar5: ra8_rar5_copy_match MC/DC");
-  static uint8_t s_out[64];
+  static uint8_t s_out[k_rar5_mcdc_val_64];
   for (uint32_t i = 0U; i < sizeof(s_out); ++i) {
     s_out[i] = (uint8_t)(i + 1U);
   }
   /* dist == 0 || dist > pos. */
-  size_t pos = 5U;
+  size_t pos = k_rar5_mcdc_pos_5;
   TEST_ASSERT(ra8_rar5_copy_match(s_out, &pos, 100U, 3U, 2U)); /* (F,F) control */
   TEST_ASSERT_EQ(8U, pos);
-  pos = 5U;
+  pos = k_rar5_mcdc_pos_5;
   TEST_ASSERT(!ra8_rar5_copy_match(s_out, &pos, 100U, 3U, 0U)); /* dist==0 (T,-) */
   TEST_ASSERT_EQ(5U, pos);
-  pos = 5U;
+  pos = k_rar5_mcdc_pos_5;
   TEST_ASSERT(!ra8_rar5_copy_match(s_out, &pos, 100U, 3U, 100U)); /* dist>pos (F,T) */
   TEST_ASSERT_EQ(5U, pos);
   /* k < length && pos < unp. */
-  pos = 5U;
+  pos = k_rar5_mcdc_pos_5;
   TEST_ASSERT(ra8_rar5_copy_match(s_out, &pos, 100U, 3U, 2U)); /* exit on k==length */
   TEST_ASSERT_EQ(8U, pos);
-  pos = 5U;
+  pos = k_rar5_mcdc_pos_5;
   TEST_ASSERT(ra8_rar5_copy_match(s_out, &pos, 6U, 10U, 2U)); /* clamp on pos==unp */
   TEST_ASSERT_EQ(6U, pos);
   TEST_END("rar5: ra8_rar5_copy_match MC/DC");
@@ -140,24 +180,24 @@ static void test_mcdc_filter_delta(void)
 {
   TEST_BEGIN("rar5: ra8_rar5_filter_delta MC/DC");
   s_state = (ra8_rar5_state_t){};
-  static uint8_t s_d[700];
+  static uint8_t s_d[k_rar5_mcdc_val_700];
   for (uint32_t i = 0U; i < sizeof(s_d); ++i) {
-    s_d[i] = (uint8_t)(i & 0xFFU);
+    s_d[i] = (uint8_t)(i & k_rar5_mcdc_bsz_ff);
   }
   /* (F,F) control: a supported range transforms (differs from the raw input). */
   ra8_rar5_filter_delta(&s_state, s_d, 32U, 2U);
   bool changed = false;
   for (uint32_t i = 0U; i < 32U; ++i) {
-    if (s_d[i] != (uint8_t)(i & 0xFFU)) {
+    if (s_d[i] != (uint8_t)(i & k_rar5_mcdc_bsz_ff)) {
       changed = true;
     }
   }
   TEST_ASSERT(changed);
   /* (T,-) over-long range: left unchanged. */
   for (uint32_t i = 0U; i < sizeof(s_d); ++i) {
-    s_d[i] = (uint8_t)(i & 0xFFU);
+    s_d[i] = (uint8_t)(i & k_rar5_mcdc_bsz_ff);
   }
-  ra8_rar5_filter_delta(&s_state, s_d, 600U, 2U);
+  ra8_rar5_filter_delta(&s_state, s_d, k_rar5_mcdc_ra8_rar5_filter_delta_600, 2U);
   TEST_ASSERT_EQ(0x57U, s_d[599]); /* 599 & 0xFF, unchanged */
   TEST_ASSERT_EQ(0x2CU, s_d[300]); /* 300 & 0xFF, unchanged */
   /* (F,T) zero channels: left unchanged. */
@@ -181,7 +221,7 @@ static void test_mcdc_filter_delta(void)
 static void test_mcdc_fill_zeros(void)
 {
   TEST_BEGIN("rar5: ra8_rar5_fill_zeros MC/DC");
-  static uint8_t s_buf[20];
+  static uint8_t s_buf[k_rar5_mcdc_val_20];
   memset(s_buf, 0xFFU, sizeof(s_buf));
   /* c < count exit. */
   TEST_ASSERT_EQ(3U, ra8_rar5_fill_zeros(s_buf, 0U, 3U, 20U));
@@ -225,7 +265,7 @@ static void test_mcdc_apply_run(void)
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, ra8_rar5_apply_run(&s_state, s_tbl, &idx, 16U));
   /* num=16, idx=1 (prev set) -> !is_zero && *idx==0 (T,F) -> copy run appends. */
   bind_bits(s_idlebits, sizeof(s_idlebits));
-  s_tbl[0] = 7U;
+  s_tbl[0] = k_rar5_mcdc_s_tbl_7;
   idx      = 1U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rar5_apply_run(&s_state, s_tbl, &idx, 16U));
   TEST_ASSERT_EQ(4U, idx);
@@ -249,8 +289,8 @@ static void test_mcdc_apply_run(void)
   TEST_ASSERT_EQ(11U, idx);
   /* num=16, idx=428 -> i < huff_total clamp (T,F). */
   bind_bits(s_idlebits, sizeof(s_idlebits));
-  s_tbl[427] = 5U;
-  idx        = (uint32_t)k_ra8_rar5_huff_total - 2U;
+  s_tbl[k_rar5_mcdc_val_427] = k_rar5_mcdc_pos_5;
+  idx                        = (uint32_t)k_ra8_rar5_huff_total - 2U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rar5_apply_run(&s_state, s_tbl, &idx, 16U));
   TEST_ASSERT_EQ(k_ra8_rar5_huff_total, idx);
   TEST_ASSERT_EQ(5U, s_tbl[(uint32_t)k_ra8_rar5_huff_total - 1U]);
@@ -279,16 +319,16 @@ static void test_mcdc_decode_stream_blocks(void)
   memset(s_b1buf, 0, sizeof(s_b1buf));
   bitw_t b1 = {.buf = s_b1buf, .cap = sizeof(s_b1buf)};
   enc_tables(&b1);
-  bw_put(&b1, 0x41U, 9U);
-  bw_put(&b1, 0x42U, 9U);
-  bw_put(&b1, 0x43U, 9U);
+  bw_put(&b1, k_rar5_mcdc_bw_put_41, k_rar5_mcdc_bw_put_9);
+  bw_put(&b1, k_rar5_mcdc_bw_put_42, k_rar5_mcdc_bw_put_9);
+  bw_put(&b1, k_rar5_mcdc_bw_put_43, k_rar5_mcdc_bw_put_9);
   /* Block 2: literals "DEF" reusing block 1's tables, the last block. */
   static uint8_t s_b2buf[k_pk_cap];
   memset(s_b2buf, 0, sizeof(s_b2buf));
   bitw_t b2 = {.buf = s_b2buf, .cap = sizeof(s_b2buf)};
-  bw_put(&b2, 0x44U, 9U);
-  bw_put(&b2, 0x45U, 9U);
-  bw_put(&b2, 0x46U, 9U);
+  bw_put(&b2, k_rar5_mcdc_bw_put_44, k_rar5_mcdc_bw_put_9);
+  bw_put(&b2, k_rar5_mcdc_bw_put_45, k_rar5_mcdc_bw_put_9);
+  bw_put(&b2, k_rar5_mcdc_bw_put_46, k_rar5_mcdc_bw_put_9);
   static uint8_t s_pk[k_pk_cap];
   memset(s_pk, 0, sizeof(s_pk));
   size_t p = enc_block(&b1, s_pk, true, false);

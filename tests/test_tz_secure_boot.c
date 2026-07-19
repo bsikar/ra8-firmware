@@ -26,6 +26,19 @@
 #include "ra8_tz_secure_boot.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum tz_secure_boot_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_tz_secure_boot_k_ra8_tz_ns_rot_header_magic_ffffffff = 0xFFFFFFFFU,
+} tz_secure_boot_uint32_const_t;
+
 /* =============================================================================
  * Layout constants (mirror the production enum names without taking a
  * dependency on the internal enum, which is file-private)
@@ -313,7 +326,8 @@ static void test_tz_ns_signed_body_len_header(void)
   TEST_ASSERT_EQ(0U, ra8_tz_ns_signed_body_len(nullptr));
 
   /* V3: wrong magic -> 0 (no RoT header present). */
-  img[k_hdr_word_magic] = (uint32_t)k_ra8_tz_ns_rot_header_magic ^ 0xFFFFFFFFU;
+  img[k_hdr_word_magic] =
+    (uint32_t)k_ra8_tz_ns_rot_header_magic ^ k_tz_secure_boot_k_ra8_tz_ns_rot_header_magic_ffffffff;
   TEST_ASSERT_EQ(0U, ra8_tz_ns_signed_body_len(img));
 
   TEST_END("tz_secure_boot: ra8_tz_ns_signed_body_len reads fixed-offset header");

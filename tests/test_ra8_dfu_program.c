@@ -23,6 +23,21 @@
 #include "ra8_flash_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum dfu_program_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_dfu_program_i_7    = 7U,
+  k_dfu_program_val_64 = 64,
+  k_dfu_program_val_ff = 0xFFU,
+} dfu_program_uint8_const_t;
+
 /** @brief Test image geometry. */
 typedef enum : uint32_t {
   k_test_img_len = 0x00000100U, /**< 256-byte image (8 DFU blocks of 32).   */
@@ -34,7 +49,7 @@ typedef enum : uint32_t {
 static void fill_pattern(uint8_t* buf, uint32_t len)
 {
   for (uint32_t i = 0U; i < len; i++) {
-    buf[i] = (uint8_t)((i * 7U) + 3U);
+    buf[i] = (uint8_t)((i * k_dfu_program_i_7) + 3U);
   }
 }
 
@@ -116,7 +131,7 @@ static void test_program_roundtrip(void)
 
   /* Corrupt one body byte -> verify must report a CRC mismatch. */
   uint8_t* mut = (uint8_t*)body;
-  mut[0]       = (uint8_t)(mut[0] ^ 0xFFU);
+  mut[0]       = (uint8_t)(mut[0] ^ k_dfu_program_val_ff);
   TEST_ASSERT_EQ(k_ra8_err_crc_mismatch, ra8_dfu_program_verify(k_ra8_dfu_slot_b));
   TEST_ASSERT(!ra8_dfu_slot_valid(k_ra8_dfu_slot_b));
 
@@ -146,7 +161,7 @@ static void test_program_guards_mcdc(void)
 {
   TEST_BEGIN("ra8_dfu: program guards (MC/DC)");
 
-  uint8_t buf[64];
+  uint8_t buf[k_dfu_program_val_64];
   fill_pattern(buf, (uint32_t)sizeof(buf));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dfu_program_prepare(k_ra8_dfu_slot_a));
   sim_mark_program_ready();

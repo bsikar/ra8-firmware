@@ -21,6 +21,32 @@
 #include "ra8_reflow_css.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum css_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_css_val_80 = 80,
+} css_uint8_const_t;
+
+/**
+ * @enum css_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_css_color_123456 = 0x123456U,
+} css_uint32_const_t;
+
 /** @brief Shared parsed stylesheet for the matching / cascade tests. */
 static ra8_css_sheet_t s_sheet;
 
@@ -328,7 +354,7 @@ static void test_cascade_color(void)
   /* a child with no colour rule inherits the parent's colour */
   ra8_css_style_t parent = {};
   parent.set             = (uint8_t)k_ra8_css_set_color;
-  parent.color           = 0x123456U;
+  parent.color           = k_css_color_123456;
   ra8_css_element_t kid  = elem(k_ra8_reflow_tag_strong, nullptr, nullptr);
   ra8_css_style_t   rk   = ra8_css_cascade(&s_sheet, &kid, parent, no_inline());
   TEST_ASSERT_EQ(0x123456, rk.color);
@@ -338,7 +364,7 @@ static void test_cascade_color(void)
 /** @brief Parse an inline `font-size: <value>` and return the declaration. */
 static ra8_css_style_t fs(const char* value)
 {
-  char buf[80] = {};
+  char buf[k_css_val_80] = {};
   (void)snprintf(buf, sizeof buf, "font-size:%s", value);
   ra8_css_style_t d = {};
   (void)ra8_css_parse_inline(buf, (uint32_t)strlen(buf), &d);

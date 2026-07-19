@@ -24,6 +24,19 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum book_xhtml_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_book_xhtml_len_99 = 99U,
+} book_xhtml_uint8_const_t;
+
+/**
  * @enum bx_dim_t
  * @brief Fixture capacities and DOM indices for the serializer tests.
  */
@@ -298,7 +311,7 @@ static void test_ra8_book_xhtml_to_xhtml_overflow_graded(void)
   const size_t caps[] =
     {0U, 1U, 2U, 4U, 5U, 6U, 7U, 8U, 10U, 11U, 12U, 13U, 16U, 17U, 20U, 30U, 40U, 60U};
   for (size_t i = 0U; i < (sizeof(caps) / sizeof(caps[0])); ++i) {
-    len = 99U;
+    len = k_book_xhtml_len_99;
     TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_book_chapter_to_xhtml(&b, 0U, out, caps[i], &len));
   }
   TEST_END("ra8_book_xhtml to_xhtml graded overflow");
@@ -400,7 +413,7 @@ static void test_ra8_book_xhtml_text_overflow_graded(void)
   size_t       len               = 0U;
   const size_t caps[]            = {0U, 1U, 2U, 4U, 8U};
   for (size_t i = 0U; i < (sizeof(caps) / sizeof(caps[0])); ++i) {
-    len = 99U;
+    len = k_book_xhtml_len_99;
     TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_book_chapter_text(&b, 0U, out, caps[i], &len));
   }
   TEST_END("ra8_book_xhtml chapter_text graded overflow");
@@ -528,7 +541,7 @@ static void test_ra8_book_xhtml_close_chain_overflow(void)
   size_t       len               = 0U;
   const size_t caps[]            = {1U, 2U, 3U, 4U, 5U, 6U, 7U};
   for (size_t i = 0U; i < (sizeof(caps) / sizeof(caps[0])); ++i) {
-    len = 99U;
+    len = k_book_xhtml_len_99;
     TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_book_chapter_to_xhtml(&b, 0U, out, caps[i], &len));
   }
   /* Full cap: the whole "<p>x</p>" serializes (all chain conditions false). */
@@ -640,11 +653,11 @@ static void test_ra8_book_xhtml_deep_nest_bounds(void)
   static bx_deep_t s_b;
   bx_build_deep(&s_b);
   char   out[k_bx_big_cap] = {};
-  size_t len               = 99U;
+  size_t len               = k_book_xhtml_len_99;
 
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_book_chapter_to_xhtml(&s_b, 0U, out, sizeof(out), &len));
-  len = 99U;
+  len = k_book_xhtml_len_99;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_book_chapter_text(&s_b, 0U, out, sizeof(out), &len));
   TEST_ASSERT_EQ(0, len); /* descent capped before reaching the leaf */
   TEST_END("ra8_book_xhtml deep-nest walk bounds");

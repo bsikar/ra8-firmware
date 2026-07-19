@@ -24,6 +24,32 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum gpt_pwm_dma_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_gpt_pwm_dma_dch_ff = 0xFFU,
+} gpt_pwm_dma_uint8_const_t;
+
+/**
+ * @enum gpt_pwm_dma_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_gpt_pwm_dma_gtcnt_deadc0de = 0xDEADC0DEUL,
+} gpt_pwm_dma_uint32_const_t;
+
 typedef enum : uint8_t {
   k_ra8_gpt_test_channel_valid = 0U,  /**< RA8 GPT test channel valid. */
   k_ra8_gpt_test_channel_bad   = 14U, /**< RA8 GPT test channel bad.   */
@@ -80,7 +106,7 @@ static void test_gpt_write_dma_streams_periods_to_gtpr(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_init((uint8_t)k_ra8_gpt_test_channel_valid, &cfg));
 
   const uint32_t periods[] = {0x11111111UL, 0x22222222UL, 0x33333333UL};
-  uint8_t        dch       = 0xFFU;
+  uint8_t        dch       = k_gpt_pwm_dma_dch_ff;
   s_gpt_dma_done           = 0;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gpt_write_dma((uint8_t)k_ra8_gpt_test_channel_valid,
@@ -114,10 +140,10 @@ static void test_gpt_read_dma_captures_gtcnt(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_init((uint8_t)k_ra8_gpt_test_channel_valid, &cfg));
 
   volatile r_gpt_channel_regs_t* reg = ra8_gpt((uint8_t)k_ra8_gpt_test_channel_valid);
-  reg->GTCNT                         = 0xDEADC0DEUL;
+  reg->GTCNT                         = k_gpt_pwm_dma_gtcnt_deadc0de;
 
   uint32_t out[2] = {0U, 0U};
-  uint8_t  dch    = 0xFFU;
+  uint8_t  dch    = k_gpt_pwm_dma_dch_ff;
   s_gpt_dma_done  = 0;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_gpt_read_dma((uint8_t)k_ra8_gpt_test_channel_valid,
@@ -551,7 +577,7 @@ static void test_mcdc_write_dma_arg_guard(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_init((uint8_t)k_ra8_gpt_test_channel_valid, &cfg));
 
   const uint32_t periods[] = {0xAAAAAAAAUL};
-  uint8_t        dch       = 0xFFU;
+  uint8_t        dch       = k_gpt_pwm_dma_dch_ff;
 
   /* Vector 1: in-range channel, non-zero count -> ok. */
   TEST_ASSERT_EQ(

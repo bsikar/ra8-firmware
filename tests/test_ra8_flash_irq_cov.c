@@ -37,6 +37,21 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum flash_irq_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_flash_irq_cov_mrcfreq_mhz_200 = 200U,
+  k_flash_irq_cov_mrefreq_mhz_100 = 100U,
+  k_flash_irq_cov_p_ff            = 0xFFU,
+} flash_irq_cov_uint8_const_t;
+
 /* ---------------------------------------------------------------------------
  * Address constants
  * ------------------------------------------------------------------------ */
@@ -119,8 +134,8 @@ static void cov_callback(const ra8_flash_isr_event_t* ev)
 static ra8_flash_cfg_t cfg_make(void)
 {
   return (ra8_flash_cfg_t){
-    .mrcfreq_mhz        = 200U,
-    .mrefreq_mhz        = 100U,
+    .mrcfreq_mhz        = k_flash_irq_cov_mrcfreq_mhz_200,
+    .mrefreq_mhz        = k_flash_irq_cov_mrefreq_mhz_100,
     .prefetch_en        = true,
     .ecc_encoder_enable = true,
     .ecc_decoder_enable = true,
@@ -452,7 +467,7 @@ static void test_blank_check_extra_mram_path(void)
    * blank_check can complete a real read without faulting. */
   volatile uint8_t* p = (volatile uint8_t*)(uintptr_t)k_ra8_flash_extra_start;
   for (uint32_t i = 0U; i < 16U; ++i) {
-    p[i] = 0xFFU;
+    p[i] = k_flash_irq_cov_p_ff;
   }
 
   bool blank = false;

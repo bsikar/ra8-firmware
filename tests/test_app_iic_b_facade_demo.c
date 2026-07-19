@@ -40,6 +40,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum iic_b_facade_demo_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_iic_b_facade_demo_mask_ff = 0xFFU,
+} iic_b_facade_demo_uint8_const_t;
+
 /** @brief Mirror of the demo's channel + on-bus addresses + register map. */
 typedef enum : uint8_t {
   k_t_channel        = 0U,    /**< I3C/IIC_B channel (only 0 on RA8D2).   */
@@ -228,7 +241,7 @@ static void test_peripheral_open_guards(void)
   /* A good open answers 0x42; status then reads without a NULL mask. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_peripheral_open((uint8_t)k_t_channel, &cfg));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_i3c_peripheral_status((uint8_t)k_t_channel, nullptr));
-  uint8_t mask = 0xFFU;
+  uint8_t mask = k_iic_b_facade_demo_mask_ff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_peripheral_status((uint8_t)k_t_channel, &mask));
   TEST_END("iic_b_facade_demo: peripheral open / status guards");
 }

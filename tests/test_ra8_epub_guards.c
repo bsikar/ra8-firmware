@@ -27,6 +27,9 @@
 #include "ra8_reflow.h"
 #include "unity_minimal.h"
 
+/** @brief Named float constant used by this file. */
+static const float k_epub_guards_ra8_epub_render_glyph_16p0 = 16.0F;
+
 /* --------------------------------------------------------------------- */
 
 /**
@@ -544,16 +547,40 @@ static void test_mcdc_render_glyph_null_or4(void)
                                        &h));
   /* V2 */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epub_render_glyph(nullptr, 0, 16.0F, bm, sizeof(bm), &w, &h));
+                 ra8_epub_render_glyph(nullptr,
+                                       0,
+                                       k_epub_guards_ra8_epub_render_glyph_16p0,
+                                       bm,
+                                       sizeof(bm),
+                                       &w,
+                                       &h));
   /* V3 */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epub_render_glyph(&book, 0, 16.0F, nullptr, sizeof(bm), &w, &h));
+                 ra8_epub_render_glyph(&book,
+                                       0,
+                                       k_epub_guards_ra8_epub_render_glyph_16p0,
+                                       nullptr,
+                                       sizeof(bm),
+                                       &w,
+                                       &h));
   /* V4 */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epub_render_glyph(&book, 0, 16.0F, bm, sizeof(bm), nullptr, &h));
+                 ra8_epub_render_glyph(&book,
+                                       0,
+                                       k_epub_guards_ra8_epub_render_glyph_16p0,
+                                       bm,
+                                       sizeof(bm),
+                                       nullptr,
+                                       &h));
   /* V5 */
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
-                 ra8_epub_render_glyph(&book, 0, 16.0F, bm, sizeof(bm), &w, nullptr));
+                 ra8_epub_render_glyph(&book,
+                                       0,
+                                       k_epub_guards_ra8_epub_render_glyph_16p0,
+                                       bm,
+                                       sizeof(bm),
+                                       &w,
+                                       nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
   TEST_END("mcdc render_glyph NULL OR(4)");
 }
@@ -579,10 +606,15 @@ static void test_mcdc_render_glyph_state_or(void)
 
   /* V3 first: opened but no font set -> not_initialized via C2 path. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_open(&media, nullptr, &book));
-  TEST_ASSERT_EQ(
-    k_ra8_err_not_initialized,
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized,
 
-    ra8_epub_render_glyph(&book, (int32_t)k_test_codepoint_a, 16.0F, bm, sizeof(bm), &w, &h));
+                 ra8_epub_render_glyph(&book,
+                                       (int32_t)k_test_codepoint_a,
+                                       k_epub_guards_ra8_epub_render_glyph_16p0,
+                                       bm,
+                                       sizeof(bm),
+                                       &w,
+                                       &h));
   /* V1: install (synthetic) font and re-call. priv_font_init will
    * reject the dummy bytes, returning validation_failed -- but the
    * NULL/state guard at line 298 evaluates false (proceeds past it),
@@ -595,10 +627,15 @@ static void test_mcdc_render_glyph_state_or(void)
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
   /* V2: book closed (in_use=0) -> not_initialized via C1. */
-  TEST_ASSERT_EQ(
-    k_ra8_err_not_initialized,
+  TEST_ASSERT_EQ(k_ra8_err_not_initialized,
 
-    ra8_epub_render_glyph(&book, (int32_t)k_test_codepoint_a, 16.0F, bm, sizeof(bm), &w, &h));
+                 ra8_epub_render_glyph(&book,
+                                       (int32_t)k_test_codepoint_a,
+                                       k_epub_guards_ra8_epub_render_glyph_16p0,
+                                       bm,
+                                       sizeof(bm),
+                                       &w,
+                                       &h));
   TEST_END("mcdc render_glyph state OR (in_use || font)");
 }
 

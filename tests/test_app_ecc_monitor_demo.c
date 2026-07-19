@@ -19,6 +19,19 @@
 
 #include "unity_minimal.h"
 
+/**
+ * @enum ecc_monitor_demo_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ecc_monitor_demo_val_7 = 7,
+} ecc_monitor_demo_uint8_const_t;
+
 typedef enum : uint32_t {
   k_t_ecc_xor   = 0x5A5A5A5AU, /**< T ECC xor.   */
   k_t_ecc_words = 64U,         /**< T ECC words. */
@@ -58,7 +71,7 @@ static void test_ecc_app_rw_model(void)
   }
   TEST_ASSERT_EQ(1U, rw);
 
-  s_buf[7] ^= 0x1U; /* corrupt one word */
+  s_buf[k_ecc_monitor_demo_val_7] ^= 0x1U; /* corrupt one word */
   rw = 1U;
   for (uint32_t i = 0U; i < (uint32_t)k_t_ecc_words; ++i) {
     if (s_buf[i] != pattern(i)) {

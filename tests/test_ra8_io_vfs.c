@@ -23,6 +23,19 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum io_vfs_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_io_vfs_val_ff = 0xFFU,
+} io_vfs_uint8_const_t;
+
+/**
  * @enum t_vfs_const_t
  * @brief Fixture sizes.
  */
@@ -57,7 +70,7 @@ static ra8_fs_mount_t* setup_volume(void)
   (void)ra8_fs_mount(&s_be, &s_mnt);
   uint8_t data[(size_t)k_t_payload];
   for (uint32_t i = 0; i < (uint32_t)k_t_payload; ++i) {
-    data[i] = (uint8_t)((i + 1U) & 0xFFU);
+    data[i] = (uint8_t)((i + 1U) & k_io_vfs_val_ff);
   }
   (void)ra8_fs_write_file(s_mnt, "HELLO.BIN", data, k_t_payload);
   return s_mnt;

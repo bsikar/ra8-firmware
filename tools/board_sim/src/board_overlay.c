@@ -23,6 +23,22 @@
 
 #include "board_overlay_internal.h"
 
+/**
+ * @enum overlay_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_overlay_val_24 = 24,
+  k_overlay_val_64 = 64,
+  k_overlay_val_80 = 80,
+  k_overlay_val_96 = 96,
+} overlay_uint8_const_t;
+
 /** @brief Draw one LED indicator dot (filled when on) plus its caption. */
 static void
 draw_led(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, const board_led_status_t* led)
@@ -62,7 +78,7 @@ static int32_t draw_run_stats(uint16_t*             out,
                               int32_t               y,
                               const board_status_t* st)
 {
-  char    buf[64];
+  char    buf[k_overlay_val_64];
   int32_t cy = section_head(out, w, h, x, y, "RUN");
   (void)snprintf(buf, sizeof(buf), "0x%08X", st->pc);
   cy = kv_row(out, w, h, x, cy, "pc", buf, (uint16_t)k_ovl_heading);
@@ -78,7 +94,7 @@ static int32_t draw_run_stats(uint16_t*             out,
 static int32_t
 draw_io_block(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, const board_status_t* st)
 {
-  char    buf[96];
+  char    buf[k_overlay_val_96];
   int32_t cy = section_head(out, w, h, x, y, "I/O");
   cy         = kv_row(out,
                       w,
@@ -277,7 +293,7 @@ static void draw_console_tabs(uint16_t*             out,
       txt = (uint16_t)k_ovl_tab_empty_txt;
     }
     fill_rect(out, w, h, rect[0], rect[1], rect[2], rect[3], bg);
-    char        cap[24];
+    char        cap[k_overlay_val_24];
     const char* name = (st->console_ch_name[i] != nullptr) ? st->console_ch_name[i] : "?";
     (void)snprintf(cap, sizeof(cap), "%s %u", name, st->console_ch_count_lines[i]);
     draw_text(out,
@@ -294,7 +310,7 @@ static void draw_console_tabs(uint16_t*             out,
 /** @brief Paint the tabbed console panel (newest line at the bottom). */
 static void draw_console(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const board_status_t* st)
 {
-  char     buf[80];
+  char     buf[k_overlay_val_80];
   uint16_t head_col;
   if (!st->console_autoscroll) {
     /* Paused: amber heading + how far back the held view sits and how to resume. */

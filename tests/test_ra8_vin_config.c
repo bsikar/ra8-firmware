@@ -33,6 +33,38 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum vin_config_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_vin_config_conv_mode_7        = 7U,
+  k_vin_config_even_field_num_5   = 5U,
+  k_vin_config_i_55               = 0x55U,
+  k_vin_config_i_aa               = 0xAAU,
+  k_vin_config_virtual_channel_99 = 99U,
+} vin_config_uint8_const_t;
+
+/**
+ * @enum vin_config_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_vin_config_i_256   = 256U,
+  k_vin_config_val_123 = 0x123U,
+  k_vin_config_val_256 = 256,
+} vin_config_uint16_const_t;
+
+/**
  * @enum ra8_vin_test_field_t
  * @brief Sample field values for the field-detect tests.
  */
@@ -260,13 +292,13 @@ static void test_lut_program(void)
   const ra8_vin_config_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vin_init(&cfg));
 
-  uint8_t y[256];
-  uint8_t cb[256];
-  uint8_t cr[256];
-  for (uint16_t i = 0U; i < 256U; ++i) {
+  uint8_t y[k_vin_config_val_256];
+  uint8_t cb[k_vin_config_val_256];
+  uint8_t cr[k_vin_config_val_256];
+  for (uint16_t i = 0U; i < k_vin_config_i_256; ++i) {
     y[i]  = (uint8_t)i;
-    cb[i] = (uint8_t)(i ^ 0x55U);
-    cr[i] = (uint8_t)(i ^ 0xAAU);
+    cb[i] = (uint8_t)(i ^ k_vin_config_i_55);
+    cr[i] = (uint8_t)(i ^ k_vin_config_i_aa);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vin_lut_program(y, cb, cr, true));
 
@@ -528,7 +560,7 @@ static void test_set_data_mode(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_vin_set_data_mode(nullptr));
 
   ra8_vin_data_mode_t bad = m;
-  bad.conv_mode           = 7U;
+  bad.conv_mode           = k_vin_config_conv_mode_7;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vin_set_data_mode(&bad));
   TEST_END("vin set_data_mode");
 }
@@ -563,7 +595,7 @@ static void test_set_csi_input(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_vin_set_csi_input(nullptr));
 
   ra8_vin_csi_input_t bad = in;
-  bad.virtual_channel     = 99U;
+  bad.virtual_channel     = k_vin_config_virtual_channel_99;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vin_set_csi_input(&bad));
   TEST_END("vin set_csi_input");
 }
@@ -595,7 +627,7 @@ static void test_set_field_detect(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_vin_set_field_detect(nullptr));
 
   ra8_vin_field_detect_t bad = d;
-  bad.even_field_num         = 5U;
+  bad.even_field_num         = k_vin_config_even_field_num_5;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vin_set_field_detect(&bad));
   TEST_END("vin set_field_detect");
 }
@@ -723,7 +755,7 @@ static void test_line_count(void)
   const ra8_vin_config_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vin_init(&cfg));
 
-  *ra8_vin_reg32(k_ra8_vin_off_lc) = 0x123U;
+  *ra8_vin_reg32(k_ra8_vin_off_lc) = k_vin_config_val_123;
   uint16_t lc                      = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vin_get_line_count(&lc));
   TEST_ASSERT_EQ(0x123U, lc);

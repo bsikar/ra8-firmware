@@ -35,6 +35,19 @@
 #include "ra8_usb_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum usb_xfer_cov_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_usb_xfer_cov_nrdysts_ffff = 0xFFFFU,
+} usb_xfer_cov_uint16_const_t;
+
 /*
  * JLink-readable diagnostic latch defined (external linkage) in
  * ra8_usb_xfer.c; 2U marks the "NULL arg / bogus speed" rejection leg.
@@ -143,7 +156,7 @@ static void test_rearm_out_pipe_valid_and_speed(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
   volatile r_usb_regs_t* reg = ra8_usb_fs();
-  reg->NRDYSTS               = (uint16_t)0xFFFFU;
+  reg->NRDYSTS               = (uint16_t)k_usb_xfer_cov_nrdysts_ffff;
   reg->PIPECTR[0]            = (uint16_t)k_ra8_pid_nak;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_rearm_out_pipe(k_ra8_usb_speed_fs, (uint8_t)k_test_usb_pipe_ok));

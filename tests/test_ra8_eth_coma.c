@@ -13,6 +13,33 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum eth_coma_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_eth_coma_coma_sts_1234 = 0x1234U,
+  k_eth_coma_coma_sts_5678 = 0x5678U,
+} eth_coma_uint16_const_t;
+
+/**
+ * @enum eth_coma_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_eth_coma_coma_sts_c0ffee00 = 0xC0FFEE00U,
+} eth_coma_uint32_const_t;
+
 static uint32_t s_coma_cb_count;
 static uint32_t s_coma_cb_last_mask;
 
@@ -70,7 +97,7 @@ static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("coma status read + clear");
   prep();
-  ra8_coma()->COMA_STS = 0xC0FFEE00U;
+  ra8_coma()->COMA_STS = k_eth_coma_coma_sts_c0ffee00;
   uint32_t mask        = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_coma_get_status(&mask));
   TEST_ASSERT_EQ(0xC0FFEE00U, mask);
@@ -90,13 +117,13 @@ static void test_attach_and_dispatch(void)
   TEST_BEGIN("coma attach + dispatch");
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_coma_attach_handler(stub_coma_cb, (void*)(uintptr_t)0xC0U));
-  ra8_coma()->COMA_STS = 0x1234U;
+  ra8_coma()->COMA_STS = k_eth_coma_coma_sts_1234;
   ra8_eth_coma_dispatch();
   TEST_ASSERT_EQ(1, s_coma_cb_count);
   TEST_ASSERT_EQ(0x1234U, s_coma_cb_last_mask);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_coma_attach_handler(nullptr, nullptr));
-  ra8_coma()->COMA_STS = 0x5678U;
+  ra8_coma()->COMA_STS = k_eth_coma_coma_sts_5678;
   ra8_eth_coma_dispatch();
   TEST_ASSERT_EQ(1, s_coma_cb_count);
   TEST_END("coma attach + dispatch");

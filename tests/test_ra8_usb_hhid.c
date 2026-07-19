@@ -16,6 +16,22 @@
 #include "ra8_usb_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum usb_hhid_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_usb_hhid_cfifo_beef = 0xBEEFU,
+  k_usb_hhid_cfifo_cafe = 0xCAFEU,
+  k_usb_hhid_got_ffff   = 0xFFFFU,
+  k_usb_hhid_val_2000   = 0x2000U,
+} usb_hhid_uint16_const_t;
+
 typedef enum : uint8_t {
   k_test_hhid_max_steps = 16U, /**< Loop bound for stepping through enum. */
 } test_hhid_lim_t;
@@ -424,8 +440,8 @@ static void test_get_report_drains_in_data_phase(void)
    * so we set DTLN=2 (FRDY left set) and stage 0xCAFE LE. */
   volatile r_usb_regs_t* reg = ra8_usb_fs();
   /* FRDY (0x2000) | DTLN=2 -> drain helper sees "2 bytes ready". */
-  reg->CFIFOCTR = (uint16_t)(0x2000U | 2U);
-  reg->CFIFO    = (uint16_t)0xCAFEU;
+  reg->CFIFOCTR = (uint16_t)(k_usb_hhid_val_2000 | 2U);
+  reg->CFIFO    = (uint16_t)k_usb_hhid_cfifo_cafe;
 
   uint8_t  buf[8] = {};
   uint16_t got    = 0U;
@@ -457,7 +473,7 @@ static void test_get_report_returns_zero_when_no_data(void)
   ra8_usb_fs()->CFIFOCTR = 0U;
 
   uint8_t  buf[8] = {};
-  uint16_t got    = 0xFFFFU;
+  uint16_t got    = k_usb_hhid_got_ffff;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_usb_hhid_get_report(k_ra8_hhid_report_type_input, 0U, buf, sizeof(buf), &got));
   TEST_ASSERT_EQ(0U, got);
@@ -481,8 +497,8 @@ static void test_get_report_caps_at_max_len(void)
   /* Stage 4 bytes available but only ask for 1.  Caller buffer must
    * not be over-written and got_len must equal max_len. */
   volatile r_usb_regs_t* reg = ra8_usb_fs();
-  reg->CFIFOCTR              = (uint16_t)(0x2000U | 4U);
-  reg->CFIFO                 = (uint16_t)0xBEEFU;
+  reg->CFIFOCTR              = (uint16_t)(k_usb_hhid_val_2000 | 4U);
+  reg->CFIFO                 = (uint16_t)k_usb_hhid_cfifo_beef;
 
   uint8_t  buf[1] = {0U};
   uint16_t got    = 0U;

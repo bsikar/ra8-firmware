@@ -28,6 +28,42 @@
 #include "ra8_fs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum epub_fs_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_epub_fs_bpb_55   = 0x55U,
+  k_epub_fs_bpb_aa   = 0xAAU,
+  k_epub_fs_put16_11 = 11U,
+  k_epub_fs_put16_14 = 14U,
+  k_epub_fs_put16_17 = 17U,
+  k_epub_fs_put16_19 = 19U,
+  k_epub_fs_put16_22 = 22U,
+  k_epub_fs_v_ff     = 0xFFU,
+  k_epub_fs_val_13   = 13,
+} epub_fs_uint8_const_t;
+
+/**
+ * @enum epub_fs_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_epub_fs_val_2048 = 2048,
+  k_epub_fs_val_510  = 510,
+  k_epub_fs_val_511  = 511,
+} epub_fs_uint16_const_t;
+
 /* --- RAM block device + minimal FAT16 volume (mirrors test_ra8_fs_fat.c) --- */
 
 typedef enum : uint32_t {
@@ -84,8 +120,8 @@ static const ra8_fs_backend_t s_backend = {
 
 static void put16(uint8_t* p, uint32_t off, uint16_t v)
 {
-  p[off]     = (uint8_t)(v & 0xFFU);
-  p[off + 1] = (uint8_t)((v >> 8) & 0xFFU);
+  p[off]     = (uint8_t)(v & k_epub_fs_v_ff);
+  p[off + 1] = (uint8_t)((v >> 8) & k_epub_fs_v_ff);
 }
 
 static void build_fat16_volume(void)
@@ -96,15 +132,15 @@ static void build_fat16_volume(void)
   s_disk.block_count = (uint32_t)k_disk_blocks;
   TEST_ASSERT(s_disk.bytes != nullptr);
   uint8_t* bpb = &s_disk.bytes[0];
-  put16(bpb, 11U, (uint16_t)k_disk_block_size); /* bytes/sector     */
-  bpb[13] = 1U;                                 /* sectors/cluster  */
-  put16(bpb, 14U, 1U);                          /* reserved sectors */
-  bpb[16] = 2U;                                 /* number of FATs   */
-  put16(bpb, 17U, 16U);                         /* root dir entries */
-  put16(bpb, 19U, (uint16_t)k_disk_blocks);     /* total sectors    */
-  put16(bpb, 22U, 32U);                         /* sectors/FAT      */
-  bpb[510] = 0x55U;
-  bpb[511] = 0xAAU;
+  put16(bpb, k_epub_fs_put16_11, (uint16_t)k_disk_block_size); /* bytes/sector     */
+  bpb[k_epub_fs_val_13] = 1U;                                  /* sectors/cluster  */
+  put16(bpb, k_epub_fs_put16_14, 1U);                          /* reserved sectors */
+  bpb[16] = 2U;                                                /* number of FATs   */
+  put16(bpb, k_epub_fs_put16_17, 16U);                         /* root dir entries */
+  put16(bpb, k_epub_fs_put16_19, (uint16_t)k_disk_blocks);     /* total sectors    */
+  put16(bpb, k_epub_fs_put16_22, 32U);                         /* sectors/FAT      */
+  bpb[k_epub_fs_val_510] = k_epub_fs_bpb_55;
+  bpb[k_epub_fs_val_511] = k_epub_fs_bpb_aa;
 }
 
 /* --- A real (minimal) EPUB assembled in memory with miniz --- */
@@ -298,8 +334,8 @@ static void test_epub_fs_streamed_roundtrip(void)
   TEST_ASSERT_EQ(2U, chapters);
 
   /* Each chapter is inflated on demand straight off the volume. */
-  uint8_t chbuf[2048] = {};
-  size_t  got         = 0U;
+  uint8_t chbuf[k_epub_fs_val_2048] = {};
+  size_t  got                       = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_load_chapter(&book, 0U, chbuf, sizeof(chbuf) - 1U, &got));
   TEST_ASSERT(got > 0U);
   chbuf[got] = (uint8_t)'\0';

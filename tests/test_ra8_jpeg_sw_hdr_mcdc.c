@@ -22,6 +22,34 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum jpeg_sw_hdr_mcdc_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_jpeg_sw_hdr_mcdc_s_spliced_d8 = 0xD8U,
+  k_jpeg_sw_hdr_mcdc_val_64       = 64,
+  k_jpeg_sw_hdr_mcdc_val_ff       = 0xFFU,
+} jpeg_sw_hdr_mcdc_uint8_const_t;
+
+/**
+ * @enum jpeg_sw_hdr_mcdc_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_jpeg_sw_hdr_mcdc_val_256 = 256,
+} jpeg_sw_hdr_mcdc_uint16_const_t;
+
+/**
  * @enum ra8_jpeg_test_const_t
  * @brief Sizes used by the test fixtures.
  */
@@ -40,9 +68,9 @@ static void fill_gradient(uint8_t* rgb, uint16_t w, uint16_t h)
   for (uint16_t y = 0U; y < h; y++) {
     for (uint16_t x = 0U; x < w; x++) {
       uint32_t i  = (((uint32_t)y * (uint32_t)w) + (uint32_t)x) * 3U;
-      rgb[i + 0U] = (uint8_t)((x * 16U) & 0xFFU);
-      rgb[i + 1U] = (uint8_t)((y * 16U) & 0xFFU);
-      rgb[i + 2U] = (uint8_t)(((x + y) * 8U) & 0xFFU);
+      rgb[i + 0U] = (uint8_t)((x * 16U) & k_jpeg_sw_hdr_mcdc_val_ff);
+      rgb[i + 1U] = (uint8_t)((y * 16U) & k_jpeg_sw_hdr_mcdc_val_ff);
+      rgb[i + 2U] = (uint8_t)(((x + y) * 8U) & k_jpeg_sw_hdr_mcdc_val_ff);
     }
   }
 }
@@ -62,9 +90,9 @@ static void fill_gradient(uint8_t* rgb, uint16_t w, uint16_t h)
 static void test_mcdc_decode_pad_byte_chain(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC decode/get_dimensions: pad-byte while-loop");
-  uint8_t  out[256] = {};
-  uint16_t dw       = 0U;
-  uint16_t dh       = 0U;
+  uint8_t  out[k_jpeg_sw_hdr_mcdc_val_256] = {};
+  uint16_t dw                              = 0U;
+  uint16_t dh                              = 0U;
 
   /* V_many_pad: three 0xFF padding bytes ahead of EOI. */
   static const uint8_t many_pad[] = {
@@ -166,10 +194,10 @@ static void test_mcdc_get_dimensions_seglen_independent(void)
 static void test_mcdc_decode_sos_without_sof(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC decode: SOS arrives before SOF0");
-  uint8_t              out[256]    = {};
-  uint16_t             dw          = 0U;
-  uint16_t             dh          = 0U;
-  static const uint8_t sos_first[] = {
+  uint8_t              out[k_jpeg_sw_hdr_mcdc_val_256] = {};
+  uint16_t             dw                              = 0U;
+  uint16_t             dh                              = 0U;
+  static const uint8_t sos_first[]                     = {
     0xFFU,
     0xD8U,
     0xFFU,
@@ -217,9 +245,9 @@ static void test_mcdc_decode_sos_without_sof(void)
 static void test_mcdc_decode_dht_tc_th_independent(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC dec_parse_dht: tc/th independence pairs");
-  uint8_t  out[64] = {};
-  uint16_t dw      = 0U;
-  uint16_t dh      = 0U;
+  uint8_t  out[k_jpeg_sw_hdr_mcdc_val_64] = {};
+  uint16_t dw                             = 0U;
+  uint16_t dh                             = 0U;
   /* V_F_F: tc=0, th=0 -- valid DHT, no symbols. Decoder returns from
    * dec_parse_dht successfully, then loop sees EOI and exits with
    * protocol_error (no SOS) -- but line 1041 was evaluated F,F. */
@@ -265,10 +293,10 @@ static void test_mcdc_decode_dht_tc_th_independent(void)
 static void test_mcdc_decode_sof0_ncomp1(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC dec_parse_sof0: ncomp=1 pair");
-  uint8_t              out[64]       = {};
-  uint16_t             dw            = 0U;
-  uint16_t             dh            = 0U;
-  static const uint8_t sof0_ncomp1[] = {
+  uint8_t              out[k_jpeg_sw_hdr_mcdc_val_64] = {};
+  uint16_t             dw                             = 0U;
+  uint16_t             dh                             = 0U;
+  static const uint8_t sof0_ncomp1[]                  = {
     0xFFU,
     0xD8U,
     0xFFU,
@@ -318,9 +346,9 @@ static void test_mcdc_decode_sof0_ncomp1(void)
 static void test_mcdc_decode_sof0_444_chroma(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC dec_parse_sof0: 4:4:4 + hmax/vmax pairs");
-  uint8_t  out[64] = {};
-  uint16_t dw      = 0U;
-  uint16_t dh      = 0U;
+  uint8_t  out[k_jpeg_sw_hdr_mcdc_val_64] = {};
+  uint16_t dw                             = 0U;
+  uint16_t dh                             = 0U;
   /* V_T_T: full 4:4:4 (1,1,1). is_444 = T,T -> true; line 1134
    * !is_444 = false so the if-body is skipped (covers is_444 C2
    * independence pair and provides T,F,T,T,T,T row for is_420 too,
@@ -370,9 +398,9 @@ static void test_mcdc_decode_sof0_444_chroma(void)
 static void test_mcdc_decode_sof0_is420_subconditions(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC dec_parse_sof0: is_420 6-cond independence");
-  uint8_t  out[64] = {};
-  uint16_t dw      = 0U;
-  uint16_t dh      = 0U;
+  uint8_t  out[k_jpeg_sw_hdr_mcdc_val_64] = {};
+  uint16_t dw                             = 0U;
+  uint16_t dh                             = 0U;
   /* C1=F via 4:4:4 already covered by sof0_444 above. Re-run for
    * MCDC isolation. */
   static const uint8_t sof0_c1f[] = {
@@ -438,9 +466,9 @@ static void test_mcdc_decode_sof0_is420_subconditions(void)
 static void test_mcdc_decode_sos_dc_ac_id_independent(void)
 {
   TEST_BEGIN("jpeg_sw MC/DC dec_parse_sos: dc_id/ac_id independence pairs");
-  uint8_t  out[64] = {};
-  uint16_t dw      = 0U;
-  uint16_t dh      = 0U;
+  uint8_t  out[k_jpeg_sw_hdr_mcdc_val_64] = {};
+  uint16_t dw                             = 0U;
+  uint16_t dh                             = 0U;
   /* V_T_F: tdta=0x20 -> dc_id=2 (T), ac_id=0 (F). SOS length 8:
    * 2(len) + 1(ns) + 2(cs+tdta)*1 + 3(Ss/Se/AhAl) = 8. */
   static const uint8_t sos_tf[] = {
@@ -653,8 +681,8 @@ static void test_mcdc_decode_skip_appn_marker(void)
     0x49U,
     0x46U,
   };
-  s_spliced[0] = 0xFFU;
-  s_spliced[1] = 0xD8U;
+  s_spliced[0] = k_jpeg_sw_hdr_mcdc_val_ff;
+  s_spliced[1] = k_jpeg_sw_hdr_mcdc_s_spliced_d8;
   for (uint32_t i = 0U; i < (uint32_t)sizeof app0_payload; ++i) {
     s_spliced[2U + i] = app0_payload[i];
   }

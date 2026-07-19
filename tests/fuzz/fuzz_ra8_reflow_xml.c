@@ -32,6 +32,19 @@
 #include "ra8_epub.h"
 #include "ra8_err.h"
 
+/**
+ * @enum reflow_xml_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_reflow_xml_u_20 = 20,
+} reflow_xml_uint8_const_t;
+
 /*
  * The tinyxml2-backed manifest parsers are declared extern "C" inside
  * ra8_epub_xml_shim.cpp (definition) and ra8_epub_open.c (consumer); there is no
@@ -47,7 +60,7 @@ static ra8_epub_book_t s_book;
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-  if (size == 0U || size > (1U << 20)) {
+  if (size == 0U || size > (1U << k_reflow_xml_u_20)) {
     return 0;
   }
   /* Each parser is independent: reset the book between passes so every entry

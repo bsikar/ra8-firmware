@@ -57,6 +57,19 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum epaper_cov_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_epaper_cov_panel_width_ffff = 0xFFFFU,
+} epaper_cov_uint16_const_t;
+
+/**
  * @enum ra8_epaper_cov_const_t
  * @brief Named fixtures: fault-injection call indices, geometry and byte
  *        stimulus used by the coverage vectors.
@@ -822,11 +835,11 @@ static void epaper_check_validate_cfg(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_init_cov(&cfg));
   set_uninit();
   cfg             = cov_cfg();
-  cfg.panel_width = (uint16_t)0xFFFFU;
+  cfg.panel_width = (uint16_t)k_epaper_cov_panel_width_ffff;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_init_cov(&cfg));
   set_uninit();
   cfg              = cov_cfg();
-  cfg.panel_height = (uint16_t)0xFFFFU;
+  cfg.panel_height = (uint16_t)k_epaper_cov_panel_width_ffff;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_init_cov(&cfg));
 }
 

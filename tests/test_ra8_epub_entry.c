@@ -35,6 +35,23 @@
 #include "ra8_err.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum epub_entry_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_epub_entry_again_123 = 123U,
+  k_epub_entry_i_251     = 251U,
+  k_epub_entry_i_37      = 37U,
+  k_epub_entry_i_5       = 5U,
+  k_epub_entry_val_11    = 11U,
+} epub_entry_uint8_const_t;
+
 /* ---------------------------------------------------------------------------
  * Dimensions (tests are exempt from the magic-number gate; enums used anyway).
  * ---------------------------------------------------------------------------
@@ -114,10 +131,11 @@ static const char* const k_ch1 =
 static void fill_sources(void)
 {
   for (size_t i = 0U; i < (size_t)k_big_bytes; ++i) {
-    s_big[i] = (uint8_t)((i % 251U) ^ (i >> 5U)); /* varied but compressible */
+    s_big[i] =
+      (uint8_t)((i % k_epub_entry_i_251) ^ (i >> k_epub_entry_i_5)); /* varied but compressible */
   }
   for (size_t i = 0U; i < (size_t)k_raw_bytes; ++i) {
-    s_raw[i] = (uint8_t)((i * 37U) + 11U);
+    s_raw[i] = (uint8_t)((i * k_epub_entry_i_37) + k_epub_entry_val_11);
   }
 }
 
@@ -249,7 +267,7 @@ static uint64_t stream_and_verify_big(ra8_epub_book_t* book)
   }
   TEST_ASSERT_EQ(k_big_bytes, off);
   /* Reading past EOF stays at zero, idempotently. */
-  size_t again = 123U;
+  size_t again = k_epub_entry_again_123;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_entry_read(&rd, chunk, sizeof(chunk), &again));
   TEST_ASSERT_EQ(0U, again);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_entry_close(&rd));

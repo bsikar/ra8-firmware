@@ -39,6 +39,46 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum rmac_mgmt_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_rmac_mgmt_cov_mon1_irq_enable_0000000f = 0x0000000FU,
+  k_rmac_mgmt_cov_mon2_irq_enable_00000007 = 0x00000007U,
+} rmac_mgmt_cov_uint8_const_t;
+
+/**
+ * @enum rmac_mgmt_cov_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_rmac_mgmt_cov_mon0_irq_enable_00001fff = 0x00001FFFU,
+} rmac_mgmt_cov_uint16_const_t;
+
+/**
+ * @enum rmac_mgmt_cov_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_rmac_mgmt_cov_err_irq_enable_cafebabe = 0xCAFEBABEU,
+} rmac_mgmt_cov_uint32_const_t;
+
+/**
  * @enum test_rmac_mgmt_addr_t
  * @brief Small PHY address used by the reachable poll-budget test.
  */
@@ -81,10 +121,10 @@ static ra8_rmac_config_t default_cfg(void)
 {
   return (ra8_rmac_config_t){
     .rx_filter       = k_ra8_rmac_mrafc_unicast_match,
-    .err_irq_enable  = 0xCAFEBABEU,
-    .mon0_irq_enable = 0x00001FFFU,
-    .mon1_irq_enable = 0x0000000FU,
-    .mon2_irq_enable = 0x00000007U,
+    .err_irq_enable  = k_rmac_mgmt_cov_err_irq_enable_cafebabe,
+    .mon0_irq_enable = k_rmac_mgmt_cov_mon0_irq_enable_00001fff,
+    .mon1_irq_enable = k_rmac_mgmt_cov_mon1_irq_enable_0000000f,
+    .mon2_irq_enable = k_rmac_mgmt_cov_mon2_irq_enable_00000007,
     .phy_interface   = k_ra8_rmac_pis_gmii,
     .link_speed      = k_ra8_rmac_lsc_1000mbit,
     .duplex          = k_ra8_rmac_duplex_full,

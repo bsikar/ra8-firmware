@@ -44,6 +44,19 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum stbtt_guard_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_stbtt_guard_w_ffff = 0xFFFFU,
+} stbtt_guard_uint16_const_t;
+
+/**
  * @enum guard_test_dim_t
  * @brief Geometry and glyph knobs for the end-to-end call-site tests.
  */
@@ -465,8 +478,8 @@ static void test_epub_render_glyph_oob_loca_safe(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_set_font(&book, s_oob_loca_font, sizeof s_oob_loca_font));
 
   uint8_t  bitmap[(size_t)k_g_glyph_dim * (size_t)k_g_glyph_dim] = {};
-  uint32_t w                                                     = 0xFFFFU;
-  uint32_t h                                                     = 0xFFFFU;
+  uint32_t w                                                     = k_stbtt_guard_w_ffff;
+  uint32_t h                                                     = k_stbtt_guard_w_ffff;
   /* Pre-fix this call read past the font buffer inside stb_truetype. Post-fix
    * the glyph's out-of-bounds glyf offset is rejected, so stb reports an empty
    * glyph: the render succeeds with a zero-size bitmap (0x0) and no read

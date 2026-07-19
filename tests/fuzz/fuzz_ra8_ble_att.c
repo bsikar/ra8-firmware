@@ -28,6 +28,19 @@
 #include "ra8_ble_host.h"
 #include "ra8_err.h"
 
+/**
+ * @enum ble_att_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ble_att_att_len_ff = 0xFFU,
+} ble_att_uint8_const_t;
+
 /* UNIT_TEST hooks declared in ra8_ble_host.h. */
 
 enum : uint16_t {
@@ -100,10 +113,10 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
   }
   /* L2CAP B-frame header: payload_len(LE16) + cid(LE16) + payload */
   const uint16_t att_len = (uint16_t)size;
-  s_frame[0]             = (uint8_t)(att_len & 0xFFU);
-  s_frame[1]             = (uint8_t)((att_len >> 8U) & 0xFFU);
-  s_frame[2]             = (uint8_t)((uint16_t)k_fuzz_l2cap_cid_att & 0xFFU);
-  s_frame[3]             = (uint8_t)(((uint16_t)k_fuzz_l2cap_cid_att >> 8U) & 0xFFU);
+  s_frame[0]             = (uint8_t)(att_len & k_ble_att_att_len_ff);
+  s_frame[1]             = (uint8_t)((att_len >> 8U) & k_ble_att_att_len_ff);
+  s_frame[2]             = (uint8_t)((uint16_t)k_fuzz_l2cap_cid_att & k_ble_att_att_len_ff);
+  s_frame[3]             = (uint8_t)(((uint16_t)k_fuzz_l2cap_cid_att >> 8U) & k_ble_att_att_len_ff);
   (void)memcpy(&s_frame[k_fuzz_l2cap_hdr_len], data, size);
   ra8_ble_host_test_inject_acl((uint16_t)k_fuzz_conn_handle,
                                s_frame,

@@ -21,6 +21,54 @@
 #include "ra8_widget.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum widget_leaf_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_widget_leaf_action_id_10 = 10U,
+  k_widget_leaf_action_id_11 = 11U,
+  k_widget_leaf_fixed_24     = 24,
+  k_widget_leaf_h_30         = 30,
+  k_widget_leaf_h_40         = 40,
+  k_widget_leaf_pad_5        = 5,
+  k_widget_leaf_w_100        = 100,
+  k_widget_leaf_w_50         = 50,
+  k_widget_leaf_w_60         = 60,
+  k_widget_leaf_x_10         = 10,
+  k_widget_leaf_y_20         = 20,
+} widget_leaf_uint8_const_t;
+
+/**
+ * @enum widget_leaf_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_widget_leaf_bg_00080808           = 0x00080808U,
+  k_widget_leaf_bg_00101018           = 0x00101018U,
+  k_widget_leaf_bg_00112233           = 0x00112233U,
+  k_widget_leaf_face_00203060         = 0x00203060U,
+  k_widget_leaf_face_00204060         = 0x00204060U,
+  k_widget_leaf_face_00445566         = 0x00445566U,
+  k_widget_leaf_face_00603020         = 0x00603020U,
+  k_widget_leaf_face_pressed_004060c0 = 0x004060C0U,
+  k_widget_leaf_face_pressed_004080c0 = 0x004080C0U,
+  k_widget_leaf_face_pressed_00c06040 = 0x00C06040U,
+  k_widget_leaf_fg_00aabbcc           = 0x00AABBCCU,
+  k_widget_leaf_fg_00c0c0c0           = 0x00C0C0C0U,
+  k_widget_leaf_fg_00ffffff           = 0x00FFFFFFU,
+} widget_leaf_uint32_const_t;
+
 /* --- Concrete leaf widgets (label + button) fixture ------------------------- */
 
 /**
@@ -118,13 +166,16 @@ static void test_label_render_align(void)
   ra8_widget_paint_t paint = make_paint(&mp, true);
   ra8_widget_label_t lab   = {.paint = &paint,
                               .text  = "hi",
-                              .fg    = 0x00AABBCCU,
-                              .bg    = 0x00112233U,
+                              .fg    = k_widget_leaf_fg_00aabbcc,
+                              .bg    = k_widget_leaf_bg_00112233,
                               .pad   = 3,
                               .align = k_ra8_widget_align_center};
   ra8_widget_t       w     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_label_init(&w, &lab));
-  w.rect = (ra8_ui_rect_t){.x = 10, .y = 20, .w = 100, .h = 40};
+  w.rect = (ra8_ui_rect_t){.x = k_widget_leaf_x_10,
+                           .y = k_widget_leaf_y_20,
+                           .w = k_widget_leaf_w_100,
+                           .h = k_widget_leaf_h_40};
 
   /* Centre: one bg fill over the rect + centred text (tw = 2 * 8 = 16). */
   w.vt->render(&w);
@@ -169,11 +220,11 @@ static void test_label_render_guards(void)
   ra8_widget_paint_t paint = make_paint(&mp, false); /* no text_size */
   ra8_widget_label_t lab   = {.paint = &paint,
                               .text  = "x",
-                              .pad   = 5,
+                              .pad   = k_widget_leaf_pad_5,
                               .align = k_ra8_widget_align_center};
   ra8_widget_t       w     = {};
   (void)ra8_widget_label_init(&w, &lab);
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 50, .h = 20};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_leaf_w_50, .h = k_widget_leaf_y_20};
 
   /* No text_size -> centre falls back to the left inset (5, 5); fill runs. */
   w.vt->render(&w);
@@ -256,16 +307,16 @@ static void test_button_render(void)
   ra8_widget_paint_t  paint = make_paint(&mp, true);
   ra8_widget_button_t btn   = {.paint        = &paint,
                                .text         = "OK",
-                               .fg           = 0x00FFFFFFU,
-                               .face         = 0x00204060U,
-                               .face_pressed = 0x004080C0U,
+                               .fg           = k_widget_leaf_fg_00ffffff,
+                               .face         = k_widget_leaf_face_00204060,
+                               .face_pressed = k_widget_leaf_face_pressed_004080c0,
                                .border       = 0x00000000U,
                                .border_w     = 2,
                                .pad          = 0,
                                .align        = k_ra8_widget_align_center};
   ra8_widget_t        w     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_button_init(&w, &btn));
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 60, .h = 30};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_leaf_w_60, .h = k_widget_leaf_h_30};
 
   /* Released: border fill then inset face fill (2 fills) + centred label. */
   w.vt->render(&w);
@@ -300,7 +351,7 @@ static void test_button_input(void)
   ra8_widget_button_t btn = {.on_press = test_btn_on_press};
   ra8_widget_t        w   = {};
   (void)ra8_widget_button_init(&w, &btn);
-  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 40, .h = 40};
+  w.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_leaf_h_40, .h = k_widget_leaf_h_40};
 
   /* A touch latches: toggle pressed, count it, dirty + fast, fire callback. */
   const ra8_widget_event_t touch = {.kind = k_ra8_widget_ev_touch, .x = 5, .y = 5};
@@ -388,29 +439,29 @@ static void kit_fixture_configs(kit_fixture_t* f)
   f->paint  = make_paint(&f->mp, true);
   f->title  = (ra8_widget_label_t){.paint = &f->paint,
                                    .text  = "Kit",
-                                   .fg    = 0x00FFFFFFU,
-                                   .bg    = 0x00101018U,
+                                   .fg    = k_widget_leaf_fg_00ffffff,
+                                   .bg    = k_widget_leaf_bg_00101018,
                                    .pad   = 4,
                                    .align = k_ra8_widget_align_center};
   f->footer = (ra8_widget_label_t){.paint = &f->paint,
                                    .text  = "hint",
-                                   .fg    = 0x00C0C0C0U,
-                                   .bg    = 0x00080808U,
+                                   .fg    = k_widget_leaf_fg_00c0c0c0,
+                                   .bg    = k_widget_leaf_bg_00080808,
                                    .pad   = 4,
                                    .align = k_ra8_widget_align_left};
   f->b0     = (ra8_widget_button_t){.paint        = &f->paint,
                                     .text         = "A",
-                                    .fg           = 0x00FFFFFFU,
-                                    .face         = 0x00203060U,
-                                    .face_pressed = 0x004060C0U,
+                                    .fg           = k_widget_leaf_fg_00ffffff,
+                                    .face         = k_widget_leaf_face_00203060,
+                                    .face_pressed = k_widget_leaf_face_pressed_004060c0,
                                     .border       = 0x00000000U,
                                     .border_w     = 2,
                                     .align        = k_ra8_widget_align_center};
   f->b1     = (ra8_widget_button_t){.paint        = &f->paint,
                                     .text         = "B",
-                                    .fg           = 0x00FFFFFFU,
-                                    .face         = 0x00603020U,
-                                    .face_pressed = 0x00C06040U,
+                                    .fg           = k_widget_leaf_fg_00ffffff,
+                                    .face         = k_widget_leaf_face_00603020,
+                                    .face_pressed = k_widget_leaf_face_pressed_00c06040,
                                     .border       = 0x00000000U,
                                     .border_w     = 2,
                                     .align        = k_ra8_widget_align_center};
@@ -424,21 +475,21 @@ static bool build_kit_fixture(kit_fixture_t* f)
   if (ra8_widget_label_init(&f->root[0], &f->title) != k_ra8_ok) {
     return false;
   }
-  f->root[0].fixed = 40;
+  f->root[0].fixed = k_widget_leaf_h_40;
   if (ra8_widget_label_init(&f->root[2], &f->footer) != k_ra8_ok) {
     return false;
   }
-  f->root[2].fixed = 24;
+  f->root[2].fixed = k_widget_leaf_fixed_24;
   if (ra8_widget_button_init(&f->body[0], &f->b0) != k_ra8_ok) {
     return false;
   }
   f->body[0].flex      = 1U;
-  f->body[0].action_id = 10U;
+  f->body[0].action_id = k_widget_leaf_action_id_10;
   if (ra8_widget_button_init(&f->body[1], &f->b1) != k_ra8_ok) {
     return false;
   }
   f->body[1].flex      = 1U;
-  f->body[1].action_id = 11U;
+  f->body[1].action_id = k_widget_leaf_action_id_11;
 
   f->body_panel = (ra8_widget_panel_t){.children    = f->body,
                                        .box_scratch = f->bscr,
@@ -535,7 +586,7 @@ static void test_button_render_guards(void)
   ra8_widget_t wn = {};
   wn.vt           = ra8_widget_button_vtable();
   wn.ctx          = nullptr;
-  wn.rect         = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 40, .h = 20};
+  wn.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_leaf_h_40, .h = k_widget_leaf_y_20};
   wn.vt->render(&wn); /* no crash, nothing drawn */
   TEST_ASSERT_EQ(0U, mp.fill_calls);
 
@@ -543,7 +594,7 @@ static void test_button_render_guards(void)
   ra8_widget_button_t bnp = {.paint = nullptr, .text = "x", .border_w = 2};
   ra8_widget_t        wp  = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_button_init(&wp, &bnp));
-  wp.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 40, .h = 20};
+  wp.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_leaf_h_40, .h = k_widget_leaf_y_20};
   wp.vt->render(&wp);
   TEST_ASSERT_EQ(0U, mp.fill_calls);
 
@@ -551,12 +602,12 @@ static void test_button_render_guards(void)
   ra8_widget_paint_t  paint = make_paint(&mp, true);
   ra8_widget_button_t bnt   = {.paint    = &paint,
                                .text     = nullptr,
-                               .face     = 0x00112233U,
+                               .face     = k_widget_leaf_bg_00112233,
                                .border   = 0x00000000U,
                                .border_w = 2};
   ra8_widget_t        wt    = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_button_init(&wt, &bnt));
-  wt.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 40, .h = 20};
+  wt.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_leaf_h_40, .h = k_widget_leaf_y_20};
   wt.vt->render(&wt);
   TEST_ASSERT_EQ(2U, mp.fill_calls); /* border fill + inset face fill */
   TEST_ASSERT_EQ(0U, mp.text_calls); /* text == NULL -> no label      */
@@ -566,12 +617,12 @@ static void test_button_render_guards(void)
   paint.draw_text         = nullptr;
   ra8_widget_button_t bnd = {.paint    = &paint,
                              .text     = "OK",
-                             .face     = 0x00445566U,
+                             .face     = k_widget_leaf_face_00445566,
                              .border   = 0x00000000U,
                              .border_w = 2};
   ra8_widget_t        wd  = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_widget_button_init(&wd, &bnd));
-  wd.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = 40, .h = 20};
+  wd.rect = (ra8_ui_rect_t){.x = 0, .y = 0, .w = k_widget_leaf_h_40, .h = k_widget_leaf_y_20};
   wd.vt->render(&wd);
   TEST_ASSERT_EQ(2U, mp.fill_calls);
   TEST_ASSERT_EQ(0U, mp.text_calls);

@@ -17,6 +17,56 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum dma_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_dma_ch_ff                         = 0xFFU,
+  k_dma_ra8_dma_dispatch_complete_200 = 200U,
+  k_dma_val_11                        = 0x11,
+  k_dma_val_22                        = 0x22,
+  k_dma_val_30                        = 0x30,
+  k_dma_val_33                        = 0x33,
+  k_dma_val_40                        = 0x40,
+  k_dma_val_44                        = 0x44,
+  k_dma_val_50                        = 0x50,
+  k_dma_val_60                        = 0x60,
+} dma_uint8_const_t;
+
+/**
+ * @enum dma_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_dma_ctx_val_abcd = 0xABCD,
+} dma_uint16_const_t;
+
+/**
+ * @enum dma_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_dma_sentinel_12345678 = 0x12345678U,
+  k_dma_sentinel_cafebabe = 0xCAFEBABEU,
+  k_dma_sentinel_deadbeef = 0xDEADBEEFU,
+} dma_uint32_const_t;
+
 static int32_t s_complete_count    = 0;
 static int32_t s_complete_last_ctx = 0;
 
@@ -67,7 +117,7 @@ static void test_request_allocates_channel_zero(void)
   TEST_BEGIN("ra8_dma_request: first allocation gets channel 0");
   reset_state();
 
-  uint8_t src[4] = {0x11, 0x22, 0x33, 0x44};
+  uint8_t src[4] = {k_dma_val_11, k_dma_val_22, k_dma_val_33, k_dma_val_44};
   uint8_t dst[4] = {};
 
   const ra8_dma_request_t req = {
@@ -82,7 +132,7 @@ static void test_request_allocates_channel_zero(void)
     .ctx         = nullptr,
   };
 
-  uint8_t ch = 0xFFU;
+  uint8_t ch = k_dma_ch_ff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dma_request(&req, &ch));
   TEST_ASSERT_EQ(0, ch);
 
@@ -226,9 +276,9 @@ static void test_sim_dma_memcpy_byte(void)
   TEST_BEGIN("ra8_sim_dma_memcpy: byte transfer");
   reset_state();
 
-  uint8_t                 src[6] = {0x10, 0x20, 0x30, 0x40, 0x50, 0x60};
-  uint8_t                 dst[6] = {};
-  const ra8_dma_request_t req    = {
+  uint8_t src[6] = {0x10, 0x20, k_dma_val_30, k_dma_val_40, k_dma_val_50, k_dma_val_60};
+  uint8_t dst[6] = {};
+  const ra8_dma_request_t req = {
     .src_addr = (uintptr_t)src,
     .dst_addr = (uintptr_t)dst,
     .count    = 6U,
@@ -257,9 +307,9 @@ static void test_sim_dma_memcpy_word(void)
   TEST_BEGIN("ra8_sim_dma_memcpy: word transfer");
   reset_state();
 
-  uint32_t                src[3] = {0xDEADBEEFU, 0xCAFEBABEU, 0x12345678U};
-  uint32_t                dst[3] = {};
-  const ra8_dma_request_t req    = {
+  uint32_t src[3] = {k_dma_sentinel_deadbeef, k_dma_sentinel_cafebabe, k_dma_sentinel_12345678};
+  uint32_t dst[3] = {};
+  const ra8_dma_request_t req = {
     .src_addr = (uintptr_t)src,
     .dst_addr = (uintptr_t)dst,
     .count    = 3U,
@@ -288,7 +338,7 @@ static void test_sim_dma_complete_fires_callback(void)
   TEST_BEGIN("ra8_sim_dma_complete: callback invoked with ctx");
   reset_state();
 
-  int32_t                 ctx_val = 0xABCD;
+  int32_t                 ctx_val = k_dma_ctx_val_abcd;
   uint8_t                 buf[4]  = {};
   const ra8_dma_request_t req     = {
     .src_addr    = (uintptr_t)buf,
@@ -362,7 +412,7 @@ static void test_dispatch_out_of_range(void)
   TEST_BEGIN("ra8_dma_dispatch_complete: out-of-range is no-op");
   reset_state();
   /* No assertion -- the call just must not crash. */
-  ra8_dma_dispatch_complete(200U);
+  ra8_dma_dispatch_complete(k_dma_ra8_dma_dispatch_complete_200);
   TEST_END("ra8_dma_dispatch_complete: out-of-range is no-op");
 }
 

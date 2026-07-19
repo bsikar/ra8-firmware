@@ -29,6 +29,32 @@
 #include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum i3c_i2c_edge_cases_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_i3c_i2c_edge_cases_i_5 = 5U,
+} i3c_i2c_edge_cases_uint8_const_t;
+
+/**
+ * @enum i3c_i2c_edge_cases_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_i3c_i2c_edge_cases_val_1000000 = 1000000,
+} i3c_i2c_edge_cases_uint32_const_t;
+
 typedef enum : uint8_t {
   k_iic_b_edge_target = 0x42U, /**< Iic b edge target. */
   k_iic_b_edge_byte_a = 0xA5U, /**< Iic b edge byte a. */
@@ -51,7 +77,7 @@ static const uint8_t s_iic_b_edge_payload[3] = {
   (uint8_t)k_iic_b_edge_byte_c,
 };
 
-static uint8_t s_iic_b_edge_long[1000000];
+static uint8_t s_iic_b_edge_long[k_i3c_i2c_edge_cases_val_1000000];
 
 static void prep(void)
 {
@@ -127,7 +153,7 @@ static void test_bus_busy_during_start_repeated(void)
    * busy without touching CNDCTL.STCND. */
   i3c_i2c_regs(0U)->BCST   = 0U;
   i3c_i2c_regs(0U)->CNDCTL = 0U;
-  for (uint8_t i = 0U; i < 5U; ++i) {
+  for (uint8_t i = 0U; i < k_i3c_i2c_edge_cases_i_5; ++i) {
     TEST_ASSERT_EQ(
       k_ra8_err_busy,
       internal_i3c_i2c_write(0U, (uint8_t)k_iic_b_edge_target, s_iic_b_edge_payload, 1U, false));

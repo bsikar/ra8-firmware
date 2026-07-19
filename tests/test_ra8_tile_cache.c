@@ -21,6 +21,20 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum tile_cache_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_tile_cache_t_key_42 = 0x42U,
+  k_tile_cache_t_key_99 = 99U,
+} tile_cache_uint8_const_t;
+
+/**
  * @enum t_tile_const_t
  * @brief Fixture sizes.
  */
@@ -137,7 +151,7 @@ static void test_decode_hit(void)
   ra8_tile_cache_cfg_t cfg = t_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_init(&tc, &cfg));
 
-  ra8_tile_key_t k = t_key(0x42U, 1U, 2U, 0U);
+  ra8_tile_key_t k = t_key(k_tile_cache_t_key_42, 1U, 2U, 0U);
   ra8_tile_t     t = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_get(&tc, &k, &t)); /* miss -> decode */
   TEST_ASSERT_EQ(k_t_full_dim, t.width);
@@ -154,7 +168,7 @@ static void test_decode_hit(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_put(&tc, t2.pixels));
 
   /* An edge tile reports its smaller decoded dimensions. */
-  ra8_tile_key_t ke = t_key(0x42U, (uint16_t)k_t_edge_x, 0U, 0U);
+  ra8_tile_key_t ke = t_key(k_tile_cache_t_key_42, (uint16_t)k_t_edge_x, 0U, 0U);
   ra8_tile_t     te = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_get(&tc, &ke, &te));
   TEST_ASSERT_EQ(k_t_edge_dim, te.width);
@@ -222,7 +236,7 @@ static void test_pin_protection(void)
     TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_get(&tc, &k, &t)); /* pinned (no put) */
     pins[i] = t.pixels;
   }
-  ra8_tile_key_t kn = t_key(2U, 99U, 1U, 0U);
+  ra8_tile_key_t kn = t_key(2U, k_tile_cache_t_key_99, 1U, 0U);
   ra8_tile_t     tn = {};
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_tile_cache_get(&tc, &kn, &tn)); /* all pinned */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_put(&tc, pins[0]));

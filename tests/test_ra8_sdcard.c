@@ -32,6 +32,34 @@
 #include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum sdcard_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_sdcard_sentinel_55 = 55U,
+  k_sdcard_val_41      = 41U,
+  k_sdcard_val_9       = 9U,
+} sdcard_uint8_const_t;
+
+/**
+ * @enum sdcard_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_sdcard_val_512 = 512,
+} sdcard_uint16_const_t;
+
 typedef enum : uint8_t {
   k_ra8_sdcard_test_inst     = 0U, /**< RA8 sdcard test inst.     */
   k_ra8_sdcard_test_inst_alt = 1U, /**< RA8 sdcard test inst alt. */
@@ -89,13 +117,13 @@ static void sdcard_srv_respond(volatile r_sdhi_regs_t* reg, uint32_t cmd)
       reg->SD_RSP54 = 0U;
       reg->SD_RSP76 = 0U;
       break;
-    case 41U: /* ACMD41 R3: OCR with busy-done + CCS bits set. */
+    case k_sdcard_val_41: /* ACMD41 R3: OCR with busy-done + CCS bits set. */
       reg->SD_RSP10 = (uint32_t)k_ra8_sdcard_test_ocr_ready;
       break;
     case 3U: /* CMD3 R6: RCA in upper 16 bits. */
       reg->SD_RSP10 = ((uint32_t)k_ra8_sdcard_test_rca) << 16U;
       break;
-    case 9U: /* CMD9 R2: 128-bit CSD; rsp[3][31:30] is CSD_STRUCTURE. */
+    case k_sdcard_val_9: /* CMD9 R2: 128-bit CSD; rsp[3][31:30] is CSD_STRUCTURE. */
       reg->SD_RSP10 = (uint32_t)k_ra8_sdcard_test_csd_w0;
       reg->SD_RSP32 = (uint32_t)k_ra8_sdcard_test_csd_w1;
       reg->SD_RSP54 = (uint32_t)k_ra8_sdcard_test_csd_w2;
@@ -104,7 +132,7 @@ static void sdcard_srv_respond(volatile r_sdhi_regs_t* reg, uint32_t cmd)
     case 6U: /* ACMD6 SET_BUS_WIDTH R1: clean (no error bits). */
       reg->SD_RSP10 = 0U;
       break;
-    case 55U: /* CMD55 APP_CMD R1: echo APP_CMD unless a test forces a decline. */
+    case k_sdcard_sentinel_55: /* CMD55 APP_CMD R1: echo APP_CMD unless a test forces a decline. */
       reg->SD_RSP10 = (s_decline_4bit != 0U) ? 0U : (uint32_t)k_ra8_sdhi_r1_app_cmd_mask;
       break;
     default: /* CMD0/2/7 and block CMD17/24: response content unused. */
@@ -278,8 +306,8 @@ static void test_io_before_init_rejected(void)
 {
   TEST_BEGIN("sdcard read/write before init rejected");
   prep();
-  uint8_t  buf[512] = {};
-  uint32_t blocks   = 0U;
+  uint8_t  buf[k_sdcard_val_512] = {};
+  uint32_t blocks                = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_sdcard_read_blocks(0U, buf, 1U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_sdcard_write_blocks(0U, buf, 1U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_sdcard_get_capacity(&blocks));
@@ -338,8 +366,8 @@ static void test_io_after_init(void)
   /* Single block read at LBA 0. SDHI mock returns whatever SD_BUF0
    * holds; we don't care about content here, only that the call
    * returns ok. */
-  uint8_t         buf[512] = {};
-  const ra8_err_t r        = ra8_sdcard_read_blocks(0U, buf, 1U);
+  uint8_t         buf[k_sdcard_val_512] = {};
+  const ra8_err_t r                     = ra8_sdcard_read_blocks(0U, buf, 1U);
   TEST_ASSERT_EQ(k_ra8_ok, r);
 
   /* Single block write. */
@@ -369,7 +397,7 @@ static void test_io_out_of_range(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sdcard_init(&cfg));
   sdcard_hook_disarm();
 
-  uint8_t buf[512] = {};
+  uint8_t buf[k_sdcard_val_512] = {};
   /* Capacity is k_ra8_sdcard_test_expected_blocks. Read starting at
    * the very last block + a span of 2 should overflow. */
   const uint32_t lba = (uint32_t)k_ra8_sdcard_test_expected_blocks - 1U;

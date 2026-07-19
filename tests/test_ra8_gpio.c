@@ -21,6 +21,19 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum gpio_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_gpio_irqcr_ff = 0xFFU,
+} gpio_uint8_const_t;
+
+/**
  * @enum ra8_gpio_test_ids_t
  * @brief Identifiers used by the GPIO test cases.
  */
@@ -776,7 +789,7 @@ static void test_gpio_detach_irq_happy(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gpio_detach_irq(pin, (uint8_t)k_ra8_gpio_test_irq_num));
   TEST_ASSERT(!ra8_pin_validator_is_claimed(pin));
 
-  uint8_t irqcr = 0xFFU;
+  uint8_t irqcr = k_gpio_irqcr_ff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_icu_read_irqcr((uint8_t)k_ra8_gpio_test_irq_num, &irqcr));
   TEST_ASSERT_EQ(0, irqcr);
   TEST_END("gpio detach_irq happy");

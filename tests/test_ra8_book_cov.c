@@ -26,6 +26,33 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum book_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_book_cov_val_64 = 64U,
+} book_cov_uint8_const_t;
+
+/**
+ * @enum book_cov_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_book_cov_crc_ffffffff = 0xFFFFFFFFU,
+  k_book_cov_val_edb88320 = 0xEDB88320U,
+} book_cov_uint32_const_t;
+
+/**
  * @enum bc_dim_t
  * @brief Fixture sizes, container geometry, and inflater control values.
  */
@@ -98,15 +125,15 @@ static size_t s_inflate_force_produced = 0U;
 /** @brief Table-driven reflected CRC-32 matching the validator's trailer CRC. */
 static uint32_t bc_crc32(const uint8_t* data, size_t len)
 {
-  uint32_t crc = 0xFFFFFFFFU;
+  uint32_t crc = k_book_cov_crc_ffffffff;
   for (size_t i = 0U; i < len; ++i) {
     crc ^= data[i];
     for (uint8_t bit = 0U; bit < 8U; ++bit) {
       uint32_t mask = (uint32_t)(-(int32_t)(crc & 1U));
-      crc           = (crc >> 1U) ^ (0xEDB88320U & mask);
+      crc           = (crc >> 1U) ^ (k_book_cov_val_edb88320 & mask);
     }
   }
-  return crc ^ 0xFFFFFFFFU;
+  return crc ^ k_book_cov_crc_ffffffff;
 }
 
 /**
@@ -209,7 +236,7 @@ static void test_ra8_book_validate_total_size_range(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_book_validate(&b, sizeof(b)));
 
   bc_build_blob(&b);
-  b.hdr.total_size = (uint32_t)sizeof(b) + 64U;
+  b.hdr.total_size = (uint32_t)sizeof(b) + k_book_cov_val_64;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_book_validate(&b, sizeof(b)));
 
   TEST_END("ra8_book_validate total_size out-of-range guard");
@@ -529,7 +556,7 @@ static void test_ra8_book_open_inflate_stage(void)
   s_inflate_force_err      = k_ra8_ok;
   s_inflate_force_produced = 0U;
   bc_container_t corrupt   = c;
-  corrupt.blob.hdr.crc32 ^= 0xFFFFFFFFU;
+  corrupt.blob.hdr.crc32 ^= k_book_cov_crc_ffffffff;
   TEST_ASSERT_EQ(k_ra8_err_range_check_failed,
                  ra8_book_open(&corrupt,
                                sizeof(corrupt),

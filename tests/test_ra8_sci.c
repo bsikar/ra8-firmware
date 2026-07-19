@@ -23,6 +23,22 @@
 #include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum sci_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_sci_ra8_sci_5               = 5U,
+  k_sci_ra8_sci_dispatch_rxi_99 = 99U,
+  k_sci_rdr_77                  = 0x77U,
+  k_sci_rdr_a5                  = 0xA5U,
+} sci_uint8_const_t;
+
 static int32_t s_rx_count   = 0;
 static int32_t s_rx_last    = 0;
 static int32_t s_tx_count   = 0;
@@ -125,7 +141,7 @@ static void test_polling_tx_rx_round_trip(void)
 
   /* Poll RX: pre-seed CSR.RDRF and stage a byte in RDR. */
   reg->CSR    = reg->CSR | (1U << (uint8_t)k_ra8_sci_csr_bit_rdrf);
-  reg->RDR    = 0xA5U;
+  reg->RDR    = k_sci_rdr_a5;
   uint8_t got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sci_getc_polling(1U, &got));
   TEST_ASSERT_EQ(0xA5, got);
@@ -227,13 +243,13 @@ static void test_dispatch_rxi_invokes_handler(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sci_init(4U, &k_cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sci_attach_rx_handler(4U, stub_rx, nullptr));
 
-  ra8_sci(4U)->RDR = 0x77U;
+  ra8_sci(4U)->RDR = k_sci_rdr_77;
   ra8_sci_dispatch_rxi(4U);
   TEST_ASSERT_EQ(1, s_rx_count);
   TEST_ASSERT_EQ(0x77, s_rx_last);
 
   /* Bad channel = no-op. */
-  ra8_sci_dispatch_rxi(99U);
+  ra8_sci_dispatch_rxi(k_sci_ra8_sci_dispatch_rxi_99);
   TEST_ASSERT_EQ(1, s_rx_count);
   TEST_END("ra8_sci_dispatch_rxi: calls handler with RDR byte");
 }
@@ -251,17 +267,17 @@ static void test_dispatch_txi_drains_callback(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sci_init(5U, &k_cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sci_attach_tx_handler(5U, stub_tx, nullptr));
 
-  volatile r_sci_regs_t* reg = ra8_sci(5U);
+  volatile r_sci_regs_t* reg = ra8_sci(k_sci_ra8_sci_5);
   for (int32_t i = 0; i < s_tx_total; ++i) {
-    ra8_sci_dispatch_txi(5U);
+    ra8_sci_dispatch_txi(k_sci_ra8_sci_5);
   }
   /* After the final byte, the next dispatch should clear TIE. */
-  ra8_sci_dispatch_txi(5U);
+  ra8_sci_dispatch_txi(k_sci_ra8_sci_5);
   TEST_ASSERT_EQ(0, (reg->CCR0 & (1U << (uint8_t)k_ra8_sci_ccr0_bit_tie)));
   TEST_ASSERT_EQ(s_tx_total, s_tx_count);
 
   /* Bad channel = no-op. */
-  ra8_sci_dispatch_txi(99U);
+  ra8_sci_dispatch_txi(k_sci_ra8_sci_dispatch_rxi_99);
   TEST_END("ra8_sci_dispatch_txi: advances TX handler until end");
 }
 
@@ -522,7 +538,7 @@ static void test_eri_dispatch_clears_errors(void)
   TEST_ASSERT_EQ(k_ra8_sci_err_none, mask);
 
   /* Out-of-range is a no-op. */
-  ra8_sci_dispatch_eri(99U);
+  ra8_sci_dispatch_eri(k_sci_ra8_sci_dispatch_rxi_99);
   TEST_END("ra8_sci_dispatch_eri clears CSR flags");
 }
 

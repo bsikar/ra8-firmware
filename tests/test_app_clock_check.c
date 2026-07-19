@@ -29,6 +29,19 @@
 #include "ra8_time.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum clock_check_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_clock_check_val_ff = 0xFFU,
+} clock_check_uint8_const_t;
+
 /** @brief Per-test enums. */
 typedef enum : uint32_t {
   k_test_cc_clock_id_bad = 200U, /**< Out-of-range clock id. */
@@ -43,7 +56,7 @@ static void reset_world(void)
   ra8_pin_validator_reset();
   /* Pre-seed OSCSF stabilisation bits so ra8_cgc_init() spin loops
    * complete on the first iteration in RA8_SIMULATOR_MODE. */
-  *ra8_sys_oscsf() = (uint8_t)0xFFU;
+  *ra8_sys_oscsf() = (uint8_t)k_clock_check_val_ff;
 }
 
 /**

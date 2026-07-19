@@ -63,6 +63,32 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum rsip_eddsa_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_rsip_eddsa_val_132 = 132,
+} rsip_eddsa_uint8_const_t;
+
+/**
+ * @enum rsip_eddsa_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_rsip_eddsa_body_b5b50000 = 0xB5B50000UL,
+} rsip_eddsa_uint32_const_t;
+
+/**
  * @enum ra8_rsip_eddsa_test_const_t
  * @brief Named magic numbers used by the dispatch tests.
  */
@@ -101,7 +127,7 @@ static ra8_rsip_key_handle_t make_handle(ra8_rsip_oem_cmd_t alg, uint32_t words)
 {
   ra8_rsip_key_handle_t h = {.alg = (uint32_t)alg, .body_words = words};
   for (uint32_t i = 0U; i < words; ++i) {
-    h.body[i] = 0xB5B50000UL | i;
+    h.body[i] = k_rsip_eddsa_body_b5b50000 | i;
   }
   return h;
 }
@@ -236,7 +262,7 @@ static void test_ecdsa_rejects_ed25519(void)
   ra8_rsip_key_handle_t ecc = make_handle(k_ra8_rsip_oem_cmd_ecc_secp256r1_priv,
                                           (uint32_t)k_ra8_rsip_handle_words_ecc256_priv);
   const uint8_t         digest[k_eddsa_test_msg_bytes] = {};
-  uint8_t               sig[132]                       = {};
+  uint8_t               sig[k_rsip_eddsa_val_132]      = {};
 
   /* Vector A: ed25519 -> reject before any opcode write. */
   *ra8_rsip_reg32(k_ra8_rsip_off_asym_ctrl) = (uint32_t)k_eddsa_test_sentinel;

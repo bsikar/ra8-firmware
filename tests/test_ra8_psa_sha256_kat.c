@@ -30,8 +30,34 @@
 #include "ra8_psa_crypto.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum psa_sha256_kat_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_psa_sha256_kat_val_56 = 56U,
+} psa_sha256_kat_uint8_const_t;
+
+/**
+ * @enum psa_sha256_kat_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_psa_sha256_kat_val_1000000 = 1000000,
+} psa_sha256_kat_uint32_const_t;
+
 /** @brief One-million-byte 'a' message buffer (NIST long-message vector). */
-static uint8_t s_million_a[1000000];
+static uint8_t s_million_a[k_psa_sha256_kat_val_1000000];
 
 /**
  * @brief Decode a hex string of ``n`` bytes into ``out`` (no compound logic).
@@ -101,7 +127,7 @@ static void test_sha256_nist_short_vectors(void)
                 3U,
                 "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
   expect_sha256((const uint8_t*)"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq",
-                56U,
+                k_psa_sha256_kat_val_56,
                 "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1");
 
   TEST_END("PSA SHA-256 KAT: empty / abc / 448-bit NIST vectors");

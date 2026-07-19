@@ -15,6 +15,33 @@
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum rtc_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_rtc_hour_24   = 24,
+  k_rtc_minute_60 = 60,
+} rtc_uint8_const_t;
+
+/**
+ * @enum rtc_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_rtc_year_2026 = 2026,
+} rtc_uint16_const_t;
+
 typedef enum : uint8_t {
   k_test_rcr2_hr24_start = 0x41U, /**< HR24(bit6) | START(bit0). */
 } test_rcr2_t;
@@ -321,7 +348,7 @@ static void test_mcdc_set_alarm_range_guard(void)
   TEST_BEGIN("mcdc rtc_set_alarm range guard");
   ra8_sim_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_init());
-  ra8_rtc_datetime_t a = {.year    = (uint16_t)2026,
+  ra8_rtc_datetime_t a = {.year    = (uint16_t)k_rtc_year_2026,
                           .month   = (uint8_t)1,
                           .day     = (uint8_t)1,
                           .weekday = 0U,
@@ -331,15 +358,15 @@ static void test_mcdc_set_alarm_range_guard(void)
   /* Vector A: all in range. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_set_alarm(&a));
   /* Vector B: bad hour only. */
-  a.hour = (uint8_t)24;
+  a.hour = (uint8_t)k_rtc_hour_24;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_rtc_set_alarm(&a));
   /* Vector C: bad minute only. */
   a.hour   = 0U;
-  a.minute = (uint8_t)60;
+  a.minute = (uint8_t)k_rtc_minute_60;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_rtc_set_alarm(&a));
   /* Vector D: bad second only. */
   a.minute = 0U;
-  a.second = (uint8_t)60;
+  a.second = (uint8_t)k_rtc_minute_60;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_rtc_set_alarm(&a));
   TEST_END("mcdc rtc_set_alarm range guard");
 }

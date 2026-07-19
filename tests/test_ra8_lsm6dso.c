@@ -39,6 +39,42 @@
 #include "ra8_lsm6dso.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum lsm6dso_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_lsm6dso_base_5                        = 5,
+  k_lsm6dso_k_lsm6dso_reg_fifo_data_out_7 = 7,
+  k_lsm6dso_regs_0c                       = 0x0CU,
+  k_lsm6dso_regs_12                       = 0x12U,
+  k_lsm6dso_regs_34                       = 0x34U,
+  k_lsm6dso_regs_40                       = 0x40U,
+  k_lsm6dso_regs_7f                       = 0x7FU,
+  k_lsm6dso_regs_80                       = 0x80U,
+  k_lsm6dso_regs_aa                       = 0xAAU,
+  k_lsm6dso_regs_bb                       = 0xBBU,
+  k_lsm6dso_regs_ff                       = 0xFFU,
+} lsm6dso_uint8_const_t;
+
+/**
+ * @enum lsm6dso_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_lsm6dso_words_ffff = 0xFFFFU,
+} lsm6dso_uint16_const_t;
+
 /* =============================================================================
  * Mock transport
  * =============================================================================
@@ -206,7 +242,7 @@ static void test_who_am_i_wrong_id(void)
   ra8_lsm6dso_t           dev = {};
   const ra8_lsm6dso_bus_t bus = make_bus();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
-  s_mock.regs[(uint8_t)k_lsm6dso_reg_who_am_i] = 0xFFU;
+  s_mock.regs[(uint8_t)k_lsm6dso_reg_who_am_i] = k_lsm6dso_regs_ff;
   uint8_t id                                   = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_who_am_i(&dev, &id));
   TEST_ASSERT_EQ(0xFFU, id);
@@ -294,7 +330,7 @@ static void test_set_accel_range_writes_fs_xl(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
   /* Pre-seed CTRL1_XL with ODR_XL = 4 (104 Hz, bits [7:4] = 0x40),
    * FS_XL = 0 to mimic a previous _set_odr call. */
-  s_mock.regs[(uint8_t)k_lsm6dso_reg_ctrl1_xl] = 0x40U;
+  s_mock.regs[(uint8_t)k_lsm6dso_reg_ctrl1_xl] = k_lsm6dso_regs_40;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_set_accel_range(&dev, k_lsm6dso_xl_fs_8g));
   /* 8g code is 0x03, occupying bits [3:2] -> 0x0C. */
@@ -339,12 +375,12 @@ static void test_set_gyro_range_writes_fs_g(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
 
   /* Vector 1: 125 dps -> FS_125 set. */
-  s_mock.regs[(uint8_t)k_lsm6dso_reg_ctrl2_g] = 0x40U; /* preserved ODR */
+  s_mock.regs[(uint8_t)k_lsm6dso_reg_ctrl2_g] = k_lsm6dso_regs_40; /* preserved ODR */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_set_gyro_range(&dev, k_lsm6dso_g_fs_125dps));
   TEST_ASSERT_EQ(0x40U | 0x02U, s_mock.regs[(uint8_t)k_lsm6dso_reg_ctrl2_g]);
 
   /* Vector 2: 1000 dps -> FS_G[1:0] = 0b10 (bits [3:2] = 0x08), FS_125 cleared. */
-  s_mock.regs[(uint8_t)k_lsm6dso_reg_ctrl2_g] = 0x40U;
+  s_mock.regs[(uint8_t)k_lsm6dso_reg_ctrl2_g] = k_lsm6dso_regs_40;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_set_gyro_range(&dev, k_lsm6dso_g_fs_1000dps));
   TEST_ASSERT_EQ(0x40U | 0x08U, s_mock.regs[(uint8_t)k_lsm6dso_reg_ctrl2_g]);
 
@@ -368,7 +404,7 @@ static void test_set_odr_writes_both_blocks(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
   /* Pre-seed FS_XL = 0x0C, FS_G = 0x02 (FS_125) so we can verify the
    * low nibble is preserved while bits [7:4] flip to the ODR. */
-  s_mock.regs[(uint8_t)k_lsm6dso_reg_ctrl1_xl] = 0x0CU;
+  s_mock.regs[(uint8_t)k_lsm6dso_reg_ctrl1_xl] = k_lsm6dso_regs_0c;
   s_mock.regs[(uint8_t)k_lsm6dso_reg_ctrl2_g]  = 0x02U;
 
   /* 104 Hz code is 0x04, occupying bits [7:4] -> 0x40. */
@@ -416,13 +452,13 @@ static void test_read_accel_combines_le_bytes(void)
   const ra8_lsm6dso_bus_t bus = make_bus();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
   /* OUTX_L_A = 0x28; layout XL XH YL YH ZL ZH. */
-  const uint8_t base    = (uint8_t)k_lsm6dso_reg_outx_l_a;
-  s_mock.regs[base + 0] = 0x34U; /* XL                     */
-  s_mock.regs[base + 1] = 0x12U; /* XH -> 0x1234  =  4660  */
-  s_mock.regs[base + 2] = 0xFFU; /* YL                     */
-  s_mock.regs[base + 3] = 0xFFU; /* YH -> 0xFFFF  =    -1  */
-  s_mock.regs[base + 4] = 0x00U; /* ZL                     */
-  s_mock.regs[base + 5] = 0x80U; /* ZH -> 0x8000  = -32768 */
+  const uint8_t base                   = (uint8_t)k_lsm6dso_reg_outx_l_a;
+  s_mock.regs[base + 0]                = k_lsm6dso_regs_34; /* XL                     */
+  s_mock.regs[base + 1]                = k_lsm6dso_regs_12; /* XH -> 0x1234  =  4660  */
+  s_mock.regs[base + 2]                = k_lsm6dso_regs_ff; /* YL                     */
+  s_mock.regs[base + 3]                = k_lsm6dso_regs_ff; /* YH -> 0xFFFF  =    -1  */
+  s_mock.regs[base + 4]                = 0x00U;             /* ZL                     */
+  s_mock.regs[base + k_lsm6dso_base_5] = k_lsm6dso_regs_80; /* ZH -> 0x8000  = -32768 */
 
   ra8_lsm6dso_xyz_t out = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_read_accel(&dev, &out));
@@ -453,13 +489,13 @@ static void test_read_gyro_combines_le_bytes(void)
   ra8_lsm6dso_t           dev = {};
   const ra8_lsm6dso_bus_t bus = make_bus();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_init(&dev, &bus));
-  const uint8_t base    = (uint8_t)k_lsm6dso_reg_outx_l_g;
-  s_mock.regs[base + 0] = 0x01U;
-  s_mock.regs[base + 1] = 0x00U; /* X = 1 */
-  s_mock.regs[base + 2] = 0x00U;
-  s_mock.regs[base + 3] = 0x01U; /* Y = 256 */
-  s_mock.regs[base + 4] = 0xFFU;
-  s_mock.regs[base + 5] = 0x7FU; /* Z = 32767 */
+  const uint8_t base                   = (uint8_t)k_lsm6dso_reg_outx_l_g;
+  s_mock.regs[base + 0]                = 0x01U;
+  s_mock.regs[base + 1]                = 0x00U; /* X = 1 */
+  s_mock.regs[base + 2]                = 0x00U;
+  s_mock.regs[base + 3]                = 0x01U; /* Y = 256 */
+  s_mock.regs[base + 4]                = k_lsm6dso_regs_ff;
+  s_mock.regs[base + k_lsm6dso_base_5] = k_lsm6dso_regs_7f; /* Z = 32767 */
 
   ra8_lsm6dso_xyz_t out = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_read_gyro(&dev, &out));
@@ -529,11 +565,12 @@ static void test_fifo_drains_words(void)
   s_mock.regs[(uint8_t)k_lsm6dso_reg_fifo_status1]     = 2U;
   s_mock.regs[(uint8_t)k_lsm6dso_reg_fifo_status1 + 1] = 0U;
   /* Stamp recognisable bytes into the FIFO data tap. */
-  s_mock.regs[(uint8_t)k_lsm6dso_reg_fifo_data_out + 0] = 0xAAU;
-  s_mock.regs[(uint8_t)k_lsm6dso_reg_fifo_data_out + 7] = 0xBBU;
+  s_mock.regs[(uint8_t)k_lsm6dso_reg_fifo_data_out + 0] = k_lsm6dso_regs_aa;
+  s_mock.regs[(uint8_t)k_lsm6dso_reg_fifo_data_out + k_lsm6dso_k_lsm6dso_reg_fifo_data_out_7] =
+    k_lsm6dso_regs_bb;
 
   uint8_t  buf[16] = {};
-  uint32_t words   = 0xFFFFU;
+  uint32_t words   = k_lsm6dso_words_ffff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_read_xl_gyro_fifo(&dev, buf, 16U, &words));
   TEST_ASSERT_EQ(2U, words);
   TEST_ASSERT_EQ(0xAAU, buf[0]);
@@ -541,7 +578,7 @@ static void test_fifo_drains_words(void)
 
   /* Vector 2: live = 0 -> out_words = 0, no payload read needed. */
   s_mock.regs[(uint8_t)k_lsm6dso_reg_fifo_status1] = 0U;
-  words                                            = 0xFFFFU;
+  words                                            = k_lsm6dso_words_ffff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lsm6dso_read_xl_gyro_fifo(&dev, buf, 16U, &words));
   TEST_ASSERT_EQ(0U, words);
 

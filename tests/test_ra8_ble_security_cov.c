@@ -26,6 +26,19 @@
 #include "ra8_err.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum ble_security_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ble_security_cov_count_ff = 0xFFU,
+} ble_security_cov_uint8_const_t;
+
 /** @brief Test hook -- forces the internal bond count without a store. */
 extern void ra8_ble_security_test_set_bond_count(uint8_t count);
 
@@ -177,12 +190,12 @@ static void test_clear_bonds_initialized(void)
   init_with(k_ra8_ble_io_cap_no_input_no_out);
   /* Seed a non-zero count so the reset-to-zero postcondition is observable. */
   ra8_ble_security_test_set_bond_count(3U);
-  uint8_t count = 0xFFU;
+  uint8_t count = k_ble_security_cov_count_ff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_security_bond_count(&count));
   TEST_ASSERT_EQ(3U, count);
   /* Clear -> host leg zeroes the mirror. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_security_clear_bonds());
-  count = 0xFFU;
+  count = k_ble_security_cov_count_ff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_security_bond_count(&count));
   TEST_ASSERT_EQ(0U, count);
   TEST_END("test_clear_bonds_initialized");

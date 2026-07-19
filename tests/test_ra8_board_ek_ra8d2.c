@@ -26,6 +26,19 @@
 #include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum board_ek_ra8d2_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_board_ek_ra8d2_out_len_aa = 0xAAU,
+} board_ek_ra8d2_uint8_const_t;
+
 static void reset_board_hal_state(void)
 {
   ra8_sim_mmap_reset();
@@ -489,11 +502,11 @@ static void test_uart_console_read_validates(void)
 {
   TEST_BEGIN("uart_console_read validates args + state");
   uint8_t buf[4]  = {};
-  size_t  out_len = 0xAAU;
+  size_t  out_len = k_board_ek_ra8d2_out_len_aa;
   /* NULL out_len always rejected. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_board_uart_console_read(buf, sizeof(buf), nullptr));
   /* cap == 0 is a successful no-op (and zeroes *out_len). */
-  out_len = 0xAAU;
+  out_len = k_board_ek_ra8d2_out_len_aa;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_board_uart_console_read(nullptr, 0U, &out_len));
   TEST_ASSERT_EQ(0, out_len);
   /* NULL buffer with non-zero cap -> invalid_arg. */

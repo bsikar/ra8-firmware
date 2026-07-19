@@ -22,6 +22,49 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum exception_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_exception_ra8_exception_report_7 = 7U,
+  k_exception_xe000ede4ul_00000048   = 0x00000048UL,
+} exception_uint8_const_t;
+
+/**
+ * @enum exception_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_exception_val_e000ed28         = 0xE000ED28UL,
+  k_exception_val_e000ed2c         = 0xE000ED2CUL,
+  k_exception_val_e000ed30         = 0xE000ED30UL,
+  k_exception_val_e000ed34         = 0xE000ED34UL,
+  k_exception_val_e000ed38         = 0xE000ED38UL,
+  k_exception_val_e000ed3c         = 0xE000ED3CUL,
+  k_exception_val_e000ede4         = 0xE000EDE4UL,
+  k_exception_val_e000ede8         = 0xE000EDE8UL,
+  k_exception_xe000ed28ul_c0ffee00 = 0xC0FFEE00UL,
+  k_exception_xe000ed2cul_c0ffee04 = 0xC0FFEE04UL,
+  k_exception_xe000ed30ul_c0ffee08 = 0xC0FFEE08UL,
+  k_exception_xe000ed34ul_c0ffee0c = 0xC0FFEE0CUL,
+  k_exception_xe000ed38ul_c0ffee10 = 0xC0FFEE10UL,
+  k_exception_xe000ed3cul_c0ffee14 = 0xC0FFEE14UL,
+  k_exception_xe000ede4ul_c0ffee18 = 0xC0FFEE18UL,
+  k_exception_xe000ede8ul_30001234 = 0x30001234UL,
+  k_exception_xe000ede8ul_c0ffee1c = 0xC0FFEE1CUL,
+} exception_uint32_const_t;
+
 static jmp_buf s_fatal_jmp;
 static uint8_t s_fatal_hit = 0U;
 
@@ -51,15 +94,15 @@ static void test_capture_diagnostics_happy(void)
 
   /* Pre-load the SCB fault status registers via the mapped core
    * window so the capture has something to read. */
-  *(volatile uint32_t*)0xE000ED28UL = 0xC0FFEE00UL;
-  *(volatile uint32_t*)0xE000ED2CUL = 0xC0FFEE04UL;
-  *(volatile uint32_t*)0xE000ED30UL = 0xC0FFEE08UL;
-  *(volatile uint32_t*)0xE000ED34UL = 0xC0FFEE0CUL;
-  *(volatile uint32_t*)0xE000ED38UL = 0xC0FFEE10UL;
-  *(volatile uint32_t*)0xE000ED3CUL = 0xC0FFEE14UL;
+  *(volatile uint32_t*)k_exception_val_e000ed28 = k_exception_xe000ed28ul_c0ffee00;
+  *(volatile uint32_t*)k_exception_val_e000ed2c = k_exception_xe000ed2cul_c0ffee04;
+  *(volatile uint32_t*)k_exception_val_e000ed30 = k_exception_xe000ed30ul_c0ffee08;
+  *(volatile uint32_t*)k_exception_val_e000ed34 = k_exception_xe000ed34ul_c0ffee0c;
+  *(volatile uint32_t*)k_exception_val_e000ed38 = k_exception_xe000ed38ul_c0ffee10;
+  *(volatile uint32_t*)k_exception_val_e000ed3c = k_exception_xe000ed3cul_c0ffee14;
   /* TrustZone SecureFault pair (SFSR / SFAR). */
-  *(volatile uint32_t*)0xE000EDE4UL = 0xC0FFEE18UL;
-  *(volatile uint32_t*)0xE000EDE8UL = 0xC0FFEE1CUL;
+  *(volatile uint32_t*)k_exception_val_e000ede4 = k_exception_xe000ede4ul_c0ffee18;
+  *(volatile uint32_t*)k_exception_val_e000ede8 = k_exception_xe000ede8ul_c0ffee1c;
 
   ra8_exception_diagnostics_t diag = {};
   ra8_exception_capture_diagnostics(&diag);
@@ -162,12 +205,12 @@ static void test_exception_report_securefault_records_sfsr_sfar(void)
 
   /* Synthetic SecureFault cause: SFSR = AUVIOL|SFARVALID (0x48), SFAR
    * = the "violating" address, planted in the mapped core window. */
-  *(volatile uint32_t*)0xE000EDE4UL = 0x00000048UL;
-  *(volatile uint32_t*)0xE000EDE8UL = 0x30001234UL;
+  *(volatile uint32_t*)k_exception_val_e000ede4 = k_exception_xe000ede4ul_00000048;
+  *(volatile uint32_t*)k_exception_val_e000ede8 = k_exception_xe000ede8ul_30001234;
 
   const ra8_exception_frame_t frame = {.pc = 0x02001000U, .lr = 0x02000FFFU};
   if (setjmp(s_fatal_jmp) == 0) {
-    ra8_exception_report(&frame, 7U);
+    ra8_exception_report(&frame, k_exception_ra8_exception_report_7);
     TEST_FAIL_FMT("%s", "ra8_exception_report returned");
   }
   TEST_ASSERT_EQ(1, s_fatal_hit);

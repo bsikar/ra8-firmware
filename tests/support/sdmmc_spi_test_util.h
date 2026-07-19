@@ -24,6 +24,24 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum sdmmc_spi_test_util_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_sdmmc_spi_test_util_mock_queue_idle_10 = 10U,
+  k_sdmmc_spi_test_util_out_40             = 0x40U,
+  k_sdmmc_spi_test_util_tail_word_24       = 24U,
+  k_sdmmc_spi_test_util_val_7              = 7,
+  k_sdmmc_spi_test_util_val_9              = 9,
+  k_sdmmc_spi_test_util_val_ff             = 0xFFU,
+} sdmmc_spi_test_util_uint8_const_t;
+
 /* ===========================================================================
  * Mock SPI transport
  * ===========================================================================
@@ -274,10 +292,11 @@ static inline void queue_command_response_r3_or_r7(uint8_t r1, uint32_t tail_wor
   mock_queue_idle(1U);
   mock_queue_idle((uint32_t)k_test_cmd_frame_bytes);
   mock_queue_byte(r1);
-  mock_queue_byte((uint8_t)((tail_word >> 24U) & 0xFFU));
-  mock_queue_byte((uint8_t)((tail_word >> 16U) & 0xFFU));
-  mock_queue_byte((uint8_t)((tail_word >> 8U) & 0xFFU));
-  mock_queue_byte((uint8_t)(tail_word & 0xFFU));
+  mock_queue_byte(
+    (uint8_t)((tail_word >> k_sdmmc_spi_test_util_tail_word_24) & k_sdmmc_spi_test_util_val_ff));
+  mock_queue_byte((uint8_t)((tail_word >> 16U) & k_sdmmc_spi_test_util_val_ff));
+  mock_queue_byte((uint8_t)((tail_word >> 8U) & k_sdmmc_spi_test_util_val_ff));
+  mock_queue_byte((uint8_t)(tail_word & k_sdmmc_spi_test_util_val_ff));
   /* cs_release post-byte (see queue_command_response_r1 comment). */
   mock_queue_idle(1U);
 }
@@ -294,10 +313,10 @@ static inline void queue_command_response_r3_or_r7(uint8_t r1, uint32_t tail_wor
 static inline void build_csd_v2_32gib(uint8_t* out)
 {
   memset(out, 0, (size_t)k_ra8_sdmmc_spi_csd_response_len);
-  out[0] = 0x40U; /* CSD_STRUCTURE = 1 */
-  out[7] = 0x00U;
-  out[8] = 0xFFU; /* low 16 bits of C_SIZE = 0xFF FF */
-  out[9] = 0xFFU;
+  out[0]                           = k_sdmmc_spi_test_util_out_40; /* CSD_STRUCTURE = 1 */
+  out[k_sdmmc_spi_test_util_val_7] = 0x00U;
+  out[8] = k_sdmmc_spi_test_util_val_ff; /* low 16 bits of C_SIZE = 0xFF FF */
+  out[k_sdmmc_spi_test_util_val_9] = k_sdmmc_spi_test_util_val_ff;
 }
 
 static inline void queue_csd_read(const uint8_t* csd)
@@ -332,7 +351,7 @@ static inline void queue_csd_read(const uint8_t* csd)
 static inline void queue_full_init_sdhc_32gib(void)
 {
   /* Wake-up dummy clocks (10 idle bytes during the 80-clock kick). */
-  mock_queue_idle(10U);
+  mock_queue_idle(k_sdmmc_spi_test_util_mock_queue_idle_10);
   /* CMD0 -> R1 idle (0x01). */
   queue_command_response_r1((uint8_t)k_test_r1_idle);
   /* CMD8 -> R1 idle + echoed pattern. */
@@ -409,8 +428,8 @@ static inline void queue_read_back(const uint8_t* block)
   mock_queue_byte((uint8_t)k_test_data_token_start); /* data-start token.        */
   mock_queue_bytes(block, (uint32_t)k_ra8_sdmmc_spi_block_size);
   const uint16_t crc = ra8_sdmmc_spi_crc16(block, (uint32_t)k_ra8_sdmmc_spi_block_size);
-  mock_queue_byte((uint8_t)((crc >> 8U) & 0xFFU));
-  mock_queue_byte((uint8_t)(crc & 0xFFU));
+  mock_queue_byte((uint8_t)((crc >> 8U) & k_sdmmc_spi_test_util_val_ff));
+  mock_queue_byte((uint8_t)(crc & k_sdmmc_spi_test_util_val_ff));
   mock_queue_idle(1U); /* cs_release post-byte. */
 }
 

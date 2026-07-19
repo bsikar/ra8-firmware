@@ -34,6 +34,42 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum unarch_gzip_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_unarch_gzip_off_9       = 9U,
+  k_unarch_gzip_s_member_1f = 0x1FU,
+  k_unarch_gzip_s_member_50 = 0x50U,
+  k_unarch_gzip_s_member_8b = 0x8BU,
+  k_unarch_gzip_s_member_a5 = 0xA5U,
+  k_unarch_gzip_tg_build_64 = 64U,
+  k_unarch_gzip_val_10      = 10,
+  k_unarch_gzip_val_10_2    = 10U,
+  k_unarch_gzip_val_11      = 11,
+  k_unarch_gzip_val_ff      = 0xFFU,
+} unarch_gzip_uint8_const_t;
+
+/**
+ * @enum unarch_gzip_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_unarch_gzip_max_output_bytes_1024 = 1024U,
+  k_unarch_gzip_tg_fill_256           = 256U,
+} unarch_gzip_uint16_const_t;
+
+/**
  * @enum tg_dim_t
  * @brief Payload / buffer budgets (tests are magic-number exempt).
  */
@@ -61,7 +97,7 @@ static void tg_fill(uint8_t* dst, size_t n)
   uint32_t s = (uint32_t)k_tg_lcg_seed;
   for (size_t i = 0U; i < n; ++i) {
     s      = ((uint32_t)k_tg_lcg_mul * s) + (uint32_t)k_tg_lcg_add;
-    dst[i] = (uint8_t)((s >> 16U) & 0xFFU);
+    dst[i] = (uint8_t)((s >> 16U) & k_unarch_gzip_val_ff);
   }
 }
 
@@ -75,8 +111,8 @@ static void tg_fill(uint8_t* dst, size_t n)
 static size_t tg_build(const uint8_t* payload, size_t n, uint8_t flg)
 {
   size_t off      = 0U;
-  s_member[off++] = 0x1FU;
-  s_member[off++] = 0x8BU;
+  s_member[off++] = k_unarch_gzip_s_member_1f;
+  s_member[off++] = k_unarch_gzip_s_member_8b;
   s_member[off++] = 8U; /* CM: DEFLATE */
   s_member[off++] = flg;
   memset(&s_member[off], 0, 6U); /* MTIME, XFL, OS */
@@ -89,7 +125,7 @@ static size_t tg_build(const uint8_t* payload, size_t n, uint8_t flg)
   }
   if ((flg & 0x08U) != 0U) { /* FNAME */
     memcpy(&s_member[off], "name.tar", 9U);
-    off += 9U;
+    off += k_unarch_gzip_off_9;
   }
   if ((flg & 0x10U) != 0U) { /* FCOMMENT */
     memcpy(&s_member[off], "comment", 8U);
@@ -97,8 +133,8 @@ static size_t tg_build(const uint8_t* payload, size_t n, uint8_t flg)
   }
   if ((flg & 0x02U) != 0U) { /* FHCRC */
     const uint32_t hc = (uint32_t)mz_crc32(MZ_CRC32_INIT, s_member, off) & 0xFFFFU;
-    s_member[off++]   = (uint8_t)(hc & 0xFFU);
-    s_member[off++]   = (uint8_t)((hc >> 8U) & 0xFFU);
+    s_member[off++]   = (uint8_t)(hc & k_unarch_gzip_val_ff);
+    s_member[off++]   = (uint8_t)((hc >> 8U) & k_unarch_gzip_val_ff);
   }
   const size_t comp = tdefl_compress_mem_to_mem(&s_member[off],
                                                 sizeof(s_member) - off - 8U,
@@ -109,8 +145,8 @@ static size_t tg_build(const uint8_t* payload, size_t n, uint8_t flg)
   off += comp;
   const uint32_t crc = (uint32_t)mz_crc32(MZ_CRC32_INIT, payload, n);
   for (uint32_t i = 0U; i < 4U; ++i) {
-    s_member[off + i]      = (uint8_t)((crc >> (8U * i)) & 0xFFU);
-    s_member[off + 4U + i] = (uint8_t)(((uint32_t)n >> (8U * i)) & 0xFFU);
+    s_member[off + i]      = (uint8_t)((crc >> (8U * i)) & k_unarch_gzip_val_ff);
+    s_member[off + 4U + i] = (uint8_t)(((uint32_t)n >> (8U * i)) & k_unarch_gzip_val_ff);
   }
   return off + 8U;
 }
@@ -193,7 +229,7 @@ static void test_gzip_honest_members(void)
   TEST_ASSERT_EQ(0, memcmp(s_arena, s_payload, got));
 
   /* Every optional field at once: FTEXT+FHCRC+FEXTRA+FNAME+FCOMMENT. */
-  len = tg_build(s_payload, (size_t)k_tg_payload, 0x1FU);
+  len = tg_build(s_payload, (size_t)k_tg_payload, k_unarch_gzip_s_member_1f);
   TEST_ASSERT_EQ(k_ra8_ok, tg_unwrap(s_member, len, nullptr, &got));
   TEST_ASSERT_EQ(k_tg_payload, got);
   TEST_ASSERT_EQ(0, memcmp(s_arena, s_payload, got));
@@ -217,16 +253,16 @@ static void test_gzip_hostile_headers(void)
 {
   TEST_BEGIN("gzip: hostile headers rejected");
   size_t got = 1U;
-  size_t len = tg_build(s_payload, 64U, 0x02U); /* with FHCRC */
+  size_t len = tg_build(s_payload, k_unarch_gzip_tg_build_64, 0x02U); /* with FHCRC */
 
   /* Wrong magic / method / reserved bits. */
   uint8_t save = s_member[0];
-  s_member[0]  = 0x50U;
+  s_member[0]  = k_unarch_gzip_s_member_50;
   TEST_ASSERT_EQ(k_ra8_err_not_supported, tg_unwrap(s_member, len, nullptr, &got));
   TEST_ASSERT_EQ(0U, got);
   s_member[0] = save;
   save        = s_member[2];
-  s_member[2] = 9U; /* not DEFLATE */
+  s_member[2] = k_unarch_gzip_off_9; /* not DEFLATE */
   TEST_ASSERT_EQ(k_ra8_err_not_supported, tg_unwrap(s_member, len, nullptr, &got));
   s_member[2] = save;
   save        = s_member[3];
@@ -235,34 +271,35 @@ static void test_gzip_hostile_headers(void)
   s_member[3] = save;
 
   /* Corrupt FHCRC. */
-  s_member[10] ^= 0xFFU; /* first FHCRC byte (no optional fields before it) */
+  s_member[k_unarch_gzip_val_10] ^=
+    k_unarch_gzip_val_ff; /* first FHCRC byte (no optional fields before it) */
   TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch, tg_unwrap(s_member, len, nullptr, &got));
-  s_member[10] ^= 0xFFU;
+  s_member[k_unarch_gzip_val_10] ^= k_unarch_gzip_val_ff;
 
   /* Header truncated inside the fixed fields. */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(s_member, 6U, nullptr, &got));
 
   /* Unterminated FNAME: flag set, no NUL before EOF. */
-  uint8_t tiny[16] = {0x1FU, 0x8BU, 8U, 0x08U};
+  uint8_t tiny[16] = {k_unarch_gzip_s_member_1f, k_unarch_gzip_s_member_8b, 8U, 0x08U};
   memset(&tiny[10], (int)'n', 6U);
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(tiny, sizeof(tiny), nullptr, &got));
 
   /* Over-long FNAME: longer than the fail-closed cap, NUL far away. */
   uint8_t* big = s_member;
   memset(big, 0, sizeof(s_member));
-  big[0] = 0x1FU;
-  big[1] = 0x8BU;
+  big[0] = k_unarch_gzip_s_member_1f;
+  big[1] = k_unarch_gzip_s_member_8b;
   big[2] = 8U;
   big[3] = 0x08U;
   memset(&big[10], (int)'n', (size_t)k_tg_longname);
-  big[10U + (size_t)k_tg_longname] = 0U;
+  big[k_unarch_gzip_val_10_2 + (size_t)k_tg_longname] = 0U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  tg_unwrap(big, 10U + (size_t)k_tg_longname + 1U, nullptr, &got));
 
   /* FEXTRA whose declared length runs past the member. */
-  uint8_t fx[16] = {0x1FU, 0x8BU, 8U, 0x04U};
-  fx[10]         = 0xFFU;
-  fx[11]         = 0x00U; /* XLEN=255 with only 4 bytes left */
+  uint8_t fx[16]           = {k_unarch_gzip_s_member_1f, k_unarch_gzip_s_member_8b, 8U, 0x04U};
+  fx[k_unarch_gzip_val_10] = k_unarch_gzip_val_ff;
+  fx[k_unarch_gzip_val_11] = 0x00U; /* XLEN=255 with only 4 bytes left */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(fx, sizeof(fx), nullptr, &got));
   TEST_END("gzip: hostile headers rejected");
 }
@@ -278,16 +315,16 @@ static void test_gzip_hostile_headers(void)
 static void test_gzip_hostile_body_and_trailer(void)
 {
   TEST_BEGIN("gzip: hostile bodies + trailers rejected");
-  tg_fill(s_payload, 256U);
+  tg_fill(s_payload, k_unarch_gzip_tg_fill_256);
   size_t got = 1U;
-  size_t len = tg_build(s_payload, 256U, 0U);
+  size_t len = tg_build(s_payload, k_unarch_gzip_tg_fill_256, 0U);
 
   /* Corrupt DEFLATE: reserved block type at the stream start. */
-  const uint8_t save = s_member[10];
-  s_member[10]       = 0x06U; /* BTYPE=11 (reserved) */
+  const uint8_t save             = s_member[10];
+  s_member[k_unarch_gzip_val_10] = 0x06U; /* BTYPE=11 (reserved) */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(s_member, len, nullptr, &got));
   TEST_ASSERT_EQ(0U, got);
-  s_member[10] = save;
+  s_member[k_unarch_gzip_val_10] = save;
 
   /* Truncated DEFLATE: cut mid-body (before the trailer). */
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(s_member, len - 20U, nullptr, &got));
@@ -296,17 +333,17 @@ static void test_gzip_hostile_body_and_trailer(void)
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(s_member, len - 4U, nullptr, &got));
 
   /* Lying trailer CRC32. */
-  s_member[len - 8U] ^= 0xFFU;
+  s_member[len - 8U] ^= k_unarch_gzip_val_ff;
   TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch, tg_unwrap(s_member, len, nullptr, &got));
-  s_member[len - 8U] ^= 0xFFU;
+  s_member[len - 8U] ^= k_unarch_gzip_val_ff;
 
   /* Lying trailer ISIZE. */
-  s_member[len - 1U] ^= 0xFFU;
+  s_member[len - 1U] ^= k_unarch_gzip_val_ff;
   TEST_ASSERT_EQ(k_ra8_err_checksum_mismatch, tg_unwrap(s_member, len, nullptr, &got));
-  s_member[len - 1U] ^= 0xFFU;
+  s_member[len - 1U] ^= k_unarch_gzip_val_ff;
 
   /* Trailing bytes after the member: no concatenation. */
-  s_member[len] = 0xA5U;
+  s_member[len] = k_unarch_gzip_s_member_a5;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, tg_unwrap(s_member, len + 1U, nullptr, &got));
 
   /* Unmodified member still decodes (the mutations were reverted). */
@@ -339,7 +376,7 @@ static void test_gzip_policy_bounds(void)
 
   /* Output cap: the same member against a small absolute cap. */
   lim                  = ra8_decomp_limits_default();
-  lim.max_output_bytes = 1024U;
+  lim.max_output_bytes = k_unarch_gzip_max_output_bytes_1024;
   TEST_ASSERT_EQ(k_ra8_err_decomp_output_cap, tg_unwrap(s_member, len, &lim, &got));
 
   /* Iteration budget: an incompressible body needs many input refills. */

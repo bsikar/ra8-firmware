@@ -31,6 +31,21 @@
 #include "ra8_usb.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum usb_printer_vendor_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_usb_printer_vendor_t_setup_09 = 0x09U,
+  k_usb_printer_vendor_t_setup_0b = 0x0BU,
+  k_usb_printer_vendor_t_setup_7  = 7U,
+} usb_printer_vendor_uint8_const_t;
+
 /* =============================================================================
  * Local wire constants (mirror the SETUP envelopes the host issues)
  * =============================================================================
@@ -140,14 +155,14 @@ static void test_route_standard(void)
               k_t_wlen_big);
   TEST_ASSERT_EQ(k_pv_action_stall, pv_route_setup(&s));
 
-  s = t_setup(0x00U, k_pv_std_set_address, 7U, 0U);
+  s = t_setup(0x00U, k_pv_std_set_address, k_usb_printer_vendor_t_setup_7, 0U);
   TEST_ASSERT_EQ(k_pv_action_set_address, pv_route_setup(&s));
 
   s = t_setup(0x00U, k_pv_std_set_configuration, 1U, 0U);
   TEST_ASSERT_EQ(k_pv_action_set_configuration, pv_route_setup(&s));
 
   /* Unknown standard bRequest (e.g. SET_INTERFACE 0x0B) -> stall. */
-  s = t_setup(0x01U, 0x0BU, 0U, 0U);
+  s = t_setup(0x01U, k_usb_printer_vendor_t_setup_0b, 0U, 0U);
   TEST_ASSERT_EQ(k_pv_action_stall, pv_route_setup(&s));
 
   TEST_END("pv_route_setup standard requests");
@@ -219,7 +234,7 @@ static void test_printer_predicate(void)
   TEST_ASSERT_EQ(false, pv_is_printer_class_request(&s));
 
   /* D1-V3: interface recipient + unknown request (0x09) -> false. */
-  s = t_setup(k_t_bm_class_in, 0x09U, 0U, 0U);
+  s = t_setup(k_t_bm_class_in, k_usb_printer_vendor_t_setup_09, 0U, 0U);
   TEST_ASSERT_EQ(false, pv_is_printer_class_request(&s));
 
   /* D2 OR-chain: each Printer request independently makes is_known true. */

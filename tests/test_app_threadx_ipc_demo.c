@@ -30,6 +30,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum threadx_ipc_demo_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_threadx_ipc_demo_send_ch_ff = 0xFFU,
+} threadx_ipc_demo_uint8_const_t;
+
 /** @brief Per-test enums. */
 typedef enum : uint32_t {
   k_test_ipc_pair_zero = 0U,          /**< Test ipc pair zero.     */
@@ -59,8 +72,8 @@ static void test_ipc_demo_resolve_send_recv_channels(void)
 {
   reset_world();
   TEST_BEGIN("ipc_demo: resolve M85 send + recv channel ids");
-  uint8_t send_ch = 0xFFU;
-  uint8_t recv_ch = 0xFFU;
+  uint8_t send_ch = k_threadx_ipc_demo_send_ch_ff;
+  uint8_t recv_ch = k_threadx_ipc_demo_send_ch_ff;
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_ipc_channel_for_send(k_ra8_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &send_ch));

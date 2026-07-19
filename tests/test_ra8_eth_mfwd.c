@@ -13,6 +13,33 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum eth_mfwd_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_eth_mfwd_mfwd_sts_abcd = 0xABCDU,
+  k_eth_mfwd_mfwd_sts_dead = 0xDEADU,
+} eth_mfwd_uint16_const_t;
+
+/**
+ * @enum eth_mfwd_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_eth_mfwd_mfwd_sts_feedface = 0xFEEDFACEU,
+} eth_mfwd_uint32_const_t;
+
 static uint32_t s_mfwd_cb_count;
 static uint32_t s_mfwd_cb_last_mask;
 
@@ -70,7 +97,7 @@ static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("mfwd status read + clear");
   prep();
-  ra8_mfwd()->MFWD_STS = 0xFEEDFACEU;
+  ra8_mfwd()->MFWD_STS = k_eth_mfwd_mfwd_sts_feedface;
   uint32_t mask        = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_mfwd_get_status(&mask));
   TEST_ASSERT_EQ(0xFEEDFACEU, mask);
@@ -90,13 +117,13 @@ static void test_attach_and_dispatch(void)
   TEST_BEGIN("mfwd attach + dispatch");
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_mfwd_attach_handler(stub_mfwd_cb, (void*)(uintptr_t)0xA0U));
-  ra8_mfwd()->MFWD_STS = 0xABCDU;
+  ra8_mfwd()->MFWD_STS = k_eth_mfwd_mfwd_sts_abcd;
   ra8_eth_mfwd_dispatch();
   TEST_ASSERT_EQ(1, s_mfwd_cb_count);
   TEST_ASSERT_EQ(0xABCDU, s_mfwd_cb_last_mask);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_mfwd_attach_handler(nullptr, nullptr));
-  ra8_mfwd()->MFWD_STS = 0xDEADU;
+  ra8_mfwd()->MFWD_STS = k_eth_mfwd_mfwd_sts_dead;
   ra8_eth_mfwd_dispatch();
   TEST_ASSERT_EQ(1, s_mfwd_cb_count);
   TEST_END("mfwd attach + dispatch");

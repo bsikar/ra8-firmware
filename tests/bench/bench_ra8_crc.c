@@ -27,6 +27,32 @@
 #include "ra8_err.h"
 
 /**
+ * @enum crc_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_crc_i_ff = 0xFFU,
+} crc_uint8_const_t;
+
+/**
+ * @enum crc_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_crc_crc_deadbeef = 0xDEADBEEFU,
+} crc_uint32_const_t;
+
+/**
  * @enum bench_crc_sizes_t
  * @brief Buffer sizes exercised by this benchmark.
  */
@@ -45,7 +71,7 @@ static uint8_t s_buf[(uint32_t)k_bench_crc_1m];
 static void fill_buf(void)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_bench_crc_1m; i++) {
-    s_buf[i] = (uint8_t)(i & 0xFFU);
+    s_buf[i] = (uint8_t)(i & k_crc_i_ff);
   }
 }
 
@@ -60,7 +86,7 @@ static void run_one(const char* name, uint32_t len)
     (void)ra8_crc_compute(s_buf, len, &crc);
   });
   /* Touch crc so the optimizer cannot elide the call. */
-  if (crc == 0xDEADBEEFU) {
+  if (crc == k_crc_crc_deadbeef) {
     (void)fprintf(stderr, "unreachable\n");
   }
 }

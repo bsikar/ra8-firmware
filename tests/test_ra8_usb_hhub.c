@@ -16,6 +16,19 @@
 #include "ra8_usb_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum usb_hhub_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_usb_hhub_status_deadbeef = 0xDEADBEEFU,
+} usb_hhub_uint32_const_t;
+
 typedef enum : uint8_t {
   k_test_hhub_max_steps = 12U, /**< Loop bound for stepping through enum. */
 } test_hhub_lim_t;
@@ -277,7 +290,7 @@ static void test_get_port_status_envelope(void)
   walk_to_attach();
   ra8_usb_fs()->DCPCTR = 0U;
 
-  uint32_t status = 0xDEADBEEFU;
+  uint32_t status = k_usb_hhub_status_deadbeef;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_hhub_get_port_status(2U, &status));
   /* status[]] zeroed on entry. */
   TEST_ASSERT_EQ(0U, status);

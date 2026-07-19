@@ -32,6 +32,20 @@
 #include "ra8_usb_pmsc_internal.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum usb_pmsc_scsi_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_usb_pmsc_scsi_cov_lba_24 = 24U,
+  k_usb_pmsc_scsi_cov_val_ff = 0xFFU,
+} usb_pmsc_scsi_cov_uint8_const_t;
+
 /* =============================================================================
  * Test fixtures
  * =============================================================================
@@ -227,12 +241,16 @@ static void seed_rw_cdb(uint32_t lba, uint16_t block_count)
   for (uint8_t i = 0U; i < k_ra8_pmsc_cdb_max_len; ++i) {
     s_usb_pmsc_state.cbw_cdb[i] = 0U;
   }
-  s_usb_pmsc_state.cbw_cdb[k_test_cdb_lba_msb] = (uint8_t)((lba >> 24U) & 0xFFU);
-  s_usb_pmsc_state.cbw_cdb[k_test_cdb_lba_b1]  = (uint8_t)((lba >> 16U) & 0xFFU);
-  s_usb_pmsc_state.cbw_cdb[k_test_cdb_lba_b2]  = (uint8_t)((lba >> 8U) & 0xFFU);
-  s_usb_pmsc_state.cbw_cdb[k_test_cdb_lba_lsb] = (uint8_t)(lba & 0xFFU);
-  s_usb_pmsc_state.cbw_cdb[k_test_cdb_cnt_msb] = (uint8_t)((block_count >> 8U) & 0xFFU);
-  s_usb_pmsc_state.cbw_cdb[k_test_cdb_cnt_lsb] = (uint8_t)(block_count & 0xFFU);
+  s_usb_pmsc_state.cbw_cdb[k_test_cdb_lba_msb] =
+    (uint8_t)((lba >> k_usb_pmsc_scsi_cov_lba_24) & k_usb_pmsc_scsi_cov_val_ff);
+  s_usb_pmsc_state.cbw_cdb[k_test_cdb_lba_b1] =
+    (uint8_t)((lba >> 16U) & k_usb_pmsc_scsi_cov_val_ff);
+  s_usb_pmsc_state.cbw_cdb[k_test_cdb_lba_b2] = (uint8_t)((lba >> 8U) & k_usb_pmsc_scsi_cov_val_ff);
+  s_usb_pmsc_state.cbw_cdb[k_test_cdb_lba_lsb] = (uint8_t)(lba & k_usb_pmsc_scsi_cov_val_ff);
+  s_usb_pmsc_state.cbw_cdb[k_test_cdb_cnt_msb] =
+    (uint8_t)((block_count >> 8U) & k_usb_pmsc_scsi_cov_val_ff);
+  s_usb_pmsc_state.cbw_cdb[k_test_cdb_cnt_lsb] =
+    (uint8_t)(block_count & k_usb_pmsc_scsi_cov_val_ff);
 }
 
 /* =============================================================================
@@ -251,7 +269,7 @@ static void test_inquiry_buffer_too_small(void)
   setup_with(&s_ok_storage);
 
   uint8_t  buf[k_test_buf_capacity] = {};
-  uint32_t out_len                  = 0xFFU;
+  uint32_t out_len                  = k_usb_pmsc_scsi_cov_val_ff;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  internal_handle_inquiry(buf, (uint32_t)k_test_small_cap, &out_len));
   TEST_END("INQUIRY rejects a buffer smaller than the 36-byte response");
@@ -270,7 +288,7 @@ static void test_inquiry_backend_error_propagates(void)
   setup_with(&st);
 
   uint8_t  buf[k_test_buf_capacity] = {};
-  uint32_t out_len                  = 0xFFU;
+  uint32_t out_len                  = k_usb_pmsc_scsi_cov_val_ff;
   TEST_ASSERT_EQ(s_test_error,
                  internal_handle_inquiry(buf, (uint32_t)k_test_buf_capacity, &out_len));
   TEST_END("INQUIRY propagates a get_inquiry backend error");
@@ -309,7 +327,7 @@ static void test_read_capacity_buffer_too_small(void)
   setup_with(&s_ok_storage);
 
   uint8_t  buf[k_test_buf_capacity] = {};
-  uint32_t out_len                  = 0xFFU;
+  uint32_t out_len                  = k_usb_pmsc_scsi_cov_val_ff;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  internal_handle_read_capacity(buf, (uint32_t)k_test_small_cap, &out_len));
   TEST_END("READ_CAPACITY(10) rejects a buffer smaller than 8 bytes");
@@ -327,7 +345,7 @@ static void test_read_capacity_backend_error_propagates(void)
   setup_with(&st);
 
   uint8_t  buf[k_test_buf_capacity] = {};
-  uint32_t out_len                  = 0xFFU;
+  uint32_t out_len                  = k_usb_pmsc_scsi_cov_val_ff;
   TEST_ASSERT_EQ(s_test_error,
                  internal_handle_read_capacity(buf, (uint32_t)k_test_buf_capacity, &out_len));
   TEST_END("READ_CAPACITY(10) propagates a get_capacity backend error");
@@ -373,7 +391,7 @@ static void test_request_sense_buffer_too_small(void)
   setup_with(&s_ok_storage);
 
   uint8_t  buf[k_test_buf_capacity] = {};
-  uint32_t out_len                  = 0xFFU;
+  uint32_t out_len                  = k_usb_pmsc_scsi_cov_val_ff;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  internal_handle_request_sense(buf, (uint32_t)k_test_small_cap, &out_len));
   TEST_END("REQUEST SENSE rejects a buffer smaller than 18 bytes");
@@ -415,7 +433,7 @@ static void test_mode_sense_buffer_too_small(void)
   setup_with(&s_ok_storage);
 
   uint8_t  buf[k_test_buf_capacity] = {};
-  uint32_t out_len                  = 0xFFU;
+  uint32_t out_len                  = k_usb_pmsc_scsi_cov_val_ff;
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  internal_handle_mode_sense(buf, (uint32_t)k_test_tiny_cap, &out_len));
   TEST_END("MODE SENSE(6) rejects a buffer smaller than 4 bytes");
@@ -457,7 +475,7 @@ static void test_read10_zero_block_count_noop(void)
   seed_rw_cdb(0U, 0U);
 
   uint8_t  buf[k_test_buf_capacity] = {};
-  uint32_t out_len                  = 0xFFU;
+  uint32_t out_len                  = k_usb_pmsc_scsi_cov_val_ff;
   TEST_ASSERT_EQ(k_ra8_ok, internal_handle_read10(buf, (uint32_t)k_test_buf_capacity, &out_len));
   TEST_ASSERT_EQ(0U, out_len);
   TEST_END("READ(10) with zero block count is a no-op");
@@ -477,7 +495,7 @@ static void test_read10_capacity_error_propagates(void)
   seed_rw_cdb(0U, 1U);
 
   uint8_t  buf[k_test_buf_capacity] = {};
-  uint32_t out_len                  = 0xFFU;
+  uint32_t out_len                  = k_usb_pmsc_scsi_cov_val_ff;
   TEST_ASSERT_EQ(s_test_error,
                  internal_handle_read10(buf, (uint32_t)k_test_buf_capacity, &out_len));
   TEST_END("READ(10) propagates a get_capacity backend error");
@@ -516,7 +534,7 @@ static void test_read10_exceeds_capacity(void)
   seed_rw_cdb(0U, 1U);
 
   uint8_t  buf[k_test_buf_capacity] = {};
-  uint32_t out_len                  = 0xFFU;
+  uint32_t out_len                  = k_usb_pmsc_scsi_cov_val_ff;
   /* One 512-byte block will not fit in a 100-byte window. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  internal_handle_read10(buf, (uint32_t)k_test_partial_read, &out_len));
@@ -537,7 +555,7 @@ static void test_read10_backend_error_propagates(void)
   seed_rw_cdb(0U, 1U);
 
   uint8_t  buf[k_test_buf_capacity] = {};
-  uint32_t out_len                  = 0xFFU;
+  uint32_t out_len                  = k_usb_pmsc_scsi_cov_val_ff;
   TEST_ASSERT_EQ(s_test_error,
                  internal_handle_read10(buf, (uint32_t)k_test_buf_capacity, &out_len));
   TEST_END("READ(10) propagates a read_block backend error");
@@ -560,7 +578,7 @@ static void test_write10_zero_block_count_noop(void)
   seed_rw_cdb(0U, 0U);
 
   uint8_t  buf[k_test_buf_capacity] = {};
-  uint32_t out_len                  = 0xFFU;
+  uint32_t out_len                  = k_usb_pmsc_scsi_cov_val_ff;
   TEST_ASSERT_EQ(k_ra8_ok, internal_handle_write10(buf, &out_len));
   TEST_ASSERT_EQ(0U, out_len);
   TEST_END("WRITE(10) with zero block count is a no-op");
@@ -580,7 +598,7 @@ static void test_write10_capacity_error_propagates(void)
   seed_rw_cdb(0U, 1U);
 
   uint8_t  buf[k_test_buf_capacity] = {};
-  uint32_t out_len                  = 0xFFU;
+  uint32_t out_len                  = k_usb_pmsc_scsi_cov_val_ff;
   TEST_ASSERT_EQ(s_test_error, internal_handle_write10(buf, &out_len));
   TEST_END("WRITE(10) propagates a get_capacity backend error");
 }
@@ -620,7 +638,7 @@ static void test_write10_backend_error_propagates(void)
   seed_rw_cdb(0U, 1U);
 
   uint8_t  buf[k_test_buf_capacity] = {};
-  uint32_t out_len                  = 0xFFU;
+  uint32_t out_len                  = k_usb_pmsc_scsi_cov_val_ff;
   TEST_ASSERT_EQ(s_test_error, internal_handle_write10(buf, &out_len));
   TEST_END("WRITE(10) propagates a write_block backend error");
 }
