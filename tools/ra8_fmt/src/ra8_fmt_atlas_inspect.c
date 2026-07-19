@@ -4,10 +4,13 @@
  *
  * @details
  * The diagnostic half of the atlas verbs. `inspect` reports every header field,
- * every tile-index entry and the footer, then cross-checks the three properties
- * a duplicated-content rendering bug would violate: exact stream coverage, no
- * two tiles sharing bytes or hashing alike, and each tile's decoded size
- * matching its edge-clamped geometry. `verify` reassembles the banded atlas and
+ * every tile-index entry and the footer, then cross-checks the properties a
+ * duplicated-content rendering bug would violate: exact stream coverage (no gap
+ * and no overlap), each tile's decoded size matching its edge-clamped geometry,
+ * and no two tiles decoding to identical NON-UNIFORM content. The uniformity
+ * qualifier is load-bearing: solid-colour gutter bands legitimately repeat
+ * throughout a real long-strip page, so flagging every identical pair would
+ * report duplication on most genuine files. `verify` reassembles the banded atlas and
  * compares it against a single-tile encode of the same source -- the reference
  * decode -- so a mismatch localises the defect to the tiling path.
  *
@@ -60,10 +63,27 @@ typedef struct {
   uint32_t offset;  /**< Absolute stored-stream offset.        */
   uint32_t length;  /**< Stored stream length, bytes.          */
   uint32_t payload; /**< Decoded payload size (tw * th * bpp). */
-  uint32_t hash;    /**< FNV-1a over the stored stream.        */
+  uint32_t hash;    /**< FNV-1a over the DECODED payload.      */
   uint16_t tw;      /**< Edge-clamped tile width.              */
   uint16_t th;      /**< Edge-clamped tile height.             */
+  bool     uniform; /**< Every decoded byte is identical.      */
 } fmt_tile_rec_t;
+
+/**
+ * @struct fmt_decode_buf_t
+ * @brief Reusable decode buffers so inspection allocates once, not per tile.
+ * @details `ra8_tileatlas_read_tile` needs a pixel destination and (for the
+ *          deflate codec) a stored-stream staging buffer. Both are sized from
+ *          the atlas geometry and shared across every tile.
+ * @invariant `cell_cap >= tile_w * tile_h * bpp` for the atlas being read.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint8_t* cell;        /**< Decoded-pixel destination. */
+  uint32_t cell_cap;    /**< Capacity of `cell`.        */
+  uint8_t* scratch;     /**< Stored-stream staging.     */
+  uint32_t scratch_cap; /**< Capacity of `scratch`.     */
+} fmt_decode_buf_t;
 
 size_t ra8_fmt_atlas_sink_cap(size_t src_len)
 {
@@ -73,14 +93,14 @@ size_t ra8_fmt_atlas_sink_cap(size_t src_len)
 
 /**
  * @brief FNV-1a 32-bit hash over a byte window.
- * @details Cheap content fingerprint used to spot two tiles whose stored
- *          streams are identical -- duplication baked into the file.
+ * @details Cheap content fingerprint over a tile's DECODED payload, used to
+ *          spot two tiles that decode to identical pixels.
  * @param[in] buf Bytes to hash (non-NULL when @p len > 0).
  * @param[in] len Byte count.
  * @return The 32-bit digest.
  * @retval k_fmt_fnv_basis @p len was zero (the unmixed basis).
  * @pre @p buf holds @p len readable bytes.
- * @pre @p len is a real stored-stream length.
+ * @pre @p len is a real decoded-payload length.
  * @post No state is mutated.
  * @post Equal inputs always produce equal digests.
  * @note Pure; thread-safe.
@@ -134,6 +154,62 @@ static void priv_print_geom(FILE* out, const ra8_tileatlas_info_t* info, size_t 
 }
 
 /**
+ * @brief Decode one tile and record its content hash and uniformity.
+ * @details Hashes the DECODED payload rather than the stored stream, because
+ *          content equality is the property the duplication check is about.
+ *          Uniformity (every byte identical) is recorded separately: a solid
+ *          colour band -- a gutter between panels -- legitimately repeats many
+ *          times in a real page, so identical uniform tiles are normal and must
+ *          not be reported as duplication.
+ * @param[in]  atlas Container bytes (non-NULL).
+ * @param[in]  info  Parsed geometry (non-NULL).
+ * @param[in]  idx   Tile index in row-major order.
+ * @param[in]  buf   Reusable decode buffers (non-NULL).
+ * @param[in,out] rec Record whose `hash` and `uniform` are filled.
+ * @return Result code propagated from `ra8_tileatlas_read_tile()`.
+ * @retval k_ra8_ok Tile decoded; hash and uniformity recorded.
+ * @pre `rec->tw`/`rec->th`/`rec->payload` are already set.
+ * @pre @p buf covers this atlas's worst-case tile.
+ * @post On success `rec->hash` covers exactly `rec->payload` decoded bytes.
+ * @post On any error @p rec is not relied upon.
+ * @note Not thread-safe (writes the shared buffers).
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_tile_content(const ra8_fmt_blob_t*       atlas,
+                                   const ra8_tileatlas_info_t* info,
+                                   uint32_t                    idx,
+                                   const fmt_decode_buf_t*     buf,
+                                   fmt_tile_rec_t*             rec)
+{
+  ra8_tileatlas_memstore_t store = {.buf = atlas->bytes, .cap = atlas->len, .len = atlas->len};
+  uint16_t                 tw    = 0U;
+  uint16_t                 th    = 0U;
+  const ra8_err_t          rc = ra8_tileatlas_read_tile(ra8_tileatlas_memstore_pread,
+                                                        &store,
+                                                        info,
+                                                        (uint16_t)(idx % (uint32_t)info->tile_cols),
+                                                        (uint16_t)(idx / (uint32_t)info->tile_cols),
+                                                        buf->scratch,
+                                                        buf->scratch_cap,
+                                                        buf->cell,
+                                                        buf->cell_cap,
+                                                        &tw,
+                                                        &th);
+  if (rc != k_ra8_ok) {
+    return rc;
+  }
+  rec->hash           = priv_fnv1a(buf->cell, (size_t)rec->payload);
+  bool          same  = true;
+  const uint8_t first = buf->cell[0];
+  for (uint32_t i = 1U; (i < rec->payload) && same; ++i) { /* bounded by payload */
+    same = (buf->cell[i] == first);
+  }
+  rec->uniform = same;
+  return k_ra8_ok;
+}
+
+/**
  * @brief Fill one tile record from the index entry and the atlas geometry.
  * @param[in]  atlas Container bytes (non-NULL).
  * @param[in]  info  Parsed geometry (non-NULL).
@@ -171,7 +247,6 @@ static ra8_err_t priv_tile_rec(const ra8_fmt_blob_t*       atlas,
   if (((size_t)rec->offset + (size_t)rec->length) > (size_t)info->index_off) {
     return k_ra8_err_validation_failed;
   }
-  rec->hash = priv_fnv1a(&atlas->bytes[rec->offset], (size_t)rec->length);
   return k_ra8_ok;
 }
 
@@ -213,19 +288,36 @@ priv_check_table(const fmt_tile_rec_t* recs, uint32_t count, uint32_t first, FIL
     }
     cursor = recs[i].offset + recs[i].length;
   }
+  /* Identical CONTENT is only suspicious when the band actually carries detail.
+   * A solid-colour band -- the gutter between panels -- is uniform, and a real
+   * long-strip page repeats those many times over. Reporting them would cry
+   * wolf on most genuine pages, which is worse for debugging than not checking:
+   * the reader would learn to ignore the verdict. */
+  uint32_t uniform_pairs = 0U;
   for (uint32_t i = 1U; i < count; ++i) { /* bounded by tile_count */
     for (uint32_t j = 0U; j < i; ++j) {   /* bounded by i          */
-      if ((recs[i].hash == recs[j].hash) && (recs[i].length == recs[j].length)) {
-        (void)fprintf(out,
-                      "  ANOMALY tiles %u and %u have IDENTICAL payloads "
-                      "(len=%u hash=%08X) -- duplication is in the FILE\n",
-                      (unsigned)j,
-                      (unsigned)i,
-                      (unsigned)recs[i].length,
-                      (unsigned)recs[i].hash);
-        verdict = k_ra8_err_validation_failed;
+      if ((recs[i].hash != recs[j].hash) || (recs[i].payload != recs[j].payload)) {
+        continue;
       }
+      if (recs[i].uniform && recs[j].uniform) {
+        uniform_pairs++;
+        continue;
+      }
+      (void)fprintf(out,
+                    "  ANOMALY tiles %u and %u decode to IDENTICAL non-uniform "
+                    "content (%u bytes, hash=%08X) -- duplication is in the FILE\n",
+                    (unsigned)j,
+                    (unsigned)i,
+                    (unsigned)recs[i].payload,
+                    (unsigned)recs[i].hash);
+      verdict = k_ra8_err_validation_failed;
     }
+  }
+  if (uniform_pairs > 0U) {
+    (void)fprintf(out,
+                  "  note: %u tile pair(s) share solid-colour content "
+                  "(gutter bands -- legitimate, not duplication)\n",
+                  (unsigned)uniform_pairs);
   }
   return verdict;
 }
@@ -266,6 +358,58 @@ static void priv_print_table(FILE* out, const fmt_tile_rec_t* recs, uint32_t cou
   }
 }
 
+/**
+ * @brief Fill every tile record: index entry, geometry, content hash, uniformity.
+ * @details Owns the shared decode buffers for the whole walk so inspection
+ *          allocates once rather than per tile, and releases them on every exit
+ *          path including the error ones.
+ * @param[in]  atlas Container bytes (non-NULL).
+ * @param[in]  info  Parsed geometry (non-NULL).
+ * @param[out] recs  Array of `info->tile_count` records to fill (non-NULL).
+ * @param[in]  opts  Options carrying the report sink (non-NULL).
+ * @return Result code.
+ * @retval k_ra8_ok         Every record filled.
+ * @retval k_ra8_err_no_mem A decode buffer could not be allocated.
+ * @retval other            Propagated from the index walk or the tile decode.
+ * @pre @p recs holds `info->tile_count` writable records.
+ * @pre @p info came from a successful parse over @p atlas.
+ * @post On success every record carries a decoded-content hash.
+ * @post No decode buffer outlives the call.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static ra8_err_t priv_collect_tiles(const ra8_fmt_blob_t*       atlas,
+                                    const ra8_tileatlas_info_t* info,
+                                    fmt_tile_rec_t*             recs,
+                                    const ra8_fmt_opts_t*       opts)
+{
+  const uint32_t   tmax = (uint32_t)info->tile_w * (uint32_t)info->tile_h * (uint32_t)info->bpp;
+  fmt_decode_buf_t buf  = {.cell        = (uint8_t*)malloc((size_t)tmax),
+                           .cell_cap    = tmax,
+                           .scratch     = nullptr,
+                           .scratch_cap = ra8_tileatlas_stored_bound(tmax)};
+  buf.scratch           = (uint8_t*)malloc((size_t)buf.scratch_cap);
+  if ((buf.cell == nullptr) || (buf.scratch == nullptr)) {
+    free(buf.cell);
+    free(buf.scratch);
+    return k_ra8_err_no_mem;
+  }
+  ra8_err_t rc = k_ra8_ok;
+  for (uint32_t i = 0U; (rc == k_ra8_ok) && (i < info->tile_count); ++i) { /* bounded */
+    rc = priv_tile_rec(atlas, info, i, &recs[i]);
+    if (rc == k_ra8_ok) {
+      rc = priv_tile_content(atlas, info, i, &buf, &recs[i]);
+    }
+    if (rc != k_ra8_ok) {
+      (void)fprintf(opts->report, "  tile %u could not be read or decoded\n", (unsigned)i);
+    }
+  }
+  free(buf.cell);
+  free(buf.scratch);
+  return rc;
+}
+
 ra8_err_t ra8_fmt_atlas_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t* opts)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
@@ -289,13 +433,10 @@ ra8_err_t ra8_fmt_atlas_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t*
   if (recs == nullptr) {
     return k_ra8_err_no_mem;
   }
-  for (uint32_t i = 0U; i < info.tile_count; ++i) { /* bounded by tile_count */
-    rc = priv_tile_rec(src, &info, i, &recs[i]);
-    if (rc != k_ra8_ok) {
-      (void)fprintf(opts->report, "  tile %u index entry is out of bounds\n", (unsigned)i);
-      free(recs);
-      return rc;
-    }
+  rc = priv_collect_tiles(src, &info, recs, opts);
+  if (rc != k_ra8_ok) {
+    free(recs);
+    return rc;
   }
   if (opts->verbose) {
     ra8_fmt_hex_dump(opts->report, "header", src->bytes, (size_t)k_fmt_hdr_dump_bytes, 0U);
