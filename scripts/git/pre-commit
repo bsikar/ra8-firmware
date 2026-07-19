@@ -401,6 +401,22 @@ if [[ -f scripts/utils/check_stub_crypto_guarded.py ]]; then
     fi
 fi
 
+# ---- No silent stubs -----------------------------------------------
+# A function that discards its arguments and hands back a canned answer, so the
+# build links and the program claims a capability it does not have. Catches a
+# do-nothing second definition of a symbol implemented for real elsewhere
+# (SHADOW) and an unsupported-error return with no implementation behind it
+# (CANNED). Hardware that does not exist yet is waived by TODO(<named part>).
+if [[ -f scripts/utils/check_no_silent_stubs.py ]]; then
+    if ! python3 scripts/utils/check_no_silent_stubs.py --selftest >/dev/null; then
+        echo "[FAIL] check_no_silent_stubs.py: the detector's own selftest failed."
+        error_found=1
+    elif ! python3 scripts/utils/check_no_silent_stubs.py; then
+        echo "[FAIL] check_no_silent_stubs.py: a silent stub would be committed."
+        error_found=1
+    fi
+fi
+
 # ---- No RA8_SIMULATOR_MODE-guarded asm in a HAL driver (#293) ------
 # wfi/dsb/isb/nop/cpsie/cpsid/reset-spin route through the shared seam
 # libs/ra8_hal/inc/ra8_hw_intrinsics.h (+ tests/mocks/ra8_host_asm_stub.c), so

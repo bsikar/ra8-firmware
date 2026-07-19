@@ -504,6 +504,19 @@ gate_pre_commit_checks() (
   # with a fail-closed #else, so a release image that forgot to swap in real
   # crypto fails closed instead of shipping the stub (#180).
   python3 scripts/utils/check_stub_crypto_guarded.py
+  # No function may exist only to satisfy the linker. Two narrowly-calibrated
+  # rules: SHADOW (a do-nothing second definition of a symbol implemented for
+  # real elsewhere -- the tools/*/webp_stub.c case, which made both host tools
+  # advertise WebP and fail at runtime) and CANNED (an unsupported-error return
+  # that discards every argument). Legitimate no-ops -- platform alternatives,
+  # vtable/ISR callbacks, the fail-closed crypto #else above, MMIO handlers
+  # returning module state -- are outside both rules by construction. Hardware
+  # that does not exist yet is waived only by TODO(<named missing part>).
+  # --selftest runs first and asserts the detector both fires and stays silent
+  # on the right inputs, so a detector that quietly stopped matching cannot
+  # pass as clean.
+  python3 scripts/utils/check_no_silent_stubs.py --selftest
+  python3 scripts/utils/check_no_silent_stubs.py
   # A HAL peripheral driver must not guard bare CPU asm
   # (wfi/dsb/isb/nop/cpsie/cpsid/reset-spin) on RA8_SIMULATOR_MODE -- those
   # route through libs/ra8_hal/inc/ra8_hw_intrinsics.h +
