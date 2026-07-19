@@ -203,7 +203,6 @@ static const ra8_widget_paint_t k_wk_paint = {
  * ===========================================================================
  */
 
-/** @brief Mark the body band dirty so a button press flushes only that rect. */
 static void wk_on_button_press(ra8_widget_t* w);
 
 /** @brief Title label: a centred heading over the slate band. */
@@ -344,6 +343,7 @@ static uint32_t wk_framebuffer_hash(void)
  * ===========================================================================
  */
 
+/** @brief Mark the body band dirty so a button press flushes only that rect. */
 static void wk_on_button_press(ra8_widget_t* w)
 {
   (void)w;

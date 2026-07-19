@@ -675,19 +675,6 @@ static ra8_err_t ls_band_decode(void*                 ctx,
  * ===========================================================================
  */
 
-/**
- * @brief Longstrip blit sink -> ra8_gfx software blit (RGB888 -> RGB565).
- * @param[in] ctx    Unused sink context.
- * @param[in] pixels Decoded band pixels (RGB888, row-major).
- * @param[in] src_w  Band width, pixels.
- * @param[in] src_h  Band height, pixels.
- * @param[in] bpp    Bytes per pixel (unused: strip is RGB888).
- * @param[in] dst_x  Destination left in the framebuffer.
- * @param[in] dst_y  Destination top in the framebuffer (may be negative).
- * @return k_ra8_ok on success; k_ra8_err_null_ptr if @p pixels is NULL.
- * @note Not thread-safe.
- * @since 0.1.0
- */
 static ra8_err_t ls_blit(void*          ctx,
                          const uint8_t* pixels,
                          uint16_t       src_w,
@@ -732,6 +719,19 @@ static void ls_open_strip(uint32_t total)
   }
 }
 
+/**
+ * @brief Longstrip blit sink -> ra8_gfx software blit (RGB888 -> RGB565).
+ * @param[in] ctx    Unused sink context.
+ * @param[in] pixels Decoded band pixels (RGB888, row-major).
+ * @param[in] src_w  Band width, pixels.
+ * @param[in] src_h  Band height, pixels.
+ * @param[in] bpp    Bytes per pixel (unused: strip is RGB888).
+ * @param[in] dst_x  Destination left in the framebuffer.
+ * @param[in] dst_y  Destination top in the framebuffer (may be negative).
+ * @return k_ra8_ok on success; k_ra8_err_null_ptr if @p pixels is NULL.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 static ra8_err_t ls_blit(void*          ctx,
                          const uint8_t* pixels,
                          uint16_t       src_w,

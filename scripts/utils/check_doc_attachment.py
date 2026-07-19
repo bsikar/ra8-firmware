@@ -703,6 +703,12 @@ def _decl_block(cursor, attached: dict[int, DocBlock]) -> DocBlock | None:
     return None
 
 
+def _decls_between(all_decls: list, first, second) -> bool:
+    """True when some *other* function is declared between ``first`` and ``second``."""
+    lo, hi = first.location.line, second.location.line
+    return any(lo < c.location.line < hi and c.spelling != first.spelling for c in all_decls)
+
+
 def check_forward_decl_blocks(tu, cindex, path: str, own_file: str, text: str) -> list[Finding]:
     """DOC006 -- a block on a forward declaration whose definition is bare.
 
@@ -721,6 +727,9 @@ def check_forward_decl_blocks(tu, cindex, path: str, own_file: str, text: str) -
             continue
         decls.setdefault(cursor.spelling, []).append(cursor)
 
+    all_decls = sorted(
+        (c for group in decls.values() for c in group), key=lambda c: c.location.line
+    )
     findings: list[Finding] = []
     for name, cursors in decls.items():
         if len(cursors) < MIN_REDECLARATIONS:
@@ -736,6 +745,20 @@ def check_forward_decl_blocks(tu, cindex, path: str, own_file: str, text: str) -
             None,
         )
         if documented_decl is None:
+            continue
+        # The `-Wmissing-prototypes` idiom puts a local prototype directly above
+        # its own definition:
+        #     /** ... */
+        #     void NMI_Handler(void);
+        #     void NMI_Handler(void) { ... }
+        # The block sits immediately above both, so no reader is misled and
+        # CLAUDE.md's "the authoritative block lives on the declaration" is
+        # satisfied. The defect is the block that got *separated* from its
+        # definition by other code -- ra8_rsip.c documented internal_sw_sha256
+        # 612 lines above the body, with a dozen other functions in between.
+        # Fire only when something else is declared between the two; no
+        # line-count threshold is involved.
+        if not _decls_between(all_decls, documented_decl, definition):
             continue
         findings.append(
             Finding(
@@ -1006,7 +1029,7 @@ int ra8_err_to_code(int c) { return c; }
         {"DOC005"},
     ),
     (
-        "block on a forward declaration, bare definition (viewer_compute_tiles shape)",
+        "block on a forward declaration separated from its definition by other code",
         """
 /**
  * @brief Probe and cache every tile's native size.
@@ -1015,9 +1038,28 @@ int ra8_err_to_code(int c) { return c; }
  */
 static int compute_tiles(int r);
 
+/**
+ * @brief Unrelated helper standing between the declaration and the body.
+ * @param[in] v Value.
+ * @return Value.
+ */
+static int passthrough(int v) { return v; }
+
 static int compute_tiles(int r) { return r; }
 """,
         {"DOC006"},
+    ),
+    (
+        "-Wmissing-prototypes idiom: local prototype directly above its definition",
+        """
+/**
+ * @brief Non-maskable interrupt handler.
+ * @return Nothing.
+ */
+void NMI_Handler(void);
+void NMI_Handler(void) { }
+""",
+        set(),
     ),
     (
         "banned pointer-only boilerplate",
