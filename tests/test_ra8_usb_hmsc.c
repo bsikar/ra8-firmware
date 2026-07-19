@@ -29,30 +29,31 @@
 #include "unity_minimal.h"
 
 /**
- * @enum usb_hmsc_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_hmsc_csw_t
+ * @brief Command Status Wrapper bytes the host-side arms build and corrupt.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * A CSW opens with the ASCII signature "USBS" and echoes the CBW tag. The
+ * `k_t_tag_*` bytes spell 0xCAFEBABE little-endian: a distinctive tag that is
+ * obviously wrong if the driver echoes the wrong wrapper.
  */
 typedef enum : uint8_t {
-  k_usb_hmsc_cdb_28 = 0x28U,
-  k_usb_hmsc_csw_42 = 0x42U,
-  k_usb_hmsc_csw_53 = 0x53U,
-  k_usb_hmsc_csw_55 = 0x55U,
-  k_usb_hmsc_csw_99 = 0x99U,
-  k_usb_hmsc_csw_ba = 0xBAU,
-  k_usb_hmsc_csw_be = 0xBEU,
-  k_usb_hmsc_csw_ca = 0xCAU,
-  k_usb_hmsc_csw_fe = 0xFEU,
-  k_usb_hmsc_tag_24 = 24U,
-  k_usb_hmsc_tag_ff = 0xFFU,
-  k_usb_hmsc_val_10 = 10,
-  k_usb_hmsc_val_5  = 5,
-  k_usb_hmsc_val_7  = 7,
-} usb_hmsc_uint8_const_t;
+  k_t_csw_sig_b0     = 0x55U, /**< CSW signature byte 0, ASCII 'U'.          */
+  k_t_csw_sig_b1     = 0x53U, /**< Signature bytes 1 and 3, ASCII 'S'.       */
+  k_t_csw_sig_b2     = 0x42U, /**< Signature byte 2, ASCII 'B'.              */
+  k_t_tag_b0         = 0xBEU, /**< Echoed tag byte 0.                        */
+  k_t_tag_b1         = 0xBAU, /**< Echoed tag byte 1.                        */
+  k_t_tag_b2         = 0xFEU, /**< Echoed tag byte 2.                        */
+  k_t_tag_b3         = 0xCAU, /**< Echoed tag byte 3.                        */
+  k_t_status_bad     = 0x99U, /**< A status outside the 0..2 range the spec
+                                   defines, which the driver must reject.     */
+  k_t_scsi_read10    = 0x28U, /**< SCSI READ(10) opcode.                     */
+  k_t_cdb_len_10     = 10U,   /**< CDB length of the 10-byte SCSI commands.  */
+  k_t_le32_hi_shift  = 24U,   /**< Shift for the top byte of the 32-bit tag. */
+  k_t_byte_mask      = 0xFFU, /**< Low-byte mask while serialising it.       */
+  k_t_csw_off_tag_b1 = 5U,    /**< Tag byte 1 offset in a bare CSW buffer.   */
+  k_t_csw_off_tag_b3 = 7U,    /**< Tag byte 3 offset in a bare CSW buffer.   */
+} t_hmsc_csw_t;
 
 typedef enum : uint8_t {
   k_test_cbw_off_signature   = 0U,  /**< Test cbw off signature.   */
@@ -289,8 +290,8 @@ static void test_build_cbw_signature_layout(void)
 {
   TEST_BEGIN("ra8_usb_hmsc_build_cbw lays out CBW per BBB rev 1.0 sec 5.1");
 
-  uint8_t cdb[k_usb_hmsc_val_10] = {};
-  cdb[0]                         = k_usb_hmsc_cdb_28; /* SCSI READ(10) opcode. */
+  uint8_t cdb[k_t_cdb_len_10] = {};
+  cdb[0]                         = k_t_scsi_read10; /* SCSI READ(10) opcode. */
   uint8_t cbw[k_test_cbw_len]    = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_hmsc_build_cbw(0U, 512U, true, cdb, 10U, cbw));
 
@@ -332,7 +333,7 @@ static void test_build_cbw_signature_layout(void)
 static void test_build_cbw_arg_rejection(void)
 {
   TEST_BEGIN("ra8_usb_hmsc_build_cbw rejects NULL / out-of-range");
-  uint8_t cdb[k_usb_hmsc_val_10] = {};
+  uint8_t cdb[k_t_cdb_len_10] = {};
   uint8_t cbw[k_test_cbw_len]    = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_hmsc_build_cbw(0U, 0U, true, nullptr, 10U, cbw));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_hmsc_build_cbw(0U, 0U, true, cdb, 10U, nullptr));
@@ -360,15 +361,15 @@ static void test_decode_csw_status(void)
   ra8_usb_hmsc_csw_status_t status_out          = k_ra8_hmsc_csw_status_passed;
 
   /* dCSWSignature = 'USBS' little-endian = 0x55, 0x53, 0x42, 0x53. */
-  csw[k_test_csw_off_signature + 0U] = k_usb_hmsc_csw_55;
-  csw[k_test_csw_off_signature + 1U] = k_usb_hmsc_csw_53;
-  csw[k_test_csw_off_signature + 2U] = k_usb_hmsc_csw_42;
-  csw[k_test_csw_off_signature + 3U] = k_usb_hmsc_csw_53;
+  csw[k_test_csw_off_signature + 0U] = k_t_csw_sig_b0;
+  csw[k_test_csw_off_signature + 1U] = k_t_csw_sig_b1;
+  csw[k_test_csw_off_signature + 2U] = k_t_csw_sig_b2;
+  csw[k_test_csw_off_signature + 3U] = k_t_csw_sig_b1;
   /* dCSWTag = 0xCAFEBABE little-endian. */
-  csw[k_test_csw_off_tag + 0U] = k_usb_hmsc_csw_be;
-  csw[k_test_csw_off_tag + 1U] = k_usb_hmsc_csw_ba;
-  csw[k_test_csw_off_tag + 2U] = k_usb_hmsc_csw_fe;
-  csw[k_test_csw_off_tag + 3U] = k_usb_hmsc_csw_ca;
+  csw[k_test_csw_off_tag + 0U] = k_t_tag_b0;
+  csw[k_test_csw_off_tag + 1U] = k_t_tag_b1;
+  csw[k_test_csw_off_tag + 2U] = k_t_tag_b2;
+  csw[k_test_csw_off_tag + 3U] = k_t_tag_b3;
 
   /* status = 0x00 (passed). */
   csw[k_test_csw_off_status] = 0x00U;
@@ -386,7 +387,7 @@ static void test_decode_csw_status(void)
   TEST_ASSERT_EQ(k_ra8_hmsc_csw_status_phase_error, status_out);
 
   /* status = 0x99 -> rejected as bogus. */
-  csw[k_test_csw_off_status] = k_usb_hmsc_csw_99;
+  csw[k_test_csw_off_status] = k_t_status_bad;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_hmsc_decode_csw(csw, 0xCAFEBABEU, &status_out));
 
   /* Tag mismatch -> invalid_arg. */
@@ -449,15 +450,15 @@ static void test_mcdc_hmsc(void)
   uint8_t        csw[k_test_csw_len] = {};
   const uint32_t tag                 = 0x12345678U;
   /* Build a valid CSW header. */
-  csw[k_test_csw_off_signature + 0U]   = k_usb_hmsc_csw_55;
-  csw[k_test_csw_off_signature + 1U]   = k_usb_hmsc_csw_53;
-  csw[k_test_csw_off_signature + 2U]   = k_usb_hmsc_csw_42;
-  csw[k_test_csw_off_signature + 3U]   = k_usb_hmsc_csw_53;
-  csw[k_test_csw_off_tag + 0U]         = (uint8_t)(tag & k_usb_hmsc_tag_ff);
-  csw[k_test_csw_off_tag + 1U]         = (uint8_t)((tag >> 8U) & k_usb_hmsc_tag_ff);
-  csw[k_test_csw_off_tag + 2U]         = (uint8_t)((tag >> 16U) & k_usb_hmsc_tag_ff);
-  csw[k_test_csw_off_tag + 3U]         = (uint8_t)((tag >> k_usb_hmsc_tag_24) & k_usb_hmsc_tag_ff);
-  ra8_usb_hmsc_csw_status_t out_status = (ra8_usb_hmsc_csw_status_t)k_usb_hmsc_tag_ff;
+  csw[k_test_csw_off_signature + 0U]   = k_t_csw_sig_b0;
+  csw[k_test_csw_off_signature + 1U]   = k_t_csw_sig_b1;
+  csw[k_test_csw_off_signature + 2U]   = k_t_csw_sig_b2;
+  csw[k_test_csw_off_signature + 3U]   = k_t_csw_sig_b1;
+  csw[k_test_csw_off_tag + 0U]         = (uint8_t)(tag & k_t_byte_mask);
+  csw[k_test_csw_off_tag + 1U]         = (uint8_t)((tag >> 8U) & k_t_byte_mask);
+  csw[k_test_csw_off_tag + 2U]         = (uint8_t)((tag >> 16U) & k_t_byte_mask);
+  csw[k_test_csw_off_tag + 3U]         = (uint8_t)((tag >> k_t_le32_hi_shift) & k_t_byte_mask);
+  ra8_usb_hmsc_csw_status_t out_status = (ra8_usb_hmsc_csw_status_t)k_t_byte_mask;
 
   csw[k_test_csw_off_status] = (uint8_t)k_ra8_hmsc_csw_status_passed;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_hmsc_decode_csw(csw, tag, &out_status));
@@ -466,7 +467,7 @@ static void test_mcdc_hmsc(void)
   csw[k_test_csw_off_status] = (uint8_t)k_ra8_hmsc_csw_status_phase_error;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_hmsc_decode_csw(csw, tag, &out_status));
   /* All-false vector: bogus status byte. */
-  csw[k_test_csw_off_status] = k_usb_hmsc_tag_ff;
+  csw[k_test_csw_off_status] = k_t_byte_mask;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_hmsc_decode_csw(csw, tag, &out_status));
 
   TEST_END("hmsc MC/DC: init / build_cbw / decode_csw status OR chain");
@@ -497,14 +498,14 @@ static void test_mcdc_hmsc_decode_csw_status_and_chain(void)
 {
   TEST_BEGIN("hmsc MC/DC: decode_csw 3-cond status AND-chain");
   uint8_t csw[(size_t)k_test_csw_len] = {};
-  csw[0]                              = k_usb_hmsc_csw_55;
-  csw[1]                              = k_usb_hmsc_csw_53;
-  csw[2]                              = k_usb_hmsc_csw_42;
-  csw[3]                              = k_usb_hmsc_csw_53;
-  csw[4]                              = k_usb_hmsc_csw_be;
-  csw[k_usb_hmsc_val_5]               = k_usb_hmsc_csw_ba;
-  csw[6]                              = k_usb_hmsc_csw_fe;
-  csw[k_usb_hmsc_val_7]               = k_usb_hmsc_csw_ca;
+  csw[0]                              = k_t_csw_sig_b0;
+  csw[1]                              = k_t_csw_sig_b1;
+  csw[2]                              = k_t_csw_sig_b2;
+  csw[3]                              = k_t_csw_sig_b1;
+  csw[4]                              = k_t_tag_b0;
+  csw[k_t_csw_off_tag_b1]               = k_t_tag_b1;
+  csw[6]                              = k_t_tag_b2;
+  csw[k_t_csw_off_tag_b3]               = k_t_tag_b3;
 
   ra8_usb_hmsc_csw_status_t out = k_ra8_hmsc_csw_status_passed;
 
@@ -520,7 +521,7 @@ static void test_mcdc_hmsc_decode_csw_status_and_chain(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_hmsc_decode_csw(csw, 0xCAFEBABEU, &out));
   TEST_ASSERT_EQ(k_ra8_hmsc_csw_status_phase_error, out);
 
-  csw[(size_t)k_test_csw_off_status] = k_usb_hmsc_csw_99;
+  csw[(size_t)k_test_csw_off_status] = k_t_status_bad;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_hmsc_decode_csw(csw, 0xCAFEBABEU, &out));
 
   TEST_END("hmsc MC/DC: decode_csw 3-cond status AND-chain");
