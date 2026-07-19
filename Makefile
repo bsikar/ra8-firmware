@@ -134,6 +134,11 @@ help:
 	@echo "  make hil               full HIL suite from this machine (build+flash+verify)"
 	@echo "  make hil-flash APP=<app>     build + flash to the Pi-attached board"
 	@echo ""
+	@echo "AGENT WORKSPACES (shared verification box)"
+	@echo "  make ws-new NAME=x     isolated git-worktree workspace (build output stays in the container)"
+	@echo "  make ws-free NAME=x    release it; make ws-list / ws-doctor to inspect"
+	@echo "  make ci-status         CI verdict from the shared monitor (no GitHub API quota)"
+	@echo ""
 	@echo "QUALITY / CI"
 	@echo "  make ci                run ALL CI gates in the Linux devcontainer (before every push)"
 	@echo "  make ci-fast           same, minus the slow misra + clang-tidy + coverage gates"
@@ -177,3 +182,4 @@ include $(ROOT)/mk/tools.mk
 include $(ROOT)/mk/hil.mk
 include $(ROOT)/mk/quality.mk
 include $(ROOT)/mk/docs.mk
+include $(ROOT)/mk/workspace.mk
