@@ -182,7 +182,14 @@ cmd_create() {
   # that makes `worktree add` refuse the path.
   git -C "$RA8_WS_UPSTREAM" worktree prune
   git -C "$RA8_WS_UPSTREAM" worktree add --detach "$ws" "$ref" >/dev/null
-  printf 'created=%s\nby=%s\nref=%s\n' "$(date -Iseconds)" "${USER:-unknown}" "$ref" >"$ws/.ra8-workspace"
+  # Metadata lives OUTSIDE the checkout. Writing it into the workspace left an
+  # untracked file there, which made is_reapable() report "untracked-files"
+  # forever -- every workspace would have been permanently unreapable, i.e. the
+  # self-healing property silently defeated by its own bookkeeping. It also
+  # kept `git status` dirty for the agent working in the tree.
+  mkdir -p "$RA8_WS_ROOT/.meta"
+  printf 'created=%s\nby=%s\nref=%s\npath=%s\n' \
+    "$(date -Iseconds)" "${USER:-unknown}" "$ref" "$ws" >"$RA8_WS_ROOT/.meta/$name"
 
   cat <<EOF
 workspace ready: $ws
@@ -212,6 +219,7 @@ cmd_release() {
   fi
   git -C "$RA8_WS_UPSTREAM" worktree remove "$ws"
   git -C "$RA8_WS_UPSTREAM" worktree prune
+  rm -f "$RA8_WS_ROOT/.meta/$name"
   echo "released $ws"
 }
 
@@ -251,6 +259,7 @@ cmd_reap() {
     verdict="$(is_reapable "$ws" "$ttl" || true)"
     if [[ "$verdict" == reapable-* ]]; then
       git -C "$RA8_WS_UPSTREAM" worktree remove --force "$ws" 2>/dev/null || rm -rf "$ws"
+      rm -f "$RA8_WS_ROOT/.meta/$(basename "$ws")"
       [[ "$quiet" == "1" ]] || echo "reaped $(basename "$ws") ($verdict)"
       reaped=$((reaped + 1))
     else
