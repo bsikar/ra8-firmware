@@ -121,7 +121,7 @@ static const char* const s_lut_m641 = "M641";
     return k_ra8_err_invalid_size;
   }
   const size_t bpp           = (size_t)ra8_epaper_bits_per_pixel(pf);
-  const size_t bits_per_byte = (size_t)k_ra8_epaper_bits_per_byte;
+  const size_t bits_per_byte = (size_t)k_ra8_epaper_geom_bits_per_byte;
   /* Rows are packed independently and each starts on a byte boundary. */
   const size_t row_bytes = (((size_t)area->width * bpp) + (bits_per_byte - 1U)) / bits_per_byte;
   *out_bytes             = row_bytes * (size_t)area->height;

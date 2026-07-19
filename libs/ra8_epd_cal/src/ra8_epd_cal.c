@@ -321,6 +321,79 @@ ra8_epd_cal_deserialize(const uint8_t* src, size_t src_size, ra8_epd_cal_record_
  * ===========================================================================
  */
 
+/**
+ * @brief Try the controller's own persisted VCOM (resolution source 1).
+ *
+ * @details
+ * A vendor-provisioned IT8951 driver board powers up holding the right
+ * VCOM, which is what makes a stock HAT work without provisioning. The
+ * value is still range-checked: a controller that has not finished booting
+ * reports 0, and a failed read reports 0xFFFF.
+ *
+ * @param[in]  cfg        Resolution config; non-NULL.
+ * @param[out] out_result Populated only on success; non-NULL.
+ * @return ``k_ra8_ok`` when the controller supplied an in-range value.
+ *
+ * @pre  ``cfg`` and ``out_result`` are readable / writable.
+ * @pre  ``cfg->limits`` has been validated by the caller.
+ * @post On success ``out_result->source`` is ::k_ra8_epd_cal_src_panel.
+ * @post On failure ``*out_result`` is untouched.
+ */
+RA8_INTERNAL
+[[nodiscard]] static ra8_err_t internal_ra8_epd_cal_try_panel(const ra8_epd_cal_cfg_t* cfg,
+                                                              ra8_epd_cal_result_t* out_result)
+{
+  if (cfg->panel.get == nullptr) {
+    return k_ra8_err_not_supported;
+  }
+  uint16_t panel_mv = 0U;
+  if (cfg->panel.get(cfg->panel.ctx, &panel_mv) != k_ra8_ok) {
+    return k_ra8_err_hw_error;
+  }
+  if (!ra8_epd_cal_vcom_in_range(panel_mv, &cfg->limits)) {
+    ra8_log_warn(s_tag, "controller VCOM out of range -- ignored");
+    return k_ra8_err_range_check_failed;
+  }
+  out_result->vcom_mv = panel_mv;
+  out_result->source  = k_ra8_epd_cal_src_panel;
+  return k_ra8_ok;
+}
+
+/**
+ * @brief Try the per-device record in storage (resolution source 2).
+ *
+ * @details
+ * The authority once a panel has been provisioned on this device, and the
+ * only source that survives a controller which has forgotten its own
+ * configuration. Lives outside both DFU code banks so a firmware update or
+ * a rollback cannot erase it.
+ *
+ * @param[in]  cfg        Resolution config; non-NULL.
+ * @param[out] out_result Populated only on success; non-NULL.
+ * @return ``k_ra8_ok`` when a valid, in-range record was found.
+ *
+ * @pre  ``cfg`` and ``out_result`` are readable / writable.
+ * @pre  ``cfg->limits`` has been validated by the caller.
+ * @post On success ``out_result->source`` is ::k_ra8_epd_cal_src_record.
+ * @post On failure ``*out_result`` is untouched.
+ */
+RA8_INTERNAL
+[[nodiscard]] static ra8_err_t internal_ra8_epd_cal_try_record(const ra8_epd_cal_cfg_t* cfg,
+                                                               ra8_epd_cal_result_t* out_result)
+{
+  ra8_epd_cal_record_t rec = {};
+  if (internal_ra8_epd_cal_read_record(&cfg->store, &rec) != k_ra8_ok) {
+    return k_ra8_err_not_found;
+  }
+  if (!ra8_epd_cal_vcom_in_range(rec.vcom_mv, &cfg->limits)) {
+    ra8_log_warn(s_tag, "stored VCOM out of range -- ignored");
+    return k_ra8_err_range_check_failed;
+  }
+  out_result->vcom_mv = rec.vcom_mv;
+  out_result->source  = k_ra8_epd_cal_src_record;
+  return k_ra8_ok;
+}
+
 [[nodiscard]] ra8_err_t ra8_epd_cal_resolve(const ra8_epd_cal_cfg_t* cfg,
                                             ra8_epd_cal_result_t*    out_result)
 {
@@ -333,31 +406,13 @@ ra8_epd_cal_deserialize(const uint8_t* src, size_t src_size, ra8_epd_cal_record_
     return k_ra8_err_invalid_arg;
   }
 
-  /* Source 1: whatever the controller's own driver board persisted. */
-  if (cfg->panel.get != nullptr) {
-    uint16_t panel_mv = 0U;
-    if (cfg->panel.get(cfg->panel.ctx, &panel_mv) == k_ra8_ok) {
-      if (ra8_epd_cal_vcom_in_range(panel_mv, &cfg->limits)) {
-        out_result->vcom_mv = panel_mv;
-        out_result->source  = k_ra8_epd_cal_src_panel;
-        return k_ra8_ok;
-      }
-      ra8_log_warn(s_tag, "controller VCOM out of range -- ignored");
-    }
+  /* Descending order of authority; first in-range value wins. */
+  if (internal_ra8_epd_cal_try_panel(cfg, out_result) == k_ra8_ok) {
+    return k_ra8_ok;
   }
-
-  /* Source 2: the per-device record in storage outside the DFU banks. */
-  ra8_epd_cal_record_t rec = {};
-  if (internal_ra8_epd_cal_read_record(&cfg->store, &rec) == k_ra8_ok) {
-    if (ra8_epd_cal_vcom_in_range(rec.vcom_mv, &cfg->limits)) {
-      out_result->vcom_mv = rec.vcom_mv;
-      out_result->source  = k_ra8_epd_cal_src_record;
-      return k_ra8_ok;
-    }
-    ra8_log_warn(s_tag, "stored VCOM out of range -- ignored");
+  if (internal_ra8_epd_cal_try_record(cfg, out_result) == k_ra8_ok) {
+    return k_ra8_ok;
   }
-
-  /* Source 3: an explicit value the operator supplied for this boot. */
   if (cfg->has_provisioned && ra8_epd_cal_vcom_in_range(cfg->provisioned_mv, &cfg->limits)) {
     out_result->vcom_mv = cfg->provisioned_mv;
     out_result->source  = k_ra8_epd_cal_src_provisioned;
