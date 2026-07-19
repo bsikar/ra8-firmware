@@ -829,45 +829,61 @@ static void test_gpio_detach_irq_not_attached(void)
   TEST_END("gpio detach_irq not attached");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_output_init_happy_low,
+  test_output_init_happy_high,
+  test_output_init_invalid_port,
+  test_output_init_invalid_pin,
+  test_output_init_conflict,
+  test_input_init_no_pull,
+  test_input_init_pull_up,
+  test_input_init_invalid_port,
+  test_input_init_invalid_pin,
+  test_write_high_sets_posr,
+  test_write_low_sets_porr,
+  test_write_invalid_port,
+  test_write_invalid_pin,
+  test_toggle_when_low,
+  test_toggle_when_high,
+  test_toggle_invalid_port,
+  test_toggle_invalid_pin,
+  test_read_high_and_low,
+  test_read_null_out,
+  test_read_invalid_port,
+  test_read_invalid_pin,
+  test_release_pin,
+  test_route_peripheral_happy,
+  test_route_peripheral_null_owner,
+  test_route_peripheral_invalid_port,
+  test_route_peripheral_invalid_pin,
+  test_route_peripheral_conflict,
+  test_vtable_output_init_and_write,
+  test_vtable_read_and_toggle,
+  test_gpio_attach_irq_happy,
+  test_gpio_attach_irq_null_cfg,
+  test_gpio_attach_irq_null_handler,
+  test_gpio_attach_irq_bad_num,
+  test_gpio_attach_irq_bad_pin,
+  test_gpio_detach_irq_happy,
+  test_gpio_detach_irq_bad_num,
+  test_gpio_detach_irq_not_attached,
+};
+
 int32_t main(void)
 {
-  test_output_init_happy_low();
-  test_output_init_happy_high();
-  test_output_init_invalid_port();
-  test_output_init_invalid_pin();
-  test_output_init_conflict();
-  test_input_init_no_pull();
-  test_input_init_pull_up();
-  test_input_init_invalid_port();
-  test_input_init_invalid_pin();
-  test_write_high_sets_posr();
-  test_write_low_sets_porr();
-  test_write_invalid_port();
-  test_write_invalid_pin();
-  test_toggle_when_low();
-  test_toggle_when_high();
-  test_toggle_invalid_port();
-  test_toggle_invalid_pin();
-  test_read_high_and_low();
-  test_read_null_out();
-  test_read_invalid_port();
-  test_read_invalid_pin();
-  test_release_pin();
-  test_route_peripheral_happy();
-  test_route_peripheral_null_owner();
-  test_route_peripheral_invalid_port();
-  test_route_peripheral_invalid_pin();
-  test_route_peripheral_conflict();
-  test_vtable_output_init_and_write();
-  test_vtable_read_and_toggle();
-  test_gpio_attach_irq_happy();
-  test_gpio_attach_irq_null_cfg();
-  test_gpio_attach_irq_null_handler();
-  test_gpio_attach_irq_bad_num();
-  test_gpio_attach_irq_bad_pin();
-  test_gpio_detach_irq_happy();
-  test_gpio_detach_irq_bad_num();
-  test_gpio_detach_irq_not_attached();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_gpio.c\n");
   return 0;
 }

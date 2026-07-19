@@ -656,30 +656,46 @@ static void test_intern_name_too_long_arms_mcdc(void)
  * @note Not thread-safe (single-threaded test runner).
  * @since 0.1.0
  */
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_whitespace_variants,
+  test_ci_eq_length_tiebreak,
+  test_ci_contains_short_span,
+  test_hex_val_ranges,
+  test_parse_color_grey_and_bad_hex,
+  test_fontsize_fractional_loops,
+  test_font_weight_keywords,
+  test_font_style_oblique,
+  test_empty_decl_guard,
+  test_name_overflow_rejected,
+  test_at_rule_split,
+  test_unterminated_block,
+  test_comment_open_scan,
+  test_hex_val_below_ranges,
+  test_fontsize_frac_end_of_input,
+  test_strip_quotes_short_and_unclosed,
+  test_extract_url_unterminated,
+  test_for_each_decl_empty_pairs,
+  test_block_empty_selector,
+  test_comment_scan_slash_not_star,
+  test_fontsize_dot_nondigit_mcdc,
+  test_intern_name_too_long_arms_mcdc,
+};
+
 int32_t main(void)
 {
-  test_whitespace_variants();
-  test_ci_eq_length_tiebreak();
-  test_ci_contains_short_span();
-  test_hex_val_ranges();
-  test_parse_color_grey_and_bad_hex();
-  test_fontsize_fractional_loops();
-  test_font_weight_keywords();
-  test_font_style_oblique();
-  test_empty_decl_guard();
-  test_name_overflow_rejected();
-  test_at_rule_split();
-  test_unterminated_block();
-  test_comment_open_scan();
-  test_hex_val_below_ranges();
-  test_fontsize_frac_end_of_input();
-  test_strip_quotes_short_and_unclosed();
-  test_extract_url_unterminated();
-  test_for_each_decl_empty_pairs();
-  test_block_empty_selector();
-  test_comment_scan_slash_not_star();
-  test_fontsize_dot_nondigit_mcdc();
-  test_intern_name_too_long_arms_mcdc();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_reflow_css_parse_mcdc.c\n");
   return 0;
 }

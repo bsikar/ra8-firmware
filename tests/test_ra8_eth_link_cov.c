@@ -753,34 +753,44 @@ static void test_link_status_triggers_resync(void)
  * @brief Test entry point -- runs every white-box coverage case.
  * @return 0 on success (Unity aborts the process on any failure).
  */
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_pick_negotiated_speed_ladder,
+  test_wait_for_autoneg_an_done,
+  test_wait_for_autoneg_mdio_fail,
+  test_wait_for_autoneg_exhaust,
+  test_query_negotiated_speed_ok,
+  test_query_negotiated_speed_anlpar_fail,
+  test_query_negotiated_speed_gbsr_fail,
+  test_program_mpic_gmii_ok,
+  test_program_mpic_mii_ok,
+  test_program_mpic_first_disable_fail,
+  test_program_mpic_config_fail,
+  test_program_mpic_setlink_fail,
+  test_program_mpic_second_disable_fail,
+  test_program_mpic_operation_fail,
+  test_resync_mac_speed_ok,
+  test_resync_mac_speed_query_fail,
+  test_resync_mac_speed_program_fail,
+  test_link_status_speed100_decode,
+  test_link_status_resynced_skip,
+  test_link_status_triggers_resync,
+};
+
 int32_t main(void)
 {
-  test_pick_negotiated_speed_ladder();
-
-  test_wait_for_autoneg_an_done();
-  test_wait_for_autoneg_mdio_fail();
-  test_wait_for_autoneg_exhaust();
-
-  test_query_negotiated_speed_ok();
-  test_query_negotiated_speed_anlpar_fail();
-  test_query_negotiated_speed_gbsr_fail();
-
-  test_program_mpic_gmii_ok();
-  test_program_mpic_mii_ok();
-  test_program_mpic_first_disable_fail();
-  test_program_mpic_config_fail();
-  test_program_mpic_setlink_fail();
-  test_program_mpic_second_disable_fail();
-  test_program_mpic_operation_fail();
-
-  test_resync_mac_speed_ok();
-  test_resync_mac_speed_query_fail();
-  test_resync_mac_speed_program_fail();
-
-  test_link_status_speed100_decode();
-  test_link_status_resynced_skip();
-  test_link_status_triggers_resync();
-
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_eth_link_cov.c\n");
   return 0;
 }

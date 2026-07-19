@@ -727,31 +727,46 @@ static void test_mcdc_blit_args(void)
   TEST_END("gfx MC/DC ra8_gfx_blit 3-condition arg guard");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_arg_validation,
+  test_clear_writes_every_pixel,
+  test_pixel_happy_and_oob,
+  test_line_horizontal,
+  test_rect_outline_and_filled,
+  test_circle_outline_and_filled,
+  test_text_out_renders_glyph_a,
+  test_text_size,
+  test_blit,
+  test_null_args,
+  test_rgb888_format,
+  test_mcdc_internal_format_ok,
+  test_mcdc_internal_plot_neg,
+  test_mcdc_internal_plot_oob,
+  test_mcdc_init_width_range,
+  test_mcdc_init_height_range,
+  test_mcdc_pixel_bounds,
+  test_mcdc_line_endpoint,
+  test_mcdc_rect_dim,
+  test_mcdc_render_glyph_codepoint,
+  test_mcdc_text_out_null,
+  test_mcdc_text_size_null,
+  test_mcdc_blit_args,
+};
+
 int main(void)
 {
-  test_init_arg_validation();
-  test_clear_writes_every_pixel();
-  test_pixel_happy_and_oob();
-  test_line_horizontal();
-  test_rect_outline_and_filled();
-  test_circle_outline_and_filled();
-  test_text_out_renders_glyph_a();
-  test_text_size();
-  test_blit();
-  test_null_args();
-  test_rgb888_format();
-
-  test_mcdc_internal_format_ok();
-  test_mcdc_internal_plot_neg();
-  test_mcdc_internal_plot_oob();
-  test_mcdc_init_width_range();
-  test_mcdc_init_height_range();
-  test_mcdc_pixel_bounds();
-  test_mcdc_line_endpoint();
-  test_mcdc_rect_dim();
-  test_mcdc_render_glyph_codepoint();
-  test_mcdc_text_out_null();
-  test_mcdc_text_size_null();
-  test_mcdc_blit_args();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   return 0;
 }

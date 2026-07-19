@@ -827,33 +827,49 @@ static void test_mcdc_ra8_sram(void)
   TEST_END("sram MC/DC: set_wait_state_for_clock 2-cond decision");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_set_mode_happy,
+  test_set_mode_bad_bank,
+  test_set_mode_null_cfg,
+  test_set_eccrgn_happy,
+  test_set_eccrgn_rejects_bank3_oversize,
+  test_set_wait_state_manual,
+  test_set_wait_state_for_clock,
+  test_status_decode,
+  test_status_null_out,
+  test_clear_status_writes_esclr,
+  test_clear_status_rejects_reserved,
+  test_clear_address_per_slot,
+  test_zero_init_bank_writes_all_zero,
+  test_self_test_catches_1bit,
+  test_self_test_catches_2bit,
+  test_self_test_miss_reports_not_caught,
+  test_self_test_rejects_bad_offset,
+  test_get_bank_info,
+  test_set_security,
+  test_set_ecc_security,
+  test_set_boundary,
+  test_attach_null_fn_rejected,
+  test_dispatch_fires_callback,
+  test_dispatch_from_esr_walks_all_bits,
+  test_mcdc_ra8_sram,
+};
+
 int32_t main(void)
 {
-  test_set_mode_happy();
-  test_set_mode_bad_bank();
-  test_set_mode_null_cfg();
-  test_set_eccrgn_happy();
-  test_set_eccrgn_rejects_bank3_oversize();
-  test_set_wait_state_manual();
-  test_set_wait_state_for_clock();
-  test_status_decode();
-  test_status_null_out();
-  test_clear_status_writes_esclr();
-  test_clear_status_rejects_reserved();
-  test_clear_address_per_slot();
-  test_zero_init_bank_writes_all_zero();
-  test_self_test_catches_1bit();
-  test_self_test_catches_2bit();
-  test_self_test_miss_reports_not_caught();
-  test_self_test_rejects_bad_offset();
-  test_get_bank_info();
-  test_set_security();
-  test_set_ecc_security();
-  test_set_boundary();
-  test_attach_null_fn_rejected();
-  test_dispatch_fires_callback();
-  test_dispatch_from_esr_walks_all_bits();
-  test_mcdc_ra8_sram();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_sram_ecc.c\n");
   return 0;
 }

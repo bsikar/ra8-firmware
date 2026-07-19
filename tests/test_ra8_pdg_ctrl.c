@@ -774,30 +774,46 @@ static void test_mcdc_validate_cfg_gptclk_range(void)
   TEST_END("pdg MC/DC: validate_cfg auto-tune gptclk band");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_power_transition,
+  test_channel_bypass_set,
+  test_pin_disable,
+  test_status_read_and_clear,
+  test_status_full,
+  test_pick_frange,
+  test_set_frange_runtime,
+  test_bind_unbind_gpt_channel,
+  test_check_constraints,
+  test_required_write_ns,
+  test_attach_and_dispatch,
+  test_capture_start_happy,
+  test_capture_start_null,
+  test_capture_start_zero_len,
+  test_capture_start_bad_entry,
+  test_capture_stop_happy,
+  test_capture_start_no_handler,
+  test_deinit,
+  test_mcdc_pdg,
+  test_mcdc_set_delay_batch_count,
+  test_mcdc_pin_disable_pin_neither,
+  test_mcdc_validate_cfg_gptclk_range,
+};
+
 int32_t main(void)
 {
-  test_power_transition();
-  test_channel_bypass_set();
-  test_pin_disable();
-  test_status_read_and_clear();
-  test_status_full();
-  test_pick_frange();
-  test_set_frange_runtime();
-  test_bind_unbind_gpt_channel();
-  test_check_constraints();
-  test_required_write_ns();
-  test_attach_and_dispatch();
-  test_capture_start_happy();
-  test_capture_start_null();
-  test_capture_start_zero_len();
-  test_capture_start_bad_entry();
-  test_capture_stop_happy();
-  test_capture_start_no_handler();
-  test_deinit();
-  test_mcdc_pdg();
-  test_mcdc_set_delay_batch_count();
-  test_mcdc_pin_disable_pin_neither();
-  test_mcdc_validate_cfg_gptclk_range();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_pdg_ctrl.c\n");
   return 0;
 }

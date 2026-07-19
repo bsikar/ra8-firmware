@@ -628,36 +628,46 @@ static void test_mcdc_eth_write_len_bounds(void)
   TEST_END("eth write MC/DC: len<min || len>max");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init,
+  test_deinit,
+  test_status_read_and_clear,
+  test_attach_and_dispatch,
+  test_power_transition,
+  test_open_null_rejected,
+  test_open_bad_channel,
+  test_mcdc_open_ring_size_oversize,
+  test_open_happy_path,
+  test_close_without_open,
+  test_write_null_rejected,
+  test_write_bad_length,
+  test_write_enqueues_and_advances,
+  test_write_slot0_reuse,
+  test_read_no_data,
+  test_read_null_rejected,
+  test_read_returns_frame,
+  test_link_status_via_mdio,
+  test_get_stats_after_io,
+  test_apis_require_open,
+  test_mcdc_resolve_sizes_buf_size,
+  test_mcdc_eth_write_len_bounds,
+};
+
 int32_t main(void)
 {
-  test_init();
-  test_deinit();
-  test_status_read_and_clear();
-  test_attach_and_dispatch();
-  test_power_transition();
-
-  test_open_null_rejected();
-  test_open_bad_channel();
-  test_mcdc_open_ring_size_oversize();
-  test_open_happy_path();
-  test_close_without_open();
-
-  test_write_null_rejected();
-  test_write_bad_length();
-  test_write_enqueues_and_advances();
-  test_write_slot0_reuse();
-
-  test_read_no_data();
-  test_read_null_rejected();
-  test_read_returns_frame();
-
-  test_link_status_via_mdio();
-  test_get_stats_after_io();
-  test_apis_require_open();
-
-  test_mcdc_resolve_sizes_buf_size();
-  test_mcdc_eth_write_len_bounds();
-
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_eth.c\n");
   return 0;
 }

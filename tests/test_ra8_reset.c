@@ -927,42 +927,57 @@ static void test_set_source_mask_syrstmsk1_and_2_remaining(void)
  * ---------------------------------------------------------------------------
  */
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_get_cause_unknown_when_all_zero,
+  test_get_cause_porf,
+  test_get_cause_swrf,
+  test_get_cause_iwdt,
+  test_get_cause_temperature,
+  test_get_cause_warm_start,
+  test_get_cause_priority_porf_over_iwdt,
+  test_get_cause_null_out,
+  test_init_snapshot_survives_clear,
+  test_get_raw_returns_register_words,
+  test_get_raw_null_out,
+  test_clear_cause_rstsr0,
+  test_clear_cause_rstsr1_swrf,
+  test_clear_cause_zero_mask_is_noop,
+  test_get_attribution,
+  test_get_attribution_null_out,
+  test_software_reset_writes_aircr,
+  test_set_source_mask_disable_sets_bit,
+  test_set_source_mask_enable_clears_bit,
+  test_set_source_mask_routes_to_syrstmsk1_and_2,
+  test_set_source_mask_invalid_source_rejected,
+  test_get_source_mask_reads_state,
+  test_get_source_mask_null_rejected,
+  test_get_source_mask_invalid_source_rejected,
+  test_get_cause_rstsr0_remaining_flags,
+  test_get_cause_rstsr1_remaining_flags,
+  test_get_cause_rstsr3_remaining_flags,
+  test_get_raw_cached_path,
+  test_clear_cause_rstsr2_cwsf_path,
+  test_clear_cause_refreshes_cached_snapshot,
+  test_set_source_mask_syrstmsk0_wdt0,
+  test_set_source_mask_syrstmsk0_remaining,
+  test_set_source_mask_syrstmsk1_and_2_remaining,
+};
+
 int32_t main(void)
 {
-  test_get_cause_unknown_when_all_zero();
-  test_get_cause_porf();
-  test_get_cause_swrf();
-  test_get_cause_iwdt();
-  test_get_cause_temperature();
-  test_get_cause_warm_start();
-  test_get_cause_priority_porf_over_iwdt();
-  test_get_cause_null_out();
-  test_init_snapshot_survives_clear();
-  test_get_raw_returns_register_words();
-  test_get_raw_null_out();
-  test_clear_cause_rstsr0();
-  test_clear_cause_rstsr1_swrf();
-  test_clear_cause_zero_mask_is_noop();
-  test_get_attribution();
-  test_get_attribution_null_out();
-  test_software_reset_writes_aircr();
-  test_set_source_mask_disable_sets_bit();
-  test_set_source_mask_enable_clears_bit();
-  test_set_source_mask_routes_to_syrstmsk1_and_2();
-  test_set_source_mask_invalid_source_rejected();
-  test_get_source_mask_reads_state();
-  test_get_source_mask_null_rejected();
-  test_get_source_mask_invalid_source_rejected();
-  test_get_cause_rstsr0_remaining_flags();
-  test_get_cause_rstsr1_remaining_flags();
-  test_get_cause_rstsr3_remaining_flags();
-  test_get_raw_cached_path();
-  test_clear_cause_rstsr2_cwsf_path();
-  test_clear_cause_refreshes_cached_snapshot();
-  test_set_source_mask_syrstmsk0_wdt0();
-  test_set_source_mask_syrstmsk0_remaining();
-  test_set_source_mask_syrstmsk1_and_2_remaining();
-
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_reset.c\n");
   return 0;
 }

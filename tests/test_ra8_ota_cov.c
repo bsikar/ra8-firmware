@@ -736,35 +736,51 @@ static void test_commit_weak_reset_hook(void)
  * main
  * ============================================================================= */
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_progress_callback_fires,
+  test_progress_bytes_total_both_arms,
+  test_check_not_initialized,
+  test_check_wrong_state,
+  test_check_manifest_open_fail,
+  test_check_manifest_too_large,
+  test_check_manifest_drain_fail,
+  test_download_not_initialized,
+  test_download_image_too_large,
+  test_download_erase_fail,
+  test_download_image_open_fail,
+  test_download_chunk_eof,
+  test_download_sha_update_fail,
+  test_download_program_fail,
+  test_verify_not_initialized,
+  test_verify_wrong_state,
+  test_verify_rehash_sha_init_fail,
+  test_verify_rehash_readback_fail,
+  test_verify_rehash_sha_update_fail,
+  test_commit_not_initialized,
+  test_commit_wrong_state,
+  test_commit_startup_fail,
+  test_run_step_not_initialized,
+  test_run_full_not_initialized,
+  test_run_full_step_error,
+  test_run_step_terminal_states,
+  test_commit_weak_reset_hook,
+};
+
 int main(void)
 {
-  test_progress_callback_fires();
-  test_progress_bytes_total_both_arms();
-  test_check_not_initialized();
-  test_check_wrong_state();
-  test_check_manifest_open_fail();
-  test_check_manifest_too_large();
-  test_check_manifest_drain_fail();
-  test_download_not_initialized();
-  test_download_image_too_large();
-  test_download_erase_fail();
-  test_download_image_open_fail();
-  test_download_chunk_eof();
-  test_download_sha_update_fail();
-  test_download_program_fail();
-  test_verify_not_initialized();
-  test_verify_wrong_state();
-  test_verify_rehash_sha_init_fail();
-  test_verify_rehash_readback_fail();
-  test_verify_rehash_sha_update_fail();
-  test_commit_not_initialized();
-  test_commit_wrong_state();
-  test_commit_startup_fail();
-  test_run_step_not_initialized();
-  test_run_full_not_initialized();
-  test_run_full_step_error();
-  test_run_step_terminal_states();
-  test_commit_weak_reset_hook();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_ota_cov.c\n");
   return 0;
 }

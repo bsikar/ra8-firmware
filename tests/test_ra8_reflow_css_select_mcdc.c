@@ -635,28 +635,44 @@ static void test_class_list_trailing_ws_and_samelen_mcdc(void)
  * @note Not thread-safe (single-threaded test runner).
  * @since 0.1.0
  */
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_sel_part_combinator_drop,
+  test_fontface_quote_strip,
+  test_fontface_weight_style_keywords,
+  test_fontface_accept_guard,
+  test_ancestor_constraint_arms,
+  test_resolve_order_tiebreak,
+  test_match_face_regular_fallback,
+  test_rule_matches_null_arms,
+  test_sel_part_empty_name,
+  test_match_face_length_mismatch,
+  test_fontface_bold_kw_full_or,
+  test_face_apply_reject_arms,
+  test_rule_family_empty,
+  test_class_list_multi_token,
+  test_anc_null_class_id_and_idlen,
+  test_resolve_specificity_override,
+  test_match_face_fallback_conditions,
+  test_face_src_guard_arms,
+  test_fontface_style_normal_mcdc,
+  test_class_list_trailing_ws_and_samelen_mcdc,
+};
+
 int32_t main(void)
 {
-  test_sel_part_combinator_drop();
-  test_fontface_quote_strip();
-  test_fontface_weight_style_keywords();
-  test_fontface_accept_guard();
-  test_ancestor_constraint_arms();
-  test_resolve_order_tiebreak();
-  test_match_face_regular_fallback();
-  test_rule_matches_null_arms();
-  test_sel_part_empty_name();
-  test_match_face_length_mismatch();
-  test_fontface_bold_kw_full_or();
-  test_face_apply_reject_arms();
-  test_rule_family_empty();
-  test_class_list_multi_token();
-  test_anc_null_class_id_and_idlen();
-  test_resolve_specificity_override();
-  test_match_face_fallback_conditions();
-  test_face_src_guard_arms();
-  test_fontface_style_normal_mcdc();
-  test_class_list_trailing_ws_and_samelen_mcdc();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_reflow_css_select_mcdc.c\n");
   return 0;
 }

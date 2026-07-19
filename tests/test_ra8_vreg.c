@@ -762,41 +762,53 @@ static void test_mcdc_ra8_vreg(void)
   TEST_END("vreg MC/DC: set_mode + get_status 2-cond decisions");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_happy_dcdc,
+  test_init_happy_dcdc_fast,
+  test_init_happy_ldo,
+  test_init_happy_ldo_with_boost,
+  test_init_null_cfg,
+  test_init_bad_vccsel,
+  test_init_bad_mode,
+  test_init_bad_ocp,
+  test_init_bad_lv_profile,
+  test_set_mode_round_trip,
+  test_set_mode_keeps_lcboost_on_disable,
+  test_set_mode_bad_arg,
+  test_set_vccsel,
+  test_set_ocp_levels,
+  test_set_fast_startup,
+  test_set_ldo_boost,
+  test_set_lv_profile,
+  test_get_status_decoded,
+  test_get_status_ldo,
+  test_clear_status,
+  test_clear_status_reserved_bits,
+  test_enter_exit_stop_legacy,
+  test_enter_standby_every_variant,
+  test_enter_standby_bad_variant,
+  test_exit_stop_uninitialized,
+  test_reset_clears_cached_state,
+  test_attach_dispatch,
+  test_deinit_clears_regs,
+  test_mcdc_ra8_vreg,
+};
+
 int32_t main(void)
 {
-  test_init_happy_dcdc();
-  test_init_happy_dcdc_fast();
-  test_init_happy_ldo();
-  test_init_happy_ldo_with_boost();
-  test_init_null_cfg();
-  test_init_bad_vccsel();
-  test_init_bad_mode();
-  test_init_bad_ocp();
-  test_init_bad_lv_profile();
-
-  test_set_mode_round_trip();
-  test_set_mode_keeps_lcboost_on_disable();
-  test_set_mode_bad_arg();
-  test_set_vccsel();
-  test_set_ocp_levels();
-  test_set_fast_startup();
-  test_set_ldo_boost();
-  test_set_lv_profile();
-
-  test_get_status_decoded();
-  test_get_status_ldo();
-  test_clear_status();
-  test_clear_status_reserved_bits();
-
-  test_enter_exit_stop_legacy();
-  test_enter_standby_every_variant();
-  test_enter_standby_bad_variant();
-  test_exit_stop_uninitialized();
-  test_reset_clears_cached_state();
-
-  test_attach_dispatch();
-  test_deinit_clears_regs();
-  test_mcdc_ra8_vreg();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_vreg.c\n");
   return 0;
 }

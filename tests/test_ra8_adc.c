@@ -556,28 +556,44 @@ static void test_power_transition(void)
   TEST_END("adc power transition");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_happy,
+  test_read_channel_null_out,
+  test_read_channel_out_of_range,
+  test_read_channel_huge,
+  test_read_channel_hcr_but_no_result,
+  test_read_channel_completes,
+  test_read_channel_timeout,
+  test_init_configured,
+  test_init_configured_null,
+  test_init_configured_scan,
+  test_deinit,
+  test_set_resolution,
+  test_set_resolution_bad,
+  test_init_configured_16bit,
+  test_init_configured_bad_resolution,
+  test_status_read_and_clear,
+  test_status_null,
+  test_attach_and_dispatch,
+  test_dispatch_no_handler,
+  test_power_transition,
+};
+
 int32_t main(void)
 {
-  test_init_happy();
-  test_read_channel_null_out();
-  test_read_channel_out_of_range();
-  test_read_channel_huge();
-  test_read_channel_hcr_but_no_result();
-  test_read_channel_completes();
-  test_read_channel_timeout();
-  test_init_configured();
-  test_init_configured_null();
-  test_init_configured_scan();
-  test_deinit();
-  test_set_resolution();
-  test_set_resolution_bad();
-  test_init_configured_16bit();
-  test_init_configured_bad_resolution();
-  test_status_read_and_clear();
-  test_status_null();
-  test_attach_and_dispatch();
-  test_dispatch_no_handler();
-  test_power_transition();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_adc.c\n");
   return 0;
 }

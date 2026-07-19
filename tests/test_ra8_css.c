@@ -776,34 +776,50 @@ static void test_descendant(void)
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_descendant,
+  test_fontface_parse,
+  test_fontface_cascade,
+  test_fontface_match_mcdc,
+  test_fontface_null_guards,
+  test_parse_props,
+  test_parse_normal_resets,
+  test_parse_selectors,
+  test_parse_unsupported_skipped,
+  test_inline,
+  test_match_mcdc,
+  test_match_class_universal_type,
+  test_compound_selectors,
+  test_cascade_specificity,
+  test_cascade_source_order,
+  test_cascade_inheritance,
+  test_cascade_null_mcdc,
+  test_parse_color,
+  test_cascade_color,
+  test_parse_fontsize,
+  test_decoration_line_alias,
+  test_cascade_fontsize,
+  test_display,
+  test_resolve_skip_mcdc,
+  test_resolve_winner_mcdc,
+  test_null_guards,
+};
+
 int32_t main(void)
 {
-  test_descendant();
-  test_fontface_parse();
-  test_fontface_cascade();
-  test_fontface_match_mcdc();
-  test_fontface_null_guards();
-  test_parse_props();
-  test_parse_normal_resets();
-  test_parse_selectors();
-  test_parse_unsupported_skipped();
-  test_inline();
-  test_match_mcdc();
-  test_match_class_universal_type();
-  test_compound_selectors();
-  test_cascade_specificity();
-  test_cascade_source_order();
-  test_cascade_inheritance();
-  test_cascade_null_mcdc();
-  test_parse_color();
-  test_cascade_color();
-  test_parse_fontsize();
-  test_decoration_line_alias();
-  test_cascade_fontsize();
-  test_display();
-  test_resolve_skip_mcdc();
-  test_resolve_winner_mcdc();
-  test_null_guards();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_css.c\n");
   return 0;
 }

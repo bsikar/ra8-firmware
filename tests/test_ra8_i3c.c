@@ -768,35 +768,51 @@ static void test_mcdc_i3c_internal_hdr_mode_invalid(void)
   TEST_END("i3c MC/DC: hdr_mode_invalid AND");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init,
+  test_deinit,
+  test_status_read_and_clear,
+  test_attach_and_dispatch,
+  test_set_address,
+  test_bus_enable,
+  test_power_transition,
+  test_dynamic_address_assign,
+  test_set_dynamic_address,
+  test_reset_dynamic_addresses,
+  test_send_ccc_broadcast,
+  test_send_ccc_directed_with_payload,
+  test_recv_ccc_directed,
+  test_write_immediate,
+  test_write_regular,
+  test_read_happy,
+  test_ibi_read_empty,
+  test_ibi_read_one,
+  test_set_hdr_mode_ddr,
+  test_set_hdr_mode_ts_and_validation,
+  test_ibi_enable_writes_ntibivctl,
+  test_ibi_drain_aliases_read,
+  test_target_open_sets_slve_and_nsdvad,
+  test_mcdc_i3c,
+  test_mcdc_i3c_write_read_arg_pairs,
+  test_mcdc_i3c_internal_recv_ccc_invalid,
+  test_mcdc_i3c_internal_hdr_mode_invalid,
+};
+
 int32_t main(void)
 {
-  test_init();
-  test_deinit();
-  test_status_read_and_clear();
-  test_attach_and_dispatch();
-  test_set_address();
-  test_bus_enable();
-  test_power_transition();
-  test_dynamic_address_assign();
-  test_set_dynamic_address();
-  test_reset_dynamic_addresses();
-  test_send_ccc_broadcast();
-  test_send_ccc_directed_with_payload();
-  test_recv_ccc_directed();
-  test_write_immediate();
-  test_write_regular();
-  test_read_happy();
-  test_ibi_read_empty();
-  test_ibi_read_one();
-  test_set_hdr_mode_ddr();
-  test_set_hdr_mode_ts_and_validation();
-  test_ibi_enable_writes_ntibivctl();
-  test_ibi_drain_aliases_read();
-  test_target_open_sets_slve_and_nsdvad();
-  test_mcdc_i3c();
-  test_mcdc_i3c_write_read_arg_pairs();
-  test_mcdc_i3c_internal_recv_ccc_invalid();
-  test_mcdc_i3c_internal_hdr_mode_invalid();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK  ] test_ra8_i3c.c\n");
   return 0;
 }

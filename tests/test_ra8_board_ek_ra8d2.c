@@ -712,42 +712,58 @@ static void test_board_ethernet_init_coma_bpr_timeout(void)
   TEST_END("board_ethernet_init reports CABPIRM.BPR timeout");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_board_get_info,
+  test_board_get_info_null,
+  test_led_pin_lookup,
+  test_led_pin_invalid,
+  test_sw_pin_lookup,
+  test_sw_attach_irq_null_cb,
+  test_audio_pins,
+  test_audio_play_sample_block_validates,
+  test_audio_init_validates,
+  test_arduino_pins,
+  test_arduino_pin_init_invalid_mode,
+  test_pmod1_spi_pins,
+  test_pmod2_spi_pins,
+  test_glcdc_pin_tables_populated,
+  test_glcdc_init_invalid_fmt,
+  test_camera_pins,
+  test_xspi_pins,
+  test_extmem_sizes,
+  test_mipi_dsi_pins,
+  test_stubs_return_not_supported,
+  test_uart_console_pins,
+  test_uart_console_init_rejects_zero_baud,
+  test_uart_console_write_validates,
+  test_uart_console_read_validates,
+  test_ethernet_pins,
+  test_ethernet_index_constants,
+  test_board_led_funcs,
+  test_board_sw_funcs,
+  test_board_xspi_init,
+  test_board_arduino_gpio_funcs,
+  test_board_io_expander,
+  test_board_uart_console_flush,
+  test_board_ethernet_init,
+  test_board_ethernet_init_coma_bpr_timeout,
+};
+
 int32_t main(void)
 {
-  test_board_get_info();
-  test_board_get_info_null();
-  test_led_pin_lookup();
-  test_led_pin_invalid();
-  test_sw_pin_lookup();
-  test_sw_attach_irq_null_cb();
-  test_audio_pins();
-  test_audio_play_sample_block_validates();
-  test_audio_init_validates();
-  test_arduino_pins();
-  test_arduino_pin_init_invalid_mode();
-  test_pmod1_spi_pins();
-  test_pmod2_spi_pins();
-  test_glcdc_pin_tables_populated();
-  test_glcdc_init_invalid_fmt();
-  test_camera_pins();
-  test_xspi_pins();
-  test_extmem_sizes();
-  test_mipi_dsi_pins();
-  test_stubs_return_not_supported();
-  test_uart_console_pins();
-  test_uart_console_init_rejects_zero_baud();
-  test_uart_console_write_validates();
-  test_uart_console_read_validates();
-  test_ethernet_pins();
-  test_ethernet_index_constants();
-  test_board_led_funcs();
-  test_board_sw_funcs();
-  test_board_xspi_init();
-  test_board_arduino_gpio_funcs();
-  test_board_io_expander();
-  test_board_uart_console_flush();
-  test_board_ethernet_init();
-  test_board_ethernet_init_coma_bpr_timeout();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_board_ek_ra8d2.c\n");
   return 0;
 }

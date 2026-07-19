@@ -698,30 +698,46 @@ static void test_mcdc_validate_lanes(void)
   TEST_END("mipi_csi init MC/DC: lanes!=1 && lanes!=2");
 }
 
+/**
+ * @var s_test_roster
+ * @brief Fixed-order roster of every test case in this translation unit.
+ *
+ * @details
+ * main() walks this table instead of naming each case, so its size does not
+ * grow with the number of tests and adding a case is a one-line edit.
+ *
+ * @note Order is significant: cases run top to bottom, exactly as before.
+ */
+static void (*const s_test_roster[])(void) = {
+  test_init_happy,
+  test_init_ecc_and_frame_bits,
+  test_init_dt_and_short_packet,
+  test_init_epct_emct,
+  test_init_irq_masks,
+  test_init_null_cfg,
+  test_init_bad_lanes,
+  test_init_bad_args,
+  test_start_then_stop,
+  test_reset,
+  test_status_get_clear,
+  test_set_rx_irq_enable,
+  test_get_module_irq_status,
+  test_get_module_info,
+  test_set_data_type_filter,
+  test_set_ecc_mode,
+  test_set_frame_error_mode,
+  test_set_epd,
+  test_set_lrte,
+  test_power_transition,
+  test_deinit,
+  test_mcdc_validate_lanes,
+};
+
 int32_t main(void)
 {
-  test_init_happy();
-  test_init_ecc_and_frame_bits();
-  test_init_dt_and_short_packet();
-  test_init_epct_emct();
-  test_init_irq_masks();
-  test_init_null_cfg();
-  test_init_bad_lanes();
-  test_init_bad_args();
-  test_start_then_stop();
-  test_reset();
-  test_status_get_clear();
-  test_set_rx_irq_enable();
-  test_get_module_irq_status();
-  test_get_module_info();
-  test_set_data_type_filter();
-  test_set_ecc_mode();
-  test_set_frame_error_mode();
-  test_set_epd();
-  test_set_lrte();
-  test_power_transition();
-  test_deinit();
-  test_mcdc_validate_lanes();
+  for (size_t i = 0U; i < (sizeof s_test_roster / sizeof s_test_roster[0]); ++i) {
+    s_test_roster[i]();
+  }
   (void)fprintf(stderr, "[OK ] test_ra8_mipi_csi_init.c\n");
   return 0;
 }
