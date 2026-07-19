@@ -101,6 +101,28 @@ static void test_blit_gray4_1to1(void)
  * @par MC/DC:
  * (no compound decision under test -- verifies integer 2x block replication)
  */
+/**
+ * @brief Assert source pixel (@p sx, @p sy) filled its whole 2x2 output block.
+ * @param[in] sx Source column, in source pixels.
+ * @param[in] sy Source row, in source pixels.
+ * @param[in] g  Gray level the whole block must carry.
+ * @return None.
+ * @pre A 2x zoom blit has just written the framebuffer.
+ * @pre The block at (2*@p sx, 2*@p sy) lies inside the framebuffer.
+ * @post All four destination pixels of the block compared equal to @p g.
+ * @post The framebuffer is unmodified.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void assert_zoom2_block(int32_t sx, int32_t sy, uint8_t g)
+{
+  for (int32_t dy = 0; dy < 2; ++dy) {
+    for (int32_t dx = 0; dx < 2; ++dx) {
+      TEST_ASSERT_EQ(g, px_gray((sx * 2) + dx, (sy * 2) + dy));
+    }
+  }
+}
+
 static void test_blit_gray4_zoom2(void)
 {
   TEST_BEGIN("gray4 2x zoom replicates each pixel into a 2x2 block");
@@ -110,12 +132,7 @@ static void test_blit_gray4_zoom2(void)
   static const uint8_t k_expect[2][2] = {{0x00, 0x11}, {0x44, 0x55}};
   for (int32_t sy = 0; sy < 2; ++sy) {
     for (int32_t sx = 0; sx < 2; ++sx) {
-      const uint8_t g = k_expect[sy][sx];
-      for (int32_t dy = 0; dy < 2; ++dy) {
-        for (int32_t dx = 0; dx < 2; ++dx) {
-          TEST_ASSERT_EQ(g, px_gray((sx * 2) + dx, (sy * 2) + dy));
-        }
-      }
+      assert_zoom2_block(sx, sy, k_expect[sy][sx]);
     }
   }
   TEST_END("gray4 2x zoom replicates each pixel into a 2x2 block");
