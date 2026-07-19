@@ -25,27 +25,13 @@
 
 #include "board_console.h"
 
-/** @brief Offsets into the frames this stub synthesises. */
+/** @brief Offsets into the frames this stub synthesises (RFC 826 / RFC 793). */
 typedef enum : uint8_t {
-  k_arp_tha_off     = 18U, /**< ARP target-hardware-address offset.   */
-  k_tcp_off_payload = 20U, /**< TCP payload offset (no options here). */
+  k_arp_plen_off    = 5U,  /**< ARP protocol-address-length field offset. */
+  k_arp_spa_off     = 14U, /**< ARP sender-protocol-address offset.       */
+  k_arp_tha_off     = 18U, /**< ARP target-hardware-address offset.       */
+  k_tcp_off_payload = 20U, /**< TCP payload offset (no options here).     */
 } board_net_frame_off_t;
-
-/**
- * @enum net_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_net_put32_12 = 12,
-  k_net_put32_14 = 14,
-  k_net_put32_24 = 24,
-  k_net_val_5    = 5,
-} net_uint8_const_t;
 
 /** @brief Console-tap line buffer capacity for a network packet summary. */
 typedef enum : uint32_t {
@@ -94,6 +80,8 @@ typedef enum : uint32_t {
   k_ip_ttl            = 64U,     /**< IPv4 default TTL.                   */
   k_ip_proto_off      = 9U,      /**< IPv4 protocol-field offset.         */
   k_ip_csum_off       = 10U,     /**< IPv4 header-checksum offset.        */
+  k_ip_src_off        = 12U,     /**< IPv4 source-address offset.         */
+  k_ip_dst_off        = 16U,     /**< IPv4 destination-address offset.    */
   k_ip_ihl_mask       = 0x0FU,   /**< IHL / data-offset nibble mask.      */
   k_ihl_word          = 4U,      /**< IHL/data-offset word size (bytes).  */
   k_icmp_ident        = 0xBEEFU, /**< ICMP echo identifier (fixed).       */
@@ -255,11 +243,11 @@ static void net_send_arp_request(void)
   put16(&a[0], 1U);                   /* htype = Ethernet. */
   put16(&a[2], (uint16_t)k_eth_ipv4); /* ptype = IPv4.     */
   a[4]           = (uint8_t)k_mac_len;
-  a[k_net_val_5] = (uint8_t)k_arp_plen;
+  a[k_arp_plen_off] = (uint8_t)k_arp_plen;
   put16(&a[6], 1U); /* op = request. */
   (void)memcpy(&a[8], s_peer_mac, k_mac_len);
-  put32(&a[k_net_put32_14], (uint32_t)k_net_peer_ip);
-  put32(&a[k_net_put32_24], (uint32_t)k_net_fw_ip);
+  put32(&a[k_arp_spa_off], (uint32_t)k_net_peer_ip);
+  put32(&a[k_arp_tpa_off], (uint32_t)k_net_fw_ip);
   net_queue(f, sizeof(f));
 }
 
@@ -273,10 +261,10 @@ static void net_send_arp_reply(const uint8_t* to_mac, uint32_t to_ip)
   put16(&a[0], 1U);
   put16(&a[2], (uint16_t)k_eth_ipv4);
   a[4]           = (uint8_t)k_mac_len;
-  a[k_net_val_5] = (uint8_t)k_arp_plen;
+  a[k_arp_plen_off] = (uint8_t)k_arp_plen;
   put16(&a[6], 2U); /* op = reply. */
   (void)memcpy(&a[8], s_peer_mac, k_mac_len);
-  put32(&a[k_net_put32_14], (uint32_t)k_net_peer_ip);
+  put32(&a[k_arp_spa_off], (uint32_t)k_net_peer_ip);
   (void)memcpy(&a[k_arp_tha_off], to_mac, k_mac_len);
   put32(&a[k_arp_tpa_off], to_ip);
   net_queue(f, sizeof(f));
@@ -297,8 +285,8 @@ static void net_ip_hdr(uint8_t* ip, uint8_t proto, uint16_t payload_len)
   put16(&ip[6], (uint16_t)k_ip_flag_df);  /* don't fragment. */
   ip[8]              = (uint8_t)k_ip_ttl; /* TTL.            */
   ip[k_ip_proto_off] = proto;
-  put32(&ip[k_net_put32_12], (uint32_t)k_net_peer_ip);
-  put32(&ip[16], (uint32_t)k_net_fw_ip);
+  put32(&ip[k_ip_src_off], (uint32_t)k_net_peer_ip);
+  put32(&ip[k_ip_dst_off], (uint32_t)k_net_fw_ip);
   put16(&ip[k_ip_csum_off], net_checksum(ip, k_ip_hdr, 0U));
 }
 
@@ -533,9 +521,9 @@ void board_net_on_tx(const uint8_t* frame, uint32_t len)
     (void)fprintf(stderr,
                   "  [net] firmware TX %u bytes ethertype 0x%04X\n",
                   len,
-                  (unsigned)get16(&frame[k_net_put32_12]));
+                  (unsigned)get16(&frame[k_eth_ethertype_off]));
   }
-  const uint16_t ethertype = get16(&frame[12]);
+  const uint16_t ethertype = get16(&frame[k_eth_ethertype_off]);
   /* Console NET tab: one line per frame the firmware transmits. */
   char ln[k_net_console_line_cap];
   (void)snprintf(ln, sizeof(ln), "NET tx eth=0x%04X %uB", (unsigned)ethertype, (unsigned)len);

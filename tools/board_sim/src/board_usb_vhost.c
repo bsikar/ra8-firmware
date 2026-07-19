@@ -20,24 +20,6 @@
 #include "ra8_elc_regs.h"
 #include "ra8_usb_regs.h"
 
-/**
- * @enum usb_vhost_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_usb_vhost_val_10 = 10,
-  k_usb_vhost_val_11 = 11,
-  k_usb_vhost_val_12 = 12,
-  k_usb_vhost_val_5  = 5,
-  k_usb_vhost_val_7  = 7,
-  k_usb_vhost_val_9  = 9,
-} usb_vhost_uint8_const_t;
-
 /* =============================================================================
  * Device-class awareness -- the host detects HID / MSC / CDC from the enumerated
  * interface descriptor and surfaces the class-specific traffic after CONFIGURED,
@@ -634,19 +616,20 @@ static void host_msc_send_cbw(uc_engine* uc)
   d[1]                 = (uint8_t)'S';
   d[2]                 = (uint8_t)'B';
   d[3]                 = (uint8_t)'C';
-  d[4]                 = (uint8_t)(s_msc_tag & (uint32_t)k_usb_byte_mask);
-  d[k_usb_vhost_val_5] = (uint8_t)((s_msc_tag >> 8) & (uint32_t)k_usb_byte_mask);
-  d[6]                 = (uint8_t)((s_msc_tag >> 16) & (uint32_t)k_usb_byte_mask);
-  d[k_usb_vhost_val_7] =
+  /* dCBWTag / dCBWDataTransferLength are little-endian u32 (USB MSC BOT 5.1). */
+  d[k_cbw_tag_off + k_le_lane_b0] = (uint8_t)(s_msc_tag & (uint32_t)k_usb_byte_mask);
+  d[k_cbw_tag_off + k_le_lane_b1] = (uint8_t)((s_msc_tag >> 8) & (uint32_t)k_usb_byte_mask);
+  d[k_cbw_tag_off + k_le_lane_b2] = (uint8_t)((s_msc_tag >> 16) & (uint32_t)k_usb_byte_mask);
+  d[k_cbw_tag_off + k_le_lane_b3] =
     (uint8_t)((s_msc_tag >> (uint32_t)k_usb_shift24) & (uint32_t)k_usb_byte_mask);
-  d[8]                  = (uint8_t)(data_len & (uint32_t)k_usb_byte_mask);
-  d[k_usb_vhost_val_9]  = (uint8_t)((data_len >> 8) & (uint32_t)k_usb_byte_mask);
-  d[k_usb_vhost_val_10] = (uint8_t)((data_len >> 16) & (uint32_t)k_usb_byte_mask);
-  d[k_usb_vhost_val_11] =
+  d[k_cbw_dtl_off + k_le_lane_b0] = (uint8_t)(data_len & (uint32_t)k_usb_byte_mask);
+  d[k_cbw_dtl_off + k_le_lane_b1] = (uint8_t)((data_len >> 8) & (uint32_t)k_usb_byte_mask);
+  d[k_cbw_dtl_off + k_le_lane_b2] = (uint8_t)((data_len >> 16) & (uint32_t)k_usb_byte_mask);
+  d[k_cbw_dtl_off + k_le_lane_b3] =
     (uint8_t)((data_len >> (uint32_t)k_usb_shift24) & (uint32_t)k_usb_byte_mask);
-  d[k_usb_vhost_val_12] = (uint8_t)k_msc_flag_in; /* all scripted commands read. */
-  d[k_cbw_lun_off]      = 0U;                     /* LUN 0.                      */
-  d[k_cbw_cdblen_off]   = cdb_len;
+  d[k_cbw_flags_off]  = (uint8_t)k_msc_flag_in; /* all scripted commands read. */
+  d[k_cbw_lun_off]    = 0U;                     /* LUN 0.                      */
+  d[k_cbw_cdblen_off] = cdb_len;
   for (uint32_t i = 0U; i < 16U; i++) {
     d[k_cbw_cdb_off + i] = cdb[i];
   }
@@ -685,12 +668,18 @@ static void host_msc_parse_capacity(const uint8_t* d, uint16_t n)
   if (n < 8U) {
     return;
   }
-  const uint32_t last_lba = ((uint32_t)d[0] << (uint32_t)k_usb_shift24) | ((uint32_t)d[1] << 16) |
-                            ((uint32_t)d[2] << 8) | (uint32_t)d[3];
-  s_msc_block_len         = ((uint32_t)d[4] << (uint32_t)k_usb_shift24) |
-                            ((uint32_t)d[k_usb_vhost_val_5] << 16) | ((uint32_t)d[6] << 8) |
-                            (uint32_t)d[k_usb_vhost_val_7];
-  s_msc_blocks            = last_lba + 1U;
+  /* Both parameter-block fields are big-endian u32 (SCSI READ CAPACITY(10)). */
+  const uint32_t last_lba =
+    ((uint32_t)d[k_cap10_last_lba_off + k_be_lane_b3] << (uint32_t)k_usb_shift24) |
+    ((uint32_t)d[k_cap10_last_lba_off + k_be_lane_b2] << 16) |
+    ((uint32_t)d[k_cap10_last_lba_off + k_be_lane_b1] << 8) |
+    (uint32_t)d[k_cap10_last_lba_off + k_be_lane_b0];
+  s_msc_block_len =
+    ((uint32_t)d[k_cap10_blocklen_off + k_be_lane_b3] << (uint32_t)k_usb_shift24) |
+    ((uint32_t)d[k_cap10_blocklen_off + k_be_lane_b2] << 16) |
+    ((uint32_t)d[k_cap10_blocklen_off + k_be_lane_b1] << 8) |
+    (uint32_t)d[k_cap10_blocklen_off + k_be_lane_b0];
+  s_msc_blocks = last_lba + 1U;
 }
 
 /** @brief Phase ::k_msc_send: push the next CBW, or finish the script. */

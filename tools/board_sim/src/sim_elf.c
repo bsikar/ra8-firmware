@@ -29,22 +29,6 @@
 #include "sim_seams.h"
 #include "sim_view.h"
 
-/**
- * @enum sim_elf_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_sim_elf_val_42 = 42,
-  k_sim_elf_val_43 = 43,
-  k_sim_elf_val_44 = 44,
-  k_sim_elf_val_45 = 45,
-} sim_elf_uint8_const_t;
-
 uint8_t* read_file(const char* path, long* out_len)
 {
   FILE* f = fopen(path, "rb");
@@ -75,15 +59,17 @@ int load_elf(uc_engine* uc, const uint8_t* elf, long len)
     (void)fprintf(stderr, "not a 32-bit ELF\n");
     return -1;
   }
-  const uint16_t e_machine = (uint16_t)(elf[18] | (elf[19] << 8));
+  const uint16_t e_machine =
+    (uint16_t)(elf[k_elf_e_machine_off] | (elf[k_elf_e_machine_off + 1U] << 8));
   if (e_machine != (uint16_t)k_elf_em_arm) {
     (void)fprintf(stderr, "ELF e_machine %u != ARM(40)\n", e_machine);
     return -1;
   }
   uint32_t phoff = 0U;
   (void)memcpy(&phoff, elf + (uint32_t)k_elf_e_phoff_off, 4);
-  uint16_t phentsize = (uint16_t)(elf[k_sim_elf_val_42] | (elf[k_sim_elf_val_43] << 8));
-  uint16_t phnum     = (uint16_t)(elf[k_sim_elf_val_44] | (elf[k_sim_elf_val_45] << 8));
+  uint16_t phentsize =
+    (uint16_t)(elf[k_elf_e_phentsize_off] | (elf[k_elf_e_phentsize_off + 1U] << 8));
+  uint16_t phnum = (uint16_t)(elf[k_elf_e_phnum_off] | (elf[k_elf_e_phnum_off + 1U] << 8));
   int      loaded    = 0;
   for (uint16_t i = 0U; i < phnum; i++) {
     const uint8_t* ph = elf + phoff + ((size_t)(uint32_t)i * phentsize);
