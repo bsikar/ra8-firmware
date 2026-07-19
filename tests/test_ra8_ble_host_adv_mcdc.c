@@ -34,7 +34,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ble_host_adv_mcdc_role_ff = 0xFFU,
+  k_ble_role_invalid = 0xFFU, /**< A role value outside the enumeration, which init must reject. */
 } ble_host_adv_mcdc_uint8_const_t;
 
 /* Test hooks from libs/ra8_hal/src/ra8_ble.c. */
@@ -253,7 +253,7 @@ static void test_mcdc_init_role_4cond(void)
   (void)ra8_ble_host_close();
   (void)ra8_ble_close();
   /* V5: bogus role */
-  cfg.role = (ra8_ble_host_role_t)k_ble_host_adv_mcdc_role_ff;
+  cfg.role = (ra8_ble_host_role_t)k_ble_role_invalid;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ble_host_init(&cfg));
   TEST_END("mcdc init role (4-cond AND chain)");
 }

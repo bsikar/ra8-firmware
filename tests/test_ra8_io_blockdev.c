@@ -38,8 +38,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_io_blockdev_i_7  = 7U,
-  k_io_blockdev_i_ff = 0xFFU,
+  k_bd_pattern_stride = 7U,    /**< Stride of the payload generator, `i * 7 + 3`. */
+  k_byte_mask         = 0xFFU, /**< Truncates a generated or shifted value back into a byte. */
 } io_blockdev_uint8_const_t;
 
 /**
@@ -122,7 +122,7 @@ static void test_ram_read_write_roundtrip(void)
 
   uint8_t out[(size_t)k_ra8_io_block_size_bytes];
   for (uint32_t i = 0; i < (uint32_t)k_ra8_io_block_size_bytes; ++i) {
-    out[i] = (uint8_t)(i & k_io_blockdev_i_ff);
+    out[i] = (uint8_t)(i & k_byte_mask);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 2, 1, out));
 
@@ -354,7 +354,7 @@ static void test_fs_bridge_fat_roundtrip(void)
 
   uint8_t payload[(size_t)k_test_payload_len];
   for (uint32_t i = 0; i < (uint32_t)k_test_payload_len; ++i) {
-    payload[i] = (uint8_t)(((i * k_io_blockdev_i_7) + 3U) & k_io_blockdev_i_ff);
+    payload[i] = (uint8_t)(((i * k_bd_pattern_stride) + 3U) & k_byte_mask);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(mnt, "HELLO.BIN", payload, k_test_payload_len));
 

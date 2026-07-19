@@ -74,7 +74,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_jpeg_sw_cov_vals_42 = 0x42U,
+  k_jpeg_huff_symbol =
+    0x42U, /**< A Huffman table symbol; non-zero, so a table left cleared is distinguishable from one that was loaded. */
 } jpeg_sw_cov_uint8_const_t;
 
 /* ------------------------------------------------------------------ */
@@ -229,7 +230,7 @@ static void test_htab_decode_valptr_overrun(void)
   ra8_jpeg_htab_t h = {};
   /* Build a 1-symbol, 1-bit table: bits[0]=1, vals[0]=0x42. */
   h.bits[0] = 1U;
-  h.vals[0] = k_jpeg_sw_cov_vals_42;
+  h.vals[0] = k_jpeg_huff_symbol;
   ra8_jpeg_sw_htab_build(&h);
   /* Corrupt total so that j = valptr[0] + 0 = 0 >= total = 0. */
   h.total = 0U;

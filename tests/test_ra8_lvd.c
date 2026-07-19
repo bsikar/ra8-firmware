@@ -31,7 +31,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_lvd_sentinel_a5 = 0xA5U,
+  k_lvd_probe_cr1 = 0xA5U, /**< Planted in PVD2 CR1 to prove the write reaches the register. */
 } lvd_uint8_const_t;
 
 /**
@@ -119,7 +119,7 @@ static void test_init_n_channel_no_cr1(void)
 
   /* Seed the CR1 byte (which lives at the PVD2 address space) with a
    * sentinel and confirm the n-channel init path leaves it alone. */
-  *ra8_lvd_reg8(k_ra8_lvd_pvd2_cr1_off) = k_lvd_sentinel_a5;
+  *ra8_lvd_reg8(k_ra8_lvd_pvd2_cr1_off) = k_lvd_probe_cr1;
 
   ra8_lvd_cfg_t cfg = make_cfg();
   cfg.response      = k_ra8_lvd_response_reset;

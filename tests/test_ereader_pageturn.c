@@ -31,7 +31,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ereader_pageturn_c_9 = 9U,
+  k_pageturn_poison_out =
+    9U, /**< Poison written into the chapter and page out-parameters, so a call that set neither is detectable. */
 } ereader_pageturn_uint8_const_t;
 
 /**
@@ -70,8 +71,8 @@ static void test_buttons(void)
 static void test_step_within(void)
 {
   TEST_BEGIN("step: within-chapter next/prev + none");
-  uint32_t c = k_ereader_pageturn_c_9;
-  uint32_t p = k_ereader_pageturn_c_9;
+  uint32_t c = k_pageturn_poison_out;
+  uint32_t p = k_pageturn_poison_out;
   bool     x = true;
   /* next within a 3-chapter spine, chapter 1 page 1 of 5 -> page 2 */
   TEST_ASSERT(er_pageturn_step(1U, 1U, 5U, 3U, k_er_dir_next, &c, &p, &x));

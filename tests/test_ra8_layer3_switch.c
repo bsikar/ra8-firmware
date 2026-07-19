@@ -23,7 +23,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_layer3_switch_mtu_bytes_1500 = 1500U,
+  k_l3_mtu_bytes = 1500U, /**< The standard Ethernet MTU the switch is configured with. */
 } layer3_switch_uint16_const_t;
 
 typedef enum : uint32_t {
@@ -61,9 +61,7 @@ static void test_open_bad_args(void)
 {
   TEST_BEGIN("open rejects zero port_count or mtu_bytes");
   prep();
-  ra8_layer3_switch_cfg_t cfg = {.port_count  = 0U,
-                                 .mtu_bytes   = k_layer3_switch_mtu_bytes_1500,
-                                 .promiscuous = 0U};
+  ra8_layer3_switch_cfg_t cfg = {.port_count = 0U, .mtu_bytes = k_l3_mtu_bytes, .promiscuous = 0U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_layer3_switch_open(&cfg));
   cfg.port_count = 4U;
   cfg.mtu_bytes  = 0U;

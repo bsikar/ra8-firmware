@@ -31,7 +31,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_css_val_80 = 80,
+  k_css_decl_cap = 80, /**< Capacity of the serialized-declaration buffer. */
 } css_uint8_const_t;
 
 /**
@@ -44,7 +44,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_css_color_123456 = 0x123456U,
+  k_css_parent_color =
+    0x123456U, /**< A parent colour with three distinct channel bytes, so a child that inherited only part of it is visible. */
 } css_uint32_const_t;
 
 /** @brief Shared parsed stylesheet for the matching / cascade tests. */
@@ -354,7 +355,7 @@ static void test_cascade_color(void)
   /* a child with no colour rule inherits the parent's colour */
   ra8_css_style_t parent = {};
   parent.set             = (uint8_t)k_ra8_css_set_color;
-  parent.color           = k_css_color_123456;
+  parent.color           = k_css_parent_color;
   ra8_css_element_t kid  = elem(k_ra8_reflow_tag_strong, nullptr, nullptr);
   ra8_css_style_t   rk   = ra8_css_cascade(&s_sheet, &kid, parent, no_inline());
   TEST_ASSERT_EQ(0x123456, rk.color);
@@ -364,7 +365,7 @@ static void test_cascade_color(void)
 /** @brief Parse an inline `font-size: <value>` and return the declaration. */
 static ra8_css_style_t fs(const char* value)
 {
-  char buf[k_css_val_80] = {};
+  char buf[k_css_decl_cap] = {};
   (void)snprintf(buf, sizeof buf, "font-size:%s", value);
   ra8_css_style_t d = {};
   (void)ra8_css_parse_inline(buf, (uint32_t)strlen(buf), &d);

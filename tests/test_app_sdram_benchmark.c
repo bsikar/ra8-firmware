@@ -30,7 +30,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_sdram_benchmark_ms_clamped_1000 = 1000U,
+  k_ms_per_second =
+    1000U, /**< Milliseconds per second, converting a byte count and a duration into a rate. */
 } sdram_benchmark_uint16_const_t;
 
 typedef enum : uint32_t {
@@ -47,7 +48,7 @@ static void reset_world(void)
 static uint32_t app_mbps(uint32_t bytes, uint32_t ms)
 {
   const uint32_t ms_clamped = (ms == 0U) ? 1U : ms;
-  return bytes / (ms_clamped * k_sdram_benchmark_ms_clamped_1000);
+  return bytes / (ms_clamped * k_ms_per_second);
 }
 
 /**

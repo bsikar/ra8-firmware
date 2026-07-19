@@ -29,7 +29,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_bkup_tamper_b_ff = 0xFFU,
+  k_bkup_field_invalid =
+    0xFFU, /**< A field value outside every enumeration it is assigned to, so each configuration guard must reject it. */
 } bkup_tamper_uint8_const_t;
 
 /**
@@ -312,7 +313,7 @@ static void test_zero_all(void)
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_bkup_zero_all());
   for (uint16_t i = 0U; i < (uint16_t)k_ra8_bkup_reg_count; ++i) {
-    uint8_t b = k_bkup_tamper_b_ff;
+    uint8_t b = k_bkup_field_invalid;
     TEST_ASSERT_EQ(k_ra8_ok, ra8_bkup_read_byte(i, &b));
     TEST_ASSERT_EQ(0, b);
   }
@@ -394,11 +395,11 @@ static void test_tamper_init_bad_args(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_bkup_tamper_init(&cfg));
 
   cfg                  = make_tamper_cfg();
-  cfg.channels[1].edge = (ra8_bkup_edge_t)k_bkup_tamper_b_ff;
+  cfg.channels[1].edge = (ra8_bkup_edge_t)k_bkup_field_invalid;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_bkup_tamper_init(&cfg));
 
   cfg                         = make_tamper_cfg();
-  cfg.channels[2].capture_src = (ra8_bkup_capture_src_t)k_bkup_tamper_b_ff;
+  cfg.channels[2].capture_src = (ra8_bkup_capture_src_t)k_bkup_field_invalid;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_bkup_tamper_init(&cfg));
   TEST_END("bkup tamper_init bad args");
 }
@@ -415,9 +416,9 @@ static void test_tamper_disable(void)
   prep();
   /* Pre-load every tamper-side register. */
   *ra8_bkup_vbtictlr()  = (uint8_t)k_ra8_bkup_vbtictlr_mask_all;
-  *ra8_bkup_vbtictlr2() = k_bkup_tamper_b_ff;
+  *ra8_bkup_vbtictlr2() = k_bkup_field_invalid;
   *ra8_bkup_vbtadsr()   = (uint8_t)k_ra8_bkup_vbtadsr_mask_all;
-  *ra8_bkup_vbtadcr1()  = k_bkup_tamper_b_ff;
+  *ra8_bkup_vbtadcr1()  = k_bkup_field_invalid;
   *ra8_bkup_vbtadcr2()  = (uint8_t)k_ra8_bkup_vbtadcr2_mask_all;
   *ra8_bkup_vbtadcr3()  = (uint8_t)k_ra8_bkup_vbtadcr3_mask_all;
 
@@ -765,14 +766,14 @@ static void test_mcdc_ra8_bkup(void)
   cfg.channels[1].edge         = k_ra8_bkup_edge_rising;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_bkup_tamper_init(&cfg));
   cfg                  = make_tamper_cfg();
-  cfg.channels[0].edge = (ra8_bkup_edge_t)k_bkup_tamper_b_ff;
+  cfg.channels[0].edge = (ra8_bkup_edge_t)k_bkup_field_invalid;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_bkup_tamper_init(&cfg));
   cfg                         = make_tamper_cfg();
   cfg.channels[0].capture_src = k_ra8_bkup_capture_src_pin;
   cfg.channels[1].capture_src = k_ra8_bkup_capture_src_vbtadf;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_bkup_tamper_init(&cfg));
   cfg                         = make_tamper_cfg();
-  cfg.channels[2].capture_src = (ra8_bkup_capture_src_t)k_bkup_tamper_b_ff;
+  cfg.channels[2].capture_src = (ra8_bkup_capture_src_t)k_bkup_field_invalid;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_bkup_tamper_init(&cfg));
   TEST_END("bkup MC/DC: validate_chan edge + capture_src decisions");
 }

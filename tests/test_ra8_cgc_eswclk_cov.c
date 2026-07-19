@@ -51,7 +51,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_cgc_eswclk_cov_i_255 = 255U,
+  k_cgc_divider_settings =
+    255U, /**< Divider settings swept: every value the field can hold, so no encoding goes untried. */
 } cgc_eswclk_cov_uint8_const_t;
 
 /**
@@ -308,7 +309,7 @@ static void test_eswclk_init_mstp_saturated(void)
   /* Saturate the ethphyclk refcount by enabling 255 times. The first
    * call ungates the peripheral (register write + readback); the
    * remaining 254 calls only increment the refcount (fast path). */
-  for (uint16_t i = 0U; i < k_cgc_eswclk_cov_i_255; ++i) {
+  for (uint16_t i = 0U; i < k_cgc_divider_settings; ++i) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_enable(k_ra8_mstp_ethphyclk));
   }
 

@@ -50,8 +50,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_app_launcher_render_crc_ffffffff = 0xFFFFFFFFU,
-  k_app_launcher_render_val_edb88320 = 0xEDB88320U,
+  k_crc32_init           = 0xFFFFFFFFU, /**< CRC-32 initial value, and the final XOR-out. */
+  k_crc32_poly_reflected = 0xEDB88320U, /**< The reflected CRC-32 polynomial. */
 } app_launcher_render_uint32_const_t;
 
 /**
@@ -125,12 +125,12 @@ static ra8_box_t s_lr_box[k_lr_box_cap];
 /** @brief CRC-32 (reflected, poly 0xEDB88320) over a byte span. */
 static uint32_t lr_crc32(const uint8_t* data, size_t len)
 {
-  uint32_t crc = k_app_launcher_render_crc_ffffffff;
+  uint32_t crc = k_crc32_init;
   for (size_t i = 0U; i < len; ++i) {
     crc ^= (uint32_t)data[i];
     for (uint32_t b = 0U; b < 8U; ++b) {
       if ((crc & 1U) != 0U) {
-        crc = (crc >> 1U) ^ k_app_launcher_render_val_edb88320;
+        crc = (crc >> 1U) ^ k_crc32_poly_reflected;
       } else {
         crc = crc >> 1U;
       }

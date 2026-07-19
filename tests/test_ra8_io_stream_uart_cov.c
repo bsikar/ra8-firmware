@@ -53,7 +53,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_io_stream_uart_cov_written_ffffffff = 0xFFFFFFFFU,
+  k_io_poison_written =
+    0xFFFFFFFFU, /**< Poison written into the bytes-written out-parameter, so a call that fails without setting it is detectable. */
 } io_stream_uart_cov_uint32_const_t;
 
 /* =========================================================================
@@ -146,7 +147,7 @@ static void test_write_success_with_out_written(void)
 
   /* A non-null buf is required even for len=0 (uart_write checks it). */
   const uint8_t buf[1]  = {(uint8_t)k_uart_cov_test_byte};
-  uint32_t      written = k_io_stream_uart_cov_written_ffffffff;
+  uint32_t      written = k_io_poison_written;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_write(&s, buf, 0U, &written));
   /* On success *out_written is set to len (== 0). */
   TEST_ASSERT_EQ(0U, written);

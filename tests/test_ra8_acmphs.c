@@ -24,7 +24,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_acmphs_cmpctl_ff = 0xFFU,
+  k_acmphs_probe_cmpctl =
+    0xFFU, /**< Every CMPCTL bit set, so a configure that clears the wrong field leaves evidence in the rest. */
 } acmphs_uint8_const_t;
 
 typedef enum : uint8_t {
@@ -48,7 +49,7 @@ static void test_init_happy(void)
 
   volatile r_acmphs_regs_t* reg = ra8_acmphs((uint8_t)k_ra8_acmphs_test_ch_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  reg->CMPCTL = k_acmphs_cmpctl_ff;
+  reg->CMPCTL = k_acmphs_probe_cmpctl;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_acmphs_init());
   TEST_ASSERT_EQ(0, reg->CMPCTL);

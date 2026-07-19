@@ -43,7 +43,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_lcd_demo_val_ff = 0xFFU,
+  k_sys_oscsf_all_ready =
+    0xFFU, /**< Every oscillator-stabilisation flag set, so clock bring-up sees all sources ready. */
 } lcd_demo_uint8_const_t;
 
 /** @brief Per-test enums. */
@@ -74,7 +75,7 @@ static void reset_world(void)
   ra8_pin_validator_reset();
   /* Pre-seed OSCSF stabilisation bits so ra8_cgc_init() spin loops
    * complete on the first iteration in RA8_SIMULATOR_MODE. */
-  *ra8_sys_oscsf() = (uint8_t)k_lcd_demo_val_ff;
+  *ra8_sys_oscsf() = (uint8_t)k_sys_oscsf_all_ready;
 }
 
 /* -------------------------------------------------------------------------

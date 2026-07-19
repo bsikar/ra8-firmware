@@ -31,7 +31,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_img_arena_mcdc_val_64 = 64U,
+  k_arena_bytes = 64U, /**< Arena capacity for this vector. */
 } img_arena_mcdc_uint8_const_t;
 
 /**
@@ -58,7 +58,7 @@ typedef enum : uint8_t {
 static void test_arena_free_null_guard_mcdc(void)
 {
   TEST_BEGIN("ra8_img_arena_free MC/DC: (p==null) || (arena==null)");
-  static uint8_t  s_buf[k_img_arena_mcdc_val_64];
+  static uint8_t  s_buf[k_arena_bytes];
   ra8_img_arena_t arena = {.base = s_buf, .cap = sizeof s_buf, .offset = 0U, .live = 0U};
 
   /* V1: both conditions false -- a real block freed while the arena is bound. */

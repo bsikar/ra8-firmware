@@ -42,7 +42,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_threadx_systick_retune_val_ff = 0xFFU,
+  k_sys_oscsf_all_ready =
+    0xFFU, /**< Every oscillator-stabilisation flag set, so clock bring-up sees all sources ready. */
 } threadx_systick_retune_uint8_const_t;
 
 /** @brief Per-test constants (no magic numbers). */
@@ -68,7 +69,7 @@ static void reset_world(void)
   ra8_sim_mmap_reset();
   /* Pre-seed OSCSF stabilisation bits so ra8_cgc_init() spin loops
    * complete on the first iteration in RA8_SIMULATOR_MODE. */
-  *ra8_sys_oscsf() = (uint8_t)k_threadx_systick_retune_val_ff;
+  *ra8_sys_oscsf() = (uint8_t)k_sys_oscsf_all_ready;
 }
 
 /**

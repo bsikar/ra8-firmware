@@ -29,7 +29,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_i3c_i2c_peripheral_demo_mask_ff = 0xFFU,
+  k_i2c_mask_all = 0xFFU, /**< Every mask bit set, so no interrupt source is filtered out. */
 } i3c_i2c_peripheral_demo_uint8_const_t;
 
 typedef enum : uint8_t {
@@ -125,7 +125,7 @@ static void test_iic_peripheral_status_idle(void)
     .general_call       = 0U,
   };
   (void)ra8_i3c_peripheral_open((uint8_t)k_test_iic_peripheral_channel, &cfg);
-  uint8_t mask = k_i3c_i2c_peripheral_demo_mask_ff;
+  uint8_t mask = k_i2c_mask_all;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_i3c_peripheral_status((uint8_t)k_test_iic_peripheral_channel, &mask));
   TEST_END("i3c_i2c_peripheral_demo: status reports idle on fresh open");

@@ -71,7 +71,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_epub_open_cov_k_cov_pad_len_512 = 512U,
+  k_epub_container_overflow_pad =
+    512U, /**< Padding pushing the container XML past the parser's buffer, so the overflow guard fires. */
 } epub_open_cov_uint16_const_t;
 
 /* ---------------------------------------------------------------------------
@@ -471,7 +472,7 @@ static void test_open_container_too_large(void)
   /* Build a container.xml that is > 4096 bytes uncompressed.
    * Prefix a large XML comment so the document remains parseable in
    * isolation, but the extracted size exceeds the static scratch. */
-  static char s_big_container[k_cov_pad_len + k_epub_open_cov_k_cov_pad_len_512];
+  static char s_big_container[k_cov_pad_len + k_epub_container_overflow_pad];
   size_t      pos = 0U;
 
   /* Opening comment with lots of padding. */

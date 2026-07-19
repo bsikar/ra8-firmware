@@ -35,8 +35,9 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_i2c_sentinel_a5 = 0xA5U,
-  k_i2c_val_12      = 0x12U,
+  k_i2c_payload_byte = 0xA5U, /**< A recognizable single-byte payload; neither 0x00 nor 0xFF. */
+  k_i2c_payload_byte_alt =
+    0x12U, /**< A second payload byte, so two writes on one bus cannot be confused. */
 } i2c_uint8_const_t;
 
 /**
@@ -498,7 +499,7 @@ static void test_mcdc_transfer(void)
   TEST_BEGIN("i2c MC/DC: transfer arg-validation 2-cond decisions");
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_init((uint8_t)k_ra8_i2c_test_ch0, &k_i2c_cfg));
-  uint8_t wr_buf[1] = {k_i2c_sentinel_a5};
+  uint8_t wr_buf[1] = {k_i2c_payload_byte};
   uint8_t rd_buf[1] = {0U};
 
   /* Decision A V1: both lens zero -> invalid_arg. */
@@ -560,7 +561,7 @@ static void test_mcdc_transfer_combined(void)
   prime_status((uint8_t)k_ra8_i2c_test_ch0);
   volatile r_i2c_regs_t* reg = ra8_i2c_regs((uint8_t)k_ra8_i2c_test_ch0);
   reg->ICDRR                 = (uint8_t)k_ra8_i2c_test_rx_byte;
-  uint8_t wr_buf[1]          = {k_i2c_val_12};
+  uint8_t wr_buf[1]          = {k_i2c_payload_byte_alt};
   uint8_t rd_buf[2]          = {0U, 0U};
   /* Decision F V1: write phase holds the bus (send_stop=false). */
   TEST_ASSERT_EQ(k_ra8_ok,
