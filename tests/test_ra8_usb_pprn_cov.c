@@ -47,17 +47,12 @@
 #include "unity_minimal.h"
 
 /**
- * @enum usb_pprn_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_pprn_cov_t
+ * @brief GET_DEVICE_ID request length.
  */
 typedef enum : uint8_t {
-  k_usb_pprn_cov_w_length_64 = 64U,
-} usb_pprn_cov_uint8_const_t;
+  k_t_wlen_device_id = 64U, /**< Bytes the host asks the printer class for. */
+} t_pprn_cov_t;
 
 /**
  * @enum test_pprn_cov_t
@@ -250,7 +245,7 @@ static void test_handle_setup_callback_stall(void)
     .b_request       = (uint8_t)k_ra8_pprn_req_get_device_id,
     .w_value         = 0U,
     .w_index         = 0U,
-    .w_length        = k_usb_pprn_cov_w_length_64,
+    .w_length        = k_t_wlen_device_id,
   };
   /* Callback returns non-ok -> STALL leg; control_response returns ok. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_handle_setup(&setup));

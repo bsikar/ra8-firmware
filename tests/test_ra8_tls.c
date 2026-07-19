@@ -28,30 +28,15 @@
 #include "unity_minimal.h"
 
 /**
- * @enum tls_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_tls_t
+ * @brief Byte-count seed and the below-range session handle.
  */
-typedef enum : uint8_t {
-  k_tls_sent_99 = 99U,
-} tls_uint8_const_t;
-
-/**
- * @enum tls_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint16_t {
-  k_tls_below_100 = 0x100U,
-} tls_uint16_const_t;
+typedef enum : uint32_t {
+  k_t_count_unset  = 99U,    /**< Pre-set sent/received count; a transfer that
+                                  fails must leave it rather than report zero.   */
+  k_t_handle_below = 0x100U, /**< A pointer-shaped value below every real
+                                  session, which the handle guard must reject.   */
+} t_tls_t;
 
 /* =============================================================================
  * Loopback BIO pair
@@ -317,11 +302,11 @@ static void test_loopback_handshake_and_io(void)
   TEST_ASSERT(recv_buf[1] == 'i');
 
   /* Zero-length transfers are no-ops with success. */
-  sent = k_tls_sent_99;
+  sent = k_t_count_unset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_send(s, payload, 0U, &sent));
   TEST_ASSERT_EQ(0, sent);
 
-  received = k_tls_sent_99;
+  received = k_t_count_unset;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_recv(s, recv_buf, 0U, &received));
   TEST_ASSERT_EQ(0, received);
 
@@ -481,7 +466,7 @@ static void test_mcdc_tls_handle_valid_bounds(void)
   /* V1: open a real session (lives inside the pool). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_open(&s, &cfg));
   /* V2: cast a deliberately-low pointer -- below the pool base. */
-  ra8_tls_session_t below = (ra8_tls_session_t)(uintptr_t)k_tls_below_100;
+  ra8_tls_session_t below = (ra8_tls_session_t)(uintptr_t)k_t_handle_below;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tls_session_close(below));
   /* V3: cast a deliberately-high pointer -- above the pool end. */
   ra8_tls_session_t above = (ra8_tls_session_t)(uintptr_t)UINTPTR_MAX;

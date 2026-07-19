@@ -20,18 +20,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum tsn_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_tsn_t
+ * @brief Calibration reference temperatures, in degrees Celsius.
  */
-typedef enum : uint8_t {
-  k_tsn_high_ref_degc_200 = 200,
-  k_tsn_high_ref_degc_80  = 80,
-} tsn_uint8_const_t;
+typedef enum : int16_t {
+  k_t_high_ref_valid = 80,  /**< A high reference inside the sensor's range.   */
+  k_t_high_ref_over  = 200, /**< One past it, which the validator must reject. */
+} t_tsn_t;
 
 /**
  * @enum ra8_tsn_test_const_t
@@ -145,7 +140,7 @@ static void test_init_bad_high_ref(void)
 
   ra8_tsn_config_t cfg = make_cfg();
   /* Pretend 80 degC reference -- not a supported part-number trim. */
-  cfg.high_ref_degc = (ra8_tsn_cal_temp_t)k_tsn_high_ref_degc_80;
+  cfg.high_ref_degc = (ra8_tsn_cal_temp_t)k_t_high_ref_valid;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tsn_init(&cfg));
   TEST_END("tsn init bad high ref");
 }
@@ -379,12 +374,12 @@ static void test_mcdc_ra8_tsn(void)
   cfg.high_ref_degc = k_ra8_tsn_cal_temp_high_105;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tsn_init(&cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tsn_deinit());
-  cfg.high_ref_degc = (ra8_tsn_cal_temp_t)k_tsn_high_ref_degc_200;
+  cfg.high_ref_degc = (ra8_tsn_cal_temp_t)k_t_high_ref_over;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tsn_init(&cfg));
   cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tsn_init(&cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tsn_deinit());
-  cfg.high_ref_degc = (ra8_tsn_cal_temp_t)k_tsn_high_ref_degc_200;
+  cfg.high_ref_degc = (ra8_tsn_cal_temp_t)k_t_high_ref_over;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tsn_init(&cfg));
   cfg              = make_cfg();
   cfg.low_ref_degc = (ra8_tsn_cal_temp_t)0;

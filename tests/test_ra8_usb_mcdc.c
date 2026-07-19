@@ -23,17 +23,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum usb_mcdc_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_mcdc_t
+ * @brief Oversized transfer buffer for the length-guard vector.
  */
-typedef enum : uint8_t {
-  k_usb_mcdc_val_128 = 128,
-} usb_mcdc_uint8_const_t;
+typedef enum : uint16_t {
+  k_t_oversize_buf = 128U, /**< Past the endpoint's maximum packet, so the guard
+                                rather than the copy is what fires.              */
+} t_mcdc_t;
 
 static void prep(void)
 {
@@ -519,7 +515,7 @@ static void test_mcdc_dcp_in_data_len_data(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
-  uint8_t big_buf[k_usb_mcdc_val_128] = {};
+  uint8_t big_buf[k_t_oversize_buf] = {};
   ra8_usb_fs()->CFIFOCTR              = (uint16_t)k_ra8_fifoctr_frdy;
 
   /* V1: small valid call -> ok (single chunk). */

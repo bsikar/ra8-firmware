@@ -14,24 +14,19 @@
 #include "unity_minimal.h"
 
 /**
- * @enum wdt_supervisor_extended_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_sup_ext_t
+ * @brief Supervisor task stack size.
  */
 typedef enum : uint16_t {
-  k_wdt_supervisor_extended_val_1024 = 1024,
-} wdt_supervisor_extended_uint16_const_t;
+  k_t_stack_bytes = 1024U, /**< Supervisor task stack, bytes. */
+} t_sup_ext_t;
 
 /* ---------------------------------------------------------------------------
  * Shared scaffolding
  * ---------------------------------------------------------------------------
  */
 
-static uint8_t  s_stack[k_wdt_supervisor_extended_val_1024];
+static uint8_t  s_stack[k_t_stack_bytes];
 static uint32_t s_now_ms;
 static uint32_t s_refresh_calls;
 

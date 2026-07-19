@@ -26,27 +26,31 @@
 #include "ra8_reflow_svg_internal.h"
 #include "unity_minimal.h"
 
+/** @brief The number every `numf()` vector must parse out of its input. */
+static const float k_t_expect_five = 5.0F;
+
 /**
- * @enum reflow_svg_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @brief Upper bound the parsed -3.5 must fall below.
+ *
+ * Stated as a bound rather than an equality because the sign-and-fraction path
+ * is what is under test, not the exact float representation.
+ */
+static const float k_t_below_neg_3p4 = 3.4F;
+
+/** @brief Lower bound proving a transform argument was parsed, not defaulted. */
+static const float k_t_parsed_nonzero = 0.5F;
+
+/**
+ * @enum t_svg_box_t
+ * @brief Square viewport and viewBox edge for the transform vectors.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Both boxes are the same square, so the preserveAspectRatio branches differ
+ * only in the condition under test rather than in the aspect ratio itself.
  */
-typedef enum : uint8_t {
-  k_reflow_svg_bw_100 = 100,
-} reflow_svg_uint8_const_t;
-
-/** @brief Named float constant used by this file. */
-static const float k_reflow_svg_test_assert_0p5 = 0.5F;
-
-/** @brief Named float constant used by this file. */
-static const float k_reflow_svg_test_assert_3p4 = 3.4F;
-
-/** @brief Named float constant used by this file. */
-static const float k_reflow_svg_test_assert_5p0 = 5.0F;
+typedef enum : int16_t {
+  k_t_box_edge = 100, /**< Edge of both the viewport and the viewBox. */
+} t_svg_box_t;
 
 /** @brief Framebuffer geometry + palette for the render cases. */
 enum : int32_t {
@@ -105,12 +109,12 @@ static void test_svgp_numf_scanner_mcdc(void)
 {
   TEST_BEGIN("ra8_svgp_numf: separator-skip and digit-scan terminators");
   TEST_ASSERT(numf("") == 0.0F);                             /* Dec A V1: C1 false          */
-  TEST_ASSERT(numf(" 5") == k_reflow_svg_test_assert_5p0);   /* Dec A V2: whitespace skip   */
-  TEST_ASSERT(numf(",5") == k_reflow_svg_test_assert_5p0);   /* Dec A V3: comma skip (C3)   */
-  TEST_ASSERT(numf("5") == k_reflow_svg_test_assert_5p0);    /* Dec A V4 / Dec B C2,C3 true */
-  TEST_ASSERT(numf("5)") == k_reflow_svg_test_assert_5p0);   /* Dec B C2 false (')' < '0')  */
-  TEST_ASSERT(numf("5a") == k_reflow_svg_test_assert_5p0);   /* Dec B C3 false ('a' > '9')  */
-  TEST_ASSERT(numf("-3.5") < -k_reflow_svg_test_assert_3p4); /* sign + fraction arms        */
+  TEST_ASSERT(numf(" 5") == k_t_expect_five);   /* Dec A V2: whitespace skip   */
+  TEST_ASSERT(numf(",5") == k_t_expect_five);   /* Dec A V3: comma skip (C3)   */
+  TEST_ASSERT(numf("5") == k_t_expect_five);    /* Dec A V4 / Dec B C2,C3 true */
+  TEST_ASSERT(numf("5)") == k_t_expect_five);   /* Dec B C2 false (')' < '0')  */
+  TEST_ASSERT(numf("5a") == k_t_expect_five);   /* Dec B C3 false ('a' > '9')  */
+  TEST_ASSERT(numf("-3.5") < -k_t_below_neg_3p4); /* sign + fraction arms        */
   TEST_END("ra8_svgp_numf: separator-skip and digit-scan terminators");
 }
 
@@ -131,17 +135,17 @@ static void test_svgp_numf_scanner_mcdc(void)
 static void test_svgp_xform_list_mcdc(void)
 {
   TEST_BEGIN("ra8_svgp_apply_xform: whitespace + comma argument separators");
-  svg_xform_t t   = {.bw = k_reflow_svg_bw_100,
-                     .bh = k_reflow_svg_bw_100,
-                     .vw = k_reflow_svg_bw_100,
-                     .vh = k_reflow_svg_bw_100,
+  svg_xform_t t   = {.bw = k_t_box_edge,
+                     .bh = k_t_box_edge,
+                     .vw = k_t_box_edge,
+                     .vh = k_t_box_edge,
                      .ua = 1.0F,
                      .ud = 1.0F};
   const char* tag = "<g transform=\"translate(1 2) scale(1,2)\">";
   ra8_svgp_apply_xform(&t, (const uint8_t*)tag, strlen(tag));
   /* translate(1,2) then scale(1,2): net x translate present, x scale applied. */
-  TEST_ASSERT(t.ue > k_reflow_svg_test_assert_0p5); /* translate x parsed (space-separated args) */
-  TEST_ASSERT(t.ua > k_reflow_svg_test_assert_0p5); /* scale x parsed (comma-separated args)     */
+  TEST_ASSERT(t.ue > k_t_parsed_nonzero); /* translate x parsed (space-separated args) */
+  TEST_ASSERT(t.ua > k_t_parsed_nonzero); /* scale x parsed (comma-separated args)     */
   TEST_END("ra8_svgp_apply_xform: whitespace + comma argument separators");
 }
 
@@ -159,10 +163,10 @@ static void test_svgp_draw_line_points_mcdc(void)
 {
   TEST_BEGIN("ra8_svgp_draw_line: comma + space point separators");
   fb_reset();
-  svg_xform_t t   = {.bw = k_reflow_svg_bw_100,
-                     .bh = k_reflow_svg_bw_100,
-                     .vw = k_reflow_svg_bw_100,
-                     .vh = k_reflow_svg_bw_100,
+  svg_xform_t t   = {.bw = k_t_box_edge,
+                     .bh = k_t_box_edge,
+                     .vw = k_t_box_edge,
+                     .vh = k_t_box_edge,
                      .ua = 1.0F,
                      .ud = 1.0F};
   const char* tag = "<polyline points=\"10,10 40,10 40,40\" stroke=\"#f00\"/>";

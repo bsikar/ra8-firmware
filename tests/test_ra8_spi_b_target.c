@@ -54,17 +54,13 @@
 #include "unity_minimal.h"
 
 /**
- * @enum spi_b_target_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_spi_target_t
+ * @brief Received-byte out-parameter seed.
  */
 typedef enum : uint8_t {
-  k_spi_b_target_rx_ee = 0xEEU,
-} spi_b_target_uint8_const_t;
+  k_t_rx_unset = 0xEEU, /**< Pre-set received byte; a transfer that fails must
+                             leave it rather than report data.                   */
+} t_spi_target_t;
 
 /* =============================================================================
  * Test constants
@@ -359,7 +355,7 @@ static void test_target_xfer_timeout_sprf(void)
     k_ra8_ok,
     ra8_sim_mmio_fail_wait((const volatile void*)&ra8_spi((uint8_t)k_test_channel_0)->SPSR));
 
-  uint8_t rx = k_spi_b_target_rx_ee;
+  uint8_t rx = k_t_rx_unset;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_spi_b_target_xfer((uint8_t)k_test_channel_0, (uint8_t)k_test_tx_byte, &rx));
   /* Timeout path must not touch the caller's rx byte. */
