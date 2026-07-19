@@ -553,6 +553,46 @@ ra8_epaper_align_area(ra8_epaper_area_t* area, ra8_epaper_pixel_format_t pf, uin
                                                         ra8_epaper_waveform_cfg_t* out_cfg);
 
 /**
+ * @brief Validate a panel descriptor without touching any hardware.
+ *
+ * @details
+ * ``ra8_epaper_init`` calls this before it drives a single pin, so a bad
+ * descriptor is rejected with no bus traffic and no reset pulse. It is
+ * public because it is a total function over the descriptor: a board
+ * bring-up can check its own ``ra8_epaper_cfg_t`` before a controller is
+ * even attached.
+ *
+ * Beyond range-checking the geometry, this rejects a zero-initialised
+ * waveform map. That check is load-bearing: mode 0 is INIT on every
+ * documented LUT, so a descriptor that forgot to fill the map would
+ * refresh *every* mode as a full INIT flash rather than fail, and a
+ * missing A2 would look like a merely slow panel instead of a
+ * misconfigured one.
+ *
+ * @param[in] cfg Descriptor to check; non-NULL.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok              Every field is in range and usable.
+ * @retval k_ra8_err_null_ptr    ``cfg`` is NULL.
+ * @retval k_ra8_err_invalid_arg A field is out of range, the bus seam is
+ *                               unbound, or the waveform map is unset.
+ *
+ * @pre  ``cfg`` is fully initialised by the caller.
+ * @pre  ``cfg->waveform`` names this panel's LUT mode numbers.
+ * @post No hardware is touched and no driver state is mutated.
+ * @post On ``k_ra8_ok`` the descriptor is safe to pass to
+ *       ``ra8_epaper_init``.
+ *
+ * @note Thread-safe: pure function over its argument.
+ *
+ * @see ra8_epaper_init
+ * @see ra8_epaper_waveform_cfg_for_lut
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t ra8_epaper_validate_cfg(const ra8_epaper_cfg_t* cfg);
+
+/**
  * @brief Hand back the ``GET_DEV_INFO`` block captured during init.
  *
  * @details
@@ -578,6 +618,61 @@ ra8_epaper_align_area(ra8_epaper_area_t* area, ra8_epaper_pixel_format_t pf, uin
  * @since 0.1.0
  */
 [[nodiscard]] ra8_err_t ra8_epaper_dev_info(ra8_epaper_dev_info_t* out_info);
+
+/**
+ * @brief Decode a raw ``GET_DEV_INFO`` word block into a device-info struct.
+ *
+ * @details
+ * The controller answers ``GET_DEV_INFO`` with 20 big-endian-assembled
+ * words: panel width, panel height, the low and high halves of the
+ * image-buffer base address, then two 16-character version strings packed
+ * two ASCII chars per word. This is the pure decode half of that read --
+ * ``ra8_epaper_init`` buffers the words off the bus and calls this.
+ *
+ * Version bytes outside printable ASCII are dropped to NUL, because the
+ * strings are logged and a controller that has not finished loading its
+ * waveform answers early reads with garbage.
+ *
+ * Split out so the layout can be pinned by host tests with no controller
+ * attached: the decoded ``lut_version`` is what
+ * ``ra8_epaper_waveform_cfg_for_lut`` maps to a waveform mode number, so a
+ * mis-decode silently selects the wrong A2 mode on the panel.
+ *
+ * @param[in]  words    Response words, most significant byte first as
+ *                      assembled by the bus layer; non-NULL.
+ * @param[in]  count    Number of words available in ``words``; must be at
+ *                      least 20.
+ * @param[out] out_info Receives the decoded block; non-NULL. Fully
+ *                      overwritten, so it need not be pre-zeroed.
+ *
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok               Block decoded.
+ * @retval k_ra8_err_null_ptr     ``words`` or ``out_info`` is NULL.
+ * @retval k_ra8_err_invalid_arg  ``count`` is below the 20-word layout.
+ *
+ * @pre  ``words`` holds at least ``count`` readable words.
+ * @pre  ``out_info`` is writable.
+ * @post On success ``fw_version`` and ``lut_version`` are NUL-terminated.
+ * @post No bus traffic and no driver state mutated.
+ *
+ * @note Thread-safe: pure function over its arguments.
+ *
+ * @par Example:
+ * @code
+ * ra8_epaper_dev_info_t info = {};
+ * if (ra8_epaper_decode_dev_info(words, 20U, &info) == k_ra8_ok) {
+ *   ra8_epaper_waveform_cfg_t wf = {};
+ *   (void)ra8_epaper_waveform_cfg_for_lut(info.lut_version, &wf);
+ * }
+ * @endcode
+ *
+ * @see ra8_epaper_dev_info
+ * @see ra8_epaper_waveform_cfg_for_lut
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra8_err_t
+ra8_epaper_decode_dev_info(const uint16_t* words, size_t count, ra8_epaper_dev_info_t* out_info);
 
 /**
  * @brief Read the controller's current VCOM setting, in millivolts.

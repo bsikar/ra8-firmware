@@ -154,9 +154,10 @@ ra8_err_t ra8_epaper_display_area_cov(const ra8_epaper_area_t* area,
                                       ra8_epaper_waveform_t    waveform);
 ra8_err_t ra8_epaper_sleep_cov(void);
 ra8_err_t ra8_epaper_dev_info_cov(ra8_epaper_dev_info_t* out_info);
-/* The pure geometry / pixel-format / waveform-map helpers live in
- * ra8_epaper_geom.c, not in the white-box copy included below, so they are
- * NOT renamed: they hold no driver state, so the cov TU calls the same
+/* The pure helpers live in ra8_epaper_geom.c (geometry, pixel format,
+ * waveform map, descriptor validation) and ra8_epaper_devinfo.c (the
+ * GET_DEV_INFO decode), not in the white-box copy included below, so they
+ * are NOT renamed: they hold no driver state, so the cov TU calls the same
  * production symbols the rest of the tree links. */
 ra8_err_t ra8_epaper_get_vcom_cov(uint16_t* out_mv);
 ra8_err_t ra8_epaper_set_vcom_cov(uint16_t mv);
@@ -888,7 +889,7 @@ static void epaper_check_size_and_guards(void)
  * @test test_validate_and_size_mcdc
  *
  * @par MC/DC:
- * Decision A libs/ra8_hal/src/ra8_epaper.c@internal_ra8_epaper_validate_cfg:
+ * Decision A libs/ra8_hal/src/ra8_epaper_geom.c@ra8_epaper_validate_cfg:
  * ``if ((bus.xfer8 == NULL) || (panel_w == 0) || (panel_h == 0) ||
  *      (panel_w > MAX) || (panel_h > MAX))``
  * (5 conditions, ``||`` short-circuit chain). N+1 = 6 vectors: an all-false
