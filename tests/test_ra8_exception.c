@@ -21,49 +21,56 @@
 #include "ra8_exception.h"
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
-
 /**
- * @enum exception_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum exc_scb_reg_t
+ * @brief Armv8-M System Control Block fault registers this test plants values in.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The host build maps the core's register window (::ra8_sim_mmap), so the test
+ * writes each fault-status register directly and then checks that the capture
+ * read the right one. Addresses are `uintptr_t` because they are addresses.
  */
-typedef enum : uint8_t {
-  k_exception_ra8_exception_report_7 = 7U,
-  k_exception_xe000ede4ul_00000048   = 0x00000048UL,
-} exception_uint8_const_t;
+typedef enum : uintptr_t {
+  k_scb_cfsr_addr  = 0xE000ED28UL, /**< SCB->CFSR:  Configurable Fault Status.  */
+  k_scb_hfsr_addr  = 0xE000ED2CUL, /**< SCB->HFSR:  HardFault Status.           */
+  k_scb_dfsr_addr  = 0xE000ED30UL, /**< SCB->DFSR:  Debug Fault Status.         */
+  k_scb_mmfar_addr = 0xE000ED34UL, /**< SCB->MMFAR: MemManage Fault Address.    */
+  k_scb_bfar_addr  = 0xE000ED38UL, /**< SCB->BFAR:  BusFault Address.           */
+  k_scb_afsr_addr  = 0xE000ED3CUL, /**< SCB->AFSR:  Auxiliary Fault Status.     */
+  k_scb_sfsr_addr  = 0xE000EDE4UL, /**< SAU->SFSR:  SecureFault Status.         */
+  k_scb_sfar_addr  = 0xE000EDE8UL, /**< SAU->SFAR:  SecureFault Address.        */
+} exc_scb_reg_t;
 
 /**
- * @enum exception_uint32_const_t
- * @brief Named uint32_t constants used by this file.
+ * @enum exc_planted_t
+ * @brief The values planted in those registers, and the SecureFault cause.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The `k_poison_*` values are a 0xC0FFEE00 ramp, one step per register. Any
+ * recognizable value would do; what matters is that no two are equal, so a
+ * capture that read CFSR into `hfsr` (or skipped a register and left a stale
+ * zero) fails a specific assertion instead of passing.
  */
 typedef enum : uint32_t {
-  k_exception_val_e000ed28         = 0xE000ED28UL,
-  k_exception_val_e000ed2c         = 0xE000ED2CUL,
-  k_exception_val_e000ed30         = 0xE000ED30UL,
-  k_exception_val_e000ed34         = 0xE000ED34UL,
-  k_exception_val_e000ed38         = 0xE000ED38UL,
-  k_exception_val_e000ed3c         = 0xE000ED3CUL,
-  k_exception_val_e000ede4         = 0xE000EDE4UL,
-  k_exception_val_e000ede8         = 0xE000EDE8UL,
-  k_exception_xe000ed28ul_c0ffee00 = 0xC0FFEE00UL,
-  k_exception_xe000ed2cul_c0ffee04 = 0xC0FFEE04UL,
-  k_exception_xe000ed30ul_c0ffee08 = 0xC0FFEE08UL,
-  k_exception_xe000ed34ul_c0ffee0c = 0xC0FFEE0CUL,
-  k_exception_xe000ed38ul_c0ffee10 = 0xC0FFEE10UL,
-  k_exception_xe000ed3cul_c0ffee14 = 0xC0FFEE14UL,
-  k_exception_xe000ede4ul_c0ffee18 = 0xC0FFEE18UL,
-  k_exception_xe000ede8ul_30001234 = 0x30001234UL,
-  k_exception_xe000ede8ul_c0ffee1c = 0xC0FFEE1CUL,
-} exception_uint32_const_t;
+  k_poison_cfsr  = 0xC0FFEE00UL, /**< Planted in CFSR.  */
+  k_poison_hfsr  = 0xC0FFEE04UL, /**< Planted in HFSR.  */
+  k_poison_dfsr  = 0xC0FFEE08UL, /**< Planted in DFSR.  */
+  k_poison_mmfar = 0xC0FFEE0CUL, /**< Planted in MMFAR. */
+  k_poison_bfar  = 0xC0FFEE10UL, /**< Planted in BFAR.  */
+  k_poison_afsr  = 0xC0FFEE14UL, /**< Planted in AFSR.  */
+  k_poison_sfsr  = 0xC0FFEE18UL, /**< Planted in SFSR.  */
+  k_poison_sfar  = 0xC0FFEE1CUL, /**< Planted in SFAR.  */
+  k_sfsr_auviol_sfarvalid =
+    0x00000048UL, /**< A realistic SFSR cause: AUVIOL together with SFARVALID,
+                       so the report must treat SFAR as meaningful.            */
+  k_sfar_violating_addr =
+    0x30001234UL, /**< The faulting address SFSR declares valid.               */
+} exc_planted_t;
+
+/** @brief Exception number 7: SecureFault. */
+typedef enum : uint8_t {
+  k_exc_num_securefault = 7U, /**< Passed to ra8_exception_report(). */
+} exc_number_t;
 
 static jmp_buf s_fatal_jmp;
 static uint8_t s_fatal_hit = 0U;
@@ -94,15 +101,15 @@ static void test_capture_diagnostics_happy(void)
 
   /* Pre-load the SCB fault status registers via the mapped core
    * window so the capture has something to read. */
-  *(volatile uint32_t*)k_exception_val_e000ed28 = k_exception_xe000ed28ul_c0ffee00;
-  *(volatile uint32_t*)k_exception_val_e000ed2c = k_exception_xe000ed2cul_c0ffee04;
-  *(volatile uint32_t*)k_exception_val_e000ed30 = k_exception_xe000ed30ul_c0ffee08;
-  *(volatile uint32_t*)k_exception_val_e000ed34 = k_exception_xe000ed34ul_c0ffee0c;
-  *(volatile uint32_t*)k_exception_val_e000ed38 = k_exception_xe000ed38ul_c0ffee10;
-  *(volatile uint32_t*)k_exception_val_e000ed3c = k_exception_xe000ed3cul_c0ffee14;
+  *(volatile uint32_t*)k_scb_cfsr_addr  = k_poison_cfsr;
+  *(volatile uint32_t*)k_scb_hfsr_addr  = k_poison_hfsr;
+  *(volatile uint32_t*)k_scb_dfsr_addr  = k_poison_dfsr;
+  *(volatile uint32_t*)k_scb_mmfar_addr = k_poison_mmfar;
+  *(volatile uint32_t*)k_scb_bfar_addr  = k_poison_bfar;
+  *(volatile uint32_t*)k_scb_afsr_addr  = k_poison_afsr;
   /* TrustZone SecureFault pair (SFSR / SFAR). */
-  *(volatile uint32_t*)k_exception_val_e000ede4 = k_exception_xe000ede4ul_c0ffee18;
-  *(volatile uint32_t*)k_exception_val_e000ede8 = k_exception_xe000ede8ul_c0ffee1c;
+  *(volatile uint32_t*)k_scb_sfsr_addr = k_poison_sfsr;
+  *(volatile uint32_t*)k_scb_sfar_addr = k_poison_sfar;
 
   ra8_exception_diagnostics_t diag = {};
   ra8_exception_capture_diagnostics(&diag);
@@ -205,12 +212,12 @@ static void test_exception_report_securefault_records_sfsr_sfar(void)
 
   /* Synthetic SecureFault cause: SFSR = AUVIOL|SFARVALID (0x48), SFAR
    * = the "violating" address, planted in the mapped core window. */
-  *(volatile uint32_t*)k_exception_val_e000ede4 = k_exception_xe000ede4ul_00000048;
-  *(volatile uint32_t*)k_exception_val_e000ede8 = k_exception_xe000ede8ul_30001234;
+  *(volatile uint32_t*)k_scb_sfsr_addr = k_sfsr_auviol_sfarvalid;
+  *(volatile uint32_t*)k_scb_sfar_addr = k_sfar_violating_addr;
 
   const ra8_exception_frame_t frame = {.pc = 0x02001000U, .lr = 0x02000FFFU};
   if (setjmp(s_fatal_jmp) == 0) {
-    ra8_exception_report(&frame, k_exception_ra8_exception_report_7);
+    ra8_exception_report(&frame, k_exc_num_securefault);
     TEST_FAIL_FMT("%s", "ra8_exception_report returned");
   }
   TEST_ASSERT_EQ(1, s_fatal_hit);

@@ -48,16 +48,14 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_book_paged_i_253         = 253U,
-  k_book_paged_node_count_10 = 10U,
-  k_book_paged_pbook_elem_7  = 7U,
-  k_book_paged_pbook_elem_9  = 9U,
-  k_book_paged_root_node_5   = 5U,
-  k_book_paged_val_10        = 10,
-  k_book_paged_val_5         = 5,
-  k_book_paged_val_64        = 64,
-  k_book_paged_val_7         = 7,
-  k_book_paged_val_9         = 9,
+  k_pbook_long_run_chars =
+    253U, /**< Characters in that single text run: more than one paged chunk, so emit_run must take its multi-chunk path and stitch the pieces byte-identically. */
+  k_pbook_node_ch2_h1_text   = 7U, /**< Text node under that section's <h1>. */
+  k_pbook_node_ch2_para_text = 9U, /**< Text node under its <p>. */
+  k_pbook_node_ch2_section   = 5U, /**< The <section> that chapter 2 roots at. */
+  k_pbook_node_count =
+    10, /**< Nodes in the fixture book: the nodes[] extent and the header's node_count are the same fact. */
+  k_pbook_name_cap = 64, /**< Capacity of the single-name scratch buffer. */
 } book_paged_uint8_const_t;
 
 /**
@@ -70,9 +68,10 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_book_paged_val_1024 = 1024,
-  k_book_paged_val_320  = 320,
-  k_book_paged_val_512  = 512,
+  k_pbook_long_strings_cap =
+    1024, /**< String-pool capacity of the long-run fixture, sized to hold one run longer than a paging chunk. */
+  k_pbook_strings_cap = 320, /**< String-pool capacity of the fixture. */
+  k_pbook_render_cap  = 512, /**< Capacity of the rendered-text comparison buffers. */
 } book_paged_uint16_const_t;
 
 /**
@@ -85,22 +84,22 @@ typedef enum : uint16_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_book_paged_crc_ffffffff = 0xFFFFFFFFU,
-  k_book_paged_val_edb88320 = 0xEDB88320U,
+  k_crc32_init           = 0xFFFFFFFFU, /**< CRC-32 initial value, and the final XOR-out. */
+  k_crc32_poly_reflected = 0xEDB88320U, /**< The reflected CRC-32 polynomial. */
 } book_paged_uint32_const_t;
 
 /** @brief CRC-32/ISO-HDLC over the blob body (matches ra8_book_validate). */
 static uint32_t pbook_crc32(const uint8_t* data, size_t len)
 {
-  uint32_t crc = k_book_paged_crc_ffffffff;
+  uint32_t crc = k_crc32_init;
   for (size_t i = 0U; i < len; ++i) {
     crc ^= data[i];
     for (uint8_t bit = 0U; bit < 8U; ++bit) {
       const uint32_t mask = (uint32_t)(-(int32_t)(crc & 1U));
-      crc                 = (crc >> 1U) ^ (k_book_paged_val_edb88320 & mask);
+      crc                 = (crc >> 1U) ^ (k_crc32_poly_reflected & mask);
     }
   }
-  return crc ^ k_book_paged_crc_ffffffff;
+  return crc ^ k_crc32_init;
 }
 
 /**
@@ -109,13 +108,13 @@ static uint32_t pbook_crc32(const uint8_t* data, size_t len)
  *          a real inflated blob would; the paged backing reads these bytes.
  */
 typedef struct {
-  ra8_book_header_t     hdr;                           /**< Hdr.         */
-  ra8_book_chapter_t    chapters[2];                   /**< Chapters.    */
-  ra8_book_node_t       nodes[k_book_paged_val_10];    /**< Nodes.       */
-  ra8_book_attr_t       attrs[1];                      /**< Attrs.       */
-  ra8_book_stylesheet_t stylesheets[1];                /**< Stylesheets. */
-  ra8_book_image_t      images[1];                     /**< Images.      */
-  char                  strings[k_book_paged_val_320]; /**< Strings.     */
+  ra8_book_header_t     hdr;                          /**< Hdr.         */
+  ra8_book_chapter_t    chapters[2];                  /**< Chapters.    */
+  ra8_book_node_t       nodes[k_pbook_node_count];    /**< Nodes.       */
+  ra8_book_attr_t       attrs[1];                     /**< Attrs.       */
+  ra8_book_stylesheet_t stylesheets[1];               /**< Stylesheets. */
+  ra8_book_image_t      images[1];                    /**< Images.      */
+  char                  strings[k_pbook_strings_cap]; /**< Strings.     */
 } pbook_t;
 
 /** @brief Intern a NUL-terminated string into the pool; returns its offset. */
@@ -138,7 +137,7 @@ static void pbook_fill_header(pbook_t* b)
 
   b->hdr.chapter_count    = 2U;
   b->hdr.chapter_off      = (uint32_t)offsetof(pbook_t, chapters);
-  b->hdr.node_count       = k_book_paged_node_count_10;
+  b->hdr.node_count       = k_pbook_node_count;
   b->hdr.node_off         = (uint32_t)offsetof(pbook_t, nodes);
   b->hdr.attr_count       = 1U;
   b->hdr.attr_off         = (uint32_t)offsetof(pbook_t, attrs);
@@ -199,7 +198,7 @@ static void pbook_setup(pbook_t* b)
   const uint32_t s_main    = pbook_intern(b, &cur, "main");
 
   b->chapters[0].root_node = 0U;
-  b->chapters[1].root_node = k_book_paged_root_node_5;
+  b->chapters[1].root_node = k_pbook_node_ch2_section;
 
   /* Chapter 0: div > (p > text), (p > text). */
   b->nodes[0] = pbook_elem(s_div, 1U, k_ra8_book_nil);
@@ -209,11 +208,11 @@ static void pbook_setup(pbook_t* b)
   b->nodes[4] = pbook_text(s_t1);
 
   /* Chapter 1: section > (h1 > text), (p > text). */
-  b->nodes[k_book_paged_val_5] = pbook_elem(s_section, 6U, k_ra8_book_nil);
-  b->nodes[6]                  = pbook_elem(s_h1, k_book_paged_pbook_elem_7, 8U);
-  b->nodes[k_book_paged_val_7] = pbook_text(s_t2);
-  b->nodes[8]                  = pbook_elem(s_p, k_book_paged_pbook_elem_9, k_ra8_book_nil);
-  b->nodes[k_book_paged_val_9] = pbook_text(s_t3);
+  b->nodes[k_pbook_node_ch2_section] = pbook_elem(s_section, 6U, k_ra8_book_nil);
+  b->nodes[6]                        = pbook_elem(s_h1, k_pbook_node_ch2_h1_text, 8U);
+  b->nodes[k_pbook_node_ch2_h1_text] = pbook_text(s_t2);
+  b->nodes[8]                        = pbook_elem(s_p, k_pbook_node_ch2_para_text, k_ra8_book_nil);
+  b->nodes[k_pbook_node_ch2_para_text] = pbook_text(s_t3);
 
   b->attrs[0]       = (ra8_book_attr_t){.name_off = s_class, .value_off = s_main};
   b->stylesheets[0] = (ra8_book_stylesheet_t){.source_off = 0U, .scope_chapter = k_ra8_book_nil};
@@ -333,12 +332,12 @@ static void pbook_compare_chapter(const pbook_t*        book,
                                   const ra8_book_src_t* psrc,
                                   uint32_t              ch)
 {
-  char   legacy[k_book_paged_val_512] = {};
-  char   res[k_book_paged_val_512]    = {};
-  char   pag[k_book_paged_val_512]    = {};
-  size_t l_len                        = 0U;
-  size_t r_len                        = 0U;
-  size_t p_len                        = 0U;
+  char   legacy[k_pbook_render_cap] = {};
+  char   res[k_pbook_render_cap]    = {};
+  char   pag[k_pbook_render_cap]    = {};
+  size_t l_len                      = 0U;
+  size_t r_len                      = 0U;
+  size_t p_len                      = 0U;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_book_chapter_text(book, ch, legacy, sizeof legacy, &l_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_book_chapter_text_src(rsrc, ch, res, sizeof res, &r_len));
@@ -447,8 +446,8 @@ static void test_ra8_book_paged_guards(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_book_src_read(&rsrc, 0U, dst, 0U)); /* len==0 short-circuit */
 
   /* chapter_text_src: arg + range guards. */
-  char   out[k_book_paged_val_64] = {};
-  size_t len                      = 0U;
+  char   out[k_pbook_name_cap] = {};
+  size_t len                   = 0U;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_book_chapter_text_src(nullptr, 0U, out, sizeof out, &len));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_book_chapter_text_src(&rsrc, s_book.hdr.chapter_count, out, sizeof out, &len));
@@ -464,13 +463,13 @@ static void test_ra8_book_paged_guards(void)
  *          across-chunk whitespace-collapse carry is exercised.
  */
 typedef struct {
-  ra8_book_header_t     hdr;                            /**< Hdr.         */
-  ra8_book_chapter_t    chapters[1];                    /**< Chapters.    */
-  ra8_book_node_t       nodes[2];                       /**< Nodes.       */
-  ra8_book_attr_t       attrs[1];                       /**< Attrs.       */
-  ra8_book_stylesheet_t stylesheets[1];                 /**< Stylesheets. */
-  ra8_book_image_t      images[1];                      /**< Images.      */
-  char                  strings[k_book_paged_val_1024]; /**< Strings.     */
+  ra8_book_header_t     hdr;                               /**< Hdr.         */
+  ra8_book_chapter_t    chapters[1];                       /**< Chapters.    */
+  ra8_book_node_t       nodes[2];                          /**< Nodes.       */
+  ra8_book_attr_t       attrs[1];                          /**< Attrs.       */
+  ra8_book_stylesheet_t stylesheets[1];                    /**< Stylesheets. */
+  ra8_book_image_t      images[1];                         /**< Images.      */
+  char                  strings[k_pbook_long_strings_cap]; /**< Strings.     */
 } plbook_t;
 
 /**
@@ -524,7 +523,7 @@ static void plbook_setup(plbook_t* b)
   memcpy(&b->strings[cur], "div", 4U);
   cur += 4U;
   const uint32_t s_run = cur;
-  for (uint32_t i = 0U; i < k_book_paged_i_253; ++i) {
+  for (uint32_t i = 0U; i < k_pbook_long_run_chars; ++i) {
     b->strings[cur++] = 'x';
   }
   for (uint32_t i = 0U; i < 4U; ++i) {
@@ -586,10 +585,10 @@ static void test_ra8_book_paged_long_run(void)
   uint32_t          oid  = 0U;
   pbook_bind(&psrc, &vs, objs, &vm, &oid);
 
-  char   res[k_book_paged_val_512] = {};
-  char   pag[k_book_paged_val_512] = {};
-  size_t r_len                     = 0U;
-  size_t p_len                     = 0U;
+  char   res[k_pbook_render_cap] = {};
+  char   pag[k_pbook_render_cap] = {};
+  size_t r_len                   = 0U;
+  size_t p_len                   = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_book_chapter_text_src(&rsrc, 0U, res, sizeof res, &r_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_book_chapter_text_src(&psrc, 0U, pag, sizeof pag, &p_len));
   TEST_ASSERT(r_len > 255U); /* the run spanned more than one chunk */
@@ -669,8 +668,8 @@ static void test_ra8_book_paged_read_faults(void)
   /* Header bound; now make all cold frames fault. */
   s_pbook_fault_armed = true;
 
-  char            out[k_book_paged_val_512] = {};
-  size_t          olen                      = 0U;
+  char            out[k_pbook_render_cap] = {};
+  size_t          olen                    = 0U;
   const ra8_err_t e = ra8_book_chapter_text_src(&psrc, 0U, out, sizeof(out), &olen);
   TEST_ASSERT(e != k_ra8_ok); /* the loader fault propagated through the walk */
 

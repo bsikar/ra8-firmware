@@ -44,49 +44,57 @@ typedef enum : uint8_t {
 } td_layout_t;
 
 /**
- * @enum decomp_retrofit_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum zip_cdir_field_t
+ * @brief ZIP central-directory offsets the archive scanner walks.
  */
 typedef enum : uint8_t {
-  k_decomp_retrofit_i_20            = 20U,
-  k_decomp_retrofit_i_24            = 24U,
-  k_decomp_retrofit_i_46            = 46U,
-  k_decomp_retrofit_m_comp_size_100 = 100U,
-  k_decomp_retrofit_out_30          = 0x30U,
-  k_decomp_retrofit_out_74          = 0x74U,
-  k_decomp_retrofit_s_arc_73        = 0x73U,
-  k_decomp_retrofit_td_le16_13      = 13U,
-  k_decomp_retrofit_td_le16_26      = 26,
-  k_decomp_retrofit_td_le16_5       = 5,
-  k_decomp_retrofit_td_le16_5_2     = 5U,
-  k_decomp_retrofit_td_le32_11      = 11,
-  k_decomp_retrofit_td_le32_20      = 20,
-  k_decomp_retrofit_td_le32_28      = 28,
-  k_decomp_retrofit_td_le32_7       = 7,
-  k_decomp_retrofit_val_15          = 15,
-  k_decomp_retrofit_val_24          = 24,
-  k_decomp_retrofit_val_25          = 25,
-  k_decomp_retrofit_val_ff          = 0xFFU,
-} decomp_retrofit_uint8_const_t;
+  k_zip_cdir_off_comp_size   = 20U, /**< Compressed size, 20 bytes in.        */
+  k_zip_cdir_off_uncomp_size = 24U, /**< Uncompressed size, 24 bytes in.      */
+  k_zip_cdir_hdr_bytes       = 46U, /**< A central-directory file header is 46
+                                         bytes; the name starts right after.  */
+} zip_cdir_field_t;
 
 /**
- * @enum decomp_retrofit_uint16_const_t
- * @brief Named uint16_t constants used by this file.
+ * @enum rar4_field_t
+ * @brief RAR4 block-header field offsets and the type/method byte values.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Offsets are from the start of a RAR4 block header and are shared by every
+ * block type; the `k_rar_head_type_*` and `k_rar_method_*` members are the
+ * values stamped into those fields to build a stored (uncompressed) file
+ * entry the extractor must accept.
+ */
+typedef enum : uint8_t {
+  k_rar_off_head_size  = 5U,    /**< head_size.                               */
+  k_rar_off_pack_size  = 7U,    /**< pack_size.                               */
+  k_rar_off_unp_size   = 11U,   /**< unp_size.                                */
+  k_rar_off_host_os    = 15U,   /**< host_os.                                 */
+  k_rar_off_ftime      = 20U,   /**< ftime.                                   */
+  k_rar_off_unp_ver    = 24U,   /**< unp_ver.                                 */
+  k_rar_off_method     = 25U,   /**< method.                                  */
+  k_rar_off_name_size  = 26U,   /**< name_size.                               */
+  k_rar_off_attr       = 28U,   /**< attr.                                    */
+  k_rar_head_type_main = 0x73U, /**< head_type 's': the archive main header.  */
+  k_rar_head_type_file = 0x74U, /**< head_type 't': a file header.            */
+  k_rar_method_store   = 0x30U, /**< method '0': stored, no compression.      */
+  k_rar_unp_ver_2_0    = 20U,   /**< unp_ver 20: RAR 2.0 format.              */
+  k_rar_main_hdr_bytes = 13U,   /**< A main header is exactly 13 bytes, which
+                                     is both its head_size and the step to the
+                                     next block.                              */
+  k_byte_mask          = 0xFFU, /**< Truncates each shifted size back into a byte.   */
+  k_shift_byte3        = 24U,   /**< Shift to the top byte of a 32-bit LE field.     */
+} rar4_field_t;
+
+/**
+ * @enum rar4_wide_t
+ * @brief RAR4 header flags and the sizes planted in a miniz stat record.
  */
 typedef enum : uint16_t {
-  k_decomp_retrofit_m_uncomp_size_300 = 300U,
-  k_decomp_retrofit_td_le16_8000      = 0x8000U,
-} decomp_retrofit_uint16_const_t;
+  k_rar_flag_long    = 0x8000U, /**< LONG: the 64-bit ADD_SIZE fields are present. */
+  k_stat_comp_size   = 100U, /**< Compressed size in a planted stat record; under the uncompressed
+               size, so the pair is self-consistent.                            */
+  k_stat_uncomp_size = 300U, /**< Its uncompressed size.                        */
+} rar4_wide_t;
 
 /**
  * @enum td_dim_t
@@ -166,20 +174,18 @@ static void td_build_zip(uint32_t n, const char* fmt)
 static void td_lie_sizes(const char* name, uint32_t comp, uint32_t uncomp)
 {
   const size_t nlen = strlen(name);
-  for (size_t i = 0U; (i + k_decomp_retrofit_i_46 + nlen) <= s_arc_len; ++i) {
+  for (size_t i = 0U; (i + k_zip_cdir_hdr_bytes + nlen) <= s_arc_len; ++i) {
     const bool sig = (s_arc[i] == 0x50U) && (s_arc[i + 1U] == 0x4BU) && (s_arc[i + 2U] == 0x01U) &&
                      (s_arc[i + 3U] == 0x02U);
     if (!sig) {
       continue;
     }
-    if (memcmp(&s_arc[i + k_decomp_retrofit_i_46], name, nlen) != 0) {
+    if (memcmp(&s_arc[i + k_zip_cdir_hdr_bytes], name, nlen) != 0) {
       continue;
     }
     for (uint32_t b = 0U; b < 4U; ++b) {
-      s_arc[i + k_decomp_retrofit_i_20 + b] =
-        (uint8_t)((comp >> (8U * b)) & k_decomp_retrofit_val_ff);
-      s_arc[i + k_decomp_retrofit_i_24 + b] =
-        (uint8_t)((uncomp >> (8U * b)) & k_decomp_retrofit_val_ff);
+      s_arc[i + k_zip_cdir_off_comp_size + b]   = (uint8_t)((comp >> (8U * b)) & k_byte_mask);
+      s_arc[i + k_zip_cdir_off_uncomp_size + b] = (uint8_t)((uncomp >> (8U * b)) & k_byte_mask);
     }
     return;
   }
@@ -199,7 +205,7 @@ static void td_le32(uint8_t* p, uint32_t v)
   p[0] = (uint8_t)v;
   p[1] = (uint8_t)(v >> 8U);
   p[2] = (uint8_t)(v >> 16U);
-  p[3] = (uint8_t)(v >> k_decomp_retrofit_i_24);
+  p[3] = (uint8_t)(v >> k_shift_byte3);
 }
 
 /** @brief Encode a RAR4 STORE file block with independent pack/unp sizes. */
@@ -208,19 +214,19 @@ td_rar4_file(uint8_t* out, const char* name, const uint8_t* data, size_t dlen, u
 {
   const size_t nlen = strlen(name);
   const size_t head = 32U + nlen;
-  td_le16(&out[0], 0U);                             /* head_crc (unverified)          */
-  out[2] = k_decomp_retrofit_out_74;                /* type: file                     */
-  td_le16(&out[3], k_decomp_retrofit_td_le16_8000); /* flags: LONG (ADD_SIZE present) */
-  td_le16(&out[k_decomp_retrofit_td_le16_5], (uint16_t)head);
-  td_le32(&out[k_decomp_retrofit_td_le32_7], (uint32_t)dlen); /* pack_size */
-  td_le32(&out[k_decomp_retrofit_td_le32_11], unp);           /* unp_size  */
-  out[k_decomp_retrofit_val_15] = 0U;
+  td_le16(&out[0], 0U);              /* head_crc (unverified)          */
+  out[2] = k_rar_head_type_file;     /* type: file                     */
+  td_le16(&out[3], k_rar_flag_long); /* flags: LONG (ADD_SIZE present) */
+  td_le16(&out[k_rar_off_head_size], (uint16_t)head);
+  td_le32(&out[k_rar_off_pack_size], (uint32_t)dlen); /* pack_size */
+  td_le32(&out[k_rar_off_unp_size], unp);             /* unp_size  */
+  out[k_rar_off_host_os] = 0U;
   td_le32(&out[16], 0U);
-  td_le32(&out[k_decomp_retrofit_td_le32_20], 0U);
-  out[k_decomp_retrofit_val_24] = k_decomp_retrofit_i_20;
-  out[k_decomp_retrofit_val_25] = k_decomp_retrofit_out_30; /* method: store */
-  td_le16(&out[k_decomp_retrofit_td_le16_26], (uint16_t)nlen);
-  td_le32(&out[k_decomp_retrofit_td_le32_28], 0U);
+  td_le32(&out[k_rar_off_ftime], 0U);
+  out[k_rar_off_unp_ver] = k_rar_unp_ver_2_0;
+  out[k_rar_off_method]  = k_rar_method_store; /* method: store */
+  td_le16(&out[k_rar_off_name_size], (uint16_t)nlen);
+  td_le32(&out[k_rar_off_attr], 0U);
   memcpy(&out[32], name, nlen);
   if (dlen > 0U) {
     memcpy(&out[head], data, dlen);
@@ -236,11 +242,11 @@ static void td_build_rar4(uint32_t nfiles, const char* name, uint32_t unp_overri
   memcpy(&s_arc[p], k_sig, sizeof(k_sig));
   p += sizeof(k_sig);
   td_le16(&s_arc[p], 0U); /* main block */
-  s_arc[p + 2U] = k_decomp_retrofit_s_arc_73;
+  s_arc[p + 2U] = k_rar_head_type_main;
   td_le16(&s_arc[p + 3U], 0U);
-  td_le16(&s_arc[p + k_decomp_retrofit_td_le16_5_2], k_decomp_retrofit_td_le16_13);
+  td_le16(&s_arc[p + k_rar_off_head_size], k_rar_main_hdr_bytes);
   memset(&s_arc[p + k_td_off_high_pos_av], 0, k_td_len_high_pos_av);
-  p += k_decomp_retrofit_td_le16_13;
+  p += k_rar_main_hdr_bytes;
   const uint8_t data[4] = {1U, 2U, 3U, 4U};
   for (uint32_t i = 0U; i < nfiles; ++i) {
     const uint32_t unp = (unp_override != 0U) ? unp_override : (uint32_t)sizeof(data);
@@ -265,8 +271,8 @@ static void test_retrofit_epub_guards_direct(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epub_zip_guard_entry(nullptr));
 
   mz_zip_archive_file_stat st = {};
-  st.m_comp_size              = k_decomp_retrofit_m_comp_size_100;
-  st.m_uncomp_size            = k_decomp_retrofit_m_uncomp_size_300;
+  st.m_comp_size              = k_stat_comp_size;
+  st.m_uncomp_size            = k_stat_uncomp_size;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_zip_guard_entry(&st));
   st.m_uncomp_size = (mz_uint64)k_td_lying_size; /* over the 64 MiB cap */
   TEST_ASSERT_EQ(k_ra8_err_decomp_output_cap, ra8_epub_zip_guard_entry(&st));

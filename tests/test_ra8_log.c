@@ -39,8 +39,10 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_log_internal_ra8_log_debug_val_42 = 42,
-  k_log_internal_ra8_log_warn_val_7   = 7U,
+  k_log_val_small_signed =
+    42, /**< A small magnitude logged as both negative and positive, covering the sign branch. */
+  k_log_val_single_digit =
+    7U, /**< A single-digit value: the shortest decimal the formatter can emit. */
 } log_uint8_const_t;
 
 /**
@@ -53,10 +55,13 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_log_internal_ra8_log_debug_val_12345 = 12345,
-  k_log_internal_ra8_log_error_val_1234  = 0x1234U,
-  k_log_internal_ra8_log_warn_val_5678   = 0x5678U,
-  k_log_ra8_err_to_str_ffff              = 0xFFFFU,
+  k_log_val_positive_decimal = 12345, /**< A positive decimal exercising the multi-digit path. */
+  k_log_val_hex_small =
+    0x1234U, /**< A small hex value: two significant nibbles, so leading-zero suppression is visible. */
+  k_log_val_hex_mid =
+    0x5678U, /**< A second hex value, distinct from the first, so the two sinks cannot be confused. */
+  k_log_err_code_unknown =
+    0xFFFFU, /**< An error code no ra8_err_t enumerator uses, so ra8_err_to_str must fall back to its unknown-code string. */
 } log_uint16_const_t;
 
 /**
@@ -69,11 +74,15 @@ typedef enum : uint16_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_log_internal_ra8_log_error_val_1234567 = 1234567U,
-  k_log_internal_ra8_log_info_val_deadbeef = 0xDEADBEEFU,
-  k_log_internal_ra8_log_info_val_ffffffff = 0xFFFFFFFFU,
-  k_log_k_test_itm_stim0_ffffffff          = 0xFFFFFFFFUL,
-  k_log_val_2147483647                     = 2147483647,
+  k_log_val_mid_decimal =
+    1234567U, /**< A mid-width decimal, between the single digit and the 32-bit extremes. */
+  k_log_val_hex_full = 0xDEADBEEFU, /**< A hex value using all eight nibbles, including letters. */
+  k_log_val_u32_max =
+    0xFFFFFFFFU, /**< UINT32_MAX: the widest unsigned value the formatter must render without truncating. */
+  k_log_all_ones =
+    0xFFFFFFFFUL, /**< All-ones, used both as an ITM stimulus-port ready state and as the widest unsigned log value. */
+  k_log_val_i32_max =
+    2147483647, /**< INT32_MAX; `-k_log_val_i32_max - 1` gives INT32_MIN without an unrepresentable literal, covering both signed extremes. */
 } log_uint32_const_t;
 
 /*
@@ -103,7 +112,7 @@ static void test_itm_arm(void)
   *(volatile uint32_t*)k_test_itm_tenr = 0x00000001UL;
   /* Non-zero STIM0 makes the "FIFO has space" poll return on the
    * first iteration. */
-  *(volatile uint32_t*)k_test_itm_stim0 = k_log_k_test_itm_stim0_ffffffff;
+  *(volatile uint32_t*)k_test_itm_stim0 = k_log_all_ones;
 }
 
 /**
@@ -152,10 +161,10 @@ static void test_log_levels_val(void)
   ra8_sim_mmap_reset();
   ra8_log_init();
 
-  internal_ra8_log_error_val("TAG", "value", k_log_internal_ra8_log_error_val_1234);
-  internal_ra8_log_warn_val("TAG", "value", k_log_internal_ra8_log_warn_val_5678);
-  internal_ra8_log_info_val("TAG", "value", k_log_internal_ra8_log_info_val_deadbeef);
-  internal_ra8_log_debug_val("TAG", "value", (int32_t)-k_log_internal_ra8_log_debug_val_42);
+  internal_ra8_log_error_val("TAG", "value", k_log_val_hex_small);
+  internal_ra8_log_warn_val("TAG", "value", k_log_val_hex_mid);
+  internal_ra8_log_info_val("TAG", "value", k_log_val_hex_full);
+  internal_ra8_log_debug_val("TAG", "value", (int32_t)-k_log_val_small_signed);
 
   TEST_END("ra8_log with companion value at every level");
 }
@@ -173,10 +182,10 @@ static void test_log_val_edge_cases(void)
   ra8_log_init();
 
   internal_ra8_log_info_val("ZERO", "v", 0U);
-  internal_ra8_log_info_val("MAX", "v", k_log_internal_ra8_log_info_val_ffffffff);
+  internal_ra8_log_info_val("MAX", "v", k_log_val_u32_max);
   internal_ra8_log_debug_val("NEG", "v", (int32_t)-1);
-  internal_ra8_log_debug_val("MIN", "v", (int32_t)(-k_log_val_2147483647 - 1));
-  internal_ra8_log_debug_val("POS", "v", (int32_t)k_log_internal_ra8_log_debug_val_12345);
+  internal_ra8_log_debug_val("MIN", "v", (int32_t)(-k_log_val_i32_max - 1));
+  internal_ra8_log_debug_val("POS", "v", (int32_t)k_log_val_positive_decimal);
 
   TEST_END("ra8_log value edge cases");
 }
@@ -254,9 +263,9 @@ static void test_log_ready_val_unsigned(void)
   /* Zero triggers the fast-path inside internal_itm_put_u32. */
   internal_ra8_log_info_val("RDY", "zero", 0U);
   /* Non-zero walks the digit loop. */
-  internal_ra8_log_info_val("RDY", "big", k_log_k_test_itm_stim0_ffffffff);
-  internal_ra8_log_error_val("RDY", "mid", k_log_internal_ra8_log_error_val_1234567);
-  internal_ra8_log_warn_val("RDY", "small", k_log_internal_ra8_log_warn_val_7);
+  internal_ra8_log_info_val("RDY", "big", k_log_all_ones);
+  internal_ra8_log_error_val("RDY", "mid", k_log_val_mid_decimal);
+  internal_ra8_log_warn_val("RDY", "small", k_log_val_single_digit);
   TEST_END("ra8_log unsigned-value writes walk the ITM path when armed");
 }
 
@@ -271,10 +280,10 @@ static void test_log_ready_val_signed(void)
   TEST_BEGIN("ra8_log signed-value writes walk the ITM path when armed");
   ra8_sim_mmap_reset();
   test_itm_arm();
-  internal_ra8_log_debug_val("RDY", "neg", (int32_t)-k_log_internal_ra8_log_debug_val_42);
-  internal_ra8_log_debug_val("RDY", "pos", (int32_t)k_log_internal_ra8_log_debug_val_42);
-  internal_ra8_log_debug_val("RDY", "min", (int32_t)(-k_log_val_2147483647 - 1));
-  internal_ra8_log_debug_val("RDY", "max", (int32_t)k_log_val_2147483647);
+  internal_ra8_log_debug_val("RDY", "neg", (int32_t)-k_log_val_small_signed);
+  internal_ra8_log_debug_val("RDY", "pos", (int32_t)k_log_val_small_signed);
+  internal_ra8_log_debug_val("RDY", "min", (int32_t)(-k_log_val_i32_max - 1));
+  internal_ra8_log_debug_val("RDY", "max", (int32_t)k_log_val_i32_max);
   internal_ra8_log_debug_val("RDY", "zero", (int32_t)0);
   TEST_END("ra8_log signed-value writes walk the ITM path when armed");
 }
@@ -292,7 +301,7 @@ static void test_log_ready_tcr_disabled(void)
   /* TCR=0 makes internal_itm_ready return false on the first check. */
   *(volatile uint32_t*)k_test_itm_tcr   = 0x00000000UL;
   *(volatile uint32_t*)k_test_itm_tenr  = 0x00000001UL;
-  *(volatile uint32_t*)k_test_itm_stim0 = k_log_k_test_itm_stim0_ffffffff;
+  *(volatile uint32_t*)k_test_itm_stim0 = k_log_all_ones;
   internal_ra8_log_info("OFF", "should drop");
   TEST_END("ra8_log bails out when TCR.ITMENA is clear");
 }
@@ -309,7 +318,7 @@ static void test_log_ready_tenr_disabled(void)
   ra8_sim_mmap_reset();
   *(volatile uint32_t*)k_test_itm_tcr   = 0x00000001UL;
   *(volatile uint32_t*)k_test_itm_tenr  = 0x00000000UL;
-  *(volatile uint32_t*)k_test_itm_stim0 = k_log_k_test_itm_stim0_ffffffff;
+  *(volatile uint32_t*)k_test_itm_stim0 = k_log_all_ones;
   internal_ra8_log_info("OFF", "should drop");
   TEST_END("ra8_log bails out when TENR port 0 is clear");
 }
@@ -428,7 +437,7 @@ static void test_err_to_str_unknown_default(void)
 {
   TEST_BEGIN("ra8_err_to_str returns 'unknown' for out-of-enum value");
   ra8_sim_mmap_reset();
-  const char* s = ra8_err_to_str((ra8_err_t)k_log_ra8_err_to_str_ffff);
+  const char* s = ra8_err_to_str((ra8_err_t)k_log_err_code_unknown);
   TEST_ASSERT_NOT_NULL(s);
   TEST_ASSERT(strcmp(s, "unknown") == 0);
   TEST_END("ra8_err_to_str returns 'unknown' for out-of-enum value");
@@ -482,7 +491,7 @@ static void test_mcdc_itm_put_u32_loop(void)
   /* Vector 3: value == UINT32_MAX -> 10 iterations exhausting the
    * digit budget so C2 transitions T->F at iteration 10 with C1 still
    * T -- proves C2 independently controls loop exit. */
-  internal_ra8_log_info_val("V3", "max", k_log_internal_ra8_log_info_val_ffffffff);
+  internal_ra8_log_info_val("V3", "max", k_log_val_u32_max);
 
   TEST_END("ra8_log put_u32 MC/DC: value!=0 && i<max_digits");
 }

@@ -28,44 +28,46 @@
 #include "unity_minimal.h"
 
 /**
- * @enum fs_mkdir_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum fat_bpb_field_t
+ * @brief Byte offsets of the BPB fields this fixture writes, per the FAT specification.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_fs_mkdir_bpb_55   = 0x55U,
-  k_fs_mkdir_bpb_aa   = 0xAAU,
-  k_fs_mkdir_fill_11  = 0x11U,
-  k_fs_mkdir_fill_7a  = 0x7AU,
-  k_fs_mkdir_i_5      = 5U,
-  k_fs_mkdir_put16_11 = 11U,
-  k_fs_mkdir_put16_14 = 14U,
-  k_fs_mkdir_put16_17 = 17U,
-  k_fs_mkdir_put16_19 = 19U,
-  k_fs_mkdir_put16_22 = 22U,
-  k_fs_mkdir_v_ff     = 0xFFU,
-  k_fs_mkdir_val_13   = 13,
-  k_fs_mkdir_val_200  = 200,
-  k_fs_mkdir_val_64   = 64,
-} fs_mkdir_uint8_const_t;
-
-/**
- * @enum fs_mkdir_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The fixture hand-builds a boot sector instead of calling a formatter, so
+ * every field is placed at its specified offset. The names are the
+ * specification's own, so the layout can be checked against the document
+ * without decoding the numbers.
  */
 typedef enum : uint16_t {
-  k_fs_mkdir_val_510 = 510,
-  k_fs_mkdir_val_511 = 511,
-} fs_mkdir_uint16_const_t;
+  k_bpb_off_bytes_per_sec = 11U,  /**< BPB_BytsPerSec: bytes per sector.           */
+  k_bpb_off_sec_per_clus  = 13U,  /**< BPB_SecPerClus: sectors per cluster.        */
+  k_bpb_off_rsvd_sec_cnt  = 14U,  /**< BPB_RsvdSecCnt: sectors before the 1st FAT. */
+  k_bpb_off_root_ent_cnt  = 17U,  /**< BPB_RootEntCnt: root-directory entries.     */
+  k_bpb_off_tot_sec16     = 19U,  /**< BPB_TotSec16: total sectors.                */
+  k_bpb_off_fat_sz16      = 22U,  /**< BPB_FATSz16: sectors per FAT.               */
+  k_bpb_off_sig_lo        = 510U, /**< Low byte of the 0xAA55 boot signature.      */
+  k_bpb_off_sig_hi        = 511U, /**< Its high byte.                              */
+} fat_bpb_field_t;
+
+/**
+ * @enum mkdir_payload_t
+ * @brief Payload sizes and fill seeds for the files this fixture creates.
+ *
+ * @details
+ * ::fill stamps `buf[i] = i * k_mkdir_seed_stride + seed`. The seeds are
+ * arbitrary; what matters is that the three payloads differ, so a read that
+ * returned another file's data fails the compare instead of passing.
+ */
+typedef enum : uint16_t {
+  k_bpb_sig_lo        = 0x55U, /**< Boot-signature low byte.                       */
+  k_bpb_sig_hi        = 0xAAU, /**< Boot-signature high byte.                      */
+  k_byte_mask         = 0xFFU, /**< Low-byte mask used by the put16 helper.        */
+  k_mkdir_seed_small  = 0x11U, /**< Seed for the sub-sector payload.               */
+  k_mkdir_seed_medium = 0x55U, /**< Seed for the single-cluster payload.           */
+  k_mkdir_seed_large  = 0x7AU, /**< Seed for the multi-cluster payload.            */
+  k_mkdir_seed_stride = 5U,    /**< Stride of that generator.                      */
+  k_mkdir_bytes_tiny  = 64U,   /**< Payload well under one sector.                 */
+  k_mkdir_bytes_small = 200U,  /**< Payload that still fits inside one cluster.    */
+} mkdir_payload_t;
 
 /**
  * @enum ra8_fs_mkdir_disk_t
@@ -125,8 +127,8 @@ static const ra8_fs_backend_t s_backend = {
 
 static void put16(uint8_t* p, uint32_t off, uint16_t v)
 {
-  p[off]     = (uint8_t)(v & k_fs_mkdir_v_ff);
-  p[off + 1] = (uint8_t)((v >> 8) & k_fs_mkdir_v_ff);
+  p[off]     = (uint8_t)(v & k_byte_mask);
+  p[off + 1] = (uint8_t)((v >> 8) & k_byte_mask);
 }
 
 static void build_fat16_volume(void)
@@ -142,15 +144,15 @@ static void build_fat16_volume(void)
     TEST_FAIL_FMT("%s", "calloc failed");
   }
   uint8_t* bpb = &s_disk.bytes[0];
-  put16(bpb, k_fs_mkdir_put16_11, (uint16_t)k_disk_block_size);
-  bpb[k_fs_mkdir_val_13] = 1U;
-  put16(bpb, k_fs_mkdir_put16_14, 1U);
+  put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_disk_block_size);
+  bpb[k_bpb_off_sec_per_clus] = 1U;
+  put16(bpb, k_bpb_off_rsvd_sec_cnt, 1U);
   bpb[16] = 2U;
-  put16(bpb, k_fs_mkdir_put16_17, 16U);
-  put16(bpb, k_fs_mkdir_put16_19, (uint16_t)k_disk_blocks_fat16);
-  put16(bpb, k_fs_mkdir_put16_22, 32U);
-  bpb[k_fs_mkdir_val_510] = k_fs_mkdir_bpb_55;
-  bpb[k_fs_mkdir_val_511] = k_fs_mkdir_bpb_aa;
+  put16(bpb, k_bpb_off_root_ent_cnt, 16U);
+  put16(bpb, k_bpb_off_tot_sec16, (uint16_t)k_disk_blocks_fat16);
+  put16(bpb, k_bpb_off_fat_sz16, 32U);
+  bpb[k_bpb_off_sig_lo] = k_bpb_sig_lo;
+  bpb[k_bpb_off_sig_hi] = k_bpb_sig_hi;
 }
 
 static void free_volume(void)
@@ -184,7 +186,7 @@ static void scan_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
 static void fill(uint8_t* buf, uint32_t len, uint8_t seed)
 {
   for (uint32_t i = 0; i < len; ++i) {
-    buf[i] = (uint8_t)((i * k_fs_mkdir_i_5) + seed);
+    buf[i] = (uint8_t)((i * k_mkdir_seed_stride) + seed);
   }
 }
 
@@ -226,14 +228,14 @@ static void test_file_in_subdir(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/BOOKS"));
 
-  uint8_t data[k_fs_mkdir_val_200];
-  fill(data, sizeof(data), k_fs_mkdir_fill_11);
+  uint8_t data[k_mkdir_bytes_small];
+  fill(data, sizeof(data), k_mkdir_seed_small);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "/BOOKS/A.TXT", data, (uint32_t)sizeof(data)));
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "/BOOKS/A.TXT", k_ra8_fs_mode_read, &f));
-  uint8_t  got[k_fs_mkdir_val_200] = {};
-  uint32_t got_len                 = 0;
+  uint8_t  got[k_mkdir_bytes_small] = {};
+  uint32_t got_len                  = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, got, (uint32_t)sizeof(got), &got_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(sizeof(data), got_len);
@@ -262,15 +264,15 @@ static void test_nested_dirs(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/BOOKS"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/BOOKS/SCIFI"));
 
-  uint8_t data[k_fs_mkdir_val_64];
-  fill(data, sizeof(data), k_fs_mkdir_bpb_55);
+  uint8_t data[k_mkdir_bytes_tiny];
+  fill(data, sizeof(data), k_mkdir_seed_medium);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_fs_write_file(h, "/BOOKS/SCIFI/X.TXT", data, (uint32_t)sizeof(data)));
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "/BOOKS/SCIFI/X.TXT", k_ra8_fs_mode_read, &f));
-  uint8_t  got[k_fs_mkdir_val_64] = {};
-  uint32_t got_len                = 0;
+  uint8_t  got[k_mkdir_bytes_tiny] = {};
+  uint32_t got_len                 = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, got, (uint32_t)sizeof(got), &got_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(sizeof(data), got_len);
@@ -321,7 +323,7 @@ static void test_subdir_rename_unlink(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/BOOKS"));
   uint8_t data[16] = {};
-  fill(data, sizeof(data), k_fs_mkdir_fill_7a);
+  fill(data, sizeof(data), k_mkdir_seed_large);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "/BOOKS/A.TXT", data, (uint32_t)sizeof(data)));
 
   /* same-directory rename */
