@@ -49,11 +49,14 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ble_l2cap_cov_k_cov_conn_handle_ff              = 0xFFU,
-  k_ble_l2cap_cov_ra8_ble_host_test_inject_event_05 = 0x05U,
-  k_ble_l2cap_cov_s_frag1_2c                        = 0x2CU,
-  k_ble_l2cap_cov_s_frag_90                         = 0x90U,
-  k_ble_l2cap_cov_val_250                           = 250,
+  k_byte_mask = 0xFFU, /**< Truncates each shifted CRC and length byte for the gzip trailer. */
+  k_hci_evt_disconn_complete = 0x05U, /**< HCI event 0x05, Disconnection Complete. */
+  k_l2cap_len_lo_300 =
+    0x2CU, /**< Low byte of an L2CAP length of 300 (0x012C): more than one fragment, so reassembly is exercised. */
+  k_l2cap_len_lo_400 =
+    0x90U, /**< Low byte of a length of 400 (0x0190), longer than the reassembly buffer so the overflow guard fires. */
+  k_l2cap_frag_cap =
+    250, /**< Fragment staging capacity: under the 300-byte payload, so the payload must arrive in pieces. */
 } ble_l2cap_cov_uint8_const_t;
 
 /**
@@ -66,7 +69,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_ble_l2cap_cov_val_300 = 300,
+  k_l2cap_reassembly_cap =
+    300, /**< Reassembly capacity, which the 400-byte payload deliberately exceeds. */
 } ble_l2cap_cov_uint16_const_t;
 
 /* Internal L2CAP entry point (non-static global in ra8_ble_l2cap.c, used by
@@ -321,12 +325,12 @@ static void test_cov_acl_reassembly_overflow_drop(void)
 {
   TEST_BEGIN("ra8_ble_l2cap cov: mid-reassembly overflow dropped");
   TEST_ASSERT_EQ(k_ra8_ok, bring_up());
-  uint8_t s_frag1[k_ble_l2cap_cov_val_250] = {};
-  s_frag1[0]                      = k_ble_l2cap_cov_s_frag1_2c; /* L2CAP length = 300 (0x012C) */
-  s_frag1[1]                      = 0x01U;
-  s_frag1[2]                      = 0x04U; /* CID = ATT */
-  s_frag1[3]                      = 0x00U;
-  static const uint8_t s_cont[10] = {0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U};
+  uint8_t s_frag1[k_l2cap_frag_cap] = {};
+  s_frag1[0]                        = k_l2cap_len_lo_300; /* L2CAP length = 300 (0x012C) */
+  s_frag1[1]                        = 0x01U;
+  s_frag1[2]                        = 0x04U; /* CID = ATT */
+  s_frag1[3]                        = 0x00U;
+  static const uint8_t s_cont[10]   = {0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U};
   ra8_ble_host_test_inject_acl(k_cov_conn_handle, s_frag1, (uint16_t)sizeof(s_frag1));
   ra8_ble_host_test_inject_acl(k_cov_conn_handle, s_cont, (uint16_t)sizeof(s_cont));
   TEST_END("ra8_ble_l2cap cov: mid-reassembly overflow dropped");
@@ -351,11 +355,11 @@ static void test_cov_acl_start_reassembly_too_long(void)
 {
   TEST_BEGIN("ra8_ble_l2cap cov: start fragment too long dropped");
   TEST_ASSERT_EQ(k_ra8_ok, bring_up());
-  uint8_t s_frag[k_ble_l2cap_cov_val_300] = {};
-  s_frag[0] = k_ble_l2cap_cov_s_frag_90; /* L2CAP length = 400 (0x0190) */
-  s_frag[1] = 0x01U;
-  s_frag[2] = 0x04U; /* CID = ATT */
-  s_frag[3] = 0x00U;
+  uint8_t s_frag[k_l2cap_reassembly_cap] = {};
+  s_frag[0]                              = k_l2cap_len_lo_400; /* L2CAP length = 400 (0x0190) */
+  s_frag[1]                              = 0x01U;
+  s_frag[2]                              = 0x04U; /* CID = ATT */
+  s_frag[3]                              = 0x00U;
   ra8_ble_host_test_inject_acl(k_cov_conn_handle, s_frag, (uint16_t)sizeof(s_frag));
   TEST_END("ra8_ble_l2cap cov: start fragment too long dropped");
 }
@@ -488,13 +492,11 @@ static void test_cov_disconnect_clears_cccd(void)
 
   ra8_ble_host_test_inject_connect(k_cov_conn_handle);
 
-  uint8_t s_disconn[4] = {0U, 0U, 0U, 0U};
-  s_disconn[1] =
-    (uint8_t)(k_cov_conn_handle & k_ble_l2cap_cov_k_cov_conn_handle_ff); /* handle LO */
-  s_disconn[2] =
-    (uint8_t)((k_cov_conn_handle >> 8U) & k_ble_l2cap_cov_k_cov_conn_handle_ff); /* handle HI */
+  uint8_t s_disconn[4]  = {0U, 0U, 0U, 0U};
+  s_disconn[1]          = (uint8_t)(k_cov_conn_handle & k_byte_mask);         /* handle LO */
+  s_disconn[2]          = (uint8_t)((k_cov_conn_handle >> 8U) & k_byte_mask); /* handle HI */
   const uint32_t before = ra8_ble_host_test_event_count();
-  ra8_ble_host_test_inject_event(k_ble_l2cap_cov_ra8_ble_host_test_inject_event_05, s_disconn, 4U);
+  ra8_ble_host_test_inject_event(k_hci_evt_disconn_complete, s_disconn, 4U);
   TEST_ASSERT(ra8_ble_host_test_event_count() == before + 1U);
 
   TEST_END("ra8_ble_l2cap cov: disconnect clears CCCD rows");

@@ -45,11 +45,15 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_epub_entry_again_123 = 123U,
-  k_epub_entry_i_251     = 251U,
-  k_epub_entry_i_37      = 37U,
-  k_epub_entry_i_5       = 5U,
-  k_epub_entry_val_11    = 11U,
+  k_epub_reread_poison =
+    123U, /**< Poison length written before a second read, so a re-read that silently returns nothing is detectable. */
+  k_epub_pattern_modulus =
+    251U, /**< Modulus of the second generator: prime and just under 256, giving data that varies yet still compresses. */
+  k_epub_pattern_stride =
+    37U, /**< Stride of the raw payload generator, `i * 37 + 11`; prime, so the byte pattern does not repeat within a deflate window. */
+  k_epub_pattern_shift =
+    5U, /**< Shift XORed into that generator, adding a slowly-varying high component. */
+  k_epub_pattern_bias = 11U, /**< Its bias, so index 0 is not byte 0. */
 } epub_entry_uint8_const_t;
 
 /* ---------------------------------------------------------------------------
@@ -131,11 +135,11 @@ static const char* const k_ch1 =
 static void fill_sources(void)
 {
   for (size_t i = 0U; i < (size_t)k_big_bytes; ++i) {
-    s_big[i] =
-      (uint8_t)((i % k_epub_entry_i_251) ^ (i >> k_epub_entry_i_5)); /* varied but compressible */
+    s_big[i] = (uint8_t)((i % k_epub_pattern_modulus) ^
+                         (i >> k_epub_pattern_shift)); /* varied but compressible */
   }
   for (size_t i = 0U; i < (size_t)k_raw_bytes; ++i) {
-    s_raw[i] = (uint8_t)((i * k_epub_entry_i_37) + k_epub_entry_val_11);
+    s_raw[i] = (uint8_t)((i * k_epub_pattern_stride) + k_epub_pattern_bias);
   }
 }
 
@@ -267,7 +271,7 @@ static uint64_t stream_and_verify_big(ra8_epub_book_t* book)
   }
   TEST_ASSERT_EQ(k_big_bytes, off);
   /* Reading past EOF stays at zero, idempotently. */
-  size_t again = k_epub_entry_again_123;
+  size_t again = k_epub_reread_poison;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_entry_read(&rd, chunk, sizeof(chunk), &again));
   TEST_ASSERT_EQ(0U, again);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_entry_close(&rd));

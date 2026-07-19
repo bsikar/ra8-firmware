@@ -51,10 +51,11 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_longstrip_first_ff        = 0xFFU,
-  k_longstrip_t_wt_put_u16_10 = 10,
-  k_longstrip_val_12          = 12,
-  k_longstrip_val_13          = 13,
+  k_band_index_poison =
+    0xFFU, /**< Poison band index written before a query, so a query that fails without setting it is detectable. */
+  k_atlas_off_tile_h = 10, /**< Tile height in the atlas header; the band height for a strip. */
+  k_atlas_off_bpp    = 12, /**< Bytes per pixel. */
+  k_atlas_off_codec  = 13, /**< Codec id for the tile payloads. */
 } longstrip_uint8_const_t;
 
 /**
@@ -67,7 +68,7 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_longstrip_band_ffff = 0xFFFFU,
+  k_band_index_poison_wide = 0xFFFFU, /**< The same for a 16-bit band index. */
 } longstrip_uint16_const_t;
 
 /**
@@ -80,7 +81,8 @@ typedef enum : uint16_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_longstrip_ra8_longstrip_scroll_by_100000 = 100000,
+  k_scroll_beyond_ends =
+    100000, /**< A scroll delta far past either end of the strip, applied in both directions so the clamp is proven on both sides. */
 } longstrip_uint32_const_t;
 
 /**
@@ -216,9 +218,9 @@ static void t_wt_write_header(uint32_t width, uint32_t height, uint32_t band_h, 
   t_wt_put_u16(&hdr[4], (uint16_t)width);
   t_wt_put_u16(&hdr[6], (uint16_t)height);
   t_wt_put_u16(&hdr[8], (uint16_t)width); /* tile_w == width */
-  t_wt_put_u16(&hdr[k_longstrip_t_wt_put_u16_10], (uint16_t)band_h);
-  hdr[k_longstrip_val_12] = (uint8_t)k_t_wt_bpp;
-  hdr[k_longstrip_val_13] = (uint8_t)k_ra8_jof_codec_raw;
+  t_wt_put_u16(&hdr[k_atlas_off_tile_h], (uint16_t)band_h);
+  hdr[k_atlas_off_bpp]   = (uint8_t)k_t_wt_bpp;
+  hdr[k_atlas_off_codec] = (uint8_t)k_ra8_jof_codec_raw;
   t_wt_put_u32(&hdr[16], bands);
 }
 
@@ -284,7 +286,7 @@ static uint32_t t_wt_write_bands(uint32_t  width,
  * @pre `s_atlas` has room for the index and footer past @p off.
  * @pre @p tile_off and @p tile_len each hold @p tiles entries.
  * @post The atlas ends with the JOFE footer magic.
- * @post The returned length is what `ra8_tileatlas_parse()` should be given.
+ * @post The returned length is what `ra8_jof_parse()` should be given.
  *
  * @note Not thread-safe; the fixture is file-scope state.
  *
@@ -530,12 +532,12 @@ static uint32_t t_wt_build_two_column_atlas(void)
   t_wt_put_u16(&s_atlas[4], width);
   t_wt_put_u16(&s_atlas[6], height);
   t_wt_put_u16(&s_atlas[8], tw);
-  t_wt_put_u16(&s_atlas[k_longstrip_t_wt_put_u16_10], th);
-  s_atlas[k_longstrip_val_12] = 1U; /* gray8 (bpp 1) keeps the atlas tiny */
-  s_atlas[k_longstrip_val_13] = (uint8_t)k_ra8_jof_codec_raw;
-  const uint32_t cols         = (uint32_t)((width + tw - 1U) / tw);
-  const uint32_t rows         = (uint32_t)((height + th - 1U) / th);
-  const uint32_t tiles        = cols * rows;
+  t_wt_put_u16(&s_atlas[k_atlas_off_tile_h], th);
+  s_atlas[k_atlas_off_bpp]   = 1U; /* gray8 (bpp 1) keeps the atlas tiny */
+  s_atlas[k_atlas_off_codec] = (uint8_t)k_ra8_jof_codec_raw;
+  const uint32_t cols        = (uint32_t)((width + tw - 1U) / tw);
+  const uint32_t rows        = (uint32_t)((height + th - 1U) / th);
+  const uint32_t tiles       = cols * rows;
   t_wt_put_u32(&s_atlas[16], tiles);
   uint32_t off = (uint32_t)k_t_hdr_bytes;
   uint32_t offs[8];
@@ -581,7 +583,7 @@ static void t_geometry(void)
   ra8_longstrip_t wt = {};
   t_wt_open(&wt);
 
-  uint16_t band = k_longstrip_band_ffff;
+  uint16_t band = k_band_index_poison_wide;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_band_at_y(&wt, 0U, &band));
   TEST_ASSERT_EQ(0, band);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_band_at_y(&wt, 63U, &band));
@@ -598,8 +600,8 @@ static void t_geometry(void)
   TEST_ASSERT_EQ(300, ra8_longstrip_clamp_scroll(&wt, 300));
 
   /* visible range at the top: rows [0,256) -> bands 0..3. */
-  uint16_t first = k_longstrip_first_ff;
-  uint16_t last  = k_longstrip_first_ff;
+  uint16_t first = k_band_index_poison;
+  uint16_t last  = k_band_index_poison;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_visible_bands(&wt, 0, &first, &last));
   TEST_ASSERT_EQ(0, first);
   TEST_ASSERT_EQ(3, last);
@@ -741,7 +743,7 @@ static void t_fling(void)
   TEST_ASSERT(wt.scroll_y > 0); /* it advanced downward */
 
   /* Upward fling from the bottom (velocity < 0 -> at_top arm): pins at the top. */
-  (void)ra8_longstrip_scroll_by(&wt, k_longstrip_ra8_longstrip_scroll_by_100000);
+  (void)ra8_longstrip_scroll_by(&wt, k_scroll_beyond_ends);
   TEST_ASSERT_EQ(k_t_wt_max_scroll, wt.scroll_y);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_fling(&wt, -200));
   ticks = 0;
@@ -838,7 +840,7 @@ static void t_bounded_memory(void)
   /* Return to the top: band 0 was long evicted -> a fresh miss decodes it. */
   uint32_t miss_before = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_stats(&s_cache, nullptr, &miss_before, nullptr));
-  (void)ra8_longstrip_scroll_by(&wt, -(int32_t)k_longstrip_ra8_longstrip_scroll_by_100000);
+  (void)ra8_longstrip_scroll_by(&wt, -(int32_t)k_scroll_beyond_ends);
   s_blit.scroll_y                 = wt.scroll_y;
   ra8_longstrip_render_stats_t st = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_longstrip_render(&wt, &st));

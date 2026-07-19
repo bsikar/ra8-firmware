@@ -31,12 +31,13 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_keycache_t_key_41   = 0x41U,
-  k_keycache_t_key_7    = 7U,
-  k_keycache_t_key_99   = 0x99U,
-  k_keycache_t_key_99_2 = 99U,
-  k_keycache_t_key_ab   = 0xABU,
-  k_keycache_t_key_cd   = 0xCDU,
+  k_kc_image_a = 0x41U, /**< Image id of the first cache key. */
+  k_kc_tile_shared =
+    7U, /**< One tile index reused across many images, so lookups must discriminate on the image half of the key. */
+  k_kc_tile_a       = 0x99U, /**< Its tile index. */
+  k_kc_image_absent = 99U, /**< An image id no entry was inserted under, so the lookup must miss. */
+  k_kc_image_b      = 0xABU, /**< Image id of a second key, sharing no byte with the first. */
+  k_kc_tile_b       = 0xCDU, /**< Its tile index. */
 } keycache_uint8_const_t;
 
 /**
@@ -161,7 +162,7 @@ static void test_render_hit(void)
   ra8_keycache_cfg_t cfg = t_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_keycache_init(&kc, &cfg));
 
-  t_key_t             k = t_key(k_keycache_t_key_41, k_keycache_t_key_99);
+  t_key_t             k = t_key(k_kc_image_a, k_kc_tile_a);
   ra8_keycache_view_t v = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_keycache_get(&kc, &k, &v)); /* miss -> render */
   TEST_ASSERT_EQ(0x41, v.data[0]);                         /* key.a stamp    */
@@ -220,7 +221,7 @@ static void test_eviction(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_keycache_put(&kc, v0.data));
 
   uint32_t            before2 = s_render_calls;
-  t_key_t             k7      = t_key(k_keycache_t_key_7, 0U);
+  t_key_t             k7      = t_key(k_kc_tile_shared, 0U);
   ra8_keycache_view_t v7      = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_keycache_get(&kc, &k7, &v7)); /* recent -> hit */
   TEST_ASSERT_EQ(before2, s_render_calls);
@@ -242,12 +243,12 @@ static void test_pin_protection(void)
 
   const uint8_t* pins[(size_t)k_t_cells] = {};
   for (uint32_t i = 0; i < (uint32_t)k_t_cells; ++i) {
-    t_key_t             k = t_key(i, k_keycache_t_key_7);
+    t_key_t             k = t_key(i, k_kc_tile_shared);
     ra8_keycache_view_t v = {};
     TEST_ASSERT_EQ(k_ra8_ok, ra8_keycache_get(&kc, &k, &v)); /* pinned (no put) */
     pins[i] = v.data;
   }
-  t_key_t             kn = t_key(k_keycache_t_key_99_2, k_keycache_t_key_7);
+  t_key_t             kn = t_key(k_kc_image_absent, k_kc_tile_shared);
   ra8_keycache_view_t vn = {};
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_keycache_get(&kc, &kn, &vn)); /* all pinned */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_keycache_put(&kc, pins[0]));
@@ -306,7 +307,7 @@ static void test_no_user_descriptor(void)
   cfg.user_bytes         = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_keycache_init(&kc, &cfg));
 
-  t_key_t             k = t_key(k_keycache_t_key_ab, k_keycache_t_key_cd);
+  t_key_t             k = t_key(k_kc_image_b, k_kc_tile_b);
   ra8_keycache_view_t v = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_keycache_get(&kc, &k, &v));
   TEST_ASSERT(v.user == nullptr);
