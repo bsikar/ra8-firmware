@@ -308,6 +308,111 @@ static void prof_insn_hook(uc_engine* uc, uint64_t address, uint32_t size, void*
 }
 
 /** @brief Write the captured call chains as a speedscope "sampled" profile JSON. */
+/**
+ * @brief Write the speedscope `shared.frames` array: one entry per symbol.
+ *
+ * @details
+ * Frame names come from the ELF symbol table and are emitted inside JSON
+ * strings, so `"` and `\` are escaped as they are copied.
+ *
+ * @param[in,out] f Open output stream positioned after the `"frames":[`.
+ *
+ * @pre @p f is non-NULL and writable.
+ * @pre `s_prof_n` frames are populated.
+ * @post Exactly `s_prof_n` comma-separated objects are written.
+ * @post The enclosing bracket is left for the caller to close.
+ *
+ * @note Not thread-safe; the profiler is single-threaded host-side.
+ */
+static void prof_json_frames(FILE* f)
+{
+  for (uint32_t i = 0U; i < s_prof_n; i++) {
+    (void)fputs((i == 0U) ? "{\"name\":\"" : ",{\"name\":\"", f);
+    for (const char* p = s_prof[i].name; *p != '\0'; p++) { /* JSON-escape. */
+      if ((*p == '"') || (*p == '\\')) {
+        (void)fputc('\\', f);
+      }
+      (void)fputc(*p, f);
+    }
+    (void)fputs("\"}", f);
+  }
+}
+
+/**
+ * @brief Write the speedscope `samples` array: one frame-index stack per sample.
+ *
+ * @param[in,out] f Open output stream positioned after the `"samples":[`.
+ *
+ * @pre @p f is non-NULL and writable.
+ * @pre `s_samp_n` samples are populated with matching depths in `s_samp_d`.
+ * @post Exactly `s_samp_n` comma-separated arrays are written.
+ * @post The enclosing bracket is left for the caller to close.
+ *
+ * @note Not thread-safe; the profiler is single-threaded host-side.
+ */
+static void prof_json_samples(FILE* f)
+{
+  for (uint32_t i = 0U; i < s_samp_n; i++) {
+    (void)fputc((i == 0U) ? '[' : ',', f);
+    if (i != 0U) {
+      (void)fputc('[', f);
+    }
+    for (uint8_t j = 0U; j < s_samp_d[i]; j++) {
+      (void)fprintf(f, (j == 0U) ? "%u" : ",%u", (unsigned)s_samp[i][j]);
+    }
+    (void)fputc(']', f);
+  }
+}
+
+/**
+ * @brief Write the speedscope `weights` array, parallel to the samples array.
+ *
+ * @param[in,out] f Open output stream positioned after the `"weights":[`.
+ *
+ * @pre @p f is non-NULL and writable.
+ * @pre `s_samp_w` holds `s_samp_n` weights.
+ * @post Exactly `s_samp_n` comma-separated integers are written.
+ * @post The enclosing bracket is left for the caller to close.
+ *
+ * @note Not thread-safe; the profiler is single-threaded host-side.
+ */
+static void prof_json_weights(FILE* f)
+{
+  for (uint32_t i = 0U; i < s_samp_n; i++) {
+    (void)fprintf(f, (i == 0U) ? "%u" : ",%u", (unsigned)s_samp_w[i]);
+  }
+}
+
+/**
+ * @brief Write the flamechart page's `FRAMES` array as JavaScript string literals.
+ *
+ * @details
+ * The same frame names as @ref prof_json_frames, but the viewer markup quotes
+ * with `'`, so `'` and `\` are the characters escaped here.
+ *
+ * @param[in,out] f Open output stream positioned after the `FRAMES=[`.
+ *
+ * @pre @p f is non-NULL and writable.
+ * @pre `s_prof_n` frames are populated.
+ * @post Exactly `s_prof_n` comma-separated quoted names are written.
+ * @post The enclosing bracket is left for the caller to close.
+ *
+ * @note Not thread-safe; the profiler is single-threaded host-side.
+ */
+static void prof_js_frames(FILE* f)
+{
+  for (uint32_t i = 0U; i < s_prof_n; i++) {
+    (void)fputs((i == 0U) ? "'" : ",'", f);
+    for (const char* p = s_prof[i].name; *p != '\0'; p++) { /* escape ' and backslash for JS. */
+      if ((*p == '\'') || (*p == '\\')) {
+        (void)fputc('\\', f);
+      }
+      (void)fputc(*p, f);
+    }
+    (void)fputc('\'', f);
+  }
+}
+
 static void prof_write_speedscope(const char* path)
 {
   if ((s_samp_n == 0U) || (s_prof_n == 0U)) {
@@ -325,36 +430,16 @@ static void prof_write_speedscope(const char* path)
                 "{\"$schema\":\"https://www.speedscope.app/file-format-schema.json\",\n"
                 " \"name\":\"board_sim boot\",\"activeProfileIndex\":0,\n"
                 " \"shared\":{\"frames\":[");
-  for (uint32_t i = 0U; i < s_prof_n; i++) {
-    (void)fputs((i == 0U) ? "{\"name\":\"" : ",{\"name\":\"", f);
-    for (const char* p = s_prof[i].name; *p != '\0'; p++) { /* JSON-escape. */
-      if ((*p == '"') || (*p == '\\')) {
-        (void)fputc('\\', f);
-      }
-      (void)fputc(*p, f);
-    }
-    (void)fputs("\"}", f);
-  }
+  prof_json_frames(f);
   (void)fprintf(f,
                 "]},\n"
                 " \"profiles\":[{\"type\":\"sampled\",\"name\":\"boot\",\"unit\":\"none\",\n"
                 "  \"startValue\":0,\"endValue\":%llu,\n"
                 "  \"samples\":[",
                 (unsigned long long)total);
-  for (uint32_t i = 0U; i < s_samp_n; i++) {
-    (void)fputc((i == 0U) ? '[' : ',', f);
-    if (i != 0U) {
-      (void)fputc('[', f);
-    }
-    for (uint8_t j = 0U; j < s_samp_d[i]; j++) {
-      (void)fprintf(f, (j == 0U) ? "%u" : ",%u", (unsigned)s_samp[i][j]);
-    }
-    (void)fputc(']', f);
-  }
+  prof_json_samples(f);
   (void)fputs("],\n  \"weights\":[", f);
-  for (uint32_t i = 0U; i < s_samp_n; i++) {
-    (void)fprintf(f, (i == 0U) ? "%u" : ",%u", (unsigned)s_samp_w[i]);
-  }
+  prof_json_weights(f);
   (void)fputs("]}]}\n", f);
   (void)fclose(f);
 }
@@ -431,33 +516,15 @@ static void prof_write_html(const char* path, uint64_t total)
   }
   (void)fputs(k_prof_html_head, f);
   (void)fputs("var FRAMES=[", f);
-  for (uint32_t i = 0U; i < s_prof_n; i++) {
-    (void)fputs((i == 0U) ? "'" : ",'", f);
-    for (const char* p = s_prof[i].name; *p != '\0'; p++) { /* escape ' and backslash for JS. */
-      if ((*p == '\'') || (*p == '\\')) {
-        (void)fputc('\\', f);
-      }
-      (void)fputc(*p, f);
-    }
-    (void)fputc('\'', f);
-  }
+  prof_js_frames(f);
   (void)fputs("];\n", f);
+  /* SAMPLES / WEIGHTS are plain integer arrays, so the JSON the speedscope
+   * writer emits is already valid JavaScript -- the same two helpers serve. */
   (void)fputs("var SAMPLES=[", f);
-  for (uint32_t i = 0U; i < s_samp_n; i++) {
-    (void)fputc((i == 0U) ? '[' : ',', f);
-    if (i != 0U) {
-      (void)fputc('[', f);
-    }
-    for (uint8_t j = 0U; j < s_samp_d[i]; j++) {
-      (void)fprintf(f, (j == 0U) ? "%u" : ",%u", (unsigned)s_samp[i][j]);
-    }
-    (void)fputc(']', f);
-  }
+  prof_json_samples(f);
   (void)fputs("];\n", f);
   (void)fputs("var WEIGHTS=[", f);
-  for (uint32_t i = 0U; i < s_samp_n; i++) {
-    (void)fprintf(f, (i == 0U) ? "%u" : ",%u", (unsigned)s_samp_w[i]);
-  }
+  prof_json_weights(f);
   (void)fputs("];\n", f);
   (void)fprintf(f,
                 "var TITLE='board_sim flamechart -- %llu insns, %u samples';\n",

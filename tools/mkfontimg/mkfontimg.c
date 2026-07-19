@@ -125,6 +125,78 @@ static void build_fat16(uint8_t* b)
 }
 
 /**
+ * @brief Write @p font onto the mounted card under @p dest_name.
+ *
+ * @details
+ * Goes through the real `ra8_fs` writer rather than poking the image directly,
+ * so the on-card layout is exactly what the firmware app will later read.
+ * A NULL @p font is the blank-card case and succeeds without writing.
+ *
+ * @param[in,out] mnt       Mounted volume to write into.
+ * @param[in]     font      Font bytes, or NULL to leave the card empty.
+ * @param[in]     font_len  Length of @p font (ignored when @p font is NULL).
+ * @param[in]     dest_name 8.3 name to create on the card.
+ *
+ * @return 0 on success, 1 on any ra8_fs failure (diagnosed on stderr).
+ *
+ * @pre @p mnt is a successfully mounted volume.
+ * @pre @p dest_name is a valid 8.3 name when @p font is non-NULL.
+ * @post On success the file exists on the card and is closed.
+ * @post On failure the caller still owns the image buffer and must free it.
+ *
+ * @note Not thread-safe; the tool is single-threaded.
+ */
+static int
+write_font_file(ra8_fs_mount_t* mnt, const uint8_t* font, size_t font_len, const char* dest_name)
+{
+  if (font == nullptr) {
+    return 0;
+  }
+  ra8_fs_file_t* f = nullptr;
+  if (ra8_fs_open(mnt, dest_name, k_ra8_fs_mode_write, &f) != k_ra8_ok) {
+    (void)fprintf(stderr, "mkfontimg: ra8_fs_open(%s) failed\n", dest_name);
+    return 1;
+  }
+  if (ra8_fs_write(f, font, (uint32_t)font_len) != k_ra8_ok) {
+    (void)fprintf(stderr, "mkfontimg: ra8_fs_write failed\n");
+    return 1;
+  }
+  (void)ra8_fs_close(f);
+  return 0;
+}
+
+/**
+ * @brief Write the whole in-memory card image out to @p image_out.
+ *
+ * @param[in] image_out Output path for the raw FAT image.
+ *
+ * @return 0 on success, 1 if the file cannot be opened or the write is short.
+ *
+ * @pre `s_disk.bytes` holds a fully built image.
+ * @pre @p image_out is non-NULL.
+ * @post On success @p image_out holds exactly the image bytes.
+ * @post The output stream is closed on every path.
+ *
+ * @note Not thread-safe; the tool is single-threaded.
+ */
+static int dump_image(const char* image_out)
+{
+  const size_t image_bytes = (size_t)k_blocks_fat16 * (size_t)k_block_size;
+  FILE*        fout        = fopen(image_out, "wb");
+  if (fout == nullptr) {
+    (void)fprintf(stderr, "mkfontimg: cannot write %s\n", image_out);
+    return 1;
+  }
+  const size_t wrote = fwrite(s_disk.bytes, 1U, image_bytes, fout);
+  (void)fclose(fout);
+  if (wrote != image_bytes) {
+    (void)fprintf(stderr, "mkfontimg: short write to %s\n", image_out);
+    return 1;
+  }
+  return 0;
+}
+
+/**
  * @brief Format a 4 MiB FAT16 image, optionally write a font, dump to disk.
  *
  * @param[in] image_out Output path for the raw FAT image.
@@ -157,36 +229,15 @@ build_and_dump(const char* image_out, const uint8_t* font, size_t font_len, cons
     free(s_disk.bytes);
     return 1;
   }
-  if (font != nullptr) {
-    ra8_fs_file_t* f = nullptr;
-    if (ra8_fs_open(mnt, dest_name, k_ra8_fs_mode_write, &f) != k_ra8_ok) {
-      (void)fprintf(stderr, "mkfontimg: ra8_fs_open(%s) failed\n", dest_name);
-      free(s_disk.bytes);
-      return 1;
-    }
-    if (ra8_fs_write(f, font, (uint32_t)font_len) != k_ra8_ok) {
-      (void)fprintf(stderr, "mkfontimg: ra8_fs_write failed\n");
-      free(s_disk.bytes);
-      return 1;
-    }
-    (void)ra8_fs_close(f);
-  }
-  (void)ra8_fs_unmount(mnt);
-
-  FILE* fout = fopen(image_out, "wb");
-  if (fout == nullptr) {
-    (void)fprintf(stderr, "mkfontimg: cannot write %s\n", image_out);
+  if (write_font_file(mnt, font, font_len, dest_name) != 0) {
     free(s_disk.bytes);
     return 1;
   }
-  size_t wrote = fwrite(s_disk.bytes, 1U, (size_t)k_blocks_fat16 * (size_t)k_block_size, fout);
-  (void)fclose(fout);
+  (void)ra8_fs_unmount(mnt);
+
+  const int rc = dump_image(image_out);
   free(s_disk.bytes);
-  if (wrote != (size_t)k_blocks_fat16 * (size_t)k_block_size) {
-    (void)fprintf(stderr, "mkfontimg: short write to %s\n", image_out);
-    return 1;
-  }
-  return 0;
+  return rc;
 }
 
 int main(int argc, char** argv)

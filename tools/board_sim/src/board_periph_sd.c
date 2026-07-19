@@ -429,49 +429,110 @@ static void board_sd_begin_write(board_sd_state_t* c, uint8_t idx, uint32_t arg,
  * @note Not thread-safe.
  * @since 0.1.0
  */
+/**
+ * @brief Handle a byte while the model waits for a write data token.
+ *
+ * @details
+ * A data token opens the payload phase; the stop-tran token ends a
+ * multi-block write and queues the busy-then-idle response the host polls.
+ * Anything else is ignored, matching a real card waiting for a token.
+ *
+ * @param[in,out] c  Card state.
+ * @param[in]     tx Byte the host clocked out.
+ *
+ * @pre @p c is non-NULL and `c->wr_phase` is ::k_sd_wr_token.
+ * @post The phase advances to data, returns to idle, or stays put.
+ * @post Any queued response is non-empty with `resp_pos` reset to 0.
+ *
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ */
+static void sd_write_token(board_sd_state_t* c, uint8_t tx)
+{
+  if ((tx == (uint8_t)k_sd_tok_data) || (tx == (uint8_t)k_sd_tok_wmulti)) {
+    c->wr_phase = k_sd_wr_data;
+    c->wr_cnt   = 0U;
+  } else if (c->wr_multi && (tx == (uint8_t)k_sd_tok_stop)) {
+    c->wr_phase = k_sd_wr_idle;
+    c->wr_multi = false;
+    c->resp[0]  = (uint8_t)k_sd_busy; /* program time, then done. */
+    c->resp[1]  = (uint8_t)k_sd_idle;
+    c->resp_len = 2U;
+    c->resp_pos = 0U;
+  } else {
+    /* Not a token the card acts on: ignored. */
+  }
+}
+
+/**
+ * @brief Absorb one payload byte of a write block.
+ *
+ * @param[in,out] c  Card state.
+ * @param[in]     tx Byte the host clocked out.
+ *
+ * @pre @p c is non-NULL and `c->wr_phase` is ::k_sd_wr_data.
+ * @pre `c->image` is non-NULL when `c->image_len` is non-zero.
+ * @post Writes landing past the image end are dropped, never out of bounds.
+ * @post The phase advances to CRC once a full block has been taken.
+ *
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ */
+static void sd_write_data(board_sd_state_t* c, uint8_t tx)
+{
+  const uint64_t a = c->wr_off + (uint64_t)c->wr_cnt;
+  if (a < c->image_len) {
+    c->image[a] = tx;
+  }
+  c->wr_cnt++;
+  if (c->wr_cnt >= (uint32_t)k_sd_block) {
+    c->wr_phase = k_sd_wr_crc;
+    c->wr_cnt   = 0U;
+  }
+}
+
+/**
+ * @brief Swallow the two block-CRC bytes, then acknowledge the block.
+ *
+ * @details
+ * The model does not verify the CRC (the firmware sends a valid one and no
+ * test injects a bad one). After both bytes it queues accept-busy-idle, and
+ * for a multi-block write re-arms the token phase at the next block offset.
+ *
+ * @param[in,out] c Card state.
+ *
+ * @pre @p c is non-NULL and `c->wr_phase` is ::k_sd_wr_crc.
+ * @post After the second CRC byte a three-byte response is queued.
+ * @post A multi-block write returns to the token phase, a single one to idle.
+ *
+ * @note Not thread-safe; the emulator is single-threaded host-side.
+ */
+static void sd_write_crc(board_sd_state_t* c)
+{
+  c->wr_cnt++;
+  if (c->wr_cnt < (uint32_t)k_sd_crc_len) {
+    return;
+  }
+  c->resp[0]  = (uint8_t)k_sd_data_accept;
+  c->resp[1]  = (uint8_t)k_sd_busy;
+  c->resp[2]  = (uint8_t)k_sd_idle;
+  c->resp_len = 3U;
+  c->resp_pos = 0U;
+  c->wr_cnt   = 0U;
+  if (c->wr_multi) {
+    c->wr_off += (uint64_t)k_sd_block; /* next block of the multi-write. */
+    c->wr_phase = k_sd_wr_token;
+  } else {
+    c->wr_phase = k_sd_wr_idle;
+  }
+}
+
 static uint8_t board_sd_write_byte(board_sd_state_t* c, uint8_t tx)
 {
   if (c->wr_phase == k_sd_wr_token) {
-    if ((tx == (uint8_t)k_sd_tok_data) || (tx == (uint8_t)k_sd_tok_wmulti)) {
-      c->wr_phase = k_sd_wr_data;
-      c->wr_cnt   = 0U;
-    } else if (c->wr_multi && (tx == (uint8_t)k_sd_tok_stop)) {
-      c->wr_phase = k_sd_wr_idle;
-      c->wr_multi = false;
-      c->resp[0]  = (uint8_t)k_sd_busy; /* program time, then done. */
-      c->resp[1]  = (uint8_t)k_sd_idle;
-      c->resp_len = 2U;
-      c->resp_pos = 0U;
-    }
-    return (uint8_t)k_sd_idle;
-  }
-  if (c->wr_phase == k_sd_wr_data) {
-    const uint64_t a = c->wr_off + (uint64_t)c->wr_cnt;
-    if (a < c->image_len) {
-      c->image[a] = tx;
-    }
-    c->wr_cnt++;
-    if (c->wr_cnt >= (uint32_t)k_sd_block) {
-      c->wr_phase = k_sd_wr_crc;
-      c->wr_cnt   = 0U;
-    }
-    return (uint8_t)k_sd_idle;
-  }
-  /* k_sd_wr_crc: swallow the 2 CRC bytes, then ack the block. */
-  c->wr_cnt++;
-  if (c->wr_cnt >= (uint32_t)k_sd_crc_len) {
-    c->resp[0]  = (uint8_t)k_sd_data_accept;
-    c->resp[1]  = (uint8_t)k_sd_busy;
-    c->resp[2]  = (uint8_t)k_sd_idle;
-    c->resp_len = 3U;
-    c->resp_pos = 0U;
-    c->wr_cnt   = 0U;
-    if (c->wr_multi) {
-      c->wr_off += (uint64_t)k_sd_block; /* next block of the multi-write. */
-      c->wr_phase = k_sd_wr_token;
-    } else {
-      c->wr_phase = k_sd_wr_idle;
-    }
+    sd_write_token(c, tx);
+  } else if (c->wr_phase == k_sd_wr_data) {
+    sd_write_data(c, tx);
+  } else {
+    sd_write_crc(c);
   }
   return (uint8_t)k_sd_idle;
 }
