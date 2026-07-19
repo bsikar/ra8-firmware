@@ -351,9 +351,9 @@ static void t_edge_dims(void)
   t_build_png();
   ra8_tileatlas_info_t info = {};
   TEST_ASSERT_EQ(k_ra8_ok, t_produce(&info));
-  TEST_ASSERT_EQ((uint16_t)k_te_cols, info.tile_cols);
-  TEST_ASSERT_EQ((uint16_t)k_te_rows, info.tile_rows);
-  TEST_ASSERT_EQ((uint32_t)k_te_tiles, info.tile_count);
+  TEST_ASSERT_EQ(k_te_cols, info.tile_cols);
+  TEST_ASSERT_EQ(k_te_rows, info.tile_rows);
+  TEST_ASSERT_EQ(k_te_tiles, info.tile_count);
   for (uint16_t ty = 0U; ty < info.tile_rows; ty++) {
     for (uint16_t tx = 0U; tx < info.tile_cols; tx++) {
       uint16_t tw = 0U;
