@@ -190,11 +190,11 @@ typedef enum : uint8_t {
  *            ::k_ra8_epaper_state_ready.
  */
 typedef struct {
-  ra8_epaper_cfg_t      cfg;           /**< Copy of init cfg.                    */
-  ra8_epaper_dev_info_t info;          /**< Decoded GET_DEV_INFO from init.      */
-  ra8_epaper_state_t    state;         /**< Current lifecycle state.             */
-  uint16_t              vcom_mv;       /**< Last verified VCOM magnitude, mV.    */
-  bool                  vcom_verified; /**< INV-VCOM-1 permit; see @invariant.   */
+  ra8_epaper_cfg_t      cfg;           /**< Copy of init cfg.                  */
+  ra8_epaper_dev_info_t info;          /**< Decoded GET_DEV_INFO from init.    */
+  ra8_epaper_state_t    state;         /**< Current lifecycle state.           */
+  uint16_t              vcom_mv;       /**< Last verified VCOM magnitude, mV.  */
+  bool                  vcom_verified; /**< INV-VCOM-1 permit; see @invariant. */
 } ra8_epaper_panel_t;
 
 /**

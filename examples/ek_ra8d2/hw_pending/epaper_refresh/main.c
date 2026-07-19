@@ -620,9 +620,9 @@ static ra8_err_t ep_vcom_set(void* ctx, uint16_t mv)
 static bool ep_calibrate_vcom(void)
 {
   const ra8_epd_cal_cfg_t cal_cfg = {
-    .limits = {.min_mv = (uint16_t)k_ep_vcom_min_mv, .max_mv = (uint16_t)k_ep_vcom_max_mv},
-    .panel  = {.get = ep_vcom_get, .set = ep_vcom_set, .ctx = nullptr},
-    .store  = {.read = nullptr, .write = nullptr, .ctx = nullptr},
+    .limits          = {.min_mv = (uint16_t)k_ep_vcom_min_mv, .max_mv = (uint16_t)k_ep_vcom_max_mv},
+    .panel           = {.get = ep_vcom_get, .set = ep_vcom_set, .ctx = nullptr},
+    .store           = {.read = nullptr, .write = nullptr, .ctx = nullptr},
     .has_provisioned = false,
     .provisioned_mv  = 0U,
   };

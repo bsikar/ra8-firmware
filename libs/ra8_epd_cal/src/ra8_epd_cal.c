@@ -382,7 +382,7 @@ ra8_epd_cal_deserialize(const uint8_t* src, size_t src_size, ra8_epd_cal_record_
  */
 RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epd_cal_try_panel(const ra8_epd_cal_cfg_t* cfg,
-                                                              ra8_epd_cal_result_t* out_result)
+                                                              ra8_epd_cal_result_t*    out_result)
 {
   if (cfg->panel.get == nullptr) {
     return k_ra8_err_not_supported;
@@ -420,7 +420,7 @@ RA8_INTERNAL
  */
 RA8_INTERNAL
 [[nodiscard]] static ra8_err_t internal_ra8_epd_cal_try_record(const ra8_epd_cal_cfg_t* cfg,
-                                                               ra8_epd_cal_result_t* out_result)
+                                                               ra8_epd_cal_result_t*    out_result)
 {
   ra8_epd_cal_record_t rec = {};
   if (internal_ra8_epd_cal_read_record(&cfg->store, &rec) != k_ra8_ok) {
