@@ -26,52 +26,66 @@
 #include "unity_minimal.h"
 
 /**
- * @enum touch_cal_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_tc_sample_t
+ * @brief Calibration sample counts and the point sets fed to the solver.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The routine calibrates from five touch points (four corners plus centre),
+ * so `k_t_cal_points` sizes every point array and is the only accepted count.
+ * The collinear triples exist to make the least-squares system singular.
  */
-typedef enum : uint8_t {
-  k_touch_cal_bad_res_42       = 0x42U,
-  k_touch_cal_bad_ver_ff       = 0xFFU,
-  k_touch_cal_i_5              = 5U,
-  k_touch_cal_inset_px_10      = 10U,
-  k_touch_cal_inset_px_60      = 60U,
-  k_touch_cal_screen_width_100 = 100U,
-  k_touch_cal_screen_width_200 = 200U,
-  k_touch_cal_val_10           = 10,
-  k_touch_cal_val_100          = 100,
-  k_touch_cal_val_20           = 20,
-  k_touch_cal_val_200          = 200,
-  k_touch_cal_val_5            = 5,
-  k_touch_cal_val_50           = 50,
-} touch_cal_uint8_const_t;
+typedef enum : int16_t {
+  k_t_cal_points   = 5,    /**< Calibration points the solver requires.       */
+  k_t_collinear_r1 = 100,  /**< Second raw point of the collinear triple.     */
+  k_t_collinear_r2 = 200,  /**< Third raw point; 0/100/200 lie on one line.   */
+  k_t_collinear_s1 = 10,   /**< Second screen point of the collinear triple.  */
+  k_t_collinear_s2 = 20,   /**< Third screen point.                           */
+  k_t_below_range  = 50,   /**< Magnitude of the negative input the identity
+                                transform must clip to 0.                      */
+  k_t_above_range  = 9999, /**< Input past the screen edge, clipped to w-1.   */
+} t_tc_sample_t;
 
 /**
- * @enum touch_cal_uint16_const_t
- * @brief Named uint16_t constants used by this file.
+ * @enum t_tc_screen_t
+ * @brief Screen geometries and target insets the run-config guards reject.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The guard rejects an inset that leaves no room between opposing targets, so
+ * the pairs below straddle it: 10 px is comfortable on any of these screens,
+ * 60 px is not on a 100 px edge.
  */
 typedef enum : uint16_t {
-  k_touch_cal_screen_width_320 = 320U,
-  k_touch_cal_val_9999         = 9999,
-} touch_cal_uint16_const_t;
+  k_t_screen_small = 100U, /**< Screen edge small enough that a wide inset fails. */
+  k_t_screen_mid   = 200U, /**< A larger screen edge.                            */
+  k_t_screen_wide  = 320U, /**< The QVGA width used by the happy-path run.       */
+  k_t_inset_ok     = 10U,  /**< An inset that leaves room on every screen above. */
+  k_t_inset_wide   = 60U,  /**< An inset that collapses the 100 px screen.       */
+} t_tc_screen_t;
 
-/** @brief Named float constant used by this file. */
-static const float k_touch_cal_u_0p5 = 0.5F;
+/**
+ * @enum t_tc_blob_t
+ * @brief Byte values that invalidate a serialised calibration blob.
+ */
+typedef enum : uint8_t {
+  k_t_bad_reserved = 0x42U, /**< Non-zero written into a reserved byte, which
+                                 the loader must reject.                       */
+  k_t_corrupt_mask = 0xFFU, /**< XOR mask that flips a magic, version or
+                                 coefficient byte to force a load failure.      */
+} t_tc_blob_t;
 
-/** @brief Named float constant used by this file. */
-static const float k_touch_cal_val_1p0eneg1 = 1.0e-1F;
+/** @brief Rounding bias added before truncating a float coordinate to int. */
+static const float k_t_round_half = 0.5F;
 
-/** @brief Named float constant used by this file. */
-static const float k_touch_cal_val_1p0eneg3 = 1.0e-3F;
+/**
+ * @brief Tolerance for the affine translation terms (c, f), in pixels.
+ *
+ * Looser than the scale tolerance because c and f accumulate the rounding of
+ * every sampled point rather than a ratio between them.
+ */
+static const float k_t_tol_translate = 1.0e-1F;
+
+/** @brief Tolerance for the affine scale/shear terms (a, e), dimensionless. */
+static const float k_t_tol_scale = 1.0e-3F;
 
 /**
  * @enum tc_test_const_t
@@ -152,8 +166,8 @@ static ra8_touch_cal_point_t apply_truth(ra8_touch_cal_point_t raw, const ra8_to
   const float           u   = (m->a * xf) + (m->b * yf) + m->c;
   const float           v   = (m->d * xf) + (m->e * yf) + m->f;
   ra8_touch_cal_point_t out = {
-    .x = (int32_t)(u + k_touch_cal_u_0p5),
-    .y = (int32_t)(v + k_touch_cal_u_0p5),
+    .x = (int32_t)(u + k_t_round_half),
+    .y = (int32_t)(v + k_t_round_half),
   };
   return out;
 }
@@ -190,14 +204,14 @@ static void test_compute_three_point(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_cal_compute(raw, scr, 3U, &got));
 
   /* Recovered coefficients should match within 1e-3. */
-  TEST_ASSERT(((got.a - truth.a) < k_touch_cal_val_1p0eneg3) &&
-              ((truth.a - got.a) < k_touch_cal_val_1p0eneg3));
-  TEST_ASSERT(((got.e - truth.e) < k_touch_cal_val_1p0eneg3) &&
-              ((truth.e - got.e) < k_touch_cal_val_1p0eneg3));
-  TEST_ASSERT(((got.c - truth.c) < k_touch_cal_val_1p0eneg1) &&
-              ((truth.c - got.c) < k_touch_cal_val_1p0eneg1));
-  TEST_ASSERT(((got.f - truth.f) < k_touch_cal_val_1p0eneg1) &&
-              ((truth.f - got.f) < k_touch_cal_val_1p0eneg1));
+  TEST_ASSERT(((got.a - truth.a) < k_t_tol_scale) &&
+              ((truth.a - got.a) < k_t_tol_scale));
+  TEST_ASSERT(((got.e - truth.e) < k_t_tol_scale) &&
+              ((truth.e - got.e) < k_t_tol_scale));
+  TEST_ASSERT(((got.c - truth.c) < k_t_tol_translate) &&
+              ((truth.c - got.c) < k_t_tol_translate));
+  TEST_ASSERT(((got.f - truth.f) < k_t_tol_translate) &&
+              ((truth.f - got.f) < k_t_tol_translate));
 }
 
 /**
@@ -229,8 +243,8 @@ static void test_compute_five_point(void)
     {300, 3650},
     {2000, 1800},
   };
-  ra8_touch_cal_point_t scr[k_touch_cal_val_5] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
-  for (uint8_t i = 0U; i < k_touch_cal_i_5; i++) {
+  ra8_touch_cal_point_t scr[k_t_cal_points] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
+  for (uint8_t i = 0U; i < k_t_cal_points; i++) {
     scr[i] = apply_truth(raw[i], &truth);
   }
 
@@ -241,7 +255,7 @@ static void test_compute_five_point(void)
    * tolerance. Even with an exact-truth dataset, integer rounding of
    * scr at fit time produces a least-squares residual that scales with
    * the raw magnitude (~3800), so a few-pixel tolerance is correct. */
-  for (uint8_t i = 0U; i < k_touch_cal_i_5; i++) {
+  for (uint8_t i = 0U; i < k_t_cal_points; i++) {
     ra8_touch_cal_point_t mapped = {0, 0};
     TEST_ASSERT_EQ(
       k_ra8_ok,
@@ -263,7 +277,7 @@ static void test_compute_five_point(void)
  */
 static void test_compute_bad_inputs(void)
 {
-  ra8_touch_cal_point_t  pts[k_touch_cal_val_5] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
+  ra8_touch_cal_point_t  pts[k_t_cal_points] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
   ra8_touch_cal_matrix_t m                      = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_touch_cal_compute(nullptr, pts, 5U, &m));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_touch_cal_compute(pts, nullptr, 5U, &m));
@@ -272,11 +286,11 @@ static void test_compute_bad_inputs(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_touch_cal_compute(pts, pts, 6U, &m));
   /* All-collinear samples -> singular system. */
   ra8_touch_cal_point_t coll_raw[3] = {{0, 0},
-                                       {k_touch_cal_val_100, k_touch_cal_val_100},
-                                       {k_touch_cal_val_200, k_touch_cal_val_200}};
+                                       {k_t_collinear_r1, k_t_collinear_r1},
+                                       {k_t_collinear_r2, k_t_collinear_r2}};
   ra8_touch_cal_point_t coll_scr[3] = {{0, 0},
-                                       {k_touch_cal_val_10, k_touch_cal_val_10},
-                                       {k_touch_cal_val_20, k_touch_cal_val_20}};
+                                       {k_t_collinear_s1, k_t_collinear_s1},
+                                       {k_t_collinear_s2, k_t_collinear_s2}};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_touch_cal_compute(coll_raw, coll_scr, 3U, &m));
 }
 
@@ -307,8 +321,8 @@ static void test_apply_clip_and_null(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_touch_cal_apply(raw, &m, 0U, 100U, &out));
 
   /* Identity transform: clip negative to 0, clip > w-1. */
-  ra8_touch_cal_point_t low  = {-k_touch_cal_val_50, -k_touch_cal_val_50};
-  ra8_touch_cal_point_t high = {k_touch_cal_val_9999, k_touch_cal_val_9999};
+  ra8_touch_cal_point_t low  = {-k_t_below_range, -k_t_below_range};
+  ra8_touch_cal_point_t high = {k_t_above_range, k_t_above_range};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_cal_apply(low, &m, 100U, 100U, &out));
   TEST_ASSERT_EQ(0, out.x);
   TEST_ASSERT_EQ(0, out.y);
@@ -328,11 +342,11 @@ static void test_apply_clip_and_null(void)
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
  */
-static void tc_verify_roundtrip(const ra8_touch_cal_point_t   raws[k_touch_cal_val_5],
-                                const ra8_touch_cal_point_t   targets[k_touch_cal_val_5],
+static void tc_verify_roundtrip(const ra8_touch_cal_point_t   raws[k_t_cal_points],
+                                const ra8_touch_cal_point_t   targets[k_t_cal_points],
                                 const ra8_touch_cal_matrix_t* got)
 {
-  for (uint8_t k = 0U; k < k_touch_cal_i_5; k++) {
+  for (uint8_t k = 0U; k < k_t_cal_points; k++) {
     ra8_touch_cal_point_t mapped = {0, 0};
     TEST_ASSERT_EQ(
       k_ra8_ok,
@@ -355,11 +369,11 @@ static void tc_verify_roundtrip(const ra8_touch_cal_point_t   raws[k_touch_cal_v
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
  */
-static void tc_synth_raws(const ra8_touch_cal_point_t   targets[k_touch_cal_val_5],
+static void tc_synth_raws(const ra8_touch_cal_point_t   targets[k_t_cal_points],
                           const ra8_touch_cal_matrix_t* truth,
-                          ra8_touch_cal_point_t         raws[k_touch_cal_val_5])
+                          ra8_touch_cal_point_t         raws[k_t_cal_points])
 {
-  for (uint8_t k = 0U; k < k_touch_cal_i_5; k++) {
+  for (uint8_t k = 0U; k < k_t_cal_points; k++) {
     raws[k].x = (int32_t)((float)targets[k].x / truth->a);
     raws[k].y = (int32_t)((float)targets[k].y / truth->e);
   }
@@ -375,10 +389,10 @@ static void tc_synth_raws(const ra8_touch_cal_point_t   targets[k_touch_cal_val_
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
  */
-static void tc_verify_draw_order(const ra8_touch_cal_point_t targets[k_touch_cal_val_5],
+static void tc_verify_draw_order(const ra8_touch_cal_point_t targets[k_t_cal_points],
                                  const stub_state_t*         state)
 {
-  for (uint8_t k = 0U; k < k_touch_cal_i_5; k++) {
+  for (uint8_t k = 0U; k < k_t_cal_points; k++) {
     TEST_ASSERT_EQ(targets[k].x, state->draws[k].x);
     TEST_ASSERT_EQ(targets[k].y, state->draws[k].y);
   }
@@ -418,7 +432,7 @@ static void test_run_full_sequence(void)
   };
   /* Synthesise the raw samples the user "would have produced" by
      inverting truth: raw = (screen - t) / scale. */
-  ra8_touch_cal_point_t raws[k_touch_cal_val_5] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
+  ra8_touch_cal_point_t raws[k_t_cal_points] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
   tc_synth_raws(targets, &truth, raws);
 
   stub_state_t state = {
@@ -426,7 +440,7 @@ static void test_run_full_sequence(void)
     .n_draws    = 0U,
     .reads      = raws,
     .reads_idx  = 0U,
-    .n_reads    = k_touch_cal_i_5,
+    .n_reads    = k_t_cal_points,
     .forced_err = k_ra8_ok,
   };
   const ra8_touch_cal_run_cfg_t cfg = {
@@ -462,13 +476,13 @@ static void test_run_full_sequence(void)
  */
 static void test_run_shim_error(void)
 {
-  ra8_touch_cal_point_t dummy[k_touch_cal_val_5] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
+  ra8_touch_cal_point_t dummy[k_t_cal_points] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
   stub_state_t          state                    = {
     .draws      = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
     .n_draws    = 0U,
     .reads      = dummy,
     .reads_idx  = 0U,
-    .n_reads    = k_touch_cal_i_5,
+    .n_reads    = k_t_cal_points,
     .forced_err = k_ra8_err_hw_error,
   };
   const ra8_touch_cal_run_cfg_t cfg = {
@@ -593,19 +607,19 @@ static void test_load_corruption(void)
   /* Version byte tamper. */
   uint8_t bad_ver[k_tc_blob] = {};
   (void)memcpy(bad_ver, blob, sizeof(blob));
-  bad_ver[(size_t)k_ra8_touch_cal_off_version] = k_touch_cal_bad_ver_ff;
+  bad_ver[(size_t)k_ra8_touch_cal_off_version] = k_t_corrupt_mask;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_touch_cal_load(bad_ver, sizeof(bad_ver), &out));
 
   /* Reserved byte tamper. */
   uint8_t bad_res[k_tc_blob] = {};
   (void)memcpy(bad_res, blob, sizeof(blob));
-  bad_res[(size_t)k_ra8_touch_cal_off_reserved] = k_touch_cal_bad_res_42;
+  bad_res[(size_t)k_ra8_touch_cal_off_reserved] = k_t_bad_reserved;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_touch_cal_load(bad_res, sizeof(bad_res), &out));
 
   /* Coefficient byte tamper -> CRC mismatch. */
   uint8_t bad_coeff[k_tc_blob] = {};
   (void)memcpy(bad_coeff, blob, sizeof(blob));
-  bad_coeff[(size_t)k_ra8_touch_cal_off_coeffs] ^= k_touch_cal_bad_ver_ff;
+  bad_coeff[(size_t)k_ra8_touch_cal_off_coeffs] ^= k_t_corrupt_mask;
   TEST_ASSERT_EQ(k_ra8_err_crc_mismatch, ra8_touch_cal_load(bad_coeff, sizeof(bad_coeff), &out));
 }
 
@@ -650,14 +664,14 @@ static void test_mcdc_load_magic_and_reserved_byte_pairs(void)
   for (size_t i = 1U; i < 4U; ++i) {
     uint8_t bad[k_tc_blob] = {};
     (void)memcpy(bad, blob, sizeof(bad));
-    bad[(size_t)k_ra8_touch_cal_off_magic + i] ^= k_touch_cal_bad_ver_ff;
+    bad[(size_t)k_ra8_touch_cal_off_magic + i] ^= k_t_corrupt_mask;
     TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_touch_cal_load(bad, sizeof(bad), &out));
   }
   /* D_reserved per-byte flips. */
   for (size_t i = 1U; i < 3U; ++i) {
     uint8_t bad[k_tc_blob] = {};
     (void)memcpy(bad, blob, sizeof(bad));
-    bad[(size_t)k_ra8_touch_cal_off_reserved + i] = k_touch_cal_bad_res_42;
+    bad[(size_t)k_ra8_touch_cal_off_reserved + i] = k_t_bad_reserved;
     TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_touch_cal_load(bad, sizeof(bad), &out));
   }
   TEST_END("touch_cal load MC/DC: magic + reserved per-byte independence");
@@ -733,9 +747,9 @@ static void test_run_margin_mcdc(void)
   ra8_touch_cal_matrix_t got      = {};
 
   /* Vector 1: C1=T short-circuits. */
-  ra8_touch_cal_run_cfg_t cfg1 = {.screen_width  = k_touch_cal_screen_width_100,
-                                  .screen_height = k_touch_cal_screen_width_100,
-                                  .inset_px      = k_touch_cal_inset_px_60,
+  ra8_touch_cal_run_cfg_t cfg1 = {.screen_width  = k_t_screen_small,
+                                  .screen_height = k_t_screen_small,
+                                  .inset_px      = k_t_inset_wide,
                                   .draw_target   = stub_draw,
                                   .draw_ctx      = &state,
                                   .read_raw      = stub_read,
@@ -744,16 +758,16 @@ static void test_run_margin_mcdc(void)
 
   /* Vector 2: C1=F, C2=F -> proceed; first read fails -> hw_error. */
   ra8_touch_cal_run_cfg_t cfg2 = cfg1;
-  cfg2.screen_width            = k_touch_cal_screen_width_200;
-  cfg2.screen_height           = k_touch_cal_screen_width_200;
-  cfg2.inset_px                = k_touch_cal_inset_px_10;
+  cfg2.screen_width            = k_t_screen_mid;
+  cfg2.screen_height           = k_t_screen_mid;
+  cfg2.inset_px                = k_t_inset_ok;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_touch_cal_run(&cfg2, &got));
 
   /* Vector 3: C1=F, C2=T. */
   ra8_touch_cal_run_cfg_t cfg3 = cfg1;
-  cfg3.screen_width            = k_touch_cal_screen_width_200;
-  cfg3.screen_height           = k_touch_cal_screen_width_100;
-  cfg3.inset_px                = k_touch_cal_inset_px_60;
+  cfg3.screen_width            = k_t_screen_mid;
+  cfg3.screen_height           = k_t_screen_small;
+  cfg3.inset_px                = k_t_inset_wide;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_touch_cal_run(&cfg3, &got));
   TEST_END("touch_cal run MC/DC: margin >= w || margin >= h");
 }
@@ -909,7 +923,7 @@ static void test_mcdc_apply_run_screen_dim_pair(void)
     .draw_ctx      = nullptr,
     .read_raw      = (ra8_touch_cal_read_raw_fn_t)0x1U,
     .read_ctx      = nullptr,
-    .screen_width  = k_touch_cal_screen_width_320,
+    .screen_width  = k_t_screen_wide,
     .screen_height = 0U,
     .inset_px      = 8U,
   };
