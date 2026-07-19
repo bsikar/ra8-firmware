@@ -49,13 +49,13 @@
  * @brief Test fixtures.
  */
 typedef enum : uint32_t {
-  k_ra8_epaper_test_pclka_hz      = 100000000U,  /**< 100 MHz PCLKA.           */
-  k_ra8_epaper_test_baud_hz       = 12000000U,   /**< 12 MHz SPI clock.        */
-  k_ra8_epaper_test_panel_w       = 800U,        /**< RA8 epaper test panel w. */
-  k_ra8_epaper_test_panel_h       = 600U,        /**< RA8 epaper test panel h. */
-  k_ra8_epaper_test_buf_pixels    = 64U,         /**< 8x8 = 64 px.             */
-  k_ra8_epaper_test_vcom_mv       = 1530U,       /**< Plausible VCOM (-1.53V). */
-  k_ra8_epaper_test_bad_wf        = 200U,        /**< Unknown wf selector.     */
+  k_ra8_epaper_test_pclka_hz   = 100000000U, /**< 100 MHz PCLKA.           */
+  k_ra8_epaper_test_baud_hz    = 12000000U,  /**< 12 MHz SPI clock.        */
+  k_ra8_epaper_test_panel_w    = 800U,       /**< RA8 epaper test panel w. */
+  k_ra8_epaper_test_panel_h    = 600U,       /**< RA8 epaper test panel h. */
+  k_ra8_epaper_test_buf_pixels = 64U,        /**< 8x8 = 64 px.             */
+  k_ra8_epaper_test_vcom_mv    = 1530U,      /**< Plausible VCOM (-1.53V). */
+  k_ra8_epaper_test_bad_wf     = 200U,       /**< Unknown wf selector.     */
   /**
    * The only VCOM that round-trips on this fixture.
    *
@@ -738,10 +738,6 @@ static void test_load_image_depth_and_alignment(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_sleep());
   TEST_END("epaper: load_image depth sizing + 1bpp alignment refusal");
 }
-
-
-
-
 
 int main(void)
 {

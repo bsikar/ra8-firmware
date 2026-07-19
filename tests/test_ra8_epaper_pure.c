@@ -37,19 +37,19 @@
  * @brief Fixtures for the pure-helper vectors.
  */
 typedef enum : uint32_t {
-  k_ra8_epaper_test_panel_w       = 800U,        /**< Descriptor panel width.  */
-  k_ra8_epaper_test_panel_h       = 600U,        /**< Descriptor panel height. */
-  k_ra8_epaper_test_devinfo_words = 20U,         /**< GET_DEV_INFO word count. */
-  k_ra8_epaper_test_buf_lo        = 0x1234U,     /**< Image-buffer base, low.  */
-  k_ra8_epaper_test_buf_hi        = 0x0012U,     /**< Image-buffer base, high. */
-  k_ra8_epaper_test_buf_base      = 0x00121234U, /**< Reassembled base addr.   */
-  k_ra8_epaper_test_lut_w0        = 0x4D36U,     /**< "M6" packed high-first.  */
-  k_ra8_epaper_test_lut_w1        = 0x3431U,     /**< "41" packed high-first.  */
-  k_ra8_epaper_test_ctrl_word     = 0x0107U,     /**< Two non-printable bytes. */
-  k_ra8_epaper_test_a2_m641       = 4U,          /**< A2 mode on the M641 LUT. */
-  k_ra8_epaper_test_panel_64      = 64U,         /**< Grid-aligned panel width.*/
-  k_ra8_epaper_test_panel_40      = 40U,         /**< Off-grid panel width.    */
-  k_ra8_epaper_test_panel_32      = 32U,         /**< One-grid-cell panel.     */
+  k_ra8_epaper_test_panel_w       = 800U,        /**< Descriptor panel width.   */
+  k_ra8_epaper_test_panel_h       = 600U,        /**< Descriptor panel height.  */
+  k_ra8_epaper_test_devinfo_words = 20U,         /**< GET_DEV_INFO word count.  */
+  k_ra8_epaper_test_buf_lo        = 0x1234U,     /**< Image-buffer base, low.   */
+  k_ra8_epaper_test_buf_hi        = 0x0012U,     /**< Image-buffer base, high.  */
+  k_ra8_epaper_test_buf_base      = 0x00121234U, /**< Reassembled base addr.    */
+  k_ra8_epaper_test_lut_w0        = 0x4D36U,     /**< "M6" packed high-first.   */
+  k_ra8_epaper_test_lut_w1        = 0x3431U,     /**< "41" packed high-first.   */
+  k_ra8_epaper_test_ctrl_word     = 0x0107U,     /**< Two non-printable bytes.  */
+  k_ra8_epaper_test_a2_m641       = 4U,          /**< A2 mode on the M641 LUT.  */
+  k_ra8_epaper_test_panel_64      = 64U,         /**< Grid-aligned panel width. */
+  k_ra8_epaper_test_panel_40      = 40U,         /**< Off-grid panel width.     */
+  k_ra8_epaper_test_panel_32      = 32U,         /**< One-grid-cell panel.      */
 } ra8_epaper_pure_const_t;
 
 /**

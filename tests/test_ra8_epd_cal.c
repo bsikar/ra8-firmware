@@ -39,18 +39,18 @@
  * @brief Test-only numeric constants.
  */
 typedef enum : uint16_t {
-  k_ec_min_mv     = 200U,    /**< Low edge of the modelled panel window.  */
-  k_ec_max_mv     = 4000U,   /**< High edge of the modelled panel window. */
-  k_ec_good_mv    = 1530U,   /**< A plausible in-range VCOM (-1.53 V).    */
-  k_ec_other_mv   = 1670U,   /**< A second, different in-range VCOM.      */
-  k_ec_third_mv   = 1450U,   /**< A third, different in-range VCOM.       */
-  k_ec_low_mv     = 199U,    /**< One below the window.                   */
-  k_ec_high_mv    = 4001U,   /**< One above the window.                   */
-  k_ec_blank_mv   = 0xFFFFU, /**< Blank-flash / failed-read signature.    */
-  k_ec_blob       = 32U,     /**< Mirrors ::k_ra8_epd_cal_blob_size.      */
-  k_ec_magic_bytes = 4U,     /**< Magic length, for the MC/DC sweep.      */
-  k_ec_magic_flip  = 0xFFU,  /**< XOR mask that guarantees a mismatch.    */
-  k_ec_bad_schema = 99U,     /**< Schema version from a future writer.    */
+  k_ec_min_mv      = 200U,    /**< Low edge of the modelled panel window.  */
+  k_ec_max_mv      = 4000U,   /**< High edge of the modelled panel window. */
+  k_ec_good_mv     = 1530U,   /**< A plausible in-range VCOM (-1.53 V).    */
+  k_ec_other_mv    = 1670U,   /**< A second, different in-range VCOM.      */
+  k_ec_third_mv    = 1450U,   /**< A third, different in-range VCOM.       */
+  k_ec_low_mv      = 199U,    /**< One below the window.                   */
+  k_ec_high_mv     = 4001U,   /**< One above the window.                   */
+  k_ec_blank_mv    = 0xFFFFU, /**< Blank-flash / failed-read signature.    */
+  k_ec_blob        = 32U,     /**< Mirrors ::k_ra8_epd_cal_blob_size.      */
+  k_ec_magic_bytes = 4U,      /**< Magic length, for the MC/DC sweep.      */
+  k_ec_magic_flip  = 0xFFU,   /**< XOR mask that guarantees a mismatch.    */
+  k_ec_bad_schema  = 99U,     /**< Schema version from a future writer.    */
 } epd_cal_test_const_t;
 
 /**
