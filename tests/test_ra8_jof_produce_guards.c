@@ -33,26 +33,34 @@
 #include "unity_minimal.h"
 
 /**
- * @enum jof_produce_guards_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_png_layout_t
+ * @brief PNG IHDR serialisation offsets used by the guard fixtures.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Offsets ending `_b<N>` are the `N`-th byte of a big-endian 32-bit field,
+ * most-significant first.
  */
 typedef enum : uint8_t {
-  k_jof_produce_guards_build_jpeg_sof_64 = 64U,
-  k_jof_produce_guards_cap_7             = 7U,
-  k_jof_produce_guards_off_5             = 5U,
-  k_jof_produce_guards_val_13            = 13,
-  k_jof_produce_guards_val_5             = 5,
-  k_jof_produce_guards_val_64            = 64,
-  k_jof_produce_guards_val_7             = 7,
-  k_jof_produce_guards_val_9             = 9,
-  k_jof_produce_guards_val_ff            = 0xFFU,
-  k_jof_produce_guards_w_24              = 24U,
-} jof_produce_guards_uint8_const_t;
+  k_t_png_ihdr_len  = 13U,   /**< IHDR payload length, fixed by the PNG spec.  */
+  k_t_ihdr_off_h_b1 = 5U,    /**< Height byte 1 within the IHDR payload.       */
+  k_t_ihdr_off_h_b3 = 7U,    /**< Height byte 3 within the IHDR payload.       */
+  k_t_ihdr_off_ct   = 9U,    /**< Colour-type byte within the IHDR payload.    */
+  k_t_be32_hi_shift = 24U,   /**< Shift selecting the top byte of a 32-bit field. */
+  k_t_byte_mask     = 0xFFU, /**< Low-byte mask while serialising it.          */
+} t_png_layout_t;
+
+/**
+ * @enum t_guard_t
+ * @brief Arena sizes and JPEG geometries that trip the producer's guards.
+ */
+typedef enum : uint8_t {
+  k_t_arena_cap     = 64U, /**< Bump-arena backing store, bytes.              */
+  k_t_arena_cap_low = 7U,  /**< A capacity below the offset below, so the next
+                                allocation must fail rather than wrap.         */
+  k_t_arena_off     = 5U,  /**< Pre-set arena offset for that arm.            */
+  k_t_jpeg_big_edge = 64U, /**< The over-cap JPEG edge, applied to width in one
+                                arm and height in the other.                   */
+} t_guard_t;
 
 /** @brief Suite geometry + buffer sizing. */
 enum : uint32_t {
@@ -136,18 +144,18 @@ static void begin_png(uint32_t w, uint32_t h, uint8_t color)
   static const uint8_t sig[8] = {0x89U, 'P', 'N', 'G', 0x0DU, 0x0AU, 0x1AU, 0x0AU};
   s_src_len                   = 0U;
   put(sig, sizeof(sig));
-  uint8_t ihdr[k_jof_produce_guards_val_13] = {};
-  ihdr[0]                                         = (uint8_t)(w >> k_jof_produce_guards_w_24);
-  ihdr[1] = (uint8_t)((w >> 16U) & k_jof_produce_guards_val_ff);
-  ihdr[2] = (uint8_t)((w >> 8U) & k_jof_produce_guards_val_ff);
-  ihdr[3] = (uint8_t)(w & k_jof_produce_guards_val_ff);
-  ihdr[4] = (uint8_t)(h >> k_jof_produce_guards_w_24);
-  ihdr[k_jof_produce_guards_val_5] =
-    (uint8_t)((h >> 16U) & k_jof_produce_guards_val_ff);
-  ihdr[6]                                = (uint8_t)((h >> 8U) & k_jof_produce_guards_val_ff);
-  ihdr[k_jof_produce_guards_val_7] = (uint8_t)(h & k_jof_produce_guards_val_ff);
+  uint8_t ihdr[k_t_png_ihdr_len] = {};
+  ihdr[0]                                         = (uint8_t)(w >> k_t_be32_hi_shift);
+  ihdr[1] = (uint8_t)((w >> 16U) & k_t_byte_mask);
+  ihdr[2] = (uint8_t)((w >> 8U) & k_t_byte_mask);
+  ihdr[3] = (uint8_t)(w & k_t_byte_mask);
+  ihdr[4] = (uint8_t)(h >> k_t_be32_hi_shift);
+  ihdr[k_t_ihdr_off_h_b1] =
+    (uint8_t)((h >> 16U) & k_t_byte_mask);
+  ihdr[6]                                = (uint8_t)((h >> 8U) & k_t_byte_mask);
+  ihdr[k_t_ihdr_off_h_b3] = (uint8_t)(h & k_t_byte_mask);
   ihdr[8]                                = 8U;
-  ihdr[k_jof_produce_guards_val_9] = color;
+  ihdr[k_t_ihdr_off_ct] = color;
   put_chunk("IHDR", ihdr, sizeof(ihdr));
 }
 
@@ -265,7 +273,7 @@ static void test_guards_work_bytes_overflow(void)
 static void test_guards_bump_take(void)
 {
   TEST_BEGIN("produce guards: bump-carve argument + exhaustion arms");
-  static uint8_t s_backing[k_jof_produce_guards_val_64];
+  static uint8_t s_backing[k_t_arena_cap];
   ra8_jof_bump_t  bump = {.base = s_backing, .cap = sizeof(s_backing), .off = 0U};
 
   TEST_ASSERT(ra8_jof_priv_bump_take(&bump, 8U) != nullptr);
@@ -277,8 +285,8 @@ static void test_guards_bump_take(void)
 
   /* Alignment alone overruns a nearly-full arena. */
   ra8_jof_bump_t tight = {.base = s_backing,
-                         .cap  = k_jof_produce_guards_cap_7,
-                         .off  = k_jof_produce_guards_off_5};
+                         .cap  = k_t_arena_cap_low,
+                         .off  = k_t_arena_off};
   TEST_ASSERT_NULL(ra8_jof_priv_bump_take(&tight, 1U));
   TEST_END("produce guards: bump-carve argument + exhaustion arms");
 }
@@ -337,13 +345,13 @@ static void test_guards_jpeg_geometry(void)
   build_jpeg_sof(0U, 16U);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, produce_with(8U, 8U, 512U, 512U, sizeof(s_work), &info));
 
-  build_jpeg_sof(k_jof_produce_guards_build_jpeg_sof_64, 16U);
+  build_jpeg_sof(k_t_jpeg_big_edge, 16U);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, produce_with(8U, 8U, 16U, 512U, sizeof(s_work), &info));
 
   build_jpeg_sof(16U, 0U);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, produce_with(8U, 8U, 512U, 512U, sizeof(s_work), &info));
 
-  build_jpeg_sof(16U, k_jof_produce_guards_build_jpeg_sof_64);
+  build_jpeg_sof(16U, k_t_jpeg_big_edge);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, produce_with(8U, 8U, 512U, 16U, sizeof(s_work), &info));
   TEST_END("produce guards: hostile JPEG SOF geometry arms");
 }
