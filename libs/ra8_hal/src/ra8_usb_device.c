@@ -429,26 +429,6 @@ ra8_err_t ra8_usb_set_address(ra8_usb_speed_t speed, uint8_t address)
 }
 
 /**
- * @brief Implementation of `ra8_usb_device_busreset_rearm()`.
- *
- * @details Mirrors FSP `usb_pstd_bus_reset` (r_usb_basic/src/driver/r_usb_psignal.c):
- * re-programmes DCPCFG / DCPMAXP / DCPCTR, clears PIPECTR[1..9], and
- * re-applies the device-mode INTENB0 mask. The IP requires this on
- * every transition to the Default state or it silently NAKs the host's
- * first SETUP and the host loops back to bus reset.
- *
- * @param[in] speed See header.
- * @return Result code (see header).
- * @retval k_ra8_ok DCP re-armed.
- * @retval k_ra8_err_invalid_arg speed out of range.
- * @pre Caller observed DVST with DVSQ == default.
- * @pre ra8_usb_device_init has run for this speed.
- * @post DCP regs re-defaulted; INTENB0 mask re-applied.
- * @post All PIPECTR PID fields cleared (NAK).
- * @note Safe in IRQ-callback context (no spin loops).
- * @since 0.1.0
- */
-/**
  * @brief Reset DCP defaults + clear DCP FIFO on bus-reset rearm.
  * @details Helper extracted from ::ra8_usb_device_busreset_rearm to keep
  *          the top-level function under the clang-tidy line budget.

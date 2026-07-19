@@ -345,27 +345,6 @@ static ra8_err_t internal_host_bulk_rx_packet(volatile r_usb_regs_t* reg,
 }
 
 /**
- * @brief Implementation of `ra8_usb_host_bulk_in()`.
- * @details See the public header for the documented contract; arms the IN
- *          pipe (PID=BUF so the SIE issues IN tokens) and consumes packets
- *          via ::internal_host_bulk_rx_packet until a short packet ends the
- *          transfer or @p max_len bytes have been gathered, then parks the
- *          pipe NAK.
- * @param[in] speed See header.
- * @param[in] pipe_num See header.
- * @param[out] buf See header.
- * @param[in] max_len See header.
- * @param[out] out_received See header.
- * @return Result code.
- * @retval k_ra8_ok Transfer ended by short packet or byte count.
- * @pre Module state is consistent.
- * @pre The pipe was configured by ::ra8_usb_host_pipe_setup.
- * @post The pipe PID is NAK; @p out_received holds the byte count.
- * @post On error the partial count received so far is still reported.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-/**
  * @brief Consume bulk-IN packets until short packet, fill, or error.
  *
  * @details Inner receive loop of ::ra8_usb_host_bulk_in, split out for the
@@ -422,6 +401,27 @@ static ra8_err_t internal_host_bulk_rx_loop(volatile r_usb_regs_t* reg,
   return err;
 }
 
+/**
+ * @brief Implementation of `ra8_usb_host_bulk_in()`.
+ * @details See the public header for the documented contract; arms the IN
+ *          pipe (PID=BUF so the SIE issues IN tokens) and consumes packets
+ *          via ::internal_host_bulk_rx_packet until a short packet ends the
+ *          transfer or @p max_len bytes have been gathered, then parks the
+ *          pipe NAK.
+ * @param[in] speed See header.
+ * @param[in] pipe_num See header.
+ * @param[out] buf See header.
+ * @param[in] max_len See header.
+ * @param[out] out_received See header.
+ * @return Result code.
+ * @retval k_ra8_ok Transfer ended by short packet or byte count.
+ * @pre Module state is consistent.
+ * @pre The pipe was configured by ::ra8_usb_host_pipe_setup.
+ * @post The pipe PID is NAK; @p out_received holds the byte count.
+ * @post On error the partial count received so far is still reported.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra8_err_t ra8_usb_host_bulk_in(ra8_usb_speed_t speed,
                                uint8_t         pipe_num,
                                uint8_t*        buf,

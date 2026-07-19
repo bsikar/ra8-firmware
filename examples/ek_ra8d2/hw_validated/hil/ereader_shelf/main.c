@@ -666,12 +666,6 @@ sh_pump_input(uint8_t* prev_touch, ra8_board_sw_state_t* prev1, ra8_board_sw_sta
   return acted;
 }
 
-/**
- * @brief Advance the idle self-demo one step (shelf -> cover -> TOC -> read ...).
- * @details Runs only until the user touches the panel; lets a headless
- *          board_sim --record walk every screen with no input. Wraps to the
- *          shelf so the loop is closed.
- */
 /** @enum sh_demo_t @brief Idle-demo step indices (one screen transition each). */
 typedef enum : uint32_t {
   k_sh_demo_cover0 = 0U, /**< Open book 0 on its cover. */
@@ -684,6 +678,12 @@ typedef enum : uint32_t {
   k_sh_demo_read2  = 7U, /**< Read book 2.              */
 } sh_demo_t;
 
+/**
+ * @brief Advance the idle self-demo one step (shelf -> cover -> TOC -> read ...).
+ * @details Runs only until the user touches the panel; lets a headless
+ *          board_sim --record walk every screen with no input. Wraps to the
+ *          shelf so the loop is closed.
+ */
 static void sh_demo_step(uint32_t step)
 {
   if (g_sh.book_count == 0U) {
@@ -720,13 +720,6 @@ static void sh_demo_step(uint32_t step)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
-/**
- * @brief App entry: bring up panel + optional SD, build the shelf, pump input.
- * @return Never returns.
- * @pre Reset_Handler copied .data and zeroed .bss; SystemInit set VTOR/FPU.
- * @post The shelf scans on the panel; taps open books, browse, and read.
- * @since 0.1.0
- */
 /**
  * @brief Run the reader superloop -- input pump, opt-in self-demo, watchdog, backlight idle-dim.
  *
@@ -781,6 +774,13 @@ static void sh_run(void)
   }
 }
 
+/**
+ * @brief App entry: bring up panel + optional SD, build the shelf, pump input.
+ * @return Never returns.
+ * @pre Reset_Handler copied .data and zeroed .bss; SystemInit set VTOR/FPU.
+ * @post The shelf scans on the panel; taps open books, browse, and read.
+ * @since 0.1.0
+ */
 int32_t main(void)
 {
   sh_setup_or_halt();

@@ -595,42 +595,6 @@ ra8_err_t ra8_ble_gatt_write(uint16_t                conn_handle,
 }
 
 /**
- * @brief Subscribe / unsubscribe to characteristic notifications and
- *        indications by writing the peer CCCD.
- *
- * @details Bluetooth Core 5.3 Vol 3 Part G 3.3.3.3 "Client
- *          Characteristic Configuration" -- bit 0 enables
- *          notifications, bit 1 enables indications. The CCCD value
- *          is written via Write_Request and the local subscription
- *          table is updated so subsequent HVN/HVI PDUs route to
- *          notify_cb.
- *
- * @param[in] conn_handle      ACL handle.
- * @param[in] cccd_handle      Attribute handle of the peer's CCCD.
- * @param[in] enable_notify    Non-zero to set the notify bit.
- * @param[in] enable_indicate  Non-zero to set the indicate bit.
- * @param[in] notify_cb        Inbound HVN/HVI callback (may be NULL
- *                             only when both enables are 0).
- * @param[in] ctx              Opaque user pointer forwarded to notify_cb.
- *
- * @return ra8_err_t Error code.
- * @retval k_ra8_ok               Subscription updated.
- * @retval k_ra8_err_invalid_arg  Both enables are 0 with NULL callback.
- * @retval k_ra8_err_no_mem       Subscription table is full.
- * @retval other                 Error from the underlying CCCD write.
- *
- * @pre A live connection identified by conn_handle exists.
- * @pre cccd_handle was discovered via ra8_ble_gatt_discover_services.
- * @post On success the local subscription table holds the slot and
- *       a CCCD Write_Request has been queued.
- * @post On failure the subscription table may have an allocated slot
- *       that is reused on retry (no leak).
- *
- * @note Not thread-safe; called from the application thread.
- *
- * @since 0.1.0
- */
-/**
  * @brief Find or allocate a subscription-table slot for (conn, cccd).
  *
  * @details First scans the table for a live slot already tracking the
@@ -672,6 +636,42 @@ static ra8_ble_gatt_client_sub_t* internal_sub_slot(uint16_t conn_handle, uint16
   return nullptr;
 }
 
+/**
+ * @brief Subscribe / unsubscribe to characteristic notifications and
+ *        indications by writing the peer CCCD.
+ *
+ * @details Bluetooth Core 5.3 Vol 3 Part G 3.3.3.3 "Client
+ *          Characteristic Configuration" -- bit 0 enables
+ *          notifications, bit 1 enables indications. The CCCD value
+ *          is written via Write_Request and the local subscription
+ *          table is updated so subsequent HVN/HVI PDUs route to
+ *          notify_cb.
+ *
+ * @param[in] conn_handle      ACL handle.
+ * @param[in] cccd_handle      Attribute handle of the peer's CCCD.
+ * @param[in] enable_notify    Non-zero to set the notify bit.
+ * @param[in] enable_indicate  Non-zero to set the indicate bit.
+ * @param[in] notify_cb        Inbound HVN/HVI callback (may be NULL
+ *                             only when both enables are 0).
+ * @param[in] ctx              Opaque user pointer forwarded to notify_cb.
+ *
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok               Subscription updated.
+ * @retval k_ra8_err_invalid_arg  Both enables are 0 with NULL callback.
+ * @retval k_ra8_err_no_mem       Subscription table is full.
+ * @retval other                 Error from the underlying CCCD write.
+ *
+ * @pre A live connection identified by conn_handle exists.
+ * @pre cccd_handle was discovered via ra8_ble_gatt_discover_services.
+ * @post On success the local subscription table holds the slot and
+ *       a CCCD Write_Request has been queued.
+ * @post On failure the subscription table may have an allocated slot
+ *       that is reused on retry (no leak).
+ *
+ * @note Not thread-safe; called from the application thread.
+ *
+ * @since 0.1.0
+ */
 ra8_err_t ra8_ble_gatt_subscribe(uint16_t                 conn_handle,
                                  uint16_t                 cccd_handle,
                                  uint8_t                  enable_notify,

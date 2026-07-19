@@ -443,8 +443,6 @@ static void gt911_stop(void* ctx)
  * =============================================================================
  */
 
-/** @brief Store a 16-bit little-endian sample at register @p reg. */
-
 /* =============================================================================
  * I3C-in-I2C-mode (IIC_B) controller model -- the transfer state machine the
  * ra8_i3c_i2c.c polling driver drives (START / addr / write / read / STOP).

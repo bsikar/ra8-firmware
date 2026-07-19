@@ -297,34 +297,6 @@ ra8_err_t ra8_cgc_pll2_enable(uint8_t mul_int, uint8_t mul_quarters, ra8_plodiv_
 }
 
 /**
- * @brief Implementation of ra8_cgc_usbfs_clock_enable (see header).
- *
- * @details
- * Step 1: bring up PLL2 via ::ra8_cgc_pll2_enable.
- *   XTAL = 24 MHz, PL2IDIV = /2 (fixed), PLL2MUL = 80, PLL2MULNF = 0
- *   -> VCO = 12 MHz * 80 = 960 MHz (right at the silicon minimum).
- *   PL2ODIVP = /4 -> PLL2P = 240 MHz.
- *
- * Step 2: USBCKCR / USBCKDIVCR handshake (FSP `bsp_clocks.c`).
- *   USBCKDIVCR = /5 codepoint (= 6, per the non-linear FSP map).
- *   USBCKSEL   = PLL2P.
- *   Effective USB clock = 240 MHz / 5 = 48.000 MHz.
- *
- * Spec compliance: USB-FS requires 48 MHz +/- 2500 ppm (+/- 0.25 %).
- * Achieved 48.000 MHz exactly (0 ppm) -> PASS.
- *
- * @return Result code.
- * @retval k_ra8_ok USB-FS clock running at exactly 48 MHz.
- * @retval k_ra8_err_hw_timeout PLL2 lock or USBCKSRDY handshake timed out.
- * @pre ra8_cgc_init has been called (PLL1 locked, main XTAL stable).
- * @pre Single-threaded init context.
- * @post PLL2 is locked at 240 MHz on PLL2P.
- * @post USBCKCR.USBCKSEL = PLL2P, USBCKDIVCR = /5.
- * @post PRCR is re-locked.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-/**
  * @brief PRCR-protected USBCKCR / USBCKDIVCR handshake body.
  * @details Steps 3..7 of the HUM "Clock selection switching procedure"
  * inside the CGC-PRCR window: SREQ=1, wait SRDY=1, write USBCKDIVCR,
@@ -449,38 +421,6 @@ ra8_err_t ra8_cgc_usbfs_clock_enable(
   return k_ra8_ok;
 }
 
-/**
- * @brief Bring up the USBHS PHY reference clock + module clock path.
- *
- * @details
- * The USBHS PHY's internal 480 MHz CDR PLL requires a stable 12 MHz
- * reference derived from the EK-RA8D2 main XTAL (24 MHz / 2). The CGC-
- * side prerequisite (HUM Ch 9 "Clock Generation Circuit", USBCKCR /
- * USBCKDIVCR description, p 365) is that the main oscillator stab-flag
- * (OSCSF.MOSCSF) is asserted before the USBHS MSTP ungate runs. We
- * verify that here, then take a PRCR-CGC unlock window so any future
- * USBCKCR.USBCKSREQ/USBCKSRDY handshake on real silicon happens under
- * the same protection-window contract the rest of this driver follows.
- *
- * On the host simulator the system registers are plain RAM, so the
- * helper short-circuits to ::k_ra8_ok after the OSCSF check passes; on
- * silicon the PRCR window is the only thing that matters since
- * ::ra8_cgc_init has already left MOSCSF asserted on a working board.
- *
- * @return ::ra8_err_t error code.
- * @retval k_ra8_ok USBHS clock subsystem armed.
- * @retval k_ra8_err_hw_timeout Main XTAL never reported stable.
- *
- * @pre  ::ra8_cgc_init has been called.
- * @pre  Caller is single-threaded init context.
- *
- * @post OSCSF.MOSCSF = 1.
- * @post PRCR is re-locked.
- *
- * @note Not thread-safe.
- *
- * @since 0.1.0
- */
 /**
  * @enum ra8_usbhs_clock_local_t
  * @brief Local sentinels for the USB60CKCR SREQ/SRDY handshake.

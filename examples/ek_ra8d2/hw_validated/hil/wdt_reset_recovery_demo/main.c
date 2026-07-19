@@ -38,7 +38,6 @@
 #include "ra8_time.h"
 #include "ra8_wdt.h"
 
-/** @brief Demo tunables. */
 /** @brief Reset-cause flag mask. */
 typedef enum : uint32_t {
   k_reset_cause_all_mask = 0x7FFFFFFFU, /**< Clear every documented reset-cause flag. */

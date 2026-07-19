@@ -337,24 +337,6 @@ static ra8_err_t js_scan_margin(ra8_jpeg_stream_state_t* st, ra8_jpeg_bitreader_
 }
 
 /**
- * @brief Decode the whole entropy-coded scan, one MCU row per stripe.
- * @details Outer loops are bounded by the SOF0-derived MCU grid (NASA
- *          Rule 2). Each MCU row fills the stripe buffer, then the stripe
- *          callback fires with the row's true (edge-clamped) height.
- * @param[in,out] st       Streaming state.
- * @param[in]     scan_pos Window offset of the entropy-coded data.
- * @return Result code.
- * @retval k_ra8_ok                 Every stripe emitted.
- * @retval k_ra8_err_protocol_error Entropy stream corrupt / truncated.
- * @retval other                    Propagated from pull / the stripe sink.
- * @pre `js_parse_markers()` succeeded (geometry + tables bound).
- * @pre `scan_pos <= st->win_len`.
- * @post On success `mcus_y` stripes were emitted in order.
- * @post On any error emission stops at the failing stripe.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-/**
  * @brief Decode + emit one MCU: margin slide, luma, chroma, stripe write.
  * @details Keeps the window margin ahead of the bit reader, then reuses the
  *          shared block decoders and the stripe emit stage.

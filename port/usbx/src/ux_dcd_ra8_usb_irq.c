@@ -237,27 +237,6 @@ static void internal_irq_record_snapshot(uint16_t intsts0)
 }
 
 /**
- * @brief Finalise a stashed transfer on the IN/OUT side after a BRDY/BEMP.
- *
- * @details Per-pipe body of the post-event walk in ``ux_dcd_ra8_usb_irq``.
- * For IN pipes the data was already pushed in ``TRANSFER_REQUEST`` so
- * we just post UX_SUCCESS and wake the waiter. For OUT pipes we try to
- * drain via ``ra8_usb_queue_out``: on ok we post UX_SUCCESS, on
- * ``k_ra8_err_no_data`` we rearm NRDYSTS / PID per HUM Ch 36.2.13 +
- * Ch 36.2.27 so the next host OUT token gets ACKed.
- *
- * @param[in] i Pipe index (1..max_pipes-1).
- *
- * @pre Bridge is past ``ux_dcd_ra8_usb_initialize``.
- * @pre Caller is on the ISR callback path.
- * @post If a transfer completed, ``s_dcd.pipes[i].xfer`` is nullptr and
- *       the semaphore has been put (non-standalone builds).
- * @post On NRDY the OUT pipe is rearmed; no semaphore wake.
- *
- * @note ISR-only; must not block.
- * @since 0.1.0
- */
-/**
  * @brief No-waiter auto-echo drain on the configured OUT pipe.
  *
  * @details When the USBX-side waiter is absent (typically because the

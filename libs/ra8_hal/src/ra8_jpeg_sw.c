@@ -155,25 +155,6 @@ int32_t ra8_jpeg_sw_br_get_bits(ra8_jpeg_bitreader_t* br, uint8_t n)
 /* ------------------------------------------------------------------ */
 
 /**
- * @brief Build canonical code/size and mincode/maxcode tables.
- *
- * @details
- * Implements T.81 Annex C "Generation of size table" + "Generation of
- * code table" plus the Annex F.2.2.3 mincode/maxcode/valptr tables
- * used by the symbol decoder.
- *
- * @param[in,out] h Huffman table (BITS / VALS in, derived tables out).
- *
- * @pre ``h`` is non-NULL.
- * @pre ``h->bits`` and ``h->vals`` populated from the JPEG DHT marker.
- * @post ``h->huffcode``, ``h->huffsize``, ``h->mincode``, ``h->maxcode``
- *       and ``h->valptr`` are populated.
- * @post ``h->total`` reflects the symbol count.
- *
- * @note Internal helper; not thread-safe.
- * @since 0.1.0
- */
-/**
  * @brief Build the F.2.2.3 mincode/maxcode/valptr decode tables.
  *
  * @details

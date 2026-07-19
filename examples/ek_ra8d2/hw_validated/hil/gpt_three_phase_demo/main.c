@@ -36,7 +36,6 @@
 #include "ra8_isr.h"
 #include "ra8_time.h"
 
-/** @brief Demo tunables. */
 /** @brief Per-step duty advance. */
 typedef enum : uint32_t {
   k_gpt_duty_advance = 0x200U, /**< Compare-value increment per update. */

@@ -34,7 +34,6 @@
 /** @brief Log tag for ra8_dual_core diagnostics. */
 static const char* const s_tag = "ra8_dual_core";
 
-/** @brief Per-module enums replacing magic numbers. */
 /** @brief Low-byte mask for ACTCSR field extraction. */
 typedef enum : uint16_t {
   k_dc_byte_mask = 0xFFU, /**< Dc byte mask. */

@@ -574,20 +574,6 @@ static UINT demo_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* med
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief Brings USBX system + FS device stack up.
- *
- * @return UINT UX_SUCCESS on success.
- * @retval UX_SUCCESS Stack ready.
- *
- * @pre File-scope pool reserved.
- * @pre Thread context.
- * @post Device stack accepts class registrations.
- * @post On failure, USBX state is undefined.
- *
- * @note Single-call; not idempotent.
- * @since 0.1.0
- */
-/**
  * @brief USBX error callback: mirror the last error into JLink probes.
  *
  * @param[in] system_level   USBX error level.
@@ -610,6 +596,20 @@ static VOID demo_usbx_error_cb(UINT system_level, UINT system_context, UINT erro
   s_dbg_err_count++;
 }
 
+/**
+ * @brief Brings USBX system + FS device stack up.
+ *
+ * @return UINT UX_SUCCESS on success.
+ * @retval UX_SUCCESS Stack ready.
+ *
+ * @pre File-scope pool reserved.
+ * @pre Thread context.
+ * @post Device stack accepts class registrations.
+ * @post On failure, USBX state is undefined.
+ *
+ * @note Single-call; not idempotent.
+ * @since 0.1.0
+ */
 static UINT demo_usbx_stack_up(void)
 {
   if (_ux_system_initialize(s_usbx_pool, k_demo_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {

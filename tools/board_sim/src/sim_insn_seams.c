@@ -60,13 +60,6 @@ typedef enum : uint32_t {
 } apsr_bit_t;
 
 /**
- * @brief Evaluate an ARM condition code against the APSR flags.
- *
- * @param[in] cond 4-bit ARM condition code (0..15).
- * @param[in] xpsr Current xPSR (APSR flags live in the top nibble).
- * @return true if the condition holds.
- */
-/**
  * @enum arm_cond_t
  * @brief ARM/Thumb 4-bit condition-code field encodings (cond[3:0]).
  */
@@ -88,6 +81,13 @@ typedef enum : uint32_t {
   k_cond_al = 0xEU, /**< Always.                   */
 } arm_cond_t;
 
+/**
+ * @brief Evaluate an ARM condition code against the APSR flags.
+ *
+ * @param[in] cond 4-bit ARM condition code (0..15).
+ * @param[in] xpsr Current xPSR (APSR flags live in the top nibble).
+ * @return true if the condition holds.
+ */
 static bool cond_holds(uint32_t cond, uint32_t xpsr)
 {
   const bool n = ((xpsr >> (uint32_t)k_apsr_n) & 1U) != 0U;

@@ -323,55 +323,6 @@ typedef enum : uint8_t {
 } ra8_usb_setup_fp_shift_t;
 
 /**
- * @brief Pack the bridge's SETUP snapshot into the USBX EP0 transfer
- *        request and hand it to the chapter-9 dispatcher.
- *
- * @details
- * USBX expects the 8-byte SETUP packet to live in
- * ``ux_slave_transfer_request_setup`` of the device's EP0 transfer
- * request, in the wire byte order
- * (bmRequestType, bRequest, wValue_lo, wValue_hi,
- *  wIndex_lo,  wIndex_hi,  wLength_lo, wLength_hi). The mirror
- * registers in the RA8 USBFS / USBHS controllers (USBREQ, USBVAL,
- * USBINDX, USBLENG -- HUM Ch 36.2.16..36.2.19, p.1623..1626) already
- * deliver the multi-byte fields in host endian, so we re-serialise
- * them little-endian here. Once the buffer is filled we call
- * ``_ux_device_stack_control_request_process`` which decodes the
- * standard request, drives any IN data stage via the bridge's
- * ``UX_DCD_TRANSFER_REQUEST`` path, and ultimately answers the host
- * (descriptors, SET_ADDRESS, SET_CONFIGURATION, etc.).
- *
- * Mirrors the pattern in
- * ``ux_hcd_sim_host_transaction_schedule.c::SETUP``-handling block
- * which is the upstream reference for "controller has a SETUP packet,
- * push it into the device stack".
- *
- * @param[in] setup Decoded SETUP packet snapshot from
- *                  ``ra8_usb_read_setup_if_valid`` (CTRT path) or
- *                  ``ra8_usb_read_setup_unconditional`` (SQMON path).
- *
- * @return UX_SUCCESS if the EP0 transfer request was dispatched,
- *         UX_ERROR if no device / EP0 is available yet.
- * @retval UX_SUCCESS Chapter-9 dispatcher consumed the SETUP.
- * @retval UX_ERROR  Device pointer or EP0 endpoint not bound
- *                   (e.g. CTRT fired before USBX device-stack init).
- *
- * @pre ``setup`` is non-NULL.
- * @pre ``_ux_system_slave`` is bound (set by
- *      ``_ux_device_stack_initialize``).
- *
- * @post EP0 transfer request's ``setup`` buffer holds the wire-format
- *       SETUP, and chapter-9 has been invoked synchronously.
- * @post EP0 ``actual_length`` and ``current_data_pointer`` are reset
- *       so the dispatcher writes from the beginning of the data buffer.
- *
- * @note Runs in IRQ-callback context (called from
- *       ``ra8_usb_dispatch`` via ``internal_event_cb``).
- *
- * @see _ux_device_stack_control_request_process
- * @since 0.1.0
- */
-/**
  * @brief Pack a decoded SETUP into the 8-byte USB-wire little-endian layout.
  *
  * @details Serialises bmRequestType, bRequest, wValue, wIndex, wLength
@@ -533,44 +484,6 @@ unsigned int internal_dispatch_setup(const ra8_usb_setup_t* setup)
   return rc;
 }
 
-/**
- * @brief Decode INTSTS0.CTSQ and forward the control transfer event.
- *
- * @details
- * Called from ``ux_dcd_ra8_usb_irq`` when ``INTSTS0.CTRT`` (bit 11,
- * HUM Ch 36.2.14, p.1620) is asserted. CTSQ[2:0] (mask
- * ``k_ra8_intsts0_mask_ctsq``) reports which control-stage edge the
- * controller has just transitioned into:
- *
- *  - ``k_ra8_ctsq_rdds`` / ``_wrds`` / ``_wrnd`` -- a SETUP packet has
- *    just been latched; drain it via ``ra8_usb_read_setup_if_valid``
- *    and feed the chapter-9 stack through ``internal_dispatch_setup``.
- *  - ``k_ra8_ctsq_rdss`` / ``_wrss`` -- the data phase is finished and
- *    the controller is in the status stage; pulse ``DCPCTR.CCPL`` via
- *    ``ra8_usb_control_response(true)`` so the host sees ACK.
- *  - ``k_ra8_ctsq_sqer`` -- protocol sequence error; STALL EP0 by
- *    passing ``false`` to ``ra8_usb_control_response``.
- *  - ``k_ra8_ctsq_idle`` -- transient; nothing to do.
- *
- * @param[in] speed Which controller fired (FS or HS).
- * @param[in] intsts0 Snapshot of INTSTS0 captured by ``ra8_usb_dispatch``.
- *
- * @pre Bridge is past ``ux_dcd_ra8_usb_initialize``.
- * @pre ``INTSTS0`` snapshot reflects a CTRT-asserted edge.
- *
- * @post For data-stage CTSQ values, the chapter-9 dispatcher has been
- *       invoked and (best effort) consumed the SETUP.
- * @post For status-stage CTSQ values, ``DCPCTR.CCPL`` has been pulsed
- *       (ACK) or ``DCPCTR.PID`` has been forced to STALL on sequence
- *       error.
- *
- * @note Runs in IRQ-callback context.
- *
- * @see ra8_usb_read_setup_if_valid
- * @see ra8_usb_read_setup_unconditional
- * @see ra8_usb_control_response
- * @since 0.1.0
- */
 /**
  * @brief Drain a fresh SETUP and forward to the chapter-9 dispatcher.
  *

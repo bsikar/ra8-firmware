@@ -442,34 +442,6 @@ static ra8_err_t tz_sau_program(void)
 }
 
 /**
- * @brief Hand BOTH USB controllers to the Non-secure world before BLXNS.
- *
- * @details The NS image runs the USB CDC self-loop: USBFS (J11) is the CDC-ACM
- *          DEVICE, USBHS (J7) is the polled HOST, and the two jacks are cabled
- *          together so the chip enumerates + echoes against itself. This routine
- *          does the Secure-only bring-up the NS image cannot:
- *          1. Route the four USB-FS pins (device role: P5_00 LOW).
- *          2. Set USBHS to host mode: U15 I/O-expander SW4-8 -> Host, PD07 HIGH
- *             (U18 supplies J7 VBUS), and route P4_08 USBHS_VBUS.
- *          3. Enable the USBHS UTMI PLL (``ra8_cgc_usbhs_pll_enable`` -- CGC is
- *             Secure-only; the 48 MHz USBFS clock is enabled by the NS image via
- *             the NSC CGC veneer).
- *          4. Mark BOTH controllers Non-secure in PSARB (bits 11 + 12) under the
- *             PRC4 gate, so the NS image reaches USBFS/USBHS through the
- *             0x5025_0000 / 0x5035_0000 aliases and may clear their
- *             MSTPCRB.MSTPB11/12 module-stop bits itself.
- *
- * @return void.
- * @pre Caller is in Secure state with full peripheral access (pre-BLXNS).
- * @pre ``ra8_cgc_init`` has run (PLL1 locked -- USBHS PLL needs it).
- * @post The USB pins are muxed and PD07 is HIGH (or ::g_tz_usb_pins_err records
- *       the first failing step).
- * @post PSARB.PSARB11|PSARB12 = 1 (both USB controllers Non-secure);
- *       ::g_tz_usb_psarb_readback holds the confirmed value.
- * @note Not thread-safe; secure-boot only.
- * @since 0.1.0
- */
-/**
  * @brief Route the USB-FS device pins + USBHS host pins and enable the HS PLL.
  *
  * @details Resets the pin validator (stale claims survive warm resets), routes

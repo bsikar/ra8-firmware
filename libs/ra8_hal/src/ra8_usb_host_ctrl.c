@@ -472,31 +472,6 @@ static ra8_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool writ
 }
 
 /**
- * @brief Decide direction and run the optional DATA stage of a control xfer.
- *
- * @details Classifies the request from @p setup: a non-zero IN length with a
- * destination buffer is a control read, which runs ::internal_host_ctrl_data_in
- * (clamped to @p data_len); everything else (control write / no-data) skips
- * the data stage. Reports the classification so the caller picks the right
- * status-stage direction.
- *
- * @param[in]  reg         Selected controller register block.
- * @param[in]  setup       The SETUP packet just delivered.
- * @param[out] data        DATA-IN destination (may be NULL).
- * @param[in]  data_len    Capacity of @p data.
- * @param[out] out_rx      Receives DATA-IN bytes read (0 if no data stage).
- * @param[out] out_is_read Set true when a DATA-IN stage ran.
- * @return k_ra8_ok when no data stage ran or it completed, else a timeout.
- * @retval k_ra8_ok             No data stage, or the DATA-IN read finished.
- * @retval k_ra8_err_hw_timeout The DATA-IN stage stalled.
- * @pre The SETUP stage for @p setup has completed.
- * @pre @p out_rx / @p out_is_read are non-NULL.
- * @post @p out_rx / @p out_is_read reflect the data stage outcome.
- * @post On k_ra8_ok the transfer is ready for its status stage.
- * @note Helper split out of ::ra8_usb_host_control_xfer for complexity.
- * @since 0.1.0
- */
-/**
  * @brief Run the DATA-OUT stage of a host control write from @p data.
  *
  * @details The host-side mirror of ::internal_host_ctrl_data_in: selects the

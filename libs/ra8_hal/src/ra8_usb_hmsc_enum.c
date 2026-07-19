@@ -462,22 +462,6 @@ static ra8_err_t internal_enum_configure(uint8_t dev_addr, uint8_t cfg_value)
 }
 
 /**
- * @brief Implementation of `ra8_usb_hmsc_enumerate()`.
- * @details See the public header for the documented contract; runs the
- *          hardware-proven polled ladder: attach wait, (reset, address)
- *          hunt, address assignment, configuration parse + activate,
- *          GET_MAX_LUN, bulk pipe setup, then fires the attach callback.
- * @param[out] out_device See header (may be NULL).
- * @return Result code.
- * @retval k_ra8_ok Device enumerated; SCSI calls may follow.
- * @pre ::ra8_usb_hmsc_init succeeded and VBUS reaches the device.
- * @pre ::ra8_time_init has run.
- * @post On success `s_usb_hmsc_state.attached` is true and the snapshot is filled.
- * @post The registered attach callback (if any) has fired.
- * @note Blocking; bounded by the ladder timeouts.
- * @since 0.1.0
- */
-/**
  * @brief Unpack VID/PID from a device descriptor into the snapshot.
  *
  * @details Little-endian 16-bit fields at idVendor/idProduct.
@@ -564,6 +548,22 @@ static ra8_err_t internal_enum_ladder(uint8_t* out_addr)
   return k_ra8_ok;
 }
 
+/**
+ * @brief Implementation of `ra8_usb_hmsc_enumerate()`.
+ * @details See the public header for the documented contract; runs the
+ *          hardware-proven polled ladder: attach wait, (reset, address)
+ *          hunt, address assignment, configuration parse + activate,
+ *          GET_MAX_LUN, bulk pipe setup, then fires the attach callback.
+ * @param[out] out_device See header (may be NULL).
+ * @return Result code.
+ * @retval k_ra8_ok Device enumerated; SCSI calls may follow.
+ * @pre ::ra8_usb_hmsc_init succeeded and VBUS reaches the device.
+ * @pre ::ra8_time_init has run.
+ * @post On success `s_usb_hmsc_state.attached` is true and the snapshot is filled.
+ * @post The registered attach callback (if any) has fired.
+ * @note Blocking; bounded by the ladder timeouts.
+ * @since 0.1.0
+ */
 ra8_err_t ra8_usb_hmsc_enumerate(ra8_usb_hmsc_device_t* out_device)
 {
   if (!s_usb_hmsc_state.initialized) {

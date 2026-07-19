@@ -456,26 +456,6 @@ static bool priv_handle_void(tok_ctx_t*            ctx,
 }
 
 /**
- * @brief Handle an opening / void / self-closing start tag.
- *
- * @details Void tags (br/hr/img) emit a single token; self-closing block
- * tags emit an empty block-start/block-end pair; ordinary tags push the
- * style stack (and a block-start for block tags).
- *
- * @param[in,out] ctx Tokenizer context.
- * @param[in]     buf Source buffer.
- * @param[in,out] pi  Cursor at '<'; advanced past '>'.
- * @param[in]     len Total buffer length.
- * @return k_ra8_ok, k_ra8_err_no_mem, or validation error.
- * @retval k_ra8_err_no_mem Token pool or nesting-depth bound exceeded.
- * @pre `ctx`, `buf`, `pi` are non-null.
- * @pre `buf[*pi] == '<'` and not an end / comment / decl.
- * @post `*pi` advances past the tag.
- * @post The element stack / token pool grow as the tag requires.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-/**
  * @brief Resolve an element's effective CSS font px from the cascade + inherited.
  *
  * @details Returns the inherited size (0 = none -> UA default) when no font-size
@@ -513,32 +493,6 @@ static uint16_t priv_css_font_px(const tok_ctx_t* ctx, const ra8_css_style_t* co
   }
   return (uint16_t)px;
 }
-
-/**
- * @brief Run the content-CSS cascade for a just-pushed element and apply it.
- *
- * @details Builds the element's CSS identity + inherited run style + colour,
- * cascades author `<style>` rules + inline style over it (#111 / #140), emits
- * the block-start (via priv_open_attrs) carrying the cascaded alignment + font
- * size, and updates the context run style + colour + font px for descendant
- * content. Unstyled content lays out byte-identically to the pre-CSS engine.
- * Factored out of priv_handle_start to keep each function within the NASA Rule 4
- * size budget.
- *
- * @param[in,out] ctx    Tokenizer context (element already pushed).
- * @param[in]     tagbuf Raw tag span starting at '<'.
- * @param[in]     span   Length of @p tagbuf, bytes.
- * @param[in]     tag    Classified tag.
- * @param[in]     block  True iff @p tag is a block element.
- * @return k_ra8_ok, or k_ra8_err_no_mem on a block-start token-pool overflow.
- * @retval k_ra8_err_no_mem Block-start token pool full.
- * @pre `ctx`, `tagbuf` are non-null; `ctx->sp > 0` (element already pushed).
- * @pre `span` spans the element's `<...>` start tag.
- * @post `ctx->style` / `ctx->color` reflect the element's computed style.
- * @post A block element emitted its block-start with the cascaded alignment.
- * @note Not thread-safe.
- * @since 0.1.0
- */
 
 /**
  * @brief Run the CSS cascade for a just-pushed element and apply the result.

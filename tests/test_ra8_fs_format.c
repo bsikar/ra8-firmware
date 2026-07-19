@@ -230,14 +230,6 @@ static void count_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
 }
 
 /**
- * @brief Format @p blocks-sector card as @p type, then run a full file cycle.
- *
- * @details Shared body for the three positive cases: format, mount, assert the
- *          detected type, create + write a multi-cluster payload, read it back
- *          and byte-compare, list (expect exactly the one file), unlink, list
- *          again (expect empty), unmount. Any failure aborts via the harness.
- */
-/**
  * @brief Mount @p be, assert the detected type, and run a full file cycle.
  *
  * @details Mount-side half of the round-trip, factored so both the RAM-backed
