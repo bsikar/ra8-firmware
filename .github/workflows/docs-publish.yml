@@ -1,3 +1,6 @@
+# SCHEDULING ONLY -- the body lives in scripts/ci.sh (gate: docs-publish).
+# See .github/workflows/firmware.yml for the design note.
+#
 # Build the Doxygen HTML and publish it to the gh-pages branch on every push
 # to main (and on manual dispatch). Generated HTML is never committed to a
 # source branch: the orphan gh-pages branch is force-updated with a single
@@ -35,11 +38,6 @@ jobs:
     runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@v4
-
-      - name: Build Doxygen HTML
-        run: make docs
-
-      - name: Publish to gh-pages
-        env:
+      - env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash scripts/publish_docs.sh
+        run: bash scripts/ci.sh --gate docs-publish

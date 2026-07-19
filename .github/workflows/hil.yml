@@ -1,3 +1,5 @@
+# SCHEDULING ONLY -- the gate body lives in scripts/ci.sh (gate: hil-all).
+# See .github/workflows/firmware.yml for the design note.
 name: hil
 
 # Hardware-in-the-loop CI.  Runs on the Raspberry Pi 5 self-hosted runner
@@ -5,8 +7,8 @@ name: hil
 # to it: J-Link OB on /dev/ttyACM0 (SWD + VCOM, 115200 baud), USBFS on
 # J11 -> hub port 4, USBHS on J7 -> hub port 1.
 #
-# Drives scripts/hil_all.sh, which auto-discovers every app under
-# examples/ek_ra8d2/hw_validated/hil/ and verifies each via its hil.conf
+# The hil-all gate drives scripts/hil_all.sh, which auto-discovers every app
+# under examples/ek_ra8d2/hw_validated/hil/ and verifies each via its hil.conf
 # manifest (uart_scrape, usb_cdc, or alive). Adding a new app to that
 # directory automatically pulls it into CI as soon as it has a hil.conf.
 #
@@ -73,6 +75,9 @@ jobs:
 
       - name: Install toolchain (idempotent)
         run: |
+          # ci-parity: infra -- runner package provisioning only; runs no
+          # project check. The hil-all gate hard-fails when arm-none-eabi-gcc
+          # is still absent afterwards.
           if ! command -v arm-none-eabi-gcc >/dev/null 2>&1 \
               || ! dpkg -s libnewlib-arm-none-eabi >/dev/null 2>&1; then
             sudo apt-get update -qq
@@ -82,15 +87,4 @@ jobs:
           arm-none-eabi-gcc --version
           cmake --version
 
-      - name: List apps discovered under hil/
-        run: bash scripts/hil_all.sh --list
-
-      - name: Build every app under hil/
-        # hil_all.sh builds them itself, but doing it explicitly in a
-        # separate step gives clearer logs if a build (not a flash) fails.
-        run: |
-          apps=$(ls examples/ek_ra8d2/hw_validated/hil/ | grep -v README.md)
-          make -j$(nproc) $apps
-
-      - name: Run HIL across every app (auto-discovered)
-        run: bash scripts/hil_all.sh --skip-build
+      - run: bash scripts/ci.sh --gate hil-all

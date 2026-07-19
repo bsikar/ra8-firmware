@@ -1,3 +1,5 @@
+# SCHEDULING ONLY -- the gate body lives in scripts/ci.sh (gate: osv-scan).
+# See .github/workflows/firmware.yml for the design note.
 name: osv-scan
 
 on:
@@ -25,26 +27,10 @@ jobs:
     runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@v4
-
-      - name: SBOM freshness gate
-        # The scan is only as good as the SBOM it reads; refuse to scan a
-        # stale one (same gate as firmware.yml / the pre-commit hook).
-        run: python3 scripts/utils/gen_sbom.py --check
-
-      - name: Download pinned osv-scanner
-        run: |
-          set -euo pipefail
-          curl -fsSL -o osv-scanner \
-            "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64"
-          echo "${OSV_SCANNER_SHA256}  osv-scanner" | sha256sum -c -
-          chmod +x osv-scanner
-
-      - name: Scan SBOM + pinned upstream commits
-        # Two legs (see scripts/utils/osv_scan.sh): the SBOM purl leg and
-        # the commit leg that resolves GIT-range advisories for the
-        # git-vendored C/C++ SOUP. Exits 1 on any finding.
-        run: bash scripts/utils/osv_scan.sh --scanner ./osv-scanner --output-dir osv-report
-
+      # The gate downloads the pinned + sha256-verified scanner, refuses to run
+      # against a stale SBOM, then runs both legs (SBOM purls and the GIT-range
+      # advisories for git-vendored SOUP). Exits 1 on any finding.
+      - run: bash scripts/ci.sh --gate osv-scan
       - name: Upload JSON reports
         if: always()
         uses: actions/upload-artifact@v4
