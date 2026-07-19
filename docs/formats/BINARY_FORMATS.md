@@ -82,12 +82,24 @@ split into two camps:
 | Style | Formats | Declared as | Bytes on disk |
 |-------|---------|-------------|---------------|
 | **Byte string** | `JOF1`, `JOFE`, `RBKC`, `RCBZ` | a 4-byte array, compared with `memcmp` | read left-to-right: `4a 4f 46 31` = `JOF1` |
-| **`uint32` constant** | `NPU1`, `ROT1`, `NSR1`, `RBK1` | a `uint32_t` enum, compared with `==` | stored little-endian, so they appear **reversed**: `ROT1` = `0x524F5431` is written `31 54 4f 52`, which a hex viewer's ASCII column shows as `1TOR` |
+| **`uint32` constant** | `NPU1`, `NSR1`, `ROT1`, `RBK1` | a `uint32_t` enum, compared with `==` | stored little-endian, so whether they read forwards depends on how the constant was chosen -- see below |
 
-Neither is wrong, but do not expect a `uint32` magic to read forwards in a
-hexdump. `NPU1` is the one that looks "correct" by coincidence: it is declared
-as `0x3155504E`, whose little-endian bytes happen to be `4e 50 55 31` = `NPU1`,
-because the constant was chosen to make that true.
+A `uint32` magic reads forwards in a hexdump only if whoever picked the constant
+wrote it "backwards" on purpose. Half of ours did and half did not:
+
+| Magic | Constant | Little-endian bytes | ASCII column | Reads |
+|-------|----------|--------------------|--------------|-------|
+| `NPU1` | `0x3155504E` | `4e 50 55 31` | `NPU1` | **forwards** |
+| `NSR1` | `0x3152534E` | `4e 53 52 31` | `NSR1` | **forwards** |
+| `ROT1` | `0x524F5431` | `31 54 4f 52` | `1TOR` | **reversed** |
+| `RBK1` | `0x52424B31` | `31 4b 42 52` | `1KBR` | **reversed** |
+
+`NPU1` and `NSR1` were deliberately spelled so the flashed image reads its own
+marker in order -- convenient when you are staring at a hexdump of an NS image
+or a `.npub` blob. `ROT1` and `RBK1` were written the "natural" way, so they
+appear reversed on disk. Neither is a bug; both compare identically with `==`.
+Just do not assume a `uint32` magic reads forwards, and do not "fix" `1TOR`
+when you see it.
 
 ### The fourth byte is a version discriminator
 
@@ -170,10 +182,20 @@ It exposes three verbs over a format registry:
   ra8_fmt verify  --format <fmt> --in <file> [--out <dump.ppm>]
 ```
 
+The three verbs answer three different questions, and the distinction matters:
+
+| Verb | Input | Question it answers |
+|------|-------|---------------------|
+| `convert` | a **source** file (PNG/JPEG) | produce the first-party container |
+| `inspect` | a **container** | is this structurally sound, and what is in it? `--verbose` adds header/footer hexdumps and a per-record table |
+| `verify` | a **source** file | does the transcode round-trip losslessly, byte for byte? |
+
 `inspect` sniffs the magic itself, so `ra8_fmt inspect foo.bin` identifies the
-container without being told which format it is. `verify` re-derives the
-structure and reports a verdict -- for `JOF` it additionally proves that the
-tile grid covers the image exactly once, with no gaps and no duplicates.
+container without being told which format it is; for `JOF` it also proves the
+tile grid covers the image exactly once, with no gaps and no duplicates. Note
+that `verify` takes the **source**, not the container -- it re-runs the
+transcode and diffs the result against a reference decode, which is how the
+no-quality-loss rule is checked mechanically rather than asserted.
 
 Using the real tool rather than hand-written examples is a deliberate policy:
 invented hexdumps drift silently from the code, and a reader who cannot
