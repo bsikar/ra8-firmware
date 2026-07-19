@@ -97,6 +97,7 @@ def doxy_dir_id(relpath: str) -> str:
 # an unmapped subdir simply shows its prettified directory name.
 SUBDIR_TITLES: dict[str, str] = {
     "adr": "Architecture Decision Records (adr)",
+    "formats": "Binary format specifications (formats)",
     "SOUP": "SOUP component justifications (SOUP)",
     "qualification": "Qualification kit (qualification)",
     "reference": "Datasheet reference (reference)",
