@@ -50,11 +50,11 @@
 
 #include <stdint.h>
 
-extern const uint32_t g_ra8_vector_table_start[];
-
 #include "ra8_boot_entry.h"
 #include "ra8_cgc.h"
 #include "trustzone_init.h"
+
+extern const uint32_t g_ra8_vector_table_start[];
 
 /* =============================================================================
  * Core / SCB / NVIC register addresses (direct, no CMSIS dep)

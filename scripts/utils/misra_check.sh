@@ -69,13 +69,24 @@ MISRA_PY="$ADDON_DIR/misra.py"
 
 JOBS="${JOBS:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)}"
 
-INCLUDE_DIRS=(
-  -Ilibs/ra8_core/inc
-  -Ilibs/ra8_hal/inc
-  -Ilibs/ra8_nsc/inc
-  -Isrc/inc
-  -Itools/board_sim/inc
-)
+# Header roots, derived from the repo layout rather than hand-picked. The
+# list used to name five directories while the audit scanned libs/, src/
+# AND port/, so every header under port/*/inc was invisible: cppcheck saw
+# the calls into those interfaces as implicitly-declared functions and
+# charged the caller MISRA 17.3 for them. That is a defect in the audit's
+# view of the tree, not in the tree -- the same failure the annotation
+# gate had when its include path was a hand-picked list (see
+# _include_args() in check_annotations.py). Deriving both from the layout
+# means a new library or port cannot silently fall outside either.
+INCLUDE_DIRS=()
+for _inc_dir in libs/*/inc src/inc src/*/inc port/*/inc tools/board_sim/inc; do
+  case "$_inc_dir" in */third_party/*) continue ;; esac
+  [[ -d "$_inc_dir" ]] && INCLUDE_DIRS+=("-I$_inc_dir")
+done
+if [[ ${#INCLUDE_DIRS[@]} -eq 0 ]]; then
+  echo "[ERROR] no header roots found -- run from the repo root" >&2
+  exit 2
+fi
 
 echo "[INFO] cppcheck MISRA-C 2012 audit -- $(cppcheck --version)" >&2
 echo "[INFO] jobs=$JOBS  output=$RESULTS" >&2
