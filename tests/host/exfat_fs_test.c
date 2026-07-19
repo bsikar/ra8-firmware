@@ -68,14 +68,14 @@ typedef enum : uint16_t {
  * block-aligned duplicate -- cannot compare equal by accident.
  */
 typedef enum : uint16_t {
-  k_exfat_path_cap       = 512U,  /**< Host path scratch capacity.                */
-  k_exfat_names_cap      = 1024U, /**< Flattened directory-listing capacity.      */
+  k_exfat_path_cap       = 512U,  /**< Host path scratch capacity.           */
+  k_exfat_names_cap      = 1024U, /**< Flattened directory-listing capacity. */
   k_exfat_read_chunk     = 128U,  /**< Read-back chunk; over the smallest fixture
                                        file, so a short read shows up.            */
-  k_exfat_name_cap       = 64U,   /**< Single-name scratch capacity.              */
-  k_exfat_pattern_stride = 31U,   /**< Stride of the payload generator.           */
-  k_exfat_pattern_bias   = 7U,    /**< Its bias, so index 0 is not byte 0.        */
-  k_byte_mask            = 0xFFU, /**< Truncates the generator back into a byte.  */
+  k_exfat_name_cap       = 64U,   /**< Single-name scratch capacity.             */
+  k_exfat_pattern_stride = 31U,   /**< Stride of the payload generator.          */
+  k_exfat_pattern_bias   = 7U,    /**< Its bias, so index 0 is not byte 0.       */
+  k_byte_mask            = 0xFFU, /**< Truncates the generator back into a byte. */
 } exfat_test_buf_t;
 
 /**
@@ -98,8 +98,8 @@ typedef enum : uint16_t {
  * @see main()
  */
 typedef enum : uint8_t {
-  k_exfat_fs_test_exit_pass    = 0, /**< Every check passed. */
-  k_exfat_fs_test_exit_failed  = 1, /**< At least one check failed. */
+  k_exfat_fs_test_exit_pass    = 0, /**< Every check passed.                */
+  k_exfat_fs_test_exit_failed  = 1, /**< At least one check failed.         */
   k_exfat_fs_test_exit_fixture = 2, /**< Fixture image could not be loaded. */
 } exfat_fs_test_exit_t;
 

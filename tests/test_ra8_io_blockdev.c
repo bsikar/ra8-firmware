@@ -38,7 +38,7 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_bd_pattern_stride = 7U,    /**< Stride of the payload generator, `i * 7 + 3`. */
+  k_bd_pattern_stride = 7U,    /**< Stride of the payload generator, `i * 7 + 3`.            */
   k_byte_mask         = 0xFFU, /**< Truncates a generated or shifted value back into a byte. */
 } io_blockdev_uint8_const_t;
 

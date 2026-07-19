@@ -50,9 +50,9 @@
  */
 typedef enum : uint8_t {
   k_lsm6dso_off_z_high     = 5, /**< High byte of Z within the 6-byte little-endian XYZ block. */
-  k_lsm6dso_fifo_last_off  = 7, /**< Offset of that last byte within the FIFO data window. */
-  k_lsm6dso_ctrl1_xl_probe = 0x0CU, /**< A CTRL1_XL value the driver must read back unchanged. */
-  k_lsm6dso_x_high         = 0x12U, /**< X high byte of that same value. */
+  k_lsm6dso_fifo_last_off  = 7, /**< Offset of that last byte within the FIFO data window.     */
+  k_lsm6dso_ctrl1_xl_probe = 0x0CU, /**< A CTRL1_XL value the driver must read back unchanged.   */
+  k_lsm6dso_x_high         = 0x12U, /**< X high byte of that same value.                         */
   k_lsm6dso_x_low          = 0x34U, /**< X low byte; with the high byte it forms 0x1234 = +4660. */
   k_lsm6dso_odr_preserved =
     0x40U, /**< A CTRL register value whose ODR field a later write must leave alone. */

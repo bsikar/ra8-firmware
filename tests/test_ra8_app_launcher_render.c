@@ -51,7 +51,7 @@
  */
 typedef enum : uint32_t {
   k_crc32_init           = 0xFFFFFFFFU, /**< CRC-32 initial value, and the final XOR-out. */
-  k_crc32_poly_reflected = 0xEDB88320U, /**< The reflected CRC-32 polynomial. */
+  k_crc32_poly_reflected = 0xEDB88320U, /**< The reflected CRC-32 polynomial.             */
 } app_launcher_render_uint32_const_t;
 
 /**

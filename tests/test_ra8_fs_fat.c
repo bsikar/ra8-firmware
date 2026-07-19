@@ -54,16 +54,16 @@ typedef enum : uint16_t {
  * @brief Byte values and payload sizes this fixture stimulates the mount with.
  */
 typedef enum : uint16_t {
-  k_bpb_sig_lo     = 0x55U, /**< Boot-signature low byte.                              */
-  k_bpb_sig_hi     = 0xAAU, /**< Boot-signature high byte.                             */
-  k_byte_mask      = 0xFFU, /**< Low-byte mask used by the put16 helper.               */
+  k_bpb_sig_lo     = 0x55U, /**< Boot-signature low byte.                */
+  k_bpb_sig_hi     = 0xAAU, /**< Boot-signature high byte.               */
+  k_byte_mask      = 0xFFU, /**< Low-byte mask used by the put16 helper. */
   k_fat_poison_out = 99U, /**< Poison written into an out-parameter before a call, so a callee that
               leaves it untouched fails the assertion instead of coasting on a
               stale zero.                                                          */
   k_fat_bad_bytes_per_sec =
     256U, /**< A BPB_BytsPerSec disagreeing with the backend's 512-byte block; the
                mount must reject it.                                               */
-  k_fat_bytes_multi_cluster = 1500U, /**< Payload spanning more than one cluster.  */
+  k_fat_bytes_multi_cluster = 1500U, /**< Payload spanning more than one cluster. */
 } fat_fixture_t;
 
 /**

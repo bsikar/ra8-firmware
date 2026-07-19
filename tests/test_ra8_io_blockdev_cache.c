@@ -35,8 +35,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_bdc_seed_block1 = 0x11, /**< Fill seed for logical block 1. */
-  k_bdc_seed_block2 = 0x12, /**< For block 2, adjacent to it so an off-by-one line is caught. */
+  k_bdc_seed_block1 = 0x11, /**< Fill seed for logical block 1.                                  */
+  k_bdc_seed_block2 = 0x12, /**< For block 2, adjacent to it so an off-by-one line is caught.    */
   k_bdc_seed_block4 = 0x44, /**< For block 4, far enough away to land in a different cache line. */
 } io_blockdev_cache_uint8_const_t;
 

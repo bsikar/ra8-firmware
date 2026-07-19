@@ -51,8 +51,8 @@ typedef enum : uint32_t {
   k_pbook_node_count         = 10U,         /**< Nodes in the book: the nodes[]
                                          extent and the header's node_count
                                          are the same fact.                 */
-  k_pbook_strings_cap        = 320U,        /**< String-pool capacity.             */
-  k_pbook_render_cap         = 512U,        /**< Rendered-text compare buffers.    */
+  k_pbook_strings_cap        = 320U,        /**< String-pool capacity.          */
+  k_pbook_render_cap         = 512U,        /**< Rendered-text compare buffers. */
   k_crc32_init               = 0xFFFFFFFFU, /**< CRC-32 init, and the XOR-out.  */
   k_crc32_poly_reflected     = 0xEDB88320U, /**< Reflected CRC-32 polynomial.   */
 } pbook_fixture_t;
