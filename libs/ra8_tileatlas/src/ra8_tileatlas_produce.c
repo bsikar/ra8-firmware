@@ -35,6 +35,7 @@
 #include "ra8_log.h"
 #include "ra8_tileatlas.h"
 #include "ra8_tileatlas_internal.h"
+#include "ra8_webp.h"
 
 /** @brief Module log tag. */
 static const char* const s_tag = "ra8_ta_prod";
@@ -55,6 +56,9 @@ typedef enum : uint32_t {
   k_ra8_ta_le_sh8          = 8U,     /**< Little-endian shift.                         */
   k_ra8_ta_le_sh16         = 16U,    /**< Little-endian shift.                         */
   k_ra8_ta_le_sh24         = 24U,    /**< Little-endian shift.                         */
+  k_ra8_ta_png_ihdr_w      = 16U,    /**< PNG IHDR width field offset (big-endian).    */
+  k_ra8_ta_png_ihdr_h      = 20U,    /**< PNG IHDR height field offset (big-endian).   */
+  k_ra8_ta_png_ihdr_end    = 24U,    /**< Bytes needed to read both IHDR fields.       */
 } ra8_ta_prod_const_t;
 
 /** @brief Module-static producer state (producer documented not thread-safe). */
@@ -746,6 +750,68 @@ priv_dispatch(ra8_ta_prod_state_t* st, const uint8_t* head, ra8_ta_prefix_pull_t
     return ra8_ta_priv_webp_transcode(st, pfx);
   }
   return k_ra8_err_not_supported; /* not a JPEG/PNG/WebP source */
+}
+
+/**
+ * @brief Read a big-endian uint32 (PNG stores its IHDR fields big-endian).
+ * @details The JOF container is little-endian throughout, so the little-endian
+ *          helpers above do not serve the PNG IHDR probe.
+ * @param[in] buf Source bytes (at least 4 readable).
+ * @return The decoded value.
+ * @retval 0 All four source bytes were zero.
+ * @pre @p buf holds 4 readable bytes.
+ * @pre The field is big-endian per the PNG specification.
+ * @post No state is mutated.
+ * @post The result equals the four bytes assembled big-endian.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+RA8_INTERNAL
+static uint32_t priv_rd_be32(const uint8_t* buf)
+{
+  return ((uint32_t)buf[0] << k_ra8_ta_le_sh24) | ((uint32_t)buf[1] << k_ra8_ta_le_sh16) |
+         ((uint32_t)buf[2] << k_ra8_ta_le_sh8) | (uint32_t)buf[3];
+}
+
+ra8_err_t
+ra8_tileatlas_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, uint16_t* out_h)
+{
+  RA8_CHECK_NULL_PTR(data, s_tag, "data must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_w, s_tag, "out_w must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_h, s_tag, "out_h must not be nullptr");
+  if (len < (size_t)k_ra8_ta_sniff_bytes) {
+    return k_ra8_err_not_supported; /* too short to carry any accepted magic */
+  }
+  uint32_t w = 0U;
+  uint32_t h = 0U;
+  if ((data[0] == (uint8_t)k_ra8_ta_jpeg_soi_first) &&
+      (data[1] == (uint8_t)k_ra8_ta_jpeg_soi_second)) {
+    return ra8_jpeg_sw_get_dimensions(data, (uint32_t)len, out_w, out_h);
+  }
+  if (memcmp(data, s_prod_png_sig, sizeof(s_prod_png_sig)) == 0) {
+    if (len < (size_t)k_ra8_ta_png_ihdr_end) {
+      return k_ra8_err_not_supported; /* IHDR truncated */
+    }
+    w = priv_rd_be32(&data[k_ra8_ta_png_ihdr_w]);
+    h = priv_rd_be32(&data[k_ra8_ta_png_ihdr_h]);
+  } else if ((memcmp(data, s_prod_webp_riff, sizeof(s_prod_webp_riff)) == 0) &&
+             (memcmp(&data[k_ra8_ta_webp_fourcc_ofs],
+                     s_prod_webp_webp,
+                     sizeof(s_prod_webp_webp)) == 0)) {
+    const ra8_err_t rc = ra8_webp_get_info(data, len, &w, &h);
+    if (rc != k_ra8_ok) {
+      return rc;
+    }
+  } else {
+    return k_ra8_err_not_supported; /* not a JPEG/PNG/WebP source */
+  }
+  if ((w == 0U) || (h == 0U) || (w > (uint32_t)k_ra8_tileatlas_max_dim) ||
+      (h > (uint32_t)k_ra8_tileatlas_max_dim)) {
+    return k_ra8_err_invalid_size;
+  }
+  *out_w = (uint16_t)w;
+  *out_h = (uint16_t)h;
+  return k_ra8_ok;
 }
 
 /**
