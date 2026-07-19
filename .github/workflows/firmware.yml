@@ -303,8 +303,8 @@ jobs:
           # ci-parity: infra -- runner package provisioning only; runs no
           # project check. Idempotent: skip apt entirely once `dot` is present
           # on this long-lived runner. The docs gate hard-requires graphviz,
-          # because without it doxygen silently drops every hand-written @dot
-          # diagram instead of rendering it.
+          # because without it doxygen silently drops every authored diagram
+          # instead of rendering it.
           if ! command -v dot >/dev/null 2>&1; then
             sudo apt-get update
             sudo apt-get install -y graphviz
