@@ -28,16 +28,19 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_app_make_app_10   = 10,
-  k_app_make_app_100  = 100,
-  k_app_make_app_20   = 20,
-  k_app_make_app_200  = 200,
-  k_app_make_app_30   = 30,
-  k_app_make_app_7    = 7,
-  k_app_make_app_9    = 9,
-  k_app_make_app_vt_5 = 5,
-  k_app_n_99          = 99U,
-  k_app_val_77        = 77U,
+  k_app_id_library = 10,  /**< Id of the library app in the three-app fixture. */
+  k_app_id_mount_a = 100, /**< First app of the mount-ordering fixture. */
+  k_app_id_reader  = 20,  /**< Id of the reader app. */
+  k_app_id_mount_b = 200, /**< Its second. */
+  k_app_id_settings =
+    30, /**< Id of the settings app. The three are spaced apart so an off-by-one in a lookup cannot land on a neighbour. */
+  k_app_id_freed       = 7, /**< App registered only to be freed again. */
+  k_app_id_init_fails  = 9, /**< App whose init deliberately fails. */
+  k_app_id_null_vtable = 5, /**< App registered with a null vtable entry. */
+  k_app_poison_out =
+    99U, /**< Poison written into a count or depth out-parameter, so a call that fails without setting it is detectable. */
+  k_app_id_unregistered =
+    77U, /**< An id no fixture app registers, so a back-trail entry naming it must be rejected. */
 } app_uint8_const_t;
 
 typedef struct {
@@ -141,7 +144,7 @@ static void test_register(void)
   ra8_app_t          a0    = make_app(&c0, 1, "lib");
   ra8_app_t          a1    = make_app(&c1, 2, "rdr");
   ra8_app_t          adup  = make_app(&cdup, 1, "dup");
-  ra8_app_t          afail = make_app(&cfail, k_app_make_app_9, "bad");
+  ra8_app_t          afail = make_app(&cfail, k_app_id_init_fails, "bad");
   ra8_app_t*         slots[2];
   ra8_app_registry_t reg = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_registry_init(&reg, slots, 2U));
@@ -166,7 +169,7 @@ static void test_register(void)
   ra8_app_registry_t reg2 = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_registry_init(&reg2, slots2, 2U));
   TEST_ASSERT_EQ(k_ra8_err_hw_init_failed, ra8_app_register(&reg2, &afail));
-  uint16_t n = k_app_n_99;
+  uint16_t n = k_app_poison_out;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_count(&reg2, &n));
   TEST_ASSERT_EQ(0U, n);
   TEST_ASSERT_EQ(false, afail.initialized);
@@ -480,7 +483,7 @@ nav_check_back_stack(ra8_app_nav_t* nav, ra8_app_registry_t* reg, app_ctx_t* c0,
 {
   /* go_index(0): Decision A false (no prior app) -> nothing pushed, depth 0. */
   ra8_app_t* act   = nullptr;
-  uint16_t   depth = k_app_n_99;
+  uint16_t   depth = k_app_poison_out;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_go_index(nav, 0U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_active(reg, &act));
   TEST_ASSERT_EQ(10, act->id);
@@ -554,8 +557,8 @@ static void nav_check_push_capacity(void)
 {
   app_ctx_t          mc0 = {};
   app_ctx_t          mc1 = {};
-  ra8_app_t          m0  = make_app(&mc0, k_app_make_app_100, "m0");
-  ra8_app_t          m1  = make_app(&mc1, k_app_make_app_200, "m1");
+  ra8_app_t          m0  = make_app(&mc0, k_app_id_mount_a, "m0");
+  ra8_app_t          m1  = make_app(&mc1, k_app_id_mount_b, "m1");
   ra8_app_t*         mslots[2];
   ra8_app_registry_t mreg = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_registry_init(&mreg, mslots, 2U));
@@ -621,9 +624,9 @@ static void test_nav_go_index(void)
   app_ctx_t          c0 = {};
   app_ctx_t          c1 = {};
   app_ctx_t          c2 = {};
-  ra8_app_t          a0 = make_app(&c0, k_app_make_app_10, "library");
-  ra8_app_t          a1 = make_app(&c1, k_app_make_app_20, "reader");
-  ra8_app_t          a2 = make_app(&c2, k_app_make_app_30, "settings");
+  ra8_app_t          a0 = make_app(&c0, k_app_id_library, "library");
+  ra8_app_t          a1 = make_app(&c1, k_app_id_reader, "reader");
+  ra8_app_t          a2 = make_app(&c2, k_app_id_settings, "settings");
   ra8_app_t*         slots[3];
   ra8_app_registry_t reg = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_registry_init(&reg, slots, 3U));
@@ -709,7 +712,7 @@ static void test_zero_cap_and_nav_launch_errors(void)
   uint16_t      trail[2] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_init(&nav, &reg, trail, 2U));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_app_nav_go(&nav, 99U));
-  uint16_t depth = k_app_n_99;
+  uint16_t depth = k_app_poison_out;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_depth(&nav, &depth));
   TEST_ASSERT_EQ(0U, depth); /* failing launch pushed nothing */
   ra8_app_t* act = &a0;
@@ -719,7 +722,7 @@ static void test_zero_cap_and_nav_launch_errors(void)
   /* L250/L251: nav_back whose trail entry no longer resolves. A hand-built nav
    * with depth 1 and a stack id absent from the registry makes the relaunch
    * return `k_ra8_err_not_found`; it is forwarded and the stack is left intact. */
-  uint16_t      btrail[1] = {k_app_val_77}; /* id 77 was never registered */
+  uint16_t      btrail[1] = {k_app_id_unregistered}; /* id 77 was never registered */
   ra8_app_nav_t bnav      = {.reg = &reg, .stack = btrail, .cap = 1U, .depth = 1U};
   bool          popped    = true;
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_app_nav_back(&bnav, &popped));
@@ -871,7 +874,7 @@ static void uninstall_check_deinit_null(ra8_app_registry_t* reg)
 {
   uint16_t  n    = 0U;
   app_ctx_t cnd  = {};
-  ra8_app_t andn = make_app_vt(&cnd, k_app_make_app_vt_5, "nodeinit", &k_app_vt_null);
+  ra8_app_t andn = make_app_vt(&cnd, k_app_id_null_vtable, "nodeinit", &k_app_vt_null);
   andn.removable = true;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_register(reg, &andn)); /* idx 2              */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_uninstall(reg, 5));    /* deinit guard false */
@@ -891,7 +894,7 @@ static void uninstall_check_active_none(void)
 {
   uint16_t  n  = 0U;
   app_ctx_t fc = {};
-  ra8_app_t fa = make_app(&fc, k_app_make_app_7, "free");
+  ra8_app_t fa = make_app(&fc, k_app_id_freed, "free");
   fa.removable = true;
   ra8_app_t*         fslots[1];
   ra8_app_registry_t freg = {};
