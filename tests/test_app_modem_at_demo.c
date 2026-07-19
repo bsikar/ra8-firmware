@@ -42,10 +42,12 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_modem_at_demo_v_123   = 123U,
-  k_modem_at_demo_v_7     = 7U,
-  k_modem_at_demo_val_128 = 128,
-  k_modem_at_demo_val_64  = 64,
+  k_modem_val_multi_digit = 123U, /**< A multi-digit value, exercising the accumulate loop. */
+  k_modem_val_single_digit =
+    7U, /**< A single-digit response value, the shortest the parser can see. */
+  k_modem_line_cap =
+    128, /**< Capacity of the end-to-end response line buffer, over the longest fixture response. */
+  k_modem_capture_cap = 64, /**< Capacity of the captured-command buffer. */
 } modem_at_demo_uint8_const_t;
 
 /* ------------------------------------------------------------------------- */
@@ -297,7 +299,7 @@ static void test_run_ok_mcdc(void)
 static void test_parse_first_uint(void)
 {
   TEST_BEGIN("modem_at_demo: parse first uint");
-  uint32_t v = k_modem_at_demo_v_123;
+  uint32_t v = k_modem_val_multi_digit;
   TEST_ASSERT(modem_parse_first_uint("+CSQ: 17,99", &v));
   TEST_ASSERT_EQ(17U, v);
   TEST_ASSERT(modem_parse_first_uint("+CGATT: 1", &v));
@@ -324,7 +326,7 @@ static void test_parse_first_uint(void)
 static void test_parse_last_uint(void)
 {
   TEST_BEGIN("modem_at_demo: parse last uint");
-  uint32_t v = k_modem_at_demo_v_7;
+  uint32_t v = k_modem_val_single_digit;
   TEST_ASSERT(modem_parse_last_uint("+CREG: 1", &v)); /* URC form */
   TEST_ASSERT_EQ(1U, v);
   TEST_ASSERT(modem_parse_last_uint("+CREG: 1,5", &v)); /* n,stat */
@@ -516,7 +518,7 @@ static void t_on_creg(const char* line, void* ctx)
   }
 }
 
-static uint8_t s_e2e_line[k_modem_at_demo_val_128];
+static uint8_t s_e2e_line[k_modem_line_cap];
 
 /**
  * @test modem_at_demo end-to-end verdict is PASS
@@ -549,7 +551,7 @@ static void test_end_to_end_pass(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_modem_at_send_cmd("AT+CMEE=1", nullptr, 0U));
 
   /* SIM phase */
-  char cap[k_modem_at_demo_val_64] = {};
+  char cap[k_modem_capture_cap] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_modem_at_send_cmd_capture("AT+CPIN?", cap, sizeof cap, 0U));
   const bool sim_ready = modem_line_contains(cap, "READY");
   TEST_ASSERT(sim_ready);

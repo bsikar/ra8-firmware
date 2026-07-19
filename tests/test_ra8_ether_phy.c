@@ -24,8 +24,9 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ether_phy_reset_wait_us_100 = 100U,
-  k_ether_phy_val_5             = 5,
+  k_phy_reset_wait_us =
+    100U, /**< Reset settling time the configuration requests, in microseconds. */
+  k_phy_reg_link_partner = 5, /**< MII register 5: the link-partner ability register. */
 } ether_phy_uint8_const_t;
 
 /**
@@ -38,8 +39,9 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_ether_phy_regs_0100 = 0x0100U,
-  k_ether_phy_val_8000  = 0x8000U,
+  k_phy_ability_100_full = 0x0100U, /**< An ability word advertising 100BASE-TX full duplex. */
+  k_phy_bmcr_reset =
+    0x8000U, /**< BMCR bit 15, the PHY reset bit the driver must clear when reset completes. */
 } ether_phy_uint16_const_t;
 
 typedef enum : uint8_t {
@@ -73,7 +75,7 @@ static ra8_err_t bus_read(void* ctx, uint8_t phy, uint8_t reg, uint16_t* out)
     if (st->reset_reads_remaining > 0U) {
       st->reset_reads_remaining = (uint16_t)(st->reset_reads_remaining - 1U);
     } else {
-      st->regs[0] = (uint16_t)(st->regs[0] & (uint16_t)~k_ether_phy_val_8000);
+      st->regs[0] = (uint16_t)(st->regs[0] & (uint16_t)~k_phy_bmcr_reset);
     }
   }
   *out = st->regs[reg];
@@ -111,7 +113,7 @@ static ra8_ether_phy_cfg_t make_cfg(void)
   cfg.io.ctx              = &s_io;
   cfg.phy_address         = (uint8_t)k_test_phy_addr;
   cfg.mii_type            = k_ra8_ether_phy_rmii;
-  cfg.reset_wait_us       = k_ether_phy_reset_wait_us_100;
+  cfg.reset_wait_us       = k_phy_reset_wait_us;
   return cfg;
 }
 
@@ -208,8 +210,8 @@ static void test_link_status(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ether_phy_open(&cfg));
 
   /* Stage BMSR = link up + AN complete; LPA = 100full. */
-  s_io.regs[1]                 = (uint16_t)(0x0004U | 0x0020U);
-  s_io.regs[k_ether_phy_val_5] = k_ether_phy_regs_0100;
+  s_io.regs[1]                      = (uint16_t)(0x0004U | 0x0020U);
+  s_io.regs[k_phy_reg_link_partner] = k_phy_ability_100_full;
 
   ra8_ether_phy_link_t link = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ether_phy_link_status_get(nullptr));
@@ -290,24 +292,24 @@ static void test_mcdc_link_status_resolved_speed_guard(void)
 
   /* V1: BMSR=0 -> link_up=0 -> C1=F, decision F. Speed stays no_link. */
   s_io.regs[1] = 0x0000U;
-  s_io.regs[k_ether_phy_val_5] =
-    k_ether_phy_regs_0100; /* LPA=100full but should NOT be consulted */
+  s_io.regs[k_phy_reg_link_partner] =
+    k_phy_ability_100_full; /* LPA=100full but should NOT be consulted */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ether_phy_link_status_get(&link));
   TEST_ASSERT_EQ(0, link.link_up);
   TEST_ASSERT_EQ(0, link.auto_neg_done);
   TEST_ASSERT_EQ(k_ra8_ether_phy_speed_no_link, link.speed);
 
   /* V2: BMSR=link_up only (no an_complete) -> C1=T, C2=F. Decision F. */
-  s_io.regs[1]                 = 0x0004U; /* link_up bit only */
-  s_io.regs[k_ether_phy_val_5] = k_ether_phy_regs_0100;
+  s_io.regs[1]                      = 0x0004U; /* link_up bit only */
+  s_io.regs[k_phy_reg_link_partner] = k_phy_ability_100_full;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ether_phy_link_status_get(&link));
   TEST_ASSERT_EQ(1, link.link_up);
   TEST_ASSERT_EQ(0, link.auto_neg_done);
   TEST_ASSERT_EQ(k_ra8_ether_phy_speed_no_link, link.speed);
 
   /* V3: BMSR=link_up | an_complete -> C1=T, C2=T. Decision T. LPA read. */
-  s_io.regs[1]                 = (uint16_t)(0x0004U | 0x0020U);
-  s_io.regs[k_ether_phy_val_5] = k_ether_phy_regs_0100;
+  s_io.regs[1]                      = (uint16_t)(0x0004U | 0x0020U);
+  s_io.regs[k_phy_reg_link_partner] = k_phy_ability_100_full;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ether_phy_link_status_get(&link));
   TEST_ASSERT_EQ(1, link.link_up);
   TEST_ASSERT_EQ(1, link.auto_neg_done);
