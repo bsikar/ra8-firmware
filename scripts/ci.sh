@@ -141,11 +141,25 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
     echo "==================================================================="
     echo "== GATE: $name"
     echo "==================================================================="
-    if "$@"; then
-      gate_names+=("$name")
+    # Do NOT write this as `if "$@"; then`. Calling a gate from an `if`
+    # condition puts it in a context where the shell suppresses ERREXIT, and
+    # that suppression extends INTO the callee -- so the `set -e` inside every
+    # `gate_*()` subshell below was silently neutered and only the gate's LAST
+    # command decided PASS/FAIL. Concretely, gate_precommit_checks runs 13
+    # checkers and only the final one counted: two of them were crashing on an
+    # uncaught exception while the gate still reported PASS.
+    #
+    # Running the gate as a plain command (with errexit disabled here, around
+    # the call only) keeps the callee's own `set -e` effective and still lets
+    # us record the status instead of aborting the whole suite on first red.
+    set +e
+    "$@"
+    local rc=$?
+    set -e
+    gate_names+=("$name")
+    if [[ "$rc" -eq 0 ]]; then
       gate_results+=("PASS")
     else
-      gate_names+=("$name")
       gate_results+=("FAIL")
     fi
   }
