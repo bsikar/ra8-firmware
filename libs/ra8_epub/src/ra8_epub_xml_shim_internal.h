@@ -1,7 +1,7 @@
 /**
  * @file ra8_epub_xml_shim_internal.h
  * @brief Library-private contract for the tinyxml2 EPUB parse shim
- * @ingroup grp_epub
+ * @ingroup grp_ereader
  *
  * @par Tag
  * [Ring 3 / LIB] {World: NS}
