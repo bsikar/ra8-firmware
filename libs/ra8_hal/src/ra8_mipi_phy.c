@@ -528,13 +528,6 @@ ra8_err_t ra8_mipi_phy_get_status(uint32_t* out_mask)
   return k_ra8_ok;
 }
 
-ra8_err_t ra8_mipi_phy_clear_status(uint32_t mask)
-{
-  /* DPHYSFR is read-only on this part (HUM Ch 64.2.6 p 3826) -- nothing to write. */
-  (void)mask;
-  return k_ra8_ok;
-}
-
 bool ra8_mipi_phy_is_ldo_stable(void)
 {
   /* HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */

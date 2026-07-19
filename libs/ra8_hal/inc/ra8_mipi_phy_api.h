@@ -195,27 +195,6 @@ extern "C" {
 [[nodiscard]] ra8_err_t ra8_mipi_phy_get_status(uint32_t* out_mask);
 
 /**
- * @brief Clear status flags (no-op on this part).
- *
- * @details
- * DPHYSFR is read-only (HUM Ch 64.2.6 p 3826) -- the bits are
- * driven by hardware ready signals and cannot be cleared by
- * software. This entry point exists so ``ra8_mipi_phy`` mirrors
- * the API shape of peer drivers.
- *
- * @param[in] mask Bits the caller would like cleared (ignored).
- *
- * @return ``k_ra8_ok`` always.
- *
- * @pre -- (no requirements; the function ignores its argument).
- * @post Hardware state is unchanged.
- *
- * @note Thread safety: trivially safe.
- * @since 0.1.0
- */
-[[nodiscard]] ra8_err_t ra8_mipi_phy_clear_status(uint32_t mask);
-
-/**
  * @brief Test whether the LDO has stabilised (DPHYSFR.PWRSF = 1).
  *
  * @details
