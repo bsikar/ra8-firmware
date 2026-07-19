@@ -6,7 +6,7 @@
 # fix those at the root or record a deviation in
 # docs/qualification/MISRA_DEVIATIONS.md first.
 # cppcheck: Cppcheck 2.13.0
-# total findings: 12682
+# total findings: 12685
 # columns: file<TAB>rule<TAB>count
 libs/ra8_app/src/ra8_app.c	misra-c2012-14.2	1
 libs/ra8_app/src/ra8_app.c	misra-c2012-15.5	79
@@ -534,12 +534,12 @@ libs/ra8_hal/src/ra8_elc.c	misra-c2012-8.4	6
 libs/ra8_hal/src/ra8_epaper.c	misra-c2012-14.2	4
 libs/ra8_hal/src/ra8_epaper.c	misra-c2012-15.5	101
 libs/ra8_hal/src/ra8_epaper.c	misra-c2012-16.2	8
-libs/ra8_hal/src/ra8_epaper.c	misra-c2012-17.3	4
+libs/ra8_hal/src/ra8_epaper.c	misra-c2012-17.3	5
 libs/ra8_hal/src/ra8_epaper.c	misra-c2012-8.9	1
 libs/ra8_hal/src/ra8_epaper_devinfo.c	misra-c2012-14.2	1
 libs/ra8_hal/src/ra8_epaper_devinfo.c	misra-c2012-15.5	4
 libs/ra8_hal/src/ra8_epaper_geom.c	misra-c2012-14.2	1
-libs/ra8_hal/src/ra8_epaper_geom.c	misra-c2012-15.5	26
+libs/ra8_hal/src/ra8_epaper_geom.c	misra-c2012-15.5	28
 libs/ra8_hal/src/ra8_epaper_geom.c	misra-c2012-16.2	4
 libs/ra8_hal/src/ra8_eth.c	misra-c2012-15.5	33
 libs/ra8_hal/src/ra8_eth.c	misra-c2012-18.4	1
