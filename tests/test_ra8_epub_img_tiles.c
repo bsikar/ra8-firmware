@@ -446,6 +446,109 @@ static void verify_tile(ra8_epub_tile_binder_t* b,
  */
 
 /**
+ * @brief Assert the big deflate atlas declares the geometry the fixture built.
+ *
+ * @details
+ * Checked before any tile is fetched, so a malformed header is reported as a
+ * header problem rather than surfacing later as mismatched pixels.
+ *
+ * @param[in] info Parsed atlas geometry from the binder.
+ *
+ * @return None.
+ * @retval None Void.
+ *
+ * @pre @p info came from a successful ::ra8_epub_tile_binder_info call.
+ * @pre The fixture archive was built by ::build_archive.
+ * @post Every geometry field matched the fixture's constants.
+ * @post No tile has been fetched yet, so the cache is still cold.
+ *
+ * @note Not thread-safe; asserts through the harness.
+ */
+static void assert_big_atlas_geometry(const ra8_jof_info_t* info)
+{
+  TEST_ASSERT_EQ(k_big_w, info->width);
+  TEST_ASSERT_EQ(k_big_h, info->height);
+  TEST_ASSERT_EQ((k_big_w / k_tile), info->tile_cols);
+  TEST_ASSERT_EQ((k_big_h / k_tile), info->tile_rows);
+  TEST_ASSERT_EQ(k_ra8_jof_codec_deflate, info->codec);
+}
+
+/**
+ * @brief Fetch and byte-check every tile of the atlas, in row-major order.
+ *
+ * @details
+ * Walking the whole grid is what forces the cache to page: the tile count
+ * exceeds the cell count, so later tiles evict earlier ones and every fetch
+ * after the first pass is a genuine miss-and-decode. Each tile's pixels are
+ * compared against the reference as it arrives.
+ *
+ * @param[in,out] binder Binder holding the atlas and its cache.
+ * @param[in]     info   Parsed atlas geometry supplying the grid bounds.
+ *
+ * @return None.
+ * @retval None Void.
+ *
+ * @pre @p binder has the big atlas bound under ::k_id_big.
+ * @pre @p info describes that same atlas.
+ * @post Every tile in the grid was fetched and matched the reference.
+ * @post The cache holds the most recently fetched tiles only.
+ *
+ * @note Not thread-safe; asserts through the harness.
+ *
+ * @see verify_tile()  The per-tile comparison this repeats.
+ */
+static void verify_all_tiles(ra8_epub_tile_binder_t* binder, const ra8_jof_info_t* info)
+{
+  for (uint32_t ty = 0U; ty < info->tile_rows; ++ty) {
+    for (uint32_t tx = 0U; tx < info->tile_cols; ++tx) {
+      verify_tile(binder, k_id_big, tx, ty, k_tile, k_tile);
+    }
+  }
+}
+
+/**
+ * @brief Assert the cache genuinely paged, and that a warm tile re-hits.
+ *
+ * @details
+ * Two separate claims about the same run. First, paging happened at all: with
+ * more tiles than cells the walk must have missed at least once per tile and
+ * evicted at least once -- if either counter says otherwise the cache silently
+ * held the whole atlas and the bound proved nothing. Second, the cache is
+ * actually useful: fetching one tile twice in a row costs a miss then a hit,
+ * so the hit counter must rise. The first of that pair is expected to miss
+ * because the walk evicted tile (0,0) long ago.
+ *
+ * @param[in,out] binder Binder whose cache statistics are read.
+ * @param[in]     info   Parsed atlas geometry supplying the expected tile count.
+ *
+ * @return None.
+ * @retval None Void.
+ *
+ * @pre ::verify_all_tiles has already walked the whole grid.
+ * @pre @p binder still has the big atlas bound under ::k_id_big.
+ * @post The miss and eviction counters proved the walk paged.
+ * @post The hit counter rose across the back-to-back re-fetch.
+ *
+ * @note Not thread-safe; asserts through the harness and perturbs the cache.
+ */
+static void assert_cache_paged_and_rehit(ra8_epub_tile_binder_t*     binder,
+                                         const ra8_jof_info_t* info)
+{
+  uint32_t hits = 0U;
+  uint32_t miss = 0U;
+  uint32_t evic = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_stats(&binder->cache, &hits, &miss, &evic));
+  TEST_ASSERT(miss >= ((uint32_t)info->tile_cols * (uint32_t)info->tile_rows));
+  TEST_ASSERT(evic > 0U);
+  /* ...and a fresh re-fetch of a just-decoded tile is a hit, not a re-decode. */
+  const uint32_t hits_before = hits;
+  verify_tile(binder, k_id_big, 0U, 0U, k_tile, k_tile); /* miss (was evicted) */
+  verify_tile(binder, k_id_big, 0U, 0U, k_tile, k_tile); /* hit  (still MRU)   */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_stats(&binder->cache, &hits, nullptr, nullptr));
+  TEST_ASSERT(hits > hits_before);
+}
+
+/**
  * @test test_tile_paging_bounded
  * @brief All 48 tiles of a deflate atlas page correctly through an 8-cell
  *        cache opened by streaming: resident pixels stay bounded, the atlas
@@ -474,19 +577,11 @@ static void test_tile_paging_bounded(void)
 
   ra8_jof_info_t info = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_tile_binder_info(&binder, k_id_big, &info));
-  TEST_ASSERT_EQ(k_big_w, info.width);
-  TEST_ASSERT_EQ(k_big_h, info.height);
-  TEST_ASSERT_EQ((k_big_w / k_tile), info.tile_cols);
-  TEST_ASSERT_EQ((k_big_h / k_tile), info.tile_rows);
-  TEST_ASSERT_EQ(k_ra8_jof_codec_deflate, info.codec);
+  assert_big_atlas_geometry(&info);
 
   /* Measure only the tile-paging backing reads (not the ZIP open / header). */
   g_peak = 0U;
-  for (uint32_t ty = 0U; ty < info.tile_rows; ++ty) {
-    for (uint32_t tx = 0U; tx < info.tile_cols; ++tx) {
-      verify_tile(&binder, k_id_big, tx, ty, k_tile, k_tile);
-    }
-  }
+  verify_all_tiles(&binder, &info);
 
   /* Bounded RAM: cell budget is ~24x smaller than the decoded image. */
   const size_t budget = (size_t)k_cells * (size_t)k_cell_bytes;
@@ -496,18 +591,7 @@ static void test_tile_paging_bounded(void)
   TEST_ASSERT(g_peak <= (size_t)k_scratch);
 
   /* Cache worked: 48 tiles through 8 cells forced misses + evictions... */
-  uint32_t hits = 0U;
-  uint32_t miss = 0U;
-  uint32_t evic = 0U;
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_stats(&binder.cache, &hits, &miss, &evic));
-  TEST_ASSERT(miss >= ((uint32_t)info.tile_cols * (uint32_t)info.tile_rows));
-  TEST_ASSERT(evic > 0U);
-  /* ...and a fresh re-fetch of a just-decoded tile is a hit, not a re-decode. */
-  const uint32_t hits_before = hits;
-  verify_tile(&binder, k_id_big, 0U, 0U, k_tile, k_tile); /* miss (was evicted) */
-  verify_tile(&binder, k_id_big, 0U, 0U, k_tile, k_tile); /* hit  (still MRU)   */
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_tile_cache_stats(&binder.cache, &hits, nullptr, nullptr));
-  TEST_ASSERT(hits > hits_before);
+  assert_cache_paged_and_rehit(&binder, &info);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_close(&book));
   TEST_END("epub tiles: page a deflate atlas through a tiny cache, bounded");

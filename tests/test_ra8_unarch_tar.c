@@ -489,6 +489,62 @@ static void tar_walk_tail(ra8_unarch_tar_t* t, ra8_unarch_tar_entry_t* e, const 
                  ra8_unarch_tar_next(t, e->next_off, s_name, sizeof(s_name), e));
 }
 
+/** @brief First file member's payload; short enough to sit in one block. */
+static const char k_honest_d1[] = "PAGE-ONE-BYTES";
+/** @brief Longname member's payload; deliberately longer than @ref k_honest_d1. */
+static const char k_honest_d2[] = "page two content, longer than one";
+/** @brief Pax member's payload; its length must match the pax `size` record. */
+static const char k_honest_d3[] = "pax-sized";
+/** @brief Real path the GNU 'L' prelude carries for the longname member. */
+static const char k_honest_lname[] = "a-very/long/nested/path/page0001.png";
+/** @brief Pax extended records overriding the following header's path and size. */
+static const char k_honest_pax[] = "22 path=pax/page2.png\n10 size=9\n";
+
+/**
+ * @brief Build the mixed "honest" tar fixture into the archive buffer.
+ *
+ * @details
+ * Lays out one member of each kind the walker must handle, in an order that
+ * makes each one's handling observable: a directory, a file whose name is
+ * split across the header's prefix and name fields, a GNU longname member
+ * whose 'L' prelude carries the real path, a pax member whose extended records
+ * override the header that follows it, and a symlink. The two prelude members
+ * ('L' and 'x') are given throwaway header names, so a walker that failed to
+ * consume the prelude would surface those names instead of the real ones.
+ *
+ * The 'L' payload is written including its terminating NUL, which is how GNU
+ * writes it; the others are written without.
+ *
+ * @return None.
+ * @retval None Void.
+ *
+ * @pre The fixture buffer is large enough for seven members plus the end blocks.
+ * @pre No walk is in progress over the previous fixture contents.
+ * @post `s_arc_len` gives the archive's total length.
+ * @post The archive ends with the two zero blocks a reader stops on.
+ *
+ * @note Not thread-safe; the fixture buffer is file-scope state.
+ *
+ * @see tb_add()  Appends one member.
+ * @see tb_end()  Writes the terminating blocks.
+ */
+static void tb_build_honest_archive(void)
+{
+  size_t off = 0U;
+  off        = tb_add(off, "dir/", nullptr, (uint8_t)'5', nullptr, 0U);
+  off = tb_add(off, "b.png", "vol1/ch1", (uint8_t)'0', k_honest_d1, sizeof(k_honest_d1) - 1U);
+  /* GNU longname member: 'L' data carries the real name. */
+  off = tb_add(off, "ignored", nullptr, (uint8_t)'L', k_honest_lname, sizeof(k_honest_lname));
+  off = tb_add(off, "short", nullptr, (uint8_t)'0', k_honest_d2, sizeof(k_honest_d2) - 1U);
+  /* pax member: path + size records override the header fields. */
+  off = tb_add(off, "ignored2", nullptr, (uint8_t)'x', k_honest_pax, sizeof(k_honest_pax) - 1U);
+  off = tb_add(off, "hdrname", nullptr, (uint8_t)'0', k_honest_d3, sizeof(k_honest_d3) - 1U);
+  /* A symlink member: enumerated, not a file. */
+  off       = tb_add(off, "link", nullptr, (uint8_t)'2', nullptr, 0U);
+  off       = tb_end(off);
+  s_arc_len = off;
+}
+
 /**
  * @test test_tar_walk_honest_archive
  * @brief A mixed honest archive enumerates and extracts byte-exactly.
@@ -504,24 +560,7 @@ static void tar_walk_tail(ra8_unarch_tar_t* t, ra8_unarch_tar_entry_t* e, const 
 static void test_tar_walk_honest_archive(void)
 {
   TEST_BEGIN("tar: honest archive walk + extract");
-  const char d1[] = "PAGE-ONE-BYTES";
-  const char d2[] = "page two content, longer than one";
-  const char d3[] = "pax-sized";
-  size_t     off  = 0U;
-  off             = tb_add(off, "dir/", nullptr, (uint8_t)'5', nullptr, 0U);
-  off             = tb_add(off, "b.png", "vol1/ch1", (uint8_t)'0', d1, sizeof(d1) - 1U);
-  /* GNU longname member: 'L' data carries the real name. */
-  const char lname[] = "a-very/long/nested/path/page0001.png";
-  off                = tb_add(off, "ignored", nullptr, (uint8_t)'L', lname, sizeof(lname));
-  off                = tb_add(off, "short", nullptr, (uint8_t)'0', d2, sizeof(d2) - 1U);
-  /* pax member: path + size records override the header fields. */
-  const char pax[] = "22 path=pax/page2.png\n10 size=9\n";
-  off              = tb_add(off, "ignored2", nullptr, (uint8_t)'x', pax, sizeof(pax) - 1U);
-  off              = tb_add(off, "hdrname", nullptr, (uint8_t)'0', d3, sizeof(d3) - 1U);
-  /* A symlink member: enumerated, not a file. */
-  off       = tb_add(off, "link", nullptr, (uint8_t)'2', nullptr, 0U);
-  off       = tb_end(off);
-  s_arc_len = off;
+  tb_build_honest_archive();
 
   ra8_unarch_tar_t t   = {};
   ra8_unarch_mem_t mem = {};
@@ -538,19 +577,19 @@ static void test_tar_walk_honest_archive(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_unarch_tar_next(&t, e.next_off, s_name, sizeof(s_name), &e));
   TEST_ASSERT_EQ(1U, e.is_file);
   TEST_ASSERT_EQ(0, memcmp(s_name, "vol1/ch1/b.png", 14U));
-  TEST_ASSERT(e.size == (uint64_t)(sizeof(d1) - 1U));
+  TEST_ASSERT(e.size == (uint64_t)(sizeof(k_honest_d1) - 1U));
   size_t got = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_unarch_tar_read(&t, &e, s_out, sizeof(s_out), &got));
-  TEST_ASSERT_EQ(sizeof(d1) - 1U, got);
-  TEST_ASSERT_EQ(0, memcmp(s_out, d1, got));
+  TEST_ASSERT_EQ(sizeof(k_honest_d1) - 1U, got);
+  TEST_ASSERT_EQ(0, memcmp(s_out, k_honest_d1, got));
   /* 3: the longname member (its 'L' prelude was consumed transparently). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_unarch_tar_next(&t, e.next_off, s_name, sizeof(s_name), &e));
   TEST_ASSERT_EQ(1U, e.is_file);
-  TEST_ASSERT_EQ(sizeof(lname) - 1U, e.name_len);
-  TEST_ASSERT_EQ(0, memcmp(s_name, lname, e.name_len));
+  TEST_ASSERT_EQ(sizeof(k_honest_lname) - 1U, e.name_len);
+  TEST_ASSERT_EQ(0, memcmp(s_name, k_honest_lname, e.name_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_unarch_tar_read(&t, &e, s_out, sizeof(s_out), &got));
-  TEST_ASSERT_EQ(0, memcmp(s_out, d2, got));
-  tar_walk_tail(&t, &e, d3);
+  TEST_ASSERT_EQ(0, memcmp(s_out, k_honest_d2, got));
+  tar_walk_tail(&t, &e, k_honest_d3);
   TEST_END("tar: honest archive walk + extract");
 }
 

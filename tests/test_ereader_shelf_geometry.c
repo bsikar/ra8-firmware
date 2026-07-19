@@ -176,13 +176,48 @@ static void test_shelf_card_geometry(void)
 }
 
 /**
+ * @brief Draw the whole shelf into @p fb: clear, title bar, then the cards.
+ *
+ * @details
+ * Goes through the same `internal_fill_rect_565` path the app uses -- the one
+ * carrying the -O1 low-overhead loop board_sim mis-emulates -- so a rendering
+ * defect shows up here exactly as it would on the device. Card 0 is drawn in
+ * the selected colour; the rest share the plain card fill.
+ *
+ * @param[out] fb   RGB565 framebuffer of `k_fb_w * k_fb_h` pixels.
+ * @param[in]  card Per-card rectangles from ::layout_shelf.
+ *
+ * @return None.
+ * @retval None Void.
+ *
+ * @pre @p fb holds at least `k_fb_w * k_fb_h` pixels.
+ * @pre @p card holds `k_books` laid-out rectangles.
+ * @post @p fb holds the complete shelf; every draw returned success.
+ * @post @p fb is now the active ra8_gfx target.
+ *
+ * @note Not thread-safe; ra8_gfx keeps one global target.
+ *
+ * @see layout_shelf()  Produces the rectangles this draws.
+ */
+static void render_shelf(uint16_t* fb, const ra8_ui_rect_t* card)
+{
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_gfx_init(fb, (uint16_t)k_fb_w, (uint16_t)k_fb_h, k_ra8_gfx_format_rgb565));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_clear(k_col_bg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(0, 0, k_fb_w, k_bar_h, k_col_bar, true));
+  for (int32_t i = 0; i < k_books; ++i) {
+    const uint32_t fill = (i == 0) ? (uint32_t)k_col_card_hi : (uint32_t)k_col_card;
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(card[i].x, card[i].y, card[i].w, card[i].h, fill, true));
+  }
+}
+
+/**
  * @brief The header bar and card fills render where they belong (#233).
- * @details Draws the shelf's clear + title-bar + card fills through ra8_gfx into
- *          an RGB565 buffer -- the same `internal_fill_rect_565` path that
- *          carries the -O1 low-overhead loop board_sim mis-emulates -- and
- *          asserts px(0,0) is the BAR colour (not the background: the exact
- *          #233 symptom), a card interior is the card fill, a grid gap stays
- *          background, and the render is deterministic.
+ * @details Asserts px(0,0) is the BAR colour (not the background: the exact
+ *          #233 symptom), that the bar reaches its bottom row, that a card
+ *          interior carries the card fill, and that a grid gap stays
+ *          background. Each probe is a single pixel whose colour is decided by
+ *          one rectangle, so a failure names which rectangle went wrong.
  */
 static void test_shelf_render_pixels(void)
 {
@@ -190,15 +225,7 @@ static void test_shelf_render_pixels(void)
   ra8_box_t     store[k_box_cap];
   ra8_ui_rect_t card[k_books] = {};
   layout_shelf(store, card);
-
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_gfx_init(s_fb, (uint16_t)k_fb_w, (uint16_t)k_fb_h, k_ra8_gfx_format_rgb565));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_clear(k_col_bg));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(0, 0, k_fb_w, k_bar_h, k_col_bar, true));
-  for (int32_t i = 0; i < k_books; ++i) {
-    const uint32_t fill = (i == 0) ? (uint32_t)k_col_card_hi : (uint32_t)k_col_card;
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(card[i].x, card[i].y, card[i].w, card[i].h, fill, true));
-  }
+  render_shelf(s_fb, card);
 
   const size_t row0 = (size_t)(card[0].y + (card[0].h / 2)) * (size_t)k_fb_w;
   /* #233 symptom: px(0,0) must be the bar, not the background. */
@@ -211,16 +238,26 @@ static void test_shelf_render_pixels(void)
   const int32_t gap_x = card[0].x + card[0].w + (k_gap / 2);
   const size_t  gpx   = row0 + (size_t)gap_x;
   TEST_ASSERT_EQ(pack565(k_col_bg), s_fb[gpx]);
+  TEST_END("ereader_shelf render pixels");
+}
 
-  /* Determinism: a second identical render yields byte-identical pixels. */
-  TEST_ASSERT_EQ(k_ra8_ok,
-                 ra8_gfx_init(s_fb2, (uint16_t)k_fb_w, (uint16_t)k_fb_h, k_ra8_gfx_format_rgb565));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_clear(k_col_bg));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(0, 0, k_fb_w, k_bar_h, k_col_bar, true));
-  for (int32_t i = 0; i < k_books; ++i) {
-    const uint32_t fill = (i == 0) ? (uint32_t)k_col_card_hi : (uint32_t)k_col_card;
-    TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(card[i].x, card[i].y, card[i].w, card[i].h, fill, true));
-  }
+/**
+ * @brief Two identical renders produce byte-identical framebuffers.
+ * @details Renders the same layout into two separate buffers and compares every
+ *          pixel. This is the property that would break first if the fill path
+ *          read uninitialised state or depended on what the buffer held before,
+ *          which is why it is checked apart from the placement probes.
+ */
+static void test_shelf_render_deterministic(void)
+{
+  TEST_BEGIN("ereader_shelf render deterministic");
+  ra8_box_t     store[k_box_cap];
+  ra8_ui_rect_t card[k_books] = {};
+  layout_shelf(store, card);
+
+  render_shelf(s_fb, card);
+  render_shelf(s_fb2, card);
+
   bool differs = false;
   for (size_t i = 0; i < (size_t)k_fb_h * (size_t)k_fb_w; ++i) {
     if (s_fb[i] != s_fb2[i]) {
@@ -229,12 +266,13 @@ static void test_shelf_render_pixels(void)
     }
   }
   TEST_ASSERT(!differs);
-  TEST_END("ereader_shelf render pixels");
+  TEST_END("ereader_shelf render deterministic");
 }
 
 int main(void)
 {
   test_shelf_card_geometry();
   test_shelf_render_pixels();
+  test_shelf_render_deterministic();
   return 0;
 }

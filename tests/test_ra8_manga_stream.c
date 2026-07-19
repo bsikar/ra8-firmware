@@ -114,6 +114,98 @@ static void t_mg_crosscheck_raw(ra8_vmem_stream_t* st, uint32_t page, uint32_t b
  *
  * @since 0.1.0
  */
+/**
+ * @brief Skim the first few bands of each of the next few pages.
+ *
+ * @details
+ * Models a reader paging forward through consecutive chapters without reading
+ * any page to its end -- each page is opened, its top bands are touched, and
+ * the reader moves on. This is the access pattern that most stresses page
+ * turnover, because no page stays current long enough for its metadata to be
+ * worth keeping.
+ *
+ * @param[in,out] st   Stream to open pages against.
+ * @param[in,out] tc   Tile cache the bands are read through.
+ * @param[in,out] hw   Residency high-water marks, updated per band.
+ * @param[out]    info Receives the geometry of the last page opened.
+ *
+ * @return Count of bands touched, for the caller's distinct-band tally.
+ *
+ * @pre The stack was wired by ::t_mg_setup over the same volume.
+ * @pre The volume holds at least `k_mg_fwd_pages` pages past page 0.
+ * @post Every touched band matched the reference.
+ * @post @p hw reflects the peak residency reached during the skim.
+ *
+ * @note Not thread-safe.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- nested single-condition loop bounds only)
+ *
+ * @since 0.1.0
+ */
+static uint32_t t_mg_skim_forward_pages(ra8_vmem_stream_t*    st,
+                                        ra8_tile_cache_t*     tc,
+                                        t_mg_hw_t*            hw,
+                                        ra8_tileatlas_info_t* info)
+{
+  uint32_t touched = 0U;
+  for (uint32_t p = 1U; p <= (uint32_t)k_mg_fwd_pages; ++p) {
+    t_mg_open_page(st, p, info);
+    for (uint32_t band = 0U; band < (uint32_t)k_mg_fwd_bands; ++band) {
+      t_mg_touch_band(tc, p, band, hw);
+      ++touched;
+    }
+  }
+  return touched;
+}
+
+/**
+ * @brief Seek to scattered bands spread across the whole volume.
+ *
+ * @details
+ * Models chapter-jumping: a reader landing anywhere in the book with no
+ * locality between one landing and the next. Successive targets are spaced by
+ * a prime stride modulo the total band count, which walks the whole volume
+ * without repeating and without the regularity a cache could exploit -- so
+ * residency here is a fair worst case rather than a lucky sequence.
+ *
+ * @param[in]     atlas_count Atlases in the modelled volume; must be non-zero.
+ * @param[in,out] st          Stream to open pages against.
+ * @param[in,out] tc          Tile cache the bands are read through.
+ * @param[in,out] hw          Residency high-water marks, updated per band.
+ * @param[out]    info        Receives the geometry of the last page opened.
+ *
+ * @return Count of bands touched, for the caller's distinct-band tally.
+ *
+ * @pre The stack was wired by ::t_mg_setup over the same volume.
+ * @pre `atlas_count * k_mg_bands` does not overflow uint32_t.
+ * @post Every touched band matched the reference.
+ * @post @p hw reflects the peak residency reached during the seeks.
+ *
+ * @note Not thread-safe.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- a single-condition loop bound only)
+ *
+ * @since 0.1.0
+ */
+static uint32_t t_mg_seek_across_volume(uint32_t              atlas_count,
+                                        ra8_vmem_stream_t*    st,
+                                        ra8_tile_cache_t*     tc,
+                                        t_mg_hw_t*            hw,
+                                        ra8_tileatlas_info_t* info)
+{
+  const uint32_t total_bands = atlas_count * (uint32_t)k_mg_bands;
+  for (uint32_t s = 0U; s < (uint32_t)k_mg_samples; ++s) {
+    const uint32_t global = (s * (uint32_t)k_mg_sample_prime) % total_bands;
+    const uint32_t page   = global / (uint32_t)k_mg_bands;
+    const uint32_t band   = global % (uint32_t)k_mg_bands;
+    t_mg_open_page(st, page, info);
+    t_mg_touch_band(tc, page, band, hw);
+  }
+  return (uint32_t)k_mg_samples;
+}
+
 static uint32_t t_mg_run_manga_pattern(uint32_t           atlas_count,
                                        ra8_vmem_stream_t* st,
                                        ra8_tile_cache_t*  tc,
@@ -128,24 +220,10 @@ static uint32_t t_mg_run_manga_pattern(uint32_t           atlas_count,
   uint32_t distinct = (uint32_t)k_mg_bands;
 
   /* 2. Forward multi-page scroll: open + skim the next few chapters. */
-  for (uint32_t p = 1U; p <= (uint32_t)k_mg_fwd_pages; ++p) {
-    t_mg_open_page(st, p, &info);
-    for (uint32_t band = 0U; band < (uint32_t)k_mg_fwd_bands; ++band) {
-      t_mg_touch_band(tc, p, band, hw);
-      ++distinct;
-    }
-  }
+  distinct += t_mg_skim_forward_pages(st, tc, hw, &info);
 
   /* 3. Cross-volume chapter jumps: random seeks across the WHOLE book. */
-  const uint32_t total_bands = atlas_count * (uint32_t)k_mg_bands;
-  for (uint32_t s = 0U; s < (uint32_t)k_mg_samples; ++s) {
-    const uint32_t global = (s * (uint32_t)k_mg_sample_prime) % total_bands;
-    const uint32_t page   = global / (uint32_t)k_mg_bands;
-    const uint32_t band   = global % (uint32_t)k_mg_bands;
-    t_mg_open_page(st, page, &info);
-    t_mg_touch_band(tc, page, band, hw);
-    ++distinct;
-  }
+  distinct += t_mg_seek_across_volume(atlas_count, st, tc, hw, &info);
 
   /* 4. Far boundary: the last atlas's last band (deep-in-the-volume seek). */
   const uint32_t last_page = atlas_count - 1U;
