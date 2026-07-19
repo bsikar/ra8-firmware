@@ -1746,9 +1746,7 @@ def run_selftest() -> int:
         finally:
             REPO_ROOT = real_root
 
-    priv_offenders = {
-        pathlib.Path(v.file).name for v in violations if v.rule == "ra8_priv"
-    }
+    priv_offenders = {pathlib.Path(v.file).name for v in violations if v.rule == "ra8_priv"}
     if "other.c" in priv_offenders:
         failures.append(
             "namesake regression: a module's call to its own file-local static "
@@ -1785,8 +1783,7 @@ def run_selftest() -> int:
         for name in sorted(_SELFTEST_LINKAGE_EXPECTED - linkage)
     )
     failures.extend(
-        f"ra8_linkage false positive: '{name}' is a justified definition "
-        f"but the rule reported it"
+        f"ra8_linkage false positive: '{name}' is a justified definition but the rule reported it"
         for name in sorted(linkage - _SELFTEST_LINKAGE_EXPECTED)
     )
     if "handler_untabled" not in linkage:
@@ -1796,12 +1793,12 @@ def run_selftest() -> int:
         )
 
     seen = {s.name for s in symbols.values()}
-    for name in _SELFTEST_LINKAGE_CLEAN:
-        if name not in seen:
-            failures.append(
-                f"selftest fixture did not parse: '{name}' is missing from the "
-                f"symbol table, so its linkage shape was never exercised"
-            )
+    failures.extend(
+        f"selftest fixture did not parse: '{name}' is missing from the "
+        f"symbol table, so its linkage shape was never exercised"
+        for name in _SELFTEST_LINKAGE_CLEAN
+        if name not in seen
+    )
 
     if failures:
         for f in failures:
