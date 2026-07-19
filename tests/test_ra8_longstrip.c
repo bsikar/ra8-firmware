@@ -193,15 +193,26 @@ static void t_wt_put_u32(uint8_t* p, uint32_t v)
  *
  * @return Total atlas byte length.
  */
-static uint32_t t_wt_build_strip(void)
+/**
+ * @brief Write the RTA1 atlas header for the band-tiled strip fixture.
+ *
+ * @param[in] width  Strip width in pixels (also the tile width).
+ * @param[in] height Strip height in pixels.
+ * @param[in] band_h Rows per band.
+ * @param[in] bands  Band count covering @p height.
+ *
+ * @pre `s_atlas` has room for the header.
+ * @pre @p band_h is non-zero and @p bands covers @p height.
+ * @post The header declares one tile column (tile_w == width).
+ * @post The codec is raw, so tile bytes are stored uncompressed.
+ *
+ * @note Not thread-safe; the fixture is file-scope state.
+ */
+static void t_wt_write_header(uint32_t width, uint32_t height, uint32_t band_h, uint32_t bands)
 {
-  const uint32_t width  = (uint32_t)k_t_wt_width;
-  const uint32_t band_h = (uint32_t)k_t_wt_band_h;
-  const uint32_t height = (uint32_t)k_t_wt_height;
-  const uint32_t bands  = (height + band_h - 1U) / band_h;
-  uint8_t*       hdr    = s_atlas;
+  uint8_t* hdr = s_atlas;
   (void)memset(hdr, 0, (size_t)k_t_hdr_bytes);
-  (void)memcpy(hdr, "JOF1", 4U);
+  (void)memcpy(hdr, k_t_magic_jof1, sizeof(k_t_magic_jof1));
   t_wt_put_u16(&hdr[4], (uint16_t)width);
   t_wt_put_u16(&hdr[6], (uint16_t)height);
   t_wt_put_u16(&hdr[8], (uint16_t)width); /* tile_w == width */
@@ -209,10 +220,35 @@ static uint32_t t_wt_build_strip(void)
   hdr[k_longstrip_val_12] = (uint8_t)k_t_wt_bpp;
   hdr[k_longstrip_val_13] = (uint8_t)k_ra8_jof_codec_raw;
   t_wt_put_u32(&hdr[16], bands);
+}
 
+/**
+ * @brief Write every band's pixels; record each band's offset and length.
+ *
+ * @param[in]  width    Strip width in pixels.
+ * @param[in]  height   Strip height in pixels.
+ * @param[in]  band_h   Rows per band; the last band may be shorter.
+ * @param[in]  bands    Band count.
+ * @param[out] tile_off Receives each band's byte offset.
+ * @param[out] tile_len Receives each band's byte length.
+ *
+ * @return The offset just past the last band's pixels.
+ *
+ * @pre `s_atlas` has room for the whole strip.
+ * @pre @p tile_off and @p tile_len each hold @p bands entries.
+ * @post The final band is clipped to the remaining rows, not padded.
+ * @post The return value is where the index table starts.
+ *
+ * @note Not thread-safe; the fixture is file-scope state.
+ */
+static uint32_t t_wt_write_bands(uint32_t  width,
+                                 uint32_t  height,
+                                 uint32_t  band_h,
+                                 uint32_t  bands,
+                                 uint32_t* tile_off,
+                                 uint32_t* tile_len)
+{
   uint32_t off = (uint32_t)k_t_hdr_bytes;
-  uint32_t tile_off[k_t_wt_bands];
-  uint32_t tile_len[k_t_wt_bands];
   for (uint32_t n = 0U; n < bands; n++) {
     const uint32_t y0 = n * band_h;
     const uint32_t th = ((height - y0) < band_h) ? (height - y0) : band_h;
@@ -225,6 +261,20 @@ static uint32_t t_wt_build_strip(void)
       }
     }
   }
+  return off;
+}
+
+static uint32_t t_wt_build_strip(void)
+{
+  const uint32_t width  = (uint32_t)k_t_wt_width;
+  const uint32_t band_h = (uint32_t)k_t_wt_band_h;
+  const uint32_t height = (uint32_t)k_t_wt_height;
+  const uint32_t bands  = (height + band_h - 1U) / band_h;
+  t_wt_write_header(width, height, band_h, bands);
+
+  uint32_t tile_off[k_t_wt_bands];
+  uint32_t tile_len[k_t_wt_bands];
+  uint32_t off = t_wt_write_bands(width, height, band_h, bands, tile_off, tile_len);
 
   const uint32_t index_off = off;
   for (uint32_t n = 0U; n < bands; n++) {
