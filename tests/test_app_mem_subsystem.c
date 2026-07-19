@@ -341,8 +341,6 @@ stream_window(ra8_vmem_stream_t* st, uint64_t off, uint32_t len, uint32_t* crc, 
  * @param[out] vm Receives the initialised vmem over @p vs.
  * @param[out] st Receives the stream over the whole backing object.
  *
- * @return None.
- * @retval None Void.
  *
  * @pre All three out-pointers are non-NULL and outlive @p st.
  * @pre No other stack is live over the same static pools.

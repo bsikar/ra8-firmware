@@ -184,7 +184,6 @@ static bool load_src_font(void)
 
 /**
  * @brief Make a FAT16 volume, write the font, and read it back byte-identically.
- * @return None.
  * @pre s_src_font holds the loaded font of length s_font_len.
  * @post s_card_font holds the font read back through the real FAT path.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -220,7 +219,6 @@ static void fat_reflow_write_read_font(void)
 
 /**
  * @brief Render a paragraph with the card-loaded font and assert real ink.
- * @return None.
  * @pre s_card_font holds a valid font of length s_font_len.
  * @post At least one non-background pixel was inked into s_fb.
  * @note Not thread-safe; single-threaded host-test helper.

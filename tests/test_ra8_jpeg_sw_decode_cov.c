@@ -219,7 +219,6 @@ static const uint8_t k_sos_444_cr_fail[] = {
  * @param[in]     seg Source fragment (non-NULL, `n` readable bytes).
  * @param[in]     n   Fragment length in bytes.
  *
- * @return None.
  *
  * @pre `dst`, `off` and `seg` are non-NULL.
  * @pre `*off + n` does not exceed the capacity of `dst`.
@@ -427,7 +426,6 @@ static void test_decode_dht_guards(void)
  * @param[in] d    Encoded JPEG bytes.
  * @param[in] n    Length of @p d in bytes.
  * @param[in] want Expected `ra8_jpeg_sw_decode` result code.
- * @return None.
  * @pre @p d is non-null.
  * @post `ra8_jpeg_sw_decode` returned @p want.
  * @note Not thread-safe; single-threaded host-test helper.

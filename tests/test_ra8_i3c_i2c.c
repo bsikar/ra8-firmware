@@ -28,77 +28,48 @@
 #include "unity_minimal.h"
 
 /**
- * @enum i3c_i2c_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_i2c_payload_byte = 0xA5U, /**< A recognizable single-byte payload; neither 0x00 nor 0xFF. */
-} i3c_i2c_uint8_const_t;
-
-/**
- * @enum i3c_i2c_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint32_t {
-  k_i2c_oversize_bytes =
-    1000000, /**< A transfer length far past any real buffer, so the length guard fires before any access. */
-} i3c_i2c_uint32_const_t;
-
-/**
  * @enum ra8_i3c_i2c_test_addr_t
- * @brief Test addresses and payload constants.
+ * @brief Target address, the bytes moved over the bus, and the pre-shifted
+ *        address bytes derived from it. No two payload bytes are equal, so a
+ *        transfer that echoed the wrong direction, dropped a byte or swapped a
+ *        pair fails a specific compare.
  */
 typedef enum : uint8_t {
-  k_ra8_i3c_i2c_test_target  = 0x50U, /**< RA8 I3C I2C test target.  */
-  k_ra8_i3c_i2c_test_byte_a  = 0xA5U, /**< RA8 I3C I2C test byte a.  */
-  k_ra8_i3c_i2c_test_byte_b  = 0x5AU, /**< RA8 I3C I2C test byte b.  */
-  k_ra8_i3c_i2c_test_byte_c  = 0x33U, /**< RA8 I3C I2C test byte c.  */
-  k_ra8_i3c_i2c_test_rx_byte = 0xC3U, /**< RA8 I3C I2C test RX byte. */
+  k_ra8_i3c_i2c_test_target  = 0x50U, /**< 7-bit target address.              */
+  k_ra8_i3c_i2c_test_byte_a  = 0xA5U, /**< First TX byte; neither 0 nor 0xFF. */
+  k_ra8_i3c_i2c_test_byte_b  = 0x5AU, /**< Its complement: a swap is obvious. */
+  k_ra8_i3c_i2c_test_byte_c  = 0x33U, /**< A third, for three-byte writes.    */
+  k_ra8_i3c_i2c_test_rx_byte = 0xC3U, /**< Unlike any TX byte, so a read that
+                                           echoed TX is visible.              */
+  k_ra8_i3c_i2c_test_addr_w  = (uint8_t)(k_ra8_i3c_i2c_test_target << 1U), /**< Write form. */
+  k_ra8_i3c_i2c_test_addr_r =
+    (uint8_t)((k_ra8_i3c_i2c_test_target << 1U) | 1U), /**< With the read bit set. */
 } ra8_i3c_i2c_test_addr_t;
 
 /**
  * @enum ra8_i3c_i2c_test_ch_t
- * @brief Channel constants used by tests.
+ * @brief Channel numbers: the one that exists, and two that do not.
  */
 typedef enum : uint8_t {
-  k_ra8_i3c_i2c_test_ch_zero = 0U,   /**< RA8 I3C I2C test channel zero. */
-  k_ra8_i3c_i2c_test_ch_oor  = 1U,   /**< IIC_B has only ch 0 on RA8D2.  */
-  k_ra8_i3c_i2c_test_ch_huge = 200U, /**< RA8 I3C I2C test channel huge. */
+  k_ra8_i3c_i2c_test_ch_zero = 0U,   /**< The only real IIC_B channel on RA8D2. */
+  k_ra8_i3c_i2c_test_ch_oor  = 1U,   /**< One past it.                          */
+  k_ra8_i3c_i2c_test_ch_huge = 200U, /**< Far past it, so the guard is a range
+                                          check and not a `!= 1` comparison.    */
 } ra8_i3c_i2c_test_ch_t;
 
-/**
- * @enum ra8_i3c_i2c_test_wait_t
- * @brief Payload length used by the long-buffer timeout tests.
- */
+/** @brief Payload length used by the long-buffer timeout tests. */
 typedef enum : uint32_t {
-  k_ra8_i3c_i2c_test_long_len = 1000000U, /**< RA8 I3C I2C test long length. */
+  k_ra8_i3c_i2c_test_long_len = 1000000U, /**< Far past any real buffer, so the
+                                               length guard fires before any
+                                               access is attempted.          */
 } ra8_i3c_i2c_test_wait_t;
-
-/**
- * @enum ra8_i3c_i2c_test_addr_byte_t
- * @brief Pre-shifted address bytes for write / read transactions.
- */
-typedef enum : uint8_t {
-  k_ra8_i3c_i2c_test_addr_w = (uint8_t)(k_ra8_i3c_i2c_test_target << 1U),       /**< 0xA0. */
-  k_ra8_i3c_i2c_test_addr_r = (uint8_t)((k_ra8_i3c_i2c_test_target << 1U) | 1U) /**< 0xA1. */
-} ra8_i3c_i2c_test_addr_byte_t;
 
 static const uint8_t s_payload[2] = {
   (uint8_t)k_ra8_i3c_i2c_test_byte_a,
   (uint8_t)k_ra8_i3c_i2c_test_byte_b,
 };
 
-static uint8_t s_long_buffer[k_i2c_oversize_bytes];
+static uint8_t s_long_buffer[k_ra8_i3c_i2c_test_long_len];
 
 static const ra8_i3c_i2c_cfg_t k_iic_b_cfg = {
   .bus_hz   = (uint32_t)k_ra8_i3c_i2c_speed_fast,
@@ -904,7 +875,7 @@ static void test_mcdc_iic_b(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
 
-  uint8_t tx_buf[1] = {k_i2c_payload_byte};
+  uint8_t tx_buf[1] = {k_ra8_i3c_i2c_test_byte_a};
   uint8_t rx_buf[1] = {0U};
 
   /* Decision A V1: both lens zero -> invalid_arg. */

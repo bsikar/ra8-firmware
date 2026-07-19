@@ -187,8 +187,6 @@ static void test_shelf_card_geometry(void)
  * @param[out] fb   RGB565 framebuffer of `k_fb_w * k_fb_h` pixels.
  * @param[in]  card Per-card rectangles from ::layout_shelf.
  *
- * @return None.
- * @retval None Void.
  *
  * @pre @p fb holds at least `k_fb_w * k_fb_h` pixels.
  * @pre @p card holds `k_books` laid-out rectangles.

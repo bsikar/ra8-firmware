@@ -630,7 +630,6 @@ static void test_write_cmd_unknown_handle(void)
  * @param[in] handle    Target attribute handle.
  * @param[in] val       Single value byte written.
  * @param[in] expect_op Expected response opcode (write_rsp or error_rsp).
- * @return None.
  * @pre A connection has been injected.
  * @post The captured response matched @p expect_op (and the error code if error).
  * @note Not thread-safe; single-threaded host-test helper.

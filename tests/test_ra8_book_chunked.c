@@ -138,7 +138,6 @@ static void bcx_fill_blob(void)
  * @param[out] stream_len Per-chunk compressed length.
  * @param[out] offs       Running offsets, `count + 1` entries starting at 0.
  * @param[in]  short_last Whether to truncate the last chunk's source span.
- * @return None.
  *
  * @pre Every out-parameter has room for ::k_bcx_chunk_count entries.
  * @pre ::s_blob holds ::k_bcx_blob_len bytes.
@@ -148,7 +147,7 @@ static void bcx_fill_blob(void)
  * @note Not thread-safe (reads the shared ::s_blob).
  * @since 0.1.0
  */
-static void bcx_compress_chunks(uint8_t streams[][k_bcx_staging_cap],
+static void bcx_compress_chunks(uint8_t   streams[][k_bcx_staging_cap],
                                 mz_ulong* stream_len,
                                 uint64_t* offs,
                                 bool      short_last)
@@ -312,7 +311,6 @@ typedef struct {
  * @param[out] table    Chunk-table buffer (nullptr exercises the table guard).
  * @param[out] staging  Staging buffer (nullptr exercises the staging guard).
  * @param[in]  file_len Packed container length in bytes.
- * @return None.
  * @pre Exactly one pointer argument is nullptr.
  * @post `ra8_book_chunked_open` returned k_ra8_err_null_ptr.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -346,7 +344,6 @@ static void bcx_expect_null_open(ra8_book_chunked_t* rd,
  * @param[in]     g         Shared buffers and container image.
  * @param[in]     table_cap Chunk-table entry budget.
  * @param[in]     stage_cap Staging-buffer byte budget.
- * @return None.
  * @pre @p g fields reference valid buffers.
  * @post `ra8_book_chunked_open` returned @p want.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -377,7 +374,6 @@ static void bcx_expect_open_err(ra8_err_t              want,
  * @param[out]    rd   Reader handle under test.
  * @param[in,out] file File context bound to the container image.
  * @param[in]     g    Shared buffers and container image.
- * @return None.
  * @pre @p g fields reference valid buffers.
  * @post Each guarded argument returned k_ra8_err_null_ptr.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -403,7 +399,6 @@ static void bcx_open_guards_null(ra8_book_chunked_t* rd, bcx_file_t* file, const
  * @param[out]    rd   Reader handle under test.
  * @param[in,out] file File context bound to the container image.
  * @param[in]     g    Shared buffers and container image.
- * @return None.
  * @pre @p g fields reference valid buffers.
  * @post Every malformed size / magic / budget returned its rejection code.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -440,7 +435,6 @@ bcx_open_guards_capacity(ra8_book_chunked_t* rd, bcx_file_t* file, const bcx_gua
  * @param[out]    rd   Reader handle under test.
  * @param[in,out] file File context bound to the container image.
  * @param[in]     g    Shared buffers and container image.
- * @return None.
  * @pre @p g fields reference valid buffers.
  * @post `ra8_book_chunked_open` returned k_ra8_err_hw_timeout.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -544,7 +538,6 @@ static void test_ra8_book_chunked_read_happy(void)
  * @brief Exercise the null and unbound-reader guards of `ra8_book_chunked_read`.
  * @param[out] rd  A zero-initialised (unopened) reader handle.
  * @param[out] out Output buffer, at least k_bcx_chunk_bytes long.
- * @return None.
  * @pre @p rd is zero-initialised.
  * @post Both null guards and the unbound-state guard returned their codes.
  * @note Not thread-safe; single-threaded host-test helper.
@@ -561,7 +554,6 @@ static void bcx_read_guards_unbound(ra8_book_chunked_t* rd, uint8_t* out)
  * @brief Assert a stream that inflates to the wrong span is rejected.
  * @param[out] out     Output buffer, at least k_bcx_chunk_bytes long.
  * @param[in]  staging Shared staging buffer for the open.
- * @return None.
  * @pre The chunk blob fixtures are populated (bcx_fill_blob()).
  * @post `ra8_book_chunked_read` returned k_ra8_err_invalid_size.
  * @note Not thread-safe; single-threaded host-test helper.
