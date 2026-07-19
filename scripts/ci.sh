@@ -30,11 +30,18 @@
 #   grep -E '^\s+name:' .github/workflows/firmware.yml
 #   grep -E '^\s+run_gate ' scripts/ci.sh
 # Jobs deliberately NOT mirrored, with the reason:
-#   mcdc        -- `make mcdc`; clang source-based MC/DC needs a clang/llvm-cov
-#                  pair the devcontainer does not currently pin. Tracked.
-#   docs        -- Doxygen warning gate; needs doxygen in the image. Tracked.
-#   cache-bench -- `make bench-cache`; a timing benchmark, meaningless under the
-#                  concurrent load a shared verification box runs. Tracked.
+#   mcdc        -- `make mcdc` needs llvm-cov + llvm-profdata for clang
+#                  source-based MC/DC; the image ships clang but neither tool.
+#   docs        -- build_docs.sh --gate provisions a PINNED doxygen (downloaded
+#                  and sha256-verified) into build/tools/. That cache cannot
+#                  survive here: every run builds in a fresh ephemeral
+#                  snapshot, so the gate would re-download doxygen each time
+#                  and would fail outright with no network. Needs a persistent
+#                  tool-cache mount, like the one ccache already gets.
+#   cache-bench -- `make bench-cache` is a timing benchmark; it is meaningless
+#                  on a box running several agents' builds concurrently.
+# All three are tracked; until they are mirrored, THESE are the jobs that can
+# still go red on the runner after a green `make ci`.
 #
 # Usage (host):
 #   bash scripts/ci.sh            # full gate suite (mirrors firmware.yml)
