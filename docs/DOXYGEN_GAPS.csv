@@ -1,2 +1,1 @@
 source_file,line,function_name,missing_tags,severity
-libs/ra8_ble_host/src/ra8_ble_l2cap.c,395,ra8_ble_host_acl_in,@brief;@details;@param[conn_handle];@param[payload];@param[len];@pre;@post;@note;@since,high
