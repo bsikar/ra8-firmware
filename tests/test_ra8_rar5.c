@@ -321,9 +321,7 @@ static void test_rar5_table_runs(void)
     bw_put(&body, k_rar5_enc_match_lowdist_5, 4U);
   }
   /* LD 0..271 = 9 via a literal 9 then copy-previous runs (codes 16/17). */
-  bw_put(&body,
-         k_rar5_bw_put_9,
-         k_rar5_enc_match_lowdist_5); /* tbl[0] = 9 */
+  bw_put(&body, k_rar5_bw_put_9, k_rar5_enc_match_lowdist_5); /* tbl[0] = 9 */
   bw_put(&body,
          k_rar5_bw_put_17,
          k_rar5_enc_match_lowdist_5);           /* copy prev, long run                 */
@@ -425,8 +423,7 @@ static void test_rar5_malformed(void)
   static uint8_t s_notab[16] = {};
   s_notab[0]                 = k_rar5_s_notab_40; /* last, no tables, bytecount 1 */
   s_notab[1]                 = 0x02U;             /* block size 2                 */
-  s_notab[2] =
-    (uint8_t)(k_rar5_sentinel_5a ^ k_rar5_s_notab_40 ^ 0x02U); /* checksum */
+  s_notab[2] = (uint8_t)(k_rar5_sentinel_5a ^ k_rar5_s_notab_40 ^ 0x02U); /* checksum */
   s_notab[3] = 0x00U;
   s_notab[4] = 0x00U;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed, decode_status(s_notab, 5U, sizeof(k_src)));

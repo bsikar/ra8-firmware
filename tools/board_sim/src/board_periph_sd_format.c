@@ -174,8 +174,7 @@ void sd_label_field(uint8_t* dst, const char* label)
  *
  * @note Thread-safe: pure arithmetic over its arguments.
  */
-static uint32_t
-fat16_solve_geometry(uint32_t total_sectors, uint32_t root_sectors, uint32_t* fatsz)
+static uint32_t fat16_solve_geometry(uint32_t total_sectors, uint32_t root_sectors, uint32_t* fatsz)
 {
   uint32_t spc = 1U;
   for (;;) {

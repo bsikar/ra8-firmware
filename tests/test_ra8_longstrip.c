@@ -286,9 +286,7 @@ static uint32_t t_wt_build_strip(void)
   t_wt_put_u32(&s_atlas[off], index_off);
   t_wt_put_u32(&s_atlas[off + 4U], bands);
   t_wt_put_u32(&s_atlas[off + 8U], total);
-  (void)memcpy(&s_atlas[off + (size_t)k_t_ftr_off_magic],
-               k_t_magic_jofe,
-               sizeof(k_t_magic_jofe));
+  (void)memcpy(&s_atlas[off + (size_t)k_t_ftr_off_magic], k_t_magic_jofe, sizeof(k_t_magic_jofe));
   return total;
 }
 
@@ -503,9 +501,7 @@ static void t_open_rejects_non_band(void)
   t_wt_put_u32(&s_atlas[off], index_off);
   t_wt_put_u32(&s_atlas[off + 4U], tiles);
   t_wt_put_u32(&s_atlas[off + 8U], total);
-  (void)memcpy(&s_atlas[off + (size_t)k_t_ftr_off_magic],
-               k_t_magic_jofe,
-               sizeof(k_t_magic_jofe));
+  (void)memcpy(&s_atlas[off + (size_t)k_t_ftr_off_magic], k_t_magic_jofe, sizeof(k_t_magic_jofe));
 
   s_store = (ra8_jof_memstore_t){.buf = s_atlas, .cap = k_t_atlas_cap, .len = total};
   const ra8_longstrip_cfg_t cfg = {.pread      = ra8_jof_memstore_pread,

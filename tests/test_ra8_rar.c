@@ -34,9 +34,9 @@
 
 /** @brief RAR main-archive-header layout used by the fixture builder. */
 typedef enum : uint8_t {
-  k_tr_off_high_pos_av = 7U, /**< HighPosAV + PosAV field offset.        */
-  k_tr_len_high_pos_av = 6U, /**< HighPosAV + PosAV combined width.      */
-  k_tr_len_signature   = 5U, /**< RAR4 signature length, bytes.          */
+  k_tr_off_high_pos_av = 7U, /**< HighPosAV + PosAV field offset.   */
+  k_tr_len_high_pos_av = 6U, /**< HighPosAV + PosAV combined width. */
+  k_tr_len_signature   = 5U, /**< RAR4 signature length, bytes.     */
 } tr_layout_t;
 
 /**
@@ -279,7 +279,7 @@ static size_t tr4_main(uint8_t* out)
   tr_le16(&out[0], 0U);
   out[2] = k_rar_out_73; /* type: main */
   tr_le16(&out[3], 0U);
-  tr_le16(&out[k_rar_tr_le16_5], k_rar_tr_le16_13); /* head_size         */
+  tr_le16(&out[k_rar_tr_le16_5], k_rar_tr_le16_13);            /* head_size         */
   memset(&out[k_tr_off_high_pos_av], 0, k_tr_len_high_pos_av); /* HighPosAV + PosAV */
   return k_rar_tr_le16_13;
 }

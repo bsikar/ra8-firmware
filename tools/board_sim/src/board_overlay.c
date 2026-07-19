@@ -328,8 +328,8 @@ static void draw_console_tabs(uint16_t*             out,
  *
  * @note Not thread-safe; the overlay is drawn from one thread.
  */
-static void draw_console_heading(uint16_t* out, uint16_t w, uint16_t h, int32_t x,
-                                 const board_status_t* st)
+static void
+draw_console_heading(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const board_status_t* st)
 {
   char     buf[k_overlay_val_80];
   uint16_t head_col;

@@ -34,7 +34,7 @@
 
 /** @brief Fill byte marking a block released back to the arena. */
 typedef enum : uint8_t {
-  k_arena_fill_stale  = 0xABU, /**< Must not survive a reallocation. */
+  k_arena_fill_stale  = 0xABU, /**< Must not survive a reallocation.               */
   k_arena_stale_bytes = 16U,   /**< Bytes of the released block that are poisoned. */
 } arena_fill_t;
 

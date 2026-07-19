@@ -72,7 +72,7 @@
 
 /** @brief Distinguishable payload fills for the read-back assertions. */
 typedef enum : uint8_t {
-  k_sdhi_cov_fill_write   = 0xA5U, /**< Payload handed to the write path. */
+  k_sdhi_cov_fill_write    = 0xA5U, /**< Payload handed to the write path.    */
   k_sdhi_cov_fill_readback = 0x5AU, /**< Poison the read path must overwrite. */
 } sdhi_cov_fill_t;
 

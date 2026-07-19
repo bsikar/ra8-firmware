@@ -594,8 +594,8 @@ static bool panel_split_kv(char* line, char** key, char** val)
   if (eq == nullptr) {
     return false;
   }
-  *eq      = '\0';
-  char* v  = eq + 1;
+  *eq     = '\0';
+  char* v = eq + 1;
   while ((*v == ' ') || (*v == '\t')) {
     v++;
   }
