@@ -42,7 +42,7 @@ jobs:
         run: |
           # ci-parity: infra -- runner package provisioning only; runs no
           # project check. Idempotent on this long-lived runner. Without
-          # graphviz the published site silently loses every @dot diagram.
+          # graphviz the published site silently loses every authored diagram.
           if ! command -v dot >/dev/null 2>&1; then
             sudo apt-get update
             sudo apt-get install -y graphviz

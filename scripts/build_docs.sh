@@ -78,14 +78,23 @@ if [[ "${GATE_MODE}" -eq 1 ]]; then
   OVERRIDES+="OUTPUT_DIRECTORY=${OUTPUT_DIR}"$'\n'
   OVERRIDES+="WARN_LOGFILE=${WARN_LOG}"$'\n'
   OVERRIDES+=$'EXTRACT_PRIVATE=YES\nWARN_IF_UNDOCUMENTED=YES\n'
-  # Only the AUTOMATIC per-function call/caller graphs are disabled here: those
-  # are the expensive ones (one dot run per documented function, thousands of
-  # them). HAVE_DOT itself stays ON so hand-written @dot blocks are actually
-  # parsed and rendered -- turning it off made doxygen emit "ignoring \dot
-  # command because HAVE_DOT is not set" for every such block, which this gate
-  # then reported as a failure. A warning gate that cannot see the diagrams it
-  # is meant to validate is not checking them.
+  # Every AUTOMATIC graph is disabled here: call/caller, include/included-by,
+  # collaboration, class and directory graphs each spawn a dot run per entity
+  # (thousands of them), and the include graphs additionally exceed
+  # DOT_GRAPH_MAX_NODES on the hub headers and warn about it.
+  #
+  # HAVE_DOT itself stays ON, so author-written diagram blocks are parsed,
+  # validated and rendered. Turning it off made doxygen ignore every such block
+  # and warn about it, which this gate reported as a failure -- a warning gate
+  # that cannot see the diagrams it is meant to validate is not checking them.
+  #
+  # (Deliberately avoiding the literal doxygen command spellings in this
+  # comment: scripts/ is inside INPUT, so writing them here would start a
+  # verbatim block that never closes.)
   OVERRIDES+=$'CALL_GRAPH=NO\nCALLER_GRAPH=NO\n'
+  OVERRIDES+=$'INCLUDE_GRAPH=NO\nINCLUDED_BY_GRAPH=NO\n'
+  OVERRIDES+=$'COLLABORATION_GRAPH=NO\nCLASS_GRAPH=NO\n'
+  OVERRIDES+=$'GRAPHICAL_HIERARCHY=NO\nDIRECTORY_GRAPH=NO\n'
 fi
 
 mkdir -p "${OUTPUT_DIR}"
