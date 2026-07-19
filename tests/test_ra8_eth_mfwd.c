@@ -23,8 +23,9 @@
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_eth_mfwd_mfwd_sts_abcd = 0xABCDU,
-  k_eth_mfwd_mfwd_sts_dead = 0xDEADU,
+  k_mfwd_probe_sts_a = 0xABCDU, /**< Planted in MFWD_STS to prove the read reaches the register. */
+  k_mfwd_probe_sts_b =
+    0xDEADU, /**< A second, different value, so the read cannot be a cached first result. */
 } eth_mfwd_uint16_const_t;
 
 /**
@@ -37,7 +38,7 @@ typedef enum : uint16_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_eth_mfwd_mfwd_sts_feedface = 0xFEEDFACEU,
+  k_mfwd_probe_sts_wide = 0xFEEDFACEU, /**< A full 32-bit value proving no field is truncated. */
 } eth_mfwd_uint32_const_t;
 
 static uint32_t s_mfwd_cb_count;
@@ -97,7 +98,7 @@ static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("mfwd status read + clear");
   prep();
-  ra8_mfwd()->MFWD_STS = k_eth_mfwd_mfwd_sts_feedface;
+  ra8_mfwd()->MFWD_STS = k_mfwd_probe_sts_wide;
   uint32_t mask        = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_mfwd_get_status(&mask));
   TEST_ASSERT_EQ(0xFEEDFACEU, mask);
@@ -117,13 +118,13 @@ static void test_attach_and_dispatch(void)
   TEST_BEGIN("mfwd attach + dispatch");
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_mfwd_attach_handler(stub_mfwd_cb, (void*)(uintptr_t)0xA0U));
-  ra8_mfwd()->MFWD_STS = k_eth_mfwd_mfwd_sts_abcd;
+  ra8_mfwd()->MFWD_STS = k_mfwd_probe_sts_a;
   ra8_eth_mfwd_dispatch();
   TEST_ASSERT_EQ(1, s_mfwd_cb_count);
   TEST_ASSERT_EQ(0xABCDU, s_mfwd_cb_last_mask);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_mfwd_attach_handler(nullptr, nullptr));
-  ra8_mfwd()->MFWD_STS = k_eth_mfwd_mfwd_sts_dead;
+  ra8_mfwd()->MFWD_STS = k_mfwd_probe_sts_b;
   ra8_eth_mfwd_dispatch();
   TEST_ASSERT_EQ(1, s_mfwd_cb_count);
   TEST_END("mfwd attach + dispatch");

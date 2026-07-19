@@ -29,8 +29,10 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_display_pal_policy_i_10 = 10U,
-  k_display_pal_policy_i_5  = 5U,
+  k_pal_refreshes_past_threshold =
+    10U, /**< Enough to cross it, so the policy must call for a full refresh. */
+  k_pal_partial_refreshes =
+    5U, /**< Partial refreshes driven before the policy is consulted; under the threshold, so no full refresh is due. */
 } display_pal_policy_uint8_const_t;
 
 /** @brief Local cadence used by the cadence/MC-DC tests. */
@@ -89,7 +91,7 @@ static void test_policy_fast_only(void)
   display_policy_t          p = {};
   display_policy_decision_t d = {};
   TEST_ASSERT_EQ(k_ra8_ok, display_policy_init(&p, k_display_policy_fast_only, k_test_clean_every));
-  for (uint32_t i = 0U; i < k_display_pal_policy_i_10; i++) {
+  for (uint32_t i = 0U; i < k_pal_refreshes_past_threshold; i++) {
     TEST_ASSERT_EQ(k_ra8_ok, display_policy_decide(&p, k_display_event_turn, &d));
     TEST_ASSERT_EQ(k_display_refresh_fast, d.hint);
     TEST_ASSERT(!d.full_update);
@@ -105,7 +107,7 @@ static void test_policy_quality(void)
   display_policy_t          p = {};
   display_policy_decision_t d = {};
   TEST_ASSERT_EQ(k_ra8_ok, display_policy_init(&p, k_display_policy_quality, k_test_clean_every));
-  for (uint32_t i = 0U; i < k_display_pal_policy_i_5; i++) {
+  for (uint32_t i = 0U; i < k_pal_partial_refreshes; i++) {
     TEST_ASSERT_EQ(k_ra8_ok, display_policy_decide(&p, k_display_event_turn, &d));
     TEST_ASSERT_EQ(k_display_refresh_quality, d.hint);
     TEST_ASSERT(d.full_update);

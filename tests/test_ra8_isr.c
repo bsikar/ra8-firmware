@@ -25,9 +25,12 @@
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_isr_marker_beef          = 0xBEEF,
-  k_isr_ra8_isr_dispatch_500 = 500U,
-  k_isr_slot_ffff            = 0xFFFFU,
+  k_isr_handler_marker =
+    0xBEEF, /**< Value the test handler writes, proving the dispatch actually ran it. */
+  k_isr_slot_out_of_range =
+    500U, /**< A vector slot past the last real one; dispatch must ignore it rather than index off the table. */
+  k_isr_slot_poison =
+    0xFFFFU, /**< Poison slot written before a registration, so a register call that fails without assigning one is detectable. */
 } isr_uint16_const_t;
 
 static int32_t  s_call_count   = 0;
@@ -86,7 +89,7 @@ static void test_register_allocates_first_slot(void)
   ra8_sim_mmap_reset();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
 
-  uint16_t slot = k_isr_slot_ffff;
+  uint16_t slot = k_isr_slot_poison;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_isr_register((ra8_elc_event_t)0x50U, stub_handler_a, nullptr, 5U, &slot));
   TEST_ASSERT_EQ(0, slot);
@@ -185,7 +188,7 @@ static void test_dispatch_invokes_handler_with_ctx(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
   reset_counts();
 
-  int32_t  marker = k_isr_marker_beef;
+  int32_t  marker = k_isr_handler_marker;
   uint16_t slot   = 0U;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_isr_register((ra8_elc_event_t)11U, stub_handler_a, &marker, 0U, &slot));
@@ -208,7 +211,7 @@ static void test_dispatch_out_of_range_is_noop(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_init());
   reset_counts();
 
-  ra8_isr_dispatch(k_isr_ra8_isr_dispatch_500); /* Out of bounds; nothing happens. */
+  ra8_isr_dispatch(k_isr_slot_out_of_range); /* Out of bounds; nothing happens. */
   TEST_ASSERT_EQ(0, s_call_count);
   TEST_END("ra8_isr_dispatch out-of-range is a no-op");
 }
@@ -303,7 +306,7 @@ static void test_find_event_mcdc_compound_guard(void)
 
   /* Vector 1: in_use=F (table empty). Decision must be false for every
    * slot, so lookup returns slot_none. */
-  uint16_t slot_v1 = k_isr_slot_ffff;
+  uint16_t slot_v1 = k_isr_slot_poison;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_lookup_slot((ra8_elc_event_t)0x40U, &slot_v1));
   TEST_ASSERT_EQ(k_ra8_isr_slot_none, slot_v1);
 
@@ -314,13 +317,13 @@ static void test_find_event_mcdc_compound_guard(void)
   /* Vector 2: in_use=T, event mismatch. Decision is false on slot 0
    * (because event 0x40 != query 0x41) and on every subsequent slot
    * (in_use=F short-circuits). Lookup returns slot_none. */
-  uint16_t slot_v2 = k_isr_slot_ffff;
+  uint16_t slot_v2 = k_isr_slot_poison;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_lookup_slot((ra8_elc_event_t)0x41U, &slot_v2));
   TEST_ASSERT_EQ(k_ra8_isr_slot_none, slot_v2);
 
   /* Vector 3: in_use=T, event match. Decision is true on slot 0; lookup
    * returns 0. */
-  uint16_t slot_v3 = k_isr_slot_ffff;
+  uint16_t slot_v3 = k_isr_slot_poison;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_isr_lookup_slot((ra8_elc_event_t)0x40U, &slot_v3));
   TEST_ASSERT_EQ(0, slot_v3);
 

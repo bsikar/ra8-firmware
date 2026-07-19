@@ -55,9 +55,10 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_jpeg_sw_decode_cov_val_128 = 128,
-  k_jpeg_sw_decode_cov_val_64  = 64,
-  k_jpeg_sw_decode_cov_val_80  = 80,
+  k_jpeg_buf_large = 128, /**< The largest, over one MCU row. */
+  k_jpeg_buf_small = 64,  /**< Smallest of three scratch sizes, under one MCU row. */
+  k_jpeg_buf_mid =
+    80, /**< A size that is not a power of two, so an allocator rounding up is visible. */
 } jpeg_sw_decode_cov_uint8_const_t;
 
 /**
@@ -526,7 +527,7 @@ static void test_decode_sof0_guards(void)
 static void test_decode_sos_guards(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_parse_sos header/len/ns guards");
-  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_64];
+  static uint8_t s_buf[k_jpeg_buf_small];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
@@ -583,7 +584,7 @@ static void test_decode_sos_guards(void)
 static void test_decode_scan_buffer_too_small(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_decode_scan output-size guard");
-  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_64];
+  static uint8_t s_buf[k_jpeg_buf_small];
   static uint8_t s_tiny[(uint32_t)k_cov_out_small];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
@@ -624,7 +625,7 @@ static void test_decode_scan_buffer_too_small(void)
 static void test_decode_dc_huffman_failure(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block DC failure -> y-block + scan propagation");
-  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_64];
+  static uint8_t s_buf[k_jpeg_buf_small];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
@@ -664,7 +665,7 @@ static void test_decode_dc_huffman_failure(void)
 static void test_decode_dc_magnitude_underflow(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block DC magnitude underflow (r<0 && t!=0)");
-  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_64];
+  static uint8_t s_buf[k_jpeg_buf_small];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
@@ -701,7 +702,7 @@ static void test_decode_dc_magnitude_underflow(void)
 static void test_decode_ac_huffman_failure(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block AC Huffman failure (rs<0)");
-  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_64];
+  static uint8_t s_buf[k_jpeg_buf_small];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
@@ -739,7 +740,7 @@ static void test_decode_ac_huffman_failure(void)
 static void test_decode_ac_magnitude_underflow(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block AC magnitude underflow (v<0)");
-  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_128];
+  static uint8_t s_buf[k_jpeg_buf_large];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
@@ -781,7 +782,7 @@ static void test_decode_ac_magnitude_underflow(void)
 static void test_decode_ac_zrl_index_overrun(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block ZRL run + AC index overrun (k>=64)");
-  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_80];
+  static uint8_t s_buf[k_jpeg_buf_mid];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
@@ -826,7 +827,7 @@ static void test_decode_ac_zrl_index_overrun(void)
 static void test_decode_chroma_block_failures(void)
 {
   TEST_BEGIN("jpeg_dec_cov: chroma Cb + Cr block failures + scan propagation");
-  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_128];
+  static uint8_t s_buf[k_jpeg_buf_large];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
@@ -890,7 +891,7 @@ static void test_decode_chroma_block_failures(void)
 static void test_decode_grayscale_edge_success(void)
 {
   TEST_BEGIN("jpeg_dec_cov: 5x5 grayscale decode -- edge crop + gray emit");
-  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_80];
+  static uint8_t s_buf[k_jpeg_buf_mid];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 

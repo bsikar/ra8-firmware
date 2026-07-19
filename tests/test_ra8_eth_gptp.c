@@ -23,8 +23,9 @@
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_eth_gptp_gptp_sts_beef = 0xBEEFU,
-  k_eth_gptp_gptp_sts_face = 0xFACEU,
+  k_gptp_probe_sts_a = 0xBEEFU, /**< Planted in GPTP_STS to prove the read reaches the register. */
+  k_gptp_probe_sts_b =
+    0xFACEU, /**< A second, different value, so the read cannot be a cached first result. */
 } eth_gptp_uint16_const_t;
 
 /**
@@ -37,7 +38,7 @@ typedef enum : uint16_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_eth_gptp_gptp_sts_1eee1588 = 0x1EEE1588U,
+  k_gptp_probe_sts_wide = 0x1EEE1588U, /**< A full 32-bit value proving no field is truncated. */
 } eth_gptp_uint32_const_t;
 
 static uint32_t s_gptp_cb_count;
@@ -97,7 +98,7 @@ static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("gptp status read + clear");
   prep();
-  ra8_gptp()->GPTP_STS = k_eth_gptp_gptp_sts_1eee1588;
+  ra8_gptp()->GPTP_STS = k_gptp_probe_sts_wide;
   uint32_t mask        = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gptp_get_status(&mask));
   TEST_ASSERT_EQ(0x1EEE1588U, mask);
@@ -117,13 +118,13 @@ static void test_attach_and_dispatch(void)
   TEST_BEGIN("gptp attach + dispatch");
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gptp_attach_handler(stub_gptp_cb, (void*)(uintptr_t)0xF0U));
-  ra8_gptp()->GPTP_STS = k_eth_gptp_gptp_sts_beef;
+  ra8_gptp()->GPTP_STS = k_gptp_probe_sts_a;
   ra8_eth_gptp_dispatch();
   TEST_ASSERT_EQ(1, s_gptp_cb_count);
   TEST_ASSERT_EQ(0xBEEFU, s_gptp_cb_last_mask);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gptp_attach_handler(nullptr, nullptr));
-  ra8_gptp()->GPTP_STS = k_eth_gptp_gptp_sts_face;
+  ra8_gptp()->GPTP_STS = k_gptp_probe_sts_b;
   ra8_eth_gptp_dispatch();
   TEST_ASSERT_EQ(1, s_gptp_cb_count);
   TEST_END("gptp attach + dispatch");

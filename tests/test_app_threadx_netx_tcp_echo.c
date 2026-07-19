@@ -46,7 +46,8 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_threadx_netx_tcp_echo_val_ff = 0xFFU,
+  k_sys_oscsf_all_ready =
+    0xFFU, /**< Every oscillator-stabilisation flag set, so clock bring-up sees all sources ready. */
 } threadx_netx_tcp_echo_uint8_const_t;
 
 /**
@@ -59,7 +60,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_threadx_netx_tcp_echo_ra8_eth_attach_handler_cafe = 0xCAFEU,
+  k_eth_handler_ctx_token =
+    0xCAFEU, /**< Token handed to the Ethernet handler and checked on the way back, proving the context pointer survives. */
 } threadx_netx_tcp_echo_uint16_const_t;
 
 /**
@@ -72,7 +74,8 @@ typedef enum : uint16_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_threadx_netx_tcp_echo_mask_ffffffff = 0xFFFFFFFFU,
+  k_event_mask_all =
+    0xFFFFFFFFU, /**< Wait on every event bit, so the first event of any kind releases the wait. */
 } threadx_netx_tcp_echo_uint32_const_t;
 
 /** @brief Captured event mask from the attached handler. */
@@ -105,7 +108,7 @@ static void reset_world(void)
   s_last_eth_event_ctx  = nullptr;
   /* Pre-seed OSCSF stabilisation bits so ra8_cgc_init() spin loops
    * complete on the first iteration in RA8_SIMULATOR_MODE. */
-  *ra8_sys_oscsf() = (uint8_t)k_threadx_netx_tcp_echo_val_ff;
+  *ra8_sys_oscsf() = (uint8_t)k_sys_oscsf_all_ready;
 }
 
 /**
@@ -170,9 +173,7 @@ static void test_netx_attach_event_handler(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&cfg));
 
   TEST_BEGIN("netx_tcp_echo: attach event handler");
-  ra8_err_t err =
-    ra8_eth_attach_handler(test_netx_eth_event_cb,
-                           (void*)k_threadx_netx_tcp_echo_ra8_eth_attach_handler_cafe);
+  ra8_err_t err = ra8_eth_attach_handler(test_netx_eth_event_cb, (void*)k_eth_handler_ctx_token);
   TEST_ASSERT(err == k_ra8_ok);
   TEST_END("netx_tcp_echo: attach event handler");
 }
@@ -215,7 +216,7 @@ static void test_netx_status_get_and_clear(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&cfg));
 
   TEST_BEGIN("netx_tcp_echo: status get + clear");
-  uint32_t  mask = k_threadx_netx_tcp_echo_mask_ffffffff;
+  uint32_t  mask = k_event_mask_all;
   ra8_err_t g    = ra8_eth_get_status(&mask);
   TEST_ASSERT(g == k_ra8_ok);
   ra8_err_t c = ra8_eth_clear_status(mask);

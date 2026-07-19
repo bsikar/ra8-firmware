@@ -24,8 +24,10 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ble_security_c_ff       = 0xFFU,
-  k_ble_security_io_cap_200 = 200U,
+  k_ble_sec_poison_out =
+    0xFFU, /**< Poison written into an out-parameter before the call, so a failure that left it alone is detectable. */
+  k_ble_sec_io_cap_invalid =
+    200U, /**< An I/O-capability value outside the enumeration, which configuration must reject. */
 } ble_security_uint8_const_t;
 
 /**
@@ -38,7 +40,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_ble_security_passkey_123456 = 123456U,
+  k_ble_sec_passkey =
+    123456U, /**< A six-digit passkey, the full width the pairing protocol defines. */
 } ble_security_uint32_const_t;
 
 extern void ra8_ble_security_test_emit_event(const ra8_ble_security_event_t* evt);
@@ -86,7 +89,7 @@ static void test_init_invalid_iocap(void)
   TEST_BEGIN("test_init_invalid_iocap");
   reset_state();
   ra8_ble_security_config_t cfg = {};
-  cfg.io_cap                    = (ra8_ble_security_io_cap_t)k_ble_security_io_cap_200;
+  cfg.io_cap                    = (ra8_ble_security_io_cap_t)k_ble_sec_io_cap_invalid;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ble_security_init(&cfg));
   TEST_END("test_init_invalid_iocap");
 }
@@ -140,7 +143,7 @@ static void test_bond_count(void)
 {
   TEST_BEGIN("test_bond_count");
   reset_state();
-  uint8_t                         c   = k_ble_security_c_ff;
+  uint8_t                         c   = k_ble_sec_poison_out;
   const ra8_ble_security_config_t cfg = {.io_cap = k_ra8_ble_io_cap_no_input_no_out};
   TEST_ASSERT_EQ(k_ra8_err_not_initialized, ra8_ble_security_bond_count(&c));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_security_init(&cfg));
@@ -165,7 +168,7 @@ static void test_event_callback(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_security_init(&cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_security_attach_event_handler(capture_evt, nullptr));
   ra8_ble_security_event_t evt = {.kind    = k_ra8_ble_sec_evt_passkey_display,
-                                  .passkey = k_ble_security_passkey_123456};
+                                  .passkey = k_ble_sec_passkey};
   ra8_ble_security_test_emit_event(&evt);
   TEST_ASSERT_EQ(1U, s_evt_count);
   TEST_ASSERT_EQ(123456U, s_last.passkey);

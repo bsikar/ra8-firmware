@@ -23,8 +23,10 @@
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_crc_crcdor_12345678 = 0x12345678UL,
-  k_crc_got_deadbeef    = 0xDEADBEEFUL,
+  k_crc_probe_crcdor =
+    0x12345678UL, /**< Planted in CRCDOR to prove the result read reaches the register. */
+  k_crc_poison_out =
+    0xDEADBEEFUL, /**< Poison written into the result out-parameter, so a call that fails without setting it is detectable. */
 } crc_uint32_const_t;
 
 /**
@@ -259,7 +261,7 @@ static void test_compute_crc32_reads_dor(void)
    * "engine" doesn't transform the seed, so the readback equals the
    * seed and the final out_crc value is `seed XOR seed = 0`. */
   (void)ra8_crc_init(k_ra8_crc_poly_32c_rev);
-  uint32_t        got = k_crc_got_deadbeef;
+  uint32_t        got = k_crc_poison_out;
   const ra8_err_t err = ra8_crc_compute(s_payload, (uint32_t)k_ra8_crc_test_len, &got);
   TEST_ASSERT_EQ(k_ra8_ok, err);
   TEST_ASSERT_EQ(0U, got);
@@ -284,7 +286,7 @@ static void test_compute_zero_length(void)
 
   (void)ra8_crc_init(k_ra8_crc_poly_8);
   volatile r_crc_regs_t* reg = ra8_crc();
-  reg->CRCDOR                = k_crc_crcdor_12345678;
+  reg->CRCDOR                = k_crc_probe_crcdor;
 
   uint32_t        got = 0U;
   const ra8_err_t err = ra8_crc_compute(s_payload, 0U, &got);

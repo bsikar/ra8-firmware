@@ -41,9 +41,12 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ftl_persist_i_17                = 17U,
-  k_ftl_persist_lbn_5               = 5U,
-  k_ftl_persist_persist_pattern_100 = 100U,
+  k_ftl_pattern_stride =
+    17U, /**< Byte stride of the block generator, `i * 17 + lbn * 5 + tag`; prime, so the pattern never repeats inside a block. */
+  k_ftl_pattern_lbn_mul =
+    5U, /**< Logical-block-number multiplier, so two blocks of one file still differ. */
+  k_ftl_tag_base =
+    100U, /**< Base generation tag of the rewrite loop; `+ rep` makes each rewrite of the same block distinguishable, which is what proves the newest copy wins. */
 } ftl_persist_uint8_const_t;
 
 /**
@@ -194,7 +197,7 @@ static void persist_bind(ra8_io_blockdev_t* bd, persist_fake_t* st, uint32_t blo
 static void persist_pattern(uint8_t* blk, uint32_t lbn, uint32_t tag)
 {
   for (uint32_t i = 0; i < (uint32_t)k_persist_block; ++i) {
-    blk[i] = (uint8_t)((i * k_ftl_persist_i_17) + (lbn * k_ftl_persist_lbn_5) + tag);
+    blk[i] = (uint8_t)((i * k_ftl_pattern_stride) + (lbn * k_ftl_pattern_lbn_mul) + tag);
   }
 }
 
@@ -449,7 +452,7 @@ static void persist_write_all(ra8_io_blockdev_t* bd)
   }
   for (uint32_t rep = 0; rep < 4U; ++rep) {
     uint8_t blk[(size_t)k_persist_block];
-    persist_pattern(blk, 2U, k_ftl_persist_persist_pattern_100 + rep);
+    persist_pattern(blk, 2U, k_ftl_tag_base + rep);
     TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(bd, 2U, 1U, blk));
   }
 }

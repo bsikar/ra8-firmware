@@ -47,9 +47,9 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_flash_irq_cov_mrcfreq_mhz_200 = 200U,
-  k_flash_irq_cov_mrefreq_mhz_100 = 100U,
-  k_flash_irq_cov_p_ff            = 0xFFU,
+  k_flash_core_clock_mhz   = 200U,  /**< Core clock the flash configuration declares, in MHz. */
+  k_flash_periph_clock_mhz = 100U,  /**< Its peripheral clock, half the core clock. */
+  k_flash_erased_byte      = 0xFFU, /**< The erased state of MRAM: all ones. */
 } flash_irq_cov_uint8_const_t;
 
 /* ---------------------------------------------------------------------------
@@ -134,8 +134,8 @@ static void cov_callback(const ra8_flash_isr_event_t* ev)
 static ra8_flash_cfg_t cfg_make(void)
 {
   return (ra8_flash_cfg_t){
-    .mrcfreq_mhz        = k_flash_irq_cov_mrcfreq_mhz_200,
-    .mrefreq_mhz        = k_flash_irq_cov_mrefreq_mhz_100,
+    .mrcfreq_mhz        = k_flash_core_clock_mhz,
+    .mrefreq_mhz        = k_flash_periph_clock_mhz,
     .prefetch_en        = true,
     .ecc_encoder_enable = true,
     .ecc_decoder_enable = true,
@@ -467,7 +467,7 @@ static void test_blank_check_extra_mram_path(void)
    * blank_check can complete a real read without faulting. */
   volatile uint8_t* p = (volatile uint8_t*)(uintptr_t)k_ra8_flash_extra_start;
   for (uint32_t i = 0U; i < 16U; ++i) {
-    p[i] = k_flash_irq_cov_p_ff;
+    p[i] = k_flash_erased_byte;
   }
 
   bool blank = false;

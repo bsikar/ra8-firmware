@@ -23,8 +23,9 @@
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_eth_coma_coma_sts_1234 = 0x1234U,
-  k_eth_coma_coma_sts_5678 = 0x5678U,
+  k_coma_probe_sts_a = 0x1234U, /**< Planted in COMA_STS to prove the read reaches the register. */
+  k_coma_probe_sts_b =
+    0x5678U, /**< A second, different value, so the read cannot be a cached first result. */
 } eth_coma_uint16_const_t;
 
 /**
@@ -37,7 +38,7 @@ typedef enum : uint16_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_eth_coma_coma_sts_c0ffee00 = 0xC0FFEE00U,
+  k_coma_probe_sts_wide = 0xC0FFEE00U, /**< A full 32-bit value proving no field is truncated. */
 } eth_coma_uint32_const_t;
 
 static uint32_t s_coma_cb_count;
@@ -97,7 +98,7 @@ static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("coma status read + clear");
   prep();
-  ra8_coma()->COMA_STS = k_eth_coma_coma_sts_c0ffee00;
+  ra8_coma()->COMA_STS = k_coma_probe_sts_wide;
   uint32_t mask        = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_coma_get_status(&mask));
   TEST_ASSERT_EQ(0xC0FFEE00U, mask);
@@ -117,13 +118,13 @@ static void test_attach_and_dispatch(void)
   TEST_BEGIN("coma attach + dispatch");
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_coma_attach_handler(stub_coma_cb, (void*)(uintptr_t)0xC0U));
-  ra8_coma()->COMA_STS = k_eth_coma_coma_sts_1234;
+  ra8_coma()->COMA_STS = k_coma_probe_sts_a;
   ra8_eth_coma_dispatch();
   TEST_ASSERT_EQ(1, s_coma_cb_count);
   TEST_ASSERT_EQ(0x1234U, s_coma_cb_last_mask);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_coma_attach_handler(nullptr, nullptr));
-  ra8_coma()->COMA_STS = k_eth_coma_coma_sts_5678;
+  ra8_coma()->COMA_STS = k_coma_probe_sts_b;
   ra8_eth_coma_dispatch();
   TEST_ASSERT_EQ(1, s_coma_cb_count);
   TEST_END("coma attach + dispatch");

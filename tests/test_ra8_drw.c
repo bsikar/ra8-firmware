@@ -31,7 +31,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_drw_val_abcd = 0xABCDUL,
+  k_drw_probe_irqctl = 0xABCDUL, /**< Planted in IRQCTL to prove the read reaches the register. */
 } drw_uint16_const_t;
 
 /**
@@ -44,8 +44,9 @@ typedef enum : uint16_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_drw_sentinel_cafebabe = 0xCAFEBABEUL,
-  k_drw_sentinel_deadbeef = 0xDEADBEEFUL,
+  k_drw_probe_perfcount2 =
+    0xCAFEBABEUL, /**< Planted in PERFCOUNT2; different from PERFCOUNT1 so the two cannot be confused. */
+  k_drw_probe_perfcount1 = 0xDEADBEEFUL, /**< Planted in PERFCOUNT1. */
 } drw_uint32_const_t;
 
 /**
@@ -182,7 +183,7 @@ static void test_deinit_clears_irq_and_callback(void)
   const ra8_drw_config_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_init(&cfg));
   /* Pretend a prior IRQ snuck through. */
-  *ra8_drw_reg32(k_ra8_drw_off_irqctl) = k_drw_val_abcd;
+  *ra8_drw_reg32(k_ra8_drw_off_irqctl) = k_drw_probe_irqctl;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_deinit());
   TEST_ASSERT_EQ(k_ra8_drw_irqctl_all_clr, *ra8_drw_reg32(k_ra8_drw_off_irqctl));
@@ -377,8 +378,8 @@ static void test_reset_clears_perfcount(void)
 {
   TEST_BEGIN("drw reset clears perf counters");
   prep();
-  *ra8_drw_reg32(k_ra8_drw_off_perfcount1) = k_drw_sentinel_deadbeef;
-  *ra8_drw_reg32(k_ra8_drw_off_perfcount2) = k_drw_sentinel_cafebabe;
+  *ra8_drw_reg32(k_ra8_drw_off_perfcount1) = k_drw_probe_perfcount1;
+  *ra8_drw_reg32(k_ra8_drw_off_perfcount2) = k_drw_probe_perfcount2;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_reset());
   TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_perfcount1));
   TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_perfcount2));

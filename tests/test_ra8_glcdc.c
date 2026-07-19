@@ -26,7 +26,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_glcdc_sentinel_aa = 0xAAU,
+  k_glcdc_probe_cfg = 0xAAU, /**< Planted in SYS_CFG to prove the write reaches the register. */
 } glcdc_uint8_const_t;
 
 /**
@@ -39,7 +39,7 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_glcdc_val_cafe = 0xCAFEU,
+  k_glcdc_probe_stat_a = 0xCAFEU, /**< Planted in SYS_STAT. */
 } glcdc_uint16_const_t;
 
 /**
@@ -52,7 +52,8 @@ typedef enum : uint16_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_glcdc_sentinel_deadbeef = 0xDEADBEEFU,
+  k_glcdc_probe_stat_wide =
+    0xDEADBEEFU, /**< A full 32-bit SYS_STAT value proving no field is truncated. */
 } glcdc_uint32_const_t;
 
 typedef enum : uint32_t {
@@ -344,7 +345,7 @@ static void test_start_disable(void)
   ra8_sim_mmap_reset();
   ra8_sim_mmio_reset();
   /* Prime with something non-zero first. */
-  *ra8_glcdc_reg32(k_ra8_glcdc_off_sys_cfg) = k_glcdc_sentinel_aa;
+  *ra8_glcdc_reg32(k_ra8_glcdc_off_sys_cfg) = k_glcdc_probe_cfg;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_start(false));
   TEST_ASSERT_EQ(0, *ra8_glcdc_reg32(k_ra8_glcdc_off_sys_cfg));
   /* Disable path: SWRST(bit16) is held high so the controller stays
@@ -405,7 +406,7 @@ static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("glcdc status read + clear");
   prep_w61();
-  *ra8_glcdc_reg32(k_ra8_glcdc_off_sys_stat) = k_glcdc_sentinel_deadbeef;
+  *ra8_glcdc_reg32(k_ra8_glcdc_off_sys_stat) = k_glcdc_probe_stat_wide;
 
   uint32_t mask = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_get_status(&mask));
@@ -426,7 +427,7 @@ static void test_attach_and_dispatch(void)
   TEST_BEGIN("glcdc attach + dispatch");
   prep_w61();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_attach_handler(stub_glcdc_cb, (void*)(uintptr_t)0x77U));
-  *ra8_glcdc_reg32(k_ra8_glcdc_off_sys_stat) = k_glcdc_val_cafe;
+  *ra8_glcdc_reg32(k_ra8_glcdc_off_sys_stat) = k_glcdc_probe_stat_a;
   ra8_glcdc_dispatch();
   TEST_ASSERT_EQ(1, s_glcdc_cb_count);
   TEST_ASSERT_EQ(0xCAFEU, s_glcdc_cb_last_mask);
