@@ -222,12 +222,25 @@ static void fill_status_hw(board_status_t* st, const char* app_name)
 }
 
 /** @brief Snapshot the tabbed-console metadata and the active scrollback window. */
-static void fill_status_console(board_status_t* st)
+/**
+ * @brief Populate the console tab-bar metadata in @p st.
+ *
+ * @details
+ * Each board_console channel (ALL | UART | ITM | SPI | I2C) is a tab. The
+ * overlay needs each tab's name and live line count, plus which tab is active,
+ * to draw the bar and hit-test clicks on it.
+ *
+ * @param[out] st Status block whose `console_ch_*` fields are filled.
+ *
+ * @pre @p st is non-NULL.
+ * @pre `s_view_console_ch` names a valid channel.
+ * @post At most @ref k_overlay_console_tabs_max tabs are described.
+ * @post `st->console_active_ch` reflects the current channel.
+ *
+ * @note Not thread-safe; the viewer is single-threaded host-side.
+ */
+static void fill_console_tabs(board_status_t* st)
 {
-  /* Tabbed console: each board_console channel (ALL | UART | ITM | SPI | I2C) is
-   * a tab; the active one (s_view_console_ch) fills the console panel. Populate
-   * the tab-bar metadata (names + live line counts + which tab is active) so the
-   * overlay can draw the bar and hit-test clicks. */
   st->console_ch_count  = (uint32_t)k_board_console_ch_count;
   st->console_active_ch = (uint32_t)s_view_console_ch;
   for (uint32_t c = 0U; c < (uint32_t)k_board_console_ch_count; c++) {
@@ -237,18 +250,35 @@ static void fill_status_console(board_status_t* st)
     st->console_ch_name[c]        = board_console_name((board_console_ch_t)c);
     st->console_ch_count_lines[c] = board_console_count((board_console_ch_t)c);
   }
-  /* Console window: copy up to k_overlay_console_rows lines from the active
-   * channel's scrollback ring, starting s_view_scroll lines back from the
-   * newest, so the mouse-wheel can page through history. console[0] is the
-   * newest visible line (= ring line s_view_scroll). */
-  const uint32_t avail = board_console_count(s_view_console_ch);
-  const uint32_t total = board_console_total(s_view_console_ch);
+}
+
+/**
+ * @brief Advance and clamp the console scroll offset, returning where to read.
+ *
+ * @details
+ * While autoscroll is on the view follows the live tail. While paused, new
+ * lines push the tail forward, so the back-offset advances by the same amount
+ * to keep the reader's current lines on screen -- capped at the ring depth,
+ * because anything older than the ring has already aged out. The result is
+ * re-clamped so a shrunken or shallow history cannot scroll past its top.
+ *
+ * @param[in] avail Lines currently held in the active channel's ring.
+ * @param[in] total Lines ever pushed to that channel (monotonic).
+ *
+ * @return The back-offset to start reading the visible window from.
+ *
+ * @pre `s_view_log_seen` holds the previous frame's @p total.
+ * @pre The active channel is `s_view_console_ch`.
+ * @post `s_view_scroll` is <= the maximum scroll for @p avail.
+ * @post `s_view_log_seen` is updated to @p total.
+ *
+ * @note Not thread-safe; the viewer is single-threaded host-side.
+ */
+static uint32_t console_advance_scroll(uint32_t avail, uint32_t total)
+{
   if (s_view_autoscroll) {
     s_view_scroll = 0U; /* follow the live tail */
   } else if (total > s_view_log_seen) {
-    /* Paused: new lines pushed the tail forward, so advance the back-offset by
-     * the same amount to keep the reader's current (absolute) lines on screen.
-     * Capped at the ring depth -- lines older than the ring have aged out. */
     const uint32_t delta = total - s_view_log_seen;
     s_view_scroll += delta;
     if (s_view_scroll > (uint32_t)k_uart_log_max) {
@@ -261,7 +291,19 @@ static void fill_status_console(board_status_t* st)
   if (s_view_scroll > max_scroll) {
     s_view_scroll = max_scroll; /* re-clamp if history shrank or is shallow */
   }
-  const uint32_t scroll = s_view_scroll;
+  return s_view_scroll;
+}
+
+static void fill_status_console(board_status_t* st)
+{
+  fill_console_tabs(st);
+  /* Console window: copy up to k_overlay_console_rows lines from the active
+   * channel's scrollback ring, starting `scroll` lines back from the newest,
+   * so the mouse-wheel can page through history. console[0] is the newest
+   * visible line (= ring line `scroll`). */
+  const uint32_t avail  = board_console_count(s_view_console_ch);
+  const uint32_t total  = board_console_total(s_view_console_ch);
+  const uint32_t scroll = console_advance_scroll(avail, total);
   uint32_t       rows   = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_overlay_console_rows; i++) {
     const char* line = board_console_line(s_view_console_ch, scroll + i);
@@ -517,6 +559,108 @@ static void panel_rstrip(char* s)
  * @param[out] out  Filled descriptor on success.
  * @return true if a valid width/height were parsed.
  */
+/**
+ * @brief Split one config line into a trimmed `key` / `value` pair, in place.
+ *
+ * @details
+ * Skips leading blanks, ignores comment and blank lines, splits on the first
+ * `=`, then right-trims both halves. The line buffer is modified: the `=`
+ * becomes the key's terminator and @p key / @p val point into it.
+ *
+ * @param[in,out] line Mutable line buffer from the config file.
+ * @param[out]    key  Receives a pointer to the trimmed key.
+ * @param[out]    val  Receives a pointer to the trimmed value.
+ *
+ * @return True when a `key=value` pair was found, false for a blank, comment,
+ *         or `=`-less line the caller should skip.
+ *
+ * @pre @p line, @p key and @p val are non-NULL.
+ * @pre @p line is NUL-terminated and writable.
+ * @post On true, both `*key` and `*val` point inside @p line.
+ * @post On false, `*key` and `*val` are untouched.
+ *
+ * @note Not thread-safe; the viewer is single-threaded host-side.
+ */
+static bool panel_split_kv(char* line, char** key, char** val)
+{
+  char* p = line;
+  while ((*p == ' ') || (*p == '\t')) {
+    p++;
+  }
+  if ((*p == '#') || (*p == '\0') || (*p == '\n') || (*p == '\r')) {
+    return false;
+  }
+  char* eq = strchr(p, '=');
+  if (eq == nullptr) {
+    return false;
+  }
+  *eq      = '\0';
+  char* v  = eq + 1;
+  while ((*v == ' ') || (*v == '\t')) {
+    v++;
+  }
+  panel_rstrip(p);
+  panel_rstrip(v);
+  *key = p;
+  *val = v;
+  return true;
+}
+
+/**
+ * @brief Copy the panel `name` value into @p out, stripping optional quotes.
+ *
+ * @param[out] out Panel description receiving the name.
+ * @param[in]  val Raw value text, optionally wrapped in double quotes.
+ *
+ * @pre @p out and @p val are non-NULL.
+ * @pre @p val is NUL-terminated.
+ * @post `out->name` is NUL-terminated and never overruns its buffer.
+ * @post A value longer than the field is truncated rather than rejected.
+ *
+ * @note Not thread-safe; the viewer is single-threaded host-side.
+ */
+static void panel_set_name(board_panel_t* out, const char* val)
+{
+  const char* s = val;
+  size_t      n = strlen(s);
+  if ((n >= 2U) && (s[0] == '"') && (s[n - 1U] == '"')) {
+    s += 1;
+    n -= 2U;
+  }
+  if (n >= sizeof(out->name)) {
+    n = sizeof(out->name) - 1U;
+  }
+  (void)memcpy(out->name, s, n);
+  out->name[n] = '\0';
+}
+
+/**
+ * @brief Apply one recognised `key=value` pair to @p out; unknown keys are ignored.
+ *
+ * @param[in,out] out Panel description being built.
+ * @param[in]     key Trimmed key text.
+ * @param[in]     val Trimmed value text.
+ *
+ * @pre @p out, @p key and @p val are non-NULL.
+ * @pre @p key and @p val are NUL-terminated.
+ * @post Exactly one field of @p out is written, or none for an unknown key.
+ * @post Unknown keys are ignored so newer configs stay loadable.
+ *
+ * @note Not thread-safe; the viewer is single-threaded host-side.
+ */
+static void panel_apply_kv(board_panel_t* out, const char* key, const char* val)
+{
+  if (strncmp(key, "width", sizeof("width")) == 0) {
+    out->width = (uint16_t)strtol(val, nullptr, (int)k_strtol_base10);
+  } else if (strncmp(key, "height", sizeof("height")) == 0) {
+    out->height = (uint16_t)strtol(val, nullptr, (int)k_strtol_base10);
+  } else if (strncmp(key, "name", sizeof("name")) == 0) {
+    panel_set_name(out, val);
+  } else {
+    /* Unknown key: ignored on purpose. */
+  }
+}
+
 bool load_panel(const char* path, board_panel_t* out)
 {
   (void)memset(out, 0, sizeof(*out));
@@ -527,41 +671,10 @@ bool load_panel(const char* path, board_panel_t* out)
   }
   char line[k_panel_line_max];
   while (fgets(line, (int)sizeof(line), f) != nullptr) {
-    char* p = line;
-    while ((*p == ' ') || (*p == '\t')) {
-      p++;
-    }
-    if ((*p == '#') || (*p == '\0') || (*p == '\n') || (*p == '\r')) {
-      continue;
-    }
-    char* eq = strchr(p, '=');
-    if (eq == nullptr) {
-      continue;
-    }
-    *eq       = '\0';
-    char* key = p;
-    char* val = eq + 1;
-    while ((*val == ' ') || (*val == '\t')) {
-      val++;
-    }
-    panel_rstrip(key);
-    panel_rstrip(val);
-    if (strncmp(key, "width", sizeof("width")) == 0) {
-      out->width = (uint16_t)strtol(val, nullptr, (int)k_strtol_base10);
-    } else if (strncmp(key, "height", sizeof("height")) == 0) {
-      out->height = (uint16_t)strtol(val, nullptr, (int)k_strtol_base10);
-    } else if (strncmp(key, "name", sizeof("name")) == 0) {
-      const char* s = val;
-      size_t      n = strlen(s);
-      if ((n >= 2U) && (s[0] == '"') && (s[n - 1U] == '"')) {
-        s += 1;
-        n -= 2U;
-      }
-      if (n >= sizeof(out->name)) {
-        n = sizeof(out->name) - 1U;
-      }
-      (void)memcpy(out->name, s, n);
-      out->name[n] = '\0';
+    char* key = nullptr;
+    char* val = nullptr;
+    if (panel_split_kv(line, &key, &val)) {
+      panel_apply_kv(out, key, val);
     }
   }
   (void)fclose(f);
