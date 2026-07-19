@@ -160,6 +160,7 @@ ra8_err_t ra8_epaper_dev_info_cov(ra8_epaper_dev_info_t* out_info);
  * production symbols the rest of the tree links. */
 ra8_err_t ra8_epaper_get_vcom_cov(uint16_t* out_mv);
 ra8_err_t ra8_epaper_set_vcom_cov(uint16_t mv);
+bool      ra8_epaper_vcom_verified_cov(void);
 
 /** @brief RA8 epaper init. */
 #define ra8_epaper_init ra8_epaper_init_cov
@@ -175,6 +176,8 @@ ra8_err_t ra8_epaper_set_vcom_cov(uint16_t mv);
 #define ra8_epaper_get_vcom ra8_epaper_get_vcom_cov
 /** @brief RA8 epaper VCOM write. */
 #define ra8_epaper_set_vcom ra8_epaper_set_vcom_cov
+/** @brief RA8 epaper INV-VCOM-1 permit query. */
+#define ra8_epaper_vcom_verified ra8_epaper_vcom_verified_cov
 
 #include "ra8_epaper.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
 
@@ -218,8 +221,16 @@ static void set_uninit(void)
 /** @brief Force the file-static panel to the ready state with a valid cfg. */
 static void set_ready(void)
 {
-  s_panel.cfg   = cov_cfg();
-  s_panel.state = k_ra8_epaper_state_ready;
+  s_panel.cfg = cov_cfg();
+  /* Pre-grant the INV-VCOM-1 permit by writing the latch directly. Every
+   * other test in this TU is about a different leg -- the DPY_AREA command
+   * fault, the LUT poll, the argument block -- and would otherwise stop at
+   * the VCOM refusal before reaching the leg it exists to cover. The gate
+   * itself, and both outcomes of the readback compare that grants it, are
+   * driven properly through the public API in ``test_vcom_permit_legs``. */
+  s_panel.state         = k_ra8_epaper_state_ready;
+  s_panel.vcom_verified = true;
+  s_panel.vcom_mv       = (uint16_t)k_cov_word_nz;
 }
 
 /* =============================================================================
@@ -605,6 +616,91 @@ static void test_load_image_api_legs(void)
 }
 
 /**
+ * @test test_vcom_permit_legs
+ *
+ * @details
+ * INV-VCOM-1 end to end on the controllable mock, which is the only place
+ * both outcomes of the readback compare can be driven: the mock stamps
+ * every received byte with ::s_xfer_rx, so a 16-bit readback is always
+ * ``(s_xfer_rx << 8) | s_xfer_rx`` and the test chooses whether the value
+ * written matches it.
+ *
+ * The asymmetry being protected is the reason this test exists at all: a
+ * blank screen costs one confusing boot, a panel biased at an unverified
+ * VCOM is destroyed slowly and unrecoverably. So the refusal path is
+ * asserted first, and the permit is proven to be revoked -- not merely
+ * absent -- after a failed write and after a sleep.
+ *
+ * @par MC/DC:
+ * Decision A: `if (readback != mv)` in ``ra8_epaper_set_vcom``
+ * (1 condition -- branch coverage, 2 vectors both necessary):
+ * - Vector 1: readback == mv -> false (permit granted, display permitted)
+ * - Vector 2: readback != mv -> true  (refused, permit stays revoked)
+ * Decision B: `if (!s_panel.vcom_verified)` in ``ra8_epaper_display_area``
+ * (1 condition -- branch coverage, 2 vectors both necessary):
+ * - Vector 1: permit absent -> true  (refresh refused)
+ * - Vector 2: permit held   -> false (refresh proceeds)
+ */
+static void test_vcom_permit_legs(void)
+{
+  TEST_BEGIN("vcom: readback grants or revokes the display permit");
+  const ra8_epaper_area_t area = {.x      = 0U,
+                                  .y      = 0U,
+                                  .width  = (uint16_t)k_cov_panel_w,
+                                  .height = (uint16_t)k_cov_panel_h};
+
+  /* Start ready but explicitly WITHOUT the permit: this is the state a
+   * freshly initialised driver is really in. */
+  set_ready();
+  s_panel.vcom_verified = false;
+  s_xfer_rx             = (uint8_t)k_cov_rx_nz;
+  arm_fault((uint32_t)k_cov_fail_never);
+
+  /* Decision B vector 1 -- no permit, so no refresh, whatever else is fine. */
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 ra8_epaper_display_area_cov(&area, k_ra8_epaper_wf_gc16));
+
+  /* Decision A vector 2 -- the controller echoes k_cov_word_nz, so asking
+   * for anything else is a mismatch. The write is refused and, critically,
+   * the panel is still not drivable. */
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 ra8_epaper_set_vcom_cov((uint16_t)k_cov_reg_val));
+  TEST_ASSERT_EQ(false, ra8_epaper_vcom_verified_cov());
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 ra8_epaper_display_area_cov(&area, k_ra8_epaper_wf_gc16));
+
+  /* Decision A vector 1 -- ask for exactly what the mock echoes back. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_set_vcom_cov((uint16_t)k_cov_word_nz));
+  TEST_ASSERT_EQ(true, ra8_epaper_vcom_verified_cov());
+
+  /* Decision B vector 2 -- with the permit held the refresh runs for real.
+   * LUT reads back zero on the first poll, so this is the idle-success exit. */
+  s_xfer_rx = (uint8_t)k_cov_rx_zero;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_display_area_cov(&area, k_ra8_epaper_wf_gc16));
+
+  /* A failed write after a good one revokes rather than leaving the earlier
+   * permit standing -- otherwise a panel could be refreshed on the strength
+   * of a calibration that has since been contradicted. */
+  s_xfer_rx = (uint8_t)k_cov_rx_nz;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_set_vcom_cov((uint16_t)k_cov_word_nz));
+  TEST_ASSERT_EQ(true, ra8_epaper_vcom_verified_cov());
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 ra8_epaper_set_vcom_cov((uint16_t)k_cov_reg_val));
+  TEST_ASSERT_EQ(false, ra8_epaper_vcom_verified_cov());
+
+  /* Sleep leaves the controller in an undefined state, so the permit must
+   * not survive it into the next init. */
+  set_ready();
+  s_xfer_rx = (uint8_t)k_cov_rx_nz;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_set_vcom_cov((uint16_t)k_cov_word_nz));
+  TEST_ASSERT_EQ(true, ra8_epaper_vcom_verified_cov());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_sleep_cov());
+  TEST_ASSERT_EQ(false, ra8_epaper_vcom_verified_cov());
+
+  TEST_END("vcom: readback grants or revokes the display permit");
+}
+
+/**
  * @test test_display_area_api_legs
  *
  * @par MC/DC:
@@ -838,6 +934,7 @@ int32_t main(void)
   test_stream_pixels_even_odd();
   test_init_ladder_legs();
   test_load_image_api_legs();
+  test_vcom_permit_legs();
   test_display_area_api_legs();
   test_sleep_legs();
   test_validate_and_size_mcdc();

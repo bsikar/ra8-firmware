@@ -30,8 +30,10 @@ endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
 # ra8_display_pal: the e-ink (IT8951) backend + PAL. ra8_io_bus: the ra8_io
-# SPI-bus facade that binds the ra8_epaper bus seam. The ra8_epaper HAL driver
-# is globbed in with ra8_hal automatically.
+# SPI-bus facade that binds the ra8_epaper bus seam. ra8_epd_cal: the VCOM
+# resolution policy that decides whether this panel may be driven at all
+# (INV-VCOM-1) -- without it the driver refuses every refresh, by design.
+# The ra8_epaper HAL driver is globbed in with ra8_hal automatically.
 ra8_add_app(NAME epaper_refresh STACK_BYTES 4096
            DESCRIPTION "IT8951 e-paper full + partial refresh via the display PAL (#256)"
-           LIBS ra8_display_pal ra8_io_bus)
+           LIBS ra8_display_pal ra8_epd_cal ra8_io_bus)

@@ -52,6 +52,7 @@
 #include "ra8_display_pal.h"
 #include "ra8_display_pal_eink.h"
 #include "ra8_epaper.h"
+#include "ra8_epd_cal.h"
 #include "ra8_err.h"
 #include "ra8_io_spi_bus.h"
 #include "ra8_io_spi_bus_spi_b.h"
@@ -212,6 +213,45 @@ static display_fb_t   s_fb;
 /** @brief PASS / FAIL banners. */
 static const uint8_t k_ep_msg_pass[] = "epaper: PASS\r\n";
 static const uint8_t k_ep_msg_fail[] = "epaper: FAIL\r\n";
+
+/**
+ * @var k_ep_msg_no_vcom
+ * @brief Banner for the INV-VCOM-1 refusal.
+ *
+ * @details Deliberately distinct from the generic FAIL banner: "this panel
+ *          has no trusted calibration" is a different fault from "the SPI
+ *          bring-up broke", and the operator's next action differs (read
+ *          the number off the flex cable and provision it, versus check
+ *          the wiring).
+ *
+ * @note Read-only.
+ * @since 0.1.0
+ */
+static const uint8_t k_ep_msg_no_vcom[] = "epaper: NO TRUSTED VCOM -- panel left dark\r\n";
+
+/**
+ * @enum ep_vcom_limits_t
+ * @brief The plausible VCOM magnitude window for this panel family.
+ *
+ * @details
+ * A range, never a value: the range says "no sane panel is calibrated
+ * outside this", which is enough to reject a controller reporting 0 or
+ * 0xFFFF, while carrying none of the per-unit information that makes a
+ * hardcoded VCOM damaging. Panels in this family ship labelled around
+ * -1.5 V; the window is deliberately wider than that so a legitimately
+ * unusual panel is not locked out.
+ *
+ * @invariant ``min`` is non-zero, so a controller reporting zero can never
+ *            pass the range check.
+ * @invariant ``min <= max``.
+ *
+ * @see ra8_epd_cal_limits_mv_t
+ * @since 0.1.0
+ */
+typedef enum : uint16_t {
+  k_ep_vcom_min_mv = 200U,  /**< Lowest plausible magnitude, millivolts.  */
+  k_ep_vcom_max_mv = 4000U, /**< Highest plausible magnitude, millivolts. */
+} ep_vcom_limits_t;
 
 /* ===========================================================================
  * Pure helpers (mirrored by tests/test_app_epaper_refresh.c)
@@ -485,6 +525,116 @@ static void ep_bringup_panel_bus(uint32_t pclka_hz)
 }
 
 /**
+ * @brief ``ra8_epd_cal`` read seam bound to the IT8951 VCOM command.
+ *
+ * @details Adapts the driver's context-free signature onto the seam's
+ *          ``(ctx, out)`` shape. ``ctx`` is unused: the driver keeps one
+ *          panel per build.
+ *
+ * @param[in]  ctx    Unused seam context.
+ * @param[out] out_mv Receives the controller's VCOM magnitude; non-NULL.
+ *
+ * @return ra8_err_t Forwarded from ``ra8_epaper_get_vcom``.
+ * @retval k_ra8_ok           Controller answered.
+ * @retval k_ra8_err_null_ptr ``out_mv`` is NULL.
+ *
+ * @pre  ``ra8_epaper_init`` succeeded.
+ * @pre  ``out_mv`` is writable.
+ * @post No panel pixels are disturbed.
+ * @post ``ctx`` is untouched.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t ep_vcom_get(void* ctx, uint16_t* out_mv)
+{
+  (void)ctx;
+  return ra8_epaper_get_vcom(out_mv);
+}
+
+/**
+ * @brief ``ra8_epd_cal`` write seam bound to the IT8951 VCOM command.
+ *
+ * @details The driver's ``ra8_epaper_set_vcom`` verifies its own write by
+ *          reading it back, so a ``k_ra8_ok`` from here means the
+ *          controller confirmed the value -- not merely that bytes were
+ *          clocked out.
+ *
+ * @param[in] ctx Unused seam context.
+ * @param[in] mv  VCOM magnitude to programme, millivolts.
+ *
+ * @return ra8_err_t Forwarded from ``ra8_epaper_set_vcom``.
+ * @retval k_ra8_ok                    Programmed and verified.
+ * @retval k_ra8_err_validation_failed Readback disagreed.
+ *
+ * @pre  ``ra8_epaper_init`` succeeded.
+ * @pre  ``mv`` was range-checked by ``ra8_epd_cal``.
+ * @post On success the controller reports ``mv``.
+ * @post ``ctx`` is untouched.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra8_err_t ep_vcom_set(void* ctx, uint16_t mv)
+{
+  (void)ctx;
+  return ra8_epaper_set_vcom(mv);
+}
+
+/**
+ * @brief Resolve this panel's VCOM and programme it, or refuse to draw.
+ *
+ * @details
+ * The INV-VCOM-1 gate, and the reason this app cannot simply start
+ * flushing after ``display_init``. ``ra8_epd_cal_resolve`` walks the
+ * controller's own persisted value, then the per-device record, then an
+ * operator-supplied value, and fails rather than inventing one;
+ * ``ra8_epd_cal_apply`` programmes the winner and confirms it by readback.
+ * Only then does the driver permit a refresh at all.
+ *
+ * The store seams are left unbound on purpose. Reading the per-device
+ * record needs a fault-tolerant extra-MRAM probe (a virgin page bus-faults
+ * on the first read), which today exists only inside the DFU anti-rollback
+ * module and has not been lifted into a shared helper.
+ * TODO(shared fault-tolerant extra-MRAM probe helper + per-device config
+ * record reader): bind ``store.read`` / ``store.write`` once that lands, at
+ * which point a provisioned unit resolves from its own record instead of
+ * trusting whatever the controller board happens to hold.
+ *
+ * Until then this app resolves from the controller's persisted value,
+ * which is what makes a vendor-provisioned driver board work out of the
+ * box, and refuses to drive anything that cannot supply one.
+ *
+ * @return ``true`` when a VCOM was resolved, programmed and verified.
+ * @retval true  Refresh is permitted.
+ * @retval false No trusted VCOM; the caller must leave the panel dark.
+ *
+ * @pre  ``display_init`` succeeded, so ``ra8_epaper_init`` has run.
+ * @pre  The SPI bus seam is bound.
+ * @post On ``true`` the controller reports the resolved VCOM.
+ * @post On ``false`` no display command has been issued.
+ *
+ * @note Not thread-safe; boot-path use only.
+ * @since 0.1.0
+ */
+static bool ep_calibrate_vcom(void)
+{
+  const ra8_epd_cal_cfg_t cal_cfg = {
+    .limits = {.min_mv = (uint16_t)k_ep_vcom_min_mv, .max_mv = (uint16_t)k_ep_vcom_max_mv},
+    .panel  = {.get = ep_vcom_get, .set = ep_vcom_set, .ctx = nullptr},
+    .store  = {.read = nullptr, .write = nullptr, .ctx = nullptr},
+    .has_provisioned = false,
+    .provisioned_mv  = 0U,
+  };
+
+  ra8_epd_cal_result_t cal = {};
+  if (ra8_epd_cal_resolve(&cal_cfg, &cal) != k_ra8_ok) {
+    return false;
+  }
+  return ra8_epd_cal_apply(&cal_cfg, &cal) == k_ra8_ok;
+}
+
+/**
  * @brief Paint the whole framebuffer with the checkerboard pattern.
  *
  * @pre  ``display_get_framebuffer`` populated ``s_fb``.
@@ -693,6 +843,16 @@ int32_t main(void)
     ep_panic_halt();
   }
   ep_report_init();
+
+  /* INV-VCOM-1: nothing gets refreshed until this panel's own bias has
+   * been resolved and confirmed. Deliberately a halt with its own banner
+   * rather than a best-effort draw -- a blank screen is a support call,
+   * a DC-biased panel is landfill. The driver would refuse the refresh
+   * anyway; failing here says why. */
+  if (!ep_calibrate_vcom()) {
+    ep_emit(k_ep_msg_no_vcom, (uint32_t)(sizeof(k_ep_msg_no_vcom) - 1U));
+    ep_panic_halt();
+  }
 
   ra8_err_t full_err = k_ra8_err_invalid_arg;
   ra8_err_t part_err = k_ra8_err_invalid_arg;

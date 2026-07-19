@@ -70,6 +70,11 @@ typedef enum : uint32_t {
 typedef enum : uint32_t {
   k_eink_spi_baud_hz = 12000000U,  /**< 12 MHz SPI clock. */
   k_eink_pclka_hz    = 100000000U, /**< 100 MHz PCLKA.    */
+  /**
+   * The only VCOM the sim SPI loopback echoes back, so the only one whose
+   * readback can satisfy ``ra8_epaper_set_vcom``. See the call site.
+   */
+  k_eink_vcom_loopback = 0xFFFFU,
 } test_eink_const_t;
 
 /** @brief Bound SPI_B bus handle the e-ink descriptor's seam points at. */
@@ -500,6 +505,18 @@ static void test_eink_flush_clear_get_fb(void)
   TEST_ASSERT_EQ(k_ra8_ok, display_clear(d, 0x8410U));
   TEST_ASSERT_EQ(0x8410U, s_test_fb[0]);
   TEST_ASSERT_EQ(0x8410U, s_test_fb[k_test_fb_pixels - 1U]);
+
+  /* INV-VCOM-1 reaches through the PAL: the backend's flush ends in
+   * ``ra8_epaper_display_area``, which refuses every refresh until a VCOM
+   * has been programmed and read back unchanged. A PAL consumer that skips
+   * calibration therefore gets a refusal, not a biased panel. */
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 display_flush(d, display_full_rect(d), k_display_refresh_quality));
+  /* Grant the permit. The sim SPI is a loopback that always echoes the
+   * driver's own 0xFF dummy, so 0xFFFF is the only value whose readback
+   * can match here -- a fixture artefact, not a plausible bias. The value
+   * comparison itself is covered in test_ra8_epaper_cov.c. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_set_vcom((uint16_t)k_eink_vcom_loopback));
 
   /* full-screen flush converts + pushes to the IT8951 (sim SPI). */
   TEST_ASSERT_EQ(k_ra8_ok, display_flush(d, display_full_rect(d), k_display_refresh_quality));

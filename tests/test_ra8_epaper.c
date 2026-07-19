@@ -57,6 +57,21 @@ typedef enum : uint32_t {
   k_ra8_epaper_test_buf_pixels = 64U,        /**< 8x8 = 64 px.             */
   k_ra8_epaper_test_vcom_mv    = 1530U,      /**< Plausible VCOM (-1.53V). */
   k_ra8_epaper_test_bad_wf     = 200U,       /**< Unknown wf selector.     */
+  /**
+   * The only VCOM that round-trips on this fixture.
+   *
+   * ``ra8_epaper_set_vcom`` reads its write back and requires a match
+   * before it grants the INV-VCOM-1 permit. The sim SPI is plain mmap'd
+   * RAM, so a read returns the last byte written to SPDR -- which for a
+   * receive is the driver's own 0xFF dummy. The loopback therefore always
+   * reports 0xFFFF, and that is the only value whose readback can match
+   * here. It is a fixture artefact, not a plausible bias: the *value*
+   * comparison logic is exercised where it can be controlled properly, in
+   * ``test_ra8_epaper_cov.c`` (programmable rx byte) and in
+   * ``test_ra8_epd_cal.c`` (fully mocked seams). What this file proves is
+   * the permit gating end to end.
+   */
+  k_ra8_epaper_test_vcom_loopback = 0xFFFFU,
 } ra8_epaper_test_const_t;
 
 /** @brief Bound SPI_B bus handle -- the seam's ctx and the mmio-seam key. */
@@ -123,6 +138,27 @@ static void stage_spsr_ready(void)
       reg->SPSR = both;
     }
   }
+}
+
+/**
+ * @brief Grant the INV-VCOM-1 permit so display commands are allowed.
+ *
+ * @details
+ * ``ra8_epaper_display_area`` refuses every refresh until a VCOM has been
+ * programmed and read back unchanged. Tests that are about something else
+ * -- the LUT poll, the HRDY wait, waveform resolution -- need the permit
+ * in hand first, and must take it before arming any fault seam, since
+ * granting it costs bus traffic of its own.
+ *
+ * @pre  ``ra8_epaper_init`` succeeded.
+ * @pre  No fault seam is armed yet.
+ * @post ``ra8_epaper_vcom_verified()`` is true.
+ * @post Display commands are permitted until the next sleep / init.
+ */
+static void grant_vcom_permit(void)
+{
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_set_vcom((uint16_t)k_ra8_epaper_test_vcom_loopback));
+  TEST_ASSERT_EQ(true, ra8_epaper_vcom_verified());
 }
 
 /**
@@ -233,6 +269,11 @@ static void test_happy_path(void)
                                        sizeof(pixels),
                                        k_ra8_epaper_pf_8bpp,
                                        k_ra8_epaper_endian_little));
+  /* INV-VCOM-1: no refresh without a verified VCOM. Taken before the seam
+   * is armed, because granting the permit costs bus traffic of its own. */
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 ra8_epaper_display_area(&area, k_ra8_epaper_wf_gc16));
+  grant_vcom_permit();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_satisfy_after((volatile const void*)&s_bus, 2U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_display_area(&area, k_ra8_epaper_wf_gc16));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_display_area(nullptr, k_ra8_epaper_wf_gc16));
@@ -260,6 +301,8 @@ static void test_display_area_lut_timeout(void)
   const ra8_epaper_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_init(&cfg));
 
+  grant_vcom_permit();
+
   /* Arm the seam so the LUT-idle poll never reports idle: the real bounded loop
    * exhausts its budget and returns k_ra8_err_hw_timeout (SPI transfers still
    * succeed -- only the LUT-idle verdict is forced false). */
@@ -283,6 +326,8 @@ static void test_wait_ready_hrdy_timeout(void)
   stage_spsr_ready();
   const ra8_epaper_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_init(&cfg));
+
+  grant_vcom_permit();
 
   /* Arm the HRDY busy-pin input register (the pin port's PCNTR2) so the panel
    * never signals ready: the next command's bounded HRDY wait exhausts its
@@ -617,7 +662,18 @@ static void test_vcom_commands(void)
   /* A zero VCOM is never programmable -- it is the "controller not ready"
    * signature, and driving a panel at it is the damage case. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_set_vcom(0U));
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_set_vcom(k_ra8_epaper_test_vcom_mv));
+  TEST_ASSERT_EQ(false, ra8_epaper_vcom_verified());
+
+  /* A well-formed value whose readback disagrees is refused, and grants no
+   * permit. On this fixture the loopback always reports 0xFFFF, so any
+   * other value lands here -- which is the readback compare doing its job,
+   * not a fixture quirk to work around. */
+  TEST_ASSERT_EQ(k_ra8_err_validation_failed,
+                 ra8_epaper_set_vcom(k_ra8_epaper_test_vcom_mv));
+  TEST_ASSERT_EQ(false, ra8_epaper_vcom_verified());
+
+  /* The value the loopback does echo back is accepted and grants the permit. */
+  grant_vcom_permit();
 
   ra8_epaper_dev_info_t info = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_dev_info(nullptr));
@@ -663,7 +719,10 @@ static void test_load_image_depth_and_alignment(void)
                  ra8_epaper_load_image(&aligned, packed8, sizeof(packed8),
                                        k_ra8_epaper_pf_4bpp, k_ra8_epaper_endian_little));
 
-  /* An unknown waveform selector is refused rather than defaulted. */
+  /* An unknown waveform selector is refused rather than defaulted. The
+   * permit is taken first so this asserts the waveform refusal and not the
+   * INV-VCOM-1 one, which is checked earlier and would otherwise mask it. */
+  grant_vcom_permit();
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_epaper_display_area(&aligned, (ra8_epaper_waveform_t)k_ra8_epaper_test_bad_wf));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_sleep());

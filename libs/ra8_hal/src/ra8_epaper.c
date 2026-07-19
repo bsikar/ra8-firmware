@@ -177,11 +177,24 @@ typedef enum : uint8_t {
  * @details
  * Static allocation only; we keep one panel per build. ``cfg`` is
  * copied from the caller-supplied descriptor at ``ra8_epaper_init``.
+ *
+ * ``vcom_verified`` is the INV-VCOM-1 permit: it is the single piece of
+ * state that decides whether ``ra8_epaper_display_area`` is allowed to
+ * bias the film at all. It is cleared at init and set **only** by a
+ * ``ra8_epaper_set_vcom`` whose readback matched what was written, so no
+ * sequence of calls can obtain the permit without the controller having
+ * confirmed the value.
+ *
+ * @invariant ``vcom_verified`` implies ``vcom_mv`` is the magnitude the
+ *            controller echoed back, and ``state`` is
+ *            ::k_ra8_epaper_state_ready.
  */
 typedef struct {
-  ra8_epaper_cfg_t      cfg;   /**< Copy of init cfg.               */
-  ra8_epaper_dev_info_t info;  /**< Decoded GET_DEV_INFO from init. */
-  ra8_epaper_state_t    state; /**< Current lifecycle state.        */
+  ra8_epaper_cfg_t      cfg;           /**< Copy of init cfg.                    */
+  ra8_epaper_dev_info_t info;          /**< Decoded GET_DEV_INFO from init.      */
+  ra8_epaper_state_t    state;         /**< Current lifecycle state.             */
+  uint16_t              vcom_mv;       /**< Last verified VCOM magnitude, mV.    */
+  bool                  vcom_verified; /**< INV-VCOM-1 permit; see @invariant.   */
 } ra8_epaper_panel_t;
 
 /**
@@ -765,6 +778,11 @@ RA8_INTERNAL
   }
 
   s_panel.cfg = *cfg;
+  /* A fresh controller has been given no VCOM by us, so the INV-VCOM-1
+   * permit starts revoked. Only a verified ``ra8_epaper_set_vcom`` grants
+   * it, and until then every display command is refused. */
+  s_panel.vcom_verified = false;
+  s_panel.vcom_mv       = 0U;
 
   internal_ra8_epaper_pulse_reset();
   err = internal_ra8_epaper_wait_ready();
@@ -820,6 +838,8 @@ RA8_INTERNAL
   return internal_ra8_epaper_read_data16(out_mv);
 }
 
+/** @brief Implementation of `ra8_epaper_set_vcom()` -- write, then read back
+ *         and compare before granting the INV-VCOM-1 permit. */
 [[nodiscard]] ra8_err_t ra8_epaper_set_vcom(uint16_t mv)
 {
   if (s_panel.state != k_ra8_epaper_state_ready) {
@@ -829,6 +849,13 @@ RA8_INTERNAL
     ra8_log_error(s_tag, "set_vcom: refusing a zero VCOM");
     return k_ra8_err_invalid_arg;
   }
+
+  /* Revoke first. Every early return below then leaves the panel
+   * un-drivable rather than trusting a half-completed write, and a second
+   * set_vcom that fails cannot leave the previous call's permit standing. */
+  s_panel.vcom_verified = false;
+  s_panel.vcom_mv       = 0U;
+
   ra8_err_t err = internal_ra8_epaper_write_cmd((uint16_t)k_ra8_epaper_cmd_vcom);
   if (err != k_ra8_ok) {
     return err;
@@ -837,7 +864,34 @@ RA8_INTERNAL
   if (err != k_ra8_ok) {
     return err;
   }
-  return internal_ra8_epaper_write_data16(mv);
+  err = internal_ra8_epaper_write_data16(mv);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+
+  /* Read it straight back. A silently dead COPI line, a controller that
+   * NAKs the command, or a bus stuck returning zeroes all accept the write
+   * and change nothing -- a failure mode indistinguishable from success
+   * without this compare, and one that would leave the film biased at the
+   * controller's own unknown value. */
+  uint16_t readback = 0U;
+  err               = ra8_epaper_get_vcom(&readback);
+  if (err != k_ra8_ok) {
+    return err;
+  }
+  if (readback != mv) {
+    ra8_log_error(s_tag, "set_vcom: readback mismatch -- panel stays dark");
+    return k_ra8_err_validation_failed;
+  }
+
+  s_panel.vcom_mv       = mv;
+  s_panel.vcom_verified = true;
+  return k_ra8_ok;
+}
+
+[[nodiscard]] bool ra8_epaper_vcom_verified(void)
+{
+  return (s_panel.state == k_ra8_epaper_state_ready) && s_panel.vcom_verified;
 }
 
 /**
@@ -934,6 +988,14 @@ RA8_INTERNAL
   if (s_panel.state != k_ra8_epaper_state_ready) {
     return k_ra8_err_invalid_state;
   }
+  /* INV-VCOM-1. DPY_AREA is the command that actually biases the film, so
+   * this is the one place the invariant has to hold. Loading pixels into
+   * frame RAM applies no bias and is deliberately left ungated -- an app
+   * may stage a full frame before calibration completes. */
+  if (!s_panel.vcom_verified) {
+    ra8_log_error(s_tag, "display_area: no verified VCOM -- refusing (INV-VCOM-1)");
+    return k_ra8_err_validation_failed;
+  }
   uint16_t  wf_mode = 0U;
   ra8_err_t err     = internal_ra8_epaper_resolve_waveform(waveform, &wf_mode);
   if (err != k_ra8_ok) {
@@ -989,7 +1051,11 @@ RA8_INTERNAL
   }
   ra8_err_t err = internal_ra8_epaper_write_cmd((uint16_t)k_ra8_epaper_cmd_sleep);
   /* Whether the SLEEP command made it out or not, the controller is
-   * no longer in a defined state from the driver's perspective. */
-  s_panel.state = k_ra8_epaper_state_uninit;
+   * no longer in a defined state from the driver's perspective -- and a
+   * controller that may have dropped its VCOM must not inherit the permit
+   * across the next init. */
+  s_panel.state         = k_ra8_epaper_state_uninit;
+  s_panel.vcom_verified = false;
+  s_panel.vcom_mv       = 0U;
   return err;
 }

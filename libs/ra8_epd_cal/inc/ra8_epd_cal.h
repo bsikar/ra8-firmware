@@ -58,6 +58,23 @@
  * caller must **refuse to drive the panel**. A blank screen is a support
  * call; a DC-biased panel is landfill.
  *
+ * Resolving a value is necessary but not sufficient: ``ra8_epd_cal_apply``
+ * writes it and then **reads it back and compares**, and the e-paper
+ * driver refuses every display command until a VCOM has been echoed back
+ * unchanged. A link that accepts writes and changes nothing is the failure
+ * mode that otherwise looks exactly like success.
+ *
+ * ## The one build-flag exception, and why it is not a hole
+ *
+ * ``-DRA8_BENCH_VCOM_MV=<mv>`` adds a fourth, lowest-authority source so
+ * first light on a bench panel is not blocked behind provisioned storage.
+ * It is off unless typed on the compiler command line, it is consulted
+ * only after all three real sources decline (so it can never override a
+ * genuine calibration), it is range-checked like everything else, it logs
+ * loudly on every boot that uses it, and it is a compile **error** when
+ * ``RA8_PRODUCTION_BUILD`` is defined. That last guard is what keeps it
+ * from becoming the shipped hardcoded VCOM this module exists to prevent.
+ *
  * ## Rule 3: the record must outlive firmware updates
  *
  * The device carries an A/B-bank DFU bootloader (``libs/ra8_dfu``) with
@@ -177,19 +194,42 @@ typedef enum : uint8_t {
  *
  * @details
  * The offset is relative to ``k_ra8_flash_extra_start`` (the extra-MRAM /
- * data-flash window base, ``0x27000000``). Block 0 of that window is
- * already claimed by the DFU anti-rollback counter, and block 1 is left
- * spare for it to grow into, so this record starts at block 2. Extra-MRAM
- * is erased by no DFU path, so the record survives an A/B firmware update
- * and a rollback alike.
+ * data-flash window base, ``0x27000000``). Extra-MRAM is erased by no DFU
+ * path, so the record survives an A/B firmware update and a rollback
+ * alike.
+ *
+ * ## Why this is not at the obvious ``0x40``
+ *
+ * Block 0 of the window is already claimed by the DFU anti-rollback
+ * counter and block 1 is left spare for it to grow into, which makes
+ * ``0x40`` look like the natural next slot. It is not available: the
+ * general per-device configuration record specified alongside this module
+ * reserves ``0x40 .. 0x1BF`` for its two sequence-numbered 192-byte
+ * copies. Landing this blob at ``0x40`` would have put a VCOM record
+ * exactly on top of copy 0 of that record -- two writers, one address,
+ * discovered on the first provisioned unit rather than in review. This
+ * blob therefore starts after that reservation, at ``0x200``.
+ *
+ * ## This placement is transitional by design
+ *
+ * The per-device record is the intended long-term home for VCOM: one
+ * record, one CRC, one signature, all the per-unit bytes together. When it
+ * lands, the production binding of ::ra8_epd_cal_store_t becomes a reader
+ * over *that* record and this standalone blob is retired -- the resolution
+ * policy in this module, which is the part that matters, does not change,
+ * because the store is an injected seam and callers of
+ * ``ra8_epd_cal_resolve`` cannot tell which backing answered. That
+ * substitutability is the whole reason the seam exists.
  *
  * @invariant The offset is a multiple of ::k_ra8_epd_cal_blob_size so the
  *            record occupies exactly one 32-byte erase block.
+ * @invariant The offset lies outside the per-device record's reserved
+ *            ``0x40 .. 0x1BF`` span.
  *
  * @see ra8_epd_cal_store_t
  */
 typedef enum : uint32_t {
-  k_ra8_epd_cal_extra_mram_offset = 0x40U, /**< Byte offset into extra-MRAM. */
+  k_ra8_epd_cal_extra_mram_offset = 0x200U, /**< Byte offset into extra-MRAM. */
 } ra8_epd_cal_storage_t;
 
 /**
@@ -208,6 +248,7 @@ typedef enum : uint8_t {
   k_ra8_epd_cal_src_panel       = 1U, /**< Read back from the controller.    */
   k_ra8_epd_cal_src_record      = 2U, /**< From the per-device NV record.    */
   k_ra8_epd_cal_src_provisioned = 3U, /**< Operator-supplied this boot.      */
+  k_ra8_epd_cal_src_bench       = 4U, /**< ``RA8_BENCH_VCOM_MV``; see below. */
 } ra8_epd_cal_source_t;
 
 /**
@@ -636,33 +677,58 @@ ra8_epd_cal_deserialize(const uint8_t* src, size_t src_size, ra8_epd_cal_record_
                                             ra8_epd_cal_result_t*    out_result);
 
 /**
- * @brief Programme a resolved VCOM onto the controller.
+ * @brief Programme a resolved VCOM onto the controller and confirm it took.
  *
  * @details
- * Re-checks the value against ``cfg->limits`` before writing it. The
- * re-check is deliberate belt-and-braces: ``result`` is caller-owned
- * memory between ``resolve`` and here, and this is the last point before
- * a number reaches the panel.
+ * Re-checks the value against ``cfg->limits`` before writing it, writes it
+ * through ``cfg->panel.set``, then reads it straight back through
+ * ``cfg->panel.get`` and requires an exact match. The pre-write re-check is
+ * deliberate belt-and-braces -- ``result`` is caller-owned memory between
+ * ``resolve`` and here, and this is the last point before a number reaches
+ * the panel.
  *
- * @param[in] cfg    Seams and limits; non-NULL.
+ * **The readback is the load-bearing part.** A dead link, a controller
+ * that ignores the command, or a bus stuck returning zeroes all accept the
+ * write and change nothing; without the compare that is indistinguishable
+ * from success, and the film would sit biased at the controller's own
+ * unknown value. The readback is compared for equality and deliberately
+ * not re-range-checked -- the written value was range-checked a few lines
+ * earlier, so an equal readback is in range by construction and a second
+ * test would be unreachable code wearing a safety check's clothes. Range
+ * validation of a value the controller *reports* belongs where such a
+ * value is adopted rather than confirmed, which is the resolve-from-
+ * controller source, and it is applied there.
+ *
+ * A ``cfg`` with no ``panel.get`` binding is rejected rather than
+ * write-and-hope: an unconfirmable bias is not one to leave on a panel.
+ *
+ * @param[in] cfg    Seams and limits; non-NULL, with **both** ``panel.set``
+ *                   and ``panel.get`` bound.
  * @param[in] result A successful ``ra8_epd_cal_resolve`` outcome; non-NULL.
  *
  * @return ra8_err_t Error code.
- * @retval k_ra8_ok                    Controller accepted the VCOM.
- * @retval k_ra8_err_null_ptr          ``cfg`` or ``result`` is NULL.
- * @retval k_ra8_err_invalid_state     ``result->source`` is ``none``.
- * @retval k_ra8_err_not_supported     ``cfg->panel.set`` is not bound.
+ * @retval k_ra8_ok                     Controller accepted the VCOM and
+ *                                      echoed it back unchanged.
+ * @retval k_ra8_err_null_ptr           ``cfg`` or ``result`` is NULL.
+ * @retval k_ra8_err_invalid_state      ``result->source`` is ``none``.
+ * @retval k_ra8_err_not_supported      ``cfg->panel.set`` or ``cfg->panel.get``
+ *                                      is not bound.
  * @retval k_ra8_err_range_check_failed ``result->vcom_mv`` is out of range.
- * @retval other                       Forwarded from ``cfg->panel.set``.
+ * @retval k_ra8_err_hw_error           The readback transaction failed.
+ * @retval k_ra8_err_validation_failed  The controller echoed a different
+ *                                      value. **Do not drive the panel.**
+ * @retval other                        Forwarded from ``cfg->panel.set``.
  *
  * @pre  ``result`` came from a successful ``ra8_epd_cal_resolve``.
- * @pre  ``cfg->panel.set`` is bound to the controller.
- * @post On success the panel is driven at ``result->vcom_mv``.
- * @post On failure the controller's previous VCOM is unchanged.
+ * @pre  ``cfg->panel.set`` and ``cfg->panel.get`` are bound to the controller.
+ * @post On success the controller reports ``result->vcom_mv`` as its VCOM.
+ * @post On failure the caller must leave the panel dark -- the bias in
+ *       effect is unknown, which is precisely the state to refuse.
  *
  * @note Not thread-safe; boot-path use only.
  *
  * @see ra8_epd_cal_resolve
+ * @see ra8_epaper_set_vcom
  *
  * @since 0.1.0
  */
