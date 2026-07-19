@@ -283,4 +283,5 @@ extern ra8_usb_hmsc_state_t s_usb_hmsc_state;
  * @note Module-private to ``libs/ra8_hal/src``; not part of the public surface.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_canfd_internal_set_channel_mode(volatile r_canfd_t* reg, ra8_chmdc_mode_t mode);
+RA8_PRIV ra8_err_t ra8_canfd_internal_set_channel_mode(volatile r_canfd_t* reg,
+                                                       ra8_chmdc_mode_t    mode);

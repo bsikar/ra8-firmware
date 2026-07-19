@@ -32,10 +32,11 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra8_sbrk_trap.h"
+
 #include <stdint.h>
 
 #include "ra8_error_handler.h"
-#include "ra8_sbrk_trap.h"
 
 /* The newlib-nano heap allocator calls ``_sbrk`` by that exact name,
  * so we must use a reserved identifier here. clang-tidy's

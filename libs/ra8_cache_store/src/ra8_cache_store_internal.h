@@ -184,7 +184,9 @@ RA8_PRIV uint32_t ra8_cs_crc32(const uint8_t* data, uint32_t len);
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_cs_sector_read(const ra8_cache_store_t* store, uint32_t sector, uint8_t* out512);
+RA8_PRIV ra8_err_t ra8_cs_sector_read(const ra8_cache_store_t* store,
+                                      uint32_t                 sector,
+                                      uint8_t*                 out512);
 
 /**
  * @brief Write one LevelX logical sector from a one-sector source buffer.
@@ -204,7 +206,9 @@ RA8_PRIV ra8_err_t ra8_cs_sector_read(const ra8_cache_store_t* store, uint32_t s
  * @note Not thread-safe; the store serialises access.
  * @since 0.1.0
  */
-RA8_PRIV ra8_err_t ra8_cs_sector_write(ra8_cache_store_t* store, uint32_t sector, const uint8_t* in512);
+RA8_PRIV ra8_err_t ra8_cs_sector_write(ra8_cache_store_t* store,
+                                       uint32_t           sector,
+                                       const uint8_t*     in512);
 
 /**
  * @brief Release a LevelX logical sector back to the free pool.
@@ -264,11 +268,11 @@ RA8_PRIV int32_t ra8_cs_index_find(const ra8_cache_store_t* store, uint32_t key)
  * @since 0.1.0
  */
 RA8_PRIV int32_t ra8_cs_index_add(ra8_cache_store_t* store,
-                         uint32_t           key,
-                         uint32_t           start_sector,
-                         uint16_t           sector_count,
-                         uint32_t           byte_len,
-                         bool               pinned);
+                                  uint32_t           key,
+                                  uint32_t           start_sector,
+                                  uint16_t           sector_count,
+                                  uint32_t           byte_len,
+                                  bool               pinned);
 
 /**
  * @brief Write the superblock (sector 0) with the given clean marker.

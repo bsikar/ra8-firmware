@@ -542,11 +542,11 @@ RA8_PRIV void ra8_jpeg_sw_idct8x8(int32_t* block);
  * @since 0.1.0
  */
 RA8_PRIV void ra8_jpeg_sw_ycc_to_rgb(int32_t  y,
-                            int32_t  cb,
-                            int32_t  cr,
-                            uint8_t* out_r,
-                            uint8_t* out_g,
-                            uint8_t* out_b);
+                                     int32_t  cb,
+                                     int32_t  cr,
+                                     uint8_t* out_r,
+                                     uint8_t* out_g,
+                                     uint8_t* out_b);
 
 /* ------------------------------------------------------------------ */
 /* Decoder context + marker/scan primitives (defined in */

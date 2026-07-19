@@ -267,9 +267,9 @@ RA8_PRIV bool ra8_flash_internal_window_allows(uintptr_t addr, uint32_t len);
  * @since 0.1.0
  */
 RA8_PRIV bool ra8_flash_internal_window_allows_pure(uintptr_t addr,
-                                           uint32_t  len,
-                                           uintptr_t win_low,
-                                           uintptr_t win_high);
+                                                    uint32_t  len,
+                                                    uintptr_t win_low,
+                                                    uintptr_t win_high);
 
 /**
  * @brief Direct-call test access to @c internal_wait_buffer_ready.

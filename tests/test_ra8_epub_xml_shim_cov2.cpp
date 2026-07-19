@@ -47,7 +47,6 @@
 #include <string>
 
 #include "ra8_epub.h"
-
 #include "ra8_epub_xml_shim_internal.h"
 
 namespace {
