@@ -111,6 +111,8 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  *
+ * @see @ref md_docs_2formats_2JOF -- the full JOF wire-format specification
+ *      (rationale, algorithms, worked example, failure modes).
  * @see ra8_tileatlas_produce.h  Import-time transcode producer.
  * @see ra8_epub_img_tiles.h     EPUB tile-cache binder over this format.
  * @since 0.1.0

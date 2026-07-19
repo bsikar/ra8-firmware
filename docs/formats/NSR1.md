@@ -216,7 +216,7 @@ place -- no copy, no buffer, no allocation. The cost of consuming NSR1 is a
 bounds check and two loads.
 
 Its *purpose*, however, is to enable the streaming verification described in
-@ref md_docs_2formats_2ROT1: the NS body is hashed incrementally and never held
+@ref md_docs_2formats_2ROT1 -- the NS body is hashed incrementally and never held
 in RAM, so a 512 KiB NS image is verified in well under a kilobyte of working
 set -- which matters because this happens in the Secure world, where the budget
 is tightest, before any NS code is trusted enough to run.

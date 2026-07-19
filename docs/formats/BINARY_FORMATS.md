@@ -33,17 +33,37 @@ artifact, and only earns an entry here).
 
 ### Content formats -- full specifications
 
-| Magic | Format | Home | Producer |
-|-------|--------|------|----------|
-| `JOF1` / `JOFE` | Jump-Offset band-tile atlas | `libs/ra8_tileatlas` | `ra8_tileatlas_produce()`, `ra8_fmt convert` |
-| `RBKC` | Chunked `.rabook` container | `libs/ra8_book` | `tools/epub_compile` |
-| `RCBZ` | Per-page comic container | `libs/ra8_book` | `tools/epub_compile/cbz_container.py` |
-| `NPU1` | `.npub` Ethos-U55 model container | `libs/ra8_hal` | `tools/vela/vela_gen.py` |
-| `ROT1` | Root-of-trust signed-image trailer | `libs/ra8_dfu` | `tools/rot_sign.py` |
-| `NSR1` | Non-Secure image RoT header | `libs/ra8_tz_secure_boot` | `sign_and_merge.py`, `ns_image.ld` |
+| Magic | Format | Home | Producer | Specification |
+|-------|--------|------|----------|---------------|
+| `JOF1` / `JOFE` | Jump-Offset band-tile atlas | `libs/ra8_tileatlas` | `ra8_tileatlas_produce()`, `ra8_fmt convert` | @ref md_docs_2formats_2JOF |
+| `RBKC` | Chunked `.rabook` container | `libs/ra8_book` | `tools/epub_compile` | @ref md_docs_2formats_2RBKC |
+| `RCBZ` | Per-page comic container | `libs/ra8_book` | `tools/epub_compile/cbz_container.py` | @ref md_docs_2formats_2RCBZ |
+| `NPU1` | `.npub` Ethos-U55 model container | `libs/ra8_hal` | `tools/vela/vela_gen.py` | @ref md_docs_2formats_2NPU1 |
+| `ROT1` | Root-of-trust signed-image trailer | `libs/ra8_dfu` | `tools/rot_sign.py` | @ref md_docs_2formats_2ROT1 |
+| `NSR1` | Non-Secure image RoT header | `libs/ra8_tz_secure_boot` | `sign_and_merge.py`, `ns_image.ld` | @ref md_docs_2formats_2NSR1 |
 
-Each has its own page in this section; they are listed in the navigation
+Each has its own page in this section; they are also listed in the navigation
 sidebar under "Binary format specifications".
+
+### Suggested reading order
+
+They are not independent, and reading them in dependency order costs less
+effort than the alphabetical sidebar suggests:
+
+1. @ref md_docs_2formats_2JOF -- the fullest treatment, and the one that
+   establishes the vocabulary (index, seek, working set, edge clamp) the others
+   reuse.
+2. @ref md_docs_2formats_2RBKC -- the same seekability problem for a flat blob;
+   introduces the two-layer container idea and the front-loaded table.
+3. @ref md_docs_2formats_2RCBZ -- a direct contrast with RBKC that shows *why*
+   the unit of indexing is a design decision rather than an implementation
+   detail.
+4. @ref md_docs_2formats_2ROT1 -- the shift from "do not crash on bad input" to
+   "do not run unauthorised code".
+5. @ref md_docs_2formats_2NSR1 -- eight bytes that make ROT1 usable at the
+   TrustZone boundary.
+6. @ref md_docs_2formats_2NPU1 -- the same host-does-the-work philosophy applied
+   to a neural network.
 
 ### Internal markers -- no separate specification
 

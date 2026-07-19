@@ -67,6 +67,8 @@
  *
  * @note Not thread-safe; the single-threaded reader loop serialises access.
  *
+ * @see @ref md_docs_2formats_2RCBZ -- the full RCBZ wire-format specification
+ *      (rationale, algorithms, worked example, failure modes).
  * @see ra8_book_chunked.h  The uniform-chunk flat-blob reader this mirrors.
  * @see ra8_vsource.h       The registry ::ra8_cbz_page_read plugs into.
  * @see ra8_book.h          ::ra8_book_flag_t / ::ra8_book_image_format_t reused here.

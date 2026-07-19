@@ -69,6 +69,9 @@
  *       ``RA8_SIMULATOR_MODE`` crypto stand-ins; the remaining production step is
  *       to sign each shipped image and enable the flag on the boot path.
  *
+ * @see @ref md_docs_2formats_2ROT1 -- the full ROT1 wire-format specification
+ *      (rationale, algorithms, worked example, failure modes).
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
