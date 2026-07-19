@@ -31,33 +31,29 @@
 #include "unity_minimal.h"
 
 /**
- * @enum mipi_phy_lanes_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_phy_pll_t
+ * @brief PLL integer multipliers spanning the D-PHY validator's range.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_mipi_phy_lanes_nmul_int_100           = 100U,
-  k_mipi_phy_lanes_nmul_int_200           = 200U,
-  k_mipi_phy_lanes_nmul_int_40            = 40U,
-  k_mipi_phy_lanes_s_phy_cb_last_event_ff = 0xFFU,
-} mipi_phy_lanes_uint8_const_t;
-
-/**
- * @enum mipi_phy_lanes_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The multiplier sets the byte-clock frequency, so the validator bounds it.
+ * These four straddle every boundary: below the minimum, inside the range, at
+ * the nominal working point, and above the maximum.
  */
 typedef enum : uint16_t {
-  k_mipi_phy_lanes_nmul_int_375 = 375U,
-} mipi_phy_lanes_uint16_const_t;
+  k_t_nmul_below_min = 40U,  /**< Under the validator's minimum.             */
+  k_t_nmul_low       = 100U, /**< Inside the range, at the low end.          */
+  k_t_nmul_nominal   = 200U, /**< The working multiplier the happy path uses. */
+  k_t_nmul_above_max = 375U, /**< Over the validator's maximum.              */
+} t_phy_pll_t;
+
+/**
+ * @enum t_phy_cb_t
+ * @brief Callback out-parameter seed proving the PHY always writes it.
+ */
+typedef enum : uint8_t {
+  k_t_event_none = 0xFFU, /**< "No event delivered yet"; a callback that fires
+                               without an event id leaves this value.          */
+} t_phy_cb_t;
 
 typedef enum : uint8_t {
   k_test_mipi_phy_pclka_mhz  = 100U, /**< PCLKA = 100 MHz (within 40..125).  */
@@ -98,7 +94,7 @@ static void prep_fixture(void)
   s_phy_cb_count      = 0U;
   s_phy_cb_last_sfr   = 0U;
   s_phy_cb_last_ctx   = nullptr;
-  s_phy_cb_last_event = k_mipi_phy_lanes_s_phy_cb_last_event_ff;
+  s_phy_cb_last_event = k_t_event_none;
   /* Pre-seed DPHYSFR so the LDO + PLL polls return immediately. */
   *ra8_mipi_phy_reg32(k_ra8_mipi_phy_off_sfr) =
     (uint32_t)k_ra8_mipi_phy_sfr_pwrsf | (uint32_t)k_ra8_mipi_phy_sfr_pllsf;
@@ -178,7 +174,7 @@ static void test_set_lane_speed_happy(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_phy_init(&cfg));
 
   ra8_mipi_phy_pll_t pll = make_pll();
-  pll.nmul_int           = k_mipi_phy_lanes_nmul_int_200;
+  pll.nmul_int           = k_t_nmul_nominal;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_phy_set_lane_speed(&pll));
 
   /* DPHYPLFCR should hold the new NMUL in [24:16]. */
@@ -847,17 +843,17 @@ static void test_mcdc_validate_pll_band_mosc_and_freq(void)
   pll.idiv               = k_ra8_mipi_phy_idiv_2;
   pll.pmul               = k_ra8_mipi_phy_pmul_1;
   pll.nfmul              = k_ra8_mipi_phy_nfmul_0_00;
-  pll.nmul_int           = k_mipi_phy_lanes_nmul_int_100;
+  pll.nmul_int           = k_t_nmul_low;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_in));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_lo));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_hi));
-  pll.nmul_int = k_mipi_phy_lanes_nmul_int_40;
+  pll.nmul_int = k_t_nmul_below_min;
   pll.idiv     = k_ra8_mipi_phy_idiv_4;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_in));
-  pll.nmul_int = k_mipi_phy_lanes_nmul_int_375;
+  pll.nmul_int = k_t_nmul_above_max;
   pll.idiv     = k_ra8_mipi_phy_idiv_1;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_in));
