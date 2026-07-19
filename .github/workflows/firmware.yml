@@ -245,6 +245,7 @@ jobs:
             python3 -m pip install --user --break-system-packages --quiet libclang==18.1.1
           fi
       - run: bash scripts/ci.sh --gate annotations
+      - run: bash scripts/ci.sh --gate doc-attachment
       - name: Install ruff, shellcheck and shfmt
         run: |
           # ci-parity: infra -- provisions pinned lint binaries on the runner;

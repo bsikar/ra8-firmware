@@ -111,6 +111,7 @@ RA8_GATE_REGISTRY=(
   "format|fast|clang-format dry run"
   "pre-commit-checks|fast|the check_*.py gate suite"
   "annotations|fast|RA8_* annotation attributes (libclang)"
+  "doc-attachment|fast|a Doxygen block describes the symbol it is attached to"
   "lint-py-shell|fast|ruff + shellcheck + shfmt"
   "cite-check|fast|HUM citation validator (strict)"
   "roadmap-stats|fast|ROADMAP summary stats"
@@ -548,6 +549,24 @@ gate_annotations() (
   # Regression-test the checker itself before trusting its verdict.
   python3 scripts/utils/check_annotations.py --selftest
   python3 scripts/utils/check_annotations.py --check
+)
+
+# --- doc-attachment -------------------------------------------------------
+# doxy_audit.py (run inside pre-commit-checks) asks only whether a block is
+# PRESENT. A block attached to the wrong symbol SATISFIES that: paste one block
+# twice and measured coverage rises while one symbol silently loses its
+# documentation and another gains a duplicate. This gate asks the other
+# question -- does the block describe the thing it sits on.
+gate_doc_attachment() (
+  set -e
+  require_python_mod clang.cindex \
+    "CI installs libclang==18.1.1; add it to .devcontainer/Dockerfile too."
+  # Regression-test the checker itself, in BOTH directions, before trusting its
+  # verdict: every defect class must fire, and the legal-but-tricky forms
+  # (@copydoc, the CLAUDE.md definition-site one-liner, macro-generated
+  # declarations, documented //#define options) must not.
+  python3 scripts/utils/check_doc_attachment.py --selftest
+  python3 scripts/utils/check_doc_attachment.py --check
 )
 
 # --- lint-py-shell --------------------------------------------------------
