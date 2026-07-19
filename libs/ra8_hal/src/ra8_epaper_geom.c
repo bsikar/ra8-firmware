@@ -246,3 +246,12 @@ internal_ra8_epaper_validate_waveform(const ra8_epaper_waveform_cfg_t* wf)
   }
   return internal_ra8_epaper_validate_waveform(&cfg->waveform);
 }
+
+[[nodiscard]] bool ra8_epaper_geometry_agrees(const ra8_epaper_dev_info_t* info,
+                                              const ra8_epaper_cfg_t*      cfg)
+{
+  if ((info == nullptr) || (cfg == nullptr)) {
+    return false;
+  }
+  return (info->panel_width == cfg->panel_width) && (info->panel_height == cfg->panel_height);
+}

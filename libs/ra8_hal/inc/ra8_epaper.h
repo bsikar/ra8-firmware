@@ -593,6 +593,44 @@ ra8_epaper_align_area(ra8_epaper_area_t* area, ra8_epaper_pixel_format_t pf, uin
 [[nodiscard]] ra8_err_t ra8_epaper_validate_cfg(const ra8_epaper_cfg_t* cfg);
 
 /**
+ * @brief Report whether reported panel geometry matches the descriptor.
+ *
+ * @details
+ * ``ra8_epaper_init`` cross-checks the geometry the controller reports in
+ * its ``GET_DEV_INFO`` block against the descriptor it was handed, and
+ * **warns rather than fails** on a mismatch. Both halves of that are
+ * deliberate: a controller that has not finished loading its waveform
+ * answers the first read with zeroes, and an application may legitimately
+ * drive a sub-window of a larger panel, so a mismatch is information
+ * rather than an error.
+ *
+ * Split out of ``ra8_epaper_init`` so the comparison is a pure function
+ * that host tests can vary directly. Inside ``init`` it could only be
+ * reached through a real ``GET_DEV_INFO`` exchange, whose reported
+ * dimensions the test bus cannot steer to a value that is also a legal
+ * descriptor size -- which left the "agrees" case untestable.
+ *
+ * @param[in] info Decoded device block; NULL is treated as disagreement.
+ * @param[in] cfg  Descriptor to compare against; NULL likewise.
+ *
+ * @return ``true`` when both dimensions match, ``false`` otherwise.
+ *
+ * @pre  ``info`` was populated by ``ra8_epaper_decode_dev_info``.
+ * @pre  ``cfg`` is the descriptor passed to ``ra8_epaper_init``.
+ * @post No state is mutated and no bus traffic is issued.
+ * @post A NULL argument yields ``false`` rather than a fault.
+ *
+ * @note Thread-safe: pure function over its arguments.
+ *
+ * @see ra8_epaper_init
+ * @see ra8_epaper_decode_dev_info
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] bool ra8_epaper_geometry_agrees(const ra8_epaper_dev_info_t* info,
+                                              const ra8_epaper_cfg_t*      cfg);
+
+/**
  * @brief Hand back the ``GET_DEV_INFO`` block captured during init.
  *
  * @details
