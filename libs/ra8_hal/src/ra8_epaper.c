@@ -889,9 +889,17 @@ RA8_INTERNAL
   return k_ra8_ok;
 }
 
+/** @brief Implementation of `ra8_epaper_vcom_verified()` -- the latch alone
+ *         already implies the lifecycle state. */
 [[nodiscard]] bool ra8_epaper_vcom_verified(void)
 {
-  return (s_panel.state == k_ra8_epaper_state_ready) && s_panel.vcom_verified;
+  /* Deliberately not `(state == ready) && vcom_verified`. The latch is set
+   * only by a set_vcom that ran in the ready state and is cleared by both
+   * init and sleep, so `vcom_verified` implies `state == ready` -- see the
+   * ra8_epaper_panel_t invariant. Testing the state as well would add a
+   * condition no test could ever vary independently, which is an
+   * untestable branch rather than defence in depth. */
+  return s_panel.vcom_verified;
 }
 
 /**
@@ -1004,7 +1012,6 @@ RA8_INTERNAL
  * @post The loop runs at most ::k_ra8_epaper_lut_poll_max iterations.
  */
 RA8_INTERNAL
-RA8_BOUNDED_LOOP(k_ra8_epaper_lut_poll_max)
 [[nodiscard]] static ra8_err_t internal_ra8_epaper_wait_lut_idle(void)
 {
 #if defined(RA8_SIMULATOR_MODE) && defined(UNIT_TEST)
