@@ -38,6 +38,15 @@ jobs:
     runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@v4
+      - name: Install graphviz
+        run: |
+          # ci-parity: infra -- runner package provisioning only; runs no
+          # project check. Idempotent on this long-lived runner. Without
+          # graphviz the published site silently loses every @dot diagram.
+          if ! command -v dot >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y graphviz
+          fi
       - env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/ci.sh --gate docs-publish

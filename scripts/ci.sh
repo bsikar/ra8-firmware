@@ -839,6 +839,12 @@ gate_stack_usage() (
 # version as docs-publish keeps this gate and the published site in lockstep.
 gate_docs() (
   set -e
+  # graphviz is a hard dependency, not a nice-to-have: build_docs.sh degrades to
+  # text-only output when `dot` is absent, and doxygen then warns on every
+  # hand-written @dot block, which this gate reports as a failure. Without this
+  # check that surfaces as a dozen confusing warnings about the .md files rather
+  # than the one true cause. Fail on the real reason instead.
+  require_cmd dot
   bash scripts/build_docs.sh --gate
   local log="build/docs-gate/doxygen-warnings.log"
   if [[ ! -f "$log" ]]; then
