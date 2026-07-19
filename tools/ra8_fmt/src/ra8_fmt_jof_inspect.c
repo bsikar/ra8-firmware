@@ -566,52 +566,95 @@ static ra8_err_t priv_reassemble_tiles(ra8_jof_memstore_t*   store,
 }
 
 /**
- * @brief Acquire the three reassembly buffers, all or nothing.
+ * @struct fmt_reassemble_ws_t
+ * @brief Everything one reassembly pass needs: the reader, the sizes, the buffers.
  *
  * @details
- * The raster, the decoded-tile cell and the stored-tile scratch are only useful
- * together, so a partial allocation frees whatever succeeded and reports
- * failure. That keeps the single cleanup path in the caller from having to
- * distinguish "never allocated" from "allocated then failed".
+ * The three buffers are not independent -- each is sized from the same parsed
+ * geometry, and none is useful without the others -- so they travel with the
+ * sizes that produced them rather than as six loose arguments. Grouping them
+ * also makes the ownership split visible: @ref cell and @ref scratch die with
+ * the pass, while @ref px is what the caller walks away with.
  *
- * @param[in]  raster    Full-page raster size in bytes.
- * @param[in]  tile_max  Decoded-tile buffer size in bytes.
- * @param[in]  scratch_c Stored-tile scratch size in bytes.
- * @param[out] px        Receives the zeroed raster, or NULL on failure.
- * @param[out] cell      Receives the tile buffer, or NULL on failure.
- * @param[out] scratch   Receives the scratch buffer, or NULL on failure.
- * @return Whether all three allocations succeeded.
- * @retval true  All three buffers are owned by the caller.
- * @retval false Nothing is allocated; the out-pointers are NULL.
+ * @invariant After a successful ::priv_open_reassemble_ws all three pointers
+ *            are non-NULL; after a failed one all three are NULL.
+ * @invariant @ref raster equals @ref stride times the atlas height.
  *
- * @pre All three out-pointers are non-null.
- * @pre The sizes were derived from a parsed atlas geometry.
- * @post On success the caller owns all three buffers and must free them.
+ * @par Example:
+ * @code
+ * fmt_reassemble_ws_t ws = {};
+ * if (priv_open_reassemble_ws(atlas, info, &ws)) {
+ *   // ... use ws.px ...
+ *   free(ws.cell);
+ *   free(ws.scratch);
+ * }
+ * @endcode
+ *
+ * @see priv_open_reassemble_ws()  Builds one.
+ * @see priv_reassemble_tiles()    Consumes one.
+ */
+typedef struct {
+  ra8_jof_memstore_t store;     /**< Reader over the atlas bytes.            */
+  size_t                   stride;    /**< Raster stride in bytes.                 */
+  size_t                   raster;    /**< Full-page raster size in bytes.         */
+  uint32_t                 tile_max;  /**< Decoded-tile buffer size in bytes.      */
+  uint32_t                 scratch_c; /**< Stored-tile scratch size in bytes.      */
+  uint8_t*                 px;        /**< Zeroed full-page raster; caller keeps.  */
+  uint8_t*                 cell;      /**< One decoded tile; freed with the pass.  */
+  uint8_t*                 scratch;   /**< One stored tile; freed with the pass.   */
+} fmt_reassemble_ws_t;
+
+/**
+ * @brief Derive the reassembly geometry and acquire its buffers, all or nothing.
+ *
+ * @details
+ * Sizes every buffer from the parsed geometry, then allocates all three. A
+ * partial allocation frees whatever succeeded and reports failure, so the
+ * caller's cleanup never has to tell "never allocated" from "allocated then
+ * failed". The raster is zeroed because a decode that stops early must not
+ * expose uninitialised memory as image data.
+ *
+ * @param[in]  atlas Container bytes the reader is opened over (non-NULL).
+ * @param[in]  info  Parsed geometry the sizes come from (non-NULL).
+ * @param[out] ws    Receives the reader, the sizes, and the three buffers.
+ *
+ * @return Whether the workspace is ready to use.
+ * @retval true  All three buffers are allocated and @p ws is complete.
+ * @retval false Nothing is allocated; @p ws holds NULL buffer pointers.
+ *
+ * @pre @p ws is non-NULL.
+ * @pre @p info came from a successful parse over @p atlas.
+ * @post On success the caller owns `ws->px`, `ws->cell` and `ws->scratch`.
  * @post On failure no allocation outlives the call.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
 RA8_INTERNAL
-static bool priv_alloc_reassemble_bufs(size_t    raster,
-                                       uint32_t  tile_max,
-                                       uint32_t  scratch_c,
-                                       uint8_t** px,
-                                       uint8_t** cell,
-                                       uint8_t** scratch)
+static bool priv_open_reassemble_ws(const ra8_fmt_blob_t*       atlas,
+                                    const ra8_jof_info_t* info,
+                                    fmt_reassemble_ws_t*        ws)
 {
-  *px      = (uint8_t*)calloc(raster, 1U);
-  *cell    = (uint8_t*)malloc((size_t)tile_max);
-  *scratch = (uint8_t*)malloc((size_t)scratch_c);
-  if ((*px != nullptr) && (*cell != nullptr) && (*scratch != nullptr)) {
+  ws->store  = (ra8_jof_memstore_t){.buf = atlas->bytes,
+                                          .cap = atlas->len,
+                                          .len = atlas->len};
+  ws->stride = (size_t)info->width * (size_t)info->bpp;
+  ws->raster = ws->stride * (size_t)info->height;
+  ws->tile_max  = (uint32_t)info->tile_w * (uint32_t)info->tile_h * (uint32_t)info->bpp;
+  ws->scratch_c = ra8_jof_stored_bound(ws->tile_max);
+
+  ws->px      = (uint8_t*)calloc(ws->raster, 1U);
+  ws->cell    = (uint8_t*)malloc((size_t)ws->tile_max);
+  ws->scratch = (uint8_t*)malloc((size_t)ws->scratch_c);
+  if ((ws->px != nullptr) && (ws->cell != nullptr) && (ws->scratch != nullptr)) {
     return true;
   }
-  free(*px);
-  free(*cell);
-  free(*scratch);
-  *px      = nullptr;
-  *cell    = nullptr;
-  *scratch = nullptr;
+  free(ws->px);
+  free(ws->cell);
+  free(ws->scratch);
+  ws->px      = nullptr;
+  ws->cell    = nullptr;
+  ws->scratch = nullptr;
   return false;
 }
 
@@ -624,27 +667,26 @@ ra8_err_t ra8_fmt_jof_reassemble(const ra8_fmt_blob_t*       atlas,
   RA8_CHECK_NULL_PTR(info, s_tag, "info must not be nullptr");
   RA8_CHECK_NULL_PTR(out_px, s_tag, "out_px must not be nullptr");
   RA8_CHECK_NULL_PTR(out_len, s_tag, "out_len must not be nullptr");
-  *out_px                         = nullptr;
-  ra8_jof_memstore_t store  = {.buf = atlas->bytes, .cap = atlas->len, .len = atlas->len};
-  const size_t             stride = (size_t)info->width * (size_t)info->bpp;
-  const size_t             raster = stride * (size_t)info->height;
-  const uint32_t tile_max  = (uint32_t)info->tile_w * (uint32_t)info->tile_h * (uint32_t)info->bpp;
-  const uint32_t scratch_c = ra8_jof_stored_bound(tile_max);
-  uint8_t*       px        = nullptr;
-  uint8_t*       cell      = nullptr;
-  uint8_t*       scratch   = nullptr;
-  if (!priv_alloc_reassemble_bufs(raster, tile_max, scratch_c, &px, &cell, &scratch)) {
+  *out_px                = nullptr;
+  fmt_reassemble_ws_t ws = {};
+  if (!priv_open_reassemble_ws(atlas, info, &ws)) {
     return k_ra8_err_no_mem;
   }
-  const ra8_err_t rc =
-    priv_reassemble_tiles(&store, info, px, stride, cell, tile_max, scratch, scratch_c);
-  free(cell);
-  free(scratch);
+  const ra8_err_t rc = priv_reassemble_tiles(&ws.store,
+                                             info,
+                                             ws.px,
+                                             ws.stride,
+                                             ws.cell,
+                                             ws.tile_max,
+                                             ws.scratch,
+                                             ws.scratch_c);
+  free(ws.cell);
+  free(ws.scratch);
   if (rc != k_ra8_ok) {
-    free(px);
+    free(ws.px);
     return rc;
   }
-  *out_px  = px;
-  *out_len = raster;
+  *out_px  = ws.px;
+  *out_len = ws.raster;
   return k_ra8_ok;
 }
