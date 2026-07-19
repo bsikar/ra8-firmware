@@ -251,6 +251,117 @@ static uint8_t t_paeth(uint8_t a, uint8_t b, uint8_t c)
  * @note Not thread-safe (shared scratch).
  * @since 0.1.0
  */
+/**
+ * @brief Value of one source pixel channel, for either colour model.
+ *
+ * @details
+ * Palette images carry index bytes, truecolour images carry the shared test
+ * pattern. Both the raw fill and the filter predictor need this, and they must
+ * agree exactly or the filtered bytes will not reconstruct.
+ *
+ * @param[in] x       Pixel column.
+ * @param[in] y       Pixel row.
+ * @param[in] c       Channel within the pixel.
+ * @param[in] palette True for a palette image, false for truecolour.
+ *
+ * @return The unfiltered sample value at that position.
+ *
+ * @pre The caller keeps @p x and @p y inside the image.
+ * @pre @p c is a valid channel index.
+ * @post The result depends only on the arguments -- no hidden state.
+ * @post The same inputs always yield the same byte.
+ *
+ * @note Thread-safe: pure function.
+ */
+static uint8_t png_sample(uint32_t x, uint32_t y, uint32_t c, bool palette)
+{
+  return palette ? (uint8_t)((x + y) % k_jof_produce_val_5) : pix(x, y, c);
+}
+
+/**
+ * @brief PNG filter predictor for byte @p k of a row.
+ *
+ * @details
+ * Recomputes the neighbouring samples from the pattern rather than keeping the
+ * previous row around, which is what lets the builder filter each row in place.
+ *
+ * @param[in] row     Row bytes, still unfiltered at and above @p k.
+ * @param[in] k       Byte index within the row.
+ * @param[in] y       Row number, needed for the "up" neighbours.
+ * @param[in] ch      Channels per pixel.
+ * @param[in] f       PNG filter type (1=Sub, 2=Up, 3=Average, else Paeth).
+ * @param[in] palette True for a palette image, false for truecolour.
+ *
+ * @return The predicted byte to subtract from `row[k]`.
+ *
+ * @pre @p row is non-NULL and @p k indexes inside it.
+ * @pre @p ch is non-zero.
+ * @post Row 0 and column 0 neighbours read as 0, per the PNG spec.
+ * @post No read leaves the row for the left neighbour when `k < ch`.
+ *
+ * @note Thread-safe: reads only its arguments.
+ */
+static uint8_t
+png_predictor(const uint8_t* row, uint32_t k, uint32_t y, uint32_t ch, uint8_t f, bool palette)
+{
+  const uint32_t px_x = (k / ch);
+  const uint32_t px_c = (k % ch);
+  const uint8_t  left = (k >= ch) ? row[k - ch] : 0U;
+  uint8_t        up   = 0U;
+  if (y > 0U) {
+    up = png_sample(px_x, y - 1U, px_c, palette);
+  }
+  uint8_t ul = 0U;
+  if ((y > 0U) && (k >= ch)) {
+    ul = png_sample(px_x - 1U, y - 1U, px_c, palette);
+  }
+  if (f == 1U) {
+    return left;
+  }
+  if (f == 2U) {
+    return up;
+  }
+  if (f == 3U) {
+    return (uint8_t)(((uint32_t)left + (uint32_t)up) / 2U);
+  }
+  return t_paeth(left, up, ul);
+}
+
+/**
+ * @brief Filter one already-populated row in place.
+ *
+ * @details
+ * Walks the row backwards so each predictor still sees unfiltered bytes to its
+ * left, which is what makes in-place filtering correct.
+ *
+ * @param[in,out] row     Row bytes to filter.
+ * @param[in]     rowb    Row length in bytes.
+ * @param[in]     y       Row number.
+ * @param[in]     ch      Channels per pixel.
+ * @param[in]     f       PNG filter type; 0 leaves the row untouched.
+ * @param[in]     palette True for a palette image, false for truecolour.
+ *
+ * @pre @p row holds @p rowb unfiltered bytes.
+ * @pre @p ch is non-zero.
+ * @post Every byte has had its predictor subtracted, modulo 256.
+ * @post A filter type of 0 leaves the row byte-identical.
+ *
+ * @note Not thread-safe with respect to @p row.
+ */
+static void
+png_filter_row(uint8_t* row, uint32_t rowb, uint32_t y, uint32_t ch, uint8_t f, bool palette)
+{
+  if (f == 0U) {
+    return;
+  }
+  for (uint32_t i = rowb; i > 0U; i--) {
+    const uint32_t k    = i - 1U;
+    const uint8_t  cur  = row[k];
+    const uint8_t  pred = png_predictor(row, k, y, ch, f, palette);
+    row[k]              = (uint8_t)(cur - pred);
+  }
+}
+
 static size_t png_fill_raw(uint32_t w, uint32_t h, uint32_t ch, bool palette, bool use_filters)
 {
   const uint32_t rowb = w * ch;
@@ -261,41 +372,12 @@ static size_t png_fill_raw(uint32_t w, uint32_t h, uint32_t ch, bool palette, bo
     uint8_t* row    = &s_raw[o + 1U];
     for (uint32_t x = 0U; x < w; x++) {
       for (uint32_t c = 0U; c < ch; c++) {
-        row[(x * ch) + c] = palette ? (uint8_t)((x + y) % k_jof_produce_val_5) : pix(x, y, c);
+        row[(x * ch) + c] = png_sample(x, y, c, palette);
       }
     }
-    /* Apply the chosen filter in place (uses the previous UNFILTERED row,
-     * which for our builder is regenerated from the pattern). */
-    if (f != 0U) {
-      for (uint32_t i = rowb; i > 0U; i--) {
-        const uint32_t k    = i - 1U;
-        const uint32_t px_x = (k / ch);
-        const uint32_t px_c = (k % ch);
-        const uint8_t  cur  = row[k];
-        const uint8_t  left = (k >= ch) ? row[k - ch] : 0U;
-        uint8_t        up   = 0U;
-        if (y > 0U) {
-          up = palette ? (uint8_t)((px_x + (y - 1U)) % k_jof_produce_val_5)
-                       : pix(px_x, y - 1U, px_c);
-        }
-        uint8_t ul = 0U;
-        if ((y > 0U) && (k >= ch)) {
-          ul = palette ? (uint8_t)(((px_x - 1U) + (y - 1U)) % k_jof_produce_val_5)
-                       : pix(px_x - 1U, y - 1U, px_c);
-        }
-        uint8_t pred = 0U;
-        if (f == 1U) {
-          pred = left;
-        } else if (f == 2U) {
-          pred = up;
-        } else if (f == 3U) {
-          pred = (uint8_t)(((uint32_t)left + (uint32_t)up) / 2U);
-        } else {
-          pred = t_paeth(left, up, ul);
-        }
-        row[k] = (uint8_t)(cur - pred);
-      }
-    }
+    /* Filter in place. The predictor regenerates the previous UNFILTERED row
+     * from the pattern, so filtering never reads an already-filtered byte. */
+    png_filter_row(row, rowb, y, ch, f, palette);
     o += 1U + (size_t)rowb;
   }
   return o;

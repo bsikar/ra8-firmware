@@ -663,7 +663,22 @@ static void test_png_hostile_palette_arms(void)
 }
 
 /** @brief Exact-length zlib stream from stored deflate blocks (byte-precise). */
-static uint32_t make_zlib_stored(uint32_t w, uint32_t h, uint8_t* out)
+/**
+ * @brief Fill `s_raw` with unfiltered scanlines; return the byte count.
+ *
+ * @param[in] w Image width, pixels (one byte per pixel).
+ * @param[in] h Image height, rows.
+ *
+ * @return Bytes written, including one filter byte per row.
+ *
+ * @pre `s_raw` is large enough for `h * (w + 1)` bytes.
+ * @pre @p w and @p h are non-zero.
+ * @post Every row begins with filter type 0 (none).
+ * @post The return value is exactly `h * (w + 1)`.
+ *
+ * @note Not thread-safe; the fixture is file-scope state.
+ */
+static size_t png_raw_scanlines(uint32_t w, uint32_t h)
 {
   size_t raw = 0U;
   for (uint32_t y = 0U; y < h; y++) {
@@ -674,34 +689,61 @@ static uint32_t make_zlib_stored(uint32_t w, uint32_t h, uint8_t* out)
       raw++;
     }
   }
+  return raw;
+}
+
+/**
+ * @brief Emit one DEFLATE stored block header (BFINAL/BTYPE, LEN, NLEN).
+ *
+ * @param[out] out   Output buffer at the header position.
+ * @param[in]  len   Payload length this block carries.
+ * @param[in]  final True when this is the last block of the stream.
+ *
+ * @return Bytes written (always the fixed 5-byte stored header).
+ *
+ * @pre @p out has room for five bytes.
+ * @pre @p len fits in 16 bits, as a stored block requires.
+ * @post LEN and NLEN are written little-endian and are one's complements.
+ * @post BTYPE is 00 (stored), so the payload follows uncompressed.
+ *
+ * @note Thread-safe: writes only through @p out.
+ */
+static size_t deflate_stored_header(uint8_t* out, uint16_t len, bool final)
+{
   size_t o = 0U;
-  out[o]   = k_jof_png_hostile_out_78; /* zlib CMF */
+  out[o]   = final ? 1U : 0U; /* BFINAL + BTYPE 00 (stored) */
   o++;
-  out[o] = 0x01U; /* zlib FLG (checksum-valid, no dict) */
+  out[o] = (uint8_t)(len & k_jof_png_hostile_val_ff);
   o++;
-  size_t left = raw;
-  size_t pos  = 0U;
-  while (left > 0U) {
-    const size_t   blk   = (left > (raw / 2U)) ? (raw / 2U) : left;
-    const bool     final = (blk == left);
-    const uint16_t len16 = (uint16_t)blk;
-    out[o]               = final ? 1U : 0U; /* BFINAL + BTYPE 00 (stored) */
-    o++;
-    out[o] = (uint8_t)(len16 & k_jof_png_hostile_val_ff);
-    o++;
-    out[o] = (uint8_t)(len16 >> 8U);
-    o++;
-    const uint16_t nlen16 = (uint16_t)~len16;
-    out[o]                = (uint8_t)(nlen16 & k_jof_png_hostile_val_ff);
-    o++;
-    out[o] = (uint8_t)(nlen16 >> 8U);
-    o++;
-    memcpy(&out[o], &s_raw[pos], blk);
-    o += blk;
-    pos += blk;
-    left -= blk;
-  }
+  out[o] = (uint8_t)(len >> 8U);
+  o++;
+  const uint16_t nlen = (uint16_t)~len;
+  out[o]              = (uint8_t)(nlen & k_jof_png_hostile_val_ff);
+  o++;
+  out[o] = (uint8_t)(nlen >> 8U);
+  o++;
+  return o;
+}
+
+/**
+ * @brief Append a big-endian Adler-32 trailer over the raw bytes.
+ *
+ * @param[out] out Output buffer at the trailer position.
+ * @param[in]  raw Number of `s_raw` bytes the checksum covers.
+ *
+ * @return Bytes written (always four).
+ *
+ * @pre @p out has room for four bytes.
+ * @pre `s_raw` holds at least @p raw bytes.
+ * @post The checksum is stored most-significant byte first, per RFC 1950.
+ * @post The stream is complete once this returns.
+ *
+ * @note Not thread-safe; reads the file-scope `s_raw`.
+ */
+static size_t zlib_adler_trailer(uint8_t* out, size_t raw)
+{
   const mz_ulong adler = mz_adler32(mz_adler32(0U, nullptr, 0U), s_raw, (mz_ulong)raw);
+  size_t         o     = 0U;
   out[o] = (uint8_t)((adler >> k_jof_png_hostile_len_24) & k_jof_png_hostile_val_ff);
   o++;
   out[o] = (uint8_t)((adler >> 16U) & k_jof_png_hostile_val_ff);
@@ -710,6 +752,32 @@ static uint32_t make_zlib_stored(uint32_t w, uint32_t h, uint8_t* out)
   o++;
   out[o] = (uint8_t)(adler & k_jof_png_hostile_val_ff);
   o++;
+  return o;
+}
+
+static uint32_t make_zlib_stored(uint32_t w, uint32_t h, uint8_t* out)
+{
+  const size_t raw = png_raw_scanlines(w, h);
+
+  size_t o = 0U;
+  out[o]   = k_jof_png_hostile_out_78; /* zlib CMF */
+  o++;
+  out[o] = 0x01U; /* zlib FLG (checksum-valid, no dict) */
+  o++;
+
+  /* Two stored blocks (half the payload each) so the decoder must cross a
+   * block boundary mid-image. */
+  size_t left = raw;
+  size_t pos  = 0U;
+  while (left > 0U) {
+    const size_t blk = (left > (raw / 2U)) ? (raw / 2U) : left;
+    o += deflate_stored_header(&out[o], (uint16_t)blk, blk == left);
+    memcpy(&out[o], &s_raw[pos], blk);
+    o += blk;
+    pos += blk;
+    left -= blk;
+  }
+  o += zlib_adler_trailer(&out[o], raw);
   return (uint32_t)o;
 }
 
