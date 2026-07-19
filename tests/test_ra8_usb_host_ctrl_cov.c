@@ -68,36 +68,26 @@
 #include "unity_minimal.h"
 
 /**
- * @enum usb_host_ctrl_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_hcc_payload_t
+ * @brief Control-transfer payload bytes and the receive-count poison.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_usb_host_ctrl_cov_val_10 = 10U,
-  k_usb_host_ctrl_cov_val_5  = 5U,
-  k_usb_host_ctrl_cov_val_7  = 7U,
-  k_usb_host_ctrl_cov_val_9  = 9U,
-  k_usb_host_ctrl_cov_val_a1 = 0xA1U,
-  k_usb_host_ctrl_cov_val_b2 = 0xB2U,
-  k_usb_host_ctrl_cov_val_c3 = 0xC3U,
-} usb_host_ctrl_cov_uint8_const_t;
-
-/**
- * @enum usb_host_ctrl_cov_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The 10-byte OUT payload is the ascending run 1..10, so a byte that lands at
+ * the wrong FIFO offset is obvious; only the values the ignore-list does not
+ * already cover need naming. The 3-byte payload uses a distinct pattern so the
+ * two arms cannot be confused in a dump.
  */
 typedef enum : uint16_t {
-  k_usb_host_ctrl_cov_rx_ffff = 0xFFFFU,
-} usb_host_ctrl_cov_uint16_const_t;
+  k_t_out_b4      = 5U,      /**< Byte 4 of the ascending 10-byte payload.    */
+  k_t_out_b6      = 7U,      /**< Byte 6.                                     */
+  k_t_out_b8      = 9U,      /**< Byte 8.                                     */
+  k_t_out_b9      = 10U,     /**< Byte 9, the last.                           */
+  k_t_short_b0    = 0xA1U,   /**< Byte 0 of the 3-byte payload.               */
+  k_t_short_b1    = 0xB2U,   /**< Byte 1.                                     */
+  k_t_short_b2    = 0xC3U,   /**< Byte 2.                                     */
+  k_t_rx_poison   = 0xFFFFU, /**< Pre-set received-byte count; a transfer that
+                                  returns without writing it leaves this.      */
+} t_hcc_payload_t;
 
 /**
  * @enum thc_const_t
@@ -297,7 +287,7 @@ static void thc_vector_write_data(uint8_t* data)
     .b_request       = (uint8_t)k_thc_breq_out,
     .w_length        = (uint16_t)k_thc_wlen_out,
   };
-  uint16_t rx = k_usb_host_ctrl_cov_rx_ffff;
+  uint16_t rx = k_t_rx_poison;
   TEST_ASSERT_EQ(
     k_ra8_err_hw_timeout,
     ra8_usb_host_control_xfer(k_ra8_usb_speed_fs, &wr, data, (uint16_t)k_thc_wlen_out, &rx));
@@ -367,12 +357,12 @@ static void test_mcdc_data_phase_direction(void)
                                    2U,
                                    3U,
                                    4U,
-                                   k_usb_host_ctrl_cov_val_5,
+                                   k_t_out_b4,
                                    6U,
-                                   k_usb_host_ctrl_cov_val_7,
+                                   k_t_out_b6,
                                    8U,
-                                   k_usb_host_ctrl_cov_val_9,
-                                   k_usb_host_ctrl_cov_val_10};
+                                   k_t_out_b8,
+                                   k_t_out_b9};
   uint16_t rx                   = 0U;
 
   thc_vector_write_data(data);
@@ -431,9 +421,9 @@ static void test_control_write_mxps_zero(void)
     .b_request       = (uint8_t)k_thc_breq_out,
     .w_length        = (uint16_t)k_thc_wlen_step1,
   };
-  uint8_t  data[k_thc_wlen_step1] = {k_usb_host_ctrl_cov_val_a1,
-                                     k_usb_host_ctrl_cov_val_b2,
-                                     k_usb_host_ctrl_cov_val_c3};
+  uint8_t  data[k_thc_wlen_step1] = {k_t_short_b0,
+                                     k_t_short_b1,
+                                     k_t_short_b2};
   uint16_t rx                     = 0U;
   TEST_ASSERT_EQ(
     k_ra8_err_hw_timeout,
@@ -481,7 +471,7 @@ static void test_control_read_completes(void)
     .b_request       = (uint8_t)k_thc_breq_in,
     .w_length        = (uint16_t)k_thc_buf_in,
   };
-  rx = k_usb_host_ctrl_cov_rx_ffff;
+  rx = k_t_rx_poison;
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_usb_host_control_xfer(k_ra8_usb_speed_fs, &rd, buf, (uint16_t)k_thc_buf_in, &rx));
@@ -499,7 +489,7 @@ static void test_control_read_completes(void)
     .b_request       = (uint8_t)k_thc_breq_in,
     .w_length        = (uint16_t)k_thc_buf_in,
   };
-  rx = k_usb_host_ctrl_cov_rx_ffff;
+  rx = k_t_rx_poison;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_host_control_xfer(k_ra8_usb_speed_fs, &rd0, buf, 0U, &rx));
   TEST_ASSERT_EQ(0U, rx);
   TEST_ASSERT_EQ(k_thc_stage_done, ra8_usb_host_ctrl_stage());
@@ -529,7 +519,7 @@ static void test_data_in_frdy_timeout(void)
   prep();
 
   uint8_t  buf[k_thc_buf_in] = {};
-  uint16_t rx                = k_usb_host_ctrl_cov_rx_ffff;
+  uint16_t rx                = k_t_rx_poison;
   ra8_usb_fs()->INTSTS1      = (uint16_t)k_thc_sack_bit;
   ra8_usb_fs()->BRDYSTS      = (uint16_t)k_thc_dcp_bit;
   ra8_usb_fs()->DCPMAXP      = (uint16_t)k_thc_mps_dcp;
@@ -623,7 +613,7 @@ static void test_mcdc_dcp_out_read(void)
    * landed, so the drain reports no-data. */
   prep();
   ra8_usb_fs()->BRDYSTS = 0U;
-  rx                    = k_usb_host_ctrl_cov_rx_ffff;
+  rx                    = k_t_rx_poison;
   TEST_ASSERT_EQ(k_ra8_err_no_data,
                  ra8_usb_dcp_out_read(k_ra8_usb_speed_fs, buf, (uint16_t)k_thc_cap, &rx));
   TEST_ASSERT_EQ(0U, rx);
@@ -632,7 +622,7 @@ static void test_mcdc_dcp_out_read(void)
   prep();
   ra8_usb_fs()->BRDYSTS  = (uint16_t)k_thc_dcp_bit;
   ra8_usb_fs()->CFIFOCTR = 0U;
-  rx                     = k_usb_host_ctrl_cov_rx_ffff;
+  rx                     = k_t_rx_poison;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_dcp_out_read(k_ra8_usb_speed_fs, buf, (uint16_t)k_thc_cap, &rx));
   TEST_ASSERT_EQ(0U, rx);
 
@@ -670,7 +660,7 @@ static void test_dcp_out_read_frdy_timeout(void)
   prep();
 
   uint8_t  buf[k_thc_cap] = {};
-  uint16_t rx             = k_usb_host_ctrl_cov_rx_ffff;
+  uint16_t rx             = k_t_rx_poison;
   ra8_usb_fs()->BRDYSTS   = (uint16_t)k_thc_dcp_bit;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&ra8_usb_fs()->CFIFOCTR));
 

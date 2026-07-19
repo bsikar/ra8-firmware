@@ -33,36 +33,31 @@
 #include "unity_minimal.h"
 
 /**
- * @enum vin_config_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_vin_plane_t
+ * @brief Synthetic YCbCr plane fixture parameters.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_vin_config_conv_mode_7        = 7U,
-  k_vin_config_even_field_num_5   = 5U,
-  k_vin_config_i_55               = 0x55U,
-  k_vin_config_i_aa               = 0xAAU,
-  k_vin_config_virtual_channel_99 = 99U,
-} vin_config_uint8_const_t;
-
-/**
- * @enum vin_config_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Each chroma plane is the byte index XORed with a distinct mask, so the two
+ * planes never hold the same value at the same index -- a Cb/Cr swap in the
+ * colour conversion is then visible rather than symmetric.
  */
 typedef enum : uint16_t {
-  k_vin_config_i_256   = 256U,
-  k_vin_config_val_123 = 0x123U,
-  k_vin_config_val_256 = 256,
-} vin_config_uint16_const_t;
+  k_t_plane_len = 256U,  /**< Samples per test plane.                          */
+  k_t_cb_mask   = 0x55U, /**< XOR mask generating the Cb plane.                */
+  k_t_cr_mask   = 0xAAU, /**< XOR mask generating the Cr plane.                */
+} t_vin_plane_t;
+
+/**
+ * @enum t_vin_bad_cfg_t
+ * @brief Out-of-range configuration values the validator must reject.
+ */
+typedef enum : uint16_t {
+  k_t_conv_mode_bad  = 7U,     /**< Conversion mode past the last defined one. */
+  k_t_field_num_bad  = 5U,     /**< Even-field number past the legal range.    */
+  k_t_vchannel_bad   = 99U,    /**< Virtual channel far past the MIPI CSI max. */
+  k_t_line_count_reg = 0x123U, /**< A distinctive line count written straight to
+                                    the LC register, to prove the read path.    */
+} t_vin_bad_cfg_t;
 
 /**
  * @enum ra8_vin_test_field_t
@@ -292,13 +287,13 @@ static void test_lut_program(void)
   const ra8_vin_config_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vin_init(&cfg));
 
-  uint8_t y[k_vin_config_val_256];
-  uint8_t cb[k_vin_config_val_256];
-  uint8_t cr[k_vin_config_val_256];
-  for (uint16_t i = 0U; i < k_vin_config_i_256; ++i) {
+  uint8_t y[k_t_plane_len];
+  uint8_t cb[k_t_plane_len];
+  uint8_t cr[k_t_plane_len];
+  for (uint16_t i = 0U; i < k_t_plane_len; ++i) {
     y[i]  = (uint8_t)i;
-    cb[i] = (uint8_t)(i ^ k_vin_config_i_55);
-    cr[i] = (uint8_t)(i ^ k_vin_config_i_aa);
+    cb[i] = (uint8_t)(i ^ k_t_cb_mask);
+    cr[i] = (uint8_t)(i ^ k_t_cr_mask);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vin_lut_program(y, cb, cr, true));
 
@@ -560,7 +555,7 @@ static void test_set_data_mode(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_vin_set_data_mode(nullptr));
 
   ra8_vin_data_mode_t bad = m;
-  bad.conv_mode           = k_vin_config_conv_mode_7;
+  bad.conv_mode           = k_t_conv_mode_bad;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vin_set_data_mode(&bad));
   TEST_END("vin set_data_mode");
 }
@@ -595,7 +590,7 @@ static void test_set_csi_input(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_vin_set_csi_input(nullptr));
 
   ra8_vin_csi_input_t bad = in;
-  bad.virtual_channel     = k_vin_config_virtual_channel_99;
+  bad.virtual_channel     = k_t_vchannel_bad;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vin_set_csi_input(&bad));
   TEST_END("vin set_csi_input");
 }
@@ -627,7 +622,7 @@ static void test_set_field_detect(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_vin_set_field_detect(nullptr));
 
   ra8_vin_field_detect_t bad = d;
-  bad.even_field_num         = k_vin_config_even_field_num_5;
+  bad.even_field_num         = k_t_field_num_bad;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vin_set_field_detect(&bad));
   TEST_END("vin set_field_detect");
 }
@@ -755,7 +750,7 @@ static void test_line_count(void)
   const ra8_vin_config_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vin_init(&cfg));
 
-  *ra8_vin_reg32(k_ra8_vin_off_lc) = k_vin_config_val_123;
+  *ra8_vin_reg32(k_ra8_vin_off_lc) = k_t_line_count_reg;
   uint16_t lc                      = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vin_get_line_count(&lc));
   TEST_ASSERT_EQ(0x123U, lc);
