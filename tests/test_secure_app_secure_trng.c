@@ -17,6 +17,19 @@
 #include "secure_trng_internal.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum secure_app_secure_trng_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_secure_app_secure_trng_buf_a5 = 0xA5U,
+} secure_app_secure_trng_uint8_const_t;
+
 typedef enum : uint16_t {
   k_test_trng_buf_bytes   = 256U, /**< Matches k_ra8_secure_trng_max_bytes.    */
   k_test_trng_len_one     = 1U,   /**< Test trng length one.                   */
@@ -161,7 +174,7 @@ static void test_mcdc_read_inner_loop_bound(void)
   /* Pre-fill the buffer with a sentinel so we can detect over-write. */
   uint8_t buf[k_test_trng_buf_bytes];
   for (uint32_t i = 0U; i < (uint32_t)k_test_trng_buf_bytes; ++i) {
-    buf[i] = 0xA5U;
+    buf[i] = k_secure_app_secure_trng_buf_a5;
   }
 
   /* Vector 3: len=1 -> at least one body iteration (C1=T,C2=T). */
@@ -171,7 +184,7 @@ static void test_mcdc_read_inner_loop_bound(void)
 
   /* Vector 2: len=7 -> loop exits via C2=(written<len)=F at b=7. */
   for (uint32_t i = 0U; i < (uint32_t)k_test_trng_buf_bytes; ++i) {
-    buf[i] = 0xA5U;
+    buf[i] = k_secure_app_secure_trng_buf_a5;
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_secure_trng_read(buf, (uint32_t)k_test_trng_len_seven));
   /* Index 7 (the 8th byte) must not have been written. */
@@ -180,7 +193,7 @@ static void test_mcdc_read_inner_loop_bound(void)
   /* Vector 1: len=8 -> loop exits via C1=(b<8)=F after byte index 7.
    * All 8 bytes written; the 9th remains the sentinel. */
   for (uint32_t i = 0U; i < (uint32_t)k_test_trng_buf_bytes; ++i) {
-    buf[i] = 0xA5U;
+    buf[i] = k_secure_app_secure_trng_buf_a5;
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_secure_trng_read(buf, (uint32_t)k_test_trng_len_eight));
   TEST_ASSERT_EQ(0xA5, buf[8]);

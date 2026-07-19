@@ -30,6 +30,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum poeg_safe_shutoff_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_poeg_safe_shutoff_count_ffffffff = 0xFFFFFFFFU,
+} poeg_safe_shutoff_uint32_const_t;
+
 /** @brief Mirror of the demo's app-local unit selection. */
 typedef enum : uint8_t {
   k_t_poeg_group       = 0U,  /**< POEG group the demo drives.  */
@@ -206,7 +219,7 @@ static void test_poeg_gpt_arm(void)
 
   const ra8_gpt_cfg_t cfg = make_gpt_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_init((uint8_t)k_t_poeg_gpt_channel, &cfg));
-  uint32_t count = 0xFFFFFFFFU;
+  uint32_t count = k_poeg_safe_shutoff_count_ffffffff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_read((uint8_t)k_t_poeg_gpt_channel, &count));
   TEST_ASSERT(ra8_gpt_init((uint8_t)k_t_poeg_gpt_channel, nullptr) != k_ra8_ok);
   TEST_END("poeg_safe_shutoff: GPT arm + reject");

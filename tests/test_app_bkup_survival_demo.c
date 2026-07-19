@@ -23,6 +23,21 @@
 
 #include "unity_minimal.h"
 
+/**
+ * @enum bkup_survival_demo_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_bkup_survival_demo_decide_survival_7 = 7U,
+  k_bkup_survival_demo_pattern_5         = 5U,
+  k_bkup_survival_demo_survived_9        = 9U,
+} bkup_survival_demo_uint8_const_t;
+
 /** @brief Mirror of the demo's app-local constants. */
 typedef enum : uint32_t {
   k_t_bkup_sentinel = 0x600DCAFEU, /**< T bkup sentinel. */
@@ -96,7 +111,7 @@ static void test_bkup_app_rw_verdict(void)
   /* Corrupt one word's read-back -> verdict must drop to 0. */
   ok                 = 1U;
   const uint32_t bad = pattern(5U) ^ 0x1U;
-  if (bad != pattern(5U)) {
+  if (bad != pattern(k_bkup_survival_demo_pattern_5)) {
     ok = 0U;
   }
   TEST_ASSERT_EQ(0U, ok);
@@ -114,8 +129,8 @@ static void test_bkup_app_rw_verdict(void)
 static void test_bkup_app_survival_decision(void)
 {
   TEST_BEGIN("bkup_survival_demo: survival decision (warm/cold)");
-  uint32_t survived = 9U;
-  uint32_t boot     = 9U;
+  uint32_t survived = k_bkup_survival_demo_survived_9;
+  uint32_t boot     = k_bkup_survival_demo_survived_9;
 
   /* Warm boot: sentinel present, prior count 4 -> survived=1, boot=5. */
   decide_survival((uint32_t)k_t_bkup_sentinel, 4U, &survived, &boot);
@@ -128,7 +143,10 @@ static void test_bkup_app_survival_decision(void)
   TEST_ASSERT_EQ(1U, boot);
 
   /* A near-miss sentinel is still a cold boot. */
-  decide_survival((uint32_t)k_t_bkup_sentinel ^ 0x1U, 7U, &survived, &boot);
+  decide_survival((uint32_t)k_t_bkup_sentinel ^ 0x1U,
+                  k_bkup_survival_demo_decide_survival_7,
+                  &survived,
+                  &boot);
   TEST_ASSERT_EQ(0U, survived);
   TEST_ASSERT_EQ(1U, boot);
   TEST_END("bkup_survival_demo: survival decision (warm/cold)");

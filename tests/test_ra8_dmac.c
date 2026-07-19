@@ -13,6 +13,32 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum dmac_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_dmac_sentinel_7 = 7,
+} dmac_uint8_const_t;
+
+/**
+ * @enum dmac_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_dmac_sentinel_abcd = 0xABCD,
+} dmac_uint16_const_t;
+
 typedef enum : uint32_t {
   k_ra8_dmac_test_src    = 0x22000100UL, /**< RA8 DMAC test src.    */
   k_ra8_dmac_test_dst    = 0x22000200UL, /**< RA8 DMAC test dst.    */
@@ -394,7 +420,7 @@ static void test_attach_half_complete_handler(void)
 {
   TEST_BEGIN("dmac half-complete handler dispatches");
   prep_dmac_ext();
-  int sentinel = 7;
+  int sentinel = k_dmac_sentinel_7;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_dmac_attach_half_complete_handler((uint8_t)k_ra8_dmac_test_channel_valid,
                                                        stub_dmac_half_cb,
@@ -424,7 +450,7 @@ static void test_attach_per_channel_callback(void)
 {
   TEST_BEGIN("dmac per-channel callback dispatches");
   prep_dmac_ext();
-  int sentinel = 0xABCD;
+  int sentinel = k_dmac_sentinel_abcd;
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_dmac_attach_callback((uint8_t)k_ra8_dmac_test_channel_valid, stub_dmac_full_cb, &sentinel));

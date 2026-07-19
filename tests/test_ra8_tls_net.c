@@ -35,6 +35,34 @@
 #include "ra8_tls.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum tls_net_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_tls_net_id_7 = 7U,
+  k_tls_net_id_9 = 9U,
+} tls_net_uint8_const_t;
+
+/**
+ * @enum tls_net_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_tls_net_flags_dead = 0xDEADU,
+  k_tls_net_mss_ffff   = 0xFFFFU,
+} tls_net_uint16_const_t;
+
 /* =============================================================================
  * BIO adapter: bind ra8_tls to the ra8_net_pal frame ring (host loopback)
  * =============================================================================
@@ -143,7 +171,7 @@ static ra8_tls_session_cfg_t make_np_cfg(void)
 static void test_mss_clamp_values(void)
 {
   TEST_BEGIN("mss_clamp: 128-byte MTU yields MSS 88");
-  uint16_t mss = 0xFFFFU;
+  uint16_t mss = k_tls_net_mss_ffff;
   /* 128 - 20 (IPv4) - 20 (TCP) == 88. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_mss_clamp((uint16_t)k_ra8_tls_mtu_min, &mss));
   TEST_ASSERT_EQ(88, mss);
@@ -173,16 +201,16 @@ static void test_mss_clamp_values(void)
 static void test_mcdc_mss_clamp(void)
 {
   TEST_BEGIN("mss_clamp MC/DC: (mtu<=overhead) || ((mtu-overhead)<mss_min)");
-  uint16_t mss = 0xFFFFU;
+  uint16_t mss = k_tls_net_mss_ffff;
   /* V1: both conditions false -> success. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_mss_clamp(128U, &mss));
   TEST_ASSERT_EQ(88, mss);
   /* V2: C1 true (mtu == overhead) -> invalid, out zeroed. */
-  mss = 0xFFFFU;
+  mss = k_tls_net_mss_ffff;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tls_mss_clamp(40U, &mss));
   TEST_ASSERT_EQ(0, mss);
   /* V3: C1 false, C2 true (segment below mss_min) -> invalid, out zeroed. */
-  mss = 0xFFFFU;
+  mss = k_tls_net_mss_ffff;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tls_mss_clamp(100U, &mss));
   TEST_ASSERT_EQ(0, mss);
   TEST_END("mss_clamp MC/DC: (mtu<=overhead) || ((mtu-overhead)<mss_min)");
@@ -208,13 +236,13 @@ static void test_cipher_and_verify_sim(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_open(&s, &cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_handshake(s));
 
-  uint16_t id                              = 0xFFFFU;
+  uint16_t id                              = k_tls_net_mss_ffff;
   char     name[k_ra8_tls_cipher_name_cap] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_get_cipher_suite(s, &id, name, sizeof(name)));
   TEST_ASSERT_EQ(0, id);
   TEST_ASSERT_EQ(0, strcmp(name, "sim-tls-loopback"));
 
-  uint32_t flags = 0xDEADU;
+  uint32_t flags = k_tls_net_flags_dead;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_get_verify_result(s, &flags));
   TEST_ASSERT_EQ(0, flags);
 
@@ -249,7 +277,7 @@ static void test_mcdc_cipher_arg_guard(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_net_pal_init(&k_np_bio_mac));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_session_open(&s, &cfg));
 
-  uint16_t id                              = 7U;
+  uint16_t id                              = k_tls_net_id_7;
   char     name[k_ra8_tls_cipher_name_cap] = {};
   /* V1: all valid -> success (session is open, no handshake needed for id 0). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_get_cipher_suite(s, &id, name, sizeof(name)));
@@ -314,9 +342,9 @@ static void test_mcdc_cipher_name_copy(void)
 static void test_accessor_state_guards(void)
 {
   TEST_BEGIN("cipher/verify accessors reject uninit + bogus handle");
-  uint16_t id                              = 9U;
+  uint16_t id                              = k_tls_net_id_9;
   char     name[k_ra8_tls_cipher_name_cap] = {};
-  uint32_t flags                           = 9U;
+  uint32_t flags                           = k_tls_net_id_9;
 
   /* Not initialized: valid out args, session ignored -> not_initialized. */
   TEST_ASSERT_EQ(k_ra8_err_not_initialized,
@@ -379,9 +407,9 @@ static void test_end_to_end_over_net_pal(void)
   TEST_ASSERT_EQ(0, memcmp(got, record, sizeof(record)));
 
   /* Report cipher + verify exactly as the firmware example prints them. */
-  uint16_t id                              = 0xFFFFU;
+  uint16_t id                              = k_tls_net_mss_ffff;
   char     name[k_ra8_tls_cipher_name_cap] = {};
-  uint32_t flags                           = 0xFFFFU;
+  uint32_t flags                           = k_tls_net_mss_ffff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_get_cipher_suite(s, &id, name, sizeof(name)));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_tls_get_verify_result(s, &flags));
   TEST_ASSERT_EQ(0, strcmp(name, "sim-tls-loopback"));

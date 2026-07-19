@@ -13,6 +13,27 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum ptp_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ptp_domain_200                  = 200U,
+  k_ptp_mac_addr_11                 = 0x11U,
+  k_ptp_mac_addr_22                 = 0x22U,
+  k_ptp_mac_addr_33                 = 0x33U,
+  k_ptp_mac_addr_44                 = 0x44U,
+  k_ptp_mac_addr_55                 = 0x55U,
+  k_ptp_ra8_ptp_dispatch_message_42 = 42U,
+  k_ptp_ra8_ptp_dispatch_message_7  = 7U,
+  k_ptp_val_5                       = 5,
+} ptp_uint8_const_t;
+
 typedef enum : int64_t {
   k_test_ptp_sec     = 1234567,    /**< Test ptp sec.     */
   k_test_ptp_nsec    = 500000000,  /**< Test ptp nsec.    */
@@ -40,16 +61,16 @@ static void stub_msg_cb(void* ctx, ra8_ptp_msg_type_t type, uint64_t sec, uint32
 
 static ra8_ptp_cfg_t default_cfg(void)
 {
-  ra8_ptp_cfg_t cfg = {.clock_class = k_ra8_ptp_clock_class_default};
-  cfg.domain        = (uint8_t)k_ra8_ptp_domain_default;
-  cfg.sync_interval = k_ra8_ptp_sync_int_1;
-  cfg.clock_class   = k_ra8_ptp_clock_class_default;
-  cfg.mac_addr[0]   = 0x02U;
-  cfg.mac_addr[1]   = 0x11U;
-  cfg.mac_addr[2]   = 0x22U;
-  cfg.mac_addr[3]   = 0x33U;
-  cfg.mac_addr[4]   = 0x44U;
-  cfg.mac_addr[5]   = 0x55U;
+  ra8_ptp_cfg_t cfg         = {.clock_class = k_ra8_ptp_clock_class_default};
+  cfg.domain                = (uint8_t)k_ra8_ptp_domain_default;
+  cfg.sync_interval         = k_ra8_ptp_sync_int_1;
+  cfg.clock_class           = k_ra8_ptp_clock_class_default;
+  cfg.mac_addr[0]           = 0x02U;
+  cfg.mac_addr[1]           = k_ptp_mac_addr_11;
+  cfg.mac_addr[2]           = k_ptp_mac_addr_22;
+  cfg.mac_addr[3]           = k_ptp_mac_addr_33;
+  cfg.mac_addr[4]           = k_ptp_mac_addr_44;
+  cfg.mac_addr[k_ptp_val_5] = k_ptp_mac_addr_55;
   return cfg;
 }
 
@@ -110,7 +131,7 @@ static void test_open_bad_domain(void)
   TEST_BEGIN("ptp open bad domain");
   prep();
   ra8_ptp_cfg_t cfg = default_cfg();
-  cfg.domain        = 200U; /* > k_ra8_ptp_domain_user_max */
+  cfg.domain        = k_ptp_domain_200; /* > k_ra8_ptp_domain_user_max */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ptp_open(&cfg));
   TEST_END("ptp open bad domain");
 }
@@ -291,7 +312,9 @@ static void test_message_handler_dispatch(void)
 
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ptp_attach_message_handler(stub_msg_cb, (void*)(uintptr_t)k_test_ctx_marker));
-  ra8_ptp_dispatch_message(k_ra8_ptp_msg_follow_up, 7U, 42U);
+  ra8_ptp_dispatch_message(k_ra8_ptp_msg_follow_up,
+                           k_ptp_ra8_ptp_dispatch_message_7,
+                           k_ptp_ra8_ptp_dispatch_message_42);
   TEST_ASSERT_EQ(1, s_cb_count);
   TEST_ASSERT_EQ(k_ra8_ptp_msg_follow_up, s_cb_last_type);
   TEST_ASSERT_EQ(7, s_cb_last_sec);

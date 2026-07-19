@@ -21,6 +21,34 @@
 #include "ra8_sram_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum sram_ecc_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_sram_ecc_val_1000 = 0x1000U,
+  k_sram_ecc_val_2000 = 0x2000U,
+  k_sram_ecc_val_3000 = 0x3000U,
+} sram_ecc_uint16_const_t;
+
+/**
+ * @enum sram_ecc_uint64_const_t
+ * @brief Named uint64_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint64_t {
+  k_sram_ecc_dst_deadbeefcafebabe = 0xDEADBEEFCAFEBABEULL,
+} sram_ecc_uint64_const_t;
+
 /* =============================================================================
  * Test constants
  * =============================================================================
@@ -421,7 +449,7 @@ static void test_zero_init_bank_writes_all_zero(void)
   const uint32_t     bytes = ra8_sram_bank_size_bytes((uint8_t)k_ra8_sram_test_bank_last);
   const uint32_t     words = bytes >> (uint32_t)k_ra8_sram_ecc_word_shift;
   for (uint32_t i = 0U; i < words; ++i) {
-    dst[i] = (uint64_t)0xDEADBEEFCAFEBABEULL;
+    dst[i] = (uint64_t)k_sram_ecc_dst_deadbeefcafebabe;
   }
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sram_zero_init_bank((uint8_t)k_ra8_sram_test_bank_last));
@@ -752,9 +780,9 @@ static void test_dispatch_from_esr_walks_all_bits(void)
   regs->SRAMESR =
     (uint16_t)((uint16_t)k_ra8_sram_err_bank0_1bit | (uint16_t)k_ra8_sram_err_bank2_2bit |
                (uint16_t)k_ra8_sram_err_bank3_1bit);
-  regs->SRAMEAR[k_ra8_sram_test_bank_first][0] = 0x1000U;
-  regs->SRAMEAR[k_ra8_sram_test_bank_mid][1]   = 0x2000U;
-  regs->SRAMEAR[k_ra8_sram_test_bank_last][0]  = 0x3000U;
+  regs->SRAMEAR[k_ra8_sram_test_bank_first][0] = k_sram_ecc_val_1000;
+  regs->SRAMEAR[k_ra8_sram_test_bank_mid][1]   = k_sram_ecc_val_2000;
+  regs->SRAMEAR[k_ra8_sram_test_bank_last][0]  = k_sram_ecc_val_3000;
 
   ra8_sram_status_t snapshot = {};
   const uint16_t    fired    = ra8_sram_dispatch_from_esr(&snapshot);

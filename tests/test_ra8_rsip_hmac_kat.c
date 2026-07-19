@@ -30,6 +30,21 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum rsip_hmac_kat_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_rsip_hmac_kat_val_152 = 152U,
+  k_rsip_hmac_kat_val_28  = 28U,
+  k_rsip_hmac_kat_val_54  = 54U,
+} rsip_hmac_kat_uint8_const_t;
+
 /** @brief Test constants for the RFC 4231 vectors. */
 typedef enum : uint32_t {
   k_hmac_key_20  = 20U,   /**< TC1/TC3 key length.                   */
@@ -123,7 +138,7 @@ static void test_hmac_sha256_rfc4231(void)
   expect_hmac((const uint8_t*)"Jefe",
               4U,
               (const uint8_t*)"what do ya want for nothing?",
-              28U,
+              k_rsip_hmac_kat_val_28,
               "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843");
 
   /* TC3: 20-byte 0xaa key, 50-byte 0xdd data. */
@@ -151,7 +166,7 @@ static void test_hmac_sha256_rfc4231(void)
   expect_hmac(s_key,
               k_hmac_key_131,
               (const uint8_t*)"Test Using Larger Than Block-Size Key - Hash Key First",
-              54U,
+              k_rsip_hmac_kat_val_54,
               "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54");
 
   /* TC7: 131-byte 0xaa key (hashed first), 152-byte text. */
@@ -160,7 +175,7 @@ static void test_hmac_sha256_rfc4231(void)
               (const uint8_t*)"This is a test using a larger than block-size key and a larger "
                               "than block-size data. The key needs to be hashed before being "
                               "used by the HMAC algorithm.",
-              152U,
+              k_rsip_hmac_kat_val_152,
               "9b09ffa71b942fcb27635fbcd5b0e944bfdc63644f0713938a7f51535c3a35e2");
 
   TEST_END("RSIP HMAC-SHA-256 RFC 4231 known-answer vectors");

@@ -16,6 +16,40 @@
 #include "ra8_usb_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum usb_phid_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_usb_phid_bm_request_type_21 = 0x21U,
+  k_usb_phid_bm_request_type_80 = 0x80U,
+  k_usb_phid_bm_request_type_a1 = 0xA1U,
+  k_usb_phid_idle_ff            = 0xFFU,
+  k_usb_phid_sentinel_aa        = 0xAAU,
+  k_usb_phid_val_0a             = 0x0AU,
+  k_usb_phid_val_bb             = 0xBBU,
+  k_usb_phid_val_cc             = 0xCCU,
+  k_usb_phid_w_length_18        = 18U,
+} usb_phid_uint8_const_t;
+
+/**
+ * @enum usb_phid_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_usb_phid_w_value_0100 = 0x0100U,
+} usb_phid_uint16_const_t;
+
 /* Sample HID Report descriptor (boot-mouse, USB HID 1.11 appendix B). */
 static const uint8_t s_sample_report_desc[] = {
   0x05,
@@ -107,7 +141,7 @@ static void test_init_hs_default_protocol(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_hs));
 
-  uint8_t idle = 0xFFU;
+  uint8_t idle = k_usb_phid_idle_ff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_get_idle(&idle));
   TEST_ASSERT_EQ(0U, idle);
 
@@ -279,7 +313,7 @@ static void test_send_report_with_id(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
 
-  uint8_t payload[3] = {0xAAU, 0xBBU, 0xCCU};
+  uint8_t payload[3] = {k_usb_phid_sentinel_aa, k_usb_phid_val_bb, k_usb_phid_val_cc};
   /* report_id=2 means framed_len = 1 + 3 = 4, fits inside FS default 8.
    * The FRDY wait converges via the unarmed ra8_sim_mmio seam (see
    * internal_wait_frdy), so a well-formed call returns k_ra8_ok; the
@@ -329,9 +363,9 @@ static void test_attach_setup_handler(void)
 
   /* Drive a SET_IDLE class request through; the callback must fire. */
   ra8_usb_setup_t setup = {
-    .bm_request_type = (uint8_t)0x21U,
+    .bm_request_type = (uint8_t)k_usb_phid_bm_request_type_21,
     .b_request       = (uint8_t)k_ra8_phid_req_set_idle,
-    .w_value         = (uint16_t)((uint16_t)0x0AU << 8U), /* duration = 10 */
+    .w_value         = (uint16_t)((uint16_t)k_usb_phid_val_0a << 8U), /* duration = 10 */
     .w_index         = 0U,
     .w_length        = 0U,
   };
@@ -363,7 +397,7 @@ static void test_handle_setup_set_protocol(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
 
   ra8_usb_setup_t setup = {
-    .bm_request_type = (uint8_t)0x21U,
+    .bm_request_type = (uint8_t)k_usb_phid_bm_request_type_21,
     .b_request       = (uint8_t)k_ra8_phid_req_set_protocol,
     .w_value         = (uint16_t)k_ra8_phid_proto_boot,
     .w_index         = 0U,
@@ -395,17 +429,17 @@ static void test_handle_setup_rejects_standard(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
 
   ra8_usb_setup_t setup = {
-    .bm_request_type = (uint8_t)0x80U, /* standard | device | IN */
-    .b_request       = (uint8_t)0x06U, /* GET_DESCRIPTOR         */
-    .w_value         = (uint16_t)0x0100U,
+    .bm_request_type = (uint8_t)k_usb_phid_bm_request_type_80, /* standard | device | IN */
+    .b_request       = (uint8_t)0x06U,                         /* GET_DESCRIPTOR         */
+    .w_value         = (uint16_t)k_usb_phid_w_value_0100,
     .w_index         = 0U,
-    .w_length        = 18U,
+    .w_length        = k_usb_phid_w_length_18,
   };
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_phid_handle_setup(&setup));
 
   /* Class envelope but unknown bRequest -> not_supported. */
-  setup.bm_request_type = (uint8_t)0x21U;
-  setup.b_request       = (uint8_t)0xFFU;
+  setup.bm_request_type = (uint8_t)k_usb_phid_bm_request_type_21;
+  setup.b_request       = (uint8_t)k_usb_phid_idle_ff;
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_phid_handle_setup(&setup));
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_phid_handle_setup(nullptr));
@@ -425,7 +459,7 @@ static void test_handle_setup_get_report_acks(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_phid_init(k_ra8_usb_speed_fs));
 
   ra8_usb_setup_t setup = {
-    .bm_request_type = (uint8_t)0xA1U,
+    .bm_request_type = (uint8_t)k_usb_phid_bm_request_type_a1,
     .b_request       = (uint8_t)k_ra8_phid_req_get_report,
     .w_value         = (uint16_t)((uint16_t)k_ra8_phid_report_type_input << 8U),
     .w_index         = 0U,
@@ -455,7 +489,7 @@ static void test_handle_setup_callback_stalls(void)
 
   s_setup_cb_return_code = k_ra8_err_not_supported;
   ra8_usb_setup_t setup  = {
-    .bm_request_type = (uint8_t)0xA1U,
+    .bm_request_type = (uint8_t)k_usb_phid_bm_request_type_a1,
     .b_request       = (uint8_t)k_ra8_phid_req_get_report,
     .w_value         = 0U,
     .w_index         = 0U,

@@ -25,6 +25,40 @@
 #include "stb_image.h"
 
 /**
+ * @enum comic_fixture_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_comic_fixture_c_5             = 5U,
+  k_comic_fixture_cf_png_chunk_13 = 13U,
+  k_comic_fixture_v_24            = 24,
+  k_comic_fixture_val_12          = 12U,
+  k_comic_fixture_val_13          = 13,
+  k_comic_fixture_val_5           = 5,
+  k_comic_fixture_val_64          = 64U,
+  k_comic_fixture_val_7           = 7,
+  k_comic_fixture_val_9           = 9,
+} comic_fixture_uint8_const_t;
+
+/**
+ * @enum comic_fixture_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_comic_fixture_u_1024 = 1024U,
+} comic_fixture_uint16_const_t;
+
+/**
  * @enum cf_dim_t
  * @brief Fixed bounds for the fixture PNG scratch buffers.
  */
@@ -38,7 +72,7 @@ typedef enum : uint16_t {
 /** @brief Write a big-endian uint32 (PNG chunk lengths, CRCs, IHDR fields). */
 static inline void cf_put_be32(uint8_t* p, uint32_t v)
 {
-  p[0] = (uint8_t)(v >> 24);
+  p[0] = (uint8_t)(v >> k_comic_fixture_v_24);
   p[1] = (uint8_t)(v >> 16);
   p[2] = (uint8_t)(v >> 8);
   p[3] = (uint8_t)v;
@@ -49,16 +83,16 @@ static inline size_t
 cf_png_chunk(uint8_t* out, const char* type, const uint8_t* data, uint32_t dlen)
 {
   cf_put_be32(&out[0], dlen);
-  out[4] = (uint8_t)type[0];
-  out[5] = (uint8_t)type[1];
-  out[6] = (uint8_t)type[2];
-  out[7] = (uint8_t)type[3];
+  out[4]                     = (uint8_t)type[0];
+  out[k_comic_fixture_val_5] = (uint8_t)type[1];
+  out[6]                     = (uint8_t)type[2];
+  out[k_comic_fixture_val_7] = (uint8_t)type[3];
   if (dlen != 0U) {
     memcpy(&out[8], data, dlen);
   }
   const mz_ulong crc = mz_crc32(MZ_CRC32_INIT, &out[4], (size_t)4U + (size_t)dlen);
   cf_put_be32(&out[8 + dlen], (uint32_t)crc);
-  return (size_t)12U + (size_t)dlen;
+  return (size_t)k_comic_fixture_val_12 + (size_t)dlen;
 }
 
 /**
@@ -80,7 +114,8 @@ static inline size_t cf_make_png(uint16_t w, uint16_t h, uint8_t seed, uint8_t* 
   for (uint16_t r = 0U; r < h; ++r) {
     raw[(size_t)r * (size_t)(w + 1U)] = 0U; /* PNG "none" row filter */
     for (uint16_t c = 0U; c < w; ++c) {
-      raw[((size_t)r * (size_t)(w + 1U)) + 1U + c] = (uint8_t)(seed + (r * 3U) + (c * 5U));
+      raw[((size_t)r * (size_t)(w + 1U)) + 1U + c] =
+        (uint8_t)(seed + (r * 3U) + (c * k_comic_fixture_c_5));
     }
   }
   uint8_t  comp[k_cf_comp_max];
@@ -93,13 +128,13 @@ static inline size_t cf_make_png(uint16_t w, uint16_t h, uint8_t seed, uint8_t* 
   }
   static const uint8_t sig[8] = {137U, 80U, 78U, 71U, 13U, 10U, 26U, 10U};
   memcpy(out, sig, sizeof(sig));
-  size_t  pos      = sizeof(sig);
-  uint8_t ihdr[13] = {};
+  size_t  pos                          = sizeof(sig);
+  uint8_t ihdr[k_comic_fixture_val_13] = {};
   cf_put_be32(&ihdr[0], w);
   cf_put_be32(&ihdr[4], h);
-  ihdr[8] = 8U; /* bit depth             */
-  ihdr[9] = 0U; /* color type: grayscale */
-  pos += cf_png_chunk(&out[pos], "IHDR", ihdr, 13U);
+  ihdr[8]                     = 8U; /* bit depth             */
+  ihdr[k_comic_fixture_val_9] = 0U; /* color type: grayscale */
+  pos += cf_png_chunk(&out[pos], "IHDR", ihdr, k_comic_fixture_cf_png_chunk_13);
   pos += cf_png_chunk(&out[pos], "IDAT", comp, (uint32_t)clen);
   pos += cf_png_chunk(&out[pos], "IEND", nullptr, 0U);
   return pos;
@@ -120,7 +155,7 @@ static inline size_t cf_make_png(uint16_t w, uint16_t h, uint8_t seed, uint8_t* 
  */
 static inline bool cf_decode_ok(const uint8_t* png, size_t len, int exp_w, int exp_h)
 {
-  static uint8_t  s_scratch[64U * 1024U];
+  static uint8_t  s_scratch[k_comic_fixture_val_64 * k_comic_fixture_u_1024];
   ra8_img_arena_t arena = {.base = s_scratch, .cap = sizeof(s_scratch), .offset = 0U, .live = 0U};
   ra8_img_arena_bind(&arena);
   int        w  = 0;

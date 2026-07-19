@@ -42,6 +42,33 @@
 #include "ra8_jof_produce.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum tileatlas_produce_webp_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_tileatlas_produce_webp_crc_24       = 24U,
+  k_tileatlas_produce_webp_s_png_len_12 = 12U,
+  k_tileatlas_produce_webp_val_10       = 10U,
+  k_tileatlas_produce_webp_val_11       = 11U,
+  k_tileatlas_produce_webp_val_12       = 12,
+  k_tileatlas_produce_webp_val_13       = 13,
+  k_tileatlas_produce_webp_val_42       = 0x42U,
+  k_tileatlas_produce_webp_val_60       = 0x60U,
+  k_tileatlas_produce_webp_val_64       = 64,
+  k_tileatlas_produce_webp_val_7        = 7,
+  k_tileatlas_produce_webp_val_82       = 0x82U,
+  k_tileatlas_produce_webp_val_9        = 9,
+  k_tileatlas_produce_webp_val_9_2      = 9U,
+  k_tileatlas_produce_webp_val_ae       = 0xAEU,
+  k_tileatlas_produce_webp_val_ff       = 0xFFU,
+} tileatlas_produce_webp_uint8_const_t;
+
 /* ------------------------------------------------------------------------- */
 /* Committed WebP fixtures under tests/fixtures/webp/, embedded inline. */
 /* ------------------------------------------------------------------------- */
@@ -142,13 +169,13 @@ static ra8_err_t t_mem_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 static uint8_t t_pix(uint32_t x, uint32_t y, uint32_t c)
 {
   if (c == 0U) {
-    return (uint8_t)((x * 32U) & 0xFFU);
+    return (uint8_t)((x * 32U) & k_tileatlas_produce_webp_val_ff);
   }
   if (c == 1U) {
-    return (uint8_t)((y * 32U) & 0xFFU);
+    return (uint8_t)((y * 32U) & k_tileatlas_produce_webp_val_ff);
   }
   if (c == 2U) {
-    return (uint8_t)(((x + y) * 16U) & 0xFFU);
+    return (uint8_t)(((x + y) * 16U) & k_tileatlas_produce_webp_val_ff);
   }
   return (uint8_t)k_t_alpha;
 }
@@ -228,46 +255,59 @@ static void build_rgba_png(void)
       }
     }
   }
-  uint8_t ihdr[13] = {};
-  ihdr[3]          = (uint8_t)k_t_dim; /* width  (big-endian, high bytes 0) */
-  ihdr[7]          = (uint8_t)k_t_dim; /* height                            */
-  ihdr[8]          = 8U;               /* bit depth                         */
-  ihdr[9]          = 6U;               /* colour type: RGBA                 */
-  s_png_len        = 0U;
+  uint8_t ihdr[k_tileatlas_produce_webp_val_13] = {};
+  ihdr[3]                              = (uint8_t)k_t_dim; /* width  (big-endian, high bytes 0) */
+  ihdr[k_tileatlas_produce_webp_val_7] = (uint8_t)k_t_dim; /* height                            */
+  ihdr[8]                              = 8U;               /* bit depth                         */
+  ihdr[k_tileatlas_produce_webp_val_9] = 6U;               /* colour type: RGBA                 */
+  s_png_len                            = 0U;
   memcpy(s_png, sig, sizeof(sig));
-  s_png_len         = sizeof(sig);
-  uint8_t chunk[64] = {};
+  s_png_len                                      = sizeof(sig);
+  uint8_t chunk[k_tileatlas_produce_webp_val_64] = {};
   /* IHDR */
   const uint32_t ihdr_len = (uint32_t)sizeof(ihdr);
   chunk[3]                = (uint8_t)ihdr_len;
   memcpy(&chunk[4], "IHDR", 4U);
   memcpy(&chunk[8], ihdr, ihdr_len);
   uint32_t crc              = (uint32_t)mz_crc32(MZ_CRC32_INIT, &chunk[4], 4U + (size_t)ihdr_len);
-  chunk[8U + ihdr_len + 0U] = (uint8_t)(crc >> 24U);
-  chunk[8U + ihdr_len + 1U] = (uint8_t)((crc >> 16U) & 0xFFU);
-  chunk[8U + ihdr_len + 2U] = (uint8_t)((crc >> 8U) & 0xFFU);
-  chunk[8U + ihdr_len + 3U] = (uint8_t)(crc & 0xFFU);
+  chunk[8U + ihdr_len + 0U] = (uint8_t)(crc >> k_tileatlas_produce_webp_crc_24);
+  chunk[8U + ihdr_len + 1U] = (uint8_t)((crc >> 16U) & k_tileatlas_produce_webp_val_ff);
+  chunk[8U + ihdr_len + 2U] = (uint8_t)((crc >> 8U) & k_tileatlas_produce_webp_val_ff);
+  chunk[8U + ihdr_len + 3U] = (uint8_t)(crc & k_tileatlas_produce_webp_val_ff);
   memcpy(&s_png[s_png_len], chunk, 12U + (size_t)ihdr_len);
-  s_png_len += 12U + (size_t)ihdr_len;
+  s_png_len += k_tileatlas_produce_webp_s_png_len_12 + (size_t)ihdr_len;
   /* IDAT */
   mz_ulong zlen = (mz_ulong)sizeof(s_zbuf);
   TEST_ASSERT_EQ(MZ_OK,
                  mz_compress(s_zbuf, &zlen, s_raw, (mz_ulong)((rowb + 1U) * (uint32_t)k_t_dim)));
   uint8_t* p = &s_png[s_png_len];
-  p[0]       = (uint8_t)(zlen >> 24U);
-  p[1]       = (uint8_t)((zlen >> 16U) & 0xFFU);
-  p[2]       = (uint8_t)((zlen >> 8U) & 0xFFU);
-  p[3]       = (uint8_t)(zlen & 0xFFU);
+  p[0]       = (uint8_t)(zlen >> k_tileatlas_produce_webp_crc_24);
+  p[1]       = (uint8_t)((zlen >> 16U) & k_tileatlas_produce_webp_val_ff);
+  p[2]       = (uint8_t)((zlen >> 8U) & k_tileatlas_produce_webp_val_ff);
+  p[3]       = (uint8_t)(zlen & k_tileatlas_produce_webp_val_ff);
   memcpy(&p[4], "IDAT", 4U);
   memcpy(&p[8], s_zbuf, (size_t)zlen);
-  crc           = (uint32_t)mz_crc32(MZ_CRC32_INIT, &p[4], 4U + (size_t)zlen);
-  p[8U + zlen]  = (uint8_t)(crc >> 24U);
-  p[9U + zlen]  = (uint8_t)((crc >> 16U) & 0xFFU);
-  p[10U + zlen] = (uint8_t)((crc >> 8U) & 0xFFU);
-  p[11U + zlen] = (uint8_t)(crc & 0xFFU);
-  s_png_len += 12U + (size_t)zlen;
+  crc          = (uint32_t)mz_crc32(MZ_CRC32_INIT, &p[4], 4U + (size_t)zlen);
+  p[8U + zlen] = (uint8_t)(crc >> k_tileatlas_produce_webp_crc_24);
+  p[k_tileatlas_produce_webp_val_9_2 + zlen] =
+    (uint8_t)((crc >> 16U) & k_tileatlas_produce_webp_val_ff);
+  p[k_tileatlas_produce_webp_val_10 + zlen] =
+    (uint8_t)((crc >> 8U) & k_tileatlas_produce_webp_val_ff);
+  p[k_tileatlas_produce_webp_val_11 + zlen] = (uint8_t)(crc & k_tileatlas_produce_webp_val_ff);
+  s_png_len += k_tileatlas_produce_webp_s_png_len_12 + (size_t)zlen;
   /* IEND */
-  uint8_t iend[12] = {0U, 0U, 0U, 0U, 'I', 'E', 'N', 'D', 0xAEU, 0x42U, 0x60U, 0x82U};
+  uint8_t iend[k_tileatlas_produce_webp_val_12] = {0U,
+                                                   0U,
+                                                   0U,
+                                                   0U,
+                                                   'I',
+                                                   'E',
+                                                   'N',
+                                                   'D',
+                                                   k_tileatlas_produce_webp_val_ae,
+                                                   k_tileatlas_produce_webp_val_42,
+                                                   k_tileatlas_produce_webp_val_60,
+                                                   k_tileatlas_produce_webp_val_82};
   memcpy(&s_png[s_png_len], iend, sizeof(iend));
   s_png_len += sizeof(iend);
 }

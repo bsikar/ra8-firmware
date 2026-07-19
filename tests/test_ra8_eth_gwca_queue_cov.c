@@ -36,6 +36,21 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum eth_gwca_queue_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_eth_gwca_queue_cov_i_64        = 64U,
+  k_eth_gwca_queue_cov_sentinel_a5 = 0xA5U,
+  k_eth_gwca_queue_cov_val_64      = 64,
+} eth_gwca_queue_cov_uint8_const_t;
+
+/**
  * @brief SRAM-window base for host-round-trippable TX buffers.
  *
  * @details ra8_sim_mmap maps 0x22000000..0x221FFFFF (2 MiB SRAM) as
@@ -142,11 +157,11 @@ static void test_tx_frame_happy(void)
   prep();
   [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_chain[4];
   uint8_t* const                                          pool = (uint8_t*)k_sram_tx_pool_addr;
-  static uint8_t                                          s_frame[64];
+  static uint8_t                                          s_frame[k_eth_gwca_queue_cov_val_64];
   uint32_t                                                tail = 0U;
 
-  for (uint32_t i = 0U; i < 64U; ++i) {
-    s_frame[i] = (uint8_t)(0xA5U ^ i);
+  for (uint32_t i = 0U; i < k_eth_gwca_queue_cov_i_64; ++i) {
+    s_frame[i] = (uint8_t)(k_eth_gwca_queue_cov_sentinel_a5 ^ i);
   }
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(s_chain, 4U, 128U));
@@ -156,7 +171,7 @@ static void test_tx_frame_happy(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_tx_frame(s_chain, 4U, &tail, s_frame, 64U, 128U));
 
   /* Frame bytes copied into the slot buffer. */
-  for (uint32_t i = 0U; i < 64U; ++i) {
+  for (uint32_t i = 0U; i < k_eth_gwca_queue_cov_i_64; ++i) {
     TEST_ASSERT_EQ(s_frame[i], pool[i]);
   }
   /* DS stamped to frame_len, DT flipped to FSINGLE, tail advanced. */
@@ -184,7 +199,7 @@ static void test_tx_frame_queue_full(void)
   prep();
   [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_chain[4];
   uint8_t* const                                          pool = (uint8_t*)k_sram_tx_pool_addr;
-  static uint8_t                                          s_frame[64];
+  static uint8_t                                          s_frame[k_eth_gwca_queue_cov_val_64];
   uint32_t                                                tail = 0U;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_gwca_init_ring(s_chain, 4U, 128U));
@@ -216,7 +231,7 @@ static void test_tx_frame_unbacked_slot(void)
   TEST_BEGIN("tx_frame unbacked slot");
   prep();
   [[gnu::aligned(16)]] static ra8_gwca_basic_descriptor_t s_chain[4];
-  static uint8_t                                          s_frame[64];
+  static uint8_t                                          s_frame[k_eth_gwca_queue_cov_val_64];
   uint32_t                                                tail = 0U;
 
   /* init_ring leaves ptr_h/ptr_l at zero (buffers not yet attached). */

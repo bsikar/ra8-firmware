@@ -26,6 +26,34 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum adc_scan_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_adc_scan_channels_5 = 5U,
+} adc_scan_uint8_const_t;
+
+/**
+ * @enum adc_scan_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_adc_scan_val_0111 = 0x0111U,
+  k_adc_scan_val_0222 = 0x0222U,
+  k_adc_scan_val_0333 = 0x0333U,
+} adc_scan_uint16_const_t;
+
 typedef enum : uint8_t {
   k_ra8_adc_test_ch_zero  = 0U,   /**< RA8 ADC test channel zero.        */
   k_ra8_adc_test_ch_valid = 5U,   /**< RA8 ADC test channel valid.       */
@@ -96,7 +124,7 @@ static ra8_adc_scan_group_cfg_t make_scan_cfg(void)
   ra8_adc_scan_group_cfg_t cfg = {};
   cfg.num_channels             = 3U;
   cfg.channels[0]              = 4U;
-  cfg.channels[1]              = 5U;
+  cfg.channels[1]              = k_adc_scan_channels_5;
   cfg.channels[2]              = 6U;
   cfg.trigger                  = k_ra8_adc_trig_src_software;
   cfg.priority                 = k_ra8_adc_priority_high;
@@ -235,9 +263,9 @@ static void test_read_group_results_happy(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_configure_scan_group(k_ra8_adc_test_group_one, &cfg));
 
   /* Pre-load distinct ADDR slots so we can verify ordering. */
-  *ra8_adc_b_addr(cfg.channels[0]) = 0x0111U;
-  *ra8_adc_b_addr(cfg.channels[1]) = 0x0222U;
-  *ra8_adc_b_addr(cfg.channels[2]) = 0x0333U;
+  *ra8_adc_b_addr(cfg.channels[0]) = k_adc_scan_val_0111;
+  *ra8_adc_b_addr(cfg.channels[1]) = k_adc_scan_val_0222;
+  *ra8_adc_b_addr(cfg.channels[2]) = k_adc_scan_val_0333;
 
   uint16_t buf[8] = {};
   uint8_t  count  = 0U;

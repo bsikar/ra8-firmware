@@ -18,6 +18,28 @@
 #include "ra8_app.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum app_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_app_make_app_10   = 10,
+  k_app_make_app_100  = 100,
+  k_app_make_app_20   = 20,
+  k_app_make_app_200  = 200,
+  k_app_make_app_30   = 30,
+  k_app_make_app_7    = 7,
+  k_app_make_app_9    = 9,
+  k_app_make_app_vt_5 = 5,
+  k_app_n_99          = 99U,
+  k_app_val_77        = 77U,
+} app_uint8_const_t;
+
 typedef struct {
   uint32_t init_calls;   /**< Init calls.                                */
   uint32_t enter_calls;  /**< Enter calls.                               */
@@ -119,7 +141,7 @@ static void test_register(void)
   ra8_app_t          a0    = make_app(&c0, 1, "lib");
   ra8_app_t          a1    = make_app(&c1, 2, "rdr");
   ra8_app_t          adup  = make_app(&cdup, 1, "dup");
-  ra8_app_t          afail = make_app(&cfail, 9, "bad");
+  ra8_app_t          afail = make_app(&cfail, k_app_make_app_9, "bad");
   ra8_app_t*         slots[2];
   ra8_app_registry_t reg = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_registry_init(&reg, slots, 2U));
@@ -144,7 +166,7 @@ static void test_register(void)
   ra8_app_registry_t reg2 = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_registry_init(&reg2, slots2, 2U));
   TEST_ASSERT_EQ(k_ra8_err_hw_init_failed, ra8_app_register(&reg2, &afail));
-  uint16_t n = 99U;
+  uint16_t n = k_app_n_99;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_count(&reg2, &n));
   TEST_ASSERT_EQ(0U, n);
   TEST_ASSERT_EQ(false, afail.initialized);
@@ -458,7 +480,7 @@ nav_check_back_stack(ra8_app_nav_t* nav, ra8_app_registry_t* reg, app_ctx_t* c0,
 {
   /* go_index(0): Decision A false (no prior app) -> nothing pushed, depth 0. */
   ra8_app_t* act   = nullptr;
-  uint16_t   depth = 99U;
+  uint16_t   depth = k_app_n_99;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_go_index(nav, 0U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_active(reg, &act));
   TEST_ASSERT_EQ(10, act->id);
@@ -532,8 +554,8 @@ static void nav_check_push_capacity(void)
 {
   app_ctx_t          mc0 = {};
   app_ctx_t          mc1 = {};
-  ra8_app_t          m0  = make_app(&mc0, 100, "m0");
-  ra8_app_t          m1  = make_app(&mc1, 200, "m1");
+  ra8_app_t          m0  = make_app(&mc0, k_app_make_app_100, "m0");
+  ra8_app_t          m1  = make_app(&mc1, k_app_make_app_200, "m1");
   ra8_app_t*         mslots[2];
   ra8_app_registry_t mreg = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_registry_init(&mreg, mslots, 2U));
@@ -599,9 +621,9 @@ static void test_nav_go_index(void)
   app_ctx_t          c0 = {};
   app_ctx_t          c1 = {};
   app_ctx_t          c2 = {};
-  ra8_app_t          a0 = make_app(&c0, 10, "library");
-  ra8_app_t          a1 = make_app(&c1, 20, "reader");
-  ra8_app_t          a2 = make_app(&c2, 30, "settings");
+  ra8_app_t          a0 = make_app(&c0, k_app_make_app_10, "library");
+  ra8_app_t          a1 = make_app(&c1, k_app_make_app_20, "reader");
+  ra8_app_t          a2 = make_app(&c2, k_app_make_app_30, "settings");
   ra8_app_t*         slots[3];
   ra8_app_registry_t reg = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_registry_init(&reg, slots, 3U));
@@ -687,7 +709,7 @@ static void test_zero_cap_and_nav_launch_errors(void)
   uint16_t      trail[2] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_init(&nav, &reg, trail, 2U));
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_app_nav_go(&nav, 99U));
-  uint16_t depth = 99U;
+  uint16_t depth = k_app_n_99;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_nav_depth(&nav, &depth));
   TEST_ASSERT_EQ(0U, depth); /* failing launch pushed nothing */
   ra8_app_t* act = &a0;
@@ -697,7 +719,7 @@ static void test_zero_cap_and_nav_launch_errors(void)
   /* L250/L251: nav_back whose trail entry no longer resolves. A hand-built nav
    * with depth 1 and a stack id absent from the registry makes the relaunch
    * return `k_ra8_err_not_found`; it is forwarded and the stack is left intact. */
-  uint16_t      btrail[1] = {77U}; /* id 77 was never registered */
+  uint16_t      btrail[1] = {k_app_val_77}; /* id 77 was never registered */
   ra8_app_nav_t bnav      = {.reg = &reg, .stack = btrail, .cap = 1U, .depth = 1U};
   bool          popped    = true;
   TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_app_nav_back(&bnav, &popped));
@@ -849,7 +871,7 @@ static void uninstall_check_deinit_null(ra8_app_registry_t* reg)
 {
   uint16_t  n    = 0U;
   app_ctx_t cnd  = {};
-  ra8_app_t andn = make_app_vt(&cnd, 5, "nodeinit", &k_app_vt_null);
+  ra8_app_t andn = make_app_vt(&cnd, k_app_make_app_vt_5, "nodeinit", &k_app_vt_null);
   andn.removable = true;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_register(reg, &andn)); /* idx 2              */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_app_uninstall(reg, 5));    /* deinit guard false */
@@ -869,7 +891,7 @@ static void uninstall_check_active_none(void)
 {
   uint16_t  n  = 0U;
   app_ctx_t fc = {};
-  ra8_app_t fa = make_app(&fc, 7, "free");
+  ra8_app_t fa = make_app(&fc, k_app_make_app_7, "free");
   fa.removable = true;
   ra8_app_t*         fslots[1];
   ra8_app_registry_t freg = {};

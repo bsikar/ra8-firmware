@@ -33,6 +33,23 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum flash_edge_cases_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_flash_edge_cases_i_64            = 64U,
+  k_flash_edge_cases_mrcfreq_mhz_200 = 200U,
+  k_flash_edge_cases_mrefreq_mhz_100 = 100U,
+  k_flash_edge_cases_p_5a            = 0x5AU,
+  k_flash_edge_cases_p_ff            = 0xFFU,
+} flash_edge_cases_uint8_const_t;
+
 typedef enum : uint32_t {
   k_flash_edge_addr_extra_in   = 0x02C9F040UL, /**< Flash edge address extra in.   */
   k_flash_edge_addr_extra_bad  = 0x03100000UL, /**< Past extra-MRAM end.           */
@@ -42,8 +59,8 @@ typedef enum : uint32_t {
 static ra8_flash_cfg_t make_cfg(void)
 {
   return (ra8_flash_cfg_t){
-    .mrcfreq_mhz        = 200U,
-    .mrefreq_mhz        = 100U,
+    .mrcfreq_mhz        = k_flash_edge_cases_mrcfreq_mhz_200,
+    .mrefreq_mhz        = k_flash_edge_cases_mrefreq_mhz_100,
     .prefetch_en        = true,
     .ecc_encoder_enable = true,
     .ecc_decoder_enable = true,
@@ -68,7 +85,7 @@ static void test_blank_check_partial_page(void)
   /* Stage a 32-byte page where only the first 16 bytes are erased. */
   volatile uint8_t* p = (volatile uint8_t*)(uintptr_t)k_flash_edge_addr_extra_in;
   for (uint32_t i = 0U; i < 16U; ++i) {
-    p[i] = 0xFFU;
+    p[i] = k_flash_edge_cases_p_ff;
   }
   for (uint32_t i = 16U; i < 32U; ++i) {
     p[i] = (uint8_t)i;
@@ -106,10 +123,10 @@ static void test_blank_check_page_boundary(void)
    * the full span across the page boundary. */
   volatile uint8_t* p = (volatile uint8_t*)(uintptr_t)k_flash_edge_addr_extra_in;
   for (uint32_t i = 0U; i < 32U; ++i) {
-    p[i] = 0x5AU;
+    p[i] = k_flash_edge_cases_p_5a;
   }
-  for (uint32_t i = 32U; i < 64U; ++i) {
-    p[i] = 0xFFU;
+  for (uint32_t i = 32U; i < k_flash_edge_cases_i_64; ++i) {
+    p[i] = k_flash_edge_cases_p_ff;
   }
   bool blank = true;
   TEST_ASSERT_EQ(k_ra8_ok,

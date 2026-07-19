@@ -30,6 +30,19 @@
 #include "ra8_stbtt_guard.h" /* sfnt table-directory bounds guard (#217)       */
 #include "stb_truetype.h"    /* stbtt_fontinfo + glyph API (declarations only) */
 
+/**
+ * @enum stbtt_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_stbtt_u_20 = 20,
+} stbtt_uint8_const_t;
+
 enum : int32_t {
   k_fuzz_ttf_px        = 24,  /**< Rasterisation height, pixels.      */
   k_fuzz_glyph_max_dim = 128, /**< Per-axis glyph bitmap cap, pixels. */
@@ -47,7 +60,7 @@ static const int32_t s_codepoints[] = {0x41, 0x67, 0x30, 0x20, 0xE9, 0x2014};
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-  if (size == 0U || size > (1U << 20)) {
+  if (size == 0U || size > (1U << k_stbtt_u_20)) {
     return 0;
   }
   /* stbtt_GetFontOffsetForIndex returns -1 for non-TTF input; stbtt_InitFont

@@ -40,6 +40,33 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum usb_host_bulk_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_usb_host_bulk_cov_val_30 = 0x30U,
+  k_usb_host_bulk_cov_val_40 = 0x40U,
+} usb_host_bulk_cov_uint8_const_t;
+
+/**
+ * @enum usb_host_bulk_cov_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_usb_host_bulk_cov_got_ffff = 0xFFFFU,
+} usb_host_bulk_cov_uint16_const_t;
+
+/**
  * @enum thb_const_t
  * @brief Named test vectors for the host bulk-engine coverage suite.
  *
@@ -286,7 +313,10 @@ static void test_bulk_out_wait_timeout(void)
   TEST_BEGIN("ra8_usb_host_bulk_out arms BEMP then times out with no BEMP event");
   prep();
 
-  uint8_t data[k_thb_len_ok] = {0x10U, 0x20U, 0x30U, 0x40U};
+  uint8_t data[k_thb_len_ok] = {0x10U,
+                                0x20U,
+                                k_usb_host_bulk_cov_val_30,
+                                k_usb_host_bulk_cov_val_40};
 
   /* The sim cannot re-assert BEMPSTS after the engine clears it, so the
    * bounded spin runs to the poll limit and reports a hardware timeout. */
@@ -575,7 +605,7 @@ static void test_bulk_in_frdy_timeout(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_sim_mmio_fail_wait((const volatile void*)&reg->CFIFOCTR));
 
   uint8_t  buf[k_thb_mps] = {};
-  uint16_t got            = 0xFFFFU;
+  uint16_t got            = k_usb_host_bulk_cov_got_ffff;
   TEST_ASSERT_EQ(
     k_ra8_err_hw_timeout,
     ra8_usb_host_bulk_in(k_ra8_usb_speed_fs, (uint8_t)k_thb_pipe, buf, (uint16_t)k_thb_mps, &got));

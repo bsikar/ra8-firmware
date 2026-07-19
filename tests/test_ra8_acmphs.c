@@ -14,6 +14,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum acmphs_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_acmphs_cmpctl_ff = 0xFFU,
+} acmphs_uint8_const_t;
+
 typedef enum : uint8_t {
   k_ra8_acmphs_test_ch_first = 0U,   /**< RA8 acmphs test channel first. */
   k_ra8_acmphs_test_ch_mid   = 3U,   /**< RA8 acmphs test channel mid.   */
@@ -35,7 +48,7 @@ static void test_init_happy(void)
 
   volatile r_acmphs_regs_t* reg = ra8_acmphs((uint8_t)k_ra8_acmphs_test_ch_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  reg->CMPCTL = 0xFFU;
+  reg->CMPCTL = k_acmphs_cmpctl_ff;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_acmphs_init());
   TEST_ASSERT_EQ(0, reg->CMPCTL);

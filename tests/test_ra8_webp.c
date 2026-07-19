@@ -33,6 +33,20 @@
 #include "ra8_webp_arena.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum webp_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_webp_u_20   = 20,
+  k_webp_val_64 = 64U,
+} webp_uint8_const_t;
+
 /* ------------------------------------------------------------------------- */
 /* Committed fixtures under tests/fixtures/webp/, embedded inline. */
 /* ------------------------------------------------------------------------- */
@@ -80,7 +94,7 @@ typedef enum : uint32_t {
 } test_webp_consts_t;
 
 /** 1 MiB scratch backing store shared by the decode tests. */
-alignas(16) static uint8_t s_scratch[1U << 20];
+alignas(16) static uint8_t s_scratch[1U << k_webp_u_20];
 
 /** @brief Fresh full-size arena over ::s_scratch. */
 static ra8_webp_arena_t fresh_arena(void)
@@ -401,7 +415,7 @@ static void test_decode_stride_over_int_max(void)
 static void test_decode_arena_oom(void)
 {
   TEST_BEGIN("ra8_webp_decode_rgba: arena OOM -> clean failure");
-  static uint8_t   s_tiny[64U];
+  static uint8_t   s_tiny[k_webp_val_64];
   ra8_webp_arena_t arena = {.base = s_tiny, .cap = sizeof s_tiny, .offset = 0U, .live = 0U};
   uint8_t          fb[k_fb_bytes] = {};
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
@@ -489,7 +503,7 @@ static void test_arena_malloc_and_bind(void)
 static void test_arena_calloc_overflow_mcdc(void)
 {
   TEST_BEGIN("ra8_webp_arena_calloc: overflow MC/DC");
-  static uint8_t   s_buf[64U];
+  static uint8_t   s_buf[k_webp_val_64];
   ra8_webp_arena_t a = {.base = s_buf, .cap = sizeof s_buf, .offset = 0U, .live = 0U};
   ra8_webp_arena_bind(&a);
 
@@ -527,7 +541,7 @@ static void test_arena_calloc_overflow_mcdc(void)
 static void test_arena_free_mcdc(void)
 {
   TEST_BEGIN("ra8_webp_arena_free: null-guard MC/DC");
-  static uint8_t   s_buf[64U];
+  static uint8_t   s_buf[k_webp_val_64];
   ra8_webp_arena_t a = {.base = s_buf, .cap = sizeof s_buf, .offset = 0U, .live = 0U};
   ra8_webp_arena_bind(&a);
 

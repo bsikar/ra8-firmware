@@ -63,6 +63,19 @@
 #include "rabook_parity_fixture.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum rabook_import_streamed_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_rabook_import_streamed_i_31 = 31U,
+} rabook_import_streamed_uint8_const_t;
+
 /* -------------------------------------------------------------------------- */
 /* Sizing + storage */
 /* -------------------------------------------------------------------------- */
@@ -280,7 +293,8 @@ static const char* const k_ch4 =
 static void build_big_epub(void)
 {
   for (size_t i = 0U; i < (size_t)k_st_filler_bytes; ++i) {
-    s_filler[i] = (uint8_t)((i * 31U) + (i >> 3U)); /* varied, not trivially compressible */
+    s_filler[i] = (uint8_t)((i * k_rabook_import_streamed_i_31) +
+                            (i >> 3U)); /* varied, not trivially compressible */
   }
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));

@@ -28,6 +28,32 @@
 #include "ra8_sim_mmio.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum ceu_config_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_ceu_config_val_200 = 0x200U,
+} ceu_config_uint16_const_t;
+
+/**
+ * @enum ceu_config_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_ceu_config_sentinel_cafe0000 = 0xCAFE0000UL,
+} ceu_config_uint32_const_t;
+
 typedef enum : uint16_t {
   k_test_ceu_width  = 1280U, /**< Test CEU width.  */
   k_test_ceu_height = 720U,  /**< Test CEU height. */
@@ -164,7 +190,7 @@ static void test_status_snapshot(void)
   *ra8_ceu_reg32(k_ra8_ceu_off_cetcr) = (uint32_t)k_ra8_ceu_evt_cpe;
   *ra8_ceu_reg32(k_ra8_ceu_off_cstsr) =
     (uint32_t)k_ra8_ceu_cstsr_mask_cpton | (uint32_t)k_ra8_ceu_cstsr_mask_cpfld;
-  *ra8_ceu_reg32(k_ra8_ceu_off_cdssr) = 0x200U;
+  *ra8_ceu_reg32(k_ra8_ceu_off_cdssr) = k_ceu_config_val_200;
 
   ra8_ceu_status_t st = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_status_snapshot(&st));
@@ -186,7 +212,7 @@ static void test_data_size_get(void)
 {
   TEST_BEGIN("ceu data_size_get");
   prep();
-  *ra8_ceu_reg32(k_ra8_ceu_off_cdssr) = 0xCAFE0000UL;
+  *ra8_ceu_reg32(k_ra8_ceu_off_cdssr) = k_ceu_config_sentinel_cafe0000;
   uint32_t bytes                      = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ceu_data_size_get(&bytes));
   TEST_ASSERT_EQ(0xCAFE0000UL, bytes);

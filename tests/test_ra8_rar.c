@@ -33,6 +33,55 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum rar_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_rar_b_80           = 0x80U,
+  k_rar_data_off_50    = 50U,
+  k_rar_h_5            = 5U,
+  k_rar_i_31           = 31U,
+  k_rar_out_20         = 20U,
+  k_rar_out_30         = 0x30U,
+  k_rar_out_73         = 0x73U,
+  k_rar_out_74         = 0x74U,
+  k_rar_out_7b         = 0x7BU,
+  k_rar_s_arc_size_100 = 100U,
+  k_rar_tr_le16_13     = 13U,
+  k_rar_tr_le16_26     = 26,
+  k_rar_tr_le16_5      = 5,
+  k_rar_tr_le32_11     = 11,
+  k_rar_tr_le32_20     = 20,
+  k_rar_tr_le32_28     = 28,
+  k_rar_tr_le32_7      = 7,
+  k_rar_v_24           = 24,
+  k_rar_v_7f           = 0x7FU,
+  k_rar_val_15         = 15,
+  k_rar_val_25         = 25,
+  k_rar_val_7          = 7U,
+} rar_uint8_const_t;
+
+/**
+ * @enum rar_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_rar_data_off_990 = 990U,
+  k_rar_tr_le16_8000 = 0x8000U,
+  k_rar_val_256      = 256,
+} rar_uint16_const_t;
+
+/**
  * @enum tr_dim_t
  * @brief Fixture geometry + buffer budgets (tests are magic-number exempt).
  */
@@ -102,10 +151,10 @@ static size_t tr_vint(uint8_t* out, uint64_t v)
 {
   size_t i = 0U;
   for (;;) {
-    uint8_t b = (uint8_t)(v & 0x7FU);
-    v >>= 7U;
+    uint8_t b = (uint8_t)(v & k_rar_v_7f);
+    v >>= k_rar_val_7;
     if (v != 0U) {
-      out[i] = (uint8_t)(b | 0x80U);
+      out[i] = (uint8_t)(b | k_rar_b_80);
       i++;
     } else {
       out[i] = b;
@@ -185,27 +234,27 @@ static void tr_le32(uint8_t* p, uint32_t v)
   p[0] = (uint8_t)v;
   p[1] = (uint8_t)(v >> 8);
   p[2] = (uint8_t)(v >> 16);
-  p[3] = (uint8_t)(v >> 24);
+  p[3] = (uint8_t)(v >> k_rar_v_24);
 }
 
 /** @brief Encode a RAR4 STORE file block. */
 static size_t tr4_file(uint8_t* out, const char* name, const uint8_t* data, size_t dlen)
 {
   const size_t nlen = strlen(name);
-  const size_t head = 32U + nlen; /* fixed fields + name (no LARGE/salt/exttime) */
-  tr_le16(&out[0], 0U);           /* head_crc (unverified)                       */
-  out[2] = 0x74U;                 /* type: file                                  */
-  tr_le16(&out[3], 0x8000U);      /* flags: LONG (ADD_SIZE present)              */
-  tr_le16(&out[5], (uint16_t)head);
-  tr_le32(&out[7], (uint32_t)dlen);  /* pack_size == add_size */
-  tr_le32(&out[11], (uint32_t)dlen); /* unp_size              */
-  out[15] = 0U;                      /* host_os               */
-  tr_le32(&out[16], 0U);             /* file_crc              */
-  tr_le32(&out[20], 0U);             /* ftime                 */
-  out[24] = 20U;                     /* unp_ver               */
-  out[25] = 0x30U;                   /* method: store         */
-  tr_le16(&out[26], (uint16_t)nlen);
-  tr_le32(&out[28], 0U); /* attr */
+  const size_t head = 32U + nlen;       /* fixed fields + name (no LARGE/salt/exttime) */
+  tr_le16(&out[0], 0U);                 /* head_crc (unverified)                       */
+  out[2] = k_rar_out_74;                /* type: file                                  */
+  tr_le16(&out[3], k_rar_tr_le16_8000); /* flags: LONG (ADD_SIZE present)              */
+  tr_le16(&out[k_rar_tr_le16_5], (uint16_t)head);
+  tr_le32(&out[k_rar_tr_le32_7], (uint32_t)dlen);  /* pack_size == add_size */
+  tr_le32(&out[k_rar_tr_le32_11], (uint32_t)dlen); /* unp_size              */
+  out[k_rar_val_15] = 0U;                          /* host_os               */
+  tr_le32(&out[16], 0U);                           /* file_crc              */
+  tr_le32(&out[k_rar_tr_le32_20], 0U);             /* ftime                 */
+  out[k_rar_v_24]   = k_rar_out_20;                /* unp_ver               */
+  out[k_rar_val_25] = k_rar_out_30;                /* method: store         */
+  tr_le16(&out[k_rar_tr_le16_26], (uint16_t)nlen);
+  tr_le32(&out[k_rar_tr_le32_28], 0U); /* attr */
   memcpy(&out[32], name, nlen);
   memcpy(&out[head], data, dlen);
   return head + dlen;
@@ -215,30 +264,30 @@ static size_t tr4_file(uint8_t* out, const char* name, const uint8_t* data, size
 static size_t tr4_main(uint8_t* out)
 {
   tr_le16(&out[0], 0U);
-  out[2] = 0x73U; /* type: main */
+  out[2] = k_rar_out_73; /* type: main */
   tr_le16(&out[3], 0U);
-  tr_le16(&out[5], 13U);  /* head_size         */
-  memset(&out[7], 0, 6U); /* HighPosAV + PosAV */
-  return 13U;
+  tr_le16(&out[k_rar_tr_le16_5], k_rar_tr_le16_13); /* head_size         */
+  memset(&out[7], 0, 6U);                           /* HighPosAV + PosAV */
+  return k_rar_tr_le16_13;
 }
 
 /** @brief Encode the RAR4 end-of-archive block. */
 static size_t tr4_end(uint8_t* out)
 {
   tr_le16(&out[0], 0U);
-  out[2] = 0x7BU; /* type: end */
+  out[2] = k_rar_out_7b; /* type: end */
   tr_le16(&out[3], 0U);
-  tr_le16(&out[5], 7U);
-  return 7U;
+  tr_le16(&out[k_rar_tr_le16_5], k_rar_val_7);
+  return k_rar_val_7;
 }
 
 /** @brief Build the four source PNGs (shared by both archive builders). */
 static void tr_build_imgs(void)
 {
   s_imgs[0] = (tr_img_t){.name = "img01.png", .w = 6U, .h = 4U, .seed = 1U};
-  s_imgs[1] = (tr_img_t){.name = "img02.png", .w = 8U, .h = 5U, .seed = 2U};
-  s_imgs[2] = (tr_img_t){.name = "img03.png", .w = 4U, .h = 7U, .seed = 3U};
-  s_imgs[3] = (tr_img_t){.name = "sub/img04.png", .w = 5U, .h = 6U, .seed = 4U};
+  s_imgs[1] = (tr_img_t){.name = "img02.png", .w = 8U, .h = k_rar_h_5, .seed = 2U};
+  s_imgs[2] = (tr_img_t){.name = "img03.png", .w = 4U, .h = k_rar_val_7, .seed = 3U};
+  s_imgs[3] = (tr_img_t){.name = "sub/img04.png", .w = k_rar_h_5, .h = 6U, .seed = 4U};
   for (uint32_t i = 0U; i < k_tr_img_count; ++i) {
     s_imgs[i].plen =
       cf_make_png(s_imgs[i].w, s_imgs[i].h, s_imgs[i].seed, s_imgs[i].png, sizeof(s_imgs[i].png));
@@ -255,7 +304,7 @@ static void tr_build_rar5(void)
 {
   tr_build_imgs();
   for (size_t i = 0U; i < sizeof(s_filler); ++i) {
-    s_filler[i] = (uint8_t)((i * 31U) + (i >> 3U));
+    s_filler[i] = (uint8_t)((i * k_rar_i_31) + (i >> 3U));
   }
   static const uint8_t k_sig[8] = {0x52U, 0x61U, 0x72U, 0x21U, 0x1AU, 0x07U, 0x01U, 0x00U};
   size_t               p        = 0U;
@@ -275,8 +324,8 @@ static void tr_build_rar5(void)
                 s_imgs[3].png,
                 s_imgs[3].plen,
                 0U,
-                false);           /* sub/img04 store */
-  p += tr5_simple(&s_arc[p], 5U); /* end             */
+                false);                  /* sub/img04 store */
+  p += tr5_simple(&s_arc[p], k_rar_h_5); /* end             */
   s_arc_size = p;
 }
 
@@ -634,8 +683,8 @@ static void test_rar5_block_vint_legs(void)
   uint8_t      k_wrap[16] = {};
   const size_t vlen       = tr_vint(&k_wrap[4], 0xFFFFFFFFFFFFFFF2ULL);
   TEST_ASSERT_EQ(10U, vlen);
-  k_wrap[4U + vlen] = 0x01U; /* header type = non-file */
-  k_wrap[5U + vlen] = 0x00U; /* header flags           */
+  k_wrap[4U + vlen]        = 0x01U; /* header type = non-file */
+  k_wrap[k_rar_h_5 + vlen] = 0x00U; /* header flags           */
   tr_put5(k_wrap, 6U + vlen);
   {
     ra8_rar_t       rar = tr_open_arc();
@@ -775,7 +824,7 @@ static void test_rar_open_next_extract_edges(void)
 
   /* Backing read shorter than a signature though the declared size is not. */
   memcpy(s_arc, k_tr_sig5, 5U);
-  s_arc_size    = 5U;
+  s_arc_size    = k_rar_h_5;
   ra8_rar_t rar = {};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_rar_open(&rar, tr_read, nullptr, 100U));
 
@@ -792,11 +841,11 @@ static void test_rar_open_next_extract_edges(void)
 
   /* Reader whose declared size (1000) exceeds the backing bytes (100). */
   memcpy(s_arc, k_tr_sig5, sizeof(k_tr_sig5));
-  s_arc_size    = 100U;
+  s_arc_size    = k_rar_s_arc_size_100;
   ra8_rar_t big = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rar_open(&big, tr_read, nullptr, 1000U));
-  uint8_t buf[256] = {};
-  size_t  got      = 0U;
+  uint8_t buf[k_rar_val_256] = {};
+  size_t  got                = 0U;
 
   /* A non-file entry is unsupported. */
   ra8_rar_entry_t nonfile = {.is_file = 0U};
@@ -807,9 +856,9 @@ static void test_rar_open_next_extract_edges(void)
   ra8_rar_entry_t overrun = {.is_file   = 1U,
                              .is_dir    = 0U,
                              .method    = (uint8_t)k_ra8_rar_method_store,
-                             .data_off  = 990U,
-                             .pack_size = 20U,
-                             .unp_size  = 20U};
+                             .data_off  = k_rar_data_off_990,
+                             .pack_size = k_rar_out_20,
+                             .unp_size  = k_rar_out_20};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_rar_extract_stored(&big, &overrun, buf, sizeof(buf), &got));
 
@@ -817,9 +866,9 @@ static void test_rar_open_next_extract_edges(void)
   ra8_rar_entry_t shortread = {.is_file   = 1U,
                                .is_dir    = 0U,
                                .method    = (uint8_t)k_ra8_rar_method_store,
-                               .data_off  = 50U,
-                               .pack_size = 100U,
-                               .unp_size  = 100U};
+                               .data_off  = k_rar_data_off_50,
+                               .pack_size = k_rar_s_arc_size_100,
+                               .unp_size  = k_rar_s_arc_size_100};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_rar_extract_stored(&big, &shortread, buf, sizeof(buf), &got));
   TEST_ASSERT_EQ(0U, got);
@@ -875,7 +924,7 @@ static void test_comic_cbr_sort_and_empty(void)
   p += tr5_file(&s_arc[p], "a.png", k_one, sizeof(k_one), 0U, false);
   p += tr5_file(&s_arc[p], "a.png.png.png", k_one, sizeof(k_one), 0U, false);
   p += tr5_file(&s_arc[p], "a.png.png", k_one, sizeof(k_one), 0U, false);
-  p += tr5_simple(&s_arc[p], 5U);
+  p += tr5_simple(&s_arc[p], k_rar_h_5);
   s_arc_size = p;
 
   ra8_comic_t      c                    = {};
@@ -897,7 +946,7 @@ static void test_comic_cbr_sort_and_empty(void)
   p += sizeof(k_tr_sig5);
   p += tr5_simple(&s_arc[p], 1U);
   p += tr5_file(&s_arc[p], "notes.txt", k_one, sizeof(k_one), 0U, false);
-  p += tr5_simple(&s_arc[p], 5U);
+  p += tr5_simple(&s_arc[p], k_rar_h_5);
   s_arc_size = p;
 
   ra8_comic_t      c2                    = {};

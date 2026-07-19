@@ -15,6 +15,38 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum rmac_phy_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_rmac_phy_regs_0080 = 0x0080U,
+  k_rmac_phy_val_10    = 10,
+  k_rmac_phy_val_5     = 5,
+} rmac_phy_uint8_const_t;
+
+/**
+ * @enum rmac_phy_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_rmac_phy_gbit_advertise_0300        = 0x0300U,
+  k_rmac_phy_local_advertise_01e1       = 0x01E1U,
+  k_rmac_phy_regs_0800                  = 0x0800U,
+  k_rmac_phy_reset_reads_remaining_ffff = 0xFFFFU,
+  k_rmac_phy_val_8000                   = 0x8000U,
+} rmac_phy_uint16_const_t;
+
 typedef enum : uint8_t {
   k_test_phy_addr  = 1U,  /**< Test PHY address.    */
   k_test_reg_count = 32U, /**< Test register count. */
@@ -42,7 +74,7 @@ static ra8_err_t bus_read(void* ctx, uint8_t phy, uint8_t reg, uint16_t* out)
     if (st->reset_reads_remaining > 0U) {
       st->reset_reads_remaining = (uint16_t)(st->reset_reads_remaining - 1U);
     } else {
-      st->regs[0] = (uint16_t)(st->regs[0] & (uint16_t)~0x8000U);
+      st->regs[0] = (uint16_t)(st->regs[0] & (uint16_t)~k_rmac_phy_val_8000);
     }
   }
   *out = st->regs[reg];
@@ -78,8 +110,8 @@ static ra8_rmac_phy_cfg_t make_cfg(void)
   cfg.lsi_type           = k_ra8_rmac_phy_lsi_ksz8091rnb;
   cfg.phy_address        = (uint8_t)k_test_phy_addr;
   cfg.reset_poll_max     = 4U;
-  cfg.local_advertise    = 0x01E1U;
-  cfg.gbit_advertise     = 0x0300U;
+  cfg.local_advertise    = k_rmac_phy_local_advertise_01e1;
+  cfg.gbit_advertise     = k_rmac_phy_gbit_advertise_0300;
   return cfg;
 }
 
@@ -152,7 +184,7 @@ static void test_reset_timeout(void)
 {
   TEST_BEGIN("open returns hw_timeout if BMCR.RESET never clears");
   prep();
-  s_io.reset_reads_remaining = 0xFFFFU; /* never auto-clear */
+  s_io.reset_reads_remaining = k_rmac_phy_reset_reads_remaining_ffff; /* never auto-clear */
   ra8_rmac_phy_cfg_t cfg     = make_cfg();
   cfg.reset_poll_max         = 2U;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, ra8_rmac_phy_open(&cfg));
@@ -196,8 +228,8 @@ static void test_link_1000(void)
   const ra8_rmac_phy_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_open(&cfg));
 
-  s_io.regs[1]  = (uint16_t)(0x0004U | 0x0020U); /* link + AN done */
-  s_io.regs[10] = 0x0800U;                       /* 1000F          */
+  s_io.regs[1]                 = (uint16_t)(0x0004U | 0x0020U); /* link + AN done */
+  s_io.regs[k_rmac_phy_val_10] = k_rmac_phy_regs_0800;          /* 1000F          */
 
   ra8_rmac_phy_link_t lk = {};
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_rmac_phy_link_status_get(nullptr));
@@ -221,8 +253,8 @@ static void test_link_100half_fallback(void)
   cfg.gbit_advertise     = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_open(&cfg));
 
-  s_io.regs[1] = (uint16_t)(0x0004U | 0x0020U);
-  s_io.regs[5] = 0x0080U; /* 100H */
+  s_io.regs[1]                = (uint16_t)(0x0004U | 0x0020U);
+  s_io.regs[k_rmac_phy_val_5] = k_rmac_phy_regs_0080; /* 100H */
 
   ra8_rmac_phy_link_t lk = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_link_status_get(&lk));
@@ -303,20 +335,21 @@ static void test_mcdc_link_status_link_and_an(void)
   ra8_rmac_phy_link_t lk = {};
 
   /* Vector 1: BMSR=0 -> no link, no AN -> decision F. */
-  s_io.regs[1] = 0x0000U;
-  s_io.regs[5] = 0U;
+  s_io.regs[1]                = 0x0000U;
+  s_io.regs[k_rmac_phy_val_5] = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_link_status_get(&lk));
   TEST_ASSERT_EQ(k_ra8_rmac_phy_speed_no_link, lk.speed);
 
   /* Vector 2: BMSR.LINK only -> C1=T, C2=F -> decision F. */
   s_io.regs[1] = 0x0004U;
-  s_io.regs[5] = 0x0080U; /* 100H bit; should be ignored since decision F. */
+  s_io.regs[k_rmac_phy_val_5] =
+    k_rmac_phy_regs_0080; /* 100H bit; should be ignored since decision F. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_link_status_get(&lk));
   TEST_ASSERT_EQ(k_ra8_rmac_phy_speed_no_link, lk.speed);
 
   /* Vector 3: BMSR.LINK + AN_COMPLETE -> decision T -> resolves via LPA. */
-  s_io.regs[1] = (uint16_t)(0x0004U | 0x0020U);
-  s_io.regs[5] = 0x0080U; /* 100H */
+  s_io.regs[1]                = (uint16_t)(0x0004U | 0x0020U);
+  s_io.regs[k_rmac_phy_val_5] = k_rmac_phy_regs_0080; /* 100H */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rmac_phy_link_status_get(&lk));
   TEST_ASSERT_EQ(k_ra8_rmac_phy_speed_100h, lk.speed);
 

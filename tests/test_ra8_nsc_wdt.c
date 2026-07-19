@@ -30,6 +30,19 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum nsc_wdt_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_nsc_wdt_wdtrr_42 = 0x42U,
+} nsc_wdt_uint8_const_t;
+
+/**
  * @test test_nsc_wdt_start_arms
  * @brief ``ra8_nsc_wdt_start`` forwards the fixed Secure config into ``ra8_wdt_init``
  *        and arms the counter (k_ra8_ok).
@@ -64,7 +77,7 @@ static void test_nsc_wdt_refresh_kicks(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_wdt_start());
 
   volatile r_wdt_regs_t* reg = ra8_wdt();
-  reg->WDTRR                 = 0x42U; /* sentinel: overwritten by the refresh */
+  reg->WDTRR                 = k_nsc_wdt_wdtrr_42; /* sentinel: overwritten by the refresh */
   ra8_nsc_wdt_refresh();
   /* The unlock sequence writes 0x00 then 0xFF; the last byte latched is 0xFF. */
   TEST_ASSERT_EQ(k_ra8_wdt_refresh_b, reg->WDTRR);

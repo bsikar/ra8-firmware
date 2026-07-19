@@ -28,6 +28,24 @@
 #include "ra8_reflow.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum fs_font_reflow_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_fs_font_reflow_put16_11 = 11U,
+  k_fs_font_reflow_put16_14 = 14U,
+  k_fs_font_reflow_put16_17 = 17U,
+  k_fs_font_reflow_put16_19 = 19U,
+  k_fs_font_reflow_v_ff     = 0xFFU,
+  k_fs_font_reflow_val_13   = 13,
+} fs_font_reflow_uint8_const_t;
+
 /* ---------------------------------------------------------------------------
  * In-memory FAT16 block device (mirrors tests/test_ra8_fs_fat.c).
  * ---------------------------------------------------------------------------
@@ -92,8 +110,8 @@ static const ra8_fs_backend_t s_backend = {
 
 static void put16(uint8_t* p, uint32_t off, uint16_t v)
 {
-  p[off]     = (uint8_t)(v & 0xFFU);
-  p[off + 1] = (uint8_t)((v >> 8) & 0xFFU);
+  p[off]     = (uint8_t)(v & k_fs_font_reflow_v_ff);
+  p[off + 1] = (uint8_t)((v >> 8) & k_fs_font_reflow_v_ff);
 }
 
 /** @brief Format the in-memory block device as an empty FAT16 volume. */
@@ -107,13 +125,13 @@ static void build_fat16_volume(void)
     TEST_FAIL_FMT("%s", "calloc failed");
   }
   uint8_t* bpb = &s_disk.bytes[0];
-  put16(bpb, 11U, (uint16_t)k_disk_block_size);   /* bytes/sector     */
-  bpb[13] = 1U;                                   /* sectors/cluster  */
-  put16(bpb, 14U, 1U);                            /* reserved sectors */
-  bpb[16] = 2U;                                   /* number of FATs   */
-  put16(bpb, 17U, 16U);                           /* root entries     */
-  put16(bpb, 19U, (uint16_t)k_disk_blocks_fat16); /* total sectors    */
-  put16(bpb, (uint32_t)k_bpb_off_secperfat, 32U); /* sectors/FAT      */
+  put16(bpb, k_fs_font_reflow_put16_11, (uint16_t)k_disk_block_size);   /* bytes/sector     */
+  bpb[k_fs_font_reflow_val_13] = 1U;                                    /* sectors/cluster  */
+  put16(bpb, k_fs_font_reflow_put16_14, 1U);                            /* reserved sectors */
+  bpb[16] = 2U;                                                         /* number of FATs   */
+  put16(bpb, k_fs_font_reflow_put16_17, 16U);                           /* root entries     */
+  put16(bpb, k_fs_font_reflow_put16_19, (uint16_t)k_disk_blocks_fat16); /* total sectors    */
+  put16(bpb, (uint32_t)k_bpb_off_secperfat, 32U);                       /* sectors/FAT      */
   bpb[k_bpb_sig_off_a] = (uint8_t)k_bpb_sig_a;
   bpb[k_bpb_sig_off_b] = (uint8_t)k_bpb_sig_b;
 }

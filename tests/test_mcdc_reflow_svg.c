@@ -26,6 +26,28 @@
 #include "ra8_reflow_svg_internal.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum reflow_svg_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_reflow_svg_bw_100 = 100,
+} reflow_svg_uint8_const_t;
+
+/** @brief Named float constant used by this file. */
+static const float k_reflow_svg_test_assert_0p5 = 0.5F;
+
+/** @brief Named float constant used by this file. */
+static const float k_reflow_svg_test_assert_3p4 = 3.4F;
+
+/** @brief Named float constant used by this file. */
+static const float k_reflow_svg_test_assert_5p0 = 5.0F;
+
 /** @brief Framebuffer geometry + palette for the render cases. */
 enum : int32_t {
   k_w     = 200,        /**< W.     */
@@ -82,13 +104,13 @@ static float numf(const char* s)
 static void test_svgp_numf_scanner_mcdc(void)
 {
   TEST_BEGIN("ra8_svgp_numf: separator-skip and digit-scan terminators");
-  TEST_ASSERT(numf("") == 0.0F);     /* Dec A V1: C1 false          */
-  TEST_ASSERT(numf(" 5") == 5.0F);   /* Dec A V2: whitespace skip   */
-  TEST_ASSERT(numf(",5") == 5.0F);   /* Dec A V3: comma skip (C3)   */
-  TEST_ASSERT(numf("5") == 5.0F);    /* Dec A V4 / Dec B C2,C3 true */
-  TEST_ASSERT(numf("5)") == 5.0F);   /* Dec B C2 false (')' < '0')  */
-  TEST_ASSERT(numf("5a") == 5.0F);   /* Dec B C3 false ('a' > '9')  */
-  TEST_ASSERT(numf("-3.5") < -3.4F); /* sign + fraction arms        */
+  TEST_ASSERT(numf("") == 0.0F);                             /* Dec A V1: C1 false          */
+  TEST_ASSERT(numf(" 5") == k_reflow_svg_test_assert_5p0);   /* Dec A V2: whitespace skip   */
+  TEST_ASSERT(numf(",5") == k_reflow_svg_test_assert_5p0);   /* Dec A V3: comma skip (C3)   */
+  TEST_ASSERT(numf("5") == k_reflow_svg_test_assert_5p0);    /* Dec A V4 / Dec B C2,C3 true */
+  TEST_ASSERT(numf("5)") == k_reflow_svg_test_assert_5p0);   /* Dec B C2 false (')' < '0')  */
+  TEST_ASSERT(numf("5a") == k_reflow_svg_test_assert_5p0);   /* Dec B C3 false ('a' > '9')  */
+  TEST_ASSERT(numf("-3.5") < -k_reflow_svg_test_assert_3p4); /* sign + fraction arms        */
   TEST_END("ra8_svgp_numf: separator-skip and digit-scan terminators");
 }
 
@@ -109,12 +131,17 @@ static void test_svgp_numf_scanner_mcdc(void)
 static void test_svgp_xform_list_mcdc(void)
 {
   TEST_BEGIN("ra8_svgp_apply_xform: whitespace + comma argument separators");
-  svg_xform_t t   = {.bw = 100, .bh = 100, .vw = 100, .vh = 100, .ua = 1.0F, .ud = 1.0F};
+  svg_xform_t t   = {.bw = k_reflow_svg_bw_100,
+                     .bh = k_reflow_svg_bw_100,
+                     .vw = k_reflow_svg_bw_100,
+                     .vh = k_reflow_svg_bw_100,
+                     .ua = 1.0F,
+                     .ud = 1.0F};
   const char* tag = "<g transform=\"translate(1 2) scale(1,2)\">";
   ra8_svgp_apply_xform(&t, (const uint8_t*)tag, strlen(tag));
   /* translate(1,2) then scale(1,2): net x translate present, x scale applied. */
-  TEST_ASSERT(t.ue > 0.5F); /* translate x parsed (space-separated args) */
-  TEST_ASSERT(t.ua > 0.5F); /* scale x parsed (comma-separated args)     */
+  TEST_ASSERT(t.ue > k_reflow_svg_test_assert_0p5); /* translate x parsed (space-separated args) */
+  TEST_ASSERT(t.ua > k_reflow_svg_test_assert_0p5); /* scale x parsed (comma-separated args)     */
   TEST_END("ra8_svgp_apply_xform: whitespace + comma argument separators");
 }
 
@@ -132,7 +159,12 @@ static void test_svgp_draw_line_points_mcdc(void)
 {
   TEST_BEGIN("ra8_svgp_draw_line: comma + space point separators");
   fb_reset();
-  svg_xform_t t   = {.bw = 100, .bh = 100, .vw = 100, .vh = 100, .ua = 1.0F, .ud = 1.0F};
+  svg_xform_t t   = {.bw = k_reflow_svg_bw_100,
+                     .bh = k_reflow_svg_bw_100,
+                     .vw = k_reflow_svg_bw_100,
+                     .vh = k_reflow_svg_bw_100,
+                     .ua = 1.0F,
+                     .ud = 1.0F};
   const char* tag = "<polyline points=\"10,10 40,10 40,40\" stroke=\"#f00\"/>";
   ra8_svgp_draw_line((const uint8_t*)tag, strlen(tag), &t);
   TEST_END("ra8_svgp_draw_line: comma + space point separators");

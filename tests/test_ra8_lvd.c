@@ -22,6 +22,19 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum lvd_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_lvd_sentinel_a5 = 0xA5U,
+} lvd_uint8_const_t;
+
+/**
  * @enum ra8_lvd_test_const_t
  * @brief Test fixtures (literals used across the test file).
  */
@@ -106,7 +119,7 @@ static void test_init_n_channel_no_cr1(void)
 
   /* Seed the CR1 byte (which lives at the PVD2 address space) with a
    * sentinel and confirm the n-channel init path leaves it alone. */
-  *ra8_lvd_reg8(k_ra8_lvd_pvd2_cr1_off) = 0xA5U;
+  *ra8_lvd_reg8(k_ra8_lvd_pvd2_cr1_off) = k_lvd_sentinel_a5;
 
   ra8_lvd_cfg_t cfg = make_cfg();
   cfg.response      = k_ra8_lvd_response_reset;

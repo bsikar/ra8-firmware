@@ -33,6 +33,46 @@
 #include "support/mipi_dsi_test_util.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum mipi_dsi_video_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_mipi_dsi_video_rxrss0r_12 = 0x12U,
+  k_mipi_dsi_video_val_34     = 0x34U,
+} mipi_dsi_video_uint8_const_t;
+
+/**
+ * @enum mipi_dsi_video_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_mipi_dsi_video_horizontal_active_ffff = 0xFFFFU,
+} mipi_dsi_video_uint16_const_t;
+
+/**
+ * @enum mipi_dsi_video_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_mipi_dsi_video_akepacmsr_0001a55a = 0x0001A55AUL,
+} mipi_dsi_video_uint32_const_t;
+
 static ra8_mipi_dsi_video_cfg_t make_video_cfg(void)
 {
   const ra8_mipi_dsi_video_cfg_t v = {
@@ -227,7 +267,7 @@ static void test_ack_error(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_dsi_init(&cfg));
 
   volatile r_mipi_dsi_regs_t* reg = ra8_mipi_dsi();
-  reg->AKEPACMSR                  = 0x0001A55AUL; /* VC=1 in bits 19:16, errors in 15:0 */
+  reg->AKEPACMSR = k_mipi_dsi_video_akepacmsr_0001a55a; /* VC=1 in bits 19:16, errors in 15:0 */
 
   ra8_mipi_dsi_ack_error_t e = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_dsi_ack_error_get(&e));
@@ -256,7 +296,8 @@ static void test_rx_result_get(void)
   /* Build a fake slot-0 capture: data0=0x12, data1=0x34, dt=0x06,
    * vc=0, fmt=0, rxsuc=1. */
   reg->RXRSSR  = (uint32_t)k_ra8_mipi_dsi_rxrssr_slt0vld;
-  reg->RXRSS0R = 0x12U | (0x34U << 8) | (0x06U << 16) | (uint32_t)k_ra8_mipi_dsi_rxrss_rxsuc;
+  reg->RXRSS0R = k_mipi_dsi_video_rxrss0r_12 | (k_mipi_dsi_video_val_34 << 8) | (0x06U << 16) |
+                 (uint32_t)k_ra8_mipi_dsi_rxrss_rxsuc;
 
   ra8_mipi_dsi_rx_result_t r = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_dsi_rx_result_get(0U, &r));
@@ -469,7 +510,7 @@ static void test_set_video_timing_null(void)
 
   /* Field overflow rejected. */
   ra8_mipi_dsi_video_timing_t bad = make_timing();
-  bad.horizontal_active           = (uint16_t)0xFFFFU; /* > 15 bits. */
+  bad.horizontal_active = (uint16_t)k_mipi_dsi_video_horizontal_active_ffff; /* > 15 bits. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_dsi_set_video_timing(&bad));
   TEST_END("mipi_dsi set_video_timing rejects nullptr");
 }
@@ -616,15 +657,15 @@ static void test_set_video_timing_overflow_each_field(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mipi_dsi_init(&cfg));
 
   ra8_mipi_dsi_video_timing_t t = make_timing();
-  t.vertical_sync               = (uint16_t)0xFFFFU;
+  t.vertical_sync               = (uint16_t)k_mipi_dsi_video_horizontal_active_ffff;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_dsi_set_video_timing(&t));
 
   t                       = make_timing();
-  t.horizontal_back_porch = (uint16_t)0xFFFFU;
+  t.horizontal_back_porch = (uint16_t)k_mipi_dsi_video_horizontal_active_ffff;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_dsi_set_video_timing(&t));
 
   t                 = make_timing();
-  t.vertical_active = (uint16_t)0xFFFFU;
+  t.vertical_active = (uint16_t)k_mipi_dsi_video_horizontal_active_ffff;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mipi_dsi_set_video_timing(&t));
   TEST_END("mipi_dsi set_video_timing rejects every field overflow");
 }

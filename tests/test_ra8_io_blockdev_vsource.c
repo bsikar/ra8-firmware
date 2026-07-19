@@ -26,6 +26,34 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum io_blockdev_vsource_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_io_blockdev_vsource_i_13   = 13U,
+  k_io_blockdev_vsource_val_7  = 7U,
+  k_io_blockdev_vsource_val_ff = 0xFFU,
+} io_blockdev_vsource_uint8_const_t;
+
+/**
+ * @enum io_blockdev_vsource_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_io_blockdev_vsource_oid_ffffffff = 0xFFFFFFFFU,
+} io_blockdev_vsource_uint32_const_t;
+
+/**
  * @enum t_bdvs_const_t
  * @brief Fixture sizes.
  */
@@ -58,7 +86,8 @@ static void t_setup_disk(void)
   s_state = (ra8_io_blockdev_ram_state_t){};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_ram_init(&s_bd, &s_state, s_disk, k_t_blocks, false));
   for (uint32_t i = 0; i < (uint32_t)k_t_total; ++i) {
-    s_golden[i] = (uint8_t)(((i * 13U) + 7U) & 0xFFU);
+    s_golden[i] = (uint8_t)(((i * k_io_blockdev_vsource_i_13) + k_io_blockdev_vsource_val_7) &
+                            k_io_blockdev_vsource_val_ff);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&s_bd, 0U, k_t_blocks, s_golden));
 }
@@ -180,7 +209,7 @@ static void test_vsource_wiring(void)
 
   ra8_vsource_t vs = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_init(&vs, s_objs, k_t_objs));
-  uint32_t oid = 0xFFFFFFFFU;
+  uint32_t oid = k_io_blockdev_vsource_oid_ffffffff;
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_vsource_add_paged(&vs, ra8_io_blockdev_vsource_read, &s_ctx, 0U, k_t_total, &oid));

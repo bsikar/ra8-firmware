@@ -46,6 +46,25 @@
 #include "ra8_sdmmc_spi.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum io_blockdev_sdspi_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_io_blockdev_sdspi_cov_i_5                = 5U,
+  k_io_blockdev_sdspi_cov_mock_queue_idle_10 = 10U,
+  k_io_blockdev_sdspi_cov_out_40             = 0x40U,
+  k_io_blockdev_sdspi_cov_tail_word_24       = 24U,
+  k_io_blockdev_sdspi_cov_val_7              = 7,
+  k_io_blockdev_sdspi_cov_val_9              = 9,
+  k_io_blockdev_sdspi_cov_val_ff             = 0xFFU,
+} io_blockdev_sdspi_cov_uint8_const_t;
+
 /* ===========================================================================
  * Mock SPI transport
  * ===========================================================================
@@ -295,10 +314,11 @@ static void queue_command_response_r3_or_r7(uint8_t r1, uint32_t tail_word)
   mock_queue_idle(1U);
   mock_queue_idle((uint32_t)k_cov_cmd_frame_len);
   mock_queue_byte(r1);
-  mock_queue_byte((uint8_t)((tail_word >> 24U) & 0xFFU));
-  mock_queue_byte((uint8_t)((tail_word >> 16U) & 0xFFU));
-  mock_queue_byte((uint8_t)((tail_word >> 8U) & 0xFFU));
-  mock_queue_byte((uint8_t)(tail_word & 0xFFU));
+  mock_queue_byte((uint8_t)((tail_word >> k_io_blockdev_sdspi_cov_tail_word_24) &
+                            k_io_blockdev_sdspi_cov_val_ff));
+  mock_queue_byte((uint8_t)((tail_word >> 16U) & k_io_blockdev_sdspi_cov_val_ff));
+  mock_queue_byte((uint8_t)((tail_word >> 8U) & k_io_blockdev_sdspi_cov_val_ff));
+  mock_queue_byte((uint8_t)(tail_word & k_io_blockdev_sdspi_cov_val_ff));
   mock_queue_idle(1U);
 }
 
@@ -314,10 +334,10 @@ static void queue_command_response_r3_or_r7(uint8_t r1, uint32_t tail_word)
 static void build_csd_v2_32gib(uint8_t* out)
 {
   memset(out, 0, (size_t)k_ra8_sdmmc_spi_csd_response_len);
-  out[0] = 0x40U; /* CSD_STRUCTURE = 1. */
-  out[7] = 0x00U;
-  out[8] = 0xFFU; /* low 16 bits of C_SIZE = 0xFFFF. */
-  out[9] = 0xFFU;
+  out[0]                             = k_io_blockdev_sdspi_cov_out_40; /* CSD_STRUCTURE = 1. */
+  out[k_io_blockdev_sdspi_cov_val_7] = 0x00U;
+  out[8] = k_io_blockdev_sdspi_cov_val_ff; /* low 16 bits of C_SIZE = 0xFFFF. */
+  out[k_io_blockdev_sdspi_cov_val_9] = k_io_blockdev_sdspi_cov_val_ff;
 }
 
 /**
@@ -355,7 +375,7 @@ static void queue_csd_read(const uint8_t* csd)
  */
 static void queue_full_init_sdhc_32gib(void)
 {
-  mock_queue_idle(10U); /* Wake-up dummy clocks. */
+  mock_queue_idle(k_io_blockdev_sdspi_cov_mock_queue_idle_10); /* Wake-up dummy clocks. */
   queue_command_response_r1((uint8_t)k_cov_r1_idle);
   queue_command_response_r3_or_r7((uint8_t)k_cov_r1_idle, (uint32_t)k_cov_cmd8_echo);
   queue_command_response_r1((uint8_t)k_cov_r1_idle);  /* CMD55.  */
@@ -424,8 +444,8 @@ static void queue_read_back(const uint8_t* block)
   mock_queue_byte((uint8_t)k_cov_data_token_start);
   mock_queue_bytes(block, (uint32_t)k_ra8_sdmmc_spi_block_size);
   const uint16_t crc = ra8_sdmmc_spi_crc16(block, (uint32_t)k_ra8_sdmmc_spi_block_size);
-  mock_queue_byte((uint8_t)((crc >> 8U) & 0xFFU));
-  mock_queue_byte((uint8_t)(crc & 0xFFU));
+  mock_queue_byte((uint8_t)((crc >> 8U) & k_io_blockdev_sdspi_cov_val_ff));
+  mock_queue_byte((uint8_t)(crc & k_io_blockdev_sdspi_cov_val_ff));
   mock_queue_idle(1U);
 }
 
@@ -453,8 +473,8 @@ static void queue_multi_read(const uint8_t* const* blocks, uint32_t count)
     mock_queue_byte((uint8_t)k_cov_data_token_start);
     mock_queue_bytes(blocks[b], (uint32_t)k_ra8_sdmmc_spi_block_size);
     const uint16_t crc = ra8_sdmmc_spi_crc16(blocks[b], (uint32_t)k_ra8_sdmmc_spi_block_size);
-    mock_queue_byte((uint8_t)((crc >> 8U) & 0xFFU));
-    mock_queue_byte((uint8_t)(crc & 0xFFU));
+    mock_queue_byte((uint8_t)((crc >> 8U) & k_io_blockdev_sdspi_cov_val_ff));
+    mock_queue_byte((uint8_t)(crc & k_io_blockdev_sdspi_cov_val_ff));
   }
   mock_queue_idle((uint32_t)k_cov_cmd_frame_len); /* CMD12 frame TX slots.  */
   mock_queue_idle(1U);                            /* stuff byte, discarded. */
@@ -529,8 +549,8 @@ static void test_sdspi_read_bulk_and_error(void)
   uint8_t block0[k_ra8_sdmmc_spi_block_size];
   uint8_t block1[k_ra8_sdmmc_spi_block_size];
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_sdmmc_spi_block_size; i++) {
-    block0[i] = (uint8_t)((i * 3U) & 0xFFU);
-    block1[i] = (uint8_t)((i * 5U) + 1U);
+    block0[i] = (uint8_t)((i * 3U) & k_io_blockdev_sdspi_cov_val_ff);
+    block1[i] = (uint8_t)((i * k_io_blockdev_sdspi_cov_i_5) + 1U);
   }
   const uint8_t* blocks[2] = {block0, block1};
   queue_multi_read(blocks, 2U);
@@ -576,7 +596,7 @@ static void test_sdspi_write_forwards(void)
 
   uint8_t buf[k_ra8_sdmmc_spi_block_size];
   for (uint32_t i = 0U; i < (uint32_t)k_ra8_sdmmc_spi_block_size; i++) {
-    buf[i] = (uint8_t)(i & 0xFFU);
+    buf[i] = (uint8_t)(i & k_io_blockdev_sdspi_cov_val_ff);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 1U, 1U, buf));
   TEST_END("sdspi_write forwards single block");

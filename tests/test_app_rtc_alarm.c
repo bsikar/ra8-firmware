@@ -22,6 +22,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum rtc_alarm_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_rtc_alarm_year_2026 = 2026U,
+} rtc_alarm_uint16_const_t;
+
 typedef enum : uint8_t {
   k_test_rtc_app_seed_year_lo = 26U,   /**< Test rtc app seed year lo. */
   k_test_rtc_app_seed_month   = 1U,    /**< Test rtc app seed month.   */
@@ -111,7 +124,7 @@ static void test_rtc_app_alarm_bad_range(void)
   TEST_BEGIN("rtc_alarm: out-of-range fields rejected");
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_init());
   ra8_rtc_datetime_t a = {
-    .year    = 2026U,
+    .year    = k_rtc_alarm_year_2026,
     .month   = 1U,
     .day     = 1U,
     .weekday = 0U,

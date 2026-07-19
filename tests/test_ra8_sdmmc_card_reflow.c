@@ -34,6 +34,24 @@
 #include "ra8_sdmmc_spi.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum sdmmc_card_reflow_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_sdmmc_card_reflow_put16_11 = 11U,
+  k_sdmmc_card_reflow_put16_14 = 14U,
+  k_sdmmc_card_reflow_put16_17 = 17U,
+  k_sdmmc_card_reflow_put16_19 = 19U,
+  k_sdmmc_card_reflow_v_ff     = 0xFFU,
+  k_sdmmc_card_reflow_val_13   = 13,
+} sdmmc_card_reflow_uint8_const_t;
+
 /* ===========================================================================
  * SD SPI-mode card model (the seed for board_sim's board_sd device).
  * ===========================================================================
@@ -331,8 +349,8 @@ static const ra8_fs_backend_t s_mem_backend = {.read_block   = mem_read,
 
 static void put16(uint8_t* p, uint32_t off, uint16_t v)
 {
-  p[off]     = (uint8_t)(v & 0xFFU);
-  p[off + 1] = (uint8_t)((v >> 8) & 0xFFU);
+  p[off]     = (uint8_t)(v & k_sdmmc_card_reflow_v_ff);
+  p[off + 1] = (uint8_t)((v >> 8) & k_sdmmc_card_reflow_v_ff);
 }
 /** @brief Build the response for a completed 6-byte command frame. */
 static void build_fat16(void)
@@ -340,12 +358,12 @@ static void build_fat16(void)
   s_disk.bytes       = (uint8_t*)calloc(1, (size_t)k_disk_blocks_fat16 * k_disk_block_size);
   s_disk.block_count = (uint32_t)k_disk_blocks_fat16;
   uint8_t* b         = s_disk.bytes;
-  put16(b, 11U, (uint16_t)k_disk_block_size);
-  b[13] = 1U;
-  put16(b, 14U, 1U);
+  put16(b, k_sdmmc_card_reflow_put16_11, (uint16_t)k_disk_block_size);
+  b[k_sdmmc_card_reflow_val_13] = 1U;
+  put16(b, k_sdmmc_card_reflow_put16_14, 1U);
   b[16] = 2U;
-  put16(b, 17U, 16U);
-  put16(b, 19U, (uint16_t)k_disk_blocks_fat16);
+  put16(b, k_sdmmc_card_reflow_put16_17, 16U);
+  put16(b, k_sdmmc_card_reflow_put16_19, (uint16_t)k_disk_blocks_fat16);
   put16(b, (uint32_t)k_bpb_off_secperfat, 32U);
   b[k_bpb_sig_off_a] = (uint8_t)k_bpb_sig_a;
   b[k_bpb_sig_off_b] = (uint8_t)k_bpb_sig_b;

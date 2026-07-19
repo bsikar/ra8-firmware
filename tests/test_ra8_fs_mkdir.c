@@ -28,6 +28,46 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum fs_mkdir_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_fs_mkdir_bpb_55   = 0x55U,
+  k_fs_mkdir_bpb_aa   = 0xAAU,
+  k_fs_mkdir_fill_11  = 0x11U,
+  k_fs_mkdir_fill_7a  = 0x7AU,
+  k_fs_mkdir_i_5      = 5U,
+  k_fs_mkdir_put16_11 = 11U,
+  k_fs_mkdir_put16_14 = 14U,
+  k_fs_mkdir_put16_17 = 17U,
+  k_fs_mkdir_put16_19 = 19U,
+  k_fs_mkdir_put16_22 = 22U,
+  k_fs_mkdir_v_ff     = 0xFFU,
+  k_fs_mkdir_val_13   = 13,
+  k_fs_mkdir_val_200  = 200,
+  k_fs_mkdir_val_64   = 64,
+} fs_mkdir_uint8_const_t;
+
+/**
+ * @enum fs_mkdir_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_fs_mkdir_val_510 = 510,
+  k_fs_mkdir_val_511 = 511,
+} fs_mkdir_uint16_const_t;
+
+/**
  * @enum ra8_fs_mkdir_disk_t
  * @brief Synthetic block-device sizes.
  */
@@ -85,8 +125,8 @@ static const ra8_fs_backend_t s_backend = {
 
 static void put16(uint8_t* p, uint32_t off, uint16_t v)
 {
-  p[off]     = (uint8_t)(v & 0xFFU);
-  p[off + 1] = (uint8_t)((v >> 8) & 0xFFU);
+  p[off]     = (uint8_t)(v & k_fs_mkdir_v_ff);
+  p[off + 1] = (uint8_t)((v >> 8) & k_fs_mkdir_v_ff);
 }
 
 static void build_fat16_volume(void)
@@ -102,15 +142,15 @@ static void build_fat16_volume(void)
     TEST_FAIL_FMT("%s", "calloc failed");
   }
   uint8_t* bpb = &s_disk.bytes[0];
-  put16(bpb, 11U, (uint16_t)k_disk_block_size);
-  bpb[13] = 1U;
-  put16(bpb, 14U, 1U);
+  put16(bpb, k_fs_mkdir_put16_11, (uint16_t)k_disk_block_size);
+  bpb[k_fs_mkdir_val_13] = 1U;
+  put16(bpb, k_fs_mkdir_put16_14, 1U);
   bpb[16] = 2U;
-  put16(bpb, 17U, 16U);
-  put16(bpb, 19U, (uint16_t)k_disk_blocks_fat16);
-  put16(bpb, 22U, 32U);
-  bpb[510] = 0x55U;
-  bpb[511] = 0xAAU;
+  put16(bpb, k_fs_mkdir_put16_17, 16U);
+  put16(bpb, k_fs_mkdir_put16_19, (uint16_t)k_disk_blocks_fat16);
+  put16(bpb, k_fs_mkdir_put16_22, 32U);
+  bpb[k_fs_mkdir_val_510] = k_fs_mkdir_bpb_55;
+  bpb[k_fs_mkdir_val_511] = k_fs_mkdir_bpb_aa;
 }
 
 static void free_volume(void)
@@ -144,7 +184,7 @@ static void scan_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
 static void fill(uint8_t* buf, uint32_t len, uint8_t seed)
 {
   for (uint32_t i = 0; i < len; ++i) {
-    buf[i] = (uint8_t)((i * 5U) + seed);
+    buf[i] = (uint8_t)((i * k_fs_mkdir_i_5) + seed);
   }
 }
 
@@ -186,14 +226,14 @@ static void test_file_in_subdir(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/BOOKS"));
 
-  uint8_t data[200];
-  fill(data, sizeof(data), 0x11U);
+  uint8_t data[k_fs_mkdir_val_200];
+  fill(data, sizeof(data), k_fs_mkdir_fill_11);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "/BOOKS/A.TXT", data, (uint32_t)sizeof(data)));
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "/BOOKS/A.TXT", k_ra8_fs_mode_read, &f));
-  uint8_t  got[200] = {};
-  uint32_t got_len  = 0;
+  uint8_t  got[k_fs_mkdir_val_200] = {};
+  uint32_t got_len                 = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, got, (uint32_t)sizeof(got), &got_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(sizeof(data), got_len);
@@ -222,15 +262,15 @@ static void test_nested_dirs(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/BOOKS"));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/BOOKS/SCIFI"));
 
-  uint8_t data[64];
-  fill(data, sizeof(data), 0x55U);
+  uint8_t data[k_fs_mkdir_val_64];
+  fill(data, sizeof(data), k_fs_mkdir_bpb_55);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_fs_write_file(h, "/BOOKS/SCIFI/X.TXT", data, (uint32_t)sizeof(data)));
 
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "/BOOKS/SCIFI/X.TXT", k_ra8_fs_mode_read, &f));
-  uint8_t  got[64] = {};
-  uint32_t got_len = 0;
+  uint8_t  got[k_fs_mkdir_val_64] = {};
+  uint32_t got_len                = 0;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_read(f, got, (uint32_t)sizeof(got), &got_len));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
   TEST_ASSERT_EQ(sizeof(data), got_len);
@@ -281,7 +321,7 @@ static void test_subdir_rename_unlink(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mount(&s_backend, &h));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_mkdir(h, "/BOOKS"));
   uint8_t data[16] = {};
-  fill(data, sizeof(data), 0x7AU);
+  fill(data, sizeof(data), k_fs_mkdir_fill_7a);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write_file(h, "/BOOKS/A.TXT", data, (uint32_t)sizeof(data)));
 
   /* same-directory rename */

@@ -23,6 +23,19 @@
 #include "ra8_err.h"
 #include "ra8_jpeg_sw.h"
 
+/**
+ * @enum jpeg_sw_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_jpeg_sw_u_20 = 20,
+} jpeg_sw_uint8_const_t;
+
 /*
  * Output buffer is fixed-size and statically allocated. We probe a few
  * very small dimension caps via ra8_jpeg_sw_get_dimensions() before
@@ -37,7 +50,7 @@ static uint8_t s_out_buf[k_fuzz_jpeg_out_bytes];
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-  if (size == 0U || size > (1U << 20)) {
+  if (size == 0U || size > (1U << k_jpeg_sw_u_20)) {
     return 0;
   }
   uint16_t  w     = 0U;

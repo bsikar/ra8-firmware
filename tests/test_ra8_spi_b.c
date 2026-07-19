@@ -39,6 +39,21 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum spi_b_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_spi_b_out_dma_ch_ff = 0xFFU,
+  k_spi_b_sentinel_a5   = 0xA5U,
+  k_spi_b_val_c3        = 0xC3U,
+} spi_b_uint8_const_t;
+
+/**
  * @enum ra8_spi_b_test_const_t
  * @brief Local constants for the SPI_B MC/DC tests.
  */
@@ -212,7 +227,7 @@ static void test_mcdc_xfer_common_both_null(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_spi_init((uint8_t)k_test_channel_0, &cfg));
   ra8_spi((uint8_t)k_test_channel_0)->SPSR = k_ra8_spsr_mask_sptef | k_ra8_spsr_mask_sprf;
 
-  uint8_t tx_buf[1] = {0xA5U};
+  uint8_t tx_buf[1] = {k_spi_b_sentinel_a5};
   uint8_t rx_buf[1] = {0U};
 
   TEST_ASSERT_EQ(
@@ -250,7 +265,7 @@ static void test_mcdc_write_null_guard(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_spi_init((uint8_t)k_test_channel_0, &cfg));
   ra8_spi((uint8_t)k_test_channel_0)->SPSR = k_ra8_spsr_mask_sptef | k_ra8_spsr_mask_sprf;
 
-  uint8_t tx_buf[1] = {0xC3U};
+  uint8_t tx_buf[1] = {k_spi_b_val_c3};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_spi_write((uint8_t)k_test_channel_0, tx_buf, 1U, k_ra8_spi_width_8));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_spi_write((uint8_t)k_test_channel_0, nullptr, 1U, k_ra8_spi_width_8));
@@ -296,7 +311,7 @@ static void test_mcdc_write_dma_arg_guard(void)
 {
   TEST_BEGIN("spi_b MC/DC ra8_spi_write_dma: channel || len arg guard");
   prep();
-  uint8_t   out_dma_ch = 0xFFU;
+  uint8_t   out_dma_ch = k_spi_b_out_dma_ch_ff;
   uint8_t   buf[1]     = {0x01U};
   ra8_err_t e =
     ra8_spi_write_dma((uint8_t)k_test_channel_0, buf, 1U, nullptr, nullptr, &out_dma_ch);
@@ -319,7 +334,7 @@ static void test_mcdc_read_dma_arg_guard(void)
 {
   TEST_BEGIN("spi_b MC/DC ra8_spi_read_dma: channel || len arg guard");
   prep();
-  uint8_t   out_dma_ch = 0xFFU;
+  uint8_t   out_dma_ch = k_spi_b_out_dma_ch_ff;
   uint8_t   buf[1]     = {0U};
   ra8_err_t e = ra8_spi_read_dma((uint8_t)k_test_channel_0, buf, 1U, nullptr, nullptr, &out_dma_ch);
   TEST_ASSERT(e != k_ra8_err_invalid_arg);

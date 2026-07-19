@@ -31,6 +31,32 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum adc_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_adc_resolution_9 = 9U,
+} adc_uint8_const_t;
+
+/**
+ * @enum adc_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_adc_raw_beef = 0xBEEFU,
+} adc_uint16_const_t;
+
 /* ---------------------------------------------------------------------------
  * Sim helper: ADACT0 idle-state (deterministic, no wall-clock timer)
  * --------------------------------------------------------------------------- */
@@ -227,7 +253,7 @@ static void test_read_channel_timeout(void)
   /* Force ADACT0 stuck high so the busy poll never exits. */
   *ra8_adc_b_adsr() = k_ra8_adsr_mask_adact0;
 
-  uint16_t        raw = 0xBEEFU;
+  uint16_t        raw = k_adc_raw_beef;
   const ra8_err_t err = ra8_adc_read_channel(k_ra8_adc_test_ch_valid, &raw);
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout, err);
   TEST_ASSERT_EQ(0, raw);
@@ -412,7 +438,7 @@ static void test_init_configured_bad_resolution(void)
   ra8_sim_mmap_reset();
 
   ra8_adc_cfg_t cfg = make_cfg();
-  cfg.resolution    = (ra8_adc_resolution_t)9U;
+  cfg.resolution    = (ra8_adc_resolution_t)k_adc_resolution_9;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_adc_init_configured(&cfg));
   TEST_END("adc init configured: bad resolution rejected");
 }

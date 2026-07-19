@@ -81,6 +81,52 @@
 #include "ra8_log.h"
 #include "ra8_rabook_gray4.h"
 
+/**
+ * @enum rabook_gray4_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_rabook_gray4_check_05                         = 0x05U,
+  k_rabook_gray4_check_10                         = 10U,
+  k_rabook_gray4_check_128                        = 128U,
+  k_rabook_gray4_check_20                         = 20U,
+  k_rabook_gray4_check_23                         = 0x23U,
+  k_rabook_gray4_check_30                         = 30U,
+  k_rabook_gray4_check_40                         = 40U,
+  k_rabook_gray4_check_80                         = 0x80U,
+  k_rabook_gray4_check_f0                         = 0xF0U,
+  k_rabook_gray4_check_ff                         = 0xFFU,
+  k_rabook_gray4_ow_42                            = 42U,
+  k_rabook_gray4_ow_99                            = 99U,
+  k_rabook_gray4_ra8_rabook_gray4_output_dims_100 = 100U,
+  k_rabook_gray4_ra8_rabook_gray4_output_dims_200 = 200U,
+  k_rabook_gray4_ra8_rabook_gray4_output_dims_50  = 50U,
+} rabook_gray4_uint8_const_t;
+
+/**
+ * @enum rabook_gray4_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_rabook_gray4_ra8_rabook_gray4_output_dims_10000 = 10000U,
+  k_rabook_gray4_ra8_rabook_gray4_output_dims_1600  = 1600U,
+  k_rabook_gray4_ra8_rabook_gray4_output_dims_1800  = 1800U,
+  k_rabook_gray4_ra8_rabook_gray4_output_dims_2400  = 2400U,
+  k_rabook_gray4_ra8_rabook_gray4_output_dims_3200  = 3200U,
+  k_rabook_gray4_ra8_rabook_gray4_output_dims_800   = 800U,
+  k_rabook_gray4_ra8_rabook_gray4_output_dims_900   = 900U,
+} rabook_gray4_uint16_const_t;
+
 /* -------------------------------------------------------------------------- */
 /* Helpers */
 /* -------------------------------------------------------------------------- */
@@ -112,49 +158,85 @@ static void test_dims_no_scale(void)
 {
   uint16_t ow = 0U;
   uint16_t oh = 0U;
-  ra8_rabook_gray4_output_dims(100U, 50U, 200U, &ow, &oh);
-  check(ow == 100U && oh == 50U, "dims: no scale when within max_edge");
+  ra8_rabook_gray4_output_dims(k_rabook_gray4_ra8_rabook_gray4_output_dims_100,
+                               k_rabook_gray4_ra8_rabook_gray4_output_dims_50,
+                               k_rabook_gray4_ra8_rabook_gray4_output_dims_200,
+                               &ow,
+                               &oh);
+  check(ow == k_rabook_gray4_ra8_rabook_gray4_output_dims_100 &&
+          oh == k_rabook_gray4_ra8_rabook_gray4_output_dims_50,
+        "dims: no scale when within max_edge");
 }
 
 static void test_dims_exact_edge(void)
 {
   uint16_t ow = 0U;
   uint16_t oh = 0U;
-  ra8_rabook_gray4_output_dims(1600U, 900U, 1600U, &ow, &oh);
-  check(ow == 1600U && oh == 900U, "dims: exact max_edge passes unchanged");
+  ra8_rabook_gray4_output_dims(k_rabook_gray4_ra8_rabook_gray4_output_dims_1600,
+                               k_rabook_gray4_ra8_rabook_gray4_output_dims_900,
+                               k_rabook_gray4_ra8_rabook_gray4_output_dims_1600,
+                               &ow,
+                               &oh);
+  check(ow == k_rabook_gray4_ra8_rabook_gray4_output_dims_1600 &&
+          oh == k_rabook_gray4_ra8_rabook_gray4_output_dims_900,
+        "dims: exact max_edge passes unchanged");
 }
 
 static void test_dims_scale_landscape(void)
 {
   uint16_t ow = 0U;
   uint16_t oh = 0U;
-  ra8_rabook_gray4_output_dims(3200U, 1800U, 1600U, &ow, &oh);
-  check(ow == 1600U && oh == 900U, "dims: 2x landscape scale down");
+  ra8_rabook_gray4_output_dims(k_rabook_gray4_ra8_rabook_gray4_output_dims_3200,
+                               k_rabook_gray4_ra8_rabook_gray4_output_dims_1800,
+                               k_rabook_gray4_ra8_rabook_gray4_output_dims_1600,
+                               &ow,
+                               &oh);
+  check(ow == k_rabook_gray4_ra8_rabook_gray4_output_dims_1600 &&
+          oh == k_rabook_gray4_ra8_rabook_gray4_output_dims_900,
+        "dims: 2x landscape scale down");
 }
 
 static void test_dims_scale_portrait(void)
 {
   uint16_t ow = 0U;
   uint16_t oh = 0U;
-  ra8_rabook_gray4_output_dims(800U, 2400U, 1600U, &ow, &oh);
-  check(oh <= 1600U, "dims: portrait longer edge clamped");
+  ra8_rabook_gray4_output_dims(k_rabook_gray4_ra8_rabook_gray4_output_dims_800,
+                               k_rabook_gray4_ra8_rabook_gray4_output_dims_2400,
+                               k_rabook_gray4_ra8_rabook_gray4_output_dims_1600,
+                               &ow,
+                               &oh);
+  check(oh <= k_rabook_gray4_ra8_rabook_gray4_output_dims_1600,
+        "dims: portrait longer edge clamped");
   check(ow >= 1U, "dims: portrait width at least 1");
 }
 
 static void test_dims_null_out(void)
 {
-  uint16_t ow = 42U;
-  uint16_t oh = 42U;
-  ra8_rabook_gray4_output_dims(100U, 100U, 200U, nullptr, &oh);
-  ra8_rabook_gray4_output_dims(100U, 100U, 200U, &ow, nullptr);
-  check(ow == 42U && oh == 42U, "dims: null out ptr leaves values unchanged");
+  uint16_t ow = k_rabook_gray4_ow_42;
+  uint16_t oh = k_rabook_gray4_ow_42;
+  ra8_rabook_gray4_output_dims(k_rabook_gray4_ra8_rabook_gray4_output_dims_100,
+                               k_rabook_gray4_ra8_rabook_gray4_output_dims_100,
+                               k_rabook_gray4_ra8_rabook_gray4_output_dims_200,
+                               nullptr,
+                               &oh);
+  ra8_rabook_gray4_output_dims(k_rabook_gray4_ra8_rabook_gray4_output_dims_100,
+                               k_rabook_gray4_ra8_rabook_gray4_output_dims_100,
+                               k_rabook_gray4_ra8_rabook_gray4_output_dims_200,
+                               &ow,
+                               nullptr);
+  check(ow == k_rabook_gray4_ow_42 && oh == k_rabook_gray4_ow_42,
+        "dims: null out ptr leaves values unchanged");
 }
 
 static void test_dims_zero_src(void)
 {
-  uint16_t ow = 99U;
-  uint16_t oh = 99U;
-  ra8_rabook_gray4_output_dims(0U, 100U, 200U, &ow, &oh);
+  uint16_t ow = k_rabook_gray4_ow_99;
+  uint16_t oh = k_rabook_gray4_ow_99;
+  ra8_rabook_gray4_output_dims(0U,
+                               k_rabook_gray4_ra8_rabook_gray4_output_dims_100,
+                               k_rabook_gray4_ra8_rabook_gray4_output_dims_200,
+                               &ow,
+                               &oh);
   check(ow == 0U && oh == 0U, "dims: zero src_w yields (0,0)");
 }
 
@@ -165,9 +247,13 @@ static void test_dims_zero_src_h(void)
    * src_h is flipped true (src_w and max_edge stay non-zero), proving src_h
    * independently drives the decision to the (0,0) arm.
    */
-  uint16_t ow = 99U;
-  uint16_t oh = 99U;
-  ra8_rabook_gray4_output_dims(100U, 0U, 200U, &ow, &oh);
+  uint16_t ow = k_rabook_gray4_ow_99;
+  uint16_t oh = k_rabook_gray4_ow_99;
+  ra8_rabook_gray4_output_dims(k_rabook_gray4_ra8_rabook_gray4_output_dims_100,
+                               0U,
+                               k_rabook_gray4_ra8_rabook_gray4_output_dims_200,
+                               &ow,
+                               &oh);
   check(ow == 0U && oh == 0U, "dims: zero src_h yields (0,0)");
 }
 
@@ -178,9 +264,13 @@ static void test_dims_zero_max_edge(void)
    * max_edge is flipped true (both source dims stay non-zero), proving
    * max_edge independently drives the decision to the (0,0) arm.
    */
-  uint16_t ow = 99U;
-  uint16_t oh = 99U;
-  ra8_rabook_gray4_output_dims(100U, 50U, 0U, &ow, &oh);
+  uint16_t ow = k_rabook_gray4_ow_99;
+  uint16_t oh = k_rabook_gray4_ow_99;
+  ra8_rabook_gray4_output_dims(k_rabook_gray4_ra8_rabook_gray4_output_dims_100,
+                               k_rabook_gray4_ra8_rabook_gray4_output_dims_50,
+                               0U,
+                               &ow,
+                               &oh);
   check(ow == 0U && oh == 0U, "dims: zero max_edge yields (0,0)");
 }
 
@@ -195,7 +285,7 @@ static void test_dims_clamp_w_to_1(void)
    */
   uint16_t ow = 0U;
   uint16_t oh = 0U;
-  ra8_rabook_gray4_output_dims(1U, 10000U, 2U, &ow, &oh);
+  ra8_rabook_gray4_output_dims(1U, k_rabook_gray4_ra8_rabook_gray4_output_dims_10000, 2U, &ow, &oh);
   check(ow == 1U, "dims: degenerate width clamped up to 1");
   check(oh == 2U, "dims: degenerate-width height is 2");
 }
@@ -211,7 +301,7 @@ static void test_dims_clamp_h_to_1(void)
    */
   uint16_t ow = 0U;
   uint16_t oh = 0U;
-  ra8_rabook_gray4_output_dims(10000U, 1U, 2U, &ow, &oh);
+  ra8_rabook_gray4_output_dims(k_rabook_gray4_ra8_rabook_gray4_output_dims_10000, 1U, 2U, &ow, &oh);
   check(ow == 2U, "dims: degenerate-height width is 2");
   check(oh == 1U, "dims: degenerate height clamped up to 1");
 }
@@ -237,7 +327,7 @@ static void test_encode_4px_exact_palette(void)
   check(err == k_ra8_ok, "encode: exact palette 4px -- ok");
   check(out_size == 2U, "encode: exact palette 4px -- size");
   check(out[0] == 0x01U, "encode: exact palette 4px -- byte0");
-  check(out[1] == 0x23U, "encode: exact palette 4px -- byte1");
+  check(out[1] == k_rabook_gray4_check_23, "encode: exact palette 4px -- byte1");
 }
 
 static void test_encode_3px_odd(void)
@@ -257,8 +347,8 @@ static void test_encode_3px_odd(void)
   ra8_err_t err = ra8_rabook_gray4_encode(pixels, 3U, 1U, out, sizeof(out), &out_size);
   check(err == k_ra8_ok, "encode: odd pixel count -- ok");
   check(out_size == 2U, "encode: odd pixel count -- size");
-  check(out[0] == 0x05U, "encode: odd pixel count -- byte0");
-  check(out[1] == 0xF0U, "encode: odd pixel count -- byte1 (low nibble zero)");
+  check(out[0] == k_rabook_gray4_check_05, "encode: odd pixel count -- byte0");
+  check(out[1] == k_rabook_gray4_check_f0, "encode: odd pixel count -- byte1 (low nibble zero)");
 }
 
 static void test_encode_1px(void)
@@ -274,13 +364,13 @@ static void test_encode_1px(void)
   ra8_err_t err = ra8_rabook_gray4_encode(&pixel, 1U, 1U, out, sizeof(out), &out_size);
   check(err == k_ra8_ok, "encode: single pixel -- ok");
   check(out_size == 1U, "encode: single pixel -- size");
-  check(out[0] == 0x80U, "encode: single pixel -- byte (nib=8)");
+  check(out[0] == k_rabook_gray4_check_80, "encode: single pixel -- byte (nib=8)");
 }
 
 static void test_encode_0px(void)
 {
   uint8_t  dummy[1] = {};
-  uint32_t out_size = 99U;
+  uint32_t out_size = k_rabook_gray4_ow_99;
 
   ra8_err_t err = ra8_rabook_gray4_encode(dummy, 0U, 0U, dummy, sizeof(dummy), &out_size);
   check(err == k_ra8_ok && out_size == 0U, "encode: 0 pixels returns 0 bytes");
@@ -319,7 +409,8 @@ static void test_encode_max_nib(void)
    * byte[1] = (15<<4)    = 0xF0
    */
   ra8_rabook_gray4_encode(pixels, 3U, 1U, out, sizeof(out), &out_size);
-  check(out[0] == 0xFFU && out[1] == 0xF0U, "encode: near-white pixels all saturate to 15");
+  check(out[0] == k_rabook_gray4_check_ff && out[1] == k_rabook_gray4_check_f0,
+        "encode: near-white pixels all saturate to 15");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -333,7 +424,8 @@ static void test_downscale_identity(void)
 
   ra8_err_t err = ra8_rabook_gray4_downscale(src, 2U, 2U, dst, 2U, 2U);
   check(err == k_ra8_ok, "downscale: identity 2x2 -- ok");
-  check(dst[0] == 10U && dst[1] == 20U && dst[2] == 30U && dst[3] == 40U,
+  check(dst[0] == k_rabook_gray4_check_10 && dst[1] == k_rabook_gray4_check_20 &&
+          dst[2] == k_rabook_gray4_check_30 && dst[3] == k_rabook_gray4_check_40,
         "downscale: identity 2x2 -- pixels unchanged");
 }
 
@@ -349,7 +441,8 @@ static void test_downscale_2to1_horizontal(void)
 
   ra8_err_t err = ra8_rabook_gray4_downscale(src, 4U, 1U, dst, 2U, 1U);
   check(err == k_ra8_ok, "downscale: 4x1->2x1 -- ok");
-  check(dst[0] == 0U && dst[1] == 128U, "downscale: 4x1->2x1 -- sampled at x=0,2");
+  check(dst[0] == 0U && dst[1] == k_rabook_gray4_check_128,
+        "downscale: 4x1->2x1 -- sampled at x=0,2");
 }
 
 static void test_downscale_null_ptr(void)
@@ -372,7 +465,10 @@ static void test_downscale_zero_dst(void)
 static void test_downscale_zero_src(void)
 {
   static const uint8_t src[]  = {1U};
-  uint8_t              dst[4] = {0xFFU, 0xFFU, 0xFFU, 0xFFU};
+  uint8_t              dst[4] = {k_rabook_gray4_check_ff,
+                                 k_rabook_gray4_check_ff,
+                                 k_rabook_gray4_check_ff,
+                                 k_rabook_gray4_check_ff};
 
   ra8_err_t err = ra8_rabook_gray4_downscale(src, 0U, 2U, dst, 2U, 2U);
   check(err == k_ra8_ok, "downscale: zero src_w returns ok");
@@ -399,7 +495,10 @@ static void test_downscale_zero_src_h(void)
    * proving src_h independently selects the ok + zeroed-dst arm.
    */
   static const uint8_t src[]  = {1U};
-  uint8_t              dst[4] = {0xFFU, 0xFFU, 0xFFU, 0xFFU};
+  uint8_t              dst[4] = {k_rabook_gray4_check_ff,
+                                 k_rabook_gray4_check_ff,
+                                 k_rabook_gray4_check_ff,
+                                 k_rabook_gray4_check_ff};
 
   ra8_err_t err = ra8_rabook_gray4_downscale(src, 2U, 0U, dst, 2U, 2U);
   check(err == k_ra8_ok, "downscale: zero src_h returns ok");

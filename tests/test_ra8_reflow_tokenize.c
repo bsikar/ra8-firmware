@@ -23,6 +23,19 @@
 #include "ra8_reflow_tokenize_internal.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum reflow_tokenize_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_reflow_tokenize_sentinel_deadbeef = 0xDEADBEEFU,
+} reflow_tokenize_uint32_const_t;
+
 /* Forward decl of the tokenizer entry point (defined in the production TU). */
 
 static ra8_reflow_t s_engine; /* large; keep off the stack */
@@ -334,7 +347,7 @@ static uint32_t first_text_color(void)
       return s_engine.tokens[i].color;
     }
   }
-  return 0xDEADBEEFU;
+  return k_reflow_tokenize_sentinel_deadbeef;
 }
 
 /**

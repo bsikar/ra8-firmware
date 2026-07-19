@@ -64,6 +64,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum jpeg_sw_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_jpeg_sw_cov_vals_42 = 0x42U,
+} jpeg_sw_cov_uint8_const_t;
+
 /* ------------------------------------------------------------------ */
 /* Bit-reader helpers: br_fill / ra8_jpeg_sw_br_get_bits */
 /* ------------------------------------------------------------------ */
@@ -216,7 +229,7 @@ static void test_htab_decode_valptr_overrun(void)
   ra8_jpeg_htab_t h = {};
   /* Build a 1-symbol, 1-bit table: bits[0]=1, vals[0]=0x42. */
   h.bits[0] = 1U;
-  h.vals[0] = 0x42U;
+  h.vals[0] = k_jpeg_sw_cov_vals_42;
   ra8_jpeg_sw_htab_build(&h);
   /* Corrupt total so that j = valptr[0] + 0 = 0 >= total = 0. */
   h.total = 0U;

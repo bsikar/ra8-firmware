@@ -52,6 +52,38 @@
 
 #include "ra8_fs.h"
 
+/**
+ * @enum exfat_fs_test_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_exfat_fs_test_i_31    = 31U,
+  k_exfat_fs_test_val_128 = 128,
+  k_exfat_fs_test_val_64  = 64,
+  k_exfat_fs_test_val_7   = 7U,
+  k_exfat_fs_test_val_ff  = 0xFFU,
+} exfat_fs_test_uint8_const_t;
+
+/**
+ * @enum exfat_fs_test_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_exfat_fs_test_bs_512   = 512U,
+  k_exfat_fs_test_val_1024 = 1024,
+  k_exfat_fs_test_val_512  = 512,
+} exfat_fs_test_uint16_const_t;
+
 #ifndef RA8_EXFAT_FIXTURE
 /** @brief RA8 EXFAT FIXTURE. */
 #define RA8_EXFAT_FIXTURE "exfat_small.img"
@@ -84,11 +116,11 @@ static ra8_err_t be_cap(void* ctx, uint32_t* bc, uint32_t* bs)
 {
   (void)ctx;
   *bc = g_blocks;
-  *bs = 512U;
+  *bs = k_exfat_fs_test_bs_512;
   return k_ra8_ok;
 }
 
-static char g_names[1024];
+static char g_names[k_exfat_fs_test_val_1024];
 static void on_entry(const char* name, uint8_t attr, uint32_t size, void* ctx)
 {
   (void)attr;
@@ -106,7 +138,7 @@ static void on_entry(const char* name, uint8_t attr, uint32_t size, void* ctx)
 /* Re-list the root and report whether `name` is currently an entry. */
 static int name_present(ra8_fs_mount_t* mnt, const char* name)
 {
-  char needle[64];
+  char needle[k_exfat_fs_test_val_64];
   g_names[0] = '\0';
   (void)ra8_fs_listdir(mnt, "/", on_entry, nullptr);
   (void)snprintf(needle, sizeof(needle), "%s|", name);
@@ -140,13 +172,13 @@ static void maybe_dump_image(const char* tag)
   if (base == nullptr) {
     return;
   }
-  char path[512];
+  char path[k_exfat_fs_test_val_512];
   (void)snprintf(path, sizeof(path), "%s.%s", base, tag);
   FILE* o = fopen(path, "wb");
   if (o == nullptr) {
     return;
   }
-  (void)fwrite(g_img, 1U, (size_t)g_blocks * 512U, o);
+  (void)fwrite(g_img, 1U, (size_t)g_blocks * k_exfat_fs_test_bs_512, o);
   (void)fclose(o);
   printf("  [dump] %s\n", path);
 }
@@ -161,9 +193,9 @@ static void check_open_reads_hello(ra8_fs_mount_t* mnt, const char* path)
     g_fail = 1;
     return;
   }
-  uint8_t  buf[128] = {};
-  uint32_t got      = 0U;
-  e                 = ra8_fs_read(fp, buf, sizeof(buf) - 1U, &got);
+  uint8_t  buf[k_exfat_fs_test_val_128] = {};
+  uint32_t got                          = 0U;
+  e                                     = ra8_fs_read(fp, buf, sizeof(buf) - 1U, &got);
   (void)ra8_fs_close(fp);
   const int ok = (e == k_ra8_ok) && (got == (uint32_t)strlen(k_expect)) &&
                  (memcmp(buf, k_expect, strlen(k_expect)) == 0);
@@ -186,9 +218,9 @@ static void check_write_path(ra8_fs_mount_t* mnt)
 
   ra8_fs_file_t* fp = nullptr;
   if (ra8_fs_open(mnt, "/W83.TXT", k_ra8_fs_mode_read, &fp) == k_ra8_ok) {
-    uint8_t   buf[64] = {};
-    uint32_t  got     = 0U;
-    ra8_err_t e       = ra8_fs_read(fp, buf, sizeof(buf) - 1U, &got);
+    uint8_t   buf[k_exfat_fs_test_val_64] = {};
+    uint32_t  got                         = 0U;
+    ra8_err_t e                           = ra8_fs_read(fp, buf, sizeof(buf) - 1U, &got);
     (void)ra8_fs_close(fp);
     check((e == k_ra8_ok) && (got == len) && (memcmp(buf, data, len) == 0),
           "written file reads back byte-identical");
@@ -211,7 +243,8 @@ static void check_multicluster_path(ra8_fs_mount_t* mnt)
   static uint8_t s_big[k_mc_payload_bytes];
   static uint8_t s_back[k_mc_payload_bytes];
   for (uint32_t i = 0U; i < k_mc_payload_bytes; i++) {
-    s_big[i] = (uint8_t)(((i * 31U) + 7U) & 0xFFU);
+    s_big[i] =
+      (uint8_t)(((i * k_exfat_fs_test_i_31) + k_exfat_fs_test_val_7) & k_exfat_fs_test_val_ff);
   }
 
   check(ra8_fs_write_file(mnt, "/BIG.BIN", s_big, k_mc_payload_bytes) == k_ra8_ok,
@@ -292,7 +325,7 @@ int main(int argc, char** argv)
     printf("FAIL: short read of fixture\n");
     return 2;
   }
-  g_blocks = (uint32_t)((size_t)sz / 512U);
+  g_blocks = (uint32_t)((size_t)sz / k_exfat_fs_test_bs_512);
 
   ra8_fs_backend_t be  = {.read_block   = be_read,
                           .write_block  = be_write,

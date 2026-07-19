@@ -23,6 +23,20 @@
 #include "sim_exc.h"
 #include "sim_trace.h"
 
+/**
+ * @enum sim_usbh_seam_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_sim_usbh_seam_val_14 = 14,
+  k_sim_usbh_seam_val_64 = 64,
+} sim_usbh_seam_uint8_const_t;
+
 /** @brief ra8_err_t values the virtual devices return to the host stack. */
 typedef enum : uint32_t {
   k_ra8_err_no_data  = 0x10AU, /**< ra8_err_t value: no RX data.    */
@@ -329,7 +343,7 @@ typedef struct {
 } vmsc_overlay_t;
 
 /** @brief Write overlay for the writable disk (file_ops touches only a handful). */
-static vmsc_overlay_t s_vmsc_overlay[64];
+static vmsc_overlay_t s_vmsc_overlay[k_sim_usbh_seam_val_64];
 
 /** @brief Return an overwritten sector if @p lba is in the overlay. */
 static bool vmsc_overlay_get(uint32_t lba, uint8_t* out)
@@ -491,10 +505,10 @@ static void on_hmsc_enumerate(uc_engine* uc, uint64_t address, uint32_t size, vo
   if (dev_ptr != 0U) {
     /* ra8_usb_hmsc_device_t: addr,bin_ep,bout_ep,max_lun,iface,[pad],in_mps,
      * out_mps,vid,pid. */
-    uint8_t d[14] = {};
-    d[0]          = 1U;                                          /* device_address      */
-    d[1]          = 1U;                                          /* bulk_in_ep          */
-    d[2]          = 2U;                                          /* bulk_out_ep         */
+    uint8_t d[k_sim_usbh_seam_val_14] = {};
+    d[0]                              = 1U;                      /* device_address      */
+    d[1]                              = 1U;                      /* bulk_in_ep          */
+    d[2]                              = 2U;                      /* bulk_out_ep         */
     vmsc_put16(&d[6], (uint16_t)k_hmsc_bulk_mps);                /* bulk_in_max_packet  */
     vmsc_put16(&d[8], (uint16_t)k_hmsc_bulk_mps);                /* bulk_out_max_packet */
     vmsc_put16(&d[k_hmsc_off_vid], (uint16_t)k_hmsc_vendor_id);  /* vendor_id           */

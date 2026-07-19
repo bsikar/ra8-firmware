@@ -21,6 +21,38 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum canfd_loopback_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_canfd_loopback_val_11 = 0x11U,
+  k_canfd_loopback_val_22 = 0x22U,
+  k_canfd_loopback_val_33 = 0x33U,
+  k_canfd_loopback_val_ad = 0xADU,
+  k_canfd_loopback_val_be = 0xBEU,
+  k_canfd_loopback_val_de = 0xDEU,
+  k_canfd_loopback_val_ef = 0xEFU,
+} canfd_loopback_uint8_const_t;
+
+/**
+ * @enum canfd_loopback_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_canfd_loopback_sts_ffffffff = 0xFFFFFFFFUL,
+} canfd_loopback_uint32_const_t;
+
 typedef enum : uint32_t {
   k_test_canfd_app_bitrate = 500000U, /**< Test CANFD app bitrate. */
   k_test_canfd_app_id      = 0x123U,  /**< Test CANFD app ID.      */
@@ -82,7 +114,7 @@ static void test_canfd_app_loopback_bits_set(void)
    * p 2711). */
   volatile r_canfd_t* reg = ra8_canfd((uint8_t)k_test_canfd_app_channel);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  reg->CFDC[0].STS = 0xFFFFFFFFUL;
+  reg->CFDC[0].STS = k_canfd_loopback_sts_ffffffff;
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_canfd_set_test_mode((uint8_t)k_test_canfd_app_channel, k_ra8_ctms_self_test_1));
@@ -118,7 +150,14 @@ static void test_canfd_app_round_trip(void)
     .is_extended = 0U,
     .is_fd       = 0U,
     .is_brs      = 0U,
-    .data        = {0xDEU, 0xADU, 0xBEU, 0xEFU, 0x00U, 0x11U, 0x22U, 0x33U},
+    .data        = {k_canfd_loopback_val_de,
+                    k_canfd_loopback_val_ad,
+                    k_canfd_loopback_val_be,
+                    k_canfd_loopback_val_ef,
+                    0x00U,
+                    k_canfd_loopback_val_11,
+                    k_canfd_loopback_val_22,
+                    k_canfd_loopback_val_33},
   };
   TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_transmit((uint8_t)k_test_canfd_app_channel, &tx));
   ra8_canfd_frame_t rx = {};

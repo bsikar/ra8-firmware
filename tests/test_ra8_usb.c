@@ -21,6 +21,67 @@
 #include "ra8_usb_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum usb_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_usb_sentinel_55  = 0x55U,
+  k_usb_usbleng_000a = 0x000AU,
+  k_usb_usbleng_0040 = 0x0040U,
+  k_usb_val_11       = 0x11U,
+  k_usb_val_22       = 0x22U,
+  k_usb_val_30       = 0x30U,
+  k_usb_val_33       = 0x33U,
+  k_usb_val_40       = 0x40U,
+  k_usb_val_66       = 0x66U,
+  k_usb_val_77       = 0x77U,
+  k_usb_val_88       = 0x88U,
+  k_usb_val_99       = 0x99U,
+} usb_uint8_const_t;
+
+/**
+ * @enum usb_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_usb_cfifo_bbaa   = 0xBBAAU,
+  k_usb_cfifo_ddcc   = 0xDDCCU,
+  k_usb_intsts0_abcd = 0xABCDU,
+  k_usb_intsts0_babe = 0xBABEU,
+  k_usb_intsts0_cafe = 0xCAFEU,
+  k_usb_usbindx_5678 = 0x5678U,
+  k_usb_usbreq_2106  = 0x2106U,
+  k_usb_usbreq_8006  = 0x8006U,
+  k_usb_usbval_0100  = 0x0100U,
+  k_usb_usbval_1234  = 0x1234U,
+  k_usb_val_00006655 = 0x00006655U,
+} usb_uint16_const_t;
+
+/**
+ * @enum usb_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_usb_val_00887766 = 0x00887766U,
+  k_usb_val_44332211 = 0x44332211U,
+} usb_uint32_const_t;
+
 typedef enum : uint16_t {
   k_test_usb_dcp_max_packet = 64U, /**< Test USB dcp maximum packet. */
 } test_usb_dcp_t;
@@ -208,7 +269,7 @@ static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("usb status read + clear");
   prep_cb();
-  ra8_usb_fs()->INTSTS0 = (uint16_t)0xABCDU;
+  ra8_usb_fs()->INTSTS0 = (uint16_t)k_usb_intsts0_abcd;
   uint16_t mask         = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_get_status(k_ra8_usb_speed_fs, &mask));
   TEST_ASSERT_EQ(0xABCDU, mask);
@@ -231,7 +292,7 @@ static void test_attach_and_dispatch(void)
   prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_usb_attach_handler(k_ra8_usb_speed_fs, stub_usb_cb, (void*)(uintptr_t)0xAAU));
-  ra8_usb_fs()->INTSTS0 = (uint16_t)0xCAFEU;
+  ra8_usb_fs()->INTSTS0 = (uint16_t)k_usb_intsts0_cafe;
   ra8_usb_dispatch(k_ra8_usb_speed_fs);
   TEST_ASSERT_EQ(1, s_usb_cb_count);
   TEST_ASSERT_EQ(0xCAFEU, s_usb_cb_last_mask);
@@ -491,10 +552,10 @@ static void test_read_setup(void)
 
   volatile r_usb_regs_t* reg = ra8_usb_fs();
   reg->INTSTS0               = (uint16_t)k_ra8_intsts0_mask_valid;
-  reg->USBREQ                = (uint16_t)0x2106U; /* bRequest=0x21 bm=0x06 */
-  reg->USBVAL                = (uint16_t)0x1234U;
-  reg->USBINDX               = (uint16_t)0x5678U;
-  reg->USBLENG               = (uint16_t)0x000AU;
+  reg->USBREQ                = (uint16_t)k_usb_usbreq_2106; /* bRequest=0x21 bm=0x06 */
+  reg->USBVAL                = (uint16_t)k_usb_usbval_1234;
+  reg->USBINDX               = (uint16_t)k_usb_usbindx_5678;
+  reg->USBLENG               = (uint16_t)k_usb_usbleng_000a;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_read_setup_if_valid(k_ra8_usb_speed_fs, &setup));
   TEST_ASSERT_EQ(0x06U, setup.bm_request_type);
@@ -525,10 +586,10 @@ static void test_read_setup_unconditional(void)
   /* Simulate the HS race: SETUP latch is populated but the SIE has
    * already auto-cleared INTSTS0.VALID before the polled worker runs. */
   reg->INTSTS0 = (uint16_t)(reg->INTSTS0 & (uint16_t)~k_ra8_intsts0_mask_valid);
-  reg->USBREQ  = (uint16_t)0x8006U; /* bRequest=0x80 bm=0x06 (GET_DESCRIPTOR) */
-  reg->USBVAL  = (uint16_t)0x0100U;
+  reg->USBREQ  = (uint16_t)k_usb_usbreq_8006; /* bRequest=0x80 bm=0x06 (GET_DESCRIPTOR) */
+  reg->USBVAL  = (uint16_t)k_usb_usbval_0100;
   reg->USBINDX = (uint16_t)0x0000U;
-  reg->USBLENG = (uint16_t)0x0040U;
+  reg->USBLENG = (uint16_t)k_usb_usbleng_0040;
 
   ra8_usb_setup_t setup = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_read_setup_unconditional(k_ra8_usb_speed_fs, &setup));
@@ -643,7 +704,7 @@ static void test_queue_in_fifo_tail_paths(void)
   prep_cb();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_device_init(k_ra8_usb_speed_fs));
 
-  uint8_t                fs_odd[3] = {0x11U, 0x22U, 0x33U};
+  uint8_t                fs_odd[3] = {k_usb_val_11, k_usb_val_22, k_usb_val_33};
   volatile r_usb_regs_t* freg      = ra8_usb_fs();
   freg->CFIFOCTR                   = (uint16_t)k_ra8_fifoctr_frdy;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_in(k_ra8_usb_speed_fs, 1U, fs_odd, 3U));
@@ -661,19 +722,19 @@ static void test_queue_in_fifo_tail_paths(void)
   volatile r_usb_regs_t* hreg = ra8_usb_hs();
   const uint16_t         hsel = (uint16_t)(k_ra8_fifosel_mbw_32 | k_ra8_fifosel_isel | 1U);
 
-  uint8_t hs_head[4] = {0x10U, 0x20U, 0x30U, 0x40U};
+  uint8_t hs_head[4] = {0x10U, 0x20U, k_usb_val_30, k_usb_val_40};
   hreg->CFIFOCTR     = (uint16_t)k_ra8_fifoctr_frdy;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_in(k_ra8_usb_speed_hs, 1U, hs_head, 4U));
   TEST_ASSERT_EQ(0x40302010U, (*test_usb_cfifo32(hreg)));
   TEST_ASSERT_EQ(hsel, hreg->CFIFOSEL);
 
-  uint8_t hs_half_tail[2] = {0x55U, 0x66U};
+  uint8_t hs_half_tail[2] = {k_usb_sentinel_55, k_usb_val_66};
   hreg->CFIFOCTR          = (uint16_t)k_ra8_fifoctr_frdy;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_in(k_ra8_usb_speed_hs, 1U, hs_half_tail, 2U));
   TEST_ASSERT_EQ(0x6655U, (*test_usb_cfifoh(hreg)));
   TEST_ASSERT_EQ(hsel, hreg->CFIFOSEL);
 
-  uint8_t hs_byte_tail[3] = {0x77U, 0x88U, 0x99U};
+  uint8_t hs_byte_tail[3] = {k_usb_val_77, k_usb_val_88, k_usb_val_99};
   hreg->CFIFOCTR          = (uint16_t)k_ra8_fifoctr_frdy;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_in(k_ra8_usb_speed_hs, 1U, hs_byte_tail, 3U));
   TEST_ASSERT_EQ(0x99U, (*test_usb_cfifohh(hreg)));
@@ -700,7 +761,7 @@ static void queue_out_fs_tails(void)
   static const uint16_t  pipe_bit = (uint16_t)(1U << 1U);
   freg->BRDYSTS                   = pipe_bit;
   freg->CFIFOCTR                  = (uint16_t)(k_ra8_fifoctr_frdy | 1U);
-  freg->CFIFO                     = (uint16_t)0xBBAAU;
+  freg->CFIFO                     = (uint16_t)k_usb_cfifo_bbaa;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_out(k_ra8_usb_speed_fs, 1U, out, &len, true));
   TEST_ASSERT_EQ(1U, len);
   TEST_ASSERT_EQ(0xAAU, out[0]);
@@ -710,7 +771,7 @@ static void queue_out_fs_tails(void)
   len            = 2U;
   freg->BRDYSTS  = pipe_bit;
   freg->CFIFOCTR = (uint16_t)(k_ra8_fifoctr_frdy | 2U);
-  freg->CFIFO    = (uint16_t)0xDDCCU;
+  freg->CFIFO    = (uint16_t)k_usb_cfifo_ddcc;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_out(k_ra8_usb_speed_fs, 1U, out, &len, true));
   TEST_ASSERT_EQ(2U, len);
   TEST_ASSERT_EQ(0xCCU, out[0]);
@@ -734,7 +795,7 @@ static void queue_out_hs_tails(void)
   len                     = 4U;
   hreg->BRDYSTS           = pipe_bit;
   hreg->CFIFOCTR          = (uint16_t)(k_ra8_fifoctr_frdy | 4U);
-  *test_usb_cfifo32(hreg) = 0x44332211U;
+  *test_usb_cfifo32(hreg) = k_usb_val_44332211;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_out(k_ra8_usb_speed_hs, 1U, out, &len, true));
   TEST_ASSERT_EQ(4U, len);
   TEST_ASSERT_EQ(0x11U, out[0]);
@@ -753,7 +814,7 @@ static void queue_out_hs_tails(void)
   len                     = 2U;
   hreg->BRDYSTS           = pipe_bit;
   hreg->CFIFOCTR          = (uint16_t)(k_ra8_fifoctr_frdy | 2U);
-  *test_usb_cfifo32(hreg) = 0x00006655U;
+  *test_usb_cfifo32(hreg) = k_usb_val_00006655;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_out(k_ra8_usb_speed_hs, 1U, out, &len, true));
   TEST_ASSERT_EQ(2U, len);
   TEST_ASSERT_EQ(0x55U, out[0]);
@@ -765,7 +826,7 @@ static void queue_out_hs_tails(void)
   len                     = 3U;
   hreg->BRDYSTS           = pipe_bit;
   hreg->CFIFOCTR          = (uint16_t)(k_ra8_fifoctr_frdy | 3U);
-  *test_usb_cfifo32(hreg) = 0x00887766U;
+  *test_usb_cfifo32(hreg) = k_usb_val_00887766;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_queue_out(k_ra8_usb_speed_hs, 1U, out, &len, true));
   TEST_ASSERT_EQ(3U, len);
   TEST_ASSERT_EQ(0x66U, out[0]);
@@ -800,7 +861,7 @@ static void test_hs_paths(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_clear_status(k_ra8_usb_speed_hs, (uint16_t)0x0002U));
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_attach_handler(k_ra8_usb_speed_hs, stub_usb_cb, nullptr));
-  ra8_usb_hs()->INTSTS0 = (uint16_t)0xBABEU;
+  ra8_usb_hs()->INTSTS0 = (uint16_t)k_usb_intsts0_babe;
   ra8_usb_dispatch(k_ra8_usb_speed_hs);
   TEST_ASSERT_EQ(1, s_usb_cb_count);
 

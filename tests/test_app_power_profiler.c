@@ -22,6 +22,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum power_profiler_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_power_profiler_s_now_us_100 = 100U,
+} power_profiler_uint8_const_t;
+
 static uint64_t s_now_us = 0U;
 
 static void reset_world(void)
@@ -34,7 +47,7 @@ static void reset_world(void)
 static uint64_t test_pp_now_us(void* ctx)
 {
   (void)ctx;
-  s_now_us += 100U;
+  s_now_us += k_power_profiler_s_now_us_100;
   return s_now_us;
 }
 

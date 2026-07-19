@@ -22,6 +22,19 @@
 #include "../examples/ek_ra8d2/hw_validated/hil/ereader_ui/er_pageturn.h"
 
 /**
+ * @enum ereader_pageturn_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ereader_pageturn_c_9 = 9U,
+} ereader_pageturn_uint8_const_t;
+
+/**
  * @test er_tap_to_dir splits the screen into thirds (edge taps).
  */
 static void test_tap_thirds(void)
@@ -57,8 +70,8 @@ static void test_buttons(void)
 static void test_step_within(void)
 {
   TEST_BEGIN("step: within-chapter next/prev + none");
-  uint32_t c = 9U;
-  uint32_t p = 9U;
+  uint32_t c = k_ereader_pageturn_c_9;
+  uint32_t p = k_ereader_pageturn_c_9;
   bool     x = true;
   /* next within a 3-chapter spine, chapter 1 page 1 of 5 -> page 2 */
   TEST_ASSERT(er_pageturn_step(1U, 1U, 5U, 3U, k_er_dir_next, &c, &p, &x));

@@ -24,6 +24,21 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum spi_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_spi_ra8_spi_dispatch_spei_9 = 9U,
+  k_spi_rx_ff                   = 0xFFU,
+  k_spi_spdr_66                 = 0x66U,
+} spi_uint8_const_t;
+
+/**
  * @enum ra8_spi_test_ch_t
  * @brief Channel numbers used by SPI tests.
  */
@@ -242,7 +257,7 @@ static void test_xfer8_timeout_sprf(void)
     k_ra8_ok,
     ra8_sim_mmio_fail_wait((const volatile void*)&ra8_spi(k_ra8_spi_test_ch_zero)->SPSR));
 
-  uint8_t rx = 0xFFU;
+  uint8_t rx = k_spi_rx_ff;
   TEST_ASSERT_EQ(k_ra8_err_hw_timeout,
                  ra8_spi_xfer8(k_ra8_spi_test_ch_zero, (uint8_t)k_ra8_spi_test_tx_byte, &rx));
   TEST_END("spi xfer8 timeout sprf");
@@ -461,11 +476,11 @@ static void test_spi_attach(void)
   TEST_ASSERT_EQ(0, s_spi_cb_count);
 
   /* Out-of-range is a no-op. */
-  ra8_spi_dispatch_spei(9U);
+  ra8_spi_dispatch_spei(k_spi_ra8_spi_dispatch_spei_9);
   ra8_spi_dispatch_spti(0U);
-  ra8_spi_dispatch_spti(9U);
+  ra8_spi_dispatch_spti(k_spi_ra8_spi_dispatch_spei_9);
   ra8_spi_dispatch_spri(0U);
-  ra8_spi_dispatch_spri(9U);
+  ra8_spi_dispatch_spri(k_spi_ra8_spi_dispatch_spei_9);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_spi_attach_transfer_handler(9U, stub_spi_cb, nullptr));
   TEST_END("ra8_spi_attach_transfer_handler: dispatch fires callback");
 }
@@ -513,7 +528,7 @@ static void test_spi_write_dma_streams_to_spdr(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_spi_init(0U, &k_spi_cfg));
 
   const uint8_t src[] = {0x77U, 0x88U, 0x99U};
-  uint8_t       dch   = 0xFFU;
+  uint8_t       dch   = k_spi_rx_ff;
   s_spi_dma_done      = 0;
   TEST_ASSERT_EQ(
     k_ra8_ok,
@@ -542,10 +557,10 @@ static void test_spi_read_dma_streams_from_spdr(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_spi_init(0U, &k_spi_cfg));
 
   volatile r_spi_regs_t* reg = ra8_spi(0U);
-  reg->SPDR                  = 0x66U;
+  reg->SPDR                  = k_spi_spdr_66;
 
   uint8_t out[2] = {0U, 0U};
-  uint8_t dch    = 0xFFU;
+  uint8_t dch    = k_spi_rx_ff;
   s_spi_dma_done = 0;
   TEST_ASSERT_EQ(
     k_ra8_ok,

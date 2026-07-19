@@ -48,6 +48,19 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum flash_config_cov_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_flash_config_cov_count_ffffffff = 0xFFFFFFFFUL,
+} flash_config_cov_uint32_const_t;
+
+/**
  * @enum ra8_arc_page_const_t
  * @brief Page bases / size for the host-backed ARC counter windows.
  *
@@ -191,7 +204,7 @@ static void test_arc_read_sec_counts_bits(void)
   arc_seed_sec_word(0U, (uint32_t)k_seed_sec_w0);
   arc_seed_sec_word(1U, (uint32_t)k_seed_sec_w1);
 
-  uint32_t count = 0xFFFFFFFFUL;
+  uint32_t count = k_flash_config_cov_count_ffffffff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_flash_arc_read(k_ra8_flash_arc_sec, &count));
   TEST_ASSERT_EQ(k_seed_sec_count, count);
   TEST_END("flash arc_read SEC counts bits");

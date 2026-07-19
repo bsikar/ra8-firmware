@@ -22,6 +22,19 @@
 #include "ra8_psa_crypto.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum crypto_aes_demo_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_crypto_aes_demo_ct_ff = 0xFFU,
+} crypto_aes_demo_uint8_const_t;
+
 typedef enum : uint8_t {
   k_test_aes_app_key_bytes   = 16U, /**< Test AES app key bytes.   */
   k_test_aes_app_plain_bytes = 8U,  /**< Test AES app plain bytes. */
@@ -184,7 +197,7 @@ static void test_aes_app_tag_tamper_rejected(void)
                                       ct,
                                       sizeof(ct),
                                       &ct_len));
-  ct[ct_len - 1U] ^= 0xFFU;
+  ct[ct_len - 1U] ^= k_crypto_aes_demo_ct_ff;
   uint8_t         recovered[k_test_aes_app_plain_bytes] = {};
   size_t          rec_len                               = 0U;
   const ra8_err_t err = ra8_psa_aead_decrypt(key,

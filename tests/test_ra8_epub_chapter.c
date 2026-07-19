@@ -15,6 +15,19 @@
 #include "ra8_err.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum epub_chapter_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_epub_chapter_val_64 = 64,
+} epub_chapter_uint8_const_t;
+
 typedef enum : size_t {
   k_test_epub_font_min_bytes = 16U, /**< Test EPUB font minimum bytes. */
 } test_epub_font_t;
@@ -35,10 +48,10 @@ typedef enum : uint16_t {
   k_test_epub_codepoint    = 65U, /**< 'A': code point handed to render_glyph.    */
 } test_epub_count_t;
 
-static uint8_t s_font_buf[64];
+static uint8_t s_font_buf[k_epub_chapter_val_64];
 
 /** @brief Scratch alpha-8 glyph buffer for the render-guard tests. */
-static uint8_t s_glyph_buf[64];
+static uint8_t s_glyph_buf[k_epub_chapter_val_64];
 
 /** @brief A non-TTF blob (>= 16 bytes): forces priv_font_init to reject it. */
 static uint8_t s_bogus_font[k_test_epub_font_min_bytes];

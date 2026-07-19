@@ -34,6 +34,33 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum smbus_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_smbus_marker_42 = 42,
+  k_smbus_out_ff    = 0xFFU,
+} smbus_uint8_const_t;
+
+/**
+ * @enum smbus_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_smbus_val_256 = 256,
+} smbus_uint16_const_t;
+
+/**
  * @enum ra8_smbus_test_const_t
  * @brief Constants used across tests.
  */
@@ -324,7 +351,7 @@ static void test_receive_byte_no_pec_happy(void)
   TEST_BEGIN("ra8_smbus_receive_byte: no PEC, 1 byte returned");
   prep_pec(false);
   prime_iic_b();
-  uint8_t out = 0xFFU;
+  uint8_t out = k_smbus_out_ff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_smbus_receive_byte((uint8_t)k_smbus_test_target, &out));
   /* Simulator returns 0 from NTDTBP0; that's fine -- we just confirm
    * the call succeeded and out_data was written. */
@@ -422,7 +449,7 @@ static void test_read_byte_data_no_pec(void)
   TEST_BEGIN("ra8_smbus_read_byte_data: combined xfer, no PEC");
   prep_pec(false);
   prime_iic_b();
-  uint8_t out = 0xFFU;
+  uint8_t out = k_smbus_out_ff;
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_smbus_read_byte_data((uint8_t)k_smbus_test_target, (uint8_t)k_smbus_test_cmd, &out));
@@ -534,8 +561,8 @@ static void test_block_read_no_pec_happy(void)
    * (255) so any 8-bit count value fits, then just verify the call
    * succeeded; the framing logic itself is exercised by
    * test_block_read_arg_validation and test_block_write_*. */
-  uint8_t buf[256] = {0U};
-  uint8_t got      = 0xFFU;
+  uint8_t buf[k_smbus_val_256] = {0U};
+  uint8_t got                  = k_smbus_out_ff;
   TEST_ASSERT_EQ(
     k_ra8_ok,
     ra8_smbus_block_read((uint8_t)k_smbus_test_target, (uint8_t)k_smbus_test_cmd, buf, 255U, &got));
@@ -604,7 +631,7 @@ static void test_alert_register_and_dispatch(void)
   prep_pec(false);
   prime_iic_b();
 
-  int32_t marker = 42;
+  int32_t marker = k_smbus_marker_42;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_smbus_alert_register_callback(stub_alert, &marker));
 
   s_alert_count = 0;

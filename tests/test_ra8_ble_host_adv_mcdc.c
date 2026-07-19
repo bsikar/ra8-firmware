@@ -24,6 +24,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum ble_host_adv_mcdc_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ble_host_adv_mcdc_role_ff = 0xFFU,
+} ble_host_adv_mcdc_uint8_const_t;
+
 /* Test hooks from libs/ra8_hal/src/ra8_ble.c. */
 const uint8_t* ra8_ble_test_tx_capture(uint16_t* out_len);
 void           ra8_ble_test_reset_capture(void);
@@ -240,7 +253,7 @@ static void test_mcdc_init_role_4cond(void)
   (void)ra8_ble_host_close();
   (void)ra8_ble_close();
   /* V5: bogus role */
-  cfg.role = (ra8_ble_host_role_t)0xFFU;
+  cfg.role = (ra8_ble_host_role_t)k_ble_host_adv_mcdc_role_ff;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_ble_host_init(&cfg));
   TEST_END("mcdc init role (4-cond AND chain)");
 }

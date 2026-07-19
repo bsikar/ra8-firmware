@@ -23,6 +23,48 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum i3c_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_i3c_cov_dummy_aa             = 0xAAU,
+  k_i3c_cov_ra8_i3c_dispatch_255 = 255U,
+} i3c_cov_uint8_const_t;
+
+/**
+ * @enum i3c_cov_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_i3c_cov_nibiqp_00008409 = 0x00008409U,
+} i3c_cov_uint16_const_t;
+
+/**
+ * @enum i3c_cov_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_i3c_cov_nibiqp_80000200  = 0x80000200U,
+  k_i3c_cov_nibiqp_80000400  = 0x80000400U,
+  k_i3c_cov_ntdtbp0_deadbeef = 0xDEADBEEFU,
+} i3c_cov_uint32_const_t;
+
 /* ---------------------------------------------------------------------------
  * Shared callbacks and config helpers
  * ---------------------------------------------------------------------------
@@ -204,7 +246,7 @@ static void test_dispatch_oob_and_i2c_mode(void)
   TEST_BEGIN("i3c dispatch: out-of-range channel + i2c-mode path");
   /* Part 1: channel 255 hits the early return at line 422. */
   prep();
-  ra8_i3c_dispatch(255U);
+  ra8_i3c_dispatch(k_i3c_cov_ra8_i3c_dispatch_255);
   /* Part 2: channel 0 in i2c mode, callback attached -- covers 428-434.
    * MC/DC V2 (fn!=nullptr): fn is invoked. */
   prep_i2c();
@@ -257,7 +299,7 @@ static void test_recv_ccc_internal_invalid(void)
 static void test_write_error_paths(void)
 {
   TEST_BEGIN("i3c write: oob channel / uninit / len overflow errors");
-  uint8_t dummy = 0xAAU;
+  uint8_t dummy = k_i3c_cov_dummy_aa;
 
   /* Line 615: channel out of range. */
   prep();
@@ -566,7 +608,7 @@ static void test_ibi_hot_join(void)
   /* Mark the IBI queue non-empty. */
   ra8_i3c()->NTST = (uint32_t)k_ra8_i3c_ntst_ibiqeff_mask;
   /* IBI_ST=1 (bit 31), ibi_id=0x02 (hot-join), len=0. */
-  ra8_i3c()->NIBIQP = 0x80000200U;
+  ra8_i3c()->NIBIQP = k_i3c_cov_nibiqp_80000200;
 
   ra8_i3c_ibi_t ibi = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_ibi_read(&ibi));
@@ -588,7 +630,7 @@ static void test_ibi_main_request(void)
   prep_native();
   ra8_i3c()->NTST = (uint32_t)k_ra8_i3c_ntst_ibiqeff_mask;
   /* IBI_ST=1 (bit 31), ibi_id=0x04 (mainship-request, not 0x02), len=0. */
-  ra8_i3c()->NIBIQP = 0x80000400U;
+  ra8_i3c()->NIBIQP = k_i3c_cov_nibiqp_80000400;
 
   ra8_i3c_ibi_t ibi = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_ibi_read(&ibi));
@@ -615,8 +657,8 @@ static void test_ibi_payload_clamping(void)
   ra8_i3c()->NTST = (uint32_t)k_ra8_i3c_ntst_ibiqeff_mask;
   /* IBI_ST=0 (interrupt type), ibi_id=0x84, len=9 (bits[7:0]=9).
    * 9 > sizeof(out_ibi->payload)=8 triggers the clamp on line 947. */
-  ra8_i3c()->NIBIQP  = 0x00008409U;
-  ra8_i3c()->NTDTBP0 = 0xDEADBEEFU; /* payload data (two reads of 4 bytes) */
+  ra8_i3c()->NIBIQP  = k_i3c_cov_nibiqp_00008409;
+  ra8_i3c()->NTDTBP0 = k_i3c_cov_ntdtbp0_deadbeef; /* payload data (two reads of 4 bytes) */
 
   ra8_i3c_ibi_t ibi = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_ibi_read(&ibi));

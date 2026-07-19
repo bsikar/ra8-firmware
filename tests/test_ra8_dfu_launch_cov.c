@@ -49,6 +49,19 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum dfu_launch_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_dfu_launch_cov_val_64 = 64,
+} dfu_launch_cov_uint8_const_t;
+
+/**
  * @enum test_dfu_launch_const_t
  * @brief Benign launch arguments used to drive each control leg.
  */
@@ -76,7 +89,7 @@ static void test_launch_production_default_paths(void)
 {
   TEST_BEGIN("ra8_dfu_launch: src==0, invalid target, and valid fall-through");
 
-  uint8_t img[64] = {};
+  uint8_t img[k_dfu_launch_cov_val_64] = {};
 
   /* src == 0 -> nothing to copy -> early return. */
   ra8_dfu_launch(0U, (uint32_t)k_tc_img_len, (uint32_t)k_ra8_dfu_run_base);
@@ -186,7 +199,7 @@ static void test_launch_cov_early_returns(void)
 {
   TEST_BEGIN("ra8_dfu_launch_cov: src==0 and bad-entry early returns");
 
-  uint8_t img[64] = {};
+  uint8_t img[k_dfu_launch_cov_val_64] = {};
 
   /* src == 0 -> early return before the root-of-trust gate. */
   ra8_dfu_launch_cov(0U, (uint32_t)k_tc_img_len, (uint32_t)k_ra8_dfu_run_base);
@@ -212,9 +225,9 @@ static void test_launch_cov_rot_verify_deny(void)
 {
   TEST_BEGIN("ra8_dfu_launch_cov(ROT): verify failure default-denies");
 
-  uint8_t img[64]    = {};
-  s_verify_err       = k_ra8_err_crc_mismatch; /* Signature did not verify. */
-  s_antirollback_err = k_ra8_ok;
+  uint8_t img[k_dfu_launch_cov_val_64] = {};
+  s_verify_err                         = k_ra8_err_crc_mismatch; /* Signature did not verify. */
+  s_antirollback_err                   = k_ra8_ok;
   ra8_dfu_launch_cov((uintptr_t)img, (uint32_t)k_tc_img_len, (uint32_t)k_ra8_dfu_run_base);
 
   TEST_ASSERT(true);
@@ -237,8 +250,8 @@ static void test_launch_cov_rot_antirollback_deny(void)
 {
   TEST_BEGIN("ra8_dfu_launch_cov(ROT): anti-rollback failure default-denies");
 
-  uint8_t img[64]    = {};
-  s_verify_err       = k_ra8_ok;
+  uint8_t img[k_dfu_launch_cov_val_64] = {};
+  s_verify_err                         = k_ra8_ok;
   s_antirollback_err = k_ra8_err_validation_failed; /* Downgrade / unprovisioned. */
   ra8_dfu_launch_cov((uintptr_t)img, (uint32_t)k_tc_img_len, (uint32_t)k_ra8_dfu_run_base);
 
@@ -262,9 +275,9 @@ static void test_launch_cov_rot_accept(void)
 {
   TEST_BEGIN("ra8_dfu_launch_cov(ROT): authentic + fresh image is accepted");
 
-  uint8_t img[64]    = {};
-  s_verify_err       = k_ra8_ok;
-  s_antirollback_err = k_ra8_ok;
+  uint8_t img[k_dfu_launch_cov_val_64] = {};
+  s_verify_err                         = k_ra8_ok;
+  s_antirollback_err                   = k_ra8_ok;
   ra8_dfu_launch_cov((uintptr_t)img, (uint32_t)k_tc_img_len, (uint32_t)k_ra8_dfu_run_base);
 
   TEST_ASSERT(true);

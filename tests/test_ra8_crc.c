@@ -14,6 +14,20 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum crc_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_crc_crcdor_12345678 = 0x12345678UL,
+  k_crc_got_deadbeef    = 0xDEADBEEFUL,
+} crc_uint32_const_t;
+
+/**
  * @enum ra8_crc_test_bit_t
  * @brief CRC control bit masks used by the tests.
  */
@@ -245,7 +259,7 @@ static void test_compute_crc32_reads_dor(void)
    * "engine" doesn't transform the seed, so the readback equals the
    * seed and the final out_crc value is `seed XOR seed = 0`. */
   (void)ra8_crc_init(k_ra8_crc_poly_32c_rev);
-  uint32_t        got = 0xDEADBEEFUL;
+  uint32_t        got = k_crc_got_deadbeef;
   const ra8_err_t err = ra8_crc_compute(s_payload, (uint32_t)k_ra8_crc_test_len, &got);
   TEST_ASSERT_EQ(k_ra8_ok, err);
   TEST_ASSERT_EQ(0U, got);
@@ -270,7 +284,7 @@ static void test_compute_zero_length(void)
 
   (void)ra8_crc_init(k_ra8_crc_poly_8);
   volatile r_crc_regs_t* reg = ra8_crc();
-  reg->CRCDOR                = 0x12345678UL;
+  reg->CRCDOR                = k_crc_crcdor_12345678;
 
   uint32_t        got = 0U;
   const ra8_err_t err = ra8_crc_compute(s_payload, 0U, &got);

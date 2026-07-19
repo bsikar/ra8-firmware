@@ -19,6 +19,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum i3c_i2c_peripheral_demo_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_i3c_i2c_peripheral_demo_mask_ff = 0xFFU,
+} i3c_i2c_peripheral_demo_uint8_const_t;
+
 typedef enum : uint8_t {
   k_test_iic_peripheral_channel  = 0U,    /**< Test iic peripheral channel.    */
   k_test_iic_peripheral_addr_7b  = 0x42U, /**< Test iic peripheral address 7b. */
@@ -112,7 +125,7 @@ static void test_iic_peripheral_status_idle(void)
     .general_call       = 0U,
   };
   (void)ra8_i3c_peripheral_open((uint8_t)k_test_iic_peripheral_channel, &cfg);
-  uint8_t mask = 0xFFU;
+  uint8_t mask = k_i3c_i2c_peripheral_demo_mask_ff;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_i3c_peripheral_status((uint8_t)k_test_iic_peripheral_channel, &mask));
   TEST_END("i3c_i2c_peripheral_demo: status reports idle on fresh open");

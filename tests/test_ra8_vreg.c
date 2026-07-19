@@ -30,6 +30,21 @@
 #include "ra8_vreg_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum vreg_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_vreg_mode_aa   = 0xAAU,
+  k_vreg_ocp_55    = 0x55U,
+  k_vreg_vccsel_07 = 0x07U,
+} vreg_uint8_const_t;
+
 /* ---------------------------------------------------------------------------
  * Helpers
  * ---------------------------------------------------------------------------
@@ -203,7 +218,7 @@ static void test_init_bad_vccsel(void)
   prep();
 
   ra8_vreg_cfg_t cfg = make_cfg_dcdc();
-  cfg.vccsel         = (ra8_vreg_vccsel_t)0x07U; /* Out of 0..2 range. */
+  cfg.vccsel         = (ra8_vreg_vccsel_t)k_vreg_vccsel_07; /* Out of 0..2 range. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vreg_init(&cfg));
   TEST_END("vreg init bad vccsel");
 }
@@ -220,7 +235,7 @@ static void test_init_bad_mode(void)
   prep();
 
   ra8_vreg_cfg_t cfg = make_cfg_dcdc();
-  cfg.mode           = (ra8_vreg_mode_t)0xAAU;
+  cfg.mode           = (ra8_vreg_mode_t)k_vreg_mode_aa;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vreg_init(&cfg));
   TEST_END("vreg init bad mode");
 }
@@ -237,7 +252,7 @@ static void test_init_bad_ocp(void)
   prep();
 
   ra8_vreg_cfg_t cfg = make_cfg_dcdc();
-  cfg.ocp            = (ra8_vreg_ocp_t)0x55U;
+  cfg.ocp            = (ra8_vreg_ocp_t)k_vreg_ocp_55;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vreg_init(&cfg));
   TEST_END("vreg init bad ocp");
 }
@@ -254,7 +269,7 @@ static void test_init_bad_lv_profile(void)
   prep();
 
   ra8_vreg_cfg_t cfg = make_cfg_ldo();
-  cfg.lv_profile     = (ra8_vreg_lv_profile_t)0x55U;
+  cfg.lv_profile     = (ra8_vreg_lv_profile_t)k_vreg_ocp_55;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_vreg_init(&cfg));
   TEST_END("vreg init bad lv profile");
 }

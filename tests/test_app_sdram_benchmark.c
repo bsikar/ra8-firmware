@@ -20,6 +20,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum sdram_benchmark_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_sdram_benchmark_ms_clamped_1000 = 1000U,
+} sdram_benchmark_uint16_const_t;
+
 typedef enum : uint32_t {
   k_test_sdram_app_block_bytes = 65536U, /**< Test SDRAM app block bytes. */
 } test_sdram_app_const_t;
@@ -34,7 +47,7 @@ static void reset_world(void)
 static uint32_t app_mbps(uint32_t bytes, uint32_t ms)
 {
   const uint32_t ms_clamped = (ms == 0U) ? 1U : ms;
-  return bytes / (ms_clamped * 1000U);
+  return bytes / (ms_clamped * k_sdram_benchmark_ms_clamped_1000);
 }
 
 /**

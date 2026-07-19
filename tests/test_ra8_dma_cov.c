@@ -32,6 +32,21 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum dma_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_dma_cov_ch_ff = 0xFFU,
+  k_dma_cov_i_254 = 254U,
+  k_dma_cov_i_255 = 255U,
+} dma_cov_uint8_const_t;
+
 /* -------------------------------------------------------------------------
  * Shared helpers
  * -------------------------------------------------------------------------
@@ -140,7 +155,7 @@ static void test_init_mstp_enable_fails(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
 
   /* Saturate the DMAC/DTC0 refcount to UINT8_MAX (255 enables). */
-  for (uint16_t i = 0U; i < 255U; ++i) {
+  for (uint16_t i = 0U; i < k_dma_cov_i_255; ++i) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_enable(k_ra8_mstp_dmac0_dtc0));
   }
 
@@ -180,7 +195,7 @@ static void test_deinit_with_channel_in_use(void)
 
   uint8_t           buf[4] = {};
   ra8_dma_request_t req    = cov_make_req(buf, buf);
-  uint8_t           ch     = 0xFFU;
+  uint8_t           ch     = k_dma_cov_ch_ff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dma_request(&req, &ch));
   TEST_ASSERT_EQ(0U, ch);
 
@@ -271,13 +286,13 @@ static void test_request_dmac_start_fails(void)
   cov_reset(); /* refcount = 1 after ra8_dma_init() */
 
   /* 254 more enables bring the refcount to 255 = UINT8_MAX. */
-  for (uint16_t i = 0U; i < 254U; ++i) {
+  for (uint16_t i = 0U; i < k_dma_cov_i_254; ++i) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_enable(k_ra8_mstp_dmac0_dtc0));
   }
 
   uint8_t           buf[4] = {};
   ra8_dma_request_t req    = cov_make_req(buf, buf);
-  uint8_t           ch     = 0xFFU;
+  uint8_t           ch     = k_dma_cov_ch_ff;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_dma_request(&req, &ch));
 
   TEST_END("ra8_dma_request: ra8_dmac_start failure -> k_ra8_err_hw_error");
@@ -315,7 +330,7 @@ static void test_release_dmac_stop_fails(void)
 
   uint8_t           buf[4] = {};
   ra8_dma_request_t req    = cov_make_req(buf, buf);
-  uint8_t           ch     = 0xFFU;
+  uint8_t           ch     = k_dma_cov_ch_ff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dma_request(&req, &ch)); /* refcount = 2 */
 
   /* Drain the refcount to 0: two disables drop 2->1->0. */

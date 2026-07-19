@@ -45,6 +45,19 @@
 #include "sim_view.h"
 
 /**
+ * @enum sim_run_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_sim_run_val_1024 = 1024,
+} sim_run_uint16_const_t;
+
+/**
  * @enum loop_action_t
  * @brief Loop-control verdict a per-phase run-loop helper hands back.
  *
@@ -401,7 +414,7 @@ static void run_loop_record(run_loop_t* st)
                     st->disp_h,
                     cfg->rotate_deg,
                     cfg->win_title);
-    char fpath[1024];
+    char fpath[k_sim_run_val_1024];
     (void)snprintf(fpath,
                    sizeof(fpath),
                    "%s/frame_%06u.ppm",

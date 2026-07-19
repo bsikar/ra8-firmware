@@ -19,6 +19,40 @@
 #include "ra8_power_profile.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum power_profile_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_power_profile_now_us_100 = 100U,
+  k_power_profile_now_us_200 = 200U,
+} power_profile_uint8_const_t;
+
+/**
+ * @enum power_profile_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_power_profile_now_us_1000 = 1000U,
+  k_power_profile_now_us_1100 = 1100U,
+  k_power_profile_now_us_1500 = 1500U,
+  k_power_profile_now_us_350  = 350U,
+  k_power_profile_now_us_500  = 500U,
+  k_power_profile_now_us_5000 = 5000U,
+  k_power_profile_now_us_5250 = 5250U,
+  k_power_profile_now_us_999  = 999U,
+} power_profile_uint16_const_t;
+
 /* ---------------------------------------------------------------------------
  * Mock GPIO + RTC state
  * ------------------------------------------------------------------------- */
@@ -131,9 +165,9 @@ static void test_enter_exit_pulses_gpio(void)
   TEST_BEGIN("enter/exit pulses gpio");
   TEST_ASSERT_EQ(k_ra8_ok, init_with_mocks());
 
-  s_rtc.now_us = 1000U;
+  s_rtc.now_us = k_power_profile_now_us_1000;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_power_profile_mark_enter(k_ra8_power_profile_region_active));
-  s_rtc.now_us = 1500U;
+  s_rtc.now_us = k_power_profile_now_us_1500;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_power_profile_mark_exit(k_ra8_power_profile_region_active));
 
   TEST_ASSERT_EQ(2, s_gpio.count);
@@ -156,15 +190,15 @@ static void test_time_accumulation(void)
   TEST_ASSERT_EQ(k_ra8_ok, init_with_mocks());
 
   /* First pair: 100us. */
-  s_rtc.now_us = 1000U;
+  s_rtc.now_us = k_power_profile_now_us_1000;
   (void)ra8_power_profile_mark_enter(k_ra8_power_profile_region_sleep);
-  s_rtc.now_us = 1100U;
+  s_rtc.now_us = k_power_profile_now_us_1100;
   (void)ra8_power_profile_mark_exit(k_ra8_power_profile_region_sleep);
 
   /* Second pair: 250us. */
-  s_rtc.now_us = 5000U;
+  s_rtc.now_us = k_power_profile_now_us_5000;
   (void)ra8_power_profile_mark_enter(k_ra8_power_profile_region_sleep);
-  s_rtc.now_us = 5250U;
+  s_rtc.now_us = k_power_profile_now_us_5250;
   (void)ra8_power_profile_mark_exit(k_ra8_power_profile_region_sleep);
 
   ra8_power_profile_stats_t stats = {};
@@ -247,7 +281,7 @@ static void test_reset_stats_clears_accumulators(void)
 
   s_rtc.now_us = 0U;
   (void)ra8_power_profile_mark_enter(k_ra8_power_profile_region_active);
-  s_rtc.now_us = 999U;
+  s_rtc.now_us = k_power_profile_now_us_999;
   (void)ra8_power_profile_mark_exit(k_ra8_power_profile_region_active);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_power_profile_reset_stats());
@@ -295,13 +329,13 @@ static void test_multiple_regions_independent(void)
   TEST_BEGIN("multiple regions independent");
   TEST_ASSERT_EQ(k_ra8_ok, init_with_mocks());
 
-  s_rtc.now_us = 100U;
+  s_rtc.now_us = k_power_profile_now_us_100;
   (void)ra8_power_profile_mark_enter(k_ra8_power_profile_region_sleep);
-  s_rtc.now_us = 200U;
+  s_rtc.now_us = k_power_profile_now_us_200;
   (void)ra8_power_profile_mark_enter(k_ra8_power_profile_region_software_standby);
-  s_rtc.now_us = 350U;
+  s_rtc.now_us = k_power_profile_now_us_350;
   (void)ra8_power_profile_mark_exit(k_ra8_power_profile_region_software_standby);
-  s_rtc.now_us = 500U;
+  s_rtc.now_us = k_power_profile_now_us_500;
   (void)ra8_power_profile_mark_exit(k_ra8_power_profile_region_sleep);
 
   ra8_power_profile_stats_t stats = {};

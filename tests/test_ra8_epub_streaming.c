@@ -44,6 +44,20 @@
 #include "ra8_vsource.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum epub_streaming_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_epub_streaming_i_31     = 31U,
+  k_epub_streaming_size_100 = 100U,
+} epub_streaming_uint8_const_t;
+
 /* ---------------------------------------------------------------------------
  * Dimensions (tests are exempt from the magic-number gate; enums used anyway).
  * ---------------------------------------------------------------------------
@@ -153,8 +167,8 @@ static const char* const k_cover = "COVER-IMAGE-BYTES";
 static void build_big_epub(void)
 {
   for (size_t i = 0U; i < (size_t)k_filler_bytes; ++i) {
-    s_filler[i] =
-      (uint8_t)((i * 31U) + (i >> 3U)); /* varied, so it is not trivially compressible */
+    s_filler[i] = (uint8_t)((i * k_epub_streaming_i_31) +
+                            (i >> 3U)); /* varied, so it is not trivially compressible */
   }
   mz_zip_archive zip;
   memset(&zip, 0, sizeof(zip));
@@ -608,11 +622,14 @@ static void test_vmem_stream_guards(void)
   ra8_vmem_stream_t bound = {.vm          = &vm,
                              .object_id   = 0U,
                              .frame_bytes = (uint32_t)k_frame_bytes,
-                             .size        = 100U};
+                             .size        = k_epub_streaming_size_100};
   TEST_ASSERT_EQ(0U, ra8_vmem_stream_read(&bound, 0U, nullptr, sizeof(buf))); /* NULL buf */
   TEST_ASSERT_EQ(0U, ra8_vmem_stream_read(&bound, 0U, buf, 0U));              /* len 0    */
   TEST_ASSERT_EQ(0U, ra8_vmem_stream_read(&bound, 100U, buf, sizeof(buf)));   /* at EOF   */
-  ra8_vmem_stream_t unbound = {.vm = &vm, .object_id = 0U, .frame_bytes = 0U, .size = 100U};
+  ra8_vmem_stream_t unbound = {.vm          = &vm,
+                               .object_id   = 0U,
+                               .frame_bytes = 0U,
+                               .size        = k_epub_streaming_size_100};
   TEST_ASSERT_EQ(0U, ra8_vmem_stream_read(&unbound, 0U, buf, sizeof(buf))); /* frame_bytes 0 */
 
   TEST_END("ra8_vmem_stream: init + read guards");

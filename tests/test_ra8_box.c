@@ -21,6 +21,21 @@
 #include "ra8_ui.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum box_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_box_leaf_10 = 10,
+  k_box_leaf_20 = 20,
+  k_box_leaf_30 = 30,
+} box_uint8_const_t;
+
 /** @brief Node-storage capacity for the test trees. */
 enum : uint16_t { k_box_cap = 32U /**< Box cap. */ };
 
@@ -73,8 +88,8 @@ static void test_box_build(void)
   ra8_box_t     root = container(k_ra8_box_stack_v, 0, 0, 1U);
   const int16_t ri   = ra8_box_add(&t, (int16_t)k_ra8_box_none, &root);
   TEST_ASSERT_EQ(0, ri);
-  ra8_box_t     a  = leaf(10, 0U);
-  ra8_box_t     b  = leaf(20, 0U);
+  ra8_box_t     a  = leaf(k_box_leaf_10, 0U);
+  ra8_box_t     b  = leaf(k_box_leaf_20, 0U);
   const int16_t ai = ra8_box_add(&t, ri, &a);
   const int16_t bi = ra8_box_add(&t, ri, &b);
   TEST_ASSERT_EQ(1, ai);
@@ -103,11 +118,11 @@ static void test_box_stack_v(void)
   ra8_box_t      store[k_box_cap];
   ra8_box_tree_t t;
   (void)ra8_box_tree_init(&t, store, k_box_cap);
-  ra8_box_t           rootn = container(k_ra8_box_stack_v, 10, 10, 1U);
+  ra8_box_t           rootn = container(k_ra8_box_stack_v, k_box_leaf_10, k_box_leaf_10, 1U);
   const int16_t       r     = ra8_box_add(&t, (int16_t)k_ra8_box_none, &rootn);
-  ra8_box_t           an    = leaf(30, 0U);
+  ra8_box_t           an    = leaf(k_box_leaf_30, 0U);
   ra8_box_t           bn    = leaf(0, 1U);
-  ra8_box_t           cn    = leaf(20, 0U);
+  ra8_box_t           cn    = leaf(k_box_leaf_20, 0U);
   const int16_t       a     = ra8_box_add(&t, r, &an);
   const int16_t       b     = ra8_box_add(&t, r, &bn);
   const int16_t       c     = ra8_box_add(&t, r, &cn);
@@ -136,7 +151,7 @@ static void test_box_stack_h(void)
   ra8_box_t      store[k_box_cap];
   ra8_box_tree_t t;
   (void)ra8_box_tree_init(&t, store, k_box_cap);
-  ra8_box_t           rootn = container(k_ra8_box_stack_h, 0, 20, 1U);
+  ra8_box_t           rootn = container(k_ra8_box_stack_h, 0, k_box_leaf_20, 1U);
   const int16_t       r     = ra8_box_add(&t, (int16_t)k_ra8_box_none, &rootn);
   ra8_box_t           an    = leaf(0, 1U);
   ra8_box_t           bn    = leaf(0, 1U);
@@ -164,7 +179,7 @@ static void test_box_grid(void)
   ra8_box_t      store[k_box_cap];
   ra8_box_tree_t t;
   (void)ra8_box_tree_init(&t, store, k_box_cap);
-  ra8_box_t           rootn = container(k_ra8_box_grid, 0, 10, 2U);
+  ra8_box_t           rootn = container(k_ra8_box_grid, 0, k_box_leaf_10, 2U);
   const int16_t       r     = ra8_box_add(&t, (int16_t)k_ra8_box_none, &rootn);
   ra8_box_t           c0    = leaf(0, 0U);
   ra8_box_t           c1    = leaf(0, 0U);
@@ -214,8 +229,8 @@ static void test_mcdc_iter_live(void)
   (void)ra8_box_tree_init(&t, store, k_box_cap);
   ra8_box_t           rootn = container(k_ra8_box_stack_v, 0, 0, 1U);
   const int16_t       r     = ra8_box_add(&t, (int16_t)k_ra8_box_none, &rootn);
-  ra8_box_t           an    = leaf(10, 0U);
-  ra8_box_t           bn    = leaf(10, 0U);
+  ra8_box_t           an    = leaf(k_box_leaf_10, 0U);
+  ra8_box_t           bn    = leaf(k_box_leaf_10, 0U);
   const int16_t       a     = ra8_box_add(&t, r, &an); /* walked: C1=T (V1)          */
   const int16_t       b     = ra8_box_add(&t, r, &bn); /* then chain ends: C1=F (V2) */
   const ra8_ui_rect_t frame = {0, 0, 40, 40};

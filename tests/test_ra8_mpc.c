@@ -15,6 +15,34 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum mpc_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_mpc_ra8_pfs_pmn_5 = 5U,
+  k_mpc_ra8_pfs_pmn_7 = 7U,
+} mpc_uint8_const_t;
+
+/**
+ * @enum mpc_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_mpc_pfs_deadbeef = 0xDEADBEEFU,
+  k_mpc_pfs_ffffffff = 0xFFFFFFFFU,
+} mpc_uint32_const_t;
+
+/**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
@@ -27,7 +55,7 @@ static void test_route_peripheral_sets_pmr_and_psel(void)
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpc_route_peripheral(k_ra8_port_1, 5U, k_ra8_mpc_psel_sci0));
 
-  volatile const uint32_t* pfs = ra8_pfs_pmn(k_ra8_port_1, 5U);
+  volatile const uint32_t* pfs = ra8_pfs_pmn(k_ra8_port_1, k_mpc_ra8_pfs_pmn_5);
   TEST_ASSERT_NOT_NULL((void*)pfs);
   TEST_ASSERT((*pfs & (uint32_t)k_ra8_pfs_mask_pmr) != 0U);
   const uint32_t expected_psel =
@@ -49,9 +77,9 @@ static void test_set_gpio_output_clears_pmr(void)
   ra8_sim_mmap_reset();
 
   /* Pollute the register first. */
-  volatile uint32_t* pfs = ra8_pfs_pmn(k_ra8_port_3, 7U);
+  volatile uint32_t* pfs = ra8_pfs_pmn(k_ra8_port_3, k_mpc_ra8_pfs_pmn_7);
   TEST_ASSERT_NOT_NULL((void*)pfs);
-  *pfs = 0xFFFFFFFFU;
+  *pfs = k_mpc_pfs_ffffffff;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpc_set_gpio(k_ra8_port_3, 7U, k_ra8_mpc_dir_output));
 
@@ -71,7 +99,7 @@ static void test_set_gpio_input(void)
   ra8_sim_mmap_reset();
   volatile uint32_t* pfs = ra8_pfs_pmn(k_ra8_port_2, 0U);
   TEST_ASSERT_NOT_NULL((void*)pfs);
-  *pfs = 0xDEADBEEFU;
+  *pfs = k_mpc_pfs_deadbeef;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_mpc_set_gpio(k_ra8_port_2, 0U, k_ra8_mpc_dir_input));
   TEST_ASSERT_EQ(0, *ra8_pfs_pmn(k_ra8_port_2, 0U));

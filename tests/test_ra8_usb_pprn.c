@@ -15,6 +15,24 @@
 #include "ra8_usb_pprn.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum usb_pprn_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_usb_pprn_b_request_77       = 0x77U,
+  k_usb_pprn_bm_request_type_21 = 0x21U,
+  k_usb_pprn_bm_request_type_80 = 0x80U,
+  k_usb_pprn_bm_request_type_a1 = 0xA1U,
+  k_usb_pprn_val_128            = 128,
+  k_usb_pprn_w_length_64        = 64U,
+} usb_pprn_uint8_const_t;
+
 /* Sample minimal config descriptor blob. */
 static const uint8_t s_sample_desc[] = {
   0x09,
@@ -211,7 +229,7 @@ static void test_send_recv_validation(void)
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_pprn_send(nullptr, 4U));
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pprn_send(buf, 0U));
 
-  uint8_t big[128] = {};
+  uint8_t big[k_usb_pprn_val_128] = {};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_usb_pprn_send(big, (uint16_t)sizeof(big)));
   TEST_END("ra8_usb_pprn_send / recv validate args");
 }
@@ -256,11 +274,11 @@ static void test_handle_setup_dispatch(void)
 
   /* GET_DEVICE_ID. */
   ra8_usb_setup_t setup = {
-    .bm_request_type = (uint8_t)0xA1U,
+    .bm_request_type = (uint8_t)k_usb_pprn_bm_request_type_a1,
     .b_request       = (uint8_t)k_ra8_pprn_req_get_device_id,
     .w_value         = 0U,
     .w_index         = 0U,
-    .w_length        = 64U,
+    .w_length        = k_usb_pprn_w_length_64,
   };
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_handle_setup(&setup));
   TEST_ASSERT_EQ(1, s_setup_cb_calls);
@@ -273,7 +291,7 @@ static void test_handle_setup_dispatch(void)
   TEST_ASSERT_EQ(2, s_setup_cb_calls);
 
   /* SOFT_RESET. */
-  setup.bm_request_type = (uint8_t)0x21U;
+  setup.bm_request_type = (uint8_t)k_usb_pprn_bm_request_type_21;
   setup.b_request       = (uint8_t)k_ra8_pprn_req_soft_reset;
   setup.w_length        = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_handle_setup(&setup));
@@ -295,7 +313,7 @@ static void test_handle_setup_rejects(void)
 
   /* Standard envelope -> not_supported. */
   ra8_usb_setup_t setup = {
-    .bm_request_type = (uint8_t)0x80U,
+    .bm_request_type = (uint8_t)k_usb_pprn_bm_request_type_80,
     .b_request       = (uint8_t)0x06U,
     .w_value         = 0U,
     .w_index         = 0U,
@@ -304,8 +322,8 @@ static void test_handle_setup_rejects(void)
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_pprn_handle_setup(&setup));
 
   /* Class envelope but unknown bRequest -> not_supported. */
-  setup.bm_request_type = (uint8_t)0xA1U;
-  setup.b_request       = (uint8_t)0x77U;
+  setup.bm_request_type = (uint8_t)k_usb_pprn_bm_request_type_a1;
+  setup.b_request       = (uint8_t)k_usb_pprn_b_request_77;
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_pprn_handle_setup(&setup));
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_usb_pprn_handle_setup(nullptr));
@@ -357,19 +375,19 @@ static void test_mcdc_pprn(void)
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_attach_setup_handler(test_setup_cb, nullptr));
   ra8_usb_setup_t setup = {
-    .bm_request_type = (uint8_t)0xA1U,
+    .bm_request_type = (uint8_t)k_usb_pprn_bm_request_type_a1,
     .b_request       = (uint8_t)k_ra8_pprn_req_get_device_id,
     .w_value         = 0U,
     .w_index         = 0U,
     .w_length        = 0U,
   };
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_handle_setup(&setup));
-  setup.bm_request_type = (uint8_t)0x21U;
+  setup.bm_request_type = (uint8_t)k_usb_pprn_bm_request_type_21;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_handle_setup(&setup));
-  setup.bm_request_type = (uint8_t)0x80U;
+  setup.bm_request_type = (uint8_t)k_usb_pprn_bm_request_type_80;
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_pprn_handle_setup(&setup));
 
-  setup.bm_request_type    = (uint8_t)0xA1U;
+  setup.bm_request_type    = (uint8_t)k_usb_pprn_bm_request_type_a1;
   const uint8_t requests[] = {
     (uint8_t)k_ra8_pprn_req_get_device_id,
     (uint8_t)k_ra8_pprn_req_get_port_status,
@@ -379,7 +397,7 @@ static void test_mcdc_pprn(void)
     setup.b_request = requests[i];
     TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pprn_handle_setup(&setup));
   }
-  setup.b_request = 0x77U;
+  setup.b_request = k_usb_pprn_b_request_77;
   TEST_ASSERT_EQ(k_ra8_err_not_supported, ra8_usb_pprn_handle_setup(&setup));
 
   TEST_END("pprn MC/DC: init / send envelope / handle_setup decisions");

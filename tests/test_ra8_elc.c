@@ -13,6 +13,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum elc_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_elc_val_123 = 0x123U,
+} elc_uint16_const_t;
+
 static void prep(void)
 {
   ra8_sim_mmap_reset();
@@ -140,7 +153,7 @@ static void test_init_enables_controller(void)
   prep();
 
   /* Pollute ELSR0 so we can verify init clears it. */
-  *test_elsr(0U) = 0x123U;
+  *test_elsr(0U) = k_elc_val_123;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_elc_init());
   TEST_ASSERT_EQ((1U << k_ra8_elcr_bit_elcon), *test_elcr());

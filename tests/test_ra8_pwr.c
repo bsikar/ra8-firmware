@@ -18,6 +18,20 @@
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum pwr_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_pwr_sentinel_cafebabe = 0xCAFEBABEU,
+  k_pwr_sentinel_deadbeef = 0xDEADBEEFU,
+} pwr_uint32_const_t;
+
 static volatile uint32_t* wupen0_ptr(void)
 {
   return (volatile uint32_t*)((uintptr_t)k_ra8_system_base_addr + (uintptr_t)k_ra8_lpm_wupen0_off);
@@ -40,8 +54,8 @@ static void test_init_clears_wupen_and_resets_mstp(void)
   ra8_sim_mmap_reset();
 
   /* Pollute WUPEN0/1 first to prove init clears them. */
-  *wupen0_ptr() = 0xDEADBEEFU;
-  *wupen1_ptr() = 0xCAFEBABEU;
+  *wupen0_ptr() = k_pwr_sentinel_deadbeef;
+  *wupen1_ptr() = k_pwr_sentinel_cafebabe;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pwr_init());
   TEST_ASSERT_EQ(0, *wupen0_ptr());

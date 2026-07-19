@@ -13,6 +13,33 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum dac_b_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_dac_b_dadr_aaaa = 0xAAAAU,
+  k_dac_b_dadr_bbbb = 0xBBBBU,
+} dac_b_uint16_const_t;
+
+/**
+ * @enum dac_b_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_dac_b_dacr0_ffffffff = 0xFFFFFFFFUL,
+} dac_b_uint32_const_t;
+
 typedef enum : uint8_t {
   k_ra8_dac_b_test_ch_0   = 0U,   /**< RA8 DAC b test channel 0.   */
   k_ra8_dac_b_test_ch_1   = 1U,   /**< RA8 DAC b test channel 1.   */
@@ -39,10 +66,10 @@ static void test_init_clears_regs(void)
 
   volatile r_dac_b_regs_t* reg0 = ra8_dac_b((uint8_t)k_ra8_dac_b_test_ch_0);
   volatile r_dac_b_regs_t* reg1 = ra8_dac_b((uint8_t)k_ra8_dac_b_test_ch_1);
-  reg0->DACR0                   = 0xFFFFFFFFUL;
-  reg0->DADR                    = 0xAAAAU;
-  reg1->DACR0                   = 0xFFFFFFFFUL;
-  reg1->DADR                    = 0xBBBBU;
+  reg0->DACR0                   = k_dac_b_dacr0_ffffffff;
+  reg0->DADR                    = k_dac_b_dadr_aaaa;
+  reg1->DACR0                   = k_dac_b_dacr0_ffffffff;
+  reg1->DADR                    = k_dac_b_dadr_bbbb;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_dac_b_init());
   TEST_ASSERT_EQ(0, reg0->DACR0);

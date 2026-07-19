@@ -22,6 +22,19 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum pdg_ctrl_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_pdg_ctrl_got_ff = 0xFFU,
+} pdg_ctrl_uint8_const_t;
+
+/**
  * @enum ra8_pdg_test_const_t
  * @brief Test-only constants -- channel indices and probe codes.
  */
@@ -172,14 +185,14 @@ static void test_pin_disable(void)
                                    (uint8_t)k_ra8_pdg_test_code_hi));
   /* Disable pin A -- both cells must drop to zero. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdg_pin_disable((uint8_t)k_ra8_pdg_test_ch_first, k_ra8_pdg_pin_a));
-  uint8_t got = 0xFFU;
+  uint8_t got = k_pdg_ctrl_got_ff;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_pdg_get_delay((uint8_t)k_ra8_pdg_test_ch_first,
                                    k_ra8_pdg_pin_a,
                                    k_ra8_pdg_edge_rising,
                                    &got));
   TEST_ASSERT_EQ(0, got);
-  got = 0xFFU;
+  got = k_pdg_ctrl_got_ff;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_pdg_get_delay((uint8_t)k_ra8_pdg_test_ch_first,
                                    k_ra8_pdg_pin_a,
@@ -264,7 +277,7 @@ static void test_pick_frange(void)
   TEST_BEGIN("pdg pick_frange");
   prep();
 
-  ra8_pdg_frange_t f = (ra8_pdg_frange_t)0xFFU;
+  ra8_pdg_frange_t f = (ra8_pdg_frange_t)k_pdg_ctrl_got_ff;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_pdg_pick_frange((uint32_t)k_ra8_pdg_test_clk_low_band, &f));
   TEST_ASSERT_EQ(k_ra8_pdg_frange_80_160_mhz, f);
 

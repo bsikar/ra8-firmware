@@ -43,6 +43,32 @@
 #include "ra8_spi_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum display_pal_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_display_pal_aligned_64 = 64,
+} display_pal_uint8_const_t;
+
+/**
+ * @enum display_pal_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_display_pal_width_px_4097 = 4097U,
+} display_pal_uint16_const_t;
+
 /* =============================================================================
  * Test fixture
  * =============================================================================
@@ -60,7 +86,7 @@ typedef enum : uint32_t {
 
 /* Static framebuffer the LCD and e-ink backends share -- one test
  * deinits before the next inits so the state machine resets. */
-[[gnu::aligned(64)]] static uint16_t s_test_fb[k_test_fb_pixels];
+[[gnu::aligned(k_display_pal_aligned_64)]] static uint16_t s_test_fb[k_test_fb_pixels];
 
 /* IT8951 descriptor the board BSP would supply through panel_timing,
  * sized to the test framebuffer. In host tests this drives the
@@ -641,7 +667,7 @@ static void test_eink_validate_cfg_rejections(void)
 
   /* width beyond the bounded conversion line buffer -> invalid_arg. */
   display_cfg_t cfg_wide = make_eink_cfg();
-  cfg_wide.width_px      = 4097U;
+  cfg_wide.width_px      = k_display_pal_width_px_4097;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, k_display_backend_eink_it8951.init(&cfg_wide, &ctx));
 
   /* BSP omitted the IT8951 descriptor -> invalid_arg. */

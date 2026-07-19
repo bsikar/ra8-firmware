@@ -32,6 +32,19 @@
 #include "ra8_threadx.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum threadx_systick_retune_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_threadx_systick_retune_val_ff = 0xFFU,
+} threadx_systick_retune_uint8_const_t;
+
 /** @brief Per-test constants (no magic numbers). */
 typedef enum : uint32_t {
   k_test_cpuclk_1ghz     = 1000000000UL, /**< Post-CGC CPUCLK0 target.         */
@@ -55,7 +68,7 @@ static void reset_world(void)
   ra8_sim_mmap_reset();
   /* Pre-seed OSCSF stabilisation bits so ra8_cgc_init() spin loops
    * complete on the first iteration in RA8_SIMULATOR_MODE. */
-  *ra8_sys_oscsf() = (uint8_t)0xFFU;
+  *ra8_sys_oscsf() = (uint8_t)k_threadx_systick_retune_val_ff;
 }
 
 /**

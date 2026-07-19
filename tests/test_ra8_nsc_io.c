@@ -18,6 +18,22 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum nsc_io_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_nsc_io_duty_a_500    = 500U,
+  k_nsc_io_height_px_480 = 480U,
+  k_nsc_io_period_1000   = 1000U,
+  k_nsc_io_width_px_800  = 800U,
+} nsc_io_uint16_const_t;
+
 static void prep(void)
 {
   ra8_sim_mmap_reset();
@@ -38,8 +54,8 @@ static void test_gpt_init_forwards(void)
   ra8_gpt_cfg_t cfg = {};
   cfg.mode          = k_ra8_gpt_mode_saw_pwm;
   cfg.prescaler     = k_ra8_gpt_ps_div_4;
-  cfg.period        = 1000U;
-  cfg.duty_a        = 500U;
+  cfg.period        = k_nsc_io_period_1000;
+  cfg.duty_a        = k_nsc_io_duty_a_500;
   cfg.duty_b        = 0U;
   cfg.auto_start    = true;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_gpt_init(0U, &cfg));
@@ -105,8 +121,8 @@ static void test_glcdc_pdm_eth_init(void)
   TEST_BEGIN("ra8_nsc_{glcdc,pdm,eth}_init forwards");
   prep();
   ra8_glcdc_config_t glcfg = {};
-  glcfg.width_px           = 800U;
-  glcfg.height_px          = 480U;
+  glcfg.width_px           = k_nsc_io_width_px_800;
+  glcfg.height_px          = k_nsc_io_height_px_480;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_glcdc_init(&glcfg));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_nsc_glcdc_init(nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_pdm_init());

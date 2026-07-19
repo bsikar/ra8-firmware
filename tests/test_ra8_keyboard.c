@@ -18,6 +18,19 @@
 #include "ra8_keyboard.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum keyboard_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_keyboard_i_200 = 200U,
+} keyboard_uint8_const_t;
+
 enum : int32_t {
   k_fx             = 0,    /**< Fx.                                          */
   k_fy             = 600,  /**< Fy.                                          */
@@ -222,7 +235,7 @@ static void test_glyph_and_edges(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_kbd_apply(&t, &s_kb, (uint8_t)k_ra8_kbd_no_hit));
   TEST_ASSERT_EQ(0, t.len);
   const uint8_t a = key_of('a');
-  for (uint32_t i = 0U; i < 200U; i++) {
+  for (uint32_t i = 0U; i < k_keyboard_i_200; i++) {
     TEST_ASSERT_EQ(k_ra8_ok, ra8_kbd_apply(&t, &s_kb, a));
   }
   TEST_ASSERT_EQ(k_ra8_kbd_text_max - 1, t.len);

@@ -14,28 +14,73 @@
 #include "ra8_err.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum book_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_book_data_size_10 = 10,
+  k_book_data_size_20 = 20,
+  k_book_raw_size_50  = 50,
+  k_book_val_128      = 128,
+  k_book_val_64       = 64,
+} book_uint8_const_t;
+
+/**
+ * @enum book_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_book_format_version_999 = 999,
+} book_uint16_const_t;
+
+/**
+ * @enum book_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_book_crc32_ffffffff = 0xFFFFFFFF,
+  k_book_crc_ffffffff   = 0xFFFFFFFFU,
+  k_book_val_edb88320   = 0xEDB88320U,
+} book_uint32_const_t;
+
 static uint32_t compute_crc32(const uint8_t* data, size_t len)
 {
-  uint32_t crc = 0xFFFFFFFFU;
+  uint32_t crc = k_book_crc_ffffffff;
   for (size_t i = 0U; i < len; ++i) {
     crc ^= data[i];
     for (uint8_t bit = 0U; bit < 8U; ++bit) {
       uint32_t mask = (uint32_t)(-(int32_t)(crc & 1U));
-      crc           = (crc >> 1U) ^ (0xEDB88320U & mask);
+      crc           = (crc >> 1U) ^ (k_book_val_edb88320 & mask);
     }
   }
-  return crc ^ 0xFFFFFFFFU;
+  return crc ^ k_book_crc_ffffffff;
 }
 
 typedef struct {
-  ra8_book_header_t     hdr;            /**< Hdr.         */
-  ra8_book_chapter_t    chapters[1];    /**< Chapters.    */
-  ra8_book_node_t       nodes[2];       /**< Nodes.       */
-  ra8_book_attr_t       attrs[1];       /**< Attrs.       */
-  ra8_book_stylesheet_t stylesheets[1]; /**< Stylesheets. */
-  ra8_book_image_t      images[2];      /**< Images.      */
-  char                  strings[128];   /**< Strings.     */
-  uint8_t               image_pool[64]; /**< Image pool.  */
+  ra8_book_header_t     hdr;                       /**< Hdr.         */
+  ra8_book_chapter_t    chapters[1];               /**< Chapters.    */
+  ra8_book_node_t       nodes[2];                  /**< Nodes.       */
+  ra8_book_attr_t       attrs[1];                  /**< Attrs.       */
+  ra8_book_stylesheet_t stylesheets[1];            /**< Stylesheets. */
+  ra8_book_image_t      images[2];                 /**< Images.      */
+  char                  strings[k_book_val_128];   /**< Strings.     */
+  uint8_t               image_pool[k_book_val_64]; /**< Image pool.  */
 } mock_book_t;
 
 /**
@@ -207,8 +252,8 @@ static void setup_mock_book_structs(mock_book_t* b, const mock_book_offsets_t* o
   b->images[0].reserved  = 0;
   b->images[0].reserved2 = 0;
   b->images[0].data_off  = 0;
-  b->images[0].data_size = 10;
-  b->images[0].raw_size  = 128;
+  b->images[0].data_size = k_book_data_size_10;
+  b->images[0].raw_size  = k_book_val_128;
 
   b->images[1].id_off    = off->svg_href;
   b->images[1].width     = 0;
@@ -216,9 +261,9 @@ static void setup_mock_book_structs(mock_book_t* b, const mock_book_offsets_t* o
   b->images[1].format    = k_ra8_book_image_svg;
   b->images[1].reserved  = 0;
   b->images[1].reserved2 = 0;
-  b->images[1].data_off  = 10;
-  b->images[1].data_size = 20;
-  b->images[1].raw_size  = 50;
+  b->images[1].data_off  = k_book_data_size_10;
+  b->images[1].data_size = k_book_data_size_20;
+  b->images[1].raw_size  = k_book_raw_size_50;
 
   b->hdr.cover_image_index = 0;
 }
@@ -263,7 +308,7 @@ static void test_ra8_book_invalid(void)
 
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_book_validate(NULL, 100));
 
-  uint8_t buffer[64] = {0};
+  uint8_t buffer[k_book_val_64] = {0};
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_book_validate(buffer, sizeof(buffer)));
 
   mock_book_t b;
@@ -275,17 +320,17 @@ static void test_ra8_book_invalid(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_book_validate(&b, sizeof(b)));
 
   setup_mock_book(&b);
-  b.hdr.format_version = 999;
+  b.hdr.format_version = k_book_format_version_999;
   body                 = (const uint8_t*)&b + sizeof(ra8_book_header_t);
   b.hdr.crc32          = compute_crc32(body, body_len);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_book_validate(&b, sizeof(b)));
 
   setup_mock_book(&b);
-  b.hdr.crc32 ^= 0xFFFFFFFF;
+  b.hdr.crc32 ^= k_book_crc32_ffffffff;
   TEST_ASSERT_EQ(k_ra8_err_range_check_failed, ra8_book_validate(&b, sizeof(b)));
 
   setup_mock_book(&b);
-  b.hdr.chapter_off = sizeof(b) + 10;
+  b.hdr.chapter_off = sizeof(b) + k_book_data_size_10;
   body              = (const uint8_t*)&b + sizeof(ra8_book_header_t);
   b.hdr.crc32       = compute_crc32(body, body_len);
   TEST_ASSERT_EQ(k_ra8_err_invalid_size, ra8_book_validate(&b, sizeof(b)));

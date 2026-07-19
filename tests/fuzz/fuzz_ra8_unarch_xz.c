@@ -24,14 +24,41 @@
 #include "ra8_unarch_io.h"
 #include "ra8_unarch_xz.h"
 
+/**
+ * @enum unarch_xz_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_unarch_xz_u_20 = 20,
+} unarch_xz_uint8_const_t;
+
+/**
+ * @enum unarch_xz_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_unarch_xz_u_1024  = 1024U,
+  k_unarch_xz_val_320 = 320U,
+} unarch_xz_uint16_const_t;
+
 /** @brief Decode destination arena (bounds every honest stream too). */
-static uint8_t s_arena[1U << 20];
+static uint8_t s_arena[1U << k_unarch_xz_u_20];
 /** @brief XZ session scratch: 64 KiB state reserve + 256 KiB dict budget. */
-static _Alignas(8) uint8_t s_scratch[320U * 1024U];
+static _Alignas(8) uint8_t s_scratch[k_unarch_xz_val_320 * k_unarch_xz_u_1024];
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-  if (size == 0U || size > (1U << 20)) {
+  if (size == 0U || size > (1U << k_unarch_xz_u_20)) {
     return 0;
   }
   ra8_unarch_mem_t mem = {.base = data, .len = size};

@@ -36,6 +36,45 @@
 #include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum threadx_netx_tcp_echo_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_threadx_netx_tcp_echo_val_ff = 0xFFU,
+} threadx_netx_tcp_echo_uint8_const_t;
+
+/**
+ * @enum threadx_netx_tcp_echo_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_threadx_netx_tcp_echo_ra8_eth_attach_handler_cafe = 0xCAFEU,
+} threadx_netx_tcp_echo_uint16_const_t;
+
+/**
+ * @enum threadx_netx_tcp_echo_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_threadx_netx_tcp_echo_mask_ffffffff = 0xFFFFFFFFU,
+} threadx_netx_tcp_echo_uint32_const_t;
+
 /** @brief Captured event mask from the attached handler. */
 static uint32_t s_last_eth_event_mask;
 /** @brief Captured ctx pointer passed to the handler. */
@@ -66,7 +105,7 @@ static void reset_world(void)
   s_last_eth_event_ctx  = nullptr;
   /* Pre-seed OSCSF stabilisation bits so ra8_cgc_init() spin loops
    * complete on the first iteration in RA8_SIMULATOR_MODE. */
-  *ra8_sys_oscsf() = (uint8_t)0xFFU;
+  *ra8_sys_oscsf() = (uint8_t)k_threadx_netx_tcp_echo_val_ff;
 }
 
 /**
@@ -131,7 +170,9 @@ static void test_netx_attach_event_handler(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&cfg));
 
   TEST_BEGIN("netx_tcp_echo: attach event handler");
-  ra8_err_t err = ra8_eth_attach_handler(test_netx_eth_event_cb, (void*)0xCAFEU);
+  ra8_err_t err =
+    ra8_eth_attach_handler(test_netx_eth_event_cb,
+                           (void*)k_threadx_netx_tcp_echo_ra8_eth_attach_handler_cafe);
   TEST_ASSERT(err == k_ra8_ok);
   TEST_END("netx_tcp_echo: attach event handler");
 }
@@ -174,7 +215,7 @@ static void test_netx_status_get_and_clear(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&cfg));
 
   TEST_BEGIN("netx_tcp_echo: status get + clear");
-  uint32_t  mask = 0xFFFFFFFFU;
+  uint32_t  mask = k_threadx_netx_tcp_echo_mask_ffffffff;
   ra8_err_t g    = ra8_eth_get_status(&mask);
   TEST_ASSERT(g == k_ra8_ok);
   ra8_err_t c = ra8_eth_clear_status(mask);

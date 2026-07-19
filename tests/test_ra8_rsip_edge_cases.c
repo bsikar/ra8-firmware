@@ -34,6 +34,35 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum rsip_edge_cases_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_rsip_edge_cases_val_132 = 132,
+  k_rsip_edge_cases_val_15  = 15,
+  k_rsip_edge_cases_val_17  = 17,
+  k_rsip_edge_cases_val_64  = 64,
+} rsip_edge_cases_uint8_const_t;
+
+/**
+ * @enum rsip_edge_cases_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_rsip_edge_cases_body_a5a50000 = 0xA5A50000UL,
+} rsip_edge_cases_uint32_const_t;
+
 typedef enum : uint32_t {
   k_rsip_edge_trng_chunk = 64U,   /**< Rsip edge trng chunk. */
   k_rsip_edge_trng_total = 4096U, /**< Rsip edge trng total. */
@@ -62,7 +91,7 @@ static ra8_rsip_key_handle_t make_handle(ra8_rsip_oem_cmd_t alg, uint32_t words)
 {
   ra8_rsip_key_handle_t h = {.alg = (uint32_t)alg, .body_words = words};
   for (uint32_t i = 0U; i < words; ++i) {
-    h.body[i] = 0xA5A50000UL | i;
+    h.body[i] = k_rsip_edge_cases_body_a5a50000 | i;
   }
   return h;
 }
@@ -144,8 +173,8 @@ static void test_aes_non_block_multiple_rejected(void)
   ra8_rsip_key_handle_t h       = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_aes128_install_plain(key, &h));
 
-  const uint8_t pt[15] = {};
-  uint8_t       ct[15] = {};
+  const uint8_t pt[15]                       = {};
+  uint8_t       ct[k_rsip_edge_cases_val_15] = {};
   /* ECB with len = 15 (non-multiple of 16). */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_rsip_aes_cipher(&h,
@@ -546,10 +575,10 @@ static void test_aes_public_error_paths(void)
     make_handle(k_ra8_rsip_oem_cmd_aes256, (uint32_t)k_ra8_rsip_handle_words_aes256);
   ra8_rsip_key_handle_t bad =
     make_handle(k_ra8_rsip_oem_cmd_chacha20, (uint32_t)k_ra8_rsip_handle_words_chacha20);
-  const uint8_t iv[16]  = {};
-  const uint8_t in[17]  = {};
-  uint8_t       out[17] = {};
-  uint8_t       tag[16] = {};
+  const uint8_t iv[16]                        = {};
+  const uint8_t in[17]                        = {};
+  uint8_t       out[k_rsip_edge_cases_val_17] = {};
+  uint8_t       tag[16]                       = {};
 
   aes_err_cipher(&aes192, &aes256, &bad, iv, in, out);
   aes_err_gcm(&aes192, &bad, iv, in, out, tag);
@@ -703,11 +732,11 @@ static void test_chacha_poly_hash_hmac_error_paths(void)
     make_handle(k_ra8_rsip_oem_cmd_chacha20, (uint32_t)k_ra8_rsip_handle_words_chacha20);
   ra8_rsip_key_handle_t aes =
     make_handle(k_ra8_rsip_oem_cmd_aes128, (uint32_t)k_ra8_rsip_handle_words_aes128);
-  const uint8_t nonce[12] = {};
-  const uint8_t msg[5]    = {'h', 'e', 'l', 'l', 'o'};
-  uint8_t       out[64]   = {};
-  uint8_t       tag[16]   = {};
-  const uint8_t otk[32]   = {};
+  const uint8_t nonce[12]                     = {};
+  const uint8_t msg[5]                        = {'h', 'e', 'l', 'l', 'o'};
+  uint8_t       out[k_rsip_edge_cases_val_64] = {};
+  uint8_t       tag[16]                       = {};
+  const uint8_t otk[32]                       = {};
 
   chacha_err_stream(&chacha, nonce, msg, out);
   chacha_err_aead(&chacha, &aes, nonce, msg, out, tag);
@@ -727,8 +756,8 @@ static void test_hmac_public_variants(void)
   TEST_BEGIN("rsip HMAC public variants");
   prep_running();
 
-  const uint8_t         msg[4]  = {'t', 'e', 's', 't'};
-  uint8_t               mac[64] = {};
+  const uint8_t         msg[4]                        = {'t', 'e', 's', 't'};
+  uint8_t               mac[k_rsip_edge_cases_val_64] = {};
   ra8_rsip_key_handle_t h224 =
     make_handle(k_ra8_rsip_oem_cmd_hmac_sha224, (uint32_t)k_ra8_rsip_handle_words_hmac_sha224);
   ra8_rsip_key_handle_t h384 =
@@ -930,12 +959,12 @@ static void test_asym_and_kdf_error_paths(void)
                                           (uint32_t)k_ra8_rsip_handle_words_ecc256_priv);
   ra8_rsip_key_handle_t ikm =
     make_handle(k_ra8_rsip_oem_cmd_hmac_sha256, (uint32_t)k_ra8_rsip_handle_words_hmac_sha256);
-  const uint8_t         digest[33]                   = {};
-  uint8_t               sig[132]                     = {};
-  const uint8_t         point[66]                    = {};
-  uint8_t               blob[k_rsip_edge_blob_bytes] = {};
-  const uint8_t         iv[16]                       = {};
-  ra8_rsip_key_handle_t out                          = {};
+  const uint8_t         digest[33]                     = {};
+  uint8_t               sig[k_rsip_edge_cases_val_132] = {};
+  const uint8_t         point[66]                      = {};
+  uint8_t               blob[k_rsip_edge_blob_bytes]   = {};
+  const uint8_t         iv[16]                         = {};
+  ra8_rsip_key_handle_t out                            = {};
 
   asym_err_rsa(&rsa, digest, sig);
   asym_err_ecdsa(&ecc, digest, sig);

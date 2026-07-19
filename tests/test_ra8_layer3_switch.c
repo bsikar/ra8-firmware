@@ -13,6 +13,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum layer3_switch_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_layer3_switch_mtu_bytes_1500 = 1500U,
+} layer3_switch_uint16_const_t;
+
 typedef enum : uint32_t {
   k_test_l3_dst_ip = 0xC0A80100U, /**< 192.168.1.0 in net order. */
   k_test_l3_mask   = 0xFFFFFF00U, /**< Test l3 mask.             */
@@ -48,7 +61,9 @@ static void test_open_bad_args(void)
 {
   TEST_BEGIN("open rejects zero port_count or mtu_bytes");
   prep();
-  ra8_layer3_switch_cfg_t cfg = {.port_count = 0U, .mtu_bytes = 1500U, .promiscuous = 0U};
+  ra8_layer3_switch_cfg_t cfg = {.port_count  = 0U,
+                                 .mtu_bytes   = k_layer3_switch_mtu_bytes_1500,
+                                 .promiscuous = 0U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_layer3_switch_open(&cfg));
   cfg.port_count = 4U;
   cfg.mtu_bytes  = 0U;

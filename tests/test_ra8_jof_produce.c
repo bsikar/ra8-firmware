@@ -38,6 +38,64 @@
 #include "stb_image.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum jof_produce_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_jof_produce_c_29         = 29U,
+  k_jof_produce_c_41         = 41U,
+  k_jof_produce_cap_64       = 64U,
+  k_jof_produce_exp_255      = 255U,
+  k_jof_produce_i_30         = 30U,
+  k_jof_produce_i_40         = 40U,
+  k_jof_produce_len_24       = 24U,
+  k_jof_produce_r_37         = 37U,
+  k_jof_produce_s_src_14     = 14U,
+  k_jof_produce_s_src_len_12 = 12U,
+  k_jof_produce_s_src_len_34 = 34U,
+  k_jof_produce_u_13         = 13U,
+  k_jof_produce_val_10       = 10U,
+  k_jof_produce_val_11       = 11U,
+  k_jof_produce_val_13       = 13,
+  k_jof_produce_val_15       = 15,
+  k_jof_produce_val_17       = 17,
+  k_jof_produce_val_18       = 18,
+  k_jof_produce_val_19       = 19,
+  k_jof_produce_val_20       = 20U,
+  k_jof_produce_val_20_2     = 20,
+  k_jof_produce_val_21       = 21,
+  k_jof_produce_val_22       = 22,
+  k_jof_produce_val_23       = 23,
+  k_jof_produce_val_24       = 24,
+  k_jof_produce_val_25       = 25,
+  k_jof_produce_val_28       = 28,
+  k_jof_produce_val_5        = 5U,
+  k_jof_produce_val_5_2      = 5,
+  k_jof_produce_val_7        = 7,
+  k_jof_produce_val_9        = 9U,
+  k_jof_produce_val_9_2      = 9,
+  k_jof_produce_val_ff       = 0xFFU,
+} jof_produce_uint8_const_t;
+
+/**
+ * @enum jof_produce_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_jof_produce_u_1024 = 1024U,
+} jof_produce_uint16_const_t;
+
 /** @brief Test geometry + buffer sizing. */
 enum : uint32_t {
   k_t_png_w       = 90U,                 /**< PNG test image width.           */
@@ -64,7 +122,7 @@ static size_t s_src_len;
 /** @brief Raw pixel scratch used while synthesizing sources. */
 static uint8_t s_raw[((size_t)k_t_big_w * (size_t)k_t_big_h) + (size_t)k_t_big_h];
 /** @brief Producer work arena. */
-static uint8_t s_work[8U * 1024U * 1024U];
+static uint8_t s_work[8U * k_jof_produce_u_1024 * k_jof_produce_u_1024];
 /** @brief Memstore backing. */
 static uint8_t s_store_buf[k_t_store_cap];
 /** @brief The atlas store under test. */
@@ -126,7 +184,7 @@ static ra8_err_t t_pull_fail(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 /** @brief Deterministic pattern channel at (x, y, c). */
 static uint8_t pix(uint32_t x, uint32_t y, uint32_t c)
 {
-  return (uint8_t)((x ^ y) + (c * 29U) + ((x + y) >> 2U));
+  return (uint8_t)((x ^ y) + (c * k_jof_produce_c_29) + ((x + y) >> 2U));
 }
 
 /* ---------------------------------------------------------------------------
@@ -138,20 +196,20 @@ static uint8_t pix(uint32_t x, uint32_t y, uint32_t c)
 static void png_chunk(const char* type, const uint8_t* data, uint32_t len)
 {
   uint8_t* p = &s_src[s_src_len];
-  p[0]       = (uint8_t)(len >> 24U);
-  p[1]       = (uint8_t)((len >> 16U) & 0xFFU);
-  p[2]       = (uint8_t)((len >> 8U) & 0xFFU);
-  p[3]       = (uint8_t)(len & 0xFFU);
+  p[0]       = (uint8_t)(len >> k_jof_produce_len_24);
+  p[1]       = (uint8_t)((len >> 16U) & k_jof_produce_val_ff);
+  p[2]       = (uint8_t)((len >> 8U) & k_jof_produce_val_ff);
+  p[3]       = (uint8_t)(len & k_jof_produce_val_ff);
   memcpy(&p[4], type, 4U);
   if (len > 0U) {
     memcpy(&p[8], data, len);
   }
-  const uint32_t crc = (uint32_t)mz_crc32(MZ_CRC32_INIT, &p[4], (size_t)len + 4U);
-  p[8U + len]        = (uint8_t)(crc >> 24U);
-  p[9U + len]        = (uint8_t)((crc >> 16U) & 0xFFU);
-  p[10U + len]       = (uint8_t)((crc >> 8U) & 0xFFU);
-  p[11U + len]       = (uint8_t)(crc & 0xFFU);
-  s_src_len += 12U + (size_t)len;
+  const uint32_t crc                  = (uint32_t)mz_crc32(MZ_CRC32_INIT, &p[4], (size_t)len + 4U);
+  p[8U + len]                         = (uint8_t)(crc >> k_jof_produce_len_24);
+  p[k_jof_produce_val_9 + len]  = (uint8_t)((crc >> 16U) & k_jof_produce_val_ff);
+  p[k_jof_produce_val_10 + len] = (uint8_t)((crc >> 8U) & k_jof_produce_val_ff);
+  p[k_jof_produce_val_11 + len] = (uint8_t)(crc & k_jof_produce_val_ff);
+  s_src_len += k_jof_produce_s_src_len_12 + (size_t)len;
 }
 
 /** @brief PNG paeth predictor (builder-side twin). */
@@ -196,7 +254,7 @@ static size_t png_fill_raw(uint32_t w, uint32_t h, uint32_t ch, bool palette, bo
     uint8_t* row    = &s_raw[o + 1U];
     for (uint32_t x = 0U; x < w; x++) {
       for (uint32_t c = 0U; c < ch; c++) {
-        row[(x * ch) + c] = palette ? (uint8_t)((x + y) % 5U) : pix(x, y, c);
+        row[(x * ch) + c] = palette ? (uint8_t)((x + y) % k_jof_produce_val_5) : pix(x, y, c);
       }
     }
     /* Apply the chosen filter in place (uses the previous UNFILTERED row,
@@ -210,11 +268,13 @@ static size_t png_fill_raw(uint32_t w, uint32_t h, uint32_t ch, bool palette, bo
         const uint8_t  left = (k >= ch) ? row[k - ch] : 0U;
         uint8_t        up   = 0U;
         if (y > 0U) {
-          up = palette ? (uint8_t)((px_x + (y - 1U)) % 5U) : pix(px_x, y - 1U, px_c);
+          up = palette ? (uint8_t)((px_x + (y - 1U)) % k_jof_produce_val_5)
+                       : pix(px_x, y - 1U, px_c);
         }
         uint8_t ul = 0U;
         if ((y > 0U) && (k >= ch)) {
-          ul = palette ? (uint8_t)(((px_x - 1U) + (y - 1U)) % 5U) : pix(px_x - 1U, y - 1U, px_c);
+          ul = palette ? (uint8_t)(((px_x - 1U) + (y - 1U)) % k_jof_produce_val_5)
+                       : pix(px_x - 1U, y - 1U, px_c);
         }
         uint8_t pred = 0U;
         if (f == 1U) {
@@ -255,25 +315,25 @@ static void png_build(uint32_t w, uint32_t h, uint8_t color_type, bool with_trns
   const uint32_t       ch        = ch_map[color_type];
   s_src_len                      = 0U;
   memcpy(s_src, sig, sizeof(sig));
-  s_src_len        = sizeof(sig);
-  uint8_t ihdr[13] = {};
-  ihdr[0]          = (uint8_t)(w >> 24U);
-  ihdr[1]          = (uint8_t)((w >> 16U) & 0xFFU);
-  ihdr[2]          = (uint8_t)((w >> 8U) & 0xFFU);
-  ihdr[3]          = (uint8_t)(w & 0xFFU);
-  ihdr[4]          = (uint8_t)(h >> 24U);
-  ihdr[5]          = (uint8_t)((h >> 16U) & 0xFFU);
-  ihdr[6]          = (uint8_t)((h >> 8U) & 0xFFU);
-  ihdr[7]          = (uint8_t)(h & 0xFFU);
-  ihdr[8]          = 8U; /* bit depth */
-  ihdr[9]          = color_type;
+  s_src_len                                = sizeof(sig);
+  uint8_t ihdr[k_jof_produce_val_13] = {};
+  ihdr[0]                                  = (uint8_t)(w >> k_jof_produce_len_24);
+  ihdr[1]                                  = (uint8_t)((w >> 16U) & k_jof_produce_val_ff);
+  ihdr[2]                                  = (uint8_t)((w >> 8U) & k_jof_produce_val_ff);
+  ihdr[3]                                  = (uint8_t)(w & k_jof_produce_val_ff);
+  ihdr[4]                                  = (uint8_t)(h >> k_jof_produce_len_24);
+  ihdr[k_jof_produce_val_5_2]        = (uint8_t)((h >> 16U) & k_jof_produce_val_ff);
+  ihdr[6]                                  = (uint8_t)((h >> 8U) & k_jof_produce_val_ff);
+  ihdr[k_jof_produce_val_7]          = (uint8_t)(h & k_jof_produce_val_ff);
+  ihdr[8]                                  = 8U; /* bit depth */
+  ihdr[k_jof_produce_val_9_2]        = color_type;
   png_chunk("IHDR", ihdr, sizeof(ihdr));
   if (color_type == 3U) {
-    uint8_t plte[15] = {};
-    for (uint32_t i = 0U; i < 5U; i++) {
-      plte[(i * 3U) + 0U] = (uint8_t)(10U + (i * 40U));
-      plte[(i * 3U) + 1U] = (uint8_t)(20U + (i * 30U));
-      plte[(i * 3U) + 2U] = (uint8_t)(30U + (i * 20U));
+    uint8_t plte[k_jof_produce_val_15] = {};
+    for (uint32_t i = 0U; i < k_jof_produce_val_5; i++) {
+      plte[(i * 3U) + 0U] = (uint8_t)(k_jof_produce_val_10 + (i * k_jof_produce_i_40));
+      plte[(i * 3U) + 1U] = (uint8_t)(k_jof_produce_val_20 + (i * k_jof_produce_i_30));
+      plte[(i * 3U) + 2U] = (uint8_t)(k_jof_produce_i_30 + (i * k_jof_produce_val_20));
     }
     png_chunk("PLTE", plte, sizeof(plte));
     if (with_trns) {
@@ -358,7 +418,7 @@ static void check_tiles(const ra8_jof_info_t* info, uint8_t ctx_ct)
             uint8_t        exp = 0U;
             const uint32_t x   = x0 + c;
             const uint32_t y   = y0 + r;
-            if (ctx_ct == 0xFFU) {
+            if (ctx_ct == k_jof_produce_val_ff) {
               exp = s_ref[(((y * (uint32_t)k_t_jpg_w) + x) * 3U) + ch];
             } else if (ctx_ct == 0U) {
               exp = pix(x, y, 0U);
@@ -378,7 +438,7 @@ static void check_tiles(const ra8_jof_info_t* info, uint8_t ctx_ct)
               } else if (idx < 3U) {
                 exp = trns[idx];
               } else {
-                exp = 255U;
+                exp = k_jof_produce_exp_255;
               }
             } else if (ctx_ct == 4U) {
               exp = (ch < 3U) ? pix(x, y, 0U) : pix(x, y, 1U);
@@ -395,7 +455,7 @@ static void check_tiles(const ra8_jof_info_t* info, uint8_t ctx_ct)
  * @brief Member-wise equality of two parsed atlas descriptors.
  *
  * @details
- * ra8_tileatlas_info_t carries padding between its uint8_t and uint32_t
+ * ra8_jof_info_t carries padding between its uint8_t and uint32_t
  * members, so memcmp would compare bytes the standard never guarantees are
  * initialised. Compare the members the producer actually fills.
  *
@@ -407,7 +467,7 @@ static void check_tiles(const ra8_jof_info_t* info, uint8_t ctx_ct)
  * @pre @p rhs is non-null.
  * @post Neither operand is modified.
  */
-static bool ta_info_equal(const ra8_tileatlas_info_t* lhs, const ra8_tileatlas_info_t* rhs)
+static bool ta_info_equal(const ra8_jof_info_t* lhs, const ra8_jof_info_t* rhs)
 {
   return (lhs->width == rhs->width) && (lhs->height == rhs->height) &&
          (lhs->tile_w == rhs->tile_w) && (lhs->tile_h == rhs->tile_h) &&
@@ -536,7 +596,7 @@ static void test_produce_jpeg_parity(void)
     TEST_ASSERT_EQ(3U, info.bpp);
     TEST_ASSERT_EQ(k_t_jpg_w, info.width);
     TEST_ASSERT_EQ(k_t_jpg_h, info.height);
-    check_tiles(&info, 0xFFU);
+    check_tiles(&info, k_jof_produce_val_ff);
   }
   TEST_END("produce: JPEG stripes == whole decode, raw + deflate codecs");
 }
@@ -607,8 +667,8 @@ static void produce_bounded_check_corners(const ra8_jof_info_t* info)
                                            &h));
     const uint32_t x0 = (uint32_t)corners[i][0] * info->tile_w;
     const uint32_t y0 = (uint32_t)corners[i][1] * info->tile_h;
-    for (uint32_t r = 0U; r < h; r += 37U) {
-      for (uint32_t c = 0U; c < w; c += 41U) {
+    for (uint32_t r = 0U; r < h; r += k_jof_produce_r_37) {
+      for (uint32_t c = 0U; c < w; c += k_jof_produce_c_41) {
         TEST_ASSERT_EQ(pix(x0 + c, y0 + r, 0U), s_cell[(r * w) + c]);
       }
     }
@@ -693,10 +753,10 @@ static void expect_produce_err(ra8_err_t want)
 static void produce_hostile_sniff(void)
 {
   /* Not a JPEG/PNG at all (0xFF then junk: sniff condition-2 vector). */
-  s_src[0] = 0xFFU;
+  s_src[0] = k_jof_produce_val_ff;
   s_src[1] = 0x00U;
   memset(&s_src[2], 0xAAU, 32U);
-  s_src_len = 34U;
+  s_src_len = k_jof_produce_s_src_len_34;
   expect_produce_err(k_ra8_err_not_supported);
   /* Too short to sniff. */
   s_src_len = 4U;
@@ -732,7 +792,7 @@ static void produce_hostile_pull_and_cfg(void)
   bad.tile_w                      = 0U;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_jof_produce(&bad, &info));
   bad       = cfg;
-  bad.codec = 9U;
+  bad.codec = k_jof_produce_val_9;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_jof_produce(&bad, &info));
   bad      = cfg;
   bad.pull = NULL;
@@ -752,35 +812,35 @@ static void produce_hostile_png_ihdr(void)
 {
   /* Interlaced PNG (IHDR interlace byte at sig 8 + chunk hdr 8 + offset 12). */
   png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[28] = 1U;
+  s_src[k_jof_produce_val_28] = 1U;
   expect_produce_err(k_ra8_err_not_supported);
   /* 16-bit depth. */
   png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[24] = 16U;
+  s_src[k_jof_produce_val_24] = 16U;
   expect_produce_err(k_ra8_err_not_supported);
   /* Unknown colour type. */
   png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[25] = 5U;
+  s_src[k_jof_produce_val_25] = k_jof_produce_val_5;
   expect_produce_err(k_ra8_err_not_supported);
   /* Oversize width / height vs the caps (big-endian IHDR fields). */
   png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[16] = 0x00U;
-  s_src[17] = 0x01U;
-  s_src[18] = 0x00U;
-  s_src[19] = 0x00U; /* width = 65536 */
+  s_src[16]                         = 0x00U;
+  s_src[k_jof_produce_val_17] = 0x01U;
+  s_src[k_jof_produce_val_18] = 0x00U;
+  s_src[k_jof_produce_val_19] = 0x00U; /* width = 65536 */
   expect_produce_err(k_ra8_err_invalid_size);
   png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[20] = 0x00U;
-  s_src[21] = 0x01U;
-  s_src[22] = 0x00U;
-  s_src[23] = 0x00U; /* height = 65536 */
+  s_src[k_jof_produce_val_20_2] = 0x00U;
+  s_src[k_jof_produce_val_21]   = 0x01U;
+  s_src[k_jof_produce_val_22]   = 0x00U;
+  s_src[k_jof_produce_val_23]   = 0x00U; /* height = 65536 */
   expect_produce_err(k_ra8_err_invalid_size);
   /* Zero width (PNG IHDR direct-geometry vector). */
   png_build(k_t_png_w, k_t_png_h, 0U, false, false);
-  s_src[16] = 0U;
-  s_src[17] = 0U;
-  s_src[18] = 0U;
-  s_src[19] = 0U;
+  s_src[16]                         = 0U;
+  s_src[k_jof_produce_val_17] = 0U;
+  s_src[k_jof_produce_val_18] = 0U;
+  s_src[k_jof_produce_val_19] = 0U;
   expect_produce_err(k_ra8_err_invalid_size);
   /* Truncated IDAT (cut the source in half). */
   png_build(k_t_png_w, k_t_png_h, 0U, false, false);
@@ -792,7 +852,7 @@ static void produce_hostile_png_ihdr(void)
   expect_produce_err(k_ra8_err_validation_failed);
   /* tRNS on a non-palette image. */
   png_build(k_t_png_w, k_t_png_h, 3U, true, false);
-  s_src[25] = 2U; /* IHDR says RGB but tRNS+PLTE follow: tRNS now rejects */
+  s_src[k_jof_produce_val_25] = 2U; /* IHDR says RGB but tRNS+PLTE follow: tRNS now rejects */
   expect_produce_err(k_ra8_err_not_supported);
 }
 
@@ -830,8 +890,9 @@ static void produce_hostile_budget(void)
   {
     png_build(k_t_png_w, k_t_png_h, 0U, false, false);
     static t_pull_t s_pull;
-    s_pull  = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
-    s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = 64U, .len = 0U};
+    s_pull = (t_pull_t){.d = s_src, .n = s_src_len, .pos = 0U, .chunk = 0U};
+    s_store =
+      (ra8_jof_memstore_t){.buf = s_store_buf, .cap = k_jof_produce_cap_64, .len = 0U};
     ra8_jof_info_t              info = {};
     const ra8_jof_produce_cfg_t cfg  = {
       .pull     = t_pull,
@@ -876,7 +937,8 @@ static void test_produce_hostile(void)
   produce_hostile_budget();
   /* PLTE MC/DC vectors: indivisible length, oversize, duplicate. */
   png_build(k_t_png_w, k_t_png_h, 3U, false, false);
-  s_src[8U + 8U + 13U + 4U + 3U] = 14U; /* PLTE length 15 -> 14 */
+  s_src[8U + 8U + k_jof_produce_u_13 + 4U + 3U] =
+    k_jof_produce_s_src_14; /* PLTE length 15 -> 14 */
   expect_produce_err(k_ra8_err_validation_failed);
   TEST_END("produce: hostile / unsupported sources fail closed");
 }

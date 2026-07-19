@@ -19,6 +19,19 @@
 
 #include "sim_elf.h"
 
+/**
+ * @enum sim_trace_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_sim_trace_val_24 = 24,
+} sim_trace_uint8_const_t;
+
 /* =============================================================================
  * Function-entry seam helpers -- emulate "return <r0> to LR" and hook one ELF
  * symbol's entry to a C callback. Shared by the USB host-mode and virtual-
@@ -46,7 +59,7 @@ void eth_seam_hook(uc_engine* uc, const uint8_t* elf, long len, const char* name
   if (addr == 0U) {
     return;
   }
-  static uc_hook  s_handles[24];
+  static uc_hook  s_handles[k_sim_trace_val_24];
   static uint32_t s_n;
   if (s_n < (uint32_t)(sizeof(s_handles) / sizeof(s_handles[0]))) {
     (void)uc_hook_add(uc, &s_handles[s_n], UC_HOOK_CODE, cb, nullptr, addr, addr);

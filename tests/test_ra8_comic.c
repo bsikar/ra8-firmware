@@ -35,6 +35,21 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum comic_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_comic_i_31          = 31U,
+  k_comic_s_arc_size_22 = 22U,
+  k_comic_w_5           = 5U,
+} comic_uint8_const_t;
+
+/**
  * @enum tc_dim_t
  * @brief Fixture geometry and buffer budgets (tests are magic-number exempt).
  */
@@ -111,7 +126,7 @@ static void tc_build(void)
   s_imgs[0] = (tc_img_t){.name = "nested/page003.png", .w = 8U, .h = 6U, .seed = 3U};
   s_imgs[1] = (tc_img_t){.name = "page000.png", .w = 4U, .h = 4U, .seed = 0U};
   s_imgs[2] = (tc_img_t){.name = "page001.png", .w = 6U, .h = 8U, .seed = 1U};
-  s_imgs[3] = (tc_img_t){.name = "page002.png", .w = 5U, .h = 5U, .seed = 2U};
+  s_imgs[3] = (tc_img_t){.name = "page002.png", .w = k_comic_w_5, .h = k_comic_w_5, .seed = 2U};
   for (uint32_t i = 0U; i < k_tc_img_count; ++i) {
     s_imgs[i].plen =
       cf_make_png(s_imgs[i].w, s_imgs[i].h, s_imgs[i].seed, s_imgs[i].png, sizeof(s_imgs[i].png));
@@ -142,7 +157,7 @@ static void tc_build(void)
   /* Large unreferenced filler (STORE) -- dominates size, never read on open. */
   static uint8_t s_filler[k_tc_filler];
   for (size_t i = 0U; i < sizeof(s_filler); ++i) {
-    s_filler[i] = (uint8_t)((i * 31U) + (i >> 3U));
+    s_filler[i] = (uint8_t)((i * k_comic_i_31) + (i >> 3U));
   }
   TEST_ASSERT(
     mz_zip_writer_add_mem(&zip, "big_filler.bin", s_filler, sizeof(s_filler), MZ_NO_COMPRESSION) ==
@@ -453,7 +468,7 @@ static void test_comic_facade_edges(void)
    * archive with no image entries opens to no pages (or a miniz open error). */
   memset(s_arc, 0, 22U);
   memcpy(s_arc, "PK\005\006", 4U);
-  s_arc_size           = 22U;
+  s_arc_size           = k_comic_s_arc_size_22;
   const ra8_err_t eocd = tc_open_std(&c, pages, names, 22U);
   TEST_ASSERT(eocd != k_ra8_ok);
   TEST_ASSERT_EQ(k_ra8_comic_kind_none, ra8_comic_kind(&c));

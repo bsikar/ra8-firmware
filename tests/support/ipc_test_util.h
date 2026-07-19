@@ -21,6 +21,19 @@
 #include "ra8_sim_mmap.h"
 #include "ra8_sim_mmio.h"
 
+/**
+ * @enum ipc_test_util_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ipc_test_util_s_ipc_cb_last_channel_ff = 0xFFU,
+} ipc_test_util_uint8_const_t;
+
 typedef enum : uint8_t {
   k_ra8_ipc_test_ch_first = 0U,   /**< RA8 ipc test channel first. */
   k_ra8_ipc_test_ch_one   = 1U,   /**< RA8 ipc test channel one.   */
@@ -99,16 +112,16 @@ static inline void prep(void)
   ra8_sim_mmio_reset();
   (void)ra8_isr_init();
   s_ipc_cb_count            = 0U;
-  s_ipc_cb_last_channel     = 0xFFU;
+  s_ipc_cb_last_channel     = k_ipc_test_util_s_ipc_cb_last_channel_ff;
   s_ipc_cb_last_event_mask  = 0U;
   s_ipc_cb_last_message     = 0U;
   s_ipc_cb_last_ctx         = nullptr;
   s_ipc_irq_cb_count        = 0U;
-  s_ipc_irq_cb_last_channel = 0xFFU;
-  s_ipc_irq_cb_last_event   = 0xFFU;
+  s_ipc_irq_cb_last_channel = k_ipc_test_util_s_ipc_cb_last_channel_ff;
+  s_ipc_irq_cb_last_event   = k_ipc_test_util_s_ipc_cb_last_channel_ff;
   s_ipc_irq_cb_last_ctx     = nullptr;
   s_ipc_nmi_cb_count        = 0U;
-  s_ipc_nmi_cb_last_unit    = 0xFFU;
+  s_ipc_nmi_cb_last_unit    = k_ipc_test_util_s_ipc_cb_last_channel_ff;
   s_ipc_nmi_cb_last_ctx     = nullptr;
   s_ring_head               = 0U;
   s_ring_tail               = 0U;

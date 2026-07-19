@@ -42,6 +42,42 @@
 #include "ra8_fs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum fs_fat_fileio_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_fs_fat_fileio_cov_bpb_55   = 0x55U,
+  k_fs_fat_fileio_cov_bpb_aa   = 0xAAU,
+  k_fs_fat_fileio_cov_got_99   = 99U,
+  k_fs_fat_fileio_cov_put16_11 = 11U,
+  k_fs_fat_fileio_cov_put16_14 = 14U,
+  k_fs_fat_fileio_cov_put16_17 = 17U,
+  k_fs_fat_fileio_cov_put16_19 = 19U,
+  k_fs_fat_fileio_cov_put16_22 = 22U,
+  k_fs_fat_fileio_cov_v_ff     = 0xFFU,
+  k_fs_fat_fileio_cov_val_13   = 13,
+} fs_fat_fileio_cov_uint8_const_t;
+
+/**
+ * @enum fs_fat_fileio_cov_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_fs_fat_fileio_cov_val_510 = 510,
+  k_fs_fat_fileio_cov_val_511 = 511,
+} fs_fat_fileio_cov_uint16_const_t;
+
 /* ===========================================================================
  * Geometry and injection constants
  * ===========================================================================
@@ -197,8 +233,8 @@ static ra8_err_t inj_capacity(void* ctx, uint32_t* block_count, uint32_t* block_
 
 static void put16(uint8_t* p, uint32_t off, uint16_t v)
 {
-  p[off]     = (uint8_t)(v & 0xFFU);
-  p[off + 1] = (uint8_t)((v >> 8U) & 0xFFU);
+  p[off]     = (uint8_t)(v & k_fs_fat_fileio_cov_v_ff);
+  p[off + 1] = (uint8_t)((v >> 8U) & k_fs_fat_fileio_cov_v_ff);
 }
 
 /**
@@ -228,15 +264,15 @@ static void build_fat16_volume(void)
     TEST_FAIL_FMT("%s", "calloc failed");
   }
   uint8_t* bpb = s_disk.bytes;
-  put16(bpb, 11U, (uint16_t)k_fio_block_size);
-  bpb[13] = 1U;
-  put16(bpb, 14U, 1U);
+  put16(bpb, k_fs_fat_fileio_cov_put16_11, (uint16_t)k_fio_block_size);
+  bpb[k_fs_fat_fileio_cov_val_13] = 1U;
+  put16(bpb, k_fs_fat_fileio_cov_put16_14, 1U);
   bpb[16] = 2U;
-  put16(bpb, 17U, 16U);
-  put16(bpb, 19U, (uint16_t)k_fio_blocks_fat16);
-  put16(bpb, 22U, 32U);
-  bpb[510] = 0x55U;
-  bpb[511] = 0xAAU;
+  put16(bpb, k_fs_fat_fileio_cov_put16_17, 16U);
+  put16(bpb, k_fs_fat_fileio_cov_put16_19, (uint16_t)k_fio_blocks_fat16);
+  put16(bpb, k_fs_fat_fileio_cov_put16_22, 32U);
+  bpb[k_fs_fat_fileio_cov_val_510] = k_fs_fat_fileio_cov_bpb_55;
+  bpb[k_fs_fat_fileio_cov_val_511] = k_fs_fat_fileio_cov_bpb_aa;
 }
 
 /**
@@ -313,7 +349,7 @@ static void seed_file(ra8_fs_mount_t* h, const char* name, uint32_t len)
 {
   static uint8_t s_pat[k_fio_pat_max] = {};
   for (uint32_t i = 0; i < len && i < (uint32_t)k_fio_pat_max; i++) {
-    s_pat[i] = (uint8_t)(i & 0xFFU);
+    s_pat[i] = (uint8_t)(i & k_fs_fat_fileio_cov_v_ff);
   }
   ra8_fs_file_t* f = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, name, k_ra8_fs_mode_write, &f));
@@ -350,12 +386,12 @@ static void test_read_seek_tell_size_not_in_use(void)
   ra8_fs_file_t closed = *f;
   closed.in_use        = 0U;
   uint8_t  buf[8]      = {};
-  uint32_t got         = 99U;
+  uint32_t got         = k_fs_fat_fileio_cov_got_99;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_read(&closed, buf, sizeof(buf), &got)); /* 188 */
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_seek(&closed, 0U));                     /* 495 */
-  uint32_t pos = 99U;
+  uint32_t pos = k_fs_fat_fileio_cov_got_99;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_tell(&closed, &pos)); /* 533 */
-  uint32_t sz = 99U;
+  uint32_t sz = k_fs_fat_fileio_cov_got_99;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_size(&closed, &sz)); /* 567 */
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
@@ -384,7 +420,7 @@ static void test_write_zero_length(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_open(h, "ZERO.TXT", k_ra8_fs_mode_write, &f));
   uint8_t byte = (uint8_t)'0';
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, &byte, 0U)); /* 419 */
-  uint32_t sz = 99U;
+  uint32_t sz = k_fs_fat_fileio_cov_got_99;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_size(f, &sz));
   TEST_ASSERT_EQ(0, sz);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
@@ -494,7 +530,7 @@ static void test_read_walk_fat_get_error(void)
   const ra8_fs_backend_t saved = h->backend;
   use_inject(h, k_fio_reads_inf, h->first_fat_lba, k_fio_lba_none, 0U);
   uint8_t  buf[k_fio_two_clusters] = {};
-  uint32_t got                     = 99U;
+  uint32_t got                     = k_fs_fat_fileio_cov_got_99;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_fs_read(f, buf, sizeof(buf), &got)); /* 59, 131 */
   h->backend = saved;
 
@@ -526,12 +562,12 @@ static void test_read_walk_hits_eoc(void)
   /* Corrupt FAT copy 0 entry for the first cluster to a FAT16 EOC marker. */
   const uint32_t fat_byte =
     (h->first_fat_lba * (uint32_t)k_fio_block_size) + (f->first_cluster * 2U);
-  s_disk.bytes[fat_byte]      = 0xFFU;
-  s_disk.bytes[fat_byte + 1U] = 0xFFU;
+  s_disk.bytes[fat_byte]      = k_fs_fat_fileio_cov_v_ff;
+  s_disk.bytes[fat_byte + 1U] = k_fs_fat_fileio_cov_v_ff;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_seek(f, (uint32_t)k_fio_block_size));
   uint8_t  buf[k_fio_block_size] = {};
-  uint32_t got                   = 99U;
+  uint32_t got                   = k_fs_fat_fileio_cov_got_99;
   TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_fs_read(f, buf, sizeof(buf), &got)); /* 62,63,131 */
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_close(f));
@@ -767,7 +803,7 @@ static void test_read_cache_unset_after_write(void)
 
   static uint8_t s_wr[k_fio_two_clusters] = {};
   for (uint32_t i = 0; i < (uint32_t)k_fio_two_clusters; i++) {
-    s_wr[i] = (uint8_t)(i & 0xFFU);
+    s_wr[i] = (uint8_t)(i & k_fs_fat_fileio_cov_v_ff);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_fs_write(f, s_wr, sizeof(s_wr))); /* resets walk cache to 0 */
 

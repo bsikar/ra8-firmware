@@ -31,6 +31,19 @@
 #include "ra8_img_arena.h" /* ra8_img_arena_t, ra8_img_arena_bind/_unbind  */
 #include "stb_image.h"     /* stbi_info_from_memory, stbi_load_from_memory */
 
+/**
+ * @enum stb_image_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_stb_image_u_20 = 20,
+} stb_image_uint8_const_t;
+
 /*
  * Output scratch is a fixed, statically allocated bump arena bound around each
  * decode -- the same zero-heap strategy the firmware uses. The pixel cap keeps
@@ -47,7 +60,7 @@ alignas(16) static uint8_t s_scratch[k_fuzz_img_scratch_bytes];
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-  if (size == 0U || size > (1U << 20)) {
+  if (size == 0U || size > (1U << k_stb_image_u_20)) {
     return 0;
   }
   /* Bound the declared dimensions before decoding so a malicious width/height

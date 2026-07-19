@@ -28,6 +28,22 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum ftl_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ftl_i_31           = 31U,
+  k_ftl_lbn_7          = 7U,
+  k_ftl_pattern_fill_5 = 5U,
+  k_ftl_pattern_fill_9 = 9U,
+} ftl_uint8_const_t;
+
+/**
  * @enum test_ftl_const_t
  * @brief Fixture sizes and the RNG constants for the random workload.
  *
@@ -267,7 +283,7 @@ static void test_ftl_unwritten_reads_erase_value(void)
 static void pattern_fill(uint8_t* blk, uint32_t lbn, uint32_t tag)
 {
   for (uint32_t i = 0; i < (uint32_t)k_test_ftl_block; ++i) {
-    blk[i] = (uint8_t)((i * 31U) + (lbn * 7U) + tag);
+    blk[i] = (uint8_t)((i * k_ftl_i_31) + (lbn * k_ftl_lbn_7) + tag);
   }
 }
 
@@ -403,7 +419,7 @@ static void test_ftl_presented_erase_unmaps(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ftl_as_blockdev(&ftl, &bd));
 
   uint8_t blk[(size_t)k_test_ftl_block];
-  pattern_fill(blk, 5U, 9U);
+  pattern_fill(blk, k_ftl_pattern_fill_5, k_ftl_pattern_fill_9);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 5U, 1U, blk));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_erase(&bd, 5U, 1U));
 

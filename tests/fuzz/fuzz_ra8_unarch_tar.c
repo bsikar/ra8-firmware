@@ -25,14 +25,41 @@
 #include "ra8_unarch_io.h"
 #include "ra8_unarch_tar.h"
 
+/**
+ * @enum unarch_tar_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_unarch_tar_u_20 = 20,
+} unarch_tar_uint8_const_t;
+
+/**
+ * @enum unarch_tar_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_unarch_tar_n_4096  = 4096U,
+  k_unarch_tar_val_512 = 512,
+} unarch_tar_uint16_const_t;
+
 /** @brief Member extraction buffer. */
 static uint8_t s_out[1U << 16];
 /** @brief Member name buffer. */
-static char s_name[512];
+static char s_name[k_unarch_tar_val_512];
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-  if (size == 0U || size > (1U << 20)) {
+  if (size == 0U || size > (1U << k_unarch_tar_u_20)) {
     return 0;
   }
   ra8_unarch_mem_t mem = {.base = data, .len = size};
@@ -41,7 +68,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     return 0;
   }
   uint64_t off = 0U;
-  for (uint32_t n = 0U; n < 4096U; ++n) { /* bound: hard member cap */
+  for (uint32_t n = 0U; n < k_unarch_tar_n_4096; ++n) { /* bound: hard member cap */
     ra8_unarch_tar_entry_t ent = {};
     if (ra8_unarch_tar_next(&t, off, s_name, (uint16_t)sizeof(s_name), &ent) != k_ra8_ok) {
       break;

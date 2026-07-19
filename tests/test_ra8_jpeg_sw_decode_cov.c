@@ -46,6 +46,21 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum jpeg_sw_decode_cov_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_jpeg_sw_decode_cov_val_128 = 128,
+  k_jpeg_sw_decode_cov_val_64  = 64,
+  k_jpeg_sw_decode_cov_val_80  = 80,
+} jpeg_sw_decode_cov_uint8_const_t;
+
+/**
  * @enum ra8_jpeg_dec_cov_const_t
  * @brief Buffer sizes shared across the coverage fixtures.
  */
@@ -511,7 +526,7 @@ static void test_decode_sof0_guards(void)
 static void test_decode_sos_guards(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_parse_sos header/len/ns guards");
-  static uint8_t s_buf[64];
+  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_64];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
@@ -568,7 +583,7 @@ static void test_decode_sos_guards(void)
 static void test_decode_scan_buffer_too_small(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_decode_scan output-size guard");
-  static uint8_t s_buf[64];
+  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_64];
   static uint8_t s_tiny[(uint32_t)k_cov_out_small];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
@@ -609,7 +624,7 @@ static void test_decode_scan_buffer_too_small(void)
 static void test_decode_dc_huffman_failure(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block DC failure -> y-block + scan propagation");
-  static uint8_t s_buf[64];
+  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_64];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
@@ -649,7 +664,7 @@ static void test_decode_dc_huffman_failure(void)
 static void test_decode_dc_magnitude_underflow(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block DC magnitude underflow (r<0 && t!=0)");
-  static uint8_t s_buf[64];
+  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_64];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
@@ -686,7 +701,7 @@ static void test_decode_dc_magnitude_underflow(void)
 static void test_decode_ac_huffman_failure(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block AC Huffman failure (rs<0)");
-  static uint8_t s_buf[64];
+  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_64];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
@@ -724,7 +739,7 @@ static void test_decode_ac_huffman_failure(void)
 static void test_decode_ac_magnitude_underflow(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block AC magnitude underflow (v<0)");
-  static uint8_t s_buf[64];
+  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_64];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
@@ -766,7 +781,7 @@ static void test_decode_ac_magnitude_underflow(void)
 static void test_decode_ac_zrl_index_overrun(void)
 {
   TEST_BEGIN("jpeg_dec_cov: dec_block ZRL run + AC index overrun (k>=64)");
-  static uint8_t s_buf[80];
+  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_80];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
@@ -811,7 +826,7 @@ static void test_decode_ac_zrl_index_overrun(void)
 static void test_decode_chroma_block_failures(void)
 {
   TEST_BEGIN("jpeg_dec_cov: chroma Cb + Cr block failures + scan propagation");
-  static uint8_t s_buf[128];
+  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_128];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 
@@ -875,7 +890,7 @@ static void test_decode_chroma_block_failures(void)
 static void test_decode_grayscale_edge_success(void)
 {
   TEST_BEGIN("jpeg_dec_cov: 5x5 grayscale decode -- edge crop + gray emit");
-  static uint8_t s_buf[80];
+  static uint8_t s_buf[k_jpeg_sw_decode_cov_val_80];
   uint16_t       w = 0U;
   uint16_t       h = 0U;
 

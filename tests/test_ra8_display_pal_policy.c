@@ -19,6 +19,20 @@
 #include "ra8_err.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum display_pal_policy_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_display_pal_policy_i_10 = 10U,
+  k_display_pal_policy_i_5  = 5U,
+} display_pal_policy_uint8_const_t;
+
 /** @brief Local cadence used by the cadence/MC-DC tests. */
 enum : uint16_t { k_test_clean_every = 4U /**< Test clean every. */ };
 
@@ -75,7 +89,7 @@ static void test_policy_fast_only(void)
   display_policy_t          p = {};
   display_policy_decision_t d = {};
   TEST_ASSERT_EQ(k_ra8_ok, display_policy_init(&p, k_display_policy_fast_only, k_test_clean_every));
-  for (uint32_t i = 0U; i < 10U; i++) {
+  for (uint32_t i = 0U; i < k_display_pal_policy_i_10; i++) {
     TEST_ASSERT_EQ(k_ra8_ok, display_policy_decide(&p, k_display_event_turn, &d));
     TEST_ASSERT_EQ(k_display_refresh_fast, d.hint);
     TEST_ASSERT(!d.full_update);
@@ -91,7 +105,7 @@ static void test_policy_quality(void)
   display_policy_t          p = {};
   display_policy_decision_t d = {};
   TEST_ASSERT_EQ(k_ra8_ok, display_policy_init(&p, k_display_policy_quality, k_test_clean_every));
-  for (uint32_t i = 0U; i < 5U; i++) {
+  for (uint32_t i = 0U; i < k_display_pal_policy_i_5; i++) {
     TEST_ASSERT_EQ(k_ra8_ok, display_policy_decide(&p, k_display_event_turn, &d));
     TEST_ASSERT_EQ(k_display_refresh_quality, d.hint);
     TEST_ASSERT(d.full_update);

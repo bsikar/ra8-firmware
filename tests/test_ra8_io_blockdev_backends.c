@@ -37,6 +37,22 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum io_blockdev_backends_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_io_blockdev_backends_i_5    = 5U,
+  k_io_blockdev_backends_i_5a   = 0x5AU,
+  k_io_blockdev_backends_i_9    = 9U,
+  k_io_blockdev_backends_val_ff = 0xFFU,
+} io_blockdev_backends_uint8_const_t;
+
+/**
  * @enum t_backend_const_t
  * @brief Fixture sizes.
  */
@@ -76,7 +92,7 @@ static void test_sdram_backend(void)
 
   uint8_t out[(size_t)k_ra8_io_block_size_bytes];
   for (uint32_t i = 0; i < (uint32_t)k_ra8_io_block_size_bytes; ++i) {
-    out[i] = (uint8_t)(((i * 5U) + 1U) & 0xFFU);
+    out[i] = (uint8_t)(((i * k_io_blockdev_backends_i_5) + 1U) & k_io_blockdev_backends_val_ff);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 3, 1, out));
   uint8_t in[(size_t)k_ra8_io_block_size_bytes] = {};
@@ -142,7 +158,7 @@ static void test_xspi_rmw_roundtrip(void)
 
   uint8_t a[(size_t)k_ra8_io_block_size_bytes];
   for (uint32_t i = 0; i < (uint32_t)k_ra8_io_block_size_bytes; ++i) {
-    a[i] = (uint8_t)((i ^ 0x5AU) & 0xFFU);
+    a[i] = (uint8_t)((i ^ k_io_blockdev_backends_i_5a) & k_io_blockdev_backends_val_ff);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_write(&bd, 2, 1, a));
 
@@ -209,7 +225,7 @@ static void test_mram_fence(void)
   /* memory-mapped read: poke known bytes into the window, read them back */
   volatile uint8_t* win = (volatile uint8_t*)base;
   for (uint32_t i = 0; i < (uint32_t)k_ra8_io_block_size_bytes; ++i) {
-    win[i] = (uint8_t)((i + 9U) & 0xFFU);
+    win[i] = (uint8_t)((i + k_io_blockdev_backends_i_9) & k_io_blockdev_backends_val_ff);
   }
   uint8_t got[(size_t)k_ra8_io_block_size_bytes] = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_blockdev_read(&bd, 0, 1, got));

@@ -32,6 +32,20 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum psa_crypto_api_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_psa_crypto_api_sig_ff = 0xFFU,
+  k_psa_crypto_api_val_64 = 64,
+} psa_crypto_api_uint8_const_t;
+
+/**
  * @enum ra8_psa_test_const_t
  * @brief Magic-number-free constants used by the test bodies.
  */
@@ -383,7 +397,7 @@ static void test_sign_verify_round_trip(void)
     ra8_psa_verify_hash(k, k_ra8_psa_alg_ecdsa_sha_256, digest, digest_len, sig, sig_len));
 
   /* Tamper a byte and ensure verification fails. */
-  sig[0] ^= 0xFFU;
+  sig[0] ^= k_psa_crypto_api_sig_ff;
   TEST_ASSERT_EQ(
     k_ra8_err_crc_mismatch,
     ra8_psa_verify_hash(k, k_ra8_psa_alg_ecdsa_sha_256, digest, digest_len, sig, sig_len));
@@ -516,7 +530,7 @@ static void test_aead_tamper_detected(void)
                                       &ct_len));
 
   /* Tamper the tag and ensure decrypt detects it. */
-  ct[ct_len - 1U] ^= 0xFFU;
+  ct[ct_len - 1U] ^= k_psa_crypto_api_sig_ff;
   uint8_t recovered[k_psa_test_plain_len];
   size_t  rec_len = 0U;
   TEST_ASSERT_EQ(k_ra8_err_crc_mismatch,
@@ -555,7 +569,7 @@ static void test_aead_invalid_args(void)
   ra8_psa_key_t k = nullptr;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_psa_key_import(&k, &attr, k_test_aes_key, sizeof(k_test_aes_key)));
 
-  uint8_t out[64];
+  uint8_t out[k_psa_crypto_api_val_64];
   size_t  ol = 0U;
   /* Wrong nonce length. */
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,

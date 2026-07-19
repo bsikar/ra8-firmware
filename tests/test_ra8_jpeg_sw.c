@@ -27,6 +27,32 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum jpeg_sw_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_jpeg_sw_val_ff = 0xFFU,
+} jpeg_sw_uint8_const_t;
+
+/**
+ * @enum jpeg_sw_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_jpeg_sw_produced_ffff = 0xFFFFU,
+} jpeg_sw_uint16_const_t;
+
+/**
  * @enum ra8_jpeg_test_const_t
  * @brief Sizes used by the test fixtures.
  */
@@ -81,9 +107,9 @@ static void fill_gradient(uint8_t* rgb, uint16_t w, uint16_t h)
   for (uint16_t y = 0U; y < h; y++) {
     for (uint16_t x = 0U; x < w; x++) {
       uint32_t i  = (((uint32_t)y * (uint32_t)w) + (uint32_t)x) * 3U;
-      rgb[i + 0U] = (uint8_t)((x * 16U) & 0xFFU);
-      rgb[i + 1U] = (uint8_t)((y * 16U) & 0xFFU);
-      rgb[i + 2U] = (uint8_t)(((x + y) * 8U) & 0xFFU);
+      rgb[i + 0U] = (uint8_t)((x * 16U) & k_jpeg_sw_val_ff);
+      rgb[i + 1U] = (uint8_t)((y * 16U) & k_jpeg_sw_val_ff);
+      rgb[i + 2U] = (uint8_t)(((x + y) * 8U) & k_jpeg_sw_val_ff);
     }
   }
 }
@@ -249,7 +275,7 @@ static void test_encode_out_of_buffer(void)
   TEST_BEGIN("jpeg_sw encode rejects undersized out_buf");
   static uint8_t s_rgb_in[(uint32_t)k_jt_rgb_bytes];
   uint8_t        tiny[8U];
-  uint32_t       produced = 0xFFFFU;
+  uint32_t       produced = k_jpeg_sw_produced_ffff;
   fill_gradient(s_rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
   ra8_err_t e = ra8_jpeg_sw_encode(s_rgb_in,
                                    (uint16_t)k_jt_w,

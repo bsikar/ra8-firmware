@@ -38,6 +38,19 @@
 #include <stdlib.h>
 
 /**
+ * @enum unity_minimal_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_unity_minimal_val_64 = 64,
+} unity_minimal_uint8_const_t;
+
+/**
  * @brief Fail the current test with a formatted message.
  *
  * @details
@@ -124,7 +137,7 @@ static inline void ra8_test_assert_true(bool cond, const char* detail, const cha
 static inline void ra8_test_assert_eq(int64_t expected, int64_t actual, const char* file, int line)
 {
   if (expected != actual) {
-    char detail[64];
+    char detail[k_unity_minimal_val_64];
     (void)snprintf(detail, sizeof detail, "expected %" PRId64 ", got %" PRId64, expected, actual);
     ra8_test_fail(file, line, detail);
   }

@@ -22,6 +22,33 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum drw_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_drw_val_abcd = 0xABCDUL,
+} drw_uint16_const_t;
+
+/**
+ * @enum drw_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_drw_sentinel_cafebabe = 0xCAFEBABEUL,
+  k_drw_sentinel_deadbeef = 0xDEADBEEFUL,
+} drw_uint32_const_t;
+
+/**
  * @enum ra8_drw_test_const_t
  * @brief Test-side bound constants used by the cases below.
  */
@@ -155,7 +182,7 @@ static void test_deinit_clears_irq_and_callback(void)
   const ra8_drw_config_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_init(&cfg));
   /* Pretend a prior IRQ snuck through. */
-  *ra8_drw_reg32(k_ra8_drw_off_irqctl) = 0xABCDUL;
+  *ra8_drw_reg32(k_ra8_drw_off_irqctl) = k_drw_val_abcd;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_deinit());
   TEST_ASSERT_EQ(k_ra8_drw_irqctl_all_clr, *ra8_drw_reg32(k_ra8_drw_off_irqctl));
@@ -350,8 +377,8 @@ static void test_reset_clears_perfcount(void)
 {
   TEST_BEGIN("drw reset clears perf counters");
   prep();
-  *ra8_drw_reg32(k_ra8_drw_off_perfcount1) = 0xDEADBEEFUL;
-  *ra8_drw_reg32(k_ra8_drw_off_perfcount2) = 0xCAFEBABEUL;
+  *ra8_drw_reg32(k_ra8_drw_off_perfcount1) = k_drw_sentinel_deadbeef;
+  *ra8_drw_reg32(k_ra8_drw_off_perfcount2) = k_drw_sentinel_cafebabe;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_drw_reset());
   TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_perfcount1));
   TEST_ASSERT_EQ(0, *ra8_drw_reg32(k_ra8_drw_off_perfcount2));

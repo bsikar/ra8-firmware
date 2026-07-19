@@ -28,6 +28,19 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum io_stream_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_io_stream_val_ff = 0xFFU,
+} io_stream_uint8_const_t;
+
+/**
  * @enum t_stream_const_t
  * @brief Fixture sizes.
  */
@@ -138,7 +151,7 @@ static void test_blockdev_sink(void)
 
   uint8_t payload[(size_t)k_t_stream_bytes];
   for (uint32_t i = 0; i < (uint32_t)k_t_stream_bytes; ++i) {
-    payload[i] = (uint8_t)(((i * 3U) + 1U) & 0xFFU);
+    payload[i] = (uint8_t)(((i * 3U) + 1U) & k_io_stream_val_ff);
   }
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_write(&s, payload, k_t_stream_bytes, nullptr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_io_stream_flush(&s));

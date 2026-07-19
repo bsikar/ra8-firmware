@@ -20,6 +20,21 @@
 #include "unity_minimal.h"
 
 /**
+ * @enum gfx_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_gfx_val_64 = 64,
+  k_gfx_x_10   = 10,
+  k_gfx_y_13   = 13,
+} gfx_uint8_const_t;
+
+/**
  * @enum test_gfx_dim_t
  * @brief Framebuffer dimensions used across the tests.
  */
@@ -119,7 +134,7 @@ static void test_line_horizontal(void)
   TEST_BEGIN("ra8_gfx_line draws a horizontal line");
   rebind_8888();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_line(2, 4, 10, 4, 0xFF00FF00U));
-  for (int32_t x = 2; x <= 10; x++) {
+  for (int32_t x = 2; x <= k_gfx_x_10; x++) {
     const uint32_t off = ((4U * k_test_fb_w) + (uint32_t)x) * 4U;
     TEST_ASSERT_EQ(0x00, s_fb8888[off + 0]); /* B */
     TEST_ASSERT_EQ(0xFF, s_fb8888[off + 1]); /* G */
@@ -145,8 +160,8 @@ static void test_rect_outline_and_filled(void)
   TEST_ASSERT_EQ(0x00, s_fb8888[(((2U * k_test_fb_w) + 2U) * 4U) + 2U]);
   /* Filled: 3x3 starting at (10,10). */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(10, 10, 3, 3, 0xFF0000FFU, true));
-  for (uint32_t y = 10; y < 13; y++) {
-    for (uint32_t x = 10; x < 13; x++) {
+  for (uint32_t y = k_gfx_x_10; y < k_gfx_y_13; y++) {
+    for (uint32_t x = k_gfx_x_10; x < k_gfx_y_13; x++) {
       TEST_ASSERT_EQ(0xFF, s_fb8888[(((y * k_test_fb_w) + x) * 4U) + 0U]); /* B */
     }
   }
@@ -349,7 +364,7 @@ static void test_mcdc_internal_format_ok(void)
   /* V1 */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(s_fb565, 64, 32, k_ra8_gfx_format_rgb565));
   /* V2 */
-  static uint8_t s_fb888[64 * 32 * 3];
+  static uint8_t s_fb888[k_gfx_val_64 * 32 * 3];
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(s_fb888, 64, 32, k_ra8_gfx_format_rgb888));
   /* V3 */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(s_fb8888, 64, 32, k_ra8_gfx_format_argb8888));

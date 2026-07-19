@@ -24,6 +24,33 @@
 #include "ra8_rar.h"
 #include "ra8_rar5.h"
 
+/**
+ * @enum rar_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_rar_u_20 = 20,
+} rar_uint8_const_t;
+
+/**
+ * @enum rar_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_rar_n_4096  = 4096U,
+  k_rar_val_512 = 512,
+} rar_uint16_const_t;
+
 /** @brief Flat backing served to the walker. */
 typedef struct {
   const uint8_t* data; /**< Data. */
@@ -44,11 +71,11 @@ static size_t fz_read(void* ctx, uint64_t off, void* dst, size_t len)
 
 static ra8_rar5_state_t s_state;
 static uint8_t          s_out[1U << 16];
-static char             s_name[512];
+static char             s_name[k_rar_val_512];
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-  if (size == 0U || size > (1U << 20)) {
+  if (size == 0U || size > (1U << k_rar_u_20)) {
     return 0;
   }
   fz_src_t  src = {.data = data, .size = size};
@@ -57,7 +84,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     return 0;
   }
   uint64_t off = rar.first_off;
-  for (uint32_t n = 0U; n < 4096U; ++n) { /* bound: hard block cap */
+  for (uint32_t n = 0U; n < k_rar_n_4096; ++n) { /* bound: hard block cap */
     if (off >= rar.size) {
       break;
     }

@@ -45,6 +45,19 @@
 #include "ra8_sram_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum sram_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_sram_ecc_mode_ff = 0xFFU,
+} sram_uint8_const_t;
+
 /* =============================================================================
  * Test constants
  * =============================================================================
@@ -190,7 +203,7 @@ static void test_init_invalid_mode(void)
   TEST_BEGIN("sram init invalid ecc_mode");
   prep();
   ra8_sram_config_t cfg                          = make_default_cfg();
-  cfg.banks[k_ra8_sram_test_bank_first].ecc_mode = (ra8_sram_ecc_mode_t)0xFFU;
+  cfg.banks[k_ra8_sram_test_bank_first].ecc_mode = (ra8_sram_ecc_mode_t)k_sram_ecc_mode_ff;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_sram_init(&cfg));
   TEST_END("sram init invalid ecc_mode");
 }

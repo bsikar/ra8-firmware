@@ -15,6 +15,20 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum ble_gatt_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ble_gatt_make_uuid_g_70 = 0x70U,
+  k_ble_gatt_make_uuid_g_80 = 0x80U,
+} ble_gatt_uint8_const_t;
+
 typedef enum : uint16_t {
   k_test_gatt_handle_unknown = 0xBEEFU, /**< Test GATT handle unknown. */
 } test_gatt_t;
@@ -92,8 +106,8 @@ static void test_mcdc_gatt_set_value_zero_len(void)
 
   uint8_t svc_uuid[16];
   uint8_t chr_uuid[16];
-  make_uuid_g(svc_uuid, 0x70U);
-  make_uuid_g(chr_uuid, 0x80U);
+  make_uuid_g(svc_uuid, k_ble_gatt_make_uuid_g_70);
+  make_uuid_g(chr_uuid, k_ble_gatt_make_uuid_g_80);
   uint16_t svc = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(svc_uuid, &svc));
   uint8_t  buf[k_test_value_buf_size];

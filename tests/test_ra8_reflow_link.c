@@ -21,6 +21,24 @@
 #include "ra8_reflow.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum reflow_link_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_reflow_link_h_24             = 24,
+  k_reflow_link_text_pool_used_9 = 9U,
+  k_reflow_link_w_80             = 80,
+  k_reflow_link_x_20             = 20,
+  k_reflow_link_y_100            = 100,
+  k_reflow_link_y_50             = 50,
+} reflow_link_uint8_const_t;
+
 /** @brief Shared engine handle (large -- keep off the stack). */
 static ra8_reflow_t s_eng;
 
@@ -103,14 +121,14 @@ static void test_hit_test_link(void)
   s_eng.in_use = 1U;
   /* text pool holds the href "ch2.xhtml" at offset 0 */
   memcpy(s_eng.text_pool, "ch2.xhtml", 9);
-  s_eng.text_pool_used           = 9U;
+  s_eng.text_pool_used           = k_reflow_link_text_pool_used_9;
   s_eng.link_targets[0].href_off = 0U;
-  s_eng.link_targets[0].href_len = 9U;
+  s_eng.link_targets[0].href_len = k_reflow_link_text_pool_used_9;
   s_eng.link_target_count        = 1U;
-  s_eng.link_rects[0].x          = 20;
-  s_eng.link_rects[0].y          = 100;
-  s_eng.link_rects[0].w          = 80;
-  s_eng.link_rects[0].h          = 24;
+  s_eng.link_rects[0].x          = k_reflow_link_x_20;
+  s_eng.link_rects[0].y          = k_reflow_link_y_100;
+  s_eng.link_rects[0].w          = k_reflow_link_w_80;
+  s_eng.link_rects[0].h          = k_reflow_link_h_24;
   s_eng.link_rects[0].target     = 0U;
   s_eng.link_rects[0].page_index = 1U;
   s_eng.link_rect_count          = 1U;
@@ -160,14 +178,14 @@ static void test_hit_test_rect_bounds_mcdc(void)
   memset(&s_eng, 0, sizeof s_eng);
   s_eng.in_use = 1U;
   memcpy(s_eng.text_pool, "ch2.xhtml", 9);
-  s_eng.text_pool_used           = 9U;
+  s_eng.text_pool_used           = k_reflow_link_text_pool_used_9;
   s_eng.link_targets[0].href_off = 0U;
-  s_eng.link_targets[0].href_len = 9U;
+  s_eng.link_targets[0].href_len = k_reflow_link_text_pool_used_9;
   s_eng.link_target_count        = 1U;
-  s_eng.link_rects[0].x          = 20;
-  s_eng.link_rects[0].y          = 100;
-  s_eng.link_rects[0].w          = 80;
-  s_eng.link_rects[0].h          = 24;
+  s_eng.link_rects[0].x          = k_reflow_link_x_20;
+  s_eng.link_rects[0].y          = k_reflow_link_y_100;
+  s_eng.link_rects[0].w          = k_reflow_link_w_80;
+  s_eng.link_rects[0].h          = k_reflow_link_h_24;
   s_eng.link_rects[0].target     = 0U;
   s_eng.link_rects[0].page_index = 1U;
   s_eng.link_rect_count          = 1U;
@@ -203,7 +221,7 @@ static void test_find_anchor(void)
   s_eng.anchors[0].id_off     = 0U;
   s_eng.anchors[0].id_len     = 4U;
   s_eng.anchors[0].page_index = 3U;
-  s_eng.anchors[0].y          = 50;
+  s_eng.anchors[0].y          = k_reflow_link_y_50;
   s_eng.anchor_count          = 1U;
 
   uint32_t page = 0U;

@@ -24,6 +24,63 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum ble_host_gatt_mcdc_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ble_host_gatt_mcdc_b_55                           = 0x55U,
+  k_ble_host_gatt_mcdc_cccd_handle_ff                 = 0xFFU,
+  k_ble_host_gatt_mcdc_make_uuid_60                   = 0x60U,
+  k_ble_host_gatt_mcdc_make_uuid_61                   = 0x61U,
+  k_ble_host_gatt_mcdc_make_uuid_70                   = 0x70U,
+  k_ble_host_gatt_mcdc_make_uuid_71                   = 0x71U,
+  k_ble_host_gatt_mcdc_make_uuid_80                   = 0x80U,
+  k_ble_host_gatt_mcdc_make_uuid_81                   = 0x81U,
+  k_ble_host_gatt_mcdc_make_uuid_90                   = 0x90U,
+  k_ble_host_gatt_mcdc_make_uuid_91                   = 0x91U,
+  k_ble_host_gatt_mcdc_make_uuid_92                   = 0x92U,
+  k_ble_host_gatt_mcdc_make_uuid_a0                   = 0xA0U,
+  k_ble_host_gatt_mcdc_make_uuid_a1                   = 0xA1U,
+  k_ble_host_gatt_mcdc_make_uuid_a2                   = 0xA2U,
+  k_ble_host_gatt_mcdc_make_uuid_a3                   = 0xA3U,
+  k_ble_host_gatt_mcdc_make_uuid_a4                   = 0xA4U,
+  k_ble_host_gatt_mcdc_make_uuid_a5                   = 0xA5U,
+  k_ble_host_gatt_mcdc_make_uuid_a6                   = 0xA6U,
+  k_ble_host_gatt_mcdc_make_uuid_a7                   = 0xA7U,
+  k_ble_host_gatt_mcdc_make_uuid_b0                   = 0xB0U,
+  k_ble_host_gatt_mcdc_make_uuid_b1                   = 0xB1U,
+  k_ble_host_gatt_mcdc_make_uuid_c0                   = 0xC0U,
+  k_ble_host_gatt_mcdc_make_uuid_c1                   = 0xC1U,
+  k_ble_host_gatt_mcdc_make_uuid_c2                   = 0xC2U,
+  k_ble_host_gatt_mcdc_make_uuid_c3                   = 0xC3U,
+  k_ble_host_gatt_mcdc_make_uuid_d0                   = 0xD0U,
+  k_ble_host_gatt_mcdc_make_uuid_d1                   = 0xD1U,
+  k_ble_host_gatt_mcdc_make_uuid_d2                   = 0xD2U,
+  k_ble_host_gatt_mcdc_make_uuid_d3                   = 0xD3U,
+  k_ble_host_gatt_mcdc_make_uuid_e0                   = 0xE0U,
+  k_ble_host_gatt_mcdc_make_uuid_e1                   = 0xE1U,
+  k_ble_host_gatt_mcdc_make_uuid_f0                   = 0xF0U,
+  k_ble_host_gatt_mcdc_make_uuid_f1                   = 0xF1U,
+  k_ble_host_gatt_mcdc_ra8_ble_host_test_inject_acl_9 = 9U,
+  k_ble_host_gatt_mcdc_sentinel_aa                    = 0xAAU,
+  k_ble_host_gatt_mcdc_val_10                         = 10,
+  k_ble_host_gatt_mcdc_val_12                         = 0x12U,
+  k_ble_host_gatt_mcdc_val_5                          = 5U,
+  k_ble_host_gatt_mcdc_val_ad                         = 0xADU,
+  k_ble_host_gatt_mcdc_val_bb                         = 0xBBU,
+  k_ble_host_gatt_mcdc_val_be                         = 0xBEU,
+  k_ble_host_gatt_mcdc_val_cc                         = 0xCCU,
+  k_ble_host_gatt_mcdc_val_dd                         = 0xDDU,
+  k_ble_host_gatt_mcdc_val_de                         = 0xDEU,
+  k_ble_host_gatt_mcdc_val_ef                         = 0xEFU,
+} ble_host_gatt_mcdc_uint8_const_t;
+
 /* Test hooks from libs/ra8_hal/src/ra8_ble.c. */
 const uint8_t* ra8_ble_test_tx_capture(uint16_t* out_len);
 void           ra8_ble_test_reset_capture(void);
@@ -189,7 +246,7 @@ static void test_mcdc_gatt_register_service_null_guard(void)
   prep_init(k_ra8_ble_host_role_peripheral);
   uint8_t  uuid[16];
   uint16_t h = 0U;
-  make_uuid(uuid, 0xA0U);
+  make_uuid(uuid, k_ble_host_gatt_mcdc_make_uuid_a0);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(uuid, &h));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ble_host_gatt_register_service(nullptr, &h));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ble_host_gatt_register_service(uuid, nullptr));
@@ -215,8 +272,8 @@ static void test_mcdc_gatt_register_char_uuid_or_out_null(void)
   uint16_t svc = 0U;
   uint16_t chr = 0U;
   uint8_t  buf[k_mcdc_gatt_buf_size];
-  make_uuid(svc_uuid, 0xB0U);
-  make_uuid(chr_uuid, 0xB1U);
+  make_uuid(svc_uuid, k_ble_host_gatt_mcdc_make_uuid_b0);
+  make_uuid(chr_uuid, k_ble_host_gatt_mcdc_make_uuid_b1);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(svc_uuid, &svc));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ble_host_gatt_register_char(svc,
@@ -264,8 +321,8 @@ static void test_mcdc_gatt_register_char_value_buf_null_with_max(void)
   uint16_t svc = 0U;
   uint16_t chr = 0U;
   uint8_t  buf[k_mcdc_gatt_buf_size];
-  make_uuid(svc_uuid, 0xC0U);
-  make_uuid(chr_uuid, 0xC1U);
+  make_uuid(svc_uuid, k_ble_host_gatt_mcdc_make_uuid_c0);
+  make_uuid(chr_uuid, k_ble_host_gatt_mcdc_make_uuid_c1);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(svc_uuid, &svc));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ble_host_gatt_register_char(svc,
@@ -274,7 +331,7 @@ static void test_mcdc_gatt_register_char_value_buf_null_with_max(void)
                                                  nullptr,
                                                  0U,
                                                  &chr));
-  make_uuid(chr_uuid, 0xC2U);
+  make_uuid(chr_uuid, k_ble_host_gatt_mcdc_make_uuid_c2);
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ble_host_gatt_register_char(svc,
                                                  chr_uuid,
@@ -282,7 +339,7 @@ static void test_mcdc_gatt_register_char_value_buf_null_with_max(void)
                                                  buf,
                                                  (uint16_t)k_mcdc_gatt_buf_size,
                                                  &chr));
-  make_uuid(chr_uuid, 0xC3U);
+  make_uuid(chr_uuid, k_ble_host_gatt_mcdc_make_uuid_c3);
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_ble_host_gatt_register_char(svc,
                                                  chr_uuid,
@@ -317,8 +374,8 @@ static void test_mcdc_gatt_register_char_svc_match(void)
   uint16_t svc = 0U;
   uint16_t chr = 0U;
   uint8_t  buf[k_mcdc_gatt_buf_size];
-  make_uuid(svc_uuid, 0xD0U);
-  make_uuid(chr_uuid, 0xD1U);
+  make_uuid(svc_uuid, k_ble_host_gatt_mcdc_make_uuid_d0);
+  make_uuid(chr_uuid, k_ble_host_gatt_mcdc_make_uuid_d1);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(svc_uuid, &svc));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ble_host_gatt_register_char(svc,
@@ -327,7 +384,7 @@ static void test_mcdc_gatt_register_char_svc_match(void)
                                                  buf,
                                                  (uint16_t)k_mcdc_gatt_buf_size,
                                                  &chr));
-  make_uuid(chr_uuid, 0xD2U);
+  make_uuid(chr_uuid, k_ble_host_gatt_mcdc_make_uuid_d2);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_ble_host_gatt_register_char((uint16_t)k_mcdc_gatt_bad_handle,
                                                  chr_uuid,
@@ -335,7 +392,7 @@ static void test_mcdc_gatt_register_char_svc_match(void)
                                                  buf,
                                                  (uint16_t)k_mcdc_gatt_buf_size,
                                                  &chr));
-  make_uuid(chr_uuid, 0xD3U);
+  make_uuid(chr_uuid, k_ble_host_gatt_mcdc_make_uuid_d3);
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_ble_host_gatt_register_char(chr,
                                                  chr_uuid,
@@ -368,8 +425,8 @@ static void test_mcdc_gatt_set_value_null_with_len(void)
   uint16_t svc = 0U;
   uint16_t chr = 0U;
   uint8_t  buf[k_mcdc_gatt_buf_size];
-  make_uuid(svc_uuid, 0xE0U);
-  make_uuid(chr_uuid, 0xE1U);
+  make_uuid(svc_uuid, k_ble_host_gatt_mcdc_make_uuid_e0);
+  make_uuid(chr_uuid, k_ble_host_gatt_mcdc_make_uuid_e1);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(svc_uuid, &svc));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ble_host_gatt_register_char(svc,
@@ -409,8 +466,8 @@ static void test_mcdc_gatt_set_value_attr_lookup(void)
   uint16_t svc = 0U;
   uint16_t chr = 0U;
   uint8_t  buf[k_mcdc_gatt_buf_size];
-  make_uuid(svc_uuid, 0xF0U);
-  make_uuid(chr_uuid, 0xF1U);
+  make_uuid(svc_uuid, k_ble_host_gatt_mcdc_make_uuid_f0);
+  make_uuid(chr_uuid, k_ble_host_gatt_mcdc_make_uuid_f1);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(svc_uuid, &svc));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ble_host_gatt_register_char(svc,
@@ -419,7 +476,7 @@ static void test_mcdc_gatt_set_value_attr_lookup(void)
                                                  buf,
                                                  (uint16_t)k_mcdc_gatt_buf_size,
                                                  &chr));
-  uint8_t b = 0x55U;
+  uint8_t b = k_ble_host_gatt_mcdc_b_55;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_set_value(chr, &b, 1U));
   TEST_ASSERT_EQ(k_ra8_err_not_found,
                  ra8_ble_host_gatt_set_value((uint16_t)k_mcdc_gatt_bad_handle, &b, 1U));
@@ -456,8 +513,8 @@ static void test_mcdc_gatt_set_value_copy_guard(void)
   uint16_t svc = 0U;
   uint16_t chr = 0U;
   uint8_t  buf[k_mcdc_gatt_buf_size];
-  make_uuid(svc_uuid, 0x70U);
-  make_uuid(chr_uuid, 0x71U);
+  make_uuid(svc_uuid, k_ble_host_gatt_mcdc_make_uuid_70);
+  make_uuid(chr_uuid, k_ble_host_gatt_mcdc_make_uuid_71);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(svc_uuid, &svc));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ble_host_gatt_register_char(svc,
@@ -467,7 +524,10 @@ static void test_mcdc_gatt_set_value_copy_guard(void)
                                                  (uint16_t)k_mcdc_gatt_buf_size,
                                                  &chr));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_set_value(chr, buf, 0U));
-  uint8_t pl[k_mcdc_gatt_payload_small] = {0xAAU, 0xBBU, 0xCCU, 0xDDU};
+  uint8_t pl[k_mcdc_gatt_payload_small] = {k_ble_host_gatt_mcdc_sentinel_aa,
+                                           k_ble_host_gatt_mcdc_val_bb,
+                                           k_ble_host_gatt_mcdc_val_cc,
+                                           k_ble_host_gatt_mcdc_val_dd};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ble_host_gatt_set_value(chr, pl, (uint16_t)k_mcdc_gatt_payload_small));
   TEST_END("mcdc gatt_set_value (len>0 && a->value!=NULL) reachable subset");
@@ -495,8 +555,8 @@ static void test_mcdc_gatt_notify_attr_lookup(void)
   uint16_t svc = 0U;
   uint16_t chr = 0U;
   uint8_t  buf[k_mcdc_gatt_buf_size];
-  make_uuid(svc_uuid, 0x80U);
-  make_uuid(chr_uuid, 0x81U);
+  make_uuid(svc_uuid, k_ble_host_gatt_mcdc_make_uuid_80);
+  make_uuid(chr_uuid, k_ble_host_gatt_mcdc_make_uuid_81);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(svc_uuid, &svc));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ble_host_gatt_register_char(
@@ -546,9 +606,9 @@ static void test_mcdc_gatt_notify_decl_props(void)
   uint16_t chr_r = 0U;
   uint8_t  buf_n[k_mcdc_gatt_buf_size];
   uint8_t  buf_r[k_mcdc_gatt_buf_size];
-  make_uuid(svc_uuid, 0x90U);
-  make_uuid(chr_n_uuid, 0x91U);
-  make_uuid(chr_r_uuid, 0x92U);
+  make_uuid(svc_uuid, k_ble_host_gatt_mcdc_make_uuid_90);
+  make_uuid(chr_n_uuid, k_ble_host_gatt_mcdc_make_uuid_91);
+  make_uuid(chr_r_uuid, k_ble_host_gatt_mcdc_make_uuid_92);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(svc_uuid, &svc));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ble_host_gatt_register_char(
@@ -573,19 +633,19 @@ static void test_mcdc_gatt_notify_decl_props(void)
 /** @brief Write @p value_lo to a characteristic CCCD over the injected ACL path. */
 static void notify_walk_subscribe(uint16_t conn, uint16_t cccd_handle, uint8_t value_lo)
 {
-  uint8_t l2[10] = {
-    5U,
+  uint8_t l2[k_ble_host_gatt_mcdc_val_10] = {
+    k_ble_host_gatt_mcdc_val_5,
     0U,
     0x04U,
     0U,
-    0x12U,
-    (uint8_t)(cccd_handle & 0xFFU),
-    (uint8_t)((cccd_handle >> 8) & 0xFFU),
+    k_ble_host_gatt_mcdc_val_12,
+    (uint8_t)(cccd_handle & k_ble_host_gatt_mcdc_cccd_handle_ff),
+    (uint8_t)((cccd_handle >> 8) & k_ble_host_gatt_mcdc_cccd_handle_ff),
     value_lo,
     0U,
     0U,
   };
-  ra8_ble_host_test_inject_acl(conn, l2, 9U);
+  ra8_ble_host_test_inject_acl(conn, l2, k_ble_host_gatt_mcdc_ra8_ble_host_test_inject_acl_9);
 }
 
 /** @brief V1: subscribed CCCD with notify bit set -> HVN constructed, ok. */
@@ -597,8 +657,8 @@ static void notify_walk_v1(uint16_t conn)
   uint16_t svc = 0U;
   uint16_t chr = 0U;
   uint8_t  buf[k_mcdc_gatt_buf_size];
-  make_uuid(svc_uuid, 0xA1U);
-  make_uuid(chr_uuid, 0xA2U);
+  make_uuid(svc_uuid, k_ble_host_gatt_mcdc_make_uuid_a1);
+  make_uuid(chr_uuid, k_ble_host_gatt_mcdc_make_uuid_a2);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(svc_uuid, &svc));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ble_host_gatt_register_char(
@@ -620,9 +680,9 @@ static void notify_walk_v3(uint16_t conn)
   uint8_t svc_uuid[16];
   uint8_t chr_a_uuid[16];
   uint8_t chr_b_uuid[16];
-  make_uuid(svc_uuid, 0xA3U);
-  make_uuid(chr_a_uuid, 0xA4U);
-  make_uuid(chr_b_uuid, 0xA5U);
+  make_uuid(svc_uuid, k_ble_host_gatt_mcdc_make_uuid_a3);
+  make_uuid(chr_a_uuid, k_ble_host_gatt_mcdc_make_uuid_a4);
+  make_uuid(chr_b_uuid, k_ble_host_gatt_mcdc_make_uuid_a5);
   uint16_t svc2 = 0U;
   uint16_t chra = 0U;
   uint16_t chrb = 0U;
@@ -659,8 +719,8 @@ static void notify_walk_v4(uint16_t conn)
   uint16_t svc = 0U;
   uint16_t chr = 0U;
   uint8_t  buf[k_mcdc_gatt_buf_size];
-  make_uuid(svc_uuid, 0xA6U);
-  make_uuid(chr_uuid, 0xA7U);
+  make_uuid(svc_uuid, k_ble_host_gatt_mcdc_make_uuid_a6);
+  make_uuid(chr_uuid, k_ble_host_gatt_mcdc_make_uuid_a7);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(svc_uuid, &svc));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ble_host_gatt_register_char(svc,
@@ -738,8 +798,8 @@ static void test_mcdc_gatt_notify_value_copy(void)
   uint16_t svc = 0U;
   uint16_t chr = 0U;
   uint8_t  buf[k_mcdc_gatt_buf_size];
-  make_uuid(svc_uuid, 0x60U);
-  make_uuid(chr_uuid, 0x61U);
+  make_uuid(svc_uuid, k_ble_host_gatt_mcdc_make_uuid_60);
+  make_uuid(chr_uuid, k_ble_host_gatt_mcdc_make_uuid_61);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(svc_uuid, &svc));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ble_host_gatt_register_char(
@@ -750,22 +810,27 @@ static void test_mcdc_gatt_notify_value_copy(void)
                    (uint16_t)k_mcdc_gatt_buf_size,
                    &chr));
   ra8_ble_host_test_inject_connect(k_test_conn_local);
-  uint16_t cccd_handle = (uint16_t)(chr + 1U);
-  uint8_t  l2[10]      = {
-    5U,
+  uint16_t cccd_handle                     = (uint16_t)(chr + 1U);
+  uint8_t  l2[k_ble_host_gatt_mcdc_val_10] = {
+    k_ble_host_gatt_mcdc_val_5,
     0U,
     0x04U,
     0U,
-    0x12U,
-    (uint8_t)(cccd_handle & 0xFFU),
-    (uint8_t)((cccd_handle >> 8) & 0xFFU),
+    k_ble_host_gatt_mcdc_val_12,
+    (uint8_t)(cccd_handle & k_ble_host_gatt_mcdc_cccd_handle_ff),
+    (uint8_t)((cccd_handle >> 8) & k_ble_host_gatt_mcdc_cccd_handle_ff),
     0x01U,
     0U,
     0U,
   };
-  ra8_ble_host_test_inject_acl(k_test_conn_local, l2, 9U);
+  ra8_ble_host_test_inject_acl(k_test_conn_local,
+                               l2,
+                               k_ble_host_gatt_mcdc_ra8_ble_host_test_inject_acl_9);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_notify(chr));
-  uint8_t pl[k_mcdc_gatt_payload_small] = {0xDEU, 0xADU, 0xBEU, 0xEFU};
+  uint8_t pl[k_mcdc_gatt_payload_small] = {k_ble_host_gatt_mcdc_val_de,
+                                           k_ble_host_gatt_mcdc_val_ad,
+                                           k_ble_host_gatt_mcdc_val_be,
+                                           k_ble_host_gatt_mcdc_val_ef};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_ble_host_gatt_set_value(chr, pl, (uint16_t)k_mcdc_gatt_payload_small));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_notify(chr));

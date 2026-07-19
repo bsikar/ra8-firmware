@@ -24,6 +24,19 @@
 #include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum error_handler_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_error_handler_internal_ra8_fatal_error_deadbeef = 0xDEADBEEFUL,
+} error_handler_uint32_const_t;
+
 static sigjmp_buf s_trap_jmp;
 static int32_t    s_trap_hit = 0;
 
@@ -102,7 +115,9 @@ static void test_fatal_error_large_code(void)
   install_sigill_handler();
 
   if (sigsetjmp(s_trap_jmp, 1) == 0) {
-    internal_ra8_fatal_error("FAULT", "huge err", 0xDEADBEEFUL);
+    internal_ra8_fatal_error("FAULT",
+                             "huge err",
+                             k_error_handler_internal_ra8_fatal_error_deadbeef);
     TEST_FAIL_FMT("%s", "internal_ra8_fatal_error returned");
   }
   TEST_ASSERT_EQ(1, s_trap_hit);

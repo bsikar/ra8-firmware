@@ -14,6 +14,19 @@
 #include "ra8_ulpt_regs.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum ulpt_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ulpt_ulptcr_ff = 0xFFU,
+} ulpt_uint8_const_t;
+
 typedef enum : uint8_t {
   k_ra8_ulpt_test_ch_0   = 0U,   /**< RA8 ulpt test channel 0.   */
   k_ra8_ulpt_test_ch_1   = 1U,   /**< RA8 ulpt test channel 1.   */
@@ -38,7 +51,7 @@ static void test_init_clears_regs(void)
 
   volatile r_ulpt_regs_t* reg = ra8_ulpt((uint8_t)k_ra8_ulpt_test_ch_0);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  reg->ULPTCR = 0xFFU;
+  reg->ULPTCR = k_ulpt_ulptcr_ff;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ulpt_init());
   TEST_ASSERT_EQ(0, reg->ULPTCR);

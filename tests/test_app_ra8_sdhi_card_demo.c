@@ -20,6 +20,20 @@
 
 #include "unity_minimal.h"
 
+/**
+ * @enum ra8_sdhi_card_demo_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_ra8_sdhi_card_demo_readback_ff = 0xFFU,
+  k_ra8_sdhi_card_demo_val_100     = 100,
+} ra8_sdhi_card_demo_uint8_const_t;
+
 /** @brief Constants mirroring `sdhi_card_config_t` in the app. */
 typedef enum : uint32_t {
   k_t_sdhi_block_bytes     = 512U,         /**< One SD block.                 */
@@ -120,7 +134,7 @@ static void test_ra8_sdhi_card_roundtrip_verdict(void)
   TEST_ASSERT_EQ(1U, t_compare(payload, readback, (uint32_t)k_t_sdhi_block_bytes));
 
   /* Vector 2: one corrupted byte. */
-  readback[100] ^= 0xFFU;
+  readback[k_ra8_sdhi_card_demo_val_100] ^= k_ra8_sdhi_card_demo_readback_ff;
   TEST_ASSERT_EQ(0U, t_compare(payload, readback, (uint32_t)k_t_sdhi_block_bytes));
 
   TEST_END("ra8_sdhi_card_demo: round-trip verdict MC/DC");

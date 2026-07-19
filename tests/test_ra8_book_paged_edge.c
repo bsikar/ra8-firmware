@@ -31,18 +31,66 @@
 #include "ra8_vsource.h"
 #include "unity_minimal.h"
 
+/**
+ * @enum book_paged_edge_uint8_const_t
+ * @brief Named uint8_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint8_t {
+  k_book_paged_edge_node_count_10 = 10U,
+  k_book_paged_edge_pbook_elem_7  = 7U,
+  k_book_paged_edge_pbook_elem_9  = 9U,
+  k_book_paged_edge_root_node_5   = 5U,
+  k_book_paged_edge_val_10        = 10,
+  k_book_paged_edge_val_5         = 5,
+  k_book_paged_edge_val_7         = 7,
+  k_book_paged_edge_val_9         = 9,
+} book_paged_edge_uint8_const_t;
+
+/**
+ * @enum book_paged_edge_uint16_const_t
+ * @brief Named uint16_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint16_t {
+  k_book_paged_edge_val_320 = 320,
+  k_book_paged_edge_val_512 = 512,
+} book_paged_edge_uint16_const_t;
+
+/**
+ * @enum book_paged_edge_uint32_const_t
+ * @brief Named uint32_t constants used by this file.
+ *
+ * @details
+ * Every literal this translation unit needs, named so the
+ * value's role is visible at the point of use (CLAUDE.md
+ * "No Magic Numbers").
+ */
+typedef enum : uint32_t {
+  k_book_paged_edge_crc_ffffffff = 0xFFFFFFFFU,
+  k_book_paged_edge_val_edb88320 = 0xEDB88320U,
+} book_paged_edge_uint32_const_t;
+
 /** @brief CRC-32/ISO-HDLC over the blob body (matches ra8_book_validate). */
 static uint32_t pbook_crc32(const uint8_t* data, size_t len)
 {
-  uint32_t crc = 0xFFFFFFFFU;
+  uint32_t crc = k_book_paged_edge_crc_ffffffff;
   for (size_t i = 0U; i < len; ++i) {
     crc ^= data[i];
     for (uint8_t bit = 0U; bit < 8U; ++bit) {
       const uint32_t mask = (uint32_t)(-(int32_t)(crc & 1U));
-      crc                 = (crc >> 1U) ^ (0xEDB88320U & mask);
+      crc                 = (crc >> 1U) ^ (k_book_paged_edge_val_edb88320 & mask);
     }
   }
-  return crc ^ 0xFFFFFFFFU;
+  return crc ^ k_book_paged_edge_crc_ffffffff;
 }
 
 /**
@@ -51,13 +99,13 @@ static uint32_t pbook_crc32(const uint8_t* data, size_t len)
  *          a real inflated blob would; the paged backing reads these bytes.
  */
 typedef struct {
-  ra8_book_header_t     hdr;            /**< Hdr.         */
-  ra8_book_chapter_t    chapters[2];    /**< Chapters.    */
-  ra8_book_node_t       nodes[10];      /**< Nodes.       */
-  ra8_book_attr_t       attrs[1];       /**< Attrs.       */
-  ra8_book_stylesheet_t stylesheets[1]; /**< Stylesheets. */
-  ra8_book_image_t      images[1];      /**< Images.      */
-  char                  strings[320];   /**< Strings.     */
+  ra8_book_header_t     hdr;                                /**< Hdr.         */
+  ra8_book_chapter_t    chapters[2];                        /**< Chapters.    */
+  ra8_book_node_t       nodes[k_book_paged_edge_val_10];    /**< Nodes.       */
+  ra8_book_attr_t       attrs[1];                           /**< Attrs.       */
+  ra8_book_stylesheet_t stylesheets[1];                     /**< Stylesheets. */
+  ra8_book_image_t      images[1];                          /**< Images.      */
+  char                  strings[k_book_paged_edge_val_320]; /**< Strings.     */
 } pbook_t;
 
 /** @brief Intern a NUL-terminated string into the pool; returns its offset. */
@@ -80,7 +128,7 @@ static void pbook_fill_header(pbook_t* b)
 
   b->hdr.chapter_count    = 2U;
   b->hdr.chapter_off      = (uint32_t)offsetof(pbook_t, chapters);
-  b->hdr.node_count       = 10U;
+  b->hdr.node_count       = k_book_paged_edge_node_count_10;
   b->hdr.node_off         = (uint32_t)offsetof(pbook_t, nodes);
   b->hdr.attr_count       = 1U;
   b->hdr.attr_off         = (uint32_t)offsetof(pbook_t, attrs);
@@ -141,7 +189,7 @@ static void pbook_setup(pbook_t* b)
   const uint32_t s_main    = pbook_intern(b, &cur, "main");
 
   b->chapters[0].root_node = 0U;
-  b->chapters[1].root_node = 5U;
+  b->chapters[1].root_node = k_book_paged_edge_root_node_5;
 
   /* Chapter 0: div > (p > text), (p > text). */
   b->nodes[0] = pbook_elem(s_div, 1U, k_ra8_book_nil);
@@ -151,11 +199,11 @@ static void pbook_setup(pbook_t* b)
   b->nodes[4] = pbook_text(s_t1);
 
   /* Chapter 1: section > (h1 > text), (p > text). */
-  b->nodes[5] = pbook_elem(s_section, 6U, k_ra8_book_nil);
-  b->nodes[6] = pbook_elem(s_h1, 7U, 8U);
-  b->nodes[7] = pbook_text(s_t2);
-  b->nodes[8] = pbook_elem(s_p, 9U, k_ra8_book_nil);
-  b->nodes[9] = pbook_text(s_t3);
+  b->nodes[k_book_paged_edge_val_5] = pbook_elem(s_section, 6U, k_ra8_book_nil);
+  b->nodes[6]                       = pbook_elem(s_h1, k_book_paged_edge_pbook_elem_7, 8U);
+  b->nodes[k_book_paged_edge_val_7] = pbook_text(s_t2);
+  b->nodes[8] = pbook_elem(s_p, k_book_paged_edge_pbook_elem_9, k_ra8_book_nil);
+  b->nodes[k_book_paged_edge_val_9] = pbook_text(s_t3);
 
   b->attrs[0]       = (ra8_book_attr_t){.name_off = s_class, .value_off = s_main};
   b->stylesheets[0] = (ra8_book_stylesheet_t){.source_off = 0U, .scope_chapter = k_ra8_book_nil};
@@ -456,10 +504,10 @@ static void test_ra8_book_paged_chunked_backing(void)
 
   /* Both chapters: paged-over-chunked text must equal the resident walk. */
   for (uint32_t ch = 0U; ch < s_book.hdr.chapter_count; ++ch) {
-    char   res[512] = {};
-    char   pag[512] = {};
-    size_t r_len    = 0U;
-    size_t p_len    = 0U;
+    char   res[k_book_paged_edge_val_512] = {};
+    char   pag[k_book_paged_edge_val_512] = {};
+    size_t r_len                          = 0U;
+    size_t p_len                          = 0U;
     TEST_ASSERT_EQ(k_ra8_ok, ra8_book_chapter_text_src(&rsrc, ch, res, sizeof res, &r_len));
     TEST_ASSERT_EQ(k_ra8_ok, ra8_book_chapter_text_src(&psrc, ch, pag, sizeof pag, &p_len));
     TEST_ASSERT(r_len > 0U);
@@ -635,7 +683,7 @@ static void test_ra8_book_paged_block_break_overflow(void)
   s_b.strings[cur++]    = '\0';
   const uint32_t s_span = cur;
   memcpy(&s_b.strings[cur], "span", 5U);
-  cur += 5U;
+  cur += k_book_paged_edge_root_node_5;
   const uint32_t s_p = cur;
   memcpy(&s_b.strings[cur], "p", 2U);
   cur += 2U;
@@ -939,10 +987,10 @@ static void test_ra8_book_paged_prefetch_warms(void)
     /* Transparency: the warm changes only residency, never the bytes read back. */
     ra8_book_src_t rsrc = {};
     TEST_ASSERT_EQ(k_ra8_ok, ra8_book_src_resident(&rsrc, &s_book, (uint32_t)sizeof(s_book)));
-    char   res[512] = {};
-    char   pag[512] = {};
-    size_t r_len    = 0U;
-    size_t p_len    = 0U;
+    char   res[k_book_paged_edge_val_512] = {};
+    char   pag[k_book_paged_edge_val_512] = {};
+    size_t r_len                          = 0U;
+    size_t p_len                          = 0U;
     TEST_ASSERT_EQ(k_ra8_ok, ra8_book_chapter_text_src(&rsrc, 1U, res, sizeof res, &r_len));
     TEST_ASSERT_EQ(k_ra8_ok, ra8_book_chapter_text_src(&psrc, 1U, pag, sizeof pag, &p_len));
     TEST_ASSERT(r_len > 0U);
