@@ -220,12 +220,39 @@ static void setup_mock_book_strings(mock_book_t* b, mock_book_offsets_t* off)
  * @note Not thread-safe; single-threaded host-test helper.
  * @since 0.1.0
  */
-static void setup_mock_book_structs(mock_book_t* b, const mock_book_offsets_t* off)
+/**
+ * @brief Populate the mock book's single chapter record.
+ * @param[out] b   Mock book to populate.
+ * @param[in]  off String-table offsets the record points at.
+ * @return None.
+ * @pre @p b and @p off are non-null.
+ * @pre @p off holds already-interned string offsets.
+ * @post Chapter 0 names its title and href and roots at node 0.
+ * @post No other part of @p b is touched.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void setup_mock_chapter(mock_book_t* b, const mock_book_offsets_t* off)
 {
   b->chapters[0].title_off = off->ch_title;
   b->chapters[0].href_off  = off->ch_href;
   b->chapters[0].root_node = 0;
+}
 
+/**
+ * @brief Populate the mock book's two-node tree: a div wrapping one text node.
+ * @param[out] b   Mock book to populate.
+ * @param[in]  off String-table offsets the nodes point at.
+ * @return None.
+ * @pre @p b and @p off are non-null.
+ * @pre @p off holds already-interned string offsets.
+ * @post Node 0 is an element with one attribute whose only child is node 1.
+ * @post Node 1 is a leaf text node with no siblings.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void setup_mock_nodes(mock_book_t* b, const mock_book_offsets_t* off)
+{
   b->nodes[0].kind         = k_ra8_book_node_element;
   b->nodes[0].reserved     = 0;
   b->nodes[0].attr_count   = 1;
@@ -243,13 +270,46 @@ static void setup_mock_book_structs(mock_book_t* b, const mock_book_offsets_t* o
   b->nodes[1].first_attr   = k_ra8_book_nil;
   b->nodes[1].first_child  = k_ra8_book_nil;
   b->nodes[1].next_sibling = k_ra8_book_nil;
+}
 
+/**
+ * @brief Populate the mock book's one attribute and one stylesheet.
+ * @param[out] b   Mock book to populate.
+ * @param[in]  off String-table offsets the records point at.
+ * @return None.
+ * @pre @p b and @p off are non-null.
+ * @pre @p off holds already-interned string offsets.
+ * @post Attribute 0 is the `class="main"` pair node 0 refers to.
+ * @post Stylesheet 0 is book-scoped rather than bound to a chapter.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void setup_mock_attrs_and_css(mock_book_t* b, const mock_book_offsets_t* off)
+{
   b->attrs[0].name_off  = off->class_attr;
   b->attrs[0].value_off = off->main_val;
 
   b->stylesheets[0].source_off    = off->css_content;
   b->stylesheets[0].scope_chapter = k_ra8_book_nil;
+}
 
+/**
+ * @brief Populate the mock book's two images: one raster, one SVG.
+ * @details The pair is deliberately mixed so the reader tests cover both the
+ *          sized raster path and the extent-less vector path, and so the two
+ *          payloads sit back to back in the data region.
+ * @param[out] b   Mock book to populate.
+ * @param[in]  off String-table offsets the records point at.
+ * @return None.
+ * @pre @p b and @p off are non-null.
+ * @pre @p off holds already-interned string offsets.
+ * @post Image 0 is a 16x16 gray4 raster and image 1 is an SVG with no extent.
+ * @post The cover points at image 0.
+ * @note Not thread-safe; single-threaded host-test helper.
+ * @since 0.1.0
+ */
+static void setup_mock_images(mock_book_t* b, const mock_book_offsets_t* off)
+{
   b->images[0].id_off    = off->img_href;
   b->images[0].width     = 16;
   b->images[0].height    = 16;
@@ -271,6 +331,14 @@ static void setup_mock_book_structs(mock_book_t* b, const mock_book_offsets_t* o
   b->images[1].raw_size  = k_book_raw_size_50;
 
   b->hdr.cover_image_index = 0;
+}
+
+static void setup_mock_book_structs(mock_book_t* b, const mock_book_offsets_t* off)
+{
+  setup_mock_chapter(b, off);
+  setup_mock_nodes(b, off);
+  setup_mock_attrs_and_css(b, off);
+  setup_mock_images(b, off);
 }
 
 /**
