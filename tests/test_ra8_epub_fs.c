@@ -38,15 +38,15 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_epub_fs_bpb_55   = 0x55U,
-  k_epub_fs_bpb_aa   = 0xAAU,
-  k_epub_fs_put16_11 = 11U,
-  k_epub_fs_put16_14 = 14U,
-  k_epub_fs_put16_17 = 17U,
-  k_epub_fs_put16_19 = 19U,
-  k_epub_fs_put16_22 = 22U,
-  k_epub_fs_v_ff     = 0xFFU,
-  k_epub_fs_val_13   = 13,
+  k_bpb_sig_lo            = 0x55U, /**< That signature's low byte. */
+  k_bpb_sig_hi            = 0xAAU, /**< Its high byte. */
+  k_bpb_off_bytes_per_sec = 11U,   /**< BPB_BytsPerSec: bytes per sector. */
+  k_bpb_off_rsvd_sec_cnt  = 14U,   /**< BPB_RsvdSecCnt: sectors before the first FAT. */
+  k_bpb_off_root_ent_cnt  = 17U,   /**< BPB_RootEntCnt: root-directory entries. */
+  k_bpb_off_tot_sec16     = 19U,   /**< BPB_TotSec16: total sectors. */
+  k_bpb_off_fat_sz16      = 22U,   /**< BPB_FATSz16: sectors per FAT. */
+  k_byte_mask             = 0xFFU, /**< Low-byte mask used by the put16 helper. */
+  k_bpb_off_sec_per_clus  = 13,    /**< BPB_SecPerClus: sectors per cluster. */
 } epub_fs_uint8_const_t;
 
 /**
@@ -59,9 +59,10 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_epub_fs_val_2048 = 2048,
-  k_epub_fs_val_510  = 510,
-  k_epub_fs_val_511  = 511,
+  k_epub_chapter_buf_bytes =
+    2048, /**< Chapter read-back buffer; larger than any fixture chapter, so a truncation is visible. */
+  k_bpb_off_sig_lo = 510, /**< Offset of the 0xAA55 boot signature's low byte. */
+  k_bpb_off_sig_hi = 511, /**< Offset of its high byte. */
 } epub_fs_uint16_const_t;
 
 /* --- RAM block device + minimal FAT16 volume (mirrors test_ra8_fs_fat.c) --- */
@@ -120,8 +121,8 @@ static const ra8_fs_backend_t s_backend = {
 
 static void put16(uint8_t* p, uint32_t off, uint16_t v)
 {
-  p[off]     = (uint8_t)(v & k_epub_fs_v_ff);
-  p[off + 1] = (uint8_t)((v >> 8) & k_epub_fs_v_ff);
+  p[off]     = (uint8_t)(v & k_byte_mask);
+  p[off + 1] = (uint8_t)((v >> 8) & k_byte_mask);
 }
 
 static void build_fat16_volume(void)
@@ -132,15 +133,15 @@ static void build_fat16_volume(void)
   s_disk.block_count = (uint32_t)k_disk_blocks;
   TEST_ASSERT(s_disk.bytes != nullptr);
   uint8_t* bpb = &s_disk.bytes[0];
-  put16(bpb, k_epub_fs_put16_11, (uint16_t)k_disk_block_size); /* bytes/sector     */
-  bpb[k_epub_fs_val_13] = 1U;                                  /* sectors/cluster  */
-  put16(bpb, k_epub_fs_put16_14, 1U);                          /* reserved sectors */
-  bpb[16] = 2U;                                                /* number of FATs   */
-  put16(bpb, k_epub_fs_put16_17, 16U);                         /* root dir entries */
-  put16(bpb, k_epub_fs_put16_19, (uint16_t)k_disk_blocks);     /* total sectors    */
-  put16(bpb, k_epub_fs_put16_22, 32U);                         /* sectors/FAT      */
-  bpb[k_epub_fs_val_510] = k_epub_fs_bpb_55;
-  bpb[k_epub_fs_val_511] = k_epub_fs_bpb_aa;
+  put16(bpb, k_bpb_off_bytes_per_sec, (uint16_t)k_disk_block_size); /* bytes/sector     */
+  bpb[k_bpb_off_sec_per_clus] = 1U;                                 /* sectors/cluster  */
+  put16(bpb, k_bpb_off_rsvd_sec_cnt, 1U);                           /* reserved sectors */
+  bpb[16] = 2U;                                                     /* number of FATs   */
+  put16(bpb, k_bpb_off_root_ent_cnt, 16U);                          /* root dir entries */
+  put16(bpb, k_bpb_off_tot_sec16, (uint16_t)k_disk_blocks);         /* total sectors    */
+  put16(bpb, k_bpb_off_fat_sz16, 32U);                              /* sectors/FAT      */
+  bpb[k_bpb_off_sig_lo] = k_bpb_sig_lo;
+  bpb[k_bpb_off_sig_hi] = k_bpb_sig_hi;
 }
 
 /* --- A real (minimal) EPUB assembled in memory with miniz --- */
@@ -352,8 +353,8 @@ static void test_epub_fs_streamed_roundtrip(void)
   TEST_ASSERT_EQ(2U, chapters);
 
   /* Each chapter is inflated on demand straight off the volume. */
-  uint8_t chbuf[k_epub_fs_val_2048] = {};
-  size_t  got                       = 0U;
+  uint8_t chbuf[k_epub_chapter_buf_bytes] = {};
+  size_t  got                             = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epub_load_chapter(&book, 0U, chbuf, sizeof(chbuf) - 1U, &got));
   TEST_ASSERT(got > 0U);
   chbuf[got] = (uint8_t)'\0';
