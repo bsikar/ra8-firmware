@@ -369,7 +369,7 @@ static ra8_err_t internal_pull_data_stage(uint8_t* buf, uint16_t cap, uint16_t* 
     return armed;
   }
   ra8_err_t rc = k_ra8_err_no_data;
-  for (uint16_t i = 0U; i < (uint16_t)k_ra8_cdc_data_stage_polls; ++i) {
+  for (uint16_t i = 0U; i < k_ra8_cdc_data_stage_polls; ++i) {
     rc = ra8_usb_dcp_out_read(s_state.speed, buf, cap, out_len);
     if (rc != k_ra8_err_no_data) {
       return rc;
