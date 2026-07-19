@@ -32,9 +32,11 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_i3c_dynamic_address_11 = 0x11U,
-  k_i3c_sentinel_a5        = 0xA5U,
-  k_i3c_val_84             = 0x84U,
+  k_i3c_dynamic_addr = 0x11U, /**< Dynamic address assigned to the fixture target. */
+  k_i3c_payload_byte =
+    0xA5U, /**< A recognizable single-byte payload; neither 0x00 nor 0xFF, so a bus left idle cannot fake it. */
+  k_i3c_ibi_id =
+    0x84U, /**< IBI identifier placed in the queue word's upper bits, with a zero length below it. */
 } i3c_uint8_const_t;
 
 /**
@@ -47,9 +49,12 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_i3c_inst_beef        = 0xBEEFU,
-  k_i3c_inst_cafe        = 0xCAFEU,
-  k_i3c_ntdtbp0_0000beef = 0x0000BEEFU,
+  k_i3c_probe_inst_b =
+    0xBEEFU, /**< A second, different INST value, so the read cannot be a cached first result. */
+  k_i3c_probe_inst_a =
+    0xCAFEU, /**< Planted in INST to prove the status read reaches the register. */
+  k_i3c_probe_half_word =
+    0x0000BEEFU, /**< A value whose upper half is zero, catching a driver that sign-extends or reuses stale high bytes. */
 } i3c_uint16_const_t;
 
 /**
@@ -62,10 +67,14 @@ typedef enum : uint16_t {
  * "No Magic Numbers").
  */
 typedef enum : uint32_t {
-  k_i3c_inst_deadbeef    = 0xDEADBEEFU,
-  k_i3c_ncmdqp_cafebabe  = 0xCAFEBABEU,
-  k_i3c_ntdtbp0_11223344 = 0x11223344U,
-  k_i3c_ntdtbp0_44332211 = 0x44332211U,
+  k_i3c_probe_word =
+    0xDEADBEEFU, /**< A full 32-bit value, planted in INST and in the command queue, proving no field is truncated. */
+  k_i3c_probe_word_alt =
+    0xCAFEBABEU, /**< A second full-width value, so command-queue and data-buffer writes cannot be confused. */
+  k_i3c_probe_ascending =
+    0x11223344U, /**< Ascending bytes: a byte-order slip in the data buffer shows up directly. */
+  k_i3c_probe_descending =
+    0x44332211U, /**< The same bytes reversed, which is what a byte-swapped write would produce. */
 } i3c_uint32_const_t;
 
 static uint32_t s_i3c_cb_count;
@@ -135,7 +144,7 @@ static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("i3c status read + clear");
   prep();
-  ra8_i3c()->INST = k_i3c_inst_deadbeef;
+  ra8_i3c()->INST = k_i3c_probe_word;
 
   uint32_t mask = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_get_status(&mask));
@@ -158,13 +167,13 @@ static void test_attach_and_dispatch(void)
   TEST_BEGIN("i3c attach + dispatch");
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_attach_handler(0U, stub_i3c_cb, (void*)(uintptr_t)0x13U));
-  ra8_i3c()->INST = k_i3c_inst_cafe;
+  ra8_i3c()->INST = k_i3c_probe_inst_a;
   ra8_i3c_dispatch(0U);
   TEST_ASSERT_EQ(1, s_i3c_cb_count);
   TEST_ASSERT_EQ(0xCAFEU, s_i3c_cb_last_mask);
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_attach_handler(0U, nullptr, nullptr));
-  ra8_i3c()->INST = k_i3c_inst_beef;
+  ra8_i3c()->INST = k_i3c_probe_inst_b;
   ra8_i3c_dispatch(0U);
   TEST_ASSERT_EQ(1, s_i3c_cb_count);
   TEST_END("i3c attach + dispatch");
@@ -244,10 +253,10 @@ static void test_dynamic_address_assign(void)
    * with a single backing word the driver's two consecutive reads return
    * the same value, so the test only verifies the *first* drained 4 bytes
    * landed in the target.pid[]. */
-  ra8_i3c()->NTDTBP0 = k_i3c_ntdtbp0_44332211;
+  ra8_i3c()->NTDTBP0 = k_i3c_probe_descending;
 
   ra8_i3c_daa_target_t targets[2] = {{.dynamic_address = 0x10U},
-                                     {.dynamic_address = k_i3c_dynamic_address_11}};
+                                     {.dynamic_address = k_i3c_dynamic_addr}};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_dynamic_address_assign(targets, 2U));
 
   /* Verify the driver issued at least the two-word command descriptor (the
@@ -303,7 +312,7 @@ static void test_reset_dynamic_addresses(void)
   /* Pre-seed NCMDQP with a sentinel so the driver's two writes (cmd1 +
    * cmd2=0) result in NCMDQP == 0 by the end -- this proves the driver
    * touched the queue at least twice. */
-  ra8_i3c()->NCMDQP = k_i3c_inst_deadbeef;
+  ra8_i3c()->NCMDQP = k_i3c_probe_word;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_reset_dynamic_addresses());
   /* RSTDAA cmd2 is zero -> last write. */
   TEST_ASSERT_EQ(0, ra8_i3c()->NCMDQP);
@@ -324,7 +333,7 @@ static void test_send_ccc_broadcast(void)
   /* Pre-seed NCMDQP with a sentinel; broadcast ENEC + zero payload causes
    * the driver to write cmd1 then cmd2 = 0, so the cell ends as 0 -- proof
    * the queue saw at least one write. */
-  ra8_i3c()->NCMDQP = k_i3c_ncmdqp_cafebabe;
+  ra8_i3c()->NCMDQP = k_i3c_probe_word_alt;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_send_ccc(0x00U, 0U, nullptr, 0U));
   /* Last NCMDQP write was the immediate-payload word (zero for empty). */
   TEST_ASSERT_EQ(0, ra8_i3c()->NCMDQP);
@@ -364,7 +373,7 @@ static void test_recv_ccc_directed(void)
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
   /* Pre-load NTDTBP0 with one word of receive data. */
-  ra8_i3c()->NTDTBP0 = k_i3c_ntdtbp0_11223344;
+  ra8_i3c()->NTDTBP0 = k_i3c_probe_ascending;
 
   uint8_t buf[4]  = {};
   uint8_t got_len = 0U;
@@ -432,7 +441,7 @@ static void test_read_happy(void)
   TEST_BEGIN("i3c read (happy path)");
   prep();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init(0U, &k_native_cfg));
-  ra8_i3c()->NTDTBP0 = k_i3c_ncmdqp_cafebabe;
+  ra8_i3c()->NTDTBP0 = k_i3c_probe_word_alt;
   uint8_t buf[4]     = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_read(0U, 0x12U, buf, 4U, false));
   TEST_ASSERT_EQ(0xBEU, buf[0]);
@@ -483,7 +492,7 @@ static void test_ibi_read_one(void)
   const uint32_t ibi_status = (2U << 0) | ((uint32_t)0x84U << 8);
   ra8_i3c()->NIBIQP         = ibi_status;
   /* Stage the 2-byte IBI payload in NTDTBP0. */
-  ra8_i3c()->NTDTBP0 = k_i3c_ntdtbp0_0000beef;
+  ra8_i3c()->NTDTBP0 = k_i3c_probe_half_word;
 
   ra8_i3c_ibi_t ibi = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_ibi_read(&ibi));
@@ -582,7 +591,7 @@ static void test_ibi_drain_aliases_read(void)
 
   /* Stage one IBI and verify drain returns it. */
   ra8_i3c()->NTST    = (uint32_t)k_ra8_i3c_ntst_ibiqeff_mask;
-  ra8_i3c()->NIBIQP  = ((uint32_t)k_i3c_val_84 << 8); /* len=0, IBI ID=0x84. */
+  ra8_i3c()->NIBIQP  = ((uint32_t)k_i3c_ibi_id << 8); /* len=0, IBI ID=0x84. */
   ra8_i3c()->NTDTBP0 = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_ibi_drain(&ibi));
   TEST_ASSERT_EQ(0x42U, ibi.address);
@@ -658,7 +667,7 @@ static void test_mcdc_i3c(void)
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_i3c_set_dynamic_address(0x33U, 0x80U));
 
   /* Decision C: send_ccc */
-  uint8_t payload[1] = {k_i3c_sentinel_a5};
+  uint8_t payload[1] = {k_i3c_payload_byte};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_send_ccc(0x00U, 0x33U, nullptr, 0U));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_send_ccc(0x00U, 0x33U, payload, 1U));
   TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_i3c_send_ccc(0x00U, 0x33U, nullptr, 1U));

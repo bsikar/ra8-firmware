@@ -32,16 +32,17 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_lpm_sentinel_55 = 0x55U,
-  k_lpm_sentinel_aa = 0xAAU,
-  k_lpm_val_05      = 0x05U,
-  k_lpm_val_11      = 0x11U,
-  k_lpm_val_22      = 0x22U,
-  k_lpm_val_33      = 0x33U,
-  k_lpm_val_40      = 0x40U,
-  k_lpm_val_54      = 0x54U,
-  k_lpm_val_80      = 0x80U,
-  k_lpm_val_ff      = 0xFFU,
+  k_lpm_probe_dpsifr3 =
+    0x55U, /**< Planted in DPSIFR3; the complement of the DPSIFR0 value, so a swap between the two is unmistakable. */
+  k_lpm_probe_dpsifr0  = 0xAAU, /**< Planted in DPSIFR0. */
+  k_lpm_probe_lpscr    = 0x05U, /**< Planted in LPSCR, and reused for SSCR1. */
+  k_lpm_probe_dpsier0  = 0x11U, /**< Planted in DPSIER0. */
+  k_lpm_probe_dpsier1  = 0x22U, /**< Planted in DPSIER1. */
+  k_lpm_probe_dpsiegr0 = 0x33U, /**< Planted in DPSIEGR0. */
+  k_lpm_probe_sbycr    = 0x40U, /**< Planted in SBYCR. */
+  k_lpm_probe_dpsbycr  = 0x54U, /**< Planted in DPSBYCR. */
+  k_lpm_probe_top_bit  = 0x80U, /**< A single high bit, planted where only one flag must move. */
+  k_lpm_all_ones       = 0xFFU, /**< All flags set, so a clear that missed a bit leaves evidence. */
 } lpm_uint8_const_t;
 
 /**
@@ -258,8 +259,8 @@ static void test_clear_dpsifr(void)
   ra8_sim_mmap_reset();
 
   /* Stamp some 'pending' flags then clear them. */
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr0_off) = k_lpm_val_ff;
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr3_off) = k_lpm_val_80;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr0_off) = k_lpm_all_ones;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr3_off) = k_lpm_probe_top_bit;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_clear_dpsifr(k_ra8_lpm_dpsier_idx_0));
   TEST_ASSERT_EQ(0, *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr0_off));
@@ -326,7 +327,7 @@ static void test_snooze_end_sources(void)
   ra8_sim_mmap_reset();
 
   /* Pre-stamp DPSIFR3 to verify the dummy-read-then-clear sequence. */
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr3_off) = k_lpm_val_ff;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr3_off) = k_lpm_all_ones;
 
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_snooze_set_end_sources(true, false, true, false));
 
@@ -453,7 +454,7 @@ static void test_opccr_read_and_wait(void)
 
   /* Hand-set OPCCR to "transition complete" (OPCMTSF=0). */
   *ra8_lpm_sysc_reg8(k_ra8_lpm_opccr_off) = 0x00U;
-  uint8_t v                               = k_lpm_val_ff;
+  uint8_t v                               = k_lpm_all_ones;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_get_opccr(&v));
   TEST_ASSERT_EQ(0x00, v);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_wait_for_opccr((uint32_t)k_ra8_lpm_test_poll_budget));
@@ -617,10 +618,10 @@ static void test_get_status_packs_four_regs(void)
   ra8_sim_mmap_reset();
 
   /* Hand-set the four single-byte LPM control regs. */
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_sbycr_off)   = k_lpm_val_40;
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsbycr_off) = k_lpm_val_54;
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_lpscr_off)   = k_lpm_val_05;
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_sscr1_off)   = k_lpm_val_05;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_sbycr_off)   = k_lpm_probe_sbycr;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsbycr_off) = k_lpm_probe_dpsbycr;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_lpscr_off)   = k_lpm_probe_lpscr;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_sscr1_off)   = k_lpm_probe_lpscr;
 
   uint32_t status = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_lpm_get_status(&status));
@@ -666,13 +667,13 @@ static void test_get_dpsi_state(void)
   TEST_BEGIN("lpm get_dpsi_state snapshots all banks");
   ra8_sim_mmap_reset();
 
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsier0_off)  = k_lpm_val_11;
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsier1_off)  = k_lpm_val_22;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsier0_off)  = k_lpm_probe_dpsier0;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsier1_off)  = k_lpm_probe_dpsier1;
   *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsier2_off)  = 0x03U;
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsier3_off)  = k_lpm_val_80;
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr0_off)  = k_lpm_sentinel_aa;
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr3_off)  = k_lpm_sentinel_55;
-  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsiegr0_off) = k_lpm_val_33;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsier3_off)  = k_lpm_probe_top_bit;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr0_off)  = k_lpm_probe_dpsifr0;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsifr3_off)  = k_lpm_probe_dpsifr3;
+  *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsiegr0_off) = k_lpm_probe_dpsiegr0;
   *ra8_lpm_sysc_reg8(k_ra8_lpm_dpsiegr2_off) = 0x10U;
 
   uint8_t enables[4] = {0U};
