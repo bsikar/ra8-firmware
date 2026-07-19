@@ -474,12 +474,18 @@ typedef struct {
 } plbook_t;
 
 /**
- * @brief Populate the single-chapter long-run fixture.
- * @details Long run: 253 'x', then 4 spaces straddling the 255-byte chunk
- *          boundary, then "END" -> 260 bytes, forcing a second chunk
- *          mid-whitespace.
+ * @brief Fill the fixture book header: magic, counts, table offsets, sizes.
+ *
+ * @param[out] b Fixture book to initialise.
+ *
+ * @pre @p b is non-NULL.
+ * @pre The caller has not yet written the string pool or node table.
+ * @post Every table offset points at the matching member of @p b.
+ * @post The struct is zeroed first, so unset fields read as 0.
+ *
+ * @note Not thread-safe with respect to @p b.
  */
-static void plbook_setup(plbook_t* b)
+static void plbook_fill_header(plbook_t* b)
 {
   memset(b, 0, sizeof(*b));
   memcpy(b->hdr.magic, "RABOOK1", 8);
@@ -500,6 +506,17 @@ static void plbook_setup(plbook_t* b)
   b->hdr.image_pool_off    = (uint32_t)offsetof(plbook_t, strings);
   b->hdr.image_pool_size   = 0U;
   b->hdr.cover_image_index = k_ra8_book_nil;
+}
+
+/**
+ * @brief Populate the single-chapter long-run fixture.
+ * @details Long run: 253 'x', then 4 spaces straddling the 255-byte chunk
+ *          boundary, then "END" -> 260 bytes, forcing a second chunk
+ *          mid-whitespace.
+ */
+static void plbook_setup(plbook_t* b)
+{
+  plbook_fill_header(b);
 
   uint32_t cur         = 0U;
   b->strings[cur++]    = '\0'; /* offset 0 = empty string */
