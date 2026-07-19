@@ -3,7 +3,7 @@
  * @brief Host unit tests for the continuous vertical-scroll longstrip engine (#289).
  *
  * @details
- * Drives ra8_longstrip over a hand-built raw JOF band-tile atlas (a synthetic
+ * Drives ra8_longstrip over a hand-built raw JOF1 band-tile atlas (a synthetic
  * tall strip) paged through a real ::ra8_tile_cache. The strip encodes each
  * pixel's absolute canvas coordinate (R=y low, G=y high, B=x low), so the
  * recording blit can assert -- per pixel -- that every band composites at its
@@ -36,7 +36,7 @@
 #include "ra8_jof.h"
 #include "unity_minimal.h"
 
-/** @brief RTA1 footer layout: three u32 fields, then the RTAE magic. */
+/** @brief JOF1 footer layout: three u32 fields, then the JOFE magic. */
 typedef enum : uint8_t {
   k_t_ftr_off_magic = 12U, /**< Magic offset, after the three u32 fields. */
 } t_footer_layout_t;
@@ -116,7 +116,7 @@ typedef enum : uint32_t {
 
 /**
  * @enum t_wt_layout_t
- * @brief JOF on-disk field sizes used by the raw-atlas builder.
+ * @brief JOF1 on-disk field sizes used by the raw-atlas builder.
  */
 typedef enum : uint32_t {
   k_t_hdr_bytes = 32U,          /**< Header length.           */
@@ -138,7 +138,7 @@ static const uint8_t k_t_magic_jof1[] = {'J', 'O', 'F', '1'};
 /** @brief JOFE tile-atlas footer magic (raw bytes; no string terminator). */
 static const uint8_t k_t_magic_jofe[] = {'J', 'O', 'F', 'E'};
 
-/** @brief Backing store for the hand-built JOF atlas. */
+/** @brief Backing store for the hand-built JOF1 atlas. */
 static uint8_t s_atlas[k_t_atlas_cap];
 
 /** @brief Cache cell storage (k_t_wt_cells x k_t_wt_band_bytes). */
@@ -156,7 +156,7 @@ static uint8_t s_view_fb[(size_t)k_t_wt_view_h * (size_t)k_t_wt_view_w * 3U];
 static bool s_canvas_covered[k_t_wt_height];
 
 /* -------------------------------------------------------------------------
- * Synthetic strip: pixel generator + raw JOF builder.
+ * Synthetic strip: pixel generator + raw JOF1 builder.
  * ------------------------------------------------------------------------- */
 
 /** @brief Deterministic RGB888 pixel: encodes the canvas coordinate. */
@@ -184,9 +184,9 @@ static void t_wt_put_u32(uint8_t* p, uint32_t v)
 }
 
 /**
- * @brief Build a raw (codec 0) JOF band-tile atlas for the synthetic strip.
+ * @brief Build a raw (codec 0) JOF1 band-tile atlas for the synthetic strip.
  *
- * @details Emits header + N raw band payloads + index + footer per the JOF
+ * @details Emits header + N raw band payloads + index + footer per the JOF1
  *          layout, with `tile_w == width` (one full-width band column). The
  *          result is validated by `ra8_jof_parse()` in the tests, so a
  *          builder bug is caught by the reader's fail-closed checks.
@@ -194,7 +194,7 @@ static void t_wt_put_u32(uint8_t* p, uint32_t v)
  * @return Total atlas byte length.
  */
 /**
- * @brief Write the RTA1 atlas header for the band-tiled strip fixture.
+ * @brief Write the JOF1 atlas header for the band-tiled strip fixture.
  *
  * @param[in] width  Strip width in pixels (also the tile width).
  * @param[in] height Strip height in pixels.
@@ -264,6 +264,52 @@ static uint32_t t_wt_write_bands(uint32_t  width,
   return off;
 }
 
+/**
+ * @brief Close an JOF1 atlas: write the index table, then the footer.
+ *
+ * @details
+ * Every atlas this file builds ends the same way regardless of how it was
+ * tiled -- an entry per tile giving offset and length, then a footer naming
+ * where the index started, how many tiles it holds, and the total length. The
+ * footer's total counts itself, so it is computed before the footer is
+ * written rather than from the final cursor.
+ *
+ * @param[in] off      Byte offset just past the last tile payload.
+ * @param[in] tiles    Tile count; the index gets one entry each.
+ * @param[in] tile_off Per-tile byte offsets, @p tiles entries.
+ * @param[in] tile_len Per-tile byte lengths, @p tiles entries.
+ *
+ * @return Total atlas byte length, footer included.
+ *
+ * @pre `s_atlas` has room for the index and footer past @p off.
+ * @pre @p tile_off and @p tile_len each hold @p tiles entries.
+ * @post The atlas ends with the JOFE footer magic.
+ * @post The returned length is what `ra8_tileatlas_parse()` should be given.
+ *
+ * @note Not thread-safe; the fixture is file-scope state.
+ *
+ * @see t_wt_build_strip()  Band-tiled caller.
+ * @see t_wt_build_two_column_atlas()  Narrow-tile caller.
+ */
+static uint32_t t_wt_write_index_and_footer(uint32_t        off,
+                                            uint32_t        tiles,
+                                            const uint32_t* tile_off,
+                                            const uint32_t* tile_len)
+{
+  const uint32_t index_off = off;
+  for (uint32_t n = 0U; n < tiles; n++) {
+    t_wt_put_u32(&s_atlas[off], tile_off[n]);
+    t_wt_put_u32(&s_atlas[off + 4U], tile_len[n]);
+    off += (uint32_t)k_t_idx_entry;
+  }
+  const uint32_t total = off + (uint32_t)k_t_ftr_bytes;
+  t_wt_put_u32(&s_atlas[off], index_off);
+  t_wt_put_u32(&s_atlas[off + 4U], tiles);
+  t_wt_put_u32(&s_atlas[off + 8U], total);
+  (void)memcpy(&s_atlas[off + (size_t)k_t_ftr_off_magic], k_t_magic_jofe, sizeof(k_t_magic_jofe));
+  return total;
+}
+
 static uint32_t t_wt_build_strip(void)
 {
   const uint32_t width  = (uint32_t)k_t_wt_width;
@@ -276,18 +322,7 @@ static uint32_t t_wt_build_strip(void)
   uint32_t tile_len[k_t_wt_bands];
   uint32_t off = t_wt_write_bands(width, height, band_h, bands, tile_off, tile_len);
 
-  const uint32_t index_off = off;
-  for (uint32_t n = 0U; n < bands; n++) {
-    t_wt_put_u32(&s_atlas[off], tile_off[n]);
-    t_wt_put_u32(&s_atlas[off + 4U], tile_len[n]);
-    off += (uint32_t)k_t_idx_entry;
-  }
-  const uint32_t total = off + (uint32_t)k_t_ftr_bytes;
-  t_wt_put_u32(&s_atlas[off], index_off);
-  t_wt_put_u32(&s_atlas[off + 4U], bands);
-  t_wt_put_u32(&s_atlas[off + 8U], total);
-  (void)memcpy(&s_atlas[off + (size_t)k_t_ftr_off_magic], k_t_magic_jofe, sizeof(k_t_magic_jofe));
-  return total;
+  return t_wt_write_index_and_footer(off, bands, tile_off, tile_len);
 }
 
 /* -------------------------------------------------------------------------
@@ -461,11 +496,31 @@ static void t_open_validates(void)
  * tile_w == width already forces tile_cols == 1 and tile_cols could never
  * independently flip the outcome (its true arm is a strict subset of this one).
  */
-static void t_open_rejects_non_band(void)
+/**
+ * @brief Build a two-column JOF1 atlas -- the shape a long strip must reject.
+ *
+ * @details
+ * Re-tiles the same pixel dimensions the band fixture uses, but with
+ * `tile_w == width / 2`, producing two tile columns instead of one. That makes
+ * both `tile_w != width` and `tile_cols != 1` true, which is precisely what
+ * ::ra8_longstrip_open refuses: a long strip is defined as a single full-width
+ * band column. Tiles carry their own index as filler content since nothing
+ * decodes them -- the open call fails on geometry before any payload is read.
+ * gray8 (bpp 1) keeps the fixture small.
+ *
+ * @return Total atlas byte length, footer included.
+ *
+ * @pre `s_atlas` is large enough for a 64x128 gray8 atlas.
+ * @pre The caller publishes the result through `s_store` before opening.
+ * @post `s_atlas` holds a structurally valid atlas that is not a band strip.
+ * @post The atlas parses cleanly, so the rejection is on geometry alone.
+ *
+ * @note Not thread-safe; the fixture is file-scope state.
+ *
+ * @see t_wt_build_strip()  The single-column fixture this contrasts with.
+ */
+static uint32_t t_wt_build_two_column_atlas(void)
 {
-  TEST_BEGIN("open_rejects_non_band_atlas");
-  /* Re-tile the SAME pixel dimensions with tile_w = width/2 -> 2 columns, so
-   * tile_w != width AND tile_cols != 1. ra8_longstrip_open must reject it. */
   const uint16_t width  = 64U;
   const uint16_t height = 128U;
   const uint16_t tw     = 32U; /* half width -> 2 columns */
@@ -491,17 +546,13 @@ static void t_open_rejects_non_band(void)
     (void)memset(&s_atlas[off], (int)n, (size_t)lens[n]);
     off += lens[n];
   }
-  const uint32_t index_off = off;
-  for (uint32_t n = 0U; n < tiles; n++) {
-    t_wt_put_u32(&s_atlas[off], offs[n]);
-    t_wt_put_u32(&s_atlas[off + 4U], lens[n]);
-    off += (uint32_t)k_t_idx_entry;
-  }
-  const uint32_t total = off + (uint32_t)k_t_ftr_bytes;
-  t_wt_put_u32(&s_atlas[off], index_off);
-  t_wt_put_u32(&s_atlas[off + 4U], tiles);
-  t_wt_put_u32(&s_atlas[off + 8U], total);
-  (void)memcpy(&s_atlas[off + (size_t)k_t_ftr_off_magic], k_t_magic_jofe, sizeof(k_t_magic_jofe));
+  return t_wt_write_index_and_footer(off, tiles, offs, lens);
+}
+
+static void t_open_rejects_non_band(void)
+{
+  TEST_BEGIN("open_rejects_non_band_atlas");
+  const uint32_t total = t_wt_build_two_column_atlas();
 
   s_store = (ra8_jof_memstore_t){.buf = s_atlas, .cap = k_t_atlas_cap, .len = total};
   const ra8_longstrip_cfg_t cfg = {.pread      = ra8_jof_memstore_pread,

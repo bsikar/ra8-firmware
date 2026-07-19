@@ -84,8 +84,6 @@ static ra8_err_t fuzz_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
  * @note Single-threaded (libFuzzer default).
  * @since 0.1.0
  */
-int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size);
-
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
   if ((data == NULL) || (size == 0U) || (size > (size_t)k_fuzz_ta_max_input)) {
