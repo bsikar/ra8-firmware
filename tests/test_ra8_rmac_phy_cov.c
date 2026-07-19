@@ -40,19 +40,15 @@
 #include "unity_minimal.h"
 
 /**
- * @enum rmac_phy_cov_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_phy_cov_t
+ * @brief IEEE 802.3 Clause 22 advertisement words and the BMCR reset bit.
  */
 typedef enum : uint16_t {
-  k_rmac_phy_cov_gbit_advertise_0300  = 0x0300U,
-  k_rmac_phy_cov_local_advertise_01e1 = 0x01E1U,
-  k_rmac_phy_cov_val_8000             = 0x8000U,
-} rmac_phy_cov_uint16_const_t;
+  k_t_bmcr_reset      = 0x8000U, /**< BMCR bit 15: software reset, self-clearing. */
+  k_t_advertise_local = 0x01E1U, /**< Advertised ability: 10/100, both duplexes,
+                                      with the 802.3 selector field.            */
+  k_t_advertise_gbit  = 0x0300U, /**< Advertised 1000BASE-T ability, both duplexes. */
+} t_phy_cov_t;
 
 typedef enum : uint8_t {
   k_test_phy_addr  = 1U,  /**< Test PHY address.    */
@@ -138,7 +134,7 @@ static ra8_err_t bus_read(void* ctx, uint8_t phy, uint8_t reg, uint16_t* out)
       st->reset_reads_remaining = (uint16_t)(st->reset_reads_remaining - 1U);
     } else {
       st->regs[k_reg_control] =
-        (uint16_t)(st->regs[k_reg_control] & (uint16_t)~k_rmac_phy_cov_val_8000);
+        (uint16_t)(st->regs[k_reg_control] & (uint16_t)~k_t_bmcr_reset);
     }
   }
   *out = st->regs[reg];
@@ -222,8 +218,8 @@ static ra8_rmac_phy_cfg_t make_cfg(void)
   cfg.lsi_type           = k_ra8_rmac_phy_lsi_ksz8091rnb;
   cfg.phy_address        = (uint8_t)k_test_phy_addr;
   cfg.reset_poll_max     = 4U;
-  cfg.local_advertise    = k_rmac_phy_cov_local_advertise_01e1;
-  cfg.gbit_advertise     = k_rmac_phy_cov_gbit_advertise_0300;
+  cfg.local_advertise    = k_t_advertise_local;
+  cfg.gbit_advertise     = k_t_advertise_gbit;
   return cfg;
 }
 

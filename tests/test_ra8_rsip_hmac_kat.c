@@ -31,19 +31,19 @@
 #include "unity_minimal.h"
 
 /**
- * @enum rsip_hmac_kat_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_kat_data_len_t
+ * @brief Data-string lengths of the RFC 4231 HMAC-SHA-256 test cases, in bytes.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * Each is the exact length of the message literal its test case supplies. The
+ * lengths are part of the published vector: changing one invalidates the
+ * expected MAC beside it, so they are named per test case rather than shared.
  */
 typedef enum : uint8_t {
-  k_rsip_hmac_kat_val_152 = 152U,
-  k_rsip_hmac_kat_val_28  = 28U,
-  k_rsip_hmac_kat_val_54  = 54U,
-} rsip_hmac_kat_uint8_const_t;
+  k_t_tc2_data_len = 28U,  /**< TC2: "what do ya want for nothing?".          */
+  k_t_tc6_data_len = 54U,  /**< TC6: the hash-key-first message.              */
+  k_t_tc7_data_len = 152U, /**< TC7: the larger-than-block-size message.      */
+} t_kat_data_len_t;
 
 /** @brief Test constants for the RFC 4231 vectors. */
 typedef enum : uint32_t {
@@ -138,7 +138,7 @@ static void test_hmac_sha256_rfc4231(void)
   expect_hmac((const uint8_t*)"Jefe",
               4U,
               (const uint8_t*)"what do ya want for nothing?",
-              k_rsip_hmac_kat_val_28,
+              k_t_tc2_data_len,
               "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843");
 
   /* TC3: 20-byte 0xaa key, 50-byte 0xdd data. */
@@ -166,7 +166,7 @@ static void test_hmac_sha256_rfc4231(void)
   expect_hmac(s_key,
               k_hmac_key_131,
               (const uint8_t*)"Test Using Larger Than Block-Size Key - Hash Key First",
-              k_rsip_hmac_kat_val_54,
+              k_t_tc6_data_len,
               "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54");
 
   /* TC7: 131-byte 0xaa key (hashed first), 152-byte text. */
@@ -175,7 +175,7 @@ static void test_hmac_sha256_rfc4231(void)
               (const uint8_t*)"This is a test using a larger than block-size key and a larger "
                               "than block-size data. The key needs to be hashed before being "
                               "used by the HMAC algorithm.",
-              k_rsip_hmac_kat_val_152,
+              k_t_tc7_data_len,
               "9b09ffa71b942fcb27635fbcd5b0e944bfdc63644f0713938a7f51535c3a35e2");
 
   TEST_END("RSIP HMAC-SHA-256 RFC 4231 known-answer vectors");

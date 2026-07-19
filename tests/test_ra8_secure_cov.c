@@ -23,19 +23,20 @@
 #include "unity_minimal.h"
 
 /**
- * @enum secure_cov_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_cmp_t
+ * @brief Payload bytes and the mismatch marker for the constant-time compare.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The reference buffer is the ascending run 1..8; each arm copies it and flips
+ * one byte to 0xFF at a different position -- first, middle, last -- so the
+ * comparator cannot pass by short-circuiting at any one end.
  */
 typedef enum : uint8_t {
-  k_secure_cov_first_ff = 0xFFU,
-  k_secure_cov_val_5    = 5U,
-  k_secure_cov_val_7    = 7U,
-} secure_cov_uint8_const_t;
+  k_t_ref_b4       = 5U,    /**< Byte 4 of the ascending reference buffer.    */
+  k_t_ref_b6       = 7U,    /**< Byte 6.                                      */
+  k_t_mismatch_val = 0xFFU, /**< Value written to create the single-byte
+                                 difference under test.                        */
+} t_cmp_t;
 
 /** @brief Fixed comparison-buffer length used across the cases. */
 typedef enum : uint8_t {
@@ -75,16 +76,16 @@ static void test_ct_equal_differs(void)
   TEST_BEGIN("ra8_ct_equal: difference at first/middle/last byte");
   const uint8_t a[k_ct_buf_len] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
 
-  uint8_t first[k_ct_buf_len] = {1U, 2U, 3U, 4U, k_secure_cov_val_5, 6U, k_secure_cov_val_7, 8U};
-  first[0]                    = k_secure_cov_first_ff;
+  uint8_t first[k_ct_buf_len] = {1U, 2U, 3U, 4U, k_t_ref_b4, 6U, k_t_ref_b6, 8U};
+  first[0]                    = k_t_mismatch_val;
   TEST_ASSERT(!ra8_ct_equal(a, first, (size_t)k_ct_buf_len));
 
-  uint8_t middle[k_ct_buf_len] = {1U, 2U, 3U, 4U, k_secure_cov_val_5, 6U, k_secure_cov_val_7, 8U};
-  middle[4]                    = k_secure_cov_first_ff;
+  uint8_t middle[k_ct_buf_len] = {1U, 2U, 3U, 4U, k_t_ref_b4, 6U, k_t_ref_b6, 8U};
+  middle[4]                    = k_t_mismatch_val;
   TEST_ASSERT(!ra8_ct_equal(a, middle, (size_t)k_ct_buf_len));
 
-  uint8_t last[k_ct_buf_len] = {1U, 2U, 3U, 4U, k_secure_cov_val_5, 6U, k_secure_cov_val_7, 8U};
-  last[k_ct_buf_len - 1U]    = k_secure_cov_first_ff;
+  uint8_t last[k_ct_buf_len] = {1U, 2U, 3U, 4U, k_t_ref_b4, 6U, k_t_ref_b6, 8U};
+  last[k_ct_buf_len - 1U]    = k_t_mismatch_val;
   TEST_ASSERT(!ra8_ct_equal(a, last, (size_t)k_ct_buf_len));
   TEST_END("ra8_ct_equal: difference at first/middle/last byte");
 }
@@ -119,13 +120,13 @@ static void test_memzero_clears_and_guards(void)
 {
   TEST_BEGIN("ra8_secure_memzero: clears buffer + NULL/zero-length guards");
 
-  uint8_t buf[k_ct_buf_len] = {1U, 2U, 3U, 4U, k_secure_cov_val_5, 6U, k_secure_cov_val_7, 8U};
+  uint8_t buf[k_ct_buf_len] = {1U, 2U, 3U, 4U, k_t_ref_b4, 6U, k_t_ref_b6, 8U};
   const uint8_t zero[k_ct_buf_len] = {};
   ra8_secure_memzero(buf, (size_t)k_ct_buf_len);
   TEST_ASSERT(ra8_ct_equal(buf, zero, (size_t)k_ct_buf_len));
 
   /* Zero only a sub-range: the tail must be untouched. */
-  uint8_t partial[k_ct_buf_len] = {1U, 2U, 3U, 4U, k_secure_cov_val_5, 6U, k_secure_cov_val_7, 8U};
+  uint8_t partial[k_ct_buf_len] = {1U, 2U, 3U, 4U, k_t_ref_b4, 6U, k_t_ref_b6, 8U};
   ra8_secure_memzero(partial, 4U);
   TEST_ASSERT(partial[0] == 0U);
   TEST_ASSERT(partial[3] == 0U);
@@ -136,7 +137,7 @@ static void test_memzero_clears_and_guards(void)
   ra8_secure_memzero(nullptr, (size_t)k_ct_buf_len);
   const uint8_t orig[k_ct_buf_len] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
   uint8_t       unchanged[k_ct_buf_len] =
-    {1U, 2U, 3U, 4U, k_secure_cov_val_5, 6U, k_secure_cov_val_7, 8U};
+    {1U, 2U, 3U, 4U, k_t_ref_b4, 6U, k_t_ref_b6, 8U};
   ra8_secure_memzero(unchanged, 0U);
   TEST_ASSERT(ra8_ct_equal(unchanged, orig, (size_t)k_ct_buf_len));
 

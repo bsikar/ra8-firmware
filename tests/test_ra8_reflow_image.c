@@ -27,31 +27,15 @@
 #include "unity_minimal.h"
 
 /**
- * @enum reflow_image_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_reflow_image_val_48 = 48,
-  k_reflow_image_val_64 = 64U,
-} reflow_image_uint8_const_t;
-
-/**
- * @enum reflow_image_uint16_const_t
- * @brief Named uint16_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_img_buf_t
+ * @brief Decode arena and the deliberately-too-small destination.
  */
 typedef enum : uint16_t {
-  k_reflow_image_u_1024 = 1024U,
-} reflow_image_uint16_const_t;
+  k_t_kib          = 1024U, /**< Bytes per KiB.                              */
+  k_t_scratch_kib  = 64U,   /**< Decode arena size, in KiB.                  */
+  k_t_tiny_dst_cap = 48U,   /**< A destination far below one decoded row, so
+                                 the out-of-room path is the one taken.        */
+} t_img_buf_t;
 
 /**
  * @brief A 2x2 RGB PNG: TL red, TR green, BL blue, BR white.
@@ -109,7 +93,7 @@ static void test_probe_size_png(void)
 static void test_decode_blit_pixels(void)
 {
   TEST_BEGIN("ra8_img_decode_blit: exact pixels 1:1 and 2x");
-  static uint8_t  s_scratch[k_reflow_image_val_64 * k_reflow_image_u_1024];
+  static uint8_t  s_scratch[k_t_scratch_kib * k_t_kib];
   ra8_img_arena_t arena = {.base = s_scratch, .cap = sizeof s_scratch, .offset = 0U, .live = 0U};
 
   static uint8_t s_fb[4 * 4 * 3];
@@ -164,7 +148,7 @@ static void test_decode_blit_pixels(void)
 static void test_decode_blit_precondition_mcdc(void)
 {
   TEST_BEGIN("ra8_img_decode_blit precondition MC/DC: len==0||box_w<1||box_h<1");
-  static uint8_t  s_scratch[k_reflow_image_val_64 * k_reflow_image_u_1024];
+  static uint8_t  s_scratch[k_t_scratch_kib * k_t_kib];
   ra8_img_arena_t arena = {.base = s_scratch, .cap = sizeof s_scratch, .offset = 0U, .live = 0U};
   static uint8_t  s_fb[4 * 4 * 3];
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(s_fb, 4, 4, k_ra8_gfx_format_rgb888));
@@ -219,7 +203,7 @@ static void test_fit_box_branch_mcdc(void)
   TEST_ASSERT_EQ(0, mirror_fit_width_limited(4, 2, 2, 2)); /* V2: height-limited */
 
   /* Real path: a square 2x2 into a wide and a tall box both fit to 2x2. */
-  static uint8_t  s_scratch[k_reflow_image_val_64 * k_reflow_image_u_1024];
+  static uint8_t  s_scratch[k_t_scratch_kib * k_t_kib];
   ra8_img_arena_t arena = {.base = s_scratch, .cap = sizeof s_scratch, .offset = 0U, .live = 0U};
   static uint8_t  s_fb[8 * 8 * 3];
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(s_fb, 8, 8, k_ra8_gfx_format_rgb888));
@@ -274,7 +258,7 @@ static void test_decode_fail_classify_mcdc(void)
 static void test_arena_drained_and_no_mem(void)
 {
   TEST_BEGIN("ra8_img_decode_blit: arena drain on failure + tiny-arena no_mem");
-  static uint8_t  s_scratch[k_reflow_image_val_64 * k_reflow_image_u_1024];
+  static uint8_t  s_scratch[k_t_scratch_kib * k_t_kib];
   ra8_img_arena_t arena = {.base = s_scratch, .cap = sizeof s_scratch, .offset = 0U, .live = 0U};
   static uint8_t  s_fb[4 * 4 * 3];
   TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_init(s_fb, 4, 4, k_ra8_gfx_format_rgb888));
@@ -286,7 +270,7 @@ static void test_arena_drained_and_no_mem(void)
   TEST_ASSERT_EQ(0, arena.live);
 
   /* Arena far too small for the decode -> no_mem (or not_supported), drained. */
-  static uint8_t  s_tiny[k_reflow_image_val_48];
+  static uint8_t  s_tiny[k_t_tiny_dst_cap];
   ra8_img_arena_t small = {.base = s_tiny, .cap = sizeof s_tiny, .offset = 0U, .live = 0U};
   const ra8_err_t e =
     ra8_img_decode_blit(&small, s_png_2x2, sizeof s_png_2x2, 0, 0, 4, 4, NULL, NULL);
@@ -335,7 +319,7 @@ static void test_decode_fail_real_paths_mcdc(void)
 
   /* V1: a valid PNG into an arena too small for the first stb allocation
      deterministically fails with the "outofmem" tag -> no_mem (true arm). */
-  static uint8_t  s_tiny[k_reflow_image_val_48];
+  static uint8_t  s_tiny[k_t_tiny_dst_cap];
   ra8_img_arena_t small = {.base = s_tiny, .cap = sizeof s_tiny, .offset = 0U, .live = 0U};
   TEST_ASSERT_EQ(k_ra8_err_no_mem,
                  ra8_img_decode_blit(&small, s_png_2x2, sizeof s_png_2x2, 0, 0, 4, 4, NULL, NULL));
@@ -344,7 +328,7 @@ static void test_decode_fail_real_paths_mcdc(void)
 
   /* V2: undecodable bytes into a large arena -> reason != "outofmem"
      -> not_supported (false arm). */
-  static uint8_t  s_scratch[k_reflow_image_val_64 * k_reflow_image_u_1024];
+  static uint8_t  s_scratch[k_t_scratch_kib * k_t_kib];
   ra8_img_arena_t big = {.base = s_scratch, .cap = sizeof s_scratch, .offset = 0U, .live = 0U};
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
                  ra8_img_decode_blit(&big, s_junk, sizeof s_junk, 0, 0, 4, 4, NULL, NULL));

@@ -22,32 +22,19 @@
 #include "unity_minimal.h"
 
 /**
- * @enum vsource_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_vsource_i_36 = 36U,
-  k_vsource_i_7  = 7U,
-  k_vsource_i_a5 = 0xA5U,
-} vsource_uint8_const_t;
-
-/**
- * @enum vsource_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_vsrc_t
+ * @brief Backing-store fill patterns and the object-id seed.
  */
 typedef enum : uint32_t {
-  k_vsource_oid_ffffffff = 0xFFFFFFFFU,
-} vsource_uint32_const_t;
+  k_t_store_stride = 7U,          /**< Multiplier of the store byte pattern.   */
+  k_t_xip_mask     = 0xA5U,       /**< XOR mask of the XIP pattern; different
+                                       from the store pattern so a source mix-up
+                                       is visible.                              */
+  k_t_frame_hdr_len = 36U,        /**< Header bytes before the frame payload,
+                                       where the comparison starts.             */
+  k_t_oid_unset    = 0xFFFFFFFFU, /**< Pre-set object id; a lookup that fails
+                                       must leave it.                           */
+} t_vsrc_t;
 
 /**
  * @enum t_vs_const_t
@@ -81,10 +68,10 @@ static ra8_err_t t_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
 static void t_fill_backing(void)
 {
   for (uint32_t i = 0; i < (uint32_t)k_t_store_bytes; ++i) {
-    s_store[i] = (uint8_t)((i * k_vsource_i_7) + 1U);
+    s_store[i] = (uint8_t)((i * k_t_store_stride) + 1U);
   }
   for (uint32_t i = 0; i < (uint32_t)k_t_xip_bytes; ++i) {
-    s_xip[i] = (uint8_t)(i ^ k_vsource_i_a5);
+    s_xip[i] = (uint8_t)(i ^ k_t_xip_mask);
   }
 }
 
@@ -99,7 +86,7 @@ static void test_loader_paged(void)
   t_fill_backing();
   ra8_vsource_t vs = {};
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_init(&vs, s_objs, k_t_objs));
-  uint32_t oid = k_vsource_oid_ffffffff;
+  uint32_t oid = k_t_oid_unset;
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_vsource_add_paged(&vs, t_read, nullptr, 0U, 100U, &oid)); /* size 100 */
   TEST_ASSERT_EQ(0U, oid);
@@ -112,7 +99,7 @@ static void test_loader_paged(void)
   /* A frame at offset 64: object has 100 bytes, so 36 valid + 28 zero-pad */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_vsource_loader(&vs, oid, 64U, frame, k_t_frame_bytes));
   TEST_ASSERT_EQ(0, memcmp(frame, &s_store[64], 36U));
-  for (uint32_t i = k_vsource_i_36; i < (uint32_t)k_t_frame_bytes; ++i) {
+  for (uint32_t i = k_t_frame_hdr_len; i < (uint32_t)k_t_frame_bytes; ++i) {
     TEST_ASSERT_EQ(0, frame[i]); /* zero-padded past object end */
   }
   /* Offset at/after the object size -> out_of_range */

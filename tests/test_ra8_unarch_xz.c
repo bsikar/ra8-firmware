@@ -41,31 +41,18 @@ typedef enum : uint8_t {
 } tx_fill_t;
 
 /**
- * @enum unarch_xz_uint8_const_t
- * @brief Named uint8_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
- */
-typedef enum : uint8_t {
-  k_unarch_xz_ra8_unarch_xz_pool_alloc_56 = 56U,
-  k_unarch_xz_s_mut_ff                    = 0xFFU,
-} unarch_xz_uint8_const_t;
-
-/**
- * @enum unarch_xz_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_xz_t
+ * @brief Allocation size, corruption mask and the relaxed ratio cap.
  */
 typedef enum : uint32_t {
-  k_unarch_xz_max_ratio_1000000 = 1000000U,
-} unarch_xz_uint32_const_t;
+  k_t_alloc_exact  = 56U,      /**< Allocation that exactly exhausts the pool,
+                                    so the next one must fail rather than wrap. */
+  k_t_corrupt_mask = 0xFFU,    /**< XOR that flips a mid-stream byte to break
+                                    the CRC64.                                  */
+  k_t_ratio_loose  = 1000000U, /**< A compression-ratio cap high enough that the
+                                    ratio guard cannot fire, isolating the other
+                                    limits under test.                          */
+} t_xz_t;
 
 /**
  * @enum tx_dim_t
@@ -171,7 +158,7 @@ static void test_xz_pool_edges(void)
   TEST_ASSERT_EQ(0U, ((uintptr_t)a % 8U));
   TEST_ASSERT_EQ(8U, ra8_unarch_xz_pool_used());
   void* b = ra8_unarch_xz_pool_alloc(
-    k_unarch_xz_ra8_unarch_xz_pool_alloc_56); /* exactly exhausts the arena */
+    k_t_alloc_exact); /* exactly exhausts the arena */
   TEST_ASSERT_NOT_NULL(b);
   TEST_ASSERT_EQ(64U, ra8_unarch_xz_pool_used());
   TEST_ASSERT_NULL(ra8_unarch_xz_pool_alloc(1U));         /* exhausted           */
@@ -445,7 +432,7 @@ static void test_xz_unwrap_rejects_hostile_streams(void)
   /* One corrupted payload byte: integrity check must catch it. */
   got = 1U;
   memcpy(s_mut, k_fx_xz_crc64_4k, sizeof(k_fx_xz_crc64_4k));
-  s_mut[sizeof(k_fx_xz_crc64_4k) / 2U] ^= k_unarch_xz_s_mut_ff;
+  s_mut[sizeof(k_fx_xz_crc64_4k) / 2U] ^= k_t_corrupt_mask;
   TEST_ASSERT_EQ(k_ra8_err_validation_failed,
                  tx_unwrap(s_mut, sizeof(k_fx_xz_crc64_4k), nullptr, &got));
   TEST_ASSERT_EQ(0U, got);
@@ -547,7 +534,7 @@ static void test_xz_unwrap_policy_bounds(void)
    * does not fire first on this bomb-shaped stream. */
   got                       = 1U;
   ra8_decomp_limits_t loose = ra8_decomp_limits_default();
-  loose.max_ratio           = k_unarch_xz_max_ratio_1000000;
+  loose.max_ratio           = k_t_ratio_loose;
   ra8_unarch_mem_t bomb     = {.base = k_fx_xz_bomb_1m, .len = sizeof(k_fx_xz_bomb_1m)};
   TEST_ASSERT_EQ(k_ra8_err_no_mem, tx_unwrap_arena(&bomb, sizeof(k_fx_xz_bomb_1m), &loose, &got));
   TEST_ASSERT_EQ(0U, got);
