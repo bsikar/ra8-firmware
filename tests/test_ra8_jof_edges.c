@@ -83,6 +83,14 @@ typedef enum : uint32_t {
   k_te_sh24      = 24U,          /**< Three-byte shift.                  */
 } t_edge_geom_t;
 
+/** @brief Byte offsets of the fields inside a PNG IHDR payload. */
+typedef enum : uint8_t {
+  k_te_ihdr_off_width     = 0U, /**< Big-endian 32-bit image width.  */
+  k_te_ihdr_off_height    = 4U, /**< Big-endian 32-bit image height. */
+  k_te_ihdr_off_bitdepth  = 8U, /**< Bits per sample.                */
+  k_te_ihdr_off_colortype = 9U, /**< PNG colour-type code.           */
+} t_edge_ihdr_off_t;
+
 /** @brief Synthesized PNG source bytes. */
 static uint8_t s_src[k_te_src_cap];
 /** @brief Length of the synthesized PNG in ::s_src. */
@@ -136,6 +144,29 @@ static uint8_t t_pix(uint32_t x, uint32_t y)
 }
 
 /**
+ * @brief Store @p v as a PNG big-endian 32-bit field at @p p.
+ * @details Every 32-bit field in a PNG -- chunk length, chunk CRC, IHDR width
+ *          and height -- is network byte order, so they all go through here
+ *          rather than repeating four shift-and-mask stores per field.
+ * @param[out] p Four writable bytes.
+ * @param[in]  v Value to store.
+ * @return None.
+ * @pre @p p points at four writable bytes.
+ * @pre @p p is not aliased by @p v's storage.
+ * @post @p p holds @p v most-significant byte first.
+ * @post No other memory is touched.
+ * @note Not thread-safe with respect to @p p.
+ * @since 0.1.0
+ */
+static void t_put_be32(uint8_t* p, uint32_t v)
+{
+  p[0] = (uint8_t)((v >> (uint32_t)k_te_sh24) & (uint32_t)k_te_byte_mask);
+  p[1] = (uint8_t)((v >> (uint32_t)k_te_sh16) & (uint32_t)k_te_byte_mask);
+  p[2] = (uint8_t)((v >> (uint32_t)k_te_sh8) & (uint32_t)k_te_byte_mask);
+  p[3] = (uint8_t)(v & (uint32_t)k_te_byte_mask);
+}
+
+/**
  * @brief Append one PNG chunk (length, type, data, CRC) to ::s_src.
  * @param[in] type Four-character chunk type (non-NULL).
  * @param[in] data Chunk payload (may be NULL when @p len is 0).
@@ -150,19 +181,13 @@ static uint8_t t_pix(uint32_t x, uint32_t y)
 static void t_png_chunk(const char* type, const uint8_t* data, uint32_t len)
 {
   uint8_t* p = &s_src[s_src_len];
-  p[0]       = (uint8_t)(len >> (uint32_t)k_te_sh24);
-  p[1]       = (uint8_t)((len >> (uint32_t)k_te_sh16) & (uint32_t)k_te_byte_mask);
-  p[2]       = (uint8_t)((len >> (uint32_t)k_te_sh8) & (uint32_t)k_te_byte_mask);
-  p[3]       = (uint8_t)(len & (uint32_t)k_te_byte_mask);
+  t_put_be32(p, len);
   memcpy(&p[4], type, 4U);
   if (len > 0U) {
     memcpy(&p[8], data, len);
   }
   const uint32_t crc = (uint32_t)mz_crc32(MZ_CRC32_INIT, &p[4], (size_t)len + 4U);
-  p[8U + len]        = (uint8_t)(crc >> (uint32_t)k_te_sh24);
-  p[9U + len]        = (uint8_t)((crc >> (uint32_t)k_te_sh16) & (uint32_t)k_te_byte_mask);
-  p[10U + len]       = (uint8_t)((crc >> (uint32_t)k_te_sh8) & (uint32_t)k_te_byte_mask);
-  p[11U + len]       = (uint8_t)(crc & (uint32_t)k_te_byte_mask);
+  t_put_be32(&p[8U + len], crc);
   s_src_len += (size_t)k_te_chunk_ovh + (size_t)len;
 }
 
@@ -197,16 +222,10 @@ static void t_build_png(void)
   memcpy(s_src, sig, sizeof(sig));
 
   uint8_t ihdr[k_te_png_hdr] = {};
-  ihdr[0]                    = (uint8_t)((uint32_t)k_te_w >> (uint32_t)k_te_sh24);
-  ihdr[1] = (uint8_t)(((uint32_t)k_te_w >> (uint32_t)k_te_sh16) & (uint32_t)k_te_byte_mask);
-  ihdr[2] = (uint8_t)(((uint32_t)k_te_w >> (uint32_t)k_te_sh8) & (uint32_t)k_te_byte_mask);
-  ihdr[3] = (uint8_t)((uint32_t)k_te_w & (uint32_t)k_te_byte_mask);
-  ihdr[4] = (uint8_t)((uint32_t)k_te_h >> (uint32_t)k_te_sh24);
-  ihdr[5] = (uint8_t)(((uint32_t)k_te_h >> (uint32_t)k_te_sh16) & (uint32_t)k_te_byte_mask);
-  ihdr[6] = (uint8_t)(((uint32_t)k_te_h >> (uint32_t)k_te_sh8) & (uint32_t)k_te_byte_mask);
-  ihdr[7] = (uint8_t)((uint32_t)k_te_h & (uint32_t)k_te_byte_mask);
-  ihdr[8] = (uint8_t)k_te_bitdepth;
-  ihdr[9] = (uint8_t)k_te_ct_gray;
+  t_put_be32(&ihdr[k_te_ihdr_off_width], (uint32_t)k_te_w);
+  t_put_be32(&ihdr[k_te_ihdr_off_height], (uint32_t)k_te_h);
+  ihdr[k_te_ihdr_off_bitdepth] = (uint8_t)k_te_bitdepth;
+  ihdr[k_te_ihdr_off_colortype] = (uint8_t)k_te_ct_gray;
   t_png_chunk("IHDR", ihdr, (uint32_t)k_te_png_hdr);
   t_png_chunk("IDAT", s_zbuf, (uint32_t)zlen);
   t_png_chunk("IEND", nullptr, 0U);
@@ -250,12 +269,12 @@ static ra8_err_t t_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
  */
 static ra8_err_t t_produce(ra8_jof_info_t* info)
 {
-  static t_pull_ctx_t pull;
-  pull    = (t_pull_ctx_t){.d = s_src, .n = s_src_len, .pos = 0U};
+  static t_pull_ctx_t s_pull;
+  s_pull  = (t_pull_ctx_t){.d = s_src, .n = s_src_len, .pos = 0U};
   s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   const ra8_jof_produce_cfg_t cfg = {
     .pull       = t_pull,
-    .pull_ctx   = &pull,
+    .pull_ctx   = &s_pull,
     .sink       = ra8_jof_memstore_sink,
     .sink_ctx   = &s_store,
     .tile_w     = (uint16_t)k_te_tile,
@@ -326,16 +345,16 @@ t_read(const ra8_jof_info_t* info, uint16_t tx, uint16_t ty, uint16_t* out_w, ui
 {
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_jof_read_tile(ra8_jof_memstore_pread,
-                                   &s_store,
-                                   info,
-                                   tx,
-                                   ty,
-                                   s_scratch,
-                                   (uint32_t)sizeof(s_scratch),
-                                   s_cell,
-                                   (uint32_t)sizeof(s_cell),
-                                   out_w,
-                                   out_h));
+                                         &s_store,
+                                         info,
+                                         tx,
+                                         ty,
+                                         s_scratch,
+                                         (uint32_t)sizeof(s_scratch),
+                                         s_cell,
+                                         (uint32_t)sizeof(s_cell),
+                                         out_w,
+                                         out_h));
 }
 
 /**
@@ -372,6 +391,36 @@ static void t_edge_dims(void)
 }
 
 /**
+ * @brief Compare the decoded tile in ::s_cell against the ::t_pix oracle.
+ *
+ * @details Maps each cell coordinate back to its canvas position -- the tile
+ *          origin plus the offset within the tile -- so a tile written to the
+ *          wrong grid slot mismatches on its very first pixel.
+ *
+ * @param[in] tx Tile column in the grid.
+ * @param[in] ty Tile row in the grid.
+ * @param[in] tw Decoded tile width, already edge-clamped.
+ * @param[in] th Decoded tile height, already edge-clamped.
+ * @return None.
+ * @pre ::s_cell holds the decoded payload of tile (@p tx, @p ty).
+ * @pre `tw * th` is within ::s_cell's capacity.
+ * @post Every decoded pixel compared equal to the oracle.
+ * @post No fixture state is mutated.
+ * @note Not thread-safe (reads the shared ::s_cell).
+ * @since 0.1.0
+ */
+static void t_assert_tile_pixels(uint16_t tx, uint16_t ty, uint16_t tw, uint16_t th)
+{
+  for (uint16_t r = 0U; r < th; r++) {
+    for (uint16_t c = 0U; c < tw; c++) {
+      const uint32_t cx = ((uint32_t)tx * (uint32_t)k_te_tile) + (uint32_t)c;
+      const uint32_t cy = ((uint32_t)ty * (uint32_t)k_te_tile) + (uint32_t)r;
+      TEST_ASSERT_EQ(t_pix(cx, cy), s_cell[((size_t)r * (size_t)tw) + (size_t)c]);
+    }
+  }
+}
+
+/**
  * @test every tile round-trips to the source pixels at its canvas position
  *
  * @details Property 2: the image -> atlas -> decode round trip, compared
@@ -389,13 +438,7 @@ static void t_edge_roundtrip(void)
       uint16_t tw = 0U;
       uint16_t th = 0U;
       t_read(&info, tx, ty, &tw, &th);
-      for (uint16_t r = 0U; r < th; r++) {
-        for (uint16_t c = 0U; c < tw; c++) {
-          const uint32_t cx = ((uint32_t)tx * (uint32_t)k_te_tile) + (uint32_t)c;
-          const uint32_t cy = ((uint32_t)ty * (uint32_t)k_te_tile) + (uint32_t)r;
-          TEST_ASSERT_EQ(t_pix(cx, cy), s_cell[((size_t)r * (size_t)tw) + (size_t)c]);
-        }
-      }
+      t_assert_tile_pixels(tx, ty, tw, th);
     }
   }
   TEST_END("jof_edges: round-trip pixels at true canvas positions");
