@@ -1,6 +1,6 @@
 /**
  * @file ra8_fmt_atlas_inspect.c
- * @brief RTA1 structure dump, duplicate detection and round-trip verification.
+ * @brief JOF structure dump, duplicate detection and round-trip verification.
  *
  * @details
  * The diagnostic half of the atlas verbs. `inspect` reports every header field,
@@ -132,7 +132,7 @@ static uint32_t priv_fnv1a(const uint8_t* buf, size_t len)
 RA8_INTERNAL
 static void priv_print_geom(FILE* out, const ra8_tileatlas_info_t* info, size_t len)
 {
-  (void)fprintf(out, "RTA1 atlas: %zu bytes\n", len);
+  (void)fprintf(out, "JOF atlas: %zu bytes\n", len);
   (void)fprintf(out, "  image      : %u x %u px\n", (unsigned)info->width, (unsigned)info->height);
   (void)fprintf(out, "  tile       : %u x %u px\n", (unsigned)info->tile_w, (unsigned)info->tile_h);
   (void)fprintf(out,
@@ -419,7 +419,7 @@ ra8_err_t ra8_fmt_atlas_inspect(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t*
   ra8_err_t                rc =
     ra8_tileatlas_parse(ra8_tileatlas_memstore_pread, &store, (uint64_t)src->len, &info);
   if (rc != k_ra8_ok) {
-    (void)fprintf(opts->report, "RTA1 parse FAILED (rc=%d) -- container is invalid\n", (int)rc);
+    (void)fprintf(opts->report, "JOF parse FAILED (rc=%d) -- container is invalid\n", (int)rc);
     ra8_fmt_hex_dump(opts->report,
                      "header",
                      src->bytes,

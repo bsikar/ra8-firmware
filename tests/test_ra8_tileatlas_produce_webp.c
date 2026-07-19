@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_tileatlas_produce_webp.c
- * @brief Host tests for WebP normalize-on-import: WebP -> RTA1 through the
+ * @brief Host tests for WebP normalize-on-import: WebP -> JOF through the
  *        #231 producer, byte-consistent tiles, cross-format convergence, and
  *        fail-closed hostile handling (#290).
  *
@@ -13,10 +13,10 @@
  *      byte-exact to its deterministic source pattern
  *      `((x*32)&255, (y*32)&255, ((x+y)*16)&255, 255)`.
  *   2. **Cross-format convergence** -- a PNG (colour type 6, RGBA) of the
- *      *same* pixels produces a **byte-identical** RTA1 atlas. Import genuinely
+ *      *same* pixels produces a **byte-identical** JOF atlas. Import genuinely
  *      normalizes: the reader cannot tell the source codec apart.
- *   3. **Lossy path** -- a VP8 WebP normalizes to a valid RTA1 (pixels not
- *      bit-compared; VP8 is lossy) so the whole codec family reaches RTA1.
+ *   3. **Lossy path** -- a VP8 WebP normalizes to a valid JOF (pixels not
+ *      bit-compared; VP8 is lossy) so the whole codec family reaches JOF.
  *   4. **Fail-closed** -- untrusted WebP: no `webp_work` arena, a RIFF header
  *      that is not WEBP, an over-cap dimension, a truncated bitstream and a
  *      too-small arena all return contracted error codes, never a crash.
@@ -54,7 +54,7 @@ static const uint8_t k_webp_lossless[] = {
   0x14, 0xFF, 0x77, 0x6A, 0x0E, 0x0C, 0x48, 0xC4, 0x04, 0x80, 0xAD, 0x0D, 0x00,
 };
 
-/** 8x8 VP8 (lossy): proves the lossy decode path normalizes to RTA1. */
+/** 8x8 VP8 (lossy): proves the lossy decode path normalizes to JOF. */
 static const uint8_t k_webp_lossy[] = {
   0x52, 0x49, 0x46, 0x46, 0x4C, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50,
   0x38, 0x20, 0x40, 0x00, 0x00, 0x00, 0xD0, 0x01, 0x00, 0x9D, 0x01, 0x2A, 0x08, 0x00,
@@ -168,7 +168,7 @@ static uint8_t t_pix(uint32_t x, uint32_t y, uint32_t c)
  * @return Producer result code.
  * @pre @p src holds @p src_len readable bytes.
  * @pre @p store backing covers its `cap`.
- * @post On k_ra8_ok the store holds one RTA1 atlas.
+ * @post On k_ra8_ok the store holds one JOF atlas.
  * @post On error the store may hold a partial (discarded) atlas.
  * @note Not thread-safe (shared work arenas).
  * @since 0.1.0
@@ -205,7 +205,7 @@ static ra8_err_t produce_webp(const uint8_t*            src,
  * @brief Build an 8-bit RGBA (colour type 6) PNG of the golden pattern.
  * @details Filter 0 (none) on every row; IDAT via miniz `mz_compress`; CRCs via
  *          `mz_crc32`. Produces the exact RGBA pixels the lossless WebP decodes
- *          to, so both sources yield a byte-identical RTA1 atlas.
+ *          to, so both sources yield a byte-identical JOF atlas.
  * @pre The pattern buffers cover the 8x8 geometry.
  * @pre `s_png` covers the built PNG.
  * @post `s_png` / `s_png_len` hold a well-formed RGBA PNG.
@@ -321,7 +321,7 @@ static void check_golden_tiles(ra8_tileatlas_memstore_t* store, const ra8_tileat
 
 /**
  * @test test_webp_lossless_golden
- * @brief A lossless WebP normalizes to RTA1 whose tiles page back byte-exact to
+ * @brief A lossless WebP normalizes to JOF whose tiles page back byte-exact to
  *        the source pattern, with the `webp_work` arena sized by
  *        `ra8_tileatlas_webp_work_bytes()` proving the sizing guarantee.
  *
@@ -333,7 +333,7 @@ static void check_golden_tiles(ra8_tileatlas_memstore_t* store, const ra8_tileat
  */
 static void test_webp_lossless_golden(void)
 {
-  TEST_BEGIN("produce webp: lossless -> RTA1 golden pixels + sized arena");
+  TEST_BEGIN("produce webp: lossless -> JOF golden pixels + sized arena");
   const uint32_t need =
     ra8_tileatlas_webp_work_bytes((uint16_t)k_t_dim, (uint16_t)k_t_dim, sizeof(k_webp_lossless));
   TEST_ASSERT(need > 0U);
@@ -359,13 +359,13 @@ static void test_webp_lossless_golden(void)
     ra8_tileatlas_parse(ra8_tileatlas_memstore_pread, &store, (uint64_t)store.len, &reparsed));
   TEST_ASSERT_EQ(0, memcmp(&info, &reparsed, sizeof(info)));
   check_golden_tiles(&store, &info);
-  TEST_END("produce webp: lossless -> RTA1 golden pixels + sized arena");
+  TEST_END("produce webp: lossless -> JOF golden pixels + sized arena");
 }
 
 /**
  * @test test_webp_png_byte_identical
  * @brief The #290 convergence proof: a lossless WebP and an RGBA PNG of the
- *        same pixels produce a **byte-identical** RTA1 atlas -- the reader sees
+ *        same pixels produce a **byte-identical** JOF atlas -- the reader sees
  *        one normalized format regardless of source codec.
  *
  * @par MC/DC:
@@ -415,7 +415,7 @@ static void test_webp_png_byte_identical(void)
 
 /**
  * @test test_webp_lossy_path
- * @brief A lossy (VP8) WebP normalizes to a valid, reparseable RTA1 atlas; the
+ * @brief A lossy (VP8) WebP normalizes to a valid, reparseable JOF atlas; the
  *        whole WebP codec family reaches the one format (pixels not bit-checked,
  *        VP8 is lossy).
  *
@@ -427,7 +427,7 @@ static void test_webp_png_byte_identical(void)
  */
 static void test_webp_lossy_path(void)
 {
-  TEST_BEGIN("produce webp: lossy VP8 -> valid RTA1");
+  TEST_BEGIN("produce webp: lossy VP8 -> valid JOF1");
   ra8_tileatlas_memstore_t store = {.buf = s_store_a, .cap = sizeof(s_store_a), .len = 0U};
   ra8_tileatlas_info_t     info  = {};
   TEST_ASSERT_EQ(k_ra8_ok,
@@ -461,7 +461,7 @@ static void test_webp_lossy_path(void)
                                          &h));
   TEST_ASSERT_EQ(k_t_tile, w);
   TEST_ASSERT_EQ(k_t_tile, h);
-  TEST_END("produce webp: lossy VP8 -> valid RTA1");
+  TEST_END("produce webp: lossy VP8 -> valid JOF1");
 }
 
 /**

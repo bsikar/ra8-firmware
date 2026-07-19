@@ -33,5 +33,5 @@ endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
 ra8_add_app(NAME ereader_manga STACK_BYTES 32768
-           DESCRIPTION "Viewable manga reader (Demo B): baked PNG page -> RTA1 tile atlas (ra8_tileatlas_produce) -> tap-zone pan/zoom viewport over the GLCDC panel through a small ra8_tile_cache"
+           DESCRIPTION "Viewable manga reader (Demo B): baked PNG page -> JOF tile atlas (ra8_tileatlas_produce) -> tap-zone pan/zoom viewport over the GLCDC panel through a small ra8_tile_cache"
            LIBS ra8_gfx ra8_display_pal ra8_tileatlas ra8_mem ra8_io_bus miniz)

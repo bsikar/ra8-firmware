@@ -1,6 +1,6 @@
 /**
  * @file ra8_fmt_atlas.c
- * @brief RTA1 band-tile atlas verbs for `ra8_fmt`: convert, inspect, verify.
+ * @brief JOF band-tile atlas verbs for `ra8_fmt`: convert, inspect, verify.
  *
  * @details
  * Wraps the firmware's own `ra8_tileatlas` producer and reader so the tool
@@ -76,7 +76,7 @@ static const uint8_t s_fmt_png_sig[8] =
 
 /**
  * @brief Read a big-endian uint32 (PNG stores its header fields big-endian).
- * @details The RTA1 container is little-endian throughout, but the PNG IHDR the
+ * @details The JOF container is little-endian throughout, but the PNG IHDR the
  *          probe reads is not, so the probe needs its own reader.
  * @param[in] buf Source bytes (at least 4 readable).
  * @return The decoded value.
@@ -263,5 +263,5 @@ ra8_err_t ra8_fmt_atlas_convert(const ra8_fmt_blob_t* src, const ra8_fmt_opts_t*
 
 bool ra8_fmt_atlas_sniff(const ra8_fmt_blob_t* src)
 {
-  return ra8_fmt_magic_is(src, "RTA1"); /* MAGIC-OK: the RTA1 header fourCC */
+  return ra8_fmt_magic_is(src, "JOF1"); /* MAGIC-OK: the JOF header fourCC */
 }

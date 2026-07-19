@@ -17,8 +17,8 @@ board, plus the gate that keeps them honest.
 | Measure the **block/frame/chunk size** for the chunked `.rabook` container / `ra8_vmem` `frame_bytes` (#208) | **`tools/cache_bench`** (`--sweep-block`) | `make -C tools/cache_bench sweep` |
 | Confirm SLRU on a **real reader workload** by driving the actual `ra8_vmem` + emitting a replayable trace | **`tools/reader_vmem`** | `make -C tools/reader_vmem run` |
 | Size the **glyph-cache budget** by sweeping the real `ra8_glyph_atlas` under a text-render workload | **`tools/glyph_bench`** | `make -C tools/glyph_bench run` |
-| Convert **one** image to a **`.rta1`** tile atlas, or dump any first-party container's structure (header, tile/chunk table, offsets, lengths, validity verdict) when a render looks wrong | **`tools/ra8_fmt`** | `cmake -S tools/ra8_fmt -B tools/ra8_fmt/build && cmake --build tools/ra8_fmt/build`, then `ra8_fmt inspect <file> --verbose` |
-| Prove a produced container is **not** the cause of a rendering bug (encode -> decode -> compare, byte for byte) | **`tools/ra8_fmt verify`** | `ra8_fmt verify --format rta1 --in page.jpg` |
+| Convert **one** image to a **`.jof`** tile atlas, or dump any first-party container's structure (header, tile/chunk table, offsets, lengths, validity verdict) when a render looks wrong | **`tools/ra8_fmt`** | `cmake -S tools/ra8_fmt -B tools/ra8_fmt/build && cmake --build tools/ra8_fmt/build`, then `ra8_fmt inspect <file> --verbose` |
+| Prove a produced container is **not** the cause of a rendering bug (encode -> decode -> compare, byte for byte) | **`tools/ra8_fmt verify`** | `ra8_fmt verify --format jof --in page.jpg` |
 
 `make apps` lists every firmware app; `make help` is the grouped target
 reference. Git hooks auto-install on first `make` (or `make hooks`).

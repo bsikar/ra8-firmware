@@ -270,7 +270,7 @@ RA8_PRIV ra8_err_t ra8_ta_priv_prefix_pull(void* ctx, uint8_t* buf, size_t cap, 
  * @details Fires once per transcode (from any decoder arm). Rejects, fail
  *          closed: dimensions above the caps, a tile grid above the format
  *          cap, and any carve the arena cannot fit. On success the 32-byte
- *          RTA1 header has been sunk. Matches ::ra8_ta_geom_fn.
+ *          JOF header has been sunk. Matches ::ra8_ta_geom_fn.
  *
  * @param[in] ctx      The producer state (::ra8_ta_prod_state_t).
  * @param[in] width    Source width, pixels.
@@ -330,7 +330,7 @@ RA8_PRIV ra8_err_t ra8_ta_priv_on_rows(void*          ctx,
                                        uint8_t        channels);
 
 /**
- * @brief Transcode a WebP source into the RTA1 tile path (whole-frame, #290).
+ * @brief Transcode a WebP source into the JOF tile path (whole-frame, #290).
  *
  * @details Pulls the whole compressed source into `cfg->webp_work`, reads its
  *          geometry, binds it as a 4-bpp source through ::ra8_ta_priv_on_geom,

@@ -9,7 +9,7 @@
  * @details
  * The firmware readers open several containers -- CBZ (ZIP), CBR (RAR), CBT
  * (tar), and xz/gzip-wrapped variants -- all detected by file magic, plus the
- * custom RTA1 tile atlas and RABOOK formats. This module turns a chapter's
+ * custom JOF tile atlas and RABOOK formats. This module turns a chapter's
  * folder of page images into one of those so the output can be fed back to the
  * readers for testing.
  *
@@ -17,7 +17,7 @@
  * -- these are host test-fixture generators, not firmware code, so reusing the
  * platform's archivers is the pragmatic choice. RAR has no open writer, so
  * `cbr` requires the proprietary `rar` tool on PATH (a clear error is printed
- * when it is absent). RTA1/RABOOK (added separately) reuse the firmware's own
+ * when it is absent). JOF/RABOOK (added separately) reuse the firmware's own
  * producers compiled host-side.
  */
 #pragma once
@@ -35,7 +35,7 @@ typedef enum : uint8_t {
   k_mdl_fmt_cbt_xz  = 4,   /**< xz-compressed tar (`.cbt.xz`).                    */
   k_mdl_fmt_cbt_gz  = 5,   /**< gzip-compressed tar (`.cbt.gz`).                  */
   k_mdl_fmt_epub    = 6,   /**< EPUB of images (`.epub`).                         */
-  k_mdl_fmt_rta1    = 7,   /**< Native RTA1 tile atlas per page (`.rta1`).        */
+  k_mdl_fmt_jof     = 7,   /**< Native JOF tile atlas per page (`.jof`).          */
   k_mdl_fmt_rabook  = 8,   /**< Native RABOOK (`.rabook`); needs external python. */
   k_mdl_fmt_invalid = 255, /**< Unrecognised `--format` string.                   */
 } mdl_format_t;

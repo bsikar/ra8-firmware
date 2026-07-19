@@ -11,8 +11,8 @@
  *
  *   - **Comics** (`.cbz` / `.cbr` / `.cbt`, and gzip/xz-wrapped variants) through
  *     ra8_comic, in ra8_viewer_comic.c.
- *   - **RTA1 long strips** (`.rta1`, the firmware-native vertical-scroll tile
- *     atlas the downloader writes) through ra8_longstrip, in ra8_viewer_rta1.c.
+ *   - **JOF long strips** (`.jof`, the firmware-native vertical-scroll tile
+ *     atlas the downloader writes) through ra8_longstrip, in ra8_viewer_jof.c.
  *
  * EPUB (`.epub`) and RABOOK (`.rabook`) reflow text/images through ra8_reflow +
  * a registered font face + an image loader; that stack is not wired here yet and
@@ -90,14 +90,14 @@ RA8_INTERNAL static void viewer_free(ra8_viewer_reader_t* r)
   if (r->file.fp != nullptr) {
     (void)fclose(r->file.fp);
   }
-  /* RTA1 buffers (all NULL unless this is an RTA1 document; free(NULL) is ok). */
-  free(r->rta1.scratch);
-  free(r->rta1.buckets);
-  free(r->rta1.dims);
-  free(r->rta1.keys);
-  free(r->rta1.meta);
-  free(r->rta1.cells);
-  free(r->rta1.atlas);
+  /* JOF buffers (all NULL unless this is a JOF document; free(NULL) is ok). */
+  free(r->jof.scratch);
+  free(r->jof.buckets);
+  free(r->jof.dims);
+  free(r->jof.keys);
+  free(r->jof.meta);
+  free(r->jof.cells);
+  free(r->jof.atlas);
   /* Comic buffers. */
   free(r->xz_scratch);
   free(r->unwrap);
@@ -158,8 +158,8 @@ RA8_INTERNAL static viewer_fmt_t viewer_classify(const char* path)
   if (viewer_ends_with(path, ".epub") || viewer_ends_with(path, ".epb")) {
     return k_vfmt_epub;
   }
-  if (viewer_ends_with(path, ".rta1")) {
-    return k_vfmt_rta1;
+  if (viewer_ends_with(path, ".jof")) {
+    return k_vfmt_jof;
   }
   if (viewer_ends_with(path, ".rabook") || viewer_ends_with(path, ".rbk")) {
     return k_vfmt_rabook;
@@ -186,7 +186,7 @@ RA8_INTERNAL static ra8_err_t viewer_alloc_core(ra8_viewer_reader_t** out)
     viewer_free(r);
     return k_ra8_err_no_mem;
   }
-  /* Default RTA1 blit target is the fixed framebuffer (headless path); the tile
+  /* Default JOF blit target is the fixed framebuffer (headless path); the tile
    * path retargets it per render. */
   r->rt565 = r->fb;
   r->rt_w  = (uint32_t)k_ra8_viewer_fb_width;
@@ -258,7 +258,7 @@ RA8_INTERNAL static ra8_err_t viewer_reject_fmt(viewer_fmt_t fmt, const char* pa
     (void)fprintf(stderr,
                   "ra8_viewer: '%s' recognised but its reflow reader engine "
                   "(font + image loader) is not wired into the viewer yet "
-                  "(comics and RTA1 long strips render today)\n",
+                  "(comics and JOF long strips render today)\n",
                   path);
     return k_ra8_err_not_supported;
   }
@@ -281,8 +281,8 @@ RA8_INTERNAL static ra8_err_t viewer_dispatch_open(ra8_viewer_reader_t* r, viewe
       return viewer_open_comic(r, false);
     case k_vfmt_comic_wrap:
       return viewer_open_comic(r, true);
-    case k_vfmt_rta1:
-      return viewer_open_rta1(r);
+    case k_vfmt_jof:
+      return viewer_open_jof(r);
     default:
       return k_ra8_err_not_supported;
   }
@@ -290,7 +290,7 @@ RA8_INTERNAL static ra8_err_t viewer_dispatch_open(ra8_viewer_reader_t* r, viewe
 
 /**
  * @brief Probe and cache every tile's native size for the scroll layout.
- * @details RTA1 bands are sized arithmetically from the parsed atlas geometry;
+ * @details JOF bands are sized arithmetically from the parsed atlas geometry;
  *          comic pages must each be probed through the image decoder.
  * @param[in,out] r Reader with an open engine (non-NULL).
  * @return ra8_err_t; ::k_ra8_err_no_mem if the size arrays cannot be allocated.
@@ -309,8 +309,8 @@ RA8_INTERNAL static ra8_err_t viewer_compute_tiles(ra8_viewer_reader_t* r)
   if ((r->tile_wpx == nullptr) || (r->tile_hpx == nullptr)) {
     return k_ra8_err_no_mem;
   }
-  if (r->fmt == k_vfmt_rta1) {
-    viewer_size_rta1_tiles(r, n);
+  if (r->fmt == k_vfmt_jof) {
+    viewer_size_jof_tiles(r, n);
     return k_ra8_ok;
   }
   ra8_img_arena_t arena = {.base = r->arena_mem, .cap = (size_t)k_viewer_arena_bytes};
@@ -365,10 +365,10 @@ uint32_t ra8_viewer_page_count(const ra8_viewer_reader_t* r)
   if (r == nullptr) {
     return 0U;
   }
-  if (r->fmt == k_vfmt_rta1) {
+  if (r->fmt == k_vfmt_jof) {
     /* Paginate the tall strip into framebuffer-height windows (>= 1 page). */
-    const uint32_t h  = r->rta1.dctx.info.height;
-    const uint32_t vh = r->rta1.viewport_h;
+    const uint32_t h  = r->jof.dctx.info.height;
+    const uint32_t vh = r->jof.viewport_h;
     if ((vh == 0U) || (h == 0U)) {
       return 1U;
     }
@@ -385,8 +385,8 @@ ra8_err_t ra8_viewer_render_page(ra8_viewer_reader_t* r, uint32_t page)
   if (page >= ra8_viewer_page_count(r)) {
     return k_ra8_err_out_of_range;
   }
-  if (r->fmt == k_vfmt_rta1) {
-    return viewer_render_rta1(r, page);
+  if (r->fmt == k_vfmt_jof) {
+    return viewer_render_jof(r, page);
   }
   return viewer_render_comic(r, page);
 }
@@ -422,8 +422,8 @@ ra8_err_t ra8_viewer_render_tile565(ra8_viewer_reader_t* r,
   if (i >= r->tile_n) {
     return k_ra8_err_out_of_range;
   }
-  if (r->fmt == k_vfmt_rta1) {
-    return viewer_tile_rta1(r, i, w, h, out);
+  if (r->fmt == k_vfmt_jof) {
+    return viewer_tile_jof(r, i, w, h, out);
   }
   return viewer_tile_comic(r, i, w, h, out);
 }

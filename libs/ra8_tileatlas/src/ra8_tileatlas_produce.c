@@ -188,8 +188,8 @@ RA8_PRIV ra8_err_t ra8_ta_priv_prefix_pull(void* ctx, uint8_t* buf, size_t cap, 
  */
 
 /**
- * @brief Serialize + sink the 32-byte RTA1 header from the bound geometry.
- * @details Serializes every geometry field per the RTA1 layout table in ra8_tileatlas.h.
+ * @brief Serialize + sink the 32-byte JOF header from the bound geometry.
+ * @details Serializes every geometry field per the JOF layout table in ra8_tileatlas.h.
  * @param[in,out] st Producer state (`written` advances via the sink).
  * @return Result code.
  * @retval k_ra8_ok The header is the first 32 atlas bytes.
@@ -205,9 +205,9 @@ RA8_INTERNAL
 static ra8_err_t priv_emit_header(ra8_ta_prod_state_t* st)
 {
   uint8_t hdr[k_ra8_tileatlas_hdr_bytes] = {};
-  hdr[0]                                 = 'R';
-  hdr[1]                                 = 'T';
-  hdr[2]                                 = 'A';
+  hdr[0]                                 = 'J';
+  hdr[1]                                 = 'O';
+  hdr[2]                                 = 'F';
   hdr[3]                                 = '1';
   priv_wr_u16(&hdr[k_ra8_tileatlas_ofs_width], st->w);
   priv_wr_u16(&hdr[k_ra8_tileatlas_ofs_height], st->h);
@@ -224,7 +224,7 @@ static ra8_err_t priv_emit_header(ra8_ta_prod_state_t* st)
  * @details Fires once per transcode (from either decoder). Rejects, fail
  *          closed: dimensions above the caps, a tile grid above the format
  *          cap, and any carve the arena cannot fit. On success the 32-byte
- *          RTA1 header has been sunk.
+ *          JOF header has been sunk.
  * @param[in] ctx      The producer state.
  * @param[in] width    Source width, pixels.
  * @param[in] height   Source height, pixels.
@@ -508,7 +508,7 @@ static ra8_err_t priv_jpeg_geom(void*     ctx,
  * @retval other                       Propagated from the sink.
  * @pre All rows arrived and the last band was flushed.
  * @pre `st->idx` holds `tile_count` serialized entries.
- * @post On success the sink holds a complete RTA1 atlas.
+ * @post On success the sink holds a complete JOF atlas.
  * @post On error the partial atlas must be discarded.
  * @note Not thread-safe.
  * @since 0.1.0
@@ -530,9 +530,9 @@ static ra8_err_t priv_finish(ra8_ta_prod_state_t* st, ra8_tileatlas_info_t* out_
   priv_wr_u32(&ftr[k_ra8_tileatlas_ftr_tile_count], st->tile_count);
   priv_wr_u32(&ftr[k_ra8_tileatlas_ftr_total_size],
               st->written + (uint32_t)k_ra8_tileatlas_footer_bytes);
-  ftr[k_ra8_tileatlas_ftr_magic]      = 'R';
-  ftr[k_ra8_tileatlas_ftr_magic + 1U] = 'T';
-  ftr[k_ra8_tileatlas_ftr_magic + 2U] = 'A';
+  ftr[k_ra8_tileatlas_ftr_magic]      = 'J';
+  ftr[k_ra8_tileatlas_ftr_magic + 1U] = 'O';
+  ftr[k_ra8_tileatlas_ftr_magic + 2U] = 'F';
   ftr[k_ra8_tileatlas_ftr_magic + 3U] = 'E';
   err                                 = priv_sink(st, ftr, sizeof(ftr));
   if (err != k_ra8_ok) {

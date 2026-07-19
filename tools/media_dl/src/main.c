@@ -624,7 +624,7 @@ RA8_INTERNAL static void usage(const char* a0)
                 "usage:\n"
                 "  series: %s --config SITE.conf --series URL [--chapters N] "
                 "[--start K] [--out DIR] "
-                "[--format cbz|cbt|cbr|cbt.xz|cbt.gz|epub|rta1|rabook] "
+                "[--format cbz|cbt|cbr|cbt.xz|cbt.gz|epub|jof|rabook] "
                 "[--separate] [--seed S] [--timeout MS]\n"
                 "          N chapters combine into ONE <slug>-<lo>-<hi>.<ext> by "
                 "default; --separate keeps one archive per chapter.\n"
@@ -649,7 +649,7 @@ typedef struct {
   const char* max;      /**< --max.                                                  */
   const char* seed;     /**< --seed.                                                 */
   const char* timeout;  /**< --timeout.                                              */
-  const char* format;   /**< --format (cbz/cbt/cbr/cbt.xz/cbt.gz/epub/rta1/rabook).  */
+  const char* format;   /**< --format (cbz/cbt/cbr/cbt.xz/cbt.gz/epub/jof/rabook).   */
   const char* pack;     /**< --pack DIR: package an existing folder, no network.     */
   bool        separate; /**< --separate: one archive per chapter (default: combine). */
   bool        bad;      /**< An unrecognised argument was seen.                      */
@@ -720,7 +720,7 @@ RA8_INTERNAL static int run_pack(const char* dir, mdl_format_t format)
   if ((format == k_mdl_fmt_loose) || (format == k_mdl_fmt_invalid)) {
     (void)fprintf(stderr,
                   "media_dl: --pack needs a --format "
-                  "(cbz|cbt|cbt.gz|cbt.xz|cbr|epub|rta1|rabook)\n");
+                  "(cbz|cbt|cbt.gz|cbt.xz|cbr|epub|jof|rabook)\n");
     return 2;
   }
   char abs[PATH_MAX];
@@ -768,7 +768,7 @@ int main(int argc, char** argv)
   if (format == k_mdl_fmt_invalid) {
     (void)fprintf(stderr,
                   "media_dl: bad --format '%s' "
-                  "(loose|cbz|cbt|cbr|cbt.xz|cbt.gz|epub|rta1|rabook)\n",
+                  "(loose|cbz|cbt|cbr|cbt.xz|cbt.gz|epub|jof|rabook)\n",
                   a.format);
     return 2;
   }

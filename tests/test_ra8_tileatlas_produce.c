@@ -1,7 +1,7 @@
 /**
  * @file test_ra8_tileatlas_produce.c
  * @brief Host tests for the import-time transcode producer: JPEG/PNG ->
- *        RTA1, byte parity, bounded RAM high-water, hostile sources (#231).
+ *        JOF, byte parity, bounded RAM high-water, hostile sources (#231).
  *
  * @details
  * Sources are synthesized in-test from deterministic pixel patterns:

@@ -32,9 +32,9 @@
 /** @brief Every format the tool knows, in CLI listing order. */
 static const ra8_fmt_desc_t s_formats[] = {
   {
-    .name    = "rta1",
-    .ext     = ".rta1",
-    .summary = "band-tile atlas (display-native, O(1) random access per tile)",
+    .name    = "jof",
+    .ext     = ".jof",
+    .summary = "band-tile atlas (JOF): display-native, O(1) random access per tile",
     .sniff   = ra8_fmt_atlas_sniff,
     .convert = ra8_fmt_atlas_convert,
     .inspect = ra8_fmt_atlas_inspect,

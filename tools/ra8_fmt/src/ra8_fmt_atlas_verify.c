@@ -1,6 +1,6 @@
 /**
  * @file ra8_fmt_atlas_verify.c
- * @brief RTA1 round-trip verification: banded encode versus untiled reference.
+ * @brief JOF round-trip verification: banded encode versus untiled reference.
  *
  * @details
  * Encodes one source image twice through the firmware producer -- once with the

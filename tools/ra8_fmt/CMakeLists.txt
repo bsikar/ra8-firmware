@@ -7,9 +7,9 @@
 # structure, or round-trip a source to prove the produced bytes are correct.
 #
 #   cmake -B build -S . && cmake --build build -j
-#   ./build/ra8_fmt convert --format rta1 --in page.jpg --out page.rta1
-#   ./build/ra8_fmt inspect page.rta1 --verbose
-#   ./build/ra8_fmt verify  --format rta1 --in page.jpg --out recon.ppm
+#   ./build/ra8_fmt convert --format jof --in page.jpg --out page.jof
+#   ./build/ra8_fmt inspect page.jof --verbose
+#   ./build/ra8_fmt verify  --format jof --in page.jpg --out recon.ppm
 #
 # It links the firmware's own producer and reader (not a host reimplementation),
 # so a defect reproduced here is a defect on silicon and a clean result here

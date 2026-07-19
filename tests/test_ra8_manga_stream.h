@@ -1,6 +1,6 @@
 /**
  * @file test_ra8_manga_stream.h
- * @brief #232 manga-scale streaming harness: a synthetic volume-of-RTA1-atlases
+ * @brief #232 manga-scale streaming harness: a synthetic volume-of-JOF-atlases
  *        driven through the real #231 tile-cache + #147 page-cache stack.
  *
  * @details
@@ -16,7 +16,7 @@
  *   ra8_tile_cache (LRU, decoded bands)          <- Layer 3b (#231)
  *     |  miss -> decode
  *     v
- *   ra8_tileatlas_read_tile (real RTA1 reader)   <- the #231/#289 band format
+ *   ra8_tileatlas_read_tile (real JOF reader)   <- the #231/#289 band format
  *     |  pread
  *     v
  *   ra8_vmem_stream_read (byte stream)           <- Layer 2 helper (#151)
@@ -28,10 +28,10 @@
  *   ra8_vsource (paged object)                   <- Layer 1 (#147)
  *     |
  *     v
- *   synthetic volume-of-RTA1-atlases (content-generated, never materialised)
+ *   synthetic volume-of-JOF-atlases (content-generated, never materialised)
  * ```
  *
- * The volume is a concatenation of byte-identical RTA1 atlases, each a legal
+ * The volume is a concatenation of byte-identical JOF atlases, each a legal
  * 768 x 32768 longstrip strip: `tile_w == width` (one tile column), so a tile row
  * IS a scroll band (#289) with O(1) seek to any scroll-y. Its bytes -- header,
  * every band's pixels, the tile index, the footer -- are produced on the fly by
@@ -67,18 +67,18 @@
 
 /**
  * @enum t_mg_geom_t
- * @brief Synthetic RTA1 atlas geometry: one legal longstrip strip (#289 bands).
+ * @brief Synthetic JOF atlas geometry: one legal longstrip strip (#289 bands).
  *
  * @details A single tile column (`tile_w == width`) of `tile_h`-tall bands at
  *          the maximum legal 32768-px height, gray8, raw codec. The derived
- *          byte offsets are cross-checked by ::static_assert against the RTA1
+ *          byte offsets are cross-checked by ::static_assert against the JOF
  *          layout so they cannot silently drift from the format.
  *
  * @since 0.1.0
  */
 typedef enum : uint32_t {
   k_mg_img_w      = 768U,      /**< Longstrip strip width, pixels (== tile_w). */
-  k_mg_img_h      = 32768U,    /**< Strip height, pixels (RTA1 max_dim).       */
+  k_mg_img_h      = 32768U,    /**< Strip height, pixels (JOF max_dim).        */
   k_mg_tile_w     = 768U,      /**< Tile width == image width -> one column.   */
   k_mg_tile_h     = 64U,       /**< Band height, pixels.                       */
   k_mg_bpp        = 1U,        /**< Bytes per pixel (gray8).                   */
@@ -89,7 +89,7 @@ typedef enum : uint32_t {
   k_mg_atlas_size = 25169968U, /**< Whole atlas bytes (index_off+idx+footer).  */
 } t_mg_geom_t;
 
-/* Cross-check the derived offsets against the real RTA1 layout so a geometry
+/* Cross-check the derived offsets against the real JOF layout so a geometry
  * edit cannot desynchronise the synthetic bytes from the reader's expectations. */
 static_assert((uint32_t)k_mg_payload ==
                 (uint32_t)k_mg_tile_w * (uint32_t)k_mg_tile_h * (uint32_t)k_mg_bpp,
@@ -106,9 +106,9 @@ static_assert((uint32_t)k_mg_atlas_size == (uint32_t)k_mg_index_off + (uint32_t)
                                              (uint32_t)k_ra8_tileatlas_footer_bytes,
               "atlas size must be index_off + index + footer");
 static_assert((uint32_t)k_mg_img_h <= (uint32_t)k_ra8_tileatlas_max_dim,
-              "strip height must be within the RTA1 dimension cap");
+              "strip height must be within the JOF dimension cap");
 static_assert((uint32_t)k_mg_bands <= (uint32_t)k_ra8_tileatlas_max_tiles,
-              "band count must be within the RTA1 tile cap");
+              "band count must be within the JOF tile cap");
 
 /**
  * @enum t_mg_target_t
@@ -184,10 +184,10 @@ typedef enum : uint32_t {
   k_mg_min_oversub = 100U,  /**< Min distinct-band-to-cell oversubscription. */
 } t_mg_probe_t;
 
-/** @brief RTA1 header magic ("RTA1"). */
-static const uint8_t s_mg_magic_hdr[k_ra8_tileatlas_magic_len] = {'R', 'T', 'A', '1'};
-/** @brief RTA1 footer magic ("RTAE"). */
-static const uint8_t s_mg_magic_ftr[k_ra8_tileatlas_magic_len] = {'R', 'T', 'A', 'E'};
+/** @brief JOF header magic ("JOF1"). */
+static const uint8_t s_mg_magic_hdr[k_ra8_tileatlas_magic_len] = {'J', 'O', 'F', '1'};
+/** @brief JOF footer magic ("JOFE"). */
+static const uint8_t s_mg_magic_ftr[k_ra8_tileatlas_magic_len] = {'J', 'O', 'F', 'E'};
 
 /* --- Fixed-budget cache storage (the asserted RAM high-water). ------------- */
 
@@ -213,7 +213,7 @@ static int32_t s_tc_buckets[(size_t)k_mg_tc_buckets];
  * @struct t_mg_atlas_pread_t
  * @brief Per-atlas positioned-read context: a base offset over the volume stream.
  *
- * @details Binds one atlas's byte range to the RTA1 reader's atlas-local pread
+ * @details Binds one atlas's byte range to the JOF reader's atlas-local pread
  *          contract by translating atlas-local offsets to absolute volume
  *          offsets and serving them through the shared page-cache byte stream.
  *
@@ -303,7 +303,7 @@ static uint8_t t_mg_le_byte(uint32_t v, uint32_t j)
 }
 
 /**
- * @brief Synthetic RTA1 header byte at atlas-local offset @p off (0..31).
+ * @brief Synthetic JOF header byte at atlas-local offset @p off (0..31).
  *
  * @details The header is atlas-independent (uniform geometry): magic, width,
  *          height, tile_w, tile_h, bpp, codec, zeroed reserved runs, and the
@@ -317,7 +317,7 @@ static uint8_t t_mg_le_byte(uint32_t v, uint32_t j)
  * @pre `off < k_ra8_tileatlas_hdr_bytes`.
  * @pre The geometry enums match the parsed atlas.
  * @post No state is modified.
- * @post The bytes reproduce a valid RTA1 header for this geometry.
+ * @post The bytes reproduce a valid JOF header for this geometry.
  *
  * @note Pure; thread-safe.
  * @since 0.1.0
@@ -353,7 +353,7 @@ static uint8_t t_mg_hdr_byte(uint32_t off)
 }
 
 /**
- * @brief Synthetic RTA1 index-entry byte for tile @p n, entry offset @p j (0..7).
+ * @brief Synthetic JOF index-entry byte for tile @p n, entry offset @p j (0..7).
  *
  * @details Entry `n` holds the tile stream offset (32 + n*payload) then the
  *          length (payload), both little-endian, matching the raw-codec layout.
@@ -382,10 +382,10 @@ static uint8_t t_mg_idx_byte(uint32_t n, uint32_t j)
 }
 
 /**
- * @brief Synthetic RTA1 footer byte at footer offset @p off (0..15).
+ * @brief Synthetic JOF footer byte at footer offset @p off (0..15).
  *
  * @details index_off, tile count, total atlas size (all little-endian), then the
- *          "RTAE" magic -- atlas-independent for uniform geometry.
+ *          "JOFE" magic -- atlas-independent for uniform geometry.
  *
  * @param[in] off Byte offset within the 16-byte footer.
  *
@@ -395,7 +395,7 @@ static uint8_t t_mg_idx_byte(uint32_t n, uint32_t j)
  * @pre `off < k_ra8_tileatlas_footer_bytes`.
  * @pre The geometry enums match the parsed atlas.
  * @post No state is modified.
- * @post The footer closes a valid RTA1 atlas of this geometry.
+ * @post The footer closes a valid JOF atlas of this geometry.
  *
  * @note Pure; thread-safe.
  * @since 0.1.0
@@ -429,7 +429,7 @@ static uint8_t t_mg_ftr_byte(uint32_t off)
  * @pre `abs` is within the modelled volume `[0, atlas_count * atlas_size)`.
  * @pre The geometry enums are consistent (guarded by the static_asserts above).
  * @post No state is modified.
- * @post The byte reproduces a valid RTA1 atlas stream at @p abs.
+ * @post The byte reproduces a valid JOF atlas stream at @p abs.
  *
  * @note Pure; thread-safe.
  * @since 0.1.0
@@ -485,7 +485,7 @@ static ra8_err_t t_mg_vol_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_
 }
 
 /**
- * @brief RTA1 pread seam over one atlas: base-translate onto the volume stream.
+ * @brief JOF pread seam over one atlas: base-translate onto the volume stream.
  *
  * @param[in]  ctx    A ::t_mg_atlas_pread_t (stream + atlas base).
  * @param[in]  offset Atlas-local byte offset.
@@ -512,7 +512,7 @@ static ra8_err_t t_mg_atlas_pread(void* ctx, uint64_t offset, uint8_t* buf, size
 }
 
 /**
- * @brief Tile-cache decode-on-miss: decode one band through the real RTA1 reader.
+ * @brief Tile-cache decode-on-miss: decode one band through the real JOF reader.
  *
  * @details Derives the atlas base from the tile key's `image_id` (page index)
  *          and reads the band (tile row) with ::ra8_tileatlas_read_tile over the
@@ -527,7 +527,7 @@ static ra8_err_t t_mg_atlas_pread(void* ctx, uint64_t offset, uint8_t* buf, size
  *
  * @return ra8_err_t Error code.
  * @retval k_ra8_ok    Band decoded into @p cell.
- * @retval k_ra8_err_* Propagated from the RTA1 reader / stream.
+ * @retval k_ra8_err_* Propagated from the JOF reader / stream.
  *
  * @pre `ctx` is a bound ::t_mg_decode_ctx_t; `cell` holds `cell_bytes`.
  * @pre `key->tile_y < k_mg_bands`.

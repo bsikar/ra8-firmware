@@ -15,7 +15,7 @@
  *      (``ra8_display_pal`` with ``k_display_backend_lcd_ra8_glcdc``), then
  *      bind ``ra8_gfx`` to the 1024x600 RGB565 framebuffer in SDRAM.
  *   2. Transcode the baked 1536x2048 grayscale PNG page
- *      (``mg_page_fixture.h``) into an RTA1 tile atlas with
+ *      (``mg_page_fixture.h``) into a JOF tile atlas with
  *      ``ra8_tileatlas_produce`` -- one bounded band at a time, the decoded
  *      page never resident whole -- into an SDRAM memstore.
  *   3. Serve the atlas through a deliberately small (4-cell) ``ra8_tile_cache``
@@ -123,7 +123,7 @@ typedef enum : uint16_t {
 
 /** @brief Producer work arena (SDRAM: the transcode working set). */
 [[gnu::section(".sdram_data")]] static uint8_t s_work[k_mg_work_bytes];
-/** @brief Atlas memstore backing (SDRAM: the produced RTA1 atlas). */
+/** @brief Atlas memstore backing (SDRAM: the produced JOF atlas). */
 [[gnu::section(".sdram_data")]] static uint8_t s_store_buf[k_mg_store_bytes];
 /** @brief Tile-cache cell storage (four gray8 256x256 tiles, SDRAM). */
 [[gnu::section(
@@ -329,7 +329,7 @@ static ra8_err_t mg_png_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
   return k_ra8_ok;
 }
 
-/** @brief Transcode the baked page into an RTA1 atlas + parse its geometry. */
+/** @brief Transcode the baked page into a JOF atlas + parse its geometry. */
 static bool mg_build_atlas(void)
 {
   s_png_cursor = (mg_png_cursor_t){.data = k_mg_png, .len = k_mg_png_len, .pos = 0U};

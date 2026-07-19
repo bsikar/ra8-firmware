@@ -6,7 +6,7 @@
  * @details
  * Runs the app's exact presentation pipeline against the app's exact fixture:
  * transcode the baked 1536x2048 grayscale PNG through `ra8_tileatlas_produce`
- * into an RTA1 atlas, page it through a small `ra8_tile_cache`, and render the
+ * into a JOF atlas, page it through a small `ra8_tile_cache`, and render the
  * initial 1:1 top-left viewport with the shared `mg_reader` into a 1024x600
  * RGB565 framebuffer. Every stage is a deterministic integer pipeline, so the
  * framebuffer FNV asserted here IS the `hil.conf` banner crc: this test is the

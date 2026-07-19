@@ -15,7 +15,7 @@
  * book -- and are fuzzed by `tests/fuzz/fuzz_ra8_webp.c`.
  *
  * @par Integration (#290 normalize-on-import):
- * The RTA1 tile producer consumes this facade
+ * The JOF tile producer consumes this facade
  * (`ra8_tileatlas_produce()` -> `priv_webp_transcode`): a WebP manifest image
  * is decoded whole-frame here and banded into the one normalized band-tile
  * format, so render time touches a single codec regardless of source. The

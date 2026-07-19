@@ -22,12 +22,12 @@ set(MDL_MINIZ ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz/miniz.c)
 set_source_files_properties(${MDL_MINIZ} PROPERTIES
   COMPILE_OPTIONS "-w;-fno-strict-aliasing")
 
-# The RTA1 exporter reuses the firmware's own tile-atlas producer + streaming
-# JPEG decoder host-side (RA8_SIMULATOR_MODE), so a .rta1 the CLI writes is
+# The JOF exporter reuses the firmware's own tile-atlas producer + streaming
+# JPEG decoder host-side (RA8_SIMULATOR_MODE), so a .jof the CLI writes is
 # byte-identical to one the RA8 produces. Compiled quietly: the repo lints these
 # via its own build, not this tool's scope.
 set(FW ${CMAKE_CURRENT_SOURCE_DIR}/../../libs)
-set(MDL_RTA1_SRC
+set(MDL_JOF_SRC
   ${FW}/ra8_tileatlas/src/ra8_tileatlas.c
   ${FW}/ra8_tileatlas/src/ra8_tileatlas_produce.c
   ${FW}/ra8_tileatlas/src/ra8_tileatlas_png.c
@@ -40,9 +40,9 @@ set(MDL_RTA1_SRC
   ${FW}/ra8_core/src/ra8_error_handler.c
   ${FW}/ra8_core/src/ra8_decomp_limits.c
   ${CMAKE_CURRENT_SOURCE_DIR}/webp_stub.c)
-set_source_files_properties(${MDL_RTA1_SRC} PROPERTIES
+set_source_files_properties(${MDL_JOF_SRC} PROPERTIES
   COMPILE_OPTIONS "-w;-fno-strict-aliasing")
-set(MDL_RTA1_INC
+set(MDL_JOF_INC
   ${FW}/ra8_tileatlas/inc ${FW}/ra8_tileatlas/src
   ${FW}/ra8_hal/inc ${FW}/ra8_hal/src
   ${FW}/ra8_io/inc)
@@ -57,7 +57,7 @@ add_executable(media_dl
   src/mdl_politeness.c
   src/mdl_config.c
   src/mdl_export.c
-  ${MDL_RTA1_SRC}
+  ${MDL_JOF_SRC}
   ${MDL_MINIZ})
 
 target_include_directories(media_dl PRIVATE
@@ -67,7 +67,7 @@ target_include_directories(media_dl PRIVATE
   # host-safe path.
   ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
   ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
-  ${MDL_RTA1_INC})
+  ${MDL_JOF_INC})
 
 target_compile_definitions(media_dl PRIVATE
   RA8_SIMULATOR_MODE
@@ -84,14 +84,14 @@ add_executable(test_media_dl
   src/mdl_extract.c
   src/mdl_config.c
   src/mdl_export.c
-  ${MDL_RTA1_SRC}
+  ${MDL_JOF_SRC}
   ${MDL_MINIZ})
 target_include_directories(test_media_dl PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/inc
   ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
   ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
   ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
-  ${MDL_RTA1_INC})
+  ${MDL_JOF_INC})
 target_compile_definitions(test_media_dl PRIVATE
   RA8_SIMULATOR_MODE
   MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}")

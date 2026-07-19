@@ -6,9 +6,9 @@
  * Three verbs over the ::ra8_fmt_desc_t registry:
  *
  * ```
- *   ra8_fmt convert --format rta1 --in page.jpg --out page.rta1
- *   ra8_fmt inspect page.rta1 [--verbose]
- *   ra8_fmt verify  --format rta1 --in page.jpg [--out recon.ppm]
+ *   ra8_fmt convert --format jof --in page.jpg --out page.jof
+ *   ra8_fmt inspect page.jof [--verbose]
+ *   ra8_fmt verify  --format jof --in page.jpg [--out recon.ppm]
  * ```
  *
  * `inspect` auto-detects the format from the container magic, so `--format` is
