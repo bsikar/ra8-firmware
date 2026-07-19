@@ -211,10 +211,25 @@ def classify_body(body: str, params: str) -> str | None:
             returns.append(m.group(1))
             continue
         return None  # any other statement means real work
-    if len(returns) != 1 or not discards:
+    if len(returns) != 1:
         return None
-    if not (set(discards) & param_names(params)):
-        return None
+    declared = param_names(params)
+    if declared:
+        # Takes parameters: at least one must actually be discarded. That is
+        # what separates "ignores its inputs" from a handler that legitimately
+        # returns module state.
+        if not (set(discards) & declared):
+            return None
+    else:
+        # Takes NO parameters, so "discards every parameter" is vacuously true
+        # and the discard test above cannot speak. Only a canned-error return
+        # qualifies here: `ra8_widget_calibrate(void) { return
+        # k_ra8_err_not_supported; }` is every bit the stub its one-argument
+        # form is, but a bare `return s_state;` getter is module state and must
+        # stay silent. Requiring an empty discard list keeps a body that pokes
+        # at file-scope names out of the "pure canned return" shape.
+        if discards or returns[0] not in CANNED_ERRORS:
+            return None
     return returns[0]
 
 
@@ -443,6 +458,28 @@ SELFTEST_CASES: list[tuple[str, str, bool, str]] = [
         """,
         False,
         "mmio.c",
+    ),
+    (
+        "zero-parameter canned return is still a stub",
+        """
+        ra8_err_t ra8_widget_calibrate(void)
+        {
+          return k_ra8_err_not_supported;
+        }
+        """,
+        True,
+        "zero_param.c",
+    ),
+    (
+        "zero-parameter getter returning module state",
+        """
+        uint32_t ra8_time_ms(void)
+        {
+          return s_tick_ms;
+        }
+        """,
+        False,
+        "getter.c",
     ),
     (
         "fail-closed half of the placeholder-crypto guard",
