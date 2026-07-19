@@ -45,19 +45,26 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ble_host_cap_len_5                      = 5U,
-  k_ble_host_cccd_handle_ff                 = 0xFFU,
-  k_ble_host_l2cap_frame_ab                 = 0xABU,
-  k_ble_host_make_uuid_30                   = 0x30U,
-  k_ble_host_make_uuid_40                   = 0x40U,
-  k_ble_host_make_uuid_50                   = 0x50U,
-  k_ble_host_make_uuid_60                   = 0x60U,
-  k_ble_host_make_uuid_f0                   = 0xF0U,
-  k_ble_host_ra8_ble_host_test_inject_acl_9 = 9U,
-  k_ble_host_val_10                         = 10,
-  k_ble_host_val_5                          = 5,
-  k_ble_host_val_7                          = 7,
-  k_ble_host_val_80                         = 0x80U,
+  k_ble_cap_tail_bytes    = 5U,    /**< Bytes of the LE_Set_Advertising_Enable command at
+                                        the tail of the HCI capture:
+                                        [0x01][0x0A][0x20][0x01][0x01].              */
+  k_sub_l2cap_payload_len = 5U,    /**< L2CAP length field: ATT opcode + handle + a
+                                        2-byte value.                                */
+  k_byte_mask             = 0xFFU, /**< Low-byte mask used by the put16 helper. */
+  k_att_write_value =
+    0xABU, /**< A recognizable byte written through the ATT write path and read back from the characteristic. */
+  k_uuid_notify_svc = 0x30U, /**< Service of the notify fixture. */
+  k_uuid_notify_chr = 0x40U, /**< Its characteristic. */
+  k_uuid_write_svc  = 0x50U, /**< Service of the ATT-write fixture. */
+  k_uuid_write_chr  = 0x60U, /**< Its characteristic. */
+  k_uuid_single_svc = 0xF0U, /**< The lone service of the single-registration fixture. */
+  k_sub_frame_len =
+    9U, /**< Bytes actually injected: the 4-byte L2CAP header plus its 5-byte payload. */
+  k_sub_frame_cap     = 10, /**< Capacity of the frame staging buffer. */
+  k_att_off_handle_lo = 5,  /**< Low byte of the ATT handle within the staged frame. */
+  k_att_off_value_lo  = 7,  /**< First byte of the ATT value that follows it. */
+  k_uuid_fill_base =
+    0x80U, /**< Base marker of the table-filling loop; `+ i` gives each registration its own UUID so the table fills with distinct entries. */
 } ble_host_uint8_const_t;
 
 /* Test hooks from libs/ra8_hal/src/ra8_ble.c. */
@@ -229,7 +236,7 @@ static void test_advertise_start_sends_enable(void)
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra8_ble_test_tx_capture(&cap_len);
   TEST_ASSERT(cap_len >= 5U);
-  const uint8_t* tail = cap + (cap_len - k_ble_host_cap_len_5);
+  const uint8_t* tail = cap + (cap_len - k_ble_cap_tail_bytes);
   TEST_ASSERT_EQ(k_test_pkt_cmd_byte, tail[0]);
   TEST_ASSERT_EQ(0x0AU, tail[1]);
   TEST_ASSERT_EQ(0x20U, tail[2]);
@@ -325,8 +332,8 @@ static uint16_t setup_notify_char(uint8_t* buf)
   prep_init(k_ra8_ble_host_role_peripheral);
   uint8_t svc_uuid[16];
   uint8_t chr_uuid[16];
-  make_uuid(svc_uuid, k_ble_host_make_uuid_30);
-  make_uuid(chr_uuid, k_ble_host_make_uuid_40);
+  make_uuid(svc_uuid, k_uuid_notify_svc);
+  make_uuid(chr_uuid, k_uuid_notify_chr);
 
   uint16_t svc = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(svc_uuid, &svc));
@@ -370,21 +377,19 @@ static void test_set_value_and_notify_paths(void)
    * (Notify enable). Find CCCD handle: chr is the value handle, decl
    * handle is chr-1, value is chr, cccd is chr+1. */
   const uint16_t cccd_handle = (uint16_t)(chr + 1U);
-  uint8_t        l2cap_frame[k_ble_host_val_10];
+  uint8_t        l2cap_frame[k_sub_frame_cap];
   /* L2CAP header: payload_len = 5 (write req opcode + handle + 2 byte value). */
-  l2cap_frame[0]                = k_ble_host_cap_len_5;
-  l2cap_frame[1]                = 0U;
-  l2cap_frame[2]                = 0x04U;
-  l2cap_frame[3]                = 0x00U;
-  l2cap_frame[4]                = (uint8_t)k_test_att_op_write_req;
-  l2cap_frame[k_ble_host_val_5] = (uint8_t)(cccd_handle & k_ble_host_cccd_handle_ff);
-  l2cap_frame[6]                = (uint8_t)((cccd_handle >> 8U) & k_ble_host_cccd_handle_ff);
-  l2cap_frame[k_ble_host_val_7] = 0x01U;
-  l2cap_frame[8]                = 0x00U;
+  l2cap_frame[0]                   = k_sub_l2cap_payload_len;
+  l2cap_frame[1]                   = 0U;
+  l2cap_frame[2]                   = 0x04U;
+  l2cap_frame[3]                   = 0x00U;
+  l2cap_frame[4]                   = (uint8_t)k_test_att_op_write_req;
+  l2cap_frame[k_att_off_handle_lo] = (uint8_t)(cccd_handle & k_byte_mask);
+  l2cap_frame[6]                   = (uint8_t)((cccd_handle >> 8U) & k_byte_mask);
+  l2cap_frame[k_att_off_value_lo]  = 0x01U;
+  l2cap_frame[8]                   = 0x00U;
 
-  ra8_ble_host_test_inject_acl((uint16_t)k_test_conn_handle,
-                               l2cap_frame,
-                               k_ble_host_ra8_ble_host_test_inject_acl_9);
+  ra8_ble_host_test_inject_acl((uint16_t)k_test_conn_handle, l2cap_frame, k_sub_frame_len);
   TEST_ASSERT_EQ(k_ra8_ble_host_event_subscribe, s_evt_last_kind);
 
   /* Now notify -- should send an ACL packet (controller TX captured). */
@@ -409,8 +414,8 @@ static void test_att_write_via_acl(void)
   prep_init(k_ra8_ble_host_role_peripheral);
   uint8_t svc_uuid[16];
   uint8_t chr_uuid[16];
-  make_uuid(svc_uuid, k_ble_host_make_uuid_50);
-  make_uuid(chr_uuid, k_ble_host_make_uuid_60);
+  make_uuid(svc_uuid, k_uuid_write_svc);
+  make_uuid(chr_uuid, k_uuid_write_chr);
 
   uint16_t svc = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(svc_uuid, &svc));
@@ -427,15 +432,15 @@ static void test_att_write_via_acl(void)
   ra8_ble_host_test_inject_connect((uint16_t)k_test_conn_handle);
 
   /* Inject ATT Write_Request on chr with payload 0xAB. */
-  uint8_t l2cap_frame[k_ble_host_val_10];
-  l2cap_frame[0]                = 4U;
-  l2cap_frame[1]                = 0U;
-  l2cap_frame[2]                = 0x04U;
-  l2cap_frame[3]                = 0x00U;
-  l2cap_frame[4]                = (uint8_t)k_test_att_op_write_req;
-  l2cap_frame[k_ble_host_val_5] = (uint8_t)(chr & k_ble_host_cccd_handle_ff);
-  l2cap_frame[6]                = (uint8_t)((chr >> 8U) & k_ble_host_cccd_handle_ff);
-  l2cap_frame[k_ble_host_val_7] = k_ble_host_l2cap_frame_ab;
+  uint8_t l2cap_frame[k_sub_frame_cap];
+  l2cap_frame[0]                   = 4U;
+  l2cap_frame[1]                   = 0U;
+  l2cap_frame[2]                   = 0x04U;
+  l2cap_frame[3]                   = 0x00U;
+  l2cap_frame[4]                   = (uint8_t)k_test_att_op_write_req;
+  l2cap_frame[k_att_off_handle_lo] = (uint8_t)(chr & k_byte_mask);
+  l2cap_frame[6]                   = (uint8_t)((chr >> 8U) & k_byte_mask);
+  l2cap_frame[k_att_off_value_lo]  = k_att_write_value;
   ra8_ble_host_test_inject_acl((uint16_t)k_test_conn_handle, l2cap_frame, 8U);
 
   TEST_ASSERT_EQ(k_ra8_ble_host_event_write, s_evt_last_kind);
@@ -457,11 +462,11 @@ static void test_max_services_exhaustion(void)
   uint8_t  uuid[16];
   uint16_t h = 0U;
   for (uint8_t i = 0U; i < (uint8_t)k_ra8_ble_host_max_services; i++) {
-    make_uuid(uuid, (uint8_t)(k_ble_host_val_80 + i));
+    make_uuid(uuid, (uint8_t)(k_uuid_fill_base + i));
     TEST_ASSERT_EQ(k_ra8_ok, ra8_ble_host_gatt_register_service(uuid, &h));
   }
   /* One more should fail with no_mem. */
-  make_uuid(uuid, k_ble_host_make_uuid_f0);
+  make_uuid(uuid, k_uuid_single_svc);
   TEST_ASSERT_EQ(k_ra8_err_no_mem, ra8_ble_host_gatt_register_service(uuid, &h));
   TEST_END("ble_host gatt service table exhaustion");
 }
