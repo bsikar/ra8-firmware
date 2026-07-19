@@ -35,33 +35,29 @@
 #include "unity_minimal.h"
 
 /**
- * @enum rsip_edge_cases_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_edge_len_t
+ * @brief Buffer lengths chosen to sit just off a block or digest boundary.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The driver's length guards are the subject here, so each capacity is one
+ * short of, or one past, a natural boundary: 15 is one below an AES block, 17
+ * one above, 132 one past a 4096-bit RSA signature.
  */
-typedef enum : uint8_t {
-  k_rsip_edge_cases_val_132 = 132,
-  k_rsip_edge_cases_val_15  = 15,
-  k_rsip_edge_cases_val_17  = 17,
-  k_rsip_edge_cases_val_64  = 64,
-} rsip_edge_cases_uint8_const_t;
+typedef enum : uint16_t {
+  k_t_ct_under_block = 15U,  /**< One byte short of an AES block.             */
+  k_t_out_over_block = 17U,  /**< One byte past an AES block.                 */
+  k_t_out_block_cap  = 64U,  /**< A full SHA-512 digest / four AES blocks.    */
+  k_t_sig_over_cap   = 132U, /**< Past the largest signature the driver emits. */
+} t_edge_len_t;
 
 /**
- * @enum rsip_edge_cases_uint32_const_t
- * @brief Named uint32_t constants used by this file.
- *
- * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * @enum t_edge_fill_t
+ * @brief Fill pattern for the fixture header body.
  */
 typedef enum : uint32_t {
-  k_rsip_edge_cases_body_a5a50000 = 0xA5A50000UL,
-} rsip_edge_cases_uint32_const_t;
+  k_t_body_fill = 0xA5A50000UL, /**< Alternating high half, ORed with the word
+                                     index so each word is unique.             */
+} t_edge_fill_t;
 
 typedef enum : uint32_t {
   k_rsip_edge_trng_chunk = 64U,   /**< Rsip edge trng chunk. */
@@ -91,7 +87,7 @@ static ra8_rsip_key_handle_t make_handle(ra8_rsip_oem_cmd_t alg, uint32_t words)
 {
   ra8_rsip_key_handle_t h = {.alg = (uint32_t)alg, .body_words = words};
   for (uint32_t i = 0U; i < words; ++i) {
-    h.body[i] = k_rsip_edge_cases_body_a5a50000 | i;
+    h.body[i] = k_t_body_fill | i;
   }
   return h;
 }
@@ -174,7 +170,7 @@ static void test_aes_non_block_multiple_rejected(void)
   TEST_ASSERT_EQ(k_ra8_ok, ra8_rsip_aes128_install_plain(key, &h));
 
   const uint8_t pt[15]                       = {};
-  uint8_t       ct[k_rsip_edge_cases_val_15] = {};
+  uint8_t       ct[k_t_ct_under_block] = {};
   /* ECB with len = 15 (non-multiple of 16). */
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_rsip_aes_cipher(&h,
@@ -577,7 +573,7 @@ static void test_aes_public_error_paths(void)
     make_handle(k_ra8_rsip_oem_cmd_chacha20, (uint32_t)k_ra8_rsip_handle_words_chacha20);
   const uint8_t iv[16]                        = {};
   const uint8_t in[17]                        = {};
-  uint8_t       out[k_rsip_edge_cases_val_17] = {};
+  uint8_t       out[k_t_out_over_block] = {};
   uint8_t       tag[16]                       = {};
 
   aes_err_cipher(&aes192, &aes256, &bad, iv, in, out);
@@ -734,7 +730,7 @@ static void test_chacha_poly_hash_hmac_error_paths(void)
     make_handle(k_ra8_rsip_oem_cmd_aes128, (uint32_t)k_ra8_rsip_handle_words_aes128);
   const uint8_t nonce[12]                     = {};
   const uint8_t msg[5]                        = {'h', 'e', 'l', 'l', 'o'};
-  uint8_t       out[k_rsip_edge_cases_val_64] = {};
+  uint8_t       out[k_t_out_block_cap] = {};
   uint8_t       tag[16]                       = {};
   const uint8_t otk[32]                       = {};
 
@@ -757,7 +753,7 @@ static void test_hmac_public_variants(void)
   prep_running();
 
   const uint8_t         msg[4]                        = {'t', 'e', 's', 't'};
-  uint8_t               mac[k_rsip_edge_cases_val_64] = {};
+  uint8_t               mac[k_t_out_block_cap] = {};
   ra8_rsip_key_handle_t h224 =
     make_handle(k_ra8_rsip_oem_cmd_hmac_sha224, (uint32_t)k_ra8_rsip_handle_words_hmac_sha224);
   ra8_rsip_key_handle_t h384 =
@@ -960,7 +956,7 @@ static void test_asym_and_kdf_error_paths(void)
   ra8_rsip_key_handle_t ikm =
     make_handle(k_ra8_rsip_oem_cmd_hmac_sha256, (uint32_t)k_ra8_rsip_handle_words_hmac_sha256);
   const uint8_t         digest[33]                     = {};
-  uint8_t               sig[k_rsip_edge_cases_val_132] = {};
+  uint8_t               sig[k_t_sig_over_cap] = {};
   const uint8_t         point[66]                      = {};
   uint8_t               blob[k_rsip_edge_blob_bytes]   = {};
   const uint8_t         iv[16]                         = {};

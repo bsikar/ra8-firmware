@@ -37,21 +37,23 @@
 #include "unity_minimal.h"
 
 /**
- * @enum touch_uint8_const_t
- * @brief Named uint8_t constants used by this file.
+ * @enum t_touch_t
+ * @brief Point-array capacity, out-parameter seeds and the controller address.
  *
  * @details
- * Every literal this translation unit needs, named so the
- * value's role is visible at the point of use (CLAUDE.md
- * "No Magic Numbers").
+ * The `k_t_got_*` values are pre-set into the reported-point count before each
+ * call: a driver that returns early without writing the count leaves the seed
+ * behind, and each arm uses a different one so a stale value cannot be
+ * mistaken for a fresh write.
  */
 typedef enum : uint8_t {
-  k_touch_got_7        = 7U,
-  k_touch_got_9        = 9U,
-  k_touch_got_99       = 99U,
-  k_touch_target_7b_42 = 0x42U,
-  k_touch_val_5        = 5U,
-} touch_uint8_const_t;
+  k_t_point_cap    = 5U,    /**< Points the caller's array can hold.         */
+  k_t_got_seed_a   = 7U,    /**< Count seed for the first pair of arms.      */
+  k_t_got_seed_b   = 9U,    /**< Count seed for the second pair.             */
+  k_t_got_seed_max = 99U,   /**< Seed for the guard arms; also a max_points
+                                 setting past what the driver supports.       */
+  k_t_i2c_addr_7b  = 0x42U, /**< 7-bit I2C address of the touch controller.  */
+} t_touch_t;
 
 /**
  * @enum ra8_touch_test_const_t
@@ -392,7 +394,7 @@ static void test_read_null_args(void)
   prep();
   prime_iic_b();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_open(&s_cfg_default));
-  ra8_touch_point_t pt[k_touch_val_5];
+  ra8_touch_point_t pt[k_t_point_cap];
   uint8_t           got = 0U;
   TEST_ASSERT_EQ(k_ra8_err_null_ptr,
                  ra8_touch_read(nullptr, (uint8_t)k_test_max_points_default, &got));
@@ -423,8 +425,8 @@ static void test_read_returns_ok(void)
    * walks the full state machine without hitting a timeout or hw
    * fault. End-to-end byte-level checks live in
    * ``test_decode_*`` against the parser hook. */
-  ra8_touch_point_t pt[k_touch_val_5];
-  uint8_t           got = k_touch_got_99;
+  ra8_touch_point_t pt[k_t_point_cap];
+  uint8_t           got = k_t_got_seed_max;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_read(pt, (uint8_t)k_test_max_points_default, &got));
   TEST_ASSERT(got <= (uint8_t)k_test_max_points_default);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_close());
@@ -441,7 +443,7 @@ static void test_read_before_open(void)
 {
   TEST_BEGIN("ra8_touch_read: not-initialized rejected");
   prep();
-  ra8_touch_point_t pt[k_touch_val_5];
+  ra8_touch_point_t pt[k_t_point_cap];
   uint8_t           got = 0U;
   TEST_ASSERT_EQ(k_ra8_err_not_initialized,
                  ra8_touch_read(pt, (uint8_t)k_test_max_points_default, &got));
@@ -543,16 +545,16 @@ static void test_mcdc_ra8_touch(void)
   cfg.target_7b = (uint8_t)k_ra8_touch_gt911_addr_high;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_open(&cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_close());
-  cfg.target_7b = (uint8_t)k_touch_target_7b_42;
+  cfg.target_7b = (uint8_t)k_t_i2c_addr_7b;
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_touch_open(&cfg));
   cfg            = s_cfg_default;
-  cfg.max_points = k_touch_val_5;
+  cfg.max_points = k_t_point_cap;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_open(&cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_close());
   cfg.max_points = 0U;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_open(&cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_close());
-  cfg.max_points = k_touch_got_99;
+  cfg.max_points = k_t_got_seed_max;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_open(&cfg));
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_close());
   TEST_END("touch MC/DC: validate_cfg + stash_state 2-cond decisions");
@@ -595,8 +597,8 @@ static void test_read_no_frame_ready(void)
   cfg.target_7b       = (uint8_t)k_test_addr_alt; /* 0x14 -> status 0x29, bit7 clear. */
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_open(&cfg));
 
-  ra8_touch_point_t pt[k_touch_val_5];
-  uint8_t           got = k_touch_got_7;
+  ra8_touch_point_t pt[k_t_point_cap];
+  uint8_t           got = k_t_got_seed_a;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_read(pt, (uint8_t)k_test_max_points_default, &got));
   TEST_ASSERT_EQ(0, got);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_close());
@@ -645,8 +647,8 @@ static void test_read_status_transfer_error(void)
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(0U);
   reg->BCST                      = 0U;
 
-  ra8_touch_point_t pt[k_touch_val_5];
-  uint8_t           got = k_touch_got_9;
+  ra8_touch_point_t pt[k_t_point_cap];
+  uint8_t           got = k_t_got_seed_b;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_touch_read(pt, (uint8_t)k_test_max_points_default, &got));
   TEST_ASSERT_EQ(0, got);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_close());
@@ -732,8 +734,8 @@ static void test_read_block_transfer_error(void)
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(0U);
   reg->BCST                      = 0U;
 
-  ra8_touch_point_t pt[k_touch_val_5];
-  uint8_t           got = k_touch_got_9;
+  ra8_touch_point_t pt[k_t_point_cap];
+  uint8_t           got = k_t_got_seed_b;
   TEST_ASSERT_EQ(k_ra8_err_hw_error, ra8_touch_read(pt, (uint8_t)k_test_max_points_default, &got));
   TEST_ASSERT_EQ(0, got);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_close());
@@ -759,8 +761,8 @@ static void test_read_ready_zero_contacts(void)
   s_script_status_armed = true;
   s_script_status_byte  = (uint8_t)k_test_status_ready_zero;
 
-  ra8_touch_point_t pt[k_touch_val_5];
-  uint8_t           got = k_touch_got_7;
+  ra8_touch_point_t pt[k_t_point_cap];
+  uint8_t           got = k_t_got_seed_a;
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_read(pt, (uint8_t)k_test_max_points_default, &got));
   TEST_ASSERT_EQ(0, got);
   TEST_ASSERT_EQ(k_ra8_ok, ra8_touch_close());
