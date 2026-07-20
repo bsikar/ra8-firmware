@@ -36,7 +36,10 @@
 set -euo pipefail
 
 # Rig config (PI_HOST) comes from the gitignored .env, not the tree.
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+_hil_dir="$(dirname "${BASH_SOURCE[0]}")"
+_hil_dir="$(cd "$_hil_dir" && pwd)"
+# shellcheck source=scripts/lib/rig_env.sh
+source "$_hil_dir/lib/rig_env.sh"
 rig_require PI_HOST
 HUB="2-1.3"
 
@@ -79,6 +82,7 @@ pi_sh() {
   if ((RUN_LOCAL)); then
     bash -c "$*"
   else
+    # shellcheck disable=SC2029  # the caller composes the remote command; forwarding it verbatim is the point.
     ssh "$PI_HOST" "$*"
   fi
 }

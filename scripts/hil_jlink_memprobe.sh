@@ -36,7 +36,10 @@
 set -euo pipefail
 
 # Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+_hil_dir="$(dirname "${BASH_SOURCE[0]}")"
+_hil_dir="$(cd "$_hil_dir" && pwd)"
+# shellcheck source=scripts/lib/rig_env.sh
+source "$_hil_dir/lib/rig_env.sh"
 rig_require PI_HOST JLINK_SN
 
 GREEN='\033[0;32m'
@@ -207,7 +210,9 @@ if ((RUN_LOCAL)); then
   echo "$JLINK_SCRIPT" >"$PI_TMP"
   JLinkExe -nogui 1 -SelectEmuBySN "${JLINK_SN}" -commanderscript "$PI_TMP" >"$PI_LOG" 2>&1 || true
 else
+  # shellcheck disable=SC2029  # ${PI_TMP} is the locally-chosen remote path for the J-Link script.
   ssh "$PI_HOST" "cat > ${PI_TMP}" <<<"$JLINK_SCRIPT"
+  # shellcheck disable=SC2029  # ${JLINK_SN}/${PI_TMP}/${PI_LOG} are local rig config and local path choices.
   ssh "$PI_HOST" "JLinkExe -nogui 1 -SelectEmuBySN ${JLINK_SN} -commanderscript ${PI_TMP} > ${PI_LOG} 2>&1 || true"
   scp -q "${PI_HOST}:${PI_LOG}" "${PI_LOG}" 2>/dev/null || true
 fi

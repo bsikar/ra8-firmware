@@ -43,6 +43,7 @@ RESULTS="$OUT_DIR/results.txt"
 # left behind by an aborted run (disk-full, timeout, ^C) would be picked up
 # by the next run's find and could resurrect findings for source that has
 # since changed -- silent corruption of the ratchet comparison.
+# shellcheck disable=SC2329  # invoked by `trap cleanup_dumps EXIT` below.
 cleanup_dumps() {
   find libs src port -name '*.dump' -not -path '*/third_party/*' -delete 2>/dev/null || true
   find libs src port -name '*.ctu-info' -not -path '*/third_party/*' -delete 2>/dev/null || true

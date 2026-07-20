@@ -42,7 +42,10 @@
 set -euo pipefail
 
 # Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+_hil_dir="$(dirname "${BASH_SOURCE[0]}")"
+_hil_dir="$(cd "$_hil_dir" && pwd)"
+# shellcheck source=scripts/lib/rig_env.sh
+source "$_hil_dir/lib/rig_env.sh"
 rig_require PI_HOST JLINK_SN
 PI_IP="192.168.1.1"
 PI_PREFIX="24"
@@ -147,6 +150,7 @@ if ((LOCAL_PI == 0)); then
   if [[ -f "${HEX%.hex}.elf" ]]; then
     scp -q "${HEX%.hex}.elf" "${PI_HOST}:${REMOTE_HEX%.hex}.elf"
   fi
+  # shellcheck disable=SC2029  # every value is local rig/app config passed as args to the piped script.
   ssh "$PI_HOST" "bash -s -- --hex '${REMOTE_HEX}' --board-ip '${BOARD_IP}' --port '${PORT}' --proto '${PROTO}' --payload-bytes '${PAYLOAD_BYTES}' --boot-timeout '${BOOT_TIMEOUT_S}' --probe-timeout '${PROBE_TIMEOUT_S}' --uart '${UART}' --baud '${BAUD}'" <"$0"
   exit $?
 fi
@@ -176,12 +180,14 @@ if [[ -z "$USB_ETH_IFACE" ]]; then
 fi
 echo -e "${YELLOW}[HIL]${NC} USB-Ethernet iface = ${USB_ETH_IFACE}"
 
+# shellcheck disable=SC2329  # invoked from cleanup(), itself a trap handler.
 restore_iface() {
   # Remove our temporary address but leave anything we did not set.
   sudo -n ip addr del "${PI_IP}/${PI_PREFIX}" dev "$USB_ETH_IFACE" 2>/dev/null || true
 }
+# shellcheck disable=SC2329  # invoked by `trap cleanup EXIT` below.
 cleanup() {
-  rm -f "$STRIPPED_HEX" /tmp/hil_eth_jlink_${APP_NAME}.cmd
+  rm -f "$STRIPPED_HEX" "/tmp/hil_eth_jlink_${APP_NAME}.cmd"
   pkill -f "cat ${UART}" 2>/dev/null || true
   restore_iface
 }

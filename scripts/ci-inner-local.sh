@@ -112,6 +112,7 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
   }
 
   # --- gate: clang-format (firmware.yml job: format) -----------------------
+  # shellcheck disable=SC2329  # invoked indirectly as run_gate's "$@" below.
   gate_clang_format() {
     CLANG_FORMAT="$cf" bash scripts/format_code.sh --check --verbose
   }
@@ -121,6 +122,7 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
   # into an explicit --suppress= flag (cppcheck 2.13 on Ubuntu 24.04 is finicky
   # about --suppressions-list), skip examples/host/* (macOS-only dev tools), and
   # run cppcheck over src libs <example app dirs> with --error-exitcode=1.
+  # shellcheck disable=SC2329  # invoked indirectly as run_gate's "$@" below.
   gate_cppcheck() (
     set -e
     local apps=() dir line
@@ -151,6 +153,7 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
 
   # --- gate: pre-commit check_*.py suite (job: pre-commit-checks) -----------
   # The exact "Run all check_*.py scripts" block from firmware.yml.
+  # shellcheck disable=SC2329  # invoked indirectly as run_gate's "$@" below.
   gate_precommit_checks() (
     set -e
     python3 scripts/utils/check_obsolete_standards.py
@@ -170,11 +173,13 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
   )
 
   # --- gate: clang-tidy (firmware.yml job: tidy) ---------------------------
+  # shellcheck disable=SC2329  # invoked indirectly as run_gate's "$@" below.
   gate_clang_tidy() {
     bash scripts/clang_tidy.sh --check
   }
 
   # --- gate: host unit tests (firmware.yml job: unit-tests) ----------------
+  # shellcheck disable=SC2329  # invoked indirectly as run_gate's "$@" below.
   gate_host_tests() (
     set -e
     bash tests/build_tests.sh
@@ -182,6 +187,7 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
   )
 
   # --- gate: coverage gate (firmware.yml job: coverage) --------------------
+  # shellcheck disable=SC2329  # invoked indirectly as run_gate's "$@" below.
   gate_coverage() {
     bash scripts/coverage.sh --gate
   }
@@ -189,6 +195,7 @@ if [[ "${RA8_CI_INNER:-0}" == "1" ]]; then
   # --- gate: MISRA-C 2012 ratchet (firmware.yml job: misra) ----------------
   # The devcontainer's cppcheck matches the runner (Ubuntu 24.04 / 2.13), so
   # the committed .github/misra-baseline.txt is directly comparable here.
+  # shellcheck disable=SC2329  # invoked indirectly as run_gate's "$@" below.
   gate_misra() (
     set -e
     bash scripts/utils/misra_check.sh

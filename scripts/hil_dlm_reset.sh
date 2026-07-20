@@ -56,7 +56,10 @@
 set -uo pipefail
 
 # Rig config (PI_HOST, JLINK_SN) comes from the gitignored .env, not the tree.
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+_hil_dir="$(dirname "${BASH_SOURCE[0]}")"
+_hil_dir="$(cd "$_hil_dir" && pwd)"
+# shellcheck source=scripts/lib/rig_env.sh
+source "$_hil_dir/lib/rig_env.sh"
 rig_require PI_HOST JLINK_SN
 DEVICE="ra"
 
@@ -81,6 +84,7 @@ tag "Pi reachable: ${PI_HOST}"
 # ---- 1. Read DLM state BEFORE Initialize ------------------------------------
 BEFORE_LOG="/tmp/hil_dlm_reset_before.log"
 tag "Reading DLM state BEFORE Initialize..."
+# shellcheck disable=SC2029  # ${DEVICE}/${JLINK_SN} are local rig config the Pi does not have.
 ssh "$PI_HOST" \
   "rfp-cli -d ${DEVICE} -t jlink:${JLINK_SN} -if swd -s 1000000 -rfo 2>&1" \
   >"$BEFORE_LOG" 2>&1 || true
@@ -105,6 +109,7 @@ INIT_LOG="/tmp/hil_dlm_reset_init.log"
 tag "Invoking Initialize command via rfp-cli -erase-chip..."
 tag "(This erases user flash AND runs the boot-firmware Initialize,"
 tag " which transitions DLM from OEM_PL0/PL1 back to OEM_PL2.)"
+# shellcheck disable=SC2029  # ${DEVICE}/${JLINK_SN} are local rig config the Pi does not have.
 if ! ssh "$PI_HOST" \
   "rfp-cli -d ${DEVICE} -t jlink:${JLINK_SN} -if swd -s 1000000 -erase-chip 2>&1" \
   >"$INIT_LOG" 2>&1; then
@@ -123,6 +128,7 @@ ok "Initialize command reported success."
 # ---- 3. Read DLM state AFTER Initialize -------------------------------------
 AFTER_LOG="/tmp/hil_dlm_reset_after.log"
 tag "Reading DLM state AFTER Initialize..."
+# shellcheck disable=SC2029  # ${DEVICE}/${JLINK_SN} are local rig config the Pi does not have.
 ssh "$PI_HOST" \
   "rfp-cli -d ${DEVICE} -t jlink:${JLINK_SN} -if swd -s 1000000 -rfo 2>&1" \
   >"$AFTER_LOG" 2>&1 || true

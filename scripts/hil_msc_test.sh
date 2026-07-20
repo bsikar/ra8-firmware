@@ -23,7 +23,10 @@
 set -euo pipefail
 
 # Rig config (PI_HOST) comes from the gitignored .env, not the tree.
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/rig_env.sh"
+_hil_dir="$(dirname "${BASH_SOURCE[0]}")"
+_hil_dir="$(cd "$_hil_dir" && pwd)"
+# shellcheck source=scripts/lib/rig_env.sh
+source "$_hil_dir/lib/rig_env.sh"
 rig_require PI_HOST
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -67,6 +70,7 @@ NC='\033[0m'
 # Run a command on the Pi (locally if we ARE the Pi, else over SSH).
 LOCAL_PI=0
 if [[ "$(hostname 2>/dev/null || true)" =~ ^star ]]; then LOCAL_PI=1; fi
+# shellcheck disable=SC2029  # the caller composes the remote command; forwarding it verbatim is the point.
 pi_run() { if ((LOCAL_PI)); then bash -c "$*"; else ssh "$PI_HOST" "$*"; fi; }
 
 echo -e "${YELLOW}[MSC]${NC} app=${APP}  vidpid=${VIDPID}"

@@ -388,6 +388,7 @@ suite_errexit_selftest() {
   local out rc=0
   # A stand-in gate shaped like a real one: `set -e` subshell, failing command
   # in the MIDDLE, more commands after it.
+  # shellcheck disable=SC2329  # driven indirectly through run_gate_capture below.
   gate_ra8_errexit_probe() (
     set -e
     false
@@ -590,7 +591,7 @@ gate_no_ai_attribution_commits() (
     fi
     rm -f "$f"
   done
-  return $rc
+  return "$rc"
 )
 
 # --- inclusive-terminology ------------------------------------------------
@@ -787,6 +788,12 @@ gate_lint_py_shell() (
   # select list now turns the selftest red instead of turning the tree green.
   python3 scripts/utils/check_ruff.py --selftest
   python3 scripts/utils/check_ruff.py --require
+  # --selftest FIRST, then the tree. It asserts the shell checker still fires on
+  # every class it claims to enforce (a relaxed severity or a dropped opt-in
+  # check turns one of those green) and still stays quiet on the tricky-but-
+  # correct forms this tree uses. Without it, "0 findings" is indistinguishable
+  # from "checked nothing".
+  python3 scripts/utils/check_shell.py --selftest
   python3 scripts/utils/check_shell.py --require
 )
 
@@ -1405,7 +1412,7 @@ list_gates() {
     esac
     printf '%s\t%s\t%s\n' "$name" "$speed" "$desc"
   done
-  return $rc
+  return "$rc"
 }
 
 run_one_gate() {
@@ -1549,7 +1556,7 @@ run_suite_on_snapshot() {
   rc=$?
   set -e
   cd "$REPO_ROOT"
-  return $rc
+  return "$rc"
 }
 
 # ===========================================================================
