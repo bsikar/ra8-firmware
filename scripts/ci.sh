@@ -783,9 +783,11 @@ gate_lint_py_shell() (
   # --selftest runs FIRST and asserts the configured rule set really enforces
   # what it advertises: a deliberately non-conforming fixture must trip every
   # rule family named in EXPECTED_CODES, and a legal-but-tricky one must stay
-  # silent. #360 is why -- an empty `[tool.ruff.lint]` table had this gate
-  # reporting a clean tree while running little more than pyflakes. Gutting the
-  # select list now turns the selftest red instead of turning the tree green.
+  # silent. #360 is why -- `check_ruff.py` hardcoded its target list, so seven
+  # first-party files (esp32/tools, the HIL fixture generators) were never
+  # linted at all while the gate reported a clean tree. Scope is derived from
+  # `git ls-files` now, and gutting the select list turns the selftest red
+  # instead of turning the tree green.
   python3 scripts/utils/check_ruff.py --selftest
   python3 scripts/utils/check_ruff.py --require
   # --selftest FIRST, then the tree. It asserts the shell checker still fires on
