@@ -90,7 +90,7 @@ typedef enum : uint32_t {
   k_mg_cells       = 4U,                 /**< Small budget (forces evictions).  */
   k_mg_buckets     = 8U,                 /**< Cache hash buckets.               */
   k_mg_scratch     = 96U * 1024U,        /**< read_tile deflate staging.        */
-  k_mg_work_bytes  = 2U * 1024U * 1024U, /**< SDRAM producer work arena.        */
+  k_mg_work_bytes  = 3203832U,           /**< SDRAM producer work arena.        */
   k_mg_store_bytes = 4U * 1024U * 1024U, /**< SDRAM atlas memstore.             */
   k_mg_image_id    = 1U,                 /**< Tile-cache key image id.          */
   k_mg_hex_nibbles = 8U,                 /**< Hex digits in a 32-bit value.     */
@@ -98,6 +98,34 @@ typedef enum : uint32_t {
   k_mg_nibble_mask = 0x0FU,              /**< Low-nibble mask.                  */
   k_mg_dec_ten     = 10U,                /**< Decimal radix / hex split.        */
 } mg_atlas_t;
+
+/*
+ * ::k_mg_work_bytes is DERIVED, never hand-picked: it is exactly
+ * `ra8_tileatlas_work_bytes(k_mg_cap_edge, k_mg_cap_edge, k_mg_tile_edge,
+ * k_mg_tile_edge)` -- the producer's own worst-case arena requirement for the
+ * cap this app advertises, taken at the format's maximum 4 bpp. A round number
+ * here is how the advertised cap and the real capability drift apart: a 2 MiB
+ * arena backs a cap of only 1016 px, so the app used to advertise 2048 and
+ * fail-closed (`k_ra8_err_invalid_size`) on any in-budget source wider than
+ * that. Three layers keep the two in agreement:
+ *   - the static_assert below is a compile-time tripwire on the band term
+ *     (`cap * tile_h * bpp_max`), a strict lower bound on the full
+ *     requirement, so raising ::k_mg_cap_edge without re-deriving the arena
+ *     fails the build;
+ *   - `tests/test_app_ereader_manga.c` asserts the arena against the real
+ *     `ra8_tileatlas_work_bytes()` return, which is the exact and
+ *     authoritative check, and runs in CI;
+ *   - `mg_build_atlas()` re-checks the same call at boot, so a mismatch that
+ *     somehow reaches silicon reports `FAIL atlas` instead of silently
+ *     under-delivering the advertised cap.
+ * The band term alone is a lower bound, not the whole requirement, so the
+ * static_assert can only catch an under-sized arena, never certify a
+ * sufficient one -- that is the test's and the boot check's job.
+ */
+static_assert((uint64_t)k_mg_work_bytes >= ((uint64_t)k_mg_cap_edge * (uint64_t)k_mg_tile_edge *
+                                            (uint64_t)k_ra8_tileatlas_bpp_max),
+              "work arena is below the producer band term for the advertised cap: re-derive "
+              "k_mg_work_bytes from ra8_tileatlas_work_bytes() for k_mg_cap_edge");
 
 /**
  * @enum mg_fb_t
@@ -332,6 +360,18 @@ static ra8_err_t mg_png_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
 /** @brief Transcode the baked page into a JOF atlas + parse its geometry. */
 static bool mg_build_atlas(void)
 {
+  /* The advertised cap must be one this arena can actually serve. The producer
+   * carves from the *decoded* geometry, so an under-sized arena would not show
+   * up until some in-budget source happened to be wide enough or deep enough in
+   * bpp to exhaust it; asking the producer for its own requirement up front
+   * turns that latent capability lie into a deterministic boot failure. */
+  const uint32_t need = ra8_tileatlas_work_bytes((uint16_t)k_mg_cap_edge,
+                                                 (uint16_t)k_mg_cap_edge,
+                                                 (uint16_t)k_mg_tile_edge,
+                                                 (uint16_t)k_mg_tile_edge);
+  if ((need == 0U) || (need > (uint32_t)sizeof(s_work))) {
+    return false;
+  }
   s_png_cursor = (mg_png_cursor_t){.data = k_mg_png, .len = k_mg_png_len, .pos = 0U};
   s_store = (ra8_tileatlas_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   const ra8_tileatlas_produce_cfg_t cfg = {
