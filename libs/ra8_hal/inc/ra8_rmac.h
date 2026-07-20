@@ -41,15 +41,32 @@
  *     MTRC capture-config bits so the GPTP block sees the frame.
  *
  * @par State Machine
- * @startuml
- * [*] --> RESET     : ra8_rmac_init()
- * RESET   --> CONFIG : caller drives ETHA into CONFIG mode
- * CONFIG  --> RUN    : caller drives ETHA into OPERATION mode
- * RUN     --> SLEEP  : ra8_rmac_enter_lpi() (TX LPI request)
- * SLEEP   --> RUN    : RX activity / ra8_rmac_exit_lpi()
- * RUN     --> STOPPED: ra8_rmac_deinit()
- * STOPPED --> [*]
- * @enduml
+ * @dot
+ * digraph ra8_rmac_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *   __end [shape=doublecircle, width=0.20, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   RESET [label="RESET"];
+ *   CONFIG [label="CONFIG"];
+ *   RUN [label="RUN"];
+ *   SLEEP [label="SLEEP"];
+ *   STOPPED [label="STOPPED"];
+ *
+ *   __start -> RESET [label="ra8_rmac_init()"];
+ *   RESET -> CONFIG [label="caller drives ETHA into\\nCONFIG mode"];
+ *   CONFIG -> RUN [label="caller drives ETHA into\\nOPERATION mode"];
+ *   RUN -> SLEEP [label="ra8_rmac_enter_lpi() (TX LPI\\nrequest)"];
+ *   SLEEP -> RUN [label="RX activity /\\nra8_rmac_exit_lpi()"];
+ *   RUN -> STOPPED [label="ra8_rmac_deinit()"];
+ *   STOPPED -> __end;
+ * }
+ * @enddot
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

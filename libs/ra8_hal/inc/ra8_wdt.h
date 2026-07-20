@@ -64,19 +64,35 @@
  * ## State machine
  *
  * @par State Machine:
- * @startuml
- * [*] --> Reset
- * Reset --> Configured: ra8_wdt_init (register-start)
- * Reset --> Running: OFS0.WDT0STRT == 0 (auto-start)
- * Configured --> Running: ra8_wdt_refresh_deferred (first refresh)
- * Running --> Running: ra8_wdt_refresh_deferred inside window
- * Running --> Underflow: counter reaches zero
- * Running --> RefreshErr: refresh outside window
- * Underflow --> Reset: WDTRCR.RSTIRQS == 1
- * Underflow --> Running: WDTRCR.RSTIRQS == 0 && NMI handled
- * RefreshErr --> Reset: WDTRCR.RSTIRQS == 1
- * RefreshErr --> Running: WDTRCR.RSTIRQS == 0 && NMI handled
- * @enduml
+ * @dot
+ * digraph ra8_wdt_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   Reset [label="Reset"];
+ *   Configured [label="Configured"];
+ *   Running [label="Running"];
+ *   Underflow [label="Underflow"];
+ *   RefreshErr [label="RefreshErr"];
+ *
+ *   __start -> Reset;
+ *   Reset -> Configured [label="ra8_wdt_init\\n(register-start)"];
+ *   Reset -> Running [label="OFS0.WDT0STRT == 0\\n(auto-start)"];
+ *   Configured -> Running [label="ra8_wdt_refresh_deferred\\n(first refresh)"];
+ *   Running -> Running [label="ra8_wdt_refresh_deferred\\ninside window"];
+ *   Running -> Underflow [label="counter reaches zero"];
+ *   Running -> RefreshErr [label="refresh outside window"];
+ *   Underflow -> Reset [label="WDTRCR.RSTIRQS == 1"];
+ *   Underflow -> Running [label="WDTRCR.RSTIRQS == 0 && NMI\\nhandled"];
+ *   RefreshErr -> Reset [label="WDTRCR.RSTIRQS == 1"];
+ *   RefreshErr -> Running [label="WDTRCR.RSTIRQS == 0 && NMI\\nhandled"];
+ * }
+ * @enddot
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

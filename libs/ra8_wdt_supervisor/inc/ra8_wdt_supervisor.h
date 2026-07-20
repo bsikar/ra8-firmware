@@ -30,15 +30,31 @@
  * start running.
  *
  * @par State Machine:
- * @startuml
- * [*] --> Uninit
- * Uninit --> Initialized: ra8_wdt_supervisor_init
- * Initialized --> Initialized: register_thread / checkin
- * Initialized --> Running: ra8_wdt_supervisor_start
- * Running --> Running: tick (all threads alive -> refresh WDT)
- * Running --> Stalled: any thread overdue (no refresh issued)
- * Stalled --> [*]: WDT underflow / chip reset
- * @enduml
+ * @dot
+ * digraph ra8_wdt_supervisor_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *   __end [shape=doublecircle, width=0.20, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   Uninit [label="Uninit"];
+ *   Initialized [label="Initialized"];
+ *   Running [label="Running"];
+ *   Stalled [label="Stalled"];
+ *
+ *   __start -> Uninit;
+ *   Uninit -> Initialized [label="ra8_wdt_supervisor_init"];
+ *   Initialized -> Initialized [label="register_thread / checkin"];
+ *   Initialized -> Running [label="ra8_wdt_supervisor_start"];
+ *   Running -> Running [label="tick (all threads alive ->\\nrefresh WDT)"];
+ *   Running -> Stalled [label="any thread overdue (no\\nrefresh issued)"];
+ *   Stalled -> __end [label="WDT underflow / chip reset"];
+ * }
+ * @enddot
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -49,17 +49,32 @@
  * ## Driver state machine
  *
  * @par State Machine:
- * @startuml
- * [*] --> Closed
- * Closed   --> Idle      : ra8_ceu_init()
- * Idle     --> Capturing : ra8_ceu_capture_start()
- * Capturing --> Idle     : CETCR.CPE (single-shot)
- * Capturing --> Capturing: CETCR.CPE (continuous, CTNCP=1)
- * Capturing --> Idle     : ra8_ceu_capture_stop() / reset()
- * Idle     --> Stopped   : ra8_ceu_enter_stop()
- * Stopped  --> Idle      : ra8_ceu_exit_stop()
- * Idle     --> Closed    : ra8_ceu_deinit()
- * @enduml
+ * @dot
+ * digraph ra8_ceu_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   Closed [label="Closed"];
+ *   Idle [label="Idle"];
+ *   Capturing [label="Capturing"];
+ *   Stopped [label="Stopped"];
+ *
+ *   __start -> Closed;
+ *   Closed -> Idle [label="ra8_ceu_init()"];
+ *   Idle -> Capturing [label="ra8_ceu_capture_start()"];
+ *   Capturing -> Idle [label="CETCR.CPE (single-shot)"];
+ *   Capturing -> Capturing [label="CETCR.CPE (continuous,\\nCTNCP=1)"];
+ *   Capturing -> Idle [label="ra8_ceu_capture_stop() /\\nreset()"];
+ *   Idle -> Stopped [label="ra8_ceu_enter_stop()"];
+ *   Stopped -> Idle [label="ra8_ceu_exit_stop()"];
+ *   Idle -> Closed [label="ra8_ceu_deinit()"];
+ * }
+ * @enddot
  *
  * | From      | Trigger                | To        |
  * |-----------|------------------------|-----------|

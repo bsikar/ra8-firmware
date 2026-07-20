@@ -50,13 +50,26 @@ extern "C" {
  * call is required.
  *
  * @par State Machine
- * @startuml
- * [*] --> Closed
- * Closed --> Open : ra8_ipc_init
- * Open --> Open : ra8_ipc_set_event_mask
- * Open --> Open : ra8_ipc_reset_fifo
- * Open --> Closed : ra8_ipc_deinit
- * @enduml
+ * @dot
+ * digraph ra8_ipc_xfer_states {
+ *   bgcolor="transparent";
+ *   rankdir=LR;
+ *   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+ *         fillcolor="#e8eef7", color="#5a7ca6"];
+ *   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+ *
+ *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
+ *
+ *   Closed [label="Closed"];
+ *   Open [label="Open"];
+ *
+ *   __start -> Closed;
+ *   Closed -> Open [label="ra8_ipc_init"];
+ *   Open -> Open [label="ra8_ipc_set_event_mask"];
+ *   Open -> Open [label="ra8_ipc_reset_fifo"];
+ *   Open -> Closed [label="ra8_ipc_deinit"];
+ * }
+ * @enddot
  *
  * @param[in] cfg Non-NULL configuration descriptor.
  *
