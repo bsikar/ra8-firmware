@@ -59,10 +59,10 @@
  *   STOPPED [label="STOPPED"];
  *
  *   __start -> RESET [label="ra8_rmac_init()"];
- *   RESET -> CONFIG [label="caller drives ETHA into\\nCONFIG mode"];
- *   CONFIG -> RUN [label="caller drives ETHA into\\nOPERATION mode"];
- *   RUN -> SLEEP [label="ra8_rmac_enter_lpi() (TX LPI\\nrequest)"];
- *   SLEEP -> RUN [label="RX activity /\\nra8_rmac_exit_lpi()"];
+ *   RESET -> CONFIG [label="caller drives ETHA into\nCONFIG mode"];
+ *   CONFIG -> RUN [label="caller drives ETHA into\nOPERATION mode"];
+ *   RUN -> SLEEP [label="ra8_rmac_enter_lpi() (TX LPI\nrequest)"];
+ *   SLEEP -> RUN [label="RX activity /\nra8_rmac_exit_lpi()"];
  *   RUN -> STOPPED [label="ra8_rmac_deinit()"];
  *   STOPPED -> __end;
  * }

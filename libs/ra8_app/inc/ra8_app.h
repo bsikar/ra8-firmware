@@ -49,10 +49,10 @@
  *   Foreground [label="Foreground"];
  *
  *   __start -> Unmounted;
- *   Unmounted -> Background [label="ra8_app_register (mount /\\ninit)"];
- *   Background -> Foreground [label="ra8_app_launch (focus /\\non_enter)"];
- *   Foreground -> Background [label="ra8_app_launch(other)\\n(suspend / on_leave)"];
- *   Background -> Unmounted [label="ra8_app_uninstall (unmount /\\ndeinit)"];
+ *   Unmounted -> Background [label="ra8_app_register (mount /\ninit)"];
+ *   Background -> Foreground [label="ra8_app_launch (focus /\non_enter)"];
+ *   Foreground -> Background [label="ra8_app_launch(other)\n(suspend / on_leave)"];
+ *   Background -> Unmounted [label="ra8_app_uninstall (unmount /\ndeinit)"];
  * }
  * @enddot
  *

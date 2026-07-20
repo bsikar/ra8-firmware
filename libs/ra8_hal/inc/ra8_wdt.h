@@ -81,16 +81,16 @@
  *   RefreshErr [label="RefreshErr"];
  *
  *   __start -> Reset;
- *   Reset -> Configured [label="ra8_wdt_init\\n(register-start)"];
- *   Reset -> Running [label="OFS0.WDT0STRT == 0\\n(auto-start)"];
- *   Configured -> Running [label="ra8_wdt_refresh_deferred\\n(first refresh)"];
- *   Running -> Running [label="ra8_wdt_refresh_deferred\\ninside window"];
+ *   Reset -> Configured [label="ra8_wdt_init\n(register-start)"];
+ *   Reset -> Running [label="OFS0.WDT0STRT == 0\n(auto-start)"];
+ *   Configured -> Running [label="ra8_wdt_refresh_deferred\n(first refresh)"];
+ *   Running -> Running [label="ra8_wdt_refresh_deferred\ninside window"];
  *   Running -> Underflow [label="counter reaches zero"];
  *   Running -> RefreshErr [label="refresh outside window"];
  *   Underflow -> Reset [label="WDTRCR.RSTIRQS == 1"];
- *   Underflow -> Running [label="WDTRCR.RSTIRQS == 0 && NMI\\nhandled"];
+ *   Underflow -> Running [label="WDTRCR.RSTIRQS == 0 && NMI\nhandled"];
  *   RefreshErr -> Reset [label="WDTRCR.RSTIRQS == 1"];
- *   RefreshErr -> Running [label="WDTRCR.RSTIRQS == 0 && NMI\\nhandled"];
+ *   RefreshErr -> Running [label="WDTRCR.RSTIRQS == 0 && NMI\nhandled"];
  * }
  * @enddot
  *

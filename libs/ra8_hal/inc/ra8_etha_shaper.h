@@ -225,7 +225,7 @@ ra8_etha_configure_cut_through(ra8_etha_port_t port, uint16_t qd, uint8_t dqd);
  *   __start -> Idle;
  *   Idle -> Loading [label="ra8_etha_set_tas_schedule"];
  *   Loading -> Committing [label="EATASC.TASCC=1"];
- *   Committing -> Active [label="EATASRIRM.TASRR observed\\ncleared"];
+ *   Committing -> Active [label="EATASRIRM.TASRR observed\ncleared"];
  *   Active -> Idle [label="EATASC.TASE=0"];
  * }
  * @enddot

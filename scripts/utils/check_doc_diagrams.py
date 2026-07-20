@@ -79,6 +79,7 @@ STARTUML_DOC_ALLOWLIST = (
 DOT_OPEN = re.compile(r"^\s*(?:\*\s?)?@dot\s*$")
 DOT_CLOSE = re.compile(r"^\s*(?:\*\s?)?@enddot\s*$")
 SVG_REF = re.compile(r"dot_inline_dotgraph_[0-9a-f]+\.svg")
+SVG_TEXT = re.compile(r"<text[^>]*>([^<]*)</text>")
 COMMENT_LEADER = re.compile(r"^\s*\*\s?")
 
 
@@ -212,6 +213,22 @@ def scan_html(html_dir: Path):
                 Finding(name, "rendered SVG contains no graph nodes (dot produced an empty layout)")
             )
             continue
+        # A diagram can render and still be wrong. `\\n` in a dot label is an
+        # escaped backslash followed by 'n', so graphviz draws the characters
+        # "\n" instead of breaking the line -- the label reads as one run of
+        # text with literal escapes in it. This has shipped twice, so catch it
+        # in the rendered text rather than trusting the source spelling.
+        literal = [t for t in SVG_TEXT.findall(content) if "\\n" in t]
+        if literal:
+            findings.append(
+                Finding(
+                    name,
+                    "rendered label contains a literal '\\n' -- the dot source "
+                    "double-escaped a line break (use \\n, not \\\\n): "
+                    + "; ".join(sorted(literal)[:3]),
+                )
+            )
+            continue
         live.add(name)
 
     return referenced, live, findings
@@ -256,8 +273,8 @@ def check(root: Path, html_dir: Path) -> list[Finding]:
 # ---------------------------------------------------------------------------
 
 
-def _svg(nodes: bool) -> str:
-    body = '<g class="node"><title>A</title></g>' if nodes else ""
+def _svg(nodes: bool, label: str = "Idle") -> str:
+    body = f'<g class="node"><title>A</title><text x="0" y="0">{label}</text></g>' if nodes else ""
     return f'<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg">{body}</svg>'
 
 
@@ -327,6 +344,12 @@ def selftest() -> int:
             "empty: rendered SVG has no nodes",
             {"docs/x.md": _md(g1)},
             {"p.html": _page(s1), s1: _svg(False)},
+            True,
+        ),
+        (
+            "double-escaped: label renders a literal backslash-n",
+            {"docs/x.md": _md(g1)},
+            {"p.html": _page(s1), s1: _svg(True, label="ra8_init\\nstep two")},
             True,
         ),
         (

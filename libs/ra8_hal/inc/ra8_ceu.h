@@ -68,8 +68,8 @@
  *   Closed -> Idle [label="ra8_ceu_init()"];
  *   Idle -> Capturing [label="ra8_ceu_capture_start()"];
  *   Capturing -> Idle [label="CETCR.CPE (single-shot)"];
- *   Capturing -> Capturing [label="CETCR.CPE (continuous,\\nCTNCP=1)"];
- *   Capturing -> Idle [label="ra8_ceu_capture_stop() /\\nreset()"];
+ *   Capturing -> Capturing [label="CETCR.CPE (continuous,\nCTNCP=1)"];
+ *   Capturing -> Idle [label="ra8_ceu_capture_stop() /\nreset()"];
  *   Idle -> Stopped [label="ra8_ceu_enter_stop()"];
  *   Stopped -> Idle [label="ra8_ceu_exit_stop()"];
  *   Idle -> Closed [label="ra8_ceu_deinit()"];
