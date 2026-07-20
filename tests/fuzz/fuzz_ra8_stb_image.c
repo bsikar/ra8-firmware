@@ -41,7 +41,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_stb_image_u_20 = 20,
+  k_stb_image_u_20 = 20, /**< Log2 of the fuzz input-size cap (1 MiB). */
 } stb_image_uint8_const_t;
 
 /*

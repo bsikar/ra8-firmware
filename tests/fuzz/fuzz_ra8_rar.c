@@ -34,7 +34,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_rar_u_20 = 20,
+  k_rar_u_20 = 20, /**< Log2 of the fuzz input-size cap (1 MiB). */
 } rar_uint8_const_t;
 
 /**
@@ -47,8 +47,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_rar_n_4096   = 4096U,
-  k_rar_name_cap = 512, /**< Extracted-entry name buffer capacity. */
+  k_rar_n_4096   = 4096U, /**< Hard cap on archive blocks walked (NASA P10 Rule 2 loop bound). */
+  k_rar_name_cap = 512,   /**< Extracted-entry name buffer capacity.                           */
 } rar_uint16_const_t;
 
 /** @brief Flat backing served to the walker. */

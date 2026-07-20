@@ -40,7 +40,7 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_stbtt_u_20 = 20,
+  k_stbtt_u_20 = 20, /**< Log2 of the fuzz input-size cap (1 MiB). */
 } stbtt_uint8_const_t;
 
 enum : int32_t {

@@ -46,19 +46,21 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_rar5_enc_fixture_bw_put_12   = 12U,
-  k_rar5_enc_fixture_bw_put_15   = 15U,
-  k_rar5_enc_fixture_bw_put_5    = 5U,
-  k_rar5_enc_fixture_bw_put_9    = 9U,
-  k_rar5_enc_fixture_bw_put_ff   = 0xFFU,
-  k_rar5_enc_fixture_exp_copy_33 = 33U,
-  k_rar5_enc_fixture_exp_copy_65 = 65U,
-  k_rar5_enc_fixture_i_10        = 10U,
-  k_rar5_enc_fixture_i_20        = 20U,
-  k_rar5_enc_fixture_i_34        = 34U,
-  k_rar5_enc_fixture_i_44        = 44U,
-  k_rar5_enc_fixture_i_64        = 64U,
-  k_rar5_enc_fixture_sentinel_5a = 0x5AU,
+  k_rar5_enc_fixture_bw_put_12 = 12U,   /**< Distance slot 12 (five extra distance bits follow). */
+  k_rar5_enc_fixture_bw_put_15 = 15U,   /**< Main-table escape symbol, written in four bits.     */
+  k_rar5_enc_fixture_bw_put_5  = 5U,    /**< Bit width of the table-preamble entries.            */
+  k_rar5_enc_fixture_bw_put_9  = 9U,    /**< Main-table Huffman code width, in bits.             */
+  k_rar5_enc_fixture_bw_put_ff = 0xFFU, /**< Low-byte mask on the emitted relative distance.     */
+  k_rar5_enc_fixture_exp_copy_33 =
+    33U, /**< Expected-output copy distance base for the low-distance arm. */
+  k_rar5_enc_fixture_exp_copy_65 =
+    65U, /**< Expected-output copy distance base for the high-distance arm. */
+  k_rar5_enc_fixture_i_10 = 10U, /**< Block-declaration table: symbols 0..9 carry length 5. */
+  k_rar5_enc_fixture_i_20 = 20U, /**< Block-declaration table entry count.                  */
+  k_rar5_enc_fixture_i_34 = 34U, /**< Literal-table entry count written by the fixture.     */
+  k_rar5_enc_fixture_i_44 = 44U, /**< Repeat-distance table: 44 entries of length 6.        */
+  k_rar5_enc_fixture_i_64 = 64U, /**< Distance table: 64 entries of length 6.               */
+  k_rar5_enc_fixture_sentinel_5a = 0x5AU, /**< Header checksum seed for the crafted RAR5 block. */
   k_rar5_enc_fixture_msb_bit =
     7U, /**< Index of the most-significant bit in a byte (MSB-first writer). */
 } rar5_enc_fixture_uint8_const_t;
@@ -73,12 +75,14 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_rar5_enc_fixture_bw_put_256   = 256U,
-  k_rar5_enc_fixture_bw_put_258   = 258U,
-  k_rar5_enc_fixture_bw_put_262   = 262U,
-  k_rar5_enc_fixture_bw_put_270   = 270U,
-  k_rar5_enc_fixture_exp_copy_257 = 257U,
-  k_rar5_enc_fixture_i_272        = 272U,
+  k_rar5_enc_fixture_bw_put_256 = 256U, /**< Main-table symbol 256: the end-of-block marker.   */
+  k_rar5_enc_fixture_bw_put_258 = 258U, /**< Main-table symbol 258: repeated-distance index 0. */
+  k_rar5_enc_fixture_bw_put_262 = 262U, /**< Main-table base symbol of the length-slot range.  */
+  k_rar5_enc_fixture_bw_put_270 = 270U, /**< Main-table symbol for length slot 8.              */
+  k_rar5_enc_fixture_exp_copy_257 =
+    257U, /**< Expected-output copy distance for the rep-distance arm. */
+  k_rar5_enc_fixture_i_272 =
+    272U, /**< Total Huffman alphabet size the fixture emits lengths for. */
 } rar5_enc_fixture_uint16_const_t;
 
 /** @brief Working buffers sized for the small crafted streams. */

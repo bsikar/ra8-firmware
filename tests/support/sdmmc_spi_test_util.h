@@ -34,9 +34,11 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_sdmmc_spi_test_util_mock_queue_idle_10 = 10U,
-  k_sdmmc_spi_test_util_out_40             = 0x40U,
-  k_sdmmc_spi_test_util_tail_word_24       = 24U,
+  k_sdmmc_spi_test_util_mock_queue_idle_10 =
+    10U, /**< Idle bytes queued before a mocked response. */
+  k_sdmmc_spi_test_util_out_40 =
+    0x40U, /**< CSD byte 0: CSD_STRUCTURE = 1 (version bits 7:6 = 0b01). */
+  k_sdmmc_spi_test_util_tail_word_24 = 24U, /**< Top-byte shift of the little-endian tail word. */
   k_sdmmc_spi_test_util_csd_off_csize_hi =
     7, /**< CSD v2 byte offset of the high C_SIZE byte (top 6 bits reserved). */
   k_sdmmc_spi_test_util_csd_off_csize_lo = 9, /**< CSD v2 byte offset of the low C_SIZE byte.    */
