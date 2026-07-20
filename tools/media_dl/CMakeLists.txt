@@ -63,6 +63,7 @@ add_executable(media_dl
   src/mdl_politeness.c
   src/mdl_config.c
   src/mdl_export.c
+  src/mdl_export_jof.c
   ${MDL_JOF_SRC}
   ${MDL_MINIZ})
 
@@ -95,6 +96,7 @@ add_executable(test_media_dl
   src/mdl_extract.c
   src/mdl_config.c
   src/mdl_export.c
+  src/mdl_export_jof.c
   ${MDL_JOF_SRC}
   ${MDL_MINIZ})
 target_include_directories(test_media_dl PRIVATE
