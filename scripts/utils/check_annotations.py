@@ -5,8 +5,9 @@
 check_annotations.py -- libclang-based annotation enforcement.
 
 This script walks the AST of every C / C++ translation unit under
-``libs/``, ``src/``, ``examples/``, ``tests/``, and ``port/`` and
-applies the project's annotation-enforcement rules. The annotation
+``libs/``, ``src/``, ``examples/``, ``tests/``, ``port/`` and
+``tools/`` -- every first-party source root, per CLAUDE.md ("Scope") --
+and applies the project's annotation-enforcement rules. The annotation
 macros themselves are defined in ``libs/ra8_core/inc/ra8_attributes.h``
 and lower to ``[[clang::annotate("ra8_<rule>:...")]]`` markers that
 libclang exposes via ``AnnotateAttr`` cursors.
@@ -49,7 +50,13 @@ from dataclasses import dataclass, field
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
-SCAN_DIRS = ("libs", "src", "examples", "tests", "port")
+#: Every first-party source root. CLAUDE.md ("Scope") holds `tools/` to the
+#: same bar as the firmware -- "a file being a host tool or just a simulator
+#: is NOT a reason to relax the rules" -- but `tools/` was absent here, so
+#: board_sim, media_dl, ra8_viewer and the rest were never annotation-checked
+#: at all. `scripts/` holds no C. Vendored SOUP under `libs/third_party/` is
+#: dropped by is_excluded(), not by omission from this tuple.
+SCAN_DIRS = ("libs", "src", "examples", "tests", "port", "tools")
 EXCLUDED_PATH_PARTS = {
     "build",
     "_deps",
@@ -347,6 +354,14 @@ def _include_args() -> list[str]:
         "tests/mocks",
         "port/*/inc",
         "port/*/src",
+        # tools/<tool>/{inc,src}: the same public/private split the libraries
+        # use. cache_bench keeps its headers flat beside its sources, and the
+        # Vela model compiler writes generated/ -- both are real include roots
+        # for their own TUs, so derive them rather than assume the convention.
+        "tools/*",
+        "tools/*/inc",
+        "tools/*/src",
+        "tools/*/generated",
     ):
         roots.extend(sorted(REPO_ROOT.glob(pattern)))
     # Applications keep their headers beside their sources with no inc/
@@ -782,6 +797,48 @@ def parse_annotation(ann: str) -> tuple[str, str]:
 def _is_test_path(path: str) -> bool:
     """True when ``path`` is a host unit-test translation unit."""
     return "/tests/" in path.replace("\\", "/")
+
+
+#: Source roots that are compiled by the host toolchain and never cross-compiled
+#: into a firmware image. `tests/` is the host unit-test suite; `tools/` is the
+#: host-side tooling (board_sim, media_dl, ra8_fmt, ...), which `scripts/ci.sh`
+#: builds with ``CC=clang-18`` and which no `cmake/toolchain-ra8d2.cmake` target
+#: ever references.
+HOST_ONLY_ROOTS = frozenset({"tests", "tools"})
+
+
+def _is_host_only_path(path: str) -> bool:
+    """True when ``path`` is host-only code, i.e. not part of any firmware image.
+
+    NASA Power of 10 Rule 3 is a claim about *firmware*: CLAUDE.md states it
+    as "zero dynamic memory after initialization (zero malloc/free in
+    firmware)". The hazard it guards -- heap fragmentation and an allocator
+    failing unpredictably in a long-running image with no operator -- does not
+    exist for a host program that runs for a moment on Linux and exits.
+
+    So the rule's real question is "is this translation unit firmware", and
+    this predicate is where that gets decided. It used to be decided by a bare
+    ``"/tests/" in path`` substring at the one call site that needed it. That
+    was the right intent expressed too narrowly: when `tools/` came into scope
+    it added 216 findings telling a CPU emulator and a libcurl downloader not
+    to call ``malloc``, none of which a developer can act on. A gate that
+    cries wolf gets switched off, so the predicate is stated in terms of what
+    actually distinguishes the code -- which toolchain compiles it -- and is
+    matched on the repo-relative root rather than by substring, so a directory
+    named ``tests`` nested anywhere else cannot silently claim the exemption.
+
+    This narrows nothing for firmware: `libs/`, `src/`, `port/` and
+    `examples/` are all still held to Rule 3, and in fact carry zero
+    ``RA8_NASA_RULE_3_OK`` waivers tree-wide because the firmware genuinely
+    does not allocate.
+    """
+    if not path:
+        return False
+    try:
+        rel = pathlib.Path(path).resolve().relative_to(REPO_ROOT)
+    except (ValueError, OSError):
+        return False
+    return bool(rel.parts) and rel.parts[0] in HOST_ONLY_ROOTS
 
 
 #: The one linkage annotation a non-static function may carry.
@@ -1414,9 +1471,9 @@ def enforce_rules(  # noqa: PLR0912 PLR0915  # rule-dispatch table; splitting by
     for cs in calls:
         if cs.in_address_of:
             continue
-        # Host-side test scaffolding is exempt from NASA P10 Rule 3 -- the
-        # firmware itself never sees these TUs (see CLAUDE.md "Exempt Code").
-        if "/tests/" in cs.caller_file.replace("\\", "/"):
+        # Host-only code is outside NASA P10 Rule 3 by construction: the
+        # firmware image never contains these TUs. See _is_host_only_path().
+        if _is_host_only_path(cs.caller_file):
             continue
         if cs.callee_name in bad_alloc and cs.caller_usr not in p10_exempt:
             out.append(
@@ -1649,13 +1706,60 @@ void (*const g_vector_table[])(void) = {
     handler_tabled,
 };
 """,
+    # --- NASA P10 Rule 3: firmware allocates -> reported ------------------
+    # Both helpers are `static` so the linkage rule has no opinion on them
+    # and the only thing under test is the allocation sweep.
+    "libs/mod_alloc/src/alloc.c": """
+void* malloc(unsigned long n);
+void free(void* p);
+
+/* Firmware, no waiver: both the malloc and the free must be reported. */
+[[clang::annotate("ra8_internal")]] static void fw_untagged_allocator(void)
+{
+  void* p = malloc(16UL);
+  free(p);
+}
+
+/* Firmware WITH the documented waiver: the sweep must leave it alone. */
+[[clang::annotate("ra8_nasa_rule_3_ok")]] static void fw_waived_allocator(void)
+{
+  void* p = malloc(16UL);
+  free(p);
+}
+""",
+    # --- tools/ is in scope, and is host-only -----------------------------
+    # This fixture carries the whole point of widening SCAN_DIRS to tools/,
+    # in both directions at once. `host_unpublished` proves the linkage rule
+    # genuinely reaches into tools/ -- if tools/ fell back out of SCAN_DIRS,
+    # is_first_party() would drop it and the selftest fails. `host_allocator`
+    # proves the Rule 3 sweep does NOT fire there, so the widening cannot be
+    # "passed" by burying a host emulator under 216 unactionable findings.
+    "tools/mod_host/src/host_tool.c": """
+void* malloc(unsigned long n);
+void free(void* p);
+
+[[clang::annotate("ra8_internal")]] static void host_allocator(void)
+{
+  void* p = malloc(16UL);
+  free(p);
+}
+
+/* Non-static, no header declares it: in scope, and a genuine gap. */
+void host_unpublished(void)
+{
+  host_allocator();
+}
+""",
 }
 
 #: What run_selftest() expects the linkage rule to report, by symbol name.
 #: ``handler_untabled`` is here because it is byte-identical to a handler
 #: the table does name: table membership is the only thing separating them.
+#: ``host_unpublished`` lives under ``tools/`` and is the scope assertion:
+#: the linkage rule only judges files is_first_party() accepts, so this name
+#: goes missing the moment ``tools`` drops out of SCAN_DIRS.
 _SELFTEST_LINKAGE_EXPECTED = frozenset(
-    {"link_internal_declared", "link_undeclared", "handler_untabled"}
+    {"link_internal_declared", "link_undeclared", "handler_untabled", "host_unpublished"}
 )
 
 #: Definitions the linkage rule must leave alone -- one per passing shape,
@@ -1731,6 +1835,19 @@ def run_selftest() -> int:
     membership the first passes and the second is reported; keyed on
     anything about the function itself -- a name prefix, a signature --
     both would pass and the exemption would swallow unrelated symbols.
+
+    * **A root silently out of scope.** ``tools/`` was absent from
+      SCAN_DIRS, so board_sim, media_dl and ra8_viewer were never checked
+      and the gate reported a clean tree over code it had not read. The
+      ``tools/`` fixture pins the scope from inside the rules rather than
+      by reading the constant: ``host_unpublished`` is only reachable if
+      is_first_party() accepts the root.
+    * **NASA P10 Rule 3 scope and waiver.** Rule 3 is a claim about
+      firmware, so it is asserted along both axes -- untagged firmware
+      allocation fires, the documented ``RA8_NASA_RULE_3_OK`` waiver does
+      not, and host-only code under ``tools/`` does not. Getting the
+      second axis wrong is what turns a real gate into 216 findings
+      nobody can act on.
     """
     import tempfile  # noqa: PLC0415  # self-test only; keep the gate path import-light
 
@@ -1792,6 +1909,31 @@ def run_selftest() -> int:
             "to a tabled handler but appears in no table, so it must still be reported"
         )
 
+    # NASA P10 Rule 3 sweep, both directions. The scope question ("is this
+    # firmware") and the waiver question ("is it tagged") are separate, and
+    # each is asserted to fire and to stay quiet.
+    allocators = {
+        re.search(r"from '([^']+)'", v.message).group(1)
+        for v in violations
+        if v.rule == "ra8_nasa_rule_3_ok" and re.search(r"from '([^']+)'", v.message)
+    }
+    if "fw_untagged_allocator" not in allocators:
+        failures.append(
+            "ra8_nasa_rule_3_ok went toothless: firmware function "
+            "'fw_untagged_allocator' calls malloc/free with no waiver and was not reported"
+        )
+    if "fw_waived_allocator" in allocators:
+        failures.append(
+            "ra8_nasa_rule_3_ok false positive: 'fw_waived_allocator' carries "
+            "RA8_NASA_RULE_3_OK, which is exactly the documented waiver"
+        )
+    if "host_allocator" in allocators:
+        failures.append(
+            "ra8_nasa_rule_3_ok false positive: 'host_allocator' is under tools/, "
+            "which the host toolchain compiles and no firmware image contains -- "
+            "Rule 3 is a claim about firmware"
+        )
+
     seen = {s.name for s in symbols.values()}
     failures.extend(
         f"selftest fixture did not parse: '{name}' is missing from the "
@@ -1807,7 +1949,9 @@ def run_selftest() -> int:
         return 1
     print(
         "check_annotations selftest: OK (namesakes resolved by USR; linkage rule "
-        "catches both gap shapes and exempts only tabled handlers)"
+        "catches both gap shapes, reaches tools/, and exempts only tabled handlers; "
+        "NASA rule 3 fires on untagged firmware allocation and stays quiet on the "
+        "documented waiver and on host-only code)"
     )
     return 0
 
