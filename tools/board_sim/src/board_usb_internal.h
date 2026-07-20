@@ -204,10 +204,10 @@ typedef enum : uint32_t {
  * readable as "byte 1 of the tag" rather than as the bare index 5.
  */
 typedef enum : uint8_t {
-  k_le_lane_b0 = 0U, /**< Least-significant byte (bits 7:0).   */
-  k_le_lane_b1 = 1U, /**< Bits 15:8.                           */
-  k_le_lane_b2 = 2U, /**< Bits 23:16.                          */
-  k_le_lane_b3 = 3U, /**< Most-significant byte (bits 31:24).  */
+  k_le_lane_b0 = 0U, /**< Least-significant byte (bits 7:0).  */
+  k_le_lane_b1 = 1U, /**< Bits 15:8.                          */
+  k_le_lane_b2 = 2U, /**< Bits 23:16.                         */
+  k_le_lane_b3 = 3U, /**< Most-significant byte (bits 31:24). */
 } usb_le_lane_t;
 
 /**

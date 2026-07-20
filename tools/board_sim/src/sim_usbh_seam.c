@@ -242,19 +242,19 @@ static void on_usbh_bulk_in(uc_engine* uc, uint64_t address, uint32_t size, void
 
 /** @brief FAT16 geometry + boot/dir layout for the virtual MSC volume. */
 typedef enum : uint32_t {
-  k_vmsc_block_size     = 512U,        /**< Logical block size.                   */
-  k_vmsc_total_sectors  = 4146U,       /**< 1 reserved + 17 FAT + 32 root + 4096. */
-  k_vmsc_root_lba       = 18U,         /**< First root-directory LBA.             */
-  k_vmsc_data_lba       = 50U,         /**< First data-region LBA (cluster 2).    */
-  k_vmsc_first_cluster  = 2U,          /**< FAT data area starts at cluster 2.    */
-  k_vmsc_last_mram_clus = 2049U,       /**< Last cluster of MRAM.BIN.             */
-  k_vmsc_entries_per_fs = 256U,        /**< FAT16 entries per 512-byte sector.    */
+  k_vmsc_block_size     = 512U,        /**< Logical block size.                    */
+  k_vmsc_total_sectors  = 4146U,       /**< 1 reserved + 17 FAT + 32 root + 4096.  */
+  k_vmsc_root_lba       = 18U,         /**< First root-directory LBA.              */
+  k_vmsc_data_lba       = 50U,         /**< First data-region LBA (cluster 2).     */
+  k_vmsc_first_cluster  = 2U,          /**< FAT data area starts at cluster 2.     */
+  k_vmsc_last_mram_clus = 2049U,       /**< Last cluster of MRAM.BIN.              */
+  k_vmsc_entries_per_fs = 256U,        /**< FAT16 entries per 512-byte sector.     */
   k_vmsc_overlay_slots  = 64U,         /**< Overwritten sectors the overlay holds. */
-  k_vmsc_mram_base      = 0x02000000U, /**< MRAM window base (MRAM.BIN data).     */
-  k_vmsc_fat_entry0     = 0xFFF8U,     /**< FAT[0]: media F8 + filler.            */
-  k_vmsc_fat_eoc        = 0xFFFFU,     /**< End-of-chain marker.                  */
-  k_vmsc_file_bytes     = 0x00100000U, /**< MRAM.BIN size: 1 MiB.                 */
-  k_vmsc_volid          = 0x52A8D20AU, /**< Boot-sector volume serial.            */
+  k_vmsc_mram_base      = 0x02000000U, /**< MRAM window base (MRAM.BIN data).      */
+  k_vmsc_fat_entry0     = 0xFFF8U,     /**< FAT[0]: media F8 + filler.             */
+  k_vmsc_fat_eoc        = 0xFFFFU,     /**< End-of-chain marker.                   */
+  k_vmsc_file_bytes     = 0x00100000U, /**< MRAM.BIN size: 1 MiB.                  */
+  k_vmsc_volid          = 0x52A8D20AU, /**< Boot-sector volume serial.             */
 } vmsc_const_t;
 
 /** @brief FAT16 BPB byte offsets, fixed field values, and store shifts. */
