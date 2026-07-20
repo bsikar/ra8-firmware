@@ -15,6 +15,22 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 find_package(CURL REQUIRED)
 
+# posix_spawn_file_actions_addchdir() is POSIX.1-2024. macOS 26 ships it and
+# has DEPRECATED the older _np spelling (which -Werror turns into a build
+# failure); glibc 2.36 ships only the _np spelling and does not declare the
+# standard name at all. So neither name works everywhere and neither platform
+# can be assumed from the other -- probe for it and let the source pick.
+include(CheckSymbolExists)
+set(CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
+check_symbol_exists(posix_spawn_file_actions_addchdir "spawn.h"
+  MDL_HAVE_POSIX_SPAWN_ADDCHDIR)
+unset(CMAKE_REQUIRED_DEFINITIONS)
+if(MDL_HAVE_POSIX_SPAWN_ADDCHDIR)
+  set(MDL_ADDCHDIR_DEF MDL_HAVE_POSIX_SPAWN_ADDCHDIR)
+else()
+  set(MDL_ADDCHDIR_DEF)
+endif()
+
 # Vendored miniz (the same third-party ZIP/DEFLATE the firmware comic reader
 # uses) provides CBZ writing and gzip DEFLATE -- so archive export needs no
 # system libraries. SOUP: compiled warning-free, exempt from our style bar.
@@ -83,6 +99,7 @@ target_include_directories(media_dl PRIVATE
 target_compile_definitions(media_dl PRIVATE
   _GNU_SOURCE
   RA8_SIMULATOR_MODE
+  ${MDL_ADDCHDIR_DEF}
   MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}")
 target_compile_options(media_dl PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(media_dl PRIVATE CURL::libcurl)
@@ -109,6 +126,7 @@ target_include_directories(test_media_dl PRIVATE
 target_compile_definitions(test_media_dl PRIVATE
   _GNU_SOURCE
   RA8_SIMULATOR_MODE
+  ${MDL_ADDCHDIR_DEF}
   MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}")
 target_compile_options(test_media_dl PRIVATE -Wall -Wextra -Werror)
 ra8_webp_attach(test_media_dl ${CMAKE_CURRENT_SOURCE_DIR}/../..)
