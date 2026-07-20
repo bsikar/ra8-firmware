@@ -64,10 +64,14 @@ and a constant, image-size-independent memory footprint on device.*
 
 ---
 
-## 2. Design rationale -- why not just use PNG?
+## 2. Design rationale -- why not PNG, and why not tiled TIFF?
 
-This is the section worth reading even if you never touch the parser, because
-the reasoning generalises to every format in this section.
+This is the section worth reading even if you never touch the parser. Two
+comparisons matter, and they are not the same argument: **PNG** is what the
+content actually arrives as, and **tiled TIFF** is the format that genuinely
+competes with what JOF *is*. The family-level version of this question -- why
+every format in this section is bespoke, and what that costs -- is answered
+once in @ref md_docs_2formats_2BINARY__FORMATS.
 
 ### The comparison that makes it click
 
@@ -158,6 +162,108 @@ A pleasing consequence of the geometry: set `tile_w == width` and the grid
 collapses to one column. Tile *n* is then simply band *n*, the tile index
 becomes a band index, and 2-D paging code and 1-D scroll code share one reader
 with no special case. `ra8_fmt inspect` reports this as `longstrip: YES`.
+
+### Why not tiled TIFF?
+
+PNG is the honest comparison for how the content *arrives*, but a weak one for
+what JOF *is*: PNG has neither tiling nor an index, so of course a tiled format
+wins. The format that actually competes is **tiled TIFF** (TIFF 6.0 section
+15), and a reader who knows it will notice it already has everything above.
+`TileOffsets` (tag 324) and `TileByteCounts` (tag 325) *are* a jump-offset
+index; `TileWidth` / `TileLength` set the grid; tiles are compressed
+individually; and `COMPRESSION_ADOBE_DEFLATE` (8) is lossless DEFLATE.
+
+So the following are **not** reasons to prefer JOF. They are the arguments this
+section already made against PNG, and they do not transfer:
+
+- *"A constant, image-size-independent memory footprint."* Tiled TIFF has this.
+- *"O(1) random access through an index."* That is exactly what
+  `TileOffsets` / `TileByteCounts` provide.
+- *"Lossless DEFLATE, so no second lossy generation."* TIFF supports DEFLATE.
+
+Three things actually decide it.
+
+**1. The parser is the threat surface.**
+[Section 7](#7-edge-cases-failure-modes-and-security) states the threat model:
+not remote code execution from an SD card, but the application or an EPUB
+**crashing or hanging** on a malformed file. Under that model the shape of the
+parser *is* the risk.
+
+Every JOF field sits at an offset known when the firmware is compiled -- the
+`k_ra8_jof_ofs_*` enum in `ra8_jof.h` is the entire layout. A 32-byte header at
+offset 0, 8-byte index entries, a 16-byte footer at `total_size - 16`. The
+format has exactly two indirections (`index_off`, and each tile's `offset`),
+both `uint32`, both validated against a window that must close the file
+exactly. `ra8_jof_parse()` is a 27-line function.
+
+TIFF's structure is instead *discovered by following the file*:
+
+| | JOF | Tiled TIFF (TIFF 6.0) |
+|---|---|---|
+| Byte order | Little-endian, always | `II` **or** `MM`, chosen by bytes 0-1; readers must handle both |
+| Where the metadata is | Fixed: offset 0, and `total_size - 16` | Bytes 4-7 point at the first IFD, which "may be at any location in the file after the header" -- including *after* the image data |
+| How many fields | Fixed by the spec | A 2-byte count read **from the file** |
+| Field size | Fixed width | 12 bytes each -- but the *value* is inline iff it fits in 4 bytes, decided by `Type` x `Count`, both read from the file |
+| More metadata after? | No | A 4-byte "next IFD" offset: a linked list, which a hostile file can make cyclic |
+| Variants | One | Plus BigTIFF (version 43, 64-bit offsets) -- a different parse |
+
+TIFF 6.0 instructs readers, in the specification's own words, to *"follow the
+pointers wherever they may lead."* That is a reasonable thing to ask of a
+desktop application with a heap and an allocator that can fail safely. It is
+the opposite of what a zero-allocation reader on a 1.6 MB part wants to hear.
+
+None of this says TIFF cannot be parsed safely. It says the safe subset has to
+be defined **by us**, because the format does not define one -- which leads
+straight to the second point.
+
+**2. It would be our parser either way.** libtiff is not a candidate: it is
+built on `_TIFFmalloc` and allocates throughout, colliding directly with NASA
+P10 Rule 3 (zero dynamic allocation). Note that **size is not the objection** --
+this tree vendors NetX Duo (~481k lines) and ThreadX (~468k), either of which
+dwarfs libtiff, so a large vendored dependency is plainly not banned here. The
+objections are the heap and a CVE surface that must be tracked forever for a
+decoder eating untrusted input.
+
+Choosing TIFF therefore means hand-writing a bounded, hostile-input-safe TIFF
+*subset* parser: accept `II` only, require a single IFD, bound the entry count,
+reject unknown tags, and reconcile `TileOffsets` / `TileByteCounts` arrays that
+the spec permits to be either `SHORT` or `LONG`. That parser is strictly larger
+than JOF's 27 lines, and the files it accepts would no longer be TIFFs that
+arbitrary tools produce -- they would be *our dialect wearing a TIFF magic
+number*. That is the worst of both: nominal compatibility, and the parser is
+still ours to own.
+
+**3. The producer must never seek.** This point has nothing to do with
+security. TIFF's header is at offset 0 and must point at the IFD, so a writer
+either buffers the whole image or **seeks back** to patch that offset once the
+tile data is written. JOF puts the pointer in the *footer* (see
+[why the index lives at the end](#why-the-index-lives-at-the-end)), so the
+producer emits header, tiles, index and footer in one forward pass.
+
+That is load-bearing rather than elegant, because import also runs **on the
+device**. The type signature is the proof: `ra8_jof_sink_fn` is
+`(ctx, buf, len)` -- it has **no offset parameter at all**, so it is
+structurally incapable of seeking, and neither real sink (an SD file, a SDRAM
+memstore) needs one. Compare the *reader's* `ra8_jof_pread_fn`, which does take
+a `uint64_t offset`. The asymmetry is deliberate, and it is what lets a page
+whose decoded size exceeds SDRAM transcode without ever being resident
+([section 5.1](#51-memory-behaviour-of-the-writer)).
+
+There is a smaller fourth point, recorded because it bites the band-tile trick
+specifically: TIFF requires `TileWidth` and `TileLength` to be **multiples of
+16**, and pads boundary tiles out to full size. JOF clamps instead
+([section 3.2](#32-tile-streams)), so tile areas sum to the image area exactly.
+The band-tile identity above -- set `tile_w == width` and the tile index
+*becomes* the band index -- is only expressible in TIFF when the image width
+happens to be a multiple of 16.
+
+**And the cost.** A tiled TIFF opens in any image viewer. A `.jof` opens in
+nothing that already exists, which is why this tree ships both
+`tools/ra8_fmt` to inspect the bytes and `tools/ra8_viewer` to look at a page
+-- two first-party tools recovering what TIFF gets for free. That is a real
+and recurring cost, paid every time something needs debugging, and it is
+accounted for with the rest of the bill in
+@ref md_docs_2formats_2BINARY__FORMATS.
 
 ---
 
