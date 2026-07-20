@@ -779,6 +779,13 @@ gate_doc_attachment() (
 # finding -- there is no grandfathering.
 gate_lint_py_shell() (
   set -e
+  # --selftest runs FIRST and asserts the configured rule set really enforces
+  # what it advertises: a deliberately non-conforming fixture must trip every
+  # rule family named in EXPECTED_CODES, and a legal-but-tricky one must stay
+  # silent. #360 is why -- an empty `[tool.ruff.lint]` table had this gate
+  # reporting a clean tree while running little more than pyflakes. Gutting the
+  # select list now turns the selftest red instead of turning the tree green.
+  python3 scripts/utils/check_ruff.py --selftest
   python3 scripts/utils/check_ruff.py --require
   python3 scripts/utils/check_shell.py --require
 )

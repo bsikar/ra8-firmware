@@ -16,6 +16,7 @@
 # Usage:  python3 make_cover_fixture.py
 import io
 import zipfile
+from pathlib import Path
 
 from PIL import Image
 
@@ -140,7 +141,7 @@ def bake_header(epub: bytes) -> str:
 def main():
     epub = make_epub()
     header = bake_header(epub)
-    with open("epub_cover_fixture.h", "w", encoding="ascii") as f:
+    with Path("epub_cover_fixture.h").open("w", encoding="ascii") as f:
         f.write(header)
     print(f"wrote epub_cover_fixture.h ({len(epub)} epub bytes)")
 

@@ -1,15 +1,15 @@
-# Ruff configuration for first-party Python tooling (scripts/, tools/, tests/).
+# Ruff configuration for first-party Python (every tracked *.py in the tree).
 #
-# Lint + format are gated in CI via scripts/utils/check_ruff.py, which
-# grandfathers the existing backlog (check_ruff_baseline.json) so the bar is
-# high for NEW code while main stays green.  Tighten the gate over time by
-# shrinking the baseline, not by relaxing the rules below.
+# Lint + format are gated in CI via scripts/utils/check_ruff.py, which fails on
+# ANY finding. There is no baseline and no grandfathering: a suppressed backlog
+# is a tree that reads green over unfixed findings, which is the failure mode
+# #360 exists to remove. The gate derives its file list from `git ls-files`, so
+# a new directory is covered the day it appears.
 #
-# The select set is deliberately broad (bugs, security, modernization,
-# complexity) but drops rule families that are wrong for a scripts/tooling
-# tree: docstring (D*) and annotation (ANN*) families are not required on
-# internal scripts, flake8-print (T20*) is dropped because CLI tools print,
-# and quote/comma rules (Q*, COM*) are owned by the formatter.
+# Every family below was MEASURED across the tree before being selected, and
+# every finding it produced was fixed rather than exempted. Families that are
+# deliberately NOT selected are listed at the bottom with the measurement that
+# justified dropping them -- "we did not get to it" is not one of the reasons.
 
 [tool.ruff]
 line-length = 100
@@ -27,11 +27,11 @@ select = [
   "C4",        # flake8-comprehensions
   "SIM",       # flake8-simplify
   "PTH",       # flake8-use-pathlib
-  "RUF",       # ruff-specific
+  "RUF",       # ruff-specific (incl. RUF100: an unused noqa is a lie)
   "PERF",      # perflint
   "RET",       # flake8-return
   "PIE",       # flake8-pie
-  "PL",        # pylint (R/C/W/E)
+  "PL",        # pylint (R/C/W/E) -- includes PLR0915 too-many-statements
   "S",         # flake8-bandit (security)
   "ARG",       # flake8-unused-arguments
   "TID",       # flake8-tidy-imports
@@ -41,11 +41,95 @@ select = [
   "FURB",      # refurb (modernization)
   "TRY",       # tryceratops (exception hygiene)
   "EM",        # flake8-errmsg
+  # --- added by #360 -------------------------------------------------------
+  # A blind `except Exception` in a gate swallows the very failure the gate
+  # exists to report. Measured 9: six were file-read catch-alls now narrowed to
+  # OSError; the remaining three are genuine process boundaries carrying a
+  # reasoned per-line noqa.
+  "BLE",
+  # Families that measured ZERO findings across all 96 first-party files.
+  # Selecting them costs nothing today and closes the defect class for good.
+  # Nothing is hidden behind them -- a zero-finding rule suppresses nothing.
+  "A",         # builtin shadowing
+  "ASYNC",     # async correctness
+  "DTZ",       # naive datetime (silently timezone-dependent behaviour)
+  "FLY",       # static str.join that should be an f-string
+  "G",         # logging-format correctness
+  "LOG",       # logging misuse
+  "PGH",       # blanket `noqa` / blanket `type: ignore` -- see the note below
+  "PT",        # pytest style
+  "PYI",       # stub-file correctness
+  "RSE",       # raise with unnecessary parentheses
+  "SLOT",      # __slots__ correctness on subclassed builtins
+  "T10",       # a pdb/breakpoint import left in a committed file
+  "YTT",       # sys.version misuse
 ]
 ignore = [
-  "ISC001",    # single-line implicit string concat -- conflicts with formatter
+  "ISC001",    # single-line implicit string concat -- conflicts with the formatter
   "COM812",    # trailing comma -- owned by the formatter
 ]
+
+# PGH is doing real work here: it bans BLANKET `# noqa` and `# type: ignore`.
+# Every suppression in this tree must therefore name its rule and carry an
+# inline reason (`# noqa: S603 -- fixed argv, trusted tool path`), and RUF100
+# deletes it again as soon as it stops being needed. That pair is what keeps a
+# targeted, justified suppression from decaying into a blanket one.
+
+[tool.ruff.lint.pylint]
+# Pinned explicitly rather than inherited, so a ruff default change cannot
+# silently move this project's limit.
+#
+# 50 statements is the ruff default and the tree is clean at it (measured:
+# 0 findings at 50, 18 at 40, 52 at 30). It is deliberately NOT tightened here:
+# tightening is a function-size decision, and #359 owns choosing the right size
+# cap for Python. Setting a second, competing number here is how two gates end
+# up disagreeing about the same rule.
+max-statements = 50
+max-branches = 12
+
+# ---------------------------------------------------------------------------
+# Deliberately NOT selected, each with the measurement behind the decision.
+# Recorded here so the next person reads a reason instead of an omission.
+#
+#   ANN (367) type annotations. A large mechanical diff across internal CLI
+#             scripts for modest defect-detection value, and it collides with
+#             the planned scripts/ reorganization. Revisit after that lands.
+#   T20 (517) flake8-print. These ARE command-line tools; printing is the
+#             output mechanism, not a debugging leftover.
+#   C90  (52) mccabe complexity. Fixing means restructuring 52 functions --
+#             a refactor campaign, not a lint pass, and it overlaps the
+#             function-size decision in #359.
+#   D   (402) pydocstyle, google convention (measured: google 402, pep257 396,
+#             numpy 384; google is the pick because it drops D401's
+#             imperative-mood policing, 27 findings of pure style opinion).
+#             Split out deliberately, and NOT because of the size: 271 of the
+#             402 are "this function has no docstring" on internal helpers,
+#             and writing 271 of those in one mechanical pass produces exactly
+#             the restating boilerplate docs/STYLE_GUIDE.md bans on the C side
+#             ("pointer-only boilerplate that restates the obvious ... carries
+#             zero information"). Doing it properly needs per-function
+#             judgment, so it is its own change. The other 131 are formatting
+#             rules (D205/D209/D212/D301/D415) that land with it.
+#             Nothing is suppressed by this: D is simply not selected, so no
+#             finding is hidden behind a green gate.
+#   ERA   (9) commented-out code. ALL NINE measured findings are false
+#             positives on prose: a documented shell command line, a sample
+#             of mcdc.txt's format, a deliberately-empty exemption list with
+#             a commented tuple template, and a plain English comment that
+#             happens to parse as a call. A rule whose entire measured yield
+#             is false positives buys nothing and costs nine suppressions on
+#             correct code.
+#   INP   (5) implicit-namespace-package. Its remedy is to add __init__.py to
+#             scripts/, converting a flat CLI-script tree into a Python
+#             package. That is a structural change this repo does not want.
+#   FBT  (23) boolean-trap. An API-design opinion, not a defect class, and
+#             these are internal single-caller helpers.
+#   SLF  (15) private-member access, all of it inside this repo's own tests
+#             and tooling reaching into modules it owns.
+#   TC   (13) typing-only import blocks. Runtime-irrelevant for scripts that
+#             are executed, not imported as a typed library.
+#   Q, COM    quote and comma style -- owned by `ruff format`.
+# ---------------------------------------------------------------------------
 
 [tool.ruff.format]
 # Formatter defaults: double quotes, space indent, magic trailing comma honoured.
