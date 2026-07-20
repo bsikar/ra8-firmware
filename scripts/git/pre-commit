@@ -135,6 +135,14 @@ if [[ -n "$c_files" ]]; then
     # Runs only when C/H files are staged. Scans libs/, src/, port/ for any
     # function that is missing a required Doxygen tag per CLAUDE.md.
     if [[ -f scripts/utils/doxy_audit.py ]]; then
+        # Regression-test the auditor before trusting it: a regex-driven gate
+        # that stops recognising a construct reports zero gaps, which is
+        # indistinguishable from a fully documented tree.
+        if ! python3 scripts/utils/doxy_audit.py --selftest; then
+            echo "[FAIL] doxy_audit.py selftest failed -- the auditor itself is broken."
+            echo "       Do not trust the --check result below until this passes."
+            error_found=1
+        fi
         if ! python3 scripts/utils/doxy_audit.py --check; then
             echo "[FAIL] doxy_audit.py reported documentation gaps."
             echo "       Every function in libs/, src/, port/ must have the"
