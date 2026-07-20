@@ -47,14 +47,14 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_unarch_xz_u_1024  = 1024U,
-  k_unarch_xz_val_320 = 320U,
+  k_unarch_xz_u_1024      = 1024U,
+  k_unarch_xz_scratch_kib = 320U, /**< Decoder scratch arena size, in KiB. */
 } unarch_xz_uint16_const_t;
 
 /** @brief Decode destination arena (bounds every honest stream too). */
 static uint8_t s_arena[1U << k_unarch_xz_u_20];
 /** @brief XZ session scratch: 64 KiB state reserve + 256 KiB dict budget. */
-static _Alignas(8) uint8_t s_scratch[k_unarch_xz_val_320 * k_unarch_xz_u_1024];
+static _Alignas(8) uint8_t s_scratch[k_unarch_xz_scratch_kib * k_unarch_xz_u_1024];
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {

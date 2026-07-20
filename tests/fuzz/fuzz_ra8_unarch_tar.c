@@ -48,14 +48,14 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_unarch_tar_n_4096  = 4096U,
-  k_unarch_tar_val_512 = 512,
+  k_unarch_tar_n_4096   = 4096U,
+  k_unarch_tar_name_cap = 512, /**< Extracted-entry name buffer capacity. */
 } unarch_tar_uint16_const_t;
 
 /** @brief Member extraction buffer. */
 static uint8_t s_out[1U << 16];
 /** @brief Member name buffer. */
-static char s_name[k_unarch_tar_val_512];
+static char s_name[k_unarch_tar_name_cap];
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {

@@ -59,7 +59,8 @@ typedef enum : uint8_t {
   k_rar5_enc_fixture_i_44        = 44U,
   k_rar5_enc_fixture_i_64        = 64U,
   k_rar5_enc_fixture_sentinel_5a = 0x5AU,
-  k_rar5_enc_fixture_val_7       = 7U,
+  k_rar5_enc_fixture_msb_bit =
+    7U, /**< Index of the most-significant bit in a byte (MSB-first writer). */
 } rar5_enc_fixture_uint8_const_t;
 
 /**
@@ -128,7 +129,7 @@ static inline void bw_put(bitw_t* w, uint32_t v, uint32_t n)
     const uint32_t bit = (v >> (i - 1U)) & 1U;
     if (w->byte < w->cap) {
       if (bit != 0U) {
-        w->buf[w->byte] |= (uint8_t)(1U << (k_rar5_enc_fixture_val_7 - w->bitpos));
+        w->buf[w->byte] |= (uint8_t)(1U << (k_rar5_enc_fixture_msb_bit - w->bitpos));
       }
     }
     w->bitpos++;

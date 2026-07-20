@@ -47,8 +47,8 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_rar_n_4096  = 4096U,
-  k_rar_val_512 = 512,
+  k_rar_n_4096   = 4096U,
+  k_rar_name_cap = 512, /**< Extracted-entry name buffer capacity. */
 } rar_uint16_const_t;
 
 /** @brief Flat backing served to the walker. */
@@ -71,7 +71,7 @@ static size_t fz_read(void* ctx, uint64_t off, void* dst, size_t len)
 
 static ra8_rar5_state_t s_state;
 static uint8_t          s_out[1U << 16];
-static char             s_name[k_rar_val_512];
+static char             s_name[k_rar_name_cap];
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {

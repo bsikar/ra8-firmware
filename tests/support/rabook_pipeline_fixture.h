@@ -49,9 +49,11 @@ typedef enum : uint8_t {
   k_rabook_pipeline_fixture_put_u32_le_40 = 40U,
   k_rabook_pipeline_fixture_v_24          = 24U,
   k_rabook_pipeline_fixture_v_ff          = 0xFFU,
-  k_rabook_pipeline_fixture_val_128       = 128,
-  k_rabook_pipeline_fixture_val_26        = 26,
-  k_rabook_pipeline_fixture_val_28        = 28,
+  k_rabook_pipeline_fixture_small_bmp_cap = 128, /**< Minimal in-test BMP buffer capacity. */
+  k_rabook_pipeline_fixture_bmp_off_planes =
+    26, /**< BMP DIB header offset of the colour-plane count. */
+  k_rabook_pipeline_fixture_bmp_off_bpp =
+    28, /**< BMP DIB header offset of the bits-per-pixel field. */
 } rabook_pipeline_fixture_uint8_const_t;
 
 /**
@@ -447,12 +449,12 @@ static inline size_t make_bmp(uint8_t* out, uint16_t w, uint16_t h, uint8_t gray
   put_u32_le(out + 2, total);                                     /* file size         */
   put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_10, hdr); /* pixel data offset */
   put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_14,
-             k_rabook_pipeline_fixture_put_u32_le_40);                    /* DIB header size    */
-  put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_18, w);           /* width              */
-  put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_22, h);           /* height (bottom-up) */
-  out[k_rabook_pipeline_fixture_val_26] = 1U;                             /* color planes       */
-  out[k_rabook_pipeline_fixture_val_28] = k_rabook_pipeline_fixture_v_24; /* bits per pixel     */
-  put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_34, data);        /* raw image size     */
+             k_rabook_pipeline_fixture_put_u32_le_40);          /* DIB header size    */
+  put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_18, w); /* width              */
+  put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_22, h); /* height (bottom-up) */
+  out[k_rabook_pipeline_fixture_bmp_off_planes] = 1U;
+  out[k_rabook_pipeline_fixture_bmp_off_bpp]    = k_rabook_pipeline_fixture_v_24;
+  put_u32_le(out + k_rabook_pipeline_fixture_put_u32_le_34, data); /* raw image size */
   for (uint32_t y = 0U; y < (uint32_t)h; y++) {
     uint8_t* px = out + hdr + ((size_t)y * row);
     for (uint32_t x = 0U; x < (uint32_t)w; x++) {
@@ -604,7 +606,7 @@ static inline void build_epub_chapter(const char* chapter)
  */
 static inline void build_epub_raster(void)
 {
-  static uint8_t s_small_bmp[k_rabook_pipeline_fixture_val_128];
+  static uint8_t s_small_bmp[k_rabook_pipeline_fixture_small_bmp_cap];
   const size_t   small_len = make_bmp(s_small_bmp, 2U, 2U, 0x80U);
   const size_t   big_len   = make_bmp(s_bmp, (uint16_t)k_pl_big_edge, 1U, 0x80U);
 
