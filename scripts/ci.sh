@@ -917,6 +917,13 @@ gate_mcdc() (
   set -o pipefail
   require_cmd clang-18 "the MC/DC gate pins clang-18 to match CI"
 
+  # Prove the build-dir freshness guard still fires BEFORE spending twenty
+  # minutes measuring nothing. #346: an inherited tests/build-cov configured
+  # by the coverage gate's gcc-13 cached "-fcoverage-mcdc: no", so the build
+  # came out uninstrumented and the gate died at the merge step blaming the
+  # tests for crashing when all 540 had passed.
+  CC=clang-18 CXX=clang++-18 bash scripts/utils/mcdc_report.sh --selftest
+
   CC=clang-18 CXX=clang++-18 RA8_MCDC_THRESHOLD=0 \
     bash scripts/utils/mcdc_report.sh --in-container | tee mcdc-output.log
 

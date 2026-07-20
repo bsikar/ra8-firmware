@@ -73,6 +73,19 @@ if(RA8_MCDC)
   set(RA8_COVERAGE OFF CACHE BOOL "Disabled because RA8_MCDC=ON" FORCE)
 
   # Probe: does the active C compiler accept the MC/DC flag trio?
+  #
+  # Drop any cached answer first (#346). check_c_compiler_flag stores its
+  # result in the CACHE and skips the check entirely when that entry already
+  # exists -- but the answer is a property of the COMPILER, not of the build
+  # dir. Re-configuring an existing tree with a different compiler therefore
+  # reuses the previous compiler's verdict: tests/build-cov configured by the
+  # coverage gate with gcc-13 (no -fcoverage-mcdc) cached "no", and the mcdc
+  # gate's later clang-18 configure silently inherited it, built with plain
+  # --coverage, and emitted no .profraw at all while reporting MC/DC support.
+  # Re-probing costs about a second; trusting a stale answer cost a gate that
+  # could not measure the thing it exists to measure.
+  unset(RA8_HAVE_CLANG_MCDC CACHE)
+  unset(RA8_HAVE_GCC_CONDCOV CACHE)
   include(CheckCCompilerFlag)
   set(CMAKE_REQUIRED_FLAGS "-fprofile-instr-generate -fcoverage-mapping -fcoverage-mcdc")
   check_c_compiler_flag("-fcoverage-mcdc" RA8_HAVE_CLANG_MCDC)
@@ -94,6 +107,27 @@ if(RA8_MCDC)
     set(CMAKE_REQUIRED_FLAGS "-fprofile-arcs -ftest-coverage -fcondition-coverage")
     check_c_compiler_flag("-fcondition-coverage" RA8_HAVE_GCC_CONDCOV)
     unset(CMAKE_REQUIRED_FLAGS)
+
+    # Degrading here is what turned a one-line configure problem into a
+    # misleading failure four steps downstream (#346): the build came out
+    # uninstrumented, every test passed, and the gate then blamed the tests
+    # for "crashing" because no .profraw existed. RA8_MCDC=ON is an explicit
+    # request to measure MC/DC; a toolchain that cannot must say so HERE.
+    #
+    # RA8_MCDC_ALLOW_FALLBACK=ON opts into the non-MC/DC fallback for local
+    # exploration on a gcc-only box. It is deliberately not the default and
+    # must never be set on a gate path -- the resulting report contains no
+    # condition-level data and cannot support a DO-178C Level B claim.
+    if(NOT RA8_MCDC_ALLOW_FALLBACK)
+      message(FATAL_ERROR
+        "RA8_MCDC=ON but ${CMAKE_C_COMPILER} does not support clang's "
+        "-fcoverage-mcdc. DO-178C Level B MC/DC CANNOT be measured with "
+        "this toolchain, so this configure fails rather than silently "
+        "producing an uninstrumented build that yields no .profraw. "
+        "Install clang >= 18 (brew install llvm / apt install clang-18), "
+        "or pass -DRA8_MCDC_ALLOW_FALLBACK=ON to accept plain "
+        "decision/condition coverage instead (NOT MC/DC).")
+    endif()
 
     message(WARNING
       "RA8_MCDC requested but the host compiler does not support "
