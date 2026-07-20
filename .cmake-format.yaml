@@ -1,0 +1,98 @@
+# cmake-format / cmake-lint configuration -- cmakelang 0.6.13, the pin the
+# lint-cmake gate, the devcontainer image and the CI runners all install.
+#
+# line_width and tab_size match .editorconfig and .clang-format (ColumnLimit
+# 100, indent 2) so CMake, C and C++ in this tree wrap at the same column.
+#
+# markup.enable_markup is OFF deliberately. With it on, cmake-format re-flows
+# comment blocks as markdown and joins consecutive lines into one paragraph --
+# which merged "Copyright (c) 2026 Brighton Sikarskie" and
+# "SPDX-License-Identifier: MIT" onto a single line in every file carrying a
+# licence header. That breaks the copyright gate and the SPDX convention, an
+# SPDX identifier being valid only on a line of its own. cmake-format owns
+# code layout in this tree; comment CONTENT stays with the author.
+parse:
+  # The repo defines its own commands in cmake/. Without their keyword
+  # signatures cmake-format treats every argument as positional and explodes
+  # ra8_add_app(NAME blink STACK_BYTES 2200 ...) into one token per line.
+  # Keep these in step with the cmake_parse_arguments() calls in cmake/.
+  additional_commands:
+    ra8_add_app:
+      flags: [NO_NSC]
+      kwargs:
+        NAME: 1
+        STACK_BYTES: 1
+        DESCRIPTION: 1
+        BOARD: 1
+        USES: '*'
+        LIBS: '*'
+        SIM_LIBS: '*'
+        NSC_SRCS: '*'
+        EXTRA_SRCS: '*'
+    ra8_add_cpu1_image:
+      kwargs:
+        PARENT: 1
+        NAME: 1
+        LINKER: 1
+        SOURCES: '*'
+        INCLUDES: '*'
+    ra8_add_shared_lib_archive:
+      kwargs:
+        NAME: 1
+        REPO_ROOT: 1
+        BOARD: 1
+        STACK_BYTES: 1
+    ra8_target_enable_project_warnings:
+      pargs: 1
+      kwargs:
+        STACK_USAGE_BYTES: 1
+
+format:
+  line_width: 100
+  tab_size: 2
+  use_tabchars: false
+  dangle_parens: true
+  max_pargs_hwrap: 4
+  max_subgroups_hwrap: 2
+  # keyword_case stays UNCHANGED on purpose. cmake-format decides what is a
+  # keyword lexically, so with upper-casing on it rewrote the VARIABLE name
+  # in get_filename_component(name ${src} NAME_WE) to NAME -- colliding with
+  # that command's own NAME keyword and breaking every ra8_add_test() call
+  # in tests/CMakeLists.txt. The cross-build stayed green because the damage
+  # was confined to tests/, so only running the host build caught it. Case
+  # belongs to the author; this formatter owns layout.
+  keyword_case: unchanged
+  command_case: lower
+  line_ending: unix
+  enable_sort: false
+  autosort: false
+
+markup:
+  enable_markup: false
+
+lint:
+  # No codes are globally disabled. The four name patterns below are widened
+  # from cmakelang's defaults to describe the convention this tree actually
+  # follows -- they are a declaration of house style, not a suppression of
+  # findings, and every rule still fires on a name that breaks the convention.
+  #
+  #   leading underscore == private/internal, at any scope.
+  # This tree spells private directory- and local-scope variables _lower_snake
+  # (_board_dir, _c1_srcs) and internal ones _RA8_UPPER (_RA8_TFPSA_DIR).
+  # cmakelang's stock private_var_pattern accepts only the lowercase half and
+  # its local_var_pattern rejects a leading underscore outright, so the
+  # uppercase internal form and every private local were reported. Widening to
+  # "underscore then any identifier" keeps the meaningful half of the rule: an
+  # unprefixed name at private scope is still an error, which is what caught
+  # tier_full and l4_full in the root listfile (both now _-prefixed).
+  private_var_pattern: '_[0-9A-Za-z_]+'
+  local_var_pattern: '_?[0-9A-Za-z_]+'
+  # cmake_parse_arguments() SYNTHESISES its output names as <PREFIX>_<KEYWORD>
+  # (_RA8_APP_NAME, _SL_BOARD, C1_LINKER). Those names cannot be renamed to
+  # satisfy a lowercase-only rule without changing the prefix, so the argument
+  # pattern has to admit them.
+  argument_var_pattern: '_?[0-9A-Za-z_]+'
+  # This tree names macros like functions (ra8_add_app), the modern CMake
+  # convention. cmakelang defaults to SHOUTING_MACRO_NAMES, which no listfile
+  # here follows and which would be a worse convention to adopt now.
+  macro_pattern: '[0-9a-z_]+'

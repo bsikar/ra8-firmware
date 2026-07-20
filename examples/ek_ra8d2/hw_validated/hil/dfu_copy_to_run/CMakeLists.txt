@@ -21,14 +21,17 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(dfu_copy_to_run LANGUAGES C ASM)
+  project(dfu_copy_to_run LANGUAGES C ASM)
 endif()
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
-ra8_add_app(NAME dfu_copy_to_run STACK_BYTES 2200
-           DESCRIPTION "Copy-to-run HIL proof: launch one embedded image at the SRAM run base via ra8_dfu_launch"
-           LIBS ra8_dfu
-          )
+ra8_add_app(
+  NAME dfu_copy_to_run
+  STACK_BYTES 2200
+  DESCRIPTION
+    "Copy-to-run HIL proof: launch one embedded image at the SRAM run base via ra8_dfu_launch"
+  LIBS ra8_dfu
+)

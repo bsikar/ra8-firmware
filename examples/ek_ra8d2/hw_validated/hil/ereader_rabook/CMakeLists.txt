@@ -21,18 +21,21 @@ cmake_minimum_required(VERSION 3.20)
 
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(ereader_rabook LANGUAGES C CXX ASM)
+  project(ereader_rabook LANGUAGES C CXX ASM)
 endif()
 
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
 # ra8_book provides the compiled-book loader + the DOM->XHTML render bridge;
 # ra8_reflow lays it out and ra8_gfx rasterizes. No ra8_epub / miniz: the fixture
 # is baked inflated, so the app validates the flat blob directly.
-ra8_add_app(NAME ereader_rabook STACK_BYTES 16384
-           DESCRIPTION "Headless load + render of a compiled .rabook, small to large (HIL gate)"
-           LIBS ra8_gfx ra8_reflow ra8_book ra8_board_ek_ra8d2)
+ra8_add_app(
+  NAME ereader_rabook
+  STACK_BYTES 16384
+  DESCRIPTION "Headless load + render of a compiled .rabook, small to large (HIL gate)"
+  LIBS ra8_gfx ra8_reflow ra8_book ra8_board_ek_ra8d2
+)

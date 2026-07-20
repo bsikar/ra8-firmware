@@ -25,16 +25,11 @@ get_filename_component(_repo "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 # all to link the whole FAT driver -- and only the FAT driver (no ra8_core_hal ->
 # no ra8_time weak-extern), so this standalone tool builds on macOS and Linux
 # alike. Matches the same glob in tests/CMakeLists.txt (test_ra8_fs_exfat).
-file(GLOB _ra8_fs_fat_tu_sources CONFIGURE_DEPENDS
-    ${_repo}/libs/ra8_fs/src/ra8_fs_fat*.c)
+file(GLOB _ra8_fs_fat_tu_sources CONFIGURE_DEPENDS ${_repo}/libs/ra8_fs/src/ra8_fs_fat*.c)
 
-add_executable(mkfontimg
-    ${CMAKE_CURRENT_SOURCE_DIR}/mkfontimg.c
-    ${_ra8_fs_fat_tu_sources})
+add_executable(mkfontimg ${CMAKE_CURRENT_SOURCE_DIR}/mkfontimg.c ${_ra8_fs_fat_tu_sources})
 
-target_include_directories(mkfontimg PRIVATE
-    ${_repo}/libs/ra8_fs/inc
-    ${_repo}/libs/ra8_core/inc)
+target_include_directories(mkfontimg PRIVATE ${_repo}/libs/ra8_fs/inc ${_repo}/libs/ra8_core/inc)
 
 # First-party sources carry the project warning bar (NASA Power of 10
 # Rule 10) here exactly as they do in the ARM and host-test builds; only

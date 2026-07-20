@@ -22,8 +22,7 @@ find_package(CURL REQUIRED)
 # can be assumed from the other -- probe for it and let the source pick.
 include(CheckSymbolExists)
 set(CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
-check_symbol_exists(posix_spawn_file_actions_addchdir "spawn.h"
-  MDL_HAVE_POSIX_SPAWN_ADDCHDIR)
+check_symbol_exists(posix_spawn_file_actions_addchdir "spawn.h" MDL_HAVE_POSIX_SPAWN_ADDCHDIR)
 unset(CMAKE_REQUIRED_DEFINITIONS)
 if(MDL_HAVE_POSIX_SPAWN_ADDCHDIR)
   set(MDL_ADDCHDIR_DEF MDL_HAVE_POSIX_SPAWN_ADDCHDIR)
@@ -35,8 +34,7 @@ endif()
 # uses) provides CBZ writing and gzip DEFLATE -- so archive export needs no
 # system libraries. SOUP: compiled warning-free, exempt from our style bar.
 set(MDL_MINIZ ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz/miniz.c)
-set_source_files_properties(${MDL_MINIZ} PROPERTIES
-  COMPILE_OPTIONS "-w;-fno-strict-aliasing")
+set_source_files_properties(${MDL_MINIZ} PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing")
 
 # The JOF exporter reuses the firmware's own JOF producer + streaming
 # JPEG decoder host-side (RA8_SIMULATOR_MODE), so a .jof the CLI writes is
@@ -47,22 +45,26 @@ set_source_files_properties(${MDL_MINIZ} PROPERTIES
 # never sees, which is what a 64-bit host build is for (#309).
 set(FW ${CMAKE_CURRENT_SOURCE_DIR}/../../libs)
 set(MDL_JOF_SRC
-  ${FW}/ra8_jof/src/ra8_jof.c
-  ${FW}/ra8_jof/src/ra8_jof_produce.c
-  ${FW}/ra8_jof/src/ra8_jof_produce_webp.c
-  ${FW}/ra8_jof/src/ra8_jof_png.c
-  ${FW}/ra8_jof/src/ra8_jof_png_chunk.c
-  ${FW}/ra8_hal/src/ra8_jpeg_sw.c
-  ${FW}/ra8_hal/src/ra8_jpeg_sw_decode.c
-  ${FW}/ra8_hal/src/ra8_jpeg_sw_stream.c
-  ${FW}/ra8_io/src/ra8_io_compress.c
-  ${FW}/ra8_core/src/ra8_log.c
-  ${FW}/ra8_core/src/ra8_error_handler.c
-  ${FW}/ra8_core/src/ra8_decomp_limits.c)
+    ${FW}/ra8_jof/src/ra8_jof.c
+    ${FW}/ra8_jof/src/ra8_jof_produce.c
+    ${FW}/ra8_jof/src/ra8_jof_produce_webp.c
+    ${FW}/ra8_jof/src/ra8_jof_png.c
+    ${FW}/ra8_jof/src/ra8_jof_png_chunk.c
+    ${FW}/ra8_hal/src/ra8_jpeg_sw.c
+    ${FW}/ra8_hal/src/ra8_jpeg_sw_decode.c
+    ${FW}/ra8_hal/src/ra8_jpeg_sw_stream.c
+    ${FW}/ra8_io/src/ra8_io_compress.c
+    ${FW}/ra8_core/src/ra8_log.c
+    ${FW}/ra8_core/src/ra8_error_handler.c
+    ${FW}/ra8_core/src/ra8_decomp_limits.c
+)
 set(MDL_JOF_INC
-  ${FW}/ra8_jof/inc ${FW}/ra8_jof/src
-  ${FW}/ra8_hal/inc ${FW}/ra8_hal/src
-  ${FW}/ra8_io/inc)
+    ${FW}/ra8_jof/inc
+    ${FW}/ra8_jof/src
+    ${FW}/ra8_hal/inc
+    ${FW}/ra8_hal/src
+    ${FW}/ra8_io/inc
+)
 
 # WebP decode for the JOF exporter: the sites this CLI scrapes serve .webp pages
 # (mdl_export's page-extension table has always accepted them), so the producer's
@@ -73,7 +75,8 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/ra8_webp_vendor.cmake)
 # write); pass its directory so the CLI can find cbz_compile.py at runtime.
 set(MDL_EPUB_COMPILE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../epub_compile)
 
-add_executable(media_dl
+add_executable(
+  media_dl
   src/main.c
   src/mdl_net_curl.c
   src/mdl_extract.c
@@ -82,25 +85,27 @@ add_executable(media_dl
   src/mdl_export.c
   src/mdl_export_jof.c
   ${MDL_JOF_SRC}
-  ${MDL_MINIZ})
+  ${MDL_MINIZ}
+)
 
-target_include_directories(media_dl PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/inc
-  # Reuse the firmware error contract host-side. RA8_SIMULATOR_MODE is the same
-  # switch the host unit-test build uses so register-reaching code takes the
-  # host-safe path.
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
-  ${MDL_JOF_INC})
+target_include_directories(
+  media_dl
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+          # Reuse the firmware error contract host-side. RA8_SIMULATOR_MODE is the same
+          # switch the host unit-test build uses so register-reaching code takes the
+          # host-safe path.
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
+          ${MDL_JOF_INC}
+)
 
 # _GNU_SOURCE: mdl_export.c uses posix_spawn_file_actions_addchdir_np() and
 # `environ`, both of which glibc gates behind it. It must be set on the compile
 # line, not in the source, so it precedes every system header.
-target_compile_definitions(media_dl PRIVATE
-  _GNU_SOURCE
-  RA8_SIMULATOR_MODE
-  ${MDL_ADDCHDIR_DEF}
-  MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}")
+target_compile_definitions(
+  media_dl PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE ${MDL_ADDCHDIR_DEF}
+                   MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}"
+)
 target_compile_options(media_dl PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(media_dl PRIVATE CURL::libcurl)
 ra8_webp_attach(media_dl ${CMAKE_CURRENT_SOURCE_DIR}/../..)
@@ -109,25 +114,28 @@ ra8_webp_attach(media_dl ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 # logic under test (extract/config/export) needs no libcurl, so the test binary
 # links only those units + vendored miniz.
 enable_testing()
-add_executable(test_media_dl
+add_executable(
+  test_media_dl
   tests/test_media_dl.c
   src/mdl_extract.c
   src/mdl_config.c
   src/mdl_export.c
   src/mdl_export_jof.c
   ${MDL_JOF_SRC}
-  ${MDL_MINIZ})
-target_include_directories(test_media_dl PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/inc
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
-  ${MDL_JOF_INC})
-target_compile_definitions(test_media_dl PRIVATE
-  _GNU_SOURCE
-  RA8_SIMULATOR_MODE
-  ${MDL_ADDCHDIR_DEF}
-  MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}")
+  ${MDL_MINIZ}
+)
+target_include_directories(
+  test_media_dl
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/third_party/miniz
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../tests
+          ${MDL_JOF_INC}
+)
+target_compile_definitions(
+  test_media_dl PRIVATE _GNU_SOURCE RA8_SIMULATOR_MODE ${MDL_ADDCHDIR_DEF}
+                        MDL_EPUB_COMPILE_DIR="${MDL_EPUB_COMPILE_DIR}"
+)
 target_compile_options(test_media_dl PRIVATE -Wall -Wextra -Werror)
 ra8_webp_attach(test_media_dl ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 add_test(NAME test_media_dl COMMAND test_media_dl)

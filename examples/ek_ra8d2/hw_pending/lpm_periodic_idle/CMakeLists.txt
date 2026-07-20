@@ -19,14 +19,19 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(lpm_periodic_idle LANGUAGES C ASM)
+  project(lpm_periodic_idle LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME lpm_periodic_idle STACK_BYTES 2200 LIBS ra8_board_ek_ra8d2 DESCRIPTION "Periodic-app deep-idle loop: work-then-Software-Standby woken by ULPT0 self-wake")
+ra8_add_app(
+  NAME lpm_periodic_idle
+  STACK_BYTES 2200
+  LIBS ra8_board_ek_ra8d2
+  DESCRIPTION "Periodic-app deep-idle loop: work-then-Software-Standby woken by ULPT0 self-wake"
+)

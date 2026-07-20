@@ -28,17 +28,16 @@ endif()
 
 # libFuzzer is a clang-only feature. Refuse to configure if the active
 # C compiler is not clang -- gcc has no `-fsanitize=fuzzer` support.
-if(NOT CMAKE_C_COMPILER_ID STREQUAL "Clang"
-   AND NOT CMAKE_C_COMPILER_ID STREQUAL "AppleClang")
-  message(FATAL_ERROR
-    "RA8_FUZZ=ON requires a clang C compiler "
-    "(detected: ${CMAKE_C_COMPILER_ID}). "
-    "Re-run cmake with -DCMAKE_C_COMPILER=clang "
-    "-DCMAKE_CXX_COMPILER=clang++ .")
+if(NOT CMAKE_C_COMPILER_ID STREQUAL "Clang" AND NOT CMAKE_C_COMPILER_ID STREQUAL "AppleClang")
+  message(
+    FATAL_ERROR "RA8_FUZZ=ON requires a clang C compiler " "(detected: ${CMAKE_C_COMPILER_ID}). "
+                "Re-run cmake with -DCMAKE_C_COMPILER=clang " "-DCMAKE_CXX_COMPILER=clang++ ."
+  )
 endif()
 
 message(STATUS "RA8_FUZZ=ON: building libFuzzer harnesses with "
-               "-fsanitize=fuzzer,address,undefined")
+               "-fsanitize=fuzzer,address,undefined"
+)
 
 # AddressSanitizer reserves the low 4 GB of address space on macOS,
 # which conflicts with the ra8_sim_mmap MAP_FIXED windows at
@@ -50,14 +49,16 @@ if(APPLE)
       -fsanitize=fuzzer,undefined
       -fno-sanitize-recover=undefined
       -fno-omit-frame-pointer
-      -g -O1
+      -g
+      -O1
   )
 else()
   set(RA8_FUZZ_SAN_FLAGS
       -fsanitize=fuzzer,address,undefined
       -fno-sanitize-recover=all
       -fno-omit-frame-pointer
-      -g -O1
+      -g
+      -O1
   )
 endif()
 
@@ -110,63 +111,60 @@ set(RA8_FUZZ_TARGETS
 #   fuzz_ra8_usb_pal  -- ra8_mstp_init + ra8_usb_pal_init / _ep_* touch USBFS regs
 #   fuzz_ra8_ble_att  -- ra8_ble_host_init -> ra8_ble_open writes the BLE
 #                       controller block at 0x40700000
-set(RA8_FUZZ_MMIO_TARGETS
-    fuzz_ra8_canfd
-    fuzz_ra8_usb_pal
-    fuzz_ra8_ble_att
-)
+set(RA8_FUZZ_MMIO_TARGETS fuzz_ra8_canfd fuzz_ra8_usb_pal fuzz_ra8_ble_att)
 
 foreach(_t ${RA8_FUZZ_TARGETS})
   # fuzz_log_sink.c installs a discard ra8_log byte sink before main() so no
   # harness reaches the ITM registers at 0xE0000000 (which are unmapped
   # here -- see fuzz_log_sink.c and issue #193). Linked into every harness.
-  set(_t_srcs
-      ${CMAKE_CURRENT_SOURCE_DIR}/${_t}.c
-      ${CMAKE_CURRENT_SOURCE_DIR}/fuzz_log_sink.c
-  )
+  set(_t_srcs ${CMAKE_CURRENT_SOURCE_DIR}/${_t}.c ${CMAKE_CURRENT_SOURCE_DIR}/fuzz_log_sink.c)
   if(_t IN_LIST RA8_FUZZ_MMIO_TARGETS)
     list(APPEND _t_srcs ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/ra8_sim_mmap.c)
   endif()
-  add_executable(${_t}
-      ${_t_srcs}
-      $<TARGET_OBJECTS:ra8_core_hal_fuzz>
-  )
+  add_executable(${_t} ${_t_srcs} $<TARGET_OBJECTS:ra8_core_hal_fuzz>)
   target_compile_options(${_t} PRIVATE ${RA8_FUZZ_SAN_FLAGS})
-  target_link_options(${_t}    PRIVATE ${RA8_FUZZ_SAN_FLAGS})
-  target_include_directories(${_t} PRIVATE
-      ${FW_ROOT}/libs/ra8_core/inc
-      ${FW_ROOT}/libs/ra8_hal/inc
-      ${FW_ROOT}/libs/ra8_modem_at/inc
-      ${FW_ROOT}/libs/ra8_net_pal/inc
-      ${FW_ROOT}/libs/ra8_epub/inc
-      ${FW_ROOT}/libs/ra8_ble_host/inc
-      ${FW_ROOT}/libs/ra8_usb_pal/inc
-      ${FW_ROOT}/libs/ra8_tls/inc
-      ${FW_ROOT}/libs/ra8_fs/inc
-      ${FW_ROOT}/libs/ra8_reflow/inc
-      ${FW_ROOT}/libs/ra8_comic/inc
-      ${FW_ROOT}/libs/ra8_unarch/inc
-      ${FW_ROOT}/libs/ra8_webp/inc
-      ${FW_ROOT}/libs/ra8_jof/inc
-      ${FW_ROOT}/libs/third_party/stb
-      ${FW_ROOT}/libs/third_party/xz_embedded
-      # tests/ root: shared test fixtures (e.g. eth_frame_fixture.h,
-      # the fuzz_ra8_etha parse target).
-      ${CMAKE_CURRENT_SOURCE_DIR}/..
-      ${CMAKE_CURRENT_SOURCE_DIR}/../mocks
+  target_link_options(${_t} PRIVATE ${RA8_FUZZ_SAN_FLAGS})
+  target_include_directories(
+    ${_t}
+    PRIVATE ${FW_ROOT}/libs/ra8_core/inc
+            ${FW_ROOT}/libs/ra8_hal/inc
+            ${FW_ROOT}/libs/ra8_modem_at/inc
+            ${FW_ROOT}/libs/ra8_net_pal/inc
+            ${FW_ROOT}/libs/ra8_epub/inc
+            ${FW_ROOT}/libs/ra8_ble_host/inc
+            ${FW_ROOT}/libs/ra8_usb_pal/inc
+            ${FW_ROOT}/libs/ra8_tls/inc
+            ${FW_ROOT}/libs/ra8_fs/inc
+            ${FW_ROOT}/libs/ra8_reflow/inc
+            ${FW_ROOT}/libs/ra8_comic/inc
+            ${FW_ROOT}/libs/ra8_unarch/inc
+            ${FW_ROOT}/libs/ra8_webp/inc
+            ${FW_ROOT}/libs/ra8_jof/inc
+            ${FW_ROOT}/libs/third_party/stb
+            ${FW_ROOT}/libs/third_party/xz_embedded
+            # tests/ root: shared test fixtures (e.g. eth_frame_fixture.h,
+            # the fuzz_ra8_etha parse target).
+            ${CMAKE_CURRENT_SOURCE_DIR}/..
+            ${CMAKE_CURRENT_SOURCE_DIR}/../mocks
   )
   set_target_properties(${_t} PROPERTIES LINKER_LANGUAGE CXX)
 endforeach()
 
 # Convenience aggregate target: `cmake --build . --target ra8_fuzz_all`.
-add_custom_target(ra8_fuzz_all DEPENDS ${RA8_FUZZ_TARGETS})
+add_custom_target(
+  ra8_fuzz_all
+  DEPENDS ${RA8_FUZZ_TARGETS}
+  COMMENT "Building every libFuzzer harness"
+)
 
 # Seed corpora live under tests/fuzz/corpus/<target>/ and are
 # (re-)materialised by scripts/utils/init_fuzz_corpora.sh. Both
 # `make fuzz` and scripts/utils/run_fuzz.sh invoke that script
 # before running a harness, then pass the corpus directory as a
 # positional argument to libFuzzer. See docs/FUZZING.md.
-add_custom_target(ra8_fuzz_seed_corpora
-    COMMAND bash ${FW_ROOT}/scripts/utils/init_fuzz_corpora.sh
-    WORKING_DIRECTORY ${FW_ROOT}
-    COMMENT "Seeding libFuzzer corpora under tests/fuzz/corpus/")
+add_custom_target(
+  ra8_fuzz_seed_corpora
+  COMMAND bash ${FW_ROOT}/scripts/utils/init_fuzz_corpora.sh
+  WORKING_DIRECTORY ${FW_ROOT}
+  COMMENT "Seeding libFuzzer corpora under tests/fuzz/corpus/"
+)

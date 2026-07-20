@@ -23,15 +23,19 @@ cmake_minimum_required(VERSION 3.20)
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" RA8_PROJECT_VERSION)
 string(STRIP "${RA8_PROJECT_VERSION}" RA8_PROJECT_VERSION)
 
-project(ra8-firmware
-    LANGUAGES C ASM
-    VERSION ${RA8_PROJECT_VERSION}
-    DESCRIPTION "Bare-metal firmware for Renesas RA8D2 (Cortex-M85) on EK-RA8D2"
+project(
+  ra8-firmware
+  LANGUAGES C ASM
+  VERSION ${RA8_PROJECT_VERSION}
+  DESCRIPTION "Bare-metal firmware for Renesas RA8D2 (Cortex-M85) on EK-RA8D2"
 )
 
 # Build type
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+  set(CMAKE_BUILD_TYPE
+      Debug
+      CACHE STRING "Build type" FORCE
+  )
 endif()
 
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
@@ -43,14 +47,15 @@ message(STATUS "Compiler:   ${CMAKE_C_COMPILER}")
 # tracked dir at configure time. Idempotent; no-op outside a git work tree
 # (.git absent in a release tarball / vendored copy).
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
-    execute_process(
-        COMMAND git config core.hooksPath scripts/git
-        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-        RESULT_VARIABLE _ra8_hooks_rc
-        OUTPUT_QUIET ERROR_QUIET)
-    if(_ra8_hooks_rc EQUAL 0)
-        message(STATUS "Git hooks: core.hooksPath -> scripts/git")
-    endif()
+  execute_process(
+    COMMAND git config core.hooksPath scripts/git
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    RESULT_VARIABLE _ra8_hooks_rc
+    OUTPUT_QUIET ERROR_QUIET
+  )
+  if(_ra8_hooks_rc EQUAL 0)
+    message(STATUS "Git hooks: core.hooksPath -> scripts/git")
+  endif()
 endif()
 
 # Compiler cache for the host-side targets configured from this listfile
@@ -74,12 +79,12 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/ra8_warnings.cmake)
 #############################################################################
 
 # Debug flags: no optimization, full debug info
-set(CMAKE_C_FLAGS_DEBUG          "-O0 -g3 -DDEBUG")
-set(CMAKE_ASM_FLAGS_DEBUG        "-g3")
+set(CMAKE_C_FLAGS_DEBUG "-O0 -g3 -DDEBUG")
+set(CMAKE_ASM_FLAGS_DEBUG "-g3")
 
 # Release flags: size-optimized, minimal debug info
-set(CMAKE_C_FLAGS_RELEASE        "-Os -g1 -DNDEBUG")
-set(CMAKE_ASM_FLAGS_RELEASE      "-g1")
+set(CMAKE_C_FLAGS_RELEASE "-Os -g1 -DNDEBUG")
+set(CMAKE_ASM_FLAGS_RELEASE "-g1")
 
 # RelWithDebInfo: -Og for a debuggable optimized build
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "-Og -g3")
@@ -99,12 +104,15 @@ option(RA8_TRUSTZONE_ENABLE "Enable Cortex-M85 TrustZone (-mcmse + SAU)" OFF)
 # top-level build keeps working without dragging the third_party trees
 # in. Per-app builds (e.g. examples/threadx_filex_demo) flip these on
 # explicitly through their own Makefile.
-option(RA8_USE_THREADX "Enable the vendored ThreadX RTOS"        OFF)
-option(RA8_USE_FILEX   "Enable the vendored FileX FAT file system" OFF)
+option(RA8_USE_THREADX "Enable the vendored ThreadX RTOS" OFF)
+option(RA8_USE_FILEX "Enable the vendored FileX FAT file system" OFF)
 
 # Default app for top-level builds. `cmake --build build --target firmware`
 # builds the default; `cmake --build build` builds every discovered app.
-set(RA8_DEFAULT_APP "ra8d2-ereader" CACHE STRING "Default app target alias")
+set(RA8_DEFAULT_APP
+    "ra8d2-ereader"
+    CACHE STRING "Default app target alias"
+)
 
 # Pull in the optional integrations early so per-app subdirectories
 # can reference the `threadx` / `filex` interface targets directly.
@@ -126,83 +134,103 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/filex.cmake)
 
 set(RA8_APPS "")
 set(RA8_APP_PATHS "")
-file(GLOB _ra8_tier_entries RELATIVE ${CMAKE_SOURCE_DIR}/examples ${CMAKE_SOURCE_DIR}/examples/*)
+file(
+  GLOB _ra8_tier_entries
+  RELATIVE ${CMAKE_SOURCE_DIR}/examples
+  ${CMAKE_SOURCE_DIR}/examples/*
+)
 foreach(tier ${_ra8_tier_entries})
-    set(tier_full ${CMAKE_SOURCE_DIR}/examples/${tier})
-    if(NOT IS_DIRECTORY ${tier_full})
-        continue()
+  set(_ra8_tier_full ${CMAKE_SOURCE_DIR}/examples/${tier})
+  if(NOT IS_DIRECTORY ${_ra8_tier_full})
+    continue()
+  endif()
+  # examples/host/* are macOS-only dev tools (AppKit window backend), not
+  # part of the cross-compiled firmware -- skip them in the unified build.
+  #
+  # examples/ra8p1_foundation/* target a DIFFERENT chip (RA8P1, R7KA8P1KFLCAC)
+  # and must be configured with cmake/toolchain-ra8p1.cmake, not the RA8D2
+  # toolchain this unified build uses. Skipping the tier here keeps every RA8D2
+  # target (make blink, make blink_hal, ...) byte-for-behaviour unchanged; the
+  # RA8P1 apps build standalone via their own per-app Makefile. See
+  # libs/ra8_core/inc/ra8_device.h for the device-selection seam.
+  if(tier STREQUAL "host" OR tier STREQUAL "ra8p1_foundation")
+    continue()
+  endif()
+  file(
+    GLOB _ra8_level2_entries
+    RELATIVE ${_ra8_tier_full}
+    ${_ra8_tier_full}/*
+  )
+  foreach(l2 ${_ra8_level2_entries})
+    set(_ra8_l2_full ${_ra8_tier_full}/${l2})
+    if(NOT IS_DIRECTORY ${_ra8_l2_full})
+      continue()
     endif()
-    # examples/host/* are macOS-only dev tools (AppKit window backend), not
-    # part of the cross-compiled firmware -- skip them in the unified build.
-    #
-    # examples/ra8p1_foundation/* target a DIFFERENT chip (RA8P1, R7KA8P1KFLCAC)
-    # and must be configured with cmake/toolchain-ra8p1.cmake, not the RA8D2
-    # toolchain this unified build uses. Skipping the tier here keeps every RA8D2
-    # target (make blink, make blink_hal, ...) byte-for-behaviour unchanged; the
-    # RA8P1 apps build standalone via their own per-app Makefile. See
-    # libs/ra8_core/inc/ra8_device.h for the device-selection seam.
-    if(tier STREQUAL "host" OR tier STREQUAL "ra8p1_foundation")
-        continue()
-    endif()
-    file(GLOB _ra8_level2_entries RELATIVE ${tier_full} ${tier_full}/*)
-    foreach(l2 ${_ra8_level2_entries})
-        set(l2_full ${tier_full}/${l2})
-        if(NOT IS_DIRECTORY ${l2_full})
-            continue()
+    if(EXISTS ${_ra8_l2_full}/main.c AND EXISTS ${_ra8_l2_full}/CMakeLists.txt)
+      # Level 2: examples/<tier>/<app>/
+      list(APPEND RA8_APPS ${l2})
+      list(APPEND RA8_APP_PATHS examples/${tier}/${l2})
+    else()
+      file(
+        GLOB _ra8_level3_entries
+        RELATIVE ${_ra8_l2_full}
+        ${_ra8_l2_full}/*
+      )
+      foreach(l3 ${_ra8_level3_entries})
+        set(_ra8_l3_full ${_ra8_l2_full}/${l3})
+        if(NOT IS_DIRECTORY ${_ra8_l3_full})
+          continue()
         endif()
-        if(EXISTS ${l2_full}/main.c AND EXISTS ${l2_full}/CMakeLists.txt)
-            # Level 2: examples/<tier>/<app>/
-            list(APPEND RA8_APPS ${l2})
-            list(APPEND RA8_APP_PATHS examples/${tier}/${l2})
+        if(EXISTS ${_ra8_l3_full}/main.c AND EXISTS ${_ra8_l3_full}/CMakeLists.txt)
+          # Level 3: examples/<tier>/<subtier>/<app>/
+          list(APPEND RA8_APPS ${l3})
+          list(APPEND RA8_APP_PATHS examples/${tier}/${l2}/${l3})
         else()
-            file(GLOB _ra8_level3_entries RELATIVE ${l2_full} ${l2_full}/*)
-            foreach(l3 ${_ra8_level3_entries})
-                set(l3_full ${l2_full}/${l3})
-                if(NOT IS_DIRECTORY ${l3_full})
-                    continue()
-                endif()
-                if(EXISTS ${l3_full}/main.c AND EXISTS ${l3_full}/CMakeLists.txt)
-                    # Level 3: examples/<tier>/<subtier>/<app>/
-                    list(APPEND RA8_APPS ${l3})
-                    list(APPEND RA8_APP_PATHS examples/${tier}/${l2}/${l3})
-                else()
-                    file(GLOB _ra8_level4_entries RELATIVE ${l3_full} ${l3_full}/*)
-                    foreach(l4 ${_ra8_level4_entries})
-                        set(l4_full ${l3_full}/${l4})
-                        if(IS_DIRECTORY ${l4_full}
-                           AND EXISTS ${l4_full}/main.c
-                           AND EXISTS ${l4_full}/CMakeLists.txt)
-                            # Level 4: examples/<tier>/<subtier>/<sub2>/<app>/
-                            list(APPEND RA8_APPS ${l4})
-                            list(APPEND RA8_APP_PATHS examples/${tier}/${l2}/${l3}/${l4})
-                        endif()
-                    endforeach()
-                endif()
-            endforeach()
+          file(
+            GLOB _ra8_level4_entries
+            RELATIVE ${_ra8_l3_full}
+            ${_ra8_l3_full}/*
+          )
+          foreach(l4 ${_ra8_level4_entries})
+            set(_ra8_l4_full ${_ra8_l3_full}/${l4})
+            if(IS_DIRECTORY ${_ra8_l4_full}
+               AND EXISTS ${_ra8_l4_full}/main.c
+               AND EXISTS ${_ra8_l4_full}/CMakeLists.txt
+            )
+              # Level 4: examples/<tier>/<subtier>/<sub2>/<app>/
+              list(APPEND RA8_APPS ${l4})
+              list(APPEND RA8_APP_PATHS examples/${tier}/${l2}/${l3}/${l4})
+            endif()
+          endforeach()
         endif()
-    endforeach()
+      endforeach()
+    endif()
+  endforeach()
 endforeach()
 
 if(NOT RA8_APPS)
-    message(FATAL_ERROR "No apps discovered under examples/ (checked up to 4 levels deep).")
+  message(FATAL_ERROR "No apps discovered under examples/ (checked up to 4 levels deep).")
 endif()
 
 message(STATUS "Discovered apps: ${RA8_APPS}")
 
 foreach(app_path ${RA8_APP_PATHS})
-    add_subdirectory(${app_path})
+  add_subdirectory(${app_path})
 endforeach()
 
 # Include the main e-reader application target
 add_subdirectory(src/app)
 
-
 # Convenience alias `firmware` that maps to the default app's elf.
 if("${RA8_DEFAULT_APP}" IN_LIST RA8_APPS)
-    add_custom_target(firmware DEPENDS ${RA8_DEFAULT_APP}.elf)
-    message(STATUS "Default app: ${RA8_DEFAULT_APP} (alias 'firmware')")
+  add_custom_target(
+    firmware
+    DEPENDS ${RA8_DEFAULT_APP}.elf
+    COMMENT "Building the default app (${RA8_DEFAULT_APP})"
+  )
+  message(STATUS "Default app: ${RA8_DEFAULT_APP} (alias 'firmware')")
 else()
-    message(WARNING "RA8_DEFAULT_APP='${RA8_DEFAULT_APP}' is not among discovered apps.")
+  message(WARNING "RA8_DEFAULT_APP='${RA8_DEFAULT_APP}' is not among discovered apps.")
 endif()
 
 #############################################################################

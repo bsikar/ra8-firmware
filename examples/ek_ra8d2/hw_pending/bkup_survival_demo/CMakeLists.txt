@@ -19,17 +19,22 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(bkup_survival_demo LANGUAGES C ASM)
+  project(bkup_survival_demo LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME bkup_survival_demo STACK_BYTES 2200 LIBS ra8_board_ek_ra8d2 DESCRIPTION "bkup_survival_demo firmware for RA8D2")
+ra8_add_app(
+  NAME bkup_survival_demo
+  STACK_BYTES 2200
+  LIBS ra8_board_ek_ra8d2
+  DESCRIPTION "bkup_survival_demo firmware for RA8D2"
+)
 
 # Issue #131: the VBATT battery-backup function is inoperative unless voltage
 # monitor 0 (LVD0) reset is enabled. HUM Ch 12.1.3 p 499: "It is necessary to
@@ -45,6 +50,7 @@ ra8_add_app(NAME bkup_survival_demo STACK_BYTES 2200 LIBS ra8_board_ek_ra8d2 DES
 # 2.80 V VDETBATT switch level (HUM Ch 12.3.2 requires LVD0 > switch level).
 # OFS1 = 0xFFFFFFFF with bits 3:0 cleared -> 0xFFFFFFF0. OFS1_SEC matches so
 # the setting applies whichever OFS1_SEL selects.
-target_compile_definitions(bkup_survival_demo.elf PRIVATE
-    BSP_CFG_OPTION_SETTING_OFS1=0xFFFFFFF0U
-    BSP_CFG_OPTION_SETTING_OFS1_SEC=0xFFFFFFF0U)
+target_compile_definitions(
+  bkup_survival_demo.elf PRIVATE BSP_CFG_OPTION_SETTING_OFS1=0xFFFFFFF0U
+                                 BSP_CFG_OPTION_SETTING_OFS1_SEC=0xFFFFFFF0U
+)

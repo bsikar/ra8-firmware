@@ -27,9 +27,7 @@ cmake_minimum_required(VERSION 3.20)
 # and nothing else.
 add_library(mbedtls_port_ra8_config INTERFACE)
 
-target_include_directories(mbedtls_port_ra8_config INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/inc
-)
+target_include_directories(mbedtls_port_ra8_config INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
 # Config-only port: no bridge sources to splice into app builds.
 # Set the property explicitly so ra8_add_app()'s generic
@@ -38,6 +36,6 @@ set_property(GLOBAL PROPERTY RA8_MBEDTLS_PORT_SOURCES "")
 
 # Track the config header path so cmake/mbedtls.cmake can pin
 # MBEDTLS_CONFIG_FILE to it.
-set_property(GLOBAL PROPERTY RA8_MBEDTLS_CONFIG_FILE
-    ${CMAKE_CURRENT_SOURCE_DIR}/inc/mbedtls_config.h
+set_property(
+  GLOBAL PROPERTY RA8_MBEDTLS_CONFIG_FILE ${CMAKE_CURRENT_SOURCE_DIR}/inc/mbedtls_config.h
 )

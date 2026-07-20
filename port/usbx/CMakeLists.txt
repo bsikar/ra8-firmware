@@ -26,21 +26,21 @@ cmake_minimum_required(VERSION 3.20)
 # the .c themselves (matching the rest of the per-app glob style).
 add_library(usbx_port_ra8_usb INTERFACE)
 
-target_include_directories(usbx_port_ra8_usb INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/inc
-)
+target_include_directories(usbx_port_ra8_usb INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
 # Track the source list as a global property so each app can splice
 # it into add_executable() alongside its own boot files.
-set_property(GLOBAL PROPERTY RA8_USBX_PORT_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb_ep.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb_xfer.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb_isr.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb_setup.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb_dvst.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb_dvst_default.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb_irq.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_hcd_ra8_usb.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_device_class_storage_inquiry.c
+set_property(
+  GLOBAL
+  PROPERTY RA8_USBX_PORT_SOURCES
+           ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb.c
+           ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb_ep.c
+           ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb_xfer.c
+           ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb_isr.c
+           ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb_setup.c
+           ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb_dvst.c
+           ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb_dvst_default.c
+           ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_dcd_ra8_usb_irq.c
+           ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_hcd_ra8_usb.c
+           ${CMAKE_CURRENT_SOURCE_DIR}/src/ux_device_class_storage_inquiry.c
 )

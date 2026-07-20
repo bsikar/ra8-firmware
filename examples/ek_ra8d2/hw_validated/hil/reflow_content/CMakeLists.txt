@@ -19,15 +19,18 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(reflow_content LANGUAGES C ASM)
+  project(reflow_content LANGUAGES C ASM)
 endif()
 
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME reflow_content STACK_BYTES 16384
-           DESCRIPTION "Headless multi-page reflow render + CRC + font-size re-flow over UART (#115 HIL)"
-           LIBS ra8_gfx ra8_reflow ra8_board_ek_ra8d2)
+ra8_add_app(
+  NAME reflow_content
+  STACK_BYTES 16384
+  DESCRIPTION "Headless multi-page reflow render + CRC + font-size re-flow over UART (#115 HIL)"
+  LIBS ra8_gfx ra8_reflow ra8_board_ek_ra8d2
+)

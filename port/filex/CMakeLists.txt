@@ -21,12 +21,10 @@ cmake_minimum_required(VERSION 3.20)
 # the .c themselves (mirroring the rest of the per-app glob style).
 add_library(filex_port_ra8_sdhi INTERFACE)
 
-target_include_directories(filex_port_ra8_sdhi INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/inc
-)
+target_include_directories(filex_port_ra8_sdhi INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
 # Track the source list as a property so apps can splice it into
 # their own add_executable() globs.
-set_property(GLOBAL PROPERTY RA8_FILEX_PORT_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/fx_media_driver_ra8_sdhi.c
+set_property(
+  GLOBAL PROPERTY RA8_FILEX_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/fx_media_driver_ra8_sdhi.c
 )

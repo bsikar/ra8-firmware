@@ -21,16 +21,25 @@ cmake_minimum_required(VERSION 3.20)
 # the XML shim), so the languages must include CXX.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(ereader_comic LANGUAGES C CXX ASM)
+  project(ereader_comic LANGUAGES C CXX ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME ereader_comic STACK_BYTES 32768
-           DESCRIPTION "Viewable page-turn comic reader: baked CBZ decoded to the 1024x600 GLCDC panel, tap-zone nav (sim-viewable)"
-           LIBS ra8_gfx ra8_reflow ra8_comic ra8_epub ra8_display_pal ra8_io_bus ra8_board_ek_ra8d2)
+ra8_add_app(
+  NAME ereader_comic
+  STACK_BYTES 32768
+  DESCRIPTION "Page-turn comic reader: baked CBZ to the GLCDC panel, tap-zone nav"
+  LIBS ra8_gfx
+       ra8_reflow
+       ra8_comic
+       ra8_epub
+       ra8_display_pal
+       ra8_io_bus
+       ra8_board_ek_ra8d2
+)

@@ -21,16 +21,24 @@ cmake_minimum_required(VERSION 3.20)
 
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(epub_toc LANGUAGES C CXX ASM)
+  project(epub_toc LANGUAGES C CXX ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME epub_toc STACK_BYTES 16384
-           DESCRIPTION "EPUB TOC navigation (NCX + nav.xhtml) from SD via ra8_fs (#116)"
-           LIBS ra8_epub ra8_reflow ra8_gfx ra8_fs ra8_sdmmc_spi ra8_board_ek_ra8d2)
+ra8_add_app(
+  NAME epub_toc
+  STACK_BYTES 16384
+  DESCRIPTION "EPUB TOC navigation (NCX + nav.xhtml) from SD via ra8_fs (#116)"
+  LIBS ra8_epub
+       ra8_reflow
+       ra8_gfx
+       ra8_fs
+       ra8_sdmmc_spi
+       ra8_board_ek_ra8d2
+)

@@ -22,16 +22,24 @@ cmake_minimum_required(VERSION 3.20)
 # match the shared toolchain setup used across the example apps.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(ereader_manga LANGUAGES C CXX ASM)
+  project(ereader_manga LANGUAGES C CXX ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME ereader_manga STACK_BYTES 32768
-           DESCRIPTION "Viewable manga reader (Demo B): baked PNG page -> JOF tile atlas (ra8_jof_produce) -> tap-zone pan/zoom viewport over the GLCDC panel through a small ra8_tile_cache"
-           LIBS ra8_gfx ra8_display_pal ra8_jof ra8_mem ra8_io_bus miniz)
+ra8_add_app(
+  NAME ereader_manga
+  STACK_BYTES 32768
+  DESCRIPTION "Manga reader: baked PNG to JOF tile atlas, pan/zoom over ra8_tile_cache"
+  LIBS ra8_gfx
+       ra8_display_pal
+       ra8_jof
+       ra8_mem
+       ra8_io_bus
+       miniz
+)

@@ -19,13 +19,13 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(app_shell_demo LANGUAGES C ASM)
+  project(app_shell_demo LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
@@ -33,9 +33,15 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # Default 1 (settings shipped); configure with -DAPP_SHELL_SETTINGS=0 to drop it
 # from the registry. Forwarded as a compile definition so the C `#if` sees it;
 # applies to the elf target ra8_add_app() creates below (directory scope).
-set(APP_SHELL_SETTINGS 1 CACHE STRING "Ship the optional settings app (1) or exclude it (0)")
+set(APP_SHELL_SETTINGS
+    1
+    CACHE STRING "Ship the optional settings app (1) or exclude it (0)"
+)
 add_compile_definitions(APP_SHELL_SETTINGS=${APP_SHELL_SETTINGS})
 
-ra8_add_app(NAME app_shell_demo STACK_BYTES 4096
-           DESCRIPTION "ra8_app chrome: launch reader/library/settings + back-stack, headless on ITM (#146)"
-           LIBS ra8_app ra8_widget ra8_box ra8_ui)
+ra8_add_app(
+  NAME app_shell_demo
+  STACK_BYTES 4096
+  DESCRIPTION "ra8_app chrome: launch reader/library/settings + back-stack, headless on ITM (#146)"
+  LIBS ra8_app ra8_widget ra8_box ra8_ui
+)

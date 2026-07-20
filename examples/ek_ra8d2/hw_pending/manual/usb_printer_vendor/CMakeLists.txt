@@ -19,13 +19,13 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(usb_printer_vendor LANGUAGES C ASM)
+  project(usb_printer_vendor LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
@@ -34,7 +34,9 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # the host test share one copy; inc/ is added to the include path by
 # ra8_add_app(). The printer + vendor native class layers live in ra8_hal,
 # which every app links by default.
-ra8_add_app(NAME usb_printer_vendor STACK_BYTES 4000
-           DESCRIPTION "Native USB composite printer (7/1/2) + vendor (FF) device, polled chapter-9"
-           LIBS ra8_board_ek_ra8d2
-          )
+ra8_add_app(
+  NAME usb_printer_vendor
+  STACK_BYTES 4000
+  DESCRIPTION "Native USB composite printer (7/1/2) + vendor (FF) device, polled chapter-9"
+  LIBS ra8_board_ek_ra8d2
+)

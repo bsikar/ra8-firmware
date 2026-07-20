@@ -32,26 +32,34 @@ set(RA8_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 # Every first-party .c in this directory is part of the one cache_bench
 # binary (mirrors the Makefile's `$(wildcard *.c)`), so new TUs need no edit
 # here or there.
-file(GLOB CACHE_BENCH_SOURCES CONFIGURE_DEPENDS
-     "${CMAKE_CURRENT_SOURCE_DIR}/*.c")
+file(GLOB CACHE_BENCH_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.c")
 
-add_executable(cache_bench
-               ${CACHE_BENCH_SOURCES}
-               ${RA8_ROOT}/libs/ra8_mem/src/ra8_vmem.c
-               ${RA8_ROOT}/libs/ra8_mem/src/ra8_vsource.c
-               ${RA8_ROOT}/libs/ra8_book/src/ra8_book.c
-               ${RA8_ROOT}/libs/ra8_book/src/ra8_book_chunked.c
-               ${RA8_ROOT}/libs/third_party/miniz/miniz.c)
+add_executable(
+  cache_bench
+  ${CACHE_BENCH_SOURCES}
+  ${RA8_ROOT}/libs/ra8_mem/src/ra8_vmem.c
+  ${RA8_ROOT}/libs/ra8_mem/src/ra8_vsource.c
+  ${RA8_ROOT}/libs/ra8_book/src/ra8_book.c
+  ${RA8_ROOT}/libs/ra8_book/src/ra8_book_chunked.c
+  ${RA8_ROOT}/libs/third_party/miniz/miniz.c
+)
 
-target_include_directories(cache_bench PRIVATE
-                           ${RA8_ROOT}/libs/ra8_core/inc
-                           ${RA8_ROOT}/libs/ra8_mem/inc
-                           ${RA8_ROOT}/libs/ra8_book/inc
-                           ${RA8_ROOT}/libs/third_party/miniz)
+target_include_directories(
+  cache_bench PRIVATE ${RA8_ROOT}/libs/ra8_core/inc ${RA8_ROOT}/libs/ra8_mem/inc
+                      ${RA8_ROOT}/libs/ra8_book/inc ${RA8_ROOT}/libs/third_party/miniz
+)
 
-target_compile_options(cache_bench PRIVATE -O2 -g -Wall -Wextra -Wno-unused-parameter)
+target_compile_options(
+  cache_bench
+  PRIVATE -O2
+          -g
+          -Wall
+          -Wextra
+          -Wno-unused-parameter
+)
 
 # miniz is SOUP: silence its warnings and defeat the strict-aliasing
 # miscompile, matching the Makefile's dedicated miniz_host.o rule.
-set_source_files_properties(${RA8_ROOT}/libs/third_party/miniz/miniz.c
-                            PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing")
+set_source_files_properties(
+  ${RA8_ROOT}/libs/third_party/miniz/miniz.c PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing"
+)

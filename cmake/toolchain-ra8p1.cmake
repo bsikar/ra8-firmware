@@ -61,9 +61,9 @@ include(${CMAKE_CURRENT_LIST_DIR}/toolchain-ra8d2.cmake)
 # 16 D-registers. Appended last so it beats the fpv5-sp-d16 the RA8D2 file set,
 # on every flag group that feeds an -mfpu-sensitive step.
 set(RA8P1_FPU_FLAG "-mfpu=fpv5-d16")
-set(CMAKE_C_FLAGS_INIT          "${CMAKE_C_FLAGS_INIT} ${RA8P1_FPU_FLAG}")
-set(CMAKE_CXX_FLAGS_INIT        "${CMAKE_CXX_FLAGS_INIT} ${RA8P1_FPU_FLAG}")
-set(CMAKE_ASM_FLAGS_INIT        "${CMAKE_ASM_FLAGS_INIT} ${RA8P1_FPU_FLAG}")
+set(CMAKE_C_FLAGS_INIT "${CMAKE_C_FLAGS_INIT} ${RA8P1_FPU_FLAG}")
+set(CMAKE_CXX_FLAGS_INIT "${CMAKE_CXX_FLAGS_INIT} ${RA8P1_FPU_FLAG}")
+set(CMAKE_ASM_FLAGS_INIT "${CMAKE_ASM_FLAGS_INIT} ${RA8P1_FPU_FLAG}")
 set(CMAKE_EXE_LINKER_FLAGS_INIT "${CMAKE_EXE_LINKER_FLAGS_INIT} ${RA8P1_FPU_FLAG}")
 
 # Device-selection define -- consumed by libs/ra8_core/inc/ra8_device.h to pick
@@ -72,7 +72,7 @@ set(CMAKE_EXE_LINKER_FLAGS_INIT "${CMAKE_EXE_LINKER_FLAGS_INIT} ${RA8P1_FPU_FLAG
 # injected inside toolchain-ra8d2.cmake. This is idempotent across CMake's
 # repeated toolchain includes: the included RA8D2 file re-sets each *_INIT var to
 # its device-agnostic base first, then this re-appends the define.
-set(CMAKE_C_FLAGS_INIT   "${CMAKE_C_FLAGS_INIT} -DRA8_DEVICE_RA8P1")
+set(CMAKE_C_FLAGS_INIT "${CMAKE_C_FLAGS_INIT} -DRA8_DEVICE_RA8P1")
 set(CMAKE_CXX_FLAGS_INIT "${CMAKE_CXX_FLAGS_INIT} -DRA8_DEVICE_RA8P1")
 set(CMAKE_ASM_FLAGS_INIT "${CMAKE_ASM_FLAGS_INIT} -DRA8_DEVICE_RA8P1")
 

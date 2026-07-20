@@ -19,19 +19,27 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(sd_font_render LANGUAGES C ASM)
+  project(sd_font_render LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME sd_font_render STACK_BYTES 4400
-           DESCRIPTION "Load a TTF/OTF font off an SD card and render it with ra8_reflow"
-           LIBS ra8_gfx ra8_display_pal ra8_reflow ra8_sdfont ra8_sdmmc_spi ra8_fs)
+ra8_add_app(
+  NAME sd_font_render
+  STACK_BYTES 4400
+  DESCRIPTION "Load a TTF/OTF font off an SD card and render it with ra8_reflow"
+  LIBS ra8_gfx
+       ra8_display_pal
+       ra8_reflow
+       ra8_sdfont
+       ra8_sdmmc_spi
+       ra8_fs
+)
 
 # Bake the Latin-1 subset font (libs/fonts/literata_latin1.ttf) into .rodata so a
 # blank "random" SD card self-provisions FONT.OTF on first boot: ra8_sdfont writes
@@ -40,12 +48,14 @@ ra8_add_app(NAME sd_font_render STACK_BYTES 4400
 # ${_d} is the repo root resolved above.
 set(_ra8_baked_font_c "${CMAKE_CURRENT_BINARY_DIR}/ra8_font_literata_latin1.c")
 add_custom_command(
-    OUTPUT "${_ra8_baked_font_c}"
-    COMMAND ${CMAKE_COMMAND} -E env python3 "${_d}/scripts/utils/font_to_c.py"
-            "${_d}/libs/fonts/literata_latin1.ttf" "${_ra8_baked_font_c}"
-            g_ra8_font_literata_latin1 literata_latin1.h
-    DEPENDS "${_d}/libs/fonts/literata_latin1.ttf" "${_d}/scripts/utils/font_to_c.py"
-    COMMENT "Generating baked Latin-1 font array (sd_font_render)")
+  OUTPUT "${_ra8_baked_font_c}"
+  COMMAND
+    ${CMAKE_COMMAND} -E env python3 "${_d}/scripts/utils/font_to_c.py"
+    "${_d}/libs/fonts/literata_latin1.ttf" "${_ra8_baked_font_c}" g_ra8_font_literata_latin1
+    literata_latin1.h
+  DEPENDS "${_d}/libs/fonts/literata_latin1.ttf" "${_d}/scripts/utils/font_to_c.py"
+  COMMENT "Generating baked Latin-1 font array (sd_font_render)"
+)
 target_sources(sd_font_render.elf PRIVATE "${_ra8_baked_font_c}")
 # libs/fonts holds the per-font declaration header (literata_latin1.h) that both
 # main.c and the generated array .c include.

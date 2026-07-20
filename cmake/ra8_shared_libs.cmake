@@ -35,14 +35,21 @@
 # divergence surfaces as a loud undefined-symbol link error, never silent
 # breakage.
 function(ra8_shared_lib_sources out_var repo_root board_dir)
-    file(GLOB_RECURSE _core    CONFIGURE_DEPENDS ${repo_root}/libs/ra8_core/src/*.c)
-    file(GLOB_RECURSE _hal     CONFIGURE_DEPENDS ${repo_root}/libs/ra8_hal/src/*.c)
-    file(GLOB_RECURSE _net_pal CONFIGURE_DEPENDS ${repo_root}/libs/ra8_net_pal/src/*.c)
-    file(GLOB_RECURSE _usb_pal CONFIGURE_DEPENDS ${repo_root}/libs/ra8_usb_pal/src/*.c)
-    file(GLOB_RECURSE _board   CONFIGURE_DEPENDS ${board_dir}/src/*.c)
-    file(GLOB_RECURSE _secure  CONFIGURE_DEPENDS ${repo_root}/src/secure_app/*.c)
-    set(${out_var} ${_core} ${_hal} ${_net_pal} ${_usb_pal} ${_board} ${_secure}
-        PARENT_SCOPE)
+  file(GLOB_RECURSE _core CONFIGURE_DEPENDS ${repo_root}/libs/ra8_core/src/*.c)
+  file(GLOB_RECURSE _hal CONFIGURE_DEPENDS ${repo_root}/libs/ra8_hal/src/*.c)
+  file(GLOB_RECURSE _net_pal CONFIGURE_DEPENDS ${repo_root}/libs/ra8_net_pal/src/*.c)
+  file(GLOB_RECURSE _usb_pal CONFIGURE_DEPENDS ${repo_root}/libs/ra8_usb_pal/src/*.c)
+  file(GLOB_RECURSE _board CONFIGURE_DEPENDS ${board_dir}/src/*.c)
+  file(GLOB_RECURSE _secure CONFIGURE_DEPENDS ${repo_root}/src/secure_app/*.c)
+  set(${out_var}
+      ${_core}
+      ${_hal}
+      ${_net_pal}
+      ${_usb_pal}
+      ${_board}
+      ${_secure}
+      PARENT_SCOPE
+  )
 endfunction()
 
 # Canonical include roots for the universal sources. These mirror the
@@ -51,18 +58,19 @@ endfunction()
 # absent: a universal library source that needed an app-local header would be
 # a layering violation.
 function(ra8_shared_lib_includes out_var repo_root board_dir)
-    set(${out_var}
-        ${repo_root}/src
-        ${repo_root}/src/inc
-        ${repo_root}/src/secure_app
-        ${repo_root}/src/secure_app/inc
-        ${repo_root}/libs/ra8_core/inc
-        ${repo_root}/libs/ra8_hal/inc
-        ${repo_root}/libs/ra8_net_pal/inc
-        ${repo_root}/libs/ra8_usb_pal/inc
-        ${repo_root}/libs/ra8_nsc/inc
-        ${board_dir}/inc
-        PARENT_SCOPE)
+  set(${out_var}
+      ${repo_root}/src
+      ${repo_root}/src/inc
+      ${repo_root}/src/secure_app
+      ${repo_root}/src/secure_app/inc
+      ${repo_root}/libs/ra8_core/inc
+      ${repo_root}/libs/ra8_hal/inc
+      ${repo_root}/libs/ra8_net_pal/inc
+      ${repo_root}/libs/ra8_usb_pal/inc
+      ${repo_root}/libs/ra8_nsc/inc
+      ${board_dir}/inc
+      PARENT_SCOPE
+  )
 endfunction()
 
 # Build the universal static archive `ra8_shared_<board>` under the current
@@ -74,33 +82,40 @@ endfunction()
 # budget, so the archive can never trip a -Wstack-usage error the per-app
 # build would not have.
 function(ra8_add_shared_lib_archive)
-    cmake_parse_arguments(_SL "" "NAME;REPO_ROOT;BOARD;STACK_BYTES" "" ${ARGN})
-    if(NOT _SL_NAME)
-        message(FATAL_ERROR "ra8_add_shared_lib_archive(): NAME is required")
-    endif()
-    if(NOT _SL_REPO_ROOT)
-        message(FATAL_ERROR "ra8_add_shared_lib_archive(): REPO_ROOT is required")
-    endif()
-    if(NOT _SL_BOARD)
-        set(_SL_BOARD "ek_ra8d2")
-    endif()
-    if(NOT _SL_STACK_BYTES)
-        set(_SL_STACK_BYTES 2200)
-    endif()
+  cmake_parse_arguments(
+    _SL
+    ""
+    "NAME;REPO_ROOT;BOARD;STACK_BYTES"
+    ""
+    ${ARGN}
+  )
+  if(NOT _SL_NAME)
+    message(FATAL_ERROR "ra8_add_shared_lib_archive(): NAME is required")
+  endif()
+  if(NOT _SL_REPO_ROOT)
+    message(FATAL_ERROR "ra8_add_shared_lib_archive(): REPO_ROOT is required")
+  endif()
+  if(NOT _SL_BOARD)
+    set(_SL_BOARD "ek_ra8d2")
+  endif()
+  if(NOT _SL_STACK_BYTES)
+    set(_SL_STACK_BYTES 2200)
+  endif()
 
-    set(_board_dir "${_SL_REPO_ROOT}/libs/ra8_board_${_SL_BOARD}")
-    if(NOT EXISTS "${_board_dir}")
-        message(FATAL_ERROR
-            "ra8_add_shared_lib_archive(): BOARD '${_SL_BOARD}' has no layer at ${_board_dir}")
-    endif()
+  set(_board_dir "${_SL_REPO_ROOT}/libs/ra8_board_${_SL_BOARD}")
+  if(NOT EXISTS "${_board_dir}")
+    message(
+      FATAL_ERROR "ra8_add_shared_lib_archive(): BOARD '${_SL_BOARD}' has no layer at ${_board_dir}"
+    )
+  endif()
 
-    include(${_SL_REPO_ROOT}/cmake/ra8_warnings.cmake)
+  include(${_SL_REPO_ROOT}/cmake/ra8_warnings.cmake)
 
-    ra8_shared_lib_sources(_srcs ${_SL_REPO_ROOT} ${_board_dir})
-    ra8_shared_lib_includes(_incs ${_SL_REPO_ROOT} ${_board_dir})
+  ra8_shared_lib_sources(_srcs ${_SL_REPO_ROOT} ${_board_dir})
+  ra8_shared_lib_includes(_incs ${_SL_REPO_ROOT} ${_board_dir})
 
-    add_library(${_SL_NAME} STATIC ${_srcs})
-    ra8_target_enable_project_warnings(${_SL_NAME} STACK_USAGE_BYTES ${_SL_STACK_BYTES})
-    target_compile_options(${_SL_NAME} PRIVATE -fshort-enums)
-    target_include_directories(${_SL_NAME} PRIVATE ${_incs})
+  add_library(${_SL_NAME} STATIC ${_srcs})
+  ra8_target_enable_project_warnings(${_SL_NAME} STACK_USAGE_BYTES ${_SL_STACK_BYTES})
+  target_compile_options(${_SL_NAME} PRIVATE -fshort-enums)
+  target_include_directories(${_SL_NAME} PRIVATE ${_incs})
 endfunction()

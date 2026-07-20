@@ -30,14 +30,14 @@
 # more than once if both the top-level CMakeLists.txt and a
 # standalone-app build want it; only the first include should run.
 if(DEFINED _RA8_NIMBLE_INCLUDED)
-    return()
+  return()
 endif()
 set(_RA8_NIMBLE_INCLUDED TRUE)
 
 option(RA8_USE_NIMBLE "Enable the vendored Apache NimBLE host stack" OFF)
 
 if(NOT RA8_USE_NIMBLE)
-    return()
+  return()
 endif()
 
 # NimBLE's Native Porting Layer (NPL) is implemented on top of
@@ -48,24 +48,25 @@ endif()
 # rather than letting the linker complain about missing `_tx_*`
 # symbols.
 if(NOT RA8_USE_THREADX)
-    message(FATAL_ERROR
-        "RA8_USE_NIMBLE=ON requires RA8_USE_THREADX=ON. The NimBLE NPL "
-        "is implemented on top of TX_MUTEX / TX_SEMAPHORE / TX_QUEUE / "
-        "TX_TIMER. Enable both options (or include cmake/threadx.cmake "
-        "before cmake/nimble.cmake).")
+  message(
+    FATAL_ERROR
+      "RA8_USE_NIMBLE=ON requires RA8_USE_THREADX=ON. The NimBLE NPL "
+      "is implemented on top of TX_MUTEX / TX_SEMAPHORE / TX_QUEUE / "
+      "TX_TIMER. Enable both options (or include cmake/threadx.cmake "
+      "before cmake/nimble.cmake)."
+  )
 endif()
 
 # Resolve the repo root so this file works whether it is included
 # from the top-level CMakeLists.txt or from a standalone per-app build.
-get_filename_component(_RA8_NIMBLE_REPO_ROOT
-    "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+get_filename_component(_RA8_NIMBLE_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 
 set(_RA8_NIMBLE_VENDOR_DIR "${_RA8_NIMBLE_REPO_ROOT}/libs/third_party/nimble")
 
 if(NOT EXISTS "${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/include/host/ble_hs.h")
-    message(FATAL_ERROR
-        "RA8_USE_NIMBLE=ON but Apache NimBLE vendor tree is missing at "
-        "${_RA8_NIMBLE_VENDOR_DIR}.")
+  message(FATAL_ERROR "RA8_USE_NIMBLE=ON but Apache NimBLE vendor tree is missing at "
+                      "${_RA8_NIMBLE_VENDOR_DIR}."
+  )
 endif()
 
 # Surface the upstream public include dirs through an INTERFACE
@@ -81,22 +82,23 @@ add_library(nimble INTERFACE)
 # and the wrappers fall through to their portable bookkeeping path.
 target_compile_definitions(nimble INTERFACE RA8_TARGET_BUILD)
 
-target_include_directories(nimble SYSTEM INTERFACE
-    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/include
-    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/include
-    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/mesh/include
-    ${_RA8_NIMBLE_VENDOR_DIR}/nimble/transport/include
-    ${_RA8_NIMBLE_VENDOR_DIR}/porting/nimble/include
-    # Upstream ``nimble/nimble_npl.h`` chains to ``nimble/nimble_npl_os.h``,
-    # which every port supplies. Ours is
-    # ``port/nimble/inc/nimble/nimble_npl_os.h``, so point the whole build
-    # at it. This used to fall back to the upstream "dummy" port's header
-    # for translation units that reference NimBLE host APIs without going
-    # through nimble_port_threadx (e.g. libs/ra8_ble_host/src/ra8_ble_*.c).
-    # That put two different definitions of ``struct ble_npl_mutex`` and
-    # friends into one image depending on which target a TU linked, which
-    # is an ABI mismatch no diagnostic reports.
-    ${_RA8_NIMBLE_REPO_ROOT}/port/nimble/inc
+target_include_directories(
+  nimble SYSTEM
+  INTERFACE ${_RA8_NIMBLE_VENDOR_DIR}/nimble/include
+            ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/include
+            ${_RA8_NIMBLE_VENDOR_DIR}/nimble/host/mesh/include
+            ${_RA8_NIMBLE_VENDOR_DIR}/nimble/transport/include
+            ${_RA8_NIMBLE_VENDOR_DIR}/porting/nimble/include
+            # Upstream ``nimble/nimble_npl.h`` chains to ``nimble/nimble_npl_os.h``,
+            # which every port supplies. Ours is
+            # ``port/nimble/inc/nimble/nimble_npl_os.h``, so point the whole build
+            # at it. This used to fall back to the upstream "dummy" port's header
+            # for translation units that reference NimBLE host APIs without going
+            # through nimble_port_threadx (e.g. libs/ra8_ble_host/src/ra8_ble_*.c).
+            # That put two different definitions of ``struct ble_npl_mutex`` and
+            # friends into one image depending on which target a TU linked, which
+            # is an ABI mismatch no diagnostic reports.
+            ${_RA8_NIMBLE_REPO_ROOT}/port/nimble/inc
 )
 
 # Apps that link `nimble` get RA8_TARGET_BUILD so the ra8_ble_host
@@ -114,7 +116,6 @@ target_link_libraries(nimble INTERFACE threadx)
 # Pull in our ra8_ble <-> NimBLE transport adapter and the ThreadX-
 # backed NPL shim. Defines the `nimble_port_threadx` library that
 # carries `ble_hci_ra8_ble.c` and `nimble_npl_threadx.c`.
-add_subdirectory(${_RA8_NIMBLE_REPO_ROOT}/port/nimble
-                 ${CMAKE_BINARY_DIR}/port_nimble)
+add_subdirectory(${_RA8_NIMBLE_REPO_ROOT}/port/nimble ${CMAKE_BINARY_DIR}/port_nimble)
 
 message(STATUS "NimBLE enabled: ${_RA8_NIMBLE_VENDOR_DIR}")

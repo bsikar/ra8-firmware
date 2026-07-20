@@ -20,18 +20,21 @@ cmake_minimum_required(VERSION 3.20)
 # to apply the shared VERSION and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(blink_m33 LANGUAGES C ASM)
+  project(blink_m33 LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME blink_m33 STACK_BYTES 2200
-           DESCRIPTION "Cortex-M33 secondary-core LED blink template (M85 releases M33) for RA8D2")
+ra8_add_app(
+  NAME blink_m33
+  STACK_BYTES 2200
+  DESCRIPTION "Cortex-M33 secondary-core LED blink template (M85 releases M33) for RA8D2"
+)
 
 #############################################################################
 # Second (Cortex-M33 / CPU1) image, embedded into the M85 ELF.
@@ -40,6 +43,7 @@ ra8_add_app(NAME blink_m33 STACK_BYTES 2200
 # linker_script.ld pins .cpu1_image at ORIGIN(MRAM_CPU1) (0x020C0000).
 #############################################################################
 ra8_add_cpu1_image(
-    PARENT  blink_m33
-    NAME    blink_m33_cpu1
-    SOURCES cpu1_main.c)
+  PARENT blink_m33
+  NAME blink_m33_cpu1
+  SOURCES cpu1_main.c
+)

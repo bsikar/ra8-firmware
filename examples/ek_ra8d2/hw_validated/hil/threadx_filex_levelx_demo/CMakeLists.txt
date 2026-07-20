@@ -19,13 +19,13 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(threadx_filex_levelx_demo LANGUAGES C ASM)
+  project(threadx_filex_levelx_demo LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
@@ -35,21 +35,24 @@ include("${_d}/cmake/ra8_add_app.cmake")
 # here so its core can be linked without dragging in the SDHI bridge.
 get_directory_property(_ra8_p PARENT_DIRECTORY)
 if(NOT _ra8_p)
-    option(RA8_USE_FILEX "Enable the vendored FileX FAT file system" ON)
-    include("${_d}/cmake/filex.cmake")
+  option(RA8_USE_FILEX "Enable the vendored FileX FAT file system" ON)
+  include("${_d}/cmake/filex.cmake")
 endif()
 if(NOT RA8_USE_FILEX)
-    message(STATUS "threadx_filex_levelx_demo: skipped (RA8_USE_FILEX is OFF)")
-    return()
+  message(STATUS "threadx_filex_levelx_demo: skipped (RA8_USE_FILEX is OFF)")
+  return()
 endif()
 
-ra8_add_app(NAME threadx_filex_levelx_demo STACK_BYTES 2200
-           DESCRIPTION "ThreadX + FileX-on-LevelX wear-levelled FAT demo for RA8D2"
-           LIBS ra8_board_ek_ra8d2
-           USES threadx levelx)
+ra8_add_app(
+  NAME threadx_filex_levelx_demo
+  STACK_BYTES 2200
+  DESCRIPTION "ThreadX + FileX-on-LevelX wear-levelled FAT demo for RA8D2"
+  LIBS ra8_board_ek_ra8d2
+  USES threadx levelx
+)
 
 target_link_libraries(threadx_filex_levelx_demo.elf PRIVATE filex)
 get_property(_ra8_lvfx GLOBAL PROPERTY RA8_LEVELX_FILEX_PORT_SOURCES)
 if(_ra8_lvfx)
-    target_sources(threadx_filex_levelx_demo.elf PRIVATE ${_ra8_lvfx})
+  target_sources(threadx_filex_levelx_demo.elf PRIVATE ${_ra8_lvfx})
 endif()

@@ -28,16 +28,9 @@ cmake_minimum_required(VERSION 3.20)
 # Only define the STATIC target when the TF-PSA-Crypto dependency is wired up.
 # The host unit-test build globs the source directly and skips this branch.
 if(TARGET tfpsacrypto)
-    add_library(ra8_psa_crypto STATIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/ra8_psa_crypto.c
-    )
+  add_library(ra8_psa_crypto STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/ra8_psa_crypto.c)
 
-    target_include_directories(ra8_psa_crypto PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/inc
-    )
+  target_include_directories(ra8_psa_crypto PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
-    target_link_libraries(ra8_psa_crypto PUBLIC
-        ra8_core
-        tfpsacrypto
-    )
+  target_link_libraries(ra8_psa_crypto PUBLIC ra8_core tfpsacrypto)
 endif()

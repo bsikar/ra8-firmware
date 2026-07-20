@@ -19,14 +19,18 @@ cmake_minimum_required(VERSION 3.20)
 # and the app description.
 get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
 if(NOT _ra8_has_parent)
-    project(uart_irq_echo LANGUAGES C ASM)
+  project(uart_irq_echo LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
 while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
-    get_filename_component(_d "${_d}" DIRECTORY)
+  get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra8_add_app.cmake")
 
-ra8_add_app(NAME uart_irq_echo STACK_BYTES 2200 DESCRIPTION "uart_irq_echo firmware for RA8D2")
+ra8_add_app(
+  NAME uart_irq_echo
+  STACK_BYTES 2200
+  DESCRIPTION "uart_irq_echo firmware for RA8D2"
+)

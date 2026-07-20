@@ -20,23 +20,22 @@ set(TOOLCHAIN_PREFIX arm-none-eabi-)
 # here wins; absent it, the search falls back to PATH and the version assertion
 # below catches a mismatch. To relocate, install to one of these paths (see
 # docs/TOOLCHAIN.md) or pass -DRA8_ARM_TOOLCHAIN_BIN=<dir>.
-set(_ra8_pinned_tc_bin
-    ${RA8_ARM_TOOLCHAIN_BIN}
-    /opt/arm-gnu-toolchain-13.3/bin
-    $ENV{HOME}/opt/arm-gnu-toolchain-13.3/bin)
+set(_ra8_pinned_tc_bin ${RA8_ARM_TOOLCHAIN_BIN} /opt/arm-gnu-toolchain-13.3/bin
+                       $ENV{HOME}/opt/arm-gnu-toolchain-13.3/bin
+)
 
 # Find the toolchain binaries
-find_program(CMAKE_C_COMPILER   ${TOOLCHAIN_PREFIX}gcc     HINTS ${_ra8_pinned_tc_bin} REQUIRED)
-find_program(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++     HINTS ${_ra8_pinned_tc_bin} REQUIRED)
-find_program(CMAKE_ASM_COMPILER ${TOOLCHAIN_PREFIX}gcc     HINTS ${_ra8_pinned_tc_bin} REQUIRED)
-find_program(CMAKE_OBJCOPY      ${TOOLCHAIN_PREFIX}objcopy HINTS ${_ra8_pinned_tc_bin} REQUIRED)
-find_program(CMAKE_OBJDUMP      ${TOOLCHAIN_PREFIX}objdump HINTS ${_ra8_pinned_tc_bin} REQUIRED)
-find_program(CMAKE_SIZE         ${TOOLCHAIN_PREFIX}size    HINTS ${_ra8_pinned_tc_bin} REQUIRED)
-find_program(CMAKE_AR           ${TOOLCHAIN_PREFIX}ar      HINTS ${_ra8_pinned_tc_bin} REQUIRED)
-find_program(CMAKE_RANLIB       ${TOOLCHAIN_PREFIX}ranlib  HINTS ${_ra8_pinned_tc_bin} REQUIRED)
+find_program(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}gcc HINTS ${_ra8_pinned_tc_bin} REQUIRED)
+find_program(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++ HINTS ${_ra8_pinned_tc_bin} REQUIRED)
+find_program(CMAKE_ASM_COMPILER ${TOOLCHAIN_PREFIX}gcc HINTS ${_ra8_pinned_tc_bin} REQUIRED)
+find_program(CMAKE_OBJCOPY ${TOOLCHAIN_PREFIX}objcopy HINTS ${_ra8_pinned_tc_bin} REQUIRED)
+find_program(CMAKE_OBJDUMP ${TOOLCHAIN_PREFIX}objdump HINTS ${_ra8_pinned_tc_bin} REQUIRED)
+find_program(CMAKE_SIZE ${TOOLCHAIN_PREFIX}size HINTS ${_ra8_pinned_tc_bin} REQUIRED)
+find_program(CMAKE_AR ${TOOLCHAIN_PREFIX}ar HINTS ${_ra8_pinned_tc_bin} REQUIRED)
+find_program(CMAKE_RANLIB ${TOOLCHAIN_PREFIX}ranlib HINTS ${_ra8_pinned_tc_bin} REQUIRED)
 # CMAKE_NM is consumed by the TrustZone app's post-build SG-veneer offset gate
 # (scripts/utils/check_sg_offsets.py) so it reads the SAME cross nm as the link.
-find_program(CMAKE_NM           ${TOOLCHAIN_PREFIX}nm      HINTS ${_ra8_pinned_tc_bin} REQUIRED)
+find_program(CMAKE_NM ${TOOLCHAIN_PREFIX}nm HINTS ${_ra8_pinned_tc_bin} REQUIRED)
 
 # Don't try to run the compiler on the host to test it -- it can't produce
 # host executables because it targets Cortex-M85.
@@ -77,7 +76,10 @@ include("${CMAKE_CURRENT_LIST_DIR}/ccache.cmake")
 # local build on a different toolchain, pass -DRA8_STRICT_TOOLCHAIN=OFF (or
 # RA8_STRICT_TOOLCHAIN=0 in the environment) to downgrade the mismatch to a
 # warning. See docs/TOOLCHAIN.md.
-set(RA8_PINNED_ARM_GCC_VERSION "13.3" CACHE STRING "Pinned arm-none-eabi-gcc major.minor (13.3.rel1) (#178)")
+set(RA8_PINNED_ARM_GCC_VERSION
+    "13.3"
+    CACHE STRING "Pinned arm-none-eabi-gcc major.minor (13.3.rel1) (#178)"
+)
 option(RA8_STRICT_TOOLCHAIN "Fail (not warn) when arm-none-eabi-gcc is not the pinned version" ON)
 # Escape hatch: RA8_STRICT_TOOLCHAIN=0 in the environment downgrades to a warning.
 if(DEFINED ENV{RA8_STRICT_TOOLCHAIN} AND "$ENV{RA8_STRICT_TOOLCHAIN}" STREQUAL "0")
@@ -87,9 +89,13 @@ execute_process(
   COMMAND ${CMAKE_C_COMPILER} -dumpfullversion
   OUTPUT_VARIABLE _ra8_arm_gcc_version
   OUTPUT_STRIP_TRAILING_WHITESPACE
-  RESULT_VARIABLE _ra8_arm_gcc_rc)
+  RESULT_VARIABLE _ra8_arm_gcc_rc
+)
 if(NOT _ra8_arm_gcc_rc EQUAL 0)
-  message(FATAL_ERROR "toolchain-ra8d2: '${CMAKE_C_COMPILER} -dumpfullversion' failed (rc=${_ra8_arm_gcc_rc})")
+  message(
+    FATAL_ERROR
+      "toolchain-ra8d2: '${CMAKE_C_COMPILER} -dumpfullversion' failed (rc=${_ra8_arm_gcc_rc})"
+  )
 endif()
 # Pin to major.minor -- the Arm GNU Toolchain release line (13.3.rel1 ships gcc
 # 13.3.1). Patch-tolerant so a 13.3.x point release still matches, but 13.2 / 14.x
@@ -98,12 +104,13 @@ endif()
 string(REGEX MATCH "^[0-9]+\\.[0-9]+" _ra8_arm_gcc_mm "${_ra8_arm_gcc_version}")
 if(NOT _ra8_arm_gcc_mm STREQUAL "${RA8_PINNED_ARM_GCC_VERSION}")
   set(_ra8_tc_msg
-    "arm-none-eabi-gcc is ${_ra8_arm_gcc_version} (${CMAKE_C_COMPILER}), but this "
-    "project pins Arm GNU Toolchain ${RA8_PINNED_ARM_GCC_VERSION} (13.3.rel1) for "
-    "reproducible codegen -- the miniz inflater is version-sensitive (#178). "
-    "Install 13.3.rel1 to /opt/arm-gnu-toolchain-13.3 or "
-    "~/opt/arm-gnu-toolchain-13.3 (see docs/TOOLCHAIN.md), or pass "
-    "-DRA8_STRICT_TOOLCHAIN=OFF for a deliberate one-off build.")
+      "arm-none-eabi-gcc is ${_ra8_arm_gcc_version} (${CMAKE_C_COMPILER}), but this "
+      "project pins Arm GNU Toolchain ${RA8_PINNED_ARM_GCC_VERSION} (13.3.rel1) for "
+      "reproducible codegen -- the miniz inflater is version-sensitive (#178). "
+      "Install 13.3.rel1 to /opt/arm-gnu-toolchain-13.3 or "
+      "~/opt/arm-gnu-toolchain-13.3 (see docs/TOOLCHAIN.md), or pass "
+      "-DRA8_STRICT_TOOLCHAIN=OFF for a deliberate one-off build."
+  )
   if(RA8_STRICT_TOOLCHAIN)
     message(FATAL_ERROR ${_ra8_tc_msg})
   else()
@@ -124,18 +131,15 @@ endif()
 # fpv5-sp-d16 is the single-precision variant; fpv5-d16 (double-precision)
 # would silently generate instructions the RA8D2 cannot execute.
 # -----------------------------------------------------------------------------
-set(RA8D2_CPU_FLAGS
-    "-mcpu=cortex-m85"
-    "-mthumb"
-    "-mfloat-abi=hard"
-    "-mfpu=fpv5-sp-d16"
-)
+set(RA8D2_CPU_FLAGS "-mcpu=cortex-m85" "-mthumb" "-mfloat-abi=hard" "-mfpu=fpv5-sp-d16")
 string(JOIN " " RA8D2_CPU_FLAGS_STR ${RA8D2_CPU_FLAGS})
 
 # Common compiler flags (applied in addition to target-specific flags in the
 # top-level CMakeLists.txt).
-set(CMAKE_C_FLAGS_INIT   "${RA8D2_CPU_FLAGS_STR} -fdata-sections -ffunction-sections")
-set(CMAKE_CXX_FLAGS_INIT "${RA8D2_CPU_FLAGS_STR} -fdata-sections -ffunction-sections -fno-rtti -fno-exceptions")
+set(CMAKE_C_FLAGS_INIT "${RA8D2_CPU_FLAGS_STR} -fdata-sections -ffunction-sections")
+set(CMAKE_CXX_FLAGS_INIT
+    "${RA8D2_CPU_FLAGS_STR} -fdata-sections -ffunction-sections -fno-rtti -fno-exceptions"
+)
 set(CMAKE_ASM_FLAGS_INIT "${RA8D2_CPU_FLAGS_STR}")
 
 # Linker flags
@@ -149,7 +153,8 @@ set(CMAKE_EXE_LINKER_FLAGS_INIT
      --specs=nosys.specs \
      -nostartfiles \
      -Wl,--gc-sections \
-     -Wl,--print-memory-usage")
+     -Wl,--print-memory-usage"
+)
 
 # Cross-compile search paths: look in the target sysroot, not the host
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)

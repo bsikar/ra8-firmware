@@ -25,7 +25,7 @@ cmake_minimum_required(VERSION 3.20)
 # and add OBJC only on APPLE, where board_view.m is actually compiled.
 project(ra8_board_sim LANGUAGES C)
 if(APPLE)
-    enable_language(OBJC)
+  enable_language(OBJC)
 endif()
 
 set(CMAKE_C_STANDARD 23)
@@ -54,70 +54,72 @@ set(BREW /opt/homebrew)
 # -- see board_periph_block.h). The glob below picks it up automatically; the
 # core keeps no central block list, so blocks can be added in parallel with no
 # edit to this file and no conflict.
-file(GLOB BOARD_PERIPH_BLOCKS CONFIGURE_DEPENDS
-     "${CMAKE_CURRENT_SOURCE_DIR}/src/board_periph_*.c")
+file(GLOB BOARD_PERIPH_BLOCKS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/board_periph_*.c")
 
 if(APPLE)
-    set(BOARD_VIEW_SRC src/board_view.m)
+  set(BOARD_VIEW_SRC src/board_view.m)
 else()
-    set(BOARD_VIEW_SRC src/board_view_stub.c)
+  set(BOARD_VIEW_SRC src/board_view_stub.c)
 endif()
 
-add_executable(board_sim
-               src/main.c
-               src/sim_console.c
-               src/sim_elf.c
-               src/sim_engine.c
-               src/sim_memmap.c
-               src/sim_mmio.c
-               src/sim_mpu.c
-               src/sim_prof.c
-               src/sim_args.c
-               src/sim_run.c
-               src/sim_run_guards.c
-               src/sim_run_inner.c
-               src/sim_run_report.c
-               src/sim_trace.c
-               src/sim_tz.c
-               src/sim_view.c
-               src/sim_usbh_seam.c
-               src/sim_cpu1.c
-               src/sim_exc.c
-               src/sim_exc_scs.c
-               src/sim_idle.c
-               src/board_periph_sd_image.c
-               src/sim_insn_seams.c
-               src/sim_seam_div0.c
-               src/sim_seam_longshift.c
-               src/sim_seam_sd.c
-               src/sim_seam_mve.c
-               src/board_periph.c
-               ${BOARD_PERIPH_BLOCKS}
-               src/board_usb.c
-               src/board_usb_bridge.c
-               src/board_usb_dev.c
-               src/board_usb_loop.c
-               src/board_usb_vhost.c
-               src/board_usb_host.c
-               src/board_net.c
-               src/board_overlay.c
-               src/board_overlay_draw.c
-               src/board_console.c
-               src/board_input.c
-               ${BOARD_VIEW_SRC})
+add_executable(
+  board_sim
+  src/main.c
+  src/sim_console.c
+  src/sim_elf.c
+  src/sim_engine.c
+  src/sim_memmap.c
+  src/sim_mmio.c
+  src/sim_mpu.c
+  src/sim_prof.c
+  src/sim_args.c
+  src/sim_run.c
+  src/sim_run_guards.c
+  src/sim_run_inner.c
+  src/sim_run_report.c
+  src/sim_trace.c
+  src/sim_tz.c
+  src/sim_view.c
+  src/sim_usbh_seam.c
+  src/sim_cpu1.c
+  src/sim_exc.c
+  src/sim_exc_scs.c
+  src/sim_idle.c
+  src/board_periph_sd_image.c
+  src/sim_insn_seams.c
+  src/sim_seam_div0.c
+  src/sim_seam_longshift.c
+  src/sim_seam_sd.c
+  src/sim_seam_mve.c
+  src/board_periph.c
+  ${BOARD_PERIPH_BLOCKS}
+  src/board_usb.c
+  src/board_usb_bridge.c
+  src/board_usb_dev.c
+  src/board_usb_loop.c
+  src/board_usb_vhost.c
+  src/board_usb_host.c
+  src/board_net.c
+  src/board_overlay.c
+  src/board_overlay_draw.c
+  src/board_console.c
+  src/board_input.c
+  ${BOARD_VIEW_SRC}
+)
 
 if(APPLE)
-    set_source_files_properties(src/board_view.m PROPERTIES COMPILE_FLAGS "-fobjc-arc")
+  set_source_files_properties(src/board_view.m PROPERTIES COMPILE_FLAGS "-fobjc-arc")
 endif()
 
 # The USB model includes the firmware's register/ELC headers for the exact
 # offsets + ELC event numbers it must mirror (ra8_usb_regs.h, ra8_elc_regs.h);
 # ra8_core/inc supplies ra8_attributes.h for the RA8_PRIV annotations on the
 # sim_* module-private cross-TU helpers.
-target_include_directories(board_sim PRIVATE
-                           ${CMAKE_CURRENT_SOURCE_DIR}/inc
-                           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_hal/inc
-                           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc)
+target_include_directories(
+  board_sim
+  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_hal/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_core/inc
+)
 
 # Unicorn + Capstone discovery: Homebrew prefix on macOS (unchanged); on Linux
 # use CMake's native find_* (the self-hosted CI runner has no pkg-config). It
@@ -125,17 +127,18 @@ target_include_directories(board_sim PRIVATE
 # + libcapstone-dev (headers under /usr/include/{unicorn,capstone}); a custom
 # prefix still works via CMAKE_PREFIX_PATH. Cocoa is linked on the APPLE path only.
 if(APPLE)
-    target_include_directories(board_sim PRIVATE ${BREW}/include)
-    target_link_directories(board_sim PRIVATE ${BREW}/lib)
-    target_link_libraries(board_sim PRIVATE unicorn capstone
-                          "-framework Cocoa" "-framework QuartzCore")
+  target_include_directories(board_sim PRIVATE ${BREW}/include)
+  target_link_directories(board_sim PRIVATE ${BREW}/lib)
+  target_link_libraries(
+    board_sim PRIVATE unicorn capstone "-framework Cocoa" "-framework QuartzCore"
+  )
 else()
-    find_path(UNICORN_INCLUDE_DIR unicorn/unicorn.h REQUIRED)
-    find_path(CAPSTONE_INCLUDE_DIR capstone/capstone.h REQUIRED)
-    find_library(UNICORN_LIBRARY unicorn REQUIRED)
-    find_library(CAPSTONE_LIBRARY capstone REQUIRED)
-    target_include_directories(board_sim PRIVATE ${UNICORN_INCLUDE_DIR} ${CAPSTONE_INCLUDE_DIR})
-    target_link_libraries(board_sim PRIVATE ${UNICORN_LIBRARY} ${CAPSTONE_LIBRARY})
+  find_path(UNICORN_INCLUDE_DIR unicorn/unicorn.h REQUIRED)
+  find_path(CAPSTONE_INCLUDE_DIR capstone/capstone.h REQUIRED)
+  find_library(UNICORN_LIBRARY unicorn REQUIRED)
+  find_library(CAPSTONE_LIBRARY capstone REQUIRED)
+  target_include_directories(board_sim PRIVATE ${UNICORN_INCLUDE_DIR} ${CAPSTONE_INCLUDE_DIR})
+  target_link_libraries(board_sim PRIVATE ${UNICORN_LIBRARY} ${CAPSTONE_LIBRARY})
 endif()
 
 target_compile_options(board_sim PRIVATE -Wall -Wextra)

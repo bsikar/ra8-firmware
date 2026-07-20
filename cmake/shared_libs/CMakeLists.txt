@@ -31,11 +31,18 @@ get_filename_component(RA8_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUT
 file(READ "${RA8_REPO_ROOT}/VERSION" _ra8_ver)
 string(STRIP "${_ra8_ver}" _ra8_ver)
 
-project(ra8_shared_libs LANGUAGES C ASM VERSION ${_ra8_ver}
-        DESCRIPTION "Prebuilt universal first-party library archive (cross-build fast path)")
+project(
+  ra8_shared_libs
+  LANGUAGES C ASM
+  VERSION ${_ra8_ver}
+  DESCRIPTION "Prebuilt universal first-party library archive (cross-build fast path)"
+)
 
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type" FORCE)
+  set(CMAKE_BUILD_TYPE
+      RelWithDebInfo
+      CACHE STRING "Build type" FORCE
+  )
 endif()
 
 set(CMAKE_C_STANDARD 23)
@@ -44,23 +51,30 @@ set(CMAKE_C_EXTENSIONS ON)
 
 # Match the per-app build-type flag sets (cmake/ra8_add_app.cmake / top-level
 # CMakeLists.txt) so the archived objects are byte-for-behaviour identical.
-set(CMAKE_C_FLAGS_DEBUG            "-O0 -g3 -DDEBUG")
-set(CMAKE_ASM_FLAGS_DEBUG          "-g3")
-set(CMAKE_C_FLAGS_RELEASE          "-Os -g1 -DNDEBUG")
-set(CMAKE_ASM_FLAGS_RELEASE        "-g1")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO   "-Og -g3")
+set(CMAKE_C_FLAGS_DEBUG "-O0 -g3 -DDEBUG")
+set(CMAKE_ASM_FLAGS_DEBUG "-g3")
+set(CMAKE_C_FLAGS_RELEASE "-Os -g1 -DNDEBUG")
+set(CMAKE_ASM_FLAGS_RELEASE "-g1")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "-Og -g3")
 set(CMAKE_ASM_FLAGS_RELWITHDEBINFO "-g3")
 
 # The board the cross-build archive targets. The CI cross-build set is entirely
 # ek_ra8d2 (the ra8p1 tier is a different chip, built standalone), so one
 # ek_ra8d2 archive serves every eligible app.
-set(RA8_SHARED_LIB_BOARD "ek_ra8d2" CACHE STRING "Board layer for the shared archive")
+set(RA8_SHARED_LIB_BOARD
+    "ek_ra8d2"
+    CACHE STRING "Board layer for the shared archive"
+)
 
 include(${RA8_REPO_ROOT}/cmake/ra8_shared_libs.cmake)
 
 ra8_add_shared_lib_archive(
-    NAME       ra8_shared_${RA8_SHARED_LIB_BOARD}
-    REPO_ROOT  ${RA8_REPO_ROOT}
-    BOARD      ${RA8_SHARED_LIB_BOARD})
+  NAME ra8_shared_${RA8_SHARED_LIB_BOARD}
+  REPO_ROOT ${RA8_REPO_ROOT}
+  BOARD ${RA8_SHARED_LIB_BOARD}
+)
 
-message(STATUS "ra8_shared_libs: archive ra8_shared_${RA8_SHARED_LIB_BOARD} (board ${RA8_SHARED_LIB_BOARD})")
+message(
+  STATUS
+    "ra8_shared_libs: archive ra8_shared_${RA8_SHARED_LIB_BOARD} (board ${RA8_SHARED_LIB_BOARD})"
+)
