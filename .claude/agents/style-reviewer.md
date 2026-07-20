@@ -38,7 +38,10 @@ Every file, public/static function, struct, enum, and macro must be documented w
   - `@code` / `@endcode` blocks if non-trivial
   - `@see`
 - **Structs & Enums**: Require inline Doxygen comments `/**<` for every member and value.
-- **State Machines**: Require a `@startuml` state diagram and a state transition table.
+- **State Machines**: Require a `@dot` state diagram (a Graphviz `digraph`) and a
+  state transition table. Reject `@startuml`: PlantUML is not configured, so
+  those blocks render nowhere. In a `@dot` label a line break is `\n`, never
+  `\\n` -- the double form draws a literal backslash-n.
 
 ## Terminology Standard
 
