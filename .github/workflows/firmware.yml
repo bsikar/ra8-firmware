@@ -204,6 +204,22 @@ jobs:
       - uses: actions/checkout@v4
       - run: bash scripts/ci.sh --gate cache-bench
 
+  # ---------------------------------------------------------------------------
+  # #335/#309 host-tool build gate -- media_dl, ra8_viewer, ra8_fmt, mkbookimg
+  # and mkfontimg were linted but never compiled or linked by any job, and
+  # media_dl could not build on Linux at all. This job builds and links all
+  # five, runs media_dl's CTest suite, drives the viewer's headless render, and
+  # enforces -Wall -Wextra -Werror on every first-party TU they pull in.
+  # ---------------------------------------------------------------------------
+  tools-build:
+    name: Host tools (build + link + test)
+    runs-on: [self-hosted, Linux, X64]
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/ci.sh --gate tools-build
+
   coverage:
     name: Coverage (gcovr 90/80)
     runs-on: [self-hosted, Linux, X64]
