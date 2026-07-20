@@ -36,10 +36,10 @@
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_sdmmc_spi_cov_test_util_out_40       = 0x40U,
-  k_sdmmc_spi_cov_test_util_tail_word_24 = 24U,
-  k_sdmmc_spi_cov_test_util_val_9        = 9,
-  k_sdmmc_spi_cov_test_util_val_ff       = 0xFFU,
+  k_sdmmc_spi_cov_test_util_out_40           = 0x40U,
+  k_sdmmc_spi_cov_test_util_tail_word_24     = 24U,
+  k_sdmmc_spi_cov_test_util_csd_off_csize_lo = 9, /**< CSD v2 byte offset of the low C_SIZE byte. */
+  k_sdmmc_spi_cov_test_util_byte_mask = 0xFFU, /**< All-ones byte: C_SIZE fill and low-byte mask. */
 } sdmmc_spi_cov_test_util_uint8_const_t;
 
 /* ===========================================================================
@@ -360,10 +360,10 @@ static inline void q_cmd_r3r7(uint8_t r1, uint32_t tail_word)
   mock_queue_idle((uint32_t)k_cov_frame_bytes);
   mock_queue_byte(r1);
   mock_queue_byte((uint8_t)((tail_word >> k_sdmmc_spi_cov_test_util_tail_word_24) &
-                            k_sdmmc_spi_cov_test_util_val_ff));
-  mock_queue_byte((uint8_t)((tail_word >> 16U) & k_sdmmc_spi_cov_test_util_val_ff));
-  mock_queue_byte((uint8_t)((tail_word >> 8U) & k_sdmmc_spi_cov_test_util_val_ff));
-  mock_queue_byte((uint8_t)(tail_word & k_sdmmc_spi_cov_test_util_val_ff));
+                            k_sdmmc_spi_cov_test_util_byte_mask));
+  mock_queue_byte((uint8_t)((tail_word >> 16U) & k_sdmmc_spi_cov_test_util_byte_mask));
+  mock_queue_byte((uint8_t)((tail_word >> 8U) & k_sdmmc_spi_cov_test_util_byte_mask));
+  mock_queue_byte((uint8_t)(tail_word & k_sdmmc_spi_cov_test_util_byte_mask));
   mock_queue_idle(1U);
 }
 
@@ -375,8 +375,8 @@ static inline void build_csd_v2(uint8_t* out)
 {
   memset(out, 0, (size_t)k_ra8_sdmmc_spi_csd_response_len);
   out[0] = k_sdmmc_spi_cov_test_util_out_40; /* CSD_STRUCTURE = 1 (version bits 7:6 == 0b01). */
-  out[8] = k_sdmmc_spi_cov_test_util_val_ff;
-  out[k_sdmmc_spi_cov_test_util_val_9] = k_sdmmc_spi_cov_test_util_val_ff;
+  out[8] = k_sdmmc_spi_cov_test_util_byte_mask;
+  out[k_sdmmc_spi_cov_test_util_csd_off_csize_lo] = k_sdmmc_spi_cov_test_util_byte_mask;
 }
 
 /**

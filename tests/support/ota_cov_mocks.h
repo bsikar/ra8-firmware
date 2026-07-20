@@ -39,9 +39,9 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint8_t {
-  k_ota_cov_mocks_i_a5   = 0xA5U,
-  k_ota_cov_mocks_val_0f = 0x0FU,
-  k_ota_cov_mocks_val_c0 = 0xC0U,
+  k_ota_cov_mocks_i_a5        = 0xA5U,
+  k_ota_cov_mocks_nibble_mask = 0x0FU, /**< Low-nibble mask while hex-encoding a digest byte. */
+  k_ota_cov_mocks_sig_seed    = 0xC0U, /**< First byte of the synthetic signature ramp.       */
 } ota_cov_mocks_uint8_const_t;
 
 /**
@@ -54,7 +54,7 @@ typedef enum : uint8_t {
  * "No Magic Numbers").
  */
 typedef enum : uint16_t {
-  k_ota_cov_mocks_val_2048 = 2048,
+  k_ota_cov_mocks_manifest_cap = 2048, /**< Manifest text buffer capacity. */
 } ota_cov_mocks_uint16_const_t;
 
 /* =============================================================================
@@ -75,7 +75,7 @@ typedef enum : uint32_t {
  * ============================================================================= */
 
 /** @brief Manifest JSON rendered for a valid fixture. */
-static char g_cov_manifest[k_ota_cov_mocks_val_2048];
+static char g_cov_manifest[k_ota_cov_mocks_manifest_cap];
 /** @brief Raw bytes of the mock firmware image. */
 static uint8_t g_cov_image[k_cov_image_size];
 /** @brief Inactive-bank sandbox. */
@@ -355,18 +355,18 @@ static inline void priv_make_manifest(void)
 {
   priv_xor_hash(g_cov_image, k_cov_image_size, g_cov_expected_hash);
   for (uint32_t i = 0U; i < sizeof g_cov_sig; ++i) {
-    g_cov_sig[i] = (uint8_t)(k_ota_cov_mocks_val_c0 + i);
+    g_cov_sig[i] = (uint8_t)(k_ota_cov_mocks_sig_seed + i);
   }
   static const char nibble[]                                    = "0123456789abcdef";
   char              hex_sha[(2U * k_ra8_ota_sha256_bytes) + 1U] = {};
   for (uint32_t i = 0U; i < k_ra8_ota_sha256_bytes; ++i) {
     hex_sha[(size_t)2U * i] = nibble[g_cov_expected_hash[i] >> 4U];
-    hex_sha[(2U * i) + 1U]  = nibble[g_cov_expected_hash[i] & k_ota_cov_mocks_val_0f];
+    hex_sha[(2U * i) + 1U]  = nibble[g_cov_expected_hash[i] & k_ota_cov_mocks_nibble_mask];
   }
   char hex_sig[(2U * sizeof g_cov_sig) + 1U] = {};
   for (uint32_t i = 0U; i < sizeof g_cov_sig; ++i) {
     hex_sig[(size_t)2U * i] = nibble[g_cov_sig[i] >> 4U];
-    hex_sig[(2U * i) + 1U]  = nibble[g_cov_sig[i] & k_ota_cov_mocks_val_0f];
+    hex_sig[(2U * i) + 1U]  = nibble[g_cov_sig[i] & k_ota_cov_mocks_nibble_mask];
   }
   (void)snprintf(g_cov_manifest,
                  sizeof g_cov_manifest,
