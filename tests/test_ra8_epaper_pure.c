@@ -50,6 +50,12 @@ typedef enum : uint32_t {
   k_ra8_epaper_test_panel_64      = 64U,         /**< Grid-aligned panel width. */
   k_ra8_epaper_test_panel_40      = 40U,         /**< Off-grid panel width.     */
   k_ra8_epaper_test_panel_32      = 32U,         /**< One-grid-cell panel.      */
+  k_ra8_epaper_test_lut_word0     = 12U,         /**< First LUT-name word slot
+                                                      in the GET_DEV_INFO
+                                                      descriptor.             */
+  k_ra8_epaper_test_lut_word1     = 13U,         /**< Second LUT-name word.   */
+  k_ra8_epaper_test_offgrid_w     = 40U,         /**< Span that clamps to an
+                                                      off-grid width.         */
 } ra8_epaper_pure_const_t;
 
 /**
@@ -125,8 +131,8 @@ static void test_decode_dev_info_layout(void)
   words[2]                                        = (uint16_t)k_ra8_epaper_test_buf_lo;
   words[3]                                        = (uint16_t)k_ra8_epaper_test_buf_hi;
   /* "M641" in the LUT slot (word 12), two chars per word, high byte first. */
-  words[12] = (uint16_t)k_ra8_epaper_test_lut_w0;
-  words[13] = (uint16_t)k_ra8_epaper_test_lut_w1;
+  words[k_ra8_epaper_test_lut_word0] = (uint16_t)k_ra8_epaper_test_lut_w0;
+  words[k_ra8_epaper_test_lut_word1] = (uint16_t)k_ra8_epaper_test_lut_w1;
   /* A control byte in the firmware slot must not survive the decode. */
   words[4] = (uint16_t)k_ra8_epaper_test_ctrl_word;
 
@@ -282,7 +288,8 @@ static void test_align_area_clamp_mcdc(void)
                  ra8_epaper_align_area(&v2, k_ra8_epaper_pf_1bpp, k_ra8_epaper_test_panel_32));
 
   /* Vector 3 -- x_hi > x_lo but the clamped span is off-grid. */
-  ra8_epaper_area_t v3 = {.x = 0U, .y = 0U, .width = 40U, .height = 1U};
+  ra8_epaper_area_t v3 = {
+    .x = 0U, .y = 0U, .width = k_ra8_epaper_test_offgrid_w, .height = 1U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_epaper_align_area(&v3, k_ra8_epaper_pf_1bpp, k_ra8_epaper_test_panel_40));
 

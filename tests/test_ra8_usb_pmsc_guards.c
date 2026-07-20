@@ -14,9 +14,14 @@
  * `ra8_usb_pmsc_dispatch_command()` and `ra8_usb_pmsc_build_csw()`.
  *
  * These arms only ever assert that a call is *refused*, so the storage backend
- * below is deliberately inert: the four callbacks exist to be non-NULL (that is
- * exactly what the validation checks) and are never invoked. Following the
- * sibling suites, this translation unit shares no state with them.
+ * below is never actually invoked: the four callbacks exist to be non-NULL,
+ * which is exactly what the validation checks. They still honour their part of
+ * the ::ra8_usb_pmsc_storage_t contract and fill the buffers they are handed,
+ * rather than discarding every argument -- a callback whose out-parameters are
+ * never written is indistinguishable from one whose signature should have taken
+ * them `const`, and the vtable's function-pointer types make that signature
+ * unfixable. Following the sibling suites, this translation unit shares no
+ * state with them.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -34,11 +39,21 @@
 #include "unity_minimal.h"
 
 /** @brief Command-block sizes the guard arms hand to the public API. */
-typedef enum : uint8_t {
+typedef enum : uint16_t {
   k_test_pmsc_cbw_len  = 31U, /**< CBW length, fixed by the BOT spec. */
   k_test_pmsc_data_len = 16U, /**< Scratch data-buffer length for the NULL
                                    output-pointer dispatch vectors.          */
+  k_test_pmsc_blk_size = 512U, /**< Block size the inert backend reports.    */
+  k_test_pmsc_blk_count = 64U, /**< Block count the inert backend reports.   */
+  k_test_pmsc_fill_byte = 0xA5U, /**< Filler the inert read callback writes. */
 } test_pmsc_len_t;
+
+/** @brief Widths of the three SCSI INQUIRY fields, fixed by the SCSI spec. */
+typedef enum : uint8_t {
+  k_test_pmsc_vendor_len   = 8U,  /**< INQUIRY vendor-identification bytes.  */
+  k_test_pmsc_product_len  = 16U, /**< INQUIRY product-identification bytes. */
+  k_test_pmsc_revision_len = 4U,  /**< INQUIRY product-revision bytes.       */
+} test_pmsc_inquiry_len_t;
 
 /* ---- Inert storage backend -------------------------------------------------
  * Present so `attach_storage` sees four non-NULL callbacks; never invoked,
@@ -51,8 +66,9 @@ static ra8_err_t stub_read_block(void* ctx, uint32_t lba, uint32_t count, uint8_
 {
   (void)ctx;
   (void)lba;
-  (void)count;
-  (void)buf;
+  for (uint32_t i = 0U; i < (count * (uint32_t)k_test_pmsc_blk_size); ++i) {
+    buf[i] = (uint8_t)k_test_pmsc_fill_byte;
+  }
   return k_ra8_ok;
 }
 
@@ -70,8 +86,8 @@ static ra8_err_t stub_write_block(void* ctx, uint32_t lba, uint32_t count, const
 static ra8_err_t stub_get_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
-  (void)block_count;
-  (void)block_size;
+  *block_count = (uint32_t)k_test_pmsc_blk_count;
+  *block_size  = (uint32_t)k_test_pmsc_blk_size;
   return k_ra8_ok;
 }
 
@@ -80,9 +96,15 @@ static ra8_err_t
 stub_get_inquiry(void* ctx, uint8_t* vendor8, uint8_t* product16, uint8_t* revision4)
 {
   (void)ctx;
-  (void)vendor8;
-  (void)product16;
-  (void)revision4;
+  for (uint8_t i = 0U; i < (uint8_t)k_test_pmsc_vendor_len; ++i) {
+    vendor8[i] = ' ';
+  }
+  for (uint8_t i = 0U; i < (uint8_t)k_test_pmsc_product_len; ++i) {
+    product16[i] = ' ';
+  }
+  for (uint8_t i = 0U; i < (uint8_t)k_test_pmsc_revision_len; ++i) {
+    revision4[i] = ' ';
+  }
   return k_ra8_ok;
 }
 

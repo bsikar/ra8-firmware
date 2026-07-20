@@ -82,6 +82,54 @@ typedef enum : uint32_t {
   k_ra8_epaper_test_vcom_loopback = 0xFFFFU,
 } ra8_epaper_test_const_t;
 
+/**
+ * @enum epaper_align_fixture_t
+ * @brief Rectangles fed to the 1 bpp 32-pixel X/width alignment arms.
+ *
+ * @details
+ * At 1 bpp the controller addresses whole 32-pixel blocks, so `align_area`
+ * must grow a rectangle *outward* to block boundaries without ever uncovering
+ * the caller's original span. Each constant below names the role its rectangle
+ * plays in that proof rather than its value -- two of them deliberately share
+ * the value 40 while testing different things (a start offset inside a block
+ * versus a width that spans two).
+ *
+ * @invariant ::k_epaper_align_past_edge_x plus one 32-pixel block exceeds
+ *            ::k_epaper_align_panel_w, which is what makes it a refusal.
+ *
+ * @see k_ra8_epaper_test_panel_w
+ * @since 0.1.0
+ */
+typedef enum : uint16_t {
+  k_epaper_align_panel_w     = 1448U, /**< Panel width the arms align against. */
+  k_epaper_align_unaligned_x = 17U,   /**< X inside a block, so it rounds down. */
+  k_epaper_align_block_x     = 40U,   /**< X inside the second block.           */
+  k_epaper_align_span_w      = 40U,   /**< Width that spans two whole blocks.   */
+  k_epaper_align_past_edge_x = 1440U, /**< X whose block runs past the panel.   */
+} epaper_align_fixture_t;
+
+/**
+ * @enum epaper_depth_bytes_t
+ * @brief Byte counts one 8x8-pixel area occupies at each supported depth.
+ *
+ * @details
+ * `load_image` sizes its transfer from the area and the pixel format, so the
+ * depth-sizing arm asserts the same rectangle costs proportionally fewer bytes
+ * as the depth drops. Naming the three counts makes that halving visible at
+ * the call sites instead of leaving three bare array extents to be compared by
+ * eye.
+ *
+ * @invariant Each value is ::k_ra8_epaper_test_buf_pixels scaled by its depth.
+ *
+ * @see k_ra8_epaper_test_buf_pixels
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_epaper_bytes_1bpp_8x8 = 8U,  /**< 64 px at 1 bpp: one bit per pixel.  */
+  k_epaper_bytes_4bpp_8x8 = 32U, /**< 64 px at 4 bpp: two pixels a byte.  */
+  k_epaper_bytes_8bpp_8x8 = 64U, /**< 64 px at 8 bpp: one byte per pixel. */
+} epaper_depth_bytes_t;
+
 /** @brief Bound SPI_B bus handle -- the seam's ctx and the mmio-seam key. */
 static ra8_io_spi_bus_t s_bus;
 /** @brief Seam filled from ::s_bus by ``ra8_io_spi_bus_as_ops`` in prep(). */
@@ -528,7 +576,8 @@ static void test_area_alignment(void)
   const ra8_epaper_area_t ok = {.x = 32U, .y = 0U, .width = 64U, .height = 1U};
   TEST_ASSERT(ra8_epaper_area_is_aligned(&ok, k_ra8_epaper_pf_1bpp));
   /* V2: x misaligned. */
-  const ra8_epaper_area_t bad_x = {.x = 17U, .y = 0U, .width = 64U, .height = 1U};
+  const ra8_epaper_area_t bad_x = {
+    .x = k_epaper_align_unaligned_x, .y = 0U, .width = 64U, .height = 1U};
   TEST_ASSERT(!ra8_epaper_area_is_aligned(&bad_x, k_ra8_epaper_pf_1bpp));
   /* V3: width misaligned. */
   const ra8_epaper_area_t bad_w = {.x = 32U, .y = 0U, .width = 3U, .height = 1U};
@@ -541,29 +590,33 @@ static void test_area_alignment(void)
   TEST_ASSERT(!ra8_epaper_area_is_aligned(nullptr, k_ra8_epaper_pf_1bpp));
 
   /* align_area grows outward so the caller's rectangle stays covered. */
-  ra8_epaper_area_t grow = {.x = 17U, .y = 0U, .width = 3U, .height = 1U};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_align_area(&grow, k_ra8_epaper_pf_1bpp, 1448U));
+  ra8_epaper_area_t grow = {
+    .x = k_epaper_align_unaligned_x, .y = 0U, .width = 3U, .height = 1U};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_align_area(&grow, k_ra8_epaper_pf_1bpp, k_epaper_align_panel_w));
   TEST_ASSERT_EQ(0U, grow.x);
   TEST_ASSERT_EQ(32U, grow.width);
   TEST_ASSERT(ra8_epaper_area_is_aligned(&grow, k_ra8_epaper_pf_1bpp));
 
-  ra8_epaper_area_t spanning = {.x = 40U, .y = 0U, .width = 40U, .height = 1U};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_align_area(&spanning, k_ra8_epaper_pf_1bpp, 1448U));
+  ra8_epaper_area_t spanning = {
+    .x = k_epaper_align_block_x, .y = 0U, .width = k_epaper_align_span_w, .height = 1U};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_align_area(&spanning, k_ra8_epaper_pf_1bpp, k_epaper_align_panel_w));
   TEST_ASSERT_EQ(32U, spanning.x);
   TEST_ASSERT_EQ(64U, spanning.width); /* covers 40..80 */
 
   /* Non-1bpp is a no-op. */
-  ra8_epaper_area_t noop = {.x = 17U, .y = 0U, .width = 3U, .height = 1U};
-  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_align_area(&noop, k_ra8_epaper_pf_4bpp, 1448U));
+  ra8_epaper_area_t noop = {
+    .x = k_epaper_align_unaligned_x, .y = 0U, .width = 3U, .height = 1U};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_align_area(&noop, k_ra8_epaper_pf_4bpp, k_epaper_align_panel_w));
   TEST_ASSERT_EQ(17U, noop.x);
 
   /* Refusals. */
-  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_align_area(nullptr, k_ra8_epaper_pf_1bpp, 1448U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_epaper_align_area(nullptr, k_ra8_epaper_pf_1bpp, k_epaper_align_panel_w));
   ra8_epaper_area_t any = {.x = 0U, .y = 0U, .width = 32U, .height = 1U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_epaper_align_area(&any, k_ra8_epaper_pf_1bpp, 0U));
-  ra8_epaper_area_t outside = {.x = 1440U, .y = 0U, .width = 32U, .height = 1U};
+  ra8_epaper_area_t outside = {
+    .x = k_epaper_align_past_edge_x, .y = 0U, .width = 32U, .height = 1U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
-                 ra8_epaper_align_area(&outside, k_ra8_epaper_pf_1bpp, 1448U));
+                 ra8_epaper_align_area(&outside, k_ra8_epaper_pf_1bpp, k_epaper_align_panel_w));
   TEST_END("epaper MC/DC: 1bpp 32px X/width alignment");
 }
 
@@ -705,35 +758,35 @@ static void test_load_image_depth_and_alignment(void)
   const ra8_epaper_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra8_ok, ra8_epaper_init(&cfg));
 
-  static uint8_t          bitmap[8]  = {};
+  static uint8_t          s_bitmap[k_epaper_bytes_1bpp_8x8] = {};
   const ra8_epaper_area_t misaligned = {.x = 8U, .y = 0U, .width = 64U, .height = 1U};
   const ra8_epaper_area_t aligned    = {.x = 0U, .y = 0U, .width = 64U, .height = 1U};
   TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
                  ra8_epaper_load_image(&misaligned,
-                                       bitmap,
-                                       sizeof(bitmap),
+                                       s_bitmap,
+                                       sizeof(s_bitmap),
                                        k_ra8_epaper_pf_1bpp,
                                        k_ra8_epaper_endian_little));
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_epaper_load_image(&aligned,
-                                       bitmap,
-                                       sizeof(bitmap),
+                                       s_bitmap,
+                                       sizeof(s_bitmap),
                                        k_ra8_epaper_pf_1bpp,
                                        k_ra8_epaper_endian_little));
 
   /* 4 bpp: half the bytes of the 8 bpp path for the same rectangle. */
-  static uint8_t packed4[32] = {};
-  static uint8_t packed8[64] = {};
+  static uint8_t s_packed4[k_epaper_bytes_4bpp_8x8] = {};
+  static uint8_t s_packed8[k_epaper_bytes_8bpp_8x8] = {};
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_epaper_load_image(&aligned,
-                                       packed4,
-                                       sizeof(packed4),
+                                       s_packed4,
+                                       sizeof(s_packed4),
                                        k_ra8_epaper_pf_4bpp,
                                        k_ra8_epaper_endian_little));
   TEST_ASSERT_EQ(k_ra8_err_invalid_size,
                  ra8_epaper_load_image(&aligned,
-                                       packed8,
-                                       sizeof(packed8),
+                                       s_packed8,
+                                       sizeof(s_packed8),
                                        k_ra8_epaper_pf_4bpp,
                                        k_ra8_epaper_endian_little));
 
