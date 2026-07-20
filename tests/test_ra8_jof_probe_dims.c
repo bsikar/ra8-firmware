@@ -47,7 +47,7 @@ enum : uint32_t {
   k_p_filler     = 0x5AU,  /**< Filler byte for the "matches no container
                                 magic" vector; any value that is not the
                                 head of a format the probe knows.          */
-  k_p_form_ofs   = 8U,     /**< Offset of the RIFF form-type fourCC.       */
+  k_p_form_ofs   = 8U,     /**< Offset of the RIFF form-type fourCC. */
 };
 
 /** @brief RIFF container tag, as raw bytes (unterminated, exactly 4 wide). */

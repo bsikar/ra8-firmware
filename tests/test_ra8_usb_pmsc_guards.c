@@ -40,11 +40,11 @@
 
 /** @brief Command-block sizes the guard arms hand to the public API. */
 typedef enum : uint16_t {
-  k_test_pmsc_cbw_len  = 31U, /**< CBW length, fixed by the BOT spec. */
-  k_test_pmsc_data_len = 16U, /**< Scratch data-buffer length for the NULL
+  k_test_pmsc_cbw_len   = 31U,   /**< CBW length, fixed by the BOT spec. */
+  k_test_pmsc_data_len  = 16U,   /**< Scratch data-buffer length for the NULL
                                    output-pointer dispatch vectors.          */
-  k_test_pmsc_blk_size = 512U, /**< Block size the inert backend reports.    */
-  k_test_pmsc_blk_count = 64U, /**< Block count the inert backend reports.   */
+  k_test_pmsc_blk_size  = 512U,  /**< Block size the inert backend reports.  */
+  k_test_pmsc_blk_count = 64U,   /**< Block count the inert backend reports. */
   k_test_pmsc_fill_byte = 0xA5U, /**< Filler the inert read callback writes. */
 } test_pmsc_len_t;
 
