@@ -795,9 +795,8 @@ ra8_tileatlas_probe_dims(const uint8_t* data, size_t len, uint16_t* out_w, uint1
     w = priv_rd_be32(&data[k_ra8_ta_png_ihdr_w]);
     h = priv_rd_be32(&data[k_ra8_ta_png_ihdr_h]);
   } else if ((memcmp(data, s_prod_webp_riff, sizeof(s_prod_webp_riff)) == 0) &&
-             (memcmp(&data[k_ra8_ta_webp_fourcc_ofs],
-                     s_prod_webp_webp,
-                     sizeof(s_prod_webp_webp)) == 0)) {
+             (memcmp(&data[k_ra8_ta_webp_fourcc_ofs], s_prod_webp_webp, sizeof(s_prod_webp_webp)) ==
+              0)) {
     const ra8_err_t rc = ra8_webp_get_info(data, len, &w, &h);
     if (rc != k_ra8_ok) {
       return rc;

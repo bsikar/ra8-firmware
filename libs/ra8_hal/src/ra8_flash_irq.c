@@ -352,7 +352,6 @@ ra8_err_t ra8_flash_set_window(uintptr_t low, uintptr_t high)
   return k_ra8_ok;
 }
 
-
 /**
  * @brief Validate a multi-block erase / multi-page write range.
  *

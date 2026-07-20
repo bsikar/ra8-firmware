@@ -58,12 +58,12 @@ static const char* const s_tag = "ra8_fmt_atlas";
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_fmt_atlas_band_h = 256U,        /**< Band height, matching media_dl.     */
-  k_fmt_fnv_offset   = 2166136261U, /**< FNV-1a 32-bit offset basis.         */
-  k_fmt_fnv_prime    = 16777619U,   /**< FNV-1a 32-bit prime.                */
-  k_fmt_webp_riff_ofs   = 0U,       /**< Offset of the "RIFF" fourCC.        */
-  k_fmt_webp_fourcc_ofs = 8U,       /**< Offset of the "WEBP" fourCC.        */
-  k_fmt_webp_head_len   = 12U,      /**< Bytes needed to sniff both fourCCs. */
+  k_fmt_atlas_band_h    = 256U,        /**< Band height, matching media_dl.     */
+  k_fmt_fnv_offset      = 2166136261U, /**< FNV-1a 32-bit offset basis.         */
+  k_fmt_fnv_prime       = 16777619U,   /**< FNV-1a 32-bit prime.                */
+  k_fmt_webp_riff_ofs   = 0U,          /**< Offset of the "RIFF" fourCC.        */
+  k_fmt_webp_fourcc_ofs = 8U,          /**< Offset of the "WEBP" fourCC.        */
+  k_fmt_webp_head_len   = 12U,         /**< Bytes needed to sniff both fourCCs. */
 } ra8_fmt_atlas_const_t;
 
 /** @brief WebP RIFF container tag (source head bytes 0..3). */
@@ -94,8 +94,7 @@ static const uint8_t s_fmt_webp_webp[4] = {'W', 'E', 'B', 'P'}; /* MAGIC-OK: WEB
 RA8_INTERNAL
 static bool ra8_fmt_atlas_is_webp(const ra8_fmt_blob_t* src)
 {
-  if ((src == nullptr) || (src->bytes == nullptr) ||
-      (src->len < (size_t)k_fmt_webp_head_len)) {
+  if ((src == nullptr) || (src->bytes == nullptr) || (src->len < (size_t)k_fmt_webp_head_len)) {
     return false;
   }
   return (memcmp(&src->bytes[k_fmt_webp_riff_ofs], s_fmt_webp_riff, sizeof(s_fmt_webp_riff)) == 0) &&
