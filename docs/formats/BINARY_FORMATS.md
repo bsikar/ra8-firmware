@@ -85,6 +85,102 @@ backlight-enable **signal name** in the EK-RA8D2 board pin table.
 
 ---
 
+## Why not an off-the-shelf format?
+
+Every page in this section has to answer the same challenge, and it is the
+first thing a reviewer asks: *a standard format already does this -- why is
+there a bespoke one instead?* The challenge is fair, and for each format there
+is a specific competitor a knowledgeable reader will name.
+
+| Format | The off-the-shelf competitor | Does it already solve seeking? | What actually decided it |
+|---|---|---|---|
+| `JOF1` | **Tiled TIFF** -- `TileOffsets` / `TileByteCounts`, `COMPRESSION_ADOBE_DEFLATE` | **Yes.** That pair genuinely is a jump-offset index over independently-compressed tiles | Parser attack surface, and a producer that must never seek |
+| `RBKC` | **Blocked DEFLATE** -- `bgzf`, `dictzip`, or `.xz` with its block index | **Yes.** Independent blocks plus an index is exactly this pattern | One chunk == one `ra8_vmem` cache frame == one inflate |
+| `RCBZ` | **Plain CBZ** -- a ZIP of page images | **Yes.** ZIP compresses each entry independently and the central directory is a seekable index | Getting the image codec off the device entirely |
+| `RABOOK1` | **EPUB, read directly** | Not the question -- the cost here is parsing, not seeking | Pre-resolving the CSS cascade and pre-transcoding images to panel-native 4 bpp |
+
+Three of those four competitors **already solve random access.** That is worth
+saying plainly, because "the standard format cannot seek" is the argument these
+pages are most likely to be *assumed* to make, and for three of them it would
+be false.
+
+### The thread that actually connects them
+
+What every one of these formats does is move a **variable, input-dependent
+cost** off the device permanently, and pay it once on a host with an operating
+system and gigabytes of RAM.
+
+- `JOF1` moves the transcode that makes an image randomly accessible.
+- `RCBZ` moves the PNG/JPEG decode and the colour conversion.
+- `RABOOK1` moves the unzip, the XML parse and the CSS cascade.
+- `RBKC` moves the decision of where the compression boundaries fall.
+
+The fixed-offset wire layouts they share are a **consequence, not the goal.**
+Once the device is no longer parsing content, the only thing left on it to
+parse is a table of offsets -- and a table can be fixed-width, bounded, and
+validated with arithmetic. The bounded parser falls out of moving the work,
+which is why the same shape appears four times.
+
+The binding constraint behind all of it, stated once: a bare-metal reader with
+**zero dynamic allocation** (NASA P10 Rule 3) and a **1.6 MB** SRAM budget,
+facing a file that arrived on a removable card and is therefore untrusted. A
+format that must allocate in order to be read is not a candidate, however well
+specified it is.
+
+### What this costs, honestly
+
+A rationale that only lists wins is not trustworthy. The bill for owning four
+bespoke formats is real and is paid continuously:
+
+- **No off-the-shelf tooling -- so we built our own, twice.** A tiled TIFF
+  opens in any image viewer and a CBZ in any comic reader; a `.jof` opens in
+  nothing that already exists. This tree therefore carries *two* first-party
+  tools to recover what a standard format gets for free: `tools/ra8_fmt` to
+  inspect the bytes, and `tools/ra8_viewer` to actually look at a page.
+  Diagnosing a real rendering bug meant building the inspector first, before a
+  single byte could be read -- a cost a standard format charges at zero.
+- **A specification per format.** These pages exist only because the formats
+  are novel. Nobody writes a 900-line document explaining how to read a TIFF.
+- **No independent validation.** There is no `tiffinfo`, no fuzzing corpus
+  accumulated over thirty years, and no second implementation to disagree with
+  ours and expose a bug. `ra8_fmt inspect` is the only checker, written by the
+  same hands as the writer it checks.
+- **Ownership with no upstream.** Every format here is a permanent maintenance
+  obligation. A bug is ours; a missing feature is ours to add.
+
+The trade is accepted because the alternative is worse **on this specific
+device**, not because the standard formats are bad. On a machine with a heap
+and an MMU, most of these decisions would go the other way.
+
+### Where the parallel breaks
+
+The four cases are not equally strong, and flattening them into one story
+would misrepresent two of them.
+
+- **JOF vs tiled TIFF is the closest contest** and the only one where parser
+  attack surface is the deciding factor. It gets the detailed treatment, in
+  @ref md_docs_2formats_2JOF section 2.
+- **RCBZ replaces an archive, not a codec container.** ZIP's central directory
+  is a much better starting point than TIFF's IFD -- already a seekable index
+  over independently-compressed entries. Reading the CBZ directly on device
+  would genuinely *work*, and @ref md_docs_2formats_2RCBZ says so in as many
+  words ("works, but drags a codec along"). What it drags along is a PNG/JPEG
+  decoder running on untrusted input; that, not seekability, is the argument.
+- **RABOOK's justification is the weakest of the four, and is partly
+  historical.** The device parses EPUB directly today: `libs/ra8_epub` opens
+  the ZIP with miniz and parses the OPF with tinyxml2, and ten firmware
+  applications link it, several of them silicon-validated. "The device cannot
+  read an EPUB" is therefore not true, and has not been for some time. The
+  defensible part is narrower -- pre-resolving the CSS cascade and
+  pre-transcoding images to 4 bpp is real work genuinely moved off the device.
+  But the compiled path does **not** eliminate runtime parsing the way its own
+  documentation implies: `ra8_book_chapter_to_xhtml()` serialises the
+  pre-parsed DOM *back into XHTML* so `ra8_reflow_layout_chapter()` can parse
+  it again. Anyone extending `ra8_book` should know that before relying on
+  "never parses XHTML at runtime" as a property.
+
+---
+
 ## Conventions shared by every format
 
 ### Endianness
