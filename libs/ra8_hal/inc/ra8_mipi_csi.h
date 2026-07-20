@@ -55,7 +55,7 @@
  *   __start -> Gated [label="reset"];
  *   Gated -> Idle [label="init() [MSTP on, RXEN=0]"];
  *   Idle -> Active [label="start_receive() [RXEN=1]"];
- *   Active -> Idle [label="stop_receive() [RXEN=0,\\nVSRST]"];
+ *   Active -> Idle [label="stop_receive() [RXEN=0,\nVSRST]"];
  *   Idle -> Gated [label="deinit()"];
  *   Idle -> Stopped [label="enter_stop()"];
  *   Stopped -> Idle [label="exit_stop()"];

@@ -94,7 +94,7 @@ extern "C" {
  *
  *   __start [shape=circle, width=0.18, label="", fillcolor="#5a7ca6", color="#5a7ca6"];
  *
- *   Off [label="Off\\nMSTPCRC bit set, regs\\nunreachable"];
+ *   Off [label="Off\nMSTPCRC bit set, regs\nunreachable"];
  *   Idle [label="Idle"];
  *   LdoUp [label="LdoUp"];
  *   PllRun [label="PllRun"];

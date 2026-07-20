@@ -678,7 +678,7 @@ ra8_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
  *   CPUSleep -> Active [label="any IRQ"];
  *   CPUDeepSleep -> Active [label="any IRQ"];
  *   SoftwareStandby -> Active [label="WUPEN-armed IRQ"];
- *   DeepStandby -> Reset [label="WUPEN/DPSIER-armed IRQ\\n(reset state)"];
+ *   DeepStandby -> Reset [label="WUPEN/DPSIER-armed IRQ\n(reset state)"];
  * }
  * @enddot
  *
