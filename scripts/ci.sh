@@ -716,6 +716,15 @@ gate_pre_commit_checks() (
   python3 scripts/utils/check_inclusive_terminology.py
   # MAXIMUM-documentation gate: every function -- including statics -- carries
   # the full Doxygen tag set.
+  #
+  # Regression-test the auditor before trusting either verdict. Both modes
+  # below are enforcing and both are driven by one regex over source text, so
+  # a construct the parser stops recognising takes its offenders with it and
+  # the gate reports a documented tree. The selftest asserts both modes in
+  # both directions: every defect class fires, and the legal-but-tricky forms
+  # (a .c definition whose header owns the contract, a static forward
+  # prototype, `else if`, inline asm) stay clean.
+  python3 scripts/utils/doxy_audit.py --selftest
   python3 scripts/utils/doxy_audit.py --check
   # ... and for aggregate members: every enum value, struct/union member, and
   # macro across the first-party tree carries a doc comment.
