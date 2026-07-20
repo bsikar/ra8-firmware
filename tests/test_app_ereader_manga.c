@@ -47,7 +47,7 @@ enum : uint32_t {
   k_t_cells      = 4U,                 /**< Small budget (forces evictions).  */
   k_t_buckets    = 8U,                 /**< Cache hash buckets.               */
   k_t_scratch    = 96U * 1024U,        /**< read_tile deflate staging.        */
-  k_t_work       = 2U * 1024U * 1024U, /**< Producer work arena.              */
+  k_t_work       = 3203832U,           /**< Producer work arena.              */
   k_t_store      = 4U * 1024U * 1024U, /**< Atlas memstore.                   */
   k_t_image_id   = 1U,                 /**< Tile-cache key image id.          */
   k_t_pan_step   = 256U,               /**< One edge-tap viewport slide.      */
@@ -171,6 +171,59 @@ static void setup_reader(void)
                                 .info     = &s_info,
                                 .image_id = (uint32_t)k_t_image_id};
   TEST_ASSERT_EQ(k_ra8_ok, mg_reader_init(&s_reader, &rcfg));
+}
+
+/**
+ * @test test_manga_work_arena_covers_advertised_cap
+ * @brief The app's static work arena covers the producer's own worst-case
+ *        requirement for the cap the app advertises.
+ *
+ * @details
+ * `ra8_tileatlas_produce()` carves its band, tile stage and compressed-tile
+ * bound from the *decoded* geometry, so an arena that is too small for the
+ * advertised `max_width`/`max_height` does not fail on every source -- only on
+ * one wide enough, or deep enough in bpp, to exhaust it. That makes an
+ * under-sized arena a latent capability lie rather than an obvious bug: the app
+ * advertises a cap it fails closed on. This test is the authoritative,
+ * exact form of the agreement (the app's static_assert only tests the band
+ * term, a lower bound). A 2 MiB arena backs a cap of just 1016 px, which is
+ * what this app shipped against a declared 2048.
+ *
+ * @par MC/DC:
+ * Decision: `(need == 0U) || (need > sizeof arena)` (2 conditions), the boot
+ * guard in the app's `mg_build_atlas()`.
+ * - Vector 1: need=3203832 (in-range), arena=3203832 -> false (control).
+ * - Vector 2: need=0 (nonsense caps: tile edge 0), arena=3203832 -> true
+ *             (varies the first condition only).
+ * - Vector 3: need=3203832, arena=2 MiB (the shipped-and-fixed size) -> true
+ *             (varies the second condition only).
+ * Vectors 1+2 prove the zero-return independently affects the outcome; 1+3
+ * prove the same for the size comparison. N+1 = 3 vectors for N=2.
+ */
+static void test_manga_work_arena_covers_advertised_cap(void)
+{
+  TEST_BEGIN("ereader_manga: work arena covers the advertised produce cap");
+  const uint32_t need = ra8_tileatlas_work_bytes((uint16_t)k_t_cap_edge,
+                                                 (uint16_t)k_t_cap_edge,
+                                                 (uint16_t)k_t_tile_edge,
+                                                 (uint16_t)k_t_tile_edge);
+  (void)fprintf(stderr,
+                "[INFO] ereader-manga arena: cap=%ux%u tile=%u need=%u have=%u\n",
+                (unsigned)k_t_cap_edge,
+                (unsigned)k_t_cap_edge,
+                (unsigned)k_t_tile_edge,
+                (unsigned)need,
+                (unsigned)sizeof(s_work));
+  /* Vector 1: the real configuration -- a usable requirement the arena covers. */
+  TEST_ASSERT(need != 0U);
+  TEST_ASSERT(sizeof(s_work) >= (size_t)need);
+  /* Vector 2: nonsense geometry returns 0, which the boot guard rejects. */
+  TEST_ASSERT_EQ(0U,
+                 ra8_tileatlas_work_bytes((uint16_t)k_t_cap_edge, (uint16_t)k_t_cap_edge, 0U, 0U));
+  /* Vector 3: the previously shipped 2 MiB arena does NOT cover this cap --
+   * the defect this test exists to keep fixed. */
+  TEST_ASSERT(need > (2U * 1024U * 1024U));
+  TEST_END("ereader_manga: work arena covers the advertised produce cap");
 }
 
 /**
@@ -362,6 +415,7 @@ static void test_manga_status_text(void)
  */
 int32_t main(void)
 {
+  test_manga_work_arena_covers_advertised_cap();
   test_manga_render_golden();
   test_manga_fixture_pattern();
   test_manga_zone_hit();
