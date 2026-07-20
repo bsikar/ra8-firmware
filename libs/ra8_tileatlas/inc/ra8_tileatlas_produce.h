@@ -22,7 +22,11 @@
  * the data so the sink can be append-only (an SD file, a memstore over SDRAM).
  * A page whose decoded size exceeds SDRAM transcodes without ever being
  * resident -- the memory ceiling is the caller's fixed work arena plus the
- * caller's buffers, independent of the image.
+ * caller's buffers. That ceiling is a function of `max_width`, `tile_h` and
+ * the tile count; it is independent of image *height* to within the 8-byte
+ * index entry each band adds, which is what makes an arbitrarily long
+ * longstrip importable. Width is not free: it scales the band, the tile stage
+ * and the compressed-tile bound together.
  *
  * **WebP** (VP8 / VP8L, via the `ra8_webp` facade over libwebp) is inherently
  * a whole-frame codec: its lossless mode uses 2-D backward references, so it
@@ -61,7 +65,17 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  *
+ * The band accumulator is always full-width, so streaming does not depend on
+ * `tile_w`: narrow tiles are cut out of the same band. `tile_w == width`
+ * (band-tiles) is a *reader* optimisation -- it makes the tile index the band
+ * index for an O(1) scroll seek -- and it costs the writer, because the tile
+ * stage then grows to a whole band.
+ *
  * @see ra8_tileatlas.h  The output format + reader.
+ * @see @ref md_docs_2formats_2JOF  Format specification. This header and its
+ *      implementation are **normative** for the producer memory contract
+ *      (carve set, arena sizing, fail-closed conditions); section 5.1 of the
+ *      spec is the explanatory companion and defers to this file.
  * @since 0.1.0
  */
 
