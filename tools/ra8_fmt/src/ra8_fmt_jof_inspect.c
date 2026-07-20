@@ -655,9 +655,9 @@ static bool priv_open_reassemble_ws(const ra8_fmt_blob_t* atlas,
 }
 
 ra8_err_t ra8_fmt_jof_reassemble(const ra8_fmt_blob_t* atlas,
-                                   const ra8_jof_info_t* info,
-                                   uint8_t**             out_px,
-                                   size_t*               out_len)
+                                 const ra8_jof_info_t* info,
+                                 uint8_t**             out_px,
+                                 size_t*               out_len)
 {
   RA8_CHECK_NULL_PTR(atlas, s_tag, "atlas must not be nullptr");
   RA8_CHECK_NULL_PTR(info, s_tag, "info must not be nullptr");

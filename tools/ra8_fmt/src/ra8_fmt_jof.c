@@ -58,7 +58,7 @@ static const char* const s_tag = "ra8_fmt_jof";
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_fmt_jof_band_h    = 256U,        /**< Band height, matching media_dl.     */
+  k_fmt_jof_band_h      = 256U,        /**< Band height, matching media_dl.     */
   k_fmt_fnv_offset      = 2166136261U, /**< FNV-1a 32-bit offset basis.         */
   k_fmt_fnv_prime       = 16777619U,   /**< FNV-1a 32-bit prime.                */
   k_fmt_webp_riff_ofs   = 0U,          /**< Offset of the "RIFF" fourCC.        */
@@ -177,10 +177,10 @@ static ra8_err_t fmt_jof_pull(void* ctx, uint8_t* buf, size_t cap, size_t* got)
  */
 RA8_INTERNAL
 static ra8_err_t fmt_jof_carve_webp(const ra8_fmt_blob_t* src,
-                                      uint16_t              max_w,
-                                      uint16_t              max_h,
-                                      uint8_t**             out_work,
-                                      size_t*               out_cap)
+                                    uint16_t              max_w,
+                                    uint16_t              max_h,
+                                    uint8_t**             out_work,
+                                    size_t*               out_cap)
 {
   *out_work = nullptr;
   *out_cap  = 0U;
@@ -247,14 +247,14 @@ ra8_err_t ra8_fmt_jof_probe(const ra8_fmt_blob_t* src, uint16_t* out_w, uint16_t
  */
 RA8_INTERNAL
 static ra8_err_t fmt_jof_run_produce(const ra8_fmt_blob_t* src,
-                                       uint16_t              max_w,
-                                       uint16_t              max_h,
-                                       uint16_t              tile_w,
-                                       uint16_t              tile_h,
-                                       uint8_t               codec,
-                                       uint32_t              work_cap,
-                                       ra8_jof_memstore_t*   store,
-                                       ra8_jof_info_t*       out_info)
+                                     uint16_t              max_w,
+                                     uint16_t              max_h,
+                                     uint16_t              tile_w,
+                                     uint16_t              tile_h,
+                                     uint8_t               codec,
+                                     uint32_t              work_cap,
+                                     ra8_jof_memstore_t*   store,
+                                     ra8_jof_info_t*       out_info)
 {
   uint8_t* work = (uint8_t*)malloc((size_t)work_cap);
   if (work == nullptr) {
@@ -288,13 +288,13 @@ static ra8_err_t fmt_jof_run_produce(const ra8_fmt_blob_t* src,
 }
 
 ra8_err_t ra8_fmt_jof_produce(const ra8_fmt_blob_t* src,
-                                uint16_t              max_w,
-                                uint16_t              max_h,
-                                uint16_t              tile_w,
-                                uint16_t              tile_h,
-                                uint8_t               codec,
-                                ra8_fmt_blob_t*       out_atlas,
-                                ra8_jof_info_t*       out_info)
+                              uint16_t              max_w,
+                              uint16_t              max_h,
+                              uint16_t              tile_w,
+                              uint16_t              tile_h,
+                              uint8_t               codec,
+                              ra8_fmt_blob_t*       out_atlas,
+                              ra8_jof_info_t*       out_info)
 {
   RA8_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA8_CHECK_NULL_PTR(out_atlas, s_tag, "out_atlas must not be nullptr");
