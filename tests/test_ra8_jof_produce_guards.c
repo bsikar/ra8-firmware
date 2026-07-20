@@ -200,14 +200,14 @@ static void build_jpeg_sof(uint32_t w, uint32_t h)
 }
 
 /** @brief Run the producer over the crafted source with explicit knobs. */
-static ra8_err_t produce_with(uint16_t              tile_w,
-                              uint16_t              tile_h,
-                              uint16_t              max_w,
-                              uint16_t              max_h,
-                              size_t                work_cap,
+static ra8_err_t produce_with(uint16_t        tile_w,
+                              uint16_t        tile_h,
+                              uint16_t        max_w,
+                              uint16_t        max_h,
+                              size_t          work_cap,
                               ra8_jof_info_t* out_info)
 {
-  static g_pull_t                 s_pull;
+  static g_pull_t           s_pull;
   static ra8_jof_memstore_t s_store;
   s_pull  = (g_pull_t){.pos = 0U};
   s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
@@ -244,14 +244,14 @@ static void test_guards_work_bytes_overflow(void)
   TEST_ASSERT(ra8_jof_work_bytes(1024U, 1024U, 128U, 128U) > 0U);
   TEST_ASSERT_EQ(0U,
                  ra8_jof_work_bytes((uint16_t)k_g_max_dim,
-                                          (uint16_t)k_g_max_dim,
-                                          (uint16_t)k_g_max_dim,
-                                          (uint16_t)k_g_max_dim));
+                                    (uint16_t)k_g_max_dim,
+                                    (uint16_t)k_g_max_dim,
+                                    (uint16_t)k_g_max_dim));
   TEST_ASSERT_EQ(0U,
                  ra8_jof_work_bytes((uint16_t)k_g_max_dim,
-                                          (uint16_t)k_g_max_dim,
-                                          (uint16_t)(k_g_max_dim / 2U),
-                                          (uint16_t)k_g_max_dim));
+                                    (uint16_t)k_g_max_dim,
+                                    (uint16_t)(k_g_max_dim / 2U),
+                                    (uint16_t)k_g_max_dim));
   TEST_END("produce guards: work-arena calculator overflow arms");
 }
 
@@ -273,7 +273,7 @@ static void test_guards_bump_take(void)
 {
   TEST_BEGIN("produce guards: bump-carve argument + exhaustion arms");
   static uint8_t s_backing[k_t_arena_cap];
-  ra8_jof_bump_t  bump = {.base = s_backing, .cap = sizeof(s_backing), .off = 0U};
+  ra8_jof_bump_t bump = {.base = s_backing, .cap = sizeof(s_backing), .off = 0U};
 
   TEST_ASSERT(ra8_jof_priv_bump_take(&bump, 8U) != nullptr);
   TEST_ASSERT_NULL(ra8_jof_priv_bump_take(nullptr, 8U));
@@ -398,14 +398,14 @@ static void test_guards_carve_sweep(void)
   TEST_BEGIN("produce guards: carve-boundary sweep (bind + pixel path)");
   build_gray_png(k_g_dim, k_g_dim);
   const uint32_t need = ra8_jof_work_bytes((uint16_t)k_g_dim,
-                                                 (uint16_t)k_g_dim,
-                                                 (uint16_t)k_g_tile,
-                                                 (uint16_t)k_g_tile);
+                                           (uint16_t)k_g_dim,
+                                           (uint16_t)k_g_tile,
+                                           (uint16_t)k_g_tile);
   TEST_ASSERT(need > 0U);
   TEST_ASSERT(need <= (uint32_t)sizeof(s_work));
 
   ra8_jof_info_t info    = {};
-  bool                 seen_ok = false;
+  bool           seen_ok = false;
   for (uint32_t cap = (uint32_t)k_g_step; cap <= need; cap += (uint32_t)k_g_step) {
     const ra8_err_t err = produce_with((uint16_t)k_g_tile,
                                        (uint16_t)k_g_tile,

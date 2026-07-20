@@ -344,16 +344,16 @@ t_read(const ra8_jof_info_t* info, uint16_t tx, uint16_t ty, uint16_t* out_w, ui
 {
   TEST_ASSERT_EQ(k_ra8_ok,
                  ra8_jof_read_tile(ra8_jof_memstore_pread,
-                                         &s_store,
-                                         info,
-                                         tx,
-                                         ty,
-                                         s_scratch,
-                                         (uint32_t)sizeof(s_scratch),
-                                         s_cell,
-                                         (uint32_t)sizeof(s_cell),
-                                         out_w,
-                                         out_h));
+                                   &s_store,
+                                   info,
+                                   tx,
+                                   ty,
+                                   s_scratch,
+                                   (uint32_t)sizeof(s_scratch),
+                                   s_cell,
+                                   (uint32_t)sizeof(s_cell),
+                                   out_w,
+                                   out_h));
 }
 
 /**

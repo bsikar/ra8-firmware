@@ -94,7 +94,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
   static ra8_jof_memstore_t s_store;
   s_store = (ra8_jof_memstore_t){.buf = s_store_buf, .cap = sizeof(s_store_buf), .len = 0U};
   /* First input byte picks the codec so both encode paths stay hot. */
-  const uint8_t                     codec = (uint8_t)(data[0] & 0x01U);
+  const uint8_t               codec = (uint8_t)(data[0] & 0x01U);
   const ra8_jof_produce_cfg_t cfg   = {
     .pull       = fuzz_pull,
     .pull_ctx   = &s_pull,
