@@ -1,6 +1,7 @@
 # mk/tools.mk -- host developer tools (native, NOT cross-compiled) and the host
 # codegen helpers. Tool dirs (MEDIA_DL_DIR, RA8_VIEWER_DIR, BOARD_SIM_DIR) come
 # from the top Makefile.
+# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
 
 .PHONY: tools tools-help media_dl test-media_dl test-integration viewer view dl \

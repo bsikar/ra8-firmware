@@ -18,7 +18,7 @@
 SHELL     := /bin/bash
 
 APP        := ptp_time_transmitter
-ROOT       := $(abspath $(CURDIR)/../../..)
+ROOT       := $(shell git -C "$(CURDIR)" rev-parse --show-toplevel)
 HERE       := $(CURDIR)
 BUILD_DIR  := $(HERE)/build
 ELF        := $(BUILD_DIR)/$(APP).elf

@@ -1,6 +1,7 @@
 # mk/sim.mk -- board_sim emulator: sim-<app>, profile-<app>, ereader GUI, SIL,
 # and the e-reader chrome golden gate. BOARD_SIM_DIR + the RA8_SIM*/RA8_PROFILE
 # app lists come from the top Makefile.
+# Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
 
 # Panel descriptor used by sim-<app>: tools/board_sim/panels/<PANEL>.toml.
@@ -65,6 +66,7 @@ sim-tz_threadx_demo:
 MODE         ?= full
 PROFILE_ARGS ?=
 STOP_PC      ?=
+.PHONY: sim-ra8d2-ereader sim-dualcore_mailbox sim-tz_threadx_demo
 .PHONY: $(RA8_PROFILE)
 $(RA8_PROFILE): profile-%: %
 	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
