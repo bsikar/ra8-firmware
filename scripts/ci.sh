@@ -231,6 +231,70 @@ require_arm_gcc_m85() {
   fi
 }
 
+# The repository whose HISTORY the commit-message gates read.
+#
+# Normally the current directory -- but NOT under run_suite_on_snapshot, which
+# runs every gate inside a `git archive` snapshot that was turned into a repo
+# by `git init`. That snapshot holds exactly ONE synthetic commit
+# ("ci.sh snapshot of HEAD") and none of the host's objects, so a gate reading
+# history there sees no real commit message at all (#348).
+#
+# Splitting the two sources is deliberate and is what makes snapshot mode
+# still mean something for these gates:
+#
+#   * the CHECKER SCRIPTS come from the snapshot (cwd), so the suite gates the
+#     committed HEAD's version of scripts/git/commit-msg and friends rather
+#     than whatever is dirty in the working tree;
+#   * the HISTORY comes from the host repo, because commit messages are git
+#     metadata that `git archive` cannot carry and no snapshot can synthesise.
+#
+# Exporting RA8_CI_COMMIT_RANGE into the snapshot instead (the other candidate
+# in #348) does not work: the range names SHAs the snapshot's fresh object
+# store does not contain, so `git rev-list` dies with "Invalid revision range".
+# Making it work would mean importing the host object store into every
+# snapshot, which is precisely the independence run_suite_on_snapshot documents
+# it wants.
+ci_history_repo() {
+  printf '%s\n' "${RA8_CI_HISTORY_REPO:-$PWD}"
+}
+
+# Number of commits reachable from HEAD in the given repository.
+ci_history_depth() {
+  git -C "$1" rev-list --count HEAD 2>/dev/null || printf '0\n'
+}
+
+# Refuse to scan a repository that has no real history to scan.
+#
+# This is the #348 guard. A commit-message gate pointed at the synthetic
+# one-commit snapshot reports PASS having read nothing but "ci.sh snapshot of
+# HEAD" -- the exact "gate that cannot see the thing it audits and says PASS"
+# CLAUDE.md bans. Fail loudly instead, the same way require_cmd does for an
+# absent tool.
+#
+# The invariant asserted here is history DEPTH (> 1 commit), not the span of
+# the resolved range, even though #348 words it as the latter. A range spanning
+# exactly one commit is perfectly legal -- pushing a single commit produces
+# `HEAD~1..HEAD` -- so failing on a one-commit span would reject the most
+# ordinary push there is. What is never legal is the gate reading a repository
+# that HAS no history, and that is the condition that actually distinguishes
+# the snapshot from a real checkout. commit_range_selftest asserts both
+# directions of exactly this distinction.
+ci_require_real_history() {
+  local repo="$1" depth
+  depth="$(ci_history_depth "$repo")"
+  if [[ "$depth" -le 1 ]]; then
+    echo "ERROR: this gate reads commit messages, but the repository at" >&2
+    echo "       '$repo' contains $depth commit(s) -- there is no real" >&2
+    echo "       history here to scan." >&2
+    echo "       This is the #348 false-green: a synthetic 'git init'" >&2
+    echo "       snapshot has one commit, so the gate would report PASS" >&2
+    echo "       having read no real commit message at all." >&2
+    echo "       Under the suite runner, RA8_CI_HISTORY_REPO must point at" >&2
+    echo "       the host repository (run_suite_on_snapshot exports it)." >&2
+    return 1
+  fi
+}
+
 # The commit range a message-scanning gate should cover.
 #
 # Derived from the GitHub event payload when running on a runner, so the range
@@ -239,13 +303,17 @@ require_arm_gcc_m85() {
 # before..head range never rots the way a hardcoded floor SHA does: a history
 # rewrite orphans the floor and silently empties the range, turning the gate
 # into a no-op.
+#
+# Every git query resolves against ci_history_repo(), not the cwd, so the range
+# describes the same repository the gates go on to read.
 ci_commit_range() {
   if [[ -n "${RA8_CI_COMMIT_RANGE:-}" ]]; then
     printf '%s\n' "$RA8_CI_COMMIT_RANGE"
     return 0
   fi
 
-  local head="" base=""
+  local repo head="" base=""
+  repo="$(ci_history_repo)"
   if [[ -n "${GITHUB_EVENT_PATH:-}" && -f "${GITHUB_EVENT_PATH}" ]]; then
     head="$(python3 -c '
 import json, os
@@ -264,11 +332,11 @@ print((pr.get("base") or {}).get("sha") or ev.get("before") or "")
 
   # A base absent locally (force-push, shallow clone, the all-zero "new
   # branch" sentinel) is unusable -- fall back rather than error out.
-  if [[ -z "$base" ]] || ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
-    base="$(git rev-parse --verify --quiet '@{upstream}' 2>/dev/null || true)"
+  if [[ -z "$base" ]] || ! git -C "$repo" cat-file -e "${base}^{commit}" 2>/dev/null; then
+    base="$(git -C "$repo" rev-parse --verify --quiet '@{upstream}' 2>/dev/null || true)"
   fi
-  if [[ -z "$base" ]] || ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
-    base="$(git rev-parse --verify --quiet "${head}~1" 2>/dev/null || true)"
+  if [[ -z "$base" ]] || ! git -C "$repo" cat-file -e "${base}^{commit}" 2>/dev/null; then
+    base="$(git -C "$repo" rev-parse --verify --quiet "${head}~1" 2>/dev/null || true)"
   fi
 
   if [[ -n "$base" ]]; then
@@ -352,6 +420,103 @@ suite_errexit_selftest() {
   echo "ci.sh: suite-runner errexit self-test OK (mid-body failure propagates)."
 }
 
+# Assert that the commit-message gates can still tell real history from a
+# synthetic snapshot -- in BOTH directions.
+#
+# Shaped after suite_errexit_selftest above, and for the same reason: #348 was
+# a detector that had quietly stopped seeing its subject while still printing a
+# green line. A guard nobody has watched fire is worth nothing, so the property
+# is re-proved on every run rather than remembered.
+#
+# Direction 1 (fires): a `git init` + one-commit repo, built exactly the way
+#   run_suite_on_snapshot builds its snapshot, must be REJECTED.
+# Direction 2 (stays silent): a repo with real history must be ACCEPTED --
+#   including the legal-but-tricky shape that a naive "the range must span more
+#   than one commit" rule would wrongly reject, namely a detached HEAD with no
+#   upstream, where ci_commit_range legitimately resolves to a range spanning
+#   exactly ONE commit. It also asserts the resolved range is RESOLVABLE in the
+#   history repo, which is the failure mode of the rejected "export
+#   RA8_CI_COMMIT_RANGE into the snapshot" fix (SHAs the object store lacks).
+commit_range_selftest() (
+  # A SUBSHELL, not a { } body: this probe flips errexit while driving the
+  # guard, and the gates that call it run `set -uo pipefail` WITHOUT -e.
+  # A { } body would leave errexit enabled in the caller after returning,
+  # silently changing how the rest of the gate behaves.
+  set -uo pipefail
+  require_cmd git || exit 1
+  local tmp fake real range span
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/ra8-range-probe.XXXXXXXX")"
+
+  # --- Direction 1: the broken input the guard exists to catch. -----------
+  fake="$tmp/snapshot"
+  mkdir -p "$fake"
+  printf 'snapshot\n' >"$fake/file.txt"
+  git -C "$fake" init --quiet
+  git -C "$fake" add -A
+  git -C "$fake" -c user.email=ci@localhost -c user.name=ci \
+    commit --quiet --no-verify -m "ci.sh snapshot of HEAD"
+
+  if ci_require_real_history "$fake" 2>/dev/null; then
+    rm -rf "$tmp"
+    echo "ERROR: ci.sh commit-range self-test FAILED (direction 1)." >&2
+    echo "       A synthetic one-commit snapshot was ACCEPTED as real" >&2
+    echo "       history. The #348 false-green guard has stopped firing:" >&2
+    echo "       the commit-message gates would again report PASS having" >&2
+    echo "       scanned only 'ci.sh snapshot of HEAD'." >&2
+    exit 1
+  fi
+
+  # --- Direction 2: legal-but-tricky input that must NOT be rejected. -----
+  real="$tmp/real"
+  mkdir -p "$real"
+  git -C "$real" init --quiet
+  local n
+  for n in 1 2 3; do
+    printf 'rev %s\n' "$n" >"$real/file.txt"
+    git -C "$real" add -A
+    git -C "$real" -c user.email=ci@localhost -c user.name=ci \
+      commit --quiet --no-verify -m "test: commit $n"
+  done
+  # Detach HEAD so there is no upstream: ci_commit_range must fall through to
+  # HEAD~1..HEAD, a range spanning exactly one commit. That is an ordinary
+  # single-commit push, and rejecting it would be a false failure.
+  git -C "$real" checkout --quiet --detach HEAD
+
+  if ! ci_require_real_history "$real" 2>/dev/null; then
+    rm -rf "$tmp"
+    echo "ERROR: ci.sh commit-range self-test FAILED (direction 2)." >&2
+    echo "       A repository with three real commits was REJECTED as" >&2
+    echo "       having no history. The guard is over-firing and would" >&2
+    echo "       block ordinary pushes." >&2
+    exit 1
+  fi
+
+  # The resolved range must name objects the history repo actually has, and
+  # must cover at least the tip commit.
+  #
+  # GITHUB_EVENT_PATH / GITHUB_SHA are cleared deliberately. On a runner they
+  # ARE set, and ci_commit_range would then resolve the real PR's head/base
+  # SHAs -- which do not exist in this throwaway repo -- so the probe would
+  # fail on every CI run while passing locally. The property under test is the
+  # local fallback chain, so pin the inputs to it.
+  range="$(RA8_CI_HISTORY_REPO="$real" RA8_CI_COMMIT_RANGE="" \
+    GITHUB_EVENT_PATH="" GITHUB_SHA="" ci_commit_range)"
+  span="$(git -C "$real" rev-list --count "$range" 2>/dev/null)" || span=""
+  if [[ -z "$span" || "$span" -lt 1 ]]; then
+    rm -rf "$tmp"
+    echo "ERROR: ci.sh commit-range self-test FAILED (direction 2, range)." >&2
+    echo "       Resolved range '$range' does not resolve in the history" >&2
+    echo "       repo, so the gates would scan nothing. This is the" >&2
+    echo "       failure mode of exporting a host range into a snapshot" >&2
+    echo "       whose object store lacks those commits." >&2
+    exit 1
+  fi
+
+  rm -rf "$tmp"
+  echo "ci.sh: commit-range self-test OK (rejects a synthetic snapshot," \
+    "accepts real history; tricky one-commit span resolved to '$range')."
+)
+
 # --- ascii ----------------------------------------------------------------
 # Every first-party root. fix-encoding.py skips third_party and any non-text
 # extension, so vendored assets (the doxygen-awesome theme under docs/,
@@ -405,12 +570,18 @@ gate_no_ai_attribution() {
 # attributed to -- and fails -- the inclusive-terminology gate instead.
 gate_no_ai_attribution_commits() (
   set -uo pipefail
-  local range rc=0 sha f hook_out
+  local range rc=0 sha f hook_out repo
+  # Prove the guard still tells real history from a snapshot, THEN prove this
+  # run has real history to read. Both before the scan: a detector that has
+  # stopped seeing its subject must not get to print a green line first.
+  commit_range_selftest || return 1
+  repo="$(ci_history_repo)"
+  ci_require_real_history "$repo" || return 1
   range="$(ci_commit_range)"
-  echo "Scanning commit messages in: $range"
-  for sha in $(git rev-list "$range"); do
+  echo "Scanning commit messages in: $range (history repo: $repo)"
+  for sha in $(git -C "$repo" rev-list "$range"); do
     f="$(mktemp)"
-    git log -1 --format=%B "$sha" >"$f"
+    git -C "$repo" log -1 --format=%B "$sha" >"$f"
     if ! hook_out="$(CHECK_ONLY=ai bash scripts/git/commit-msg "$f" 2>&1)"; then
       echo "$hook_out"
       echo "::error::Commit $sha carries a forbidden trailer in its message"
@@ -429,10 +600,15 @@ gate_inclusive_terminology() {
 # --- inclusive-terminology-commits ----------------------------------------
 gate_inclusive_terminology_commits() (
   set -uo pipefail
-  local range
+  local range repo
+  # See gate_no_ai_attribution_commits: self-test, then real-history guard,
+  # then the scan.
+  commit_range_selftest || return 1
+  repo="$(ci_history_repo)"
+  ci_require_real_history "$repo" || return 1
   range="$(ci_commit_range)"
-  echo "Scanning commit messages in: $range"
-  git log "$range" --format=%B |
+  echo "Scanning commit messages in: $range (history repo: $repo)"
+  git -C "$repo" log "$range" --format=%B |
     python3 scripts/utils/check_inclusive_terminology_commits.py
 )
 
@@ -1233,6 +1409,14 @@ run_suite_on_snapshot() {
   git -C "$work" add -A
   git -C "$work" -c user.email=ci@localhost -c user.name=ci \
     commit --quiet --no-verify -m "ci.sh snapshot of HEAD" >/dev/null 2>&1 || true
+  # That snapshot has ONE synthetic commit and none of the host's objects, so
+  # commit messages simply are not in it -- `git archive` carries a tree, not
+  # history. Point the message-scanning gates back at the real repository;
+  # everything else still reads the clean snapshot. Without this the two
+  # commit-metadata gates scan "ci.sh snapshot of HEAD" and report PASS,
+  # which is #348: the only local enforcement of the attribution-trailer ban
+  # and the inclusive-terminology rule, silently reading nothing.
+  export RA8_CI_HISTORY_REPO="$REPO_ROOT"
   cd "$work"
   # Disable errexit around the CALL only -- never `run_suite ... || rc=$?`.
   # A `||` chain (like an `if` condition, or `!`) puts the callee into bash's
