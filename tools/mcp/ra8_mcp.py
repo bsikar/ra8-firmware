@@ -833,7 +833,7 @@ def handle_tools_call(params: dict[str, Any]) -> dict[str, Any]:
         text = tool["handler"](arguments)
     except ValueError as exc:
         return {"content": [{"type": "text", "text": f"invalid request: {exc}"}], "isError": True}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 -- RPC boundary: every handler error becomes a protocol error
         log(f"tool '{name}' raised: {exc!r}")
         return {"content": [{"type": "text", "text": f"tool error: {exc}"}], "isError": True}
     else:
@@ -895,7 +895,7 @@ def dispatch(request: dict[str, Any]) -> dict[str, Any] | None:  # noqa: PLR0911
         return _error(request_id, ERR_METHOD_NOT_FOUND, f"method not found: {method}")
     except ValueError as exc:
         return _error(request_id, ERR_INVALID_PARAMS, str(exc))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 -- RPC boundary: every handler error becomes a protocol error
         log(f"dispatch error for {method}: {exc!r}")
         return _error(request_id, ERR_INTERNAL, str(exc))
 

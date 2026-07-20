@@ -14,6 +14,7 @@
 #
 # Usage:  python3 make_imgfmt_fixtures.py
 import io
+from pathlib import Path
 
 from PIL import Image
 
@@ -90,7 +91,7 @@ def main():
         "\n"
         f"{bake_array('gif', gif)}"
     )
-    with open("imgfmt_fixtures.h", "w", encoding="ascii") as f:
+    with Path("imgfmt_fixtures.h").open("w", encoding="ascii") as f:
         f.write(header)
     print(f"wrote imgfmt_fixtures.h (bmp {len(bmp)} B, gif {len(gif)} B)")
 

@@ -78,7 +78,7 @@ def stream_echo(device, total_bytes):  # noqa: PLR0915  # streaming bench with w
                     sent[0] += n
                 except BlockingIOError:
                     pass
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 -- thread boundary: transport any failure to the joiner
             err.append(("writer", e))
 
     t0 = time.monotonic()

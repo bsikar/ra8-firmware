@@ -2037,7 +2037,7 @@ def main(argv: list[str]) -> int:  # noqa: PLR0912  # gate/parser dispatch, spli
             continue
         try:
             walk_tu(tu, tu_path, symbols, calls, stats, vector_entries)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- one TU must not abort the sweep; the parse floor catches wholesale failure
             sys.stderr.write(f"  WARN: walk failed for {tu_path}: {exc}\n")
 
     if args.list:
