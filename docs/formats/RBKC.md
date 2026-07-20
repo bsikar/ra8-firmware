@@ -348,7 +348,7 @@ digraph rbkc_residency {
   sd [shape=box, style="rounded,filled", fillcolor="#f0f0f0", color="#888888",
       label="SD card\nwhole .rabook\nnever resident"];
   ram [shape=record, fillcolor="#dff0e4", color="#5f9e72",
-       label="{SRAM|{table\\n8 B/chunk|staging\\n1 chunk|vmem frames\\nN x chunk_bytes}}"];
+       label="{SRAM|{table\n8 B/chunk|staging\n1 chunk|vmem frames\nN x chunk_bytes}}"];
   rend [shape=box, style="rounded,filled", fillcolor="#e8eef7", color="#5a7ca6",
         label="renderer\nreads nodes by index\ninto the flat blob"];
 

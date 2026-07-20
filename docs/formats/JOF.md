@@ -29,12 +29,18 @@ differentially coded across the entire image, so the same applies. Neither
 format lets you say "give me the pixels from y=8000 to y=8256" without doing
 almost all the work.
 
-JOF fixes this once, at **import time**, on the host. The source image is
-transcoded into a grid of **independently decodable tiles**, plus a **per-tile
-byte index**. A reader parses a fixed 16-byte footer, learns where the index
-is, reads one 8-byte index entry, and jumps straight to the tile it wants. One
-bounded read, one bounded inflate, and the resident cost is *one tile* -- not
-one image.
+JOF fixes this once, at **import time**. The source image is transcoded into a
+grid of **independently decodable tiles**, plus a **per-tile byte index**. A
+reader parses a fixed 16-byte footer, learns where the index is, reads one
+8-byte index entry, and jumps straight to the tile it wants. One bounded read,
+one bounded inflate, and the resident cost is *one tile* -- not one image.
+
+Import runs on the **host** (`ra8_fmt convert`) *or* on the **device**
+(`ra8_epub_tile_binder_import()`, when a book arrives with ordinary JPEG/PNG
+inside it). That is not an afterthought: the producer is a streaming,
+zero-heap, fixed-arena transcoder precisely so the device can run it, and
+[section 5.1](#51-memory-behaviour-of-the-writer) is the half of the memory
+story that makes on-device import possible at all.
 
 That gives full-resolution random access with a working set that does not grow
 with the image. A 12260-pixel-tall longstrip and a 600-pixel-tall page cost the
@@ -278,7 +284,14 @@ truncation even when the caller's idea of the file length is wrong.
 
 ## 4. Algorithms
 
-### 4.1 Producing (host side, `ra8_tileatlas_produce()` / `ra8_fmt convert`)
+### 4.1 Producing (`ra8_tileatlas_produce()` -- host *or* device)
+
+The same function runs in both places. On the host it is driven by
+`ra8_fmt convert` / `tools/media_dl`; on the device it is driven by
+`ra8_epub_tile_binder_import()` when an EPUB turns out to contain ordinary
+JPEG/PNG. There is no separate device transcoder and no reduced device mode --
+the memory contract in [section 5.1](#51-memory-behaviour-of-the-writer) is
+what lets one implementation serve both.
 
 @dot
 digraph produce {
@@ -286,7 +299,7 @@ digraph produce {
   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
         fillcolor="#e8eef7", color="#5a7ca6"];
   edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
-  a [label="1. Decode source (PNG/JPEG)\nand pick geometry"];
+  a [label="1. Sniff the source magic (JPEG / PNG / WebP),\nread the geometry, pick the tile grid"];
   b [label="2. Reserve 32 bytes for the header\n(fields not all known yet)"];
   c [label="3. For each tile in row-major order:\n   clamp tw, th at the edges\n   extract payload\n   compress (codec 1) or copy (codec 0)\n   append to sink\n   record (offset, length)"];
   d [label="4. Append the index:\n   tile_count x 8 bytes"];
@@ -359,7 +372,12 @@ noise tile.
 ## 5. Memory behaviour
 
 This is the section that justifies the format's existence, so it is worth being
-concrete.
+concrete. There are **two** memory stories, not one: reading a tile (below) and
+*producing* the atlas in the first place ([section 5.1](#51-memory-behaviour-of-the-writer)).
+The second is the one people ask about, because it is the one that sounds
+impossible.
+
+### 5.0 Reading
 
 **Resident cost of reading a tile is `scratch_cap + out_cap`, and nothing
 else.** It does not depend on the image dimensions, the tile count, or the file
@@ -394,7 +412,7 @@ digraph residency {
   store [shape=box, style="rounded,filled", fillcolor="#f0f0f0", color="#888888",
          label="Backing store\n(SD file / ZIP entry / SDRAM)\nWHOLE atlas lives here\nnever resident"];
   ram [shape=record, fillcolor="#dff0e4", color="#5f9e72",
-       label="{SRAM working set|{<s>scratch\\n(stored tile)|<o>out_px\\n(decoded tile)|<i>info\\n24 B}}"];
+       label="{SRAM working set|{<s>scratch\n(stored tile)|<o>out_px\n(decoded tile)|<i>info\n24 B}}"];
   cache [shape=box, style="rounded,filled", fillcolor="#e8eef7", color="#5a7ca6",
          label="ra8_tile_cache\n(N decoded tiles,\ncaller-sized)"];
 
@@ -405,6 +423,232 @@ digraph residency {
 
 Zero heap throughout (NASA P10 Rule 3): the caller owns `scratch` and `out_px`,
 sizes them from `ra8_tileatlas_stored_bound()`, and the reader never allocates.
+
+### 5.1 Memory behaviour of the writer
+
+Everything above is the *read* side. The obvious next question, and the one
+this section exists to answer, is:
+
+> The device imports media. Import means transcoding. There is no `malloc` --
+> so what happens when the file to transcode is bigger than the RAM?
+
+The answer is that **it never needs to be resident**, and the transcoder's
+memory ceiling is a number you can compute *before you start*.
+
+#### The streaming write model
+
+For JPEG and PNG the producer is a **single forward pass** with a constant RAM
+high-water. Nothing in the chain ever holds a whole image:
+
+@dot
+digraph produce_streaming {
+  bgcolor="transparent"; rankdir=LR;
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10,
+        fillcolor="#e8eef7", color="#5a7ca6"];
+  edge [fontname="Helvetica", fontsize=9, color="#5a7ca6"];
+
+  src [label="encoded source\n(SD file / ZIP entry)\npulled in bounded chunks\nNEVER held whole",
+       fillcolor="#f0f0f0", color="#888888"];
+
+  subgraph cluster_arena {
+    label="cfg.work -- ONE fixed arena, sized up front by ra8_tileatlas_work_bytes()";
+    fontsize=11; fontname="Helvetica-Bold";
+    color="#5f9e72"; style="rounded"; bgcolor="#eef7f0";
+    dec  [label="stripe decoder\nJPEG: 128 KiB window\n+ one MCU-row stripe\nPNG: ring + 3 rows",
+          fillcolor="#dff0e4", color="#5f9e72"];
+    band [label="band accumulator\nwidth x tile_h x bpp\nONE tile row",
+          fillcolor="#d6efd9", color="#5f9e72"];
+    cut  [label="cut + intra-code\neach tile in the band",
+          fillcolor="#dff0e4", color="#5f9e72"];
+    dec -> band [label="scanline rows"];
+    band -> cut [label="band full"];
+    band -> band [label="drain, reuse"];
+  }
+
+  sink [label="append-only sink\nheader, tiles,\nindex, footer\n(never seeks)",
+        fillcolor="#f0f0f0", color="#888888"];
+
+  src -> dec;
+  cut -> sink;
+}
+@enddot
+
+The band accumulator is the heart of it. Rows arrive from the decoder in
+scanline order; they are copied into a buffer exactly `tile_h` rows tall and as
+wide as the image. When that buffer fills, every tile in the band is cut out,
+compressed and appended, the buffer is reset, and decoding continues. The
+index and footer **trail** the tile data (see
+[why the index lives at the end](#why-the-index-lives-at-the-end)), which is
+what lets the sink be strictly append-only -- an SD file or a SDRAM memstore,
+no seeking.
+
+The consequence is the headline: **a page whose decoded size exceeds SDRAM
+transcodes without ever being resident.** The 800 x 12260 longstrip decodes to
+~29 MB; the producer never holds more than one 800 x 256 band of it.
+
+#### The arena contract
+
+The producer **allocates nothing**. Every byte of state -- decoder buffers,
+band, tile stage, compressor scratch, tile index -- is carved by an internal
+bump allocator from one caller-supplied buffer, `cfg.work`. That is the entire
+RAM cost, and `ra8_tileatlas_work_bytes()` computes it exactly, up front, from
+the caller's budget caps:
+
+```c
+uint32_t need = ra8_tileatlas_work_bytes(max_w, max_h, tile_w, tile_h);
+```
+
+A caller therefore knows *before starting* whether an import fits. If the arena
+is short the transcode fails closed with `k_ra8_err_invalid_size` before any
+pixel is decoded -- it never overruns and never half-writes an atlas it cannot
+finish.
+
+The resident working set, for the 800 x 12260 longstrip at `tile_h = 256`
+(every figure below is the real return of the sizing function, not an estimate):
+
+| Carve | Bytes | What sets it |
+|---|---:|---|
+| Decoder set (worst of JPEG / PNG) | 169 472 | JPEG: 128 KiB input window + one MCU-row stripe (`width x 16 x 3`). PNG: inflate state (8 376) + 64 KiB ring + 4 KiB input + three row buffers |
+| Band accumulator | 819 200 | `width x tile_h x bpp` |
+| Tile stage | 819 200 | one uncompressed tile |
+| Compressed-tile bound | 921 856 | `stage + stage/8 + 256` |
+| Tile index | 384 | 8 bytes x 48 tiles |
+| Deflate scratch | 319 352 | one `tdefl_compressor` (codec 1 only) |
+| Alignment slack | 128 | per-carve rounding |
+| **Total** | **3 049 592** | **~2.91 MiB** |
+
+#### What the ceiling actually depends on
+
+The header describes this arena as "independent of the image". That is the
+right intuition but it is worth stating precisely, because *which* dimension it
+is independent of is the entire point:
+
+| Varying | Arena | Effect |
+|---|---:|---|
+| height 1 000 | 3 049 240 | -- |
+| height 4 000 | 3 049 336 | +96 B |
+| height 12 260 | 3 049 592 | +352 B |
+| height 32 768 (format cap) | 3 050 232 | +992 B |
+
+Growing the image **32x taller costs 992 additional bytes** -- and those bytes
+are entirely the 8-byte-per-tile index, the one term that scales with tile
+count. The pixel path does not move at all. So the precise claim is:
+
+> The arena is a function of **width**, **`tile_h`** and **tile count**. It is
+> independent of image *height* to within 8 bytes per band.
+
+That is exactly the property that makes unbounded-length longstrips importable,
+and it is why the interesting cap is `max_width`, not `max_height`. Width, by
+contrast, is *not* free: it scales the band, the stage and the compressed bound
+together, so a 1600-wide page costs roughly double an 800-wide one.
+
+One consequence that surprises people: **`tile_w == width` is a reader
+optimisation, and it costs the writer.** Band-tiles give the reader an O(1)
+seek (the tile index *is* the band index), but the writer streams a full-width
+band regardless of `tile_w` -- narrow tiles are simply cut out of that band. So
+choosing `tile_w == width` does not enable streaming; it just enlarges the tile
+stage until it equals a whole band. For a 1600 x 2300 page:
+
+| Tile geometry | Arena | |
+|---|---:|---|
+| `1600 x 256` (band-tile) | 5 647 680 | ~5.39 MiB |
+| `256 x 256` (square tile) | 2 723 568 | ~2.60 MiB |
+
+Square tiles more than halve the import cost. Band-tiles buy scroll-seek
+simplicity in return. Pick deliberately.
+
+#### WebP is the genuine exception
+
+WebP cannot stream, and this is a property of **the codec, not of this
+implementation**. VP8L (lossless WebP) encodes with 2-D backward references
+that may point anywhere in the frame already decoded, so there is no bounded
+output window through which the image can be emitted -- unlike a PNG scanline
+or a JPEG MCU row, a VP8L pixel can depend on a pixel thousands of rows back.
+
+So a WebP source is normalised through the *same* JOF tile path, but the decode
+in front of it is whole-frame, and it is paid for out of a **second, separate**
+arena sized by `ra8_tileatlas_webp_work_bytes()`. That arena holds three things
+at once: the compressed source, the decoded RGBA8888 frame, and libwebp's
+internal scratch.
+
+| WebP source | `webp_work` needed |
+|---|---:|
+| 800 x 1200, 512 KiB compressed | 13 092 992 (~12.49 MiB) |
+| 1600 x 2300, 2 MiB compressed | 47 305 856 (~45.11 MiB) |
+| 8192 x 8192 (axis cap), 4 MiB compressed | 810 549 376 (~773 MiB) |
+| 8193 wide (over cap) | 0 -- rejected |
+
+That last row is the design working. The cost is honest and it is bounded by
+declared caps; an over-cap source returns 0 from the sizing function and
+`k_ra8_err_not_supported` from the producer, rather than being quietly
+downscaled into something affordable.
+
+The critical detail is the default: **`webp_work == NULL` fail-closed rejects
+every WebP source** with `k_ra8_err_not_supported`. A streaming-only caller
+passes NULL, pays *nothing*, and cannot accidentally blow its budget on a
+whole-frame decode it never provisioned for. WebP support is opt-in by
+supplying memory, which is the only honest way to expose a whole-frame codec
+inside a fixed-arena system.
+
+#### The other fail-closed rejections
+
+The same principle covers every source variant that cannot be striped. Each is
+rejected with `k_ra8_err_not_supported` *before* any pixel work:
+
+| Rejected | Why it cannot stream |
+|---|---|
+| Progressive JPEG | Coefficients arrive across multiple scans over the whole image; no row is final until the last scan |
+| Interlaced (Adam7) PNG | Pixels arrive in seven passes scattered across the frame, not in scanline order |
+| 16-bit PNG | Outside the supported 8-bit sample path |
+| Anything not JPEG / PNG / WebP | No decoder |
+
+The caller's fallback is a whole-decode path, used only for images small enough
+to afford it -- a deliberate, explicit choice rather than a silent one.
+
+**No downscaling, ever.** Output pixels are the decoded pixels, at full
+resolution, losslessly recompressed. Shrinking an oversized page to fit the
+arena is *not* an available mitigation and will not be added: full-resolution
+pixels are what make a zoom loupe on a manga page possible, which is the
+product requirement the format exists to serve (issues #210-#213).
+
+#### Import on the device
+
+`ra8_epub_tile_binder_import()` (`libs/ra8_epub`) is the device-side driver,
+and it is a thin one -- there is no separate device transcoder:
+
+1. **Classify.** A 4-byte positioned read sniffs the entry. If it already
+   starts with `JOF1` the entry is registered **in place** and there is no
+   transcode and no arena at all. (A *deflated* ZIP entry reports
+   `k_ra8_err_not_supported` to that positioned read, which correctly
+   classifies it as "not an in-place atlas" and routes it to the transcode
+   path.)
+2. **Stream.** Otherwise it opens an entry cursor and wraps
+   `ra8_epub_entry_read` as the producer's `pull` seam. The encoded source is
+   pulled straight out of the ZIP entry in bounded chunks -- stored or
+   deflated, decompressed on the fly, **never staged whole**.
+3. **Produce.** It forwards the caller's knobs verbatim into
+   `ra8_tileatlas_produce_cfg_t`: `tile_w`, `tile_h`, `codec`, `max_width`,
+   `max_height`, `work` / `work_cap`, and `webp_work` / `webp_work_cap`.
+4. **Register.** The finished atlas is bound into the tile binder through the
+   store's `pread` seam. The entry cursor is always closed, with the first
+   error winning.
+
+Note what the EPUB layer does *not* do: **it supplies no memory of its own.**
+The arena is entirely the application's, arriving through
+`ra8_epub_atlas_import_cfg_t`. The e-reader application places it in external
+SDRAM -- which is the real answer to "we can't allocate more". The device does
+not allocate; it is *given* a fixed arena at build time, sized by
+`ra8_tileatlas_work_bytes()` for the caps that application intends to support,
+and any source outside those caps is refused rather than accommodated.
+
+> **Normative split.** The wire format in [section 3](#3-wire-format) is
+> normative here -- this document defines the bytes. The producer's *memory
+> contract* is normative in **`ra8_tileatlas_produce.h`**: the carve set,
+> the arena sizing functions and the fail-closed conditions are defined by
+> that header and its implementation, and this section is explanatory. If the
+> two ever disagree, the header wins and this section is the bug. Every figure
+> in section 5.1 is a computed return value of
+> `ra8_tileatlas_work_bytes()` / `ra8_tileatlas_webp_work_bytes()`.
 
 ---
 
@@ -710,7 +954,11 @@ no dual-version reader and there should never be one.
 ## See also
 
 - `ra8_tileatlas.h` -- reader API, offset enums, limits
-- `ra8_tileatlas_produce.h` -- import-time transcode producer
+- `ra8_tileatlas_produce.h` -- import-time transcode producer, and the
+  **normative** contract for the writer memory model described in section 5.1
+  (`ra8_tileatlas_work_bytes()`, `ra8_tileatlas_webp_work_bytes()`)
+- `ra8_epub_img_tiles.h` / `ra8_epub_tile_binder_import()` -- device-side
+  import driver
 - `ra8_epub_img_tiles.h` -- EPUB tile-cache binder over this format
 - @ref md_docs_2formats_2RBKC -- the chunked book container, which solves the
   same seekability problem for a *flat blob* rather than an image grid
