@@ -1003,15 +1003,27 @@ def check_parse_integrity(stats: ParseStats, tu_count: int) -> list[Violation]:
     return out
 
 
+#: Roots whose immediate child directory is one module for RA8_PRIV purposes.
+#: `libs/<module>` is the obvious one. `tools/<tool>` is the same shape: each
+#: tool is one module split across several TUs with its own `*_internal.h`
+#: (ra8_fmt says so in that header's own file comment), and board_sim calling
+#: ra8_fmt's private helper is the same boundary violation as one library
+#: calling another's. Without this, an RA8_PRIV tag under tools/ is decorative
+#: -- module_of() returned None, the rule hit `if callee_mod is None: continue`
+#: and never compared anything.
+MODULE_ROOTS = ("libs", "tools")
+
+
 def module_of(path: str) -> str | None:
-    """libs/<module>/... -> '<module>'; else None."""
-    p = pathlib.Path(path)
-    try:
-        idx = p.parts.index("libs")
-    except ValueError:
-        return None
-    if idx + 1 < len(p.parts):
-        return p.parts[idx + 1]
+    """libs/<module>/... or tools/<tool>/... -> the module name; else None."""
+    parts = pathlib.Path(path).parts
+    for root in MODULE_ROOTS:
+        try:
+            idx = parts.index(root)
+        except ValueError:
+            continue
+        if idx + 1 < len(parts):
+            return f"{root}/{parts[idx + 1]}"
     return None
 
 
@@ -1749,6 +1761,24 @@ void host_unpublished(void)
 {
   host_allocator();
 }
+
+/* RA8_PRIV inside tools/mod_host. Reaching this from another tool is the
+   same boundary violation as one library calling another's private helper. */
+[[clang::annotate("ra8_priv")]] void host_priv_helper(void);
+
+void host_priv_helper(void) {}
+""",
+    # A second tool calling the first one's RA8_PRIV symbol. module_of() has
+    # to resolve tools/<tool> as a module for this to be caught at all.
+    "tools/mod_other_host/src/other_host.c": """
+[[clang::annotate("ra8_priv")]] void other_host_caller(void);
+
+void host_priv_helper(void);
+
+void other_host_caller(void)
+{
+  host_priv_helper();
+}
 """,
 }
 
@@ -1877,6 +1907,13 @@ def run_selftest() -> int:
         failures.append(
             "ra8_priv went toothless: the genuine cross-module call to RA8_PRIV "
             "'shared_helper' from mod_stranger was NOT reported"
+        )
+    if "other_host.c" not in priv_offenders:
+        failures.append(
+            "ra8_priv is blind under tools/: mod_other_host calls mod_host's "
+            "RA8_PRIV 'host_priv_helper' across a module boundary and it was NOT "
+            "reported -- module_of() is not resolving tools/<tool> as a module, so "
+            "every RA8_PRIV tag under tools/ is decorative"
         )
 
     # The merged symbol table is the underlying defect, so assert its shape
