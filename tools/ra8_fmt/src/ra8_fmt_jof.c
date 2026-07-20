@@ -346,15 +346,15 @@ ra8_err_t ra8_fmt_jof_produce(const ra8_fmt_blob_t* src,
   }
   ra8_jof_memstore_t store = {.buf = sink, .cap = sink_cap, .len = 0U};
   const ra8_err_t          rc    = fmt_jof_run_produce(src,
-                                              tile_w,
-                                              tile_h,
-                                              codec,
-                                              work,
-                                              work_cap,
-                                              webp_work,
-                                              webp_work_cap,
-                                              &store,
-                                              out_info);
+                                                         tile_w,
+                                                         tile_h,
+                                                         codec,
+                                                         work,
+                                                         work_cap,
+                                                         webp_work,
+                                                         webp_work_cap,
+                                                         &store,
+                                                         out_info);
   free(work);
   free(webp_work);
   if (rc != k_ra8_ok) {

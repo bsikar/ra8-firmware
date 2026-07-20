@@ -28,13 +28,12 @@
  * @since 0.1.0
  */
 
-#include "mdl_export_internal.h"
-
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "mdl_export_internal.h"
 #include "ra8_attributes.h"
 #include "ra8_err.h"
 #include "ra8_log.h"
