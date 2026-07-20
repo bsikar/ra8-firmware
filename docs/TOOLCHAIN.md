@@ -116,34 +116,71 @@ code -- run cppcheck 2.13 (dev box, built from source) first.**
 
 ### 3.4 ruff / shfmt / shellcheck on the dev box
 
-CI pins ruff==**0.15.19**, shfmt **v3.13.1**, shellcheck **v0.11.0**. The Mac has
-these (ruff 0.15.20 is one patch ahead -- align with `pipx install ruff==0.15.19`
-or a venv if a ruff-rule skew ever appears). The dev box does not ship them; run
-`.py`/`.sh` lint on the Mac (pinned) or install on dev:
-```bash
-python3 -m venv ~/lintenv && ~/lintenv/bin/pip install ruff==0.15.19
-curl -fsSL https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz | tar xJ
-curl -fsSL -o shfmt https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_v3.13.1_linux_amd64 && chmod +x shfmt
-```
+CI pins ruff==**0.15.19**, shfmt **v3.13.1**, shellcheck **v0.11.0**. The dev box
+now ships all three at exactly those versions, in `~/.local/bin`, so
+`make ci-gate GATE=lint-py-shell` on dev is CI-faithful. The Mac has them too
+(ruff 0.15.20 is one patch ahead -- align with `pipx install ruff==0.15.19` if a
+ruff-rule skew ever appears).
+
+**Resolve them through a login shell.** `~/.local/bin` is added to `PATH` by the
+profile, so a plain `ssh dev '<cmd>'` does not see any of the three while
+`ssh dev 'bash -lc "<cmd>"'` does -- the gate then fails on a missing tool that
+is in fact installed. The same trap changes which `clang-tidy` and `gcovr` you
+get (#333). Always use `bash -lc`.
+
+### 3.5 ccache: shared across agents, bypassed for instrumented builds
+
+`cmake/ccache.cmake` wires ccache in as `CMAKE_<LANG>_COMPILER_LAUNCHER` for the
+host builds, the arm-none-eabi cross builds and the containerised gate run
+alike, and the dev box points every one of them at one shared cache
+(`CCACHE_DIR=/var/cache/ccache-ra8`). Measured on that box: a cross build goes
+0% -> **100%** hits on a rebuild into a *different* build directory, and the
+host test build 1.25% -> **100%**.
+
+Hits survive across build directories only because the cache sets `base_dir = /`
+and `hash_dir = false` (and `scripts/ci.sh` exports the `CCACHE_BASEDIR` /
+`CCACHE_NOHASHDIR` equivalents into the container). Every `make ci` builds in a
+fresh `mktemp` snapshot, so without that normalisation the hit rate is flat
+zero rather than merely lower.
+
+**Coverage and MC/DC builds deliberately bypass the cache** and say so
+(`ccache: DISABLED for this build`). gcov records absolute source and object
+paths inside the `.gcno`, so a cached object replayed into a different build
+directory makes gcovr resolve nothing and report `no_working_dir_found` -- a
+failure indistinguishable from a real coverage regression. Do not "fix" that
+opt-out.
 
 ---
 
 ## 4. Fast pre-push validation (dev box)
 
-The Mac cannot run host tests. Sync your change onto a clean `origin/dev` and run
-the gates on the dev box, where **Linux native IS the CI environment**:
+The Mac cannot run host tests. Run the gates on the dev box, where **Linux
+native IS the CI environment**:
+
+**Get your own workspace first.** `~/ra8-firmware` is shared by every agent on
+the box, and `git reset --hard` in it is how two agents had their checkouts
+clobbered mid-run, corrupting a baseline measurement and a SIL run. Never work
+there and never improvise a checkout of your own -- `make ws-new` exists so you
+do not have to:
 
 ```bash
-# 1. clean sync (dev's origin ref lags -- always fetch first)
-ssh dev 'cd ~/ra8-firmware && git fetch origin -q && git reset --hard origin/dev -q && git clean -fdq'
-COPYFILE_DISABLE=1 tar czf - <changed files> | ssh dev 'cd ~/ra8-firmware && tar xzf - && find . -name "._*" -delete'
-# 2. gates -- the SAME functions the runner executes, no container needed
-ssh dev 'cd ~/ra8-firmware && make ci-native'        # every gate
-ssh dev 'cd ~/ra8-firmware && make ci-native-fast'   # quick pre-push smoke
-ssh dev 'cd ~/ra8-firmware && make ci-gate GATE=coverage-report'   # just one
+# 0. isolated workspace (a linked worktree; costs a checkout, not a clone)
+ssh dev 'bash -lc "cd ~/ra8-firmware && make ws-new NAME=my-task"'
+# ... then work in ~/ra8-ws/my-task, and `make ws-free NAME=my-task` when done.
+# 1. put your commit in it -- push a branch and check it out there; do NOT rsync
+#    into the shared tree.
+# 2. gates -- the SAME functions the runner executes
+ssh dev 'bash -lc "cd ~/ra8-ws/my-task && make ci"'                     # container (works from a worktree, #334)
+ssh dev 'bash -lc "cd ~/ra8-ws/my-task && make ci-native"'              # every gate, no container
+ssh dev 'bash -lc "cd ~/ra8-ws/my-task && make ci-gate GATE=coverage-report"'   # just one
 # 3. push (the pre-push hook runs the suite, which the Mac cannot; dev validated it)
 SKIP_CI_PUSH=1 git push origin dev
 ```
+
+`bash -lc` is not optional -- see section 3.4. And do not poll GitHub with
+`gh run watch`: the REST quota is shared and ~18 concurrent watchers have
+exhausted it twice in a day. Use `make ci-status` (exit 3 means UNKNOWN, which
+is neither a pass nor a failure).
 
 > **Do not hand-assemble gate commands.** Every check body lives in exactly one
 > place -- `scripts/ci.sh`, listed in its `RA8_GATE_REGISTRY` -- and each CI
