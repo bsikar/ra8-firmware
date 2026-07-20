@@ -1,0 +1,58 @@
+# yamllint configuration -- yamllint 1.37.1, the pin the lint-yaml gate, the
+# devcontainer image and the CI runners all install.
+#
+# Scope is the 10 first-party workflow / config YAML files. Vendored trees
+# (libs/third_party/, libs/fonts/) are excluded by the gate's file list, not
+# here, so this config never has to know about SOUP.
+
+---
+extends: default
+
+rules:
+  # 100 columns, matching .clang-format ColumnLimit and .editorconfig. The
+  # yamllint default of 80 is narrower than every other language in this tree.
+  line-length:
+    max: 100
+    level: error
+
+  # GitHub Actions requires the trigger block to be spelled `on:`. YAML 1.1
+  # resolves a bare `on` to the boolean true, which is what this rule reports
+  # -- so the finding is unfixable by construction: renaming the key breaks
+  # the workflow. Narrow the rule to VALUES only. `foo: yes` in a value
+  # position is still an error, which is the half of the rule that can
+  # actually catch something here.
+  truthy:
+    check-keys: false
+    level: error
+
+  # Everything else stays at `default` strictness, promoted from warning to
+  # error: a warning that never fails a gate is a finding nobody reads.
+  comments:
+    level: error
+  comments-indentation:
+    level: error
+  document-start:
+    present: true
+    level: error
+  empty-lines:
+    level: error
+  new-line-at-end-of-file:
+    level: error
+  trailing-spaces:
+    level: error
+  braces:
+    level: error
+  brackets:
+    level: error
+  colons:
+    level: error
+  commas:
+    level: error
+  hyphens:
+    level: error
+  indentation:
+    level: error
+  key-duplicates:
+    level: error
+  octal-values:
+    level: error

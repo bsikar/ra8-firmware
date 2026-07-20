@@ -26,6 +26,7 @@
 # scope. Workflow files alone cannot fully close this: see SECURITY.md for the
 # GitHub UI / runner-group / ephemeral-VM settings the owner MUST also set
 # before making the repo public.
+---
 name: firmware
 
 on:
@@ -51,7 +52,9 @@ jobs:
   ci-parity:
     name: CI parity (workflows <-> ci.sh)
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - name: Ensure PyYAML is available
@@ -70,7 +73,9 @@ jobs:
   ascii:
     name: ASCII-only source files
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - run: bash scripts/ci.sh --gate ascii
@@ -78,7 +83,9 @@ jobs:
   copyright:
     name: Copyright header check
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - run: bash scripts/ci.sh --gate copyright
@@ -86,7 +93,9 @@ jobs:
   since:
     name: Doxygen @since tags
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - run: bash scripts/ci.sh --gate since
@@ -99,7 +108,9 @@ jobs:
   hil-sil-parity:
     name: SIM==HIL parity
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - run: bash scripts/ci.sh --gate hil-sil-parity
@@ -107,7 +118,9 @@ jobs:
   format:
     name: clang-format check
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - run: bash scripts/ci.sh --gate format
@@ -126,7 +139,9 @@ jobs:
   tidy:
     name: clang-tidy
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
 
@@ -159,7 +174,9 @@ jobs:
   nsc-cmse:
     name: NSC veneers (-mcmse)
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - run: bash scripts/ci.sh --gate nsc-cmse
@@ -167,7 +184,9 @@ jobs:
   unit-tests:
     name: Unit tests (host)
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -185,7 +204,9 @@ jobs:
   ubsan:
     name: UBSan (host tests)
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -198,7 +219,9 @@ jobs:
   cache-bench:
     name: Cache benchmarks (#147/#160)
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -214,7 +237,9 @@ jobs:
   tools-build:
     name: Host tools (build + link + test)
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -223,7 +248,9 @@ jobs:
   coverage:
     name: Coverage (gcovr 90/80)
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -249,7 +276,9 @@ jobs:
   mcdc:
     name: MC/DC coverage gate
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -271,7 +300,9 @@ jobs:
   pre-commit-checks:
     name: Pre-commit gate suite
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
         with:
@@ -311,7 +342,9 @@ jobs:
           fi
           # pinned static binaries for the X64 runner (no sudo, no apt)
           mkdir -p "$RUNNER_TEMP/lintbin"
-          curl -fsSL https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz \
+          sc_url=https://github.com/koalaman/shellcheck/releases/download
+          sc_tar=shellcheck-v0.11.0.linux.x86_64.tar.xz
+          curl -fsSL "$sc_url/v0.11.0/$sc_tar" \
             | tar -xJ -C "$RUNNER_TEMP"
           cp "$RUNNER_TEMP/shellcheck-v0.11.0/shellcheck" "$RUNNER_TEMP/lintbin/"
           curl -fsSL -o "$RUNNER_TEMP/lintbin/shfmt" \
@@ -319,6 +352,34 @@ jobs:
           chmod +x "$RUNNER_TEMP/lintbin/shfmt"
           echo "$RUNNER_TEMP/lintbin" >> "$GITHUB_PATH"
       - run: bash scripts/ci.sh --gate lint-py-shell
+      - name: Install the config-as-code linters
+        run: |
+          # ci-parity: infra -- provisions pinned cmake-format / cmake-lint /
+          # yamllint / actionlint on the runner; runs no project check. The
+          # lint-cmake and lint-yaml gates call require_cmd, so a tool still
+          # missing after this FAILS the gate rather than skipping it.
+          set -euo pipefail
+          if python3 -m venv "$RUNNER_TEMP/cfgenv" 2>/dev/null \
+             && "$RUNNER_TEMP/cfgenv/bin/pip" install --quiet \
+                  cmakelang==0.6.13 yamllint==1.37.1; then
+            echo "$RUNNER_TEMP/cfgenv/bin" >> "$GITHUB_PATH"
+          else
+            echo "venv unavailable; installing via pip --user --break-system-packages"
+            python3 -m pip install --user --break-system-packages --quiet \
+              cmakelang==0.6.13 yamllint==1.37.1
+            echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
+          fi
+          mkdir -p "$RUNNER_TEMP/cfgbin"
+          al_url=https://github.com/rhysd/actionlint/releases/download
+          al_tar=actionlint_1.7.7_linux_amd64.tar.gz
+          curl -fsSL "$al_url/v1.7.7/$al_tar" \
+            | tar -xz -C "$RUNNER_TEMP/cfgbin" actionlint
+          chmod +x "$RUNNER_TEMP/cfgbin/actionlint"
+          echo "$RUNNER_TEMP/cfgbin" >> "$GITHUB_PATH"
+      - run: bash scripts/ci.sh --gate lint-cmake
+      - run: bash scripts/ci.sh --gate lint-yaml
+      - run: bash scripts/ci.sh --gate lint-make
+      - run: bash scripts/ci.sh --gate lint-ld
       - run: bash scripts/ci.sh --gate cite-check
       - run: bash scripts/ci.sh --gate sbom
       - run: bash scripts/ci.sh --gate roadmap-stats
@@ -332,7 +393,9 @@ jobs:
   build-cross:
     name: Cross-build all apps
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - run: bash scripts/ci.sh --gate build-cross
@@ -342,7 +405,9 @@ jobs:
   docs:
     name: Doxygen warnings
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - name: Install graphviz
@@ -367,7 +432,9 @@ jobs:
   misra:
     name: MISRA-C 2012 ratchet
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -376,7 +443,9 @@ jobs:
   cppcheck:
     name: cppcheck
     runs-on: [self-hosted, Linux, X64]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name != 'pull_request'
+      || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
       - run: bash scripts/ci.sh --gate cppcheck
@@ -392,7 +461,9 @@ jobs:
     # PR-only job, and self-hosted: also require the PR head to live in THIS
     # repo so a fork PR can never reach the runner (defence in depth -- `needs:
     # mcdc` already skips it when the guarded mcdc job is skipped on a fork PR).
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       pull-requests: write
       contents: read
@@ -460,7 +531,9 @@ jobs:
             body += "Showing up to 50 files sorted by delta (regressions first).\n\n";
             body += "| file | base | PR | delta |\n|---|---|---|---|\n";
             for (const r of top) {
-              body += `| \`${r.file}\` | ${fmt(r.base)} | ${fmt(r.pr)} | ${sign(r.delta)}${fmt(r.delta)} |\n`;
+              const delta = `${sign(r.delta)}${fmt(r.delta)}`;
+              body +=
+                `| \`${r.file}\` | ${fmt(r.base)} | ${fmt(r.pr)} | ${delta} |\n`;
             }
             if (!top.length) {
               body += "| _no rows_ | | | |\n";
