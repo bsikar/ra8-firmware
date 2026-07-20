@@ -212,6 +212,15 @@ static void test_probe_range_guard(void)
  * @pre None.
  * @post Arbitrary bytes returned ::k_ra8_err_not_supported.
  * @post A RIFF/AVI header returned ::k_ra8_err_not_supported.
+ *
+ * @par MC/DC:
+ * Decision: `(RIFF fourCC matches) && (WEBP fourCC matches)` in `priv_is_webp`
+ * (2 conditions)
+ * - Vector 1: 0x5A filler       -> false (varies the first fourCC)
+ * - Vector 2: "RIFF" + "AVI "   -> false (varies only the second fourCC)
+ * - Vector 3: "RIFF" + "WEBP"   -> true  (control: both conditions true)
+ * Vectors 1+3 prove the first fourCC independently affects the outcome; 2+3
+ * prove the same for the second. N+1 = 3 vectors for N=2: minimal MC/DC.
  * @note Not thread-safe.
  * @since 0.1.0
  */
@@ -230,6 +239,12 @@ static void test_probe_unknown_magic(void)
   (void)memcpy(&hdr[8], "AVI ", 4U);
   TEST_ASSERT_EQ(k_ra8_err_not_supported,
                  ra8_tileatlas_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h));
+  /* Both fourCCs match, so priv_is_webp() is true and the WebP arm is taken;
+   * the body is not a decodable bitstream, so the reader -- not the container
+   * sniff -- reports the failure. This is the vector that varies only the
+   * second fourCC against the AVI case above. */
+  (void)memcpy(&hdr[8], "WEBP", 4U);
+  TEST_ASSERT(ra8_tileatlas_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h) != k_ra8_ok);
   TEST_END("probe_dims: unknown magic and RIFF-but-not-WEBP");
 }
 
@@ -244,6 +259,14 @@ static void test_probe_unknown_magic(void)
  * @pre None.
  * @post A bare SOI did not return ::k_ra8_err_not_supported.
  * @post The dispatch reached the JPEG reader.
+ *
+ * @par MC/DC:
+ * Decision: `(data[0] == SOI_first) && (data[1] == SOI_second)` (2 conditions)
+ * - Vector 1: 0xFF 0xD8 -> true  (control: both conditions true)
+ * - Vector 2: 0x89 'P'  -> false (varies data[0]; the PNG vectors above)
+ * - Vector 3: 0xFF 0x00 -> false (varies only data[1])
+ * Vectors 1+2 prove data[0] independently affects the outcome; 1+3 prove the
+ * same for data[1]. N+1 = 3 vectors for N=2: minimal MC/DC.
  * @note Not thread-safe.
  * @since 0.1.0
  */
@@ -260,6 +283,11 @@ static void test_probe_jpeg_dispatch(void)
   /* Whatever the reader concludes about a headerless JPEG, the probe must not
    * have treated it as an unrecognised container. */
   TEST_ASSERT(rc != k_ra8_err_not_supported);
+  /* SOI's first byte alone is not SOI: varying only the second condition must
+   * drop out of the JPEG arm and fall through to the unsupported tail. */
+  hdr[1] = 0x00U;
+  TEST_ASSERT_EQ(k_ra8_err_not_supported,
+                 ra8_tileatlas_probe_dims(hdr, (size_t)k_p_hdr_cap, &w, &h));
   TEST_END("probe_dims: JPEG SOI dispatch arm");
 }
 
