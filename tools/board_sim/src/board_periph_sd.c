@@ -299,29 +299,6 @@ static void board_sd_begin_write(board_sd_state_t* c, uint8_t idx, uint32_t arg,
 }
 
 /**
- * @brief Feed one host byte into an in-flight block write; return the CIPO byte.
- *
- * @details Drives the SD SPI write handshake (SD PHY v9 7.3.3): skip idle bytes
- * until the data-start token (0xFE single / 0xFC multi), capture 512 payload
- * bytes into the backing image, swallow the 2 CRC bytes, then stage the
- * data-response token (0x05 accepted) + one busy byte + done. A CMD25 multi-write
- * advances to the next block and re-arms the token wait; the stop-tran token
- * (0xFD) ends it. board_sim has no real program delay, so a single busy byte
- * suffices.
- *
- * @param[in,out] c  Card state (must be mid-write).
- * @param[in]     tx Byte clocked out by the host.
- * @return The byte the card presents on CIPO (always idle here; the staged
- *         data-response is drained by ::board_sd_exchange next).
- * @retval 0xFF Bus idle while collecting the data phase.
- * @pre `c->wr_phase != k_sd_wr_idle`.
- * @pre A writable backing image is attached.
- * @post Captured payload bytes are written into `c->image`.
- * @post On block completion the data-response token is staged in `c->resp`.
- * @note Not thread-safe.
- * @since 0.1.0
- */
-/**
  * @brief Handle a byte while the model waits for a write data token.
  *
  * @details
@@ -417,6 +394,29 @@ static void sd_write_crc(board_sd_state_t* c)
   }
 }
 
+/**
+ * @brief Feed one host byte into an in-flight block write; return the CIPO byte.
+ *
+ * @details Drives the SD SPI write handshake (SD PHY v9 7.3.3): skip idle bytes
+ * until the data-start token (0xFE single / 0xFC multi), capture 512 payload
+ * bytes into the backing image, swallow the 2 CRC bytes, then stage the
+ * data-response token (0x05 accepted) + one busy byte + done. A CMD25 multi-write
+ * advances to the next block and re-arms the token wait; the stop-tran token
+ * (0xFD) ends it. board_sim has no real program delay, so a single busy byte
+ * suffices.
+ *
+ * @param[in,out] c  Card state (must be mid-write).
+ * @param[in]     tx Byte clocked out by the host.
+ * @return The byte the card presents on CIPO (always idle here; the staged
+ *         data-response is drained by ::board_sd_exchange next).
+ * @retval 0xFF Bus idle while collecting the data phase.
+ * @pre `c->wr_phase != k_sd_wr_idle`.
+ * @pre A writable backing image is attached.
+ * @post Captured payload bytes are written into `c->image`.
+ * @post On block completion the data-response token is staged in `c->resp`.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 static uint8_t board_sd_write_byte(board_sd_state_t* c, uint8_t tx)
 {
   if (c->wr_phase == k_sd_wr_token) {

@@ -300,7 +300,7 @@ static void draw_console_tabs(uint16_t*             out,
   }
 }
 
-/** @brief Paint the tabbed console panel (newest line at the bottom). */
+/* @brief Paint the tabbed console panel (newest line at the bottom). */
 /**
  * @brief Draw the console heading line and its rule.
  *

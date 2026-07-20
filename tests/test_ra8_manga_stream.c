@@ -86,35 +86,6 @@ static void t_mg_crosscheck_raw(ra8_vmem_stream_t* st, uint32_t page, uint32_t b
 }
 
 /**
- * @brief Drive the manga access pattern over @p atlas_count atlases.
- *
- * @details Cover scroll flood, forward multi-page scroll, cross-volume chapter
- *          jumps (random seeks), a scroll-up back-flip, a far-boundary read, and
- *          repeated cover revisits -- verifying every band and tracking the
- *          residency high-water. Returns the count of DISTINCT bands touched so
- *          the caller can assert oversubscription.
- *
- * @param[in]  atlas_count Atlases in the volume.
- * @param[in]  st          Volume byte stream.
- * @param[in]  tc          Tile cache.
- * @param[out] hw          Residency high-water marks.
- *
- * @return Approximate distinct-band count touched by the flood + samples.
- * @retval >0 Always (the cover flood alone touches every band of atlas 0).
- *
- * @pre The stack was wired by ::t_mg_setup over the same volume.
- * @pre `atlas_count >= 2` so cross-volume seeks are meaningful.
- * @post Every touched band matched the reference.
- * @post `hw` reflects the peak residency of the run.
- *
- * @note Not thread-safe.
- *
- * @par MC/DC:
- * (no compound decisions -- nested single-condition scroll/sample loop bounds)
- *
- * @since 0.1.0
- */
-/**
  * @brief Skim the first few bands of each of the next few pages.
  *
  * @details
@@ -206,6 +177,35 @@ static uint32_t t_mg_seek_across_volume(uint32_t              atlas_count,
   return (uint32_t)k_mg_samples;
 }
 
+/**
+ * @brief Drive the manga access pattern over @p atlas_count atlases.
+ *
+ * @details Cover scroll flood, forward multi-page scroll, cross-volume chapter
+ *          jumps (random seeks), a scroll-up back-flip, a far-boundary read, and
+ *          repeated cover revisits -- verifying every band and tracking the
+ *          residency high-water. Returns the count of DISTINCT bands touched so
+ *          the caller can assert oversubscription.
+ *
+ * @param[in]  atlas_count Atlases in the volume.
+ * @param[in]  st          Volume byte stream.
+ * @param[in]  tc          Tile cache.
+ * @param[out] hw          Residency high-water marks.
+ *
+ * @return Approximate distinct-band count touched by the flood + samples.
+ * @retval >0 Always (the cover flood alone touches every band of atlas 0).
+ *
+ * @pre The stack was wired by ::t_mg_setup over the same volume.
+ * @pre `atlas_count >= 2` so cross-volume seeks are meaningful.
+ * @post Every touched band matched the reference.
+ * @post `hw` reflects the peak residency of the run.
+ *
+ * @note Not thread-safe.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- nested single-condition scroll/sample loop bounds)
+ *
+ * @since 0.1.0
+ */
 static uint32_t t_mg_run_manga_pattern(uint32_t           atlas_count,
                                        ra8_vmem_stream_t* st,
                                        ra8_tile_cache_t*  tc,

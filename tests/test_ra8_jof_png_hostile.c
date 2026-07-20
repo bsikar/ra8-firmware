@@ -677,7 +677,7 @@ static void test_png_hostile_palette_arms(void)
   TEST_END("png hostile: PLTE/tRNS ordering + shape arms");
 }
 
-/** @brief Exact-length zlib stream from stored deflate blocks (byte-precise). */
+/* @brief Exact-length zlib stream from stored deflate blocks (byte-precise). */
 /**
  * @brief Fill `s_raw` with unfiltered scanlines; return the byte count.
  *

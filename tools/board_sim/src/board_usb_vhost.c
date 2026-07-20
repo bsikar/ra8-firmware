@@ -704,8 +704,6 @@ static void host_msc_phase_send(uc_engine* uc)
  *
  * @param[in] d Data-phase bytes just taken off the bulk-IN pipe.
  * @param[in] n Number of valid bytes in @p d, always non-zero.
- * @return None.
- * @retval None Void.
  * @pre @p d is non-null.
  * @pre @p n is greater than zero (the caller checked).
  * @post The globals for the in-flight command reflect this burst.
